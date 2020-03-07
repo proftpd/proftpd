@@ -113,19 +113,20 @@ static DH *get_dh(BIGNUM *p, BIGNUM *g) {
   return dh;
 }
 
-static X509 *read_cert(FILE *fh, SSL_CTX *ssl_ctx) {
-  X509 *cert;
+static X509 *read_cert(FILE *fh, SSL_CTX *ctx) {
+  pem_password_cb *cb;
+  void *cb_data;
 
 #if OPENSSL_VERSION_NUMBER >= 0x10100000L && \
     !defined(HAVE_LIBRESSL)
-  cert = PEM_read_X509(fh, NULL, SSL_CTX_get_default_passwd_cb(ssl_ctx),
-    SSL_CTX_get_default_passwd_cb_userdata(ssl_ctx));
+  cb = SSL_CTX_get_default_passwd_cb(ctx);
+  cb_data = SSL_CTX_get_default_passwd_cb_userdata(ctx);
 #else
-  cert = PEM_read_X509(fh, NULL, ssl_ctx->default_passwd_callback,
-    ssl_ctx->default_passwd_callback_userdata);
+  cb = ctx->default_passwd_callback;
+  cb_data = ctx->default_passwd_callback_userdata;
 #endif /* OpenSSL-1.1.x and later */
 
-  return cert;
+  return PEM_read_X509(fh, NULL, cb, cb_data);
 }
 
 static int get_pkey_type(EVP_PKEY *pkey) {
@@ -482,6 +483,8 @@ static char *tls_passphrase_provider = NULL;
 # define TLS_PROTO_DEFAULT		(TLS_PROTO_TLS_V1)
 #endif /* OpenSSL 1.0.1 or later */
 
+static unsigned int tls_protocol = TLS_PROTO_DEFAULT;
+
 /* This is used for e.g. "TLSProtocol ALL -SSLv3 ...". */
 #define TLS_PROTO_ALL			(TLS_PROTO_SSL_V3|TLS_PROTO_TLS_V1|TLS_PROTO_TLS_V1_1|TLS_PROTO_TLS_V1_2|TLS_PROTO_TLS_V1_3)
 
@@ -554,12 +557,21 @@ static unsigned int tls_sscn_mode = TLS_SSCN_MODE_SERVER;
 #define TLS_X509V3_TLS_FEAT_STATUS_REQUEST_V2	{ 0x30, 0x03, 0x02, 0x01, 0x17 }
 
 static char *tls_cipher_suite = NULL;
+static char *tls_ca_file = NULL, *tls_ca_path = NULL, *tls_ca_chain = NULL;
 static char *tls_crl_file = NULL, *tls_crl_path = NULL;
 static char *tls_ec_cert_file = NULL, *tls_ec_key_file = NULL;
+static void *tls_ecdh_curve = NULL;
 static char *tls_dsa_cert_file = NULL, *tls_dsa_key_file = NULL;
 static char *tls_pkcs12_file = NULL;
 static char *tls_rsa_cert_file = NULL, *tls_rsa_key_file = NULL;
 static char *tls_rand_file = NULL;
+#if !defined(OPENSSL_NO_TLSEXT) && \
+    OPENSSL_VERSION_NUMBER >= 0x10002000L
+static char *tls_serverinfo_file = NULL;
+#endif /* OPENSSL_NO_TLSEXT */
+static int tls_use_next_protocol = TRUE;
+static int tls_use_server_cipher_preference = TRUE;
+static int tls_use_session_tickets = FALSE;
 
 #if defined(PSK_MAX_PSK_LEN)
 static pr_table_t *tls_psks = NULL;
@@ -628,6 +640,16 @@ static int tls_get_passphrase(server_rec *, const char *, const char *,
 
 static char *tls_get_subj_name(SSL *);
 
+static void tls_lookup_all(server_rec *);
+static int tls_ctx_set_all(server_rec *, SSL_CTX *);
+static int tls_ctx_set_ca_certs(SSL_CTX *);
+static int tls_ctx_set_certs(SSL_CTX *, X509 **, X509 **, X509 **);
+static int tls_ctx_set_crls(SSL_CTX *);
+static int tls_ctx_set_session_cache(server_rec *, SSL_CTX *);
+static int tls_ctx_set_session_tickets(SSL_CTX *);
+static int tls_ctx_set_stapling(SSL_CTX *);
+static int tls_ssl_set_all(server_rec *, SSL *);
+
 static int tls_openlog(void);
 static int tls_seed_prng(void);
 static int tls_sess_init(void);
@@ -645,7 +667,7 @@ static tls_sess_cache_t *tls_sess_cache_get_cache(const char *);
 static long tls_sess_cache_get_cache_mode(void);
 static int tls_sess_cache_open(char *, long);
 static int tls_sess_cache_close(void);
-#ifdef PR_USE_CTRLS
+#if defined(PR_USE_CTRLS)
 static int tls_sess_cache_clear(void);
 static int tls_sess_cache_remove(void);
 static int tls_sess_cache_status(pr_ctrls_t *, int);
@@ -659,7 +681,7 @@ static void tls_sess_cache_delete_sess_cb(SSL_CTX *, SSL_SESSION *);
 static tls_ocsp_cache_t *tls_ocsp_cache_get_cache(const char *);
 static int tls_ocsp_cache_open(char *);
 static int tls_ocsp_cache_close(void);
-#ifdef PR_USE_CTRLS
+#if defined(PR_USE_CTRLS)
 static int tls_ocsp_cache_clear(void);
 static int tls_ocsp_cache_remove(void);
 static int tls_ocsp_cache_status(pr_ctrls_t *, int);
@@ -882,14 +904,25 @@ static void tls_reset_state(void) {
   tls_cipher_suite = NULL;
   tls_crl_file = NULL;
   tls_crl_path = NULL;
-  tls_ec_cert_file = NULL;
-  tls_ec_key_file = NULL;
+  tls_crypto_device = NULL;
   tls_dsa_cert_file = NULL;
   tls_dsa_key_file = NULL;
+  tls_ec_cert_file = NULL;
+  tls_ec_key_file = NULL;
   tls_pkcs12_file = NULL;
   tls_rsa_cert_file = NULL;
   tls_rsa_key_file = NULL;
   tls_rand_file = NULL;
+#if defined(PSK_MAX_PSK_LEN)
+  tls_psks = NULL;
+#endif /* PSK_MAX_PSK_LEN */
+
+#if defined(PR_USE_OPENSSL_OCSP)
+  tls_stapling = FALSE;
+  tls_stapling_opts = 0UL;
+  tls_stapling_responder = NULL;
+  tls_stapling_timeout = 0;
+#endif /* PR_USE_OPENSSL_OCSP */
 
   tls_handshake_timeout = 300;
   tls_handshake_timed_out = FALSE;
@@ -897,16 +930,16 @@ static void tls_reset_state(void) {
 
   tls_verify_depth = 9;
 
+  /* Note that we do NOT want to set the netio and nstrm pointers, ctrl
+   * channel, to here.  Why not?  We reset this state when a HOST command
+   * occurs -- but that does NOT cause the NetIO open() to be called again.
+   * And only the NetIO open callback sets our netio/nstrm pointers; so we
+   * leave those as they are (Bug#4370).
+   */
+
   tls_data_netio = NULL;
   tls_data_rd_nstrm = NULL;
   tls_data_wr_nstrm = NULL;
-
-  /* Note that we do NOT want to set the ctrl netio and nstrm pointers here.
-   * Why not?  We reset this state when a HOST command occurs -- but that does
-   * NOT cause the NetIO open() to be called again.  And only the NetIO open
-   * callback sets our netio/nstrm pointers; so we leave those as they are
-   * (Bug#4370).
-   */
 
   tls_sess_cache = NULL;
 
@@ -3305,7 +3338,8 @@ static void tls_scrub_pkey(tls_pkey_t *k) {
   k->sid = 0;
 }
 
-static tls_pkey_t *tls_lookup_pkey(void) {
+static tls_pkey_t *tls_lookup_pkey(server_rec *s, int lock_if_found,
+    int scrub_unless_match) {
   tls_pkey_t *k, *knext, *pkey = NULL;
 
   for (k = tls_pkey_list; k; k = knext) {
@@ -3313,9 +3347,18 @@ static tls_pkey_t *tls_lookup_pkey(void) {
 
     knext = k->next;
 
-    /* If this pkey matches the current server_rec, mark it and move on. */
-    if (k->sid == main_server->sid) {
+    if (k->sid != s->sid) {
+      if (scrub_unless_match) {
+        /* Scrub the passphrase's memory areas. */
+        tls_scrub_pkey(k);
+      }
 
+      continue;
+    }
+
+    pkey = k;
+
+    if (lock_if_found) {
 #ifdef HAVE_MLOCK
       /* mlock() the passphrase memory areas again; page locks are not
        * inherited across forks.
@@ -3352,13 +3395,9 @@ static tls_pkey_t *tls_lookup_pkey(void) {
       }
       PRIVS_RELINQUISH
 #endif /* HAVE_MLOCK */
-
-      pkey = k;
-      break;
     }
 
-    /* Otherwise, scrub the passphrase's memory areas. */
-    tls_scrub_pkey(k);
+    break;
   }
 
   return pkey;
@@ -3790,6 +3829,7 @@ static int tls_sni_cb(SSL *ssl, int *alert_desc, void *user_data) {
   server_name = SSL_get_servername(ssl, TLSEXT_NAMETYPE_host_name);
   if (server_name != NULL) {
     const char *host = NULL, *sni;
+    server_rec *named_server = NULL;
 
     pr_trace_msg(trace_channel, 5, "received SNI '%s'", server_name);
 
@@ -3853,6 +3893,71 @@ static int tls_sni_cb(SSL *ssl, int *alert_desc, void *user_data) {
       if (errno != EEXIST) {
         pr_trace_msg(trace_channel, 3,
           "error stashing 'mod_tls.sni' in session.notes: %s", strerror(errno));
+      }
+    }
+
+    if (tls_opts & TLS_OPT_IGNORE_SNI) {
+      pr_trace_msg(trace_channel, 5,
+        "client sent SNI '%s', ignoring due to IgnoreSNI TLSOption",
+        server_name);
+      return SSL_TLSEXT_ERR_OK;
+    }
+
+    /* See if we have a name-based vhost matching the SNI; if so, we want
+     * to switch to that vhost, in case it is configured with different
+     * server certificates, CAs.
+     */
+
+    named_server = pr_namebind_get_server(server_name, main_server->addr,
+      session.c->local_port);
+    if (named_server == NULL) {
+      tls_log("no matching server found for client-sent SNI '%s', rejecting "
+        "SSL/TLS connection", server_name);
+      pr_log_pri(PR_LOG_NOTICE, MOD_TLS_VERSION
+        ": no matching server found for client-sent SNI '%s', "
+        "rejecting SSL/TLS connection", server_name);
+#if defined(SSL_AD_UNRECOGNIZED_NAME)
+      *alert_desc = SSL_AD_UNRECOGNIZED_NAME;
+#else
+      *alert_desc = SSL_AD_ACCESS_DENIED;
+#endif /* SSL_AD_UNRECOGNIZED_NAME */
+      return SSL_TLSEXT_ERR_ALERT_FATAL;
+    }
+
+    if (named_server != main_server) {
+      unsigned char *engine;
+
+      /* First, check to see whether mod_tls is even enabled for the named
+       * vhost.
+       */
+      engine = get_param_ptr(named_server->conf, "TLSEngine", FALSE);
+      if (engine == NULL ||
+          *engine == FALSE) {
+        tls_log("TLSEngine not enabled for SNI '%s', rejecting client",
+          server_name);
+        pr_log_pri(PR_LOG_NOTICE, MOD_TLS_VERSION
+          ": TLSEngine not enabled for SNI '%s', rejecting client",
+          server_name);
+
+#if defined(SSL_AD_UNRECOGNIZED_NAME)
+        *alert_desc = SSL_AD_UNRECOGNIZED_NAME;
+#else
+        *alert_desc = SSL_AD_HANDSHAKE_FAILURE;
+#endif /* SSL_AD_UNRECOGNIZED_NAME */
+        return SSL_TLSEXT_ERR_ALERT_FATAL;
+      }
+
+      tls_lookup_all(named_server);
+
+      /* Check to see if a passphrase has been entered for this server. */
+      tls_pkey = tls_lookup_pkey(named_server, TRUE, TRUE);
+
+      if (tls_ssl_set_all(named_server, ssl) < 0) {
+        tls_log("error initializing OpenSSL session for SNI '%s'", server_name);
+        pr_log_pri(PR_LOG_NOTICE, MOD_TLS_VERSION
+          ": error initializing OpenSSL session for SNI '%s'", server_name);
+        *alert_desc = SSL_AD_ACCESS_DENIED;
+        return SSL_TLSEXT_ERR_ALERT_FATAL;
       }
     }
   }
@@ -5923,7 +6028,8 @@ static int tls_ticket_key_cb(SSL *ssl, unsigned char *key_name,
 }
 #endif /* TLS_USE_SESSION_TICKETS */
 
-#if defined(PR_USE_OPENSSL_ECC) && OPENSSL_VERSION_NUMBER < 0x10100000L
+#if defined(PR_USE_OPENSSL_ECC) && \
+    OPENSSL_VERSION_NUMBER < 0x10100000L
 static EC_KEY *tls_ecdh_cb(SSL *ssl, int is_export, int keylen) {
   static EC_KEY *ecdh = NULL;
   static int init = 0;
@@ -6039,56 +6145,58 @@ static void tls_blinding_on(SSL *ssl) {
 }
 #endif
 
-static int tls_init_ctx(void) {
-  config_rec *c;
+static int tls_set_fips(void) {
+  if (pr_define_exists("TLS_USE_FIPS") != TRUE) {
+    return 0;
+  }
+
+#ifdef OPENSSL_FIPS
+  if (!FIPS_mode()) {
+    /* Make sure OpenSSL is set to use the default RNG, as per an email
+     * discussion on the OpenSSL developer list:
+     *
+     *  "The internal FIPS logic uses the default RNG to see the FIPS RNG
+     *   as part of the self test process..."
+     */
+    RAND_set_rand_method(NULL);
+
+    if (!FIPS_mode_set(1)) {
+      const char *errstr;
+
+      errstr = tls_get_errors();
+      tls_log("unable to use FIPS mode: %s", errstr);
+      pr_log_pri(PR_LOG_ERR, MOD_TLS_VERSION
+        ": unable to use FIPS mode: %s", errstr);
+
+      errno = EPERM;
+      return -1;
+    }
+
+    pr_log_pri(PR_LOG_NOTICE, MOD_TLS_VERSION ": FIPS mode enabled");
+
+  } else {
+    pr_log_pri(PR_LOG_DEBUG, MOD_TLS_VERSION ": FIPS mode already enabled");
+  }
+#else
+  pr_log_pri(PR_LOG_WARNING, MOD_TLS_VERSION ": FIPS mode requested, but " OPENSSL_VERSION_TEXT " not built with FIPS support");
+#endif /* OPENSSL_FIPS */
+
+  return 0;
+}
+
+static SSL_CTX *tls_init_ctx(server_rec *s) {
   int ssl_opts = tls_ssl_opts;
   long ssl_mode = 0;
+  SSL_CTX *ctx;
+#if defined(TLS_USE_SESSION_TICKETS)
+  config_rec *c;
+#endif /* TLS_USE_SESSION_TICKETS */
 
-  if (pr_define_exists("TLS_USE_FIPS") &&
-      ServerType == SERVER_INETD) {
-#ifdef OPENSSL_FIPS
-    if (!FIPS_mode()) {
-      /* Make sure OpenSSL is set to use the default RNG, as per an email
-       * discussion on the OpenSSL developer list:
-       *
-       *  "The internal FIPS logic uses the default RNG to see the FIPS RNG
-       *   as part of the self test process..."
-       */
-      RAND_set_rand_method(NULL);
-
-      if (!FIPS_mode_set(1)) {
-        const char *errstr;
-
-        errstr = tls_get_errors();
-        tls_log("unable to use FIPS mode: %s", errstr);
-        pr_log_pri(PR_LOG_ERR, MOD_TLS_VERSION
-          ": unable to use FIPS mode: %s", errstr);
-
-        errno = EPERM;
-        return -1;
-
-      } else {
-        pr_log_pri(PR_LOG_NOTICE, MOD_TLS_VERSION ": FIPS mode enabled");
-      }
-
-    } else {
-      pr_log_pri(PR_LOG_DEBUG, MOD_TLS_VERSION ": FIPS mode already enabled");
-    }
-#else
-    pr_log_pri(PR_LOG_WARNING, MOD_TLS_VERSION ": FIPS mode requested, but " OPENSSL_VERSION_TEXT " not built with FIPS support");
-#endif /* OPENSSL_FIPS */
-  }
-
-  if (ssl_ctx != NULL) {
-    SSL_CTX_free(ssl_ctx);
-    ssl_ctx = NULL;
-  }
-
-  ssl_ctx = SSL_CTX_new(SSLv23_server_method());
-  if (ssl_ctx == NULL) {
+  ctx = SSL_CTX_new(SSLv23_server_method());
+  if (ctx == NULL) {
     pr_log_debug(DEBUG0, MOD_TLS_VERSION ": error: SSL_CTX_new(): %s",
       tls_get_errors());
-    return -1;
+    return NULL;
   }
 
 #if OPENSSL_VERSION_NUMBER > 0x000906000L
@@ -6102,7 +6210,7 @@ static int tls_init_ctx(void) {
 #endif
 
   if (ssl_mode != 0) {
-    SSL_CTX_set_mode(ssl_ctx, ssl_mode);
+    SSL_CTX_set_mode(ctx, ssl_mode);
   }
 
   /* If using OpenSSL-0.9.7 or greater, prevent session resumptions on
@@ -6126,158 +6234,19 @@ static int tls_init_ctx(void) {
 # endif
 #endif /* ECC support */
 
-#ifdef SSL_OP_CIPHER_SERVER_PREFERENCE
-  c = find_config(main_server->conf, CONF_PARAM, "TLSServerCipherPreference",
-    FALSE);
-  if (c != NULL) {
-    int use_server_pref;
-
-    use_server_pref = *((int *) c->argv[0]);
-    if (use_server_pref == TRUE) {
-      ssl_opts |= SSL_OP_CIPHER_SERVER_PREFERENCE;
-    }
-  } else {
-    /* Use the server cipher preferences by default. */
+#if defined(SSL_OP_CIPHER_SERVER_PREFERENCE)
+  /* Use the server cipher preferences by default. */
+  if (tls_use_server_cipher_preference == TRUE) {
     ssl_opts |= SSL_OP_CIPHER_SERVER_PREFERENCE;
   }
 #endif /* SSL_OP_CIPHER_SERVER_PREFERENCE */
 
-  SSL_CTX_set_options(ssl_ctx, ssl_opts);
+  SSL_CTX_set_options(ctx, ssl_opts);
 
-  /* Set up session caching. */
-  c = find_config(main_server->conf, CONF_PARAM, "TLSSessionCache", FALSE);
-  if (c != NULL) {
-    const char *provider;
-    long timeout;
-
-    /* Look up and initialize the configured session cache provider. */
-    provider = c->argv[0];
-    timeout = *((long *) c->argv[2]);
-
-    if (provider != NULL) {
-      if (strncmp(provider, "internal", 9) != 0) {
-        tls_sess_cache = tls_sess_cache_get_cache(provider);
-
-        pr_log_debug(DEBUG8, MOD_TLS_VERSION ": opening '%s' TLSSessionCache",
-          provider);
-
-        if (tls_sess_cache_open(c->argv[1], timeout) == 0) {
-          long cache_mode, cache_flags;
-
-          cache_mode = SSL_SESS_CACHE_SERVER;
-
-          /* We could force OpenSSL to use ONLY the configured external session
-           * caching mechanism by using the SSL_SESS_CACHE_NO_INTERNAL mode flag
-           * (available in OpenSSL 0.9.6h and later).
-           *
-           * However, consider the case where the serialized session data is
-           * too large for the external cache, or the external cache refuses
-           * to add the session for some reason.  If OpenSSL is using only our
-           * external cache, that session is lost (which could cause problems
-           * e.g. for later protected data transfers, which require that the
-           * SSL session from the control connection be reused).
-           *
-           * If the external cache can be reasonably sure that session data
-           * can be added, then the NO_INTERNAL flag is a good idea; it keeps
-           * OpenSSL from allocating more memory than necessary.  Having both
-           * an internal and an external cache of the same data is a bit
-           * unresourceful.  Thus we ask the external cache mechanism what
-           * additional cache mode flags to use.
-           */
-
-          cache_flags = tls_sess_cache_get_cache_mode();
-          cache_mode |= cache_flags;
-
-          SSL_CTX_set_session_cache_mode(ssl_ctx, cache_mode);
-          SSL_CTX_set_timeout(ssl_ctx, timeout);
-
-          SSL_CTX_sess_set_new_cb(ssl_ctx, tls_sess_cache_add_sess_cb);
-          SSL_CTX_sess_set_get_cb(ssl_ctx, tls_sess_cache_get_sess_cb);
-          SSL_CTX_sess_set_remove_cb(ssl_ctx, tls_sess_cache_delete_sess_cb);
-
-        } else {
-          pr_log_debug(DEBUG1, MOD_TLS_VERSION
-            ": error opening '%s' TLSSessionCache: %s", provider,
-            strerror(errno));
-
-          /* Default to using OpenSSL's own internal session caching. */
-          SSL_CTX_set_session_cache_mode(ssl_ctx, SSL_SESS_CACHE_SERVER);
-        }
-
-      } else {
-        /* Default to using OpenSSL's own internal session caching. */
-        SSL_CTX_set_session_cache_mode(ssl_ctx, SSL_SESS_CACHE_SERVER);
-        SSL_CTX_set_timeout(ssl_ctx, timeout);
-      }
-
-    } else {
-      /* SSL session caching has been explicitly turned off. */
-
-      pr_log_debug(DEBUG3, MOD_TLS_VERSION
-        ": TLSSessionCache off, disabling TLS session caching and setting "
-        "NoSessionReuseRequired TLSOption");
-
-      SSL_CTX_set_session_cache_mode(ssl_ctx, SSL_SESS_CACHE_OFF);
-
-      /* Make sure we automatically relax the "SSL session reuse required
-       * for data connections" requirement; to enforce such a requirement
-       * TLS session caching MUST be enabled.  So if session caching has been
-       * explicitly disabled, relax that policy as well.
-       */
-      tls_opts |= TLS_OPT_NO_SESSION_REUSE_REQUIRED;
-    }
-
-  } else {
-    long timeout = 0;
-
-#if OPENSSL_VERSION_NUMBER > 0x000907000L
-    /* If we support renegotiations, then make the cache lifetime be 10%
-     * longer than the control connection renegotiation timer.
-     */
-    timeout = 15840;
-
-#else
-    /* If we are not supporting reneogtiations because the OpenSSL version
-     * is too old, then set the default cache lifetime to 30 minutes.
-     */
-    timeout = 1800;
-#endif /* OpenSSL older than 0.9.7. */
-
-    /* Make sure that we enable OpenSSL internal caching, AND that the
-     * cache timeout is longer than the default control channel
-     * renegotiation.
-     */
-
-    SSL_CTX_set_session_cache_mode(ssl_ctx, SSL_SESS_CACHE_SERVER);
-    SSL_CTX_set_timeout(ssl_ctx, timeout);
-  }
-
-  /* Set up OCSP response caching */
-  c = find_config(main_server->conf, CONF_PARAM, "TLSStaplingCache", FALSE);
-  if (c != NULL) {
-    const char *provider;
-
-    /* Look up and initialize the configured OCSP cache provider. */
-    provider = c->argv[0];
-
-    if (provider != NULL) {
-      tls_ocsp_cache = tls_ocsp_cache_get_cache(provider);
-
-      pr_log_debug(DEBUG8, MOD_TLS_VERSION ": opening '%s' TLSStaplingCache",
-        provider);
-
-      if (tls_ocsp_cache_open(c->argv[1]) < 0 &&
-          errno != ENOSYS) {
-        pr_log_debug(DEBUG1, MOD_TLS_VERSION
-          ": error opening '%s' TLSStaplingCache: %s", provider,
-          strerror(errno));
-        tls_ocsp_cache = NULL;
-      }
-    }
-  }
+  tls_ctx_set_session_cache(s, ctx);
 
 #if defined(TLS_USE_SESSION_TICKETS)
-  c = find_config(main_server->conf, CONF_PARAM, "TLSSessionTicketKeys", FALSE);
+  c = find_config(s->conf, CONF_PARAM, "TLSSessionTicketKeys", FALSE);
   if (c != NULL) {
     tls_ticket_key_max_age = *((unsigned int *) c->argv[0]);
     tls_ticket_key_max_count = *((unsigned int *) c->argv[1]);
@@ -6340,25 +6309,18 @@ static int tls_init_ctx(void) {
   }
 #endif /* TLS_USE_SESSION_TICKETS */
 
-  SSL_CTX_set_tmp_dh_callback(ssl_ctx, tls_dh_cb);
+  SSL_CTX_set_tmp_dh_callback(ctx, tls_dh_cb);
 
 #ifdef PR_USE_OPENSSL_ECC
   /* If using OpenSSL 1.0.2 or later, let it automatically choose the
    * correct/best curve, rather than having to hardcode a fallback.
    */
 # if defined(SSL_CTX_set_ecdh_auto)
-  SSL_CTX_set_ecdh_auto(ssl_ctx, 1);
+  SSL_CTX_set_ecdh_auto(ctx, 1);
 # endif
 #endif /* PR_USE_OPENSSL_ECC */
 
-  if (tls_seed_prng() < 0) {
-    pr_log_debug(DEBUG1, MOD_TLS_VERSION ": unable to properly seed PRNG");
-  }
-
-  tls_pool = make_sub_pool(permanent_pool);
-  pr_pool_tag(tls_pool, MOD_TLS_VERSION);
-
-  return 0;
+  return ctx;
 }
 
 static const char *tls_get_proto_str(pool *p, unsigned int protos,
@@ -6448,795 +6410,6 @@ static int get_disabled_protocols(unsigned int supported_protocols) {
   return disabled_protocols;
 }
 
-static int tls_init_server(void) {
-  config_rec *c = NULL;
-  char *tls_ca_cert = NULL, *tls_ca_path = NULL, *tls_ca_chain = NULL;
-  X509 *server_ec_cert = NULL, *server_dsa_cert = NULL, *server_rsa_cert = NULL;
-  int verify_mode = 0;
-  unsigned int enabled_proto_count = 0, tls_protocol = TLS_PROTO_DEFAULT;
-  int disabled_proto;
-  const char *enabled_proto_str = NULL;
-
-  c = find_config(main_server->conf, CONF_PARAM, "TLSProtocol", FALSE);
-  if (c != NULL) {
-    tls_protocol = *((unsigned int *) c->argv[0]);
-  }
-
-  disabled_proto = get_disabled_protocols(tls_protocol);
-
-  /* Per the comments in <ssl/ssl.h>, SSL_CTX_set_options() uses |= on
-   * the previous value.  This means we can easily OR in our new option
-   * values with any previously set values.
-   */
-  enabled_proto_str = tls_get_proto_str(main_server->pool, tls_protocol,
-    &enabled_proto_count);
-
-  pr_log_debug(DEBUG8, MOD_TLS_VERSION ": supporting %s %s",
-    enabled_proto_str,
-    enabled_proto_count != 1 ? "protocols" : "protocol only");
-  SSL_CTX_set_options(ssl_ctx, disabled_proto);
-
-  tls_ca_cert = get_param_ptr(main_server->conf, "TLSCACertificateFile", FALSE);
-  tls_ca_path = get_param_ptr(main_server->conf, "TLSCACertificatePath", FALSE);
-
-  if (tls_ca_cert || tls_ca_path) {
-
-    /* Set the locations used for verifying certificates. */
-    PRIVS_ROOT
-    if (SSL_CTX_load_verify_locations(ssl_ctx, tls_ca_cert, tls_ca_path) != 1) {
-      PRIVS_RELINQUISH
-      tls_log("unable to set CA verification using file '%s' or "
-        "directory '%s': %s", tls_ca_cert ? tls_ca_cert : "(none)",
-        tls_ca_path ? tls_ca_path : "(none)",
-        ERR_error_string(ERR_get_error(), NULL));
-      return -1;
-    }
-    PRIVS_RELINQUISH
-
-  } else {
-    /* Default to using locations set in the OpenSSL config file. */
-    pr_trace_msg(trace_channel, 9,
-      "using default OpenSSL verification locations (see $SSL_CERT_DIR "
-      "environment variable)");
-
-    if (SSL_CTX_set_default_verify_paths(ssl_ctx) != 1) {
-      tls_log("error setting default verification locations: %s",
-        tls_get_errors());
-    }
-  }
-
-  if (tls_flags & TLS_SESS_VERIFY_CLIENT_OPTIONAL) {
-    verify_mode = SSL_VERIFY_PEER;
-  }
-
-  if (tls_flags & TLS_SESS_VERIFY_CLIENT_REQUIRED) {
-    /* If we are verifying clients, make sure the client sends a cert;
-     * the protocol allows for the client to disregard a request for
-     * its cert by the server.
-     */
-    verify_mode |= (SSL_VERIFY_PEER|SSL_VERIFY_FAIL_IF_NO_PEER_CERT);
-  }
-
-  if (verify_mode != 0) {
-    SSL_CTX_set_verify(ssl_ctx, verify_mode, tls_verify_cb);
-
-    /* Note: we add one to the configured depth purposefully.  As noted
-     * in the OpenSSL man pages, the verification process will silently
-     * stop at the configured depth, and the error messages ensuing will
-     * be that of an incomplete certificate chain, rather than the
-     * "chain too long" error that might be expected.  To log the "chain
-     * too long" condition, we add one to the configured depth, and catch,
-     * in the verify callback, the exceeding of the actual depth.
-     */
-    SSL_CTX_set_verify_depth(ssl_ctx, tls_verify_depth + 1);
-  }
-
-  if (tls_ca_cert) {
-    STACK_OF(X509_NAME) *sk;
-
-    /* Use SSL_load_client_CA_file() to load all of the CA certs (since
-     * there can be more than one) from the TLSCACertificateFile.  The
-     * entire list of CAs in that file will be present to the client as
-     * the "acceptable client CA" list, assuming that
-     * TLSOptions NoCertRequest" is not in use.
-     */
-
-    PRIVS_ROOT
-    sk = SSL_load_client_CA_file(tls_ca_cert);
-    PRIVS_RELINQUISH
-
-    if (sk) {
-      SSL_CTX_set_client_CA_list(ssl_ctx, sk);
-
-    } else {
-      tls_log("unable to read certificates in '%s': %s", tls_ca_cert,
-        tls_get_errors());
-    }
-
-    if (tls_ca_path) {
-      DIR *cacertdir = NULL;
-
-      PRIVS_ROOT
-      cacertdir = opendir(tls_ca_path);
-      PRIVS_RELINQUISH
-
-      if (cacertdir) {
-        struct dirent *cadent = NULL;
-        pool *tmp_pool = make_sub_pool(permanent_pool);
-
-        while ((cadent = readdir(cacertdir)) != NULL) {
-          FILE *cacertf;
-          char *cacertname;
-
-          pr_signals_handle();
-
-          /* Skip dot directories. */
-          if (is_dotdir(cadent->d_name)) {
-            continue;
-          }
-
-          cacertname = pdircat(tmp_pool, tls_ca_path, cadent->d_name, NULL);
-
-          PRIVS_ROOT
-          cacertf = fopen(cacertname, "r");
-          PRIVS_RELINQUISH
-
-          if (cacertf) {
-            X509 *x509 = PEM_read_X509(cacertf, NULL, NULL, NULL);
-
-            if (x509) {
-              if (SSL_CTX_add_client_CA(ssl_ctx, x509) != 1) {
-                tls_log("error adding '%s' to client CA list: %s", cacertname,
-                  tls_get_errors());
-              }
-
-            } else {
-              tls_log("unable to read '%s': %s", cacertname, tls_get_errors());
-            }
-
-            fclose(cacertf);
-
-          } else {
-            tls_log("unable to open '%s': %s", cacertname, strerror(errno));
-          }
-        }
-
-        destroy_pool(tmp_pool);
-        closedir(cacertdir);
- 
-      } else {
-        tls_log("unable to add CAs in '%s': %s", tls_ca_path,
-          strerror(errno));
-      }
-    }
-  }
-
-  /* Assume that, if no separate key files are configured, the keys are
-   * in the same file as the corresponding certificate.
-   */
-  if (tls_rsa_key_file == NULL) {
-    tls_rsa_key_file = tls_rsa_cert_file;
-  }
-
-  if (tls_dsa_key_file == NULL) {
-    tls_dsa_key_file = tls_dsa_cert_file;
-  }
-
-  if (tls_ec_key_file == NULL) {
-    tls_ec_key_file = tls_ec_cert_file;
-  }
-
-  PRIVS_ROOT
-  if (tls_rsa_cert_file != NULL) {
-    FILE *fh = NULL;
-    int res, xerrno;
-    X509 *cert = NULL;
-
-    fh = fopen(tls_rsa_cert_file, "r");
-    xerrno = errno;
-    if (fh == NULL) {
-      PRIVS_RELINQUISH
-      pr_log_pri(PR_LOG_DEBUG, MOD_TLS_VERSION
-        ": error reading TLSRSACertificateFile '%s': %s", tls_rsa_cert_file,
-        strerror(xerrno));
-      errno = xerrno;
-      return -1;
-    }
-
-    /* As the file may contain sensitive data, we do not want it lingering
-     * around in stdio buffers.
-     */
-    (void) setvbuf(fh, NULL, _IONBF, 0);
-
-    cert = read_cert(fh, ssl_ctx);
-    if (cert == NULL) {
-      PRIVS_RELINQUISH
-      pr_log_pri(PR_LOG_NOTICE, MOD_TLS_VERSION
-        ": error reading TLSRSACertificateFile '%s': %s", tls_rsa_cert_file,
-        tls_get_errors());
-      fclose(fh);
-      return -1;
-    }
-
-    fclose(fh);
-
-    /* SSL_CTX_use_certificate() will increment the refcount on cert, so we
-     * can safely call X509_free() on it.  However, we need to keep that
-     * pointer around until after the handling of a cert chain file.
-     */
-    res = SSL_CTX_use_certificate(ssl_ctx, cert);
-    if (res <= 0) {
-      PRIVS_RELINQUISH
-
-      pr_log_pri(PR_LOG_NOTICE, MOD_TLS_VERSION
-        ": error loading TLSRSACertificateFile '%s': %s", tls_rsa_cert_file,
-        tls_get_errors());
-      return -1;
-    }
-
-    server_rsa_cert = cert;
-  }
-
-  if (tls_rsa_key_file != NULL) {
-    int res;
-
-    if (tls_pkey) {
-      tls_pkey->flags |= TLS_PKEY_USE_RSA;
-      tls_pkey->flags &= ~(TLS_PKEY_USE_DSA|TLS_PKEY_USE_EC);
-    }
-
-    res = SSL_CTX_use_PrivateKey_file(ssl_ctx, tls_rsa_key_file,
-      X509_FILETYPE_PEM);
-
-    if (res <= 0) {
-      const char *errors;
-
-      PRIVS_RELINQUISH
-
-      errors = tls_get_errors();
-
-      pr_trace_msg(trace_channel, 3,
-        "error loading TLSRSACertificateKeyFile '%s': %s",
-        tls_rsa_key_file, errors);
-      pr_log_pri(PR_LOG_NOTICE, MOD_TLS_VERSION
-        ": error loading TLSRSACertificateKeyFile '%s': %s",
-        tls_rsa_key_file, errors);
-      return -1;
-    }
-
-    res = SSL_CTX_check_private_key(ssl_ctx);
-    if (res != 1) {
-      const char *errors;
-
-      PRIVS_RELINQUISH 
-
-      errors = tls_get_errors();
-      pr_trace_msg(trace_channel, 3,
-        "error checking key from TLSRSACertificateKeyFile '%s': %s",
-        tls_rsa_key_file, errors);
-      pr_log_pri(PR_LOG_NOTICE, MOD_TLS_VERSION
-        ": error checking key from TLSRSACertificateKeyFile '%s': %s",
-        tls_rsa_key_file, errors);
-      return -1;
-    }
-  }
-
-  if (tls_dsa_cert_file != NULL) {
-    FILE *fh = NULL;
-    int res, xerrno;
-    X509 *cert = NULL;
-
-    fh = fopen(tls_dsa_cert_file, "r");
-    xerrno = errno;
-    if (fh == NULL) {
-      PRIVS_RELINQUISH
-      tls_log("error reading TLSDSACertificateFile '%s': %s", tls_dsa_cert_file,
-        strerror(xerrno));
-      errno = xerrno;
-      return -1;
-    }
-
-    /* As the file may contain sensitive data, we do not want it lingering
-     * around in stdio buffers.
-     */
-    (void) setvbuf(fh, NULL, _IONBF, 0);
-
-    cert = read_cert(fh, ssl_ctx);
-    if (cert == NULL) {
-      PRIVS_RELINQUISH
-      tls_log("error reading TLSDSACertificateFile '%s': %s", tls_dsa_cert_file,
-        tls_get_errors());
-      fclose(fh);
-      return -1;
-    }
-
-    fclose(fh);
-
-    /* SSL_CTX_use_certificate() will increment the refcount on cert, so we
-     * can safely call X509_free() on it.  However, we need to keep that
-     * pointer around until after the handling of a cert chain file.
-     */
-    res = SSL_CTX_use_certificate(ssl_ctx, cert);
-    if (res <= 0) {
-      PRIVS_RELINQUISH
-
-      tls_log("error loading TLSDSACertificateFile '%s': %s", tls_dsa_cert_file,
-        tls_get_errors());
-      return -1;
-    }
-
-    server_dsa_cert = cert;
-  }
-
-  if (tls_dsa_key_file != NULL) {
-    int res;
-
-    if (tls_pkey) {
-      tls_pkey->flags |= TLS_PKEY_USE_DSA;
-      tls_pkey->flags &= ~(TLS_PKEY_USE_RSA|TLS_PKEY_USE_EC);
-    }
-
-    res = SSL_CTX_use_PrivateKey_file(ssl_ctx, tls_dsa_key_file,
-      X509_FILETYPE_PEM);
-
-    if (res <= 0) {
-      PRIVS_RELINQUISH
-
-      tls_log("error loading TLSDSACertificateKeyFile '%s': %s",
-        tls_dsa_key_file, tls_get_errors());
-      return -1;
-    }
-
-    res = SSL_CTX_check_private_key(ssl_ctx);
-    if (res != 1) {
-      PRIVS_RELINQUISH
-
-      tls_log("error checking key from TLSDSACertificateKeyFile '%s': %s",
-        tls_dsa_key_file, tls_get_errors());
-      return -1;
-    }
-  }
-
-#ifdef PR_USE_OPENSSL_ECC
-  if (tls_ec_cert_file != NULL) {
-    FILE *fh = NULL;
-    int res, xerrno;
-    X509 *cert = NULL;
-
-    fh = fopen(tls_ec_cert_file, "r");
-    xerrno = errno;
-    if (fh == NULL) {
-      PRIVS_RELINQUISH
-      tls_log("error reading TLSECCertificateFile '%s': %s", tls_ec_cert_file,
-        strerror(xerrno));
-      errno = xerrno;
-      return -1;
-    }
-
-    /* As the file may contain sensitive data, we do not want it lingering
-     * around in stdio buffers.
-     */
-    (void) setvbuf(fh, NULL, _IONBF, 0);
-
-    cert = read_cert(fh, ssl_ctx);
-    if (cert == NULL) {
-      PRIVS_RELINQUISH
-      tls_log("error reading TLSECCertificateFile '%s': %s", tls_ec_cert_file,
-        tls_get_errors());
-      fclose(fh);
-      return -1;
-    }
-
-    fclose(fh);
-
-    /* SSL_CTX_use_certificate() will increment the refcount on cert, so we
-     * can safely call X509_free() on it.  However, we need to keep that
-     * pointer around until after the handling of a cert chain file.
-     */
-    res = SSL_CTX_use_certificate(ssl_ctx, cert);
-    if (res <= 0) {
-      PRIVS_RELINQUISH
-
-      tls_log("error loading TLSECCertificateFile '%s': %s", tls_ec_cert_file,
-        tls_get_errors());
-      return -1;
-    }
-
-    server_ec_cert = cert;
-  }
-
-  if (tls_ec_key_file != NULL) {
-    int res;
-
-    if (tls_pkey) {
-      tls_pkey->flags |= TLS_PKEY_USE_EC;
-      tls_pkey->flags &= ~(TLS_PKEY_USE_RSA|TLS_PKEY_USE_DSA);
-    }
-
-    res = SSL_CTX_use_PrivateKey_file(ssl_ctx, tls_ec_key_file,
-      X509_FILETYPE_PEM);
-
-    if (res <= 0) {
-      PRIVS_RELINQUISH
-
-      tls_log("error loading TLSECCertificateKeyFile '%s': %s",
-        tls_ec_key_file, tls_get_errors());
-      return -1;
-    }
-
-    res = SSL_CTX_check_private_key(ssl_ctx);
-    if (res != 1) {
-      PRIVS_RELINQUISH
-
-      tls_log("error checking key from TLSECCertificateKeyFile '%s': %s",
-        tls_ec_key_file, tls_get_errors());
-      return -1;
-    }
-  }
-#endif /* PR_USE_OPENSSL_ECC */
-
-  if (tls_pkcs12_file != NULL) {
-    int res;
-    FILE *fp;
-    X509 *cert = NULL;
-    EVP_PKEY *pkey = NULL;
-    PKCS12 *p12 = NULL;
-    char *passwd = "";
-
-    if (tls_pkey) {
-      passwd = tls_pkey->pkcs12_passwd;
-    }
-
-    fp = fopen(tls_pkcs12_file, "r");
-    if (fp == NULL) {
-      int xerrno = errno;
-
-      PRIVS_RELINQUISH
-      tls_log("error opening TLSPKCS12File '%s': %s", tls_pkcs12_file,
-        strerror(xerrno));
-      return -1;
-    }
-
-    /* As the file may contain sensitive data, we do not want it lingering
-     * around in stdio buffers.
-     */
-    (void) setvbuf(fp, NULL, _IONBF, 0);
-
-    /* Note that this should NOT fail; we will have already parsed the
-     * PKCS12 file already, in order to get the password and key passphrases.
-     */
-    p12 = d2i_PKCS12_fp(fp, NULL);
-    if (p12 == NULL) {
-      tls_log("error reading TLSPKCS12File '%s': %s", tls_pkcs12_file,
-        tls_get_errors()); 
-      fclose(fp);
-      return -1;
-    }
-
-    fclose(fp);
-
-    /* XXX Need to add support for any CA certs contained in the PKCS12 file. */
-    if (PKCS12_parse(p12, passwd, &pkey, &cert, NULL) != 1) {
-      tls_log("error parsing info in TLSPKCS12File '%s': %s", tls_pkcs12_file,
-        tls_get_errors());
-
-      PKCS12_free(p12);
-
-      if (cert)
-        X509_free(cert);
-
-      if (pkey)
-        EVP_PKEY_free(pkey);
-
-      return -1;
-    }
-
-    /* Note: You MIGHT be tempted to call SSL_CTX_check_private_key(ssl_ctx)
-     * here, to make sure that the private key can be used.  But doing so
-     * will not work as expected, and will error out with:
-     *
-     *  SSL_CTX_check_private_key:no certificate assigned
-     *
-     * To make PKCS#12 support work, do not make that call here.
-     */
-
-    res = SSL_CTX_use_certificate(ssl_ctx, cert);
-    if (res <= 0) {
-      PRIVS_RELINQUISH
-
-      tls_log("error loading certificate from TLSPKCS12File '%s' %s",
-        tls_pkcs12_file, tls_get_errors());
-      PKCS12_free(p12);
-
-      if (cert)
-        X509_free(cert);
-
-      if (pkey)
-        EVP_PKEY_free(pkey);
-
-      return -1;
-    }
-
-    if (pkey &&
-        tls_pkey) {
-      switch (get_pkey_type(pkey)) {
-        case EVP_PKEY_RSA:
-          tls_pkey->flags |= TLS_PKEY_USE_RSA;
-          tls_pkey->flags &= ~(TLS_PKEY_USE_DSA|TLS_PKEY_USE_EC);
-          break;
-
-        case EVP_PKEY_DSA:
-          tls_pkey->flags |= TLS_PKEY_USE_DSA;
-          tls_pkey->flags &= ~(TLS_PKEY_USE_RSA|TLS_PKEY_USE_EC);
-          break;
-
-#ifdef PR_USE_OPENSSL_ECC
-        case EVP_PKEY_EC:
-          tls_pkey->flags |= TLS_PKEY_USE_EC;
-          tls_pkey->flags &= ~(TLS_PKEY_USE_RSA|TLS_PKEY_USE_DSA);
-          break;
-#endif /* PR_USE_OPENSSL_ECC */
-      }
-    }
-
-    res = SSL_CTX_use_PrivateKey(ssl_ctx, pkey);
-    if (res <= 0) {
-      PRIVS_RELINQUISH
-
-      tls_log("error loading key from TLSPKCS12File '%s' %s", tls_pkcs12_file,
-        tls_get_errors());
-
-      PKCS12_free(p12);
-
-      if (cert)
-        X509_free(cert);
-
-      if (pkey)
-        EVP_PKEY_free(pkey);
-
-      return -1;
-    }
-
-    res = SSL_CTX_check_private_key(ssl_ctx);
-    if (res != 1) {
-      PRIVS_RELINQUISH
-
-      tls_log("error checking key from TLSPKCS12File '%s': %s", tls_pkcs12_file,
-        tls_get_errors());
-
-      PKCS12_free(p12);
-
-      if (cert)
-        X509_free(cert);
-
-      if (pkey)
-        EVP_PKEY_free(pkey);
-
-      return -1;
-    }
-
-    /* SSL_CTX_use_certificate() will increment the refcount on cert, so we
-     * can safely call X509_free() on it.  However, we need to keep that
-     * pointer around until after the handling of a cert chain file.
-     */
-    if (pkey != NULL) {
-      switch (get_pkey_type(pkey)) {
-        case EVP_PKEY_RSA:
-          server_rsa_cert = cert;
-          break;
-
-        case EVP_PKEY_DSA:
-          server_dsa_cert = cert;
-          break;
-
-#ifdef PR_USE_OPENSSL_ECC
-        case EVP_PKEY_EC:
-          server_ec_cert = cert;
-          break;
-#endif /* PR_USE_OPENSSL_ECC */
-      }
-    }
-
-    if (pkey)
-      EVP_PKEY_free(pkey);
-
-    if (p12)
-      PKCS12_free(p12);
-  }
-
-  /* Log a warning if the server was badly misconfigured, and has no server
-   * certs at all.  The client will probably see this situation as something
-   * like:
-   *
-   *  error:14094410:SSL routines:SSL3_READ_BYTES:sslv3 alert handshake failure
-   *
-   * And the TLSLog will show the error as:
-   *
-   *  error:1408A0C1:SSL routines:SSL3_GET_CLIENT_HELLO:no shared cipher
-   */
-  if (tls_rsa_cert_file == NULL &&
-      tls_dsa_cert_file == NULL &&
-      tls_ec_cert_file == NULL &&
-      tls_pkcs12_file == NULL) {
-    tls_log("no TLSRSACertificateFile, TLSDSACertificateFile, "
-      "TLSECCertificateFile, or TLSPKCS12File configured; "
-      "unable to handle SSL/TLS connections");
-    pr_log_pri(PR_LOG_NOTICE, MOD_TLS_VERSION
-      ": no TLSRSACertificateFile, TLSDSACertificateFile, "
-      "TLSECCertificateFile or TLSPKCS12File configured; "
-      "unable to handle SSL/TLS connections");
-  }
-
-  /* Handle a CertificateChainFile.  We need to do this here, after the
-   * server cert has been loaded, so that we can decide whether the
-   * CertificateChainFile contains another copy of the server cert (or not).
-   */
-
-  tls_ca_chain = get_param_ptr(main_server->conf, "TLSCertificateChainFile",
-    FALSE);
-  if (tls_ca_chain) {
-    BIO *bio;
-    X509 *cert;
-
-    /* Ideally we would use OpenSSL's SSL_CTX_use_certificate_chain()
-     * function.  However, that function automatically assumes that the
-     * first cert contained in the chain file is to be used as the server
-     * cert.  This may or may not be the case.  So instead, we read through
-     * the chain and add the extra certs ourselves.
-     */
-
-    bio = BIO_new_file(tls_ca_chain, "r");
-    if (bio != NULL) {
-      unsigned int count = 0;
-      int res;
-
-      cert = PEM_read_bio_X509(bio, NULL, NULL, NULL);
-      while (cert != NULL) {
-        pr_signals_handle();
-
-        if (server_rsa_cert != NULL) {
-          /* Skip this cert if it is the same as the configured RSA
-           * server cert.
-           */
-          if (X509_cmp(server_rsa_cert, cert) == 0) {
-            X509_free(cert);
-            cert = PEM_read_bio_X509(bio, NULL, NULL, NULL);
-            continue;
-          }
-        }
-
-        if (server_dsa_cert != NULL) {
-          /* Skip this cert if it is the same as the configured DSA
-           * server cert.
-           */
-          if (X509_cmp(server_dsa_cert, cert) == 0) {
-            X509_free(cert);
-            cert = PEM_read_bio_X509(bio, NULL, NULL, NULL);
-            continue;
-          }
-        }
-
-#ifdef PR_USE_OPENSSL_ECC
-        if (server_ec_cert != NULL) {
-          /* Skip this cert if it is the same as the configured EC
-           * server cert.
-           */
-          if (X509_cmp(server_ec_cert, cert) == 0) {
-            X509_free(cert);
-            cert = PEM_read_bio_X509(bio, NULL, NULL, NULL);
-            continue;
-          }
-        }
-#endif /* PR_USE_OPENSSL_ECC */
-
-        res = SSL_CTX_add_extra_chain_cert(ssl_ctx, cert);
-        if (res != 1) {
-          tls_log("error adding cert to certificate chain: %s",
-            tls_get_errors());
-          X509_free(cert);
-          break;
-        }
-
-        count++;
-        cert = PEM_read_bio_X509(bio, NULL, NULL, NULL);
-      }
-
-      BIO_free(bio);
-      tls_log("added %u certs from '%s' to certificate chain", count,
-        tls_ca_chain);
-
-    } else {
-      tls_log("unable to read certificate chain '%s': %s", tls_ca_chain,
-        tls_get_errors());
-    }
-  } 
-
-  /* Done with the server cert pointers now. */
-  if (server_rsa_cert != NULL) {
-    X509_free(server_rsa_cert);
-    server_rsa_cert = NULL;
-  }
-
-  if (server_dsa_cert != NULL) {
-    X509_free(server_dsa_cert);
-    server_dsa_cert = NULL;
-  }
-
-#ifdef PR_USE_OPENSSL_ECC
-  if (server_ec_cert != NULL) {
-    X509_free(server_ec_cert);
-    server_ec_cert = NULL;
-  }
-#endif /* PR_USE_OPENSSL_ECC */
-
-  /* Set up the CRL. */
-  if (tls_crl_file || tls_crl_path) {
-    tls_crl_store = X509_STORE_new();
-    if (tls_crl_store == NULL) {
-      tls_log("error creating CRL store: %s", tls_get_errors());
-      return -1;
-    }
-
-    if (X509_STORE_load_locations(tls_crl_store, tls_crl_file,
-        tls_crl_path) == 0) {
-
-      if (tls_crl_file && !tls_crl_path) {
-        tls_log("error loading TLSCARevocationFile '%s': %s",
-          tls_crl_file, tls_get_errors());
-
-      } else if (!tls_crl_file && tls_crl_path) {
-        tls_log("error loading TLSCARevocationPath '%s': %s",
-          tls_crl_path, tls_get_errors());
-
-      } else {
-        tls_log("error loading TLSCARevocationFile '%s', "
-          "TLSCARevocationPath '%s': %s", tls_crl_file, tls_crl_path,
-          tls_get_errors());
-      }
-    }
-  }
-
-  PRIVS_RELINQUISH
-
-  SSL_CTX_set_cipher_list(ssl_ctx, tls_cipher_suite);
-
-#if OPENSSL_VERSION_NUMBER > 0x000907000L
-  /* Lookup/process any configured TLSRenegotiate parameters. */
-  c = find_config(main_server->conf, CONF_PARAM, "TLSRenegotiate", FALSE);
-  if (c) {
-    if (c->argc == 0) {
-      /* Disable all server-side requested renegotiations; clients can
-       * still request renegotiations.
-       */
-      tls_ctrl_renegotiate_timeout = 0;
-      tls_data_renegotiate_limit = 0;
-      tls_renegotiate_timeout = 0;
-      tls_renegotiate_required = FALSE;
-
-    } else {
-      int ctrl_timeout = *((int *) c->argv[0]);
-      off_t data_limit = *((off_t *) c->argv[1]);
-      int renegotiate_timeout = *((int *) c->argv[2]);
-      unsigned char renegotiate_required = *((unsigned char *) c->argv[3]);
-
-      if (data_limit)
-        tls_data_renegotiate_limit = data_limit;
-    
-      if (renegotiate_timeout)
-        tls_renegotiate_timeout = renegotiate_timeout;
-
-      tls_renegotiate_required = renegotiate_required;
-  
-      /* Set any control channel renegotiation timers, if need be. */
-      pr_timer_add(ctrl_timeout ? ctrl_timeout : tls_ctrl_renegotiate_timeout,
-        -1, &tls_module, tls_ctrl_renegotiate_cb, "SSL/TLS renegotiation");
-    }
-  }
-#endif
-
-  return 0;
-}
-
 static int tls_get_block(conn_t *conn) {
   int flags;
 
@@ -7271,7 +6444,7 @@ static int tls_compare_session_ids(SSL_SESSION *ctrl_sess,
 
   res = SSL_has_matching_session_id(ctrl_ssl, sess_id, sess_id_len);
 
-  /* SSL_has_matchin_session_id() returns 1 for true, 0 for false.  Thus to
+  /* SSL_has_matching_session_id() returns 1 for true, 0 for false.  Thus to
    * emulate the memcmp(3) type interface, we return 0 for true, and -1 for
    * false.
    */
@@ -7440,7 +6613,7 @@ static int tls_accept(conn_t *conn, unsigned char on_data) {
       case SSL_ERROR_SYSCALL: {
         /* Check to see if the OpenSSL error queue has info about this. */
         int xerrcode = ERR_get_error();
-    
+
         if (xerrcode == 0) {
           /* The OpenSSL error queue doesn't have any more info, so we'll
            * examine the SSL_accept() return value itself.
@@ -7592,7 +6765,7 @@ static int tls_accept(conn_t *conn, unsigned char on_data) {
     tls_data_adaptive_bytes_written_ms = 0L;
     tls_data_adaptive_bytes_written_count = 0;
   }
- 
+
   /* Disable the handshake timer. */
   pr_timer_remove(tls_handshake_timer_id, &tls_module);
 
@@ -8006,7 +7179,7 @@ static int tls_connect(conn_t *conn) {
       case SSL_ERROR_SYSCALL: {
         /* Check to see if the OpenSSL error queue has info about this. */
         int xerrcode = ERR_get_error();
-    
+
         if (xerrcode == 0) {
           /* The OpenSSL error queue doesn't have any more info, so we'll
            * examine the SSL_connect() return value itself.
@@ -8117,18 +7290,18 @@ static int tls_connect(conn_t *conn) {
 static void tls_cleanup(int flags) {
 
 #if OPENSSL_VERSION_NUMBER > 0x000907000L
-  if (tls_crypto_device) {
+  if (tls_crypto_device != NULL) {
     ENGINE_cleanup();
     tls_crypto_device = NULL;
   }
 #endif
 
-  if (tls_crl_store) {
+  if (tls_crl_store != NULL) {
     X509_STORE_free(tls_crl_store);
     tls_crl_store = NULL;
   }
 
-  if (ssl_ctx) {
+  if (ssl_ctx != NULL) {
     SSL_CTX_free(ssl_ctx);
     ssl_ctx = NULL;
   }
@@ -8139,7 +7312,7 @@ static void tls_cleanup(int flags) {
   tls_sess_cache_close();
   tls_ocsp_cache_close();
 
-  if (tls_tmp_dhs) {
+  if (tls_tmp_dhs != NULL) {
     register unsigned int i;
     DH **dhs;
 
@@ -8151,7 +7324,7 @@ static void tls_cleanup(int flags) {
     tls_tmp_dhs = NULL;
   }
 
-  if (tls_tmp_rsa) {
+  if (tls_tmp_rsa != NULL) {
     RSA_free(tls_tmp_rsa);
     tls_tmp_rsa = NULL;
   }
@@ -8178,10 +7351,18 @@ static void tls_cleanup(int flags) {
      * initialization, and other modules want to use OpenSSL, we may
      * be depriving those modules of OpenSSL functionality.
      *
-     * At the moment, the modules known to use OpenSSL are mod_ldap, mod_proxy,
-     * mod_sftp, mod_sql, and mod_sql_passwd.
+     * At the moment, the modules known to use OpenSSL are:
+     *   mod_auth_otp
+     *   mod_digest
+     *   mod_ldap
+     *   mod_proxy
+     *   mod_sftp
+     *   mod_sql
+     *   mod_sql_passwd
      */
-    if (pr_module_get("mod_ldap.c") == NULL &&
+    if (pr_module_get("mod_auth_otp.c") == NULL &&
+        pr_module_get("mod_digest.c") == NULL &&
+        pr_module_get("mod_ldap.c") == NULL &&
         pr_module_get("mod_proxy.c") == NULL &&
         pr_module_get("mod_sftp.c") == NULL &&
         pr_module_get("mod_sql.c") == NULL &&
@@ -8209,7 +7390,7 @@ static void tls_end_sess(SSL *ssl, conn_t *conn, int flags) {
   int shutdown_state;
   BIO *rbio, *wbio;
   int bread, bwritten;
-  unsigned long rbio_rbytes, rbio_wbytes, wbio_rbytes, wbio_wbytes; 
+  unsigned long rbio_rbytes, rbio_wbytes, wbio_rbytes, wbio_wbytes;
 
   if (ssl == NULL) {
     return;
@@ -8691,7 +7872,7 @@ static int tls_cert_to_user(const char *user_name, const char *field_name) {
   if (strcmp(field_name, "CommonName") == 0) {
     X509_NAME *name;
     int pos = -1;
- 
+
     name = X509_get_subject_name(client_cert);
 
     while (TRUE) {
@@ -8960,7 +8141,7 @@ static int tls_seed_prng(void) {
   char *heapdata, stackdata[1024];
   static char rand_file[300];
   FILE *fp = NULL;
-  
+
 #if OPENSSL_VERSION_NUMBER >= 0x00905100L
   if (RAND_status() == 1)
 
@@ -8974,7 +8155,7 @@ static int tls_seed_prng(void) {
    * Check if it's present, else we have to make random data ourselves.
    */
   fp = fopen("/dev/urandom", "r");
-  if (fp) {
+  if (fp != NULL) {
     fclose(fp);
 
     tls_log("device /dev/urandom is present, assuming OpenSSL will use that "
@@ -8984,8 +8165,7 @@ static int tls_seed_prng(void) {
 
   /* Lookup any configured TLSRandomSeed. */
   tls_rand_file = get_param_ptr(main_server->conf, "TLSRandomSeed", FALSE);
-
-  if (!tls_rand_file) {
+  if (tls_rand_file == NULL) {
     /* The ftpd's random file is (openssl-dir)/.rnd */
     memset(rand_file, '\0', sizeof(rand_file));
     pr_snprintf(rand_file, sizeof(rand_file)-1, "%s/.rnd",
@@ -8999,7 +8179,6 @@ static int tls_seed_prng(void) {
    */
   if (RAND_load_file(tls_rand_file, -1) == 0) {
 #else
-
   /* In versions of OpenSSL prior to 0.9.5, we have to specify the amount of
    * bytes to read in.  Since RAND_write_file(3) typically writes 1K of data
    * out, we will read 1K bytes in.
@@ -9008,7 +8187,7 @@ static int tls_seed_prng(void) {
 #endif
     struct timeval tv;
     pid_t pid;
- 
+
 #if OPENSSL_VERSION_NUMBER >= 0x00905100L
     tls_log("unable to load PRNG seed data from '%s': %s", tls_rand_file,
       tls_get_errors());
@@ -9016,7 +8195,7 @@ static int tls_seed_prng(void) {
     tls_log("unable to load 1024 bytes of PRNG seed data from '%s': %s",
       tls_rand_file, tls_get_errors());
 #endif
- 
+
     /* No random file found, create new seed. */
     gettimeofday(&tv, NULL);
     RAND_seed(&(tv.tv_sec), sizeof(tv.tv_sec));
@@ -9454,7 +8633,7 @@ static void tls_setup_environ(pool *p, SSL *ssl) {
       pr_env_set(p, k, v);
 
       BIO_free(bio);
-    } 
+    }
   }
 
   /* Note: SSL_get_certificate() does NOT increment a reference counter,
@@ -9780,10 +8959,10 @@ static int tls_verify_crl(int ok, X509_STORE_CTX *ctx) {
 
 #if OPENSSL_VERSION_NUMBER >= 0x10100000L && \
     !defined(HAVE_LIBRESSL)
-  crls = X509_STORE_CTX_get1_crls(store_ctx, issuer);
+  crls = X509_STORE_CTX_get1_crls(store_ctx, subject);
 #elif OPENSSL_VERSION_NUMBER >= 0x10000000L && \
       !defined(HAVE_LIBRESSL)
-  crls = X509_STORE_get1_crls(store_ctx, issuer);
+  crls = X509_STORE_get1_crls(store_ctx, subject);
 #else
   /* Your OpenSSL is before 1.0.0.  You really need to upgrade. */
   crls = NULL;
@@ -9802,9 +8981,6 @@ static int tls_verify_crl(int ok, X509_STORE_CTX *ctx) {
         ASN1_INTEGER *sn;
 
         revoked = sk_X509_REVOKED_value(X509_CRL_get_REVOKED(crl), j);
-        if (revoked == NULL) {
-          continue;
-        }
 #if OPENSSL_VERSION_NUMBER >= 0x10100000L && \
     !defined(HAVE_LIBRESSL)
         sn = X509_REVOKED_get0_serialNumber(revoked);
@@ -10368,7 +9544,7 @@ static char *tls_x509_name_oneline(X509_NAME *x509_name) {
   char *data = NULL;
   long datalen = 0;
   int ok;
-   
+
   ok = X509_NAME_print_ex(mem, x509_name, 0, XN_FLAG_ONELINE);
   if (ok) {
     datalen = BIO_get_mem_data(mem, &data);
@@ -10428,11 +9604,11 @@ int tls_sess_cache_register(const char *name, tls_sess_cache_t *cache) {
     return -1;
   }
 
-  sc = pcalloc(tls_sess_cache_pool, sizeof(struct tls_scache)); 
+  sc = pcalloc(tls_sess_cache_pool, sizeof(struct tls_scache));
 
   /* XXX Should this name string be dup'd from the tls_sess_cache_pool? */
   sc->name = name;
-  cache->cache_name = pstrdup(tls_sess_cache_pool, name); 
+  cache->cache_name = pstrdup(tls_sess_cache_pool, name);
   sc->cache = cache;
 
   if (tls_sess_caches) {
@@ -11138,7 +10314,7 @@ static int tls_sess_cache_add_sess_cb(SSL *ssl, SSL_SESSION *sess) {
       /* Call SSL_SESSION_free() here, and return 1.  We told OpenSSL that we
        * are the only cache, so failing to call SSL_SESSION_free() could
        * result in a memory leak.
-       */ 
+       */
       SSL_SESSION_free(sess);
       return 1;
     }
@@ -11289,7 +10465,7 @@ static unsigned int tls_lookup_psk(SSL *ssl, const char *identity,
     return res;
   }
 
-  res = BN_bn2bin(bn, psk); 
+  res = BN_bn2bin(bn, psk);
   if (res == 0) {
     tls_log("error converting PSK for identity '%s' to binary: %s",
       identity, tls_get_errors());
@@ -11352,7 +10528,7 @@ static pr_netio_stream_t *tls_netio_open_cb(pr_netio_stream_t *nstrm, int fd,
      * used to open multiple different read/write control streams.  To do
      * so, we need a small (e.g. 4) array of pr_netio_stream_t pointers
      * for both read and write streams, and to iterate through them.  Need
-     * iterate through and set strm_data appropriately in tls_accept(), too. 
+     * iterate through and set strm_data appropriately in tls_accept(), too.
      *
      * This will needed to support FTPS connections to backend servers from
      * mod_proxy, for example.
@@ -11379,15 +10555,15 @@ static pr_netio_stream_t *tls_netio_open_cb(pr_netio_stream_t *nstrm, int fd,
     }
 
     /* Note: from the FTP-TLS Draft 9.2:
-     * 
+     *
      *  It is quite reasonable for the server to insist that the data
      *  connection uses a TLS cached session.  This might be a cache of a
      *  previous data connection or of the control connection.  If this is
      *  the reason for the refusal to allow the data transfer then the
      *  '522' reply should indicate this.
-     * 
+     *
      * and, from 10.4:
-     *   
+     *
      *   If a server needs to have the connection protected then it will
      *   reply to the STOR/RETR/NLST/... command with a '522' indicating
      *   that the current state of the data connection protection level is
@@ -11467,7 +10643,7 @@ static int tls_netio_postopen_cb(pr_netio_stream_t *nstrm) {
 
           pr_trace_msg(timing_channel, 4,
             "TLS data handshake duration: %lu ms", elapsed_ms);
-        } 
+        }
 
         ssl = (SSL *) pr_table_get(nstrm->notes, TLS_NETIO_NOTE, NULL);
 
@@ -12383,7 +11559,6 @@ MODRET tls_post_auth(cmd_rec *cmd) {
   const char *sni = NULL;
   server_rec *named_server = NULL;
   cmd_rec *host_cmd = NULL;
-  pool *tmp_pool = NULL;
 
   if (tls_engine == FALSE) {
     return PR_DECLINED(cmd);
@@ -12404,8 +11579,6 @@ MODRET tls_post_auth(cmd_rec *cmd) {
   }
 
   if (tls_opts & TLS_OPT_IGNORE_SNI) {
-    pr_trace_msg(trace_channel, 5,
-      "client sent SNI '%s', ignoring due to IgnoreSNI TLSOption", sni);
     return PR_DECLINED(cmd);
   }
 
@@ -12434,12 +11607,22 @@ MODRET tls_post_auth(cmd_rec *cmd) {
    * do their checks.
    */
 
-  tmp_pool = make_sub_pool(cmd->tmp_pool);
-  host_cmd = pr_cmd_alloc(tmp_pool, 2, pstrdup(tmp_pool, C_HOST), sni, NULL);
+  host_cmd = pr_cmd_alloc(cmd->tmp_pool, 2, pstrdup(cmd->tmp_pool, C_HOST), sni,
+    NULL);
   pr_cmd_dispatch_phase(host_cmd, POST_CMD, 0);
   pr_cmd_dispatch_phase(host_cmd, LOG_CMD, 0);
   pr_response_clear(&resp_list);
-  destroy_pool(tmp_pool);
+
+  return PR_DECLINED(cmd);
+}
+
+MODRET tls_log_auth(cmd_rec *cmd) {
+  if (tls_engine == FALSE) {
+    return PR_DECLINED(cmd);
+  }
+
+  /* Ensure any sensitive passphrases are scrubbed. */
+  (void) tls_lookup_pkey(main_server, FALSE, TRUE);
 
   return PR_DECLINED(cmd);
 }
@@ -12452,12 +11635,12 @@ MODRET tls_post_pass(cmd_rec *cmd) {
   }
 
   /* At this point, we can look up the Protocols config if the client has been
-   * authenticated, which may have been tweaked via mod_ifsession's 
+   * authenticated, which may have been tweaked via mod_ifsession's
    * user/group/class-specific sections.
    */
   protocols_config = find_config(main_server->conf, CONF_PARAM, "Protocols",
     FALSE);
-  
+
   if (!(tls_opts & TLS_OPT_ALLOW_PER_USER) &&
       protocols_config == NULL) {
     return PR_DECLINED(cmd);
@@ -12805,7 +11988,7 @@ MODRET set_tlscacertpath(cmd_rec *cmd) {
   if (*path != '/') {
     CONF_ERROR(cmd, "parameter must be an absolute path");
   }
- 
+
   add_config_param_str(cmd->argv[0], 1, path);
   return PR_HANDLED(cmd);
 }
@@ -13267,7 +12450,7 @@ MODRET set_tlsecdhcurve(cmd_rec *cmd) {
   int curve_nid = -1;
   EC_KEY *ec_key = NULL;
 # endif /* No SSL_CTX_set1_curves_list; pre-OpenSSL 1.0.2 */
-  
+
   CHECK_ARGS(cmd, 1);
   CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL);
 
@@ -13569,7 +12752,7 @@ MODRET set_tlspresharedkey(cmd_rec *cmd) {
   CHECK_ARGS(cmd, 2);
   CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL);
 
-  identity = cmd->argv[1]; 
+  identity = cmd->argv[1];
   path = cmd->argv[2];
 
   identity_len = strlen(identity);
@@ -13609,7 +12792,7 @@ MODRET set_tlspresharedkey(cmd_rec *cmd) {
 MODRET set_tlsprotocol(cmd_rec *cmd) {
   register unsigned int i;
   config_rec *c;
-  unsigned int tls_protocol = 0;
+  unsigned int protocols = 0;
 
   if (cmd->argc-1 == 0) {
     CONF_ERROR(cmd, "wrong number of parameters");
@@ -13619,7 +12802,7 @@ MODRET set_tlsprotocol(cmd_rec *cmd) {
 
   if (strcasecmp(cmd->argv[1], "all") == 0) {
     /* We're in an additive/subtractive type of configuration. */
-    tls_protocol = TLS_PROTO_ALL;
+    protocols = TLS_PROTO_ALL;
 
     for (i = 2; i < cmd->argc; i++) {
       int disable = FALSE;
@@ -13644,24 +12827,24 @@ MODRET set_tlsprotocol(cmd_rec *cmd) {
 
       if (strncasecmp(proto_name, "SSLv3", 6) == 0) {
         if (disable) {
-          tls_protocol &= ~TLS_PROTO_SSL_V3;
+          protocols &= ~TLS_PROTO_SSL_V3;
         } else {
-          tls_protocol |= TLS_PROTO_SSL_V3;
+          protocols |= TLS_PROTO_SSL_V3;
         }
 
       } else if (strncasecmp(proto_name, "TLSv1", 6) == 0) {
         if (disable) {
-          tls_protocol &= ~TLS_PROTO_TLS_V1;
+          protocols &= ~TLS_PROTO_TLS_V1;
         } else {
-          tls_protocol |= TLS_PROTO_TLS_V1;
+          protocols |= TLS_PROTO_TLS_V1;
         }
 
       } else if (strncasecmp(proto_name, "TLSv1.1", 8) == 0) {
 #if OPENSSL_VERSION_NUMBER >= 0x10001000L
         if (disable) {
-          tls_protocol &= ~TLS_PROTO_TLS_V1_1;
+          protocols &= ~TLS_PROTO_TLS_V1_1;
         } else {
-          tls_protocol |= TLS_PROTO_TLS_V1_1;
+          protocols |= TLS_PROTO_TLS_V1_1;
         }
 #else
         CONF_ERROR(cmd, "Your OpenSSL installation does not support TLSv1.1");
@@ -13670,9 +12853,9 @@ MODRET set_tlsprotocol(cmd_rec *cmd) {
       } else if (strncasecmp(proto_name, "TLSv1.2", 8) == 0) {
 #if OPENSSL_VERSION_NUMBER >= 0x10001000L
         if (disable) {
-          tls_protocol &= ~TLS_PROTO_TLS_V1_2;
+          protocols &= ~TLS_PROTO_TLS_V1_2;
         } else {
-          tls_protocol |= TLS_PROTO_TLS_V1_2;
+          protocols |= TLS_PROTO_TLS_V1_2;
         }
 #else
         CONF_ERROR(cmd, "Your OpenSSL installation does not support TLSv1.2");
@@ -13681,9 +12864,9 @@ MODRET set_tlsprotocol(cmd_rec *cmd) {
       } else if (strncasecmp(proto_name, "TLSv1.3", 8) == 0) {
 #ifdef TLS1_3_VERSION
         if (disable) {
-          tls_protocol &= ~TLS_PROTO_TLS_V1_3;
+          protocols &= ~TLS_PROTO_TLS_V1_3;
         } else {
-          tls_protocol |= TLS_PROTO_TLS_V1_3;
+          protocols |= TLS_PROTO_TLS_V1_3;
         }
 #else
         CONF_ERROR(cmd, "Your OpenSSL installation does not support TLSv1.3");
@@ -13698,41 +12881,41 @@ MODRET set_tlsprotocol(cmd_rec *cmd) {
   } else {
     for (i = 1; i < cmd->argc; i++) {
       if (strncasecmp(cmd->argv[i], "SSLv23", 7) == 0) {
-        tls_protocol |= TLS_PROTO_SSL_V3;
-        tls_protocol |= TLS_PROTO_TLS_V1;
+        protocols |= TLS_PROTO_SSL_V3;
+        protocols |= TLS_PROTO_TLS_V1;
 #ifdef SSL_OP_NO_TLSv1_1
-        tls_protocol |= TLS_PROTO_TLS_V1_1;
+        protocols |= TLS_PROTO_TLS_V1_1;
 #endif
 #ifdef SSL_OP_NO_TLSv1_2
-        tls_protocol |= TLS_PROTO_TLS_V1_2;
+        protocols |= TLS_PROTO_TLS_V1_2;
 #endif
 #ifdef SSL_OP_NO_TLSv1_3
-        tls_protocol |= TLS_PROTO_TLS_V1_3;
+        protocols |= TLS_PROTO_TLS_V1_3;
 #endif
 
       } else if (strncasecmp(cmd->argv[i], "SSLv3", 6) == 0) {
-        tls_protocol |= TLS_PROTO_SSL_V3;
+        protocols |= TLS_PROTO_SSL_V3;
 
       } else if (strncasecmp(cmd->argv[i], "TLSv1", 6) == 0) {
-        tls_protocol |= TLS_PROTO_TLS_V1;
+        protocols |= TLS_PROTO_TLS_V1;
 
       } else if (strncasecmp(cmd->argv[i], "TLSv1.1", 8) == 0) {
 #if OPENSSL_VERSION_NUMBER >= 0x10001000L
-        tls_protocol |= TLS_PROTO_TLS_V1_1;
+        protocols |= TLS_PROTO_TLS_V1_1;
 #else
         CONF_ERROR(cmd, "Your OpenSSL installation does not support TLSv1.1");
 #endif /* OpenSSL 1.0.1 or later */
 
       } else if (strncasecmp(cmd->argv[i], "TLSv1.2", 8) == 0) {
 #if OPENSSL_VERSION_NUMBER >= 0x10001000L
-        tls_protocol |= TLS_PROTO_TLS_V1_2;
+        protocols |= TLS_PROTO_TLS_V1_2;
 #else
         CONF_ERROR(cmd, "Your OpenSSL installation does not support TLSv1.2");
 #endif /* OpenSSL 1.0.1 or later */
 
       } else if (strncasecmp(cmd->argv[i], "TLSv1.3", 8) == 0) {
 #ifdef TLS1_3_VERSION
-        tls_protocol |= TLS_PROTO_TLS_V1_3;
+        protocols |= TLS_PROTO_TLS_V1_3;
 #else
         CONF_ERROR(cmd, "Your OpenSSL installation does not support TLSv1.3");
 #endif /* OpenSSL 1.1.1 or later */
@@ -13746,7 +12929,7 @@ MODRET set_tlsprotocol(cmd_rec *cmd) {
 
   c = add_config_param(cmd->argv[0], 1, NULL);
   c->argv[0] = palloc(c->pool, sizeof(unsigned int));
-  *((unsigned int *) c->argv[0]) = tls_protocol;
+  *((unsigned int *) c->argv[0]) = protocols;
 
   return PR_HANDLED(cmd);
 }
@@ -13830,7 +13013,7 @@ MODRET set_tlsrenegotiate(cmd_rec *cmd) {
 
     } else if (strcmp(cmd->argv[i], "timeout") == 0) {
       int secs = atoi(cmd->argv[i+1]);
-      
+
       if (secs > 0) {
         *((int *) c->argv[2]) = secs;
 
@@ -14098,7 +13281,7 @@ MODRET set_tlssessioncache(cmd_rec *cmd) {
 
   if (cmd->argc == 3) {
     char *ptr = NULL;
-   
+
     timeout = strtol(cmd->argv[2], &ptr, 10);
     if (ptr && *ptr) {
       CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "'", cmd->argv[2],
@@ -14454,13 +13637,14 @@ MODRET set_tlsverifydepth(cmd_rec *cmd) {
   CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL);
 
   depth = atoi(cmd->argv[1]);
-  if (depth < 0)
+  if (depth < 0) {
     CONF_ERROR(cmd, "depth must be zero or greater");
- 
+  }
+
   c = add_config_param(cmd->argv[0], 1, NULL);
   c->argv[0] = pcalloc(c->pool, sizeof(int));
   *((int *) c->argv[0]) = depth;
- 
+
   return PR_HANDLED(cmd);
 }
 
@@ -14523,7 +13707,7 @@ MODRET set_tlsverifyserver(cmd_rec *cmd) {
     if (strcasecmp(cmd->argv[1], "NoReverseDNS") != 0) {
       CONF_ERROR(cmd, "expected Boolean parameter");
     }
- 
+
     setting = 2;
   }
 
@@ -14583,7 +13767,7 @@ static void tls_sess_reinit_ev(const void *event_data, void *user_data) {
 
   /* If the client has already established a TLS session, then do nothing;
    * we cannot easily force a re-handshake using different credentials very
-   * easily.  (Right?)
+   * easily. (Right?)
    */
   if (session.rfc2228_mech != NULL) {
     return;
@@ -14595,6 +13779,17 @@ static void tls_sess_reinit_ev(const void *event_data, void *user_data) {
   pr_event_unregister(&tls_module, "core.session-reinit", tls_sess_reinit_ev);
 
   tls_reset_state();
+
+/* XXX How to indicate, to sess_init. to NOT re-register the following event
+ * listeners?
+ *
+ *
+ * XXX How to indicate, to sess_init, to NOT re-add the pr_feat_add TLS
+ * features.  Same for TLS HELP stuff.
+ * ANSWER: Add unit tests for Feature API, Help API for adding duplicates;
+ * ensure APIs detect and ignore such duplicates.
+ */
+
   res = tls_sess_init();
   if (res < 0) {
     pr_session_disconnect(&tls_module, PR_SESS_DISCONNECT_SESSION_INIT_FAILED,
@@ -14688,7 +13883,7 @@ static void tls_exit_ev(const void *event_data, void *user_data) {
   }
 
   /* If diags are enabled, log some OpenSSL stats. */
-  if (ssl_ctx != NULL && 
+  if (ssl_ctx != NULL &&
       (tls_opts & TLS_OPT_ENABLE_DIAGS)) {
     long res;
 
@@ -14761,7 +13956,7 @@ static void tls_timeout_ev(const void *event_data, void *user_data) {
       (tls_flags & TLS_SESS_ON_CTRL)) {
     /* Try to properly close the TLS session down on the control channel,
      * if there is one.
-     */ 
+     */
     tls_end_sess(ctrl_ssl, session.c, 0);
     pr_table_remove(tls_ctrl_rd_nstrm->notes, TLS_NETIO_NOTE, NULL);
     pr_table_remove(tls_ctrl_wr_nstrm->notes, TLS_NETIO_NOTE, NULL);
@@ -15070,7 +14265,7 @@ static void tls_postparse_ev(const void *event_data, void *user_data) {
      *  </IfModule>
      *
      *  <Anonymous ...>
-     *    ... 
+     *    ...
      *    <IfModule mod_tls.c>
      *      TLSRequired off
      *    </IfModule>
@@ -15123,7 +14318,7 @@ static void tls_postparse_ev(const void *event_data, void *user_data) {
       if (other_c->parent == NULL ||
           (other_c->parent->config_type != CONF_ANON &&
            other_c->parent->config_type != CONF_DIR)) {
-        /* Not what we're looking for; continue on. */ 
+        /* Not what we're looking for; continue on. */
         other_c = find_config_next(other_c, other_c->next, CONF_PARAM,
           "TLSRequired", TRUE);
         continue;
@@ -15149,12 +14344,29 @@ static void tls_postparse_ev(const void *event_data, void *user_data) {
     }
   }
 
+  if (ServerType == SERVER_INETD) {
+    if (tls_set_fips() < 0) {
+      pr_log_pri(PR_LOG_NOTICE, MOD_TLS_VERSION
+        ": error initialising FIPS");
+      pr_session_disconnect(&tls_module, PR_SESS_DISCONNECT_BY_APPLICATION,
+        NULL);
+    }
+  }
+
   /* Initialize the OpenSSL context. */
-  if (tls_init_ctx() < 0) {
+  ssl_ctx = tls_init_ctx(main_server);
+  if (ssl_ctx == NULL) {
     pr_log_pri(PR_LOG_NOTICE, MOD_TLS_VERSION
       ": error initialising OpenSSL context");
     pr_session_disconnect(&tls_module, PR_SESS_DISCONNECT_BY_APPLICATION, NULL);
   }
+
+  if (tls_seed_prng() < 0) {
+    pr_log_debug(DEBUG1, MOD_TLS_VERSION ": unable to properly seed PRNG");
+  }
+
+  tls_pool = make_sub_pool(permanent_pool);
+  pr_pool_tag(tls_pool, MOD_TLS_VERSION);
 
   /* We can only get the passphrases for certs once OpenSSL has been
    * initialized.
@@ -15174,171 +14386,10 @@ static void tls_postparse_ev(const void *event_data, void *user_data) {
   tls_netio_install_ctrl();
 }
 
-/* Initialization routines
- */
+static void tls_lookup_dh_params(server_rec *s) {
+  config_rec *c;
 
-static int tls_init(void) {
-  unsigned long openssl_version;
-
-  /* Check that the OpenSSL headers used match the version of the
-   * OpenSSL library used.
-   *
-   * For now, we only log if there is a difference.
-   */
-  openssl_version = SSLeay();
-
-  if (openssl_version != OPENSSL_VERSION_NUMBER) {
-    int unexpected_version_mismatch = TRUE;
-
-    if (OPENSSL_VERSION_NUMBER >= 0x1000000fL) {
-      /* OpenSSL versions after 1.0.0 try to maintain ABI compatibility.
-       * So we will warn about header/library version mismatches only if
-       * the library is older than the headers.
-       */
-      if (openssl_version >= OPENSSL_VERSION_NUMBER) {
-        unexpected_version_mismatch = FALSE;
-      }
-    }
-
-    if (unexpected_version_mismatch == TRUE) {
-      pr_log_pri(PR_LOG_WARNING, MOD_TLS_VERSION
-        ": compiled using OpenSSL version '%s' headers, but linked to "
-        "OpenSSL version '%s' library", OPENSSL_VERSION_TEXT,
-        SSLeay_version(SSLEAY_VERSION));
-      tls_log("compiled using OpenSSL version '%s' headers, but linked to "
-        "OpenSSL version '%s' library", OPENSSL_VERSION_TEXT,
-        SSLeay_version(SSLEAY_VERSION));
-    }
-  }
-
-  pr_log_debug(DEBUG2, MOD_TLS_VERSION ": using " OPENSSL_VERSION_TEXT);
-
-#if defined(PR_SHARED_MODULE)
-  pr_event_register(&tls_module, "core.module-unload", tls_mod_unload_ev, NULL);
-#endif /* PR_SHARED_MODULE */
-  pr_event_register(&tls_module, "core.postparse", tls_postparse_ev, NULL);
-  pr_event_register(&tls_module, "core.restart", tls_restart_ev, NULL);
-  pr_event_register(&tls_module, "core.shutdown", tls_shutdown_ev, NULL);
-
-#if OPENSSL_VERSION_NUMBER < 0x10100000L
-  OPENSSL_config(NULL);
-#endif /* prior to OpenSSL-1.1.x */
-  SSL_load_error_strings();
-  SSL_library_init();
-
-  /* It looks like calling OpenSSL_add_all_algorithms() is necessary for
-   * handling some algorithms (e.g. PKCS12 files) which are NOT added by
-   * just calling SSL_library_init().
-   */
-  ERR_load_crypto_strings();
-  OpenSSL_add_all_algorithms();
-
-#ifdef PR_USE_CTRLS
-  if (pr_ctrls_register(&tls_module, "tls", "query/tune mod_tls settings",
-      tls_handle_tls) < 0) {
-    pr_log_pri(PR_LOG_NOTICE, MOD_TLS_VERSION
-      ": error registering 'tls' control: %s", strerror(errno));
-
-  } else {
-    register unsigned int i;
-
-    tls_act_pool = make_sub_pool(permanent_pool);
-    pr_pool_tag(tls_act_pool, "TLS Controls Pool");
-
-    for (i = 0; tls_acttab[i].act_action; i++) {
-      tls_acttab[i].act_acl = palloc(tls_act_pool, sizeof(ctrls_acl_t));
-      pr_ctrls_init_acl(tls_acttab[i].act_acl);
-    }
-  }
-#endif /* PR_USE_CTRLS */
-
-  return 0;
-}
-
-#if !defined(OPENSSL_NO_TLSEXT)
-static int set_next_protocol(void) {
-  register unsigned int i;
-  const char *proto = TLS_DEFAULT_NEXT_PROTO;
-  size_t encoded_protolen, proto_len;
-  unsigned char *encoded_proto;
-  struct tls_next_proto *next_proto;
-
-  proto_len = strlen(proto);
-  encoded_protolen = proto_len + 1;
-  encoded_proto = palloc(session.pool, encoded_protolen);
-  encoded_proto[0] = proto_len;
-  for (i = 0; i < proto_len; i++) {
-    encoded_proto[i+1] = proto[i];
-  }
-
-  next_proto = palloc(session.pool, sizeof(struct tls_next_proto));
-  next_proto->proto = pstrdup(session.pool, proto);
-  next_proto->encoded_proto = encoded_proto;
-  next_proto->encoded_protolen = encoded_protolen;
-
-# if defined(PR_USE_OPENSSL_NPN)
-  SSL_CTX_set_next_protos_advertised_cb(ssl_ctx, tls_npn_advertised_cb,
-    next_proto);
-# endif /* NPN */
-
-# if defined(PR_USE_OPENSSL_ALPN)
-  SSL_CTX_set_alpn_select_cb(ssl_ctx, tls_alpn_select_cb, next_proto);
-# endif /* ALPN */
-
-  return 0;
-}
-#endif /* !OPENSSL_NO_TLSEXT */
-
-static int tls_sess_init(void) {
-  int res = 0;
-  unsigned char *tmp = NULL;
-  config_rec *c = NULL;
-
-#if defined(TLS_USE_SESSION_TICKETS)
-  lock_ticket_keys();
-#endif /* TLS_USE_SESSION_TICKETS */
-
-  pr_event_register(&tls_module, "core.session-reinit", tls_sess_reinit_ev,
-    NULL);
-
-  /* First, check to see whether mod_tls is even enabled. */
-  tmp = get_param_ptr(main_server->conf, "TLSEngine", FALSE);
-  if (tmp != NULL &&
-      *tmp == TRUE) {
-    tls_engine = TRUE;
-  }
-
-  if (tls_engine == FALSE) {
-    /* If we have no ServerAlias vhosts at all, then it is OK to clean up
-     * all of the TLS/OpenSSL-related code from this process.  Otherwise,
-     * a client MIGHT send a HOST command for a TLS-enabled vhost; if we
-     * were to always cleanup OpenSSL here, that HOST command would inevitably
-     * lead to a problem.
-     */
-
-    res = pr_namebind_count(main_server);
-    if (res == 0) {
-      /* No need for this module's control channel NetIO handlers anymore. */
-      pr_unregister_netio(PR_NETIO_STRM_CTRL);
-
-      /* No need for all the OpenSSL stuff in this process space, either. */
-      tls_cleanup(TLS_CLEANUP_FL_SESS_INIT);
-      tls_scrub_pkeys();
-    }
-
-    return 0;
-  }
-
-  tls_cipher_suite = get_param_ptr(main_server->conf, "TLSCipherSuite",
-    FALSE);
-  if (tls_cipher_suite == NULL) {
-    tls_cipher_suite = TLS_DEFAULT_CIPHER_SUITE;
-  }
-
-  tls_crl_file = get_param_ptr(main_server->conf, "TLSCARevocationFile", FALSE);
-  tls_crl_path = get_param_ptr(main_server->conf, "TLSCARevocationPath", FALSE);
-
-  c = find_config(main_server->conf, CONF_PARAM, "TLSDHParamFile", FALSE);
+  c = find_config(s->conf, CONF_PARAM, "TLSDHParamFile", FALSE);
   while (c != NULL) {
     const char *path;
     FILE *fp;
@@ -15379,30 +14430,23 @@ static int tls_sess_init(void) {
 
     c = find_config_next(c, c->next, CONF_PARAM, "TLSDHParamFile", FALSE);
   }
+}
 
-  tls_dsa_cert_file = get_param_ptr(main_server->conf, "TLSDSACertificateFile",
-    FALSE);
-  tls_dsa_key_file = get_param_ptr(main_server->conf,
-    "TLSDSACertificateKeyFile", FALSE);
-
-  tls_ec_cert_file = get_param_ptr(main_server->conf, "TLSECCertificateFile",
-    FALSE);
-  tls_ec_key_file = get_param_ptr(main_server->conf,
-    "TLSECCertificateKeyFile", FALSE);
-
-  tls_pkcs12_file = get_param_ptr(main_server->conf, "TLSPKCS12File", FALSE);
-
-  tls_rsa_cert_file = get_param_ptr(main_server->conf, "TLSRSACertificateFile",
-    FALSE);
-  tls_rsa_key_file = get_param_ptr(main_server->conf,
-    "TLSRSACertificateKeyFile", FALSE);
-
+static void tls_lookup_psks(server_rec *s) {
 #if defined(PSK_MAX_PSK_LEN)
-  c = find_config(main_server->conf, CONF_PARAM, "TLSPreSharedKey", FALSE);
+  config_rec *c;
+
+  if (tls_psks != NULL) {
+    pr_table_empty(tls_psks);
+    pr_table_free(tls_psks);
+    tls_psks = NULL;
+  }
+
+  c = find_config(s->conf, CONF_PARAM, "TLSPreSharedKey", FALSE);
   while (c != NULL) {
     register int i;
     char key_buf[PR_TUNABLE_BUFFER_SIZE], *identity, *path;
-    int fd, key_len, valid_hex = TRUE, xerrno;
+    int fd, key_len, valid_hex = TRUE, res, xerrno;
     struct stat st;
     BIGNUM *bn = NULL;
 
@@ -15415,7 +14459,7 @@ static int tls_sess_init(void) {
     path += 4;
 
     PRIVS_ROOT
-    fd = open(path, O_RDONLY); 
+    fd = open(path, O_RDONLY);
     xerrno = errno;
     PRIVS_RELINQUISH
 
@@ -15503,7 +14547,7 @@ static int tls_sess_init(void) {
         break;
       }
     }
- 
+
     if (valid_hex == FALSE) {
       pr_log_debug(DEBUG2, MOD_TLS_VERSION
         ": unable to use '%s': not a hex number", key_buf);
@@ -15538,78 +14582,79 @@ static int tls_sess_init(void) {
 
     c = find_config_next(c, c->next, CONF_PARAM, "TLSPreSharedKey", FALSE);
   }
-
-  if (tls_psks != NULL &&
-      pr_table_count(tls_psks) > 0) {
-    pr_trace_msg(trace_channel, 9,
-      "enabling support for PSK identities (%d)", pr_table_count(tls_psks));
-    SSL_CTX_set_psk_server_callback(ssl_ctx, tls_lookup_psk);
-  }
 #endif /* PSK_MAX_PSK_LEN */
+}
 
-#if !defined(OPENSSL_NO_TLSEXT)
-  c = find_config(main_server->conf, CONF_PARAM, "TLSNextProtocol", FALSE);
-  if (c != NULL) {
-    int use_next_protocol = TRUE;
+static void tls_lookup_renegotiate(server_rec *s) {
+#if OPENSSL_VERSION_NUMBER > 0x000907000L
+  config_rec *c = NULL;
 
-    use_next_protocol = *((int *) c->argv[0]);
-    if (use_next_protocol) {
-      set_next_protocol();
-    }
+  /* Lookup/process any configured TLSRenegotiate parameters. */
+  c = find_config(s->conf, CONF_PARAM, "TLSRenegotiate", FALSE);
+  if (c == NULL) {
+    return;
+  }
+
+  if (c->argc == 0) {
+    /* Disable all server-side requested renegotiations; clients can still
+     * request renegotiations.
+     */
+    tls_ctrl_renegotiate_timeout = 0;
+    tls_data_renegotiate_limit = 0;
+    tls_renegotiate_timeout = 0;
+    tls_renegotiate_required = FALSE;
 
   } else {
-    set_next_protocol();
-  }
+    int ctrl_timeout = *((int *) c->argv[0]);
+    off_t data_limit = *((off_t *) c->argv[1]);
+    int renegotiate_timeout = *((int *) c->argv[2]);
+    unsigned char renegotiate_required = *((unsigned char *) c->argv[3]);
 
-# if OPENSSL_VERSION_NUMBER >= 0x10002000L && \
-     !defined(HAVE_LIBRESSL)
-  c = find_config(main_server->conf, CONF_PARAM, "TLSServerInfoFile", FALSE);
-  if (c != NULL) {
-    const char *path;
-
-    path = c->argv[0];
-    if (SSL_CTX_use_serverinfo_file(ssl_ctx, path) != 1) {
-      tls_log("error setting server info using '%s': %s", path,
-        tls_get_errors());
+    if (data_limit > 0) {
+      tls_data_renegotiate_limit = data_limit;
     }
-  }
-# endif /* OpenSSL-1.0.2 and later */
-#endif /* !OPENSSL_NO_TLSEXT */
 
-  c = find_config(main_server->conf, CONF_PARAM, "TLSOptions", FALSE);
-  while (c != NULL) {
-    unsigned long opts = 0;
+    if (renegotiate_timeout > 0) {
+      tls_renegotiate_timeout = renegotiate_timeout;
+    }
 
-    pr_signals_handle();
+    tls_renegotiate_required = renegotiate_required;
 
-    opts = *((unsigned long *) c->argv[0]);
-    tls_opts |= opts;
-
-    c = find_config_next(c, c->next, CONF_PARAM, "TLSOptions", FALSE);
-  }
-
-#if OPENSSL_VERSION_NUMBER > 0x009080cfL
-  /* The OpenSSL team realized that the flag added in 0.9.8l, the
-   * SSL3_FLAGS_ALLOW_UNSAFE_LEGACY_RENEGOTIATION flag, was a bad idea.
-   * So in later versions, it was changed to a context flag,
-   * SSL_OP_ALLOW_UNSAFE_LEGACY_RENEGOTIATION.
-   */
-  if (tls_opts & TLS_OPT_ALLOW_CLIENT_RENEGOTIATIONS) {
-    int ssl_opts;
-
-    ssl_opts = SSL_CTX_get_options(ssl_ctx);
-    ssl_opts |= SSL_OP_ALLOW_UNSAFE_LEGACY_RENEGOTIATION;
-    SSL_CTX_set_options(ssl_ctx, ssl_opts);
+    /* Set any control channel renegotiation timers, if need be. */
+    pr_timer_add(ctrl_timeout ? ctrl_timeout : tls_ctrl_renegotiate_timeout,
+      -1, &tls_module, tls_ctrl_renegotiate_cb, "SSL/TLS renegotiation");
   }
 #endif
+}
 
-#if !defined(OPENSSL_NO_TLSEXT) && defined(TLSEXT_MAXLEN_host_name)
-  SSL_CTX_set_tlsext_servername_callback(ssl_ctx, tls_sni_cb);
-  SSL_CTX_set_tlsext_servername_arg(ssl_ctx, NULL);
-#endif /* !OPENSSL_NO_TLSEXT */
-
+static void tls_lookup_stapling(server_rec *s) {
 #if defined(PR_USE_OPENSSL_OCSP)
-  c = find_config(main_server->conf, CONF_PARAM, "TLSStaplingOptions", FALSE);
+  config_rec *c;
+
+  c = find_config(s->conf, CONF_PARAM, "TLSStaplingCache", FALSE);
+  if (c != NULL) {
+    const char *provider;
+
+    /* Look up and initialize the configured OCSP cache provider. */
+    provider = c->argv[0];
+
+    if (provider != NULL) {
+      tls_ocsp_cache = tls_ocsp_cache_get_cache(provider);
+
+      pr_log_debug(DEBUG8, MOD_TLS_VERSION ": opening '%s' TLSStaplingCache",
+        provider);
+
+      if (tls_ocsp_cache_open(c->argv[1]) < 0 &&
+          errno != ENOSYS) {
+        pr_log_debug(DEBUG1, MOD_TLS_VERSION
+          ": error opening '%s' TLSStaplingCache: %s", provider,
+          strerror(errno));
+        tls_ocsp_cache = NULL;
+      }
+    }
+  }
+
+  c = find_config(s->conf, CONF_PARAM, "TLSStaplingOptions", FALSE);
   while (c != NULL) {
     unsigned long opts = 0;
 
@@ -15621,83 +14666,35 @@ static int tls_sess_init(void) {
     c = find_config_next(c, c->next, CONF_PARAM, "TLSStaplingOptions", FALSE);
   }
 
-  c = find_config(main_server->conf, CONF_PARAM, "TLSStaplingResponder", FALSE);
+  c = find_config(s->conf, CONF_PARAM, "TLSStaplingResponder", FALSE);
   if (c != NULL) {
     tls_stapling_responder = c->argv[0];
   }
 
-  c = find_config(main_server->conf, CONF_PARAM, "TLSStaplingTimeout", FALSE);
+  c = find_config(s->conf, CONF_PARAM, "TLSStaplingTimeout", FALSE);
   if (c != NULL) {
     tls_stapling_timeout = *((unsigned int *) c->argv[0]);
   }
 
-  SSL_CTX_set_tlsext_status_cb(ssl_ctx, tls_ocsp_cb);
-  SSL_CTX_set_tlsext_status_arg(ssl_ctx, NULL);
+  /* If a TLSStaplingCache has been configured, then TLSStapling should
+   * be enabled by default.
+   */
+  if (tls_ocsp_cache != NULL) {
+    tls_stapling = TRUE;
+  }
+
+  c = find_config(s->conf, CONF_PARAM, "TLSStapling", FALSE);
+  if (c != NULL) {
+    tls_stapling = *((int *) c->argv[0]);
+  }
 #endif /* PR_USE_OPENSSL_OCSP */
+}
 
-#if defined(TLS_USE_SESSION_TICKETS)
-  c = find_config(main_server->conf, CONF_PARAM, "TLSSessionTickets", FALSE);
-  if (c != NULL) {
-    int session_tickets;
+static void tls_lookup_verify(server_rec *s) {
+  config_rec *c;
 
-    session_tickets = *((int *) c->argv[0]);
-
-# ifdef SSL_OP_NO_TICKET
-    if (session_tickets == TRUE) {
-      if (SSL_CTX_set_tlsext_ticket_key_cb(ssl_ctx, tls_ticket_key_cb) == 0) {
-        pr_log_pri(PR_LOG_WARNING, MOD_TLS_VERSION
-          ": mod_tls compiled with Session Ticket support, but linked to "
-          "an OpenSSL library without tlsext support, therefore Session "
-          "Tickets are not available");
-      }
-
-    } else {
-      /* Disable session tickets. */
-      SSL_CTX_set_options(ssl_ctx, SSL_OP_NO_TICKET);
-    }
-# endif
-
-  } else {
-    /* Disable session tickets. */
-# ifdef SSL_OP_NO_TICKET
-    SSL_CTX_set_options(ssl_ctx, SSL_OP_NO_TICKET);
-# endif
-  }
-#endif /* TLS_USE_SESSION_TICKETS */
-
-#ifdef PR_USE_OPENSSL_ECC
-# if defined(SSL_CTX_set_ecdh_auto)
-  if (tls_opts & TLS_OPT_NO_AUTO_ECDH) {
-    SSL_CTX_set_ecdh_auto(ssl_ctx, 0);
-  }
-# endif
-
-  c = find_config(main_server->conf, CONF_PARAM, "TLSECDHCurve", FALSE);
-  if (c != NULL) {
-# if defined(SSL_CTX_set1_curves_list)
-    char *curve_names;
-
-    curve_names = c->argv[0];
-    if (strcasecmp(curve_names, "auto") != 0) {
-      SSL_CTX_set1_curves_list(ssl_ctx, curve_names);
-    }
-# else
-    const EC_KEY *ec_key;
-
-    ec_key = c->argv[0];
-
-    SSL_CTX_set_tmp_ecdh(ssl_ctx, ec_key);
-# endif /* pre OpenSSL-1.0.2 */
-    SSL_CTX_set_options(ssl_ctx, SSL_OP_SINGLE_ECDH_USE);
-
-  } else {
-# if OPENSSL_VERSION_NUMBER < 0x10100000L
-    SSL_CTX_set_tmp_ecdh_callback(ssl_ctx, tls_ecdh_cb);
-# endif /* Before OpenSSL-1.1.x */
-  }
-#endif /* PR_USE_OPENSSL_ECC */
-
-  c = find_config(main_server->conf, CONF_PARAM, "TLSVerifyClient", FALSE);
+  /* TLSVerifyClient */
+  c = find_config(s->conf, CONF_PARAM, "TLSVerifyClient", FALSE);
   if (c != NULL) {
     unsigned char verify_client;
 
@@ -15719,7 +14716,8 @@ static int tls_sess_init(void) {
     }
   }
 
-  c = find_config(main_server->conf, CONF_PARAM, "TLSVerifyServer", FALSE);
+  /* TLSVerifyServer */
+  c = find_config(s->conf, CONF_PARAM, "TLSVerifyServer", FALSE);
   if (c != NULL) {
     int setting;
 
@@ -15742,36 +14740,1758 @@ static int tls_sess_init(void) {
   if (tls_flags & (TLS_SESS_VERIFY_CLIENT_REQUIRED|TLS_SESS_VERIFY_SERVER|TLS_SESS_VERIFY_SERVER_NO_DNS)) {
     int *depth = NULL;
 
-    depth = get_param_ptr(main_server->conf, "TLSVerifyDepth", FALSE);
+    depth = get_param_ptr(s->conf, "TLSVerifyDepth", FALSE);
     if (depth != NULL) {
       tls_verify_depth = *depth;
     }
   }
+}
 
-  c = find_config(main_server->conf, CONF_PARAM, "TLSRequired", FALSE);
+static void tls_lookup_all(server_rec *s) {
+  config_rec *c;
+
+  /* TLSCACertificate{File,Path} */
+  tls_ca_file = get_param_ptr(s->conf, "TLSCACertificateFile", FALSE);
+  tls_ca_path = get_param_ptr(s->conf, "TLSCACertificatePath", FALSE);
+
+  /* TLSCARevocation{File,Path} */
+  tls_crl_file = get_param_ptr(s->conf, "TLSCARevocationFile", FALSE);
+  tls_crl_path = get_param_ptr(s->conf, "TLSCARevocationPath", FALSE);
+
+  /* TLSCertificateChainFile */
+  tls_ca_chain = get_param_ptr(s->conf, "TLSCertificateChainFile", FALSE);
+
+  /* TLS*CertificateFile.  Assume that, if no separate key files are configured,
+   * the keys are in the same file as the corresponding certificate.
+   */
+  tls_dsa_cert_file = get_param_ptr(s->conf, "TLSDSACertificateFile", FALSE);
+  tls_dsa_key_file = get_param_ptr(s->conf, "TLSDSACertificateKeyFile", FALSE);
+  if (tls_dsa_key_file == NULL) {
+    tls_dsa_key_file = tls_dsa_cert_file;
+  }
+
+  tls_ec_cert_file = get_param_ptr(s->conf, "TLSECCertificateFile", FALSE);
+  tls_ec_key_file = get_param_ptr(s->conf, "TLSECCertificateKeyFile", FALSE);
+  if (tls_ec_key_file == NULL) {
+    tls_ec_key_file = tls_ec_cert_file;
+  }
+
+  tls_pkcs12_file = get_param_ptr(s->conf, "TLSPKCS12File", FALSE);
+
+  tls_rsa_cert_file = get_param_ptr(s->conf, "TLSRSACertificateFile", FALSE);
+  tls_rsa_key_file = get_param_ptr(s->conf, "TLSRSACertificateKeyFile", FALSE);
+  if (tls_rsa_key_file == NULL) {
+    tls_rsa_key_file = tls_rsa_cert_file;
+  }
+
+  /* TLSCipherSuite */
+  tls_cipher_suite = get_param_ptr(s->conf, "TLSCipherSuite", FALSE);
+  if (tls_cipher_suite == NULL) {
+    tls_cipher_suite = TLS_DEFAULT_CIPHER_SUITE;
+  }
+
+  tls_lookup_dh_params(s);
+
+  /* TLSECDHCurve */
+#if defined(PR_USE_OPENSSL_ECC)
+  c = find_config(s->conf, CONF_PARAM, "TLSECDHCurve", FALSE);
+  if (c != NULL) {
+    tls_ecdh_curve = (void *) c->argv[0];
+  }
+#endif /* PR_USE_OPENSSL_ECC */
+
+  /* TLSNextProtocol */
+#if !defined(OPENSSL_NO_TLSEXT)
+  c = find_config(s->conf, CONF_PARAM, "TLSNextProtocol", FALSE);
+  if (c != NULL) {
+    tls_use_next_protocol = *((int *) c->argv[0]);
+  }
+#endif /* !OPENSSL_NO_TLSEXT */
+
+  /* TLSOptions */
+  c = find_config(s->conf, CONF_PARAM, "TLSOptions", FALSE);
+  while (c != NULL) {
+    unsigned long opts = 0;
+
+    pr_signals_handle();
+
+    opts = *((unsigned long *) c->argv[0]);
+    tls_opts |= opts;
+
+    c = find_config_next(c, c->next, CONF_PARAM, "TLSOptions", FALSE);
+  }
+
+  /* If UseReverseDNS is set to off, disable TLS_OPT_VERIFY_CERT_FQDN. */
+  if (!ServerUseReverseDNS &&
+      ((tls_opts & TLS_OPT_VERIFY_CERT_FQDN) ||
+       (tls_opts & TLS_OPT_VERIFY_CERT_CN))) {
+
+    if (tls_opts & TLS_OPT_VERIFY_CERT_FQDN) {
+      tls_opts &= ~TLS_OPT_VERIFY_CERT_FQDN;
+      tls_log("%s", "reverse DNS off, disabling TLSOption dNSNameRequired");
+    }
+
+    if (tls_opts & TLS_OPT_VERIFY_CERT_CN) {
+      tls_opts &= ~TLS_OPT_VERIFY_CERT_CN;
+      tls_log("%s", "reverse DNS off, disabling TLSOption CommonNameRequired");
+    }
+  }
+
+  /* TLSProtocol */
+  c = find_config(s->conf, CONF_PARAM, "TLSProtocol", FALSE);
+  if (c != NULL) {
+    tls_protocol = *((unsigned int *) c->argv[0]);
+  }
+
+  tls_lookup_psks(s);
+
+  tls_lookup_renegotiate(s);
+
+  /* TLSRequired */
+  c = find_config(s->conf, CONF_PARAM, "TLSRequired", FALSE);
   if (c != NULL) {
     tls_required_on_ctrl = *((int *) c->argv[0]);
     tls_required_on_data = *((int *) c->argv[1]);
     tls_required_on_auth = *((int *) c->argv[2]);
   }
 
-#if defined(PR_USE_OPENSSL_OCSP)
-  /* If a TLSStaplingCache has been configured, then TLSStapling should
-   * be enabled by default.
-   */
-  if (tls_ocsp_cache != NULL) {
-    tls_stapling = TRUE;
-  }
-
-  c = find_config(main_server->conf, CONF_PARAM, "TLSStapling", FALSE);
+  /* TLSServerCipherPreference */
+#if defined(SSL_OP_CIPHER_SERVER_PREFERENCE)
+  c = find_config(s->conf, CONF_PARAM, "TLSServerCipherPreference",
+    FALSE);
   if (c != NULL) {
-    tls_stapling = *((int *) c->argv[0]);
+    tls_use_server_cipher_preference = *((int *) c->argv[0]);
   }
-#endif /* PR_USE_OPENSSL_OCSP */
+#endif /* SSL_OP_CIPHER_SERVER_PREFERENCE */
 
-  c = find_config(main_server->conf, CONF_PARAM, "TLSTimeoutHandshake", FALSE);
+  /* TLSServerInfoFile */
+#if !defined(OPENSSL_NO_TLSEXT)
+# if OPENSSL_VERSION_NUMBER >= 0x10002000L && \
+     !defined(HAVE_LIBRESSL)
+  c = find_config(s->conf, CONF_PARAM, "TLSServerInfoFile", FALSE);
+  if (c != NULL) {
+    tls_serverinfo_file = c->argv[0];
+  }
+# endif /* OpenSSL-1.0.2 and later */
+#endif /* !OPENSSL_NO_TLSEXT */
+
+  /* TLSSessionTickets */
+#if defined(TLS_USE_SESSION_TICKETS)
+  c = find_config(s->conf, CONF_PARAM, "TLSSessionTickets", FALSE);
+  if (c != NULL) {
+    tls_use_session_tickets = *((int *) c->argv[0]);
+  }
+#endif /* TLS_USE_SESSION_TICKETS */
+
+  tls_lookup_stapling(s);
+
+  /* TLSTimeoutHandshake */
+  c = find_config(s->conf, CONF_PARAM, "TLSTimeoutHandshake", FALSE);
   if (c != NULL) {
     tls_handshake_timeout = *((unsigned int *) c->argv[0]);
+  }
+
+  tls_lookup_verify(s);
+}
+
+/* SSL setters */
+
+static int tls_ssl_set_ciphers(SSL *ssl) {
+  SSL_set_cipher_list(ssl, tls_cipher_suite);
+  return 0;
+}
+
+static int tls_ssl_set_crls(SSL *ssl) {
+  return 0;
+}
+
+static int tls_ssl_set_ecdh_curve(SSL *ssl) {
+#if defined(PR_USE_OPENSSL_ECC)
+# if defined(SSL_CTX_set_ecdh_auto)
+  if (tls_opts & TLS_OPT_NO_AUTO_ECDH) {
+    SSL_set_ecdh_auto(ssl, 0);
+  }
+# endif
+
+  if (tls_ecdh_curve != NULL) {
+# if defined(SSL_CTX_set1_curves_list)
+    char *curve_names;
+
+    curve_names = tls_ecdh_curve;
+    if (strcasecmp(curve_names, "auto") != 0) {
+      SSL_set1_curves_list(ssl, curve_names);
+    }
+# else
+    const EC_KEY *ec_key;
+
+    ec_key = tls_ecdh_curve;
+    SSL_set_tmp_ecdh(ssl, ec_key);
+# endif /* pre OpenSSL-1.0.2 */
+
+    SSL_set_options(ssl, SSL_OP_SINGLE_ECDH_USE);
+  } else {
+# if OPENSSL_VERSION_NUMBER < 0x10100000L
+    SSL_set_tmp_ecdh_callback(ssl, tls_ecdh_cb);
+# endif /* Before OpenSSL-1.1.x */
+  }
+#endif /* PR_USE_OPENSS_ECC */
+
+  return 0;
+}
+
+static int tls_ssl_set_psks(SSL *ssl) {
+#if defined(PSK_MAX_PSK_LEN)
+  if (tls_psks == NULL ||
+      pr_table_count(tls_psks) == 0) {
+    SSL_set_psk_server_callback(ssl, NULL);
+    return 0;
+  }
+
+  pr_trace_msg(trace_channel, 9,
+    "enabling support for PSK identities (%d)", pr_table_count(tls_psks));
+  SSL_set_psk_server_callback(ssl, tls_lookup_psk);
+#endif /* PSK_MAX_PSK_LEN */
+
+  return 0;
+}
+
+static int tls_ssl_set_options(server_rec *s, SSL *ssl) {
+  SSL_CTX *ctx;
+
+  SSL_clear_options(ssl, SSL_OP_ALLOW_UNSAFE_LEGACY_RENEGOTIATION);
+  SSL_clear_options(ssl, SSL_OP_CIPHER_SERVER_PREFERENCE);
+
+#if OPENSSL_VERSION_NUMBER > 0x009080cfL
+  /* The OpenSSL team realized that the flag added in 0.9.8l, the
+   * SSL3_FLAGS_ALLOW_UNSAFE_LEGACY_RENEGOTIATION flag, was a bad idea.
+   * So in later versions, it was changed to a context flag,
+   * SSL_OP_ALLOW_UNSAFE_LEGACY_RENEGOTIATION.
+   */
+  if (tls_opts & TLS_OPT_ALLOW_CLIENT_RENEGOTIATIONS) {
+    int ssl_opts;
+
+    ssl_opts = SSL_get_options(ssl);
+    ssl_opts |= SSL_OP_ALLOW_UNSAFE_LEGACY_RENEGOTIATION;
+    SSL_set_options(ssl, ssl_opts);
+  }
+#endif
+
+#if defined(SSL_OP_CIPHER_SERVER_PREFERENCE)
+  if (tls_use_server_cipher_preference == TRUE) {
+    int ssl_opts;
+
+    ssl_opts = SSL_get_options(ssl);
+    ssl_opts |= SSL_OP_CIPHER_SERVER_PREFERENCE;
+    SSL_set_options(ssl, ssl_opts);
+  }
+#endif /* SSL_OP_CIPHER_SERVER_PREFERENCE */
+
+#if OPENSSL_VERSION_NUMBER > 0x000907000L
+  /* Install a callback for logging OpenSSL message information, if requested.
+   */
+  if (tls_opts & TLS_OPT_ENABLE_DIAGS) {
+    tls_log("%s",
+      "TLSOption EnableDiags enabled, setting diagnostics callback");
+    SSL_set_msg_callback(ssl, tls_msg_cb);
+
+  } else {
+    SSL_set_msg_callback(ssl, NULL);
+  }
+#endif
+
+  ctx = SSL_get_SSL_CTX(ssl);
+  (void) tls_ctx_set_session_cache(s, ctx);
+
+  return 0;
+}
+
+static int tls_ssl_set_next_protocol(SSL *ssl) {
+#if !defined(OPENSSL_NO_TLSEXT)
+  register unsigned int i;
+  const char *proto = TLS_DEFAULT_NEXT_PROTO;
+  size_t encoded_protolen, proto_len;
+  unsigned char *encoded_proto;
+  struct tls_next_proto *next_proto;
+  SSL_CTX *ctx;
+
+  ctx = SSL_get_SSL_CTX(ssl);
+
+  if (tls_use_next_protocol == FALSE) {
+# if defined(PR_USE_OPENSSL_NPN)
+    SSL_CTX_set_next_protos_advertised_cb(ctx, NULL, NULL);
+# endif /* NPN */
+
+# if defined(PR_USE_OPENSSL_ALPN)
+    SSL_CTX_set_alpn_select_cb(ctx, NULL, NULL);
+# endif /* ALPN */
+
+    return 0;
+  }
+
+  proto_len = strlen(proto);
+  encoded_protolen = proto_len + 1;
+  encoded_proto = palloc(session.pool, encoded_protolen);
+  encoded_proto[0] = proto_len;
+  for (i = 0; i < proto_len; i++) {
+    encoded_proto[i+1] = proto[i];
+  }
+
+  next_proto = palloc(session.pool, sizeof(struct tls_next_proto));
+  next_proto->proto = pstrdup(session.pool, proto);
+  next_proto->encoded_proto = encoded_proto;
+  next_proto->encoded_protolen = encoded_protolen;
+
+# if defined(PR_USE_OPENSSL_NPN)
+  SSL_CTX_set_next_protos_advertised_cb(ctx, tls_npn_advertised_cb, next_proto);
+# endif /* NPN */
+
+# if defined(PR_USE_OPENSSL_ALPN)
+  SSL_CTX_set_alpn_select_cb(ctx, tls_alpn_select_cb, next_proto);
+# endif /* ALPN */
+#endif /* !OPENSSL_NO_TLSEXT */
+
+  return 0;
+}
+
+static int tls_ssl_set_protocol(server_rec *s, SSL *ssl) {
+  int disabled_proto;
+  unsigned int enabled_proto_count = 0;
+  const char *enabled_proto_str = NULL;
+
+  disabled_proto = get_disabled_protocols(tls_protocol);
+
+  /* Per the comments in <ssl/ssl.h>, SSL_CTX_set_options() uses |= on
+   * the previous value.  This means we can easily OR in our new option
+   * values with any previously set values.
+   */
+  enabled_proto_str = tls_get_proto_str(s->pool, tls_protocol,
+    &enabled_proto_count);
+
+  pr_log_debug(DEBUG8, MOD_TLS_VERSION ": supporting %s %s", enabled_proto_str,
+    enabled_proto_count != 1 ? "protocols" : "protocol only");
+  SSL_set_options(ssl, disabled_proto);
+
+  return 0;
+}
+
+static int tls_ssl_set_verify(SSL *ssl) {
+  int verify_mode = 0;
+
+  if (tls_flags & TLS_SESS_VERIFY_CLIENT_OPTIONAL) {
+    verify_mode = SSL_VERIFY_PEER;
+  }
+
+  if (tls_flags & TLS_SESS_VERIFY_CLIENT_REQUIRED) {
+    /* If we are verifying clients, make sure the client sends a cert;
+     * the protocol allows for the client to disregard a request for
+     * its cert by the server.
+     */
+    verify_mode |= (SSL_VERIFY_PEER|SSL_VERIFY_FAIL_IF_NO_PEER_CERT);
+  }
+
+  if (verify_mode != 0) {
+    SSL_set_verify(ssl, verify_mode, tls_verify_cb);
+
+    /* Note: we add one to the configured depth purposefully.  As noted
+     * in the OpenSSL man pages, the verification process will silently
+     * stop at the configured depth, and the error messages ensuing will
+     * be that of an incomplete certificate chain, rather than the
+     * "chain too long" error that might be expected.  To log the "chain
+     * too long" condition, we add one to the configured depth, and catch,
+     * in the verify callback, the exceeding of the actual depth.
+     */
+    SSL_set_verify_depth(ssl, tls_verify_depth + 1);
+  }
+
+  return 0;
+}
+
+static int tls_ssl_set_session_id_context(server_rec *s, SSL *ssl) {
+  /* Update the session ID context to use.  This is important; it ensures
+   * that the session IDs for this particular vhost will differ from those
+   * for another vhost.  An external TLS session cache will possibly
+   * cache sessions from all vhosts together, and we need to keep them
+   * separate.
+   */
+  SSL_set_session_id_context(ssl, (unsigned char *) &(s->sid), sizeof(s->sid));
+
+  return 0;
+}
+
+static int tls_ssl_set_all(server_rec *s, SSL *ssl) {
+  SSL_CTX *ctx = NULL;
+
+  /* This is the key to switching CAs, cert chains, etc for the SSL object
+   * for SNI support: build an entirely new SSL_CTX, using the new/proper CAs
+   * et al, and set that on the SSL object.
+   */
+  ctx = tls_init_ctx(s);
+  if (ctx == NULL) {
+    return -1;
+  }
+
+  pr_trace_msg(trace_channel, 19,
+    "resetting SSL_CTX for future data transfers");
+
+  /* Update the SSL_CTX for the possibly changed <VirtualHost> config.
+   *
+   * Even though our SSL has already been created from this SSL_CTX,
+   * which means any SSL_CTX changes WILL NOT be related in our SSL,
+   * we update it for any data transfer SSL objects later.
+   */
+  if (tls_ctx_set_all(s, ctx) < 0) {
+    return -1;
+  }
+
+  if (ssl_ctx != NULL) {
+    SSL_CTX_free(ssl_ctx);
+  }
+
+  ssl_ctx = ctx;
+
+  /* Note that it is important that we update the SSL with the new SSL_CTX
+   * AFTER it has been provisioned.  That way, the new/changed certs in the
+   * SSL_CTX will be properly copied/updated in the SSL object.
+   */
+  ctx = SSL_set_SSL_CTX(ssl, ssl_ctx);
+
+  pr_trace_msg(trace_channel, 19, "resetting SSL for ctrl connection");
+
+  if (tls_ssl_set_ciphers(ssl) < 0) {
+    return -1;
+  }
+
+  if (tls_ssl_set_crls(ssl) < 0) {
+    return -1;
+  }
+
+  if (tls_ssl_set_ecdh_curve(ssl) < 0) {
+    return -1;
+  }
+
+  if (tls_ssl_set_psks(ssl) < 0) {
+    return -1;
+  }
+
+  if (tls_ssl_set_options(s, ssl) < 0) {
+    return -1;
+  }
+
+  if (tls_ssl_set_next_protocol(ssl) < 0) {
+    return -1;
+  }
+
+  if (tls_ssl_set_protocol(s, ssl) < 0) {
+    return -1;
+  }
+
+  if (tls_ssl_set_verify(ssl) < 0) {
+    return -1;
+  }
+
+  if (tls_ssl_set_session_id_context(s, ssl) < 0) {
+    return -1;
+  }
+
+  return 0;
+}
+
+/* SSL_CTX setters */
+
+static int tls_ctx_set_ca_certs(SSL_CTX *ctx) {
+  if (tls_ca_file == NULL &&
+      tls_ca_path == NULL) {
+    /* Default to using locations set in the OpenSSL config file. */
+    pr_trace_msg(trace_channel, 9,
+      "using default OpenSSL verification locations (see $SSL_CERT_DIR "
+      "environment variable)");
+
+    if (SSL_CTX_set_default_verify_paths(ctx) != 1) {
+      tls_log("error setting default verification locations: %s",
+        tls_get_errors());
+    }
+
+    return 0;
+  }
+
+  /* Set the locations used for verifying certificates. */
+  PRIVS_ROOT
+  if (SSL_CTX_load_verify_locations(ctx, tls_ca_file, tls_ca_path) != 1) {
+    PRIVS_RELINQUISH
+
+    tls_log("unable to set CA verification using file '%s' or directory '%s': "
+      "%s", tls_ca_file ? tls_ca_file : "(none)",
+      tls_ca_path ? tls_ca_path : "(none)", tls_get_errors());
+      return -1;
+  }
+  PRIVS_RELINQUISH
+
+  if (tls_ca_file != NULL) {
+    pr_trace_msg(trace_channel, 19, "using CA verification file '%s'",
+      tls_ca_file);
+  }
+
+  if (tls_ca_path != NULL) {
+    pr_trace_msg(trace_channel, 19, "using CA verification directory '%s'",
+      tls_ca_path);
+  }
+
+  if (tls_ca_file != NULL) {
+    STACK_OF(X509_NAME) *sk;
+
+    /* Use SSL_load_client_CA_file() to load all of the CA certs (since
+     * there can be more than one) from the TLSCACertificateFile.  The
+     * entire list of CAs in that file will be present to the client as
+     * the "acceptable client CA" list.
+     */
+
+    PRIVS_ROOT
+    sk = SSL_load_client_CA_file(tls_ca_file);
+    PRIVS_RELINQUISH
+
+    if (sk != NULL) {
+      SSL_CTX_set_client_CA_list(ctx, sk);
+
+    } else {
+      tls_log("unable to read certificates in '%s': %s", tls_ca_file,
+        tls_get_errors());
+    }
+  }
+
+  if (tls_ca_path != NULL) {
+    DIR *cacertdir = NULL;
+
+    PRIVS_ROOT
+    cacertdir = opendir(tls_ca_path);
+    PRIVS_RELINQUISH
+
+    if (cacertdir != NULL) {
+      struct dirent *cadent = NULL;
+      pool *tmp_pool = make_sub_pool(permanent_pool);
+
+      while ((cadent = readdir(cacertdir)) != NULL) {
+        FILE *cacertf;
+        char *cacertname;
+
+        pr_signals_handle();
+
+        /* Skip dot directories. */
+        if (is_dotdir(cadent->d_name)) {
+          continue;
+        }
+
+        cacertname = pdircat(tmp_pool, tls_ca_path, cadent->d_name, NULL);
+
+        PRIVS_ROOT
+        cacertf = fopen(cacertname, "r");
+        PRIVS_RELINQUISH
+
+        if (cacertf != NULL) {
+          X509 *x509;
+
+          x509 = PEM_read_X509(cacertf, NULL, NULL, NULL);
+          if (x509 != NULL) {
+            if (SSL_CTX_add_client_CA(ctx, x509) != 1) {
+              tls_log("error adding '%s' to client CA list: %s", cacertname,
+                tls_get_errors());
+            }
+
+          } else {
+            tls_log("unable to read '%s': %s", cacertname, tls_get_errors());
+          }
+
+          fclose(cacertf);
+
+        } else {
+          tls_log("unable to open '%s': %s", cacertname, strerror(errno));
+        }
+      }
+
+      destroy_pool(tmp_pool);
+      closedir(cacertdir);
+
+    } else {
+      tls_log("unable to add CAs in '%s': %s", tls_ca_path, strerror(errno));
+    }
+  }
+
+  return 0;
+}
+
+static int tls_ctx_set_dsa_cert(SSL_CTX *ctx, X509 **dsa_cert) {
+  X509 *cert;
+  FILE *fh = NULL;
+  int res, xerrno;
+
+  if (tls_dsa_cert_file == NULL) {
+    return 0;
+  }
+
+  PRIVS_ROOT
+  fh = fopen(tls_dsa_cert_file, "r");
+  xerrno = errno;
+  if (fh == NULL) {
+    PRIVS_RELINQUISH
+    tls_log("error reading TLSDSACertificateFile '%s': %s", tls_dsa_cert_file,
+      strerror(xerrno));
+    errno = xerrno;
+    return -1;
+  }
+
+  /* As the file may contain sensitive data, we do not want it lingering
+   * around in stdio buffers.
+   */
+  (void) setvbuf(fh, NULL, _IONBF, 0);
+
+  cert = read_cert(fh, ctx);
+  if (cert == NULL) {
+    PRIVS_RELINQUISH
+    tls_log("error reading TLSDSACertificateFile '%s': %s", tls_dsa_cert_file,
+      tls_get_errors());
+    fclose(fh);
+    return -1;
+  }
+
+  fclose(fh);
+
+  /* SSL_CTX_use_certificate() will increment the refcount on cert, so we
+   * can safely call X509_free() on it.  However, we need to keep that
+   * pointer around until after the handling of a cert chain file.
+   */
+  res = SSL_CTX_use_certificate(ctx, cert);
+  if (res <= 0) {
+    PRIVS_RELINQUISH
+
+    tls_log("error loading TLSDSACertificateFile '%s': %s", tls_dsa_cert_file,
+      tls_get_errors());
+    return -1;
+  }
+
+  *dsa_cert = cert;
+  pr_trace_msg(trace_channel, 19, "loaded DSA server certificate from '%s'",
+    tls_dsa_cert_file);
+
+  if (tls_dsa_key_file != NULL) {
+    if (tls_pkey) {
+      tls_pkey->flags |= TLS_PKEY_USE_DSA;
+      tls_pkey->flags &= ~(TLS_PKEY_USE_RSA|TLS_PKEY_USE_EC);
+    }
+
+    res = SSL_CTX_use_PrivateKey_file(ctx, tls_dsa_key_file, X509_FILETYPE_PEM);
+    if (res <= 0) {
+      PRIVS_RELINQUISH
+
+      tls_log("error loading TLSDSACertificateKeyFile '%s': %s",
+        tls_dsa_key_file, tls_get_errors());
+      return -1;
+    }
+
+    res = SSL_CTX_check_private_key(ctx);
+    if (res != 1) {
+      PRIVS_RELINQUISH
+
+      tls_log("error checking key from TLSDSACertificateKeyFile '%s': %s",
+        tls_dsa_key_file, tls_get_errors());
+      return -1;
+    }
+  }
+  PRIVS_RELINQUISH
+
+  return 0;
+}
+
+static int tls_ctx_set_ec_cert(SSL_CTX *ctx, X509 **ec_cert) {
+#if defined(PR_USE_OPENSSL_ECC)
+  X509 *cert;
+  FILE *fh = NULL;
+  int res, xerrno;
+
+  if (tls_ec_cert_file == NULL) {
+    return 0;
+  }
+
+  PRIVS_ROOT
+  fh = fopen(tls_ec_cert_file, "r");
+  xerrno = errno;
+  if (fh == NULL) {
+    PRIVS_RELINQUISH
+    tls_log("error reading TLSECCertificateFile '%s': %s", tls_ec_cert_file,
+      strerror(xerrno));
+    errno = xerrno;
+    return -1;
+  }
+
+  /* As the file may contain sensitive data, we do not want it lingering
+   * around in stdio buffers.
+   */
+  (void) setvbuf(fh, NULL, _IONBF, 0);
+
+  cert = read_cert(fh, ctx);
+  if (cert == NULL) {
+    PRIVS_RELINQUISH
+    tls_log("error reading TLSECCertificateFile '%s': %s", tls_ec_cert_file,
+      tls_get_errors());
+    fclose(fh);
+    return -1;
+  }
+
+  fclose(fh);
+
+  /* SSL_CTX_use_certificate() will increment the refcount on cert, so we
+   * can safely call X509_free() on it.  However, we need to keep that
+   * pointer around until after the handling of a cert chain file.
+   */
+  res = SSL_CTX_use_certificate(ctx, cert);
+  if (res <= 0) {
+    PRIVS_RELINQUISH
+
+    tls_log("error loading TLSECCertificateFile '%s': %s", tls_ec_cert_file,
+      tls_get_errors());
+    return -1;
+  }
+
+  *ec_cert = cert;
+  pr_trace_msg(trace_channel, 19, "loaded EC server certificate from '%s'",
+    tls_ec_cert_file);
+
+  if (tls_ec_key_file != NULL) {
+    if (tls_pkey) {
+      tls_pkey->flags |= TLS_PKEY_USE_EC;
+      tls_pkey->flags &= ~(TLS_PKEY_USE_RSA|TLS_PKEY_USE_DSA);
+    }
+
+    res = SSL_CTX_use_PrivateKey_file(ctx, tls_ec_key_file, X509_FILETYPE_PEM);
+    if (res <= 0) {
+      PRIVS_RELINQUISH
+
+      tls_log("error loading TLSECCertificateKeyFile '%s': %s",
+        tls_ec_key_file, tls_get_errors());
+      return -1;
+    }
+
+    res = SSL_CTX_check_private_key(ctx);
+    if (res != 1) {
+      PRIVS_RELINQUISH
+
+      tls_log("error checking key from TLSECCertificateKeyFile '%s': %s",
+        tls_ec_key_file, tls_get_errors());
+      return -1;
+    }
+  }
+
+  PRIVS_RELINQUISH
+#endif /* PR_USE_OPENSSL_ECC */
+
+  return 0;
+}
+
+static int tls_ctx_set_pkcs12_cert(SSL_CTX *ctx, X509 **dsa_cert,
+    X509 **ec_cert, X509 **rsa_cert) {
+  PKCS12 *p12 = NULL;
+  X509 *cert = NULL;
+  EVP_PKEY *pkey = NULL;
+  FILE *fh;
+  int res, xerrno;
+  char *passwd = "";
+
+  if (tls_pkcs12_file == NULL) {
+    return 0;
+  }
+
+  if (tls_pkey) {
+    passwd = tls_pkey->pkcs12_passwd;
+  }
+
+  PRIVS_ROOT
+  fh = fopen(tls_pkcs12_file, "r");
+  xerrno = errno;
+  if (fh == NULL) {
+    PRIVS_RELINQUISH
+
+    tls_log("error opening TLSPKCS12File '%s': %s", tls_pkcs12_file,
+      strerror(xerrno));
+    errno = xerrno;
+    return -1;
+  }
+
+  /* As the file may contain sensitive data, we do not want it lingering
+   * around in stdio buffers.
+   */
+  (void) setvbuf(fh, NULL, _IONBF, 0);
+
+  /* Note that this should NOT fail; we will have already parsed the PKCS12
+   * file, in order to get the password and key passphrases.
+   */
+  p12 = d2i_PKCS12_fp(fh, NULL);
+  if (p12 == NULL) {
+    PRIVS_RELINQUISH
+
+    tls_log("error reading TLSPKCS12File '%s': %s", tls_pkcs12_file,
+      tls_get_errors());
+    fclose(fh);
+    return -1;
+  }
+
+  fclose(fh);
+
+  /* XXX Need to add support for any CA certs contained in the PKCS12 file. */
+  if (PKCS12_parse(p12, passwd, &pkey, &cert, NULL) != 1) {
+    PRIVS_RELINQUISH
+
+    tls_log("error parsing info in TLSPKCS12File '%s': %s", tls_pkcs12_file,
+      tls_get_errors());
+
+    PKCS12_free(p12);
+
+    if (cert != NULL) {
+      X509_free(cert);
+    }
+
+    if (pkey != NULL) {
+      EVP_PKEY_free(pkey);
+    }
+
+    return -1;
+  }
+
+  /* Note: You MIGHT be tempted to call SSL_CTX_check_private_key(ctx) here,
+   * to make sure that the private key can be used.  But doing so will not
+   * work as expected, and will error out with:
+   *
+   *  SSL_CTX_check_private_key:no certificate assigned
+   *
+   * To make PKCS#12 support work, do not make that call here.
+   */
+
+  res = SSL_CTX_use_certificate(ctx, cert);
+  if (res <= 0) {
+    PRIVS_RELINQUISH
+
+    tls_log("error loading certificate from TLSPKCS12File '%s' %s",
+      tls_pkcs12_file, tls_get_errors());
+    PKCS12_free(p12);
+
+    if (cert != NULL) {
+      X509_free(cert);
+    }
+
+    if (pkey != NULL) {
+      EVP_PKEY_free(pkey);
+    }
+
+    return -1;
+  }
+
+  if (pkey != NULL &&
+      tls_pkey != NULL) {
+    switch (get_pkey_type(pkey)) {
+      case EVP_PKEY_RSA:
+        tls_pkey->flags |= TLS_PKEY_USE_RSA;
+        tls_pkey->flags &= ~(TLS_PKEY_USE_DSA|TLS_PKEY_USE_EC);
+        break;
+
+      case EVP_PKEY_DSA:
+        tls_pkey->flags |= TLS_PKEY_USE_DSA;
+        tls_pkey->flags &= ~(TLS_PKEY_USE_RSA|TLS_PKEY_USE_EC);
+        break;
+
+#ifdef PR_USE_OPENSSL_ECC
+      case EVP_PKEY_EC:
+        tls_pkey->flags |= TLS_PKEY_USE_EC;
+        tls_pkey->flags &= ~(TLS_PKEY_USE_RSA|TLS_PKEY_USE_DSA);
+        break;
+#endif /* PR_USE_OPENSSL_ECC */
+    }
+  }
+
+  res = SSL_CTX_use_PrivateKey(ctx, pkey);
+  if (res <= 0) {
+    PRIVS_RELINQUISH
+
+    tls_log("error loading key from TLSPKCS12File '%s' %s", tls_pkcs12_file,
+      tls_get_errors());
+
+    PKCS12_free(p12);
+
+    if (cert != NULL) {
+      X509_free(cert);
+    }
+
+    if (pkey != NULL) {
+      EVP_PKEY_free(pkey);
+    }
+
+    return -1;
+  }
+
+  res = SSL_CTX_check_private_key(ctx);
+  if (res != 1) {
+    PRIVS_RELINQUISH
+
+    tls_log("error checking key from TLSPKCS12File '%s': %s", tls_pkcs12_file,
+      tls_get_errors());
+
+    PKCS12_free(p12);
+
+    if (cert != NULL) {
+      X509_free(cert);
+    }
+
+    if (pkey != NULL) {
+      EVP_PKEY_free(pkey);
+    }
+
+    return -1;
+  }
+
+  /* SSL_CTX_use_certificate() will increment the refcount on cert, so we
+   * can safely call X509_free() on it.  However, we need to keep that
+   * pointer around until after the handling of a cert chain file.
+   */
+  if (pkey != NULL) {
+    switch (get_pkey_type(pkey)) {
+      case EVP_PKEY_RSA:
+        *rsa_cert = cert;
+        break;
+
+      case EVP_PKEY_DSA:
+        *dsa_cert = cert;
+        break;
+
+#ifdef PR_USE_OPENSSL_ECC
+      case EVP_PKEY_EC:
+        *ec_cert = cert;
+        break;
+#endif /* PR_USE_OPENSSL_ECC */
+    }
+  }
+
+  if (pkey != NULL) {
+    EVP_PKEY_free(pkey);
+  }
+
+  if (p12 != NULL) {
+    PKCS12_free(p12);
+  }
+
+  PRIVS_RELINQUISH
+
+  return 0;
+}
+
+static int tls_ctx_set_rsa_cert(SSL_CTX *ctx, X509 **rsa_cert) {
+  X509 *cert;
+  FILE *fh = NULL;
+  int res, xerrno;
+
+  if (tls_rsa_cert_file == NULL) {
+    return 0;
+  }
+
+  PRIVS_ROOT
+  fh = fopen(tls_rsa_cert_file, "r");
+  xerrno = errno;
+  if (fh == NULL) {
+    PRIVS_RELINQUISH
+    pr_log_pri(PR_LOG_DEBUG, MOD_TLS_VERSION
+      ": error reading TLSRSACertificateFile '%s': %s", tls_rsa_cert_file,
+      strerror(xerrno));
+    errno = xerrno;
+    return -1;
+  }
+
+  /* As the file may contain sensitive data, we do not want it lingering
+   * around in stdio buffers.
+   */
+  (void) setvbuf(fh, NULL, _IONBF, 0);
+
+  cert = read_cert(fh, ctx);
+  if (cert == NULL) {
+    PRIVS_RELINQUISH
+    pr_log_pri(PR_LOG_NOTICE, MOD_TLS_VERSION
+      ": error reading TLSRSACertificateFile '%s': %s", tls_rsa_cert_file,
+      tls_get_errors());
+    fclose(fh);
+    return -1;
+  }
+
+  fclose(fh);
+
+  /* SSL_CTX_use_certificate() will increment the refcount on cert, so we
+   * can safely call X509_free() on it.  However, we need to keep that
+   * pointer around until after the handling of a cert chain file.
+   */
+  res = SSL_CTX_use_certificate(ctx, cert);
+  if (res <= 0) {
+    PRIVS_RELINQUISH
+
+    pr_log_pri(PR_LOG_NOTICE, MOD_TLS_VERSION
+      ": error loading TLSRSACertificateFile '%s': %s", tls_rsa_cert_file,
+      tls_get_errors());
+    return -1;
+  }
+
+  *rsa_cert = cert;
+  pr_trace_msg(trace_channel, 19, "loaded RSA server certificate from '%s'",
+    tls_rsa_cert_file);
+
+  if (tls_rsa_key_file != NULL) {
+    if (tls_pkey) {
+      tls_pkey->flags |= TLS_PKEY_USE_RSA;
+      tls_pkey->flags &= ~(TLS_PKEY_USE_DSA|TLS_PKEY_USE_EC);
+    }
+
+    res = SSL_CTX_use_PrivateKey_file(ctx, tls_rsa_key_file, X509_FILETYPE_PEM);
+    if (res <= 0) {
+      const char *errors;
+
+      PRIVS_RELINQUISH
+      errors = tls_get_errors();
+
+      pr_trace_msg(trace_channel, 3,
+        "error loading TLSRSACertificateKeyFile '%s': %s", tls_rsa_key_file,
+        errors);
+      pr_log_pri(PR_LOG_NOTICE, MOD_TLS_VERSION
+        ": error loading TLSRSACertificateKeyFile '%s': %s", tls_rsa_key_file,
+        errors);
+      return -1;
+    }
+
+    res = SSL_CTX_check_private_key(ctx);
+    if (res != 1) {
+      const char *errors;
+
+      PRIVS_RELINQUISH
+      errors = tls_get_errors();
+
+      pr_trace_msg(trace_channel, 3,
+        "error checking key from TLSRSACertificateKeyFile '%s': %s",
+        tls_rsa_key_file, errors);
+      pr_log_pri(PR_LOG_NOTICE, MOD_TLS_VERSION
+        ": error checking key from TLSRSACertificateKeyFile '%s': %s",
+        tls_rsa_key_file, errors);
+      return -1;
+    }
+  }
+  PRIVS_RELINQUISH
+
+  return 0;
+}
+
+static int tls_ctx_set_cert_chain(SSL_CTX *ctx, X509 *dsa_cert, X509 *ec_cert,
+    X509 *rsa_cert) {
+  BIO *bio;
+  X509 *cert;
+  unsigned int count = 0;
+  int res;
+
+  if (tls_ca_chain == NULL) {
+    return 0;
+  }
+
+  PRIVS_ROOT
+  bio = BIO_new_file(tls_ca_chain, "r");
+  if (bio == NULL) {
+    PRIVS_RELINQUISH
+
+    tls_log("unable to read certificate chain '%s': %s", tls_ca_chain,
+      tls_get_errors());
+    return 0;
+  }
+
+  cert = PEM_read_bio_X509(bio, NULL, NULL, NULL);
+  while (cert != NULL) {
+    pr_signals_handle();
+
+    if (rsa_cert != NULL) {
+      /* Skip this cert if it is the same as the configured RSA server cert. */
+      if (X509_cmp(rsa_cert, cert) == 0) {
+        X509_free(cert);
+        cert = PEM_read_bio_X509(bio, NULL, NULL, NULL);
+        continue;
+      }
+    }
+
+    if (dsa_cert != NULL) {
+      /* Skip this cert if it is the same as the configured DSA server cert. */
+      if (X509_cmp(dsa_cert, cert) == 0) {
+        X509_free(cert);
+        cert = PEM_read_bio_X509(bio, NULL, NULL, NULL);
+        continue;
+      }
+    }
+
+    if (ec_cert != NULL) {
+      /* Skip this cert if it is the same as the configured EC server cert. */
+      if (X509_cmp(ec_cert, cert) == 0) {
+        X509_free(cert);
+        cert = PEM_read_bio_X509(bio, NULL, NULL, NULL);
+        continue;
+      }
+    }
+
+    res = SSL_CTX_add_extra_chain_cert(ctx, cert);
+    if (res != 1) {
+      tls_log("error adding cert to certificate chain: %s", tls_get_errors());
+      X509_free(cert);
+      break;
+    }
+
+    count++;
+    cert = PEM_read_bio_X509(bio, NULL, NULL, NULL);
+  }
+
+  PRIVS_RELINQUISH
+  BIO_free(bio);
+
+  tls_log("added %u certs from '%s' to certificate chain", count, tls_ca_chain);
+  return 0;
+}
+
+static int tls_ctx_set_certs(SSL_CTX *ctx, X509 **dsa_cert, X509 **ec_cert,
+    X509 **rsa_cert) {
+  if (tls_ctx_set_dsa_cert(ctx, dsa_cert) < 0 ||
+      tls_ctx_set_ec_cert(ctx, ec_cert) < 0 ||
+      tls_ctx_set_pkcs12_cert(ctx, dsa_cert, ec_cert, rsa_cert) < 0 ||
+      tls_ctx_set_rsa_cert(ctx, rsa_cert) < 0) {
+    return -1;
+  }
+
+  /* Log a warning if the server was badly misconfigured, and has no server
+   * certs at all.  The client will probably see this situation as something
+   * like:
+   *
+   *  error:14094410:SSL routines:SSL3_READ_BYTES:sslv3 alert handshake failure
+   *
+   * And the TLSLog will show the error as:
+   *
+   *  error:1408A0C1:SSL routines:SSL3_GET_CLIENT_HELLO:no shared cipher
+   */
+  if (tls_rsa_cert_file == NULL &&
+      tls_dsa_cert_file == NULL &&
+      tls_ec_cert_file == NULL &&
+      tls_pkcs12_file == NULL) {
+    tls_log("no TLSRSACertificateFile, TLSDSACertificateFile, "
+      "TLSECCertificateFile, or TLSPKCS12File configured; "
+      "unable to handle SSL/TLS connections");
+    pr_log_pri(PR_LOG_NOTICE, MOD_TLS_VERSION
+      ": no TLSRSACertificateFile, TLSDSACertificateFile, "
+      "TLSECCertificateFile or TLSPKCS12File configured; "
+      "unable to handle SSL/TLS connections");
+  }
+
+  return 0;
+}
+
+static int tls_ctx_set_ciphers(SSL_CTX *ctx) {
+  SSL_CTX_set_cipher_list(ctx, tls_cipher_suite);
+  return 0;
+}
+
+static int tls_ctx_set_crls(SSL_CTX *ctx) {
+  if (tls_crl_file == NULL &&
+      tls_crl_path == NULL) {
+    return 0;
+  }
+
+  /* Set up the CRL. */
+  tls_crl_store = X509_STORE_new();
+  if (tls_crl_store == NULL) {
+    tls_log("error creating CRL store: %s", tls_get_errors());
+    return -1;
+  }
+
+  PRIVS_ROOT
+  if (X509_STORE_load_locations(tls_crl_store, tls_crl_file,
+      tls_crl_path) != 1) {
+
+    if (tls_crl_file != NULL &&
+        tls_crl_path == NULL) {
+      tls_log("error loading TLSCARevocationFile '%s': %s", tls_crl_file,
+        tls_get_errors());
+
+    } else if (tls_crl_file == NULL &&
+               tls_crl_path != NULL) {
+      tls_log("error loading TLSCARevocationPath '%s': %s", tls_crl_path,
+        tls_get_errors());
+
+    } else {
+      tls_log("error loading TLSCARevocationFile '%s', "
+        "TLSCARevocationPath '%s': %s", tls_crl_file, tls_crl_path,
+        tls_get_errors());
+    }
+  }
+
+  PRIVS_RELINQUISH
+  return 0;
+}
+
+static int tls_ctx_set_ecdh_curve(SSL_CTX *ctx) {
+#if defined(PR_USE_OPENSSL_ECC)
+# if defined(SSL_CTX_set_ecdh_auto)
+  if (tls_opts & TLS_OPT_NO_AUTO_ECDH) {
+    SSL_CTX_set_ecdh_auto(ctx, 0);
+  }
+# endif
+
+  if (tls_ecdh_curve != NULL) {
+# if defined(SSL_CTX_set1_curves_list)
+    char *curve_names;
+
+    curve_names = tls_ecdh_curve;
+    if (strcasecmp(curve_names, "auto") != 0) {
+      SSL_CTX_set1_curves_list(ctx, curve_names);
+    }
+# else
+    const EC_KEY *ec_key;
+
+    ec_key = tls_ecdh_curve;
+    SSL_CTX_set_tmp_ecdh(ctx, ec_key);
+# endif /* pre OpenSSL-1.0.2 */
+
+    SSL_CTX_set_options(ctx, SSL_OP_SINGLE_ECDH_USE);
+  } else {
+# if OPENSSL_VERSION_NUMBER < 0x10100000L
+    SSL_CTX_set_tmp_ecdh_callback(ctx, tls_ecdh_cb);
+# endif /* Before OpenSSL-1.1.x */
+  }
+#endif /* PR_USE_OPENSS_ECC */
+
+  return 0;
+}
+
+static int tls_ctx_set_next_protocol(SSL_CTX *ctx) {
+#if !defined(OPENSSL_NO_TLSEXT)
+  register unsigned int i;
+  const char *proto = TLS_DEFAULT_NEXT_PROTO;
+  size_t encoded_protolen, proto_len;
+  unsigned char *encoded_proto;
+  struct tls_next_proto *next_proto;
+
+  if (tls_use_next_protocol == FALSE) {
+    return 0;
+  }
+
+  proto_len = strlen(proto);
+  encoded_protolen = proto_len + 1;
+  encoded_proto = palloc(session.pool, encoded_protolen);
+  encoded_proto[0] = proto_len;
+  for (i = 0; i < proto_len; i++) {
+    encoded_proto[i+1] = proto[i];
+  }
+
+  next_proto = palloc(session.pool, sizeof(struct tls_next_proto));
+  next_proto->proto = pstrdup(session.pool, proto);
+  next_proto->encoded_proto = encoded_proto;
+  next_proto->encoded_protolen = encoded_protolen;
+
+# if defined(PR_USE_OPENSSL_NPN)
+  SSL_CTX_set_next_protos_advertised_cb(ctx, tls_npn_advertised_cb, next_proto);
+# endif /* NPN */
+
+# if defined(PR_USE_OPENSSL_ALPN)
+  SSL_CTX_set_alpn_select_cb(ctx, tls_alpn_select_cb, next_proto);
+# endif /* ALPN */
+#endif /* !OPENSSL_NO_TLSEXT */
+
+  return 0;
+}
+
+static int tls_ctx_set_options(SSL_CTX *ctx) {
+#if OPENSSL_VERSION_NUMBER > 0x009080cfL
+  /* The OpenSSL team realized that the flag added in 0.9.8l, the
+   * SSL3_FLAGS_ALLOW_UNSAFE_LEGACY_RENEGOTIATION flag, was a bad idea.
+   * So in later versions, it was changed to a context flag,
+   * SSL_OP_ALLOW_UNSAFE_LEGACY_RENEGOTIATION.
+   */
+  if (tls_opts & TLS_OPT_ALLOW_CLIENT_RENEGOTIATIONS) {
+    int ssl_opts;
+
+    ssl_opts = SSL_CTX_get_options(ctx);
+    ssl_opts |= SSL_OP_ALLOW_UNSAFE_LEGACY_RENEGOTIATION;
+    SSL_CTX_set_options(ctx, ssl_opts);
+  }
+#endif
+
+#if defined(SSL_OP_CIPHER_SERVER_PREFERENCE)
+  if (tls_use_server_cipher_preference == TRUE) {
+    int ssl_opts;
+
+    ssl_opts = SSL_CTX_get_options(ctx);
+    ssl_opts |= SSL_OP_CIPHER_SERVER_PREFERENCE;
+    SSL_CTX_set_options(ctx, ssl_opts);
+  }
+#endif /* SSL_OP_CIPHER_SERVER_PREFERENCE */
+
+#if OPENSSL_VERSION_NUMBER > 0x000907000L
+  /* Install a callback for logging OpenSSL message information, if requested.
+   */
+  if (tls_opts & TLS_OPT_ENABLE_DIAGS) {
+    tls_log("%s",
+      "TLSOption EnableDiags enabled, setting diagnostics callback");
+    SSL_CTX_set_msg_callback(ctx, tls_msg_cb);
+  }
+#endif
+
+  return 0;
+}
+
+static int tls_ctx_set_pkey(SSL_CTX *ctx) {
+  if (tls_pkey != NULL) {
+    SSL_CTX_set_default_passwd_cb(ctx, tls_pkey_cb);
+    SSL_CTX_set_default_passwd_cb_userdata(ctx, (void *) tls_pkey);
+  }
+
+  return 0;
+}
+
+static int tls_ctx_set_protocol(server_rec *s, SSL_CTX *ctx) {
+  int disabled_proto;
+  unsigned int enabled_proto_count = 0;
+  const char *enabled_proto_str = NULL;
+
+  disabled_proto = get_disabled_protocols(tls_protocol);
+
+  /* Per the comments in <ssl/ssl.h>, SSL_CTX_set_options() uses |= on
+   * the previous value.  This means we can easily OR in our new option
+   * values with any previously set values.
+   */
+  enabled_proto_str = tls_get_proto_str(s->pool, tls_protocol,
+    &enabled_proto_count);
+
+  pr_log_debug(DEBUG8, MOD_TLS_VERSION ": supporting %s %s", enabled_proto_str,
+    enabled_proto_count != 1 ? "protocols" : "protocol only");
+  SSL_CTX_set_options(ctx, disabled_proto);
+
+  return 0;
+}
+
+static int tls_ctx_set_psks(SSL_CTX *ctx) {
+#if defined(PSK_MAX_PSK_LEN)
+  if (tls_psks != NULL &&
+      pr_table_count(tls_psks) > 0) {
+    pr_trace_msg(trace_channel, 9,
+      "enabling support for PSK identities (%d)", pr_table_count(tls_psks));
+    SSL_CTX_set_psk_server_callback(ctx, tls_lookup_psk);
+  }
+#endif /* PSK_MAX_PSK_LEN */
+
+  return 0;
+}
+
+static int tls_ctx_set_serverinfo(SSL_CTX *ctx) {
+#if !defined(OPENSSL_NO_TLSEXT)
+# if OPENSSL_VERSION_NUMBER >= 0x10002000L && \
+     !defined(HAVE_LIBRESSL)
+  if (tls_serverinfo_file == NULL) {
+    return 0;
+  }
+
+  if (SSL_CTX_use_serverinfo_file(ctx, tls_serverinfo_file) != 1) {
+    tls_log("error setting server info using '%s': %s", tls_serverinfo_file,
+      tls_get_errors());
+  }
+# endif /* OpenSSL-1.0.2 and later */
+#endif /* !OPENSSL_NO_TLSEXT */
+
+  return 0;
+}
+
+static int tls_ctx_set_session_id_context(server_rec *s, SSL_CTX *ctx) {
+  /* Update the session ID context to use.  This is important; it ensures
+   * that the session IDs for this particular vhost will differ from those
+   * for another vhost.  An external TLS session cache will possibly
+   * cache sessions from all vhosts together, and we need to keep them
+   * separate.
+   */
+  SSL_CTX_set_session_id_context(ctx, (unsigned char *) &(s->sid),
+    sizeof(s->sid));
+
+  return 0;
+}
+
+static int tls_ctx_set_session_cache(server_rec *s, SSL_CTX *ctx) {
+  config_rec *c;
+
+  c = find_config(s->conf, CONF_PARAM, "TLSSessionCache", FALSE);
+  if (c != NULL) {
+    const char *provider;
+    long timeout;
+
+    /* Look up and initialize the configured session cache provider. */
+    provider = c->argv[0];
+    timeout = *((long *) c->argv[2]);
+
+    if (provider != NULL) {
+      if (strncmp(provider, "internal", 9) != 0) {
+        tls_sess_cache = tls_sess_cache_get_cache(provider);
+
+        pr_log_debug(DEBUG8, MOD_TLS_VERSION ": opening '%s' TLSSessionCache",
+          provider);
+
+        if (tls_sess_cache_open(c->argv[1], timeout) == 0) {
+          long cache_mode, cache_flags;
+
+          cache_mode = SSL_SESS_CACHE_SERVER;
+
+          /* We could force OpenSSL to use ONLY the configured external session
+           * caching mechanism by using the SSL_SESS_CACHE_NO_INTERNAL mode flag
+           * (available in OpenSSL 0.9.6h and later).
+           *
+           * However, consider the case where the serialized session data is
+           * too large for the external cache, or the external cache refuses
+           * to add the session for some reason.  If OpenSSL is using only our
+           * external cache, that session is lost (which could cause problems
+           * e.g. for later protected data transfers, which require that the
+           * SSL session from the control connection be reused).
+           *
+           * If the external cache can be reasonably sure that session data
+           * can be added, then the NO_INTERNAL flag is a good idea; it keeps
+           * OpenSSL from allocating more memory than necessary.  Having both
+           * an internal and an external cache of the same data is a bit
+           * unresourceful.  Thus we ask the external cache mechanism what
+           * additional cache mode flags to use.
+           */
+
+          cache_flags = tls_sess_cache_get_cache_mode();
+          cache_mode |= cache_flags;
+
+          SSL_CTX_set_session_cache_mode(ctx, cache_mode);
+          SSL_CTX_set_timeout(ctx, timeout);
+
+          SSL_CTX_sess_set_new_cb(ctx, tls_sess_cache_add_sess_cb);
+          SSL_CTX_sess_set_get_cb(ctx, tls_sess_cache_get_sess_cb);
+          SSL_CTX_sess_set_remove_cb(ctx, tls_sess_cache_delete_sess_cb);
+
+        } else {
+          pr_log_debug(DEBUG1, MOD_TLS_VERSION
+            ": error opening '%s' TLSSessionCache: %s", provider,
+            strerror(errno));
+
+          /* Default to using OpenSSL's own internal session caching. */
+          SSL_CTX_set_session_cache_mode(ctx, SSL_SESS_CACHE_SERVER);
+        }
+
+      } else {
+        /* Default to using OpenSSL's own internal session caching. */
+        SSL_CTX_set_session_cache_mode(ctx, SSL_SESS_CACHE_SERVER);
+        SSL_CTX_set_timeout(ctx, timeout);
+      }
+
+    } else {
+      /* SSL session caching has been explicitly turned off. */
+
+      pr_log_debug(DEBUG3, MOD_TLS_VERSION
+        ": TLSSessionCache off, disabling TLS session caching and setting "
+        "NoSessionReuseRequired TLSOption");
+
+      SSL_CTX_set_session_cache_mode(ctx, SSL_SESS_CACHE_OFF);
+
+      /* Make sure we automatically relax the "SSL session reuse required
+       * for data connections" requirement; to enforce such a requirement
+       * TLS session caching MUST be enabled.  So if session caching has been
+       * explicitly disabled, relax that policy as well.
+       */
+      tls_opts |= TLS_OPT_NO_SESSION_REUSE_REQUIRED;
+    }
+
+  } else {
+    long timeout = 0;
+
+#if OPENSSL_VERSION_NUMBER > 0x000907000L
+    /* If we support renegotiations, then make the cache lifetime be 10%
+     * longer than the control connection renegotiation timer.
+     */
+    timeout = 15840;
+#else
+    /* If we are not supporting reneogtiations because the OpenSSL version
+     * is too old, then set the default cache lifetime to 30 minutes.
+     */
+    timeout = 1800;
+#endif /* OpenSSL older than 0.9.7. */
+
+    /* Make sure that we enable OpenSSL internal caching, AND that the
+     * cache timeout is longer than the default control channel
+     * renegotiation.
+     */
+
+    SSL_CTX_set_session_cache_mode(ctx, SSL_SESS_CACHE_SERVER);
+    SSL_CTX_set_timeout(ctx, timeout);
+  }
+
+  return 0;
+}
+
+static int tls_ctx_set_session_tickets(SSL_CTX *ctx) {
+#if defined(TLS_USE_SESSION_TICKETS) && \
+    defined(SSL_OP_NO_TICKET)
+  if (tls_use_session_tickets == TRUE) {
+    if (SSL_CTX_set_tlsext_ticket_key_cb(ctx, tls_ticket_key_cb) == 0) {
+      pr_log_pri(PR_LOG_WARNING, MOD_TLS_VERSION
+        ": mod_tls compiled with Session Ticket support, but linked to "
+        "an OpenSSL library without tlsext support, therefore Session "
+        "Tickets are not available");
+    }
+
+  } else {
+    /* Disable session tickets. */
+    SSL_CTX_set_options(ctx, SSL_OP_NO_TICKET);
+    SSL_CTX_set_tlsext_ticket_key_cb(ctx, NULL);
+  }
+#endif /* TLS_USE_SESSION_TICKETS and SSL_OP_NO_TICKET */
+
+  return 0;
+}
+
+static int tls_ctx_set_stapling(SSL_CTX *ctx) {
+#if defined(PR_USE_OPENSSL_OCSP)
+  SSL_CTX_set_tlsext_status_cb(ctx, tls_ocsp_cb);
+  SSL_CTX_set_tlsext_status_arg(ctx, NULL);
+#endif /* PR_USE_OPENSSL_OCSP */
+
+  return 0;
+}
+
+static int tls_ctx_set_verify(SSL_CTX *ctx) {
+  int verify_mode = 0;
+
+  if (tls_flags & TLS_SESS_VERIFY_CLIENT_OPTIONAL) {
+    verify_mode = SSL_VERIFY_PEER;
+  }
+
+  if (tls_flags & TLS_SESS_VERIFY_CLIENT_REQUIRED) {
+    /* If we are verifying clients, make sure the client sends a cert;
+     * the protocol allows for the client to disregard a request for
+     * its cert by the server.
+     */
+    verify_mode |= (SSL_VERIFY_PEER|SSL_VERIFY_FAIL_IF_NO_PEER_CERT);
+  }
+
+  if (verify_mode != 0) {
+    SSL_CTX_set_verify(ctx, verify_mode, tls_verify_cb);
+
+    /* Note: we add one to the configured depth purposefully.  As noted
+     * in the OpenSSL man pages, the verification process will silently
+     * stop at the configured depth, and the error messages ensuing will
+     * be that of an incomplete certificate chain, rather than the
+     * "chain too long" error that might be expected.  To log the "chain
+     * too long" condition, we add one to the configured depth, and catch,
+     * in the verify callback, the exceeding of the actual depth.
+     */
+    SSL_CTX_set_verify_depth(ctx, tls_verify_depth + 1);
+  }
+
+  return 0;
+}
+
+static int tls_ctx_set_all(server_rec *s, SSL_CTX *ctx) {
+  X509 *dsa_cert = NULL, *ec_cert = NULL, *rsa_cert = NULL;
+
+  if (tls_ctx_set_pkey(ctx) < 0) {
+    return -1;
+  }
+
+  if (tls_ctx_set_ca_certs(ctx) < 0) {
+    return -1;
+  }
+
+  if (tls_ctx_set_certs(ctx, &dsa_cert, &ec_cert, &rsa_cert) < 0) {
+    return -1;
+  }
+
+  /* Handle a CertificateChainFile.  We need to do this here, after the
+   * server cert has been loaded, so that we can decide whether the
+   * CertificateChainFile contains another copy of the server cert (or not).
+   */
+  if (tls_ctx_set_cert_chain(ctx, dsa_cert, ec_cert, rsa_cert) < 0) {
+    return -1;
+  }
+
+  if (dsa_cert != NULL) {
+    X509_free(dsa_cert);
+    dsa_cert = NULL;
+  }
+
+  if (ec_cert != NULL) {
+    X509_free(ec_cert);
+    ec_cert = NULL;
+  }
+
+  if (rsa_cert != NULL) {
+    X509_free(rsa_cert);
+    rsa_cert = NULL;
+  }
+
+  if (tls_ctx_set_ciphers(ctx) < 0) {
+    return -1;
+  }
+
+  if (tls_ctx_set_crls(ctx) < 0) {
+    return -1;
+  }
+
+  if (tls_ctx_set_ecdh_curve(ctx) < 0) {
+    return -1;
+  }
+
+  if (tls_ctx_set_psks(ctx) < 0) {
+    return -1;
+  }
+
+  if (tls_ctx_set_options(ctx) < 0) {
+    return -1;
+  }
+
+  if (tls_ctx_set_next_protocol(ctx) < 0) {
+    return -1;
+  }
+
+  if (tls_ctx_set_protocol(s, ctx) < 0) {
+    return -1;
+  }
+
+  if (tls_ctx_set_serverinfo(ctx) < 0) {
+    return -1;
+  }
+
+  if (tls_ctx_set_stapling(ctx) < 0) {
+    return -1;
+  }
+
+  if (tls_ctx_set_verify(ctx) < 0) {
+    return -1;
+  }
+
+  if (tls_ctx_set_session_tickets(ctx) < 0) {
+    return -1;
+  }
+
+  if (tls_ctx_set_session_id_context(s, ctx) < 0) {
+    return -1;
+  }
+
+  return 0;
+}
+
+/* Initialization routines
+ */
+
+static int tls_init(void) {
+  unsigned long openssl_version;
+
+  /* Check that the OpenSSL headers used match the version of the
+   * OpenSSL library used.
+   *
+   * For now, we only log if there is a difference.
+   */
+  openssl_version = SSLeay();
+
+  if (openssl_version != OPENSSL_VERSION_NUMBER) {
+    int unexpected_version_mismatch = TRUE;
+
+    if (OPENSSL_VERSION_NUMBER >= 0x1000000fL) {
+      /* OpenSSL versions after 1.0.0 try to maintain ABI compatibility.
+       * So we will warn about header/library version mismatches only if
+       * the library is older than the headers.
+       */
+      if (openssl_version >= OPENSSL_VERSION_NUMBER) {
+        unexpected_version_mismatch = FALSE;
+      }
+    }
+
+    if (unexpected_version_mismatch == TRUE) {
+      pr_log_pri(PR_LOG_WARNING, MOD_TLS_VERSION
+        ": compiled using OpenSSL version '%s' headers, but linked to "
+        "OpenSSL version '%s' library", OPENSSL_VERSION_TEXT,
+        SSLeay_version(SSLEAY_VERSION));
+      tls_log("compiled using OpenSSL version '%s' headers, but linked to "
+        "OpenSSL version '%s' library", OPENSSL_VERSION_TEXT,
+        SSLeay_version(SSLEAY_VERSION));
+    }
+  }
+
+  pr_log_debug(DEBUG2, MOD_TLS_VERSION ": using " OPENSSL_VERSION_TEXT);
+
+#if defined(PR_SHARED_MODULE)
+  pr_event_register(&tls_module, "core.module-unload", tls_mod_unload_ev, NULL);
+#endif /* PR_SHARED_MODULE */
+  pr_event_register(&tls_module, "core.postparse", tls_postparse_ev, NULL);
+  pr_event_register(&tls_module, "core.restart", tls_restart_ev, NULL);
+  pr_event_register(&tls_module, "core.shutdown", tls_shutdown_ev, NULL);
+
+#if OPENSSL_VERSION_NUMBER < 0x10100000L
+  OPENSSL_config(NULL);
+#endif /* prior to OpenSSL-1.1.x */
+  SSL_load_error_strings();
+  SSL_library_init();
+
+  /* It looks like calling OpenSSL_add_all_algorithms() is necessary for
+   * handling some algorithms (e.g. PKCS12 files) which are NOT added by
+   * just calling SSL_library_init().
+   */
+  ERR_load_crypto_strings();
+  OpenSSL_add_all_algorithms();
+
+#ifdef PR_USE_CTRLS
+  if (pr_ctrls_register(&tls_module, "tls", "query/tune mod_tls settings",
+      tls_handle_tls) < 0) {
+    pr_log_pri(PR_LOG_NOTICE, MOD_TLS_VERSION
+      ": error registering 'tls' control: %s", strerror(errno));
+
+  } else {
+    register unsigned int i;
+
+    tls_act_pool = make_sub_pool(permanent_pool);
+    pr_pool_tag(tls_act_pool, "TLS Controls Pool");
+
+    for (i = 0; tls_acttab[i].act_action; i++) {
+      tls_acttab[i].act_acl = palloc(tls_act_pool, sizeof(ctrls_acl_t));
+      pr_ctrls_init_acl(tls_acttab[i].act_acl);
+    }
+  }
+#endif /* PR_USE_CTRLS */
+
+  return 0;
+}
+
+static int tls_sess_init(void) {
+  int res = 0;
+  unsigned char *tmp = NULL;
+  config_rec *c = NULL;
+
+#if defined(TLS_USE_SESSION_TICKETS)
+  lock_ticket_keys();
+#endif /* TLS_USE_SESSION_TICKETS */
+
+  pr_event_register(&tls_module, "core.session-reinit", tls_sess_reinit_ev,
+    NULL);
+
+  /* First, check to see whether mod_tls is even enabled. */
+  tmp = get_param_ptr(main_server->conf, "TLSEngine", FALSE);
+  if (tmp != NULL &&
+      *tmp == TRUE) {
+    tls_engine = TRUE;
+  }
+
+  if (tls_engine == FALSE) {
+    /* If we have no ServerAlias vhosts at all, then it is OK to clean up
+     * all of the TLS/OpenSSL-related code from this process.  Otherwise,
+     * a client MIGHT send a HOST command for a TLS-enabled vhost; if we
+     * were to always cleanup OpenSSL here, that HOST command would inevitably
+     * lead to a problem.
+     */
+
+    res = pr_namebind_count(main_server);
+    if (res == 0) {
+      /* No need for this module's control channel NetIO handlers anymore. */
+      pr_unregister_netio(PR_NETIO_STRM_CTRL);
+
+      /* No need for all the OpenSSL stuff in this process space, either. */
+      tls_cleanup(TLS_CLEANUP_FL_SESS_INIT);
+      tls_scrub_pkeys();
+    }
+
+    return 0;
   }
 
   /* Open the TLSLog, if configured */
@@ -15791,92 +16511,14 @@ static int tls_sess_init(void) {
     }
   }
 
-  /* If UseReverseDNS is set to off, disable TLS_OPT_VERIFY_CERT_FQDN. */
-  if (!ServerUseReverseDNS &&
-      ((tls_opts & TLS_OPT_VERIFY_CERT_FQDN) ||
-       (tls_opts & TLS_OPT_VERIFY_CERT_CN))) {
-
-    if (tls_opts & TLS_OPT_VERIFY_CERT_FQDN) {
-      tls_opts &= ~TLS_OPT_VERIFY_CERT_FQDN;
-      tls_log("%s", "reverse DNS off, disabling TLSOption dNSNameRequired");
-    }
-
-    if (tls_opts & TLS_OPT_VERIFY_CERT_CN) {
-      tls_opts &= ~TLS_OPT_VERIFY_CERT_CN;
-      tls_log("%s", "reverse DNS off, disabling TLSOption CommonNameRequired");
-    }
-  }
-
-  /* We need to check for FIPS mode in the child process as well, in order
-   * to re-seed the FIPS PRNG for this process ID.  Annoying, isn't it?
-   */
-  if (pr_define_exists("TLS_USE_FIPS") &&
-      ServerType == SERVER_STANDALONE) {
-#ifdef OPENSSL_FIPS
-    if (!FIPS_mode()) {
-      /* Make sure OpenSSL is set to use the default RNG, as per an email
-       * discussion on the OpenSSL developer list:
-       *
-       *  "The internal FIPS logic uses the default RNG to see the FIPS RNG
-       *   as part of the self test process..."
-       */
-      RAND_set_rand_method(NULL);
-
-      if (!FIPS_mode_set(1)) {
-        const char *errstr;
-
-        errstr = tls_get_errors();
-
-        tls_log("unable to use FIPS mode: %s", errstr);
-        pr_log_pri(PR_LOG_ERR, MOD_TLS_VERSION ": unable to use FIPS mode: %s",
-          errstr);
-
-        errno = EPERM;
-        return -1;
-
-      } else {
-        tls_log("FIPS mode enabled");
-        pr_log_pri(PR_LOG_NOTICE, MOD_TLS_VERSION ": FIPS mode enabled");
-      }
-
-    } else {
-      tls_log("FIPS mode already enabled");
-    }
-#else
-    pr_log_pri(PR_LOG_WARNING, MOD_TLS_VERSION ": FIPS mode requested, but " OPENSSL_VERSION_TEXT " not built with FIPS support");
-#endif /* OPENSSL_FIPS */
-  }
-
-  /* Update the session ID context to use.  This is important; it ensures
-   * that the session IDs for this particular vhost will differ from those
-   * for another vhost.  An external TLS session cache will possibly
-   * cache sessions from all vhosts together, and we need to keep them
-   * separate.
-   */
-  SSL_CTX_set_session_id_context(ssl_ctx,
-    (unsigned char *) &(main_server->sid), sizeof(main_server->sid));
-
-  /* Install our data channel NetIO handlers. */
-  tls_netio_install_data();
-
-  pr_event_register(&tls_module, "core.exit", tls_exit_ev, NULL);
-
-  /* There are several timeouts which can cause the client to be disconnected;
-   * register a listener for them which can politely/cleanly shut the SSL/TLS
-   * session down before the connection is closed.
-   */
-  pr_event_register(&tls_module, "core.timeout-idle", tls_timeout_ev, NULL);
-  pr_event_register(&tls_module, "core.timeout-login", tls_timeout_ev, NULL);
-  pr_event_register(&tls_module, "core.timeout-no-transfer", tls_timeout_ev,
-    NULL);
-  pr_event_register(&tls_module, "core.timeout-session", tls_timeout_ev, NULL);
-  pr_event_register(&tls_module, "core.timeout-stalled", tls_timeout_ev, NULL);
+  tls_lookup_all(main_server);
 
   /* Check to see if a passphrase has been entered for this server. */
-  tls_pkey = tls_lookup_pkey();
-  if (tls_pkey != NULL) {
-    SSL_CTX_set_default_passwd_cb(ssl_ctx, tls_pkey_cb);
-    SSL_CTX_set_default_passwd_cb_userdata(ssl_ctx, (void *) tls_pkey);
+  tls_pkey = tls_lookup_pkey(main_server, TRUE, FALSE);
+
+  if (tls_ctx_set_all(main_server, ssl_ctx) < 0) {
+    tls_log("%s", "error initializing OpenSSL context for this session");
+    return -1;
   }
 
   /* We always install an info callback, in order to watch for
@@ -15886,21 +16528,24 @@ static int tls_sess_init(void) {
    */
   SSL_CTX_set_info_callback(ssl_ctx, tls_info_cb);
 
-#if OPENSSL_VERSION_NUMBER > 0x000907000L
-  /* Install a callback for logging OpenSSL message information,
-   * if requested.
+#if !defined(OPENSSL_NO_TLSEXT) && defined(TLSEXT_MAXLEN_host_name)
+  SSL_CTX_set_tlsext_servername_callback(ssl_ctx, tls_sni_cb);
+  SSL_CTX_set_tlsext_servername_arg(ssl_ctx, NULL);
+#endif /* !OPENSSL_NO_TLSEXT */
+
+  /* We need to check for FIPS mode in the child process as well, in order
+   * to re-seed the FIPS PRNG for this process ID.  Annoying, isn't it?
    */
-  if (tls_opts & TLS_OPT_ENABLE_DIAGS) {
-    tls_log("%s",
-      "TLSOption EnableDiags enabled, setting diagnostics callback");
-    SSL_CTX_set_msg_callback(ssl_ctx, tls_msg_cb);
+  if (ServerType == SERVER_STANDALONE) {
+    if (tls_set_fips() < 0) {
+      return -1;
+    }
   }
-#endif
 
 #if OPENSSL_VERSION_NUMBER > 0x000907000L
   /* Handle any requested crypto accelerators/drivers. */
   c = find_config(main_server->conf, CONF_PARAM, "TLSCryptoDevice", FALSE);
-  if (c) {
+  if (c != NULL) {
     tls_crypto_device = (const char *) c->argv[0];
 
     if (strncasecmp(tls_crypto_device, "ALL", 4) == 0) {
@@ -15923,7 +16568,7 @@ static int tls_sess_init(void) {
 #endif /* prior to OpenSSL-1.1.x */
 
       e = ENGINE_by_id(tls_crypto_device);
-      if (e) {
+      if (e != NULL) {
         if (ENGINE_init(e)) {
           if (ENGINE_set_default(e, ENGINE_METHOD_ALL)) {
             ENGINE_finish(e);
@@ -15963,12 +16608,21 @@ static int tls_sess_init(void) {
   }
 #endif
 
-  /* Initialize the OpenSSL context for this server's configuration. */
-  res = tls_init_server();
-  if (res < 0) {
-    /* NOTE: should we fail session init if TLS server init fails? */
-    tls_log("%s", "error initializing OpenSSL context for this session");
-  }
+  /* Install our data channel NetIO handlers. */
+  tls_netio_install_data();
+
+  pr_event_register(&tls_module, "core.exit", tls_exit_ev, NULL);
+
+  /* There are several timeouts which can cause the client to be disconnected;
+   * register a listener for them which can politely/cleanly shut the SSL/TLS
+   * session down before the connection is closed.
+   */
+  pr_event_register(&tls_module, "core.timeout-idle", tls_timeout_ev, NULL);
+  pr_event_register(&tls_module, "core.timeout-login", tls_timeout_ev, NULL);
+  pr_event_register(&tls_module, "core.timeout-no-transfer", tls_timeout_ev,
+    NULL);
+  pr_event_register(&tls_module, "core.timeout-session", tls_timeout_ev, NULL);
+  pr_event_register(&tls_module, "core.timeout-stalled", tls_timeout_ev, NULL);
 
   /* Add the additional features implemented by this module into the
    * list, to be displayed in response to a FEAT command.
@@ -16101,6 +16755,8 @@ static cmdtable tls_cmdtab[] = {
   { CMD,	"SSCN",	G_NONE,	tls_sscn,	TRUE,	FALSE,	CL_SEC },
   { POST_CMD,	C_PASS,	G_NONE,	tls_post_pass,	FALSE,	FALSE },
   { POST_CMD,	C_AUTH,	G_NONE,	tls_post_auth,	FALSE,	FALSE },
+  { LOG_CMD,	C_AUTH,	G_NONE,	tls_log_auth,	FALSE,	FALSE },
+  { LOG_CMD_ERR,C_AUTH,	G_NONE,	tls_log_auth,	FALSE,	FALSE },
   { 0,	NULL }
 };
 
