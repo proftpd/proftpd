@@ -1385,6 +1385,13 @@ static struct tls_label tls_ciphersuite_labels[] = {
   { 0xC030, "TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384" },
   { 0xC031, "TLS_ECDH_RSA_WITH_AES_128_GCM_SHA256" },
   { 0xC032, "TLS_ECDH_RSA_WITH_AES_256_GCM_SHA384" },
+  { 0xCCA8, "TLS_ECDHE_RSA_WITH_CHACHA20_POLY1305_SHA256" },
+  { 0xCCA9, "TLS_ECDHE_ECDSA_WITH_CHACHA20_POLY1305_SHA256" },
+  { 0xCCAA, "TLS_DHE_RSA_WITH_CHACHA20_POLY1305_SHA256" },
+  { 0xCCAB, "TLS_PSK_WITH_CHACHA20_POLY1305_SHA256" },
+  { 0xCCAC, "TLS_ECDHE_PSK_WITH_CHACHA20_POLY1305_SHA256" },
+  { 0xCCAD, "TLS_DHE_PSK_WITH_CHACHA20_POLY1305_SHA256" },
+  { 0xCCAE, "TLS_RSA_PSK_WITH_CHACHA20_POLY1305_SHA256" },
   { 0xFEFE, "SSL_RSA_FIPS_WITH_DES_CBC_SHA" },
   { 0xFEFF, "SSL_RSA_FIPS_WITH_3DES_EDE_CBC_SHA" },
 
@@ -1555,7 +1562,8 @@ static void tls_print_ciphersuites(BIO *bio, const char *name,
     pr_signals_handle();
 
     suiteno = ((*msg[0]) << 8) | (*msg)[1];
-    BIO_printf(bio, "    %s\n", tls_get_label(suiteno, tls_ciphersuite_labels));
+    BIO_printf(bio, "    %s (%X)\n",
+      tls_get_label(suiteno, tls_ciphersuite_labels), suiteno);
 
     *msg += 2;
     *msglen -= 2;
@@ -1645,7 +1653,6 @@ static void tls_print_extensions(BIO *bio, const char *name, int server,
   }
 }
 
-/* XXX Consider doing same for tls_print_server_hello? */
 static void tls_print_client_hello(int io_flag, int version, int content_type,
     const unsigned char *buf, size_t buflen, SSL *ssl, void *arg) {
   BIO *bio;
@@ -1659,13 +1666,77 @@ static void tls_print_client_hello(int io_flag, int version, int content_type,
   tls_print_random(bio, &buf, &buflen);
   tls_print_session_id(bio, &buf, &buflen);
   if (buflen < 2) {
+    BIO_free(bio);
     return;
   }
   tls_print_ciphersuites(bio, "cipher_suites", &buf, &buflen);
   if (buflen < 1) {
+    BIO_free(bio);
     return;
   }
   tls_print_compressions(bio, "compression_methods", &buf, &buflen);
+  tls_print_extensions(bio, "extensions", FALSE, &buf, &buflen);
+
+  datalen = BIO_get_mem_data(bio, &data);
+  if (data != NULL) {
+    data[datalen] = '\0';
+    tls_log("[msg] %.*s", (int) datalen, data);
+  }
+
+  BIO_free(bio);
+}
+
+static void tls_print_server_hello(int io_flag, int version, int content_type,
+    const unsigned char *buf, size_t buflen, SSL *ssl, void *arg) {
+  BIO *bio;
+  char *data = NULL;
+  long datalen;
+  int print_session_id = TRUE, print_compressions = TRUE;
+  unsigned int suiteno;
+
+  bio = BIO_new(BIO_s_mem());
+#ifdef TLS1_3_VERSION
+  if (version == TLS1_3_VERSION) {
+    print_session_id = FALSE;
+    print_compressions = FALSE;
+  }
+#endif /* TLS1_3_VERSION */
+
+  BIO_puts(bio, "\nServerHello:\n");
+  tls_print_ssl_version(bio, "server_version", &buf, &buflen);
+  tls_print_random(bio, &buf, &buflen);
+  if (print_session_id == TRUE) {
+    tls_print_session_id(bio, &buf, &buflen);
+  }
+  if (buflen < 2) {
+    BIO_free(bio);
+    return;
+  }
+
+  /* Print the selected ciphersuite. */
+  BIO_printf(bio, "  cipher_suites (2 bytes)\n");
+  suiteno = ((buf[0]) << 8) | (buf)[1];
+  BIO_printf(bio, "    %s (%X)\n",
+    tls_get_label(suiteno, tls_ciphersuite_labels), suiteno);
+  buf += 2;
+  buflen -= 2;
+
+  if (buflen < 1) {
+    BIO_free(bio);
+    return;
+  }
+
+  if (print_compressions == TRUE) {
+    int comp_type;
+
+    /* Print the selected compression. */
+    BIO_printf(bio, "  compression_methods (1 byte)\n");
+    comp_type = *buf;
+    BIO_printf(bio, "    %s\n",
+      tls_get_label(comp_type, tls_compression_labels));
+    buf += 1;
+    buflen -= 1;
+  }
   tls_print_extensions(bio, "extensions", FALSE, &buf, &buflen);
 
   datalen = BIO_get_mem_data(bio, &data);
@@ -1902,10 +1973,20 @@ static void tls_msg_cb(int io_flag, int version, int content_type,
               break;
             }
 
-            case SSL3_MT_SERVER_HELLO:
+            case SSL3_MT_SERVER_HELLO: {
+              const unsigned char *msg;
+              size_t msglen;
+
+              msg = buf;
+              msglen = buflen;
+
               tls_log("[msg] %s %s 'ServerHello' Handshake message (%u %s)",
                 action_str, version_str, (unsigned int) buflen, bytes_str);
+
+              tls_print_server_hello(io_flag, version, content_type, msg + 4,
+                msglen - 4, ssl, arg);
               break;
+            }
 
 #ifdef SSL3_MT_NEWSESSION_TICKET
             case SSL3_MT_NEWSESSION_TICKET:
@@ -3978,176 +4059,188 @@ static void tls_tlsext_cb(SSL *ssl, int client_server, int type,
   switch (type) {
 # ifdef TLSEXT_TYPE_server_name
     case TLSEXT_TYPE_server_name:
-        extension_name = "server name";
-        break;
+      extension_name = "server name";
+      break;
 # endif
 
 # ifdef TLSEXT_TYPE_max_fragment_length
     case TLSEXT_TYPE_max_fragment_length:
-        extension_name = "max fragment length";
-        break;
+      extension_name = "max fragment length";
+      break;
 # endif
 
 # ifdef TLSEXT_TYPE_client_certificate_url
     case TLSEXT_TYPE_client_certificate_url:
-        extension_name = "client certificate URL";
-        break;
+      extension_name = "client certificate URL";
+      break;
 # endif
 
 # ifdef TLSEXT_TYPE_trusted_ca_keys
     case TLSEXT_TYPE_trusted_ca_keys:
-        extension_name = "trusted CA keys";
-        break;
+      extension_name = "trusted CA keys";
+      break;
 # endif
 
 # ifdef TLSEXT_TYPE_truncated_hmac
     case TLSEXT_TYPE_truncated_hmac:
-        extension_name = "truncated HMAC";
-        break;
+      extension_name = "truncated HMAC";
+      break;
 # endif
 
 # ifdef TLSEXT_TYPE_status_request
     case TLSEXT_TYPE_status_request:
-        extension_name = "status request";
-        break;
+      extension_name = "status request";
+      break;
 # endif
 
 # ifdef TLSEXT_TYPE_user_mapping
     case TLSEXT_TYPE_user_mapping:
-        extension_name = "user mapping";
-        break;
+      extension_name = "user mapping";
+      break;
 # endif
 
 # ifdef TLSEXT_TYPE_client_authz
     case TLSEXT_TYPE_client_authz:
-        extension_name = "client authz";
-        break;
+      extension_name = "client authz";
+      break;
 # endif
 
 # ifdef TLSEXT_TYPE_server_authz
     case TLSEXT_TYPE_server_authz:
-        extension_name = "server authz";
-        break;
+      extension_name = "server authz";
+      break;
 # endif
 
 # ifdef TLSEXT_TYPE_cert_type
     case TLSEXT_TYPE_cert_type:
-        extension_name = "cert type";
-        break;
+      extension_name = "cert type";
+      break;
 # endif
 
 # ifdef TLSEXT_TYPE_elliptic_curves
     case TLSEXT_TYPE_elliptic_curves:
-        extension_name = "elliptic curves";
-        break;
+      extension_name = "elliptic curves";
+      break;
 # endif
 
 # ifdef TLSEXT_TYPE_ec_point_formats
     case TLSEXT_TYPE_ec_point_formats:
-        extension_name = "EC point formats";
-        break;
+      extension_name = "EC point formats";
+      break;
 # endif
 
 # ifdef TLSEXT_TYPE_srp
     case TLSEXT_TYPE_srp:
-        extension_name = "SRP";
-        break;
+      extension_name = "SRP";
+      break;
 # endif
 
 # ifdef TLSEXT_TYPE_signature_algorithms
     case TLSEXT_TYPE_signature_algorithms:
-        extension_name = "signature algorithms";
-        break;
+      extension_name = "signature algorithms";
+      break;
 # endif
 
 # ifdef TLSEXT_TYPE_use_srtp
     case TLSEXT_TYPE_use_srtp:
-        extension_name = "use SRTP";
-        break;
+      extension_name = "use SRTP";
+      break;
 # endif
 
 # ifdef TLSEXT_TYPE_heartbeat
     case TLSEXT_TYPE_heartbeat:
-        extension_name = "heartbeat";
-        break;
+      extension_name = "heartbeat";
+      break;
 # endif
 
 # ifdef TLSEXT_TYPE_signed_certificate_timestamp
     case TLSEXT_TYPE_signed_certificate_timestamp:
-        extension_name = "signed certificate timestamp";
-        break;
+      extension_name = "signed certificate timestamp";
+      break;
 # endif
 
 # ifdef TLSEXT_TYPE_encrypt_then_mac
     case TLSEXT_TYPE_encrypt_then_mac:
-        extension_name = "encrypt then mac";
-        break;
+      extension_name = "encrypt then mac";
+      break;
 # endif
 
 # ifdef TLSEXT_TYPE_extended_master_secret
     case TLSEXT_TYPE_extended_master_secret:
-        extension_name = "extended master secret";
-        break;
+      extension_name = "extended master secret";
+      break;
 # endif
 
 # ifdef TLSEXT_TYPE_session_ticket
     case TLSEXT_TYPE_session_ticket:
-        extension_name = "session ticket";
-        break;
+      extension_name = "session ticket";
+      break;
 # endif
 
 # ifdef TLSEXT_TYPE_psk
     case TLSEXT_TYPE_psk:
-        extension_name = "PSK";
-        break;
+      extension_name = "PSK";
+      break;
 # endif
 
 # ifdef TLSEXT_TYPE_supported_versions
     case TLSEXT_TYPE_supported_versions:
-        extension_name = "supported versions";
-        break;
+      extension_name = "supported versions";
+      break;
 # endif
 
 # ifdef TLSEXT_TYPE_psk_kex_modes
     case TLSEXT_TYPE_psk_kex_modes:
-        extension_name = "PSK KEX modes";
-        break;
+      extension_name = "PSK KEX modes";
+      break;
 # endif
 
 # ifdef TLSEXT_TYPE_key_share
     case TLSEXT_TYPE_key_share:
-        extension_name = "key share";
-        break;
+      extension_name = "key share";
+      break;
 # endif
 
 # ifdef TLSEXT_TYPE_renegotiate
     case TLSEXT_TYPE_renegotiate:
-        extension_name = "renegotiation info";
-        break;
+      extension_name = "renegotiation info";
+      break;
 # endif
 
 # ifdef TLSEXT_TYPE_opaque_prf_input
     case TLSEXT_TYPE_opaque_prf_input:
-        extension_name = "opaque PRF input";
-        break;
+      extension_name = "opaque PRF input";
+      break;
 # endif
 
 # ifdef TLSEXT_TYPE_next_proto_neg
     case TLSEXT_TYPE_next_proto_neg:
-        extension_name = "next protocol";
-        break;
+      extension_name = "next protocol";
+      break;
 # endif
 
 # ifdef TLSEXT_TYPE_application_layer_protocol_negotiation
     case TLSEXT_TYPE_application_layer_protocol_negotiation:
-        extension_name = "application layer protocol";
-        break;
+      extension_name = "application layer protocol";
+      break;
 # endif
 
 # ifdef TLSEXT_TYPE_padding
     case TLSEXT_TYPE_padding:
-        extension_name = "TLS padding";
-        break;
+      extension_name = "TLS padding";
+      break;
+# endif
+
+# ifdef TLSEXT_TYPE_early_data
+    case TLSEXT_TYPE_early_data:
+      extension_name = "early data";
+      break;
+# endif
+
+# ifdef TLSEXT_TYPE_post_handshake_auth
+    case TLSEXT_TYPE_post_handshake_auth:
+      extension_name = "post handshake auth";
+      break;
 # endif
 
     default:
@@ -6906,11 +6999,11 @@ static int tls_accept(conn_t *conn, unsigned char on_data) {
 #endif
 
   /* TLS handshake on the control channel... */
-  if (!on_data) {
+  if (on_data == FALSE) {
     int reused;
 
     subj = tls_get_subj_name(ctrl_ssl);
-    if (subj) {
+    if (subj != NULL) {
       tls_log("Client: %s", subj);
     }
 
@@ -7060,9 +7153,14 @@ static int tls_accept(conn_t *conn, unsigned char on_data) {
      * might be too much noise.
      */
     if (!logged_data) {
-      tls_log("%s data connection accepted, using cipher %s (%d bits)",
+      int reused;
+
+      reused = SSL_session_reused(ssl);
+
+      tls_log("%s data connection accepted, using cipher %s (%d bits%s)",
         SSL_get_version(ssl), SSL_get_cipher_name(ssl),
-        SSL_get_cipher_bits(ssl, NULL));
+        SSL_get_cipher_bits(ssl, NULL),
+        reused > 0 ? ", resumed session" : "");
       logged_data = TRUE;
     }
   }
@@ -10285,6 +10383,9 @@ static int tls_sess_cache_add_sess_cb(SSL *ssl, SSL_SESSION *sess) {
     return 1;
   }
 
+  pr_trace_msg(trace_channel, 9, "adding new SSL session to '%s' cache",
+    tls_sess_cache->cache_name);
+
   SSL_set_timeout(sess, tls_sess_cache->cache_timeout);
 
 #if OPENSSL_VERSION_NUMBER > 0x000908000L
@@ -10332,6 +10433,9 @@ static SSL_SESSION *tls_sess_cache_get_sess_cb(SSL *ssl, unsigned char *id,
   SSL_SESSION *sess;
   const unsigned char *sess_id;
 
+  pr_trace_msg(trace_channel, 9, "getting SSL session from '%s' cache",
+    tls_sess_cache->cache_name);
+
   sess_id = id;
 
   /* Indicate to OpenSSL that the ref count should not be incremented
@@ -10358,8 +10462,15 @@ static SSL_SESSION *tls_sess_cache_get_sess_cb(SSL *ssl, unsigned char *id,
 
   sess = (tls_sess_cache->get)(tls_sess_cache, sess_id, sess_id_len);
   if (sess == NULL) {
-    tls_log("error retrieving session from '%s' cache: %s",
-      tls_sess_cache->cache_name, strerror(errno));
+    int xerrno = errno;
+
+    pr_trace_msg(trace_channel, 5,
+      "error retrieving session from '%s' cache: %s",
+      tls_sess_cache->cache_name, strerror(xerrno));
+    if (xerrno != ENOENT) {
+      tls_log("error retrieving session from '%s' cache: %s",
+        tls_sess_cache->cache_name, strerror(xerrno));
+    }
   }
 
   return sess;
@@ -10375,6 +10486,9 @@ static void tls_sess_cache_delete_sess_cb(SSL_CTX *ctx, SSL_SESSION *sess) {
       strerror(ENOSYS));
     return;
   }
+
+  pr_trace_msg(trace_channel, 9, "removing SSL session from '%s' cache",
+    tls_sess_cache->cache_name);
 
 #if OPENSSL_VERSION_NUMBER > 0x000908000L
   sess_id = (unsigned char *) SSL_SESSION_get_id(sess, &sess_id_len);
