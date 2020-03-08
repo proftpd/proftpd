@@ -646,6 +646,7 @@ static int tls_ctx_set_ca_certs(SSL_CTX *);
 static int tls_ctx_set_certs(SSL_CTX *, X509 **, X509 **, X509 **);
 static int tls_ctx_set_crls(SSL_CTX *);
 static int tls_ctx_set_session_cache(server_rec *, SSL_CTX *);
+static int tls_ctx_set_session_id_context(server_rec *, SSL_CTX *);
 static int tls_ctx_set_session_tickets(SSL_CTX *);
 static int tls_ctx_set_stapling(SSL_CTX *);
 static int tls_ssl_set_all(server_rec *, SSL *);
@@ -888,10 +889,6 @@ static const char *ocsp_get_responder_url(pool *p, X509 *cert) {
 #endif /* PR_USE_OPENSSL_OCSP */
 
 static void tls_reset_state(void) {
-  if (ssl_ctx != NULL) {
-    SSL_CTX_set_options(ssl_ctx, SSL_CTX_get_options(ssl_ctx));
-  }
-
   tls_engine = FALSE;
   tls_flags = 0UL;
   tls_opts = 0UL;
@@ -940,8 +937,6 @@ static void tls_reset_state(void) {
   tls_data_netio = NULL;
   tls_data_rd_nstrm = NULL;
   tls_data_wr_nstrm = NULL;
-
-  tls_sess_cache = NULL;
 
   tls_crl_store = NULL;
   tls_tmp_dhs = NULL;
@@ -6412,6 +6407,13 @@ static SSL_CTX *tls_init_ctx(server_rec *s) {
   SSL_CTX_set_ecdh_auto(ctx, 1);
 # endif
 #endif /* PR_USE_OPENSSL_ECC */
+
+  /* We always install an info callback, in order to watch for
+   * client-initiated session renegotiations (Bug#3324).  If EnableDiags
+   * is enabled, that info callback will also log the OpenSSL diagnostic
+   * information.
+   */
+  SSL_CTX_set_info_callback(ctx, tls_info_cb);
 
   return ctx;
 }
@@ -15069,9 +15071,7 @@ static int tls_ssl_set_psks(SSL *ssl) {
   return 0;
 }
 
-static int tls_ssl_set_options(server_rec *s, SSL *ssl) {
-  SSL_CTX *ctx;
-
+static int tls_ssl_set_options(SSL *ssl) {
   SSL_clear_options(ssl, SSL_OP_ALLOW_UNSAFE_LEGACY_RENEGOTIATION);
   SSL_clear_options(ssl, SSL_OP_CIPHER_SERVER_PREFERENCE);
 
@@ -15112,9 +15112,6 @@ static int tls_ssl_set_options(server_rec *s, SSL *ssl) {
     SSL_set_msg_callback(ssl, NULL);
   }
 #endif
-
-  ctx = SSL_get_SSL_CTX(ssl);
-  (void) tls_ctx_set_session_cache(s, ctx);
 
   return 0;
 }
@@ -15171,6 +15168,9 @@ static int tls_ssl_set_protocol(server_rec *s, SSL *ssl) {
   int disabled_proto;
   unsigned int enabled_proto_count = 0;
   const char *enabled_proto_str = NULL;
+
+  /* Set the SSL options for disabling every protocol. */
+  SSL_clear_options(ssl, get_disabled_protocols(0));
 
   disabled_proto = get_disabled_protocols(tls_protocol);
 
@@ -15257,17 +15257,26 @@ static int tls_ssl_set_all(server_rec *s, SSL *ssl) {
     return -1;
   }
 
-  if (ssl_ctx != NULL) {
-    SSL_CTX_free(ssl_ctx);
+  /* We MUST update the session ID context for the current SSL before we
+   * replace its SSL_CTX, due to logic in the SSL_set_SSL_CTX internals.
+   * Do the same for the old SSL_CTX, as a hack for the same reason.
+   */
+  if (tls_ssl_set_session_id_context(main_server, ssl) < 0 ||
+      tls_ctx_set_session_id_context(main_server, ssl_ctx) < 0) {
+    return -1;
   }
-
-  ssl_ctx = ctx;
 
   /* Note that it is important that we update the SSL with the new SSL_CTX
    * AFTER it has been provisioned.  That way, the new/changed certs in the
    * SSL_CTX will be properly copied/updated in the SSL object.
    */
-  ctx = SSL_set_SSL_CTX(ssl, ssl_ctx);
+  ctx = SSL_set_SSL_CTX(ssl, ctx);
+
+  if (ssl_ctx != NULL) {
+    SSL_CTX_free(ssl_ctx);
+  }
+
+  ssl_ctx = ctx;
 
   pr_trace_msg(trace_channel, 19, "resetting SSL for ctrl connection");
 
@@ -15287,7 +15296,7 @@ static int tls_ssl_set_all(server_rec *s, SSL *ssl) {
     return -1;
   }
 
-  if (tls_ssl_set_options(s, ssl) < 0) {
+  if (tls_ssl_set_options(ssl) < 0) {
     return -1;
   }
 
@@ -15300,10 +15309,6 @@ static int tls_ssl_set_all(server_rec *s, SSL *ssl) {
   }
 
   if (tls_ssl_set_verify(ssl) < 0) {
-    return -1;
-  }
-
-  if (tls_ssl_set_session_id_context(s, ssl) < 0) {
     return -1;
   }
 
@@ -16227,6 +16232,36 @@ static int tls_ctx_set_session_id_context(server_rec *s, SSL_CTX *ctx) {
 static int tls_ctx_set_session_cache(server_rec *s, SSL_CTX *ctx) {
   config_rec *c;
 
+  /* The TLSSessionCache directive can only be configured globally; if we
+   * already have one, leave it alone.
+   */
+  if (tls_sess_cache != NULL) {
+    if (ssl_ctx != NULL) {
+      long cache_mode;
+
+      /* Copy the existing session cache settings into the new SSL_CTX. */
+
+      cache_mode = SSL_CTX_get_session_cache_mode(ssl_ctx);
+      SSL_CTX_set_session_cache_mode(ctx, cache_mode);
+
+      if (cache_mode == SSL_SESS_CACHE_OFF) {
+        /* Make sure we automatically relax the "SSL session reuse required
+         * for data connections" requirement; to enforce such a requirement
+         * TLS session caching MUST be enabled.  So if session caching has been
+         * explicitly disabled, relax that policy as well.
+         */
+        tls_opts |= TLS_OPT_NO_SESSION_REUSE_REQUIRED;
+      }
+
+      SSL_CTX_sess_set_new_cb(ctx, SSL_CTX_sess_get_new_cb(ssl_ctx));
+      SSL_CTX_sess_set_get_cb(ctx, SSL_CTX_sess_get_get_cb(ssl_ctx));
+      SSL_CTX_sess_set_remove_cb(ctx, SSL_CTX_sess_get_remove_cb(ssl_ctx));
+      SSL_CTX_set_timeout(ctx, SSL_CTX_get_timeout(ssl_ctx));
+    }
+
+    return 0;
+  }
+
   c = find_config(s->conf, CONF_PARAM, "TLSSessionCache", FALSE);
   if (c != NULL) {
     const char *provider;
@@ -16480,7 +16515,7 @@ static int tls_ctx_set_all(server_rec *s, SSL_CTX *ctx) {
     return -1;
   }
 
-  if (tls_ctx_set_session_id_context(s, ctx) < 0) {
+  if (tls_ctx_set_session_id_context(main_server, ctx) < 0) {
     return -1;
   }
 
@@ -16634,13 +16669,6 @@ static int tls_sess_init(void) {
     tls_log("%s", "error initializing OpenSSL context for this session");
     return -1;
   }
-
-  /* We always install an info callback, in order to watch for
-   * client-initiated session renegotiations (Bug#3324).  If EnableDiags
-   * is enabled, that info callback will also log the OpenSSL diagnostic
-   * information.
-   */
-  SSL_CTX_set_info_callback(ssl_ctx, tls_info_cb);
 
 #if !defined(OPENSSL_NO_TLSEXT) && defined(TLSEXT_MAXLEN_host_name)
   SSL_CTX_set_tlsext_servername_callback(ssl_ctx, tls_sni_cb);
