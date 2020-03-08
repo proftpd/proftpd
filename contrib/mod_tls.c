@@ -6633,6 +6633,13 @@ static int tls_accept(conn_t *conn, unsigned char on_data) {
       data_cache_mode = SSL_SESS_CACHE_SERVER|SSL_SESS_CACHE_NO_INTERNAL_STORE;
       SSL_CTX_set_session_cache_mode(ssl_ctx, data_cache_mode);
     }
+
+#if !defined(OPENSSL_NO_TLSEXT) && defined(TLSEXT_MAXLEN_host_name)
+    /* Disable any SNI handling for data TLS sessions. */
+    pr_trace_msg(trace_channel, 5, "ignoring SNI for data connections");
+    SSL_CTX_set_tlsext_servername_callback(ssl_ctx, NULL);
+    SSL_CTX_set_tlsext_servername_arg(ssl_ctx, NULL);
+#endif /* !OPENSSL_NO_TLSEXT */
   }
 
   retry:
