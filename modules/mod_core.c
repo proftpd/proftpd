@@ -5062,8 +5062,13 @@ MODRET core_post_host(cmd_rec *cmd) {
     /* Restore the original TimeoutLinger value. */
     pr_data_set_linger(PR_TUNABLE_TIMEOUTLINGER);
 
-    /* Restore original DebugLevel. */
-    pr_log_setdebuglevel(DEBUG0);
+    /* Restore original DebugLevel, but only if set via directive, not
+     * via the command-line.
+     */
+    c = find_config(session.prev_server->conf, CONF_PARAM, "DebugLevel", FALSE);
+    if (c != NULL) {
+      pr_log_setdebuglevel(DEBUG0);
+    }
 
     /* Restore the original RegexOptions values. */
     pr_regexp_set_limits(0, 0);
