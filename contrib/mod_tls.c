@@ -7060,6 +7060,8 @@ static int tls_accept(conn_t *conn, unsigned char on_data) {
        *   2. The reused TLS session matches the TLS session from the control
        *      connection.
        *
+       * Make sure we handle session tickets, too, especially for TLSv1.3.
+       *
        * Shutdown the TLS session unless the conditions are met.  By
        * requiring these conditions, we make sure that the client which is
        * talking to us on the control connection is indeed the same client
@@ -7086,8 +7088,33 @@ static int tls_accept(conn_t *conn, unsigned char on_data) {
         data_sess = SSL_get_session(ssl);
         if (data_sess != NULL) {
           int matching_sess = -1;
+          long sess_created, sess_expires;
+          time_t now;
 
           matching_sess = tls_compare_session_ids(ctrl_sess, data_sess);
+
+#ifdef TLS1_3_VERSION
+          /* TLSv1.3 sessions will show session reuse, but NOT matching session
+           * IDs.  Why?  TLSv1.3 completely redid session resumption, and now
+           * favors session tickets (and stateless servers) rather than
+           * session IDs (and stateful server session caches).
+           *
+           * Note that when OpenSSL's SSL_OP_NO_TICKET is used, OpenSSL will
+           * try to emulate legacy server-side session IDs for TLSv1.3
+           * connections.  Thus we might be able to strengthen this particular
+           * policy check in such cases to be: IFF TLSv1.3 and OP_NO_TICKET
+           * and no matching session IDs.  Maybe.
+           */
+          if (matching_sess != 0 &&
+              SSL_version(ctrl_ssl) == TLS1_3_VERSION &&
+              SSL_version(ssl) == TLS1_3_VERSION) {
+            pr_trace_msg(trace_channel, 9,
+              "ignoring mismatched control/data session IDs for %s sessions, "
+              "for now", SSL_get_version(ssl));
+            matching_sess = 0;
+          }
+#endif /* TLS1_3_VERSION */
+
           if (matching_sess != 0) {
             tls_log("Client did not reuse TLS session from control channel, "
               "rejecting data connection (see the NoSessionReuseRequired "
@@ -7096,42 +7123,38 @@ static int tls_accept(conn_t *conn, unsigned char on_data) {
             pr_table_remove(tls_data_rd_nstrm->notes, TLS_NETIO_NOTE, NULL);
             pr_table_remove(tls_data_wr_nstrm->notes, TLS_NETIO_NOTE, NULL);
             return -1;
+          }
 
-          } else {
-            long sess_created, sess_expires;
-            time_t now;
+          /* The TLS session ID for data and control channels matches.
+           *
+           * Many sites are using mod_tls such that OpenSSL's internal
+           * session caching is being used.  And by default, that
+           * cache expires sessions after 300 secs (5 min).  It's possible
+           * that the control channel TLS session will expire soon;
+           * unless the client renegotiates that session, the internal
+           * cache will expire the cached session, and the next data
+           * transfer could fail (since mod_tls won't allow that session ID
+           * to be reused again, as it will no longer be in the session
+           * cache).
+           *
+           * Try to warn if this is about to happen.
+           */
 
-            /* The TLS session ID for data and control channels matches.
-             *
-             * Many sites are using mod_tls such that OpenSSL's internal
-             * session caching is being used.  And by default, that
-             * cache expires sessions after 300 secs (5 min).  It's possible
-             * that the control channel TLS session will expire soon;
-             * unless the client renegotiates that session, the internal
-             * cache will expire the cached session, and the next data
-             * transfer could fail (since mod_tls won't allow that session ID
-             * to be reused again, as it will no longer be in the session
-             * cache).
-             *
-             * Try to warn if this is about to happen.
-             */
+          sess_created = SSL_SESSION_get_time(ctrl_sess);
+          sess_expires = SSL_SESSION_get_timeout(ctrl_sess);
+          now = time(NULL);
 
-            sess_created = SSL_SESSION_get_time(ctrl_sess);
-            sess_expires = SSL_SESSION_get_timeout(ctrl_sess);
-            now = time(NULL);
+          if ((sess_created + sess_expires) >= now) {
+            unsigned long remaining;
 
-            if ((sess_created + sess_expires) >= now) {
-              unsigned long remaining;
+            remaining = (unsigned long) ((sess_created + sess_expires) - now);
 
-              remaining = (unsigned long) ((sess_created + sess_expires) - now);
-
-              if (remaining <= 60) {
-                tls_log("control channel TLS session expires in %lu secs "
-                  "(%lu session cache expiration)", remaining, sess_expires);
-                tls_log("%s", "Consider using 'TLSSessionCache internal:' to "
-                  "increase the session cache expiration if necessary, or "
-                  "renegotiate the control channel TLS session");
-              }
+            if (remaining <= 60) {
+              tls_log("control channel TLS session expires in %lu secs "
+                "(%lu session cache expiration)", remaining, sess_expires);
+              tls_log("%s", "Consider using 'TLSSessionCache internal:' to "
+                "increase the session cache expiration if necessary, or "
+                "renegotiate the control channel TLS session");
             }
           }
 
@@ -15192,6 +15215,18 @@ static int tls_ssl_set_protocol(server_rec *s, SSL *ssl) {
     enabled_proto_count != 1 ? "protocols" : "protocol only");
   SSL_set_options(ssl, disabled_proto);
 
+#ifdef TLS1_3_VERSION
+  /* Unless SSL_OP_NO_TLSv1_3 is set, make sure that SSL_OP_NO_TICKET is NOT
+   * set.  In other words, if we might handle TLSv1.3 connections, enable
+   * use of session tickets, too.  Why?  TLSv1.3 prefers the session ticket
+   * approach to session resumption, vs server-side session IDs.  Using
+   * OP_NO_TICKET disables that.
+   */
+  if (!(disabled_proto & SSL_OP_NO_TLSv1_3)) {
+    SSL_clear_options(ssl, SSL_OP_NO_TICKET);
+  }
+#endif /* TLS1_3_VERSION */
+
   return 0;
 }
 
@@ -16188,6 +16223,18 @@ static int tls_ctx_set_protocol(server_rec *s, SSL_CTX *ctx) {
   pr_log_debug(DEBUG8, MOD_TLS_VERSION ": supporting %s %s", enabled_proto_str,
     enabled_proto_count != 1 ? "protocols" : "protocol only");
   SSL_CTX_set_options(ctx, disabled_proto);
+
+#ifdef TLS1_3_VERSION
+  /* Unless SSL_OP_NO_TLSv1_3 is set, make sure that SSL_OP_NO_TICKET is NOT
+   * set.  In other words, if we might handle TLSv1.3 connections, enable
+   * use of session tickets, too.  Why?  TLSv1.3 prefers the session ticket
+   * approach to session resumption, vs server-side session IDs.  Using
+   * OP_NO_TICKET disables that.
+   */
+  if (!(disabled_proto & SSL_OP_NO_TLSv1_3)) {
+    SSL_CTX_clear_options(ctx, SSL_OP_NO_TICKET);
+  }
+#endif /* TLS1_3_VERSION */
 
   return 0;
 }
