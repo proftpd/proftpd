@@ -12976,7 +12976,8 @@ MODRET set_tlsprotocol(cmd_rec *cmd) {
           protocols |= TLS_PROTO_SSL_V3;
         }
 
-      } else if (strncasecmp(proto_name, "TLSv1", 6) == 0) {
+      } else if (strncasecmp(proto_name, "TLSv1", 6) == 0 ||
+                 strncasecmp(proto_name, "TLSv1.0", 8) == 0) {
         if (disable) {
           protocols &= ~TLS_PROTO_TLS_V1;
         } else {
@@ -13040,7 +13041,8 @@ MODRET set_tlsprotocol(cmd_rec *cmd) {
       } else if (strncasecmp(cmd->argv[i], "SSLv3", 6) == 0) {
         protocols |= TLS_PROTO_SSL_V3;
 
-      } else if (strncasecmp(cmd->argv[i], "TLSv1", 6) == 0) {
+      } else if (strncasecmp(cmd->argv[i], "TLSv1", 6) == 0 ||
+                 strncasecmp(cmd->argv[i], "TLSv1.0", 8) == 0) {
         protocols |= TLS_PROTO_TLS_V1;
 
       } else if (strncasecmp(cmd->argv[i], "TLSv1.1", 8) == 0) {
@@ -13914,6 +13916,8 @@ static void tls_sess_reinit_ev(const void *event_data, void *user_data) {
    * easily. (Right?)
    */
   if (session.rfc2228_mech != NULL) {
+    pr_trace_msg(trace_channel, 17,
+      "ignored 'core.session-reinit' event due to existing SSL session");
     return;
   }
 
