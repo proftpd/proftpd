@@ -6331,8 +6331,6 @@ static SSL_CTX *tls_init_ctx(server_rec *s) {
 
   SSL_CTX_set_options(ctx, ssl_opts);
 
-  tls_ctx_set_session_cache(s, ctx);
-
 #if defined(TLS_USE_SESSION_TICKETS)
   c = find_config(s->conf, CONF_PARAM, "TLSSessionTicketKeys", FALSE);
   if (c != NULL) {
@@ -14514,6 +14512,8 @@ static void tls_postparse_ev(const void *event_data, void *user_data) {
   tls_pool = make_sub_pool(permanent_pool);
   pr_pool_tag(tls_pool, MOD_TLS_VERSION);
 
+  tls_ctx_set_session_cache(main_server, ssl_ctx);
+
   /* We can only get the passphrases for certs once OpenSSL has been
    * initialized.
    */
@@ -15276,6 +15276,7 @@ static int tls_ssl_set_session_id_context(server_rec *s, SSL *ssl) {
 
 static int tls_ssl_set_all(server_rec *s, SSL *ssl) {
   SSL_CTX *ctx = NULL;
+  long cache_mode;
 
   /* This is the key to switching CAs, cert chains, etc for the SSL object
    * for SNI support: build an entirely new SSL_CTX, using the new/proper CAs
@@ -15298,6 +15299,24 @@ static int tls_ssl_set_all(server_rec *s, SSL *ssl) {
   if (tls_ctx_set_all(s, ctx) < 0) {
     return -1;
   }
+
+  /* Copy the existing session cache settings into the new SSL_CTX. */
+  cache_mode = SSL_CTX_get_session_cache_mode(ssl_ctx);
+  SSL_CTX_set_session_cache_mode(ctx, cache_mode);
+
+  if (cache_mode == SSL_SESS_CACHE_OFF) {
+    /* Make sure we automatically relax the "SSL session reuse required
+     * for data connections" requirement; to enforce such a requirement
+     * TLS session caching MUST be enabled.  So if session caching has been
+     * explicitly disabled, relax that policy as well.
+     */
+    tls_opts |= TLS_OPT_NO_SESSION_REUSE_REQUIRED;
+  }
+
+  SSL_CTX_sess_set_new_cb(ctx, SSL_CTX_sess_get_new_cb(ssl_ctx));
+  SSL_CTX_sess_set_get_cb(ctx, SSL_CTX_sess_get_get_cb(ssl_ctx));
+  SSL_CTX_sess_set_remove_cb(ctx, SSL_CTX_sess_get_remove_cb(ssl_ctx));
+  SSL_CTX_set_timeout(ctx, SSL_CTX_get_timeout(ssl_ctx));
 
   /* We MUST update the session ID context for the current SSL before we
    * replace its SSL_CTX, due to logic in the SSL_set_SSL_CTX internals.
@@ -16285,36 +16304,6 @@ static int tls_ctx_set_session_id_context(server_rec *s, SSL_CTX *ctx) {
 
 static int tls_ctx_set_session_cache(server_rec *s, SSL_CTX *ctx) {
   config_rec *c;
-
-  /* The TLSSessionCache directive can only be configured globally; if we
-   * already have one, leave it alone.
-   */
-  if (tls_sess_cache != NULL) {
-    if (ssl_ctx != NULL) {
-      long cache_mode;
-
-      /* Copy the existing session cache settings into the new SSL_CTX. */
-
-      cache_mode = SSL_CTX_get_session_cache_mode(ssl_ctx);
-      SSL_CTX_set_session_cache_mode(ctx, cache_mode);
-
-      if (cache_mode == SSL_SESS_CACHE_OFF) {
-        /* Make sure we automatically relax the "SSL session reuse required
-         * for data connections" requirement; to enforce such a requirement
-         * TLS session caching MUST be enabled.  So if session caching has been
-         * explicitly disabled, relax that policy as well.
-         */
-        tls_opts |= TLS_OPT_NO_SESSION_REUSE_REQUIRED;
-      }
-
-      SSL_CTX_sess_set_new_cb(ctx, SSL_CTX_sess_get_new_cb(ssl_ctx));
-      SSL_CTX_sess_set_get_cb(ctx, SSL_CTX_sess_get_get_cb(ssl_ctx));
-      SSL_CTX_sess_set_remove_cb(ctx, SSL_CTX_sess_get_remove_cb(ssl_ctx));
-      SSL_CTX_set_timeout(ctx, SSL_CTX_get_timeout(ssl_ctx));
-    }
-
-    return 0;
-  }
 
   c = find_config(s->conf, CONF_PARAM, "TLSSessionCache", FALSE);
   if (c != NULL) {
