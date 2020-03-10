@@ -581,7 +581,8 @@ static pr_table_t *tls_psks = NULL;
 #endif /* PSK support */
 
 /* Timeout given for TLS handshakes.  The default is 5 minutes. */
-static unsigned int tls_handshake_timeout = 300;
+#define TLS_DEFAULT_HANDSHAKE_TIMEOUT		300
+static unsigned int tls_handshake_timeout = TLS_DEFAULT_HANDSHAKE_TIMEOUT;
 static unsigned char tls_handshake_timed_out = FALSE;
 static int tls_handshake_timer_id = -1;
 
@@ -642,6 +643,9 @@ static int tls_get_passphrase(server_rec *, const char *, const char *,
   char *, size_t, int);
 
 static char *tls_get_subj_name(SSL *);
+
+/* Table-based session cache "provider" for SNI sessions only (Issue #924). */
+static pr_table_t *tls_sni_sess_tab = NULL;
 
 static void tls_lookup_all(server_rec *);
 static int tls_ctx_set_all(server_rec *, SSL_CTX *);
@@ -925,7 +929,7 @@ static void tls_reset_state(void) {
   tls_stapling_timeout = TLS_DEFAULT_STAPLING_TIMEOUT;
 #endif /* PR_USE_OPENSSL_OCSP */
 
-  tls_handshake_timeout = 300;
+  tls_handshake_timeout = TLS_DEFAULT_HANDSHAKE_TIMEOUT;
   tls_handshake_timed_out = FALSE;
   tls_handshake_timer_id = -1;
 
@@ -6612,26 +6616,31 @@ static int tls_compare_session_ids(SSL_SESSION *ctrl_sess,
    */
   res = SSL_SESSION_cmp(ctrl_sess, data_sess);
 #else
-  const unsigned char *data_sess_id;
-  unsigned int data_sess_id_len;
+  const unsigned char *ctrl_sess_id, *data_sess_id;
+  unsigned int ctrl_sess_id_len, data_sess_id_len;
 
 # if OPENSSL_VERSION_NUMBER > 0x000908000L
+  ctrl_sess_id = (const unsigned char *) SSL_SESSION_get_id(ctrl_sess,
+    &ctrl_sess_id_len);
   data_sess_id = (const unsigned char *) SSL_SESSION_get_id(data_sess,
     &data_sess_id_len);
 # else
   /* XXX Directly accessing these fields cannot be a Good Thing. */
+  ctrl_sess_id = ctrl_sess->session_id;
+  ctrl_sess_id_len = ctrl_sess->session_id_length;
   data_sess_id = data_sess->session_id;
   data_sess_id_len = data_sess->session_id_length;
 # endif
 
-  res = SSL_has_matching_session_id(ctrl_ssl, data_sess_id, data_sess_id_len);
-
-  /* SSL_has_matching_session_id() returns 1 for true, 0 for false.  Thus to
-   * emulate the memcmp(3) type interface, we return 0 for true, and -1 for
-   * false.
+  /* We might use SSL_has_matching_session_id, except that it does not
+   * appear to be reliable using older versions of OpenSSL (e.g. 1.0.1t in
+   * my local testing).  So just compare the raw session IDs ourselves.
    */
-  if (res == 1) {
-    res = 0;
+  if (ctrl_sess_id_len == data_sess_id_len) {
+    res = memcmp(ctrl_sess_id, data_sess_id, ctrl_sess_id_len);
+    if (res != 0) {
+      res = -1;
+    }
 
   } else {
     res = -1;
@@ -6749,9 +6758,8 @@ static int tls_accept(conn_t *conn, unsigned char on_data) {
   pr_trace_msg(trace_channel, 17, "calling SSL_accept() on %s conn fd %d",
     on_data ? "data" : "ctrl", conn->rfd);
   res = SSL_accept(ssl);
-  if (res == -1) {
-    xerrno = errno;
-  }
+  xerrno = errno;
+
   pr_trace_msg(trace_channel, 17, "SSL_accept() returned %d for %s conn fd %d",
     res, on_data ? "data" : "ctrl", conn->rfd);
 
@@ -14152,6 +14160,12 @@ static void tls_exit_ev(const void *event_data, void *user_data) {
     tls_log("[stat]: SSL/TLS session cache size exceeded: %ld", res);
   }
 
+  if (tls_sni_sess_tab != NULL) {
+    (void) pr_table_empty(tls_sni_sess_tab);
+    (void) pr_table_free(tls_sni_sess_tab);
+    tls_sni_sess_tab = NULL;
+  }
+
   if (tls_pkey != NULL) {
     tls_scrub_pkey(tls_pkey);
     tls_pkey = NULL;
@@ -14607,6 +14621,7 @@ static void tls_postparse_ev(const void *event_data, void *user_data) {
 
   tls_ctx_set_session_cache(main_server, ssl_ctx);
   tls_ctx_set_stapling_cache(main_server, ssl_ctx);
+  tls_ctx_set_session_id_context(main_server, ssl_ctx);
 
   /* We can only get the passphrases for certs once OpenSSL has been
    * initialized.
@@ -14925,6 +14940,10 @@ static void tls_lookup_stapling(server_rec *s) {
 static void tls_lookup_verify(server_rec *s) {
   config_rec *c;
 
+  /* Clear client verification-related flags. */
+  tls_flags &= ~TLS_SESS_VERIFY_CLIENT_REQUIRED;
+  tls_flags &= ~TLS_SESS_VERIFY_CLIENT_OPTIONAL;
+
   /* TLSVerifyClient */
   c = find_config(s->conf, CONF_PARAM, "TLSVerifyClient", FALSE);
   if (c != NULL) {
@@ -14947,6 +14966,10 @@ static void tls_lookup_verify(server_rec *s) {
         break;
     }
   }
+
+  /* Clear server verification-related flags. */
+  tls_flags &= ~TLS_SESS_VERIFY_SERVER_NO_DNS;
+  tls_flags &= ~TLS_SESS_VERIFY_SERVER;
 
   /* TLSVerifyServer */
   c = find_config(s->conf, CONF_PARAM, "TLSVerifyServer", FALSE);
@@ -15033,6 +15056,10 @@ static void tls_lookup_all(server_rec *s) {
   c = find_config(s->conf, CONF_PARAM, "TLSECDHCurve", FALSE);
   if (c != NULL) {
     tls_ecdh_curve = (void *) c->argv[0];
+  } else {
+
+    /* Reset the default. */
+    tls_ecdh_curve = NULL;
   }
 #endif /* PR_USE_OPENSSL_ECC */
 
@@ -15041,6 +15068,10 @@ static void tls_lookup_all(server_rec *s) {
   c = find_config(s->conf, CONF_PARAM, "TLSNextProtocol", FALSE);
   if (c != NULL) {
     tls_use_next_protocol = *((int *) c->argv[0]);
+
+  } else {
+    /* Reset the default. */
+    tls_use_next_protocol = TRUE;
   }
 #endif /* !OPENSSL_NO_TLSEXT */
 
@@ -15107,6 +15138,10 @@ static void tls_lookup_all(server_rec *s) {
     FALSE);
   if (c != NULL) {
     tls_use_server_cipher_preference = *((int *) c->argv[0]);
+
+  } else {
+    /* Reset the default. */
+    tls_use_server_cipher_preference = TRUE;
   }
 #endif /* SSL_OP_CIPHER_SERVER_PREFERENCE */
 
@@ -15117,6 +15152,10 @@ static void tls_lookup_all(server_rec *s) {
   c = find_config(s->conf, CONF_PARAM, "TLSServerInfoFile", FALSE);
   if (c != NULL) {
     tls_serverinfo_file = c->argv[0];
+
+  } else {
+    /* Reset the default. */
+    tls_serverinfo_file = NULL;
   }
 # endif /* OpenSSL-1.0.2 and later */
 #endif /* !OPENSSL_NO_TLSEXT */
@@ -15126,6 +15165,10 @@ static void tls_lookup_all(server_rec *s) {
   c = find_config(s->conf, CONF_PARAM, "TLSSessionTickets", FALSE);
   if (c != NULL) {
     tls_use_session_tickets = *((int *) c->argv[0]);
+
+  } else {
+    /* Reset the default. */
+    tls_use_session_tickets = FALSE;
   }
 #endif /* TLS_USE_SESSION_TICKETS */
 
@@ -15135,6 +15178,10 @@ static void tls_lookup_all(server_rec *s) {
   c = find_config(s->conf, CONF_PARAM, "TLSTimeoutHandshake", FALSE);
   if (c != NULL) {
     tls_handshake_timeout = *((unsigned int *) c->argv[0]);
+
+  } else {
+    /* Reset the default. */
+    tls_handshake_timeout = TLS_DEFAULT_HANDSHAKE_TIMEOUT;
   }
 
   tls_lookup_verify(s);
@@ -15372,15 +15419,195 @@ static int tls_ssl_set_verify(SSL *ssl) {
 }
 
 static int tls_ssl_set_session_id_context(server_rec *s, SSL *ssl) {
+  SSL_SESSION *sess;
+
   /* Update the session ID context to use.  This is important; it ensures
    * that the session IDs for this particular vhost will differ from those
    * for another vhost.  An external TLS session cache will possibly
    * cache sessions from all vhosts together, and we need to keep them
    * separate.
    */
+
+  pr_trace_msg(trace_channel, 19,
+    "setting session ID context '%u' (%lu bytes) on SSL %p", s->sid,
+    sizeof(s->sid), ssl);
   SSL_set_session_id_context(ssl, (unsigned char *) &(s->sid), sizeof(s->sid));
 
+  sess = SSL_get_session(ssl);
+  if (sess != NULL) {
+    pr_trace_msg(trace_channel, 19,
+      "setting session ID context '%u' (%lu bytes) on SSL_SESSION %p (SSL %p)",
+      s->sid, sizeof(s->sid), sess, ssl);
+    SSL_SESSION_set1_id_context(sess, (unsigned char *) &(s->sid),
+      sizeof(s->sid));
+  }
+
   return 0;
+}
+
+static char *get_sess_id_text(BIO *bio, unsigned char *id, unsigned int idsz) {
+  register unsigned int i;
+  char *data = NULL;
+  long datalen;
+
+  for (i = 0; i < idsz; i++) {
+    BIO_printf(bio, "%02x", id[i]);
+  }
+
+  datalen = BIO_get_mem_data(bio, &data);
+  if (data != NULL) {
+    data[datalen] = '\0';
+
+  } else {
+    data = "UKNOWN";
+  }
+
+  return data;
+}
+
+static int tls_sni_sess_tab_add_cb(SSL *ssl, SSL_SESSION *sess) {
+  unsigned char *sess_id;
+  unsigned int sess_id_len;
+  void *key;
+
+#if OPENSSL_VERSION_NUMBER > 0x000908000L
+  sess_id = (unsigned char *) SSL_SESSION_get_id(sess, &sess_id_len);
+#else
+  /* XXX Directly accessing these fields cannot be a Good Thing. */
+  sess_id = sess->session_id;
+  sess_id_len = sess->session_id_length;
+#endif
+
+  key = pr_table_pcalloc(tls_sni_sess_tab, sess_id_len);
+  memcpy(key, sess_id, sess_id_len);
+
+  if (pr_table_kadd(tls_sni_sess_tab, key, (size_t) sess_id_len,
+      sess, sizeof(sess)) < 0) {
+    pr_trace_msg(trace_channel, 3, "error adding SSL_SESSION to SNI table: %s",
+      strerror(errno));
+    return 0;
+  }
+
+  if (pr_trace_get_level(trace_channel) >= 29) {
+    BIO *bio;
+    char *data = NULL;
+    long datalen;
+
+    bio = BIO_new(BIO_s_mem());
+    SSL_SESSION_print(bio, sess);
+
+    datalen = BIO_get_mem_data(bio, &data);
+    if (data != NULL) {
+      data[datalen] = '\0';
+
+      pr_trace_msg(trace_channel, 29, "added session to SNI table:\n%.*s",
+        (int) datalen, data);
+    }
+
+    BIO_free(bio);
+
+  } else {
+    BIO *bio;
+    char *text;
+
+    bio = BIO_new(BIO_s_mem());
+    text = get_sess_id_text(bio, sess_id, sess_id_len);
+    pr_trace_msg(trace_channel, 9, "added session (ID %s) to SNI table", text);
+    BIO_free(bio);
+  }
+
+  return 0;
+}
+
+static SSL_SESSION *tls_sni_sess_tab_get_cb(SSL *ssl, unsigned char *sess_id,
+    int sess_id_len, int *do_copy) {
+  SSL_SESSION *sess = NULL;
+  const void *val;
+  BIO *bio;
+  char *text;
+
+  /* Indicate to OpenSSL that the ref count should not be incremented
+   * by setting the do_copy pointer to zero.
+   */
+  *do_copy = 0;
+
+  bio = BIO_new(BIO_s_mem());
+  text = get_sess_id_text(bio, sess_id, sess_id_len);
+  pr_trace_msg(trace_channel, 9, "getting session (ID %s) from SNI table",
+    text);
+
+  val = pr_table_kget(tls_sni_sess_tab, (const void *) sess_id,
+    (size_t) sess_id_len, NULL);
+  if (val == NULL) {
+    pr_trace_msg(trace_channel, 9, "session (ID %s) not found in SNI table",
+      text);
+    BIO_free(bio);
+
+    errno = ENOENT;
+    return NULL;
+  }
+
+  sess = (SSL_SESSION *) val;
+
+  if (pr_trace_get_level(trace_channel) >= 29) {
+    char *data = NULL;
+    long datalen;
+
+    BIO_free(bio);
+    bio = BIO_new(BIO_s_mem());
+    SSL_SESSION_print(bio, sess);
+
+    datalen = BIO_get_mem_data(bio, &data);
+    if (data != NULL) {
+      data[datalen] = '\0';
+
+      pr_trace_msg(trace_channel, 29, "found session in SNI table:\n%.*s",
+        (int) datalen, data);
+    }
+
+  } else {
+    pr_trace_msg(trace_channel, 9, "found session (ID %s) in SNI table", text);
+  }
+
+  BIO_free(bio);
+  return sess;
+}
+
+static void tls_sni_sess_tab_delete_cb(SSL_CTX *ctx, SSL_SESSION *sess) {
+  unsigned char *sess_id;
+  unsigned int sess_id_len;
+  const void *val;
+  BIO *bio;
+  char *text;
+
+#if OPENSSL_VERSION_NUMBER > 0x000908000L
+  sess_id = (unsigned char *) SSL_SESSION_get_id(sess, &sess_id_len);
+#else
+  /* XXX Directly accessing these fields cannot be a Good Thing. */
+  sess_id = sess->session_id;
+  sess_id_len = sess->session_id_length;
+#endif
+
+  bio = BIO_new(BIO_s_mem());
+  text = get_sess_id_text(bio, sess_id, sess_id_len);
+  pr_trace_msg(trace_channel, 9, "removing session (ID %s) from SNI table",
+    text);
+
+  val = pr_table_kremove(tls_sni_sess_tab, (const void *) sess_id,
+    (size_t) sess_id_len, NULL);
+  if (val == NULL) {
+    if (errno == ENOENT) {
+      pr_trace_msg(trace_channel, 9, "no session (ID %s) found in SNI table",
+        text);
+
+    } else {
+      pr_trace_msg(trace_channel, 9,
+        "error removing session (ID %s) from SNI table: %s", text,
+          strerror(errno));
+    }
+  }
+
+  BIO_free(bio);
 }
 
 static int tls_ssl_set_all(server_rec *s, SSL *ssl) {
@@ -15397,12 +15624,12 @@ static int tls_ssl_set_all(server_rec *s, SSL *ssl) {
   }
 
   pr_trace_msg(trace_channel, 19,
-    "resetting SSL_CTX for future data transfers");
+    "setting new SSL_CTX for future data transfers");
 
   /* Update the SSL_CTX for the possibly changed <VirtualHost> config.
    *
    * Even though our SSL has already been created from this SSL_CTX,
-   * which means any SSL_CTX changes WILL NOT be related in our SSL,
+   * which means any SSL_CTX changes WILL NOT be conveyed to our SSL,
    * we update it for any data transfer SSL objects later.
    */
   if (tls_ctx_set_all(s, ctx) < 0) {
@@ -15422,6 +15649,30 @@ static int tls_ssl_set_all(server_rec *s, SSL *ssl) {
     tls_opts |= TLS_OPT_NO_SESSION_REUSE_REQUIRED;
   }
 
+  /* Use an in-memory table-based session store to preserve sessions
+   * across the SNI-mandated SSL_CTX changes, in order to preserve
+   * session resumption for data transfers (Issue #924).
+   *
+   * Note that this is only necessary if a TLSSessionCache has not been
+   * configured.
+   */
+
+  if (SSL_CTX_sess_get_new_cb(ssl_ctx) == NULL) {
+    tls_sni_sess_tab = pr_table_alloc(session.pool, 0);
+
+    /* Yes, it looks strange to be setting these callbacks on the old
+     * SSL_CTX, the one we will be replacing with our new SNI SSL_CTX.
+     *
+     * However, that old SSL_CTX is preserved (and used!) in the SSL object
+     * via the initial_ctx, and thus its callbacks are used when adding
+     * sessions.  And later, for data transfers, the SNI SSL_CTX callbacks
+     * will be used for session lookup.  Fun, huh?
+     */
+    SSL_CTX_sess_set_new_cb(ssl_ctx, tls_sni_sess_tab_add_cb);
+    SSL_CTX_sess_set_get_cb(ssl_ctx, tls_sni_sess_tab_get_cb);
+    SSL_CTX_sess_set_remove_cb(ssl_ctx, tls_sni_sess_tab_delete_cb);
+  }
+
   SSL_CTX_sess_set_new_cb(ctx, SSL_CTX_sess_get_new_cb(ssl_ctx));
   SSL_CTX_sess_set_get_cb(ctx, SSL_CTX_sess_get_get_cb(ssl_ctx));
   SSL_CTX_sess_set_remove_cb(ctx, SSL_CTX_sess_get_remove_cb(ssl_ctx));
@@ -15429,10 +15680,9 @@ static int tls_ssl_set_all(server_rec *s, SSL *ssl) {
 
   /* We MUST update the session ID context for the current SSL before we
    * replace its SSL_CTX, due to logic in the SSL_set_SSL_CTX internals.
-   * Do the same for the old SSL_CTX, as a hack for the same reason.
    */
-  if (tls_ssl_set_session_id_context(main_server, ssl) < 0 ||
-      tls_ctx_set_session_id_context(main_server, ssl_ctx) < 0) {
+  if (tls_ssl_set_session_id_context(s, ssl) < 0 ||
+      tls_ctx_set_session_id_context(s, ctx) < 0) {
     return -1;
   }
 
@@ -15443,6 +15693,7 @@ static int tls_ssl_set_all(server_rec *s, SSL *ssl) {
   ctx = SSL_set_SSL_CTX(ssl, ctx);
 
   if (ssl_ctx != NULL) {
+    /* Try not to leak memory. */
     SSL_CTX_free(ssl_ctx);
   }
 
@@ -16417,6 +16668,9 @@ static int tls_ctx_set_session_id_context(server_rec *s, SSL_CTX *ctx) {
    * cache sessions from all vhosts together, and we need to keep them
    * separate.
    */
+  pr_trace_msg(trace_channel, 19,
+    "setting session ID context '%u' (%lu bytes) on SSL_CTX %p", s->sid,
+    sizeof(s->sid), ctx);
   SSL_CTX_set_session_id_context(ctx, (unsigned char *) &(s->sid),
     sizeof(s->sid));
 
@@ -16691,6 +16945,14 @@ static int tls_ctx_set_all(server_rec *s, SSL_CTX *ctx) {
     return -1;
   }
 
+  /* Note that we set this prior to setting the protocol versions, since
+   * the support protocol version flags are affected by session tickets,
+   * due to TLSv1.3.
+   */
+  if (tls_ctx_set_session_tickets(ctx) < 0) {
+    return -1;
+  }
+
   if (tls_ctx_set_protocol(s, ctx) < 0) {
     return -1;
   }
@@ -16704,14 +16966,6 @@ static int tls_ctx_set_all(server_rec *s, SSL_CTX *ctx) {
   }
 
   if (tls_ctx_set_verify(ctx) < 0) {
-    return -1;
-  }
-
-  if (tls_ctx_set_session_tickets(ctx) < 0) {
-    return -1;
-  }
-
-  if (tls_ctx_set_session_id_context(main_server, ctx) < 0) {
     return -1;
   }
 

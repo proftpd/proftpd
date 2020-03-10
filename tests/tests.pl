@@ -474,6 +474,11 @@ if (scalar(@ARGV) > 0) {
       test_class => [qw(mod_tls)],
     },
 
+    't/modules/mod_tls/sni.t' => {
+      order => ++$order,
+      test_class => [qw(mod_tls)],
+    },
+
     't/modules/mod_tls_fscache.t' => {
       order => ++$order,
       test_class => [qw(mod_tls_fscache)],
