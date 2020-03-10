@@ -584,7 +584,8 @@ static unsigned char tls_handshake_timed_out = FALSE;
 static int tls_handshake_timer_id = -1;
 
 /* Note: 9 is the default OpenSSL depth. */
-static int tls_verify_depth = 9;
+#define TLS_DEFAULT_VERIFY_DEPTH	9
+static int tls_verify_depth = TLS_DEFAULT_VERIFY_DEPTH;
 
 #if OPENSSL_VERSION_NUMBER > 0x000907000L
 /* Renegotiate control channel on TLS sessions after 4 hours, by default. */
@@ -925,7 +926,7 @@ static void tls_reset_state(void) {
   tls_handshake_timed_out = FALSE;
   tls_handshake_timer_id = -1;
 
-  tls_verify_depth = 9;
+  tls_verify_depth = TLS_DEFAULT_VERIFY_DEPTH;
 
   /* Note that we do NOT want to set the netio and nstrm pointers, ctrl
    * channel, to here.  Why not?  We reset this state when a HOST command
@@ -4002,6 +4003,7 @@ static int tls_sni_cb(SSL *ssl, int *alert_desc, void *user_data) {
 
     if (named_server != main_server) {
       unsigned char *engine;
+      SSL_SESSION *sess;
 
       /* First, check to see whether mod_tls is even enabled for the named
        * vhost.
@@ -4034,6 +4036,89 @@ static int tls_sni_cb(SSL *ssl, int *alert_desc, void *user_data) {
           ": error initializing OpenSSL session for SNI '%s'", server_name);
         *alert_desc = SSL_AD_ACCESS_DENIED;
         return SSL_TLSEXT_ERR_ALERT_FATAL;
+      }
+
+      /* Our new SSL_CTX, from the SNI, might have different protocol
+       * versions enabled.  However, due to the _timing_ of when this SNI
+       * callback is invoked during the TLS handshake processing, the
+       * "acceptable" server protocol version has already been determined
+       * based on the original SSL_CTX.  This means that we need to check
+       * for incompatible protocol versions ourselves.  Fun!
+       *
+       * We implement this in a naive manner: if the new SSL_CTX has an
+       * SSL_OP_NO_ option enabled for the protocol version currently
+       * selected by our SSL_SESSION, fail the callback with
+       * SSL_AD_PROTOCOL_VERSION.
+       */
+      sess = SSL_get_session(ssl);
+      if (sess != NULL) {
+        SSL_CTX *ctx;
+        long ctx_options;
+        int protocol_ok = FALSE, sess_version;
+
+        ctx = SSL_get_SSL_CTX(ssl);
+        ctx_options = SSL_CTX_get_options(ctx);
+
+#if OPENSSL_VERSION_NUMBER >= 0x10100000L && \
+    !defined(HAVE_LIBRESSL)
+        sess_version = SSL_SESSION_get_protocol_version(sess);
+#else
+        sess_version = sess->ssl_version;
+#endif /* OpenSSL 1.1.x and later */
+
+        switch (sess_version) {
+          case SSL3_VERSION:
+            if (!(ctx_options & SSL_OP_NO_SSLv3)) {
+              protocol_ok = TRUE;
+            }
+            break;
+
+          case TLS1_VERSION:
+            if (!(ctx_options & SSL_OP_NO_TLSv1)) {
+              protocol_ok = TRUE;
+            }
+            break;
+
+#if defined(TLS1_1_VERSION)
+          case TLS1_1_VERSION:
+            if (!(ctx_options & SSL_OP_NO_TLSv1_1)) {
+              protocol_ok = TRUE;
+            }
+            break;
+#endif /* TLS1_1_VERSION */
+
+#if defined(TLS1_2_VERSION)
+          case TLS1_2_VERSION:
+            if (!(ctx_options & SSL_OP_NO_TLSv1_2)) {
+              protocol_ok = TRUE;
+            }
+            break;
+#endif /* TLS1_2_VERSION */
+
+#if defined(TLS1_3_VERSION)
+          case TLS1_3_VERSION:
+            if (!(ctx_options & SSL_OP_NO_TLSv1_3)) {
+              protocol_ok = TRUE;
+            }
+            break;
+#endif /* TLS1_3_VERSION */
+
+          default:
+            pr_trace_msg(trace_channel, 3,
+              "unknown/unsupported protocol version '%s' (%d) requested by "
+              "client", SSL_get_version(ssl), sess_version);
+            break;
+        }
+
+        if (protocol_ok == FALSE) {
+          tls_log("client-requested protocol version %s not supported by "
+            "SNI '%s' host", SSL_get_version(ssl), server_name);
+          pr_log_pri(PR_LOG_NOTICE, MOD_TLS_VERSION
+            ": client-requested protocol version %s not supported by "
+            "SNI '%s' host", SSL_get_version(ssl), server_name);
+          *alert_desc = SSL_AD_PROTOCOL_VERSION;
+          return SSL_TLSEXT_ERR_ALERT_FATAL;
+        }
       }
     }
   }
@@ -14824,6 +14909,10 @@ static void tls_lookup_stapling(server_rec *s) {
   c = find_config(s->conf, CONF_PARAM, "TLSStaplingTimeout", FALSE);
   if (c != NULL) {
     tls_stapling_timeout = *((unsigned int *) c->argv[0]);
+
+  } else {
+    /* Reset the default. */
+    tls_stapling_timeout = 10;
   }
 
   /* If a TLSStaplingCache has been configured, then TLSStapling should
@@ -14836,6 +14925,10 @@ static void tls_lookup_stapling(server_rec *s) {
   c = find_config(s->conf, CONF_PARAM, "TLSStapling", FALSE);
   if (c != NULL) {
     tls_stapling = *((int *) c->argv[0]);
+
+  } else {
+    /* Reset the default. */
+    tls_stapling = FALSE;
   }
 #endif /* PR_USE_OPENSSL_OCSP */
 }
@@ -14893,6 +14986,10 @@ static void tls_lookup_verify(server_rec *s) {
     depth = get_param_ptr(s->conf, "TLSVerifyDepth", FALSE);
     if (depth != NULL) {
       tls_verify_depth = *depth;
+
+    } else {
+      /* Reset the default. */
+      tls_verify_depth = TLS_DEFAULT_VERIFY_DEPTH;
     }
   }
 }
@@ -14991,6 +15088,10 @@ static void tls_lookup_all(server_rec *s) {
   c = find_config(s->conf, CONF_PARAM, "TLSProtocol", FALSE);
   if (c != NULL) {
     tls_protocol = *((unsigned int *) c->argv[0]);
+
+  } else {
+    /* Reset the default. */
+    tls_protocol = TLS_PROTO_DEFAULT;
   }
 
   tls_lookup_psks(s);
@@ -15003,6 +15104,12 @@ static void tls_lookup_all(server_rec *s) {
     tls_required_on_ctrl = *((int *) c->argv[0]);
     tls_required_on_data = *((int *) c->argv[1]);
     tls_required_on_auth = *((int *) c->argv[2]);
+
+  } else {
+    /* Reset the default. */
+    tls_required_on_ctrl = 0;
+    tls_required_on_data = 0;
+    tls_required_on_auth = 0;
   }
 
   /* TLSServerCipherPreference */
@@ -15199,12 +15306,13 @@ static int tls_ssl_set_next_protocol(SSL *ssl) {
 }
 
 static int tls_ssl_set_protocol(server_rec *s, SSL *ssl) {
-  int disabled_proto;
+  int all_proto, disabled_proto;
   unsigned int enabled_proto_count = 0;
   const char *enabled_proto_str = NULL;
 
-  /* Set the SSL options for disabling every protocol. */
-  SSL_clear_options(ssl, get_disabled_protocols(0));
+  /* First, make sure ALL protocol versions are disabled by default. */
+  all_proto = get_disabled_protocols(0);
+  SSL_set_options(ssl, all_proto);
 
   disabled_proto = get_disabled_protocols(tls_protocol);
 
@@ -15217,6 +15325,14 @@ static int tls_ssl_set_protocol(server_rec *s, SSL *ssl) {
 
   pr_log_debug(DEBUG8, MOD_TLS_VERSION ": supporting %s %s", enabled_proto_str,
     enabled_proto_count != 1 ? "protocols" : "protocol only");
+
+  /* Now we clear all of the NO_ protocol version options EXCEPT for the
+   * enabled versions.
+   *
+   * This is more convoluted than it should be, because of the expression
+   * of enabled protocol versions via OP_NO_ negations, and bitmasking.
+   */
+  SSL_clear_options(ssl, all_proto|disabled_proto);
   SSL_set_options(ssl, disabled_proto);
 
 #ifdef TLS1_3_VERSION
@@ -16230,9 +16346,13 @@ static int tls_ctx_set_pkey(SSL_CTX *ctx) {
 }
 
 static int tls_ctx_set_protocol(server_rec *s, SSL_CTX *ctx) {
-  int disabled_proto;
+  int all_proto, disabled_proto;
   unsigned int enabled_proto_count = 0;
   const char *enabled_proto_str = NULL;
+
+  /* First, make sure ALL protocol versions are disabled by default. */
+  all_proto = get_disabled_protocols(0);
+  SSL_CTX_set_options(ctx, all_proto);
 
   disabled_proto = get_disabled_protocols(tls_protocol);
 
@@ -16245,6 +16365,14 @@ static int tls_ctx_set_protocol(server_rec *s, SSL_CTX *ctx) {
 
   pr_log_debug(DEBUG8, MOD_TLS_VERSION ": supporting %s %s", enabled_proto_str,
     enabled_proto_count != 1 ? "protocols" : "protocol only");
+
+  /* Now we clear all of the NO_ protocol version options EXCEPT for the
+   * enabled versions.
+   *
+   * This is more convoluted than it should be, because of the expression
+   * of enabled protocol versions via OP_NO_ negations, and bitmasking.
+   */
+  SSL_CTX_clear_options(ctx, all_proto|disabled_proto);
   SSL_CTX_set_options(ctx, disabled_proto);
 
 #ifdef TLS1_3_VERSION

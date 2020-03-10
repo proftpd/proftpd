@@ -84,6 +84,11 @@ my $TESTS = {
     test_class => [qw(forking)],
   },
 
+  tls_login_with_sni_mismatched_protocol_version_issue850 => {
+    order => ++$order,
+    test_class => [qw(forking)],
+  },
+
   tls_list_no_session_reuse => {
     order => ++$order,
     test_class => [qw(forking)],
@@ -2223,6 +2228,159 @@ EOC
       }
 
       $client->quit();
+    };
+    if ($@) {
+      $ex = $@;
+    }
+
+    $wfh->print("done\n");
+    $wfh->flush();
+
+  } else {
+    eval { server_wait($setup->{config_file}, $rfh) };
+    if ($@) {
+      warn($@);
+      exit 1;
+    }
+
+    exit 0;
+  }
+
+  # Stop server
+  server_stop($setup->{pid_file});
+  $self->assert_child_ok($pid);
+
+  test_cleanup($setup->{log_file}, $ex);
+}
+
+sub tls_login_with_sni_mismatched_protocol_version_issue850 {
+  my $self = shift;
+  my $tmpdir = $self->{tmpdir};
+  my $setup = test_setup($tmpdir, 'tls');
+
+  my $ec_cert_file = File::Spec->rel2abs('t/etc/modules/mod_tls/ec-server-cert.pem');
+  my $ec_ca_file = File::Spec->rel2abs('t/etc/modules/mod_tls/ec-ca.pem');
+
+  # Use RSA certs for our name-based vhost, to test that the SNI vhost switching
+  # is working as expected.
+  my $rsa_cert_file = File::Spec->rel2abs('t/etc/modules/mod_tls/server-cert.pem');
+  my $rsa_ca_file = File::Spec->rel2abs('t/etc/modules/mod_tls/ca-cert.pem');
+
+  my $config = {
+    PidFile => $setup->{pid_file},
+    ScoreboardFile => $setup->{scoreboard_file},
+    SystemLog => $setup->{log_file},
+    TraceLog => $setup->{log_file},
+    Trace => 'tls:20',
+
+    AuthUserFile => $setup->{auth_user_file},
+    AuthGroupFile => $setup->{auth_group_file},
+
+    IfModules => {
+      'mod_delay.c' => {
+        DelayEngine => 'off',
+      },
+
+      'mod_tls.c' => {
+        TLSEngine => 'on',
+        TLSLog => $setup->{log_file},
+        TLSRequired => 'on',
+        TLSECCertificateFile => $ec_cert_file,
+        TLSCACertificateFile => $ec_ca_file,
+        TLSOptions => 'EnableDiags',
+        TLSProtocol => 'SSLv3 TLSv1.0',
+      },
+    },
+  };
+
+  my ($port, $config_user, $config_group) = config_write($setup->{config_file},
+    $config);
+
+  my $host = 'castaglia';
+
+  # Configure name-based <VirtualHost> sections for our testing.
+  if (open(my $fh, ">> $setup->{config_file}")) {
+    print $fh <<EOC;
+<VirtualHost 127.0.0.1>
+  ServerAlias $host
+  Port $port
+
+  AuthUserFile $setup->{auth_user_file}
+  AuthGroupFile $setup->{auth_group_file}
+  AuthOrder mod_auth_file.c
+
+  <IfModule mod_delay.c>
+    DelayEngine off
+  </IfModule>
+
+  <IfModule mod_tls.c>
+    TLSEngine on
+    TLSLog $setup->{log_file}
+    TLSRequired on
+    TLSRSACertificateFile $rsa_cert_file
+    TLSCACertificateFile $rsa_ca_file
+    TLSOptions EnableDiags
+    TLSProtocol TLSv1.2 TLSv1.3
+  </IfModule>
+
+  <Limit LOGIN>
+    DenyAll
+  </Limit>
+</VirtualHost>
+EOC
+    unless (close($fh)) {
+      die("Can't write $setup->{config_file}: $!");
+    }
+
+  } else {
+    die("Can't open $setup->{config_file}: $!");
+  }
+
+  # Open pipes, for use between the parent and child processes.  Specifically,
+  # the child will indicate when it's done with its test by writing a message
+  # to the parent.
+  my ($rfh, $wfh);
+  unless (pipe($rfh, $wfh)) {
+    die("Can't open pipe: $!");
+  }
+
+  require Net::FTPSSL;
+
+  my $ex;
+
+  # Fork child
+  $self->handle_sigchld();
+  defined(my $pid = fork()) or die("Can't fork: $!");
+  if ($pid) {
+    eval {
+      # Give the server a chance to start up
+      sleep(2);
+
+      my $ssl_opts = {
+        Encryption => 'E',
+        Port => $port,
+        SSL_ca_file => $rsa_ca_file,
+        SSL_hostname => $host,
+        SSL_verify_mode => IO::Socket::SSL::SSL_VERIFY_PEER(),
+        SSL_version => 'TLSv1',
+      };
+
+      if ($ENV{TEST_VERBOSE}) {
+        $ssl_opts->{Debug} = 2;
+      }
+
+      my $client = Net::FTPSSL->new('127.0.0.1', $ssl_opts);
+
+      # The named vhost has does not support the specified TLS protocol
+      # version, so the handshake should fail.
+      if ($client) {
+        die("Connected to FTPS server unexpectedly");
+      }
+
+      my $errstr = IO::Socket::SSL::errstr();
+      my $expected = 'handshake failure|protocol version';
+      $self->assert(qr/$expected/, $errstr,
+        test_msg("Expected '$expected', got '$errstr'"));
     };
     if ($@) {
       $ex = $@;
