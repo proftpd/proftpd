@@ -459,7 +459,9 @@ static unsigned long tls_stapling_opts = 0UL;
 # define TLS_STAPLING_OPT_NO_VERIFY		0x0002
 # define TLS_STAPLING_OPT_NO_FAKE_TRY_LATER	0x0004
 static const char *tls_stapling_responder = NULL;
-static unsigned int tls_stapling_timeout = 10;
+
+#define TLS_DEFAULT_STAPLING_TIMEOUT	10
+static unsigned int tls_stapling_timeout = TLS_DEFAULT_STAPLING_TIMEOUT;
 #endif
 
 static char *tls_passphrase_provider = NULL;
@@ -650,6 +652,7 @@ static int tls_ctx_set_session_cache(server_rec *, SSL_CTX *);
 static int tls_ctx_set_session_id_context(server_rec *, SSL_CTX *);
 static int tls_ctx_set_session_tickets(SSL_CTX *);
 static int tls_ctx_set_stapling(SSL_CTX *);
+static int tls_ctx_set_stapling_cache(server_rec *, SSL_CTX *);
 static int tls_ssl_set_all(server_rec *, SSL *);
 
 static int tls_openlog(void);
@@ -919,7 +922,7 @@ static void tls_reset_state(void) {
   tls_stapling = FALSE;
   tls_stapling_opts = 0UL;
   tls_stapling_responder = NULL;
-  tls_stapling_timeout = 0;
+  tls_stapling_timeout = TLS_DEFAULT_STAPLING_TIMEOUT;
 #endif /* PR_USE_OPENSSL_OCSP */
 
   tls_handshake_timeout = 300;
@@ -6609,18 +6612,19 @@ static int tls_compare_session_ids(SSL_SESSION *ctrl_sess,
    */
   res = SSL_SESSION_cmp(ctrl_sess, data_sess);
 #else
-  const unsigned char *sess_id;
-  unsigned int sess_id_len;
+  const unsigned char *data_sess_id;
+  unsigned int data_sess_id_len;
 
 # if OPENSSL_VERSION_NUMBER > 0x000908000L
-  sess_id = (const unsigned char *) SSL_SESSION_get_id(data_sess, &sess_id_len);
+  data_sess_id = (const unsigned char *) SSL_SESSION_get_id(data_sess,
+    &data_sess_id_len);
 # else
   /* XXX Directly accessing these fields cannot be a Good Thing. */
-  sess_id = data_sess->session_id;
-  sess_id_len = data_sess->session_id_length;
+  data_sess_id = data_sess->session_id;
+  data_sess_id_len = data_sess->session_id_length;
 # endif
 
-  res = SSL_has_matching_session_id(ctrl_ssl, sess_id, sess_id_len);
+  res = SSL_has_matching_session_id(ctrl_ssl, data_sess_id, data_sess_id_len);
 
   /* SSL_has_matching_session_id() returns 1 for true, 0 for false.  Thus to
    * emulate the memcmp(3) type interface, we return 0 for true, and -1 for
@@ -14602,6 +14606,7 @@ static void tls_postparse_ev(const void *event_data, void *user_data) {
   pr_pool_tag(tls_pool, MOD_TLS_VERSION);
 
   tls_ctx_set_session_cache(main_server, ssl_ctx);
+  tls_ctx_set_stapling_cache(main_server, ssl_ctx);
 
   /* We can only get the passphrases for certs once OpenSSL has been
    * initialized.
@@ -14866,28 +14871,8 @@ static void tls_lookup_stapling(server_rec *s) {
 #if defined(PR_USE_OPENSSL_OCSP)
   config_rec *c;
 
-  c = find_config(s->conf, CONF_PARAM, "TLSStaplingCache", FALSE);
-  if (c != NULL) {
-    const char *provider;
-
-    /* Look up and initialize the configured OCSP cache provider. */
-    provider = c->argv[0];
-
-    if (provider != NULL) {
-      tls_ocsp_cache = tls_ocsp_cache_get_cache(provider);
-
-      pr_log_debug(DEBUG8, MOD_TLS_VERSION ": opening '%s' TLSStaplingCache",
-        provider);
-
-      if (tls_ocsp_cache_open(c->argv[1]) < 0 &&
-          errno != ENOSYS) {
-        pr_log_debug(DEBUG1, MOD_TLS_VERSION
-          ": error opening '%s' TLSStaplingCache: %s", provider,
-          strerror(errno));
-        tls_ocsp_cache = NULL;
-      }
-    }
-  }
+  /* Reset to defaults. */
+  tls_stapling_opts = 0UL;
 
   c = find_config(s->conf, CONF_PARAM, "TLSStaplingOptions", FALSE);
   while (c != NULL) {
@@ -14904,7 +14889,11 @@ static void tls_lookup_stapling(server_rec *s) {
   c = find_config(s->conf, CONF_PARAM, "TLSStaplingResponder", FALSE);
   if (c != NULL) {
     tls_stapling_responder = c->argv[0];
-  }
+
+  } else {
+    /* Reset to default. */
+    tls_stapling_responder = NULL;
+  } 
 
   c = find_config(s->conf, CONF_PARAM, "TLSStaplingTimeout", FALSE);
   if (c != NULL) {
@@ -14912,7 +14901,7 @@ static void tls_lookup_stapling(server_rec *s) {
 
   } else {
     /* Reset the default. */
-    tls_stapling_timeout = 10;
+    tls_stapling_timeout = TLS_DEFAULT_STAPLING_TIMEOUT;
   }
 
   /* If a TLSStaplingCache has been configured, then TLSStapling should
@@ -16436,91 +16425,12 @@ static int tls_ctx_set_session_id_context(server_rec *s, SSL_CTX *ctx) {
 
 static int tls_ctx_set_session_cache(server_rec *s, SSL_CTX *ctx) {
   config_rec *c;
+  const char *provider;
+  long timeout;
 
   c = find_config(s->conf, CONF_PARAM, "TLSSessionCache", FALSE);
-  if (c != NULL) {
-    const char *provider;
-    long timeout;
-
-    /* Look up and initialize the configured session cache provider. */
-    provider = c->argv[0];
-    timeout = *((long *) c->argv[2]);
-
-    if (provider != NULL) {
-      if (strncmp(provider, "internal", 9) != 0) {
-        tls_sess_cache = tls_sess_cache_get_cache(provider);
-
-        pr_log_debug(DEBUG8, MOD_TLS_VERSION ": opening '%s' TLSSessionCache",
-          provider);
-
-        if (tls_sess_cache_open(c->argv[1], timeout) == 0) {
-          long cache_mode, cache_flags;
-
-          cache_mode = SSL_SESS_CACHE_SERVER;
-
-          /* We could force OpenSSL to use ONLY the configured external session
-           * caching mechanism by using the SSL_SESS_CACHE_NO_INTERNAL mode flag
-           * (available in OpenSSL 0.9.6h and later).
-           *
-           * However, consider the case where the serialized session data is
-           * too large for the external cache, or the external cache refuses
-           * to add the session for some reason.  If OpenSSL is using only our
-           * external cache, that session is lost (which could cause problems
-           * e.g. for later protected data transfers, which require that the
-           * SSL session from the control connection be reused).
-           *
-           * If the external cache can be reasonably sure that session data
-           * can be added, then the NO_INTERNAL flag is a good idea; it keeps
-           * OpenSSL from allocating more memory than necessary.  Having both
-           * an internal and an external cache of the same data is a bit
-           * unresourceful.  Thus we ask the external cache mechanism what
-           * additional cache mode flags to use.
-           */
-
-          cache_flags = tls_sess_cache_get_cache_mode();
-          cache_mode |= cache_flags;
-
-          SSL_CTX_set_session_cache_mode(ctx, cache_mode);
-          SSL_CTX_set_timeout(ctx, timeout);
-
-          SSL_CTX_sess_set_new_cb(ctx, tls_sess_cache_add_sess_cb);
-          SSL_CTX_sess_set_get_cb(ctx, tls_sess_cache_get_sess_cb);
-          SSL_CTX_sess_set_remove_cb(ctx, tls_sess_cache_delete_sess_cb);
-
-        } else {
-          pr_log_debug(DEBUG1, MOD_TLS_VERSION
-            ": error opening '%s' TLSSessionCache: %s", provider,
-            strerror(errno));
-
-          /* Default to using OpenSSL's own internal session caching. */
-          SSL_CTX_set_session_cache_mode(ctx, SSL_SESS_CACHE_SERVER);
-        }
-
-      } else {
-        /* Default to using OpenSSL's own internal session caching. */
-        SSL_CTX_set_session_cache_mode(ctx, SSL_SESS_CACHE_SERVER);
-        SSL_CTX_set_timeout(ctx, timeout);
-      }
-
-    } else {
-      /* SSL session caching has been explicitly turned off. */
-
-      pr_log_debug(DEBUG3, MOD_TLS_VERSION
-        ": TLSSessionCache off, disabling TLS session caching and setting "
-        "NoSessionReuseRequired TLSOption");
-
-      SSL_CTX_set_session_cache_mode(ctx, SSL_SESS_CACHE_OFF);
-
-      /* Make sure we automatically relax the "SSL session reuse required
-       * for data connections" requirement; to enforce such a requirement
-       * TLS session caching MUST be enabled.  So if session caching has been
-       * explicitly disabled, relax that policy as well.
-       */
-      tls_opts |= TLS_OPT_NO_SESSION_REUSE_REQUIRED;
-    }
-
-  } else {
-    long timeout = 0;
+  if (c == NULL) {
+    /* No explicit external session cache configured. */
 
 #if OPENSSL_VERSION_NUMBER > 0x000907000L
     /* If we support renegotiations, then make the cache lifetime be 10%
@@ -16541,6 +16451,85 @@ static int tls_ctx_set_session_cache(server_rec *s, SSL_CTX *ctx) {
 
     SSL_CTX_set_session_cache_mode(ctx, SSL_SESS_CACHE_SERVER);
     SSL_CTX_set_timeout(ctx, timeout);
+
+    return 0;
+  }
+
+  /* Look up and initialize the configured session cache provider. */
+  provider = c->argv[0];
+  timeout = *((long *) c->argv[2]);
+
+  if (provider != NULL) {
+    if (strncmp(provider, "internal", 9) != 0) {
+      tls_sess_cache = tls_sess_cache_get_cache(provider);
+
+      pr_log_debug(DEBUG8, MOD_TLS_VERSION ": opening '%s' TLSSessionCache",
+        provider);
+
+      if (tls_sess_cache_open(c->argv[1], timeout) == 0) {
+        long cache_mode, cache_flags;
+
+        cache_mode = SSL_SESS_CACHE_SERVER;
+
+        /* We could force OpenSSL to use ONLY the configured external session
+         * caching mechanism by using the SSL_SESS_CACHE_NO_INTERNAL mode flag
+         * (available in OpenSSL 0.9.6h and later).
+         *
+         * However, consider the case where the serialized session data is
+         * too large for the external cache, or the external cache refuses
+         * to add the session for some reason.  If OpenSSL is using only our
+         * external cache, that session is lost (which could cause problems
+         * e.g. for later protected data transfers, which require that the
+         * SSL session from the control connection be reused).
+         *
+         * If the external cache can be reasonably sure that session data
+         * can be added, then the NO_INTERNAL flag is a good idea; it keeps
+         * OpenSSL from allocating more memory than necessary.  Having both
+         * an internal and an external cache of the same data is a bit
+         * unresourceful.  Thus we ask the external cache mechanism what
+         * additional cache mode flags to use.
+         */
+
+        cache_flags = tls_sess_cache_get_cache_mode();
+        cache_mode |= cache_flags;
+
+        SSL_CTX_set_session_cache_mode(ctx, cache_mode);
+        SSL_CTX_set_timeout(ctx, timeout);
+
+        SSL_CTX_sess_set_new_cb(ctx, tls_sess_cache_add_sess_cb);
+        SSL_CTX_sess_set_get_cb(ctx, tls_sess_cache_get_sess_cb);
+        SSL_CTX_sess_set_remove_cb(ctx, tls_sess_cache_delete_sess_cb);
+
+      } else {
+        pr_log_debug(DEBUG1, MOD_TLS_VERSION
+          ": error opening '%s' TLSSessionCache: %s", provider,
+          strerror(errno));
+
+        /* Default to using OpenSSL's own internal session caching. */
+        SSL_CTX_set_session_cache_mode(ctx, SSL_SESS_CACHE_SERVER);
+      }
+
+    } else {
+      /* Default to using OpenSSL's own internal session caching. */
+      SSL_CTX_set_session_cache_mode(ctx, SSL_SESS_CACHE_SERVER);
+      SSL_CTX_set_timeout(ctx, timeout);
+    }
+
+  } else {
+    /* SSL session caching has been explicitly turned off. */
+
+    pr_log_debug(DEBUG3, MOD_TLS_VERSION
+      ": TLSSessionCache off, disabling TLS session caching and setting "
+      "NoSessionReuseRequired TLSOption");
+
+    SSL_CTX_set_session_cache_mode(ctx, SSL_SESS_CACHE_OFF);
+
+    /* Make sure we automatically relax the "SSL session reuse required
+     * for data connections" requirement; to enforce such a requirement
+     * TLS session caching MUST be enabled.  So if session caching has been
+     * explicitly disabled, relax that policy as well.
+     */
+    tls_opts |= TLS_OPT_NO_SESSION_REUSE_REQUIRED;
   }
 
   return 0;
@@ -16571,6 +16560,38 @@ static int tls_ctx_set_stapling(SSL_CTX *ctx) {
 #if defined(PR_USE_OPENSSL_OCSP)
   SSL_CTX_set_tlsext_status_cb(ctx, tls_ocsp_cb);
   SSL_CTX_set_tlsext_status_arg(ctx, NULL);
+#endif /* PR_USE_OPENSSL_OCSP */
+
+  return 0;
+}
+
+static int tls_ctx_set_stapling_cache(server_rec *s, SSL_CTX *ctx) {
+#if defined(PR_USE_OPENSSL_OCSP)
+  config_rec *c;
+  const char *provider;
+
+  c = find_config(s->conf, CONF_PARAM, "TLSStaplingCache", FALSE);
+  if (c == NULL) {
+    return 0;
+  }
+
+  /* Look up and initialize the configured OCSP cache provider. */
+  provider = c->argv[0];
+
+  if (provider != NULL) {
+    tls_ocsp_cache = tls_ocsp_cache_get_cache(provider);
+
+    pr_log_debug(DEBUG8, MOD_TLS_VERSION ": opening '%s' TLSStaplingCache",
+      provider);
+
+    if (tls_ocsp_cache_open(c->argv[1]) < 0 &&
+        errno != ENOSYS) {
+      pr_log_debug(DEBUG1, MOD_TLS_VERSION
+        ": error opening '%s' TLSStaplingCache: %s", provider,
+        strerror(errno));
+      tls_ocsp_cache = NULL;
+    }
+  }
 #endif /* PR_USE_OPENSSL_OCSP */
 
   return 0;
