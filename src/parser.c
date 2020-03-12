@@ -1,6 +1,6 @@
 /*
  * ProFTPD - FTP server daemon
- * Copyright (c) 2004-2017 The ProFTPD Project team
+ * Copyright (c) 2004-2020 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -133,7 +133,11 @@ static char *get_config_word(pool *p, char *word) {
         /* No value in the environment; continue on to the next potential
          * variable in the word.
          */
-        ptr = strstr(ptr2, "%{env:");
+        pr_trace_msg(trace_channel, 17, "no value found for environment "
+          "variable '%s' for word '%s', ignoring", key, word);
+
+        word = (char *) sreplace(p, word, var, "", NULL);
+        ptr = strstr(word, "%{env:");
         continue;
       }
 
