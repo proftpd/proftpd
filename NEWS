@@ -25,6 +25,8 @@
   mod_sftp, per RFC 8332.
 - Issue 912 - Support logging of data transfer remote ports in ExtendedLog.
 - Issue 317 - Implement pread(2), pwrite(2) FSIO API.
+- Issue 857 - Fixed regression in the handling of `%{env:...}` configuration
+  variables when the environment variable is not present.
 
 1.3.7rc3 - Released 20-Feb-2020
 --------------------------------
