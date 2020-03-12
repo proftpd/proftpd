@@ -139,7 +139,9 @@ static char *get_config_word(pool *p, char *word) {
          */
         pr_trace_msg(trace_channel, 17, "no value found for environment "
           "variable '%s' for word '%s', ignoring", key, word);
-        ptr = strstr(ptr2, "%{env:");
+
+        word = (char *) sreplace(p, word, var, "", NULL);
+        ptr = strstr(word, "%{env:");
         continue;
       }
 
