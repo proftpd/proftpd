@@ -21,11 +21,6 @@ my $order = 0;
 
 # All of these tests use an external `curl` for testing the ability to
 # login AND download with SNI, across multiple TLS protocol versions.
-#
-# Variants:
-#   TLSSessionCache absent/present
-#   TLSOption IgnoreSNI
-#   TLSSessionTickets on/off (TLSv1.3 only)
 
 my $CURL = '/Users/tj/local/curl-7.69.0/bin/curl';
 
@@ -88,6 +83,16 @@ my $TESTS = {
   tls_sni_tlsv13_session_cache => {
     order => ++$order,
     test_class => [qw(forking mod_tls_shmcache)],
+  },
+
+  tls_sni_tlsv13_session_tickets_off => {
+    order => ++$order,
+    test_class => [qw(forking)],
+  },
+
+  tls_sni_tlsv13_session_tickets_on => {
+    order => ++$order,
+    test_class => [qw(forking)],
   },
 
 };
@@ -206,8 +211,6 @@ EOC
   defined(my $pid = fork()) or die("Can't fork: $!");
   if ($pid) {
     eval {
-      my $curl_tls_protocol = lc($tls_protocol);
-
       my $curl_cmd = [
         $CURL,
         '-kvs',
@@ -216,7 +219,6 @@ EOC
         '--user',
         "$setup->{user}:$setup->{passwd}",
         '--ssl',
-        "--$curl_tls_protocol",
         '--sessionid',
         '--resolve',
         "$host:$port:127.0.0.1",
@@ -307,7 +309,7 @@ sub tls_sni_tlsv10_opt_ignoresni {
 sub tls_sni_tlsv10_session_cache {
   my $self = shift;
   my $tls_protocol = 'TLSv1.0';
-  my $tls_options = 'EnableDiags IgnoreSNI';
+  my $tls_options = 'EnableDiags';
 
   # For session caching
   my $shm_path = File::Spec->rel2abs("$self->{tmpdir}/tls-shmcache");
@@ -345,7 +347,7 @@ sub tls_sni_tlsv11_opt_ignoresni {
 sub tls_sni_tlsv11_session_cache {
   my $self = shift;
   my $tls_protocol = 'TLSv1.1';
-  my $tls_options = 'EnableDiags IgnoreSNI';
+  my $tls_options = 'EnableDiags';
 
   # For session caching
   my $shm_path = File::Spec->rel2abs("$self->{tmpdir}/tls-shmcache");
@@ -383,7 +385,7 @@ sub tls_sni_tlsv12_opt_ignoresni {
 sub tls_sni_tlsv12_session_cache {
   my $self = shift;
   my $tls_protocol = 'TLSv1.2';
-  my $tls_options = 'EnableDiags IgnoreSNI';
+  my $tls_options = 'EnableDiags';
 
   # For session caching
   my $shm_path = File::Spec->rel2abs("$self->{tmpdir}/tls-shmcache");
@@ -421,7 +423,7 @@ sub tls_sni_tlsv13_opt_ignoresni {
 sub tls_sni_tlsv13_session_cache {
   my $self = shift;
   my $tls_protocol = 'TLSv1.3';
-  my $tls_options = 'EnableDiags IgnoreSNI';
+  my $tls_options = 'EnableDiags';
 
   # For session caching
   my $shm_path = File::Spec->rel2abs("$self->{tmpdir}/tls-shmcache");
@@ -430,6 +432,32 @@ sub tls_sni_tlsv13_session_cache {
     'mod_tls_shmcache.c' => {
       # 10332 is the minimum number of bytes for shmcache
       TLSSessionCache => "shm:/file=$shm_path&size=41328",
+    }
+  };
+
+  test_curl_sni($self, $tls_protocol, $tls_options, $addl_config);
+}
+
+sub tls_sni_tlsv13_session_tickets_off {
+  my $self = shift;
+  my $tls_protocol = 'TLSv1.3';
+  my $tls_options = 'EnableDiags IgnoreSNI';
+  my $addl_config = {
+    'mod_tls.c' => {
+      'TLSSessionTickets' => 'off'
+    }
+  };
+
+  test_curl_sni($self, $tls_protocol, $tls_options, $addl_config);
+}
+
+sub tls_sni_tlsv13_session_tickets_on {
+  my $self = shift;
+  my $tls_protocol = 'TLSv1.3';
+  my $tls_options = 'EnableDiags IgnoreSNI';
+  my $addl_config = {
+    'mod_tls.c' => {
+      'TLSSessionTickets' => 'on'
     }
   };
 

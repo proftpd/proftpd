@@ -1689,6 +1689,7 @@ sub tls_login_with_sni_different_certs_issue850 {
         TLSRequired => 'on',
         TLSECCertificateFile => $ec_cert_file,
         TLSCACertificateFile => $ec_ca_file,
+        TLSProtocol => 'TLSv1.0'
       },
     },
   };
@@ -1720,7 +1721,7 @@ sub tls_login_with_sni_different_certs_issue850 {
     TLSRSACertificateFile $rsa_cert_file
     TLSCACertificateFile $rsa_ca_file
     TLSOptions EnableDiags
-    TLSProtocol TLSv1.2
+    TLSProtocol TLSv1.0
   </IfModule>
 
   <Limit LOGIN>
@@ -1994,7 +1995,6 @@ sub tls_login_with_sni_mismatched_host_issue850 {
     TLSRSACertificateFile $rsa_cert_file
     TLSCACertificateFile $rsa_ca_file
     TLSOptions EnableDiags
-    TLSProtocol TLSv1.2
   </IfModule>
 
   <Limit LOGIN>
@@ -2168,7 +2168,6 @@ sub tls_login_with_sni_matching_host_issue850 {
     TLSRSACertificateFile $rsa_cert_file
     TLSCACertificateFile $rsa_ca_file
     TLSOptions EnableDiags
-    TLSProtocol TLSv1.2
   </IfModule>
 
   <Limit LOGIN>
