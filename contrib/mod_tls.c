@@ -1186,6 +1186,7 @@ static struct tls_label tls_version_labels[] = {
   { 0x0301, "TLS 1.0" },
   { 0x0302, "TLS 1.1" },
   { 0x0303, "TLS 1.2" },
+  { 0x0304, "TLS 1.3" },
 
   { 0, NULL }
 };
@@ -1448,6 +1449,51 @@ static struct tls_label tls_extension_labels[] = {
   { 0, NULL }
 };
 
+#if defined(TLSEXT_TYPE_signature_algorithms)
+/* Signature Algorithms.  These values come from:
+ *   https://www.iana.org/assignments/tls-parameters/tls-parameters.xhtml#tls-parameters-16
+ */
+static struct tls_label tls_sigalgo_labels[] = {
+  { 0x0201, "rsa_pkcs1_sha1" },
+  { 0x0202, "dsa_sha1" },
+  { 0x0203, "ecdsa_sha1" },
+  { 0x0301, "rsa_pkcs1_sha224" },
+  { 0x0302, "dsa_sha224" },
+  { 0x0303, "ecdsa_sha224" },
+  { 0x0401, "rsa_pkcs1_sha256" },
+  { 0x0402, "dsa_sha256" },
+  { 0x0403, "ecdsa_secp256r1_sha256" },
+  { 0x0501, "rsa_pkcs1_sha384" },
+  { 0x0502, "dsa_sha384" },
+  { 0x0503, "ecdsa_secp384r1_sha384" },
+  { 0x0601, "rsa_pkcs1_sha512" },
+  { 0x0602, "dsa_sha512" },
+  { 0x0603, "ecdsa_secp521r1_sha512" },
+  { 0x0804, "rsa_pss_rsae_sha256" },
+  { 0x0805, "rsa_pss_rsae_sha384" },
+  { 0x0806, "rsa_pss_rsae_sha512" },
+  { 0x0807, "ed25519" },
+  { 0x0808, "ed448" },
+  { 0x0809, "rsa_pss_pss_sha256" },
+  { 0x080A, "rsa_pss_pss_sha384" },
+  { 0x080B, "rsa_pss_pss_sha512" },
+
+  { 0, NULL }
+};
+#endif /* TLSEXT_TYPE_signature_algorithms */
+
+#if defined(TLSEXT_TYPE_psk_kex_modes)
+/* PSK KEX modes.  These values come from:
+ *   https://tools.ietf.org/html/rfc8446#section-4.2.9
+ */
+static struct tls_label tls_psk_kex_labels[] = {
+  { 0, "psk_ke" },
+  { 1, "psk_dhe_key" },
+
+  { 0, NULL }
+};
+#endif /* TLSEXT_TYPE_psk_kex_modes */
+
 static const char *tls_get_label(int labelno, struct tls_label *labels) {
   register unsigned int i;
 
@@ -1461,7 +1507,7 @@ static const char *tls_get_label(int labelno, struct tls_label *labels) {
 }
 
 static void tls_print_ssl_version(BIO *bio, const char *name,
-    const unsigned char **msg, size_t *msglen) {
+    const unsigned char **msg, size_t *msglen, int *pversion) {
   int version;
 
   if (*msglen < 2) {
@@ -1473,6 +1519,10 @@ static void tls_print_ssl_version(BIO *bio, const char *name,
     tls_get_label(version, tls_version_labels));
   *msg += 2;
   *msglen -= 2;
+
+  if (pversion != NULL) {
+    *pversion = version;
+  }
 }
 
 static void tls_print_hex(BIO *bio, const char *indent, const char *name,
@@ -1565,7 +1615,7 @@ static void tls_print_ciphersuites(BIO *bio, const char *name,
     pr_signals_handle();
 
     suiteno = ((*msg[0]) << 8) | (*msg)[1];
-    BIO_printf(bio, "    %s (%X)\n",
+    BIO_printf(bio, "    %s (0x%x)\n",
       tls_get_label(suiteno, tls_ciphersuite_labels), suiteno);
 
     *msg += 2;
@@ -1609,8 +1659,6 @@ static void tls_print_extension(BIO *bio, const char *indent, int server,
   BIO_printf(bio, "%sextension_type = %s (%lu %s)\n", indent,
     tls_get_label(ext_type, tls_extension_labels), (unsigned long) extlen,
     extlen != 1 ? "bytes" : "byte");
-
-  /* There might be additional extension information to be displayed. */
 }
 
 static void tls_print_extensions(BIO *bio, const char *name, int server,
@@ -1665,7 +1713,7 @@ static void tls_print_client_hello(int io_flag, int version, int content_type,
   bio = BIO_new(BIO_s_mem());
 
   BIO_puts(bio, "\nClientHello:\n");
-  tls_print_ssl_version(bio, "client_version", &buf, &buflen);
+  tls_print_ssl_version(bio, "client_version", &buf, &buflen, NULL);
   tls_print_random(bio, &buf, &buflen);
   tls_print_session_id(bio, &buf, &buflen);
   if (buflen < 2) {
@@ -1694,19 +1742,21 @@ static void tls_print_server_hello(int io_flag, int version, int content_type,
   BIO *bio;
   char *data = NULL;
   long datalen;
-  int print_session_id = TRUE, print_compressions = TRUE;
+  int print_session_id = TRUE, print_compressions = TRUE, server_version;
   unsigned int suiteno;
 
   bio = BIO_new(BIO_s_mem());
+
+  BIO_puts(bio, "\nServerHello:\n");
+  tls_print_ssl_version(bio, "server_version", &buf, &buflen, &server_version);
+
 #ifdef TLS1_3_VERSION
-  if (version == TLS1_3_VERSION) {
+  if (server_version == TLS1_3_VERSION) {
     print_session_id = FALSE;
     print_compressions = FALSE;
   }
 #endif /* TLS1_3_VERSION */
 
-  BIO_puts(bio, "\nServerHello:\n");
-  tls_print_ssl_version(bio, "server_version", &buf, &buflen);
   tls_print_random(bio, &buf, &buflen);
   if (print_session_id == TRUE) {
     tls_print_session_id(bio, &buf, &buflen);
@@ -1718,19 +1768,19 @@ static void tls_print_server_hello(int io_flag, int version, int content_type,
 
   /* Print the selected ciphersuite. */
   BIO_printf(bio, "  cipher_suites (2 bytes)\n");
-  suiteno = ((buf[0]) << 8) | (buf)[1];
-  BIO_printf(bio, "    %s (%X)\n",
+  suiteno = (buf[0] << 8) | buf[1];
+  BIO_printf(bio, "    %s (0x%x)\n",
     tls_get_label(suiteno, tls_ciphersuite_labels), suiteno);
   buf += 2;
   buflen -= 2;
 
-  if (buflen < 1) {
-    BIO_free(bio);
-    return;
-  }
-
   if (print_compressions == TRUE) {
     int comp_type;
+
+    if (buflen < 1) {
+      BIO_free(bio);
+      return;
+    }
 
     /* Print the selected compression. */
     BIO_printf(bio, "  compression_methods (1 byte)\n");
@@ -1740,7 +1790,7 @@ static void tls_print_server_hello(int io_flag, int version, int content_type,
     buf += 1;
     buflen -= 1;
   }
-  tls_print_extensions(bio, "extensions", FALSE, &buf, &buflen);
+  tls_print_extensions(bio, "extensions", TRUE, &buf, &buflen);
 
   datalen = BIO_get_mem_data(bio, &data);
   if (data != NULL) {
@@ -1750,6 +1800,62 @@ static void tls_print_server_hello(int io_flag, int version, int content_type,
 
   BIO_free(bio);
 }
+
+#ifdef SSL3_MT_NEWSESSION_TICKET
+static void tls_print_ticket(int io_flag, int version, int content_type,
+    const unsigned char *buf, size_t buflen, SSL *ssl, void *arg) {
+  BIO *bio;
+  char *data = NULL;
+  long datalen;
+
+  bio = BIO_new(BIO_s_mem());
+
+  BIO_puts(bio, "\nNewSessionTicket:\n");
+  if (buflen != 0) {
+    unsigned int ticket_lifetime;
+    int print_ticket_age = FALSE, print_extensions = FALSE;
+
+    ticket_lifetime = (buf[0] << 24) | (buf[1] << 16) | (buf[2] << 8) | buf[3];
+    buf += 4;
+    buflen -= 4;
+    BIO_printf(bio, "  ticket_lifetime_hint\n    %u (sec)\n", ticket_lifetime);
+
+# if defined(TLS1_3_VERSION)
+    if (SSL_version(ssl) == TLS1_3_VERSION) {
+      print_ticket_age = TRUE;
+      print_extensions = TRUE;
+    }
+# endif /* TLS1_3_VERSION */
+
+    if (print_ticket_age == TRUE) {
+      unsigned int ticket_age_add;
+
+      ticket_age_add = (buf[0] << 24) | (buf[1] << 16) | (buf[2] << 8) | buf[3];
+      buf += 4;
+      buflen -= 4;
+      BIO_printf(bio, "  ticket_age_add\n    %u (sec)\n", ticket_age_add);
+      tls_print_hexbuf(bio, "    ", "  ticket_nonce", 1, &buf, &buflen);
+    }
+
+    tls_print_hexbuf(bio, "    ", "  ticket", 2, &buf, &buflen);
+
+    if (print_extensions == TRUE) {
+      tls_print_extensions(bio, "extensions", TRUE, &buf, &buflen);
+    }
+
+  } else {
+    BIO_puts(bio, "  <no ticket>\n");
+  }
+
+  datalen = BIO_get_mem_data(bio, &data);
+  if (data != NULL) {
+    data[datalen] = '\0';
+    tls_log("[msg] %.*s", (int) datalen, data);
+  }
+
+  BIO_free(bio);
+}
+#endif /* SSL3_MT_NEWSESSION_TICKET */
 
 static void tls_msg_cb(int io_flag, int version, int content_type,
     const void *buf, size_t buflen, SSL *ssl, void *arg) {
@@ -1776,22 +1882,24 @@ static void tls_msg_cb(int io_flag, int version, int content_type,
       version_str = "TLSv1";
       break;
 
-#if OPENSSL_VERSION_NUMBER >= 0x10001000L
+# if defined(TLS1_1_VERSION)
     case TLS1_1_VERSION:
       version_str = "TLSv1.1";
       break;
+# endif /* TLS1_1_VERSION */
 
+# if defined(TLS1_2_VERSION)
     case TLS1_2_VERSION:
       version_str = "TLSv1.2";
       break;
+# endif /* TLS1_2_VERSION */
 
 # if OPENSSL_VERSION_NUMBER >= 0x10101000L && \
      defined(TLS1_3_VERSION)
     case TLS1_3_VERSION:
       version_str = "TLSv1.3";
       break;
-# endif
-#endif
+# endif /* TLS1_3_VERSION */
 
     default:
 #ifdef SSL3_RT_HEADER
@@ -1992,11 +2100,21 @@ static void tls_msg_cb(int io_flag, int version, int content_type,
             }
 
 #ifdef SSL3_MT_NEWSESSION_TICKET
-            case SSL3_MT_NEWSESSION_TICKET:
+            case SSL3_MT_NEWSESSION_TICKET: {
+              const unsigned char *msg;
+              size_t msglen;
+
+              msg = buf;
+              msglen = buflen;
+
               tls_log("[msg] %s %s 'NewSessionTicket' Handshake message "
                 "(%u %s)", action_str, version_str, (unsigned int) buflen,
                 bytes_str);
+
+              tls_print_ticket(io_flag, version, content_type, msg + 4,
+                msglen - 4, ssl, arg);
               break;
+            }
 #endif /* SSL3_MT_NEWSESSION_TICKET */
 
             case SSL3_MT_CERTIFICATE:
@@ -2045,6 +2163,39 @@ static void tls_msg_cb(int io_flag, int version, int content_type,
                 bytes_str);
               break;
 #endif /* SSL3_MT_CERTIFICATE_STATUS */
+
+#ifdef SSL3_MT_ENCRYPTED_EXTENSIONS
+            case SSL3_MT_ENCRYPTED_EXTENSIONS: {
+              const unsigned char *msg;
+              size_t msglen;
+              BIO *bio;
+              char *data = NULL;
+              long datalen;
+
+              msg = buf;
+              msglen = buflen;
+
+              tls_log("[msg] %s %s 'EncryptedExtensions' Handshake message "
+                "(%u %s)", action_str, version_str, (unsigned int) buflen,
+                bytes_str);
+
+              bio = BIO_new(BIO_s_mem());
+
+              msg += 4;
+              msglen -= 4;
+
+              BIO_puts(bio, "\nEncryptedExtensions:\n");
+              tls_print_extensions(bio, "extensions", TRUE, &msg, &msglen);
+              datalen = BIO_get_mem_data(bio, &data);
+              if (data != NULL) {
+                data[datalen] = '\0';
+                tls_log("[msg] %.*s", (int) datalen, data);
+              }
+
+              BIO_free(bio);
+              break;
+            }
+#endif /* SSL3_MT_ENCRYPTED_EXTENSIONS */
           }
 
         } else {
@@ -4134,9 +4285,10 @@ static int tls_sni_cb(SSL *ssl, int *alert_desc, void *user_data) {
 }
 # endif /* !TLSEXT_MAXLEN_host_name */
 
-static void tls_tlsext_cb(SSL *ssl, int client_server, int type,
+static void tls_tlsext_cb(SSL *ssl, int server, int type,
     unsigned char *tlsext_data, int tlsext_datalen, void *data) {
   char *extension_name = "(unknown)";
+  int print_basic_info = TRUE;
 
   /* Note: OpenSSL does not implement all possible extensions.  For the
    * "(unknown)" extensions, see:
@@ -4145,9 +4297,63 @@ static void tls_tlsext_cb(SSL *ssl, int client_server, int type,
    */
   switch (type) {
 # ifdef TLSEXT_TYPE_server_name
-    case TLSEXT_TYPE_server_name:
+    case TLSEXT_TYPE_server_name: {
+      BIO *bio = NULL;
+      char *ext_info = "";
+      long ext_infolen = 0;
+
       extension_name = "server name";
+
+      if (pr_trace_get_level(trace_channel) >= 19 &&
+          tlsext_datalen >= 2) {
+
+        /* We read 2 bytes for the extension length, 1 byte for the
+         * name type, and 2 bytes for the name length.  For the SNI
+         * format specification, see:
+         *   https://tools.ietf.org/html/rfc6066#section-3
+         */
+        int ext_len;
+
+        ext_len = (tlsext_data[0] << 8) | tlsext_data[1];
+        if (tlsext_datalen == ext_len + 2 &&
+            (ext_len & 1) == 0) {
+          int name_type;
+          tlsext_data += 2;
+
+          name_type = tlsext_data[0];
+          tlsext_data += 1;
+
+          if (name_type == TLSEXT_NAMETYPE_host_name) {
+            size_t name_len;
+
+            name_len = (tlsext_data[0] << 8) | tlsext_data[1];
+            tlsext_data += 2;
+
+            bio = BIO_new(BIO_s_mem());
+            BIO_printf(bio, "\n  %.*s (%lu)", (int) name_len, tlsext_data,
+              (unsigned long) name_len);
+
+            ext_infolen = BIO_get_mem_data(bio, &ext_info);
+            if (ext_info != NULL) {
+              ext_info[ext_infolen] = '\0';
+            }
+          }
+        }
+      }
+
+      pr_trace_msg(trace_channel, 6,
+        "[tls.tlsext] TLS %s extension \"%s\" (ID %d, %d %s)%.*s",
+        server ? "server" : "client", extension_name, type,
+        tlsext_datalen, tlsext_datalen != 1 ? "bytes" : "byte",
+        (int) ext_infolen, ext_info);
+
+      if (bio != NULL) {
+        BIO_free(bio);
+      }
+
+      print_basic_info = FALSE;
       break;
+    }
 # endif
 
 # ifdef TLSEXT_TYPE_max_fragment_length
@@ -4223,9 +4429,57 @@ static void tls_tlsext_cb(SSL *ssl, int client_server, int type,
 # endif
 
 # ifdef TLSEXT_TYPE_signature_algorithms
-    case TLSEXT_TYPE_signature_algorithms:
+    case TLSEXT_TYPE_signature_algorithms: {
+      BIO *bio = NULL;
+      char *ext_info = "";
+      long ext_infolen = 0;
+
       extension_name = "signature algorithms";
+
+      if (pr_trace_get_level(trace_channel) >= 19 &&
+          tlsext_datalen >= 2) {
+        int len;
+
+        len = (tlsext_data[0] << 8) | tlsext_data[1];
+        if (tlsext_datalen == len + 2 &&
+            (len & 1) == 0) {
+          tlsext_data += 2;
+
+          bio = BIO_new(BIO_s_mem());
+          BIO_puts(bio, "\n");
+
+          while (len > 0) {
+            unsigned int sig_algo;
+
+            pr_signals_handle();
+
+            sig_algo = (tlsext_data[0] << 8) | tlsext_data[1];
+            BIO_printf(bio, "  %s (0x%x)\n",
+              tls_get_label(sig_algo, tls_sigalgo_labels), sig_algo);
+            len -= 2;
+            tlsext_data += 2;
+          }
+
+          ext_infolen = BIO_get_mem_data(bio, &ext_info);
+          if (ext_info != NULL) {
+            ext_info[ext_infolen] = '\0';
+          }
+        }
+      }
+
+      pr_trace_msg(trace_channel, 6,
+        "[tls.tlsext] TLS %s extension \"%s\" (ID %d, %d %s)%.*s",
+        server ? "server" : "client", extension_name, type,
+        tlsext_datalen, tlsext_datalen != 1 ? "bytes" : "byte",
+        (int) ext_infolen, ext_info);
+
+      if (bio != NULL) {
+        BIO_free(bio);
+      }
+
+      print_basic_info = FALSE;
       break;
+    }
 # endif
 
 # ifdef TLSEXT_TYPE_use_srtp
@@ -4271,15 +4525,129 @@ static void tls_tlsext_cb(SSL *ssl, int client_server, int type,
 # endif
 
 # ifdef TLSEXT_TYPE_supported_versions
-    case TLSEXT_TYPE_supported_versions:
+    case TLSEXT_TYPE_supported_versions: {
+      BIO *bio = NULL;
+      char *ext_info = NULL;
+      long ext_infolen;
+
+      /* If we are the server responding, we only indicate the selected
+       * protocol version.  Otherwise, we are a client indicating the range
+       * of versions supported.
+       */
+
       extension_name = "supported versions";
+
+      if (pr_trace_get_level(trace_channel) >= 19) {
+        bio = BIO_new(BIO_s_mem());
+
+        if (server) {
+          if (tlsext_datalen == 2) {
+            int version;
+
+            version = (tlsext_data[0] << 8) | tlsext_data[1];
+            BIO_printf(bio, "\n  %s (0x%x)\n",
+              tls_get_label(version, tls_version_labels), version);
+          }
+
+        } else {
+          if (tlsext_datalen >= 1) {
+            int len;
+
+            len = tlsext_data[0];
+            if (tlsext_datalen == len + 1) {
+              tlsext_data += 1;
+
+              BIO_puts(bio, "\n");
+
+              while (len > 0) {
+                int version;
+
+                pr_signals_handle();
+
+                version = (tlsext_data[0] << 8) | tlsext_data[1];
+                BIO_printf(bio, "  %s (0x%x)\n",
+                  tls_get_label(version, tls_version_labels), version);
+                len -= 2;
+                tlsext_data += 2;
+              }
+            }
+          }
+        }
+
+        ext_infolen = BIO_get_mem_data(bio, &ext_info);
+        if (ext_info != NULL) {
+          ext_info[ext_infolen] = '\0';
+        }
+      }
+
+      pr_trace_msg(trace_channel, 6,
+        "[tls.tlsext] TLS %s extension \"%s\" (ID %d, %d %s)%.*s",
+        server ? "server" : "client", extension_name, type,
+        tlsext_datalen, tlsext_datalen != 1 ? "bytes" : "byte",
+        (int) ext_infolen, ext_info);
+
+      if (bio != NULL) {
+        BIO_free(bio);
+      }
+
+      print_basic_info = FALSE;
       break;
+    }
 # endif
 
 # ifdef TLSEXT_TYPE_psk_kex_modes
-    case TLSEXT_TYPE_psk_kex_modes:
+    case TLSEXT_TYPE_psk_kex_modes: {
+      BIO *bio = NULL;
+      char *ext_info = NULL;
+      long ext_infolen;
+
       extension_name = "PSK KEX modes";
+
+      if (pr_trace_get_level(trace_channel) >= 19) {
+        if (tlsext_datalen >= 1) {
+          bio = BIO_new(BIO_s_mem());
+
+          int len;
+
+          len = tlsext_data[0];
+          if (tlsext_datalen == len + 1) {
+            tlsext_data += 1;
+
+            BIO_puts(bio, "\n");
+
+            while (len > 0) {
+              int kex_mode;
+
+              pr_signals_handle();
+
+              kex_mode = tlsext_data[0];
+              BIO_printf(bio, "  %s (%d)\n",
+                tls_get_label(kex_mode, tls_psk_kex_labels), kex_mode);
+              len -= 1;
+              tlsext_data += 1;
+            }
+          }
+        }
+
+        ext_infolen = BIO_get_mem_data(bio, &ext_info);
+        if (ext_info != NULL) {
+          ext_info[ext_infolen] = '\0';
+        }
+      }
+
+      pr_trace_msg(trace_channel, 6,
+        "[tls.tlsext] TLS %s extension \"%s\" (ID %d, %d %s)%.*s",
+        server ? "server" : "client", extension_name, type,
+        tlsext_datalen, tlsext_datalen != 1 ? "bytes" : "byte",
+        (int) ext_infolen, ext_info);
+
+      if (bio != NULL) {
+        BIO_free(bio);
+      }
+
+      print_basic_info = FALSE;
       break;
+    }
 # endif
 
 # ifdef TLSEXT_TYPE_key_share
@@ -4331,13 +4699,16 @@ static void tls_tlsext_cb(SSL *ssl, int client_server, int type,
 # endif
 
     default:
+      print_basic_info = TRUE;
       break;
   }
 
-  pr_trace_msg(trace_channel, 6,
-    "[tls.tlsext] TLS %s extension \"%s\" (ID %d, %d %s)",
-    client_server ? "server" : "client", extension_name, type, tlsext_datalen,
-    tlsext_datalen != 1 ? "bytes" : "byte");
+  if (print_basic_info == TRUE) {
+    pr_trace_msg(trace_channel, 6,
+      "[tls.tlsext] TLS %s extension \"%s\" (ID %d, %d %s)",
+      server ? "server" : "client", extension_name, type, tlsext_datalen,
+      tlsext_datalen != 1 ? "bytes" : "byte");
+  }
 }
 #endif /* !OPENSSL_NO_TLSEXT */
 
@@ -6077,6 +6448,10 @@ static int tls_ticket_key_cb(SSL *ssl, unsigned char *key_name,
   struct tls_ticket_key *k;
   char *key_name_str;
 
+  pr_trace_msg(trace_channel, 19,
+    "handling session ticket key request on %s session (%s mode)",
+    SSL_get_version(ssl), mode ? "encrypt" : "decrypt");
+
   /* Note: should we have a list of ciphers from which we randomly choose,
    * when creating a key?  I.e. should the keys themselves hold references
    * to their ciphers, digests?
@@ -6102,7 +6477,7 @@ static int tls_ticket_key_cb(SSL *ssl, unsigned char *key_name,
       PR_STR_FL_HEX_USE_LC);
 
     pr_trace_msg(trace_channel, 3,
-      "TLS session ticket: encrypting using key '%s' for %s session",
+      "TLS session ticket: encrypting using key name '%s' for %s session",
       key_name_str, SSL_session_reused(ssl) ? "reused" : "new");
 
     /* Warn loudly if the ticket key we are using is not as strong (based on
@@ -6155,13 +6530,14 @@ static int tls_ticket_key_cb(SSL *ssl, unsigned char *key_name,
     if (k == NULL) {
       /* No matching key found. */
       pr_trace_msg(trace_channel, 3,
-        "TLS session ticket: decrypting ticket using key '%s': key not found",
-        key_name_str);
+        "TLS session ticket: decrypting ticket using key name '%s': "
+        "key not found", key_name_str);
       return 0;
     }
 
     pr_trace_msg(trace_channel, 3,
-      "TLS session ticket: decrypting ticket using key '%s'", key_name_str);
+      "TLS session ticket: decrypting ticket using key name '%s'",
+      key_name_str);
 
 # if OPENSSL_VERSION_NUMBER >= 0x10000001L
     if (HMAC_Init_ex(hmac_ctx, k->hmac_key, 32, md, NULL) != 1) {
@@ -6199,6 +6575,17 @@ static int tls_ticket_key_cb(SSL *ssl, unsigned char *key_name,
         newest_age != 1 ? "secs" : "sec");
       return 2;
     }
+
+# if defined(TLS1_3_VERSION)
+    /* If we're a TLSv1.3 session, aim for single-use tickets, and indicate
+     * that the client should get a new ticket.  Will the FTPS client
+     * Do The Right Thing(tm), and use this new ticket for future data
+     * transfers?
+     */
+    if (SSL_version(ssl) == TLS1_3_VERSION) {
+      return 2;
+    }
+# endif /* TLS1_3_VERSION */
 
     return 1;
   }
@@ -6420,6 +6807,10 @@ static SSL_CTX *tls_init_ctx(server_rec *s) {
     ssl_opts |= SSL_OP_CIPHER_SERVER_PREFERENCE;
   }
 #endif /* SSL_OP_CIPHER_SERVER_PREFERENCE */
+
+#if defined(SSL_OP_PRIORITIZE_CHACHA)
+  ssl_opts |= SSL_OP_PRIORITIZE_CHACHA;
+#endif /* SSL_OP_PRIORITIZE_CHACHA */
 
   SSL_CTX_set_options(ctx, ssl_opts);
 
@@ -15277,6 +15668,10 @@ static int tls_ssl_set_options(SSL *ssl) {
   }
 #endif /* SSL_OP_CIPHER_SERVER_PREFERENCE */
 
+#if defined(SSL_OP_PRIORITIZE_CHACHA)
+  SSL_set_options(ssl, SSL_OP_PRIORITIZE_CHACHA);
+#endif /* SSL_OP_PRIORITIZE_CHACHA */
+
 #if OPENSSL_VERSION_NUMBER > 0x000907000L
   /* Install a callback for logging OpenSSL message information, if requested.
    */
@@ -15371,17 +15766,28 @@ static int tls_ssl_set_protocol(server_rec *s, SSL *ssl) {
   SSL_clear_options(ssl, all_proto|disabled_proto);
   SSL_set_options(ssl, disabled_proto);
 
-#ifdef TLS1_3_VERSION
-  /* Unless SSL_OP_NO_TLSv1_3 is set, make sure that SSL_OP_NO_TICKET is NOT
-   * set.  In other words, if we might handle TLSv1.3 connections, enable
-   * use of session tickets, too.  Why?  TLSv1.3 prefers the session ticket
-   * approach to session resumption, vs server-side session IDs.  Using
-   * OP_NO_TICKET disables that.
-   */
-  if (!(disabled_proto & SSL_OP_NO_TLSv1_3)) {
+  return 0;
+}
+
+static int tls_ssl_set_session_tickets(SSL *ssl) {
+#if defined(TLS_USE_SESSION_TICKETS) && \
+    defined(SSL_OP_NO_TICKET)
+  if (tls_use_session_tickets == TRUE) {
+    /* Ensure that tickets are enabled in the SSL options. */
     SSL_clear_options(ssl, SSL_OP_NO_TICKET);
+
+  } else {
+# ifdef TLS1_3_VERSION
+    /* Disable session tickets unless it's a TLSv1.3 session. */
+    if (SSL_version(ssl) != TLS1_3_VERSION) {
+      SSL_set_options(ssl, SSL_OP_NO_TICKET);
+    }
+# else
+    /* Disable session tickets. */
+    SSL_set_options(ssl, SSL_OP_NO_TICKET);
+# endif /* TLS1_3_VERSION */
   }
-#endif /* TLS1_3_VERSION */
+#endif /* TLS_USE_SESSION_TICKETS and SSL_OP_NO_TICKET */
 
   return 0;
 }
@@ -15726,6 +16132,14 @@ static int tls_ssl_set_all(server_rec *s, SSL *ssl) {
   }
 
   if (tls_ssl_set_protocol(s, ssl) < 0) {
+    return -1;
+  }
+
+  /* Note that we set this after setting the protocol versions, since the
+   * supported protocol version flags will affect session tickets, due to
+   * TLSv1.3' use of tickets.
+   */
+  if (tls_ssl_set_session_tickets(ssl) < 0) {
     return -1;
   }
 
@@ -16615,18 +17029,6 @@ static int tls_ctx_set_protocol(server_rec *s, SSL_CTX *ctx) {
   SSL_CTX_clear_options(ctx, all_proto|disabled_proto);
   SSL_CTX_set_options(ctx, disabled_proto);
 
-#ifdef TLS1_3_VERSION
-  /* Unless SSL_OP_NO_TLSv1_3 is set, make sure that SSL_OP_NO_TICKET is NOT
-   * set.  In other words, if we might handle TLSv1.3 connections, enable
-   * use of session tickets, too.  Why?  TLSv1.3 prefers the session ticket
-   * approach to session resumption, vs server-side session IDs.  Using
-   * OP_NO_TICKET disables that.
-   */
-  if (!(disabled_proto & SSL_OP_NO_TLSv1_3)) {
-    SSL_CTX_clear_options(ctx, SSL_OP_NO_TICKET);
-  }
-#endif /* TLS1_3_VERSION */
-
   return 0;
 }
 
@@ -16800,10 +17202,33 @@ static int tls_ctx_set_session_tickets(SSL_CTX *ctx) {
         "Tickets are not available");
     }
 
+    /* Ensure that tickets are enabled in the SSL_CTX options. */
+    SSL_CTX_clear_options(ctx, SSL_OP_NO_TICKET);
+
   } else {
-    /* Disable session tickets. */
+# ifdef TLS1_3_VERSION
+    /* If we might handle TLSv1.3 sessions, we need the callback for session
+     * resumption; TLSv1.3 prefers stateless session tickets vs stateful
+     * server-side session IDs.
+     */
+    if (SSL_CTX_get_options(ctx) & SSL_OP_NO_TLSv1_3) {
+      SSL_CTX_set_options(ctx, SSL_OP_NO_TICKET);
+      SSL_CTX_set_tlsext_ticket_key_cb(ctx, NULL);
+
+    } else {
+      if (SSL_CTX_set_tlsext_ticket_key_cb(ctx, tls_ticket_key_cb) == 0) {
+        pr_log_pri(PR_LOG_WARNING, MOD_TLS_VERSION
+          ": mod_tls compiled with Session Ticket support, but linked to "
+          "an OpenSSL library without tlsext support, therefore Session "
+          "Tickets are not available");
+      }
+
+      SSL_CTX_clear_options(ctx, SSL_OP_NO_TICKET);
+    }
+# else
     SSL_CTX_set_options(ctx, SSL_OP_NO_TICKET);
     SSL_CTX_set_tlsext_ticket_key_cb(ctx, NULL);
+# endif /* TLS1_3_VERSION */
   }
 #endif /* TLS_USE_SESSION_TICKETS and SSL_OP_NO_TICKET */
 
@@ -16945,15 +17370,15 @@ static int tls_ctx_set_all(server_rec *s, SSL_CTX *ctx) {
     return -1;
   }
 
-  /* Note that we set this prior to setting the protocol versions, since
-   * the support protocol version flags are affected by session tickets,
-   * due to TLSv1.3.
-   */
-  if (tls_ctx_set_session_tickets(ctx) < 0) {
+  if (tls_ctx_set_protocol(s, ctx) < 0) {
     return -1;
   }
 
-  if (tls_ctx_set_protocol(s, ctx) < 0) {
+  /* Note that we set this after setting the protocol versions, since the
+   * supported protocol version flags will affect session tickets, due to
+   * TLSv1.3' use of tickets.
+   */
+  if (tls_ctx_set_session_tickets(ctx) < 0) {
     return -1;
   }
 

@@ -1764,6 +1764,13 @@ For control over the key expiration and generation schedule, use the
 directive.
 
 <p>
+<b>Note</b>: TLSv1.3 sessions <b>require</b> the use of session tickets,
+as the protocol favors stateless tickets <i>versus</i> stateful server-side
+session IDs for session resumption.  Thus for TLSv1.3 sessions, the
+<code>TLSSessionTickets</code> directive is <i>ignored</i>, and session
+tickets are supported.
+
+<p>
 <hr>
 <h3><a name="TLSStapling">TLSStapling</a></h3>
 <strong>Syntax:</strong> TLSStapling <em>on|off</em><br>
@@ -2317,7 +2324,7 @@ in your <code>configure</code> command, <i>e.g.</i>:
 <p>
 <hr>
 <font size=2><b><i>
-&copy; Copyright 2002-2019 TJ Saunders<br>
+&copy; Copyright 2002-2020 TJ Saunders<br>
  All Rights Reserved<br>
 </i></b></font>
 <hr>
