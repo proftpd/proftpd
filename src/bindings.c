@@ -1,6 +1,6 @@
 /*
  * ProFTPD - FTP server daemon
- * Copyright (c) 2001-2016 The ProFTPD Project team
+ * Copyright (c) 2001-2020 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -1239,6 +1239,49 @@ static int init_inetd_bindings(void) {
   return 0;
 }
 
+static unsigned int process_serveralias(server_rec *s) {
+  unsigned namebind_count = 0;
+  config_rec *c;
+
+  /* If there is no ipbind already for this server, we cannot associate
+   * any ServerAlias-based namebinds to it.
+   */
+  if (pr_ipbind_get_server(s->addr, s->ServerPort) == NULL) {
+    return 0;
+  }
+
+  c = find_config(s->conf, CONF_PARAM, "ServerAlias", FALSE);
+  while (c != NULL) {
+    int res;
+
+    pr_signals_handle();
+
+    res = pr_namebind_create(s, c->argv[0], s->addr, s->ServerPort);
+    if (res == 0) {
+      namebind_count++;
+
+      res = pr_namebind_open(c->argv[0], s->addr);
+      if (res < 0) {
+        pr_trace_msg(trace_channel, 2,
+          "notice: unable to open namebind '%s': %s", (char *) c->argv[0],
+          strerror(errno));
+      }
+
+    } else {
+      if (errno != ENOENT) {
+        pr_trace_msg(trace_channel, 3,
+          "unable to create namebind for '%s' to %s#%u: %s",
+          (char *) c->argv[0], pr_netaddr_get_ipstr(s->addr), s->ServerPort,
+          strerror(errno));
+      }
+    }
+
+    c = find_config_next(c, c->next, CONF_PARAM, "ServerAlias", FALSE);
+  }
+
+  return namebind_count;
+}
+
 static int init_standalone_bindings(void) {
   int res = 0;
   server_rec *serv = NULL;
@@ -1248,7 +1291,6 @@ static int init_standalone_bindings(void) {
    * at all.
    */
   if (main_server->ServerPort) {
-
     /* If SocketBindTight is off, then pr_inet_create_conn() will
      * create and bind to a wildcard socket.  However, should it be an
      * IPv4 or an IPv6 wildcard socket?
@@ -1295,38 +1337,13 @@ static int init_standalone_bindings(void) {
   }
 
   for (serv = main_server->next; serv; serv = serv->next) {
-    config_rec *c;
-    int is_namebind = FALSE;
+    unsigned int namebind_count;
 
-    /* See if this server is a namebind, to be part of an existing ipbind. */
-    c = find_config(serv->conf, CONF_PARAM, "ServerAlias", FALSE);
-    while (c != NULL) {
-      pr_signals_handle();
-
-      res = pr_namebind_create(serv, c->argv[0], serv->addr, serv->ServerPort);
-      if (res == 0) {
-        is_namebind = TRUE;
-
-        res = pr_namebind_open(c->argv[0], serv->addr);
-        if (res < 0) {
-          pr_trace_msg(trace_channel, 2,
-            "notice: unable to open namebind '%s': %s", (char *) c->argv[0],
-            strerror(errno));
-        }
-
-      } else {
-        if (errno != ENOENT) {
-          pr_trace_msg(trace_channel, 3,
-            "unable to create namebind for '%s' to %s#%u: %s",
-            (char *) c->argv[0], pr_netaddr_get_ipstr(serv->addr),
-            serv->ServerPort, strerror(errno));
-        }
-      }
-
-      c = find_config_next(c, c->next, CONF_PARAM, "ServerAlias", FALSE);
-    }
-
-    if (is_namebind == TRUE) {
+    namebind_count = process_serveralias(serv);
+    if (namebind_count > 0) {
+      /* If we successfully added ServerAlias namebinds, move on to the next
+       * server.
+       */
       continue;
     }
 
@@ -1400,6 +1417,11 @@ static int init_standalone_bindings(void) {
         TRUE);
       PR_ADD_IPBINDS(serv);
     }
+
+    /* Process any ServerAlias directives AFTER the server's ipbind has been
+     * created/opened (Issue #932).
+     */
+    process_serveralias(serv);
   }
 
   /* Any "unclaimed" listening conns can be removed and closed. */
