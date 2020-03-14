@@ -4119,6 +4119,18 @@ static int tls_sni_cb(SSL *ssl, int *alert_desc, void *user_data) {
       }
     }
 
+    /* Per RFC 6066, literal IPv4/IPv6 addresses are NOT permissed in the
+     * SNI.  However, some clients will still send such IP addresses.
+     * We can safely ignore these, since any IP-based virtual host selection
+     * happens at TCP connect time.
+     */
+    if (pr_netaddr_is_v4(server_name) == TRUE ||
+        pr_netaddr_is_v6(server_name) == TRUE) {
+      pr_trace_msg(trace_channel, 5,
+        "client sent IP address SNI '%s', ignoring", server_name);
+      return SSL_TLSEXT_ERR_OK;
+    }
+
     if (pr_table_add_dup(session.notes, "mod_tls.sni",
         (char *) server_name, 0) < 0) {
 
