@@ -406,12 +406,16 @@ sub config_write {
       }
     }
 
-    unless (defined($config->{DefaultAddress})) {
-      $config->{DefaultAddress} = '127.0.0.1';
+    unless ($opts->{NoDefaultAddress}) {
+      unless (defined($config->{DefaultAddress})) {
+        $config->{DefaultAddress} = '127.0.0.1';
+      }
     }
 
-    unless (defined($config->{DefaultServer})) {
-      $config->{DefaultServer} = 'on';
+    unless ($opts->{NoDefaultServer}) {
+      unless (defined($config->{DefaultServer})) {
+        $config->{DefaultServer} = 'on';
+      }
     }
 
     unless (defined($config->{RequireValidShell})) {
