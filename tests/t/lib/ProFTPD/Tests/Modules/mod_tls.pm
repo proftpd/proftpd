@@ -12,7 +12,7 @@ use IO::Handle;
 use Socket;
 
 use ProFTPD::TestSuite::FTP;
-use ProFTPD::TestSuite::Utils qw(:auth :config :running :test :testsuite);
+use ProFTPD::TestSuite::Utils qw(:auth :config :features :running :test :testsuite);
 
 $| = 1;
 
@@ -105,6 +105,11 @@ my $TESTS = {
   },
 
   tls_login_with_sni_port_zero_socketbindtight_on_issue932 => {
+    order => ++$order,
+    test_class => [qw(bug forking)],
+  },
+
+  tls_login_with_sni_port_zero_multi_ports_issue932 => {
     order => ++$order,
     test_class => [qw(bug forking)],
   },
@@ -2968,6 +2973,194 @@ EOC
       }
 
       my $resp_code = $client->quot('HOST', $host);
+      if ($resp_code != '2') {
+        die("HOST failed: " . $client->last_message());
+      }
+
+      $client->quit();
+    };
+    if ($@) {
+      $ex = $@;
+    }
+
+    $wfh->print("done\n");
+    $wfh->flush();
+
+  } else {
+    eval { server_wait($setup->{config_file}, $rfh) };
+    if ($@) {
+      warn($@);
+      exit 1;
+    }
+
+    exit 0;
+  }
+
+  # Stop server
+  server_stop($setup->{pid_file});
+  $self->assert_child_ok($pid);
+
+  test_cleanup($setup->{log_file}, $ex);
+}
+
+sub tls_login_with_sni_port_zero_multi_ports_issue932 {
+  my $self = shift;
+  my $tmpdir = $self->{tmpdir};
+  my $setup = test_setup($tmpdir, 'tls');
+
+  # Use RSA certs for our name-based vhost, to test that the SNI vhost switching
+  # is working as expected.
+  my $rsa_cert_file = File::Spec->rel2abs('t/etc/modules/mod_tls/server-cert.pem');
+  my $rsa_ca_file = File::Spec->rel2abs('t/etc/modules/mod_tls/ca-cert.pem');
+
+  # The key for this issue is the use of:
+  #
+  #   DefaultServer off
+  #   Port 0
+  #
+  # So that the default vhost is DISABLED.
+
+  my $config = {
+    PidFile => $setup->{pid_file},
+    ScoreboardFile => $setup->{scoreboard_file},
+    SystemLog => $setup->{log_file},
+    TraceLog => $setup->{log_file},
+    Trace => 'binding:20 tls:20',
+    Port => 0,
+  };
+
+  if (feature_have_feature_enabled('ipv6')) {
+    $config->{UseIPv6} = 'on';
+  }
+
+  my $config_opts = {
+    NoDefaultAddress => 1,
+    NoDefaultServer => 1,
+  };
+
+  my ($port, $config_user, $config_group) = config_write($setup->{config_file},
+    $config, $config_opts);
+
+  my $address = '0.0.0.0';
+  my $host = 'castaglia';
+  my $other_host = 'ftp.nospam.org';
+  my $other_port = $port + 19;
+  my $last_host = 'ftp3.example.com';
+
+  # Configure name-based <VirtualHost> sections for our testing.
+  if (open(my $fh, ">> $setup->{config_file}")) {
+    print $fh <<EOC;
+<Global>
+  AuthOrder mod_auth_file.c
+  AuthUserFile $setup->{auth_user_file}
+  AuthGroupFile $setup->{auth_group_file}
+
+  <IfModule mod_delay.c>
+    DelayEngine off
+  </IfModule>
+
+  <IfModule mod_tls.c>
+    TLSEngine on
+    TLSLog $setup->{log_file}
+    TLSRequired on
+    TLSRSACertificateFile $rsa_cert_file
+    TLSCACertificateFile $rsa_ca_file
+    TLSProtocol TLSv1.0
+    TLSOptions EnableDiags
+  </IfModule>
+</Global>
+
+<VirtualHost $address>
+  Port $port
+  ServerAlias $host
+</VirtualHost>
+
+<VirtualHost $address>
+  Port $port
+  ServerAlias $other_host
+</VirtualHost>
+
+<VirtualHost $address>
+  Port $other_port
+  ServerAlias $host
+</VirtualHost>
+
+<VirtualHost $address>
+  Port $other_port
+  ServerAlias $other_host
+</VirtualHost>
+
+<VirtualHost $address>
+  Port $port
+  ServerAlias $last_host
+</VirtualHost>
+
+<VirtualHost $address>
+  Port $other_port
+  ServerAlias $last_host
+</VirtualHost>
+EOC
+    unless (close($fh)) {
+      die("Can't write $setup->{config_file}: $!");
+    }
+
+  } else {
+    die("Can't open $setup->{config_file}: $!");
+  }
+
+  # Open pipes, for use between the parent and child processes.  Specifically,
+  # the child will indicate when it's done with its test by writing a message
+  # to the parent.
+  my ($rfh, $wfh);
+  unless (pipe($rfh, $wfh)) {
+    die("Can't open pipe: $!");
+  }
+
+  require Net::FTPSSL;
+
+  my $ex;
+
+  # Fork child
+  $self->handle_sigchld();
+  defined(my $pid = fork()) or die("Can't fork: $!");
+  if ($pid) {
+    eval {
+      # Give the server a chance to start up
+      sleep(2);
+
+      my $ssl_opts = {
+        Encryption => 'E',
+        Port => $port,
+        SSL_ca_file => $rsa_ca_file,
+        SSL_hostname => $host,
+        SSL_verify_mode => IO::Socket::SSL::SSL_VERIFY_PEER(),
+      };
+
+      if ($ENV{TEST_VERBOSE}) {
+        $ssl_opts->{Debug} = 2;
+      }
+
+      my $client = Net::FTPSSL->new('127.0.0.1', $ssl_opts);
+      unless ($client) {
+        die("Can't connect to FTPS server: " . IO::Socket::SSL::errstr());
+      }
+
+      my $resp_code = $client->quot('HOST', $host);
+      if ($resp_code != '2') {
+        die("HOST failed: " . $client->last_message());
+      }
+
+      $client->quit();
+
+      $ssl_opts->{Port} = $other_port;
+      $ssl_opts->{SSL_hostname} = $last_host;
+
+      $client = Net::FTPSSL->new('127.0.0.1', $ssl_opts);
+      unless ($client) {
+        die("Can't connect to FTPS server: " . IO::Socket::SSL::errstr());
+      }
+
+      $resp_code = $client->quot('HOST', $last_host);
       if ($resp_code != '2') {
         die("HOST failed: " . $client->last_message());
       }

@@ -799,7 +799,8 @@ int pr_ipbind_open(const pr_netaddr_t *addr, unsigned int port,
     for (i = 0; i < ipbind->ib_namebinds->nelts; i++) {
       pr_namebind_t *nb = namebinds[i];
 
-      res = pr_namebind_open(nb->nb_name, nb->nb_server->addr);
+      res = pr_namebind_open(nb->nb_name, nb->nb_server->addr,
+        nb->nb_server_port);
       if (res < 0) {
         pr_trace_msg(trace_channel, 2,
           "notice: unable to open namebind '%s': %s", nb->nb_name,
@@ -894,7 +895,7 @@ int pr_namebind_create(server_rec *server, const char *name,
   }
 
   /* Make sure we can add this namebind. */
-  if (!ipbind->ib_namebinds) {
+  if (ipbind->ib_namebinds == NULL) {
     ipbind->ib_namebinds = make_array(binding_pool, 0, sizeof(pr_namebind_t *));
 
   } else {
@@ -925,6 +926,7 @@ int pr_namebind_create(server_rec *server, const char *name,
   namebind = (pr_namebind_t *) pcalloc(server->pool, sizeof(pr_namebind_t));
   namebind->nb_name = name;
   namebind->nb_server = server;
+  namebind->nb_server_port = server_port;
   namebind->nb_isactive = FALSE;
 
   if (pr_str_is_fnmatch(name) == TRUE) {
@@ -1061,7 +1063,8 @@ pr_namebind_t *pr_namebind_find(const char *name, const pr_netaddr_t *addr,
        */
       if (namebind->nb_name != NULL) {
         pr_trace_msg(trace_channel, 17,
-          "namebind #%u: %s", i, namebind->nb_name);
+          "namebind #%u: %s (%s)", i, namebind->nb_name,
+          namebind->nb_isactive ? "active" : "inactive");
 
         if (namebind->nb_iswildcard == FALSE) {
           if (strcasecmp(namebind->nb_name, name) == 0) {
@@ -1120,7 +1123,8 @@ unsigned int pr_namebind_count(server_rec *srv) {
   return count;
 }
 
-int pr_namebind_open(const char *name, const pr_netaddr_t *addr) {
+int pr_namebind_open(const char *name, const pr_netaddr_t *addr,
+    unsigned int server_port) {
   pr_namebind_t *namebind = NULL;
   unsigned int port;
 
@@ -1131,6 +1135,9 @@ int pr_namebind_open(const char *name, const pr_netaddr_t *addr) {
   }
 
   port = ntohs(pr_netaddr_get_port(addr));
+  if (port == 0) {
+    port = server_port;
+  }
   namebind = pr_namebind_find(name, addr, port, FALSE);
   if (namebind == NULL) {
     errno = ENOENT;
@@ -1260,7 +1267,7 @@ static unsigned int process_serveralias(server_rec *s) {
     if (res == 0) {
       namebind_count++;
 
-      res = pr_namebind_open(c->argv[0], s->addr);
+      res = pr_namebind_open(c->argv[0], s->addr, s->ServerPort);
       if (res < 0) {
         pr_trace_msg(trace_channel, 2,
           "notice: unable to open namebind '%s': %s", (char *) c->argv[0],
