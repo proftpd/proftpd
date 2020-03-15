@@ -377,9 +377,12 @@ sub config_write {
     unless (defined($config->{Port})) {
       my $dynport = get_high_numbered_port();
       $config->{Port} = $dynport;
-    }
+      $port = $dynport;
 
-    $port = $config->{Port};
+    } elsif ($config->{Port} == 0 || $config->{Port} eq '0') {
+      my $dynport = get_high_numbered_port();
+      $port = $dynport;
+   }
 
     unless (defined($config->{User})) {
       # Handle User names that may contain embedded backslashes and spaces
