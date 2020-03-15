@@ -4162,6 +4162,11 @@ static int tls_sni_cb(SSL *ssl, int *alert_desc, void *user_data) {
       return SSL_TLSEXT_ERR_OK;
     }
 
+    /* Notify any listeners (e.g. mod_autohost) of the requested name, to
+     * given them a chance to update/modify the configuration.
+     */
+    pr_event_generate("mod_tls.sni", server_name);
+
     /* See if we have a name-based vhost matching the SNI; if so, we want
      * to switch to that vhost, in case it is configured with different
      * server certificates, CAs.
