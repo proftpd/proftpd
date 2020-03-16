@@ -1,6 +1,6 @@
 /*
  * ProFTPD - mod_sftp SFTP
- * Copyright (c) 2008-2016 TJ Saunders
+ * Copyright (c) 2008-2020 TJ Saunders
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -86,6 +86,7 @@ int sftp_fxp_close_session(uint32_t);
 int sftp_fxp_set_displaylogin(const char *);
 int sftp_fxp_set_extensions(unsigned long);
 
+int sftp_fxp_set_file_buffer_size(off_t);
 int sftp_fxp_set_protocol_version(unsigned int, unsigned int);
 
 /* Set the SFTP protocol version at which UTF8 decoding/encoding will be done
