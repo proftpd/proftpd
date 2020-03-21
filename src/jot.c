@@ -1251,7 +1251,7 @@ static int resolve_logfmt_id(pool *p, unsigned char logfmt_id,
     case LOGFMT_META_REMOTE_IP: {
       const char *ipstr;
 
-      ipstr = pr_netaddr_get_ipstr(pr_netaddr_get_sess_local_addr());
+      ipstr = pr_netaddr_get_ipstr(pr_netaddr_get_sess_remote_addr());
       res = (on_meta)(p, ctx, logfmt_id, NULL, ipstr);
       break;
     }
