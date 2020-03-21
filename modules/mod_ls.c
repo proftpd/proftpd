@@ -2,7 +2,7 @@
  * ProFTPD - FTP server daemon
  * Copyright (c) 1997, 1998 Public Flood Software
  * Copyright (c) 1999, 2000 MacGyver aka Habeeb J. Dihu <macgyver@tos.net>
- * Copyright (c) 2001-2019 The ProFTPD Project
+ * Copyright (c) 2001-2020 The ProFTPD Project
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -205,9 +205,8 @@ static void push_cwd(char *_cwd, unsigned char *symhold) {
   if (!_cwd)
     _cwd = cwd;
 
-  *symhold = show_symlinks_hold;
   sstrncpy(_cwd, pr_fs_getcwd(), PR_TUNABLE_PATH_MAX + 1);
-  *symhold = list_show_symlinks;
+  *symhold = show_symlinks_hold = list_show_symlinks;
 }
 
 static void pop_cwd(char *_cwd, unsigned char *symhold) {
@@ -2131,7 +2130,7 @@ static int dolist(cmd_rec *cmd, const char *opt, const char *resp_code,
           /* Recurse into the directory. */
           push_cwd(cwd_buf, &symhold);
 
-          if (!pr_fsio_chdir_canon(*path, !opt_L && list_show_symlinks)) {
+          if (pr_fsio_chdir_canon(*path, !opt_L && list_show_symlinks) == 0) {
             int res = 0;
 
             list_ndepth.curr++;
@@ -2150,6 +2149,9 @@ static int dolist(cmd_rec *cmd, const char *opt, const char *resp_code,
               }
               return -1;
             }
+
+          } else {
+            pop_cwd(cwd_buf, &symhold);
           }
         }
 
