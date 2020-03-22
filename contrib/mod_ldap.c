@@ -1501,8 +1501,8 @@ MODRET ldap_auth_auth(cmd_rec *cmd) {
   return PR_HANDLED(cmd);
 }
 
-/* cmd->argv[0] = hashed password,
- * cmd->argv[1] = user,
+/* cmd->argv[0] = hashed password
+ * cmd->argv[1] = user
  * cmd->argv[2] = cleartext
  */
 MODRET ldap_auth_check(cmd_rec *cmd) {
@@ -1596,21 +1596,30 @@ MODRET ldap_auth_check(cmd_rec *cmd) {
   if (strncasecmp(hash_method, "crypt", strlen(hash_method)) == 0) {
     crypted = crypt(pass, cryptpass + encname_len);
     if (crypted == NULL) {
+      pr_trace_msg(trace_channel, 19,
+        "using %s auth scheme, crypt(3) failed: %s", hash_method,
+        strerror(errno));
       return PR_ERROR(cmd);
     }
 
     if (strcmp(crypted, cryptpass + encname_len) != 0) {
+      pr_trace_msg(trace_channel, 19,
+        "using '%s' auth scheme, comparison failed", hash_method);
       return PR_ERROR(cmd);
     }
 
   /* The {clear} scheme */
   } else if (strncasecmp(hash_method, "clear", strlen(hash_method)) == 0) {
     if (strcmp(pass, cryptpass + encname_len) != 0) {
+      pr_trace_msg(trace_channel, 19,
+        "using '%s' auth scheme, comparison failed", hash_method);
       return PR_ERROR(cmd);
     }
 
   } else {
     /* Can't find a supported {scheme} */
+    pr_trace_msg(trace_channel, 3,
+      "unsupported userPassword auth scheme: %s", hash_method);
     return PR_DECLINED(cmd);
   }
 
