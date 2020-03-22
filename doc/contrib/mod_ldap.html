@@ -182,8 +182,8 @@ See also: <a href="#LDAPServer"><code>LDAPServer</code></a>
 <p>
 <hr>
 <h3><a name="LDAPDefaultAuthScheme">LDAPDefaultAuthScheme</a></h3>
-<strong>Syntax:</strong> LDAPDefaultAuthScheme <em>crypt|clear</em><br>
-<strong>Default:</strong> None<br>
+<strong>Syntax:</strong> LDAPDefaultAuthScheme <em>"crypt"|"clear"</em><br>
+<strong>Default:</strong> crypt<br>
 <strong>Context:</strong> server config, <code>&lt;VirtualHost&gt;</code>, <code>&lt;Global&gt;</code><br>
 <strong>Module:</strong> mod_ldap<br>
 <strong>Compatibility:</strong> 1.2.7rc1 and later
@@ -191,15 +191,18 @@ See also: <a href="#LDAPServer"><code>LDAPServer</code></a>
 <p>
 The <code>LDAPDefaultAuthScheme</code> directive specifies the authentication
 scheme used for passwords which have no "{hashname}" prefix in the LDAP
-directory.  For example, if you are:
+directory.  For example, if you have:
 <pre>
   userPassword <em>mypass</em>
 </pre>
 in your directory, you would want to set <code>LDAPDefaultAuthScheme</code>
-to <em>clear</em>.
+to <em>"clear"</em>, <i>e.g.</i>:
+<pre>
+  LDAPDefaultAuthScheme clear
+<pre>
 
 <p>
-The default value is <em>crypt</em>.
+The default value is <em>"crypt"</em>.
 
 <p>
 <hr>
@@ -842,7 +845,7 @@ for details.
 <p>
 <hr>
 <font size=2><b><i>
-&copy; Copyright 2013-2017 TJ Saunders<br>
+&copy; Copyright 2013-2020 TJ Saunders<br>
  All Rights Reserved<br>
 </i></b></font>
 <hr>
