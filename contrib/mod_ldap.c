@@ -1,7 +1,7 @@
 /*
  * mod_ldap - LDAP password lookup module for ProFTPD
  * Copyright (c) 1999-2013, John Morrissey <jwm@horde.net>
- * Copyright (c) 2013-2017 The ProFTPD Project
+ * Copyright (c) 2013-2020 The ProFTPD Project
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -2302,7 +2302,7 @@ static int ldap_sess_init(void) {
   }
 
   ptr = get_param_ptr(main_server->conf, "LDAPProtocolVersion", FALSE);
-  if (ptr) {
+  if (ptr != NULL) {
     ldap_protocol_version = *((int *) ptr);
   }
 
@@ -2311,6 +2311,9 @@ static int ldap_sess_init(void) {
     ldap_servers = c->argv[0];
 
   } else {
+    pr_log_pri(PR_LOG_NOTICE, MOD_LDAP_VERSION
+      ": no LDAPServer configured, using LDAP library defaults");
+
     /* Leave a NULL server entry if LDAPServer isn't present, so
      * ldap_init()/ldap_initialize() will connect to the LDAP SDK's
      * default.
@@ -2505,6 +2508,16 @@ static int ldap_sess_init(void) {
     }
   }
 #endif /* LBER_OPT_LOG_PRINT_FN */
+
+  if (ldap_do_users == FALSE) {
+    pr_log_pri(PR_LOG_WARNING, MOD_LDAP_VERSION
+      ": LDAPUsers not configured, skipping LDAP-based user authentication");
+  }
+
+  if (ldap_do_groups == FALSE) {
+    pr_log_pri(PR_LOG_NOTICE, MOD_LDAP_VERSION
+      ": LDAPGroups not configured, skipping LDAP-based group memberships");
+  }
 
   return 0;
 }
