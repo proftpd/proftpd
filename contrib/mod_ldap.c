@@ -191,8 +191,6 @@ static void pr_ldap_unbind(void) {
   int res;
 
   if (ld == NULL) {
-    pr_trace_msg(trace_channel, 13,
-      "not unbinding to an already unbound connection");
     return;
   }
 
@@ -202,8 +200,7 @@ static void pr_ldap_unbind(void) {
       "error unbinding connection: %s", ldap_err2string(res));
 
   } else {
-    pr_trace_msg(trace_channel, 8,
-      "connection successfully unbound");
+    pr_trace_msg(trace_channel, 8, "connection successfully unbound");
   }
 
   ld = NULL;
