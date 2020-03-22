@@ -1,6 +1,6 @@
 /*
  * ProFTPD - mod_sftp user authentication
- * Copyright (c) 2008-2017 TJ Saunders
+ * Copyright (c) 2008-2020 TJ Saunders
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -333,14 +333,14 @@ static int setup_env(pool *p, char *user) {
       if (*((int *) c->argv[0]) == FALSE) {
         (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
           "root login attempted, denied by RootLogin configuration");
-        pr_log_auth(PR_LOG_NOTICE, "SECURITY VIOLATION: Root login attempted.");
+        pr_log_auth(PR_LOG_NOTICE, "SECURITY VIOLATION: Root login attempted");
         return -1;
       }
 
     } else {
       (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
         "root login attempted, denied by RootLogin configuration");
-      pr_log_auth(PR_LOG_NOTICE, "SECURITY VIOLATION: Root login attempted.");
+      pr_log_auth(PR_LOG_NOTICE, "SECURITY VIOLATION: Root login attempted");
       return -1;
     }
   }
