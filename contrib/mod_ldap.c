@@ -2505,12 +2505,29 @@ static int ldap_sess_init(void) {
    * libldap (via liblber) to log to our trace logging.
    */
   if (pr_trace_get_level(libtrace_channel) >= 1) {
-    int res;
+    int res, trace_level;
 
     res = ber_set_option(NULL, LBER_OPT_LOG_PRINT_FN, ldap_tracelog_cb);
     if (res != LBER_OPT_SUCCESS) {
       (void) pr_log_writefile(ldap_logfd, MOD_LDAP_VERSION,
         "error setting trace logging function: %s", strerror(EINVAL));
+    }
+
+    /* Debug levels:
+     *  Trace (1)
+     *  Packets (2)
+     *  Arguments (4)
+     *  Filters (32)
+     *  Access control (128)
+     *
+     * See include/ldap_log.h in the OpenLDAP source.
+     */
+    trace_level = pr_trace_get_level(libtrace_channel);
+    res = ldap_set_option(NULL, LDAP_OPT_DEBUG_LEVEL, &trace_level);
+    if (res != LDAP_OPT_SUCCESS) {
+      (void) pr_log_writefile(ldap_logfd, MOD_LDAP_VERSION,
+        "error setting LDAP debug level %d: %s", trace_level,
+        strerror(EINVAL));
     }
   }
 #endif /* LBER_OPT_LOG_PRINT_FN */
