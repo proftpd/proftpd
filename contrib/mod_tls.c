@@ -4131,6 +4131,13 @@ static int tls_sni_cb(SSL *ssl, int *alert_desc, void *user_data) {
       }
     }
 
+    if (tls_opts & TLS_OPT_IGNORE_SNI) {
+      pr_trace_msg(trace_channel, 5,
+        "client sent SNI '%s', ignoring due to IgnoreSNI TLSOption",
+        server_name);
+      return SSL_TLSEXT_ERR_OK;
+    }
+
     /* Per RFC 6066, literal IPv4/IPv6 addresses are NOT permissed in the
      * SNI.  However, some clients will still send such IP addresses.
      * We can safely ignore these, since any IP-based virtual host selection
@@ -4155,17 +4162,21 @@ static int tls_sni_cb(SSL *ssl, int *alert_desc, void *user_data) {
       }
     }
 
-    if (tls_opts & TLS_OPT_IGNORE_SNI) {
-      pr_trace_msg(trace_channel, 5,
-        "client sent SNI '%s', ignoring due to IgnoreSNI TLSOption",
-        server_name);
-      return SSL_TLSEXT_ERR_OK;
-    }
-
     /* Notify any listeners (e.g. mod_autohost) of the requested name, to
      * given them a chance to update/modify the configuration.
      */
     pr_event_generate("mod_tls.sni", server_name);
+
+    /* If we have no name-based virtual servers configured (no ServerAlias),
+     * then just ignore the SNI.  Otherwise, configurations which have been
+     * working will "break" unexpectedly, due to SNI support.
+     */
+    if (pr_namebind_count(main_server) == 0) {
+      pr_trace_msg(trace_channel, 5,
+        "no name-based <VirtualHost> configured, ignoring SNI '%s'",
+        server_name);
+      return SSL_TLSEXT_ERR_OK;
+    }
 
     /* See if we have a name-based vhost matching the SNI; if so, we want
      * to switch to that vhost, in case it is configured with different
