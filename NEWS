@@ -30,6 +30,7 @@
 - Issue 940 - Second LIST of the same symlink shows different results.
 - Bug 4394 - LogFormat %a gives local server IP address instead of remote
   client IP address.
+- Issue 946 - Improve handling of ldaps URLs, LDAPUseTLS directive in mod_ldap.
 
 1.3.7rc3 - Released 20-Feb-2020
 --------------------------------
