@@ -41,6 +41,8 @@
 #include <lber.h>
 #include <ldap.h>
 
+extern xaset_t *server_list;
+
 module ldap_module;
 
 static int ldap_logfd = -1;
@@ -142,8 +144,21 @@ LDAP_SEARCH(LDAP *ld, char *base, int scope, char *filter, char *attrs[],
 #endif
 
 /* Config entries */
+
+struct server_info {
+  const char *info_text;
+  char *host;
+  int port;
+  char *port_text;
+  LDAPURLDesc *url_desc;
+  char *url_text;
+  int use_starttls;
+};
+
 static array_header *ldap_servers = NULL;
-static unsigned int cur_server_index = 0;
+static struct server_info *curr_server_info = NULL;
+static unsigned int curr_server_index = 0;
+
 static char *ldap_dn, *ldap_dnpass,
             *ldap_user_basedn = NULL, *ldap_user_name_filter = NULL,
             *ldap_user_uid_filter = NULL,
@@ -162,9 +177,7 @@ static char *ldap_dn, *ldap_dnpass,
             *ldap_attr_ftpquota = "ftpQuota",
             *ldap_attr_ftpquota_profiledn = "ftpQuotaProfileDN",
             *ldap_attr_ssh_pubkey = "sshPublicKey";
-#ifdef HAS_LDAP_INITIALIZE
-static char *ldap_server_url;
-#endif /* HAS_LDAP_INITIALIZE */
+
 static int ldap_do_users = FALSE, ldap_do_groups = FALSE,
            ldap_authbinds = TRUE, ldap_querytimeout = 0,
            ldap_genhdir = FALSE, ldap_genhdir_prefix_nouname = FALSE,
@@ -178,11 +191,6 @@ static struct timeval ldap_querytimeout_tv;
 
 static uid_t ldap_defaultuid = -1;
 static gid_t ldap_defaultgid = -1;
-
-#if defined(LDAP_OPT_X_TLS)
-static int ldap_use_tls = FALSE;
-#endif
-
 static LDAP *ld = NULL;
 static array_header *cached_quota = NULL;
 static array_header *cached_ssh_pubkeys = NULL;
@@ -206,43 +214,75 @@ static void pr_ldap_unbind(void) {
   ld = NULL;
 }
 
+static int do_ldap_prepare(LDAP **conn_ld) {
+#if defined(HAS_LDAP_INITIALIZE)
+  int res;
+  char *url_text = NULL;
+
+  if (curr_server_info != NULL) {
+    url_text = curr_server_info->url_text;
+    (void) pr_log_writefile(ldap_logfd, MOD_LDAP_VERSION,
+      "attempting connection to URL %s", url_text);
+
+  } else {
+    (void) pr_log_writefile(ldap_logfd, MOD_LDAP_VERSION,
+      "attempting connection (see ldap.conf for details)");
+  }
+
+  res = ldap_initialize(conn_ld, url_text);
+  if (res != LDAP_SUCCESS) {
+    (void) pr_log_writefile(ldap_logfd, MOD_LDAP_VERSION,
+      "ldap_initialize() to URL %s failed: %s",
+      url_text ? url_text : "(null)", ldap_err2string(res));
+
+    *conn_ld = NULL;
+    return -1;
+  }
+
+  ldap_search_scope = curr_server_info->url_desc->lud_scope;
+
+#else
+  char *host = NULL;
+  int port = LDAP_PORT;
+
+  if (curr_server_info != NULL) {
+    host = curr_server_info->host;
+    port = curr_server_info->port;
+
+    (void) pr_log_writefile(ldap_logfd, MOD_LDAP_VERSION,
+      "attempting connection to %s:%d", host, port);
+
+  } else {
+    (void) pr_log_writefile(ldap_logfd, MOD_LDAP_VERSION,
+      "attempting connection (see ldap.conf for details)");
+  }
+
+  *conn_ld = ldap_init(host, port);
+  if (*conn_ld == NULL) {
+    (void) pr_log_writefile(ldap_logfd, MOD_LDAP_VERSION,
+      "ldap_init() to %s:%d failed: %s", host ? host : "(null)", port,
+      strerror(errno));
+    return -1;
+  }
+#endif /* HAS_LDAP_INITIALIZE */
+
+  return 0;
+}
+
 static int do_ldap_connect(LDAP **conn_ld, int do_bind) {
   int res, version;
 #ifdef HAS_LDAP_SASL_BIND_S
   struct berval bindcred;
 #endif
 
-#ifdef HAS_LDAP_INITIALIZE
-  (void) pr_log_writefile(ldap_logfd, MOD_LDAP_VERSION,
-    "attempting connection to URL %s",
-    ldap_server_url ? ldap_server_url : "(null)");
-
-  res = ldap_initialize(conn_ld, ldap_server_url);
-  if (res != LDAP_SUCCESS) {
-    (void) pr_log_writefile(ldap_logfd, MOD_LDAP_VERSION,
-      "ldap_initialize() to URL %s failed: %s",
-      ldap_server_url ? ldap_server_url : "(null)", ldap_err2string(res));
-    ++cur_server_index;
-    if (cur_server_index >= ldap_servers->nelts) {
-      cur_server_index = 0;
-    }
-
-    *conn_ld = NULL;
+  /* Note that because we use ldap_init(3)/ldap_initialize(3), the first
+   * actual TCP connection does not occur until the first operation is
+   * requested.
+   */
+  res = do_ldap_prepare(conn_ld);
+  if (res < 0) {
     return -1;
   }
-#else /* HAS_LDAP_INITIALIZE */
-  (void) pr_log_writefile(ldap_logfd, MOD_LDAP_VERSION,
-    "attempting connection to %s:%d", ldap_server ? ldap_server : "(null)",
-    ldap_port);
-
-  *conn_ld = ldap_init(ldap_server, ldap_port);
-  if (conn_ld == NULL) {
-    (void) pr_log_writefile(ldap_logfd, MOD_LDAP_VERSION,
-      "ldap_init() to %s:%d failed: %s", ldap_server ? ldap_server : "(null)",
-      ldap_port, strerror(errno));
-    return -1;
-  }
-#endif /* HAS_LDAP_INITIALIZE */
 
   version = LDAP_VERSION3;
   if (ldap_protocol_version == 2) {
@@ -261,22 +301,16 @@ static int do_ldap_connect(LDAP **conn_ld, int do_bind) {
   (void) pr_log_writefile(ldap_logfd, MOD_LDAP_VERSION,
     "set LDAP protocol version to %d", version);
 
-#ifdef HAS_LDAP_INITIALIZE
-  (void) pr_log_writefile(ldap_logfd, MOD_LDAP_VERSION,
-    "connected to URL %s", ldap_server_url ? ldap_server_url : "(null)");
-
-#else /* HAS_LDAP_INITIALIZE */
-  (void) pr_log_writefile(ldap_logfd, MOD_LDAP_VERSION,
-    "connected to %s:%d", ldap_server ? ldap_server : "(null)", ldap_port);
-#endif /* HAS_LDAP_INITIALIZE */
-
 #if defined(LDAP_OPT_X_TLS)
-  if (ldap_use_tls == TRUE) {
+  if (curr_server_info->use_starttls == TRUE) {
+    (void) pr_log_writefile(ldap_logfd, MOD_LDAP_VERSION,
+      "LDAPUseTLS in effect, performing STARTTLS handshake on '%s'",
+      curr_server_info->info_text);
     res = ldap_start_tls_s(*conn_ld, NULL, NULL);
     if (res != LDAP_SUCCESS) {
       char *diag_msg = NULL;
 
-      ldap_get_option(*conn_ld, LDAP_OPT_DIAGNOSTIC_MESSAGE,
+      (void) ldap_get_option(*conn_ld, LDAP_OPT_DIAGNOSTIC_MESSAGE,
         (void *) &diag_msg);
 
       if (diag_msg != NULL) {
@@ -294,7 +328,7 @@ static int do_ldap_connect(LDAP **conn_ld, int do_bind) {
     }
 
     (void) pr_log_writefile(ldap_logfd, MOD_LDAP_VERSION,
-      "enabled TLS for connection");
+      "enabled TLS for connection to '%s'", curr_server_info->info_text);
   }
 #endif /* LDAP_OPT_X_TLS */
 
@@ -310,16 +344,18 @@ static int do_ldap_connect(LDAP **conn_ld, int do_bind) {
 
     if (res != LDAP_SUCCESS) {
       (void) pr_log_writefile(ldap_logfd, MOD_LDAP_VERSION,
-        "bind as DN '%s' failed: %s", ldap_dn ? ldap_dn : "(anonymous)",
-        ldap_err2string(res));
+        "bind as DN '%s' failed for '%s': %s",
+        ldap_dn ? ldap_dn : "(anonymous)", ldap_err2string(res),
+        curr_server_info->info_text);
+
       pr_ldap_unbind();
       return -1;
     }
 
     (void) pr_log_writefile(ldap_logfd, MOD_LDAP_VERSION,
-      "successfully bound as DN '%s' with password %s",
+      "successfully bound as DN '%s' with password %s for '%s'",
       ldap_dn ? ldap_dn : "(anonymous)",
-      ldap_dnpass ? "(see config)" : "(none)");
+      ldap_dnpass ? "(see config)" : "(none)", curr_server_info->info_text);
   }
 
 #ifdef LDAP_OPT_DEREF
@@ -346,7 +382,7 @@ static int do_ldap_connect(LDAP **conn_ld, int do_bind) {
   (void) pr_log_writefile(ldap_logfd, MOD_LDAP_VERSION,
     "set query timeout to %u secs", (unsigned int) ldap_querytimeout_tv.tv_sec);
 
-  return 1;
+  return 0;
 }
 
 #if defined(LBER_OPT_LOG_PRINT_FN)
@@ -357,103 +393,42 @@ static void ldap_tracelog_cb(const char *msg) {
 
 static int pr_ldap_connect(LDAP **conn_ld, int do_bind) {
   unsigned int start_server_index;
-  char *item;
-  LDAPURLDesc *url;
 
-  if (ldap_servers == NULL ||
-      ldap_servers->nelts == 0) {
-    (void) pr_log_writefile(ldap_logfd, MOD_LDAP_VERSION,
-      "internal error: no LDAP servers configured");
-    return -1;
-  }
-
-  start_server_index = cur_server_index;
+  start_server_index = curr_server_index;
   do {
+    int res, debug_level = -1;
+
     pr_signals_handle();
 
-    item = ((char **) ldap_servers->elts)[cur_server_index];
-
-    /* item might be NULL if no LDAPServer directive was specified
-     * and we're using the SDK default.
+    /* Note that ldap_servers might be NULL if no LDAPServer directive was
+     * specified.  We fall back to using the SDK default.
      */
-    if (item != NULL) {
-      if (ldap_is_ldap_url(item)) {
-        char *url_desc;
-
-        if (ldap_url_parse(item, &url) != LDAP_URL_SUCCESS) {
-          (void) pr_log_writefile(ldap_logfd, MOD_LDAP_VERSION,
-            "URL %s was valid during server startup, but is no longer valid?!",
-            item);
-
-          ++cur_server_index;
-          if (cur_server_index >= ldap_servers->nelts) {
-            cur_server_index = 0;
-          }
-          continue;
-        }
-
-        url_desc = ldap_url_desc2str(url);
-        if (url_desc != NULL) {
-          (void) pr_log_writefile(ldap_logfd, MOD_LDAP_VERSION,
-            "parsed '%s' as '%s'", item, url_desc);
-          ldap_memfree(url_desc);
-        }
-
-#ifdef HAS_LDAP_INITIALIZE
-        ldap_server_url = item;
-#else /* HAS_LDAP_INITIALIZE */
-        /* Need to keep parsed host and port for pre-2000 ldap_init(). */
-        if (url->lud_host != NULL) {
-          ldap_server = pstrdup(session.pool, url->lud_host);
-        }
-
-        if (url->lud_port != 0) {
-          ldap_port = url->lud_port;
-        }
-#endif /* HAS_LDAP_INITIALIZE */
-
-        if (url->lud_scope != LDAP_SCOPE_DEFAULT) {
-          ldap_search_scope = url->lud_scope;
-          if (ldap_search_scope == LDAP_SCOPE_BASE) {
-            pr_log_debug(DEBUG0, MOD_LDAP_VERSION
-              ": WARNING: LDAP URL search scopes default to 'base', not 'subtree', and may not be what you want (see LDAPSearchScope)");
-          }
-        }
-
-        ldap_free_urldesc(url);
-
-      } else {
-#ifdef HAS_LDAP_INITIALIZE
-        ldap_server_url = pstrcat(session.pool, "ldap://", item, "/", NULL);
-
-#else /* HAS_LDAP_INITIALIZE */
-        ldap_server = pstrdup(session.pool, item);
-        ldap_port = LDAP_PORT;
-#endif /*  HAS_LDAP_INITIALIZE */
-      }
+    if (ldap_servers != NULL) {
+      curr_server_info = ((struct server_info **) ldap_servers->elts)[curr_server_index];
     }
 
-    if (do_ldap_connect(conn_ld, do_bind) == 1) {
-      /* This debug level value should be LDAP_DEBUG_ANY, but that macro is, I
-       * think, OpenLDAP-specific.
-       */
-      int debug_level = -1, res;
-
-      res = ldap_set_option(*conn_ld, LDAP_OPT_DEBUG_LEVEL, &debug_level);
-      if (res != LDAP_OPT_SUCCESS) {
-        (void) pr_log_writefile(ldap_logfd, MOD_LDAP_VERSION,
-          "error setting DEBUG_ANY debug level: %s", ldap_err2string(res));
+    res = do_ldap_connect(conn_ld, do_bind);
+    if (res < 0) {
+      ++curr_server_index;
+      if (curr_server_index >= ldap_servers->nelts) {
+        curr_server_index = 0;
       }
 
-      return 1;
+      continue;
     }
 
-    ++cur_server_index;
-    if (cur_server_index >= ldap_servers->nelts) {
-      cur_server_index = 0;
+    /* This debug level value should be LDAP_DEBUG_ANY, but that macro is, I
+     * think, OpenLDAP-specific.
+     */
+    res = ldap_set_option(*conn_ld, LDAP_OPT_DEBUG_LEVEL, &debug_level);
+    if (res != LDAP_OPT_SUCCESS) {
+      (void) pr_log_writefile(ldap_logfd, MOD_LDAP_VERSION,
+        "error setting DEBUG_ANY debug level: %s", ldap_err2string(res));
     }
 
-  } while (cur_server_index != start_server_index);
+    return 0;
+
+  } while (curr_server_index != start_server_index);
 
   return -1;
 }
@@ -507,7 +482,7 @@ static LDAPMessage *pr_ldap_search(const char *basedn, const char *filter,
    */
   if (ld == NULL) {
     /* If we _still_ can't connect, give up and return NULL. */
-    if (pr_ldap_connect(&ld, TRUE) == -1) {
+    if (pr_ldap_connect(&ld, TRUE) < 0) {
       return NULL;
     }
   }
@@ -1242,6 +1217,7 @@ MODRET handle_ldap_ssh_pubkey_lookup(cmd_rec *cmd) {
   return mod_create_data(cmd, cached_ssh_pubkeys);
 }
 
+/* Auth handlers */
 MODRET ldap_auth_setpwent(cmd_rec *cmd) {
   if (ldap_do_users == FALSE &&
       ldap_do_groups == FALSE) {
@@ -1430,9 +1406,6 @@ return_groups:
   return PR_DECLINED(cmd);
 }
 
-/* Authentication handlers
- */
-
 /* cmd->argv[0] : user name
  * cmd->argv[1] : cleartext password
  */
@@ -1542,7 +1515,7 @@ MODRET ldap_auth_check(cmd_rec *cmd) {
       return PR_DECLINED(cmd);
     }
 
-    if (pr_ldap_connect(&ld_auth, FALSE) == -1) {
+    if (pr_ldap_connect(&ld_auth, FALSE) < 0) {
       (void) pr_log_writefile(ldap_logfd, MOD_LDAP_VERSION,
         "unable to check login: LDAP connection failed");
       return PR_DECLINED(cmd);
@@ -1689,6 +1662,41 @@ MODRET ldap_auth_name2gid(cmd_rec *cmd) {
   return mod_create_data(cmd, (void *) &gr->gr_gid);
 }
 
+/* Free up any library-allocated memory. */
+static void server_info_free(void) {
+  server_rec *s;
+
+  for (s = (server_rec *) server_list->xas_list; s; s = s->next) {
+    register unsigned int i;
+    config_rec *c;
+    array_header *infos;
+
+    c = find_config(s->conf, CONF_PARAM, "LDAPServer", FALSE);
+    if (c == NULL) {
+      continue;
+    }
+
+    pr_signals_handle();
+
+    infos = c->argv[0];
+    for (i = 0; i < infos->nelts; i++) {
+      struct server_info *info;
+
+      info = ((struct server_info **) infos->elts)[i];
+
+      if (info->url_desc != NULL) {
+        ldap_free_urldesc(info->url_desc);
+        info->url_desc = NULL;
+      }
+
+      if (info->url_text != NULL) {
+        ldap_memfree(info->url_text);
+        info->url_text = NULL;
+      }
+    }
+  }
+}
+
 /* Configuration handlers
  */
 
@@ -1727,81 +1735,143 @@ MODRET set_ldapprotoversion(cmd_rec *cmd) {
 
 MODRET set_ldapserver(cmd_rec *cmd) {
   register unsigned int i;
-  int len;
-  LDAPURLDesc *url;
-  array_header *urls = NULL;
+  array_header *infos, *items;
   config_rec *c;
 
-  CHECK_ARGS(cmd, 1);
+  if (cmd->argc < 2) {
+    CONF_ERROR(cmd, "wrong number of parameters");
+  }
   CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL);
 
   c = add_config_param(cmd->argv[0], 1, NULL);
-  urls = make_array(c->pool, cmd->argc - 1, sizeof(char *));
-  c->argv[0] = urls;
+  infos = make_array(c->pool, cmd->argc - 1, sizeof(struct server_info *));
+  c->argv[0] = infos;
 
-  for (i = 1; i < cmd->argc; ++i) {
+  /* For historical reasons, the LDAPServer directive supports having
+   * multiple hosts/URLs being passed as a single string, quoted and
+   * separated by whitespace.  That is not really necessary, but we need
+   * to handle such items as well.
+   *
+   * Order matters, since the ordering of these hosts/URLs dictates the
+   * order in which they are tried when attempting to connect.
+   */
+
+  items = make_array(cmd->tmp_pool, cmd->argc - 1, sizeof(char *));
+  for (i = 1; i < cmd->argc; i++) {
     char *item;
 
     item = cmd->argv[i];
 
+    /* Split non-URL arguments on whitespace and insert them as separate
+     * servers.
+     */
+    while (*item) {
+      size_t len;
+
+      pr_signals_handle();
+
+      len = strcspn(item, " \f\n\r\t\v");
+      *((char **) push_array(items)) = pstrndup(cmd->tmp_pool, item, len);
+
+      item += len;
+      while (PR_ISSPACE(*item)) {
+        ++item;
+      }
+    }
+  }
+
+  for (i = 0; i < items->nelts; i++) {
+    char *item;
+    struct server_info *info;
+
+    item = ((char **) items->elts)[i];
+    info = pcalloc(c->pool, sizeof(struct server_info));
+
+    info->info_text = pstrdup(c->pool, item);
+
     if (ldap_is_ldap_url(item)) {
-      char *url_desc;
+      int res;
+      LDAPURLDesc *url_desc;
+      char *url_text;
 
-      if (ldap_url_parse(item, &url) != LDAP_URL_SUCCESS) {
+      res = ldap_url_parse(item, &url_desc);
+      if (res != LDAP_URL_SUCCESS) {
         CONF_ERROR(cmd, pstrcat(cmd->tmp_pool,
-          "must be supplied with a valid LDAP URL: ", item, NULL));
+          "invalid LDAP URL '", item, "': ", ldap_err2string(res), NULL));
       }
 
-      url_desc = ldap_url_desc2str(url);
-      if (url_desc != NULL) {
+      info->url_desc = url_desc;
+
+      url_text = ldap_url_desc2str(url_desc);
+      if (url_text != NULL) {
         pr_log_debug(DEBUG0, "%s: parsed URL '%s' as '%s'",
-          (char *) cmd->argv[0], item, url_desc);
-        ldap_memfree(url_desc);
-      }
-
-      if (find_config(cmd->server->conf, CONF_PARAM, "LDAPSearchScope", FALSE)) {
-        CONF_ERROR(cmd, "LDAPSearchScope cannot be used when LDAPServer specifies a URL; specify a search scope in the LDAPServer URL instead");
+          (char *) cmd->argv[0], item, url_text);
+        info->url_text = url_text;
       }
 
 #ifdef HAS_LDAP_INITIALIZE
-      if (strncasecmp(item, "ldap:", 5) != 0 &&
-          strncasecmp(item, "ldaps:", 6) != 0) {
-        CONF_ERROR(cmd, "Invalid scheme specified by LDAPServer URL: valid schemes are 'ldap' or 'ldaps'");
+      if (strcasecmp(url_desc->lud_scheme, "ldap") != 0 &&
+          strcasecmp(url_desc->lud_scheme, "ldaps") != 0) {
+        CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "invalid scheme specified by URL '", item, "': valid schemes are 'ldap' or 'ldaps'", NULL));
       }
-
 #else /* HAS_LDAP_INITIALIZE */
-      if (strncasecmp(item, "ldap:", 5) != 0) {
-        CONF_ERROR(cmd, "Invalid scheme specified by LDAPServer URL: valid schemes are 'ldap'");
+      if (strcasecmp(url_desc->lud_scheme, "ldap") != 0) {
+        CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "unsupported scheme specified by URL '", item, "': valid scheme is only 'ldap'", NULL));
       }
 #endif /* HAS_LDAP_INITIALIZE */
 
-      if (url->lud_dn != NULL &&
-          strcmp(url->lud_dn, "") != 0) {
-        CONF_ERROR(cmd, "A base DN may not be specified by an LDAPServer URL, only by LDAPUsers or LDAPGroups");
+      if (url_desc->lud_dn != NULL &&
+          strcmp(url_desc->lud_dn, "") != 0) {
+        CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, item, ": a base DN may not be specified by an LDAPServer URL, only by LDAPUsers or LDAPGroups", NULL));
       }
 
-      if (url->lud_filter != NULL &&
-         strcmp(url->lud_filter, "") != 0) {
-        CONF_ERROR(cmd, "A search filter may not be specified by an LDAPServer URL, only by LDAPUsers or LDAPGroups");
+      if (url_desc->lud_filter != NULL &&
+         strcmp(url_desc->lud_filter, "") != 0) {
+        CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, item, ": a search filter may not be specified by an LDAPServer URL, only by LDAPUsers or LDAPGroups", NULL));
       }
 
-      ldap_free_urldesc(url);
-      *((char **) push_array(urls)) = pstrdup(c->pool, item);
+      if (url_desc->lud_scope == LDAP_SCOPE_BASE) {
+        pr_log_debug(DEBUG0, MOD_LDAP_VERSION
+          ": WARNING: '%s': LDAP URL search scopes default to 'base', "
+          "not 'subtree', and may not be what you want (see LDAPSearchScope)",
+          item);
+      }
+
+      /* Need to keep parsed host and port for pre-2000 ldap_init(3). */
+      if (url_desc->lud_host != NULL) {
+        info->host = pstrdup(c->pool, url_desc->lud_host);
+      }
+
+      if (url_desc->lud_port != 0) {
+        info->port = url_desc->lud_port;
+      }
 
     } else {
-      /* Split non-URL arguments on whitespace and insert them as separate
-       * servers.
-       */
-      while (*item) {
-        len = strcspn(item, " \f\n\r\t\v");
-        *((char **) push_array(urls)) = pstrndup(c->pool, item, len);
+      char *ptr;
 
-        item += len;
-        while (PR_ISSPACE(*item)) {
-          ++item;
+      /* The given item is just a hostname/IP address, maybe a port. */
+      ptr = strchr(item, ':');
+      if (ptr == NULL) {
+        info->host = pstrdup(c->pool, item);
+        info->port = LDAP_PORT;
+
+      } else {
+        int port;
+
+        info->host = pstrndup(c->pool, item, ptr - item);
+
+        port = atoi(ptr + 1);
+        if (port == 0) {
+          CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "unable to parse '", ptr + 1,
+            "' as a port number for '", item, "'", NULL));
         }
+
+        info->port = port;
+        info->port_text = pstrdup(c->pool, ptr + 1);
       }
     }
+
+    *((struct server_info **) push_array(infos)) = info;
   }
 
   return PR_HANDLED(cmd);
@@ -1809,26 +1879,26 @@ MODRET set_ldapserver(cmd_rec *cmd) {
 
 /* usage: LDAPUseTLS on|off */
 MODRET set_ldapusetls(cmd_rec *cmd) {
-#ifndef LDAP_OPT_X_TLS
-  CONF_ERROR(cmd, "LDAPUseTLS: Your LDAP libraries do not appear to support TLS");
-
-#else /* LDAP_OPT_X_TLS */
-  int b;
+#if defined(LDAP_OPT_X_TLS)
+  int use_tls;
   config_rec *c;
 
   CHECK_ARGS(cmd, 1);
   CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL);
 
-  b = get_boolean(cmd, 1);
-  if (b == -1) {
+  use_tls = get_boolean(cmd, 1);
+  if (use_tls == -1) {
     CONF_ERROR(cmd, "expected Boolean parameter");
   }
 
   c = add_config_param(cmd->argv[0], 1, NULL);
   c->argv[0] = pcalloc(c->pool, sizeof(int));
-  *((int *) c->argv[0]) = b;
+  *((int *) c->argv[0]) = use_tls;
 
   return PR_HANDLED(cmd);
+
+#else /* LDAP_OPT_X_TLS */
+  CONF_ERROR(cmd, "Your LDAP libraries do not appear to support TLS");
 #endif /* LDAP_OPT_X_TLS */
 }
 
@@ -1848,22 +1918,6 @@ MODRET set_ldapsearchscope(cmd_rec *cmd) {
   CHECK_ARGS(cmd, 1);
   CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL);
 
-  c = find_config(main_server->conf, CONF_PARAM, "LDAPServer", FALSE);
-  if (c != NULL) {
-    register unsigned int i;
-    array_header *servers = NULL;
-
-    servers = c->argv[0];
-    for (i = 0; i < servers->nelts; i++) {
-      char *elt;
-
-      elt = ((char **) servers->elts)[i];
-      if (ldap_is_ldap_url(elt)) {
-        CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "cannot be used when LDAPServer specifies a URL (see '", elt, "'); specify a search scope in the LDAPServer URL instead", NULL));
-      }
-    }
-  }
-
   scope_name = cmd->argv[1];
 
   if (strcasecmp(scope_name, "base") == 0) {
@@ -1873,7 +1927,8 @@ MODRET set_ldapsearchscope(cmd_rec *cmd) {
              strcasecmp(scope_name, "onelevel") == 0) {
     search_scope = LDAP_SCOPE_ONELEVEL;
 
-  } else if (strcasecmp(scope_name, "subtree") == 0) {
+  } else if (strcasecmp(scope_name, "sub") == 0 ||
+             strcasecmp(scope_name, "subtree") == 0) {
     search_scope = LDAP_SCOPE_SUBTREE;
 
   } else {
@@ -2190,6 +2245,141 @@ MODRET set_ldapdefaultquota(cmd_rec *cmd) {
 /* Event listeners
  */
 
+#if defined(PR_SHARED_MODULE)
+static void ldap_mod_unload_ev(const void *event_data, void *user_data) {
+  if (strcmp("mod_ldap.c", (const char *) event_data) != 0) {
+    return;
+  }
+
+  pr_event_unregister(&ldap_module, NULL, NULL);
+  server_info_free();
+}
+#endif /* PR_SHARED_MODULE */
+
+static void ldap_postparse_ev(const void *event_data, void *user_data) {
+  server_rec *s = NULL;
+
+  /* Check the configured LDAPServer directives.  Specifically, if the URL
+   * syntax has been used, we look for any LDAPSearchScope directive and
+   * warn that they are ignored.  Similarly, if there are "ldaps" URLs,
+   * we warn that any LDAPUseTLS directive will be ignored.  Otherwise,
+   * cases where LDAP URLs have not been used, we construct them.
+   */
+  for (s = (server_rec *) server_list->xas_list; s; s = s->next) {
+    register unsigned int i;
+    config_rec *c;
+    array_header *infos;
+    int search_scope = -1, use_tls = -1;
+
+    pr_signals_handle();
+
+    c = find_config(s->conf, CONF_PARAM, "LDAPSearchScope", FALSE);
+    if (c != NULL) {
+      search_scope = *((int *) c->argv[0]);
+
+    } else {
+      /* Per documentation, the default search scope is "subtree". */
+      search_scope = LDAP_SCOPE_SUBTREE;
+    }
+
+#if defined(LDAP_OPT_X_TLS)
+    c = find_config(s->conf, CONF_PARAM, "LDAPUseTLS", FALSE);
+    if (c != NULL) {
+      use_tls = *((int *) c->argv[0]);
+    }
+#endif /* LDAP_OPT_X_TLS */
+
+    c = find_config(s->conf, CONF_PARAM, "LDAPServer", FALSE);
+    if (c == NULL) {
+      continue;
+    }
+
+    infos = c->argv[0];
+
+    for (i = 0; i < infos->nelts; i++) {
+      struct server_info *info;
+
+      info = ((struct server_info **) infos->elts)[i];
+
+      if (info->url_desc != NULL) {
+        if (info->url_desc->lud_scope != search_scope) {
+          /* When LDAP URLs are used, the search scope is part of the URL
+           * syntax, which takes precedence over LDAPSearchScope.
+           */
+          pr_log_debug(DEBUG2, MOD_LDAP_VERSION
+            ": ignoring configured LDAPSearchScope for LDAP URL '%s'",
+            info->info_text);
+        }
+
+        /* If the scheme is "ldaps", AND LDAPUseTLS has been explicitly
+         * configured, warn that it will be ignored.
+         */
+        if (use_tls != -1) {
+          if (strcasecmp(info->url_desc->lud_scheme, "ldaps") == 0) {
+            pr_log_debug(DEBUG2, MOD_LDAP_VERSION
+              ": ignoring configured LDAPUseTLS for explicit LDAPS URL '%s'",
+              info->info_text);
+          } else {
+            info->use_starttls = use_tls;
+          }
+        }
+
+      } else {
+        int res;
+        char *url, *url_text;
+        LDAPURLDesc *url_desc;
+
+        /* Construct an LDAP URL, and parse it. */
+
+        url = pstrcat(c->pool, "ldap://", info->host, NULL);
+        if (info->port_text != NULL) {
+          url = pstrcat(c->pool, url, ":", info->port_text, NULL);
+        }
+
+        switch (search_scope) {
+          case LDAP_SCOPE_SUBTREE:
+            url = pstrcat(c->pool, url, "/??sub", NULL);
+            break;
+
+          case LDAP_SCOPE_BASE:
+            url = pstrcat(c->pool, url, "/??base", NULL);
+            break;
+
+          case LDAP_SCOPE_ONELEVEL:
+            url = pstrcat(c->pool, url, "/??one", NULL);
+            break;
+
+          default:
+            break;
+        }
+
+        res = ldap_url_parse(url, &url_desc);
+        if (res != LDAP_URL_SUCCESS) {
+          /* This should only happen as a result of a coding bug. */
+          pr_log_pri(PR_LOG_NOTICE, MOD_LDAP_VERSION
+            ": invalid LDAP URL '%s': %s", url, ldap_err2string(res));
+          pr_session_disconnect(&ldap_module, PR_SESS_DISCONNECT_BAD_CONFIG,
+            NULL);
+        }
+
+        info->url_desc = url_desc;
+        info->port = url_desc->lud_port;
+
+        url_text = ldap_url_desc2str(url_desc);
+        if (url_text != NULL) {
+          pr_log_debug(DEBUG0, "%s: parsed URL '%s' as '%s'", c->name, url,
+            url_text);
+          info->url_text = url_text;
+        }
+
+        if (use_tls != -1) {
+          info->use_starttls = use_tls;
+        }
+      }
+    }
+  }
+}
+
 static void ldap_sess_reinit_ev(const void *event_data, void *user_data) {
   int res;
 
@@ -2202,9 +2392,6 @@ static void ldap_sess_reinit_ev(const void *event_data, void *user_data) {
   ldap_logfd = -1;
   ldap_protocol_version = 3;
   ldap_servers = NULL;
-#if defined(LDAP_OPT_X_TLS)
-  ldap_use_tls = FALSE;
-#endif /* LDAP_OPT_X_TLS */
   ldap_dn = NULL;
   ldap_dnpass = NULL;
   ldap_search_scope = LDAP_SCOPE_SUBTREE;
@@ -2250,6 +2437,10 @@ static void ldap_sess_reinit_ev(const void *event_data, void *user_data) {
   }
 }
 
+static void ldap_shutdown_ev(const void *event_data, void *user_data) {
+  server_info_free();
+}
+
 /* Initialization routines
  */
 
@@ -2257,6 +2448,53 @@ static int ldap_mod_init(void) {
   pr_log_debug(DEBUG2, MOD_LDAP_VERSION
     ": compiled using LDAP vendor '%s', LDAP API version %lu",
     LDAP_VENDOR_NAME, (unsigned long) LDAP_API_VERSION);
+
+#if defined(LDAP_OPT_API_INFO)
+  {
+    int res;
+    LDAPAPIInfo api_info;
+
+    api_info.ldapai_info_version = LDAP_API_INFO_VERSION;
+    res = ldap_get_option(NULL, LDAP_OPT_API_INFO, &api_info);
+    if (res == LDAP_OPT_SUCCESS) {
+      pool *tmp_pool;
+      char *feats = "";
+
+      tmp_pool = make_sub_pool(permanent_pool);
+
+      if (api_info.ldapai_extensions != NULL) {
+        register unsigned int i;
+
+        for (i = 0; api_info.ldapai_extensions[i]; i++) {
+          feats = pstrcat(tmp_pool, feats, i != 0 ? ", " : "",
+            api_info.ldapai_extensions[i]);
+          ldap_memfree(api_info.ldapai_extensions[i]);
+        }
+
+        ldap_memfree(api_info.ldapai_extensions);
+      }
+
+      pr_log_debug(DEBUG10, MOD_LDAP_VERSION
+        " linked with LDAP vendor '%s' (LDAP API version %d, "
+        "vendor version %d), features: %s", api_info.ldapai_vendor_name,
+        api_info.ldapai_api_version, api_info.ldapai_vendor_version,
+        feats);
+      ldap_memfree(api_info.ldapai_vendor_name);
+      destroy_pool(tmp_pool);
+
+    } else {
+      pr_trace_msg(trace_channel, 3,
+        "error retrieving LDAP_OPT_API_INFO: %s", ldap_err2string(res));
+    }
+  }
+#endif /* LDAP_OPT_API_INFO */
+
+#if defined(PR_SHARED_MODULE)
+  pr_event_register(&ldap_module, "core.module-unload", ldap_mod_unload_ev,
+    NULL);
+#endif /* PR_SHARED_MODULE */
+  pr_event_register(&ldap_module, "core.postparse", ldap_postparse_ev, NULL);
+  pr_event_register(&ldap_module, "core.shutdown", ldap_shutdown_ev, NULL);
 
   return 0;
 }
@@ -2319,21 +2557,7 @@ static int ldap_sess_init(void) {
   } else {
     pr_log_pri(PR_LOG_NOTICE, MOD_LDAP_VERSION
       ": no LDAPServer configured, using LDAP library defaults");
-
-    /* Leave a NULL server entry if LDAPServer isn't present, so
-     * ldap_init()/ldap_initialize() will connect to the LDAP SDK's
-     * default.
-     */
-    ldap_servers = make_array(ldap_pool, 1, sizeof(char *));
-    *((char **) push_array(ldap_servers)) = NULL;
   }
-
-#if defined(LDAP_OPT_X_TLS)
-  ptr = get_param_ptr(main_server->conf, "LDAPUseTLS", FALSE);
-  if (ptr != NULL) {
-    ldap_use_tls = *((int *) ptr);
-  }
-#endif /* LDAP_OPT_X_TLS */
 
   c = find_config(main_server->conf, CONF_PARAM, "LDAPBindDN", FALSE);
   if (c != NULL) {
