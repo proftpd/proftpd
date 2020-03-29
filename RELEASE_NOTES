@@ -6,6 +6,21 @@ This file contains a description of the major changes to ProFTPD for the
 releases.  More information on these changes can be found in the NEWS and
 ChangeLog files.
 
+1.3.7rc4
+---------
+
+  + Implemented support for configuring certificate options for LDAP
+    connections using SSL/TLS.
+
+  + Changed Configuration Directives
+
+    LDAPServer
+      The LDAPServer directive now supports configuring the trusted CA
+      file, client certificate and key files, SSL ciphers, and verification
+      policies for LDAP connections.  See doc/contrib/mod_ldap.html#LDAPServer
+      for more details.
+
+
 1.3.7rc3
 ---------
 
@@ -32,9 +47,15 @@ ChangeLog files.
 
   + Changed Configuration Directives
 
-    LogFormat %{transfer-port} (Issue #912)
+    LogFormat %{transfer-port}
+      The LogFormat directive supports a %{transfer-port} variable for
+      logging the selected data transfer port.
 
-    SFTPOptions NoExtensionNegotiation (Issue #907)
+    SFTPOptions NoExtensionNegotiation
+      The mod_sftp module now supports SSH extension negotations (RFC 8332).
+      If there any issues with this support, it can be disabled using:
+
+        SFTPOptions NoExtensionNegotiation
 
     SQLAuthTypes bcrypt
       The mod_sql_passwd module now supports bcrypt-encrypted passwords.
