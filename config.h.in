@@ -759,6 +759,9 @@
 /* Define if you have the <regex.h> header file.  */
 #undef HAVE_REGEX_H
 
+/* Define if you have the <sasl/sasl.h> header file.  */
+#undef HAVE_SASL_SASL_H
+
 /* Define if you have the <security/pam_appl.h> header file.  */
 #undef HAVE_SECURITY_PAM_APPL_H
 

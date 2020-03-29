@@ -48,6 +48,7 @@ questions, concerns, or suggestions regarding this module.
   <li><a href="#LDAPSearchScope">LDAPSearchScope</a>
   <li><a href="#LDAPServer">LDAPServer</a>
   <li><a href="#LDAPUsers">LDAPUsers</a>
+  <li><a href="#LDAPUseSASL">LDAPUseSASL</a>
   <li><a href="#LDAPUseTLS">LDAPUseTLS</a>
 </ul>
 
@@ -136,7 +137,7 @@ The following LDAP attributes can be renamed in this manner:
 
 <p>
 By default, the DN specified by the
-<a href="#LDAPBindDNo"><code>LDAPBindDN</code></a> will be used to bind to the
+<a href="#LDAPBindDN"><code>LDAPBindDN</code></a> will be used to bind to the
 LDAP server to obtain user information, including the <code>userPassword</code>
 attribute.  If <code>LDAPAuthBinds</code> is set to <em>on</em>, the DN
 specified by <code>LDAPDNInfo</code> will be used to fetch all user information
@@ -177,7 +178,7 @@ The default is:
 </pre>
 
 <p>
-See also: <a href="#LDAPServer"><code>LDAPServer</code></a>
+See also: <a href="#LDAPServer"><code>LDAPServer</code></a>, <a href="#LDAPUseSASL"><code>LDAPUseSASL</code></a>
 
 <p>
 <hr>
@@ -731,6 +732,54 @@ The <em>uidNumber</em> attribute name used in the search filter comes from
 the <a href="#LDAPAttr"><code>LDAPAttr</code></a> directive.
 Note that filter templates are only supported in <code>mod_ldap</code>
 version 2.7 and later.
+
+<p>
+<hr>
+<h3><a name="LDAPUseSASL">LDAPUseSASL</a></h3>
+<strong>Syntax:</strong> LDAPUseSASL <em>mech1 ...</em><br>
+<strong>Default:</strong> None<br>
+<strong>Context:</strong> server config, <code>&lt;VirtualHost&gt;</code>, <code>&lt;Global&gt;</code><br>
+<strong>Module:</strong> mod_ldap<br>
+<strong>Compatibility:</strong> 1.3.7rc4 and later
+
+<p>
+The <code>LDAPUseSASL</code> directive tells the <code>mod_ldap</code> module
+to use the configured space-separated list of
+<a href="https://ldapwiki.com/wiki/SASL">SASL</a> (Simple Authentication and
+Security Layer) mechanisms, when using the
+<a href="#LDAPBindDN"><code>LDAPBindDN</code></a> to talk to the LDAP server.
+By default, <em>simple</em> binds are done to the LDAP server.
+
+<p>
+The currently supported mechanisms are:
+<ul>
+  <li>ANONYMOUS
+  <li>CRAM-MD5
+  <li>DIGEST-MD5
+  <li>LOGIN
+  <li>PLAIN
+  <li>SCRAM-SHA-1
+</ul>
+The order in which the mechanisms are configured matters; the first one
+selected by the LDAP server wins.
+
+<p>
+<b>Note</b> that a SASL mechanism configured here may still be rejected by
+the LDAP server, if the server-side policies for authentication are not met.
+Indeed, some SASL mechanisms may only be allowed by the server <i>if</i> used
+in conjunction with SSL/TLS; this is a common requirement for using the
+<code>LOGIN</code> and <code>PLAIN</code> mechanisms.
+
+<p>
+Thus a good default configuration, using TLS <i>and</i> SASL, might be:
+<pre>
+  &lt;IfModule mod_ldap.c&gt;
+    LDAPServer ldap.example.com
+    LDAPBindDN CN=readonly,DC=example,DC=com ...
+    LDAPUseSASL SCRAM-SHA-1 DIGEST-MD5
+    LDAPUseTLS on
+  &lt;/IfModule&gt;
+</pre>
 
 <p>
 <hr>

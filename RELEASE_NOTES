@@ -12,6 +12,14 @@ ChangeLog files.
   + Implemented support for configuring certificate options for LDAP
     connections using SSL/TLS.
 
+  + New Configuration Directives
+
+    LDAPUseSASL
+
+      The LDAPUseSASL directive configures a list of SASL authentication
+      mechanisms to use, when using the LDAPBindDN to bind to the LDAP
+      server.  See doc/contrib/mod_ldap.html#LDAPUseSASL for details.
+
   + Changed Configuration Directives
 
     LDAPServer
