@@ -111,6 +111,7 @@ BuildRequires: geoip-devel
 #
 # --with ldap (for mod_ldap, mod_quotatab_ldap)
 %if 0%{?_with_ldap:1}
+BuildRequires: cyrus-sasl-devel
 BuildRequires: openldap-devel
 %endif
 #

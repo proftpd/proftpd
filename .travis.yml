@@ -27,6 +27,8 @@ install:
   - sudo apt-get install -y libgeoip-dev
   # for mod_ldap
   - sudo apt-get install -y libldap2-dev libsasl2-dev
+  # for mod_ldap runtime support for SCRAM
+  - sudo apt-get install -y libsasl2-modules-gssapi-mit
   # for memcache support
   - sudo apt-get install -y libmemcached-dev
   # for redis support
