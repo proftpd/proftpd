@@ -31,6 +31,8 @@
 - Bug 4394 - LogFormat %a gives local server IP address instead of remote
   client IP address.
 - Issue 946 - Improve handling of ldaps URLs, LDAPUseTLS directive in mod_ldap.
+- Issue 82 - Support configurable certificate settings in LDAP SSL/TLS
+  connections.
 
 1.3.7rc3 - Released 20-Feb-2020
 --------------------------------

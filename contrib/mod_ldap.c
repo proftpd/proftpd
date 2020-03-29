@@ -153,6 +153,14 @@ struct server_info {
   LDAPURLDesc *url_desc;
   char *url_text;
   int use_starttls;
+
+  /* For configuring the SSL/TLS session to the LDAP server. */
+  const char *ssl_cert_file;
+  const char *ssl_key_file;
+  const char *ssl_ca_file;
+  const char *ssl_ciphers;
+  int ssl_verify;
+  const char *ssl_verify_text;
 };
 
 static array_header *ldap_servers = NULL;
@@ -302,6 +310,71 @@ static int do_ldap_connect(LDAP **conn_ld, int do_bind) {
     "set LDAP protocol version to %d", version);
 
 #if defined(LDAP_OPT_X_TLS)
+# if defined(LDAP_OPT_X_TLS_CACERTFILE)
+  if (curr_server_info->ssl_ca_file != NULL) {
+    res = ldap_set_option(NULL, LDAP_OPT_X_TLS_CACERTFILE,
+      curr_server_info->ssl_ca_file);
+    if (res != LDAP_OPT_SUCCESS) {
+    } else {
+      pr_trace_msg(trace_channel, 17,
+        "set LDAP_OPT_X_TLS_CACERTFILE = %s for '%s'",
+        curr_server_info->ssl_ca_file, curr_server_info->info_text);
+    }
+  }
+# endif /* LDAP_OPT_X_TLS_CACERTFILE */
+
+# if defined(LDAP_OPT_X_TLS_CERTFILE)
+  if (curr_server_info->ssl_cert_file != NULL) {
+    res = ldap_set_option(NULL, LDAP_OPT_X_TLS_CERTFILE,
+      curr_server_info->ssl_cert_file);
+    if (res != LDAP_OPT_SUCCESS) {
+    } else {
+      pr_trace_msg(trace_channel, 17,
+        "set LDAP_OPT_X_TLS_CERTFILE = %s for '%s'",
+        curr_server_info->ssl_cert_file, curr_server_info->info_text);
+    }
+  }
+# endif /* LDAP_OPT_X_TLS_CERTFILE */
+
+# if defined(LDAP_OPT_X_TLS_KEYFILE)
+  if (curr_server_info->ssl_key_file != NULL) {
+    res = ldap_set_option(NULL, LDAP_OPT_X_TLS_KEYFILE,
+      curr_server_info->ssl_key_file);
+    if (res != LDAP_OPT_SUCCESS) {
+    } else {
+      pr_trace_msg(trace_channel, 17,
+        "set LDAP_OPT_X_TLS_KEYFILE = %s for '%s'",
+        curr_server_info->ssl_key_file, curr_server_info->info_text);
+    }
+  }
+# endif /* LDAP_OPT_X_TLS_KEYFILE */
+
+# if defined(LDAP_OPT_X_TLS_CIPHER_SUITE)
+  if (curr_server_info->ssl_ciphers != NULL) {
+    res = ldap_set_option(NULL, LDAP_OPT_X_TLS_CIPHER_SUITE,
+      curr_server_info->ssl_ciphers);
+    if (res != LDAP_OPT_SUCCESS) {
+    } else {
+      pr_trace_msg(trace_channel, 17,
+        "set LDAP_OPT_X_TLS_CIPHER_SUITE = %s for '%s'",
+        curr_server_info->ssl_ciphers, curr_server_info->info_text);
+    }
+  }
+# endif /* LDAP_OPT_X_TLS_CIPHER_SUITE */
+
+# if defined(LDAP_OPT_X_TLS_REQUIRE_CERT)
+  if (curr_server_info->ssl_verify != -1) {
+    res = ldap_set_option(NULL, LDAP_OPT_X_TLS_REQUIRE_CERT,
+      &(curr_server_info->ssl_verify));
+    if (res != LDAP_OPT_SUCCESS) {
+    } else {
+      pr_trace_msg(trace_channel, 17,
+        "set LDAP_OPT_X_TLS_REQUIRE_CERT = %s for '%s'",
+        curr_server_info->ssl_verify_text, curr_server_info->info_text);
+    }
+  }
+# endif /* LDAP_OPT_X_TLS_REQUIRE_CERT */
+
   if (curr_server_info->use_starttls == TRUE) {
     (void) pr_log_writefile(ldap_logfd, MOD_LDAP_VERSION,
       "LDAPUseTLS in effect, performing STARTTLS handshake on '%s'",
@@ -1662,8 +1735,175 @@ MODRET ldap_auth_name2gid(cmd_rec *cmd) {
   return mod_create_data(cmd, (void *) &gr->gr_gid);
 }
 
+/* server_info functions. */
+static struct server_info *server_info_alloc(pool *p) {
+  struct server_info *info;
+
+  info = pcalloc(p, sizeof(struct server_info));
+  info->ssl_verify = -1;
+
+  return info;
+}
+
+static void server_info_get_ssl_defaults(struct server_info *info) {
+#if defined(LDAP_OPT_X_TLS)
+  int res, ssl_verify;
+  char *ssl_val = NULL;
+
+  /* Fill in the SSL defaults, if not explicitly configured. */
+
+# if defined(LDAP_OPT_X_TLS_CACERTFILE)
+  if (info->ssl_ca_file == NULL) {
+    ssl_val = NULL;
+    res = ldap_get_option(NULL, LDAP_OPT_X_TLS_CACERTFILE, &ssl_val);
+    if (res == LDAP_OPT_SUCCESS) {
+      if (ssl_val != NULL) {
+        pr_trace_msg(trace_channel, 17,
+          "using default 'ssl-ca' value: %s", ssl_val);
+        info->ssl_ca_file = ldap_strdup(ssl_val);
+      }
+    }
+  }
+# endif /* LDAP_OPT_X_TLS_CACERTFILE */
+
+# if defined(LDAP_OPT_X_TLS_CERTFILE)
+  if (info->ssl_cert_file == NULL) {
+    ssl_val = NULL;
+    res = ldap_get_option(NULL, LDAP_OPT_X_TLS_CERTFILE, &ssl_val);
+    if (res == LDAP_OPT_SUCCESS) {
+      if (ssl_val != NULL) {
+        pr_trace_msg(trace_channel, 17,
+          "using default 'ssl-cert' value: %s", ssl_val);
+        info->ssl_cert_file = ldap_strdup(ssl_val);
+      }
+    }
+  }
+# endif /* LDAP_OPT_X_TLS_CERTFILE */
+
+# if defined(LDAP_OPT_X_TLS_KEYFILE)
+  if (info->ssl_key_file == NULL) {
+    ssl_val = NULL;
+    res = ldap_get_option(NULL, LDAP_OPT_X_TLS_KEYFILE, &ssl_val);
+    if (res == LDAP_OPT_SUCCESS) {
+      if (ssl_val != NULL) {
+        pr_trace_msg(trace_channel, 17,
+          "using default 'ssl-key' value: %s", ssl_val);
+        info->ssl_key_file = ldap_strdup(ssl_val);
+      }
+    }
+  }
+# endif /* LDAP_OPT_X_TLS_KEYFILE */
+
+# if defined(LDAP_OPT_X_TLS_CIPHER_SUITE)
+  if (info->ssl_ciphers == NULL) {
+    ssl_val = NULL;
+    res = ldap_get_option(NULL, LDAP_OPT_X_TLS_CIPHER_SUITE, &ssl_val);
+    if (res == LDAP_OPT_SUCCESS) {
+      if (ssl_val != NULL) {
+        pr_trace_msg(trace_channel, 17,
+          "using default 'ssl-ciphers' value: %s", ssl_val);
+        info->ssl_ciphers = ldap_strdup(ssl_val);
+      }
+    }
+  }
+# endif /* LDAP_OPT_X_TLS_CIPHER_SUITE */
+
+# if defined(LDAP_OPT_X_TLS_REQUIRE_CERT)
+  if (info->ssl_verify == -1) {
+    res = ldap_get_option(NULL, LDAP_OPT_X_TLS_REQUIRE_CERT, &ssl_verify);
+    if (res == LDAP_OPT_SUCCESS) {
+      ssl_val = NULL;
+
+      switch (ssl_verify) {
+#  if defined(LDAP_OPT_X_TLS_NEVER)
+        case LDAP_OPT_X_TLS_NEVER:
+          ssl_val = "never";
+          break;
+#  endif /* LDAP_OPT_X_TLS_NEVER */
+
+#  if defined(LDAP_OPT_X_TLS_HARD)
+        case LDAP_OPT_X_TLS_HARD:
+          ssl_val = "hard";
+          break;
+#  endif /* LDAP_OPT_X_TLS_HARD */
+
+#  if defined(LDAP_OPT_X_TLS_DEMAND)
+        case LDAP_OPT_X_TLS_DEMAND:
+          ssl_val = "demand";
+          break;
+#  endif /* LDAP_OPT_X_TLS_DEMAND */
+
+#  if defined(LDAP_OPT_X_TLS_ALLOW)
+        case LDAP_OPT_X_TLS_ALLOW:
+          ssl_val = "allow";
+          break;
+#  endif /* LDAP_OPT_X_TLS_ALLOW */
+
+#  if defined(LDAP_OPT_X_TLS_TRY)
+        case LDAP_OPT_X_TLS_TRY:
+          ssl_val = "try";
+          break;
+#  endif /* LDAP_OPT_X_TLS_TRY */
+
+        default:
+          ssl_val = NULL;
+      }
+
+      pr_trace_msg(trace_channel, 17,
+        "using default 'ssl-verify' value: %s", ssl_val ? ssl_val : "UNKNOWN");
+
+      info->ssl_verify = ssl_verify;
+
+      if (ssl_val != NULL) {
+        info->ssl_verify_text = ldap_strdup(ssl_val);
+      }
+    }
+  }
+# endif /* LDAP_OPT_X_TLS_REQUIRE_CERT */
+#endif /* LDAP_OPT_X_TLS */
+}
+
 /* Free up any library-allocated memory. */
-static void server_info_free(void) {
+static void server_info_free(struct server_info *info) {
+  if (info->url_desc != NULL) {
+    ldap_free_urldesc(info->url_desc);
+    info->url_desc = NULL;
+  }
+
+  if (info->url_text != NULL) {
+    ldap_memfree(info->url_text);
+    info->url_text = NULL;
+  }
+
+  if (info->ssl_ca_file != NULL) {
+    ldap_memfree((char *) info->ssl_ca_file);
+    info->ssl_ca_file = NULL;
+  }
+
+  if (info->ssl_cert_file != NULL) {
+    ldap_memfree((char *) info->ssl_cert_file);
+    info->ssl_cert_file = NULL;
+  }
+
+  if (info->ssl_key_file != NULL) {
+    ldap_memfree((char *) info->ssl_key_file);
+    info->ssl_key_file = NULL;
+  }
+
+  if (info->ssl_ciphers != NULL) {
+    ldap_memfree((char *) info->ssl_ciphers);
+    info->ssl_ciphers = NULL;
+  }
+
+  info->ssl_verify = -1;
+
+  if (info->ssl_verify_text != NULL) {
+    ldap_memfree((char *) info->ssl_verify_text);
+    info->ssl_verify_text = NULL;
+  }
+}
+
+static void server_infos_free(void) {
   server_rec *s;
 
   for (s = (server_rec *) server_list->xas_list; s; s = s->next) {
@@ -1683,16 +1923,7 @@ static void server_info_free(void) {
       struct server_info *info;
 
       info = ((struct server_info **) infos->elts)[i];
-
-      if (info->url_desc != NULL) {
-        ldap_free_urldesc(info->url_desc);
-        info->url_desc = NULL;
-      }
-
-      if (info->url_text != NULL) {
-        ldap_memfree(info->url_text);
-        info->url_text = NULL;
-      }
+      server_info_free(info);
     }
   }
 }
@@ -1733,8 +1964,12 @@ MODRET set_ldapprotoversion(cmd_rec *cmd) {
   return PR_HANDLED(cmd);
 }
 
+/* usage: LDAPServer info [ssl-cert:<path>] [ssl-key:<path>] [ssl-ca:<path>]
+ *          [ssl-ciphers:ciphers] [ssl-verify:verify]
+ */
 MODRET set_ldapserver(cmd_rec *cmd) {
   register unsigned int i;
+  struct server_info *info = NULL;
   array_header *infos, *items;
   config_rec *c;
 
@@ -1747,10 +1982,10 @@ MODRET set_ldapserver(cmd_rec *cmd) {
   infos = make_array(c->pool, cmd->argc - 1, sizeof(struct server_info *));
   c->argv[0] = infos;
 
-  /* For historical reasons, the LDAPServer directive supports having
-   * multiple hosts/URLs being passed as a single string, quoted and
-   * separated by whitespace.  That is not really necessary, but we need
-   * to handle such items as well.
+  /* For historical reasons (and leaky abstractions from underlying LDAP
+   * libraries), the LDAPServer directive supports having multiple hosts/URLs
+   * being passed as a single string, quoted and separated by whitespace.
+   * That is not really necessary, but we need to handle such items as well.
    *
    * Order matters, since the ordering of these hosts/URLs dictates the
    * order in which they are tried when attempting to connect.
@@ -1782,10 +2017,161 @@ MODRET set_ldapserver(cmd_rec *cmd) {
 
   for (i = 0; i < items->nelts; i++) {
     char *item;
-    struct server_info *info;
 
     item = ((char **) items->elts)[i];
-    info = pcalloc(c->pool, sizeof(struct server_info));
+
+    /* Is this an SSL option?  If so, it needs to be applied to the
+     * previously defined LDAP URL/host.  Otherwise, it's a misconfiguration.
+     */
+    if (strncmp(item, "ssl-ca:", 7) == 0) {
+      char *path;
+
+      if (info == NULL) {
+        CONF_ERROR(cmd, "wrong order of parameters");
+      }
+
+      path = item;
+
+      /* Advance past the "ssl-ca:" prefix. */
+      path += 7;
+
+      if (file_exists2(cmd->tmp_pool, path) != TRUE) {
+        CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "SSL CA file '", path, "': ",
+          strerror(ENOENT), NULL));
+      }
+
+      info->ssl_ca_file = ldap_strdup(path);
+      continue;
+
+    } else if (strncmp(item, "ssl-cert:", 9) == 0) {
+      char *path;
+
+      if (info == NULL) {
+        CONF_ERROR(cmd, "wrong order of parameters");
+      }
+
+      path = item;
+
+      /* Advance past the "ssl-cert:" prefix. */
+      path += 9;
+
+      if (file_exists2(cmd->tmp_pool, path) != TRUE) {
+        CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "SSL certificate file '",
+          path, "': ", strerror(ENOENT), NULL));
+      }
+
+      info->ssl_cert_file = ldap_strdup(path);
+      continue;
+
+    } else if (strncmp(item, "ssl-key:", 8) == 0) {
+      char *path;
+
+      if (info == NULL) {
+        CONF_ERROR(cmd, "wrong order of parameters");
+      }
+
+      path = item;
+
+      /* Advance past the "ssl-key:" prefix. */
+      path += 8;
+
+      if (file_exists2(cmd->tmp_pool, path) != TRUE) {
+        CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "SSL certificate key file '",
+          path, "': ", strerror(ENOENT), NULL));
+      }
+
+      info->ssl_key_file = ldap_strdup(path);
+      continue;
+
+    } else if (strncmp(item, "ssl-ciphers:", 12) == 0) {
+      char *ciphers;
+
+      if (info == NULL) {
+        CONF_ERROR(cmd, "wrong order of parameters");
+      }
+
+      ciphers = item;
+
+      /* Advance past the "ssl-ciphers:" prefix. */
+      ciphers += 12;
+
+      info->ssl_ciphers = ldap_strdup(ciphers);
+      continue;
+
+    } else if (strncmp(item, "ssl-verify:", 11) == 0) {
+      int b, ssl_verify = -1;
+      char *verify_text;
+
+      if (info == NULL) {
+        CONF_ERROR(cmd, "wrong order of parameters");
+      }
+
+      verify_text = item;
+
+      /* Advance past the "ssl-verify:" prefix. */
+      verify_text += 11;
+
+      /* For convenience, we accept the usual on/off values, AND the
+       * LDAP specific names, for those who think they want the finer
+       * control.
+       */
+
+      b = pr_str_is_boolean(verify_text);
+      if (b < 0) {
+#if defined(LDAP_OPT_X_TLS_ALLOW)
+        if (strcasecmp(verify_text, "allow") == 0) {
+          ssl_verify = LDAP_OPT_X_TLS_ALLOW;
+#else
+        if (FALSE) {
+#endif /* LDAP_OPT_X_TLS_ALLOW */
+
+#if defined(LDAP_OPT_X_TLS_DEMAND)
+        } else if (strcasecmp(verify_text, "demand") == 0) {
+          ssl_verify = LDAP_OPT_X_TLS_DEMAND;
+#endif /* LDAP_OPT_X_TLS_DEMAND */
+
+#if defined(LDAP_OPT_X_TLS_HARD)
+        } else if (strcasecmp(verify_text, "hard") == 0) {
+          ssl_verify = LDAP_OPT_X_TLS_HARD;
+#endif /* LDAP_OPT_X_TLS_HARD */
+
+#if defined(LDAP_OPT_X_TLS_NEVER)
+        } else if (strcasecmp(verify_text, "never") == 0) {
+          ssl_verify = LDAP_OPT_X_TLS_NEVER;
+#endif /* LDAP_OPT_X_TLS_NEVER */
+
+#if defined(LDAP_OPT_X_TLS_TRY)
+        } else if (strcasecmp(verify_text, "try") == 0) {
+          ssl_verify = LDAP_OPT_X_TLS_TRY;
+#endif /* LDAP_OPT_X_TLS_TRY */
+
+        } else {
+          CONF_ERROR(cmd, pstrcat(cmd->tmp_pool,
+            "unknown/unsupported 'ssl-verify' value: ", verify_text, NULL));
+        }
+
+      } else {
+        if (b == TRUE) {
+#if defined(LDAP_OPT_X_TLS_DEMAND)
+          ssl_verify = LDAP_OPT_X_TLS_DEMAND;
+#endif /* LDAP_OPT_X_TLS_DEMAND */
+          verify_text = "demand";
+
+        } else {
+#if defined(LDAP_OPT_X_TLS_NEVER)
+          ssl_verify = LDAP_OPT_X_TLS_NEVER;
+#endif /* LDAP_OPT_X_TLS_NEVER */
+          verify_text = "never";
+        }
+      }
+
+      info->ssl_verify = ssl_verify;
+      info->ssl_verify_text = ldap_strdup(verify_text);
+      continue;
+
+    } else {
+      info = server_info_alloc(c->pool);
+    }
 
     info->info_text = pstrdup(c->pool, item);
 
@@ -2252,7 +2638,7 @@ static void ldap_mod_unload_ev(const void *event_data, void *user_data) {
   }
 
   pr_event_unregister(&ldap_module, NULL, NULL);
-  server_info_free();
+  server_infos_free();
 }
 #endif /* PR_SHARED_MODULE */
 
@@ -2376,6 +2762,8 @@ static void ldap_postparse_ev(const void *event_data, void *user_data) {
           info->use_starttls = use_tls;
         }
       }
+
+      server_info_get_ssl_defaults(info);
     }
   }
 }
@@ -2438,7 +2826,7 @@ static void ldap_sess_reinit_ev(const void *event_data, void *user_data) {
 }
 
 static void ldap_shutdown_ev(const void *event_data, void *user_data) {
-  server_info_free();
+  server_infos_free();
 }
 
 /* Initialization routines
@@ -2488,6 +2876,23 @@ static int ldap_mod_init(void) {
     }
   }
 #endif /* LDAP_OPT_API_INFO */
+
+#if defined(LDAP_OPT_X_TLS_PACKAGE)
+  {
+    int res;
+    char *tls_package = NULL;
+
+    res = ldap_get_option(NULL, LDAP_OPT_X_TLS_PACKAGE, &tls_package);
+    if (res == LDAP_OPT_SUCCESS) {
+      pr_log_debug(DEBUG10, MOD_LDAP_VERSION
+        ": LDAP TLS package = %s", tls_package);
+
+    } else {
+      pr_trace_msg(trace_channel, 3,
+        "error retrieving LDAP_OPT_X_TLS_PACKAGE: %s", ldap_err2string(res));
+    }
+  }
+#endif /* LDAP_OPT_X_TLS_PACKAGE */
 
 #if defined(PR_SHARED_MODULE)
   pr_event_register(&ldap_module, "core.module-unload", ldap_mod_unload_ev,
@@ -2550,11 +2955,22 @@ static int ldap_sess_init(void) {
     ldap_protocol_version = *((int *) ptr);
   }
 
+  /* Allow for multiple LDAPServer directives. */
   c = find_config(main_server->conf, CONF_PARAM, "LDAPServer", FALSE);
-  if (c != NULL) {
-    ldap_servers = c->argv[0];
+  while (c != NULL) {
+    pr_signals_handle();
 
-  } else {
+    if (ldap_servers != NULL) {
+      array_cat(ldap_servers, c->argv[0]);
+
+    } else {
+      ldap_servers = c->argv[0];
+    }
+
+    c = find_config_next(c, c->next, CONF_PARAM, "LDAPServer", FALSE);
+  }
+
+  if (ldap_servers == NULL) {
     pr_log_pri(PR_LOG_NOTICE, MOD_LDAP_VERSION
       ": no LDAPServer configured, using LDAP library defaults");
   }
