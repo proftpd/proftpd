@@ -2079,18 +2079,6 @@ static void show_settings(void) {
   printf("%s", "    - NLS support\n");
 #endif /* PR_USE_NLS */
 
-#ifdef PR_USE_REDIS
-  printf("%s", "    + Redis support\n");
-#else
-  printf("%s", "    - Redis support\n");
-#endif /* PR_USE_REDIS */
-
-#ifdef PR_USE_SODIUM
-  printf("%s", "    + Sodium support\n");
-#else
-  printf("%s", "    - Sodium support\n");
-#endif /* PR_USE_SODIUM */
-
 #ifdef PR_USE_OPENSSL
 # ifdef PR_USE_OPENSSL_FIPS
     printf("    + OpenSSL support (%s, FIPS enabled)\n", OPENSSL_VERSION_TEXT);
@@ -2112,6 +2100,12 @@ static void show_settings(void) {
 #else
   printf("%s", "    - POSIX ACL support\n");
 #endif /* PR_USE_FACL */
+
+#ifdef PR_USE_REDIS
+  printf("%s", "    + Redis support\n");
+#else
+  printf("%s", "    - Redis support\n");
+#endif /* PR_USE_REDIS */
 
 #ifdef PR_USE_SHADOW
   printf("%s", "    + Shadow file support\n");
