@@ -2125,6 +2125,12 @@ static void show_settings(void) {
   printf("%s", "    - Sendfile support\n");
 #endif /* PR_USE_SENDFILE */
 
+#ifdef PR_USE_SODIUM
+  printf("%s", "    + Sodium support\n");
+#else
+  printf("%s", "    - Sodium support\n");
+#endif /* PR_USE_SODIUM */
+
 #ifdef PR_USE_TRACE
   printf("%s", "    + Trace support\n");
 #else

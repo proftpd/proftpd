@@ -38,7 +38,7 @@
 #   mod_geoip (needs geoip [--with geoip])
 #   mod_ldap (needs openldap [--with ldap])
 #   mod_quotatab_ldap (needs openldap [--with ldap])
-#   mod_sftp (needs openssl [--with ssl])
+#   mod_sftp (needs openssl [--with ssl], sodium [--with sodium])
 #   mod_sftp_pam (needs openssl [--with ssl])
 #   mod_sftp_sql (needs openssl [--with ssl])
 #   mod_sql_mysql (needs mysql client libraries [--with mysql])
@@ -101,6 +101,7 @@
 %global _with_sqlite 1
 %global _with_postgresql 1
 %global _with_ssl 1
+%global _with_sodium 1
 %global _with_wrap 1
 %endif
 #
@@ -111,8 +112,7 @@ BuildRequires: geoip-devel
 #
 # --with ldap (for mod_ldap, mod_quotatab_ldap)
 %if 0%{?_with_ldap:1}
-BuildRequires: cyrus-sasl-devel
-BuildRequires: openldap-devel
+BuildRequires: cyrus-sasl-devel, openldap-devel
 %endif
 #
 # --with memcache (for mod_memcache, mod_tls_memcache)
@@ -142,6 +142,11 @@ BuildRequires: hiredis
 # --with ssl (for mod_auth_otp, mod_digest, mod_sftp, mod_sftp_pam, mod_sftp_sql, mod_sql_passwd, mod_tls, mod_tls_fscache, mod_tls_shmcache)
 %if 0%{?_with_ssl:1}
 BuildRequires: openssl-devel
+%endif
+#
+# --with sodium (for mod_sftp)
+%if 0%{?_with_sodium:1}
+BuildRequires: epel-release, libsodium-devel
 %endif
 #
 # --with-sqlite (for mod_sql_sqlite)
@@ -289,13 +294,14 @@ Requires:       pam-devel
 Requires:       ncurses-devel
 Requires:       zlib-devel
 %{?_with_geoip:Requires:      geoip-devel}
-%{?_with_ldap:Requires:       openldap-devel}
+%{?_with_ldap:Requires:       cyrus-sasl-devel, openldap-devel}
 %{?_with_memcache:Requires:   libmemcached-devel >= 0.41}
 %{?_with_mysql:Requires:      mysql-devel}
 %{?_with_pcre:Requires:       pcre-devel >= 7.0}
 %{?_with_postgresql:Requires: postgresql-devel}
 %{?_with_redis:Requires:      hiredis}
 %{?_with_ssl:Requires:        openssl-devel}
+%{?_with_sodium:Requires:     epel-release, libsodium-devel}
 %{?_with_sqlite:Requires:     sqlite-devel}
 %{?_with_wrap:Requires:       /usr/include/tcpd.h}
 
