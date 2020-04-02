@@ -2509,6 +2509,18 @@ module, or configure it to preserve the SGID bit (<i>e.g.</i> via the
 <a href="../modules/mod_cap.html#CapabilitiesSet"><code>CAP_FSETID</code></a>
 capability).
 
+<p><a name="SFTPEd25519">
+<font color=red>Question</font>: I see that Ed25519 SSH keys are supported
+as of ProFTPD 1.3.7rc3 (see <a href="http://bugs.proftpd.org/show_bug.cgi?id=4221">Bug #4221</a>), but when I try to use one with <code>mod_sftp</code>, my
+login fails.  The <code>SFTPLog</code> shows this error; why?
+<pre>
+  USER user1 (Login failed): unsupported public key algorithm 'ssh-ed25519' requested
+</pre>
+<font color=blue>Answer</font>: Support for the Ed25519 algorithm requires
+the <a href="https://github.com/jedisct1/libsodium">libsodium</a> library.
+You may need to install this library, and recompile ProFTPD with
+<code>mod_sftp</code> in order for the library to be detected and used.
+
 <p><a name="SFTPWarnings">
 <font color=red>Question</font>: In my SFTP logs, I see these warnings:
 <pre>
