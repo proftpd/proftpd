@@ -8041,6 +8041,119 @@ static void tls_cleanup(int flags) {
   }
 }
 
+/* Returns TRUE for SSL data, FALSE for FTP data, and -1 on error.
+ *
+ * First, we want for readable data on the socket via select(2).  Then
+ * we use recv(2) to peek at the data; we only need three bytes.  Why only
+ * three bytes?  According to the TLS RFCs on SSL record layering, each
+ * well-formed SSL record starts with:
+ *
+ *    struct {
+ *        uint8 major;
+ *        uint8 minor;
+ *    } ProtocolVersion;
+ *
+ *    enum {
+ *        change_cipher_spec(20), alert(21), handshake(22),
+ *        application_data(23), (255)
+ *    } ContentType;
+ *
+ *    struct {
+ *        ContentType type;
+ *        ProtocolVersion version;
+ *
+ * It helps that the first byte, if an SSL record, will be 20-23, or 255.
+ * The printable ASCII range, which would be used for an FTP command, starts
+ * at 32 (sp).  We read three bytes to include the protocol version, to
+ * help increase confidence in our guess at whether these data are a well-
+ * formed SSL record, or an FTP command.
+ */
+static int peek_for_ssl_data(int fd) {
+  register unsigned int i;
+  int res;
+  fd_set rfds;
+  struct timeval tv;
+  ssize_t len;
+  unsigned char buf[3];
+
+  /* We'll wait up to 5 secs, or until interrupted, for the next data. */
+  tv.tv_sec = 5;
+  tv.tv_usec = 0;
+
+  pr_trace_msg(trace_channel, 20, "peeking at next data for fd %d, for %d secs",
+    fd, (int) tv.tv_sec);
+
+  FD_ZERO(&rfds);
+  FD_SET(fd, &rfds);
+
+  res = select(fd + 1, &rfds, NULL, NULL, &tv);
+  while (res < 0) {
+    int xerrno = errno;
+
+    if (xerrno == EINTR) {
+      pr_signals_handle();
+      res = select(fd + 1, &rfds, NULL, NULL, &tv);
+      continue;
+    }
+
+    pr_trace_msg(trace_channel, 20,
+      "error waiting for next data on fd %d: %s", fd, strerror(xerrno));
+    errno = xerrno;
+    return -1;
+  }
+
+  if (res == 0) {
+    /* Timed out.  Error on the side of optimism, and assume the next data
+     * will be an SSL record.  This is what mod_tls would do, if we were not
+     * peeking.
+     */
+    pr_trace_msg(trace_channel, 20,
+      "timed out after %d secs peeking at next data, assuming SSL data",
+      (int) tv.tv_sec);
+    return TRUE;
+  }
+
+  /* If we reach here, the peer must have sent something.  Let's see what it
+   * might be.  Chances are that we received at least 3 bytes, but to be
+   * defensive, we use MSG_WAITALL anyway.  TCP allows for sending one byte
+   * at time, if need be.  Fortunately, either SSL record or FTP command will
+   * require more than three bytes.
+   */
+  memset(&buf, 0, sizeof(buf));
+  len = recv(fd, buf, sizeof(buf), MSG_PEEK|MSG_WAITALL);
+  while (len < 0) {
+    int xerrno = errno;
+
+    if (xerrno == EINTR) {
+      pr_signals_handle();
+      len = recv(fd, &buf, sizeof(buf), MSG_PEEK|MSG_WAITALL);
+      continue;
+    }
+
+    pr_trace_msg(trace_channel, 20,
+      "error peeking at next data: %s", strerror(xerrno));
+    errno = xerrno;
+    return -1;
+  }
+
+  pr_trace_msg(trace_channel, 20, "peeking at %ld bytes of next data",
+    (long) len);
+  for (i = 0; i < len; i++) {
+    if (PR_ISPRINT(buf[i]) == 0) {
+      /* Not a printable character; assume it's SSL data. */
+      pr_trace_msg(trace_channel, 20,
+        "byte %u of peeked data is a non-printable ASCII character (%d), "
+        "assuming SSL data", i, (int) buf[i]);
+      return TRUE;
+    }
+  }
+
+  pr_trace_msg(trace_channel, 20,
+    "all %ld bytes of peeked data are printable ASCII characters, assuming "
+    "FTP data", (long) len);
+  return FALSE;
+}
+
 static void tls_end_sess(SSL *ssl, conn_t *conn, int flags) {
   int res = 0;
   int shutdown_state;
@@ -8084,6 +8197,9 @@ static void tls_end_sess(SSL *ssl, conn_t *conn, int flags) {
     }
 
     /* 'close_notify' not already sent; send it now. */
+    pr_trace_msg(trace_channel, 17,
+      "shutting down TLS session, 'close_notify' not already sent; "
+      "sending now");
     res = SSL_shutdown(ssl);
   }
 
@@ -8094,8 +8210,50 @@ static void tls_end_sess(SSL *ssl, conn_t *conn, int flags) {
 
       res = 1;
       if (!(shutdown_state & SSL_RECEIVED_SHUTDOWN)) {
+        int is_ssl_data = FALSE, xerrno;
+
+        pr_trace_msg(trace_channel, 17,
+          "shutting down TLS session, 'close_notify' not received; "
+          "peeking at next data");
+
+        /* This where we need to peek at the next data, to see whether we
+         * dealing with a well-behaved FTPS client, which will be sending
+         * its `close_notify` to properly shutdown the TLS session, or with
+         * a buggy/ill-behaved FTPS client which will not send a `close_notify`,
+         * and instead will just send the next FTP command in plaintext.
+         *
+         * If it's the latter case, then we do NOT want to wait for a
+         * `close_notify` that will never come.  Doing so will cause the
+         * plaintext FTP command to be treated as an SSL record, which will
+         * fail with a "wrong version number" SSL error.
+         */
+
+        is_ssl_data = peek_for_ssl_data(conn->rfd);
+        if (is_ssl_data < 0) {
+          SSL_free(ssl);
+          pr_session_disconnect(&tls_module, PR_SESS_DISCONNECT_BY_APPLICATION,
+            NULL);
+          return;
+        }
+
+        if (is_ssl_data == FALSE) {
+          /* We're dealing with a buggy/ill-behaved FTPS client.  Sigh. */
+          pr_trace_msg(trace_channel, 17,
+            "shut down TLS session uncleanly, next data is FTP command from "
+            "buggy/ill-behaved FTPS client");
+          SSL_free(ssl);
+          return;
+        }
+
         errno = 0;
         res = SSL_shutdown(ssl);
+        xerrno = errno;
+
+        pr_trace_msg(trace_channel, 17,
+          "shutting down TLS session, 'close_notify' not received; "
+          "SSL_shutdown() returned %d", res);
+
+        errno = xerrno;
       }
     }
 
@@ -8233,6 +8391,10 @@ static void tls_end_sess(SSL *ssl, conn_t *conn, int flags) {
   }
 
   SSL_free(ssl);
+
+  if (res >= 0) {
+    pr_trace_msg(trace_channel, 17, "TLS session cleanly shut down");
+  }
 }
 
 static const char *tls_get_errors2(pool *p) {
