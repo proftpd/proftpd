@@ -34,6 +34,8 @@
 - Issue 82 - Support configurable certificate settings in LDAP SSL/TLS
   connections.
 - Issue 947 - Support use of SASL auth mechanisms for LDAPBindDN binds.
+- Issue 954 - Support buggy/ill-behaved FTPS client shutdown behavior for CCC
+  command.
 
 1.3.7rc3 - Released 20-Feb-2020
 --------------------------------
