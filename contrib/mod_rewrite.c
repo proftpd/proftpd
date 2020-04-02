@@ -1,6 +1,6 @@
 /*
  * ProFTPD: mod_rewrite -- a module for rewriting FTP commands
- * Copyright (c) 2001-2017 TJ Saunders
+ * Copyright (c) 2001-2020 TJ Saunders
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -2837,7 +2837,8 @@ MODRET rewrite_fixup(cmd_rec *cmd) {
         pr_cmd_clear_cache(cmd);
 
       } else {
-        rewrite_log("rewrite_fixup(): error processing RewriteRule");
+        rewrite_log("rewrite_fixup(): error processing RewriteRule: generated "
+          "empty command argument, which is not allowed");
       }
 
       /* If this Rule is marked as "last", break out of the loop. */
