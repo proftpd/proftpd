@@ -42042,6 +42042,7 @@ cat >>confdefs.h <<\_ACEOF
 _ACEOF
 
      ac_build_addl_libs="$ac_build_addl_libs -lsodium"
+     ac_orig_libs="$ac_orig_libs -lsodium"
 
 fi
 

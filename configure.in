@@ -3706,6 +3706,7 @@ if test x"$pr_use_sodium" = xyes; then
     [AC_DEFINE(HAVE_SODIUM_H, 1, [Define if sodium.h is present.])
      AC_DEFINE(PR_USE_SODIUM, 1, [Define if using Sodium support.])
      ac_build_addl_libs="$ac_build_addl_libs -lsodium"
+     ac_orig_libs="$ac_orig_libs -lsodium"
     ])
 fi
 
