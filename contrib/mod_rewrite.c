@@ -2567,7 +2567,7 @@ MODRET set_rewriterule(cmd_rec *cmd) {
     pattern++;
   }
 
-  res = pr_regexp_compile_posix(pre, pattern, regex_flags);
+  res = pr_regexp_compile(pre, pattern, regex_flags);
   if (res != 0) {
     char errstr[200] = {'\0'};
 
