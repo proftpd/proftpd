@@ -1761,9 +1761,22 @@ static void sftp_postparse_ev(const void *event_data, void *user_data) {
    *
    * without also configuring SFTPAuthorizedHostKeys means that authentication
    * will never succeed.
+   *
+   * While here, we also check for unsupported configuration directives, and
+   * warn if found.
    */
   for (s = (server_rec *) server_list->xas_list; s; s = s->next) {
-    int supports_hostbased = FALSE, supports_publickey = FALSE;
+    int supports_hostbased = FALSE, supports_publickey = FALSE, use_sftp = FALSE;
+
+    c = find_config(s->conf, CONF_PARAM, "SFTPEngine", FALSE);
+    if (c != NULL) {
+      use_sftp = *((int *) c->argv[0]);
+    }
+
+    if (use_sftp == FALSE) {
+      /* No need to check further if mod_sftp is not enabled. */
+      continue;
+    }
 
     c = find_config(s->conf, CONF_PARAM, "SFTPAuthorizedHostKeys", FALSE);
     if (c != NULL) {
@@ -1795,7 +1808,7 @@ static void sftp_postparse_ev(const void *event_data, void *user_data) {
           if (meth->method_id == SFTP_AUTH_FL_METH_HOSTBASED &&
               supports_hostbased == FALSE) {
             pr_log_pri(PR_LOG_NOTICE, MOD_SFTP_VERSION
-              ": Server %s: cannot support authentication method '%s' "
+              ": Server '%s': cannot support authentication method '%s' "
               "without SFTPAuthorizedHostKeys configuration", s->ServerName,
               meth->method_name);
             pr_session_disconnect(&sftp_module, PR_SESS_DISCONNECT_BAD_CONFIG,
@@ -1805,7 +1818,7 @@ static void sftp_postparse_ev(const void *event_data, void *user_data) {
           if (meth->method_id == SFTP_AUTH_FL_METH_PUBLICKEY &&
               supports_publickey == FALSE) {
             pr_log_pri(PR_LOG_NOTICE, MOD_SFTP_VERSION
-              ": Server %s: cannot support authentication method '%s' "
+              ": Server '%s': cannot support authentication method '%s' "
               "without SFTPAuthorizedUserKeys configuration", s->ServerName,
               meth->method_name);
             pr_session_disconnect(&sftp_module, PR_SESS_DISCONNECT_BAD_CONFIG,
@@ -1813,6 +1826,33 @@ static void sftp_postparse_ev(const void *event_data, void *user_data) {
           }
         }
       }
+    }
+
+    /* The following directives are documented as not supported:
+     *   <Anonymous>
+     *   ListOptions
+     *   MaxRetrieveFileSize
+     */
+
+    c = find_config(s->conf, CONF_ANON, NULL, FALSE);
+    if (c != NULL) {
+      pr_log_pri(PR_LOG_WARNING, MOD_SFTP_VERSION
+        ": Server '%s': <Anonymous> configuration is not supported by "
+        "mod_sftp, and will be ignored", s->ServerName);
+    }
+
+    c = find_config(s->conf, CONF_PARAM, "ListOptions", TRUE);
+    if (c != NULL) {
+      pr_log_pri(PR_LOG_WARNING, MOD_SFTP_VERSION
+        ": Server '%s': ListOptions directive is not supported by mod_sftp, "
+        "and will be ignored", s->ServerName);
+    }
+
+    c = find_config(s->conf, CONF_PARAM, "MaxRetrieveFileSize", TRUE);
+    if (c != NULL) {
+      pr_log_pri(PR_LOG_WARNING, MOD_SFTP_VERSION
+        ": Server '%s': MaxRetrieveFileSize directive is not supported by "
+        "mod_sftp, and will be ignored", s->ServerName);
     }
   }
 }
