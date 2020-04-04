@@ -1179,6 +1179,15 @@ struct tls_label {
   const char *label_name;
 };
 
+/* SSL record types */
+static struct tls_label tls_record_type_labels[] = {
+  { 20, "ChangeCipherSpec" },
+  { 21, "Alert" },
+  { 22, "Handshake" },
+  { 23, "ApplicationData" },
+  { 0, NULL }
+};
+
 /* SSL versions */
 static struct tls_label tls_version_labels[] = {
   { 0x0002, "SSL 2.0" },
@@ -1943,12 +1952,18 @@ static void tls_msg_cb(int io_flag, int version, int content_type,
     switch (content_type) {
       case SSL3_RT_CHANGE_CIPHER_SPEC:
         /* ChangeCipherSpec message */
+        pr_trace_msg(trace_channel, 27,
+          "%s %s ChangeCipherSpec (%u %s)", action_str, version_str,
+          (unsigned int) buflen, bytes_str);
         tls_log("[msg] %s %s ChangeCipherSpec message (%u %s)",
           action_str, version_str, (unsigned int) buflen, bytes_str);
         break;
 
       case SSL3_RT_ALERT: {
         /* Alert messages */
+        pr_trace_msg(trace_channel, 27,
+          "%s %s Alert (%u %s)", action_str, version_str,
+          (unsigned int) buflen, bytes_str);
         if (buflen == 2) {
           char *severity_str = NULL;
 
@@ -2073,6 +2088,9 @@ static void tls_msg_cb(int io_flag, int version, int content_type,
 
       case SSL3_RT_HANDSHAKE: {
         /* Handshake messages */
+        pr_trace_msg(trace_channel, 27,
+          "%s %s Handshake (%u %s)", action_str, version_str,
+          (unsigned int) buflen, bytes_str);
         if (buflen > 0) {
           /* Peek naughtily into the buffer. */
           switch (((const unsigned char *) buf)[0]) {
@@ -2318,8 +2336,16 @@ static void tls_msg_cb(int io_flag, int version, int content_type,
   } else if (version == 0 &&
              content_type == SSL3_RT_HEADER &&
              buflen == SSL3_RT_HEADER_LENGTH) {
-    tls_log("[msg] %s protocol record message (%u %s)", action_str,
-      (unsigned int) buflen, bytes_str);
+    const char *msg;
+    const char *record_type;
+    int msg_len;
+
+    msg = buf;
+    record_type = tls_get_label(msg[0], tls_record_type_labels);
+    msg_len = msg[buflen - 2] << 8 | msg[buflen - 1];
+
+    tls_log("[msg] %s protocol record message (content type = %s, len = %d)",
+      action_str, record_type, msg_len);
 #endif
 
   } else {
@@ -6488,10 +6514,6 @@ static int tls_ticket_key_cb(SSL *ssl, unsigned char *key_name,
   struct tls_ticket_key *k;
   char *key_name_str;
 
-  pr_trace_msg(trace_channel, 19,
-    "handling session ticket key request on %s session (%s mode)",
-    SSL_get_version(ssl), mode ? "encrypt" : "decrypt");
-
   /* Note: should we have a list of ciphers from which we randomly choose,
    * when creating a key?  I.e. should the keys themselves hold references
    * to their ciphers, digests?
@@ -6502,6 +6524,10 @@ static int tls_ticket_key_cb(SSL *ssl, unsigned char *key_name,
 # else
   const EVP_MD *md = EVP_sha256();
 # endif
+
+  pr_trace_msg(trace_channel, 19,
+    "handling session ticket key request on %s session (%s mode)",
+    SSL_get_version(ssl), mode ? "encrypt" : "decrypt");
 
   if (mode == 1) {
     int ticket_key_len, sess_key_len;
@@ -8068,7 +8094,7 @@ static void tls_cleanup(int flags) {
  * help increase confidence in our guess at whether these data are a well-
  * formed SSL record, or an FTP command.
  */
-static int peek_for_ssl_data(int fd) {
+static int peek_is_ssl_data(int fd) {
   register unsigned int i;
   int res;
   fd_set rfds;
@@ -8155,7 +8181,7 @@ static int peek_for_ssl_data(int fd) {
 }
 
 static void tls_end_sess(SSL *ssl, conn_t *conn, int flags) {
-  int res = 0;
+  int lineno, res = 0;
   int shutdown_state;
   BIO *rbio, *wbio;
   int bread, bwritten;
@@ -8200,6 +8226,7 @@ static void tls_end_sess(SSL *ssl, conn_t *conn, int flags) {
     pr_trace_msg(trace_channel, 17,
       "shutting down TLS session, 'close_notify' not already sent; "
       "sending now");
+    lineno = __LINE__ + 1;
     res = SSL_shutdown(ssl);
   }
 
@@ -8228,7 +8255,7 @@ static void tls_end_sess(SSL *ssl, conn_t *conn, int flags) {
          * fail with a "wrong version number" SSL error.
          */
 
-        is_ssl_data = peek_for_ssl_data(conn->rfd);
+        is_ssl_data = peek_is_ssl_data(conn->rfd);
         if (is_ssl_data < 0) {
           SSL_free(ssl);
           pr_session_disconnect(&tls_module, PR_SESS_DISCONNECT_BY_APPLICATION,
@@ -8246,6 +8273,7 @@ static void tls_end_sess(SSL *ssl, conn_t *conn, int flags) {
         }
 
         errno = 0;
+        lineno = __LINE__ + 1;
         res = SSL_shutdown(ssl);
         xerrno = errno;
 
@@ -8369,7 +8397,7 @@ static void tls_end_sess(SSL *ssl, conn_t *conn, int flags) {
         break;
 
       default:
-        tls_fatal_error(err_code, __LINE__);
+        tls_fatal_error(err_code, lineno);
         break;
     }
   }
@@ -8520,8 +8548,12 @@ static void tls_fatal_error(long error, int lineno) {
     case SSL_ERROR_SYSCALL: {
       long xerrcode = ERR_get_error();
 
-      if (errno == ECONNRESET)
+      if (errno == ECONNRESET) {
+        pr_trace_msg(trace_channel, 17,
+          "SSL_ERROR_SYSCALL error (errcode %ld) occurred on line %d; ignoring "
+          "ECONNRESET (%s)", xerrcode, lineno, strerror(errno));
         return;
+      }
 
       /* Check to see if the OpenSSL error queue has info about this. */
       if (xerrcode == 0) {
@@ -8877,10 +8909,15 @@ static int tls_writemore(int wfd) {
 
 static ssize_t tls_read(SSL *ssl, void *buf, size_t len) {
   ssize_t count;
-  int xerrno = 0;
+  int lineno, xerrno = 0;
 
   retry:
   pr_signals_handle();
+
+  /* Help ensure we have a clean/trustable errno value. */
+  errno = 0;
+
+  lineno = __LINE__ + 1;
   count = SSL_read(ssl, buf, len);
   xerrno = errno;
 
@@ -8945,8 +8982,10 @@ static ssize_t tls_read(SSL *ssl, void *buf, size_t len) {
         tls_log("read EOF from client");
         break;
 
+      case SSL_ERROR_SSL:
+      case SSL_ERROR_SYSCALL:
       default:
-        tls_fatal_error(err, __LINE__);
+        tls_fatal_error(err, lineno);
         break;
     }
   }
@@ -10288,8 +10327,12 @@ static int tls_verify_ocsp(int ok, X509_STORE_CTX *ctx) {
 
 static ssize_t tls_write(SSL *ssl, const void *buf, size_t len) {
   ssize_t count;
-  int xerrno = 0;
+  int lineno, xerrno = 0;
 
+  /* Help ensure we have a clean/trustable errno value. */
+  errno = 0;
+
+  lineno = __LINE__ + 1;
   count = SSL_write(ssl, buf, len);
   xerrno = errno;
 
@@ -10306,8 +10349,10 @@ static ssize_t tls_write(SSL *ssl, const void *buf, size_t len) {
         xerrno = EINTR;
         break;
 
+      case SSL_ERROR_SSL:
+      case SSL_ERROR_SYSCALL:
       default:
-        tls_fatal_error(err, __LINE__);
+        tls_fatal_error(err, lineno);
         break;
     }
   }
