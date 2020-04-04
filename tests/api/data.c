@@ -452,6 +452,9 @@ START_TEST (data_open_passive_test) {
   session.d = pr_inet_create_conn(p, sockfd, NULL, port, FALSE);
   fail_unless(session.d != NULL, "Failed to create conn: %s", strerror(errno));
 
+  /* Reset the session flags after every failed open. */
+  session.sf_flags |= SF_PASSIVE;
+
   /* Open a READing data transfer connection...*/
 
   mark_point();
@@ -466,6 +469,7 @@ START_TEST (data_open_passive_test) {
     strerror(errno));
 
   mark_point();
+  session.sf_flags |= SF_PASSIVE;
   res = pr_data_open(NULL, NULL, dir, 0);
   fail_unless(res < 0, "Opened passive READ data connection unexpectedly");
   fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
@@ -475,12 +479,14 @@ START_TEST (data_open_passive_test) {
   dir = PR_NETIO_IO_WR;
 
   mark_point();
+  session.sf_flags |= SF_PASSIVE;
   res = pr_data_open(NULL, NULL, dir, 0);
   fail_unless(res < 0, "Opened passive READ data connection unexpectedly");
   fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
     strerror(errno), errno);
 
   mark_point();
+  session.sf_flags |= SF_PASSIVE;
   session.xfer.p = NULL;
   res = pr_data_open(NULL, NULL, dir, 0);
   fail_unless(res < 0, "Opened passive READ data connection unexpectedly");

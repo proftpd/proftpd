@@ -4671,11 +4671,11 @@ static void tls_tlsext_cb(SSL *ssl, int server, int type,
 
       if (pr_trace_get_level(trace_channel) >= 19) {
         if (tlsext_datalen >= 1) {
-          bio = BIO_new(BIO_s_mem());
-
           int len;
 
+          bio = BIO_new(BIO_s_mem());
           len = tlsext_data[0];
+
           if (tlsext_datalen == len + 1) {
             tlsext_data += 1;
 
