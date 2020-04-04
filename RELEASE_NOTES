@@ -12,6 +12,8 @@ ChangeLog files.
   + Implemented support for configuring certificate options for LDAP
     connections using SSL/TLS.
 
+  + Fixed issue with FTPS uploads of large files using TLSv1.3 (Issue #959).
+
   + New Configuration Directives
 
     LDAPUseSASL
