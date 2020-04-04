@@ -1580,11 +1580,12 @@ MODRET facts_mlsd(cmd_rec *cmd) {
   pr_fsio_closedir(dirh);
 
   if (XFER_ABORTED) {
-    pr_data_close(TRUE);
+    pr_data_close2();
 
   } else {
     facts_mlinfobuf_flush();
-    pr_data_close(FALSE);
+    pr_data_close2();
+    pr_response_add(R_226, _("Transfer complete"));
   }
 
   return PR_HANDLED(cmd);

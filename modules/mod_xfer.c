@@ -2243,7 +2243,8 @@ MODRET xfer_stor(cmd_rec *cmd) {
   }
 
   xfer_displayfile();
-  pr_data_close(FALSE);
+  pr_data_close2();
+  pr_response_add(R_226, _("Transfer complete"));
 
   return PR_HANDLED(cmd);
 }
@@ -2933,7 +2934,8 @@ MODRET xfer_retr(cmd_rec *cmd) {
 
     retr_complete(cmd->pool);
     xfer_displayfile();
-    pr_data_close(FALSE);
+    pr_data_close2();
+    pr_response_add(R_226, _("Transfer complete"));
   }
 
   return PR_HANDLED(cmd);

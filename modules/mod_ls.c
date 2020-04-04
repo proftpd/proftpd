@@ -419,13 +419,12 @@ static int sendline(int flags, char *fmt, ...) {
 }
 
 static void ls_done(cmd_rec *cmd) {
-  int quiet = FALSE;
+  pr_data_close2();
 
-  if (session.sf_flags & SF_ABORT) {
-    quiet = TRUE;
+  if (!(session.sf_flags & SF_ABORT)) {
+    /* If the transfer was not aborted, consider it a success. */
+    pr_response_add(R_226, _("Transfer complete"));
   }
-
-  pr_data_close(quiet);
 }
 
 static char units[6][2] = 
