@@ -204,7 +204,7 @@ static int data_passive_open(const char *reason, off_t size) {
   xerrno = session.d->xerrno;
   pr_response_add_err(R_425, _("Unable to build data connection: %s"),
     strerror(xerrno));
-  pr_data_close(TRUE);
+  pr_data_close2();
 
   errno = xerrno;
   return -1;
@@ -339,7 +339,7 @@ static int data_active_open(const char *reason, off_t size) {
       strerror(xerrno));
     pr_response_add_err(R_425, _("Unable to build data connection: %s"),
       strerror(xerrno));
-    pr_data_close(TRUE);
+    pr_data_close2();
 
     errno = xerrno;
     return -1;
@@ -400,7 +400,7 @@ static int data_active_open(const char *reason, off_t size) {
   pr_response_add_err(R_425, _("Unable to build data connection: %s"),
     strerror(session.d->xerrno));
   xerrno = session.d->xerrno;
-  pr_data_close(TRUE);
+  pr_data_close2();
 
   errno = xerrno;
   return -1;
@@ -576,7 +576,7 @@ int pr_data_open(char *filename, char *reason, int direction, off_t size) {
       pr_response_add_err(R_425, _("Unable to build data connection: %s"),
         strerror(session.d->xerrno));
       xerrno = session.d->xerrno;
-      pr_data_close(TRUE);
+      pr_data_close2();
 
       errno = xerrno;
       return -1;
@@ -588,7 +588,7 @@ int pr_data_open(char *filename, char *reason, int direction, off_t size) {
       pr_response_add_err(R_425, _("Unable to build data connection: %s"),
         strerror(session.d->xerrno));
       xerrno = session.d->xerrno;
-      pr_data_close(TRUE);
+      pr_data_close2();
 
       errno = xerrno;
       return -1;
@@ -654,11 +654,10 @@ int pr_data_open(char *filename, char *reason, int direction, off_t size) {
   return res;
 }
 
-/* close == successful transfer */
-void pr_data_close(int quiet) {
+void pr_data_close2(void) {
   nstrm = NULL;
 
-  if (session.d) {
+  if (session.d != NULL) {
     pr_inet_lingering_close(session.pool, session.d, timeout_linger);
     session.d = NULL;
   }
@@ -677,8 +676,13 @@ void pr_data_close(int quiet) {
   session.sf_flags &= (SF_ALL^SF_PASSIVE);
   session.sf_flags &= (SF_ALL^(SF_ABORT|SF_XFER|SF_PASSIVE|SF_ASCII_OVERRIDE));
   pr_session_set_idle();
+}
 
-  if (!quiet) {
+/* close == successful transfer */
+void pr_data_close(int quiet) {
+  pr_data_close2();
+
+  if (quiet == FALSE) {
     pr_response_add(R_226, _("Transfer complete"));
   }
 }
