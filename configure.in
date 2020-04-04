@@ -3562,6 +3562,79 @@ if test x"$pr_use_openssl" = xyes; then
   )
   LIBS="$saved_libs"
 
+  AC_MSG_CHECKING([whether OpenSSL has SSL num tickets support])
+  saved_libs="$LIBS"
+
+  dnl Splice out -lsupp, since that library hasn't been built yet
+  LIBS=`echo "$LIBS" | sed -e 's/-lsupp//g'`;
+  LIBS="-lcrypto -lssl $LIBS"
+
+  AC_TRY_LINK(
+    [
+      #include <openssl/ssl.h>
+    ],
+    [
+      (void) SSL_set_num_tickets(NULL, 0);
+    ],
+    [
+      AC_MSG_RESULT(yes)
+      AC_DEFINE(PR_USE_OPENSSL_SSL_NUM_TICKETS, 1, [Define if your OpenSSL supports SSL num tickets])
+    ],
+    [
+      AC_MSG_RESULT(no)
+    ]
+  )
+  LIBS="$saved_libs"
+
+  AC_MSG_CHECKING([whether OpenSSL has SSL read ahead support])
+  saved_libs="$LIBS"
+
+  dnl Splice out -lsupp, since that library hasn't been built yet
+  LIBS=`echo "$LIBS" | sed -e 's/-lsupp//g'`;
+  LIBS="-lcrypto -lssl $LIBS"
+
+  AC_TRY_LINK(
+    [
+      #include <openssl/ssl.h>
+    ],
+    [
+      (void) SSL_set_read_ahead(NULL, 1);
+    ],
+    [
+      AC_MSG_RESULT(yes)
+      AC_DEFINE(PR_USE_OPENSSL_SSL_READ_AHEAD, 1, [Define if your OpenSSL supports SSL read ahead])
+    ],
+    [
+      AC_MSG_RESULT(no)
+    ]
+  )
+  LIBS="$saved_libs"
+
+  AC_MSG_CHECKING([whether OpenSSL has SSL session ticket callback support])
+  saved_libs="$LIBS"
+
+  dnl Splice out -lsupp, since that library hasn't been built yet
+  LIBS=`echo "$LIBS" | sed -e 's/-lsupp//g'`;
+  LIBS="-lcrypto -lssl $LIBS"
+
+  AC_TRY_LINK(
+    [
+      #include <openssl/ssl.h>
+    ],
+    [
+
+      (void) SSL_CTX_set_session_ticket_cb(NULL, NULL, NULL, NULL);
+    ],
+    [
+      AC_MSG_RESULT(yes)
+      AC_DEFINE(PR_USE_OPENSSL_SSL_SESSION_TICKET_CALLBACK, 1, [Define if your OpenSSL supports SSL session ticket callbacks])
+    ],
+    [
+      AC_MSG_RESULT(no)
+    ]
+  )
+  LIBS="$saved_libs"
+
   pr_use_pthread_for_openssl="no"
   if test x"$openssl_cmdline" != xno; then
     if `$openssl_cmdline version 2>/dev/null 1>&2`; then
