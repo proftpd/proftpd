@@ -204,8 +204,7 @@ static int data_passive_open(const char *reason, off_t size) {
   xerrno = session.d->xerrno;
   pr_response_add_err(R_425, _("Unable to build data connection: %s"),
     strerror(xerrno));
-  destroy_pool(session.d->pool);
-  session.d = NULL;
+  pr_data_close(TRUE);
 
   errno = xerrno;
   return -1;
@@ -213,7 +212,7 @@ static int data_passive_open(const char *reason, off_t size) {
 
 static int data_active_open(const char *reason, off_t size) {
   conn_t *c;
-  int bind_port, rev, *root_revoke = NULL;
+  int bind_port, rev, *root_revoke = NULL, xerrno;
   const pr_netaddr_t *bind_addr = NULL;
 
   if (session.c->remote_addr == NULL) {
@@ -277,11 +276,10 @@ static int data_active_open(const char *reason, off_t size) {
 
   session.d = pr_inet_create_conn(session.pool, -1, bind_addr, bind_port, TRUE);
   if (session.d == NULL) {
-    int xerrno = errno;
+    xerrno = errno;
 
     pr_response_add_err(R_425, _("Unable to build data connection: %s"),
       strerror(xerrno));
-    session.d = NULL;
 
     errno = xerrno;
     return -1;
@@ -333,7 +331,7 @@ static int data_active_open(const char *reason, off_t size) {
 
   if (pr_inet_connect(session.d->pool, session.d, &session.data_addr,
       session.data_port) < 0) {
-    int xerrno = session.d->xerrno;
+    xerrno = session.d->xerrno;
 
     pr_log_debug(DEBUG6,
       "Error connecting to %s#%u for active data transfer: %s",
@@ -341,9 +339,7 @@ static int data_active_open(const char *reason, off_t size) {
       strerror(xerrno));
     pr_response_add_err(R_425, _("Unable to build data connection: %s"),
       strerror(xerrno));
-
-    destroy_pool(session.d->pool);
-    session.d = NULL;
+    pr_data_close(TRUE);
 
     errno = xerrno;
     return -1;
@@ -403,10 +399,10 @@ static int data_active_open(const char *reason, off_t size) {
 
   pr_response_add_err(R_425, _("Unable to build data connection: %s"),
     strerror(session.d->xerrno));
-  errno = session.d->xerrno;
+  xerrno = session.d->xerrno;
+  pr_data_close(TRUE);
 
-  destroy_pool(session.d->pool);
-  session.d = NULL;
+  errno = xerrno;
   return -1;
 }
 
@@ -575,20 +571,26 @@ int pr_data_open(char *filename, char *reason, int direction, off_t size) {
     struct sigaction act;
 
     if (pr_netio_postopen(session.d->instrm) < 0) {
+      int xerrno;
+
       pr_response_add_err(R_425, _("Unable to build data connection: %s"),
         strerror(session.d->xerrno));
-      destroy_pool(session.d->pool);
-      errno = session.d->xerrno;
-      session.d = NULL;
+      xerrno = session.d->xerrno;
+      pr_data_close(TRUE);
+
+      errno = xerrno;
       return -1;
     }
 
     if (pr_netio_postopen(session.d->outstrm) < 0) {
+      int xerrno;
+
       pr_response_add_err(R_425, _("Unable to build data connection: %s"),
         strerror(session.d->xerrno));
-      destroy_pool(session.d->pool);
-      errno = session.d->xerrno;
-      session.d = NULL;
+      xerrno = session.d->xerrno;
+      pr_data_close(TRUE);
+
+      errno = xerrno;
       return -1;
     }
 
