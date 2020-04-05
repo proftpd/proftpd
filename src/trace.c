@@ -1,6 +1,6 @@
 /*
  * ProFTPD - FTP server daemon
- * Copyright (c) 2006-2019 The ProFTPD Project team
+ * Copyright (c) 2006-2020 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -28,6 +28,8 @@
 #include "privs.h"
 
 #ifdef PR_USE_TRACE
+
+#define TRACE_BUFFER_SIZE		(PR_TUNABLE_BUFFER_SIZE * 4)
 
 static int trace_logfd = -1;
 static unsigned long trace_opts = PR_TRACE_OPT_DEFAULT;
@@ -92,7 +94,7 @@ static void trace_restart_ev(const void *event_data, void *user_data) {
 
 static int trace_write(const char *channel, int level, const char *msg,
     int discard) {
-  char buf[PR_TUNABLE_BUFFER_SIZE * 2];
+  char buf[TRACE_BUFFER_SIZE];
   size_t buflen, len;
   struct tm *tm;
   int use_conn_ips = FALSE;
@@ -527,7 +529,7 @@ int pr_trace_msg(const char *channel, int level, const char *fmt, ...) {
 
 int pr_trace_vmsg(const char *channel, int level, const char *fmt,
     va_list msg) {
-  char buf[PR_TUNABLE_BUFFER_SIZE * 2];
+  char buf[TRACE_BUFFER_SIZE];
   size_t buflen;
   const struct trace_levels *levels;
   int discard = FALSE, listening;
