@@ -4164,7 +4164,7 @@ static int tls_sni_cb(SSL *ssl, int *alert_desc, void *user_data) {
       return SSL_TLSEXT_ERR_OK;
     }
 
-    /* Per RFC 6066, literal IPv4/IPv6 addresses are NOT permissed in the
+    /* Per RFC 6066, literal IPv4/IPv6 addresses are NOT permitted in the
      * SNI.  However, some clients will still send such IP addresses.
      * We can safely ignore these, since any IP-based virtual host selection
      * happens at TCP connect time.
