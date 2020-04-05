@@ -1,7 +1,7 @@
 dnl ProFTPD - FTP server daemon
 dnl Copyright (c) 1997, 1998 Public Flood Software
 dnl Copyright (c) 1999, 2000 MacGyver aka Habeeb J. Dihu <macgyver@tos.net>
-dnl Copyright (c) 2001-2018 The ProFTPD Project team
+dnl Copyright (c) 2001-2020 The ProFTPD Project team
 dnl
 dnl This program is free software; you can redistribute it and/or modify
 dnl it under the terms of the GNU General Public License as published by
@@ -3462,6 +3462,31 @@ if test x"$pr_use_openssl" = xyes; then
     [
       AC_MSG_RESULT(yes)
       AC_DEFINE(PR_USE_OPENSSL_OCSP, 1, [Define if your OpenSSL supports OCSP])
+    ],
+    [
+      AC_MSG_RESULT(no)
+    ]
+  )
+  LIBS="$saved_libs"
+
+  AC_MSG_CHECKING([whether OpenSSL has SSL session ticket callback support])
+  saved_libs="$LIBS"
+
+  dnl Splice out -lsupp, since that library hasn't been built yet
+  LIBS=`echo "$LIBS" | sed -e 's/-lsupp//g'`;
+  LIBS="-lcrypto -lssl $LIBS"
+
+  AC_TRY_LINK(
+    [
+      #include <openssl/ssl.h>
+    ],
+    [
+
+      (void) SSL_CTX_set_session_ticket_cb(NULL, NULL, NULL, NULL);
+    ],
+    [
+      AC_MSG_RESULT(yes)
+      AC_DEFINE(PR_USE_OPENSSL_SSL_SESSION_TICKET_CALLBACK, 1, [Define if your OpenSSL supports SSL session ticket callbacks])
     ],
     [
       AC_MSG_RESULT(no)

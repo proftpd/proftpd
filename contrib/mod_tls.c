@@ -2,7 +2,7 @@
  * mod_tls - An RFC2228 SSL/TLS module for ProFTPD
  *
  * Copyright (c) 2000-2002 Peter 'Luna' Runestig <peter@runestig.com>
- * Copyright (c) 2002-2019 TJ Saunders <tj@castaglia.org>
+ * Copyright (c) 2002-2020 TJ Saunders <tj@castaglia.org>
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without modifi-
@@ -5113,6 +5113,9 @@ static void scrub_ticket_keys(void) {
   tls_ticket_keys = NULL;
 }
 
+/* TLS session ticket _key_ callback; not to be confused with the TLSv1.3
+ * session ticket callbacks.
+ */
 static int tls_ticket_key_cb(SSL *ssl, unsigned char *key_name,
     unsigned char *iv, EVP_CIPHER_CTX *cipher_ctx, HMAC_CTX *hmac_ctx,
     int mode) {
@@ -5254,6 +5257,55 @@ static int tls_ticket_key_cb(SSL *ssl, unsigned char *key_name,
   return -1;
 }
 #endif /* TLS_USE_SESSION_TICKETS */
+
+#if defined(PR_USE_OPENSSL_SSL_SESSION_TICKET_CALLBACK)
+/* Note that we want to _use_ any provided TLSv1.3 session tickets, so that
+ * data transfers can reuse the TLS session from the control connection.  BUT
+ * we do not want to _renew_ (or issue) new tickets, as that will may tickle
+ * the ECONNRESET bug (see Issue #959) for some data transfers.
+ */
+static SSL_TICKET_RETURN tls_data_xfer_session_ticket_cb(SSL *ssl,
+    SSL_SESSION *ssl_session, const unsigned char *key_name, size_t key_namelen,
+    SSL_TICKET_STATUS status, void *user_data) {
+  SSL_TICKET_RETURN res;
+  int ssl_version, renew_tickets = TRUE;
+
+  ssl_version = SSL_SESSION_get_protocol_version(ssl_session);
+# if defined(TLS1_3_VERSION)
+  if (ssl_version == TLS1_3_VERSION) {
+    pr_trace_msg(trace_channel, 29,
+      "suppressing renewal of TLSv1.3 tickets for data transfers");
+    renew_tickets = FALSE;
+  }
+# endif /* TLS1_3_VERSION */
+
+  switch (status) {
+    case SSL_TICKET_EMPTY:
+    case SSL_TICKET_NO_DECRYPT:
+      res = SSL_TICKET_RETURN_IGNORE_RENEW;
+      if (renew_tickets == FALSE) {
+        res = SSL_TICKET_RETURN_IGNORE;
+      }
+      break;
+
+    case SSL_TICKET_SUCCESS:
+      res = SSL_TICKET_RETURN_USE;
+      break;
+
+    case SSL_TICKET_SUCCESS_RENEW:
+      res = SSL_TICKET_RETURN_USE_RENEW;
+      if (renew_tickets == FALSE) {
+        res = SSL_TICKET_RETURN_USE;
+      }
+      break;
+
+    default:
+      res = SSL_TICKET_RETURN_IGNORE;
+  }
+
+  return res;
+}
+#endif /* PR_USE_OPENSSL_SSL_SESSION_TICKET_CALLBACK */
 
 #if defined(PR_USE_OPENSSL_ECC) && OPENSSL_VERSION_NUMBER < 0x10100000L
 static EC_KEY *tls_ecdh_cb(SSL *ssl, int is_export, int keylen) {
@@ -6665,6 +6717,49 @@ static int tls_accept(conn_t *conn, unsigned char on_data) {
       data_cache_mode = SSL_SESS_CACHE_SERVER|SSL_SESS_CACHE_NO_INTERNAL_STORE;
       SSL_CTX_set_session_cache_mode(ssl_ctx, data_cache_mode);
     }
+
+#if defined(PR_USE_OPENSSL_SSL_SESSION_TICKET_CALLBACK)
+    if (session.curr_cmd_id == PR_CMD_APPE_ID ||
+        session.curr_cmd_id == PR_CMD_STOR_ID ||
+        session.curr_cmd_id == PR_CMD_STOU_ID) {
+
+      /* Some versions of SSL_do_handshake have a bug in how they handle the
+       * TLS 1.3 handshake on the server side: after the handshake finishes,
+       * they automatically send session tickets, even though the client may
+       * not be expecting data to arrive at this point and sending it could
+       * cause a deadlock or lost data. This applies at least to OpenSSL 1.1.1c
+       * and earlier, and the OpenSSL devs currently have no plans to fix it:
+       *
+       *  https://github.com/openssl/openssl/issues/7948
+       *  https://github.com/openssl/openssl/issues/7967
+       *
+       * The correct behavior is to wait to send session tickets on the
+       * first call to SSL_write. (This is what BoringSSL does.) So, we
+       * programmatically disable sending/renewing TLSv1.3 session tickets
+       * for the TLS session on data transfers, specifically uploads
+       * (Issue #959).
+       *
+       * Why is this needed for FTPS uploads only, and not downloads or
+       * directory listings?  An FTPS upload is the only case where we
+       * are a) the server, and b) in a read-only role.  Thus we are not
+       * expected to _send_ any TCP data, including session tickets.
+       */
+      if (SSL_CTX_set_session_ticket_cb(ssl_ctx, NULL,
+          tls_data_xfer_session_ticket_cb, NULL) != 1) {
+        pr_trace_msg(trace_channel, 3, "error setting TLSv1.3 session ticket "
+          "callback for '%s' data transfer: %s", session.curr_cmd,
+          tls_get_errors());
+      }
+
+    } else {
+      /* Restore default session ticket callbacks for any other transfer. */
+      if (SSL_CTX_set_session_ticket_cb(ssl_ctx, NULL, NULL, NULL) != 1) {
+        pr_trace_msg(trace_channel, 3, "error setting TLSv1.3 session ticket "
+          "callback for '%s' data transfer: %s", session.curr_cmd,
+          tls_get_errors());
+      }
+    }
+#endif /* PR_USE_OPENSSL_SSL_SESSION_TICKET_CALLBACK */
   }
 
   retry:
@@ -14250,7 +14345,7 @@ static int set_next_protocol(void) {
 #endif /* !OPENSSL_NO_TLSEXT */
 
 static int tls_sess_init(void) {
-  int res = 0;
+  int res = 0, use_session_tickets = FALSE;
   unsigned char *tmp = NULL;
   config_rec *c = NULL;
 
@@ -14601,31 +14696,42 @@ static int tls_sess_init(void) {
 #if defined(TLS_USE_SESSION_TICKETS)
   c = find_config(main_server->conf, CONF_PARAM, "TLSSessionTickets", FALSE);
   if (c != NULL) {
-    int session_tickets;
-
-    session_tickets = *((int *) c->argv[0]);
+    use_session_tickets = *((int *) c->argv[0]);
+  }
 
 # ifdef SSL_OP_NO_TICKET
-    if (session_tickets == TRUE) {
-      if (SSL_CTX_set_tlsext_ticket_key_cb(ssl_ctx, tls_ticket_key_cb) == 0) {
-        pr_log_pri(PR_LOG_WARNING, MOD_TLS_VERSION
-          ": mod_tls compiled with Session Ticket support, but linked to "
-          "an OpenSSL library without tlsext support, therefore Session "
-          "Tickets are not available");
-      }
-
-    } else {
-      /* Disable session tickets. */
-      SSL_CTX_set_options(ssl_ctx, SSL_OP_NO_TICKET);
+  if (use_session_tickets == TRUE) {
+    if (SSL_CTX_set_tlsext_ticket_key_cb(ssl_ctx, tls_ticket_key_cb) == 0) {
+      pr_log_pri(PR_LOG_WARNING, MOD_TLS_VERSION
+        ": mod_tls compiled with Session Ticket support, but linked to "
+        "an OpenSSL library without tlsext support, therefore Session "
+        "Tickets are not available");
     }
-# endif
+
+    /* Ensure that tickets are enabled in the SSL_CTX options. */
+    SSL_CTX_clear_options(ssl_ctx, SSL_OP_NO_TICKET);
 
   } else {
+#  if defined(TLS1_3_VERSION)
+    /* If we might handle TLSv1.3 sessions, we need the callback for session
+     * resumption; TLSv1.3 prefers stateless session tickets vs stateful
+     * server-side session IDs.
+     */
+    if (SSL_CTX_set_tlsext_ticket_key_cb(ssl_ctx, tls_ticket_key_cb) == 0) {
+      pr_log_pri(PR_LOG_WARNING, MOD_TLS_VERSION
+        ": mod_tls compiled with Session Ticket support, but linked to "
+        "an OpenSSL library without tlsext support, therefore Session "
+        "Tickets are not available");
+    }
+
+    SSL_CTX_clear_options(ssl_ctx, SSL_OP_NO_TICKET);
+#  else
     /* Disable session tickets. */
-# ifdef SSL_OP_NO_TICKET
     SSL_CTX_set_options(ssl_ctx, SSL_OP_NO_TICKET);
-# endif
+    SSL_CTX_set_tlsext_ticket_key_cb(ssl_ctx, NULL);
+#  endif /* TLS1_3_VERSION */
   }
+# endif
 #endif /* TLS_USE_SESSION_TICKETS */
 
 #ifdef PR_USE_OPENSSL_ECC

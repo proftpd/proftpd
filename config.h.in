@@ -1095,6 +1095,10 @@
 /* Define if OpenSSL OCSP support, if available, should be used.  */
 #undef PR_USE_OPENSSL_OCSP
 
+/* Define if OpenSSL SSL session ticket callback support, if available,
+ * should be used.  */
+#undef PR_USE_OPENSSL_SSL_SESSION_TICKET_CALLBACK
+
 /* Define if using PCRE support.  */
 #undef PR_USE_PCRE
 

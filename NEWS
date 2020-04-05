@@ -20,6 +20,7 @@
 - Issue 857 - Fixed regression in the handling of `%{env:...}` configuration
   variables when the environment variable is not present. 
 - Issue 940 - Second LIST of the same symlink shows different results.
+- Issue 959 - FTPS uploads using TLSv1.3 are likely to fail unexpectedly.
 
 1.3.6c - Released 20-Feb-2020
 --------------------------------
