@@ -7247,7 +7247,8 @@ static int tls_accept(conn_t *conn, unsigned char on_data) {
 #endif /* !OPENSSL_NO_TLSEXT */
 
 #if defined(PR_USE_OPENSSL_SSL_SESSION_TICKET_CALLBACK)
-    if (session.curr_cmd_id == PR_CMD_STOR_ID ||
+    if (session.curr_cmd_id == PR_CMD_APPE_ID ||
+        session.curr_cmd_id == PR_CMD_STOR_ID ||
         session.curr_cmd_id == PR_CMD_STOU_ID) {
 
       /* Some versions of SSL_do_handshake have a bug in how they handle the
