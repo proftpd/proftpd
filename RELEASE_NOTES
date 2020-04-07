@@ -14,6 +14,8 @@ ChangeLog files.
 
   + Fixed issue with FTPS uploads of large files using TLSv1.3 (Issue #959).
 
+  + Fixed handling of IPv6 addresses in From directives (Issue #682).
+
   + New Configuration Directives
 
     LDAPUseSASL

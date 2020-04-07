@@ -37,6 +37,8 @@
 - Issue 954 - Support buggy/ill-behaved FTPS client shutdown behavior for CCC
   command.
 - Issue 959 - FTPS uploads using TLSv1.3 are likely to fail unexpectedly.
+- Issue 682 - IPv6 addresses not properly parsed in From directives, causing
+  unexpected <IfClass> mismatches.
 
 1.3.7rc3 - Released 20-Feb-2020
 --------------------------------
