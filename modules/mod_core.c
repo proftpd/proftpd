@@ -1367,21 +1367,24 @@ MODRET add_from(cmd_rec *cmd) {
   cargv = cmd->argv;
 
   while (cargc && *(cargv + 1)) {
-    if (strcasecmp("all", *(((char **) cargv) + 1)) == 0 ||
-        strcasecmp("none", *(((char **) cargv) + 1)) == 0) {
-      pr_netacl_t *acl = pr_netacl_create(cmd->tmp_pool,
-        *(((char **) cargv) + 1));
+    char *from;
+
+    from = *(((char **) cargv) + 1);
+
+    if (strcasecmp(from, "all") == 0 ||
+        strcasecmp(from, "none") == 0) {
+      pr_netacl_t *acl = pr_netacl_create(cmd->tmp_pool, from);
       if (acl == NULL) {
-        CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "bad ACL definition '",
-          *(((char **) cargv) + 1), "': ", strerror(errno), NULL));
+        CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "bad ACL definition '", from,
+          "': ", strerror(errno), NULL));
       }
 
-      pr_trace_msg("netacl", 9, "'%s' parsed into netacl '%s'",
-        *(((char **) cargv) + 1), pr_netacl_get_str(cmd->tmp_pool, acl));
+      pr_trace_msg("netacl", 9, "'%s' parsed into netacl '%s'", from,
+        pr_netacl_get_str(cmd->tmp_pool, acl));
 
       if (pr_class_add_acl(acl) < 0) {
-        CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "error adding rule '",
-          *(((char **) cargv) + 1), "': ", strerror(errno), NULL));
+        CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "error adding rule '", from,
+          "': ", strerror(errno), NULL));
       }
 
       cargc = 0;
@@ -1400,6 +1403,8 @@ MODRET add_from(cmd_rec *cmd) {
       if (*ent) {
         pr_netacl_t *acl;
 
+        pr_signals_handle();
+
         if (strcasecmp(ent, "all") == 0 ||
             strcasecmp(ent, "none") == 0) {
            cargc = 0;
@@ -1409,7 +1414,7 @@ MODRET add_from(cmd_rec *cmd) {
         acl = pr_netacl_create(cmd->tmp_pool, ent);
         if (acl == NULL) {
           CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "bad ACL definition '",
-            *(((char **) cargv) + 1), "': ", strerror(errno), NULL));
+            ent, "': ", strerror(errno), NULL));
         }
 
         pr_trace_msg("netacl", 9, "'%s' parsed into netacl '%s'", ent,
