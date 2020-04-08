@@ -32,6 +32,12 @@ ChangeLog files.
       policies for LDAP connections.  See doc/contrib/mod_ldap.html#LDAPServer
       for more details.
 
+  + Developer notes
+
+    When MaxLoginAttempts is reach, the POST_CMD_ERR/LOG_CMD_ERR command
+    handler phases will now run.  This allows interested modules, such
+    as mod_exec and others, to react to these events (Issue #718).
+
 
 1.3.7rc3
 ---------
