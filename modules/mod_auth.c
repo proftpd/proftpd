@@ -383,6 +383,14 @@ MODRET auth_err_pass(cmd_rec *cmd) {
    */
   pr_table_remove(session.notes, "mod_auth.orig-user", NULL);
 
+  /* If auth_tries = -1, that means we reached the max login attempts and
+   * should disconnect the session.
+   */
+  if (auth_tries == -1) {
+    pr_session_disconnect(&auth_module, PR_SESS_DISCONNECT_CONFIG_ACL,
+      "Denied by MaxLoginAttempts");
+  }
+  
   return PR_HANDLED(cmd);
 }
 
@@ -2657,8 +2665,10 @@ MODRET auth_pass(cmd_rec *cmd) {
       /* Generate an event about this limit being exceeded. */
       pr_event_generate("mod_auth.max-login-attempts", session.c);
 
-      pr_session_disconnect(&auth_module, PR_SESS_DISCONNECT_CONFIG_ACL,
-        "Denied by MaxLoginAttempts");
+      /* Set auth_tries to -1 so that the session is disconnected after
+       * POST_CMD_ERR and LOG_CMD_ERR events are processed.
+       */
+      auth_tries = -1;
     }
 
     return PR_ERROR_MSG(cmd, R_530, denymsg ? denymsg : _("Login incorrect."));
