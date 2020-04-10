@@ -1,6 +1,6 @@
 /*
  * ProFTPD - FTP server testsuite
- * Copyright (c) 2014-2016 The ProFTPD Project team
+ * Copyright (c) 2014-2020 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -1853,6 +1853,51 @@ START_TEST (auth_set_max_password_len_test) {
 }
 END_TEST
 
+START_TEST (auth_bcrypt_test) {
+  char *res;
+  size_t hashed_len;
+
+  res = pr_auth_bcrypt(NULL, NULL, NULL, NULL);
+  fail_unless(res == NULL, "Failed to handle null pool argument");
+  fail_unless(errno == EINVAL, "Expected EINVAL (%d), got '%s' (%d)", EINVAL,
+    strerror(errno), errno);
+
+  res = pr_auth_bcrypt(p, NULL, NULL, NULL);
+  fail_unless(res == NULL, "Failed to handle null key argument");
+  fail_unless(errno == EINVAL, "Expected EINVAL (%d), got '%s' (%d)", EINVAL,
+    strerror(errno), errno);
+
+  res = pr_auth_bcrypt(p, "", NULL, NULL);
+  fail_unless(res == NULL, "Failed to handle null salt argument");
+  fail_unless(errno == EINVAL, "Expected EINVAL (%d), got '%s' (%d)", EINVAL,
+    strerror(errno), errno);
+
+  res = pr_auth_bcrypt(p, "", "", NULL);
+  fail_unless(res == NULL, "Failed to handle null hashed_len argument");
+  fail_unless(errno == EINVAL, "Expected EINVAL (%d), got '%s' (%d)", EINVAL,
+    strerror(errno), errno);
+
+  res = pr_auth_bcrypt(p, "", "", &hashed_len);
+  fail_unless(res == NULL, "Failed to handle empty strings");
+  fail_unless(errno == EINVAL, "Expected EINVAL (%d), got '%s' (%d)", EINVAL,
+    strerror(errno), errno);
+
+  res = pr_auth_bcrypt(p, "foo", "$1", &hashed_len);
+  fail_unless(res == NULL, "Failed to handle invalid salt");
+  fail_unless(errno == EINVAL, "Expected EINVAL (%d), got '%s' (%d)", EINVAL,
+    strerror(errno), errno);
+
+  /* TODO: Add more tests of the invalid salt constructions: bcrypt version
+   * numbers, rounds, salt too short, etc.
+   */
+
+  res = pr_auth_bcrypt(p, "password",
+    "$2b$12$IoFxXvbRQUKssPqFacJFFuZl1KXl5ULppqf0aLFjwCFnLRh3NbYSG",
+    &hashed_len);
+  fail_unless(res != NULL, "Failed to handle valid key and salt");
+}
+END_TEST
+
 Suite *tests_get_auth_suite(void) {
   Suite *suite;
   TCase *testcase;
@@ -1909,6 +1954,7 @@ Suite *tests_get_auth_suite(void) {
   tcase_add_test(testcase, auth_is_valid_shell_test);
   tcase_add_test(testcase, auth_get_home_test);
   tcase_add_test(testcase, auth_set_max_password_len_test);
+  tcase_add_test(testcase, auth_bcrypt_test);
 
   suite_add_tcase(suite, testcase);
   return suite;
