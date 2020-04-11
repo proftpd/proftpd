@@ -2583,6 +2583,8 @@ MODRET set_ldapusesasl(cmd_rec *cmd) {
     CONF_ERROR(cmd, "wrong number of parameters");
   }
 
+  CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL);
+
   c = add_config_param(cmd->argv[0], 1, NULL);
 
   for (i = 1; i < cmd->argc; i++) {
