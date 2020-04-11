@@ -28,6 +28,12 @@ ChangeLog files.
       mechanisms to use, when using the LDAPBindDN to bind to the LDAP
       server.  See doc/contrib/mod_ldap.html#LDAPUseSASL for details.
 
+    SQLKeepAlive
+
+      The SQLKeepAlive directive configures a periodic "keepalive" query
+      for ensuring the connection between mod_sql and the backend database
+      server.  See doc/contrib/mod_sql.html#SQLKeepAlive for more information.
+
   + Changed Configuration Directives
 
     LDAPServer
