@@ -20,6 +20,9 @@
  * give permission to link this program with OpenSSL, and distribute the
  * resulting executable, without including the source code for OpenSSL in
  * the source distribution.
+ *
+ * -----DO NOT EDIT BELOW THIS LINE-----
+ * $Libraries: -lcrypto$
  */
 
 #include "conf.h"
@@ -50,9 +53,6 @@
 # include <openssl/err.h>
 # include <openssl/objects.h>
 #endif
-
-/* From lib/openbsd-bcrypt.c */
-extern int bcrypt_hashpass(const char *, const char *, char *, size_t);
 
 module sql_passwd_module;
 
@@ -739,7 +739,8 @@ static modret_t *sql_passwd_auth(cmd_rec *cmd, const char *plaintext,
 
 static modret_t *sql_passwd_bcrypt(cmd_rec *cmd, const char *plaintext,
     const char *ciphertext) {
-  char hashed[128];
+  char *hashed;
+  size_t hashed_len = 0;
 
   if (sql_passwd_engine == FALSE) {
     return PR_ERROR_INT(cmd, PR_AUTH_ERROR);
@@ -749,7 +750,8 @@ static modret_t *sql_passwd_bcrypt(cmd_rec *cmd, const char *plaintext,
    * ourselves.
    */
 
-  if (bcrypt_hashpass(plaintext, ciphertext, hashed, sizeof(hashed)) != 0) {
+  hashed = pr_auth_bcrypt(cmd->tmp_pool, plaintext, ciphertext, &hashed_len);
+  if (hashed == NULL) {
     pr_trace_msg(trace_channel, 3, "error using 'bcrypt': %s", strerror(errno));
     return PR_ERROR_INT(cmd, PR_AUTH_BADPWD);
   }

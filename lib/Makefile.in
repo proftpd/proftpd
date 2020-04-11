@@ -22,7 +22,7 @@ Makefile: Makefile.in ../config.status
 	cd ../ && ./config.status
 
 .c.o:
-	$(CC) $(CPPFLAGS) $(CFLAGS) -c $<
+	$(LIBTOOL) --mode=compile --tag=CC $(CC) $(CPPFLAGS) $(CFLAGS) -c $<
 
 libltdl: dummy
 	cd libltdl/ && $(MAKE)
