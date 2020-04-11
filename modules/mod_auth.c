@@ -345,13 +345,17 @@ static int do_auth(pool *p, xaset_t *conf, const char *u, char *pw) {
  */
 
 static void login_failed(pool *p, const char *user) {
-#ifdef HAVE_LOGINFAILED
   const char *host, *sess_ttyname;
+#if defined(HAVE_LOGINFAILED)
   int res, xerrno;
+#endif /* HAVE_LOGINFAILED */
 
   host = pr_netaddr_get_dnsstr(session.c->remote_addr);
   sess_ttyname = pr_session_get_ttyname(p);
 
+  pr_trace_msg("auth", 19, "mod_auth handling failed login for "
+    "user = '%s', host = '%s', tty = '%s'", user, host, sess_ttyname);
+#if defined(HAVE_LOGINFAILED)
   PRIVS_ROOT
   res = loginfailed((char *) user, (char *) host, (char *) sess_ttyname,
     AUDIT_FAIL);
@@ -416,14 +420,19 @@ MODRET auth_log_pass(cmd_rec *cmd) {
 }
 
 static void login_succeeded(pool *p, const char *user) {
-#ifdef HAVE_LOGINSUCCESS
   const char *host, *sess_ttyname;
+#if defined(HAVE_LOGINSUCCESS)
   char *msg = NULL;
   int res, xerrno;
+#endif /* HAVE_LOGINSUCCESS */
 
   host = pr_netaddr_get_dnsstr(session.c->remote_addr);
   sess_ttyname = pr_session_get_ttyname(p);
 
+  pr_trace_msg("auth", 19, "mod_auth handling successful login for "
+    "user = '%s', host = '%s', tty = '%s'", user, host, sess_ttyname);
+
+#if defined(HAVE_LOGINSUCCESS)
   PRIVS_ROOT
   res = loginsuccess((char *) user, (char *) host, (char *) sess_ttyname, &msg);
   xerrno = errno;
@@ -2651,7 +2660,7 @@ MODRET auth_pass(cmd_rec *cmd) {
     }
 
     if (max_logins > 0 &&
-        ++auth_tries >= max_logins) {
+        ((unsigned int) ++auth_tries) >= max_logins) {
       if (denymsg) {
         pr_response_send(R_530, "%s", denymsg);
 
