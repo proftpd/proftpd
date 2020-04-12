@@ -2571,20 +2571,8 @@ int main(int argc, char *argv[], char **envp) {
   }
 
   if (daemon_uid != PR_ROOT_UID) {
-    /* Allocate space for daemon supplemental groups. */
-    daemon_gids = make_array(permanent_pool, 2, sizeof(gid_t));
-
-    if (pr_auth_getgroups(permanent_pool, (const char *) get_param_ptr(
-        main_server->conf, "UserName", FALSE), &daemon_gids, NULL) < 0) {
-      pr_log_debug(DEBUG2, "unable to retrieve daemon supplemental groups");
-    }
-
-    if (set_groups(permanent_pool, daemon_gid, daemon_gids) < 0) {
-      if (errno != ENOSYS) {
-        pr_log_pri(PR_LOG_WARNING, "unable to set daemon groups: %s",
-          strerror(errno));
-      }
-    }
+    pr_log_debug(DEBUG9, "ignoring supplemental groups for non-root UID %lu",
+      (unsigned long) daemon_uid);
   }
 
   /* After configuration is complete, make sure that passwd, group

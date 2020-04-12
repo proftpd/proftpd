@@ -18,6 +18,8 @@ ChangeLog files.
 
   + Added -b and -n command-line options to ftptop.
 
+  + Ignore supplemental groups when run as non-root user (Issue #808).
+
   + New Configuration Directives
 
     LDAPUseSASL
