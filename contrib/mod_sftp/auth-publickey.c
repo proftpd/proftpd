@@ -340,6 +340,10 @@ int sftp_auth_publickey(struct ssh2_packet *pkt, cmd_rec *pass_cmd,
       pr_log_auth(PR_LOG_NOTICE, "USER %s (Login failed): authentication "
         "via '%s' public key failed", user, pubkey_algo);
 
+      pr_response_add_err(R_501, "Login incorrect.");
+      pr_cmd_dispatch_phase(pass_cmd, POST_CMD_ERR, 0);
+      pr_cmd_dispatch_phase(pass_cmd, LOG_CMD_ERR, 0);
+
       *send_userauth_fail = TRUE;
       errno = EACCES;
       return 0;
@@ -387,6 +391,10 @@ int sftp_auth_publickey(struct ssh2_packet *pkt, cmd_rec *pass_cmd,
       pr_log_auth(PR_LOG_NOTICE, "USER %s (Login failed): signature "
         "verification of '%s' public key failed", user, pubkey_algo);
 
+      pr_response_add_err(R_501, "Login incorrect.");
+      pr_cmd_dispatch_phase(pass_cmd, POST_CMD_ERR, 0);
+      pr_cmd_dispatch_phase(pass_cmd, LOG_CMD_ERR, 0);
+
       *send_userauth_fail = TRUE;
       errno = EACCES;
       return 0;
@@ -403,6 +411,11 @@ int sftp_auth_publickey(struct ssh2_packet *pkt, cmd_rec *pass_cmd,
       "authentication for user '%s' failed: User not authorized", user);
     pr_log_auth(PR_LOG_NOTICE, "USER %s (Login failed): User not authorized "
       "for login", user);
+
+    pr_response_add_err(R_501, "Login incorrect.");
+    pr_cmd_dispatch_phase(pass_cmd, POST_CMD_ERR, 0);
+    pr_cmd_dispatch_phase(pass_cmd, LOG_CMD_ERR, 0);
+
     *send_userauth_fail = TRUE;
     errno = EACCES;
     return 0;
@@ -422,6 +435,10 @@ int sftp_auth_publickey(struct ssh2_packet *pkt, cmd_rec *pass_cmd,
 
       pr_log_auth(PR_LOG_NOTICE, "USER %s (Login failed): public key request "
        "reused previously verified public key (fingerprint %s)", user, fp);
+
+      pr_response_add_err(R_501, "Login incorrect.");
+      pr_cmd_dispatch_phase(pass_cmd, POST_CMD_ERR, 0);
+      pr_cmd_dispatch_phase(pass_cmd, LOG_CMD_ERR, 0);
 
       *send_userauth_fail = TRUE;
       errno = EACCES;

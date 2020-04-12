@@ -1,6 +1,6 @@
 /*
  * ProFTPD - mod_sftp 'password' user authentication
- * Copyright (c) 2008-2017 TJ Saunders
+ * Copyright (c) 2008-2020 TJ Saunders
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -171,6 +171,11 @@ int sftp_auth_password(struct ssh2_packet *pkt, cmd_rec *pass_cmd,
         user);
       pr_log_auth(PR_LOG_NOTICE, "USER %s (Login failed): Incorrect password",
         user);
+
+      pr_response_add_err(R_501, "Login incorrect.");
+      pr_cmd_dispatch_phase(pass_cmd, POST_CMD_ERR, 0);
+      pr_cmd_dispatch_phase(pass_cmd, LOG_CMD_ERR, 0);
+
       *send_userauth_fail = TRUE;
       errno = EINVAL;
       return 0;
@@ -181,6 +186,11 @@ int sftp_auth_password(struct ssh2_packet *pkt, cmd_rec *pass_cmd,
         user);
       pr_log_auth(PR_LOG_NOTICE, "USER %s (Login failed): Password expired",
         user);
+
+      pr_response_add_err(R_501, "Login incorrect.");
+      pr_cmd_dispatch_phase(pass_cmd, POST_CMD_ERR, 0);
+      pr_cmd_dispatch_phase(pass_cmd, LOG_CMD_ERR, 0);
+
       *send_userauth_fail = TRUE;
       errno = EINVAL;
       return 0;
@@ -191,6 +201,11 @@ int sftp_auth_password(struct ssh2_packet *pkt, cmd_rec *pass_cmd,
         user);
       pr_log_auth(PR_LOG_NOTICE, "USER %s (Login failed): Account disabled",
         user);
+
+      pr_response_add_err(R_501, "Login incorrect.");
+      pr_cmd_dispatch_phase(pass_cmd, POST_CMD_ERR, 0);
+      pr_cmd_dispatch_phase(pass_cmd, LOG_CMD_ERR, 0);
+
       *send_userauth_fail = TRUE;
       errno = EINVAL;
       return 0;
