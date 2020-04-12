@@ -154,7 +154,8 @@ void pr_response_flush(pr_response_t **head) {
   const char *last_numeric = NULL;
   pr_response_t *resp = NULL;
 
-  if (head == NULL) {
+  if (head == NULL ||
+      *head == NULL) {
     return;
   }
 
