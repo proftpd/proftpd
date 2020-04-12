@@ -1,7 +1,7 @@
 /*
  * ProFTPD - ftptop: a utility for monitoring proftpd sessions
  * Copyright (c) 2000-2002 TJ Saunders <tj@castaglia.org>
- * Copyright (c) 2003-2016 The ProFTPD Project team
+ * Copyright (c) 2003-2020 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -27,7 +27,7 @@
  * scoreboard files.
  */
 
-#define FTPTOP_VERSION 		"ftptop/0.9"
+#define FTPTOP_VERSION 		"ftptop/1.0"
 
 #include "utils.h"
 
@@ -92,6 +92,8 @@ static const char *program = "ftptop";
 
 static int delay = 2;
 static unsigned int display_mode = FTPTOP_SHOW_REG;
+static int batch_mode = FALSE;
+static unsigned int max_iterations = 0;
 
 static char *config_filename = PR_CONFIG_FILE_PATH;
 
@@ -101,6 +103,7 @@ static unsigned int ftp_nsessions = 0;
 static unsigned int ftp_nuploads = 0;
 static unsigned int ftp_ndownloads = 0;
 static unsigned int ftp_nidles = 0;
+
 static char *server_name = NULL;
 static char **ftp_sessions = NULL;
 static unsigned int chunklen = 3;
@@ -115,12 +118,13 @@ static void usage(void);
 
 static void clear_counters(void) {
 
-  if (ftp_sessions &&
+  if (ftp_sessions != NULL &&
       ftp_nsessions > 0) {
     register unsigned int i = 0;
 
-    for (i = 0; i < ftp_nsessions; i++)
+    for (i = 0; i < ftp_nsessions; i++) {
       free(ftp_sessions[i]);
+    }
     free(ftp_sessions);
     ftp_sessions = NULL;
   }
@@ -289,7 +293,7 @@ static const char *show_ftpd_uptime(void) {
 
 static void process_opts(int argc, char *argv[]) {
   int optc = 0;
-  const char *prgopts = "AaDS:d:f:hIiUV";
+  const char *prgopts = "AabDS:d:f:hIin:UV";
 
   while ((optc = getopt(argc, argv, prgopts)) != -1) {
     switch (optc) {
@@ -301,19 +305,14 @@ static void process_opts(int argc, char *argv[]) {
       case 'a':
         display_mode &= ~FTPTOP_SHOW_AUTH;
         break;
- 
+
+      case 'b':
+        batch_mode = TRUE;
+        break;
+
       case 'D':
         display_mode = 0U;
         display_mode |= FTPTOP_SHOW_DOWNLOAD;
-        break;
-
-      case 'S':
-        if (server_name != NULL) {
-          free(server_name);
-          server_name = NULL;
-        }
-
-        server_name = strdup(optarg);
         break;
 
       case 'd':
@@ -354,6 +353,29 @@ static void process_opts(int argc, char *argv[]) {
         display_mode &= ~FTPTOP_SHOW_IDLE;
         break;
 
+      case 'n': {
+        int count;
+
+        count = atoi(optarg);
+        if (count <= 0) {
+          fprintf(stderr, "%s: bad iterations argument '%s'\n", program,
+            optarg);
+          exit(1);
+        }
+
+        max_iterations = count;
+        break;
+      }
+
+      case 'S':
+        if (server_name != NULL) {
+          free(server_name);
+          server_name = NULL;
+        }
+
+        server_name = strdup(optarg);
+        break;
+
       case 'U':
         display_mode = 0U;
         display_mode |= FTPTOP_SHOW_UPLOAD;
@@ -378,7 +400,7 @@ static void process_opts(int argc, char *argv[]) {
     char *path;
 
     path = util_scan_config(config_filename, "ScoreboardFile");
-    if (path) {
+    if (path != NULL) {
       util_set_scoreboard(path);
       free(path);
     }
@@ -610,7 +632,7 @@ static void show_sessions(void) {
   attroff(A_REVERSE);
 
   /* Write out the scoreboard entries. */
-  if (ftp_sessions &&
+  if (ftp_sessions != NULL &&
       ftp_nsessions > 0) {
     register unsigned int i = 0;
 
@@ -643,13 +665,17 @@ static void show_version(void) {
 
 static void usage(void) {
   fprintf(stdout, "usage: ftptop [options]\n\n");
-  fprintf(stdout, "\t-A      \t\tshow only authenticatng sessions\n");
+  fprintf(stdout, "\t-A      \t\tshow only authenticating sessions\n");
   fprintf(stdout, "\t-a      \t\tignores authenticating connections when listing\n");
+  fprintf(stdout, "\t-b      \t\tbatch mode\n");
   fprintf(stdout, "\t-D      \t\tshow only downloading sessions\n");
   fprintf(stdout, "\t-d <num>\t\trefresh delay in seconds\n");
   fprintf(stdout, "\t-f      \t\tconfigures the ScoreboardFile to use\n");
   fprintf(stdout, "\t-h      \t\tdisplays this message\n");
-  fprintf(stdout, "\t-i      \t\tignores idle connections when listing\n");
+  fprintf(stdout, "\t-I      \t\tshow only idle connections\n");
+  fprintf(stdout, "\t-i      \t\tignores idle connections\n");
+  fprintf(stdout, "\t-n <num>\t\tnumber of iterations\n");
+  fprintf(stdout, "\t-S      \t\tshow only sessions for this ServerName\n");
   fprintf(stdout, "\t-U      \t\tshow only uploading sessions\n");
   fprintf(stdout, "\t-V      \t\tshows version\n");
   fprintf(stdout, "\n");
@@ -669,6 +695,7 @@ static void verify_scoreboard_file(void) {
 }
 
 int main(int argc, char *argv[]) {
+  unsigned int iteration_count = 0;
 
   /* Process command line options. */
   process_opts(argc, argv);
@@ -688,37 +715,53 @@ int main(int argc, char *argv[]) {
   initscr();
   cbreak();
   noecho();
-#ifndef HAVE_NCURSES
+#if !defined(HAVE_NCURSES)
   nodelay(stdscr, TRUE);
-#endif
+#endif /* HAVE_NCURSES */
   curs_set(0);
 
   /* Paint the initial display. */
   show_sessions();
 
   /* Loop endlessly. */
-  for (;;) {
-    int c = -1;
+  while (TRUE) {
+    if (batch_mode == FALSE) {
+      int c = -1;
 
-#ifdef HAVE_NCURSES
-    if (halfdelay(delay * 10) != ERR)
-      c = getch();
-#else
-    sleep(delay);
-    c = getch();
-#endif
-
-    if (c != -1) {
-      if (tolower(c) == 'q') {
-        break;
+#if defined(HAVE_NCURSES)
+      if (halfdelay(delay * 10) != ERR) {
+        c = getch();
       }
+#else
+      sleep(delay);
+      c = getch();
+#endif /* HAVE_NCURSES */
 
-      if (tolower(c) == 't') {
-        toggle_mode();
+      if (c != -1) {
+        if (tolower(c) == 'q') {
+          break;
+        }
+
+        if (tolower(c) == 't') {
+          toggle_mode();
+        }
       }
     }
 
     show_sessions();
+
+    if (batch_mode == TRUE) {
+      /* Only worry about the number of iterations if a limit has been
+       * set via `-n`.
+       */
+      if (max_iterations > 0) {
+        iteration_count++;
+
+        if (iteration_count >= max_iterations) {
+          break;
+        }
+      }
+    }
   }
 
   /* done */
