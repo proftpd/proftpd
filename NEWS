@@ -41,6 +41,8 @@
   unexpected <IfClass> mismatches.
 - Issue 964 - Unable to load mod_sftp, mod_sql_passwd as shared modules on
   Alpine.
+- Issue 968 - Require TLSv1.3 data connection sessions to reuse same session as
+  control connection for TLSv1.3 session tickets.
 
 1.3.7rc3 - Released 20-Feb-2020
 --------------------------------
