@@ -1458,13 +1458,12 @@ void sftp_ssh2_packet_handle_ext_info(struct ssh2_packet *pkt) {
   for (i = 0; i < ext_count; i++) {
     char *ext_name = NULL;
     uint32_t ext_datalen = 0;
-    unsigned char *ext_data;
 
     ext_name = sftp_msg_read_string(pkt->pool, &pkt->payload,
       &pkt->payload_len);
     ext_datalen = sftp_msg_read_int(pkt->pool, &pkt->payload,
       &pkt->payload_len);
-    ext_data = sftp_msg_read_data(pkt->pool, &pkt->payload,
+    (void) sftp_msg_read_data(pkt->pool, &pkt->payload,
       &pkt->payload_len, ext_datalen);
 
     pr_trace_msg(trace_channel, 9,
