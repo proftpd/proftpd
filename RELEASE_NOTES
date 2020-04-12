@@ -16,6 +16,8 @@ ChangeLog files.
 
   + Fixed handling of IPv6 addresses in From directives (Issue #682).
 
+  + Added -b and -n command-line options to ftptop.
+
   + New Configuration Directives
 
     LDAPUseSASL
