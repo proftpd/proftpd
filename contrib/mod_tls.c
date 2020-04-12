@@ -619,6 +619,16 @@ static pr_netio_stream_t *tls_data_wr_nstrm = NULL;
 static tls_sess_cache_t *tls_sess_cache = NULL;
 static tls_ocsp_cache_t *tls_ocsp_cache = NULL;
 
+#if defined(PR_USE_OPENSSL_SSL_SESSION_TICKET_CALLBACK)
+/* These are used to ensure that TLSv1.3 session tickets are from the same
+ * FTP session.
+ */
+static const void *tls_ctrl_ticket_appdata = NULL;
+static size_t tls_ctrl_ticket_appdatasz = 0, tls_ctrl_ticket_appdata_len = 0;
+static const void *tls_data_ticket_appdata = NULL;
+static size_t tls_data_ticket_appdatasz = 0, tls_data_ticket_appdata_len = 0;
+#endif /* PR_USE_OPENSSL_SSL_SESSION_TICKET_CALLBACK */
+
 /* OpenSSL variables */
 static SSL *ctrl_ssl = NULL;
 static SSL_CTX *ssl_ctx = NULL;
@@ -6665,12 +6675,150 @@ static int tls_ticket_key_cb(SSL *ssl, unsigned char *key_name,
 #endif /* TLS_USE_SESSION_TICKETS */
 
 #if defined(PR_USE_OPENSSL_SSL_SESSION_TICKET_CALLBACK)
+static int tls_generate_session_ticket_cb(SSL *ssl, void *user_data) {
+  SSL_SESSION *ssl_session;
+
+  ssl_session = SSL_get_session(ssl);
+
+  if (SSL_SESSION_set1_ticket_appdata(ssl_session,
+      tls_ctrl_ticket_appdata, tls_ctrl_ticket_appdata_len) != 1) {
+    tls_log("error setting ticket appdata for ticket: %s",
+      tls_get_errors());
+
+  } else {
+    if (pr_trace_get_level(trace_channel) >= 19) {
+      register unsigned int i;
+      unsigned char *ticket_appdata;
+      BIO *bio;
+      char *text = NULL;
+      long text_len = 0;
+
+      bio = BIO_new(BIO_s_mem());
+      BIO_printf(bio, "set %lu bytes of ticket appdata (",
+        (unsigned long) tls_ctrl_ticket_appdata_len);
+      ticket_appdata = tls_ctrl_ticket_appdata;
+      for (i = 0; i < tls_ctrl_ticket_appdata_len; i++) {
+        BIO_printf(bio, "%02x", ticket_appdata[i]);
+      }
+      BIO_printf(bio, ") for %s session ticket", SSL_get_version(ssl));
+
+      text_len = BIO_get_mem_data(bio, &text);
+      if (text != NULL) {
+        text[text_len] = '\0';
+        pr_trace_msg(trace_channel, 19, "%.*s", (int) text_len, text);
+      }
+
+      BIO_free(bio);
+
+    } else {
+      pr_trace_msg(trace_channel, 9,
+        "set %lu bytes of ticket appdata for %s session ticket",
+        (unsigned long) tls_ctrl_ticket_appdata_len, SSL_get_version(ssl));
+    }
+  }
+
+  return 1;
+}
+
+static void get_session_ticket_appdata(SSL *ssl, SSL_SESSION *ssl_session) {
+  void *appdata = NULL;
+  size_t appdata_len = 0;
+
+  if (SSL_SESSION_get0_ticket_appdata(ssl_session, &appdata,
+      &appdata_len) != 1) {
+    tls_log("error obtaining ticket appdata from data transfer ticket: %s",
+      tls_get_errors());
+    tls_data_ticket_appdata_len = 0;
+
+    return;
+  }
+
+  /* Make sure the ticket appdata length is what we expect; we might have
+   * received a ticket with different appdata that what we want.
+   */
+  if (appdata_len != tls_data_ticket_appdatasz) {
+    tls_log("received %s session ticket with unexpected appdata "
+      "(expected %lu bytes, got %lu), ignoring", SSL_get_version(ssl),
+      (unsigned long) tls_data_ticket_appdatasz, (unsigned long) appdata_len);
+    tls_data_ticket_appdata_len = 0;
+
+    return;
+  }
+
+  /* Note that we need to copy the appdata into our own buffers for later
+   * comparisons; the OpenSSL docs do not do a good job of describing the
+   * lifetime of the pointer/buffer returned by
+   * SSL_SESSION_get0_ticket_appdata.
+   */
+  tls_data_ticket_appdata_len = appdata_len;
+  memcpy(tls_data_ticket_appdata, appdata, appdata_len);
+
+  if (pr_trace_get_level(trace_channel) >= 19) {
+    register unsigned int i;
+    unsigned char *ticket_appdata;
+    BIO *bio;
+    char *text = NULL;
+    long text_len = 0;
+
+    bio = BIO_new(BIO_s_mem());
+    BIO_printf(bio, "obtained %lu bytes of ticket appdata (",
+      (unsigned long) tls_data_ticket_appdata_len);
+    ticket_appdata = tls_data_ticket_appdata;
+    for (i = 0; i < tls_data_ticket_appdata_len; i++) {
+      BIO_printf(bio, "%02x", ticket_appdata[i]);
+    }
+    BIO_printf(bio, ") from %s session ticket", SSL_get_version(ssl));
+
+    text_len = BIO_get_mem_data(bio, &text);
+    if (text != NULL) {
+      text[text_len] = '\0';
+      pr_trace_msg(trace_channel, 19, "%.*s", (int) text_len, text);
+    }
+
+    BIO_free(bio);
+
+  } else {
+    pr_trace_msg(trace_channel, 9,
+      "obtained %lu bytes of ticket appdata from %s session ticket",
+      (unsigned long) tls_data_ticket_appdata_len, SSL_get_version(ssl));
+  }
+}
+
+static SSL_TICKET_RETURN tls_decrypt_session_ticket_data_xfer_cb(SSL *ssl,
+    SSL_SESSION *ssl_session, const unsigned char *key_name, size_t key_namelen,
+    SSL_TICKET_STATUS status, void *user_data) {
+  SSL_TICKET_RETURN res;
+
+  switch (status) {
+    case SSL_TICKET_EMPTY:
+    case SSL_TICKET_NO_DECRYPT:
+      tls_data_ticket_appdata_len = 0;
+      res = SSL_TICKET_RETURN_IGNORE_RENEW;
+      break;
+
+    case SSL_TICKET_SUCCESS:
+      get_session_ticket_appdata(ssl, ssl_session);
+      res = SSL_TICKET_RETURN_USE;
+      break;
+
+    case SSL_TICKET_SUCCESS_RENEW:
+      get_session_ticket_appdata(ssl, ssl_session);
+      res = SSL_TICKET_RETURN_USE_RENEW;
+      break;
+
+    default:
+      res = SSL_TICKET_RETURN_IGNORE;
+  }
+
+  return res;
+}
+
 /* Note that we want to _use_ any provided TLSv1.3 session tickets, so that
  * data transfers can reuse the TLS session from the control connection.  BUT
  * we do not want to _renew_ (or issue) new tickets, as that will may tickle
  * the ECONNRESET bug (see Issue #959) for some data transfers.
  */
-static SSL_TICKET_RETURN tls_data_xfer_session_ticket_cb(SSL *ssl,
+static SSL_TICKET_RETURN tls_decrypt_session_ticket_data_upload_cb(SSL *ssl,
     SSL_SESSION *ssl_session, const unsigned char *key_name, size_t key_namelen,
     SSL_TICKET_STATUS status, void *user_data) {
   SSL_TICKET_RETURN res;
@@ -6688,6 +6836,7 @@ static SSL_TICKET_RETURN tls_data_xfer_session_ticket_cb(SSL *ssl,
   switch (status) {
     case SSL_TICKET_EMPTY:
     case SSL_TICKET_NO_DECRYPT:
+      tls_data_ticket_appdata_len = 0;
       res = SSL_TICKET_RETURN_IGNORE_RENEW;
       if (renew_tickets == FALSE) {
         res = SSL_TICKET_RETURN_IGNORE;
@@ -6695,10 +6844,12 @@ static SSL_TICKET_RETURN tls_data_xfer_session_ticket_cb(SSL *ssl,
       break;
 
     case SSL_TICKET_SUCCESS:
+      get_session_ticket_appdata(ssl, ssl_session);
       res = SSL_TICKET_RETURN_USE;
       break;
 
     case SSL_TICKET_SUCCESS_RENEW:
+      get_session_ticket_appdata(ssl, ssl_session);
       res = SSL_TICKET_RETURN_USE_RENEW;
       if (renew_tickets == FALSE) {
         res = SSL_TICKET_RETURN_USE;
@@ -6996,6 +7147,14 @@ static SSL_CTX *tls_init_ctx(server_rec *s) {
   }
 #endif /* TLS_USE_SESSION_TICKETS */
 
+#if defined(PR_USE_OPENSSL_SSL_SESSION_TICKET_CALLBACK)
+  if (SSL_CTX_set_session_ticket_cb(ctx, tls_generate_session_ticket_cb,
+      tls_decrypt_session_ticket_data_xfer_cb, NULL) != 1) {
+    pr_trace_msg(trace_channel, 3,
+      "error setting TLSv1.3 session ticket callback: %s", tls_get_errors());
+  }
+#endif /* PR_USE_OPENSSL_SSL_SESSION_TICKET_CALLBACK */
+
   SSL_CTX_set_tmp_dh_callback(ctx, tls_dh_cb);
 
 #ifdef PR_USE_OPENSSL_ECC
@@ -7247,6 +7406,8 @@ static int tls_accept(conn_t *conn, unsigned char on_data) {
 #endif /* !OPENSSL_NO_TLSEXT */
 
 #if defined(PR_USE_OPENSSL_SSL_SESSION_TICKET_CALLBACK)
+    tls_data_ticket_appdata_len = 0;
+
     if (session.curr_cmd_id == PR_CMD_APPE_ID ||
         session.curr_cmd_id == PR_CMD_STOR_ID ||
         session.curr_cmd_id == PR_CMD_STOU_ID) {
@@ -7272,15 +7433,16 @@ static int tls_accept(conn_t *conn, unsigned char on_data) {
        * are a) the server, and b) in a read-only role.  Thus we are not
        * expected to _send_ any TCP data, including session tickets.
        */
-      if (SSL_CTX_set_session_ticket_cb(ssl_ctx, NULL,
-          tls_data_xfer_session_ticket_cb, NULL) != 1) {
+      if (SSL_CTX_set_session_ticket_cb(ssl_ctx, tls_generate_session_ticket_cb,
+          tls_decrypt_session_ticket_data_upload_cb, NULL) != 1) {
         pr_trace_msg(trace_channel, 3, "error setting TLSv1.3 session ticket "
           "callback for '%s' data transfer: %s", session.curr_cmd,
           tls_get_errors());
       }
     } else {
       /* Restore default session ticket callbacks for any other transfer. */
-      if (SSL_CTX_set_session_ticket_cb(ssl_ctx, NULL, NULL, NULL) != 1) {
+      if (SSL_CTX_set_session_ticket_cb(ssl_ctx, tls_generate_session_ticket_cb,
+          tls_decrypt_session_ticket_data_xfer_cb, NULL) != 1) {
         pr_trace_msg(trace_channel, 3, "error setting TLSv1.3 session ticket "
           "callback for '%s' data transfer: %s", session.curr_cmd,
           tls_get_errors());
@@ -7745,19 +7907,65 @@ static int tls_accept(conn_t *conn, unsigned char on_data) {
            * favors session tickets (and stateless servers) rather than
            * session IDs (and stateful server session caches).
            *
-           * Note that when OpenSSL's SSL_OP_NO_TICKET is used, OpenSSL will
-           * try to emulate legacy server-side session IDs for TLSv1.3
-           * connections.  Thus we might be able to strengthen this particular
-           * policy check in such cases to be: IFF TLSv1.3 and OP_NO_TICKET
-           * and no matching session IDs.  Maybe.
+           * To prove session reuse via TLSv1.3 session tickets, then, we use
+           * ticket appdata to generate a random "FTP session ID" that we stick
+           * in the control session tickets; the data session tickets presented
+           * should have the exact same appdata, if they are coming from our
+           * expected control session.
            */
           if (matching_sess != 0 &&
               SSL_version(ctrl_ssl) == TLS1_3_VERSION &&
               SSL_version(ssl) == TLS1_3_VERSION) {
-            pr_trace_msg(trace_channel, 9,
-              "ignoring mismatched control/data session IDs for %s sessions, "
-              "for now", SSL_get_version(ssl));
-            matching_sess = 0;
+
+            if (tls_ctrl_ticket_appdata_len > 0 &&
+                tls_data_ticket_appdata_len > 0 &&
+                tls_ctrl_ticket_appdata_len == tls_data_ticket_appdata_len) {
+              if (pr_trace_get_level(trace_channel) >= 19) {
+                register unsigned int i;
+                unsigned char *ticket_appdata;
+                BIO *bio;
+                char *text = NULL;
+                long text_len = 0;
+
+                bio = BIO_new(BIO_s_mem());
+                BIO_puts(bio, "comparing control ticket appdata (");
+                ticket_appdata = tls_ctrl_ticket_appdata;
+                for (i = 0; i < tls_ctrl_ticket_appdata_len; i++) {
+                  BIO_printf(bio, "%02x", ticket_appdata[i]);
+                }
+
+                BIO_puts(bio, ") and data ticket appdata (");
+                ticket_appdata = tls_data_ticket_appdata;
+                for (i = 0; i < tls_data_ticket_appdata_len; i++) {
+                  BIO_printf(bio, "%02x", ticket_appdata[i]);
+                }
+                BIO_puts(bio, ")");
+
+                text_len = BIO_get_mem_data(bio, &text);
+                if (text != NULL) {
+                  text[text_len] = '\0';
+                  pr_trace_msg(trace_channel, 19, "%.*s", (int) text_len, text);
+                }
+
+                BIO_free(bio);
+              }
+
+              matching_sess = memcmp(tls_ctrl_ticket_appdata,
+                tls_data_ticket_appdata, tls_ctrl_ticket_appdata_len);
+              if (matching_sess != 0) {
+                pr_trace_msg(trace_channel, 9,
+                  "mismatched control/data ticket appdata for %s sessions",
+                  SSL_get_version(ssl));
+              }
+
+            } else {
+              pr_trace_msg(trace_channel, 9,
+                "mismatched control/data ticket appdata (ctrl = %lu bytes, "
+                "data = %lu bytes) for %s sessions",
+                (unsigned long) tls_ctrl_ticket_appdata_len,
+                (unsigned long) tls_data_ticket_appdata_len,
+                SSL_get_version(ssl));
+            }
           }
 #endif /* TLS1_3_VERSION */
 
@@ -17890,6 +18098,41 @@ static int tls_sess_init(void) {
   SSL_CTX_set_tlsext_servername_callback(ssl_ctx, tls_sni_cb);
   SSL_CTX_set_tlsext_servername_arg(ssl_ctx, NULL);
 #endif /* !OPENSSL_NO_TLSEXT */
+
+#if defined(PR_USE_OPENSSL_SSL_SESSION_TICKET_CALLBACK)
+  /* Generate random ticket appdata that will uniquely (hopefully) identify
+   * this particular FTP session.
+   *
+   * Note that we only want to do this once, so that the identifying data
+   * does not change across SNI/HOST.
+   */
+  if (tls_ctrl_ticket_appdatasz == 0) {
+    tls_ctrl_ticket_appdatasz = tls_data_ticket_appdatasz = 32;
+
+    if (tls_ctrl_ticket_appdata == NULL) {
+      tls_ctrl_ticket_appdata = palloc(session.pool,
+        tls_ctrl_ticket_appdatasz);
+    }
+
+    /* Allocate space for the data connection ticket appdata as well; we
+     * only need one buffer for this.
+     */
+    if (tls_data_ticket_appdata == NULL) {
+      tls_data_ticket_appdata = palloc(session.pool,
+        tls_data_ticket_appdatasz);
+    }
+
+    if (RAND_bytes((unsigned char *) tls_ctrl_ticket_appdata,
+        tls_ctrl_ticket_appdatasz) != 1) {
+      tls_log("error generating %lu bytes of random ticket appdata: %s",
+        (unsigned long) tls_ctrl_ticket_appdatasz, tls_get_errors());
+      tls_ctrl_ticket_appdata_len = 0;
+
+    } else {
+      tls_ctrl_ticket_appdata_len = tls_ctrl_ticket_appdatasz;
+    }
+  }
+#endif /* PR_USE_OPENSSL_SSL_SESSION_TICKET_CALLBACK */
 
   /* We need to check for FIPS mode in the child process as well, in order
    * to re-seed the FIPS PRNG for this process ID.  Annoying, isn't it?
