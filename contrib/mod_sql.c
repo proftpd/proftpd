@@ -5210,7 +5210,10 @@ MODRET set_sqlnamedquery(cmd_rec *cmd) {
     CONF_ERROR(cmd, "type must be SELECT, INSERT, UPDATE, or FREEFORM");
   }
 
-  c->flags |= CF_MULTI;
+  if (c != NULL) {
+    c->flags |= CF_MULTI;
+  }
+
   return PR_HANDLED(cmd);
 }
 

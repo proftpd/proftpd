@@ -479,11 +479,11 @@ static int sys_fsync(pr_fh_t *fh, int fd) {
 
 static ssize_t sys_getxattr(pool *p, pr_fs_t *fs, const char *path,
     const char *name, void *val, size_t valsz) {
-  ssize_t res;
+  ssize_t res = -1;
 
   (void) p;
 
-#ifdef PR_USE_XATTR
+#if defined(PR_USE_XATTR)
 # if defined(HAVE_SYS_EXTATTR_H)
   res = extattr_get_file(path, EXTATTR_NAMESPACE_USER, name, val, valsz);
 # elif defined(HAVE_SYS_XATTR_H)
@@ -492,6 +492,9 @@ static ssize_t sys_getxattr(pool *p, pr_fs_t *fs, const char *path,
 #  else
   res = getxattr(path, name, val, valsz);
 #  endif /* XATTR_NOFOLLOW */
+# else
+  errno = NOSYS;
+  res = -1;
 # endif /* HAVE_SYS_XATTR_H */
 #else
   (void) fs;
@@ -499,6 +502,7 @@ static ssize_t sys_getxattr(pool *p, pr_fs_t *fs, const char *path,
   (void) name;
   (void) val;
   (void) valsz;
+
   errno = ENOSYS;
   res = -1;
 #endif /* PR_USE_XATTR */
@@ -508,11 +512,11 @@ static ssize_t sys_getxattr(pool *p, pr_fs_t *fs, const char *path,
 
 static ssize_t sys_lgetxattr(pool *p, pr_fs_t *fs, const char *path,
     const char *name, void *val, size_t valsz) {
-  ssize_t res;
+  ssize_t res = -1;
 
   (void) p;
 
-#ifdef PR_USE_XATTR
+#if defined(PR_USE_XATTR)
 # if defined(HAVE_SYS_EXTATTR_H)
 #  if defined(HAVE_EXTATTR_GET_LINK)
   res = extattr_get_link(path, EXTATTR_NAMESPACE_USER, name, val, valsz);
@@ -527,6 +531,9 @@ static ssize_t sys_lgetxattr(pool *p, pr_fs_t *fs, const char *path,
 #  else
   res = getxattr(path, name, val, valsz);
 #  endif /* HAVE_LGETXATTR */
+# else
+  errno = ENOSYS;
+  res = -1;
 # endif /* HAVE_SYS_XATTR_H */
 #else
   (void) fs;
@@ -534,6 +541,7 @@ static ssize_t sys_lgetxattr(pool *p, pr_fs_t *fs, const char *path,
   (void) name;
   (void) val;
   (void) valsz;
+
   errno = ENOSYS;
   res = -1;
 #endif /* PR_USE_XATTR */
@@ -543,11 +551,11 @@ static ssize_t sys_lgetxattr(pool *p, pr_fs_t *fs, const char *path,
 
 static ssize_t sys_fgetxattr(pool *p, pr_fh_t *fh, int fd, const char *name,
     void *val, size_t valsz) {
-  ssize_t res;
+  ssize_t res = -1;
 
   (void) p;
 
-#ifdef PR_USE_XATTR
+#if defined(PR_USE_XATTR)
 # if defined(HAVE_SYS_EXTATTR_H)
   res = extattr_get_fd(fd, EXTATTR_NAMESPACE_USER, name, val, valsz);
 # elif defined(HAVE_SYS_XATTR_H)
@@ -556,6 +564,9 @@ static ssize_t sys_fgetxattr(pool *p, pr_fh_t *fh, int fd, const char *name,
 #  else
   res = fgetxattr(fd, name, val, valsz);
 #  endif /* XATTR_NOFOLLOW */
+# else
+  errno = ENOSYS;
+  res = -1;
 # endif /* HAVE_SYS_XATTR_H */
 #else
   (void) fh;
@@ -563,6 +574,7 @@ static ssize_t sys_fgetxattr(pool *p, pr_fh_t *fh, int fd, const char *name,
   (void) name;
   (void) val;
   (void) valsz;
+
   errno = ENOSYS;
   res = -1;
 #endif /* PR_USE_XATTR */
@@ -570,7 +582,7 @@ static ssize_t sys_fgetxattr(pool *p, pr_fh_t *fh, int fd, const char *name,
   return res;
 }
 
-#ifdef PR_USE_XATTR
+#if defined(PR_USE_XATTR)
 static array_header *parse_xattr_namelist(pool *p, char *namelist, size_t sz) {
   array_header *names;
   char *ptr;
@@ -619,7 +631,7 @@ static array_header *parse_xattr_namelist(pool *p, char *namelist, size_t sz) {
 }
 
 static ssize_t unix_listxattr(const char *path, char *namelist, size_t len) {
-  ssize_t res;
+  ssize_t res = -1;
 
 #if defined(HAVE_SYS_EXTATTR_H)
   res = extattr_list_file(path, EXTATTR_NAMESPACE_USER, namelist, len);
@@ -629,13 +641,16 @@ static ssize_t unix_listxattr(const char *path, char *namelist, size_t len) {
 # else
   res = listxattr(path, namelist, len);
 # endif /* XATTR_NOFOLLOW */
+#else
+  errno = ENOSYS;
+  res = -1;
 #endif /* HAVE_SYS_XATTR_H */
 
   return res;
 }
 
 static ssize_t unix_llistxattr(const char *path, char *namelist, size_t len) {
-  ssize_t res;
+  ssize_t res = -1;
 
 # if defined(HAVE_SYS_EXTATTR_H)
 #  if defined(HAVE_EXTATTR_LIST_LINK)
@@ -651,13 +666,16 @@ static ssize_t unix_llistxattr(const char *path, char *namelist, size_t len) {
 #  else
   res = listxattr(path, namelist, len);
 #  endif /* XATTR_NOFOLLOW */
+# else
+  errno = ENOSYS;
+  res = -1;
 # endif /* HAVE_SYS_XATTR_H */
 
   return res;
 }
 
 static ssize_t unix_flistxattr(int fd, char *namelist, size_t len) {
-  ssize_t res;
+  ssize_t res = -1;
 
 # if defined(HAVE_SYS_EXTATTR_H)
   res = extattr_list_fd(fd, EXTATTR_NAMESPACE_USER, namelist, len);
@@ -667,6 +685,9 @@ static ssize_t unix_flistxattr(int fd, char *namelist, size_t len) {
 #  else
   res = flistxattr(fd, namelist, len);
 #  endif /* XATTR_NOFOLLOW */
+# else
+  errno = ENOSYS;
+  res = -1;
 # endif /* HAVE_SYS_XATTR_H */
 
   return res;
@@ -840,11 +861,11 @@ static int sys_flistxattr(pool *p, pr_fh_t *fh, int fd, array_header **names) {
 
 static int sys_removexattr(pool *p, pr_fs_t *fs, const char *path,
     const char *name) {
-  int res;
+  int res = -1;
 
   (void) p;
 
-#ifdef PR_USE_XATTR
+#if defined(PR_USE_XATTR)
 # if defined(HAVE_SYS_EXTATTR_H)
   res = extattr_delete_file(path, EXTATTR_NAMESPACE_USER, name);
 # elif defined(HAVE_SYS_XATTR_H)
@@ -853,11 +874,15 @@ static int sys_removexattr(pool *p, pr_fs_t *fs, const char *path,
 #  else
   res = removexattr(path, name);
 #  endif /* XATTR_NOFOLLOW */
+# else
+  errno = ENOSYS;
+  res = -1;
 # endif /* HAVE_SYS_XATTR_H */
 #else
   (void) fs;
   (void) path;
   (void) name;
+
   errno = ENOSYS;
   res = -1;
 #endif /* PR_USE_XATTR */
@@ -871,7 +896,7 @@ static int sys_lremovexattr(pool *p, pr_fs_t *fs, const char *path,
 
   (void) p;
 
-#ifdef PR_USE_XATTR
+#if defined(PR_USE_XATTR)
 # if defined(HAVE_SYS_EXTATTR_H)
 #  if defined(HAVE_EXTATTR_DELETE_LINK)
   res = extattr_delete_link(path, EXTATTR_NAMESPACE_USER, name);
@@ -886,11 +911,15 @@ static int sys_lremovexattr(pool *p, pr_fs_t *fs, const char *path,
 #  else
   res = removexattr(path, name);
 #  endif /* XATTR_NOFOLLOW */
+# else
+  errno = ENOSYS;
+  res = -1;
 # endif /* HAVE_SYS_XATTR_H */
 #else
   (void) fs;
   (void) path;
   (void) name;
+
   errno = ENOSYS;
   res = -1;
 #endif /* PR_USE_XATTR */
@@ -903,7 +932,7 @@ static int sys_fremovexattr(pool *p, pr_fh_t *fh, int fd, const char *name) {
 
   (void) p;
 
-#ifdef PR_USE_XATTR
+#if defined(PR_USE_XATTR)
 # if defined(HAVE_SYS_EXTATTR_H)
   res = extattr_delete_fd(fd, EXTATTR_NAMESPACE_USER, name);
 # elif defined(HAVE_SYS_XATTR_H)
@@ -912,11 +941,15 @@ static int sys_fremovexattr(pool *p, pr_fh_t *fh, int fd, const char *name) {
 #  else
   res = fremovexattr(fd, name);
 #  endif /* XATTR_NOFOLLOW */
+# else
+  errno = ENOSYS;
+  res = -1;
 # endif /* HAVE_SYS_XATTR_H */
 #else
   (void) fh;
   (void) fd;
   (void) name;
+
   errno = ENOSYS;
   res = -1;
 #endif /* PR_USE_XATTR */
@@ -959,7 +992,7 @@ static int sys_setxattr(pool *p, pr_fs_t *fs, const char *path,
 
   (void) p;
 
-#ifdef PR_USE_XATTR
+#if defined(PR_USE_XATTR)
 # if defined(HAVE_SYS_EXTATTR_H)
   (void) xattr_flags;
   res = extattr_set_file(path, EXTATTR_NAMESPACE_USER, name, val, valsz);
@@ -972,6 +1005,9 @@ static int sys_setxattr(pool *p, pr_fs_t *fs, const char *path,
 #  else
   res = setxattr(path, name, val, valsz, xattr_flags);
 #  endif /* XATTR_NOFOLLOW */
+# else
+  errno = NOSYS;
+  res = -1;
 # endif /* HAVE_SYS_XATTR_H */
 #else
   (void) fs;
@@ -981,6 +1017,7 @@ static int sys_setxattr(pool *p, pr_fs_t *fs, const char *path,
   (void) valsz;
   (void) flags;
   (void) xattr_flags;
+
   errno = ENOSYS;
   res = -1;
 #endif /* PR_USE_XATTR */
@@ -994,7 +1031,7 @@ static int sys_lsetxattr(pool *p, pr_fs_t *fs, const char *path,
 
   (void) p;
 
-#ifdef PR_USE_XATTR
+#if defined(PR_USE_XATTR)
 # if defined(HAVE_SYS_EXTATTR_H)
   (void) xattr_flags;
 #  if defined(HAVE_EXTATTR_SET_LINK)
@@ -1013,6 +1050,9 @@ static int sys_lsetxattr(pool *p, pr_fs_t *fs, const char *path,
 #  else
   res = setxattr(path, name, val, valsz, xattr_flags);
 #  endif /* XATTR_NOFOLLOW */
+# else
+  errno = ENOSYS;
+  res = -1;
 # endif /* HAVE_SYS_XATTR_H */
 #else
   (void) fs;
@@ -1022,6 +1062,7 @@ static int sys_lsetxattr(pool *p, pr_fs_t *fs, const char *path,
   (void) valsz;
   (void) flags;
   (void) xattr_flags;
+
   errno = ENOSYS;
   res = -1;
 #endif /* PR_USE_XATTR */
@@ -1035,7 +1076,7 @@ static int sys_fsetxattr(pool *p, pr_fh_t *fh, int fd, const char *name,
 
   (void) p;
 
-#ifdef PR_USE_XATTR
+#if defined(PR_USE_XATTR)
 # if defined(HAVE_SYS_EXTATTR_H)
   (void) xattr_flags;
   res = extattr_set_fd(fd, EXTATTR_NAMESPACE_USER, name, val, valsz);
@@ -1048,6 +1089,9 @@ static int sys_fsetxattr(pool *p, pr_fh_t *fh, int fd, const char *name,
 #  else
   res = fsetxattr(fd, name, val, valsz, xattr_flags);
 #  endif /* XATTR_NOFOLLOW */
+# else
+  errno = ENOSYS;
+  res = -1;
 # endif /* HAVE_SYS_XATTR_H */
 #else
   (void) fh;
@@ -1057,6 +1101,7 @@ static int sys_fsetxattr(pool *p, pr_fh_t *fh, int fd, const char *name,
   (void) valsz;
   (void) flags;
   (void) xattr_flags;
+
   errno = ENOSYS;
   res = -1;
 #endif /* PR_USE_XATTR */
