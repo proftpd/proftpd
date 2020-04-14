@@ -1331,7 +1331,8 @@ static void fxp_msg_write_extpair(unsigned char **buf, uint32_t *buflen,
 
 static uint32_t fxp_attrs_clear_unsupported(uint32_t attr_flags) {
 
-  /* Clear any unsupported flags. */
+  /* Clear any unsupported/ignored flags. */
+
   if (attr_flags & SSH2_FX_ATTR_ALLOCATION_SIZE) {
     pr_trace_msg(trace_channel, 17,
       "clearing unsupported ALLOCATION_SIZE attribute flag");
@@ -1342,6 +1343,12 @@ static uint32_t fxp_attrs_clear_unsupported(uint32_t attr_flags) {
     pr_trace_msg(trace_channel, 17,
       "clearing unsupported SUBSECOND_TIMES attribute flag");
     attr_flags &= ~SSH2_FX_ATTR_SUBSECOND_TIMES;
+  }
+
+  if (attr_flags & SSH2_FX_ATTR_CREATETIME) {
+    pr_trace_msg(trace_channel, 17,
+      "clearing unsupported CREATETIME attribute flag");
+    attr_flags &= ~SSH2_FX_ATTR_CREATETIME;
   }
 
   if (attr_flags & SSH2_FX_ATTR_ACL) {
@@ -2397,7 +2404,6 @@ static struct stat *fxp_attrs_read(struct fxp_packet *fxp, unsigned char **buf,
     }
 
     if (*flags & SSH2_FX_ATTR_LINK_COUNT) {
-      /* Read (and ignore) the LINK_COUNT attribute. */
       uint32_t link_count;
 
       link_count = sftp_msg_read_int(fxp->pool, buf, buflen);
