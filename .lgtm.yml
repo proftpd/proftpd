@@ -1,5 +1,7 @@
 ---
 path_classifiers:
+  docs:
+    - doc
   test:
     - test
 
