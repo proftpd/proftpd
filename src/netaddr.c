@@ -276,20 +276,22 @@ int pr_getnameinfo(const struct sockaddr *sa, socklen_t salen, char *host,
 #if !defined(HAVE_GETADDRINFO) || defined(PR_USE_GETADDRINFO)
 int pr_getaddrinfo(const char *node, const char *service,
     const struct addrinfo *hints, struct addrinfo **res) {
-
   struct addrinfo *ans = NULL;
   struct sockaddr_in *saddr = NULL;
   const char *proto_name = "tcp";
   int socktype = SOCK_STREAM;
   unsigned short port = 0;
 
-  if (!res)
+  if (res == NULL) {
     return EAI_FAIL;
+  }
+
   *res = NULL;
 
   ans = malloc(sizeof(struct addrinfo));
-  if (ans == NULL)
+  if (ans == NULL) {
     return EAI_MEMORY;
+  }
 
   saddr = malloc(sizeof(struct sockaddr_in));
   if (saddr == NULL) {
@@ -324,12 +326,13 @@ int pr_getaddrinfo(const char *node, const char *service,
     struct servent *se = NULL;
 
     if ((se = getservbyname(service, proto_name)) != NULL &&
-        se->s_port > 0)
+        se->s_port > 0) {
       port = se->s_port;
 
-    else if ((port = (unsigned short) strtoul(service, NULL, 0)) <= 0 ||
-        port > 65535)
+    } else if ((port = (unsigned short) strtoul(service, NULL, 0)) <= 0 ||
+        port > 65535) {
       port = 0;
+    }
   }
 
   if (hints != NULL &&
@@ -355,13 +358,15 @@ int pr_getaddrinfo(const char *node, const char *service,
 }
 
 void pr_freeaddrinfo(struct addrinfo *ai) {
-  if (!ai)
+  if (ai == NULL) {
     return;
+  }
 
   if (ai->ai_addr != NULL) {
     free(ai->ai_addr);
     ai->ai_addr = NULL;
   }
+
   free(ai);
 }
 #endif /* HAVE_GETADDRINFO or PR_USE_GETADDRINFO */

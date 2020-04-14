@@ -1467,7 +1467,7 @@ int pr_data_xfer(char *cl_buf, size_t cl_size) {
   return (len < 0 ? -1 : len);
 }
 
-#ifdef HAVE_SENDFILE
+#if defined(HAVE_SENDFILE)
 /* pr_data_sendfile() actually transfers the data on the data connection.
  * ASCII translation is not performed.
  * return 0 if reading and data connection closes, or -1 if error
@@ -1475,10 +1475,10 @@ int pr_data_xfer(char *cl_buf, size_t cl_size) {
 pr_sendfile_t pr_data_sendfile(int retr_fd, off_t *offset, off_t count) {
   int flags, error;
   pr_sendfile_t len = 0, total = 0;
-#if defined(HAVE_AIX_SENDFILE)
+# if defined(HAVE_AIX_SENDFILE)
   struct sf_parms parms;
   int rc;
-#endif /* HAVE_AIX_SENDFILE */
+# endif /* HAVE_AIX_SENDFILE */
 
   if (offset == NULL ||
       count == 0) {
@@ -1509,7 +1509,7 @@ pr_sendfile_t pr_data_sendfile(int retr_fd, off_t *offset, off_t count) {
   }
 
   for (;;) {
-#if defined(HAVE_LINUX_SENDFILE) || defined(HAVE_SOLARIS_SENDFILE)
+# if defined(HAVE_LINUX_SENDFILE) || defined(HAVE_SOLARIS_SENDFILE)
     off_t orig_offset = *offset;
 
     /* Linux semantics are fairly straightforward in a glibc 2.x world:
@@ -1527,25 +1527,25 @@ pr_sendfile_t pr_data_sendfile(int retr_fd, off_t *offset, off_t count) {
      * times.  How annoying.
      */
 
-#if defined(HAVE_LINUX_SENDFILE)
+#  if defined(HAVE_LINUX_SENDFILE)
     if (count > INT_MAX) {
       count = INT_MAX;
     }
-#elif defined(HAVE_SOLARIS_SENDFILE)
-# if SIZEOF_SIZE_T == SIZEOF_INT
+#  elif defined(HAVE_SOLARIS_SENDFILE)
+#   if SIZEOF_SIZE_T == SIZEOF_INT
     if (count > INT_MAX) {
       count = INT_MAX;
     }
-# elif SIZEOF_SIZE_T == SIZEOF_LONG
+#   elif SIZEOF_SIZE_T == SIZEOF_LONG
     if (count > LONG_MAX) {
       count = LONG_MAX;
     }
-# elif SIZEOF_SIZE_T == SIZEOF_LONG_LONG
+#   elif SIZEOF_SIZE_T == SIZEOF_LONG_LONG
     if (count > LLONG_MAX) {
       count = LLONG_MAX;
     }
-# endif
-#endif /* !HAVE_SOLARIS_SENDFILE */
+#   endif
+#  endif /* !HAVE_SOLARIS_SENDFILE */
 
     errno = 0;
     len = sendfile(PR_NETIO_FD(session.d->outstrm), retr_fd, offset, count);
@@ -1608,7 +1608,7 @@ pr_sendfile_t pr_data_sendfile(int retr_fd, off_t *offset, off_t count) {
       len = *offset - orig_offset;
       *offset = orig_offset;
 
-#elif defined(HAVE_BSD_SENDFILE)
+# elif defined(HAVE_BSD_SENDFILE)
     /* BSD semantics for sendfile are flexible...it'd be nice if we could
      * standardize on something like it.  The semantics are:
      *
@@ -1625,24 +1625,24 @@ pr_sendfile_t pr_data_sendfile(int retr_fd, off_t *offset, off_t count) {
      *  value.
      */
 
-#if SIZEOF_SIZE_T == SIZEOF_INT
+#  if SIZEOF_SIZE_T == SIZEOF_INT
     if (count > UINT_MAX) {
       count = UINT_MAX;
     }
-#elif SIZEOF_SIZE_T == SIZEOF_LONG
+#  elif SIZEOF_SIZE_T == SIZEOF_LONG
     if (count > ULONG_MAX) {
       count = ULONG_MAX;
     }
-#elif SIZEOF_SIZE_T == SIZEOF_LONG_LONG
+#  elif SIZEOF_SIZE_T == SIZEOF_LONG_LONG
     if (count > ULLONG_MAX) {
       count = ULLONG_MAX;
     }
-#endif
+#  endif
 
     if (sendfile(retr_fd, PR_NETIO_FD(session.d->outstrm), *offset, count,
         NULL, &len, 0) == -1) {
 
-#elif defined(HAVE_MACOSX_SENDFILE)
+# elif defined(HAVE_MACOSX_SENDFILE)
     off_t orig_len = count;
     int res;
 
@@ -1656,7 +1656,7 @@ pr_sendfile_t pr_data_sendfile(int retr_fd, off_t *offset, off_t count) {
     len = orig_len;
 
     if (res < 0) {
-#elif defined(HAVE_AIX_SENDFILE)
+# elif defined(HAVE_AIX_SENDFILE)
 
     memset(&parms, 0, sizeof(parms));
 
@@ -1668,7 +1668,9 @@ pr_sendfile_t pr_data_sendfile(int retr_fd, off_t *offset, off_t count) {
     len = (int) parms.bytes_sent;
 
     if (rc < -1 || rc == 1) {
-#endif /* HAVE_AIX_SENDFILE */
+# else
+    if (FALSE) {
+# endif /* HAVE_AIX_SENDFILE */
 
       /* IMO, BSD's semantics are warped.  Apparently, since we have our
        * alarms tagged SA_INTERRUPT (allowing system calls to be
