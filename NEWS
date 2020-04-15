@@ -21,6 +21,8 @@
   variables when the environment variable is not present. 
 - Issue 940 - Second LIST of the same symlink shows different results.
 - Issue 959 - FTPS uploads using TLSv1.3 are likely to fail unexpectedly.
+- Issue 980 - mod_sftp sends broken response when CREATETIME attribute is
+  requested.
 
 1.3.6c - Released 20-Feb-2020
 --------------------------------
