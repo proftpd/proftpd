@@ -47,6 +47,8 @@
   command-line options, like top(1).
 - Issue 808 - ProFTPD should ignore supplemental groups when run as a non-root
   user.
+- Issue 980 - mod_sftp sends broken response when CREATETIME attribute is
+  requested.
 
 1.3.7rc3 - Released 20-Feb-2020
 --------------------------------
