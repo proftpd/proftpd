@@ -49,6 +49,7 @@
   user.
 - Issue 980 - mod_sftp sends broken response when CREATETIME attribute is
   requested.
+- Bug 4390 - Implement keepalive support for mod_sql/database connections.
 
 1.3.7rc3 - Released 20-Feb-2020
 --------------------------------

@@ -29,7 +29,7 @@
 #include "mod_sql.h"
 #include "jot.h"
 
-#define MOD_SQL_VERSION			"mod_sql/4.4"
+#define MOD_SQL_VERSION			"mod_sql/4.5"
 
 #if defined(HAVE_CRYPT_H) && !defined(AIX4) && !defined(AIX5)
 # include <crypt.h>
@@ -105,6 +105,9 @@ unsigned int pr_sql_conn_policy = 0;
 
 /* For tracking the size of deleted files. */
 static off_t sql_dele_filesz = 0;
+
+static int sql_keepalive_timer_id = -1;
+static const char *sql_keepalive_stmt = NULL;
 
 /* It is best if this value is larger than the PR_TUNABLE_BUFFER_SIZE value.
  * PR_TUNABLE_BUFFER_SIZE controls how much network data from a client at
@@ -3580,6 +3583,19 @@ MODRET sql_escapestr(cmd_rec *cmd) {
   return mr;
 }
 
+/* SQLKeepAlive timer callback. */
+static int sql_keepalive_cb(CALLBACK_FRAME) {
+  pool *tmp_pool;
+  cmd_rec *cmd;
+
+  tmp_pool = make_sub_pool(session.pool);
+  pr_pool_tag(tmp_pool, "SQL keepalive pool");
+  cmd = sql_make_cmd(tmp_pool, 2, MOD_SQL_DEF_CONN_NAME, sql_keepalive_stmt);
+  (void) sql_dispatch(cmd, "sql_query");
+
+  return 1;
+}
+
 /* Auth Handlers.
  */
 
@@ -4806,6 +4822,39 @@ MODRET set_sqldefaulthomedir(cmd_rec *cmd) {
   return add_virtualstr("SQLDefaultHomedir", cmd);
 }
 
+/* usage: SQLKeepAlive interval [select-stmt] */
+MODRET set_sqlkeepalive(cmd_rec *cmd) {
+  config_rec *c;
+  int interval;
+  const char *stmt;
+
+  if (cmd->argc != 2 &&
+      cmd->argc != 3) {
+    CONF_ERROR(cmd, "wrong number of parameters");
+  }
+
+  CHECK_CONF(cmd, CONF_ROOT|CONF_GLOBAL|CONF_VIRTUAL);
+
+  interval = atoi(cmd->argv[1]);
+  if (interval < 0) {
+    CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "interval '", (char *) cmd->argv[1],
+      "' must be equal to or greater than zero", NULL));
+  }
+
+  /* Default SQL query to use: `SELECT 1` */
+  stmt = "SELECT 1";
+  if (cmd->argc == 3) {
+    stmt = cmd->argv[2];
+  }
+
+  c = add_config_param(cmd->argv[0], 2, NULL, NULL);
+  c->argv[0] = pcalloc(c->pool, sizeof(int));
+  *((int *) c->argv[0]) = interval;
+  c->argv[1] = pstrdup(c->pool, stmt);
+
+  return PR_HANDLED(cmd);
+}
+
 /* usage: SQLLog cmdlist query-name ["IGNORE_ERRORS"] */
 MODRET set_sqllog(cmd_rec *cmd) {
   config_rec *c;
@@ -5814,26 +5863,32 @@ static void sql_exit_ev(const void *event_data, void *user_data) {
 
 #if defined(PR_SHARED_MODULE)
 static void sql_mod_unload_ev(const void *event_data, void *user_data) {
-  if (strcmp("mod_sql.c", (const char *) event_data) == 0) {
-    destroy_pool(sql_pool);
-    sql_pool = NULL;
-    sql_backends = NULL;
-    sql_auth_list = NULL;
+  if (strcmp("mod_sql.c", (const char *) event_data) != 0) {
+    return;
+  }
 
-    pr_event_unregister(&sql_module, NULL, NULL);
+  destroy_pool(sql_pool);
+  sql_pool = NULL;
+  sql_backends = NULL;
+  sql_auth_list = NULL;
 
-    (void) sql_unregister_authtype("Crypt");
-    (void) sql_unregister_authtype("Empty");
-    (void) sql_unregister_authtype("Plaintext");
+  pr_event_unregister(&sql_module, NULL, NULL);
+
+  pr_timer_remove(-1, &sql_module);
+  sql_keepalive_timer_id = -1;
+  sql_keepalive_stmt = NULL;
+
+  (void) sql_unregister_authtype("Crypt");
+  (void) sql_unregister_authtype("Empty");
+  (void) sql_unregister_authtype("Plaintext");
 
 #if defined(HAVE_OPENSSL) || defined(PR_USE_OPENSSL)
-    (void) sql_unregister_authtype("OpenSSL");
+  (void) sql_unregister_authtype("OpenSSL");
 #endif /* HAVE_OPENSSL */
 
-    close(sql_logfd);
-    sql_logfd = -1;
-    sql_logfile = NULL;
-  }
+  close(sql_logfd);
+  sql_logfd = -1;
+  sql_logfile = NULL;
 }
 
 #else
@@ -5868,6 +5923,10 @@ static void sql_sess_reinit_ev(const void *event_data, void *user_data) {
   pr_event_unregister(&sql_module, "core.chroot", sql_chroot_ev);
   pr_event_unregister(&sql_module, "core.exit", sql_exit_ev);
   pr_event_unregister(&sql_module, "core.session-reinit", sql_sess_reinit_ev);
+
+  pr_timer_remove(-1, &sql_module);
+  sql_keepalive_timer_id = -1;
+  sql_keepalive_stmt = NULL;
 
   c = find_config(session.prev_server->conf, CONF_PARAM, "SQLLogOnEvent",
     FALSE);
@@ -6257,7 +6316,6 @@ static int sql_sess_init(void) {
       }
     }
 
-
   } else {
     cmap.grptable = get_param_ptr(main_server->conf, "SQLGroupTable", FALSE);
     cmap.grpfield = get_param_ptr(main_server->conf, "SQLGroupnameField",
@@ -6574,6 +6632,19 @@ static int sql_sess_init(void) {
   pr_event_register(&sql_module, "core.chroot", sql_chroot_ev, NULL);
   pr_event_register(&sql_module, "core.exit", sql_exit_ev, NULL);
 
+  c = find_config(main_server->conf, CONF_PARAM, "SQLKeepAlive", FALSE);
+  if (c != NULL) {
+    int interval;
+
+    interval = *((int *) c->argv[0]);
+
+    sql_keepalive_stmt = c->argv[1];
+    sql_keepalive_timer_id = pr_timer_add(interval, -1, &sql_module,
+      sql_keepalive_cb, "SQL keepalive");
+    sql_log(DEBUG_INFO, "scheduling SQLKeepAlive (using '%s') every %d %s",
+      sql_keepalive_stmt, interval, interval != 1 ? "secs" : "sec");
+  }
+
   return 0;
 }
 
@@ -6595,6 +6666,7 @@ static conftable sql_conftab[] = {
   { "SQLGroupInfo",		set_sqlgroupinfo,		NULL },
   { "SQLGroupPrimaryKey",	set_sqlgroupprimarykey,		NULL },
   { "SQLGroupWhereClause",	set_sqlgroupwhereclause,	NULL },
+  { "SQLKeepAlive",		set_sqlkeepalive,		NULL },
   { "SQLLog",			set_sqllog,			NULL },
   { "SQLLogFile",		set_sqllogfile,			NULL },
   { "SQLLogOnEvent",		set_sqllogonevent,		NULL },
