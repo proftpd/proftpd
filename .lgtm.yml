@@ -24,7 +24,7 @@ extraction:
         - libgeoip-dev
         - libhiredis-dev
         - libldap2-dev
-        - libmemcache-dev
+        - libmemcached-dev
         - libmysqlclient-dev
         - libpam-dev
         - libpcre3-dev
