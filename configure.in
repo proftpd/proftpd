@@ -89,7 +89,9 @@ fi
 
 LDFLAGS="-L\$(top_srcdir)/lib -L\$(top_builddir)/lib $LDFLAGS"
 
-if test $ac_cv_prog_gcc = yes; then
+# AIX has issues with the -rdynamic linker flag.  How many different AIX
+# versions should we support here?
+if test $ac_cv_prog_gcc = yes && test "$OSTYPE" != "-DAIX7"; then
   dnl Make sure to use the -rdynamic linker flag, for stacktraces
   LDFLAGS="$LDFLAGS -rdynamic"
 fi
@@ -1458,7 +1460,6 @@ AC_TRY_LINK([
     AC_MSG_RESULT(no)
   ]
 )
-
 
 AC_MSG_CHECKING(for AIX loginfailed)
 AC_TRY_LINK([
