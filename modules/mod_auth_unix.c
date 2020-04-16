@@ -1002,6 +1002,25 @@ MODRET pw_check(cmd_rec *cmd) {
         "AIX authenticate result: %d (msg '%.100s')", res, msg);
 
     } while (reenter != 0);
+# if defined(HAVE_LOGINSUCCESS)
+    if (res == 0) {
+      const char *host, *sess_ttyname;
+      char *msg = NULL;
+
+      host = pr_netaddr_get_dnsstr(session.c->remote_addr);
+      sess_ttyname = pr_session_get_ttyname(cmd->tmp_pool);
+
+      if (loginsuccess(user, (char *) host, (char *) sess_ttyname, &msg) == 0) {
+        if (msg != NULL) {
+          pr_trace_msg("auth", 14, "AIX loginsuccess() report: %s", msg);
+        }
+
+      } else {
+        pr_trace_msg("auth", 3, "AIX loginsuccess() error for user '%s', "
+          "host '%s', tty '%s': %s", user, host, sess_ttyname, strerror(errno));
+      }
+    }
+# endif /* HAVE_LOGINSUCCESS */
     PRIVS_RELINQUISH
 
     /* AIX indicates failure with a return value of 1. */
