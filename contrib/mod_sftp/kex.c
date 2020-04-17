@@ -120,6 +120,9 @@ struct sftp_kex {
   /* Using Curve25519? */
   int use_curve25519;
 
+  /* Using extension negotiations? */
+  int use_ext_info;
+
   /* For generating the session ID */
   DH *dh;
   BIGNUM *e;
@@ -2162,6 +2165,12 @@ static int get_session_names(struct sftp_kex *kex, int *correct_guess) {
       " + Session key exchange: %s", kex_algo);
     pr_trace_msg(trace_channel, 20, "session key exchange algorithm: %s",
       kex_algo);
+
+    /* Did the client indicate EXT_INFO support (Issue #984)? */
+    kex->use_ext_info = sftp_misc_namelist_contains(kex->pool, client_list,
+      "ext-info-c");
+    pr_trace_msg(trace_channel, 20, "client %s EXT_INFO support",
+      kex->use_ext_info ? "signaled" : "did not signal" );
 
   } else {
     (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
@@ -4818,10 +4827,11 @@ int sftp_kex_handle(struct ssh2_packet *pkt) {
   cmd = NULL;
 
   /* If extension negotiation has not been disabled, AND if we have not
-   * received a service request, then send our EXT_INFO.  We do not want
-   * send this during rekeys.
+   * received a service request, AND if the client sent "ext-info-c", THEN
+   * send our EXT_INFO.  We do not want send this during rekeys.
    */
   if (!(sftp_opts & SFTP_OPT_NO_EXT_INFO) &&
+      kex->use_ext_info == TRUE &&
       !(sftp_sess_state & SFTP_SESS_STATE_HAVE_SERVICE)) {
     struct ssh2_packet *pkt2;
 
