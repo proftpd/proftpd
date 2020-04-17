@@ -6,6 +6,7 @@ path_classifiers:
     - "lib/glibc-*.c"
     - "lib/hanson-*.c"
     - "lib/openbsd-*.c"
+    - "lib/pr_fnmatch*.c"
   docs:
     - doc
   test:
