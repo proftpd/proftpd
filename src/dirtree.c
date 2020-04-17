@@ -2,7 +2,7 @@
  * ProFTPD - FTP server daemon
  * Copyright (c) 1997, 1998 Public Flood Software
  * Copyright (c) 1999, 2000 MacGyver aka Habeeb J. Dihu <macgyver@tos.net>
- * Copyright (c) 2001-2017 The ProFTPD Project team
+ * Copyright (c) 2001-2020 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -479,8 +479,7 @@ static config_rec *recur_match_path(pool *p, xaset_t *s, char *path) {
           !(tmp_path[path_len-2] == '/' && tmp_path[path_len-1] == '*')) {
 
         /* Trim a trailing path separator, if present. */
-        if (path_len > 1 &&
-            *tmp_path && 
+        if (*tmp_path &&
             *(tmp_path + path_len - 1) == '/') {
           *(tmp_path + path_len - 1) = '\0';
           path_len--;
