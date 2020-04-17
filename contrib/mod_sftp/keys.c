@@ -2182,7 +2182,6 @@ int sftp_keys_compare_keys(pool *p,
   } else if (remote_key_type == SFTP_KEY_ED25519 &&
              remote_key_type == local_key_type) {
 #if defined(PR_USE_SODIUM)
-pr_trace_msg(trace_channel, 3, "comparing ED25519 keys (remote %lu, local %lu)", remote_pubkey_datalen, local_pubkey_datalen);
     if (ed25519_compare_keys(p, remote_pubkey_data, remote_pubkey_datalen,
         local_pubkey_data, local_pubkey_datalen) == 0) {
       res = TRUE;
@@ -2190,7 +2189,6 @@ pr_trace_msg(trace_channel, 3, "comparing ED25519 keys (remote %lu, local %lu)",
     } else {
       res = FALSE;
     }
-pr_trace_msg(trace_channel, 3, "compared ED25519 keys: res = %d", res);
 #endif /* PR_USE_SODIUM */
 
   } else {

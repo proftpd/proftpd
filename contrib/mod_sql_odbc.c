@@ -412,7 +412,7 @@ static modret_t *sqlodbc_get_data(cmd_rec *cmd, db_conn_t *conn) {
 
     switch (res) {
       case SQL_ERROR:
-        sql_log(DEBUG_WARN, "error fetching row %u: %s", sd->rnum + 1,
+        sql_log(DEBUG_WARN, "error fetching row %lu: %s", sd->rnum + 1,
           sqlodbc_errstr(SQL_HANDLE_STMT, conn->sth, NULL));
         return PR_ERROR(cmd);
 
@@ -422,7 +422,7 @@ static modret_t *sqlodbc_get_data(cmd_rec *cmd, db_conn_t *conn) {
 
       case SQL_SUCCESS_WITH_INFO:
         /* Note: this deliberately falls through to the SQL_SUCCESS case. */
-        sql_log(DEBUG_WARN, "fetching row %u: %s", sd->rnum + 1,
+        sql_log(DEBUG_WARN, "fetching row %lu: %s", sd->rnum + 1,
           sqlodbc_errstr(SQL_HANDLE_STMT, conn->sth, NULL));
 
       case SQL_SUCCESS:
@@ -458,7 +458,7 @@ static modret_t *sqlodbc_get_data(cmd_rec *cmd, db_conn_t *conn) {
                   if (SQLGetData(conn->sth, i, col_ctype, buf, col_size,
                       &buflen) != SQL_SUCCESS) {
                     sql_log(DEBUG_WARN, "error getting %s data for column %u, "
-                      "row %u: %s", sqlodbc_typestr(col_ctype), i,
+                      "row %lu: %s", sqlodbc_typestr(col_ctype), i,
                       sd->rnum + 1, sqlodbc_errstr(SQL_HANDLE_STMT, conn->sth,
                         NULL));
                     *((char **) push_array(dh)) = pstrdup(cmd->tmp_pool, "");
@@ -467,14 +467,14 @@ static modret_t *sqlodbc_get_data(cmd_rec *cmd, db_conn_t *conn) {
 
                   if (buflen == SQL_NO_TOTAL) {
                     sql_log(DEBUG_WARN, "notice: unable to determine total "
-                      "number of bytes remaining for %s column %u, row %u",
+                      "number of bytes remaining for %s column %u, row %lu",
                       sqlodbc_typestr(col_ctype), i, sd->rnum + 1);
                     *((char **) push_array(dh)) = pstrdup(cmd->tmp_pool, "");
                     break;
 
                   } else if (buflen == SQL_NULL_DATA) {
                     sql_log(DEBUG_WARN, "notice: data is NULL for %s column "
-                      "%u, row %u", sqlodbc_typestr(col_ctype), i,
+                      "%u, row %lu", sqlodbc_typestr(col_ctype), i,
                       sd->rnum + 1);
                     *((char **) push_array(dh)) = pstrdup(cmd->tmp_pool, "");
                     break;
@@ -504,7 +504,7 @@ static modret_t *sqlodbc_get_data(cmd_rec *cmd, db_conn_t *conn) {
                 if (SQLGetData(conn->sth, i, col_ctype,
                     (SQLPOINTER) &col_cval, 0, &ind) != SQL_SUCCESS) {
                   sql_log(DEBUG_WARN, "error getting %s data for column %u, "
-                    "row %u: %s", sqlodbc_typestr(col_ctype), i,
+                    "row %lu: %s", sqlodbc_typestr(col_ctype), i,
                     sd->rnum + 1, sqlodbc_errstr(SQL_HANDLE_STMT, conn->sth,
                       NULL));
                   *((char **) push_array(dh)) = pstrdup(cmd->tmp_pool, "");
@@ -513,14 +513,14 @@ static modret_t *sqlodbc_get_data(cmd_rec *cmd, db_conn_t *conn) {
 
                 if (ind == SQL_NO_TOTAL) {
                   sql_log(DEBUG_WARN, "notice: unable to determine total "
-                    "number of bytes remaining for %s column %u, row %u",
+                    "number of bytes remaining for %s column %u, row %lu",
                     sqlodbc_typestr(col_ctype), i, sd->rnum + 1);
                   *((char **) push_array(dh)) = pstrdup(cmd->tmp_pool, "");
                   break;
 
                 } else if (ind == SQL_NULL_DATA) {
                   sql_log(DEBUG_WARN, "notice: data is NULL for %s column %u, "
-                    "row %u", sqlodbc_typestr(col_ctype), i, sd->rnum + 1);
+                    "row %lu", sqlodbc_typestr(col_ctype), i, sd->rnum + 1);
                   *((char **) push_array(dh)) = pstrdup(cmd->tmp_pool, "");
                   break;
                 }
@@ -542,7 +542,7 @@ static modret_t *sqlodbc_get_data(cmd_rec *cmd, db_conn_t *conn) {
                 if (SQLGetData(conn->sth, i, col_ctype,
                     (SQLPOINTER) &col_cval, 0, &ind) != SQL_SUCCESS) {
                   sql_log(DEBUG_WARN, "error getting %s data for column %u, "
-                    "row %u: %s", sqlodbc_typestr(col_ctype), i,
+                    "row %lu: %s", sqlodbc_typestr(col_ctype), i,
                     sd->rnum + 1, sqlodbc_errstr(SQL_HANDLE_STMT, conn->sth,
                       NULL));
                   *((char **) push_array(dh)) = pstrdup(cmd->tmp_pool, "");
@@ -551,14 +551,14 @@ static modret_t *sqlodbc_get_data(cmd_rec *cmd, db_conn_t *conn) {
 
                 if (ind == SQL_NO_TOTAL) {
                   sql_log(DEBUG_WARN, "notice: unable to determine total "
-                    "number of bytes remaining for %s column %u, row %u",
+                    "number of bytes remaining for %s column %u, row %lu",
                     sqlodbc_typestr(col_ctype), i, sd->rnum + 1);
                   *((char **) push_array(dh)) = pstrdup(cmd->tmp_pool, "");
                   break;
 
                 } else if (ind == SQL_NULL_DATA) {
                   sql_log(DEBUG_WARN, "notice: data is NULL for %s column %u, "
-                    "row %u", sqlodbc_typestr(col_ctype), i, sd->rnum + 1);
+                    "row %lu", sqlodbc_typestr(col_ctype), i, sd->rnum + 1);
                   *((char **) push_array(dh)) = pstrdup(cmd->tmp_pool, "");
                   break;
                 }
@@ -580,7 +580,7 @@ static modret_t *sqlodbc_get_data(cmd_rec *cmd, db_conn_t *conn) {
                 if (SQLGetData(conn->sth, i, col_ctype,
                     (SQLPOINTER) &col_cval, 0, &ind) != SQL_SUCCESS) {
                   sql_log(DEBUG_WARN, "error getting %s data for column %u, "
-                    "row %u: %s", sqlodbc_typestr(col_ctype), i,
+                    "row %lu: %s", sqlodbc_typestr(col_ctype), i,
                     sd->rnum + 1, sqlodbc_errstr(SQL_HANDLE_STMT, conn->sth,
                       NULL));
                   *((char **) push_array(dh)) = pstrdup(cmd->tmp_pool, "");
@@ -589,14 +589,14 @@ static modret_t *sqlodbc_get_data(cmd_rec *cmd, db_conn_t *conn) {
 
                 if (ind == SQL_NO_TOTAL) {
                   sql_log(DEBUG_WARN, "notice: unable to determine total "
-                    "number of bytes remaining for %s column %u, row %u",
+                    "number of bytes remaining for %s column %u, row %lu",
                     sqlodbc_typestr(col_ctype), i, sd->rnum + 1);
                   *((char **) push_array(dh)) = pstrdup(cmd->tmp_pool, "");
                   break;
 
                 } else if (ind == SQL_NULL_DATA) {
                   sql_log(DEBUG_WARN, "notice: data is NULL for %s column %u, "
-                    "row %u", sqlodbc_typestr(col_ctype), i, sd->rnum + 1);
+                    "row %lu", sqlodbc_typestr(col_ctype), i, sd->rnum + 1);
                   *((char **) push_array(dh)) = pstrdup(cmd->tmp_pool, "");
                   break;
                 }
@@ -618,7 +618,7 @@ static modret_t *sqlodbc_get_data(cmd_rec *cmd, db_conn_t *conn) {
                 if (SQLGetData(conn->sth, i, col_ctype,
                     (SQLPOINTER) &col_cval, 0, &ind) != SQL_SUCCESS) {
                   sql_log(DEBUG_WARN, "error getting %s data for column %u, "
-                    "row %u: %s", sqlodbc_typestr(col_ctype), i,
+                    "row %lu: %s", sqlodbc_typestr(col_ctype), i,
                     sd->rnum + 1, sqlodbc_errstr(SQL_HANDLE_STMT, conn->sth,
                       NULL));
                   *((char **) push_array(dh)) = pstrdup(cmd->tmp_pool, "");
@@ -627,14 +627,14 @@ static modret_t *sqlodbc_get_data(cmd_rec *cmd, db_conn_t *conn) {
 
                 if (ind == SQL_NO_TOTAL) {
                   sql_log(DEBUG_WARN, "notice: unable to determine total "
-                    "number of bytes remaining for %s column %u, row %u",
+                    "number of bytes remaining for %s column %u, row %lu",
                     sqlodbc_typestr(col_ctype), i, sd->rnum + 1);
                   *((char **) push_array(dh)) = pstrdup(cmd->tmp_pool, "");
                   break;
 
                 } else if (ind == SQL_NULL_DATA) {
                   sql_log(DEBUG_WARN, "notice: data is NULL for %s column %u, "
-                    "row %u", sqlodbc_typestr(col_ctype), i, sd->rnum + 1);
+                    "row %lu", sqlodbc_typestr(col_ctype), i, sd->rnum + 1);
                   *((char **) push_array(dh)) = pstrdup(cmd->tmp_pool, "");
                   break;
                 }
@@ -656,7 +656,7 @@ static modret_t *sqlodbc_get_data(cmd_rec *cmd, db_conn_t *conn) {
                 if (SQLGetData(conn->sth, i, col_ctype,
                     (SQLPOINTER) &col_cval, 0, &ind) != SQL_SUCCESS) {
                   sql_log(DEBUG_WARN, "error getting %s data for column %u, "
-                    "row %u: %s", sqlodbc_typestr(col_ctype), i,
+                    "row %lu: %s", sqlodbc_typestr(col_ctype), i,
                     sd->rnum + 1, sqlodbc_errstr(SQL_HANDLE_STMT, conn->sth,
                       NULL));
                   *((char **) push_array(dh)) = pstrdup(cmd->tmp_pool, "");
@@ -665,14 +665,14 @@ static modret_t *sqlodbc_get_data(cmd_rec *cmd, db_conn_t *conn) {
 
                 if (ind == SQL_NO_TOTAL) {
                   sql_log(DEBUG_WARN, "notice: unable to determine total "
-                    "number of bytes remaining for %s column %u, row %u",
+                    "number of bytes remaining for %s column %u, row %lu",
                     sqlodbc_typestr(col_ctype), i, sd->rnum + 1);
                   *((char **) push_array(dh)) = pstrdup(cmd->tmp_pool, "");
                   break;
 
                 } else if (ind == SQL_NULL_DATA) {
                   sql_log(DEBUG_WARN, "notice: data is NULL for %s column %u, "
-                    "row %u", sqlodbc_typestr(col_ctype), i, sd->rnum + 1);
+                    "row %lu", sqlodbc_typestr(col_ctype), i, sd->rnum + 1);
                   *((char **) push_array(dh)) = pstrdup(cmd->tmp_pool, "");
                   break;
                 }
@@ -694,7 +694,7 @@ static modret_t *sqlodbc_get_data(cmd_rec *cmd, db_conn_t *conn) {
                 if (SQLGetData(conn->sth, i, col_ctype,
                     (SQLPOINTER) &col_cval, 0, &ind) != SQL_SUCCESS) {
                   sql_log(DEBUG_WARN, "error getting %s data for column %u, "
-                    "row %u: %s", sqlodbc_typestr(col_ctype), i,
+                    "row %lu: %s", sqlodbc_typestr(col_ctype), i,
                     sd->rnum + 1, sqlodbc_errstr(SQL_HANDLE_STMT, conn->sth,
                       NULL));
                   *((char **) push_array(dh)) = pstrdup(cmd->tmp_pool, "");
@@ -703,14 +703,14 @@ static modret_t *sqlodbc_get_data(cmd_rec *cmd, db_conn_t *conn) {
 
                 if (ind == SQL_NO_TOTAL) {
                   sql_log(DEBUG_WARN, "notice: unable to determine total "
-                    "number of bytes remaining for %s column %u, row %u",
+                    "number of bytes remaining for %s column %u, row %lu",
                     sqlodbc_typestr(col_ctype), i, sd->rnum + 1);
                   *((char **) push_array(dh)) = pstrdup(cmd->tmp_pool, "");
                   break;
 
                 } else if (ind == SQL_NULL_DATA) {
                   sql_log(DEBUG_WARN, "notice: data is NULL for %s column %u, "
-                    "row %u", sqlodbc_typestr(col_ctype), i, sd->rnum + 1);
+                    "row %lu", sqlodbc_typestr(col_ctype), i, sd->rnum + 1);
                   *((char **) push_array(dh)) = pstrdup(cmd->tmp_pool, "");
                   break;
                 }
@@ -732,7 +732,7 @@ static modret_t *sqlodbc_get_data(cmd_rec *cmd, db_conn_t *conn) {
                 if (SQLGetData(conn->sth, i, col_ctype,
                     (SQLPOINTER) &col_cval, 0, &ind) != SQL_SUCCESS) {
                   sql_log(DEBUG_WARN, "error getting %s data for column %u, "
-                    "row %u: %s", sqlodbc_typestr(col_ctype), i,
+                    "row %lu: %s", sqlodbc_typestr(col_ctype), i,
                     sd->rnum + 1, sqlodbc_errstr(SQL_HANDLE_STMT, conn->sth,
                       NULL));
                   *((char **) push_array(dh)) = pstrdup(cmd->tmp_pool, "");
@@ -741,14 +741,14 @@ static modret_t *sqlodbc_get_data(cmd_rec *cmd, db_conn_t *conn) {
 
                 if (ind == SQL_NO_TOTAL) {
                   sql_log(DEBUG_WARN, "notice: unable to determine total "
-                    "number of bytes remaining for %s column %u, row %u",
+                    "number of bytes remaining for %s column %u, row %lu",
                     sqlodbc_typestr(col_ctype), i, sd->rnum + 1);
                   *((char **) push_array(dh)) = pstrdup(cmd->tmp_pool, "");
                   break;
 
                 } else if (ind == SQL_NULL_DATA) {
                   sql_log(DEBUG_WARN, "notice: data is NULL for %s column %u, "
-                    "row %u", sqlodbc_typestr(col_ctype), i, sd->rnum + 1);
+                    "row %lu", sqlodbc_typestr(col_ctype), i, sd->rnum + 1);
                   *((char **) push_array(dh)) = pstrdup(cmd->tmp_pool, "");
                   break;
                 }

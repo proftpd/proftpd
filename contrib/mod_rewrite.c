@@ -1302,7 +1302,7 @@ static const char *rewrite_subst_maps(cmd_rec *cmd, const char *pattern) {
          * if indeed a map (and value) have been found.
          */
         rewrite_log("rewrite_subst_maps(): substituting '%s' for '%s'",
-          lookup_value, map.map_string);
+          lookup_value, (char *) map.map_string);
 
         if (new_pattern == NULL) {
           new_pattern = pstrdup(cmd->pool, pattern);
@@ -2644,7 +2644,7 @@ MODRET rewrite_fixup(cmd_rec *cmd) {
    * operate.
    */
   if (cmd->argc == 1) {
-    rewrite_log("rewrite_fixup(): skipping %s (no arg)", cmd->argv[0]);
+    rewrite_log("rewrite_fixup(): skipping %s (no arg)", (char *) cmd->argv[0]);
     return PR_DECLINED(cmd);
   }
 
@@ -2662,8 +2662,8 @@ MODRET rewrite_fixup(cmd_rec *cmd) {
       char *tmp = "";
 
       if (cmd->argc < 3) {
-        rewrite_log("%s %s has too few parameters (%d)", cmd->argv[0],
-          cmd->argv[1], cmd->argc);
+        rewrite_log("%s %s has too few parameters (%d)", (char *) cmd->argv[0],
+          (char *) cmd->argv[1], cmd->argc);
         return PR_DECLINED(cmd);
       }
 
