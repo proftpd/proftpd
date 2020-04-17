@@ -1,7 +1,7 @@
 /*
  * ProFTPD: mod_quotatab -- a module for managing FTP byte/file quotas via
  *                          centralized tables
- * Copyright (c) 2001-2017 TJ Saunders
+ * Copyright (c) 2001-2020 TJ Saunders
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -1510,6 +1510,9 @@ MODRET set_quotadefault(cmd_rec *cmd) {
   /* limit-type */
   if (strncasecmp(cmd->argv[3], "soft", 5) != 0 &&
       strncasecmp(cmd->argv[3], "hard", 5) != 0) {
+    CONF_ERROR(cmd, pstrcat(cmd->tmp_pool,
+      "expected 'soft' or 'hard' limit-type parameter: ",
+      (char *) cmd->argv[3], NULL));
   }
 
   c->argv[2] = pstrdup(c->pool, cmd->argv[3]);
