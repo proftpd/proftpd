@@ -3755,8 +3755,8 @@ static void fxp_version_add_newline_ext(pool *p, unsigned char **buf,
 static void fxp_version_add_supported_ext(pool *p, unsigned char **buf,
     uint32_t *buflen) {
   struct fxp_extpair ext;
-  uint32_t attrs_len, attrs_sz;
-  unsigned char *attrs_buf, *attrs_ptr;
+  uint32_t attrs_len, attrs_sz, exts_len, exts_sz;
+  unsigned char *attrs_buf, *attrs_ptr, *exts_buf, *exts_ptr;
   uint32_t file_mask, bits_mask, open_mask, access_mask, max_read_size;
   unsigned int ext_count;
 
@@ -3814,38 +3814,33 @@ static void fxp_version_add_supported_ext(pool *p, unsigned char **buf,
    * telling the client that it can send us its vendor information.
    */
 
-  if (ext_count > 0) {
-    unsigned char *exts_buf, *exts_ptr;
-    uint32_t exts_len, exts_sz;
+  exts_len = exts_sz = 256;
+  exts_buf = exts_ptr = palloc(p, exts_sz);
 
-    exts_len = exts_sz = 256;
-    exts_buf = exts_ptr = palloc(p, exts_sz);
-
-    if (fxp_ext_flags & SFTP_FXP_EXT_CHECK_FILE) {
-      pr_trace_msg(trace_channel, 11, "%s", "+ SFTP extension: check-file");
-      sftp_msg_write_string(&exts_buf, &exts_len, "check-file");
-    }
-
-    if (fxp_ext_flags & SFTP_FXP_EXT_COPY_FILE) {
-      pr_trace_msg(trace_channel, 11, "%s", "+ SFTP extension: copy-file");
-      sftp_msg_write_string(&exts_buf, &exts_len, "copy-file");
-    }
-
-    if (fxp_ext_flags & SFTP_FXP_EXT_SPACE_AVAIL) {
-      pr_trace_msg(trace_channel, 11, "%s",
-        "+ SFTP extension: space-available");
-      sftp_msg_write_string(&exts_buf, &exts_len, "space-available");
-    }
-
-    /* We always send the 'vendor-id' extension; it lets the client know
-     * that it can send its vendor information to us.
-     */
-    pr_trace_msg(trace_channel, 11, "%s", "+ SFTP extension: vendor-id");
-    sftp_msg_write_string(&exts_buf, &exts_len, "vendor-id");
-
-    sftp_msg_write_data(&attrs_buf, &attrs_len, exts_ptr,
-      (exts_sz - exts_len), FALSE);
+  if (fxp_ext_flags & SFTP_FXP_EXT_CHECK_FILE) {
+    pr_trace_msg(trace_channel, 11, "%s", "+ SFTP extension: check-file");
+    sftp_msg_write_string(&exts_buf, &exts_len, "check-file");
   }
+
+  if (fxp_ext_flags & SFTP_FXP_EXT_COPY_FILE) {
+    pr_trace_msg(trace_channel, 11, "%s", "+ SFTP extension: copy-file");
+    sftp_msg_write_string(&exts_buf, &exts_len, "copy-file");
+  }
+
+  if (fxp_ext_flags & SFTP_FXP_EXT_SPACE_AVAIL) {
+    pr_trace_msg(trace_channel, 11, "%s",
+      "+ SFTP extension: space-available");
+    sftp_msg_write_string(&exts_buf, &exts_len, "space-available");
+  }
+
+  /* We always send the 'vendor-id' extension; it lets the client know
+   * that it can send its vendor information to us.
+   */
+  pr_trace_msg(trace_channel, 11, "%s", "+ SFTP extension: vendor-id");
+  sftp_msg_write_string(&exts_buf, &exts_len, "vendor-id");
+
+  sftp_msg_write_data(&attrs_buf, &attrs_len, exts_ptr, (exts_sz - exts_len),
+    FALSE);
 
   ext.ext_data = attrs_ptr;
   ext.ext_datalen = (attrs_sz - attrs_len);
@@ -3946,29 +3941,27 @@ static void fxp_version_add_supported2_ext(pool *p, unsigned char **buf,
    */
   sftp_msg_write_int(&attrs_buf, &attrs_len, ext_count);
 
-  if (ext_count > 0) {
-    if (fxp_ext_flags & SFTP_FXP_EXT_CHECK_FILE) {
-      pr_trace_msg(trace_channel, 11, "%s", "+ SFTP extension: check-file");
-      sftp_msg_write_string(&attrs_buf, &attrs_len, "check-file");
-    }
-
-    if (fxp_ext_flags & SFTP_FXP_EXT_COPY_FILE) {
-      pr_trace_msg(trace_channel, 11, "%s", "+ SFTP extension: copy-file");
-      sftp_msg_write_string(&attrs_buf, &attrs_len, "copy-file");
-    }
-
-    if (fxp_ext_flags & SFTP_FXP_EXT_SPACE_AVAIL) {
-      pr_trace_msg(trace_channel, 11, "%s",
-        "+ SFTP extension: space-available");
-      sftp_msg_write_string(&attrs_buf, &attrs_len, "space-available");
-    }
-
-    /* We always send the 'vendor-id' extension; it lets the client know
-     * that it can send its vendor information to us.
-     */
-    pr_trace_msg(trace_channel, 11, "%s", "+ SFTP extension: vendor-id");
-    sftp_msg_write_string(&attrs_buf, &attrs_len, "vendor-id");
+  if (fxp_ext_flags & SFTP_FXP_EXT_CHECK_FILE) {
+    pr_trace_msg(trace_channel, 11, "%s", "+ SFTP extension: check-file");
+    sftp_msg_write_string(&attrs_buf, &attrs_len, "check-file");
   }
+
+  if (fxp_ext_flags & SFTP_FXP_EXT_COPY_FILE) {
+    pr_trace_msg(trace_channel, 11, "%s", "+ SFTP extension: copy-file");
+    sftp_msg_write_string(&attrs_buf, &attrs_len, "copy-file");
+  }
+
+  if (fxp_ext_flags & SFTP_FXP_EXT_SPACE_AVAIL) {
+    pr_trace_msg(trace_channel, 11, "%s",
+      "+ SFTP extension: space-available");
+    sftp_msg_write_string(&attrs_buf, &attrs_len, "space-available");
+  }
+
+  /* We always send the 'vendor-id' extension; it lets the client know
+   * that it can send its vendor information to us.
+   */
+  pr_trace_msg(trace_channel, 11, "%s", "+ SFTP extension: vendor-id");
+  sftp_msg_write_string(&attrs_buf, &attrs_len, "vendor-id");
  
   ext.ext_data = attrs_ptr;
   ext.ext_datalen = (attrs_sz - attrs_len);

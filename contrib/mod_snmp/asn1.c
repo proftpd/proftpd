@@ -1,6 +1,6 @@
 /*
  * ProFTPD - mod_snmp ASN.1 support
- * Copyright (c) 2008-2017 TJ Saunders
+ * Copyright (c) 2008-2020 TJ Saunders
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -1069,12 +1069,6 @@ int snmp_asn1_write_oid(pool *p, unsigned char **buf, size_t *buflen,
 
     if (i != 1) {
       sub_id = *oid_ptr++;
-
-#if SIZEOF_LONG != 4
-      if (sub_id > 0xffffffff) {
-        sub_id &= 0xffffffff;
-      }
-#endif
     }
 
     switch (oid_lens[i]) {
