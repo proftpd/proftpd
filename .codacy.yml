@@ -1,0 +1,7 @@
+---
+exclude_paths:
+  - "lib/ccan-*.c"
+  - "lib/glibc-*.c"
+  - "lib/libltdl/**"
+  - "lib/hanson-*.c"
+  - "lib/openbsd-*.c"
