@@ -2005,8 +2005,8 @@ static char *rewrite_map_int_utf8trans(pool *map_pool, char *key) {
   }
 
   /* Always make sure the buffers are clear for this run. */
-  memset(utf8_val, '\0', PR_TUNABLE_BUFFER_SIZE);
-  memset(ucs4_longs, 0, PR_TUNABLE_BUFFER_SIZE);
+  memset(utf8_val, '\0', sizeof(utf8_val));
+  memset(ucs4_longs, 0, sizeof(ucs4_longs));
 
   ucs4strlen = rewrite_utf8_to_ucs4(ucs4_longs, strlen(key),
     (unsigned char *) key);
