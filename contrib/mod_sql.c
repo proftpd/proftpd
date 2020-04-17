@@ -1716,8 +1716,8 @@ static int sql_getuserprimarykey(cmd_rec *cmd, const char *username) {
       sd->fnum = ah->nelts;
 
       sql_log(DEBUG_INFO,
-        "custom SQLUserPrimaryKey query '%s' returned %d columns for user '%s'",
-        ptr, sd->fnum, username);
+        "custom SQLUserPrimaryKey query '%s' returned %lu columns for "
+        "user '%s'", ptr, sd->fnum, username);
       if (sd->fnum) {
         sd->rnum = 1;
         sd->data = (char **) ah->elts;
@@ -1811,7 +1811,7 @@ static int sql_getgroupprimarykey(cmd_rec *cmd, const char *groupname) {
       sd->fnum = ah->nelts;
 
       sql_log(DEBUG_INFO,
-        "custom SQLGroupPrimaryKey query '%s' returned %d columns for "
+        "custom SQLGroupPrimaryKey query '%s' returned %lu columns for "
         "group '%s'", ptr, sd->fnum, groupname);
       if (sd->fnum) {
         sd->rnum = 1;
@@ -1942,7 +1942,7 @@ static struct passwd *sql_getpasswd(cmd_rec *cmd, struct passwd *p) {
         sd->fnum = ah->nelts;
 
         sql_log(DEBUG_INFO,
-          "custom SQLUserInfo query '%s' returned %d columns for user '%s'",
+          "custom SQLUserInfo query '%s' returned %lu columns for user '%s'",
           cmap.usercustom, sd->fnum, realname);
         if (sd->fnum) {
           sd->rnum = 1;
@@ -2594,7 +2594,7 @@ MODRET sql_pre_dele(cmd_rec *cmd) {
      */
     pr_fs_clear_cache2(path);
     if (pr_fsio_stat(path, &st) < 0) {
-      sql_log(DEBUG_INFO, "%s: unable to stat '%s': %s", cmd->argv[0],
+      sql_log(DEBUG_INFO, "%s: unable to stat '%s': %s", (char *) cmd->argv[0],
         path, strerror(errno));
     
     } else {
@@ -5667,7 +5667,7 @@ MODRET set_sqlauthtypes(cmd_rec *cmd) {
 
     sah = sql_get_authtype(cmd->argv[i]);
     if (sah == NULL) {
-      sql_log(DEBUG_WARN, "unknown SQLAuthType '%s'", cmd->argv[i]);
+      sql_log(DEBUG_WARN, "unknown SQLAuthType '%s'", (char *) cmd->argv[i]);
       CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "unknown SQLAuthType '",
         cmd->argv[i], "'", NULL));
     }
