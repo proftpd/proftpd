@@ -1801,11 +1801,13 @@ START_TEST (auth_is_valid_shell_test) {
 
   shell = "/foo/bar";
   res = pr_auth_is_valid_shell(ctx, shell);
-  fail_unless(res == FALSE, "Failed to handle invalid shell (got %d)", res);
+  fail_unless(res == FALSE, "Failed to handle invalid shell '%s' (got %d)",
+    shell, res);
 
-  shell = "/bin/bash";
+  shell = "/bin/sh";
   res = pr_auth_is_valid_shell(ctx, shell);
-  fail_unless(res == TRUE, "Failed to handle valid shell (got %d)", res);
+  fail_unless(res == TRUE, "Failed to handle valid shell '%s' (got %d)",
+    shell, res);
 }
 END_TEST
 

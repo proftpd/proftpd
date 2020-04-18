@@ -844,7 +844,8 @@ START_TEST (fsio_sys_access_dir_test) {
   fail_unless(res == 0, "Failed to check for write access on directory: %s",
     strerror(errno));
 
-  if (getenv("TRAVIS") == NULL) {
+  if (getenv("CIRRUS_CLONE_DEPTH") == NULL &&
+      getenv("TRAVIS") == NULL) {
     uid_t other_uid;
     gid_t other_gid;
 
@@ -992,8 +993,8 @@ START_TEST (fsio_sys_faccess_test) {
 
   pr_fs_clear_cache2(fsio_test_path);
   res = pr_fsio_faccess(fh, X_OK, uid, gid, NULL);
-  fail_unless(res < 0, "Failed to check for execute access on '%s': %s",
-    fsio_test_path, strerror(errno));
+  fail_unless(res < 0,
+    "Check for execute access on '%s' succeeded unexpectedly", fsio_test_path);
 
   (void) pr_fsio_close(fh);
   (void) pr_fsio_unlink(fsio_test_path);

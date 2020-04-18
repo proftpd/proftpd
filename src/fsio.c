@@ -7136,8 +7136,9 @@ int pr_fs_have_access(struct stat *st, int mode, uid_t uid, gid_t gid,
     return -1;
   }
 
-  /* Root always succeeds. */
-  if (uid == PR_ROOT_UID) {
+  /* Root always succeeds for reads/writes. */
+  if (uid == PR_ROOT_UID &&
+      mode != X_OK) {
     return 0;
   }
 

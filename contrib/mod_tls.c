@@ -4604,7 +4604,7 @@ static void tls_tlsext_cb(SSL *ssl, int server, int type,
     case TLSEXT_TYPE_supported_versions: {
       BIO *bio = NULL;
       char *ext_info = NULL;
-      long ext_infolen;
+      long ext_infolen = 0;
 
       /* If we are the server responding, we only indicate the selected
        * protocol version.  Otherwise, we are a client indicating the range
@@ -4675,7 +4675,7 @@ static void tls_tlsext_cb(SSL *ssl, int server, int type,
     case TLSEXT_TYPE_psk_kex_modes: {
       BIO *bio = NULL;
       char *ext_info = NULL;
-      long ext_infolen;
+      long ext_infolen = 0;
 
       extension_name = "PSK KEX modes";
 
@@ -7917,6 +7917,7 @@ static int tls_accept(conn_t *conn, unsigned char on_data) {
               SSL_version(ctrl_ssl) == TLS1_3_VERSION &&
               SSL_version(ssl) == TLS1_3_VERSION) {
 
+# if defined(PR_USE_OPENSSL_SSL_SESSION_TICKET_CALLBACK)
             if (tls_ctrl_ticket_appdata_len > 0 &&
                 tls_data_ticket_appdata_len > 0 &&
                 tls_ctrl_ticket_appdata_len == tls_data_ticket_appdata_len) {
@@ -7966,6 +7967,12 @@ static int tls_accept(conn_t *conn, unsigned char on_data) {
                 (unsigned long) tls_data_ticket_appdata_len,
                 SSL_get_version(ssl));
             }
+# else
+            pr_trace_msg(trace_channel, 9,
+             "ignoring mismatched control/data session IDs for %s sessions, "
+             "for now", SSL_get_version(ssl));
+            matching_sess = 0;
+# endif /* PR_USE_OPENSSL_SSL_SESSION_TICKET_CALLBACK */
           }
 #endif /* TLS1_3_VERSION */
 

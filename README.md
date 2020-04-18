@@ -3,7 +3,8 @@ ProFTPD 1.3.x README
 
 Status
 ------
-[![Build Status](https://travis-ci.org/proftpd/proftpd.svg?branch=master)](https://travis-ci.org/proftpd/proftpd)
+[![TravisCI Build Status](https://travis-ci.org/proftpd/proftpd.svg?branch=master)](https://travis-ci.org/proftpd/proftpd)
+[![CirrusCI Build Status](https://api.cirrus-ci.com/github/proftpd/proftpd.svg?branch=master)](https://cirrus-ci.com/github/proftpd/proftpd)
 [![Coverage Status](https://coveralls.io/repos/proftpd/proftpd/badge.svg?branch=master&service=github)](https://coveralls.io/github/proftpd/proftpd?branch=master)
 [![Coverity Scan Status](https://scan.coverity.com/projects/198/badge.svg)](https://scan.coverity.com/projects/198)
 [![C/C++ Language Grade](https://img.shields.io/lgtm/grade/cpp/g/proftpd/proftpd.svg?logo=lgtm&logoWidth=18)](https://lgtm.com/projects/g/proftpd/proftpd/context:cpp)
