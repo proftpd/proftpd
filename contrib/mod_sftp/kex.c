@@ -1521,6 +1521,7 @@ static const char *get_preferred_name(pool *p, const char *names) {
  */
 static const char *kex_exchanges[] = {
 #if defined(PR_USE_SODIUM) && defined(HAVE_SHA256_OPENSSL)
+  "curve25519-sha256",
   "curve25519-sha256@libssh.org",
 #endif /* PR_USE_SODIUM and HAVE_SHA256_OPENSSL */
 #ifdef PR_USE_OPENSSL_ECC
@@ -1966,7 +1967,8 @@ static int setup_kex_algo(struct sftp_kex *kex, const char *algo) {
 #endif /* PR_USE_OPENSSL_ECC */
 
 #if defined(PR_USE_SODIUM) && defined(HAVE_SHA256_OPENSSL)
-  if (strncmp(algo, "curve25519-sha256@libssh.org", 22) == 0) {
+  if (strncmp(algo, "curve25519-sha256", 18) == 0 ||
+      strncmp(algo, "curve25519-sha256@libssh.org", 29) == 0) {
     kex->hash = EVP_sha256();
     kex->session_names->kex_algo = algo;
     kex->use_curve25519 = TRUE;
