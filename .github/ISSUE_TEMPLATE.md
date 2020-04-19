@@ -16,10 +16,11 @@ us to better pinpoint the root cause of the problem/issue.
 Please help us reproduce the problem/issue you are encountering.  To do this,
 we need to know which version of ProFTPD you are using, how it was built,
 _etc_.  The following command is an easy way to get all of this information:
+```bash
+proftpd -V
+```
 
-    $ proftpd -V
-
-In addition, we need to see *all* of the ProFTPD configuration files you are
-using (*minus* any sensitive information like passwords, of course).  Armed
+In addition, we need to see **all** of the ProFTPD configuration files you are
+using (**minus** any sensitive information like passwords, of course).  Armed
 with the version and configuration data, then, we can set up ProFTPD locally
 using the same configuration, and see what happens.
