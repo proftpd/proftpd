@@ -192,8 +192,8 @@ int main(int argc, char **argv) {
 
     if (!count++ ||
         oldpid != mpid) {
-      if (total) {
-        printf("   -  %d user%s\n\n", total, total > 1 ? "s" : "");
+      if (total > 0) {
+        printf("   -  %u user%s\n\n", total, total > 1 ? "s" : "");
       }
 
       if (!mpid) {
@@ -203,7 +203,7 @@ int main(int argc, char **argv) {
         printf("Master proftpd process %u:\n", (unsigned int) mpid);
       }
 
-      if (server_name) {
+      if (server_name != NULL) {
         printf("ProFTPD Server '%s'\n", server_name);
       }
 
@@ -212,7 +212,7 @@ int main(int argc, char **argv) {
     }
 
     /* If a ServerName was given, skip unless the scoreboard entry matches. */
-    if (server_name &&
+    if (server_name != NULL &&
         strcmp(server_name, score->sce_server_label) != 0) {
       continue;
     }
@@ -235,7 +235,7 @@ int main(int argc, char **argv) {
   util_close_scoreboard();
 
   /* Print out the total. */
-  if (total) {
+  if (total > 0) {
     for (i = 0; i != MAX_CLASSES; i++) {
       if (classes[i].score_class == NULL) {
         break;

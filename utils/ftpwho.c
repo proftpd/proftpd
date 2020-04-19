@@ -482,7 +482,7 @@ int main(int argc, char **argv) {
       json_delete(json);
     }
 
-    if (server_name) {
+    if (server_name != NULL) {
       free(server_name);
       server_name = NULL;
     }
@@ -502,7 +502,7 @@ int main(int argc, char **argv) {
       show_uptime(uptime));
   }
 
-  if (server_name) {
+  if (server_name != NULL) {
     printf("ProFTPD Server '%s'\n", server_name);
   }
 
@@ -517,8 +517,8 @@ int main(int argc, char **argv) {
     }
 
     if (!count++) {
-      if (total) {
-        printf("   -  %d user%s\n\n", total, total > 1 ? "s" : "");
+      if (total > 0) {
+        printf("   -  %u user%s\n\n", total, total > 1 ? "s" : "");
       }
       total = 0;
     }
@@ -719,7 +719,7 @@ int main(int argc, char **argv) {
   }
   util_close_scoreboard();
 
-  if (total) {
+  if (total > 0) {
     register unsigned int i = 0;
 
     for (i = 0; i != MAX_CLASSES; i++) {
