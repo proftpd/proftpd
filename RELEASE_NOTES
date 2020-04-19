@@ -20,6 +20,8 @@ ChangeLog files.
 
   + Ignore supplemental groups when run as non-root user (Issue #808).
 
+  + Use re-entrant versions of time functions where available (Issue #983).
+
   + New Configuration Directives
 
     LDAPUseSASL

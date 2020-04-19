@@ -53,6 +53,7 @@
 - Issue 693 - mod_sftp unsuccessful login count issues on AIX.
 - Issue 984 - Do not send EXT_INFO messages to SSH clients which did not
   signal "ext-info-c".
+- Issue 983 - Use re-entrant versions of time functions where available.
 
 1.3.7rc3 - Released 20-Feb-2020
 --------------------------------
