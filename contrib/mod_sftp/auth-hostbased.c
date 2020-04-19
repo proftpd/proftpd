@@ -1,6 +1,6 @@
 /*
  * ProFTPD - mod_sftp 'hostbased' user authentication
- * Copyright (c) 2008-2016 TJ Saunders
+ * Copyright (c) 2008-2020 TJ Saunders
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -93,6 +93,16 @@ int sftp_auth_hostbased(struct ssh2_packet *pkt, cmd_rec *pass_cmd,
 
   if (strncmp(hostkey_algo, "ssh-rsa", 8) == 0) {
     pubkey_type = SFTP_KEY_RSA;
+
+#ifdef HAVE_SHA256_OPENSSL
+  } else if (strncmp(hostkey_algo, "rsa-sha2-256", 13) == 0) {
+    pubkey_type = SFTP_KEY_RSA_SHA256;
+#endif /* HAVE_SHA256_OPENSSL */
+
+#ifdef HAVE_SHA512_OPENSSL
+  } else if (strncmp(hostkey_algo, "rsa-sha2-512", 13) == 0) {
+    pubkey_type = SFTP_KEY_RSA_SHA512;
+#endif /* HAVE_SHA512_OPENSSL */
 
   } else if (strncmp(hostkey_algo, "ssh-dss", 8) == 0) {
     pubkey_type = SFTP_KEY_DSA;

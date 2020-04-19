@@ -3889,8 +3889,7 @@ static const unsigned char *agent_sign_data(pool *p, const char *agent_path,
 }
 
 static const unsigned char *get_rsa_signed_data(pool *p, const char *data,
-    size_t datalen, size_t *siglen, const char *sig_name, const EVP_MD *md,
-    int md_nid) {
+    size_t datalen, size_t *siglen, const char *sig_name, const EVP_MD *md) {
   RSA *rsa;
 #if OPENSSL_VERSION_NUMBER < 0x10100000L || \
     defined(HAVE_LIBRESSL)
@@ -3943,7 +3942,7 @@ static const unsigned char *get_rsa_signed_data(pool *p, const char *data,
 
   sig_rsalen = RSA_size(rsa);
   sig_data = pcalloc(p, sig_rsalen);
-  res = RSA_sign(md_nid, dgst, dgstlen, sig_data, &sig_datalen, rsa);
+  res = RSA_sign(EVP_MD_type(md), dgst, dgstlen, sig_data, &sig_datalen, rsa);
 
   /* Regardless of whether the RSA signing succeeds or fails, we are done
    * with the digest buffer.
@@ -3984,8 +3983,7 @@ static const unsigned char *rsa_sign_data(pool *p, const unsigned char *data,
       siglen, 0);
   }
 
-  return get_rsa_signed_data(p, data, datalen, siglen, "ssh-rsa", EVP_sha1(),
-    NID_sha1);
+  return get_rsa_signed_data(p, data, datalen, siglen, "ssh-rsa", EVP_sha1());
 }
 
 #if defined(HAVE_SHA256_OPENSSL)
@@ -3998,7 +3996,7 @@ static const unsigned char *rsa_sha256_sign_data(pool *p,
   }
 
   return get_rsa_signed_data(p, data, datalen, siglen, "rsa-sha2-256",
-    EVP_sha256(), NID_sha256);
+    EVP_sha256());
 }
 #endif /* HAVE_SHA256_OPENSSL */
 
@@ -4012,7 +4010,7 @@ static const unsigned char *rsa_sha512_sign_data(pool *p,
   }
 
   return get_rsa_signed_data(p, data, datalen, siglen, "rsa-sha2-512",
-    EVP_sha512(), NID_sha512);
+    EVP_sha512());
 }
 #endif /* HAVE_SHA256_OPENSSL */
 
@@ -4549,7 +4547,7 @@ int sftp_keys_verify_pubkey_type(pool *p, unsigned char *pubkey_data,
 
 static int verify_rsa_signed_data(pool *p, EVP_PKEY *pkey,
     unsigned char *signature, uint32_t signature_len,
-    unsigned char *sig_data, size_t sig_datalen, const EVP_MD *md, int md_nid) {
+    unsigned char *sig_data, size_t sig_datalen, const EVP_MD *md) {
 #if OPENSSL_VERSION_NUMBER < 0x10100000L || \
     defined(HAVE_LIBRESSL)
   EVP_MD_CTX ctx;
@@ -4648,7 +4646,7 @@ static int verify_rsa_signed_data(pool *p, EVP_PKEY *pkey,
   EVP_MD_CTX_free(pctx);
 #endif /* OpenSSL-1.1.0 and later */
 
-  ok = RSA_verify(md_nid, digest, digest_len, sig, sig_len, rsa);
+  ok = RSA_verify(EVP_MD_type(md), digest, digest_len, sig, sig_len, rsa);
   if (ok == 1) {
     res = 0;
 
@@ -4667,7 +4665,7 @@ static int rsa_verify_signed_data(pool *p, EVP_PKEY *pkey,
     unsigned char *signature, uint32_t signature_len,
     unsigned char *sig_data, size_t sig_datalen) {
   return verify_rsa_signed_data(p, pkey, signature, signature_len,
-    sig_data, sig_datalen, EVP_sha1(), NID_sha1);
+    sig_data, sig_datalen, EVP_sha1());
 }
 
 #if defined(HAVE_SHA256_OPENSSL)
@@ -4675,7 +4673,7 @@ static int rsa_sha256_verify_signed_data(pool *p, EVP_PKEY *pkey,
     unsigned char *signature, uint32_t signature_len,
     unsigned char *sig_data, size_t sig_datalen) {
   return verify_rsa_signed_data(p, pkey, signature, signature_len,
-    sig_data, sig_datalen, EVP_sha256(), NID_sha256);
+    sig_data, sig_datalen, EVP_sha256());
 }
 #endif /* HAVE_SHA256_OPENSSL */
 
@@ -4684,7 +4682,7 @@ static int rsa_sha512_verify_signed_data(pool *p, EVP_PKEY *pkey,
     unsigned char *signature, uint32_t signature_len,
     unsigned char *sig_data, size_t sig_datalen) {
   return verify_rsa_signed_data(p, pkey, signature, signature_len,
-    sig_data, sig_datalen, EVP_sha512(), NID_sha512);
+    sig_data, sig_datalen, EVP_sha512());
 }
 #endif /* HAVE_SHA512_OPENSSL */
 
@@ -5148,7 +5146,7 @@ int sftp_keys_verify_signed_data(pool *p, const char *pubkey_algo,
       sig_datalen);
 
 #if defined(HAVE_SHA256_OPENSSL)
-  } else if (strncmp(sig_type, "rsa-sha2-256", 8) == 0) {
+  } else if (strncmp(sig_type, "rsa-sha2-256", 13) == 0) {
     if (strcmp(pubkey_algo, sig_type) != 0) {
       (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
         "unable to verify signed data: signature type '%s' does not match "
@@ -5162,7 +5160,7 @@ int sftp_keys_verify_signed_data(pool *p, const char *pubkey_algo,
 #endif /* HAVE_SHA256_OPENSSL */
 
 #if defined(HAVE_SHA512_OPENSSL)
-  } else if (strncmp(sig_type, "rsa-sha2-512", 8) == 0) {
+  } else if (strncmp(sig_type, "rsa-sha2-512", 13) == 0) {
     if (strcmp(pubkey_algo, sig_type) != 0) {
       (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
         "unable to verify signed data: signature type '%s' does not match "

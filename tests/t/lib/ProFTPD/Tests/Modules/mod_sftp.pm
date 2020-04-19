@@ -1864,7 +1864,11 @@ sub list_tests {
     }
   }
 
-  return @tests;
+#  return @tests;
+  return qw(
+    ssh2_ext_hostkey_rsa_sha512
+    ssh2_ext_auth_publickey_rsa_sha512
+  );
 }
 
 sub set_up {
@@ -4364,7 +4368,7 @@ sub ssh2_ext_hostkey_rsa_sha512 {
     print $fh <<EOC;
 HostKeyAlgorithms rsa-sha2-512
 IdentityAgent none
-PubkeyAcceptedKeyTypes rsa-sha2-256
+PubkeyAcceptedKeyTypes rsa-sha2-512
 EOC
     unless (close($fh)) {
       die("Can't write $ssh_config: $!");
@@ -4434,10 +4438,6 @@ EOC
       # libssh2, and thus Net::SSH2, don't support rsa-sha512 yet.  So we
       # use the external sftp(1) client (e.g. OpenSSH-7.9p1) to test.
       my $sftp = '/Users/tj/local/openssh-7.9p1/bin/sftp';
-
-      # Since we are using a non-standard sftp(1), make sure the system
-      # ssh-agent, which may not support SHA-2 signatures, is not involved.
-      $ENV{SSH_AUTH_SOCK} = '';
 
       my @cmd = (
         $sftp,
@@ -13416,6 +13416,7 @@ sub ssh2_ext_auth_publickey_rsa_sha512 {
   my $ssh_config = File::Spec->rel2abs("$tmpdir/ssh.conf");
   if (open(my $fh, "> $ssh_config")) {
     print $fh <<EOC;
+IdentityAgent none
 PubkeyAcceptedKeyTypes rsa-sha2-512
 EOC
     unless (close($fh)) {
