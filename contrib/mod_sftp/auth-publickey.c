@@ -130,12 +130,12 @@ int sftp_auth_publickey(struct ssh2_packet *pkt, cmd_rec *pass_cmd,
     pubkey_type = SFTP_KEY_RSA;
 
 #ifdef HAVE_SHA256_OPENSSL
-  } else if (strncmp(pubkey_algo, "rsa-sha2-256", 12) == 0) {
+  } else if (strncmp(pubkey_algo, "rsa-sha2-256", 13) == 0) {
     pubkey_type = SFTP_KEY_RSA_SHA256;
 #endif /* HAVE_SHA256_OPENSSL */
 
 #ifdef HAVE_SHA512_OPENSSL
-  } else if (strncmp(pubkey_algo, "rsa-sha2-512", 12) == 0) {
+  } else if (strncmp(pubkey_algo, "rsa-sha2-512", 13) == 0) {
     pubkey_type = SFTP_KEY_RSA_SHA512;
 #endif /* HAVE_SHA512_OPENSSL */
 
