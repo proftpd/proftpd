@@ -313,7 +313,7 @@ MODRET set_systemlog(cmd_rec *cmd) {
   return PR_HANDLED(cmd);
 }
 
-static struct tm *get_gmtoff(int *tz) {
+static struct tm *get_gmtoff(pool *p, int *tz) {
   time_t now;
   struct tm *gmt, *tm = NULL;
 
@@ -324,11 +324,16 @@ static struct tm *get_gmtoff(int *tz) {
    *  https://forums.proftpd.org/smf/index.php/topic,11971.0.html
    */
   time(&now);
+
+#if defined(HAVE_GMTIME_R)
+  gmt = gmtime_r(&now, pcalloc(p, sizeof(struct tm)));
+#else
   gmt = gmtime(&now);
+#endif /* HAVE_GMTIME_R */
   if (gmt != NULL) {
     int days, hours, minutes;
 
-    tm = pr_localtime(NULL, &now);
+    tm = pr_localtime(p, &now);
     if (tm != NULL) {
       days = tm->tm_yday - gmt->tm_yday;
       hours = ((days < -1 ? 24 : 1 < days ? -24 : days * 24)
@@ -483,7 +488,7 @@ static int resolve_on_meta(pool *p, pr_jot_ctx_t *jot_ctx,
           internal_fmt = FALSE;
         }
 
-        t = *get_gmtoff(&with_tz);
+        t = *get_gmtoff(p, &with_tz);
         sign = (with_tz < 0 ? '-' : '+');
         if (with_tz < 0) {
           with_tz = -with_tz;

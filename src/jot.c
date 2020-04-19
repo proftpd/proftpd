@@ -1301,14 +1301,19 @@ static int resolve_logfmt_id(pool *p, unsigned char logfmt_id,
       time_t now;
 
       now = time(NULL);
-      tm = pr_gmtime(NULL, &now);
+      tm = pr_gmtime(p, &now);
+      if (tm != NULL) {
+        if (logfmt_data != NULL) {
+          time_fmt = logfmt_data;
+        }
 
-      if (logfmt_data != NULL) {
-        time_fmt = logfmt_data;
+        strftime(ts, sizeof(ts)-1, time_fmt, tm);
+        res = (on_meta)(p, ctx, logfmt_id, logfmt_data, ts);
+
+      } else {
+        res = (on_default)(p, ctx, logfmt_id);
       }
 
-      strftime(ts, sizeof(ts)-1, time_fmt, tm);
-      res = (on_meta)(p, ctx, logfmt_id, logfmt_data, ts);
       break;
     }
 
@@ -1887,22 +1892,28 @@ static int resolve_logfmt_id(pool *p, unsigned char logfmt_id,
     }
 
     case LOGFMT_META_ISO8601: {
-      char ts[128];
       struct tm *tm;
       struct timeval now;
-      unsigned long millis;
-      size_t len;
 
       gettimeofday(&now, NULL);
-      tm = pr_localtime(NULL, (const time_t *) &(now.tv_sec));
+      tm = pr_localtime(p, (const time_t *) &(now.tv_sec));
+      if (tm != NULL) {
+        char ts[128];
+        size_t len;
+        unsigned long millis;
 
-      len = strftime(ts, sizeof(ts)-1, "%Y-%m-%d %H:%M:%S", tm);
+        len = strftime(ts, sizeof(ts)-1, "%Y-%m-%d %H:%M:%S", tm);
 
-      /* Convert microsecs to millisecs. */
-      millis = now.tv_usec / 1000;
+        /* Convert microsecs to millisecs. */
+        millis = now.tv_usec / 1000;
 
-      pr_snprintf(ts + len, sizeof(ts) - len - 1, ",%03lu", millis);
-      res = (on_meta)(p, ctx, logfmt_id, NULL, ts);
+        pr_snprintf(ts + len, sizeof(ts) - len - 1, ",%03lu", millis);
+        res = (on_meta)(p, ctx, logfmt_id, NULL, ts);
+
+      } else {
+        res = (on_default)(p, ctx, logfmt_id);
+      }
+
       break;
     }
 

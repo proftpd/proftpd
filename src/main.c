@@ -149,7 +149,9 @@ void session_exit(int pri, void *lv, int exitval, void *dummy) {
 }
 
 void shutdown_end_session(void *d1, void *d2, void *d3, void *d4) {
-  if (check_shutmsg(PR_SHUTMSG_PATH, &shut, &deny, &disc, shutmsg,
+  pool *p = permanent_pool;
+
+  if (check_shutmsg(p, PR_SHUTMSG_PATH, &shut, &deny, &disc, shutmsg,
       sizeof(shutmsg)) == 1) {
     const char *user;
     time_t now;
@@ -183,15 +185,15 @@ void shutdown_end_session(void *d1, void *d2, void *d3, void *d4) {
       user = "NONE";
     }
 
-    msg = sreplace(permanent_pool, shutmsg,
-                   "%s", pstrdup(permanent_pool, pr_strtime(shut)),
-                   "%r", pstrdup(permanent_pool, pr_strtime(deny)),
-                   "%d", pstrdup(permanent_pool, pr_strtime(disc)),
+    msg = sreplace(p, shutmsg,
+                   "%s", pstrdup(p, pr_strtime3(p, shut, FALSE)),
+                   "%r", pstrdup(p, pr_strtime3(p, deny, FALSE)),
+                   "%d", pstrdup(p, pr_strtime3(p, disc, FALSE)),
 		   "%C", (session.cwd[0] ? session.cwd : "(none)"),
 		   "%L", serveraddress,
 		   "%R", (session.c && session.c->remote_name ?
                          session.c->remote_name : "(unknown)"),
-		   "%T", pstrdup(permanent_pool, pr_strtime(now)),
+		   "%T", pstrdup(p, pr_strtime3(p, now, FALSE)),
 		   "%U", user,
 		   "%V", main_server->ServerName,
                    NULL );
@@ -1376,6 +1378,7 @@ static void fork_server(int fd, conn_t *l, unsigned char no_fork) {
 
     time(&now);
     if (!deny || deny <= now) {
+      pool *tmp_pool;
       config_rec *c = NULL;
       const char *reason = NULL, *serveraddress;
 
@@ -1397,25 +1400,29 @@ static void fork_server(int fd, conn_t *l, unsigned char no_fork) {
         }
       }
 
-      reason = sreplace(permanent_pool, shutmsg,
-                   "%s", pstrdup(permanent_pool, pr_strtime(shut)),
-                   "%r", pstrdup(permanent_pool, pr_strtime(deny)),
-                   "%d", pstrdup(permanent_pool, pr_strtime(disc)),
+      tmp_pool = make_sub_pool(permanent_pool);
+      pr_pool_tag(tmp_pool, "shutmsg check pool");
+
+      reason = sreplace(tmp_pool, shutmsg,
+                   "%s", pstrdup(tmp_pool, pr_strtime3(tmp_pool, shut, FALSE)),
+                   "%r", pstrdup(tmp_pool, pr_strtime3(tmp_pool, deny, FALSE)),
+                   "%d", pstrdup(tmp_pool, pr_strtime3(tmp_pool, disc, FALSE)),
 		   "%C", (session.cwd[0] ? session.cwd : "(none)"),
 		   "%L", serveraddress,
 		   "%R", (session.c && session.c->remote_name ?
                          session.c->remote_name : "(unknown)"),
-		   "%T", pstrdup(permanent_pool, pr_strtime(now)),
+		   "%T", pstrdup(tmp_pool, pr_strtime3(tmp_pool, now, FALSE)),
 		   "%U", "NONE",
 		   "%V", main_server->ServerName,
                    NULL );
 
       pr_log_auth(PR_LOG_NOTICE, "connection refused (%s) from %s [%s]",
-               reason, session.c->remote_name,
-               pr_netaddr_get_ipstr(session.c->remote_addr));
-
+        reason, session.c->remote_name,
+        pr_netaddr_get_ipstr(session.c->remote_addr));
       pr_response_send(R_500,
         _("FTP server shut down (%s) -- please try again later"), reason);
+
+      destroy_pool(tmp_pool);
       exit(0);
     }
   }
@@ -1557,8 +1564,8 @@ static void daemon_loop(void) {
     maxfd = semaphore_fds(&listenfds, maxfd);
 
     /* Check for ftp shutdown message file */
-    switch (check_shutmsg(PR_SHUTMSG_PATH, &shut, &deny, &disc, shutmsg,
-        sizeof(shutmsg))) {
+    switch (check_shutmsg(permanent_pool, PR_SHUTMSG_PATH, &shut, &deny,
+        &disc, shutmsg, sizeof(shutmsg))) {
       case 1:
         if (!shutting_down) {
           disc_children();
@@ -1600,9 +1607,19 @@ static void daemon_loop(void) {
           " present: all incoming connections will be refused");
 
       } else {
+#if defined(HAVE_CTIME_R)
+        char deny_ts[32];
+
+        memset(deny_ts, '\0', sizeof(deny_ts));
+        (void) ctime_r(&deny, deny_ts);
+#else
+        char *deny_ts = NULL;
+        deny_ts = ctime(&deny);
+#endif /* HAVE_CTIME_R */
+
         pr_log_pri(PR_LOG_NOTICE,
           PR_SHUTMSG_PATH " present: incoming connections "
-          "will be denied starting %s", CHOP(ctime(&deny)));
+          "will be denied starting %s", CHOP(deny_ts));
       }
     }
 
@@ -1666,8 +1683,9 @@ static void daemon_loop(void) {
         strerror(xerrno));
     }
 
-    if (i == 0)
+    if (i == 0) {
       continue;
+    }
 
     /* Reset the connection counter.  Take into account this current
      * connection, which does not (yet) have an entry in the child list.
@@ -1705,11 +1723,11 @@ static void daemon_loop(void) {
     listen_conn = pr_ipbind_accept_conn(&listenfds, &fd);
 
     /* Fork off servers to handle each connection our job is to get back to
-     * answering connections asap, so leave the work of determining which
+     * answering connections ASAP, so leave the work of determining which
      * server the connection is for to our child.
      */
 
-    if (listen_conn) {
+    if (listen_conn != NULL) {
 
       /* Check for exceeded MaxInstances. */
       if (ServerMaxInstances > 0 &&
@@ -1850,8 +1868,8 @@ static void inetd_main(void) {
   init_bindings();
 
   /* Check our shutdown status */
-  if (check_shutmsg(PR_SHUTMSG_PATH, &shut, &deny, &disc, shutmsg,
-      sizeof(shutmsg)) == 1) {
+  if (check_shutmsg(permanent_pool, PR_SHUTMSG_PATH, &shut, &deny, &disc,
+      shutmsg, sizeof(shutmsg)) == 1) {
     shutting_down = TRUE;
   }
 

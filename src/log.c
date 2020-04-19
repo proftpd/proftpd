@@ -2,7 +2,7 @@
  * ProFTPD - FTP server daemon
  * Copyright (c) 1997, 1998 Public Flood Software
  * Copyright (c) 1999, 2000 MacGyver aka Habeeb J. Dihu <macgyver@tos.net>
- * Copyright (c) 2001-2017 The ProFTPD Project team
+ * Copyright (c) 2001-2020 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -323,6 +323,7 @@ int pr_log_openfile(const char *log_file, int *log_fd, mode_t log_mode) {
 
 int pr_log_vwritefile(int logfd, const char *ident, const char *fmt,
     va_list msg) {
+  pool *tmp_pool;
   char buf[LOGBUFFER_SIZE] = {'\0'};
   struct timeval now;
   struct tm *tm = NULL;
@@ -334,9 +335,16 @@ int pr_log_vwritefile(int logfd, const char *ident, const char *fmt,
     return -1;
   }
 
+  tmp_pool = make_sub_pool(permanent_pool);
+  pr_pool_tag(tmp_pool, "Log message pool");
+
   gettimeofday(&now, NULL);
-  tm = pr_localtime(NULL, (const time_t *) &(now.tv_sec));
+  tm = pr_localtime(tmp_pool, (const time_t *) &(now.tv_sec));
   if (tm == NULL) {
+    int xerrno = errno;
+
+    destroy_pool(tmp_pool);
+    errno = xerrno;
     return -1;
   }
 
@@ -374,6 +382,7 @@ int pr_log_vwritefile(int logfd, const char *ident, const char *fmt,
   }
 
   pr_log_event_generate(PR_LOG_TYPE_UNSPEC, logfd, -1, buf, buflen);
+  destroy_pool(tmp_pool);
 
   while (write(logfd, buf, buflen) < 0) {
     if (errno == EINTR) {
@@ -479,7 +488,7 @@ static void log_write(int priority, int f, char *s, int discard) {
 
   memset(serverinfo, '\0', sizeof(serverinfo));
 
-  if (main_server &&
+  if (main_server != NULL &&
       main_server->ServerFQDN) {
     const pr_netaddr_t *remote_addr;
     const char *remote_name;
@@ -507,21 +516,27 @@ static void log_write(int priority, int f, char *s, int discard) {
 
   if (!discard &&
       (logstderr || !main_server)) {
+    pool *tmp_pool;
     char buf[LOGBUFFER_SIZE] = {'\0'};
     size_t buflen, len;
     struct timeval now;
     struct tm *tm = NULL;
     unsigned long millis;
+ 
+    tmp_pool = make_sub_pool(permanent_pool);
+    pr_pool_tag(tmp_pool, "Log message pool");
 
     gettimeofday(&now, NULL);
-    tm = pr_localtime(NULL, (const time_t *) &(now.tv_sec));
+    tm = pr_localtime(tmp_pool, (const time_t *) &(now.tv_sec));
     if (tm == NULL) {
+      destroy_pool(tmp_pool);
       return;
     }
 
     len = strftime(buf, sizeof(buf)-1, "%Y-%m-%d %H:%M:%S", tm);
     buflen = len;
     buf[sizeof(buf)-1] = '\0';
+    destroy_pool(tmp_pool);
 
     /* Convert microsecs to millisecs. */
     millis = now.tv_usec / 1000;
@@ -588,21 +603,27 @@ static void log_write(int priority, int f, char *s, int discard) {
   }
 
   if (systemlog_fd != -1) {
+    pool *tmp_pool;
     char buf[LOGBUFFER_SIZE] = {'\0'};
     size_t buflen, len;
     struct timeval now;
     struct tm *tm;
     unsigned long millis;
 
+    tmp_pool = make_sub_pool(permanent_pool);
+    pr_pool_tag(tmp_pool, "Log message pool");
+
     gettimeofday(&now, NULL);
-    tm = pr_localtime(NULL, (const time_t *) &(now.tv_sec));
+    tm = pr_localtime(tmp_pool, (const time_t *) &(now.tv_sec));
     if (tm == NULL) {
+      destroy_pool(tmp_pool);
       return;
     }
 
     len = strftime(buf, sizeof(buf), "%Y-%m-%d %H:%M:%S", tm);
     buflen = len;
     buf[sizeof(buf) - 1] = '\0';
+    destroy_pool(tmp_pool);
 
     /* Convert microsecs to millisecs. */
     millis = now.tv_usec / 1000;

@@ -241,16 +241,6 @@ START_TEST (fsio_sys_close_test) {
 
   res = pr_fsio_close(fh);
   fail_unless(res == 0, "Failed to close file handle: %s", strerror(errno));
-
-  mark_point();
-
-  /* Deliberately try to close an already-closed handle, to make sure we
-   * don't segfault.
-   */
-  res = pr_fsio_close(fh);
-  fail_unless(res < 0, "Failed to handle already-closed file handle");
-  fail_unless(errno == EBADF, "Expected EBADF (%d), got %s (%d)", EBADF,
-    strerror(errno), errno);
 }
 END_TEST
 
@@ -1653,7 +1643,6 @@ START_TEST (fsio_sys_listxattr_test) {
   res = pr_fsio_listxattr(p, path, &names);
   fail_if(res < 0, "Failed to list xattrs for '%s': %s", path, strerror(errno));
 
-  pr_fsio_close(fh);
   (void) unlink(fsio_test_path);
 #else
   (void) fh;
@@ -1709,7 +1698,6 @@ START_TEST (fsio_sys_llistxattr_test) {
   res = pr_fsio_listxattr(p, path, &names);
   fail_if(res < 0, "Failed to list xattrs for '%s': %s", path, strerror(errno));
 
-  pr_fsio_close(fh);
   (void) unlink(fsio_test_path);
 #else
   (void) fh;
