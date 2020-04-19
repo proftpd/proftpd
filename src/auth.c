@@ -1946,7 +1946,7 @@ int pr_auth_chroot(const char *path) {
    */
   tmp_pool = make_sub_pool(session.pool);
   now = time(NULL);
-  (void) pr_localtime(NULL, &now);
+  (void) pr_localtime(tmp_pool, &now);
 
   pr_event_generate("core.chroot", path);
 

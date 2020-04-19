@@ -2,7 +2,7 @@
  * ProFTPD - FTP server daemon
  * Copyright (c) 1997, 1998 Public Flood Software
  * Copyright (c) 1999, 2000 MacGyver aka Habeeb J. Dihu <macgyver@tos.net>
- * Copyright (c) 2001-2017 The ProFTPD Project team
+ * Copyright (c) 2001-2020 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -67,7 +67,12 @@ static void readme_add_path(pool *p, const char *path) {
       }
 
       memset(time_str, '\0', sizeof(time_str));
+#if defined(HAVE_CTIME_R)
+      pr_snprintf(time_str, sizeof(time_str)-1, "%.26s",
+        ctime_r(&st.st_mtime, time_str));
+#else
       pr_snprintf(time_str, sizeof(time_str)-1, "%.26s", ctime(&st.st_mtime));
+#endif /* HAVE_CTIME_R */
     
       ptr = strchr(time_str, '\n');
       if (ptr != NULL) {

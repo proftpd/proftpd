@@ -881,7 +881,7 @@ static int sql_resolve_on_meta(pool *p, pr_jot_ctx_t *jot_ctx,
         time_t now;
 
         now = time(NULL);
-        tm = pr_localtime(NULL, &now);
+        tm = pr_localtime(p, &now);
 
         if (jot_hint != NULL) {
           time_fmt = jot_hint;

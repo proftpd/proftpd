@@ -1601,6 +1601,7 @@ static void tls_print_hexbuf(BIO *bio, const char *indent, const char *name,
 
 static void tls_print_random(BIO *bio, const unsigned char **msg,
     size_t *msglen) {
+  pool *tmp_pool;
   time_t ts;
   const unsigned char *ptr;
 
@@ -1613,12 +1614,16 @@ static void tls_print_random(BIO *bio, const unsigned char **msg,
   ts = ((ptr[0] << 24) | (ptr[1] << 16) | (ptr[2] << 8) | ptr[3]);
   ptr += 4;
 
+  tmp_pool = make_sub_pool(session.pool);
+  pr_pool_tag(tmp_pool, "TLS Diags pool");
+
   BIO_puts(bio, "  random:\n");
   BIO_printf(bio, "    gmt_unix_time = %s (not guaranteed to be accurate)\n",
-    pr_strtime2(ts, TRUE));
+    pr_strtime3(tmp_pool, ts, TRUE));
   tls_print_hex(bio, "      ", "    random_bytes", ptr, 28);
   *msg += 32;
   *msglen -= 32;
+  destroy_pool(tmp_pool);
 }
 
 static void tls_print_session_id(BIO *bio, const unsigned char **msg,
@@ -5848,7 +5853,7 @@ static OCSP_RESPONSE *ocsp_get_cached_response(pool *p,
       /* If the response has expired, we need to delete it. */
       pr_trace_msg(trace_channel, 5,
         "cached OCSP response for fingerprint '%s' expired at %s",
-        fingerprint, pr_strtime2(expired, TRUE));
+        fingerprint, pr_strtime3(p, expired, TRUE));
       res = (tls_ocsp_cache->delete)(tls_ocsp_cache, fingerprint);
       if (res < 0) {
         pr_trace_msg(trace_channel, 3,

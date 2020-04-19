@@ -33431,7 +33431,10 @@ done
 
 
 
-for ac_func in bcopy crypt fdatasync fgetgrent fgetpwent fgetspent flock fpathconf freeaddrinfo fsync futimes getifaddrs getpgid getpgrp mkdtemp nl_langinfo
+
+
+
+for ac_func in bcopy crypt ctime_r fdatasync fgetgrent fgetpwent fgetspent flock fpathconf freeaddrinfo fsync futimes getifaddrs getpgid getpgrp gmtime_r localtime_r mkdtemp nl_langinfo
 do
 as_ac_var=`echo "ac_cv_func_$ac_func" | $as_tr_sh`
 { echo "$as_me:$LINENO: checking for $ac_func" >&5
@@ -33523,6 +33526,7 @@ _ACEOF
 
 fi
 done
+
 
 { echo "$as_me:$LINENO: checking for gai_strerror" >&5
 echo $ECHO_N "checking for gai_strerror... $ECHO_C" >&6; }

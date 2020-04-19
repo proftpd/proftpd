@@ -1,6 +1,6 @@
 /*
  * ProFTPD: mod_ban -- a module implementing ban lists using the Controls API
- * Copyright (c) 2004-2017 TJ Saunders
+ * Copyright (c) 2004-2020 TJ Saunders
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -1382,9 +1382,10 @@ static int ban_list_exists(pool *p, unsigned int type, unsigned int sid,
         "found cache entry for name %s, type %u: version %u, update_ts %s, "
         "ip_addr %s, port %u, be_type %u, be_name %s, be_reason %s, "
         "be_mesg %s, be_expires %s, be_sid %u", name, type, bce.version,
-        pr_strtime(bce.update_ts), bce.ip_addr, bce.port, bce.be_type,
-        bce.be_name, bce.be_reason, bce.be_mesg ? bce.be_mesg : "<nil>",
-        pr_strtime(bce.be_expires), bce.be_sid);
+        pr_strtime3(p, bce.update_ts, FALSE), bce.ip_addr, bce.port,
+        bce.be_type, bce.be_name, bce.be_reason,
+        bce.be_mesg ? bce.be_mesg : "<nil>",
+        pr_strtime3(p, bce.be_expires, FALSE), bce.be_sid);
 
       /* Use BanCacheOptions to check the various struct fields for usability.
        */
@@ -1853,7 +1854,8 @@ static int ban_handle_info(pr_ctrls_t *ctrl, int reqargc, char **reqargv) {
             time_t then = ban_lists->bans.bl_entries[i].be_expires;
 
             pr_ctrls_add_response(ctrl, "    Expires: %s (in %lu seconds)",
-              pr_strtime(then), (unsigned long) (then - now));
+              pr_strtime3(ctrl->ctrls_tmp_pool, then, FALSE),
+              (unsigned long) (then - now));
 
           } else {
             pr_ctrls_add_response(ctrl, "    Expires: never");
@@ -1894,14 +1896,15 @@ static int ban_handle_info(pr_ctrls_t *ctrl, int reqargc, char **reqargv) {
             time_t then = ban_lists->bans.bl_entries[i].be_expires;
 
             pr_ctrls_add_response(ctrl, "    Expires: %s (in %lu seconds)",
-              pr_strtime(then), (unsigned long) (then - now));
+              pr_strtime3(ctrl->ctrls_tmp_pool, then, FALSE),
+              (unsigned long) (then - now));
 
           } else {
             pr_ctrls_add_response(ctrl, "    Expires: never");
           }
 
           s = ban_get_server_by_id(ban_lists->bans.bl_entries[i].be_sid);
-          if (s) {
+          if (s != NULL) {
             pr_ctrls_add_response(ctrl, "    <VirtualHost>: %s (%s#%u)",
               s->ServerName, pr_netaddr_get_ipstr(s->addr),
               s->ServerPort);
@@ -1935,14 +1938,15 @@ static int ban_handle_info(pr_ctrls_t *ctrl, int reqargc, char **reqargv) {
             time_t then = ban_lists->bans.bl_entries[i].be_expires;
 
             pr_ctrls_add_response(ctrl, "    Expires: %s (in %lu seconds)",
-              pr_strtime(then), (unsigned long) (then - now));
+              pr_strtime3(ctrl->ctrls_tmp_pool, then, FALSE),
+              (unsigned long) (then - now));
 
           } else {
             pr_ctrls_add_response(ctrl, "    Expires: never");
           }
 
           s = ban_get_server_by_id(ban_lists->bans.bl_entries[i].be_sid);
-          if (s) {
+          if (s != NULL) {
             pr_ctrls_add_response(ctrl, "    <VirtualHost>: %s (%s#%u)",
               s->ServerName, pr_netaddr_get_ipstr(s->addr),
               s->ServerPort);
@@ -2127,11 +2131,15 @@ static int ban_handle_ban(pr_ctrls_t *ctrl, int reqargc,
     for (i = optind; i < reqargc; i++) {
      
       /* Check for duplicates. */
-      if (ban_list_exists(NULL, BAN_TYPE_USER, sid, reqargv[i], NULL) < 0) {
+      if (ban_list_exists(ctrl->ctrls_tmp_pool, BAN_TYPE_USER, sid, reqargv[i],
+          NULL) < 0) {
 
         if (ban_lists->bans.bl_listlen < BAN_LIST_MAXSZ) {
-          const char *reason = pstrcat(ctrl->ctrls_tmp_pool, "requested by '",
-            ctrl->ctrls_cl->cl_user, "' on ", pr_strtime(time(NULL)), NULL);
+          const char *reason;
+
+          reason = pstrcat(ctrl->ctrls_tmp_pool, "requested by '",
+            ctrl->ctrls_cl->cl_user, "' on ",
+            pr_strtime3(ctrl->ctrls_tmp_pool, time(NULL), FALSE), NULL);
 
           ban_list_add(NULL, BAN_TYPE_USER, sid, reqargv[i],
             reason, 0, NULL);
@@ -2176,14 +2184,16 @@ static int ban_handle_ban(pr_ctrls_t *ctrl, int reqargc,
       }
  
       /* Check for duplicates. */
-      if (ban_list_exists(NULL, BAN_TYPE_HOST, sid, pr_netaddr_get_ipstr(site),
-          NULL) < 0) {
+      if (ban_list_exists(ctrl->ctrls_tmp_pool, BAN_TYPE_HOST, sid,
+          pr_netaddr_get_ipstr(site), NULL) < 0) {
 
         if (ban_lists->bans.bl_listlen < BAN_LIST_MAXSZ) {
           ban_list_add(NULL, BAN_TYPE_HOST, sid, pr_netaddr_get_ipstr(site),
             pstrcat(ctrl->ctrls_tmp_pool, "requested by '",
               ctrl->ctrls_cl->cl_user, "' on ",
-              pr_strtime(time(NULL)), NULL), 0, NULL);
+              pr_strtime3(ctrl->ctrls_tmp_pool, time(NULL), FALSE), NULL), 0,
+              NULL);
+
           (void) pr_log_writefile(ban_logfd, MOD_BAN_VERSION,
             "added '%s' to banned hosts list", reqargv[i]);
           pr_ctrls_add_response(ctrl, "host %s banned", reqargv[i]);
@@ -2217,11 +2227,15 @@ static int ban_handle_ban(pr_ctrls_t *ctrl, int reqargc,
     for (i = optind; i < reqargc; i++) {
 
       /* Check for duplicates. */
-      if (ban_list_exists(NULL, BAN_TYPE_CLASS, sid, reqargv[i], NULL) < 0) {
+      if (ban_list_exists(ctrl->ctrls_tmp_pool, BAN_TYPE_CLASS, sid,
+          reqargv[i], NULL) < 0) {
 
         if (ban_lists->bans.bl_listlen < BAN_LIST_MAXSZ) {
-          const char *reason = pstrcat(ctrl->ctrls_tmp_pool, "requested by '",
-            ctrl->ctrls_cl->cl_user, "' on ", pr_strtime(time(NULL)), NULL);
+          const char *reason;
+
+          reason = pstrcat(ctrl->ctrls_tmp_pool, "requested by '",
+            ctrl->ctrls_cl->cl_user, "' on ",
+            pr_strtime3(ctrl->ctrls_tmp_pool, time(NULL), FALSE), NULL);
 
           ban_list_add(NULL, BAN_TYPE_CLASS, sid, reqargv[i], reason, 0, NULL);
           (void) pr_log_writefile(ban_logfd, MOD_BAN_VERSION,
@@ -3004,10 +3018,12 @@ static void ban_handle_event(unsigned int ev_type, int ban_type,
        * Check for an existing entry first, though.
        */
 
-      res = ban_list_exists(NULL, ban_type, main_server->sid, src, NULL);
+      res = ban_list_exists(tmp_pool, ban_type, main_server->sid, src, NULL);
       if (res < 0) {
-        const char *reason = pstrcat(tmp_pool, event, " autoban at ",
-          pr_strtime(time(NULL)), NULL);
+        const char *reason;
+
+        reason = pstrcat(tmp_pool, event, " autoban at ",
+          pr_strtime3(tmp_pool, time(NULL), FALSE), NULL);
 
         ban_list_expire();
 

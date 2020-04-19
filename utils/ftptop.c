@@ -594,7 +594,11 @@ static int scoreboard_open(void) {
 
 static void show_sessions(void) {
   time_t now;
+#if defined(HAVE_CTIME_R)
+  char now_str[32];
+#else
   char *now_str = NULL;
+#endif /* HAVE_CTIME_R */
   const char *uptime_str = NULL;
 
   clear_counters();
@@ -602,8 +606,14 @@ static void show_sessions(void) {
 
   time(&now);
 
-  /* Trim ctime(3)'s trailing newline. */
+#if defined(HAVE_CTIME_R)
+  memset(now_str, '\0', sizeof(now_str));
+  (void) ctime_r(&now, now_str);
+#else
   now_str = ctime(&now);
+#endif /* HAVE_CTIME_R */
+
+  /* Trim ctime(3)'s trailing newline. */
   now_str[strlen(now_str)-1] = '\0';
 
   uptime_str = show_ftpd_uptime();

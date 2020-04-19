@@ -1492,7 +1492,7 @@ static int sess_cache_status(tls_sess_cache_t *cache,
     statusf(arg, "Shared memory segment size: %u bytes",
       (unsigned int) ds.shm_segsz);
     statusf(arg, "Shared memory cache created on: %s",
-      pr_strtime(ds.shm_ctime));
+      pr_strtime3(tmp_pool, ds.shm_ctime, FALSE));
     statusf(arg, "Shared memory attach count: %u",
       (unsigned int) ds.shm_nattch);
 
@@ -1626,10 +1626,10 @@ static int sess_cache_status(tls_sess_cache_t *cache,
         }
 
         ts = SSL_SESSION_get_time(sess);
-        statusf(arg, "    Started: %s", pr_strtime(ts));
+        statusf(arg, "    Started: %s", pr_strtime3(tmp_pool, ts, FALSE));
         ts = entry->expires;
-        statusf(arg, "    Expires: %s (%u secs)", pr_strtime(ts),
-          SSL_SESSION_get_timeout(sess));
+        statusf(arg, "    Expires: %s (%u secs)",
+          pr_strtime3(tmp_pool, ts, FALSE), SSL_SESSION_get_timeout(sess));
 
         SSL_SESSION_free(sess);
         statusf(arg, "%s", "  -----END SSL SESSION PARAMETERS-----");
@@ -2515,7 +2515,7 @@ static int ocsp_cache_status(tls_ocsp_cache_t *cache,
     statusf(arg, "Shared memory segment size: %u bytes",
       (unsigned int) ds.shm_segsz);
     statusf(arg, "Shared memory cache created on: %s",
-      pr_strtime(ds.shm_ctime));
+      pr_strtime3(tmp_pool, ds.shm_ctime, FALSE));
     statusf(arg, "Shared memory attach count: %u",
       (unsigned int) ds.shm_nattch);
 

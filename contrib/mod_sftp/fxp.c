@@ -1011,30 +1011,8 @@ static int fxp_get_v5_open_flags(uint32_t desired_access, uint32_t flags) {
   return res;
 }
 
-/* Like pr_strtime(), except that it uses pr_gmtime() rather than
- * pr_localtime().
- */
 static const char *fxp_strtime(pool *p, time_t t) {
-  static char buf[64];
-  static char *mons[] = { "Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul",
-    "Aug", "Sep", "Oct", "Nov", "Dec" };
-  static char *days[] = { "Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat" };
-  struct tm *tm;
-
-  memset(buf, '\0', sizeof(buf));
-
-  tm = pr_gmtime(p, &t);
-  if (tm != NULL) {
-    pr_snprintf(buf, sizeof(buf), "%s %s %2d %02d:%02d:%02d %d",
-      days[tm->tm_wday], mons[tm->tm_mon], tm->tm_mday, tm->tm_hour,
-      tm->tm_min, tm->tm_sec, tm->tm_year + 1900);
-
-  } else {
-    buf[0] = '\0';
-  }
-
-  buf[sizeof(buf)-1] = '\0';
-  return buf;
+  return pr_strtime3(p, t, TRUE);
 }
 
 static void fxp_cmd_dispatch(cmd_rec *cmd) {
