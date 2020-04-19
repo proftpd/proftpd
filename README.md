@@ -3,6 +3,7 @@ ProFTPD 1.3.x README
 
 Status
 ------
+[![Codacy Badge](https://api.codacy.com/project/badge/Grade/7af32da7e3b04d44be5047f777776477)](https://app.codacy.com/gh/proftpd/proftpd?utm_source=github.com&utm_medium=referral&utm_content=proftpd/proftpd&utm_campaign=Badge_Grade_Dashboard)
 [![TravisCI Build Status](https://travis-ci.org/proftpd/proftpd.svg?branch=master)](https://travis-ci.org/proftpd/proftpd)
 [![CirrusCI Build Status](https://api.cirrus-ci.com/github/proftpd/proftpd.svg?branch=master)](https://cirrus-ci.com/github/proftpd/proftpd)
 [![Coverage Status](https://coveralls.io/repos/proftpd/proftpd/badge.svg?branch=master&service=github)](https://coveralls.io/github/proftpd/proftpd?branch=master)
