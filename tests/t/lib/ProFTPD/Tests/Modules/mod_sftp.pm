@@ -1864,11 +1864,7 @@ sub list_tests {
     }
   }
 
-#  return @tests;
-  return qw(
-    ssh2_ext_hostkey_rsa_sha512
-    ssh2_ext_auth_publickey_rsa_sha512
-  );
+  return @tests;
 }
 
 sub set_up {
