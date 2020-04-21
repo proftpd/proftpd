@@ -739,7 +739,10 @@ int main(int argc, char *argv[]) {
 
   /* Initialize the display. */
   initscr();
-  if (batch_mode == FALSE) {
+  if (batch_mode == TRUE) {
+    scrollok(stdscr, TRUE);
+
+  } else {
     cbreak();
   }
   noecho();
