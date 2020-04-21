@@ -34,6 +34,7 @@ extraction:
         - libssl-dev
         - libsodium-dev
         - libwrap0-dev
+        - ncurses-dev
         - unixodbc-dev
         - zlib1g-dev
 
