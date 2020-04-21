@@ -423,11 +423,13 @@ static void read_scoreboard(void) {
   pr_scoreboard_entry_t *score = NULL;
 
   ftp_sessions = calloc(chunklen, sizeof(char *));
-  if (ftp_sessions == NULL)
+  if (ftp_sessions == NULL) {
     exit(1);
+  }
 
-  if (scoreboard_open() < 0)
+  if (scoreboard_open() < 0) {
     return;
+  }
 
   /* Iterate through the scoreboard. */
   while ((score = util_scoreboard_entry_read()) != NULL) {
@@ -453,8 +455,9 @@ static void read_scoreboard(void) {
         ftp_nidles++;
 
         if (display_mode != FTPTOP_SHOW_RATES &&
-            !(display_mode & FTPTOP_SHOW_IDLE))
+            !(display_mode & FTPTOP_SHOW_IDLE)) {
           continue;
+        }
 
       } else if (strcmp(score->sce_cmd, "RETR") == 0 ||
                  strcmp(score->sce_cmd, "READ") == 0 ||
@@ -463,8 +466,9 @@ static void read_scoreboard(void) {
         ftp_ndownloads++;
 
         if (display_mode != FTPTOP_SHOW_RATES &&
-            !(display_mode & FTPTOP_SHOW_DOWNLOAD))
+            !(display_mode & FTPTOP_SHOW_DOWNLOAD)) {
           continue;
+        }
 
       } else if (strcmp(score->sce_cmd, "STOR") == 0 ||
                  strcmp(score->sce_cmd, "APPE") == 0 ||
@@ -475,8 +479,9 @@ static void read_scoreboard(void) {
         ftp_nuploads++;
 
         if (display_mode != FTPTOP_SHOW_RATES &&
-            !(display_mode & FTPTOP_SHOW_UPLOAD))
+            !(display_mode & FTPTOP_SHOW_UPLOAD)) {
           continue;
+        }
 
       } else if (strcmp(score->sce_cmd, "LIST") == 0 ||
                  strcmp(score->sce_cmd, "NLST") == 0 ||
@@ -516,8 +521,10 @@ static void read_scoreboard(void) {
       client_namelen = str_getscreenlen(score->sce_client_name, 44);
 
       /* Skip sessions unless they are actually transferring data */
-      if (*status != 'U' && *status != 'D')
+      if (*status != 'U' &&
+          *status != 'D') {
         continue;
+      }
 
       snprintf(buf, sizeof(buf), FTPTOP_XFER_DISPLAY_FMT,
         (unsigned int) score->sce_pid, status,
@@ -534,7 +541,7 @@ static void read_scoreboard(void) {
     /* Make sure there is enough memory allocated in the session list.
      * Allocate more if needed.
      */
-    if (ftp_nsessions &&
+    if (ftp_nsessions > 0 &&
         ftp_nsessions % chunklen == 0) {
       ftp_sessions = realloc(ftp_sessions,
         (ftp_nsessions + chunklen) * sizeof(char *));
@@ -592,7 +599,7 @@ static int scoreboard_open(void) {
   return 0;
 }
 
-static void show_sessions(void) {
+static void show_sessions(int use_attributes) {
   time_t now;
 #if defined(HAVE_CTIME_R)
   char now_str[32];
@@ -618,18 +625,25 @@ static void show_sessions(void) {
 
   uptime_str = show_ftpd_uptime();
 
-  wclear(stdscr);
-  move(0, 0);
+  if (use_attributes) {
+    wclear(stdscr);
+    move(0, 0);
+    attron(A_BOLD);
+  }
 
-  attron(A_BOLD);
   printw(FTPTOP_VERSION ": %s%s\n", now_str, uptime_str);
   printw("%u Total FTP Sessions: %u downloading, %u uploading, %u idle\n",
     ftp_nsessions, ftp_ndownloads, ftp_nuploads, ftp_nidles);
-  attroff(A_BOLD);
+
+  if (use_attributes) {
+    attroff(A_BOLD);
+  }
 
   printw("\n");
 
-  attron(A_REVERSE);
+  if (use_attributes) {
+    attron(A_REVERSE);
+  }
 
   if (display_mode != FTPTOP_SHOW_RATES) {
     printw(FTPTOP_REG_HEADER_FMT, "PID", "S", "USER", "CLIENT", "SERVER",
@@ -639,7 +653,9 @@ static void show_sessions(void) {
     printw(FTPTOP_XFER_HEADER_FMT, "PID", "S", "USER", "CLIENT", "KB/s", FTPTOP_XFER_DONE_SIZE, "%DONE");
   }
 
-  attroff(A_REVERSE);
+  if (use_attributes) {
+    attroff(A_REVERSE);
+  }
 
   /* Write out the scoreboard entries. */
   if (ftp_sessions != NULL &&
@@ -723,7 +739,9 @@ int main(int argc, char *argv[]) {
 
   /* Initialize the display. */
   initscr();
-  cbreak();
+  if (batch_mode == FALSE) {
+    cbreak();
+  }
   noecho();
 #if !defined(HAVE_NCURSES)
   nodelay(stdscr, TRUE);
@@ -731,22 +749,23 @@ int main(int argc, char *argv[]) {
   curs_set(0);
 
   /* Paint the initial display. */
-  show_sessions();
+  show_sessions(batch_mode == FALSE);
 
   /* Loop endlessly. */
   while (TRUE) {
-    if (batch_mode == FALSE) {
+    if (batch_mode == TRUE) {
+      sleep(delay);
+
+    } else {
       int c = -1;
 
 #if defined(HAVE_NCURSES)
-      if (halfdelay(delay * 10) != ERR) {
-        c = getch();
-      }
+      (void) halfdelay(delay * 10);
 #else
       sleep(delay);
-      c = getch();
 #endif /* HAVE_NCURSES */
 
+      c = getch();
       if (c != -1) {
         if (tolower(c) == 'q') {
           break;
@@ -758,7 +777,7 @@ int main(int argc, char *argv[]) {
       }
     }
 
-    show_sessions();
+    show_sessions(batch_mode == FALSE);
 
     if (batch_mode == TRUE) {
       /* Only worry about the number of iterations if a limit has been

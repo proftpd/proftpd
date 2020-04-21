@@ -51,6 +51,8 @@ install:
   - sudo apt-get install -y libwrap0-dev
   # for PCRE support
   - sudo apt-get install -y libpcre3-dev
+  # for ftptop
+  - sudo apt-get install -y ncurses-dev
   # for zlib support
   - sudo apt-get install -y zlib1g-dev
   # for static code analysis
