@@ -331,7 +331,7 @@ static char peek_mesg_type(struct ssh2_packet *pkt) {
 
 static void handle_global_request_mesg(struct ssh2_packet *pkt) {
   unsigned char *buf, *ptr;
-  uint32_t buflen, bufsz;
+  uint32_t buflen;
   char *request_name;
   int want_reply;
 
@@ -346,6 +346,7 @@ static void handle_global_request_mesg(struct ssh2_packet *pkt) {
 
   if (want_reply) {
     struct ssh2_packet *pkt2;
+    uint32_t bufsz;
     int res;
 
     buflen = bufsz = 1024;
@@ -442,7 +443,6 @@ static void is_client_alive(void) {
  * disconnect the client after reading this data anyway.
  */
 static void read_packet_discard(int sockfd) {
-  char buf[SFTP_MAX_PACKET_LEN];
   size_t buflen;
 
   buflen = SFTP_MAX_PACKET_LEN -
@@ -452,11 +452,13 @@ static void read_packet_discard(int sockfd) {
     (unsigned long) buflen);
 
   if (buflen > 0) {
-    int flags = SFTP_PACKET_READ_FL_PESSIMISTIC;
+    char buf[SFTP_MAX_PACKET_LEN];
+    int flags;
 
     /* We don't necessarily want to wait for the entire random amount of data
      * to be read in.
      */
+    flags = SFTP_PACKET_READ_FL_PESSIMISTIC;
     sftp_ssh2_packet_sock_read(sockfd, buf, buflen, flags);
   }
 
@@ -1343,8 +1345,6 @@ int sftp_ssh2_packet_send(int sockfd, struct ssh2_packet *pkt) {
 }
 
 int sftp_ssh2_packet_write(int sockfd, struct ssh2_packet *pkt) {
-  int res;
-
   /* For future reference, I tried buffering up the possible TAP message
    * and the given message using TCP_CORK/TCP_NOPUSH.  I tried this test
    * on a Mac OSX 10.5 box.  It was for this test that I refactored the
@@ -1363,6 +1363,8 @@ int sftp_ssh2_packet_write(int sockfd, struct ssh2_packet *pkt) {
    */
 
   if (sent_version_id) {
+    int res;
+
     res = sftp_tap_send_packet();
     if (res < 0) {
       (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,

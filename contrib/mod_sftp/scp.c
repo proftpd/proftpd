@@ -1,6 +1,6 @@
 /*
  * ProFTPD - mod_sftp SCP
- * Copyright (c) 2008-2018 TJ Saunders
+ * Copyright (c) 2008-2020 TJ Saunders
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -1120,7 +1120,7 @@ static int recv_data(pool *p, uint32_t channel_id, struct scp_path *sp,
 #elif defined(ENOSPC)
         int xerrno = ENOSPC;
 #else
-        int xerno = EIO;
+        int xerrno = EIO;
 #endif
 
         pr_log_pri(PR_LOG_NOTICE, "MaxStoreFileSize (%" PR_LU " %s) reached: "
@@ -1796,10 +1796,8 @@ static int send_finfo(pool *p, uint32_t channel_id, struct scp_path *sp,
 
 static int send_data(pool *p, uint32_t channel_id, struct scp_path *sp,
     struct stat *st) {
-  int res;
   unsigned char *chunk;
   size_t chunksz;
-  long chunklen;
 
   /* Include space for one more character, i.e. for the terminating NUL
    * character that indicates the last chunk of the file.
@@ -1810,7 +1808,9 @@ static int send_data(pool *p, uint32_t channel_id, struct scp_path *sp,
   /* Keep sending chunks until we have sent the entire file, or until the
    * channel window closes.
    */
-  while (1) {
+  while (TRUE) {
+    int res, chunklen;
+
     pr_signals_handle();
 
     if (S_ISREG(st->st_mode)) {

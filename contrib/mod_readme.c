@@ -104,13 +104,15 @@ static void readme_add_path(pool *p, const char *path) {
 static void readme_add_pattern(pool *p, const char *pattern) {
   glob_t g;
   int a;
-  char **path;
   
   a = pr_fs_glob(pattern, 0, NULL, &g);
   if (!a) {
+    char **path;
+
     path = g.gl_pathv;
     while (path && *path) {
       pr_signals_handle();
+
       readme_add_path(p, *path);
       path++;
     }

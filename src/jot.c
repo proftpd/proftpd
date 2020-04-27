@@ -1295,14 +1295,15 @@ static int resolve_logfmt_id(pool *p, unsigned char logfmt_id,
     }
 
     case LOGFMT_META_TIME: {
-      const char *time_fmt = "%Y-%m-%d %H:%M:%S %z";
-      char ts[128];
       struct tm *tm;
       time_t now;
 
       now = time(NULL);
       tm = pr_gmtime(p, &now);
       if (tm != NULL) {
+        char ts[128];
+        const char *time_fmt = "%Y-%m-%d %H:%M:%S %z";
+
         if (logfmt_data != NULL) {
           time_fmt = logfmt_data;
         }

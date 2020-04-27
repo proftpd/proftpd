@@ -949,7 +949,6 @@ MODRET cmd_select(cmd_rec *cmd) {
   modret_t *cmr = NULL;
   modret_t *dmr = NULL;
   char *query = NULL;
-  unsigned long cnt = 0;
   cmd_rec *close_cmd;
 
   sql_log(DEBUG_FUNC, "%s", "entering \tpostgres cmd_select");
@@ -993,14 +992,17 @@ MODRET cmd_select(cmd_rec *cmd) {
     }
 
     if (cmd->argc > 5) {
+      register unsigned int i;
+
       /* Handle the optional arguments -- they're rare, so in this case
        * we'll play with the already constructed query string, but in 
        * general we should probably take optional arguments into account 
        * and put the query string together later once we know what they are.
        */
     
-      for (cnt = 5; cnt < cmd->argc; cnt++) {
-	if ((cmd->argv[cnt]) && !strcasecmp("DISTINCT", cmd->argv[cnt])) {
+      for (i = 5; i < cmd->argc; i++) {
+	if (cmd->argv[i] != NULL &&
+            strcasecmp("DISTINCT", cmd->argv[i]) == 0) {
 	  query = pstrcat(cmd->tmp_pool, "DISTINCT ", query, NULL);
 	}
       }

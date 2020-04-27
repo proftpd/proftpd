@@ -480,7 +480,6 @@ MODRET auth_post_pass(cmd_rec *cmd) {
      */
     c = find_config(main_server->conf, CONF_PARAM, "Protocols", FALSE);
     if (c != NULL) {
-      register unsigned int i;
       array_header *protocols;
       char **elts;
       const char *protocol;
@@ -496,6 +495,7 @@ MODRET auth_post_pass(cmd_rec *cmd) {
        */
       if (session.rfc2228_mech == NULL &&
           strncmp(protocol, "SSH2", 5) != 0) {
+        register unsigned int i;
         int allow_ftp = FALSE;
 
         for (i = 0; i < protocols->nelts; i++) {
@@ -510,7 +510,7 @@ MODRET auth_post_pass(cmd_rec *cmd) {
           }
         }
 
-        if (!allow_ftp) {
+        if (allow_ftp == FALSE) {
           pr_log_debug(DEBUG0, "%s", "ftp protocol denied by Protocols config");
           pr_response_send(R_530, "%s", _("Login incorrect."));
           pr_session_disconnect(&auth_module, PR_SESS_DISCONNECT_CONFIG_ACL,
@@ -532,8 +532,9 @@ MODRET auth_post_pass(cmd_rec *cmd) {
    * setting of any possible anon_config, as that context may be allowed
    * or denied .ftpaccess-parsing separately from the containing server.
    */
-  if (pr_fsio_stat(session.cwd, &st) != -1)
+  if (pr_fsio_stat(session.cwd, &st) != -1) {
     build_dyn_config(cmd->tmp_pool, session.cwd, &st, TRUE);
+  }
 
   have_user_timeout = have_group_timeout = have_class_timeout =
     have_all_timeout = FALSE;
@@ -624,7 +625,7 @@ MODRET auth_post_pass(cmd_rec *cmd) {
   }
 
   /* Handle a DisplayLogin file. */
-  if (displaylogin_fh) {
+  if (displaylogin_fh != NULL) {
     if (!(session.sf_flags & SF_ANON)) {
       if (pr_display_fh(displaylogin_fh, NULL, auth_pass_resp_code, 0) < 0) {
         pr_log_debug(DEBUG6, "unable to display DisplayLogin file '%s': %s",
@@ -645,7 +646,7 @@ MODRET auth_post_pass(cmd_rec *cmd) {
       displaylogin_fh = NULL;
 
       displaylogin = get_param_ptr(TOPLEVEL_CONF, "DisplayLogin", FALSE);
-      if (displaylogin) {
+      if (displaylogin != NULL) {
         if (pr_display_file(displaylogin, NULL, auth_pass_resp_code, 0) < 0) {
           pr_log_debug(DEBUG6, "unable to display DisplayLogin file '%s': %s",
             displaylogin, strerror(errno));
@@ -654,8 +655,10 @@ MODRET auth_post_pass(cmd_rec *cmd) {
     }
 
   } else {
-    char *displaylogin = get_param_ptr(TOPLEVEL_CONF, "DisplayLogin", FALSE);
-    if (displaylogin) {
+    char *displaylogin;
+
+    displaylogin = get_param_ptr(TOPLEVEL_CONF, "DisplayLogin", FALSE);
+    if (displaylogin != NULL) {
       if (pr_display_file(displaylogin, NULL, auth_pass_resp_code, 0) < 0) {
         pr_log_debug(DEBUG6, "unable to display DisplayLogin file '%s': %s",
           displaylogin, strerror(errno));

@@ -1449,7 +1449,6 @@ MODRET xfer_pre_stor(cmd_rec *cmd) {
   c = find_config(CURRENT_CONF, CONF_PARAM, "HiddenStores", FALSE);
   if (c != NULL &&
       *((int *) c->argv[0]) == TRUE) {
-    const char *prefix, *suffix;
 
     /* If we're using HiddenStores, then RANG/REST won't work. */
     if (session.restart_pos > 0 ||
@@ -1479,6 +1478,8 @@ MODRET xfer_pre_stor(cmd_rec *cmd) {
      * functionality.
      */
     if (session.xfer.xfer_type != STOR_APPEND) {
+      const char *prefix, *suffix;
+
       prefix = c->argv[1];
       suffix = c->argv[2];
 

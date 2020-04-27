@@ -1031,9 +1031,10 @@ static int parse_wildcard_config_path(pool *p, const char *path,
   }
 
   pr_fs_clear_cache2(parent_path);
-  if (pr_fsio_lstat(parent_path, &st) < 0) {
-    xerrno = errno;
+  res = pr_fsio_lstat(parent_path, &st);
+  xerrno = errno;
 
+  if (res < 0) {
     pr_log_pri(PR_LOG_WARNING,
       "error: failed to check configuration path '%s': %s", parent_path,
       strerror(xerrno));

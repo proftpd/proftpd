@@ -1806,7 +1806,6 @@ static int netaddr_get_dnsstr_getaddrinfo(const pr_netaddr_t *na,
 #ifdef HAVE_GETHOSTBYNAME2
 static int netaddr_get_dnsstr_gethostbyname(const pr_netaddr_t *na,
     const char *name) {
-  char **checkaddr;
   struct hostent *hent = NULL;
   int family, ok = FALSE;
   void *inaddr;
@@ -1826,6 +1825,8 @@ static int netaddr_get_dnsstr_gethostbyname(const pr_netaddr_t *na,
   hent = gethostbyname2(name, family);
 
   if (hent != NULL) {
+    char **checkaddr;
+
     if (hent->h_name != NULL) {
       netaddr_dnscache_set(pr_netaddr_get_ipstr(na), hent->h_name);
     }

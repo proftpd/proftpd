@@ -254,7 +254,6 @@ long get_name_max(char *dir_name, int dir_fd) {
 /* Interpolates a pathname, expanding ~ notation if necessary
  */
 char *dir_interpolate(pool *p, const char *path) {
-  struct passwd *pw;
   char *res = NULL;
 
   if (p == NULL ||
@@ -265,6 +264,7 @@ char *dir_interpolate(pool *p, const char *path) {
 
   if (*path == '~') {
     char *ptr, *user;
+    struct passwd *pw;
 
     user = pstrdup(p, path + 1);
     ptr = strchr(user, '/');

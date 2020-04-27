@@ -294,7 +294,7 @@ int pr_cmd_set_name(cmd_rec *cmd, const char *cmd_name) {
 }
 
 int pr_cmd_strcmp(cmd_rec *cmd, const char *cmd_name) {
-  int cmd_id, res;
+  int cmd_id;
   size_t cmd_namelen;
 
   if (cmd == NULL ||
@@ -314,6 +314,8 @@ int pr_cmd_strcmp(cmd_rec *cmd, const char *cmd_name) {
   }
 
   if (cmd->cmd_id > 0) {
+    int res;
+
     cmd_id = pr_cmd_get_id(cmd_name); 
 
     res = pr_cmd_cmp(cmd, cmd_id);
