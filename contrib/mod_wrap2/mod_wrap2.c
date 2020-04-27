@@ -332,10 +332,10 @@ static char *wrap2_get_hostname(wrap2_host_t *host) {
 
   if (*host->name == '\0') {
     int reverse_dns;
-    size_t namelen;
 
     reverse_dns = pr_netaddr_set_reverse_dns(TRUE);
     if (reverse_dns) {
+      size_t namelen;
       pr_netaddr_t *remote_addr;
 
       /* If UseReverseDNS is on, then clear any caches, so that we really do
@@ -692,7 +692,6 @@ static unsigned char wrap2_match_host(char *tok, wrap2_host_t *host) {
     }
 
     if (WRAP2_IS_NOT_INADDR(tok)) {
-      register unsigned int i;
       char *primary_name;
       array_header *dns_names;
 
@@ -712,6 +711,7 @@ static unsigned char wrap2_match_host(char *tok, wrap2_host_t *host) {
         session.c->remote_addr);
       if (dns_names != NULL &&
           dns_names->nelts > 0) {
+        register unsigned int i;
         char **names;
 
         names = dns_names->elts;

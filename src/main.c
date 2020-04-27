@@ -1543,8 +1543,7 @@ static void disc_children(void) {
 static void daemon_loop(void) {
   fd_set listenfds;
   conn_t *listen_conn;
-  int fd, maxfd;
-  int i, err_count = 0, xerrno = 0;
+  int i, err_count = 0, fd, xerrno = 0;
   unsigned long nconnects = 0UL;
   time_t last_error;
   struct timeval tv;
@@ -1555,6 +1554,8 @@ static void daemon_loop(void) {
   time(&last_error);
 
   while (TRUE) {
+    int maxfd;
+
     run_schedule();
 
     FD_ZERO(&listenfds);
@@ -2562,9 +2563,7 @@ int main(int argc, char *argv[], char **envp) {
 
   pr_event_generate("core.postparse", NULL);
 
-  if (show_version &&
-      show_version == 2) {
-
+  if (show_version == 2) {
     printf("ProFTPD Version: %s", PROFTPD_VERSION_TEXT " " PR_STATUS "\n");
     printf("  Scoreboard Version: %08x\n", PR_SCOREBOARD_VERSION); 
     printf("  Built: %s\n\n", BUILD_STAMP);

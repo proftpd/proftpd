@@ -331,10 +331,10 @@ static struct tm *get_gmtoff(pool *p, int *tz) {
   gmt = gmtime(&now);
 #endif /* HAVE_GMTIME_R */
   if (gmt != NULL) {
-    int days, hours, minutes;
-
     tm = pr_localtime(p, &now);
     if (tm != NULL) {
+      int days, hours, minutes;
+
       days = tm->tm_yday - gmt->tm_yday;
       hours = ((days < -1 ? 24 : 1 < days ? -24 : days * 24)
               + tm->tm_hour - gmt->tm_hour);
