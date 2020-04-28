@@ -714,7 +714,7 @@ MODRET auth_post_pass(cmd_rec *cmd) {
     /* Disable future attempts at UID/GID manipulation. */
     session.disable_id_switching = TRUE;
 
-    pr_log_debug(DEBUG0, "RootRevoke in effect, dropped root privs");
+    pr_log_debug(DEBUG2, "RootRevoke in effect, dropped root privs");
   }
 
   c = find_config(TOPLEVEL_CONF, CONF_PARAM, "AnonAllowRobots", FALSE);
