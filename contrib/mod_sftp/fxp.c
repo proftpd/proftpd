@@ -215,10 +215,17 @@ struct fxp_handle {
    */
   struct stat *fh_st;
 
-  /* For tracking the number of bytes transferred for this file; for
-   * better TransferLog tracking.
+  /* Tracking the number of bytes transferred for this file, for better
+   * TransferLog reporting.
    */
   size_t fh_bytes_xferred;
+
+  /* Buffered reads/writes.  Note that we also need to track the starting
+   * offset for the buffered data; ill-behaved clients may try to request
+   * an out-of-order chunk of file data.
+   */
+  pr_buffer_t *fh_pbuf;
+  off_t fh_pbuf_offset;
 
   void *dirh;
   const char *dir;
@@ -299,6 +306,8 @@ static int fxp_use_gmt = TRUE;
 
 /* FSOptions */
 static unsigned long fxp_fsio_opts = 0UL;
+
+static off_t fxp_file_bufsz = 0;
 static unsigned int fxp_min_client_version = 1;
 static unsigned int fxp_max_client_version = 6;
 static unsigned int fxp_utf8_protocol_version = 4;
@@ -9121,7 +9130,7 @@ static int fxp_handle_open(struct fxp_packet *fxp) {
   pr_fs_clear_cache2(path);
   if (exists2(fxp->pool, path)) {
     /* draft-ietf-secsh-filexfer-06.txt, section 7.1.1 specifically
-     * states that any attributes in a OPEN request are ignored if the
+     * states that any attributes in an OPEN request are ignored if the
      * file already exists.
      */
     if (attr_flags & SSH2_FX_ATTR_PERMISSIONS) {
@@ -9431,6 +9440,20 @@ static int fxp_handle_open(struct fxp_packet *fxp) {
      */
     pr_fs_fadvise(PR_FH_FD(fxh->fh), 0, 0, PR_FS_FADVISE_SEQUENTIAL);
     pr_fs_fadvise(PR_FH_FD(fxh->fh), 0, 0, PR_FS_FADVISE_WILLNEED);
+
+    /* Is file read buffering enabled for this client? */
+    if (fxp_file_bufsz > 0) {
+      fxh->fh_pbuf = pcalloc(fxh->pool, sizeof(pr_buffer_t));
+      fxh->fh_pbuf->buflen = fxp_file_bufsz;
+      fxh->fh_pbuf->buf = palloc(fxh->pool, fxp_file_bufsz);
+      fxh->fh_pbuf->current = fxh->fh_pbuf->buf;
+      fxh->fh_pbuf->remaining = 0;
+      fxh->fh_pbuf_offset = 0;
+
+      pr_trace_msg(trace_channel, 17,
+        "allocating file read buffer (%" PR_LU " bytes) for '%s'",
+        (pr_off_t) fxp_file_bufsz, fxh->fh->fh_path);
+    }
 
     session.xfer.direction = PR_NETIO_IO_WR;
   }
@@ -9808,6 +9831,207 @@ static int fxp_handle_opendir(struct fxp_packet *fxp) {
   return fxp_packet_write(resp);
 }
 
+/* Refill the cache.  Handle short reads such that the entire buffer
+ * is refilled; we don't want any leftovers from previous reads.
+ */
+static ssize_t fxp_file_refill_buffer(struct fxp_handle *fxh, off_t offset) {
+  ssize_t nread = 0;
+  char *buf;
+  size_t buflen;
+
+  buf = fxh->fh_pbuf->buf;
+  buflen = fxh->fh_pbuf->buflen;
+
+  /* We need to be cognizant of the size of the file; adjust buflen accordingly
+   * if needed.
+   */
+  if (offset > fxh->fh_st->st_size) {
+    /* Treat this as an EOF. */
+    pr_trace_msg(trace_channel, 19,
+      "requested %" PR_LU " byte offset exceeds file size (%" PR_LU
+      " bytes), handle as EOF", (pr_off_t) offset,
+      (pr_off_t) fxh->fh_st->st_size);
+    errno = EOF;
+    return 0;
+  }
+
+  if (((off_t) (offset + buflen)) > fxh->fh_st->st_size) {
+    buflen = fxh->fh_st->st_size - offset;
+  }
+
+  if (buflen == 0) {
+    /* EOF */
+    return 0;
+  }
+
+  pr_trace_msg(trace_channel, 19,
+    "refilling %lu byte buffer at offset %" PR_LU " from '%s'",
+    (unsigned long) buflen, (pr_off_t) offset, fxh->fh->fh_path);
+
+  /* Note that the outer while loop is for handling short reads; the inner
+   * while loop is for handling interrupted reads.  Fun!
+   */
+
+  while (nread < (int) buflen) {
+    int res;
+
+    pr_signals_handle();
+
+    res = pr_fsio_pread(fxh->fh, buf, buflen, offset);
+    while (res < 0) {
+      int xerrno = errno;
+
+      if (xerrno == EINTR ||
+          xerrno == EAGAIN) {
+        pr_signals_handle();
+        res = pr_fsio_pread(fxh->fh, buf, buflen, offset);
+        continue;
+      }
+
+      pr_trace_msg(trace_channel, 17,
+        "error reading %lu bytes at offset %" PR_LU " from '%s': %s",
+        (unsigned long) buflen, (pr_off_t) offset, fxh->fh->fh_path,
+        strerror(xerrno));
+
+      errno = xerrno;
+      return -1;
+    }
+
+    nread += res;
+  }
+
+  fxh->fh_pbuf->remaining = nread;
+  return nread;
+}
+
+static ssize_t fxp_file_buffered_read(struct fxp_handle *fxh,
+    unsigned char *data, uint32_t datalen, off_t file_offset) {
+  ssize_t res;
+  int cache_miss = FALSE;
+  unsigned char *buf;
+  uint32_t buflen;
+  off_t refill_offset;
+
+  /* If we are not buffering reads, then a simple pread(2) call should
+   * suffice.
+   */
+  if (fxh->fh_pbuf == NULL) {
+    return pr_fsio_pread(fxh->fh, data, datalen, file_offset);
+  }
+
+  /* Is this a cache hit, or miss? */
+
+  if (fxh->fh_pbuf_offset > 0 &&
+      file_offset < fxh->fh_pbuf_offset) {
+    /* This client is requesting data PRIOR TO our current buffer; we do not
+     * currently support backtracking in this manner.  Fall back to an
+     * unbuffered read for such cases.  And disable buffered reading for
+     * future requests for this file, as random IO and buffered reads do
+     * not mix well.
+     */
+    pr_trace_msg(trace_channel, 19,
+      "client requested READ offset %" PR_LU " behind current buffer offset %"
+      PR_LU ", ignoring buffer", (pr_off_t) file_offset,
+      (pr_off_t) fxh->fh_pbuf_offset);
+
+    /* This pr_buffer_t is allocated out fxh->pool, and will be cleaned up
+     * when the file handle is destroyed.
+     */
+    fxh->fh_pbuf = NULL;
+    fxh->fh_pbuf_offset = 0;
+
+    return pr_fsio_pread(fxh->fh, data, datalen, file_offset);
+  }
+
+  if (fxh->fh_pbuf->remaining == 0) {
+    cache_miss = TRUE;
+    refill_offset = file_offset;
+  }
+
+  if (cache_miss == TRUE) {
+    res = fxp_file_refill_buffer(fxh, refill_offset);
+    if (res <= 0) {
+      /* Return on error, or on EOF. */
+      return res;
+    }
+
+    pr_trace_msg(trace_channel, 22, "refilled buffer with %ld bytes",
+      (long) res);
+    fxh->fh_pbuf->current = fxh->fh_pbuf->buf;
+    fxh->fh_pbuf->remaining = res;
+    fxh->fh_pbuf_offset = refill_offset;
+  }
+
+  buf = data;
+  buflen = datalen;
+
+  if (buflen <= fxh->fh_pbuf->remaining) {
+    /* Simple; we can fulfill this request directly from our cache. */
+    memcpy(buf, fxh->fh_pbuf->current, buflen);
+    fxh->fh_pbuf->current += buflen;
+    fxh->fh_pbuf->remaining -= buflen;
+
+    pr_trace_msg(trace_channel, 21,
+      "satisfying %lu byte read at offset %" PR_LU " from '%s' from cache "
+      "(%lu bytes cache remaining)", (unsigned long) datalen,
+      (pr_off_t) file_offset, fxh->fh->fh_path,
+      (unsigned long) fxh->fh_pbuf->remaining);
+
+    return (ssize_t) buflen;
+  }
+
+  /* Here, we do not have enough cached data to fulfill the request.  Ideally,
+   * we would truncate the requested length, and return a "short read" to the
+   * requesting client.  However, many SFTP clients use pipelining, sending
+   * multiple READ requests in flight at the same time, each one _assuming_
+   * that it succeeds and obtains the requested data.
+   *
+   * A "short read", in the face of such pipelines, leads to terror and
+   * confusion of the end user.
+   *
+   * So instead of a short read, we use recursion to provide the rest of
+   * the requested data.
+   */
+
+  pr_trace_msg(trace_channel, 22,
+    "truncated buffered read, filling %lu bytes with remaining cache (%lu "
+    "bytes requested), then refilling", (unsigned long) fxh->fh_pbuf->remaining,
+    (unsigned long) datalen);
+
+  memcpy(buf, fxh->fh_pbuf->current, fxh->fh_pbuf->remaining);
+  buf += fxh->fh_pbuf->remaining;
+  buflen -= fxh->fh_pbuf->remaining;
+  refill_offset = file_offset + fxh->fh_pbuf->remaining;
+  fxh->fh_pbuf->remaining = 0;
+
+  res = fxp_file_buffered_read(fxh, buf, buflen, refill_offset);
+  if (res < 0) {
+    return -1;
+  }
+
+  if (res == 0) {
+    pr_trace_msg(trace_channel, 17,
+      "satisfying %lu byte read at offset %" PR_LU " from '%s' from cache "
+      "(%lu bytes cache remaining)", (unsigned long) (datalen - buflen),
+      (pr_off_t) file_offset, fxh->fh->fh_path,
+      (unsigned long) fxh->fh_pbuf->remaining);
+
+    /* Return the short read we have so far. */
+    return (ssize_t) datalen - buflen;
+  }
+
+  pr_trace_msg(trace_channel, 17,
+    "satisfying %lu byte read at offset %" PR_LU " from '%s' from cache "
+    "(%lu bytes cache remaining)", (unsigned long) datalen,
+    (pr_off_t) file_offset, fxh->fh->fh_path,
+    (unsigned long) fxh->fh_pbuf->remaining);
+
+  /* Return the amount we copied (from previous cache) plus the amount
+   * read via recursion.
+   */
+  return (ssize_t) datalen - buflen + res;
+}
+
 static int fxp_handle_read(struct fxp_packet *fxp) {
   unsigned char *buf, *data = NULL, *ptr;
   char *file, *name, *ptr2;
@@ -10008,7 +10232,7 @@ static int fxp_handle_read(struct fxp_packet *fxp) {
     data = palloc(fxp->pool, datalen);
   }
 
-  res = pr_fsio_pread(fxh->fh, data, datalen, offset);
+  res = fxp_file_buffered_read(fxh, data, datalen, offset);
 
   if (pr_data_get_timeout(PR_DATA_TIMEOUT_NO_TRANSFER) > 0) {
     pr_timer_reset(PR_TIMER_NOXFER, ANY_MODULE);
@@ -13579,6 +13803,11 @@ int sftp_fxp_set_displaylogin(const char *path) {
 
 int sftp_fxp_set_extensions(unsigned long ext_flags) {
   fxp_ext_flags = ext_flags;
+  return 0;
+}
+
+int sftp_fxp_set_file_buffer_size(off_t buffer_size) {
+  fxp_file_bufsz = buffer_size;
   return 0;
 }
 

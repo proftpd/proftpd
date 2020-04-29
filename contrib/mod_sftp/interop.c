@@ -1,6 +1,6 @@
 /*
  * ProFTPD - mod_sftp interoperability
- * Copyright (c) 2008-2016 TJ Saunders
+ * Copyright (c) 2008-2020 TJ Saunders
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -290,6 +290,7 @@ int sftp_interop_handle_version(pool *p, const char *client_version) {
        *  channelWindowSize
        *  channelPacketSize
        *  pessimisticNewkeys
+       *  sftpFileBufferSize
        *  sftpMinProtocolVersion
        *  sftpMaxProtocolVersion
        *  sftpUTF8ProtocolVersion (only if NLS support is enabled)
@@ -334,6 +335,18 @@ int sftp_interop_handle_version(pool *p, const char *client_version) {
         if (pessimistic_newkeys) {
           default_flags |= SFTP_SSH2_FEAT_PESSIMISTIC_NEWKEYS;
         } 
+      }
+
+      v = pr_table_get(tab, "sftpFileBufferSize", NULL);
+      if (v != NULL) {
+        off_t buffer_size;
+
+        buffer_size = *((off_t *) v);
+
+        pr_trace_msg(trace_channel, 16, "setting SFTP file buffer size to %"
+          PR_LU " bytes, as per SFTPClientMatch", (pr_off_t) buffer_size);
+
+        sftp_fxp_set_file_buffer_size(buffer_size);
       }
 
       v = pr_table_get(tab, "sftpMinProtocolVersion", NULL);

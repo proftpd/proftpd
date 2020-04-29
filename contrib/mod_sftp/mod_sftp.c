@@ -707,6 +707,83 @@ MODRET set_sftpclientmatch(cmd_rec *cmd) {
       /* Don't forget to advance i past the value. */
       i++;
 
+    } else if (strncmp(cmd->argv[i], "sftpFileBufferSize", 19) == 0) {
+      off_t buffer_size;
+      void *value;
+      char *arg, units[3];
+      size_t arglen;
+
+      arg = pstrdup(cmd->tmp_pool, cmd->argv[i+1]);
+      arglen = strlen(arg);
+
+      memset(units, '\0', sizeof(units));
+
+      if (arglen >= 3) {
+        /* Look for any possible "GB", "MB", "KB", "B" suffixes. */
+
+        if ((arg[arglen-2] == 'G' || arg[arglen-2] == 'g') &&
+            (arg[arglen-1] == 'B' || arg[arglen-1] == 'b')) {
+          units[0] = 'G';
+          units[1] = 'B';
+          arg[arglen-2] = '\0';
+          arg[arglen-1] = '\0';
+          arglen -= 2;
+
+        } else if ((arg[arglen-2] == 'M' || arg[arglen-2] == 'm') &&
+                   (arg[arglen-1] == 'B' || arg[arglen-1] == 'b')) {
+          units[0] = 'M';
+          units[1] = 'B';
+          arg[arglen-2] = '\0';
+          arg[arglen-1] = '\0';
+          arglen -= 2;
+
+        } else if ((arg[arglen-2] == 'K' || arg[arglen-2] == 'k') &&
+                   (arg[arglen-1] == 'B' || arg[arglen-1] == 'b')) {
+          units[0] = 'K';
+          units[1] = 'B';
+          arg[arglen-2] = '\0';
+          arg[arglen-1] = '\0';
+          arglen -= 2;
+
+        } else if (arg[arglen-1] == 'B' || arg[arglen-1] == 'b') {
+          units[0] = 'B';
+          arg[arglen-1] = '\0';
+          arglen--;
+        }
+
+      } else if (arglen >= 2) {
+        /* Look for any possible "B" suffix. */
+        if (arg[arglen-1] == 'B' || arg[arglen-1] == 'b') {
+          units[0] = 'B';
+          arg[arglen-1] = '\0';
+          arglen--;
+        }
+      }
+
+      if (pr_str_get_nbytes(arg, units, &buffer_size) < 0) {
+        CONF_ERROR(cmd, pstrcat(cmd->tmp_pool,
+          "error parsing 'sftpFileBufferSize' value ", cmd->argv[i+1], ": ",
+          strerror(errno), NULL));
+      }
+
+      if (buffer_size == 0) {
+        CONF_ERROR(cmd, pstrcat(cmd->tmp_pool,
+          "'sftpFileBufferSize' value ", cmd->argv[i+1], " too small, must be "
+          "greater than 0", NULL));
+      }
+
+      value = palloc(c->pool, sizeof(off_t));
+      *((off_t *) value) = (off_t) buffer_size;
+
+      if (pr_table_add(tab, pstrdup(c->pool, "sftpFileBufferSize"), value,
+          sizeof(off_t)) < 0) {
+        CONF_ERROR(cmd, pstrcat(cmd->tmp_pool,
+          "error storing 'sftpFileBufferSize' value: ", strerror(errno), NULL));
+      }
+
+      /* Don't forget to advance i past the value. */
+      i++;
+
     } else if (strncmp(cmd->argv[i], "pessimisticNewkeys", 19) == 0) {
       int pessimistic_newkeys;
       void *value;

@@ -463,6 +463,19 @@ The currently supported SSH2/SFTP keys which can be tuned via
   </li>
 
   <p>
+  <li>sftpFileBufferSize</br>
+    The <em>value> for this key can be a number, with an optional
+    "GB" (gigabytes), "MB" (megabytes), or "KB" (kilobytes) suffix.
+
+    <p>
+    This key enables buffering of file data from disk, for <i>e.g.</i>
+    slow/networked filesystems for which disk IO may be slow/expensive.
+    <b>Note</b> that this buffering is currently implemented for
+    <em>downloads only</em>.  Futur work <i>may</i> implement buffering for
+    uploads.
+  </li>
+
+  <p>
   <li>sftpProtocolVersion</br>
     The <em>value</em> for this key can be a specific version number,
     <i>e.g.</i> "3", or it can be a range such as "1-3".  The
