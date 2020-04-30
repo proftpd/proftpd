@@ -10006,9 +10006,11 @@ static int fxp_handle_read(struct fxp_packet *fxp) {
 
   if (datalen > 0) {
     data = palloc(fxp->pool, datalen);
-  }
+    res = pr_fsio_pread(fxh->fh, data, datalen, offset);
 
-  res = pr_fsio_pread(fxh->fh, data, datalen, offset);
+  } else {
+    res = 0;
+  }
 
   if (pr_data_get_timeout(PR_DATA_TIMEOUT_NO_TRANSFER) > 0) {
     pr_timer_reset(PR_TIMER_NOXFER, ANY_MODULE);
@@ -12946,7 +12948,14 @@ static int fxp_handle_write(struct fxp_packet *fxp) {
 
   pr_throttle_init(cmd2);
   
-  res = pr_fsio_pwrite(fxh->fh, data, datalen, offset);
+  /* Handle zero-length writes as a special case; see Bug#4398. */
+  if (datalen > 0) {
+    res = pr_fsio_pwrite(fxh->fh, data, datalen, offset);
+
+  } else {
+    res = 0;
+  }
+
   xerrno = errno;
 
   /* Increment the "on-disk" file size with the number of bytes written.
