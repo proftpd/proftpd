@@ -1,6 +1,6 @@
 /*
  * ProFTPD - mod_sftp sftp
- * Copyright (c) 2008-2017 TJ Saunders
+ * Copyright (c) 2008-2020 TJ Saunders
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -9992,11 +9992,13 @@ static int fxp_handle_read(struct fxp_packet *fxp) {
   cmd2 = fxp_cmd_alloc(fxp->pool, C_RETR, NULL);
   pr_throttle_init(cmd2);
 
-  if (datalen) {
+  if (datalen > 0) {
     data = palloc(fxp->pool, datalen);
-  }
+    res = pr_fsio_read(fxh->fh, (char *) data, datalen);
 
-  res = pr_fsio_read(fxh->fh, (char *) data, datalen);
+  } else {
+    res = 0;
+  }
 
   if (pr_data_get_timeout(PR_DATA_TIMEOUT_NO_TRANSFER) > 0) {
     pr_timer_reset(PR_TIMER_NOXFER, ANY_MODULE);
@@ -12950,9 +12952,15 @@ static int fxp_handle_write(struct fxp_packet *fxp) {
   pr_event_generate("mod_sftp.sftp.data-read", pbuf);
 
   pr_throttle_init(cmd2);
-  
-  res = pr_fsio_write(fxh->fh, (char *) data, datalen);
-  xerrno = errno;
+
+  /* Handle zero-length writes as a special case; see Bug#4398. */
+  if (datalen > 0) {
+    res = pr_fsio_write(fxh->fh, (char *) data, datalen);
+    xerrno = errno;
+
+  } else {
+    res = 0;
+  }
 
   /* Increment the "on-disk" file size with the number of bytes written.
    * We do this, rather than using fstat(2), to avoid performance penalties
