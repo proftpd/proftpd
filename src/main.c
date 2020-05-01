@@ -2126,17 +2126,17 @@ static void show_settings(void) {
   printf("%s", "    - Redis support\n");
 #endif /* PR_USE_REDIS */
 
-#ifdef PR_USE_SHADOW
-  printf("%s", "    + Shadow file support\n");
-#else
-  printf("%s", "    - Shadow file support\n");
-#endif /* PR_USE_SHADOW */
-
 #ifdef PR_USE_SENDFILE
   printf("%s", "    + Sendfile support\n");
 #else
   printf("%s", "    - Sendfile support\n");
 #endif /* PR_USE_SENDFILE */
+
+#ifdef PR_USE_SHADOW
+  printf("%s", "    + Shadow file support\n");
+#else
+  printf("%s", "    - Shadow file support\n");
+#endif /* PR_USE_SHADOW */
 
 #ifdef PR_USE_SODIUM
   printf("%s", "    + Sodium support\n");
