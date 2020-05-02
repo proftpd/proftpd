@@ -2,7 +2,7 @@
  * ProFTPD - FTP server daemon
  * Copyright (c) 1997, 1998 Public Flood Software
  * Copyright (c) 1999, 2000 MacGyver aka Habeeb J. Dihu <macgyver@tos.net>
- * Copyright (c) 2001-2019 The ProFTPD Project team
+ * Copyright (c) 2001-2020 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -177,7 +177,7 @@ conn_t *pr_inet_copy_conn(pool *p, conn_t *c) {
     res->remote_name = pstrdup(res->pool, c->remote_name);
   }
 
-  register_cleanup(res->pool, (void *) res, conn_cleanup_cb, conn_cleanup_cb);
+  register_cleanup2(res->pool, (void *) res, conn_cleanup_cb);
   return res;
 }
 
@@ -567,7 +567,7 @@ static conn_t *init_conn(pool *p, int fd, const pr_netaddr_t *bind_addr,
   }
 
   c->listen_fd = fd;
-  register_cleanup(c->pool, (void *) c, conn_cleanup_cb, conn_cleanup_cb);
+  register_cleanup2(c->pool, (void *) c, conn_cleanup_cb);
 
   pr_trace_msg("binding", 4, "bound address %s, port %d to socket fd %d",
     pr_netaddr_get_ipstr(&na), c->local_port, fd);

@@ -1,6 +1,6 @@
 /*
  * ProFTPD - FTP server daemon
- * Copyright (c) 2017 The ProFTPD Project team
+ * Copyright (c) 2017-2020 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -535,7 +535,7 @@ pr_redis_t *pr_redis_conn_new(pool *p, module *m, unsigned long flags) {
     /* Register a cleanup on this redis, so that when it is destroyed, we
      * clear this sess_redis pointer, lest it remaining dangling.
      */
-    register_cleanup(redis->pool, NULL, sess_redis_cleanup, NULL);
+    register_cleanup2(redis->pool, NULL, sess_redis_cleanup);
   }
 
   return redis;

@@ -92,6 +92,8 @@ extern void pr_alarms_block(void);
 extern void pr_alarms_unblock(void);
 
 void register_cleanup(pool *, void *, void (*)(void *), void (*)(void *));
+void register_cleanup2(pool *, void *, void (*)(void *));
+
 void unregister_cleanup(pool *, void *, void (*)(void *));
 
 /* minimum free bytes in a new block pool */
