@@ -1227,8 +1227,7 @@ static int init_inetd_bindings(void) {
      */
 
     serv->listen = main_server->listen;
-    register_cleanup(serv->listen->pool, &serv->listen, server_cleanup_cb,
-      server_cleanup_cb);
+    register_cleanup2(serv->listen->pool, &serv->listen, server_cleanup_cb);
 
     is_default = FALSE;
     default_server = get_param_ptr(serv->conf, "DefaultServer", FALSE);
@@ -1416,8 +1415,7 @@ static int init_standalone_bindings(void) {
       }
 
       serv->listen = main_server->listen;
-      register_cleanup(serv->listen->pool, &serv->listen, server_cleanup_cb,
-        server_cleanup_cb);
+      register_cleanup2(serv->listen->pool, &serv->listen, server_cleanup_cb);
 
       PR_CREATE_IPBIND(serv, serv->addr, serv->ServerPort);
       PR_OPEN_IPBIND(serv->addr, serv->ServerPort, NULL, is_default, FALSE,

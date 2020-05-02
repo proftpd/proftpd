@@ -392,6 +392,25 @@ START_TEST (pool_register_cleanup_test) {
 }
 END_TEST
 
+START_TEST (pool_register_cleanup2_test) {
+  pool *p;
+
+  pool_cleanup_count = 0;
+
+  mark_point();
+  register_cleanup2(NULL, NULL, NULL);
+
+  mark_point();
+  p = make_sub_pool(permanent_pool);
+  register_cleanup2(p, NULL, NULL);
+
+  register_cleanup2(p, NULL, cleanup_cb);
+  destroy_pool(p);
+  fail_unless(pool_cleanup_count > 0, "Expected cleanup count >0, got %u",
+    pool_cleanup_count);
+}
+END_TEST
+
 START_TEST (pool_unregister_cleanup_test) {
   pool *p;
 
@@ -459,6 +478,7 @@ Suite *tests_get_pool_suite(void) {
   tcase_add_test(testcase, pool_debug_flags_test);
 #endif /* PR_USE_DEVEL */
   tcase_add_test(testcase, pool_register_cleanup_test);
+  tcase_add_test(testcase, pool_register_cleanup2_test);
   tcase_add_test(testcase, pool_unregister_cleanup_test);
 
   suite_add_tcase(suite, testcase);
