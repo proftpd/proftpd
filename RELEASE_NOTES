@@ -30,6 +30,12 @@ ChangeLog files.
       mechanisms to use, when using the LDAPBindDN to bind to the LDAP
       server.  See doc/contrib/mod_ldap.html#LDAPUseSASL for details.
 
+    LogOptions
+
+      The LogOptions directive is used to modify the default logging format
+      for ProFTPD syslog, debug, and module logging.  See
+      doc/modules/mod_log.html#LogOptions for more information.
+
     SQLKeepAlive
 
       The SQLKeepAlive directive configures a periodic "keepalive" query
@@ -43,6 +49,10 @@ ChangeLog files.
       file, client certificate and key files, SSL ciphers, and verification
       policies for LDAP connections.  See doc/contrib/mod_ldap.html#LDAPServer
       for more details.
+
+    TraceOptions
+      The TraceOptions directive now supports a "Timestamp" option, for
+      disabling inclusion of timestamps in Trace logs.
 
   + Developer notes
 

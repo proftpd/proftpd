@@ -1700,7 +1700,7 @@ MODRET set_traceoptions(cmd_rec *cmd) {
 
     opt++;
 
-    if (strncasecmp(opt, "ConnIPs", 8) == 0) {
+    if (strcasecmp(opt, "ConnIPs") == 0) {
       switch (action) {
         case '-':
           trace_opts &= ~PR_TRACE_OPT_LOG_CONN_IPS;
@@ -1711,7 +1711,18 @@ MODRET set_traceoptions(cmd_rec *cmd) {
           break;
       }
 
-    } else if (strncasecmp(opt, "TimestampMillis", 16) == 0) {
+    } else if (strcasecmp(opt, "Timestamp") == 0) {
+      switch (action) {
+        case '-':
+          trace_opts &= ~PR_TRACE_OPT_USE_TIMESTAMP;
+          break;
+
+        case '+':
+          trace_opts |= PR_TRACE_OPT_USE_TIMESTAMP;
+          break;
+      }
+
+    } else if (strcasecmp(opt, "TimestampMillis") == 0) {
       switch (action) {
         case '-':
           trace_opts &= ~PR_TRACE_OPT_USE_TIMESTAMP_MILLIS;

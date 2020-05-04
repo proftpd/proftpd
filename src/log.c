@@ -34,8 +34,12 @@
 
 #define LOGBUFFER_SIZE		(PR_TUNABLE_PATH_MAX * 4)
 
+/* From src/main.c */
+extern unsigned char is_master;
+
 static int syslog_open = FALSE;
 static int syslog_discard = FALSE;
+static unsigned long log_opts = PR_LOG_OPT_DEFAULT;
 static int logstderr = TRUE;
 static int debug_level = DEBUG0;
 static int default_level = PR_LOG_NOTICE;
@@ -492,68 +496,92 @@ static void log_write(int priority, int f, char *s, int discard) {
       main_server->ServerFQDN) {
     const pr_netaddr_t *remote_addr;
     const char *remote_name;
+    size_t buflen = 0;
 
     remote_addr = pr_netaddr_get_sess_remote_addr();
     remote_name = pr_netaddr_get_sess_remote_name();
 
-    pr_snprintf(serverinfo, sizeof(serverinfo)-1, "%s",
-      main_server->ServerFQDN);
+    if (log_opts & PR_LOG_OPT_USE_VHOST) {
+      size_t len;
+
+      len = pr_snprintf(serverinfo, sizeof(serverinfo)-1, "%s",
+        main_server->ServerFQDN);
+      buflen += len;
+    }
+
     serverinfo[sizeof(serverinfo)-1] = '\0';
 
     if (remote_addr != NULL &&
         remote_name != NULL) {
-      size_t serverinfo_len;
-
-      serverinfo_len = strlen(serverinfo);
-
-      pr_snprintf(serverinfo + serverinfo_len,
-        sizeof(serverinfo) - serverinfo_len, " (%s[%s])",
+      pr_snprintf(serverinfo + buflen, sizeof(serverinfo) - buflen,
+        "%s(%s[%s])", (log_opts & PR_LOG_OPT_USE_VHOST) ? " " : "",
         remote_name, pr_netaddr_get_ipstr(remote_addr));
-
       serverinfo[sizeof(serverinfo)-1] = '\0';
     }
   }
 
   if (!discard &&
       (logstderr || !main_server)) {
-    pool *tmp_pool;
     char buf[LOGBUFFER_SIZE] = {'\0'};
-    size_t buflen, len;
-    struct timeval now;
-    struct tm *tm = NULL;
-    unsigned long millis;
- 
-    tmp_pool = make_sub_pool(permanent_pool);
-    pr_pool_tag(tmp_pool, "Log message pool");
+    size_t buflen = 0, len = 0;
+    pid_t log_pid;
+    const char *process_label = "proftpd";
 
-    gettimeofday(&now, NULL);
-    tm = pr_localtime(tmp_pool, (const time_t *) &(now.tv_sec));
-    if (tm == NULL) {
+    if (log_opts & PR_LOG_OPT_USE_TIMESTAMP) {
+      pool *tmp_pool;
+      struct timeval now;
+      struct tm *tm = NULL;
+      unsigned long millis;
+
+      tmp_pool = make_sub_pool(permanent_pool);
+      pr_pool_tag(tmp_pool, "Log message pool");
+
+      gettimeofday(&now, NULL);
+      tm = pr_localtime(tmp_pool, (const time_t *) &(now.tv_sec));
+      if (tm == NULL) {
+        destroy_pool(tmp_pool);
+        return;
+      }
+
+      len = strftime(buf, sizeof(buf)-1, "%Y-%m-%d %H:%M:%S", tm);
+      buflen = len;
+      buf[sizeof(buf)-1] = '\0';
       destroy_pool(tmp_pool);
-      return;
+
+      /* Convert microsecs to millisecs. */
+      millis = now.tv_usec / 1000;
+
+      len = pr_snprintf(buf + buflen, sizeof(buf) - len, ",%03lu ", millis);
+      buflen += len;
     }
 
-    len = strftime(buf, sizeof(buf)-1, "%Y-%m-%d %H:%M:%S", tm);
-    buflen = len;
     buf[sizeof(buf)-1] = '\0';
-    destroy_pool(tmp_pool);
 
-    /* Convert microsecs to millisecs. */
-    millis = now.tv_usec / 1000;
+    if (log_opts & PR_LOG_OPT_USE_HOSTNAME) {
+      len = pr_snprintf(buf + buflen, sizeof(buf) - buflen, "%s ",
+        systemlog_host);
+      buflen += len;
+    }
 
-    len = pr_snprintf(buf + buflen, sizeof(buf) - len, ",%03lu ", millis);
-    buflen += len;
-    buf[sizeof(buf)-1] = '\0';
+    log_pid = session.pid ? session.pid : getpid();
+
+    if (log_opts & PR_LOG_OPT_USE_ROLE_BASED_PROCESS_LABELS) {
+      if (is_master) {
+        process_label = "daemon";
+
+      } else {
+        process_label = "session";
+      }
+    }
 
     if (*serverinfo) {
       len = pr_snprintf(buf + buflen, sizeof(buf) - buflen,
-        "%s proftpd[%u] %s: %s\n", systemlog_host,
-        (unsigned int) (session.pid ? session.pid : getpid()), serverinfo, s);
+        "%s[%u] %s: %s\n", process_label, (unsigned int) log_pid, serverinfo,
+        s);
 
     } else {
       len = pr_snprintf(buf + buflen, sizeof(buf) - buflen,
-        "%s proftpd[%u]: %s\n", systemlog_host,
-        (unsigned int) (session.pid ? session.pid : getpid()), s);
+        "%s[%u]: %s\n", process_label, (unsigned int) log_pid, s);
     }
 
     buflen += len;
@@ -603,44 +631,66 @@ static void log_write(int priority, int f, char *s, int discard) {
   }
 
   if (systemlog_fd != -1) {
-    pool *tmp_pool;
     char buf[LOGBUFFER_SIZE] = {'\0'};
-    size_t buflen, len;
-    struct timeval now;
-    struct tm *tm;
-    unsigned long millis;
+    size_t buflen = 0, len = 0;
+    pid_t log_pid;
+    const char *process_label = "proftpd";
 
-    tmp_pool = make_sub_pool(permanent_pool);
-    pr_pool_tag(tmp_pool, "Log message pool");
+    if (log_opts & PR_LOG_OPT_USE_TIMESTAMP) {
+      pool *tmp_pool;
+      struct timeval now;
+      struct tm *tm;
+      unsigned long millis;
 
-    gettimeofday(&now, NULL);
-    tm = pr_localtime(tmp_pool, (const time_t *) &(now.tv_sec));
-    if (tm == NULL) {
+      tmp_pool = make_sub_pool(permanent_pool);
+      pr_pool_tag(tmp_pool, "Log message pool");
+
+      gettimeofday(&now, NULL);
+      tm = pr_localtime(tmp_pool, (const time_t *) &(now.tv_sec));
+      if (tm == NULL) {
+        destroy_pool(tmp_pool);
+        return;
+      }
+
+      len = strftime(buf, sizeof(buf), "%Y-%m-%d %H:%M:%S", tm);
+      buflen = len;
+      buf[sizeof(buf) - 1] = '\0';
       destroy_pool(tmp_pool);
-      return;
+
+      /* Convert microsecs to millisecs. */
+      millis = now.tv_usec / 1000;
+
+      len = pr_snprintf(buf + buflen, sizeof(buf) - len, ",%03lu ", millis);
+      buflen += len;
     }
 
-    len = strftime(buf, sizeof(buf), "%Y-%m-%d %H:%M:%S", tm);
-    buflen = len;
     buf[sizeof(buf) - 1] = '\0';
-    destroy_pool(tmp_pool);
 
-    /* Convert microsecs to millisecs. */
-    millis = now.tv_usec / 1000;
+    if (log_opts & PR_LOG_OPT_USE_HOSTNAME) {
+      len = pr_snprintf(buf + buflen, sizeof(buf) - buflen, "%s ",
+        systemlog_host);
+      buflen += len;
+    }
 
-    len = pr_snprintf(buf + buflen, sizeof(buf) - len, ",%03lu ", millis);
-    buflen += len;
-    buf[sizeof(buf) - 1] = '\0';
+    log_pid = session.pid ? session.pid : getpid();
+
+    if (log_opts & PR_LOG_OPT_USE_ROLE_BASED_PROCESS_LABELS) {
+      if (is_master) {
+        process_label = "daemon";
+
+      } else {
+        process_label = "session";
+      }
+    }
 
     if (*serverinfo) {
       len = pr_snprintf(buf + buflen, sizeof(buf) - buflen,
-        "%s proftpd[%u] %s: %s\n", systemlog_host,
-        (unsigned int) (session.pid ? session.pid : getpid()), serverinfo, s);
+        "%s[%u] %s: %s\n", process_label, (unsigned int) log_pid, serverinfo,
+        s);
 
     } else {
       len = pr_snprintf(buf + buflen, sizeof(buf) - buflen,
-        "%s proftpd[%u]: %s\n", systemlog_host,
-        (unsigned int) (session.pid ? session.pid : getpid()), s);
+        "%s[%u]: %s\n", process_label, (unsigned int) log_pid, s);
     }
 
     buflen += len;
@@ -764,6 +814,11 @@ int pr_log_setdefaultlevel(int level) {
   int old_level = default_level;
   default_level = level;
   return old_level;
+}
+
+int pr_log_set_options(unsigned long opts) {
+  log_opts = opts;
+  return 0;
 }
 
 /* Convert a string into the matching syslog level value.  Return -1
