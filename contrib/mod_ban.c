@@ -2569,7 +2569,7 @@ MODRET set_bancache(cmd_rec *cmd) {
   CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL);
 
 #if defined(PR_USE_MEMCACHE)
-  if (strcmp(cmd->argv[1], "memcache") == 0) {
+  if (strcasecmp(cmd->argv[1], "memcache") == 0) {
     config_rec *c;
 
     c = add_config_param(cmd->argv[0], 1, NULL);
@@ -2580,7 +2580,7 @@ MODRET set_bancache(cmd_rec *cmd) {
 #endif /* PR_USE_MEMCACHE */
 
 #if defined(PR_USE_REDIS)
-  if (strcmp(cmd->argv[1], "redis") == 0) {
+  if (strcasecmp(cmd->argv[1], "redis") == 0) {
     config_rec *c;
 
     c = add_config_param(cmd->argv[0], 1, NULL);
