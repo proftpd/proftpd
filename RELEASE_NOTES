@@ -24,6 +24,12 @@ ChangeLog files.
 
   + New Configuration Directives
 
+    BanOptions
+
+      The BanOptions directive is used to tune mod_ban behavior, such as
+      creating ban entries that match/apply to all <VirtualHost> sections.
+      See doc/contrib/mod_ban.html#BanOptions for more details.
+
     LDAPUseSASL
 
       The LDAPUseSASL directive configures a list of SASL authentication
