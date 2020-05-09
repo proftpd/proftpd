@@ -141,6 +141,7 @@ if (scalar(@ARGV) > 0) {
     t/config/ifdefine.t
     t/config/include.t
     t/config/listoptions.t
+    t/config/logoptions.t
     t/config/masqueradeaddress.t
     t/config/maxclients.t
     t/config/maxclientsperclass.t

@@ -35,6 +35,7 @@ static const char *program = "ftpdctl";
 
 /* NOTE: these empty stubs are needed for proper linking.  What a mess. */
 
+unsigned char is_master;
 session_t session;
 server_rec *main_server = NULL;
 

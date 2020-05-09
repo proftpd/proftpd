@@ -216,6 +216,104 @@ MODRET set_logformat(cmd_rec *cmd) {
   return PR_HANDLED(cmd);
 }
 
+/* usage: LogOptions opt1 ... */
+MODRET set_logoptions(cmd_rec *cmd) {
+  register unsigned int i;
+  int ctx;
+  unsigned long log_opts = PR_LOG_OPT_DEFAULT;
+  config_rec *c;
+
+  if (cmd->argc < 2) {
+    CONF_ERROR(cmd, "wrong number of parameters");
+  }
+
+  CHECK_CONF(cmd, CONF_ROOT|CONF_GLOBAL|CONF_VIRTUAL);
+
+  for (i = 1; i < cmd->argc; i++) {
+    char action, *opt;
+
+    opt = cmd->argv[i];
+    action = *opt;
+
+    if (action != '+' &&
+        action != '-') {
+      CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "bad LogOption: '", opt, "'",
+        NULL));
+    }
+
+    opt++;
+
+    if (strcasecmp(opt, "Timestamp") == 0) {
+      switch (action) {
+        case '-':
+          log_opts &= ~PR_LOG_OPT_USE_TIMESTAMP;
+          break;
+
+        case '+':
+          log_opts |= PR_LOG_OPT_USE_TIMESTAMP;
+          break;
+      }
+
+    } else if (strcasecmp(opt, "Hostname") == 0) {
+      switch (action) {
+        case '-':
+          log_opts &= ~PR_LOG_OPT_USE_HOSTNAME;
+          break;
+
+        case '+':
+          log_opts |= PR_LOG_OPT_USE_HOSTNAME;
+          break;
+      }
+
+    } else if (strcasecmp(opt, "VirtualHost") == 0) {
+      switch (action) {
+        case '-':
+          log_opts &= ~PR_LOG_OPT_USE_VHOST;
+          break;
+
+        case '+':
+          log_opts |= PR_LOG_OPT_USE_VHOST;
+          break;
+      }
+
+    } else if (strcasecmp(opt, "RoleBasedProcessLabels") == 0) {
+      switch (action) {
+        case '-':
+          log_opts &= ~PR_LOG_OPT_USE_ROLE_BASED_PROCESS_LABELS;
+          break;
+
+        case '+':
+          log_opts |= PR_LOG_OPT_USE_ROLE_BASED_PROCESS_LABELS;
+          break;
+      }
+
+    } else {
+      CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "unknown LogOption: '",
+        opt, "'", NULL));
+    }
+  }
+
+  c = add_config_param(cmd->argv[0], 1, NULL);
+  c->argv[0] = palloc(c->pool, sizeof(unsigned long));
+  *((unsigned long *) c->argv[0]) = log_opts;
+
+  ctx = (cmd->config && cmd->config->config_type != CONF_PARAM ?
+    cmd->config->config_type : cmd->server->config_type ?
+    cmd->server->config_type : CONF_ROOT);
+
+  if (ctx == CONF_ROOT) {
+    /* If we're the "server config" context, set the LogOptions here,
+     * too.  This will apply these LogOptions to the daemon process.
+     */
+    if (pr_log_set_options(log_opts) < 0) {
+      pr_log_debug(DEBUG6, "%s: error setting LogOptions (%lu): %s",
+        (char *) cmd->argv[0], log_opts, strerror(errno));
+    }
+  }
+
+  return PR_HANDLED(cmd);
+}
+
 /* Syntax: ExtendedLog file [<cmd-classes> [<name>]] */
 MODRET set_extendedlog(cmd_rec *cmd) {
   config_rec *c = NULL;
@@ -839,6 +937,9 @@ static void log_sess_reinit_ev(const void *event_data, void *user_data) {
     }
   }
 
+  /* Restore original LogOptions settings. */
+  (void) pr_log_set_options(PR_LOG_OPT_DEFAULT);
+
   res = log_sess_init();
   if (res < 0) {
     pr_session_disconnect(&log_module,
@@ -1073,11 +1174,23 @@ MODRET log_post_pass(cmd_rec *cmd) {
 static int dispatched_connect = FALSE;
 
 static int log_sess_init(void) {
+  config_rec *c;
   char *serverlog_name = NULL;
   logfile_t *lf = NULL;
 
   pr_event_register(&log_module, "core.session-reinit", log_sess_reinit_ev,
     NULL);
+
+  c = find_config(main_server->conf, CONF_PARAM, "LogOptions", FALSE);
+  if (c != NULL) {
+    unsigned long log_opts;
+
+    log_opts = *((unsigned long *) c->argv[0]);
+    if (pr_log_set_options(log_opts) < 0) {
+      pr_log_debug(DEBUG6, "%s: error setting LogOptions (%lu): %s",
+        c->name, log_opts, strerror(errno));
+    }
+  }
 
   /* Open the ServerLog, if present. */
   serverlog_name = get_param_ptr(main_server->conf, "ServerLog", FALSE);
@@ -1245,6 +1358,7 @@ static conftable log_conftab[] = {
   { "AllowLogSymlinks",	set_allowlogsymlinks,			NULL },
   { "ExtendedLog",	set_extendedlog,			NULL },
   { "LogFormat",	set_logformat,				NULL },
+  { "LogOptions",	set_logoptions,				NULL },
   { "ServerLog",	set_serverlog,				NULL },
   { "SystemLog",	set_systemlog,				NULL },
   { NULL,		NULL,					NULL }

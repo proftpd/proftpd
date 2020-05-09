@@ -96,7 +96,7 @@ static int trace_write(const char *channel, int level, const char *msg,
     int discard) {
   pool *tmp_pool;
   char buf[TRACE_BUFFER_SIZE];
-  size_t buflen, len;
+  size_t buflen = 0, len = 0;
   struct tm *tm;
   int use_conn_ips = FALSE;
 
@@ -108,31 +108,32 @@ static int trace_write(const char *channel, int level, const char *msg,
   tmp_pool = make_sub_pool(trace_pool);
   pr_pool_tag(tmp_pool, "Trace message pool");
 
-  if (!(trace_opts & PR_TRACE_OPT_USE_TIMESTAMP_MILLIS)) {
-    time_t now;
+  if (trace_opts & PR_TRACE_OPT_USE_TIMESTAMP) {
+    if (trace_opts & PR_TRACE_OPT_USE_TIMESTAMP_MILLIS) {
+      struct timeval now;
+      unsigned long millis;
 
-    now = time(NULL);
-    tm = pr_localtime(tmp_pool, &now);
+      gettimeofday(&now, NULL);
+      tm = pr_localtime(tmp_pool, (const time_t *) &(now.tv_sec));
 
-    len = strftime(buf, sizeof(buf)-1, "%Y-%m-%d %H:%M:%S", tm);
-    buflen = len;
+      len = strftime(buf, sizeof(buf)-1, "%Y-%m-%d %H:%M:%S", tm);
+      buflen = len;
 
-  } else {
-    struct timeval now;
-    unsigned long millis;
+      /* Convert microsecs to millisecs. */
+      millis = now.tv_usec / 1000;
 
-    gettimeofday(&now, NULL);
+      len = pr_snprintf(buf + buflen, sizeof(buf) - buflen, ",%03lu ", millis);
+      buflen += len;
 
-    tm = pr_localtime(tmp_pool, (const time_t *) &(now.tv_sec));
+    } else {
+      time_t now;
 
-    len = strftime(buf, sizeof(buf)-1, "%Y-%m-%d %H:%M:%S", tm);
-    buflen = len;
+      now = time(NULL);
+      tm = pr_localtime(tmp_pool, &now);
 
-    /* Convert microsecs to millisecs. */
-    millis = now.tv_usec / 1000;
-
-    len = pr_snprintf(buf + buflen, sizeof(buf) - buflen, ",%03lu", millis);
-    buflen += len;
+      len = strftime(buf, sizeof(buf)-1, "%Y-%m-%d %H:%M:%S ", tm);
+      buflen = len;
+    }
   }
 
   if ((trace_opts & PR_TRACE_OPT_LOG_CONN_IPS) &&
@@ -145,7 +146,7 @@ static int trace_write(const char *channel, int level, const char *msg,
   }
 
   if (use_conn_ips == FALSE) {
-    len = pr_snprintf(buf + buflen, sizeof(buf) - buflen, " [%u] <%s:%d>: %s",
+    len = pr_snprintf(buf + buflen, sizeof(buf) - buflen, "[%u] <%s:%d>: %s",
       (unsigned int) (session.pid ? session.pid : getpid()), channel, level,
       msg);
     buflen += len;
@@ -159,7 +160,7 @@ static int trace_write(const char *channel, int level, const char *msg,
     server_port = pr_netaddr_get_port(session.c->local_addr);
 
     len = pr_snprintf(buf + buflen, sizeof(buf) - buflen,
-      " [%u] (client %s, server %s:%d) <%s:%d>: %s",
+      "[%u] (client %s, server %s:%d) <%s:%d>: %s",
       (unsigned int) (session.pid ? session.pid : getpid()),
       client_ip != NULL ? client_ip : "none",
       server_ip != NULL ? server_ip : "none", server_port, channel, level, msg);
