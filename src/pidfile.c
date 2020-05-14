@@ -52,10 +52,13 @@ int pr_pidfile_set(const char *path) {
 int pr_pidfile_write(void) {
   int xerrno;
   FILE *fh = NULL;
+  mode_t prev_mask;
 
   PRIVS_ROOT
+  prev_mask = umask(0113);
   fh = fopen(pidfile_path, "w");
   xerrno = errno;
+  umask(prev_mask);
   PRIVS_RELINQUISH
 
   if (fh == NULL) {
