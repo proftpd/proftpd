@@ -609,7 +609,7 @@ int pr_netio_lingering_close(pr_netio_stream_t *nstrm, long linger) {
 
 pr_netio_stream_t *pr_netio_open(pool *parent_pool, int strm_type, int fd,
     int mode) {
-  pr_netio_stream_t *nstrm = NULL;
+  pr_netio_stream_t *nstrm = NULL, *res = NULL;
   const char *nstrm_mode;
 
   if (parent_pool == NULL) {
@@ -635,7 +635,10 @@ pr_netio_stream_t *pr_netio_open(pool *parent_pool, int strm_type, int fd,
         }
         pr_trace_msg(trace_channel, 19, "using %s open() for control %s stream",
           ctrl_netio->owner_name, nstrm_mode);
-        return (ctrl_netio->open)(nstrm, fd, mode);
+        res = (ctrl_netio->open)(nstrm, fd, mode);
+        if (res != NULL) {
+          res->strm_netio = ctrl_netio;
+        }
 
       } else {
         if (pr_table_add(nstrm->notes, pstrdup(nstrm->strm_pool, "core.netio"),
@@ -646,8 +649,12 @@ pr_netio_stream_t *pr_netio_open(pool *parent_pool, int strm_type, int fd,
         }
         pr_trace_msg(trace_channel, 19, "using %s open() for control %s stream",
           default_ctrl_netio->owner_name, nstrm_mode);
-        return (default_ctrl_netio->open)(nstrm, fd, mode);
+        res = (default_ctrl_netio->open)(nstrm, fd, mode);
+        if (res != NULL) {
+          res->strm_netio = default_ctrl_netio;
+        }
       }
+      break;
 
     case PR_NETIO_STRM_DATA:
       nstrm->strm_type = PR_NETIO_STRM_DATA;
@@ -662,7 +669,10 @@ pr_netio_stream_t *pr_netio_open(pool *parent_pool, int strm_type, int fd,
         }
         pr_trace_msg(trace_channel, 19, "using %s open() for data %s stream",
           data_netio->owner_name, nstrm_mode);
-        return (data_netio->open)(nstrm, fd, mode);
+        res = (data_netio->open)(nstrm, fd, mode);
+        if (res != NULL) {
+          res->strm_netio = data_netio;
+        }
 
       } else {
         if (pr_table_add(nstrm->notes, pstrdup(nstrm->strm_pool, "core.netio"),
@@ -673,8 +683,12 @@ pr_netio_stream_t *pr_netio_open(pool *parent_pool, int strm_type, int fd,
         }
         pr_trace_msg(trace_channel, 19, "using %s open() for data %s stream",
           default_data_netio->owner_name, nstrm_mode);
-        return (default_data_netio->open)(nstrm, fd, mode);
+        res = (default_data_netio->open)(nstrm, fd, mode);
+        if (res != NULL) {
+          res->strm_netio = default_data_netio;
+        }
       }
+      break;
 
     case PR_NETIO_STRM_OTHR:
       nstrm->strm_type = PR_NETIO_STRM_OTHR;
@@ -689,7 +703,10 @@ pr_netio_stream_t *pr_netio_open(pool *parent_pool, int strm_type, int fd,
         }
         pr_trace_msg(trace_channel, 19, "using %s open() for other %s stream",
           othr_netio->owner_name, nstrm_mode);
-        return (othr_netio->open)(nstrm, fd, mode);
+        res = (othr_netio->open)(nstrm, fd, mode);
+        if (res != NULL) {
+          res->strm_netio = othr_netio;
+        }
 
       } else {
         if (pr_table_add(nstrm->notes, pstrdup(nstrm->strm_pool, "core.netio"),
@@ -700,15 +717,21 @@ pr_netio_stream_t *pr_netio_open(pool *parent_pool, int strm_type, int fd,
         }
         pr_trace_msg(trace_channel, 19, "using %s open() for other %s stream",
           default_othr_netio->owner_name, nstrm_mode);
-        return (default_othr_netio->open)(nstrm, fd, mode);
+        res = (default_othr_netio->open)(nstrm, fd, mode);
+        if (res != NULL) {
+          res->strm_netio = default_othr_netio;
+        }
       }
+      break;
+
+    default:
+      destroy_pool(nstrm->strm_pool);
+      nstrm->strm_pool = NULL;
+      errno = EINVAL;
+      res = NULL;
   }
 
-  destroy_pool(nstrm->strm_pool);
-  nstrm->strm_pool = NULL;
-
-  errno = EPERM;
-  return NULL;
+  return res;
 }
 
 pr_netio_stream_t *pr_netio_reopen(pr_netio_stream_t *nstrm, int fd, int mode) {

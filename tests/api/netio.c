@@ -109,28 +109,31 @@ START_TEST (netio_open_test) {
 
   nstrm = pr_netio_open(p, 7777, fd, PR_NETIO_IO_RD);
   fail_unless(nstrm == NULL, "Failed to handle unknown stream type argument");
-  fail_unless(errno == EPERM, "Failed to set errno to EPERM, got %s (%d)",
+  fail_unless(errno == EINVAL, "Failed to set errno to EINVAL, got %s (%d)",
     strerror(errno), errno);
 
   /* open/close CTRL stream */
   nstrm = pr_netio_open(p, PR_NETIO_STRM_CTRL, fd, PR_NETIO_IO_RD);
   fail_unless(nstrm != NULL, "Failed to open ctrl stream on fd %d: %s", fd,
     strerror(errno));
-
+  fail_unless(nstrm->strm_netio != NULL,
+    "Failed to assign owning NetIO to stream");
   pr_netio_close(nstrm);
 
   /* open/close DATA stream */
   nstrm = pr_netio_open(p, PR_NETIO_STRM_DATA, fd, PR_NETIO_IO_WR);
   fail_unless(nstrm != NULL, "Failed to open data stream on fd %d: %s", fd,
     strerror(errno));
-
+  fail_unless(nstrm->strm_netio != NULL,
+    "Failed to assign owning NetIO to stream");
   pr_netio_close(nstrm);
 
   /* open/close OTHR stream */
   nstrm = pr_netio_open(p, PR_NETIO_STRM_OTHR, fd, PR_NETIO_IO_WR);
   fail_unless(nstrm != NULL, "Failed to open othr stream on fd %d: %s", fd,
     strerror(errno));
-
+  fail_unless(nstrm->strm_netio != NULL,
+    "Failed to assign owning NetIO to stream");
   pr_netio_close(nstrm);
 }
 END_TEST
