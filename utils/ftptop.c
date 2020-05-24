@@ -226,23 +226,25 @@ ascii:
 static const char *show_time(time_t *i) {
   time_t now = time(NULL);
   unsigned long l;
-  static char sbuf[7];
+  static char buf[32];
 
-  if (!i || !*i)
+  if (i == NULL ||
+     *i == 0) {
     return "-";
+  }
 
-  memset(sbuf, '\0', sizeof(sbuf));
+  memset(buf, '\0', sizeof(buf));
   l = now - *i;
 
   if (l < 3600) {
-    snprintf(sbuf, sizeof(sbuf), "%lum%lus",(l / 60),(l % 60));
+    snprintf(buf, sizeof(buf), "%lum%lus", (l / 60), (l % 60));
 
   } else {
-    snprintf(sbuf, sizeof(sbuf), "%luh%lum",(l / 3600),
+    snprintf(buf, sizeof(buf), "%luh%lum", (l / 3600),
       ((l - (l / 3600) * 3600) / 60));
   }
 
-  return sbuf;
+  return buf;
 }
 
 static int check_scoreboard_file(void) {
