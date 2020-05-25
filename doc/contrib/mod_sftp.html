@@ -1128,7 +1128,9 @@ The currently implemented options are:
     <p>
     When this option is used, <code>mod_sftp</code> will ignore insecure
     permissions (<i>i.e.</i> group- or world-readable) on
-    <code>SFTPHostKey</code> files.
+    <code>SFTPHostKey</code> files.  This option should appear <em>before</em>
+    any <code>SFTPHostKey</code> directives in the configuration, as hostkey
+    permissions are checked at configuration parse time.
 
     <p>
     <b>Note</b> that this option first appeared in
