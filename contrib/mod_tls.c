@@ -6312,11 +6312,17 @@ static struct tls_ticket_key *create_ticket_key(void) {
   PRIVS_RELINQUISH
 
   if (res < 0) {
+    /* Ideally, we would not proceed unless we can ensure this key remains
+     * only in memory.  However, on some systems there may be a limit to the
+     * amount of locked memory.  Erasing the session ticket key here would lead
+     * to hard-to-debug TLS handshake issues later, for TLSv1.3 sessions which
+     * use session tickets (and thus need these keys); see Issue #1014.
+     *
+     * Thus we now only _try_ to lock the key in memory, but proceed if we
+     * cannot.
+     */
     pr_log_debug(DEBUG1, MOD_TLS_VERSION
       ": error locking session ticket key into memory: %s", strerror(xerrno));
-    free(page_ptr);
-    errno = xerrno;
-    return NULL;
   }
 # endif /* HAVE_MLOCK */
 
