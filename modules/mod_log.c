@@ -1219,8 +1219,6 @@ static int log_sess_init(void) {
     }
 
   } else {
-    config_rec *c;
-
     c = find_config(main_server->conf, CONF_PARAM, "SystemLog", FALSE);
     if (c != NULL) {
       char *path;
