@@ -24,6 +24,7 @@
 - Issue 980 - mod_sftp sends broken response when CREATETIME attribute is
   requested.
 - Bug 4398 - Handle zero-length SFTP WRITE requests without error.
+- Issue 1018 - PidFile should not be world-writable.
 
 1.3.6c - Released 20-Feb-2020
 --------------------------------
