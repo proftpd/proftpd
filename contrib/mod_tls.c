@@ -7136,7 +7136,7 @@ static SSL_CTX *tls_init_ctx(server_rec *s) {
       ": scheduling new TLS session ticket key every %d %s",
       new_ticket_key_intvl, new_ticket_key_intvl != 1 ? "secs" : "sec");
 
-    pr_timer_add(new_ticket_key_intvl, -1, NULL, new_ticket_key_timer_cb,
+    pr_timer_add(new_ticket_key_intvl, -1, &tls_module, new_ticket_key_timer_cb,
       "New TLS Session Ticket Key");
 
   } else {
