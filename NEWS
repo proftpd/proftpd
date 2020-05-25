@@ -25,6 +25,8 @@
   requested.
 - Bug 4398 - Handle zero-length SFTP WRITE requests without error.
 - Issue 1018 - PidFile should not be world-writable.
+- Issue 1014 - TLSv1.3 handshake fails due to missing session ticket key on
+  some systems.
 
 1.3.6c - Released 20-Feb-2020
 --------------------------------
