@@ -500,7 +500,17 @@ static int transmit_normal(pool *p, char *buf, size_t bufsz) {
   nread = pr_fsio_read_with_error(p, retr_fh, buf, read_len, &err);
   xerrno = errno;
 
-  if (nread < 0) {
+  while (nread < 0) {
+    if (xerrno == EINTR) {
+      /* Interrupted by signal; handle it, and try again. */
+      errno = EINTR;
+      pr_signals_handle();
+
+      nread = pr_fsio_read_with_error(p, retr_fh, buf, read_len, &err);
+      xerrno = errno;
+      continue;
+    }
+
     pr_error_set_where(err, &xfer_module, __FILE__, __LINE__ - 4);
     pr_error_set_why(err, pstrcat(p, "normal download of '", retr_fh->fh_path,
       "'", NULL));
@@ -517,7 +527,7 @@ static int transmit_normal(pool *p, char *buf, size_t bufsz) {
     }
 
     errno = xerrno;
-    return 0;
+    return -1;
   }
 
   if (nread == 0) {
@@ -2071,6 +2081,16 @@ MODRET xfer_stor(cmd_rec *cmd) {
      */
     res = pr_fsio_write_with_error(cmd->pool, stor_fh, lbuf, len, &err);
     xerrno = errno;
+
+    while (res < 0 &&
+           xerrno == EINTR) {
+      /* Interrupted by signal; handle it, and try again. */
+      errno = EINTR;
+      pr_signals_handle();
+
+      res = pr_fsio_write_with_error(cmd->pool, stor_fh, lbuf, len, &err);
+      xerrno = errno;
+    }
 
     if (res != len) {
       xerrno = EIO;
