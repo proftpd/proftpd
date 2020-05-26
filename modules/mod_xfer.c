@@ -485,7 +485,6 @@ static int xfer_parse_cmdlist(const char *name, config_rec *c,
 }
 
 static int transmit_normal(pool *p, char *buf, size_t bufsz) {
-  int xerrno;
   long nread;
   size_t read_len;
   pr_error_t *err = NULL;
@@ -498,9 +497,23 @@ static int transmit_normal(pool *p, char *buf, size_t bufsz) {
   }
 
   nread = pr_fsio_read_with_error(p, retr_fh, buf, read_len, &err);
-  xerrno = errno;
 
-  if (nread < 0) {
+  while (nread < 0) {
+    int xerrno = errno;
+
+    if (xerrno == EAGAIN || xerrno == EINTR) {
+	/*
+	 * We should not assume FSIO is always instant. If FS served by slow
+	 * storage the I/O might take several seconds (where several > 5).
+	 * The call to pr_fsio_read_with_error() might bail out upon
+	 * reception of alarm.
+	 */
+	errno = EINTR;
+	pr_signals_handle();
+	nread = pr_fsio_read_with_error(p, retr_fh, buf, read_len, &err);
+	continue;
+    }
+
     pr_error_set_where(err, &xfer_module, __FILE__, __LINE__ - 4);
     pr_error_set_why(err, pstrcat(p, "normal download of '", retr_fh->fh_path,
       "'", NULL));
@@ -517,7 +530,7 @@ static int transmit_normal(pool *p, char *buf, size_t bufsz) {
     }
 
     errno = xerrno;
-    return 0;
+    return -1;
   }
 
   if (nread == 0) {
@@ -1751,8 +1764,9 @@ MODRET xfer_pre_appe(cmd_rec *cmd) {
 MODRET xfer_stor(cmd_rec *cmd) {
   const char *path;
   char *lbuf;
-  int bufsz, len, xerrno = 0, res;
+  int bufsz, xerrno = 0, res;
   off_t nbytes_stored, nbytes_max_store = 0;
+  ssize_t len, writen;
   unsigned char have_limit = FALSE;
   struct stat st;
   off_t start_offset = 0, upload_len = 0;
@@ -2069,39 +2083,43 @@ MODRET xfer_stor(cmd_rec *cmd) {
      * be doing short writes, and we ideally should be more resilient/graceful
      * in the face of such things.
      */
-    res = pr_fsio_write_with_error(cmd->pool, stor_fh, lbuf, len, &err);
-    xerrno = errno;
-
-    if (res != len) {
-      xerrno = EIO;
-
+    writen = 0;
+    while (writen < len) {
+      res = pr_fsio_write_with_error(cmd->pool, stor_fh,
+	lbuf + writen, len - writen, &err);
       if (res < 0) {
         xerrno = errno;
-
+        if (xerrno == EAGAIN || xerrno == EINTR) {
+          errno = EINTR;
+          pr_signals_handle();
+          continue;
+        }
         pr_error_set_where(err, &xfer_module, __FILE__, __LINE__ - 9);
         pr_error_set_why(err, pstrcat(cmd->pool, "writing '", stor_fh->fh_path,
           "'", NULL));
+     
+        (void) pr_trace_msg("fileperms", 1, "%s, user '%s' (UID %s, GID %s): "
+          "error writing to '%s': %s", (char *) cmd->argv[0], session.user,
+          pr_uid2str(cmd->tmp_pool, session.uid),
+          pr_gid2str(cmd->tmp_pool, session.gid), stor_fh->fh_path,
+          strerror(xerrno));
+     
+        if (err != NULL) {
+          pr_log_debug(DEBUG9, "%s", pr_error_strerror(err, 0));
+          pr_error_destroy(err);
+          err = NULL;
+        }
+     
+        stor_abort(cmd->pool);
+        pr_data_abort(xerrno, FALSE);
+     
+        pr_cmd_set_errno(cmd, xerrno);
+        errno = xerrno;
+        return PR_ERROR(cmd);
       }
-
-      (void) pr_trace_msg("fileperms", 1, "%s, user '%s' (UID %s, GID %s): "
-        "error writing to '%s': %s", (char *) cmd->argv[0], session.user,
-        pr_uid2str(cmd->tmp_pool, session.uid),
-        pr_gid2str(cmd->tmp_pool, session.gid), stor_fh->fh_path,
-        strerror(xerrno));
-
-      if (err != NULL) {
-        pr_log_debug(DEBUG9, "%s", pr_error_strerror(err, 0));
-        pr_error_destroy(err);
-        err = NULL;
-      }
-
-      stor_abort(cmd->pool);
-      pr_data_abort(xerrno, FALSE);
-
-      pr_cmd_set_errno(cmd, xerrno);
-      errno = xerrno;
-      return PR_ERROR(cmd);
+      writen += res;
     }
+    
 
     /* If no throttling is configured, this does nothing. */
     pr_throttle_pause(nbytes_stored, FALSE);
