@@ -11693,18 +11693,34 @@ static int tls_netio_close_cb(pr_netio_stream_t *nstrm) {
   if (ssl != NULL) {
     if (nstrm->strm_type == PR_NETIO_STRM_CTRL &&
         nstrm->strm_mode == PR_NETIO_IO_WR) {
+      if (tls_ctrl_rd_nstrm != NULL) {
+        pr_table_remove(tls_ctrl_rd_nstrm->notes, TLS_NETIO_NOTE, NULL);
+        tls_ctrl_rd_nstrm = NULL;
+      }
+
+      if (tls_ctrl_wr_nstrm != NULL) {
+        pr_table_remove(tls_ctrl_wr_nstrm->notes, TLS_NETIO_NOTE, NULL);
+        tls_ctrl_wr_nstrm = NULL;
+      }
+
       tls_end_sess(ssl, session.c, 0);
-      pr_table_remove(tls_ctrl_rd_nstrm->notes, TLS_NETIO_NOTE, NULL);
-      pr_table_remove(tls_ctrl_wr_nstrm->notes, TLS_NETIO_NOTE, NULL);
       tls_ctrl_netio = NULL;
       tls_flags &= ~TLS_SESS_ON_CTRL;
     }
 
     if (nstrm->strm_type == PR_NETIO_STRM_DATA &&
         nstrm->strm_mode == PR_NETIO_IO_WR) {
+      if (tls_data_rd_nstrm != NULL) {
+        pr_table_remove(tls_data_rd_nstrm->notes, TLS_NETIO_NOTE, NULL);
+        tls_data_rd_nstrm = NULL;
+      }
+
+      if (tls_data_wr_nstrm != NULL) {
+        pr_table_remove(tls_data_wr_nstrm->notes, TLS_NETIO_NOTE, NULL);
+        tls_data_wr_nstrm = NULL;
+      }
+
       tls_end_sess(ssl, session.d, 0);
-      pr_table_remove(tls_data_rd_nstrm->notes, TLS_NETIO_NOTE, NULL);
-      pr_table_remove(tls_data_wr_nstrm->notes, TLS_NETIO_NOTE, NULL);
       tls_data_netio = NULL;
       tls_flags &= ~TLS_SESS_ON_DATA;
     }
