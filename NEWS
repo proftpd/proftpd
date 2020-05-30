@@ -60,6 +60,7 @@
 - Issue 1018 - PidFile should not be world-writable.
 - Issue 1014 - TLSv1.3 handshake fails due to missing session ticket key on
   some systems.
+- Issue 1023 - Lowercased FTP commands not properly identified.
 
 1.3.7rc3 - Released 20-Feb-2020
 --------------------------------
