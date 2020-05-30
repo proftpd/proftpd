@@ -3888,8 +3888,9 @@ static const unsigned char *agent_sign_data(pool *p, const char *agent_path,
   return sig_data;
 }
 
-static const unsigned char *get_rsa_signed_data(pool *p, const char *data,
-    size_t datalen, size_t *siglen, const char *sig_name, const EVP_MD *md) {
+static const unsigned char *get_rsa_signed_data(pool *p,
+    const unsigned char *data, size_t datalen, size_t *siglen,
+    const char *sig_name, const EVP_MD *md) {
   RSA *rsa;
 #if OPENSSL_VERSION_NUMBER < 0x10100000L || \
     defined(HAVE_LIBRESSL)
