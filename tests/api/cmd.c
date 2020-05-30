@@ -1,6 +1,6 @@
 /*
  * ProFTPD - FTP server API testsuite
- * Copyright (c) 2011-2016 The ProFTPD Project team
+ * Copyright (c) 2011-2020 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -302,6 +302,15 @@ START_TEST (cmd_get_id_test) {
   res = pr_cmd_get_id(C_PROT);
   fail_unless(res == PR_CMD_PROT_ID, "Expected cmd ID %d for %s, got %d",
     PR_CMD_PROT_ID, C_PROT, res); 
+
+  /* Make sure we handle lowercased, mixed-case commands as well. */
+  res = pr_cmd_get_id("user");
+  fail_unless(res == PR_CMD_USER_ID, "Expected cmd ID %d for 'user', got %d",
+    PR_CMD_USER_ID, res);
+
+  res = pr_cmd_get_id("RnTo");
+  fail_unless(res == PR_CMD_RNTO_ID, "Expected cmd ID %d for 'RnTo', got %d",
+    PR_CMD_RNTO_ID, res);
 }
 END_TEST
 
@@ -330,6 +339,10 @@ START_TEST (cmd_cmp_test) {
 
   res = pr_cmd_cmp(cmd, PR_CMD_RETR_ID);
   fail_unless(res == 0, "Unexpected comparison result: %d", res);
+
+  cmd = pr_cmd_alloc(p, 1, "ReTr");
+  res = pr_cmd_cmp(cmd, PR_CMD_RETR_ID);
+  fail_unless(res == 0, "Unexpected comparison result: %d", res);
 }
 END_TEST
 
@@ -349,7 +362,7 @@ START_TEST (cmd_strcmp_test) {
   mark_point();
   cmd = pr_cmd_alloc(p, 1, C_RETR);
   res = pr_cmd_strcmp(cmd, "a");
-  fail_unless(res > 0, "Unexpected comparison result: %d", res);
+  fail_unless(res < 0, "Unexpected comparison result: %d", res);
 
   mark_point();
   cmd->cmd_id = 0;
