@@ -1149,6 +1149,10 @@
 /* Define if OpenSSL SSL read ahead support, if available, should be used.  */
 #undef PR_USE_OPENSSL_SSL_READ_AHEAD
 
+/* Define if OpenSSL SSL session ID context set support, if available, should
+   be used.  */
+#undef PR_USE_OPENSSL_SSL_SESSION_SET1_ID_CONTEXT
+
 /* Define if OpenSSL SSL session ticket callback support, if available,
  * should be used.  */
 #undef PR_USE_OPENSSL_SSL_SESSION_TICKET_CALLBACK

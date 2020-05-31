@@ -16223,15 +16223,16 @@ static int tls_ssl_set_psks(SSL *ssl) {
 }
 
 static int tls_ssl_set_options(SSL *ssl) {
-  SSL_clear_options(ssl, SSL_OP_ALLOW_UNSAFE_LEGACY_RENEGOTIATION);
-  SSL_clear_options(ssl, SSL_OP_CIPHER_SERVER_PREFERENCE);
 
 #if OPENSSL_VERSION_NUMBER > 0x009080cfL
+  SSL_clear_options(ssl, SSL_OP_CIPHER_SERVER_PREFERENCE);
+
   /* The OpenSSL team realized that the flag added in 0.9.8l, the
    * SSL3_FLAGS_ALLOW_UNSAFE_LEGACY_RENEGOTIATION flag, was a bad idea.
    * So in later versions, it was changed to a context flag,
    * SSL_OP_ALLOW_UNSAFE_LEGACY_RENEGOTIATION.
    */
+  SSL_clear_options(ssl, SSL_OP_ALLOW_UNSAFE_LEGACY_RENEGOTIATION);
   if (tls_opts & TLS_OPT_ALLOW_CLIENT_RENEGOTIATIONS) {
     int ssl_opts;
 
@@ -16346,7 +16347,9 @@ static int tls_ssl_set_protocol(server_rec *s, SSL *ssl) {
    * This is more convoluted than it should be, because of the expression
    * of enabled protocol versions via OP_NO_ negations, and bitmasking.
    */
+#if OPENSSL_VERSION_NUMBER > 0x000908000L
   SSL_clear_options(ssl, all_proto|disabled_proto);
+#endif
   SSL_set_options(ssl, disabled_proto);
 
   return 0;
@@ -16422,6 +16425,7 @@ static int tls_ssl_set_session_id_context(server_rec *s, SSL *ssl) {
     sizeof(s->sid), ssl);
   SSL_set_session_id_context(ssl, (unsigned char *) &(s->sid), sizeof(s->sid));
 
+#if defined(PR_USE_OPENSSL_SSL_SESSION_SET1_ID_CONTEXT)
   sess = SSL_get_session(ssl);
   if (sess != NULL) {
     pr_trace_msg(trace_channel, 19,
@@ -16430,6 +16434,7 @@ static int tls_ssl_set_session_id_context(server_rec *s, SSL *ssl) {
     SSL_SESSION_set1_id_context(sess, (unsigned char *) &(s->sid),
       sizeof(s->sid));
   }
+#endif
 
   return 0;
 }
@@ -16675,11 +16680,13 @@ static int tls_ssl_set_all(server_rec *s, SSL *ssl) {
     return -1;
   }
 
+#if OPENSSL_VERSION_NUMBER > 0x009080cfL
   /* Note that it is important that we update the SSL with the new SSL_CTX
    * AFTER it has been provisioned.  That way, the new/changed certs in the
    * SSL_CTX will be properly copied/updated in the SSL object.
    */
   ctx = SSL_set_SSL_CTX(ssl, ctx);
+#endif
 
   if (ssl_ctx != NULL) {
     /* Try not to leak memory. */
@@ -17609,7 +17616,9 @@ static int tls_ctx_set_protocol(server_rec *s, SSL_CTX *ctx) {
    * This is more convoluted than it should be, because of the expression
    * of enabled protocol versions via OP_NO_ negations, and bitmasking.
    */
+#if OPENSSL_VERSION_NUMBER > 0x009080cfL
   SSL_CTX_clear_options(ctx, all_proto|disabled_proto);
+#endif
   SSL_CTX_set_options(ctx, disabled_proto);
 
   return 0;
