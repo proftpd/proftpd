@@ -39,8 +39,18 @@ const char *quote_dir(pool *p, char *dir);
 char *sstrcat(char *, const char *, size_t);
 const char *sreplace(pool *, const char *, ...);
 
-char *pdircat(pool *, ...);
-char *pstrcat(pool *, ...);
+char *pdircat(pool *, ...)
+#ifdef __GNUC__
+      __attribute__ ((sentinel));
+#else
+      ;
+#endif
+char *pstrcat(pool *, ...)
+#ifdef __GNUC__
+      __attribute__ ((sentinel));
+#else
+      ;
+#endif
 char *pstrdup(pool *, const char *);
 char *pstrndup(pool *, const char *, size_t);
 
