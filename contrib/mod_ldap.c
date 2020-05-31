@@ -3218,7 +3218,7 @@ static int ldap_mod_init(void) {
 
         for (i = 0; api_info.ldapai_extensions[i]; i++) {
           feats = pstrcat(tmp_pool, feats, i != 0 ? ", " : "",
-            api_info.ldapai_extensions[i]);
+            api_info.ldapai_extensions[i], NULL);
           ldap_memfree(api_info.ldapai_extensions[i]);
         }
 
