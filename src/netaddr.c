@@ -590,7 +590,7 @@ static pr_netaddr_t *get_addr_by_ip(pool *p, const char *name,
 static pr_netaddr_t *get_addr_by_name(pool *p, const char *name,
     array_header **addrs) {
   pr_netaddr_t *na = NULL;
-  int res;
+  int res, xerrno;
   struct addrinfo hints, *info = NULL;
 
   memset(&hints, 0, sizeof(hints));
@@ -599,11 +599,13 @@ static pr_netaddr_t *get_addr_by_name(pool *p, const char *name,
   hints.ai_socktype = SOCK_STREAM;
   hints.ai_protocol = IPPROTO_TCP;
 
+  xerrno = errno;
   pr_trace_msg(trace_channel, 7,
     "attempting to resolve '%s' to IPv4 address via DNS", name);
+  errno = xerrno;
   res = pr_getaddrinfo(name, NULL, &hints, &info);
   if (res != 0) {
-    int xerrno = errno;
+    xerrno = errno;
 
     if (res != EAI_SYSTEM) {
 #ifdef PR_USE_IPV6
@@ -766,7 +768,7 @@ static pr_netaddr_t *get_addr_by_name(pool *p, const char *name,
       "attempting to resolve '%s' to IPv6 address via DNS", name);
     res = pr_getaddrinfo(name, NULL, &hints, &info);
     if (res != 0) {
-      int xerrno = errno;
+      xerrno = errno;
 
       if (res != EAI_SYSTEM) {
         pr_trace_msg(trace_channel, 1, "IPv6 getaddrinfo '%s' error: %s",
