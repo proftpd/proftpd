@@ -623,6 +623,7 @@ static pr_netaddr_t *get_addr_by_name(pool *p, const char *name,
 
         pr_trace_msg(trace_channel, 7,
           "attempting to resolve '%s' to IPv6 address via DNS", name);
+        errno = xerrno;
         res = pr_getaddrinfo(name, NULL, &hints, &info);
         if (res != 0) {
           xerrno = errno;
