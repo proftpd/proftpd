@@ -2485,7 +2485,6 @@ int sftp_scp_set_params(pool *p, uint32_t channel_id, array_header *req) {
   pr_getopt_reset();
 
   reqargv = (char **) req->elts;
-
   for (i = 0; i < req->nelts; i++) {
     if (reqargv[i]) {
       pr_trace_msg(trace_channel, 5, "reqargv[%u] = '%s'", i, reqargv[i]);
@@ -2501,7 +2500,7 @@ int sftp_scp_set_params(pool *p, uint32_t channel_id, array_header *req) {
   scp_pool = make_sub_pool(sftp_pool);
   pr_pool_tag(scp_pool, "SSH2 SCP Pool");
 
-  while ((optc = getopt(req->nelts, reqargv, opts)) != -1) {
+  while ((optc = getopt(req->nelts-1, reqargv, opts)) != -1) {
     switch (optc) {
       case 'd':
         scp_opts |= SFTP_SCP_OPT_DIR;
@@ -2535,6 +2534,7 @@ int sftp_scp_set_params(pool *p, uint32_t channel_id, array_header *req) {
   if (reqargv[optind] == NULL) {
     (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
       "'scp' request provided no paths, ignoring");
+    errno = EINVAL;
     return -1;
   }
 
