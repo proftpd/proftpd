@@ -37,6 +37,7 @@ install:
 
 clean:
 	$(RM) *.o libsupp.a
+	$(LIBTOOL) --mode=clean $(RM) `echo $(LIB_OBJS) | sed 's/\.o$\/.lo/g'`
 	test -z $(LIB_DEPS) || (cd libltdl/ && $(MAKE) clean)
 
 depend:
