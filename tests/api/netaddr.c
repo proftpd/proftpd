@@ -1,6 +1,6 @@
 /*
  * ProFTPD - FTP server testsuite
- * Copyright (c) 2008-2017 The ProFTPD Project team
+ * Copyright (c) 2008-2020 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -70,6 +70,7 @@ END_TEST
 
 START_TEST (netaddr_dup_test) {
   pr_netaddr_t *res, *addr;
+  int port;
 
   res = pr_netaddr_dup(NULL, NULL);
   fail_unless(res == NULL, "Failed to handle null arguments");
@@ -81,6 +82,9 @@ START_TEST (netaddr_dup_test) {
 
   addr = pr_netaddr_alloc(p);
   pr_netaddr_set_family(addr, AF_INET);
+
+  port = 7654;
+  pr_netaddr_set_port2(addr, port);
   
   res = pr_netaddr_dup(NULL, addr);
   fail_unless(res == NULL, "Failed to handle null pool");
@@ -90,6 +94,8 @@ START_TEST (netaddr_dup_test) {
   fail_unless(res != NULL, "Failed to dup netaddr: %s", strerror(errno));
   fail_unless(res->na_family == addr->na_family, "Expected family %d, got %d",
     addr->na_family, res->na_family);
+  fail_unless(ntohs(pr_netaddr_get_port(res)) == port,
+    "Expected port %d, got %d", port, ntohs(pr_netaddr_get_port(res)));
 }
 END_TEST
 
