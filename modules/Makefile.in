@@ -74,3 +74,7 @@ depend:
 
 distclean: clean
 	-$(RM) *.gcda *.gcno
+	@dirs="$(SHARED_MODULE_DIRS) $(STATIC_MODULE_DIRS)"; \
+	for dir in $$dirs; do \
+		(cd $(top_builddir)/$$dir/ && $(MAKE) distclean); \
+	done
