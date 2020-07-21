@@ -57,7 +57,7 @@
 
 # rc_version should be incremented for each RC release, and reset back to 1
 # AFTER each stable release.
-%global rc_version			5
+%global rc_version			1
 
 # release_version should be incremented for each maint release, and reset back
 # to 1 BEFORE starting new release cycle.
