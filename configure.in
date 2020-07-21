@@ -4058,9 +4058,9 @@ locale_dir="`eval echo ${localedir}`"
 locale_dir="`eval echo ${locale_dir}`"
 AC_DEFINE_UNQUOTED(PR_LOCALE_DIR, "`eval echo "${locale_dir}"`", [Define the locale directory])
 
-AC_DEFINE_UNQUOTED(PR_RUN_DIR, "`eval echo "${runstatedir}"`", [Define the run directory])
+AC_DEFINE_UNQUOTED(PR_RUN_DIR, "`eval echo "${localstatedir}"`", [Define the run directory])
 AC_DEFINE_UNQUOTED(PR_CONFIG_FILE_PATH, "`eval echo "${sysconfdir}/proftpd.conf"`", [Define the configuration file path])
-AC_DEFINE_UNQUOTED(PR_PID_FILE_PATH, "`eval echo "${runstatedir}/proftpd.pid"`", [Define the PID file path])
+AC_DEFINE_UNQUOTED(PR_PID_FILE_PATH, "`eval echo "${localstatedir}/proftpd.pid"`", [Define the PID file path])
 
 prefix="$pr_saved_prefix"
 exec_prefix="$pr_saved_exec_prefix"
