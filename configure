@@ -25116,7 +25116,7 @@ _ACEOF
 
 
 cat >>confdefs.h <<_ACEOF
-#define PR_RUN_DIR "`eval echo "${runstatedir}"`"
+#define PR_RUN_DIR "`eval echo "${localstatedir}"`"
 _ACEOF
 
 
@@ -25126,7 +25126,7 @@ _ACEOF
 
 
 cat >>confdefs.h <<_ACEOF
-#define PR_PID_FILE_PATH "`eval echo "${runstatedir}/proftpd.pid"`"
+#define PR_PID_FILE_PATH "`eval echo "${localstatedir}/proftpd.pid"`"
 _ACEOF
 
 
