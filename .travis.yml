@@ -1,5 +1,5 @@
 env:
-  - PACKAGE_VERSION=1.3.7a
+  - PACKAGE_VERSION=1.3.7b
 
 language: c
 
