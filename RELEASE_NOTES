@@ -6,6 +6,11 @@ This file contains a description of the major changes to ProFTPD for the
 releases.  More information on these changes can be found in the NEWS and
 ChangeLog files.
 
+1.3.6e
+---------
+  + Fixed null pointer deference in mod_sftp when using SCP incorrectly
+    (Issue #1043).
+
 1.3.6d
 ---------
   + Fixed issue with FTPS uploads of large files using TLSv1.3 (Issue #959).
