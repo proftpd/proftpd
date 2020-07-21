@@ -6,7 +6,7 @@ Status
 [![Build Status](https://travis-ci.org/proftpd/proftpd.svg?branch=1.3.6)](https://travis-ci.org/proftpd/proftpd)
 [![Coverage Status](https://coveralls.io/repos/proftpd/proftpd/badge.svg?branch=1.3.6&service=github)](https://coveralls.io/github/proftpd/proftpd?branch=1.3.6)
 [![Coverity Scan Status](https://scan.coverity.com/projects/198/badge.svg)](https://scan.coverity.com/projects/198)
-[![Release](https://img.shields.io/badge/release-1.3.6-brightgreen.svg)](https://github.com/proftpd/proftpd/releases/tag/v1.3.6)
+[![Release](https://img.shields.io/badge/release-1.3.6e-brightgreen.svg)](https://github.com/proftpd/proftpd/releases/tag/v1.3.6e)
 [![License](https://img.shields.io/badge/license-GPL-brightgreen.svg)](https://img.shields.io/badge/license-GPL-brightgreen.svg)
 
 Introduction
