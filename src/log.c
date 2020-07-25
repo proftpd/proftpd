@@ -65,7 +65,6 @@ static int fd_set_block(int fd) {
 #endif /* PR_USE_NONBLOCKING_LOG_OPEN */
 
 int pr_log_openfile(const char *log_file, int *log_fd, mode_t log_mode) {
-  int res;
   pool *tmp_pool = NULL;
   char *ptr = NULL, *lf;
   unsigned char have_stat = FALSE, *allow_log_symlinks = NULL;
@@ -272,7 +271,7 @@ int pr_log_openfile(const char *log_file, int *log_fd, mode_t log_mode) {
     pr_log_debug(DEBUG0, "error: unable to stat %s (fd %d): %s", lf, *log_fd,
       strerror(xerrno));
 
-    close(*log_fd);
+    (void) close(*log_fd);
     *log_fd = -1;
     destroy_pool(tmp_pool);
 
@@ -285,7 +284,7 @@ int pr_log_openfile(const char *log_file, int *log_fd, mode_t log_mode) {
 
     pr_log_debug(DEBUG0, "error: unable to use %s: %s", lf, strerror(xerrno));
 
-    close(*log_fd);
+    (void) close(*log_fd);
     *log_fd = -1;
     destroy_pool(tmp_pool);
 
@@ -295,6 +294,8 @@ int pr_log_openfile(const char *log_file, int *log_fd, mode_t log_mode) {
 
   /* Find a usable fd for the just-opened log fd. */
   if (*log_fd <= STDERR_FILENO) {
+    int res;
+
     res = pr_fs_get_usable_fd(*log_fd);
     if (res < 0) {
       pr_log_debug(DEBUG0, "warning: unable to find good fd for logfd %d: %s",

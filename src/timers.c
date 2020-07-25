@@ -255,8 +255,6 @@ static void set_sig_alarm(void) {
 }
 
 void handle_alarm(void) {
-  int new_timeout = 0;
-
   /* We need to adjust for any time that might be remaining on the alarm,
    * in case we were called in order to change alarm durations.  Note
    * that rapid-fire calling of this function will probably screw
@@ -272,7 +270,7 @@ void handle_alarm(void) {
     nalarms = 0;
 
     if (!alarms_blocked) {
-      int alarm_elapsed;
+      int alarm_elapsed, new_timeout;
       time_t now;
 
       /* Clear any pending ALRM signals. */

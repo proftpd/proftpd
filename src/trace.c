@@ -97,7 +97,6 @@ static int trace_write(const char *channel, int level, const char *msg,
   pool *tmp_pool;
   char buf[TRACE_BUFFER_SIZE];
   size_t buflen = 0, len = 0;
-  struct tm *tm;
   int use_conn_ips = FALSE;
 
   if (trace_logfd < 0) {
@@ -109,6 +108,8 @@ static int trace_write(const char *channel, int level, const char *msg,
   pr_pool_tag(tmp_pool, "Trace message pool");
 
   if (trace_opts & PR_TRACE_OPT_USE_TIMESTAMP) {
+    struct tm *tm;
+
     if (trace_opts & PR_TRACE_OPT_USE_TIMESTAMP_MILLIS) {
       struct timeval now;
       unsigned long millis;

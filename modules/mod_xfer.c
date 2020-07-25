@@ -1761,7 +1761,7 @@ MODRET xfer_pre_appe(cmd_rec *cmd) {
 MODRET xfer_stor(cmd_rec *cmd) {
   const char *path;
   char *lbuf;
-  int bufsz, len, xerrno = 0, res;
+  int bufsz, len, xerrno = 0;
   off_t nbytes_stored, nbytes_max_store = 0;
   unsigned char have_limit = FALSE;
   struct stat st;
@@ -2039,6 +2039,8 @@ MODRET xfer_stor(cmd_rec *cmd) {
     (unsigned long) bufsz);
 
   while ((len = pr_data_xfer(lbuf, bufsz)) > 0) {
+    int res;
+
     pr_signals_handle();
 
     if (XFER_ABORTED) {
