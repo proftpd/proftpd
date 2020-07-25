@@ -6833,14 +6833,23 @@ static SSL_TICKET_RETURN tls_decrypt_session_ticket_data_upload_cb(SSL *ssl,
     SSL_SESSION *ssl_session, const unsigned char *key_name, size_t key_namelen,
     SSL_TICKET_STATUS status, void *user_data) {
   SSL_TICKET_RETURN res;
-  int ssl_version, renew_tickets = TRUE;
+  int renew_tickets = TRUE;
 
-  ssl_version = SSL_SESSION_get_protocol_version(ssl_session);
+  /* Avoid using the given SSL_SESSION pointer unless the status indicates that
+   * that pointer is valid (Issue #1063).
+   */
+
+  if (status != SSL_TICKET_EMPTY &&
+      status != SSL_TICKET_NO_DECRYPT) {
+    int ssl_version;
+
+    ssl_version = SSL_SESSION_get_protocol_version(ssl_session);
 # if defined(TLS1_3_VERSION)
-  if (ssl_version == TLS1_3_VERSION) {
-    pr_trace_msg(trace_channel, 29,
-      "suppressing renewal of TLSv1.3 tickets for data transfers");
-    renew_tickets = FALSE;
+    if (ssl_version == TLS1_3_VERSION) {
+      pr_trace_msg(trace_channel, 29,
+        "suppressing renewal of TLSv1.3 tickets for data transfers");
+      renew_tickets = FALSE;
+    }
   }
 # endif /* TLS1_3_VERSION */
 
