@@ -2869,7 +2869,7 @@ static int write_ext_info_server_sig_algs(struct ssh2_packet *pkt, char **buf,
   char *sig_algs = "";
 
 #if defined(PR_USE_SODIUM)
-  sig_algs = pstrcat(pkt->pool, sig_algs, *sig_algs ? "," : "", "ssh-ec25519",
+  sig_algs = pstrcat(pkt->pool, sig_algs, *sig_algs ? "," : "", "ssh-ed25519",
     NULL);
 #endif /* PR_USE_SODIUM */
 
