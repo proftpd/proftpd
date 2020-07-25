@@ -747,7 +747,6 @@ int pr_ipbind_listen(fd_set *readfds) {
 int pr_ipbind_open(const pr_netaddr_t *addr, unsigned int port,
     conn_t *listen_conn, unsigned char isdefault, unsigned char islocalhost,
     unsigned char open_namebinds) {
-  int res = 0;
   pr_ipbind_t *ipbind = NULL;
 
   if (addr == NULL) {
@@ -762,8 +761,9 @@ int pr_ipbind_open(const pr_netaddr_t *addr, unsigned int port,
     return -1;
   }
 
-  if (listen_conn)
+  if (listen_conn) {
     listen_conn->next = NULL;
+  }
 
   ipbind->ib_listener = ipbind->ib_server->listen = listen_conn;
   ipbind->ib_listener = listen_conn;
@@ -779,11 +779,13 @@ int pr_ipbind_open(const pr_netaddr_t *addr, unsigned int port,
    * - It's the default server (specified via the DefaultServer directive)
    * - It handles connections to the loopback interface
    */
-  if (isdefault)
+  if (isdefault) {
     ipbind_default_server = ipbind;
+  }
 
-  if (islocalhost)
+  if (islocalhost) {
     ipbind_localhost_server = ipbind;
+  }
 
   /* If requested, look for any namebinds for this ipbind, and open them. */
   if (open_namebinds &&
@@ -797,6 +799,8 @@ int pr_ipbind_open(const pr_netaddr_t *addr, unsigned int port,
      */
     namebinds = (pr_namebind_t **) ipbind->ib_namebinds->elts;
     for (i = 0; i < ipbind->ib_namebinds->nelts; i++) {
+      int res;
+
       pr_namebind_t *nb = namebinds[i];
 
       res = pr_namebind_open(nb->nb_name, nb->nb_server->addr,

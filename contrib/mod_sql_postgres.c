@@ -453,7 +453,6 @@ MODRET cmd_open(cmd_rec *cmd) {
 
       if (reason[reason_len-1] == '\n') {
         reason[reason_len-1] = '\0';
-        reason_len--;
       }
 
       sql_log(DEBUG_INFO, "lost connection to database: %s", reason);

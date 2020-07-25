@@ -307,9 +307,10 @@ static int auth_sess_init(void) {
 
 static int do_auth(pool *p, xaset_t *conf, const char *u, char *pw) {
   char *cpw = NULL;
-  config_rec *c;
 
   if (conf != NULL) {
+    config_rec *c;
+
     c = find_config(conf, CONF_PARAM, "UserPassword", FALSE);
     while (c != NULL) {
       pr_signals_handle();
@@ -365,7 +366,7 @@ static void login_failed(pool *p, const char *user) {
   if (res < 0) {
     pr_trace_msg("auth", 3, "AIX loginfailed() error for user '%s', "
       "host '%s', tty '%s', reason %d: %s", user, host, sess_ttyname,
-      AUDIT_FAIL, strerror(errno));
+      AUDIT_FAIL, strerror(xerrno));
   }
 #endif /* HAVE_LOGINFAILED */
 }
@@ -777,9 +778,9 @@ static int is_symlink_path(pool *p, const char *path, size_t pathlen) {
 
   pr_fs_clear_cache2(path);
   res = pr_fsio_lstat(path, &st);
-  if (res < 0) {
-    xerrno = errno;
+  xerrno = errno;
 
+  if (res < 0) {
     pr_log_pri(PR_LOG_WARNING, "error: unable to check %s: %s", path,
       strerror(xerrno));
 
