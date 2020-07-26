@@ -299,7 +299,7 @@ static void set_userauth_methods(void) {
   }
 }
 
-static int setup_env(pool *p, char *user) {
+static int setup_env(pool *p, const char *user) {
   struct passwd *pw;
   config_rec *c;
   int login_acl, i, res, root_revoke = TRUE, show_symlinks = FALSE, xerrno;
@@ -1065,7 +1065,8 @@ static void incr_auth_attempts(const char *user, cmd_rec *pass_cmd) {
 /* Return -1 on error, 0 to continue, and 1 if the authentication succeeded. */
 static int handle_userauth_req(struct ssh2_packet *pkt, char **service) {
   unsigned char *buf;
-  char *orig_user, *user, *method;
+  const char *orig_user, *user;
+  char *method;
   uint32_t buflen;
   cmd_rec *cmd, *user_cmd, *pass_cmd;
   int res, send_userauth_fail = FALSE;
@@ -1078,7 +1079,7 @@ static int handle_userauth_req(struct ssh2_packet *pkt, char **service) {
 
   user_cmd = pr_cmd_alloc(pkt->pool, 2, pstrdup(pkt->pool, C_USER), orig_user);
   user_cmd->cmd_class = CL_AUTH|CL_SSH;
-  user_cmd->arg = orig_user;
+  user_cmd->arg = (char *) orig_user;
 
   pass_cmd = pr_cmd_alloc(pkt->pool, 1, pstrdup(pkt->pool, C_PASS));
   pass_cmd->cmd_class = CL_AUTH|CL_SSH;
