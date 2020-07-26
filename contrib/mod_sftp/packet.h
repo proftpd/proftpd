@@ -99,7 +99,7 @@ int sftp_ssh2_packet_handle(void);
  */
 void sftp_ssh2_packet_handle_debug(struct ssh2_packet *);
 void sftp_ssh2_packet_handle_disconnect(struct ssh2_packet *);
-void sftp_ssh2_packet_handle_ext_info(sruct ssh2_packet *);
+void sftp_ssh2_packet_handle_ext_info(struct ssh2_packet *);
 void sftp_ssh2_packet_handle_ignore(struct ssh2_packet *);
 void sftp_ssh2_packet_handle_unimplemented(struct ssh2_packet *);
 
