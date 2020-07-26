@@ -53,7 +53,10 @@
 
 #include <openssl/err.h>
 #include <openssl/conf.h>
+#include <openssl/bn.h>
 #include <openssl/crypto.h>
+#include <openssl/dh.h>
+#include <openssl/rsa.h>
 #include <openssl/evp.h>
 #include <openssl/ssl.h>
 #include <openssl/ssl3.h>
