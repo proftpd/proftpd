@@ -1,6 +1,6 @@
 /*
  * ProFTPD - FTP server testsuite
- * Copyright (c) 2008-2017 The ProFTPD Project team
+ * Copyright (c) 2008-2020 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -372,11 +372,11 @@ END_TEST
 START_TEST (pdircat_test) {
   char *res, *ok;
 
-  res = pdircat(NULL, 0);
+  res = pdircat(NULL, 0, NULL);
   fail_unless(res == NULL, "Failed to handle null arguments");
   fail_unless(errno == EINVAL, "Failed to set errno to EINVAL");
 
-  res = pdircat(p, 0);
+  res = pdircat(p, 0, NULL);
   fail_unless(res != NULL,
     "Failed to handle empty arguments (expected '', got '%s')", res);
   fail_unless(strcmp(res, "") == 0, "Expected '%s', got '%s'", "", res);
@@ -414,11 +414,11 @@ END_TEST
 START_TEST (pstrcat_test) {
   char *res, *ok;
 
-  res = pstrcat(NULL, 0);
+  res = pstrcat(NULL, 0, NULL);
   fail_unless(res == NULL, "Failed to handle null arguments");
   fail_unless(errno == EINVAL, "Failed to set errno to EINVAL");
 
-  res = pstrcat(p, 0);
+  res = pstrcat(p, 0, NULL);
   fail_unless(res != NULL,
     "Failed to handle empty arguments (expected '', got '%s')", res);
   fail_unless(strcmp(res, "") == 0, "Expected '%s', got '%s'", "", res);
