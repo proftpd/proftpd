@@ -4453,7 +4453,7 @@ const unsigned char *sftp_keys_sign_data(pool *p,
 
 int sftp_keys_verify_pubkey_type(pool *p, unsigned char *pubkey_data,
     uint32_t pubkey_len, enum sftp_key_type_e pubkey_type) {
-  EVP_PKEY *pkey;
+  EVP_PKEY *pkey = NULL;
   int res = FALSE;
   uint32_t len;
 
@@ -4542,7 +4542,10 @@ int sftp_keys_verify_pubkey_type(pool *p, unsigned char *pubkey_data,
       break;
   }
 
-  EVP_PKEY_free(pkey);
+  if (pkey != NULL) {
+    EVP_PKEY_free(pkey);
+  }
+
   return res;
 }
 
