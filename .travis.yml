@@ -69,6 +69,10 @@ install:
   - sudo apt-get install -y tidy
 
 before_script:
+  # Make sure Redis does not require authentication for our tests
+  - sudo sed -e 's/^protected-mode.*/protected-mode no/' /etc/redis/redis.conf > /tmp/redis.conf
+  - sudo mv /tmp/redis.conf /etc/redis/redis.conf
+  - sudo service redis-server restart
   - cd ${TRAVIS_BUILD_DIR}
   - lcov --directory . --zerocounters
 
