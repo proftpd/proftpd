@@ -2849,8 +2849,8 @@ static int write_newkeys_reply(struct ssh2_packet *pkt) {
   return 0;
 }
 
-static int write_ext_info_server_sig_algs(struct ssh2_packet *pkt, char **buf,
-    uint32_t *buflen) {
+static int write_ext_info_server_sig_algs(struct ssh2_packet *pkt,
+    unsigned char **buf, uint32_t *buflen) {
   char *sig_algs = "";
 
 #if defined(PR_USE_SODIUM)
