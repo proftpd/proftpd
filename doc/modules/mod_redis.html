@@ -101,19 +101,19 @@ Example:
   LogFormat file-transfers "%h %l %u %t \"%r\" %s %b"
 
   # Only log to Redis for uploads in this directory
-  <Directory /path/to/inbox>
+  &lt;Directory /path/to/inbox&gt;
     RedisLogOnCommand APPE,STOR,STOU file-transfers
-  </Directory>
+  &lt;/Directory&gt;
 
   # Only log to Redis for downloads from this directory
-  <Directory /path/to/pub>
+  &lt;Directory /path/to/pub&gt;
     RedisLogOnCommand RETR file-transfers
-  </Directory>
+  &lt;/Directory&gt;
 
   # ...but prevent Redis logging in this subdirectory
-  <Directory /path/to/pub/subdir>
+  &lt;Directory /path/to/pub/subdir&gt;
     RedisLogOnCommand none
-  </Directory
+  &lt;/Directory&gt;
 </pre>
 
 <p>
@@ -639,7 +639,7 @@ needed to provide/fill in that timestamp.
 <p>
 <hr>
 <font size=2><b><i>
-&copy; Copyright 2017 The ProFTPD Project<br>
+&copy; Copyright 2017-2020 The ProFTPD Project<br>
  All Rights Reserved<br>
 </i></b></font>
 <hr>
