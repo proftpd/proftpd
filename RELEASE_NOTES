@@ -12,6 +12,8 @@ ChangeLog files.
   + Fixed occasional segfaults with FTPS data transfers using TLSv1.3, when
     session tickets cannot be decrypted (Issue #1063).
 
+  + Implemented support for Redis 6.x AUTH semantics (Issue #1070).
+
 1.3.7a
 ---------
 

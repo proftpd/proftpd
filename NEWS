@@ -19,6 +19,7 @@
 --------------------------------
 - Issue 1063 - FTPS data transfers using TLSv1.3 might segfault when session
   tickets cannot be decrypted.
+- Issue 1070 - Implement support for Redis 6.x AUTH semantics.
 
 1.3.7a - Released 21-Jul-2020
 --------------------------------
