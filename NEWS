@@ -20,6 +20,8 @@
 - Issue 1063 - FTPS data transfers using TLSv1.3 might segfault when session
   tickets cannot be decrypted.
 - Issue 1070 - Implement support for Redis 6.x AUTH semantics.
+- Issue 1068 - Define an OpenSSL API version compatibility macro, currently
+  set to OpenSSL 1.0.0 and later.
 
 1.3.7 - Released 20-Jul-2020
 --------------------------------
