@@ -12,3 +12,12 @@ ChangeLog files.
   + Fixed occasional segfaults with FTPS data transfers using TLSv1.3, when
     session tickets cannot be decrypted (Issue #1063).
 
+
+  + Changed Directives
+
+    RedisServer
+      Redis 6.x changed its AUTH command, due to the Redis ACL system, for
+      supporting multiple users.  Thus the `RedisServer` directive now takes
+      a username, as well as a password.  The Redis server version is auto-
+      detected; the configured username will be ignored for Redis servers
+      older than Redis 6.x.

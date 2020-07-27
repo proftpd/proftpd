@@ -701,10 +701,10 @@ MODRET set_redissentinel(cmd_rec *cmd) {
   return PR_HANDLED(cmd);
 }
 
-/* usage: RedisServer host[:port] [password] [db-index] */
+/* usage: RedisServer host[:port] [username] [password] [db-index] */
 MODRET set_redisserver(cmd_rec *cmd) {
   config_rec *c;
-  char *server, *password = NULL, *db_idx = NULL, *ptr;
+  char *server, *username = NULL, *password = NULL, *db_idx = NULL, *ptr;
   size_t server_len;
   int ctx, port = REDIS_SERVER_DEFAULT_PORT;
 
@@ -741,25 +741,33 @@ MODRET set_redisserver(cmd_rec *cmd) {
   }
 
   if (cmd->argc == 3) {
-    password = cmd->argv[2];
+    username = cmd->argv[2];
+    if (strcmp(username, "") == 0) {
+      username = NULL;
+    }
+  }
+
+  if (cmd->argc == 4) {
+    password = cmd->argv[3];
     if (strcmp(password, "") == 0) {
       password = NULL;
     }
   }
 
-  if (cmd->argc == 4) {
-    db_idx = cmd->argv[3];
+  if (cmd->argc == 5) {
+    db_idx = cmd->argv[4];
     if (strcmp(db_idx, "") == 0) {
       db_idx = NULL;
     }
   }
 
-  c = add_config_param(cmd->argv[0], 4, NULL, NULL, NULL, NULL);
+  c = add_config_param(cmd->argv[0], 5, NULL, NULL, NULL, NULL, NULL);
   c->argv[0] = pstrdup(c->pool, server);
   c->argv[1] = palloc(c->pool, sizeof(int));
   *((int *) c->argv[1]) = port;
-  c->argv[2] = pstrdup(c->pool, password);
-  c->argv[3] = pstrdup(c->pool, db_idx);
+  c->argv[2] = pstrdup(c->pool, username);
+  c->argv[3] = pstrdup(c->pool, password);
+  c->argv[4] = pstrdup(c->pool, db_idx);
 
   ctx = (cmd->config && cmd->config->config_type != CONF_PARAM ?
     cmd->config->config_type : cmd->server->config_type ?
@@ -769,7 +777,8 @@ MODRET set_redisserver(cmd_rec *cmd) {
     /* If we're the "server config" context, set the server now.  This
      * would let mod_redis talk to those servers for e.g. ftpdctl actions.
      */
-    (void) redis_set_server(c->argv[0], port, 0UL, c->argv[2], c->argv[3]);
+    (void) redis_set_server2(c->argv[0], port, 0UL, c->argv[2], c->argv[3],
+      c->argv[4]);
   }
 
   return PR_HANDLED(cmd);
@@ -1084,15 +1093,17 @@ static int redis_sess_init(void) {
 
   c = find_config(main_server->conf, CONF_PARAM, "RedisServer", FALSE);
   if (c != NULL) {
-    const char *server, *password, *db_idx;
+    const char *server, *username, *password, *db_idx;
     int port;
 
     server = c->argv[0];
     port = *((int *) c->argv[1]);
-    password = c->argv[2];
-    db_idx = c->argv[3];
+    username = c->argv[2];
+    password = c->argv[3];
+    db_idx = c->argv[4];
 
-    (void) redis_set_server(server, port, redis_opts, password, db_idx);
+    (void) redis_set_server2(server, port, redis_opts, username, password,
+      db_idx);
   }
 
   c = find_config(main_server->conf, CONF_PARAM, "RedisTimeouts", FALSE);

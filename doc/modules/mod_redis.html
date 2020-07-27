@@ -234,16 +234,16 @@ supports multiple databases, then you <b>will</b> need to use
 <code>RedisServer</code> as well:
 <pre>
   # Use this to configure our password and database
-  RedisServer 127.0.0.1:6379 redisr0cks 2
+  RedisServer 127.0.0.1:6379 redis redisr0cks 2
 
   # And use Sentinels to discover the true address/port
-  RedisSentine 1.2.3.4 5.6.7.8 9.10.11.12
+  RedisSentinel 1.2.3.4 5.6.7.8 9.10.11.12
 </pre>
 
 <p>
 <hr>
 <h3><a name="RedisServer">RedisServer</a></h3>
-<strong>Syntax:</strong> RedisServer <em>server [password] [db-index]</em><br>
+<strong>Syntax:</strong> RedisServer <em>server [username] [password] [db-index]</em><br>
 <strong>Default:</strong> None<br>
 <strong>Context:</strong> server config, <code>&lt;VirtualHost&gt;</code>, <code>&lt;Global&gt;</code><br>
 <strong>Module:</strong> mod_redis<br>
@@ -269,19 +269,20 @@ Alternatively, you can configure a Unix domain socket path using <i>e.g.</i>:
 </pre>
 
 <p>
-An optional <em>password</em> parameter can be provided, for Redis servers
-which are password protected.
+Optional <em>username<em> and <em>password</em> parameters can be provided,
+for Redis servers which are password protected.
 
 <p>
 As of ProFTPD 1.3.7rc1, the optional <em>db-index</em> parameter can be
 provided, for <i>selecting</i> the server-side Redis database by index:
 <pre>
-  RedisServer 1.2.3.4:6379 passwd 2
+  RedisServer 1.2.3.4:6379 user passwd 2
 </pre>
 Connecting to a Redis server without password authentication <i>but</i> still
-selecting the database would be done using the empty string for the password:
+selecting the database would be done using the empty string for the username
+and password:
 <pre>
-  RedisServer 1.2.3.4:6379 "" 2
+  RedisServer 1.2.3.4:6379 "" "" 2
 </pre>
 
 <p>
