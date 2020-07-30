@@ -135,7 +135,8 @@ START_TEST (netaddr_get_addr_test) {
 
   res = pr_netaddr_get_addr(p, name, NULL);
   fail_unless(res == NULL, "Unexpected got address for '%s'", name);
-  fail_unless(errno == ENOENT, "Expected ENOENT (%d), got %s (%d)", ENOENT,
+  fail_unless(errno == ENOENT || errno == EAGAIN,
+    "Expected ENOENT (%d) or EAGAIN (%d), got %s (%d)", ENOENT, EAGAIN,
     strerror(errno), errno);
 
   name = "localhost";
@@ -190,7 +191,8 @@ START_TEST (netaddr_get_addr_test) {
 
   res = pr_netaddr_get_addr(p, name, NULL);
   fail_unless(res == NULL, "Resolved '%s' unexpectedly", name);
-  fail_unless(errno == ENOENT, "Expected ENOENT (%d), got %s (%d)", ENOENT,
+  fail_unless(errno == ENOENT || errno == EAGAIN,
+    "Expected ENOENT (%d) or EAGAIN (%d), got %s (%d)", ENOENT, EAGAIN,
     strerror(errno), errno);
 
 #if defined(PR_USE_IPV6)
