@@ -68,7 +68,7 @@ struct mlinfo {
 };
 
 /* Necessary prototypes */
-static void facts_mlinfobuf_flush(void);
+static int facts_mlinfobuf_flush(void);
 static int facts_sess_init(void);
 
 /* Support functions
@@ -382,7 +382,7 @@ static void facts_mlinfobuf_init(void) {
   mlinfo_buflen = 0;
 }
 
-static void facts_mlinfobuf_add(struct mlinfo *info, int flags) {
+static int facts_mlinfobuf_add(struct mlinfo *info, int flags) {
   char buf[PR_TUNABLE_BUFFER_SIZE];
   size_t buflen;
  
@@ -392,18 +392,24 @@ static void facts_mlinfobuf_add(struct mlinfo *info, int flags) {
    * mlinfo_buf.
    */
   if (buflen >= (mlinfo_bufsz - mlinfo_buflen)) {
-    (void) facts_mlinfobuf_flush();
+
+    /* This can fail, if the client closes its end abruptly. */
+    if (facts_mlinfobuf_flush() < 0) {
+      return -1;
+    }
   }
 
   sstrcat(mlinfo_bufptr, buf, mlinfo_bufsz - mlinfo_buflen);
   mlinfo_bufptr += buflen;
   mlinfo_buflen += buflen;
+
+  return 0;
 }
 
-static void facts_mlinfobuf_flush(void) {
-  if (mlinfo_buflen > 0) {
-    int res;
+static int facts_mlinfobuf_flush(void) {
+  int res = 0, xerrno = 0;
 
+  if (mlinfo_buflen > 0) {
     /* Make sure the ASCII flags are cleared from the session flags,
      * so that the pr_data_xfer() function does not try to perform
      * ASCII translation on this data.
@@ -411,16 +417,21 @@ static void facts_mlinfobuf_flush(void) {
     session.sf_flags &= ~SF_ASCII_OVERRIDE;
 
     res = pr_data_xfer(mlinfo_buf, mlinfo_buflen);
+    xerrno = errno;
+
     if (res < 0 &&
-        errno != 0) {
+        xerrno != 0) {
       pr_log_debug(DEBUG3, MOD_FACTS_VERSION
-        ": error transferring data: [%d] %s", errno, strerror(errno));
+        ": error transferring data: [%d] %s", errno, strerror(xerrno));
     }
 
     session.sf_flags |= SF_ASCII_OVERRIDE;
   }
 
   facts_mlinfobuf_init();
+
+  errno = xerrno;
+  return res;
 }
 
 static int facts_mlinfo_get(struct mlinfo *info, const char *path,
@@ -1355,7 +1366,7 @@ MODRET facts_mlsd(cmd_rec *cmd) {
   mode_t *fake_mode = NULL;
   struct mlinfo info;
   unsigned char *ptr;
-  int flags = 0;
+  int flags = 0, res, succeeded = TRUE;
   DIR *dirh;
   struct dirent *dent;
 
@@ -1521,7 +1532,7 @@ MODRET facts_mlsd(cmd_rec *cmd) {
   facts_mlinfobuf_init();
 
   while ((dent = pr_fsio_readdir(dirh)) != NULL) {
-    int hidden = FALSE, res;
+    int hidden = FALSE, xerrno;
     char *rel_path, *abs_path;
 
     pr_signals_handle();
@@ -1566,13 +1577,21 @@ MODRET facts_mlsd(cmd_rec *cmd) {
      */
     info.path = pr_fs_encode_path(info.pool, dent->d_name);
 
-    facts_mlinfobuf_add(&info, FACTS_MLINFO_FL_APPEND_CRLF);
+    res = facts_mlinfobuf_add(&info, FACTS_MLINFO_FL_APPEND_CRLF);
+    xerrno = errno;
 
     destroy_pool(info.pool);
     info.pool = NULL;
 
     if (XFER_ABORTED) {
-      pr_data_abort(0, 0);
+      pr_data_abort(0, FALSE);
+      succeeded = FALSE;
+      break;
+    }
+
+    if (res < 0) {
+      pr_data_abort(xerrno, FALSE);
+      succeeded = FALSE;
       break;
     }
   }
@@ -1581,13 +1600,28 @@ MODRET facts_mlsd(cmd_rec *cmd) {
 
   if (XFER_ABORTED) {
     pr_data_close2();
-
-  } else {
-    facts_mlinfobuf_flush();
-    pr_data_close2();
-    pr_response_add(R_226, _("Transfer complete"));
+    return PR_ERROR(cmd);
   }
 
+  if (succeeded == FALSE) {
+    return PR_ERROR(cmd);
+  }
+
+  res = facts_mlinfobuf_flush();
+  if (res < 0) {
+    int xerrno = errno;
+
+    if (session.d != NULL &&
+        session.d->outstrm != NULL) {
+      xerrno = PR_NETIO_ERRNO(session.d->outstrm);
+    }
+
+    pr_data_abort(xerrno, FALSE);
+    return PR_ERROR(cmd);
+  }
+
+  pr_data_close2();
+  pr_response_add(R_226, _("Transfer complete"));
   return PR_HANDLED(cmd);
 }
 

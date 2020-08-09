@@ -926,6 +926,71 @@ START_TEST (data_xfer_read_ascii_test) {
 }
 END_TEST
 
+START_TEST (data_xfer_read_ascii_with_abor_test) {
+  int res;
+  char *buf, *expected;
+  size_t bufsz, expected_len;
+  cmd_rec *cmd;
+
+  pr_data_clear_xfer_pool();
+  pr_data_reset();
+
+  bufsz = 1024;
+  buf = palloc(p, bufsz);
+
+  session.d = pr_inet_create_conn(p, -1, NULL, INPORT_ANY, FALSE);
+  fail_unless(session.d != NULL, "Failed to create conn: %s", strerror(errno));
+
+  /* read ASCII data */
+  session.xfer.direction = PR_NETIO_IO_RD;
+  session.xfer.p = make_sub_pool(p);
+  session.xfer.bufsize = 1024;
+
+  /* Note: this string comes from the data_read_cb() we register with our
+   * DATA stream callback.
+   */
+  expected = "Hello,\n World!\n";
+  expected_len = strlen(expected);
+
+  res = data_open_streams(session.d, PR_NETIO_STRM_DATA);
+  fail_unless(res == 0, "Failed to open streams on session.d: %s",
+    strerror(errno));
+
+  session.c = pr_inet_create_conn(p, -1, NULL, INPORT_ANY, FALSE);
+  fail_unless(session.c != NULL, "Failed to create conn: %s", strerror(errno));
+
+  res = data_open_streams(session.c, PR_NETIO_STRM_CTRL);
+  fail_unless(res == 0, "Failed to open streams on session.c: %s",
+    strerror(errno));
+
+  mark_point();
+  pr_ascii_ftp_reset();
+  session.xfer.buf = pcalloc(p, session.xfer.bufsize);
+  session.xfer.buflen = 0;
+
+  mark_point();
+
+  cmd = pr_cmd_alloc(p, 1, pstrdup(p, "abor"));
+  tests_stubs_set_next_cmd(cmd);
+
+  pr_ascii_ftp_reset();
+  session.xfer.buf = pcalloc(p, session.xfer.bufsize);
+  session.xfer.buflen = 0;
+
+  session.sf_flags |= SF_ASCII;
+  res = pr_data_xfer(buf, bufsz);
+  session.sf_flags &= ~SF_ASCII;
+
+  fail_unless(res == (int) expected_len, "Expected %lu, got %d",
+    (unsigned long) expected_len, res);
+  fail_unless(session.xfer.buflen == 0,
+    "Expected session.xfer.buflen 0, got %lu",
+    (unsigned long) session.xfer.buflen);
+  fail_unless(strncmp(buf, expected, expected_len) == 0,
+    "Expected '%s', got '%.100s'", expected, buf);
+}
+END_TEST
+
 START_TEST (data_xfer_write_ascii_test) {
   int res;
   char *buf, *ascii_buf;
@@ -1065,6 +1130,62 @@ START_TEST (data_xfer_write_ascii_test) {
 }
 END_TEST
 
+START_TEST (data_xfer_write_ascii_with_abor_test) {
+  int res;
+  char *buf, *ascii_buf;
+  size_t buflen, ascii_buflen;
+  cmd_rec *cmd;
+
+  pr_data_clear_xfer_pool();
+  pr_data_reset();
+
+  buf = "Hello,\n World\n";
+  buflen = strlen(buf);
+
+  ascii_buf = "Hello,\r\n World\r\n";
+  ascii_buflen = strlen(ascii_buf);
+
+  session.d = pr_inet_create_conn(p, -1, NULL, INPORT_ANY, FALSE);
+  fail_unless(session.d != NULL, "Failed to create conn: %s", strerror(errno));
+
+  /* write ASCII data */
+  session.xfer.direction = PR_NETIO_IO_WR;
+  session.xfer.p = make_sub_pool(p);
+  session.xfer.buflen = 1024;
+  session.xfer.buf = pcalloc(p, session.xfer.buflen);
+
+  res = data_open_streams(session.d, PR_NETIO_STRM_DATA);
+  fail_unless(res == 0, "Failed to open streams on session.d: %s",
+    strerror(errno));
+
+  session.c = pr_inet_create_conn(p, -1, NULL, INPORT_ANY, FALSE);
+  fail_unless(session.c != NULL, "Failed to create conn: %s", strerror(errno));
+
+  res = data_open_streams(session.c, PR_NETIO_STRM_CTRL);
+  fail_unless(res == 0, "Failed to open streams on session.c: %s",
+    strerror(errno));
+
+  mark_point();
+
+  cmd = pr_cmd_alloc(p, 1, pstrdup(p, "abor"));
+  tests_stubs_set_next_cmd(cmd);
+
+  pr_ascii_ftp_reset();
+  session.xfer.buflen = 1024;
+  session.xfer.buf = pcalloc(p, session.xfer.buflen);
+
+  session.sf_flags |= SF_ASCII_OVERRIDE;
+  res = pr_data_xfer(buf, buflen);
+  session.sf_flags &= ~SF_ASCII_OVERRIDE;
+
+  fail_unless(res == (int) buflen, "Expected %lu, got %d",
+    (unsigned long) buflen, res);
+  fail_unless(session.xfer.buflen == ascii_buflen,
+    "Expected session.xfer.buflen %lu, got %lu", (unsigned long) ascii_buflen,
+    (unsigned long) session.xfer.buflen);
+}
+END_TEST
+
 Suite *tests_get_data_suite(void) {
   Suite *suite;
   TCase *testcase;
@@ -1090,7 +1211,14 @@ Suite *tests_get_data_suite(void) {
   tcase_add_test(testcase, data_xfer_read_binary_test);
   tcase_add_test(testcase, data_xfer_write_binary_test);
   tcase_add_test(testcase, data_xfer_read_ascii_test);
+  tcase_add_test(testcase, data_xfer_read_ascii_with_abor_test);
   tcase_add_test(testcase, data_xfer_write_ascii_test);
+  tcase_add_test(testcase, data_xfer_write_ascii_with_abor_test);
+
+  /* Allow a longer timeout on these tests, as they will need a second or
+   * two to actually run through the test itself, plus overhead.
+   */
+  tcase_set_timeout(testcase, 5);
 
   suite_add_tcase(suite, testcase);
   return suite;

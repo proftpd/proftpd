@@ -79,6 +79,20 @@ sub new {
   return $self;
 }
 
+sub read_response {
+  my $self = shift;
+
+  $self->{ftp}->response();
+
+  my $resp_code = $self->response_code();
+
+  if (wantarray()) {
+    return ($resp_code, $self->response_msg());
+  }
+
+  return $resp_code;
+}
+
 sub response_code {
   my $self = shift;
   return $self->{ftp}->code;
@@ -1423,6 +1437,15 @@ sub quote {
       $self->response_msg());
   }
 
+  # Per RFC 959, the ABOR command expects either one or two responses.  If
+  # there is a data transfer in progress, the first response is for the
+  # aborted transfer, the second response is for the ABOR command itself.
+  #
+  # Thus we have to call response() again, for ABOR, to handle this properly.
+  if ($cmd =~ /^abor$/i) {
+    $self->{ftp}->response() if defined ${*{$self->{ftp}}}{'net_ftp_dataconn'};
+  }
+
   if ($code == 4 || $code == 5) {
     croak("Raw command '$cmd' failed: " .  $self->{ftp}->code . ' ' .
       $self->response_msg());
@@ -1431,10 +1454,9 @@ sub quote {
   my $msg = $self->response_msg();
   if (wantarray()) {
     return ($self->{ftp}->code, $msg);
-
-  } else {
-    return $msg;
   }
+
+  return $msg;
 }
 
 sub quote_raw {
