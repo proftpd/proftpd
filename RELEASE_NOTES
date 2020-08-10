@@ -14,6 +14,10 @@ ChangeLog files.
 
   + Implemented support for Redis 6.x AUTH semantics (Issue #1070).
 
+  + Fixed memory use-after-free issue in mod_sftp which can cause unexpected
+    login/authentication issues.
+
+
 1.3.7a
 ---------
 
