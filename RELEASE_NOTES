@@ -12,6 +12,9 @@ ChangeLog files.
   + Fixed occasional segfaults with FTPS data transfers using TLSv1.3, when
     session tickets cannot be decrypted (Issue #1063).
 
+  + Fixed memory use-after-free issue in mod_sftp which can cause unexpected
+    login/authentication issues.
+
   * Set the `OPENSSL_API_COMPAT` API version compatibility macro.  We currently
     set our OpenSSL API version to 1.0.0 and later; code which uses an OpenSSL
     API earlier than 1.0.0 will cause the build to fail.  Use the new
