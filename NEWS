@@ -24,6 +24,8 @@
   set to OpenSSL 1.0.0 and later.
 - Bug 4405 - Memory use-after-free in mod_sftp causes unexpected
   login/authentication issues.
+- Bug 4402 - Inappropriate handling of aborted FTP data transfers causes issues
+  for some FTP clients.
 
 1.3.7 - Released 20-Jul-2020
 --------------------------------
