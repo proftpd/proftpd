@@ -726,11 +726,14 @@ void pr_data_abort(int err, int quiet) {
     true_abort ? "true" : "false");
 
   if (session.d != NULL) {
-    if (true_abort == FALSE) {
-      pr_inet_lingering_close(session.pool, session.d, timeout_linger);
+    if (true_abort) {
+      /* For "true" aborts, we also asynchronously send a 426 response
+       * message via the "lingering abort" functions.
+       */
+      pr_inet_lingering_abort(session.pool, session.d, timeout_linger);
 
     } else {
-      pr_inet_lingering_abort(session.pool, session.d, timeout_linger);
+      pr_inet_lingering_close(session.pool, session.d, timeout_linger);
     }
 
     session.d = NULL;
@@ -748,9 +751,6 @@ void pr_data_abort(int err, int quiet) {
   session.sf_flags &= (SF_ALL^(SF_XFER|SF_PASSIVE|SF_ASCII_OVERRIDE));
   pr_session_set_idle();
 
-  /* Aborts no longer necessary */
-  signal(SIGURG, SIG_IGN);
-
   if (!quiet) {
     char *respcode = R_426;
     char *msg = NULL;
@@ -759,6 +759,15 @@ void pr_data_abort(int err, int quiet) {
     switch (err) {
 
     case 0:
+#ifdef ECONNABORTED
+    case ECONNABORTED:	/* FALLTHROUGH */
+#endif
+#ifdef ECONNRESET
+    case ECONNRESET:	/* FALLTHROUGH */
+#endif
+#ifdef EPIPE
+    case EPIPE:
+#endif
       respcode = R_426;
       msg = _("Data connection closed");
       break;
@@ -768,7 +777,6 @@ void pr_data_abort(int err, int quiet) {
       respcode = R_451;
       msg = _("Unexpected streams hangup");
       break;
-
 #endif
 
 #ifdef EAGAIN
@@ -843,9 +851,6 @@ void pr_data_abort(int err, int quiet) {
 #ifdef ESPIPE
     case ESPIPE:		/* FALLTHROUGH */
 #endif
-#ifdef EPIPE
-    case EPIPE:
-#endif
 #if defined(ECOMM) || defined(EDEADLK) ||  defined(EDEADLOCK) \
 	|| defined(EXFULL) || defined(ENOSR) || defined(EPROTO) \
 	|| defined(ETIME) || defined(EIO) || defined(EFAULT) \
@@ -872,12 +877,6 @@ void pr_data_abort(int err, int quiet) {
 #ifdef ENETRESET
     case ENETRESET:		/* FALLTHROUGH */
 #endif
-#ifdef ECONNABORTED
-    case ECONNABORTED:	/* FALLTHROUGH */
-#endif
-#ifdef ECONNRESET
-    case ECONNRESET:	/* FALLTHROUGH */
-#endif
 #ifdef ETIMEDOUT
     case ETIMEDOUT:
 #endif
@@ -901,8 +900,9 @@ void pr_data_abort(int err, int quiet) {
     pr_log_pri(PR_LOG_NOTICE, "notice: user %s: aborting transfer: %s",
       session.user ? session.user : "(unknown)", msg);
 
-    /* If we are aborting, then a 426 response has already been sent,
-     * and we don't want to add another to the error queue.
+    /* If we are aborting, then a 426 response has already been sent via
+     * pr_inet_lingering_abort(), and we don't want to add another to the
+     * error queue.
      */
     if (true_abort == FALSE) {
       pr_response_add_err(respcode, _("Transfer aborted. %s"), msg ? msg : "");
@@ -922,6 +922,78 @@ void pr_data_abort(int err, int quiet) {
 /* From response.c.  XXX Need to provide these symbols another way. */
 extern pr_response_t *resp_list, *resp_err_list;
 
+static int peek_is_abor_cmd(void) {
+  int fd, res;
+  fd_set rfds;
+  struct timeval tv;
+  ssize_t len;
+  char buf[5];
+
+  tv.tv_sec = 1;
+  tv.tv_usec = 0;
+
+  fd = PR_NETIO_FD(session.c->instrm);
+  pr_trace_msg(trace_channel, 20, "peeking at next data for fd %d", fd);
+
+  FD_ZERO(&rfds);
+  FD_SET(fd, &rfds);
+
+  res = select(fd + 1, &rfds, NULL, NULL, &tv);
+  while (res < 0) {
+    int xerrno = errno;
+
+    if (xerrno == EINTR) {
+      pr_signals_handle();
+      res = select(fd + 1, &rfds, NULL, NULL, &tv);
+      continue;
+    }
+
+    pr_trace_msg(trace_channel, 20,
+      "error waiting for next data on fd %d: %s", fd, strerror(xerrno));
+    return FALSE;
+  }
+
+  if (res == 0) {
+    /* Timed out. */
+    pr_trace_msg(trace_channel, 20, "timed out peeking for data on fd %d", fd);
+    return FALSE;
+  }
+
+  /* If we reach here, the peer must have sent something.  Let's see what it
+   * might be.  Chances are that we received at least 5 bytes, but to be
+   * defensive, we use MSG_WAITALL anyway.  TCP allows for sending one byte
+   * at time, if need be.  The shortest FTP command is 5 bytes, e.g. "CCC\r\n".
+   * ABOR would be 6 bytes, but we do not want to block until we see 6 bytes;
+   * we're peeking opportunistically, and optimistically.
+   */
+  memset(&buf, 0, sizeof(buf));
+  len = recv(fd, buf, sizeof(buf), MSG_PEEK|MSG_WAITALL);
+  while (len < 0) {
+    int xerrno = errno;
+
+    if (xerrno == EINTR) {
+      pr_signals_handle();
+      len = recv(fd, &buf, sizeof(buf), MSG_PEEK|MSG_WAITALL);
+      continue;
+    }
+
+    pr_trace_msg(trace_channel, 20,
+      "error peeking at next data: %s", strerror(xerrno));
+    return FALSE;
+  }
+
+  pr_trace_msg(trace_channel, 20, "peeking at %ld bytes of next data",
+    (long) len);
+  if (strncasecmp(buf, "ABOR\r", len) == 0) {
+    pr_trace_msg(trace_channel, 20, "peeked data probably 'ABOR' command");
+    return TRUE;
+  }
+
+  pr_trace_msg(trace_channel, 20, "peeked data '%.*s' not ABOR command",
+    (int) len, buf);
+  return FALSE;
+}
+
 static void poll_ctrl(void) {
   int res;
 
@@ -933,6 +1005,42 @@ static void poll_ctrl(void) {
   pr_netio_set_poll_interval(session.c->instrm, 0);
   res = pr_netio_poll(session.c->instrm);
   pr_netio_reset_poll_interval(session.c->instrm);
+
+  if (res == 0 &&
+      !(session.sf_flags & SF_ABORT)) {
+
+    /* First, we peek at the data, to see if it is an ABOR command.  Why?
+     *
+     * Consider the case where a client uses the TCP OOB mechanism and
+     * marks the ABOR command with the marker.  In that case, a SIGURG signal
+     * will have been raised, and the SF_ABORT flag set.  The actual "ABOR"
+     * data on the control connection will be read only AFTER the data transfer
+     * has been failed.  This leads the proper ordering of multiple responses
+     * (first for failed transfer, second for successful ABOR) in such cases.
+     *
+     * Now consider the case where a client does NOT use the TCP OOB mechanism,
+     * and only sends the ABOR command.  We want the same behavior in this case
+     * as for the TCP OOB case, BUT now, the SF_ABORT flag has NOT been set at
+     * this point in the flow.  Which means that we might read that "ABOR" text
+     * from the control connection _in the middle_ of the data transfer, which
+     * leads to different behavior, different ordering of responses.
+     *
+     * Thus we cheat here, and only peek at the control connection data.  IFF
+     * it is the "ABOR\r\n" text, then we set the SF_ABORT flag ourselves
+     * here, and preserve the expected semantics (Bug #4402).
+     */
+    if (peek_is_abor_cmd() == TRUE) {
+      pr_trace_msg(trace_channel, 5, "client sent 'ABOR' command during data "
+        "transfer, setting 'aborted' session flag");
+
+      session.sf_flags |= SF_ABORT;
+
+      if (nstrm != NULL) {
+        pr_netio_abort(nstrm);
+        errno = 0;
+      }
+    }
+  }
 
   if (res == 0 &&
       !(session.sf_flags & SF_ABORT)) {
