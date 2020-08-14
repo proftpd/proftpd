@@ -288,7 +288,7 @@ Example:
 <p>
 <hr>
 <h3><a name="TLSCipherSuite">TLSCipherSuite</a></h3>
-<strong>Syntax:</strong> TLSCipherSuite <em>cipher-list</em><br>
+<strong>Syntax:</strong> TLSCipherSuite <em>[protocol] cipher-list</em><br>
 <strong>Default:</strong> DEFAULT:!ADH:!EXPORT:!DES<br>
 <strong>Context:</strong> server config, <code>&lt;VirtualHost&gt;</code>, <code>&lt;Global&gt;</code><br>
 <strong>Module:</strong> mod_tls<br>
@@ -302,6 +302,15 @@ Sets the list of SSL/TLS ciphersuites for use.  Default cipher list is
 <b>Note</b> that <code>mod_tls</code> will automatically <i>prepend</i> the
 configured <em>cipher-list</em> with "!EXPORT", in order to <i>prevent</i> the
 use of the insecure "export grade" ciphers.
+
+<p>
+If the SSL library supports TLSv1.3 (<i>e.g.</i> OpenSSL-1.1.1 and later), the
+<em>protocol specifier</em> "TLSv1.3" can be used to configure the cipher
+suites for that protocol:
+<pre>
+  # Configure TLSv1.3 ciphersuites
+  TLSCipherSuite TLSv1.3 TLS_CHACHA20_POLY1305_SHA256:TLS_AES_256_GCM_SHA384:TLS_AES_128_GCM_SHA256
+</pre>
 
 <p>
 How to put together a <em>cipher list</em> parameter:

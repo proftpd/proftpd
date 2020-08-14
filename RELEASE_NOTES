@@ -30,3 +30,9 @@ ChangeLog files.
       a username, as well as a password.  The Redis server version is auto-
       detected; the configured username will be ignored for Redis servers
       older than Redis 6.x.
+
+    TLSCipherSuite
+      TLSv1.3 ciphersuites have different names, and are configured differently
+      in OpenSSL.  To support configuration of TLSv1.3 ciphersuites, the
+      `TLSCipherSuite` directive takes an optional protocol specifier; see
+      the documentation for details.
