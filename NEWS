@@ -26,6 +26,7 @@
   login/authentication issues.
 - Bug 4402 - Inappropriate handling of aborted FTP data transfers causes issues
   for some FTP clients.
+- Issue 1084 - Implement support for configuring TLSv1.3 ciphersuites.
 
 1.3.7 - Released 20-Jul-2020
 --------------------------------
