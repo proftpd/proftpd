@@ -562,6 +562,11 @@ static unsigned int tls_sscn_mode = TLS_SSCN_MODE_SERVER;
 #define TLS_X509V3_TLS_FEAT_STATUS_REQUEST_V2	{ 0x30, 0x03, 0x02, 0x01, 0x17 }
 
 static char *tls_cipher_suite = NULL;
+#if OPENSSL_VERSION_NUMBER >= 0x10101000L && \
+    defined(TLS1_3_VERSION)
+static char *tlsv13_cipher_suite = NULL;
+#endif /* TLS1_3_VERSION */
+
 static char *tls_ca_file = NULL, *tls_ca_path = NULL, *tls_ca_chain = NULL;
 static char *tls_crl_file = NULL, *tls_crl_path = NULL;
 static char *tls_ec_cert_file = NULL, *tls_ec_key_file = NULL;
@@ -920,6 +925,10 @@ static void tls_reset_state(void) {
   }
 
   tls_cipher_suite = NULL;
+# if OPENSSL_VERSION_NUMBER >= 0x10101000L && \
+     defined(TLS1_3_VERSION)
+  tlsv13_cipher_suite = NULL;
+# endif /* TLS1_3_VERSION */
   tls_crl_file = NULL;
   tls_crl_path = NULL;
   tls_crypto_device = NULL;
@@ -7637,9 +7646,25 @@ static int tls_accept(conn_t *conn, unsigned char on_data) {
           }
 
           case SSL_R_NO_SHARED_CIPHER: {
+# if OPENSSL_VERSION_NUMBER >= 0x10101000L && \
+     defined(TLS1_3_VERSION)
+            if (tlsv13_cipher_suite != NULL) {
+              tls_log("%s: client does not support any cipher from "
+                "'TLSCipherSuite %s' or 'TLSCipherSuite TLSv1.3 %s' "
+                "(see `openssl ciphers` for full list)",
+                msg, tls_cipher_suite, tlsv13_cipher_suite);
+
+            } else {
+              tls_log("%s: client does not support any cipher from "
+                "'TLSCipherSuite %s' (see `openssl ciphers %s` for full list)",
+                msg, tls_cipher_suite, tls_cipher_suite);
+            }
+# else
             tls_log("%s: client does not support any cipher from "
               "'TLSCipherSuite %s' (see `openssl ciphers %s` for full list)",
               msg, tls_cipher_suite, tls_cipher_suite);
+# endif /* TLS1_3_VERSION */
+
             break;
           }
 
@@ -13367,32 +13392,67 @@ MODRET set_tlscertchain(cmd_rec *cmd) {
   return PR_HANDLED(cmd);
 }
 
-/* usage: TLSCipherSuite string */
+/* usage: TLSCipherSuite [protocol] string */
 MODRET set_tlsciphersuite(cmd_rec *cmd) {
   config_rec *c = NULL;
   char *ciphersuite = NULL;
+  int protocol = 0;
   SSL_CTX *ctx;
 
   CHECK_ARGS(cmd, 1);
   CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL);
 
-  ciphersuite = cmd->argv[1];
-  c = add_config_param(cmd->argv[0], 1, NULL);
+  if (cmd->argc-1 == 1) {
+    ciphersuite = cmd->argv[1];
 
-  /* Make sure that EXPORT ciphers cannot be used, per Bug#4163. Note that
-   * this breaks system profiles, so handle them specially.
-   */
-  if (strncmp(ciphersuite, "PROFILE=", 8) == 0) {
+  } else if (cmd->argc-1 == 2) {
+    char *protocol_text;
+
+    protocol_text = cmd->argv[1];
+    if (strcasecmp(protocol_text, "TLSv1.3") == 0) {
+      protocol = TLS_PROTO_TLS_V1_3;
+
+    } else {
+      CONF_ERROR(cmd, pstrcat(cmd->tmp_pool,
+        "unknown/unsupported protocol specifier: ", protocol_text, NULL));
+    }
+
+    ciphersuite = cmd->argv[2];
+  }
+
+  c = add_config_param(cmd->argv[0], 2, NULL, NULL);
+
+  if (protocol == TLS_PROTO_TLS_V1_3) {
     ciphersuite = pstrdup(c->pool, ciphersuite);
 
   } else {
-    ciphersuite = pstrcat(c->pool, "!EXPORT:", ciphersuite, NULL);
+    /* Make sure that EXPORT ciphers cannot be used, per Bug#4163. Note that
+     * this breaks system profiles, so handle them specially.
+     */
+    if (strncmp(ciphersuite, "PROFILE=", 8) == 0) {
+      ciphersuite = pstrdup(c->pool, ciphersuite);
+
+    } else {
+      ciphersuite = pstrcat(c->pool, "!EXPORT:", ciphersuite, NULL);
+    }
   }
 
   /* Check that our construct ciphersuite is acceptable. */
   ctx = SSL_CTX_new(SSLv23_server_method());
   if (ctx != NULL) {
-    if (SSL_CTX_set_cipher_list(ctx, ciphersuite) != 1) {
+    int res = 1;
+
+    if (protocol == TLS_PROTO_TLS_V1_3) {
+#if OPENSSL_VERSION_NUMBER >= 0x10101000L && \
+    defined(TLS1_3_VERSION)
+      res = SSL_CTX_set_ciphersuites(ctx, ciphersuite);
+#endif /* TLS1_3_VERSION */
+
+    } else {
+      res = SSL_CTX_set_cipher_list(ctx, ciphersuite);
+    }
+
+    if (res != 1) {
       CONF_ERROR(cmd, pstrcat(cmd->tmp_pool,
         "unable to use ciphersuite '", ciphersuite, "': ",
         tls_get_errors2(cmd->tmp_pool), NULL));
@@ -13402,6 +13462,9 @@ MODRET set_tlsciphersuite(cmd_rec *cmd) {
   }
 
   c->argv[0] = ciphersuite;
+  c->argv[1] = palloc(c->pool, sizeof(int));
+  *((int *) c->argv[1]) = protocol;
+
   return PR_HANDLED(cmd);
 }
 
@@ -16033,7 +16096,29 @@ static void tls_lookup_all(server_rec *s) {
   }
 
   /* TLSCipherSuite */
-  tls_cipher_suite = get_param_ptr(s->conf, "TLSCipherSuite", FALSE);
+  c = find_config(s->conf, CONF_PARAM, "TLSCipherSuite", FALSE);
+  while (c != NULL) {
+    int protocol;
+
+    pr_signals_handle();
+
+    protocol = *((int *) c->argv[1]);
+
+#if OPENSSL_VERSION_NUMBER >= 0x10101000L && \
+    defined(TLS1_3_VERSION)
+    if (protocol == TLS_PROTO_TLS_V1_3) {
+      tlsv13_cipher_suite = c->argv[0];
+
+    } else {
+      tls_cipher_suite = c->argv[0];
+    }
+#else
+    tls_cipher_suite = c->argv[0];
+#endif /* TLS1_3_VERSION */
+
+    c = find_config_next(c, c->next, CONF_PARAM, "TLSCipherSuite", FALSE);
+  }
+
   if (tls_cipher_suite == NULL) {
     tls_cipher_suite = TLS_DEFAULT_CIPHER_SUITE;
   }
@@ -16045,8 +16130,8 @@ static void tls_lookup_all(server_rec *s) {
   c = find_config(s->conf, CONF_PARAM, "TLSECDHCurve", FALSE);
   if (c != NULL) {
     tls_ecdh_curve = (void *) c->argv[0];
-  } else {
 
+  } else {
     /* Reset the default. */
     tls_ecdh_curve = NULL;
   }
@@ -16180,6 +16265,14 @@ static void tls_lookup_all(server_rec *s) {
 
 static int tls_ssl_set_ciphers(SSL *ssl) {
   SSL_set_cipher_list(ssl, tls_cipher_suite);
+
+#if OPENSSL_VERSION_NUMBER >= 0x10101000L && \
+    defined(TLS1_3_VERSION)
+  if (tlsv13_cipher_suite != NULL) {
+    SSL_set_ciphersuites(ssl, tlsv13_cipher_suite);
+  }
+#endif /* TLS1_3_VERSION */
+
   return 0;
 }
 
@@ -17444,6 +17537,14 @@ static int tls_ctx_set_certs(SSL_CTX *ctx, X509 **dsa_cert, X509 **ec_cert,
 
 static int tls_ctx_set_ciphers(SSL_CTX *ctx) {
   SSL_CTX_set_cipher_list(ctx, tls_cipher_suite);
+
+#if OPENSSL_VERSION_NUMBER >= 0x10101000L && \
+    defined(TLS1_3_VERSION)
+  if (tlsv13_cipher_suite != NULL) {
+    SSL_CTX_set_ciphersuites(ctx, tlsv13_cipher_suite);
+  }
+#endif /* TLS1_3_VERSION */
+
   return 0;
 }
 
@@ -18455,4 +18556,3 @@ module tls_module = {
   /* Module version */
   MOD_TLS_VERSION
 };
-
