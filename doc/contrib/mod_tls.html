@@ -799,6 +799,7 @@ The currently implemented options are:
     initiated by <code>mod_tls</code>, via the
     <a href="#TLSRenegotiate"><code>TLSRenegotiate</code></a> directive, are
     still handled (depending on the OpenSSL version).
+  </li>
 
   <li><code>AllowDotLogin</code><br>
     <p>
@@ -1456,28 +1457,48 @@ the control channel after 4 hours, and on the data channel after one gigabyte
 of transferred data.  The default timeout for a renegotiation is 30 seconds.
 
 <p>
-Use <em>none</em> to disable all renegotiation requirements.
+In OpenSSL 0.9.8l and later, SSL/TLS session renegotiations are automatically
+disabled.  In order to use renegotiations as configured by the
+<code>TLSRenegotiate</code> directive, you must <i>also</i> explicitly allow
+them via:
+<pre>
+  # Allow renegotiations (not recommended; see CVE-2009-3555, CVE-2011-1473)
+  TLSOptions AllowClientRenegotiations
+</pre>
+
+<p>
+The TLSv1.3 protocol does not support renegotiations, but it <i>does</i> support
+updating the session keys, which is the primary goal/function of the
+<code>TLSRenegotiate</code> directive.  Thus using OpenSSL 1.1.1 and later,
+key updates will be requested for control and data sessions for TLSv1.3
+sessions.
+
+<p>
+Use <em>none</em> to explicitly disable all renegotiation requirements.
 
 <p>
 Examples:
 <pre>
-    # Change renegotiations to occur on control channels after 1 hour
-    TLSRenegotiate ctrl 3600
+  # Allow renegotiations
+  TLSOptions AllowClientRenegotiations
 
-    # Change renegotiations to occur on data channels after 500 MB
-    TLSRenegotiate data 512000
+  # Change renegotiations to occur on control channels after 1 hour
+  TLSRenegotiate ctrl 3600
 
-    # Change renegotiations so that they are not required, only requested
-    TLSRenegotiate required off
+  # Change renegotiations to occur on data channels after 500 MB
+  TLSRenegotiate data 512000
 
-    # Change only the timeout for renegotiations to be 5 minutes
-    TLSRenegotiate timeout 300
+  # Change renegotiations so that they are not required, only requested
+  TLSRenegotiate required off
 
-    # Change all of the above renegotiation thresholds using one directive
-    TLSRenegotiate ctrl 3600 data 512000 required off timeout 300
+  # Change only the timeout for renegotiations to be 5 minutes
+  TLSRenegotiate timeout 300
 
-    # To disable renegotiations entirely
-    TLSRenegotiate none
+  # Change all of the above renegotiation thresholds using one directive
+  TLSRenegotiate ctrl 3600 data 512000 required off timeout 300
+
+  # To disable renegotiations entirely
+  TLSRenegotiate none
 </pre>
 
 <p>
