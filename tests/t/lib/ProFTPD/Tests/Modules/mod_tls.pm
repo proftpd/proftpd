@@ -419,6 +419,21 @@ my $TESTS = {
     test_class => [qw(bug forking)],
   },
 
+  tls_config_tlsrenegotiate_ctrl => {
+    order => ++$order,
+    test_class => [qw(bug forking)],
+  },
+
+  tls_config_tlsrenegotiate_download => {
+    order => ++$order,
+    test_class => [qw(bug forking)],
+  },
+
+  tls_config_tlsrenegotiate_upload => {
+    order => ++$order,
+    test_class => [qw(bug forking)],
+  },
+
   tls_sscn_no_args_bug3955 => {
     order => ++$order,
     test_class => [qw(bug forking)],
@@ -11948,6 +11963,503 @@ sub tls_config_tlsusername_bug3899 {
   }
 
   unlink($log_file);
+}
+
+sub tls_config_tlsrenegotiate_ctrl {
+  my $self = shift;
+  my $tmpdir = $self->{tmpdir};
+  my $setup = test_setup($tmpdir, 'tls');
+
+  my $server_cert = File::Spec->rel2abs('t/etc/modules/mod_tls/server-cert.pem');
+  my $ca_cert = File::Spec->rel2abs('t/etc/modules/mod_tls/ca-cert.pem');
+
+  # Number of seconds before renegotiating ctrl session
+  my $ctrl_reneg = 3;
+
+  # Number of KB before renegotiating data session
+  my $data_reneg = 1;
+
+  my $config = {
+    PidFile => $setup->{pid_file},
+    ScoreboardFile => $setup->{scoreboard_file},
+    SystemLog => $setup->{log_file},
+    TraceLog => $setup->{log_file},
+    Trace => 'timer:20 tls:20',
+
+    AuthUserFile => $setup->{auth_user_file},
+    AuthGroupFile => $setup->{auth_group_file},
+
+    IfModules => {
+      'mod_delay.c' => {
+        DelayEngine => 'off',
+      },
+
+      'mod_tls.c' => {
+        TLSEngine => 'on',
+        TLSLog => $setup->{log_file},
+        TLSOptions => 'AllowClientRenegotiations EnableDiags',
+        TLSRequired => 'on',
+        TLSRSACertificateFile => $server_cert,
+        TLSCACertificateFile => $ca_cert,
+
+        TLSRenegotiate => "ctrl $ctrl_reneg data $data_reneg",
+      },
+    },
+  };
+
+  my ($port, $config_user, $config_group) = config_write($setup->{config_file},
+    $config);
+
+  # Open pipes, for use between the parent and child processes.  Specifically,
+  # the child will indicate when it's done with its test by writing a message
+  # to the parent.
+  my ($rfh, $wfh);
+  unless (pipe($rfh, $wfh)) {
+    die("Can't open pipe: $!");
+  }
+
+  require Net::FTPSSL;
+
+  my $ex;
+
+  # Fork child
+  $self->handle_sigchld();
+  defined(my $pid = fork()) or die("Can't fork: $!");
+  if ($pid) {
+    eval {
+      # Give the server a chance to start up
+      sleep(2);
+
+      # Make sure we do not use TLSv1.3 here.
+      my $ssl_opts = {
+        SSL_version => 'TLSv1',
+      };
+
+      my $client = Net::FTPSSL->new('127.0.0.1',
+        Croak => 1,
+        Encryption => 'E',
+        Port => $port,
+        SSL_Client_Certificate => $ssl_opts,
+      );
+
+      unless ($client) {
+        die("Can't connect to FTPS server: " . IO::Socket::SSL::errstr());
+      }
+
+      unless ($client->login($setup->{user}, $setup->{passwd})) {
+        die("Can't login: ", $client->last_message());
+      }
+
+      # Sleep for longer than the ctrl renegotiation time, then use NOOP.
+      if ($ENV{TEST_VERBOSE}) {
+        print STDERR "# Sleeping for ", $ctrl_reneg, " secs\n";
+      }
+      sleep($ctrl_reneg + 1);
+
+      $client->quot('NOOP');
+      $client->quit();
+    };
+    if ($@) {
+      $ex = $@;
+    }
+
+    $wfh->print("done\n");
+    $wfh->flush();
+
+  } else {
+    eval { server_wait($setup->{config_file}, $rfh) };
+    if ($@) {
+      warn($@);
+      exit 1;
+    }
+
+    exit 0;
+  }
+
+  # Stop server
+  server_stop($setup->{pid_file});
+  $self->assert_child_ok($pid);
+
+  eval {
+    if (open(my $fh, "< $setup->{log_file}")) {
+      my $ok = 0;
+
+      while (my $line = <$fh>) {
+        chomp($line);
+
+        if ($line =~ /SSL\/TLS sessions renegotiated: (\d+)/) {
+          my $count = $1;
+
+          if ($ENV{TEST_VERBOSE}) {
+            print STDERR "# $line\n";
+          }
+
+          if ($count == 3) {
+            $ok = 1;
+            last;
+          }
+        }
+      }
+      close($fh);
+
+      $self->assert($ok,
+        test_msg("Did not see expected number of session renegotiations"));
+
+    } else {
+      die("Can't read $setup->{log_file}: $!");
+    }
+  };
+  if ($@) {
+    $ex = $@;
+  }
+
+  test_cleanup($setup->{log_file}, $ex);
+}
+
+sub tls_config_tlsrenegotiate_download {
+  my $self = shift;
+  my $tmpdir = $self->{tmpdir};
+  my $setup = test_setup($tmpdir, 'tls');
+
+  my $server_cert = File::Spec->rel2abs('t/etc/modules/mod_tls/server-cert.pem');
+  my $ca_cert = File::Spec->rel2abs('t/etc/modules/mod_tls/ca-cert.pem');
+
+  # Number of KB before renegotiating data session
+  my $data_reneg = 32;
+
+  # Make a file large enough to trigger the renegotiation
+  my $download_file = File::Spec->rel2abs("$tmpdir/download.dat");
+  if (open(my $fh, "> $download_file")) {
+    print $fh "AbCdEfGhIjKlMnOp" x 32768;
+
+    unless (close($fh)) {
+      die("Can't write $download_file: $!");
+    }
+
+  } else {
+    die("Can't open $download_file: $!");
+  }
+
+  my $test_file = File::Spec->rel2abs("$tmpdir/test.dat");
+
+  # Number of seconds to perform the renegotiation
+  my $reneg_timeout = 2;
+
+  my $config = {
+    PidFile => $setup->{pid_file},
+    ScoreboardFile => $setup->{scoreboard_file},
+    SystemLog => $setup->{log_file},
+    TraceLog => $setup->{log_file},
+    Trace => 'timer:20 tls:20',
+
+    AuthUserFile => $setup->{auth_user_file},
+    AuthGroupFile => $setup->{auth_group_file},
+
+    IfModules => {
+      'mod_delay.c' => {
+        DelayEngine => 'off',
+      },
+
+      'mod_tls.c' => {
+        TLSEngine => 'on',
+        TLSLog => $setup->{log_file},
+        TLSOptions => 'AllowClientRenegotiations EnableDiags NoSessionReuseRequired',
+        TLSRequired => 'on',
+        TLSRSACertificateFile => $server_cert,
+        TLSCACertificateFile => $ca_cert,
+
+        TLSRenegotiate => "data $data_reneg timeout $reneg_timeout",
+      },
+    },
+  };
+
+  my ($port, $config_user, $config_group) = config_write($setup->{config_file},
+    $config);
+
+  # Open pipes, for use between the parent and child processes.  Specifically,
+  # the child will indicate when it's done with its test by writing a message
+  # to the parent.
+  my ($rfh, $wfh);
+  unless (pipe($rfh, $wfh)) {
+    die("Can't open pipe: $!");
+  }
+
+  require Net::FTPSSL;
+
+  my $ex;
+
+  # Fork child
+  $self->handle_sigchld();
+  defined(my $pid = fork()) or die("Can't fork: $!");
+  if ($pid) {
+    eval {
+      # Give the server a chance to start up
+      sleep(2);
+
+      # Make sure we do not use TLSv1.3 here.
+      my $ssl_opts = {
+        SSL_version => 'TLSv1',
+      };
+
+      my $client = Net::FTPSSL->new('127.0.0.1',
+        Croak => 1,
+        Encryption => 'E',
+        Port => $port,
+        SSL_Client_Certificate => $ssl_opts,
+      );
+
+      unless ($client) {
+        die("Can't connect to FTPS server: " . IO::Socket::SSL::errstr());
+      }
+
+      unless ($client->login($setup->{user}, $setup->{passwd})) {
+        die("Can't login: " . $client->last_message());
+      }
+
+      unless ($client->binary()) {
+        die("Can't set binary transfer mode: " . $client->last_message());
+      }
+
+      unless ($client->get($download_file, $test_file)) {
+        die("Can't download '$download_file' to '$test_file': " .
+          $client->last_message());
+      }
+
+      if ($ENV{TEST_VERBOSE}) {
+        print STDERR "# Sleeping for ", $reneg_timeout + 1, " secs\n";
+      }
+
+      # Allow the renegotiation timeout to fire
+      sleep($reneg_timeout + 1);
+
+      $client->quot('NOOP');
+      $client->quit();
+    };
+    if ($@) {
+      $ex = $@;
+    }
+
+    $wfh->print("done\n");
+    $wfh->flush();
+
+  } else {
+    eval { server_wait($setup->{config_file}, $rfh) };
+    if ($@) {
+      warn($@);
+      exit 1;
+    }
+
+    exit 0;
+  }
+
+  # Stop server
+  server_stop($setup->{pid_file});
+  $self->assert_child_ok($pid);
+
+  eval {
+    if (open(my $fh, "< $setup->{log_file}")) {
+      my $ok = 0;
+
+      while (my $line = <$fh>) {
+        chomp($line);
+
+        if ($line =~ /SSL\/TLS sessions renegotiated: (\d+)/) {
+          my $count = $1;
+
+          if ($ENV{TEST_VERBOSE}) {
+            print STDERR "# $line\n";
+          }
+
+          if ($count >= 3) {
+            $ok = 1;
+            last;
+          }
+        }
+      }
+      close($fh);
+
+      $self->assert($ok,
+        test_msg("Did not see expected number of session renegotiations"));
+
+    } else {
+      die("Can't read $setup->{log_file}: $!");
+    }
+  };
+  if ($@) {
+    $ex = $@;
+  }
+
+  test_cleanup($setup->{log_file}, $ex);
+}
+
+sub tls_config_tlsrenegotiate_upload {
+  my $self = shift;
+  my $tmpdir = $self->{tmpdir};
+  my $setup = test_setup($tmpdir, 'tls');
+
+  my $server_cert = File::Spec->rel2abs('t/etc/modules/mod_tls/server-cert.pem');
+  my $ca_cert = File::Spec->rel2abs('t/etc/modules/mod_tls/ca-cert.pem');
+
+  # Number of KB before renegotiating data session
+  my $data_reneg = 32;
+
+  # Make a file large enough to trigger the renegotiation
+  my $test_file = File::Spec->rel2abs("$tmpdir/input.dat");
+  if (open(my $fh, "> $test_file")) {
+    print $fh "AbCdEfGhIjKlMnOp" x 8192;
+
+    unless (close($fh)) {
+      die("Can't write $test_file: $!");
+    }
+
+  } else {
+    die("Can't open $test_file: $!");
+  }
+
+  # Number of seconds to perform the renegotiation
+  my $reneg_timeout = 2;
+
+  my $config = {
+    PidFile => $setup->{pid_file},
+    ScoreboardFile => $setup->{scoreboard_file},
+    SystemLog => $setup->{log_file},
+    TraceLog => $setup->{log_file},
+    Trace => 'timer:20 tls:20',
+
+    AuthUserFile => $setup->{auth_user_file},
+    AuthGroupFile => $setup->{auth_group_file},
+
+    IfModules => {
+      'mod_delay.c' => {
+        DelayEngine => 'off',
+      },
+
+      'mod_tls.c' => {
+        TLSEngine => 'on',
+        TLSLog => $setup->{log_file},
+        TLSOptions => 'AllowClientRenegotiations EnableDiags NoSessionReuseRequired',
+        TLSRequired => 'on',
+        TLSRSACertificateFile => $server_cert,
+        TLSCACertificateFile => $ca_cert,
+
+        TLSRenegotiate => "data $data_reneg timeout $reneg_timeout",
+      },
+    },
+  };
+
+  my ($port, $config_user, $config_group) = config_write($setup->{config_file},
+    $config);
+
+  # Open pipes, for use between the parent and child processes.  Specifically,
+  # the child will indicate when it's done with its test by writing a message
+  # to the parent.
+  my ($rfh, $wfh);
+  unless (pipe($rfh, $wfh)) {
+    die("Can't open pipe: $!");
+  }
+
+  require Net::FTPSSL;
+
+  my $ex;
+
+  # Fork child
+  $self->handle_sigchld();
+  defined(my $pid = fork()) or die("Can't fork: $!");
+  if ($pid) {
+    eval {
+      # Give the server a chance to start up
+      sleep(2);
+
+      # Make sure we do not use TLSv1.3 here.
+      my $ssl_opts = {
+        SSL_version => 'TLSv1',
+      };
+
+      my $client = Net::FTPSSL->new('127.0.0.1',
+        Croak => 1,
+        Encryption => 'E',
+        Port => $port,
+        SSL_Client_Certificate => $ssl_opts,
+      );
+
+      unless ($client) {
+        die("Can't connect to FTPS server: " . IO::Socket::SSL::errstr());
+      }
+
+      unless ($client->login($setup->{user}, $setup->{passwd})) {
+        die("Can't login: " . $client->last_message());
+      }
+
+      unless ($client->put($test_file, 'test.dat')) {
+        die("Can't upload '$test_file' to 'test.dat': " .
+          $client->last_message());
+      }
+
+      if ($ENV{TEST_VERBOSE}) {
+        print STDERR "# Sleeping for ", $reneg_timeout + 1, " secs\n";
+      }
+
+      # Allow the renegotiation timeout to fire
+      sleep($reneg_timeout + 1);
+
+      $client->quot('NOOP');
+      $client->quit();
+    };
+    if ($@) {
+      $ex = $@;
+    }
+
+    $wfh->print("done\n");
+    $wfh->flush();
+
+  } else {
+    eval { server_wait($setup->{config_file}, $rfh) };
+    if ($@) {
+      warn($@);
+      exit 1;
+    }
+
+    exit 0;
+  }
+
+  # Stop server
+  server_stop($setup->{pid_file});
+  $self->assert_child_ok($pid);
+
+  eval {
+    if (open(my $fh, "< $setup->{log_file}")) {
+      my $ok = 0;
+
+      while (my $line = <$fh>) {
+        chomp($line);
+
+        if ($line =~ /SSL\/TLS sessions renegotiated: (\d+)/) {
+          my $count = $1;
+
+          if ($ENV{TEST_VERBOSE}) {
+            print STDERR "# $line\n";
+          }
+
+          if ($count >= 5) {
+            $ok = 1;
+            last;
+          }
+        }
+      }
+      close($fh);
+
+      $self->assert($ok,
+        test_msg("Did not see expected number of session renegotiations"));
+
+    } else {
+      die("Can't read $setup->{log_file}: $!");
+    }
+  };
+  if ($@) {
+    $ex = $@;
+  }
+
+  test_cleanup($setup->{log_file}, $ex);
 }
 
 sub tls_sscn_no_args_bug3955 {

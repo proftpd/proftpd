@@ -604,6 +604,7 @@ static int tls_ctrl_renegotiate_timeout = 14400;
 
 /* Renegotiate data channel on TLS sessions after 1 gigabyte, by default. */
 static off_t tls_data_renegotiate_limit = 1024 * 1024 * 1024;
+static off_t tls_data_renegotiate_current = 0;
 
 /* Timeout given for renegotiations to occur before the TLS session is
  * shutdown.  The default is 30 seconds.
@@ -978,6 +979,8 @@ static void tls_reset_state(void) {
   tls_required_on_auth = 0;
   tls_required_on_ctrl = 0;
   tls_required_on_data = 0;
+
+  tls_data_renegotiate_current = 0;
 }
 
 static void tls_info_cb(const SSL *ssl, int where, int ret) {
@@ -3873,8 +3876,25 @@ static void tls_clean_pkeys(void) {
 static int tls_renegotiate_timeout_cb(CALLBACK_FRAME) {
   if ((tls_flags & TLS_SESS_ON_CTRL) &&
       (tls_flags & TLS_SESS_CTRL_RENEGOTIATING)) {
+    int ctrl_renegotiated = FALSE;
 
-    if (!SSL_renegotiate_pending(ctrl_ssl)) {
+    switch (SSL_version(ctrl_ssl)) {
+# if defined(TLS1_3_VERSION)
+      case TLS1_3_VERSION:
+        if (SSL_get_key_update_type(ctrl_ssl) == SSL_KEY_UPDATE_NONE) {
+          ctrl_renegotiated = TRUE;
+        }
+        break;
+# endif /* TLS1_3_VERSION */
+
+      default:
+        if (SSL_renegotiate_pending(ctrl_ssl) == 0) {
+          ctrl_renegotiated = TRUE;
+        }
+        break;
+    }
+
+    if (ctrl_renegotiated == TRUE) {
       tls_log("%s", "control channel TLS session renegotiated");
       tls_flags &= ~TLS_SESS_CTRL_RENEGOTIATING;
 
@@ -3890,12 +3910,30 @@ static int tls_renegotiate_timeout_cb(CALLBACK_FRAME) {
 
   if ((tls_flags & TLS_SESS_ON_DATA) &&
       (tls_flags & TLS_SESS_DATA_RENEGOTIATING)) {
+    int data_renegotiated = FALSE;
     SSL *ssl;
 
     ssl = (SSL *) pr_table_get(tls_data_wr_nstrm->notes, TLS_NETIO_NOTE, NULL);
-    if (!SSL_renegotiate_pending(ssl)) {
+    switch (SSL_version(ssl)) {
+# if defined(TLS1_3_VERSION)
+      case TLS1_3_VERSION:
+        if (SSL_get_key_update_type(ssl) == SSL_KEY_UPDATE_NONE) {
+          data_renegotiated = TRUE;
+        }
+        break;
+# endif /* TLS1_3_VERSION */
+
+      default:
+        if (SSL_renegotiate_pending(ssl) == 0) {
+          data_renegotiated = TRUE;
+        }
+        break;
+    }
+
+    if (data_renegotiated == TRUE) {
       tls_log("%s", "data channel TLS session renegotiated");
       tls_flags &= ~TLS_SESS_DATA_RENEGOTIATING;
+      tls_data_renegotiate_current = 0;
 
     } else if (tls_renegotiate_required) {
       tls_log("%s", "requested TLS renegotiation timed out on data channel");
@@ -3910,38 +3948,64 @@ static int tls_renegotiate_timeout_cb(CALLBACK_FRAME) {
 }
 
 static int tls_ctrl_renegotiate_cb(CALLBACK_FRAME) {
-
   /* Guard against a timer firing as the SSL session is being torn down. */
   if (ctrl_ssl == NULL) {
     return 0;
   }
 
   if (tls_flags & TLS_SESS_ON_CTRL) {
+    switch (SSL_version(ctrl_ssl)) {
+#if defined(TLS1_3_VERSION)
+      /* If we're a TLSv1.3 session, use SSL_key_update() to request new
+       * session keys; TLSv1.3 does not support renegotiations.
+       */
+      case TLS1_3_VERSION: {
+        if (SSL_get_key_update_type(ctrl_ssl) == SSL_KEY_UPDATE_NONE) {
+          tls_flags |= TLS_SESS_CTRL_RENEGOTIATING;
 
-    if (TRUE
+          tls_log("requesting TLS key updates on control channel "
+            "(%lu sec renegotiation interval)", p1);
+
+          if (SSL_key_update(ctrl_ssl, SSL_KEY_UPDATE_REQUESTED) != 1) {
+            tls_log("error requesting TLS key update on control channel: %s",
+              tls_get_errors());
+          }
+
+        } else {
+          pr_trace_msg(trace_channel, 7,
+            "TLS key update on control channel already in progress");
+        }
+      }
+      break;
+#endif /* TLS1_3_VERSION */
+
+      default: {
 #if OPENSSL_VERSION_NUMBER >= 0x009080cfL
-        /* In OpenSSL-0.9.8l and later, SSL session renegotiations
-         * (both client- and server-initiated) are automatically disabled.
-         * Unless the admin explicitly configured support for
-         * client-initiated renegotiations via the AllowClientRenegotiations
-         * TLSOption, we can't request renegotiations ourselves.
-         */
-        && (tls_opts & TLS_OPT_ALLOW_CLIENT_RENEGOTIATIONS) 
+         /* In OpenSSL-0.9.8l and later, SSL session renegotiations
+          * (both client- and server-initiated) are automatically disabled.
+          * Unless the admin explicitly configured support for
+          * client-initiated renegotiations via the AllowClientRenegotiations
+          * TLSOption, we can't request renegotiations ourselves.
+          */
+        if (tls_opts & TLS_OPT_ALLOW_CLIENT_RENEGOTIATIONS) {
+#else
+        if (TRUE) {
 #endif
-      ) {
-      tls_flags |= TLS_SESS_CTRL_RENEGOTIATING;
+          tls_flags |= TLS_SESS_CTRL_RENEGOTIATING;
 
-      tls_log("requesting TLS renegotiation on control channel "
-        "(%lu sec renegotiation interval)", p1);
-      SSL_renegotiate(ctrl_ssl);
-      /* SSL_do_handshake(ctrl_ssl); */
-  
-      pr_timer_add(tls_renegotiate_timeout, -1, &tls_module,
-        tls_renegotiate_timeout_cb, "SSL/TLS renegotiation");
+          tls_log("requesting TLS renegotiation on control channel "
+            "(%lu sec renegotiation interval)", p1);
 
-      /* Restart the timer. */
-      return 1;
+          if (SSL_renegotiate(ctrl_ssl) != 1) {
+            tls_log("error requesting TLS renegotiation on control channel: %s",
+              tls_get_errors());
+          }
+        }
+      }
     }
+
+    /* Restart the timer. */
+    return 1;
   }
 
   return 0;
@@ -11763,6 +11827,7 @@ static int tls_netio_close_cb(pr_netio_stream_t *nstrm) {
       tls_end_sess(ssl, session.d, 0);
       tls_data_netio = NULL;
       tls_flags &= ~TLS_SESS_ON_DATA;
+      tls_data_renegotiate_current = 0;
     }
   }
 
@@ -11801,6 +11866,8 @@ static pr_netio_stream_t *tls_netio_open_cb(pr_netio_stream_t *nstrm, int fd,
     }
 
   } else if (nstrm->strm_type == PR_NETIO_STRM_DATA) {
+    tls_data_renegotiate_current = 0;
+
     if (nstrm->strm_mode == PR_NETIO_IO_RD) {
       tls_data_rd_nstrm = nstrm;
     }
@@ -11960,6 +12027,75 @@ static int tls_netio_postopen_cb(pr_netio_stream_t *nstrm) {
   return 0;
 }
 
+static void tls_data_renegotiate(SSL *ssl) {
+#if OPENSSL_VERSION_NUMBER > 0x000907000L
+  if (tls_flags & TLS_SESS_DATA_RENEGOTIATING) {
+    return;
+  }
+
+  tls_data_renegotiate_current = session.xfer.total_bytes;
+
+  if (tls_data_renegotiate_limit > 0 &&
+      tls_data_renegotiate_current >= tls_data_renegotiate_limit) {
+
+    switch (SSL_version(ssl)) {
+# if defined(TLS1_3_VERSION)
+      /* If we're a TLSv1.3 session, use SSL_key_update() to request new
+       * session keys; TLSv1.3 does not support renegotiations.
+       */
+      case TLS1_3_VERSION: {
+        if (SSL_get_key_update_type(ctrl_ssl) == SSL_KEY_UPDATE_NONE) {
+          tls_flags |= TLS_SESS_DATA_RENEGOTIATING;
+
+          tls_log("requesting TLS key updates on data channel "
+            "(%" PR_LU " KB data limit)",
+            (pr_off_t) (tls_data_renegotiate_limit / 1024));
+
+          if (SSL_key_update(ssl, SSL_KEY_UPDATE_REQUESTED) != 1) {
+            tls_log("error requesting TLS key update on data channel: %s",
+              tls_get_errors());
+          }
+
+        } else {
+          pr_trace_msg(trace_channel, 7,
+            "TLS key update on data channel already in progress");
+        }
+      }
+      break;
+# endif /* TLS1_3_VERSION */
+
+      default: {
+#if OPENSSL_VERSION_NUMBER >= 0x009080cfL
+        /* In OpenSSL-0.9.8l and later, SSL session renegotiations
+         * (both client- and server-initiated) are automatically disabled.
+         * Unless the admin explicitly configured support for
+         * client-initiated renegotiations via the AllowClientRenegotiations
+         * TLSOption, we can't request renegotiations ourselves.
+         */
+        if (tls_opts & TLS_OPT_ALLOW_CLIENT_RENEGOTIATIONS) {
+# else
+        if (TRUE) {
+#endif
+          tls_flags |= TLS_SESS_DATA_RENEGOTIATING;
+
+          tls_log("requesting TLS renegotiation on data channel "
+            "(%" PR_LU " KB data limit)",
+            (pr_off_t) (tls_data_renegotiate_limit / 1024));
+
+          if (SSL_renegotiate(ssl) != 1) {
+            tls_log("error requesting TLS renegotiation on data channel: %s",
+              tls_get_errors());
+          }
+
+          pr_timer_add(tls_renegotiate_timeout, -1, &tls_module,
+            tls_renegotiate_timeout_cb, "SSL/TLS renegotiation timeout");
+        }
+      }
+    }
+  }
+#endif
+}
+
 static int tls_netio_read_cb(pr_netio_stream_t *nstrm, char *buf,
     size_t buflen) {
   SSL *ssl;
@@ -11978,6 +12114,10 @@ static int tls_netio_read_cb(pr_netio_stream_t *nstrm, char *buf,
     wbio = SSL_get_wbio(ssl);
     wbio_rbytes = BIO_number_read(wbio);
     wbio_wbytes = BIO_number_written(wbio);
+
+    if (nstrm->strm_type == PR_NETIO_STRM_DATA) {
+      tls_data_renegotiate(ssl);
+    }
 
     res = tls_read(ssl, buf, buflen);
     xerrno = errno;
@@ -12121,33 +12261,9 @@ static int tls_netio_write_cb(pr_netio_stream_t *nstrm, char *buf,
     wbio_rbytes = BIO_number_read(wbio);
     wbio_wbytes = BIO_number_written(wbio);
 
-#if OPENSSL_VERSION_NUMBER > 0x000907000L
-    if (tls_data_renegotiate_limit &&
-        session.xfer.total_bytes >= tls_data_renegotiate_limit
-
-#if OPENSSL_VERSION_NUMBER >= 0x009080cfL
-        /* In OpenSSL-0.9.8l and later, SSL session renegotiations
-         * (both client- and server-initiated) are automatically disabled.
-         * Unless the admin explicitly configured support for
-         * client-initiated renegotiations via the AllowClientRenegotiations
-         * TLSOption, we can't request renegotiations ourselves.
-         */
-        && (tls_opts & TLS_OPT_ALLOW_CLIENT_RENEGOTIATIONS)
-#endif
-      ) {
-
-      tls_flags |= TLS_SESS_DATA_RENEGOTIATING;
-
-      tls_log("requesting TLS renegotiation on data channel "
-        "(%" PR_LU " KB data limit)",
-        (pr_off_t) (tls_data_renegotiate_limit / 1024));
-      SSL_renegotiate(ssl);
-      /* SSL_do_handshake(ssl); */
-
-      pr_timer_add(tls_renegotiate_timeout, -1, &tls_module,
-        tls_renegotiate_timeout_cb, "SSL/TLS renegotiation");
+    if (nstrm->strm_type == PR_NETIO_STRM_DATA) {
+      tls_data_renegotiate(ssl);
     }
-#endif
 
     res = tls_write(ssl, buf, buflen);
     xerrno = errno;
