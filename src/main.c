@@ -2102,7 +2102,11 @@ static void show_settings(void) {
 # ifdef PR_USE_OPENSSL_FIPS
     printf("    + OpenSSL support (%s, FIPS enabled)\n", OPENSSL_VERSION_TEXT);
 # else
+#  ifdef LIBRESSL_VERSION_NUMBER
+    printf("    + OpenSSL support (%s, LibreSSL)\n", OPENSSL_VERSION_TEXT);
+#  else
     printf("    + OpenSSL support (%s)\n", OPENSSL_VERSION_TEXT);
+#  endif /* Have LibreSSL */
 # endif /* PR_USE_OPENSSL_FIPS */
 #else
   printf("%s", "    - OpenSSL support\n");
