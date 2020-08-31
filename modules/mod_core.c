@@ -71,6 +71,13 @@ static unsigned long core_max_cmds = 0UL;
 static unsigned int core_max_cmd_interval = 1;
 static time_t core_max_cmd_ts = 0;
 
+/* These are for handling masquerade configs. */
+static int fix_data_listen_addr = 0;
+struct maskips {
+  unsigned int ipUInt;
+  unsigned int maskUInt;
+};
+
 static unsigned long core_exceeded_cmd_rate(cmd_rec *cmd) {
   unsigned long res = 0;
   long over = 0;
@@ -190,6 +197,52 @@ static int core_scrub_scoreboard_cb(CALLBACK_FRAME) {
   pr_scoreboard_scrub();
 
   return 1;
+}
+
+int check_ip_valid(char *address, struct maskips *config) {
+  int maskbit;
+  char *ip, *mask;
+
+  ip = strtok(address, "/");
+  if (ip == NULL) {
+    return FALSE;
+  }
+  
+  mask = strtok(NULL, "\0");
+  if (mask == NULL) {
+    mask = "32";
+  }
+
+  if (inet_pton(AF_INET, ip, &config->ipUInt) != 1) {
+    return FALSE;
+  }
+
+  maskbit = atoi(mask);
+  if (maskbit < 0 || maskbit > 32) {
+    return FALSE;
+  } else {
+    if (maskbit == 0) {
+      config->maskUInt = 0;
+    } else {
+      config->maskUInt = htonl(0xFFFFFFFFU << (32 - maskbit));
+    }
+  }  
+
+  return TRUE;
+}
+
+static int check_data_mask_client(struct maskips *config, const char *remote_ip) {
+  unsigned int remoteIPUInt;
+
+  if (inet_pton(AF_INET, remote_ip, &remoteIPUInt) != 1) {
+    return FALSE;
+  }
+
+  if ((config->ipUInt & config->maskUInt) == (remoteIPUInt & config->maskUInt)) {
+    return TRUE;
+  }
+
+  return FALSE;
 }
 
 MODRET start_ifdefine(cmd_rec *cmd) {
@@ -955,6 +1008,58 @@ MODRET set_masqueradeaddress(cmd_rec *cmd) {
 
   c = add_config_param(cmd->argv[0], 2, (void *) masq_addr, NULL);
   c->argv[1] = pstrdup(c->pool, cmd->argv[1]);
+
+  return PR_HANDLED(cmd);
+}
+
+/* usage: MasqueradeDataAddrAlso on|off */
+MODRET set_masqueradedataaddralso(cmd_rec *cmd) {
+  int var = 0;
+  config_rec *c;
+
+  CHECK_ARGS(cmd, 1);
+  CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL);
+
+  var = get_boolean(cmd, 1);
+  if (var == -1) {
+    CONF_ERROR(cmd, "expected Boolean parameter");
+  }
+ 
+  c = add_config_param(cmd->argv[0], 1, NULL);
+  c->argv[0] = pcalloc(c->pool, sizeof(int));
+  *((int *) c->argv[0]) = var;
+
+  return PR_HANDLED(cmd);
+}
+
+/* usage: MasqueradeIgnoreAddress 1.2.34.56/24 12.12.12.1/30 10.0.0.2 192.168.0.1/32 */
+MODRET set_masqueradeignoreaddress(cmd_rec *cmd) {
+  char *conf_ip = NULL;
+  config_rec *c = NULL;
+  int valid_arg = 0, ptr = 0, i = 0;
+  int argnum = cmd->argc - 1;
+  
+  CHECK_ARGS(cmd, argnum);
+  CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL);
+  
+  c = add_config_param(cmd->argv[0], argnum + 1, NULL);
+  c->argv[0] = pcalloc(c->pool, sizeof(int));
+  *((int *) c->argv[0]) = argnum;
+
+  conf_ip = (char *)malloc(sizeof(char) * 20);
+
+  for (i = 0; i < argnum; i++) {
+    strcpy(conf_ip, (char *) cmd->argv[i + 1]);
+    c->argv[i + 1] = pcalloc(c->pool, sizeof(struct maskips));
+
+    if (check_ip_valid(conf_ip, ((struct maskips *)(c->argv[i + 1]))) == FALSE) {
+      CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "invalid ip address: ",
+        cmd->argv[i + 1], NULL));
+      break;
+    }
+  }
+
+  free(conf_ip);
 
   return PR_HANDLED(cmd);
 }
@@ -3719,6 +3824,44 @@ MODRET core_pasv(cmd_rec *cmd) {
     return PR_ERROR(cmd);
   }
 
+  /* Check for a MasqueradeAddress configuration record, and return that
+   * addr if appropriate.  Note that if TLSMasqueradeAddress is configured AND
+   * this is an FTPS session, TLSMasqueradeAddress will take precedence;
+   * see Bug#3862.
+   */
+  proto = pr_session_get_protocol(0);
+  if (strncmp(proto, "ftps", 5) == 0) {
+    c = find_config(main_server->conf, CONF_PARAM, "TLSMasqueradeAddress",
+      FALSE);
+    if (c != NULL) {
+      addrstr = (char *) pr_netaddr_get_ipstr(c->argv[0]);
+
+    } else {
+      c = find_config(main_server->conf, CONF_PARAM, "MasqueradeAddress",
+        FALSE);
+      if (c != NULL) {
+        if (c->argv[0] != NULL) {
+          addrstr = (char *) pr_netaddr_get_ipstr(c->argv[0]);
+        }
+      }
+    }
+  } else {
+    c = find_config(main_server->conf, CONF_PARAM, "MasqueradeAddress", FALSE);
+    if (c != NULL) {
+      if (c->argv[0] != NULL) {
+        addrstr = (char *) pr_netaddr_get_ipstr(c->argv[0]);
+      }
+    }
+  }
+
+  /* Fixup the address string for the PASV response. */
+  if (addrstr != NULL) {
+    tmp = strrchr(addrstr, ':');
+    if (tmp) {
+      addrstr = tmp + 1;
+    }
+  }
+
   /* If we already have a passive listen data connection open, kill it. */
   if (session.d) {
     pr_inet_close(session.d->pool, session.d);
@@ -3756,6 +3899,28 @@ MODRET core_pasv(cmd_rec *cmd) {
      * is an IPv4 (or IPv4-mapped IPv6) peer.
      */
     bind_addr = pr_netaddr_v6tov4(cmd->pool, session.c->local_addr);
+  }
+
+  /* Verify matching of MasqueradeIgnoreAddress and remote_ip */
+  if (addrstr != NULL) {
+    c = find_config(main_server->conf, CONF_PARAM, "MasqueradeIgnoreAddress", FALSE);
+    if (c != NULL) {
+      int i; 
+      int confc = *((int *) c->argv[0]);
+      const char *remote_ip = NULL;
+
+      remote_ip = pstrdup(session.pool, pr_netaddr_get_ipstr(pr_netaddr_get_sess_remote_addr()));
+
+      for (i = 1; i <= confc; i++) {
+        if (check_data_mask_client((struct maskips *) c->argv[i], remote_ip) == TRUE) {
+          addrstr = (char *) pr_netaddr_get_ipstr(bind_addr);
+          break;
+        } else if (i == confc && fix_data_listen_addr != 0) {
+          bind_addr = pr_netaddr_get_addr(cmd->pool, addrstr, NULL);
+          break;
+        }
+      }
+    }
   }
 
   c = find_config(main_server->conf, CONF_PARAM, "PassivePorts", FALSE);
@@ -3819,43 +3984,14 @@ MODRET core_pasv(cmd_rec *cmd) {
   port = session.data_port = session.d->local_port;
   session.sf_flags |= SF_PASSIVE;
 
-  addrstr = (char *) pr_netaddr_get_ipstr(session.d->local_addr);
+  if (addrstr == NULL) {
+    addrstr = (char *) pr_netaddr_get_ipstr(session.d->local_addr);
 
-  /* Check for a MasqueradeAddress configuration record, and return that
-   * addr if appropriate.  Note that if TLSMasqueradeAddress is configured AND
-   * this is an FTPS session, TLSMasqueradeAddress will take precedence;
-   * see Bug#3862.
-   */
-  proto = pr_session_get_protocol(0);
-  if (strncmp(proto, "ftps", 5) == 0) {
-    c = find_config(main_server->conf, CONF_PARAM, "TLSMasqueradeAddress",
-      FALSE);
-    if (c != NULL) {
-      addrstr = (char *) pr_netaddr_get_ipstr(c->argv[0]);
-
-    } else {
-      c = find_config(main_server->conf, CONF_PARAM, "MasqueradeAddress",
-        FALSE);
-      if (c != NULL) {
-        if (c->argv[0] != NULL) {
-          addrstr = (char *) pr_netaddr_get_ipstr(c->argv[0]);
-        }
-      }
+    /* Fixup the address string for the PASV response. */
+    tmp = strrchr(addrstr, ':');
+    if (tmp) {
+      addrstr = tmp + 1;
     }
-
-  } else {
-    c = find_config(main_server->conf, CONF_PARAM, "MasqueradeAddress", FALSE);
-    if (c != NULL) {
-      if (c->argv[0] != NULL) {
-        addrstr = (char *) pr_netaddr_get_ipstr(c->argv[0]);
-      }
-    }
-  }
-
-  /* Fixup the address string for the PASV response. */
-  tmp = strrchr(addrstr, ':');
-  if (tmp) {
-    addrstr = tmp + 1;
   }
 
   for (tmp = addrstr; *tmp; tmp++) {
@@ -6873,6 +7009,12 @@ static int core_sess_init(void) {
     c = find_config_next(c, c->next, CONF_PARAM, "UnsetEnv", FALSE);
   }
 
+  /* Check for overwrite masquerade address to data listen address */
+  c = find_config(main_server->conf, CONF_PARAM, "MasqueradeDataAddrAlso", FALSE);
+  if (c != NULL) {
+    fix_data_listen_addr = *((int *) c->argv[0]);
+  }
+
   set_server_auth_order();
 
 #ifdef PR_USE_TRACE
@@ -7112,6 +7254,8 @@ static conftable core_conftab[] = {
   { "Include",			set_include,	 		NULL },
   { "IncludeOptions",		set_includeoptions, 		NULL },
   { "MasqueradeAddress",	set_masqueradeaddress,		NULL },
+  { "MasqueradeDataAddrAlso",	set_masqueradedataaddralso,     NULL },
+  { "MasqueradeIgnoreAddress", set_masqueradeignoreaddress,    NULL },
   { "MaxCommandRate",		set_maxcommandrate,		NULL },
   { "MaxConnectionRate",	set_maxconnrate,		NULL },
   { "MaxInstances",		set_maxinstances,		NULL },
