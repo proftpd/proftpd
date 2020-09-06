@@ -1,6 +1,6 @@
 /*
  * ProFTPD - mod_sftp message format
- * Copyright (c) 2008-2019 TJ Saunders
+ * Copyright (c) 2008-2020 TJ Saunders
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -52,7 +52,7 @@ unsigned char *sftp_msg_getbuf(pool *p, size_t sz) {
 }
 
 uint32_t sftp_msg_read_byte2(pool *p, unsigned char **buf, uint32_t *buflen,
-    char *byte) {
+    unsigned char *byte) {
   (void) p;
 
   if (*buflen < sizeof(char)) {
@@ -62,15 +62,16 @@ uint32_t sftp_msg_read_byte2(pool *p, unsigned char **buf, uint32_t *buflen,
     return 0;
   }
 
-  memcpy(byte, *buf, sizeof(char));
-  (*buf) += sizeof(char);
-  (*buflen) -= sizeof(char);
+  memcpy(byte, *buf, sizeof(unsigned char));
+  (*buf) += sizeof(unsigned char);
+  (*buflen) -= sizeof(unsigned char);
 
-  return sizeof(char);
+  return sizeof(unsigned char);
 }
 
-char sftp_msg_read_byte(pool *p, unsigned char **buf, uint32_t *buflen) {
-  char byte = 0;
+unsigned char sftp_msg_read_byte(pool *p, unsigned char **buf,
+    uint32_t *buflen) {
+  unsigned char byte = 0;
   uint32_t len;
 
   len = sftp_msg_read_byte2(p, buf, buflen, &byte);
@@ -84,7 +85,7 @@ char sftp_msg_read_byte(pool *p, unsigned char **buf, uint32_t *buflen) {
 
 uint32_t sftp_msg_read_bool2(pool *p, unsigned char **buf, uint32_t *buflen,
     int *bool) {
-  char byte = 0;
+  unsigned char byte = 0;
   uint32_t len;
 
   (void) p;
@@ -449,7 +450,8 @@ EC_POINT *sftp_msg_read_ecpoint(pool *p, unsigned char **buf, uint32_t *buflen,
 }
 #endif /* PR_USE_OPENSSL_ECC */
 
-uint32_t sftp_msg_write_byte(unsigned char **buf, uint32_t *buflen, char byte) {
+uint32_t sftp_msg_write_byte(unsigned char **buf, uint32_t *buflen,
+    unsigned char byte) {
   uint32_t len = 0;
 
   if (*buflen < sizeof(char)) {
@@ -460,7 +462,7 @@ uint32_t sftp_msg_write_byte(unsigned char **buf, uint32_t *buflen, char byte) {
     SFTP_DISCONNECT_CONN(SFTP_SSH2_DISCONNECT_BY_APPLICATION, NULL);
   }
 
-  len = sizeof(char);
+  len = sizeof(unsigned char);
 
   memcpy(*buf, &byte, len);
   (*buf) += len;
@@ -469,7 +471,8 @@ uint32_t sftp_msg_write_byte(unsigned char **buf, uint32_t *buflen, char byte) {
   return len;
 }
 
-uint32_t sftp_msg_write_bool(unsigned char **buf, uint32_t *buflen, char bool) {
+uint32_t sftp_msg_write_bool(unsigned char **buf, uint32_t *buflen,
+    unsigned char bool) {
   return sftp_msg_write_byte(buf, buflen, bool == 0 ? 0 : 1);
 }
 

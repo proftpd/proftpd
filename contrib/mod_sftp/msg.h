@@ -1,6 +1,6 @@
 /*
  * ProFTPD - mod_sftp message format
- * Copyright (c) 2008-2019 TJ Saunders
+ * Copyright (c) 2008-2020 TJ Saunders
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -27,7 +27,7 @@
 
 #include "mod_sftp.h"
 
-char sftp_msg_read_byte(pool *, unsigned char **, uint32_t *);
+unsigned char sftp_msg_read_byte(pool *, unsigned char **, uint32_t *);
 int sftp_msg_read_bool(pool *, unsigned char **, uint32_t *);
 unsigned char *sftp_msg_read_data(pool *, unsigned char **, uint32_t *, size_t);
 #ifdef PR_USE_OPENSSL_ECC
@@ -43,7 +43,7 @@ char *sftp_msg_read_string(pool *, unsigned char **, uint32_t *);
  * of bytes of the message actually read.  A zero-length return value indicates
  * failure to read the requested data type.
  */
-uint32_t sftp_msg_read_byte2(pool *, unsigned char **, uint32_t *, char *);
+uint32_t sftp_msg_read_byte2(pool *, unsigned char **, uint32_t *, unsigned char *);
 uint32_t sftp_msg_read_bool2(pool *, unsigned char **, uint32_t *, int *);
 uint32_t sftp_msg_read_data2(pool *, unsigned char **, uint32_t *, size_t, unsigned char **);
 #ifdef PR_USE_OPENSSL_ECC
@@ -55,8 +55,8 @@ uint32_t sftp_msg_read_long2(pool *, unsigned char **, uint32_t *, uint64_t *);
 uint32_t sftp_msg_read_mpint2(pool *, unsigned char **, uint32_t *, BIGNUM **);
 uint32_t sftp_msg_read_string2(pool *, unsigned char **, uint32_t *, char **);
 
-uint32_t sftp_msg_write_byte(unsigned char **, uint32_t *, char);
-uint32_t sftp_msg_write_bool(unsigned char **, uint32_t *, char);
+uint32_t sftp_msg_write_byte(unsigned char **, uint32_t *, unsigned char);
+uint32_t sftp_msg_write_bool(unsigned char **, uint32_t *, unsigned char);
 uint32_t sftp_msg_write_data(unsigned char **, uint32_t *,
   const unsigned char *, size_t, int);
 #ifdef PR_USE_OPENSSL_ECC

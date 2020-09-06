@@ -4096,6 +4096,7 @@ if test x"$devel" = xyes ; then
     dnl options.  Check if they are supported.  They will be added to
     dnl CFLAGS if supported.
     PR_CHECK_CC_OPT(Wcomment)
+    PR_CHECK_CC_OPT(Wconstant-conversion)
     PR_CHECK_CC_OPT(Wdangling-else)
     PR_CHECK_CC_OPT(Wdeclaration-after-statement)
     PR_CHECK_CC_OPT(Wduplicated-branches)
