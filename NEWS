@@ -22,6 +22,8 @@
 - Issue 1070 - Implement support for Redis 6.x AUTH semantics.
 - Bug 4405 - Memory use-after-free in mod_sftp causes unexpected
   login/authentication issues.
+- Issue 1079 - prxs fails to detect module-specific configure/Makefile,
+  leading to unexpected module load errors.
 
 1.3.7a - Released 21-Jul-2020
 --------------------------------
