@@ -2139,7 +2139,7 @@ static int sftp_sess_init(void) {
       if (!FIPS_mode_set(1)) { 
         const char *errstr;
 
-        errstr = sftp_crypto_get_errors();
+        errstr = ERR_error_string(ERR_get_error(), NULL);
         (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
           "unable to use FIPS mode: %s", errstr);
         pr_log_pri(PR_LOG_ERR, MOD_SFTP_VERSION ": unable to use FIPS mode: %s",
@@ -2147,10 +2147,9 @@ static int sftp_sess_init(void) {
 
         errno = EACCES;
         return -1;
-
-      } else {
-        pr_log_pri(PR_LOG_NOTICE, MOD_SFTP_VERSION ": FIPS mode enabled");
       }
+
+      pr_log_pri(PR_LOG_NOTICE, MOD_SFTP_VERSION ": FIPS mode enabled");
 
     } else {
       pr_log_pri(PR_LOG_DEBUG, MOD_SFTP_VERSION ": FIPS mode already enabled");

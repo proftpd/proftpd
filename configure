@@ -24125,7 +24125,6 @@ else
 /* end confdefs.h.  */
 
       #include <openssl/crypto.h>
-      #include <openssl/fips.h>
       int main(int argc, char *argv[]) {
       # ifdef OPENSSL_FIPS
         return 0;

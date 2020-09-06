@@ -7095,7 +7095,7 @@ static int tls_set_fips(void) {
     if (!FIPS_mode_set(1)) {
       const char *errstr;
 
-      errstr = tls_get_errors();
+      errstr = ERR_error_string(ERR_get_error(), NULL);
       tls_log("unable to use FIPS mode: %s", errstr);
       pr_log_pri(PR_LOG_ERR, MOD_TLS_VERSION
         ": unable to use FIPS mode: %s", errstr);
