@@ -25181,6 +25181,19 @@ $as_echo "no" >&6; }
    fi
    rm -fr conftest*
 
+    { $as_echo "$as_me:${as_lineno-$LINENO}: checking whether ${CC-cc} accepts -Wconstant-conversion" >&5
+$as_echo_n "checking whether ${CC-cc} accepts -Wconstant-conversion... " >&6; }
+   echo 'void f(){}' > conftest.c
+   if test -z "`${CC-cc} -c -Wconstant-conversion conftest.c 2>&1`"; then
+     { $as_echo "$as_me:${as_lineno-$LINENO}: result: yes" >&5
+$as_echo "yes" >&6; }
+     CFLAGS="$CFLAGS -Wconstant-conversion"
+   else
+     { $as_echo "$as_me:${as_lineno-$LINENO}: result: no" >&5
+$as_echo "no" >&6; }
+   fi
+   rm -fr conftest*
+
     { $as_echo "$as_me:${as_lineno-$LINENO}: checking whether ${CC-cc} accepts -Wdangling-else" >&5
 $as_echo_n "checking whether ${CC-cc} accepts -Wdangling-else... " >&6; }
    echo 'void f(){}' > conftest.c
