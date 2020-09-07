@@ -24,6 +24,8 @@
   login/authentication issues.
 - Issue 1079 - prxs fails to detect module-specific configure/Makefile,
   leading to unexpected module load errors.
+- Issue 1074 - TLS SNI connections to name-based VirtualHosts with
+  TLSCertificateChainFile fail unexpectedly.
 
 1.3.7a - Released 21-Jul-2020
 --------------------------------
