@@ -1263,21 +1263,9 @@ MODRET set_socketoptions(cmd_rec *cmd) {
 }
 
 MODRET set_multilinerfc2228(cmd_rec *cmd) {
-  int bool;
-  config_rec *c;
-
-  CHECK_ARGS(cmd, 1);
-  CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL);
-
-  bool = get_boolean(cmd, 1);
-  if (bool == -1) {
-    CONF_ERROR(cmd, "expected Boolean parameter");
-  }
-
-  c = add_config_param(cmd->argv[0], 1, NULL);
-  c->argv[0] = pcalloc(c->pool, sizeof(int));
-  *((int *) c->argv[0]) = bool;
- 
+  pr_log_pri(PR_LOG_WARNING,
+    "the %s directive has been deprecated, and will be removed in a future "
+    "release.  Please remove it from your config file.", (char *) cmd->argv[0]);
   return PR_HANDLED(cmd);
 }
 
@@ -6779,11 +6767,6 @@ static int core_sess_init(void) {
   unsigned long fs_opts = 0UL;
 
   init_auth();
-
-  c = find_config(main_server->conf, CONF_PARAM, "MultilineRFC2228", FALSE);
-  if (c != NULL) {
-    session.multiline_rfc2228 = *((int *) c->argv[0]);
-  }
 
   /* Start the idle timer. */
 

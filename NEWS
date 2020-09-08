@@ -32,6 +32,7 @@
   leading to unexpected module load errors.
 - Issue 1074 - TLS SNI connections to name-based VirtualHosts with
   TLSCertificateChainFile fail unexpectedly.
+- Issue 1089 - Deprecate the MultilineRFC2228 directive.
 
 1.3.7 - Released 20-Jul-2020
 --------------------------------

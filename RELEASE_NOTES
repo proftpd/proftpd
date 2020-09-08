@@ -21,6 +21,11 @@ ChangeLog files.
     `--disable-openssl-api-compat` configure option to disable use of this
     macro.
 
+  + Deprecated Directives
+
+    MultilineRFC2228
+      This directive has caused more issues unexpectedly, and is not necessary.
+
 
   + Changed Directives
 
