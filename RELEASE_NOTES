@@ -21,10 +21,12 @@ ChangeLog files.
     `--disable-openssl-api-compat` configure option to disable use of this
     macro.
 
+
   + Deprecated Directives
 
     MultilineRFC2228
-      This directive has caused more issues unexpectedly, and is not necessary.
+      This directive has caused many issues unexpectedly, particularly for
+      responses of the FEAT command, and is not necessary.
 
 
   + Changed Directives
