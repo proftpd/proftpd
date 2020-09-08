@@ -81,12 +81,7 @@ static int display_add_line(pool *p, const char *resp_code,
   }
 
   if (prev_msg != NULL) {
-    if (session.multiline_rfc2228) {
-      pr_response_send_raw("%s-%s", resp_code, prev_msg);
-
-    } else {
-      pr_response_send_raw(" %s", prev_msg);
-    }
+    pr_response_send_raw(" %s", prev_msg);
   }
 
   prev_msg = pstrdup(p, resp_msg);
@@ -114,16 +109,11 @@ static int display_flush_lines(pool *p, const char *resp_code, int flags) {
 
   } else {
     if (prev_msg) {
-      if (session.multiline_rfc2228) {
-        pr_response_send_raw("%s-%s", resp_code, prev_msg);
+      if (flags & PR_DISPLAY_FL_NO_EOM) {
+        pr_response_send_raw(" %s", prev_msg);
 
       } else {
-        if (flags & PR_DISPLAY_FL_NO_EOM) {
-          pr_response_send_raw(" %s", prev_msg);
-
-        } else {
-          pr_response_send_raw("%s %s", resp_code, prev_msg);
-        }
+        pr_response_send_raw("%s %s", resp_code, prev_msg);
       }
     }
   }

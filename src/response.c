@@ -186,7 +186,7 @@ void pr_response_flush(pr_response_t **head) {
 
       } else {
         /* RFC2228's multiline responses are required for protected sessions. */
-	if (session.multiline_rfc2228 || session.sp_flags) {
+	if (session.sp_flags) {
           RESPONSE_WRITE_NUM_STR(session.c->outstrm, "%s-%s\r\n", last_numeric,
             resp->msg)
 
