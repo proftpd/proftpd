@@ -7097,10 +7097,6 @@ static SSL_CTX *tls_init_ctx(server_rec *s) {
   }
 #endif /* SSL_OP_CIPHER_SERVER_PREFERENCE */
 
-#if defined(SSL_OP_PRIORITIZE_CHACHA)
-  ssl_opts |= SSL_OP_PRIORITIZE_CHACHA;
-#endif /* SSL_OP_PRIORITIZE_CHACHA */
-
   SSL_CTX_set_options(ctx, ssl_opts);
 
 #if defined(TLS_USE_SESSION_TICKETS)
@@ -16287,10 +16283,6 @@ static int tls_ssl_set_options(SSL *ssl) {
     SSL_set_options(ssl, ssl_opts);
   }
 #endif /* SSL_OP_CIPHER_SERVER_PREFERENCE */
-
-#if defined(SSL_OP_PRIORITIZE_CHACHA)
-  SSL_set_options(ssl, SSL_OP_PRIORITIZE_CHACHA);
-#endif /* SSL_OP_PRIORITIZE_CHACHA */
 
 #if OPENSSL_VERSION_NUMBER > 0x000907000L
   /* Install a callback for logging OpenSSL message information, if requested.
