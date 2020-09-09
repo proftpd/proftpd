@@ -9,6 +9,8 @@ ChangeLog files.
 1.3.8rc1
 ---------
 
+  + Minimum DH parameter size for TLS has been raised from 1024 to 2048.
+
   + Fixed occasional segfaults with FTPS data transfers using TLSv1.3, when
     session tickets cannot be decrypted (Issue #1063).
 
