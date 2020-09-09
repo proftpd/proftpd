@@ -1158,6 +1158,10 @@ static void tls_info_cb(const SSL *ssl, int where, int ret) {
         ssl_state == SSL23_ST_SR_CLNT_HELLO_A) {
 #endif /* OpenSSL-1.1.x and later */
 
+      if (tls_opts & TLS_OPT_ENABLE_DIAGS) {
+        tls_log("[info] %s: %s", str, SSL_state_string_long(ssl));
+      }
+
       /* If we have already completed our initial handshake, then this might
        * a session renegotiation.
        */
@@ -1195,6 +1199,10 @@ static void tls_info_cb(const SSL *ssl, int where, int ret) {
 #if OPENSSL_VERSION_NUMBER >= 0x009080cfL && \
     OPENSSL_VERSION_NUMBER < 0x10100000L
     } else if (ssl_state & SSL_ST_RENEGOTIATE) {
+      if (tls_opts & TLS_OPT_ENABLE_DIAGS) {
+        tls_log("[info] %s: %s", str, SSL_state_string_long(ssl));
+      }
+
       if ((ssl == ctrl_ssl && !tls_ctrl_need_init_handshake) ||
           (ssl != ctrl_ssl && !tls_data_need_init_handshake)) {
 
@@ -1237,11 +1245,20 @@ static void tls_info_cb(const SSL *ssl, int where, int ret) {
 
   } else if (where & SSL_CB_HANDSHAKE_START) {
     if (tls_opts & TLS_OPT_ENABLE_DIAGS) {
-      tls_log("[info] %s: %s", str, SSL_state_string_long(ssl));
+      tls_log("[info] %s: %s (HANDSHAKE_START)", str,
+        SSL_state_string_long(ssl));
     }
 
   } else if (where & SSL_CB_HANDSHAKE_DONE) {
-    if (ssl == ctrl_ssl) {
+    if (tls_opts & TLS_OPT_ENABLE_DIAGS) {
+      tls_log("[info] %s: %s (HANDSHAKE_DONE)", str,
+        SSL_state_string_long(ssl));
+    }
+
+    /* ctrl_ssl is NULL if this is our initial ctrl SSL, and the handshake has
+     * not be completed yet.
+     */
+    if (ctrl_ssl == NULL) {
       if (tls_ctrl_need_init_handshake == FALSE) {
         int reused;
 
@@ -1278,10 +1295,6 @@ static void tls_info_cb(const SSL *ssl, int where, int ret) {
 
     if (tls_flags & ~TLS_SESS_DATA_RENEGOTIATING) {
       tls_flags &= ~TLS_SESS_DATA_RENEGOTIATING;
-    }
-
-    if (tls_opts & TLS_OPT_ENABLE_DIAGS) {
-      tls_log("[info] %s: %s", str, SSL_state_string_long(ssl));
     }
 
   } else if (where & SSL_CB_LOOP) {
@@ -12149,7 +12162,6 @@ static int tls_netio_postopen_cb(pr_netio_stream_t *nstrm) {
 }
 
 static void tls_data_renegotiate(SSL *ssl) {
-#if OPENSSL_VERSION_NUMBER > 0x000907000L
   if (tls_flags & TLS_SESS_DATA_RENEGOTIATING) {
     return;
   }
@@ -12186,35 +12198,22 @@ static void tls_data_renegotiate(SSL *ssl) {
 # endif /* TLS1_3_VERSION */
 
       default: {
-#if OPENSSL_VERSION_NUMBER >= 0x009080cfL
-        /* In OpenSSL-0.9.8l and later, SSL session renegotiations
-         * (both client- and server-initiated) are automatically disabled.
-         * Unless the admin explicitly configured support for
-         * client-initiated renegotiations via the AllowClientRenegotiations
-         * TLSOption, we can't request renegotiations ourselves.
-         */
-        if (tls_opts & TLS_OPT_ALLOW_CLIENT_RENEGOTIATIONS) {
-# else
-        if (TRUE) {
-#endif
-          tls_flags |= TLS_SESS_DATA_RENEGOTIATING;
+        tls_flags |= TLS_SESS_DATA_RENEGOTIATING;
 
-          tls_log("requesting TLS renegotiation on data channel "
-            "(%" PR_LU " KB data limit)",
-            (pr_off_t) (tls_data_renegotiate_limit / 1024));
+        tls_log("requesting TLS renegotiation on data channel "
+          "(%" PR_LU " KB data limit)",
+          (pr_off_t) (tls_data_renegotiate_limit / 1024));
 
-          if (SSL_renegotiate(ssl) != 1) {
-            tls_log("error requesting TLS renegotiation on data channel: %s",
-              tls_get_errors());
-          }
-
-          pr_timer_add(tls_renegotiate_timeout, -1, &tls_module,
-            tls_renegotiate_timeout_cb, "SSL/TLS renegotiation timeout");
+        if (SSL_renegotiate(ssl) != 1) {
+          tls_log("error requesting TLS renegotiation on data channel: %s",
+            tls_get_errors());
         }
+
+        pr_timer_add(tls_renegotiate_timeout, -1, &tls_module,
+          tls_renegotiate_timeout_cb, "SSL/TLS renegotiation timeout");
       }
     }
   }
-#endif
 }
 
 static int tls_netio_read_cb(pr_netio_stream_t *nstrm, char *buf,
