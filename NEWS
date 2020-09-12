@@ -26,6 +26,8 @@
   leading to unexpected module load errors.
 - Issue 1074 - TLS SNI connections to name-based VirtualHosts with
   TLSCertificateChainFile fail unexpectedly.
+- Issue 1106 - TLS SNI can cause mod_quotatab to crash due to null pointer
+  dereferences.
 
 1.3.7a - Released 21-Jul-2020
 --------------------------------
