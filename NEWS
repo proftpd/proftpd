@@ -36,6 +36,8 @@
 - Issue 1067 - Generate new DH parameters for mod_tls, mod_sftp for 1.3.8.
 - Issue 1101 - Update TLS minimum supported DH parameter size to 2048.
 - Issue 811 - Support adding custom key/values to RedisLogOnCommand.
+- Issue 1106 - TLS SNI can cause mod_quotatab to crash due to null pointer
+  dereferences.
 
 1.3.7 - Released 20-Jul-2020
 --------------------------------
