@@ -787,6 +787,7 @@ static int tls_ctx_set_all(server_rec *, SSL_CTX *);
 static int tls_ctx_set_ca_certs(SSL_CTX *);
 static int tls_ctx_set_certs(SSL_CTX *, X509 **, X509 **, X509 **);
 static int tls_ctx_set_crls(SSL_CTX *);
+static int tls_ctx_set_renegotiations(SSL_CTX *);
 static int tls_ctx_set_session_cache(server_rec *, SSL_CTX *);
 static int tls_ctx_set_session_id_context(server_rec *, SSL_CTX *);
 static int tls_ctx_set_session_tickets(SSL_CTX *);
@@ -16602,21 +16603,13 @@ static int tls_ssl_set_options(SSL *ssl) {
    */
   SSL_clear_options(ssl, SSL_OP_ALLOW_UNSAFE_LEGACY_RENEGOTIATION);
   if (tls_opts & TLS_OPT_ALLOW_CLIENT_RENEGOTIATIONS) {
-    int ssl_opts;
-
-    ssl_opts = SSL_get_options(ssl);
-    ssl_opts |= SSL_OP_ALLOW_UNSAFE_LEGACY_RENEGOTIATION;
-    SSL_set_options(ssl, ssl_opts);
+    SSL_set_options(ssl, SSL_OP_ALLOW_UNSAFE_LEGACY_RENEGOTIATION);
   }
 #endif
 
 #if defined(SSL_OP_CIPHER_SERVER_PREFERENCE)
   if (tls_use_server_cipher_preference == TRUE) {
-    int ssl_opts;
-
-    ssl_opts = SSL_get_options(ssl);
-    ssl_opts |= SSL_OP_CIPHER_SERVER_PREFERENCE;
-    SSL_set_options(ssl, ssl_opts);
+    SSL_set_options(ssl, SSL_OP_CIPHER_SERVER_PREFERENCE);
   }
 #endif /* SSL_OP_CIPHER_SERVER_PREFERENCE */
 
@@ -16715,6 +16708,22 @@ static int tls_ssl_set_protocol(server_rec *s, SSL *ssl) {
   SSL_clear_options(ssl, all_proto|disabled_proto);
 #endif
   SSL_set_options(ssl, disabled_proto);
+
+  return 0;
+}
+
+static int tls_ssl_set_renegotiations(SSL *ssl) {
+#if defined(SSL_OP_NO_RENEGOTIATION)
+  if (tls_ctrl_renegotiate_timeout == 0 &&
+      tls_data_renegotiate_limit == 0 &&
+      tls_renegotiate_timeout == 0 &&
+      tls_renegotiate_required == FALSE) {
+    /* If server-requested renegotiations are disabled, reject
+     * client-initiated renegotiations, too.
+     */
+    SSL_set_options(ssl, SSL_OP_NO_RENEGOTIATION);
+  }
+#endif /* SSL_OP_NO_RENEGOTIATION */
 
   return 0;
 }
@@ -17093,6 +17102,10 @@ static int tls_ssl_set_all(server_rec *s, SSL *ssl) {
   }
 
   if (tls_ssl_set_protocol(s, ssl) < 0) {
+    return -1;
+  }
+
+  if (tls_ssl_set_renegotiations(ssl) < 0) {
     return -1;
   }
 
@@ -17931,27 +17944,24 @@ static int tls_ctx_set_next_protocol(SSL_CTX *ctx) {
 
 static int tls_ctx_set_options(SSL_CTX *ctx) {
 #if OPENSSL_VERSION_NUMBER > 0x009080cfL
+# if defined(SSL_OP_CIPHER_SERVER_PREFERENCE)
+  SSL_CTX_clear_options(ctx, SSL_OP_CIPHER_SERVER_PREFERENCE);
+# endif /* SSL_OP_CIPHER_SERVER_PREFERENCE */
+
   /* The OpenSSL team realized that the flag added in 0.9.8l, the
    * SSL3_FLAGS_ALLOW_UNSAFE_LEGACY_RENEGOTIATION flag, was a bad idea.
    * So in later versions, it was changed to a context flag,
    * SSL_OP_ALLOW_UNSAFE_LEGACY_RENEGOTIATION.
    */
+  SSL_CTX_clear_options(ctx, SSL_OP_ALLOW_UNSAFE_LEGACY_RENEGOTIATION);
   if (tls_opts & TLS_OPT_ALLOW_CLIENT_RENEGOTIATIONS) {
-    int ssl_opts;
-
-    ssl_opts = SSL_CTX_get_options(ctx);
-    ssl_opts |= SSL_OP_ALLOW_UNSAFE_LEGACY_RENEGOTIATION;
-    SSL_CTX_set_options(ctx, ssl_opts);
+    SSL_CTX_set_options(ctx, SSL_OP_ALLOW_UNSAFE_LEGACY_RENEGOTIATION);
   }
 #endif
 
 #if defined(SSL_OP_CIPHER_SERVER_PREFERENCE)
   if (tls_use_server_cipher_preference == TRUE) {
-    int ssl_opts;
-
-    ssl_opts = SSL_CTX_get_options(ctx);
-    ssl_opts |= SSL_OP_CIPHER_SERVER_PREFERENCE;
-    SSL_CTX_set_options(ctx, ssl_opts);
+    SSL_CTX_set_options(ctx, SSL_OP_CIPHER_SERVER_PREFERENCE);
   }
 #endif /* SSL_OP_CIPHER_SERVER_PREFERENCE */
 
@@ -18021,6 +18031,22 @@ static int tls_ctx_set_psks(SSL_CTX *ctx) {
     SSL_CTX_set_psk_server_callback(ctx, tls_lookup_psk);
   }
 #endif /* PSK_MAX_PSK_LEN */
+
+  return 0;
+}
+
+static int tls_ctx_set_renegotiations(SSL_CTX *ctx) {
+#if defined(SSL_OP_NO_RENEGOTIATION)
+  if (tls_ctrl_renegotiate_timeout == 0 &&
+      tls_data_renegotiate_limit == 0 &&
+      tls_renegotiate_timeout == 0 &&
+      tls_renegotiate_required == FALSE) {
+    /* If server-requested renegotiations are disabled, reject
+     * client-initiated renegotiations, too.
+     */
+    SSL_CTX_set_options(ctx, SSL_OP_NO_RENEGOTIATION);
+  }
+#endif /* SSL_OP_NO_RENEGOTIATION */
 
   return 0;
 }
@@ -18351,6 +18377,10 @@ static int tls_ctx_set_all(server_rec *s, SSL_CTX *ctx) {
   }
 
   if (tls_ctx_set_protocol(s, ctx) < 0) {
+    return -1;
+  }
+
+  if (tls_ctx_set_renegotiations(ctx) < 0) {
     return -1;
   }
 
