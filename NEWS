@@ -38,6 +38,7 @@
 - Issue 811 - Support adding custom key/values to RedisLogOnCommand.
 - Issue 1106 - TLS SNI can cause mod_quotatab to crash due to null pointer
   dereferences.
+- Issue 1076 - TLS client-initiated renegotiations are supported unexpectedly.
 
 1.3.7 - Released 20-Jul-2020
 --------------------------------
