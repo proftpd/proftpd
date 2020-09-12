@@ -1026,6 +1026,10 @@ static void tls_info_cb(const SSL *ssl, int where, int ret) {
         ssl_state == SSL23_ST_SR_CLNT_HELLO_A) {
 #endif /* OpenSSL-1.1.x and later */
 
+      if (tls_opts & TLS_OPT_ENABLE_DIAGS) {
+        tls_log("[info] %s: %s", str, SSL_state_string_long(ssl));
+      }
+
       /* If we have already completed our initial handshake, then this might
        * a session renegotiation.
        */
@@ -1063,6 +1067,10 @@ static void tls_info_cb(const SSL *ssl, int where, int ret) {
 #if OPENSSL_VERSION_NUMBER >= 0x009080cfL && \
     OPENSSL_VERSION_NUMBER < 0x10100000L
     } else if (ssl_state & SSL_ST_RENEGOTIATE) {
+      if (tls_opts & TLS_OPT_ENABLE_DIAGS) {
+        tls_log("[info] %s: %s", str, SSL_state_string_long(ssl));
+      }
+
       if ((ssl == ctrl_ssl && !tls_ctrl_need_init_handshake) ||
           (ssl != ctrl_ssl && !tls_data_need_init_handshake)) {
 
@@ -1099,17 +1107,22 @@ static void tls_info_cb(const SSL *ssl, int where, int ret) {
 #endif
     }
 
-    if (tls_opts & TLS_OPT_ENABLE_DIAGS) {
-      tls_log("[info] %s: %s", str, SSL_state_string_long(ssl));
-    }
-
   } else if (where & SSL_CB_HANDSHAKE_START) {
     if (tls_opts & TLS_OPT_ENABLE_DIAGS) {
-      tls_log("[info] %s: %s", str, SSL_state_string_long(ssl));
+      tls_log("[info] %s: %s (HANDSHAKE_START)", str,
+        SSL_state_string_long(ssl));
     }
 
   } else if (where & SSL_CB_HANDSHAKE_DONE) {
-    if (ssl == ctrl_ssl) {
+    if (tls_opts & TLS_OPT_ENABLE_DIAGS) {
+      tls_log("[info] %s: %s (HANDSHAKE_DONE)", str,
+        SSL_state_string_long(ssl));
+    }
+
+    /* ctrl_ssl is NULL if this is our initial ctrl SSL, and the handshake has
+     * not be completed yet.
+     */
+    if (ctrl_ssl == NULL) {
       if (tls_ctrl_need_init_handshake == FALSE) {
         int reused;
 
@@ -1146,10 +1159,6 @@ static void tls_info_cb(const SSL *ssl, int where, int ret) {
 
     if (tls_flags & ~TLS_SESS_DATA_RENEGOTIATING) {
       tls_flags &= ~TLS_SESS_DATA_RENEGOTIATING;
-    }
-
-    if (tls_opts & TLS_OPT_ENABLE_DIAGS) {
-      tls_log("[info] %s: %s", str, SSL_state_string_long(ssl));
     }
 
   } else if (where & SSL_CB_LOOP) {
