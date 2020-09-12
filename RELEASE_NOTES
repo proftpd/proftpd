@@ -31,6 +31,14 @@ ChangeLog files.
       responses of the FEAT command, and is not necessary.
 
 
+  + New Directives
+
+    RedisLogFormatExtra
+      This directive supports adding custom key/values to the JSON logging
+      done by the RedisLogOnCommand, RedisLogOnEvent directives.  See
+      doc/modules/mod_redis.html#RedisLogFormatExtra for details.
+
+
   + Changed Directives
 
     RedisServer

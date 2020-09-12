@@ -1,6 +1,6 @@
 /*
  * ProFTPD - FTP server testsuite
- * Copyright (c) 2017-2018 The ProFTPD Project team
+ * Copyright (c) 2017-2020 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -170,6 +170,61 @@ START_TEST (json_object_to_text_test) {
     strerror(errno));
   fail_unless(strcmp(text, expected) == 0, "Expected '%s', got '%s'", expected,
     text);
+
+  (void) pr_json_object_free(json);
+}
+END_TEST
+
+static int object_item_ok(const char *key, int val_type, const void *val,
+    size_t valsz, void *user_data) {
+  return 0;
+}
+
+static int object_item_fail(const char *key, int val_type, const void *val,
+    size_t valsz, void *user_data) {
+  errno = EPERM;
+  return -1;
+}
+
+START_TEST(json_object_foreach_test) {
+  int res;
+  pr_json_object_t *json = NULL;
+  const char *text;
+
+  mark_point();
+  res = pr_json_object_foreach(NULL, NULL, NULL, NULL);
+  fail_unless(res < 0, "Failed to handle null pool");
+  fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+    strerror(errno), errno);
+
+  mark_point();
+  res = pr_json_object_foreach(p, NULL, NULL, NULL);
+  fail_unless(res < 0, "Failed to handle null object");
+  fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+    strerror(errno), errno);
+
+  json = pr_json_object_alloc(p);
+
+  mark_point();
+  res = pr_json_object_foreach(p, json, NULL, NULL);
+  fail_unless(res < 0, "Failed to handle null callback");
+  fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+    strerror(errno), errno);
+
+  (void) pr_json_object_free(json);
+
+  text = "{\"foo\":true,\"bar\":false,\"baz\":{}}";
+  json = pr_json_object_from_text(p, text);
+
+  mark_point();
+  res = pr_json_object_foreach(p, json, object_item_ok, NULL);
+  fail_unless(res == 0, "Failed to iterate over object: %s", strerror(errno));
+
+  mark_point();
+  res = pr_json_object_foreach(p, json, object_item_fail, NULL);
+  fail_unless(res < 0, "Failing callback succeeded unexpectedly");
+  fail_unless(errno == EPERM, "Expected EPERM (%d), got %s (%d)", EPERM,
+    strerror(errno), errno);
 
   (void) pr_json_object_free(json);
 }
@@ -1099,6 +1154,61 @@ START_TEST(json_array_to_text_test) {
 }
 END_TEST
 
+static int array_item_ok(int val_type, const void *val, size_t valsz,
+    void *user_data) {
+  return 0;
+}
+
+static int array_item_fail(int val_type, const void *val, size_t valsz,
+    void *user_data) {
+  errno = EPERM;
+  return -1;
+}
+
+START_TEST(json_array_foreach_test) {
+  int res;
+  pr_json_array_t *json = NULL;
+  const char *text;
+
+  mark_point();
+  res = pr_json_array_foreach(NULL, NULL, NULL, NULL);
+  fail_unless(res < 0, "Failed to handle null pool");
+  fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+    strerror(errno), errno);
+
+  mark_point();
+  res = pr_json_array_foreach(p, NULL, NULL, NULL);
+  fail_unless(res < 0, "Failed to handle null array");
+  fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+    strerror(errno), errno);
+
+  json = pr_json_array_alloc(p);
+
+  mark_point();
+  res = pr_json_array_foreach(p, json, NULL, NULL);
+  fail_unless(res < 0, "Failed to handle null callback");
+  fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+    strerror(errno), errno);
+
+  (void) pr_json_array_free(json);
+
+  text = "[\"foo\",true,\"bar\",false,\"baz\",1,{}]";
+  json = pr_json_array_from_text(p, text);
+
+  mark_point();
+  res = pr_json_array_foreach(p, json, array_item_ok, NULL);
+  fail_unless(res == 0, "Failed to iterate over array: %s", strerror(errno));
+
+  mark_point();
+  res = pr_json_array_foreach(p, json, array_item_fail, NULL);
+  fail_unless(res < 0, "Failing callback succeeded unexpectedly");
+  fail_unless(errno == EPERM, "Expected EPERM (%d), got %s (%d)", EPERM,
+    strerror(errno), errno);
+
+  (void) pr_json_array_free(json);
+}
+END_TEST
+
 START_TEST(json_array_count_test) {
   int res;
   pr_json_array_t *json;
@@ -1901,6 +2011,7 @@ Suite *tests_get_json_suite(void) {
   tcase_add_test(testcase, json_object_alloc_test);
   tcase_add_test(testcase, json_object_from_text_test);
   tcase_add_test(testcase, json_object_to_text_test);
+  tcase_add_test(testcase, json_object_foreach_test);
   tcase_add_test(testcase, json_object_count_test);
   tcase_add_test(testcase, json_object_exists_test);
   tcase_add_test(testcase, json_object_remove_test);
@@ -1921,6 +2032,7 @@ Suite *tests_get_json_suite(void) {
   tcase_add_test(testcase, json_array_alloc_test);
   tcase_add_test(testcase, json_array_from_text_test);
   tcase_add_test(testcase, json_array_to_text_test);
+  tcase_add_test(testcase, json_array_foreach_test);
   tcase_add_test(testcase, json_array_count_test);
   tcase_add_test(testcase, json_array_exists_test);
   tcase_add_test(testcase, json_array_remove_test);
