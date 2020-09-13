@@ -59,6 +59,10 @@ static int sendline(int flags, char *fmt, ...)
 #define LS_FL_SORTED_NLST		0x0010
 static unsigned long list_flags = 0UL;
 
+#define LS_LIST_STYLE_UNIX		1
+#define LS_LIST_STYLE_WINDOWS		2
+static int list_style = LS_LIST_STYLE_UNIX;
+
 /* Maximum size of the "dsize" directory block we'll allocate for all of the
  * entries in a directory (Bug#4247).
  */
@@ -644,12 +648,23 @@ static int listfile(cmd_rec *cmd, pool *p, const char *resp_code,
       return 0;
     }
 
-    /* Skip dotfiles, unless requested not to via -a or -A. */
+    /* Skip dotfiles, unless requested not to via -a or -A, or if Windows
+     * ListStyle is in effect.
+     */
     if (*filename == '.' &&
-        (!opt_a && (!opt_A || is_dotdir(filename)))) {
-      pr_log_debug(DEBUG10,
-        "skipping listing of hidden file '%s' (no -A/-a options in effect)",
-        filename);
+        ((!opt_a && (!opt_A || is_dotdir(filename))) ||
+         list_style == LS_LIST_STYLE_WINDOWS)) {
+      if (list_style == LS_LIST_STYLE_WINDOWS) {
+        pr_log_debug(DEBUG10,
+          "skipping listing of hidden file '%s' (ListStyle Windows in effect)",
+          filename);
+
+      } else {
+        pr_log_debug(DEBUG10,
+          "skipping listing of hidden file '%s' (no -A/-a options in effect)",
+          filename);
+      }
+
       return 0;
     }
 
@@ -680,6 +695,34 @@ static int listfile(cmd_rec *cmd, pool *p, const char *resp_code,
 
     } else {
       t = pr_localtime(p, (const time_t *) &sort_time);
+    }
+
+    if (list_style == LS_LIST_STYLE_WINDOWS) {
+      char line_text[(PR_TUNABLE_PATH_MAX * 2) + 128] = {'\0'};
+      char ts_text[18];
+
+      memset(ts_text, '\0', sizeof(ts_text));
+      strftime(ts_text, sizeof(ts_text)-1, "%m-%d-%y  %I:%M%p", t);
+
+      if (S_ISDIR(st.st_mode)) {
+        char dir_text[8];
+
+        memset(dir_text, '\0', sizeof(dir_text));
+        sstrncpy(dir_text, "<DIR>", sizeof(dir_text)-1);
+
+        /* For Windows directories, we do not include the st.st_size. */
+        pr_snprintf(line_text, sizeof(line_text)-1, "%s%12s%9s %s", ts_text,
+          dir_text, "", display_name);
+
+        rval = 1;
+
+      } else {
+        pr_snprintf(line_text, sizeof(line_text)-1, "%s%12s%9" PR_LU " %s",
+          ts_text, "", (pr_off_t) st.st_size, display_name);
+      }
+
+      addfile(cmd, line_text, suffix, sort_time, st.st_size);
+      return rval;
     }
 
     if (opt_F) {
@@ -3376,9 +3419,10 @@ MODRET ls_nlst(cmd_rec *cmd) {
 }
 
 /* Check for the UseGlobbing setting, if any, after the PASS command has
- * been successfully handled.
+ * been successfully handled, as well as other post-login settings.
  */
 MODRET ls_post_pass(cmd_rec *cmd) {
+  config_rec *c;
   unsigned char *globbing = NULL;
 
   globbing = get_param_ptr(TOPLEVEL_CONF, "UseGlobbing", FALSE);
@@ -3386,6 +3430,11 @@ MODRET ls_post_pass(cmd_rec *cmd) {
       *globbing == FALSE) {
     pr_log_debug(DEBUG3, "UseGlobbing: disabling globbing functionality");
     use_globbing = FALSE;
+  }
+
+  c = find_config(TOPLEVEL_CONF, CONF_PARAM, "ListStyle", FALSE);
+  if (c != NULL) {
+    list_style = *((int *) c->argv[0]);
   }
 
   return PR_DECLINED(cmd);
@@ -3558,6 +3607,35 @@ MODRET set_listoptions(cmd_rec *cmd) {
   return PR_HANDLED(cmd);
 }
 
+/* usage: ListStyle Unix|Windows */
+MODRET set_liststyle(cmd_rec *cmd) {
+  config_rec *c;
+  const char *style = NULL;
+  int style_id = -1;
+
+  CHECK_ARGS(cmd, 1);
+  CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL|CONF_ANON);
+
+  c = add_config_param(cmd->argv[0], 1, NULL);
+  style = cmd->argv[1];
+
+  if (strcasecmp(style, "Unix") == 0) {
+    style_id = LS_LIST_STYLE_UNIX;
+
+  } else if (strcasecmp(style, "Windows") == 0) {
+    style_id = LS_LIST_STYLE_WINDOWS;
+
+  } else {
+    CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, ": unknown ListStyle: '", style, "'",
+      NULL));
+  }
+
+  c->argv[0] = palloc(c->pool, sizeof(int));
+  *((int *) c->argv[0]) = style_id;
+
+  return PR_HANDLED(cmd);
+}
+
 MODRET set_showsymlinks(cmd_rec *cmd) {
   int bool = -1;
   config_rec *c = NULL;
@@ -3617,6 +3695,7 @@ static conftable ls_conftab[] = {
   { "DirFakeGroup",	set_dirfakeusergroup,			NULL },
   { "DirFakeMode",	set_dirfakemode,			NULL },
   { "ListOptions",	set_listoptions,			NULL },
+  { "ListStyle",	set_liststyle,				NULL },
   { "ShowSymlinks",	set_showsymlinks,			NULL },
   { "UseGlobbing",	set_useglobbing,			NULL },
   { NULL,		NULL,					NULL }

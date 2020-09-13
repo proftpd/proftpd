@@ -243,6 +243,11 @@ my $TESTS = {
     test_class => [qw(bug forking rootprivs)],
   },
 
+  list_style_windows => {
+    order => ++$order,
+    test_class => [qw(forking)],
+  },
+
   # XXX Plenty of other tests needed: params, maxfiles, maxdirs, depth, etc
 };
 
@@ -6941,6 +6946,135 @@ sub list_symlink_rel_path_subdir_cwd_chrooted_bug4322 {
 
       $self->assert($res->{'/domains/test.oxilion.nl/public_html'},
         "Expected '/domains/test.oxilion.nl/public_html'");
+    };
+    if ($@) {
+      $ex = $@;
+    }
+
+    $wfh->print("done\n");
+    $wfh->flush();
+
+  } else {
+    eval { server_wait($setup->{config_file}, $rfh) };
+    if ($@) {
+      warn($@);
+      exit 1;
+    }
+
+    exit 0;
+  }
+
+  # Stop server
+  server_stop($setup->{pid_file});
+  $self->assert_child_ok($pid);
+
+  test_cleanup($setup->{log_file}, $ex);
+}
+
+sub list_style_windows {
+  my $self = shift;
+  my $tmpdir = $self->{tmpdir};
+  my $setup = test_setup($tmpdir, 'cmds');
+
+  my $test_dir = File::Spec->rel2abs("$tmpdir/test.d");
+  mkpath($test_dir);
+
+  my $config = {
+    PidFile => $setup->{pid_file},
+    ScoreboardFile => $setup->{scoreboard_file},
+    SystemLog => $setup->{log_file},
+
+    AuthUserFile => $setup->{auth_user_file},
+    AuthGroupFile => $setup->{auth_group_file},
+
+    ListStyle => 'Windows',
+
+    IfModules => {
+      'mod_delay.c' => {
+        DelayEngine => 'off',
+      },
+    },
+  };
+
+  my ($port, $config_user, $config_group) = config_write($setup->{config_file},
+    $config);
+
+  # Open pipes, for use between the parent and child processes.  Specifically,
+  # the child will indicate when it's done with its test by writing a message
+  # to the parent.
+  my ($rfh, $wfh);
+  unless (pipe($rfh, $wfh)) {
+    die("Can't open pipe: $!");
+  }
+
+  my $ex;
+
+  # Fork child
+  $self->handle_sigchld();
+  defined(my $pid = fork()) or die("Can't fork: $!");
+  if ($pid) {
+    eval {
+      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port, 1, 1);
+      $client->login($setup->{user}, $setup->{passwd});
+
+      my $conn = $client->list_raw('-al');
+      unless ($conn) {
+        die("Failed to LIST: " . $client->response_code() . " " .
+          $client->response_msg());
+      }
+
+      my $buf;
+      $conn->read($buf, 8192, 30);
+      eval { $conn->close() };
+
+      if ($ENV{TEST_VERBOSE}) {
+        print STDERR "# Response:\n$buf\n";
+      }
+
+      my $resp_code = $client->response_code();
+      my $resp_msg = $client->response_msg();
+      $client->quit();
+
+      $self->assert_transfer_ok($resp_code, $resp_msg);
+
+      # We have to be careful of the fact that readdir returns directory
+      # entries in an unordered fashion.
+
+      my $res = {};
+      my $lines = [split(/(\r)?\n/, $buf)];
+      foreach my $line (@$lines) {
+        if ($line =~ /^\S+\s+\S+\s+(\S+)?\s+(\d+)?\s+(\S+)$/) {
+          $res->{$3} = 1;
+        }
+      }
+
+      if (scalar(keys(%$res)) == 0) {
+        die("Failed to parse Windows-style LIST data");
+      }
+
+      my $expected = {
+        'cmds.conf' => 1,
+        'cmds.group' => 1,
+        'cmds.passwd' => 1,
+        'cmds.pid' => 1,
+        'cmds.scoreboard' => 1,
+        'cmds.scoreboard.lck' => 1,
+        'test.d' => 1,
+      };
+
+      my $ok = 1;
+      my $mismatch;
+      foreach my $name (keys(%$res)) {
+        unless (defined($expected->{$name})) {
+          $mismatch = $name;
+          $ok = 0;
+          last;
+        }
+      }
+
+      unless ($ok) {
+        die("Unexpected name '$mismatch' appeared in Windows-style LIST data")
+      }
     };
     if ($@) {
       $ex = $@;

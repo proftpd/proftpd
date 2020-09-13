@@ -33,6 +33,11 @@ ChangeLog files.
 
   + New Directives
 
+    ListStyle
+      This directive is used to emit Windows-style directory listings, for
+      compatibility with certain FTP clients.  See
+      doc/modules/mod_ls.html#ListStyle for more information.
+
     RedisLogFormatExtra
       This directive supports adding custom key/values to the JSON logging
       done by the RedisLogOnCommand, RedisLogOnEvent directives.  See
