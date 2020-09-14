@@ -178,8 +178,8 @@ properly, even though I have "ShowSymlinks on" in my <code>proftpd.conf</code>?<
 <font color=blue>Answer</font>: Newer versions of FileZilla (and other
 FTP clients) use the <code>MLSD</code> command for listing files, rather than
 the older <code>LIST</code> command.  And FileZilla and the
-<code>mod_facts</code> disagree on the proper syntax for indicating when a
-file is a symlink.
+<code>mod_facts</code> module disagree on the proper syntax for indicating when
+a file is a symlink.
 
 <p>
 To work around this issue, you can add the following to your
@@ -287,7 +287,7 @@ Then follow the usual steps:
 <p>
 <hr>
 <font size=2><b><i>
-&copy; Copyright 2007-2019 The ProFTPD Project<br>
+&copy; Copyright 2007-2020 The ProFTPD Project<br>
  All Rights Reserved<br>
 </i></b></font>
 <hr>
