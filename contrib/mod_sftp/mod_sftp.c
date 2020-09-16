@@ -1288,6 +1288,7 @@ MODRET set_sftpkeyexchanges(cmd_rec *cmd) {
         strncmp(cmd->argv[i], "ecdh-sha2-nistp521", 19) != 0 &&
 #endif /* PR_USE_OPENSSL_ECC */
 #if defined(HAVE_SODIUM_H) && defined(HAVE_SHA256_OPENSSL)
+        strncmp(cmd->argv[i], "curve25519-sha256", 18) != 0 &&
         strncmp(cmd->argv[i], "curve25519-sha256@libssh.org", 22) != 0 &&
 #endif /* HAVE_SODIUM_H and HAVE_SHA256_OPENSSL */
         strncmp(cmd->argv[i], "rsa1024-sha1", 13) != 0) {
