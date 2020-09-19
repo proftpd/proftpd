@@ -506,6 +506,10 @@ static modret_t *sql_passwd_auth(cmd_rec *cmd, const char *plaintext,
   const char *encodedtext;
 
   if (sql_passwd_engine == FALSE) {
+    pr_log_pri(PR_LOG_INFO, MOD_SQL_PASSWD_VERSION
+      ": SQLPasswordEngine disabled; unable to handle %s SQLAuthType", digest);
+    sql_log(DEBUG_WARN, MOD_SQL_PASSWD_VERSION
+      ": SQLPasswordEngine disabled; unable to handle %s SQLAuthType", digest);
     return PR_ERROR_INT(cmd, PR_AUTH_ERROR);
   }
 
@@ -743,6 +747,10 @@ static modret_t *sql_passwd_bcrypt(cmd_rec *cmd, const char *plaintext,
   size_t hashed_len = 0;
 
   if (sql_passwd_engine == FALSE) {
+    pr_log_pri(PR_LOG_INFO, MOD_SQL_PASSWD_VERSION
+      ": SQLPasswordEngine disabled; unable to handle bcrypt SQLAuthType");
+    sql_log(DEBUG_WARN, MOD_SQL_PASSWD_VERSION
+      ": SQLPasswordEngine disabled; unable to handle bcrypt SQLAuthType");
     return PR_ERROR_INT(cmd, PR_AUTH_ERROR);
   }
 
@@ -796,6 +804,8 @@ static modret_t *sql_passwd_pbkdf2(cmd_rec *cmd, const char *plaintext,
   int res;
 
   if (sql_passwd_engine == FALSE) {
+    pr_log_pri(PR_LOG_INFO, MOD_SQL_PASSWD_VERSION
+      ": SQLPasswordEngine disabled; unable to handle PBKDF2 SQLAuthType");
     sql_log(DEBUG_WARN, MOD_SQL_PASSWD_VERSION
       ": SQLPasswordEngine disabled; unable to handle PBKDF2 SQLAuthType");
     return PR_ERROR_INT(cmd, PR_AUTH_ERROR);
@@ -879,6 +889,10 @@ static modret_t *sql_passwd_scrypt(cmd_rec *cmd, const char *plaintext,
   size_t ops_limit, mem_limit, plaintext_len, scrypt_salt_len;
 
   if (sql_passwd_engine == FALSE) {
+    pr_log_pri(PR_LOG_INFO, MOD_SQL_PASSWD_VERSION
+      ": SQLPasswordEngine disabled; unable to handle scrypt SQLAuthType");
+    sql_log(DEBUG_WARN, MOD_SQL_PASSWD_VERSION
+      ": SQLPasswordEngine disabled; unable to handle scrypt SQLAuthType");
     return PR_ERROR_INT(cmd, PR_AUTH_ERROR);
   }
 
@@ -968,6 +982,10 @@ static modret_t *sql_passwd_argon2(cmd_rec *cmd, const char *plaintext,
   size_t ops_limit, mem_limit, plaintext_len, argon2_salt_len;
 
   if (sql_passwd_engine == FALSE) {
+    pr_log_pri(PR_LOG_INFO, MOD_SQL_PASSWD_VERSION
+      ": SQLPasswordEngine disabled; unable to handle argon2 SQLAuthType");
+    sql_log(DEBUG_WARN, MOD_SQL_PASSWD_VERSION
+      ": SQLPasswordEngine disabled; unable to handle argon2 SQLAuthType");
     return PR_ERROR_INT(cmd, PR_AUTH_ERROR);
   }
 
