@@ -14167,10 +14167,6 @@ MODRET set_tlsoptions(cmd_rec *cmd) {
     } else if (strcmp(cmd->argv[i], "IgnoreSNI") == 0) {
       opts |= TLS_OPT_IGNORE_SNI;
 
-    } else if (strcmp(cmd->argv[i], "NoCertRequest") == 0) {
-      pr_log_debug(DEBUG0, MOD_TLS_VERSION
-        ": NoCertRequest TLSOption is deprecated");
-
 #ifdef SSL_OP_DONT_INSERT_EMPTY_FRAGMENTS
     } else if (strcmp(cmd->argv[i], "NoEmptyFragments") == 0) {
       /* Unlike the other TLSOptions, this option is handled slightly

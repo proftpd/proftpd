@@ -58,3 +58,7 @@ ChangeLog files.
       in OpenSSL.  To support configuration of TLSv1.3 ciphersuites, the
       `TLSCipherSuite` directive takes an optional protocol specifier; see
       the documentation for details.
+
+    TLSOptions
+      Support for the long-deprecated `NoCertRequest` TLSOption has been
+      removed.
