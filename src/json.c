@@ -471,7 +471,7 @@ int pr_json_object_foreach(pool *p, const pr_json_object_t *json,
   for (iter = json_first_child(json->object); iter != NULL; iter = iter->next) {
     int res, val_type;
     const void *val = NULL;
-    size_t valsz;
+    size_t valsz = 0;
 
     pr_signals_handle();
 
@@ -709,7 +709,7 @@ int pr_json_array_foreach(pool *p, const pr_json_array_t *json,
   for (iter = json_first_child(json->array); iter != NULL; iter = iter->next) {
     int res, val_type;
     const void *val = NULL;
-    size_t valsz;
+    size_t valsz = 0;
 
     pr_signals_handle();
 
