@@ -77,7 +77,7 @@ script:
   # - find . -type f -name "*.c" -print | grep -v 'lib/libltdl/' | grep -v tests | xargs rats --language=c
   # git check
   - |
-    if [ -n $(git diff --check HEAD^) ]; then
+    if [[ -n $(git diff --check HEAD^) ]]; then
       echo "You must remove whitespace before submitting a pull request"
       echo ""
       git diff --check HEAD^
