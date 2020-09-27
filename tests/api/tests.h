@@ -1,6 +1,6 @@
 /*
  * ProFTPD - FTP server API testsuite
- * Copyright (c) 2008-2017 The ProFTPD Project team
+ * Copyright (c) 2008-2020 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -72,6 +72,7 @@ Suite *tests_get_filter_suite(void);
 Suite *tests_get_inet_suite(void);
 Suite *tests_get_data_suite(void);
 Suite *tests_get_ascii_suite(void);
+Suite *tests_get_ctrls_suite(void);
 Suite *tests_get_help_suite(void);
 Suite *tests_get_rlimit_suite(void);
 Suite *tests_get_encode_suite(void);
