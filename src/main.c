@@ -140,8 +140,9 @@ void session_exit(int pri, void *lv, int exitval, void *dummy) {
 
     PRIVS_ROOT
     pr_delete_scoreboard();
-    if (!nodaemon)
+    if (nodaemon == FALSE) {
       pr_pidfile_remove();
+    }
     PRIVS_RELINQUISH
   }
 
@@ -357,8 +358,11 @@ static int _dispatch(cmd_rec *cmd, int cmd_type, int validate, char *match) {
        * this is only necessary for performance reasons in 1.1/1.2
        */
 
-      if (!c->group || strcmp(c->group, G_WRITE) != 0)
+      if (c->group == NULL ||
+          strcmp(c->group, G_WRITE) != 0) {
         kludge_disable_umask();
+      }
+
       mr = pr_module_call(c->m, c->handler, cmd);
       kludge_enable_umask();
 
@@ -435,8 +439,9 @@ static int _dispatch(cmd_rec *cmd, int cmd_type, int validate, char *match) {
 
       method = pstrdup(cmd->pool, cmd->argv[0]);
       for (i = 0; method[i]; i++) {
-        if (method[i] == '_')
+        if (method[i] == '_') {
           method[i] = ' ';
+        }
       }
     }
 
@@ -652,7 +657,7 @@ int pr_cmd_dispatch_phase(cmd_rec *cmd, int phase, int flags) {
   pr_response_set_pool(cmd->pool);
 
   for (cp = cmd->argv[0]; *cp; cp++) {
-    *cp = toupper(*cp);
+    *cp = toupper((int) *cp);
   }
 
   if (cmd->cmd_class == 0) {
@@ -668,9 +673,10 @@ int pr_cmd_dispatch_phase(cmd_rec *cmd, int phase, int flags) {
   if (phase == 0) {
     /* First, dispatch to wildcard PRE_CMD handlers. */
     success = _dispatch(cmd, PRE_CMD, FALSE, C_ANY);
-
-    if (!success)	/* run other pre_cmd */
+    if (success == 0) {
+      /* No success yet?  Run other PRE_CMD phase handlers. */
       success = _dispatch(cmd, PRE_CMD, FALSE, NULL);
+    }
 
     if (success < 0) {
       /* Dispatch to POST_CMD_ERR handlers as well. */
@@ -694,13 +700,15 @@ int pr_cmd_dispatch_phase(cmd_rec *cmd, int phase, int flags) {
     }
 
     success = _dispatch(cmd, CMD, FALSE, C_ANY);
-    if (!success)
+    if (success == 0) {
       success = _dispatch(cmd, CMD, TRUE, NULL);
+    }
 
     if (success == 1) {
       success = _dispatch(cmd, POST_CMD, FALSE, C_ANY);
-      if (!success)
+      if (success == 0) {
         success = _dispatch(cmd, POST_CMD, FALSE, NULL);
+      }
 
       _dispatch(cmd, LOG_CMD, FALSE, C_ANY);
       _dispatch(cmd, LOG_CMD, FALSE, NULL);
@@ -716,8 +724,9 @@ int pr_cmd_dispatch_phase(cmd_rec *cmd, int phase, int flags) {
       /* Allow for non-logging command handlers to be run if CMD fails. */
 
       success = _dispatch(cmd, POST_CMD_ERR, FALSE, C_ANY);
-      if (!success)
+      if (success == 0) {
         success = _dispatch(cmd, POST_CMD_ERR, FALSE, NULL);
+      }
 
       _dispatch(cmd, LOG_CMD_ERR, FALSE, C_ANY);
       _dispatch(cmd, LOG_CMD_ERR, FALSE, NULL);
@@ -736,7 +745,7 @@ int pr_cmd_dispatch_phase(cmd_rec *cmd, int phase, int flags) {
       case POST_CMD:
       case POST_CMD_ERR:
         success = _dispatch(cmd, phase, FALSE, C_ANY);
-        if (!success) {
+        if (success == 0) {
           success = _dispatch(cmd, phase, FALSE, NULL);
           xerrno = errno;
         }
@@ -744,8 +753,9 @@ int pr_cmd_dispatch_phase(cmd_rec *cmd, int phase, int flags) {
 
       case CMD:
         success = _dispatch(cmd, phase, FALSE, C_ANY);
-        if (!success)
+        if (success == 0) {
           success = _dispatch(cmd, phase, TRUE, NULL);
+        }
         break;
 
       case LOG_CMD:
@@ -948,153 +958,153 @@ static void cmd_loop(server_rec *server, conn_t *c) {
 }
 
 void restart_daemon(void *d1, void *d2, void *d3, void *d4) {
-  if (is_master && mpid) {
-    int maxfd;
-    fd_set childfds;
-    struct timeval restart_start, restart_finish;
-    long restart_elapsed = 0;
+  int maxfd, res, xerrno;
+  fd_set childfds;
+  struct timeval restart_start, restart_finish;
+  long restart_elapsed = 0;
 
-    pr_log_pri(PR_LOG_NOTICE, "received SIGHUP -- master server reparsing "
-      "configuration file");
-
-    gettimeofday(&restart_start, NULL);
-
-    /* Make sure none of our children haven't completed start up */
-    FD_ZERO(&childfds);
-    maxfd = -1;
-
-    maxfd = semaphore_fds(&childfds, maxfd);
-    if (maxfd > -1) {
-      pr_log_pri(PR_LOG_NOTICE, "waiting for child processes to complete "
-        "initialization");
-
-      while (maxfd != -1) {
-	int i;
-	
-	i = select(maxfd + 1, &childfds, NULL, NULL, NULL);
-
-        if (i > 0) {
-          pr_child_t *ch;
-
-          for (ch = child_get(NULL); ch; ch = child_get(ch)) {
-            if (ch->ch_pipefd != -1 &&
-               FD_ISSET(ch->ch_pipefd, &childfds)) {
-              (void) close(ch->ch_pipefd);
-              ch->ch_pipefd = -1;
-            }
-          }
-        }
-
-	FD_ZERO(&childfds);
-        maxfd = -1;
-	maxfd = semaphore_fds(&childfds, maxfd);
-      }
-    }
-
-    free_bindings();
-
-    /* Run through the list of registered restart callbacks. */
-    pr_event_generate("core.restart", NULL);
-
-    init_log();
-    init_netaddr();
-    init_class();
-    init_config();
-    init_dirtree();
-
-#ifdef PR_USE_NLS
-    encode_free();
-#endif /* PR_USE_NLS */
-
-    pr_netaddr_clear_cache();
-
-    pr_parser_prepare(NULL, NULL);
-
-    pr_event_generate("core.preparse", NULL);
-
-    PRIVS_ROOT
-    if (pr_parser_parse_file(NULL, config_filename, NULL, 0) < 0) {
-      int xerrno = errno;
-
-      PRIVS_RELINQUISH
-
-      /* Note: EPERM is used to indicate the presence of unrecognized
-       * configuration directives in the parsed file(s).
-       */
-      if (xerrno != EPERM) {
-        pr_log_pri(PR_LOG_WARNING,
-          "fatal: unable to read configuration file '%s': %s", config_filename,
-          strerror(xerrno));
-      }
-
-      pr_session_end(0);
-    }
-    PRIVS_RELINQUISH
-
-    if (pr_parser_cleanup() < 0) {
-      pr_log_pri(PR_LOG_WARNING,
-        "fatal: error processing configuration file '%s': "
-        "unclosed configuration section", config_filename);
-      pr_session_end(0);
-    }
-
-#ifdef PR_USE_NLS
-    encode_init();
-#endif /* PR_USE_NLS */
-
-    /* After configuration is complete, make sure that passwd, group
-     * aren't held open (unnecessary fds for master daemon)
-     */
-    endpwent();
-    endgrent();
-
-    if (fixup_servers(server_list) < 0) {
-      pr_log_pri(PR_LOG_WARNING,
-        "fatal: error processing configuration file '%s'", config_filename);
-      pr_session_end(0);
-    }
-
-    pr_event_generate("core.postparse", NULL);
-
-    /* Recreate the listen connection.  Can an inetd-spawned server accept
-     * and process HUP?
-     */
-    init_bindings();
-
-    gettimeofday(&restart_finish, NULL);
-
-    restart_elapsed = ((restart_finish.tv_sec - restart_start.tv_sec) * 1000L) +
-      ((restart_finish.tv_usec - restart_start.tv_usec) / 1000L);
-    pr_trace_msg("config", 12, "restart took %ld millisecs", restart_elapsed);
-      
-  } else {
-
+  if (is_master == FALSE ||
+      !mpid) {
     /* Child process -- cannot restart, log error */
     pr_log_pri(PR_LOG_ERR, "received SIGHUP, cannot restart child process");
+    return;
   }
+
+  pr_log_pri(PR_LOG_NOTICE,
+    "received SIGHUP -- master server reparsing configuration file");
+
+  gettimeofday(&restart_start, NULL);
+
+  /* Make sure none of our children haven't completed start up */
+  FD_ZERO(&childfds);
+  maxfd = -1;
+
+  maxfd = semaphore_fds(&childfds, maxfd);
+  if (maxfd > -1) {
+    pr_log_pri(PR_LOG_NOTICE, "waiting for child processes to complete "
+      "initialization");
+
+    while (maxfd != -1) {
+      int i;
+
+      i = select(maxfd + 1, &childfds, NULL, NULL, NULL);
+      if (i > 0) {
+        pr_child_t *ch;
+
+        for (ch = child_get(NULL); ch; ch = child_get(ch)) {
+          if (ch->ch_pipefd != -1 &&
+             FD_ISSET(ch->ch_pipefd, &childfds)) {
+            (void) close(ch->ch_pipefd);
+            ch->ch_pipefd = -1;
+          }
+        }
+      }
+
+      FD_ZERO(&childfds);
+      maxfd = -1;
+      maxfd = semaphore_fds(&childfds, maxfd);
+    }
+  }
+
+  free_bindings();
+
+  /* Run through the list of registered restart callbacks. */
+  pr_event_generate("core.restart", NULL);
+
+  init_log();
+  init_netaddr();
+  init_class();
+  init_config();
+  init_dirtree();
+
+#ifdef PR_USE_NLS
+  encode_free();
+#endif /* PR_USE_NLS */
+
+  pr_netaddr_clear_cache();
+  pr_parser_prepare(NULL, NULL);
+  pr_event_generate("core.preparse", NULL);
+
+  PRIVS_ROOT
+  res = pr_parser_parse_file(NULL, config_filename, NULL, 0);
+  xerrno = errno;
+  PRIVS_RELINQUISH
+
+  if (res < 0) {
+    /* Note: EPERM is used to indicate the presence of unrecognized
+     * configuration directives in the parsed file(s).
+     */
+    if (xerrno != EPERM) {
+      pr_log_pri(PR_LOG_WARNING,
+        "fatal: unable to read configuration file '%s': %s", config_filename,
+        strerror(xerrno));
+    }
+
+    pr_session_end(0);
+  }
+
+  if (pr_parser_cleanup() < 0) {
+    pr_log_pri(PR_LOG_WARNING,
+      "fatal: error processing configuration file '%s': "
+      "unclosed configuration section", config_filename);
+    pr_session_end(0);
+  }
+
+#ifdef PR_USE_NLS
+  encode_init();
+#endif /* PR_USE_NLS */
+
+  /* After configuration is complete, make sure that passwd, group
+   * aren't held open (unnecessary fds for master daemon)
+   */
+  endpwent();
+  endgrent();
+
+  if (fixup_servers(server_list) < 0) {
+    pr_log_pri(PR_LOG_WARNING,
+      "fatal: error processing configuration file '%s'", config_filename);
+    pr_session_end(0);
+  }
+
+  pr_event_generate("core.postparse", NULL);
+
+  /* Recreate the listen connection.  Can an inetd-spawned server accept
+   * and process HUP?
+   */
+  init_bindings();
+
+  gettimeofday(&restart_finish, NULL);
+
+  restart_elapsed = ((restart_finish.tv_sec - restart_start.tv_sec) * 1000L) +
+    ((restart_finish.tv_usec - restart_start.tv_usec) / 1000L);
+  pr_trace_msg("config", 12, "restart took %ld millisecs", restart_elapsed);
 }
 
 static void set_server_privs(void) {
-  uid_t server_uid, current_euid = geteuid();
-  gid_t server_gid, current_egid = getegid();
+  uid_t *uid, server_uid, current_euid;
+  gid_t *gid, server_gid, current_egid;
   unsigned char switch_server_id = FALSE;
 
-  uid_t *uid = get_param_ptr(main_server->conf, "UserID", FALSE);
-  gid_t *gid =  get_param_ptr(main_server->conf, "GroupID", FALSE);
+  current_euid = geteuid();
+  current_egid = getegid();
 
-  if (uid) {
+  uid = get_param_ptr(main_server->conf, "UserID", FALSE);
+  if (uid != NULL) {
     server_uid = *uid;
     switch_server_id = TRUE;
 
-  } else
+  } else {
     server_uid = current_euid;
+  }
 
-  if (gid) {
+  gid =  get_param_ptr(main_server->conf, "GroupID", FALSE);
+  if (gid != NULL) {
     server_gid = *gid;
     switch_server_id = TRUE;
 
-  } else
+  } else {
     server_gid = current_egid;
+  }
 
   if (switch_server_id) {
     PRIVS_ROOT
@@ -1358,14 +1368,15 @@ static void fork_server(int fd, conn_t *l, unsigned char no_fork) {
    * we are all grown up and have finished housekeeping (closing
    * former listen sockets).
    */
-  close(semfds[1]);
+  (void) close(semfds[1]);
 
   /* Now perform reverse DNS lookups. */
   if (ServerUseReverseDNS) {
     rev = pr_netaddr_set_reverse_dns(ServerUseReverseDNS);
 
-    if (conn->remote_addr)
+    if (conn->remote_addr) {
       conn->remote_name = pr_netaddr_get_dnsstr(conn->remote_addr);
+    }
 
     pr_netaddr_set_reverse_dns(rev);
   }
@@ -2289,8 +2300,9 @@ int main(int argc, char *argv[], char **envp) {
   /* getpeername() fails if the fd isn't a socket */
   peerlen = sizeof(peer);
   memset(&peer, 0, peerlen);
-  if (getpeername(fileno(stdin), &peer, &peerlen) != -1)
+  if (getpeername(fileno(stdin), &peer, &peerlen) != -1) {
     log_stderr(FALSE);
+  }
 
   /* Open the syslog */
   log_opensyslog(NULL);

@@ -31,3 +31,6 @@ depend:
 
 distclean: clean
 	-$(RM) *.gcda *.gcno
+
+clang-tidy:
+	clang-tidy $(SRCS) -- $(CPPFLAGS) $(CFLAGS)

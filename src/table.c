@@ -1,6 +1,6 @@
 /*
  * ProFTPD - FTP server daemon
- * Copyright (c) 2004-2017 The ProFTPD Project team
+ * Copyright (c) 2004-2020 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -166,7 +166,8 @@ static void entry_insert(pr_table_entry_t **h, pr_table_entry_t *e) {
     return;
   }
 
-  for (ei = *h; ei != NULL && ei->next; ei = ei->next);
+  for (ei = *h; ei != NULL && ei->next; ei = ei->next) {
+  }
 
   /* Now, ei points to the last entry in the chain. */
   ei->next = e;
@@ -189,7 +190,6 @@ static void entry_remove(pr_table_entry_t **h, pr_table_entry_t *e) {
   }
 
   e->prev = e->next = NULL;
-  return;
 }
 
 /* Table key management
@@ -500,8 +500,9 @@ int pr_table_kexists(pr_table_t *tab, const void *key_data, size_t key_datasz) {
      * the _exact same pointer_, not identical data.
      */
     if (tab->cache_ent &&
-        tab->cache_ent->key->key_data == key_data)
+        tab->cache_ent->key->key_data == key_data) {
       return tab->cache_ent->key->nents;
+    }
   }
 
   /* Don't forget to add in the random seed data. */
@@ -1271,8 +1272,6 @@ void pr_table_dump(void (*dumpf)(const char *fmt, ...), pr_table_t *tab) {
       ent = ent->next;
     }
   }
-
-  return;
 }
 
 int table_handling_signal(int bool) {

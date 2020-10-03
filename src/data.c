@@ -445,8 +445,9 @@ void pr_data_set_timeout(int id, int timeout) {
 void pr_data_clear_xfer_pool(void) {
   int xfer_type;
 
-  if (session.xfer.p)
+  if (session.xfer.p != NULL) {
     destroy_pool(session.xfer.p);
+  }
 
   /* Note that session.xfer.xfer_type may have been set already, e.g.
    * for STOR_UNIQUE uploads.  To support this, we need to preserve that
@@ -851,10 +852,10 @@ void pr_data_abort(int err, int quiet) {
 #ifdef ESPIPE
     case ESPIPE:		/* FALLTHROUGH */
 #endif
-#if defined(ECOMM) || defined(EDEADLK) ||  defined(EDEADLOCK) \
-	|| defined(EXFULL) || defined(ENOSR) || defined(EPROTO) \
-	|| defined(ETIME) || defined(EIO) || defined(EFAULT) \
-	|| defined(ESPIPE) || defined(EPIPE)
+#if defined(ECOMM) || defined(EDEADLK) ||  defined(EDEADLOCK) || \
+    defined(EXFULL) || defined(ENOSR) || defined(EPROTO) || \
+    defined(ETIME) || defined(EIO) || defined(EFAULT) || \
+    defined(ESPIPE) || defined(EPIPE)
       respcode = R_451;
       break;
 #endif
@@ -880,9 +881,9 @@ void pr_data_abort(int err, int quiet) {
 #ifdef ETIMEDOUT
     case ETIMEDOUT:
 #endif
-#if defined(EREMCHG) || defined(ESRMNT) ||  defined(ESTALE) \
-	|| defined(ENOLINK) || defined(ENOLCK) || defined(ENETRESET) \
-	|| defined(ECONNABORTED) || defined(ECONNRESET) || defined(ETIMEDOUT)
+#if defined(EREMCHG) || defined(ESRMNT) ||  defined(ESTALE) || \
+    defined(ENOLINK) || defined(ENOLCK) || defined(ENETRESET) || \
+    defined(ECONNABORTED) || defined(ECONNRESET) || defined(ETIMEDOUT)
       respcode = R_450;
       msg = _("Link to file server lost");
       break;
@@ -890,11 +891,12 @@ void pr_data_abort(int err, int quiet) {
     }
 
     if (msg == NULL &&
-        (msg = strerror(err)) == NULL ) {
+        (msg = strerror(err)) == NULL) {
 
       if (pr_snprintf(msgbuf, sizeof(msgbuf),
-          _("Unknown or out of range errno [%d]"), err) > 0)
-	msg = msgbuf;
+          _("Unknown or out of range errno [%d]"), err) > 0) {
+        msg = msgbuf;
+      }
     }
 
     pr_log_pri(PR_LOG_NOTICE, "notice: user %s: aborting transfer: %s",
@@ -1077,7 +1079,7 @@ static void poll_ctrl(void) {
       char *ch;
 
       for (ch = cmd->argv[0]; *ch; ch++) {
-        *ch = toupper(*ch);
+        *ch = toupper((int) *ch);
       }
 
       cmd->cmd_id = pr_cmd_get_id(cmd->argv[0]);
@@ -1708,8 +1710,9 @@ pr_sendfile_t pr_data_sendfile(int retr_fd, off_t *offset, off_t count) {
 
       pr_signals_handle();
       continue;
+    }
 
-    } else if (len == -1) {
+    if (len == -1) {
       /* Linux updates offset on error, not len like BSD, fix up so
        * BSD-based code works.
        */
@@ -1810,11 +1813,9 @@ pr_sendfile_t pr_data_sendfile(int retr_fd, off_t *offset, off_t count) {
         /* If we got everything in this transaction, we're done. */
         if (len >= count) {
           break;
-
-        } else {
-          count -= len;
         }
 
+        count -= len;
         *offset += len;
 
         if (timeout_stalled) {

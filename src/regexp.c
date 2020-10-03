@@ -119,12 +119,10 @@ static void regexp_cleanup(void) {
 
 static void regexp_exit_ev(const void *event_data, void *user_data) {
   regexp_cleanup();
-  return;
 }
 
 static void regexp_restart_ev(const void *event_data, void *user_data) {
   regexp_cleanup();
-  return;
 }
 
 pr_regex_t *pr_regexp_alloc(module *m) {

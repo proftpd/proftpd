@@ -1,6 +1,6 @@
 /*
  * ProFTPD - FTP server daemon
- * Copyright (c) 2008-2017 The ProFTPD Project team
+ * Copyright (c) 2008-2020 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -245,7 +245,8 @@ char *sstrcat(char *dst, const char *src, size_t n) {
     strlcat(dst, src, n);
   
 #else
-    for (; *d && n > 1; d++, n--) ;
+    for (; *d && n > 1; d++, n--) {
+    }
 
     while (n-- > 1 && *src) {
       *d++ = *src++;
@@ -453,10 +454,12 @@ const char *pr_str_strip(pool *p, const char *str) {
   }
  
   /* First, find the non-whitespace start of the given string */
-  for (start = str; PR_ISSPACE(*start); start++);
+  for (start = str; PR_ISSPACE(*start); start++) {
+  }
  
   /* Now, find the non-whitespace end of the given string */
-  for (finish = &str[strlen(str)-1]; PR_ISSPACE(*finish); finish--);
+  for (finish = &str[strlen(str)-1]; PR_ISSPACE(*finish); finish--) {
+  }
 
   /* Include for the last byte, of course. */
   len = finish - start + 1;
@@ -1380,8 +1383,9 @@ int pr_str_is_fnmatch(const char *str) {
         break;
 
       case ']':
-        if (have_bracket)
+        if (have_bracket) {
           return TRUE;
+        }
         break;
 
       default:

@@ -163,8 +163,10 @@ static void free_blocks(union block_hdr *blok, const char *pool_tag) {
 
   union block_hdr *old_free_list = block_freelist;
 
-  if (!blok)
-    return;		/* Shouldn't be freeing an empty pool */
+  if (blok == NULL) {
+    /* Don't free an empty pool. */
+    return;
+  }
 
   block_freelist = blok;
 
@@ -436,12 +438,13 @@ struct pool_rec *make_sub_pool(struct pool_rec *p) {
   new_pool->free_first_avail = blok->h.first_avail;
   new_pool->first = new_pool->last = blok;
 
-  if (p) {
+  if (p != NULL) {
     new_pool->parent = p;
     new_pool->sub_next = p->sub_pools;
 
-    if (new_pool->sub_next)
+    if (new_pool->sub_next) {
       new_pool->sub_next->sub_prev = new_pool;
+    }
 
     p->sub_pools = new_pool;
   }
@@ -466,12 +469,13 @@ struct pool_rec *pr_pool_create_sz(struct pool_rec *p, size_t sz) {
   new_pool->free_first_avail = blok->h.first_avail;
   new_pool->first = new_pool->last = blok;
 
-  if (p) {
+  if (p != NULL) {
     new_pool->parent = p;
     new_pool->sub_next = p->sub_pools;
 
-    if (new_pool->sub_next)
+    if (new_pool->sub_next) {
       new_pool->sub_next->sub_prev = new_pool;
+    }
 
     p->sub_pools = new_pool;
   }
@@ -654,8 +658,9 @@ array_header *make_array(pool *p, unsigned int nelts, size_t elt_size) {
 
   res = palloc(p, sizeof(array_header));
 
-  if (nelts < 1)
+  if (nelts < 1) {
     nelts = 1;
+  }
 
   res->elts = pcalloc(p, nelts * elt_size);
   res->pool = p;
@@ -764,8 +769,9 @@ array_header *copy_array_str(pool *p, const array_header *arr) {
 
   res = copy_array(p, arr);
 
-  for (i = 0; i < arr->nelts; i++)
+  for (i = 0; i < arr->nelts; i++) {
     ((char **) res->elts)[i] = pstrdup(p, ((char **) res->elts)[i]);
+  }
 
   return res;
 }

@@ -323,8 +323,6 @@ void pr_netio_abort(pr_netio_stream_t *nstrm) {
       errno = EINVAL;
       return;
   }
-
-  return;
 }
 
 int pr_netio_close(pr_netio_stream_t *nstrm) {
@@ -585,11 +583,10 @@ int pr_netio_lingering_abort(pr_netio_stream_t *nstrm, long linger) {
           tv.tv_sec = 0L;
           tv.tv_usec = 300000L;
           continue;
-
-        } else {
-          nstrm->strm_errno = errno;
-          return -1;
         }
+
+        nstrm->strm_errno = errno;
+        return -1;
       }
 
       break;

@@ -618,7 +618,8 @@ static array_header *parse_xattr_namelist(pool *p, char *namelist, size_t sz) {
 
     pr_signals_handle();
 
-    for (ptr2 = ptr; *ptr2; ptr2++);
+    for (ptr2 = ptr; *ptr2; ptr2++) {
+    }
     len = ptr2 - ptr;
     *((char **) push_array(names)) = pstrndup(p, ptr, len);
 
@@ -1176,11 +1177,10 @@ static int fs_cmp(const void *a, const void *b) {
     }
 
     return 1;
+  }
 
-  } else {
-    if (b == NULL) {
-      return -1;
-    }
+  if (b == NULL) {
+    return -1;
   }
 
   fsa = *((pr_fs_t **) a);
@@ -2513,8 +2513,9 @@ pr_fs_t *pr_get_fs(const char *path, int *exact) {
 
       chk_fs_map = FALSE;
       return fs;
+    }
 
-    } else if (res > 0) {
+    if (res > 0) {
       if (exact != NULL) {
         *exact = FALSE;
       }
@@ -3076,7 +3077,8 @@ int pr_fs_resolve_path(const char *path, char *buf, size_t buflen, int op) {
       sstrncpy(namebuf, workpath, sizeof(namebuf));
 
       if (*namebuf) {
-        for (last = namebuf; *last; last++);
+        for (last = namebuf; *last; last++) {
+        }
         if (*--last != '/') {
           sstrcat(namebuf, "/", sizeof(namebuf)-1);
         }
@@ -3268,7 +3270,8 @@ int pr_fs_clean_path2(const char *path, char *buf, size_t buflen, int flags) {
       sstrncpy(namebuf, workpath, sizeof(namebuf));
 
       if (*namebuf) {
-        for (last = namebuf; *last; last++);
+        for (last = namebuf; *last; last++) {
+        }
         if (*--last != '/') {
           sstrcat(namebuf, "/", sizeof(namebuf)-1);
         }
@@ -3693,7 +3696,8 @@ void pr_fs_virtual_path(const char *path, char *buf, size_t buflen) {
       sstrncpy(namebuf, workpath, sizeof(namebuf));
 
       if (*namebuf) {
-        for (last = namebuf; *last; last++);
+        for (last = namebuf; *last; last++) {
+        }
         if (*--last != '/') {
           sstrcat(namebuf, "/", sizeof(namebuf)-1);
         }
@@ -6640,7 +6644,8 @@ char *pr_fsio_getline(char *buf, size_t buflen, pr_fh_t *fh,
            * Advance past any leading whitespace, to see if the first
            * non-whitespace character is the comment character.
            */
-          for (bufp = buf; *bufp && PR_ISSPACE(*bufp); bufp++);
+          for (bufp = buf; *bufp && PR_ISSPACE(*bufp); bufp++) {
+          }
 
           if (*bufp == '#') {
             continue;
@@ -6716,7 +6721,7 @@ void pr_fs_close_extra_fds(void) {
   for (i = 3; i < nfiles; i++) {
     /* This is a potentially long-running loop, so handle signals. */
     pr_signals_handle();
-    (void) close(i);
+    (void) close((int) i);
   }
 }
 
@@ -7123,8 +7128,6 @@ void pr_fs_fadvise(int fd, off_t offset, off_t len, int advice) {
       strerror(errno));
   }
 #endif
-
-  return;
 }
 
 int pr_fs_have_access(struct stat *st, int mode, uid_t uid, gid_t gid,
@@ -7330,8 +7333,6 @@ void pr_resolve_fs_map(void) {
 
   /* Resort the map */
   qsort(fs_map->elts, fs_map->nelts, sizeof(pr_fs_t *), fs_cmp);
-
-  return;
 }
 
 int init_fs(void) {

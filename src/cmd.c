@@ -412,7 +412,7 @@ int pr_cmd_get_id(const char *cmd_name) {
     return -1;
   }
 
-  first_letter = toupper(cmd_name[0]);
+  first_letter = toupper((int) cmd_name[0]);
 
   for (i = 1; cmd_ids[i].cmd_name != NULL; i++) {
     if (cmd_ids[i].cmd_namelen != cmd_namelen) {
