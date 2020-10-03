@@ -47,6 +47,7 @@ TEST_API_DEPS=\
   $(top_builddir)/src/inet.o \
   $(top_builddir)/src/data.o \
   $(top_builddir)/src/ascii.o \
+  $(top_builddir)/src/ctrls.o \
   $(top_builddir)/src/help.o \
   $(top_builddir)/src/display.o \
   $(top_builddir)/src/json.o \
@@ -90,6 +91,7 @@ TEST_API_OBJS=\
   api/inet.o \
   api/data.o \
   api/ascii.o \
+  api/ctrls.o \
   api/help.o \
   api/rlimit.o \
   api/encode.o \

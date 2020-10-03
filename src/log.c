@@ -335,7 +335,8 @@ int pr_log_vwritefile(int logfd, const char *ident, const char *fmt,
   size_t buflen, len;
   unsigned long millis;
 
-  if (logfd < 0) {
+  if (logfd < 0 ||
+      ident == NULL) {
     errno = EINVAL;
     return -1;
   }
