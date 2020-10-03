@@ -712,7 +712,7 @@ static const char *get_meta_dir_path(cmd_rec *cmd) {
 
     if (session.chroot_path != NULL) {
       /* Chrooted session. */
-      if (strncmp(pr_fs_getvwd(), "/", 2) == 0) {
+      if (strcmp(pr_fs_getvwd(), "/") == 0) {
         dir_path = session.chroot_path;
 
       } else {
@@ -865,8 +865,8 @@ static const char *get_meta_transfer_failure(cmd_rec *cmd) {
 
     proto = pr_session_get_protocol(0);
 
-    if (strncmp(proto, "ftp", 4) == 0 ||
-        strncmp(proto, "ftps", 5) == 0) {
+    if (strcmp(proto, "ftp") == 0 ||
+        strcmp(proto, "ftps") == 0) {
 
       if (!(XFER_ABORTED)) {
         int res;
@@ -969,8 +969,8 @@ static const char *get_meta_transfer_status(cmd_rec *cmd) {
 
     proto = pr_session_get_protocol(0);
 
-    if (strncmp(proto, "ftp", 4) == 0 ||
-        strncmp(proto, "ftps", 5) == 0) {
+    if (strcmp(proto, "ftp") == 0 ||
+        strcmp(proto, "ftps") == 0) {
       if (!(XFER_ABORTED)) {
         int res;
         const char *resp_code = NULL, *resp_msg = NULL;
@@ -1069,8 +1069,8 @@ static const char *get_meta_transfer_type(cmd_rec *cmd) {
 
     proto = pr_session_get_protocol(0);
 
-    if (strncmp(proto, "sftp", 5) == 0 ||
-        strncmp(proto, "scp", 4) == 0) {
+    if (strcmp(proto, "sftp") == 0 ||
+        strcmp(proto, "scp") == 0) {
 
       /* Always binary. */
       transfer_type = "binary";
@@ -1665,7 +1665,7 @@ static int resolve_logfmt_id(pool *p, unsigned char logfmt_id,
 
       val = pr_table_get(cmd->notes, "mod_xfer.file-modified", NULL);
       if (val != NULL) {
-        if (strncmp(val, "true", 5) == 0) {
+        if (strcasecmp(val, "true") == 0) {
           modified = TRUE;
         }
       }

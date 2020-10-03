@@ -395,18 +395,20 @@ int pr_ipbind_close_listeners(void) {
   conn_t **listeners;
   register unsigned int i = 0;
 
-  if (!listener_list ||
-      listener_list->nelts == 0)
+  if (listener_list == NULL ||
+      listener_list->nelts == 0) {
     return 0;
+  }
 
   listeners = listener_list->elts;
   for (i = 0; i < listener_list->nelts; i++) {
-    conn_t *listener = listeners[i];
+    conn_t *listener;
 
     pr_signals_handle();
 
+    listener = listeners[i];
     if (listener->listen_fd != -1) {
-      close(listener->listen_fd);
+      (void) close(listener->listen_fd);
       listener->listen_fd = -1;
     }
   }
@@ -755,8 +757,9 @@ int pr_ipbind_listen(fd_set *readfds) {
 
         if (ipbind->ib_listener->mode == CM_LISTEN) {
           FD_SET(ipbind->ib_listener->listen_fd, readfds);
-          if (ipbind->ib_listener->listen_fd > maxfd)
+          if (ipbind->ib_listener->listen_fd > maxfd) {
             maxfd = ipbind->ib_listener->listen_fd;
+          }
 
           /* Add this to the listener list as well. */
           *((conn_t **) push_array(listener_list)) = ipbind->ib_listener;
@@ -973,8 +976,9 @@ int pr_namebind_create(server_rec *server, const char *name,
 
 pr_namebind_t *pr_namebind_find(const char *name, const pr_netaddr_t *addr,
     unsigned int port, unsigned char skip_inactive) {
+  register unsigned int i = 0;
   pr_ipbind_t *ipbind = NULL;
-  pr_namebind_t *namebind = NULL;
+  pr_namebind_t *namebind = NULL, **namebinds = NULL;
 
   if (name == NULL ||
       addr == NULL) {
@@ -1025,60 +1029,58 @@ pr_namebind_t *pr_namebind_find(const char *name, const pr_netaddr_t *addr,
       "ipbind %p (server %p) for %s#%u has no namebinds", ipbind,
       ipbind->ib_server, pr_netaddr_get_ipstr(addr), port);
     return NULL;
+  }
 
-  } else {
-    register unsigned int i = 0;
-    pr_namebind_t **namebinds = (pr_namebind_t **) ipbind->ib_namebinds->elts;
+  namebinds = (pr_namebind_t **) ipbind->ib_namebinds->elts;
 
-    pr_trace_msg(trace_channel, 17,
-      "ipbind %p (server %p) for %s#%u has namebinds (%d)", ipbind,
-      ipbind->ib_server, pr_netaddr_get_ipstr(addr), port,
-      ipbind->ib_namebinds->nelts);
+  pr_trace_msg(trace_channel, 17,
+    "ipbind %p (server %p) for %s#%u has namebinds (%d)", ipbind,
+    ipbind->ib_server, pr_netaddr_get_ipstr(addr), port,
+    ipbind->ib_namebinds->nelts);
 
-    for (i = 0; i < ipbind->ib_namebinds->nelts; i++) {
-      namebind = namebinds[i];
-      if (namebind == NULL) {
-        continue;
-      }
+  for (i = 0; i < ipbind->ib_namebinds->nelts; i++) {
+    namebind = namebinds[i];
+    if (namebind == NULL) {
+      continue;
+    }
 
-      /* Skip inactive namebinds */
-      if (skip_inactive == TRUE &&
-          namebind->nb_isactive == FALSE) {
-        pr_trace_msg(trace_channel, 17,
-          "namebind #%u: %s is inactive, skipping", i, namebind->nb_name);
-        continue;
-      }
+    /* Skip inactive namebinds */
+    if (skip_inactive == TRUE &&
+        namebind->nb_isactive == FALSE) {
+      pr_trace_msg(trace_channel, 17,
+        "namebind #%u: %s is inactive, skipping", i, namebind->nb_name);
+      continue;
+    }
 
-      /* At present, this looks for an exactly matching name.  In the future,
-       * we may want to have something like Apache's matching scheme, which
-       * looks for the most specific domain to the most general.  Note that
-       * that scheme, however, is specific to DNS; should any other naming
-       * scheme be desired, that sort of matching will be unnecessary.
-       */
-      if (namebind->nb_name != NULL) {
-        pr_trace_msg(trace_channel, 17,
-          "namebind #%u: %s (%s)", i, namebind->nb_name,
-          namebind->nb_isactive ? "active" : "inactive");
+    /* At present, this looks for an exactly matching name.  In the future,
+     * we may want to have something like Apache's matching scheme, which
+     * looks for the most specific domain to the most general.  Note that
+     * that scheme, however, is specific to DNS; should any other naming
+     * scheme be desired, that sort of matching will be unnecessary.
+     */
+    if (namebind->nb_name != NULL) {
+      pr_trace_msg(trace_channel, 17,
+        "namebind #%u: %s (%s)", i, namebind->nb_name,
+        namebind->nb_isactive ? "active" : "inactive");
 
-        if (namebind->nb_iswildcard == FALSE) {
-          if (strcasecmp(namebind->nb_name, name) == 0) {
-            return namebind;
-          }
-
-        } else {
-          int match_flags = PR_FNM_NOESCAPE|PR_FNM_CASEFOLD;
-
-          if (pr_fnmatch(namebind->nb_name, name, match_flags) == 0) {
-            pr_trace_msg(trace_channel, 9,
-              "matched name '%s' against pattern '%s'", name,
-              namebind->nb_name);
-            return namebind;
-          }
-
-          pr_trace_msg(trace_channel, 9,
-            "failed to match name '%s' against pattern '%s'", name,
-            namebind->nb_name);
+      if (namebind->nb_iswildcard == FALSE) {
+        if (strcasecmp(namebind->nb_name, name) == 0) {
+          return namebind;
         }
+
+      } else {
+        int match_flags = PR_FNM_NOESCAPE|PR_FNM_CASEFOLD;
+
+        if (pr_fnmatch(namebind->nb_name, name, match_flags) == 0) {
+          pr_trace_msg(trace_channel, 9,
+            "matched name '%s' against pattern '%s'", name,
+            namebind->nb_name);
+          return namebind;
+        }
+
+        pr_trace_msg(trace_channel, 9,
+          "failed to match name '%s' against pattern '%s'", name,
+          namebind->nb_name);
       }
     }
   }

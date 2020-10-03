@@ -1,6 +1,6 @@
 /*
  * ProFTPD - FTP server daemon
- * Copyright (c) 2015-2018 The ProFTPD Project team
+ * Copyright (c) 2015-2020 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -177,7 +177,7 @@ found_lf:
   *outlen = i;
   *out = dst;
 
-  return i - j;
+  return (int) i - j;
 }
 
 void pr_ascii_ftp_reset(void) {

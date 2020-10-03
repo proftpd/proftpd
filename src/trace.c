@@ -78,18 +78,16 @@ static const char *trace_channels[] = {
 static void trace_restart_ev(const void *event_data, void *user_data) {
   trace_opts = PR_TRACE_OPT_DEFAULT;
 
-  close(trace_logfd);
+  (void) close(trace_logfd);
   trace_logfd = -1;
 
-  if (trace_pool) {
+  if (trace_pool != NULL) {
     destroy_pool(trace_pool);
     trace_pool = NULL;
     trace_tab = NULL;
 
     pr_event_unregister(NULL, "core.restart", trace_restart_ev);
   }
-
-  return;
 }
 
 static int trace_write(const char *channel, int level, const char *msg,

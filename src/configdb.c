@@ -958,7 +958,6 @@ void init_config(void) {
     config_id = 0;
 
   } else {
-
     config_tab_pool = make_sub_pool(permanent_pool);
     pr_pool_tag(config_tab_pool, "Config Table Pool");
     config_tab = pr_table_alloc(config_tab_pool, 0);
@@ -973,6 +972,4 @@ void init_config(void) {
     pr_log_debug(DEBUG2, "error setting config ID table max size to %u: %s",
       maxents, strerror(errno));
   }
-
-  return;
 }

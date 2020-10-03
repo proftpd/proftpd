@@ -514,12 +514,10 @@ void pr_auth_setpwent(pool *p) {
   cmd = make_cmd(p, 0);
   (void) dispatch_auth(cmd, "setpwent", NULL);
 
-  if (cmd->tmp_pool) {
+  if (cmd->tmp_pool != NULL) {
     destroy_pool(cmd->tmp_pool);
     cmd->tmp_pool = NULL;
   }
-
-  return;
 }
 
 void pr_auth_endpwent(pool *p) {
@@ -528,12 +526,12 @@ void pr_auth_endpwent(pool *p) {
   cmd = make_cmd(p, 0);
   (void) dispatch_auth(cmd, "endpwent", NULL);
 
-  if (cmd->tmp_pool) {
+  if (cmd->tmp_pool != NULL) {
     destroy_pool(cmd->tmp_pool);
     cmd->tmp_pool = NULL;
   }
 
-  if (auth_tab) {
+  if (auth_tab != NULL) {
     int item_count;
 
     item_count = pr_table_count(auth_tab);
@@ -544,8 +542,6 @@ void pr_auth_endpwent(pool *p) {
     (void) pr_table_free(auth_tab);
     auth_tab = NULL;
   }
-
-  return;
 }
 
 void pr_auth_setgrent(pool *p) {
@@ -554,12 +550,10 @@ void pr_auth_setgrent(pool *p) {
   cmd = make_cmd(p, 0);
   (void) dispatch_auth(cmd, "setgrent", NULL);
 
-  if (cmd->tmp_pool) {
+  if (cmd->tmp_pool != NULL) {
     destroy_pool(cmd->tmp_pool);
     cmd->tmp_pool = NULL;
   }
-
-  return;
 }
 
 void pr_auth_endgrent(pool *p) {
@@ -568,12 +562,10 @@ void pr_auth_endgrent(pool *p) {
   cmd = make_cmd(p, 0);
   (void) dispatch_auth(cmd, "endgrent", NULL);
 
-  if (cmd->tmp_pool) {
+  if (cmd->tmp_pool != NULL) {
     destroy_pool(cmd->tmp_pool);
     cmd->tmp_pool = NULL;
   }
-
-  return;
 }
 
 struct passwd *pr_auth_getpwent(pool *p) {
@@ -594,7 +586,7 @@ struct passwd *pr_auth_getpwent(pool *p) {
     res = mr->data;
   }
 
-  if (cmd->tmp_pool) {
+  if (cmd->tmp_pool != NULL) {
     destroy_pool(cmd->tmp_pool);
     cmd->tmp_pool = NULL;
   }
@@ -638,7 +630,7 @@ struct group *pr_auth_getgrent(pool *p) {
     res = mr->data;
   }
 
-  if (cmd->tmp_pool) {
+  if (cmd->tmp_pool != NULL) {
     destroy_pool(cmd->tmp_pool);
     cmd->tmp_pool = NULL;
   }
@@ -1617,7 +1609,7 @@ config_rec *pr_auth_get_anon_config(pool *p, const char **login_user,
       pr_signals_handle();
 
       alias = c->argv[0];
-      if (strncmp(alias, "*", 2) == 0 ||
+      if (strcmp(alias, "*") == 0 ||
           strcmp(alias, *login_user) == 0) {
         is_alias = TRUE;
         alias_config = c;
@@ -1660,7 +1652,7 @@ config_rec *pr_auth_get_anon_config(pool *p, const char **login_user,
       config_flags);
 
     if (c != NULL &&
-        (strncmp(c->argv[0], "*", 2) == 0 ||
+        (strcmp(c->argv[0], "*") == 0 ||
          strcmp(c->argv[0], *login_user) == 0)) {
       is_alias = TRUE;
       alias_config = c;

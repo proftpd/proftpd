@@ -238,8 +238,9 @@ int pr_expr_eval_group_or(char **expr) {
       }
     }
 
-    if (found)
+    if (found) {
       return TRUE;
+    }
   }
 
   return FALSE;
@@ -267,7 +268,7 @@ int pr_expr_eval_user_and(char **expr) {
       user++;
     }
 
-    if (session.user &&
+    if (session.user != NULL &&
         strcmp(session.user, user) == 0) {
       found = !found;
     }

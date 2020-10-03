@@ -267,8 +267,8 @@ void pr_response_add_err(const char *numeric, const char *fmt, ...) {
     *head &&
     (!numeric || !(*head)->num || strcmp((*head)->num, numeric) <= 0) &&
     !(numeric && !(*head)->num && head == &resp_err_list);
-
-  head = &(*head)->next);
+    head = &(*head)->next) {
+  }
 
   resp->next = *head;
   *head = resp;
@@ -326,7 +326,8 @@ void pr_response_add(const char *numeric, const char *fmt, ...) {
     *head &&
     (!numeric || !(*head)->num || strcmp((*head)->num, numeric) <= 0) &&
     !(numeric && !(*head)->num && head == &resp_list);
-  head = &(*head)->next);
+    head = &(*head)->next) {
+  }
 
   resp->next = *head;
   *head = resp;

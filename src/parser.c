@@ -164,19 +164,17 @@ static char *get_config_word(pool *p, char *word) {
 static void remove_config_source(void) {
   struct config_src *cs = parser_sources;
 
-  if (cs) {
+  if (cs != NULL) {
     parser_sources = cs->cs_next;
     destroy_pool(cs->cs_pool);
   }
-
-  return;
 }
 
 /* Public API
  */
 
 int pr_parser_cleanup(void) {
-  if (parser_pool) {
+  if (parser_pool != NULL) {
     if (parser_servstack->nelts > 1 ||
         (parser_curr_config && *parser_curr_config)) {
       errno = EPERM;
@@ -799,7 +797,8 @@ char *pr_parser_read_line(char *buf, size_t bufsz) {
     }
 
     /* Advance past any leading whitespace. */
-    for (bufp = buf; *bufp && PR_ISSPACE(*bufp); bufp++);
+    for (bufp = buf; *bufp && PR_ISSPACE(*bufp); bufp++) {
+    }
 
     /* Check for commented or blank lines at this point, and just continue on
      * to the next configuration line if found.  If not, return the
@@ -807,16 +806,14 @@ char *pr_parser_read_line(char *buf, size_t bufsz) {
      */
     if (*bufp == '#' || !*bufp) {
       continue;
-
-    } else {
-
-      /* Copy the value of bufp back into the pointer passed in
-       * and return it.
-       */
-      buf = bufp;
-
-      return buf;
     }
+
+    /* Copy the value of bufp back into the pointer passed in
+     * and return it.
+     */
+    buf = bufp;
+
+    return buf;
   }
 
   return NULL;
@@ -1072,8 +1069,8 @@ static int parse_wildcard_config_path(pool *p, const char *path,
   while ((dent = pr_fsio_readdir(dirh)) != NULL) {
     pr_signals_handle();
 
-    if (strncmp(dent->d_name, ".", 2) == 0 ||
-        strncmp(dent->d_name, "..", 3) == 0) {
+    if (strcmp(dent->d_name, ".") == 0 ||
+        strcmp(dent->d_name, "..") == 0) {
       continue;
     }
 

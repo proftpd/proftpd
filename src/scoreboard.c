@@ -1,6 +1,6 @@
 /*
  * ProFTPD - FTP server daemon
- * Copyright (c) 2001-2019 The ProFTPD Project team
+ * Copyright (c) 2001-2020 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -386,8 +386,10 @@ int pr_close_scoreboard(int keep_mutex) {
     return 0;
   }
 
-  if (scoreboard_read_locked || scoreboard_write_locked)
+  if (scoreboard_read_locked ||
+      scoreboard_write_locked) {
     unlock_scoreboard();
+  }
 
   pr_trace_msg(trace_channel, 4, "closing scoreboard fd %d", scoreboard_fd);
 
@@ -582,7 +584,7 @@ int pr_open_scoreboard(int flags) {
         continue;
       }
 
-      close(scoreboard_fd);
+      (void) close(scoreboard_fd);
       scoreboard_fd = -1;
 
       pr_trace_msg(trace_channel, 9, "error opening ScoreboardMutex '%s': %s",
@@ -629,10 +631,10 @@ int pr_open_scoreboard(int flags) {
     if (res < 0) {
       int xerrno = errno;
 
-      close(scoreboard_mutex_fd);
+      (void) close(scoreboard_mutex_fd);
       scoreboard_mutex_fd = -1;
 
-      close(scoreboard_fd);
+      (void) close(scoreboard_fd);
       scoreboard_fd = -1;
 
       errno = xerrno;
@@ -651,10 +653,10 @@ int pr_open_scoreboard(int flags) {
 
       unlock_scoreboard();
 
-      close(scoreboard_mutex_fd);
+      (void) close(scoreboard_mutex_fd);
       scoreboard_mutex_fd = -1;
 
-      close(scoreboard_fd);
+      (void) close(scoreboard_fd);
       scoreboard_fd = -1;
 
       errno = xerrno;
@@ -795,14 +797,14 @@ int pr_set_scoreboard(const char *path) {
     return 0;
   }
 
-  if (strncasecmp(path, "none", 5) == 0) {
+  if (strcasecmp(path, "none") == 0) {
     pr_trace_msg(trace_channel, 3,
       "ScoreboardFile set to '%s', disabling scoreboarding", path);
     scoreboard_engine = FALSE;
     return 0;
   }
 
-  if (strncmp(path, "/dev/null", 10) == 0) {
+  if (strcmp(path, "/dev/null") == 0) {
     pr_trace_msg(trace_channel, 3,
       "ScoreboardFile set to '%s', disabling scoreboarding", path);
     scoreboard_engine = FALSE;
@@ -858,8 +860,9 @@ int pr_scoreboard_entry_add(void) {
 
   /* Write-lock the scoreboard file. */
   PR_DEVEL_CLOCK(res = wlock_scoreboard());
-  if (res < 0)
+  if (res < 0) {
     return -1;
+  }
 
   /* No interruptions, please. */
   pr_signals_block();
@@ -886,8 +889,9 @@ int pr_scoreboard_entry_add(void) {
       found_slot = TRUE;
     }
 
-    if (found_slot)
+    if (found_slot) {
       break;
+    }
   }
 
   memset(&entry, '\0', sizeof(entry));
@@ -1254,33 +1258,33 @@ int pr_scoreboard_entry_update(pid_t pid, ...) {
         break;
 
       case PR_SCORE_CMD: {
-          char *cmdstr = NULL;
-          tmp = va_arg(ap, char *);
-          cmdstr = handle_score_str(tmp, ap);
+        char *cmdstr = NULL;
+        tmp = va_arg(ap, char *);
+        cmdstr = handle_score_str(tmp, ap);
 
-          memset(entry.sce_cmd, '\0', sizeof(entry.sce_cmd));
-          sstrncpy(entry.sce_cmd, cmdstr, sizeof(entry.sce_cmd));
-          (void) va_arg(ap, void *);
+        memset(entry.sce_cmd, '\0', sizeof(entry.sce_cmd));
+        sstrncpy(entry.sce_cmd, cmdstr, sizeof(entry.sce_cmd));
+        (void) va_arg(ap, void *);
 
-          pr_trace_msg(trace_channel, 15, "updated scoreboard entry "
-            "command to '%s'", entry.sce_cmd);
-        }
+        pr_trace_msg(trace_channel, 15, "updated scoreboard entry "
+          "command to '%s'", entry.sce_cmd);
         break;
+      }
 
       case PR_SCORE_CMD_ARG: {
-          char *argstr = NULL;
-          tmp = va_arg(ap, char *);
-          argstr = handle_score_str(tmp, ap);
+        char *argstr = NULL;
+        tmp = va_arg(ap, char *);
+        argstr = handle_score_str(tmp, ap);
 
-          memset(entry.sce_cmd_arg, '\0', sizeof(entry.sce_cmd_arg));
-          sstrncpy(entry.sce_cmd_arg, argstr,
-            str_getlen(argstr, sizeof(entry.sce_cmd_arg)-1) + 1);
-          (void) va_arg(ap, void *);
+        memset(entry.sce_cmd_arg, '\0', sizeof(entry.sce_cmd_arg));
+        sstrncpy(entry.sce_cmd_arg, argstr,
+          str_getlen(argstr, sizeof(entry.sce_cmd_arg)-1) + 1);
+        (void) va_arg(ap, void *);
 
-          pr_trace_msg(trace_channel, 15, "updated scoreboard entry "
-            "command args to '%s'", entry.sce_cmd_arg);
-        }
+        pr_trace_msg(trace_channel, 15, "updated scoreboard entry "
+          "command args to '%s'", entry.sce_cmd_arg);
         break;
+      }
 
       case PR_SCORE_SERVER_PORT:
         entry.sce_server_port = va_arg(ap, int);
@@ -1289,18 +1293,18 @@ int pr_scoreboard_entry_update(pid_t pid, ...) {
         break;
 
       case PR_SCORE_SERVER_ADDR: {
-          pr_netaddr_t *server_addr = va_arg(ap, pr_netaddr_t *);
-          int server_port = va_arg(ap, int);
+        pr_netaddr_t *server_addr = va_arg(ap, pr_netaddr_t *);
+        int server_port = va_arg(ap, int);
 
-          pr_snprintf(entry.sce_server_addr, sizeof(entry.sce_server_addr),
-            "%s:%d", server_addr ? pr_netaddr_get_ipstr(server_addr) :
-            "(unknown)", server_port);
-          entry.sce_server_addr[sizeof(entry.sce_server_addr)-1] = '\0';
+        pr_snprintf(entry.sce_server_addr, sizeof(entry.sce_server_addr),
+          "%s:%d", server_addr ? pr_netaddr_get_ipstr(server_addr) :
+          "(unknown)", server_port);
+        entry.sce_server_addr[sizeof(entry.sce_server_addr)-1] = '\0';
 
-          pr_trace_msg(trace_channel, 15, "updated scoreboard entry server "
-            "address to '%s'", entry.sce_server_addr);
-        }
+        pr_trace_msg(trace_channel, 15, "updated scoreboard entry server "
+          "address to '%s'", entry.sce_server_addr);
         break;
+      }
 
       case PR_SCORE_SERVER_LABEL:
         tmp = va_arg(ap, char *);

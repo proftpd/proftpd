@@ -231,14 +231,15 @@ const char *pr_session_get_protocol(int flags) {
   }
 
   /* Otherwise, we need to return either "FTP" or "SSH2", for consistency. */
-  if (strncmp(sess_proto, "ftp", 4) == 0 ||
-      strncmp(sess_proto, "ftps", 5) == 0) {
+  if (strcmp(sess_proto, "ftp") == 0 ||
+      strcmp(sess_proto, "ftps") == 0) {
     return "FTP";
-  
-  } else if (strncmp(sess_proto, "ssh2", 5) == 0 ||
-             strncmp(sess_proto, "sftp", 5) == 0 ||
-             strncmp(sess_proto, "scp", 4) == 0 ||
-             strncmp(sess_proto, "publickey", 10) == 0) {
+  }
+
+  if (strcmp(sess_proto, "ssh2") == 0 ||
+      strcmp(sess_proto, "sftp") == 0 ||
+      strcmp(sess_proto, "scp") == 0 ||
+      strcmp(sess_proto, "publickey") == 0) {
     return "SSH2";
   }
 
@@ -433,19 +434,19 @@ const char *pr_session_get_ttyname(pool *p) {
   }
 
   sess_proto = pr_table_get(session.notes, "protocol", NULL);
-  if (sess_proto) {
-    if (strncmp(sess_proto, "ftp", 4) == 0 ||
-        strncmp(sess_proto, "ftps", 5) == 0) {
+  if (sess_proto != NULL) {
+    if (strcmp(sess_proto, "ftp") == 0 ||
+        strcmp(sess_proto, "ftps") == 0) {
 #if (defined(BSD) && (BSD >= 199103))
       tty_proto = "ftp";
 #else
       tty_proto = "ftpd";
 #endif
 
-    } else if (strncmp(sess_proto, "ssh2", 5) == 0 ||
-               strncmp(sess_proto, "sftp", 5) == 0 ||
-               strncmp(sess_proto, "scp", 4) == 0 ||
-               strncmp(sess_proto, "publickey", 10) == 0) {
+    } else if (strcmp(sess_proto, "ssh2") == 0 ||
+               strcmp(sess_proto, "sftp") == 0 ||
+               strcmp(sess_proto, "scp") == 0 ||
+               strcmp(sess_proto, "publickey") == 0) {
 
       /* Just use the plain "ssh" string for the tty name for these cases. */
       tty_proto = "ssh";

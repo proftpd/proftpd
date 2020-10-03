@@ -421,10 +421,11 @@ int pr_log_writefile(int logfd, const char *ident, const char *fmt, ...) {
 int log_opensyslog(const char *fn) {
   int res = 0;
 
-  if (set_facility != -1)
+  if (set_facility != -1) {
     facility = set_facility;
+  }
 
-  if (fn) {
+  if (fn != NULL) {
     memset(systemlog_fn, '\0', sizeof(systemlog_fn));
     sstrncpy(systemlog_fn, fn, sizeof(systemlog_fn));
   }
@@ -828,28 +829,35 @@ int pr_log_set_options(unsigned long opts) {
  */
 int pr_log_str2sysloglevel(const char *name) {
 
-  if (strncasecmp(name, "emerg", 6) == 0) {
+  if (strcasecmp(name, "emerg") == 0) {
     return PR_LOG_EMERG;
+  }
 
-  } else if (strncasecmp(name, "alert", 6) == 0) {
+  if (strcasecmp(name, "alert") == 0) {
     return PR_LOG_ALERT;
+  }
 
-  } else if (strncasecmp(name, "crit", 5) == 0) {
+  if (strcasecmp(name, "crit") == 0) {
     return PR_LOG_CRIT;
+  }
 
-  } else if (strncasecmp(name, "error", 6) == 0) {
+  if (strcasecmp(name, "error") == 0) {
     return PR_LOG_ERR;
+  }
 
-  } else if (strncasecmp(name, "warn", 5) == 0) {
+  if (strcasecmp(name, "warn") == 0) {
     return PR_LOG_WARNING;
+  }
 
-  } else if (strncasecmp(name, "notice", 7) == 0) {
+  if (strcasecmp(name, "notice") == 0) {
     return PR_LOG_NOTICE;
+  }
 
-  } else if (strncasecmp(name, "info", 5) == 0) {
+  if (strcasecmp(name, "info") == 0) {
     return PR_LOG_INFO;
+  }
 
-  } else if (strncasecmp(name, "debug", 6) == 0) {
+  if (strcasecmp(name, "debug") == 0) {
     return PR_LOG_DEBUG;
   }
 
@@ -871,8 +879,9 @@ void pr_log_debug(int level, const char *fmt, ...) {
     }
   }
 
-  if (fmt == NULL)
+  if (fmt == NULL) {
     return;
+  }
 
   memset(buf, '\0', sizeof(buf));
   va_start(msg, fmt);
