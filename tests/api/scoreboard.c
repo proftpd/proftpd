@@ -1,6 +1,6 @@
 /*
  * ProFTPD - FTP server testsuite
- * Copyright (c) 2008-2016 The ProFTPD Project team
+ * Copyright (c) 2008-2020 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -94,32 +94,38 @@ START_TEST (scoreboard_set_test) {
   int res;
   const char *path;
 
+  mark_point();
   res = pr_set_scoreboard(NULL);
-  fail_unless(res == -1, "Failed to handle null argument");
+  fail_unless(res < 0, "Failed to handle null argument");
   fail_unless(errno == EINVAL, "Failed to set errno to EINVAL");
 
+  mark_point();
   res = pr_set_scoreboard("foo");
-  fail_unless(res == -1, "Failed to handle non-path argument");
+  fail_unless(res < 0, "Failed to handle non-path argument");
   fail_unless(errno == EINVAL, "Failed to set errno to EINVAL (got %d)",
     errno);
 
+  mark_point();
   res = pr_set_scoreboard("foo/");
-  fail_unless(res == -1, "Failed to handle relative path argument");
+  fail_unless(res < 0, "Failed to handle relative path argument");
   fail_unless(errno == EINVAL, "Failed to set errno to EINVAL (got %d)",
     errno);
 
+  mark_point();
   res = pr_set_scoreboard("/foo");
-  fail_unless(res == -1, "Failed to handle nonexistent path argument");
+  fail_unless(res < 0, "Failed to handle nonexistent path argument");
   fail_unless(errno == EINVAL, "Failed to set errno to EINVAL (got %d)",
     errno);
 
+  mark_point();
   res = pr_set_scoreboard("/tmp");
-  fail_unless(res == -1, "Failed to handle nonexistent path argument");
+  fail_unless(res < 0, "Failed to handle nonexistent path argument");
   fail_unless(errno == EINVAL, "Failed to set errno to EINVAL (got %d)",
     errno);
 
+  mark_point();
   res = pr_set_scoreboard("/tmp/");
-  fail_unless(res == -1, "Failed to handle nonexistent path argument");
+  fail_unless(res < 0, "Failed to handle nonexistent path argument");
   fail_unless(errno == EINVAL, "Failed to set errno to EINVAL (got %d)",
     errno);
 
@@ -130,18 +136,21 @@ START_TEST (scoreboard_set_test) {
   fail_unless(res == 0,
     "Failed to create set 0777 perms on '%s': %s", test_dir, strerror(errno));
 
+  mark_point();
   res = pr_set_scoreboard(test_dir);
-  fail_unless(res == -1, "Failed to handle nonexistent file argument");
+  fail_unless(res < 0, "Failed to handle nonexistent file argument");
   fail_unless(errno == EINVAL, "Failed to set errno to EINVAL");
 
+  mark_point();
   res = pr_set_scoreboard("/tmp/prt-scoreboard/bar");
-  fail_unless(res == -1, "Failed to handle world-writable path argument");
+  fail_unless(res < 0, "Failed to handle world-writable path argument");
   fail_unless(errno == EPERM, "Failed to set errno to EPERM");
 
   res = chmod(test_dir, 0775);
   fail_unless(res == 0, "Failed to set 0775 perms on '%s': %s", test_dir,
     strerror(errno));
 
+  mark_point();
   res = pr_set_scoreboard("/tmp/prt-scoreboard/bar");
   fail_unless(res == 0, "Failed to set scoreboard: %s", strerror(errno));
   (void) rmdir(test_dir);
@@ -339,6 +348,7 @@ END_TEST
 
 START_TEST (scoreboard_restore_test) {
   int res;
+  const char *path;
 
   res = mkdir(test_dir, 0775);
   fail_unless(res == 0, "Failed to create directory '%s': %s", test_dir,
@@ -352,6 +362,7 @@ START_TEST (scoreboard_restore_test) {
   fail_unless(res == 0, "Failed to set scoreboard to '%s': %s", test_file,
     strerror(errno));
 
+  mark_point();
   res = pr_restore_scoreboard();
   fail_unless(res < 0, "Unexpectedly restored scoreboard");
   fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
@@ -360,15 +371,25 @@ START_TEST (scoreboard_restore_test) {
   res = pr_open_scoreboard(O_RDWR);
   fail_unless(res == 0, "Failed to open scoreboard: %s", strerror(errno));
 
+  mark_point();
   res = pr_restore_scoreboard();
   fail_unless(res < 0,
     "Restoring scoreboard before rewind succeeded unexpectedly");
 
+  mark_point();
   res = pr_rewind_scoreboard();
   fail_unless(res == 0, "Failed to rewind scoreboard: %s", strerror(errno));
-
   res = pr_restore_scoreboard();
   fail_unless(res == 0, "Failed to restore scoreboard: %s", strerror(errno));
+
+  mark_point();
+  path = pr_get_scoreboard();
+  res = pr_set_scoreboard("none");
+  fail_unless(res == 0, "Failed to disable scoreboarding: %s", strerror(errno));
+  res = pr_restore_scoreboard();
+  fail_unless(res == 0, "Failed to restore scoreboard: %s", strerror(errno));
+  res = pr_set_scoreboard(path);
+  fail_unless(res == 0, "Failed to enable scoreboarding: %s", strerror(errno));
 
   (void) unlink(test_mutex);
   (void) unlink(test_file);
@@ -378,6 +399,7 @@ END_TEST
 
 START_TEST (scoreboard_rewind_test) {
   int res;
+  const char *path;
 
   res = mkdir(test_dir, 0775);
   fail_unless(res == 0, "Failed to create directory '%s': %s", test_dir,
@@ -387,6 +409,7 @@ START_TEST (scoreboard_rewind_test) {
   fail_unless(res == 0, "Failed to set perms on '%s' to 0775': %s", test_dir,
     strerror(errno));
 
+  mark_point();
   res = pr_set_scoreboard(test_file);
   fail_unless(res == 0, "Failed to set scoreboard to '%s': %s", test_file,
     strerror(errno));
@@ -396,11 +419,20 @@ START_TEST (scoreboard_rewind_test) {
   fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
     strerror(errno), errno);
 
+  mark_point();
   res = pr_open_scoreboard(O_RDWR);
   fail_unless(res == 0, "Failed to open scoreboard: %s", strerror(errno));
-
   res = pr_rewind_scoreboard();
   fail_unless(res == 0, "Failed to rewind scoreboard: %s", strerror(errno));
+
+  mark_point();
+  path = pr_get_scoreboard();
+  res = pr_set_scoreboard("none");
+  fail_unless(res == 0, "Failed to disable scoreboarding: %s", strerror(errno));
+  res = pr_rewind_scoreboard();
+  fail_unless(res == 0, "Failed to rewind scoreboard: %s", strerror(errno));
+  res = pr_set_scoreboard(path);
+  fail_unless(res == 0, "Failed to enable scoreboarding: %s", strerror(errno));
 
   (void) unlink(test_mutex);
   (void) unlink(test_file);
@@ -882,16 +914,34 @@ END_TEST
 START_TEST (scoreboard_entry_kill_test) {
   int res;
   pr_scoreboard_entry_t sce;
+  const char *path;
 
+  mark_point();
   res = pr_scoreboard_entry_kill(NULL, 0);
   fail_unless(res < 0, "Failed to handle null arguments");
   fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
     strerror(errno), errno);
 
+  mark_point();
+  sce.sce_pid = 1;
+  res = pr_scoreboard_entry_kill(&sce, 0);
+  fail_unless(res < 0, "Failed to handle bad PID");
+  fail_unless(errno == EPERM, "Expected EPERM (%d), got %s (%d)", EPERM,
+    strerror(errno), errno);
+
+  mark_point();
   sce.sce_pid = getpid();
   res = pr_scoreboard_entry_kill(&sce, 0);
   fail_unless(res == 0, "Failed to send signal 0 to PID %lu: %s",
     (unsigned long) sce.sce_pid, strerror(errno));
+
+  mark_point();
+  path = pr_get_scoreboard();
+  res = pr_set_scoreboard("none");
+  fail_unless(res == 0, "Failed to disable scoreboarding: %s", strerror(errno));
+  sce.sce_pid = getpid();
+  res = pr_scoreboard_entry_kill(&sce, 0);
+  fail_unless(res == 0, "Failed to send signal: %s", strerror(errno));
 }
 END_TEST
 

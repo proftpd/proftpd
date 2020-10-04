@@ -38,6 +38,7 @@ module *loaded_modules = NULL;
 xaset_t *server_list = NULL;
 
 static cmd_rec *next_cmd = NULL;
+static const char *tests_proto = "ftp";
 
 volatile unsigned int recvd_signal_flags = 0;
 
@@ -48,6 +49,11 @@ int tests_stubs_set_next_cmd(cmd_rec *cmd) {
 
 int tests_stubs_set_main_server(server_rec *s) {
   main_server = s;
+  return 0;
+}
+
+int tests_stubs_set_protocol(const char *proto) {
+  tests_proto = proto;
   return 0;
 }
 
@@ -233,6 +239,10 @@ void pr_session_disconnect(module *m, int reason_code, const char *details) {
 }
 
 const char *pr_session_get_disconnect_reason(const char **details) {
+  if (session.disconnect_reason < 0) {
+    return NULL;
+  }
+
   if (details != NULL) {
     *details = "bebugging";
   }
@@ -241,7 +251,11 @@ const char *pr_session_get_disconnect_reason(const char **details) {
 }
 
 const char *pr_session_get_protocol(int flags) {
-  return "ftp";
+  if (tests_proto == NULL) {
+    return "ftp";
+  }
+
+  return tests_proto;
 }
 
 int pr_session_set_idle(void) {
