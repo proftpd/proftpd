@@ -38,6 +38,7 @@
 
 int tests_stubs_set_main_server(server_rec *);
 int tests_stubs_set_next_cmd(cmd_rec *);
+int tests_stubs_set_protocol(const char *);
 
 Suite *tests_get_pool_suite(void);
 Suite *tests_get_array_suite(void);

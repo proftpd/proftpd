@@ -88,32 +88,12 @@ static unsigned int gid_hash_cb(const void *key, size_t keysz) {
 static void uidcache_create(void) {
   if (uid_tab == NULL &&
       auth_pool != NULL) {
-    int ok = TRUE;
-
     uid_tab = pr_table_alloc(auth_pool, 0);
 
-    if (pr_table_ctl(uid_tab, PR_TABLE_CTL_SET_KEY_CMP,
-        (void *) uid_keycmp_cb) < 0) {
-      pr_trace_msg(trace_channel, 2,
-        "error setting key comparison callback for uidcache: %s",
-        strerror(errno));
-      ok = FALSE;
-    }
-
-    if (pr_table_ctl(uid_tab, PR_TABLE_CTL_SET_KEY_HASH,
-        (void *) uid_hash_cb) < 0) {
-      pr_trace_msg(trace_channel, 2,
-        "error setting key hash callback for uidcache: %s",
-        strerror(errno));
-      ok = FALSE;
-    }
-
-    if (!ok) {
-      pr_trace_msg(trace_channel, 2, "%s",
-        "destroying unusable uidcache table");
-      pr_table_free(uid_tab);
-      uid_tab = NULL;
-    }
+    (void) pr_table_ctl(uid_tab, PR_TABLE_CTL_SET_KEY_CMP,
+      (void *) uid_keycmp_cb);
+    (void) pr_table_ctl(uid_tab, PR_TABLE_CTL_SET_KEY_HASH,
+      (void *) uid_hash_cb);
   }
 }
 
@@ -180,32 +160,12 @@ static int uidcache_get(uid_t uid, char *name, size_t namesz) {
 static void gidcache_create(void) {
   if (gid_tab == NULL&&
       auth_pool != NULL) {
-    int ok = TRUE;
-
     gid_tab = pr_table_alloc(auth_pool, 0);
 
-    if (pr_table_ctl(gid_tab, PR_TABLE_CTL_SET_KEY_CMP,
-        (void *) gid_keycmp_cb) < 0) {
-      pr_trace_msg(trace_channel, 2,
-        "error setting key comparison callback for gidcache: %s",
-        strerror(errno));
-      ok = FALSE;
-    }
-
-    if (pr_table_ctl(gid_tab, PR_TABLE_CTL_SET_KEY_HASH,
-        (void *) gid_hash_cb) < 0) {
-      pr_trace_msg(trace_channel, 2,
-        "error setting key hash callback for gidcache: %s",
-        strerror(errno));
-      ok = FALSE;
-    }
-
-    if (!ok) {
-      pr_trace_msg(trace_channel, 2, "%s",
-        "destroying unusable gidcache table");
-      pr_table_free(gid_tab);
-      gid_tab = NULL;
-    }
+    (void) pr_table_ctl(gid_tab, PR_TABLE_CTL_SET_KEY_CMP,
+      (void *) gid_keycmp_cb);
+    (void) pr_table_ctl(gid_tab, PR_TABLE_CTL_SET_KEY_HASH,
+      (void *) gid_hash_cb);
   }
 }
 
@@ -1154,7 +1114,7 @@ int pr_auth_check(pool *p, const char *ciphertext_passwd, const char *name,
    * of modules.  This is usually only mod_auth_pam, but other modules
    * might also add themselves (e.g. mod_radius under certain conditions).
    */
-  if (auth_module_list) {
+  if (auth_module_list != NULL) {
     struct auth_module_elt *elt;
 
     for (elt = (struct auth_module_elt *) auth_module_list->xas_list; elt;
@@ -1162,16 +1122,15 @@ int pr_auth_check(pool *p, const char *ciphertext_passwd, const char *name,
       pr_signals_handle();
 
       m = pr_module_get(elt->name);
-      if (m) {
+      if (m != NULL) {
         mr = dispatch_auth(cmd, "check", &m);
-
         if (MODRET_ISHANDLED(mr)) {
           pr_trace_msg(trace_channel, 4,
             "module '%s' used for authenticating user '%s'", elt->name, name);
 
           res = MODRET_HASDATA(mr) ? PR_AUTH_RFC2228_OK : PR_AUTH_OK;
 
-          if (cmd->tmp_pool) {
+          if (cmd->tmp_pool != NULL) {
             destroy_pool(cmd->tmp_pool);
             cmd->tmp_pool = NULL;
           }
@@ -1185,14 +1144,14 @@ int pr_auth_check(pool *p, const char *ciphertext_passwd, const char *name,
         if (MODRET_ISERROR(mr)) {
           res = MODRET_ERROR(mr);
 
-          if (cmd->tmp_pool) {
+          if (cmd->tmp_pool != NULL) {
             destroy_pool(cmd->tmp_pool);
             cmd->tmp_pool = NULL;
           }
 
           pr_trace_msg(trace_channel, 9,
-            "module '%s' returned ERROR (%s) for checking user '%s'",
-            elt->name, get_authcode_str(res), name);
+            "module '%s' returned ERROR (%d %s) for checking user '%s'",
+            elt->name, res, get_authcode_str(res), name);
           return res;
         }
 
@@ -1224,7 +1183,7 @@ int pr_auth_check(pool *p, const char *ciphertext_passwd, const char *name,
       name);
   }
 
-  if (cmd->tmp_pool) {
+  if (cmd->tmp_pool != NULL) {
     destroy_pool(cmd->tmp_pool);
     cmd->tmp_pool = NULL;
   }

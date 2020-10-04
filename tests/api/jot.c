@@ -29,24 +29,33 @@
 #include "json.h"
 #include "jot.h"
 
+extern pr_response_t *resp_list;
+
 static pool *p = NULL;
 
 static void set_up(void) {
   if (p == NULL) {
-    p = make_sub_pool(NULL);
+    p = permanent_pool = make_sub_pool(NULL);
   }
 
   if (getenv("TEST_VERBOSE") != NULL) {
     pr_trace_set_levels("jot", 1, 20);
   }
+
+  init_fs();
 }
 
 static void tear_down(void) {
+  if (session.c != NULL) {
+    pr_inet_close(p, session.c);
+    session.c = NULL;
+  }
+
   if (getenv("TEST_VERBOSE") != NULL) {
     pr_trace_set_levels("jot", 0, 0);
   }
 
-  if (p) {
+  if (p != NULL) {
     destroy_pool(p);
     p = permanent_pool = NULL;
   }
@@ -1099,7 +1108,7 @@ static int resolve_on_other(pool *jot_pool, pr_jot_ctx_t *jot_ctx,
   return 0;
 }
 
-START_TEST (jot_resolve_logfmt_test) {
+START_TEST (jot_resolve_logfmt_invalid_test) {
   int res;
   cmd_rec *cmd;
   unsigned char *logfmt;
@@ -1136,6 +1145,3446 @@ START_TEST (jot_resolve_logfmt_test) {
   res = pr_jot_resolve_logfmt(p, cmd, NULL, logfmt, NULL, resolve_on_meta,
     NULL, NULL);
   fail_unless(res == 0, "Failed to handle empty logfmt: %s", strerror(errno));
+}
+END_TEST
+
+START_TEST (jot_resolve_logfmt_basename_test) {
+  int res;
+  cmd_rec *cmd;
+  unsigned char logfmt[3];
+
+  logfmt[0] = LOGFMT_META_START;
+  logfmt[1] = LOGFMT_META_BASENAME;
+  logfmt[2] = 0;
+
+  mark_point();
+  cmd = pr_cmd_alloc(p, 1, pstrdup(p, "FOO"));
+  cmd->cmd_class = CL_MISC;
+  resolve_on_meta_count = resolve_on_default_count = resolve_on_other_count = 0;
+  res = pr_jot_resolve_logfmt(p, cmd, NULL, logfmt, NULL,
+    resolve_on_meta, resolve_on_default, resolve_on_other);
+  fail_unless(res == 0, "Failed to handle logfmt: %s", strerror(errno));
+  fail_unless(resolve_on_meta_count == 0,
+    "Expected on_meta count 0, got %u", resolve_on_meta_count);
+  fail_unless(resolve_on_default_count == 1,
+    "Expected on_default count 1, got %u", resolve_on_default_count);
+  fail_unless(resolve_on_other_count == 0,
+    "Expected on_other count 0, got %u", resolve_on_other_count);
+
+  mark_point();
+  cmd = pr_cmd_alloc(p, 1, pstrdup(p, "RNTO"));
+  cmd->cmd_class = CL_MISC;
+  cmd->arg = pstrdup(p, "/foo/bar");
+  resolve_on_meta_count = resolve_on_default_count = resolve_on_other_count = 0;
+  res = pr_jot_resolve_logfmt(p, cmd, NULL, logfmt, NULL,
+    resolve_on_meta, resolve_on_default, resolve_on_other);
+  fail_unless(res == 0, "Failed to handle logfmt: %s", strerror(errno));
+  fail_unless(resolve_on_meta_count == 1,
+    "Expected on_meta count 1, got %u", resolve_on_meta_count);
+  fail_unless(resolve_on_default_count == 0,
+    "Expected on_default count 0, got %u", resolve_on_default_count);
+  fail_unless(resolve_on_other_count == 0,
+    "Expected on_other count 0, got %u", resolve_on_other_count);
+
+  mark_point();
+  cmd = pr_cmd_alloc(p, 1, pstrdup(p, "RETR"));
+  cmd->cmd_class = CL_MISC;
+  pr_table_add_dup(cmd->notes, "mod_xfer.retr-path", "foo", 0);
+  resolve_on_meta_count = resolve_on_default_count = resolve_on_other_count = 0;
+  res = pr_jot_resolve_logfmt(p, cmd, NULL, logfmt, NULL,
+    resolve_on_meta, resolve_on_default, resolve_on_other);
+  fail_unless(res == 0, "Failed to handle logfmt: %s", strerror(errno));
+  fail_unless(resolve_on_meta_count == 1,
+    "Expected on_meta count 1, got %u", resolve_on_meta_count);
+  fail_unless(resolve_on_default_count == 0,
+    "Expected on_default count 0, got %u", resolve_on_default_count);
+  fail_unless(resolve_on_other_count == 0,
+    "Expected on_other count 0, got %u", resolve_on_other_count);
+
+  mark_point();
+  cmd = pr_cmd_alloc(p, 1, pstrdup(p, "APPE"));
+  cmd->cmd_class = CL_MISC;
+  pr_table_add_dup(cmd->notes, "mod_xfer.store-path", "foo", 0);
+  resolve_on_meta_count = resolve_on_default_count = resolve_on_other_count = 0;
+  res = pr_jot_resolve_logfmt(p, cmd, NULL, logfmt, NULL,
+    resolve_on_meta, resolve_on_default, resolve_on_other);
+  fail_unless(res == 0, "Failed to handle logfmt: %s", strerror(errno));
+  fail_unless(resolve_on_meta_count == 1,
+    "Expected on_meta count 1, got %u", resolve_on_meta_count);
+  fail_unless(resolve_on_default_count == 0,
+    "Expected on_default count 0, got %u", resolve_on_default_count);
+  fail_unless(resolve_on_other_count == 0,
+    "Expected on_other count 0, got %u", resolve_on_other_count);
+
+  mark_point();
+  cmd = pr_cmd_alloc(p, 1, pstrdup(p, "STOR"));
+  cmd->cmd_class = CL_MISC;
+  pr_table_add_dup(cmd->notes, "mod_xfer.store-path", "foo", 0);
+  resolve_on_meta_count = resolve_on_default_count = resolve_on_other_count = 0;
+  res = pr_jot_resolve_logfmt(p, cmd, NULL, logfmt, NULL,
+    resolve_on_meta, resolve_on_default, resolve_on_other);
+  fail_unless(res == 0, "Failed to handle logfmt: %s", strerror(errno));
+  fail_unless(resolve_on_meta_count == 1,
+    "Expected on_meta count 1, got %u", resolve_on_meta_count);
+  fail_unless(resolve_on_default_count == 0,
+    "Expected on_default count 0, got %u", resolve_on_default_count);
+  fail_unless(resolve_on_other_count == 0,
+    "Expected on_other count 0, got %u", resolve_on_other_count);
+
+  mark_point();
+  cmd = pr_cmd_alloc(p, 1, pstrdup(p, "FOO"));
+  cmd->cmd_class = CL_MISC;
+  session.xfer.p = p;
+  session.xfer.path = pstrdup(p, "/foo/bar/baz");
+  resolve_on_meta_count = resolve_on_default_count = resolve_on_other_count = 0;
+  res = pr_jot_resolve_logfmt(p, cmd, NULL, logfmt, NULL,
+    resolve_on_meta, resolve_on_default, resolve_on_other);
+  fail_unless(res == 0, "Failed to handle logfmt: %s", strerror(errno));
+  fail_unless(resolve_on_meta_count == 1,
+    "Expected on_meta count 1, got %u", resolve_on_meta_count);
+  fail_unless(resolve_on_default_count == 0,
+    "Expected on_default count 0, got %u", resolve_on_default_count);
+  fail_unless(resolve_on_other_count == 0,
+    "Expected on_other count 0, got %u", resolve_on_other_count);
+
+  session.xfer.p = NULL;
+  session.xfer.path = NULL;
+
+  mark_point();
+  cmd = pr_cmd_alloc(p, 1, pstrdup(p, "CDUP"));
+  cmd->cmd_class = CL_MISC;
+  resolve_on_meta_count = resolve_on_default_count = resolve_on_other_count = 0;
+  res = pr_jot_resolve_logfmt(p, cmd, NULL, logfmt, NULL,
+    resolve_on_meta, resolve_on_default, resolve_on_other);
+  fail_unless(res == 0, "Failed to handle logfmt: %s", strerror(errno));
+  fail_unless(resolve_on_meta_count == 1,
+    "Expected on_meta count 1, got %u", resolve_on_meta_count);
+  fail_unless(resolve_on_default_count == 0,
+    "Expected on_default count 0, got %u", resolve_on_default_count);
+  fail_unless(resolve_on_other_count == 0,
+    "Expected on_other count 0, got %u", resolve_on_other_count);
+
+  mark_point();
+  cmd = pr_cmd_alloc(p, 1, pstrdup(p, "XCUP"));
+  cmd->cmd_class = CL_MISC;
+  resolve_on_meta_count = resolve_on_default_count = resolve_on_other_count = 0;
+  res = pr_jot_resolve_logfmt(p, cmd, NULL, logfmt, NULL,
+    resolve_on_meta, resolve_on_default, resolve_on_other);
+  fail_unless(res == 0, "Failed to handle logfmt: %s", strerror(errno));
+  fail_unless(resolve_on_meta_count == 1,
+    "Expected on_meta count 1, got %u", resolve_on_meta_count);
+  fail_unless(resolve_on_default_count == 0,
+    "Expected on_default count 0, got %u", resolve_on_default_count);
+  fail_unless(resolve_on_other_count == 0,
+    "Expected on_other count 0, got %u", resolve_on_other_count);
+
+  mark_point();
+  cmd = pr_cmd_alloc(p, 1, pstrdup(p, "PWD"));
+  cmd->cmd_class = CL_MISC;
+  resolve_on_meta_count = resolve_on_default_count = resolve_on_other_count = 0;
+  res = pr_jot_resolve_logfmt(p, cmd, NULL, logfmt, NULL,
+    resolve_on_meta, resolve_on_default, resolve_on_other);
+  fail_unless(res == 0, "Failed to handle logfmt: %s", strerror(errno));
+  fail_unless(resolve_on_meta_count == 1,
+    "Expected on_meta count 1, got %u", resolve_on_meta_count);
+  fail_unless(resolve_on_default_count == 0,
+    "Expected on_default count 0, got %u", resolve_on_default_count);
+  fail_unless(resolve_on_other_count == 0,
+    "Expected on_other count 0, got %u", resolve_on_other_count);
+
+  mark_point();
+  cmd = pr_cmd_alloc(p, 1, pstrdup(p, "XPWD"));
+  cmd->cmd_class = CL_MISC;
+  resolve_on_meta_count = resolve_on_default_count = resolve_on_other_count = 0;
+  res = pr_jot_resolve_logfmt(p, cmd, NULL, logfmt, NULL,
+    resolve_on_meta, resolve_on_default, resolve_on_other);
+  fail_unless(res == 0, "Failed to handle logfmt: %s", strerror(errno));
+  fail_unless(resolve_on_meta_count == 1,
+    "Expected on_meta count 1, got %u", resolve_on_meta_count);
+  fail_unless(resolve_on_default_count == 0,
+    "Expected on_default count 0, got %u", resolve_on_default_count);
+  fail_unless(resolve_on_other_count == 0,
+    "Expected on_other count 0, got %u", resolve_on_other_count);
+
+  mark_point();
+  cmd = pr_cmd_alloc(p, 1, pstrdup(p, "CWD"));
+  cmd->cmd_class = CL_MISC;
+  resolve_on_meta_count = resolve_on_default_count = resolve_on_other_count = 0;
+  res = pr_jot_resolve_logfmt(p, cmd, NULL, logfmt, NULL,
+    resolve_on_meta, resolve_on_default, resolve_on_other);
+  fail_unless(res == 0, "Failed to handle logfmt: %s", strerror(errno));
+  fail_unless(resolve_on_meta_count == 1,
+    "Expected on_meta count 1, got %u", resolve_on_meta_count);
+  fail_unless(resolve_on_default_count == 0,
+    "Expected on_default count 0, got %u", resolve_on_default_count);
+  fail_unless(resolve_on_other_count == 0,
+    "Expected on_other count 0, got %u", resolve_on_other_count);
+
+  mark_point();
+  cmd = pr_cmd_alloc(p, 1, pstrdup(p, "XCWD"));
+  cmd->cmd_class = CL_MISC;
+  session.chroot_path = "/foo/bar";
+  resolve_on_meta_count = resolve_on_default_count = resolve_on_other_count = 0;
+  res = pr_jot_resolve_logfmt(p, cmd, NULL, logfmt, NULL,
+    resolve_on_meta, resolve_on_default, resolve_on_other);
+  fail_unless(res == 0, "Failed to handle logfmt: %s", strerror(errno));
+  fail_unless(resolve_on_meta_count == 1,
+    "Expected on_meta count 1, got %u", resolve_on_meta_count);
+  fail_unless(resolve_on_default_count == 0,
+    "Expected on_default count 0, got %u", resolve_on_default_count);
+  fail_unless(resolve_on_other_count == 0,
+    "Expected on_other count 0, got %u", resolve_on_other_count);
+
+  session.chroot_path = NULL;
+
+  mark_point();
+  cmd = pr_cmd_alloc(p, 4, pstrdup(p, "SITE"), pstrdup(p, "chgrp"),
+    pstrdup(p, "foo"), pstrdup(p, "bar"));
+  cmd->cmd_class = CL_MISC;
+  resolve_on_meta_count = resolve_on_default_count = resolve_on_other_count = 0;
+  res = pr_jot_resolve_logfmt(p, cmd, NULL, logfmt, NULL,
+    resolve_on_meta, resolve_on_default, resolve_on_other);
+  fail_unless(res == 0, "Failed to handle logfmt: %s", strerror(errno));
+  fail_unless(resolve_on_meta_count == 1,
+    "Expected on_meta count 1, got %u", resolve_on_meta_count);
+  fail_unless(resolve_on_default_count == 0,
+    "Expected on_default count 0, got %u", resolve_on_default_count);
+  fail_unless(resolve_on_other_count == 0,
+    "Expected on_other count 0, got %u", resolve_on_other_count);
+
+  mark_point();
+  cmd = pr_cmd_alloc(p, 4, pstrdup(p, "SITE"), pstrdup(p, "chmod"),
+    pstrdup(p, "foo"), pstrdup(p, "bar"));
+  cmd->cmd_class = CL_MISC;
+  resolve_on_meta_count = resolve_on_default_count = resolve_on_other_count = 0;
+  res = pr_jot_resolve_logfmt(p, cmd, NULL, logfmt, NULL,
+    resolve_on_meta, resolve_on_default, resolve_on_other);
+  fail_unless(res == 0, "Failed to handle logfmt: %s", strerror(errno));
+  fail_unless(resolve_on_meta_count == 1,
+    "Expected on_meta count 1, got %u", resolve_on_meta_count);
+  fail_unless(resolve_on_default_count == 0,
+    "Expected on_default count 0, got %u", resolve_on_default_count);
+  fail_unless(resolve_on_other_count == 0,
+    "Expected on_other count 0, got %u", resolve_on_other_count);
+
+  mark_point();
+  cmd = pr_cmd_alloc(p, 4, pstrdup(p, "SITE"), pstrdup(p, "UTIME"),
+    pstrdup(p, "foo"), pstrdup(p, "bar"));
+  cmd->cmd_class = CL_MISC;
+  resolve_on_meta_count = resolve_on_default_count = resolve_on_other_count = 0;
+  res = pr_jot_resolve_logfmt(p, cmd, NULL, logfmt, NULL,
+    resolve_on_meta, resolve_on_default, resolve_on_other);
+  fail_unless(res == 0, "Failed to handle logfmt: %s", strerror(errno));
+  fail_unless(resolve_on_meta_count == 1,
+    "Expected on_meta count 1, got %u", resolve_on_meta_count);
+  fail_unless(resolve_on_default_count == 0,
+    "Expected on_default count 0, got %u", resolve_on_default_count);
+  fail_unless(resolve_on_other_count == 0,
+    "Expected on_other count 0, got %u", resolve_on_other_count);
+
+  mark_point();
+  cmd = pr_cmd_alloc(p, 1, pstrdup(p, "DELE"));
+  cmd->cmd_class = CL_MISC;
+  cmd->arg = pstrdup(p, "/");
+  resolve_on_meta_count = resolve_on_default_count = resolve_on_other_count = 0;
+  res = pr_jot_resolve_logfmt(p, cmd, NULL, logfmt, NULL,
+    resolve_on_meta, resolve_on_default, resolve_on_other);
+  fail_unless(res == 0, "Failed to handle logfmt: %s", strerror(errno));
+  fail_unless(resolve_on_meta_count == 1,
+    "Expected on_meta count 1, got %u", resolve_on_meta_count);
+  fail_unless(resolve_on_default_count == 0,
+    "Expected on_default count 0, got %u", resolve_on_default_count);
+  fail_unless(resolve_on_other_count == 0,
+    "Expected on_other count 0, got %u", resolve_on_other_count);
+
+  mark_point();
+  cmd = pr_cmd_alloc(p, 1, pstrdup(p, "LIST"));
+  cmd->cmd_class = CL_MISC;
+  cmd->arg = pstrdup(p, "/foo/bar/");
+  resolve_on_meta_count = resolve_on_default_count = resolve_on_other_count = 0;
+  res = pr_jot_resolve_logfmt(p, cmd, NULL, logfmt, NULL,
+    resolve_on_meta, resolve_on_default, resolve_on_other);
+  fail_unless(res == 0, "Failed to handle logfmt: %s", strerror(errno));
+  fail_unless(resolve_on_meta_count == 1,
+    "Expected on_meta count 1, got %u", resolve_on_meta_count);
+  fail_unless(resolve_on_default_count == 0,
+    "Expected on_default count 0, got %u", resolve_on_default_count);
+  fail_unless(resolve_on_other_count == 0,
+    "Expected on_other count 0, got %u", resolve_on_other_count);
+
+  mark_point();
+  cmd = pr_cmd_alloc(p, 1, pstrdup(p, "MDTM"));
+  cmd->cmd_class = CL_MISC;
+  cmd->arg = pstrdup(p, "foo/bar");
+  resolve_on_meta_count = resolve_on_default_count = resolve_on_other_count = 0;
+  res = pr_jot_resolve_logfmt(p, cmd, NULL, logfmt, NULL,
+    resolve_on_meta, resolve_on_default, resolve_on_other);
+  fail_unless(res == 0, "Failed to handle logfmt: %s", strerror(errno));
+  fail_unless(resolve_on_meta_count == 1,
+    "Expected on_meta count 1, got %u", resolve_on_meta_count);
+  fail_unless(resolve_on_default_count == 0,
+    "Expected on_default count 0, got %u", resolve_on_default_count);
+  fail_unless(resolve_on_other_count == 0,
+    "Expected on_other count 0, got %u", resolve_on_other_count);
+
+  mark_point();
+  cmd = pr_cmd_alloc(p, 1, pstrdup(p, "MKD"));
+  cmd->cmd_class = CL_MISC;
+  cmd->arg = pstrdup(p, "foo/bar");
+  resolve_on_meta_count = resolve_on_default_count = resolve_on_other_count = 0;
+  res = pr_jot_resolve_logfmt(p, cmd, NULL, logfmt, NULL,
+    resolve_on_meta, resolve_on_default, resolve_on_other);
+  fail_unless(res == 0, "Failed to handle logfmt: %s", strerror(errno));
+  fail_unless(resolve_on_meta_count == 1,
+    "Expected on_meta count 1, got %u", resolve_on_meta_count);
+  fail_unless(resolve_on_default_count == 0,
+    "Expected on_default count 0, got %u", resolve_on_default_count);
+  fail_unless(resolve_on_other_count == 0,
+    "Expected on_other count 0, got %u", resolve_on_other_count);
+
+  mark_point();
+  cmd = pr_cmd_alloc(p, 1, pstrdup(p, "MLSD"));
+  cmd->cmd_class = CL_MISC;
+  cmd->arg = pstrdup(p, "foo/bar");
+  resolve_on_meta_count = resolve_on_default_count = resolve_on_other_count = 0;
+  res = pr_jot_resolve_logfmt(p, cmd, NULL, logfmt, NULL,
+    resolve_on_meta, resolve_on_default, resolve_on_other);
+  fail_unless(res == 0, "Failed to handle logfmt: %s", strerror(errno));
+  fail_unless(resolve_on_meta_count == 1,
+    "Expected on_meta count 1, got %u", resolve_on_meta_count);
+  fail_unless(resolve_on_default_count == 0,
+    "Expected on_default count 0, got %u", resolve_on_default_count);
+  fail_unless(resolve_on_other_count == 0,
+    "Expected on_other count 0, got %u", resolve_on_other_count);
+
+  mark_point();
+  cmd = pr_cmd_alloc(p, 1, pstrdup(p, "MLST"));
+  cmd->cmd_class = CL_MISC;
+  cmd->arg = pstrdup(p, "foo/bar");
+  resolve_on_meta_count = resolve_on_default_count = resolve_on_other_count = 0;
+  res = pr_jot_resolve_logfmt(p, cmd, NULL, logfmt, NULL,
+    resolve_on_meta, resolve_on_default, resolve_on_other);
+  fail_unless(res == 0, "Failed to handle logfmt: %s", strerror(errno));
+  fail_unless(resolve_on_meta_count == 1,
+    "Expected on_meta count 1, got %u", resolve_on_meta_count);
+  fail_unless(resolve_on_default_count == 0,
+    "Expected on_default count 0, got %u", resolve_on_default_count);
+  fail_unless(resolve_on_other_count == 0,
+    "Expected on_other count 0, got %u", resolve_on_other_count);
+
+  mark_point();
+  cmd = pr_cmd_alloc(p, 1, pstrdup(p, "NLST"));
+  cmd->cmd_class = CL_MISC;
+  cmd->arg = pstrdup(p, "foo/bar");
+  resolve_on_meta_count = resolve_on_default_count = resolve_on_other_count = 0;
+  res = pr_jot_resolve_logfmt(p, cmd, NULL, logfmt, NULL,
+    resolve_on_meta, resolve_on_default, resolve_on_other);
+  fail_unless(res == 0, "Failed to handle logfmt: %s", strerror(errno));
+  fail_unless(resolve_on_meta_count == 1,
+    "Expected on_meta count 1, got %u", resolve_on_meta_count);
+  fail_unless(resolve_on_default_count == 0,
+    "Expected on_default count 0, got %u", resolve_on_default_count);
+  fail_unless(resolve_on_other_count == 0,
+    "Expected on_other count 0, got %u", resolve_on_other_count);
+
+  mark_point();
+  cmd = pr_cmd_alloc(p, 1, pstrdup(p, "RMD"));
+  cmd->cmd_class = CL_MISC;
+  cmd->arg = pstrdup(p, "foo/bar");
+  resolve_on_meta_count = resolve_on_default_count = resolve_on_other_count = 0;
+  res = pr_jot_resolve_logfmt(p, cmd, NULL, logfmt, NULL,
+    resolve_on_meta, resolve_on_default, resolve_on_other);
+  fail_unless(res == 0, "Failed to handle logfmt: %s", strerror(errno));
+  fail_unless(resolve_on_meta_count == 1,
+    "Expected on_meta count 1, got %u", resolve_on_meta_count);
+  fail_unless(resolve_on_default_count == 0,
+    "Expected on_default count 0, got %u", resolve_on_default_count);
+  fail_unless(resolve_on_other_count == 0,
+    "Expected on_other count 0, got %u", resolve_on_other_count);
+
+  mark_point();
+  cmd = pr_cmd_alloc(p, 1, pstrdup(p, "XMKD"));
+  cmd->cmd_class = CL_MISC;
+  cmd->arg = pstrdup(p, "foo/bar");
+  resolve_on_meta_count = resolve_on_default_count = resolve_on_other_count = 0;
+  res = pr_jot_resolve_logfmt(p, cmd, NULL, logfmt, NULL,
+    resolve_on_meta, resolve_on_default, resolve_on_other);
+  fail_unless(res == 0, "Failed to handle logfmt: %s", strerror(errno));
+  fail_unless(resolve_on_meta_count == 1,
+    "Expected on_meta count 1, got %u", resolve_on_meta_count);
+  fail_unless(resolve_on_default_count == 0,
+    "Expected on_default count 0, got %u", resolve_on_default_count);
+  fail_unless(resolve_on_other_count == 0,
+    "Expected on_other count 0, got %u", resolve_on_other_count);
+
+  mark_point();
+  cmd = pr_cmd_alloc(p, 1, pstrdup(p, "XRMD"));
+  cmd->cmd_class = CL_MISC;
+  cmd->arg = pstrdup(p, "foo/bar");
+  resolve_on_meta_count = resolve_on_default_count = resolve_on_other_count = 0;
+  res = pr_jot_resolve_logfmt(p, cmd, NULL, logfmt, NULL,
+    resolve_on_meta, resolve_on_default, resolve_on_other);
+  fail_unless(res == 0, "Failed to handle logfmt: %s", strerror(errno));
+  fail_unless(resolve_on_meta_count == 1,
+    "Expected on_meta count 1, got %u", resolve_on_meta_count);
+  fail_unless(resolve_on_default_count == 0,
+    "Expected on_default count 0, got %u", resolve_on_default_count);
+  fail_unless(resolve_on_other_count == 0,
+    "Expected on_other count 0, got %u", resolve_on_other_count);
+
+  mark_point();
+  cmd = pr_cmd_alloc(p, 3, pstrdup(p, "MFMT"), pstrdup(p, "foo"),
+    pstrdup(p, "BAR"));
+  cmd->cmd_class = CL_MISC;
+  resolve_on_meta_count = resolve_on_default_count = resolve_on_other_count = 0;
+  res = pr_jot_resolve_logfmt(p, cmd, NULL, logfmt, NULL,
+    resolve_on_meta, resolve_on_default, resolve_on_other);
+  fail_unless(res == 0, "Failed to handle logfmt: %s", strerror(errno));
+  fail_unless(resolve_on_meta_count == 1,
+    "Expected on_meta count 1, got %u", resolve_on_meta_count);
+  fail_unless(resolve_on_default_count == 0,
+    "Expected on_default count 0, got %u", resolve_on_default_count);
+  fail_unless(resolve_on_other_count == 0,
+    "Expected on_other count 0, got %u", resolve_on_other_count);
+}
+END_TEST
+
+START_TEST (jot_resolve_logfmt_bytes_sent_test) {
+  int res;
+  cmd_rec *cmd;
+  unsigned char logfmt[3];
+
+  logfmt[0] = LOGFMT_META_START;
+  logfmt[1] = LOGFMT_META_BYTES_SENT;
+  logfmt[2] = 0;
+
+  mark_point();
+  cmd = pr_cmd_alloc(p, 1, pstrdup(p, "FOO"));
+  cmd->cmd_class = CL_MISC;
+  resolve_on_meta_count = resolve_on_default_count = resolve_on_other_count = 0;
+  res = pr_jot_resolve_logfmt(p, cmd, NULL, logfmt, NULL,
+    resolve_on_meta, resolve_on_default, resolve_on_other);
+  fail_unless(res == 0, "Failed to handle logfmt: %s", strerror(errno));
+  fail_unless(resolve_on_meta_count == 0,
+    "Expected on_meta count 0, got %u", resolve_on_meta_count);
+  fail_unless(resolve_on_default_count == 1,
+    "Expected on_default count 1, got %u", resolve_on_default_count);
+  fail_unless(resolve_on_other_count == 0,
+    "Expected on_other count 0, got %u", resolve_on_other_count);
+
+  mark_point();
+  resolve_on_meta_count = resolve_on_default_count = resolve_on_other_count = 0;
+  session.xfer.p = p;
+  res = pr_jot_resolve_logfmt(p, cmd, NULL, logfmt, NULL,
+    resolve_on_meta, resolve_on_default, resolve_on_other);
+  fail_unless(res == 0, "Failed to handle logfmt: %s", strerror(errno));
+  fail_unless(resolve_on_meta_count == 1,
+    "Expected on_meta count 1, got %u", resolve_on_meta_count);
+  fail_unless(resolve_on_default_count == 0,
+    "Expected on_default count 0, got %u", resolve_on_default_count);
+  fail_unless(resolve_on_other_count == 0,
+    "Expected on_other count 0, got %u", resolve_on_other_count);
+
+  session.xfer.p = NULL;
+
+  mark_point();
+  resolve_on_meta_count = resolve_on_default_count = resolve_on_other_count = 0;
+  cmd = pr_cmd_alloc(p, 1, pstrdup(p, "DELE"));
+  cmd->cmd_class = CL_MISC;
+  res = pr_jot_resolve_logfmt(p, cmd, NULL, logfmt, NULL,
+    resolve_on_meta, resolve_on_default, resolve_on_other);
+  fail_unless(res == 0, "Failed to handle logfmt: %s", strerror(errno));
+  fail_unless(resolve_on_meta_count == 1,
+    "Expected on_meta count 1, got %u", resolve_on_meta_count);
+  fail_unless(resolve_on_default_count == 0,
+    "Expected on_default count 0, got %u", resolve_on_default_count);
+  fail_unless(resolve_on_other_count == 0,
+    "Expected on_other count 0, got %u", resolve_on_other_count);
+}
+END_TEST
+
+START_TEST (jot_resolve_logfmt_filename_test) {
+  int res;
+  cmd_rec *cmd;
+  unsigned char logfmt[3];
+
+  logfmt[0] = LOGFMT_META_START;
+  logfmt[1] = LOGFMT_META_FILENAME;
+  logfmt[2] = 0;
+
+  mark_point();
+  resolve_on_meta_count = resolve_on_default_count = resolve_on_other_count = 0;
+  cmd = pr_cmd_alloc(p, 1, pstrdup(p, "FOO"));
+  cmd->cmd_class = CL_MISC;
+  res = pr_jot_resolve_logfmt(p, cmd, NULL, logfmt, NULL,
+    resolve_on_meta, resolve_on_default, resolve_on_other);
+  fail_unless(res == 0, "Failed to handle logfmt: %s", strerror(errno));
+  fail_unless(resolve_on_meta_count == 0,
+    "Expected on_meta count 0, got %u", resolve_on_meta_count);
+  fail_unless(resolve_on_default_count == 1,
+    "Expected on_default count 1, got %u", resolve_on_default_count);
+  fail_unless(resolve_on_other_count == 0,
+    "Expected on_other count 0, got %u", resolve_on_other_count);
+
+  mark_point();
+  resolve_on_meta_count = resolve_on_default_count = resolve_on_other_count = 0;
+  cmd = pr_cmd_alloc(p, 1, pstrdup(p, "RNTO"));
+  cmd->cmd_class = CL_MISC;
+  cmd->arg = pstrdup(p, "foo");
+  res = pr_jot_resolve_logfmt(p, cmd, NULL, logfmt, NULL,
+    resolve_on_meta, resolve_on_default, resolve_on_other);
+  fail_unless(res == 0, "Failed to handle logfmt: %s", strerror(errno));
+  fail_unless(resolve_on_meta_count == 1,
+    "Expected on_meta count 1, got %u", resolve_on_meta_count);
+  fail_unless(resolve_on_default_count == 0,
+    "Expected on_default count 0, got %u", resolve_on_default_count);
+  fail_unless(resolve_on_other_count == 0,
+    "Expected on_other count 0, got %u", resolve_on_other_count);
+
+  mark_point();
+  resolve_on_meta_count = resolve_on_default_count = resolve_on_other_count = 0;
+  cmd = pr_cmd_alloc(p, 1, pstrdup(p, "RETR"));
+  cmd->cmd_class = CL_MISC;
+  pr_table_add_dup(cmd->notes, "mod_xfer.retr-path", "foobar", 0);
+  res = pr_jot_resolve_logfmt(p, cmd, NULL, logfmt, NULL,
+    resolve_on_meta, resolve_on_default, resolve_on_other);
+  fail_unless(res == 0, "Failed to handle logfmt: %s", strerror(errno));
+  fail_unless(resolve_on_meta_count == 1,
+    "Expected on_meta count 1, got %u", resolve_on_meta_count);
+  fail_unless(resolve_on_default_count == 0,
+    "Expected on_default count 0, got %u", resolve_on_default_count);
+  fail_unless(resolve_on_other_count == 0,
+    "Expected on_other count 0, got %u", resolve_on_other_count);
+
+  mark_point();
+  resolve_on_meta_count = resolve_on_default_count = resolve_on_other_count = 0;
+  cmd = pr_cmd_alloc(p, 1, pstrdup(p, "APPE"));
+  cmd->cmd_class = CL_MISC;
+  pr_table_add_dup(cmd->notes, "mod_xfer.store-path", "foobar", 0);
+  res = pr_jot_resolve_logfmt(p, cmd, NULL, logfmt, NULL,
+    resolve_on_meta, resolve_on_default, resolve_on_other);
+  fail_unless(res == 0, "Failed to handle logfmt: %s", strerror(errno));
+  fail_unless(resolve_on_meta_count == 1,
+    "Expected on_meta count 1, got %u", resolve_on_meta_count);
+  fail_unless(resolve_on_default_count == 0,
+    "Expected on_default count 0, got %u", resolve_on_default_count);
+  fail_unless(resolve_on_other_count == 0,
+    "Expected on_other count 0, got %u", resolve_on_other_count);
+
+  mark_point();
+  resolve_on_meta_count = resolve_on_default_count = resolve_on_other_count = 0;
+  cmd = pr_cmd_alloc(p, 1, pstrdup(p, "STOR"));
+  cmd->cmd_class = CL_MISC;
+  pr_table_add_dup(cmd->notes, "mod_xfer.store-path", "foobar", 0);
+  res = pr_jot_resolve_logfmt(p, cmd, NULL, logfmt, NULL,
+    resolve_on_meta, resolve_on_default, resolve_on_other);
+  fail_unless(res == 0, "Failed to handle logfmt: %s", strerror(errno));
+  fail_unless(resolve_on_meta_count == 1,
+    "Expected on_meta count 1, got %u", resolve_on_meta_count);
+  fail_unless(resolve_on_default_count == 0,
+    "Expected on_default count 0, got %u", resolve_on_default_count);
+  fail_unless(resolve_on_other_count == 0,
+    "Expected on_other count 0, got %u", resolve_on_other_count);
+
+  mark_point();
+  resolve_on_meta_count = resolve_on_default_count = resolve_on_other_count = 0;
+  cmd = pr_cmd_alloc(p, 1, pstrdup(p, "FOO"));
+  cmd->cmd_class = CL_MISC;
+  session.xfer.p = p;
+  session.xfer.path = pstrdup(p, "foobar");
+  res = pr_jot_resolve_logfmt(p, cmd, NULL, logfmt, NULL,
+    resolve_on_meta, resolve_on_default, resolve_on_other);
+  fail_unless(res == 0, "Failed to handle logfmt: %s", strerror(errno));
+  fail_unless(resolve_on_meta_count == 1,
+    "Expected on_meta count 1, got %u", resolve_on_meta_count);
+  fail_unless(resolve_on_default_count == 0,
+    "Expected on_default count 0, got %u", resolve_on_default_count);
+  fail_unless(resolve_on_other_count == 0,
+    "Expected on_other count 0, got %u", resolve_on_other_count);
+
+  session.xfer.p = NULL;
+  session.xfer.path = NULL;
+
+  mark_point();
+  resolve_on_meta_count = resolve_on_default_count = resolve_on_other_count = 0;
+  cmd = pr_cmd_alloc(p, 1, pstrdup(p, "CDUP"));
+  cmd->cmd_class = CL_MISC;
+  res = pr_jot_resolve_logfmt(p, cmd, NULL, logfmt, NULL,
+    resolve_on_meta, resolve_on_default, resolve_on_other);
+  fail_unless(res == 0, "Failed to handle logfmt: %s", strerror(errno));
+  fail_unless(resolve_on_meta_count == 1,
+    "Expected on_meta count 1, got %u", resolve_on_meta_count);
+  fail_unless(resolve_on_default_count == 0,
+    "Expected on_default count 0, got %u", resolve_on_default_count);
+  fail_unless(resolve_on_other_count == 0,
+    "Expected on_other count 0, got %u", resolve_on_other_count);
+
+  mark_point();
+  resolve_on_meta_count = resolve_on_default_count = resolve_on_other_count = 0;
+  cmd = pr_cmd_alloc(p, 1, pstrdup(p, "PWD"));
+  cmd->cmd_class = CL_MISC;
+  res = pr_jot_resolve_logfmt(p, cmd, NULL, logfmt, NULL,
+    resolve_on_meta, resolve_on_default, resolve_on_other);
+  fail_unless(res == 0, "Failed to handle logfmt: %s", strerror(errno));
+  fail_unless(resolve_on_meta_count == 1,
+    "Expected on_meta count 1, got %u", resolve_on_meta_count);
+  fail_unless(resolve_on_default_count == 0,
+    "Expected on_default count 0, got %u", resolve_on_default_count);
+  fail_unless(resolve_on_other_count == 0,
+    "Expected on_other count 0, got %u", resolve_on_other_count);
+
+  mark_point();
+  resolve_on_meta_count = resolve_on_default_count = resolve_on_other_count = 0;
+  cmd = pr_cmd_alloc(p, 1, pstrdup(p, "XCUP"));
+  cmd->cmd_class = CL_MISC;
+  res = pr_jot_resolve_logfmt(p, cmd, NULL, logfmt, NULL,
+    resolve_on_meta, resolve_on_default, resolve_on_other);
+  fail_unless(res == 0, "Failed to handle logfmt: %s", strerror(errno));
+  fail_unless(resolve_on_meta_count == 1,
+    "Expected on_meta count 1, got %u", resolve_on_meta_count);
+  fail_unless(resolve_on_default_count == 0,
+    "Expected on_default count 0, got %u", resolve_on_default_count);
+  fail_unless(resolve_on_other_count == 0,
+    "Expected on_other count 0, got %u", resolve_on_other_count);
+
+  mark_point();
+  resolve_on_meta_count = resolve_on_default_count = resolve_on_other_count = 0;
+  cmd = pr_cmd_alloc(p, 1, pstrdup(p, "XPWD"));
+  cmd->cmd_class = CL_MISC;
+  res = pr_jot_resolve_logfmt(p, cmd, NULL, logfmt, NULL,
+    resolve_on_meta, resolve_on_default, resolve_on_other);
+  fail_unless(res == 0, "Failed to handle logfmt: %s", strerror(errno));
+  fail_unless(resolve_on_meta_count == 1,
+    "Expected on_meta count 1, got %u", resolve_on_meta_count);
+  fail_unless(resolve_on_default_count == 0,
+    "Expected on_default count 0, got %u", resolve_on_default_count);
+  fail_unless(resolve_on_other_count == 0,
+    "Expected on_other count 0, got %u", resolve_on_other_count);
+
+  mark_point();
+  resolve_on_meta_count = resolve_on_default_count = resolve_on_other_count = 0;
+  cmd = pr_cmd_alloc(p, 1, pstrdup(p, "CWD"));
+  cmd->cmd_class = CL_MISC;
+  res = pr_jot_resolve_logfmt(p, cmd, NULL, logfmt, NULL,
+    resolve_on_meta, resolve_on_default, resolve_on_other);
+  fail_unless(res == 0, "Failed to handle logfmt: %s", strerror(errno));
+  fail_unless(resolve_on_meta_count == 1,
+    "Expected on_meta count 1, got %u", resolve_on_meta_count);
+  fail_unless(resolve_on_default_count == 0,
+    "Expected on_default count 0, got %u", resolve_on_default_count);
+  fail_unless(resolve_on_other_count == 0,
+    "Expected on_other count 0, got %u", resolve_on_other_count);
+
+  mark_point();
+  resolve_on_meta_count = resolve_on_default_count = resolve_on_other_count = 0;
+  cmd = pr_cmd_alloc(p, 1, pstrdup(p, "XCWD"));
+  cmd->cmd_class = CL_MISC;
+  session.chroot_path = "/foo/bar/baz";
+  res = pr_jot_resolve_logfmt(p, cmd, NULL, logfmt, NULL,
+    resolve_on_meta, resolve_on_default, resolve_on_other);
+  fail_unless(res == 0, "Failed to handle logfmt: %s", strerror(errno));
+  fail_unless(resolve_on_meta_count == 1,
+    "Expected on_meta count 1, got %u", resolve_on_meta_count);
+  fail_unless(resolve_on_default_count == 0,
+    "Expected on_default count 0, got %u", resolve_on_default_count);
+  fail_unless(resolve_on_other_count == 0,
+    "Expected on_other count 0, got %u", resolve_on_other_count);
+
+  session.chroot_path = NULL;
+
+  mark_point();
+  resolve_on_meta_count = resolve_on_default_count = resolve_on_other_count = 0;
+  cmd = pr_cmd_alloc(p, 4, pstrdup(p, "SITE"), pstrdup(p, "CHGRP"),
+    pstrdup(p, "foo"), pstrdup(p, "bar"));
+  cmd->cmd_class = CL_MISC;
+  res = pr_jot_resolve_logfmt(p, cmd, NULL, logfmt, NULL,
+    resolve_on_meta, resolve_on_default, resolve_on_other);
+  fail_unless(res == 0, "Failed to handle logfmt: %s", strerror(errno));
+  fail_unless(resolve_on_meta_count == 1,
+    "Expected on_meta count 1, got %u", resolve_on_meta_count);
+  fail_unless(resolve_on_default_count == 0,
+    "Expected on_default count 0, got %u", resolve_on_default_count);
+  fail_unless(resolve_on_other_count == 0,
+    "Expected on_other count 0, got %u", resolve_on_other_count);
+
+  mark_point();
+  resolve_on_meta_count = resolve_on_default_count = resolve_on_other_count = 0;
+  cmd = pr_cmd_alloc(p, 4, pstrdup(p, "SITE"), pstrdup(p, "CHMOD"),
+    pstrdup(p, "foo"), pstrdup(p, "bar"));
+  cmd->cmd_class = CL_MISC;
+  res = pr_jot_resolve_logfmt(p, cmd, NULL, logfmt, NULL,
+    resolve_on_meta, resolve_on_default, resolve_on_other);
+  fail_unless(res == 0, "Failed to handle logfmt: %s", strerror(errno));
+  fail_unless(resolve_on_meta_count == 1,
+    "Expected on_meta count 1, got %u", resolve_on_meta_count);
+  fail_unless(resolve_on_default_count == 0,
+    "Expected on_default count 0, got %u", resolve_on_default_count);
+  fail_unless(resolve_on_other_count == 0,
+    "Expected on_other count 0, got %u", resolve_on_other_count);
+
+  mark_point();
+  resolve_on_meta_count = resolve_on_default_count = resolve_on_other_count = 0;
+  cmd = pr_cmd_alloc(p, 4, pstrdup(p, "SITE"), pstrdup(p, "UTIME"),
+    pstrdup(p, "foo"), pstrdup(p, "bar"));
+  cmd->cmd_class = CL_MISC;
+  res = pr_jot_resolve_logfmt(p, cmd, NULL, logfmt, NULL,
+    resolve_on_meta, resolve_on_default, resolve_on_other);
+  fail_unless(res == 0, "Failed to handle logfmt: %s", strerror(errno));
+  fail_unless(resolve_on_meta_count == 1,
+    "Expected on_meta count 1, got %u", resolve_on_meta_count);
+  fail_unless(resolve_on_default_count == 0,
+    "Expected on_default count 0, got %u", resolve_on_default_count);
+  fail_unless(resolve_on_other_count == 0,
+    "Expected on_other count 0, got %u", resolve_on_other_count);
+
+  mark_point();
+  resolve_on_meta_count = resolve_on_default_count = resolve_on_other_count = 0;
+  cmd = pr_cmd_alloc(p, 1, pstrdup(p, "DELE"));
+  cmd->cmd_class = CL_MISC;
+  cmd->arg = pstrdup(p, "foo bar");
+  res = pr_jot_resolve_logfmt(p, cmd, NULL, logfmt, NULL,
+    resolve_on_meta, resolve_on_default, resolve_on_other);
+  fail_unless(res == 0, "Failed to handle logfmt: %s", strerror(errno));
+  fail_unless(resolve_on_meta_count == 1,
+    "Expected on_meta count 1, got %u", resolve_on_meta_count);
+  fail_unless(resolve_on_default_count == 0,
+    "Expected on_default count 0, got %u", resolve_on_default_count);
+  fail_unless(resolve_on_other_count == 0,
+    "Expected on_other count 0, got %u", resolve_on_other_count);
+
+  mark_point();
+  resolve_on_meta_count = resolve_on_default_count = resolve_on_other_count = 0;
+  cmd = pr_cmd_alloc(p, 1, pstrdup(p, "LIST"));
+  cmd->cmd_class = CL_MISC;
+  cmd->arg = pstrdup(p, "foo bar");
+  res = pr_jot_resolve_logfmt(p, cmd, NULL, logfmt, NULL,
+    resolve_on_meta, resolve_on_default, resolve_on_other);
+  fail_unless(res == 0, "Failed to handle logfmt: %s", strerror(errno));
+  fail_unless(resolve_on_meta_count == 1,
+    "Expected on_meta count 1, got %u", resolve_on_meta_count);
+  fail_unless(resolve_on_default_count == 0,
+    "Expected on_default count 0, got %u", resolve_on_default_count);
+  fail_unless(resolve_on_other_count == 0,
+    "Expected on_other count 0, got %u", resolve_on_other_count);
+
+  mark_point();
+  resolve_on_meta_count = resolve_on_default_count = resolve_on_other_count = 0;
+  cmd = pr_cmd_alloc(p, 1, pstrdup(p, "MDTM"));
+  cmd->cmd_class = CL_MISC;
+  cmd->arg = pstrdup(p, "foo bar");
+  res = pr_jot_resolve_logfmt(p, cmd, NULL, logfmt, NULL,
+    resolve_on_meta, resolve_on_default, resolve_on_other);
+  fail_unless(res == 0, "Failed to handle logfmt: %s", strerror(errno));
+  fail_unless(resolve_on_meta_count == 1,
+    "Expected on_meta count 1, got %u", resolve_on_meta_count);
+  fail_unless(resolve_on_default_count == 0,
+    "Expected on_default count 0, got %u", resolve_on_default_count);
+  fail_unless(resolve_on_other_count == 0,
+    "Expected on_other count 0, got %u", resolve_on_other_count);
+
+  mark_point();
+  resolve_on_meta_count = resolve_on_default_count = resolve_on_other_count = 0;
+  cmd = pr_cmd_alloc(p, 1, pstrdup(p, "MKD"));
+  cmd->cmd_class = CL_MISC;
+  cmd->arg = pstrdup(p, "foo bar");
+  res = pr_jot_resolve_logfmt(p, cmd, NULL, logfmt, NULL,
+    resolve_on_meta, resolve_on_default, resolve_on_other);
+  fail_unless(res == 0, "Failed to handle logfmt: %s", strerror(errno));
+  fail_unless(resolve_on_meta_count == 1,
+    "Expected on_meta count 1, got %u", resolve_on_meta_count);
+  fail_unless(resolve_on_default_count == 0,
+    "Expected on_default count 0, got %u", resolve_on_default_count);
+  fail_unless(resolve_on_other_count == 0,
+    "Expected on_other count 0, got %u", resolve_on_other_count);
+
+  mark_point();
+  resolve_on_meta_count = resolve_on_default_count = resolve_on_other_count = 0;
+  cmd = pr_cmd_alloc(p, 1, pstrdup(p, "MLSD"));
+  cmd->cmd_class = CL_MISC;
+  cmd->arg = pstrdup(p, "foo bar");
+  res = pr_jot_resolve_logfmt(p, cmd, NULL, logfmt, NULL,
+    resolve_on_meta, resolve_on_default, resolve_on_other);
+  fail_unless(res == 0, "Failed to handle logfmt: %s", strerror(errno));
+  fail_unless(resolve_on_meta_count == 1,
+    "Expected on_meta count 1, got %u", resolve_on_meta_count);
+  fail_unless(resolve_on_default_count == 0,
+    "Expected on_default count 0, got %u", resolve_on_default_count);
+  fail_unless(resolve_on_other_count == 0,
+    "Expected on_other count 0, got %u", resolve_on_other_count);
+
+  mark_point();
+  resolve_on_meta_count = resolve_on_default_count = resolve_on_other_count = 0;
+  cmd = pr_cmd_alloc(p, 1, pstrdup(p, "MLST"));
+  cmd->cmd_class = CL_MISC;
+  cmd->arg = pstrdup(p, "foo bar");
+  res = pr_jot_resolve_logfmt(p, cmd, NULL, logfmt, NULL,
+    resolve_on_meta, resolve_on_default, resolve_on_other);
+  fail_unless(res == 0, "Failed to handle logfmt: %s", strerror(errno));
+  fail_unless(resolve_on_meta_count == 1,
+    "Expected on_meta count 1, got %u", resolve_on_meta_count);
+  fail_unless(resolve_on_default_count == 0,
+    "Expected on_default count 0, got %u", resolve_on_default_count);
+  fail_unless(resolve_on_other_count == 0,
+    "Expected on_other count 0, got %u", resolve_on_other_count);
+
+  mark_point();
+  resolve_on_meta_count = resolve_on_default_count = resolve_on_other_count = 0;
+  cmd = pr_cmd_alloc(p, 1, pstrdup(p, "NLST"));
+  cmd->cmd_class = CL_MISC;
+  cmd->arg = pstrdup(p, "foo bar");
+  res = pr_jot_resolve_logfmt(p, cmd, NULL, logfmt, NULL,
+    resolve_on_meta, resolve_on_default, resolve_on_other);
+  fail_unless(res == 0, "Failed to handle logfmt: %s", strerror(errno));
+  fail_unless(resolve_on_meta_count == 1,
+    "Expected on_meta count 1, got %u", resolve_on_meta_count);
+  fail_unless(resolve_on_default_count == 0,
+    "Expected on_default count 0, got %u", resolve_on_default_count);
+  fail_unless(resolve_on_other_count == 0,
+    "Expected on_other count 0, got %u", resolve_on_other_count);
+
+  mark_point();
+  resolve_on_meta_count = resolve_on_default_count = resolve_on_other_count = 0;
+  cmd = pr_cmd_alloc(p, 1, pstrdup(p, "RMD"));
+  cmd->cmd_class = CL_MISC;
+  cmd->arg = pstrdup(p, "foo bar");
+  res = pr_jot_resolve_logfmt(p, cmd, NULL, logfmt, NULL,
+    resolve_on_meta, resolve_on_default, resolve_on_other);
+  fail_unless(res == 0, "Failed to handle logfmt: %s", strerror(errno));
+  fail_unless(resolve_on_meta_count == 1,
+    "Expected on_meta count 1, got %u", resolve_on_meta_count);
+  fail_unless(resolve_on_default_count == 0,
+    "Expected on_default count 0, got %u", resolve_on_default_count);
+  fail_unless(resolve_on_other_count == 0,
+    "Expected on_other count 0, got %u", resolve_on_other_count);
+
+  mark_point();
+  resolve_on_meta_count = resolve_on_default_count = resolve_on_other_count = 0;
+  cmd = pr_cmd_alloc(p, 1, pstrdup(p, "XMKD"));
+  cmd->cmd_class = CL_MISC;
+  cmd->arg = pstrdup(p, "foo bar");
+  res = pr_jot_resolve_logfmt(p, cmd, NULL, logfmt, NULL,
+    resolve_on_meta, resolve_on_default, resolve_on_other);
+  fail_unless(res == 0, "Failed to handle logfmt: %s", strerror(errno));
+  fail_unless(resolve_on_meta_count == 1,
+    "Expected on_meta count 1, got %u", resolve_on_meta_count);
+  fail_unless(resolve_on_default_count == 0,
+    "Expected on_default count 0, got %u", resolve_on_default_count);
+  fail_unless(resolve_on_other_count == 0,
+    "Expected on_other count 0, got %u", resolve_on_other_count);
+
+  mark_point();
+  resolve_on_meta_count = resolve_on_default_count = resolve_on_other_count = 0;
+  cmd = pr_cmd_alloc(p, 1, pstrdup(p, "XRMD"));
+  cmd->cmd_class = CL_MISC;
+  cmd->arg = pstrdup(p, "foo bar");
+  res = pr_jot_resolve_logfmt(p, cmd, NULL, logfmt, NULL,
+    resolve_on_meta, resolve_on_default, resolve_on_other);
+  fail_unless(res == 0, "Failed to handle logfmt: %s", strerror(errno));
+  fail_unless(resolve_on_meta_count == 1,
+    "Expected on_meta count 1, got %u", resolve_on_meta_count);
+  fail_unless(resolve_on_default_count == 0,
+    "Expected on_default count 0, got %u", resolve_on_default_count);
+  fail_unless(resolve_on_other_count == 0,
+    "Expected on_other count 0, got %u", resolve_on_other_count);
+
+  mark_point();
+  resolve_on_meta_count = resolve_on_default_count = resolve_on_other_count = 0;
+  cmd = pr_cmd_alloc(p, 3, pstrdup(p, "MFMT"), pstrdup(p, "foo"),
+    pstrdup(p, "BAR"));
+  cmd->cmd_class = CL_MISC;
+  res = pr_jot_resolve_logfmt(p, cmd, NULL, logfmt, NULL,
+    resolve_on_meta, resolve_on_default, resolve_on_other);
+  fail_unless(res == 0, "Failed to handle logfmt: %s", strerror(errno));
+  fail_unless(resolve_on_meta_count == 1,
+    "Expected on_meta count 1, got %u", resolve_on_meta_count);
+  fail_unless(resolve_on_default_count == 0,
+    "Expected on_default count 0, got %u", resolve_on_default_count);
+  fail_unless(resolve_on_other_count == 0,
+    "Expected on_other count 0, got %u", resolve_on_other_count);
+}
+END_TEST
+
+START_TEST (jot_resolve_logfmt_file_modified_test) {
+  int res;
+  cmd_rec *cmd;
+  unsigned char logfmt[3];
+  char *modified;
+
+  cmd = pr_cmd_alloc(p, 1, pstrdup(p, "FOO"));
+  cmd->cmd_class = CL_MISC;
+  logfmt[0] = LOGFMT_META_START;
+  logfmt[1] = LOGFMT_META_FILE_MODIFIED;
+  logfmt[2] = 0;
+
+  /* First, without the "mod_xfer.file-modified" note. */
+  mark_point();
+  resolve_on_meta_count = resolve_on_default_count = resolve_on_other_count = 0;
+  res = pr_jot_resolve_logfmt(p, cmd, NULL, logfmt, NULL,
+    resolve_on_meta, resolve_on_default, resolve_on_other);
+  fail_unless(res == 0, "Failed to handle logfmt: %s", strerror(errno));
+  fail_unless(resolve_on_meta_count == 1,
+    "Expected on_meta count 1, got %u", resolve_on_meta_count);
+  fail_unless(resolve_on_default_count == 0,
+    "Expected on_default count 0, got %u", resolve_on_default_count);
+  fail_unless(resolve_on_other_count == 0,
+    "Expected on_other count 0, got %u", resolve_on_other_count);
+
+  /* Now, with the "mod_xfer.file-modified" note. */
+  mark_point();
+  resolve_on_meta_count = resolve_on_default_count = resolve_on_other_count = 0;
+  modified = "true";
+  pr_table_add_dup(cmd->notes, "mod_xfer.file-modified", modified, 0);
+  res = pr_jot_resolve_logfmt(p, cmd, NULL, logfmt, NULL,
+    resolve_on_meta, resolve_on_default, resolve_on_other);
+  fail_unless(res == 0, "Failed to handle logfmt: %s", strerror(errno));
+  fail_unless(resolve_on_meta_count == 1,
+    "Expected on_meta count 1, got %u", resolve_on_meta_count);
+  fail_unless(resolve_on_default_count == 0,
+    "Expected on_default count 0, got %u", resolve_on_default_count);
+  fail_unless(resolve_on_other_count == 0,
+    "Expected on_other count 0, got %u", resolve_on_other_count);
+}
+END_TEST
+
+START_TEST (jot_resolve_logfmt_file_offset_test) {
+  int res;
+  cmd_rec *cmd;
+  unsigned char logfmt[3];
+  double file_offset;
+
+  cmd = pr_cmd_alloc(p, 1, pstrdup(p, "FOO"));
+  cmd->cmd_class = CL_MISC;
+  logfmt[0] = LOGFMT_META_START;
+  logfmt[1] = LOGFMT_META_FILE_OFFSET;
+  logfmt[2] = 0;
+
+  /* First, without the "mod_xfer.file-offset" note. */
+  mark_point();
+  resolve_on_meta_count = resolve_on_default_count = resolve_on_other_count = 0;
+  res = pr_jot_resolve_logfmt(p, cmd, NULL, logfmt, NULL,
+    resolve_on_meta, resolve_on_default, resolve_on_other);
+  fail_unless(res == 0, "Failed to handle logfmt: %s", strerror(errno));
+  fail_unless(resolve_on_meta_count == 0,
+    "Expected on_meta count 0, got %u", resolve_on_meta_count);
+  fail_unless(resolve_on_default_count == 1,
+    "Expected on_default count 1, got %u", resolve_on_default_count);
+  fail_unless(resolve_on_other_count == 0,
+    "Expected on_other count 0, got %u", resolve_on_other_count);
+
+  /* Now, with the "mod_xfer.file-offset" note. */
+  mark_point();
+  resolve_on_meta_count = resolve_on_default_count = resolve_on_other_count = 0;
+  file_offset = 2.0;
+  pr_table_add(cmd->notes, "mod_xfer.file-offset", &file_offset,
+    sizeof(file_offset));
+  res = pr_jot_resolve_logfmt(p, cmd, NULL, logfmt, NULL,
+    resolve_on_meta, resolve_on_default, resolve_on_other);
+  fail_unless(res == 0, "Failed to handle logfmt: %s", strerror(errno));
+  fail_unless(resolve_on_meta_count == 1,
+    "Expected on_meta count 1, got %u", resolve_on_meta_count);
+  fail_unless(resolve_on_default_count == 0,
+    "Expected on_default count 0, got %u", resolve_on_default_count);
+  fail_unless(resolve_on_other_count == 0,
+    "Expected on_other count 0, got %u", resolve_on_other_count);
+}
+END_TEST
+
+START_TEST (jot_resolve_logfmt_file_size_test) {
+  int res;
+  cmd_rec *cmd;
+  unsigned char logfmt[3];
+  off_t file_size;
+
+  cmd = pr_cmd_alloc(p, 1, pstrdup(p, "FOO"));
+  cmd->cmd_class = CL_MISC;
+  logfmt[0] = LOGFMT_META_START;
+  logfmt[1] = LOGFMT_META_FILE_SIZE;
+  logfmt[2] = 0;
+
+  /* First, without the "mod_xfer.file-size" note. */
+  mark_point();
+  resolve_on_meta_count = resolve_on_default_count = resolve_on_other_count = 0;
+  res = pr_jot_resolve_logfmt(p, cmd, NULL, logfmt, NULL,
+    resolve_on_meta, resolve_on_default, resolve_on_other);
+  fail_unless(res == 0, "Failed to handle logfmt: %s", strerror(errno));
+  fail_unless(resolve_on_meta_count == 0,
+    "Expected on_meta count 0, got %u", resolve_on_meta_count);
+  fail_unless(resolve_on_default_count == 1,
+    "Expected on_default count 1, got %u", resolve_on_default_count);
+  fail_unless(resolve_on_other_count == 0,
+    "Expected on_other count 0, got %u", resolve_on_other_count);
+
+  /* Now, with the "mod_xfer.file-size" note. */
+  mark_point();
+  resolve_on_meta_count = resolve_on_default_count = resolve_on_other_count = 0;
+  file_size = 2.0;
+  pr_table_add(cmd->notes, "mod_xfer.file-size", &file_size, sizeof(file_size));
+  res = pr_jot_resolve_logfmt(p, cmd, NULL, logfmt, NULL,
+    resolve_on_meta, resolve_on_default, resolve_on_other);
+  fail_unless(res == 0, "Failed to handle logfmt: %s", strerror(errno));
+  fail_unless(resolve_on_meta_count == 1,
+    "Expected on_meta count 1, got %u", resolve_on_meta_count);
+  fail_unless(resolve_on_default_count == 0,
+    "Expected on_default count 0, got %u", resolve_on_default_count);
+  fail_unless(resolve_on_other_count == 0,
+    "Expected on_other count 0, got %u", resolve_on_other_count);
+}
+END_TEST
+
+START_TEST (jot_resolve_logfmt_env_var_test) {
+  int res;
+  cmd_rec *cmd;
+  unsigned char logfmt[9];
+  const char *key, *val;
+
+  cmd = pr_cmd_alloc(p, 1, pstrdup(p, "FOO"));
+  cmd->cmd_class = CL_MISC;
+  logfmt[0] = LOGFMT_META_START;
+  logfmt[1] = LOGFMT_META_ENV_VAR;
+  logfmt[2] = 0;
+
+  mark_point();
+  resolve_on_meta_count = resolve_on_default_count = resolve_on_other_count = 0;
+  res = pr_jot_resolve_logfmt(p, cmd, NULL, logfmt, NULL,
+    resolve_on_meta, resolve_on_default, resolve_on_other);
+  fail_unless(res == 0, "Failed to handle logfmt: %s", strerror(errno));
+  fail_unless(resolve_on_meta_count == 0,
+    "Expected on_meta count 0, got %u", resolve_on_meta_count);
+  fail_unless(resolve_on_default_count == 0,
+    "Expected on_default count 0, got %u", resolve_on_default_count);
+  fail_unless(resolve_on_other_count == 0,
+    "Expected on_other count 0, got %u", resolve_on_other_count);
+
+  mark_point();
+  resolve_on_meta_count = resolve_on_default_count = resolve_on_other_count = 0;
+  logfmt[0] = LOGFMT_META_START;
+  logfmt[1] = LOGFMT_META_ENV_VAR;
+  logfmt[2] = LOGFMT_META_START;
+  logfmt[3] = LOGFMT_META_ARG;
+  logfmt[4] = 'k';
+  logfmt[5] = 'e';
+  logfmt[6] = 'y';
+  logfmt[7] = LOGFMT_META_ARG_END;
+  logfmt[8] = 0;
+  res = pr_jot_resolve_logfmt(p, cmd, NULL, logfmt, NULL,
+    resolve_on_meta, resolve_on_default, resolve_on_other);
+  fail_unless(res == 0, "Failed to handle logfmt: %s", strerror(errno));
+  fail_unless(resolve_on_meta_count == 0,
+    "Expected on_meta count 0, got %u", resolve_on_meta_count);
+  fail_unless(resolve_on_default_count == 1,
+    "Expected on_default count 1, got %u", resolve_on_default_count);
+  fail_unless(resolve_on_other_count == 0,
+    "Expected on_other count 0, got %u", resolve_on_other_count);
+
+  mark_point();
+  resolve_on_meta_count = resolve_on_default_count = resolve_on_other_count = 0;
+  key = "key";
+  val = "val";
+  pr_env_set(p, key, val);
+  res = pr_jot_resolve_logfmt(p, cmd, NULL, logfmt, NULL,
+    resolve_on_meta, resolve_on_default, resolve_on_other);
+  fail_unless(res == 0, "Failed to handle logfmt: %s", strerror(errno));
+  fail_unless(resolve_on_meta_count == 1,
+    "Expected on_meta count 1, got %u", resolve_on_meta_count);
+  fail_unless(resolve_on_default_count == 0,
+    "Expected on_default count 0, got %u", resolve_on_default_count);
+  fail_unless(resolve_on_other_count == 0,
+    "Expected on_other count 0, got %u", resolve_on_other_count);
+  pr_env_unset(p, key);
+}
+END_TEST
+
+START_TEST (jot_resolve_logfmt_note_test) {
+  int res;
+  cmd_rec *cmd;
+  unsigned char logfmt[9];
+  const char *key, *val;
+
+  cmd = pr_cmd_alloc(p, 1, pstrdup(p, "FOO"));
+  cmd->cmd_class = CL_MISC;
+  logfmt[0] = LOGFMT_META_START;
+  logfmt[1] = LOGFMT_META_NOTE_VAR;
+  logfmt[2] = 0;
+
+  mark_point();
+  resolve_on_meta_count = resolve_on_default_count = resolve_on_other_count = 0;
+  res = pr_jot_resolve_logfmt(p, cmd, NULL, logfmt, NULL,
+    resolve_on_meta, resolve_on_default, resolve_on_other);
+  fail_unless(res == 0, "Failed to handle logfmt: %s", strerror(errno));
+  fail_unless(resolve_on_meta_count == 0,
+    "Expected on_meta count 0, got %u", resolve_on_meta_count);
+  fail_unless(resolve_on_default_count == 0,
+    "Expected on_default count 0, got %u", resolve_on_default_count);
+  fail_unless(resolve_on_other_count == 0,
+    "Expected on_other count 0, got %u", resolve_on_other_count);
+
+  mark_point();
+  resolve_on_meta_count = resolve_on_default_count = resolve_on_other_count = 0;
+  logfmt[0] = LOGFMT_META_START;
+  logfmt[1] = LOGFMT_META_NOTE_VAR;
+  logfmt[2] = LOGFMT_META_START;
+  logfmt[3] = LOGFMT_META_ARG;
+  logfmt[4] = 'k';
+  logfmt[5] = 'e';
+  logfmt[6] = 'y';
+  logfmt[7] = LOGFMT_META_ARG_END;
+  logfmt[8] = 0;
+  res = pr_jot_resolve_logfmt(p, cmd, NULL, logfmt, NULL,
+    resolve_on_meta, resolve_on_default, resolve_on_other);
+  fail_unless(res == 0, "Failed to handle logfmt: %s", strerror(errno));
+  fail_unless(resolve_on_meta_count == 0,
+    "Expected on_meta count 0, got %u", resolve_on_meta_count);
+  fail_unless(resolve_on_default_count == 1,
+    "Expected on_default count 1, got %u", resolve_on_default_count);
+  fail_unless(resolve_on_other_count == 0,
+    "Expected on_other count 0, got %u", resolve_on_other_count);
+
+  mark_point();
+  resolve_on_meta_count = resolve_on_default_count = resolve_on_other_count = 0;
+  key = "key";
+  val = "val";
+  session.notes = pr_table_alloc(p, 0);
+  pr_table_add_dup(session.notes, key, val, 0);
+  res = pr_jot_resolve_logfmt(p, cmd, NULL, logfmt, NULL,
+    resolve_on_meta, resolve_on_default, resolve_on_other);
+  fail_unless(res == 0, "Failed to handle logfmt: %s", strerror(errno));
+  fail_unless(resolve_on_meta_count == 1,
+    "Expected on_meta count 1, got %u", resolve_on_meta_count);
+  fail_unless(resolve_on_default_count == 0,
+    "Expected on_default count 0, got %u", resolve_on_default_count);
+  fail_unless(resolve_on_other_count == 0,
+    "Expected on_other count 0, got %u", resolve_on_other_count);
+
+  mark_point();
+  resolve_on_meta_count = resolve_on_default_count = resolve_on_other_count = 0;
+  pr_table_add_dup(cmd->notes, key, val, 0);
+  res = pr_jot_resolve_logfmt(p, cmd, NULL, logfmt, NULL,
+    resolve_on_meta, resolve_on_default, resolve_on_other);
+  fail_unless(res == 0, "Failed to handle logfmt: %s", strerror(errno));
+  fail_unless(resolve_on_meta_count == 1,
+    "Expected on_meta count 1, got %u", resolve_on_meta_count);
+  fail_unless(resolve_on_default_count == 0,
+    "Expected on_default count 0, got %u", resolve_on_default_count);
+  fail_unless(resolve_on_other_count == 0,
+    "Expected on_other count 0, got %u", resolve_on_other_count);
+
+  pr_table_empty(session.notes);
+  pr_table_free(session.notes);
+  session.notes = NULL;
+}
+END_TEST
+
+START_TEST (jot_resolve_logfmt_remote_port_test) {
+  int res;
+  cmd_rec *cmd;
+  unsigned char logfmt[3];
+  conn_t *conn;
+  const pr_netaddr_t *addr;
+
+  cmd = pr_cmd_alloc(p, 1, pstrdup(p, "FOO"));
+  cmd->cmd_class = CL_MISC;
+  logfmt[0] = LOGFMT_META_START;
+  logfmt[1] = LOGFMT_META_REMOTE_PORT;
+  logfmt[2] = 0;
+
+  /* First, without a session remote address. */
+  mark_point();
+  resolve_on_meta_count = resolve_on_default_count = resolve_on_other_count = 0;
+  res = pr_jot_resolve_logfmt(p, cmd, NULL, logfmt, NULL,
+    resolve_on_meta, resolve_on_default, resolve_on_other);
+  fail_unless(res == 0, "Failed to handle logfmt: %s", strerror(errno));
+  fail_unless(resolve_on_meta_count == 0,
+    "Expected on_meta count 0, got %u", resolve_on_meta_count);
+  fail_unless(resolve_on_default_count == 1,
+    "Expected on_default count 1, got %u", resolve_on_default_count);
+  fail_unless(resolve_on_other_count == 0,
+    "Expected on_other count 0, got %u", resolve_on_other_count);
+
+  /* Now, with a session remote address. */
+  mark_point();
+  resolve_on_meta_count = resolve_on_default_count = resolve_on_other_count = 0;
+
+  mark_point();
+  conn = pr_inet_create_conn(p, -1, NULL, INPORT_ANY, FALSE);
+  session.c = conn;
+  addr = pr_netaddr_get_addr(p, "127.0.0.1", NULL);
+  fail_unless(addr != NULL, "Failed to get address: %s", strerror(errno));
+  pr_netaddr_set_port2((pr_netaddr_t *) addr, 2476);
+  session.c->remote_addr = addr;
+  pr_netaddr_set_sess_addrs();
+
+  mark_point();
+  res = pr_jot_resolve_logfmt(p, cmd, NULL, logfmt, NULL,
+    resolve_on_meta, resolve_on_default, resolve_on_other);
+  fail_unless(res == 0, "Failed to handle logfmt: %s", strerror(errno));
+  fail_unless(resolve_on_meta_count == 1,
+    "Expected on_meta count 1, got %u", resolve_on_meta_count);
+  fail_unless(resolve_on_default_count == 0,
+    "Expected on_default count 0, got %u", resolve_on_default_count);
+  fail_unless(resolve_on_other_count == 0,
+    "Expected on_other count 0, got %u", resolve_on_other_count);
+
+  pr_inet_close(p, session.c);
+  session.c = NULL;
+}
+END_TEST
+
+START_TEST (jot_resolve_logfmt_rfc1413_ident_test) {
+  int res;
+  cmd_rec *cmd;
+  unsigned char logfmt[3];
+  char *ident_user;
+
+  cmd = pr_cmd_alloc(p, 1, pstrdup(p, "FOO"));
+  cmd->cmd_class = CL_MISC;
+  logfmt[0] = LOGFMT_META_START;
+  logfmt[1] = LOGFMT_META_IDENT_USER;
+  logfmt[2] = 0;
+
+  /* First, without the "mod_ident.rfc1413-ident" note. */
+  mark_point();
+  resolve_on_meta_count = resolve_on_default_count = resolve_on_other_count = 0;
+  res = pr_jot_resolve_logfmt(p, cmd, NULL, logfmt, NULL,
+    resolve_on_meta, resolve_on_default, resolve_on_other);
+  fail_unless(res == 0, "Failed to handle logfmt: %s", strerror(errno));
+  fail_unless(resolve_on_meta_count == 0,
+    "Expected on_meta count 0, got %u", resolve_on_meta_count);
+  fail_unless(resolve_on_default_count == 1,
+    "Expected on_default count 1, got %u", resolve_on_default_count);
+  fail_unless(resolve_on_other_count == 0,
+    "Expected on_other count 0, got %u", resolve_on_other_count);
+
+  /* Now, with the "mod_ident.rfc1413-ident" note. */
+  mark_point();
+  resolve_on_meta_count = resolve_on_default_count = resolve_on_other_count = 0;
+  ident_user = "FOOBAR";
+  session.notes = pr_table_alloc(p, 0);
+  pr_table_add_dup(session.notes, "mod_ident.rfc1413-ident", ident_user, 0);
+  res = pr_jot_resolve_logfmt(p, cmd, NULL, logfmt, NULL,
+    resolve_on_meta, resolve_on_default, resolve_on_other);
+  fail_unless(res == 0, "Failed to handle logfmt: %s", strerror(errno));
+  fail_unless(resolve_on_meta_count == 1,
+    "Expected on_meta count 1, got %u", resolve_on_meta_count);
+  fail_unless(resolve_on_default_count == 0,
+    "Expected on_default count 0, got %u", resolve_on_default_count);
+  fail_unless(resolve_on_other_count == 0,
+    "Expected on_other count 0, got %u", resolve_on_other_count);
+
+  pr_table_empty(session.notes);
+  pr_table_free(session.notes);
+  session.notes = NULL;
+}
+END_TEST
+
+START_TEST (jot_resolve_logfmt_xfer_secs_test) {
+  int res;
+  cmd_rec *cmd;
+  unsigned char logfmt[3];
+
+  cmd = pr_cmd_alloc(p, 1, pstrdup(p, "FOO"));
+  cmd->cmd_class = CL_MISC;
+  logfmt[0] = LOGFMT_META_START;
+  logfmt[1] = LOGFMT_META_SECONDS;
+  logfmt[2] = 0;
+
+  /* First, without the sess.xfer.p pool. */
+  mark_point();
+  resolve_on_meta_count = resolve_on_default_count = resolve_on_other_count = 0;
+  res = pr_jot_resolve_logfmt(p, cmd, NULL, logfmt, NULL,
+    resolve_on_meta, resolve_on_default, resolve_on_other);
+  fail_unless(res == 0, "Failed to handle logfmt: %s", strerror(errno));
+  fail_unless(resolve_on_meta_count == 0,
+    "Expected on_meta count 0, got %u", resolve_on_meta_count);
+  fail_unless(resolve_on_default_count == 1,
+    "Expected on_default count 1, got %u", resolve_on_default_count);
+  fail_unless(resolve_on_other_count == 0,
+    "Expected on_other count 0, got %u", resolve_on_other_count);
+
+  /* Now, with the session.xfer.p pool, but no transfer times. */
+  mark_point();
+  session.xfer.p = p;
+  session.xfer.start_time.tv_sec = session.xfer.start_time.tv_usec = 0;
+  resolve_on_meta_count = resolve_on_default_count = resolve_on_other_count = 0;
+  res = pr_jot_resolve_logfmt(p, cmd, NULL, logfmt, NULL,
+    resolve_on_meta, resolve_on_default, resolve_on_other);
+  fail_unless(res == 0, "Failed to handle logfmt: %s", strerror(errno));
+  fail_unless(resolve_on_meta_count == 0,
+    "Expected on_meta count 0, got %u", resolve_on_meta_count);
+  fail_unless(resolve_on_default_count == 1,
+    "Expected on_default count 1, got %u", resolve_on_default_count);
+  fail_unless(resolve_on_other_count == 0,
+    "Expected on_other count 0, got %u", resolve_on_other_count);
+
+  mark_point();
+  session.xfer.p = p;
+  session.xfer.start_time.tv_sec = 0;
+  session.xfer.start_time.tv_usec = 200000;
+  resolve_on_meta_count = resolve_on_default_count = resolve_on_other_count = 0;
+  res = pr_jot_resolve_logfmt(p, cmd, NULL, logfmt, NULL,
+    resolve_on_meta, resolve_on_default, resolve_on_other);
+  fail_unless(res == 0, "Failed to handle logfmt: %s", strerror(errno));
+  fail_unless(resolve_on_meta_count == 1,
+    "Expected on_meta count 1, got %u", resolve_on_meta_count);
+  fail_unless(resolve_on_default_count == 0,
+    "Expected on_default count 0, got %u", resolve_on_default_count);
+  fail_unless(resolve_on_other_count == 0,
+    "Expected on_other count 0, got %u", resolve_on_other_count);
+
+  mark_point();
+  session.xfer.p = p;
+  session.xfer.start_time.tv_sec = 20;
+  session.xfer.start_time.tv_usec = 200;
+  resolve_on_meta_count = resolve_on_default_count = resolve_on_other_count = 0;
+  res = pr_jot_resolve_logfmt(p, cmd, NULL, logfmt, NULL,
+    resolve_on_meta, resolve_on_default, resolve_on_other);
+  fail_unless(res == 0, "Failed to handle logfmt: %s", strerror(errno));
+  fail_unless(resolve_on_meta_count == 1,
+    "Expected on_meta count 1, got %u", resolve_on_meta_count);
+  fail_unless(resolve_on_default_count == 0,
+    "Expected on_default count 0, got %u", resolve_on_default_count);
+  fail_unless(resolve_on_other_count == 0,
+    "Expected on_other count 0, got %u", resolve_on_other_count);
+
+  session.xfer.p = NULL;
+  session.xfer.start_time.tv_sec = session.xfer.start_time.tv_usec = 0;
+}
+END_TEST
+
+START_TEST (jot_resolve_logfmt_xfer_ms_test) {
+  int res;
+  cmd_rec *cmd;
+  unsigned char logfmt[3];
+
+  cmd = pr_cmd_alloc(p, 1, pstrdup(p, "FOO"));
+  cmd->cmd_class = CL_MISC;
+  logfmt[0] = LOGFMT_META_START;
+  logfmt[1] = LOGFMT_META_XFER_MS;
+  logfmt[2] = 0;
+
+  /* First, without the sess.xfer.p pool. */
+  mark_point();
+  resolve_on_meta_count = resolve_on_default_count = resolve_on_other_count = 0;
+  res = pr_jot_resolve_logfmt(p, cmd, NULL, logfmt, NULL,
+    resolve_on_meta, resolve_on_default, resolve_on_other);
+  fail_unless(res == 0, "Failed to handle logfmt: %s", strerror(errno));
+  fail_unless(resolve_on_meta_count == 0,
+    "Expected on_meta count 0, got %u", resolve_on_meta_count);
+  fail_unless(resolve_on_default_count == 1,
+    "Expected on_default count 1, got %u", resolve_on_default_count);
+  fail_unless(resolve_on_other_count == 0,
+    "Expected on_other count 0, got %u", resolve_on_other_count);
+
+  /* Now, with the session.xfer.p pool, but no transfer times. */
+  mark_point();
+  session.xfer.p = p;
+  session.xfer.start_time.tv_sec = session.xfer.start_time.tv_usec = 0;
+  resolve_on_meta_count = resolve_on_default_count = resolve_on_other_count = 0;
+  res = pr_jot_resolve_logfmt(p, cmd, NULL, logfmt, NULL,
+    resolve_on_meta, resolve_on_default, resolve_on_other);
+  fail_unless(res == 0, "Failed to handle logfmt: %s", strerror(errno));
+  fail_unless(resolve_on_meta_count == 0,
+    "Expected on_meta count 0, got %u", resolve_on_meta_count);
+  fail_unless(resolve_on_default_count == 1,
+    "Expected on_default count 1, got %u", resolve_on_default_count);
+  fail_unless(resolve_on_other_count == 0,
+    "Expected on_other count 0, got %u", resolve_on_other_count);
+
+  mark_point();
+  session.xfer.p = p;
+  session.xfer.start_time.tv_sec = 0;
+  session.xfer.start_time.tv_usec = 200000;
+  resolve_on_meta_count = resolve_on_default_count = resolve_on_other_count = 0;
+  res = pr_jot_resolve_logfmt(p, cmd, NULL, logfmt, NULL,
+    resolve_on_meta, resolve_on_default, resolve_on_other);
+  fail_unless(res == 0, "Failed to handle logfmt: %s", strerror(errno));
+  fail_unless(resolve_on_meta_count == 1,
+    "Expected on_meta count 1, got %u", resolve_on_meta_count);
+  fail_unless(resolve_on_default_count == 0,
+    "Expected on_default count 0, got %u", resolve_on_default_count);
+  fail_unless(resolve_on_other_count == 0,
+    "Expected on_other count 0, got %u", resolve_on_other_count);
+
+  mark_point();
+  session.xfer.p = p;
+  session.xfer.start_time.tv_sec = 20;
+  session.xfer.start_time.tv_usec = 200;
+  resolve_on_meta_count = resolve_on_default_count = resolve_on_other_count = 0;
+  res = pr_jot_resolve_logfmt(p, cmd, NULL, logfmt, NULL,
+    resolve_on_meta, resolve_on_default, resolve_on_other);
+  fail_unless(res == 0, "Failed to handle logfmt: %s", strerror(errno));
+  fail_unless(resolve_on_meta_count == 1,
+    "Expected on_meta count 1, got %u", resolve_on_meta_count);
+  fail_unless(resolve_on_default_count == 0,
+    "Expected on_default count 0, got %u", resolve_on_default_count);
+  fail_unless(resolve_on_other_count == 0,
+    "Expected on_other count 0, got %u", resolve_on_other_count);
+
+  session.xfer.p = NULL;
+  session.xfer.start_time.tv_sec = session.xfer.start_time.tv_usec = 0;
+}
+END_TEST
+
+START_TEST (jot_resolve_logfmt_command_test) {
+  int res;
+  cmd_rec *cmd;
+  unsigned char logfmt[3];
+
+  cmd = pr_cmd_alloc(p, 1, pstrdup(p, "FOO"));
+  logfmt[0] = LOGFMT_META_START;
+  logfmt[1] = LOGFMT_META_COMMAND;
+  logfmt[2] = 0;
+
+  mark_point();
+  cmd->cmd_class = CL_CONNECT;
+  resolve_on_meta_count = resolve_on_default_count = resolve_on_other_count = 0;
+  res = pr_jot_resolve_logfmt(p, cmd, NULL, logfmt, NULL,
+    resolve_on_meta, resolve_on_default, resolve_on_other);
+  fail_unless(res == 0, "Failed to handle logfmt: %s", strerror(errno));
+  fail_unless(resolve_on_meta_count == 0,
+    "Expected on_meta count 0, got %u", resolve_on_meta_count);
+  fail_unless(resolve_on_default_count == 1,
+    "Expected on_default count 1, got %u", resolve_on_default_count);
+  fail_unless(resolve_on_other_count == 0,
+    "Expected on_other count 0, got %u", resolve_on_other_count);
+
+  mark_point();
+  cmd->cmd_class = CL_DISCONNECT;
+  resolve_on_meta_count = resolve_on_default_count = resolve_on_other_count = 0;
+  res = pr_jot_resolve_logfmt(p, cmd, NULL, logfmt, NULL,
+    resolve_on_meta, resolve_on_default, resolve_on_other);
+  fail_unless(res == 0, "Failed to handle logfmt: %s", strerror(errno));
+  fail_unless(resolve_on_meta_count == 0,
+    "Expected on_meta count 0, got %u", resolve_on_meta_count);
+  fail_unless(resolve_on_default_count == 1,
+    "Expected on_default count 1, got %u", resolve_on_default_count);
+  fail_unless(resolve_on_other_count == 0,
+    "Expected on_other count 0, got %u", resolve_on_other_count);
+
+  mark_point();
+  cmd = pr_cmd_alloc(p, 1, pstrdup(p, "PASS"));
+  cmd->cmd_class = CL_AUTH;
+  session.hide_password = TRUE;
+  resolve_on_meta_count = resolve_on_default_count = resolve_on_other_count = 0;
+  res = pr_jot_resolve_logfmt(p, cmd, NULL, logfmt, NULL,
+    resolve_on_meta, resolve_on_default, resolve_on_other);
+  fail_unless(res == 0, "Failed to handle logfmt: %s", strerror(errno));
+  fail_unless(resolve_on_meta_count == 1,
+    "Expected on_meta count 1, got %u", resolve_on_meta_count);
+  fail_unless(resolve_on_default_count == 0,
+    "Expected on_default count 0, got %u", resolve_on_default_count);
+  fail_unless(resolve_on_other_count == 0,
+    "Expected on_other count 0, got %u", resolve_on_other_count);
+
+  mark_point();
+  cmd = pr_cmd_alloc(p, 1, pstrdup(p, "PASS"));
+  cmd->cmd_class = CL_AUTH;
+  session.hide_password = FALSE;
+  resolve_on_meta_count = resolve_on_default_count = resolve_on_other_count = 0;
+  res = pr_jot_resolve_logfmt(p, cmd, NULL, logfmt, NULL,
+    resolve_on_meta, resolve_on_default, resolve_on_other);
+  fail_unless(res == 0, "Failed to handle logfmt: %s", strerror(errno));
+  fail_unless(resolve_on_meta_count == 1,
+    "Expected on_meta count 1, got %u", resolve_on_meta_count);
+  fail_unless(resolve_on_default_count == 0,
+    "Expected on_default count 0, got %u", resolve_on_default_count);
+  fail_unless(resolve_on_other_count == 0,
+    "Expected on_other count 0, got %u", resolve_on_other_count);
+
+  mark_point();
+  cmd = pr_cmd_alloc(p, 1, pstrdup(p, "ADAT"));
+  cmd->cmd_class = CL_SEC;
+  resolve_on_meta_count = resolve_on_default_count = resolve_on_other_count = 0;
+  res = pr_jot_resolve_logfmt(p, cmd, NULL, logfmt, NULL,
+    resolve_on_meta, resolve_on_default, resolve_on_other);
+  fail_unless(res == 0, "Failed to handle logfmt: %s", strerror(errno));
+  fail_unless(resolve_on_meta_count == 1,
+    "Expected on_meta count 1, got %u", resolve_on_meta_count);
+  fail_unless(resolve_on_default_count == 0,
+    "Expected on_default count 0, got %u", resolve_on_default_count);
+  fail_unless(resolve_on_other_count == 0,
+    "Expected on_other count 0, got %u", resolve_on_other_count);
+
+  mark_point();
+  cmd = pr_cmd_alloc(p, 1, pstrdup(p, "FOO"));
+  cmd->cmd_class = CL_MISC;
+  resolve_on_meta_count = resolve_on_default_count = resolve_on_other_count = 0;
+  res = pr_jot_resolve_logfmt(p, cmd, NULL, logfmt, NULL,
+    resolve_on_meta, resolve_on_default, resolve_on_other);
+  fail_unless(res == 0, "Failed to handle logfmt: %s", strerror(errno));
+  fail_unless(resolve_on_meta_count == 1,
+    "Expected on_meta count 1, got %u", resolve_on_meta_count);
+  fail_unless(resolve_on_default_count == 0,
+    "Expected on_default count 0, got %u", resolve_on_default_count);
+  fail_unless(resolve_on_other_count == 0,
+    "Expected on_other count 0, got %u", resolve_on_other_count);
+}
+END_TEST
+
+START_TEST (jot_resolve_logfmt_local_name_test) {
+  int res;
+  cmd_rec *cmd;
+  server_rec *server;
+  unsigned char logfmt[3];
+
+  cmd = pr_cmd_alloc(p, 1, pstrdup(p, "FOO"));
+  cmd->cmd_class = CL_MISC;
+  logfmt[0] = LOGFMT_META_START;
+  logfmt[1] = LOGFMT_META_LOCAL_NAME;
+  logfmt[2] = 0;
+
+  mark_point();
+  resolve_on_meta_count = resolve_on_default_count = resolve_on_other_count = 0;
+  res = pr_jot_resolve_logfmt(p, cmd, NULL, logfmt, NULL,
+    resolve_on_meta, resolve_on_default, resolve_on_other);
+  fail_unless(res == 0, "Failed to handle logfmt: %s", strerror(errno));
+  fail_unless(resolve_on_meta_count == 0,
+    "Expected on_meta count 0, got %u", resolve_on_meta_count);
+  fail_unless(resolve_on_default_count == 1,
+    "Expected on_default count 1, got %u", resolve_on_default_count);
+  fail_unless(resolve_on_other_count == 0,
+    "Expected on_other count 0, got %u", resolve_on_other_count);
+
+  mark_point();
+  resolve_on_meta_count = resolve_on_default_count = resolve_on_other_count = 0;
+  server = pcalloc(p, sizeof(server_rec));
+  server->ServerName = "FOOBAR";
+  cmd->server = server;
+  res = pr_jot_resolve_logfmt(p, cmd, NULL, logfmt, NULL,
+    resolve_on_meta, resolve_on_default, resolve_on_other);
+  fail_unless(res == 0, "Failed to handle logfmt: %s", strerror(errno));
+  fail_unless(resolve_on_meta_count == 1,
+    "Expected on_meta count 1, got %u", resolve_on_meta_count);
+  fail_unless(resolve_on_default_count == 0,
+    "Expected on_default count 0, got %u", resolve_on_default_count);
+  fail_unless(resolve_on_other_count == 0,
+    "Expected on_other count 0, got %u", resolve_on_other_count);
+}
+END_TEST
+
+START_TEST (jot_resolve_logfmt_local_port_test) {
+  int res;
+  cmd_rec *cmd;
+  server_rec *server;
+  unsigned char logfmt[3];
+
+  cmd = pr_cmd_alloc(p, 1, pstrdup(p, "FOO"));
+  cmd->cmd_class = CL_MISC;
+  logfmt[0] = LOGFMT_META_START;
+  logfmt[1] = LOGFMT_META_LOCAL_PORT;
+  logfmt[2] = 0;
+
+  mark_point();
+  resolve_on_meta_count = resolve_on_default_count = resolve_on_other_count = 0;
+  res = pr_jot_resolve_logfmt(p, cmd, NULL, logfmt, NULL,
+    resolve_on_meta, resolve_on_default, resolve_on_other);
+  fail_unless(res == 0, "Failed to handle logfmt: %s", strerror(errno));
+  fail_unless(resolve_on_meta_count == 0,
+    "Expected on_meta count 0, got %u", resolve_on_meta_count);
+  fail_unless(resolve_on_default_count == 1,
+    "Expected on_default count 1, got %u", resolve_on_default_count);
+  fail_unless(resolve_on_other_count == 0,
+    "Expected on_other count 0, got %u", resolve_on_other_count);
+
+  mark_point();
+  resolve_on_meta_count = resolve_on_default_count = resolve_on_other_count = 0;
+  server = pcalloc(p, sizeof(server_rec));
+  server->ServerPort = 2121;
+  cmd->server = server;
+  res = pr_jot_resolve_logfmt(p, cmd, NULL, logfmt, NULL,
+    resolve_on_meta, resolve_on_default, resolve_on_other);
+  fail_unless(res == 0, "Failed to handle logfmt: %s", strerror(errno));
+  fail_unless(resolve_on_meta_count == 1,
+    "Expected on_meta count 1, got %u", resolve_on_meta_count);
+  fail_unless(resolve_on_default_count == 0,
+    "Expected on_default count 0, got %u", resolve_on_default_count);
+  fail_unless(resolve_on_other_count == 0,
+    "Expected on_other count 0, got %u", resolve_on_other_count);
+}
+END_TEST
+
+START_TEST (jot_resolve_logfmt_user_test) {
+  int res;
+  cmd_rec *cmd;
+  unsigned char logfmt[3];
+
+  cmd = pr_cmd_alloc(p, 1, pstrdup(p, "FOO"));
+  cmd->cmd_class = CL_MISC;
+  logfmt[0] = LOGFMT_META_START;
+  logfmt[1] = LOGFMT_META_USER;
+  logfmt[2] = 0;
+
+  mark_point();
+  resolve_on_meta_count = resolve_on_default_count = resolve_on_other_count = 0;
+  res = pr_jot_resolve_logfmt(p, cmd, NULL, logfmt, NULL,
+    resolve_on_meta, resolve_on_default, resolve_on_other);
+  fail_unless(res == 0, "Failed to handle logfmt: %s", strerror(errno));
+  fail_unless(resolve_on_meta_count == 0,
+    "Expected on_meta count 0, got %u", resolve_on_meta_count);
+  fail_unless(resolve_on_default_count == 1,
+    "Expected on_default count 1, got %u", resolve_on_default_count);
+  fail_unless(resolve_on_other_count == 0,
+    "Expected on_other count 0, got %u", resolve_on_other_count);
+
+  mark_point();
+  resolve_on_meta_count = resolve_on_default_count = resolve_on_other_count = 0;
+  session.user = "FOOBAR";
+  res = pr_jot_resolve_logfmt(p, cmd, NULL, logfmt, NULL,
+    resolve_on_meta, resolve_on_default, resolve_on_other);
+  fail_unless(res == 0, "Failed to handle logfmt: %s", strerror(errno));
+  fail_unless(resolve_on_meta_count == 1,
+    "Expected on_meta count 1, got %u", resolve_on_meta_count);
+  fail_unless(resolve_on_default_count == 0,
+    "Expected on_default count 0, got %u", resolve_on_default_count);
+  fail_unless(resolve_on_other_count == 0,
+    "Expected on_other count 0, got %u", resolve_on_other_count);
+
+  session.user = NULL;
+}
+END_TEST
+
+START_TEST (jot_resolve_logfmt_uid_test) {
+  int res;
+  cmd_rec *cmd;
+  unsigned char logfmt[3];
+
+  cmd = pr_cmd_alloc(p, 1, pstrdup(p, "FOO"));
+  cmd->cmd_class = CL_MISC;
+  logfmt[0] = LOGFMT_META_START;
+  logfmt[1] = LOGFMT_META_UID;
+  logfmt[2] = 0;
+
+  mark_point();
+  resolve_on_meta_count = resolve_on_default_count = resolve_on_other_count = 0;
+  res = pr_jot_resolve_logfmt(p, cmd, NULL, logfmt, NULL,
+    resolve_on_meta, resolve_on_default, resolve_on_other);
+  fail_unless(res == 0, "Failed to handle logfmt: %s", strerror(errno));
+  fail_unless(resolve_on_meta_count == 1,
+    "Expected on_meta count 1, got %u", resolve_on_meta_count);
+  fail_unless(resolve_on_default_count == 0,
+    "Expected on_default count 0, got %u", resolve_on_default_count);
+  fail_unless(resolve_on_other_count == 0,
+    "Expected on_other count 0, got %u", resolve_on_other_count);
+
+  mark_point();
+  resolve_on_meta_count = resolve_on_default_count = resolve_on_other_count = 0;
+  session.auth_mech = "mod_auth_file.c";
+  session.login_uid = 400;
+  res = pr_jot_resolve_logfmt(p, cmd, NULL, logfmt, NULL,
+    resolve_on_meta, resolve_on_default, resolve_on_other);
+  fail_unless(res == 0, "Failed to handle logfmt: %s", strerror(errno));
+  fail_unless(resolve_on_meta_count == 1,
+    "Expected on_meta count 1, got %u", resolve_on_meta_count);
+  fail_unless(resolve_on_default_count == 0,
+    "Expected on_default count 0, got %u", resolve_on_default_count);
+  fail_unless(resolve_on_other_count == 0,
+    "Expected on_other count 0, got %u", resolve_on_other_count);
+
+  session.auth_mech = NULL;
+  session.login_uid = 0;
+}
+END_TEST
+
+START_TEST (jot_resolve_logfmt_group_test) {
+  int res;
+  cmd_rec *cmd;
+  unsigned char logfmt[3];
+
+  cmd = pr_cmd_alloc(p, 1, pstrdup(p, "FOO"));
+  cmd->cmd_class = CL_MISC;
+  logfmt[0] = LOGFMT_META_START;
+  logfmt[1] = LOGFMT_META_GROUP;
+  logfmt[2] = 0;
+
+  mark_point();
+  resolve_on_meta_count = resolve_on_default_count = resolve_on_other_count = 0;
+  res = pr_jot_resolve_logfmt(p, cmd, NULL, logfmt, NULL,
+    resolve_on_meta, resolve_on_default, resolve_on_other);
+  fail_unless(res == 0, "Failed to handle logfmt: %s", strerror(errno));
+  fail_unless(resolve_on_meta_count == 0,
+    "Expected on_meta count 0, got %u", resolve_on_meta_count);
+  fail_unless(resolve_on_default_count == 1,
+    "Expected on_default count 1, got %u", resolve_on_default_count);
+  fail_unless(resolve_on_other_count == 0,
+    "Expected on_other count 0, got %u", resolve_on_other_count);
+
+  mark_point();
+  resolve_on_meta_count = resolve_on_default_count = resolve_on_other_count = 0;
+  session.group = "FOOBAR";
+  res = pr_jot_resolve_logfmt(p, cmd, NULL, logfmt, NULL,
+    resolve_on_meta, resolve_on_default, resolve_on_other);
+  fail_unless(res == 0, "Failed to handle logfmt: %s", strerror(errno));
+  fail_unless(resolve_on_meta_count == 1,
+    "Expected on_meta count 1, got %u", resolve_on_meta_count);
+  fail_unless(resolve_on_default_count == 0,
+    "Expected on_default count 0, got %u", resolve_on_default_count);
+  fail_unless(resolve_on_other_count == 0,
+    "Expected on_other count 0, got %u", resolve_on_other_count);
+
+  session.group = NULL;
+}
+END_TEST
+
+START_TEST (jot_resolve_logfmt_gid_test) {
+  int res;
+  cmd_rec *cmd;
+  unsigned char logfmt[3];
+
+  cmd = pr_cmd_alloc(p, 1, pstrdup(p, "FOO"));
+  cmd->cmd_class = CL_MISC;
+  logfmt[0] = LOGFMT_META_START;
+  logfmt[1] = LOGFMT_META_GID;
+  logfmt[2] = 0;
+
+  mark_point();
+  resolve_on_meta_count = resolve_on_default_count = resolve_on_other_count = 0;
+  res = pr_jot_resolve_logfmt(p, cmd, NULL, logfmt, NULL,
+    resolve_on_meta, resolve_on_default, resolve_on_other);
+  fail_unless(res == 0, "Failed to handle logfmt: %s", strerror(errno));
+  fail_unless(resolve_on_meta_count == 1,
+    "Expected on_meta count 1, got %u", resolve_on_meta_count);
+  fail_unless(resolve_on_default_count == 0,
+    "Expected on_default count 0, got %u", resolve_on_default_count);
+  fail_unless(resolve_on_other_count == 0,
+    "Expected on_other count 0, got %u", resolve_on_other_count);
+
+  mark_point();
+  resolve_on_meta_count = resolve_on_default_count = resolve_on_other_count = 0;
+  session.auth_mech = "mod_auth_file.c";
+  session.login_gid = 400;
+  res = pr_jot_resolve_logfmt(p, cmd, NULL, logfmt, NULL,
+    resolve_on_meta, resolve_on_default, resolve_on_other);
+  fail_unless(res == 0, "Failed to handle logfmt: %s", strerror(errno));
+  fail_unless(resolve_on_meta_count == 1,
+    "Expected on_meta count 1, got %u", resolve_on_meta_count);
+  fail_unless(resolve_on_default_count == 0,
+    "Expected on_default count 0, got %u", resolve_on_default_count);
+  fail_unless(resolve_on_other_count == 0,
+    "Expected on_other count 0, got %u", resolve_on_other_count);
+
+  session.auth_mech = NULL;
+  session.login_gid = 0;
+}
+END_TEST
+
+START_TEST (jot_resolve_logfmt_original_user_test) {
+  int res;
+  cmd_rec *cmd;
+  unsigned char logfmt[3];
+  char *orig_user;
+
+  cmd = pr_cmd_alloc(p, 1, pstrdup(p, "FOO"));
+  cmd->cmd_class = CL_MISC;
+  logfmt[0] = LOGFMT_META_START;
+  logfmt[1] = LOGFMT_META_ORIGINAL_USER;
+  logfmt[2] = 0;
+
+  /* First, without the "mod_auth.orig-user" note. */
+  mark_point();
+  resolve_on_meta_count = resolve_on_default_count = resolve_on_other_count = 0;
+  res = pr_jot_resolve_logfmt(p, cmd, NULL, logfmt, NULL,
+    resolve_on_meta, resolve_on_default, resolve_on_other);
+  fail_unless(res == 0, "Failed to handle logfmt: %s", strerror(errno));
+  fail_unless(resolve_on_meta_count == 0,
+    "Expected on_meta count 0, got %u", resolve_on_meta_count);
+  fail_unless(resolve_on_default_count == 1,
+    "Expected on_default count 1, got %u", resolve_on_default_count);
+  fail_unless(resolve_on_other_count == 0,
+    "Expected on_other count 0, got %u", resolve_on_other_count);
+
+  /* Now, with the "mod_auth.orig-user" note. */
+  mark_point();
+  resolve_on_meta_count = resolve_on_default_count = resolve_on_other_count = 0;
+  orig_user = "FOOBAR";
+  session.notes = pr_table_alloc(p, 0);
+  pr_table_add_dup(session.notes, "mod_auth.orig-user", orig_user, 0);
+  res = pr_jot_resolve_logfmt(p, cmd, NULL, logfmt, NULL,
+    resolve_on_meta, resolve_on_default, resolve_on_other);
+  fail_unless(res == 0, "Failed to handle logfmt: %s", strerror(errno));
+  fail_unless(resolve_on_meta_count == 1,
+    "Expected on_meta count 1, got %u", resolve_on_meta_count);
+  fail_unless(resolve_on_default_count == 0,
+    "Expected on_default count 0, got %u", resolve_on_default_count);
+  fail_unless(resolve_on_other_count == 0,
+    "Expected on_other count 0, got %u", resolve_on_other_count);
+
+  pr_table_empty(session.notes);
+  pr_table_free(session.notes);
+  session.notes = NULL;
+}
+END_TEST
+
+START_TEST (jot_resolve_logfmt_response_code_test) {
+  int res;
+  cmd_rec *cmd;
+  unsigned char logfmt[3];
+
+  cmd = pr_cmd_alloc(p, 1, pstrdup(p, "FOO"));
+  cmd->cmd_class = CL_MISC;
+  logfmt[0] = LOGFMT_META_START;
+  logfmt[1] = LOGFMT_META_RESPONSE_CODE;
+  logfmt[2] = 0;
+
+  mark_point();
+  resolve_on_meta_count = resolve_on_default_count = resolve_on_other_count = 0;
+  res = pr_jot_resolve_logfmt(p, cmd, NULL, logfmt, NULL,
+    resolve_on_meta, resolve_on_default, resolve_on_other);
+  fail_unless(res == 0, "Failed to handle logfmt: %s", strerror(errno));
+  fail_unless(resolve_on_meta_count == 0,
+    "Expected on_meta count 0, got %u", resolve_on_meta_count);
+  fail_unless(resolve_on_default_count == 1,
+    "Expected on_default count 1, got %u", resolve_on_default_count);
+  fail_unless(resolve_on_other_count == 0,
+    "Expected on_other count 0, got %u", resolve_on_other_count);
+
+  mark_point();
+  cmd = pr_cmd_alloc(p, 1, pstrdup(p, "QUIT"));
+  cmd->cmd_class = CL_MISC;
+  resolve_on_meta_count = resolve_on_default_count = resolve_on_other_count = 0;
+  res = pr_jot_resolve_logfmt(p, cmd, NULL, logfmt, NULL,
+    resolve_on_meta, resolve_on_default, resolve_on_other);
+  fail_unless(res == 0, "Failed to handle logfmt: %s", strerror(errno));
+  fail_unless(resolve_on_meta_count == 1,
+    "Expected on_meta count 1, got %u", resolve_on_meta_count);
+  fail_unless(resolve_on_default_count == 0,
+    "Expected on_default count 0, got %u", resolve_on_default_count);
+  fail_unless(resolve_on_other_count == 0,
+    "Expected on_other count 0, got %u", resolve_on_other_count);
+
+  mark_point();
+  resolve_on_meta_count = resolve_on_default_count = resolve_on_other_count = 0;
+  cmd = pr_cmd_alloc(p, 1, pstrdup(p, "FOO"));
+  cmd->cmd_class = CL_MISC;
+
+  pr_response_set_pool(p);
+  pr_response_add("200", "foo %s", "bar");
+  res = pr_jot_resolve_logfmt(p, cmd, NULL, logfmt, NULL,
+    resolve_on_meta, resolve_on_default, resolve_on_other);
+  fail_unless(res == 0, "Failed to handle logfmt: %s", strerror(errno));
+  fail_unless(resolve_on_meta_count == 1,
+    "Expected on_meta count 1, got %u", resolve_on_meta_count);
+  fail_unless(resolve_on_default_count == 0,
+    "Expected on_default count 0, got %u", resolve_on_default_count);
+  fail_unless(resolve_on_other_count == 0,
+    "Expected on_other count 0, got %u", resolve_on_other_count);
+
+  pr_response_clear(&resp_list);
+  pr_response_set_pool(NULL);
+}
+END_TEST
+
+START_TEST (jot_resolve_logfmt_response_text_test) {
+  int res;
+  cmd_rec *cmd;
+  unsigned char logfmt[3];
+
+  cmd = pr_cmd_alloc(p, 1, pstrdup(p, "FOO"));
+  cmd->cmd_class = CL_MISC;
+  logfmt[0] = LOGFMT_META_START;
+  logfmt[1] = LOGFMT_META_RESPONSE_STR;
+  logfmt[2] = 0;
+
+  mark_point();
+  resolve_on_meta_count = resolve_on_default_count = resolve_on_other_count = 0;
+  res = pr_jot_resolve_logfmt(p, cmd, NULL, logfmt, NULL,
+    resolve_on_meta, resolve_on_default, resolve_on_other);
+  fail_unless(res == 0, "Failed to handle logfmt: %s", strerror(errno));
+  fail_unless(resolve_on_meta_count == 0,
+    "Expected on_meta count 0, got %u", resolve_on_meta_count);
+  fail_unless(resolve_on_default_count == 1,
+    "Expected on_default count 1, got %u", resolve_on_default_count);
+  fail_unless(resolve_on_other_count == 0,
+    "Expected on_other count 0, got %u", resolve_on_other_count);
+
+  mark_point();
+  resolve_on_meta_count = resolve_on_default_count = resolve_on_other_count = 0;
+
+  pr_response_set_pool(p);
+  pr_response_add("200", "foo %s", "bar");
+  res = pr_jot_resolve_logfmt(p, cmd, NULL, logfmt, NULL,
+    resolve_on_meta, resolve_on_default, resolve_on_other);
+  fail_unless(res == 0, "Failed to handle logfmt: %s", strerror(errno));
+  fail_unless(resolve_on_meta_count == 1,
+    "Expected on_meta count 1, got %u", resolve_on_meta_count);
+  fail_unless(resolve_on_default_count == 0,
+    "Expected on_default count 0, got %u", resolve_on_default_count);
+  fail_unless(resolve_on_other_count == 0,
+    "Expected on_other count 0, got %u", resolve_on_other_count);
+
+  pr_response_clear(&resp_list);
+  pr_response_set_pool(NULL);
+}
+END_TEST
+
+START_TEST (jot_resolve_logfmt_response_ms_test) {
+  int res;
+  cmd_rec *cmd;
+  unsigned char logfmt[3];
+  uint64_t start_ms;
+
+  cmd = pr_cmd_alloc(p, 1, pstrdup(p, "FOO"));
+  cmd->cmd_class = CL_MISC;
+  logfmt[0] = LOGFMT_META_START;
+  logfmt[1] = LOGFMT_META_RESPONSE_MS;
+  logfmt[2] = 0;
+
+  /* First, without the "start_ms" note. */
+  mark_point();
+  resolve_on_meta_count = resolve_on_default_count = resolve_on_other_count = 0;
+  res = pr_jot_resolve_logfmt(p, cmd, NULL, logfmt, NULL,
+    resolve_on_meta, resolve_on_default, resolve_on_other);
+  fail_unless(res == 0, "Failed to handle logfmt: %s", strerror(errno));
+  fail_unless(resolve_on_meta_count == 0,
+    "Expected on_meta count 0, got %u", resolve_on_meta_count);
+  fail_unless(resolve_on_default_count == 1,
+    "Expected on_default count 1, got %u", resolve_on_default_count);
+  fail_unless(resolve_on_other_count == 0,
+    "Expected on_other count 0, got %u", resolve_on_other_count);
+
+  /* Now, with the "start_ms" note. */
+  mark_point();
+  resolve_on_meta_count = resolve_on_default_count = resolve_on_other_count = 0;
+  start_ms = 123456;
+  pr_table_add(cmd->notes, "start_ms", &start_ms, sizeof(start_ms));
+  res = pr_jot_resolve_logfmt(p, cmd, NULL, logfmt, NULL,
+    resolve_on_meta, resolve_on_default, resolve_on_other);
+  fail_unless(res == 0, "Failed to handle logfmt: %s", strerror(errno));
+  fail_unless(resolve_on_meta_count == 1,
+    "Expected on_meta count 1, got %u", resolve_on_meta_count);
+  fail_unless(resolve_on_default_count == 0,
+    "Expected on_default count 0, got %u", resolve_on_default_count);
+  fail_unless(resolve_on_other_count == 0,
+    "Expected on_other count 0, got %u", resolve_on_other_count);
+}
+END_TEST
+
+START_TEST (jot_resolve_logfmt_class_test) {
+  int res;
+  cmd_rec *cmd;
+  unsigned char logfmt[3];
+
+  cmd = pr_cmd_alloc(p, 1, pstrdup(p, "FOO"));
+  cmd->cmd_class = CL_MISC;
+  logfmt[0] = LOGFMT_META_START;
+  logfmt[1] = LOGFMT_META_CLASS;
+  logfmt[2] = 0;
+
+  mark_point();
+  resolve_on_meta_count = resolve_on_default_count = resolve_on_other_count = 0;
+  res = pr_jot_resolve_logfmt(p, cmd, NULL, logfmt, NULL,
+    resolve_on_meta, resolve_on_default, resolve_on_other);
+  fail_unless(res == 0, "Failed to handle logfmt: %s", strerror(errno));
+  fail_unless(resolve_on_meta_count == 0,
+    "Expected on_meta count 0, got %u", resolve_on_meta_count);
+  fail_unless(resolve_on_default_count == 1,
+    "Expected on_default count 1, got %u", resolve_on_default_count);
+  fail_unless(resolve_on_other_count == 0,
+    "Expected on_other count 0, got %u", resolve_on_other_count);
+
+  mark_point();
+  resolve_on_meta_count = resolve_on_default_count = resolve_on_other_count = 0;
+  session.conn_class = pcalloc(p, sizeof(pr_class_t));
+  res = pr_jot_resolve_logfmt(p, cmd, NULL, logfmt, NULL,
+    resolve_on_meta, resolve_on_default, resolve_on_other);
+  fail_unless(res == 0, "Failed to handle logfmt: %s", strerror(errno));
+  fail_unless(resolve_on_meta_count == 1,
+    "Expected on_meta count 1, got %u", resolve_on_meta_count);
+  fail_unless(resolve_on_default_count == 0,
+    "Expected on_default count 0, got %u", resolve_on_default_count);
+  fail_unless(resolve_on_other_count == 0,
+    "Expected on_other count 0, got %u", resolve_on_other_count);
+
+  session.conn_class = NULL;
+}
+END_TEST
+
+START_TEST (jot_resolve_logfmt_anon_passwd_test) {
+  int res;
+  cmd_rec *cmd;
+  unsigned char logfmt[3];
+  char *anon_passwd;
+
+  cmd = pr_cmd_alloc(p, 1, pstrdup(p, "FOO"));
+  cmd->cmd_class = CL_MISC;
+  logfmt[0] = LOGFMT_META_START;
+  logfmt[1] = LOGFMT_META_ANON_PASS;
+  logfmt[2] = 0;
+
+  /* First, without the "mod_auth.anon-passwd" note. */
+  mark_point();
+  resolve_on_meta_count = resolve_on_default_count = resolve_on_other_count = 0;
+  res = pr_jot_resolve_logfmt(p, cmd, NULL, logfmt, NULL,
+    resolve_on_meta, resolve_on_default, resolve_on_other);
+  fail_unless(res == 0, "Failed to handle logfmt: %s", strerror(errno));
+  fail_unless(resolve_on_meta_count == 0,
+    "Expected on_meta count 0, got %u", resolve_on_meta_count);
+  fail_unless(resolve_on_default_count == 1,
+    "Expected on_default count 1, got %u", resolve_on_default_count);
+  fail_unless(resolve_on_other_count == 0,
+    "Expected on_other count 0, got %u", resolve_on_other_count);
+
+  /* Now, with the "mod_auth.anon-passwd" note. */
+  mark_point();
+  resolve_on_meta_count = resolve_on_default_count = resolve_on_other_count = 0;
+  anon_passwd = "FOOBAR";
+  session.notes = pr_table_alloc(p, 0);
+  pr_table_add_dup(session.notes, "mod_auth.anon-passwd", anon_passwd, 0);
+  res = pr_jot_resolve_logfmt(p, cmd, NULL, logfmt, NULL,
+    resolve_on_meta, resolve_on_default, resolve_on_other);
+  fail_unless(res == 0, "Failed to handle logfmt: %s", strerror(errno));
+  fail_unless(resolve_on_meta_count == 1,
+    "Expected on_meta count 1, got %u", resolve_on_meta_count);
+  fail_unless(resolve_on_default_count == 0,
+    "Expected on_default count 0, got %u", resolve_on_default_count);
+  fail_unless(resolve_on_other_count == 0,
+    "Expected on_other count 0, got %u", resolve_on_other_count);
+
+  pr_table_empty(session.notes);
+  pr_table_free(session.notes);
+  session.notes = NULL;
+}
+END_TEST
+
+START_TEST (jot_resolve_logfmt_method_test) {
+  int res;
+  cmd_rec *cmd;
+  unsigned char logfmt[3];
+
+  cmd = pr_cmd_alloc(p, 1, pstrdup(p, "FOO"));
+  cmd->cmd_class = CL_CONNECT;
+  logfmt[0] = LOGFMT_META_START;
+  logfmt[1] = LOGFMT_META_METHOD;
+  logfmt[2] = 0;
+
+  mark_point();
+  resolve_on_meta_count = resolve_on_default_count = resolve_on_other_count = 0;
+  res = pr_jot_resolve_logfmt(p, cmd, NULL, logfmt, NULL,
+    resolve_on_meta, resolve_on_default, resolve_on_other);
+  fail_unless(res == 0, "Failed to handle logfmt: %s", strerror(errno));
+  fail_unless(resolve_on_meta_count == 0,
+    "Expected on_meta count 0, got %u", resolve_on_meta_count);
+  fail_unless(resolve_on_default_count == 1,
+    "Expected on_default count 1, got %u", resolve_on_default_count);
+  fail_unless(resolve_on_other_count == 0,
+    "Expected on_other count 0, got %u", resolve_on_other_count);
+
+  mark_point();
+  resolve_on_meta_count = resolve_on_default_count = resolve_on_other_count = 0;
+  cmd->cmd_class = CL_MISC;
+  res = pr_jot_resolve_logfmt(p, cmd, NULL, logfmt, NULL,
+    resolve_on_meta, resolve_on_default, resolve_on_other);
+  fail_unless(res == 0, "Failed to handle logfmt: %s", strerror(errno));
+  fail_unless(resolve_on_meta_count == 1,
+    "Expected on_meta count 1, got %u", resolve_on_meta_count);
+  fail_unless(resolve_on_default_count == 0,
+    "Expected on_default count 0, got %u", resolve_on_default_count);
+  fail_unless(resolve_on_other_count == 0,
+    "Expected on_other count 0, got %u", resolve_on_other_count);
+
+  mark_point();
+  resolve_on_meta_count = resolve_on_default_count = resolve_on_other_count = 0;
+  cmd = pr_cmd_alloc(p, 1, pstrdup(p, "SITE"));
+  cmd->cmd_class = CL_MISC;
+  res = pr_jot_resolve_logfmt(p, cmd, NULL, logfmt, NULL,
+    resolve_on_meta, resolve_on_default, resolve_on_other);
+  fail_unless(res == 0, "Failed to handle logfmt: %s", strerror(errno));
+  fail_unless(resolve_on_meta_count == 0,
+    "Expected on_meta count 0, got %u", resolve_on_meta_count);
+  fail_unless(resolve_on_default_count == 1,
+    "Expected on_default count 1, got %u", resolve_on_default_count);
+  fail_unless(resolve_on_other_count == 0,
+    "Expected on_other count 0, got %u", resolve_on_other_count);
+
+  mark_point();
+  resolve_on_meta_count = resolve_on_default_count = resolve_on_other_count = 0;
+  cmd = pr_cmd_alloc(p, 2, pstrdup(p, "SITE"), pstrdup(p, "foobar"));
+  cmd->cmd_class = CL_MISC;
+  res = pr_jot_resolve_logfmt(p, cmd, NULL, logfmt, NULL,
+    resolve_on_meta, resolve_on_default, resolve_on_other);
+  fail_unless(res == 0, "Failed to handle logfmt: %s", strerror(errno));
+  fail_unless(resolve_on_meta_count == 1,
+    "Expected on_meta count 1, got %u", resolve_on_meta_count);
+  fail_unless(resolve_on_default_count == 0,
+    "Expected on_default count 0, got %u", resolve_on_default_count);
+  fail_unless(resolve_on_other_count == 0,
+    "Expected on_other count 0, got %u", resolve_on_other_count);
+}
+END_TEST
+
+START_TEST (jot_resolve_logfmt_xfer_path_test) {
+  int res;
+  cmd_rec *cmd;
+  unsigned char logfmt[3];
+
+  logfmt[0] = LOGFMT_META_START;
+  logfmt[1] = LOGFMT_META_XFER_PATH;
+  logfmt[2] = 0;
+
+  mark_point();
+  resolve_on_meta_count = resolve_on_default_count = resolve_on_other_count = 0;
+  cmd = pr_cmd_alloc(p, 1, pstrdup(p, "FOO"));
+  cmd->cmd_class = CL_MISC;
+  res = pr_jot_resolve_logfmt(p, cmd, NULL, logfmt, NULL,
+    resolve_on_meta, resolve_on_default, resolve_on_other);
+  fail_unless(res == 0, "Failed to handle logfmt: %s", strerror(errno));
+  fail_unless(resolve_on_meta_count == 0,
+    "Expected on_meta count 0, got %u", resolve_on_meta_count);
+  fail_unless(resolve_on_default_count == 1,
+    "Expected on_default count 1, got %u", resolve_on_default_count);
+  fail_unless(resolve_on_other_count == 0,
+    "Expected on_other count 0, got %u", resolve_on_other_count);
+
+  mark_point();
+  resolve_on_meta_count = resolve_on_default_count = resolve_on_other_count = 0;
+  cmd = pr_cmd_alloc(p, 1, pstrdup(p, "RNTO"));
+  cmd->cmd_class = CL_MISC;
+  cmd->arg = pstrdup(p, "foo");
+  res = pr_jot_resolve_logfmt(p, cmd, NULL, logfmt, NULL,
+    resolve_on_meta, resolve_on_default, resolve_on_other);
+  fail_unless(res == 0, "Failed to handle logfmt: %s", strerror(errno));
+  fail_unless(resolve_on_meta_count == 1,
+    "Expected on_meta count 1, got %u", resolve_on_meta_count);
+  fail_unless(resolve_on_default_count == 0,
+    "Expected on_default count 0, got %u", resolve_on_default_count);
+  fail_unless(resolve_on_other_count == 0,
+    "Expected on_other count 0, got %u", resolve_on_other_count);
+
+  mark_point();
+  resolve_on_meta_count = resolve_on_default_count = resolve_on_other_count = 0;
+  cmd = pr_cmd_alloc(p, 1, pstrdup(p, "FOO"));
+  cmd->cmd_class = CL_MISC;
+  session.xfer.p = p;
+  session.xfer.path = pstrdup(p, "foo/bar");
+  res = pr_jot_resolve_logfmt(p, cmd, NULL, logfmt, NULL,
+    resolve_on_meta, resolve_on_default, resolve_on_other);
+  fail_unless(res == 0, "Failed to handle logfmt: %s", strerror(errno));
+  fail_unless(resolve_on_meta_count == 1,
+    "Expected on_meta count 1, got %u", resolve_on_meta_count);
+  fail_unless(resolve_on_default_count == 0,
+    "Expected on_default count 0, got %u", resolve_on_default_count);
+  fail_unless(resolve_on_other_count == 0,
+    "Expected on_other count 0, got %u", resolve_on_other_count);
+
+  session.xfer.p = NULL;
+  session.xfer.path = NULL;
+
+  mark_point();
+  resolve_on_meta_count = resolve_on_default_count = resolve_on_other_count = 0;
+  cmd = pr_cmd_alloc(p, 1, pstrdup(p, "DELE"));
+  cmd->cmd_class = CL_MISC;
+  cmd->arg = pstrdup(p, "foo/bar");
+  res = pr_jot_resolve_logfmt(p, cmd, NULL, logfmt, NULL,
+    resolve_on_meta, resolve_on_default, resolve_on_other);
+  fail_unless(res == 0, "Failed to handle logfmt: %s", strerror(errno));
+  fail_unless(resolve_on_meta_count == 1,
+    "Expected on_meta count 1, got %u", resolve_on_meta_count);
+  fail_unless(resolve_on_default_count == 0,
+    "Expected on_default count 0, got %u", resolve_on_default_count);
+  fail_unless(resolve_on_other_count == 0,
+    "Expected on_other count 0, got %u", resolve_on_other_count);
+
+  mark_point();
+  resolve_on_meta_count = resolve_on_default_count = resolve_on_other_count = 0;
+  cmd = pr_cmd_alloc(p, 1, pstrdup(p, "MKD"));
+  cmd->cmd_class = CL_MISC;
+  cmd->arg = pstrdup(p, "foo/bar");
+  res = pr_jot_resolve_logfmt(p, cmd, NULL, logfmt, NULL,
+    resolve_on_meta, resolve_on_default, resolve_on_other);
+  fail_unless(res == 0, "Failed to handle logfmt: %s", strerror(errno));
+  fail_unless(resolve_on_meta_count == 1,
+    "Expected on_meta count 1, got %u", resolve_on_meta_count);
+  fail_unless(resolve_on_default_count == 0,
+    "Expected on_default count 0, got %u", resolve_on_default_count);
+  fail_unless(resolve_on_other_count == 0,
+    "Expected on_other count 0, got %u", resolve_on_other_count);
+
+  mark_point();
+  resolve_on_meta_count = resolve_on_default_count = resolve_on_other_count = 0;
+  cmd = pr_cmd_alloc(p, 1, pstrdup(p, "XMKD"));
+  cmd->cmd_class = CL_MISC;
+  cmd->arg = pstrdup(p, "foo/bar");
+  res = pr_jot_resolve_logfmt(p, cmd, NULL, logfmt, NULL,
+    resolve_on_meta, resolve_on_default, resolve_on_other);
+  fail_unless(res == 0, "Failed to handle logfmt: %s", strerror(errno));
+  fail_unless(resolve_on_meta_count == 1,
+    "Expected on_meta count 1, got %u", resolve_on_meta_count);
+  fail_unless(resolve_on_default_count == 0,
+    "Expected on_default count 0, got %u", resolve_on_default_count);
+  fail_unless(resolve_on_other_count == 0,
+    "Expected on_other count 0, got %u", resolve_on_other_count);
+
+  mark_point();
+  resolve_on_meta_count = resolve_on_default_count = resolve_on_other_count = 0;
+  cmd = pr_cmd_alloc(p, 1, pstrdup(p, "RMD"));
+  cmd->cmd_class = CL_MISC;
+  cmd->arg = pstrdup(p, "foo/bar");
+  res = pr_jot_resolve_logfmt(p, cmd, NULL, logfmt, NULL,
+    resolve_on_meta, resolve_on_default, resolve_on_other);
+  fail_unless(res == 0, "Failed to handle logfmt: %s", strerror(errno));
+  fail_unless(resolve_on_meta_count == 1,
+    "Expected on_meta count 1, got %u", resolve_on_meta_count);
+  fail_unless(resolve_on_default_count == 0,
+    "Expected on_default count 0, got %u", resolve_on_default_count);
+  fail_unless(resolve_on_other_count == 0,
+    "Expected on_other count 0, got %u", resolve_on_other_count);
+
+  mark_point();
+  resolve_on_meta_count = resolve_on_default_count = resolve_on_other_count = 0;
+  cmd = pr_cmd_alloc(p, 1, pstrdup(p, "XRMD"));
+  cmd->cmd_class = CL_MISC;
+  cmd->arg = pstrdup(p, "foo/bar");
+  res = pr_jot_resolve_logfmt(p, cmd, NULL, logfmt, NULL,
+    resolve_on_meta, resolve_on_default, resolve_on_other);
+  fail_unless(res == 0, "Failed to handle logfmt: %s", strerror(errno));
+  fail_unless(resolve_on_meta_count == 1,
+    "Expected on_meta count 1, got %u", resolve_on_meta_count);
+  fail_unless(resolve_on_default_count == 0,
+    "Expected on_default count 0, got %u", resolve_on_default_count);
+  fail_unless(resolve_on_other_count == 0,
+    "Expected on_other count 0, got %u", resolve_on_other_count);
+}
+END_TEST
+
+START_TEST (jot_resolve_logfmt_xfer_port_test) {
+  int res;
+  cmd_rec *cmd;
+  unsigned char logfmt[3];
+
+  logfmt[0] = LOGFMT_META_START;
+  logfmt[1] = LOGFMT_META_XFER_PORT;
+  logfmt[2] = 0;
+
+  mark_point();
+  resolve_on_meta_count = resolve_on_default_count = resolve_on_other_count = 0;
+  cmd = pr_cmd_alloc(p, 1, pstrdup(p, "FOO"));
+  cmd->cmd_class = CL_MISC;
+  res = pr_jot_resolve_logfmt(p, cmd, NULL, logfmt, NULL,
+    resolve_on_meta, resolve_on_default, resolve_on_other);
+  fail_unless(res == 0, "Failed to handle logfmt: %s", strerror(errno));
+  fail_unless(resolve_on_meta_count == 0,
+    "Expected on_meta count 0, got %u", resolve_on_meta_count);
+  fail_unless(resolve_on_default_count == 1,
+    "Expected on_default count 1, got %u", resolve_on_default_count);
+  fail_unless(resolve_on_other_count == 0,
+    "Expected on_other count 0, got %u", resolve_on_other_count);
+
+  mark_point();
+  resolve_on_meta_count = resolve_on_default_count = resolve_on_other_count = 0;
+  cmd = pr_cmd_alloc(p, 1, pstrdup(p, "PASV"));
+  cmd->cmd_class = CL_MISC;
+  session.data_port = 7777;
+  res = pr_jot_resolve_logfmt(p, cmd, NULL, logfmt, NULL,
+    resolve_on_meta, resolve_on_default, resolve_on_other);
+  fail_unless(res == 0, "Failed to handle logfmt: %s", strerror(errno));
+  fail_unless(resolve_on_meta_count == 1,
+    "Expected on_meta count 1, got %u", resolve_on_meta_count);
+  fail_unless(resolve_on_default_count == 0,
+    "Expected on_default count 0, got %u", resolve_on_default_count);
+  fail_unless(resolve_on_other_count == 0,
+    "Expected on_other count 0, got %u", resolve_on_other_count);
+
+  mark_point();
+  resolve_on_meta_count = resolve_on_default_count = resolve_on_other_count = 0;
+  cmd = pr_cmd_alloc(p, 1, pstrdup(p, "PORT"));
+  cmd->cmd_class = CL_MISC;
+  session.data_port = 7777;
+  res = pr_jot_resolve_logfmt(p, cmd, NULL, logfmt, NULL,
+    resolve_on_meta, resolve_on_default, resolve_on_other);
+  fail_unless(res == 0, "Failed to handle logfmt: %s", strerror(errno));
+  fail_unless(resolve_on_meta_count == 1,
+    "Expected on_meta count 1, got %u", resolve_on_meta_count);
+  fail_unless(resolve_on_default_count == 0,
+    "Expected on_default count 0, got %u", resolve_on_default_count);
+  fail_unless(resolve_on_other_count == 0,
+    "Expected on_other count 0, got %u", resolve_on_other_count);
+
+  mark_point();
+  resolve_on_meta_count = resolve_on_default_count = resolve_on_other_count = 0;
+  cmd = pr_cmd_alloc(p, 1, pstrdup(p, "EPRT"));
+  cmd->cmd_class = CL_MISC;
+  session.data_port = 7777;
+  res = pr_jot_resolve_logfmt(p, cmd, NULL, logfmt, NULL,
+    resolve_on_meta, resolve_on_default, resolve_on_other);
+  fail_unless(res == 0, "Failed to handle logfmt: %s", strerror(errno));
+  fail_unless(resolve_on_meta_count == 1,
+    "Expected on_meta count 1, got %u", resolve_on_meta_count);
+  fail_unless(resolve_on_default_count == 0,
+    "Expected on_default count 0, got %u", resolve_on_default_count);
+  fail_unless(resolve_on_other_count == 0,
+    "Expected on_other count 0, got %u", resolve_on_other_count);
+
+  mark_point();
+  resolve_on_meta_count = resolve_on_default_count = resolve_on_other_count = 0;
+  cmd = pr_cmd_alloc(p, 1, pstrdup(p, "EPSV"));
+  cmd->cmd_class = CL_MISC;
+  session.data_port = 7777;
+  res = pr_jot_resolve_logfmt(p, cmd, NULL, logfmt, NULL,
+    resolve_on_meta, resolve_on_default, resolve_on_other);
+  fail_unless(res == 0, "Failed to handle logfmt: %s", strerror(errno));
+  fail_unless(resolve_on_meta_count == 1,
+    "Expected on_meta count 1, got %u", resolve_on_meta_count);
+  fail_unless(resolve_on_default_count == 0,
+    "Expected on_default count 0, got %u", resolve_on_default_count);
+  fail_unless(resolve_on_other_count == 0,
+    "Expected on_other count 0, got %u", resolve_on_other_count);
+
+  mark_point();
+  resolve_on_meta_count = resolve_on_default_count = resolve_on_other_count = 0;
+  cmd = pr_cmd_alloc(p, 1, pstrdup(p, "APPE"));
+  cmd->cmd_class = CL_MISC;
+  session.data_port = 7777;
+  res = pr_jot_resolve_logfmt(p, cmd, NULL, logfmt, NULL,
+    resolve_on_meta, resolve_on_default, resolve_on_other);
+  fail_unless(res == 0, "Failed to handle logfmt: %s", strerror(errno));
+  fail_unless(resolve_on_meta_count == 1,
+    "Expected on_meta count 1, got %u", resolve_on_meta_count);
+  fail_unless(resolve_on_default_count == 0,
+    "Expected on_default count 0, got %u", resolve_on_default_count);
+  fail_unless(resolve_on_other_count == 0,
+    "Expected on_other count 0, got %u", resolve_on_other_count);
+
+  mark_point();
+  resolve_on_meta_count = resolve_on_default_count = resolve_on_other_count = 0;
+  cmd = pr_cmd_alloc(p, 1, pstrdup(p, "LIST"));
+  cmd->cmd_class = CL_MISC;
+  session.data_port = 7777;
+  res = pr_jot_resolve_logfmt(p, cmd, NULL, logfmt, NULL,
+    resolve_on_meta, resolve_on_default, resolve_on_other);
+  fail_unless(res == 0, "Failed to handle logfmt: %s", strerror(errno));
+  fail_unless(resolve_on_meta_count == 1,
+    "Expected on_meta count 1, got %u", resolve_on_meta_count);
+  fail_unless(resolve_on_default_count == 0,
+    "Expected on_default count 0, got %u", resolve_on_default_count);
+  fail_unless(resolve_on_other_count == 0,
+    "Expected on_other count 0, got %u", resolve_on_other_count);
+
+  mark_point();
+  resolve_on_meta_count = resolve_on_default_count = resolve_on_other_count = 0;
+  cmd = pr_cmd_alloc(p, 1, pstrdup(p, "MLSD"));
+  cmd->cmd_class = CL_MISC;
+  session.data_port = 7777;
+  res = pr_jot_resolve_logfmt(p, cmd, NULL, logfmt, NULL,
+    resolve_on_meta, resolve_on_default, resolve_on_other);
+  fail_unless(res == 0, "Failed to handle logfmt: %s", strerror(errno));
+  fail_unless(resolve_on_meta_count == 1,
+    "Expected on_meta count 1, got %u", resolve_on_meta_count);
+  fail_unless(resolve_on_default_count == 0,
+    "Expected on_default count 0, got %u", resolve_on_default_count);
+  fail_unless(resolve_on_other_count == 0,
+    "Expected on_other count 0, got %u", resolve_on_other_count);
+
+  mark_point();
+  resolve_on_meta_count = resolve_on_default_count = resolve_on_other_count = 0;
+  cmd = pr_cmd_alloc(p, 1, pstrdup(p, "NLST"));
+  cmd->cmd_class = CL_MISC;
+  session.data_port = 7777;
+  res = pr_jot_resolve_logfmt(p, cmd, NULL, logfmt, NULL,
+    resolve_on_meta, resolve_on_default, resolve_on_other);
+  fail_unless(res == 0, "Failed to handle logfmt: %s", strerror(errno));
+  fail_unless(resolve_on_meta_count == 1,
+    "Expected on_meta count 1, got %u", resolve_on_meta_count);
+  fail_unless(resolve_on_default_count == 0,
+    "Expected on_default count 0, got %u", resolve_on_default_count);
+  fail_unless(resolve_on_other_count == 0,
+    "Expected on_other count 0, got %u", resolve_on_other_count);
+
+  mark_point();
+  resolve_on_meta_count = resolve_on_default_count = resolve_on_other_count = 0;
+  cmd = pr_cmd_alloc(p, 1, pstrdup(p, "RETR"));
+  cmd->cmd_class = CL_MISC;
+  session.data_port = 7777;
+  res = pr_jot_resolve_logfmt(p, cmd, NULL, logfmt, NULL,
+    resolve_on_meta, resolve_on_default, resolve_on_other);
+  fail_unless(res == 0, "Failed to handle logfmt: %s", strerror(errno));
+  fail_unless(resolve_on_meta_count == 1,
+    "Expected on_meta count 1, got %u", resolve_on_meta_count);
+  fail_unless(resolve_on_default_count == 0,
+    "Expected on_default count 0, got %u", resolve_on_default_count);
+  fail_unless(resolve_on_other_count == 0,
+    "Expected on_other count 0, got %u", resolve_on_other_count);
+
+  mark_point();
+  resolve_on_meta_count = resolve_on_default_count = resolve_on_other_count = 0;
+  cmd = pr_cmd_alloc(p, 1, pstrdup(p, "STOR"));
+  cmd->cmd_class = CL_MISC;
+  session.data_port = 7777;
+  res = pr_jot_resolve_logfmt(p, cmd, NULL, logfmt, NULL,
+    resolve_on_meta, resolve_on_default, resolve_on_other);
+  fail_unless(res == 0, "Failed to handle logfmt: %s", strerror(errno));
+  fail_unless(resolve_on_meta_count == 1,
+    "Expected on_meta count 1, got %u", resolve_on_meta_count);
+  fail_unless(resolve_on_default_count == 0,
+    "Expected on_default count 0, got %u", resolve_on_default_count);
+  fail_unless(resolve_on_other_count == 0,
+    "Expected on_other count 0, got %u", resolve_on_other_count);
+
+  mark_point();
+  resolve_on_meta_count = resolve_on_default_count = resolve_on_other_count = 0;
+  cmd = pr_cmd_alloc(p, 1, pstrdup(p, "STOU"));
+  cmd->cmd_class = CL_MISC;
+  session.data_port = 7777;
+  res = pr_jot_resolve_logfmt(p, cmd, NULL, logfmt, NULL,
+    resolve_on_meta, resolve_on_default, resolve_on_other);
+  fail_unless(res == 0, "Failed to handle logfmt: %s", strerror(errno));
+  fail_unless(resolve_on_meta_count == 1,
+    "Expected on_meta count 1, got %u", resolve_on_meta_count);
+  fail_unless(resolve_on_default_count == 0,
+    "Expected on_default count 0, got %u", resolve_on_default_count);
+  fail_unless(resolve_on_other_count == 0,
+    "Expected on_other count 0, got %u", resolve_on_other_count);
+
+  session.data_port = 0;
+}
+END_TEST
+
+START_TEST (jot_resolve_logfmt_xfer_type_test) {
+  int res;
+  cmd_rec *cmd;
+  unsigned char logfmt[3];
+
+  logfmt[0] = LOGFMT_META_START;
+  logfmt[1] = LOGFMT_META_XFER_TYPE;
+  logfmt[2] = 0;
+
+  mark_point();
+  resolve_on_meta_count = resolve_on_default_count = resolve_on_other_count = 0;
+  cmd = pr_cmd_alloc(p, 1, pstrdup(p, "FOO"));
+  cmd->cmd_class = CL_MISC;
+  res = pr_jot_resolve_logfmt(p, cmd, NULL, logfmt, NULL,
+    resolve_on_meta, resolve_on_default, resolve_on_other);
+  fail_unless(res == 0, "Failed to handle logfmt: %s", strerror(errno));
+  fail_unless(resolve_on_meta_count == 0,
+    "Expected on_meta count 0, got %u", resolve_on_meta_count);
+  fail_unless(resolve_on_default_count == 1,
+    "Expected on_default count 1, got %u", resolve_on_default_count);
+  fail_unless(resolve_on_other_count == 0,
+    "Expected on_other count 0, got %u", resolve_on_other_count);
+
+  mark_point();
+  resolve_on_meta_count = resolve_on_default_count = resolve_on_other_count = 0;
+  cmd = pr_cmd_alloc(p, 1, pstrdup(p, "APPE"));
+  cmd->cmd_class = CL_MISC;
+  session.sf_flags = SF_ASCII;
+  res = pr_jot_resolve_logfmt(p, cmd, NULL, logfmt, NULL,
+    resolve_on_meta, resolve_on_default, resolve_on_other);
+  fail_unless(res == 0, "Failed to handle logfmt: %s", strerror(errno));
+  fail_unless(resolve_on_meta_count == 1,
+    "Expected on_meta count 1, got %u", resolve_on_meta_count);
+  fail_unless(resolve_on_default_count == 0,
+    "Expected on_default count 0, got %u", resolve_on_default_count);
+  fail_unless(resolve_on_other_count == 0,
+    "Expected on_other count 0, got %u", resolve_on_other_count);
+
+  mark_point();
+  resolve_on_meta_count = resolve_on_default_count = resolve_on_other_count = 0;
+  cmd = pr_cmd_alloc(p, 1, pstrdup(p, "LIST"));
+  cmd->cmd_class = CL_MISC;
+  session.sf_flags = SF_ASCII_OVERRIDE;
+  res = pr_jot_resolve_logfmt(p, cmd, NULL, logfmt, NULL,
+    resolve_on_meta, resolve_on_default, resolve_on_other);
+  fail_unless(res == 0, "Failed to handle logfmt: %s", strerror(errno));
+  fail_unless(resolve_on_meta_count == 1,
+    "Expected on_meta count 1, got %u", resolve_on_meta_count);
+  fail_unless(resolve_on_default_count == 0,
+    "Expected on_default count 0, got %u", resolve_on_default_count);
+  fail_unless(resolve_on_other_count == 0,
+    "Expected on_other count 0, got %u", resolve_on_other_count);
+
+  session.sf_flags = 0;
+
+  mark_point();
+  resolve_on_meta_count = resolve_on_default_count = resolve_on_other_count = 0;
+  cmd = pr_cmd_alloc(p, 1, pstrdup(p, "MLSD"));
+  cmd->cmd_class = CL_MISC;
+  res = pr_jot_resolve_logfmt(p, cmd, NULL, logfmt, NULL,
+    resolve_on_meta, resolve_on_default, resolve_on_other);
+  fail_unless(res == 0, "Failed to handle logfmt: %s", strerror(errno));
+  fail_unless(resolve_on_meta_count == 1,
+    "Expected on_meta count 1, got %u", resolve_on_meta_count);
+  fail_unless(resolve_on_default_count == 0,
+    "Expected on_default count 0, got %u", resolve_on_default_count);
+  fail_unless(resolve_on_other_count == 0,
+    "Expected on_other count 0, got %u", resolve_on_other_count);
+
+  mark_point();
+  resolve_on_meta_count = resolve_on_default_count = resolve_on_other_count = 0;
+  cmd = pr_cmd_alloc(p, 1, pstrdup(p, "RETR"));
+  cmd->cmd_class = CL_MISC;
+  tests_stubs_set_protocol("sftp");
+  res = pr_jot_resolve_logfmt(p, cmd, NULL, logfmt, NULL,
+    resolve_on_meta, resolve_on_default, resolve_on_other);
+  fail_unless(res == 0, "Failed to handle logfmt: %s", strerror(errno));
+  fail_unless(resolve_on_meta_count == 1,
+    "Expected on_meta count 1, got %u", resolve_on_meta_count);
+  fail_unless(resolve_on_default_count == 0,
+    "Expected on_default count 0, got %u", resolve_on_default_count);
+  fail_unless(resolve_on_other_count == 0,
+    "Expected on_other count 0, got %u", resolve_on_other_count);
+
+  mark_point();
+  resolve_on_meta_count = resolve_on_default_count = resolve_on_other_count = 0;
+  cmd = pr_cmd_alloc(p, 1, pstrdup(p, "STOR"));
+  cmd->cmd_class = CL_MISC;
+  tests_stubs_set_protocol("scp");
+  res = pr_jot_resolve_logfmt(p, cmd, NULL, logfmt, NULL,
+    resolve_on_meta, resolve_on_default, resolve_on_other);
+  fail_unless(res == 0, "Failed to handle logfmt: %s", strerror(errno));
+  fail_unless(resolve_on_meta_count == 1,
+    "Expected on_meta count 1, got %u", resolve_on_meta_count);
+  fail_unless(resolve_on_default_count == 0,
+    "Expected on_default count 0, got %u", resolve_on_default_count);
+  fail_unless(resolve_on_other_count == 0,
+    "Expected on_other count 0, got %u", resolve_on_other_count);
+
+  tests_stubs_set_protocol(NULL);
+}
+END_TEST
+
+START_TEST (jot_resolve_logfmt_xfer_status_test) {
+  int res;
+  cmd_rec *cmd;
+  unsigned char logfmt[3];
+
+  logfmt[0] = LOGFMT_META_START;
+  logfmt[1] = LOGFMT_META_XFER_STATUS;
+  logfmt[2] = 0;
+
+  mark_point();
+  resolve_on_meta_count = resolve_on_default_count = resolve_on_other_count = 0;
+  cmd = pr_cmd_alloc(p, 1, pstrdup(p, "FOO"));
+  cmd->cmd_class = CL_MISC;
+  res = pr_jot_resolve_logfmt(p, cmd, NULL, logfmt, NULL,
+    resolve_on_meta, resolve_on_default, resolve_on_other);
+  fail_unless(res == 0, "Failed to handle logfmt: %s", strerror(errno));
+  fail_unless(resolve_on_meta_count == 0,
+    "Expected on_meta count 0, got %u", resolve_on_meta_count);
+  fail_unless(resolve_on_default_count == 1,
+    "Expected on_default count 1, got %u", resolve_on_default_count);
+  fail_unless(resolve_on_other_count == 0,
+    "Expected on_other count 0, got %u", resolve_on_other_count);
+
+  mark_point();
+  resolve_on_meta_count = resolve_on_default_count = resolve_on_other_count = 0;
+  cmd = pr_cmd_alloc(p, 1, pstrdup(p, "RETR"));
+  cmd->cmd_class = CL_MISC;
+  res = pr_jot_resolve_logfmt(p, cmd, NULL, logfmt, NULL,
+    resolve_on_meta, resolve_on_default, resolve_on_other);
+  fail_unless(res == 0, "Failed to handle logfmt: %s", strerror(errno));
+  fail_unless(resolve_on_meta_count == 1,
+    "Expected on_meta count 1, got %u", resolve_on_meta_count);
+  fail_unless(resolve_on_default_count == 0,
+    "Expected on_default count 0, got %u", resolve_on_default_count);
+  fail_unless(resolve_on_other_count == 0,
+    "Expected on_other count 0, got %u", resolve_on_other_count);
+
+  mark_point();
+  resolve_on_meta_count = resolve_on_default_count = resolve_on_other_count = 0;
+  cmd = pr_cmd_alloc(p, 1, pstrdup(p, "RETR"));
+  cmd->cmd_class = CL_MISC;
+  tests_stubs_set_protocol("ftps");
+  res = pr_jot_resolve_logfmt(p, cmd, NULL, logfmt, NULL,
+    resolve_on_meta, resolve_on_default, resolve_on_other);
+  fail_unless(res == 0, "Failed to handle logfmt: %s", strerror(errno));
+  fail_unless(resolve_on_meta_count == 1,
+    "Expected on_meta count 1, got %u", resolve_on_meta_count);
+  fail_unless(resolve_on_default_count == 0,
+    "Expected on_default count 0, got %u", resolve_on_default_count);
+  fail_unless(resolve_on_other_count == 0,
+    "Expected on_other count 0, got %u", resolve_on_other_count);
+
+  tests_stubs_set_protocol(NULL);
+
+  /* 5xx response */
+  mark_point();
+  resolve_on_meta_count = resolve_on_default_count = resolve_on_other_count = 0;
+  cmd = pr_cmd_alloc(p, 1, pstrdup(p, "RETR"));
+  cmd->cmd_class = CL_MISC;
+  pr_response_set_pool(p);
+  pr_response_add("500", "foo %s", "bar");
+  res = pr_jot_resolve_logfmt(p, cmd, NULL, logfmt, NULL,
+    resolve_on_meta, resolve_on_default, resolve_on_other);
+  fail_unless(res == 0, "Failed to handle logfmt: %s", strerror(errno));
+  fail_unless(resolve_on_meta_count == 1,
+    "Expected on_meta count 1, got %u", resolve_on_meta_count);
+  fail_unless(resolve_on_default_count == 0,
+    "Expected on_default count 0, got %u", resolve_on_default_count);
+  fail_unless(resolve_on_other_count == 0,
+    "Expected on_other count 0, got %u", resolve_on_other_count);
+
+  pr_response_clear(&resp_list);
+
+  /* 1xx response */
+  mark_point();
+  resolve_on_meta_count = resolve_on_default_count = resolve_on_other_count = 0;
+  cmd = pr_cmd_alloc(p, 1, pstrdup(p, "RETR"));
+  cmd->cmd_class = CL_MISC;
+  pr_response_set_pool(p);
+  pr_response_add("123", "foo %s", "bar");
+  res = pr_jot_resolve_logfmt(p, cmd, NULL, logfmt, NULL,
+    resolve_on_meta, resolve_on_default, resolve_on_other);
+  fail_unless(res == 0, "Failed to handle logfmt: %s", strerror(errno));
+  fail_unless(resolve_on_meta_count == 1,
+    "Expected on_meta count 1, got %u", resolve_on_meta_count);
+  fail_unless(resolve_on_default_count == 0,
+    "Expected on_default count 0, got %u", resolve_on_default_count);
+  fail_unless(resolve_on_other_count == 0,
+    "Expected on_other count 0, got %u", resolve_on_other_count);
+
+  pr_response_clear(&resp_list);
+
+  /* 2xx response */
+  mark_point();
+  resolve_on_meta_count = resolve_on_default_count = resolve_on_other_count = 0;
+  cmd = pr_cmd_alloc(p, 1, pstrdup(p, "RETR"));
+  cmd->cmd_class = CL_MISC;
+  pr_response_set_pool(p);
+  pr_response_add("234", "foo %s", "bar");
+  res = pr_jot_resolve_logfmt(p, cmd, NULL, logfmt, NULL,
+    resolve_on_meta, resolve_on_default, resolve_on_other);
+  fail_unless(res == 0, "Failed to handle logfmt: %s", strerror(errno));
+  fail_unless(resolve_on_meta_count == 1,
+    "Expected on_meta count 1, got %u", resolve_on_meta_count);
+  fail_unless(resolve_on_default_count == 0,
+    "Expected on_default count 0, got %u", resolve_on_default_count);
+  fail_unless(resolve_on_other_count == 0,
+    "Expected on_other count 0, got %u", resolve_on_other_count);
+
+  pr_response_clear(&resp_list);
+
+  /* ABOR */
+  mark_point();
+  resolve_on_meta_count = resolve_on_default_count = resolve_on_other_count = 0;
+  cmd = pr_cmd_alloc(p, 1, pstrdup(p, "ABOR"));
+  cmd->cmd_class = CL_MISC;
+  pr_response_set_pool(p);
+  pr_response_add("234", "foo %s", "bar");
+  res = pr_jot_resolve_logfmt(p, cmd, NULL, logfmt, NULL,
+    resolve_on_meta, resolve_on_default, resolve_on_other);
+  fail_unless(res == 0, "Failed to handle logfmt: %s", strerror(errno));
+  fail_unless(resolve_on_meta_count == 1,
+    "Expected on_meta count 1, got %u", resolve_on_meta_count);
+  fail_unless(resolve_on_default_count == 0,
+    "Expected on_default count 0, got %u", resolve_on_default_count);
+  fail_unless(resolve_on_other_count == 0,
+    "Expected on_other count 0, got %u", resolve_on_other_count);
+
+  pr_response_clear(&resp_list);
+
+  /* SF_ABORT */
+  mark_point();
+  resolve_on_meta_count = resolve_on_default_count = resolve_on_other_count = 0;
+  cmd = pr_cmd_alloc(p, 1, pstrdup(p, "RETR"));
+  cmd->cmd_class = CL_MISC;
+  session.sf_flags = SF_ABORT;
+  res = pr_jot_resolve_logfmt(p, cmd, NULL, logfmt, NULL,
+    resolve_on_meta, resolve_on_default, resolve_on_other);
+  fail_unless(res == 0, "Failed to handle logfmt: %s", strerror(errno));
+  fail_unless(resolve_on_meta_count == 1,
+    "Expected on_meta count 1, got %u", resolve_on_meta_count);
+  fail_unless(resolve_on_default_count == 0,
+    "Expected on_default count 0, got %u", resolve_on_default_count);
+  fail_unless(resolve_on_other_count == 0,
+    "Expected on_other count 0, got %u", resolve_on_other_count);
+
+  session.sf_flags = 0;
+  pr_response_clear(&resp_list);
+  pr_response_set_pool(NULL);
+
+  mark_point();
+  resolve_on_meta_count = resolve_on_default_count = resolve_on_other_count = 0;
+  cmd = pr_cmd_alloc(p, 1, pstrdup(p, "RETR"));
+  cmd->cmd_class = CL_MISC;
+  tests_stubs_set_protocol("sftp");
+  res = pr_jot_resolve_logfmt(p, cmd, NULL, logfmt, NULL,
+    resolve_on_meta, resolve_on_default, resolve_on_other);
+  fail_unless(res == 0, "Failed to handle logfmt: %s", strerror(errno));
+  fail_unless(resolve_on_meta_count == 1,
+    "Expected on_meta count 1, got %u", resolve_on_meta_count);
+  fail_unless(resolve_on_default_count == 0,
+    "Expected on_default count 0, got %u", resolve_on_default_count);
+  fail_unless(resolve_on_other_count == 0,
+    "Expected on_other count 0, got %u", resolve_on_other_count);
+
+  mark_point();
+  resolve_on_meta_count = resolve_on_default_count = resolve_on_other_count = 0;
+  cmd = pr_cmd_alloc(p, 1, pstrdup(p, "STOR"));
+  cmd->cmd_class = CL_MISC;
+  pr_table_add_dup(cmd->notes, "mod_sftp.file-status", "FOO!", 0);
+  tests_stubs_set_protocol("sftp");
+  res = pr_jot_resolve_logfmt(p, cmd, NULL, logfmt, NULL,
+    resolve_on_meta, resolve_on_default, resolve_on_other);
+  fail_unless(res == 0, "Failed to handle logfmt: %s", strerror(errno));
+  fail_unless(resolve_on_meta_count == 1,
+    "Expected on_meta count 1, got %u", resolve_on_meta_count);
+  fail_unless(resolve_on_default_count == 0,
+    "Expected on_default count 0, got %u", resolve_on_default_count);
+  fail_unless(resolve_on_other_count == 0,
+    "Expected on_other count 0, got %u", resolve_on_other_count);
+
+  tests_stubs_set_protocol(NULL);
+}
+END_TEST
+
+START_TEST (jot_resolve_logfmt_xfer_failure_test) {
+  int res;
+  cmd_rec *cmd;
+  unsigned char logfmt[3];
+
+  logfmt[0] = LOGFMT_META_START;
+  logfmt[1] = LOGFMT_META_XFER_FAILURE;
+  logfmt[2] = 0;
+
+  mark_point();
+  resolve_on_meta_count = resolve_on_default_count = resolve_on_other_count = 0;
+  cmd = pr_cmd_alloc(p, 1, pstrdup(p, "FOO"));
+  cmd->cmd_class = CL_MISC;
+  res = pr_jot_resolve_logfmt(p, cmd, NULL, logfmt, NULL,
+    resolve_on_meta, resolve_on_default, resolve_on_other);
+  fail_unless(res == 0, "Failed to handle logfmt: %s", strerror(errno));
+  fail_unless(resolve_on_meta_count == 0,
+    "Expected on_meta count 0, got %u", resolve_on_meta_count);
+  fail_unless(resolve_on_default_count == 1,
+    "Expected on_default count 1, got %u", resolve_on_default_count);
+  fail_unless(resolve_on_other_count == 0,
+    "Expected on_other count 0, got %u", resolve_on_other_count);
+
+  mark_point();
+  resolve_on_meta_count = resolve_on_default_count = resolve_on_other_count = 0;
+  cmd = pr_cmd_alloc(p, 1, pstrdup(p, "RETR"));
+  cmd->cmd_class = CL_MISC;
+  tests_stubs_set_protocol("ftps");
+  res = pr_jot_resolve_logfmt(p, cmd, NULL, logfmt, NULL,
+    resolve_on_meta, resolve_on_default, resolve_on_other);
+  fail_unless(res == 0, "Failed to handle logfmt: %s", strerror(errno));
+  fail_unless(resolve_on_meta_count == 1,
+    "Expected on_meta count 1, got %u", resolve_on_meta_count);
+  fail_unless(resolve_on_default_count == 0,
+    "Expected on_default count 0, got %u", resolve_on_default_count);
+  fail_unless(resolve_on_other_count == 0,
+    "Expected on_other count 0, got %u", resolve_on_other_count);
+
+  tests_stubs_set_protocol(NULL);
+
+  /* SF_ABORT */
+  mark_point();
+  resolve_on_meta_count = resolve_on_default_count = resolve_on_other_count = 0;
+  cmd = pr_cmd_alloc(p, 1, pstrdup(p, "RETR"));
+  cmd->cmd_class = CL_MISC;
+  session.sf_flags = SF_ABORT;
+  res = pr_jot_resolve_logfmt(p, cmd, NULL, logfmt, NULL,
+    resolve_on_meta, resolve_on_default, resolve_on_other);
+  fail_unless(res == 0, "Failed to handle logfmt: %s", strerror(errno));
+  fail_unless(resolve_on_meta_count == 1,
+    "Expected on_meta count 1, got %u", resolve_on_meta_count);
+  fail_unless(resolve_on_default_count == 0,
+    "Expected on_default count 0, got %u", resolve_on_default_count);
+  fail_unless(resolve_on_other_count == 0,
+    "Expected on_other count 0, got %u", resolve_on_other_count);
+
+  session.sf_flags = 0;
+
+  /* 5xx response */
+  mark_point();
+  resolve_on_meta_count = resolve_on_default_count = resolve_on_other_count = 0;
+  cmd = pr_cmd_alloc(p, 1, pstrdup(p, "RETR"));
+  cmd->cmd_class = CL_MISC;
+  pr_response_set_pool(p);
+  pr_response_add("543", "foo %s", "BAR BAZ");
+  res = pr_jot_resolve_logfmt(p, cmd, NULL, logfmt, NULL,
+    resolve_on_meta, resolve_on_default, resolve_on_other);
+  fail_unless(res == 0, "Failed to handle logfmt: %s", strerror(errno));
+  fail_unless(resolve_on_meta_count == 1,
+    "Expected on_meta count 1, got %u", resolve_on_meta_count);
+  fail_unless(resolve_on_default_count == 0,
+    "Expected on_default count 0, got %u", resolve_on_default_count);
+  fail_unless(resolve_on_other_count == 0,
+    "Expected on_other count 0, got %u", resolve_on_other_count);
+
+  pr_response_clear(&resp_list);
+  pr_response_set_pool(NULL);
+
+  /* 1xx response */
+  mark_point();
+  resolve_on_meta_count = resolve_on_default_count = resolve_on_other_count = 0;
+  cmd = pr_cmd_alloc(p, 1, pstrdup(p, "RETR"));
+  cmd->cmd_class = CL_MISC;
+  pr_response_set_pool(p);
+  pr_response_add("123", "foo %s", "BAR BAZ");
+  res = pr_jot_resolve_logfmt(p, cmd, NULL, logfmt, NULL,
+    resolve_on_meta, resolve_on_default, resolve_on_other);
+  fail_unless(res == 0, "Failed to handle logfmt: %s", strerror(errno));
+  fail_unless(resolve_on_meta_count == 0,
+    "Expected on_meta count 0, got %u", resolve_on_meta_count);
+  fail_unless(resolve_on_default_count == 1,
+    "Expected on_default count 1, got %u", resolve_on_default_count);
+  fail_unless(resolve_on_other_count == 0,
+    "Expected on_other count 0, got %u", resolve_on_other_count);
+
+  pr_response_clear(&resp_list);
+  pr_response_set_pool(NULL);
+
+  /* 2xx response */
+  mark_point();
+  resolve_on_meta_count = resolve_on_default_count = resolve_on_other_count = 0;
+  cmd = pr_cmd_alloc(p, 1, pstrdup(p, "RETR"));
+  cmd->cmd_class = CL_MISC;
+  pr_response_set_pool(p);
+  pr_response_add("234", "foo %s", "BAR BAZ");
+  res = pr_jot_resolve_logfmt(p, cmd, NULL, logfmt, NULL,
+    resolve_on_meta, resolve_on_default, resolve_on_other);
+  fail_unless(res == 0, "Failed to handle logfmt: %s", strerror(errno));
+  fail_unless(resolve_on_meta_count == 0,
+    "Expected on_meta count 0, got %u", resolve_on_meta_count);
+  fail_unless(resolve_on_default_count == 1,
+    "Expected on_default count 1, got %u", resolve_on_default_count);
+  fail_unless(resolve_on_other_count == 0,
+    "Expected on_other count 0, got %u", resolve_on_other_count);
+
+  pr_response_clear(&resp_list);
+  pr_response_set_pool(NULL);
+
+  mark_point();
+  resolve_on_meta_count = resolve_on_default_count = resolve_on_other_count = 0;
+  cmd = pr_cmd_alloc(p, 1, pstrdup(p, "RETR"));
+  cmd->cmd_class = CL_MISC;
+  tests_stubs_set_protocol("sftp");
+  res = pr_jot_resolve_logfmt(p, cmd, NULL, logfmt, NULL,
+    resolve_on_meta, resolve_on_default, resolve_on_other);
+  fail_unless(res == 0, "Failed to handle logfmt: %s", strerror(errno));
+  fail_unless(resolve_on_meta_count == 1,
+    "Expected on_meta count 1, got %u", resolve_on_meta_count);
+  fail_unless(resolve_on_default_count == 0,
+    "Expected on_default count 0, got %u", resolve_on_default_count);
+  fail_unless(resolve_on_other_count == 0,
+    "Expected on_other count 0, got %u", resolve_on_other_count);
+
+  tests_stubs_set_protocol(NULL);
+}
+END_TEST
+
+START_TEST (jot_resolve_logfmt_dir_name_test) {
+  int res;
+  cmd_rec *cmd;
+  unsigned char logfmt[3];
+
+  logfmt[0] = LOGFMT_META_START;
+  logfmt[1] = LOGFMT_META_DIR_NAME;
+  logfmt[2] = 0;
+
+  mark_point();
+  resolve_on_meta_count = resolve_on_default_count = resolve_on_other_count = 0;
+  cmd = pr_cmd_alloc(p, 1, pstrdup(p, "FOO"));
+  cmd->cmd_class = CL_MISC;
+  res = pr_jot_resolve_logfmt(p, cmd, NULL, logfmt, NULL,
+    resolve_on_meta, resolve_on_default, resolve_on_other);
+  fail_unless(res == 0, "Failed to handle logfmt: %s", strerror(errno));
+  fail_unless(resolve_on_meta_count == 1,
+    "Expected on_meta count 1, got %u", resolve_on_meta_count);
+  fail_unless(resolve_on_default_count == 0,
+    "Expected on_default count 0, got %u", resolve_on_default_count);
+  fail_unless(resolve_on_other_count == 0,
+    "Expected on_other count 0, got %u", resolve_on_other_count);
+
+  mark_point();
+  resolve_on_meta_count = resolve_on_default_count = resolve_on_other_count = 0;
+  cmd = pr_cmd_alloc(p, 1, pstrdup(p, "CDUP"));
+  cmd->cmd_class = CL_MISC;
+  res = pr_jot_resolve_logfmt(p, cmd, NULL, logfmt, NULL,
+    resolve_on_meta, resolve_on_default, resolve_on_other);
+  fail_unless(res == 0, "Failed to handle logfmt: %s", strerror(errno));
+  fail_unless(resolve_on_meta_count == 0,
+    "Expected on_meta count 0, got %u", resolve_on_meta_count);
+  fail_unless(resolve_on_default_count == 1,
+    "Expected on_default count 1, got %u", resolve_on_default_count);
+  fail_unless(resolve_on_other_count == 0,
+    "Expected on_other count 0, got %u", resolve_on_other_count);
+
+  mark_point();
+  resolve_on_meta_count = resolve_on_default_count = resolve_on_other_count = 0;
+  cmd = pr_cmd_alloc(p, 1, pstrdup(p, "CWD"));
+  cmd->cmd_class = CL_MISC;
+  cmd->arg = pstrdup(p, "foo");
+  res = pr_jot_resolve_logfmt(p, cmd, NULL, logfmt, NULL,
+    resolve_on_meta, resolve_on_default, resolve_on_other);
+  fail_unless(res == 0, "Failed to handle logfmt: %s", strerror(errno));
+  fail_unless(resolve_on_meta_count == 1,
+    "Expected on_meta count 1, got %u", resolve_on_meta_count);
+  fail_unless(resolve_on_default_count == 0,
+    "Expected on_default count 0, got %u", resolve_on_default_count);
+  fail_unless(resolve_on_other_count == 0,
+    "Expected on_other count 0, got %u", resolve_on_other_count);
+
+  mark_point();
+  resolve_on_meta_count = resolve_on_default_count = resolve_on_other_count = 0;
+  cmd = pr_cmd_alloc(p, 1, pstrdup(p, "LIST"));
+  cmd->cmd_class = CL_MISC;
+  cmd->arg = pstrdup(p, "/foo");
+  res = pr_jot_resolve_logfmt(p, cmd, NULL, logfmt, NULL,
+    resolve_on_meta, resolve_on_default, resolve_on_other);
+  fail_unless(res == 0, "Failed to handle logfmt: %s", strerror(errno));
+  fail_unless(resolve_on_meta_count == 1,
+    "Expected on_meta count 1, got %u", resolve_on_meta_count);
+  fail_unless(resolve_on_default_count == 0,
+    "Expected on_default count 0, got %u", resolve_on_default_count);
+  fail_unless(resolve_on_other_count == 0,
+    "Expected on_other count 0, got %u", resolve_on_other_count);
+
+  mark_point();
+  resolve_on_meta_count = resolve_on_default_count = resolve_on_other_count = 0;
+  cmd = pr_cmd_alloc(p, 1, pstrdup(p, "MLSD"));
+  cmd->cmd_class = CL_MISC;
+  cmd->arg = pstrdup(p, "/foo/");
+  res = pr_jot_resolve_logfmt(p, cmd, NULL, logfmt, NULL,
+    resolve_on_meta, resolve_on_default, resolve_on_other);
+  fail_unless(res == 0, "Failed to handle logfmt: %s", strerror(errno));
+  fail_unless(resolve_on_meta_count == 1,
+    "Expected on_meta count 1, got %u", resolve_on_meta_count);
+  fail_unless(resolve_on_default_count == 0,
+    "Expected on_default count 0, got %u", resolve_on_default_count);
+  fail_unless(resolve_on_other_count == 0,
+    "Expected on_other count 0, got %u", resolve_on_other_count);
+
+  mark_point();
+  resolve_on_meta_count = resolve_on_default_count = resolve_on_other_count = 0;
+  cmd = pr_cmd_alloc(p, 1, pstrdup(p, "MKD"));
+  cmd->cmd_class = CL_MISC;
+  cmd->arg = pstrdup(p, "foo/");
+  res = pr_jot_resolve_logfmt(p, cmd, NULL, logfmt, NULL,
+    resolve_on_meta, resolve_on_default, resolve_on_other);
+  fail_unless(res == 0, "Failed to handle logfmt: %s", strerror(errno));
+  fail_unless(resolve_on_meta_count == 1,
+    "Expected on_meta count 1, got %u", resolve_on_meta_count);
+  fail_unless(resolve_on_default_count == 0,
+    "Expected on_default count 0, got %u", resolve_on_default_count);
+  fail_unless(resolve_on_other_count == 0,
+    "Expected on_other count 0, got %u", resolve_on_other_count);
+
+  mark_point();
+  resolve_on_meta_count = resolve_on_default_count = resolve_on_other_count = 0;
+  cmd = pr_cmd_alloc(p, 1, pstrdup(p, "NLST"));
+  cmd->cmd_class = CL_MISC;
+  cmd->arg = pstrdup(p, "foo/");
+  res = pr_jot_resolve_logfmt(p, cmd, NULL, logfmt, NULL,
+    resolve_on_meta, resolve_on_default, resolve_on_other);
+  fail_unless(res == 0, "Failed to handle logfmt: %s", strerror(errno));
+  fail_unless(resolve_on_meta_count == 1,
+    "Expected on_meta count 1, got %u", resolve_on_meta_count);
+  fail_unless(resolve_on_default_count == 0,
+    "Expected on_default count 0, got %u", resolve_on_default_count);
+  fail_unless(resolve_on_other_count == 0,
+    "Expected on_other count 0, got %u", resolve_on_other_count);
+
+  mark_point();
+  resolve_on_meta_count = resolve_on_default_count = resolve_on_other_count = 0;
+  cmd = pr_cmd_alloc(p, 1, pstrdup(p, "RMD"));
+  cmd->cmd_class = CL_MISC;
+  cmd->arg = pstrdup(p, "foo/");
+  res = pr_jot_resolve_logfmt(p, cmd, NULL, logfmt, NULL,
+    resolve_on_meta, resolve_on_default, resolve_on_other);
+  fail_unless(res == 0, "Failed to handle logfmt: %s", strerror(errno));
+  fail_unless(resolve_on_meta_count == 1,
+    "Expected on_meta count 1, got %u", resolve_on_meta_count);
+  fail_unless(resolve_on_default_count == 0,
+    "Expected on_default count 0, got %u", resolve_on_default_count);
+  fail_unless(resolve_on_other_count == 0,
+    "Expected on_other count 0, got %u", resolve_on_other_count);
+
+  mark_point();
+  resolve_on_meta_count = resolve_on_default_count = resolve_on_other_count = 0;
+  cmd = pr_cmd_alloc(p, 1, pstrdup(p, "XCWD"));
+  cmd->cmd_class = CL_MISC;
+  cmd->arg = pstrdup(p, "foo/");
+  res = pr_jot_resolve_logfmt(p, cmd, NULL, logfmt, NULL,
+    resolve_on_meta, resolve_on_default, resolve_on_other);
+  fail_unless(res == 0, "Failed to handle logfmt: %s", strerror(errno));
+  fail_unless(resolve_on_meta_count == 1,
+    "Expected on_meta count 1, got %u", resolve_on_meta_count);
+  fail_unless(resolve_on_default_count == 0,
+    "Expected on_default count 0, got %u", resolve_on_default_count);
+  fail_unless(resolve_on_other_count == 0,
+    "Expected on_other count 0, got %u", resolve_on_other_count);
+
+  mark_point();
+  resolve_on_meta_count = resolve_on_default_count = resolve_on_other_count = 0;
+  cmd = pr_cmd_alloc(p, 1, pstrdup(p, "XCUP"));
+  cmd->cmd_class = CL_MISC;
+  cmd->arg = pstrdup(p, "foo/");
+  res = pr_jot_resolve_logfmt(p, cmd, NULL, logfmt, NULL,
+    resolve_on_meta, resolve_on_default, resolve_on_other);
+  fail_unless(res == 0, "Failed to handle logfmt: %s", strerror(errno));
+  fail_unless(resolve_on_meta_count == 1,
+    "Expected on_meta count 1, got %u", resolve_on_meta_count);
+  fail_unless(resolve_on_default_count == 0,
+    "Expected on_default count 0, got %u", resolve_on_default_count);
+  fail_unless(resolve_on_other_count == 0,
+    "Expected on_other count 0, got %u", resolve_on_other_count);
+
+  mark_point();
+  resolve_on_meta_count = resolve_on_default_count = resolve_on_other_count = 0;
+  cmd = pr_cmd_alloc(p, 1, pstrdup(p, "XMKD"));
+  cmd->cmd_class = CL_MISC;
+  cmd->arg = pstrdup(p, "foo/");
+  res = pr_jot_resolve_logfmt(p, cmd, NULL, logfmt, NULL,
+    resolve_on_meta, resolve_on_default, resolve_on_other);
+  fail_unless(res == 0, "Failed to handle logfmt: %s", strerror(errno));
+  fail_unless(resolve_on_meta_count == 1,
+    "Expected on_meta count 1, got %u", resolve_on_meta_count);
+  fail_unless(resolve_on_default_count == 0,
+    "Expected on_default count 0, got %u", resolve_on_default_count);
+  fail_unless(resolve_on_other_count == 0,
+    "Expected on_other count 0, got %u", resolve_on_other_count);
+
+  mark_point();
+  resolve_on_meta_count = resolve_on_default_count = resolve_on_other_count = 0;
+  cmd = pr_cmd_alloc(p, 1, pstrdup(p, "XRMD"));
+  cmd->cmd_class = CL_MISC;
+  cmd->arg = pstrdup(p, "foo/");
+  res = pr_jot_resolve_logfmt(p, cmd, NULL, logfmt, NULL,
+    resolve_on_meta, resolve_on_default, resolve_on_other);
+  fail_unless(res == 0, "Failed to handle logfmt: %s", strerror(errno));
+  fail_unless(resolve_on_meta_count == 1,
+    "Expected on_meta count 1, got %u", resolve_on_meta_count);
+  fail_unless(resolve_on_default_count == 0,
+    "Expected on_default count 0, got %u", resolve_on_default_count);
+  fail_unless(resolve_on_other_count == 0,
+    "Expected on_other count 0, got %u", resolve_on_other_count);
+}
+END_TEST
+
+START_TEST (jot_resolve_logfmt_dir_path_test) {
+  int res;
+  cmd_rec *cmd;
+  unsigned char logfmt[3];
+
+  logfmt[0] = LOGFMT_META_START;
+  logfmt[1] = LOGFMT_META_DIR_PATH;
+  logfmt[2] = 0;
+
+  mark_point();
+  resolve_on_meta_count = resolve_on_default_count = resolve_on_other_count = 0;
+  cmd = pr_cmd_alloc(p, 1, pstrdup(p, "FOO"));
+  cmd->cmd_class = CL_MISC;
+  res = pr_jot_resolve_logfmt(p, cmd, NULL, logfmt, NULL,
+    resolve_on_meta, resolve_on_default, resolve_on_other);
+  fail_unless(res == 0, "Failed to handle logfmt: %s", strerror(errno));
+  fail_unless(resolve_on_meta_count == 0,
+    "Expected on_meta count 0, got %u", resolve_on_meta_count);
+  fail_unless(resolve_on_default_count == 1,
+    "Expected on_default count 1, got %u", resolve_on_default_count);
+  fail_unless(resolve_on_other_count == 0,
+    "Expected on_other count 0, got %u", resolve_on_other_count);
+
+  mark_point();
+  resolve_on_meta_count = resolve_on_default_count = resolve_on_other_count = 0;
+  cmd = pr_cmd_alloc(p, 1, pstrdup(p, "CDUP"));
+  cmd->cmd_class = CL_MISC;
+  cmd->arg = pstrdup(p, "/foo/bar/baz");
+  res = pr_jot_resolve_logfmt(p, cmd, NULL, logfmt, NULL,
+    resolve_on_meta, resolve_on_default, resolve_on_other);
+  fail_unless(res == 0, "Failed to handle logfmt: %s", strerror(errno));
+  fail_unless(resolve_on_meta_count == 1,
+    "Expected on_meta count 1, got %u", resolve_on_meta_count);
+  fail_unless(resolve_on_default_count == 0,
+    "Expected on_default count 0, got %u", resolve_on_default_count);
+  fail_unless(resolve_on_other_count == 0,
+    "Expected on_other count 0, got %u", resolve_on_other_count);
+
+  mark_point();
+  resolve_on_meta_count = resolve_on_default_count = resolve_on_other_count = 0;
+  cmd = pr_cmd_alloc(p, 1, pstrdup(p, "LIST"));
+  cmd->cmd_class = CL_MISC;
+  cmd->arg = pstrdup(p, "/foo/bar/baz");
+  res = pr_jot_resolve_logfmt(p, cmd, NULL, logfmt, NULL,
+    resolve_on_meta, resolve_on_default, resolve_on_other);
+  fail_unless(res == 0, "Failed to handle logfmt: %s", strerror(errno));
+  fail_unless(resolve_on_meta_count == 1,
+    "Expected on_meta count 1, got %u", resolve_on_meta_count);
+  fail_unless(resolve_on_default_count == 0,
+    "Expected on_default count 0, got %u", resolve_on_default_count);
+  fail_unless(resolve_on_other_count == 0,
+    "Expected on_other count 0, got %u", resolve_on_other_count);
+
+  mark_point();
+  resolve_on_meta_count = resolve_on_default_count = resolve_on_other_count = 0;
+  cmd = pr_cmd_alloc(p, 1, pstrdup(p, "MKD"));
+  cmd->cmd_class = CL_MISC;
+  cmd->arg = pstrdup(p, "/foo/bar/baz");
+  res = pr_jot_resolve_logfmt(p, cmd, NULL, logfmt, NULL,
+    resolve_on_meta, resolve_on_default, resolve_on_other);
+  fail_unless(res == 0, "Failed to handle logfmt: %s", strerror(errno));
+  fail_unless(resolve_on_meta_count == 1,
+    "Expected on_meta count 1, got %u", resolve_on_meta_count);
+  fail_unless(resolve_on_default_count == 0,
+    "Expected on_default count 0, got %u", resolve_on_default_count);
+  fail_unless(resolve_on_other_count == 0,
+    "Expected on_other count 0, got %u", resolve_on_other_count);
+
+  mark_point();
+  resolve_on_meta_count = resolve_on_default_count = resolve_on_other_count = 0;
+  cmd = pr_cmd_alloc(p, 1, pstrdup(p, "MLSD"));
+  cmd->cmd_class = CL_MISC;
+  cmd->arg = pstrdup(p, "/foo/bar/baz");
+  res = pr_jot_resolve_logfmt(p, cmd, NULL, logfmt, NULL,
+    resolve_on_meta, resolve_on_default, resolve_on_other);
+  fail_unless(res == 0, "Failed to handle logfmt: %s", strerror(errno));
+  fail_unless(resolve_on_meta_count == 1,
+    "Expected on_meta count 1, got %u", resolve_on_meta_count);
+  fail_unless(resolve_on_default_count == 0,
+    "Expected on_default count 0, got %u", resolve_on_default_count);
+  fail_unless(resolve_on_other_count == 0,
+    "Expected on_other count 0, got %u", resolve_on_other_count);
+
+  mark_point();
+  resolve_on_meta_count = resolve_on_default_count = resolve_on_other_count = 0;
+  cmd = pr_cmd_alloc(p, 1, pstrdup(p, "NLST"));
+  cmd->cmd_class = CL_MISC;
+  cmd->arg = pstrdup(p, "/foo/bar/baz");
+  res = pr_jot_resolve_logfmt(p, cmd, NULL, logfmt, NULL,
+    resolve_on_meta, resolve_on_default, resolve_on_other);
+  fail_unless(res == 0, "Failed to handle logfmt: %s", strerror(errno));
+  fail_unless(resolve_on_meta_count == 1,
+    "Expected on_meta count 1, got %u", resolve_on_meta_count);
+  fail_unless(resolve_on_default_count == 0,
+    "Expected on_default count 0, got %u", resolve_on_default_count);
+  fail_unless(resolve_on_other_count == 0,
+    "Expected on_other count 0, got %u", resolve_on_other_count);
+
+  mark_point();
+  resolve_on_meta_count = resolve_on_default_count = resolve_on_other_count = 0;
+  cmd = pr_cmd_alloc(p, 1, pstrdup(p, "RMD"));
+  cmd->cmd_class = CL_MISC;
+  cmd->arg = pstrdup(p, "/foo/bar/baz");
+  res = pr_jot_resolve_logfmt(p, cmd, NULL, logfmt, NULL,
+    resolve_on_meta, resolve_on_default, resolve_on_other);
+  fail_unless(res == 0, "Failed to handle logfmt: %s", strerror(errno));
+  fail_unless(resolve_on_meta_count == 1,
+    "Expected on_meta count 1, got %u", resolve_on_meta_count);
+  fail_unless(resolve_on_default_count == 0,
+    "Expected on_default count 0, got %u", resolve_on_default_count);
+  fail_unless(resolve_on_other_count == 0,
+    "Expected on_other count 0, got %u", resolve_on_other_count);
+
+  mark_point();
+  resolve_on_meta_count = resolve_on_default_count = resolve_on_other_count = 0;
+  cmd = pr_cmd_alloc(p, 1, pstrdup(p, "XCUP"));
+  cmd->cmd_class = CL_MISC;
+  cmd->arg = pstrdup(p, "/foo/bar/baz");
+  res = pr_jot_resolve_logfmt(p, cmd, NULL, logfmt, NULL,
+    resolve_on_meta, resolve_on_default, resolve_on_other);
+  fail_unless(res == 0, "Failed to handle logfmt: %s", strerror(errno));
+  fail_unless(resolve_on_meta_count == 1,
+    "Expected on_meta count 1, got %u", resolve_on_meta_count);
+  fail_unless(resolve_on_default_count == 0,
+    "Expected on_default count 0, got %u", resolve_on_default_count);
+  fail_unless(resolve_on_other_count == 0,
+    "Expected on_other count 0, got %u", resolve_on_other_count);
+
+  mark_point();
+  resolve_on_meta_count = resolve_on_default_count = resolve_on_other_count = 0;
+  cmd = pr_cmd_alloc(p, 1, pstrdup(p, "XMKD"));
+  cmd->cmd_class = CL_MISC;
+  cmd->arg = pstrdup(p, "/foo/bar/baz");
+  res = pr_jot_resolve_logfmt(p, cmd, NULL, logfmt, NULL,
+    resolve_on_meta, resolve_on_default, resolve_on_other);
+  fail_unless(res == 0, "Failed to handle logfmt: %s", strerror(errno));
+  fail_unless(resolve_on_meta_count == 1,
+    "Expected on_meta count 1, got %u", resolve_on_meta_count);
+  fail_unless(resolve_on_default_count == 0,
+    "Expected on_default count 0, got %u", resolve_on_default_count);
+  fail_unless(resolve_on_other_count == 0,
+    "Expected on_other count 0, got %u", resolve_on_other_count);
+
+  mark_point();
+  resolve_on_meta_count = resolve_on_default_count = resolve_on_other_count = 0;
+  cmd = pr_cmd_alloc(p, 1, pstrdup(p, "XRMD"));
+  cmd->cmd_class = CL_MISC;
+  cmd->arg = pstrdup(p, "/foo/bar/baz");
+  res = pr_jot_resolve_logfmt(p, cmd, NULL, logfmt, NULL,
+    resolve_on_meta, resolve_on_default, resolve_on_other);
+  fail_unless(res == 0, "Failed to handle logfmt: %s", strerror(errno));
+  fail_unless(resolve_on_meta_count == 1,
+    "Expected on_meta count 1, got %u", resolve_on_meta_count);
+  fail_unless(resolve_on_default_count == 0,
+    "Expected on_default count 0, got %u", resolve_on_default_count);
+  fail_unless(resolve_on_other_count == 0,
+    "Expected on_other count 0, got %u", resolve_on_other_count);
+
+  mark_point();
+  resolve_on_meta_count = resolve_on_default_count = resolve_on_other_count = 0;
+  cmd = pr_cmd_alloc(p, 1, pstrdup(p, "CWD"));
+  cmd->cmd_class = CL_MISC;
+  res = pr_jot_resolve_logfmt(p, cmd, NULL, logfmt, NULL,
+    resolve_on_meta, resolve_on_default, resolve_on_other);
+  fail_unless(res == 0, "Failed to handle logfmt: %s", strerror(errno));
+  fail_unless(resolve_on_meta_count == 1,
+    "Expected on_meta count 1, got %u", resolve_on_meta_count);
+  fail_unless(resolve_on_default_count == 0,
+    "Expected on_default count 0, got %u", resolve_on_default_count);
+  fail_unless(resolve_on_other_count == 0,
+    "Expected on_other count 0, got %u", resolve_on_other_count);
+
+  mark_point();
+  resolve_on_meta_count = resolve_on_default_count = resolve_on_other_count = 0;
+  cmd = pr_cmd_alloc(p, 1, pstrdup(p, "CWD"));
+  cmd->cmd_class = CL_MISC;
+  session.chroot_path = "/foo/bar/baz/";
+  res = pr_jot_resolve_logfmt(p, cmd, NULL, logfmt, NULL,
+    resolve_on_meta, resolve_on_default, resolve_on_other);
+  fail_unless(res == 0, "Failed to handle logfmt: %s", strerror(errno));
+  fail_unless(resolve_on_meta_count == 1,
+    "Expected on_meta count 1, got %u", resolve_on_meta_count);
+  fail_unless(resolve_on_default_count == 0,
+    "Expected on_default count 0, got %u", resolve_on_default_count);
+  fail_unless(resolve_on_other_count == 0,
+    "Expected on_other count 0, got %u", resolve_on_other_count);
+
+  session.chroot_path = NULL;
+}
+END_TEST
+
+START_TEST (jot_resolve_logfmt_cmd_params_test) {
+  int res;
+  cmd_rec *cmd;
+  unsigned char logfmt[3];
+
+  logfmt[0] = LOGFMT_META_START;
+  logfmt[1] = LOGFMT_META_CMD_PARAMS;
+  logfmt[2] = 0;
+
+  mark_point();
+  cmd = pr_cmd_alloc(p, 1, pstrdup(p, "FOO"));
+  cmd->cmd_class = CL_CONNECT;
+  resolve_on_meta_count = resolve_on_default_count = resolve_on_other_count = 0;
+  res = pr_jot_resolve_logfmt(p, cmd, NULL, logfmt, NULL,
+    resolve_on_meta, resolve_on_default, resolve_on_other);
+  fail_unless(res == 0, "Failed to handle logfmt: %s", strerror(errno));
+  fail_unless(resolve_on_meta_count == 0,
+    "Expected on_meta count 0, got %u", resolve_on_meta_count);
+  fail_unless(resolve_on_default_count == 1,
+    "Expected on_default count 1, got %u", resolve_on_default_count);
+  fail_unless(resolve_on_other_count == 0,
+    "Expected on_other count 0, got %u", resolve_on_other_count);
+
+  mark_point();
+  cmd->cmd_class = CL_DISCONNECT;
+  resolve_on_meta_count = resolve_on_default_count = resolve_on_other_count = 0;
+  res = pr_jot_resolve_logfmt(p, cmd, NULL, logfmt, NULL,
+    resolve_on_meta, resolve_on_default, resolve_on_other);
+  fail_unless(res == 0, "Failed to handle logfmt: %s", strerror(errno));
+  fail_unless(resolve_on_meta_count == 0,
+    "Expected on_meta count 0, got %u", resolve_on_meta_count);
+  fail_unless(resolve_on_default_count == 1,
+    "Expected on_default count 1, got %u", resolve_on_default_count);
+  fail_unless(resolve_on_other_count == 0,
+    "Expected on_other count 0, got %u", resolve_on_other_count);
+
+  mark_point();
+  cmd->cmd_class = CL_MISC;
+  resolve_on_meta_count = resolve_on_default_count = resolve_on_other_count = 0;
+  res = pr_jot_resolve_logfmt(p, cmd, NULL, logfmt, NULL,
+    resolve_on_meta, resolve_on_default, resolve_on_other);
+  fail_unless(res == 0, "Failed to handle logfmt: %s", strerror(errno));
+  fail_unless(resolve_on_meta_count == 0,
+    "Expected on_meta count 0, got %u", resolve_on_meta_count);
+  fail_unless(resolve_on_default_count == 1,
+    "Expected on_default count 1, got %u", resolve_on_default_count);
+  fail_unless(resolve_on_other_count == 0,
+    "Expected on_other count 0, got %u", resolve_on_other_count);
+
+  mark_point();
+  cmd = pr_cmd_alloc(p, 2, pstrdup(p, "FOO"), pstrdup(p, "bar"));
+  cmd->arg = pstrdup(p, "baz");
+  cmd->cmd_class = CL_MISC;
+  resolve_on_meta_count = resolve_on_default_count = resolve_on_other_count = 0;
+  res = pr_jot_resolve_logfmt(p, cmd, NULL, logfmt, NULL,
+    resolve_on_meta, resolve_on_default, resolve_on_other);
+  fail_unless(res == 0, "Failed to handle logfmt: %s", strerror(errno));
+  fail_unless(resolve_on_meta_count == 1,
+    "Expected on_meta count 1, got %u", resolve_on_meta_count);
+  fail_unless(resolve_on_default_count == 0,
+    "Expected on_default count 0, got %u", resolve_on_default_count);
+  fail_unless(resolve_on_other_count == 0,
+    "Expected on_other count 0, got %u", resolve_on_other_count);
+
+  mark_point();
+  cmd = pr_cmd_alloc(p, 1, pstrdup(p, "ADAT"));
+  cmd->cmd_class = CL_SEC;
+  resolve_on_meta_count = resolve_on_default_count = resolve_on_other_count = 0;
+  res = pr_jot_resolve_logfmt(p, cmd, NULL, logfmt, NULL,
+    resolve_on_meta, resolve_on_default, resolve_on_other);
+  fail_unless(res == 0, "Failed to handle logfmt: %s", strerror(errno));
+  fail_unless(resolve_on_meta_count == 1,
+    "Expected on_meta count 1, got %u", resolve_on_meta_count);
+  fail_unless(resolve_on_default_count == 0,
+    "Expected on_default count 0, got %u", resolve_on_default_count);
+  fail_unless(resolve_on_other_count == 0,
+    "Expected on_other count 0, got %u", resolve_on_other_count);
+
+  mark_point();
+  cmd = pr_cmd_alloc(p, 1, pstrdup(p, "PASS"));
+  cmd->cmd_class = CL_AUTH;
+  resolve_on_meta_count = resolve_on_default_count = resolve_on_other_count = 0;
+  res = pr_jot_resolve_logfmt(p, cmd, NULL, logfmt, NULL,
+    resolve_on_meta, resolve_on_default, resolve_on_other);
+  fail_unless(res == 0, "Failed to handle logfmt: %s", strerror(errno));
+  fail_unless(resolve_on_meta_count == 1,
+    "Expected on_meta count 1, got %u", resolve_on_meta_count);
+  fail_unless(resolve_on_default_count == 0,
+    "Expected on_default count 0, got %u", resolve_on_default_count);
+  fail_unless(resolve_on_other_count == 0,
+    "Expected on_other count 0, got %u", resolve_on_other_count);
+}
+END_TEST
+
+START_TEST (jot_resolve_logfmt_rename_from_test) {
+  int res;
+  cmd_rec *cmd;
+  unsigned char logfmt[3];
+  char *rnfr_path;
+
+  logfmt[0] = LOGFMT_META_START;
+  logfmt[1] = LOGFMT_META_RENAME_FROM;
+  logfmt[2] = 0;
+
+  mark_point();
+  cmd = pr_cmd_alloc(p, 1, pstrdup(p, "FOO"));
+  cmd->cmd_class = CL_MISC;
+  resolve_on_meta_count = resolve_on_default_count = resolve_on_other_count = 0;
+  res = pr_jot_resolve_logfmt(p, cmd, NULL, logfmt, NULL,
+    resolve_on_meta, resolve_on_default, resolve_on_other);
+  fail_unless(res == 0, "Failed to handle logfmt: %s", strerror(errno));
+  fail_unless(resolve_on_meta_count == 0,
+    "Expected on_meta count 0, got %u", resolve_on_meta_count);
+  fail_unless(resolve_on_default_count == 1,
+    "Expected on_default count 1, got %u", resolve_on_default_count);
+  fail_unless(resolve_on_other_count == 0,
+    "Expected on_other count 0, got %u", resolve_on_other_count);
+
+  mark_point();
+  cmd = pr_cmd_alloc(p, 1, pstrdup(p, "RNTO"));
+  cmd->cmd_class = CL_MISC;
+  resolve_on_meta_count = resolve_on_default_count = resolve_on_other_count = 0;
+  res = pr_jot_resolve_logfmt(p, cmd, NULL, logfmt, NULL,
+    resolve_on_meta, resolve_on_default, resolve_on_other);
+  fail_unless(res == 0, "Failed to handle logfmt: %s", strerror(errno));
+  fail_unless(resolve_on_meta_count == 0,
+    "Expected on_meta count 0, got %u", resolve_on_meta_count);
+  fail_unless(resolve_on_default_count == 1,
+    "Expected on_default count 1, got %u", resolve_on_default_count);
+  fail_unless(resolve_on_other_count == 0,
+    "Expected on_other count 0, got %u", resolve_on_other_count);
+
+  mark_point();
+  resolve_on_meta_count = resolve_on_default_count = resolve_on_other_count = 0;
+  rnfr_path = "FOOBAR";
+  session.notes = pr_table_alloc(p, 0);
+  pr_table_add_dup(session.notes, "mod_core.rnfr-path", rnfr_path, 0);
+  res = pr_jot_resolve_logfmt(p, cmd, NULL, logfmt, NULL,
+    resolve_on_meta, resolve_on_default, resolve_on_other);
+  fail_unless(res == 0, "Failed to handle logfmt: %s", strerror(errno));
+  fail_unless(resolve_on_meta_count == 1,
+    "Expected on_meta count 1, got %u", resolve_on_meta_count);
+  fail_unless(resolve_on_default_count == 0,
+    "Expected on_default count 0, got %u", resolve_on_default_count);
+  fail_unless(resolve_on_other_count == 0,
+    "Expected on_other count 0, got %u", resolve_on_other_count);
+
+  pr_table_empty(session.notes);
+  pr_table_free(session.notes);
+  session.notes = NULL;
+}
+END_TEST
+
+START_TEST (jot_resolve_logfmt_eos_reason_test) {
+  int res;
+  cmd_rec *cmd;
+  unsigned char logfmt[3];
+
+  cmd = pr_cmd_alloc(p, 1, pstrdup(p, "FOO"));
+  cmd->cmd_class = CL_MISC;
+  logfmt[0] = LOGFMT_META_START;
+  logfmt[1] = LOGFMT_META_EOS_REASON;
+  logfmt[2] = 0;
+
+  mark_point();
+  resolve_on_meta_count = resolve_on_default_count = resolve_on_other_count = 0;
+  res = pr_jot_resolve_logfmt(p, cmd, NULL, logfmt, NULL,
+    resolve_on_meta, resolve_on_default, resolve_on_other);
+  fail_unless(res == 0, "Failed to handle logfmt: %s", strerror(errno));
+  fail_unless(resolve_on_meta_count == 0,
+    "Expected on_meta count 0, got %u", resolve_on_meta_count);
+  fail_unless(resolve_on_default_count == 1,
+    "Expected on_default count 1, got %u", resolve_on_default_count);
+  fail_unless(resolve_on_other_count == 0,
+    "Expected on_other count 0, got %u", resolve_on_other_count);
+
+  mark_point();
+  resolve_on_meta_count = resolve_on_default_count = resolve_on_other_count = 0;
+  session.disconnect_reason = -1;
+  res = pr_jot_resolve_logfmt(p, cmd, NULL, logfmt, NULL,
+    resolve_on_meta, resolve_on_default, resolve_on_other);
+  fail_unless(res == 0, "Failed to handle logfmt: %s", strerror(errno));
+  fail_unless(resolve_on_meta_count == 0,
+    "Expected on_meta count 0, got %u", resolve_on_meta_count);
+  fail_unless(resolve_on_default_count == 1,
+    "Expected on_default count 1, got %u", resolve_on_default_count);
+  fail_unless(resolve_on_other_count == 0,
+    "Expected on_other count 0, got %u", resolve_on_other_count);
+
+  mark_point();
+  resolve_on_meta_count = resolve_on_default_count = resolve_on_other_count = 0;
+  session.disconnect_reason = PR_SESS_DISCONNECT_BANNED;
+  res = pr_jot_resolve_logfmt(p, cmd, NULL, logfmt, NULL,
+    resolve_on_meta, resolve_on_default, resolve_on_other);
+  fail_unless(res == 0, "Failed to handle logfmt: %s", strerror(errno));
+  fail_unless(resolve_on_meta_count == 1,
+    "Expected on_meta count 1, got %u", resolve_on_meta_count);
+  fail_unless(resolve_on_default_count == 0,
+    "Expected on_default count 0, got %u", resolve_on_default_count);
+  fail_unless(resolve_on_other_count == 0,
+    "Expected on_other count 0, got %u", resolve_on_other_count);
+
+  session.disconnect_reason = 0;
+}
+END_TEST
+
+START_TEST (jot_resolve_logfmt_vhost_ip_test) {
+  int res;
+  cmd_rec *cmd;
+  server_rec *server;
+  unsigned char logfmt[3];
+
+  cmd = pr_cmd_alloc(p, 1, pstrdup(p, "FOO"));
+  cmd->cmd_class = CL_MISC;
+  logfmt[0] = LOGFMT_META_START;
+  logfmt[1] = LOGFMT_META_VHOST_IP;
+  logfmt[2] = 0;
+
+  mark_point();
+  resolve_on_meta_count = resolve_on_default_count = resolve_on_other_count = 0;
+  res = pr_jot_resolve_logfmt(p, cmd, NULL, logfmt, NULL,
+    resolve_on_meta, resolve_on_default, resolve_on_other);
+  fail_unless(res == 0, "Failed to handle logfmt: %s", strerror(errno));
+  fail_unless(resolve_on_meta_count == 0,
+    "Expected on_meta count 0, got %u", resolve_on_meta_count);
+  fail_unless(resolve_on_default_count == 1,
+    "Expected on_default count 1, got %u", resolve_on_default_count);
+  fail_unless(resolve_on_other_count == 0,
+    "Expected on_other count 0, got %u", resolve_on_other_count);
+
+  mark_point();
+  resolve_on_meta_count = resolve_on_default_count = resolve_on_other_count = 0;
+  server = pcalloc(p, sizeof(server_rec));
+  server->ServerAddress = "FOOBAR";
+  cmd->server = server;
+  res = pr_jot_resolve_logfmt(p, cmd, NULL, logfmt, NULL,
+    resolve_on_meta, resolve_on_default, resolve_on_other);
+  fail_unless(res == 0, "Failed to handle logfmt: %s", strerror(errno));
+  fail_unless(resolve_on_meta_count == 1,
+    "Expected on_meta count 1, got %u", resolve_on_meta_count);
+  fail_unless(resolve_on_default_count == 0,
+    "Expected on_default count 0, got %u", resolve_on_default_count);
+  fail_unless(resolve_on_other_count == 0,
+    "Expected on_other count 0, got %u", resolve_on_other_count);
 }
 END_TEST
 
@@ -1631,8 +5080,8 @@ START_TEST (jot_get_logfmt_id_name_test) {
   fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
     strerror(errno), errno);
 
-  /* Currently, the max known LogFormat meta/ID is 53 (DISCONNECT). */
-  for (i = 2; i < 54; i++) {
+  /* Currently, the max known LogFormat meta/ID is 54 (XFER_PORT). */
+  for (i = 2; i < 55; i++) {
     mark_point();
     res = pr_jot_get_logfmt_id_name(i);
     fail_unless(res != NULL, "Failed to get name for LogFormat ID %u: %s",
@@ -1651,7 +5100,6 @@ Suite *tests_get_jot_suite(void) {
 
   suite = suite_create("jot");
   testcase = tcase_create("base");
-
   tcase_add_checked_fixture(testcase, set_up, tear_down);
 
   tcase_add_test(testcase, jot_filters_create_test);
@@ -1673,8 +5121,44 @@ Suite *tests_get_jot_suite(void) {
   tcase_add_test(testcase, jot_resolve_logfmt_id_disconnect_test);
   tcase_add_test(testcase, jot_resolve_logfmt_id_custom_test);
   tcase_add_test(testcase, jot_resolve_logfmt_ids_test);
-
-  tcase_add_test(testcase, jot_resolve_logfmt_test);
+  tcase_add_test(testcase, jot_resolve_logfmt_invalid_test);
+  tcase_add_test(testcase, jot_resolve_logfmt_basename_test);
+  tcase_add_test(testcase, jot_resolve_logfmt_bytes_sent_test);
+  tcase_add_test(testcase, jot_resolve_logfmt_filename_test);
+  tcase_add_test(testcase, jot_resolve_logfmt_file_modified_test);
+  tcase_add_test(testcase, jot_resolve_logfmt_file_offset_test);
+  tcase_add_test(testcase, jot_resolve_logfmt_file_size_test);
+  tcase_add_test(testcase, jot_resolve_logfmt_env_var_test);
+  tcase_add_test(testcase, jot_resolve_logfmt_note_test);
+  tcase_add_test(testcase, jot_resolve_logfmt_remote_port_test);
+  tcase_add_test(testcase, jot_resolve_logfmt_rfc1413_ident_test);
+  tcase_add_test(testcase, jot_resolve_logfmt_xfer_secs_test);
+  tcase_add_test(testcase, jot_resolve_logfmt_xfer_ms_test);
+  tcase_add_test(testcase, jot_resolve_logfmt_command_test);
+  tcase_add_test(testcase, jot_resolve_logfmt_local_name_test);
+  tcase_add_test(testcase, jot_resolve_logfmt_local_port_test);
+  tcase_add_test(testcase, jot_resolve_logfmt_user_test);
+  tcase_add_test(testcase, jot_resolve_logfmt_uid_test);
+  tcase_add_test(testcase, jot_resolve_logfmt_group_test);
+  tcase_add_test(testcase, jot_resolve_logfmt_gid_test);
+  tcase_add_test(testcase, jot_resolve_logfmt_original_user_test);
+  tcase_add_test(testcase, jot_resolve_logfmt_response_code_test);
+  tcase_add_test(testcase, jot_resolve_logfmt_response_text_test);
+  tcase_add_test(testcase, jot_resolve_logfmt_response_ms_test);
+  tcase_add_test(testcase, jot_resolve_logfmt_class_test);
+  tcase_add_test(testcase, jot_resolve_logfmt_anon_passwd_test);
+  tcase_add_test(testcase, jot_resolve_logfmt_method_test);
+  tcase_add_test(testcase, jot_resolve_logfmt_xfer_path_test);
+  tcase_add_test(testcase, jot_resolve_logfmt_xfer_port_test);
+  tcase_add_test(testcase, jot_resolve_logfmt_xfer_type_test);
+  tcase_add_test(testcase, jot_resolve_logfmt_xfer_status_test);
+  tcase_add_test(testcase, jot_resolve_logfmt_xfer_failure_test);
+  tcase_add_test(testcase, jot_resolve_logfmt_dir_name_test);
+  tcase_add_test(testcase, jot_resolve_logfmt_dir_path_test);
+  tcase_add_test(testcase, jot_resolve_logfmt_cmd_params_test);
+  tcase_add_test(testcase, jot_resolve_logfmt_rename_from_test);
+  tcase_add_test(testcase, jot_resolve_logfmt_eos_reason_test);
+  tcase_add_test(testcase, jot_resolve_logfmt_vhost_ip_test);
   tcase_add_test(testcase, jot_resolve_logfmt_filters_test);
   tcase_add_test(testcase, jot_resolve_logfmt_on_default_test);
   tcase_add_test(testcase, jot_resolve_logfmt_on_other_test);

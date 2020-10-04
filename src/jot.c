@@ -516,6 +516,20 @@ int pr_jot_on_json(pool *p, pr_jot_ctx_t *ctx, unsigned char logfmt_id,
   return res;
 }
 
+static int is_data_xfer_cmd(cmd_rec *cmd) {
+  if (pr_cmd_cmp(cmd, PR_CMD_APPE_ID) == 0 ||
+      pr_cmd_cmp(cmd, PR_CMD_LIST_ID) == 0 ||
+      pr_cmd_cmp(cmd, PR_CMD_MLSD_ID) == 0 ||
+      pr_cmd_cmp(cmd, PR_CMD_NLST_ID) == 0 ||
+      pr_cmd_cmp(cmd, PR_CMD_RETR_ID) == 0 ||
+      pr_cmd_cmp(cmd, PR_CMD_STOR_ID) == 0 ||
+      pr_cmd_cmp(cmd, PR_CMD_STOU_ID) == 0) {
+    return TRUE;
+  }
+
+  return FALSE;
+}
+
 static char *get_meta_arg(pool *p, unsigned char *meta, size_t *arg_len) {
   char buf[PR_TUNABLE_PATH_MAX+1], *ptr;
   size_t len;
@@ -580,9 +594,10 @@ static const char *get_meta_basename(cmd_rec *cmd) {
     }
 
   } else if (pr_cmd_cmp(cmd, PR_CMD_SITE_ID) == 0 &&
-             (strncasecmp(cmd->argv[1], "CHGRP", 6) == 0 ||
-              strncasecmp(cmd->argv[1], "CHMOD", 6) == 0 ||
-              strncasecmp(cmd->argv[1], "UTIME", 6) == 0)) {
+             cmd->argc > 3 &&
+             (strcasecmp(cmd->argv[1], "CHGRP") == 0 ||
+              strcasecmp(cmd->argv[1], "CHMOD") == 0 ||
+              strcasecmp(cmd->argv[1], "UTIME") == 0)) {
     register unsigned int i;
     char *ptr = "";
 
@@ -648,18 +663,20 @@ static const char *get_meta_dir_name(cmd_rec *cmd) {
   if (pr_cmd_cmp(cmd, PR_CMD_CDUP_ID) == 0 ||
       pr_cmd_cmp(cmd, PR_CMD_CWD_ID) == 0 ||
       pr_cmd_cmp(cmd, PR_CMD_LIST_ID) == 0 ||
-      pr_cmd_cmp(cmd, PR_CMD_MLSD_ID) == 0 ||
       pr_cmd_cmp(cmd, PR_CMD_MKD_ID) == 0 ||
+      pr_cmd_cmp(cmd, PR_CMD_MLSD_ID) == 0 ||
       pr_cmd_cmp(cmd, PR_CMD_NLST_ID) == 0 ||
       pr_cmd_cmp(cmd, PR_CMD_RMD_ID) == 0 ||
       pr_cmd_cmp(cmd, PR_CMD_XCWD_ID) == 0 ||
       pr_cmd_cmp(cmd, PR_CMD_XCUP_ID) == 0 ||
       pr_cmd_cmp(cmd, PR_CMD_XMKD_ID) == 0 ||
       pr_cmd_cmp(cmd, PR_CMD_XRMD_ID) == 0) {
-    char *path, *ptr;
+    char *path, *ptr = NULL;
 
     path = pr_fs_decode_path(p, cmd->arg);
-    ptr = strrchr(path, '/');
+    if (path != NULL) {
+      ptr = strrchr(path, '/');
+    }
 
     if (ptr != NULL) {
       if (ptr != path) {
@@ -691,8 +708,8 @@ static const char *get_meta_dir_path(cmd_rec *cmd) {
 
   if (pr_cmd_cmp(cmd, PR_CMD_CDUP_ID) == 0 ||
       pr_cmd_cmp(cmd, PR_CMD_LIST_ID) == 0 ||
-      pr_cmd_cmp(cmd, PR_CMD_MLSD_ID) == 0 ||
       pr_cmd_cmp(cmd, PR_CMD_MKD_ID) == 0 ||
+      pr_cmd_cmp(cmd, PR_CMD_MLSD_ID) == 0 ||
       pr_cmd_cmp(cmd, PR_CMD_NLST_ID) == 0 ||
       pr_cmd_cmp(cmd, PR_CMD_RMD_ID) == 0 ||
       pr_cmd_cmp(cmd, PR_CMD_XCUP_ID) == 0 ||
@@ -775,7 +792,7 @@ static const char *get_meta_filename(cmd_rec *cmd) {
      */
     if (session.chroot_path != NULL) {
       /* Chrooted session. */
-      if (strncmp(pr_fs_getvwd(), "/", 2) == 0) {
+      if (strcmp(pr_fs_getvwd(), "/") == 0) {
         filename = session.chroot_path;
 
       } else {
@@ -788,9 +805,10 @@ static const char *get_meta_filename(cmd_rec *cmd) {
     }
 
   } else if (pr_cmd_cmp(cmd, PR_CMD_SITE_ID) == 0 &&
-             (strncasecmp(cmd->argv[1], "CHGRP", 6) == 0 ||
-              strncasecmp(cmd->argv[1], "CHMOD", 6) == 0 ||
-              strncasecmp(cmd->argv[1], "UTIME", 6) == 0)) {
+             cmd->argc > 3 &&
+             (strcasecmp(cmd->argv[1], "CHGRP") == 0 ||
+              strcasecmp(cmd->argv[1], "CHMOD") == 0 ||
+              strcasecmp(cmd->argv[1], "UTIME") == 0)) {
     register unsigned int i;
     char *ptr = "";
 
@@ -854,19 +872,14 @@ static const char *get_meta_transfer_failure(cmd_rec *cmd) {
   /* If the current command is one that incurs a data transfer, then we
    * need to do more work.  If not, it's an easy substitution.
    */
-  if (pr_cmd_cmp(cmd, PR_CMD_APPE_ID) == 0 ||
-      pr_cmd_cmp(cmd, PR_CMD_LIST_ID) == 0 ||
-      pr_cmd_cmp(cmd, PR_CMD_MLSD_ID) == 0 ||
-      pr_cmd_cmp(cmd, PR_CMD_NLST_ID) == 0 ||
-      pr_cmd_cmp(cmd, PR_CMD_RETR_ID) == 0 ||
-      pr_cmd_cmp(cmd, PR_CMD_STOR_ID) == 0 ||
-      pr_cmd_cmp(cmd, PR_CMD_STOU_ID) == 0) {
+  if (is_data_xfer_cmd(cmd) == TRUE) {
     const char *proto;
 
     proto = pr_session_get_protocol(0);
 
     if (strcmp(proto, "ftp") == 0 ||
-        strcmp(proto, "ftps") == 0) {
+        strcmp(proto, "ftps") == 0 ||
+        strcmp(proto, "sftp") == 0) {
 
       if (!(XFER_ABORTED)) {
         int res;
@@ -891,7 +904,13 @@ static const char *get_meta_transfer_failure(cmd_rec *cmd) {
               transfer_failure = resp_msg;
             }
           }
+
+        } else {
+          transfer_failure = "unknown";
         }
+
+      } else {
+        transfer_failure = "aborted";
       }
     }
   }
@@ -957,14 +976,8 @@ static const char *get_meta_transfer_status(cmd_rec *cmd) {
   /* If the current command is one that incurs a data transfer, then we need
    * to do more work.  If not, it's an easy substitution.
    */
-  if (pr_cmd_cmp(cmd, PR_CMD_ABOR_ID) == 0 ||
-      pr_cmd_cmp(cmd, PR_CMD_APPE_ID) == 0 ||
-      pr_cmd_cmp(cmd, PR_CMD_LIST_ID) == 0 ||
-      pr_cmd_cmp(cmd, PR_CMD_MLSD_ID) == 0 ||
-      pr_cmd_cmp(cmd, PR_CMD_NLST_ID) == 0 ||
-      pr_cmd_cmp(cmd, PR_CMD_RETR_ID) == 0 ||
-      pr_cmd_cmp(cmd, PR_CMD_STOR_ID) == 0 ||
-      pr_cmd_cmp(cmd, PR_CMD_STOU_ID) == 0) {
+  if (is_data_xfer_cmd(cmd) == TRUE ||
+      pr_cmd_cmp(cmd, PR_CMD_ABOR_ID) == 0) {
     const char *proto;
 
     proto = pr_session_get_protocol(0);
@@ -1039,13 +1052,7 @@ static int get_meta_transfer_port(cmd_rec *cmd) {
       pr_cmd_cmp(cmd, PR_CMD_PORT_ID) == 0 ||
       pr_cmd_cmp(cmd, PR_CMD_EPRT_ID) == 0 ||
       pr_cmd_cmp(cmd, PR_CMD_EPSV_ID) == 0 ||
-      pr_cmd_cmp(cmd, PR_CMD_APPE_ID) == 0 ||
-      pr_cmd_cmp(cmd, PR_CMD_LIST_ID) == 0 ||
-      pr_cmd_cmp(cmd, PR_CMD_MLSD_ID) == 0 ||
-      pr_cmd_cmp(cmd, PR_CMD_NLST_ID) == 0 ||
-      pr_cmd_cmp(cmd, PR_CMD_RETR_ID) == 0 ||
-      pr_cmd_cmp(cmd, PR_CMD_STOR_ID) == 0 ||
-      pr_cmd_cmp(cmd, PR_CMD_STOU_ID) == 0) {
+      is_data_xfer_cmd(cmd) == TRUE) {
     transfer_port = session.data_port;
   }
 
@@ -1058,13 +1065,7 @@ static const char *get_meta_transfer_type(cmd_rec *cmd) {
   /* If the current command is one that incurs a data transfer, then we
    * need to do more work.  If not, it's an easy substitution.
    */
-  if (pr_cmd_cmp(cmd, PR_CMD_APPE_ID) == 0 ||
-      pr_cmd_cmp(cmd, PR_CMD_LIST_ID) == 0 ||
-      pr_cmd_cmp(cmd, PR_CMD_MLSD_ID) == 0 ||
-      pr_cmd_cmp(cmd, PR_CMD_NLST_ID) == 0 ||
-      pr_cmd_cmp(cmd, PR_CMD_RETR_ID) == 0 ||
-      pr_cmd_cmp(cmd, PR_CMD_STOR_ID) == 0 ||
-      pr_cmd_cmp(cmd, PR_CMD_STOU_ID) == 0) {
+  if (is_data_xfer_cmd(cmd) == TRUE) {
     const char *proto;
 
     proto = pr_session_get_protocol(0);
@@ -1491,7 +1492,7 @@ static int resolve_logfmt_id(pool *p, unsigned char logfmt_id,
           method = cmd->argv[0];
         }
 
-      } else {
+      } else if (cmd->argc > 1) {
         char buf[128], *ch;
         size_t len;
 

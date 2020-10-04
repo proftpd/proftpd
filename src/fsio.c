@@ -3092,7 +3092,6 @@ int pr_fs_resolve_path(const char *path, char *buf, size_t buflen, int op) {
       where = ++ptr;
 
       fs = lookup_dir_fs(namebuf, op);
-
       if (fs_cache_lstat(fs, namebuf, &sbuf) == -1) {
         errno = ENOENT;
         return -1;

@@ -2228,9 +2228,10 @@ Suite *tests_get_ctrls_suite(void) {
 
   suite = suite_create("ctrls");
   testcase = tcase_create("base");
-  tcase_add_checked_fixture(testcase, set_up, tear_down);
 
 #if defined(PR_USE_CTRLS)
+  tcase_add_checked_fixture(testcase, set_up, tear_down);
+
   tcase_add_test(testcase, ctrls_alloc_free_test);
   tcase_add_test(testcase, ctrls_unregister_test);
   tcase_add_test(testcase, ctrls_register_test);

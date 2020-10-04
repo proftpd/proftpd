@@ -474,7 +474,7 @@ static void tear_down(void) {
     pr_trace_set_levels("auth", 0, 0);
   }
 
-  if (p) {
+  if (p != NULL) {
     destroy_pool(p);
     p = permanent_pool = NULL;
   } 
@@ -1621,32 +1621,94 @@ START_TEST (auth_authorize_test) {
 }
 END_TEST
 
-START_TEST (auth_check_test) {
+static int test_check_errorcode = PR_AUTH_BADPWD;
+
+MODRET handle_check_error(cmd_rec *cmd) {
+  return PR_ERROR_INT(cmd, test_check_errorcode);
+}
+
+START_TEST (auth_check_errors_test) {
+  register unsigned int i;
   int res;
-  const char *cleartext_passwd, *ciphertext_passwd, *name;
+  const char *cleartext_passwd, *name;
   authtable authtab;
   char *sym_name = "check";
+  int test_errorcodes[] = {
+    PR_AUTH_ERROR,
+    PR_AUTH_NOPWD,
+    PR_AUTH_BADPWD,
+    PR_AUTH_AGEPWD,
+    PR_AUTH_DISABLEDPWD,
+    PR_AUTH_CRED_INSUFFICIENT,
+    PR_AUTH_CRED_UNAVAIL,
+    PR_AUTH_CRED_ERROR,
+    PR_AUTH_INFO_UNAVAIL,
+    PR_AUTH_MAX_ATTEMPTS_EXCEEDED,
+    PR_AUTH_INIT_ERROR,
+    PR_AUTH_NEW_TOKEN_REQUIRED,
+    0
+  };
 
+  mark_point();
   res = pr_auth_check(NULL, NULL, NULL, NULL);
   fail_unless(res < 0, "Failed to handle null arguments");
   fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
     strerror(errno), errno);
 
+  mark_point();
   res = pr_auth_check(p, NULL, NULL, NULL);
   fail_unless(res < 0, "Failed to handle null name");
   fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
     strerror(errno), errno);
 
+  mark_point();
   name = PR_TEST_AUTH_NAME;
   res = pr_auth_check(p, NULL, name, NULL);
   fail_unless(res < 0, "Failed to handle null cleartext password");
   fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
     strerror(errno), errno);
 
+  mark_point();
   cleartext_passwd = PR_TEST_AUTH_PASSWD;
   res = pr_auth_check(p, NULL, name, cleartext_passwd);
   fail_unless(res == PR_AUTH_BADPWD, "Expected %d, got %d", PR_AUTH_BADPWD,
     res);
+
+  res = pr_module_load(&testsuite_module);
+  fail_unless(res == 0, "Failed to load module: %s", strerror(errno));
+
+  memset(&authtab, 0, sizeof(authtab));
+  authtab.name = sym_name;
+  authtab.handler = handle_check_error;
+  authtab.m = &testsuite_module;
+  res = pr_stash_add_symbol(PR_SYM_AUTH, &authtab);
+  fail_unless(res == 0, "Failed to add '%s' AUTH symbol: %s", sym_name,
+    strerror(errno));
+
+  (void) pr_auth_cache_set(TRUE, PR_AUTH_CACHE_FL_AUTH_MODULE);
+  res = pr_auth_add_auth_only_module("mod_testsuite.c");
+  fail_unless(res == 0, "Failed to add auth-only module: %s", strerror(errno));
+
+  for (i = 0; test_errorcodes[i] != 0; i++) {
+    mark_point();
+    test_check_errorcode = test_errorcodes[i];
+    res = pr_auth_check(p, "", name, cleartext_passwd);
+    fail_unless(res == test_check_errorcode, "Expected %d, got %d",
+      test_check_errorcode, res);
+  }
+
+  res = pr_module_unload(&testsuite_module);
+  fail_unless(res == 0, "Failed to unload module: %s", strerror(errno));
+  (void) pr_auth_clear_auth_only_modules();
+  pr_stash_remove_symbol(PR_SYM_AUTH, sym_name, &testsuite_module);
+}
+END_TEST
+
+START_TEST (auth_check_valid_test) {
+  int res;
+  const char *cleartext_passwd, *ciphertext_passwd, *name;
+  authtable authtab;
+  char *sym_name = "check";
 
   /* Load the appropriate AUTH symbol, and call it. */
 
@@ -1658,18 +1720,24 @@ START_TEST (auth_check_test) {
   fail_unless(res == 0, "Failed to add '%s' AUTH symbol: %s", sym_name,
     strerror(errno));
 
+  mark_point();
+  cleartext_passwd = PR_TEST_AUTH_PASSWD;
   res = pr_auth_check(p, NULL, "other", cleartext_passwd);
   fail_unless(res == PR_AUTH_BADPWD, "Expected %d, got %d", PR_AUTH_BADPWD,
     res);
 
+  mark_point();
+  name = PR_TEST_AUTH_NAME;
   res = pr_auth_check(p, "foo", name, cleartext_passwd);
   fail_unless(res == PR_AUTH_BADPWD, "Expected %d, got %d", PR_AUTH_BADPWD,
     res);
 
+  mark_point();
   res = pr_auth_check(p, NULL, name, cleartext_passwd);
   fail_unless(res == PR_AUTH_BADPWD, "Expected %d, got %d", PR_AUTH_BADPWD,
     res);
 
+  mark_point();
   ciphertext_passwd = PR_TEST_AUTH_PASSWD;
   res = pr_auth_check(p, ciphertext_passwd, name, cleartext_passwd);
   fail_unless(res == PR_AUTH_OK, "Expected %d, got %d", PR_AUTH_OK, res);
@@ -1679,9 +1747,10 @@ START_TEST (auth_check_test) {
   res = pr_auth_add_auth_only_module("foo.bar");
   fail_unless(res == 0, "Failed to add auth-only module: %s", strerror(errno));
 
-  res = pr_auth_add_auth_only_module(testsuite_module.name);
+  res = pr_auth_add_auth_only_module("mod_testsuite.c");
   fail_unless(res == 0, "Failed to add auth-only module: %s", strerror(errno));
 
+  mark_point();
   check_rfc2228 = TRUE;
   res = pr_auth_check(p, ciphertext_passwd, name, cleartext_passwd);
   fail_unless(res == PR_AUTH_RFC2228_OK,
@@ -1689,6 +1758,7 @@ START_TEST (auth_check_test) {
     PR_AUTH_RFC2228_OK, res);
 
   (void) pr_auth_clear_auth_only_modules();
+  pr_stash_remove_symbol(PR_SYM_AUTH, sym_name, &testsuite_module);
 }
 END_TEST
 
@@ -1946,7 +2016,8 @@ Suite *tests_get_auth_suite(void) {
   /* Authorization */
   tcase_add_test(testcase, auth_authenticate_test);
   tcase_add_test(testcase, auth_authorize_test);
-  tcase_add_test(testcase, auth_check_test);
+  tcase_add_test(testcase, auth_check_errors_test);
+  tcase_add_test(testcase, auth_check_valid_test);
   tcase_add_test(testcase, auth_requires_pass_test);
 
   /* Misc */
