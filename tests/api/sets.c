@@ -173,25 +173,28 @@ START_TEST (set_insert_end_test) {
   xaset_t *set;
   struct test_item *item1, *item2;
   xasetmember_t *member;
- 
+
+  mark_point();
   res = xaset_insert_end(NULL, NULL);
-  fail_unless(res == -1, "Failed to handle null arguments");
+  fail_unless(res < 0, "Failed to handle null arguments");
   fail_unless(errno == EINVAL, "Failed to set errno to EINVAL");
 
   set = xaset_create(p, NULL);
   fail_unless(set != NULL, "Failed to create set: %s", strerror(errno));
   fail_unless(set->xas_list == NULL, "New set has non-empty list");
 
+  mark_point();
   res = xaset_insert_end(set, NULL);
-  fail_unless(res == -1, "Failed to handle null arguments");
+  fail_unless(res < 0, "Failed to handle null arguments");
   fail_unless(errno == EINVAL, "Failed to set errno to EINVAL");
 
   item1 = pcalloc(p, sizeof(struct test_item));
   item1->num = 7;
   item1->str = pstrdup(p, "foo");
 
+  mark_point();
   res = xaset_insert_end(NULL, (xasetmember_t *) item1);
-  fail_unless(res == -1, "Failed to handle null arguments");
+  fail_unless(res < 0, "Failed to handle null arguments");
   fail_unless(errno == EINVAL, "Failed to set errno to EINVAL");
 
   res = xaset_insert_end(set, (xasetmember_t *) item1);
@@ -216,6 +219,8 @@ START_TEST (set_insert_end_test) {
     member);
   fail_unless(member->next == (xasetmember_t *) item2,
     "Next item in list does not point to item2");
+  fail_unless(item2->prev == item1,
+    "Previous item in list does not point to item1");
 }
 END_TEST
 

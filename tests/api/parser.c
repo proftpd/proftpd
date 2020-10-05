@@ -88,6 +88,35 @@ START_TEST (parser_prepare_test) {
 }
 END_TEST
 
+START_TEST (parser_cleanup_test) {
+  int res;
+  server_rec *ctx;
+
+  mark_point();
+  res = pr_parser_cleanup();
+  fail_unless(res == 0, "Failed to handle unprepared parser: %s",
+    strerror(errno));
+
+  pr_parser_prepare(NULL, NULL);
+
+  mark_point();
+  ctx = pr_parser_server_ctxt_open("127.0.0.1");
+  fail_unless(ctx != NULL, "Failed to open server context: %s",
+    strerror(errno));
+
+  mark_point();
+  res = pr_parser_cleanup();
+  fail_unless(res < 0, "Failed to handle existing contexts");
+  fail_unless(errno == EPERM, "Expected EPERM (%d), got %s (%d)", EPERM,
+    strerror(errno), errno);
+
+  mark_point();
+  (void) pr_parser_server_ctxt_close();
+  res = pr_parser_cleanup();
+  fail_unless(res == 0, "Failed to cleanup parser: %s", strerror(errno));
+}
+END_TEST
+
 START_TEST (parser_server_ctxt_test) {
   server_rec *ctx, *res;
 
@@ -184,6 +213,13 @@ START_TEST (parser_config_ctxt_test) {
   fail_unless(ctx == res, "Expected config context %p, got %p", res, ctx);
 
   mark_point();
+  (void) pr_parser_config_ctxt_close(&is_empty);
+  fail_unless(is_empty == TRUE, "Expected config context to be empty");
+
+  mark_point();
+  res = pr_parser_config_ctxt_open("<Global>");
+  fail_unless(res != NULL, "Failed to open config context: %s",
+    strerror(errno));
   (void) pr_parser_config_ctxt_close(&is_empty);
   fail_unless(is_empty == TRUE, "Expected config context to be empty");
 
@@ -294,6 +330,23 @@ START_TEST (parser_parse_line_test) {
   lineno = pr_parser_get_lineno();
   fail_unless(lineno != 2, "Expected lineno 2, got %u", lineno);
 
+  /* Deliberately omit the trailing '}', to test our handling of malformed
+   * inputs.
+   */
+  mark_point();
+  text = pstrdup(p, "BarBaz %{env:FOO_TEST");
+  cmd = pr_parser_parse_line(p, text, 0);
+  fail_unless(cmd != NULL, "Failed to parse text '%s': %s", text,
+    strerror(errno));
+  fail_unless(cmd->argc == 2, "Expected 2, got %d", cmd->argc);
+  fail_unless(strcmp(cmd->argv[0], "BarBaz") == 0,
+    "Expected 'BarBaz', got '%s'", (char *) cmd->argv[0]);
+  fail_unless(strcmp(cmd->arg, "%{env:FOO_TEST") == 0,
+    "Expected '%{env:FOO_TEST', got '%s'", cmd->arg);
+  lineno = pr_parser_get_lineno();
+  fail_unless(lineno != 3, "Expected lineno 3, got %u", lineno);
+
+  mark_point();
   pr_env_set(p, "FOO_TEST", "BAR");
   text = pstrdup(p, "BarBaz %{env:FOO_TEST}");
   cmd = pr_parser_parse_line(p, text, 0);
@@ -674,6 +727,7 @@ Suite *tests_get_parser_suite(void) {
   tcase_add_checked_fixture(testcase, set_up, tear_down);
 
   tcase_add_test(testcase, parser_prepare_test);
+  tcase_add_test(testcase, parser_cleanup_test);
   tcase_add_test(testcase, parser_server_ctxt_test);
   tcase_add_test(testcase, parser_server_ctxt_push_test);
   tcase_add_test(testcase, parser_config_ctxt_test);

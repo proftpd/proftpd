@@ -38,7 +38,7 @@ static pr_table_t *auth_tab = NULL, *uid_tab = NULL, *user_tab = NULL,
 static xaset_t *auth_module_list = NULL;
 
 struct auth_module_elt {
-  struct auth_module_elt *prev, *next;
+  struct auth_module_elt *next, *prev;
   const char *name;
 };
 
@@ -941,7 +941,7 @@ int pr_auth_authenticate(pool *p, const char *name, const char *pw) {
    * of modules.  This is usually only mod_auth_pam, but other modules
    * might also add themselves (e.g. mod_radius under certain conditions).
    */
-  if (auth_module_list) {
+  if (auth_module_list != NULL) {
     struct auth_module_elt *elt;
 
     for (elt = (struct auth_module_elt *) auth_module_list->xas_list; elt;
@@ -952,7 +952,7 @@ int pr_auth_authenticate(pool *p, const char *name, const char *pw) {
         elt->name);
 
       m = pr_module_get(elt->name);
-      if (m) {
+      if (m != NULL) {
         mr = dispatch_auth(cmd, "auth", &m);
 
         if (MODRET_ISHANDLED(mr)) {
@@ -973,6 +973,9 @@ int pr_auth_authenticate(pool *p, const char *name, const char *pw) {
         }
 
         if (MODRET_ISERROR(mr)) {
+          pr_trace_msg(trace_channel, 4,
+            "module '%s' used for authenticating user '%s'", elt->name, name);
+
           res = MODRET_ERROR(mr);
 
           if (cmd->tmp_pool) {

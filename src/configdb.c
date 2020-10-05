@@ -935,19 +935,12 @@ void init_config(void) {
     global_config_pool = NULL;
   }
 
-  if (config_tab) {
+  if (config_tab != NULL) {
     /* Clear the existing config ID table.  This needs to happen when proftpd
      * is restarting.
      */
-    if (pr_table_empty(config_tab) < 0) {
-      pr_log_debug(DEBUG0, "error emptying config ID table: %s",
-        strerror(errno));
-    }
-
-    if (pr_table_free(config_tab) < 0) {
-      pr_log_debug(DEBUG0, "error destroying config ID table: %s",
-        strerror(errno));
-    }
+    (void) pr_table_empty(config_tab);
+    (void) pr_table_free(config_tab);
 
     config_tab = pr_table_alloc(config_tab_pool, 0);
 
