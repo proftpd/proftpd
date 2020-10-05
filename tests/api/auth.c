@@ -476,7 +476,7 @@ static void tear_down(void) {
 
   if (p != NULL) {
     destroy_pool(p);
-    p = permanent_pool = NULL;
+    p = session.pool = permanent_pool = NULL;
   } 
 
   tests_stubs_set_main_server(NULL);
@@ -638,13 +638,19 @@ START_TEST (auth_getpwnam_test) {
   fail_unless(getpwnam_count == 3, "Expected call count 3, got %u",
     getpwnam_count);
 
+  pw = pr_auth_getpwnam(p, PR_TEST_AUTH_NAME);
+  fail_unless(pw != NULL, "Failed to find user '%s': %s", PR_TEST_AUTH_NAME,
+    strerror(errno));
+  fail_unless(getpwnam_count == 4, "Expected call count 4, got %u",
+    getpwnam_count);
+
   mark_point();
 
   pw = pr_auth_getpwnam(p, "other");
   fail_unless(pw == NULL, "Found pwnam for user 'other' unexpectedly");
   fail_unless(errno == ENOENT, "Failed to set errno to ENOENT, got %d (%s)",
     errno, strerror(errno));
-  fail_unless(getpwnam_count == 4, "Expected call count 4, got %u",
+  fail_unless(getpwnam_count == 5, "Expected call count 5, got %u",
     getpwnam_count);
 
   pr_auth_endpwent(p);
@@ -1548,21 +1554,43 @@ START_TEST (auth_authenticate_test) {
   res = pr_auth_add_auth_only_module("foo.bar");
   fail_unless(res == 0, "Failed to add auth-only module: %s", strerror(errno));
 
-  res = pr_auth_add_auth_only_module(testsuite_module.name);
+  res = pr_auth_add_auth_only_module("mod_testsuite.c");
   fail_unless(res == 0, "Failed to add auth-only module: %s", strerror(errno));
+
+  res = pr_module_load(&testsuite_module);
+  fail_unless(res == 0, "Failed to load module: %s", strerror(errno));
+
+  res = pr_auth_authenticate(p, "foo", "bar");
+  fail_unless(res == PR_AUTH_NOPWD,
+    "Failed to handle unknown user 'foo' (expected %d, got %d)", PR_AUTH_NOPWD,
+    res);
+
+  res = pr_auth_authenticate(p, PR_TEST_AUTH_NAME, "bar");
+  fail_unless(res == PR_AUTH_BADPWD,
+    "Failed to handle user '%s' with bad password (expected %d, got %d)",
+    PR_TEST_AUTH_NAME, PR_AUTH_BADPWD, res);
 
   res = pr_auth_authenticate(p, PR_TEST_AUTH_NAME, PR_TEST_AUTH_PASSWD);
   fail_unless(res == PR_AUTH_OK,
     "Failed to authenticate user '%s' (expected %d, got %d)",
     PR_TEST_AUTH_NAME, PR_AUTH_OK, res);
 
+  authn_rfc2228 = TRUE;
+  res = pr_auth_authenticate(p, PR_TEST_AUTH_NAME, PR_TEST_AUTH_PASSWD);
+  fail_unless(res == PR_AUTH_RFC2228_OK,
+    "Failed to authenticate user '%s' (expected %d, got %d)",
+    PR_TEST_AUTH_NAME, PR_AUTH_RFC2228_OK, res);
+
   pr_auth_clear_auth_only_modules();
+  pr_module_unload(&testsuite_module);
 
   authn_rfc2228 = TRUE;
   res = pr_auth_authenticate(p, PR_TEST_AUTH_NAME, PR_TEST_AUTH_PASSWD);
   fail_unless(res == PR_AUTH_RFC2228_OK,
     "Failed to authenticate user '%s' (expected %d, got %d)",
     PR_TEST_AUTH_NAME, PR_AUTH_RFC2228_OK, res);
+
+  authn_rfc2228 = FALSE;
 }
 END_TEST
 
@@ -1697,6 +1725,12 @@ START_TEST (auth_check_errors_test) {
       test_check_errorcode, res);
   }
 
+  mark_point();
+  test_check_errorcode = PR_AUTH_OK_NO_PASS;
+  res = pr_auth_check(p, "", name, cleartext_passwd);
+  fail_unless(res == test_check_errorcode, "Expected %d, got %d",
+    test_check_errorcode, res);
+
   res = pr_module_unload(&testsuite_module);
   fail_unless(res == 0, "Failed to unload module: %s", strerror(errno));
   (void) pr_auth_clear_auth_only_modules();
@@ -1830,12 +1864,34 @@ START_TEST (auth_chroot_test) {
     "Expected EINVAL (%d) or ENOENT (%d), got %s (%d)", EINVAL, ENOENT,
     strerror(errno), errno);
 
+  /* This first time, we do not have session.pool set, so the setting of the
+   * TZ environment variable will fail.
+   */
   path = "/tmp";
   res = pr_auth_chroot(path);
   fail_unless(res < 0, "Failed to chroot to '%s': %s", path, strerror(errno));
   fail_unless(errno == ENOENT || errno == EPERM || errno == EINVAL,
     "Expected ENOENT (%d), EPERM (%d) or EINVAL (%d), got %s (%d)",
     ENOENT, EPERM, EINVAL, strerror(errno), errno);
+
+  /* We should now set the TZ environment variable, but still fail. */
+  session.pool = p;
+  path = "/tmp";
+  res = pr_auth_chroot(path);
+  fail_unless(res < 0, "Failed to chroot to '%s': %s", path, strerror(errno));
+  fail_unless(errno == ENOENT || errno == EPERM || errno == EINVAL,
+    "Expected ENOENT (%d), EPERM (%d) or EINVAL (%d), got %s (%d)",
+    ENOENT, EPERM, EINVAL, strerror(errno), errno);
+
+  /* Last, the TZ environment variable should already be set. */
+  path = "/tmp";
+  res = pr_auth_chroot(path);
+  fail_unless(res < 0, "Failed to chroot to '%s': %s", path, strerror(errno));
+  fail_unless(errno == ENOENT || errno == EPERM || errno == EINVAL,
+    "Expected ENOENT (%d), EPERM (%d) or EINVAL (%d), got %s (%d)",
+    ENOENT, EPERM, EINVAL, strerror(errno), errno);
+
+  session.pool = NULL;
 }
 END_TEST
 
@@ -1878,6 +1934,61 @@ START_TEST (auth_is_valid_shell_test) {
   res = pr_auth_is_valid_shell(ctx, shell);
   fail_unless(res == TRUE, "Failed to handle valid shell '%s' (got %d)",
     shell, res);
+}
+END_TEST
+
+START_TEST (auth_set_groups_test) {
+  int res;
+
+  if (getuid() == PR_ROOT_UID) {
+    gid_t gid;
+
+    gid = getgid();
+
+    mark_point();
+    res = set_groups(NULL, 0, NULL);
+    fail_unless(res == 0, "Failed to handle zero primary gid: %s",
+      strerror(errno));
+
+    mark_point();
+    res = set_groups(p, 0, NULL);
+    fail_unless(res == 0, "Failed to handle zero primary gid: %s",
+      strerror(errno));
+
+    mark_point();
+    res = set_groups(NULL, gid, NULL);
+    fail_unless(res == 0, "Failed to handle current primary gid: %s",
+      strerror(errno));
+
+  } else {
+    mark_point();
+    res = set_groups(NULL, 0, NULL);
+    fail_unless(res < 0, "Failed to handle zero primary gid: %s",
+      strerror(errno));
+    fail_unless(errno == ENOSYS, "Expected ENOSYS (%d), got %s (%d)", ENOSYS,
+      strerror(errno), errno);
+
+    mark_point();
+    res = set_groups(p, 0, NULL);
+    fail_unless(res < 0, "Failed to handle zero primary gid: %s",
+      strerror(errno));
+    fail_unless(errno == ENOSYS, "Expected ENOSYS (%d), got %s (%d)", ENOSYS,
+      strerror(errno), errno);
+
+    mark_point();
+    res = set_groups(p, 1, NULL);
+    fail_unless(res < 0, "Failed to handle non-root primary gid: %s",
+      strerror(errno));
+    fail_unless(errno == ENOSYS, "Expected ENOSYS (%d), got %s (%d)", ENOSYS,
+      strerror(errno), errno);
+
+    mark_point();
+    res = set_groups(p, getgid(), NULL);
+    fail_unless(res < 0, "Failed to handle current primary gid: %s",
+      strerror(errno));
+    fail_unless(errno == ENOSYS, "Expected ENOSYS (%d), got %s (%d)", ENOSYS,
+      strerror(errno), errno);
+  }
 }
 END_TEST
 
@@ -2025,6 +2136,7 @@ Suite *tests_get_auth_suite(void) {
   tcase_add_test(testcase, auth_chroot_test);
   tcase_add_test(testcase, auth_banned_by_ftpusers_test);
   tcase_add_test(testcase, auth_is_valid_shell_test);
+  tcase_add_test(testcase, auth_set_groups_test);
   tcase_add_test(testcase, auth_get_home_test);
   tcase_add_test(testcase, auth_set_max_password_len_test);
   tcase_add_test(testcase, auth_bcrypt_test);

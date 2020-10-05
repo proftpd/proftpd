@@ -1,6 +1,6 @@
 /*
  * ProFTPD - FTP server testsuite
- * Copyright (c) 2014-2017 The ProFTPD Project team
+ * Copyright (c) 2014-2020 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -273,6 +273,12 @@ START_TEST (config_add_config_set_test) {
 }
 END_TEST
 
+START_TEST (config_dump_test) {
+  mark_point();
+  pr_config_dump(NULL, NULL, NULL);
+}
+END_TEST
+
 START_TEST (config_find_config_test) {
   int res;
   config_rec *c;
@@ -507,6 +513,19 @@ START_TEST (config_find_config2_recurse_test) {
 }
 END_TEST
 
+START_TEST (config_find_config_set_top_test) {
+  config_rec *c;
+
+  mark_point();
+  c = pcalloc(p, sizeof(config_rec));
+  c->parent = pcalloc(p, sizeof(config_rec));
+  find_config_set_top(c);
+
+  mark_point();
+  find_config_set_top(NULL);
+}
+END_TEST
+
 START_TEST (config_get_param_ptr_test) {
   void *res;
   int count;
@@ -567,9 +586,14 @@ START_TEST (config_get_param_ptr_test) {
   fail_unless(res != NULL, "Failed to find any config: %s", strerror(errno));
 
   mark_point();
-
   res = get_param_ptr_next(name, FALSE);
   fail_unless(res != NULL, "Expected to find another config");
+
+  mark_point();
+  res = get_param_ptr_next("foobar", TRUE);
+  fail_unless(res == NULL, "Found another config unexpectedly");
+  fail_unless(errno == ENOENT, "Expected ENOENT (%d), got %s (%d)", ENOENT,
+    strerror(errno), errno);
 
   res = get_param_ptr_next(name, FALSE);
   fail_unless(res == NULL, "Found another config unexpectedly");
@@ -584,7 +608,6 @@ START_TEST (config_get_param_ptr_test) {
     strerror(errno));
 
   mark_point();
-
   res = get_param_ptr(set, name, FALSE);
   fail_unless(res == NULL, "Found config '%s' unexpectedly", name);
   fail_unless(errno == ENOENT, "Failed to set errno to ENOENT, got %d (%s)",
@@ -705,9 +728,11 @@ Suite *tests_get_config_suite(void) {
   tcase_add_test(testcase, config_add_config_param_str_test);
   tcase_add_test(testcase, config_add_server_config_param_str_test);
   tcase_add_test(testcase, config_add_config_set_test);
+  tcase_add_test(testcase, config_dump_test);
   tcase_add_test(testcase, config_find_config_test);
   tcase_add_test(testcase, config_find_config2_test);
   tcase_add_test(testcase, config_find_config2_recurse_test);
+  tcase_add_test(testcase, config_find_config_set_top_test);
   tcase_add_test(testcase, config_get_param_ptr_test);
   tcase_add_test(testcase, config_set_get_id_test);
   tcase_add_test(testcase, config_merge_down_test);
