@@ -1,7 +1,7 @@
 /*
  * ProFTPD: mod_auth_file - file-based authentication module that supports
  *                          restrictions on the file contents
- * Copyright (c) 2002-2017 The ProFTPD Project team
+ * Copyright (c) 2002-2020 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -494,21 +494,19 @@ static int af_allow_grent(pool *p, struct group *grp) {
 }
 
 static void af_endgrent(void) {
-  if (af_group_file &&
-      af_group_file->af_file) {
+  if (af_group_file != NULL &&
+      af_group_file->af_file != NULL) {
     fclose(af_group_file->af_file);
     af_group_file->af_file = NULL;
     af_group_file->af_lineno = 0;
   }
-
-  return;
 }
 
 static struct group *af_getgrent(pool *p) {
   struct group *grp = NULL, *res = NULL;
 
-  if (!af_group_file ||
-      !af_group_file->af_file) {
+  if (af_group_file == NULL ||
+      af_group_file->af_file == NULL) {
     errno = EINVAL;
     return NULL;
   }
@@ -610,57 +608,56 @@ static struct group *af_getgrgid(pool *p, gid_t gid) {
 static int af_setgrent(pool *p) {
 
   if (af_group_file != NULL) {
+    int xerrno;
+
     if (af_group_file->af_file != NULL) {
       /* If already opened, rewind */
       rewind(af_group_file->af_file);
       return 0;
-
-    } else {
-      int xerrno;
-
-      PRIVS_ROOT
-      af_group_file->af_file = fopen(af_group_file->af_path, "r");
-      xerrno = errno;
-      PRIVS_RELINQUISH
-
-      if (af_group_file->af_file == NULL) {
-        struct stat st;
-
-        if (pr_fsio_stat(af_group_file->af_path, &st) == 0) {
-          pr_log_pri(PR_LOG_WARNING,
-            "error: unable to open AuthGroupFile file '%s' (file owned by "
-            "UID %s, GID %s, perms %04o, accessed by UID %s, GID %s): %s",
-            af_group_file->af_path, pr_uid2str(p, st.st_uid),
-            pr_gid2str(p, st.st_gid), st.st_mode & ~S_IFMT,
-            pr_uid2str(p, geteuid()), pr_gid2str(p, getegid()),
-            strerror(xerrno));
-
-        } else {
-          pr_log_pri(PR_LOG_WARNING,
-            "error: unable to open AuthGroupFile file '%s': %s",
-            af_group_file->af_path, strerror(xerrno));
-        }
-
-        errno = xerrno;
-        return -1;
-      }
-
-      /* As the file may contain sensitive data, we do not want it lingering
-       * around in stdio buffers.
-       */
-      (void) setvbuf(af_group_file->af_file, NULL, _IONBF, 0);
-
-      if (fcntl(fileno(af_group_file->af_file), F_SETFD, FD_CLOEXEC) < 0) {
-        pr_log_pri(PR_LOG_WARNING, MOD_AUTH_FILE_VERSION
-          ": unable to set CLOEXEC on AuthGroupFile %s (fd %d): %s",
-          af_group_file->af_path, fileno(af_group_file->af_file),
-          strerror(errno));
-      }
-
-      pr_log_debug(DEBUG7, MOD_AUTH_FILE_VERSION ": using group file '%s'",
-        af_group_file->af_path);
-      return 0;
     }
+
+    PRIVS_ROOT
+    af_group_file->af_file = fopen(af_group_file->af_path, "r");
+    xerrno = errno;
+    PRIVS_RELINQUISH
+
+    if (af_group_file->af_file == NULL) {
+      struct stat st;
+
+      if (pr_fsio_stat(af_group_file->af_path, &st) == 0) {
+        pr_log_pri(PR_LOG_WARNING,
+          "error: unable to open AuthGroupFile file '%s' (file owned by "
+          "UID %s, GID %s, perms %04o, accessed by UID %s, GID %s): %s",
+          af_group_file->af_path, pr_uid2str(p, st.st_uid),
+          pr_gid2str(p, st.st_gid), st.st_mode & ~S_IFMT,
+          pr_uid2str(p, geteuid()), pr_gid2str(p, getegid()),
+          strerror(xerrno));
+
+      } else {
+        pr_log_pri(PR_LOG_WARNING,
+          "error: unable to open AuthGroupFile file '%s': %s",
+          af_group_file->af_path, strerror(xerrno));
+      }
+
+      errno = xerrno;
+      return -1;
+    }
+
+    /* As the file may contain sensitive data, we do not want it lingering
+     * around in stdio buffers.
+     */
+    (void) setvbuf(af_group_file->af_file, NULL, _IONBF, 0);
+
+    if (fcntl(fileno(af_group_file->af_file), F_SETFD, FD_CLOEXEC) < 0) {
+      pr_log_pri(PR_LOG_WARNING, MOD_AUTH_FILE_VERSION
+        ": unable to set CLOEXEC on AuthGroupFile %s (fd %d): %s",
+        af_group_file->af_path, fileno(af_group_file->af_file),
+        strerror(errno));
+    }
+
+    pr_log_debug(DEBUG7, MOD_AUTH_FILE_VERSION ": using group file '%s'",
+      af_group_file->af_path);
+    return 0;
   }
 
   pr_trace_msg(trace_channel, 8, "no AuthGroupFile configured");
@@ -736,14 +733,12 @@ static int af_allow_pwent(pool *p, struct passwd *pwd) {
 }
 
 static void af_endpwent(void) {
-  if (af_user_file &&
-      af_user_file->af_file) {
+  if (af_user_file != NULL &&
+      af_user_file->af_file != NULL) {
     fclose(af_user_file->af_file);
     af_user_file->af_file = NULL;
     af_user_file->af_lineno = 0;
   }
-
-  return;
 }
 
 static struct passwd *af_getpwent(pool *p) {
@@ -850,57 +845,56 @@ static struct passwd *af_getpwuid(pool *p, uid_t uid) {
 static int af_setpwent(pool *p) {
 
   if (af_user_file != NULL) {
+    int xerrno;
+
     if (af_user_file->af_file != NULL) {
       /* If already opened, rewind */
       rewind(af_user_file->af_file);
       return 0;
-
-    } else {
-      int xerrno;
-
-      PRIVS_ROOT
-      af_user_file->af_file = fopen(af_user_file->af_path, "r");
-      xerrno = errno;
-      PRIVS_RELINQUISH
-
-      if (af_user_file->af_file == NULL) {
-        struct stat st;
-
-        if (pr_fsio_stat(af_user_file->af_path, &st) == 0) {
-          pr_log_pri(PR_LOG_WARNING,
-            "error: unable to open AuthUserFile file '%s' (file owned by "
-            "UID %s, GID %s, perms %04o, accessed by UID %s, GID %s): %s",
-            af_user_file->af_path, pr_uid2str(p, st.st_uid),
-            pr_gid2str(p, st.st_gid), st.st_mode & ~S_IFMT,
-            pr_uid2str(p, geteuid()), pr_gid2str(p, getegid()),
-            strerror(xerrno));
-
-        } else {
-          pr_log_pri(PR_LOG_WARNING,
-            "error: unable to open AuthUserFile file '%s': %s",
-            af_user_file->af_path, strerror(xerrno));
-        }
-
-        errno = xerrno;
-        return -1;
-      }
-
-      /* As the file may contain sensitive data, we do not want it lingering
-       * around in stdio buffers.
-       */
-      (void) setvbuf(af_user_file->af_file, NULL, _IONBF, 0);
-
-      if (fcntl(fileno(af_user_file->af_file), F_SETFD, FD_CLOEXEC) < 0) {
-        pr_log_pri(PR_LOG_WARNING, MOD_AUTH_FILE_VERSION
-          ": unable to set CLOEXEC on AuthUserFile %s (fd %d): %s",
-          af_user_file->af_path, fileno(af_user_file->af_file),
-          strerror(errno));
-      }
-
-      pr_log_debug(DEBUG7, MOD_AUTH_FILE_VERSION ": using passwd file '%s'",
-        af_user_file->af_path);
-      return 0;
     }
+
+    PRIVS_ROOT
+    af_user_file->af_file = fopen(af_user_file->af_path, "r");
+    xerrno = errno;
+    PRIVS_RELINQUISH
+
+    if (af_user_file->af_file == NULL) {
+      struct stat st;
+
+      if (pr_fsio_stat(af_user_file->af_path, &st) == 0) {
+        pr_log_pri(PR_LOG_WARNING,
+          "error: unable to open AuthUserFile file '%s' (file owned by "
+          "UID %s, GID %s, perms %04o, accessed by UID %s, GID %s): %s",
+          af_user_file->af_path, pr_uid2str(p, st.st_uid),
+          pr_gid2str(p, st.st_gid), st.st_mode & ~S_IFMT,
+          pr_uid2str(p, geteuid()), pr_gid2str(p, getegid()),
+          strerror(xerrno));
+
+      } else {
+        pr_log_pri(PR_LOG_WARNING,
+          "error: unable to open AuthUserFile file '%s': %s",
+          af_user_file->af_path, strerror(xerrno));
+      }
+
+      errno = xerrno;
+      return -1;
+    }
+
+    /* As the file may contain sensitive data, we do not want it lingering
+     * around in stdio buffers.
+     */
+    (void) setvbuf(af_user_file->af_file, NULL, _IONBF, 0);
+
+    if (fcntl(fileno(af_user_file->af_file), F_SETFD, FD_CLOEXEC) < 0) {
+      pr_log_pri(PR_LOG_WARNING, MOD_AUTH_FILE_VERSION
+        ": unable to set CLOEXEC on AuthUserFile %s (fd %d): %s",
+        af_user_file->af_path, fileno(af_user_file->af_file),
+        strerror(errno));
+    }
+
+    pr_log_debug(DEBUG7, MOD_AUTH_FILE_VERSION ": using passwd file '%s'",
+      af_user_file->af_path);
+    return 0;
   }
 
   pr_trace_msg(trace_channel, 8, "no AuthUserFile configured");
@@ -1108,10 +1102,13 @@ MODRET authfile_getgroups(cmd_rec *cmd) {
     }
   }
 
-  if (gids && gids->nelts > 0) {
+  if (gids != NULL &&
+      gids->nelts > 0) {
     return mod_create_data(cmd, (void *) &gids->nelts);
+  }
 
-  } else if (groups && groups->nelts > 0) {
+  if (groups != NULL &&
+      groups->nelts > 0) {
     return mod_create_data(cmd, (void *) &groups->nelts);
   }
 
@@ -1424,7 +1421,7 @@ MODRET set_authgroupfile(cmd_rec *cmd) {
     register unsigned int i = 0;
 
     for (i = 2; i < cmd->argc; i++) {
-      if (strncmp(cmd->argv[i], "id", 3) == 0) {
+      if (strcasecmp(cmd->argv[i], "id") == 0) {
         gid_t min, max;
         char *sep = NULL, *tmp = NULL;
 
@@ -1460,7 +1457,7 @@ MODRET set_authgroupfile(cmd_rec *cmd) {
         file->af_restricted_ids = TRUE;
 
 #ifdef PR_USE_REGEX
-      } else if (strncmp(cmd->argv[i], "name", 5) == 0) {
+      } else if (strcasecmp(cmd->argv[i], "name") == 0) {
         char *filter = cmd->argv[++i];
         pr_regex_t *pre = NULL;
         int res = 0;
@@ -1548,7 +1545,7 @@ MODRET set_authuserfile(cmd_rec *cmd) {
     register unsigned int i = 0;
 
     for (i = 2; i < cmd->argc; i++) {
-      if (strncmp(cmd->argv[i], "id", 3) == 0) {
+      if (strcasecmp(cmd->argv[i], "id") == 0) {
         uid_t min, max;
         char *sep = NULL, *tmp = NULL;
 
@@ -1585,7 +1582,7 @@ MODRET set_authuserfile(cmd_rec *cmd) {
         file->af_restricted_ids = TRUE;
 
 #ifdef PR_USE_REGEX
-      } else if (strncmp(cmd->argv[i], "home", 5) == 0) {
+      } else if (strcasecmp(cmd->argv[i], "home") == 0) {
         char *filter = cmd->argv[++i];
         pr_regex_t *pre = NULL;
         int res = 0;
@@ -1613,7 +1610,7 @@ MODRET set_authuserfile(cmd_rec *cmd) {
         file->af_home_regex = pre;
         file->af_restricted_homes = TRUE;
 
-      } else if (strncmp(cmd->argv[i], "name", 5) == 0) {
+      } else if (strcasecmp(cmd->argv[i], "name") == 0) {
         char *filter = cmd->argv[++i];
         pr_regex_t *pre = NULL;
         int res = 0;

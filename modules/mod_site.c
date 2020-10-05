@@ -27,10 +27,6 @@
 
 #include "conf.h"
 
-/* From mod_core.c */
-extern int core_chmod(cmd_rec *cmd, const char *path, mode_t mode);
-extern int core_chgrp(cmd_rec *cmd, const char *path, uid_t uid, gid_t gid);
-
 modret_t *site_dispatch(cmd_rec *cmd);
 
 static struct {
@@ -347,8 +343,9 @@ MODRET site_chmod(cmd_rec *cmd) {
             break;
         }
 
-        if (invalid)
+        if (invalid) {
           break;
+        }
 
         switch (*how) {
           case '+':
@@ -360,8 +357,9 @@ MODRET site_chmod(cmd_rec *cmd) {
             invalid++;
         }
 
-        if (invalid)
+        if (invalid) {
           break;
+        }
 
         switch (*cp) {
           case 'r':
@@ -423,10 +421,9 @@ MODRET site_chmod(cmd_rec *cmd) {
               who++;
               cp = what;
               continue;
-
-            } else {
-              cp = NULL;
             }
+
+            cp = NULL;
             break;
 
           default:
@@ -504,7 +501,7 @@ MODRET site_help(cmd_rec *cmd) {
 
     arg = cmd->argv[1];
     for (cp = arg; *cp; cp++) {
-      *cp = toupper(*cp);
+      *cp = toupper((int) *cp);
     }
 
     for (i = 0; _help[i].cmd; i++) {
@@ -573,9 +570,12 @@ modret_t *site_dispatch(cmd_rec *cmd) {
  */
 
 MODRET site_pre_cmd(cmd_rec *cmd) {
-  if (cmd->argc > 1 && !strcasecmp(cmd->argv[1], "help"))
+  if (cmd->argc > 1 &&
+      strcasecmp(cmd->argv[1], "help") == 0) {
     pr_response_add(R_214,
       _("The following SITE commands are recognized (* =>'s unimplemented)"));
+  }
+
   return PR_DECLINED(cmd);
 }
 
@@ -603,9 +603,10 @@ MODRET site_cmd(cmd_rec *cmd) {
 
 MODRET site_post_cmd(cmd_rec *cmd) {
   if (cmd->argc > 1 &&
-      strcasecmp(cmd->argv[1], "help") == 0)
+      strcasecmp(cmd->argv[1], "help") == 0) {
     pr_response_add(R_214, _("Direct comments to %s"),
       (cmd->server->ServerAdmin ? cmd->server->ServerAdmin : "ftp-admin"));
+  }
 
   return PR_DECLINED(cmd);
 }

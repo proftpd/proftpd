@@ -61,9 +61,9 @@ utils: include/buildstamp.h dummy
 	cd utils/ && $(MAKE) utils
 
 clang-tidy:
-	cd src/ && $(MAKE) clang-tidy
+	-cd src/ && $(MAKE) clang-tidy
 	# cd lib/ && $(MAKE) clang-tidy
-	# cd modules/ && $(MAKE) clang-tidy
+	-cd modules/ && $(MAKE) clang-tidy
 	# cd utils/ && $(MAKE) clang-tidy
 
 locale: include/buildstamp.h dummy

@@ -2490,7 +2490,8 @@ static void fixup_globals(xaset_t *list) {
 
         xaset_remove(s->conf, (xasetmember_t *) c);
 
-        if (s->conf->xas_list == NULL) {
+        if (s->conf != NULL &&
+            s->conf->xas_list == NULL) {
           destroy_pool(s->conf->pool);
           s->conf = NULL;
         }

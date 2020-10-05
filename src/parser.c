@@ -681,7 +681,7 @@ cmd_rec *pr_parser_parse_line(pool *p, const char *text, size_t text_len) {
     if (*(cp + cp_len-1) == '>' &&
         cmd->argc > 1) {
 
-      if (strncmp(cp, ">", 2) == 0) {
+      if (strcmp(cp, ">") == 0) {
         cmd->argv[cmd->argc-1] = NULL;
         cmd->argc--;
 
@@ -1280,8 +1280,8 @@ int parse_config_path2(pool *p, const char *path, unsigned int depth) {
   while ((dent = pr_fsio_readdir(dirh)) != NULL) {
     pr_signals_handle();
 
-    if (strncmp(dent->d_name, ".", 2) == 0 ||
-        strncmp(dent->d_name, "..", 3) == 0) {
+    if (strcmp(dent->d_name, ".") == 0 ||
+        strcmp(dent->d_name, "..") == 0) {
       continue;
     }
 

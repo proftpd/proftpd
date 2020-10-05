@@ -436,7 +436,7 @@ static int facts_mlinfobuf_flush(void) {
 
 static int facts_mlinfo_get(struct mlinfo *info, const char *path,
     const char *dent_name, int flags, const char *user, uid_t uid,
-    const char *group, gid_t gid, mode_t *mode) {
+    const char *group, gid_t gid, const mode_t *mode) {
   char *perm = "";
   int res;
 
@@ -803,8 +803,9 @@ static void facts_mlst_feat_remove(void) {
     feat = pr_feat_get_next();
   }
 
-  if (mlst_feat)
+  if (mlst_feat != NULL) {
     pr_feat_remove(mlst_feat);
+  }
 }
 
 static int facts_modify_mtime(pool *p, const char *path, char *timestamp) {
@@ -1363,7 +1364,7 @@ MODRET facts_mlsd(cmd_rec *cmd) {
   config_rec *c;
   uid_t fake_uid = -1;
   gid_t fake_gid = -1;
-  mode_t *fake_mode = NULL;
+  const mode_t *fake_mode = NULL;
   struct mlinfo info;
   unsigned char *ptr;
   int flags = 0, res, succeeded = TRUE;
@@ -1460,11 +1461,11 @@ MODRET facts_mlsd(cmd_rec *cmd) {
  
   c = find_config(get_dir_ctxt(cmd->tmp_pool, (char *) best_path), CONF_PARAM,
     "DirFakeUser", FALSE);
-  if (c) {
+  if (c != NULL) {
     if (c->argc > 0) {
       fake_user = c->argv[0];
       if (fake_user != NULL &&
-          strncmp(fake_user, "~", 2) != 0) {
+          strcmp(fake_user, "~") != 0) {
         fake_uid = pr_auth_name2uid(cmd->tmp_pool, fake_user);
 
       } else {
@@ -1481,11 +1482,11 @@ MODRET facts_mlsd(cmd_rec *cmd) {
 
   c = find_config(get_dir_ctxt(cmd->tmp_pool, (char *) best_path), CONF_PARAM,
     "DirFakeGroup", FALSE);
-  if (c) {
+  if (c != NULL) {
     if (c->argc > 0) {
       fake_group = c->argv[0];
       if (fake_group != NULL &&
-          strncmp(fake_group, "~", 2) != 0) {
+          strcmp(fake_group, "~") != 0) {
         fake_gid = pr_auth_name2gid(cmd->tmp_pool, fake_group);
 
       } else {
@@ -1631,11 +1632,11 @@ MODRET facts_mlsd_cleanup(cmd_rec *cmd) {
   proto = pr_session_get_protocol(0);
 
   /* Ignore this for SFTP connections. */
-  if (strncmp(proto, "sftp", 5) == 0) {
+  if (strcmp(proto, "sftp") == 0) {
     return PR_DECLINED(cmd);
   }
 
-  if (session.xfer.p) {
+  if (session.xfer.p != NULL) {
     destroy_pool(session.xfer.p);
   }
 
@@ -1648,7 +1649,7 @@ MODRET facts_mlst(cmd_rec *cmd) {
   config_rec *c;
   uid_t fake_uid = -1;
   gid_t fake_gid = -1;
-  mode_t *fake_mode = NULL;
+  const mode_t *fake_mode = NULL;
   unsigned char *ptr;
   const char *path, *decoded_path;
   const char *fake_user = NULL, *fake_group = NULL;
@@ -1713,11 +1714,11 @@ MODRET facts_mlst(cmd_rec *cmd) {
 
   c = find_config(get_dir_ctxt(cmd->tmp_pool, (char *) decoded_path),
     CONF_PARAM, "DirFakeUser", FALSE);
-  if (c) {
+  if (c != NULL) {
     if (c->argc > 0) {
       fake_user = c->argv[0];
       if (fake_user != NULL &&
-          strncmp(fake_user, "~", 2) != 0) {
+          strcmp(fake_user, "~") != 0) {
         fake_uid = pr_auth_name2uid(cmd->tmp_pool, fake_user);
 
       } else {
@@ -1734,11 +1735,11 @@ MODRET facts_mlst(cmd_rec *cmd) {
 
   c = find_config(get_dir_ctxt(cmd->tmp_pool, (char *) decoded_path),
     CONF_PARAM, "DirFakeGroup", FALSE);
-  if (c) {
+  if (c != NULL) {
     if (c->argc > 0) {
       fake_group = c->argv[0];
       if (fake_group != NULL &&
-          strncmp(fake_group, "~", 2) != 0) {
+          strcmp(fake_group, "~") != 0) {
         fake_gid = pr_auth_name2gid(cmd->tmp_pool, fake_group);
 
       } else {

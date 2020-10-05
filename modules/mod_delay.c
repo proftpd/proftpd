@@ -1,7 +1,7 @@
 /*
  * ProFTPD: mod_delay -- a module for adding arbitrary delays to the FTP
  *                       session lifecycle
- * Copyright (c) 2004-2017 TJ Saunders
+ * Copyright (c) 2004-2020 TJ Saunders
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -164,6 +164,10 @@ static long delay_select_k(unsigned long k, array_header *values) {
   ir = values->nelts - 1;
 
   while (TRUE) {
+    unsigned int i, j;
+    long p;
+    unsigned long mid;
+
     pr_signals_handle();
 
     if (ir <= l+1) {
@@ -173,60 +177,59 @@ static long delay_select_k(unsigned long k, array_header *values) {
       }
 
       return elts[k];
+    }
 
-    } else {
-      unsigned int i, j;
-      long p;
-      unsigned long mid = (l + ir) >> 1;
+    mid = (l + ir) >> 1;
 
-      delay_swap(elts[mid], elts[l+1]);
-      if (elts[l] > elts[ir]) {
-        delay_swap(elts[l], elts[ir]);
-      }
+    delay_swap(elts[mid], elts[l+1]);
+    if (elts[l] > elts[ir]) {
+      delay_swap(elts[l], elts[ir]);
+    }
 
-      if (elts[l+1] > elts[ir]) {
-        delay_swap(elts[l+1], elts[ir]);
-      }
+    if (elts[l+1] > elts[ir]) {
+      delay_swap(elts[l+1], elts[ir]);
+    }
 
-      if (elts[l] > elts[l+1]) {
-        delay_swap(elts[l], elts[l+1]);
-      }
+    if (elts[l] > elts[l+1]) {
+      delay_swap(elts[l], elts[l+1]);
+    }
 
-      i = l + 1;
-      j = ir;
-      p = elts[l+1];
+    i = l + 1;
+    j = ir;
+    p = elts[l+1];
 
-      while (TRUE) {
-        pr_signals_handle();
+    while (TRUE) {
+      pr_signals_handle();
 
-        do i++;
-          while (i < nelts && elts[i] < p);
+      do {
+        i++;
+      } while (i < nelts && elts[i] < p);
 
-        do j--;
-          while (elts[j] > p);
+      do {
+        j--;
+      } while (elts[j] > p);
 
-        if (j < i) {
-          break;
-        }
-
-        delay_swap(elts[i], elts[j]);
-      }
-
-      elts[l+1] = elts[j];
-      elts[j] = p;
-
-      if ((unsigned long) p >= k) {
-        ir = j - 1;
-      }
-
-      if ((unsigned long) p <= k) {
-        l = i;
-      }
-
-      if (l >= (nelts - 1) ||
-          ir >= nelts) {
+      if (j < i) {
         break;
       }
+
+      delay_swap(elts[i], elts[j]);
+    }
+
+    elts[l+1] = elts[j];
+    elts[j] = p;
+
+    if ((unsigned long) p >= k) {
+      ir = j - 1;
+    }
+
+    if ((unsigned long) p <= k) {
+      l = i;
+    }
+
+    if (l >= (nelts - 1) ||
+        ir >= nelts) {
+      break;
     }
   }
 
@@ -651,24 +654,23 @@ static int delay_table_init(void) {
     pr_trace_msg(trace_channel, 8, "write-locking DelayTable '%s'",
       fh->fh_path);
     while (fcntl(fh->fh_fd, F_SETLKW, &lock) < 0) {
+      xerrno = errno;
+
       if (errno == EINTR) {
         pr_signals_handle();
         continue;
+      }
 
-      } else {
-        xerrno = errno;
+      pr_log_pri(PR_LOG_WARNING, MOD_DELAY_VERSION
+        ": unable to obtain write lock on DelayTable '%s': %s",
+        fh->fh_path, strerror(xerrno));
+      pr_trace_msg(trace_channel, 1,
+        "unable to obtain write lock on DelayTable '%s': %s", fh->fh_path,
+        strerror(xerrno));
+      pr_fsio_close(fh);
 
-        pr_log_pri(PR_LOG_WARNING, MOD_DELAY_VERSION
-          ": unable to obtain write lock on DelayTable '%s': %s",
-          fh->fh_path, strerror(xerrno));
-        pr_trace_msg(trace_channel, 1,
-          "unable to obtain write lock on DelayTable '%s': %s", fh->fh_path,
-          strerror(xerrno));
-        pr_fsio_close(fh);
-
-        errno = xerrno;
-        return -1;
-      } 
+      errno = xerrno;
+      return -1;
     } 
 
     /* Seek to the desired table size (actually, one byte less than the
@@ -799,24 +801,23 @@ static int delay_table_init(void) {
     pr_trace_msg(trace_channel, 8, "write-locking DelayTable '%s'",
       fh->fh_path);
     while (fcntl(fh->fh_fd, F_SETLKW, &lock) < 0) {
+      xerrno = errno;
+
       if (errno == EINTR) {
         pr_signals_handle();
         continue;
-
-      } else {
-        xerrno = errno;
-
-        pr_log_pri(PR_LOG_WARNING, MOD_DELAY_VERSION
-          ": unable to obtain write lock on DelayTable '%s': %s",
-          fh->fh_path, strerror(xerrno));
-        pr_trace_msg(trace_channel, 1,
-          "unable to obtain write lock on DelayTable '%s': %s", fh->fh_path,
-          strerror(xerrno));
-        pr_fsio_close(fh);
-
-        errno = xerrno;
-        return -1;
       }
+
+      pr_log_pri(PR_LOG_WARNING, MOD_DELAY_VERSION
+        ": unable to obtain write lock on DelayTable '%s': %s",
+        fh->fh_path, strerror(xerrno));
+      pr_trace_msg(trace_channel, 1,
+        "unable to obtain write lock on DelayTable '%s': %s", fh->fh_path,
+        strerror(xerrno));
+      pr_fsio_close(fh);
+
+      errno = xerrno;
+      return -1;
     }
 
     /* Seek to the desired table size (actually, one byte less than the
@@ -1033,8 +1034,6 @@ static void delay_table_reset(void) {
     dv->dv_nvals = 0;
     memset(dv->dv_vals, -1, sizeof(dv->dv_vals));
   }
-
-  return;
 }
 
 static int delay_table_wlock(unsigned int rownum) {
@@ -1863,8 +1862,6 @@ static void delay_postparse_ev(const void *event_data, void *user_data) {
   if (delay_tab.dt_enabled) {
     (void) delay_table_init();
   }
-
-  return;
 }
 
 static void delay_restart_ev(const void *event_data, void *user_data) {
@@ -1889,8 +1886,6 @@ static void delay_restart_ev(const void *event_data, void *user_data) {
     pr_ctrls_init_acl(delay_acttab[i].act_acl);
   }
 #endif /* PR_USE_CTRLS */
-
-  return;
 }
 
 static void delay_sess_reinit_ev(const void *event_data, void *user_data) {
@@ -1992,8 +1987,6 @@ static void delay_shutdown_ev(const void *event_data, void *user_data) {
       ": error writing DelayTable '%s': %s", delay_tab.dt_path,
       strerror(errno));
   }
-
-  return;
 }
 
 /* Initialization functions

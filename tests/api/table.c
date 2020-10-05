@@ -1,6 +1,6 @@
 /*
  * ProFTPD - FTP server testsuite
- * Copyright (c) 2008-2017 The ProFTPD Project team
+ * Copyright (c) 2008-2020 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -155,8 +155,7 @@ START_TEST (table_add_dup_test) {
   fail_unless(errno == EINVAL, "Failed to set errno to EINVAL");
 
   res = pr_table_add_dup(tab, "", NULL, 0);
-  fail_unless(res == -1, "Failed to handle duplicate (empty) key");
-  fail_unless(errno == EEXIST, "Failed to set errno to EEXIST");
+  fail_unless(res == 0, "Failed to handle empty value: %s", strerror(errno));
 
   mark_point();
   res = pr_table_add_dup(tab, "foo", "bar", 0);
