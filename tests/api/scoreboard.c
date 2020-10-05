@@ -936,7 +936,6 @@ START_TEST (scoreboard_entry_kill_test) {
     (unsigned long) sce.sce_pid, strerror(errno));
 
   mark_point();
-  path = pr_get_scoreboard();
   res = pr_set_scoreboard("none");
   fail_unless(res == 0, "Failed to disable scoreboarding: %s", strerror(errno));
   sce.sce_pid = getpid();

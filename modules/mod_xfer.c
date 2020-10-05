@@ -101,8 +101,7 @@ static off_t find_max_nbytes(char *directive) {
      */
 
     if (c->argc > 3) {
-      if (strncmp(c->argv[2], "user", 5) == 0) {
-
+      if (strcasecmp(c->argv[2], "user") == 0) {
         if (pr_expr_eval_user_or((char **) &c->argv[3]) == TRUE) {
           if (*((unsigned int *) c->argv[1]) > ctxt_precedence) {
 
@@ -116,8 +115,7 @@ static off_t find_max_nbytes(char *directive) {
           }
         }
 
-      } else if (strncmp(c->argv[2], "group", 6) == 0) {
-
+      } else if (strcasecmp(c->argv[2], "group") == 0) {
         if (pr_expr_eval_group_or((char **) &c->argv[3]) == TRUE) {
           if (*((unsigned int *) c->argv[1]) > ctxt_precedence) {
 
@@ -131,8 +129,7 @@ static off_t find_max_nbytes(char *directive) {
           }
         }
 
-      } else if (strncmp(c->argv[2], "class", 6) == 0) {
-
+      } else if (strcasecmp(c->argv[2], "class") == 0) {
         if (pr_expr_eval_class_or((char **) &c->argv[3]) == TRUE) {
           if (*((unsigned int *) c->argv[1]) > ctxt_precedence) {
 
@@ -148,7 +145,6 @@ static off_t find_max_nbytes(char *directive) {
       }
 
     } else {
-
       if (*((unsigned int *) c->argv[1]) > ctxt_precedence) {
 
         /* Set the context precedence. */
@@ -166,8 +162,10 @@ static off_t find_max_nbytes(char *directive) {
 
   /* Print out some nice debugging information. */
   if (max_nbytes > 0 &&
-      (have_user_limit || have_group_limit ||
-       have_class_limit || have_all_limit)) {
+      (have_user_limit ||
+       have_group_limit ||
+       have_class_limit ||
+       have_all_limit)) {
     pr_log_debug(DEBUG5, "%s (%" PR_LU " bytes) in effect for %s",
       directive, (pr_off_t) max_nbytes,
       have_user_limit ? "user " : have_group_limit ? "group " :
@@ -229,8 +227,9 @@ static char *get_cmd_from_list(char **list) {
     (*list)++;
   }
 
-  if (!**list)
+  if (!**list) {
     return NULL;
+  }
 
   res = dst = *list;
 
@@ -245,19 +244,20 @@ static char *get_cmd_from_list(char **list) {
     if (**list == '\\' && quote_mode) {
 
       /* escaped char */
-      if (*((*list) + 1))
+      if (*((*list) + 1)) {
         *dst = *(++(*list));
+      }
     }
 
     *dst++ = **list;
     ++(*list);
   }
 
-  if (**list)
+  if (**list) {
     (*list)++;
+  }
 
   *dst = '\0';
-
   return res;
 }
 
@@ -272,7 +272,7 @@ static int xfer_check_limit(cmd_rec *cmd) {
   server_addr[sizeof(server_addr)-1] = '\0';
 
   c = find_config(CURRENT_CONF, CONF_PARAM, "MaxTransfersPerHost", FALSE);
-  while (c) {
+  while (c != NULL) {
     char *xfer_cmd = NULL, **cmdlist = (char **) c->argv[0];
     unsigned char matched_cmd = FALSE;
     unsigned int curr = 0, max = 0;
@@ -291,7 +291,7 @@ static int xfer_check_limit(cmd_rec *cmd) {
       }
     }
 
-    if (!matched_cmd) {
+    if (matched_cmd == FALSE) {
       c = find_config_next(c, c->next, CONF_PARAM, "MaxTransfersPerHost",
         FALSE);
       continue;
@@ -310,14 +310,17 @@ static int xfer_check_limit(cmd_rec *cmd) {
       /* Scoreboard entry must match local server address and remote client
        * address to be counted.
        */
-      if (strcmp(score->sce_server_addr, server_addr) != 0)
+      if (strcmp(score->sce_server_addr, server_addr) != 0) {
         continue;
+      }
 
-      if (strcmp(score->sce_client_addr, client_addr) != 0)
+      if (strcmp(score->sce_client_addr, client_addr) != 0) {
         continue;
+      }
 
-      if (strcmp(score->sce_cmd, xfer_cmd) == 0)
+      if (strcmp(score->sce_cmd, xfer_cmd) == 0) {
         curr++;
+      }
     }
 
     pr_restore_scoreboard();
@@ -328,8 +331,9 @@ static int xfer_check_limit(cmd_rec *cmd) {
       char *maxstr = "Sorry, the maximum number of data transfers (%m) from "
         "your host are currently being used.";
 
-      if (c->argv[2] != NULL)
+      if (c->argv[2] != NULL) {
         maxstr = c->argv[2];
+      }
 
       pr_event_generate("mod_xfer.max-transfers-per-host", session.c);
 
@@ -347,7 +351,7 @@ static int xfer_check_limit(cmd_rec *cmd) {
   }
 
   c = find_config(CURRENT_CONF, CONF_PARAM, "MaxTransfersPerUser", FALSE);
-  while (c) {
+  while (c != NULL) {
     char *xfer_cmd = NULL, **cmdlist = (char **) c->argv[0];
     unsigned char matched_cmd = FALSE;
     unsigned int curr = 0, max = 0;
@@ -366,7 +370,7 @@ static int xfer_check_limit(cmd_rec *cmd) {
       }
     }
 
-    if (!matched_cmd) {
+    if (matched_cmd == FALSE) {
       c = find_config_next(c, c->next, CONF_PARAM, "MaxTransfersPerUser",
         FALSE);
       continue;
@@ -382,14 +386,17 @@ static int xfer_check_limit(cmd_rec *cmd) {
     while ((score = pr_scoreboard_entry_read()) != NULL) {
       pr_signals_handle();
 
-      if (strcmp(score->sce_server_addr, server_addr) != 0)
+      if (strcmp(score->sce_server_addr, server_addr) != 0) {
         continue;
+      }
 
-      if (strcmp(score->sce_user, session.user) != 0)
+      if (strcmp(score->sce_user, session.user) != 0) {
         continue;
+      }
 
-      if (strcmp(score->sce_cmd, xfer_cmd) == 0)
+      if (strcmp(score->sce_cmd, xfer_cmd) == 0) {
         curr++;
+      }
     }
 
     pr_restore_scoreboard();
@@ -400,8 +407,9 @@ static int xfer_check_limit(cmd_rec *cmd) {
       char *maxstr = "Sorry, the maximum number of data transfers (%m) from "
         "this user are currently being used.";
 
-      if (c->argv[2] != NULL)
+      if (c->argv[2] != NULL) {
         maxstr = c->argv[2];
+      }
 
       pr_event_generate("mod_xfer.max-transfers-per-user", session.user);
 
@@ -423,7 +431,7 @@ static int xfer_check_limit(cmd_rec *cmd) {
 
 static void xfer_displayfile(void) {
 
-  if (displayfilexfer_fh) {
+  if (displayfilexfer_fh != NULL) {
     if (pr_display_fh(displayfilexfer_fh, session.vwd, R_226, 0) < 0) {
       pr_log_debug(DEBUG6, "unable to display DisplayFileTransfer "
         "file '%s': %s", displayfilexfer_fh->fh_path, strerror(errno));
@@ -1257,7 +1265,7 @@ static int get_hidden_store_path(cmd_rec *cmd, const char *path,
 MODRET xfer_post_prot(cmd_rec *cmd) {
   CHECK_CMD_ARGS(cmd, 2);
 
-  if (strncmp(cmd->argv[1], "C", 2) != 0) {
+  if (strcmp(cmd->argv[1], "C") != 0) {
     have_rfc2228_data = TRUE;
 
   } else {
@@ -1270,7 +1278,7 @@ MODRET xfer_post_prot(cmd_rec *cmd) {
 MODRET xfer_post_mode(cmd_rec *cmd) {
   CHECK_CMD_ARGS(cmd, 2);
 
-  if (strncmp(cmd->argv[1], "Z", 2) == 0) {
+  if (strcmp(cmd->argv[1], "Z") == 0) {
     have_zmode = TRUE;
 
   } else {
@@ -2944,22 +2952,20 @@ MODRET xfer_retr(cmd_rec *cmd) {
     pr_cmd_set_errno(cmd, EIO);
     errno = EIO;
     return PR_ERROR(cmd);
-
-  } else {
-
-    /* If no throttling is configured, this simply updates the scoreboard.
-     * In this case, we want to use session.xfer.total_bytes, rather than
-     * nbytes_sent, as the latter incorporates a REST position and the
-     * former does not.  (When handling STOR, this is not an issue: different
-     * end-of-loop conditions).
-     */
-    pr_throttle_pause(session.xfer.total_bytes, TRUE);
-
-    retr_complete(cmd->pool);
-    xfer_displayfile();
-    pr_data_close2();
-    pr_response_add(R_226, _("Transfer complete"));
   }
+
+  /* If no throttling is configured, this simply updates the scoreboard.
+   * In this case, we want to use session.xfer.total_bytes, rather than
+   * nbytes_sent, as the latter incorporates a REST position and the
+   * former does not.  (When handling STOR, this is not an issue: different
+   * end-of-loop conditions).
+   */
+  pr_throttle_pause(session.xfer.total_bytes, TRUE);
+
+  retr_complete(cmd->pool);
+  xfer_displayfile();
+  pr_data_close2();
+  pr_response_add(R_226, _("Transfer complete"));
 
   return PR_HANDLED(cmd);
 }
@@ -3010,20 +3016,20 @@ MODRET xfer_type(cmd_rec *cmd) {
   }
 
   type = pstrdup(cmd->tmp_pool, cmd->argv[1]);
-  type[0] = toupper(type[0]);
+  type[0] = toupper((int) type[0]);
 
-  if (strncmp(type, "A", 2) == 0 ||
+  if (strcmp(type, "A") == 0 ||
       (cmd->argc == 3 &&
-       strncmp(type, "L", 2) == 0 &&
-       strncmp(cmd->argv[2], "7", 2) == 0)) {
+       strcmp(type, "L") == 0 &&
+       strcmp(cmd->argv[2], "7") == 0)) {
 
     /* TYPE A(SCII) or TYPE L 7. */
     session.sf_flags |= SF_ASCII;
 
-  } else if (strncmp(type, "I", 2) == 0 ||
+  } else if (strcmp(type, "I") == 0 ||
       (cmd->argc == 3 &&
-       strncmp(type, "L", 2) == 0 &&
-       strncmp(cmd->argv[2], "8", 2) == 0)) {
+       strcmp(type, "L") == 0 &&
+       strcmp(cmd->argv[2], "8") == 0)) {
 
     /* TYPE I(MAGE) or TYPE L 8. */
     session.sf_flags &= (SF_ALL^(SF_ASCII|SF_ASCII_OVERRIDE));
@@ -3066,7 +3072,7 @@ MODRET xfer_stru(cmd_rec *cmd) {
   }
 
   stru = cmd->argv[1];
-  stru[0] = toupper(stru[0]);
+  stru[0] = toupper((int) stru[0]);
 
   switch ((int) stru[0]) {
     case 'F':
@@ -3120,7 +3126,7 @@ MODRET xfer_mode(cmd_rec *cmd) {
   }
 
   mode = cmd->argv[1];
-  mode[0] = toupper(mode[0]);
+  mode[0] = toupper((int) mode[0]);
 
   switch ((int) mode[0]) {
     case 'S':
@@ -3584,11 +3590,12 @@ MODRET set_maxfilesize(cmd_rec *cmd) {
      cmd->server->config_type : CONF_ROOT);
 
   if (cmd->argc-1 == 1) {
-    if (strncmp(cmd->argv[1], "*", 2) != 0) {
+    if (strcmp(cmd->argv[1], "*") != 0) {
       CONF_ERROR(cmd, "incorrect number of parameters");
     }
 
-  } else if (cmd->argc-1 != 2 && cmd->argc-1 != 4) {
+  } else if (cmd->argc-1 != 2 &&
+             cmd->argc-1 != 4) {
     CONF_ERROR(cmd, "incorrect number of parameters");
   }
 
@@ -3621,20 +3628,15 @@ MODRET set_maxfilesize(cmd_rec *cmd) {
    * one.
    */
   if (cmd->argc-1 == 4) {
-    if (strncmp(cmd->argv[3], "user", 5) == 0 ||
-        strncmp(cmd->argv[3], "group", 6) == 0 ||
-        strncmp(cmd->argv[3], "class", 6) == 0) {
-
-       /* no-op */
-
-     } else {
-       CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "unknown classifier used: '",
-         cmd->argv[3], "'", NULL));
+    if (strcasecmp(cmd->argv[3], "user") != 0 &&
+        strcasecmp(cmd->argv[3], "group") != 0 &&
+        strcasecmp(cmd->argv[3], "class") != 0) {
+      CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "unknown classifier used: '",
+        cmd->argv[3], "'", NULL));
     }
   }
 
   if (cmd->argc-1 == 1) {
-
     /* Do nothing here -- the "*" (the only parameter allowed if there is
      * only a single parameter given) signifies an unlimited size, which is
      * what the server provides by default.
@@ -3642,7 +3644,6 @@ MODRET set_maxfilesize(cmd_rec *cmd) {
     nbytes = 0UL;
 
   } else {
-
     /* Pass the cmd_rec off to see what number of bytes was
      * requested/configured.
      */
@@ -3713,8 +3714,9 @@ MODRET set_maxtransfersperhost(cmd_rec *cmd) {
   int count = 0;
 
   if (cmd->argc-1 < 2 ||
-      cmd->argc-1 > 3)
+      cmd->argc-1 > 3) {
     CONF_ERROR(cmd, "bad number of parameters");
+  }
 
   CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL|CONF_ANON|
     CONF_DIR|CONF_DYNDIR);
@@ -3727,14 +3729,16 @@ MODRET set_maxtransfersperhost(cmd_rec *cmd) {
   c = add_config_param(cmd->argv[0], 3, NULL, NULL, NULL);
 
   /* Parse the command list. */
-  if (xfer_parse_cmdlist(cmd->argv[0], c, cmd->argv[1]) < 0)
+  if (xfer_parse_cmdlist(cmd->argv[0], c, cmd->argv[1]) < 0) {
     CONF_ERROR(cmd, "error with command list");
+  }
 
   c->argv[1] = pcalloc(c->pool, sizeof(unsigned int));
   *((unsigned int *) c->argv[1]) = count;
 
-  if (cmd->argc-1 == 3)
+  if (cmd->argc-1 == 3) {
     c->argv[2] = pstrdup(c->pool, cmd->argv[3]);
+  }
 
   c->flags |= CF_MERGEDOWN_MULTI;
 
@@ -3747,28 +3751,32 @@ MODRET set_maxtransfersperuser(cmd_rec *cmd) {
   int count = 0;
 
   if (cmd->argc-1 < 2 ||
-      cmd->argc-1 > 3) 
+      cmd->argc-1 > 3) {
     CONF_ERROR(cmd, "bad number of parameters");
+  }
 
   CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL|CONF_ANON|
     CONF_DIR|CONF_DYNDIR);
 
   count = atoi(cmd->argv[2]);
-  if (count < 1)
+  if (count < 1) {
     CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "count must be greater than zero: '",
       cmd->argv[2], "'", NULL));
+  }
 
   c = add_config_param(cmd->argv[0], 3, NULL, NULL, NULL);
 
   /* Parse the command list. */
-  if (xfer_parse_cmdlist(cmd->argv[0], c, cmd->argv[1]) < 0)
+  if (xfer_parse_cmdlist(cmd->argv[0], c, cmd->argv[1]) < 0) {
     CONF_ERROR(cmd, "error with command list");
+  }
 
   c->argv[1] = pcalloc(c->pool, sizeof(unsigned int));
   *((unsigned int *) c->argv[1]) = count;
 
-  if (cmd->argc-1 == 3)
+  if (cmd->argc-1 == 3) {
     c->argv[2] = pstrdup(c->pool, cmd->argv[3]);
+  }
 
   c->flags |= CF_MERGEDOWN_MULTI;
 
@@ -3783,9 +3791,10 @@ MODRET set_storeuniqueprefix(cmd_rec *cmd) {
     CONF_DIR|CONF_DYNDIR);
 
   /* make sure there are no slashes in the prefix */
-  if (strchr(cmd->argv[1], '/') != NULL)
+  if (strchr(cmd->argv[1], '/') != NULL) {
     CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "no slashes allowed in prefix: '",
       cmd->argv[1], "'", NULL));
+  }
 
   c = add_config_param_str(cmd->argv[0], 1, (void *) cmd->argv[1]);
   c->flags |= CF_MERGEDOWN;
@@ -3878,8 +3887,10 @@ MODRET set_transferrate(cmd_rec *cmd) {
      cmd->server->config_type : CONF_ROOT);
 
   /* Must have two or four parameters */
-  if (cmd->argc-1 != 2 && cmd->argc-1 != 4)
+  if (cmd->argc-1 != 2 &&
+      cmd->argc-1 != 4) {
     CONF_ERROR(cmd, "wrong number of parameters");
+  }
 
   CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL|CONF_ANON|
     CONF_DIR|CONF_DYNDIR);
@@ -3887,54 +3898,55 @@ MODRET set_transferrate(cmd_rec *cmd) {
   /* Set the precedence for this config_rec based on its configuration
    * context.
    */
-  if (ctxt & CONF_GLOBAL)
+  if (ctxt & CONF_GLOBAL) {
     precedence = 1;
 
   /* These will never appear simultaneously */
-  else if (ctxt & CONF_ROOT || ctxt & CONF_VIRTUAL)
+  } else if (ctxt & CONF_ROOT || ctxt & CONF_VIRTUAL) {
     precedence = 2;
 
-  else if (ctxt & CONF_ANON)
+  } else if (ctxt & CONF_ANON) {
     precedence = 3;
 
-  else if (ctxt & CONF_DIR)
+  } else if (ctxt & CONF_DIR) {
     precedence = 4;
 
   /* Note: by tweaking this value to be lower than the precedence for
    * <Directory> appearances of this directive, I can effectively cause
    * any .ftpaccess appearances not to override...
    */
-  else if (ctxt & CONF_DYNDIR)
+  } else if (ctxt & CONF_DYNDIR) {
     precedence = 5;
+  }
 
   /* Check for a valid classifier. */
   if (cmd->argc-1 > 2) {
-    if (strncmp(cmd->argv[3], "user", 5) == 0 ||
-        strncmp(cmd->argv[3], "group", 6) == 0 ||
-        strncmp(cmd->argv[3], "class", 6) == 0) {
-      /* do nothing */
-      ;
-
-    } else {
+    if (strcasecmp(cmd->argv[3], "user") != 0 &&
+        strcasecmp(cmd->argv[3], "group") != 0 &&
+        strcasecmp(cmd->argv[3], "class") != 0) {
       CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "unknown classifier requested: '",
         cmd->argv[3], "'", NULL));
     }
   }
 
-  if ((tmp = strchr(cmd->argv[2], ':')) != NULL)
+  tmp = strchr(cmd->argv[2], ':');
+  if (tmp != NULL) {
     *tmp = '\0';
+  }
 
   /* Parse the 'kbps' part.  Ideally, we'd be using strtold(3) rather than
    * strtod(3) here, but FreeBSD doesn't have strtold(3).  Yay.  Portability.
    */
   rate = (long double) strtod(cmd->argv[2], &endp);
 
-  if (rate < 0.0)
+  if (rate < 0.0) {
     CONF_ERROR(cmd, "rate must be greater than zero");
+  }
 
-  if (endp && *endp)
+  if (endp && *endp) {
     CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "invalid number: '",
       cmd->argv[2], "'", NULL));
+  }
 
   /* Parse any 'free-bytes' part */
   if (tmp) {
@@ -3952,8 +3964,9 @@ MODRET set_transferrate(cmd_rec *cmd) {
     c = add_config_param(cmd->argv[0], 4, NULL, NULL, NULL, NULL);
 
     /* Parse the command list. */
-    if (xfer_parse_cmdlist(cmd->argv[0], c, cmd->argv[1]) < 0)
+    if (xfer_parse_cmdlist(cmd->argv[0], c, cmd->argv[1]) < 0) {
       CONF_ERROR(cmd, "error with command list");
+    }
 
     c->argv[1] = pcalloc(c->pool, sizeof(long double));
     *((long double *) c->argv[1]) = rate;
@@ -4037,25 +4050,25 @@ MODRET set_usesendfile(cmd_rec *cmd) {
       arglen = strlen(arg);
       if (arglen > 1 &&
           arg[arglen-1] == '%') {
-          char *ptr = NULL;
+        char *ptr = NULL;
   
-          arg[arglen-1] = '\0';
+        arg[arglen-1] = '\0';
 
 #ifdef HAVE_STRTOF
-          sendfile_pct = strtof(arg, &ptr);
+        sendfile_pct = strtof(arg, &ptr);
 #elif HAVE_STRTOD
-          sendfile_pct = strtod(arg, &ptr);
+        sendfile_pct = strtod(arg, &ptr);
 #else
-          sendfile_pct = atof(arg);
+        sendfile_pct = atof(arg);
 #endif /* !HAVE_STRTOF and !HAVE_STRTOD */
 
-          if (ptr && *ptr) {
-            CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "bad percentage value '",
-              arg, "%'", NULL));
-          }
+        if (ptr && *ptr) {
+          CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "bad percentage value '",
+            arg, "%'", NULL));
+        }
 
-          sendfile_pct /= 100.0;
-          bool = TRUE;
+        sendfile_pct /= 100.0;
+        bool = TRUE;
 
       } else {
         CONF_ERROR(cmd, "expected Boolean parameter");
@@ -4118,8 +4131,6 @@ static void xfer_exit_ev(const void *event_data, void *user_data) {
     (void) pr_cmd_dispatch_phase(cmd, POST_CMD_ERR, 0);
     (void) pr_cmd_dispatch_phase(cmd, LOG_CMD_ERR, 0);
   }
-
-  return;
 }
 
 static void xfer_sess_reinit_ev(const void *event_data, void *user_data) {
@@ -4172,8 +4183,6 @@ static void xfer_sigusr2_ev(const void *event_data, void *user_data) {
       destroy_pool(tmp_pool);
     }
   }
-
-  return;
 }
 
 static void xfer_timedout(const char *reason) {
@@ -4288,7 +4297,7 @@ static int xfer_sess_init(void) {
    * implicit SSL (Bug#4073).
    */
   if (session.rfc2228_mech != NULL &&
-      strncmp(session.rfc2228_mech, "TLS", 4) == 0) {
+      strcmp(session.rfc2228_mech, "TLS") == 0) {
     have_rfc2228_data = TRUE;
   }
 

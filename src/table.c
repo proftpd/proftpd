@@ -824,8 +824,11 @@ int pr_table_add_dup(pr_table_t *tab, const char *key_data,
     return -1;
   }
 
-  if (value_data == NULL &&
-      value_datasz != 0) {
+  if (value_data == NULL) {
+    if (value_datasz == 0) {
+      return 0;
+    }
+
     errno = EINVAL;
     return -1;
   }

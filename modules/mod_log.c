@@ -910,7 +910,6 @@ static void log_restart_ev(const void *event_data, void *user_data) {
   pr_pool_tag(log_pool, "mod_log pool");
 
   parse_logformat(NULL, "", "%h %l %u %t \"%r\" %s %b");
-  return;
 }
 
 static void log_sess_reinit_ev(const void *event_data, void *user_data) {

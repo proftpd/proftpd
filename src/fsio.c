@@ -1413,7 +1413,6 @@ static int cache_stat(pr_fs_t *fs, const char *path, struct stat *st,
 
   sc = fs_statcache_get(cache_tab, cache_set, cleaned_path, path_len, now);
   if (sc != NULL) {
-
     /* Update the given struct stat pointer with the cached info */
     memcpy(st, &(sc->sc_stat), sizeof(struct stat));
 
@@ -1530,18 +1529,27 @@ static pr_fs_t *lookup_file_fs(const char *path, char **deref, int op) {
 
   /* Determine which function to use, stat() or lstat(). */
   if (op == FSIO_FILE_STAT) {
-    while (fs && fs->fs_next && !fs->stat) {
+    while (fs != NULL &&
+           fs->fs_next != NULL &&
+           fs->stat == NULL) {
       fs = fs->fs_next;
     }
 
     mystat = fs->stat;
 
   } else {
-    while (fs && fs->fs_next && !fs->lstat) {
+    while (fs != NULL &&
+           fs->fs_next != NULL &&
+           fs->lstat == NULL) {
       fs = fs->fs_next;
     }
 
     mystat = fs->lstat;
+  }
+
+  if (mystat == NULL) {
+    errno = ENOSYS;
+    return NULL;
   }
 
   res = mystat(fs, path, &st);

@@ -299,7 +299,8 @@ MODRET start_ifmodule(cmd_rec *cmd) {
     pr_signals_handle();
 
     /* Advance past any leading whitespace. */
-    for (bufp = config_line; *bufp && PR_ISSPACE(*bufp); bufp++);
+    for (bufp = config_line; *bufp && PR_ISSPACE(*bufp); bufp++) {
+    }
 
     if (strncasecmp(bufp, "<IfModule", 9) == 0) {
       ifmodule_ctx_count++;
@@ -590,7 +591,7 @@ MODRET set_servername(cmd_rec *cmd) {
   CHECK_ARGS(cmd, 1);
   CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL);
 
-  s->ServerName = pstrdup(s->pool,cmd->argv[1]);
+  s->ServerName = pstrdup(s->pool, cmd->argv[1]);
   return PR_HANDLED(cmd);
 }
 
@@ -598,14 +599,15 @@ MODRET set_servertype(cmd_rec *cmd) {
   CHECK_ARGS(cmd, 1);
   CHECK_CONF(cmd, CONF_ROOT);
 
-  if (strcasecmp(cmd->argv[1], "inetd") == 0)
+  if (strcasecmp(cmd->argv[1], "inetd") == 0) {
     ServerType = SERVER_INETD;
 
-  else if (strcasecmp(cmd->argv[1], "standalone") == 0)
+  } else if (strcasecmp(cmd->argv[1], "standalone") == 0) {
     ServerType = SERVER_STANDALONE;
 
-  else
+  } else {
     CONF_ERROR(cmd,"type must be either 'inetd' or 'standalone'");
+  }
 
   return PR_HANDLED(cmd);
 }
@@ -1558,7 +1560,7 @@ MODRET set_trace(cmd_rec *cmd) {
   /* Look for the optional "session" keyword, which will indicate that these
    * Trace settings are to be applied to a session process only.
    */
-  if (strncmp(cmd->argv[1], "session", 8) == 0) {
+  if (strcasecmp(cmd->argv[1], "session") == 0) {
 
     /* If this is the only parameter, it's a config error. */
     if (cmd->argc == 2) {
@@ -1569,7 +1571,7 @@ MODRET set_trace(cmd_rec *cmd) {
     idx = 2;
   }
 
-  if (!per_session) {
+  if (per_session == FALSE) {
     for (i = idx; i < cmd->argc; i++) {
       char *channel, *ptr;
       int min_level, max_level, res;
@@ -1646,11 +1648,10 @@ MODRET set_tracelog(cmd_rec *cmd) {
     if (errno == EPERM) {
       CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "error using TraceLog '",
         trace_log, "': directory is symlink or is world-writable", NULL));
-
-    } else {
-      CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "error using TraceLog '",
-        trace_log, "': ", strerror(errno), NULL));
     }
+
+    CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "error using TraceLog '",
+      trace_log, "': ", strerror(errno), NULL));
   }
 
   return PR_HANDLED(cmd);
@@ -1869,21 +1870,19 @@ MODRET set_protocols(cmd_rec *cmd) {
 /* usage: RegexOptions [MatchLimit limit] [MatchLimitRecursion limit]
  */
 MODRET set_regexoptions(cmd_rec *cmd) {
+  register unsigned int i;
   config_rec *c;
   unsigned long match_limit = 0, match_limit_recursion = 0;
-  register unsigned int i;
+  int npairs;
 
   if (cmd->argc < 3) {
     CONF_ERROR(cmd, "Wrong number of parameters");
+  }
 
-  } else {
-    int npairs;
-
-    /* Make sure we have an even number of args for the key/value pairs. */
-    npairs = cmd->argc - 1;
-    if (npairs % 2 != 0) {
-      CONF_ERROR(cmd, "Wrong number of parameters");
-    }
+  /* Make sure we have an even number of args for the key/value pairs. */
+  npairs = cmd->argc - 1;
+  if (npairs % 2 != 0) {
+    CONF_ERROR(cmd, "Wrong number of parameters");
   }
 
   CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL);
@@ -1893,7 +1892,7 @@ MODRET set_regexoptions(cmd_rec *cmd) {
    */
 
   for (i = 1; i < cmd->argc; i++) {
-    if (strncmp(cmd->argv[i], "MatchLimit", 11) == 0) {
+    if (strcmp(cmd->argv[i], "MatchLimit") == 0) {
       char *ptr = NULL;
 
       match_limit = strtoul(cmd->argv[i+1], &ptr, 10);
@@ -1905,7 +1904,7 @@ MODRET set_regexoptions(cmd_rec *cmd) {
       /* Don't forget to advance i past the value. */
       i += 2;
 
-    } else if (strncmp(cmd->argv[i], "MatchLimitRecursion", 20) == 0) {
+    } else if (strcmp(cmd->argv[i], "MatchLimitRecursion") == 0) {
       char *ptr = NULL;
 
       match_limit_recursion = strtoul(cmd->argv[i+1], &ptr, 10);
@@ -2298,7 +2297,7 @@ MODRET add_directory(cmd_rec *cmd) {
       cmd->config->config_type == CONF_ANON &&
       *dir != '/' &&
       *dir != '~') {
-    if (strncmp(dir, "*", 2) != 0) {
+    if (strcmp(dir, "*") != 0) {
       dir = pdircat(cmd->tmp_pool, "/", dir, NULL);
     }
     rootdir = cmd->config->name;
@@ -2425,13 +2424,9 @@ MODRET set_hidefiles(cmd_rec *cmd) {
    * a valid classifier was used.
    */
   if (cmd->argc-1 == 3) {
-    if (strncmp(cmd->argv[2], "user", 5) == 0 ||
-        strncmp(cmd->argv[2], "group", 6) == 0 ||
-        strncmp(cmd->argv[2], "class", 6) == 0) {
-
-      /* no-op */
-
-    } else {
+    if (strcasecmp(cmd->argv[2], "user") != 0 &&
+        strcasecmp(cmd->argv[2], "group") != 0 &&
+        strcasecmp(cmd->argv[2], "class") != 0) {
       return PR_ERROR_MSG(cmd, NULL, pstrcat(cmd->tmp_pool, cmd->argv[0],
         "unknown classifier used: '", cmd->argv[2], "'", NULL));
     }
@@ -2689,11 +2684,11 @@ MODRET add_anonymous(cmd_rec *cmd) {
       "in pathname", NULL));
   }
 
-  if (strncmp(dir, "/", 2) == 0) {
+  if (strcmp(dir, "/") == 0) {
     CONF_ERROR(cmd, "'/' not permitted for anonymous root directory");
   }
 
-  if (*(dir+strlen(dir)-1) != '/') {
+  if (*(dir + strlen(dir)-1) != '/') {
     dir = pstrcat(cmd->tmp_pool, dir, "/", NULL);
   }
 
@@ -2951,10 +2946,10 @@ MODRET set_allowdenyusergroupclass(cmd_rec *cmd) {
   /* For AllowClass/DenyClass and AllowUser/DenyUser, the default expression
    * type is "or".
    */
-  if (strncmp(cmd->argv[0], "AllowClass", 11) == 0 ||
-      strncmp(cmd->argv[0], "AllowUser", 10) == 0 ||
-      strncmp(cmd->argv[0], "DenyClass", 10) == 0 ||
-      strncmp(cmd->argv[0], "DenyUser", 9) == 0) {
+  if (strcmp(cmd->argv[0], "AllowClass") == 0 ||
+      strcmp(cmd->argv[0], "AllowUser") == 0 ||
+      strcmp(cmd->argv[0], "DenyClass") == 0 ||
+      strcmp(cmd->argv[0], "DenyUser") == 0) {
     eval_type = PR_EXPR_EVAL_OR;
 
   /* For AllowGroup and DenyGroup, the default expression type is "and". */
@@ -3074,13 +3069,15 @@ MODRET set_allowdeny(cmd_rec *cmd) {
       argv++;
       argc--;
       continue;
+    }
 
-    } else if (strcasecmp("!all", *(((char **) argv) + 1)) == 0 ||
-               strcasecmp("!none", *(((char **) argv) + 1)) == 0) {
+    if (strcasecmp("!all", *(((char **) argv) + 1)) == 0 ||
+         strcasecmp("!none", *(((char **) argv) + 1)) == 0) {
       CONF_ERROR(cmd, "the ! negation operator cannot be used with ALL/NONE");
+    }
 
-    } else if (strcasecmp("all", *(argv+1)) == 0 ||
-               strcasecmp("none", *(argv+1)) == 0) {
+    if (strcasecmp("all", *(argv+1)) == 0 ||
+        strcasecmp("none", *(argv+1)) == 0) {
       *((pr_netacl_t **) push_array(list)) =
         pr_netacl_create(c->pool, *(argv+1));
       argc = 0;
@@ -3815,7 +3812,7 @@ MODRET core_pasv(cmd_rec *cmd) {
    * see Bug#3862.
    */
   proto = pr_session_get_protocol(0);
-  if (strncmp(proto, "ftps", 5) == 0) {
+  if (strcmp(proto, "ftps") == 0) {
     c = find_config(main_server->conf, CONF_PARAM, "TLSMasqueradeAddress",
       FALSE);
     if (c != NULL) {
@@ -3979,7 +3976,7 @@ MODRET core_port(cmd_rec *cmd) {
   listen_addr = session.c->local_addr;
 
   proto = pr_session_get_protocol(0);
-  if (strncmp(proto, "ftps", 5) == 0) {
+  if (strcmp(proto, "ftps") == 0) {
     c = find_config(main_server->conf, CONF_PARAM, "TLSMasqueradeAddress",
       FALSE);
     if (c != NULL) {
@@ -4269,8 +4266,10 @@ MODRET core_eprt(cmd_rec *cmd) {
 
       pr_netaddr_set_family(&na, AF_INET);
       sa = pr_netaddr_get_sockaddr(&na);
-      if (sa)
+      if (sa != NULL) {
         sa->sa_family = AF_INET;
+      }
+
       if (pr_inet_pton(AF_INET, argstr, pr_netaddr_get_inaddr(&na)) <= 0) {
         pr_log_debug(DEBUG2, "error converting IPv4 address '%s': %s",
           argstr, strerror(errno));
@@ -4288,8 +4287,10 @@ MODRET core_eprt(cmd_rec *cmd) {
 
       pr_netaddr_set_family(&na, AF_INET6);
       sa = pr_netaddr_get_sockaddr(&na);
-      if (sa)
+      if (sa != NULL) {
         sa->sa_family = AF_INET6;
+      }
+
       if (pr_inet_pton(AF_INET6, argstr, pr_netaddr_get_inaddr(&na)) <= 0) {
         pr_log_debug(DEBUG2, "error converting IPv6 address '%s': %s",
           argstr, strerror(errno));
@@ -4332,7 +4333,7 @@ MODRET core_eprt(cmd_rec *cmd) {
   listen_addr = session.c->local_addr;
 
   proto = pr_session_get_protocol(0);
-  if (strncmp(proto, "ftps", 5) == 0) {
+  if (strcmp(proto, "ftps") == 0) {
     c = find_config(main_server->conf, CONF_PARAM, "TLSMasqueradeAddress",
       FALSE);
     if (c != NULL) {
@@ -4553,8 +4554,9 @@ MODRET core_epsv(cmd_rec *cmd) {
 
 #ifdef PR_USE_IPV6
     case 2:
-      if (pr_netaddr_use_ipv6())
+      if (pr_netaddr_use_ipv6()) {
         break;
+      }
 #endif /* PR_USE_IPV6 */
 
     default:
@@ -4693,7 +4695,7 @@ MODRET core_help(cmd_rec *cmd) {
     char *cp;
 
     for (cp = cmd->argv[1]; *cp; cp++) {
-      *cp = toupper(*cp);
+      *cp = toupper((int) *cp);
     }
 
     if (strcasecmp(cmd->argv[1], C_SITE) == 0) {
@@ -4854,8 +4856,9 @@ MODRET core_host(cmd_rec *cmd) {
      */
     pr_response_add(R_220, _("HOST command successful"));
     return PR_HANDLED(cmd);
+  }
 
-  } else if (pr_netaddr_is_v6(host) == TRUE) {
+  if (pr_netaddr_is_v6(host) == TRUE) {
     if (pr_netaddr_is_v6(local_ipstr) == TRUE) {
 
       if (found_ipv6 == FALSE) {
@@ -4930,7 +4933,7 @@ MODRET core_host(cmd_rec *cmd) {
   }
 
   if (session.rfc2228_mech != NULL &&
-      strncmp(session.rfc2228_mech, "TLS", 4) == 0) {
+      strcmp(session.rfc2228_mech, "TLS") == 0) {
     const char *sni = NULL;
 
     /* If the TLS client used the SNI extension, ensure that the SNI name
@@ -5249,25 +5252,26 @@ MODRET core_chdir(cmd_rec *cmd, char *ndir) {
     ndir = dir_canonical_vpath(cmd->tmp_pool, ndir);
     dir = dir_realpath(cmd->tmp_pool, ndir);
 
-    if (!dir) {
+    if (dir == NULL) {
       use_cdpath = TRUE;
     }
 
-    if (!use_cdpath) {
+    if (use_cdpath == FALSE) {
       int allowed_access = TRUE;
 
       allowed_access = dir_check_full(cmd->tmp_pool, cmd, cmd->group, dir,
         NULL);
-      if (!allowed_access)
+      if (allowed_access == FALSE) {
         use_cdpath = TRUE;
+      }
     }
 
-    if (!use_cdpath &&
+    if (use_cdpath == FALSE &&
         pr_fsio_chdir_canon(ndir, 1) < 0) {
       use_cdpath = TRUE;
     }            
 
-    if (use_cdpath) {
+    if (use_cdpath == TRUE) {
       for (cdpath = find_config(main_server->conf, CONF_PARAM, "CDPath", TRUE);
           cdpath != NULL;
           cdpath = find_config_next(cdpath, cdpath->next, CONF_PARAM, "CDPath", TRUE)) {
@@ -5604,6 +5608,8 @@ MODRET core_cdup(cmd_rec *cmd) {
 MODRET core_mdtm(cmd_rec *cmd) {
   char *decoded_path, *path;
   struct stat st;
+  char buf[16];
+  struct tm *tm;
 
   CHECK_CMD_MIN_ARGS(cmd, 2);
 
@@ -5636,35 +5642,29 @@ MODRET core_mdtm(cmd_rec *cmd) {
     pr_cmd_set_errno(cmd, xerrno);
     errno = xerrno;
     return PR_ERROR(cmd);
-
-  } else {
-    if (!S_ISREG(st.st_mode)) {
-      pr_response_add_err(R_550, _("%s: not a plain file"), cmd->arg);
-
-      pr_cmd_set_errno(cmd, EINVAL);
-      errno = EINVAL;
-      return PR_ERROR(cmd);
-
-    } else {
-      char buf[16];
-      struct tm *tm;
-
-      memset(buf, '\0', sizeof(buf));
-
-      tm = pr_gmtime(cmd->tmp_pool, &st.st_mtime);
-      if (tm != NULL) {
-        pr_snprintf(buf, sizeof(buf), "%04d%02d%02d%02d%02d%02d",
-          tm->tm_year+1900, tm->tm_mon+1, tm->tm_mday, tm->tm_hour,
-          tm->tm_min, tm->tm_sec);
-
-      } else {
-        pr_snprintf(buf, sizeof(buf), "00000000000000");
-      }
-
-      pr_response_add(R_213, "%s", buf);
-    }
   }
 
+  if (!S_ISREG(st.st_mode)) {
+    pr_response_add_err(R_550, _("%s: not a plain file"), cmd->arg);
+
+    pr_cmd_set_errno(cmd, EINVAL);
+    errno = EINVAL;
+    return PR_ERROR(cmd);
+  }
+
+  memset(buf, '\0', sizeof(buf));
+
+  tm = pr_gmtime(cmd->tmp_pool, &st.st_mtime);
+  if (tm != NULL) {
+    pr_snprintf(buf, sizeof(buf), "%04d%02d%02d%02d%02d%02d",
+      tm->tm_year+1900, tm->tm_mon+1, tm->tm_mday, tm->tm_hour,
+      tm->tm_min, tm->tm_sec);
+
+  } else {
+    pr_snprintf(buf, sizeof(buf), "00000000000000");
+  }
+
+  pr_response_add(R_213, "%s", buf);
   return PR_HANDLED(cmd);
 }
 
@@ -5730,20 +5730,17 @@ MODRET core_size(cmd_rec *cmd) {
     pr_cmd_set_errno(cmd, xerrno);
     errno = xerrno;
     return PR_ERROR(cmd);
-
-  } else {
-    if (!S_ISREG(st.st_mode)) {
-      pr_response_add_err(R_550, _("%s: not a regular file"), cmd->arg);
-
-      pr_cmd_set_errno(cmd, EINVAL);
-      errno = EINVAL;
-      return PR_ERROR(cmd);
-
-    } else {
-      pr_response_add(R_213, "%" PR_LU, (pr_off_t) st.st_size);
-    }
   }
 
+  if (!S_ISREG(st.st_mode)) {
+    pr_response_add_err(R_550, _("%s: not a regular file"), cmd->arg);
+
+    pr_cmd_set_errno(cmd, EINVAL);
+    errno = EINVAL;
+    return PR_ERROR(cmd);
+  }
+
+  pr_response_add(R_213, "%" PR_LU, (pr_off_t) st.st_size);
   return PR_HANDLED(cmd);
 }
 
@@ -6119,8 +6116,9 @@ MODRET core_rnto(cmd_rec *cmd) {
 }
 
 MODRET core_rnto_cleanup(cmd_rec *cmd) {
-  if (session.xfer.p)
+  if (session.xfer.p != NULL) {
     destroy_pool(session.xfer.p);
+  }
 
   memset(&session.xfer, '\0', sizeof(session.xfer));
 
