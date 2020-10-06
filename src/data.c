@@ -518,6 +518,7 @@ void pr_data_init(char *filename, int direction) {
 
 int pr_data_open(char *filename, char *reason, int direction, off_t size) {
   int res = 0;
+  struct sigaction act;
 
   if (session.c == NULL) {
     errno = EINVAL;
@@ -554,7 +555,7 @@ int pr_data_open(char *filename, char *reason, int direction, off_t size) {
     session.xfer.direction = direction;
   }
 
-  if (!reason) {
+  if (reason == NULL) {
     reason = filename;
   }
 
@@ -568,89 +569,90 @@ int pr_data_open(char *filename, char *reason, int direction, off_t size) {
     res = data_active_open(reason, size);
   }
 
-  if (res >= 0) {
-    struct sigaction act;
+  if (res < 0) {
+    return res;
+  }
 
-    if (pr_netio_postopen(session.d->instrm) < 0) {
-      int xerrno;
 
-      pr_response_add_err(R_425, _("Unable to build data connection: %s"),
-        strerror(session.d->xerrno));
-      xerrno = session.d->xerrno;
-      pr_data_close2();
+  if (pr_netio_postopen(session.d->instrm) < 0) {
+    int xerrno;
 
-      errno = xerrno;
-      return -1;
-    }
+    pr_response_add_err(R_425, _("Unable to build data connection: %s"),
+      strerror(session.d->xerrno));
+    xerrno = session.d->xerrno;
+    pr_data_close2();
 
-    if (pr_netio_postopen(session.d->outstrm) < 0) {
-      int xerrno;
+    errno = xerrno;
+    return -1;
+  }
 
-      pr_response_add_err(R_425, _("Unable to build data connection: %s"),
-        strerror(session.d->xerrno));
-      xerrno = session.d->xerrno;
-      pr_data_close2();
+  if (pr_netio_postopen(session.d->outstrm) < 0) {
+    int xerrno;
 
-      errno = xerrno;
-      return -1;
-    }
+    pr_response_add_err(R_425, _("Unable to build data connection: %s"),
+      strerror(session.d->xerrno));
+    xerrno = session.d->xerrno;
+    pr_data_close2();
 
-    memset(&session.xfer.start_time, '\0', sizeof(session.xfer.start_time));
-    gettimeofday(&session.xfer.start_time, NULL);
+    errno = xerrno;
+    return -1;
+  }
 
-    if (session.xfer.direction == PR_NETIO_IO_RD) {
-      nstrm = session.d->instrm;
+  memset(&session.xfer.start_time, '\0', sizeof(session.xfer.start_time));
+  gettimeofday(&session.xfer.start_time, NULL);
 
-    } else {
-      nstrm = session.d->outstrm;
-    }
+  if (session.xfer.direction == PR_NETIO_IO_RD) {
+    nstrm = session.d->instrm;
 
-    session.sf_flags |= SF_XFER;
+  } else {
+    nstrm = session.d->outstrm;
+  }
 
-    if (timeout_noxfer) {
-      pr_timer_reset(PR_TIMER_NOXFER, ANY_MODULE);
-    }
+  session.sf_flags |= SF_XFER;
 
-    /* Allow aborts -- set the current NetIO stream to allow interrupted
-     * syscalls, so our SIGURG handler can interrupt it
-     */
-    pr_netio_set_poll_interval(nstrm, 1);
+  if (timeout_noxfer) {
+    pr_timer_reset(PR_TIMER_NOXFER, ANY_MODULE);
+  }
 
-    /* PORTABILITY: sigaction is used here to allow us to indicate
-     * (w/ POSIX at least) that we want SIGURG to interrupt syscalls.  Put
-     * in whatever is necessary for your arch here; probably not necessary
-     * as the only _important_ interrupted syscall is select(), which on
-     * any sensible system is interrupted.
-     */
+  /* Allow aborts -- set the current NetIO stream to allow interrupted
+   * syscalls, so our SIGURG handler can interrupt it
+   */
+  pr_netio_set_poll_interval(nstrm, 1);
 
-    act.sa_handler = data_urgent;
-    sigemptyset(&act.sa_mask);
-    act.sa_flags = 0;
+  /* PORTABILITY: sigaction is used here to allow us to indicate
+   * (w/ POSIX at least) that we want SIGURG to interrupt syscalls.  Put
+   * in whatever is necessary for your arch here; probably not necessary
+   * as the only _important_ interrupted syscall is select(), which on
+   * any sensible system is interrupted.
+   */
+
+  act.sa_handler = data_urgent;
+  sigemptyset(&act.sa_mask);
+  act.sa_flags = 0;
 #ifdef SA_INTERRUPT
-    act.sa_flags |= SA_INTERRUPT;
+  act.sa_flags |= SA_INTERRUPT;
 #endif
 
-    if (sigaction(SIGURG, &act, NULL) < 0) {
-      pr_log_pri(PR_LOG_WARNING,
-        "warning: unable to set SIGURG signal handler: %s", strerror(errno));
-    }
+  if (sigaction(SIGURG, &act, NULL) < 0) {
+    pr_log_pri(PR_LOG_WARNING,
+      "warning: unable to set SIGURG signal handler: %s", strerror(errno));
+  }
 
 #ifdef HAVE_SIGINTERRUPT
-    /* This is the BSD way of ensuring interruption.
-     * Linux uses it too (??)
-     */
-    if (siginterrupt(SIGURG, 1) < 0) {
-      pr_log_pri(PR_LOG_WARNING,
-        "warning: unable to make SIGURG interrupt system calls: %s",
-        strerror(errno));
-    }
+  /* This is the BSD way of ensuring interruption.
+   * Linux uses it too (??)
+   */
+  if (siginterrupt(SIGURG, 1) < 0) {
+    pr_log_pri(PR_LOG_WARNING,
+      "warning: unable to make SIGURG interrupt system calls: %s",
+      strerror(errno));
+  }
 #endif
 
-    /* Reset all of the timing-related variables for data transfers. */
-    pr_gettimeofday_millis(&data_start_ms);
-    data_first_byte_read = FALSE;
-    data_first_byte_written = FALSE;
-  }
+  /* Reset all of the timing-related variables for data transfers. */
+  pr_gettimeofday_millis(&data_start_ms);
+  data_first_byte_read = FALSE;
+  data_first_byte_written = FALSE;
 
   return res;
 }

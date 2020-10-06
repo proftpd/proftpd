@@ -82,7 +82,7 @@ static void tear_down(void) {
 
   pr_response_set_pool(NULL);
 
-  if (p) {
+  if (p == NULL) {
     destroy_pool(p);
     p = session.pool = session.xfer.p = permanent_pool = NULL;
   } 

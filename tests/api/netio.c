@@ -1364,8 +1364,20 @@ static int netio_write_cb(pr_netio_stream_t *nstrm, char *buf, size_t buflen) {
   return buflen;
 }
 
+static int devnull_fd(void) {
+  int fd;
+
+  fd = open("/dev/null", O_RDWR);
+  if (fd < 0) {
+    fprintf(stderr, "Error opening /dev/null: %s\n", strerror(errno));
+    return -1;
+  }
+
+  return fd;
+}
+
 static int netio_read_from_stream(int strm_type) {
-  int fd = 2, res;
+  int fd, res;
   char buf[1024], *expected_text;
   size_t expected_sz;
   pr_netio_stream_t *nstrm;
@@ -1373,6 +1385,11 @@ static int netio_read_from_stream(int strm_type) {
   res = pr_netio_read(NULL, NULL, 0, 0);
   if (res == 0) {
     errno = EINVAL;
+    return -1;
+  }
+
+  fd = devnull_fd();
+  if (fd < 0) {
     return -1;
   }
 
@@ -1453,7 +1470,7 @@ static int netio_read_from_stream(int strm_type) {
 }
 
 static int netio_write_to_stream(int strm_type, int use_async) {
-  int fd = 2, res;
+  int fd, res;
   char *buf;
   size_t buflen;
   pr_netio_stream_t *nstrm;
@@ -1461,6 +1478,11 @@ static int netio_write_to_stream(int strm_type, int use_async) {
   res = pr_netio_write(NULL, NULL, 0);
   if (res == 0) {
     errno = EINVAL;
+    return -1;
+  }
+
+  fd = devnull_fd();
+  if (fd < 0) {
     return -1;
   }
 
@@ -1528,6 +1550,35 @@ static int netio_write_to_stream(int strm_type, int use_async) {
 START_TEST (netio_read_test) {
   int res;
   pr_netio_t *netio, *netio2;
+  pr_netio_stream_t *nstrm;
+  char *buf;
+
+  mark_point();
+  res = pr_netio_read(NULL, NULL, 0, 0);
+  fail_unless(res < 0, "Failed to handle null nstrm");
+  fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+    strerror(errno), errno);
+
+  mark_point();
+  nstrm = pcalloc(p, sizeof(pr_netio_stream_t));
+  res = pr_netio_read(nstrm, NULL, 0, 0);
+  fail_unless(res < 0, "Failed to handle null buf");
+  fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+    strerror(errno), errno);
+
+  mark_point();
+  buf = "foo";
+  res = pr_netio_read(nstrm, buf, 0, 0);
+  fail_unless(res < 0, "Failed to handle zero buflen");
+  fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+    strerror(errno), errno);
+
+  mark_point();
+  nstrm->strm_fd = -2;
+  res = pr_netio_read(nstrm, buf, 3, 0);
+  fail_unless(res < 0, "Failed to handle bad nstrm fd");
+  fail_unless(errno == EBADF, "Expected EBADF (%d), got %s (%d)", EBADF,
+    strerror(errno), errno);
 
   netio = pr_alloc_netio2(p, NULL, "testsuite");
   netio->poll = netio_poll_cb;
@@ -1639,6 +1690,35 @@ END_TEST
 START_TEST (netio_write_test) {
   int res;
   pr_netio_t *netio, *netio2;
+  pr_netio_stream_t *nstrm;
+  char *buf;
+
+  mark_point();
+  res = pr_netio_write(NULL, NULL, 0);
+  fail_unless(res < 0, "Failed to handle null nstrm");
+  fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+    strerror(errno), errno);
+
+  mark_point();
+  nstrm = pcalloc(p, sizeof(pr_netio_stream_t));
+  res = pr_netio_write(nstrm, NULL, 0);
+  fail_unless(res < 0, "Failed to handle null buf");
+  fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+    strerror(errno), errno);
+
+  mark_point();
+  buf = "foo";
+  res = pr_netio_write(nstrm, buf, 0);
+  fail_unless(res < 0, "Failed to handle zero buflen");
+  fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+    strerror(errno), errno);
+
+  mark_point();
+  nstrm->strm_fd = -34;
+  res = pr_netio_write(nstrm, buf, 3);
+  fail_unless(res < 0, "Failed to handle bad nstrm fd");
+  fail_unless(errno == EBADF, "Expected EBADF (%d), got %s (%d)", EBADF,
+    strerror(errno), errno);
 
   netio = pr_alloc_netio2(p, NULL, "testsuite");
   netio->poll = netio_poll_cb;
@@ -1703,21 +1783,64 @@ END_TEST
 START_TEST (netio_write_async_test) {
   int res;
   pr_netio_t *netio;
+  pr_netio_stream_t *nstrm;
+
+  mark_point();
+  res = pr_netio_write_async(NULL, NULL, 0);
+  fail_unless(res < 0, "Failed to handle null nstrm");
+  fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+    strerror(errno), errno);
+
+  mark_point();
+  nstrm = pcalloc(p, sizeof(pr_netio_stream_t));
+  nstrm->strm_fd = -1;
+  res = pr_netio_write_async(nstrm, NULL, 0);
+  fail_unless(res < 0, "Failed to handle bad nstrm fd");
+  fail_unless(errno == EBADF, "Expected EBADF (%d), got %s (%d)", EBADF,
+    strerror(errno), errno);
 
   netio = pr_alloc_netio2(p, NULL, "testsuite");
   netio->poll = netio_poll_cb;
   netio->write = netio_write_cb;
 
+  /* ctrl */
   res = pr_register_netio(netio, PR_NETIO_STRM_CTRL);
   fail_unless(res == 0, "Failed to register custom ctrl NetIO: %s",
     strerror(errno));
 
+  mark_point();
   res = netio_write_to_stream(PR_NETIO_STRM_CTRL, TRUE);
   fail_unless(res == 0, "Failed to write to custom ctrl NetIO: %s",
     strerror(errno));
 
   mark_point();
   pr_unregister_netio(PR_NETIO_STRM_CTRL);
+
+  /* data */
+  res = pr_register_netio(netio, PR_NETIO_STRM_DATA);
+  fail_unless(res == 0, "Failed to register custom data NetIO: %s",
+    strerror(errno));
+
+  mark_point();
+  res = netio_write_to_stream(PR_NETIO_STRM_DATA, TRUE);
+  fail_unless(res == 0, "Failed to write to custom data NetIO: %s",
+    strerror(errno));
+
+  mark_point();
+  pr_unregister_netio(PR_NETIO_STRM_DATA);
+
+  /* othr */
+  res = pr_register_netio(netio, PR_NETIO_STRM_OTHR);
+  fail_unless(res == 0, "Failed to register custom othr NetIO: %s",
+    strerror(errno));
+
+  mark_point();
+  res = netio_write_to_stream(PR_NETIO_STRM_OTHR, TRUE);
+  fail_unless(res == 0, "Failed to write to custom othr NetIO: %s",
+    strerror(errno));
+
+  mark_point();
+  pr_unregister_netio(PR_NETIO_STRM_OTHR);
 }
 END_TEST
 
@@ -1861,7 +1984,15 @@ START_TEST (netio_lingering_abort_test) {
 
   mark_point();
   res = pr_netio_lingering_abort(NULL, linger);
-  fail_unless(res < 0, "Failed to handle null arguments");
+  fail_unless(res < 0, "Failed to handle null nstrm");
+  fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+    strerror(errno), errno);
+
+  mark_point();
+  nstrm = pcalloc(p, sizeof(pr_netio_stream_t));
+  nstrm->strm_type = 0;
+  res = pr_netio_lingering_abort(nstrm, linger);
+  fail_unless(res < 0, "Failed to handle invalid nstrm type");
   fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
     strerror(errno), errno);
 
@@ -1927,6 +2058,55 @@ START_TEST (netio_lingering_abort_test) {
 }
 END_TEST
 
+START_TEST (netio_poll_test) {
+  int res;
+  pr_netio_stream_t *nstrm;
+
+  mark_point();
+  res = pr_netio_poll(NULL);
+  fail_unless(res < 0, "Failed to handle null nstrm");
+  fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+    strerror(errno), errno);
+
+  mark_point();
+  nstrm = pcalloc(p, sizeof(pr_netio_stream_t));
+  nstrm->strm_fd = -3;
+  res = pr_netio_poll(nstrm);
+  fail_unless(res < 0, "Failed to handle bad nstrm fd");
+  fail_unless(errno == EBADF, "Expected EBADF (%d), got %s (%d)", EBADF,
+    strerror(errno), errno);
+
+  mark_point();
+  nstrm->strm_fd = fileno(stderr);
+  nstrm->strm_flags |= PR_NETIO_SESS_ABORT;
+  res = pr_netio_poll(nstrm);
+  fail_unless(res == 1, "Failed to handle SESS_ABORT flag");
+
+  mark_point();
+  nstrm->strm_flags |= PR_NETIO_SESS_INTR;
+  res = pr_netio_poll(nstrm);
+  fail_unless(res < 0, "Failed to handle SESS_INTR flag");
+  fail_unless(errno == EOF, "Expected EOF (%d), got %s (%d)", EOF,
+    strerror(errno), errno);
+
+  mark_point();
+  nstrm->strm_flags &= ~PR_NETIO_SESS_INTR;
+  nstrm->strm_type = PR_NETIO_STRM_CTRL;
+  res = pr_netio_poll(nstrm);
+  fail_unless(res == 0, "Failed to handle ctrl strm: %s", strerror(errno));
+
+  mark_point();
+  nstrm->strm_type = PR_NETIO_STRM_DATA;
+  res = pr_netio_poll(nstrm);
+  fail_unless(res == 0, "Failed to handle data strm: %s", strerror(errno));
+
+  mark_point();
+  nstrm->strm_type = PR_NETIO_STRM_OTHR;
+  res = pr_netio_poll(nstrm);
+  fail_unless(res == 0, "Failed to handle othr strm: %s", strerror(errno));
+}
+END_TEST
+
 START_TEST (netio_poll_interval_test) {
   pr_netio_stream_t *nstrm;
   int fd = -1;
@@ -1967,7 +2147,14 @@ START_TEST (netio_shutdown_test) {
 
   mark_point();
   res = pr_netio_shutdown(NULL, how);
-  fail_unless(res < 0, "Failed to handle null arguments");
+  fail_unless(res < 0, "Failed to handle null nstrm");
+  fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+    strerror(errno), errno);
+
+  mark_point();
+  nstrm = pcalloc(p, sizeof(pr_netio_stream_t));
+  res = pr_netio_shutdown(nstrm, how);
+  fail_unless(res < 0, "Failed to handle invalid nstrm type");
   fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
     strerror(errno), errno);
 
@@ -2022,6 +2209,154 @@ START_TEST (netio_shutdown_test) {
 }
 END_TEST
 
+START_TEST (netio_register_test) {
+  int res;
+  pr_netio_t *netio;
+  void *cb;
+
+  netio = pr_alloc_netio(p);
+
+  /* abort */
+  mark_point();
+  cb = netio->abort;
+  netio->abort = NULL;
+  res = pr_register_netio(netio, 0);
+  fail_unless(res < 0, "Failed to handle null abort cb");
+  fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+    strerror(errno), errno);
+  netio->abort = cb;
+
+  /* close */
+  mark_point();
+  cb = netio->close;
+  netio->close = NULL;
+  res = pr_register_netio(netio, 0);
+  fail_unless(res < 0, "Failed to handle null close cb");
+  fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+    strerror(errno), errno);
+  netio->close = cb;
+
+  /* open */
+  mark_point();
+  cb = netio->open;
+  netio->open = NULL;
+  res = pr_register_netio(netio, 0);
+  fail_unless(res < 0, "Failed to handle null open cb");
+  fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+    strerror(errno), errno);
+  netio->open = cb;
+
+  /* poll */
+  mark_point();
+  cb = netio->poll;
+  netio->poll = NULL;
+  res = pr_register_netio(netio, 0);
+  fail_unless(res < 0, "Failed to handle null poll cb");
+  fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+    strerror(errno), errno);
+  netio->poll = cb;
+
+  /* postopen */
+  mark_point();
+  cb = netio->postopen;
+  netio->postopen = NULL;
+  res = pr_register_netio(netio, 0);
+  fail_unless(res < 0, "Failed to handle null postopen cb");
+  fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+    strerror(errno), errno);
+  netio->postopen = cb;
+
+  /* read */
+  mark_point();
+  cb = netio->read;
+  netio->read = NULL;
+  res = pr_register_netio(netio, 0);
+  fail_unless(res < 0, "Failed to handle null read cb");
+  fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+    strerror(errno), errno);
+  netio->read = cb;
+
+  /* reopen */
+  mark_point();
+  cb = netio->reopen;
+  netio->reopen = NULL;
+  res = pr_register_netio(netio, 0);
+  fail_unless(res < 0, "Failed to handle null reopen cb");
+  fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+    strerror(errno), errno);
+  netio->reopen = cb;
+
+  /* shutdown */
+  mark_point();
+  cb = netio->shutdown;
+  netio->shutdown = NULL;
+  res = pr_register_netio(netio, 0);
+  fail_unless(res < 0, "Failed to handle null shutdown cb");
+  fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+    strerror(errno), errno);
+  netio->shutdown = cb;
+
+  /* write */
+  mark_point();
+  cb = netio->write;
+  netio->write = NULL;
+  res = pr_register_netio(netio, 0);
+  fail_unless(res < 0, "Failed to handle null write cb");
+  fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+    strerror(errno), errno);
+  netio->write = cb;
+}
+END_TEST
+
+START_TEST (netio_unregister_test) {
+  int res;
+
+  mark_point();
+  res = pr_unregister_netio(0);
+  fail_unless(res < 0, "Failed to handle invalid types");
+  fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+    strerror(errno), errno);
+
+  mark_point();
+  res = pr_unregister_netio(10000);
+  fail_unless(res == 0, "Failed to handle invalid types");
+}
+END_TEST
+
+START_TEST (netio_get_test) {
+  pr_netio_t *netio;
+
+  mark_point();
+  netio = pr_get_netio(0);
+  fail_unless(netio == NULL, "Failed to handle zero type");
+  fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+    strerror(errno), errno);
+
+  mark_point();
+  netio = pr_get_netio(1000);
+  fail_unless(netio == NULL, "Failed to handle invalid type");
+  fail_unless(errno == ENOENT, "Expected ENOENT (%d), got %s (%d)", ENOENT,
+    strerror(errno), errno);
+}
+END_TEST
+
+START_TEST (netio_alloc_test) {
+  pr_netio_t *netio;
+
+  mark_point();
+  netio = pr_alloc_netio2(NULL, NULL, NULL);
+  fail_unless(netio == NULL, "Failed to handle null pool");
+  fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+    strerror(errno));
+
+  mark_point();
+  netio = pr_alloc_netio(NULL);
+  fail_unless(netio == NULL, "Failed to handle null pool");
+  fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+    strerror(errno));
+}
+END_TEST
+
 Suite *tests_get_netio_suite(void) {
   Suite *suite;
   TCase *testcase;
@@ -2072,8 +2407,14 @@ Suite *tests_get_netio_suite(void) {
   tcase_add_test(testcase, netio_printf_async_test);
   tcase_add_test(testcase, netio_abort_test);
   tcase_add_test(testcase, netio_lingering_abort_test);
+  tcase_add_test(testcase, netio_poll_test);
   tcase_add_test(testcase, netio_poll_interval_test);
   tcase_add_test(testcase, netio_shutdown_test);
+
+  tcase_add_test(testcase, netio_register_test);
+  tcase_add_test(testcase, netio_unregister_test);
+  tcase_add_test(testcase, netio_get_test);
+  tcase_add_test(testcase, netio_alloc_test);
 
   suite_add_tcase(suite, testcase);
   return suite;
