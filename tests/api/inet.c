@@ -68,6 +68,18 @@ static void tear_down(void) {
   } 
 }
 
+static int devnull_fd(void) {
+  int fd;
+
+  fd = open("/dev/null", O_RDWR);
+  if (fd < 0) {
+    fprintf(stderr, "Error opening /dev/null: %s\n", strerror(errno));
+    return -1;
+  }
+
+  return fd;
+}
+
 /* Tests */
 
 START_TEST (inet_family_test) {
@@ -87,16 +99,58 @@ START_TEST (inet_family_test) {
 }
 END_TEST
 
+START_TEST (inet_getservport_test) {
+  int res;
+
+  mark_point();
+  res = pr_inet_getservport(NULL, NULL, NULL);
+  fail_unless(res < 0, "Failed to handle null service");
+  fail_unless(errno == EINVAL, "Expected EINVAL (%d) got %s (%d)", EINVAL,
+    strerror(errno), errno);
+
+  mark_point();
+  res = pr_inet_getservport(p, "ftp", NULL);
+  fail_unless(res > 0, "Failed to handle known service");
+
+  mark_point();
+  res = pr_inet_getservport(p, "ftp", "tcp");
+  fail_unless(res > 0, "Failed to handle service 'ftp', proto 'tcp': %s",
+    strerror(errno));
+
+  mark_point();
+  res = pr_inet_getservport(p, "foobarbaz", "quxxquzz");
+
+  /* Different platforms/implementations handle this differently. */
+  if (res < 0 &&
+      errno != 0) {
+    fail_unless(errno == EINVAL || errno == ENOENT,
+      "Expected EINVAL (%d) or ENOENT (%d), got %s (%d)", EINVAL, ENOENT,
+      strerror(errno), errno);
+  }
+}
+END_TEST
+
+START_TEST (inet_close_test) {
+  mark_point();
+  pr_inet_close(NULL, NULL);
+
+  mark_point();
+  pr_inet_close(p, NULL);
+}
+END_TEST
+
 START_TEST (inet_create_conn_test) {
   int sockfd = -2, port = INPORT_ANY;
   conn_t *conn, *conn2;
 
+  mark_point();
   conn = pr_inet_create_conn(NULL, sockfd, NULL, port, FALSE);
   fail_unless(conn == NULL, "Failed to handle null arguments");
   fail_unless(errno == EINVAL,
     "Failed to set errno to EINVAL (%d), got '%s' (%d)", EINVAL,
     strerror(errno), errno);
 
+  mark_point();
   conn = pr_inet_create_conn(p, sockfd, NULL, port, FALSE);
   fail_unless(conn != NULL, "Failed to create conn: %s", strerror(errno));
   fail_unless(conn->listen_fd == sockfd, "Expected listen_fd %d, got %d",
@@ -249,20 +303,23 @@ START_TEST (inet_set_async_test) {
 END_TEST
 
 START_TEST (inet_set_block_test) {
-  int sockfd = -1, port = INPORT_ANY, res;
+  int fd, sockfd, port = INPORT_ANY, res;
   conn_t *conn; 
 
+  mark_point();
   res = pr_inet_set_block(NULL, NULL);
   fail_unless(res < 0, "Failed to handle null arguments");
   fail_unless(errno == EINVAL, "Expected errno EINVAL (%d), got '%s' (%d)",
     EINVAL, strerror(errno), errno);
 
+  mark_point();
   res = pr_inet_set_nonblock(NULL, NULL);
   fail_unless(res < 0, "Failed to handle null arguments");
   fail_unless(errno == EINVAL, "Expected errno EINVAL (%d), got '%s' (%d)",
     EINVAL, strerror(errno), errno);
 
-  conn = pr_inet_create_conn(p, sockfd, NULL, port, FALSE);
+  mark_point();
+  conn = pr_inet_create_conn(p, -1, NULL, port, FALSE);
   fail_unless(conn != NULL, "Failed to create conn: %s", strerror(errno));
 
   res = pr_inet_set_nonblock(p, conn);
@@ -275,41 +332,101 @@ START_TEST (inet_set_block_test) {
   fail_unless(errno == EBADF, "Expected EBADF (%d), got %s (%d)", EBADF,
     strerror(errno), errno);
 
+  mark_point();
+  sockfd = devnull_fd();
+  if (sockfd < 0) {
+    return;
+  }
+
+  fd = conn->listen_fd;
+  conn->listen_fd = sockfd;
+  conn->mode = CM_LISTEN;
+  res = pr_inet_set_nonblock(p, conn);
+  fail_unless(res == 0, "Failed to set nonblock on listen fd: %s",
+    strerror(errno));
+  conn->listen_fd = fd;
+
+  mark_point();
+  fd = conn->rfd;
+  conn->rfd = sockfd;
+  conn->mode = CM_NONE;
+  res = pr_inet_set_nonblock(p, conn);
+  fail_unless(res == 0, "Failed to set nonblock on rfd: %s", strerror(errno));
+  conn->rfd = fd;
+
+  mark_point();
+  fd = conn->wfd;
+  conn->wfd = sockfd;
+  conn->mode = CM_NONE;
+  res = pr_inet_set_nonblock(p, conn);
+  fail_unless(res == 0, "Failed to set nonblock on wfd: %s", strerror(errno));
+  conn->wfd = fd;
+
+  (void) close(sockfd);
   pr_inet_close(p, conn);
 }
 END_TEST
 
 START_TEST (inet_set_proto_cork_test) {
-  int res, sockfd = -1;
+  int fd = -1, res;
 
-  res = pr_inet_set_proto_cork(sockfd, TRUE);
+  mark_point();
+  res = pr_inet_set_proto_cork(fd, TRUE);
   fail_unless(res < 0, "Failed to handle bad socket descriptor");
-  fail_unless(errno == EBADF,
-    "Failed to set errno to EBADF (%d), got '%s' (%d)", EBADF, strerror(errno),
-    errno);
+  fail_unless(errno == EBADF, "Expectedl EBADF (%d), got '%s' (%d)", EBADF,
+    strerror(errno), errno);
+
+  mark_point();
+  fd = devnull_fd();
+  if (fd < 0) {
+    return;
+  }
+
+  mark_point();
+  res = pr_inet_set_proto_cork(fd, TRUE);
+  fail_unless(res < 0, "Failed to handle bad socket descriptor");
+  fail_unless(errno == ENOTSOCK, "Expected ENOTSOCK (%d), got '%s' (%d)",
+    ENOTSOCK, strerror(errno), errno);
+
+  (void) close(fd);
 }
 END_TEST
 
 START_TEST (inet_set_proto_nodelay_test) {
-  int fd, sockfd = -1, port = INPORT_ANY, res;
+  int fd, sockfd, port = INPORT_ANY, res;
   conn_t *conn;
 
+  mark_point();
   res = pr_inet_set_proto_nodelay(NULL, NULL, 1);
   fail_unless(res < 0, "Failed to handle null arguments");
   fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
     strerror(errno), errno);
 
-  conn = pr_inet_create_conn(p, sockfd, NULL, port, FALSE);
+  conn = pr_inet_create_conn(p, -1, NULL, port, FALSE);
   fail_unless(conn != NULL, "Failed to create conn: %s", strerror(errno));
 
+  mark_point();
   res = pr_inet_set_proto_nodelay(p, conn, 1);
   fail_unless(res == 0, "Failed to enable nodelay: %s", strerror(errno));
 
+  mark_point();
   res = pr_inet_set_proto_nodelay(p, conn, 0);
   fail_unless(res == 0, "Failed to disable nodelay: %s", strerror(errno));
 
   fd = conn->rfd;
   conn->rfd = 8;
+  res = pr_inet_set_proto_nodelay(p, conn, 0);
+  fail_unless(res == 0, "Failed to disable nodelay: %s", strerror(errno));
+  conn->rfd = fd;
+
+  mark_point();
+  sockfd = devnull_fd();
+  if (sockfd < 0) {
+    return;
+  }
+
+  fd = conn->rfd;
+  conn->rfd = sockfd;
   res = pr_inet_set_proto_nodelay(p, conn, 0);
   fail_unless(res == 0, "Failed to disable nodelay: %s", strerror(errno));
   conn->rfd = fd;
@@ -321,23 +438,31 @@ START_TEST (inet_set_proto_nodelay_test) {
   conn->rfd = fd;
 
   fd = conn->wfd;
-  conn->rfd = 9;
+  conn->wfd = 9;
   res = pr_inet_set_proto_nodelay(p, conn, 0);
   fail_unless(res == 0, "Failed to disable nodelay: %s", strerror(errno));
   conn->wfd = fd;
 
   fd = conn->wfd;
-  conn->rfd = -3;
+  conn->wfd = -3;
   res = pr_inet_set_proto_nodelay(p, conn, 0);
   fail_unless(res == 0, "Failed to disable nodelay: %s", strerror(errno));
   conn->wfd = fd;
 
+  mark_point();
+  fd = conn->wfd;
+  conn->wfd = sockfd;
+  res = pr_inet_set_proto_nodelay(p, conn, 0);
+  fail_unless(res == 0, "Failed to disable nodelay: %s", strerror(errno));
+  conn->wfd = fd;
+
+  (void) close(sockfd);
   pr_inet_close(p, conn);
 }
 END_TEST
 
 START_TEST (inet_set_proto_opts_test) {
-  int fd, sockfd = -1, port = INPORT_ANY, res;
+  int fd, sockfd, port = INPORT_ANY, res;
   conn_t *conn;
 
   mark_point();
@@ -346,7 +471,7 @@ START_TEST (inet_set_proto_opts_test) {
   fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
     strerror(errno), errno);
 
-  conn = pr_inet_create_conn(p, sockfd, NULL, port, FALSE);
+  conn = pr_inet_create_conn(p, -1, NULL, port, FALSE);
   fail_unless(conn != NULL, "Failed to create conn: %s", strerror(errno));
 
   mark_point();
@@ -361,8 +486,27 @@ START_TEST (inet_set_proto_opts_test) {
   conn->rfd = fd;
 
   mark_point();
+  sockfd = devnull_fd();
+  if (sockfd < 0) {
+    return;
+  }
+
+  fd = conn->rfd;
+  conn->rfd = sockfd;
+  res = pr_inet_set_proto_opts(p, conn, 1, 1, 1, 1);
+  fail_unless(res == 0, "Failed to set proto opts: %s", strerror(errno));
+  conn->rfd = sockfd;
+
+  mark_point();
   fd = conn->wfd;
   conn->wfd = 9;
+  res = pr_inet_set_proto_opts(p, conn, 1, 1, 1, 1);
+  fail_unless(res == 0, "Failed to set proto opts: %s", strerror(errno));
+  conn->wfd = fd;
+
+  mark_point();
+  fd = conn->wfd;
+  conn->wfd = sockfd;
   res = pr_inet_set_proto_opts(p, conn, 1, 1, 1, 1);
   fail_unless(res == 0, "Failed to set proto opts: %s", strerror(errno));
   conn->wfd = fd;
@@ -374,6 +518,14 @@ START_TEST (inet_set_proto_opts_test) {
   fail_unless(res == 0, "Failed to set proto opts: %s", strerror(errno));
   conn->listen_fd = fd;
 
+  mark_point();
+  fd = conn->listen_fd;
+  conn->listen_fd = sockfd;
+  res = pr_inet_set_proto_opts(p, conn, 1, 1, 1, 1);
+  fail_unless(res == 0, "Failed to set proto opts: %s", strerror(errno));
+  conn->listen_fd = fd;
+
+  (void) close(sockfd);
   pr_inet_close(p, conn);
 }
 END_TEST
@@ -428,21 +580,24 @@ START_TEST (inet_set_proto_opts_ipv6_test) {
 END_TEST
 
 START_TEST (inet_set_socket_opts_test) {
-  int sockfd = -1, port = INPORT_ANY, res;
+  int fd, sockfd, port = INPORT_ANY, res;
   conn_t *conn;
   struct tcp_keepalive keepalive;
 
+  mark_point();
   res = pr_inet_set_socket_opts(NULL, NULL, 1, 2, NULL);
   fail_unless(res < 0, "Failed to handle null arguments");
   fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
     strerror(errno), errno);
 
-  conn = pr_inet_create_conn(p, sockfd, NULL, port, FALSE);
+  conn = pr_inet_create_conn(p, -1, NULL, port, FALSE);
   fail_unless(conn != NULL, "Failed to create conn: %s", strerror(errno));
 
+  mark_point();
   res = pr_inet_set_socket_opts(p, conn, 1, 2, NULL);
   fail_unless(res == 0, "Failed to set socket opts: %s", strerror(errno));
 
+  mark_point();
   res = pr_inet_set_socket_opts(p, conn, INT_MAX, INT_MAX, NULL);
   fail_unless(res == 0, "Failed to set socket opts: %s", strerror(errno));
 
@@ -453,6 +608,19 @@ START_TEST (inet_set_socket_opts_test) {
   res = pr_inet_set_socket_opts(p, conn, 1, 2, &keepalive);
   fail_unless(res == 0, "Failed to set socket opts: %s", strerror(errno));
 
+  mark_point();
+  sockfd = devnull_fd();
+  if (sockfd < 0) {
+    return;
+  }
+
+  fd = conn->listen_fd;
+  conn->listen_fd = sockfd;
+  res = pr_inet_set_socket_opts(p, conn, 1, 2, &keepalive);
+  fail_unless(res == 0, "Failed to set socket opts: %s", strerror(errno));
+  conn->listen_fd = fd;
+
+  (void) close(sockfd);
   pr_inet_close(p, conn);
 }
 END_TEST
@@ -710,22 +878,40 @@ START_TEST (inet_accept_test) {
 END_TEST
 
 START_TEST (inet_accept_nowait_test) {
-  int sockfd = -1, port = INPORT_ANY, res;
+  int fd, sockfd, port = INPORT_ANY, res;
   conn_t *conn;
 
+  mark_point();
   res = pr_inet_accept_nowait(NULL, NULL);
   fail_unless(res < 0, "Failed to handle null arguments");
   fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
     strerror(errno), errno);
 
-  conn = pr_inet_create_conn(p, sockfd, NULL, port, FALSE);
+  conn = pr_inet_create_conn(p, -1, NULL, port, FALSE);
   fail_unless(conn != NULL, "Failed to create conn: %s", strerror(errno));
 
+  mark_point();
   res = pr_inet_accept_nowait(p, conn);
   fail_unless(res < 0, "Accepted connection unexpectedly");
   fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
     strerror(errno), errno);
 
+  mark_point();
+  sockfd = devnull_fd();
+  if (sockfd < 0) {
+    return;
+  }
+
+  fd = conn->listen_fd;
+  conn->listen_fd = sockfd;
+  conn->mode = CM_LISTEN;
+  res = pr_inet_accept_nowait(p, conn);
+  fail_unless(res < 0, "Failed to handle non-socket");
+  fail_unless(errno == ENOTSOCK, "Expected ENOTSOCK (%d), got %s (%d)",
+    ENOTSOCK, strerror(errno), errno);
+  conn->listen_fd = fd;
+
+  (void) close(sockfd);
   pr_inet_close(p, conn);
 }
 END_TEST
@@ -757,10 +943,11 @@ START_TEST (inet_conn_info_test) {
 END_TEST
 
 START_TEST (inet_openrw_test) {
-  int sockfd = -1, port = INPORT_ANY;
+  int fd, sockfd = -1, port = INPORT_ANY;
   conn_t *conn, *res;
   const pr_netaddr_t *addr;
 
+  mark_point();
   res = pr_inet_openrw(NULL, NULL, NULL, PR_NETIO_STRM_CTRL, -1, -1, -1, FALSE);
   fail_unless(res == NULL, "Failed to handle null arguments");
   fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
@@ -769,6 +956,7 @@ START_TEST (inet_openrw_test) {
   conn = pr_inet_create_conn(p, sockfd, NULL, port, FALSE);
   fail_unless(conn != NULL, "Failed to create conn: %s", strerror(errno));
 
+  mark_point();
   res = pr_inet_openrw(p, conn, NULL, PR_NETIO_STRM_CTRL, -1, -1, -1, FALSE);
   fail_unless(res == NULL, "Opened rw conn unexpectedly");
   fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
@@ -777,12 +965,26 @@ START_TEST (inet_openrw_test) {
   addr = pr_netaddr_get_addr(p, "127.0.0.1", NULL);
   fail_unless(addr != NULL, "Failed to resolve 127.0.0.1: %s", strerror(errno));
 
+  mark_point();
   res = pr_inet_openrw(p, conn, addr, PR_NETIO_STRM_CTRL, -1, -1, -1, FALSE);
   fail_unless(res != NULL, "Failed to open rw conn: %s", strerror(errno));
   (void) pr_inet_close(p, res);
 
+  mark_point();
   res = pr_inet_openrw(p, conn, addr, PR_NETIO_STRM_CTRL, -1, -1, -1, TRUE);
   fail_unless(res != NULL, "Failed to open rw conn: %s", strerror(errno));
+
+  mark_point();
+  fd = devnull_fd();
+  if (fd < 0) {
+    return;
+  }
+  res = pr_inet_openrw(p, conn, addr, PR_NETIO_STRM_CTRL, fd, -1, -1, TRUE);
+  fail_unless(res == NULL, "Failed to handle non-socket");
+  fail_unless(errno == ENOTSOCK, "Expected ENOTSOCK (%d), got %s (%d)",
+    ENOTSOCK, strerror(errno), errno);
+
+  (void) close(fd);
 }
 END_TEST
 
@@ -820,6 +1022,8 @@ Suite *tests_get_inet_suite(void) {
   tcase_add_checked_fixture(testcase, set_up, tear_down);
 
   tcase_add_test(testcase, inet_family_test);
+  tcase_add_test(testcase, inet_getservport_test);
+  tcase_add_test(testcase, inet_close_test);
   tcase_add_test(testcase, inet_create_conn_test);
   tcase_add_test(testcase, inet_create_conn_portrange_test);
   tcase_add_test(testcase, inet_copy_conn_test);

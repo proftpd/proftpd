@@ -74,6 +74,13 @@ int pr_inet_set_default_family(pool *p, int family) {
 int pr_inet_getservport(pool *p, const char *serv, const char *proto) {
   struct servent *servent;
 
+  (void) p;
+
+  if (serv == NULL) {
+    errno = EINVAL;
+    return -1;
+  }
+
   servent = getservbyname(serv, proto);
   if (servent == NULL) {
     return -1;
@@ -374,17 +381,9 @@ static conn_t *init_conn(pool *p, int fd, const pr_netaddr_t *bind_addr,
 #endif /* IP_FREEBIND */
 
     memset(&na, 0, sizeof(na));
-    if (pr_netaddr_set_family(&na, addr_family) < 0) {
-      int xerrno = errno;
+    pr_netaddr_set_family(&na, addr_family);
 
-      destroy_pool(c->pool);
-      (void) close(fd);
-
-      errno = xerrno;
-      return NULL;
-    }
-
-    if (bind_addr) {
+    if (bind_addr != NULL) {
       pr_netaddr_set_sockaddr(&na, pr_netaddr_get_sockaddr(bind_addr));
 
     } else {

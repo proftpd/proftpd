@@ -503,7 +503,7 @@ static int netio_lingering_close(pr_netio_stream_t *nstrm, long linger,
           default_ctrl_netio->owner_name, nstrm_mode);
         res = (default_ctrl_netio->close)(nstrm);
       }
-      return res;
+      break;
 
     case PR_NETIO_STRM_DATA:
       if (data_netio != NULL) {
@@ -516,9 +516,10 @@ static int netio_lingering_close(pr_netio_stream_t *nstrm, long linger,
           default_data_netio->owner_name, nstrm_mode);
         res = (default_data_netio->close)(nstrm);
       }
-      return res;
+      break;
 
     case PR_NETIO_STRM_OTHR:
+    default:
       if (othr_netio != NULL) {
         pr_trace_msg(trace_channel, 19, "using %s close() for other %s stream",
           othr_netio->owner_name, nstrm_mode);
@@ -529,11 +530,10 @@ static int netio_lingering_close(pr_netio_stream_t *nstrm, long linger,
           default_othr_netio->owner_name, nstrm_mode);
         res = (default_othr_netio->close)(nstrm);
       }
-      return res;
+      break;
   }
 
-  errno = EPERM;
-  return -1;
+  return res;
 }
 
 int pr_netio_lingering_abort(pr_netio_stream_t *nstrm, long linger) {
@@ -551,7 +551,7 @@ int pr_netio_lingering_abort(pr_netio_stream_t *nstrm, long linger) {
       break;
 
     default:
-      errno = EPERM;
+      errno = EINVAL;
       return -1;
   }
 
@@ -818,7 +818,7 @@ int pr_netio_poll(pr_netio_stream_t *nstrm) {
     return -1;
   }
 
-  if (nstrm->strm_fd == -1) {
+  if (nstrm->strm_fd < 0) {
     errno = EBADF;
     return -1;
   }
@@ -1064,7 +1064,7 @@ int pr_netio_write(pr_netio_stream_t *nstrm, char *buf, size_t buflen) {
     return -1;
   }
 
-  if (nstrm->strm_fd == -1) {
+  if (nstrm->strm_fd < 0) {
     errno = (nstrm->strm_errno ? nstrm->strm_errno : EBADF);
     return -1;
   }
@@ -1206,7 +1206,7 @@ int pr_netio_write_async(pr_netio_stream_t *nstrm, char *buf, size_t buflen) {
     return -1;
   }
 
-  if (nstrm->strm_fd == -1) {
+  if (nstrm->strm_fd < 0) {
     errno = (nstrm->strm_errno ? nstrm->strm_errno : EBADF);
     return -1;
   }
@@ -1350,7 +1350,7 @@ int pr_netio_read(pr_netio_stream_t *nstrm, char *buf, size_t buflen,
     return -1;
   }
 
-  if (nstrm->strm_fd == -1) {
+  if (nstrm->strm_fd < 0) {
     errno = (nstrm->strm_errno ? nstrm->strm_errno : EBADF);
     return -1;
   }
@@ -1547,7 +1547,7 @@ int pr_netio_shutdown(pr_netio_stream_t *nstrm, int how) {
           default_ctrl_netio->owner_name, nstrm_mode);
         res = (default_ctrl_netio->shutdown)(nstrm, how);
       }
-      return res;
+      break;
 
     case PR_NETIO_STRM_DATA:
       if (data_netio != NULL) {
@@ -1562,7 +1562,7 @@ int pr_netio_shutdown(pr_netio_stream_t *nstrm, int how) {
           default_data_netio->owner_name, nstrm_mode);
         res = (default_data_netio->shutdown)(nstrm, how);
       }
-      return res;
+      break;
 
     case PR_NETIO_STRM_OTHR:
       if (othr_netio != NULL) {
@@ -1577,10 +1577,13 @@ int pr_netio_shutdown(pr_netio_stream_t *nstrm, int how) {
           default_othr_netio->owner_name, nstrm_mode);
         res = (default_othr_netio->shutdown)(nstrm, how);
       }
-      return res;
+      break;
+
+    default:
+      errno = EINVAL;
+      return -1;
   }
 
-  errno = EPERM;
   return res;
 }
 
@@ -1915,9 +1918,15 @@ int pr_register_netio(pr_netio_t *netio, int strm_types) {
     return 0;
   }
 
-  if (!netio->abort || !netio->close || !netio->open || !netio->poll ||
-      !netio->postopen || !netio->read || !netio->reopen ||
-      !netio->shutdown || !netio->write) {
+  if (netio->abort == NULL ||
+      netio->close == NULL ||
+      netio->open == NULL ||
+      netio->poll == NULL ||
+      netio->postopen == NULL ||
+      netio->read == NULL ||
+      netio->reopen == NULL ||
+      netio->shutdown == NULL ||
+      netio->write == NULL) {
     errno = EINVAL;
     return -1;
   }
@@ -1938,7 +1947,7 @@ int pr_register_netio(pr_netio_t *netio, int strm_types) {
 }
 
 int pr_unregister_netio(int strm_types) {
-  if (!strm_types) {
+  if (strm_types == 0) {
     errno = EINVAL;
     return -1;
   }
