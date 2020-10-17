@@ -42,6 +42,7 @@
 #define PR_TEST_AUTH_PASSWD		"password"
 
 static pool *p = NULL;
+static server_rec *test_server = NULL;
 
 static struct passwd test_pwd;
 static struct group test_grp;
@@ -420,8 +421,6 @@ MODRET handle_requires_pass(cmd_rec *cmd) {
 /* Fixtures */
 
 static void set_up(void) {
-  server_rec *s = NULL;
-
   if (p == NULL) {
     p = permanent_pool = make_sub_pool(NULL);
   }
@@ -434,8 +433,8 @@ static void set_up(void) {
     pr_trace_set_levels("auth", 1, 20);
   }
 
-  s = pcalloc(p, sizeof(server_rec));
-  tests_stubs_set_main_server(s);
+  test_server = pcalloc(p, sizeof(server_rec));
+  tests_stubs_set_main_server(test_server);
 
   test_pwd.pw_name = PR_TEST_AUTH_NAME;
   test_pwd.pw_uid = PR_TEST_AUTH_UID;
@@ -477,8 +476,9 @@ static void tear_down(void) {
   if (p != NULL) {
     destroy_pool(p);
     p = session.pool = permanent_pool = NULL;
-  } 
+  }
 
+  test_server = NULL;
   tests_stubs_set_main_server(NULL);
 }
 
@@ -1839,12 +1839,73 @@ START_TEST (auth_requires_pass_test) {
 END_TEST
 
 START_TEST (auth_get_anon_config_test) {
-  config_rec *c;
+  config_rec *anon_config, *c, *c2, *res;
+  const char *login_user = "test";
+  char *real_user = NULL, *anon_user = NULL;
 
-  c = pr_auth_get_anon_config(NULL, NULL, NULL, NULL);
-  fail_unless(c == NULL, "Failed to handle null arguments");
+  mark_point();
+  login_user = "test";
+  res = pr_auth_get_anon_config(NULL, NULL, NULL, NULL);
+  fail_unless(res == NULL, "Failed to handle null arguments");
 
-  /* XXX Need to exercise more of this function. */
+  mark_point();
+  /* UserAlias alias realname */
+  c = add_config_param_set(&(test_server->conf), "UserAlias", 2, NULL, NULL);
+  c->argv[0] = pstrdup(c->pool, "bar");
+  c->argv[1] = pstrdup(c->pool, "foo");
+
+  c2 = add_config_param_set(&(test_server->conf), "AuthAliasOnly", 1, NULL);
+  c2->argv[0] = palloc(c2->pool, sizeof(unsigned char));
+  *((unsigned char *) c2->argv[0]) = TRUE;
+
+  login_user = "test";
+  anon_user = "anon";
+  res = pr_auth_get_anon_config(p, &login_user, &real_user, &anon_user);
+  fail_unless(res == NULL, "Failed to handle UserAlias with mismatched alias");
+  fail_unless(login_user == NULL, "Failed to set login_user to null");
+  fail_unless(anon_user == NULL, "Failed to set anon_user to null");
+
+  mark_point();
+  login_user = "test";
+  c->argv[0] = pstrdup(c->pool, "*");
+  res = pr_auth_get_anon_config(p, &login_user, &real_user, &anon_user);
+  fail_unless(res == NULL, "Failed to handle UserAlias with globbed alias");
+
+  mark_point();
+  login_user = "test";
+  c->argv[0] = pstrdup(c->pool, login_user);
+  res = pr_auth_get_anon_config(p, &login_user, &real_user, &anon_user);
+  fail_unless(res == NULL, "Failed to handle UserAlias with matching alias");
+
+  mark_point();
+  login_user = "test";
+  anon_config = pcalloc(p, sizeof(config_rec));
+  anon_config->config_type = CONF_ANON;
+  c2 = add_config_param_set(&(anon_config->subset), "AuthAliasOnly", 1, NULL);
+  c2->argv[0] = palloc(c2->pool, sizeof(unsigned char));
+  *((unsigned char *) c2->argv[0]) = TRUE;
+  c->parent = anon_config;
+  res = pr_auth_get_anon_config(p, &login_user, &real_user, &anon_user);
+  fail_unless(res != NULL, "Failed to handle UserAlias with matching alias and <Anonymous> config");
+  fail_unless(res == anon_config, "Expected <Anonymous> config %p, got %p",
+    anon_config, res);
+
+  mark_point();
+  login_user = "test";
+  real_user = "foo";
+
+  c2 = add_config_param_set(&(anon_config->subset), "UserName", 1, NULL);
+  c2->argv[0] = pstrdup(c2->pool, "BAZ");
+  res = pr_auth_get_anon_config(p, &login_user, &real_user, &anon_user);
+
+  fail_unless(res != NULL, "Failed to handle UserAlias with matching alias and <Anonymous> config");
+  fail_unless(res == anon_config, "Expected <Anonymous> config %p, got %p",
+    anon_config, res);
+  fail_unless(real_user != NULL, "Expected real_user, got NULL");
+  fail_unless(strcmp(real_user, "BAZ") == 0, "Expected real_user 'BAZ', got '%s'", real_user);
+
+  (void) remove_config(test_server->conf, "AuthAliasOnly", TRUE);
+  (void) remove_config(test_server->conf, "UserAlias", FALSE);
 }
 END_TEST
 
@@ -1852,11 +1913,13 @@ START_TEST (auth_chroot_test) {
   int res;
   const char *path;
 
+  mark_point();
   res = pr_auth_chroot(NULL);
   fail_unless(res < 0, "Failed to handle null argument");
   fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
     strerror(errno), errno);
 
+  mark_point();
   path = "tmp";
   res = pr_auth_chroot(path);
   fail_unless(res < 0, "Failed to chroot to '%s': %s", path, strerror(errno));
@@ -1867,6 +1930,7 @@ START_TEST (auth_chroot_test) {
   /* This first time, we do not have session.pool set, so the setting of the
    * TZ environment variable will fail.
    */
+  mark_point();
   path = "/tmp";
   res = pr_auth_chroot(path);
   fail_unless(res < 0, "Failed to chroot to '%s': %s", path, strerror(errno));
@@ -1875,6 +1939,7 @@ START_TEST (auth_chroot_test) {
     ENOENT, EPERM, EINVAL, strerror(errno), errno);
 
   /* We should now set the TZ environment variable, but still fail. */
+  mark_point();
   session.pool = p;
   path = "/tmp";
   res = pr_auth_chroot(path);
@@ -1884,6 +1949,7 @@ START_TEST (auth_chroot_test) {
     ENOENT, EPERM, EINVAL, strerror(errno), errno);
 
   /* Last, the TZ environment variable should already be set. */
+  mark_point();
   path = "/tmp";
   res = pr_auth_chroot(path);
   fail_unless(res < 0, "Failed to chroot to '%s': %s", path, strerror(errno));
@@ -1898,42 +1964,71 @@ END_TEST
 START_TEST (auth_banned_by_ftpusers_test) {
   const char *name;
   int res;
-  xaset_t *ctx;
+  config_rec *c;
 
+  mark_point();
   res = pr_auth_banned_by_ftpusers(NULL, NULL);
   fail_unless(res == FALSE, "Failed to handle null arguments");
 
-  ctx = xaset_create(p, NULL);
-  res = pr_auth_banned_by_ftpusers(ctx, NULL);
+  mark_point();
+  res = pr_auth_banned_by_ftpusers(test_server->conf, NULL);
   fail_unless(res == FALSE, "Failed to handle null user");
 
+  mark_point();
   name = "testsuite";
-  res = pr_auth_banned_by_ftpusers(ctx, name);
+  res = pr_auth_banned_by_ftpusers(test_server->conf, name);
   fail_unless(res == FALSE, "Expected FALSE, got %d", res);
+
+  /* UseFtpUsers off */
+  mark_point();
+  c = add_config_param_set(&(test_server->conf), "UseFtpUsers", 1, NULL);
+  c->argv[0] = pcalloc(c->pool, sizeof(unsigned char));
+  *((unsigned char *) c->argv[0]) = FALSE;
+
+  res = pr_auth_banned_by_ftpusers(test_server->conf, name);
+  fail_unless(res == FALSE, "Failed to handle UseFtpUsers off (got %d)",
+    res);
+
+  (void) remove_config(test_server->conf, "UseFtpUsers", FALSE);
 }
 END_TEST
 
 START_TEST (auth_is_valid_shell_test) {
   const char *shell;
   int res;
-  xaset_t *ctx;
+  config_rec *c;
 
+  mark_point();
   res = pr_auth_is_valid_shell(NULL, NULL);
   fail_unless(res == TRUE, "Failed to handle null arguments");
 
-  ctx = xaset_create(p, NULL);
-  res = pr_auth_is_valid_shell(ctx, NULL);
+  mark_point();
+  res = pr_auth_is_valid_shell(test_server->conf, NULL);
   fail_unless(res == TRUE, "Failed to handle null shell");
 
   shell = "/foo/bar";
-  res = pr_auth_is_valid_shell(ctx, shell);
+  res = pr_auth_is_valid_shell(test_server->conf, shell);
   fail_unless(res == FALSE, "Failed to handle invalid shell '%s' (got %d)",
     shell, res);
 
+  mark_point();
   shell = "/bin/sh";
-  res = pr_auth_is_valid_shell(ctx, shell);
+  res = pr_auth_is_valid_shell(test_server->conf, shell);
   fail_unless(res == TRUE, "Failed to handle valid shell '%s' (got %d)",
     shell, res);
+
+  /* RequireValidShell off */
+  mark_point();
+  c = add_config_param_set(&(test_server->conf), "RequireValidShell", 1, NULL);
+  c->argv[0] = pcalloc(c->pool, sizeof(unsigned char));
+  *((unsigned char *) c->argv[0]) = FALSE;
+
+  shell = "/foo/bar";
+  res = pr_auth_is_valid_shell(test_server->conf, shell);
+  fail_unless(res == TRUE, "Failed to handle RequireValidShell off (got %d)",
+    res);
+
+  (void) remove_config(test_server->conf, "RequireValidShell", FALSE);
 }
 END_TEST
 
@@ -1994,6 +2089,7 @@ END_TEST
 
 START_TEST (auth_get_home_test) {
   const char *home, *res;
+  config_rec *c;
 
   res = pr_auth_get_home(NULL, NULL);
   fail_unless(res == NULL, "Failed to handle null arguments");
@@ -2009,6 +2105,38 @@ START_TEST (auth_get_home_test) {
   res = pr_auth_get_home(p, home);
   fail_unless(res != NULL, "Failed to get home: %s", strerror(errno));
   fail_unless(strcmp(home, res) == 0, "Expected '%s', got '%s'", home, res);  
+
+  /* RewriteHome off */
+  mark_point();
+  c = add_config_param_set(&(test_server->conf), "RewriteHome", 1);
+  c->argv[0] = pcalloc(c->pool, sizeof(unsigned char));
+  *((int *) c->argv[0]) = FALSE;
+
+  res = pr_auth_get_home(p, home);
+  fail_unless(res != NULL, "Failed to get home: %s", strerror(errno));
+  fail_unless(strcmp(home, res) == 0,
+    "Failed to handle RewriteHome off, got '%s'", res);
+
+  /* RewriteHome on */
+  mark_point();
+  *((int *) c->argv[0]) = TRUE;
+  res = pr_auth_get_home(p, home);
+  fail_unless(res != NULL, "Failed to get home: %s", strerror(errno));
+  fail_unless(strcmp(home, res) == 0,
+    "Failed to handle RewriteHome on, got '%s'", res);
+
+  mark_point();
+  session.notes = pr_table_alloc(p, 2);
+  res = pr_auth_get_home(p, home);
+  fail_unless(res != NULL, "Failed to get home: %s", strerror(errno));
+  fail_unless(strcmp(home, res) == 0,
+    "Failed to handle RewriteHome on, got '%s'", res);
+
+  (void) pr_table_empty(session.notes);
+  (void) pr_table_free(session.notes);
+  session.notes = NULL;
+
+  (void) remove_config(test_server->conf, "RewriteHome", FALSE);
 }
 END_TEST
 

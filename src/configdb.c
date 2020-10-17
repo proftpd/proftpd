@@ -58,7 +58,6 @@ config_rec *pr_config_add_set(xaset_t **set, const char *name, int flags) {
   }
  
   if (!*set) {
-
     /* Allocate a subpool from permanent_pool for the set. */
     set_pool = make_sub_pool(permanent_pool);
     pr_pool_tag(set_pool, "config set pool");
