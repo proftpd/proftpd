@@ -112,7 +112,7 @@ static int data_passive_open(const char *reason, off_t size) {
   int rev, xerrno = 0;
 
   if (reason == NULL &&
-      session.xfer.filename) {
+      session.xfer.filename != NULL) {
     reason = session.xfer.filename;
   }
 
@@ -222,7 +222,7 @@ static int data_active_open(const char *reason, off_t size) {
   }
 
   if (reason == NULL &&
-      session.xfer.filename) {
+      session.xfer.filename != NULL) {
     reason = session.xfer.filename;
   }
 
@@ -572,7 +572,6 @@ int pr_data_open(char *filename, char *reason, int direction, off_t size) {
   if (res < 0) {
     return res;
   }
-
 
   if (pr_netio_postopen(session.d->instrm) < 0) {
     int xerrno;
