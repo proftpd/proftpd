@@ -30,7 +30,7 @@
 #if defined(PR_USE_CTRLS)
 static pool *p = NULL;
 
-static const char *tmpfile_path = "/tmp/ctrls.dat";
+static const char *tmpfile_path = "/tmp/prt-ctrls.dat";
 
 static void set_up(void) {
   (void) unlink(tmpfile_path);

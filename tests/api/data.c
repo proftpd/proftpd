@@ -37,7 +37,10 @@ static void set_up(void) {
 
   init_fs();
   init_netio();
+  init_config();
   init_dirtree();
+
+  pr_parser_prepare(p, NULL);
 
   pr_response_set_pool(p);
   (void) pr_fsio_unlink(data_test_path);
@@ -66,12 +69,11 @@ static void tear_down(void) {
   pr_trace_set_levels("timing", 0, 0);
 
   if (session.c != NULL) {
-    (void) pr_inet_close(p, session.c);
-
     if (session.c == session.d) {
       session.d = NULL;
     }
 
+    (void) pr_inet_close(p, session.c);
     session.c = NULL;
   }
 
@@ -80,12 +82,34 @@ static void tear_down(void) {
     session.d = NULL;
   }
 
+  pr_parser_cleanup();
   pr_response_set_pool(NULL);
 
   if (p == NULL) {
     destroy_pool(p);
     p = session.pool = session.xfer.p = permanent_pool = NULL;
   } 
+}
+
+static int tmpfile_fd(void) {
+  int fd;
+
+  fd = open(data_test_path, O_CREAT|O_RDWR);
+  if (fd < 0) {
+    fprintf(stderr, "Error opening %s: %s\n", data_test_path, strerror(errno));
+    return -1;
+  }
+
+  (void) unlink(data_test_path);
+  return fd;
+}
+
+static int rewind_fd(int fd) {
+  if (lseek(fd, 0, SEEK_SET) == (off_t) -1) {
+    return -1;
+  }
+
+  return 0;
 }
 
 START_TEST (data_get_timeout_test) {
@@ -398,11 +422,21 @@ START_TEST (data_open_active_test) {
     strerror(errno));
 
   mark_point();
+  session.d = session.c;
+  res = pr_data_open(NULL, NULL, dir, 0);
+  fail_unless(res < 0, "Failed to handle non-null session.d");
+  fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+    strerror(errno), errno);
+  session.d = NULL;
+
+  mark_point();
+  session.xfer.filename = "foo";
   res = pr_data_open(NULL, NULL, dir, 0);
   fail_unless(res < 0, "Opened active READ data connection unexpectedly");
   fail_unless(errno == EADDRNOTAVAIL || errno == ECONNREFUSED,
     "Expected EADDRNOTAVAIL (%d) or ECONNREFUSED (%d), got %s (%d)",
     EADDRNOTAVAIL, ECONNREFUSED, strerror(errno), errno);
+  session.xfer.filename = NULL;
 
   /* Open a WRITing data transfer connection...*/
   dir = PR_NETIO_IO_WR;
@@ -431,8 +465,86 @@ START_TEST (data_open_active_test) {
 }
 END_TEST
 
+START_TEST (data_open_active_rootrevoke_test) {
+  int dir = PR_NETIO_IO_RD, local_port, port = INPORT_ANY, sockfd = -1, res;
+  conn_t *conn;
+  config_rec *c;
+  server_rec *s;
+
+  conn = pr_inet_create_conn(p, sockfd, NULL, port, FALSE);
+  fail_unless(conn != NULL, "Failed to create conn: %s", strerror(errno));
+
+  /* Note: these tests REQUIRE that session.c be non-NULL */
+  session.c = conn;
+
+  /* Note: we also need session.c to have valid local/remote_addr, too! */
+  session.c->local_addr = session.c->remote_addr = pr_netaddr_get_addr(p, "127.0.0.1", NULL);
+  fail_unless(session.c->remote_addr != NULL, "Failed to get address: %s",
+    strerror(errno));
+
+  s = pr_parser_server_ctxt_open("127.0.0.1");
+  c = add_config_param("RootRevoke", 1, NULL);
+  c->argv[0] = palloc(c->pool, sizeof(int));
+  *((int *) c->argv[0]) = 1;
+
+  tests_stubs_set_main_server(s);
+
+  mark_point();
+  session.xfer.filename = "foo";
+  res = pr_data_open(NULL, NULL, dir, 0);
+  fail_unless(res < 0, "Opened active READ data connection unexpectedly");
+  fail_unless(errno == EADDRNOTAVAIL || errno == ECONNREFUSED,
+    "Expected EADDRNOTAVAIL (%d) or ECONNREFUSED (%d), got %s (%d)",
+    EADDRNOTAVAIL, ECONNREFUSED, strerror(errno), errno);
+  session.xfer.filename = NULL;
+
+  mark_point();
+  local_port = session.c->local_port;
+  session.c->local_port = 21;
+  session.xfer.filename = "foo";
+  res = pr_data_open(NULL, NULL, dir, 0);
+  fail_unless(res < 0, "Opened active READ data connection unexpectedly");
+  fail_unless(errno == EPERM, "Expected EPERM (%d), got %s (%d)", EPERM,
+    strerror(errno), errno);
+  session.c->local_port = local_port;
+  session.xfer.filename = NULL;
+
+  mark_point();
+  *((int *) c->argv[0]) = 2;
+  session.xfer.filename = "foo";
+  res = pr_data_open(NULL, NULL, dir, 0);
+  fail_unless(res < 0, "Opened active READ data connection unexpectedly");
+  fail_unless(errno == EADDRNOTAVAIL || errno == ECONNREFUSED,
+    "Expected EADDRNOTAVAIL (%d) or ECONNREFUSED (%d), got %s (%d)",
+    EADDRNOTAVAIL, ECONNREFUSED, strerror(errno), errno);
+  session.xfer.filename = NULL;
+
+  mark_point();
+  *((int *) c->argv[0]) = 3;
+  session.xfer.filename = "foo";
+  res = pr_data_open(NULL, NULL, dir, 0);
+  fail_unless(res < 0, "Opened active READ data connection unexpectedly");
+  fail_unless(errno == EADDRNOTAVAIL || errno == ECONNREFUSED,
+    "Expected EADDRNOTAVAIL (%d) or ECONNREFUSED (%d), got %s (%d)",
+    EADDRNOTAVAIL, ECONNREFUSED, strerror(errno), errno);
+  session.xfer.filename = NULL;
+
+  (void) pr_config_remove(s->conf, "RootRevoke", 0, FALSE);
+
+  (void) pr_inet_close(p, session.c);
+  session.c = NULL;
+  if (session.d != NULL) {
+    (void) pr_inet_close(p, session.d);
+    session.d = NULL;
+  }
+
+  tests_stubs_set_main_server(NULL);
+}
+END_TEST
+
 START_TEST (data_open_passive_test) {
   int dir = PR_NETIO_IO_RD, port = INPORT_ANY, sockfd = -1, res;
+  conn_t *data_conn;
 
   /* Set the session flags for a passive transfer data connection. */
   session.sf_flags |= SF_PASSIVE;
@@ -449,7 +561,7 @@ START_TEST (data_open_passive_test) {
   session.c = pr_inet_create_conn(p, sockfd, NULL, port, FALSE);
   fail_unless(session.c != NULL, "Failed to create conn: %s", strerror(errno));
 
-  session.d = pr_inet_create_conn(p, sockfd, NULL, port, FALSE);
+  session.d = data_conn = pr_inet_create_conn(p, sockfd, NULL, port, FALSE);
   fail_unless(session.d != NULL, "Failed to create conn: %s", strerror(errno));
 
   /* Reset the session flags after every failed open. */
@@ -469,27 +581,30 @@ START_TEST (data_open_passive_test) {
     strerror(errno));
 
   mark_point();
+  session.d = data_conn;
   session.sf_flags |= SF_PASSIVE;
   res = pr_data_open(NULL, NULL, dir, 0);
   fail_unless(res < 0, "Opened passive READ data connection unexpectedly");
-  fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
-    strerror(errno), errno);
+  fail_unless(errno == ENOTSOCK, "Expected ENOTSOCK (%d), got %s (%d)",
+    ENOTSOCK, strerror(errno), errno);
 
   /* Open a WRITing data transfer connection...*/
   dir = PR_NETIO_IO_WR;
 
   mark_point();
+  session.d = data_conn;
   session.sf_flags |= SF_PASSIVE;
+  session.xfer.p = NULL;
   res = pr_data_open(NULL, NULL, dir, 0);
-  fail_unless(res < 0, "Opened passive READ data connection unexpectedly");
-  fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
-    strerror(errno), errno);
+  fail_unless(res < 0, "Opened passive WRITE data connection unexpectedly");
+  fail_unless(errno == ENOTSOCK, "Expected ENOTSOCK (%d), got %s (%d)",
+    ENOTSOCK, strerror(errno), errno);
 
   mark_point();
   session.sf_flags |= SF_PASSIVE;
   session.xfer.p = NULL;
   res = pr_data_open(NULL, NULL, dir, 0);
-  fail_unless(res < 0, "Opened passive READ data connection unexpectedly");
+  fail_unless(res < 0, "Opened passive WRITE data connection unexpectedly");
   fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
     strerror(errno), errno);
 
@@ -522,6 +637,7 @@ START_TEST (data_close_test) {
 END_TEST
 
 START_TEST (data_abort_test) {
+  mark_point();
   session.sf_flags |= SF_PASSIVE;
   pr_data_abort(EPERM, TRUE);
   fail_unless(!(session.sf_flags & SF_PASSIVE),
@@ -532,10 +648,74 @@ START_TEST (data_abort_test) {
   fail_unless(!(session.sf_flags & SF_PASSIVE),
     "Failed to clear SF_PASSIVE session flag");
 
+  mark_point();
   session.d = pr_inet_create_conn(p, -1, NULL, INPORT_ANY, FALSE);
   fail_unless(session.d != NULL, "Failed to create conn: %s", strerror(errno));
 
   pr_data_abort(ESPIPE, FALSE);
+  fail_unless(session.d == NULL, "Failed to close session.d");
+
+  mark_point();
+  session.d = pr_inet_create_conn(p, -1, NULL, INPORT_ANY, FALSE);
+  fail_unless(session.d != NULL, "Failed to create conn: %s", strerror(errno));
+
+  session.sf_flags = SF_ABORT;
+  pr_data_abort(EPIPE, FALSE);
+  fail_unless(session.d == NULL, "Failed to close session.d");
+  session.sf_flags &= ~SF_POST_ABORT;
+
+#if defined(ENXIO)
+  mark_point();
+  session.d = pr_inet_create_conn(p, -1, NULL, INPORT_ANY, FALSE);
+  fail_unless(session.d != NULL, "Failed to create conn: %s", strerror(errno));
+  pr_data_abort(ENXIO, FALSE);
+  fail_unless(session.d == NULL, "Failed to close session.d");
+#endif /* ENXIO */
+
+#if defined(ENOMEM)
+  mark_point();
+  session.d = pr_inet_create_conn(p, -1, NULL, INPORT_ANY, FALSE);
+  fail_unless(session.d != NULL, "Failed to create conn: %s", strerror(errno));
+  pr_data_abort(ENOMEM, FALSE);
+  fail_unless(session.d == NULL, "Failed to close session.d");
+#endif /* ENOMEM */
+
+#if defined(EBUSY)
+  mark_point();
+  session.d = pr_inet_create_conn(p, -1, NULL, INPORT_ANY, FALSE);
+  fail_unless(session.d != NULL, "Failed to create conn: %s", strerror(errno));
+  pr_data_abort(EBUSY, FALSE);
+  fail_unless(session.d == NULL, "Failed to close session.d");
+#endif /* EBUSY */
+
+#if defined(ENOSPC)
+  mark_point();
+  session.d = pr_inet_create_conn(p, -1, NULL, INPORT_ANY, FALSE);
+  fail_unless(session.d != NULL, "Failed to create conn: %s", strerror(errno));
+  pr_data_abort(ENOSPC, FALSE);
+  fail_unless(session.d == NULL, "Failed to close session.d");
+#endif /* ENOSPC */
+
+#if defined(EFBIG)
+  mark_point();
+  session.d = pr_inet_create_conn(p, -1, NULL, INPORT_ANY, FALSE);
+  fail_unless(session.d != NULL, "Failed to create conn: %s", strerror(errno));
+  pr_data_abort(EFBIG, FALSE);
+  fail_unless(session.d == NULL, "Failed to close session.d");
+#endif /* EFBIG */
+
+#if defined(ECONNRESET)
+  mark_point();
+  session.d = pr_inet_create_conn(p, -1, NULL, INPORT_ANY, FALSE);
+  fail_unless(session.d != NULL, "Failed to create conn: %s", strerror(errno));
+  pr_data_abort(ECONNRESET, FALSE);
+  fail_unless(session.d == NULL, "Failed to close session.d");
+#endif /* ECONNRESET */
+
+  mark_point();
+  session.d = pr_inet_create_conn(p, -1, NULL, INPORT_ANY, FALSE);
+  fail_unless(session.d != NULL, "Failed to create conn: %s", strerror(errno));
+  pr_data_abort(-5432, FALSE);
   fail_unless(session.d == NULL, "Failed to close session.d");
 }
 END_TEST
@@ -1186,6 +1366,78 @@ START_TEST (data_xfer_write_ascii_with_abor_test) {
 }
 END_TEST
 
+START_TEST (data_xfer_peek_nonsocket_test) {
+  int fd, res, strm_fd;
+  char *buf, *expected;
+  size_t bufsz, expected_len;
+
+  pr_data_clear_xfer_pool();
+  pr_data_reset();
+
+  mark_point();
+  bufsz = 1024;
+  buf = palloc(p, bufsz);
+  session.d = pr_inet_create_conn(p, -1, NULL, INPORT_ANY, FALSE);
+  fail_unless(session.d != NULL, "Failed to create conn: %s", strerror(errno));
+
+  /* read binary data */
+  session.xfer.direction = PR_NETIO_IO_RD;
+
+  /* Note: this string comes from the data_read_cb() we register with our
+   * DATA stream callback.
+   */
+  expected = "Hello,\r\n World!\r\n";
+  expected_len = strlen(expected);
+
+  session.xfer.buf = NULL;
+  session.xfer.buflen = 0;
+
+  res = data_open_streams(session.d, PR_NETIO_STRM_DATA);
+  fail_unless(res == 0, "Failed to open streams on session.d: %s",
+    strerror(errno));
+
+  session.c = pr_inet_create_conn(p, -1, NULL, INPORT_ANY, FALSE);
+  fail_unless(session.c != NULL, "Failed to create conn: %s", strerror(errno));
+
+  res = data_open_streams(session.c, PR_NETIO_STRM_CTRL);
+  fail_unless(res == 0, "Failed to open streams on session.c: %s",
+    strerror(errno));
+
+  fd = tmpfile_fd();
+  if (fd < 0) {
+    return;
+  }
+
+  strm_fd = PR_NETIO_FD(session.c->instrm);
+  PR_NETIO_FD(session.c->instrm) = fd;
+
+  write(fd, "FOO\r\n", 5);
+  rewind_fd(fd);
+
+  mark_point();
+  session.xfer.buf = NULL;
+  session.xfer.buflen = 0;
+  data_write_eagain = TRUE;
+
+  res = pr_data_xfer(buf, bufsz);
+  fail_unless(res == (int) expected_len, "Expected %lu, got %d",
+    (unsigned long) expected_len, res);
+  fail_unless(session.xfer.buflen == 0,
+    "Expected session.xfer.buflen 0, got %lu",
+    (unsigned long) session.xfer.buflen);
+
+  (void) close(fd);
+
+  PR_NETIO_FD(session.c->instrm) = strm_fd;
+  (void) pr_inet_close(p, session.c);
+  session.c = NULL;
+  if (session.d != NULL) {
+    (void) pr_inet_close(p, session.d);
+    session.d = NULL;
+  }
+}
+END_TEST
+
 Suite *tests_get_data_suite(void) {
   Suite *suite;
   TCase *testcase;
@@ -1202,6 +1454,7 @@ Suite *tests_get_data_suite(void) {
 
   tcase_add_test(testcase, data_init_test);
   tcase_add_test(testcase, data_open_active_test);
+  tcase_add_test(testcase, data_open_active_rootrevoke_test);
   tcase_add_test(testcase, data_open_passive_test);
   tcase_add_test(testcase, data_close_test);
   tcase_add_test(testcase, data_abort_test);
@@ -1214,6 +1467,7 @@ Suite *tests_get_data_suite(void) {
   tcase_add_test(testcase, data_xfer_read_ascii_with_abor_test);
   tcase_add_test(testcase, data_xfer_write_ascii_test);
   tcase_add_test(testcase, data_xfer_write_ascii_with_abor_test);
+  tcase_add_test(testcase, data_xfer_peek_nonsocket_test);
 
   /* Allow a longer timeout on these tests, as they will need a second or
    * two to actually run through the test itself, plus overhead.
