@@ -91,7 +91,7 @@ START_TEST (scoreboard_get_test) {
 END_TEST
 
 START_TEST (scoreboard_set_test) {
-  int res;
+  int fd, res;
   const char *path;
 
   mark_point();
@@ -129,12 +129,31 @@ START_TEST (scoreboard_set_test) {
   fail_unless(errno == EINVAL, "Failed to set errno to EINVAL (got %d)",
     errno);
 
+  mark_point();
+  res = pr_set_scoreboard("/tmp/foo/bar");
+  fail_unless(res < 0, "Failed to handle nonexistent path argument");
+  fail_unless(errno == ENOENT, "Expected ENOENT (%d), got %s (%d)", ENOENT,
+    strerror(errno), errno);
+
   res = mkdir(test_dir, 0777);
   fail_unless(res == 0,
     "Failed to create tmp directory '%s': %s", test_dir, strerror(errno));
   res = chmod(test_dir, 0777);
   fail_unless(res == 0,
     "Failed to create set 0777 perms on '%s': %s", test_dir, strerror(errno));
+
+  mark_point();
+  fd = open("/tmp/foo", O_CREAT|O_RDONLY);
+  if (fd < 0) {
+    return;
+  }
+  (void) close(fd);
+
+  res = pr_set_scoreboard("/tmp/foo/bar");
+  fail_unless(res < 0, "Failed to handle non-directory path argument");
+  fail_unless(errno == ENOTDIR, "Expected ENOTDIR (%d), got %s (%d)", ENOTDIR,
+    strerror(errno), errno);
+  (void) unlink("/tmp/foo");
 
   mark_point();
   res = pr_set_scoreboard(test_dir);
@@ -247,6 +266,7 @@ START_TEST (scoreboard_open_close_test) {
   fail_unless(res == 0, "Failed to open scoreboard again: %s", strerror(errno));
 
   /* Now that we have a scoreboard, try opening it again using O_RDONLY. */
+  mark_point();
   pr_close_scoreboard(FALSE);
 
   res = pr_open_scoreboard(O_RDONLY);
@@ -254,8 +274,94 @@ START_TEST (scoreboard_open_close_test) {
   fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
     strerror(errno), errno);
 
+  mark_point();
+  res = pr_open_scoreboard(O_RDWR);
+  fail_unless(res == 0, "Failed to open scoreboard: %s", strerror(errno));
+
+  res = pr_close_scoreboard(FALSE);
+  fail_unless(res == 0, "Failed to close scoreboard: %s", strerror(errno));
+
+  /* Close the already-closed scoreboard, to assert that it is a no-op. */
+  mark_point();
+  res = pr_close_scoreboard(FALSE);
+  fail_unless(res == 0, "Failed to close scoreboard: %s", strerror(errno));
+
   (void) unlink(test_mutex);
   (void) unlink(test_file);
+  (void) rmdir(test_dir);
+}
+END_TEST
+
+START_TEST (scoreboard_open_invalid_header_test) {
+  int fd, res;
+  pr_scoreboard_header_t sch;
+
+  res = mkdir(test_dir, 0775);
+  fail_unless(res == 0, "Failed to create directory '%s': %s", test_dir,
+    strerror(errno));
+
+  res = chmod(test_dir, 0775);
+  fail_unless(res == 0, "Failed to set perms on '%s': %s", test_dir,
+    strerror(errno));
+
+  (void) unlink(test_file);
+  res = pr_set_scoreboard(test_file);
+  fail_unless(res == 0, "Failed to set scoreboard to '%s': %s", test_file,
+    strerror(errno));
+
+  /* Bad magic */
+  mark_point();
+  fd = open(test_file, O_CREAT|O_RDWR, PR_SCOREBOARD_MODE);
+  if (fd < 0) {
+    return;
+  }
+
+  memset(&sch, 0, sizeof(sch));
+  (void) write(fd, &sch, sizeof(sch));
+  (void) close(fd);
+  res = pr_open_scoreboard(O_RDWR);
+  fail_unless(res == PR_SCORE_ERR_BAD_MAGIC,
+    "Failed to handle invalid header magic; expected %d, got %d",
+    PR_SCORE_ERR_BAD_MAGIC, res);
+  (void) unlink(test_file);
+
+  /* Version too old */
+  mark_point();
+  fd = open(test_file, O_CREAT|O_RDWR, PR_SCOREBOARD_MODE);
+  if (fd < 0) {
+    return;
+  }
+
+  memset(&sch, 0, sizeof(sch));
+  sch.sch_magic = PR_SCOREBOARD_MAGIC;
+  sch.sch_version = 1;
+  (void) write(fd, &sch, sizeof(sch));
+  (void) close(fd);
+  res = pr_open_scoreboard(O_RDWR);
+  fail_unless(res == PR_SCORE_ERR_OLDER_VERSION,
+    "Failed to handle too-old header version; expected %d, got %d",
+    PR_SCORE_ERR_OLDER_VERSION, res);
+  (void) unlink(test_file);
+
+  /* Version too new */
+  mark_point();
+  fd = open(test_file, O_CREAT|O_RDWR, PR_SCOREBOARD_MODE);
+  if (fd < 0) {
+    return;
+  }
+
+  memset(&sch, 0, sizeof(sch));
+  sch.sch_magic = PR_SCOREBOARD_MAGIC;
+  sch.sch_version = PR_SCOREBOARD_VERSION + 1;
+  (void) write(fd, &sch, sizeof(sch));
+  (void) close(fd);
+  res = pr_open_scoreboard(O_RDWR);
+  fail_unless(res == PR_SCORE_ERR_NEWER_VERSION,
+    "Failed to handle too-new header version; expected %d, got %d",
+    PR_SCORE_ERR_NEWER_VERSION, res);
+  (void) unlink(test_file);
+
+  (void) unlink(test_mutex);
   (void) rmdir(test_dir);
 }
 END_TEST
@@ -914,7 +1020,6 @@ END_TEST
 START_TEST (scoreboard_entry_kill_test) {
   int res;
   pr_scoreboard_entry_t sce;
-  const char *path;
 
   mark_point();
   res = pr_scoreboard_entry_kill(NULL, 0);
@@ -1083,6 +1188,7 @@ Suite *tests_get_scoreboard_suite(void) {
   tcase_add_test(testcase, scoreboard_set_test);
   tcase_add_test(testcase, scoreboard_set_mutex_test);
   tcase_add_test(testcase, scoreboard_open_close_test);
+  tcase_add_test(testcase, scoreboard_open_invalid_header_test);
   tcase_add_test(testcase, scoreboard_lock_test);
   tcase_add_test(testcase, scoreboard_delete_test);
   tcase_add_test(testcase, scoreboard_restore_test);

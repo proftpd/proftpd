@@ -77,10 +77,8 @@ static int read_scoreboard_header(pr_scoreboard_header_t *sch) {
   /* NOTE: reading a struct from a file using read(2) -- bad (in general).
    * Better would be to use readv(2).  Should also handle short-reads here.
    */
-  while ((res = read(scoreboard_fd, sch, sizeof(pr_scoreboard_header_t))) !=
-      sizeof(pr_scoreboard_header_t)) {
-    int rd_errno = errno;
-
+  res = read(scoreboard_fd, sch, sizeof(pr_scoreboard_header_t));
+  while (res != sizeof(pr_scoreboard_header_t)) {
     if (res == 0) {
       errno = EIO;
       return -1;
@@ -91,26 +89,33 @@ static int read_scoreboard_header(pr_scoreboard_header_t *sch) {
       continue;
     }
 
-    errno = rd_errno;
     return -1;
   }
 
   /* Note: these errors will most likely occur only for inetd-run daemons.
    * Standalone daemons erase the scoreboard on startup.
    */
- 
+
   if (sch->sch_magic != PR_SCOREBOARD_MAGIC) {
-    pr_close_scoreboard(FALSE);
+    pr_trace_msg(trace_channel, 3, "scoreboard header magic %lu (expected %lu)",
+      sch->sch_magic, (unsigned long) PR_SCOREBOARD_MAGIC);
+    (void) pr_close_scoreboard(FALSE);
     return PR_SCORE_ERR_BAD_MAGIC;
   }
 
   if (sch->sch_version < PR_SCOREBOARD_VERSION) {
-    pr_close_scoreboard(FALSE);
+    pr_trace_msg(trace_channel, 3,
+      "scoreboard header version %lu too old (expected %lu)",
+      sch->sch_version, (unsigned long) PR_SCOREBOARD_VERSION);
+    (void) pr_close_scoreboard(FALSE);
     return PR_SCORE_ERR_OLDER_VERSION;
   }
 
   if (sch->sch_version > PR_SCOREBOARD_VERSION) {
-    pr_close_scoreboard(FALSE);
+    pr_trace_msg(trace_channel, 3,
+      "scoreboard header version %lu too new (expected %lu)",
+      sch->sch_version, (unsigned long) PR_SCOREBOARD_VERSION);
+    (void) pr_close_scoreboard(FALSE);
     return PR_SCORE_ERR_NEWER_VERSION;
   }
 
@@ -393,30 +398,14 @@ int pr_close_scoreboard(int keep_mutex) {
 
   pr_trace_msg(trace_channel, 4, "closing scoreboard fd %d", scoreboard_fd);
 
-  while (close(scoreboard_fd) < 0) {
-    if (errno == EINTR) {
-      pr_signals_handle();
-      continue;
-    }
-
-    break;
-  }
-
+  (void) close(scoreboard_fd);
   scoreboard_fd = -1;
 
-  if (!keep_mutex) {
+  if (keep_mutex == FALSE) {
     pr_trace_msg(trace_channel, 4, "closing scoreboard mutex fd %d",
       scoreboard_mutex_fd);
 
-    while (close(scoreboard_mutex_fd) < 0) {
-      if (errno == EINTR) {
-        pr_signals_handle();
-        continue;
-      }
-
-      break;
-    }
-
+    (void) close(scoreboard_mutex_fd);
     scoreboard_mutex_fd = -1;
   }
 
@@ -430,25 +419,11 @@ void pr_delete_scoreboard(void) {
   }
 
   if (scoreboard_fd > -1) {
-    while (close(scoreboard_fd) < 0) {
-      if (errno == EINTR) {
-        pr_signals_handle();
-        continue;
-      }
-
-      break;
-    }
+    (void) close(scoreboard_fd);
   }
 
   if (scoreboard_mutex_fd > -1) {
-    while (close(scoreboard_mutex_fd) < 0) {
-      if (errno == EINTR) {
-        pr_signals_handle();
-        continue;
-      }
-
-      break;
-    }
+    (void) close(scoreboard_mutex_fd);
   }
 
   scoreboard_fd = -1;
@@ -610,7 +585,6 @@ int pr_open_scoreboard(int flags) {
   /* Check the header of this scoreboard file. */
   res = read_scoreboard_header(&header);
   if (res == -1) {
-
     /* If this file is newly created, it needs to have the header
      * written.
      */
