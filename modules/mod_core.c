@@ -5996,7 +5996,6 @@ MODRET core_rnto(cmd_rec *cmd) {
 
   if (!path ||
       !dir_check_canon(cmd->tmp_pool, cmd, cmd->group, path, NULL)) {
-        
     pr_log_debug(DEBUG8, "%s command denied by <Limit> config",
       (char *) cmd->argv[0]);
     pr_response_add_err(R_550, _("%s: %s"), cmd->arg, strerror(EPERM));
