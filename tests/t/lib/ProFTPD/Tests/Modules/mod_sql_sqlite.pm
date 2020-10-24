@@ -12428,19 +12428,7 @@ EOS
 sub sql_sqlite_maxhostsperuser {
   my $self = shift;
   my $tmpdir = $self->{tmpdir};
-
-  my $config_file = "$tmpdir/sqlite.conf";
-  my $pid_file = File::Spec->rel2abs("$tmpdir/sqlite.pid");
-  my $scoreboard_file = File::Spec->rel2abs("$tmpdir/sqlite.scoreboard");
-
-  my $log_file = test_get_logfile();
-
-  my $user = 'proftpd';
-  my $passwd = 'test';
-  my $group = 'ftpd';
-  my $home_dir = File::Spec->rel2abs($tmpdir);
-  my $uid = 500;
-  my $gid = 500;
+  my $setup = test_setup($tmpdir, 'sqlite');
 
   my $db_file = File::Spec->rel2abs("$tmpdir/proftpd.db");
 
@@ -12459,7 +12447,7 @@ CREATE TABLE users (
 );
 CREATE INDEX i_users_userid ON users.userid;
 CREATE INDEX i_users_uid ON users.uid;
-INSERT INTO users (userid, passwd, uid, gid, homedir, shell) VALUES ('$user', '$passwd', $uid, $gid, '$home_dir', '/bin/bash');
+INSERT INTO users (userid, passwd, uid, gid, homedir, shell) VALUES ('$setup->{user}', '$setup->{passwd}', $setup->{uid}, $setup->{gid}, '$setup->{home_dir}', '/bin/bash');
 
 CREATE TABLE groups (
   groupname TEXT,
@@ -12467,7 +12455,7 @@ CREATE TABLE groups (
   members TEXT
 );
 CREATE INDEX i_groups_gid ON groups.gid;
-INSERT INTO groups (groupname, gid, members) VALUES ('$group', $gid, '$user');
+INSERT INTO groups (groupname, gid, members) VALUES ('$setup->{group}', $setup->{gid}, '$setup->{user}');
 
 CREATE TABLE user_hosts (
   session_id TEXT,
@@ -12475,10 +12463,9 @@ CREATE TABLE user_hosts (
   host TEXT
 );
 CREATE INDEX i_user_hosts_userid ON user_hosts.userid;
-INSERT INTO user_hosts (session_id, userid, host) VALUES ('abc', '$user', '127.0.0.1');
+INSERT INTO user_hosts (session_id, userid, host) VALUES ('abc', '$setup->{user}', '127.0.0.1');
 
 EOS
-
     unless (close($fh)) {
       die("Can't write $db_script: $!");
     }
@@ -12499,11 +12486,11 @@ EOS
   }
 
   my $config = {
-    PidFile => $pid_file,
-    ScoreboardFile => $scoreboard_file,
-    SystemLog => $log_file,
-    TraceLog => $log_file,
-    Trace => 'response:20 sql:20',
+    PidFile => $setup->{pid_file},
+    ScoreboardFile => $setup->{scoreboard_file},
+    SystemLog => $setup->{log_file},
+    TraceLog => $setup->{log_file},
+    Trace => 'jot:20 response:20 sql:20',
 
     IfModules => {
       'mod_delay.c' => {
@@ -12517,7 +12504,7 @@ EOS
         'SQLAuthTypes plaintext',
         'SQLBackend sqlite3',
         "SQLConnectInfo $db_file",
-        "SQLLogFile $log_file",
+        "SQLLogFile $setup->{log_file}",
         'SQLMinID 100',
 
         # Here, the MaxHostsPerUser limit is 3; it has to be hardcoded into
@@ -12529,10 +12516,10 @@ EOS
         'SQLNamedQuery get-user-by-id SELECT "userid, passwd, uid, gid, homedir, shell FROM users WHERE uid = %{0}"',
         'SQLUserInfo custom:/get-user-by-name/get-user-by-id',
 
-        'SQLNamedQuery add-user-host FREEFORM "INSERT INTO user_hosts (session_id, userid, host) VALUES (\'%{env:UNIQUE_ID}\', \'%u\', \'%a\')"',
+        'SQLNamedQuery add-user-host FREEFORM "INSERT INTO user_hosts (session_id, userid, host) VALUES (\'%{note:UNIQUE_ID}\', \'%u\', \'%a\')"',
         'SQLLog PASS add-user-host',
 
-        'SQLNamedQuery remove-user-host FREEFORM "DELETE FROM user_hosts WHERE session_id = \"%{env:UNIQUE_ID}\"',
+        'SQLNamedQuery remove-user-host FREEFORM "DELETE FROM user_hosts WHERE session_id = \"%{note:UNIQUE_ID}\"',
         'SQLLog EXIT remove-user-host',
 
         'SQLShowInfo ERR_PASS 530 "Sorry, the maximum number of hosts for this user are already connected."',
@@ -12540,7 +12527,8 @@ EOS
     },
   };
 
-  my ($port, $config_user, $config_group) = config_write($config_file, $config);
+  my ($port, $config_user, $config_group) = config_write($setup->{config_file},
+    $config);
 
   # Open pipes, for use between the parent and child processes.  Specifically,
   # the child will indicate when it's done with its test by writing a message
@@ -12558,16 +12546,16 @@ EOS
   if ($pid) {
     eval {
       my $client1 = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
-      $client1->login($user, $passwd);
+      $client1->login($setup->{user}, $setup->{passwd});
 
       my $client2 = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
-      $client2->login($user, $passwd);
+      $client2->login($setup->{user}, $setup->{passwd});
 
       my $client3 = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
-      $client3->login($user, $passwd);
+      $client3->login($setup->{user}, $setup->{passwd});
 
       my $client4 = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
-      eval { $client4->login($user, $passwd) };
+      eval { $client4->login($setup->{user}, $setup->{passwd}) };
       unless ($@) {
         die("Fourth login succeeded unexpectedly");
       }
@@ -12588,17 +12576,15 @@ EOS
         test_msg("Expected response '$expected', got '$resp_msgs->[1]'"));
 
       $client4->quit();
-
       $client3->quit();
 
       $client4 = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
-      $client4->login($user, $passwd);
+      $client4->login($setup->{user}, $setup->{passwd});
       $client4->quit();
 
       $client2->quit();
       $client1->quit();
     };
-
     if ($@) {
       $ex = $@;
     }
@@ -12607,7 +12593,7 @@ EOS
     $wfh->flush();
 
   } else {
-    eval { server_wait($config_file, $rfh) };
+    eval { server_wait($setup->{config_file}, $rfh) };
     if ($@) {
       warn($@);
       exit 1;
@@ -12617,18 +12603,10 @@ EOS
   }
 
   # Stop server
-  server_stop($pid_file);
-
+  server_stop($setup->{pid_file});
   $self->assert_child_ok($pid);
 
-  if ($ex) {
-    test_append_logfile($log_file, $ex);
-    unlink($log_file);
-
-    die($ex);
-  }
-
-  unlink($log_file);
+  test_cleanup($setup->{log_file}, $ex);
 }
 
 sub get_logins {
