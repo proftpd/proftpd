@@ -3658,6 +3658,8 @@ MODRET core_pwd(cmd_rec *cmd) {
   if (!dir_check(cmd->tmp_pool, cmd, cmd->group, session.vwd, NULL)) {
     int xerrno = EACCES;
 
+    pr_log_debug(DEBUG7, "%s command denied by <Limit> configuration",
+      (char *) cmd->argv[0]);
     pr_response_add_err(R_550, "%s: %s", (char *) cmd->argv[0],
       strerror(xerrno));
 
@@ -4748,6 +4750,8 @@ MODRET core_host(cmd_rec *cmd) {
   if (!dir_check(cmd->tmp_pool, cmd, cmd->group, session.cwd, NULL)) {
     int xerrno = EACCES;
 
+    pr_log_debug(DEBUG7, "%s command denied by <Limit> configuration",
+      (char *) cmd->argv[0]);
     pr_response_add_err(R_504, "%s: %s", (char *) cmd->argv[1],
       strerror(xerrno));
 
@@ -6211,6 +6215,8 @@ MODRET core_noop(cmd_rec *cmd) {
   if (!dir_check(cmd->tmp_pool, cmd, cmd->group, session.vwd, NULL)) {
     int xerrno = EPERM;
 
+    pr_log_debug(DEBUG7, "%s command denied by <Limit> configuration",
+      (char *) cmd->argv[0]);
     pr_response_add_err(R_550, "%s", strerror(xerrno));
 
     pr_cmd_set_errno(cmd, xerrno);
