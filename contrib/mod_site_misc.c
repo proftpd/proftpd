@@ -181,10 +181,16 @@ static int site_misc_delete_dir(pool *p, const char *dir) {
   int res;
   cmd_rec *cmd;
   pool *sub_pool;
+  int xerrno;
 
   dirh = pr_fsio_opendir(dir);
-  if (dirh == NULL)
+  xerrno = errno;
+  
+  if (dirh == NULL) {
+    pr_log_debug(DEBUG2, MOD_SITE_MISC_VERSION ": error deleting '%s': %s",
+      dir, strerror(xerrno));
     return -1;
+  }
 
   while ((dent = pr_fsio_readdir(dirh)) != NULL) {
     struct stat st;
