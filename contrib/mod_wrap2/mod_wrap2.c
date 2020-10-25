@@ -1465,9 +1465,9 @@ MODRET set_wrapgrouptables(cmd_rec *cmd) {
       }
     }
 
-    if (!have_registration) {
+    if (have_registration == FALSE) {
       CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "unsupported table source type: '",
-        (char *) cmd->argv[1], "'", NULL));
+        (char *) cmd->argv[i], "'", NULL));
     }
 
     *tmp = ':';
@@ -1580,12 +1580,12 @@ MODRET set_wraptables(cmd_rec *cmd) {
       }
     }
 
-    if (!have_registration) {
+    if (have_registration == FALSE) {
       CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "unsupported table source type: '",
-        cmd->argv[1], "'", NULL));
+        cmd->argv[i], "'", NULL));
     }
 
-    *tmp = ':'; 
+    *tmp = ':';
   }
 
   c = add_config_param_str(cmd->argv[0], 2, cmd->argv[1], cmd->argv[2]);
@@ -1626,9 +1626,9 @@ MODRET set_wrapusertables(cmd_rec *cmd) {
       }
     }
 
-    if (!have_registration) {
+    if (have_registration == FALSE) {
       CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "unsupported table source type: '",
-        (char *) cmd->argv[1], "'", NULL));
+        (char *) cmd->argv[i], "'", NULL));
     }
 
     *tmp = ':';
