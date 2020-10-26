@@ -1029,6 +1029,8 @@ MODRET site_misc_utime_mtime(cmd_rec *cmd) {
   if (pr_fsio_utimes_with_root(path, tvs) < 0) {
     int xerrno = errno;
 
+    pr_log_debug(DEBUG2, MOD_SITE_MISC_VERSION
+        ": error modifying fact for '%s': %s", path, strerror(xerrno));
     pr_response_add_err(R_550, "%s: %s", cmd->arg, strerror(xerrno));
 
     errno = xerrno;
@@ -1211,6 +1213,8 @@ MODRET site_misc_utime_atime_mtime_ctime(cmd_rec *cmd) {
   if (pr_fsio_utimes_with_root(path, tvs) < 0) {
     int xerrno = errno;
 
+    pr_log_debug(DEBUG2, MOD_SITE_MISC_VERSION
+        ": error modifying fact for '%s': %s", path, strerror(xerrno));
     pr_response_add_err(R_550, "%s: %s", cmd->arg, strerror(xerrno));
 
     errno = xerrno;
