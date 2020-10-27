@@ -905,7 +905,7 @@ static int facts_modify_mtime(pool *p, const char *path, char *timestamp) {
     int xerrno = errno;
 
     pr_log_debug(DEBUG2, MOD_FACTS_VERSION
-      ": error modifying modify fact for '%s': %s", path, strerror(xerrno));
+      ": error modifying fact for '%s': %s", path, strerror(xerrno));
     errno = xerrno;
     return -1;
   }
