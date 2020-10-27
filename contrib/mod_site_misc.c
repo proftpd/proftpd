@@ -899,6 +899,8 @@ MODRET site_misc_symlink(cmd_rec *cmd) {
     if (res < 0) {
       int xerrno = errno;
 
+      pr_log_debug(DEBUG7, MOD_SITE_MISC_VERSION
+        "unable to stat '%s': %s", src, strerror(xerrno));
       pr_response_add_err(R_550, "%s: %s", cmd->arg, strerror(xerrno));
 
       errno = xerrno;
@@ -908,6 +910,8 @@ MODRET site_misc_symlink(cmd_rec *cmd) {
     if (pr_fsio_symlink(src, dst) < 0) {
       int xerrno = errno;
 
+      pr_log_debug(DEBUG2, MOD_SITE_MISC_VERSION
+        ": error symlinking '%s' to '%s': %s", src, dst, strerror(xerrno));
       pr_response_add_err(R_550, "%s: %s", cmd->arg, strerror(xerrno));
 
       errno = xerrno;
