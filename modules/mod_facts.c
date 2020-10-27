@@ -1766,6 +1766,9 @@ MODRET facts_mlst(cmd_rec *cmd) {
   pr_fs_clear_cache2(decoded_path);
   if (facts_mlinfo_get(&info, decoded_path, decoded_path, flags,
       fake_user, fake_uid, fake_group, fake_gid, fake_mode) < 0) {
+
+    pr_log_debug(DEBUG3, MOD_FACTS_VERSION
+      ": MLST: unable to get info for '%s': %s", decoded_path, strerror(errno));
     pr_response_add_err(R_550, _("'%s' cannot be listed"), path);
 
     pr_cmd_set_errno(cmd, EPERM);
