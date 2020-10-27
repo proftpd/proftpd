@@ -1568,8 +1568,6 @@ MODRET facts_mlsd(cmd_rec *cmd) {
     pr_pool_tag(info.pool, "MLSD facts pool");
     if (facts_mlinfo_get(&info, rel_path, dent->d_name, flags,
         fake_user, fake_uid, fake_group, fake_gid, fake_mode) < 0) {
-      pr_log_debug(DEBUG3, MOD_FACTS_VERSION
-        ": MLSD: unable to get info for '%s': %s", abs_path, strerror(errno));
       continue;
     }
 
