@@ -41,6 +41,8 @@
 - Issue 1076 - TLS client-initiated renegotiations are supported unexpectedly.
 - Issue 1105 - Improper handling of multiple IP addresses, ServerAliases in
   <VirtualHost> sections.
+- Issue 1048 - Support using weak TLS certificates via the new AllowWeakSecurity
+  TLSOption.
 
 1.3.7 - Released 20-Jul-2020
 --------------------------------

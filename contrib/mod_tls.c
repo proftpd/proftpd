@@ -78,7 +78,7 @@
 # include <sys/mman.h>
 #endif
 
-#define MOD_TLS_VERSION		"mod_tls/2.9"
+#define MOD_TLS_VERSION		"mod_tls/2.9.1"
 
 /* Make sure the version of proftpd is as necessary. */
 #if PROFTPD_VERSION_NUMBER < 0x0001030602
@@ -660,6 +660,7 @@ static unsigned char *tls_authenticated = NULL;
 #define TLS_OPT_NO_AUTO_ECDH				0x1000
 #define TLS_OPT_ALLOW_WEAK_DH				0x2000
 #define TLS_OPT_IGNORE_SNI				0x4000
+#define TLS_OPT_ALLOW_WEAK_SECURITY			0x8000
 
 /* mod_tls SSCN modes */
 #define TLS_SSCN_MODE_SERVER				0
@@ -14146,6 +14147,15 @@ MODRET set_tlsoptions(cmd_rec *cmd) {
     } else if (strcmp(cmd->argv[i], "AllowWeakDH") == 0) {
       opts |= TLS_OPT_ALLOW_WEAK_DH;
 
+    } else if (strcmp(cmd->argv[i], "AllowWeakSecurity") == 0) {
+#if OPENSSL_VERSION_NUMBER >= 0x10100000L
+      opts |= TLS_OPT_ALLOW_WEAK_SECURITY;
+#else
+      CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "The ", cmd->argv[i],
+        " option cannot be used on this system, as your OpenSSL version "
+        "is too old; requires OpenSSL-1.1.0 or later", NULL));
+#endif /* OpenSSL-1.1.0 and later */
+
     } else if (strcmp(cmd->argv[i], "AllowClientRenegotiation") == 0 ||
                strcmp(cmd->argv[i], "AllowClientRenegotiations") == 0) {
       opts |= TLS_OPT_ALLOW_CLIENT_RENEGOTIATIONS;
@@ -18303,6 +18313,12 @@ static int tls_ctx_set_verify(SSL_CTX *ctx) {
 
 static int tls_ctx_set_all(server_rec *s, SSL_CTX *ctx) {
   X509 *dsa_cert = NULL, *ec_cert = NULL, *rsa_cert = NULL;
+
+  if (tls_opts & TLS_OPT_ALLOW_WEAK_SECURITY) {
+#if OPENSSL_VERSION_NUMBER >= 0x10100000L
+    SSL_CTX_set_security_level(ctx, 0);
+#endif /* OpenSSL-1.1.0 and later */
+  }
 
   if (tls_ctx_set_pkey(ctx) < 0) {
     return -1;
