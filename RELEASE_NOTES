@@ -62,3 +62,5 @@ ChangeLog files.
     TLSOptions
       Support for the long-deprecated `NoCertRequest` TLSOption has been
       removed.
+
+      New `AllowWeakSecurity` TLSOption added (Issue #1048)
