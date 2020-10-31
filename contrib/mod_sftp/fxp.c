@@ -1989,6 +1989,51 @@ static char *fxp_strattrflags(pool *p, uint32_t flags) {
     if (flags & SSH2_FX_ATTR_MODIFYTIME) {
       str = pstrcat(p, str, *str ? ";" : "", "modify", NULL);
     }
+
+    if (flags & SSH2_FX_ATTR_OWNERGROUP) {
+      str = pstrcat(p, str, *str ? ";" : "", "UNIX.owner;UNIX.group", NULL);
+    }
+
+    if (flags & SSH2_FX_ATTR_LINK_COUNT) {
+      str = pstrcat(p, str, *str ? ";" : "", "UNIX.nlink", NULL);
+    }
+
+    /* Ignored/unimplemented */
+    if (flags & SSH2_FX_ATTR_ALLOCATION_SIZE) {
+      str = pstrcat(p, str, *str ? ";" : "", "allocation-size", NULL);
+    }
+
+    if (flags & SSH2_FX_ATTR_SUBSECOND_TIMES) {
+      str = pstrcat(p, str, *str ? ";" : "", "subsecond", NULL);
+    }
+
+    if (flags & SSH2_FX_ATTR_CREATETIME) {
+      str = pstrcat(p, str, *str ? ";" : "", "create", NULL);
+    }
+
+    if (flags & SSH2_FX_ATTR_ACL) {
+      str = pstrcat(p, str, *str ? ";" : "", "acl", NULL);
+    }
+
+    if (flags & SSH2_FX_ATTR_BITS) {
+      str = pstrcat(p, str, *str ? ";" : "", "bits", NULL);
+    }
+
+    if (flags & SSH2_FX_ATTR_TEXT_HINT) {
+      str = pstrcat(p, str, *str ? ";" : "", "text-hint", NULL);
+    }
+
+    if (flags & SSH2_FX_ATTR_MIME_TYPE) {
+      str = pstrcat(p, str, *str ? ";" : "", "mime-type", NULL);
+    }
+
+    if (flags & SSH2_FX_ATTR_UNTRANSLATED_NAME) {
+      str = pstrcat(p, str, *str ? ";" : "", "untranslated-name", NULL);
+    }
+
+    if (flags & SSH2_FX_ATTR_CTIME) {
+      str = pstrcat(p, str, *str ? ";" : "", "ctime", NULL);
+    }
   }
 
   return str;
