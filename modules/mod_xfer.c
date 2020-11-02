@@ -2651,6 +2651,8 @@ MODRET xfer_retr(cmd_rec *cmd) {
   if (pr_fsio_fstat(retr_fh, &st) < 0) {
     /* Error stat'ing the file. */
     xerrno = errno;
+    pr_log_debug(DEBUG6, "unable to stat retr path '%s': %s",
+      dir, strerror(xerrno));
 
     pr_fsio_close(retr_fh);
     retr_fh = NULL;

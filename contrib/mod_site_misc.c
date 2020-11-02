@@ -337,6 +337,8 @@ static int site_misc_delete_path(pool *p, const char *path) {
 
   pr_fs_clear_cache2(path);
   if (pr_fsio_stat(path, &st) < 0) {
+    pr_log_debug(DEBUG4, MOD_SITE_MISC_VERSION
+      ": unable to stat path %s", path);
     return -1;
   }
 
