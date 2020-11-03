@@ -23,6 +23,9 @@ ChangeLog files.
     `--disable-openssl-api-compat` configure option to disable use of this
     macro.
 
+  + Fixed SQL syntax regression for some generated SQL statements
+    (Issue #1149).
+
 
   + Deprecated Directives
 
