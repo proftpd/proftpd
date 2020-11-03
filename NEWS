@@ -31,6 +31,8 @@
 - Issue 1076 - TLS client-initiated renegotiations are supported unexpectedly.
 - Issue 1105 - Improper handling of multiple IP addresses, ServerAliases in
   <VirtualHost> sections.
+- Issue 1149 - mod_quotatab_sql failing due to SQL syntax errors.  This is
+  a regression caused by Issue #392.
 
 1.3.7a - Released 21-Jul-2020
 --------------------------------
