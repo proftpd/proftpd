@@ -1,5 +1,5 @@
 dnl ProFTPD - mod_sftp
-dnl Copyright (c) 2012-2019 TJ Saunders <tj@castaglia.org>
+dnl Copyright (c) 2012-2020 TJ Saunders <tj@castaglia.org>
 dnl
 dnl This program is free software; you can redistribute it and/or modify
 dnl it under the terms of the GNU General Public License as published by
@@ -238,3 +238,20 @@ AC_SUBST(MODULE_LIBS)
 
 AC_CONFIG_HEADER(mod_sftp.h)
 AC_OUTPUT(Makefile)
+
+dnl After everything has been generated, we need to ensure that our API
+dnl headers are in the include/ directory, for use by other modules' build
+dnl systems.
+builddir=../..
+if test ! -d $builddir/include/mod_sftp ; then
+  mkdir $builddir/include/mod_sftp
+fi
+
+for h in $(ls *.h); do
+  if test ! -e $builddir/include/mod_sftp/$h ; then
+    olddir=`pwd`
+    cd $builddir/include/mod_sftp
+    ln -s ../../contrib/mod_sftp/$h .
+    cd $olddir
+  fi
+done

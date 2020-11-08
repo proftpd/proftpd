@@ -23,6 +23,7 @@ contrib/mod_sftp/mod_sftp.h
 contrib/mod_snmp/mod_snmp.h
 contrib/mod_wrap2/mod_wrap2.h
 include/buildstamp.h
+include/mod_sftp
 Makefile
 Make.rules
 Make.modules

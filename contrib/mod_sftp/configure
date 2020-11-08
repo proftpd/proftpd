@@ -5196,3 +5196,17 @@ if test -n "$ac_unrecognized_opts" && test "$enable_option_checking" != no; then
 $as_echo "$as_me: WARNING: unrecognized options: $ac_unrecognized_opts" >&2;}
 fi
 
+
+builddir=../..
+if test ! -d $builddir/include/mod_sftp ; then
+  mkdir $builddir/include/mod_sftp
+fi
+
+for h in $(ls *.h); do
+  if test ! -e $builddir/include/mod_sftp/$h ; then
+    olddir=`pwd`
+    cd $builddir/include/mod_sftp
+    ln -s ../../contrib/mod_sftp/$h .
+    cd $olddir
+  fi
+done
