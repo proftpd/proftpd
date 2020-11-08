@@ -167,6 +167,8 @@ static int chroot_allow_path(const char *path) {
 static void copy_progress_cb(int nwritten) {
   int res;
 
+  (void) nwritten;
+
   copy_iter_count++;
   if ((copy_iter_count % COPY_PROGRESS_NTH_ITER) != 0) {
     return;
