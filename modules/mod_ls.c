@@ -2046,7 +2046,7 @@ static int dolist(cmd_rec *cmd, const char *opt, const char *resp_code,
           return 0;
         }
         pr_log_debug(DEBUG8,
-          "Unable to stat %s: %s", target, strerror(xerrno));
+          "error checking %s: %s", target, strerror(xerrno));
         pr_response_add_err(R_450, "%s: %s",
           pr_fs_encode_path(cmd->tmp_pool, target), strerror(xerrno));
 
@@ -2933,7 +2933,7 @@ MODRET ls_stat(cmd_rec *cmd) {
     int xerrno = errno;
 
     pr_log_debug(DEBUG8,
-          "Unable to stat %s: %s", path, strerror(xerrno));
+          "error checking %s: %s", path, strerror(xerrno));
     pr_response_add_err(R_450, "%s: %s", path, strerror(xerrno));
 
     pr_cmd_set_errno(cmd, xerrno);
@@ -3185,7 +3185,7 @@ MODRET ls_nlst(cmd_rec *cmd) {
           }
 
           pr_log_debug(DEBUG8,
-            "Unable to stat %s: %s", target, strerror(errno));
+            "error checking %s: %s", target, strerror(errno));
           pr_response_add_err(R_450, _("No files found"));
 
           pr_cmd_set_errno(cmd, ENOENT);
@@ -3395,7 +3395,7 @@ MODRET ls_nlst(cmd_rec *cmd) {
       }
 
       pr_log_debug(DEBUG8,
-          "Unable to stat %s: %s", target, strerror(xerrno));
+          "error checking %s: %s", target, strerror(xerrno));
       pr_response_add_err(R_450, "%s: %s", cmd->arg, strerror(xerrno));
 
       pr_cmd_set_errno(cmd, xerrno);

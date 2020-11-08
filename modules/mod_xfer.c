@@ -1904,7 +1904,7 @@ MODRET xfer_stor(cmd_rec *cmd) {
       xerrno = errno;
 
     } else if (pr_fsio_stat(path, &st) < 0) {
-      pr_log_debug(DEBUG4, "unable to stat '%s': %s", cmd->arg,
+      pr_log_debug(DEBUG4, "error checking '%s': %s", cmd->arg,
         strerror(errno));
       xerrno = errno;
     }
@@ -2651,7 +2651,7 @@ MODRET xfer_retr(cmd_rec *cmd) {
   if (pr_fsio_fstat(retr_fh, &st) < 0) {
     /* Error stat'ing the file. */
     xerrno = errno;
-    pr_log_debug(DEBUG6, "unable to stat retr path '%s': %s",
+    pr_log_debug(DEBUG6, "error checking path '%s': %s",
       dir, strerror(xerrno));
 
     pr_fsio_close(retr_fh);
@@ -4275,7 +4275,7 @@ static int xfer_sess_init(void) {
 
     } else {
       if (pr_fsio_fstat(displayfilexfer_fh, &st) < 0) {
-        pr_log_debug(DEBUG6, "unable to stat DisplayFileTransfer file '%s': %s",
+        pr_log_debug(DEBUG6, "error checking DisplayFileTransfer file '%s': %s",
           displayfilexfer, strerror(errno));
         pr_fsio_close(displayfilexfer_fh);
         displayfilexfer_fh = NULL;

@@ -1872,7 +1872,7 @@ static modret_t *digest_xcmd(cmd_rec *cmd, unsigned long algo) {
     int xerrno = errno;
 
     pr_log_debug(DEBUG8, MOD_DIGEST_VERSION
-      ": unable to stat %s: %s", path, strerror(xerrno));
+      ": error checking %s: %s", path, strerror(xerrno));
     pr_response_add_err(R_550, "%s: %s", orig_path, strerror(xerrno));
 
     pr_cmd_set_errno(cmd, xerrno);
@@ -2038,7 +2038,7 @@ MODRET digest_hash(cmd_rec *cmd) {
     xerrno = errno;
 
     pr_log_debug(DEBUG8, MOD_DIGEST_VERSION
-      ": unable to stat %s: %s", path, strerror(xerrno));
+      ": error checking %s: %s", path, strerror(xerrno));
     pr_response_add_err(R_550, "%s: %s", orig_path, strerror(xerrno));
 
     pr_cmd_set_errno(cmd, xerrno);
@@ -2622,7 +2622,7 @@ MODRET digest_md5(cmd_rec *cmd) {
     xerrno = errno;
 
     pr_log_debug(DEBUG8, MOD_DIGEST_VERSION
-      ": unable to stat %s: %s", path, strerror(xerrno));
+      ": error checking %s: %s", path, strerror(xerrno));
     pr_response_add_err(R_550, "%s: %s", orig_path, strerror(xerrno));
 
     pr_cmd_set_errno(cmd, xerrno);
