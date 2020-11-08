@@ -2649,7 +2649,6 @@ int pr_fs_dircat(char *buf, int buflen, const char *dir1, const char *dir2) {
   buflen -= dir1len;
 
   if (buflen > 0 &&
-      dir1len >= 1 &&
       *(_dir1 + (dir1len-1)) != '/') {
     sstrcat(ptr, "/", buflen);
     ptr += 1;

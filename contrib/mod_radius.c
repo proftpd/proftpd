@@ -440,9 +440,7 @@ static int radius_parse_var(char *var, int *attr_id, char **attr_default) {
      * a NULL for this portion, so that the string stored in the config_rec
      * is not actually manipulated, as is done here.
      */
-    if (var_len > 0) {
-      var[var_len-1] = '\0';
-    }
+    var[var_len-1] = '\0';
 
     if (ptr != NULL) {
       *attr_default = ++ptr;
