@@ -1230,7 +1230,6 @@ static char **sreaddir(const char *dirname, const int sort) {
   struct stat st;
   int i, dir_fd;
   char **p;
-  long ssize;
   size_t dsize;
 
   pr_fs_clear_cache2(dirname);
@@ -1253,7 +1252,6 @@ static char **sreaddir(const char *dirname, const int sort) {
    * don't guess *too* naively!
    *
    * 'dsize' must be greater than zero or we loop forever.
-   * 'ssize' must be at least big enough to hold a maximum-length name.
    */
 
   /* Guess the number of entries in the directory. */
@@ -1277,15 +1275,6 @@ static char **sreaddir(const char *dirname, const int sort) {
 #else
   dir_fd = 0;
 #endif
-
-  ssize = get_name_max((char *) dirname, dir_fd);
-  if (ssize < 1) {
-    pr_log_debug(DEBUG1, "get_name_max(%s, %d) = %lu, using %d", dirname,
-      dir_fd, (unsigned long) ssize, NAME_MAX_GUESS);
-    ssize = NAME_MAX_GUESS;
-  }
-
-  ssize *= ((dsize / 4) + 1);
 
   /* Allocate first block for holding filenames.  Yes, we are explicitly using
    * malloc (and realloc, and calloc, later) rather than the memory pools.
