@@ -245,7 +245,7 @@ static int set_cipher_key(struct sftp_cipher *cipher, const EVP_MD *hash,
   }
 
   key_sz = sftp_crypto_get_size(cipher->key_len > 0 ?
-      cipher->key_len : EVP_CIPHER_key_length(cipher->cipher),
+      cipher->key_len : (size_t) EVP_CIPHER_key_length(cipher->cipher),
     EVP_MD_size(hash));
   if (key_sz == 0) {
     (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
