@@ -52,6 +52,9 @@ struct logfmt_json_info {
 static int logfmt_json_keycmp(const void *k1, size_t ksz1, const void *k2,
   size_t ksz2) {
 
+  (void) ksz1;
+  (void) ksz2;
+
   /* Return zero to indicate a match, non-zero otherwise. */
   return (*((unsigned char *) k1) == *((unsigned char *) k2) ? 0 : 1);
 }
@@ -60,6 +63,8 @@ static int logfmt_json_keycmp(const void *k1, size_t ksz1, const void *k2,
 static unsigned int logfmt_json_keyhash(const void *k, size_t ksz) {
   unsigned char c;
   unsigned int res;
+
+  (void) ksz;
 
   c = *((unsigned char *) k);
   res = (c << 8);
@@ -3045,6 +3050,8 @@ static array_header *filter_get_cmd_ids(pool *p, array_header *names,
     int *included_classes, int *excluded_classes, int rules_type, int flags) {
   register unsigned int i;
   array_header *cmd_ids;
+
+  (void) excluded_classes;
 
   cmd_ids = make_array(p, names->nelts, sizeof(int));
   for (i = 0; i < names->nelts; i++) {
