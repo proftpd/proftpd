@@ -74,6 +74,7 @@
   keywords.
 - Issue 1175 - Unable to set per-user TLSOptions using mod_ifsession.
 - Issue 754 - Some mod_snmp counters were not being incremented properly.
+- Issue 548 - `make install` target should install only, not recompile any code.
 
 1.3.7 - Released 20-Jul-2020
 --------------------------------
