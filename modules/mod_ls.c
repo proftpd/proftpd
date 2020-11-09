@@ -2034,7 +2034,8 @@ static int dolist(cmd_rec *cmd, const char *opt, const char *resp_code,
             (list_flags & LS_FL_NO_ERROR_IF_ABSENT)) {
           return 0;
         }
-
+        pr_log_debug(DEBUG8,
+          "error checking %s: %s", target, strerror(xerrno));
         pr_response_add_err(R_450, "%s: %s",
           pr_fs_encode_path(cmd->tmp_pool, target), strerror(xerrno));
 
@@ -2920,6 +2921,8 @@ MODRET ls_stat(cmd_rec *cmd) {
   if (res < 0) {
     int xerrno = errno;
 
+    pr_log_debug(DEBUG8,
+          "error checking %s: %s", path, strerror(xerrno));
     pr_response_add_err(R_450, "%s: %s", path, strerror(xerrno));
 
     pr_cmd_set_errno(cmd, xerrno);
@@ -3170,6 +3173,8 @@ MODRET ls_nlst(cmd_rec *cmd) {
             return PR_HANDLED(cmd);
           }
 
+          pr_log_debug(DEBUG8,
+            "error checking %s: %s", target, strerror(errno));
           pr_response_add_err(R_450, _("No files found"));
 
           pr_cmd_set_errno(cmd, ENOENT);
@@ -3378,6 +3383,8 @@ MODRET ls_nlst(cmd_rec *cmd) {
         return PR_HANDLED(cmd);
       }
 
+      pr_log_debug(DEBUG8,
+          "error checking %s: %s", target, strerror(xerrno));
       pr_response_add_err(R_450, "%s: %s", cmd->arg, strerror(xerrno));
 
       pr_cmd_set_errno(cmd, xerrno);
