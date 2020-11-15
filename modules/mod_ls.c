@@ -1228,7 +1228,7 @@ static char **sreaddir(const char *dirname, const int sort) {
   DIR *d;
   struct dirent *de;
   struct stat st;
-  int i, dir_fd;
+  int i;
   char **p;
   size_t dsize;
 
@@ -1259,22 +1259,6 @@ static char **sreaddir(const char *dirname, const int sort) {
   if (dsize > LS_MAX_DSIZE) {
     dsize = LS_MAX_DSIZE;
   }
-
-  /* The directory has been opened already, but portably accessing the file
-   * descriptor inside the DIR struct isn't easy.  Some systems use "dd_fd" or
-   * "__dd_fd" rather than "d_fd".  Still others work really hard at opacity.
-   */
-#if defined(HAVE_DIRFD) 
-  dir_fd = dirfd(d);
-#elif defined(HAVE_STRUCT_DIR_D_FD)
-  dir_fd = d->d_fd;
-#elif defined(HAVE_STRUCT_DIR_DD_FD)
-  dir_fd = d->dd_fd;
-#elif defined(HAVE_STRUCT_DIR___DD_FD)
-  dir_fd = d->__dd_fd;
-#else
-  dir_fd = 0;
-#endif
 
   /* Allocate first block for holding filenames.  Yes, we are explicitly using
    * malloc (and realloc, and calloc, later) rather than the memory pools.
