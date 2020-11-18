@@ -35,6 +35,14 @@ mentioned possibilities of compromise or disclosure via those programs.
 </center>
 
 <p>
+Additionally, <code>mod_exec</code> supports submodules that allow other
+methods of executing commands than simply running scripts:
+<a name="submodules"></a>
+<ul>
+  <li><a href="mod_exec_mqueue.html"><code>mod_exec_mqueue</code></a> for sending messages vi SysV IPC Message Queues<br>
+</ul>
+
+<p>
 Please read the <a href="#Usage">usage</a> section to know the other caveats
 with this module.
 
@@ -582,6 +590,11 @@ allows for any script you wish, and is not subject to the restrictions of a
 chroot, meaning that you can use <code>DefaultRoot</code> and still have
 arbitrary scripts executed.  If requested, I can provide help in writing a
 FIFO reader to execute the necessary scripts.
+
+<p>
+Another alternative is to use the <a href="mod_exec_mqueue.html"><code>
+mod_exec_mqueue</code></a> submodule, which uses SysV IPC Message Queues to
+bypass the filesystem paths altogether.
 
 <p>
 <hr>

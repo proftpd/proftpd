@@ -41,7 +41,7 @@
 module exec_module;
 
 static pool *exec_pool = NULL;
-static int exec_engine = FALSE;
+int exec_engine = FALSE;
 static unsigned int exec_nexecs = 0;
 
 static int exec_logfd = -1;
@@ -79,9 +79,19 @@ struct exec_event_data {
   const char *event;
 };
 
+/* For handling execution backends */
+typedef struct exec_backend {
+  struct exec_backend *next, *prev;
+  const char *prefix;
+  int (*exec_cmd)(cmd_rec *, config_rec *, int);
+} exec_backend_t;
+  
+static struct exec_backend *exec_backends = NULL;
+
 /* Prototypes */
+int exec_register_backend(const char *prefix, int (*exec_cmd)(cmd_rec *, config_rec *, int));
 static void exec_any_ev(const void *, void *);
-static const char *exec_subst_var(pool *, const char *, cmd_rec *);
+const char *exec_subst_var(pool *, const char *, cmd_rec *);
 static int exec_log(const char *, ...)
 #ifdef __GNUC__
       __attribute__ ((format (printf, 1, 2)));
@@ -89,6 +99,101 @@ static int exec_log(const char *, ...)
       ;
 #endif
 static int exec_sess_init(void);
+
+/* Backend handling */
+
+/* Register an execution backend */
+int exec_register_backend(const char *prefix, int (*exec_cmd)(cmd_rec *, config_rec *, int)) {
+   exec_backend_t *eb;
+
+  if (!prefix || !(*prefix) || !exec_cmd) {
+    errno = EINVAL;
+    return -1;
+  }
+
+  eb = pcalloc(exec_pool, sizeof(exec_backend_t));
+  eb->prefix = pstrdup(exec_pool, prefix);
+  eb->exec_cmd = exec_cmd;
+
+  /* Add this object to the list. */
+  if (exec_backends) {
+    exec_backends->prev = eb;
+    eb->next = exec_backends;
+  }
+
+  exec_backends = eb;
+
+  pr_log_debug(DEBUG4, "registered backend prefix '%s'", prefix);
+  return 0;
+}
+
+/* Unregister an execution backend */
+int exec_unregister_backend(const char *prefix) {
+  if (exec_backends) {
+    register exec_backend_t *eb = NULL;
+
+    for (eb = exec_backends; eb; eb = eb->next) {
+      if (strcmp(eb->prefix, prefix) == 0) {
+
+        if (eb->prev) {
+          eb->prev->next = eb->next;
+
+        } else {
+          exec_backends = eb->next;
+        }
+
+        if (eb->next) {
+          eb->next->prev = eb->prev;
+        }
+
+        eb->prev = eb->next = NULL;
+
+        return 0;
+      }
+    }
+
+    errno = ENOENT;
+    return -1;
+  }
+
+  errno = EPERM;
+  return -1;
+}
+
+static int exec_cmd_dispatch(cmd_rec *cmd, config_rec *c, int flags) {
+  register exec_backend_t *eb = NULL;
+
+  for (eb = exec_backends; eb; eb = eb->next) {
+    if (strncmp(c->argv[2], eb->prefix, strlen(eb->prefix)) == 0) {
+      return eb->exec_cmd(cmd, c, flags);
+    }
+  }
+
+  return EINVAL;
+}
+
+MODRET exec_check_backend(cmd_rec *cmd, int arg) {
+  register exec_backend_t *eb = NULL;
+  char errbuf[256], *p;
+
+  if ((p = strchr(cmd->argv[arg], ':'))) {
+    for (eb = exec_backends; eb; eb = eb->next) {
+      if (strncmp(cmd->argv[arg], eb->prefix, strlen(eb->prefix)) == 0) {
+        return NULL;
+      }
+    }
+    *p = 0;
+    snprintf(errbuf, 256, "module '%s' is unknown", cmd->argv[arg]);
+    *p = ':';
+    CONF_ERROR(cmd, errbuf);
+  } else {
+    p = cmd->argv[arg];
+    if (*p != '/') {
+      CONF_ERROR(cmd, "path to program must be a full path");
+    }
+  }
+  return NULL;
+}
 
 /* Support routines
  */
@@ -868,7 +973,7 @@ static int exec_ssystem(cmd_rec *cmd, config_rec *c, int flags) {
 }
 
 /* Perform any substitution of "magic cookie" values. */
-static const char *exec_subst_var(pool *tmp_pool, const char *varstr,
+const char *exec_subst_var(pool *tmp_pool, const char *varstr,
     cmd_rec *cmd) {
   char *ptr = NULL;
 
@@ -1226,7 +1331,7 @@ MODRET exec_pre_cmd(cmd_rec *cmd) {
 
     /* Check the command list for this program against the current command. */
     if (exec_match_cmd(cmd, c->argv[1])) {
-      int res = exec_ssystem(cmd, c, EXEC_FL_NO_SEND);
+      int res = exec_cmd_dispatch(cmd, c, EXEC_FL_NO_SEND);
       if (res != 0) {
         exec_log("%s ExecBeforeCommand '%s' failed: %s", (char *) cmd->argv[0],
           (const char *) c->argv[2], strerror(res));
@@ -1289,7 +1394,7 @@ MODRET exec_post_cmd(cmd_rec *cmd) {
 
     /* Check the command list for this program against the command. */
     if (exec_match_cmd(cmd, c->argv[1])) {
-      int res = exec_ssystem(cmd, c, 0);
+      int res = exec_cmd_dispatch(cmd, c, 0);
       if (res != 0) {
         exec_log("%s ExecOnCommand '%s' failed: %s", (char *) cmd->argv[0],
           (const char *) c->argv[2], strerror(res));
@@ -1354,7 +1459,7 @@ MODRET exec_post_cmd_err(cmd_rec *cmd) {
     if (exec_match_cmd(cmd, c->argv[1])) {
       int res;
 
-      res = exec_ssystem(cmd, c, 0);
+      res = exec_cmd_dispatch(cmd, c, 0);
       if (res != 0) {
         exec_log("%s ExecOnError '%s' failed: %s", (char *) cmd->argv[0],
           (const char *) c->argv[2], strerror(res));
@@ -1378,7 +1483,7 @@ MODRET exec_post_cmd_err(cmd_rec *cmd) {
 MODRET set_execbeforecommand(cmd_rec *cmd) {
   config_rec *c = NULL;
   register unsigned int i = 0;
-  char *path;
+  modret_t *moderr;
 
   if (cmd->argc-1 < 2) {
     CONF_ERROR(cmd, "wrong number of parameters");
@@ -1387,9 +1492,8 @@ MODRET set_execbeforecommand(cmd_rec *cmd) {
   CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL|CONF_ANON|
     CONF_DIR);
 
-  path = cmd->argv[2];
-  if (*path != '/') {
-    CONF_ERROR(cmd, "path to program must be a full path");
+  if ((moderr = exec_check_backend(cmd, 2))) {
+    return moderr;
   }
 
   c = add_config_param(cmd->argv[0], 0);
@@ -1491,7 +1595,7 @@ MODRET set_execlog(cmd_rec *cmd) {
 MODRET set_execoncommand(cmd_rec *cmd) {
   config_rec *c = NULL;
   register unsigned int i = 0;
-  char *path;
+  modret_t *moderr;
 
   if (cmd->argc-1 < 2) {
     CONF_ERROR(cmd, "wrong number of parameters");
@@ -1500,9 +1604,8 @@ MODRET set_execoncommand(cmd_rec *cmd) {
   CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL|CONF_ANON|
     CONF_DIR);
 
-  path = cmd->argv[2];
-  if (*path != '/') {
-    CONF_ERROR(cmd, "path to program must be a full path");
+  if ((moderr = exec_check_backend(cmd, 2))) {
+    return moderr;
   }
 
   c = add_config_param(cmd->argv[0], 0);
@@ -1526,7 +1629,7 @@ MODRET set_execoncommand(cmd_rec *cmd) {
 MODRET set_execonconnect(cmd_rec *cmd) {
   config_rec *c = NULL;
   register unsigned int i = 0;
-  char *path;
+  modret_t *moderr = NULL;
 
   if (cmd->argc-1 < 1) {
     CONF_ERROR(cmd, "wrong number of parameters");
@@ -1534,9 +1637,8 @@ MODRET set_execonconnect(cmd_rec *cmd) {
 
   CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL);
 
-  path = cmd->argv[1];
-  if (*path != '/') {
-    CONF_ERROR(cmd, "path to program must be a full path");
+  if ((moderr = exec_check_backend(cmd, 1))) {
+    return moderr;
   }
 
   c = add_config_param(cmd->argv[0], 0);
@@ -1559,7 +1661,7 @@ MODRET set_execonconnect(cmd_rec *cmd) {
 MODRET set_execonerror(cmd_rec *cmd) {
   config_rec *c = NULL;
   register unsigned int i = 0;
-  char *path;
+  modret_t *moderr;
 
   if (cmd->argc-1 < 2) {
     CONF_ERROR(cmd, "wrong number of parameters");
@@ -1568,9 +1670,8 @@ MODRET set_execonerror(cmd_rec *cmd) {
   CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL|CONF_ANON|
     CONF_DIR); 
 
-  path = cmd->argv[2];
-  if (*path != '/') {
-    CONF_ERROR(cmd, "path to program must be a full path");
+  if ((moderr = exec_check_backend(cmd, 2))) {
+    return moderr;
   }
 
   c = add_config_param(cmd->argv[0], 0);
@@ -1594,10 +1695,11 @@ MODRET set_execonerror(cmd_rec *cmd) {
 MODRET set_execonevent(cmd_rec *cmd) {
   register unsigned int i;
   unsigned int flags = EXEC_FL_CLEAR_GROUPS|EXEC_FL_NO_SEND;
-  char *event_name, *path;
+  char *event_name;
   size_t event_namelen;
   config_rec *c;
   struct exec_event_data *eed;
+  modret_t *moderr;
 
   if (cmd->argc-1 < 2) {
     CONF_ERROR(cmd, "wrong number of parameters");
@@ -1619,9 +1721,8 @@ MODRET set_execonevent(cmd_rec *cmd) {
     event_namelen--;
   }
 
-  path = cmd->argv[2];
-  if (*path != '/') {
-    CONF_ERROR(cmd, "path to program must be a full path");
+  if ((moderr = exec_check_backend(cmd, 2))) {
+    return moderr;
   }
 
   c = pcalloc(cmd->server->pool, sizeof(config_rec));
@@ -1662,7 +1763,7 @@ MODRET set_execonevent(cmd_rec *cmd) {
 MODRET set_execonexit(cmd_rec *cmd) {
   config_rec *c = NULL;
   register unsigned int i = 0;
-  char *path;
+  modret_t *moderr;
 
   if (cmd->argc-1 < 1) {
     CONF_ERROR(cmd, "wrong number of parameters");
@@ -1670,9 +1771,8 @@ MODRET set_execonexit(cmd_rec *cmd) {
 
   CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL);
 
-  path = cmd->argv[1];
-  if (*path != '/') {
-    CONF_ERROR(cmd, "path to program must be a full path");
+  if ((moderr = exec_check_backend(cmd, 1))) {
+    return moderr;
   }
 
   c = add_config_param(cmd->argv[0], 0);
@@ -1695,7 +1795,7 @@ MODRET set_execonexit(cmd_rec *cmd) {
 MODRET set_execonrestart(cmd_rec *cmd) {
   config_rec *c = NULL;
   register unsigned int i = 0;
-  char *path;
+  modret_t *moderr;
 
   if (cmd->argc-1 < 1) {
     CONF_ERROR(cmd, "wrong number of parameters");
@@ -1703,9 +1803,8 @@ MODRET set_execonrestart(cmd_rec *cmd) {
 
   CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL);
 
-  path = cmd->argv[1];
-  if (*path != '/') {
-    CONF_ERROR(cmd, "path to program must be a full path");
+  if ((moderr = exec_check_backend(cmd, 1))) {
+    return moderr;
   }
 
   c = add_config_param(cmd->argv[0], 0);
@@ -1793,7 +1892,7 @@ static void exec_any_ev(const void *event_data, void *user_data) {
   if (!exec_engine)
     return;
 
-  res = exec_ssystem(NULL, eed->c, eed->flags);
+  res = exec_cmd_dispatch(NULL, eed->c, eed->flags);
   if (res != 0) {
     exec_log("ExecOnEvent '%s' for %s failed: %s", eed->event,
       (const char *) eed->c->argv[2], strerror(res));
@@ -1816,7 +1915,7 @@ static void exec_exit_ev(const void *event_data, void *user_data) {
 
     pr_signals_handle();
 
-    res = exec_ssystem(NULL, c, EXEC_FL_CLEAR_GROUPS|EXEC_FL_NO_SEND);
+    res = exec_cmd_dispatch(NULL, c, EXEC_FL_CLEAR_GROUPS|EXEC_FL_NO_SEND);
     if (res != 0) {
       exec_log("ExecOnExit '%s' failed: %s", (const char *) c->argv[2],
         strerror(res));
@@ -1882,7 +1981,7 @@ static void exec_restart_ev(const void *event_data, void *user_data) {
 
       pr_signals_handle();
 
-      res = exec_ssystem(NULL, c, EXEC_FL_CLEAR_GROUPS|EXEC_FL_NO_SEND);
+      res = exec_cmd_dispatch(NULL, c, EXEC_FL_CLEAR_GROUPS|EXEC_FL_NO_SEND);
       if (res != 0) {
         exec_log("ExecOnRestart '%s' failed: %s", (const char *) c->argv[1],
           strerror(res));
@@ -1999,7 +2098,7 @@ static int exec_sess_init(void) {
 
     pr_signals_handle();
 
-    res = exec_ssystem(NULL, c, EXEC_FL_CLEAR_GROUPS|EXEC_FL_USE_SEND);
+    res = exec_cmd_dispatch(NULL, c, EXEC_FL_CLEAR_GROUPS|EXEC_FL_USE_SEND);
     if (res != 0) {
       exec_log("ExecOnConnect '%s' failed: %s", (const char *) c->argv[2],
         strerror(res));
@@ -2026,6 +2125,8 @@ static int exec_init(void) {
   pr_event_register(&exec_module, "core.postparse", exec_postparse_ev, NULL);
   pr_event_register(&exec_module, "core.restart", exec_restart_ev, NULL);
 
+  /* Register the default system backend */
+  exec_register_backend("/", exec_ssystem);
   return 0;
 }
 
