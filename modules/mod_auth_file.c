@@ -82,10 +82,9 @@ static authfile_file_t *af_user_file = NULL;
 static authfile_file_t *af_group_file = NULL;
 static unsigned long auth_file_opts = 0UL;
 
-/* Tell mod_auth_file to skip/ignore the permissions checks on the configured
- * AuthUserFile/AuthGroupFile.
- */
+/* mod_auth_file option flags */
 #define AUTH_FILE_OPT_INSECURE_PERMS		0x0001
+#define AUTH_FILE_OPT_CRYPT_WITH_ROOT		0x0002
 
 static int handle_empty_salt = FALSE;
 
@@ -1301,8 +1300,16 @@ MODRET authfile_chkpass(cmd_rec *cmd) {
     return PR_DECLINED(cmd);
   }
 
+  if (auth_file_opts & AUTH_FILE_OPT_CRYPT_WITH_ROOT) {
+    PRIVS_ROOT
+  }
+
   crypted_pass = crypt(cleartxt_pass, ciphertxt_pass);
   xerrno = errno;
+
+  if (auth_file_opts & AUTH_FILE_OPT_CRYPT_WITH_ROOT) {
+    PRIVS_RELINQUISH
+  }
 
   ciphertxt_passlen = strlen(ciphertxt_pass);
   if (handle_empty_salt == TRUE &&
@@ -1352,7 +1359,10 @@ MODRET set_authfileoptions(cmd_rec *cmd) {
   c = add_config_param(cmd->argv[0], 1, NULL);
 
   for (i = 1; i < cmd->argc; i++) {
-    if (strcmp(cmd->argv[i], "InsecurePerms") == 0) {
+    if (strcasecmp(cmd->argv[i], "CryptWithRoot") == 0) {
+      opts |= AUTH_FILE_OPT_CRYPT_WITH_ROOT;
+
+    } else if (strcasecmp(cmd->argv[i], "InsecurePerms") == 0) {
       opts |= AUTH_FILE_OPT_INSECURE_PERMS;
 
       /* Note that this option disables some parse-time checks, so we need
@@ -1662,6 +1672,7 @@ static void authfile_sess_reinit_ev(const void *event_data, void *user_data) {
 
   af_user_file = NULL;
   af_group_file = NULL;
+  auth_file_opts = 0UL;
 
   res = authfile_sess_init();
   if (res < 0) {
@@ -1717,6 +1728,18 @@ static int authfile_sess_init(void) {
   c = find_config(main_server->conf, CONF_PARAM, "AuthGroupFile", FALSE);
   if (c != NULL) {
     af_group_file = c->argv[0];
+  }
+
+  c = find_config(main_server->conf, CONF_PARAM, "AuthFileOptions", FALSE);
+  while (c != NULL) {
+    unsigned long opts = 0;
+
+    pr_signals_handle();
+
+    opts = *((unsigned long *) c->argv[0]);
+    auth_file_opts |= opts;
+
+    c = find_config_next(c, c->next, CONF_PARAM, "AuthFileOptions", FALSE);
   }
 
   return 0;
@@ -1788,4 +1811,3 @@ module auth_file_module = {
   /* Module version */
   MOD_AUTH_FILE_VERSION
 };
-
