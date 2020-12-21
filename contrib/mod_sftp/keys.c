@@ -2890,7 +2890,7 @@ static int deserialize_openssh_private_key(pool *p, const char *path,
 
   if (*key_type == SFTP_KEY_ED25519) {
     const char *pkey_type = "ssh-ed25519";
-    uint32_t public_keylen = 0, secret_keylen = 0, res = 0;
+    uint32_t public_keylen = 0, secret_keylen = 0;
     unsigned char *public_key = NULL, *secret_key = NULL;
 
     public_keylen = sftp_msg_read_int(p, data, data_len);
