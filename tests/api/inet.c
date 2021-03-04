@@ -1,6 +1,6 @@
 /*
  * ProFTPD - FTP server testsuite
- * Copyright (c) 2014-2020 The ProFTPD Project team
+ * Copyright (c) 2014-2021 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -625,6 +625,52 @@ START_TEST (inet_set_socket_opts_test) {
 }
 END_TEST
 
+START_TEST (inet_set_socket_opts2_test) {
+  int fd, sockfd, port = INPORT_ANY, res;
+  conn_t *conn;
+  struct tcp_keepalive keepalive;
+
+  mark_point();
+  res = pr_inet_set_socket_opts2(NULL, NULL, 1, 2, NULL, -1);
+  fail_unless(res < 0, "Failed to handle null arguments");
+  fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+    strerror(errno), errno);
+
+  conn = pr_inet_create_conn(p, -1, NULL, port, FALSE);
+  fail_unless(conn != NULL, "Failed to create conn: %s", strerror(errno));
+
+  mark_point();
+  res = pr_inet_set_socket_opts2(p, conn, 1, 2, NULL, -1);
+  fail_unless(res == 0, "Failed to set socket opts: %s", strerror(errno));
+
+  mark_point();
+  res = pr_inet_set_socket_opts2(p, conn, INT_MAX, INT_MAX, NULL, 0);
+  fail_unless(res == 0, "Failed to set socket opts: %s", strerror(errno));
+
+  keepalive.keepalive_enabled = 1;
+  keepalive.keepalive_idle = 1;
+  keepalive.keepalive_count = 2;
+  keepalive.keepalive_intvl = 3;
+  res = pr_inet_set_socket_opts2(p, conn, 1, 2, &keepalive, 1);
+  fail_unless(res == 0, "Failed to set socket opts: %s", strerror(errno));
+
+  mark_point();
+  sockfd = devnull_fd();
+  if (sockfd < 0) {
+    return;
+  }
+
+  fd = conn->listen_fd;
+  conn->listen_fd = sockfd;
+  res = pr_inet_set_socket_opts2(p, conn, 1, 2, &keepalive, 1);
+  fail_unless(res == 0, "Failed to set socket opts: %s", strerror(errno));
+  conn->listen_fd = fd;
+
+  (void) close(sockfd);
+  pr_inet_close(p, conn);
+}
+END_TEST
+
 START_TEST (inet_listen_test) {
   int fd, mode, sockfd = -1, port = INPORT_ANY, res;
   conn_t *conn;
@@ -1034,6 +1080,7 @@ Suite *tests_get_inet_suite(void) {
   tcase_add_test(testcase, inet_set_proto_opts_test);
   tcase_add_test(testcase, inet_set_proto_opts_ipv6_test);
   tcase_add_test(testcase, inet_set_socket_opts_test);
+  tcase_add_test(testcase, inet_set_socket_opts2_test);
   tcase_add_test(testcase, inet_listen_test);
   tcase_add_test(testcase, inet_connect_ipv4_test);
   tcase_add_test(testcase, inet_connect_ipv6_test);
