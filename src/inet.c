@@ -2,7 +2,7 @@
  * ProFTPD - FTP server daemon
  * Copyright (c) 1997, 1998 Public Flood Software
  * Copyright (c) 1999, 2000 MacGyver aka Habeeb J. Dihu <macgyver@tos.net>
- * Copyright (c) 2001-2020 The ProFTPD Project team
+ * Copyright (c) 2001-2021 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -330,21 +330,6 @@ static conn_t *init_conn(pool *p, int fd, const pr_netaddr_t *bind_addr,
       pr_log_pri(PR_LOG_NOTICE, "error setting SO_REUSEADDR: %s",
         strerror(errno));
     }
-
-#ifdef SO_REUSEPORT
-    /* Note that we only want to use this socket option if we are NOT the
-     * master/parent daemon.  Otherwise, we would allow multiple daemon
-     * processes to bind to the same socket, causing unexpected terror
-     * and madness (see Issue #622).
-     */
-    if (!is_master) {
-      if (setsockopt(fd, SOL_SOCKET, SO_REUSEPORT, (void *) &on,
-          sizeof(on)) < 0) {
-        pr_log_pri(PR_LOG_NOTICE, "error setting SO_REUSEPORT: %s",
-          strerror(errno));
-      }
-    }
-#endif /* SO_REUSEPORT */
 
     /* Allow socket keepalive messages by default.  However, if
      * "SocketOptions keepalive off" is in effect, then explicitly
