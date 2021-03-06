@@ -37,6 +37,7 @@
   keys.
 - Issue 1111 - "Corrupted MAC on input" errors using SFTP umac-64@openssh.com
   digest.
+- Issue 1171 - PassivePort randomization is broken due to SO_REUSEPORT option.
 
 1.3.7a - Released 21-Jul-2020
 --------------------------------
