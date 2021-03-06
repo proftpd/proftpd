@@ -17408,6 +17408,9 @@ pr_use_openssl=""
 if test "${enable_openssl+set}" = set; then :
   enableval=$enable_openssl;  if test x"$enableval" = xno ; then
       pr_use_openssl="no"
+
+    elif test x"$enableval" = xyes ; then
+      pr_use_openssl="yes"
     fi
 
 fi
@@ -24787,7 +24790,11 @@ fi
 { $as_echo "$as_me:${as_lineno-$LINENO}: result: $ac_cv_lib_hiredis_ssl_redisInitiateSSL" >&5
 $as_echo "$ac_cv_lib_hiredis_ssl_redisInitiateSSL" >&6; }
 if test "x$ac_cv_lib_hiredis_ssl_redisInitiateSSL" = xyes; then :
-  saved_libs="$saved_libs -lhiredis_ssl"
+
+$as_echo "#define HAVE_HIREDIS_REDISINITIATESSL 1" >>confdefs.h
+
+       saved_libs="$saved_libs -lhiredis_ssl"
+
 fi
 
 
