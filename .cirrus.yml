@@ -6,7 +6,7 @@ task:
       # NOTE: Currently disabled due to this error:
       #  pkg: repository FreeBSD contains packages for wrong OS version: FreeBSD:13:amd64
       # image_family: freebsd-13-0-snap
-      image_family: freebsd-12-1
+      image_family: freebsd-12-2
       image_family: freebsd-11-4
 
   env:
