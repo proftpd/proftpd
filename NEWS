@@ -33,6 +33,8 @@
   <VirtualHost> sections.
 - Issue 1149 - mod_quotatab_sql failing due to SQL syntax errors.  This is
   a regression caused by Issue #392.
+- Issue 1061 - Freeing uninitialized memory causes SFTP issues with ed25519
+  keys.
 
 1.3.7a - Released 21-Jul-2020
 --------------------------------
