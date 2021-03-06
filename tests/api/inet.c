@@ -68,6 +68,18 @@ static void tear_down(void) {
   } 
 }
 
+static int devnull_fd(void) {
+  int fd;
+
+  fd = open("/dev/null", O_RDWR);
+  if (fd < 0) {
+    fprintf(stderr, "Error opening /dev/null: %s\n", strerror(errno));
+    return -1;
+  }
+
+  return fd;
+}
+
 /* Tests */
 
 START_TEST (inet_family_test) {
