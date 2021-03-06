@@ -448,7 +448,8 @@ static pr_redis_t *make_redis_conn(pool *p, const char *host, int port,
       res = redisInitiateSSLWithContext(redis->ctx, ssl_ctx);
       if (res != REDIS_OK) {
         pr_trace_msg(trace_channel, 3,
-          "TLS handshake error with '%s': %s", redis->ctx->errstr);
+          "TLS handshake error with '%s:%d': %s", host, port,
+          redis->ctx->errstr);
 
         redisFreeSSLContext(ssl_ctx);
         redisFree(redis->ctx);
@@ -457,6 +458,8 @@ static pr_redis_t *make_redis_conn(pool *p, const char *host, int port,
         return NULL;
       }
 
+      pr_trace_msg(trace_channel, 17, "established TLS connection with '%s:%d'",
+        host, port);
       redis->ssl_ctx = ssl_ctx;
     }
   }

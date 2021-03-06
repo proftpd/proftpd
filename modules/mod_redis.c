@@ -819,12 +819,16 @@ MODRET set_redisoptions(cmd_rec *cmd) {
   return PR_HANDLED(cmd);
 }
 
-/* usage: RedisSentinel host[:port] ... [master name] */
+/* usage: RedisSentinel host[:port] ... [master name] \
+ *          [ssl:true] [ssl-ca:/path] [ssl-cert:/path] [ssl-key:/path]
+ */
 MODRET set_redissentinel(cmd_rec *cmd) {
   register unsigned int i;
   config_rec *c;
   array_header *sentinels;
-  char *master_name = NULL;
+  char *master_name = NULL, *ssl_cacert = NULL, *ssl_cert = NULL,
+    *ssl_key = NULL;
+  int use_ssl = FALSE;
 
   CHECK_ARGS(cmd, 1);
   CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL);
@@ -838,7 +842,7 @@ MODRET set_redissentinel(cmd_rec *cmd) {
     }
   }
 
-  c = add_config_param(cmd->argv[0], 2, NULL, NULL);
+  c = add_config_param(cmd->argv[0], 6, NULL, NULL, NULL, NULL, NULL, NULL);
   sentinels = make_array(c->pool, 0, sizeof(pr_netaddr_t *));
 
   for (i = 1; i < cmd->argc; i++) {
@@ -846,6 +850,88 @@ MODRET set_redissentinel(cmd_rec *cmd) {
     size_t sentinel_len;
     int port = REDIS_SENTINEL_DEFAULT_PORT;
     pr_netaddr_t *sentinel_addr;
+
+    /* Handle the optional SSL/TLS settings, too. */
+    if (strncmp(cmd->argv[i], "ssl:", 4) == 0) {
+      const char *text;
+
+      text = cmd->argv[i];
+
+      /* Advance past the "ssl:" prefix. */
+      text += 4;
+
+      use_ssl = pr_str_is_boolean(text);
+      if (use_ssl < 0) {
+        pr_log_pri(PR_LOG_NOTICE, MOD_REDIS_VERSION
+          ": %s: use SSL '%s': %s", (char *) cmd->argv[0], text,
+          strerror(EINVAL));
+      }
+
+      continue;
+    }
+
+    if (strncmp(cmd->argv[i], "ssl-ca:", 7) == 0) {
+      char *path;
+
+      path = cmd->argv[i];
+
+      /* Advance past the "ssl-ca:" prefix. */
+      path += 7;
+
+      /* Check the file exists! */
+      if (file_exists2(cmd->tmp_pool, path) == TRUE) {
+        ssl_cacert = path;
+
+      } else {
+        pr_log_pri(PR_LOG_NOTICE, MOD_REDIS_VERSION
+          ": %s: SSL CA '%s': %s", (char *) cmd->argv[0], path,
+          strerror(ENOENT));
+      }
+
+      continue;
+    }
+
+    if (strncmp(cmd->argv[i], "ssl-cert:", 9) == 0) {
+      char *path;
+
+      path = cmd->argv[i];
+
+      /* Advance past the "ssl-cert:" prefix. */
+      path += 9;
+
+      /* Check the file exists! */
+      if (file_exists2(cmd->tmp_pool, path) == TRUE) {
+        ssl_cert = path;
+
+      } else {
+        pr_log_pri(PR_LOG_NOTICE, MOD_REDIS_VERSION
+          ": %s: SSL certificate '%s': %s", (char *) cmd->argv[0], path,
+          strerror(ENOENT));
+      }
+
+      continue;
+    }
+
+    if (strncmp(cmd->argv[i], "ssl-key:", 8) == 0) {
+      char *path;
+
+      path = cmd->argv[i];
+
+      /* Advance past the "ssl-key:" prefix. */
+      path += 8;
+
+      /* Check the file exists! */
+      if (file_exists2(cmd->tmp_pool, path) == TRUE) {
+        ssl_key = path;
+
+      } else {
+        pr_log_pri(PR_LOG_NOTICE, MOD_REDIS_VERSION
+          ": %s: SSL certificate key '%s': %s", (char *) cmd->argv[0], path,
+          strerror(ENOENT));
+      }
+
+      continue;
+    }
 
     sentinel = pstrdup(cmd->tmp_pool, cmd->argv[i]);
     sentinel_len = strlen(sentinel);
@@ -890,16 +976,25 @@ MODRET set_redissentinel(cmd_rec *cmd) {
 
   c->argv[0] = sentinels;
   c->argv[1] = pstrdup(c->pool, master_name);
+  c->argv[2] = pcalloc(c->pool, sizeof(int));
+  *((int *) c->argv[2]) = use_ssl;
+  c->argv[3] = pstrdup(c->pool, ssl_cacert);
+  c->argv[4] = pstrdup(c->pool, ssl_cert);
+  c->argv[5] = pstrdup(c->pool, ssl_key);
 
   return PR_HANDLED(cmd);
 }
 
-/* usage: RedisServer host[:port] [username] [password] [db-index] */
+/* usage: RedisServer host[:port] [username] [password] [db-index] \
+ *          [ssl:true] [ssl-ca:/path] [ssl-cert:/path] [ssl-key:/path]
+ */
 MODRET set_redisserver(cmd_rec *cmd) {
+  register unsigned int i;
   config_rec *c;
   char *server, *username = NULL, *password = NULL, *db_idx = NULL, *ptr;
+  const char *ssl_cacert = NULL, *ssl_cert = NULL, *ssl_key = NULL;
   size_t server_len;
-  int ctx, port = REDIS_SERVER_DEFAULT_PORT;
+  int ctx, opts_idx = 0, port = REDIS_SERVER_DEFAULT_PORT, use_ssl = FALSE;
 
   CHECK_ARGS(cmd, 1);
   CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL);
@@ -933,34 +1028,159 @@ MODRET set_redisserver(cmd_rec *cmd) {
     }
   }
 
-  if (cmd->argc == 3) {
-    username = cmd->argv[2];
-    if (strcmp(username, "") == 0) {
-      username = NULL;
+  /* This index tells us where to start looking for optional settings, like
+   * the SSL/TLS settings.
+   */
+  opts_idx = 2;
+
+  if (cmd->argc >= 3) {
+    char *text;
+
+    text = cmd->argv[2];
+
+    if (strchr(text, ':') == NULL &&
+        strncmp(text, "ssl", 3) != 0) {
+      username = text;
+
+      if (strcmp(username, "") == 0) {
+        username = NULL;
+      }
+
+      opts_idx = 3;
     }
   }
 
-  if (cmd->argc == 4) {
-    password = cmd->argv[3];
-    if (strcmp(password, "") == 0) {
-      password = NULL;
+  if (cmd->argc >= 4) {
+    char *text;
+
+    text = cmd->argv[3];
+
+    if (strchr(text, ':') == NULL &&
+        strncmp(text, "ssl", 3) != 0) {
+      password = text;
+
+      if (strcmp(password, "") == 0) {
+        password = NULL;
+      }
+
+      opts_idx = 4;
     }
   }
 
-  if (cmd->argc == 5) {
-    db_idx = cmd->argv[4];
-    if (strcmp(db_idx, "") == 0) {
-      db_idx = NULL;
+  if (cmd->argc >= 5) {
+    char *text;
+
+    text = cmd->argv[4];
+
+    if (strchr(text, ':') == NULL &&
+        strncmp(text, "ssl", 3) != 0) {
+      db_idx = text;
+
+      if (strcmp(db_idx, "") == 0) {
+        db_idx = NULL;
+      }
+
+      opts_idx = 5;
     }
   }
 
-  c = add_config_param(cmd->argv[0], 5, NULL, NULL, NULL, NULL, NULL);
+  /* Handle the optional SSL/TLS settings, too. */
+  for (i = opts_idx; i < cmd->argc; i++) {
+    if (strncmp(cmd->argv[i], "ssl:", 4) == 0) {
+      const char *text;
+
+      text = cmd->argv[i];
+
+      /* Advance past the "ssl:" prefix. */
+      text += 4;
+
+      use_ssl = pr_str_is_boolean(text);
+      if (use_ssl < 0) {
+        pr_log_pri(PR_LOG_NOTICE, MOD_REDIS_VERSION
+          ": %s: use SSL '%s': %s", (char *) cmd->argv[0], text,
+          strerror(EINVAL));
+      }
+
+      continue;
+    }
+
+    if (strncmp(cmd->argv[i], "ssl-ca:", 7) == 0) {
+      const char *path;
+
+      path = cmd->argv[i];
+
+      /* Advance past the "ssl-ca:" prefix. */
+      path += 7;
+
+      /* Check the file exists! */
+      if (file_exists2(cmd->tmp_pool, path) == TRUE) {
+        ssl_cacert = path;
+
+      } else {
+        pr_log_pri(PR_LOG_NOTICE, MOD_REDIS_VERSION
+          ": %s: SSL CA '%s': %s", (char *) cmd->argv[0], path,
+          strerror(ENOENT));
+      }
+
+      continue;
+    }
+
+    if (strncmp(cmd->argv[i], "ssl-cert:", 9) == 0) {
+      char *path;
+
+      path = cmd->argv[i];
+
+      /* Advance past the "ssl-cert:" prefix. */
+      path += 9;
+
+      /* Check the file exists! */
+      if (file_exists2(cmd->tmp_pool, path) == TRUE) {
+        ssl_cert = path;
+
+      } else {
+        pr_log_pri(PR_LOG_NOTICE, MOD_REDIS_VERSION
+          ": %s: SSL certificate '%s': %s", (char *) cmd->argv[0], path,
+          strerror(ENOENT));
+      }
+
+      continue;
+    }
+
+    if (strncmp(cmd->argv[i], "ssl-key:", 8) == 0) {
+      char *path;
+
+      path = cmd->argv[i];
+
+      /* Advance past the "ssl-key:" prefix. */
+      path += 8;
+
+      /* Check the file exists! */
+      if (file_exists2(cmd->tmp_pool, path) == TRUE) {
+        ssl_key = path;
+
+      } else {
+        pr_log_pri(PR_LOG_NOTICE, MOD_REDIS_VERSION
+          ": %s: SSL certificate key '%s': %s", (char *) cmd->argv[0], path,
+          strerror(ENOENT));
+      }
+
+      continue;
+    }
+  }
+
+  c = add_config_param(cmd->argv[0], 9, NULL, NULL, NULL, NULL, NULL, NULL,
+    NULL, NULL, NULL);
   c->argv[0] = pstrdup(c->pool, server);
   c->argv[1] = palloc(c->pool, sizeof(int));
   *((int *) c->argv[1]) = port;
   c->argv[2] = pstrdup(c->pool, username);
   c->argv[3] = pstrdup(c->pool, password);
   c->argv[4] = pstrdup(c->pool, db_idx);
+  c->argv[5] = palloc(c->pool, sizeof(int));
+  *((int *) c->argv[5]) = use_ssl;
+  c->argv[6] = pstrdup(c->pool, ssl_cacert);
+  c->argv[7] = pstrdup(c->pool, ssl_cert);
+  c->argv[8] = pstrdup(c->pool, ssl_key);
 
   ctx = (cmd->config && cmd->config->config_type != CONF_PARAM ?
     cmd->config->config_type : cmd->server->config_type ?
@@ -970,8 +1190,8 @@ MODRET set_redisserver(cmd_rec *cmd) {
     /* If we're the "server config" context, set the server now.  This
      * would let mod_redis talk to those servers for e.g. ftpdctl actions.
      */
-    (void) redis_set_server2(c->argv[0], port, 0UL, c->argv[2], c->argv[3],
-      c->argv[4]);
+    (void) redis_set_server3(c->argv[0], port, 0UL, c->argv[2], c->argv[3],
+      c->argv[4], use_ssl, ssl_cacert, ssl_cert, ssl_key);
   }
 
   return PR_HANDLED(cmd);
@@ -1276,27 +1496,38 @@ static int redis_sess_init(void) {
   c = find_config(main_server->conf, CONF_PARAM, "RedisSentinel", FALSE);
   if (c != NULL) {
     array_header *sentinels;
-    const char *master;
+    const char *master, *ssl_cacert, *ssl_cert, *ssl_key;
+    int use_ssl;
 
     sentinels = c->argv[0];
     master = c->argv[1];
+    use_ssl = *((int *) c->argv[2]);
+    ssl_cacert = c->argv[3];
+    ssl_cert = c->argv[4];
+    ssl_key = c->argv[5];
 
-    (void) redis_set_sentinels(sentinels, master);
+    (void) redis_set_sentinels2(sentinels, master, use_ssl, ssl_cacert,
+      ssl_cert, ssl_key);
   }
 
   c = find_config(main_server->conf, CONF_PARAM, "RedisServer", FALSE);
   if (c != NULL) {
-    const char *server, *username, *password, *db_idx;
-    int port;
+    const char *server, *username, *password, *db_idx, *ssl_cacert,
+      *ssl_cert, *ssl_key;
+    int port, use_ssl;
 
     server = c->argv[0];
     port = *((int *) c->argv[1]);
     username = c->argv[2];
     password = c->argv[3];
     db_idx = c->argv[4];
+    use_ssl = *((int *) c->argv[5]);
+    ssl_cacert = c->argv[6];
+    ssl_cert = c->argv[7];
+    ssl_key = c->argv[8];
 
-    (void) redis_set_server2(server, port, redis_opts, username, password,
-      db_idx);
+    (void) redis_set_server3(server, port, redis_opts, username, password,
+      db_idx, use_ssl, ssl_cacert, ssl_cert, ssl_key);
   }
 
   c = find_config(main_server->conf, CONF_PARAM, "RedisTimeouts", FALSE);
