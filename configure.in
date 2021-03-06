@@ -911,7 +911,7 @@ AC_ARG_ENABLE(redis,
       AC_CHECK_HEADER(hiredis/hiredis.h,
         [AC_DEFINE(HAVE_HIREDIS_HIREDIS_H, 1, [Define if hiredis.h is present.])
          AC_DEFINE(PR_USE_REDIS, 1, [Define if using Redis support.])
-      ])
+        ])
 
       # Check for the redisReconnect() function in Hiredis; earlier versions
       # did not have this.
@@ -3714,6 +3714,29 @@ if test x"$pr_use_openssl" = xyes; then
 
   if test x"$pr_use_pthread_for_openssl" = xyes ; then
     LIBS="$LIBS -pthread"
+  fi
+
+  if test x"$enable_redis" = xyes; then
+    AC_CHECK_HEADER(hiredis/hiredis_ssl.h,
+      [AC_DEFINE(HAVE_HIREDIS_HIREDIS_SSL_H, 1, [Define if hiredis_ssl.h is present.])
+      ],
+      [],
+      [
+        #ifdef HAVE_HIREDIS_HIREDIS_H
+        # include <hiredis/hiredis.h>
+        #endif
+      ]
+    )
+
+    saved_libs="$LIBS"
+
+    dnl Splice out -lsupp, since that library hasn't been built yet
+    LIBS=`echo "$LIBS" | sed -e 's/-lsupp//g'`;
+    LIBS="-lcrypto -lssl $LIBS"
+    AC_CHECK_LIB(hiredis_ssl, redisInitiateSSL,
+      [saved_libs="$saved_libs -lhiredis_ssl"])
+
+    LIBS="$saved_libs"
   fi
 fi
 
