@@ -24728,6 +24728,71 @@ rm -f core conftest.err conftest.$ac_objext \
   if test x"$pr_use_pthread_for_openssl" = xyes ; then
     LIBS="$LIBS -pthread"
   fi
+
+  if test x"$enable_redis" = xyes; then
+    ac_fn_c_check_header_compile "$LINENO" "hiredis/hiredis_ssl.h" "ac_cv_header_hiredis_hiredis_ssl_h" "
+        #ifdef HAVE_HIREDIS_HIREDIS_H
+        # include <hiredis/hiredis.h>
+        #endif
+
+
+"
+if test "x$ac_cv_header_hiredis_hiredis_ssl_h" = xyes; then :
+
+$as_echo "#define HAVE_HIREDIS_HIREDIS_SSL_H 1" >>confdefs.h
+
+
+fi
+
+
+
+    saved_libs="$LIBS"
+
+        LIBS=`echo "$LIBS" | sed -e 's/-lsupp//g'`;
+    LIBS="-lcrypto -lssl $LIBS"
+    { $as_echo "$as_me:${as_lineno-$LINENO}: checking for redisInitiateSSL in -lhiredis_ssl" >&5
+$as_echo_n "checking for redisInitiateSSL in -lhiredis_ssl... " >&6; }
+if ${ac_cv_lib_hiredis_ssl_redisInitiateSSL+:} false; then :
+  $as_echo_n "(cached) " >&6
+else
+  ac_check_lib_save_LIBS=$LIBS
+LIBS="-lhiredis_ssl  $LIBS"
+cat confdefs.h - <<_ACEOF >conftest.$ac_ext
+/* end confdefs.h.  */
+
+/* Override any GCC internal prototype to avoid an error.
+   Use char because int might match the return type of a GCC
+   builtin and then its argument prototype would still apply.  */
+#ifdef __cplusplus
+extern "C"
+#endif
+char redisInitiateSSL ();
+int
+main ()
+{
+return redisInitiateSSL ();
+  ;
+  return 0;
+}
+_ACEOF
+if ac_fn_c_try_link "$LINENO"; then :
+  ac_cv_lib_hiredis_ssl_redisInitiateSSL=yes
+else
+  ac_cv_lib_hiredis_ssl_redisInitiateSSL=no
+fi
+rm -f core conftest.err conftest.$ac_objext \
+    conftest$ac_exeext conftest.$ac_ext
+LIBS=$ac_check_lib_save_LIBS
+fi
+{ $as_echo "$as_me:${as_lineno-$LINENO}: result: $ac_cv_lib_hiredis_ssl_redisInitiateSSL" >&5
+$as_echo "$ac_cv_lib_hiredis_ssl_redisInitiateSSL" >&6; }
+if test "x$ac_cv_lib_hiredis_ssl_redisInitiateSSL" = xyes; then :
+  saved_libs="$saved_libs -lhiredis_ssl"
+fi
+
+
+    LIBS="$saved_libs"
+  fi
 fi
 
 if test x"$pr_use_postgres" = xyes; then

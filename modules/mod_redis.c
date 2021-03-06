@@ -1,6 +1,6 @@
 /*
  * ProFTPD: mod_redis -- a module for managing Redis data
- * Copyright (c) 2017-2020 The ProFTPD Project
+ * Copyright (c) 2017-2021 The ProFTPD Project
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -306,7 +306,7 @@ static const char *log_fmt_extra_resolve_val(pool *p, cmd_rec *cmd,
 
 static int log_fmt_extra_iter_cb(const char *key, int val_type, const void *val,
     size_t valsz, void *user_data) {
-  int res;
+  int res = 0;
   pool *tmp_pool;
   cmd_rec *cmd;
   pr_jot_ctx_t *jot_ctx;

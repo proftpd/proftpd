@@ -393,6 +393,9 @@
 /* Define if you have the gmtime_r function.  */
 #undef HAVE_GMTIME_R
 
+/* Define if you have the Hiredis redisInitiateSSL function.  */
+#undef HAVE_HIREDIS_REDISINITIATESSL
+
 /* Define if you have the Hiredis redisReconnect function.  */
 #undef HAVE_HIREDIS_REDISRECONNECT
 
@@ -689,6 +692,9 @@
 
 /* Define if you have the <hiredis/hiredis.h> header file.  */
 #undef HAVE_HIREDIS_HIREDIS_H
+
+/* Define if you have the <hiredis/hiredis_ssl.h> header file.  */
+#undef HAVE_HIREDIS_HIREDIS_SSL_H
 
 /* Define if you have the <iconv.h> header file.  */
 #undef HAVE_ICONV_H

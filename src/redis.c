@@ -1,6 +1,6 @@
 /*
  * ProFTPD - FTP server daemon
- * Copyright (c) 2017-2020 The ProFTPD Project team
+ * Copyright (c) 2017-2021 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -29,6 +29,14 @@
 #ifdef PR_USE_REDIS
 
 #include <hiredis/hiredis.h>
+
+#ifdef HAVE_HIREDIS_HIREDIS_SSL_H
+# include <hiredis/hiredis_ssl.h>
+#endif /* HAVE_HIREDIS_HIREDIS_SSL_H */
+
+#if defined(HAVE_HIREDIS_REDISINITIATESSL)
+# define PR_USE_REDIS_SSL
+#endif /* HAVE_HIREDIS_REDISINITIATESSL */
 
 #ifndef REDIS_CONNECT_RETRIES
 # define REDIS_CONNECT_RETRIES	10
