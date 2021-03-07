@@ -72,3 +72,11 @@ ChangeLog files.
       removed.
 
       New `AllowWeakSecurity` TLSOption added (Issue #1048)
+
+
+  + Developer Notes
+
+    The new `pr_pool_debug_memory2` function uses a visitor pattern to walk
+    the memory pools, and provides the pool data to the callback via
+    structure, allowing the callback to format/use the memory pool information
+    as needed, including emitting the data as JSON.

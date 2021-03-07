@@ -1,6 +1,6 @@
 /*
  * ProFTPD - FTP server testsuite
- * Copyright (c) 2008-2020 The ProFTPD Project team
+ * Copyright (c) 2008-2021 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -325,7 +325,19 @@ START_TEST (pool_get_tag_test) {
 }
 END_TEST
 
-#if defined(PR_USE_DEVEL)
+START_TEST (pool_debug_flags_test) {
+  int res;
+
+  res = pr_pool_debug_set_flags(-1);
+  fail_unless(res < 0, "Failed to handle invalid flags");
+  fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+    strerror(errno), errno);
+
+  res = pr_pool_debug_set_flags(0);
+  fail_if(res < 0, "Failed to set flags: %s", strerror(errno));
+}
+END_TEST
+
 START_TEST (pool_debug_memory_test) {
   pool *p, *sub_pool;
 
@@ -353,19 +365,36 @@ START_TEST (pool_debug_memory_test) {
 }
 END_TEST
 
-START_TEST (pool_debug_flags_test) {
-  int res;
+static void test_visitf(const pr_pool_info_t *pinfo, void *user_data) {
+  fail_unless(pinfo != NULL, "Expected pool info, got NULL");
+}
 
-  res = pr_pool_debug_set_flags(-1);
-  fail_unless(res < 0, "Failed to handle invalid flags");
-  fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
-    strerror(errno), errno);
+START_TEST (pool_debug_memory2_test) {
+  pool *p, *sub_pool;
 
-  res = pr_pool_debug_set_flags(0);
-  fail_if(res < 0, "Failed to set flags: %s", strerror(errno));
+  mark_point();
+  pr_pool_debug_memory2(NULL, NULL);
+
+  mark_point();
+  p = make_sub_pool(permanent_pool);
+  pr_pool_debug_memory2(test_visitf, NULL);
+
+  mark_point();
+  destroy_pool(p);
+  pr_pool_debug_memory2(test_visitf, NULL);
+
+  mark_point();
+  p = make_sub_pool(permanent_pool);
+  sub_pool = make_sub_pool(p);
+  pr_pool_debug_memory2(test_visitf, NULL);
+
+  destroy_pool(sub_pool);
+  pr_pool_debug_memory2(test_visitf, NULL);
+
+  destroy_pool(p);
+  pr_pool_debug_memory2(test_visitf, NULL);
 }
 END_TEST
-#endif /* PR_USE_DEVEL */
 
 static unsigned int pool_cleanup_count = 0;
 
@@ -473,10 +502,9 @@ Suite *tests_get_pool_suite(void) {
   tcase_add_test(testcase, pool_pcallocsz_test);
   tcase_add_test(testcase, pool_tag_test);
   tcase_add_test(testcase, pool_get_tag_test);
-#if defined(PR_USE_DEVEL)
-  tcase_add_test(testcase, pool_debug_memory_test);
   tcase_add_test(testcase, pool_debug_flags_test);
-#endif /* PR_USE_DEVEL */
+  tcase_add_test(testcase, pool_debug_memory_test);
+  tcase_add_test(testcase, pool_debug_memory2_test);
   tcase_add_test(testcase, pool_register_cleanup_test);
   tcase_add_test(testcase, pool_register_cleanup2_test);
   tcase_add_test(testcase, pool_unregister_cleanup_test);
