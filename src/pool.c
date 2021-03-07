@@ -2,7 +2,7 @@
  * ProFTPD - FTP server daemon
  * Copyright (c) 1997, 1998 Public Flood Software
  * Copyright (c) 1999, 2000 MacGyver aka Habeeb J. Dihu <macgyver@tos.net>
- * Copyright (c) 2001-2020 The ProFTPD Project team
+ * Copyright (c) 2001-2021 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -62,14 +62,12 @@ static union block_hdr *block_freelist = NULL;
 static unsigned int stat_malloc = 0;	/* incr when malloc required */
 static unsigned int stat_freehit = 0;	/* incr when freelist used */
 
-#ifdef PR_USE_DEVEL
 static const char *trace_channel = "pool";
-#endif /* PR_USE_DEVEL */
 
-#ifdef PR_USE_DEVEL
 /* Debug flags */
 static int debug_flags = 0;
 
+#ifdef PR_USE_DEVEL
 static void oom_printf(const char *fmt, ...) {
   char buf[PR_TUNABLE_BUFFER_SIZE];
   va_list msg;
@@ -250,8 +248,6 @@ pool *global_config_pool = NULL;
 #define POOL_HDR_CLICKS (1 + ((sizeof(struct pool_rec) - 1) / CLICK_SZ))
 #define POOL_HDR_BYTES (POOL_HDR_CLICKS * CLICK_SZ)
 
-#ifdef PR_USE_DEVEL
-
 static unsigned long blocks_in_block_list(union block_hdr *blok) {
   unsigned long count = 0;
 
@@ -278,8 +274,9 @@ static unsigned int subpools_in_pool(pool *p) {
   unsigned int count = 0;
   pool *iter;
 
-  if (p->sub_pools == NULL)
+  if (p->sub_pools == NULL) {
     return 0;
+  }
 
   for (iter = p->sub_pools; iter; iter = iter->sub_next) {
     /* Count one for the current subpool (iter). */
@@ -289,70 +286,46 @@ static unsigned int subpools_in_pool(pool *p) {
   return count;
 }
 
-/* Walk all pools, starting with top level permanent pool, displaying a
- * tree.
+/* Visit all pools, starting with the top-level permanent pool, walking the
+ * hierarchy.
  */
-static long walk_pools(pool *p, unsigned long level,
-    void (*debugf)(const char *, ...)) {
-  char _levelpad[80] = "";
-  long total = 0;
+static unsigned long visit_pools(pool *p, unsigned long level,
+    void (*visit)(const pr_pool_info_t *, void *), void *user_data) {
+  unsigned long total_bytes = 0;
 
   if (p == NULL) {
     return 0;
   }
 
-  if (level > 1) {
-    memset(_levelpad, ' ', sizeof(_levelpad)-1);
-
-    if ((level - 1) * 3 >= sizeof(_levelpad)) {
-      _levelpad[sizeof(_levelpad)-1] = 0;
-
-    } else {
-      _levelpad[(level - 1) * 3] = '\0';
-    }
-  }
-
-  /* The emitted message is:
-   *
-   *  <pool-tag> [pool-ptr] (n B, m L, r P)
-   *
-   * where n is the number of bytes (B), m is the number of allocated blocks
-   * in the pool list (L), and r is the number of sub-pools (P).
-   */
-
   for (; p; p = p->sub_next) {
-    total += bytes_in_block_list(p->first);
-    if (level == 0) {
-      debugf("%s [%p] (%lu B, %lu L, %u P)",
-        p->tag ? p->tag : "<unnamed>", p, bytes_in_block_list(p->first),
-        blocks_in_block_list(p->first), subpools_in_pool(p));
+    unsigned long byte_count = 0, block_count = 0;
+    unsigned int subpool_count = 0;
+    pr_pool_info_t pinfo;
 
-    } else {
-      debugf("%s + %s [%p] (%lu B, %lu L, %u P)", _levelpad,
-        p->tag ? p->tag : "<unnamed>", p, bytes_in_block_list(p->first),
-        blocks_in_block_list(p->first), subpools_in_pool(p));
-    }
+    byte_count = bytes_in_block_list(p->first);
+    block_count = blocks_in_block_list(p->first);
+    subpool_count = subpools_in_pool(p);
+
+    total_bytes += byte_count;
+
+    memset(&pinfo, 0, sizeof(pinfo));
+    pinfo.have_pool_info = TRUE;
+    pinfo.tag = p->tag;
+    pinfo.ptr = p;
+    pinfo.byte_count = byte_count;
+    pinfo.block_count = block_count;
+    pinfo.subpool_count = subpool_count;
+    pinfo.level = level;
+
+    visit(&pinfo, user_data);
 
     /* Recurse */
     if (p->sub_pools) {
-      total += walk_pools(p->sub_pools, level+1, debugf);
+      total_bytes += visit_pools(p->sub_pools, level + 1, visit, user_data);
     }
   }
 
-  return total;
-}
-
-static void debug_pool_info(void (*debugf)(const char *, ...)) {
-  if (block_freelist) {
-    debugf("Free block list: %lu bytes",
-      bytes_in_block_list(block_freelist));
-
-  } else {
-    debugf("Free block list: empty");
-  }
-
-  debugf("%u blocks allocated", stat_malloc);
-  debugf("%u blocks reused", stat_freehit);
+  return total_bytes;
 }
 
 static void pool_printf(const char *fmt, ...) {
@@ -369,14 +342,98 @@ static void pool_printf(const char *fmt, ...) {
   pr_trace_msg(trace_channel, 5, "%s", buf);
 }
 
+static void pool_visitf(const pr_pool_info_t *pinfo, void *user_data) {
+  void (*debugf)(const char *, ...) = user_data;
+
+  if (pinfo->have_pool_info) {
+
+    /* The emitted message is:
+     *
+     *  <pool-tag> [pool-ptr] (n B, m L, r P)
+     *
+     * where n is the number of bytes (B), m is the number of allocated blocks
+     * in the pool list (L), and r is the number of sub-pools (P).
+     */
+
+    if (pinfo->level == 0) {
+      debugf("%s [%p] (%lu B, %lu L, %u P)",
+        pinfo->tag ? pinfo->tag : "<unnamed>", pinfo->ptr,
+        pinfo->byte_count, pinfo->block_count, pinfo->subpool_count);
+
+    } else {
+      char indent_text[80] = "";
+
+      if (pinfo->level > 1) {
+        memset(indent_text, ' ', sizeof(indent_text)-1);
+
+        if ((pinfo->level - 1) * 3 >= sizeof(indent_text)) {
+          indent_text[sizeof(indent_text)-1] = 0;
+
+        } else {
+          indent_text[(pinfo->level - 1) * 3] = '\0';
+        }
+      }
+
+      debugf("%s + %s [%p] (%lu B, %lu L, %u P)", indent_text,
+        pinfo->tag ? pinfo->tag : "<unnamed>", pinfo->ptr,
+        pinfo->byte_count, pinfo->block_count, pinfo->subpool_count);
+    }
+  }
+
+  if (pinfo->have_freelist_info) {
+    debugf("Free block list: %lu bytes", pinfo->freelist_byte_count);
+  }
+
+  if (pinfo->have_total_info) {
+    debugf("Total %lu bytes allocated", pinfo->total_byte_count);
+    debugf("%lu blocks allocated", pinfo->total_blocks_allocated);
+    debugf("%lu blocks reused", pinfo->total_blocks_reused);
+  }
+}
+
 void pr_pool_debug_memory(void (*debugf)(const char *, ...)) {
   if (debugf == NULL) {
     debugf = pool_printf;
   }
 
   debugf("Memory pool allocation:");
-  debugf("Total %lu bytes allocated", walk_pools(permanent_pool, 0, debugf));
-  debug_pool_info(debugf);
+  pr_pool_debug_memory2(pool_visitf, debugf);
+}
+
+void pr_pool_debug_memory2(void (*visit)(const pr_pool_info_t *, void *),
+    void *user_data) {
+  unsigned long freelist_byte_count = 0, freelist_block_count = 0,
+    total_byte_count = 0;
+  pr_pool_info_t pinfo;
+
+  if (visit == NULL) {
+    return;
+  }
+
+  /* Per pool */
+  total_byte_count = visit_pools(permanent_pool, 0, visit, user_data);
+
+  /* Free list */
+  if (block_freelist) {
+    freelist_byte_count = bytes_in_block_list(block_freelist);
+    freelist_block_count = blocks_in_block_list(block_freelist);
+  }
+
+  memset(&pinfo, 0, sizeof(pinfo));
+  pinfo.have_freelist_info = TRUE;
+  pinfo.freelist_byte_count = freelist_byte_count;
+  pinfo.freelist_block_count = freelist_block_count;
+
+  visit(&pinfo, user_data);
+
+  /* Totals */
+  memset(&pinfo, 0, sizeof(pinfo));
+  pinfo.have_total_info = TRUE;
+  pinfo.total_byte_count = total_byte_count;
+  pinfo.total_blocks_allocated = stat_malloc;
+  pinfo.total_blocks_reused = stat_freehit;
+
+  visit(&pinfo, user_data);
 }
 
 int pr_pool_debug_set_flags(int flags) {
@@ -388,7 +445,6 @@ int pr_pool_debug_set_flags(int flags) {
   debug_flags = flags;
   return 0;
 }
-#endif /* PR_USE_DEVEL */
 
 void pr_pool_tag(pool *p, const char *tag) {
   if (p == NULL ||
