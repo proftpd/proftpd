@@ -1,7 +1,7 @@
 /*
  * ProFTPD: mod_auth_file - file-based authentication module that supports
  *                          restrictions on the file contents
- * Copyright (c) 2002-2020 The ProFTPD Project team
+ * Copyright (c) 2002-2021 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -248,8 +248,6 @@ static int af_check_file(pool *p, const char *name, const char *path,
   return 0;
 }
 
-#ifndef HAVE_FGETPWENT
-
 #define NPWDFIELDS      7
 
 static char pwdbuf[BUFSIZ];
@@ -314,9 +312,6 @@ static struct passwd *af_getpasswd(const char *buf, unsigned int lineno) {
 
   return pwd;
 }
-#endif /* !HAVE_FGETPWENT */
-
-#ifndef HAVE_FGETGRENT
 
 #define MAXMEMBERS	4096
 #define NGRPFIELDS      4
@@ -441,7 +436,6 @@ static struct group *af_getgrp(const char *buf, unsigned int lineno) {
 
   return &grent;
 }
-#endif /* !HAVE_FGETGRENT */
 
 static int af_allow_grent(pool *p, struct group *grp) {
   if (af_group_file == NULL) {
@@ -512,10 +506,6 @@ static struct group *af_getgrent(pool *p) {
   }
 
   while (TRUE) {
-#ifdef HAVE_FGETGRENT
-    pr_signals_handle();
-    grp = fgetgrent(af_group_file->af_file);
-#else
     char *cp = NULL, *buf = NULL;
     int buflen = BUFSIZ;
 
@@ -549,7 +539,6 @@ static struct group *af_getgrent(pool *p) {
 
       break;
     }
-#endif /* !HAVE_FGETGRENT */
 
     /* If grp is NULL now, the file is empty - nothing more to be read. */
     if (grp == NULL) {
@@ -751,10 +740,6 @@ static struct passwd *af_getpwent(pool *p) {
   }
 
   while (TRUE) {
-#ifdef HAVE_FGETPWENT
-    pr_signals_handle();
-    pwd = fgetpwent(af_user_file->af_file);
-#else
     char buf[BUFSIZ+1] = {'\0'};
 
     pr_signals_handle();
@@ -778,7 +763,6 @@ static struct passwd *af_getpwent(pool *p) {
       pwd = af_getpasswd(buf, af_user_file->af_lineno);
       break;
     }
-#endif /* !HAVE_FGETPWENT */
 
     /* If pwd is NULL now, the file is empty - nothing more to be read. */
     if (pwd == NULL) {
@@ -786,9 +770,7 @@ static struct passwd *af_getpwent(pool *p) {
     }
 
     if (af_allow_pwent(p, pwd) < 0) {
-#ifndef HAVE_FGETPWENT
       memset(buf, '\0', sizeof(buf));
-#endif
       continue;
     }
 

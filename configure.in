@@ -1920,7 +1920,7 @@ AC_PROG_GCC_TRADITIONAL
 AC_TYPE_SIGNAL
 AC_FUNC_VPRINTF
 
-AC_CHECK_FUNCS(bcopy crypt ctime_r fdatasync fgetgrent fgetpwent fgetspent flock fpathconf freeaddrinfo fsync futimes getifaddrs getpgid getpgrp gmtime_r localtime_r mkdtemp nl_langinfo)
+AC_CHECK_FUNCS(bcopy crypt ctime_r fdatasync fgetspent flock fpathconf freeaddrinfo fsync futimes getifaddrs getpgid getpgrp gmtime_r localtime_r mkdtemp nl_langinfo)
 
 AC_CHECK_FUNC(gai_strerror,
   AC_DEFINE(HAVE_GAI_STRERROR, 1,
