@@ -54,6 +54,8 @@
   connections.
 - Issue 369 - Provide function for obtaining memory pool information as e.g.
   JSON.
+- Issue 1134 - AuthUserFile-based logins are very slow due to fgetpwent(3)
+  library buffer size changes.
 
 1.3.7 - Released 20-Jul-2020
 --------------------------------
