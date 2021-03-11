@@ -21217,7 +21217,7 @@ done
 
 
 
-for ac_func in bcopy crypt ctime_r fdatasync fgetgrent fgetpwent fgetspent flock fpathconf freeaddrinfo fsync futimes getifaddrs getpgid getpgrp gmtime_r localtime_r mkdtemp nl_langinfo
+for ac_func in bcopy crypt ctime_r fdatasync fgetspent flock fpathconf freeaddrinfo fsync futimes getifaddrs getpgid getpgrp gmtime_r localtime_r mkdtemp nl_langinfo
 do :
   as_ac_var=`$as_echo "ac_cv_func_$ac_func" | $as_tr_sh`
 ac_fn_c_check_func "$LINENO" "$ac_func" "$as_ac_var"
