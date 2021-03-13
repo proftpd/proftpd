@@ -40,6 +40,8 @@
 - Issue 1171 - PassivePort randomization is broken due to SO_REUSEPORT option.
 - Issue 1134 - AuthUserFile-based logins are very slow due to fgetpwent(3)
   library buffer size changes.
+- Issue 1193 - Improper checking for reused TLS session for data transfers
+  using OpenSSL 1.1.1.
 
 1.3.7a - Released 21-Jul-2020
 --------------------------------
