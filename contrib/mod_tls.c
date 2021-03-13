@@ -13841,11 +13841,20 @@ MODRET set_tlsdsakeyfile(cmd_rec *cmd) {
       unsigned long err_code;
 
       err_code = ERR_peek_error();
-      if (ERR_GET_REASON(err_code) != PEM_R_BAD_PASSWORD_READ) {
-        PRIVS_RELINQUISH
+      switch (ERR_GET_REASON(err_code)) {
+        /* These are "expected" error codes from working with
+         * passphrase-protected keys.
+         */
+        case EVP_R_BAD_DECRYPT:
+        case PEM_R_BAD_PASSWORD_READ:
+          break;
 
-        CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "unable to use '", path, "': ",
-          tls_get_errors2(cmd->tmp_pool), NULL));
+        default: {
+          PRIVS_RELINQUISH
+
+          CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "unable to use '", path, "': ",
+            tls_get_errors2(cmd->tmp_pool), NULL));
+        }
       }
     }
 
@@ -13931,11 +13940,20 @@ MODRET set_tlseckeyfile(cmd_rec *cmd) {
       unsigned long err_code;
 
       err_code = ERR_peek_error();
-      if (ERR_GET_REASON(err_code) != PEM_R_BAD_PASSWORD_READ) {
-        PRIVS_RELINQUISH
+      switch (ERR_GET_REASON(err_code)) {
+        /* These are "expected" error codes from working with
+         * passphrase-protected keys.
+         */
+        case EVP_R_BAD_DECRYPT:
+        case PEM_R_BAD_PASSWORD_READ:
+          break;
 
-        CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "unable to use '", path, "': ",
-          tls_get_errors2(cmd->tmp_pool), NULL));
+        default: {
+          PRIVS_RELINQUISH
+
+          CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "unable to use '", path, "': ",
+            tls_get_errors2(cmd->tmp_pool), NULL));
+        }
       }
     }
 
@@ -14692,11 +14710,20 @@ MODRET set_tlsrsakeyfile(cmd_rec *cmd) {
       unsigned long err_code;
 
       err_code = ERR_peek_error();
-      if (ERR_GET_REASON(err_code) != PEM_R_BAD_PASSWORD_READ) {
-        PRIVS_RELINQUISH
+      switch (ERR_GET_REASON(err_code)) {
+        /* These are "expected" error codes from working with
+         * passphrase-protected keys.
+         */
+        case EVP_R_BAD_DECRYPT:
+        case PEM_R_BAD_PASSWORD_READ:
+          break;
 
-        CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "unable to use '", path, "': ",
-          tls_get_errors2(cmd->tmp_pool), NULL));
+        default: {
+          PRIVS_RELINQUISH
+
+          CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "unable to use '", path, "': ",
+            tls_get_errors2(cmd->tmp_pool), NULL));
+        }
       }
     }
 
