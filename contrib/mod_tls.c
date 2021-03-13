@@ -2,7 +2,7 @@
  * mod_tls - An RFC2228 SSL/TLS module for ProFTPD
  *
  * Copyright (c) 2000-2002 Peter 'Luna' Runestig <peter@runestig.com>
- * Copyright (c) 2002-2020 TJ Saunders <tj@castaglia.org>
+ * Copyright (c) 2002-2021 TJ Saunders <tj@castaglia.org>
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without modifi-
@@ -7937,10 +7937,13 @@ static int tls_accept(conn_t *conn, unsigned char on_data) {
            * in the control session tickets; the data session tickets presented
            * should have the exact same appdata, if they are coming from our
            * expected control session.
+           *
+           * However, we cannot just assume that session tickets will be used
+           * only for TLSv1.3 sessions.  It is possible that session tickets,
+           * rather than session IDs, will be used for TLSv1.2 and earlier
+           * sessions as well.
            */
-          if (matching_sess != 0 &&
-              SSL_version(ctrl_ssl) == TLS1_3_VERSION &&
-              SSL_version(ssl) == TLS1_3_VERSION) {
+          if (matching_sess != 0) {
 
 # if defined(PR_USE_OPENSSL_SSL_SESSION_TICKET_CALLBACK)
             if (tls_ctrl_ticket_appdata_len > 0 &&
