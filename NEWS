@@ -46,6 +46,7 @@
   format.
 - Issue 1179 - TLSRSACertificateKeyFile sanity checks fail unexpectedly for
   passphrase-protected keys.
+- Issue 1174 - ftptop segfaults when using libncursesw on Gentoo.
 
 1.3.7a - Released 21-Jul-2020
 --------------------------------
