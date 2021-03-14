@@ -38,8 +38,8 @@
 - Issue 1111 - "Corrupted MAC on input" errors using SFTP umac-64@openssh.com
   digest.
 - Issue 1171 - PassivePort randomization is broken due to SO_REUSEPORT option.
-- Issue 1134 - AuthUserFile-based logins are very slow due to fgetpwent(3)
-  library buffer size changes.
+- Issue 1134 - AuthUserFile-based logins, directory listings are very slow due
+  to unbuffered reads.
 - Issue 1193 - Improper checking for reused TLS session for data transfers
   using OpenSSL 1.1.1.
 - Issue 1168 - Improve error handling of OpenSSH host keys converted to PEM
