@@ -143,6 +143,7 @@ jobs:
           sudo make install
 
       - name: Upload code coverage
+        if: ${{ matrix.compiler == 'gcc' }}
         run: |
           lcov --ignore-errors gcov,source --directory . --capture --output-file coverage.info
           # filter out system and test code
