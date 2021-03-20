@@ -1464,6 +1464,9 @@ Suite *tests_get_netaddr_suite(void) {
   tcase_add_test(testcase, netaddr_disable_ipv6_test);
   tcase_add_test(testcase, netaddr_enable_ipv6_test);
 
+  /* Some of the DNS-related tests may take a little longer. */
+  tcase_set_timeout(testcase, 30);
+
   suite_add_tcase(suite, testcase);
   return suite;
 }

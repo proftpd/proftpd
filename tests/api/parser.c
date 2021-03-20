@@ -1,6 +1,6 @@
 /*
  * ProFTPD - FTP server testsuite
- * Copyright (c) 2014-2020 The ProFTPD Project team
+ * Copyright (c) 2014-2021 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -737,6 +737,9 @@ Suite *tests_get_parser_suite(void) {
   tcase_add_test(testcase, parser_parse_line_test);
   tcase_add_test(testcase, parse_config_path_test);
   tcase_add_test(testcase, parser_parse_file_test);
+
+  /* Some of these tests may take a little longer. */
+  tcase_set_timeout(testcase, 15);
 
   suite_add_tcase(suite, testcase);
   return suite;
