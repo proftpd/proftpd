@@ -112,7 +112,7 @@ jobs:
 
       - name: Install with static modules
         run: |
-          make install
+          sudo make install
 
       - name: Build with shared modules
         run: |
@@ -122,7 +122,7 @@ jobs:
 
       - name: Install with shared modules
         run: |
-          make install
+          sudo make install
 
       - name: Upload code coverage
         run: |
