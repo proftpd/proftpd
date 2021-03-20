@@ -494,7 +494,7 @@ START_TEST (parse_config_path_test) {
   /* Note that `/tmp/` may be a large/wide directory on some systems; we
    * thus make a more predictable directory for our testing.
    */
-  res = mkdir(config_path3);
+  res = mkdir(config_path3, 0775);
   fail_unless(res == 0, "Failed to mkdir '%s': %s", config_path3,
     strerror(errno));
 
