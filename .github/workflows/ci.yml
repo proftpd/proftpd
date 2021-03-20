@@ -6,7 +6,7 @@ on:
       - master
   pull_request:
     branches:
-      - mastaer
+      - master
 
 jobs:
   build:
@@ -89,12 +89,9 @@ jobs:
           # - sudo apt-get install -y cppcheck
           # - sudo apt-get install rats
           # for integration/regression test
-          sudo apt-get install -y libtest-unit-perl
-          sudo apt-get install -y libwww-perl libnet-telnet-perl
-          sudo apt-get install -y libssh2-1-dev libnet-ssh2-perl
           # for test code coverage
           sudo apt-get install -y lcov
-          gem install coveralls-lcov
+          sudo gem install coveralls-lcov
           # for HTML validation
           sudo apt-get install -y tidy
 
