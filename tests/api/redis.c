@@ -41,11 +41,6 @@ static void set_up(void) {
     p = permanent_pool = make_sub_pool(NULL);
   }
 
-  redis_host = getenv("REDIS_HOST");
-  if (redis_host != NULL) {
-    redis_server = redis_host;
-  }
-
   redis_init();
   redis_set_server(redis_server, redis_port, 0UL, NULL, NULL);
 
