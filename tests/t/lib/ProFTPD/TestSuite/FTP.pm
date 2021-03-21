@@ -38,6 +38,10 @@ sub new {
     $opts{Debug} = 10;
   }
 
+  if (defined($conn_timeout)) {
+    $opts{Timeout} = $conn_timeout;
+  }
+
   if (defined($cmd_timeout)) {
     $opts{Timeout} = $cmd_timeout;
   }
