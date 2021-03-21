@@ -88,7 +88,7 @@ if test $ac_cv_prog_gcc = no -a "$OSTYPE" = "-DHPUX10"; then
   CFLAGS="$CFLAGS -Ae"
 fi
 
-LDFLAGS="-L\$(top_srcdir)/lib -L\$(top_builddir)/lib $LDFLAGS"
+LDFLAGS="-Wl,-L\$(top_srcdir)/lib,-L\$(top_builddir)/lib $LDFLAGS"
 
 # AIX has issues with the -rdynamic linker flag.  How many different AIX
 # versions should we support here?
