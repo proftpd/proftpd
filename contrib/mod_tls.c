@@ -4535,17 +4535,21 @@ static int tls_sni_cb(SSL *ssl, int *alert_desc, void *user_data) {
 
 #if defined(TLS1_1_VERSION)
           case TLS1_1_VERSION:
+# if defined(SSL_OP_NO_TLSv1_1)
             if (!(ctx_options & SSL_OP_NO_TLSv1_1)) {
               protocol_ok = TRUE;
             }
+# endif /* SSL_OP_NO_TLSv1_1 */
             break;
 #endif /* TLS1_1_VERSION */
 
 #if defined(TLS1_2_VERSION)
           case TLS1_2_VERSION:
+# if defined(SSL_OP_NO_TLSv1_2)
             if (!(ctx_options & SSL_OP_NO_TLSv1_2)) {
               protocol_ok = TRUE;
             }
+# endif /* SSL_OP_NO_TLSv1_2 */
             break;
 #endif /* TLS1_2_VERSION */
 
