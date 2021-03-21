@@ -7393,6 +7393,7 @@ static int tls_accept(conn_t *conn, unsigned char on_data) {
 
   /* If configured, set a timer for the handshake. */
   if (tls_handshake_timeout) {
+    tls_handshake_timed_out = FALSE;
     tls_handshake_timer_id = pr_timer_add(tls_handshake_timeout, -1,
       &tls_module, tls_handshake_timeout_cb, "SSL/TLS handshake");
   }
@@ -8127,6 +8128,7 @@ static int tls_connect(conn_t *conn) {
 
   /* If configured, set a timer for the handshake. */
   if (tls_handshake_timeout) {
+    tls_handshake_timed_out = FALSE;
     tls_handshake_timer_id = pr_timer_add(tls_handshake_timeout, -1,
       &tls_module, tls_handshake_timeout_cb, "SSL/TLS handshake");
   }
