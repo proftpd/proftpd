@@ -73,6 +73,9 @@ ChangeLog files.
 
       New `AllowWeakSecurity` TLSOption added (Issue #1048)
 
+    Wrap2Tables
+      Support for include files (Issue #1133)
+
 
   + Developer Notes
 
