@@ -1,6 +1,6 @@
 /*
  * ProFTPD: mod_wrap2 -- tcpwrappers-like access control
- * Copyright (c) 2000-2020 TJ Saunders
+ * Copyright (c) 2000-2021 TJ Saunders
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -107,7 +107,10 @@ typedef struct conn_info {
 #define INADDR_NONE 0xffffffff
 #endif
 
+static const char *trace_channel = "wrap2";
+
 /* Necessary prototypes. */
+static unsigned char wrap2_match_includes(const char *path, wrap2_host_t *host);
 static int wrap2_sess_init(void);
 
 /* Logging routines */
@@ -530,6 +533,8 @@ static unsigned char wrap2_match_host(char *tok, wrap2_host_t *host) {
 
   } else if (strcasecmp(tok, "ALL") == 0) {
     /* Matches everything */
+    wrap2_log("comparing client hostname '%s' against ALL",
+      wrap2_get_hostname(host));
     return TRUE;
 
   } else if (strcasecmp(tok, "KNOWN") == 0) {
@@ -657,6 +662,10 @@ static unsigned char wrap2_match_host(char *tok, wrap2_host_t *host) {
     }
 #endif /* PR_USE_IPV6 */
 
+  } else if (*tok == '/') {
+    /* Include file */
+    return (wrap2_match_includes(tok, host));
+
   } else if ((mask = wrap2_strsplit(tok, '/')) != 0) {
     /* Net/mask */
     return (wrap2_match_netmask(tok, mask, wrap2_get_hostaddr(host)));
@@ -730,9 +739,68 @@ static unsigned char wrap2_match_host(char *tok, wrap2_host_t *host) {
   return FALSE;
 }
 
+static unsigned char wrap2_match_includes(const char *path,
+    wrap2_host_t *host) {
+  pr_fh_t *fh;
+  int xerrno;
+  char buf[PR_TUNABLE_BUFFER_SIZE+1], *line;
+
+  PRIVS_ROOT
+  fh = pr_fsio_open(path, O_RDONLY);
+  xerrno = errno;
+  PRIVS_RELINQUISH
+
+  if (fh == NULL) {
+    wrap2_log("error opening include file '%s': %s", path, strerror(xerrno));
+    return FALSE;
+  }
+
+  memset(buf, '\0', sizeof(buf));
+  line = pr_fsio_getline(buf, sizeof(buf)-1, fh, NULL);
+  while (line != NULL) {
+    unsigned char match = FALSE;
+
+    pr_signals_handle();
+
+    /* If `line` itself starts with `/`, log/ignore it.  No recursive loops. */
+    if (*line != '/') {
+      char *next;
+
+      next = strsep(&line, " \t\r\n");
+      while (next != NULL) {
+        pr_signals_handle();
+
+        match = wrap2_match_host(next, host);
+        if (match) {
+          pr_fsio_close(fh);
+          return match;
+        }
+
+        next = strsep(&line, " \t\r\n");
+        while (next != NULL &&
+               *next == '\0') {
+          next = strsep(&line, " \t\r\n");
+        }
+      }
+
+    } else {
+      wrap2_log("ignoring include pattern '%s' from include file '%s'",
+        line, path);
+    }
+
+    memset(buf, '\0', sizeof(buf));
+    line = pr_fsio_getline(buf, sizeof(buf)-1, fh, NULL);
+  }
+
+  pr_fsio_close(fh);
+  return FALSE;
+}
+
 static unsigned char wrap2_match_client(char *tok, wrap2_conn_t *conn) {
   unsigned char match = FALSE;
   char *host = NULL;
+
+  pr_trace_msg(trace_channel, 9, "matching client token '%s'", tok);
 
   host = wrap2_strsplit(tok + 1, '@');
   if (host == 0) {
