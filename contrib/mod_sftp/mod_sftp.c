@@ -1,6 +1,6 @@
 /*
  * ProFTPD - mod_sftp
- * Copyright (c) 2008-2020 TJ Saunders
+ * Copyright (c) 2008-2021 TJ Saunders
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -728,7 +728,7 @@ MODRET set_sftpclientmatch(cmd_rec *cmd) {
       /* Don't forget to advance i past the value. */
       i++;
 
-    } else if (strncmp(cmd->argv[i], "sftpProtocolVersion", 20) == 0) {
+    } else if (strcmp(cmd->argv[i], "sftpProtocolVersion") == 0) {
       void *min_value, *max_value;
       char *ptr = NULL;
 
@@ -753,6 +753,19 @@ MODRET set_sftpclientmatch(cmd_rec *cmd) {
             "'sftpProtocolVersion' value ", cmd->argv[i+1],
             " must be between 1 and 6: ", strerror(errno), NULL));
         }
+
+#if !defined(PR_USE_NLS)
+        /* If NLS supported was enabled in the proftpd build, then we can
+         * support UTF8, and thus every other version of SFTP.  Otherwise, we
+         * can only support up to version 3.
+         */
+        if (protocol_version > 3) {
+          CONF_ERROR(cmd, pstrcat(cmd->tmp_pool,
+            "'sftpProtocolVersion' value ", cmd->argv[i+1],
+            " cannot be higher than 3, due to lack of UTF8 support "
+            "(requires --enable-nls)", NULL));
+        }
+#endif /* PR_USE_NLS */
 
         min_value = palloc(c->pool, sizeof(unsigned int));
         *((unsigned int *) min_value) = (unsigned int) protocol_version;
@@ -784,6 +797,19 @@ MODRET set_sftpclientmatch(cmd_rec *cmd) {
             " must be between 1 and 6: ", strerror(errno), NULL));
         }
 
+#if !defined(PR_USE_NLS)
+        /* If NLS supported was enabled in the proftpd build, then we can
+         * support UTF8, and thus every other version of SFTP.  Otherwise, we
+         * can only support up to version 3.
+         */
+        if (min_version > 3) {
+          CONF_ERROR(cmd, pstrcat(cmd->tmp_pool,
+            "'sftpProtocolVersion' value ", cmd->argv[i+1],
+            " cannot be higher than 3, due to lack of UTF8 support "
+            "(requires --enable-nls)", NULL));
+        }
+#endif /* PR_USE_NLS */
+
         min_value = palloc(c->pool, sizeof(unsigned int));
         *((unsigned int *) min_value) = (unsigned int) min_version;
 
@@ -805,6 +831,19 @@ MODRET set_sftpclientmatch(cmd_rec *cmd) {
             "'sftpProtocolVersion' value ", cmd->argv[i+1],
             " must be between 1 and 6: ", strerror(errno), NULL));
         }
+
+#if !defined(PR_USE_NLS)
+        /* If NLS supported was enabled in the proftpd build, then we can
+         * support UTF8, and thus every other version of SFTP.  Otherwise, we
+         * can only support up to version 3.
+         */
+        if (max_version > 3) {
+          CONF_ERROR(cmd, pstrcat(cmd->tmp_pool,
+            "'sftpProtocolVersion' value ", cmd->argv[i+1],
+            " cannot be higher than 3, due to lack of UTF8 support "
+            "(requires --enable-nls)", NULL));
+        }
+#endif /* PR_USE_NLS */
 
         max_value = palloc(c->pool, sizeof(unsigned int));
         *((unsigned int *) max_value) = (unsigned int) max_version;
