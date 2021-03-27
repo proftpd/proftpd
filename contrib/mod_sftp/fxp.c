@@ -1,6 +1,6 @@
 /*
  * ProFTPD - mod_sftp sftp
- * Copyright (c) 2008-2020 TJ Saunders
+ * Copyright (c) 2008-2021 TJ Saunders
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -7724,13 +7724,13 @@ static int fxp_handle_fstat(struct fxp_packet *fxp) {
 static int fxp_handle_init(struct fxp_packet *fxp) {
   char version_str[16];
   unsigned char *buf, *ptr;
-  uint32_t buflen, bufsz;
+  uint32_t buflen, bufsz, client_version;
   struct fxp_packet *resp;
   cmd_rec *cmd;
   config_rec *c;
 
-  fxp_session->client_version = sftp_msg_read_int(fxp->pool, &fxp->payload,
-    &fxp->payload_sz);
+  client_version = fxp_session->client_version = sftp_msg_read_int(fxp->pool,
+    &fxp->payload, &fxp->payload_sz);
 
   memset(version_str, '\0', sizeof(version_str));
   pr_snprintf(version_str, sizeof(version_str)-1, "%lu",
@@ -7773,7 +7773,7 @@ static int fxp_handle_init(struct fxp_packet *fxp) {
     fxp_session->client_version = fxp_min_client_version;
   }
 
-#ifndef PR_USE_NLS
+#if !defined(PR_USE_NLS)
   /* If NLS supported was enabled in the proftpd build, then we can support
    * UTF8, and thus every other version of SFTP.  Otherwise, we can only
    * support up to version 3.
@@ -7785,7 +7785,20 @@ static int fxp_handle_init(struct fxp_packet *fxp) {
       (unsigned long) fxp_session->client_version);
     fxp_session->client_version = 3;
   }
-#endif
+#endif /* PR_USE_NLS */
+
+  /* If the lowest protocol version we want to support is still higher than
+   * the client-requested protocol version, then we will -- sadly -- abruptly
+   * disconnect the client.  See Issue #1200 for the reasons why.
+   */
+  if (fxp_session->client_version > client_version) {
+    (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
+      "client-requested SFTP protocol version (%lu) is lower than we can "
+      "support (%lu), disconnecting client", (unsigned long) client_version,
+      (unsigned long) fxp_session->client_version);
+    SFTP_DISCONNECT_CONN(SFTP_SSH2_DISCONNECT_PROTOCOL_VERSION_NOT_SUPPORTED,
+      "Unable to use requested SFTP protocol version");
+  }
 
   (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
     "using SFTP protocol version %lu for this session (channel ID %lu)",

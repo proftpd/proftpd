@@ -66,6 +66,8 @@
 - Issue 1204 - Once TLSTimeoutHandshake is reached, internal "timed out" flag
   never reset.
 - Issue 1133 - Support include files in mod_wrap2 allow/deny tables.
+- Issue 1200 - Disconnect SFTP clients that request unsupportable protocol
+  versions.
 
 1.3.7 - Released 20-Jul-2020
 --------------------------------
