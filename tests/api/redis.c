@@ -35,8 +35,6 @@ static int redis_port = 6379;
 /* Fixtures */
 
 static void set_up(void) {
-  char *redis_host = NULL;
-
   if (p == NULL) {
     p = permanent_pool = make_sub_pool(NULL);
   }
@@ -1146,7 +1144,7 @@ START_TEST (redis_get_with_namespace_test) {
     strerror(errno));
   fail_unless(valsz == strlen(val), "Expected %lu, got %lu",
     (unsigned long) strlen(val), (unsigned long) valsz);
-  fail_unless(strncmp(data, val, valsz) == 0, "Expected '%s', got '%.*s'",
+  fail_unless(memcmp(data, val, valsz) == 0, "Expected '%s', got '%.*s'",
     val, (int) valsz, data);
 
   mark_point();
@@ -1765,7 +1763,7 @@ START_TEST (redis_hash_set_test) {
   fail_unless(valsz == 7, "Expected item length 7, got %lu",
     (unsigned long) valsz);
   fail_unless(val != NULL, "Failed to get value from hash");
-  fail_unless(strncmp(val, "hashval", valsz) == 0,
+  fail_unless(memcmp(val, "hashval", valsz) == 0,
     "Expected 'hashval', got '%.*s'", (int) valsz, val);
 
   mark_point();
@@ -2808,7 +2806,7 @@ START_TEST (redis_list_get_test) {
   fail_unless(res == 0, "Failed to get item in list: %s", strerror(errno));
   fail_unless(val != NULL, "Expected value, got null");
   fail_unless(valsz == 3, "Expected 3, got %lu", (unsigned long) valsz);
-  fail_unless(strncmp(val, "foo", 3) == 0, "Expected 'foo', got '%.*s'",
+  fail_unless(memcmp(val, "foo", 3) == 0, "Expected 'foo', got '%.*s'",
     (int) valsz, val);
 
   mark_point();
@@ -3017,7 +3015,7 @@ START_TEST (redis_list_pop_left_test) {
   fail_unless(res == 0, "Failed to get item in list: %s", strerror(errno));
   fail_unless(val != NULL, "Expected value, got null");
   fail_unless(valsz == 3, "Expected 3, got %lu", (unsigned long) valsz);
-  fail_unless(strncmp(val, "foo", 3) == 0, "Expected 'foo', got '%.*s'",
+  fail_unless(memcmp(val, "foo", 3) == 0, "Expected 'foo', got '%.*s'",
     (int) valsz, val);
 
   mark_point();
@@ -3064,7 +3062,7 @@ START_TEST (redis_list_pop_right_test) {
   fail_unless(res == 0, "Failed to get item in list: %s", strerror(errno));
   fail_unless(val != NULL, "Expected value, got null");
   fail_unless(valsz == 3, "Expected 3, got %lu", (unsigned long) valsz);
-  fail_unless(strncmp(val, "foo", 3) == 0, "Expected 'foo', got '%.*s'",
+  fail_unless(memcmp(val, "foo", 3) == 0, "Expected 'foo', got '%.*s'",
     (int) valsz, val);
 
   mark_point();
@@ -3283,7 +3281,7 @@ START_TEST (redis_list_rotate_test) {
   fail_unless(res == 0, "Failed to rotate list '%s': %s", key, strerror(errno));
   fail_unless(val != NULL, "Expected value, got NULL");
   fail_unless(valsz == 3, "Expected 3, got %lu", (unsigned long) valsz);
-  fail_unless(strncmp(val, "bar", valsz) == 0, "Expected 'bar', got '%.*s'",
+  fail_unless(memcmp(val, "bar", valsz) == 0, "Expected 'bar', got '%.*s'",
     (int) valsz, val);
 
   val = NULL;
@@ -3294,7 +3292,7 @@ START_TEST (redis_list_rotate_test) {
   fail_unless(res == 0, "Failed to rotate list '%s': %s", key, strerror(errno));
   fail_unless(val != NULL, "Expected value, got NULL");
   fail_unless(valsz == 3, "Expected 3, got %lu", (unsigned long) valsz);
-  fail_unless(strncmp(val, "foo", valsz) == 0, "Expected 'foo', got '%.*s'",
+  fail_unless(memcmp(val, "foo", valsz) == 0, "Expected 'foo', got '%.*s'",
     (int) valsz, val);
 
   val = NULL;
@@ -3305,7 +3303,7 @@ START_TEST (redis_list_rotate_test) {
   fail_unless(res == 0, "Failed to rotate list '%s': %s", key, strerror(errno));
   fail_unless(val != NULL, "Expected value, got NULL");
   fail_unless(valsz == 3, "Expected 3, got %lu", (unsigned long) valsz);
-  fail_unless(strncmp(val, "bar", valsz) == 0, "Expected 'bar', got '%.*s'",
+  fail_unless(memcmp(val, "bar", valsz) == 0, "Expected 'bar', got '%.*s'",
     (int) valsz, val);
 
   mark_point();
@@ -4967,9 +4965,8 @@ Suite *tests_get_redis_suite(void) {
 
   /* Some of the Redis tests may take a little longer. */
   tcase_set_timeout(testcase, 30);
-
-  suite_add_tcase(suite, testcase);
 #endif /* PR_USE_REDIS */
 
+  suite_add_tcase(suite, testcase);
   return suite;
 }

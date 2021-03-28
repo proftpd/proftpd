@@ -159,6 +159,27 @@ jobs:
           # upload coverage info to coveralls
           coveralls-lcov --repo-token="$COVERALLS_REPO_TOKEN" --service-name=github --service-job-id="$GITHUB_RUN_ID" --branch="$GITHUB_REF" coverage.info
 
+      # https://github.com/google/sanitizers/wiki/AddressSanitizer
+      # https://github.com/google/sanitizers/wiki/AddressSanitizerLeakSanitizer
+      # https://clang.llvm.org/docs/UndefinedBehaviorSanitizer.html
+      #
+      # NOTE: Using MemorySanitizer is desirable, but currently unusable since
+      # libcheck is not instrumented, resulting in unsuppressible false
+      # positives.
+      - name: Run unit tests under asan+lsan+ubsan
+        env:
+          ASAN_OPTIONS: abort_on_error=1,check_initialization_order=true,debug=true,detect_invalid_pointer_pairs=2,detect_leaks=1,detect_stack_use_after_return=true,strict_string_checks=true,verbosity=0
+          CC: ${{ matrix.compiler }}
+          CFLAGS: -fsanitize=address,undefined
+          LDFLAGS: -fsanitize=address,undefined
+        if: ${{ matrix.compiler == 'clang' }}
+        run: |
+          make clean
+          ./configure LIBS="-lm -lsubunit -lrt -pthread" --enable-devel -enable-ctrls --enable-facl --enable-memcache --enable-nls --enable-pcre --enable-redis --enable-tests
+          make
+          export ASAN_SYMBOLIZER_PATH=$(readlink -f $(which llvm-symbolizer-10))
+          make check-api
+
       - name: Check Perl scripts
         run: |
           perl -cw contrib/ftpasswd

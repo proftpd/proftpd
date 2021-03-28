@@ -1,6 +1,6 @@
 /*
  * ProFTPD - FTP server testsuite
- * Copyright (c) 2008-2017 The ProFTPD Project team
+ * Copyright (c) 2008-2021 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -96,13 +96,14 @@ START_TEST (regexp_compile_test) {
   char errstr[256], *pattern;
   size_t errstrlen;
 
+  mark_point();
   res = pr_regexp_compile(NULL, NULL, 0);
   fail_unless(res < 0, "Failed to handle null arguments");
   fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
     strerror(errno), errno);
 
+  mark_point();
   pre = pr_regexp_alloc(NULL);
-
   res = pr_regexp_compile(pre, NULL, 0);
   fail_unless(res < 0, "Failed to handle null pattern");
   fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
@@ -124,14 +125,17 @@ START_TEST (regexp_compile_test) {
   errstrlen = pr_regexp_error(res, pre, errstr, sizeof(errstr));
   fail_unless(errstrlen > 0, "Failed to get regex compilation error string");
 
+  mark_point();
   pattern = "foo";
   res = pr_regexp_compile(pre, pattern, 0);
   fail_unless(res == 0, "Failed to compile regex pattern '%s'", pattern);
 
+  mark_point();
+  pr_regexp_free(NULL, pre);
+  pre = pr_regexp_alloc(NULL);
   pattern = "foo";
   res = pr_regexp_compile(pre, pattern, REG_ICASE);
   fail_unless(res == 0, "Failed to compile regex pattern '%s'", pattern);
-
   pr_regexp_free(NULL, pre);
 }
 END_TEST

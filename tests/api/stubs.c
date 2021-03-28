@@ -200,7 +200,7 @@ int pr_log_openfile(const char *log_file, int *log_fd, mode_t log_mode) {
     }
   }
 
-  *log_fd = STDERR_FILENO;
+  *log_fd = dup(STDERR_FILENO);
   return 0;
 }
 
