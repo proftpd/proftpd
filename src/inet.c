@@ -112,17 +112,17 @@ static void conn_cleanup_cb(void *cv) {
   c->instrm = c->outstrm = NULL;
 
   if (c->listen_fd != -1) {
-    close(c->listen_fd);
+    (void) close(c->listen_fd);
     c->listen_fd = -1;
   }
 
   if (c->rfd != -1) {
-    close(c->rfd);
+    (void) close(c->rfd);
     c->rfd = -1;
   }
 
   if (c->wfd != -1) {
-    close(c->wfd);
+    (void) close(c->wfd);
     c->wfd = -1;
   }
 }

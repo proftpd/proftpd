@@ -632,6 +632,11 @@ static void *alloc_pool(struct pool_rec *p, size_t reqsz, int exact) {
   union block_hdr *blok;
   char *first_avail, *new_first_avail;
 
+  if (p == NULL) {
+    errno = EINVAL;
+    return NULL;
+  }
+
   /* For performance, see if space is available in the most recently
    * allocated block.
    */
@@ -686,6 +691,11 @@ void *pallocsz(struct pool_rec *p, size_t sz) {
 void *pcalloc(struct pool_rec *p, size_t sz) {
   void *res;
 
+  if (p == NULL) {
+    errno = EINVAL;
+    return NULL;
+  }
+
   res = palloc(p, sz);
   memset(res, '\0', sz);
 
@@ -694,6 +704,11 @@ void *pcalloc(struct pool_rec *p, size_t sz) {
 
 void *pcallocsz(struct pool_rec *p, size_t sz) {
   void *res;
+
+  if (p == NULL) {
+    errno = EINVAL;
+    return NULL;
+  }
 
   res = pallocsz(p, sz);
   memset(res, '\0', sz);

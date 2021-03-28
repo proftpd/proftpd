@@ -1,6 +1,6 @@
 /*
  * ProFTPD - FTP server testsuite
- * Copyright (c) 2015 The ProFTPD Project team
+ * Copyright (c) 2015-2021 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -59,20 +59,24 @@ static void tear_down(void) {
 
 #ifdef PR_USE_NLS
 START_TEST (encode_encode_str_test) {
-  char *res;
-  const char *in_str, junk[1024];
+  register unsigned int i;
+  char junk[1024], *res;
+  const char *in_str;
   size_t in_len, out_len = 0;
 
+  mark_point();
   res = pr_encode_str(NULL, NULL, 0, NULL);
   fail_unless(res == NULL, "Failed to handle null arguments");
   fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
     strerror(errno), errno);
 
+  mark_point();
   res = pr_encode_str(p, NULL, 0, NULL);
   fail_unless(res == NULL, "Failed to handle null input string");
   fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
     strerror(errno), errno);
 
+  mark_point();
   in_str = "OK";
   in_len = 2;
   res = pr_encode_str(p, in_str, in_len, NULL);
@@ -80,12 +84,17 @@ START_TEST (encode_encode_str_test) {
   fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
     strerror(errno), errno);
 
+  mark_point();
   res = pr_encode_str(p, in_str, in_len, &out_len);
   fail_unless(res != NULL, "Failed to encode '%s': %s", in_str,
     strerror(errno));
   fail_unless(strcmp(res, in_str) == 0, "Expected '%s', got '%s'", in_str,
     res);
 
+  mark_point();
+  for (i = 0; i < sizeof(junk); i++) {
+    junk[i] = i;
+  }
   in_str = junk;
   in_len = sizeof(junk);
   res = pr_encode_str(p, in_str, in_len, &out_len);
@@ -96,20 +105,24 @@ START_TEST (encode_encode_str_test) {
 END_TEST
 
 START_TEST (encode_decode_str_test) {
-  char *res;
-  const char *in_str, junk[1024];
+  register unsigned int i;
+  char junk[1024], *res;
+  const char *in_str;
   size_t in_len, out_len = 0;
 
+  mark_point();
   res = pr_decode_str(NULL, NULL, 0, NULL);
   fail_unless(res == NULL, "Failed to handle null arguments");
   fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
     strerror(errno), errno);
 
+  mark_point();
   res = pr_decode_str(p, NULL, 0, NULL);
   fail_unless(res == NULL, "Failed to handle null input string");
   fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
     strerror(errno), errno);
 
+  mark_point();
   in_str = "OK";
   in_len = 2;
   res = pr_decode_str(p, in_str, in_len, NULL);
@@ -117,15 +130,20 @@ START_TEST (encode_decode_str_test) {
   fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
     strerror(errno), errno);
 
+  mark_point();
   res = pr_decode_str(p, in_str, in_len, &out_len);
   fail_unless(res != NULL, "Failed to decode '%s': %s", in_str,
     strerror(errno));
   fail_unless(strcmp(res, in_str) == 0, "Expected '%s', got '%s'", in_str,
     res);
 
+  mark_point();
+  for (i = 0; i < sizeof(junk); i++) {
+    junk[i] = i;
+  }
   in_str = junk;
   in_len = sizeof(junk);
-  res = pr_encode_str(p, in_str, in_len, &out_len);
+  res = pr_decode_str(p, in_str, in_len, &out_len);
   fail_unless(res == NULL, "Failed to handle bad input");
   fail_unless(errno == EILSEQ, "Expected EILSEQ (%d), got %s (%d)", EILSEQ,
     strerror(errno), errno);

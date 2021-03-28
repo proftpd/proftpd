@@ -1,6 +1,6 @@
 /*
  * ProFTPD - FTP server testsuite
- * Copyright (c) 2008-2015 The ProFTPD Project team
+ * Copyright (c) 2008-2021 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -35,7 +35,7 @@ static void set_up(void) {
 }
 
 static void tear_down(void) {
-  if (p) {
+  if (p != NULL) {
     destroy_pool(p);
     p = NULL;
   }
@@ -372,34 +372,41 @@ START_TEST (append_arrays_test) {
   array_header *a, *b, *res;
   int elt, *elts;
 
-  p = make_sub_pool(NULL);
+  mark_point();
   a = make_array(p, 0, sizeof(int));
   b = make_array(p, 0, sizeof(int));
 
+  mark_point();
   res = append_arrays(NULL, NULL, NULL);
   fail_unless(res == NULL, "Failed to handle null arguments");
   fail_unless(errno == EINVAL, "Failed to set errno to EINVAL");
 
+  mark_point();
   res = append_arrays(p, NULL, NULL);
   fail_unless(res == NULL, "Failed to handle null arguments");
   fail_unless(errno == EINVAL, "Failed to set errno to EINVAL");
 
+  mark_point();
   res = append_arrays(NULL, a, NULL);
   fail_unless(res == NULL, "Failed to handle null arguments");
   fail_unless(errno == EINVAL, "Failed to set errno to EINVAL");
 
+  mark_point();
   res = append_arrays(NULL, NULL, b);
   fail_unless(res == NULL, "Failed to handle null arguments");
   fail_unless(errno == EINVAL, "Failed to set errno to EINVAL");
 
+  mark_point();
   res = append_arrays(p, a, NULL);
   fail_unless(res == NULL, "Failed to handle null arguments");
   fail_unless(errno == EINVAL, "Failed to set errno to EINVAL");
 
+  mark_point();
   res = append_arrays(p, NULL, b);
   fail_unless(res == NULL, "Failed to handle null arguments");
   fail_unless(errno == EINVAL, "Failed to set errno to EINVAL");
 
+  mark_point();
   res = append_arrays(NULL, a, b);
   fail_unless(res == NULL, "Failed to handle null arguments");
   fail_unless(errno == EINVAL, "Failed to set errno to EINVAL");
@@ -410,6 +417,7 @@ START_TEST (append_arrays_test) {
   *((int *) push_array(b)) = 4762;
   *((int *) push_array(b)) = 7642;
 
+  mark_point();
   res = append_arrays(p, a, b);
 
   fail_unless(res->elt_size == a->elt_size,

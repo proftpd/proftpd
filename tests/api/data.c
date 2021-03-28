@@ -1,6 +1,6 @@
 /*
  * ProFTPD - FTP server testsuite
- * Copyright (c) 2015-2020 The ProFTPD Project team
+ * Copyright (c) 2015-2021 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -59,28 +59,26 @@ static void set_up(void) {
 }
 
 static void tear_down(void) {
+  (void) pr_fsio_unlink(data_test_path);
+
+  if (session.c != NULL) {
+    (void) pr_inet_close(p, session.c);
+  }
+
+  if (session.d != NULL &&
+      session.d != session.c) {
+    (void) pr_inet_close(p, session.d);
+  }
+
+  session.c = session.d = NULL;
+
   pr_unregister_netio(PR_NETIO_STRM_CTRL|PR_NETIO_STRM_CTRL);
   pr_unregister_netio(PR_NETIO_STRM_CTRL|PR_NETIO_STRM_DATA);
-  (void) pr_fsio_unlink(data_test_path);
 
   if (getenv("TEST_VERBOSE") != NULL) {
     pr_trace_set_levels("data", 0, 0);
   }
   pr_trace_set_levels("timing", 0, 0);
-
-  if (session.c != NULL) {
-    if (session.c == session.d) {
-      session.d = NULL;
-    }
-
-    (void) pr_inet_close(p, session.c);
-    session.c = NULL;
-  }
-
-  if (session.d != NULL) {
-    (void) pr_inet_close(p, session.d);
-    session.d = NULL;
-  }
 
   pr_parser_cleanup();
   pr_response_set_pool(NULL);
@@ -1038,7 +1036,7 @@ START_TEST (data_xfer_read_ascii_test) {
   fail_unless(session.xfer.buflen == 0,
     "Expected session.xfer.buflen 0, got %lu",
     (unsigned long) session.xfer.buflen);
-  fail_unless(strncmp(buf, expected, expected_len) == 0,
+  fail_unless(memcmp(buf, expected, expected_len) == 0,
     "Expected '%s', got '%.100s'", expected, buf);
 
   mark_point();
@@ -1057,7 +1055,7 @@ START_TEST (data_xfer_read_ascii_test) {
   fail_unless(session.xfer.buflen == 0,
     "Expected session.xfer.buflen 0, got %lu",
     (unsigned long) session.xfer.buflen);
-  fail_unless(strncmp(buf, expected, expected_len) == 0,
+  fail_unless(memcmp(buf, expected, expected_len) == 0,
     "Expected '%s', got '%.100s'", expected, buf);
 
   mark_point();
@@ -1076,7 +1074,7 @@ START_TEST (data_xfer_read_ascii_test) {
   fail_unless(session.xfer.buflen == 0,
     "Expected session.xfer.buflen 0, got %lu",
     (unsigned long) session.xfer.buflen);
-  fail_unless(strncmp(buf, expected, expected_len) == 0,
+  fail_unless(memcmp(buf, expected, expected_len) == 0,
     "Expected '%s', got '%.100s'", expected, buf);
 
   /* Bug#4237 happened because of insufficient testing of the edge case
@@ -1101,7 +1099,7 @@ START_TEST (data_xfer_read_ascii_test) {
   fail_unless(session.xfer.buflen == 1,
     "Expected session.xfer.buflen 1, got %lu",
     (unsigned long) session.xfer.buflen);
-  fail_unless(strncmp(buf, expected, expected_len) == 0,
+  fail_unless(memcmp(buf, expected, expected_len) == 0,
     "Expected '%s', got '%.100s'", expected, buf);
 }
 END_TEST
@@ -1166,7 +1164,7 @@ START_TEST (data_xfer_read_ascii_with_abor_test) {
   fail_unless(session.xfer.buflen == 0,
     "Expected session.xfer.buflen 0, got %lu",
     (unsigned long) session.xfer.buflen);
-  fail_unless(strncmp(buf, expected, expected_len) == 0,
+  fail_unless(memcmp(buf, expected, expected_len) == 0,
     "Expected '%s', got '%.100s'", expected, buf);
 }
 END_TEST

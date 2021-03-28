@@ -1,6 +1,6 @@
 /*
  * ProFTPD - FTP server testsuite
- * Copyright (c) 2015-2018 The ProFTPD Project team
+ * Copyright (c) 2015-2021 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -236,7 +236,7 @@ START_TEST (ascii_ftp_to_crlf_test) {
   fail_unless(dst_len == expected_len,
     "Expected output buffer length %lu, got %lu", (unsigned long) expected_len,
     (unsigned long) dst_len);
-  fail_unless(strncmp(dst, expected, dst_len) == 0,
+  fail_unless(memcmp(dst, expected, dst_len) == 0,
     "Expected output buffer '%s', got '%s'", expected, dst);
   free(dst);
 
@@ -254,7 +254,7 @@ START_TEST (ascii_ftp_to_crlf_test) {
   fail_unless(dst_len == expected_len,
     "Expected output buffer length %lu, got %lu", (unsigned long) expected_len,
     (unsigned long) dst_len);
-  fail_unless(strncmp(dst, expected, dst_len) == 0,
+  fail_unless(memcmp(dst, expected, dst_len) == 0,
     "Expected output buffer '%s', got '%s'", expected, dst);
   free(dst);
 
@@ -272,7 +272,7 @@ START_TEST (ascii_ftp_to_crlf_test) {
   fail_unless(dst_len == expected_len,
     "Expected output buffer length %lu, got %lu", (unsigned long) expected_len,
     (unsigned long) dst_len);
-  fail_unless(strncmp(dst, expected, dst_len) == 0,
+  fail_unless(memcmp(dst, expected, dst_len) == 0,
     "Expected output buffer '%s', got '%s'", expected, dst);
   free(dst);
 
@@ -290,7 +290,7 @@ START_TEST (ascii_ftp_to_crlf_test) {
   fail_unless(dst_len == expected_len,
     "Expected output buffer length %lu, got %lu", (unsigned long) expected_len,
     (unsigned long) dst_len);
-  fail_unless(strncmp(dst, expected, dst_len) == 0,
+  fail_unless(memcmp(dst, expected, dst_len) == 0,
     "Expected output buffer '%s', got '%s'", expected, dst);
   free(dst);
 
@@ -308,7 +308,7 @@ START_TEST (ascii_ftp_to_crlf_test) {
   fail_unless(dst_len == expected_len,
     "Expected output buffer length %lu, got %lu", (unsigned long) expected_len,
     (unsigned long) dst_len);
-  fail_unless(strncmp(dst, expected, dst_len) == 0,
+  fail_unless(memcmp(dst, expected, dst_len) == 0,
     "Expected output buffer '%s', got '%s'", expected, dst);
   free(dst);
 
@@ -326,7 +326,7 @@ START_TEST (ascii_ftp_to_crlf_test) {
   fail_unless(dst_len == expected_len,
     "Expected output buffer length %lu, got %lu", (unsigned long) expected_len,
     (unsigned long) dst_len);
-  fail_unless(strncmp(dst, expected, dst_len) == 0,
+  fail_unless(memcmp(dst, expected, dst_len) == 0,
     "Expected output buffer '%s', got '%s'", expected, dst);
   free(dst);
 
@@ -342,7 +342,7 @@ START_TEST (ascii_ftp_to_crlf_test) {
   fail_unless(dst_len == expected_len,
     "Expected output buffer length %lu, got %lu", (unsigned long) expected_len,
     (unsigned long) dst_len);
-  fail_unless(strncmp(dst, expected, dst_len) == 0,
+  fail_unless(memcmp(dst, expected, dst_len) == 0,
     "Expected output buffer '%s', got '%s'", expected, dst);
   free(dst);
 }

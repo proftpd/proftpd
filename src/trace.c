@@ -405,7 +405,6 @@ int pr_trace_set_file(const char *path) {
 }
 
 int pr_trace_set_levels(const char *channel, int min_level, int max_level) {
-
   if (channel == NULL) {
     if (trace_tab == NULL) {
       errno = EINVAL;

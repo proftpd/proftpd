@@ -1,6 +1,6 @@
 /*
  * ProFTPD - FTP server testsuite
- * Copyright (c) 2008-2020 The ProFTPD Project team
+ * Copyright (c) 2008-2021 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -1317,6 +1317,10 @@ START_TEST (netio_telnet_gets2_single_line_lf_test) {
 }
 END_TEST
 
+static int netio_close_cb(pr_netio_stream_t *nstrm) {
+  return 0;
+}
+
 static int netio_poll_cb(pr_netio_stream_t *nstrm) {
   /* Always return >0, to indicate that we haven't timed out, AND that there
    * is a writable fd available.
@@ -1895,11 +1899,14 @@ START_TEST (netio_printf_test) {
   netio = pr_alloc_netio2(p, NULL, "testsuite");
   netio->poll = netio_poll_cb;
   netio->write = netio_write_cb;
+  netio->close = netio_close_cb;
 
+  mark_point();
   res = pr_register_netio(netio, PR_NETIO_STRM_CTRL);
   fail_unless(res == 0, "Failed to register custom ctrl NetIO: %s",
     strerror(errno));
 
+  mark_point();
   res = netio_print_to_stream(PR_NETIO_STRM_CTRL, FALSE);
   fail_unless(res == 0, "Failed to print to custom ctrl NetIO: %s",
     strerror(errno));
@@ -1916,11 +1923,14 @@ START_TEST (netio_printf_async_test) {
   netio = pr_alloc_netio2(p, NULL, "testsuite");
   netio->poll = netio_poll_cb;
   netio->write = netio_write_cb;
+  netio->close = netio_close_cb;
 
+  mark_point();
   res = pr_register_netio(netio, PR_NETIO_STRM_CTRL);
   fail_unless(res == 0, "Failed to register custom ctrl NetIO: %s",
     strerror(errno));
 
+  mark_point();
   res = netio_print_to_stream(PR_NETIO_STRM_CTRL, TRUE);
   fail_unless(res == 0, "Failed to print to custom ctrl NetIO: %s",
     strerror(errno));
@@ -1971,10 +1981,6 @@ START_TEST (netio_abort_test) {
   pr_netio_close(nstrm);
 }
 END_TEST
-
-static int netio_close_cb(pr_netio_stream_t *nstrm) {
-  return 0;
-}
 
 START_TEST (netio_lingering_abort_test) {
   pr_netio_t *netio;
