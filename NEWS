@@ -51,6 +51,8 @@
   never reset.
 - Issue 1207 - On Gentoo, "./configure --disable-ncurses" fails to link ftptop,
   due to "undefined reference to symbol 'stdscr'" error.
+- Issue 1212 - mod_sql_mysql needs to quote table names due to reserved MySQL
+  keywords.
 
 1.3.7a - Released 21-Jul-2020
 --------------------------------
