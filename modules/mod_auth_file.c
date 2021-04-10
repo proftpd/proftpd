@@ -253,7 +253,7 @@ static struct passwd pwent;
 static struct passwd *af_getpasswd(const char *buf, unsigned int lineno) {
   register unsigned int i;
   register char *cp = NULL;
-  char *ep = NULL, *buffer = NULL;
+  char *ptr = NULL, *buffer = NULL;
   char **fields = NULL;
   struct passwd *pwd = NULL;
 
@@ -285,21 +285,32 @@ static struct passwd *af_getpasswd(const char *buf, unsigned int lineno) {
     return NULL;
   }
 
-  if (*fields[2] == '\0' ||
-      *fields[3] == '\0') {
-    return NULL;
-  }
-
   pwd->pw_name = fields[0];
   pwd->pw_passwd = fields[1];
 
-  if (fields[2][0] == '\0' ||
-     ((pwd->pw_uid = strtol(fields[2], &ep, 10)) == 0 && *ep)) {
+  if (*fields[2] == '\0' ||
+      *fields[3] == '\0') {
+    pr_trace_msg(trace_channel, 3,
+      "missing UID/GID fields for user '%.100s' (line %u), skipping",
+      pwd->pw_name, lineno);
     return NULL;
   }
 
-  if (fields[3][0] == '\0' ||
-     ((pwd->pw_gid = strtol(fields[3], &ep, 10)) == 0 && *ep)) {
+  ptr = NULL;
+  pwd->pw_uid = strtol(fields[2], &ptr, 10);
+  if (*ptr != '\0') {
+    pr_trace_msg(trace_channel, 3,
+      "non-numeric UID field '%.100s' for user '%.100s' (line %u), skipping",
+      fields[2], pwd->pw_name, lineno);
+    return NULL;
+  }
+
+  ptr = NULL;
+  pwd->pw_gid = strtol(fields[3], &ptr, 10);
+  if (*ptr != '\0') {
+    pr_trace_msg(trace_channel, 3,
+      "non-numeric GID field '%.100s' for user '%.100s' (line %u), skipping",
+      fields[3], pwd->pw_name, lineno);
     return NULL;
   }
 
@@ -532,6 +543,12 @@ static struct group *af_getgrent(pool *p) {
       }
 
       grp = af_getgrp(buf, af_group_file->af_lineno);
+
+      /* If grp is NULL here, it's a malformed entry; keep looking. */
+      if (grp == NULL) {
+        continue;
+      }
+
       free(buf);
 
       break;
@@ -598,8 +615,19 @@ static int af_setgrent(pool *p) {
     struct stat st;
 
     if (af_group_file->af_file_fh != NULL) {
+      pr_buffer_t *pbuf;
+
       /* If already opened, rewind */
       (void) pr_fsio_lseek(af_group_file->af_file_fh, 0, SEEK_SET);
+
+      /* Make sure to clear any buffers as well. */
+      pbuf = af_group_file->af_file_fh->fh_buf;
+      if (pbuf != NULL) {
+        memset(pbuf->buf, '\0', pbuf->buflen);
+        pbuf->current = pbuf->buf;
+        pbuf->remaining = pbuf->buflen;
+      }
+
       return 0;
     }
 
@@ -757,6 +785,13 @@ static struct passwd *af_getpwent(pool *p) {
 
       buf[strlen(buf)-1] = '\0';
       pwd = af_getpasswd(buf, af_user_file->af_lineno);
+
+      /* If pwd is NULL here, it's a malformed entry; keep looking. */
+      if (pwd == NULL) {
+        memset(buf, '\0', sizeof(buf));
+        continue;
+      }
+
       break;
     }
 
@@ -827,8 +862,19 @@ static int af_setpwent(pool *p) {
     struct stat st;
 
     if (af_user_file->af_file_fh != NULL) {
+      pr_buffer_t *pbuf;
+
       /* If already opened, rewind */
       (void) pr_fsio_lseek(af_user_file->af_file_fh, 0, SEEK_SET);
+
+      /* Make sure to clear any buffers as well. */
+      pbuf = af_user_file->af_file_fh->fh_buf;
+      if (pbuf != NULL) {
+        memset(pbuf->buf, '\0', pbuf->buflen);
+        pbuf->current = pbuf->buf;
+        pbuf->remaining = pbuf->buflen;
+      }
+
       return 0;
     }
 
