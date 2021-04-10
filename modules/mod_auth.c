@@ -389,8 +389,8 @@ MODRET auth_err_pass(cmd_rec *cmd) {
 
     } else {
       pr_trace_msg("auth", 19,
-        "ignoring non-fatal %s auth attempt for user '%s' from mod_sftp", hint,
-        user);
+        "ignoring non-fatal %s auth attempt for user '%s' from mod_sftp",
+        (const char *) hint, user);
     }
   }
 
