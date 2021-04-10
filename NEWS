@@ -68,6 +68,8 @@
 - Issue 1133 - Support include files in mod_wrap2 allow/deny tables.
 - Issue 1200 - Disconnect SFTP clients that request unsupportable protocol
   versions.
+- Issue 1207 - On Gentoo, "./configure --disable-ncurses" fails to link ftptop,
+  due to "undefined reference to symbol 'stdscr'" error.
 
 1.3.7 - Released 20-Jul-2020
 --------------------------------
