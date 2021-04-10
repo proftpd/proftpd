@@ -306,7 +306,7 @@ static struct passwd *af_getpasswd(const char *buf, unsigned int lineno) {
   }
 
   ptr = NULL;
-  pwd->pw_gid = strtol(fields[3], &ep, 10);
+  pwd->pw_gid = strtol(fields[3], &ptr, 10);
   if (*ptr != '\0') {
     pr_trace_msg(trace_channel, 3,
       "non-numeric GID field '%.100s' for user '%.100s' (line %u), skipping",
