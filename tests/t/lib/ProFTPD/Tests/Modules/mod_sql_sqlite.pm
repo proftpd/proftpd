@@ -8,7 +8,7 @@ use Carp;
 use File::Path qw(mkpath);
 use File::Spec;
 use IO::Handle;
-use Sys::HostAddr;
+use Net::Address::IP::Local;
 
 use ProFTPD::TestSuite::FTP;
 use ProFTPD::TestSuite::Utils qw(:auth :config :running :test :testsuite);
@@ -8691,8 +8691,7 @@ EOS
   my ($port, $config_user, $config_group) = config_write($setup->{config_file},
     $config);
 
-  my $sysaddr = Sys::HostAddr->new();
-  my $real_addr = $sysaddr->main_ip();
+  my $real_addr = Net::Address::IP::Local->public_ipv4;
   my $real_port = ProFTPD::TestSuite::Utils::get_high_numbered_port();
   my $vhost_addr = '0.0.0.0';
 
@@ -8873,8 +8872,7 @@ EOS
   my ($port, $config_user, $config_group) = config_write($setup->{config_file},
     $config);
 
-  my $sysaddr = Sys::HostAddr->new();
-  my $real_addr = $sysaddr->main_ip();
+  my $real_addr = Net::Address::IP::Local->public_ipv4;
   my $real_port = ProFTPD::TestSuite::Utils::get_high_numbered_port();
   my $vhost_addr = '0.0.0.0';
 
