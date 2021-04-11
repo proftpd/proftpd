@@ -1464,7 +1464,8 @@ static void fork_server(int fd, conn_t *l, unsigned char no_fork) {
      * expected.
      */
 
-    exit(0);
+    pr_session_disconnect(NULL, PR_SESS_DISCONNECT_CONFIG_ACL,
+      "Blocked by <Limit LOGIN>");
   }
 
   /* Create a table for modules to use. */
