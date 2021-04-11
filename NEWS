@@ -73,6 +73,7 @@
 - Issue 1212 - mod_sql_mysql needs to quote table names due to reserved MySQL
   keywords.
 - Issue 1175 - Unable to set per-user TLSOptions using mod_ifsession.
+- Issue 754 - Some mod_snmp counters were not being incremented properly.
 
 1.3.7 - Released 20-Jul-2020
 --------------------------------
