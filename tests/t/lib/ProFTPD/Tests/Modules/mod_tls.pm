@@ -215,6 +215,11 @@ my $TESTS = {
     test_class => [qw(bug forking mod_ifsession)],
   },
 
+  tls_opts_allow_per_user_nosessionreuserequired_ifsess_login_issue1175 => {
+    order => ++$order,
+    test_class => [qw(bug forking mod_ifsession)],
+  },
+
   tls_opts_allow_weak_security_issue1048 => {
     order => ++$order,
     test_class => [qw(forking)],
@@ -6163,50 +6168,19 @@ EOC
 sub tls_opts_allow_per_user_tlsrequired_on_ifsess_login_bug3325 {
   my $self = shift;
   my $tmpdir = $self->{tmpdir};
-
-  my $config_file = "$tmpdir/tls.conf";
-  my $pid_file = File::Spec->rel2abs("$tmpdir/tls.pid");
-  my $scoreboard_file = File::Spec->rel2abs("$tmpdir/tls.scoreboard");
-
-  my $log_file = test_get_logfile();
-
-  my $auth_user_file = File::Spec->rel2abs("$tmpdir/tls.passwd");
-  my $auth_group_file = File::Spec->rel2abs("$tmpdir/tls.group");
-
-  my $user = 'proftpd';
-  my $passwd = 'test';
-  my $group = 'ftpd';
-  my $home_dir = File::Spec->rel2abs($tmpdir);
-  my $uid = 500;
-  my $gid = 500;
-
-  # Make sure that, if we're running as root, that the home directory has
-  # permissions/privs set for the account we create
-  if ($< == 0) {
-    unless (chmod(0755, $home_dir)) {
-      die("Can't set perms on $home_dir to 0755: $!");
-    }
-
-    unless (chown($uid, $gid, $home_dir)) {
-      die("Can't set owner of $home_dir to $uid/$gid: $!");
-    }
-  }
-
-  auth_user_write($auth_user_file, $user, $passwd, $uid, $gid, $home_dir,
-    '/bin/bash');
-  auth_group_write($auth_group_file, $group, $gid, $user);
+  my $setup = test_setup($tmpdir, 'tls');
 
   my $client_cert = File::Spec->rel2abs('t/etc/modules/mod_tls/client-cert.pem');
   my $cert_file = File::Spec->rel2abs('t/etc/modules/mod_tls/server-cert.pem');
   my $ca_file = File::Spec->rel2abs('t/etc/modules/mod_tls/ca-cert.pem');
 
   my $config = {
-    PidFile => $pid_file,
-    ScoreboardFile => $scoreboard_file,
-    SystemLog => $log_file,
+    PidFile => $setup->{pid_file},
+    ScoreboardFile => $setup->{scoreboard_file},
+    SystemLog => $setup->{log_file},
 
-    AuthUserFile => $auth_user_file,
-    AuthGroupFile => $auth_group_file,
+    AuthUserFile => $setup->{auth_user_file},
+    AuthGroupFile => $setup->{auth_group_file},
 
     IfModules => {
       'mod_delay.c' => {
@@ -6215,7 +6189,7 @@ sub tls_opts_allow_per_user_tlsrequired_on_ifsess_login_bug3325 {
 
       'mod_tls.c' => {
         TLSEngine => 'on',
-        TLSLog => $log_file,
+        TLSLog => $setup->{log_file},
         TLSRequired => 'on',
         TLSRSACertificateFile => $cert_file,
         TLSCACertificateFile => $ca_file,
@@ -6224,24 +6198,25 @@ sub tls_opts_allow_per_user_tlsrequired_on_ifsess_login_bug3325 {
     },
   };
 
-  my ($port, $config_user, $config_group) = config_write($config_file, $config);
+  my ($port, $config_user, $config_group) = config_write($setup->{config_file},
+    $config);
 
   my ($anon_user, $anon_group) = config_get_identity();
 
-  if (open(my $fh, ">> $config_file")) {
+  if (open(my $fh, ">> $setup->{config_file}")) {
     print $fh <<EOC;
 <IfModule mod_ifsession.c>
-  <IfUser $user>
+  <IfUser $setup->{user}>
     TLSRequired off
   </IfUser>
 </IfModule>
 EOC
     unless (close($fh)) {
-      die("Can't write $config_file: $!");
+      die("Can't write $setup->{config_file}: $!");
     }
 
   } else {
-    die("Can't open $config_file: $!");
+    die("Can't open $setup->{config_file}: $!");
   }
 
   # Open pipes, for use between the parent and child processes.  Specifically,
@@ -6266,20 +6241,20 @@ EOC
 
       my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
 
-      my ($resp_code, $resp_msg) = $client->login($user, $passwd);
+      my ($resp_code, $resp_msg) = $client->login($setup->{user},
+        $setup->{passwd});
       my $expected;
 
       $expected = 230;
       $self->assert($expected == $resp_code,
-        test_msg("Expected $expected, got $resp_code"));
+        test_msg("Expected response code $expected, got $resp_code"));
 
-      $expected = "User $user logged in";
+      $expected = "User $setup->{user} logged in";
       $self->assert($expected eq $resp_msg,
-        test_msg("Expected '$expected', got '$resp_msg'"));
+        test_msg("Expected response message '$expected', got '$resp_msg'"));
 
       $client->quit();
     };
-
     if ($@) {
       $ex = $@;
     }
@@ -6288,7 +6263,7 @@ EOC
     $wfh->flush();
 
   } else {
-    eval { server_wait($config_file, $rfh) };
+    eval { server_wait($setup->{config_file}, $rfh) };
     if ($@) {
       warn($@);
       exit 1;
@@ -6298,18 +6273,126 @@ EOC
   }
 
   # Stop server
-  server_stop($pid_file);
-
+  server_stop($setup->{pid_file});
   $self->assert_child_ok($pid);
 
-  if ($ex) {
-    test_append_logfile($log_file, $ex);
-    unlink($log_file);
+  test_cleanup($setup->{log_file}, $ex);
+}
 
-    die($ex);
+sub tls_opts_allow_per_user_nosessionreuserequired_ifsess_login_issue1175 {
+  my $self = shift;
+  my $tmpdir = $self->{tmpdir};
+  my $setup = test_setup($tmpdir, 'tls');
+
+  my $cert_file = File::Spec->rel2abs('t/etc/modules/mod_tls/server-cert.pem');
+  my $ca_file = File::Spec->rel2abs('t/etc/modules/mod_tls/ca-cert.pem');
+
+  my $config = {
+    PidFile => $setup->{pid_file},
+    ScoreboardFile => $setup->{scoreboard_file},
+    SystemLog => $setup->{log_file},
+
+    AuthUserFile => $setup->{auth_user_file},
+    AuthGroupFile => $setup->{auth_group_file},
+
+    IfModules => {
+      'mod_delay.c' => {
+        DelayEngine => 'off',
+      },
+
+      'mod_tls.c' => {
+        TLSEngine => 'on',
+        TLSLog => $setup->{log_file},
+        TLSRequired => 'on',
+        TLSRSACertificateFile => $cert_file,
+        TLSCACertificateFile => $ca_file,
+      },
+    },
+  };
+
+  my ($port, $config_user, $config_group) = config_write($setup->{config_file},
+    $config);
+
+  my ($anon_user, $anon_group) = config_get_identity();
+
+  if (open(my $fh, ">> $setup->{config_file}")) {
+    print $fh <<EOC;
+<IfModule mod_ifsession.c>
+  <IfUser $setup->{user}>
+    TLSOptions NoSessionReuseRequired
+  </IfUser>
+</IfModule>
+EOC
+    unless (close($fh)) {
+      die("Can't write $setup->{config_file}: $!");
+    }
+
+  } else {
+    die("Can't open $setup->{config_file}: $!");
   }
 
-  unlink($log_file);
+  # Open pipes, for use between the parent and child processes.  Specifically,
+  # the child will indicate when it's done with its test by writing a message
+  # to the parent.
+  my ($rfh, $wfh);
+  unless (pipe($rfh, $wfh)) {
+    die("Can't open pipe: $!");
+  }
+
+  require Net::FTPSSL;
+
+  my $ex;
+
+  # Fork child
+  $self->handle_sigchld();
+  defined(my $pid = fork()) or die("Can't fork: $!");
+  if ($pid) {
+    eval {
+      # Give the server a chance to start up
+      sleep(2);
+
+      my $client = Net::FTPSSL->new('127.0.0.1',
+        Encryption => 'E',
+        Port => $port,
+        Croak => 1,
+      );
+
+      unless ($client->login($setup->{user}, $setup->{passwd})) {
+        die("Can't login: " . $client->last_message());
+      }
+
+      # Since we are NOT requiring SSL session reuse for data transfers,
+      # and this client is not using SSL session resumption, I expect
+      # this data transfer to succeed.
+      my $res = $client->list('.');
+      unless ($res) {
+        die("LIST failed unexpectedly: " . $client->message());
+      }
+
+      $client->quit();
+    };
+    if ($@) {
+      $ex = $@;
+    }
+
+    $wfh->print("done\n");
+    $wfh->flush();
+
+  } else {
+    eval { server_wait($setup->{config_file}, $rfh) };
+    if ($@) {
+      warn($@);
+      exit 1;
+    }
+
+    exit 0;
+  }
+
+  # Stop server
+  server_stop($setup->{pid_file});
+  $self->assert_child_ok($pid);
+
+  test_cleanup($setup->{log_file}, $ex);
 }
 
 sub tls_opts_allow_weak_security_issue1048 {

@@ -13121,10 +13121,22 @@ MODRET tls_log_auth(cmd_rec *cmd) {
 }
 
 MODRET tls_post_pass(cmd_rec *cmd) {
-  config_rec *protocols_config;
+  config_rec *c, *protocols_config;
 
   if (tls_engine == FALSE) {
     return PR_DECLINED(cmd);
+  }
+
+  c = find_config(main_server->conf, CONF_PARAM, "TLSOptions", FALSE);
+  while (c != NULL) {
+    unsigned long opts = 0;
+
+    pr_signals_handle();
+
+    opts = *((unsigned long *) c->argv[0]);
+    tls_opts |= opts;
+
+    c = find_config_next(c, c->next, CONF_PARAM, "TLSOptions", FALSE);
   }
 
   /* At this point, we can look up the Protocols config if the client has been
@@ -13143,11 +13155,9 @@ MODRET tls_post_pass(cmd_rec *cmd) {
 
   if (tls_authenticated &&
       *tls_authenticated == TRUE) {
-    config_rec *c;
 
     c = find_config(TOPLEVEL_CONF, CONF_PARAM, "TLSRequired", FALSE);
-    if (c) {
-
+    if (c != NULL) {
       /* Lookup the TLSRequired directive again in this context (which could be
        * <Anonymous>, for example, or modified by mod_ifsession).
        */
@@ -13172,7 +13182,7 @@ MODRET tls_post_pass(cmd_rec *cmd) {
       }
     }
 
-    if (protocols_config) {
+    if (protocols_config != NULL) {
       register unsigned int i;
       int allow_ftps = FALSE;
       array_header *protocols;
@@ -13199,7 +13209,7 @@ MODRET tls_post_pass(cmd_rec *cmd) {
         }
       }
 
-      if (!allow_ftps) {
+      if (allow_ftps == FALSE) {
         tls_log("ftps protocol denied by Protocols config");
         pr_response_send(R_530, "%s", _("Login incorrect."));
         pr_session_disconnect(&tls_module, PR_SESS_DISCONNECT_CONFIG_ACL,
