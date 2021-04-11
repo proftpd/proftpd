@@ -1445,7 +1445,10 @@ Example:
     # Hide files/directories owned by root
     HideUser root
 
-    &lt;Limit DIRS&gt;
+    # Hide Unix dot files
+    HideFiles ^\.
+
+    &lt;Limit DIRS READ&gt;
       # Return "No such file or directory" for hidden files/directories
       IgnoreHidden on
     &lt;/Limit&gt;
