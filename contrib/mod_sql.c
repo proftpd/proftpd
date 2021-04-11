@@ -2,7 +2,7 @@
  * ProFTPD: mod_sql -- SQL frontend
  * Copyright (c) 1998-1999 Johnie Ingram.
  * Copyright (c) 2001 Andrew Houghton.
- * Copyright (c) 2004-2020 TJ Saunders
+ * Copyright (c) 2004-2021 TJ Saunders
  *  
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -37,6 +37,11 @@
 
 #if defined(HAVE_OPENSSL) || defined(PR_USE_OPENSSL)
 # include <openssl/evp.h>
+#endif
+
+/* Define if you have the LibreSSL library.  */
+#if defined(LIBRESSL_VERSION_NUMBER)
+# define HAVE_LIBRESSL  1
 #endif
 
 /* default information for tables and fields */
@@ -1177,7 +1182,10 @@ static modret_t *sql_auth_openssl(cmd_rec *cmd, const char *plaintext,
   *hashvalue = '\0';
   hashvalue++;
 
+#if OPENSSL_VERSION_NUMBER < 0x10100000L || \
+    defined(HAVE_LIBRESSL)
   OpenSSL_add_all_digests();
+#endif /* OpenSSL-1.1.0 and later */
 
   md = EVP_get_digestbyname(digestname);
   if (md == NULL) {

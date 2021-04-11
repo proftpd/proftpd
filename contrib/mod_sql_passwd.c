@@ -1,6 +1,6 @@
 /*
  * ProFTPD: mod_sql_passwd -- Various SQL password handlers
- * Copyright (c) 2009-2020 TJ Saunders
+ * Copyright (c) 2009-2021 TJ Saunders
  *  
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -52,6 +52,11 @@
 # include <openssl/evp.h>
 # include <openssl/err.h>
 # include <openssl/objects.h>
+#endif
+
+/* Define if you have the LibreSSL library.  */
+#if defined(LIBRESSL_VERSION_NUMBER)
+# define HAVE_LIBRESSL  1
 #endif
 
 module sql_passwd_module;
@@ -1686,7 +1691,10 @@ static void sql_passwd_sess_reinit_ev(const void *event_data, void *user_data) {
  */
 
 static int sql_passwd_init(void) {
+#if OPENSSL_VERSION_NUMBER < 0x10100000L || \
+    defined(HAVE_LIBRESSL)
   OpenSSL_add_all_digests();
+#endif /* prior to OpenSSL-1.1.0 */
 
 #if defined(PR_SHARED_MODULE)
   pr_event_register(&sql_passwd_module, "core.module-unload",

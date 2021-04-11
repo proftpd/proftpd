@@ -2864,7 +2864,11 @@ static int decrypt_openssh_data(pool *p, const char *path,
     errno = EPERM;
     return -1;
   }
+
+#if OPENSSL_VERSION_NUMBER < 0x10100000L || \
+    defined(HAVE_LIBRESSL)
   EVP_CIPHER_CTX_init(cipher_ctx);
+#endif
 
   openssl_cipher = (cipher->get_cipher)();
 
@@ -2888,7 +2892,9 @@ static int decrypt_openssh_data(pool *p, const char *path,
         "error setting key length (%lu bytes) for %s cipher for decryption: %s",
         (unsigned long) cipher->key_len, cipher->algo,
         sftp_crypto_get_errors());
+#if OPENSSL_VERSION_NUMBER < 0x10100000L
       EVP_CIPHER_CTX_cleanup(cipher_ctx);
+#endif /* prior to OpenSSL-1.1.0 */
       EVP_CIPHER_CTX_free(cipher_ctx);
       pr_memscrub(key, key_len);
       errno = EPERM;
@@ -2908,7 +2914,9 @@ static int decrypt_openssh_data(pool *p, const char *path,
     pr_trace_msg(trace_channel, 3,
       "error decrypting %s data for key: %s", cipher->algo,
       sftp_crypto_get_errors());
+#if OPENSSL_VERSION_NUMBER < 0x10100000L
     EVP_CIPHER_CTX_cleanup(cipher_ctx);
+#endif /* prior to OpenSSL-1.1.0 */
     EVP_CIPHER_CTX_free(cipher_ctx);
     pr_memscrub(key, key_len);
     pr_memscrub(buf, buflen);
@@ -2916,7 +2924,9 @@ static int decrypt_openssh_data(pool *p, const char *path,
     return -1;
   }
 
+#if OPENSSL_VERSION_NUMBER < 0x10100000L
   EVP_CIPHER_CTX_cleanup(cipher_ctx);
+#endif /* prior to OpenSSL-1.1.0 */
   EVP_CIPHER_CTX_free(cipher_ctx);
   pr_memscrub(key, key_len);
 

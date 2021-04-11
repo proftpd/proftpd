@@ -1772,11 +1772,12 @@ static void sftp_postparse_ev(const void *event_data, void *user_data) {
   server_rec *s;
 
   /* Initialize OpenSSL. */
-#if OPENSSL_VERSION_NUMBER < 0x10100000L
+#if OPENSSL_VERSION_NUMBER < 0x10100000L || \
+    defined(HAVE_LIBRESSL)
   OPENSSL_config(NULL);
-#endif /* prior to OpenSSL-1.1.x */
   ERR_load_crypto_strings();
   OpenSSL_add_all_algorithms();
+#endif /* prior to OpenSSL-1.1.x */
 
   c = find_config(main_server->conf, CONF_PARAM, "SFTPPassPhraseProvider",
     FALSE);
@@ -2032,7 +2033,13 @@ static int sftp_init(void) {
    *
    * For now, we only log if there is a difference.
    */
+
+#if OPENSSL_VERSION_NUMBER < 0x10100000L || \
+    defined(HAVE_LIBRESSL)
   openssl_version = SSLeay();
+#else
+  openssl_version = OpenSSL_version_num();
+#endif /* prior to OpenSSL-1.1.x */
 
   if (openssl_version != OPENSSL_VERSION_NUMBER) {
     int unexpected_version_mismatch = TRUE;
@@ -2048,10 +2055,18 @@ static int sftp_init(void) {
     }
 
     if (unexpected_version_mismatch == TRUE) {
+      const char *version_text;
+
+#if OPENSSL_VERSION_NUMBER < 0x10100000L || \
+    defined(HAVE_LIBRESSL)
+      version_text = SSLeay_version(SSLEAY_VERSION);
+#else
+      version_text = OpenSSL_version(OPENSSL_VERSION);
+#endif /* prior to OpenSSL-1.1.x */
+
       pr_log_pri(PR_LOG_WARNING, MOD_SFTP_VERSION
         ": compiled using OpenSSL version '%s' headers, but linked to "
-        "OpenSSL version '%s' library", OPENSSL_VERSION_TEXT,
-        SSLeay_version(SSLEAY_VERSION));
+        "OpenSSL version '%s' library", OPENSSL_VERSION_TEXT, version_text);
     }
   }
 

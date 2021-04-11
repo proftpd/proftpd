@@ -969,7 +969,12 @@ static const char *tls_get_fingerprint_from_file(pool *p, const char *path,
     EVP_PKEY *pkey;
 
     now = time(NULL);
+#if OPENSSL_VERSION_NUMBER < 0x10100000L || \
+    defined(HAVE_LIBRESSL)
     cert_end_ts = X509_get_notAfter(cert);
+#else
+    cert_end_ts = X509_get0_notAfter(cert);
+#endif
     pkey = X509_get_pubkey(cert);
 
     if (pkey != NULL) {
@@ -8536,7 +8541,8 @@ static int tls_connect(conn_t *conn) {
 
 static void tls_cleanup(int flags) {
 
-#if OPENSSL_VERSION_NUMBER > 0x000907000L
+#if OPENSSL_VERSION_NUMBER > 0x000907000L && \
+    OPENSSL_VERSION_NUMBER < 0x10100000L
   if (tls_crypto_device != NULL) {
     ENGINE_cleanup();
     tls_crypto_device = NULL;
@@ -8577,20 +8583,23 @@ static void tls_cleanup(int flags) {
   }
 
   if (!(flags & TLS_CLEANUP_FL_SESS_INIT)) {
-    ERR_free_strings();
-
 #if OPENSSL_VERSION_NUMBER >= 0x10000001L
     /* The ERR_remove_state(0) usage is deprecated due to thread ID
      * differences among platforms; see the OpenSSL-1.0.0 CHANGES file
      * for details.  So for new enough OpenSSL installations, use the
      * proper way to clear the error queue state.
      */
+# if OPENSSL_VERSION_NUMBER < 0x10100000L
     ERR_remove_thread_state(NULL);
+# endif /* prior to OpenSSL-1.1.x */
 #else
     ERR_remove_state(0);
 #endif /* OpenSSL prior to 1.0.0-beta1 */
 
+#if OPENSSL_VERSION_NUMBER < 0x10100000L
+    ERR_free_strings();
     EVP_cleanup();
+#endif /* prior to OpenSSL-1.1.x */
 
   } else {
     /* Only call EVP_cleanup() et al if other OpenSSL-using modules are not
@@ -8614,7 +8623,6 @@ static void tls_cleanup(int flags) {
         pr_module_get("mod_sftp.c") == NULL &&
         pr_module_get("mod_sql.c") == NULL &&
         pr_module_get("mod_sql_passwd.c") == NULL) {
-      ERR_free_strings();
 
 #if OPENSSL_VERSION_NUMBER >= 0x10000001L
       /* The ERR_remove_state(0) usage is deprecated due to thread ID
@@ -8622,12 +8630,17 @@ static void tls_cleanup(int flags) {
        * for details.  So for new enough OpenSSL installations, use the
        * proper way to clear the error queue state.
        */
+# if OPENSSL_VERSION_NUMBER < 0x10100000L
       ERR_remove_thread_state(NULL);
+# endif /* prior to OpenSSL-1.1.x */
 #else
       ERR_remove_state(0);
 #endif /* OpenSSL prior to 1.0.0-beta1 */
 
+#if OPENSSL_VERSION_NUMBER < 0x10100000L
+      ERR_free_strings();
       EVP_cleanup();
+#endif /* prior to OpenSSL-1.1.x */
     }
   }
 }
@@ -9870,7 +9883,12 @@ static void tls_setup_cert_environ(pool *p, const char *env_prefix,
     tls_setup_cert_ext_environ(pstrcat(p, env_prefix, "EXT_", NULL), cert);
 
     bio = BIO_new(BIO_s_mem());
+#if OPENSSL_VERSION_NUMBER < 0x10100000L || \
+    defined(HAVE_LIBRESSL)
     ASN1_TIME_print(bio, X509_get_notBefore(cert));
+#else
+    ASN1_TIME_print(bio, X509_get0_notBefore(cert));
+#endif
     datalen = BIO_get_mem_data(bio, &data);
     data[datalen] = '\0';
 
@@ -9881,7 +9899,12 @@ static void tls_setup_cert_environ(pool *p, const char *env_prefix,
     BIO_free(bio);
 
     bio = BIO_new(BIO_s_mem());
+#if OPENSSL_VERSION_NUMBER < 0x10100000L || \
+    defined(HAVE_LIBRESSL)
     ASN1_TIME_print(bio, X509_get_notAfter(cert));
+#else
+    ASN1_TIME_print(bio, X509_get0_notAfter(cert));
+#endif
     datalen = BIO_get_mem_data(bio, &data);
     data[datalen] = '\0';
 
@@ -15408,7 +15431,9 @@ static void tls_shutdown_ev(const void *event_data, void *user_data) {
     ssl_ctx = NULL;
   }
 
+#if OPENSSL_VERSION_NUMBER < 0x10100000L
   RAND_cleanup();
+#endif /* prior to OpenSSL-1.1.x */
 }
 
 static void tls_restart_ev(const void *event_data, void *user_data) {
@@ -18361,7 +18386,8 @@ static int tls_ctx_set_all(server_rec *s, SSL_CTX *ctx) {
   X509 *dsa_cert = NULL, *ec_cert = NULL, *rsa_cert = NULL;
 
   if (tls_opts & TLS_OPT_ALLOW_WEAK_SECURITY) {
-#if OPENSSL_VERSION_NUMBER >= 0x10100000L
+#if OPENSSL_VERSION_NUMBER >= 0x10100000L && \
+    !defined(HAVE_LIBRESSL)
     SSL_CTX_set_security_level(ctx, 0);
 #endif /* OpenSSL-1.1.0 and later */
   }
@@ -18467,7 +18493,13 @@ static int tls_init(void) {
    *
    * For now, we only log if there is a difference.
    */
+
+#if OPENSSL_VERSION_NUMBER < 0x10100000L || \
+    defined(HAVE_LIBRESSL)
   openssl_version = SSLeay();
+#else
+  openssl_version = OpenSSL_version_num();
+#endif /* prior to OpenSSL-1.1.x */
 
   if (openssl_version != OPENSSL_VERSION_NUMBER) {
     int unexpected_version_mismatch = TRUE;
@@ -18483,13 +18515,20 @@ static int tls_init(void) {
     }
 
     if (unexpected_version_mismatch == TRUE) {
+      const char *version_text = NULL;
+
+#if OPENSSL_VERSION_NUMBER < 0x10100000L || \
+    defined(HAVE_LIBRESSL)
+      version_text = SSLeay_version(SSLEAY_VERSION);
+#else
+      version_text = OpenSSL_version(OPENSSL_VERSION);
+#endif /* prior to OpenSSL-1.1.x */
+
       pr_log_pri(PR_LOG_WARNING, MOD_TLS_VERSION
         ": compiled using OpenSSL version '%s' headers, but linked to "
-        "OpenSSL version '%s' library", OPENSSL_VERSION_TEXT,
-        SSLeay_version(SSLEAY_VERSION));
+        "OpenSSL version '%s' library", OPENSSL_VERSION_TEXT, version_text);
       tls_log("compiled using OpenSSL version '%s' headers, but linked to "
-        "OpenSSL version '%s' library", OPENSSL_VERSION_TEXT,
-        SSLeay_version(SSLEAY_VERSION));
+        "OpenSSL version '%s' library", OPENSSL_VERSION_TEXT, version_text);
     }
   }
 
@@ -18504,16 +18543,17 @@ static int tls_init(void) {
 
 #if OPENSSL_VERSION_NUMBER < 0x10100000L
   OPENSSL_config(NULL);
-#endif /* prior to OpenSSL-1.1.x */
-  SSL_load_error_strings();
-  SSL_library_init();
 
   /* It looks like calling OpenSSL_add_all_algorithms() is necessary for
    * handling some algorithms (e.g. PKCS12 files) which are NOT added by
    * just calling SSL_library_init().
    */
-  ERR_load_crypto_strings();
   OpenSSL_add_all_algorithms();
+
+  SSL_load_error_strings();
+  SSL_library_init();
+  ERR_load_crypto_strings();
+#endif /* prior to OpenSSL-1.1.x */
 
 #ifdef PR_USE_CTRLS
   if (pr_ctrls_register(&tls_module, "tls", "query/tune mod_tls settings",

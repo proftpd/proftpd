@@ -1,6 +1,6 @@
 /*
  * ProFTPD - mod_sftp OpenSSL interface
- * Copyright (c) 2008-2017 TJ Saunders
+ * Copyright (c) 2008-2021 TJ Saunders
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -1371,28 +1371,32 @@ void sftp_crypto_free(int flags) {
       pr_module_get("mod_sql_passwd.c") == NULL &&
       pr_module_get("mod_tls.c") == NULL) {
 
-#if OPENSSL_VERSION_NUMBER > 0x000907000L
+#if OPENSSL_VERSION_NUMBER > 0x000907000L && \
+    OPENSSL_VERSION_NUMBER < 0x10100000L
     if (crypto_engine) {
       ENGINE_cleanup();
       crypto_engine = NULL;
     }
 #endif
 
-    ERR_free_strings();
-
 #if OPENSSL_VERSION_NUMBER >= 0x10000001L
     /* The ERR_remove_state(0) usage is deprecated due to thread ID
-     * differences among platforms; see the OpenSSL-1.0.0c CHANGES file
+     * differences among platforms; see the OpenSSL-1.0.0 CHANGES file
      * for details.  So for new enough OpenSSL installations, use the
      * proper way to clear the error queue state.
      */
+# if OPENSSL_VERSION_NUMBER < 0x10100000L
     ERR_remove_thread_state(NULL);
+# endif /* prior to OpenSSL-1.1.x */
 #else
     ERR_remove_state(0);
 #endif /* OpenSSL prior to 1.0.0-beta1 */
 
+#if OPENSSL_VERSION_NUMBER < 0x10100000L
+    ERR_free_strings();
     EVP_cleanup();
     RAND_cleanup();
+#endif /* prior to OpenSSL-1.1.x */
   }
 }
 
