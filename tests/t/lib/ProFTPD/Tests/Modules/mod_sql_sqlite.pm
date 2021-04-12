@@ -14813,7 +14813,8 @@ EOS
     die($ex);
   }
 
-  my ($login, $ip_addr, $port) = get_port($db_file, "user = \'$user\'");
+  my ($login, $ip_addr);
+  ($login, $ip_addr, $port) = get_port($db_file, "user = \'$user\'");
 
   my $expected = $user;
   $self->assert($expected eq $login,

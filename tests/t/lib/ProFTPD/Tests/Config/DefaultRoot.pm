@@ -786,7 +786,8 @@ sub defaultroot_allowchrootsymlinks_bug4306 {
     },
   };
 
-  my ($port, $config_user, $config_group) = config_write($setup->{config_file},
+  my $port;
+  ($port, $config_user, $config_group) = config_write($setup->{config_file},
     $config);
 
   # Open pipes, for use between the parent and child processes.  Specifically,

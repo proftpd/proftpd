@@ -784,8 +784,8 @@ sub rnto_fails_enoent_no_file {
         die("RNTO succeeded unexpectedly");
       }
 
-      my $resp_code = $client->response_code();
-      my $resp_msg = $client->response_msg();
+      $resp_code = $client->response_code();
+      $resp_msg = $client->response_msg();
       $client->quit();
 
       my $expected = 550;

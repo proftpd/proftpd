@@ -2437,7 +2437,7 @@ EOC
         die("Connect succeeded unexpectedly");
       }
 
-      my $conn_ex = ProFTPD::TestSuite::FTP::get_connect_exception();
+      $conn_ex = ProFTPD::TestSuite::FTP::get_connect_exception();
 
       $expected = '';
       $self->assert($expected eq $conn_ex,

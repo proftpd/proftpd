@@ -2098,7 +2098,7 @@ sub extlog_remote_port {
     }
   };
   if ($@) {
-    $ex;
+    $ex = $@;
   }
 
   test_cleanup($setup->{log_file}, $ex);
@@ -11546,10 +11546,10 @@ sub extlog_preauth_var_u_bug3822 {
 
   # Stop server
   server_stop($pid_file);
-
   $self->assert_child_ok($pid);
 
-  my $config_user = (config_get_identity())[0];
+  $config_user = (config_get_identity())[0];
+
   # Now, read in the ExtendedLog, and see whether the %U variable were
   # properly written out.
   if (open(my $fh, "< $ext_log")) {

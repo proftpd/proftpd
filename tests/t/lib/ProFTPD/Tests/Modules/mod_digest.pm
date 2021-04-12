@@ -343,14 +343,12 @@ sub list_tests {
   #
   #  Digest-CRC
   #  Digest-MD5
-  #  Digest-SHA1
-  #  Digest-SHA256
+  #  Digest-SHA
 
   my $required = [qw(
     Digest::CRC
     Digest::MD5
-    Digest::SHA1
-    Digest::SHA256
+    Digest::SHA
   )];
 
   foreach my $req (@$required) {
@@ -1444,9 +1442,9 @@ sub digest_hash_md5 {
   if ($pid) {
     eval {
       # Allow server to start up
-      sleep(1);
+      sleep(2);
 
-      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port, 0, 1);
+      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port, 0, 1, 30);
       $client->login($setup->{user}, $setup->{passwd});
 
       my $algo = 'MD5';
@@ -1505,7 +1503,7 @@ sub digest_hash_sha1 {
   my $tmpdir = $self->{tmpdir};
   my $setup = test_setup($tmpdir, 'digest');
 
-  require Digest::SHA1;
+  require Digest::SHA;
 
   my $test_file = File::Spec->rel2abs("$tmpdir/test.txt");
   if (open(my $fh, "> $test_file")) {
@@ -1521,7 +1519,7 @@ sub digest_hash_sha1 {
   my $expected_digest;
 
   if (open(my $fh, "< $test_file")) {
-    my $ctx = Digest::SHA1->new();
+    my $ctx = Digest::SHA->new(1);
     $ctx->addfile($fh);
     $expected_digest = lc($ctx->hexdigest);
     close($fh);
@@ -1631,7 +1629,7 @@ sub digest_hash_sha256 {
   my $tmpdir = $self->{tmpdir};
   my $setup = test_setup($tmpdir, 'digest');
 
-  require Digest::SHA256;
+  require Digest::SHA;
 
   my $test_file = File::Spec->rel2abs("$tmpdir/test.txt");
   if (open(my $fh, "> $test_file")) {
@@ -1647,8 +1645,7 @@ sub digest_hash_sha256 {
   my $expected_digest;
 
   if (open(my $fh, "< $test_file")) {
-    # Digest::SHA256 is a bit of an odd duck
-    my $ctx = Digest::SHA256::new(256);
+    my $ctx = Digest::SHA->new(256);
     $ctx->addfile($fh);
     $expected_digest = lc($ctx->hexdigest);
     $expected_digest =~ s/ //g;
@@ -1759,7 +1756,7 @@ sub digest_hash_sha512 {
   my $tmpdir = $self->{tmpdir};
   my $setup = test_setup($tmpdir, 'digest');
 
-  require Digest::SHA256;
+  require Digest::SHA;
 
   my $test_file = File::Spec->rel2abs("$tmpdir/test.txt");
   if (open(my $fh, "> $test_file")) {
@@ -1775,8 +1772,7 @@ sub digest_hash_sha512 {
   my $expected_digest;
 
   if (open(my $fh, "< $test_file")) {
-    # Digest::SHA256 is a bit of an odd duck
-    my $ctx = Digest::SHA256::new(512);
+    my $ctx = Digest::SHA->new(512);
     $ctx->addfile($fh);
     $expected_digest = lc($ctx->hexdigest);
     $expected_digest =~ s/ //g;
@@ -3215,7 +3211,7 @@ sub digest_xcrc_2gb {
       # Allow server to start up
       sleep(1);
 
-      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port, 0, 1);
+      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port, 0, 1, 30);
       $client->login($setup->{user}, $setup->{passwd});
       $client->quote('XCRC', 'test.dat');
 
@@ -3590,7 +3586,7 @@ sub digest_xsha {
   my $tmpdir = $self->{tmpdir};
   my $setup = test_setup($tmpdir, 'digest');
 
-  require Digest::SHA1;
+  require Digest::SHA;
 
   my $test_file = File::Spec->rel2abs("$tmpdir/test.txt");
   if (open(my $fh, "> $test_file")) {
@@ -3606,7 +3602,7 @@ sub digest_xsha {
   my $expected_digest;
 
   if (open(my $fh, "< $test_file")) {
-    my $ctx = Digest::SHA1->new();
+    my $ctx = Digest::SHA->new(1);
     $ctx->addfile($fh);
     $expected_digest = uc($ctx->hexdigest);
     close($fh);
@@ -3702,7 +3698,7 @@ sub digest_xsha1 {
   my $tmpdir = $self->{tmpdir};
   my $setup = test_setup($tmpdir, 'digest');
 
-  require Digest::SHA1;
+  require Digest::SHA;
 
   my $test_file = File::Spec->rel2abs("$tmpdir/test.txt");
   if (open(my $fh, "> $test_file")) {
@@ -3718,7 +3714,7 @@ sub digest_xsha1 {
   my $expected_digest;
 
   if (open(my $fh, "< $test_file")) {
-    my $ctx = Digest::SHA1->new();
+    my $ctx = Digest::SHA->new(1);
     $ctx->addfile($fh);
     $expected_digest = uc($ctx->hexdigest);
     close($fh);
@@ -3814,7 +3810,7 @@ sub digest_xsha256 {
   my $tmpdir = $self->{tmpdir};
   my $setup = test_setup($tmpdir, 'digest');
 
-  require Digest::SHA256;
+  require Digest::SHA;
 
   my $test_file = File::Spec->rel2abs("$tmpdir/test.txt");
   if (open(my $fh, "> $test_file")) {
@@ -3830,8 +3826,7 @@ sub digest_xsha256 {
   my $expected_digest;
 
   if (open(my $fh, "< $test_file")) {
-    # Digest::SHA256 is a bit of an odd duck...
-    my $ctx = Digest::SHA256::new(256);
+    my $ctx = Digest::SHA->new(256);
     $ctx->addfile($fh);
     $expected_digest = uc($ctx->hexdigest);
     $expected_digest =~ s/ //g;
@@ -3928,7 +3923,7 @@ sub digest_xsha512 {
   my $tmpdir = $self->{tmpdir};
   my $setup = test_setup($tmpdir, 'digest');
 
-  require Digest::SHA256;
+  require Digest::SHA;
 
   my $test_file = File::Spec->rel2abs("$tmpdir/test.txt");
   if (open(my $fh, "> $test_file")) {
@@ -3944,8 +3939,7 @@ sub digest_xsha512 {
   my $expected_digest;
 
   if (open(my $fh, "< $test_file")) {
-    # Digest::SHA256 is a bit of an odd duck...
-    my $ctx = Digest::SHA256::new(512);
+    my $ctx = Digest::SHA->new(512);
     $ctx->addfile($fh);
     $expected_digest = uc($ctx->hexdigest);
     $expected_digest =~ s/ //g;
@@ -4042,7 +4036,7 @@ sub digest_host {
   my $tmpdir = $self->{tmpdir};
   my $setup = test_setup($tmpdir, 'digest');
 
-  require Digest::SHA1;
+  require Digest::SHA;
 
   my $test_file = File::Spec->rel2abs("$tmpdir/test.txt");
   if (open(my $fh, "> $test_file")) {
@@ -4058,7 +4052,7 @@ sub digest_host {
   my $expected_digest;
 
   if (open(my $fh, "< $test_file")) {
-    my $ctx = Digest::SHA1->new();
+    my $ctx = Digest::SHA->new(1);
     $ctx->addfile($fh);
     $expected_digest = $ctx->hexdigest;
     close($fh);
@@ -5110,7 +5104,7 @@ sub digest_caching_max_age_different_file {
       # Allow server to start up
       sleep(1);
 
-      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port, 0, 1);
+      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port, 0, 1, 30);
       $client->login($setup->{user}, $setup->{passwd});
 
       # We deliberately do this multiple times, to test the in-memory
@@ -6725,7 +6719,7 @@ sub digest_config_algorithms {
   my $tmpdir = $self->{tmpdir};
   my $setup = test_setup($tmpdir, 'digest');
 
-  require Digest::SHA256;
+  require Digest::SHA;
 
   my $test_file = File::Spec->rel2abs("$tmpdir/test.txt");
   if (open(my $fh, "> $test_file")) {
@@ -6741,8 +6735,7 @@ sub digest_config_algorithms {
   my $expected_digest;
 
   if (open(my $fh, "< $test_file")) {
-    # Digest::SHA256 is a bit of an odd duck
-    my $ctx = Digest::SHA256::new(256);
+    my $ctx = Digest::SHA->new(256);
     $ctx->addfile($fh);
     $expected_digest = lc($ctx->hexdigest);
     $expected_digest =~ s/ //g;

@@ -125,8 +125,6 @@ sub ifuser_allowoverwrite {
   my $auth_user_file = File::Spec->rel2abs("$tmpdir/ifsess.passwd");
   my $auth_group_file = File::Spec->rel2abs("$tmpdir/ifsess.group");
 
-  my $test_file = File::Spec->rel2abs($config_file);
-
   my $user = 'proftpd';
   my $passwd = 'test';
   my $group = 'ftpd';
@@ -1131,8 +1129,6 @@ sub ifauthenticated_bug3629 {
 
   my $auth_user_file = File::Spec->rel2abs("$tmpdir/ifsess.passwd");
   my $auth_group_file = File::Spec->rel2abs("$tmpdir/ifsess.group");
-
-  my $test_file = File::Spec->rel2abs($config_file);
 
   my $user = 'proftpd';
   my $passwd = 'test';
@@ -2260,7 +2256,7 @@ EOC
       $self->assert($expected == $resp_code,
         test_msg("Expected response code $expected, got $resp_code"));
 
-      my $expected = "OTHER access granted for $setup->{user}";
+      $expected = "OTHER access granted for $setup->{user}";
       $self->assert($expected eq $resp_msg,
         test_msg("Expected response message '$expected', got '$resp_msg'"));
     };

@@ -760,7 +760,7 @@ sub rewrite_map_whitespace_trim {
       # Send the path with following spaces; the rewrite rules should handle it
       ($resp_code, $resp_msg) = $client->size("test.txt   ");
 
-      my $expected = 213;
+      $expected = 213;
       $self->assert($expected == $resp_code,
         test_msg("Expected response code $expected, got $resp_code"));
 
@@ -772,7 +772,7 @@ sub rewrite_map_whitespace_trim {
       # should handle it.
       ($resp_code, $resp_msg) = $client->size("    test.txt   ");
 
-      my $expected = 213;
+      $expected = 213;
       $self->assert($expected == $resp_code,
         test_msg("Expected response code $expected, got $resp_code"));
 
