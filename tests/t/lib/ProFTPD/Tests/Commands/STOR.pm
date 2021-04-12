@@ -574,7 +574,7 @@ sub stor_ok_ascii_file_bug4237 {
       $expected = -s $test_file;
 
       # Take back one byte for per CR
-      my $size = length($buf) / 2;
+      $size = length($buf) / 2;
       $self->assert($expected == $size,
         test_msg("Expected size $expected, got $size"));
 

@@ -10857,8 +10857,8 @@ sub tls_opts_allow_dot_login {
         die("PASS succeeded unexpectedly");
       }
 
-      my $expected = "503 You are already logged in";
-      my $resp = $client->last_message();
+      $expected = "503 You are already logged in";
+      $resp = $client->last_message();
       $self->assert($expected eq $resp,
         test_msg("Expected response '$expected', got '$resp'"));
     };

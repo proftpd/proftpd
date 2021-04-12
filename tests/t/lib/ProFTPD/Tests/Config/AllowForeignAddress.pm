@@ -621,7 +621,7 @@ sub fxp_allowed {
         test_msg("File $dst_file does not exist as expected"));
 
       my $dst_size = -s $dst_file;
-      my $expected = -s $src_file;
+      $expected = -s $src_file;
       $self->assert($expected == $dst_size,
         test_msg("Expected file size $expected, got $dst_size"));
     };
@@ -753,7 +753,7 @@ sub fxp_allowed_eprt {
         "File $dst_file does not exist as expected");
 
       my $dst_size = -s $dst_file;
-      my $expected = -s $src_file;
+      $expected = -s $src_file;
       $self->assert($expected == $dst_size,
         "Expected file size $expected, got $dst_size");
     };
@@ -898,7 +898,7 @@ EOC
       $self->assert(-f $dst_file, "File $dst_file does not exist as expected");
 
       my $dst_size = -s $dst_file;
-      my $expected = -s $src_file;
+      $expected = -s $src_file;
       $self->assert($expected == $dst_size,
         "Expected file size $expected, got $dst_size");
     };
@@ -1036,7 +1036,7 @@ sub fxp_allowed_2gb {
         test_msg("File $dst_file does not exist as expected"));
 
       my $dst_size = -s $dst_file;
-      my $expected = -s $src_file;
+      $expected = -s $src_file;
       $self->assert($expected == $dst_size,
         test_msg("Expected file size $expected, got $dst_size"));
     };

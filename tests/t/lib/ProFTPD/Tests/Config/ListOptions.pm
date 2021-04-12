@@ -1426,7 +1426,7 @@ sub listoptions_sortednlst_bug4267 {
       }
 
       # Do NOT sort the results; we expect them to match the expected list.
-      my $res = [];
+      $res = [];
       my $lines = [split(/\n/, $buf)];
       foreach my $line (@$lines) {
         push(@$res, $line);

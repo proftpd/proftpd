@@ -148,11 +148,10 @@ sub ban_memcache_max_login_attempts {
 
       my $conn_ex = ProFTPD::TestSuite::FTP::get_connect_exception();
 
-      my $expected = "";
+      $expected = "";
       $self->assert($expected eq $conn_ex,
         test_msg("Expected '$expected', got '$conn_ex'"));
     };
-
     if ($@) {
       $ex = $@;
     }
@@ -329,11 +328,10 @@ sub ban_memcache_json_max_login_attempts_bug4056 {
 
       my $conn_ex = ProFTPD::TestSuite::FTP::get_connect_exception();
 
-      my $expected = "";
+      $expected = "";
       $self->assert($expected eq $conn_ex,
         test_msg("Expected '$expected', got '$conn_ex'"));
     };
-
     if ($@) {
       $ex = $@;
     }

@@ -239,7 +239,7 @@ sub redis_log_on_command {
     $self->assert($record->{user} eq $expected,
       "Expected user '$expected', got '$record->{user}'");
 
-    my $expected = '127.0.0.1';
+    $expected = '127.0.0.1';
     $self->assert($record->{remote_ip} eq $expected,
       "Expected remote IP '$expected', got '$record->{remote_ip}'");
   };
@@ -357,7 +357,7 @@ sub redis_log_on_command_custom_key {
     $self->assert($record->{user} eq $expected,
       "Expected user '$expected', got '$record->{user}'");
 
-    my $expected = '127.0.0.1';
+    $expected = '127.0.0.1';
     $self->assert($record->{remote_ip} eq $expected,
       "Expected remote IP '$expected', got '$record->{remote_ip}'");
   };
@@ -486,7 +486,7 @@ EOC
     $self->assert($record->{user} eq $expected,
       "Expected user '$expected', got '$record->{user}'");
 
-    my $expected = '127.0.0.1';
+    $expected = '127.0.0.1';
     $self->assert($record->{remote_ip} eq $expected,
       "Expected remote IP '$expected', got '$record->{remote_ip}'");
   };
@@ -1098,7 +1098,7 @@ EOC
     $self->assert($record->{user} eq $expected,
       "Expected user '$expected', got '$record->{user}'");
 
-    my $expected = '127.0.0.1';
+    $expected = '127.0.0.1';
     $self->assert($record->{remote_ip} eq $expected,
       "Expected remote IP '$expected', got '$record->{remote_ip}'");
   };
@@ -1455,7 +1455,7 @@ sub redis_log_fmt_extra_with_log_on_commmand {
     $self->assert($record->{user} eq $expected,
       "Expected user '$expected', got '$record->{user}'");
 
-    my $expected = '127.0.0.1';
+    $expected = '127.0.0.1';
     $self->assert($record->{remote_ip} eq $expected,
       "Expected remote IP '$expected', got '$record->{remote_ip}'");
 

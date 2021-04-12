@@ -600,14 +600,13 @@ sub retr_ok_ascii_file_bug4237 {
         test_msg("Expected size $expected, got $size"));
 
       # Download a file of all LFs
-      my $conn = $client->retr_raw($test_file2);
+      $conn = $client->retr_raw($test_file2);
       unless ($conn) {
         die("RETR failed: " . $client->response_code() . " " .
           $client->response_msg());
       }
 
-      my $buf = '';
-      my $tmp;
+      $buf = '';
       while ($conn->read($tmp, 8192, 25)) {
         $buf .= $tmp;
       }

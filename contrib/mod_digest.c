@@ -1635,7 +1635,11 @@ static int digest_cache_expiry_cb(CALLBACK_FRAME) {
 
   for (cache_key = (struct digest_cache_key *) digest_cache_keys->xas_list;
        cache_key != NULL;
-       cache_key = cache_key->next) {
+       ) {
+    struct digest_cache_key *next_key;
+
+    next_key = cache_key->next;
+
     if (now > (cache_key->mtime + digest_cache_max_age)) {
       if (remove_cached_digest(digest_pool, cache_key->algo, cache_key->path,
           cache_key->mtime, cache_key->start, cache_key->len) < 0) {
@@ -1651,6 +1655,8 @@ static int digest_cache_expiry_cb(CALLBACK_FRAME) {
     } else {
       break;
     }
+
+    cache_key = next_key;
   }
 
   /* Always restart the timer. */

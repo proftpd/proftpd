@@ -3866,10 +3866,10 @@ EOC
         die('SITE CPTO succeeded unexpectedly');
       }
 
-      my $resp_code = $client->response_code();
-      my $resp_msg = $client->response_msg();
+      $resp_code = $client->response_code();
+      $resp_msg = $client->response_msg();
 
-      my $expected = 550;
+      $expected = 550;
       $self->assert($expected == $resp_code,
         test_msg("Expected response code $expected, got $resp_code"));
 

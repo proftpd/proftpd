@@ -1609,7 +1609,7 @@ sub abor_list_ok {
       # Make sure the control connection did not close because of the abort.
       ($resp_code, $resp_msg) = $client->quit();
 
-      my $expected = 221;
+      $expected = 221;
       $self->assert($expected == $resp_code,
         test_msg("Expected response code $expected, got $resp_code"));
 
@@ -1733,7 +1733,7 @@ sub abor_mlsd_ok {
       # Make sure the control connection did not close because of the abort.
       ($resp_code, $resp_msg) = $client->quit();
 
-      my $expected = 221;
+      $expected = 221;
       $self->assert($expected == $resp_code,
         test_msg("Expected response code $expected, got $resp_code"));
 
@@ -2463,7 +2463,7 @@ sub abor_only_list {
       # Make sure the control connection did not close because of the abort.
       my ($resp_code, $resp_msg) = $client->quit();
 
-      my $expected = 221;
+      $expected = 221;
       $self->assert($expected == $resp_code,
         test_msg("Expected response code $expected, got $resp_code"));
 
@@ -2587,7 +2587,7 @@ sub abor_only_mlsd {
       # Make sure the control connection did not close because of the abort.
       my ($resp_code, $resp_msg) = $client->quit();
 
-      my $expected = 221;
+      $expected = 221;
       $self->assert($expected == $resp_code,
         test_msg("Expected response code $expected, got $resp_code"));
 
@@ -4003,7 +4003,7 @@ sub data_eof_before_abor_stor_ascii {
       # Make sure the control connection did not close because of the abort.
       ($resp_code, $resp_msg) = $client->quit();
 
-      my $expected = 221;
+      $expected = 221;
       $self->assert($expected == $resp_code,
         test_msg("Expected response message $expected, got $resp_code"));
 
@@ -4124,7 +4124,7 @@ sub data_eof_before_abor_stor_binary {
       # Make sure the control connection did not close because of the abort.
       ($resp_code, $resp_msg) = $client->quit();
 
-      my $expected = 221;
+      $expected = 221;
       $self->assert($expected == $resp_code,
         test_msg("Expected response message $expected, got $resp_code"));
 
@@ -4237,7 +4237,7 @@ sub data_eof_before_abor_list {
       $resp_code = $client->response_code();
       $resp_msg = $client->response_msg();
 
-      my $expected = 226;
+      $expected = 226;
       $self->assert($expected == $resp_code,
         test_msg("Expected response code $expected, got $resp_code"));
 
@@ -4370,7 +4370,7 @@ sub data_eof_before_abor_mlsd {
       $resp_code = $client->response_code();
       $resp_msg = $client->response_msg();
 
-      my $expected = 226;
+      $expected = 226;
       $self->assert($expected == $resp_code,
         test_msg("Expected response code $expected, got $resp_code"));
 

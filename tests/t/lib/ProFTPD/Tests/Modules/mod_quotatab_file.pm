@@ -664,13 +664,12 @@ sub quotatab_file_bytes_download_zero {
       $self->assert($expected == $resp_code,
         test_msg("Expected response code $expected, got $resp_code"));
 
-      my $expected = '   Downloaded Mb:    unlimited';
+      $expected = '   Downloaded Mb:    unlimited';
       $self->assert($expected eq $resp_msgs->[6],
         test_msg("Expected response message '$expected', got '$resp_msgs->[6]'"));
 
       $client->quit();
     };
-
     if ($@) {
       $ex = $@;
     }
