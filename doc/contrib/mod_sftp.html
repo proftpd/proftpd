@@ -1698,6 +1698,23 @@ For these clients, use this configuration to disable the optimization:
   SFTPOptions PessimisticKexinit
 </pre>
 
+<p>
+<i>Cipher Implementations</i><br>
+Some SFTP clients (most notably the SecureBlackBox libraries) do not implement
+the <code>blowfish-ctr</code> cipher correctly.  If your site needs to
+support such clients, then you will need to use the
+<a href="#SFTPCiphers"><code>SFTPCiphers</code></a> directive to configure
+a list of ciphers which does <b>not</b> include <code>blowfish-ctr</code>.
+Clients with this bug will show up in the <code>SFTPLog</code> with this
+log message:
+<pre>
+  client sent buggy/malicious packet payload length, ignoring
+</pre>
+<b>However</b>, this log message can also be caused by other factors.  It
+is the combination of this error message, <b>and</b> the negotiation of
+the <code>blowfish-ctr</code> cipher, that indicates the use of these
+buggy clients.
+
 <p><a name="ClientMatches"></a>
 <b>Recommended <code>SFTPClientMatch</code> Settings</b><br>
 Based on the above client issues, the following is the recommended list of
@@ -1772,23 +1789,6 @@ for all of the clients' known issues:
   &lt;/Global&gt;
 &lt;/IfModule&gt;
 </pre>
-
-<p>
-<i>Cipher Implementations</i><br>
-Some SFTP clients (most notably the SecureBlackBox libraries) do not implement
-the <code>blowfish-ctr</code> cipher correctly.  If your site needs to
-support such clients, then you will need to use the
-<a href="#SFTPCiphers"><code>SFTPCiphers</code></a> directive to configure
-a list of ciphers which does <b>not</b> include <code>blowfish-ctr</code>.
-Clients with this bug will show up in the <code>SFTPLog</code> with this
-log message:
-<pre>
-  client sent buggy/malicious packet payload length, ignoring
-</pre>
-<b>However</b>, this log message can also be caused by other factors.  It
-is the combination of this error message, <b>and</b> the negotiation of
-the <code>blowfish-ctr</code> cipher, that indicates the use of these
-buggy clients.
 
 <p>
 <b>FIPS Compliance</b><br>
