@@ -1698,6 +1698,81 @@ For these clients, use this configuration to disable the optimization:
   SFTPOptions PessimisticKexinit
 </pre>
 
+<p><a name="ClientMatches"></a>
+<b>Recommended <code>SFTPClientMatch</code> Settings</b><br>
+Based on the above client issues, the following is the recommended list of
+configurations -- contributed by the <a href="https://forums.proftpd.org/smf/index.php/topic,4616.0/all.html">ProFTPD community</a> -- to use as workarounds
+for all of the clients' known issues:
+<pre>
+&lt;IfModule mod_sftp.c&gt;
+  &lt;Global&gt;
+    # The default values used by mod_sftp are:
+    #   channelPacketSize 32KB
+    #   channelWindowSize 4GB
+    #   sftpProtocolVersion 1-6
+
+    # Axway (SSH-2.0-XFB.Gateway Unix)
+    SFTPClientMatch .*Axway channelWindowSize 1GB
+    SFTPClientMatch ".*XFB.*" channelWindowSize 1GB
+
+    # CoreFTP LE (free version 2.2)
+    SFTPClientMatch CoreFTP channelWindowSize 1GB
+
+    # CuteFTPPro8
+    SFTPClientMatch ".*ClientSftp" sftpProtocolVersion 3
+
+    # Network Automation (SSH-2.0-EldoS.SSHBlackbox.3)
+    # http://www.networkautomation.com/
+    SFTPClientMatch ".*EldoS.SSHBlackbox.3.*" channelWindowSize 1GB sftpProtocolVersion 3
+
+    # GlobalScape FTP application (SSH2 client 'GSSFTP1.0') - (needs v2)
+    # http://www.globalscape.com/downloads/
+    # GoAnywhere (SSH-2.0-1.0)
+    # http://www.goanywheremft.com/products
+    SFTPClientMatch "1.0" channelWindowSize 1GB sftpProtocolVersion 2
+
+    # JaSFtp (SSH-2.0-J2SSH_Maverick_1.2.10_Sterling Commerce)
+    # http://www.hiteksoftware.com/jasf/
+    SFTPClientMatch ".*J2SSH_Maverick.*" channelWindowSize 1GB
+
+    # JSch - Java Secure Channel (SSH-2.0-JSCH-0.1.39)
+    # http://www.jcraft.com/jsch/
+    SFTPClientMatch "JSCH.*" channelWindowSize 1GB
+
+    # Robo-FTP (SSH-2.0-WeOnlyDo)
+    # http://www.robo-ftp.com/
+    SFTPClientMatch ".*WeOnlyDo.*" channelWindowSize 1GB sftpProtocolVersion 3
+
+    # SecureBlackbox (SSH-2.0-SecureBlackbox.7)
+    # http://www.eldos.com/sbb/download-release.php
+    SFTPClientMatch ".*SecureBlackbox.*" sftpProtocolVersion 3
+
+    # SecureFX - SSH2 client 'SecureFX_2_2_5_225 SecureFX'
+    # http://www.vandyke.com/products/securefx/
+    SFTPClientMatch "SecureFX.*" sftpProtocolVersion 3
+
+    # SSH-2.0-1.30
+    SFTPClientMatch "1.30" channelPacketSize 16KB channelWindowSize 256MB
+
+    # SSH-2.0-Sun_SSH_1.0.1
+    SFTPClientMatch ".*Sun_SSH.*" channelWindowSize 1GB
+
+    # SSH-2.0-SharpSSH-1.1.1.13-JSCH-0.1.28
+    SFTPClientMatch ".*SharpSSH.*" channelWindowSize 256MB
+
+    # WinSCP
+    SFTPClientMatch ".*WinSCP.*" sftpProtocolVersion 3
+
+    # WS_FTP
+    SFTPClientMatch ".*WS_FTP.*" channelWindowSize 1GB
+
+    # /n Software BizTalk SFTP Receive (SSH-2.0-IP*Works! SSH Client v8.0)
+    # http://www.nsoftware.com/products/biztalk/adapters/sftp.aspx
+    SFTPClientMatch ".*IP.Works.*" channelWindowSize 1GB
+  &lt;/Global&gt;
+&lt;/IfModule&gt;
+</pre>
+
 <p>
 <i>Cipher Implementations</i><br>
 Some SFTP clients (most notably the SecureBlackBox libraries) do not implement
