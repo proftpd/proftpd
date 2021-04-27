@@ -13007,9 +13007,12 @@ MODRET tls_ccc(cmd_rec *cmd) {
 
   /* Check for <Limit> restrictions. */
   if (!dir_check(cmd->tmp_pool, cmd, G_NONE, session.cwd, NULL)) {
-    pr_response_add_err(R_534, _("Unwilling to accept security parameters"));
+
+    pr_log_debug(DEBUG8, "%s %s denied by <Limit> configuration",
+      (char *) cmd->argv[0], cmd->arg);
     tls_log("%s: unwilling to accept security parameters",
       (char *) cmd->argv[0]);
+    pr_response_add_err(R_534, _("Unwilling to accept security parameters"));
 
     pr_cmd_set_errno(cmd, EPERM);
     errno = EPERM;
@@ -13279,8 +13282,11 @@ MODRET tls_prot(cmd_rec *cmd) {
 
   /* Check for <Limit> restrictions. */
   if (!dir_check(cmd->tmp_pool, cmd, G_NONE, session.cwd, NULL)) {
-    pr_response_add_err(R_534, _("Unwilling to accept security parameters"));
+
+    pr_log_debug(DEBUG8, "%s %s denied by <Limit> configuration",
+      (char *) cmd->argv[0], cmd->arg);
     tls_log("%s: denied by <Limit> configuration", (char *) cmd->argv[0]);
+    pr_response_add_err(R_534, _("Unwilling to accept security parameters"));
 
     pr_cmd_set_errno(cmd, EPERM);
     errno = EPERM;
@@ -13388,8 +13394,8 @@ MODRET tls_sscn(cmd_rec *cmd) {
   if (!dir_check(cmd->tmp_pool, cmd, cmd->group, session.cwd, NULL)) {
     int xerrno = EPERM;
 
-    pr_log_debug(DEBUG8, "%s denied by <Limit> configuration",
-      (char *) cmd->argv[0]);
+    pr_log_debug(DEBUG8, "%s %s denied by <Limit> configuration",
+      (char *) cmd->argv[0], cmd->arg);
     tls_log("%s denied by <Limit> configuration", (char *) cmd->argv[0]);
     pr_response_add_err(R_550, _("%s: %s"), (char *) cmd->argv[0],
       strerror(xerrno));
