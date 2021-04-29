@@ -310,6 +310,9 @@ static int site_misc_delete_dir(pool *p, const char *dir) {
   xerrno = errno;
 
   if (res < 0) {
+    pr_log_debug(DEBUG3, MOD_SITE_MISC_VERSION
+      ": error removing directory '%s', %s", dir,
+      strerror(xerrno));
     pr_response_add_err(R_550, "%s: %s", cmd->arg, strerror(xerrno));
     pr_cmd_dispatch_phase(cmd, POST_CMD_ERR, 0);
     pr_cmd_dispatch_phase(cmd, LOG_CMD_ERR, 0);
