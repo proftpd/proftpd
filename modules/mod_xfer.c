@@ -1638,7 +1638,8 @@ MODRET xfer_pre_stou(cmd_rec *cmd) {
      * an error.
      */
     (void) pr_fsio_unlink(cmd->arg);
-
+    pr_log_debug(DEBUG8, "%s %s denied by <Limit> configuration",
+          (char *) cmd->argv[0], cmd->arg);
     pr_response_add_err(R_550, "%s: %s", cmd->arg, strerror(xerrno));
 
     pr_cmd_set_errno(cmd, xerrno);
@@ -2506,6 +2507,8 @@ MODRET xfer_pre_retr(cmd_rec *cmd) {
       !dir_check(cmd->tmp_pool, cmd, cmd->group, dir, NULL)) {
     int xerrno = errno;
 
+    pr_log_debug(DEBUG8, "%s %s denied by <Limit> configuration",
+        (char *) cmd->argv[0], cmd->arg);
     pr_response_add_err(R_550, "%s: %s", cmd->arg, strerror(xerrno));
 
     pr_cmd_set_errno(cmd, xerrno);
