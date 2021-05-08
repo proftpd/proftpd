@@ -83,3 +83,18 @@ ChangeLog files.
     the memory pools, and provides the pool data to the callback via
     structure, allowing the callback to format/use the memory pool information
     as needed, including emitting the data as JSON.
+
+    The "make install" target now will _only_ try to install existing
+    code/binaries, and will no longer attempt to recompile existing binaries.
+    That is, this sequence will no longer work:
+
+      $ ./configure
+      $ make install
+
+    Instead, the officially documented and supported sequence is now required:
+
+      $ ./configure
+      $ make
+      $ make install
+
+    This ensures that no unexpected recompilation occurs; see Issue #548.
