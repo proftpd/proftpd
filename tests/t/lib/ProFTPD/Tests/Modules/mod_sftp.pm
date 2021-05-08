@@ -1376,7 +1376,12 @@ my $TESTS = {
 
   sftp_config_maxclientsperuser_issue750 => {
     order => ++$order,
-    test_class => [qw(bug forking mod_digest sftp ssh2)],
+    test_class => [qw(bug forking sftp ssh2)],
+  },
+
+  sftp_config_serverlog_issue1227 => {
+    order => ++$order,
+    test_class => [qw(bug forking sftp ssh2)],
   },
 
   sftp_multi_channels => {
@@ -45322,6 +45327,155 @@ sub sftp_multi_channels {
   }
 
   unlink($log_file);
+}
+
+sub sftp_config_serverlog_issue1227 {
+  my $self = shift;
+  my $tmpdir = $self->{tmpdir};
+  my $setup = test_setup($tmpdir, 'sftp');
+
+  my $rsa_host_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/ssh_host_rsa_key');
+  my $dsa_host_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/ssh_host_dsa_key');
+
+  my $config = {
+    PidFile => $setup->{pid_file},
+    ScoreboardFile => $setup->{scoreboard_file},
+    TraceLog => $setup->{log_file},
+    Trace => 'ssh2:10 sftp:10',
+
+    AuthUserFile => $setup->{auth_user_file},
+    AuthGroupFile => $setup->{auth_group_file},
+
+    IfModules => {
+      'mod_delay.c' => {
+        DelayEngine => 'off',
+      },
+
+      'mod_sftp.c' => [
+        "SFTPEngine on",
+        "SFTPLog $setup->{log_file}",
+        "SFTPHostKey $rsa_host_key",
+        "SFTPHostKey $dsa_host_key",
+
+        "ServerLog $setup->{log_file}",
+        "SyslogLevel INFO",
+      ],
+    },
+  };
+
+  my ($port, $config_user, $config_group) = config_write($setup->{config_file},
+    $config);
+
+  # Open pipes, for use between the parent and child processes.  Specifically,
+  # the child will indicate when it's done with its test by writing a message
+  # to the parent.
+  my ($rfh, $wfh);
+  unless (pipe($rfh, $wfh)) {
+    die("Can't open pipe: $!");
+  }
+
+  require Net::SSH2;
+
+  my $ex;
+
+  # Fork child
+  $self->handle_sigchld();
+  defined(my $pid = fork()) or die("Can't fork: $!");
+  if ($pid) {
+    eval {
+      my $ssh2 = Net::SSH2->new();
+
+      sleep(1);
+
+      unless ($ssh2->connect('127.0.0.1', $port)) {
+        my ($err_code, $err_name, $err_str) = $ssh2->error();
+        die("Can't connect to SSH2 server: [$err_name] ($err_code) $err_str");
+      }
+
+      unless ($ssh2->auth_password($setup->{user}, $setup->{passwd})) {
+        my ($err_code, $err_name, $err_str) = $ssh2->error();
+        die("Can't login to SSH2 server: [$err_name] ($err_code) $err_str");
+      }
+
+      my $sftp = $ssh2->sftp();
+      unless ($sftp) {
+        my ($err_code, $err_name, $err_str) = $ssh2->error();
+        die("Can't use SFTP on SSH2 server: [$err_name] ($err_code) $err_str");
+      }
+
+      my $path = 'sftp.conf';
+      my $attrs = $sftp->stat($path, 1);
+      unless ($attrs) {
+        my ($err_code, $err_name) = $sftp->error();
+        die("STAT $path failed: [$err_name] ($err_code)");
+      }
+
+      $sftp = undef;
+      $ssh2->disconnect();
+      $ssh2 = undef;
+    };
+    if ($@) {
+      $ex = $@;
+    }
+
+    $wfh->print("done\n");
+    $wfh->flush();
+
+  } else {
+    eval { server_wait($setup->{config_file}, $rfh) };
+    if ($@) {
+      warn($@);
+      exit 1;
+    }
+
+    exit 0;
+  }
+
+  # Stop server
+  server_stop($setup->{pid_file});
+  $self->assert_child_ok($pid);
+
+  eval {
+    if (open(my $fh, "< $setup->{log_file}")) {
+      my $sess_opened = 0;
+      my $sess_closed = 0;
+
+      while (my $line = <$fh>) {
+        chomp($line);
+
+        if ($ENV{TEST_VERBOSE}) {
+          print STDERR "# $line\n";
+        }
+
+        if ($sess_opened == 0 &&
+            $line =~ /session opened/) {
+          $sess_opened = 1;
+        }
+
+        if ($sess_closed == 0 &&
+            $line =~ /session closed/) {
+          $sess_closed = 1;
+        }
+
+        if ($sess_opened && $sess_closed) {
+          last;
+        }
+      }
+
+      close($fh);
+
+      $self->assert($sess_opened && $sess_closed,
+        test_msg("Did not see expected 'session opened/closed' ServerLog messages"));
+
+    } else {
+      die("Can't open $setup->{log_file}: $!");
+    }
+  };
+  if ($@) {
+    $ex = $@;
+  }
+
+  test_cleanup($setup->{log_file}, $ex);
 }
 
 sub sftp_config_insecure_hostkey_perms_bug4098 {
