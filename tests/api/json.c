@@ -1,6 +1,6 @@
 /*
  * ProFTPD - FTP server testsuite
- * Copyright (c) 2017-2020 The ProFTPD Project team
+ * Copyright (c) 2017-2021 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -123,8 +123,12 @@ START_TEST (json_object_from_text_test) {
   json = pr_json_object_from_text(p, text);
   fail_unless(json != NULL, "Failed to handle text '%s': %s", text,
     strerror(errno));
-
   (void) pr_json_object_free(json);
+
+  mark_point();
+  text = "{\"key\":{\"key\":{\"key\":{\"key\":{\"key\":{\"key\":{\"key\":{\"key\":{\"key\":{\"key\":{\"key\":{\"key\":{\"key\":{\"key\":{\"key\":{\"key\":{\"key\":null}}}}}}}}}}}}}}}}}";
+  json = pr_json_object_from_text(p, text);
+  fail_unless(json == NULL, "Failed to handle depth-exceeding text '%s'", text);
 }
 END_TEST
 
@@ -1112,8 +1116,12 @@ START_TEST(json_array_from_text_test) {
   json = pr_json_array_from_text(p, text);
   fail_unless(json != NULL, "Failed to handle text '%s': %s", text,
     strerror(errno));
-
   (void) pr_json_array_free(json);
+
+  mark_point();
+  text = "[[[[[[[[[[[[[[[[[1]]]]]]]]]]]]]]]]]";
+  json = pr_json_array_from_text(p, text);
+  fail_unless(json == NULL, "Failed to handle depth-exceeding text '%s'", text);
 }
 END_TEST
 
