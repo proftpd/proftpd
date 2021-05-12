@@ -77,6 +77,8 @@
 - Issue 548 - `make install` target should install only, not recompile any code.
 - Bug 4428 - <VirtualHost> name resolution does not include all associated
   IPv6 records.
+- Issue 1230 - Stack overflow due to unlimited recursion possible when parsing
+  JSON text.
 
 1.3.7 - Released 20-Jul-2020
 --------------------------------
