@@ -49,6 +49,8 @@ ChangeLog files.
 
   + Changed Directives
 
+    BanOnEvent MaxLoginAttemptsFromUser (Issue #1170)
+
     RedisSentinel
       TLS support (Issue #1072)
 
