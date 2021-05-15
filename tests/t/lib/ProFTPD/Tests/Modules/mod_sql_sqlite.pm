@@ -14944,7 +14944,7 @@ EOS
         SQLBackend => 'sqlite3',
         SQLConnectInfo => $db_file,
         SQLLogFile => $setup->{log_file},
-        SQLNamedQuery => 'on_login FREEFORM "INSERT INTO ftpsessions (user, ip_addr, ftps) VALUES (\'%u\', \'%L\', \'%{note:mod_tls.FTPS}\')"',
+        SQLNamedQuery => 'on_login FREEFORM "INSERT INTO ftpsessions (user, ip_addr, ftps) VALUES (\'%u\', \'%L\', \'%{note:FTPS}\')"',
         SQLLog => 'PASS on_login',
       },
     },
@@ -15095,7 +15095,7 @@ EOS
         SQLBackend => 'sqlite3',
         SQLConnectInfo => $db_file,
         SQLLogFile => $setup->{log_file},
-        SQLNamedQuery => 'on_login FREEFORM "INSERT INTO ftpsessions (user, ip_addr, ftps) VALUES (\'%u\', \'%L\', \'%{note:mod_tls.FTPS}\')"',
+        SQLNamedQuery => 'on_login FREEFORM "INSERT INTO ftpsessions (user, ip_addr, ftps) VALUES (\'%u\', \'%L\', \'%{note:FTPS}\')"',
         SQLLog => 'PASS on_login',
       },
 
