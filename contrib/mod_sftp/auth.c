@@ -1254,6 +1254,7 @@ static int handle_userauth_req(struct ssh2_packet *pkt, char **service) {
   if (strcmp(method, "none") != 0) {
     pr_env_unset(cmd->pool, "SFTP_USER_AUTH_METHOD");
     pr_env_set(cmd->pool, "SFTP_USER_AUTH_METHOD", method);
+    (void) pr_table_add_dup(session.notes, "SFTP_USER_AUTH_METHOD", method, 0);
   }
 
   /* In order for the actual user password (if any) to be populated properly

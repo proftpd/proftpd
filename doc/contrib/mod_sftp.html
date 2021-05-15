@@ -1602,8 +1602,10 @@ is intentional; the logs may be used to help troubleshoot <i>failed</i>
 authentication attempts, as well as successful authentications.
 
 <p>
-These environment variables are intended for informational purposes,
-<i>e.g.</i> <code>ExtendedLog</code> or <code>SQLLog</code> directives.
+These values are also available in the <code>session.notes</code> table,
+under keys of the names above.  These note variables are intended for
+informational purposes, <i>e.g.</i> <code>ExtendedLog</code> or
+<code>SQLLog</code> directives via the <code>%{note:...}</code> syntax.
 
 <p><a name="UsageRFC4716Format">
 <b>SSH2 Public Key Formats</b><br>
