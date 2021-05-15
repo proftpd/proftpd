@@ -10110,22 +10110,22 @@ static void tls_setup_notes(pool *p, SSL *ssl) {
   SSL_CIPHER *cipher = NULL;
   const char *sni = NULL;
 
-  (void) pr_table_add_dup(session.notes, "mod_tls.FTPS", "1", 0);
-  (void) pr_table_add_dup(session.notes, "mod_tls.TLS_PROTOCOL",
-    SSL_get_version(ssl), 0);
+  (void) pr_table_add_dup(session.notes, "FTPS", "1", 0);
+  (void) pr_table_add_dup(session.notes, "TLS_PROTOCOL", SSL_get_version(ssl),
+    0);
 
   /* Process the TLS cipher-related values. */
   cipher = (SSL_CIPHER *) SSL_get_current_cipher(ssl);
   if (cipher != NULL) {
-    (void) pr_table_add_dup(session.notes, "mod_tls.TLS_CIPHER",
+    (void) pr_table_add_dup(session.notes, "TLS_CIPHER",
       SSL_CIPHER_get_name(cipher), 0);
 
     sni = pr_table_get(session.notes, "mod_tls.sni", NULL);
     if (sni != NULL) {
-      (void) pr_table_add_dup(session.notes, "mod_tls.TLS_SERVER_NAME", sni, 0);
+      (void) pr_table_add_dup(session.notes, "TLS_SERVER_NAME", sni, 0);
     }
 
-    (void) pr_table_add_dup(session.notes, "mod_tls.TLS_LIBRARY_VERSIONS",
+    (void) pr_table_add_dup(session.notes, "TLS_LIBRARY_VERSIONS",
       OPENSSL_VERSION_TEXT, 0);
   }
 }
