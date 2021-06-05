@@ -175,7 +175,7 @@ jobs:
         if: ${{ matrix.compiler == 'clang' }}
         run: |
           make clean
-          ./configure LIBS="-lm -lsubunit -lrt -pthread" --enable-devel -enable-ctrls --enable-facl --enable-memcache --enable-nls --enable-pcre --enable-redis --enable-tests
+          ./configure LIBS="-lm -lsubunit -lrt -pthread" --enable-devel --enable-ctrls --enable-facl --enable-memcache --enable-nls --enable-pcre --enable-redis --enable-tests
           make
           export ASAN_SYMBOLIZER_PATH=$(readlink -f $(which llvm-symbolizer-10))
           make check-api
