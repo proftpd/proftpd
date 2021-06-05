@@ -427,7 +427,7 @@ The <code>TimeoutNoTransfer</code> directive configures the maximum number of
 <em>seconds</em> a client is allowed to spend connected, after authentication,
 without issuing a data transfer command which results in a data connection
 (<i>i.e.</i> sending/receiving a file, or requesting a directory listing).
-The maximum allowed <em>seconds</em> value is 65535 (108 minutes).
+The maximum allowed <em>seconds</em> value is 65535 (18 hours).
 
 <p>
 See also: <a href="mod_core.html#TimeoutIdle"><code>TimeoutIdle</code></a>,
@@ -449,7 +449,7 @@ The <code>TimeoutStalled</code> directive sets the maximum number of
 can exist but have no actual data transferred (<i>i.e.</i> "stalled").  If the
 <em>seconds</em> parameter is set to zero, data transfers are allowed to stall
 indefinitely; <b>note</b> that this is <b>not</b> a recommended configuration.
-The maximum allowed <em>seconds</em> value is 65535 (108 minutes).
+The maximum allowed <em>seconds</em> value is 65535 (18 hours).
 
 <p>
 <hr>
@@ -568,7 +568,7 @@ only, and should be removed from any production configuration.
 <p>
 <hr>
 <font size=2><b><i>
-&copy; Copyright 2000-2017 The ProFTPD Project<br>
+&copy; Copyright 2000-2021 The ProFTPD Project<br>
  All Rights Reserved<br>
 </i></b></font>
 <hr>
