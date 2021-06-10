@@ -1,6 +1,6 @@
 /*
  * ProFTPD: mod_sftp_sql -- SQL backend module for retrieving authorized keys
- * Copyright (c) 2008-2016 TJ Saunders
+ * Copyright (c) 2008-2021 TJ Saunders
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -557,12 +557,11 @@ static int sqlstore_verify_host_key(sftp_keystore_t *store, pool *p,
     destroy_pool(tmp_pool);
     errno = ENOENT;
     return -1;
-
-  } else {
-    (void) pr_log_writefile(sftp_logfd, MOD_SFTP_SQL_VERSION,
-      "SQLNamedQuery '%s' returned %d %s", store_data->select_query,
-      sql_data->nelts, sql_data->nelts != 1 ? "rows" : "row");
   }
+
+  (void) pr_log_writefile(sftp_logfd, MOD_SFTP_SQL_VERSION,
+    "SQLNamedQuery '%s' returned %d %s", store_data->select_query,
+    sql_data->nelts, sql_data->nelts != 1 ? "rows" : "row");
 
   values = (char **) sql_data->elts;
   for (i = 0; i < sql_data->nelts; i++) {
@@ -572,6 +571,14 @@ static int sqlstore_verify_host_key(sftp_keystore_t *store, pool *p,
     pr_signals_handle();
 
     col_data = values[i];
+    if (col_data == NULL) {
+      (void) pr_log_writefile(sftp_logfd, MOD_SFTP_SQL_VERSION,
+        "SQLNamedQuery '%s' returned NULL data", store_data->select_query);
+      destroy_pool(tmp_pool);
+      errno = EINVAL;
+      return -1;
+    }
+
     col_datalen = strlen(values[i]);
 
     res = sqlstore_verify_key_rfc4716(p, store_data, i, col_data, col_datalen,
@@ -664,6 +671,14 @@ static int sqlstore_verify_user_key(sftp_keystore_t *store, pool *p,
     pr_signals_handle();
 
     col_data = values[i];
+    if (col_data == NULL) {
+      (void) pr_log_writefile(sftp_logfd, MOD_SFTP_SQL_VERSION,
+        "SQLNamedQuery '%s' returned NULL data", store_data->select_query);
+      destroy_pool(tmp_pool);
+      errno = EINVAL;
+      return -1;
+    }
+
     col_datalen = strlen(values[i]);
 
     res = sqlstore_verify_key_rfc4716(p, store_data, i, col_data, col_datalen,

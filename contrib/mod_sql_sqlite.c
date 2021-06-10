@@ -1,6 +1,6 @@
 /*
  * ProFTPD: mod_sql_sqlite -- Support for connecting to SQLite databases
- * Copyright (c) 2004-2020 TJ Saunders
+ * Copyright (c) 2004-2021 TJ Saunders
  *  
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -168,8 +168,19 @@ static int exec_cb(void *n, int ncols, char **cols,
   *row = pcalloc(cmd->tmp_pool, sizeof(char *) * ncols);
 
   for (i = 0; i < ncols; i++) {
-    char *val = cols[i];
-    (*row)[i] = pstrdup(cmd->tmp_pool, val ? val : "NULL");
+    char *val;
+
+    val = cols[i];
+
+    /* Make sure we propagate NULL values properly, to force callers
+     * to deal with such things.
+     */
+    if (val != NULL) {
+      (*row)[i] = pstrdup(cmd->tmp_pool, val);
+
+    } else {
+      (*row)[i] = NULL;
+    }
   }
 
   return 0;
