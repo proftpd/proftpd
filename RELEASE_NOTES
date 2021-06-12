@@ -51,6 +51,8 @@ ChangeLog files.
 
   + Changed Directives
 
+    AuthFileOptions SyntaxCheck (Issue #490)
+
     BanOnEvent MaxLoginAttemptsFromUser (Issue #1170)
 
     RedisSentinel
