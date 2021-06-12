@@ -83,6 +83,7 @@
   use %{note:FTPS} instead.
 - Issue 1170 - Implement support for user/host combination bans in mod_ban.
 - Issue 1246 - mod_sftp_sql crashes (sigsegv) on NULL key.
+- Issue 1237 - ftpasswd should default to SHA256, not MD5.
 
 1.3.7 - Released 20-Jul-2020
 --------------------------------

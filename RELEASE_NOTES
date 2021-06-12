@@ -17,6 +17,8 @@ ChangeLog files.
   + Fixed memory use-after-free issue in mod_sftp which can cause unexpected
     login/authentication issues.
 
+  + ftpasswd now generates SHA256 password hashes by default, rather than MD5.
+
   * Set the `OPENSSL_API_COMPAT` API version compatibility macro.  We currently
     set our OpenSSL API version to 1.0.0 and later; code which uses an OpenSSL
     API earlier than 1.0.0 will cause the build to fail.  Use the new

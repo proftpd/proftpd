@@ -189,10 +189,9 @@ usage: ftpasswd [--help] [--hash|--group|--passwd]
     --home      Home directory for the user (required)
 
     --des       Use the DES algorithm for encrypting passwords.  The default
-                is the MD5 algorithm.
+                is the SHA256 algorithm.
 
-    --md5       Use the MD5 algorithm for encrypting passwords.  This is the
-                default.
+    --md5       Use the MD5 algorithm for encrypting passwords.
 
     --name      Name of the user account (required).  If the name does not
                 exist in the specified output-file, an entry will be created
@@ -240,7 +239,8 @@ usage: ftpasswd [--help] [--hash|--group|--passwd]
                 helps to enforce different passwords for different types of
                 access.
 
-    --sha256    Use the SHA-256 algorithm for encrypting passwords.
+    --sha256    Use the SHA-256 algorithm for encrypting passwords. This is the
+                default.
 
     --sha512    Use the SHA-512 algorithm for encrypting passwords.
 
@@ -372,7 +372,7 @@ usage: ftpasswd [--help] [--hash|--group|--passwd]
 <p>
 <hr>
 <font size=2><b><i>
-&copy; Copyright 2000-2017 TJ Saunders<br>
+&copy; Copyright 2000-2021 TJ Saunders<br>
  All Rights Reserved<br>
 </i></b></font>
 <hr>
