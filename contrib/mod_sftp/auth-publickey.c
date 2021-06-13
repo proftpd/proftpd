@@ -82,7 +82,6 @@ static int send_pubkey_ok(const char *algo, const unsigned char *pubkey_data,
 int sftp_auth_publickey(struct ssh2_packet *pkt, cmd_rec *pass_cmd,
     const char *orig_user, const char *user, const char *service,
     unsigned char **buf, uint32_t *buflen, int *send_userauth_fail) {
-  register unsigned int i;
   int fp_algo_id = 0, have_signature, res;
   enum sftp_key_type_e pubkey_type;
   unsigned char *pubkey_data;
@@ -411,29 +410,33 @@ int sftp_auth_publickey(struct ssh2_packet *pkt, cmd_rec *pass_cmd,
     return 0;
   }
 
-  /* Check the key fingerprint against any previously used keys, to see if the
-   * same key is being reused.
-   */
-  for (i = 0; i < publickey_fps->nelts; i++) {
-    char *fpi;
+  if (fp != NULL) {
+    register unsigned int i;
 
-    fpi = ((char **) publickey_fps->elts)[i];
-    if (strcmp(fp, fpi) == 0) {
-      (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
-        "publickey request reused previously verified publickey "
-        "(fingerprint %s), rejecting", fp);
+    /* Check the key fingerprint against any previously used keys, to see if the
+     * same key is being reused.
+     */
+    for (i = 0; i < publickey_fps->nelts; i++) {
+      char *fpi;
 
-      pr_log_auth(PR_LOG_NOTICE, "USER %s (Login failed): public key request "
-       "reused previously verified public key (fingerprint %s)", user, fp);
+      fpi = ((char **) publickey_fps->elts)[i];
+      if (strcmp(fp, fpi) == 0) {
+        (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
+          "publickey request reused previously verified publickey "
+          "(fingerprint %s), rejecting", fp);
 
-      *send_userauth_fail = TRUE;
-      errno = EACCES;
-      return 0;
+        pr_log_auth(PR_LOG_NOTICE, "USER %s (Login failed): public key request "
+         "reused previously verified public key (fingerprint %s)", user, fp);
+
+        *send_userauth_fail = TRUE;
+        errno = EACCES;
+        return 0;
+      }
     }
-  }
 
-  /* Store the fingerprint for future checking. */
-  *((char **) push_array(publickey_fps)) = pstrdup(sftp_pool, fp);
+    /* Store the fingerprint for future checking. */
+    *((char **) push_array(publickey_fps)) = pstrdup(sftp_pool, fp);
+  }
 
   return 1;
 }

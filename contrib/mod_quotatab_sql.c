@@ -1,7 +1,7 @@
 /*
  * ProFTPD: mod_quotatab_sql -- a mod_quotatab sub-module for managing quota
  *                              data via SQL-based tables
- * Copyright (c) 2002-2020 TJ Saunders
+ * Copyright (c) 2002-2021 TJ Saunders
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -309,6 +309,7 @@ static unsigned char sqltab_lookup(quota_table_t *sqltab, void *ptr,
     if (quota_type != ALL_QUOTA &&
         values[0] &&
         strlen(values[0]) > 0 &&
+        name != NULL &&
         strcmp(name, tally->name) != 0) {
       destroy_pool(tmp_pool);
       return FALSE;
@@ -408,6 +409,7 @@ static unsigned char sqltab_lookup(quota_table_t *sqltab, void *ptr,
     if (quota_type != ALL_QUOTA &&
         values[0] &&
         strlen(values[0]) > 0 &&
+        name != NULL &&
         strcmp(name, limit->name) != 0) {
       destroy_pool(tmp_pool);
       return FALSE;

@@ -1,6 +1,6 @@
 /*
  * ProFTPD: mod_radius -- a module for RADIUS authentication and accounting
- * Copyright (c) 2001-2020 TJ Saunders
+ * Copyright (c) 2001-2021 TJ Saunders
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -1628,6 +1628,8 @@ static void radius_process_user_info(config_rec *c) {
    * is no practical need for this information.
    */
 
+  radius_passwd.pw_uid = -1;
+  radius_passwd.pw_gid = -1;
   radius_passwd.pw_passwd = NULL;
   radius_passwd.pw_gecos = NULL;
 
@@ -1643,7 +1645,9 @@ static void radius_process_user_info(config_rec *c) {
     char *endp = NULL, *value = NULL;
 
     radius_parse_var(param, &radius_uid_attr_id, &value);
-    radius_passwd.pw_uid = (uid_t) strtoul(value, &endp, 10);
+    if (value != NULL) {
+      radius_passwd.pw_uid = (uid_t) strtoul(value, &endp, 10);
+    }
 
     if (radius_passwd.pw_uid == (uid_t) -1) {
       (void) pr_log_writefile(radius_logfd, MOD_RADIUS_VERSION,
@@ -1658,8 +1662,8 @@ static void radius_process_user_info(config_rec *c) {
     }
 
   } else {
-
     char *endp = NULL;
+
     radius_passwd.pw_uid = (uid_t) strtoul(param, &endp, 10);
 
     if (radius_passwd.pw_uid == (uid_t) -1) {
@@ -1682,7 +1686,10 @@ static void radius_process_user_info(config_rec *c) {
     char *endp = NULL, *value = NULL;
 
     radius_parse_var(param, &radius_gid_attr_id, &value);
-    radius_passwd.pw_gid = (gid_t) strtoul(value, &endp, 10);
+
+    if (value != NULL) {
+      radius_passwd.pw_gid = (gid_t) strtoul(value, &endp, 10);
+    }
 
     if (radius_passwd.pw_gid == (gid_t) -1) {
       (void) pr_log_writefile(radius_logfd, MOD_RADIUS_VERSION,
@@ -1697,8 +1704,8 @@ static void radius_process_user_info(config_rec *c) {
     }
 
   } else {
-
     char *endp = NULL;
+
     radius_passwd.pw_gid = (gid_t) strtoul(param, &endp, 10);
 
     if (radius_passwd.pw_gid == (gid_t) -1) {

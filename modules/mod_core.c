@@ -2,7 +2,7 @@
  * ProFTPD - FTP server daemon
  * Copyright (c) 1997, 1998 Public Flood Software
  * Copyright (c) 1999, 2000 MacGyver aka Habeeb J. Dihu <macgyver@tos.net>
- * Copyright (c) 2001-2020 The ProFTPD Project team
+ * Copyright (c) 2001-2021 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -2441,6 +2441,8 @@ MODRET set_hidefiles(cmd_rec *cmd) {
     c->argv[2] = pcalloc(c->pool, sizeof(unsigned int));
     *((unsigned int *) c->argv[2]) = precedence;
 
+    c->flags |= CF_MERGEDOWN_MULTI;
+
   } else if (cmd->argc-1 == 3) {
     array_header *acl = NULL;
     unsigned int argc = cmd->argc - 3;
@@ -2493,9 +2495,10 @@ MODRET set_hidefiles(cmd_rec *cmd) {
 
     /* don't forget the terminating NULL */
     *argv = NULL;
+
+    c->flags |= CF_MERGEDOWN_MULTI;
   }
 
-  c->flags |= CF_MERGEDOWN_MULTI;
   return PR_HANDLED(cmd);
 
 #else /* no regular expression support at the moment */
