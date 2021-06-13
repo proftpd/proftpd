@@ -2783,6 +2783,11 @@ static struct openssh_cipher *get_openssh_cipher(const char *name) {
     }
   }
 
+  if (cipher == NULL) {
+    errno = ENOENT;
+    return NULL;
+  }
+
   /* The CTR algorithms require our own implementation, not the OpenSSL
    * implementation.
    */
@@ -2794,7 +2799,6 @@ static struct openssh_cipher *get_openssh_cipher(const char *name) {
     }
   }
 
-  errno = ENOENT;
   return cipher;
 }
 

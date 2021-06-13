@@ -2459,6 +2459,7 @@ static int sql_getgroups(cmd_rec *cmd) {
   }
 
   lpw.pw_uid = -1;
+  lpw.pw_gid = -1;
   lpw.pw_name = name;
 
   /* Now that we have the pointers for the lists, tweak the argc field
@@ -3826,6 +3827,7 @@ MODRET sql_auth_setpwent(cmd_rec *cmd) {
       
         /* otherwise, add it to the cache */
         lpw.pw_uid = -1;
+        lpw.pw_gid = -1;
         lpw.pw_name = username;
         sql_getpasswd(cmd, &lpw);
       }
@@ -4103,6 +4105,7 @@ MODRET sql_auth_getpwnam(cmd_rec *cmd) {
   sql_log(DEBUG_FUNC, "%s", ">>> cmd_getpwnam");
 
   lpw.pw_uid = -1;
+  lpw.pw_gid = -1;
   lpw.pw_name = cmd->argv[0];
   pw = sql_getpasswd(cmd, &lpw);
 
@@ -4214,6 +4217,7 @@ MODRET sql_auth_authenticate(cmd_rec *cmd) {
   user = (char *) mr->data;
 
   lpw.pw_uid = -1;
+  lpw.pw_gid = -1;
   lpw.pw_name = cmd->argv[0];
 
   if ((pw = sql_getpasswd(cmd, &lpw)) && 
@@ -4304,6 +4308,7 @@ MODRET sql_auth_check(cmd_rec *cmd) {
      */
 
     lpw.pw_uid = -1;
+    lpw.pw_gid = -1;
     lpw.pw_name = cmd->argv[1];
     cmap.authpasswd = sql_getpasswd(cmd, &lpw);
 
@@ -4415,6 +4420,7 @@ MODRET sql_auth_name2uid(cmd_rec *cmd) {
   sql_log(DEBUG_FUNC, "%s", ">>> cmd_name2uid");
 
   lpw.pw_uid = -1;
+  lpw.pw_gid = -1;
   lpw.pw_name = cmd->argv[0];
 
   /* check to see if we're looking up the current user */

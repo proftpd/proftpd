@@ -1,6 +1,6 @@
 /*
  * ProFTPD - mod_sftp packet IO
- * Copyright (c) 2008-2020 TJ Saunders
+ * Copyright (c) 2008-2021 TJ Saunders
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -1558,7 +1558,7 @@ int sftp_ssh2_packet_handle(void) {
       break;
 
     case SFTP_SSH2_MSG_KEXINIT: {
-      uint64_t start_ms;
+      uint64_t start_ms = 0;
 
       if (pr_trace_get_level(timing_channel) > 0) {
         pr_gettimeofday_millis(&start_ms);

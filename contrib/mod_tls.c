@@ -1930,7 +1930,7 @@ static void tls_print_server_hello(int io_flag, int version, int content_type,
   BIO *bio;
   char *data = NULL;
   long datalen;
-  int print_session_id = TRUE, print_compressions = TRUE, server_version;
+  int print_session_id = TRUE, print_compressions = TRUE, server_version = 0;
   unsigned int suiteno;
 
   bio = BIO_new(BIO_s_mem());
@@ -8816,7 +8816,8 @@ static void tls_end_sess(SSL *ssl, conn_t *conn, int flags) {
       shutdown_state = SSL_get_shutdown(ssl);
 
       res = 1;
-      if (!(shutdown_state & SSL_RECEIVED_SHUTDOWN)) {
+      if (!(shutdown_state & SSL_RECEIVED_SHUTDOWN) &&
+          conn != NULL) {
         int is_ssl_data = FALSE, xerrno;
 
         pr_trace_msg(trace_channel, 17,
@@ -8920,9 +8921,11 @@ static void tls_end_sess(SSL *ssl, conn_t *conn, int flags) {
           break;
 
         default:
-          tls_log("SSL_shutdown error [%ld]: %s", err_code, tls_get_errors());
+          tls_log("SSL_shutdown error [%ld], line %d: %s", err_code, lineno,
+            tls_get_errors());
           pr_log_debug(DEBUG0, MOD_TLS_VERSION
-            ": SSL_shutdown error [%ld]: %s", err_code, tls_get_errors());
+            ": SSL_shutdown error [%ld], line %d: %s", err_code, lineno,
+            tls_get_errors());
           break;
       }
     }
@@ -12127,7 +12130,7 @@ static int tls_netio_postopen_cb(pr_netio_stream_t *nstrm) {
           session.curr_cmd_id == PR_CMD_NLST_ID ||
           tls_sscn_mode == TLS_SSCN_MODE_SERVER) {
         X509 *ctrl_cert = NULL, *data_cert = NULL;
-        uint64_t start_ms;
+        uint64_t start_ms = 0;
 
         pr_gettimeofday_millis(&start_ms);
 
@@ -12882,7 +12885,7 @@ MODRET tls_auth(cmd_rec *cmd) {
 
   if (strncmp(mode, "TLS", 4) == 0 ||
       strncmp(mode, "TLS-C", 6) == 0) {
-    uint64_t start_ms;
+    uint64_t start_ms = 0;
 
     pr_response_send(R_234, _("AUTH %s successful"), (char *) cmd->argv[1]);
     tls_log("%s", "TLS/TLS-C requested, starting TLS handshake");
@@ -12936,7 +12939,7 @@ MODRET tls_auth(cmd_rec *cmd) {
 
   } else if (strncmp(mode, "SSL", 4) == 0 ||
              strncmp(mode, "TLS-P", 6) == 0) {
-    uint64_t start_ms;
+    uint64_t start_ms = 0;
 
     pr_response_send(R_234, _("AUTH %s successful"), (char *) cmd->argv[1]);
     tls_log("%s", "SSL/TLS-P requested, starting TLS handshake");
@@ -18820,7 +18823,7 @@ static int tls_sess_init(void) {
   pr_help_add(C_PROT, _("<sp> protection code"), TRUE);
 
   if (tls_opts & TLS_OPT_USE_IMPLICIT_SSL) {
-    uint64_t start_ms;
+    uint64_t start_ms = 0;
 
     tls_log("%s", "TLSOption UseImplicitSSL in effect, starting SSL/TLS "
       "handshake");

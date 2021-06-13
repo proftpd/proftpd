@@ -2399,7 +2399,7 @@ MODRET auth_pre_user(cmd_rec *cmd) {
 MODRET auth_user(cmd_rec *cmd) {
   int nopass = FALSE;
   config_rec *c;
-  const char *denymsg = NULL, *user, *origuser;
+  const char *user, *origuser;
   unsigned char *anon_require_passwd = NULL;
 
   if (cmd->argc < 2) {
@@ -2434,15 +2434,6 @@ MODRET auth_user(cmd_rec *cmd) {
 
   origuser = user;
   c = pr_auth_get_anon_config(cmd->tmp_pool, &user, NULL, NULL);
-
-  /* Check for AccessDenyMsg */
-  denymsg = get_param_ptr((c ? c->subset : cmd->server->conf), "AccessDenyMsg",
-    FALSE);
-  if (denymsg != NULL) {
-    if (strstr(denymsg, "%u") != NULL) {
-      denymsg = sreplace(cmd->tmp_pool, denymsg, "%u", user, NULL);
-    }
-  }
 
   if (c != NULL) {
     anon_require_passwd = get_param_ptr(c->subset, "AnonRequirePassword",
