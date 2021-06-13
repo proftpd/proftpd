@@ -562,7 +562,7 @@ static void af_endgrent(void) {
 }
 
 static struct group *af_getgrent(pool *p, int flags,
-    void (*bad_entry_cb)(void)) {
+    unsigned int *bad_entry_count) {
   struct group *grp = NULL, *res = NULL;
 
   if (af_group_file == NULL ||
@@ -603,8 +603,8 @@ static struct group *af_getgrent(pool *p, int flags,
       grp = af_parse_grp(buf, af_group_file->af_lineno, flags);
       if (grp == NULL) {
         /* If grp is NULL here, it's a malformed entry; keep looking. */
-        if (bad_entry_cb != NULL) {
-          (bad_entry_cb)();
+        if (bad_entry_count != NULL) {
+          (*bad_entry_count)++;
         }
 
         continue;
@@ -823,7 +823,7 @@ static void af_endpwent(void) {
 }
 
 static struct passwd *af_getpwent(pool *p, int flags,
-    void (*bad_entry_cb)(void)) {
+    unsigned int *bad_entry_count) {
   struct passwd *pwd = NULL, *res = NULL;
 
   if (af_user_file == NULL ||
@@ -857,8 +857,8 @@ static struct passwd *af_getpwent(pool *p, int flags,
 
       if (pwd == NULL) {
         /* If pwd is NULL here, it's a malformed entry; keep looking. */
-        if (bad_entry_cb != NULL) {
-          (bad_entry_cb)();
+        if (bad_entry_count != NULL) {
+          (*bad_entry_count)++;
         }
 
         memset(buf, '\0', sizeof(buf));
@@ -1006,15 +1006,10 @@ static int af_setpwent(pool *p) {
   return -1;
 }
 
-static int unsigned bad_entry_count = 0;
-
-static void bad_entry_cb(void) {
-  bad_entry_count++;
-}
-
 static int af_check_group_syntax(pool *p, const char *path) {
   int flags = 0, xerrno, res = 0;
   struct group *grp;
+  unsigned int bad_entry_count = 0;
 
   af_group_file = pcalloc(p, sizeof(authfile_file_t));
   af_group_file->af_path = pstrdup(p, path);
@@ -1032,12 +1027,11 @@ static int af_check_group_syntax(pool *p, const char *path) {
     return -1;
   }
 
-  bad_entry_count = 0;
-  grp = af_getgrent(p, flags, bad_entry_cb);
+  grp = af_getgrent(p, flags, &bad_entry_count);
   while (grp != NULL) {
     pr_signals_handle();
 
-    grp = af_getgrent(p, flags, bad_entry_cb);
+    grp = af_getgrent(p, flags, &bad_entry_count);
   }
 
   pr_fsio_close(af_group_file->af_file_fh);
@@ -1052,13 +1046,13 @@ static int af_check_group_syntax(pool *p, const char *path) {
     res = -1;
   }
 
-  bad_entry_count = 0;
   return res;
 }
 
 static int af_check_user_syntax(pool *p, const char *path) {
   int flags = 0, xerrno, res = 0;
   struct passwd *pwd;
+  unsigned int bad_entry_count = 0;
 
   af_user_file = pcalloc(p, sizeof(authfile_file_t));
   af_user_file->af_path = pstrdup(p, path);
@@ -1077,11 +1071,11 @@ static int af_check_user_syntax(pool *p, const char *path) {
   }
 
   bad_entry_count = 0;
-  pwd = af_getpwent(p, flags, bad_entry_cb);
+  pwd = af_getpwent(p, flags, &bad_entry_count);
   while (pwd != NULL) {
     pr_signals_handle();
 
-    pwd = af_getpwent(p, flags, bad_entry_cb);
+    pwd = af_getpwent(p, flags, &bad_entry_count);
   }
 
   pr_fsio_close(af_user_file->af_file_fh);
@@ -1096,7 +1090,6 @@ static int af_check_user_syntax(pool *p, const char *path) {
     res = -1;
   }
 
-  bad_entry_count = 0;
   return res;
 }
 
