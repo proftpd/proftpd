@@ -11,11 +11,20 @@ ChangeLog files.
 
   + Minimum DH parameter size for TLS has been raised from 1024 to 2048.
 
+  + Passive transfers fail unexpectedly due to use of SO_REUSEPORT socket
+    option (Issue #1171).
+
   + Fixed occasional segfaults with FTPS data transfers using TLSv1.3, when
     session tickets cannot be decrypted (Issue #1063).
 
+  + Fixed "Corrupted MAC on inptut" errors when SFTP uses the
+    umac-64@openssh.com digest (Issue #1111).
+
   + Fixed memory use-after-free issue in mod_sftp which can cause unexpected
     login/authentication issues.
+
+  + Fixed speed regression for logins, directory listings when AuthUserFile
+    is used.
 
   + ftpasswd now generates SHA256 password hashes by default, rather than MD5.
 
@@ -51,12 +60,18 @@ ChangeLog files.
 
   + Changed Directives
 
-    AuthFileOptions SyntaxCheck (Issue #490)
+    AuthFileOptions SyntaxCheck
+      Syntax checks of configured AuthUserFile, AuthGroupFile can now be
+      performed, at startup time, via this option.  See
+      doc/modules/mod_auth_file.html#AuthFileOptions for more information.
 
-    BanOnEvent MaxLoginAttemptsFromUser (Issue #1170)
+    BanOnEvent MaxLoginAttemptsFromUser
+      The mod_ban module now supports bans for a given user/IP address
+      combination; see Issue #1170 for details.
 
     RedisSentinel
-      TLS support (Issue #1072)
+      Support for using TLS when connecting to Redis Sentinels has been
+      implemented; see doc/modules/mod_redis.html#RedisSentinel for details.
 
     RedisServer
       Redis 6.x changed its AUTH command, due to the Redis ACL system, for
@@ -65,7 +80,8 @@ ChangeLog files.
       detected; the configured username will be ignored for Redis servers
       older than Redis 6.x.
 
-      TLS support (Issue #1072)
+      Support for using TLS when connecting to Redis servers has been
+      implemented; see doc/modules/mod_redis.html#RedisServer for details.
 
     TLSCipherSuite
       TLSv1.3 ciphersuites have different names, and are configured differently
@@ -77,10 +93,13 @@ ChangeLog files.
       Support for the long-deprecated `NoCertRequest` TLSOption has been
       removed.
 
-      New `AllowWeakSecurity` TLSOption added (Issue #1048)
+      AllowWeakSecurity TLSOption added, for cases where interacting with
+      "insecure" (by system OpenSSL policy) clients is required; see
+      doc/contrib/mod_tls.html#TLSOptions for more details.
 
     Wrap2Tables
-      Support for include files (Issue #1133)
+      The mod_wrap2 module now supports including additional files for
+      its allow/deny tables; see Issue #1133.
 
 
   + Developer Notes
