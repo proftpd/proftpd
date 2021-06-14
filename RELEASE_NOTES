@@ -12,6 +12,9 @@ ChangeLog files.
   + Fixed occasional segfaults with FTPS data transfers using TLSv1.3, when
     session tickets cannot be decrypted (Issue #1063).
 
+  + Passive transfers fail unexpectedly due to use of SO_REUSEPORT socket
+    option (Issue #1171).
+
   + Implemented support for Redis 6.x AUTH semantics (Issue #1070).
 
   + Fixed memory use-after-free issue in mod_sftp which can cause unexpected
@@ -20,6 +23,8 @@ ChangeLog files.
   + Fixed SQL syntax regression for some generated SQL statements
     (Issue #1149).
 
+  + Fixed "Corrupted MAC on inptut" errors when SFTP uses the
+    umac-64@openssh.com digest (Issue #1111).
 
 1.3.7a
 ---------
