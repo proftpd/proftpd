@@ -1,6 +1,6 @@
 /*
  * ProFTPD - FTP server daemon
- * Copyright (c) 2001-2020 The ProFTPD Project team
+ * Copyright (c) 2001-2021 The ProFTPD Project team
  *  
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -924,7 +924,7 @@ int pr_ctrls_recv_response(pool *resp_pool, int ctrls_sockfd,
     if ((unsigned int) bread != resparglen) {
       pr_signals_unblock();
 
-      if (res < 0) {
+      if (bread < 0) {
         (void) pr_trace_msg(trace_channel, 3,
           "error reading %u response arg bytes: %s",
           (unsigned int) resparglen, strerror(xerrno));
