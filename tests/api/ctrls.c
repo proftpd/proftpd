@@ -74,7 +74,7 @@ static int devnull_fd(void) {
 static int tmpfile_fd(void) {
   int fd;
 
-  fd = open(tmpfile_path, O_CREAT|O_RDWR);
+  fd = open(tmpfile_path, O_CREAT|O_RDWR, 0600);
   if (fd < 0) {
     fprintf(stderr, "Error opening %s: %s\n", tmpfile_path, strerror(errno));
     return -1;
