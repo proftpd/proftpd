@@ -119,6 +119,8 @@ jobs:
         run: |
           # Need to add other repos for e.g. libsodium
           apt-get update -qq
+          # for builds
+          apt-get install -y make
           # for unit tests
           apt-get install -y check libsubunit-dev
           # for mod_lang
