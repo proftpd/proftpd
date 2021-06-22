@@ -195,7 +195,7 @@ jobs:
 
       - name: Install with static modules
         run: |
-          sudo make install
+          make install
 
       - name: Build with shared modules
         env:
@@ -207,7 +207,7 @@ jobs:
 
       - name: Install with shared modules
         run: |
-          sudo make install
+          make install
 
       - name: Upload code coverage
         env:
