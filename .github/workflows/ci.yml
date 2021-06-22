@@ -38,6 +38,11 @@ jobs:
         compiler:
           - gcc
           - clang
+        container:
+          - ubuntu:18.04
+          - centos:8
+
+    container: ${{ matrix.container }}
 
     steps:
       - name: Checkout source code
@@ -52,13 +57,70 @@ jobs:
             exit 1
           fi
 
-      - name: Install packages
+      - name: Install Centos packages
+        if: ${{ matrix.container == 'centos:8' }}
+        run: |
+          # Need to add other repos for e.g. libsodium
+          sudo yum install dnf-plugins-core epel-release gcc make
+          sudo yum config-manager --set-enabled powertools
+          # for unit tests
+          sudo yum install -y check-devel https://cbs.centos.org/kojifiles/packages/subunit/1.4.0/1.el8/x86_64/subunit-devel-1.4.0-1.el8.x86_64.rpm
+          # for mod_lang
+          sudo yum install -y gettext-devel
+          # for xattr support
+          sudo yum install -y libattr-devel
+          # for mod_cap
+          sudo yum install -y libacl-devel libcap-devel
+          # for mod_geoip
+          sudo yum install -y GeoIP-devel
+          # for mod_ldap
+          sudo yum install -y openldap-devel cyrus-sasl-devel
+          # for memcache support
+          sudo yum install -y libmemcached
+          # for redis support
+          sudo yum install -y hiredis-devel
+          # for mod_sql_mysql
+          sudo yum install -y mysql-devel
+          # for PAM support
+          sudo yum install -y pam-devel
+          # for mod_sql_postgres
+          sudo yum install -y postgresql-devel
+          # for mod_sql_odbc
+          sudo yum install -y unixODBC-devel
+          # for OpenSSL support
+          sudo yum install -y openssl-devel
+          # for Sodium support
+          sudo yum install -y libsodium-devel
+          # for mod_sql_sqlite
+          sudo yum install -y sqlite-devel
+          # for mod_wrap
+          sudo yum install -y libnsl2-devel https://pkgs.dyn.su/el8/extras/x86_64/tcp_wrappers-libs-7.6-77.el8.x86_64.rpm https://pkgs.dyn.su/el8/extras/x86_64/tcp_wrappers-devel-7.6-77.el8.x86_64.rpm
+          # for PCRE support
+          sudo yum install -y pcre-devel
+          # for ftptop
+          sudo yum install -y ncurses-devel
+          # for zlib support
+          sudo yum install -y zlib-devel
+          # for static code analysis
+          # - sudo yum install -y cppcheck
+          # - sudo yum install rats
+          # for integration/regression test
+          # for test code coverage
+          # for HTML validation
+          # for clang
+          yum install -y clang
+          # for debugging
+          clang --version
+          gcc --version
+          openssl version -a
+
+      - name: Install Ubuntu packages
+        if: ${{ matrix.container == 'ubuntu:18.04' }}
         run: |
           # Need to add other repos for e.g. libsodium
           sudo apt-get update -qq
           # for unit tests
-          sudo apt-get install -y check
-          sudo apt-get install -y libsubunit-dev
+          sudo apt-get install -y check libsubunit-dev
           # for mod_lang
           sudo apt-get install -y gettext
           # for xattr support
@@ -114,6 +176,7 @@ jobs:
           openssl version -a
 
       - name: Prepare code coverage
+        if: ${{ matrix.container == 'ubuntu:18.04' }}
         run: |
           lcov --directory . --zerocounters
 
@@ -149,7 +212,7 @@ jobs:
       - name: Upload code coverage
         env:
           COVERALLS_REPO_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        if: ${{ matrix.compiler == 'gcc' }}
+        if: ${{ matrix.compiler == 'gcc' && matrix.container == 'ubuntu:18.04' }}
         run: |
           lcov --ignore-errors gcov,source --directory . --capture --output-file coverage.info
           # filter out system and test code
@@ -172,7 +235,7 @@ jobs:
           CC: ${{ matrix.compiler }}
           CFLAGS: -fsanitize=address,undefined
           LDFLAGS: -fsanitize=address,undefined
-        if: ${{ matrix.compiler == 'clang' }}
+        if: ${{ matrix.compiler == 'clang' && matrix.container == 'ubuntu:18.04' }}
         run: |
           make clean
           ./configure LIBS="-lm -lsubunit -lrt -pthread" --enable-devel --enable-ctrls --enable-facl --enable-memcache --enable-nls --enable-pcre --enable-redis --enable-tests
@@ -181,10 +244,12 @@ jobs:
           make check-api
 
       - name: Check Perl scripts
+        if: ${{ matrix.container == 'ubuntu:18.04' }}
         run: |
           perl -cw contrib/ftpasswd
           perl -cw contrib/ftpquota
 
       - name: Check HTML docs
+        if: ${{ matrix.container == 'ubuntu:18.04' }}
         run: |
           for f in $(/bin/ls doc/contrib/*.html doc/howto/*.html doc/modules/*.html doc/utils/*.html); do echo "Processing $f"; tidy -errors -omit -q $f; done || exit 0
