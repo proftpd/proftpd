@@ -76,7 +76,7 @@ jobs:
           # for mod_ldap
           yum install -y openldap-devel cyrus-sasl-devel
           # for memcache support
-          yum install -y libmemcached
+          yum install -y libmemcached-devel
           # for redis support
           yum install -y hiredis-devel
           # for mod_sql_mysql
