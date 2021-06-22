@@ -92,7 +92,7 @@ static void tear_down(void) {
 static int tmpfile_fd(void) {
   int fd;
 
-  fd = open(data_test_path, O_CREAT|O_RDWR);
+  fd = open(data_test_path, O_CREAT|O_RDWR, 0600);
   if (fd < 0) {
     fprintf(stderr, "Error opening %s: %s\n", data_test_path, strerror(errno));
     return -1;

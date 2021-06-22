@@ -143,7 +143,7 @@ START_TEST (scoreboard_set_test) {
     "Failed to create set 0777 perms on '%s': %s", test_dir, strerror(errno));
 
   mark_point();
-  fd = open("/tmp/foo", O_CREAT|O_RDONLY);
+  fd = open("/tmp/foo", O_CREAT|O_RDONLY, 0400);
   if (fd < 0) {
     return;
   }
