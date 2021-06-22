@@ -164,7 +164,7 @@ jobs:
           # - sudo apt-get install rats
           # for integration/regression test
           # for test code coverage
-          apt-get install -y lcov
+          apt-get install -y lcov ruby
           gem install coveralls-lcov
           # for HTML validation
           apt-get install -y tidy
