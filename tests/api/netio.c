@@ -64,7 +64,7 @@ static int open_tmpfile(void) {
 
   tmp_path = "/tmp/netio-test.dat";
   fd = open(tmp_path, O_RDWR|O_CREAT, 0666);
-  fail_unless(fd >= 0, "Failed to open '%s': %s", tmp_path, strerror(errno));  
+  ck_assert_msg(fd >= 0, "Failed to open '%s': %s", tmp_path, strerror(errno));  
   tmp_fd = fd;
 
   return fd;
@@ -103,36 +103,36 @@ START_TEST (netio_open_test) {
   int fd = -1;
 
   nstrm = pr_netio_open(NULL, PR_NETIO_STRM_CTRL, fd, PR_NETIO_IO_RD);
-  fail_unless(nstrm == NULL, "Failed to handle null pool argument");
-  fail_unless(errno == EINVAL, "Failed to set errno to EINVAL, got %s (%d)",
+  ck_assert_msg(nstrm == NULL, "Failed to handle null pool argument");
+  ck_assert_msg(errno == EINVAL, "Failed to set errno to EINVAL, got %s (%d)",
     strerror(errno), errno);
 
   nstrm = pr_netio_open(p, 7777, fd, PR_NETIO_IO_RD);
-  fail_unless(nstrm == NULL, "Failed to handle unknown stream type argument");
-  fail_unless(errno == EINVAL, "Failed to set errno to EINVAL, got %s (%d)",
+  ck_assert_msg(nstrm == NULL, "Failed to handle unknown stream type argument");
+  ck_assert_msg(errno == EINVAL, "Failed to set errno to EINVAL, got %s (%d)",
     strerror(errno), errno);
 
   /* open/close CTRL stream */
   nstrm = pr_netio_open(p, PR_NETIO_STRM_CTRL, fd, PR_NETIO_IO_RD);
-  fail_unless(nstrm != NULL, "Failed to open ctrl stream on fd %d: %s", fd,
+  ck_assert_msg(nstrm != NULL, "Failed to open ctrl stream on fd %d: %s", fd,
     strerror(errno));
-  fail_unless(nstrm->strm_netio != NULL,
+  ck_assert_msg(nstrm->strm_netio != NULL,
     "Failed to assign owning NetIO to stream");
   pr_netio_close(nstrm);
 
   /* open/close DATA stream */
   nstrm = pr_netio_open(p, PR_NETIO_STRM_DATA, fd, PR_NETIO_IO_WR);
-  fail_unless(nstrm != NULL, "Failed to open data stream on fd %d: %s", fd,
+  ck_assert_msg(nstrm != NULL, "Failed to open data stream on fd %d: %s", fd,
     strerror(errno));
-  fail_unless(nstrm->strm_netio != NULL,
+  ck_assert_msg(nstrm->strm_netio != NULL,
     "Failed to assign owning NetIO to stream");
   pr_netio_close(nstrm);
 
   /* open/close OTHR stream */
   nstrm = pr_netio_open(p, PR_NETIO_STRM_OTHR, fd, PR_NETIO_IO_WR);
-  fail_unless(nstrm != NULL, "Failed to open othr stream on fd %d: %s", fd,
+  ck_assert_msg(nstrm != NULL, "Failed to open othr stream on fd %d: %s", fd,
     strerror(errno));
-  fail_unless(nstrm->strm_netio != NULL,
+  ck_assert_msg(nstrm->strm_netio != NULL,
     "Failed to assign owning NetIO to stream");
   pr_netio_close(nstrm);
 }
@@ -143,35 +143,35 @@ START_TEST (netio_postopen_test) {
   int fd = -1, res;
 
   res = pr_netio_postopen(NULL);
-  fail_unless(res < 0, "Failed to handle null argument");
-  fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+  ck_assert_msg(res < 0, "Failed to handle null argument");
+  ck_assert_msg(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
     strerror(errno), errno);
 
   /* open/postopen/close CTRL stream */
   nstrm = pr_netio_open(p, PR_NETIO_STRM_CTRL, fd, PR_NETIO_IO_RD);
-  fail_unless(nstrm != NULL, "Failed to open stream on fd %d: %s", fd,
+  ck_assert_msg(nstrm != NULL, "Failed to open stream on fd %d: %s", fd,
     strerror(errno));
 
   res = pr_netio_postopen(nstrm);
-  fail_unless(res == 0, "Failed to post-open ctrl stream: %s", strerror(errno));
+  ck_assert_msg(res == 0, "Failed to post-open ctrl stream: %s", strerror(errno));
   (void) pr_netio_close(nstrm);
 
   /* open/postopen/close DATA stream */
   nstrm = pr_netio_open(p, PR_NETIO_STRM_DATA, fd, PR_NETIO_IO_RD);
-  fail_unless(nstrm != NULL, "Failed to open stream on fd %d: %s", fd,
+  ck_assert_msg(nstrm != NULL, "Failed to open stream on fd %d: %s", fd,
     strerror(errno));
 
   res = pr_netio_postopen(nstrm);
-  fail_unless(res == 0, "Failed to post-open data stream: %s", strerror(errno));
+  ck_assert_msg(res == 0, "Failed to post-open data stream: %s", strerror(errno));
   (void) pr_netio_close(nstrm);
 
   /* open/postopen/close OTHR stream */
   nstrm = pr_netio_open(p, PR_NETIO_STRM_OTHR, fd, PR_NETIO_IO_RD);
-  fail_unless(nstrm != NULL, "Failed to open stream on fd %d: %s", fd,
+  ck_assert_msg(nstrm != NULL, "Failed to open stream on fd %d: %s", fd,
     strerror(errno));
 
   res = pr_netio_postopen(nstrm);
-  fail_unless(res == 0, "Failed to post-open othr stream: %s", strerror(errno));
+  ck_assert_msg(res == 0, "Failed to post-open othr stream: %s", strerror(errno));
   (void) pr_netio_close(nstrm);
 }
 END_TEST
@@ -181,8 +181,8 @@ START_TEST (netio_close_test) {
   int res, fd = -1;
 
   res = pr_netio_close(NULL);
-  fail_unless(res == -1, "Failed to handle null stream argument");
-  fail_unless(errno == EINVAL, "Failed to set errno to EINVAL, got %s (%d)",
+  ck_assert_msg(res == -1, "Failed to handle null stream argument");
+  ck_assert_msg(errno == EINVAL, "Failed to set errno to EINVAL, got %s (%d)",
     strerror(errno), errno);
 
   /* Open/close CTRL stream */
@@ -190,28 +190,28 @@ START_TEST (netio_close_test) {
   nstrm->strm_type = 7777;
 
   res = pr_netio_close(nstrm);
-  fail_unless(res == -1, "Failed to handle unknown stream type argument");
-  fail_unless(errno == EPERM, "Failed to set errno to EPERM, got %s (%d)",
+  ck_assert_msg(res == -1, "Failed to handle unknown stream type argument");
+  ck_assert_msg(errno == EPERM, "Failed to set errno to EPERM, got %s (%d)",
     strerror(errno), errno);
 
   nstrm->strm_type = PR_NETIO_STRM_CTRL;
   res = pr_netio_close(nstrm);
-  fail_unless(res == -1, "Failed to handle bad file descriptor");
-  fail_unless(errno == EBADF, "Failed to set errno to EBADF, got %s (%d)",
+  ck_assert_msg(res == -1, "Failed to handle bad file descriptor");
+  ck_assert_msg(errno == EBADF, "Failed to set errno to EBADF, got %s (%d)",
     strerror(errno), errno);
 
   /* Open/close DATA stream */
   nstrm = pr_netio_open(p, PR_NETIO_STRM_DATA, fd, PR_NETIO_IO_RD);
   res = pr_netio_close(nstrm);
-  fail_unless(res == -1, "Failed to handle bad file descriptor");
-  fail_unless(errno == EBADF, "Failed to set errno to EBADF, got %s (%d)",
+  ck_assert_msg(res == -1, "Failed to handle bad file descriptor");
+  ck_assert_msg(errno == EBADF, "Failed to set errno to EBADF, got %s (%d)",
     strerror(errno), errno);
 
   /* Open/close OTHR stream */
   nstrm = pr_netio_open(p, PR_NETIO_STRM_OTHR, fd, PR_NETIO_IO_RD);
   res = pr_netio_close(nstrm);
-  fail_unless(res == -1, "Failed to handle bad file descriptor");
-  fail_unless(errno == EBADF, "Failed to set errno to EBADF, got %s (%d)",
+  ck_assert_msg(res == -1, "Failed to handle bad file descriptor");
+  ck_assert_msg(errno == EBADF, "Failed to set errno to EBADF, got %s (%d)",
     strerror(errno), errno);
 }
 END_TEST
@@ -222,8 +222,8 @@ START_TEST (netio_lingering_close_test) {
   long linger = 0L;
 
   res = pr_netio_lingering_close(NULL, linger);
-  fail_unless(res == -1, "Failed to handle null stream argument");
-  fail_unless(errno == EINVAL, "Failed to set errno to EINVAL, got %s (%d)",
+  ck_assert_msg(res == -1, "Failed to handle null stream argument");
+  ck_assert_msg(errno == EINVAL, "Failed to set errno to EINVAL, got %s (%d)",
     strerror(errno), errno);
 
   /* Open/close CTRL stream */
@@ -231,23 +231,23 @@ START_TEST (netio_lingering_close_test) {
   nstrm->strm_type = 7777;
 
   res = pr_netio_lingering_close(nstrm, linger);
-  fail_unless(res < 0, "Failed to handle unknown stream type argument");
-  fail_unless(errno == EPERM, "Failed to set errno to EPERM, got %s (%d)",
+  ck_assert_msg(res < 0, "Failed to handle unknown stream type argument");
+  ck_assert_msg(errno == EPERM, "Failed to set errno to EPERM, got %s (%d)",
     strerror(errno), errno);
 
   nstrm->strm_type = PR_NETIO_STRM_CTRL;
   res = pr_netio_lingering_close(nstrm, linger);
-  fail_unless(res == 0, "Failed to close stream: %s", strerror(errno));
+  ck_assert_msg(res == 0, "Failed to close stream: %s", strerror(errno));
 
   /* Open/close DATA stream */
   nstrm = pr_netio_open(p, PR_NETIO_STRM_DATA, fd, PR_NETIO_IO_RD);
   res = pr_netio_lingering_close(nstrm, linger);
-  fail_unless(res == 0, "Failed to close stream: %s", strerror(errno));
+  ck_assert_msg(res == 0, "Failed to close stream: %s", strerror(errno));
 
   /* Open/close OTHR stream */
   nstrm = pr_netio_open(p, PR_NETIO_STRM_OTHR, fd, PR_NETIO_IO_RD);
   res = pr_netio_lingering_close(nstrm, linger);
-  fail_unless(res == 0, "Failed to close stream: %s", strerror(errno));
+  ck_assert_msg(res == 0, "Failed to close stream: %s", strerror(errno));
 }
 END_TEST
 
@@ -256,8 +256,8 @@ START_TEST (netio_reopen_test) {
   int res, fd = -1;
 
   nstrm2 = pr_netio_reopen(NULL, fd, PR_NETIO_IO_RD);
-  fail_unless(nstrm2 == NULL, "Failed to handle null stream argument");
-  fail_unless(errno == EINVAL, "Failed to set errno to EINVAL, got %s (%d)",
+  ck_assert_msg(nstrm2 == NULL, "Failed to handle null stream argument");
+  ck_assert_msg(errno == EINVAL, "Failed to set errno to EINVAL, got %s (%d)",
     strerror(errno), errno);
 
   /* Open/reopen/close CTRL stream */
@@ -265,35 +265,35 @@ START_TEST (netio_reopen_test) {
   nstrm->strm_type = 7777;
 
   nstrm2 = pr_netio_reopen(nstrm, fd, PR_NETIO_IO_RD);
-  fail_unless(nstrm2 == NULL, "Failed to handle unknown stream type argument");
-  fail_unless(errno == EPERM, "Failed to set errno to EPERM, got %s (%d)",
+  ck_assert_msg(nstrm2 == NULL, "Failed to handle unknown stream type argument");
+  ck_assert_msg(errno == EPERM, "Failed to set errno to EPERM, got %s (%d)",
     strerror(errno), errno);
 
   nstrm->strm_type = PR_NETIO_STRM_CTRL;
   nstrm2 = pr_netio_reopen(nstrm, fd, PR_NETIO_IO_RD);
-  fail_unless(nstrm2 != NULL, "Failed to reopen ctrl stream: %s",
+  ck_assert_msg(nstrm2 != NULL, "Failed to reopen ctrl stream: %s",
     strerror(errno));
 
   /* Open/reopen/close DATA stream */
   nstrm = pr_netio_open(p, PR_NETIO_STRM_DATA, fd, PR_NETIO_IO_RD);
   nstrm2 = pr_netio_reopen(nstrm, fd, PR_NETIO_IO_RD);
-  fail_unless(nstrm2 != NULL, "Failed to reopen data stream: %s",
+  ck_assert_msg(nstrm2 != NULL, "Failed to reopen data stream: %s",
     strerror(errno));
 
   res = pr_netio_close(nstrm);
-  fail_unless(res == -1, "Failed to handle bad file descriptor");
-  fail_unless(errno == EBADF, "Failed to set errno to EBADF, got %s (%d)",
+  ck_assert_msg(res == -1, "Failed to handle bad file descriptor");
+  ck_assert_msg(errno == EBADF, "Failed to set errno to EBADF, got %s (%d)",
     strerror(errno), errno);
 
   /* Open/reopen/close OTHR stream */
   nstrm = pr_netio_open(p, PR_NETIO_STRM_OTHR, fd, PR_NETIO_IO_RD);
   nstrm2 = pr_netio_reopen(nstrm, fd, PR_NETIO_IO_RD);
-  fail_unless(nstrm2 != NULL, "Failed to reopen othr stream: %s",
+  ck_assert_msg(nstrm2 != NULL, "Failed to reopen othr stream: %s",
     strerror(errno));
 
   res = pr_netio_close(nstrm);
-  fail_unless(res == -1, "Failed to handle bad file descriptor");
-  fail_unless(errno == EBADF, "Failed to set errno to EBADF, got %s (%d)",
+  ck_assert_msg(res == -1, "Failed to handle bad file descriptor");
+  ck_assert_msg(errno == EBADF, "Failed to set errno to EBADF, got %s (%d)",
     strerror(errno), errno);
 }
 END_TEST
@@ -303,14 +303,14 @@ START_TEST (netio_buffer_alloc_test) {
   pr_netio_stream_t *nstrm;
 
   pbuf = pr_netio_buffer_alloc(NULL);
-  fail_unless(pbuf == NULL, "Failed to handle null arguments");
-  fail_unless(errno == EINVAL, "Failed to set errno to EINVAL, got %s (%d)",
+  ck_assert_msg(pbuf == NULL, "Failed to handle null arguments");
+  ck_assert_msg(errno == EINVAL, "Failed to set errno to EINVAL, got %s (%d)",
     strerror(errno), errno);
 
   nstrm = pr_netio_open(p, PR_NETIO_STRM_CTRL, -1, PR_NETIO_IO_RD);
 
   pbuf = pr_netio_buffer_alloc(nstrm);
-  fail_unless(pbuf != NULL, "Failed to allocate buffer: %s", strerror(errno));
+  ck_assert_msg(pbuf != NULL, "Failed to allocate buffer: %s", strerror(errno));
 
   pr_netio_close(nstrm);
 }
@@ -321,8 +321,8 @@ START_TEST (netio_telnet_gets_args_test) {
   pr_netio_stream_t *in, *out;
 
   res = pr_netio_telnet_gets(NULL, 0, NULL, NULL);
-  fail_unless(res == NULL, "Failed to handle null arguments");
-  fail_unless(errno == EINVAL, "Failed to set errno to EINVAL, got %s (%d)",
+  ck_assert_msg(res == NULL, "Failed to handle null arguments");
+  ck_assert_msg(errno == EINVAL, "Failed to set errno to EINVAL, got %s (%d)",
     strerror(errno), errno);
 
   buf = "";
@@ -330,19 +330,19 @@ START_TEST (netio_telnet_gets_args_test) {
   out = pr_netio_open(p, PR_NETIO_STRM_CTRL, -1, PR_NETIO_IO_WR);
 
   res = pr_netio_telnet_gets(buf, 0, in, out);
-  fail_unless(res == NULL,
+  ck_assert_msg(res == NULL,
     "Failed to handle zero-length buffer length argument");
-  fail_unless(errno == EINVAL, "Failed to set errno to EINVAL, got %s (%d)",
+  ck_assert_msg(errno == EINVAL, "Failed to set errno to EINVAL, got %s (%d)",
     strerror(errno), errno);
 
   res = pr_netio_telnet_gets(buf, 1, NULL, out);
-  fail_unless(res == NULL, "Failed to handle null input stream argument");
-  fail_unless(errno == EINVAL, "Failed to set errno to EINVAL, got %s (%d)",
+  ck_assert_msg(res == NULL, "Failed to handle null input stream argument");
+  ck_assert_msg(errno == EINVAL, "Failed to set errno to EINVAL, got %s (%d)",
     strerror(errno), errno);
 
   res = pr_netio_telnet_gets(buf, 1, in, NULL);
-  fail_unless(res == NULL, "Failed to handle null output stream argument");
-  fail_unless(errno == EINVAL, "Failed to set errno to EINVAL, got %s (%d)",
+  ck_assert_msg(res == NULL, "Failed to handle null output stream argument");
+  ck_assert_msg(errno == EINVAL, "Failed to set errno to EINVAL, got %s (%d)",
     strerror(errno), errno);
 
   pr_netio_close(in);
@@ -372,11 +372,11 @@ START_TEST (netio_telnet_gets_single_line_test) {
   res = pr_netio_telnet_gets(buf, sizeof(buf)-1, in, out);
   xerrno = errno;
 
-  fail_unless(res != NULL, "Failed to get string from stream: (%d) %s",
+  ck_assert_msg(res != NULL, "Failed to get string from stream: (%d) %s",
     xerrno, strerror(xerrno));
-  fail_unless(strcmp(buf, cmd) == 0, "Expected string '%s', got '%s'", cmd,
+  ck_assert_msg(strcmp(buf, cmd) == 0, "Expected string '%s', got '%s'", cmd,
     buf);
-  fail_unless(pbuf->remaining == (size_t) xfer_bufsz,
+  ck_assert_msg(pbuf->remaining == (size_t) xfer_bufsz,
     "Expected %d remaining bytes, got %lu", xfer_bufsz,
     (unsigned long) pbuf->remaining);
 
@@ -410,21 +410,21 @@ START_TEST (netio_telnet_gets_multi_line_test) {
   res = pr_netio_telnet_gets(buf, sizeof(buf)-1, in, out);
   xerrno = errno;
 
-  fail_unless(res != NULL, "Failed to get string from stream: (%d) %s",
+  ck_assert_msg(res != NULL, "Failed to get string from stream: (%d) %s",
     xerrno, strerror(xerrno));
-  fail_unless(strcmp(buf, first_cmd) == 0, "Expected string '%s', got '%s'",
+  ck_assert_msg(strcmp(buf, first_cmd) == 0, "Expected string '%s', got '%s'",
     first_cmd, buf);
 
   memset(buf, '\0', sizeof(buf));
   res = pr_netio_telnet_gets(buf, sizeof(buf)-1, in, out);
   xerrno = errno;
 
-  fail_unless(res != NULL, "Failed to get string from stream: (%d) %s",
+  ck_assert_msg(res != NULL, "Failed to get string from stream: (%d) %s",
     xerrno, strerror(xerrno));
-  fail_unless(strcmp(buf, second_cmd) == 0, "Expected string '%s', got '%s'",
+  ck_assert_msg(strcmp(buf, second_cmd) == 0, "Expected string '%s', got '%s'",
     second_cmd, buf);
 
-  fail_unless(pbuf->remaining == (size_t) xfer_bufsz,
+  ck_assert_msg(pbuf->remaining == (size_t) xfer_bufsz,
     "Expected %d remaining bytes, got %lu", xfer_bufsz,
     (unsigned long) pbuf->remaining);
 
@@ -455,8 +455,8 @@ START_TEST (netio_telnet_gets_no_newline_test) {
   res = pr_netio_telnet_gets(buf, sizeof(buf)-1, in, out);
   xerrno = errno;
 
-  fail_unless(res == NULL, "Read in string unexpectedly, got '%s'", buf);
-  fail_unless(xerrno == E2BIG, "Failed to set errno to E2BIG, got (%d) %s",
+  ck_assert_msg(res == NULL, "Read in string unexpectedly, got '%s'", buf);
+  ck_assert_msg(xerrno == E2BIG, "Failed to set errno to E2BIG, got (%d) %s",
     xerrno, strerror(xerrno));
 
   pr_netio_close(in);
@@ -493,9 +493,9 @@ START_TEST (netio_telnet_gets_telnet_will_test) {
 
   pr_netio_close(in);
 
-  fail_unless(res != NULL, "Failed to get string from stream: (%d) %s",
+  ck_assert_msg(res != NULL, "Failed to get string from stream: (%d) %s",
     xerrno, strerror(xerrno));
-  fail_unless(strcmp(buf, cmd) == 0, "Expected string '%s', got '%s'", cmd,
+  ck_assert_msg(strcmp(buf, cmd) == 0, "Expected string '%s', got '%s'", cmd,
     buf);
 
   /* Rewind the output stream fd. */
@@ -503,13 +503,13 @@ START_TEST (netio_telnet_gets_telnet_will_test) {
   len = read(out_fd, buf, sizeof(buf)-1);
   pr_netio_close(out);
 
-  fail_unless(len == 3, "Expected to read 3 bytes from output stream, got %d",
+  ck_assert_msg(len == 3, "Expected to read 3 bytes from output stream, got %d",
     len);
-  fail_unless(buf[0] == (char) TELNET_IAC, "Expected IAC at index 0, got %d",
+  ck_assert_msg(buf[0] == (char) TELNET_IAC, "Expected IAC at index 0, got %d",
     buf[0]);
-  fail_unless(buf[1] == (char) TELNET_DONT, "Expected DONT at index 1, got %d",
+  ck_assert_msg(buf[1] == (char) TELNET_DONT, "Expected DONT at index 1, got %d",
     buf[1]);
-  fail_unless(buf[2] == telnet_opt, "Expected opt '%c' at index 2, got %c",
+  ck_assert_msg(buf[2] == telnet_opt, "Expected opt '%c' at index 2, got %c",
     telnet_opt, buf[2]);
 
   test_cleanup();
@@ -541,15 +541,15 @@ START_TEST (netio_telnet_gets_telnet_bare_will_test) {
   res = pr_netio_telnet_gets(buf, sizeof(buf)-1, in, out);
   xerrno = errno;
 
-  fail_unless(res != NULL, "Failed to get string from stream: (%d) %s",
+  ck_assert_msg(res != NULL, "Failed to get string from stream: (%d) %s",
     xerrno, strerror(xerrno));
-  fail_unless(strncmp(buf, cmd, 7) == 0, "Expected string '%*s', got '%*s'",
+  ck_assert_msg(strncmp(buf, cmd, 7) == 0, "Expected string '%*s', got '%*s'",
     7, cmd, 7, buf);
-  fail_unless(buf[7] == (char) TELNET_WILL, "Expected WILL at index 7, got %d",
+  ck_assert_msg(buf[7] == (char) TELNET_WILL, "Expected WILL at index 7, got %d",
     buf[7]);
-  fail_unless(buf[8] == telnet_opt, "Expected Telnet opt %c at index 8, got %d",
+  ck_assert_msg(buf[8] == telnet_opt, "Expected Telnet opt %c at index 8, got %d",
     telnet_opt, buf[8]);
-  fail_unless(strcmp(buf + 9, cmd + 7) == 0, "Expected string '%s', got '%s'",
+  ck_assert_msg(strcmp(buf + 9, cmd + 7) == 0, "Expected string '%s', got '%s'",
     cmd + 7, buf + 9);
 
   pr_netio_close(in);
@@ -583,9 +583,9 @@ START_TEST (netio_telnet_gets_telnet_will_multi_read_test) {
   res = pr_netio_telnet_gets(buf, sizeof(buf)-1, in, out);
   xerrno = errno;
 
-  fail_unless(res != NULL, "Failed to get string from stream: (%d) %s",
+  ck_assert_msg(res != NULL, "Failed to get string from stream: (%d) %s",
     xerrno, strerror(xerrno));
-  fail_unless(strncmp(buf, cmd, 7) == 0, "Expected string '%*s', got '%*s'",
+  ck_assert_msg(strncmp(buf, cmd, 7) == 0, "Expected string '%*s', got '%*s'",
     7, cmd, 7, buf);
 
   /* Fill up the input stream's buffer with the rest of the Telnet WILL
@@ -602,9 +602,9 @@ START_TEST (netio_telnet_gets_telnet_will_multi_read_test) {
   res = pr_netio_telnet_gets(buf + 7, sizeof(buf)-8, in, out);
   xerrno = errno;
 
-  fail_unless(res != NULL, "Failed to get string from stream: (%d) %s",
+  ck_assert_msg(res != NULL, "Failed to get string from stream: (%d) %s",
     xerrno, strerror(xerrno));
-  fail_unless(strcmp(buf, cmd) == 0, "Expected string '%s', got '%s'",
+  ck_assert_msg(strcmp(buf, cmd) == 0, "Expected string '%s', got '%s'",
     cmd, buf);
 
   pr_netio_close(in);
@@ -614,13 +614,13 @@ START_TEST (netio_telnet_gets_telnet_will_multi_read_test) {
   len = read(out_fd, buf, sizeof(buf)-1);
   pr_netio_close(out);
 
-  fail_unless(len == 3, "Expected to read 3 bytes from output stream, got %d",
+  ck_assert_msg(len == 3, "Expected to read 3 bytes from output stream, got %d",
     len);
-  fail_unless(buf[0] == (char) TELNET_IAC, "Expected IAC at index 0, got %d",
+  ck_assert_msg(buf[0] == (char) TELNET_IAC, "Expected IAC at index 0, got %d",
     buf[0]);
-  fail_unless(buf[1] == (char) TELNET_DONT, "Expected DONT at index 1, got %d",
+  ck_assert_msg(buf[1] == (char) TELNET_DONT, "Expected DONT at index 1, got %d",
     buf[1]);
-  fail_unless(buf[2] == telnet_opt, "Expected %c at index 2, got %d",
+  ck_assert_msg(buf[2] == telnet_opt, "Expected %c at index 2, got %d",
     telnet_opt, buf[2]);
 
   test_cleanup();
@@ -656,9 +656,9 @@ START_TEST (netio_telnet_gets_telnet_wont_test) {
 
   pr_netio_close(in);
 
-  fail_unless(res != NULL, "Failed to get string from stream: (%d) %s",
+  ck_assert_msg(res != NULL, "Failed to get string from stream: (%d) %s",
     xerrno, strerror(xerrno));
-  fail_unless(strcmp(buf, cmd) == 0, "Expected string '%s', got '%s'", cmd,
+  ck_assert_msg(strcmp(buf, cmd) == 0, "Expected string '%s', got '%s'", cmd,
     buf);
 
   /* Rewind the output stream fd. */
@@ -666,13 +666,13 @@ START_TEST (netio_telnet_gets_telnet_wont_test) {
   len = read(out_fd, buf, sizeof(buf)-1);
   pr_netio_close(out);
 
-  fail_unless(len == 3, "Expected to read 3 bytes from output stream, got %d",
+  ck_assert_msg(len == 3, "Expected to read 3 bytes from output stream, got %d",
     len);
-  fail_unless(buf[0] == (char) TELNET_IAC, "Expected IAC at index 0, got %d",
+  ck_assert_msg(buf[0] == (char) TELNET_IAC, "Expected IAC at index 0, got %d",
     buf[0]);
-  fail_unless(buf[1] == (char) TELNET_DONT, "Expected DONT at index 1, got %d",
+  ck_assert_msg(buf[1] == (char) TELNET_DONT, "Expected DONT at index 1, got %d",
     buf[1]);
-  fail_unless(buf[2] == telnet_opt, "Expected opt '%c' at index 2, got %c",
+  ck_assert_msg(buf[2] == telnet_opt, "Expected opt '%c' at index 2, got %c",
     telnet_opt, buf[2]);
 
   test_cleanup();
@@ -704,15 +704,15 @@ START_TEST (netio_telnet_gets_telnet_bare_wont_test) {
   res = pr_netio_telnet_gets(buf, sizeof(buf)-1, in, out);
   xerrno = errno;
 
-  fail_unless(res != NULL, "Failed to get string from stream: (%d) %s",
+  ck_assert_msg(res != NULL, "Failed to get string from stream: (%d) %s",
     xerrno, strerror(xerrno));
-  fail_unless(strncmp(buf, cmd, 7) == 0, "Expected string '%*s', got '%*s'",
+  ck_assert_msg(strncmp(buf, cmd, 7) == 0, "Expected string '%*s', got '%*s'",
     7, cmd, 7, buf);
-  fail_unless(buf[7] == (char) TELNET_WONT, "Expected WONT at index 7, got %d",
+  ck_assert_msg(buf[7] == (char) TELNET_WONT, "Expected WONT at index 7, got %d",
     buf[7]);
-  fail_unless(buf[8] == telnet_opt, "Expected Telnet opt %c at index 8, got %d",
+  ck_assert_msg(buf[8] == telnet_opt, "Expected Telnet opt %c at index 8, got %d",
     telnet_opt, buf[8]);
-  fail_unless(strcmp(buf + 9, cmd + 7) == 0, "Expected string '%s', got '%s'",
+  ck_assert_msg(strcmp(buf + 9, cmd + 7) == 0, "Expected string '%s', got '%s'",
     cmd + 7, buf + 9);
 
   pr_netio_close(in);
@@ -749,9 +749,9 @@ START_TEST (netio_telnet_gets_telnet_do_test) {
 
   pr_netio_close(in);
 
-  fail_unless(res != NULL, "Failed to get string from stream: (%d) %s",
+  ck_assert_msg(res != NULL, "Failed to get string from stream: (%d) %s",
     xerrno, strerror(xerrno));
-  fail_unless(strcmp(buf, cmd) == 0, "Expected string '%s', got '%s'", cmd,
+  ck_assert_msg(strcmp(buf, cmd) == 0, "Expected string '%s', got '%s'", cmd,
     buf);
 
   /* Rewind the output stream fd. */
@@ -759,13 +759,13 @@ START_TEST (netio_telnet_gets_telnet_do_test) {
   len = read(out_fd, buf, sizeof(buf)-1);
   pr_netio_close(out);
 
-  fail_unless(len == 3, "Expected to read 3 bytes from output stream, got %d",
+  ck_assert_msg(len == 3, "Expected to read 3 bytes from output stream, got %d",
     len);
-  fail_unless(buf[0] == (char) TELNET_IAC, "Expected IAC at index 0, got %d",
+  ck_assert_msg(buf[0] == (char) TELNET_IAC, "Expected IAC at index 0, got %d",
     buf[0]);
-  fail_unless(buf[1] == (char) TELNET_WONT, "Expected WONT at index 1, got %d",
+  ck_assert_msg(buf[1] == (char) TELNET_WONT, "Expected WONT at index 1, got %d",
     buf[1]);
-  fail_unless(buf[2] == telnet_opt, "Expected opt '%c' at index 2, got %c",
+  ck_assert_msg(buf[2] == telnet_opt, "Expected opt '%c' at index 2, got %c",
     telnet_opt, buf[2]);
 
   test_cleanup();
@@ -797,15 +797,15 @@ START_TEST (netio_telnet_gets_telnet_bare_do_test) {
   res = pr_netio_telnet_gets(buf, sizeof(buf)-1, in, out);
   xerrno = errno;
 
-  fail_unless(res != NULL, "Failed to get string from stream: (%d) %s",
+  ck_assert_msg(res != NULL, "Failed to get string from stream: (%d) %s",
     xerrno, strerror(xerrno));
-  fail_unless(strncmp(buf, cmd, 7) == 0, "Expected string '%*s', got '%*s'",
+  ck_assert_msg(strncmp(buf, cmd, 7) == 0, "Expected string '%*s', got '%*s'",
     7, cmd, 7, buf);
-  fail_unless(buf[7] == (char) TELNET_DO, "Expected DO at index 7, got %d",
+  ck_assert_msg(buf[7] == (char) TELNET_DO, "Expected DO at index 7, got %d",
     buf[7]);
-  fail_unless(buf[8] == telnet_opt, "Expected Telnet opt %c at index 8, got %d",
+  ck_assert_msg(buf[8] == telnet_opt, "Expected Telnet opt %c at index 8, got %d",
     telnet_opt, buf[8]);
-  fail_unless(strcmp(buf + 9, cmd + 7) == 0, "Expected string '%s', got '%s'",
+  ck_assert_msg(strcmp(buf + 9, cmd + 7) == 0, "Expected string '%s', got '%s'",
     cmd + 7, buf + 9);
 
   pr_netio_close(in);
@@ -842,9 +842,9 @@ START_TEST (netio_telnet_gets_telnet_dont_test) {
 
   pr_netio_close(in);
 
-  fail_unless(res != NULL, "Failed to get string from stream: (%d) %s",
+  ck_assert_msg(res != NULL, "Failed to get string from stream: (%d) %s",
     xerrno, strerror(xerrno));
-  fail_unless(strcmp(buf, cmd) == 0, "Expected string '%s', got '%s'", cmd,
+  ck_assert_msg(strcmp(buf, cmd) == 0, "Expected string '%s', got '%s'", cmd,
     buf);
 
   /* Rewind the output stream fd. */
@@ -852,13 +852,13 @@ START_TEST (netio_telnet_gets_telnet_dont_test) {
   len = read(out_fd, buf, sizeof(buf)-1);
   pr_netio_close(out);
 
-  fail_unless(len == 3, "Expected to read 3 bytes from output stream, got %d",
+  ck_assert_msg(len == 3, "Expected to read 3 bytes from output stream, got %d",
     len);
-  fail_unless(buf[0] == (char) TELNET_IAC, "Expected IAC at index 0, got %d",
+  ck_assert_msg(buf[0] == (char) TELNET_IAC, "Expected IAC at index 0, got %d",
     buf[0]);
-  fail_unless(buf[1] == (char) TELNET_WONT, "Expected WONT at index 1, got %d",
+  ck_assert_msg(buf[1] == (char) TELNET_WONT, "Expected WONT at index 1, got %d",
     buf[1]);
-  fail_unless(buf[2] == telnet_opt, "Expected opt '%c' at index 2, got %c",
+  ck_assert_msg(buf[2] == telnet_opt, "Expected opt '%c' at index 2, got %c",
     telnet_opt, buf[2]);
 
   test_cleanup();
@@ -890,15 +890,15 @@ START_TEST (netio_telnet_gets_telnet_bare_dont_test) {
   res = pr_netio_telnet_gets(buf, sizeof(buf)-1, in, out);
   xerrno = errno;
 
-  fail_unless(res != NULL, "Failed to get string from stream: (%d) %s",
+  ck_assert_msg(res != NULL, "Failed to get string from stream: (%d) %s",
     xerrno, strerror(xerrno));
-  fail_unless(strncmp(buf, cmd, 7) == 0, "Expected string '%*s', got '%*s'",
+  ck_assert_msg(strncmp(buf, cmd, 7) == 0, "Expected string '%*s', got '%*s'",
     7, cmd, 7, buf);
-  fail_unless(buf[7] == (char) TELNET_DONT, "Expected DONT at index 7, got %d",
+  ck_assert_msg(buf[7] == (char) TELNET_DONT, "Expected DONT at index 7, got %d",
     buf[7]);
-  fail_unless(buf[8] == telnet_opt, "Expected Telnet opt %c at index 8, got %d",
+  ck_assert_msg(buf[8] == telnet_opt, "Expected Telnet opt %c at index 8, got %d",
     telnet_opt, buf[8]);
-  fail_unless(strcmp(buf + 9, cmd + 7) == 0, "Expected string '%s', got '%s'",
+  ck_assert_msg(strcmp(buf + 9, cmd + 7) == 0, "Expected string '%s', got '%s'",
     cmd + 7, buf + 9);
 
   pr_netio_close(in);
@@ -930,9 +930,9 @@ START_TEST (netio_telnet_gets_telnet_ip_test) {
   res = pr_netio_telnet_gets(buf, sizeof(buf)-1, in, out);
   xerrno = errno;
 
-  fail_unless(res != NULL, "Failed to get string from stream: (%d) %s",
+  ck_assert_msg(res != NULL, "Failed to get string from stream: (%d) %s",
     xerrno, strerror(xerrno));
-  fail_unless(strcmp(buf, cmd) == 0, "Expected string '%s', got '%s'", cmd,
+  ck_assert_msg(strcmp(buf, cmd) == 0, "Expected string '%s', got '%s'", cmd,
     buf);
 
   pr_netio_close(in);
@@ -963,13 +963,13 @@ START_TEST (netio_telnet_gets_telnet_bare_ip_test) {
   res = pr_netio_telnet_gets(buf, sizeof(buf)-1, in, out);
   xerrno = errno;
 
-  fail_unless(res != NULL, "Failed to get string from stream: (%d) %s",
+  ck_assert_msg(res != NULL, "Failed to get string from stream: (%d) %s",
     xerrno, strerror(xerrno));
-  fail_unless(strncmp(buf, cmd, 7) == 0, "Expected string '%*s', got '%*s'",
+  ck_assert_msg(strncmp(buf, cmd, 7) == 0, "Expected string '%*s', got '%*s'",
     7, cmd, 7, buf);
-  fail_unless(buf[7] == (char) TELNET_IP, "Expected IP at index 7, got %d",
+  ck_assert_msg(buf[7] == (char) TELNET_IP, "Expected IP at index 7, got %d",
     buf[7]);
-  fail_unless(strcmp(buf + 8, cmd + 7) == 0, "Expected string '%s', got '%s'",
+  ck_assert_msg(strcmp(buf + 8, cmd + 7) == 0, "Expected string '%s', got '%s'",
     cmd + 7, buf + 8);
 
   pr_netio_close(in);
@@ -1001,9 +1001,9 @@ START_TEST (netio_telnet_gets_telnet_dm_test) {
   res = pr_netio_telnet_gets(buf, sizeof(buf)-1, in, out);
   xerrno = errno;
 
-  fail_unless(res != NULL, "Failed to get string from stream: (%d) %s",
+  ck_assert_msg(res != NULL, "Failed to get string from stream: (%d) %s",
     xerrno, strerror(xerrno));
-  fail_unless(strcmp(buf, cmd) == 0, "Expected string '%s', got '%s'", cmd,
+  ck_assert_msg(strcmp(buf, cmd) == 0, "Expected string '%s', got '%s'", cmd,
     buf);
 
   pr_netio_close(in);
@@ -1034,13 +1034,13 @@ START_TEST (netio_telnet_gets_telnet_bare_dm_test) {
   res = pr_netio_telnet_gets(buf, sizeof(buf)-1, in, out);
   xerrno = errno;
 
-  fail_unless(res != NULL, "Failed to get string from stream: (%d) %s",
+  ck_assert_msg(res != NULL, "Failed to get string from stream: (%d) %s",
     xerrno, strerror(xerrno));
-  fail_unless(strncmp(buf, cmd, 7) == 0, "Expected string '%*s', got '%*s'",
+  ck_assert_msg(strncmp(buf, cmd, 7) == 0, "Expected string '%*s', got '%*s'",
     7, cmd, 7, buf);
-  fail_unless(buf[7] == (char) TELNET_DM, "Expected DM at index 7, got %d",
+  ck_assert_msg(buf[7] == (char) TELNET_DM, "Expected DM at index 7, got %d",
     buf[7]);
-  fail_unless(strcmp(buf + 8, cmd + 7) == 0, "Expected string '%s', got '%s'",
+  ck_assert_msg(strcmp(buf + 8, cmd + 7) == 0, "Expected string '%s', got '%s'",
     cmd + 7, buf + 8);
 
   pr_netio_close(in);
@@ -1071,13 +1071,13 @@ START_TEST (netio_telnet_gets_telnet_single_iac_test) {
   res = pr_netio_telnet_gets(buf, sizeof(buf)-1, in, out);
   xerrno = errno;
 
-  fail_unless(res != NULL, "Failed to get string from stream: (%d) %s",
+  ck_assert_msg(res != NULL, "Failed to get string from stream: (%d) %s",
     xerrno, strerror(xerrno));
-  fail_unless(strncmp(buf, cmd, 7) == 0, "Expected string '%*s', got '%*s'",
+  ck_assert_msg(strncmp(buf, cmd, 7) == 0, "Expected string '%*s', got '%*s'",
     7, cmd, 7, buf);
-  fail_unless(buf[7] == (char) TELNET_IAC, "Expected IAC at index 7, got %d",
+  ck_assert_msg(buf[7] == (char) TELNET_IAC, "Expected IAC at index 7, got %d",
     buf[7]);
-  fail_unless(strcmp(buf + 8, cmd + 7) == 0, "Expected string '%s', got '%s'",
+  ck_assert_msg(strcmp(buf + 8, cmd + 7) == 0, "Expected string '%s', got '%s'",
     cmd + 7, buf + 8);
 
   pr_netio_close(in);
@@ -1108,8 +1108,8 @@ START_TEST (netio_telnet_gets_bug3521_test) {
   res = pr_netio_telnet_gets(buf, sizeof(buf)-1, in, out);
   xerrno = errno;
 
-  fail_unless(res == NULL, "Expected null");
-  fail_unless(xerrno == E2BIG, "Failed to set errno to E2BIG, got %s (%d)",
+  ck_assert_msg(res == NULL, "Expected null");
+  ck_assert_msg(xerrno == E2BIG, "Failed to set errno to E2BIG, got %s (%d)",
     strerror(xerrno), xerrno);
 
   pr_netio_close(in);
@@ -1141,13 +1141,13 @@ START_TEST (netio_telnet_gets_bug3697_test) {
   res = pr_netio_telnet_gets(buf, sizeof(buf)-1, in, out);
   xerrno = errno;
 
-  fail_unless(res != NULL, "Failed to get string from stream: (%d) %s",
+  ck_assert_msg(res != NULL, "Failed to get string from stream: (%d) %s",
     xerrno, strerror(xerrno));
-  fail_unless(strncmp(buf, cmd, 7) == 0, "Expected string '%*s', got '%*s'",
+  ck_assert_msg(strncmp(buf, cmd, 7) == 0, "Expected string '%*s', got '%*s'",
     7, cmd, 7, buf);
-  fail_unless(buf[7] == (char) TELNET_IAC, "Expected IAC at index 7, got %d",
+  ck_assert_msg(buf[7] == (char) TELNET_IAC, "Expected IAC at index 7, got %d",
     buf[7]);
-  fail_unless(strcmp(buf + 8, cmd + 7) == 0, "Expected string '%s', got '%s'",
+  ck_assert_msg(strcmp(buf + 8, cmd + 7) == 0, "Expected string '%s', got '%s'",
     cmd + 7, buf + 8);
 
   pr_netio_close(in);
@@ -1183,9 +1183,9 @@ START_TEST (netio_telnet_gets_eof_test) {
   res = pr_netio_telnet_gets(buf, strlen(cmd) + 2, in, out);
   xerrno = errno;
 
-  fail_unless(res != NULL, "Failed to get string from stream: (%d) %s",
+  ck_assert_msg(res != NULL, "Failed to get string from stream: (%d) %s",
     xerrno, strerror(xerrno));
-  fail_unless(strcmp(buf, cmd) == 0, "Expected string '%s', got '%s'", cmd,
+  ck_assert_msg(strcmp(buf, cmd) == 0, "Expected string '%s', got '%s'", cmd,
     buf);
 
   pr_netio_close(in);
@@ -1218,14 +1218,14 @@ START_TEST (netio_telnet_gets2_single_line_test) {
   res = pr_netio_telnet_gets2(buf, sizeof(buf)-1, in, out);
   xerrno = errno;
 
-  fail_unless(res > 0, "Failed to get string from stream: (%d) %s",
+  ck_assert_msg(res > 0, "Failed to get string from stream: (%d) %s",
     xerrno, strerror(xerrno));
-  fail_unless(strcmp(buf, cmd) == 0, "Expected string '%s', got '%s'", cmd,
+  ck_assert_msg(strcmp(buf, cmd) == 0, "Expected string '%s', got '%s'", cmd,
     buf);
 
-  fail_unless((size_t) res == cmd_len, "Expected length %lu, got %d",
+  ck_assert_msg((size_t) res == cmd_len, "Expected length %lu, got %d",
     (unsigned long) cmd_len, res);
-  fail_unless(pbuf->remaining == (size_t) xfer_bufsz,
+  ck_assert_msg(pbuf->remaining == (size_t) xfer_bufsz,
     "Expected %d remaining bytes, got %lu", xfer_bufsz,
     (unsigned long) pbuf->remaining);
 
@@ -1260,14 +1260,14 @@ START_TEST (netio_telnet_gets2_single_line_crnul_test) {
   res = pr_netio_telnet_gets2(buf, sizeof(buf)-1, in, out);
   xerrno = errno;
 
-  fail_unless(res > 0, "Failed to get string from stream: (%d) %s",
+  ck_assert_msg(res > 0, "Failed to get string from stream: (%d) %s",
     xerrno, strerror(xerrno));
-  fail_unless(strcmp(buf, cmd) == 0, "Expected string '%s', got '%s'", cmd,
+  ck_assert_msg(strcmp(buf, cmd) == 0, "Expected string '%s', got '%s'", cmd,
     buf);
 
-  fail_unless((size_t) res == cmd_len, "Expected length %lu, got %d",
+  ck_assert_msg((size_t) res == cmd_len, "Expected length %lu, got %d",
     (unsigned long) cmd_len, res);
-  fail_unless(pbuf->remaining == (size_t) xfer_bufsz,
+  ck_assert_msg(pbuf->remaining == (size_t) xfer_bufsz,
     "Expected %d remaining bytes, got %lu", xfer_bufsz,
     (unsigned long) pbuf->remaining);
 
@@ -1301,14 +1301,14 @@ START_TEST (netio_telnet_gets2_single_line_lf_test) {
   res = pr_netio_telnet_gets2(buf, sizeof(buf)-1, in, out);
   xerrno = errno;
 
-  fail_unless(res > 0, "Failed to get string from stream: (%d) %s",
+  ck_assert_msg(res > 0, "Failed to get string from stream: (%d) %s",
     xerrno, strerror(xerrno));
-  fail_unless(strcmp(buf, cmd) == 0, "Expected string '%s', got '%s'", cmd,
+  ck_assert_msg(strcmp(buf, cmd) == 0, "Expected string '%s', got '%s'", cmd,
     buf);
 
-  fail_unless((size_t) res == cmd_len, "Expected length %lu, got %d",
+  ck_assert_msg((size_t) res == cmd_len, "Expected length %lu, got %d",
     (unsigned long) cmd_len, res);
-  fail_unless(pbuf->remaining == (size_t) xfer_bufsz,
+  ck_assert_msg(pbuf->remaining == (size_t) xfer_bufsz,
     "Expected %d remaining bytes, got %lu", xfer_bufsz,
     (unsigned long) pbuf->remaining);
 
@@ -1559,29 +1559,29 @@ START_TEST (netio_read_test) {
 
   mark_point();
   res = pr_netio_read(NULL, NULL, 0, 0);
-  fail_unless(res < 0, "Failed to handle null nstrm");
-  fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+  ck_assert_msg(res < 0, "Failed to handle null nstrm");
+  ck_assert_msg(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
     strerror(errno), errno);
 
   mark_point();
   nstrm = pcalloc(p, sizeof(pr_netio_stream_t));
   res = pr_netio_read(nstrm, NULL, 0, 0);
-  fail_unless(res < 0, "Failed to handle null buf");
-  fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+  ck_assert_msg(res < 0, "Failed to handle null buf");
+  ck_assert_msg(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
     strerror(errno), errno);
 
   mark_point();
   buf = "foo";
   res = pr_netio_read(nstrm, buf, 0, 0);
-  fail_unless(res < 0, "Failed to handle zero buflen");
-  fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+  ck_assert_msg(res < 0, "Failed to handle zero buflen");
+  ck_assert_msg(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
     strerror(errno), errno);
 
   mark_point();
   nstrm->strm_fd = -2;
   res = pr_netio_read(nstrm, buf, 3, 0);
-  fail_unless(res < 0, "Failed to handle bad nstrm fd");
-  fail_unless(errno == EBADF, "Expected EBADF (%d), got %s (%d)", EBADF,
+  ck_assert_msg(res < 0, "Failed to handle bad nstrm fd");
+  ck_assert_msg(errno == EBADF, "Expected EBADF (%d), got %s (%d)", EBADF,
     strerror(errno), errno);
 
   netio = pr_alloc_netio2(p, NULL, "testsuite");
@@ -1590,17 +1590,17 @@ START_TEST (netio_read_test) {
 
   /* Write to control stream */
   res = pr_register_netio(netio, PR_NETIO_STRM_CTRL);
-  fail_unless(res == 0, "Failed to register custom ctrl NetIO: %s",
+  ck_assert_msg(res == 0, "Failed to register custom ctrl NetIO: %s",
     strerror(errno));
 
   netio2 = pr_get_netio(PR_NETIO_STRM_CTRL);
-  fail_unless(netio2 != NULL, "Failed to get custom ctrl NetIO: %s",
+  ck_assert_msg(netio2 != NULL, "Failed to get custom ctrl NetIO: %s",
     strerror(errno));
-  fail_unless(netio2 == netio, "Expected custom ctrl NetIO %p, got %p",
+  ck_assert_msg(netio2 == netio, "Expected custom ctrl NetIO %p, got %p",
     netio, netio2);
 
   res = netio_read_from_stream(PR_NETIO_STRM_CTRL);
-  fail_unless(res == 0, "Failed to read from custom ctrl NetIO: %s",
+  ck_assert_msg(res == 0, "Failed to read from custom ctrl NetIO: %s",
     strerror(errno));
 
   mark_point();
@@ -1608,17 +1608,17 @@ START_TEST (netio_read_test) {
 
   /* Read from data stream */
   res = pr_register_netio(netio, PR_NETIO_STRM_DATA);
-  fail_unless(res == 0, "Failed to register custom data NetIO: %s",
+  ck_assert_msg(res == 0, "Failed to register custom data NetIO: %s",
     strerror(errno));
 
   netio2 = pr_get_netio(PR_NETIO_STRM_DATA);
-  fail_unless(netio2 != NULL, "Failed to get custom data NetIO: %s",
+  ck_assert_msg(netio2 != NULL, "Failed to get custom data NetIO: %s",
     strerror(errno));
-  fail_unless(netio2 == netio, "Expected custom data NetIO %p, got %p",
+  ck_assert_msg(netio2 == netio, "Expected custom data NetIO %p, got %p",
     netio, netio2);
 
   res = netio_read_from_stream(PR_NETIO_STRM_DATA);
-  fail_unless(res == 0, "Failed to read from custom data NetIO: %s",
+  ck_assert_msg(res == 0, "Failed to read from custom data NetIO: %s",
     strerror(errno));
 
   mark_point();
@@ -1626,17 +1626,17 @@ START_TEST (netio_read_test) {
 
   /* Read from other stream */
   res = pr_register_netio(netio, PR_NETIO_STRM_OTHR);
-  fail_unless(res == 0, "Failed to register custom other NetIO: %s",
+  ck_assert_msg(res == 0, "Failed to register custom other NetIO: %s",
     strerror(errno));
 
   netio2 = pr_get_netio(PR_NETIO_STRM_OTHR);
-  fail_unless(netio2 != NULL, "Failed to get custom othr NetIO: %s",
+  ck_assert_msg(netio2 != NULL, "Failed to get custom othr NetIO: %s",
     strerror(errno));
-  fail_unless(netio2 == netio, "Expected custom othr NetIO %p, got %p",
+  ck_assert_msg(netio2 == netio, "Expected custom othr NetIO %p, got %p",
     netio, netio2);
 
   res = netio_read_from_stream(PR_NETIO_STRM_OTHR);
-  fail_unless(res == 0, "Failed to read from custom other NetIO: %s",
+  ck_assert_msg(res == 0, "Failed to read from custom other NetIO: %s",
     strerror(errno));
 
   mark_point();
@@ -1652,8 +1652,8 @@ START_TEST (netio_gets_test) {
   pr_netio_stream_t *nstrm;
 
   text = pr_netio_gets(NULL, 0, NULL);
-  fail_unless(text == NULL, "Failed to handle null arguments");
-  fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+  ck_assert_msg(text == NULL, "Failed to handle null arguments");
+  ck_assert_msg(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
     strerror(errno), errno);
 
   netio = pr_alloc_netio2(p, NULL, "testsuite");
@@ -1661,29 +1661,29 @@ START_TEST (netio_gets_test) {
   netio->read = netio_read_cb;
 
   res = pr_register_netio(netio, PR_NETIO_STRM_CTRL);
-  fail_unless(res == 0, "Failed to register custom ctrl NetIO: %s",
+  ck_assert_msg(res == 0, "Failed to register custom ctrl NetIO: %s",
     strerror(errno));
 
   nstrm = pr_netio_open(p, PR_NETIO_STRM_CTRL, fd, PR_NETIO_IO_RD);
-  fail_unless(nstrm != NULL, "Failed to open stream: %s", strerror(errno));
+  ck_assert_msg(nstrm != NULL, "Failed to open stream: %s", strerror(errno));
 
   text = pr_netio_gets(NULL, 0, nstrm);
-  fail_unless(text == NULL, "Failed to handle null buffer");
-  fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+  ck_assert_msg(text == NULL, "Failed to handle null buffer");
+  ck_assert_msg(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
     strerror(errno), errno);
 
   buflen = 1024;
   buf = pcalloc(p, buflen);
 
   text = pr_netio_gets(buf, 0, nstrm);
-  fail_unless(text == NULL, "Failed to handle zero buffer length");
-  fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+  ck_assert_msg(text == NULL, "Failed to handle zero buffer length");
+  ck_assert_msg(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
     strerror(errno), errno);
 
   expected = "Hello, World!\r\n";
   text = pr_netio_gets(buf, buflen-1, nstrm);
-  fail_unless(text != NULL, "Failed to get text: %s", strerror(errno));
-  fail_unless(strcmp(text, expected) == 0, "Expected '%s', got '%s'",
+  ck_assert_msg(text != NULL, "Failed to get text: %s", strerror(errno));
+  ck_assert_msg(strcmp(text, expected) == 0, "Expected '%s', got '%s'",
     expected, text);
 
   mark_point();
@@ -1699,29 +1699,29 @@ START_TEST (netio_write_test) {
 
   mark_point();
   res = pr_netio_write(NULL, NULL, 0);
-  fail_unless(res < 0, "Failed to handle null nstrm");
-  fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+  ck_assert_msg(res < 0, "Failed to handle null nstrm");
+  ck_assert_msg(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
     strerror(errno), errno);
 
   mark_point();
   nstrm = pcalloc(p, sizeof(pr_netio_stream_t));
   res = pr_netio_write(nstrm, NULL, 0);
-  fail_unless(res < 0, "Failed to handle null buf");
-  fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+  ck_assert_msg(res < 0, "Failed to handle null buf");
+  ck_assert_msg(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
     strerror(errno), errno);
 
   mark_point();
   buf = "foo";
   res = pr_netio_write(nstrm, buf, 0);
-  fail_unless(res < 0, "Failed to handle zero buflen");
-  fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+  ck_assert_msg(res < 0, "Failed to handle zero buflen");
+  ck_assert_msg(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
     strerror(errno), errno);
 
   mark_point();
   nstrm->strm_fd = -34;
   res = pr_netio_write(nstrm, buf, 3);
-  fail_unless(res < 0, "Failed to handle bad nstrm fd");
-  fail_unless(errno == EBADF, "Expected EBADF (%d), got %s (%d)", EBADF,
+  ck_assert_msg(res < 0, "Failed to handle bad nstrm fd");
+  ck_assert_msg(errno == EBADF, "Expected EBADF (%d), got %s (%d)", EBADF,
     strerror(errno), errno);
 
   netio = pr_alloc_netio2(p, NULL, "testsuite");
@@ -1730,17 +1730,17 @@ START_TEST (netio_write_test) {
 
   /* Write to control stream */
   res = pr_register_netio(netio, PR_NETIO_STRM_CTRL);
-  fail_unless(res == 0, "Failed to register custom ctrl NetIO: %s",
+  ck_assert_msg(res == 0, "Failed to register custom ctrl NetIO: %s",
     strerror(errno));
 
   netio2 = pr_get_netio(PR_NETIO_STRM_CTRL);
-  fail_unless(netio2 != NULL, "Failed to get custom ctrl NetIO: %s",
+  ck_assert_msg(netio2 != NULL, "Failed to get custom ctrl NetIO: %s",
     strerror(errno));
-  fail_unless(netio2 == netio, "Expected custom ctrl NetIO %p, got %p",
+  ck_assert_msg(netio2 == netio, "Expected custom ctrl NetIO %p, got %p",
     netio, netio2);
 
   res = netio_write_to_stream(PR_NETIO_STRM_CTRL, FALSE);
-  fail_unless(res == 0, "Failed to write to custom ctrl NetIO: %s",
+  ck_assert_msg(res == 0, "Failed to write to custom ctrl NetIO: %s",
     strerror(errno));
 
   mark_point();
@@ -1748,17 +1748,17 @@ START_TEST (netio_write_test) {
 
   /* Write to data stream */
   res = pr_register_netio(netio, PR_NETIO_STRM_DATA);
-  fail_unless(res == 0, "Failed to register custom data NetIO: %s",
+  ck_assert_msg(res == 0, "Failed to register custom data NetIO: %s",
     strerror(errno));
 
   netio2 = pr_get_netio(PR_NETIO_STRM_DATA);
-  fail_unless(netio2 != NULL, "Failed to get custom data NetIO: %s",
+  ck_assert_msg(netio2 != NULL, "Failed to get custom data NetIO: %s",
     strerror(errno));
-  fail_unless(netio2 == netio, "Expected custom data NetIO %p, got %p",
+  ck_assert_msg(netio2 == netio, "Expected custom data NetIO %p, got %p",
     netio, netio2);
 
   res = netio_write_to_stream(PR_NETIO_STRM_DATA, FALSE);
-  fail_unless(res == 0, "Failed to write to custom data NetIO: %s",
+  ck_assert_msg(res == 0, "Failed to write to custom data NetIO: %s",
     strerror(errno));
 
   mark_point();
@@ -1766,17 +1766,17 @@ START_TEST (netio_write_test) {
 
   /* Write to other stream */
   res = pr_register_netio(netio, PR_NETIO_STRM_OTHR);
-  fail_unless(res == 0, "Failed to register custom other NetIO: %s",
+  ck_assert_msg(res == 0, "Failed to register custom other NetIO: %s",
     strerror(errno));
 
   netio2 = pr_get_netio(PR_NETIO_STRM_OTHR);
-  fail_unless(netio2 != NULL, "Failed to get custom othr NetIO: %s",
+  ck_assert_msg(netio2 != NULL, "Failed to get custom othr NetIO: %s",
     strerror(errno));
-  fail_unless(netio2 == netio, "Expected custom othr NetIO %p, got %p",
+  ck_assert_msg(netio2 == netio, "Expected custom othr NetIO %p, got %p",
     netio, netio2);
 
   res = netio_write_to_stream(PR_NETIO_STRM_OTHR, FALSE);
-  fail_unless(res == 0, "Failed to write to custom other NetIO: %s",
+  ck_assert_msg(res == 0, "Failed to write to custom other NetIO: %s",
     strerror(errno));
 
   mark_point();
@@ -1791,16 +1791,16 @@ START_TEST (netio_write_async_test) {
 
   mark_point();
   res = pr_netio_write_async(NULL, NULL, 0);
-  fail_unless(res < 0, "Failed to handle null nstrm");
-  fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+  ck_assert_msg(res < 0, "Failed to handle null nstrm");
+  ck_assert_msg(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
     strerror(errno), errno);
 
   mark_point();
   nstrm = pcalloc(p, sizeof(pr_netio_stream_t));
   nstrm->strm_fd = -1;
   res = pr_netio_write_async(nstrm, NULL, 0);
-  fail_unless(res < 0, "Failed to handle bad nstrm fd");
-  fail_unless(errno == EBADF, "Expected EBADF (%d), got %s (%d)", EBADF,
+  ck_assert_msg(res < 0, "Failed to handle bad nstrm fd");
+  ck_assert_msg(errno == EBADF, "Expected EBADF (%d), got %s (%d)", EBADF,
     strerror(errno), errno);
 
   netio = pr_alloc_netio2(p, NULL, "testsuite");
@@ -1809,12 +1809,12 @@ START_TEST (netio_write_async_test) {
 
   /* ctrl */
   res = pr_register_netio(netio, PR_NETIO_STRM_CTRL);
-  fail_unless(res == 0, "Failed to register custom ctrl NetIO: %s",
+  ck_assert_msg(res == 0, "Failed to register custom ctrl NetIO: %s",
     strerror(errno));
 
   mark_point();
   res = netio_write_to_stream(PR_NETIO_STRM_CTRL, TRUE);
-  fail_unless(res == 0, "Failed to write to custom ctrl NetIO: %s",
+  ck_assert_msg(res == 0, "Failed to write to custom ctrl NetIO: %s",
     strerror(errno));
 
   mark_point();
@@ -1822,12 +1822,12 @@ START_TEST (netio_write_async_test) {
 
   /* data */
   res = pr_register_netio(netio, PR_NETIO_STRM_DATA);
-  fail_unless(res == 0, "Failed to register custom data NetIO: %s",
+  ck_assert_msg(res == 0, "Failed to register custom data NetIO: %s",
     strerror(errno));
 
   mark_point();
   res = netio_write_to_stream(PR_NETIO_STRM_DATA, TRUE);
-  fail_unless(res == 0, "Failed to write to custom data NetIO: %s",
+  ck_assert_msg(res == 0, "Failed to write to custom data NetIO: %s",
     strerror(errno));
 
   mark_point();
@@ -1835,12 +1835,12 @@ START_TEST (netio_write_async_test) {
 
   /* othr */
   res = pr_register_netio(netio, PR_NETIO_STRM_OTHR);
-  fail_unless(res == 0, "Failed to register custom othr NetIO: %s",
+  ck_assert_msg(res == 0, "Failed to register custom othr NetIO: %s",
     strerror(errno));
 
   mark_point();
   res = netio_write_to_stream(PR_NETIO_STRM_OTHR, TRUE);
-  fail_unless(res == 0, "Failed to write to custom othr NetIO: %s",
+  ck_assert_msg(res == 0, "Failed to write to custom othr NetIO: %s",
     strerror(errno));
 
   mark_point();
@@ -1903,12 +1903,12 @@ START_TEST (netio_printf_test) {
 
   mark_point();
   res = pr_register_netio(netio, PR_NETIO_STRM_CTRL);
-  fail_unless(res == 0, "Failed to register custom ctrl NetIO: %s",
+  ck_assert_msg(res == 0, "Failed to register custom ctrl NetIO: %s",
     strerror(errno));
 
   mark_point();
   res = netio_print_to_stream(PR_NETIO_STRM_CTRL, FALSE);
-  fail_unless(res == 0, "Failed to print to custom ctrl NetIO: %s",
+  ck_assert_msg(res == 0, "Failed to print to custom ctrl NetIO: %s",
     strerror(errno));
 
   mark_point();
@@ -1927,12 +1927,12 @@ START_TEST (netio_printf_async_test) {
 
   mark_point();
   res = pr_register_netio(netio, PR_NETIO_STRM_CTRL);
-  fail_unless(res == 0, "Failed to register custom ctrl NetIO: %s",
+  ck_assert_msg(res == 0, "Failed to register custom ctrl NetIO: %s",
     strerror(errno));
 
   mark_point();
   res = netio_print_to_stream(PR_NETIO_STRM_CTRL, TRUE);
-  fail_unless(res == 0, "Failed to print to custom ctrl NetIO: %s",
+  ck_assert_msg(res == 0, "Failed to print to custom ctrl NetIO: %s",
     strerror(errno));
 
   mark_point();
@@ -1949,33 +1949,33 @@ START_TEST (netio_abort_test) {
 
   /* open/abort/close CTRL stream */
   nstrm = pr_netio_open(p, PR_NETIO_STRM_CTRL, fd, PR_NETIO_IO_RD);
-  fail_unless(nstrm != NULL, "Failed to open ctrl stream on fd %d: %s", fd,
+  ck_assert_msg(nstrm != NULL, "Failed to open ctrl stream on fd %d: %s", fd,
     strerror(errno));
 
   pr_netio_abort(nstrm);
-  fail_unless(nstrm->strm_flags & PR_NETIO_SESS_ABORT,
+  ck_assert_msg(nstrm->strm_flags & PR_NETIO_SESS_ABORT,
     "Failed to set PR_NETIO_SESS_ABORT flags on ctrl stream");
 
   pr_netio_close(nstrm);
 
   /* open/abort/close DATA stream */
   nstrm = pr_netio_open(p, PR_NETIO_STRM_DATA, fd, PR_NETIO_IO_WR);
-  fail_unless(nstrm != NULL, "Failed to open data stream on fd %d: %s", fd,
+  ck_assert_msg(nstrm != NULL, "Failed to open data stream on fd %d: %s", fd,
     strerror(errno));
 
   pr_netio_abort(nstrm);
-  fail_unless(nstrm->strm_flags & PR_NETIO_SESS_ABORT,
+  ck_assert_msg(nstrm->strm_flags & PR_NETIO_SESS_ABORT,
     "Failed to set PR_NETIO_SESS_ABORT flags on data stream");
 
   pr_netio_close(nstrm);
 
   /* open/abort/close OTHR stream */
   nstrm = pr_netio_open(p, PR_NETIO_STRM_OTHR, fd, PR_NETIO_IO_WR);
-  fail_unless(nstrm != NULL, "Failed to open othr stream on fd %d: %s", fd,
+  ck_assert_msg(nstrm != NULL, "Failed to open othr stream on fd %d: %s", fd,
     strerror(errno));
 
   pr_netio_abort(nstrm);
-  fail_unless(nstrm->strm_flags & PR_NETIO_SESS_ABORT,
+  ck_assert_msg(nstrm->strm_flags & PR_NETIO_SESS_ABORT,
     "Failed to set PR_NETIO_SESS_ABORT flags on othr stream");
 
   pr_netio_close(nstrm);
@@ -1990,16 +1990,16 @@ START_TEST (netio_lingering_abort_test) {
 
   mark_point();
   res = pr_netio_lingering_abort(NULL, linger);
-  fail_unless(res < 0, "Failed to handle null nstrm");
-  fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+  ck_assert_msg(res < 0, "Failed to handle null nstrm");
+  ck_assert_msg(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
     strerror(errno), errno);
 
   mark_point();
   nstrm = pcalloc(p, sizeof(pr_netio_stream_t));
   nstrm->strm_type = 0;
   res = pr_netio_lingering_abort(nstrm, linger);
-  fail_unless(res < 0, "Failed to handle invalid nstrm type");
-  fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+  ck_assert_msg(res < 0, "Failed to handle invalid nstrm type");
+  ck_assert_msg(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
     strerror(errno), errno);
 
   netio = pr_alloc_netio2(p, NULL, "testsuite");
@@ -2007,18 +2007,18 @@ START_TEST (netio_lingering_abort_test) {
 
   /* open/abort/close CTRL stream */
   res = pr_register_netio(netio, PR_NETIO_STRM_CTRL);
-  fail_unless(res == 0, "Failed to register custom ctrl NetIO: %s",
+  ck_assert_msg(res == 0, "Failed to register custom ctrl NetIO: %s",
     strerror(errno));
 
   nstrm = pr_netio_open(p, PR_NETIO_STRM_CTRL, fd, PR_NETIO_IO_RD);
-  fail_unless(nstrm != NULL, "Failed to open ctrl stream on fd %d: %s", fd,
+  ck_assert_msg(nstrm != NULL, "Failed to open ctrl stream on fd %d: %s", fd,
     strerror(errno));
 
   res = pr_netio_lingering_abort(nstrm, linger);
-  fail_unless(res == 0, "Failed to set lingering abort on ctrl stream: %s",
+  ck_assert_msg(res == 0, "Failed to set lingering abort on ctrl stream: %s",
     strerror(errno));
 
-  fail_unless(nstrm->strm_flags & PR_NETIO_SESS_ABORT,
+  ck_assert_msg(nstrm->strm_flags & PR_NETIO_SESS_ABORT,
     "Failed to set PR_NETIO_SESS_ABORT flags on ctrl stream");
 
   pr_netio_close(nstrm);
@@ -2026,18 +2026,18 @@ START_TEST (netio_lingering_abort_test) {
 
   /* open/abort/close DATA stream */
   res = pr_register_netio(netio, PR_NETIO_STRM_DATA);
-  fail_unless(res == 0, "Failed to register custom data NetIO: %s",
+  ck_assert_msg(res == 0, "Failed to register custom data NetIO: %s",
     strerror(errno));
 
   nstrm = pr_netio_open(p, PR_NETIO_STRM_DATA, fd, PR_NETIO_IO_RD);
-  fail_unless(nstrm != NULL, "Failed to open data stream on fd %d: %s", fd,
+  ck_assert_msg(nstrm != NULL, "Failed to open data stream on fd %d: %s", fd,
     strerror(errno));
 
   res = pr_netio_lingering_abort(nstrm, linger);
-  fail_unless(res == 0, "Failed to set lingering abort on data stream: %s",
+  ck_assert_msg(res == 0, "Failed to set lingering abort on data stream: %s",
     strerror(errno));
 
-  fail_unless(nstrm->strm_flags & PR_NETIO_SESS_ABORT,
+  ck_assert_msg(nstrm->strm_flags & PR_NETIO_SESS_ABORT,
     "Failed to set PR_NETIO_SESS_ABORT flags on data stream");
 
   pr_netio_close(nstrm);
@@ -2045,18 +2045,18 @@ START_TEST (netio_lingering_abort_test) {
 
   /* open/abort/close OTHR stream */
   res = pr_register_netio(netio, PR_NETIO_STRM_OTHR);
-  fail_unless(res == 0, "Failed to register custom othr NetIO: %s",
+  ck_assert_msg(res == 0, "Failed to register custom othr NetIO: %s",
     strerror(errno));
 
   nstrm = pr_netio_open(p, PR_NETIO_STRM_OTHR, fd, PR_NETIO_IO_RD);
-  fail_unless(nstrm != NULL, "Failed to open othr stream on fd %d: %s", fd,
+  ck_assert_msg(nstrm != NULL, "Failed to open othr stream on fd %d: %s", fd,
     strerror(errno));
 
   res = pr_netio_lingering_abort(nstrm, linger);
-  fail_unless(res == 0, "Failed to set lingering abort on othr stream: %s",
+  ck_assert_msg(res == 0, "Failed to set lingering abort on othr stream: %s",
     strerror(errno));
 
-  fail_unless(nstrm->strm_flags & PR_NETIO_SESS_ABORT,
+  ck_assert_msg(nstrm->strm_flags & PR_NETIO_SESS_ABORT,
     "Failed to set PR_NETIO_SESS_ABORT flags on othr stream");
 
   pr_netio_close(nstrm);
@@ -2070,46 +2070,46 @@ START_TEST (netio_poll_test) {
 
   mark_point();
   res = pr_netio_poll(NULL);
-  fail_unless(res < 0, "Failed to handle null nstrm");
-  fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+  ck_assert_msg(res < 0, "Failed to handle null nstrm");
+  ck_assert_msg(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
     strerror(errno), errno);
 
   mark_point();
   nstrm = pcalloc(p, sizeof(pr_netio_stream_t));
   nstrm->strm_fd = -3;
   res = pr_netio_poll(nstrm);
-  fail_unless(res < 0, "Failed to handle bad nstrm fd");
-  fail_unless(errno == EBADF, "Expected EBADF (%d), got %s (%d)", EBADF,
+  ck_assert_msg(res < 0, "Failed to handle bad nstrm fd");
+  ck_assert_msg(errno == EBADF, "Expected EBADF (%d), got %s (%d)", EBADF,
     strerror(errno), errno);
 
   mark_point();
   nstrm->strm_fd = fileno(stderr);
   nstrm->strm_flags |= PR_NETIO_SESS_ABORT;
   res = pr_netio_poll(nstrm);
-  fail_unless(res == 1, "Failed to handle SESS_ABORT flag");
+  ck_assert_msg(res == 1, "Failed to handle SESS_ABORT flag");
 
   mark_point();
   nstrm->strm_flags |= PR_NETIO_SESS_INTR;
   res = pr_netio_poll(nstrm);
-  fail_unless(res < 0, "Failed to handle SESS_INTR flag");
-  fail_unless(errno == EOF, "Expected EOF (%d), got %s (%d)", EOF,
+  ck_assert_msg(res < 0, "Failed to handle SESS_INTR flag");
+  ck_assert_msg(errno == EOF, "Expected EOF (%d), got %s (%d)", EOF,
     strerror(errno), errno);
 
   mark_point();
   nstrm->strm_flags &= ~PR_NETIO_SESS_INTR;
   nstrm->strm_type = PR_NETIO_STRM_CTRL;
   res = pr_netio_poll(nstrm);
-  fail_unless(res == 0, "Failed to handle ctrl strm: %s", strerror(errno));
+  ck_assert_msg(res == 0, "Failed to handle ctrl strm: %s", strerror(errno));
 
   mark_point();
   nstrm->strm_type = PR_NETIO_STRM_DATA;
   res = pr_netio_poll(nstrm);
-  fail_unless(res == 0, "Failed to handle data strm: %s", strerror(errno));
+  ck_assert_msg(res == 0, "Failed to handle data strm: %s", strerror(errno));
 
   mark_point();
   nstrm->strm_type = PR_NETIO_STRM_OTHR;
   res = pr_netio_poll(nstrm);
-  fail_unless(res == 0, "Failed to handle othr strm: %s", strerror(errno));
+  ck_assert_msg(res == 0, "Failed to handle othr strm: %s", strerror(errno));
 }
 END_TEST
 
@@ -2122,13 +2122,13 @@ START_TEST (netio_poll_interval_test) {
   pr_netio_set_poll_interval(NULL, 0);
 
   nstrm = pr_netio_open(p, PR_NETIO_STRM_CTRL, fd, PR_NETIO_IO_RD);
-  fail_unless(nstrm != NULL, "Failed to open ctrl stream on fd %d: %s", fd,
+  ck_assert_msg(nstrm != NULL, "Failed to open ctrl stream on fd %d: %s", fd,
     strerror(errno));
 
   pr_netio_set_poll_interval(nstrm, interval); 
-  fail_unless(nstrm->strm_interval == interval,
+  ck_assert_msg(nstrm->strm_interval == interval,
     "Expected stream interval %u, got %u", interval, nstrm->strm_interval);
-  fail_unless(nstrm->strm_flags & PR_NETIO_SESS_INTR,
+  ck_assert_msg(nstrm->strm_flags & PR_NETIO_SESS_INTR,
     "Failed to set PR_NETIO_SESS_INTR stream flag");
 
   mark_point();
@@ -2153,15 +2153,15 @@ START_TEST (netio_shutdown_test) {
 
   mark_point();
   res = pr_netio_shutdown(NULL, how);
-  fail_unless(res < 0, "Failed to handle null nstrm");
-  fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+  ck_assert_msg(res < 0, "Failed to handle null nstrm");
+  ck_assert_msg(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
     strerror(errno), errno);
 
   mark_point();
   nstrm = pcalloc(p, sizeof(pr_netio_stream_t));
   res = pr_netio_shutdown(nstrm, how);
-  fail_unless(res < 0, "Failed to handle invalid nstrm type");
-  fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+  ck_assert_msg(res < 0, "Failed to handle invalid nstrm type");
+  ck_assert_msg(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
     strerror(errno), errno);
 
   netio = pr_alloc_netio2(p, NULL, "testsuite");
@@ -2170,45 +2170,45 @@ START_TEST (netio_shutdown_test) {
 
   /* open/shutdown/close CTRL stream */
   res = pr_register_netio(netio, PR_NETIO_STRM_CTRL);
-  fail_unless(res == 0, "Failed to register custom ctrl NetIO: %s",
+  ck_assert_msg(res == 0, "Failed to register custom ctrl NetIO: %s",
     strerror(errno));
 
   nstrm = pr_netio_open(p, PR_NETIO_STRM_CTRL, fd, PR_NETIO_IO_RD);
-  fail_unless(nstrm != NULL, "Failed to open ctrl stream on fd %d: %s", fd,
+  ck_assert_msg(nstrm != NULL, "Failed to open ctrl stream on fd %d: %s", fd,
     strerror(errno));
 
   res = pr_netio_shutdown(nstrm, how);
-  fail_unless(res == 0, "Failed to shutdown ctrl stream: %s", strerror(errno));
+  ck_assert_msg(res == 0, "Failed to shutdown ctrl stream: %s", strerror(errno));
 
   pr_netio_close(nstrm);
   pr_unregister_netio(PR_NETIO_STRM_CTRL);
 
   /* open/shutdown/close DATA stream */
   res = pr_register_netio(netio, PR_NETIO_STRM_DATA);
-  fail_unless(res == 0, "Failed to register custom data NetIO: %s",
+  ck_assert_msg(res == 0, "Failed to register custom data NetIO: %s",
     strerror(errno));
 
   nstrm = pr_netio_open(p, PR_NETIO_STRM_DATA, fd, PR_NETIO_IO_RD);
-  fail_unless(nstrm != NULL, "Failed to open data stream on fd %d: %s", fd,
+  ck_assert_msg(nstrm != NULL, "Failed to open data stream on fd %d: %s", fd,
     strerror(errno));
 
   res = pr_netio_shutdown(nstrm, how);
-  fail_unless(res == 0, "Failed to shutdown ctrl stream: %s", strerror(errno));
+  ck_assert_msg(res == 0, "Failed to shutdown ctrl stream: %s", strerror(errno));
 
   pr_netio_close(nstrm);
   pr_unregister_netio(PR_NETIO_STRM_DATA);
 
   /* open/shutdown/close OTHR stream */
   res = pr_register_netio(netio, PR_NETIO_STRM_OTHR);
-  fail_unless(res == 0, "Failed to register custom othr NetIO: %s",
+  ck_assert_msg(res == 0, "Failed to register custom othr NetIO: %s",
     strerror(errno));
 
   nstrm = pr_netio_open(p, PR_NETIO_STRM_OTHR, fd, PR_NETIO_IO_RD);
-  fail_unless(nstrm != NULL, "Failed to open othr stream on fd %d: %s", fd,
+  ck_assert_msg(nstrm != NULL, "Failed to open othr stream on fd %d: %s", fd,
     strerror(errno));
 
   res = pr_netio_shutdown(nstrm, how);
-  fail_unless(res == 0, "Failed to shutdown ctrl stream: %s", strerror(errno));
+  ck_assert_msg(res == 0, "Failed to shutdown ctrl stream: %s", strerror(errno));
 
   pr_netio_close(nstrm);
   pr_unregister_netio(PR_NETIO_STRM_OTHR);
@@ -2227,8 +2227,8 @@ START_TEST (netio_register_test) {
   cb = netio->abort;
   netio->abort = NULL;
   res = pr_register_netio(netio, 0);
-  fail_unless(res < 0, "Failed to handle null abort cb");
-  fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+  ck_assert_msg(res < 0, "Failed to handle null abort cb");
+  ck_assert_msg(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
     strerror(errno), errno);
   netio->abort = cb;
 
@@ -2237,8 +2237,8 @@ START_TEST (netio_register_test) {
   cb = netio->close;
   netio->close = NULL;
   res = pr_register_netio(netio, 0);
-  fail_unless(res < 0, "Failed to handle null close cb");
-  fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+  ck_assert_msg(res < 0, "Failed to handle null close cb");
+  ck_assert_msg(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
     strerror(errno), errno);
   netio->close = cb;
 
@@ -2247,8 +2247,8 @@ START_TEST (netio_register_test) {
   cb = netio->open;
   netio->open = NULL;
   res = pr_register_netio(netio, 0);
-  fail_unless(res < 0, "Failed to handle null open cb");
-  fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+  ck_assert_msg(res < 0, "Failed to handle null open cb");
+  ck_assert_msg(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
     strerror(errno), errno);
   netio->open = cb;
 
@@ -2257,8 +2257,8 @@ START_TEST (netio_register_test) {
   cb = netio->poll;
   netio->poll = NULL;
   res = pr_register_netio(netio, 0);
-  fail_unless(res < 0, "Failed to handle null poll cb");
-  fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+  ck_assert_msg(res < 0, "Failed to handle null poll cb");
+  ck_assert_msg(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
     strerror(errno), errno);
   netio->poll = cb;
 
@@ -2267,8 +2267,8 @@ START_TEST (netio_register_test) {
   cb = netio->postopen;
   netio->postopen = NULL;
   res = pr_register_netio(netio, 0);
-  fail_unless(res < 0, "Failed to handle null postopen cb");
-  fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+  ck_assert_msg(res < 0, "Failed to handle null postopen cb");
+  ck_assert_msg(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
     strerror(errno), errno);
   netio->postopen = cb;
 
@@ -2277,8 +2277,8 @@ START_TEST (netio_register_test) {
   cb = netio->read;
   netio->read = NULL;
   res = pr_register_netio(netio, 0);
-  fail_unless(res < 0, "Failed to handle null read cb");
-  fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+  ck_assert_msg(res < 0, "Failed to handle null read cb");
+  ck_assert_msg(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
     strerror(errno), errno);
   netio->read = cb;
 
@@ -2287,8 +2287,8 @@ START_TEST (netio_register_test) {
   cb = netio->reopen;
   netio->reopen = NULL;
   res = pr_register_netio(netio, 0);
-  fail_unless(res < 0, "Failed to handle null reopen cb");
-  fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+  ck_assert_msg(res < 0, "Failed to handle null reopen cb");
+  ck_assert_msg(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
     strerror(errno), errno);
   netio->reopen = cb;
 
@@ -2297,8 +2297,8 @@ START_TEST (netio_register_test) {
   cb = netio->shutdown;
   netio->shutdown = NULL;
   res = pr_register_netio(netio, 0);
-  fail_unless(res < 0, "Failed to handle null shutdown cb");
-  fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+  ck_assert_msg(res < 0, "Failed to handle null shutdown cb");
+  ck_assert_msg(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
     strerror(errno), errno);
   netio->shutdown = cb;
 
@@ -2307,8 +2307,8 @@ START_TEST (netio_register_test) {
   cb = netio->write;
   netio->write = NULL;
   res = pr_register_netio(netio, 0);
-  fail_unless(res < 0, "Failed to handle null write cb");
-  fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+  ck_assert_msg(res < 0, "Failed to handle null write cb");
+  ck_assert_msg(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
     strerror(errno), errno);
   netio->write = cb;
 }
@@ -2319,13 +2319,13 @@ START_TEST (netio_unregister_test) {
 
   mark_point();
   res = pr_unregister_netio(0);
-  fail_unless(res < 0, "Failed to handle invalid types");
-  fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+  ck_assert_msg(res < 0, "Failed to handle invalid types");
+  ck_assert_msg(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
     strerror(errno), errno);
 
   mark_point();
   res = pr_unregister_netio(10000);
-  fail_unless(res == 0, "Failed to handle invalid types");
+  ck_assert_msg(res == 0, "Failed to handle invalid types");
 }
 END_TEST
 
@@ -2334,14 +2334,14 @@ START_TEST (netio_get_test) {
 
   mark_point();
   netio = pr_get_netio(0);
-  fail_unless(netio == NULL, "Failed to handle zero type");
-  fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+  ck_assert_msg(netio == NULL, "Failed to handle zero type");
+  ck_assert_msg(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
     strerror(errno), errno);
 
   mark_point();
   netio = pr_get_netio(1000);
-  fail_unless(netio == NULL, "Failed to handle invalid type");
-  fail_unless(errno == ENOENT, "Expected ENOENT (%d), got %s (%d)", ENOENT,
+  ck_assert_msg(netio == NULL, "Failed to handle invalid type");
+  ck_assert_msg(errno == ENOENT, "Expected ENOENT (%d), got %s (%d)", ENOENT,
     strerror(errno), errno);
 }
 END_TEST
@@ -2351,14 +2351,14 @@ START_TEST (netio_alloc_test) {
 
   mark_point();
   netio = pr_alloc_netio2(NULL, NULL, NULL);
-  fail_unless(netio == NULL, "Failed to handle null pool");
-  fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+  ck_assert_msg(netio == NULL, "Failed to handle null pool");
+  ck_assert_msg(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
     strerror(errno));
 
   mark_point();
   netio = pr_alloc_netio(NULL);
-  fail_unless(netio == NULL, "Failed to handle null pool");
-  fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+  ck_assert_msg(netio == NULL, "Failed to handle null pool");
+  ck_assert_msg(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
     strerror(errno));
 }
 END_TEST

@@ -190,7 +190,7 @@ START_TEST (pool_palloc_test) {
 
   sz = 0;
   v = palloc(p, sz);
-  fail_unless(v == NULL, "Allocated %u-len memory", sz);
+  ck_assert_msg(v == NULL, "Allocated %u-len memory", sz);
 
   sz = 1;
   v = palloc(p, sz);
@@ -214,7 +214,7 @@ START_TEST (pool_pallocsz_test) {
 
   sz = 0;
   v = pallocsz(p, sz);
-  fail_unless(v == NULL, "Allocated %u-len memory", sz);
+  ck_assert_msg(v == NULL, "Allocated %u-len memory", sz);
 
   sz = 1;
   v = pallocsz(p, sz);
@@ -239,20 +239,20 @@ START_TEST (pool_pcalloc_test) {
 
   sz = 0;
   v = pcalloc(p, sz);
-  fail_unless(v == NULL, "Allocated %u-len memory", sz);
+  ck_assert_msg(v == NULL, "Allocated %u-len memory", sz);
 
   sz = 1;
   v = pcalloc(p, sz);
   fail_if(v == NULL, "Failed to allocate %u-len memory", sz);
   for (i = 0; i < sz; i++) {
-    fail_unless(v[i] == 0, "Allocated non-zero memory at position %u", i);
+    ck_assert_msg(v[i] == 0, "Allocated non-zero memory at position %u", i);
   }
 
   sz = 16382;
   v = pcalloc(p, sz);
   fail_if(v == NULL, "Failed to allocate %u-len memory", sz);
   for (i = 0; i < sz; i++) {
-    fail_unless(v[i] == 0, "Allocated non-zero memory at position %u", i);
+    ck_assert_msg(v[i] == 0, "Allocated non-zero memory at position %u", i);
   }
 
   destroy_pool(p);
@@ -269,7 +269,7 @@ START_TEST (pool_pcallocsz_test) {
 
   sz = 0;
   v = pcallocsz(p, sz);
-  fail_unless(v == NULL, "Allocated %u-len memory", sz);
+  ck_assert_msg(v == NULL, "Allocated %u-len memory", sz);
 
   sz = 1;
   v = pcallocsz(p, sz);
@@ -306,19 +306,19 @@ START_TEST (pool_get_tag_test) {
   const char *res;
 
   res = pr_pool_get_tag(NULL);
-  fail_unless(res == NULL, "Failed to handle null pool");
+  ck_assert_msg(res == NULL, "Failed to handle null pool");
 
   p = make_sub_pool(permanent_pool);
 
   mark_point();
   res = pr_pool_get_tag(p);
-  fail_unless(res == NULL, "Failed to handle untagged pool");
+  ck_assert_msg(res == NULL, "Failed to handle untagged pool");
 
   mark_point();
   pr_pool_tag(p, "foo");
   res = pr_pool_get_tag(p);
-  fail_unless(res != NULL, "Failed to get pool tag: %s", strerror(errno));
-  fail_unless(strcmp(res, "foo") == 0, "Expected tag 'foo', got '%s'", res);
+  ck_assert_msg(res != NULL, "Failed to get pool tag: %s", strerror(errno));
+  ck_assert_msg(strcmp(res, "foo") == 0, "Expected tag 'foo', got '%s'", res);
 
   destroy_pool(p);
 
@@ -329,8 +329,8 @@ START_TEST (pool_debug_flags_test) {
   int res;
 
   res = pr_pool_debug_set_flags(-1);
-  fail_unless(res < 0, "Failed to handle invalid flags");
-  fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+  ck_assert_msg(res < 0, "Failed to handle invalid flags");
+  ck_assert_msg(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
     strerror(errno), errno);
 
   res = pr_pool_debug_set_flags(0);
@@ -366,7 +366,7 @@ START_TEST (pool_debug_memory_test) {
 END_TEST
 
 static void test_visitf(const pr_pool_info_t *pinfo, void *user_data) {
-  fail_unless(pinfo != NULL, "Expected pool info, got NULL");
+  ck_assert_msg(pinfo != NULL, "Expected pool info, got NULL");
 }
 
 START_TEST (pool_debug_memory2_test) {
@@ -416,7 +416,7 @@ START_TEST (pool_register_cleanup_test) {
 
   register_cleanup(p, NULL, cleanup_cb, cleanup_cb);
   destroy_pool(p);
-  fail_unless(pool_cleanup_count > 0, "Expected cleanup count >0, got %u",
+  ck_assert_msg(pool_cleanup_count > 0, "Expected cleanup count >0, got %u",
     pool_cleanup_count);
 }
 END_TEST
@@ -435,7 +435,7 @@ START_TEST (pool_register_cleanup2_test) {
 
   register_cleanup2(p, NULL, cleanup_cb);
   destroy_pool(p);
-  fail_unless(pool_cleanup_count > 0, "Expected cleanup count >0, got %u",
+  ck_assert_msg(pool_cleanup_count > 0, "Expected cleanup count >0, got %u",
     pool_cleanup_count);
 }
 END_TEST
@@ -452,17 +452,17 @@ START_TEST (pool_unregister_cleanup_test) {
   p = make_sub_pool(permanent_pool);
   register_cleanup(p, NULL, cleanup_cb, cleanup_cb);
   unregister_cleanup(p, NULL, NULL);
-  fail_unless(pool_cleanup_count == 0, "Expected cleanup count 0, got %u",
+  ck_assert_msg(pool_cleanup_count == 0, "Expected cleanup count 0, got %u",
     pool_cleanup_count);
 
   pool_cleanup_count = 0;
   register_cleanup(p, NULL, cleanup_cb, cleanup_cb);
   unregister_cleanup(p, NULL, cleanup_cb);
-  fail_unless(pool_cleanup_count == 0, "Expected cleanup count >0, got %u",
+  ck_assert_msg(pool_cleanup_count == 0, "Expected cleanup count >0, got %u",
     pool_cleanup_count);
 
   destroy_pool(p);
-  fail_unless(pool_cleanup_count == 0, "Expected cleanup count >0, got %u",
+  ck_assert_msg(pool_cleanup_count == 0, "Expected cleanup count >0, got %u",
     pool_cleanup_count);
 }
 END_TEST

@@ -88,7 +88,7 @@ START_TEST (random_next_range_1000_test) {
    * good, right?
    */
   for (i = 0; i < count; i++) {
-    fail_unless(seen[i] == 1, "Expected to have generated number %d", i);
+    ck_assert_msg(seen[i] == 1, "Expected to have generated number %d", i);
   }
 }
 END_TEST

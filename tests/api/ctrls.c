@@ -151,55 +151,55 @@ START_TEST (ctrls_alloc_free_test) {
 
   mark_point();
   res = pr_ctrls_free(NULL);
-  fail_unless(res < 0, "Failed to handle null ctrl");
-  fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+  ck_assert_msg(res < 0, "Failed to handle null ctrl");
+  ck_assert_msg(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
     strerror(errno), errno);
 
   mark_point();
   ctrl = pr_ctrls_alloc();
-  fail_unless(ctrl != NULL, "Failed to allocate ctrl: %s", strerror(errno));
+  ck_assert_msg(ctrl != NULL, "Failed to allocate ctrl: %s", strerror(errno));
   res = pr_ctrls_free(ctrl);
-  fail_unless(res == 0, "Failed to free ctrl: %s", strerror(errno));
+  ck_assert_msg(res == 0, "Failed to free ctrl: %s", strerror(errno));
 
   mark_point();
   ctrl = pr_ctrls_alloc();
-  fail_unless(ctrl != NULL, "Failed to allocate ctrl: %s", strerror(errno));
+  ck_assert_msg(ctrl != NULL, "Failed to allocate ctrl: %s", strerror(errno));
   res = pr_ctrls_free(ctrl);
-  fail_unless(res == 0, "Failed to free ctrl: %s", strerror(errno));
+  ck_assert_msg(res == 0, "Failed to free ctrl: %s", strerror(errno));
 
   /* LIFO order */
   mark_point();
   ctrl = pr_ctrls_alloc();
   ctrl2 = pr_ctrls_alloc();
-  fail_unless(ctrl2 != NULL, "Failed to allocate ctrl2: %s", strerror(errno));
+  ck_assert_msg(ctrl2 != NULL, "Failed to allocate ctrl2: %s", strerror(errno));
   ctrl2->ctrls_tmp_pool = make_sub_pool(p);
   ctrl3 = pr_ctrls_alloc();
-  fail_unless(ctrl3 != NULL, "Failed to allocate ctrl3: %s", strerror(errno));
+  ck_assert_msg(ctrl3 != NULL, "Failed to allocate ctrl3: %s", strerror(errno));
   ctrl3->ctrls_tmp_pool = make_sub_pool(p);
 
   res = pr_ctrls_free(ctrl3);
-  fail_unless(res == 0, "Failed to free ctrl3 %s", strerror(errno));
+  ck_assert_msg(res == 0, "Failed to free ctrl3 %s", strerror(errno));
   res = pr_ctrls_free(ctrl2);
-  fail_unless(res == 0, "Failed to free ctrl2: %s", strerror(errno));
+  ck_assert_msg(res == 0, "Failed to free ctrl2: %s", strerror(errno));
   res = pr_ctrls_free(ctrl);
-  fail_unless(res == 0, "Failed to free ctrl: %s", strerror(errno));
+  ck_assert_msg(res == 0, "Failed to free ctrl: %s", strerror(errno));
 
   /* FIFO order */
   mark_point();
   ctrl = pr_ctrls_alloc();
   ctrl2 = pr_ctrls_alloc();
-  fail_unless(ctrl2 != NULL, "Failed to allocate ctrl2: %s", strerror(errno));
+  ck_assert_msg(ctrl2 != NULL, "Failed to allocate ctrl2: %s", strerror(errno));
   ctrl2->ctrls_tmp_pool = make_sub_pool(p);
   ctrl3 = pr_ctrls_alloc();
-  fail_unless(ctrl3 != NULL, "Failed to allocate ctrl3: %s", strerror(errno));
+  ck_assert_msg(ctrl3 != NULL, "Failed to allocate ctrl3: %s", strerror(errno));
   ctrl3->ctrls_tmp_pool = make_sub_pool(p);
 
   res = pr_ctrls_free(ctrl);
-  fail_unless(res == 0, "Failed to free ctrl: %s", strerror(errno));
+  ck_assert_msg(res == 0, "Failed to free ctrl: %s", strerror(errno));
   res = pr_ctrls_free(ctrl2);
-  fail_unless(res == 0, "Failed to free ctrl2: %s", strerror(errno));
+  ck_assert_msg(res == 0, "Failed to free ctrl2: %s", strerror(errno));
   res = pr_ctrls_free(ctrl3);
-  fail_unless(res == 0, "Failed to free ctrl3 %s", strerror(errno));
+  ck_assert_msg(res == 0, "Failed to free ctrl3 %s", strerror(errno));
 }
 END_TEST
 
@@ -208,8 +208,8 @@ START_TEST (ctrls_unregister_test) {
 
   mark_point();
   res = pr_ctrls_unregister(NULL, NULL);
-  fail_unless(res < 0, "Failed to handle lack of registered actions");
-  fail_unless(errno == ENOENT, "Expected ENOENT (%d), got %s (%d)", ENOENT,
+  ck_assert_msg(res < 0, "Failed to handle lack of registered actions");
+  ck_assert_msg(errno == ENOENT, "Expected ENOENT (%d), got %s (%d)", ENOENT,
     strerror(errno), errno);
 }
 END_TEST
@@ -229,44 +229,44 @@ START_TEST (ctrls_register_test) {
 
   mark_point();
   res = pr_ctrls_register(NULL, NULL, NULL, NULL);
-  fail_unless(res < 0, "Failed to handle null action");
-  fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+  ck_assert_msg(res < 0, "Failed to handle null action");
+  ck_assert_msg(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
     strerror(errno), errno);
 
   mark_point();
   action = "test";
   res = pr_ctrls_register(NULL, action, NULL, NULL);
-  fail_unless(res < 0, "Failed to handle null desc");
-  fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+  ck_assert_msg(res < 0, "Failed to handle null desc");
+  ck_assert_msg(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
     strerror(errno), errno);
 
   mark_point();
   desc = "desc";
   res = pr_ctrls_register(NULL, action, desc, NULL);
-  fail_unless(res < 0, "Failed to handle null callback");
-  fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+  ck_assert_msg(res < 0, "Failed to handle null callback");
+  ck_assert_msg(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
     strerror(errno), errno);
 
   mark_point();
   res = pr_ctrls_register(NULL, action, desc, ctrls_test_cb);
-  fail_unless(res >= 0, "Failed to register ctrls action: %s", strerror(errno));
+  ck_assert_msg(res >= 0, "Failed to register ctrls action: %s", strerror(errno));
 
   mark_point();
   res = pr_ctrls_unregister(NULL, action);
-  fail_unless(res == 0, "Failed to unregister ctrls action: %s",
+  ck_assert_msg(res == 0, "Failed to unregister ctrls action: %s",
     strerror(errno));
 
   mark_point();
   res = pr_ctrls_register(NULL, action, desc, ctrls_test_cb);
-  fail_unless(res >= 0, "Failed to register ctrls action: %s", strerror(errno));
+  ck_assert_msg(res >= 0, "Failed to register ctrls action: %s", strerror(errno));
 
   m.name = "test";
   res = pr_ctrls_register(&m, action, desc, ctrls_test_cb);
-  fail_unless(res >= 0, "Failed to register ctrls action: %s", strerror(errno));
+  ck_assert_msg(res >= 0, "Failed to register ctrls action: %s", strerror(errno));
 
   mark_point();
   res = pr_ctrls_unregister(NULL, action);
-  fail_unless(res == 0, "Failed to unregister ctrls action: %s",
+  ck_assert_msg(res == 0, "Failed to unregister ctrls action: %s",
     strerror(errno));
 }
 END_TEST
@@ -279,15 +279,15 @@ START_TEST (ctrls_add_arg_test) {
 
   mark_point();
   res = pr_ctrls_add_arg(NULL, NULL, 0);
-  fail_unless(res < 0, "Failed to handle null ctrl");
-  fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+  ck_assert_msg(res < 0, "Failed to handle null ctrl");
+  ck_assert_msg(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
     strerror(errno), errno);
 
   mark_point();
   ctrl = pr_ctrls_alloc();
   res = pr_ctrls_add_arg(ctrl, NULL, 0);
-  fail_unless(res < 0, "Failed to handle null arg");
-  fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+  ck_assert_msg(res < 0, "Failed to handle null arg");
+  ck_assert_msg(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
     strerror(errno), errno);
 
   mark_point();
@@ -300,8 +300,8 @@ START_TEST (ctrls_add_arg_test) {
   buflen = 3;
 
   res = pr_ctrls_add_arg(ctrl, buf, buflen);
-  fail_unless(res < 0, "Failed to handle bad arg");
-  fail_unless(errno == EPERM, "Expected EPERM (%d), got %s (%d)", EPERM,
+  ck_assert_msg(res < 0, "Failed to handle bad arg");
+  ck_assert_msg(errno == EPERM, "Expected EPERM (%d), got %s (%d)", EPERM,
     strerror(errno), errno);
 
   mark_point();
@@ -311,7 +311,7 @@ START_TEST (ctrls_add_arg_test) {
   buflen = 3;
 
   res = pr_ctrls_add_arg(ctrl, buf, buflen);
-  fail_unless(res == 0, "Failed to add ctrl arg: %s", strerror(errno));
+  ck_assert_msg(res == 0, "Failed to add ctrl arg: %s", strerror(errno));
 }
 END_TEST
 
@@ -321,20 +321,20 @@ START_TEST (ctrls_add_response_test) {
 
   mark_point();
   res = pr_ctrls_add_response(NULL, NULL);
-  fail_unless(res < 0, "Failed to handle null ctrl");
-  fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+  ck_assert_msg(res < 0, "Failed to handle null ctrl");
+  ck_assert_msg(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
     strerror(errno), errno);
 
   mark_point();
   ctrl = pr_ctrls_alloc();
   res = pr_ctrls_add_response(ctrl, NULL);
-  fail_unless(res < 0, "Failed to handle null fmt");
-  fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+  ck_assert_msg(res < 0, "Failed to handle null fmt");
+  ck_assert_msg(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
     strerror(errno), errno);
 
   mark_point();
   res = pr_ctrls_add_response(ctrl, "%s", "foo");
-  fail_unless(res == 0, "Failed to add ctrl response: %s", strerror(errno));
+  ck_assert_msg(res == 0, "Failed to add ctrl response: %s", strerror(errno));
 }
 END_TEST
 
@@ -344,40 +344,40 @@ START_TEST (ctrls_copy_args_test) {
 
   mark_point();
   res = pr_ctrls_copy_args(NULL, NULL);
-  fail_unless(res < 0, "Failed to handle null src ctrl");
-  fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+  ck_assert_msg(res < 0, "Failed to handle null src ctrl");
+  ck_assert_msg(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
     strerror(errno), errno);
 
   mark_point();
   src_ctrl = pr_ctrls_alloc();
   res = pr_ctrls_copy_args(src_ctrl, NULL);
-  fail_unless(res < 0, "Failed to handle null dst ctrl");
-  fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+  ck_assert_msg(res < 0, "Failed to handle null dst ctrl");
+  ck_assert_msg(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
     strerror(errno), errno);
 
   mark_point();
   res = pr_ctrls_copy_args(src_ctrl, src_ctrl);
-  fail_unless(res < 0, "Failed to handle same src/dst ctrl");
-  fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+  ck_assert_msg(res < 0, "Failed to handle same src/dst ctrl");
+  ck_assert_msg(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
     strerror(errno), errno);
 
   mark_point();
   dst_ctrl = pr_ctrls_alloc();
   res = pr_ctrls_copy_args(src_ctrl, dst_ctrl);
-  fail_unless(res == 0, "Failed to copy ctrl args: %s", strerror(errno));
+  ck_assert_msg(res == 0, "Failed to copy ctrl args: %s", strerror(errno));
 
   mark_point();
   res = pr_ctrls_add_arg(src_ctrl, "foo", 3);
-  fail_unless(res == 0, "Failed to add src ctrl arg: %s", strerror(errno));
+  ck_assert_msg(res == 0, "Failed to add src ctrl arg: %s", strerror(errno));
 
   res = pr_ctrls_add_arg(src_ctrl, "bar", 3);
-  fail_unless(res == 0, "Failed to add src ctrl arg: %s", strerror(errno));
+  ck_assert_msg(res == 0, "Failed to add src ctrl arg: %s", strerror(errno));
 
   res = pr_ctrls_add_arg(src_ctrl, "baz", 3);
-  fail_unless(res == 0, "Failed to add src ctrl arg: %s", strerror(errno));
+  ck_assert_msg(res == 0, "Failed to add src ctrl arg: %s", strerror(errno));
 
   res = pr_ctrls_copy_args(src_ctrl, dst_ctrl);
-  fail_unless(res == 0, "Failed to copy ctrl args: %s", strerror(errno));
+  ck_assert_msg(res == 0, "Failed to copy ctrl args: %s", strerror(errno));
 }
 END_TEST
 
@@ -387,50 +387,50 @@ START_TEST (ctrls_copy_resps_test) {
 
   mark_point();
   res = pr_ctrls_copy_resps(NULL, NULL);
-  fail_unless(res < 0, "Failed to handle null src ctrl");
-  fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+  ck_assert_msg(res < 0, "Failed to handle null src ctrl");
+  ck_assert_msg(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
     strerror(errno), errno);
 
   mark_point();
   src_ctrl = pr_ctrls_alloc();
   res = pr_ctrls_copy_resps(src_ctrl, NULL);
-  fail_unless(res < 0, "Failed to handle null dst ctrl");
-  fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+  ck_assert_msg(res < 0, "Failed to handle null dst ctrl");
+  ck_assert_msg(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
     strerror(errno), errno);
 
   mark_point();
   res = pr_ctrls_copy_resps(src_ctrl, src_ctrl);
-  fail_unless(res < 0, "Failed to handle same src/dst ctrl");
-  fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+  ck_assert_msg(res < 0, "Failed to handle same src/dst ctrl");
+  ck_assert_msg(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
     strerror(errno), errno);
 
   mark_point();
   dst_ctrl = pr_ctrls_alloc();
   res = pr_ctrls_copy_resps(src_ctrl, dst_ctrl);
-  fail_unless(res < 0, "Failed to handle src ctrl with no responses");
-  fail_unless(errno == EPERM, "Expected EPERM (%d), got %s (%d)", EPERM,
+  ck_assert_msg(res < 0, "Failed to handle src ctrl with no responses");
+  ck_assert_msg(errno == EPERM, "Expected EPERM (%d), got %s (%d)", EPERM,
     strerror(errno), errno);
 
   mark_point();
   res = pr_ctrls_add_response(src_ctrl, "%s", "foo");
-  fail_unless(res == 0, "Failed to add src ctrl response: %s", strerror(errno));
+  ck_assert_msg(res == 0, "Failed to add src ctrl response: %s", strerror(errno));
 
   res = pr_ctrls_add_response(dst_ctrl, "%s", "bar");
-  fail_unless(res == 0, "Failed to add dst ctrl response: %s", strerror(errno));
+  ck_assert_msg(res == 0, "Failed to add dst ctrl response: %s", strerror(errno));
 
   res = pr_ctrls_copy_resps(src_ctrl, dst_ctrl);
-  fail_unless(res < 0, "Failed to handle dst ctrl with responses");
-  fail_unless(errno == EPERM, "Expected EPERM (%d), got %s (%d)", EPERM,
+  ck_assert_msg(res < 0, "Failed to handle dst ctrl with responses");
+  ck_assert_msg(errno == EPERM, "Expected EPERM (%d), got %s (%d)", EPERM,
     strerror(errno), errno);
 
   mark_point();
   src_ctrl = pr_ctrls_alloc();
   res = pr_ctrls_add_response(src_ctrl, "%s", "foo");
-  fail_unless(res == 0, "Failed to add src ctrl response: %s", strerror(errno));
+  ck_assert_msg(res == 0, "Failed to add src ctrl response: %s", strerror(errno));
 
   dst_ctrl = pr_ctrls_alloc();
   res = pr_ctrls_copy_resps(src_ctrl, dst_ctrl);
-  fail_unless(res == 0, "Failed to copy ctrl responses: %s", strerror(errno));
+  ck_assert_msg(res == 0, "Failed to copy ctrl responses: %s", strerror(errno));
 }
 END_TEST
 
@@ -441,28 +441,28 @@ START_TEST (ctrls_send_msg_test) {
 
   mark_point();
   res = pr_ctrls_send_msg(-1, 0, 0, NULL);
-  fail_unless(res < 0, "Failed to handle invalid fd");
-  fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+  ck_assert_msg(res < 0, "Failed to handle invalid fd");
+  ck_assert_msg(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
     strerror(errno), errno);
 
   mark_point();
   fd = 7;
   res = pr_ctrls_send_msg(fd, 0, 0, NULL);
-  fail_unless(res == 0, "Failed to send zero ctrl messages: %s",
+  ck_assert_msg(res == 0, "Failed to send zero ctrl messages: %s",
     strerror(errno));
 
   mark_point();
   fd = 7;
   res = pr_ctrls_send_msg(fd, 0, msgargc, NULL);
-  fail_unless(res == 0, "Failed to send zero ctrl messages: %s",
+  ck_assert_msg(res == 0, "Failed to send zero ctrl messages: %s",
     strerror(errno));
 
   mark_point();
   fd = 7777;
   status = -24;
   res = pr_ctrls_send_msg(fd, status, msgargc, msgargv);
-  fail_unless(res < 0, "Failed to handle invalid fd");
-  fail_unless(errno == EBADF, "Expected EBADF (%d), got %s (%d)", EBADF,
+  ck_assert_msg(res < 0, "Failed to handle invalid fd");
+  ck_assert_msg(errno == EBADF, "Expected EBADF (%d), got %s (%d)", EBADF,
     strerror(errno), errno);
 
   fd = devnull_fd();
@@ -473,7 +473,7 @@ START_TEST (ctrls_send_msg_test) {
   mark_point();
   status = -24;
   res = pr_ctrls_send_msg(fd, status, msgargc, msgargv);
-  fail_unless(res == 0, "Failed to send ctrl message: %s", strerror(errno));
+  ck_assert_msg(res == 0, "Failed to send ctrl message: %s", strerror(errno));
 
   (void) close(fd);
 }
@@ -486,22 +486,22 @@ START_TEST (ctrls_flush_response_test) {
 
   mark_point();
   res = pr_ctrls_flush_response(NULL);
-  fail_unless(res < 0, "Failed to handle null ctrl");
-  fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+  ck_assert_msg(res < 0, "Failed to handle null ctrl");
+  ck_assert_msg(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
     strerror(errno), errno);
 
   mark_point();
   ctrl = pr_ctrls_alloc();
   res = pr_ctrls_flush_response(ctrl);
-  fail_unless(res == 0, "Failed to flush ctrl with no responses: %s",
+  ck_assert_msg(res == 0, "Failed to flush ctrl with no responses: %s",
     strerror(errno));
 
   mark_point();
   res = pr_ctrls_add_response(ctrl, "%s", "foo");
-  fail_unless(res == 0, "Failed to add ctrl response: %s", strerror(errno));
+  ck_assert_msg(res == 0, "Failed to add ctrl response: %s", strerror(errno));
   res = pr_ctrls_flush_response(ctrl);
-  fail_unless(res < 0, "Failed to handle ctrl with no client");
-  fail_unless(errno == EPERM, "Expected EPERM (%d), got %s (%d)", EPERM,
+  ck_assert_msg(res < 0, "Failed to handle ctrl with no client");
+  ck_assert_msg(errno == EPERM, "Expected EPERM (%d), got %s (%d)", EPERM,
     strerror(errno), errno);
 
   mark_point();
@@ -513,13 +513,13 @@ START_TEST (ctrls_flush_response_test) {
 
   ctrl->ctrls_cl = cl;
   res = pr_ctrls_flush_response(ctrl);
-  fail_unless(res == 0, "Failed to flush ctrl responses: %s", strerror(errno));
+  ck_assert_msg(res == 0, "Failed to flush ctrl responses: %s", strerror(errno));
 
   mark_point();
   (void) close(cl->cl_fd);
   res = pr_ctrls_flush_response(ctrl);
-  fail_unless(res < 0, "Failed to handle bad fd");
-  fail_unless(errno == EBADF, "Expected EBADF (%d), got %s (%d)", EBADF,
+  ck_assert_msg(res < 0, "Failed to handle bad fd");
+  ck_assert_msg(errno == EBADF, "Expected EBADF (%d), got %s (%d)", EBADF,
     strerror(errno), errno);
 }
 END_TEST
@@ -531,79 +531,79 @@ START_TEST (ctrls_parse_msg_test) {
 
   mark_point();
   res = pr_ctrls_parse_msg(NULL, NULL, NULL, NULL);
-  fail_unless(res < 0, "Failed to handle null pool");
-  fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+  ck_assert_msg(res < 0, "Failed to handle null pool");
+  ck_assert_msg(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
     strerror(errno), errno);
 
   mark_point();
   res = pr_ctrls_parse_msg(p, NULL, NULL, NULL);
-  fail_unless(res < 0, "Failed to handle null msg");
-  fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+  ck_assert_msg(res < 0, "Failed to handle null msg");
+  ck_assert_msg(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
     strerror(errno), errno);
 
   mark_point();
   msg = "foo 'bar' baz";
   res = pr_ctrls_parse_msg(p, msg, NULL, NULL);
-  fail_unless(res < 0, "Failed to handle null msgargc");
-  fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+  ck_assert_msg(res < 0, "Failed to handle null msgargc");
+  ck_assert_msg(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
     strerror(errno), errno);
 
   mark_point();
   msg = "foo 'bar' baz";
   res = pr_ctrls_parse_msg(p, msg, &msgargc, NULL);
-  fail_unless(res < 0, "Failed to handle null msgargv");
-  fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+  ck_assert_msg(res < 0, "Failed to handle null msgargv");
+  ck_assert_msg(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
     strerror(errno), errno);
 
   mark_point();
   msg = pstrdup(p, "foo 'Bar' BAZ");
   res = pr_ctrls_parse_msg(p, msg, &msgargc, &msgargv);
-  fail_unless(res == 0, "Failed to parse msg '%s': %s", msg, strerror(errno));
-  fail_unless(msgargc == 3, "Expected msgargc 3, got %u", msgargc);
-  fail_unless(msgargv != NULL, "Expected msgargv, got null");
-  fail_unless(strcmp(msgargv[0], "foo") == 0,
+  ck_assert_msg(res == 0, "Failed to parse msg '%s': %s", msg, strerror(errno));
+  ck_assert_msg(msgargc == 3, "Expected msgargc 3, got %u", msgargc);
+  ck_assert_msg(msgargv != NULL, "Expected msgargv, got null");
+  ck_assert_msg(strcmp(msgargv[0], "foo") == 0,
     "Expected 'foo', got '%s'", msgargv[0]);
-  fail_unless(strcmp(msgargv[1], "'Bar'") == 0,
+  ck_assert_msg(strcmp(msgargv[1], "'Bar'") == 0,
     "Expected 'Bar', got '%s'", msgargv[1]);
-  fail_unless(strcmp(msgargv[2], "BAZ") == 0,
+  ck_assert_msg(strcmp(msgargv[2], "BAZ") == 0,
     "Expected 'BAZ', got '%s'", msgargv[2]);
   mark_point();
   msg = pstrdup(p, "foo\'s 'Bar\\\'s' BAZ");
   res = pr_ctrls_parse_msg(p, msg, &msgargc, &msgargv);
-  fail_unless(res == 0, "Failed to parse msg '%s': %s", msg, strerror(errno));
-  fail_unless(msgargc == 3, "Expected msgargc 3, got %u", msgargc);
-  fail_unless(msgargv != NULL, "Expected msgargv, got null");
-  fail_unless(strcmp(msgargv[0], "foo's") == 0,
+  ck_assert_msg(res == 0, "Failed to parse msg '%s': %s", msg, strerror(errno));
+  ck_assert_msg(msgargc == 3, "Expected msgargc 3, got %u", msgargc);
+  ck_assert_msg(msgargv != NULL, "Expected msgargv, got null");
+  ck_assert_msg(strcmp(msgargv[0], "foo's") == 0,
     "Expected 'foo's', got '%s'", msgargv[0]);
-  fail_unless(strcmp(msgargv[1], "'Bar\\\'s'") == 0,
+  ck_assert_msg(strcmp(msgargv[1], "'Bar\\\'s'") == 0,
     "Expected 'Bar\\\'s', got '%s'", msgargv[1]);
-  fail_unless(strcmp(msgargv[2], "BAZ") == 0,
+  ck_assert_msg(strcmp(msgargv[2], "BAZ") == 0,
     "Expected 'BAZ', got '%s'", msgargv[2]);
 
   mark_point();
   msg = pstrdup(p, "foo 'Bar' BAZ");
   res = pr_ctrls_parse_msg(p, msg, &msgargc, &msgargv);
-  fail_unless(res == 0, "Failed to parse msg '%s': %s", msg, strerror(errno));
-  fail_unless(msgargc == 3, "Expected msgargc 3, got %u", msgargc);
-  fail_unless(msgargv != NULL, "Expected msgargv, got null");
-  fail_unless(strcmp(msgargv[0], "foo") == 0,
+  ck_assert_msg(res == 0, "Failed to parse msg '%s': %s", msg, strerror(errno));
+  ck_assert_msg(msgargc == 3, "Expected msgargc 3, got %u", msgargc);
+  ck_assert_msg(msgargv != NULL, "Expected msgargv, got null");
+  ck_assert_msg(strcmp(msgargv[0], "foo") == 0,
     "Expected 'foo', got '%s'", msgargv[0]);
-  fail_unless(strcmp(msgargv[1], "'Bar'") == 0,
+  ck_assert_msg(strcmp(msgargv[1], "'Bar'") == 0,
     "Expected 'Bar', got '%s'", msgargv[1]);
-  fail_unless(strcmp(msgargv[2], "BAZ") == 0,
+  ck_assert_msg(strcmp(msgargv[2], "BAZ") == 0,
     "Expected 'BAZ', got '%s'", msgargv[2]);
 
   mark_point();
   msg = pstrdup(p, "foo \"Bar\\\'s\" BAZ");
   res = pr_ctrls_parse_msg(p, msg, &msgargc, &msgargv);
-  fail_unless(res == 0, "Failed to parse msg '%s': %s", msg, strerror(errno));
-  fail_unless(msgargc == 3, "Expected msgargc 3, got %u", msgargc);
-  fail_unless(msgargv != NULL, "Expected msgargv, got null");
-  fail_unless(strcmp(msgargv[0], "foo") == 0,
+  ck_assert_msg(res == 0, "Failed to parse msg '%s': %s", msg, strerror(errno));
+  ck_assert_msg(msgargc == 3, "Expected msgargc 3, got %u", msgargc);
+  ck_assert_msg(msgargv != NULL, "Expected msgargv, got null");
+  ck_assert_msg(strcmp(msgargv[0], "foo") == 0,
     "Expected 'foo', got '%s'", msgargv[0]);
-  fail_unless(strcmp(msgargv[1], "Bar's") == 0,
+  ck_assert_msg(strcmp(msgargv[1], "Bar's") == 0,
     "Expected 'Bar's', got '%s'", msgargv[1]);
-  fail_unless(strcmp(msgargv[2], "BAZ") == 0,
+  ck_assert_msg(strcmp(msgargv[2], "BAZ") == 0,
     "Expected 'BAZ', got '%s'", msgargv[2]);
 }
 END_TEST
@@ -616,23 +616,23 @@ START_TEST (ctrls_recv_request_invalid_test) {
 
   mark_point();
   res = pr_ctrls_recv_request(NULL);
-  fail_unless(res < 0, "Failed to handle null client");
-  fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+  ck_assert_msg(res < 0, "Failed to handle null client");
+  ck_assert_msg(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
     strerror(errno), errno);
 
   mark_point();
   cl = pcalloc(p, sizeof(pr_ctrls_cl_t));
   res = pr_ctrls_recv_request(cl);
-  fail_unless(res < 0, "Failed to handle client without ctrls list");
-  fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+  ck_assert_msg(res < 0, "Failed to handle client without ctrls list");
+  ck_assert_msg(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
     strerror(errno), errno);
 
   mark_point();
   cl->cl_ctrls = make_array(p, 0, sizeof(pr_ctrls_t *));
   cl->cl_fd = -1;
   res = pr_ctrls_recv_request(cl);
-  fail_unless(res < 0, "Failed to handle client without fd");
-  fail_unless(errno == EBADF, "Expected EBADF (%d), got %s (%d)", EBADF,
+  ck_assert_msg(res < 0, "Failed to handle client without fd");
+  ck_assert_msg(errno == EBADF, "Expected EBADF (%d), got %s (%d)", EBADF,
     strerror(errno), errno);
 
   mark_point();
@@ -644,8 +644,8 @@ START_TEST (ctrls_recv_request_invalid_test) {
   cl->cl_fd = fd;
   (void) close(cl->cl_fd);
   res = pr_ctrls_recv_request(cl);
-  fail_unless(res < 0, "Failed to handle client with bad fd");
-  fail_unless(errno == EBADF, "Expected EBADF (%d), got %s (%d)", EBADF,
+  ck_assert_msg(res < 0, "Failed to handle client with bad fd");
+  ck_assert_msg(errno == EBADF, "Expected EBADF (%d), got %s (%d)", EBADF,
     strerror(errno), errno);
 
   mark_point();
@@ -658,8 +658,8 @@ START_TEST (ctrls_recv_request_invalid_test) {
   (void) write(fd, "a", 1);
   rewind_fd(fd);
   res = pr_ctrls_recv_request(cl);
-  fail_unless(res < 0, "Failed to handle invalid status (too short)");
-  fail_unless(errno == EPERM, "Expected EPERM (%d), got %s (%d)", EPERM,
+  ck_assert_msg(res < 0, "Failed to handle invalid status (too short)");
+  ck_assert_msg(errno == EPERM, "Expected EPERM (%d), got %s (%d)", EPERM,
     strerror(errno), errno);
 
   fd = reset_fd(fd);
@@ -674,8 +674,8 @@ START_TEST (ctrls_recv_request_invalid_test) {
   (void) write(fd, "a", 1);
   rewind_fd(fd);
   res = pr_ctrls_recv_request(cl);
-  fail_unless(res < 0, "Failed to handle invalid nreqargs (too short)");
-  fail_unless(errno == EPERM, "Expected EPERM (%d), got %s (%d)", EPERM,
+  ck_assert_msg(res < 0, "Failed to handle invalid nreqargs (too short)");
+  ck_assert_msg(errno == EPERM, "Expected EPERM (%d), got %s (%d)", EPERM,
     strerror(errno), errno);
 
   fd = reset_fd(fd);
@@ -690,8 +690,8 @@ START_TEST (ctrls_recv_request_invalid_test) {
   (void) write(fd, &nreqargs, sizeof(nreqargs));
   rewind_fd(fd);
   res = pr_ctrls_recv_request(cl);
-  fail_unless(res < 0, "Failed to handle invalid nreqargs (too many)");
-  fail_unless(errno == ENOMEM, "Expected ENOMEM (%d), got %s (%d)", ENOMEM,
+  ck_assert_msg(res < 0, "Failed to handle invalid nreqargs (too many)");
+  ck_assert_msg(errno == ENOMEM, "Expected ENOMEM (%d), got %s (%d)", ENOMEM,
     strerror(errno), errno);
 
   fd = reset_fd(fd);
@@ -707,8 +707,8 @@ START_TEST (ctrls_recv_request_invalid_test) {
   (void) write(fd, "a", 1);
   rewind_fd(fd);
   res = pr_ctrls_recv_request(cl);
-  fail_unless(res < 0, "Failed to handle invalid actionlen (too short)");
-  fail_unless(errno == EPERM, "Expected EPERM (%d), got %s (%d)", EPERM,
+  ck_assert_msg(res < 0, "Failed to handle invalid actionlen (too short)");
+  ck_assert_msg(errno == EPERM, "Expected EPERM (%d), got %s (%d)", EPERM,
     strerror(errno), errno);
 
   fd = reset_fd(fd);
@@ -724,8 +724,8 @@ START_TEST (ctrls_recv_request_invalid_test) {
   (void) write(fd, &actionlen, sizeof(actionlen));
   rewind_fd(fd);
   res = pr_ctrls_recv_request(cl);
-  fail_unless(res < 0, "Failed to handle invalid actionlen (too long)");
-  fail_unless(errno == ENOMEM, "Expected ENOMEM (%d), got %s (%d)", ENOMEM,
+  ck_assert_msg(res < 0, "Failed to handle invalid actionlen (too long)");
+  ck_assert_msg(errno == ENOMEM, "Expected ENOMEM (%d), got %s (%d)", ENOMEM,
     strerror(errno), errno);
 
   fd = reset_fd(fd);
@@ -742,8 +742,8 @@ START_TEST (ctrls_recv_request_invalid_test) {
   (void) write(fd, "a", 1);
   rewind_fd(fd);
   res = pr_ctrls_recv_request(cl);
-  fail_unless(res < 0, "Failed to handle invalid reqarg (too short)");
-  fail_unless(errno == EPERM, "Expected EPERM (%d), got %s (%d)", EPERM,
+  ck_assert_msg(res < 0, "Failed to handle invalid reqarg (too short)");
+  ck_assert_msg(errno == EPERM, "Expected EPERM (%d), got %s (%d)", EPERM,
     strerror(errno), errno);
 
   fd = reset_fd(fd);
@@ -761,8 +761,8 @@ START_TEST (ctrls_recv_request_invalid_test) {
   (void) write(fd, action, actionlen);
   rewind_fd(fd);
   res = pr_ctrls_recv_request(cl);
-  fail_unless(res < 0, "Failed to handle unknown action");
-  fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+  ck_assert_msg(res < 0, "Failed to handle unknown action");
+  ck_assert_msg(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
     strerror(errno), errno);
 
   (void) close(fd);
@@ -782,7 +782,7 @@ START_TEST (ctrls_recv_request_actions_test) {
   action = "test";
   desc = "desc";
   res = pr_ctrls_register(&m, action, desc, ctrls_test_cb);
-  fail_unless(res >= 0, "Failed to register ctrls action: %s", strerror(errno));
+  ck_assert_msg(res >= 0, "Failed to register ctrls action: %s", strerror(errno));
 
   mark_point();
   fd = tmpfile_fd();
@@ -803,13 +803,13 @@ START_TEST (ctrls_recv_request_actions_test) {
   (void) write(fd, action, actionlen);
   rewind_fd(fd);
   res = pr_ctrls_recv_request(cl);
-  fail_unless(res == 0, "Failed to handle known action: %s", strerror(errno));
-  fail_unless(cl->cl_ctrls->nelts == 1, "Expected 1 ctrl, got %d",
+  ck_assert_msg(res == 0, "Failed to handle known action: %s", strerror(errno));
+  ck_assert_msg(cl->cl_ctrls->nelts == 1, "Expected 1 ctrl, got %d",
     cl->cl_ctrls->nelts);
   ctrl = ((pr_ctrls_t **) cl->cl_ctrls->elts)[0];
-  fail_unless(ctrl->ctrls_flags & PR_CTRLS_REQUESTED,
+  ck_assert_msg(ctrl->ctrls_flags & PR_CTRLS_REQUESTED,
     "Expected PR_CTRLS_REQUESTED flag, got %lu", ctrl->ctrls_flags);
-  fail_unless(ctrl->ctrls_cb_args == NULL,
+  ck_assert_msg(ctrl->ctrls_cb_args == NULL,
     "Expected no callback args, got %p", ctrl->ctrls_cb_args);
 
   mark_point();
@@ -828,14 +828,14 @@ START_TEST (ctrls_recv_request_actions_test) {
   (void) write(fd, "a", 1);
   rewind_fd(fd);
   res = pr_ctrls_recv_request(cl);
-  fail_unless(res == 0, "Failed to handle too-short reqarglen: %s",
+  ck_assert_msg(res == 0, "Failed to handle too-short reqarglen: %s",
     strerror(errno));
-  fail_unless(cl->cl_ctrls->nelts == 1, "Expected 1 ctrl, got %d",
+  ck_assert_msg(cl->cl_ctrls->nelts == 1, "Expected 1 ctrl, got %d",
     cl->cl_ctrls->nelts);
   ctrl = ((pr_ctrls_t **) cl->cl_ctrls->elts)[0];
-  fail_unless(ctrl->ctrls_flags & PR_CTRLS_REQUESTED,
+  ck_assert_msg(ctrl->ctrls_flags & PR_CTRLS_REQUESTED,
     "Expected PR_CTRLS_REQUESTED flag, got %lu", ctrl->ctrls_flags);
-  fail_unless(ctrl->ctrls_cb_args == NULL,
+  ck_assert_msg(ctrl->ctrls_cb_args == NULL,
     "Expected no callback args, got %p", ctrl->ctrls_cb_args);
 
   mark_point();
@@ -854,14 +854,14 @@ START_TEST (ctrls_recv_request_actions_test) {
   (void) write(fd, &reqarglen, sizeof(reqarglen));
   rewind_fd(fd);
   res = pr_ctrls_recv_request(cl);
-  fail_unless(res == 0, "Failed to handle zero-length reqarg: %s",
+  ck_assert_msg(res == 0, "Failed to handle zero-length reqarg: %s",
     strerror(errno));
-  fail_unless(cl->cl_ctrls->nelts == 1, "Expected 1 ctrl, got %d",
+  ck_assert_msg(cl->cl_ctrls->nelts == 1, "Expected 1 ctrl, got %d",
     cl->cl_ctrls->nelts);
   ctrl = ((pr_ctrls_t **) cl->cl_ctrls->elts)[0];
-  fail_unless(ctrl->ctrls_flags & PR_CTRLS_REQUESTED,
+  ck_assert_msg(ctrl->ctrls_flags & PR_CTRLS_REQUESTED,
     "Expected PR_CTRLS_REQUESTED flag, got %lu", ctrl->ctrls_flags);
-  fail_unless(ctrl->ctrls_cb_args == NULL,
+  ck_assert_msg(ctrl->ctrls_cb_args == NULL,
     "Expected no callback args, got %p", ctrl->ctrls_cb_args);
 
   mark_point();
@@ -880,10 +880,10 @@ START_TEST (ctrls_recv_request_actions_test) {
   (void) write(fd, &reqarglen, sizeof(reqarglen));
   rewind_fd(fd);
   res = pr_ctrls_recv_request(cl);
-  fail_unless(res < 0, "Failed to handle too-long reqarg");
-  fail_unless(errno == ENOMEM, "Expected ENOMEM (%d), got %s (%d)", ENOMEM,
+  ck_assert_msg(res < 0, "Failed to handle too-long reqarg");
+  ck_assert_msg(errno == ENOMEM, "Expected ENOMEM (%d), got %s (%d)", ENOMEM,
     strerror(errno), errno);
-  fail_unless(cl->cl_ctrls->nelts == 0, "Expected 0 ctrl, got %d",
+  ck_assert_msg(cl->cl_ctrls->nelts == 0, "Expected 0 ctrl, got %d",
     cl->cl_ctrls->nelts);
 
   mark_point();
@@ -903,14 +903,14 @@ START_TEST (ctrls_recv_request_actions_test) {
   (void) write(fd, "a", 1);
   rewind_fd(fd);
   res = pr_ctrls_recv_request(cl);
-  fail_unless(res == 0, "Failed to handle truncated reqarg: %s",
+  ck_assert_msg(res == 0, "Failed to handle truncated reqarg: %s",
     strerror(errno));
-  fail_unless(cl->cl_ctrls->nelts == 1, "Expected 1 ctrl, got %d",
+  ck_assert_msg(cl->cl_ctrls->nelts == 1, "Expected 1 ctrl, got %d",
     cl->cl_ctrls->nelts);
   ctrl = ((pr_ctrls_t **) cl->cl_ctrls->elts)[0];
-  fail_unless(ctrl->ctrls_flags & PR_CTRLS_REQUESTED,
+  ck_assert_msg(ctrl->ctrls_flags & PR_CTRLS_REQUESTED,
     "Expected PR_CTRLS_REQUESTED flag, got %lu", ctrl->ctrls_flags);
-  fail_unless(ctrl->ctrls_cb_args == NULL,
+  ck_assert_msg(ctrl->ctrls_cb_args == NULL,
     "Expected no callback args, got %p", ctrl->ctrls_cb_args);
 
   mark_point();
@@ -931,22 +931,22 @@ START_TEST (ctrls_recv_request_actions_test) {
   (void) write(fd, reqarg, reqarglen);
   rewind_fd(fd);
   res = pr_ctrls_recv_request(cl);
-  fail_unless(res == 0, "Failed to handle truncated reqarg: %s",
+  ck_assert_msg(res == 0, "Failed to handle truncated reqarg: %s",
     strerror(errno));
-  fail_unless(cl->cl_ctrls->nelts == 1, "Expected 1 ctrl, got %d",
+  ck_assert_msg(cl->cl_ctrls->nelts == 1, "Expected 1 ctrl, got %d",
     cl->cl_ctrls->nelts);
   ctrl = ((pr_ctrls_t **) cl->cl_ctrls->elts)[0];
-  fail_unless(ctrl->ctrls_flags & PR_CTRLS_REQUESTED,
+  ck_assert_msg(ctrl->ctrls_flags & PR_CTRLS_REQUESTED,
     "Expected PR_CTRLS_REQUESTED flag, got %lu", ctrl->ctrls_flags);
-  fail_unless(ctrl->ctrls_cb_args != NULL, "Expected callback args, got NULL");
-  fail_unless(ctrl->ctrls_cb_args->nelts == 1,
+  ck_assert_msg(ctrl->ctrls_cb_args != NULL, "Expected callback args, got NULL");
+  ck_assert_msg(ctrl->ctrls_cb_args->nelts == 1,
     "Expected 1 callback arg, got %d", ctrl->ctrls_cb_args->nelts);
 
   /* next_action present */
 
   mark_point();
   res = pr_ctrls_register(&m, action, desc, ctrls_test2_cb);
-  fail_unless(res >= 0, "Failed to register ctrls action: %s", strerror(errno));
+  ck_assert_msg(res >= 0, "Failed to register ctrls action: %s", strerror(errno));
 
   mark_point();
   fd = reset_fd(fd);
@@ -966,23 +966,23 @@ START_TEST (ctrls_recv_request_actions_test) {
   (void) write(fd, reqarg, reqarglen);
   rewind_fd(fd);
   res = pr_ctrls_recv_request(cl);
-  fail_unless(res == 0, "Failed to handle truncated reqarg: %s",
+  ck_assert_msg(res == 0, "Failed to handle truncated reqarg: %s",
     strerror(errno));
-  fail_unless(cl->cl_ctrls->nelts == 2, "Expected 2 ctrl, got %d",
+  ck_assert_msg(cl->cl_ctrls->nelts == 2, "Expected 2 ctrl, got %d",
     cl->cl_ctrls->nelts);
 
   ctrl = ((pr_ctrls_t **) cl->cl_ctrls->elts)[0];
-  fail_unless(ctrl->ctrls_flags & PR_CTRLS_REQUESTED,
+  ck_assert_msg(ctrl->ctrls_flags & PR_CTRLS_REQUESTED,
     "Expected PR_CTRLS_REQUESTED flag, got %lu", ctrl->ctrls_flags);
-  fail_unless(ctrl->ctrls_cb_args != NULL, "Expected callback args, got NULL");
-  fail_unless(ctrl->ctrls_cb_args->nelts == 1,
+  ck_assert_msg(ctrl->ctrls_cb_args != NULL, "Expected callback args, got NULL");
+  ck_assert_msg(ctrl->ctrls_cb_args->nelts == 1,
     "Expected 1 callback arg, got %d", ctrl->ctrls_cb_args->nelts);
 
   ctrl = ((pr_ctrls_t **) cl->cl_ctrls->elts)[1];
-  fail_unless(ctrl->ctrls_flags & PR_CTRLS_REQUESTED,
+  ck_assert_msg(ctrl->ctrls_flags & PR_CTRLS_REQUESTED,
     "Expected PR_CTRLS_REQUESTED flag, got %lu", ctrl->ctrls_flags);
-  fail_unless(ctrl->ctrls_cb_args != NULL, "Expected callback args, got NULL");
-  fail_unless(ctrl->ctrls_cb_args->nelts == 1,
+  ck_assert_msg(ctrl->ctrls_cb_args != NULL, "Expected callback args, got NULL");
+  ck_assert_msg(ctrl->ctrls_cb_args->nelts == 1,
     "Expected 1 callback arg, got %d", ctrl->ctrls_cb_args->nelts);
 
   (void) pr_ctrls_unregister(&m, action);
@@ -997,20 +997,20 @@ START_TEST (ctrls_recv_response_test) {
 
   mark_point();
   res = pr_ctrls_recv_response(NULL, -1, NULL, NULL);
-  fail_unless(res < 0, "Failed to handle null pool");
-  fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+  ck_assert_msg(res < 0, "Failed to handle null pool");
+  ck_assert_msg(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
     strerror(errno), errno);
 
   mark_point();
   res = pr_ctrls_recv_response(p, -1, NULL, NULL);
-  fail_unless(res < 0, "Failed to handle invalid fd");
-  fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+  ck_assert_msg(res < 0, "Failed to handle invalid fd");
+  ck_assert_msg(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
     strerror(errno), errno);
 
   mark_point();
   res = pr_ctrls_recv_response(p, 0, NULL, NULL);
-  fail_unless(res < 0, "Failed to handle null status");
-  fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+  ck_assert_msg(res < 0, "Failed to handle null status");
+  ck_assert_msg(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
     strerror(errno), errno);
 
   mark_point();
@@ -1021,8 +1021,8 @@ START_TEST (ctrls_recv_response_test) {
 
   errno = 0;
   res = pr_ctrls_recv_response(p, fd, &status, &respargv);
-  fail_unless(res < 0, "Failed to handle no response");
-  fail_unless(errno == EPERM, "Expected EPERM (%d), got %s (%d)", EPERM,
+  ck_assert_msg(res < 0, "Failed to handle no response");
+  ck_assert_msg(errno == EPERM, "Expected EPERM (%d), got %s (%d)", EPERM,
     strerror(errno), errno);
   (void) close(fd);
 
@@ -1035,8 +1035,8 @@ START_TEST (ctrls_recv_response_test) {
   (void) write(fd, "a", 1);
   rewind_fd(fd);
   res = pr_ctrls_recv_response(p, fd, &status, &respargv);
-  fail_unless(res < 0, "Failed to handle truncated status");
-  fail_unless(errno == EPERM, "Expected EPERM (%d), got %s (%d)", EPERM,
+  ck_assert_msg(res < 0, "Failed to handle truncated status");
+  ck_assert_msg(errno == EPERM, "Expected EPERM (%d), got %s (%d)", EPERM,
     strerror(errno), errno);
 
   mark_point();
@@ -1050,8 +1050,8 @@ START_TEST (ctrls_recv_response_test) {
   (void) write(fd, "a", 1);
   rewind_fd(fd);
   res = pr_ctrls_recv_response(p, fd, &status, &respargv);
-  fail_unless(res < 0, "Failed to handle truncated nrespargc");
-  fail_unless(errno == EPERM, "Expected EPERM (%d), got %s (%d)", EPERM,
+  ck_assert_msg(res < 0, "Failed to handle truncated nrespargc");
+  ck_assert_msg(errno == EPERM, "Expected EPERM (%d), got %s (%d)", EPERM,
     strerror(errno), errno);
 
   mark_point();
@@ -1065,8 +1065,8 @@ START_TEST (ctrls_recv_response_test) {
   (void) write(fd, &respargc, sizeof(respargc));
   rewind_fd(fd);
   res = pr_ctrls_recv_response(p, fd, &status, &respargv);
-  fail_unless(res < 0, "Failed to handle too-many respargc");
-  fail_unless(errno == ENOMEM, "Expected ENOMEM (%d), got %s (%d)", ENOMEM,
+  ck_assert_msg(res < 0, "Failed to handle too-many respargc");
+  ck_assert_msg(errno == ENOMEM, "Expected ENOMEM (%d), got %s (%d)", ENOMEM,
     strerror(errno), errno);
 
   mark_point();
@@ -1081,8 +1081,8 @@ START_TEST (ctrls_recv_response_test) {
   (void) write(fd, "a", 1);
   rewind_fd(fd);
   res = pr_ctrls_recv_response(p, fd, &status, &respargv);
-  fail_unless(res < 0, "Failed to handle truncated resparglen");
-  fail_unless(errno == EPERM, "Expected EPERM (%d), got %s (%d)", EPERM,
+  ck_assert_msg(res < 0, "Failed to handle truncated resparglen");
+  ck_assert_msg(errno == EPERM, "Expected EPERM (%d), got %s (%d)", EPERM,
     strerror(errno), errno);
 
   mark_point();
@@ -1097,8 +1097,8 @@ START_TEST (ctrls_recv_response_test) {
   (void) write(fd, &resparglen, sizeof(resparglen));
   rewind_fd(fd);
   res = pr_ctrls_recv_response(p, fd, &status, &respargv);
-  fail_unless(res < 0, "Failed to handle too-long resparglen");
-  fail_unless(errno == ENOMEM, "Expected ENOMEM (%d), got %s (%d)", ENOMEM,
+  ck_assert_msg(res < 0, "Failed to handle too-long resparglen");
+  ck_assert_msg(errno == ENOMEM, "Expected ENOMEM (%d), got %s (%d)", ENOMEM,
     strerror(errno), errno);
 
   mark_point();
@@ -1114,8 +1114,8 @@ START_TEST (ctrls_recv_response_test) {
   (void) write(fd, "a", 1);
   rewind_fd(fd);
   res = pr_ctrls_recv_response(p, fd, &status, &respargv);
-  fail_unless(res < 0, "Failed to handle truncated resparg");
-  fail_unless(errno == EPERM, "Expected EPERM (%d), got %s (%d)", EPERM,
+  ck_assert_msg(res < 0, "Failed to handle truncated resparg");
+  ck_assert_msg(errno == EPERM, "Expected EPERM (%d), got %s (%d)", EPERM,
     strerror(errno), errno);
 
   mark_point();
@@ -1132,12 +1132,12 @@ START_TEST (ctrls_recv_response_test) {
   (void) write(fd, resparg, resparglen);
   rewind_fd(fd);
   res = pr_ctrls_recv_response(p, fd, &status, &respargv);
-  fail_unless((unsigned int) res == respargc, "Failed to receive response: %s",
+  ck_assert_msg((unsigned int) res == respargc, "Failed to receive response: %s",
     strerror(errno));
-  fail_unless(status == retval, "Expected %d, got %d", retval, status);
-  fail_unless(respargv != NULL, "Expected respargv, got NULL");
+  ck_assert_msg(status == retval, "Expected %d, got %d", retval, status);
+  ck_assert_msg(respargv != NULL, "Expected respargv, got NULL");
   resp = respargv[0];
-  fail_unless(strcmp(resp, resparg) == 0, "Expected '%s', got '%s'",
+  ck_assert_msg(strcmp(resp, resparg) == 0, "Expected '%s', got '%s'",
     resparg, resp);
 
   (void) close(fd);
@@ -1151,8 +1151,8 @@ START_TEST (ctrls_issock_unix_test) {
   mark_point();
   mode = 0;
   res = pr_ctrls_issock_unix(mode);
-  fail_unless(res < 0, "Failed to handle invalid mode");
-  fail_unless(errno == ENOSYS, "Expected ENOSYS (%d), got %s (%d)", ENOSYS,
+  ck_assert_msg(res < 0, "Failed to handle invalid mode");
+  ck_assert_msg(errno == ENOSYS, "Expected ENOSYS (%d), got %s (%d)", ENOSYS,
     strerror(errno), errno);
 
 #if defined(S_ISFIFO)
@@ -1185,21 +1185,21 @@ START_TEST (ctrls_get_registered_actions_test) {
 
   mark_point();
   res = pr_get_registered_actions(NULL, 0);
-  fail_unless(res < 0, "Failed to handle null ctrl");
-  fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+  ck_assert_msg(res < 0, "Failed to handle null ctrl");
+  ck_assert_msg(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
     strerror(errno), errno);
 
   mark_point();
   ctrl = pr_ctrls_alloc();
   res = pr_get_registered_actions(ctrl, 0);
-  fail_unless(res == 0, "Failed to handle lack of registered actions: %s",
+  ck_assert_msg(res == 0, "Failed to handle lack of registered actions: %s",
     strerror(errno));
 
   mark_point();
   pr_block_ctrls();
   res = pr_get_registered_actions(ctrl, 0);
-  fail_unless(res < 0, "Failed to handle blocked actions");
-  fail_unless(errno == EPERM, "Expected EPERM (%d), got %s (%d)", EPERM,
+  ck_assert_msg(res < 0, "Failed to handle blocked actions");
+  ck_assert_msg(errno == EPERM, "Expected EPERM (%d), got %s (%d)", EPERM,
     strerror(errno), errno);
   pr_unblock_ctrls();
 
@@ -1207,33 +1207,33 @@ START_TEST (ctrls_get_registered_actions_test) {
   action = "test";
   desc = "desc";
   res = pr_ctrls_register(NULL, action, desc, ctrls_test_cb);
-  fail_unless(res >= 0, "Failed to register ctrls action: %s", strerror(errno));
+  ck_assert_msg(res >= 0, "Failed to register ctrls action: %s", strerror(errno));
 
   m.name = "test";
   res = pr_ctrls_register(&m, action, desc, ctrls_test_cb);
-  fail_unless(res >= 0, "Failed to register ctrls action: %s", strerror(errno));
+  ck_assert_msg(res >= 0, "Failed to register ctrls action: %s", strerror(errno));
 
   mark_point();
   res = pr_get_registered_actions(ctrl, 0);
-  fail_unless(res == 0, "Failed to handle invalid flags: %s", strerror(errno));
+  ck_assert_msg(res == 0, "Failed to handle invalid flags: %s", strerror(errno));
 
   mark_point();
   res = pr_get_registered_actions(ctrl, CTRLS_GET_ACTION_ALL);
-  fail_unless(res == 2, "Failed to handle GET_ACTION_ALL flag: %s",
+  ck_assert_msg(res == 2, "Failed to handle GET_ACTION_ALL flag: %s",
     strerror(errno));
 
   mark_point();
   res = pr_get_registered_actions(ctrl, CTRLS_GET_ACTION_ENABLED);
-  fail_unless(res == 2, "Failed to handle GET_ACTION_ENABLED flag: %s",
+  ck_assert_msg(res == 2, "Failed to handle GET_ACTION_ENABLED flag: %s",
     strerror(errno));
 
   mark_point();
   res = pr_get_registered_actions(ctrl, CTRLS_GET_DESC);
-  fail_unless(res == 2, "Failed to handle GET_DESC flag: %s", strerror(errno));
+  ck_assert_msg(res == 2, "Failed to handle GET_DESC flag: %s", strerror(errno));
 
   mark_point();
   res = pr_ctrls_unregister(NULL, action);
-  fail_unless(res == 0, "Failed to unregister ctrls action: %s",
+  ck_assert_msg(res == 0, "Failed to unregister ctrls action: %s",
     strerror(errno));
 }
 END_TEST
@@ -1244,47 +1244,47 @@ START_TEST (ctrls_set_registered_actions_test) {
 
   mark_point();
   res = pr_set_registered_actions(NULL, NULL, FALSE, 0);
-  fail_unless(res < 0, "Failed to handle no registered actions");
-  fail_unless(errno == ENOENT, "Expected ENOENT (%d), got %s (%d)", ENOENT,
+  ck_assert_msg(res < 0, "Failed to handle no registered actions");
+  ck_assert_msg(errno == ENOENT, "Expected ENOENT (%d), got %s (%d)", ENOENT,
     strerror(errno), errno);
 
   mark_point();
   res = pr_set_registered_actions(NULL, NULL, FALSE, 24);
-  fail_unless(res < 0, "Failed to handle invalid flag");
-  fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+  ck_assert_msg(res < 0, "Failed to handle invalid flag");
+  ck_assert_msg(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
     strerror(errno), errno);
 
   mark_point();
   action = "test";
   desc = "desc";
   res = pr_ctrls_register(NULL, action, desc, ctrls_test_cb);
-  fail_unless(res >= 0, "Failed to register ctrls action: %s", strerror(errno));
+  ck_assert_msg(res >= 0, "Failed to register ctrls action: %s", strerror(errno));
 
   mark_point();
   res = pr_set_registered_actions(NULL, NULL, FALSE, 0);
-  fail_unless(res == 0, "Failed to handle no registered actions: %s",
+  ck_assert_msg(res == 0, "Failed to handle no registered actions: %s",
     strerror(errno));
 
   mark_point();
   pr_block_ctrls();
   res = pr_set_registered_actions(NULL, NULL, FALSE, 0);
-  fail_unless(res < 0, "Failed to handle blocked actions");
-  fail_unless(errno == EPERM, "Expected EPERM (%d), got %s (%d)", EPERM,
+  ck_assert_msg(res < 0, "Failed to handle blocked actions");
+  ck_assert_msg(errno == EPERM, "Expected EPERM (%d), got %s (%d)", EPERM,
     strerror(errno), errno);
   pr_unblock_ctrls();
 
   mark_point();
   res = pr_set_registered_actions(NULL, action, FALSE, 0);
-  fail_unless(res == 0, "Failed to handle action '%s': %s", action,
+  ck_assert_msg(res == 0, "Failed to handle action '%s': %s", action,
     strerror(errno));
 
   mark_point();
   res = pr_set_registered_actions(NULL, "all", FALSE, 0);
-  fail_unless(res == 0, "Failed to handle action 'all': %s", strerror(errno));
+  ck_assert_msg(res == 0, "Failed to handle action 'all': %s", strerror(errno));
 
   mark_point();
   res = pr_ctrls_unregister(NULL, action);
-  fail_unless(res == 0, "Failed to unregister ctrls action: %s",
+  ck_assert_msg(res == 0, "Failed to unregister ctrls action: %s",
     strerror(errno));
 }
 END_TEST
@@ -1295,45 +1295,45 @@ START_TEST (ctrls_check_actions_test) {
 
   mark_point();
   res = pr_ctrls_check_actions();
-  fail_unless(res == 0, "Failed to handle no registered actions: %s",
+  ck_assert_msg(res == 0, "Failed to handle no registered actions: %s",
     strerror(errno));
 
   mark_point();
   action = "test";
   desc = "desc";
   res = pr_ctrls_register(NULL, action, desc, ctrls_test_cb);
-  fail_unless(res >= 0, "Failed to register ctrls action: %s", strerror(errno));
+  ck_assert_msg(res >= 0, "Failed to register ctrls action: %s", strerror(errno));
 
   mark_point();
   res = pr_ctrls_check_actions();
-  fail_unless(res == 0, "Failed to handle no registered actions: %s",
+  ck_assert_msg(res == 0, "Failed to handle no registered actions: %s",
     strerror(errno));
 
   /* Register a duplicate action name, then check. */
 
   mark_point();
   res = pr_ctrls_register(NULL, action, desc, ctrls_test_cb);
-  fail_unless(res >= 0, "Failed to register ctrls action: %s", strerror(errno));
+  ck_assert_msg(res >= 0, "Failed to register ctrls action: %s", strerror(errno));
 
   mark_point();
   res = pr_ctrls_check_actions();
-  fail_unless(res == 0, "Failed to handle registered actions: %s",
+  ck_assert_msg(res == 0, "Failed to handle registered actions: %s",
     strerror(errno));
 
   mark_point();
   res = pr_set_registered_actions(NULL, action, FALSE, PR_CTRLS_ACT_SOLITARY);
-  fail_unless(res == 0, "Failed to set SOLITARY action flag: %s",
+  ck_assert_msg(res == 0, "Failed to set SOLITARY action flag: %s",
     strerror(errno));
 
   mark_point();
   res = pr_ctrls_check_actions();
-  fail_unless(res < 0, "Failed to handle duplicate SOLITARY actions");
-  fail_unless(errno == EEXIST, "Expected EEXIST (%d), got %s (%d)", EEXIST,
+  ck_assert_msg(res < 0, "Failed to handle duplicate SOLITARY actions");
+  ck_assert_msg(errno == EEXIST, "Expected EEXIST (%d), got %s (%d)", EEXIST,
     strerror(errno), errno);
 
   mark_point();
   res = pr_ctrls_unregister(NULL, action);
-  fail_unless(res == 0, "Failed to unregister ctrls action: %s",
+  ck_assert_msg(res == 0, "Failed to unregister ctrls action: %s",
     strerror(errno));
 }
 END_TEST
@@ -1349,13 +1349,13 @@ START_TEST (ctrls_run_ctrls_test) {
 
   mark_point();
   res = pr_run_ctrls(NULL, NULL);
-  fail_unless(res == 0, "Failed to run ctrls: %s", strerror(errno));
+  ck_assert_msg(res == 0, "Failed to run ctrls: %s", strerror(errno));
 
   mark_point();
   pr_block_ctrls();
   res = pr_run_ctrls(NULL, NULL);
-  fail_unless(res < 0, "Failed to handle blocked ctrls");
-  fail_unless(errno == EPERM, "Expected EPERM (%d), got %s (%d)", EPERM,
+  ck_assert_msg(res < 0, "Failed to handle blocked ctrls");
+  ck_assert_msg(errno == EPERM, "Expected EPERM (%d), got %s (%d)", EPERM,
     strerror(errno), errno);
   pr_unblock_ctrls();
 
@@ -1365,19 +1365,19 @@ START_TEST (ctrls_run_ctrls_test) {
   m.name = "test";
   m2.name = "test2";
   res = pr_ctrls_register(&m, action, desc, ctrls_test_cb);
-  fail_unless(res >= 0, "Failed to register ctrls action: %s", strerror(errno));
+  ck_assert_msg(res >= 0, "Failed to register ctrls action: %s", strerror(errno));
 
   mark_point();
   res = pr_run_ctrls(NULL, NULL);
-  fail_unless(res == 0, "Failed to run ctrls: %s", strerror(errno));
+  ck_assert_msg(res == 0, "Failed to run ctrls: %s", strerror(errno));
 
   mark_point();
   res = pr_run_ctrls(&m2, NULL);
-  fail_unless(res == 0, "Failed to run ctrls: %s", strerror(errno));
+  ck_assert_msg(res == 0, "Failed to run ctrls: %s", strerror(errno));
 
   mark_point();
   res = pr_run_ctrls(&m, NULL);
-  fail_unless(res == 0, "Failed to run ctrls: %s", strerror(errno));
+  ck_assert_msg(res == 0, "Failed to run ctrls: %s", strerror(errno));
 
   /* XXX TODO More test cases to fill in here. */
   /* Note that pr_run_ctrls() makes a lot of assumptions about recv_response,
@@ -1408,31 +1408,31 @@ START_TEST (ctrls_run_ctrls_test) {
   (void) write(fd, reqarg, reqarglen);
   rewind_fd(fd);
   res = pr_ctrls_recv_request(cl);
-  fail_unless(res == 0, "Failed to handle known action: %s", strerror(errno));
-  fail_unless(cl->cl_ctrls->nelts == 1, "Expected 1 ctrl, got %d",
+  ck_assert_msg(res == 0, "Failed to handle known action: %s", strerror(errno));
+  ck_assert_msg(cl->cl_ctrls->nelts == 1, "Expected 1 ctrl, got %d",
     cl->cl_ctrls->nelts);
   ctrl = ((pr_ctrls_t **) cl->cl_ctrls->elts)[0];
 
   mark_point();
   res = pr_run_ctrls(&m2, NULL);
-  fail_unless(res == 0, "Failed to run ctrls: %s", strerror(errno));
+  ck_assert_msg(res == 0, "Failed to run ctrls: %s", strerror(errno));
 
   mark_point();
   res = pr_run_ctrls(&m, NULL);
-  fail_unless(res == 0, "Failed to run ctrls: %s", strerror(errno));
+  ck_assert_msg(res == 0, "Failed to run ctrls: %s", strerror(errno));
 
   mark_point();
   cl->cl_flags = PR_CTRLS_CL_HAVEREQ;
   ctrl->ctrls_flags |= PR_CTRLS_ACT_DISABLED;
   res = pr_run_ctrls(&m, NULL);
-  fail_unless(res == 0, "Failed to run ctrls: %s", strerror(errno));
+  ck_assert_msg(res == 0, "Failed to run ctrls: %s", strerror(errno));
 
   mark_point();
   cl->cl_flags = PR_CTRLS_CL_HAVEREQ;
   ctrl->ctrls_flags &= ~PR_CTRLS_ACT_DISABLED;
   ctrl->ctrls_flags &= ~PR_CTRLS_REQUESTED;
   res = pr_run_ctrls(&m, NULL);
-  fail_unless(res == 0, "Failed to run ctrls: %s", strerror(errno));
+  ck_assert_msg(res == 0, "Failed to run ctrls: %s", strerror(errno));
 
   mark_point();
   cl->cl_flags = PR_CTRLS_CL_HAVEREQ;
@@ -1440,7 +1440,7 @@ START_TEST (ctrls_run_ctrls_test) {
   now = time(NULL);
   ctrl->ctrls_when = now + 10;
   res = pr_run_ctrls(&m, NULL);
-  fail_unless(res == 0, "Failed to run ctrls: %s", strerror(errno));
+  ck_assert_msg(res == 0, "Failed to run ctrls: %s", strerror(errno));
 
   mark_point();
   cl->cl_flags = PR_CTRLS_CL_HAVEREQ;
@@ -1448,17 +1448,17 @@ START_TEST (ctrls_run_ctrls_test) {
   ctrl->ctrls_flags |= PR_CTRLS_REQUESTED;
   ctrl->ctrls_when = now - 10;
   res = pr_run_ctrls(&m, "test2");
-  fail_unless(res == 0, "Failed to run ctrls: %s", strerror(errno));
+  ck_assert_msg(res == 0, "Failed to run ctrls: %s", strerror(errno));
 
   mark_point();
   cl->cl_flags = PR_CTRLS_CL_HAVEREQ;
   ctrl->ctrls_flags |= PR_CTRLS_REQUESTED;
   res = pr_run_ctrls(&m, "test");
-  fail_unless(res == 0, "Failed to run ctrls: %s", strerror(errno));
+  ck_assert_msg(res == 0, "Failed to run ctrls: %s", strerror(errno));
 
   mark_point();
   res = pr_ctrls_unregister(NULL, action);
-  fail_unless(res == 0, "Failed to unregister ctrls action: %s",
+  ck_assert_msg(res == 0, "Failed to unregister ctrls action: %s",
     strerror(errno));
 
   (void) close(fd);
@@ -1471,21 +1471,21 @@ START_TEST (ctrls_reset_ctrls_test) {
 
   mark_point();
   res = pr_ctrls_reset();
-  fail_unless(res == 0, "Failed to reset ctrls: %s", strerror(errno));
+  ck_assert_msg(res == 0, "Failed to reset ctrls: %s", strerror(errno));
 
   mark_point();
   action = "test";
   desc = "desc";
   res = pr_ctrls_register(NULL, action, desc, ctrls_test_cb);
-  fail_unless(res >= 0, "Failed to register ctrls action: %s", strerror(errno));
+  ck_assert_msg(res >= 0, "Failed to register ctrls action: %s", strerror(errno));
 
   mark_point();
   res = pr_ctrls_reset();
-  fail_unless(res == 0, "Failed to reset ctrls: %s", strerror(errno));
+  ck_assert_msg(res == 0, "Failed to reset ctrls: %s", strerror(errno));
 
   mark_point();
   res = pr_ctrls_unregister(NULL, action);
-  fail_unless(res == 0, "Failed to unregister ctrls action: %s",
+  ck_assert_msg(res == 0, "Failed to unregister ctrls action: %s",
     strerror(errno));
 }
 END_TEST
@@ -1495,8 +1495,8 @@ START_TEST (ctrls_accept_test) {
 
   mark_point();
   res = pr_ctrls_accept(-1, NULL, NULL, NULL, 0);
-  fail_unless(res < 0, "Failed to handle bad fd");
-  fail_unless(errno == EBADF, "Expected EBADF (%d), got %s (%d)", EBADF,
+  ck_assert_msg(res < 0, "Failed to handle bad fd");
+  ck_assert_msg(errno == EBADF, "Expected EBADF (%d), got %s (%d)", EBADF,
     strerror(errno), errno);
 
   mark_point();
@@ -1506,8 +1506,8 @@ START_TEST (ctrls_accept_test) {
   }
 
   res = pr_ctrls_accept(fd, NULL, NULL, NULL, 5);
-  fail_unless(res < 0, "Failed to handle no clients");
-  fail_unless(errno = ENOENT, "Expected ENOENT (%d), got %d (%d)", ENOENT,
+  ck_assert_msg(res < 0, "Failed to handle no clients");
+  ck_assert_msg(errno = ENOENT, "Expected ENOENT (%d), got %d (%d)", ENOENT,
     strerror(errno), errno);
 
   (void) close(fd);
@@ -1520,15 +1520,15 @@ START_TEST (ctrls_connect_test) {
 
   mark_point();
   res = pr_ctrls_connect(NULL);
-  fail_unless(res < 0, "Failed to handle null path");
-  fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+  ck_assert_msg(res < 0, "Failed to handle null path");
+  ck_assert_msg(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
     strerror(errno), errno);
 
   mark_point();
   socket_path = "/tmp/foo.sock";
   res = pr_ctrls_connect(socket_path);
-  fail_unless(res < 0, "Failed to handle nonexistent socket path");
-  fail_unless(errno == ECONNREFUSED || errno == ENOENT,
+  ck_assert_msg(res < 0, "Failed to handle nonexistent socket path");
+  ck_assert_msg(errno == ECONNREFUSED || errno == ENOENT,
     "Expected ECONNREFUSED (%d) or ENOENT (%d), got %s (%d)", ECONNREFUSED,
     ENOENT, strerror(errno), errno);
 
@@ -1539,7 +1539,7 @@ START_TEST (ctrls_connect_test) {
   }
 
   res = pr_ctrls_connect(socket_path);
-  fail_unless(res >= 0, "Failed to connect to local socket: %s",
+  ck_assert_msg(res >= 0, "Failed to connect to local socket: %s",
     strerror(errno));
 
   (void) close(res);
@@ -1555,29 +1555,29 @@ START_TEST (ctrls_check_group_acl_test) {
 
   mark_point();
   res = pr_ctrls_check_group_acl(0, NULL);
-  fail_unless(res < 0, "Failed to handle null acl");
-  fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+  ck_assert_msg(res < 0, "Failed to handle null acl");
+  ck_assert_msg(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
     strerror(errno), errno);
 
   mark_point();
   group_acl = pcalloc(p, sizeof(ctrls_group_acl_t));
   res = pr_ctrls_check_group_acl(0, group_acl);
-  fail_unless(res == TRUE, "Expected TRUE, got %d", res);
+  ck_assert_msg(res == TRUE, "Expected TRUE, got %d", res);
 
   mark_point();
   group_acl->allow = TRUE;
   res = pr_ctrls_check_group_acl(0, group_acl);
-  fail_unless(res == FALSE, "Expected FALSE, got %d", res);
+  ck_assert_msg(res == FALSE, "Expected FALSE, got %d", res);
 
   mark_point();
   group_acl->ngids = 1;
   res = pr_ctrls_check_group_acl(0, group_acl);
-  fail_unless(res == group_acl->allow, "Expected %d, got %d",
+  ck_assert_msg(res == group_acl->allow, "Expected %d, got %d",
     group_acl->allow, res);
 
   group_acl->allow = FALSE;
   res = pr_ctrls_check_group_acl(0, group_acl);
-  fail_unless(res == group_acl->allow, "Expected %d, got %d",
+  ck_assert_msg(res == group_acl->allow, "Expected %d, got %d",
     group_acl->allow, res);
 
   mark_point();
@@ -1586,10 +1586,10 @@ START_TEST (ctrls_check_group_acl_test) {
   group_acl->gids = palloc(p, sizeof(gid_t) * 2);
   ((gid_t *) group_acl->gids)[0] = gid;
   res = pr_ctrls_check_group_acl(0, group_acl);
-  fail_unless(res == FALSE, "Expected FALSE, got %d", res);
+  ck_assert_msg(res == FALSE, "Expected FALSE, got %d", res);
 
   res = pr_ctrls_check_group_acl(gid, group_acl);
-  fail_unless(res == TRUE, "Expected TRUE, got %d", res);
+  ck_assert_msg(res == TRUE, "Expected TRUE, got %d", res);
 }
 END_TEST
 
@@ -1600,29 +1600,29 @@ START_TEST (ctrls_check_user_acl_test) {
 
   mark_point();
   res = pr_ctrls_check_user_acl(0, NULL);
-  fail_unless(res < 0, "Failed to handle null acl");
-  fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+  ck_assert_msg(res < 0, "Failed to handle null acl");
+  ck_assert_msg(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
     strerror(errno), errno);
 
   mark_point();
   user_acl = pcalloc(p, sizeof(ctrls_user_acl_t));
   res = pr_ctrls_check_user_acl(0, user_acl);
-  fail_unless(res == TRUE, "Expected TRUE, got %d", res);
+  ck_assert_msg(res == TRUE, "Expected TRUE, got %d", res);
 
   mark_point();
   user_acl->allow = TRUE;
   res = pr_ctrls_check_user_acl(0, user_acl);
-  fail_unless(res == FALSE, "Expected FALSE, got %d", res);
+  ck_assert_msg(res == FALSE, "Expected FALSE, got %d", res);
 
   mark_point();
   user_acl->nuids = 1;
   res = pr_ctrls_check_user_acl(0, user_acl);
-  fail_unless(res == user_acl->allow, "Expected %d, got %d",
+  ck_assert_msg(res == user_acl->allow, "Expected %d, got %d",
     user_acl->allow, res);
 
   user_acl->allow = FALSE;
   res = pr_ctrls_check_user_acl(0, user_acl);
-  fail_unless(res == user_acl->allow, "Expected %d, got %d",
+  ck_assert_msg(res == user_acl->allow, "Expected %d, got %d",
     user_acl->allow, res);
 
   mark_point();
@@ -1631,10 +1631,10 @@ START_TEST (ctrls_check_user_acl_test) {
   user_acl->uids = palloc(p, sizeof(uid_t) * 2);
   ((uid_t *) user_acl->uids)[0] = uid;
   res = pr_ctrls_check_user_acl(0, user_acl);
-  fail_unless(res == FALSE, "Expected FALSE, got %d", res);
+  ck_assert_msg(res == FALSE, "Expected FALSE, got %d", res);
 
   res = pr_ctrls_check_user_acl(uid, user_acl);
-  fail_unless(res == TRUE, "Expected TRUE, got %d", res);
+  ck_assert_msg(res == TRUE, "Expected TRUE, got %d", res);
 }
 END_TEST
 
@@ -1644,14 +1644,14 @@ START_TEST (ctrls_init_acl_test) {
 
   mark_point();
   res = pr_ctrls_init_acl(NULL);
-  fail_unless(res < 0, "Failed to handle null acl");
-  fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+  ck_assert_msg(res < 0, "Failed to handle null acl");
+  ck_assert_msg(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
     strerror(errno), errno);
 
   mark_point();
   acl = pcalloc(p, sizeof(ctrls_acl_t));
   res = pr_ctrls_init_acl(acl);
-  fail_unless(res == 0, "Failed to init acl: %s", strerror(errno));
+  ck_assert_msg(res == 0, "Failed to init acl: %s", strerror(errno));
 }
 END_TEST
 
@@ -1672,15 +1672,15 @@ START_TEST (ctrls_check_acl_test) {
 
   mark_point();
   res = pr_ctrls_check_acl(NULL, NULL, NULL);
-  fail_unless(res < 0, "Failed to handle null ctrl");
-  fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+  ck_assert_msg(res < 0, "Failed to handle null ctrl");
+  ck_assert_msg(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
     strerror(errno), errno);
 
   mark_point();
   ctrl = pr_ctrls_alloc();
   res = pr_ctrls_check_acl(ctrl, NULL, NULL);
-  fail_unless(res < 0, "Failed to handle ctrl without client");
-  fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+  ck_assert_msg(res < 0, "Failed to handle ctrl without client");
+  ck_assert_msg(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
     strerror(errno), errno);
 
   mark_point();
@@ -1688,41 +1688,41 @@ START_TEST (ctrls_check_acl_test) {
   cl->cl_uid = cl->cl_gid = 1;
   ctrl->ctrls_cl = cl;
   res = pr_ctrls_check_acl(ctrl, NULL, NULL);
-  fail_unless(res < 0, "Failed to handle null acttab");
-  fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+  ck_assert_msg(res < 0, "Failed to handle null acttab");
+  ck_assert_msg(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
     strerror(errno), errno);
 
   mark_point();
   res = pr_ctrls_check_acl(ctrl, acttab, NULL);
-  fail_unless(res < 0, "Failed to handle null action");
-  fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+  ck_assert_msg(res < 0, "Failed to handle null action");
+  ck_assert_msg(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
     strerror(errno), errno);
 
   mark_point();
   action = "foobar";
   res = pr_ctrls_check_acl(ctrl, acttab, action);
-  fail_unless(res == TRUE, "Expected TRUE, got %d", res);
+  ck_assert_msg(res == TRUE, "Expected TRUE, got %d", res);
 
   mark_point();
   action = "test";
   res = pr_ctrls_check_acl(ctrl, acttab, action);
-  fail_unless(res == FALSE, "Expected FALSE, got %d", res);
+  ck_assert_msg(res == FALSE, "Expected FALSE, got %d", res);
 
   mark_point();
   acl = pcalloc(p, sizeof(ctrls_acl_t));
   res = pr_ctrls_init_acl(acl);
   acttab[0].act_acl = acl;
   res = pr_ctrls_check_acl(ctrl, acttab, action);
-  fail_unless(res == FALSE, "Expected FALSE, got %d", res);
+  ck_assert_msg(res == FALSE, "Expected FALSE, got %d", res);
 
   mark_point();
   acl->acl_groups.ngids = 1;
   res = pr_ctrls_check_acl(ctrl, acttab, action);
-  fail_unless(res == TRUE, "Expected TRUE, got %d", res);
+  ck_assert_msg(res == TRUE, "Expected TRUE, got %d", res);
 
   acl->acl_users.nuids = 1;
   res = pr_ctrls_check_acl(ctrl, acttab, action);
-  fail_unless(res == TRUE, "Expected TRUE, got %d", res);
+  ck_assert_msg(res == TRUE, "Expected TRUE, got %d", res);
 }
 END_TEST
 
@@ -1732,33 +1732,33 @@ START_TEST (ctrls_parse_acl_test) {
 
   mark_point();
   res = pr_ctrls_parse_acl(NULL, NULL);
-  fail_unless(res == NULL, "Failed to handle null pool");
-  fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+  ck_assert_msg(res == NULL, "Failed to handle null pool");
+  ck_assert_msg(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
     strerror(errno), errno);
 
   mark_point();
   res = pr_ctrls_parse_acl(p, NULL);
-  fail_unless(res == NULL, "Failed to handle null ACL text");
-  fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+  ck_assert_msg(res == NULL, "Failed to handle null ACL text");
+  ck_assert_msg(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
     strerror(errno), errno);
 
   mark_point();
   names = "foo";
   res = pr_ctrls_parse_acl(p, names);
-  fail_unless(res != NULL, "Failed to parse ACL '%s': %s", names,
+  ck_assert_msg(res != NULL, "Failed to parse ACL '%s': %s", names,
     strerror(errno));
-  fail_unless(strcmp(res[0], "foo") == 0, "Expected 'foo', got '%s'", res[0]);
-  fail_unless(res[1] == NULL, "Expected NULL, got %p", res[1]);
+  ck_assert_msg(strcmp(res[0], "foo") == 0, "Expected 'foo', got '%s'", res[0]);
+  ck_assert_msg(res[1] == NULL, "Expected NULL, got %p", res[1]);
 
   mark_point();
   names = "foo,'Bar',BAZ";
   res = pr_ctrls_parse_acl(p, names);
-  fail_unless(res != NULL, "Failed to parse ACL '%s': %s", names,
+  ck_assert_msg(res != NULL, "Failed to parse ACL '%s': %s", names,
     strerror(errno));
-  fail_unless(strcmp(res[0], "foo") == 0, "Expected 'foo', got '%s'", res[0]);
-  fail_unless(strcmp(res[1], "'Bar'") == 0, "Expected 'Bar', got '%s'", res[1]);
-  fail_unless(strcmp(res[2], "BAZ") == 0, "Expected 'BAZ', got '%s'", res[2]);
-  fail_unless(res[3] == NULL, "Expected NULL, got %p", res[3]);
+  ck_assert_msg(strcmp(res[0], "foo") == 0, "Expected 'foo', got '%s'", res[0]);
+  ck_assert_msg(strcmp(res[1], "'Bar'") == 0, "Expected 'Bar', got '%s'", res[1]);
+  ck_assert_msg(strcmp(res[2], "BAZ") == 0, "Expected 'BAZ', got '%s'", res[2]);
+  ck_assert_msg(res[3] == NULL, "Expected NULL, got %p", res[3]);
 }
 END_TEST
 
@@ -1770,52 +1770,52 @@ START_TEST (ctrls_set_group_acl_test) {
 
   mark_point();
   res = pr_ctrls_set_group_acl(NULL, NULL, NULL, NULL);
-  fail_unless(res < 0, "Failed to handle null pool");
-  fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+  ck_assert_msg(res < 0, "Failed to handle null pool");
+  ck_assert_msg(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
     strerror(errno), errno);
 
   mark_point();
   res = pr_ctrls_set_group_acl(p, NULL, NULL, NULL);
-  fail_unless(res < 0, "Failed to handle null group_acl");
-  fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+  ck_assert_msg(res < 0, "Failed to handle null group_acl");
+  ck_assert_msg(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
     strerror(errno), errno);
 
   mark_point();
   group_acl = pcalloc(p, sizeof(ctrls_group_acl_t));
   res = pr_ctrls_set_group_acl(p, group_acl, NULL, NULL);
-  fail_unless(res < 0, "Failed to handle null allow");
-  fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+  ck_assert_msg(res < 0, "Failed to handle null allow");
+  ck_assert_msg(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
     strerror(errno), errno);
 
   mark_point();
   allow = "allow";
   res = pr_ctrls_set_group_acl(p, group_acl, allow, NULL);
-  fail_unless(res < 0, "Failed to handle null grouplist");
-  fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+  ck_assert_msg(res < 0, "Failed to handle null grouplist");
+  ck_assert_msg(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
     strerror(errno), errno);
 
   mark_point();
   grouplist = "foo,bar,baz,wheel";
   res = pr_ctrls_set_group_acl(p, group_acl, allow, grouplist);
-  fail_unless(res == 0, "Failed to set group acl: %s", strerror(errno));
-  fail_unless(group_acl->allow == TRUE, "Expected TRUE, got %d",
+  ck_assert_msg(res == 0, "Failed to set group acl: %s", strerror(errno));
+  ck_assert_msg(group_acl->allow == TRUE, "Expected TRUE, got %d",
     group_acl->allow);
   /* Note that we expect zero here, because of name/GID lookup failures. */
-  fail_unless(group_acl->ngids == 0, "Expected 0, got %d",
+  ck_assert_msg(group_acl->ngids == 0, "Expected 0, got %d",
     group_acl->ngids);
-  fail_unless(group_acl->gids != NULL, "Got NULL unexpectedly");
+  ck_assert_msg(group_acl->gids != NULL, "Got NULL unexpectedly");
 
   mark_point();
   group_acl = pcalloc(p, sizeof(ctrls_group_acl_t));
   allow = "deny";
   grouplist = "foo,*";
   res = pr_ctrls_set_group_acl(p, group_acl, allow, grouplist);
-  fail_unless(res == 0, "Failed to set group acl: %s", strerror(errno));
-  fail_unless(group_acl->allow == FALSE, "Expected FALSE, got %d",
+  ck_assert_msg(res == 0, "Failed to set group acl: %s", strerror(errno));
+  ck_assert_msg(group_acl->allow == FALSE, "Expected FALSE, got %d",
     group_acl->allow);
-  fail_unless(group_acl->ngids == 1, "Expected 1, got %d",
+  ck_assert_msg(group_acl->ngids == 1, "Expected 1, got %d",
     group_acl->ngids);
-  fail_unless(group_acl->gids == NULL, "Expected NULL, got %p",
+  ck_assert_msg(group_acl->gids == NULL, "Expected NULL, got %p",
     group_acl->gids);
 }
 END_TEST
@@ -1828,50 +1828,50 @@ START_TEST (ctrls_set_user_acl_test) {
 
   mark_point();
   res = pr_ctrls_set_user_acl(NULL, NULL, NULL, NULL);
-  fail_unless(res < 0, "Failed to handle null pool");
-  fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+  ck_assert_msg(res < 0, "Failed to handle null pool");
+  ck_assert_msg(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
     strerror(errno), errno);
 
   mark_point();
   res = pr_ctrls_set_user_acl(p, NULL, NULL, NULL);
-  fail_unless(res < 0, "Failed to handle null user_acl");
-  fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+  ck_assert_msg(res < 0, "Failed to handle null user_acl");
+  ck_assert_msg(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
     strerror(errno), errno);
 
   mark_point();
   user_acl = pcalloc(p, sizeof(ctrls_user_acl_t));
   res = pr_ctrls_set_user_acl(p, user_acl, NULL, NULL);
-  fail_unless(res < 0, "Failed to handle null allow");
-  fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+  ck_assert_msg(res < 0, "Failed to handle null allow");
+  ck_assert_msg(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
     strerror(errno), errno);
 
   mark_point();
   allow = "allow";
   res = pr_ctrls_set_user_acl(p, user_acl, allow, NULL);
-  fail_unless(res < 0, "Failed to handle null userlist");
-  fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+  ck_assert_msg(res < 0, "Failed to handle null userlist");
+  ck_assert_msg(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
     strerror(errno), errno);
 
   mark_point();
   userlist = "foo,bar,baz,root";
   res = pr_ctrls_set_user_acl(p, user_acl, allow, userlist);
-  fail_unless(res == 0, "Failed to set user acl: %s", strerror(errno));
-  fail_unless(user_acl->allow == TRUE, "Expected TRUE, got %d",
+  ck_assert_msg(res == 0, "Failed to set user acl: %s", strerror(errno));
+  ck_assert_msg(user_acl->allow == TRUE, "Expected TRUE, got %d",
     user_acl->allow);
   /* Note that we expect zero here, because of name/UID lookup failures. */
-  fail_unless(user_acl->nuids == 0, "Expected 0, got %d", user_acl->nuids);
-  fail_unless(user_acl->uids != NULL, "Got NULL unexpectedly");
+  ck_assert_msg(user_acl->nuids == 0, "Expected 0, got %d", user_acl->nuids);
+  ck_assert_msg(user_acl->uids != NULL, "Got NULL unexpectedly");
 
   mark_point();
   user_acl = pcalloc(p, sizeof(ctrls_user_acl_t));
   allow = "deny";
   userlist = "foo,*";
   res = pr_ctrls_set_user_acl(p, user_acl, allow, userlist);
-  fail_unless(res == 0, "Failed to set user acl: %s", strerror(errno));
-  fail_unless(user_acl->allow == FALSE, "Expected FALSE, got %d",
+  ck_assert_msg(res == 0, "Failed to set user acl: %s", strerror(errno));
+  ck_assert_msg(user_acl->allow == FALSE, "Expected FALSE, got %d",
     user_acl->allow);
-  fail_unless(user_acl->nuids == 1, "Expected 1, got %d", user_acl->nuids);
-  fail_unless(user_acl->uids == NULL, "Expected NULL, got %p",
+  ck_assert_msg(user_acl->nuids == 1, "Expected 1, got %d", user_acl->nuids);
+  ck_assert_msg(user_acl->uids == NULL, "Expected NULL, got %p",
     user_acl->uids);
 }
 END_TEST
@@ -1890,75 +1890,75 @@ START_TEST (ctrls_set_module_acls_test) {
 
   mark_point();
   res = pr_ctrls_set_module_acls(NULL, NULL, NULL, NULL, NULL, NULL);
-  fail_unless(res == NULL, "Failed to handle null acttab");
-  fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+  ck_assert_msg(res == NULL, "Failed to handle null acttab");
+  ck_assert_msg(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
     strerror(errno), errno);
 
   mark_point();
   res = pr_ctrls_set_module_acls(acttab, NULL, NULL, NULL, NULL, NULL);
-  fail_unless(res == NULL, "Failed to handle null acl_pool");
-  fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+  ck_assert_msg(res == NULL, "Failed to handle null acl_pool");
+  ck_assert_msg(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
     strerror(errno), errno);
 
   mark_point();
   res = pr_ctrls_set_module_acls(acttab, p, NULL, NULL, NULL, NULL);
-  fail_unless(res == NULL, "Failed to handle null actions");
-  fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+  ck_assert_msg(res == NULL, "Failed to handle null actions");
+  ck_assert_msg(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
     strerror(errno), errno);
 
   mark_point();
   res = pr_ctrls_set_module_acls(acttab, p, good_actions, NULL, NULL, NULL);
-  fail_unless(res == NULL, "Failed to handle null allow");
-  fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+  ck_assert_msg(res == NULL, "Failed to handle null allow");
+  ck_assert_msg(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
     strerror(errno), errno);
 
   mark_point();
   allow = "allow";
   res = pr_ctrls_set_module_acls(acttab, p, good_actions, allow, NULL, NULL);
-  fail_unless(res == NULL, "Failed to handle null type");
-  fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+  ck_assert_msg(res == NULL, "Failed to handle null type");
+  ck_assert_msg(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
     strerror(errno), errno);
 
   mark_point();
   type = "test";
   res = pr_ctrls_set_module_acls(acttab, p, good_actions, allow, type, NULL);
-  fail_unless(res == NULL, "Failed to handle null list");
-  fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+  ck_assert_msg(res == NULL, "Failed to handle null list");
+  ck_assert_msg(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
     strerror(errno), errno);
 
   mark_point();
   list = "foo,bar,baz";
   res = pr_ctrls_set_module_acls(acttab, p, bad_actions, allow, type, list);
-  fail_unless(res == NULL, "Failed to handle invalid type '%s'", type);
-  fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+  ck_assert_msg(res == NULL, "Failed to handle invalid type '%s'", type);
+  ck_assert_msg(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
     strerror(errno), errno);
 
   mark_point();
   type = "user";
   res = pr_ctrls_set_module_acls(acttab, p, bad_actions, allow, type, list);
-  fail_unless(res != NULL, "Failed to handle invalid action");
-  fail_unless(errno == EPERM, "Expected EPERM (%d), got %s (%d)", EPERM,
+  ck_assert_msg(res != NULL, "Failed to handle invalid action");
+  ck_assert_msg(errno == EPERM, "Expected EPERM (%d), got %s (%d)", EPERM,
     strerror(errno), errno);
-  fail_unless(strcmp(res, "bar") == 0, "Expected 'bar', got '%s'", res);
+  ck_assert_msg(strcmp(res, "bar") == 0, "Expected 'bar', got '%s'", res);
 
   mark_point();
   acl = pcalloc(p, sizeof(ctrls_acl_t));
-  fail_unless(pr_ctrls_init_acl(acl) == 0,
+  ck_assert_msg(pr_ctrls_init_acl(acl) == 0,
     "Failed to initialize acl: %s", strerror(errno));
 
   acttab[0].act_acl = acl;
   type = "group";
   res = pr_ctrls_set_module_acls(acttab, p, good_actions, allow, type, list);
-  fail_unless(res == NULL, "Failed to handle good action: %s", strerror(errno));
+  ck_assert_msg(res == NULL, "Failed to handle good action: %s", strerror(errno));
 
   mark_point();
   type = "user";
   res = pr_ctrls_set_module_acls(acttab, p, good_actions, allow, type, list);
-  fail_unless(res == NULL, "Failed to handle good action: %s", strerror(errno));
+  ck_assert_msg(res == NULL, "Failed to handle good action: %s", strerror(errno));
 
   mark_point();
   res = pr_ctrls_set_module_acls(acttab, p, all_actions, allow, type, list);
-  fail_unless(res == NULL, "Failed to handle all actions: %s", strerror(errno));
+  ck_assert_msg(res == NULL, "Failed to handle all actions: %s", strerror(errno));
 }
 END_TEST
 
@@ -1977,91 +1977,91 @@ START_TEST (ctrls_set_module_acls2_test) {
 
   mark_point();
   res = pr_ctrls_set_module_acls2(NULL, NULL, NULL, NULL, NULL, NULL, NULL);
-  fail_unless(res < 0, "Failed to handle null acttab");
-  fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+  ck_assert_msg(res < 0, "Failed to handle null acttab");
+  ck_assert_msg(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
     strerror(errno), errno);
 
   mark_point();
   res = pr_ctrls_set_module_acls2(acttab, NULL, NULL, NULL, NULL, NULL, NULL);
-  fail_unless(res < 0, "Failed to handle null acl_pool");
-  fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+  ck_assert_msg(res < 0, "Failed to handle null acl_pool");
+  ck_assert_msg(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
     strerror(errno), errno);
 
   mark_point();
   res = pr_ctrls_set_module_acls2(acttab, p, NULL, NULL, NULL, NULL, NULL);
-  fail_unless(res < 0, "Failed to handle null actions");
-  fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+  ck_assert_msg(res < 0, "Failed to handle null actions");
+  ck_assert_msg(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
     strerror(errno), errno);
 
   mark_point();
   res = pr_ctrls_set_module_acls2(acttab, p, good_actions, NULL, NULL, NULL,
     NULL);
-  fail_unless(res < 0, "Failed to handle null allow");
-  fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+  ck_assert_msg(res < 0, "Failed to handle null allow");
+  ck_assert_msg(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
     strerror(errno), errno);
 
   mark_point();
   allow = "allow";
   res = pr_ctrls_set_module_acls2(acttab, p, good_actions, allow, NULL, NULL,
     NULL);
-  fail_unless(res < 0, "Failed to handle null type");
-  fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+  ck_assert_msg(res < 0, "Failed to handle null type");
+  ck_assert_msg(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
     strerror(errno), errno);
 
   mark_point();
   type = "test";
   res = pr_ctrls_set_module_acls2(acttab, p, good_actions, allow, type, NULL,
     NULL);
-  fail_unless(res < 0, "Failed to handle null list");
-  fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+  ck_assert_msg(res < 0, "Failed to handle null list");
+  ck_assert_msg(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
     strerror(errno), errno);
 
   mark_point();
   list = "foo,bar,baz";
   res = pr_ctrls_set_module_acls2(acttab, p, bad_actions, allow, type, list,
     NULL);
-  fail_unless(res < 0, "Failed to handle null bad_action");
-  fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+  ck_assert_msg(res < 0, "Failed to handle null bad_action");
+  ck_assert_msg(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
     strerror(errno), errno);
 
   mark_point();
   res = pr_ctrls_set_module_acls2(acttab, p, bad_actions, allow, type, list,
     &bad_action);
-  fail_unless(res < 0, "Failed to handle invalid type '%s'", type);
-  fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+  ck_assert_msg(res < 0, "Failed to handle invalid type '%s'", type);
+  ck_assert_msg(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
     strerror(errno), errno);
 
   mark_point();
   type = "user";
   res = pr_ctrls_set_module_acls2(acttab, p, bad_actions, allow, type, list,
     &bad_action);
-  fail_unless(res < 0, "Failed to handle invalid action");
-  fail_unless(errno == EPERM, "Expected EPERM (%d), got %s (%d)", EPERM,
+  ck_assert_msg(res < 0, "Failed to handle invalid action");
+  ck_assert_msg(errno == EPERM, "Expected EPERM (%d), got %s (%d)", EPERM,
     strerror(errno), errno);
-  fail_unless(strcmp(bad_action, "bar") == 0,
+  ck_assert_msg(strcmp(bad_action, "bar") == 0,
     "Expected 'bar', got '%s'", bad_action);
 
   mark_point();
   acl = pcalloc(p, sizeof(ctrls_acl_t));
-  fail_unless(pr_ctrls_init_acl(acl) == 0,
+  ck_assert_msg(pr_ctrls_init_acl(acl) == 0,
     "Failed to initialize acl: %s", strerror(errno));
 
   acttab[0].act_acl = acl;
   type = "group";
   res = pr_ctrls_set_module_acls2(acttab, p, good_actions, allow, type, list,
     &bad_action);
-  fail_unless(res == 0, "Failed to handle good action: %s", strerror(errno));
+  ck_assert_msg(res == 0, "Failed to handle good action: %s", strerror(errno));
 
   mark_point();
   type = "user";
   res = pr_ctrls_set_module_acls2(acttab, p, good_actions, allow, type, list,
     &bad_action);
-  fail_unless(res == 0, "Failed to handle good action: %s", strerror(errno));
+  ck_assert_msg(res == 0, "Failed to handle good action: %s", strerror(errno));
 
   mark_point();
   res = pr_ctrls_set_module_acls2(acttab, p, all_actions, allow, type, list,
     &bad_action);
-  fail_unless(res == 0, "Failed to handle all actions: %s", strerror(errno));
+  ck_assert_msg(res == 0, "Failed to handle all actions: %s", strerror(errno));
 }
 END_TEST
 
@@ -2078,37 +2078,37 @@ START_TEST (ctrls_unregister_module_actions_test) {
 
   mark_point();
   res = pr_ctrls_unregister_module_actions(NULL, NULL, NULL);
-  fail_unless(res == NULL, "Failed to handle null acttab");
-  fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+  ck_assert_msg(res == NULL, "Failed to handle null acttab");
+  ck_assert_msg(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
     strerror(errno), errno);
 
   mark_point();
   res = pr_ctrls_unregister_module_actions(acttab, NULL, NULL);
-  fail_unless(res == NULL, "Failed to handle null actions");
-  fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+  ck_assert_msg(res == NULL, "Failed to handle null actions");
+  ck_assert_msg(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
     strerror(errno), errno);
 
   mark_point();
   res = pr_ctrls_unregister_module_actions(acttab, good_actions, NULL);
-  fail_unless(res == NULL, "Failed to handle null module");
-  fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+  ck_assert_msg(res == NULL, "Failed to handle null module");
+  ck_assert_msg(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
     strerror(errno), errno);
 
   mark_point();
   m.name = "test";
   res = pr_ctrls_unregister_module_actions(acttab, bad_actions, &m);
-  fail_unless(res != NULL, "Failed to handle invalid action");
-  fail_unless(errno == EPERM, "Expected EPERM (%d), got %s (%d)", EPERM,
+  ck_assert_msg(res != NULL, "Failed to handle invalid action");
+  ck_assert_msg(errno == EPERM, "Expected EPERM (%d), got %s (%d)", EPERM,
     strerror(errno), errno);
-  fail_unless(strcmp(res, "bar") == 0, "Expected 'bar', got '%s'", res);
+  ck_assert_msg(strcmp(res, "bar") == 0, "Expected 'bar', got '%s'", res);
 
   mark_point();
   acl = pcalloc(p, sizeof(ctrls_acl_t));
-  fail_unless(pr_ctrls_init_acl(acl) == 0,
+  ck_assert_msg(pr_ctrls_init_acl(acl) == 0,
     "Failed to initialize acl: %s", strerror(errno));
   acttab[0].act_acl = acl;
   res = pr_ctrls_unregister_module_actions(acttab, good_actions, &m);
-  fail_unless(res == NULL, "Failed to handle valid action: %s",
+  ck_assert_msg(res == NULL, "Failed to handle valid action: %s",
     strerror(errno));
 }
 END_TEST
@@ -2127,47 +2127,47 @@ START_TEST (ctrls_unregister_module_actions2_test) {
 
   mark_point();
   res = pr_ctrls_unregister_module_actions2(NULL, NULL, NULL, NULL);
-  fail_unless(res < 0, "Failed to handle null acttab");
-  fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+  ck_assert_msg(res < 0, "Failed to handle null acttab");
+  ck_assert_msg(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
     strerror(errno), errno);
 
   mark_point();
   res = pr_ctrls_unregister_module_actions2(acttab, NULL, NULL, NULL);
-  fail_unless(res < 0, "Failed to handle null actions");
-  fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+  ck_assert_msg(res < 0, "Failed to handle null actions");
+  ck_assert_msg(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
     strerror(errno), errno);
 
   mark_point();
   res = pr_ctrls_unregister_module_actions2(acttab, good_actions, NULL, NULL);
-  fail_unless(res < 0, "Failed to handle null module");
-  fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+  ck_assert_msg(res < 0, "Failed to handle null module");
+  ck_assert_msg(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
     strerror(errno), errno);
 
   mark_point();
   m.name = "test";
   res = pr_ctrls_unregister_module_actions2(acttab, bad_actions, &m, NULL);
-  fail_unless(res < 0, "Failed to handle null bad_action");
-  fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+  ck_assert_msg(res < 0, "Failed to handle null bad_action");
+  ck_assert_msg(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
     strerror(errno), errno);
 
   mark_point();
   res = pr_ctrls_unregister_module_actions2(acttab, bad_actions, &m,
     &bad_action);
-  fail_unless(res < 0, "Failed to handle invalid action");
-  fail_unless(errno == EPERM, "Expected EPERM (%d), got %s (%d)", EPERM,
+  ck_assert_msg(res < 0, "Failed to handle invalid action");
+  ck_assert_msg(errno == EPERM, "Expected EPERM (%d), got %s (%d)", EPERM,
     strerror(errno), errno);
-  fail_unless(bad_action != NULL, "Expected bad_action, got NULL");
-  fail_unless(strcmp(bad_action, "bar") == 0,
+  ck_assert_msg(bad_action != NULL, "Expected bad_action, got NULL");
+  ck_assert_msg(strcmp(bad_action, "bar") == 0,
     "Expected 'bar', got '%s'", bad_action);
 
   mark_point();
   acl = pcalloc(p, sizeof(ctrls_acl_t));
-  fail_unless(pr_ctrls_init_acl(acl) == 0,
+  ck_assert_msg(pr_ctrls_init_acl(acl) == 0,
     "Failed to initialize acl: %s", strerror(errno));
   acttab[0].act_acl = acl;
   res = pr_ctrls_unregister_module_actions2(acttab, good_actions, &m,
     &bad_action);
-  fail_unless(res == 0, "Failed to handle valid action: %s", strerror(errno));
+  ck_assert_msg(res == 0, "Failed to handle valid action: %s", strerror(errno));
 }
 END_TEST
 
@@ -2177,13 +2177,13 @@ START_TEST (ctrls_set_logfd_test) {
   mark_point();
   fd = 0;
   res = pr_ctrls_set_logfd(fd);
-  fail_unless(res == 0, "Failed to set ctrls log fd %d: %s", fd,
+  ck_assert_msg(res == 0, "Failed to set ctrls log fd %d: %s", fd,
      strerror(errno));
 
   mark_point();
   fd = -1;
   res = pr_ctrls_set_logfd(fd);
-  fail_unless(res == 0, "Failed to set ctrls log fd %d: %s", fd,
+  ck_assert_msg(res == 0, "Failed to set ctrls log fd %d: %s", fd,
      strerror(errno));
 }
 END_TEST
@@ -2195,7 +2195,7 @@ START_TEST (ctrls_log_test) {
   fd = -1;
   pr_ctrls_set_logfd(fd);
   res = pr_ctrls_log(NULL, NULL);
-  fail_unless(res == 0, "Failed to handle bad logfd: %s", strerror(errno));
+  ck_assert_msg(res == 0, "Failed to handle bad logfd: %s", strerror(errno));
 
   mark_point();
   fd = devnull_fd();
@@ -2205,16 +2205,16 @@ START_TEST (ctrls_log_test) {
 
   pr_ctrls_set_logfd(fd);
   res = pr_ctrls_log(NULL, NULL);
-  fail_unless(res == 0, "Failed to handle bad module_version: %s",
+  ck_assert_msg(res == 0, "Failed to handle bad module_version: %s",
     strerror(errno));
 
   mark_point();
   res = pr_ctrls_log("test", NULL);
-  fail_unless(res == 0, "Failed to handle null fmt: %s", strerror(errno));
+  ck_assert_msg(res == 0, "Failed to handle null fmt: %s", strerror(errno));
 
   mark_point();
   res = pr_ctrls_log("test", "%s", "foo bar baz");
-  fail_unless(res == 0, "Failed to handle valid fmt: %s", strerror(errno));
+  ck_assert_msg(res == 0, "Failed to handle valid fmt: %s", strerror(errno));
 
   (void) close(fd);
 }
