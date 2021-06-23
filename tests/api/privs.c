@@ -65,7 +65,7 @@ START_TEST (privs_set_nonroot_daemon_test) {
     strerror(errno), errno);
 
   nonroot = set_nonroot_daemon(TRUE);
-  fail_if(nonroot != FALSE && nonroot != TRUE,  "Expected true/false, got %d",
+  ck_assert_msg(nonroot == FALSE || nonroot == TRUE,  "Expected true/false, got %d",
     nonroot);
   set_nonroot_daemon(nonroot);
 }

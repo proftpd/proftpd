@@ -393,14 +393,14 @@ START_TEST (cmd_get_displayable_str_test) {
   res = pr_cmd_get_displayable_str(cmd, NULL);
 
   ok = "foo";
-  fail_if(res == NULL, "Expected string, got null");
+  ck_assert_msg(res != NULL, "Expected string, got null");
   ck_assert_msg(strcmp(res, ok) == 0, "Expected '%s', got '%s'", ok, res);
 
   mark_point();
   cmd->argc = 0;
   res = pr_cmd_get_displayable_str(cmd, NULL);
 
-  fail_if(res == NULL, "Expected string, got null");
+  ck_assert_msg(res != NULL, "Expected string, got null");
 
   /* Note: We still expect the PREVIOUS ok value, since
    * pr_cmd_get_displayable_str() should cache the constructed string,
@@ -418,7 +418,7 @@ START_TEST (cmd_get_displayable_str_test) {
   res = pr_cmd_get_displayable_str(cmd, NULL);
 
   ok = "";
-  fail_if(res == NULL, "Expected string, got null");
+  ck_assert_msg(res != NULL, "Expected string, got null");
   ck_assert_msg(strcmp(res, ok) == 0, "Expected '%s', got '%s'", ok, res);
 
   mark_point();
@@ -427,7 +427,7 @@ START_TEST (cmd_get_displayable_str_test) {
   res = pr_cmd_get_displayable_str(cmd, NULL);
 
   ok = "bar";
-  fail_if(res == NULL, "Expected string, got null");
+  ck_assert_msg(res != NULL, "Expected string, got null");
   ck_assert_msg(strcmp(res, ok) == 0, "Expected '%s', got '%s'", ok, res);
 
   mark_point();
@@ -441,7 +441,7 @@ START_TEST (cmd_get_displayable_str_test) {
    * empty string.
    */
   ok = "";
-  fail_if(res == NULL, "Expected string, got null");
+  ck_assert_msg(res != NULL, "Expected string, got null");
   ck_assert_msg(strcmp(res, ok) == 0, "Expected '%s', got '%s'", ok, res);
 
   mark_point();
@@ -454,7 +454,7 @@ START_TEST (cmd_get_displayable_str_test) {
    * empty string.
    */
   ok = "foo bar baz";
-  fail_if(res == NULL, "Expected string, got null");
+  ck_assert_msg(res != NULL, "Expected string, got null");
   ck_assert_msg(strcmp(res, ok) == 0, "Expected '%s', got '%s'", ok, res);
 
   /* Make sure we can handle cases where cmd_rec->argv has been tampered
@@ -466,7 +466,7 @@ START_TEST (cmd_get_displayable_str_test) {
   res = pr_cmd_get_displayable_str(cmd, NULL);
 
   ok = " bar baz";
-  fail_if(res == NULL, "Expected string, got null");
+  ck_assert_msg(res != NULL, "Expected string, got null");
   ck_assert_msg(strcmp(res, ok) == 0, "Expected '%s', got '%s'", ok, res);
 
   mark_point();

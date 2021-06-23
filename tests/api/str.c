@@ -795,7 +795,7 @@ START_TEST (get_word_utf8_test) {
     str = pcalloc(p, sz);
 
     nread = fread(str, sizeof(char), sz-1, fh);
-    fail_if(ferror(fh), "Error reading '%s': %s", path, strerror(errno));
+    ck_assert_msg(!ferror(fh), "Error reading '%s': %s", path, strerror(errno));
     ck_assert_msg(nread > 0, "Expected >0 bytes read, got 0");
 
     res = pr_str_get_word(&str, 0);
@@ -803,7 +803,7 @@ START_TEST (get_word_utf8_test) {
       strerror(errno));
 
     ok = "foo";
-    fail_if(strcmp(res, ok) == 0, "Did NOT expect '%s'", ok);
+    ck_assert_msg(strcmp(res, ok) != 0, "Did NOT expect '%s'", ok);
 
     fclose(fh);
   }
@@ -858,45 +858,45 @@ START_TEST (is_fnmatch_test) {
 
   str = "foo";
   res = pr_str_is_fnmatch(str);
-  fail_if(res != FALSE, "Expected false for string '%s'", str);
+  ck_assert_msg(res == FALSE, "Expected false for string '%s'", str);
 
   str = "foo?";
   res = pr_str_is_fnmatch(str);
-  fail_if(res != TRUE, "Expected true for string '%s'", str);
+  ck_assert_msg(res == TRUE, "Expected true for string '%s'", str);
 
   str = "foo*";
   res = pr_str_is_fnmatch(str);
-  fail_if(res != TRUE, "Expected true for string '%s'", str);
+  ck_assert_msg(res == TRUE, "Expected true for string '%s'", str);
 
   str = "foo[";
   res = pr_str_is_fnmatch(str);
-  fail_if(res != FALSE, "Expected false for string '%s'", str);
+  ck_assert_msg(res == FALSE, "Expected false for string '%s'", str);
 
   str = "foo]";
   res = pr_str_is_fnmatch(str);
-  fail_if(res != FALSE, "Expected false for string '%s'", str);
+  ck_assert_msg(res == FALSE, "Expected false for string '%s'", str);
 
   str = "foo[]";
   res = pr_str_is_fnmatch(str);
-  fail_if(res != TRUE, "Expected true for string '%s'", str);
+  ck_assert_msg(res == TRUE, "Expected true for string '%s'", str);
 
   /* Now the fun cases using the escape character. */
 
   str = "f\\oo";
   res = pr_str_is_fnmatch(str);
-  fail_if(res != FALSE, "Expected false for string '%s'", str);
+  ck_assert_msg(res == FALSE, "Expected false for string '%s'", str);
 
   str = "foo\\";
   res = pr_str_is_fnmatch(str);
-  fail_if(res != FALSE, "Expected false for string '%s'", str);
+  ck_assert_msg(res == FALSE, "Expected false for string '%s'", str);
 
   str = "foo\\?";
   res = pr_str_is_fnmatch(str);
-  fail_if(res != FALSE, "Expected false for string '%s'", str);
+  ck_assert_msg(res == FALSE, "Expected false for string '%s'", str);
 
   str = "foo\\??";
   res = pr_str_is_fnmatch(str);
-  fail_if(res != TRUE, "Expected true for string '%s'", str);
+  ck_assert_msg(res == TRUE, "Expected true for string '%s'", str);
 }
 END_TEST
 
@@ -1398,7 +1398,7 @@ START_TEST (levenshtein_test) {
 
   mark_point();
   res = pr_str_levenshtein(p, a, b, 0, 0, 0, 0, flags);
-  fail_if(res < 0,
+  ck_assert_msg(res >= 0,
     "Failed to compute Levenshtein distance from '%s' to '%s': %s", a, b,
     strerror(errno));
   ck_assert_msg(expected == res, "Expected distance %d, got %d", expected, res);
@@ -1406,7 +1406,7 @@ START_TEST (levenshtein_test) {
   expected = 3;
   b = "Foo";
   res = pr_str_levenshtein(p, a, b, 0, 1, 1, 1, flags);
-  fail_if(res < 0,
+  ck_assert_msg(res >= 0,
     "Failed to compute Levenshtein distance from '%s' to '%s': %s", a, b,
     strerror(errno));
   ck_assert_msg(expected == res, "Expected distance %d, got %d", expected, res);
@@ -1415,7 +1415,7 @@ START_TEST (levenshtein_test) {
   expected = 2;
   b = "Foo";
   res = pr_str_levenshtein(p, a, b, 0, 1, 1, 1, flags);
-  fail_if(res < 0,
+  ck_assert_msg(res >= 0,
     "Failed to compute Levenshtein distance from '%s' to '%s': %s", a, b,
     strerror(errno));
   ck_assert_msg(expected == res, "Expected distance %d, got %d", expected, res);

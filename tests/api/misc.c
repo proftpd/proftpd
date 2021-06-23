@@ -149,7 +149,7 @@ START_TEST (get_name_max_test) {
 
   path = "/";
   res = get_name_max(path, -1);
-  fail_if(res < 0, "Failed to handle path '%s': %s", path, strerror(errno));
+  ck_assert_msg(res >= 0, "Failed to handle path '%s': %s", path, strerror(errno));
 
   fd = 1;
   res = get_name_max(NULL, fd);
@@ -320,7 +320,7 @@ START_TEST (dir_readlink_test) {
     strerror(errno));
 
   res = dir_readlink(p, path, buf, bufsz, flags);
-  fail_if(res < 0, "Failed to read '%s' symlink: %s", path, strerror(errno));
+  ck_assert_msg(res >= 0, "Failed to read '%s' symlink: %s", path, strerror(errno));
   ck_assert_msg((size_t) res == dst_pathlen, "Expected length %lu, got %d",
     (unsigned long) dst_pathlen, res);
   ck_assert_msg(strcmp(buf, dst_path) == 0, "Expected '%s', got '%s'",
@@ -337,7 +337,7 @@ START_TEST (dir_readlink_test) {
     strerror(errno));
 
   res = dir_readlink(p, path, buf, bufsz, flags);
-  fail_if(res < 0, "Failed to read '%s' symlink: %s", path, strerror(errno));
+  ck_assert_msg(res >= 0, "Failed to read '%s' symlink: %s", path, strerror(errno));
   ck_assert_msg((size_t) res == dst_pathlen, "Expected length %lu, got %d",
     (unsigned long) dst_pathlen, res);
   ck_assert_msg(strcmp(buf, dst_path) == 0, "Expected '%s', got '%s'",
@@ -356,7 +356,7 @@ START_TEST (dir_readlink_test) {
     strerror(errno));
 
   res = dir_readlink(p, path, buf, bufsz, flags);
-  fail_if(res < 0, "Failed to read '%s' symlink: %s", path, strerror(errno));
+  ck_assert_msg(res >= 0, "Failed to read '%s' symlink: %s", path, strerror(errno));
   ck_assert_msg((size_t) res == dst_pathlen, "Expected length %lu, got %d",
     (unsigned long) dst_pathlen, res);
   ck_assert_msg(strcmp(buf, dst_path) == 0, "Expected '%s', got '%s'",
@@ -376,7 +376,7 @@ START_TEST (dir_readlink_test) {
 
   flags = PR_DIR_READLINK_FL_HANDLE_REL_PATH;
   res = dir_readlink(p, path, buf, bufsz, flags);
-  fail_if(res < 0, "Failed to read '%s' symlink: %s", path, strerror(errno));
+  ck_assert_msg(res >= 0, "Failed to read '%s' symlink: %s", path, strerror(errno));
   ck_assert_msg((size_t) res == expected_pathlen, "Expected length %lu, got %d",
     (unsigned long) expected_pathlen, res);
   ck_assert_msg(strcmp(buf, expected_path) == 0, "Expected '%s', got '%s'",
@@ -398,7 +398,7 @@ START_TEST (dir_readlink_test) {
 
   flags = PR_DIR_READLINK_FL_HANDLE_REL_PATH;
   res = dir_readlink(p, path, buf, bufsz, flags);
-  fail_if(res < 0, "Failed to read '%s' symlink: %s", path, strerror(errno));
+  ck_assert_msg(res >= 0, "Failed to read '%s' symlink: %s", path, strerror(errno));
   ck_assert_msg((size_t) res == expected_pathlen, "Expected length %lu, got %d",
     (unsigned long) expected_pathlen, res);
   ck_assert_msg(strcmp(buf, expected_path) == 0, "Expected '%s', got '%s'",
@@ -408,7 +408,7 @@ START_TEST (dir_readlink_test) {
   flags = 0;
   memset(buf, '\0', bufsz);
   res = dir_readlink(p, path, buf, 2, flags);
-  fail_if(res < 0, "Failed to read '%s' symlink: %s", path, strerror(errno));
+  ck_assert_msg(res >= 0, "Failed to read '%s' symlink: %s", path, strerror(errno));
   ck_assert_msg(res == 2, "Expected length 2, got %d", res);
   ck_assert_msg(strncmp(buf, dst_path, 2) == 0, "Expected '%*s', got '%*s'",
     2, dst_path, 2, buf);
@@ -417,7 +417,7 @@ START_TEST (dir_readlink_test) {
   session.chroot_path = "/";
   memset(buf, '\0', bufsz);
   res = dir_readlink(p, path, buf, bufsz, flags);
-  fail_if(res < 0, "Failed to read '%s' symlink: %s", path, strerror(errno));
+  ck_assert_msg(res >= 0, "Failed to read '%s' symlink: %s", path, strerror(errno));
   ck_assert_msg((size_t) res == dst_pathlen, "Expected length %lu, got %d",
     (unsigned long) dst_pathlen, res);
   ck_assert_msg(strcmp(buf, dst_path) == 0, "Expected '%s', got '%s'",
@@ -435,7 +435,7 @@ START_TEST (dir_readlink_test) {
     strerror(errno));
 
   res = dir_readlink(p, path, buf, bufsz, flags);
-  fail_if(res < 0, "Failed to read '%s' symlink: %s", path, strerror(errno));
+  ck_assert_msg(res >= 0, "Failed to read '%s' symlink: %s", path, strerror(errno));
   ck_assert_msg((size_t) res == dst_pathlen, "Expected length %lu, got %d",
     (unsigned long) dst_pathlen, res);
   ck_assert_msg(strcmp(buf, dst_path) == 0, "Expected '%s', got '%s'",
@@ -452,7 +452,7 @@ START_TEST (dir_readlink_test) {
     strerror(errno));
 
   res = dir_readlink(p, path, buf, bufsz, flags);
-  fail_if(res < 0, "Failed to read '%s' symlink: %s", path, strerror(errno));
+  ck_assert_msg(res >= 0, "Failed to read '%s' symlink: %s", path, strerror(errno));
   ck_assert_msg((size_t) res == dst_pathlen, "Expected length %lu, got %d",
     (unsigned long) dst_pathlen, res);
   ck_assert_msg(strcmp(buf, dst_path) == 0, "Expected '%s', got '%s'",
@@ -471,7 +471,7 @@ START_TEST (dir_readlink_test) {
     strerror(errno));
 
   res = dir_readlink(p, path, buf, bufsz, flags);
-  fail_if(res < 0, "Failed to read '%s' symlink: %s", path, strerror(errno));
+  ck_assert_msg(res >= 0, "Failed to read '%s' symlink: %s", path, strerror(errno));
   ck_assert_msg((size_t) res == expected_pathlen, "Expected length %lu, got %d",
     (unsigned long) expected_pathlen, res);
   ck_assert_msg(strcmp(buf, expected_path) == 0, "Expected '%s', got '%s'",
@@ -490,7 +490,7 @@ START_TEST (dir_readlink_test) {
     strerror(errno));
 
   res = dir_readlink(p, path, buf, bufsz, flags);
-  fail_if(res < 0, "Failed to read '%s' symlink: %s", path, strerror(errno));
+  ck_assert_msg(res >= 0, "Failed to read '%s' symlink: %s", path, strerror(errno));
   ck_assert_msg((size_t) res == expected_pathlen, "Expected length %lu, got %d",
     (unsigned long) expected_pathlen, res);
   ck_assert_msg(strcmp(buf, expected_path) == 0, "Expected '%s', got '%s'",
@@ -509,7 +509,7 @@ START_TEST (dir_readlink_test) {
     strerror(errno));
 
   res = dir_readlink(p, path, buf, bufsz, flags);
-  fail_if(res < 0, "Failed to read '%s' symlink: %s", path, strerror(errno));
+  ck_assert_msg(res >= 0, "Failed to read '%s' symlink: %s", path, strerror(errno));
   ck_assert_msg((size_t) res == expected_pathlen, "Expected length %lu, got %d",
     (unsigned long) expected_pathlen, res);
   ck_assert_msg(strcmp(buf, expected_path) == 0, "Expected '%s', got '%s'",
@@ -528,7 +528,7 @@ START_TEST (dir_readlink_test) {
     strerror(errno));
 
   res = dir_readlink(p, path, buf, bufsz, flags);
-  fail_if(res < 0, "Failed to read '%s' symlink: %s", path, strerror(errno));
+  ck_assert_msg(res >= 0, "Failed to read '%s' symlink: %s", path, strerror(errno));
   ck_assert_msg((size_t) res == expected_pathlen, "Expected length %lu, got %d",
     (unsigned long) expected_pathlen, res);
   ck_assert_msg(strcmp(buf, expected_path) == 0, "Expected '%s', got '%s'",
@@ -549,7 +549,7 @@ START_TEST (dir_readlink_test) {
   /* First, tell dir_readlink() to ignore relative destination paths. */
   flags = 0;
   res = dir_readlink(p, path, buf, bufsz, flags);
-  fail_if(res < 0, "Failed to read '%s' symlink: %s", path, strerror(errno));
+  ck_assert_msg(res >= 0, "Failed to read '%s' symlink: %s", path, strerror(errno));
   ck_assert_msg((size_t) res == expected_pathlen, "Expected length %lu, got %d",
     (unsigned long) expected_pathlen, res);
   ck_assert_msg(strcmp(buf, expected_path) == 0, "Expected '%s', got '%s'",
@@ -571,7 +571,7 @@ START_TEST (dir_readlink_test) {
 
   flags = PR_DIR_READLINK_FL_HANDLE_REL_PATH;
   res = dir_readlink(p, path, buf, bufsz, flags);
-  fail_if(res < 0, "Failed to read '%s' symlink: %s", path, strerror(errno));
+  ck_assert_msg(res >= 0, "Failed to read '%s' symlink: %s", path, strerror(errno));
   ck_assert_msg((size_t) res == expected_pathlen, "Expected length %lu, got %d",
     (unsigned long) expected_pathlen, res);
   ck_assert_msg(strcmp(buf, expected_path) == 0, "Expected '%s', got '%s'",
@@ -594,7 +594,7 @@ START_TEST (dir_readlink_test) {
   session.chroot_path = "/tmp";
   flags = PR_DIR_READLINK_FL_HANDLE_REL_PATH;
   res = dir_readlink(p, path, buf, bufsz, flags);
-  fail_if(res < 0, "Failed to read '%s' symlink: %s", path, strerror(errno));
+  ck_assert_msg(res >= 0, "Failed to read '%s' symlink: %s", path, strerror(errno));
   ck_assert_msg((size_t) res == expected_pathlen, "Expected length %lu, got %d",
     (unsigned long) expected_pathlen, res);
   ck_assert_msg(strcmp(buf, expected_path) == 0, "Expected '%s', got '%s'",
@@ -615,7 +615,7 @@ START_TEST (dir_readlink_test) {
   session.chroot_path = "/tmp";
   flags = PR_DIR_READLINK_FL_HANDLE_REL_PATH;
   res = dir_readlink(p, path, buf, bufsz, flags);
-  fail_if(res < 0, "Failed to read '%s' symlink: %s", path, strerror(errno));
+  ck_assert_msg(res >= 0, "Failed to read '%s' symlink: %s", path, strerror(errno));
   ck_assert_msg((size_t) res == expected_pathlen,
     "Expected length %lu, got %d (%s)", (unsigned long) expected_pathlen, res,
     buf);
@@ -639,7 +639,7 @@ START_TEST (dir_readlink_test) {
   session.chroot_path = "/tmp/foo/bar";
   flags = PR_DIR_READLINK_FL_HANDLE_REL_PATH;
   res = dir_readlink(p, path, buf, bufsz, flags);
-  fail_if(res < 0, "Failed to read '%s' symlink: %s", path, strerror(errno));
+  ck_assert_msg(res >= 0, "Failed to read '%s' symlink: %s", path, strerror(errno));
   ck_assert_msg((size_t) res == expected_pathlen,
     "Expected length %lu, got %d (%s)", (unsigned long) expected_pathlen, res,
     buf);
@@ -666,7 +666,7 @@ START_TEST (dir_readlink_test) {
   session.chroot_path = "/tmp/foo/bar";
   flags = PR_DIR_READLINK_FL_HANDLE_REL_PATH;
   res = dir_readlink(p, path, buf, bufsz, flags);
-  fail_if(res < 0, "Failed to read '%s' symlink: %s", path, strerror(errno));
+  ck_assert_msg(res >= 0, "Failed to read '%s' symlink: %s", path, strerror(errno));
   ck_assert_msg((size_t) res == expected_pathlen,
     "Expected length %lu, got %d (%s)", (unsigned long) expected_pathlen, res,
     buf);
@@ -693,7 +693,7 @@ START_TEST (dir_readlink_test) {
   session.chroot_path = "/tmp/foo/bar";
   flags = PR_DIR_READLINK_FL_HANDLE_REL_PATH;
   res = dir_readlink(p, path, buf, bufsz, flags);
-  fail_if(res < 0, "Failed to read '%s' symlink: %s", path, strerror(errno));
+  ck_assert_msg(res >= 0, "Failed to read '%s' symlink: %s", path, strerror(errno));
   ck_assert_msg((size_t) res == expected_pathlen,
     "Expected length %lu, got %d (%s)", (unsigned long) expected_pathlen, res,
     buf);

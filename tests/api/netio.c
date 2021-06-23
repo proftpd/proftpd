@@ -2135,7 +2135,7 @@ START_TEST (netio_poll_interval_test) {
   pr_netio_reset_poll_interval(NULL);
 
   pr_netio_reset_poll_interval(nstrm);
-  fail_if(nstrm->strm_flags & PR_NETIO_SESS_INTR,
+  ck_assert_msg(!(nstrm->strm_flags & PR_NETIO_SESS_INTR),
     "Failed to clear PR_NETIO_SESS_INTR stream flag");
 
   (void) pr_netio_close(nstrm);

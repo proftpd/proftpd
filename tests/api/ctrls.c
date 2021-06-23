@@ -1161,7 +1161,7 @@ START_TEST (ctrls_issock_unix_test) {
   mode |= S_IFIFO;
   res = pr_ctrls_issock_unix(mode);
   if (res < 0) {
-    fail_if(errno != ENOSYS, "Did not expect ENOSYS (%d)", ENOSYS);
+    ck_assert_msg(errno == ENOSYS, "Did not expect ENOSYS (%d)", ENOSYS);
   }
 #endif /* S_ISFIFO */
 
@@ -1171,7 +1171,7 @@ START_TEST (ctrls_issock_unix_test) {
   mode |= S_IFSOCK;
   res = pr_ctrls_issock_unix(mode);
   if (res < 0) {
-    fail_if(errno != ENOSYS, "Did not expect ENOSYS (%d)", ENOSYS);
+    ck_assert_msg(errno == ENOSYS, "Did not expect ENOSYS (%d)", ENOSYS);
   }
 #endif /* S_ISSOCK */
 }
