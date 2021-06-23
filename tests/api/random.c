@@ -58,8 +58,8 @@ START_TEST (random_next_range_10_test) {
     long num;
 
     num = pr_random_next(min, max);
-    fail_if(num < min, "random number %ld less than minimum %ld", num, min);
-    fail_if(num > max, "random number %ld greater than maximum %ld", num, max);
+    ck_assert_msg(num >= min, "random number %ld less than minimum %ld", num, min);
+    ck_assert_msg(num <= max, "random number %ld greater than maximum %ld", num, max);
   }
 }
 END_TEST
@@ -78,8 +78,8 @@ START_TEST (random_next_range_1000_test) {
     long num;
 
     num = pr_random_next(min, max);
-    fail_if(num < min, "random number %ld less than minimum %ld", num, min);
-    fail_if(num > max, "random number %ld greater than maximum %ld", num, max);
+    ck_assert_msg(num >= min, "random number %ld less than minimum %ld", num, min);
+    ck_assert_msg(num <= max, "random number %ld greater than maximum %ld", num, max);
 
     seen[num] = 1;
   }

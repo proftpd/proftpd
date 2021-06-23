@@ -784,14 +784,14 @@ START_TEST (fsio_sys_access_dir_test) {
   /* Make the directory to check; we want it to have perms 771.*/
   perms = (mode_t) 0771;
   res = mkdir(fsio_testdir_path, perms);
-  fail_if(res < 0, "Unable to create directory '%s': %s", fsio_testdir_path,
+  ck_assert_msg(res >= 0, "Unable to create directory '%s': %s", fsio_testdir_path,
     strerror(errno));
 
   /* Use chmod(2) to ensure that the directory has the perms we want,
    * regardless of any umask settings.
    */
   res = chmod(fsio_testdir_path, perms);
-  fail_if(res < 0, "Unable to set perms %04o on directory '%s': %s", perms,
+  ck_assert_msg(res >= 0, "Unable to set perms %04o on directory '%s': %s", perms,
     fsio_testdir_path, strerror(errno));
 
   /* First, check that we ourselves can access our own directory. */
@@ -888,14 +888,14 @@ START_TEST (fsio_sys_access_file_test) {
 
   /* Make the file to check; we want it to have perms 664.*/
   fd = open(fsio_test_path, O_CREAT|O_EXCL|O_WRONLY, S_IRUSR|S_IWUSR);
-  fail_if(fd < 0, "Unable to create file '%s': %s", fsio_test_path,
+  ck_assert_msg(fd >= 0, "Unable to create file '%s': %s", fsio_test_path,
     strerror(errno));
 
   /* Use chmod(2) to ensure that the file has the perms we want,
    * regardless of any umask settings.
    */
   res = chmod(fsio_test_path, perms);
-  fail_if(res < 0, "Unable to set perms %04o on file '%s': %s", perms,
+  ck_assert_msg(res >= 0, "Unable to set perms %04o on file '%s': %s", perms,
     fsio_test_path, strerror(errno));
 
   /* First, check that we ourselves can access our own file. */
@@ -962,7 +962,7 @@ START_TEST (fsio_sys_faccess_test) {
    * regardless of any umask settings.
    */
   res = chmod(fsio_test_path, perms);
-  fail_if(res < 0, "Unable to set perms %04o on file '%s': %s", perms,
+  ck_assert_msg(res >= 0, "Unable to set perms %04o on file '%s': %s", perms,
     fsio_test_path, strerror(errno));
 
   /* First, check that we ourselves can access our own file. */
@@ -1642,7 +1642,7 @@ START_TEST (fsio_sys_listxattr_test) {
   pr_fsio_close(fh);
 
   res = pr_fsio_listxattr(p, path, &names);
-  fail_if(res < 0, "Failed to list xattrs for '%s': %s", path, strerror(errno));
+  ck_assert_msg(res >= 0, "Failed to list xattrs for '%s': %s", path, strerror(errno));
 
   (void) unlink(fsio_test_path);
 #else
@@ -1697,7 +1697,7 @@ START_TEST (fsio_sys_llistxattr_test) {
   pr_fsio_close(fh);
 
   res = pr_fsio_listxattr(p, path, &names);
-  fail_if(res < 0, "Failed to list xattrs for '%s': %s", path, strerror(errno));
+  ck_assert_msg(res >= 0, "Failed to list xattrs for '%s': %s", path, strerror(errno));
 
   (void) unlink(fsio_test_path);
 #else
@@ -1744,7 +1744,7 @@ START_TEST (fsio_sys_flistxattr_test) {
   pr_fsio_set_options(fsio_opts);
   res = pr_fsio_flistxattr(p, fh, &names);
 #ifdef PR_USE_XATTR
-  fail_if(res < 0, "Failed to list xattrs for '%s': %s", fsio_test_path,
+  ck_assert_msg(res >= 0, "Failed to list xattrs for '%s': %s", fsio_test_path,
     strerror(errno));
 
 #else
@@ -3901,7 +3901,7 @@ START_TEST (fs_copy_file_test) {
 
   text = "Hello, World!\n";
   res = pr_fsio_write(fh, text, strlen(text));
-  fail_if(res < 0, "Failed to write '%s' to '%s': %s", text, src_path,
+  ck_assert_msg(res >= 0, "Failed to write '%s' to '%s': %s", text, src_path,
     strerror(errno));
 
   res = pr_fsio_close(fh);
@@ -3954,7 +3954,7 @@ START_TEST (fs_copy_file2_test) {
 
   text = "Hello, World!\n";
   res = pr_fsio_write(fh, text, strlen(text));
-  fail_if(res < 0, "Failed to write '%s' to '%s': %s", text, src_path,
+  ck_assert_msg(res >= 0, "Failed to write '%s' to '%s': %s", text, src_path,
     strerror(errno));
 
   res = pr_fsio_close(fh);
@@ -4985,14 +4985,14 @@ START_TEST (fsio_gets_test) {
 
   text = "Hello, World!\n";
   res2 = pr_fsio_puts(text, fh);
-  fail_if(res2 < 0, "Error writing to '%s': %s", fsio_test_path,
+  ck_assert_msg(res2 >= 0, "Error writing to '%s': %s", fsio_test_path,
     strerror(errno));
   pr_fsio_fsync(fh);
   pr_fsio_lseek(fh, 0, SEEK_SET);
 
   memset(buf, '\0', sizeof(buf));
   res = pr_fsio_gets(buf, sizeof(buf)-1, fh);
-  fail_if(res == NULL, "Failed reading from '%s': %s", fsio_test_path,
+  ck_assert_msg(res != NULL, "Failed reading from '%s': %s", fsio_test_path,
     strerror(errno));
   ck_assert_msg(strcmp(res, text) == 0, "Expected '%s', got '%s'", text, res);
 
@@ -5031,12 +5031,12 @@ START_TEST (fsio_getline_test) {
 
   text = "Hello, World!\n";
   res2 = pr_fsio_puts(text, fh);
-  fail_if(res2 < 0, "Error writing to '%s': %s", fsio_test_path,
+  ck_assert_msg(res2 >= 0, "Error writing to '%s': %s", fsio_test_path,
     strerror(errno));
 
   text = "How\\\n are you?\n";
   res2 = pr_fsio_puts(text, fh);
-  fail_if(res2 < 0, "Error writing to '%s': %s", fsio_test_path,
+  ck_assert_msg(res2 >= 0, "Error writing to '%s': %s", fsio_test_path,
     strerror(errno));
 
   pr_fsio_fsync(fh);
@@ -5044,7 +5044,7 @@ START_TEST (fsio_getline_test) {
 
   memset(buf, '\0', sizeof(buf));
   res = pr_fsio_getline(buf, sizeof(buf)-1, fh, &lineno);
-  fail_if(res == NULL, "Failed to read line from '%s': %s", fsio_test_path,
+  ck_assert_msg(res != NULL, "Failed to read line from '%s': %s", fsio_test_path,
     strerror(errno));
   ck_assert_msg(strcmp(res, "Hello, World!\n") == 0,
     "Expected 'Hello, World!\n', got '%s'", res);
@@ -5052,7 +5052,7 @@ START_TEST (fsio_getline_test) {
 
   memset(buf, '\0', sizeof(buf));
   res = pr_fsio_getline(buf, sizeof(buf)-1, fh, &lineno);
-  fail_if(res == NULL, "Failed to read line from '%s': %s", fsio_test_path,
+  ck_assert_msg(res != NULL, "Failed to read line from '%s': %s", fsio_test_path,
     strerror(errno));
   ck_assert_msg(strcmp(res, "How are you?\n") == 0,
     "Expected 'How are you?\n', got '%s'", res);

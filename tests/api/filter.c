@@ -103,7 +103,7 @@ START_TEST (filter_allow_path_test) {
 
   mark_point();
   c = add_config_param_set(&set, "test", 1, "test");
-  fail_if(c == NULL, "Failed to add config param: %s", strerror(errno));
+  ck_assert_msg(c != NULL, "Failed to add config param: %s", strerror(errno));
 
   path = "/foo/bar";
   res = pr_filter_allow_path(set, path);
@@ -116,7 +116,7 @@ START_TEST (filter_allow_path_test) {
   ck_assert_msg(res == 0, "Error compiling deny filter");
 
   c = add_config_param_set(&set, "PathDenyFilter", 1, deny_pre);
-  fail_if(c == NULL, "Failed to add config param: %s", strerror(errno));
+  ck_assert_msg(c != NULL, "Failed to add config param: %s", strerror(errno));
 
   mark_point();
   res = pr_filter_allow_path(set, path);
@@ -136,7 +136,7 @@ START_TEST (filter_allow_path_test) {
   ck_assert_msg(res == 0, "Error compiling allow filter");
 
   c = add_config_param_set(&set, "PathAllowFilter", 1, allow_pre);
-  fail_if(c == NULL, "Failed to add config param: %s", strerror(errno));
+  ck_assert_msg(c != NULL, "Failed to add config param: %s", strerror(errno));
 
   mark_point();
   path = "/foo/quxx";

@@ -30,7 +30,7 @@ START_TEST (version_get_module_api_number_test) {
   unsigned long res;
 
   res = pr_version_get_module_api_number();
-  fail_if(res == 0, "Expected value, got zero");
+  ck_assert_msg(res != 0, "Expected value, got zero");
   ck_assert_msg(res == PR_MODULE_API_VERSION, "Expected %lu, got %lu",
     PR_MODULE_API_VERSION, res);
 }
@@ -40,7 +40,7 @@ START_TEST (version_get_number_test) {
   unsigned long res;
 
   res = pr_version_get_number();
-  fail_if(res == 0, "Expected value, got zero");
+  ck_assert_msg(res != 0, "Expected value, got zero");
   ck_assert_msg(res == PROFTPD_VERSION_NUMBER, "Expected %lu, got %lu",
     PROFTPD_VERSION_NUMBER, res);
 }
@@ -50,7 +50,7 @@ START_TEST (version_get_str_test) {
   const char *res;
 
   res = pr_version_get_str();
-  fail_if(res == NULL, "Expected string, got null");
+  ck_assert_msg(res != NULL, "Expected string, got null");
   ck_assert_msg(strcmp(res, PROFTPD_VERSION_TEXT) == 0, "Expected '%s', '%s'",
     PROFTPD_VERSION_TEXT, res);
 }

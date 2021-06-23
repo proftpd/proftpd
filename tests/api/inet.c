@@ -860,7 +860,7 @@ START_TEST (inet_connect_ipv4_test) {
   ck_assert_msg(conn != NULL, "Failed to create conn: %s", strerror(errno));
 
   res = pr_inet_connect(p, conn, addr, 53);
-  fail_if(res < 0, "Failed to connect to %s#53: %s", dns_resolver,
+  ck_assert_msg(res >= 0, "Failed to connect to %s#53: %s", dns_resolver,
     strerror(errno));
 
   res = pr_inet_connect(p, conn, addr, 53);

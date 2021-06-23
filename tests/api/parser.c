@@ -591,18 +591,18 @@ START_TEST (parse_config_path_test) {
 
   text = "TestSuiteEngine on\r\n";
   res = pr_fsio_write(fh, text, strlen(text));
-  fail_if(res < 0, "Failed to write '%s': %s", text, strerror(errno));
+  ck_assert_msg(res >= 0, "Failed to write '%s': %s", text, strerror(errno));
 
   res = pr_fsio_close(fh);
   ck_assert_msg(res == 0, "Failed to write '%s': %s", path, strerror(errno));
 
   mark_point();
   res = parse_config_path2(p, path, 0);
-  fail_if(res < 0, "Failed to parse '%s': %s", path, strerror(errno));
+  ck_assert_msg(res >= 0, "Failed to parse '%s': %s", path, strerror(errno));
 
   path = "/tmp/prt*.conf";
   res = parse_config_path2(p, path, 0);
-  fail_if(res < 0, "Failed to parse '%s': %s", path, strerror(errno));
+  ck_assert_msg(res >= 0, "Failed to parse '%s': %s", path, strerror(errno));
 
   (void) pr_parser_set_include_opts(PR_PARSER_INCLUDE_OPT_ALLOW_SYMLINKS|PR_PARSER_INCLUDE_OPT_IGNORE_TMP_FILES|PR_PARSER_INCLUDE_OPT_IGNORE_WILDCARDS);
 
@@ -612,7 +612,7 @@ START_TEST (parse_config_path_test) {
 
   text = "TestSuiteEnabled off\r\n";
   res = pr_fsio_write(fh, text, strlen(text));
-  fail_if(res < 0, "Failed to write '%s': %s", text, strerror(errno));
+  ck_assert_msg(res >= 0, "Failed to write '%s': %s", text, strerror(errno));
 
   res = pr_fsio_close(fh);
   ck_assert_msg(res == 0, "Failed to write '%s': %s", path, strerror(errno));
@@ -620,7 +620,7 @@ START_TEST (parse_config_path_test) {
   mark_point();
   path = "/tmp/prt*.conf*";
   res = parse_config_path2(p, path, 0);
-  fail_if(res < 0, "Failed to parse '%s': %s", path, strerror(errno));
+  ck_assert_msg(res >= 0, "Failed to parse '%s': %s", path, strerror(errno));
 
   mark_point();
   path = "/t*p/prt*.conf*";
@@ -634,7 +634,7 @@ START_TEST (parse_config_path_test) {
   mark_point();
   path = "/t*p/prt*.conf*";
   res = parse_config_path2(p, path, 0);
-  fail_if(res < 0, "Failed to parse '%s': %s", path, strerror(errno));
+  ck_assert_msg(res >= 0, "Failed to parse '%s': %s", path, strerror(errno));
 
   (void) pr_parser_server_ctxt_close();
   (void) pr_parser_cleanup();
@@ -683,23 +683,23 @@ START_TEST (parser_parse_file_test) {
 
   text = "TestSuiteEngine on\r\n";
   res = pr_fsio_write(fh, text, strlen(text));
-  fail_if(res < 0, "Failed to write '%s': %s", text, strerror(errno));
+  ck_assert_msg(res >= 0, "Failed to write '%s': %s", text, strerror(errno));
 
   text = "TestSuiteEnabled on\n";
   res = pr_fsio_write(fh, text, strlen(text));
-  fail_if(res < 0, "Failed to write '%s': %s", text, strerror(errno));
+  ck_assert_msg(res >= 0, "Failed to write '%s': %s", text, strerror(errno));
 
   text = "Include ";
   res = pr_fsio_write(fh, text, strlen(text));
-  fail_if(res < 0, "Failed to write '%s': %s", text, strerror(errno));
+  ck_assert_msg(res >= 0, "Failed to write '%s': %s", text, strerror(errno));
 
   text = (char *) config_path2;
   res = pr_fsio_write(fh, text, strlen(text));
-  fail_if(res < 0, "Failed to write '%s': %s", text, strerror(errno));
+  ck_assert_msg(res >= 0, "Failed to write '%s': %s", text, strerror(errno));
 
   text = "\n";
   res = pr_fsio_write(fh, text, strlen(text));
-  fail_if(res < 0, "Failed to write '%s': %s", text, strerror(errno));
+  ck_assert_msg(res >= 0, "Failed to write '%s': %s", text, strerror(errno));
 
   res = pr_fsio_close(fh);
   ck_assert_msg(res == 0, "Failed to write '%s': %s", config_path,
@@ -711,7 +711,7 @@ START_TEST (parser_parse_file_test) {
 
   text = "TestSuiteOptions Bebugging\n";
   res = pr_fsio_write(fh, text, strlen(text));
-  fail_if(res < 0, "Failed to write '%s': %s", text, strerror(errno));
+  ck_assert_msg(res >= 0, "Failed to write '%s': %s", text, strerror(errno));
 
   res = pr_fsio_close(fh);
   ck_assert_msg(res == 0, "Failed to write '%s': %s", config_path2,

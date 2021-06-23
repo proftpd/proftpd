@@ -234,7 +234,7 @@ START_TEST (netaddr_get_addr2_test) {
     res = pr_netaddr_get_addr2(p, name, NULL, flags);
   }
 
-  fail_if(res == NULL,
+  ck_assert_msg(res != NULL,
     "Expected to resolve name '%s' to an address via INCL_DEVICE", name);
 
   flags = PR_NETADDR_GET_ADDR_FL_EXCL_DNS;
@@ -248,7 +248,7 @@ START_TEST (netaddr_get_addr2_test) {
   flags = PR_NETADDR_GET_ADDR_FL_EXCL_CACHE;
   name = "127.0.0.1";
   res = pr_netaddr_get_addr2(p, name, NULL, flags);
-  fail_if(res == NULL, "Failed to resolve name '%s' to IP address: %s",
+  ck_assert_msg(res != NULL, "Failed to resolve name '%s' to IP address: %s",
     strerror(errno));
 }
 END_TEST

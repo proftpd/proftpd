@@ -84,14 +84,14 @@ START_TEST (pool_make_sub_pool_test) {
   pool *p, *sub_pool;
 
   p = make_sub_pool(NULL);
-  fail_if(p == NULL, "Failed to allocate parent pool");
+  ck_assert_msg(p != NULL, "Failed to allocate parent pool");
   destroy_pool(p);
 
   p = make_sub_pool(NULL);
-  fail_if(p == NULL, "Failed to allocate parent pool");
+  ck_assert_msg(p != NULL, "Failed to allocate parent pool");
 
   sub_pool = make_sub_pool(p);
-  fail_if(sub_pool == NULL, "Failed to allocate sub pool");
+  ck_assert_msg(sub_pool != NULL, "Failed to allocate sub pool");
 
   destroy_pool(p);
 }
@@ -102,21 +102,21 @@ START_TEST (pool_create_sz_test) {
   size_t sz;
 
   p = make_sub_pool(NULL);
-  fail_if(p == NULL, "Failed to allocate parent pool");
+  ck_assert_msg(p != NULL, "Failed to allocate parent pool");
 
   sz = 0;
   sub_pool = pr_pool_create_sz(p, sz);
-  fail_if(sub_pool == NULL, "Failed to allocate %u byte sub-pool", sz);
+  ck_assert_msg(sub_pool != NULL, "Failed to allocate %u byte sub-pool", sz);
   destroy_pool(sub_pool);
 
   sz = 1;
   sub_pool = pr_pool_create_sz(p, sz);
-  fail_if(sub_pool == NULL, "Failed to allocate %u byte sub-pool", sz);
+  ck_assert_msg(sub_pool != NULL, "Failed to allocate %u byte sub-pool", sz);
   destroy_pool(sub_pool);
 
   sz = 16382;
   sub_pool = pr_pool_create_sz(p, sz);
-  fail_if(sub_pool == NULL, "Failed to allocate %u byte sub-pool", sz);
+  ck_assert_msg(sub_pool != NULL, "Failed to allocate %u byte sub-pool", sz);
   destroy_pool(sub_pool);
 
   destroy_pool(p);
@@ -144,7 +144,7 @@ START_TEST (pool_create_sz_with_alloc_test) {
     fprintf(stdout, "pool_sz: %lu bytes (factor %u)\n", pool_sz, factors[i]);
 #endif /* PR_TEST_VERBOSE */
     sub_pool = pr_pool_create_sz(p, pool_sz);
-    fail_if(sub_pool == NULL, "Failed to allocate %u byte sub-pool", pool_sz);
+    ck_assert_msg(sub_pool != NULL, "Failed to allocate %u byte sub-pool", pool_sz);
 
     alloc_sz = (pool_sz * 2);
 #ifdef PR_TEST_VERBOSE
@@ -168,7 +168,7 @@ START_TEST (pool_create_sz_with_alloc_test) {
           i + 1, j, j, data[j]);
       }
 #endif /* PR_TEST_VERBOSE */
-      fail_if(data[j] != j,
+      ck_assert_msg(data[j] == j,
         "Iteration #%u: Expected value %u at memory index %u, got %u\n", i + 1,
         j, j, data[j]);
     }
@@ -186,7 +186,7 @@ START_TEST (pool_palloc_test) {
   size_t sz;
 
   p = make_sub_pool(NULL);
-  fail_if(p == NULL, "Failed to allocate parent pool");
+  ck_assert_msg(p != NULL, "Failed to allocate parent pool");
 
   sz = 0;
   v = palloc(p, sz);
@@ -194,11 +194,11 @@ START_TEST (pool_palloc_test) {
 
   sz = 1;
   v = palloc(p, sz);
-  fail_if(v == NULL, "Failed to allocate %u-len memory", sz);
+  ck_assert_msg(v != NULL, "Failed to allocate %u-len memory", sz);
 
   sz = 16382;
   v = palloc(p, sz);
-  fail_if(v == NULL, "Failed to allocate %u-len memory", sz);
+  ck_assert_msg(v != NULL, "Failed to allocate %u-len memory", sz);
 
   destroy_pool(p);
 }
@@ -210,7 +210,7 @@ START_TEST (pool_pallocsz_test) {
   size_t sz;
 
   p = make_sub_pool(NULL);
-  fail_if(p == NULL, "Failed to allocate parent pool");
+  ck_assert_msg(p != NULL, "Failed to allocate parent pool");
 
   sz = 0;
   v = pallocsz(p, sz);
@@ -218,11 +218,11 @@ START_TEST (pool_pallocsz_test) {
 
   sz = 1;
   v = pallocsz(p, sz);
-  fail_if(v == NULL, "Failed to allocate %u-len memory", sz);
+  ck_assert_msg(v != NULL, "Failed to allocate %u-len memory", sz);
 
   sz = 16382;
   v = pallocsz(p, sz);
-  fail_if(v == NULL, "Failed to allocate %u-len memory", sz);
+  ck_assert_msg(v != NULL, "Failed to allocate %u-len memory", sz);
 
   destroy_pool(p);
 }
@@ -235,7 +235,7 @@ START_TEST (pool_pcalloc_test) {
   size_t sz;
 
   p = make_sub_pool(NULL);
-  fail_if(p == NULL, "Failed to allocate parent pool");
+  ck_assert_msg(p != NULL, "Failed to allocate parent pool");
 
   sz = 0;
   v = pcalloc(p, sz);
@@ -243,14 +243,14 @@ START_TEST (pool_pcalloc_test) {
 
   sz = 1;
   v = pcalloc(p, sz);
-  fail_if(v == NULL, "Failed to allocate %u-len memory", sz);
+  ck_assert_msg(v != NULL, "Failed to allocate %u-len memory", sz);
   for (i = 0; i < sz; i++) {
     ck_assert_msg(v[i] == 0, "Allocated non-zero memory at position %u", i);
   }
 
   sz = 16382;
   v = pcalloc(p, sz);
-  fail_if(v == NULL, "Failed to allocate %u-len memory", sz);
+  ck_assert_msg(v != NULL, "Failed to allocate %u-len memory", sz);
   for (i = 0; i < sz; i++) {
     ck_assert_msg(v[i] == 0, "Allocated non-zero memory at position %u", i);
   }
@@ -265,7 +265,7 @@ START_TEST (pool_pcallocsz_test) {
   size_t sz;
 
   p = make_sub_pool(NULL);
-  fail_if(p == NULL, "Failed to allocate parent pool");
+  ck_assert_msg(p != NULL, "Failed to allocate parent pool");
 
   sz = 0;
   v = pcallocsz(p, sz);
@@ -273,11 +273,11 @@ START_TEST (pool_pcallocsz_test) {
 
   sz = 1;
   v = pcallocsz(p, sz);
-  fail_if(v == NULL, "Failed to allocate %u-len memory", sz);
+  ck_assert_msg(v != NULL, "Failed to allocate %u-len memory", sz);
 
   sz = 16382;
   v = pcallocsz(p, sz);
-  fail_if(v == NULL, "Failed to allocate %u-len memory", sz);
+  ck_assert_msg(v != NULL, "Failed to allocate %u-len memory", sz);
 
   destroy_pool(p);
 }
@@ -334,7 +334,7 @@ START_TEST (pool_debug_flags_test) {
     strerror(errno), errno);
 
   res = pr_pool_debug_set_flags(0);
-  fail_if(res < 0, "Failed to set flags: %s", strerror(errno));
+  ck_assert_msg(res >= 0, "Failed to set flags: %s", strerror(errno));
 }
 END_TEST
 
