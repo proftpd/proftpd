@@ -646,7 +646,7 @@ START_TEST(json_object_set_number_test) {
 
   mark_point();
   res = pr_json_object_set_number(p, json, key, val);
-  ck_assert_msg(res == 0, "Failed to set key '%s' to %d: %s", key, val,
+  ck_assert_msg(res == 0, "Failed to set key '%s' to %f: %s", key, val,
     strerror(errno));
  
   val = 3;
@@ -902,7 +902,7 @@ START_TEST(json_object_set_array_test) {
 
   mark_point();
   res = pr_json_object_set_array(p, json, key, val);
-  ck_assert_msg(res == 0, "Failed to set key '%s' to '%s': %s", key, val,
+  ck_assert_msg(res == 0, "Failed to set key '%s' to '%s': %s", key, text,
     strerror(errno));
 
   val = NULL;
@@ -1030,7 +1030,7 @@ START_TEST(json_object_set_object_test) {
 
   mark_point();
   res = pr_json_object_set_object(p, json, key, val);
-  ck_assert_msg(res == 0, "Failed to set key '%s' to '%s': %s", key, val,
+  ck_assert_msg(res == 0, "Failed to set key '%s' to '%s': %s", key, text,
     strerror(errno));
 
   val = NULL;

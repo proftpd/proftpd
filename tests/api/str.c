@@ -65,42 +65,47 @@ START_TEST (sstrncpy_test) {
 
   mark_point();
   res = sstrncpy(ok, ok, 1);
-  ck_assert_msg(res == 1, "Expected result 1, got %d", len, res);
+  ck_assert_msg(res == 1, "Expected result 1, got %d", res);
 
   mark_point();
   memset(dst, 'A', sz);
   len = 1;
 
   res = sstrncpy(dst, ok, len);
-  ck_assert_msg((size_t) res <= len, "Expected result %d, got %d", len, res);
-  ck_assert_msg(strlen(dst) == (len - 1), "Expected len %u, got len %u", len - 1,
-    strlen(dst));
+  ck_assert_msg((size_t) res <= len, "Expected result %lu, got %d",
+    (unsigned long)len, res);
+  ck_assert_msg(strlen(dst) == (len - 1), "Expected len %lu, got len %lu",
+    (unsigned long)len - 1, (unsigned long)strlen(dst));
   ck_assert_msg(dst[len-1] == '\0', "Expected NUL, got '%c'", dst[len-1]);
 
   memset(dst, 'A', sz);
   len = 7;
 
   res = sstrncpy(dst, ok, len);
-  ck_assert_msg((size_t) res <= len, "Expected result %d, got %d", len, res);
-  ck_assert_msg(strlen(dst) == (len - 1), "Expected len %u, got len %u", len - 1,
-    strlen(dst));
+  ck_assert_msg((size_t) res <= len, "Expected result %lu, got %d",
+    (unsigned long)len, res);
+  ck_assert_msg(strlen(dst) == (len - 1), "Expected len %lu, got len %lu",
+    (unsigned long)len - 1, (unsigned long)strlen(dst));
   ck_assert_msg(dst[len-1] == '\0', "Expected NUL, got '%c'", dst[len-1]);
 
   memset(dst, 'A', sz);
   len = sz;
 
   res = sstrncpy(dst, ok, len);
-  ck_assert_msg((size_t) res <= len, "Expected result %d, got %d", len, res);
-  ck_assert_msg(strlen(dst) == (len - 1), "Expected len %u, got len %u", len - 1,
-    strlen(dst));
+  ck_assert_msg((size_t) res <= len, "Expected result %lu, got %d",
+    (unsigned long)len, res);
+  ck_assert_msg(strlen(dst) == (len - 1), "Expected len %lu, got len %lu",
+    (unsigned long)len - 1, (unsigned long)strlen(dst));
   ck_assert_msg(dst[len-1] == '\0', "Expected NUL, got '%c'", dst[len-1]);
 
   memset(dst, 'A', sz);
   len = sz;
 
   res = sstrncpy(dst, "", len);
-  ck_assert_msg((size_t) res <= len, "Expected result %d, got %d", len, res);
-  ck_assert_msg(strlen(dst) == 0, "Expected len %u, got len %u", 0, strlen(dst));
+  ck_assert_msg((size_t) res <= len, "Expected result %lu, got %d",
+    (unsigned long)len, res);
+  ck_assert_msg(strlen(dst) == 0, "Expected len %u, got len %lu", 0,
+    (unsigned long)strlen(dst));
   ck_assert_msg(*dst == '\0', "Expected NUL, got '%c'", *dst);
 }
 END_TEST
@@ -183,8 +188,8 @@ START_TEST (sstrcat_test) {
 
   mark_point();
   ck_assert_msg(strlen(dst) == (sizeof(dst)-1),
-    "Failed to copy all the data (expected len %u, got len %u)",
-    sizeof(dst)-1, strlen(dst));
+    "Failed to copy all the data (expected len %lu, got len %lu)",
+    (unsigned long)sizeof(dst)-1, (unsigned long)strlen(dst));
 
   mark_point();
   for (i = 0; i < sizeof(dst)-1; i++) {
@@ -378,7 +383,7 @@ START_TEST (pdircat_test) {
 
   res = pdircat(p, 0, NULL);
   ck_assert_msg(res != NULL,
-    "Failed to handle empty arguments (expected '', got '%s')", res);
+    "Failed to handle empty arguments (expected '', got NULL)");
   ck_assert_msg(strcmp(res, "") == 0, "Expected '%s', got '%s'", "", res);
 
   /* Comments in the pdircat() function suggest that an empty string
@@ -420,7 +425,7 @@ START_TEST (pstrcat_test) {
 
   res = pstrcat(p, 0, NULL);
   ck_assert_msg(res != NULL,
-    "Failed to handle empty arguments (expected '', got '%s')", res);
+    "Failed to handle empty arguments (expected '', got NULL)");
   ck_assert_msg(strcmp(res, "") == 0, "Expected '%s', got '%s'", "", res);
 
   res = pstrcat(p, "", NULL);
@@ -462,8 +467,8 @@ START_TEST (pstrdup_test) {
 
   res = pstrdup(p, "foo");
   ok = "foo";
-  ck_assert_msg(strlen(res) == strlen(ok), "Expected len %u, got len %u",
-    strlen(ok), strlen(res));
+  ck_assert_msg(strlen(res) == strlen(ok), "Expected len %lu, got len %lu",
+    (unsigned long)strlen(ok), (unsigned long)strlen(res));
   ck_assert_msg(strcmp(res, ok) == 0, "Expected '%s', got '%s'", ok, res);
 }
 END_TEST
@@ -485,20 +490,20 @@ START_TEST (pstrndup_test) {
 
   res = pstrndup(p, "foo", 0);
   ok = "";
-  ck_assert_msg(strlen(res) == strlen(ok), "Expected len %u, got len %u",
-    strlen(ok), strlen(res));
+  ck_assert_msg(strlen(res) == strlen(ok), "Expected len %lu, got len %lu",
+    (unsigned long)strlen(ok), (unsigned long)strlen(res));
   ck_assert_msg(strcmp(res, ok) == 0, "Expected '%s', got '%s'", ok, res);
 
   res = pstrndup(p, "foo", 1);
   ok = "f";
-  ck_assert_msg(strlen(res) == strlen(ok), "Expected len %u, got len %u",
-    strlen(ok), strlen(res));
+  ck_assert_msg(strlen(res) == strlen(ok), "Expected len %lu, got len %lu",
+    (unsigned long)strlen(ok), (unsigned long)strlen(res));
   ck_assert_msg(strcmp(res, ok) == 0, "Expected '%s', got '%s'", ok, res);
 
   res = pstrndup(p, "foo", 10);
   ok = "foo";
-  ck_assert_msg(strlen(res) == strlen(ok), "Expected len %u, got len %u",
-    strlen(ok), strlen(res));
+  ck_assert_msg(strlen(res) == strlen(ok), "Expected len %lu, got len %lu",
+    (unsigned long)strlen(ok), (unsigned long)strlen(res));
   ck_assert_msg(strcmp(res, ok) == 0, "Expected '%s', got '%s'", ok, res);
 }
 END_TEST

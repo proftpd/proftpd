@@ -2353,13 +2353,13 @@ START_TEST (netio_alloc_test) {
   netio = pr_alloc_netio2(NULL, NULL, NULL);
   ck_assert_msg(netio == NULL, "Failed to handle null pool");
   ck_assert_msg(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
-    strerror(errno));
+    strerror(errno), errno);
 
   mark_point();
   netio = pr_alloc_netio(NULL);
   ck_assert_msg(netio == NULL, "Failed to handle null pool");
   ck_assert_msg(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
-    strerror(errno));
+    strerror(errno), errno);
 }
 END_TEST
 

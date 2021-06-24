@@ -73,8 +73,8 @@ START_TEST (make_array_test) {
     3, list->nalloc);
   ck_assert_msg(list->nelts == 0, "Expected list->nelts of %u, got %d",
     0, list->nelts);
-  ck_assert_msg(list->elt_size == 1, "Expect list element size of %u, got %d",
-    1, list->elt_size);
+  ck_assert_msg(list->elt_size == 1, "Expect list element size of %u, got %lu",
+    1, (unsigned long)list->elt_size);
 }
 END_TEST
 
@@ -266,8 +266,8 @@ START_TEST (copy_array_test) {
   list = copy_array(p, src);
   ck_assert_msg(list != NULL, "Failed to copy list");
   ck_assert_msg(list->elt_size == src->elt_size,
-    "Copy item size wrong (expected %d, got %d)", src->elt_size,
-    list->elt_size);
+    "Copy item size wrong (expected %lu, got %lu)",
+    (unsigned long)src->elt_size, (unsigned long)list->elt_size);
   ck_assert_msg(list->nalloc == src->nalloc,
     "Copy nalloc wrong (expected %d, got %d)", src->nalloc, list->nalloc);
   ck_assert_msg(list->nelts == src->nelts,
@@ -299,8 +299,8 @@ START_TEST (copy_array_str_test) {
   list = copy_array_str(p, src);
 
   ck_assert_msg(list->elt_size == src->elt_size,
-    "Copy item size wrong (expected %d, got %d)", src->elt_size,
-    list->elt_size);
+    "Copy item size wrong (expected %lu, got %lu)",
+    (unsigned long)src->elt_size, (unsigned long)list->elt_size);
   ck_assert_msg(list->nalloc == src->nalloc,
     "Copy nalloc wrong (expected %d, got %d)", src->nalloc, list->nalloc);
   ck_assert_msg(list->nelts == src->nelts,
@@ -343,8 +343,8 @@ START_TEST (copy_array_hdr_test) {
   list = copy_array_hdr(p, src);
 
   ck_assert_msg(list->elt_size == src->elt_size,
-    "Copy item size wrong (expected %d, got %d)", src->elt_size,
-    list->elt_size);
+    "Copy item size wrong (expected %lu, got %lu)",
+    (unsigned long)src->elt_size, (unsigned long)list->elt_size);
   ck_assert_msg(list->elts == src->elts,
     "Copy elts wrong (expected %p, got %p)", src->elts, list->elts);
   ck_assert_msg(list->nelts == src->nelts,
@@ -421,7 +421,8 @@ START_TEST (append_arrays_test) {
   res = append_arrays(p, a, b);
 
   ck_assert_msg(res->elt_size == a->elt_size,
-    "Append item size wrong (expected %d, got %d)", a->elt_size, res->elt_size);
+    "Append item size wrong (expected %lu, got %lu)",
+    (unsigned long)a->elt_size, (unsigned long)res->elt_size);
   ck_assert_msg(res->nelts == 5,
     "Append nelts wrong (expected %d, got %d)", 5, res->nelts);
 

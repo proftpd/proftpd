@@ -249,7 +249,7 @@ START_TEST (netaddr_get_addr2_test) {
   name = "127.0.0.1";
   res = pr_netaddr_get_addr2(p, name, NULL, flags);
   ck_assert_msg(res != NULL, "Failed to resolve name '%s' to IP address: %s",
-    strerror(errno));
+    name, strerror(errno));
 }
 END_TEST
 
@@ -482,7 +482,7 @@ START_TEST (netaddr_get_sockaddr_test) {
 
   pr_netaddr_disable_ipv6();
   sockaddr = pr_netaddr_get_sockaddr(addr);
-  ck_assert_msg(sockaddr == NULL, "Got sock addr for IPv6 addr", strerror(errno));
+  ck_assert_msg(sockaddr == NULL, "Got sock addr for IPv6 addr: %s", strerror(errno));
   ck_assert_msg(errno == EPERM, "Expected EPERM (%d), got %s (%d)", EPERM,
     strerror(errno), errno);
 
@@ -490,7 +490,7 @@ START_TEST (netaddr_get_sockaddr_test) {
   family = addr->na_family;
   addr->na_family = 777;
   sockaddr = pr_netaddr_get_sockaddr(addr);
-  ck_assert_msg(sockaddr == NULL, "Got sock addr for IPv6 addr", strerror(errno));
+  ck_assert_msg(sockaddr == NULL, "Got sock addr for IPv6 addr: %s", strerror(errno));
   ck_assert_msg(errno == EPERM, "Expected EPERM (%d), got %s (%d)", EPERM,
     strerror(errno), errno);
   addr->na_family = family;

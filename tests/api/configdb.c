@@ -253,7 +253,7 @@ START_TEST (config_add_server_config_param_str_test) {
   c = pr_conf_add_server_config_param_str(NULL, NULL, 0);
   ck_assert_msg(c == NULL, "Failed to handle null arguments");
   ck_assert_msg(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
-    strerror(errno));
+    strerror(errno), errno);
 
   mark_point();
   s = pr_parser_server_ctxt_open("127.0.0.2");
@@ -298,7 +298,7 @@ START_TEST (config_add_config_set_test) {
 
   name = "bar";
   res = remove_config(set, name, FALSE);
-  ck_assert_msg(res == 0, "Removed config '%s' unexpectedly", name,
+  ck_assert_msg(res == 0, "Removed config '%s' unexpectedly: %s", name,
     strerror(errno));
 
   c = pr_config_add_set(&set, name, flags);

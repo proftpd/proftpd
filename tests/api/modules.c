@@ -505,10 +505,10 @@ START_TEST (module_create_ret_test) {
   mr = mod_create_ret(cmd, 1, numeric, msg);
   ck_assert_msg(mr != NULL, "Failed to create modret: %s", strerror(errno));
   ck_assert_msg(mr->mr_error == 1, "Expected 1, got %d", mr->mr_error);
-  ck_assert_msg(mr->mr_numeric != NULL, "Expected '%s', got null");
+  ck_assert_msg(mr->mr_numeric != NULL, "Expected '%s', got null", numeric);
   ck_assert_msg(strcmp(mr->mr_numeric, numeric) == 0,
     "Expected '%s', got '%s'", numeric, mr->mr_numeric);
-  ck_assert_msg(mr->mr_message != NULL, "Expected '%s', got null");
+  ck_assert_msg(mr->mr_message != NULL, "Expected '%s', got null", msg);
   ck_assert_msg(strcmp(mr->mr_message, msg) == 0,
     "Expected '%s', got '%s'", msg, mr->mr_message);
 }

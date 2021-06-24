@@ -134,7 +134,7 @@ START_TEST (parser_server_ctxt_test) {
   res = pr_parser_server_ctxt_close();
   ck_assert_msg(res == NULL, "Closed server context unexpectedly");
   ck_assert_msg(errno == EPERM, "Expected EPERM (%d), got %s (%d)", EPERM,
-    strerror(errno));
+    strerror(errno), errno);
 
   mark_point();
   res = pr_parser_server_ctxt_open("127.0.0.1");
@@ -345,7 +345,7 @@ START_TEST (parser_parse_line_test) {
   ck_assert_msg(strcmp(cmd->argv[0], "BarBaz") == 0,
     "Expected 'BarBaz', got '%s'", (char *) cmd->argv[0]);
   ck_assert_msg(strcmp(cmd->arg, "%{env:FOO_TEST") == 0,
-    "Expected '%{env:FOO_TEST', got '%s'", cmd->arg);
+    "Expected '%s', got '%s'", "%{env:FOO_TEST", cmd->arg);
   lineno = pr_parser_get_lineno();
   ck_assert_msg(lineno != 3, "Expected lineno 3, got %u", lineno);
 

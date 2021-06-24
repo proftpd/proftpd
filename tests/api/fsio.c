@@ -194,7 +194,7 @@ START_TEST (fsio_sys_open_chroot_guard_test) {
   }
 
   ck_assert_msg(errno == ENOENT, "Expected ENOENT (%d), got %s (%d)", ENOENT,
-    strerror(errno));
+    strerror(errno), errno);
 
   path = "/etc";
   fh = pr_fsio_open(path, flags);
@@ -204,7 +204,7 @@ START_TEST (fsio_sys_open_chroot_guard_test) {
   }
 
   ck_assert_msg(errno == EACCES, "Expected EACCES (%d), got %s (%d)", EACCES,
-    strerror(errno));
+    strerror(errno), errno);
 
   path = "/lib";
   fh = pr_fsio_open(path, flags);
@@ -214,7 +214,7 @@ START_TEST (fsio_sys_open_chroot_guard_test) {
   }
 
   ck_assert_msg(errno == EACCES, "Expected EACCES (%d), got %s (%d)", EACCES,
-    strerror(errno));
+    strerror(errno), errno);
 
   (void) pr_fsio_guard_chroot(FALSE);
 
@@ -450,7 +450,8 @@ START_TEST (fsio_sys_write_test) {
     strerror(errno), errno);
 
   fh = pr_fsio_open(fsio_test_path, O_CREAT|O_EXCL|O_WRONLY);
-  ck_assert_msg(fh != NULL, "Failed to open '%s': %s", strerror(errno));
+  ck_assert_msg(fh != NULL, "Failed to open '%s': %s", fsio_test_path,
+    strerror(errno));
 
   /* XXX What happens if we use NULL buffer, zero length? */
   res = pr_fsio_write(fh, NULL, 0);
@@ -486,7 +487,8 @@ START_TEST (fsio_sys_pwrite_test) {
     strerror(errno), errno);
 
   fh = pr_fsio_open(fsio_test_path, O_CREAT|O_EXCL|O_WRONLY);
-  ck_assert_msg(fh != NULL, "Failed to open '%s': %s", strerror(errno));
+  ck_assert_msg(fh != NULL, "Failed to open '%s': %s", fsio_test_path,
+    strerror(errno));
 
   /* XXX What happens if we use NULL buffer, zero length? */
   res = pr_fsio_pwrite(fh, NULL, 0, 0);
@@ -4477,20 +4479,20 @@ START_TEST (fs_virtual_path_test) {
   memset(buf, '\0', sizeof(buf));
   path = "tmp";
   pr_fs_virtual_path(path, buf, sizeof(buf)-1);
-  ck_assert_msg(strcmp(buf, "/tmp") == 0, "Expected '/tmp', got '%s'", path, buf);
+  ck_assert_msg(strcmp(buf, "/tmp") == 0, "Expected '/tmp', got '%s'", buf);
 
   mark_point();
   memset(buf, '\0', sizeof(buf));
   path = "/tmp/././";
   pr_fs_virtual_path(path, buf, sizeof(buf)-1);
   ck_assert_msg(strcmp(buf, "/tmp") == 0 || strcmp(buf, "/tmp/") == 0,
-    "Expected '/tmp', got '%s'", path, buf);
+    "Expected '/tmp', got '%s'", buf);
 
   mark_point();
   memset(buf, '\0', sizeof(buf));
   path = "tmp/../../";
   pr_fs_virtual_path(path, buf, sizeof(buf)-1);
-  ck_assert_msg(strcmp(buf, "/") == 0, "Expected '/', got '%s'", path, buf);
+  ck_assert_msg(strcmp(buf, "/") == 0, "Expected '/', got '%s'", buf);
 }
 END_TEST
 
