@@ -35,11 +35,26 @@ static int redis_port = 6379;
 /* Fixtures */
 
 static void set_up(void) {
+  const char *key, *val;
+
   if (p == NULL) {
     p = permanent_pool = make_sub_pool(NULL);
   }
 
   redis_init();
+
+  key = "REDIS_HOST";
+  val = getenv(key);
+  if (val != NULL) {
+    redis_server = val;
+  }
+
+  key = "REDIS_PORT";
+  val = getenv(key);
+  if (val != NULL) {
+    redis_port = atoi(val);
+  }
+
   redis_set_server(redis_server, redis_port, 0UL, NULL, NULL);
 
   if (getenv("TEST_VERBOSE") != NULL) {

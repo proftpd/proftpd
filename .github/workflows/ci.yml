@@ -17,15 +17,13 @@ jobs:
     services:
       redis:
         # Docker Hub image
-        image: redis:5-alpine
+        image: redis:6-alpine
         # Set health checks to wait until redis has started
         options: >-
           --health-cmd "redis-cli ping"
           --health-interval 10s
           --health-timeout 5s
           --health-retries 5
-        ports:
-          - 6379:6379
 
     environment: CI
 
@@ -38,6 +36,11 @@ jobs:
         compiler:
           - gcc
           - clang
+        container:
+          - ubuntu:18.04
+          - centos:8
+
+    container: ${{ matrix.container }}
 
     steps:
       - name: Checkout source code
@@ -52,68 +55,128 @@ jobs:
             exit 1
           fi
 
-      - name: Install packages
+      - name: Install Centos packages
+        if: ${{ matrix.container == 'centos:8' }}
         run: |
           # Need to add other repos for e.g. libsodium
-          sudo apt-get update -qq
+          yum install -y dnf-plugins-core epel-release gcc make
+          yum config-manager --set-enabled powertools
           # for unit tests
-          sudo apt-get install -y check
-          sudo apt-get install -y libsubunit-dev
+          yum install -y check-devel https://cbs.centos.org/kojifiles/packages/subunit/1.4.0/1.el8/x86_64/subunit-1.4.0-1.el8.x86_64.rpm https://cbs.centos.org/kojifiles/packages/subunit/1.4.0/1.el8/x86_64/subunit-devel-1.4.0-1.el8.x86_64.rpm
           # for mod_lang
-          sudo apt-get install -y gettext
+          yum install -y gettext-devel
           # for xattr support
-          sudo apt-get install -y libattr1-dev
+          yum install -y libattr-devel
           # for mod_cap
-          sudo apt-get install -y libcap-dev
+          yum install -y libacl-devel libcap-devel
           # for mod_geoip
-          sudo apt-get install -y libgeoip-dev
+          yum install -y GeoIP-devel
           # for mod_ldap
-          sudo apt-get install -y libldap2-dev libsasl2-dev
-          # for mod_ldap runtime support for SCRAM
-          sudo apt-get install -y libsasl2-modules-gssapi-mit
+          yum install -y openldap-devel cyrus-sasl-devel
           # for memcache support
-          sudo apt-get install -y libmemcached-dev
+          yum install -y libmemcached-devel
           # for redis support
-          sudo apt-get install -y libhiredis-dev
+          yum install -y hiredis-devel
           # for mod_sql_mysql
-          sudo apt-get install -y libmysqlclient-dev
+          yum install -y mysql-devel
           # for PAM support
-          sudo apt-get install -y libpam-dev
+          yum install -y pam-devel
           # for mod_sql_postgres
-          sudo apt-get install -y libpq-dev
+          yum install -y postgresql-devel
           # for mod_sql_odbc
-          sudo apt-get install -y unixodbc-dev
+          yum install -y unixODBC-devel
           # for OpenSSL support
-          sudo apt-get install -y libssl-dev
+          yum install -y openssl-devel
           # for Sodium support
-          sudo apt-get install -y --force-yes libsodium-dev
+          yum install -y libsodium-devel
           # for mod_sql_sqlite
-          sudo apt-get install -y libsqlite3-dev sqlite3
+          yum install -y sqlite-devel
           # for mod_wrap
-          sudo apt-get install -y libwrap0-dev
+          yum install -y libnsl2-devel https://pkgs.dyn.su/el8/extras/x86_64/tcp_wrappers-libs-7.6-77.el8.x86_64.rpm https://pkgs.dyn.su/el8/extras/x86_64/tcp_wrappers-devel-7.6-77.el8.x86_64.rpm
           # for PCRE support
-          sudo apt-get install -y libpcre3-dev
+          yum install -y pcre-devel
           # for ftptop
-          sudo apt-get install -y ncurses-dev
+          yum install -y ncurses-devel
           # for zlib support
-          sudo apt-get install -y zlib1g-dev
+          yum install -y zlib-devel
+          # for static code analysis
+          # - sudo yum install -y cppcheck
+          # - sudo yum install rats
+          # for integration/regression test
+          # for test code coverage
+          # for HTML validation
+          # for clang
+          yum install -y clang
+          # for debugging
+          clang --version
+          gcc --version
+          openssl version -a
+
+      - name: Install Ubuntu packages
+        if: ${{ matrix.container == 'ubuntu:18.04' }}
+        run: |
+          # Need to add other repos for e.g. libsodium
+          apt-get update -qq
+          # for builds
+          apt-get install -y git make
+          # for unit tests
+          apt-get install -y check libsubunit-dev
+          # for mod_lang
+          apt-get install -y gettext
+          # for xattr support
+          apt-get install -y libattr1-dev
+          # for mod_cap
+          apt-get install -y libcap-dev
+          # for mod_geoip
+          apt-get install -y libgeoip-dev
+          # for mod_ldap
+          apt-get install -y libldap2-dev libsasl2-dev
+          # for mod_ldap runtime support for SCRAM
+          apt-get install -y libsasl2-modules-gssapi-mit
+          # for memcache support
+          apt-get install -y libmemcached-dev
+          # for redis support
+          apt-get install -y libhiredis-dev
+          # for mod_sql_mysql
+          apt-get install -y libmysqlclient-dev
+          # for PAM support
+          apt-get install -y libpam-dev
+          # for mod_sql_postgres
+          apt-get install -y libpq-dev
+          # for mod_sql_odbc
+          apt-get install -y unixodbc-dev
+          # for OpenSSL support
+          apt-get install -y libssl-dev
+          # for Sodium support
+          apt-get install -y --force-yes libsodium-dev
+          # for mod_sql_sqlite
+          apt-get install -y libsqlite3-dev sqlite3
+          # for mod_wrap
+          apt-get install -y libwrap0-dev
+          # for PCRE support
+          apt-get install -y libpcre3-dev
+          # for ftptop
+          apt-get install -y ncurses-dev
+          # for zlib support
+          apt-get install -y zlib1g-dev
           # for static code analysis
           # - sudo apt-get install -y cppcheck
           # - sudo apt-get install rats
           # for integration/regression test
           # for test code coverage
-          sudo apt-get install -y lcov
-          sudo gem install coveralls-lcov
+          apt-get install -y lcov ruby
+          gem install coveralls-lcov
           # for HTML validation
-          sudo apt-get install -y tidy
+          apt-get install -y tidy
           # for clang
-          sudo apt-get install -y clang
+          apt-get install -y clang
           # for debugging
           clang --version
           gcc --version
           openssl version -a
 
       - name: Prepare code coverage
+        if: ${{ matrix.container == 'ubuntu:18.04' }}
         run: |
           lcov --directory . --zerocounters
 
@@ -132,7 +195,7 @@ jobs:
 
       - name: Install with static modules
         run: |
-          sudo make install
+          make install
 
       - name: Build with shared modules
         env:
@@ -144,12 +207,12 @@ jobs:
 
       - name: Install with shared modules
         run: |
-          sudo make install
+          make install
 
       - name: Upload code coverage
         env:
           COVERALLS_REPO_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        if: ${{ matrix.compiler == 'gcc' }}
+        if: ${{ matrix.compiler == 'gcc' && matrix.container == 'ubuntu:18.04' }}
         run: |
           lcov --ignore-errors gcov,source --directory . --capture --output-file coverage.info
           # filter out system and test code
@@ -172,7 +235,7 @@ jobs:
           CC: ${{ matrix.compiler }}
           CFLAGS: -fsanitize=address,undefined
           LDFLAGS: -fsanitize=address,undefined
-        if: ${{ matrix.compiler == 'clang' }}
+        if: ${{ matrix.compiler == 'clang' && matrix.container == 'ubuntu:18.04' }}
         run: |
           make clean
           ./configure LIBS="-lm -lsubunit -lrt -pthread" --enable-devel --enable-ctrls --enable-facl --enable-memcache --enable-nls --enable-pcre --enable-redis --enable-tests
@@ -181,10 +244,12 @@ jobs:
           make check-api
 
       - name: Check Perl scripts
+        if: ${{ matrix.container == 'ubuntu:18.04' }}
         run: |
           perl -cw contrib/ftpasswd
           perl -cw contrib/ftpquota
 
       - name: Check HTML docs
+        if: ${{ matrix.container == 'ubuntu:18.04' }}
         run: |
           for f in $(/bin/ls doc/contrib/*.html doc/howto/*.html doc/modules/*.html doc/utils/*.html); do echo "Processing $f"; tidy -errors -omit -q $f; done || exit 0
