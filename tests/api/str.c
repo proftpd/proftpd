@@ -1330,7 +1330,7 @@ START_TEST (hex2bin_test) {
   res = pr_str_hex2bin(p, (const unsigned char *) hex, hex_len, &len);
   ck_assert_msg(res != NULL, "Failed to unhexify '%s': %s", hex, strerror(errno));
   ck_assert_msg(len == expected_len, "Expected len %lu, got %lu",
-    (unsigned long) expected_len, len);
+    (unsigned long) expected_len, (unsigned long) len);
   ck_assert_msg(memcmp(res, expected, len) == 0,
     "Did not receive expected unhexified data");
 
@@ -1349,7 +1349,7 @@ START_TEST (hex2bin_test) {
   res = pr_str_hex2bin(p, (const unsigned char *) hex, hex_len, &len);
   ck_assert_msg(res != NULL, "Failed to unhexify '%s': %s", hex, strerror(errno));
   ck_assert_msg(len == expected_len, "Expected len %lu, got %lu",
-    (unsigned long) expected_len, len);
+    (unsigned long) expected_len, (unsigned long) len);
   ck_assert_msg(memcmp(res, expected, len) == 0,
     "Did not receive expected unhexified data");
 
@@ -1360,7 +1360,7 @@ START_TEST (hex2bin_test) {
   res = pr_str_hex2bin(p, (const unsigned char *) hex, hex_len, &len);
   ck_assert_msg(res != NULL, "Failed to unhexify '%s': %s", hex, strerror(errno));
   ck_assert_msg(len == expected_len, "Expected len %lu, got %lu",
-    (unsigned long) expected_len, len);
+    (unsigned long) expected_len, (unsigned long) len);
   ck_assert_msg(memcmp(res, expected, len) == 0,
     "Did not receive expected unhexified data");
 
