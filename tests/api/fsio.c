@@ -179,7 +179,7 @@ START_TEST (fsio_sys_open_chroot_guard_test) {
   fh = pr_fsio_open(path, flags);
   if (fh != NULL) {
     (void) pr_fsio_close(fh);
-    fail("open(2) of %s succeeded unexpectedly", path);
+    ck_abort_msg("open(2) of %s succeeded unexpectedly", path);
   }
 
   ck_assert_msg(errno == EACCES, "Expected EACCES (%d), got %s (%d)", EACCES,
@@ -190,7 +190,7 @@ START_TEST (fsio_sys_open_chroot_guard_test) {
   fh = pr_fsio_open(path, flags);
   if (fh != NULL) {
     (void) pr_fsio_close(fh);
-    fail("open(2) of %s succeeded unexpectedly", path);
+    ck_abort_msg("open(2) of %s succeeded unexpectedly", path);
   }
 
   ck_assert_msg(errno == ENOENT, "Expected ENOENT (%d), got %s (%d)", ENOENT,
@@ -200,7 +200,7 @@ START_TEST (fsio_sys_open_chroot_guard_test) {
   fh = pr_fsio_open(path, flags);
   if (fh != NULL) {
     (void) pr_fsio_close(fh);
-    fail("open(2) of %s succeeded unexpectedly", path);
+    ck_abort_msg("open(2) of %s succeeded unexpectedly", path);
   }
 
   ck_assert_msg(errno == EACCES, "Expected EACCES (%d), got %s (%d)", EACCES,
@@ -210,7 +210,7 @@ START_TEST (fsio_sys_open_chroot_guard_test) {
   fh = pr_fsio_open(path, flags);
   if (fh != NULL) {
     (void) pr_fsio_close(fh);
-    fail("open(2) of %s succeeded unexpectedly", path);
+    ck_abort_msg("open(2) of %s succeeded unexpectedly", path);
   }
 
   ck_assert_msg(errno == EACCES, "Expected EACCES (%d), got %s (%d)", EACCES,
@@ -4068,7 +4068,7 @@ START_TEST (fs_resolve_partial_test) {
     const char *prefix = "/private";
 
     if (strncmp(buf, prefix, strlen(prefix)) != 0) {
-      fail("Expected '%s', got '%s'", path, buf);
+      ck_abort_msg("Expected '%s', got '%s'", path, buf);
     }
   }
 
@@ -4081,7 +4081,7 @@ START_TEST (fs_resolve_partial_test) {
 
     if (strncmp(buf, prefix, strlen(prefix)) != 0 &&
         strcmp(buf, "/tmp/") != 0) {
-      fail("Expected '%s', got '%s'", path, buf);
+      ck_abort_msg("Expected '%s', got '%s'", path, buf);
     }
   }
 
@@ -4093,7 +4093,7 @@ START_TEST (fs_resolve_partial_test) {
     const char *prefix = "/private";
 
     if (strncmp(buf, prefix, strlen(prefix)) != 0) {
-      fail("Expected '%s', got '%s'", path, buf);
+      ck_abort_msg("Expected '%s', got '%s'", path, buf);
     }
   }
 
@@ -4158,7 +4158,7 @@ START_TEST (fs_resolve_path_test) {
     const char *prefix = "/private";
 
     if (strncmp(buf, prefix, strlen(prefix)) != 0) {
-      fail("Expected '%s', got '%s'", path, buf);
+      ck_abort_msg("Expected '%s', got '%s'", path, buf);
     }
   }
 

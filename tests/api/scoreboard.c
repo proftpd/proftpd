@@ -225,7 +225,7 @@ START_TEST (scoreboard_open_close_test) {
     if (res == 0) {
       (void) unlink(symlink_path);
 
-      fail("Unexpectedly opened symlink scoreboard");
+      ck_abort_msg("Unexpectedly opened symlink scoreboard");
     }
 
     if (errno != EPERM) {
@@ -233,7 +233,7 @@ START_TEST (scoreboard_open_close_test) {
 
       (void) unlink(symlink_path);
 
-      fail("Failed to set errno to EPERM (got %d)", xerrno);
+      ck_abort_msg("Failed to set errno to EPERM (got %d)", xerrno);
     }
 
     (void) unlink(symlink_path);
@@ -251,7 +251,7 @@ START_TEST (scoreboard_open_close_test) {
 
     (void) unlink(symlink_path);
 
-    fail("Failed to set errno to EINVAL (got %d)", xerrno);
+    ck_abort_msg("Failed to set errno to EINVAL (got %d)", xerrno);
   }
 
   (void) unlink(test_mutex);
@@ -569,13 +569,13 @@ START_TEST (scoreboard_scrub_test) {
   if (euid != 0) {
     if (errno != EPERM &&
         errno != ENOENT) {
-      fail("Failed to set errno to EPERM/ENOENT, got %d [%s] (euid = %lu)",
+      ck_abort_msg("Failed to set errno to EPERM/ENOENT, got %d [%s] (euid = %lu)",
         errno, strerror(errno), (unsigned long) euid);
     }
 
   } else {
     if (errno != ENOENT) {
-      fail("Failed to set errno to ENOENT, got %d [%s] (euid = %lu)", errno,
+      ck_abort_msg("Failed to set errno to ENOENT, got %d [%s] (euid = %lu)", errno,
         strerror(errno), (unsigned long) euid);
     }
   }
@@ -613,7 +613,7 @@ START_TEST (scoreboard_get_daemon_pid_test) {
 
   daemon_pid = pr_scoreboard_get_daemon_pid();
   if (daemon_pid != getpid()) {
-    fail("Expected %lu, got %lu", (unsigned long) getpid(),
+    ck_abort_msg("Expected %lu, got %lu", (unsigned long) getpid(),
       (unsigned long) daemon_pid);
   }
 
@@ -626,7 +626,7 @@ START_TEST (scoreboard_get_daemon_pid_test) {
 
   daemon_pid = pr_scoreboard_get_daemon_pid();
   if (daemon_pid != 0) {
-    fail("Expected %lu, got %lu", (unsigned long) 0,
+    ck_abort_msg("Expected %lu, got %lu", (unsigned long) 0,
       (unsigned long) daemon_pid);
   }
 
@@ -659,7 +659,7 @@ START_TEST (scoreboard_get_daemon_uptime_test) {
   now = time(NULL);
 
   if (daemon_uptime > now) {
-    fail("Expected %lu, got %lu", (unsigned long) now,
+    ck_abort_msg("Expected %lu, got %lu", (unsigned long) now,
       (unsigned long) daemon_uptime);
   }
 
@@ -672,7 +672,7 @@ START_TEST (scoreboard_get_daemon_uptime_test) {
 
   daemon_uptime = pr_scoreboard_get_daemon_uptime();
   if (daemon_uptime != 0) {
-    fail("Expected %lu, got %lu", (unsigned long) 0,
+    ck_abort_msg("Expected %lu, got %lu", (unsigned long) 0,
       (unsigned long) daemon_uptime);
   }
 
@@ -804,7 +804,7 @@ START_TEST (scoreboard_entry_read_test) {
     strerror(errno));
 
   if (score->sce_pid != getpid()) {
-    fail("Failed to read expected scoreboard entry (expected PID %lu, got %lu)",
+    ck_abort_msg("Failed to read expected scoreboard entry (expected PID %lu, got %lu)",
       (unsigned long) getpid(), (unsigned long) score->sce_pid);
   }
 
