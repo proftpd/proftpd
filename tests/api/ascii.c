@@ -50,7 +50,7 @@ START_TEST (ascii_ftp_from_crlf_test) {
   res = pr_ascii_ftp_from_crlf(NULL, NULL, 0, NULL, NULL);
   ck_assert_msg(res == -1, "Failed to handle null arguments");
   ck_assert_msg(errno == EINVAL, "Expected EINVAL ('%s' [%d]), got '%s' [%d]",
-    strerror(errno), errno);
+    strerror(EINVAL), EINVAL, strerror(errno), errno);
 
   /* Handle an empty input buffer. */
   pr_ascii_ftp_reset();
@@ -208,7 +208,7 @@ START_TEST (ascii_ftp_to_crlf_test) {
   res = pr_ascii_ftp_to_crlf(NULL, NULL, 0, NULL, NULL);
   ck_assert_msg(res == -1, "Failed to handle null arguments");
   ck_assert_msg(errno == EINVAL, "Expected EINVAL ('%s' [%d]), got '%s' [%d]",
-    strerror(errno), errno);
+    strerror(EINVAL), EINVAL, strerror(errno), errno);
 
   /* Handle empty input buffer. */
   mark_point();

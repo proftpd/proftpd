@@ -2155,7 +2155,7 @@ START_TEST (auth_set_max_password_len_test) {
     strerror(errno), errno);
 
   res = pr_auth_set_max_password_len(p, 0);
-  ck_assert_msg(res == 1, "Expected %lu, got %lu", 1, (unsigned long) res);
+  ck_assert_msg(res == 1, "Expected %d, got %lu", 1, (unsigned long) res);
 
   res = pr_auth_set_max_password_len(p, 0);
   ck_assert_msg(res == PR_TUNABLE_PASSWORD_MAX,

@@ -330,7 +330,7 @@ START_TEST (table_get_test) {
   res = pr_table_get(tab, "bar", &sz);
   ck_assert_msg(res != NULL, "Failed to lookup value for 'bar': %s",
     strerror(errno));
-  ck_assert_msg(sz == 4, "Expected result len of 4, got %u", sz);
+  ck_assert_msg(sz == 4, "Expected result len of 4, got %lu", (unsigned long)sz);
 
   str = pcalloc(p, sz);
   memcpy(str, res, sz);
@@ -382,7 +382,7 @@ START_TEST (table_get_use_cache_test) {
   res = pr_table_get(tab, key, &sz);
   ck_assert_msg(res != NULL, "Failed to lookup value for 'bar': %s",
     strerror(errno));
-  ck_assert_msg(sz == 4, "Expected result len of 4, got %u", sz);
+  ck_assert_msg(sz == 4, "Expected result len of 4, got %lu", (unsigned long)sz);
 
   str = pcalloc(p, sz);
   memcpy(str, res, sz);
@@ -506,7 +506,7 @@ START_TEST (table_remove_test) {
 
   res = pr_table_remove(tab, "foo", &sz);
   ck_assert_msg(res != NULL, "Failed to remove 'foo': %s", strerror(errno));
-  ck_assert_msg(sz == 8, "Expected value len of 8, got %u", sz);
+  ck_assert_msg(sz == 8, "Expected value len of 8, got %lu", (unsigned long)sz);
 
   str = pcalloc(p, sz);
   memcpy(str, res, sz);
@@ -571,7 +571,7 @@ START_TEST (table_set_test) {
   v = pr_table_get(tab, "foo", &sz);
   ck_assert_msg(v != NULL, "Failed to retrieve 'foo' from table: %s",
     strerror(errno));
-  ck_assert_msg(sz == 4, "Expected len 4, got %u", sz);
+  ck_assert_msg(sz == 4, "Expected len 4, got %lu", (unsigned long)sz);
 
   str = pcalloc(p, sz);
   memcpy(str, v, sz);
@@ -730,7 +730,7 @@ START_TEST (table_ctl_test) {
   res = pr_table_add(tab, "baz", "quxx", 0);
   ck_assert_msg(res == -1, "Added second entry unexpectedly");
   ck_assert_msg(errno == ENOSPC,
-    "Failed to set errno to ENOSPC, received %s (%d)", errno, strerror(errno));
+    "Failed to set errno to ENOSPC, received %d (%s)", errno, strerror(errno));
 }
 END_TEST
 
@@ -741,7 +741,7 @@ START_TEST (table_load_test) {
   load = pr_table_load(tab);
   ck_assert_msg(load < 0, "Failed to handle NULL table argument");
   ck_assert_msg(errno == EINVAL,
-    "Failed to set errno to EINVAL; received %s (%d)", errno, strerror(errno));
+    "Failed to set errno to EINVAL; received %d (%s)", errno, strerror(errno));
 
   tab = pr_table_alloc(p, 0);
   load = pr_table_load(tab);

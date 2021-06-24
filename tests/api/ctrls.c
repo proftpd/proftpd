@@ -1507,7 +1507,7 @@ START_TEST (ctrls_accept_test) {
 
   res = pr_ctrls_accept(fd, NULL, NULL, NULL, 5);
   ck_assert_msg(res < 0, "Failed to handle no clients");
-  ck_assert_msg(errno = ENOENT, "Expected ENOENT (%d), got %d (%d)", ENOENT,
+  ck_assert_msg(errno = ENOENT, "Expected ENOENT (%d), got %s (%d)", ENOENT,
     strerror(errno), errno);
 
   (void) close(fd);

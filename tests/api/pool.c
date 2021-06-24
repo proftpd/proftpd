@@ -106,17 +106,17 @@ START_TEST (pool_create_sz_test) {
 
   sz = 0;
   sub_pool = pr_pool_create_sz(p, sz);
-  ck_assert_msg(sub_pool != NULL, "Failed to allocate %u byte sub-pool", sz);
+  ck_assert_msg(sub_pool != NULL, "Failed to allocate %lu byte sub-pool", (unsigned long)sz);
   destroy_pool(sub_pool);
 
   sz = 1;
   sub_pool = pr_pool_create_sz(p, sz);
-  ck_assert_msg(sub_pool != NULL, "Failed to allocate %u byte sub-pool", sz);
+  ck_assert_msg(sub_pool != NULL, "Failed to allocate %lu byte sub-pool", (unsigned long)sz);
   destroy_pool(sub_pool);
 
   sz = 16382;
   sub_pool = pr_pool_create_sz(p, sz);
-  ck_assert_msg(sub_pool != NULL, "Failed to allocate %u byte sub-pool", sz);
+  ck_assert_msg(sub_pool != NULL, "Failed to allocate %lu byte sub-pool", (unsigned long)sz);
   destroy_pool(sub_pool);
 
   destroy_pool(p);
@@ -144,11 +144,11 @@ START_TEST (pool_create_sz_with_alloc_test) {
     fprintf(stdout, "pool_sz: %lu bytes (factor %u)\n", pool_sz, factors[i]);
 #endif /* PR_TEST_VERBOSE */
     sub_pool = pr_pool_create_sz(p, pool_sz);
-    ck_assert_msg(sub_pool != NULL, "Failed to allocate %u byte sub-pool", pool_sz);
+    ck_assert_msg(sub_pool != NULL, "Failed to allocate %lu byte sub-pool", (unsigned long)pool_sz);
 
     alloc_sz = (pool_sz * 2);
 #ifdef PR_TEST_VERBOSE
-    fprintf(stdout, "alloc_sz: %lu bytes (factor %u)\n", alloc_sz, factors[i]);
+    fprintf(stdout, "alloc_sz: %lu bytes (factor %u)\n", (unsigned long)alloc_sz, factors[i]);
 #endif /* PR_TEST_VERBOSE */
     data = palloc(sub_pool, alloc_sz);
 
@@ -190,15 +190,15 @@ START_TEST (pool_palloc_test) {
 
   sz = 0;
   v = palloc(p, sz);
-  ck_assert_msg(v == NULL, "Allocated %u-len memory", sz);
+  ck_assert_msg(v == NULL, "Allocated %lu-len memory", (unsigned long)sz);
 
   sz = 1;
   v = palloc(p, sz);
-  ck_assert_msg(v != NULL, "Failed to allocate %u-len memory", sz);
+  ck_assert_msg(v != NULL, "Failed to allocate %lu-len memory", (unsigned long)sz);
 
   sz = 16382;
   v = palloc(p, sz);
-  ck_assert_msg(v != NULL, "Failed to allocate %u-len memory", sz);
+  ck_assert_msg(v != NULL, "Failed to allocate %lu-len memory", (unsigned long)sz);
 
   destroy_pool(p);
 }
@@ -214,15 +214,15 @@ START_TEST (pool_pallocsz_test) {
 
   sz = 0;
   v = pallocsz(p, sz);
-  ck_assert_msg(v == NULL, "Allocated %u-len memory", sz);
+  ck_assert_msg(v == NULL, "Allocated %lu-len memory", (unsigned long)sz);
 
   sz = 1;
   v = pallocsz(p, sz);
-  ck_assert_msg(v != NULL, "Failed to allocate %u-len memory", sz);
+  ck_assert_msg(v != NULL, "Failed to allocate %lu-len memory", (unsigned long)sz);
 
   sz = 16382;
   v = pallocsz(p, sz);
-  ck_assert_msg(v != NULL, "Failed to allocate %u-len memory", sz);
+  ck_assert_msg(v != NULL, "Failed to allocate %lu-len memory", (unsigned long)sz);
 
   destroy_pool(p);
 }
@@ -239,18 +239,18 @@ START_TEST (pool_pcalloc_test) {
 
   sz = 0;
   v = pcalloc(p, sz);
-  ck_assert_msg(v == NULL, "Allocated %u-len memory", sz);
+  ck_assert_msg(v == NULL, "Allocated %lu-len memory", (unsigned long)sz);
 
   sz = 1;
   v = pcalloc(p, sz);
-  ck_assert_msg(v != NULL, "Failed to allocate %u-len memory", sz);
+  ck_assert_msg(v != NULL, "Failed to allocate %lu-len memory", (unsigned long)sz);
   for (i = 0; i < sz; i++) {
     ck_assert_msg(v[i] == 0, "Allocated non-zero memory at position %u", i);
   }
 
   sz = 16382;
   v = pcalloc(p, sz);
-  ck_assert_msg(v != NULL, "Failed to allocate %u-len memory", sz);
+  ck_assert_msg(v != NULL, "Failed to allocate %lu-len memory", (unsigned long)sz);
   for (i = 0; i < sz; i++) {
     ck_assert_msg(v[i] == 0, "Allocated non-zero memory at position %u", i);
   }
@@ -269,15 +269,15 @@ START_TEST (pool_pcallocsz_test) {
 
   sz = 0;
   v = pcallocsz(p, sz);
-  ck_assert_msg(v == NULL, "Allocated %u-len memory", sz);
+  ck_assert_msg(v == NULL, "Allocated %lu-len memory", (unsigned long)sz);
 
   sz = 1;
   v = pcallocsz(p, sz);
-  ck_assert_msg(v != NULL, "Failed to allocate %u-len memory", sz);
+  ck_assert_msg(v != NULL, "Failed to allocate %lu-len memory", (unsigned long)sz);
 
   sz = 16382;
   v = pcallocsz(p, sz);
-  ck_assert_msg(v != NULL, "Failed to allocate %u-len memory", sz);
+  ck_assert_msg(v != NULL, "Failed to allocate %lu-len memory", (unsigned long)sz);
 
   destroy_pool(p);
 }
