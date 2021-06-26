@@ -216,7 +216,7 @@ jobs:
         run: |
           lcov --ignore-errors gcov,source --directory . --capture --output-file all.info
           # filter out system and test code
-          lcov --remove all.info --output-file coverage.info 'lib/glibc-glob.c' 'lib/ccan-json.c' 'lib/hanson-tpl.*' 'lib/openbsd-bcrypt.c' 'lib/openbsd-blowfish.c' 'lib/pr_fnmatch.c' 'lib/pr_fnmatch_loop.c'
+          lcov --output-file coverage.info --remove all.info 'lib/glibc-glob.c' 'lib/ccan-json.c' 'lib/hanson-tpl.*' 'lib/openbsd-bcrypt.c' 'lib/openbsd-blowfish.c' 'lib/pr_fnmatch.c' 'lib/pr_fnmatch_loop.c'
           # debug before upload
           lcov --list coverage.info
           # upload coverage info to coveralls
