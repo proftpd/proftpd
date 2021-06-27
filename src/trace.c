@@ -1,6 +1,6 @@
 /*
  * ProFTPD - FTP server daemon
- * Copyright (c) 2006-2020 The ProFTPD Project team
+ * Copyright (c) 2006-2021 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -596,7 +596,7 @@ int pr_trace_vmsg(const char *channel, int level, const char *fmt,
   buf[sizeof(buf)-1] = '\0';
 
   if (buflen > 0 &&
-      buflen < sizeof(buf)) {
+      (size_t) buflen < sizeof(buf)) {
     buf[buflen] = '\0';
 
   } else {
