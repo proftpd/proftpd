@@ -149,19 +149,20 @@ struct openssh_cipher {
   uint32_t iv_len;
   uint32_t auth_len;
 
+  const EVP_CIPHER *cipher;
   const EVP_CIPHER *(*get_cipher)(void);
 };
 
 static struct openssh_cipher ciphers[] = {
-  { "none",        8,  0, 0, 0, EVP_enc_null },
-  { "aes256-cbc", 16, 32, 16, 0, EVP_aes_256_cbc },
+  { "none",        8,  0, 0, 0, NULL, EVP_enc_null },
+  { "aes256-cbc", 16, 32, 16, 0, NULL, EVP_aes_256_cbc },
 #if defined(HAVE_EVP_AES_256_CTR_OPENSSL)
-  { "aes256-ctr", 16, 32, 16, 0, EVP_aes_256_ctr },
+  { "aes256-ctr", 16, 32, 16, 0, NULL, EVP_aes_256_ctr },
 #else
-  { "aes256-ctr", 16, 32, 16, 0, NULL },
+  { "aes256-ctr", 16, 32, 16, 0, NULL, NULL },
 #endif /* HAVE_EVP_AES_256_CTR_OPENSSL */
 
-  { NULL,          0,  0, 0, 0, NULL }
+  { NULL,          0,  0, 0, 0, NULL, NULL }
 };
 
 static int read_openssh_private_key(pool *p, const char *path, int fd,
@@ -2788,15 +2789,21 @@ static struct openssh_cipher *get_openssh_cipher(const char *name) {
     return NULL;
   }
 
-  /* The CTR algorithms require our own implementation, not the OpenSSL
+  if (cipher->get_cipher != NULL) {
+    cipher->cipher = (cipher->get_cipher)();
+    if (cipher->cipher != NULL) {
+      return cipher;
+    }
+  }
+
+  /* The CTR algorithms may require our own implementation, not the OpenSSL
    * implementation.
    */
-  if (cipher->get_cipher == NULL) {
-    cipher->get_cipher = sftp_crypto_get_cipher(name, NULL, NULL);
-    if (cipher->get_cipher == NULL) {
-      errno = ENOSYS;
-      return NULL;
-    }
+
+  cipher->cipher = sftp_crypto_get_cipher(name, NULL, NULL);
+  if (cipher->cipher == NULL) {
+    errno = ENOSYS;
+    return NULL;
   }
 
   return cipher;
@@ -2807,7 +2814,6 @@ static int decrypt_openssh_data(pool *p, const char *path,
     const char *passphrase, struct openssh_cipher *cipher,
     const char *kdf_name, unsigned char *kdf_data, uint32_t kdf_len,
     unsigned char **decrypted_data, uint32_t *decrypted_len) {
-  EVP_CIPHER *openssl_cipher;
   EVP_CIPHER_CTX *cipher_ctx = NULL;
   unsigned char *buf, *key, *iv, *salt_data;
   uint32_t buflen, key_len, rounds, salt_len;
@@ -2874,12 +2880,10 @@ static int decrypt_openssh_data(pool *p, const char *path,
   EVP_CIPHER_CTX_init(cipher_ctx);
 #endif
 
-  openssl_cipher = (cipher->get_cipher)();
-
 #if defined(PR_USE_OPENSSL_EVP_CIPHERINIT_EX)
-  if (EVP_CipherInit_ex(cipher_ctx, openssl_cipher, NULL, key, iv, 0) != 1) {
+  if (EVP_CipherInit_ex(cipher_ctx, cipher->cipher, NULL, key, iv, 0) != 1) {
 #else
-  if (EVP_CipherInit(cipher_ctx, openssl_cipher, key, iv, 0) != 1) {
+  if (EVP_CipherInit(cipher_ctx, cipher->cipher, key, iv, 0) != 1) {
 #endif /* PR_USE_OPENSSL_EVP_CIPHERINIT_EX */
     pr_trace_msg(trace_channel, 3,
       "error initializing %s cipher for decryption: %s", cipher->algo,
