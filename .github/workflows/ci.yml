@@ -173,6 +173,7 @@ jobs:
           # for debugging
           clang --version
           gcc --version
+          lcov --version
           openssl version -a
 
       - name: Prepare code coverage
