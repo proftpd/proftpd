@@ -569,8 +569,8 @@ static pr_netaddr_t *get_addr_by_ip(pool *p, const char *name,
       *addrs = NULL;
     }
 
-    pr_trace_msg(trace_channel, 7, "'%s' resolved to IPv4 address %s = %u", name,
-      pr_netaddr_get_ipstr(na), ipbind_hash_addr(na));
+    pr_trace_msg(trace_channel, 7, "'%s' resolved to IPv4 address %s", name,
+      pr_netaddr_get_ipstr(na));
 
     if (!(flags & PR_NETADDR_GET_ADDR_FL_EXCL_DNS)) {
       if (netaddr_ipcache_set(name, na) < 0) {
