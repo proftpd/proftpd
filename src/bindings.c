@@ -1,6 +1,6 @@
 /*
  * ProFTPD - FTP server daemon
- * Copyright (c) 2001-2020 The ProFTPD Project team
+ * Copyright (c) 2001-2021 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -47,7 +47,7 @@ static void server_cleanup_cb(void *conn) {
  */
 static unsigned int ipbind_hash_addr(const pr_netaddr_t *addr) {
   size_t offset;
-  unsigned int key;
+  unsigned int key, idx;
 
   offset = pr_netaddr_get_inaddr_len(addr);
 
@@ -58,7 +58,8 @@ static unsigned int ipbind_hash_addr(const pr_netaddr_t *addr) {
   key = *(unsigned *) ((char *) pr_netaddr_get_inaddr(addr) + offset - 4);
 
   key ^= (key >> 16);
-  return ((key >> 8) ^ key) % PR_BINDINGS_TABLE_SIZE;
+  idx = ((key >> 8) ^ key) % PR_BINDINGS_TABLE_SIZE;
+  return idx;
 }
 
 static pool *listening_conn_pool = NULL;
@@ -260,7 +261,6 @@ int pr_ipbind_add_binds(server_rec *serv) {
       PR_OPEN_IPBIND(addr, serv->ServerPort, listen_conn, FALSE, FALSE, TRUE);
 
     } else {
-
       PR_CREATE_IPBIND(serv, addr, serv->ServerPort);
       PR_OPEN_IPBIND(addr, serv->ServerPort, serv->listen, FALSE, FALSE, TRUE);
     }
@@ -478,9 +478,9 @@ int pr_ipbind_create(server_rec *server, const pr_netaddr_t *addr,
   ipbind->ib_islocalhost = FALSE;
   ipbind->ib_isactive = FALSE;
 
-  pr_trace_msg(trace_channel, 8, "created ipbind %p for %s#%u, server %p",
+  pr_trace_msg(trace_channel, 8, "created ipbind %p for %s#%u, server %p (%s)",
     ipbind, pr_netaddr_get_ipstr(ipbind->ib_addr), ipbind->ib_port,
-    ipbind->ib_server);
+    ipbind->ib_server, ipbind->ib_server->ServerName);
 
   /* Add the ipbind to the table. */
   if (ipbind_table[i] != NULL) {
@@ -616,6 +616,8 @@ server_rec *pr_ipbind_get_server(const pr_netaddr_t *addr, unsigned int port) {
    */
   ipbind = pr_ipbind_find(addr, port, TRUE);
   if (ipbind != NULL) {
+    pr_log_debug(DEBUG7, "matching vhost found for %s#%u, using '%s'",
+      pr_netaddr_get_ipstr(addr), port, ipbind->ib_server->ServerName);
     return ipbind->ib_server;
   }
 
@@ -960,8 +962,9 @@ int pr_namebind_create(server_rec *server, const char *name,
   }
 
   pr_trace_msg(trace_channel, 8,
-    "created namebind '%s' for %s#%u, server %p", name,
-    pr_netaddr_get_ipstr(server->addr), server->ServerPort, server);
+    "created namebind '%s' for %s#%u, server %p (%s)", name,
+    pr_netaddr_get_ipstr(server->addr), server->ServerPort, server,
+    server->ServerName);
 
   /* The given server should already have the following populated:
    *
@@ -1301,6 +1304,10 @@ static unsigned int process_serveralias(server_rec *s) {
       pr_ipbind_t *ipbind;
 
       ipbind = elts[i];
+
+      pr_trace_msg(trace_channel, 7, "adding ServerAlias '%s' to server '%s'",
+        c->argv[0], s->ServerName);
+
       res = pr_namebind_create(s, c->argv[0], ipbind, s->addr, s->ServerPort);
       if (res == 0) {
         namebind_count++;
@@ -1357,6 +1364,8 @@ static void trace_ipbind_table(void) {
       pr_trace_msg(trace_channel, 25, "      address: %s#%u",
         pr_netaddr_get_ipstr(ipbind->ib_addr), ipbind->ib_port);
       pr_trace_msg(trace_channel, 25, "      server: %p", ipbind->ib_server);
+      pr_trace_msg(trace_channel, 25, "      active: %s",
+        ipbind->ib_isactive ? "TRUE" : "FALSE");
 
       if (namebinds != NULL) {
         register unsigned int k;
@@ -1373,6 +1382,8 @@ static void trace_ipbind_table(void) {
             namebind->nb_name);
           pr_trace_msg(trace_channel, 25, "        server: %p",
             namebind->nb_server);
+          pr_trace_msg(trace_channel, 25, "        active: %s",
+            namebind->nb_isactive ? "TRUE" : "FALSE");
         }
       }
     }
@@ -1395,7 +1406,7 @@ static int init_standalone_bindings(void) {
      * IPv4 or an IPv6 wildcard socket?
      */
     if (!SocketBindTight) {
-#ifdef PR_USE_IPV6
+#if defined(PR_USE_IPV6)
       if (pr_netaddr_use_ipv6()) {
         pr_inet_set_default_family(NULL, AF_INET6);
 

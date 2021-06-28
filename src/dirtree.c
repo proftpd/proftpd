@@ -2552,7 +2552,7 @@ int fixup_servers(xaset_t *list) {
       s->ServerAddress = pr_netaddr_get_localaddr_str(s->pool);
       s->addr = pr_netaddr_get_addr(s->pool, s->ServerAddress, &addrs);
      
-      if (addrs) {
+      if (addrs != NULL) {
         register unsigned int i;
         pr_netaddr_t **elts = addrs->elts;
 
@@ -2561,7 +2561,7 @@ int fixup_servers(xaset_t *list) {
           const char *ipstr;
 
           ipstr = pr_netaddr_get_ipstr(elts[i]);
-#ifdef PR_USE_IPV6
+#if defined(PR_USE_IPV6)
           if (pr_netaddr_use_ipv6()) {
             char *ipbuf = pcalloc(s->pool, INET6_ADDRSTRLEN + 1);
             if (pr_netaddr_get_family(elts[i]) == AF_INET) {
