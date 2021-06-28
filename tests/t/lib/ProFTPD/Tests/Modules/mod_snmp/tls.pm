@@ -510,8 +510,8 @@ sub snmp_tls_v1_get_sess_counts {
     '/bin/bash');
   auth_group_write($auth_group_file, $group, $gid, $user);
 
-  my $cert_file = File::Spec->rel2abs('t/etc/modules/mod_snmp/tls-server-cert.pem');
-  my $ca_file = File::Spec->rel2abs('t/etc/modules/mod_snmp/tls-ca-cert.pem');
+  my $cert_file = File::Spec->rel2abs('t/etc/modules/mod_tls/server-cert.pem');
+  my $ca_file = File::Spec->rel2abs('t/etc/modules/mod_tls/ca-cert.pem');
 
   my $agent_port = ProFTPD::TestSuite::Utils::get_high_numbered_port();
   my $snmp_community = "public";
@@ -699,8 +699,8 @@ sub snmp_tls_v1_get_xfer_dirlist_counts {
     '/bin/bash');
   auth_group_write($auth_group_file, $group, $gid, $user);
 
-  my $cert_file = File::Spec->rel2abs('t/etc/modules/mod_snmp/tls-server-cert.pem');
-  my $ca_file = File::Spec->rel2abs('t/etc/modules/mod_snmp/tls-ca-cert.pem');
+  my $cert_file = File::Spec->rel2abs('t/etc/modules/mod_tls/server-cert.pem');
+  my $ca_file = File::Spec->rel2abs('t/etc/modules/mod_tls/ca-cert.pem');
 
   my $agent_port = ProFTPD::TestSuite::Utils::get_high_numbered_port();
   my $snmp_community = "public";
@@ -889,8 +889,8 @@ sub snmp_tls_v1_get_xfer_download_counts {
     '/bin/bash');
   auth_group_write($auth_group_file, $group, $gid, $user);
 
-  my $cert_file = File::Spec->rel2abs('t/etc/modules/mod_snmp/tls-server-cert.pem');
-  my $ca_file = File::Spec->rel2abs('t/etc/modules/mod_snmp/tls-ca-cert.pem');
+  my $cert_file = File::Spec->rel2abs('t/etc/modules/mod_tls/server-cert.pem');
+  my $ca_file = File::Spec->rel2abs('t/etc/modules/mod_tls/ca-cert.pem');
 
   my $agent_port = ProFTPD::TestSuite::Utils::get_high_numbered_port();
   my $snmp_community = "public";
@@ -1124,8 +1124,8 @@ sub snmp_tls_v1_get_xfer_upload_counts {
     '/bin/bash');
   auth_group_write($auth_group_file, $group, $gid, $user);
 
-  my $cert_file = File::Spec->rel2abs('t/etc/modules/mod_snmp/tls-server-cert.pem');
-  my $ca_file = File::Spec->rel2abs('t/etc/modules/mod_snmp/tls-ca-cert.pem');
+  my $cert_file = File::Spec->rel2abs('t/etc/modules/mod_tls/server-cert.pem');
+  my $ca_file = File::Spec->rel2abs('t/etc/modules/mod_tls/ca-cert.pem');
 
   my $agent_port = ProFTPD::TestSuite::Utils::get_high_numbered_port();
   my $snmp_community = "public";
