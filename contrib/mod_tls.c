@@ -9992,7 +9992,7 @@ static void tls_setup_environ(pool *p, SSL *ssl) {
 
     /* Process the TLS session-related environ variable. */
     ssl_session = SSL_get_session(ssl);
-    if (ssl_session) {
+    if (ssl_session != NULL) {
       const unsigned char *sess_data;
       unsigned int sess_datalen;
       char *sess_id;
@@ -13737,7 +13737,7 @@ MODRET set_tlsciphersuite(cmd_rec *cmd) {
       ciphersuite = pstrdup(c->pool, ciphersuite);
 
     } else {
-      ciphersuite = pstrcat(c->pool, "!EXPORT:", ciphersuite, NULL);
+      ciphersuite = pstrcat(c->pool, ciphersuite, ":!EXPORT", NULL);
     }
   }
 
