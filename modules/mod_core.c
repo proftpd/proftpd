@@ -504,7 +504,7 @@ MODRET set_defaultaddress(cmd_rec *cmd) {
         continue;
       }
 
-#ifdef PR_USE_IPV6
+#if defined(PR_USE_IPV6)
       if (pr_netaddr_use_ipv6()) {
         char *ipbuf;
 
@@ -537,7 +537,7 @@ MODRET set_defaultaddress(cmd_rec *cmd) {
       addrs = NULL;
 
       addr = pr_netaddr_get_addr2(cmd->tmp_pool, cmd->argv[i], &addrs,
-        addr_flags);
+        addr_flags|PR_NETADDR_GET_ADDR_FL_EXCL_CACHE);
       if (addr == NULL) {
         CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "error resolving '",
           cmd->argv[i], "': ", strerror(errno), NULL));
@@ -3283,7 +3283,7 @@ MODRET add_virtualhost(cmd_rec *cmd) {
   server_rec *s = NULL;
   const pr_netaddr_t *addr = NULL;
   array_header *addrs = NULL;
-  unsigned int addr_flags = PR_NETADDR_GET_ADDR_FL_INCL_DEVICE;
+  unsigned int addr_flags = PR_NETADDR_GET_ADDR_FL_INCL_DEVICE|PR_NETADDR_GET_ADDR_FL_EXCL_CACHE;
 
   if (cmd->argc-1 < 1) {
     CONF_ERROR(cmd, "wrong number of parameters");
@@ -3393,7 +3393,7 @@ MODRET end_virtualhost(cmd_rec *cmd) {
   server_rec *s = NULL, *next_s = NULL;
   const pr_netaddr_t *addr = NULL;
   const char *address = NULL;
-  unsigned int addr_flags = PR_NETADDR_GET_ADDR_FL_INCL_DEVICE;
+  unsigned int addr_flags = PR_NETADDR_GET_ADDR_FL_INCL_DEVICE|PR_NETADDR_GET_ADDR_FL_EXCL_CACHE;
 
   if (cmd->argc > 1) {
     CONF_ERROR(cmd, "wrong number of parameters");
@@ -3963,7 +3963,8 @@ MODRET core_port(cmd_rec *cmd) {
   pr_snprintf(buf, sizeof(buf), "%u.%u.%u.%u", h1, h2, h3, h4);
   buf[sizeof(buf)-1] = '\0';
 
-  port_addr = pr_netaddr_get_addr(cmd->tmp_pool, buf, NULL);
+  port_addr = pr_netaddr_get_addr2(cmd->tmp_pool, buf, NULL,
+    PR_NETADDR_GET_ADDR_FL_EXCL_CACHE);
   if (port_addr == NULL) {
     pr_log_debug(DEBUG1, "error getting sockaddr for '%s': %s", buf,
       strerror(errno)); 
