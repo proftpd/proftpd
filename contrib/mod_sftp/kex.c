@@ -1,6 +1,6 @@
 /*
  * ProFTPD - mod_sftp key exchange (kex)
- * Copyright (c) 2008-2020 TJ Saunders
+ * Copyright (c) 2008-2021 TJ Saunders
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -128,7 +128,7 @@ struct sftp_kex {
   BIGNUM *e;
   const EVP_MD *hash;
 
-  BIGNUM *k;
+  const BIGNUM *k;
   const char *h;
   uint32_t hlen;
 
@@ -806,7 +806,7 @@ static const unsigned char *calculate_ecdh_h(struct sftp_kex *kex,
 #endif /* PR_USE_OPENSSL_ECC */
 
 /* Make sure that the DH key we're generating is good enough. */
-static int have_good_dh(DH *dh, BIGNUM *pub_key) {
+static int have_good_dh(DH *dh, const BIGNUM *pub_key) {
   register int i;
   unsigned int nbits = 0;
   const BIGNUM *dh_p = NULL;
@@ -995,7 +995,7 @@ static int create_dh(struct sftp_kex *kex, int type) {
 
   /* We have 10 attempts to make a DH key which passes muster. */
   while (attempts <= 10) {
-    BIGNUM *dh_p, *dh_g, *dh_pub_key = NULL, *dh_priv_key = NULL;
+    const BIGNUM *dh_p, *dh_g, *dh_pub_key = NULL, *dh_priv_key = NULL;
 
     pr_signals_handle();
 
@@ -1014,20 +1014,20 @@ static int create_dh(struct sftp_kex *kex, int type) {
 
     switch (type) {
       case SFTP_DH_GROUP18_SHA512:
-        if (BN_hex2bn(&dh_p, dh_group18_str) == 0) {
+        if (BN_hex2bn((BIGNUM **) &dh_p, dh_group18_str) == 0) {
           (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
             "error setting DH (group18) P: %s", sftp_crypto_get_errors());
-          BN_clear_free(dh_p);
+          BN_clear_free((BIGNUM *) dh_p);
           DH_free(dh);
           return -1;
         }
         break;
 
       case SFTP_DH_GROUP16_SHA512:
-        if (BN_hex2bn(&dh_p, dh_group16_str) == 0) {
+        if (BN_hex2bn((BIGNUM **) &dh_p, dh_group16_str) == 0) {
           (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
             "error setting DH (group16) P: %s", sftp_crypto_get_errors());
-          BN_clear_free(dh_p);
+          BN_clear_free((BIGNUM *) dh_p);
           DH_free(dh);
           return -1;
         }
@@ -1035,20 +1035,20 @@ static int create_dh(struct sftp_kex *kex, int type) {
 
       case SFTP_DH_GROUP14_SHA1:
       case SFTP_DH_GROUP14_SHA256:
-        if (BN_hex2bn(&dh_p, dh_group14_str) == 0) {
+        if (BN_hex2bn((BIGNUM **) &dh_p, dh_group14_str) == 0) {
           (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
             "error setting DH (group14) P: %s", sftp_crypto_get_errors());
-          BN_clear_free(dh_p);
+          BN_clear_free((BIGNUM *) dh_p);
           DH_free(dh);
           return -1;
         }
         break;
 
       default:
-        if (BN_hex2bn(&dh_p, dh_group1_str) == 0) {
+        if (BN_hex2bn((BIGNUM **) &dh_p, dh_group1_str) == 0) {
           (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
             "error setting DH (group1) P: %s", sftp_crypto_get_errors());
-          BN_clear_free(dh_p);
+          BN_clear_free((BIGNUM *) dh_p);
           DH_free(dh);
           return -1;
         }
@@ -1057,18 +1057,18 @@ static int create_dh(struct sftp_kex *kex, int type) {
 
     dh_g = BN_new();
 
-    if (BN_hex2bn(&dh_g, "2") == 0) {
+    if (BN_hex2bn((BIGNUM **) &dh_g, "2") == 0) {
       (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
         "error setting DH G: %s", sftp_crypto_get_errors());
-      BN_clear_free(dh_p);
-      BN_clear_free(dh_g);
+      BN_clear_free((BIGNUM *) dh_p);
+      BN_clear_free((BIGNUM *) dh_g);
       DH_free(dh);
       return -1;
     }
 
 #if OPENSSL_VERSION_NUMBER >= 0x10100000L && \
     !defined(HAVE_LIBRESSL)
-    DH_set0_pqg(dh, dh_p, NULL, dh_g);
+    DH_set0_pqg(dh, (BIGNUM *) dh_p, NULL, (BIGNUM *) dh_g);
 #else
     dh->p = dh_p;
     dh->g = dh_g;
@@ -1077,11 +1077,11 @@ static int create_dh(struct sftp_kex *kex, int type) {
     dh_priv_key = BN_new();
 
     /* Generate a random private exponent of the desired size, in bits. */
-    if (!BN_rand(dh_priv_key, dh_nbits, 0, 0)) {
+    if (!BN_rand((BIGNUM *) dh_priv_key, dh_nbits, 0, 0)) {
       (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
         "error generating DH random key (%d bits): %s", dh_nbits,
         sftp_crypto_get_errors());
-      BN_clear_free(dh_priv_key);
+      BN_clear_free((BIGNUM *) dh_priv_key);
       DH_free(dh);
       return -1;
     }
@@ -1089,7 +1089,7 @@ static int create_dh(struct sftp_kex *kex, int type) {
     dh_pub_key = BN_new();
 #if OPENSSL_VERSION_NUMBER >= 0x10100000L && \
     !defined(HAVE_LIBRESSL)
-    DH_set0_key(dh, dh_pub_key, dh_priv_key);
+    DH_set0_key(dh, (BIGNUM *) dh_pub_key, (BIGNUM *) dh_priv_key);
 #else
     dh->pub_key = dh_pub_key;
     dh->priv_key = dh_priv_key;
@@ -1774,7 +1774,7 @@ static void destroy_kex(struct sftp_kex *kex) {
     }
 
     if (kex->k) {
-      BN_clear_free(kex->k);
+      BN_clear_free((BIGNUM *) kex->k);
       kex->k = NULL;
     }
 
@@ -2738,7 +2738,7 @@ static int write_dh_reply(struct ssh2_packet *pkt, struct sftp_kex *kex) {
   unsigned char *buf, *ptr;
   uint32_t bufsz, buflen, hlen = 0, hostkey_datalen = 0;
   size_t dhlen, hsiglen;
-  BIGNUM *k = NULL, *dh_pub_key = NULL;
+  const BIGNUM *k = NULL, *dh_pub_key = NULL;
   int res;
 
   /* Compute the shared secret */
@@ -2754,10 +2754,9 @@ static int write_dh_reply(struct ssh2_packet *pkt, struct sftp_kex *kex) {
   }
 
   k = BN_new();
-  if (BN_bin2bn((unsigned char *) buf, res, k) == NULL) {
+  if (BN_bin2bn((unsigned char *) buf, res, (BIGNUM *) k) == NULL) {
     (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
       "error converting DH shared secret to BN: %s", sftp_crypto_get_errors());
-
     pr_memscrub(buf, res);
     return -1;
   }
@@ -2774,7 +2773,7 @@ static int write_dh_reply(struct ssh2_packet *pkt, struct sftp_kex *kex) {
     (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
       "error converting hostkey for signing: %s", strerror(errno));
 
-    BN_clear_free(kex->k);
+    BN_clear_free((BIGNUM *) kex->k);
     kex->k = NULL;
     return -1;
   }
@@ -2783,7 +2782,7 @@ static int write_dh_reply(struct ssh2_packet *pkt, struct sftp_kex *kex) {
   h = calculate_h(kex, hostkey_data, hostkey_datalen, k, &hlen);
   if (h == NULL) {
     pr_memscrub((char *) hostkey_data, hostkey_datalen);
-    BN_clear_free(kex->k);
+    BN_clear_free((BIGNUM *) kex->k);
     kex->k = NULL;
     return -1;
   }
@@ -2801,7 +2800,7 @@ static int write_dh_reply(struct ssh2_packet *pkt, struct sftp_kex *kex) {
   if (hsig == NULL) {
     (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION, "error signing H");
     pr_memscrub((char *) hostkey_data, hostkey_datalen);
-    BN_clear_free(kex->k);
+    BN_clear_free((BIGNUM *) kex->k);
     kex->k = NULL;
     return -1;
   }
@@ -3193,7 +3192,7 @@ static int get_dh_gex_group(struct sftp_kex *kex, uint32_t min,
       }
 
       if (chosen_dh != NULL) {
-        BIGNUM *dh_p = NULL, *dh_g = NULL, *dup_p, *dup_g;
+        const BIGNUM *dh_p = NULL, *dh_g = NULL, *dup_p, *dup_g;
 
         pr_trace_msg(trace_channel, 20, "client requested min %lu, pref %lu, "
           "max %lu sizes for DH group exchange, selected DH of %lu bits",
@@ -3227,14 +3226,14 @@ static int get_dh_gex_group(struct sftp_kex *kex, uint32_t min,
               "error copying selected DH G: %s", sftp_crypto_get_errors());
             (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
               "WARNING: using fixed modulus for DH group exchange");
-            BN_clear_free(dup_p);
+            BN_clear_free((BIGNUM *) dup_p);
             use_fixed_modulus = TRUE;
 
           } else {
             /* Now set those P, G copies into our KEX DH. */
 #if OPENSSL_VERSION_NUMBER >= 0x10100000L && \
     !defined(HAVE_LIBRESSL)
-            DH_set0_pqg(kex->dh, dup_p, NULL, dup_g);
+            DH_set0_pqg(kex->dh, (BIGNUM *) dup_p, NULL, (BIGNUM *) dup_g);
 #else
             kex->dh->p = dup_p;
             kex->dh->g = dup_g;
@@ -3312,7 +3311,7 @@ static int get_dh_gex_group(struct sftp_kex *kex, uint32_t min,
 
 static int write_dh_gex_group(struct ssh2_packet *pkt, struct sftp_kex *kex,
     uint32_t min, uint32_t pref, uint32_t max) {
-  BIGNUM *dh_p = NULL, *dh_g = NULL;
+  const BIGNUM *dh_p = NULL, *dh_g = NULL;
   unsigned char *buf, *ptr;
   uint32_t buflen, bufsz;
 
@@ -3366,7 +3365,7 @@ static int write_dh_gex_reply(struct ssh2_packet *pkt, struct sftp_kex *kex,
   unsigned char *buf, *ptr;
   uint32_t bufsz, buflen, hlen = 0, hostkey_datalen = 0;
   size_t dhlen, hsiglen = 0;
-  BIGNUM *k = NULL, *dh_pub_key = NULL;
+  const BIGNUM *k = NULL, *dh_pub_key = NULL;
   int res;
 
   /* Compute the shared secret. */
@@ -3382,12 +3381,11 @@ static int write_dh_gex_reply(struct ssh2_packet *pkt, struct sftp_kex *kex,
   }
 
   k = BN_new();
-  if (BN_bin2bn(buf, res, k) == NULL) {
+  if (BN_bin2bn(buf, res, (BIGNUM *) k) == NULL) {
     (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
       "error converting DH shared secret to BN: %s", sftp_crypto_get_errors());
-
     pr_memscrub(buf, res);
-    BN_clear_free(k);
+    BN_clear_free((BIGNUM *) k);
     return -1;
   }
 
@@ -3402,8 +3400,7 @@ static int write_dh_gex_reply(struct ssh2_packet *pkt, struct sftp_kex *kex,
   if (hostkey_data == NULL) {
     (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
       "error converting hostkey for signing: %s", strerror(errno));
-
-    BN_clear_free(kex->k);
+    BN_clear_free((BIGNUM *) kex->k);
     kex->k = NULL;
     return -1;
   }
@@ -3417,7 +3414,7 @@ static int write_dh_gex_reply(struct ssh2_packet *pkt, struct sftp_kex *kex,
     &hlen);
   if (h == NULL) {
     pr_memscrub((char *) hostkey_data, hostkey_datalen);
-    BN_clear_free(kex->k);
+    BN_clear_free((BIGNUM *) kex->k);
     kex->k = NULL;
     return -1;
   } 
@@ -3435,7 +3432,7 @@ static int write_dh_gex_reply(struct ssh2_packet *pkt, struct sftp_kex *kex,
   if (hsig == NULL) {
     (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION, "error signing H");
     pr_memscrub((char *) hostkey_data, hostkey_datalen);
-    BN_clear_free(kex->k);
+    BN_clear_free((BIGNUM *) kex->k);
     kex->k = NULL;
     return -1;
   }
@@ -3617,7 +3614,7 @@ static int read_kexrsa_secret(struct ssh2_packet *pkt, struct sftp_kex *kex) {
 }
 
 static int write_kexrsa_pubkey(struct ssh2_packet *pkt, struct sftp_kex *kex) {
-  BIGNUM *rsa_n = NULL, *rsa_e = NULL;
+  const BIGNUM *rsa_n = NULL, *rsa_e = NULL;
   unsigned char *buf, *ptr, *buf2, *ptr2;
   const unsigned char *hostkey_data;
   uint32_t buflen, bufsz, buflen2, bufsz2, hostkey_datalen;
@@ -3668,7 +3665,7 @@ static int write_kexrsa_pubkey(struct ssh2_packet *pkt, struct sftp_kex *kex) {
 }
 
 static int write_kexrsa_done(struct ssh2_packet *pkt, struct sftp_kex *kex) {
-  BIGNUM *rsa_e = NULL, *rsa_n = NULL;
+  const BIGNUM *rsa_e = NULL, *rsa_n = NULL;
   unsigned char *buf, *ptr, *buf2, *ptr2;
   const unsigned char *h, *hostkey_data, *hsig;
   uint32_t buflen, bufsz, buflen2, bufsz2, hlen, hostkey_datalen = 0;
@@ -3682,7 +3679,7 @@ static int write_kexrsa_done(struct ssh2_packet *pkt, struct sftp_kex *kex) {
 
     RSA_free(kex->rsa);
     kex->rsa = NULL;
-    BN_clear_free(kex->k);
+    BN_clear_free((BIGNUM *) kex->k);
     kex->k = NULL;
     pr_memscrub(kex->rsa_encrypted, kex->rsa_encrypted_len);
     kex->rsa_encrypted = NULL;
@@ -3717,7 +3714,7 @@ static int write_kexrsa_done(struct ssh2_packet *pkt, struct sftp_kex *kex) {
     pr_memscrub((char *) hostkey_data, hostkey_datalen);
     RSA_free(kex->rsa);
     kex->rsa = NULL;
-    BN_clear_free(kex->k);
+    BN_clear_free((BIGNUM *) kex->k);
     kex->k = NULL;
     pr_memscrub(kex->rsa_encrypted, kex->rsa_encrypted_len);
     kex->rsa_encrypted = NULL;
@@ -3742,7 +3739,7 @@ static int write_kexrsa_done(struct ssh2_packet *pkt, struct sftp_kex *kex) {
     pr_memscrub((char *) hostkey_data, hostkey_datalen);
     RSA_free(kex->rsa);
     kex->rsa = NULL;
-    BN_clear_free(kex->k);
+    BN_clear_free((BIGNUM *) kex->k);
     kex->k = NULL;
     pr_memscrub(kex->rsa_encrypted, kex->rsa_encrypted_len);
     kex->rsa_encrypted = NULL;
@@ -4235,7 +4232,7 @@ static int write_ecdh_reply(struct ssh2_packet *pkt, struct sftp_kex *kex) {
   unsigned char *buf, *ptr;
   uint32_t bufsz, buflen, hlen = 0, hostkey_datalen = 0;
   size_t ecdhlen, hsiglen;
-  BIGNUM *k = NULL;
+  const BIGNUM *k = NULL;
   int res;
 
   /* Compute the shared secret */
@@ -4266,11 +4263,10 @@ static int write_ecdh_reply(struct ssh2_packet *pkt, struct sftp_kex *kex) {
     return -1;
   }
 
-  if (BN_bin2bn((unsigned char *) buf, res, k) == NULL) {
+  if (BN_bin2bn((unsigned char *) buf, res, (BIGNUM *) k) == NULL) {
     (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
       "error converting ECDH shared secret to BN: %s",
       sftp_crypto_get_errors());
-
     pr_memscrub(buf, res);
     return -1;
   }
@@ -4286,8 +4282,7 @@ static int write_ecdh_reply(struct ssh2_packet *pkt, struct sftp_kex *kex) {
   if (hostkey_data == NULL) {
     (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
       "error converting hostkey for signing: %s", strerror(errno));
-
-    BN_clear_free(kex->k);
+    BN_clear_free((BIGNUM *) kex->k);
     kex->k = NULL;
     return -1;
   }
@@ -4296,7 +4291,7 @@ static int write_ecdh_reply(struct ssh2_packet *pkt, struct sftp_kex *kex) {
   h = calculate_ecdh_h(kex, hostkey_data, hostkey_datalen, k, &hlen);
   if (h == NULL) {
     pr_memscrub((char *) hostkey_data, hostkey_datalen);
-    BN_clear_free(kex->k);
+    BN_clear_free((BIGNUM *) kex->k);
     kex->k = NULL;
     return -1;
   }
@@ -4314,7 +4309,7 @@ static int write_ecdh_reply(struct ssh2_packet *pkt, struct sftp_kex *kex) {
   if (hsig == NULL) {
     (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION, "error signing H");
     pr_memscrub((char *) hostkey_data, hostkey_datalen);
-    BN_clear_free(kex->k);
+    BN_clear_free((BIGNUM *) kex->k);
     kex->k = NULL;
     return -1;
   }

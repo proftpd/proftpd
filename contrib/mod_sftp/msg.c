@@ -1,6 +1,6 @@
 /*
  * ProFTPD - mod_sftp message format
- * Copyright (c) 2008-2020 TJ Saunders
+ * Copyright (c) 2008-2021 TJ Saunders
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -234,7 +234,7 @@ uint64_t sftp_msg_read_long(pool *p, unsigned char **buf, uint32_t *buflen) {
 }
 
 uint32_t sftp_msg_read_mpint2(pool *p, unsigned char **buf, uint32_t *buflen,
-    BIGNUM **mpint) {
+    const BIGNUM **mpint) {
   unsigned char *mpint_data = NULL;
   const unsigned char *data = NULL, *ptr = NULL;
   uint32_t datalen = 0, mpint_len = 0, len = 0, total_len = 0;
@@ -295,8 +295,9 @@ uint32_t sftp_msg_read_mpint2(pool *p, unsigned char **buf, uint32_t *buflen,
   return total_len;
 }
 
-BIGNUM *sftp_msg_read_mpint(pool *p, unsigned char **buf, uint32_t *buflen) {
-  BIGNUM *mpint = NULL;
+const BIGNUM *sftp_msg_read_mpint(pool *p, unsigned char **buf,
+    uint32_t *buflen) {
+  const BIGNUM *mpint = NULL;
   uint32_t len;
 
   len = sftp_msg_read_mpint2(p, buf, buflen, &mpint);

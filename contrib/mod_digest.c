@@ -1,7 +1,7 @@
 /*
  * ProFTPD: mod_digest - File hashing/checksumming module
  * Copyright (c) Mathias Berchtold <mb@smartftp.com>
- * Copyright (c) 2016-2019 TJ Saunders <tj@castaglia.org>
+ * Copyright (c) 2016-2021 TJ Saunders <tj@castaglia.org>
  * 
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -389,7 +389,7 @@ static const EVP_MD crc32_md = {
 #endif /* Older OpenSSLs */
 
 static const EVP_MD *EVP_crc32(void) {
-  const EVP_MD *md;
+  EVP_MD *md;
 
 #if OPENSSL_VERSION_NUMBER >= 0x10100000L && \
     !defined(HAVE_LIBRESSL)
