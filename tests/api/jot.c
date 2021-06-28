@@ -71,7 +71,7 @@ static void assert_jot_class_filter(const char *class_name) {
 
   mark_point();
   filters = pr_jot_filters_create(p, rules, PR_JOT_FILTER_TYPE_CLASSES, 0);
-  fail_unless(filters != NULL, "Failed to create filters from '%s': %s",
+  ck_assert_msg(filters != NULL, "Failed to create filters from '%s': %s",
     rules, strerror(errno));
   (void) pr_jot_filters_destroy(filters);
 
@@ -79,7 +79,7 @@ static void assert_jot_class_filter(const char *class_name) {
 
   mark_point();
   filters = pr_jot_filters_create(p, rules, PR_JOT_FILTER_TYPE_CLASSES, 0);
-  fail_unless(filters != NULL, "Failed to create filters from '%s': %s",
+  ck_assert_msg(filters != NULL, "Failed to create filters from '%s': %s",
     rules, strerror(errno));
   (void) pr_jot_filters_destroy(filters);
 }
@@ -90,7 +90,7 @@ static void assert_jot_command_with_class_filter(const char *rules) {
   mark_point();
   filters = pr_jot_filters_create(p, rules,
     PR_JOT_FILTER_TYPE_COMMANDS_WITH_CLASSES, 0);
-  fail_unless(filters != NULL, "Failed to create filters from '%s': %s",
+  ck_assert_msg(filters != NULL, "Failed to create filters from '%s': %s",
     rules, strerror(errno));
   (void) pr_jot_filters_destroy(filters);
 }
@@ -101,31 +101,31 @@ START_TEST (jot_filters_create_test) {
 
   mark_point();
   filters = pr_jot_filters_create(NULL, NULL, 0, 0);
-  fail_unless(filters == NULL, "Failed to handle null pool");
-  fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+  ck_assert_msg(filters == NULL, "Failed to handle null pool");
+  ck_assert_msg(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
     strerror(errno), errno);
 
   mark_point();
   filters = pr_jot_filters_create(p, NULL, 0, 0);
-  fail_unless(filters == NULL, "Failed to handle null rules");
-  fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+  ck_assert_msg(filters == NULL, "Failed to handle null rules");
+  ck_assert_msg(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
     strerror(errno), errno);
 
   rules = "foo";
 
   mark_point();
   filters = pr_jot_filters_create(p, rules, -1, 0);
-  fail_unless(filters == NULL, "Failed to handle invalid rules type");
-  fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+  ck_assert_msg(filters == NULL, "Failed to handle invalid rules type");
+  ck_assert_msg(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
     strerror(errno), errno);
 
   /* Class rules */
 
   mark_point();
   filters = pr_jot_filters_create(p, rules, PR_JOT_FILTER_TYPE_CLASSES, 0);
-  fail_unless(filters == NULL, "Failed to handle invalid class name '%s'",
+  ck_assert_msg(filters == NULL, "Failed to handle invalid class name '%s'",
     rules);
-  fail_unless(errno == ENOENT, "Expected ENOENT (%d), got %s (%d)", ENOENT,
+  ck_assert_msg(errno == ENOENT, "Expected ENOENT (%d), got %s (%d)", ENOENT,
     strerror(errno), errno);
 
   assert_jot_class_filter("NONE");
@@ -147,7 +147,7 @@ START_TEST (jot_filters_create_test) {
 
   mark_point();
   filters = pr_jot_filters_create(p, rules, PR_JOT_FILTER_TYPE_CLASSES, 0);
-  fail_unless(filters != NULL, "Failed to create filters from '%s': %s",
+  ck_assert_msg(filters != NULL, "Failed to create filters from '%s': %s",
     rules, strerror(errno));
   (void) pr_jot_filters_destroy(filters);
 
@@ -155,7 +155,7 @@ START_TEST (jot_filters_create_test) {
 
   mark_point();
   filters = pr_jot_filters_create(p, rules, PR_JOT_FILTER_TYPE_CLASSES, 0);
-  fail_unless(filters != NULL, "Failed to create filters from '%s': %s",
+  ck_assert_msg(filters != NULL, "Failed to create filters from '%s': %s",
     rules, strerror(errno));
   (void) pr_jot_filters_destroy(filters);
 
@@ -164,14 +164,14 @@ START_TEST (jot_filters_create_test) {
   rules = "FOO,BAR";
   mark_point();
   filters = pr_jot_filters_create(p, rules, PR_JOT_FILTER_TYPE_COMMANDS, 0);
-  fail_unless(filters != NULL, "Failed to create filters from '%s': %s",
+  ck_assert_msg(filters != NULL, "Failed to create filters from '%s': %s",
     rules, strerror(errno));
   (void) pr_jot_filters_destroy(filters);
 
   rules = "APPE,RETR,STOR,STOU";
   mark_point();
   filters = pr_jot_filters_create(p, rules, PR_JOT_FILTER_TYPE_COMMANDS, 0);
-  fail_unless(filters != NULL, "Failed to create filters from '%s': %s",
+  ck_assert_msg(filters != NULL, "Failed to create filters from '%s': %s",
     rules, strerror(errno));
   (void) pr_jot_filters_destroy(filters);
 
@@ -211,7 +211,7 @@ START_TEST (jot_filters_create_test) {
   mark_point();
   filters = pr_jot_filters_create(p, rules,
     PR_JOT_FILTER_TYPE_COMMANDS_WITH_CLASSES, 0);
-  fail_unless(filters != NULL, "Failed to create filters from '%s': %s",
+  ck_assert_msg(filters != NULL, "Failed to create filters from '%s': %s",
     rules, strerror(errno));
   (void) pr_jot_filters_destroy(filters);
 
@@ -221,7 +221,7 @@ START_TEST (jot_filters_create_test) {
   mark_point();
   filters = pr_jot_filters_create(p, rules,
     PR_JOT_FILTER_TYPE_COMMANDS_WITH_CLASSES, PR_JOT_FILTER_FL_ALL_INCL_ALL);
-  fail_unless(filters != NULL, "Failed to create filters from '%s': %s",
+  ck_assert_msg(filters != NULL, "Failed to create filters from '%s': %s",
     rules, strerror(errno));
   (void) pr_jot_filters_destroy(filters);
 }
@@ -233,15 +233,15 @@ START_TEST (jot_filters_destroy_test) {
 
   mark_point();
   res = pr_jot_filters_destroy(NULL);
-  fail_unless(res < 0, "Failed to handle null filters");
-  fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+  ck_assert_msg(res < 0, "Failed to handle null filters");
+  ck_assert_msg(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
     strerror(errno), errno);
 
   filters = pr_jot_filters_create(p, "NONE", PR_JOT_FILTER_TYPE_CLASSES, 0);
 
   mark_point();
   res = pr_jot_filters_destroy(filters);
-  fail_unless(res == 0, "Failed to destroy filters: %s", strerror(errno));
+  ck_assert_msg(res == 0, "Failed to destroy filters: %s", strerror(errno));
 }
 END_TEST
 
@@ -251,20 +251,20 @@ START_TEST (jot_filters_include_classes_test) {
 
   mark_point();
   res = pr_jot_filters_include_classes(NULL, 0);
-  fail_unless(res < 0, "Failed to handle null filters");
-  fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+  ck_assert_msg(res < 0, "Failed to handle null filters");
+  ck_assert_msg(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
     strerror(errno), errno);
 
   filters = pr_jot_filters_create(p, "NONE", PR_JOT_FILTER_TYPE_CLASSES, 0);
 
   res = pr_jot_filters_include_classes(filters, CL_ALL);
-  fail_unless(res == FALSE, "Expected FALSE, got %d", res);
+  ck_assert_msg(res == FALSE, "Expected FALSE, got %d", res);
 
   res = pr_jot_filters_include_classes(filters, CL_NONE);
-  fail_unless(res == TRUE, "Expected TRUE, got %d", res);
+  ck_assert_msg(res == TRUE, "Expected TRUE, got %d", res);
 
   res = pr_jot_filters_destroy(filters);
-  fail_unless(res == 0, "Failed to destroy filters: %s", strerror(errno));
+  ck_assert_msg(res == 0, "Failed to destroy filters: %s", strerror(errno));
 }
 END_TEST
 
@@ -296,16 +296,16 @@ START_TEST (jot_parse_on_meta_test) {
 
   mark_point();
   res = pr_jot_parse_on_meta(p, NULL, 0, NULL, 0);
-  fail_unless(res < 0, "Failed to handle null jot_ctx");
-  fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+  ck_assert_msg(res < 0, "Failed to handle null jot_ctx");
+  ck_assert_msg(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
     strerror(errno), errno);
 
   jot_ctx = pcalloc(p, sizeof(pr_jot_ctx_t));
 
   mark_point();
   res = pr_jot_parse_on_meta(p, jot_ctx, 0, NULL, 0);
-  fail_unless(res < 0, "Failed to handle null jot_ctx->log");
-  fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+  ck_assert_msg(res < 0, "Failed to handle null jot_ctx->log");
+  ck_assert_msg(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
     strerror(errno), errno);
 
   jot_parsed = pcalloc(p, sizeof(pr_jot_parsed_t));
@@ -313,7 +313,7 @@ START_TEST (jot_parse_on_meta_test) {
 
   mark_point();
   res = pr_jot_parse_on_meta(p, jot_ctx, 0, NULL, 0);
-  fail_unless(res == 0, "Failed to handle parse_on_meta callback: %s",
+  ck_assert_msg(res == 0, "Failed to handle parse_on_meta callback: %s",
     strerror(errno));
 }
 END_TEST
@@ -325,16 +325,16 @@ START_TEST (jot_parse_on_unknown_test) {
 
   mark_point();
   res = pr_jot_parse_on_unknown(p, NULL, NULL, 0);
-  fail_unless(res < 0, "Failed to handle null jot_ctx");
-  fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+  ck_assert_msg(res < 0, "Failed to handle null jot_ctx");
+  ck_assert_msg(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
     strerror(errno), errno);
 
   jot_ctx = pcalloc(p, sizeof(pr_jot_ctx_t));
 
   mark_point();
   res = pr_jot_parse_on_unknown(p, jot_ctx, NULL, 0);
-  fail_unless(res < 0, "Failed to handle null jot_ctx->log");
-  fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+  ck_assert_msg(res < 0, "Failed to handle null jot_ctx->log");
+  ck_assert_msg(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
     strerror(errno), errno);
 
   jot_parsed = pcalloc(p, sizeof(pr_jot_parsed_t));
@@ -342,7 +342,7 @@ START_TEST (jot_parse_on_unknown_test) {
 
   mark_point();
   res = pr_jot_parse_on_unknown(p, jot_ctx, NULL, 0);
-  fail_unless(res == 0, "Failed to handle parse_on_unknown callback: %s",
+  ck_assert_msg(res == 0, "Failed to handle parse_on_unknown callback: %s",
     strerror(errno));
 }
 END_TEST
@@ -354,16 +354,16 @@ START_TEST (jot_parse_on_other_test) {
 
   mark_point();
   res = pr_jot_parse_on_other(p, NULL, 0);
-  fail_unless(res < 0, "Failed to handle null jot_ctx");
-  fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+  ck_assert_msg(res < 0, "Failed to handle null jot_ctx");
+  ck_assert_msg(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
     strerror(errno), errno);
 
   jot_ctx = pcalloc(p, sizeof(pr_jot_ctx_t));
 
   mark_point();
   res = pr_jot_parse_on_other(p, jot_ctx, 0);
-  fail_unless(res < 0, "Failed to handle null jot_ctx->log");
-  fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+  ck_assert_msg(res < 0, "Failed to handle null jot_ctx->log");
+  ck_assert_msg(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
     strerror(errno), errno);
 
   jot_parsed = pcalloc(p, sizeof(pr_jot_parsed_t));
@@ -371,7 +371,7 @@ START_TEST (jot_parse_on_other_test) {
 
   mark_point();
   res = pr_jot_parse_on_other(p, jot_ctx, 0);
-  fail_unless(res == 0, "Failed to handle parse_on_other callback: %s",
+  ck_assert_msg(res == 0, "Failed to handle parse_on_other callback: %s",
     strerror(errno));
 }
 END_TEST
@@ -384,42 +384,42 @@ START_TEST (jot_parse_logfmt_test) {
 
   mark_point();
   res = pr_jot_parse_logfmt(NULL, NULL, NULL, NULL, NULL, NULL, 0);
-  fail_unless(res < 0, "Failed to handle null pool");
-  fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+  ck_assert_msg(res < 0, "Failed to handle null pool");
+  ck_assert_msg(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
     strerror(errno), errno);
 
   mark_point();
   res = pr_jot_parse_logfmt(p, NULL, NULL, NULL, NULL, NULL, 0);
-  fail_unless(res < 0, "Failed to handle null text");
-  fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+  ck_assert_msg(res < 0, "Failed to handle null text");
+  ck_assert_msg(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
     strerror(errno), errno);
 
   text = "Hello, World!";
 
   mark_point();
   res = pr_jot_parse_logfmt(p, text, NULL, NULL, NULL, NULL, 0);
-  fail_unless(res < 0, "Failed to handle null ctx");
-  fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+  ck_assert_msg(res < 0, "Failed to handle null ctx");
+  ck_assert_msg(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
     strerror(errno), errno);
 
   jot_ctx = pcalloc(p, sizeof(pr_jot_ctx_t));
 
   mark_point();
   res = pr_jot_parse_logfmt(p, text, jot_ctx, NULL, NULL, NULL, 0);
-  fail_unless(res < 0, "Failed to handle null on_meta");
-  fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+  ck_assert_msg(res < 0, "Failed to handle null on_meta");
+  ck_assert_msg(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
     strerror(errno), errno);
 
   parse_on_meta_count = parse_on_unknown_count = parse_on_other_count = 0;
 
   mark_point();
   res = pr_jot_parse_logfmt(p, text, jot_ctx, parse_on_meta, NULL, NULL, 0);
-  fail_unless(res == 0, "Failed to parse text '%s': %s", text, strerror(errno));
-  fail_unless(parse_on_meta_count == 0,
+  ck_assert_msg(res == 0, "Failed to parse text '%s': %s", text, strerror(errno));
+  ck_assert_msg(parse_on_meta_count == 0,
     "Expected on_meta count 0, got %u", parse_on_meta_count);
-  fail_unless(parse_on_unknown_count == 0,
+  ck_assert_msg(parse_on_unknown_count == 0,
     "Expected on_unknown count 0, got %u", parse_on_unknown_count);
-  fail_unless(parse_on_other_count == 0,
+  ck_assert_msg(parse_on_other_count == 0,
     "Expected on_other count 0, got %u", parse_on_other_count);
 
   parse_on_meta_count = parse_on_unknown_count = parse_on_other_count = 0;
@@ -428,12 +428,12 @@ START_TEST (jot_parse_logfmt_test) {
   mark_point();
   res = pr_jot_parse_logfmt(p, text, jot_ctx, parse_on_meta, NULL,
     parse_on_other, 0);
-  fail_unless(res == 0, "Failed to parse text '%s': %s", text, strerror(errno));
-  fail_unless(parse_on_meta_count == 0,
+  ck_assert_msg(res == 0, "Failed to parse text '%s': %s", text, strerror(errno));
+  ck_assert_msg(parse_on_meta_count == 0,
     "Expected on_meta count 0, got %u", parse_on_meta_count);
-  fail_unless(parse_on_unknown_count == 0,
+  ck_assert_msg(parse_on_unknown_count == 0,
     "Expected on_unknown count 0, got %u", parse_on_unknown_count);
-  fail_unless((unsigned long) parse_on_other_count == text_len,
+  ck_assert_msg((unsigned long) parse_on_other_count == text_len,
     "Expected on_other count %lu, got %u", (unsigned long) text_len,
     parse_on_other_count);
 
@@ -444,12 +444,12 @@ START_TEST (jot_parse_logfmt_test) {
   mark_point();
   res = pr_jot_parse_logfmt(p, text, jot_ctx, parse_on_meta, parse_on_unknown,
     parse_on_other, 0);
-  fail_unless(res == 0, "Failed to parse text '%s': %s", text, strerror(errno));
-  fail_unless(parse_on_meta_count == 3,
+  ck_assert_msg(res == 0, "Failed to parse text '%s': %s", text, strerror(errno));
+  ck_assert_msg(parse_on_meta_count == 3,
     "Expected on_meta count 0, got %u", parse_on_meta_count);
-  fail_unless(parse_on_unknown_count == 1,
+  ck_assert_msg(parse_on_unknown_count == 1,
     "Expected on_unknown count 0, got %u", parse_on_unknown_count);
-  fail_unless(parse_on_other_count == 9,
+  ck_assert_msg(parse_on_other_count == 9,
     "Expected on_other count 9, got %u", parse_on_other_count);
 
   parse_on_meta_count = parse_on_unknown_count = parse_on_other_count = 0;
@@ -459,12 +459,12 @@ START_TEST (jot_parse_logfmt_test) {
   mark_point();
   res = pr_jot_parse_logfmt(p, text, jot_ctx, parse_on_meta, parse_on_unknown,
     parse_on_other, 0);
-  fail_unless(res == 0, "Failed to parse text '%s': %s", text, strerror(errno));
-  fail_unless(parse_on_meta_count == 3,
+  ck_assert_msg(res == 0, "Failed to parse text '%s': %s", text, strerror(errno));
+  ck_assert_msg(parse_on_meta_count == 3,
     "Expected on_meta count 0, got %u", parse_on_meta_count);
-  fail_unless(parse_on_unknown_count == 1,
+  ck_assert_msg(parse_on_unknown_count == 1,
     "Expected on_unknown count 0, got %u", parse_on_unknown_count);
-  fail_unless(parse_on_other_count == 17,
+  ck_assert_msg(parse_on_other_count == 17,
     "Expected on_other count 17, got %u", parse_on_other_count);
 }
 END_TEST
@@ -521,10 +521,10 @@ START_TEST (jot_parse_logfmt_short_vars_test) {
   mark_point();
   res = pr_jot_parse_logfmt(p, text, jot_ctx, parse_on_meta, NULL,
     parse_on_other, 0);
-  fail_unless(res == 0, "Failed to parse text '%s': %s", text, strerror(errno));
-  fail_unless(parse_on_meta_count == 0, "Expected on_meta count 0, got %u",
+  ck_assert_msg(res == 0, "Failed to parse text '%s': %s", text, strerror(errno));
+  ck_assert_msg(parse_on_meta_count == 0, "Expected on_meta count 0, got %u",
     parse_on_meta_count);
-  fail_unless(parse_on_other_count == 2, "Expected on_other count 2, got %u",
+  ck_assert_msg(parse_on_other_count == 2, "Expected on_other count 2, got %u",
     parse_on_other_count);
 
   text = "%{0}";
@@ -533,12 +533,12 @@ START_TEST (jot_parse_logfmt_short_vars_test) {
   mark_point();
   res = pr_jot_parse_logfmt(p, text, jot_ctx, parse_on_meta, parse_on_unknown,
     parse_on_other, 0);
-  fail_unless(res == 0, "Failed to parse text '%s': %s", text, strerror(errno));
-  fail_unless(parse_on_meta_count == 0,
+  ck_assert_msg(res == 0, "Failed to parse text '%s': %s", text, strerror(errno));
+  ck_assert_msg(parse_on_meta_count == 0,
     "Expected on_meta count 0, got %u", parse_on_meta_count);
-  fail_unless(parse_on_unknown_count == 1,
+  ck_assert_msg(parse_on_unknown_count == 1,
     "Expected on_unknown count 1, got %u", parse_on_unknown_count);
-  fail_unless(parse_on_other_count == 0,
+  ck_assert_msg(parse_on_other_count == 0,
     "Expected on_other count 0, got %u", parse_on_other_count);
 
   parse_on_meta_count = parse_on_unknown_count = parse_on_other_count = 0;
@@ -551,15 +551,15 @@ START_TEST (jot_parse_logfmt_short_vars_test) {
     mark_point();
     res = pr_jot_parse_logfmt(p, text, jot_ctx, parse_on_meta, parse_on_unknown,
       parse_on_other, 0);
-    fail_unless(res == 0, "Failed to parse text '%s': %s", text,
+    ck_assert_msg(res == 0, "Failed to parse text '%s': %s", text,
       strerror(errno));
   }
 
-  fail_unless(parse_on_meta_count == text_count,
+  ck_assert_msg(parse_on_meta_count == text_count,
     "Expected on_meta count %d, got %u", text_count, parse_on_meta_count);
-  fail_unless(parse_on_unknown_count == 0,
+  ck_assert_msg(parse_on_unknown_count == 0,
     "Expected on_unknown count 0, got %u", parse_on_unknown_count);
-  fail_unless(parse_on_other_count == 0,
+  ck_assert_msg(parse_on_other_count == 0,
     "Expected on_other count 0, got %u", parse_on_other_count);
 }
 END_TEST
@@ -608,10 +608,10 @@ START_TEST (jot_parse_logfmt_long_vars_test) {
   mark_point();
   res = pr_jot_parse_logfmt(p, text, jot_ctx, long_on_meta, NULL,
     parse_on_other, 0);
-  fail_unless(res == 0, "Failed to parse text '%s': %s", text, strerror(errno));
-  fail_unless(parse_on_meta_count == 1, "Expected on_meta count 1, got %u",
+  ck_assert_msg(res == 0, "Failed to parse text '%s': %s", text, strerror(errno));
+  ck_assert_msg(parse_on_meta_count == 1, "Expected on_meta count 1, got %u",
     parse_on_meta_count);
-  fail_unless(parse_on_other_count == 1, "Expected on_other count 1, got %u",
+  ck_assert_msg(parse_on_other_count == 1, "Expected on_other count 1, got %u",
     parse_on_other_count);
 
   text = "%{note:FOOBAR}!";
@@ -620,10 +620,10 @@ START_TEST (jot_parse_logfmt_long_vars_test) {
   mark_point();
   res = pr_jot_parse_logfmt(p, text, jot_ctx, long_on_meta, NULL,
     parse_on_other, 0);
-  fail_unless(res == 0, "Failed to parse text '%s': %s", text, strerror(errno));
-  fail_unless(parse_on_meta_count == 1, "Expected on_meta count 1, got %u",
+  ck_assert_msg(res == 0, "Failed to parse text '%s': %s", text, strerror(errno));
+  ck_assert_msg(parse_on_meta_count == 1, "Expected on_meta count 1, got %u",
     parse_on_meta_count);
-  fail_unless(parse_on_other_count == 1, "Expected on_other count 1, got %u",
+  ck_assert_msg(parse_on_other_count == 1, "Expected on_other count 1, got %u",
     parse_on_other_count);
 
   text = "%{time:FOOBAR}!";
@@ -632,10 +632,10 @@ START_TEST (jot_parse_logfmt_long_vars_test) {
   mark_point();
   res = pr_jot_parse_logfmt(p, text, jot_ctx, long_on_meta, NULL,
     parse_on_other, 0);
-  fail_unless(res == 0, "Failed to parse text '%s': %s", text, strerror(errno));
-  fail_unless(parse_on_meta_count == 1, "Expected on_meta count 1, got %u",
+  ck_assert_msg(res == 0, "Failed to parse text '%s': %s", text, strerror(errno));
+  ck_assert_msg(parse_on_meta_count == 1, "Expected on_meta count 1, got %u",
     parse_on_meta_count);
-  fail_unless(parse_on_other_count == 1, "Expected on_other count 1, got %u",
+  ck_assert_msg(parse_on_other_count == 1, "Expected on_other count 1, got %u",
     parse_on_other_count);
 
   parse_on_meta_count = parse_on_unknown_count = parse_on_other_count = 0;
@@ -648,13 +648,13 @@ START_TEST (jot_parse_logfmt_long_vars_test) {
     mark_point();
     res = pr_jot_parse_logfmt(p, text, jot_ctx, parse_on_meta, NULL,
       parse_on_other, 0);
-    fail_unless(res == 0, "Failed to parse text '%s': %s", text,
+    ck_assert_msg(res == 0, "Failed to parse text '%s': %s", text,
       strerror(errno));
   }
 
-  fail_unless(parse_on_meta_count == text_count,
+  ck_assert_msg(parse_on_meta_count == text_count,
     "Expected on_meta count %d, got %u", text_count, parse_on_meta_count);
-  fail_unless(parse_on_other_count == 0, "Expected on_other count 0, got %u",
+  ck_assert_msg(parse_on_other_count == 0, "Expected on_other count 0, got %u",
     parse_on_other_count);
 
   text = "%{FOOBAR}e";
@@ -663,10 +663,10 @@ START_TEST (jot_parse_logfmt_long_vars_test) {
   mark_point();
   res = pr_jot_parse_logfmt(p, text, jot_ctx, long_on_meta, NULL,
     parse_on_other, 0);
-  fail_unless(res == 0, "Failed to parse text '%s': %s", text, strerror(errno));
-  fail_unless(parse_on_meta_count == 1, "Expected on_meta count 1, got %u",
+  ck_assert_msg(res == 0, "Failed to parse text '%s': %s", text, strerror(errno));
+  ck_assert_msg(parse_on_meta_count == 1, "Expected on_meta count 1, got %u",
     parse_on_meta_count);
-  fail_unless(parse_on_other_count == 0, "Expected on_other count 0, got %u",
+  ck_assert_msg(parse_on_other_count == 0, "Expected on_other count 0, got %u",
     parse_on_other_count);
 
   text = "%{FOOBAR}t";
@@ -675,10 +675,10 @@ START_TEST (jot_parse_logfmt_long_vars_test) {
   mark_point();
   res = pr_jot_parse_logfmt(p, text, jot_ctx, long_on_meta, NULL,
     parse_on_other, 0);
-  fail_unless(res == 0, "Failed to parse text '%s': %s", text, strerror(errno));
-  fail_unless(parse_on_meta_count == 1, "Expected on_meta count 1, got %u",
+  ck_assert_msg(res == 0, "Failed to parse text '%s': %s", text, strerror(errno));
+  ck_assert_msg(parse_on_meta_count == 1, "Expected on_meta count 1, got %u",
     parse_on_meta_count);
-  fail_unless(parse_on_other_count == 0, "Expected on_other count 0, got %u",
+  ck_assert_msg(parse_on_other_count == 0, "Expected on_other count 0, got %u",
     parse_on_other_count);
 
   text = "%{FOOBAR}T";
@@ -691,12 +691,12 @@ START_TEST (jot_parse_logfmt_long_vars_test) {
   mark_point();
   res = pr_jot_parse_logfmt(p, text, jot_ctx, long_on_meta, parse_on_unknown,
     parse_on_other, 0);
-  fail_unless(res == 0, "Failed to parse text '%s': %s", text, strerror(errno));
-  fail_unless(parse_on_meta_count == 0,
+  ck_assert_msg(res == 0, "Failed to parse text '%s': %s", text, strerror(errno));
+  ck_assert_msg(parse_on_meta_count == 0,
     "Expected on_meta count 0, got %u", parse_on_meta_count);
-  fail_unless(parse_on_unknown_count == 1,
+  ck_assert_msg(parse_on_unknown_count == 1,
     "Expected on_unknown count 1, got %u", parse_on_unknown_count);
-  fail_unless(parse_on_other_count == 1,
+  ck_assert_msg(parse_on_other_count == 1,
     "Expected on_other count 1, got %u", parse_on_other_count);
 }
 END_TEST
@@ -713,12 +713,12 @@ START_TEST (jot_parse_logfmt_custom_vars_test) {
   mark_point();
   res = pr_jot_parse_logfmt(p, text, jot_ctx, parse_on_meta, parse_on_unknown,
     parse_on_other, 0);
-  fail_unless(res == 0, "Failed to parse text '%s': %s", text, strerror(errno));
-  fail_unless(parse_on_meta_count == 0,
+  ck_assert_msg(res == 0, "Failed to parse text '%s': %s", text, strerror(errno));
+  ck_assert_msg(parse_on_meta_count == 0,
     "Expected on_meta count 0, got %u", parse_on_meta_count);
-  fail_unless(parse_on_unknown_count == 1,
+  ck_assert_msg(parse_on_unknown_count == 1,
     "Expected on_unknown count 1, got %u", parse_on_unknown_count);
-  fail_unless(parse_on_other_count == 0,
+  ck_assert_msg(parse_on_other_count == 0,
     "Expected on_other count 0, got %u", parse_on_other_count);
 
   parse_on_meta_count = parse_on_unknown_count = parse_on_other_count = 0;
@@ -726,12 +726,12 @@ START_TEST (jot_parse_logfmt_custom_vars_test) {
   mark_point();
   res = pr_jot_parse_logfmt(p, text, jot_ctx, parse_on_meta, parse_on_unknown,
     parse_on_other, PR_JOT_LOGFMT_PARSE_FL_UNKNOWN_AS_CUSTOM);
-  fail_unless(res == 0, "Failed to parse text '%s': %s", text, strerror(errno));
-  fail_unless(parse_on_meta_count == 1,
+  ck_assert_msg(res == 0, "Failed to parse text '%s': %s", text, strerror(errno));
+  ck_assert_msg(parse_on_meta_count == 1,
     "Expected on_meta count 1, got %u", parse_on_meta_count);
-  fail_unless(parse_on_unknown_count == 0,
+  ck_assert_msg(parse_on_unknown_count == 0,
     "Expected on_unknown count 0, got %u", parse_on_unknown_count);
-  fail_unless(parse_on_other_count == 0,
+  ck_assert_msg(parse_on_other_count == 0,
     "Expected on_other count 0, got %u", parse_on_other_count);
 }
 END_TEST
@@ -760,22 +760,22 @@ START_TEST (jot_resolve_logfmt_id_test) {
   mark_point();
   res = pr_jot_resolve_logfmt_id(NULL, NULL, NULL, 0, NULL, 0, NULL, NULL,
     NULL);
-  fail_unless(res < 0, "Failed to handle null pool");
-  fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+  ck_assert_msg(res < 0, "Failed to handle null pool");
+  ck_assert_msg(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
     strerror(errno), errno);
 
   mark_point();
   res = pr_jot_resolve_logfmt_id(p, NULL, NULL, 0, NULL, 0, NULL, NULL, NULL);
-  fail_unless(res < 0, "Failed to handle null cmd");
-  fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+  ck_assert_msg(res < 0, "Failed to handle null cmd");
+  ck_assert_msg(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
     strerror(errno), errno);
 
   cmd = pr_cmd_alloc(p, 1, pstrdup(p, "FOO"));
 
   mark_point();
   res = pr_jot_resolve_logfmt_id(p, cmd, NULL, 0, NULL, 0, NULL, NULL, NULL);
-  fail_unless(res < 0, "Failed to handle null on_meta");
-  fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+  ck_assert_msg(res < 0, "Failed to handle null on_meta");
+  ck_assert_msg(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
     strerror(errno), errno);
 
   logfmt_id = 0;
@@ -783,8 +783,8 @@ START_TEST (jot_resolve_logfmt_id_test) {
   mark_point();
   res = pr_jot_resolve_logfmt_id(p, cmd, NULL, logfmt_id, NULL, 0, NULL,
     resolve_id_on_meta, NULL);
-  fail_unless(res < 0, "Failed to handle invalid logfmt_id %u", logfmt_id);
-  fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+  ck_assert_msg(res < 0, "Failed to handle invalid logfmt_id %u", logfmt_id);
+  ck_assert_msg(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
     strerror(errno), errno);
 
   logfmt_id = LOGFMT_META_START;
@@ -792,8 +792,8 @@ START_TEST (jot_resolve_logfmt_id_test) {
   mark_point();
   res = pr_jot_resolve_logfmt_id(p, cmd, NULL, logfmt_id, NULL, 0, NULL,
     resolve_id_on_meta, NULL);
-  fail_unless(res < 0, "Failed to handle invalid logfmt_id %u", logfmt_id);
-  fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+  ck_assert_msg(res < 0, "Failed to handle invalid logfmt_id %u", logfmt_id);
+  ck_assert_msg(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
     strerror(errno), errno);
 
   logfmt_id = LOGFMT_META_ARG_END;
@@ -801,8 +801,8 @@ START_TEST (jot_resolve_logfmt_id_test) {
   mark_point();
   res = pr_jot_resolve_logfmt_id(p, cmd, NULL, logfmt_id, NULL, 0, NULL,
     resolve_id_on_meta, NULL);
-  fail_unless(res < 0, "Failed to handle invalid logfmt_id %u", logfmt_id);
-  fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+  ck_assert_msg(res < 0, "Failed to handle invalid logfmt_id %u", logfmt_id);
+  ck_assert_msg(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
     strerror(errno), errno);
 }
 END_TEST
@@ -819,11 +819,11 @@ START_TEST (jot_resolve_logfmt_id_on_default_test) {
   mark_point();
   res = pr_jot_resolve_logfmt_id(p, cmd, NULL, logfmt_id, NULL, 0, NULL,
     resolve_id_on_meta, resolve_id_on_default);
-  fail_unless(res == 0, "Failed to handle logfmt_id %u: %s", logfmt_id,
+  ck_assert_msg(res == 0, "Failed to handle logfmt_id %u: %s", logfmt_id,
     strerror(errno));
-  fail_unless(resolve_on_meta_count == 0,
+  ck_assert_msg(resolve_on_meta_count == 0,
     "Expected on_meta count 0, got %u", resolve_on_meta_count);
-  fail_unless(resolve_on_default_count == 1,
+  ck_assert_msg(resolve_on_default_count == 1,
     "Expected on_default count 1, got %u", resolve_on_default_count);
 }
 END_TEST
@@ -845,11 +845,11 @@ START_TEST (jot_resolve_logfmt_id_filters_test) {
   mark_point();
   res = pr_jot_resolve_logfmt_id(p, cmd, jot_filters, logfmt_id, NULL, 0, NULL,
     resolve_id_on_meta, NULL);
-  fail_unless(res == 0, "Failed to handle logfmt_id %u: %s", logfmt_id,
+  ck_assert_msg(res == 0, "Failed to handle logfmt_id %u: %s", logfmt_id,
     strerror(errno));
-  fail_unless(resolve_on_meta_count == 1,
+  ck_assert_msg(resolve_on_meta_count == 1,
     "Expected on_meta count 1, got %u", resolve_on_meta_count);
-  fail_unless(resolve_on_default_count == 0,
+  ck_assert_msg(resolve_on_default_count == 0,
     "Expected on_default count 0, got %u", resolve_on_default_count);
 
   /* With an ALL filter, and no command class. */
@@ -862,11 +862,11 @@ START_TEST (jot_resolve_logfmt_id_filters_test) {
   mark_point();
   res = pr_jot_resolve_logfmt_id(p, cmd, jot_filters, logfmt_id, NULL, 0, NULL,
     resolve_id_on_meta, NULL);
-  fail_unless(res == 0, "Failed to handle logfmt_id %u: %s", logfmt_id,
+  ck_assert_msg(res == 0, "Failed to handle logfmt_id %u: %s", logfmt_id,
     strerror(errno));
-  fail_unless(resolve_on_meta_count == 1,
+  ck_assert_msg(resolve_on_meta_count == 1,
     "Expected on_meta count 1, got %u", resolve_on_meta_count);
-  fail_unless(resolve_on_default_count == 0,
+  ck_assert_msg(resolve_on_default_count == 0,
     "Expected on_default count 0, got %u", resolve_on_default_count);
 
   /* With explicit filters that allow the class. */
@@ -879,11 +879,11 @@ START_TEST (jot_resolve_logfmt_id_filters_test) {
   mark_point();
   res = pr_jot_resolve_logfmt_id(p, cmd, jot_filters, logfmt_id, NULL, 0, NULL,
     resolve_id_on_meta, NULL);
-  fail_unless(res == 0, "Failed to handle logfmt_id %u: %s", logfmt_id,
+  ck_assert_msg(res == 0, "Failed to handle logfmt_id %u: %s", logfmt_id,
     strerror(errno));
-  fail_unless(resolve_on_meta_count == 1,
+  ck_assert_msg(resolve_on_meta_count == 1,
     "Expected on_meta count 1, got %u", resolve_on_meta_count);
-  fail_unless(resolve_on_default_count == 0,
+  ck_assert_msg(resolve_on_default_count == 0,
     "Expected on_default count 0, got %u", resolve_on_default_count);
 
   /* With explicit filters that ignore the class. */
@@ -894,10 +894,10 @@ START_TEST (jot_resolve_logfmt_id_filters_test) {
   mark_point();
   res = pr_jot_resolve_logfmt_id(p, cmd, jot_filters, logfmt_id, NULL, 0, NULL,
     resolve_id_on_meta, NULL);
-  fail_unless(res < 0, "Failed to handle filtered logfmt_id %u", logfmt_id);
-  fail_unless(errno == EPERM, "Expected EPERM (%d), got %s (%d)", EPERM,
+  ck_assert_msg(res < 0, "Failed to handle filtered logfmt_id %u", logfmt_id);
+  ck_assert_msg(errno == EPERM, "Expected EPERM (%d), got %s (%d)", EPERM,
     strerror(errno), errno);
-  fail_unless(resolve_on_meta_count == 0,
+  ck_assert_msg(resolve_on_meta_count == 0,
     "Expected on_meta count 0, got %u", resolve_on_meta_count);
 
   /* With explicit filters that do not match the class. */
@@ -908,10 +908,10 @@ START_TEST (jot_resolve_logfmt_id_filters_test) {
   mark_point();
   res = pr_jot_resolve_logfmt_id(p, cmd, jot_filters, logfmt_id, NULL, 0, NULL,
     resolve_id_on_meta, NULL);
-  fail_unless(res < 0, "Failed to handle filtered logfmt_id %u", logfmt_id);
-  fail_unless(errno == EPERM, "Expected EPERM (%d), got %s (%d)", EPERM,
+  ck_assert_msg(res < 0, "Failed to handle filtered logfmt_id %u", logfmt_id);
+  ck_assert_msg(errno == EPERM, "Expected EPERM (%d), got %s (%d)", EPERM,
     strerror(errno), errno);
-  fail_unless(resolve_on_meta_count == 0,
+  ck_assert_msg(resolve_on_meta_count == 0,
     "Expected on_meta count 0, got %u", resolve_on_meta_count);
 
   /* With explicit filters that allow the command. Note that this REQUIRES
@@ -927,11 +927,11 @@ START_TEST (jot_resolve_logfmt_id_filters_test) {
   mark_point();
   res = pr_jot_resolve_logfmt_id(p, cmd, jot_filters, logfmt_id, NULL, 0, NULL,
     resolve_id_on_meta, NULL);
-  fail_unless(res == 0, "Failed to handle logfmt_id %u: %s", logfmt_id,
+  ck_assert_msg(res == 0, "Failed to handle logfmt_id %u: %s", logfmt_id,
     strerror(errno));
-  fail_unless(resolve_on_meta_count == 1,
+  ck_assert_msg(resolve_on_meta_count == 1,
     "Expected on_meta count 1, got %u", resolve_on_meta_count);
-  fail_unless(resolve_on_default_count == 0,
+  ck_assert_msg(resolve_on_default_count == 0,
     "Expected on_default count 0, got %u", resolve_on_default_count);
 
   /* With explicit filters that ignore the command. */
@@ -942,10 +942,10 @@ START_TEST (jot_resolve_logfmt_id_filters_test) {
   mark_point();
   res = pr_jot_resolve_logfmt_id(p, cmd, jot_filters, logfmt_id, NULL, 0, NULL,
     resolve_id_on_meta, NULL);
-  fail_unless(res < 0, "Failed to handle filtered logfmt_id %u", logfmt_id);
-  fail_unless(errno == EPERM, "Expected EPERM (%d), got %s (%d)", EPERM,
+  ck_assert_msg(res < 0, "Failed to handle filtered logfmt_id %u", logfmt_id);
+  ck_assert_msg(errno == EPERM, "Expected EPERM (%d), got %s (%d)", EPERM,
     strerror(errno), errno);
-  fail_unless(resolve_on_meta_count == 0,
+  ck_assert_msg(resolve_on_meta_count == 0,
     "Expected on_meta count 0, got %u", resolve_on_meta_count);
 
   /* With explicit filters that do not match the command. */
@@ -956,10 +956,10 @@ START_TEST (jot_resolve_logfmt_id_filters_test) {
   mark_point();
   res = pr_jot_resolve_logfmt_id(p, cmd, jot_filters, logfmt_id, NULL, 0, NULL,
     resolve_id_on_meta, NULL);
-  fail_unless(res < 0, "Failed to handle filtered logfmt_id %u", logfmt_id);
-  fail_unless(errno == EPERM, "Expected EPERM (%d), got %s (%d)", EPERM,
+  ck_assert_msg(res < 0, "Failed to handle filtered logfmt_id %u", logfmt_id);
+  ck_assert_msg(errno == EPERM, "Expected EPERM (%d), got %s (%d)", EPERM,
     strerror(errno), errno);
-  fail_unless(resolve_on_meta_count == 0,
+  ck_assert_msg(resolve_on_meta_count == 0,
     "Expected on_meta count 0, got %u", resolve_on_meta_count);
 }
 END_TEST
@@ -978,11 +978,11 @@ START_TEST (jot_resolve_logfmt_id_connect_test) {
   mark_point();
   res = pr_jot_resolve_logfmt_id(p, cmd, NULL, logfmt_id, NULL, 0, NULL,
     resolve_id_on_meta, NULL);
-  fail_unless(res == 0, "Failed to handle logfmt_id %u: %s", logfmt_id,
+  ck_assert_msg(res == 0, "Failed to handle logfmt_id %u: %s", logfmt_id,
     strerror(errno));
-  fail_unless(resolve_on_meta_count == 1,
+  ck_assert_msg(resolve_on_meta_count == 1,
     "Expected on_meta count 1, got %u", resolve_on_meta_count);
-  fail_unless(resolve_on_default_count == 0,
+  ck_assert_msg(resolve_on_default_count == 0,
     "Expected on_default count 0, got %u", resolve_on_default_count);
 
   resolve_on_meta_count = resolve_on_default_count = 0;
@@ -991,11 +991,11 @@ START_TEST (jot_resolve_logfmt_id_connect_test) {
   mark_point();
   res = pr_jot_resolve_logfmt_id(p, cmd, NULL, logfmt_id, NULL, 0, NULL,
     resolve_id_on_meta, NULL);
-  fail_unless(res == 0, "Failed to handle logfmt_id %u: %s", logfmt_id,
+  ck_assert_msg(res == 0, "Failed to handle logfmt_id %u: %s", logfmt_id,
     strerror(errno));
-  fail_unless(resolve_on_meta_count == 0,
+  ck_assert_msg(resolve_on_meta_count == 0,
     "Expected on_meta count 0, got %u", resolve_on_meta_count);
-  fail_unless(resolve_on_default_count == 0,
+  ck_assert_msg(resolve_on_default_count == 0,
     "Expected on_default count 0, got %u", resolve_on_default_count);
 }
 END_TEST
@@ -1014,11 +1014,11 @@ START_TEST (jot_resolve_logfmt_id_disconnect_test) {
   mark_point();
   res = pr_jot_resolve_logfmt_id(p, cmd, NULL, logfmt_id, NULL, 0, NULL,
     resolve_id_on_meta, NULL);
-  fail_unless(res == 0, "Failed to handle logfmt_id %u: %s", logfmt_id,
+  ck_assert_msg(res == 0, "Failed to handle logfmt_id %u: %s", logfmt_id,
     strerror(errno));
-  fail_unless(resolve_on_meta_count == 1,
+  ck_assert_msg(resolve_on_meta_count == 1,
     "Expected on_meta count 1, got %u", resolve_on_meta_count);
-  fail_unless(resolve_on_default_count == 0,
+  ck_assert_msg(resolve_on_default_count == 0,
     "Expected on_default count 0, got %u", resolve_on_default_count);
 
   resolve_on_meta_count = resolve_on_default_count = 0;
@@ -1027,11 +1027,11 @@ START_TEST (jot_resolve_logfmt_id_disconnect_test) {
   mark_point();
   res = pr_jot_resolve_logfmt_id(p, cmd, NULL, logfmt_id, NULL, 0, NULL,
     resolve_id_on_meta, NULL);
-  fail_unless(res == 0, "Failed to handle logfmt_id %u: %s", logfmt_id,
+  ck_assert_msg(res == 0, "Failed to handle logfmt_id %u: %s", logfmt_id,
     strerror(errno));
-  fail_unless(resolve_on_meta_count == 0,
+  ck_assert_msg(resolve_on_meta_count == 0,
     "Expected on_meta count 0, got %u", resolve_on_meta_count);
-  fail_unless(resolve_on_default_count == 0,
+  ck_assert_msg(resolve_on_default_count == 0,
     "Expected on_default count 0, got %u", resolve_on_default_count);
 }
 END_TEST
@@ -1054,11 +1054,11 @@ START_TEST (jot_resolve_logfmt_id_custom_test) {
   mark_point();
   res = pr_jot_resolve_logfmt_id(p, cmd, NULL, logfmt_id, custom_data,
     custom_datalen, NULL, resolve_id_on_meta, NULL);
-  fail_unless(res == 0, "Failed to handle logfmt_id %u: %s", logfmt_id,
+  ck_assert_msg(res == 0, "Failed to handle logfmt_id %u: %s", logfmt_id,
     strerror(errno));
-  fail_unless(resolve_on_meta_count == 1,
+  ck_assert_msg(resolve_on_meta_count == 1,
     "Expected on_meta count 1, got %u", resolve_on_meta_count);
-  fail_unless(resolve_on_default_count == 0,
+  ck_assert_msg(resolve_on_default_count == 0,
     "Expected on_default count 0, got %u", resolve_on_default_count);
 }
 END_TEST
@@ -1079,13 +1079,13 @@ START_TEST (jot_resolve_logfmt_ids_test) {
     mark_point();
     res = pr_jot_resolve_logfmt_id(p, cmd, NULL, logfmt_id, NULL, 0, NULL,
       resolve_id_on_meta, resolve_id_on_default);
-    fail_unless(res == 0, "Failed to handle logfmt_id %u: %s", logfmt_id,
+    ck_assert_msg(res == 0, "Failed to handle logfmt_id %u: %s", logfmt_id,
       strerror(errno));
   }
 
-  fail_unless(resolve_on_meta_count == 20,
+  ck_assert_msg(resolve_on_meta_count == 20,
     "Expected on_meta count 20, got %u", resolve_on_meta_count);
-  fail_unless(resolve_on_default_count == 28,
+  ck_assert_msg(resolve_on_default_count == 28,
     "Expected on_default count 28, got %u", resolve_on_default_count);
 }
 END_TEST
@@ -1115,36 +1115,36 @@ START_TEST (jot_resolve_logfmt_invalid_test) {
 
   mark_point();
   res = pr_jot_resolve_logfmt(NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL);
-  fail_unless(res < 0, "Failed to handle null pool");
-  fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+  ck_assert_msg(res < 0, "Failed to handle null pool");
+  ck_assert_msg(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
     strerror(errno), errno);
 
   mark_point();
   res = pr_jot_resolve_logfmt(p, NULL, NULL, NULL, NULL, NULL, NULL, NULL);
-  fail_unless(res < 0, "Failed to handle null cmd");
-  fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+  ck_assert_msg(res < 0, "Failed to handle null cmd");
+  ck_assert_msg(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
     strerror(errno), errno);
 
   cmd = pr_cmd_alloc(p, 1, pstrdup(p, "FOO"));
 
   mark_point();
   res = pr_jot_resolve_logfmt(p, cmd, NULL, NULL, NULL, NULL, NULL, NULL);
-  fail_unless(res < 0, "Failed to handle null logfmt");
-  fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+  ck_assert_msg(res < 0, "Failed to handle null logfmt");
+  ck_assert_msg(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
     strerror(errno), errno);
 
   logfmt = (unsigned char *) "";
 
   mark_point();
   res = pr_jot_resolve_logfmt(p, cmd, NULL, logfmt, NULL, NULL, NULL, NULL);
-  fail_unless(res < 0, "Failed to handle null on_meta");
-  fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+  ck_assert_msg(res < 0, "Failed to handle null on_meta");
+  ck_assert_msg(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
     strerror(errno), errno);
 
   mark_point();
   res = pr_jot_resolve_logfmt(p, cmd, NULL, logfmt, NULL, resolve_on_meta,
     NULL, NULL);
-  fail_unless(res == 0, "Failed to handle empty logfmt: %s", strerror(errno));
+  ck_assert_msg(res == 0, "Failed to handle empty logfmt: %s", strerror(errno));
 }
 END_TEST
 
@@ -1163,12 +1163,12 @@ START_TEST (jot_resolve_logfmt_basename_test) {
   resolve_on_meta_count = resolve_on_default_count = resolve_on_other_count = 0;
   res = pr_jot_resolve_logfmt(p, cmd, NULL, logfmt, NULL,
     resolve_on_meta, resolve_on_default, resolve_on_other);
-  fail_unless(res == 0, "Failed to handle logfmt: %s", strerror(errno));
-  fail_unless(resolve_on_meta_count == 0,
+  ck_assert_msg(res == 0, "Failed to handle logfmt: %s", strerror(errno));
+  ck_assert_msg(resolve_on_meta_count == 0,
     "Expected on_meta count 0, got %u", resolve_on_meta_count);
-  fail_unless(resolve_on_default_count == 1,
+  ck_assert_msg(resolve_on_default_count == 1,
     "Expected on_default count 1, got %u", resolve_on_default_count);
-  fail_unless(resolve_on_other_count == 0,
+  ck_assert_msg(resolve_on_other_count == 0,
     "Expected on_other count 0, got %u", resolve_on_other_count);
 
   mark_point();
@@ -1178,12 +1178,12 @@ START_TEST (jot_resolve_logfmt_basename_test) {
   resolve_on_meta_count = resolve_on_default_count = resolve_on_other_count = 0;
   res = pr_jot_resolve_logfmt(p, cmd, NULL, logfmt, NULL,
     resolve_on_meta, resolve_on_default, resolve_on_other);
-  fail_unless(res == 0, "Failed to handle logfmt: %s", strerror(errno));
-  fail_unless(resolve_on_meta_count == 1,
+  ck_assert_msg(res == 0, "Failed to handle logfmt: %s", strerror(errno));
+  ck_assert_msg(resolve_on_meta_count == 1,
     "Expected on_meta count 1, got %u", resolve_on_meta_count);
-  fail_unless(resolve_on_default_count == 0,
+  ck_assert_msg(resolve_on_default_count == 0,
     "Expected on_default count 0, got %u", resolve_on_default_count);
-  fail_unless(resolve_on_other_count == 0,
+  ck_assert_msg(resolve_on_other_count == 0,
     "Expected on_other count 0, got %u", resolve_on_other_count);
 
   mark_point();
@@ -1193,12 +1193,12 @@ START_TEST (jot_resolve_logfmt_basename_test) {
   resolve_on_meta_count = resolve_on_default_count = resolve_on_other_count = 0;
   res = pr_jot_resolve_logfmt(p, cmd, NULL, logfmt, NULL,
     resolve_on_meta, resolve_on_default, resolve_on_other);
-  fail_unless(res == 0, "Failed to handle logfmt: %s", strerror(errno));
-  fail_unless(resolve_on_meta_count == 1,
+  ck_assert_msg(res == 0, "Failed to handle logfmt: %s", strerror(errno));
+  ck_assert_msg(resolve_on_meta_count == 1,
     "Expected on_meta count 1, got %u", resolve_on_meta_count);
-  fail_unless(resolve_on_default_count == 0,
+  ck_assert_msg(resolve_on_default_count == 0,
     "Expected on_default count 0, got %u", resolve_on_default_count);
-  fail_unless(resolve_on_other_count == 0,
+  ck_assert_msg(resolve_on_other_count == 0,
     "Expected on_other count 0, got %u", resolve_on_other_count);
 
   mark_point();
@@ -1208,12 +1208,12 @@ START_TEST (jot_resolve_logfmt_basename_test) {
   resolve_on_meta_count = resolve_on_default_count = resolve_on_other_count = 0;
   res = pr_jot_resolve_logfmt(p, cmd, NULL, logfmt, NULL,
     resolve_on_meta, resolve_on_default, resolve_on_other);
-  fail_unless(res == 0, "Failed to handle logfmt: %s", strerror(errno));
-  fail_unless(resolve_on_meta_count == 1,
+  ck_assert_msg(res == 0, "Failed to handle logfmt: %s", strerror(errno));
+  ck_assert_msg(resolve_on_meta_count == 1,
     "Expected on_meta count 1, got %u", resolve_on_meta_count);
-  fail_unless(resolve_on_default_count == 0,
+  ck_assert_msg(resolve_on_default_count == 0,
     "Expected on_default count 0, got %u", resolve_on_default_count);
-  fail_unless(resolve_on_other_count == 0,
+  ck_assert_msg(resolve_on_other_count == 0,
     "Expected on_other count 0, got %u", resolve_on_other_count);
 
   mark_point();
@@ -1223,12 +1223,12 @@ START_TEST (jot_resolve_logfmt_basename_test) {
   resolve_on_meta_count = resolve_on_default_count = resolve_on_other_count = 0;
   res = pr_jot_resolve_logfmt(p, cmd, NULL, logfmt, NULL,
     resolve_on_meta, resolve_on_default, resolve_on_other);
-  fail_unless(res == 0, "Failed to handle logfmt: %s", strerror(errno));
-  fail_unless(resolve_on_meta_count == 1,
+  ck_assert_msg(res == 0, "Failed to handle logfmt: %s", strerror(errno));
+  ck_assert_msg(resolve_on_meta_count == 1,
     "Expected on_meta count 1, got %u", resolve_on_meta_count);
-  fail_unless(resolve_on_default_count == 0,
+  ck_assert_msg(resolve_on_default_count == 0,
     "Expected on_default count 0, got %u", resolve_on_default_count);
-  fail_unless(resolve_on_other_count == 0,
+  ck_assert_msg(resolve_on_other_count == 0,
     "Expected on_other count 0, got %u", resolve_on_other_count);
 
   mark_point();
@@ -1239,12 +1239,12 @@ START_TEST (jot_resolve_logfmt_basename_test) {
   resolve_on_meta_count = resolve_on_default_count = resolve_on_other_count = 0;
   res = pr_jot_resolve_logfmt(p, cmd, NULL, logfmt, NULL,
     resolve_on_meta, resolve_on_default, resolve_on_other);
-  fail_unless(res == 0, "Failed to handle logfmt: %s", strerror(errno));
-  fail_unless(resolve_on_meta_count == 1,
+  ck_assert_msg(res == 0, "Failed to handle logfmt: %s", strerror(errno));
+  ck_assert_msg(resolve_on_meta_count == 1,
     "Expected on_meta count 1, got %u", resolve_on_meta_count);
-  fail_unless(resolve_on_default_count == 0,
+  ck_assert_msg(resolve_on_default_count == 0,
     "Expected on_default count 0, got %u", resolve_on_default_count);
-  fail_unless(resolve_on_other_count == 0,
+  ck_assert_msg(resolve_on_other_count == 0,
     "Expected on_other count 0, got %u", resolve_on_other_count);
 
   session.xfer.p = NULL;
@@ -1256,12 +1256,12 @@ START_TEST (jot_resolve_logfmt_basename_test) {
   resolve_on_meta_count = resolve_on_default_count = resolve_on_other_count = 0;
   res = pr_jot_resolve_logfmt(p, cmd, NULL, logfmt, NULL,
     resolve_on_meta, resolve_on_default, resolve_on_other);
-  fail_unless(res == 0, "Failed to handle logfmt: %s", strerror(errno));
-  fail_unless(resolve_on_meta_count == 1,
+  ck_assert_msg(res == 0, "Failed to handle logfmt: %s", strerror(errno));
+  ck_assert_msg(resolve_on_meta_count == 1,
     "Expected on_meta count 1, got %u", resolve_on_meta_count);
-  fail_unless(resolve_on_default_count == 0,
+  ck_assert_msg(resolve_on_default_count == 0,
     "Expected on_default count 0, got %u", resolve_on_default_count);
-  fail_unless(resolve_on_other_count == 0,
+  ck_assert_msg(resolve_on_other_count == 0,
     "Expected on_other count 0, got %u", resolve_on_other_count);
 
   mark_point();
@@ -1270,12 +1270,12 @@ START_TEST (jot_resolve_logfmt_basename_test) {
   resolve_on_meta_count = resolve_on_default_count = resolve_on_other_count = 0;
   res = pr_jot_resolve_logfmt(p, cmd, NULL, logfmt, NULL,
     resolve_on_meta, resolve_on_default, resolve_on_other);
-  fail_unless(res == 0, "Failed to handle logfmt: %s", strerror(errno));
-  fail_unless(resolve_on_meta_count == 1,
+  ck_assert_msg(res == 0, "Failed to handle logfmt: %s", strerror(errno));
+  ck_assert_msg(resolve_on_meta_count == 1,
     "Expected on_meta count 1, got %u", resolve_on_meta_count);
-  fail_unless(resolve_on_default_count == 0,
+  ck_assert_msg(resolve_on_default_count == 0,
     "Expected on_default count 0, got %u", resolve_on_default_count);
-  fail_unless(resolve_on_other_count == 0,
+  ck_assert_msg(resolve_on_other_count == 0,
     "Expected on_other count 0, got %u", resolve_on_other_count);
 
   mark_point();
@@ -1284,12 +1284,12 @@ START_TEST (jot_resolve_logfmt_basename_test) {
   resolve_on_meta_count = resolve_on_default_count = resolve_on_other_count = 0;
   res = pr_jot_resolve_logfmt(p, cmd, NULL, logfmt, NULL,
     resolve_on_meta, resolve_on_default, resolve_on_other);
-  fail_unless(res == 0, "Failed to handle logfmt: %s", strerror(errno));
-  fail_unless(resolve_on_meta_count == 1,
+  ck_assert_msg(res == 0, "Failed to handle logfmt: %s", strerror(errno));
+  ck_assert_msg(resolve_on_meta_count == 1,
     "Expected on_meta count 1, got %u", resolve_on_meta_count);
-  fail_unless(resolve_on_default_count == 0,
+  ck_assert_msg(resolve_on_default_count == 0,
     "Expected on_default count 0, got %u", resolve_on_default_count);
-  fail_unless(resolve_on_other_count == 0,
+  ck_assert_msg(resolve_on_other_count == 0,
     "Expected on_other count 0, got %u", resolve_on_other_count);
 
   mark_point();
@@ -1298,12 +1298,12 @@ START_TEST (jot_resolve_logfmt_basename_test) {
   resolve_on_meta_count = resolve_on_default_count = resolve_on_other_count = 0;
   res = pr_jot_resolve_logfmt(p, cmd, NULL, logfmt, NULL,
     resolve_on_meta, resolve_on_default, resolve_on_other);
-  fail_unless(res == 0, "Failed to handle logfmt: %s", strerror(errno));
-  fail_unless(resolve_on_meta_count == 1,
+  ck_assert_msg(res == 0, "Failed to handle logfmt: %s", strerror(errno));
+  ck_assert_msg(resolve_on_meta_count == 1,
     "Expected on_meta count 1, got %u", resolve_on_meta_count);
-  fail_unless(resolve_on_default_count == 0,
+  ck_assert_msg(resolve_on_default_count == 0,
     "Expected on_default count 0, got %u", resolve_on_default_count);
-  fail_unless(resolve_on_other_count == 0,
+  ck_assert_msg(resolve_on_other_count == 0,
     "Expected on_other count 0, got %u", resolve_on_other_count);
 
   mark_point();
@@ -1312,12 +1312,12 @@ START_TEST (jot_resolve_logfmt_basename_test) {
   resolve_on_meta_count = resolve_on_default_count = resolve_on_other_count = 0;
   res = pr_jot_resolve_logfmt(p, cmd, NULL, logfmt, NULL,
     resolve_on_meta, resolve_on_default, resolve_on_other);
-  fail_unless(res == 0, "Failed to handle logfmt: %s", strerror(errno));
-  fail_unless(resolve_on_meta_count == 1,
+  ck_assert_msg(res == 0, "Failed to handle logfmt: %s", strerror(errno));
+  ck_assert_msg(resolve_on_meta_count == 1,
     "Expected on_meta count 1, got %u", resolve_on_meta_count);
-  fail_unless(resolve_on_default_count == 0,
+  ck_assert_msg(resolve_on_default_count == 0,
     "Expected on_default count 0, got %u", resolve_on_default_count);
-  fail_unless(resolve_on_other_count == 0,
+  ck_assert_msg(resolve_on_other_count == 0,
     "Expected on_other count 0, got %u", resolve_on_other_count);
 
   mark_point();
@@ -1327,12 +1327,12 @@ START_TEST (jot_resolve_logfmt_basename_test) {
   resolve_on_meta_count = resolve_on_default_count = resolve_on_other_count = 0;
   res = pr_jot_resolve_logfmt(p, cmd, NULL, logfmt, NULL,
     resolve_on_meta, resolve_on_default, resolve_on_other);
-  fail_unless(res == 0, "Failed to handle logfmt: %s", strerror(errno));
-  fail_unless(resolve_on_meta_count == 1,
+  ck_assert_msg(res == 0, "Failed to handle logfmt: %s", strerror(errno));
+  ck_assert_msg(resolve_on_meta_count == 1,
     "Expected on_meta count 1, got %u", resolve_on_meta_count);
-  fail_unless(resolve_on_default_count == 0,
+  ck_assert_msg(resolve_on_default_count == 0,
     "Expected on_default count 0, got %u", resolve_on_default_count);
-  fail_unless(resolve_on_other_count == 0,
+  ck_assert_msg(resolve_on_other_count == 0,
     "Expected on_other count 0, got %u", resolve_on_other_count);
 
   session.chroot_path = NULL;
@@ -1344,12 +1344,12 @@ START_TEST (jot_resolve_logfmt_basename_test) {
   resolve_on_meta_count = resolve_on_default_count = resolve_on_other_count = 0;
   res = pr_jot_resolve_logfmt(p, cmd, NULL, logfmt, NULL,
     resolve_on_meta, resolve_on_default, resolve_on_other);
-  fail_unless(res == 0, "Failed to handle logfmt: %s", strerror(errno));
-  fail_unless(resolve_on_meta_count == 1,
+  ck_assert_msg(res == 0, "Failed to handle logfmt: %s", strerror(errno));
+  ck_assert_msg(resolve_on_meta_count == 1,
     "Expected on_meta count 1, got %u", resolve_on_meta_count);
-  fail_unless(resolve_on_default_count == 0,
+  ck_assert_msg(resolve_on_default_count == 0,
     "Expected on_default count 0, got %u", resolve_on_default_count);
-  fail_unless(resolve_on_other_count == 0,
+  ck_assert_msg(resolve_on_other_count == 0,
     "Expected on_other count 0, got %u", resolve_on_other_count);
 
   mark_point();
@@ -1359,12 +1359,12 @@ START_TEST (jot_resolve_logfmt_basename_test) {
   resolve_on_meta_count = resolve_on_default_count = resolve_on_other_count = 0;
   res = pr_jot_resolve_logfmt(p, cmd, NULL, logfmt, NULL,
     resolve_on_meta, resolve_on_default, resolve_on_other);
-  fail_unless(res == 0, "Failed to handle logfmt: %s", strerror(errno));
-  fail_unless(resolve_on_meta_count == 1,
+  ck_assert_msg(res == 0, "Failed to handle logfmt: %s", strerror(errno));
+  ck_assert_msg(resolve_on_meta_count == 1,
     "Expected on_meta count 1, got %u", resolve_on_meta_count);
-  fail_unless(resolve_on_default_count == 0,
+  ck_assert_msg(resolve_on_default_count == 0,
     "Expected on_default count 0, got %u", resolve_on_default_count);
-  fail_unless(resolve_on_other_count == 0,
+  ck_assert_msg(resolve_on_other_count == 0,
     "Expected on_other count 0, got %u", resolve_on_other_count);
 
   mark_point();
@@ -1374,12 +1374,12 @@ START_TEST (jot_resolve_logfmt_basename_test) {
   resolve_on_meta_count = resolve_on_default_count = resolve_on_other_count = 0;
   res = pr_jot_resolve_logfmt(p, cmd, NULL, logfmt, NULL,
     resolve_on_meta, resolve_on_default, resolve_on_other);
-  fail_unless(res == 0, "Failed to handle logfmt: %s", strerror(errno));
-  fail_unless(resolve_on_meta_count == 1,
+  ck_assert_msg(res == 0, "Failed to handle logfmt: %s", strerror(errno));
+  ck_assert_msg(resolve_on_meta_count == 1,
     "Expected on_meta count 1, got %u", resolve_on_meta_count);
-  fail_unless(resolve_on_default_count == 0,
+  ck_assert_msg(resolve_on_default_count == 0,
     "Expected on_default count 0, got %u", resolve_on_default_count);
-  fail_unless(resolve_on_other_count == 0,
+  ck_assert_msg(resolve_on_other_count == 0,
     "Expected on_other count 0, got %u", resolve_on_other_count);
 
   mark_point();
@@ -1389,12 +1389,12 @@ START_TEST (jot_resolve_logfmt_basename_test) {
   resolve_on_meta_count = resolve_on_default_count = resolve_on_other_count = 0;
   res = pr_jot_resolve_logfmt(p, cmd, NULL, logfmt, NULL,
     resolve_on_meta, resolve_on_default, resolve_on_other);
-  fail_unless(res == 0, "Failed to handle logfmt: %s", strerror(errno));
-  fail_unless(resolve_on_meta_count == 1,
+  ck_assert_msg(res == 0, "Failed to handle logfmt: %s", strerror(errno));
+  ck_assert_msg(resolve_on_meta_count == 1,
     "Expected on_meta count 1, got %u", resolve_on_meta_count);
-  fail_unless(resolve_on_default_count == 0,
+  ck_assert_msg(resolve_on_default_count == 0,
     "Expected on_default count 0, got %u", resolve_on_default_count);
-  fail_unless(resolve_on_other_count == 0,
+  ck_assert_msg(resolve_on_other_count == 0,
     "Expected on_other count 0, got %u", resolve_on_other_count);
 
   mark_point();
@@ -1404,12 +1404,12 @@ START_TEST (jot_resolve_logfmt_basename_test) {
   resolve_on_meta_count = resolve_on_default_count = resolve_on_other_count = 0;
   res = pr_jot_resolve_logfmt(p, cmd, NULL, logfmt, NULL,
     resolve_on_meta, resolve_on_default, resolve_on_other);
-  fail_unless(res == 0, "Failed to handle logfmt: %s", strerror(errno));
-  fail_unless(resolve_on_meta_count == 1,
+  ck_assert_msg(res == 0, "Failed to handle logfmt: %s", strerror(errno));
+  ck_assert_msg(resolve_on_meta_count == 1,
     "Expected on_meta count 1, got %u", resolve_on_meta_count);
-  fail_unless(resolve_on_default_count == 0,
+  ck_assert_msg(resolve_on_default_count == 0,
     "Expected on_default count 0, got %u", resolve_on_default_count);
-  fail_unless(resolve_on_other_count == 0,
+  ck_assert_msg(resolve_on_other_count == 0,
     "Expected on_other count 0, got %u", resolve_on_other_count);
 
   mark_point();
@@ -1419,12 +1419,12 @@ START_TEST (jot_resolve_logfmt_basename_test) {
   resolve_on_meta_count = resolve_on_default_count = resolve_on_other_count = 0;
   res = pr_jot_resolve_logfmt(p, cmd, NULL, logfmt, NULL,
     resolve_on_meta, resolve_on_default, resolve_on_other);
-  fail_unless(res == 0, "Failed to handle logfmt: %s", strerror(errno));
-  fail_unless(resolve_on_meta_count == 1,
+  ck_assert_msg(res == 0, "Failed to handle logfmt: %s", strerror(errno));
+  ck_assert_msg(resolve_on_meta_count == 1,
     "Expected on_meta count 1, got %u", resolve_on_meta_count);
-  fail_unless(resolve_on_default_count == 0,
+  ck_assert_msg(resolve_on_default_count == 0,
     "Expected on_default count 0, got %u", resolve_on_default_count);
-  fail_unless(resolve_on_other_count == 0,
+  ck_assert_msg(resolve_on_other_count == 0,
     "Expected on_other count 0, got %u", resolve_on_other_count);
 
   mark_point();
@@ -1434,12 +1434,12 @@ START_TEST (jot_resolve_logfmt_basename_test) {
   resolve_on_meta_count = resolve_on_default_count = resolve_on_other_count = 0;
   res = pr_jot_resolve_logfmt(p, cmd, NULL, logfmt, NULL,
     resolve_on_meta, resolve_on_default, resolve_on_other);
-  fail_unless(res == 0, "Failed to handle logfmt: %s", strerror(errno));
-  fail_unless(resolve_on_meta_count == 1,
+  ck_assert_msg(res == 0, "Failed to handle logfmt: %s", strerror(errno));
+  ck_assert_msg(resolve_on_meta_count == 1,
     "Expected on_meta count 1, got %u", resolve_on_meta_count);
-  fail_unless(resolve_on_default_count == 0,
+  ck_assert_msg(resolve_on_default_count == 0,
     "Expected on_default count 0, got %u", resolve_on_default_count);
-  fail_unless(resolve_on_other_count == 0,
+  ck_assert_msg(resolve_on_other_count == 0,
     "Expected on_other count 0, got %u", resolve_on_other_count);
 
   mark_point();
@@ -1449,12 +1449,12 @@ START_TEST (jot_resolve_logfmt_basename_test) {
   resolve_on_meta_count = resolve_on_default_count = resolve_on_other_count = 0;
   res = pr_jot_resolve_logfmt(p, cmd, NULL, logfmt, NULL,
     resolve_on_meta, resolve_on_default, resolve_on_other);
-  fail_unless(res == 0, "Failed to handle logfmt: %s", strerror(errno));
-  fail_unless(resolve_on_meta_count == 1,
+  ck_assert_msg(res == 0, "Failed to handle logfmt: %s", strerror(errno));
+  ck_assert_msg(resolve_on_meta_count == 1,
     "Expected on_meta count 1, got %u", resolve_on_meta_count);
-  fail_unless(resolve_on_default_count == 0,
+  ck_assert_msg(resolve_on_default_count == 0,
     "Expected on_default count 0, got %u", resolve_on_default_count);
-  fail_unless(resolve_on_other_count == 0,
+  ck_assert_msg(resolve_on_other_count == 0,
     "Expected on_other count 0, got %u", resolve_on_other_count);
 
   mark_point();
@@ -1464,12 +1464,12 @@ START_TEST (jot_resolve_logfmt_basename_test) {
   resolve_on_meta_count = resolve_on_default_count = resolve_on_other_count = 0;
   res = pr_jot_resolve_logfmt(p, cmd, NULL, logfmt, NULL,
     resolve_on_meta, resolve_on_default, resolve_on_other);
-  fail_unless(res == 0, "Failed to handle logfmt: %s", strerror(errno));
-  fail_unless(resolve_on_meta_count == 1,
+  ck_assert_msg(res == 0, "Failed to handle logfmt: %s", strerror(errno));
+  ck_assert_msg(resolve_on_meta_count == 1,
     "Expected on_meta count 1, got %u", resolve_on_meta_count);
-  fail_unless(resolve_on_default_count == 0,
+  ck_assert_msg(resolve_on_default_count == 0,
     "Expected on_default count 0, got %u", resolve_on_default_count);
-  fail_unless(resolve_on_other_count == 0,
+  ck_assert_msg(resolve_on_other_count == 0,
     "Expected on_other count 0, got %u", resolve_on_other_count);
 
   mark_point();
@@ -1479,12 +1479,12 @@ START_TEST (jot_resolve_logfmt_basename_test) {
   resolve_on_meta_count = resolve_on_default_count = resolve_on_other_count = 0;
   res = pr_jot_resolve_logfmt(p, cmd, NULL, logfmt, NULL,
     resolve_on_meta, resolve_on_default, resolve_on_other);
-  fail_unless(res == 0, "Failed to handle logfmt: %s", strerror(errno));
-  fail_unless(resolve_on_meta_count == 1,
+  ck_assert_msg(res == 0, "Failed to handle logfmt: %s", strerror(errno));
+  ck_assert_msg(resolve_on_meta_count == 1,
     "Expected on_meta count 1, got %u", resolve_on_meta_count);
-  fail_unless(resolve_on_default_count == 0,
+  ck_assert_msg(resolve_on_default_count == 0,
     "Expected on_default count 0, got %u", resolve_on_default_count);
-  fail_unless(resolve_on_other_count == 0,
+  ck_assert_msg(resolve_on_other_count == 0,
     "Expected on_other count 0, got %u", resolve_on_other_count);
 
   mark_point();
@@ -1494,12 +1494,12 @@ START_TEST (jot_resolve_logfmt_basename_test) {
   resolve_on_meta_count = resolve_on_default_count = resolve_on_other_count = 0;
   res = pr_jot_resolve_logfmt(p, cmd, NULL, logfmt, NULL,
     resolve_on_meta, resolve_on_default, resolve_on_other);
-  fail_unless(res == 0, "Failed to handle logfmt: %s", strerror(errno));
-  fail_unless(resolve_on_meta_count == 1,
+  ck_assert_msg(res == 0, "Failed to handle logfmt: %s", strerror(errno));
+  ck_assert_msg(resolve_on_meta_count == 1,
     "Expected on_meta count 1, got %u", resolve_on_meta_count);
-  fail_unless(resolve_on_default_count == 0,
+  ck_assert_msg(resolve_on_default_count == 0,
     "Expected on_default count 0, got %u", resolve_on_default_count);
-  fail_unless(resolve_on_other_count == 0,
+  ck_assert_msg(resolve_on_other_count == 0,
     "Expected on_other count 0, got %u", resolve_on_other_count);
 
   mark_point();
@@ -1509,12 +1509,12 @@ START_TEST (jot_resolve_logfmt_basename_test) {
   resolve_on_meta_count = resolve_on_default_count = resolve_on_other_count = 0;
   res = pr_jot_resolve_logfmt(p, cmd, NULL, logfmt, NULL,
     resolve_on_meta, resolve_on_default, resolve_on_other);
-  fail_unless(res == 0, "Failed to handle logfmt: %s", strerror(errno));
-  fail_unless(resolve_on_meta_count == 1,
+  ck_assert_msg(res == 0, "Failed to handle logfmt: %s", strerror(errno));
+  ck_assert_msg(resolve_on_meta_count == 1,
     "Expected on_meta count 1, got %u", resolve_on_meta_count);
-  fail_unless(resolve_on_default_count == 0,
+  ck_assert_msg(resolve_on_default_count == 0,
     "Expected on_default count 0, got %u", resolve_on_default_count);
-  fail_unless(resolve_on_other_count == 0,
+  ck_assert_msg(resolve_on_other_count == 0,
     "Expected on_other count 0, got %u", resolve_on_other_count);
 
   mark_point();
@@ -1524,12 +1524,12 @@ START_TEST (jot_resolve_logfmt_basename_test) {
   resolve_on_meta_count = resolve_on_default_count = resolve_on_other_count = 0;
   res = pr_jot_resolve_logfmt(p, cmd, NULL, logfmt, NULL,
     resolve_on_meta, resolve_on_default, resolve_on_other);
-  fail_unless(res == 0, "Failed to handle logfmt: %s", strerror(errno));
-  fail_unless(resolve_on_meta_count == 1,
+  ck_assert_msg(res == 0, "Failed to handle logfmt: %s", strerror(errno));
+  ck_assert_msg(resolve_on_meta_count == 1,
     "Expected on_meta count 1, got %u", resolve_on_meta_count);
-  fail_unless(resolve_on_default_count == 0,
+  ck_assert_msg(resolve_on_default_count == 0,
     "Expected on_default count 0, got %u", resolve_on_default_count);
-  fail_unless(resolve_on_other_count == 0,
+  ck_assert_msg(resolve_on_other_count == 0,
     "Expected on_other count 0, got %u", resolve_on_other_count);
 
   mark_point();
@@ -1539,12 +1539,12 @@ START_TEST (jot_resolve_logfmt_basename_test) {
   resolve_on_meta_count = resolve_on_default_count = resolve_on_other_count = 0;
   res = pr_jot_resolve_logfmt(p, cmd, NULL, logfmt, NULL,
     resolve_on_meta, resolve_on_default, resolve_on_other);
-  fail_unless(res == 0, "Failed to handle logfmt: %s", strerror(errno));
-  fail_unless(resolve_on_meta_count == 1,
+  ck_assert_msg(res == 0, "Failed to handle logfmt: %s", strerror(errno));
+  ck_assert_msg(resolve_on_meta_count == 1,
     "Expected on_meta count 1, got %u", resolve_on_meta_count);
-  fail_unless(resolve_on_default_count == 0,
+  ck_assert_msg(resolve_on_default_count == 0,
     "Expected on_default count 0, got %u", resolve_on_default_count);
-  fail_unless(resolve_on_other_count == 0,
+  ck_assert_msg(resolve_on_other_count == 0,
     "Expected on_other count 0, got %u", resolve_on_other_count);
 }
 END_TEST
@@ -1564,12 +1564,12 @@ START_TEST (jot_resolve_logfmt_bytes_sent_test) {
   resolve_on_meta_count = resolve_on_default_count = resolve_on_other_count = 0;
   res = pr_jot_resolve_logfmt(p, cmd, NULL, logfmt, NULL,
     resolve_on_meta, resolve_on_default, resolve_on_other);
-  fail_unless(res == 0, "Failed to handle logfmt: %s", strerror(errno));
-  fail_unless(resolve_on_meta_count == 0,
+  ck_assert_msg(res == 0, "Failed to handle logfmt: %s", strerror(errno));
+  ck_assert_msg(resolve_on_meta_count == 0,
     "Expected on_meta count 0, got %u", resolve_on_meta_count);
-  fail_unless(resolve_on_default_count == 1,
+  ck_assert_msg(resolve_on_default_count == 1,
     "Expected on_default count 1, got %u", resolve_on_default_count);
-  fail_unless(resolve_on_other_count == 0,
+  ck_assert_msg(resolve_on_other_count == 0,
     "Expected on_other count 0, got %u", resolve_on_other_count);
 
   mark_point();
@@ -1577,12 +1577,12 @@ START_TEST (jot_resolve_logfmt_bytes_sent_test) {
   session.xfer.p = p;
   res = pr_jot_resolve_logfmt(p, cmd, NULL, logfmt, NULL,
     resolve_on_meta, resolve_on_default, resolve_on_other);
-  fail_unless(res == 0, "Failed to handle logfmt: %s", strerror(errno));
-  fail_unless(resolve_on_meta_count == 1,
+  ck_assert_msg(res == 0, "Failed to handle logfmt: %s", strerror(errno));
+  ck_assert_msg(resolve_on_meta_count == 1,
     "Expected on_meta count 1, got %u", resolve_on_meta_count);
-  fail_unless(resolve_on_default_count == 0,
+  ck_assert_msg(resolve_on_default_count == 0,
     "Expected on_default count 0, got %u", resolve_on_default_count);
-  fail_unless(resolve_on_other_count == 0,
+  ck_assert_msg(resolve_on_other_count == 0,
     "Expected on_other count 0, got %u", resolve_on_other_count);
 
   session.xfer.p = NULL;
@@ -1593,12 +1593,12 @@ START_TEST (jot_resolve_logfmt_bytes_sent_test) {
   cmd->cmd_class = CL_MISC;
   res = pr_jot_resolve_logfmt(p, cmd, NULL, logfmt, NULL,
     resolve_on_meta, resolve_on_default, resolve_on_other);
-  fail_unless(res == 0, "Failed to handle logfmt: %s", strerror(errno));
-  fail_unless(resolve_on_meta_count == 1,
+  ck_assert_msg(res == 0, "Failed to handle logfmt: %s", strerror(errno));
+  ck_assert_msg(resolve_on_meta_count == 1,
     "Expected on_meta count 1, got %u", resolve_on_meta_count);
-  fail_unless(resolve_on_default_count == 0,
+  ck_assert_msg(resolve_on_default_count == 0,
     "Expected on_default count 0, got %u", resolve_on_default_count);
-  fail_unless(resolve_on_other_count == 0,
+  ck_assert_msg(resolve_on_other_count == 0,
     "Expected on_other count 0, got %u", resolve_on_other_count);
 }
 END_TEST
@@ -1618,12 +1618,12 @@ START_TEST (jot_resolve_logfmt_filename_test) {
   cmd->cmd_class = CL_MISC;
   res = pr_jot_resolve_logfmt(p, cmd, NULL, logfmt, NULL,
     resolve_on_meta, resolve_on_default, resolve_on_other);
-  fail_unless(res == 0, "Failed to handle logfmt: %s", strerror(errno));
-  fail_unless(resolve_on_meta_count == 0,
+  ck_assert_msg(res == 0, "Failed to handle logfmt: %s", strerror(errno));
+  ck_assert_msg(resolve_on_meta_count == 0,
     "Expected on_meta count 0, got %u", resolve_on_meta_count);
-  fail_unless(resolve_on_default_count == 1,
+  ck_assert_msg(resolve_on_default_count == 1,
     "Expected on_default count 1, got %u", resolve_on_default_count);
-  fail_unless(resolve_on_other_count == 0,
+  ck_assert_msg(resolve_on_other_count == 0,
     "Expected on_other count 0, got %u", resolve_on_other_count);
 
   mark_point();
@@ -1633,12 +1633,12 @@ START_TEST (jot_resolve_logfmt_filename_test) {
   cmd->arg = pstrdup(p, "foo");
   res = pr_jot_resolve_logfmt(p, cmd, NULL, logfmt, NULL,
     resolve_on_meta, resolve_on_default, resolve_on_other);
-  fail_unless(res == 0, "Failed to handle logfmt: %s", strerror(errno));
-  fail_unless(resolve_on_meta_count == 1,
+  ck_assert_msg(res == 0, "Failed to handle logfmt: %s", strerror(errno));
+  ck_assert_msg(resolve_on_meta_count == 1,
     "Expected on_meta count 1, got %u", resolve_on_meta_count);
-  fail_unless(resolve_on_default_count == 0,
+  ck_assert_msg(resolve_on_default_count == 0,
     "Expected on_default count 0, got %u", resolve_on_default_count);
-  fail_unless(resolve_on_other_count == 0,
+  ck_assert_msg(resolve_on_other_count == 0,
     "Expected on_other count 0, got %u", resolve_on_other_count);
 
   mark_point();
@@ -1648,12 +1648,12 @@ START_TEST (jot_resolve_logfmt_filename_test) {
   pr_table_add_dup(cmd->notes, "mod_xfer.retr-path", "foobar", 0);
   res = pr_jot_resolve_logfmt(p, cmd, NULL, logfmt, NULL,
     resolve_on_meta, resolve_on_default, resolve_on_other);
-  fail_unless(res == 0, "Failed to handle logfmt: %s", strerror(errno));
-  fail_unless(resolve_on_meta_count == 1,
+  ck_assert_msg(res == 0, "Failed to handle logfmt: %s", strerror(errno));
+  ck_assert_msg(resolve_on_meta_count == 1,
     "Expected on_meta count 1, got %u", resolve_on_meta_count);
-  fail_unless(resolve_on_default_count == 0,
+  ck_assert_msg(resolve_on_default_count == 0,
     "Expected on_default count 0, got %u", resolve_on_default_count);
-  fail_unless(resolve_on_other_count == 0,
+  ck_assert_msg(resolve_on_other_count == 0,
     "Expected on_other count 0, got %u", resolve_on_other_count);
 
   mark_point();
@@ -1663,12 +1663,12 @@ START_TEST (jot_resolve_logfmt_filename_test) {
   pr_table_add_dup(cmd->notes, "mod_xfer.store-path", "foobar", 0);
   res = pr_jot_resolve_logfmt(p, cmd, NULL, logfmt, NULL,
     resolve_on_meta, resolve_on_default, resolve_on_other);
-  fail_unless(res == 0, "Failed to handle logfmt: %s", strerror(errno));
-  fail_unless(resolve_on_meta_count == 1,
+  ck_assert_msg(res == 0, "Failed to handle logfmt: %s", strerror(errno));
+  ck_assert_msg(resolve_on_meta_count == 1,
     "Expected on_meta count 1, got %u", resolve_on_meta_count);
-  fail_unless(resolve_on_default_count == 0,
+  ck_assert_msg(resolve_on_default_count == 0,
     "Expected on_default count 0, got %u", resolve_on_default_count);
-  fail_unless(resolve_on_other_count == 0,
+  ck_assert_msg(resolve_on_other_count == 0,
     "Expected on_other count 0, got %u", resolve_on_other_count);
 
   mark_point();
@@ -1678,12 +1678,12 @@ START_TEST (jot_resolve_logfmt_filename_test) {
   pr_table_add_dup(cmd->notes, "mod_xfer.store-path", "foobar", 0);
   res = pr_jot_resolve_logfmt(p, cmd, NULL, logfmt, NULL,
     resolve_on_meta, resolve_on_default, resolve_on_other);
-  fail_unless(res == 0, "Failed to handle logfmt: %s", strerror(errno));
-  fail_unless(resolve_on_meta_count == 1,
+  ck_assert_msg(res == 0, "Failed to handle logfmt: %s", strerror(errno));
+  ck_assert_msg(resolve_on_meta_count == 1,
     "Expected on_meta count 1, got %u", resolve_on_meta_count);
-  fail_unless(resolve_on_default_count == 0,
+  ck_assert_msg(resolve_on_default_count == 0,
     "Expected on_default count 0, got %u", resolve_on_default_count);
-  fail_unless(resolve_on_other_count == 0,
+  ck_assert_msg(resolve_on_other_count == 0,
     "Expected on_other count 0, got %u", resolve_on_other_count);
 
   mark_point();
@@ -1694,12 +1694,12 @@ START_TEST (jot_resolve_logfmt_filename_test) {
   session.xfer.path = pstrdup(p, "foobar");
   res = pr_jot_resolve_logfmt(p, cmd, NULL, logfmt, NULL,
     resolve_on_meta, resolve_on_default, resolve_on_other);
-  fail_unless(res == 0, "Failed to handle logfmt: %s", strerror(errno));
-  fail_unless(resolve_on_meta_count == 1,
+  ck_assert_msg(res == 0, "Failed to handle logfmt: %s", strerror(errno));
+  ck_assert_msg(resolve_on_meta_count == 1,
     "Expected on_meta count 1, got %u", resolve_on_meta_count);
-  fail_unless(resolve_on_default_count == 0,
+  ck_assert_msg(resolve_on_default_count == 0,
     "Expected on_default count 0, got %u", resolve_on_default_count);
-  fail_unless(resolve_on_other_count == 0,
+  ck_assert_msg(resolve_on_other_count == 0,
     "Expected on_other count 0, got %u", resolve_on_other_count);
 
   session.xfer.p = NULL;
@@ -1711,12 +1711,12 @@ START_TEST (jot_resolve_logfmt_filename_test) {
   cmd->cmd_class = CL_MISC;
   res = pr_jot_resolve_logfmt(p, cmd, NULL, logfmt, NULL,
     resolve_on_meta, resolve_on_default, resolve_on_other);
-  fail_unless(res == 0, "Failed to handle logfmt: %s", strerror(errno));
-  fail_unless(resolve_on_meta_count == 1,
+  ck_assert_msg(res == 0, "Failed to handle logfmt: %s", strerror(errno));
+  ck_assert_msg(resolve_on_meta_count == 1,
     "Expected on_meta count 1, got %u", resolve_on_meta_count);
-  fail_unless(resolve_on_default_count == 0,
+  ck_assert_msg(resolve_on_default_count == 0,
     "Expected on_default count 0, got %u", resolve_on_default_count);
-  fail_unless(resolve_on_other_count == 0,
+  ck_assert_msg(resolve_on_other_count == 0,
     "Expected on_other count 0, got %u", resolve_on_other_count);
 
   mark_point();
@@ -1725,12 +1725,12 @@ START_TEST (jot_resolve_logfmt_filename_test) {
   cmd->cmd_class = CL_MISC;
   res = pr_jot_resolve_logfmt(p, cmd, NULL, logfmt, NULL,
     resolve_on_meta, resolve_on_default, resolve_on_other);
-  fail_unless(res == 0, "Failed to handle logfmt: %s", strerror(errno));
-  fail_unless(resolve_on_meta_count == 1,
+  ck_assert_msg(res == 0, "Failed to handle logfmt: %s", strerror(errno));
+  ck_assert_msg(resolve_on_meta_count == 1,
     "Expected on_meta count 1, got %u", resolve_on_meta_count);
-  fail_unless(resolve_on_default_count == 0,
+  ck_assert_msg(resolve_on_default_count == 0,
     "Expected on_default count 0, got %u", resolve_on_default_count);
-  fail_unless(resolve_on_other_count == 0,
+  ck_assert_msg(resolve_on_other_count == 0,
     "Expected on_other count 0, got %u", resolve_on_other_count);
 
   mark_point();
@@ -1739,12 +1739,12 @@ START_TEST (jot_resolve_logfmt_filename_test) {
   cmd->cmd_class = CL_MISC;
   res = pr_jot_resolve_logfmt(p, cmd, NULL, logfmt, NULL,
     resolve_on_meta, resolve_on_default, resolve_on_other);
-  fail_unless(res == 0, "Failed to handle logfmt: %s", strerror(errno));
-  fail_unless(resolve_on_meta_count == 1,
+  ck_assert_msg(res == 0, "Failed to handle logfmt: %s", strerror(errno));
+  ck_assert_msg(resolve_on_meta_count == 1,
     "Expected on_meta count 1, got %u", resolve_on_meta_count);
-  fail_unless(resolve_on_default_count == 0,
+  ck_assert_msg(resolve_on_default_count == 0,
     "Expected on_default count 0, got %u", resolve_on_default_count);
-  fail_unless(resolve_on_other_count == 0,
+  ck_assert_msg(resolve_on_other_count == 0,
     "Expected on_other count 0, got %u", resolve_on_other_count);
 
   mark_point();
@@ -1753,12 +1753,12 @@ START_TEST (jot_resolve_logfmt_filename_test) {
   cmd->cmd_class = CL_MISC;
   res = pr_jot_resolve_logfmt(p, cmd, NULL, logfmt, NULL,
     resolve_on_meta, resolve_on_default, resolve_on_other);
-  fail_unless(res == 0, "Failed to handle logfmt: %s", strerror(errno));
-  fail_unless(resolve_on_meta_count == 1,
+  ck_assert_msg(res == 0, "Failed to handle logfmt: %s", strerror(errno));
+  ck_assert_msg(resolve_on_meta_count == 1,
     "Expected on_meta count 1, got %u", resolve_on_meta_count);
-  fail_unless(resolve_on_default_count == 0,
+  ck_assert_msg(resolve_on_default_count == 0,
     "Expected on_default count 0, got %u", resolve_on_default_count);
-  fail_unless(resolve_on_other_count == 0,
+  ck_assert_msg(resolve_on_other_count == 0,
     "Expected on_other count 0, got %u", resolve_on_other_count);
 
   mark_point();
@@ -1767,12 +1767,12 @@ START_TEST (jot_resolve_logfmt_filename_test) {
   cmd->cmd_class = CL_MISC;
   res = pr_jot_resolve_logfmt(p, cmd, NULL, logfmt, NULL,
     resolve_on_meta, resolve_on_default, resolve_on_other);
-  fail_unless(res == 0, "Failed to handle logfmt: %s", strerror(errno));
-  fail_unless(resolve_on_meta_count == 1,
+  ck_assert_msg(res == 0, "Failed to handle logfmt: %s", strerror(errno));
+  ck_assert_msg(resolve_on_meta_count == 1,
     "Expected on_meta count 1, got %u", resolve_on_meta_count);
-  fail_unless(resolve_on_default_count == 0,
+  ck_assert_msg(resolve_on_default_count == 0,
     "Expected on_default count 0, got %u", resolve_on_default_count);
-  fail_unless(resolve_on_other_count == 0,
+  ck_assert_msg(resolve_on_other_count == 0,
     "Expected on_other count 0, got %u", resolve_on_other_count);
 
   mark_point();
@@ -1782,12 +1782,12 @@ START_TEST (jot_resolve_logfmt_filename_test) {
   session.chroot_path = "/foo/bar/baz";
   res = pr_jot_resolve_logfmt(p, cmd, NULL, logfmt, NULL,
     resolve_on_meta, resolve_on_default, resolve_on_other);
-  fail_unless(res == 0, "Failed to handle logfmt: %s", strerror(errno));
-  fail_unless(resolve_on_meta_count == 1,
+  ck_assert_msg(res == 0, "Failed to handle logfmt: %s", strerror(errno));
+  ck_assert_msg(resolve_on_meta_count == 1,
     "Expected on_meta count 1, got %u", resolve_on_meta_count);
-  fail_unless(resolve_on_default_count == 0,
+  ck_assert_msg(resolve_on_default_count == 0,
     "Expected on_default count 0, got %u", resolve_on_default_count);
-  fail_unless(resolve_on_other_count == 0,
+  ck_assert_msg(resolve_on_other_count == 0,
     "Expected on_other count 0, got %u", resolve_on_other_count);
 
   session.chroot_path = NULL;
@@ -1799,12 +1799,12 @@ START_TEST (jot_resolve_logfmt_filename_test) {
   cmd->cmd_class = CL_MISC;
   res = pr_jot_resolve_logfmt(p, cmd, NULL, logfmt, NULL,
     resolve_on_meta, resolve_on_default, resolve_on_other);
-  fail_unless(res == 0, "Failed to handle logfmt: %s", strerror(errno));
-  fail_unless(resolve_on_meta_count == 1,
+  ck_assert_msg(res == 0, "Failed to handle logfmt: %s", strerror(errno));
+  ck_assert_msg(resolve_on_meta_count == 1,
     "Expected on_meta count 1, got %u", resolve_on_meta_count);
-  fail_unless(resolve_on_default_count == 0,
+  ck_assert_msg(resolve_on_default_count == 0,
     "Expected on_default count 0, got %u", resolve_on_default_count);
-  fail_unless(resolve_on_other_count == 0,
+  ck_assert_msg(resolve_on_other_count == 0,
     "Expected on_other count 0, got %u", resolve_on_other_count);
 
   mark_point();
@@ -1814,12 +1814,12 @@ START_TEST (jot_resolve_logfmt_filename_test) {
   cmd->cmd_class = CL_MISC;
   res = pr_jot_resolve_logfmt(p, cmd, NULL, logfmt, NULL,
     resolve_on_meta, resolve_on_default, resolve_on_other);
-  fail_unless(res == 0, "Failed to handle logfmt: %s", strerror(errno));
-  fail_unless(resolve_on_meta_count == 1,
+  ck_assert_msg(res == 0, "Failed to handle logfmt: %s", strerror(errno));
+  ck_assert_msg(resolve_on_meta_count == 1,
     "Expected on_meta count 1, got %u", resolve_on_meta_count);
-  fail_unless(resolve_on_default_count == 0,
+  ck_assert_msg(resolve_on_default_count == 0,
     "Expected on_default count 0, got %u", resolve_on_default_count);
-  fail_unless(resolve_on_other_count == 0,
+  ck_assert_msg(resolve_on_other_count == 0,
     "Expected on_other count 0, got %u", resolve_on_other_count);
 
   mark_point();
@@ -1829,12 +1829,12 @@ START_TEST (jot_resolve_logfmt_filename_test) {
   cmd->cmd_class = CL_MISC;
   res = pr_jot_resolve_logfmt(p, cmd, NULL, logfmt, NULL,
     resolve_on_meta, resolve_on_default, resolve_on_other);
-  fail_unless(res == 0, "Failed to handle logfmt: %s", strerror(errno));
-  fail_unless(resolve_on_meta_count == 1,
+  ck_assert_msg(res == 0, "Failed to handle logfmt: %s", strerror(errno));
+  ck_assert_msg(resolve_on_meta_count == 1,
     "Expected on_meta count 1, got %u", resolve_on_meta_count);
-  fail_unless(resolve_on_default_count == 0,
+  ck_assert_msg(resolve_on_default_count == 0,
     "Expected on_default count 0, got %u", resolve_on_default_count);
-  fail_unless(resolve_on_other_count == 0,
+  ck_assert_msg(resolve_on_other_count == 0,
     "Expected on_other count 0, got %u", resolve_on_other_count);
 
   mark_point();
@@ -1844,12 +1844,12 @@ START_TEST (jot_resolve_logfmt_filename_test) {
   cmd->arg = pstrdup(p, "foo bar");
   res = pr_jot_resolve_logfmt(p, cmd, NULL, logfmt, NULL,
     resolve_on_meta, resolve_on_default, resolve_on_other);
-  fail_unless(res == 0, "Failed to handle logfmt: %s", strerror(errno));
-  fail_unless(resolve_on_meta_count == 1,
+  ck_assert_msg(res == 0, "Failed to handle logfmt: %s", strerror(errno));
+  ck_assert_msg(resolve_on_meta_count == 1,
     "Expected on_meta count 1, got %u", resolve_on_meta_count);
-  fail_unless(resolve_on_default_count == 0,
+  ck_assert_msg(resolve_on_default_count == 0,
     "Expected on_default count 0, got %u", resolve_on_default_count);
-  fail_unless(resolve_on_other_count == 0,
+  ck_assert_msg(resolve_on_other_count == 0,
     "Expected on_other count 0, got %u", resolve_on_other_count);
 
   mark_point();
@@ -1859,12 +1859,12 @@ START_TEST (jot_resolve_logfmt_filename_test) {
   cmd->arg = pstrdup(p, "foo bar");
   res = pr_jot_resolve_logfmt(p, cmd, NULL, logfmt, NULL,
     resolve_on_meta, resolve_on_default, resolve_on_other);
-  fail_unless(res == 0, "Failed to handle logfmt: %s", strerror(errno));
-  fail_unless(resolve_on_meta_count == 1,
+  ck_assert_msg(res == 0, "Failed to handle logfmt: %s", strerror(errno));
+  ck_assert_msg(resolve_on_meta_count == 1,
     "Expected on_meta count 1, got %u", resolve_on_meta_count);
-  fail_unless(resolve_on_default_count == 0,
+  ck_assert_msg(resolve_on_default_count == 0,
     "Expected on_default count 0, got %u", resolve_on_default_count);
-  fail_unless(resolve_on_other_count == 0,
+  ck_assert_msg(resolve_on_other_count == 0,
     "Expected on_other count 0, got %u", resolve_on_other_count);
 
   mark_point();
@@ -1874,12 +1874,12 @@ START_TEST (jot_resolve_logfmt_filename_test) {
   cmd->arg = pstrdup(p, "foo bar");
   res = pr_jot_resolve_logfmt(p, cmd, NULL, logfmt, NULL,
     resolve_on_meta, resolve_on_default, resolve_on_other);
-  fail_unless(res == 0, "Failed to handle logfmt: %s", strerror(errno));
-  fail_unless(resolve_on_meta_count == 1,
+  ck_assert_msg(res == 0, "Failed to handle logfmt: %s", strerror(errno));
+  ck_assert_msg(resolve_on_meta_count == 1,
     "Expected on_meta count 1, got %u", resolve_on_meta_count);
-  fail_unless(resolve_on_default_count == 0,
+  ck_assert_msg(resolve_on_default_count == 0,
     "Expected on_default count 0, got %u", resolve_on_default_count);
-  fail_unless(resolve_on_other_count == 0,
+  ck_assert_msg(resolve_on_other_count == 0,
     "Expected on_other count 0, got %u", resolve_on_other_count);
 
   mark_point();
@@ -1889,12 +1889,12 @@ START_TEST (jot_resolve_logfmt_filename_test) {
   cmd->arg = pstrdup(p, "foo bar");
   res = pr_jot_resolve_logfmt(p, cmd, NULL, logfmt, NULL,
     resolve_on_meta, resolve_on_default, resolve_on_other);
-  fail_unless(res == 0, "Failed to handle logfmt: %s", strerror(errno));
-  fail_unless(resolve_on_meta_count == 1,
+  ck_assert_msg(res == 0, "Failed to handle logfmt: %s", strerror(errno));
+  ck_assert_msg(resolve_on_meta_count == 1,
     "Expected on_meta count 1, got %u", resolve_on_meta_count);
-  fail_unless(resolve_on_default_count == 0,
+  ck_assert_msg(resolve_on_default_count == 0,
     "Expected on_default count 0, got %u", resolve_on_default_count);
-  fail_unless(resolve_on_other_count == 0,
+  ck_assert_msg(resolve_on_other_count == 0,
     "Expected on_other count 0, got %u", resolve_on_other_count);
 
   mark_point();
@@ -1904,12 +1904,12 @@ START_TEST (jot_resolve_logfmt_filename_test) {
   cmd->arg = pstrdup(p, "foo bar");
   res = pr_jot_resolve_logfmt(p, cmd, NULL, logfmt, NULL,
     resolve_on_meta, resolve_on_default, resolve_on_other);
-  fail_unless(res == 0, "Failed to handle logfmt: %s", strerror(errno));
-  fail_unless(resolve_on_meta_count == 1,
+  ck_assert_msg(res == 0, "Failed to handle logfmt: %s", strerror(errno));
+  ck_assert_msg(resolve_on_meta_count == 1,
     "Expected on_meta count 1, got %u", resolve_on_meta_count);
-  fail_unless(resolve_on_default_count == 0,
+  ck_assert_msg(resolve_on_default_count == 0,
     "Expected on_default count 0, got %u", resolve_on_default_count);
-  fail_unless(resolve_on_other_count == 0,
+  ck_assert_msg(resolve_on_other_count == 0,
     "Expected on_other count 0, got %u", resolve_on_other_count);
 
   mark_point();
@@ -1919,12 +1919,12 @@ START_TEST (jot_resolve_logfmt_filename_test) {
   cmd->arg = pstrdup(p, "foo bar");
   res = pr_jot_resolve_logfmt(p, cmd, NULL, logfmt, NULL,
     resolve_on_meta, resolve_on_default, resolve_on_other);
-  fail_unless(res == 0, "Failed to handle logfmt: %s", strerror(errno));
-  fail_unless(resolve_on_meta_count == 1,
+  ck_assert_msg(res == 0, "Failed to handle logfmt: %s", strerror(errno));
+  ck_assert_msg(resolve_on_meta_count == 1,
     "Expected on_meta count 1, got %u", resolve_on_meta_count);
-  fail_unless(resolve_on_default_count == 0,
+  ck_assert_msg(resolve_on_default_count == 0,
     "Expected on_default count 0, got %u", resolve_on_default_count);
-  fail_unless(resolve_on_other_count == 0,
+  ck_assert_msg(resolve_on_other_count == 0,
     "Expected on_other count 0, got %u", resolve_on_other_count);
 
   mark_point();
@@ -1934,12 +1934,12 @@ START_TEST (jot_resolve_logfmt_filename_test) {
   cmd->arg = pstrdup(p, "foo bar");
   res = pr_jot_resolve_logfmt(p, cmd, NULL, logfmt, NULL,
     resolve_on_meta, resolve_on_default, resolve_on_other);
-  fail_unless(res == 0, "Failed to handle logfmt: %s", strerror(errno));
-  fail_unless(resolve_on_meta_count == 1,
+  ck_assert_msg(res == 0, "Failed to handle logfmt: %s", strerror(errno));
+  ck_assert_msg(resolve_on_meta_count == 1,
     "Expected on_meta count 1, got %u", resolve_on_meta_count);
-  fail_unless(resolve_on_default_count == 0,
+  ck_assert_msg(resolve_on_default_count == 0,
     "Expected on_default count 0, got %u", resolve_on_default_count);
-  fail_unless(resolve_on_other_count == 0,
+  ck_assert_msg(resolve_on_other_count == 0,
     "Expected on_other count 0, got %u", resolve_on_other_count);
 
   mark_point();
@@ -1949,12 +1949,12 @@ START_TEST (jot_resolve_logfmt_filename_test) {
   cmd->arg = pstrdup(p, "foo bar");
   res = pr_jot_resolve_logfmt(p, cmd, NULL, logfmt, NULL,
     resolve_on_meta, resolve_on_default, resolve_on_other);
-  fail_unless(res == 0, "Failed to handle logfmt: %s", strerror(errno));
-  fail_unless(resolve_on_meta_count == 1,
+  ck_assert_msg(res == 0, "Failed to handle logfmt: %s", strerror(errno));
+  ck_assert_msg(resolve_on_meta_count == 1,
     "Expected on_meta count 1, got %u", resolve_on_meta_count);
-  fail_unless(resolve_on_default_count == 0,
+  ck_assert_msg(resolve_on_default_count == 0,
     "Expected on_default count 0, got %u", resolve_on_default_count);
-  fail_unless(resolve_on_other_count == 0,
+  ck_assert_msg(resolve_on_other_count == 0,
     "Expected on_other count 0, got %u", resolve_on_other_count);
 
   mark_point();
@@ -1964,12 +1964,12 @@ START_TEST (jot_resolve_logfmt_filename_test) {
   cmd->arg = pstrdup(p, "foo bar");
   res = pr_jot_resolve_logfmt(p, cmd, NULL, logfmt, NULL,
     resolve_on_meta, resolve_on_default, resolve_on_other);
-  fail_unless(res == 0, "Failed to handle logfmt: %s", strerror(errno));
-  fail_unless(resolve_on_meta_count == 1,
+  ck_assert_msg(res == 0, "Failed to handle logfmt: %s", strerror(errno));
+  ck_assert_msg(resolve_on_meta_count == 1,
     "Expected on_meta count 1, got %u", resolve_on_meta_count);
-  fail_unless(resolve_on_default_count == 0,
+  ck_assert_msg(resolve_on_default_count == 0,
     "Expected on_default count 0, got %u", resolve_on_default_count);
-  fail_unless(resolve_on_other_count == 0,
+  ck_assert_msg(resolve_on_other_count == 0,
     "Expected on_other count 0, got %u", resolve_on_other_count);
 
   mark_point();
@@ -1979,12 +1979,12 @@ START_TEST (jot_resolve_logfmt_filename_test) {
   cmd->arg = pstrdup(p, "foo bar");
   res = pr_jot_resolve_logfmt(p, cmd, NULL, logfmt, NULL,
     resolve_on_meta, resolve_on_default, resolve_on_other);
-  fail_unless(res == 0, "Failed to handle logfmt: %s", strerror(errno));
-  fail_unless(resolve_on_meta_count == 1,
+  ck_assert_msg(res == 0, "Failed to handle logfmt: %s", strerror(errno));
+  ck_assert_msg(resolve_on_meta_count == 1,
     "Expected on_meta count 1, got %u", resolve_on_meta_count);
-  fail_unless(resolve_on_default_count == 0,
+  ck_assert_msg(resolve_on_default_count == 0,
     "Expected on_default count 0, got %u", resolve_on_default_count);
-  fail_unless(resolve_on_other_count == 0,
+  ck_assert_msg(resolve_on_other_count == 0,
     "Expected on_other count 0, got %u", resolve_on_other_count);
 
   mark_point();
@@ -1994,12 +1994,12 @@ START_TEST (jot_resolve_logfmt_filename_test) {
   cmd->cmd_class = CL_MISC;
   res = pr_jot_resolve_logfmt(p, cmd, NULL, logfmt, NULL,
     resolve_on_meta, resolve_on_default, resolve_on_other);
-  fail_unless(res == 0, "Failed to handle logfmt: %s", strerror(errno));
-  fail_unless(resolve_on_meta_count == 1,
+  ck_assert_msg(res == 0, "Failed to handle logfmt: %s", strerror(errno));
+  ck_assert_msg(resolve_on_meta_count == 1,
     "Expected on_meta count 1, got %u", resolve_on_meta_count);
-  fail_unless(resolve_on_default_count == 0,
+  ck_assert_msg(resolve_on_default_count == 0,
     "Expected on_default count 0, got %u", resolve_on_default_count);
-  fail_unless(resolve_on_other_count == 0,
+  ck_assert_msg(resolve_on_other_count == 0,
     "Expected on_other count 0, got %u", resolve_on_other_count);
 }
 END_TEST
@@ -2021,12 +2021,12 @@ START_TEST (jot_resolve_logfmt_file_modified_test) {
   resolve_on_meta_count = resolve_on_default_count = resolve_on_other_count = 0;
   res = pr_jot_resolve_logfmt(p, cmd, NULL, logfmt, NULL,
     resolve_on_meta, resolve_on_default, resolve_on_other);
-  fail_unless(res == 0, "Failed to handle logfmt: %s", strerror(errno));
-  fail_unless(resolve_on_meta_count == 1,
+  ck_assert_msg(res == 0, "Failed to handle logfmt: %s", strerror(errno));
+  ck_assert_msg(resolve_on_meta_count == 1,
     "Expected on_meta count 1, got %u", resolve_on_meta_count);
-  fail_unless(resolve_on_default_count == 0,
+  ck_assert_msg(resolve_on_default_count == 0,
     "Expected on_default count 0, got %u", resolve_on_default_count);
-  fail_unless(resolve_on_other_count == 0,
+  ck_assert_msg(resolve_on_other_count == 0,
     "Expected on_other count 0, got %u", resolve_on_other_count);
 
   /* Now, with the "mod_xfer.file-modified" note. */
@@ -2036,12 +2036,12 @@ START_TEST (jot_resolve_logfmt_file_modified_test) {
   pr_table_add_dup(cmd->notes, "mod_xfer.file-modified", modified, 0);
   res = pr_jot_resolve_logfmt(p, cmd, NULL, logfmt, NULL,
     resolve_on_meta, resolve_on_default, resolve_on_other);
-  fail_unless(res == 0, "Failed to handle logfmt: %s", strerror(errno));
-  fail_unless(resolve_on_meta_count == 1,
+  ck_assert_msg(res == 0, "Failed to handle logfmt: %s", strerror(errno));
+  ck_assert_msg(resolve_on_meta_count == 1,
     "Expected on_meta count 1, got %u", resolve_on_meta_count);
-  fail_unless(resolve_on_default_count == 0,
+  ck_assert_msg(resolve_on_default_count == 0,
     "Expected on_default count 0, got %u", resolve_on_default_count);
-  fail_unless(resolve_on_other_count == 0,
+  ck_assert_msg(resolve_on_other_count == 0,
     "Expected on_other count 0, got %u", resolve_on_other_count);
 }
 END_TEST
@@ -2063,12 +2063,12 @@ START_TEST (jot_resolve_logfmt_file_offset_test) {
   resolve_on_meta_count = resolve_on_default_count = resolve_on_other_count = 0;
   res = pr_jot_resolve_logfmt(p, cmd, NULL, logfmt, NULL,
     resolve_on_meta, resolve_on_default, resolve_on_other);
-  fail_unless(res == 0, "Failed to handle logfmt: %s", strerror(errno));
-  fail_unless(resolve_on_meta_count == 0,
+  ck_assert_msg(res == 0, "Failed to handle logfmt: %s", strerror(errno));
+  ck_assert_msg(resolve_on_meta_count == 0,
     "Expected on_meta count 0, got %u", resolve_on_meta_count);
-  fail_unless(resolve_on_default_count == 1,
+  ck_assert_msg(resolve_on_default_count == 1,
     "Expected on_default count 1, got %u", resolve_on_default_count);
-  fail_unless(resolve_on_other_count == 0,
+  ck_assert_msg(resolve_on_other_count == 0,
     "Expected on_other count 0, got %u", resolve_on_other_count);
 
   /* Now, with the "mod_xfer.file-offset" note. */
@@ -2079,12 +2079,12 @@ START_TEST (jot_resolve_logfmt_file_offset_test) {
     sizeof(file_offset));
   res = pr_jot_resolve_logfmt(p, cmd, NULL, logfmt, NULL,
     resolve_on_meta, resolve_on_default, resolve_on_other);
-  fail_unless(res == 0, "Failed to handle logfmt: %s", strerror(errno));
-  fail_unless(resolve_on_meta_count == 1,
+  ck_assert_msg(res == 0, "Failed to handle logfmt: %s", strerror(errno));
+  ck_assert_msg(resolve_on_meta_count == 1,
     "Expected on_meta count 1, got %u", resolve_on_meta_count);
-  fail_unless(resolve_on_default_count == 0,
+  ck_assert_msg(resolve_on_default_count == 0,
     "Expected on_default count 0, got %u", resolve_on_default_count);
-  fail_unless(resolve_on_other_count == 0,
+  ck_assert_msg(resolve_on_other_count == 0,
     "Expected on_other count 0, got %u", resolve_on_other_count);
 }
 END_TEST
@@ -2106,12 +2106,12 @@ START_TEST (jot_resolve_logfmt_file_size_test) {
   resolve_on_meta_count = resolve_on_default_count = resolve_on_other_count = 0;
   res = pr_jot_resolve_logfmt(p, cmd, NULL, logfmt, NULL,
     resolve_on_meta, resolve_on_default, resolve_on_other);
-  fail_unless(res == 0, "Failed to handle logfmt: %s", strerror(errno));
-  fail_unless(resolve_on_meta_count == 0,
+  ck_assert_msg(res == 0, "Failed to handle logfmt: %s", strerror(errno));
+  ck_assert_msg(resolve_on_meta_count == 0,
     "Expected on_meta count 0, got %u", resolve_on_meta_count);
-  fail_unless(resolve_on_default_count == 1,
+  ck_assert_msg(resolve_on_default_count == 1,
     "Expected on_default count 1, got %u", resolve_on_default_count);
-  fail_unless(resolve_on_other_count == 0,
+  ck_assert_msg(resolve_on_other_count == 0,
     "Expected on_other count 0, got %u", resolve_on_other_count);
 
   /* Now, with the "mod_xfer.file-size" note. */
@@ -2121,12 +2121,12 @@ START_TEST (jot_resolve_logfmt_file_size_test) {
   pr_table_add(cmd->notes, "mod_xfer.file-size", &file_size, sizeof(file_size));
   res = pr_jot_resolve_logfmt(p, cmd, NULL, logfmt, NULL,
     resolve_on_meta, resolve_on_default, resolve_on_other);
-  fail_unless(res == 0, "Failed to handle logfmt: %s", strerror(errno));
-  fail_unless(resolve_on_meta_count == 1,
+  ck_assert_msg(res == 0, "Failed to handle logfmt: %s", strerror(errno));
+  ck_assert_msg(resolve_on_meta_count == 1,
     "Expected on_meta count 1, got %u", resolve_on_meta_count);
-  fail_unless(resolve_on_default_count == 0,
+  ck_assert_msg(resolve_on_default_count == 0,
     "Expected on_default count 0, got %u", resolve_on_default_count);
-  fail_unless(resolve_on_other_count == 0,
+  ck_assert_msg(resolve_on_other_count == 0,
     "Expected on_other count 0, got %u", resolve_on_other_count);
 }
 END_TEST
@@ -2147,12 +2147,12 @@ START_TEST (jot_resolve_logfmt_env_var_test) {
   resolve_on_meta_count = resolve_on_default_count = resolve_on_other_count = 0;
   res = pr_jot_resolve_logfmt(p, cmd, NULL, logfmt, NULL,
     resolve_on_meta, resolve_on_default, resolve_on_other);
-  fail_unless(res == 0, "Failed to handle logfmt: %s", strerror(errno));
-  fail_unless(resolve_on_meta_count == 0,
+  ck_assert_msg(res == 0, "Failed to handle logfmt: %s", strerror(errno));
+  ck_assert_msg(resolve_on_meta_count == 0,
     "Expected on_meta count 0, got %u", resolve_on_meta_count);
-  fail_unless(resolve_on_default_count == 0,
+  ck_assert_msg(resolve_on_default_count == 0,
     "Expected on_default count 0, got %u", resolve_on_default_count);
-  fail_unless(resolve_on_other_count == 0,
+  ck_assert_msg(resolve_on_other_count == 0,
     "Expected on_other count 0, got %u", resolve_on_other_count);
 
   mark_point();
@@ -2168,12 +2168,12 @@ START_TEST (jot_resolve_logfmt_env_var_test) {
   logfmt[8] = 0;
   res = pr_jot_resolve_logfmt(p, cmd, NULL, logfmt, NULL,
     resolve_on_meta, resolve_on_default, resolve_on_other);
-  fail_unless(res == 0, "Failed to handle logfmt: %s", strerror(errno));
-  fail_unless(resolve_on_meta_count == 0,
+  ck_assert_msg(res == 0, "Failed to handle logfmt: %s", strerror(errno));
+  ck_assert_msg(resolve_on_meta_count == 0,
     "Expected on_meta count 0, got %u", resolve_on_meta_count);
-  fail_unless(resolve_on_default_count == 1,
+  ck_assert_msg(resolve_on_default_count == 1,
     "Expected on_default count 1, got %u", resolve_on_default_count);
-  fail_unless(resolve_on_other_count == 0,
+  ck_assert_msg(resolve_on_other_count == 0,
     "Expected on_other count 0, got %u", resolve_on_other_count);
 
   mark_point();
@@ -2183,12 +2183,12 @@ START_TEST (jot_resolve_logfmt_env_var_test) {
   pr_env_set(p, key, val);
   res = pr_jot_resolve_logfmt(p, cmd, NULL, logfmt, NULL,
     resolve_on_meta, resolve_on_default, resolve_on_other);
-  fail_unless(res == 0, "Failed to handle logfmt: %s", strerror(errno));
-  fail_unless(resolve_on_meta_count == 1,
+  ck_assert_msg(res == 0, "Failed to handle logfmt: %s", strerror(errno));
+  ck_assert_msg(resolve_on_meta_count == 1,
     "Expected on_meta count 1, got %u", resolve_on_meta_count);
-  fail_unless(resolve_on_default_count == 0,
+  ck_assert_msg(resolve_on_default_count == 0,
     "Expected on_default count 0, got %u", resolve_on_default_count);
-  fail_unless(resolve_on_other_count == 0,
+  ck_assert_msg(resolve_on_other_count == 0,
     "Expected on_other count 0, got %u", resolve_on_other_count);
   pr_env_unset(p, key);
 }
@@ -2210,12 +2210,12 @@ START_TEST (jot_resolve_logfmt_note_test) {
   resolve_on_meta_count = resolve_on_default_count = resolve_on_other_count = 0;
   res = pr_jot_resolve_logfmt(p, cmd, NULL, logfmt, NULL,
     resolve_on_meta, resolve_on_default, resolve_on_other);
-  fail_unless(res == 0, "Failed to handle logfmt: %s", strerror(errno));
-  fail_unless(resolve_on_meta_count == 0,
+  ck_assert_msg(res == 0, "Failed to handle logfmt: %s", strerror(errno));
+  ck_assert_msg(resolve_on_meta_count == 0,
     "Expected on_meta count 0, got %u", resolve_on_meta_count);
-  fail_unless(resolve_on_default_count == 0,
+  ck_assert_msg(resolve_on_default_count == 0,
     "Expected on_default count 0, got %u", resolve_on_default_count);
-  fail_unless(resolve_on_other_count == 0,
+  ck_assert_msg(resolve_on_other_count == 0,
     "Expected on_other count 0, got %u", resolve_on_other_count);
 
   mark_point();
@@ -2231,12 +2231,12 @@ START_TEST (jot_resolve_logfmt_note_test) {
   logfmt[8] = 0;
   res = pr_jot_resolve_logfmt(p, cmd, NULL, logfmt, NULL,
     resolve_on_meta, resolve_on_default, resolve_on_other);
-  fail_unless(res == 0, "Failed to handle logfmt: %s", strerror(errno));
-  fail_unless(resolve_on_meta_count == 0,
+  ck_assert_msg(res == 0, "Failed to handle logfmt: %s", strerror(errno));
+  ck_assert_msg(resolve_on_meta_count == 0,
     "Expected on_meta count 0, got %u", resolve_on_meta_count);
-  fail_unless(resolve_on_default_count == 1,
+  ck_assert_msg(resolve_on_default_count == 1,
     "Expected on_default count 1, got %u", resolve_on_default_count);
-  fail_unless(resolve_on_other_count == 0,
+  ck_assert_msg(resolve_on_other_count == 0,
     "Expected on_other count 0, got %u", resolve_on_other_count);
 
   mark_point();
@@ -2247,12 +2247,12 @@ START_TEST (jot_resolve_logfmt_note_test) {
   pr_table_add_dup(session.notes, key, val, 0);
   res = pr_jot_resolve_logfmt(p, cmd, NULL, logfmt, NULL,
     resolve_on_meta, resolve_on_default, resolve_on_other);
-  fail_unless(res == 0, "Failed to handle logfmt: %s", strerror(errno));
-  fail_unless(resolve_on_meta_count == 1,
+  ck_assert_msg(res == 0, "Failed to handle logfmt: %s", strerror(errno));
+  ck_assert_msg(resolve_on_meta_count == 1,
     "Expected on_meta count 1, got %u", resolve_on_meta_count);
-  fail_unless(resolve_on_default_count == 0,
+  ck_assert_msg(resolve_on_default_count == 0,
     "Expected on_default count 0, got %u", resolve_on_default_count);
-  fail_unless(resolve_on_other_count == 0,
+  ck_assert_msg(resolve_on_other_count == 0,
     "Expected on_other count 0, got %u", resolve_on_other_count);
 
   mark_point();
@@ -2260,12 +2260,12 @@ START_TEST (jot_resolve_logfmt_note_test) {
   pr_table_add_dup(cmd->notes, key, val, 0);
   res = pr_jot_resolve_logfmt(p, cmd, NULL, logfmt, NULL,
     resolve_on_meta, resolve_on_default, resolve_on_other);
-  fail_unless(res == 0, "Failed to handle logfmt: %s", strerror(errno));
-  fail_unless(resolve_on_meta_count == 1,
+  ck_assert_msg(res == 0, "Failed to handle logfmt: %s", strerror(errno));
+  ck_assert_msg(resolve_on_meta_count == 1,
     "Expected on_meta count 1, got %u", resolve_on_meta_count);
-  fail_unless(resolve_on_default_count == 0,
+  ck_assert_msg(resolve_on_default_count == 0,
     "Expected on_default count 0, got %u", resolve_on_default_count);
-  fail_unless(resolve_on_other_count == 0,
+  ck_assert_msg(resolve_on_other_count == 0,
     "Expected on_other count 0, got %u", resolve_on_other_count);
 
   pr_table_empty(session.notes);
@@ -2292,12 +2292,12 @@ START_TEST (jot_resolve_logfmt_remote_port_test) {
   resolve_on_meta_count = resolve_on_default_count = resolve_on_other_count = 0;
   res = pr_jot_resolve_logfmt(p, cmd, NULL, logfmt, NULL,
     resolve_on_meta, resolve_on_default, resolve_on_other);
-  fail_unless(res == 0, "Failed to handle logfmt: %s", strerror(errno));
-  fail_unless(resolve_on_meta_count == 0,
+  ck_assert_msg(res == 0, "Failed to handle logfmt: %s", strerror(errno));
+  ck_assert_msg(resolve_on_meta_count == 0,
     "Expected on_meta count 0, got %u", resolve_on_meta_count);
-  fail_unless(resolve_on_default_count == 1,
+  ck_assert_msg(resolve_on_default_count == 1,
     "Expected on_default count 1, got %u", resolve_on_default_count);
-  fail_unless(resolve_on_other_count == 0,
+  ck_assert_msg(resolve_on_other_count == 0,
     "Expected on_other count 0, got %u", resolve_on_other_count);
 
   /* Now, with a session remote address. */
@@ -2308,7 +2308,7 @@ START_TEST (jot_resolve_logfmt_remote_port_test) {
   conn = pr_inet_create_conn(p, -1, NULL, INPORT_ANY, FALSE);
   session.c = conn;
   addr = pr_netaddr_get_addr(p, "127.0.0.1", NULL);
-  fail_unless(addr != NULL, "Failed to get address: %s", strerror(errno));
+  ck_assert_msg(addr != NULL, "Failed to get address: %s", strerror(errno));
   pr_netaddr_set_port2((pr_netaddr_t *) addr, 2476);
   session.c->remote_addr = addr;
   pr_netaddr_set_sess_addrs();
@@ -2316,12 +2316,12 @@ START_TEST (jot_resolve_logfmt_remote_port_test) {
   mark_point();
   res = pr_jot_resolve_logfmt(p, cmd, NULL, logfmt, NULL,
     resolve_on_meta, resolve_on_default, resolve_on_other);
-  fail_unless(res == 0, "Failed to handle logfmt: %s", strerror(errno));
-  fail_unless(resolve_on_meta_count == 1,
+  ck_assert_msg(res == 0, "Failed to handle logfmt: %s", strerror(errno));
+  ck_assert_msg(resolve_on_meta_count == 1,
     "Expected on_meta count 1, got %u", resolve_on_meta_count);
-  fail_unless(resolve_on_default_count == 0,
+  ck_assert_msg(resolve_on_default_count == 0,
     "Expected on_default count 0, got %u", resolve_on_default_count);
-  fail_unless(resolve_on_other_count == 0,
+  ck_assert_msg(resolve_on_other_count == 0,
     "Expected on_other count 0, got %u", resolve_on_other_count);
 
   pr_inet_close(p, session.c);
@@ -2346,12 +2346,12 @@ START_TEST (jot_resolve_logfmt_rfc1413_ident_test) {
   resolve_on_meta_count = resolve_on_default_count = resolve_on_other_count = 0;
   res = pr_jot_resolve_logfmt(p, cmd, NULL, logfmt, NULL,
     resolve_on_meta, resolve_on_default, resolve_on_other);
-  fail_unless(res == 0, "Failed to handle logfmt: %s", strerror(errno));
-  fail_unless(resolve_on_meta_count == 0,
+  ck_assert_msg(res == 0, "Failed to handle logfmt: %s", strerror(errno));
+  ck_assert_msg(resolve_on_meta_count == 0,
     "Expected on_meta count 0, got %u", resolve_on_meta_count);
-  fail_unless(resolve_on_default_count == 1,
+  ck_assert_msg(resolve_on_default_count == 1,
     "Expected on_default count 1, got %u", resolve_on_default_count);
-  fail_unless(resolve_on_other_count == 0,
+  ck_assert_msg(resolve_on_other_count == 0,
     "Expected on_other count 0, got %u", resolve_on_other_count);
 
   /* Now, with the "mod_ident.rfc1413-ident" note. */
@@ -2362,12 +2362,12 @@ START_TEST (jot_resolve_logfmt_rfc1413_ident_test) {
   pr_table_add_dup(session.notes, "mod_ident.rfc1413-ident", ident_user, 0);
   res = pr_jot_resolve_logfmt(p, cmd, NULL, logfmt, NULL,
     resolve_on_meta, resolve_on_default, resolve_on_other);
-  fail_unless(res == 0, "Failed to handle logfmt: %s", strerror(errno));
-  fail_unless(resolve_on_meta_count == 1,
+  ck_assert_msg(res == 0, "Failed to handle logfmt: %s", strerror(errno));
+  ck_assert_msg(resolve_on_meta_count == 1,
     "Expected on_meta count 1, got %u", resolve_on_meta_count);
-  fail_unless(resolve_on_default_count == 0,
+  ck_assert_msg(resolve_on_default_count == 0,
     "Expected on_default count 0, got %u", resolve_on_default_count);
-  fail_unless(resolve_on_other_count == 0,
+  ck_assert_msg(resolve_on_other_count == 0,
     "Expected on_other count 0, got %u", resolve_on_other_count);
 
   pr_table_empty(session.notes);
@@ -2392,12 +2392,12 @@ START_TEST (jot_resolve_logfmt_xfer_secs_test) {
   resolve_on_meta_count = resolve_on_default_count = resolve_on_other_count = 0;
   res = pr_jot_resolve_logfmt(p, cmd, NULL, logfmt, NULL,
     resolve_on_meta, resolve_on_default, resolve_on_other);
-  fail_unless(res == 0, "Failed to handle logfmt: %s", strerror(errno));
-  fail_unless(resolve_on_meta_count == 0,
+  ck_assert_msg(res == 0, "Failed to handle logfmt: %s", strerror(errno));
+  ck_assert_msg(resolve_on_meta_count == 0,
     "Expected on_meta count 0, got %u", resolve_on_meta_count);
-  fail_unless(resolve_on_default_count == 1,
+  ck_assert_msg(resolve_on_default_count == 1,
     "Expected on_default count 1, got %u", resolve_on_default_count);
-  fail_unless(resolve_on_other_count == 0,
+  ck_assert_msg(resolve_on_other_count == 0,
     "Expected on_other count 0, got %u", resolve_on_other_count);
 
   /* Now, with the session.xfer.p pool, but no transfer times. */
@@ -2407,12 +2407,12 @@ START_TEST (jot_resolve_logfmt_xfer_secs_test) {
   resolve_on_meta_count = resolve_on_default_count = resolve_on_other_count = 0;
   res = pr_jot_resolve_logfmt(p, cmd, NULL, logfmt, NULL,
     resolve_on_meta, resolve_on_default, resolve_on_other);
-  fail_unless(res == 0, "Failed to handle logfmt: %s", strerror(errno));
-  fail_unless(resolve_on_meta_count == 0,
+  ck_assert_msg(res == 0, "Failed to handle logfmt: %s", strerror(errno));
+  ck_assert_msg(resolve_on_meta_count == 0,
     "Expected on_meta count 0, got %u", resolve_on_meta_count);
-  fail_unless(resolve_on_default_count == 1,
+  ck_assert_msg(resolve_on_default_count == 1,
     "Expected on_default count 1, got %u", resolve_on_default_count);
-  fail_unless(resolve_on_other_count == 0,
+  ck_assert_msg(resolve_on_other_count == 0,
     "Expected on_other count 0, got %u", resolve_on_other_count);
 
   mark_point();
@@ -2422,12 +2422,12 @@ START_TEST (jot_resolve_logfmt_xfer_secs_test) {
   resolve_on_meta_count = resolve_on_default_count = resolve_on_other_count = 0;
   res = pr_jot_resolve_logfmt(p, cmd, NULL, logfmt, NULL,
     resolve_on_meta, resolve_on_default, resolve_on_other);
-  fail_unless(res == 0, "Failed to handle logfmt: %s", strerror(errno));
-  fail_unless(resolve_on_meta_count == 1,
+  ck_assert_msg(res == 0, "Failed to handle logfmt: %s", strerror(errno));
+  ck_assert_msg(resolve_on_meta_count == 1,
     "Expected on_meta count 1, got %u", resolve_on_meta_count);
-  fail_unless(resolve_on_default_count == 0,
+  ck_assert_msg(resolve_on_default_count == 0,
     "Expected on_default count 0, got %u", resolve_on_default_count);
-  fail_unless(resolve_on_other_count == 0,
+  ck_assert_msg(resolve_on_other_count == 0,
     "Expected on_other count 0, got %u", resolve_on_other_count);
 
   mark_point();
@@ -2437,12 +2437,12 @@ START_TEST (jot_resolve_logfmt_xfer_secs_test) {
   resolve_on_meta_count = resolve_on_default_count = resolve_on_other_count = 0;
   res = pr_jot_resolve_logfmt(p, cmd, NULL, logfmt, NULL,
     resolve_on_meta, resolve_on_default, resolve_on_other);
-  fail_unless(res == 0, "Failed to handle logfmt: %s", strerror(errno));
-  fail_unless(resolve_on_meta_count == 1,
+  ck_assert_msg(res == 0, "Failed to handle logfmt: %s", strerror(errno));
+  ck_assert_msg(resolve_on_meta_count == 1,
     "Expected on_meta count 1, got %u", resolve_on_meta_count);
-  fail_unless(resolve_on_default_count == 0,
+  ck_assert_msg(resolve_on_default_count == 0,
     "Expected on_default count 0, got %u", resolve_on_default_count);
-  fail_unless(resolve_on_other_count == 0,
+  ck_assert_msg(resolve_on_other_count == 0,
     "Expected on_other count 0, got %u", resolve_on_other_count);
 
   session.xfer.p = NULL;
@@ -2466,12 +2466,12 @@ START_TEST (jot_resolve_logfmt_xfer_ms_test) {
   resolve_on_meta_count = resolve_on_default_count = resolve_on_other_count = 0;
   res = pr_jot_resolve_logfmt(p, cmd, NULL, logfmt, NULL,
     resolve_on_meta, resolve_on_default, resolve_on_other);
-  fail_unless(res == 0, "Failed to handle logfmt: %s", strerror(errno));
-  fail_unless(resolve_on_meta_count == 0,
+  ck_assert_msg(res == 0, "Failed to handle logfmt: %s", strerror(errno));
+  ck_assert_msg(resolve_on_meta_count == 0,
     "Expected on_meta count 0, got %u", resolve_on_meta_count);
-  fail_unless(resolve_on_default_count == 1,
+  ck_assert_msg(resolve_on_default_count == 1,
     "Expected on_default count 1, got %u", resolve_on_default_count);
-  fail_unless(resolve_on_other_count == 0,
+  ck_assert_msg(resolve_on_other_count == 0,
     "Expected on_other count 0, got %u", resolve_on_other_count);
 
   /* Now, with the session.xfer.p pool, but no transfer times. */
@@ -2481,12 +2481,12 @@ START_TEST (jot_resolve_logfmt_xfer_ms_test) {
   resolve_on_meta_count = resolve_on_default_count = resolve_on_other_count = 0;
   res = pr_jot_resolve_logfmt(p, cmd, NULL, logfmt, NULL,
     resolve_on_meta, resolve_on_default, resolve_on_other);
-  fail_unless(res == 0, "Failed to handle logfmt: %s", strerror(errno));
-  fail_unless(resolve_on_meta_count == 0,
+  ck_assert_msg(res == 0, "Failed to handle logfmt: %s", strerror(errno));
+  ck_assert_msg(resolve_on_meta_count == 0,
     "Expected on_meta count 0, got %u", resolve_on_meta_count);
-  fail_unless(resolve_on_default_count == 1,
+  ck_assert_msg(resolve_on_default_count == 1,
     "Expected on_default count 1, got %u", resolve_on_default_count);
-  fail_unless(resolve_on_other_count == 0,
+  ck_assert_msg(resolve_on_other_count == 0,
     "Expected on_other count 0, got %u", resolve_on_other_count);
 
   mark_point();
@@ -2496,12 +2496,12 @@ START_TEST (jot_resolve_logfmt_xfer_ms_test) {
   resolve_on_meta_count = resolve_on_default_count = resolve_on_other_count = 0;
   res = pr_jot_resolve_logfmt(p, cmd, NULL, logfmt, NULL,
     resolve_on_meta, resolve_on_default, resolve_on_other);
-  fail_unless(res == 0, "Failed to handle logfmt: %s", strerror(errno));
-  fail_unless(resolve_on_meta_count == 1,
+  ck_assert_msg(res == 0, "Failed to handle logfmt: %s", strerror(errno));
+  ck_assert_msg(resolve_on_meta_count == 1,
     "Expected on_meta count 1, got %u", resolve_on_meta_count);
-  fail_unless(resolve_on_default_count == 0,
+  ck_assert_msg(resolve_on_default_count == 0,
     "Expected on_default count 0, got %u", resolve_on_default_count);
-  fail_unless(resolve_on_other_count == 0,
+  ck_assert_msg(resolve_on_other_count == 0,
     "Expected on_other count 0, got %u", resolve_on_other_count);
 
   mark_point();
@@ -2511,12 +2511,12 @@ START_TEST (jot_resolve_logfmt_xfer_ms_test) {
   resolve_on_meta_count = resolve_on_default_count = resolve_on_other_count = 0;
   res = pr_jot_resolve_logfmt(p, cmd, NULL, logfmt, NULL,
     resolve_on_meta, resolve_on_default, resolve_on_other);
-  fail_unless(res == 0, "Failed to handle logfmt: %s", strerror(errno));
-  fail_unless(resolve_on_meta_count == 1,
+  ck_assert_msg(res == 0, "Failed to handle logfmt: %s", strerror(errno));
+  ck_assert_msg(resolve_on_meta_count == 1,
     "Expected on_meta count 1, got %u", resolve_on_meta_count);
-  fail_unless(resolve_on_default_count == 0,
+  ck_assert_msg(resolve_on_default_count == 0,
     "Expected on_default count 0, got %u", resolve_on_default_count);
-  fail_unless(resolve_on_other_count == 0,
+  ck_assert_msg(resolve_on_other_count == 0,
     "Expected on_other count 0, got %u", resolve_on_other_count);
 
   session.xfer.p = NULL;
@@ -2539,12 +2539,12 @@ START_TEST (jot_resolve_logfmt_command_test) {
   resolve_on_meta_count = resolve_on_default_count = resolve_on_other_count = 0;
   res = pr_jot_resolve_logfmt(p, cmd, NULL, logfmt, NULL,
     resolve_on_meta, resolve_on_default, resolve_on_other);
-  fail_unless(res == 0, "Failed to handle logfmt: %s", strerror(errno));
-  fail_unless(resolve_on_meta_count == 0,
+  ck_assert_msg(res == 0, "Failed to handle logfmt: %s", strerror(errno));
+  ck_assert_msg(resolve_on_meta_count == 0,
     "Expected on_meta count 0, got %u", resolve_on_meta_count);
-  fail_unless(resolve_on_default_count == 1,
+  ck_assert_msg(resolve_on_default_count == 1,
     "Expected on_default count 1, got %u", resolve_on_default_count);
-  fail_unless(resolve_on_other_count == 0,
+  ck_assert_msg(resolve_on_other_count == 0,
     "Expected on_other count 0, got %u", resolve_on_other_count);
 
   mark_point();
@@ -2552,12 +2552,12 @@ START_TEST (jot_resolve_logfmt_command_test) {
   resolve_on_meta_count = resolve_on_default_count = resolve_on_other_count = 0;
   res = pr_jot_resolve_logfmt(p, cmd, NULL, logfmt, NULL,
     resolve_on_meta, resolve_on_default, resolve_on_other);
-  fail_unless(res == 0, "Failed to handle logfmt: %s", strerror(errno));
-  fail_unless(resolve_on_meta_count == 0,
+  ck_assert_msg(res == 0, "Failed to handle logfmt: %s", strerror(errno));
+  ck_assert_msg(resolve_on_meta_count == 0,
     "Expected on_meta count 0, got %u", resolve_on_meta_count);
-  fail_unless(resolve_on_default_count == 1,
+  ck_assert_msg(resolve_on_default_count == 1,
     "Expected on_default count 1, got %u", resolve_on_default_count);
-  fail_unless(resolve_on_other_count == 0,
+  ck_assert_msg(resolve_on_other_count == 0,
     "Expected on_other count 0, got %u", resolve_on_other_count);
 
   mark_point();
@@ -2567,12 +2567,12 @@ START_TEST (jot_resolve_logfmt_command_test) {
   resolve_on_meta_count = resolve_on_default_count = resolve_on_other_count = 0;
   res = pr_jot_resolve_logfmt(p, cmd, NULL, logfmt, NULL,
     resolve_on_meta, resolve_on_default, resolve_on_other);
-  fail_unless(res == 0, "Failed to handle logfmt: %s", strerror(errno));
-  fail_unless(resolve_on_meta_count == 1,
+  ck_assert_msg(res == 0, "Failed to handle logfmt: %s", strerror(errno));
+  ck_assert_msg(resolve_on_meta_count == 1,
     "Expected on_meta count 1, got %u", resolve_on_meta_count);
-  fail_unless(resolve_on_default_count == 0,
+  ck_assert_msg(resolve_on_default_count == 0,
     "Expected on_default count 0, got %u", resolve_on_default_count);
-  fail_unless(resolve_on_other_count == 0,
+  ck_assert_msg(resolve_on_other_count == 0,
     "Expected on_other count 0, got %u", resolve_on_other_count);
 
   mark_point();
@@ -2582,12 +2582,12 @@ START_TEST (jot_resolve_logfmt_command_test) {
   resolve_on_meta_count = resolve_on_default_count = resolve_on_other_count = 0;
   res = pr_jot_resolve_logfmt(p, cmd, NULL, logfmt, NULL,
     resolve_on_meta, resolve_on_default, resolve_on_other);
-  fail_unless(res == 0, "Failed to handle logfmt: %s", strerror(errno));
-  fail_unless(resolve_on_meta_count == 1,
+  ck_assert_msg(res == 0, "Failed to handle logfmt: %s", strerror(errno));
+  ck_assert_msg(resolve_on_meta_count == 1,
     "Expected on_meta count 1, got %u", resolve_on_meta_count);
-  fail_unless(resolve_on_default_count == 0,
+  ck_assert_msg(resolve_on_default_count == 0,
     "Expected on_default count 0, got %u", resolve_on_default_count);
-  fail_unless(resolve_on_other_count == 0,
+  ck_assert_msg(resolve_on_other_count == 0,
     "Expected on_other count 0, got %u", resolve_on_other_count);
 
   mark_point();
@@ -2596,12 +2596,12 @@ START_TEST (jot_resolve_logfmt_command_test) {
   resolve_on_meta_count = resolve_on_default_count = resolve_on_other_count = 0;
   res = pr_jot_resolve_logfmt(p, cmd, NULL, logfmt, NULL,
     resolve_on_meta, resolve_on_default, resolve_on_other);
-  fail_unless(res == 0, "Failed to handle logfmt: %s", strerror(errno));
-  fail_unless(resolve_on_meta_count == 1,
+  ck_assert_msg(res == 0, "Failed to handle logfmt: %s", strerror(errno));
+  ck_assert_msg(resolve_on_meta_count == 1,
     "Expected on_meta count 1, got %u", resolve_on_meta_count);
-  fail_unless(resolve_on_default_count == 0,
+  ck_assert_msg(resolve_on_default_count == 0,
     "Expected on_default count 0, got %u", resolve_on_default_count);
-  fail_unless(resolve_on_other_count == 0,
+  ck_assert_msg(resolve_on_other_count == 0,
     "Expected on_other count 0, got %u", resolve_on_other_count);
 
   mark_point();
@@ -2610,12 +2610,12 @@ START_TEST (jot_resolve_logfmt_command_test) {
   resolve_on_meta_count = resolve_on_default_count = resolve_on_other_count = 0;
   res = pr_jot_resolve_logfmt(p, cmd, NULL, logfmt, NULL,
     resolve_on_meta, resolve_on_default, resolve_on_other);
-  fail_unless(res == 0, "Failed to handle logfmt: %s", strerror(errno));
-  fail_unless(resolve_on_meta_count == 1,
+  ck_assert_msg(res == 0, "Failed to handle logfmt: %s", strerror(errno));
+  ck_assert_msg(resolve_on_meta_count == 1,
     "Expected on_meta count 1, got %u", resolve_on_meta_count);
-  fail_unless(resolve_on_default_count == 0,
+  ck_assert_msg(resolve_on_default_count == 0,
     "Expected on_default count 0, got %u", resolve_on_default_count);
-  fail_unless(resolve_on_other_count == 0,
+  ck_assert_msg(resolve_on_other_count == 0,
     "Expected on_other count 0, got %u", resolve_on_other_count);
 }
 END_TEST
@@ -2636,12 +2636,12 @@ START_TEST (jot_resolve_logfmt_local_name_test) {
   resolve_on_meta_count = resolve_on_default_count = resolve_on_other_count = 0;
   res = pr_jot_resolve_logfmt(p, cmd, NULL, logfmt, NULL,
     resolve_on_meta, resolve_on_default, resolve_on_other);
-  fail_unless(res == 0, "Failed to handle logfmt: %s", strerror(errno));
-  fail_unless(resolve_on_meta_count == 0,
+  ck_assert_msg(res == 0, "Failed to handle logfmt: %s", strerror(errno));
+  ck_assert_msg(resolve_on_meta_count == 0,
     "Expected on_meta count 0, got %u", resolve_on_meta_count);
-  fail_unless(resolve_on_default_count == 1,
+  ck_assert_msg(resolve_on_default_count == 1,
     "Expected on_default count 1, got %u", resolve_on_default_count);
-  fail_unless(resolve_on_other_count == 0,
+  ck_assert_msg(resolve_on_other_count == 0,
     "Expected on_other count 0, got %u", resolve_on_other_count);
 
   mark_point();
@@ -2651,12 +2651,12 @@ START_TEST (jot_resolve_logfmt_local_name_test) {
   cmd->server = server;
   res = pr_jot_resolve_logfmt(p, cmd, NULL, logfmt, NULL,
     resolve_on_meta, resolve_on_default, resolve_on_other);
-  fail_unless(res == 0, "Failed to handle logfmt: %s", strerror(errno));
-  fail_unless(resolve_on_meta_count == 1,
+  ck_assert_msg(res == 0, "Failed to handle logfmt: %s", strerror(errno));
+  ck_assert_msg(resolve_on_meta_count == 1,
     "Expected on_meta count 1, got %u", resolve_on_meta_count);
-  fail_unless(resolve_on_default_count == 0,
+  ck_assert_msg(resolve_on_default_count == 0,
     "Expected on_default count 0, got %u", resolve_on_default_count);
-  fail_unless(resolve_on_other_count == 0,
+  ck_assert_msg(resolve_on_other_count == 0,
     "Expected on_other count 0, got %u", resolve_on_other_count);
 }
 END_TEST
@@ -2677,12 +2677,12 @@ START_TEST (jot_resolve_logfmt_local_port_test) {
   resolve_on_meta_count = resolve_on_default_count = resolve_on_other_count = 0;
   res = pr_jot_resolve_logfmt(p, cmd, NULL, logfmt, NULL,
     resolve_on_meta, resolve_on_default, resolve_on_other);
-  fail_unless(res == 0, "Failed to handle logfmt: %s", strerror(errno));
-  fail_unless(resolve_on_meta_count == 0,
+  ck_assert_msg(res == 0, "Failed to handle logfmt: %s", strerror(errno));
+  ck_assert_msg(resolve_on_meta_count == 0,
     "Expected on_meta count 0, got %u", resolve_on_meta_count);
-  fail_unless(resolve_on_default_count == 1,
+  ck_assert_msg(resolve_on_default_count == 1,
     "Expected on_default count 1, got %u", resolve_on_default_count);
-  fail_unless(resolve_on_other_count == 0,
+  ck_assert_msg(resolve_on_other_count == 0,
     "Expected on_other count 0, got %u", resolve_on_other_count);
 
   mark_point();
@@ -2692,12 +2692,12 @@ START_TEST (jot_resolve_logfmt_local_port_test) {
   cmd->server = server;
   res = pr_jot_resolve_logfmt(p, cmd, NULL, logfmt, NULL,
     resolve_on_meta, resolve_on_default, resolve_on_other);
-  fail_unless(res == 0, "Failed to handle logfmt: %s", strerror(errno));
-  fail_unless(resolve_on_meta_count == 1,
+  ck_assert_msg(res == 0, "Failed to handle logfmt: %s", strerror(errno));
+  ck_assert_msg(resolve_on_meta_count == 1,
     "Expected on_meta count 1, got %u", resolve_on_meta_count);
-  fail_unless(resolve_on_default_count == 0,
+  ck_assert_msg(resolve_on_default_count == 0,
     "Expected on_default count 0, got %u", resolve_on_default_count);
-  fail_unless(resolve_on_other_count == 0,
+  ck_assert_msg(resolve_on_other_count == 0,
     "Expected on_other count 0, got %u", resolve_on_other_count);
 }
 END_TEST
@@ -2717,12 +2717,12 @@ START_TEST (jot_resolve_logfmt_user_test) {
   resolve_on_meta_count = resolve_on_default_count = resolve_on_other_count = 0;
   res = pr_jot_resolve_logfmt(p, cmd, NULL, logfmt, NULL,
     resolve_on_meta, resolve_on_default, resolve_on_other);
-  fail_unless(res == 0, "Failed to handle logfmt: %s", strerror(errno));
-  fail_unless(resolve_on_meta_count == 0,
+  ck_assert_msg(res == 0, "Failed to handle logfmt: %s", strerror(errno));
+  ck_assert_msg(resolve_on_meta_count == 0,
     "Expected on_meta count 0, got %u", resolve_on_meta_count);
-  fail_unless(resolve_on_default_count == 1,
+  ck_assert_msg(resolve_on_default_count == 1,
     "Expected on_default count 1, got %u", resolve_on_default_count);
-  fail_unless(resolve_on_other_count == 0,
+  ck_assert_msg(resolve_on_other_count == 0,
     "Expected on_other count 0, got %u", resolve_on_other_count);
 
   mark_point();
@@ -2730,12 +2730,12 @@ START_TEST (jot_resolve_logfmt_user_test) {
   session.user = "FOOBAR";
   res = pr_jot_resolve_logfmt(p, cmd, NULL, logfmt, NULL,
     resolve_on_meta, resolve_on_default, resolve_on_other);
-  fail_unless(res == 0, "Failed to handle logfmt: %s", strerror(errno));
-  fail_unless(resolve_on_meta_count == 1,
+  ck_assert_msg(res == 0, "Failed to handle logfmt: %s", strerror(errno));
+  ck_assert_msg(resolve_on_meta_count == 1,
     "Expected on_meta count 1, got %u", resolve_on_meta_count);
-  fail_unless(resolve_on_default_count == 0,
+  ck_assert_msg(resolve_on_default_count == 0,
     "Expected on_default count 0, got %u", resolve_on_default_count);
-  fail_unless(resolve_on_other_count == 0,
+  ck_assert_msg(resolve_on_other_count == 0,
     "Expected on_other count 0, got %u", resolve_on_other_count);
 
   session.user = NULL;
@@ -2757,12 +2757,12 @@ START_TEST (jot_resolve_logfmt_uid_test) {
   resolve_on_meta_count = resolve_on_default_count = resolve_on_other_count = 0;
   res = pr_jot_resolve_logfmt(p, cmd, NULL, logfmt, NULL,
     resolve_on_meta, resolve_on_default, resolve_on_other);
-  fail_unless(res == 0, "Failed to handle logfmt: %s", strerror(errno));
-  fail_unless(resolve_on_meta_count == 1,
+  ck_assert_msg(res == 0, "Failed to handle logfmt: %s", strerror(errno));
+  ck_assert_msg(resolve_on_meta_count == 1,
     "Expected on_meta count 1, got %u", resolve_on_meta_count);
-  fail_unless(resolve_on_default_count == 0,
+  ck_assert_msg(resolve_on_default_count == 0,
     "Expected on_default count 0, got %u", resolve_on_default_count);
-  fail_unless(resolve_on_other_count == 0,
+  ck_assert_msg(resolve_on_other_count == 0,
     "Expected on_other count 0, got %u", resolve_on_other_count);
 
   mark_point();
@@ -2771,12 +2771,12 @@ START_TEST (jot_resolve_logfmt_uid_test) {
   session.login_uid = 400;
   res = pr_jot_resolve_logfmt(p, cmd, NULL, logfmt, NULL,
     resolve_on_meta, resolve_on_default, resolve_on_other);
-  fail_unless(res == 0, "Failed to handle logfmt: %s", strerror(errno));
-  fail_unless(resolve_on_meta_count == 1,
+  ck_assert_msg(res == 0, "Failed to handle logfmt: %s", strerror(errno));
+  ck_assert_msg(resolve_on_meta_count == 1,
     "Expected on_meta count 1, got %u", resolve_on_meta_count);
-  fail_unless(resolve_on_default_count == 0,
+  ck_assert_msg(resolve_on_default_count == 0,
     "Expected on_default count 0, got %u", resolve_on_default_count);
-  fail_unless(resolve_on_other_count == 0,
+  ck_assert_msg(resolve_on_other_count == 0,
     "Expected on_other count 0, got %u", resolve_on_other_count);
 
   session.auth_mech = NULL;
@@ -2799,12 +2799,12 @@ START_TEST (jot_resolve_logfmt_group_test) {
   resolve_on_meta_count = resolve_on_default_count = resolve_on_other_count = 0;
   res = pr_jot_resolve_logfmt(p, cmd, NULL, logfmt, NULL,
     resolve_on_meta, resolve_on_default, resolve_on_other);
-  fail_unless(res == 0, "Failed to handle logfmt: %s", strerror(errno));
-  fail_unless(resolve_on_meta_count == 0,
+  ck_assert_msg(res == 0, "Failed to handle logfmt: %s", strerror(errno));
+  ck_assert_msg(resolve_on_meta_count == 0,
     "Expected on_meta count 0, got %u", resolve_on_meta_count);
-  fail_unless(resolve_on_default_count == 1,
+  ck_assert_msg(resolve_on_default_count == 1,
     "Expected on_default count 1, got %u", resolve_on_default_count);
-  fail_unless(resolve_on_other_count == 0,
+  ck_assert_msg(resolve_on_other_count == 0,
     "Expected on_other count 0, got %u", resolve_on_other_count);
 
   mark_point();
@@ -2812,12 +2812,12 @@ START_TEST (jot_resolve_logfmt_group_test) {
   session.group = "FOOBAR";
   res = pr_jot_resolve_logfmt(p, cmd, NULL, logfmt, NULL,
     resolve_on_meta, resolve_on_default, resolve_on_other);
-  fail_unless(res == 0, "Failed to handle logfmt: %s", strerror(errno));
-  fail_unless(resolve_on_meta_count == 1,
+  ck_assert_msg(res == 0, "Failed to handle logfmt: %s", strerror(errno));
+  ck_assert_msg(resolve_on_meta_count == 1,
     "Expected on_meta count 1, got %u", resolve_on_meta_count);
-  fail_unless(resolve_on_default_count == 0,
+  ck_assert_msg(resolve_on_default_count == 0,
     "Expected on_default count 0, got %u", resolve_on_default_count);
-  fail_unless(resolve_on_other_count == 0,
+  ck_assert_msg(resolve_on_other_count == 0,
     "Expected on_other count 0, got %u", resolve_on_other_count);
 
   session.group = NULL;
@@ -2839,12 +2839,12 @@ START_TEST (jot_resolve_logfmt_gid_test) {
   resolve_on_meta_count = resolve_on_default_count = resolve_on_other_count = 0;
   res = pr_jot_resolve_logfmt(p, cmd, NULL, logfmt, NULL,
     resolve_on_meta, resolve_on_default, resolve_on_other);
-  fail_unless(res == 0, "Failed to handle logfmt: %s", strerror(errno));
-  fail_unless(resolve_on_meta_count == 1,
+  ck_assert_msg(res == 0, "Failed to handle logfmt: %s", strerror(errno));
+  ck_assert_msg(resolve_on_meta_count == 1,
     "Expected on_meta count 1, got %u", resolve_on_meta_count);
-  fail_unless(resolve_on_default_count == 0,
+  ck_assert_msg(resolve_on_default_count == 0,
     "Expected on_default count 0, got %u", resolve_on_default_count);
-  fail_unless(resolve_on_other_count == 0,
+  ck_assert_msg(resolve_on_other_count == 0,
     "Expected on_other count 0, got %u", resolve_on_other_count);
 
   mark_point();
@@ -2853,12 +2853,12 @@ START_TEST (jot_resolve_logfmt_gid_test) {
   session.login_gid = 400;
   res = pr_jot_resolve_logfmt(p, cmd, NULL, logfmt, NULL,
     resolve_on_meta, resolve_on_default, resolve_on_other);
-  fail_unless(res == 0, "Failed to handle logfmt: %s", strerror(errno));
-  fail_unless(resolve_on_meta_count == 1,
+  ck_assert_msg(res == 0, "Failed to handle logfmt: %s", strerror(errno));
+  ck_assert_msg(resolve_on_meta_count == 1,
     "Expected on_meta count 1, got %u", resolve_on_meta_count);
-  fail_unless(resolve_on_default_count == 0,
+  ck_assert_msg(resolve_on_default_count == 0,
     "Expected on_default count 0, got %u", resolve_on_default_count);
-  fail_unless(resolve_on_other_count == 0,
+  ck_assert_msg(resolve_on_other_count == 0,
     "Expected on_other count 0, got %u", resolve_on_other_count);
 
   session.auth_mech = NULL;
@@ -2883,12 +2883,12 @@ START_TEST (jot_resolve_logfmt_original_user_test) {
   resolve_on_meta_count = resolve_on_default_count = resolve_on_other_count = 0;
   res = pr_jot_resolve_logfmt(p, cmd, NULL, logfmt, NULL,
     resolve_on_meta, resolve_on_default, resolve_on_other);
-  fail_unless(res == 0, "Failed to handle logfmt: %s", strerror(errno));
-  fail_unless(resolve_on_meta_count == 0,
+  ck_assert_msg(res == 0, "Failed to handle logfmt: %s", strerror(errno));
+  ck_assert_msg(resolve_on_meta_count == 0,
     "Expected on_meta count 0, got %u", resolve_on_meta_count);
-  fail_unless(resolve_on_default_count == 1,
+  ck_assert_msg(resolve_on_default_count == 1,
     "Expected on_default count 1, got %u", resolve_on_default_count);
-  fail_unless(resolve_on_other_count == 0,
+  ck_assert_msg(resolve_on_other_count == 0,
     "Expected on_other count 0, got %u", resolve_on_other_count);
 
   /* Now, with the "mod_auth.orig-user" note. */
@@ -2899,12 +2899,12 @@ START_TEST (jot_resolve_logfmt_original_user_test) {
   pr_table_add_dup(session.notes, "mod_auth.orig-user", orig_user, 0);
   res = pr_jot_resolve_logfmt(p, cmd, NULL, logfmt, NULL,
     resolve_on_meta, resolve_on_default, resolve_on_other);
-  fail_unless(res == 0, "Failed to handle logfmt: %s", strerror(errno));
-  fail_unless(resolve_on_meta_count == 1,
+  ck_assert_msg(res == 0, "Failed to handle logfmt: %s", strerror(errno));
+  ck_assert_msg(resolve_on_meta_count == 1,
     "Expected on_meta count 1, got %u", resolve_on_meta_count);
-  fail_unless(resolve_on_default_count == 0,
+  ck_assert_msg(resolve_on_default_count == 0,
     "Expected on_default count 0, got %u", resolve_on_default_count);
-  fail_unless(resolve_on_other_count == 0,
+  ck_assert_msg(resolve_on_other_count == 0,
     "Expected on_other count 0, got %u", resolve_on_other_count);
 
   pr_table_empty(session.notes);
@@ -2928,12 +2928,12 @@ START_TEST (jot_resolve_logfmt_response_code_test) {
   resolve_on_meta_count = resolve_on_default_count = resolve_on_other_count = 0;
   res = pr_jot_resolve_logfmt(p, cmd, NULL, logfmt, NULL,
     resolve_on_meta, resolve_on_default, resolve_on_other);
-  fail_unless(res == 0, "Failed to handle logfmt: %s", strerror(errno));
-  fail_unless(resolve_on_meta_count == 0,
+  ck_assert_msg(res == 0, "Failed to handle logfmt: %s", strerror(errno));
+  ck_assert_msg(resolve_on_meta_count == 0,
     "Expected on_meta count 0, got %u", resolve_on_meta_count);
-  fail_unless(resolve_on_default_count == 1,
+  ck_assert_msg(resolve_on_default_count == 1,
     "Expected on_default count 1, got %u", resolve_on_default_count);
-  fail_unless(resolve_on_other_count == 0,
+  ck_assert_msg(resolve_on_other_count == 0,
     "Expected on_other count 0, got %u", resolve_on_other_count);
 
   mark_point();
@@ -2942,12 +2942,12 @@ START_TEST (jot_resolve_logfmt_response_code_test) {
   resolve_on_meta_count = resolve_on_default_count = resolve_on_other_count = 0;
   res = pr_jot_resolve_logfmt(p, cmd, NULL, logfmt, NULL,
     resolve_on_meta, resolve_on_default, resolve_on_other);
-  fail_unless(res == 0, "Failed to handle logfmt: %s", strerror(errno));
-  fail_unless(resolve_on_meta_count == 1,
+  ck_assert_msg(res == 0, "Failed to handle logfmt: %s", strerror(errno));
+  ck_assert_msg(resolve_on_meta_count == 1,
     "Expected on_meta count 1, got %u", resolve_on_meta_count);
-  fail_unless(resolve_on_default_count == 0,
+  ck_assert_msg(resolve_on_default_count == 0,
     "Expected on_default count 0, got %u", resolve_on_default_count);
-  fail_unless(resolve_on_other_count == 0,
+  ck_assert_msg(resolve_on_other_count == 0,
     "Expected on_other count 0, got %u", resolve_on_other_count);
 
   mark_point();
@@ -2959,12 +2959,12 @@ START_TEST (jot_resolve_logfmt_response_code_test) {
   pr_response_add("200", "foo %s", "bar");
   res = pr_jot_resolve_logfmt(p, cmd, NULL, logfmt, NULL,
     resolve_on_meta, resolve_on_default, resolve_on_other);
-  fail_unless(res == 0, "Failed to handle logfmt: %s", strerror(errno));
-  fail_unless(resolve_on_meta_count == 1,
+  ck_assert_msg(res == 0, "Failed to handle logfmt: %s", strerror(errno));
+  ck_assert_msg(resolve_on_meta_count == 1,
     "Expected on_meta count 1, got %u", resolve_on_meta_count);
-  fail_unless(resolve_on_default_count == 0,
+  ck_assert_msg(resolve_on_default_count == 0,
     "Expected on_default count 0, got %u", resolve_on_default_count);
-  fail_unless(resolve_on_other_count == 0,
+  ck_assert_msg(resolve_on_other_count == 0,
     "Expected on_other count 0, got %u", resolve_on_other_count);
 
   pr_response_clear(&resp_list);
@@ -2987,12 +2987,12 @@ START_TEST (jot_resolve_logfmt_response_text_test) {
   resolve_on_meta_count = resolve_on_default_count = resolve_on_other_count = 0;
   res = pr_jot_resolve_logfmt(p, cmd, NULL, logfmt, NULL,
     resolve_on_meta, resolve_on_default, resolve_on_other);
-  fail_unless(res == 0, "Failed to handle logfmt: %s", strerror(errno));
-  fail_unless(resolve_on_meta_count == 0,
+  ck_assert_msg(res == 0, "Failed to handle logfmt: %s", strerror(errno));
+  ck_assert_msg(resolve_on_meta_count == 0,
     "Expected on_meta count 0, got %u", resolve_on_meta_count);
-  fail_unless(resolve_on_default_count == 1,
+  ck_assert_msg(resolve_on_default_count == 1,
     "Expected on_default count 1, got %u", resolve_on_default_count);
-  fail_unless(resolve_on_other_count == 0,
+  ck_assert_msg(resolve_on_other_count == 0,
     "Expected on_other count 0, got %u", resolve_on_other_count);
 
   mark_point();
@@ -3002,12 +3002,12 @@ START_TEST (jot_resolve_logfmt_response_text_test) {
   pr_response_add("200", "foo %s", "bar");
   res = pr_jot_resolve_logfmt(p, cmd, NULL, logfmt, NULL,
     resolve_on_meta, resolve_on_default, resolve_on_other);
-  fail_unless(res == 0, "Failed to handle logfmt: %s", strerror(errno));
-  fail_unless(resolve_on_meta_count == 1,
+  ck_assert_msg(res == 0, "Failed to handle logfmt: %s", strerror(errno));
+  ck_assert_msg(resolve_on_meta_count == 1,
     "Expected on_meta count 1, got %u", resolve_on_meta_count);
-  fail_unless(resolve_on_default_count == 0,
+  ck_assert_msg(resolve_on_default_count == 0,
     "Expected on_default count 0, got %u", resolve_on_default_count);
-  fail_unless(resolve_on_other_count == 0,
+  ck_assert_msg(resolve_on_other_count == 0,
     "Expected on_other count 0, got %u", resolve_on_other_count);
 
   pr_response_clear(&resp_list);
@@ -3032,12 +3032,12 @@ START_TEST (jot_resolve_logfmt_response_ms_test) {
   resolve_on_meta_count = resolve_on_default_count = resolve_on_other_count = 0;
   res = pr_jot_resolve_logfmt(p, cmd, NULL, logfmt, NULL,
     resolve_on_meta, resolve_on_default, resolve_on_other);
-  fail_unless(res == 0, "Failed to handle logfmt: %s", strerror(errno));
-  fail_unless(resolve_on_meta_count == 0,
+  ck_assert_msg(res == 0, "Failed to handle logfmt: %s", strerror(errno));
+  ck_assert_msg(resolve_on_meta_count == 0,
     "Expected on_meta count 0, got %u", resolve_on_meta_count);
-  fail_unless(resolve_on_default_count == 1,
+  ck_assert_msg(resolve_on_default_count == 1,
     "Expected on_default count 1, got %u", resolve_on_default_count);
-  fail_unless(resolve_on_other_count == 0,
+  ck_assert_msg(resolve_on_other_count == 0,
     "Expected on_other count 0, got %u", resolve_on_other_count);
 
   /* Now, with the "start_ms" note. */
@@ -3047,12 +3047,12 @@ START_TEST (jot_resolve_logfmt_response_ms_test) {
   pr_table_add(cmd->notes, "start_ms", &start_ms, sizeof(start_ms));
   res = pr_jot_resolve_logfmt(p, cmd, NULL, logfmt, NULL,
     resolve_on_meta, resolve_on_default, resolve_on_other);
-  fail_unless(res == 0, "Failed to handle logfmt: %s", strerror(errno));
-  fail_unless(resolve_on_meta_count == 1,
+  ck_assert_msg(res == 0, "Failed to handle logfmt: %s", strerror(errno));
+  ck_assert_msg(resolve_on_meta_count == 1,
     "Expected on_meta count 1, got %u", resolve_on_meta_count);
-  fail_unless(resolve_on_default_count == 0,
+  ck_assert_msg(resolve_on_default_count == 0,
     "Expected on_default count 0, got %u", resolve_on_default_count);
-  fail_unless(resolve_on_other_count == 0,
+  ck_assert_msg(resolve_on_other_count == 0,
     "Expected on_other count 0, got %u", resolve_on_other_count);
 }
 END_TEST
@@ -3072,12 +3072,12 @@ START_TEST (jot_resolve_logfmt_class_test) {
   resolve_on_meta_count = resolve_on_default_count = resolve_on_other_count = 0;
   res = pr_jot_resolve_logfmt(p, cmd, NULL, logfmt, NULL,
     resolve_on_meta, resolve_on_default, resolve_on_other);
-  fail_unless(res == 0, "Failed to handle logfmt: %s", strerror(errno));
-  fail_unless(resolve_on_meta_count == 0,
+  ck_assert_msg(res == 0, "Failed to handle logfmt: %s", strerror(errno));
+  ck_assert_msg(resolve_on_meta_count == 0,
     "Expected on_meta count 0, got %u", resolve_on_meta_count);
-  fail_unless(resolve_on_default_count == 1,
+  ck_assert_msg(resolve_on_default_count == 1,
     "Expected on_default count 1, got %u", resolve_on_default_count);
-  fail_unless(resolve_on_other_count == 0,
+  ck_assert_msg(resolve_on_other_count == 0,
     "Expected on_other count 0, got %u", resolve_on_other_count);
 
   mark_point();
@@ -3085,12 +3085,12 @@ START_TEST (jot_resolve_logfmt_class_test) {
   session.conn_class = pcalloc(p, sizeof(pr_class_t));
   res = pr_jot_resolve_logfmt(p, cmd, NULL, logfmt, NULL,
     resolve_on_meta, resolve_on_default, resolve_on_other);
-  fail_unless(res == 0, "Failed to handle logfmt: %s", strerror(errno));
-  fail_unless(resolve_on_meta_count == 1,
+  ck_assert_msg(res == 0, "Failed to handle logfmt: %s", strerror(errno));
+  ck_assert_msg(resolve_on_meta_count == 1,
     "Expected on_meta count 1, got %u", resolve_on_meta_count);
-  fail_unless(resolve_on_default_count == 0,
+  ck_assert_msg(resolve_on_default_count == 0,
     "Expected on_default count 0, got %u", resolve_on_default_count);
-  fail_unless(resolve_on_other_count == 0,
+  ck_assert_msg(resolve_on_other_count == 0,
     "Expected on_other count 0, got %u", resolve_on_other_count);
 
   session.conn_class = NULL;
@@ -3114,12 +3114,12 @@ START_TEST (jot_resolve_logfmt_anon_passwd_test) {
   resolve_on_meta_count = resolve_on_default_count = resolve_on_other_count = 0;
   res = pr_jot_resolve_logfmt(p, cmd, NULL, logfmt, NULL,
     resolve_on_meta, resolve_on_default, resolve_on_other);
-  fail_unless(res == 0, "Failed to handle logfmt: %s", strerror(errno));
-  fail_unless(resolve_on_meta_count == 0,
+  ck_assert_msg(res == 0, "Failed to handle logfmt: %s", strerror(errno));
+  ck_assert_msg(resolve_on_meta_count == 0,
     "Expected on_meta count 0, got %u", resolve_on_meta_count);
-  fail_unless(resolve_on_default_count == 1,
+  ck_assert_msg(resolve_on_default_count == 1,
     "Expected on_default count 1, got %u", resolve_on_default_count);
-  fail_unless(resolve_on_other_count == 0,
+  ck_assert_msg(resolve_on_other_count == 0,
     "Expected on_other count 0, got %u", resolve_on_other_count);
 
   /* Now, with the "mod_auth.anon-passwd" note. */
@@ -3130,12 +3130,12 @@ START_TEST (jot_resolve_logfmt_anon_passwd_test) {
   pr_table_add_dup(session.notes, "mod_auth.anon-passwd", anon_passwd, 0);
   res = pr_jot_resolve_logfmt(p, cmd, NULL, logfmt, NULL,
     resolve_on_meta, resolve_on_default, resolve_on_other);
-  fail_unless(res == 0, "Failed to handle logfmt: %s", strerror(errno));
-  fail_unless(resolve_on_meta_count == 1,
+  ck_assert_msg(res == 0, "Failed to handle logfmt: %s", strerror(errno));
+  ck_assert_msg(resolve_on_meta_count == 1,
     "Expected on_meta count 1, got %u", resolve_on_meta_count);
-  fail_unless(resolve_on_default_count == 0,
+  ck_assert_msg(resolve_on_default_count == 0,
     "Expected on_default count 0, got %u", resolve_on_default_count);
-  fail_unless(resolve_on_other_count == 0,
+  ck_assert_msg(resolve_on_other_count == 0,
     "Expected on_other count 0, got %u", resolve_on_other_count);
 
   pr_table_empty(session.notes);
@@ -3159,12 +3159,12 @@ START_TEST (jot_resolve_logfmt_method_test) {
   resolve_on_meta_count = resolve_on_default_count = resolve_on_other_count = 0;
   res = pr_jot_resolve_logfmt(p, cmd, NULL, logfmt, NULL,
     resolve_on_meta, resolve_on_default, resolve_on_other);
-  fail_unless(res == 0, "Failed to handle logfmt: %s", strerror(errno));
-  fail_unless(resolve_on_meta_count == 0,
+  ck_assert_msg(res == 0, "Failed to handle logfmt: %s", strerror(errno));
+  ck_assert_msg(resolve_on_meta_count == 0,
     "Expected on_meta count 0, got %u", resolve_on_meta_count);
-  fail_unless(resolve_on_default_count == 1,
+  ck_assert_msg(resolve_on_default_count == 1,
     "Expected on_default count 1, got %u", resolve_on_default_count);
-  fail_unless(resolve_on_other_count == 0,
+  ck_assert_msg(resolve_on_other_count == 0,
     "Expected on_other count 0, got %u", resolve_on_other_count);
 
   mark_point();
@@ -3172,12 +3172,12 @@ START_TEST (jot_resolve_logfmt_method_test) {
   cmd->cmd_class = CL_MISC;
   res = pr_jot_resolve_logfmt(p, cmd, NULL, logfmt, NULL,
     resolve_on_meta, resolve_on_default, resolve_on_other);
-  fail_unless(res == 0, "Failed to handle logfmt: %s", strerror(errno));
-  fail_unless(resolve_on_meta_count == 1,
+  ck_assert_msg(res == 0, "Failed to handle logfmt: %s", strerror(errno));
+  ck_assert_msg(resolve_on_meta_count == 1,
     "Expected on_meta count 1, got %u", resolve_on_meta_count);
-  fail_unless(resolve_on_default_count == 0,
+  ck_assert_msg(resolve_on_default_count == 0,
     "Expected on_default count 0, got %u", resolve_on_default_count);
-  fail_unless(resolve_on_other_count == 0,
+  ck_assert_msg(resolve_on_other_count == 0,
     "Expected on_other count 0, got %u", resolve_on_other_count);
 
   mark_point();
@@ -3186,12 +3186,12 @@ START_TEST (jot_resolve_logfmt_method_test) {
   cmd->cmd_class = CL_MISC;
   res = pr_jot_resolve_logfmt(p, cmd, NULL, logfmt, NULL,
     resolve_on_meta, resolve_on_default, resolve_on_other);
-  fail_unless(res == 0, "Failed to handle logfmt: %s", strerror(errno));
-  fail_unless(resolve_on_meta_count == 0,
+  ck_assert_msg(res == 0, "Failed to handle logfmt: %s", strerror(errno));
+  ck_assert_msg(resolve_on_meta_count == 0,
     "Expected on_meta count 0, got %u", resolve_on_meta_count);
-  fail_unless(resolve_on_default_count == 1,
+  ck_assert_msg(resolve_on_default_count == 1,
     "Expected on_default count 1, got %u", resolve_on_default_count);
-  fail_unless(resolve_on_other_count == 0,
+  ck_assert_msg(resolve_on_other_count == 0,
     "Expected on_other count 0, got %u", resolve_on_other_count);
 
   mark_point();
@@ -3200,12 +3200,12 @@ START_TEST (jot_resolve_logfmt_method_test) {
   cmd->cmd_class = CL_MISC;
   res = pr_jot_resolve_logfmt(p, cmd, NULL, logfmt, NULL,
     resolve_on_meta, resolve_on_default, resolve_on_other);
-  fail_unless(res == 0, "Failed to handle logfmt: %s", strerror(errno));
-  fail_unless(resolve_on_meta_count == 1,
+  ck_assert_msg(res == 0, "Failed to handle logfmt: %s", strerror(errno));
+  ck_assert_msg(resolve_on_meta_count == 1,
     "Expected on_meta count 1, got %u", resolve_on_meta_count);
-  fail_unless(resolve_on_default_count == 0,
+  ck_assert_msg(resolve_on_default_count == 0,
     "Expected on_default count 0, got %u", resolve_on_default_count);
-  fail_unless(resolve_on_other_count == 0,
+  ck_assert_msg(resolve_on_other_count == 0,
     "Expected on_other count 0, got %u", resolve_on_other_count);
 }
 END_TEST
@@ -3225,12 +3225,12 @@ START_TEST (jot_resolve_logfmt_xfer_path_test) {
   cmd->cmd_class = CL_MISC;
   res = pr_jot_resolve_logfmt(p, cmd, NULL, logfmt, NULL,
     resolve_on_meta, resolve_on_default, resolve_on_other);
-  fail_unless(res == 0, "Failed to handle logfmt: %s", strerror(errno));
-  fail_unless(resolve_on_meta_count == 0,
+  ck_assert_msg(res == 0, "Failed to handle logfmt: %s", strerror(errno));
+  ck_assert_msg(resolve_on_meta_count == 0,
     "Expected on_meta count 0, got %u", resolve_on_meta_count);
-  fail_unless(resolve_on_default_count == 1,
+  ck_assert_msg(resolve_on_default_count == 1,
     "Expected on_default count 1, got %u", resolve_on_default_count);
-  fail_unless(resolve_on_other_count == 0,
+  ck_assert_msg(resolve_on_other_count == 0,
     "Expected on_other count 0, got %u", resolve_on_other_count);
 
   mark_point();
@@ -3240,12 +3240,12 @@ START_TEST (jot_resolve_logfmt_xfer_path_test) {
   cmd->arg = pstrdup(p, "foo");
   res = pr_jot_resolve_logfmt(p, cmd, NULL, logfmt, NULL,
     resolve_on_meta, resolve_on_default, resolve_on_other);
-  fail_unless(res == 0, "Failed to handle logfmt: %s", strerror(errno));
-  fail_unless(resolve_on_meta_count == 1,
+  ck_assert_msg(res == 0, "Failed to handle logfmt: %s", strerror(errno));
+  ck_assert_msg(resolve_on_meta_count == 1,
     "Expected on_meta count 1, got %u", resolve_on_meta_count);
-  fail_unless(resolve_on_default_count == 0,
+  ck_assert_msg(resolve_on_default_count == 0,
     "Expected on_default count 0, got %u", resolve_on_default_count);
-  fail_unless(resolve_on_other_count == 0,
+  ck_assert_msg(resolve_on_other_count == 0,
     "Expected on_other count 0, got %u", resolve_on_other_count);
 
   mark_point();
@@ -3256,12 +3256,12 @@ START_TEST (jot_resolve_logfmt_xfer_path_test) {
   session.xfer.path = pstrdup(p, "foo/bar");
   res = pr_jot_resolve_logfmt(p, cmd, NULL, logfmt, NULL,
     resolve_on_meta, resolve_on_default, resolve_on_other);
-  fail_unless(res == 0, "Failed to handle logfmt: %s", strerror(errno));
-  fail_unless(resolve_on_meta_count == 1,
+  ck_assert_msg(res == 0, "Failed to handle logfmt: %s", strerror(errno));
+  ck_assert_msg(resolve_on_meta_count == 1,
     "Expected on_meta count 1, got %u", resolve_on_meta_count);
-  fail_unless(resolve_on_default_count == 0,
+  ck_assert_msg(resolve_on_default_count == 0,
     "Expected on_default count 0, got %u", resolve_on_default_count);
-  fail_unless(resolve_on_other_count == 0,
+  ck_assert_msg(resolve_on_other_count == 0,
     "Expected on_other count 0, got %u", resolve_on_other_count);
 
   session.xfer.p = NULL;
@@ -3274,12 +3274,12 @@ START_TEST (jot_resolve_logfmt_xfer_path_test) {
   cmd->arg = pstrdup(p, "foo/bar");
   res = pr_jot_resolve_logfmt(p, cmd, NULL, logfmt, NULL,
     resolve_on_meta, resolve_on_default, resolve_on_other);
-  fail_unless(res == 0, "Failed to handle logfmt: %s", strerror(errno));
-  fail_unless(resolve_on_meta_count == 1,
+  ck_assert_msg(res == 0, "Failed to handle logfmt: %s", strerror(errno));
+  ck_assert_msg(resolve_on_meta_count == 1,
     "Expected on_meta count 1, got %u", resolve_on_meta_count);
-  fail_unless(resolve_on_default_count == 0,
+  ck_assert_msg(resolve_on_default_count == 0,
     "Expected on_default count 0, got %u", resolve_on_default_count);
-  fail_unless(resolve_on_other_count == 0,
+  ck_assert_msg(resolve_on_other_count == 0,
     "Expected on_other count 0, got %u", resolve_on_other_count);
 
   mark_point();
@@ -3289,12 +3289,12 @@ START_TEST (jot_resolve_logfmt_xfer_path_test) {
   cmd->arg = pstrdup(p, "foo/bar");
   res = pr_jot_resolve_logfmt(p, cmd, NULL, logfmt, NULL,
     resolve_on_meta, resolve_on_default, resolve_on_other);
-  fail_unless(res == 0, "Failed to handle logfmt: %s", strerror(errno));
-  fail_unless(resolve_on_meta_count == 1,
+  ck_assert_msg(res == 0, "Failed to handle logfmt: %s", strerror(errno));
+  ck_assert_msg(resolve_on_meta_count == 1,
     "Expected on_meta count 1, got %u", resolve_on_meta_count);
-  fail_unless(resolve_on_default_count == 0,
+  ck_assert_msg(resolve_on_default_count == 0,
     "Expected on_default count 0, got %u", resolve_on_default_count);
-  fail_unless(resolve_on_other_count == 0,
+  ck_assert_msg(resolve_on_other_count == 0,
     "Expected on_other count 0, got %u", resolve_on_other_count);
 
   mark_point();
@@ -3304,12 +3304,12 @@ START_TEST (jot_resolve_logfmt_xfer_path_test) {
   cmd->arg = pstrdup(p, "foo/bar");
   res = pr_jot_resolve_logfmt(p, cmd, NULL, logfmt, NULL,
     resolve_on_meta, resolve_on_default, resolve_on_other);
-  fail_unless(res == 0, "Failed to handle logfmt: %s", strerror(errno));
-  fail_unless(resolve_on_meta_count == 1,
+  ck_assert_msg(res == 0, "Failed to handle logfmt: %s", strerror(errno));
+  ck_assert_msg(resolve_on_meta_count == 1,
     "Expected on_meta count 1, got %u", resolve_on_meta_count);
-  fail_unless(resolve_on_default_count == 0,
+  ck_assert_msg(resolve_on_default_count == 0,
     "Expected on_default count 0, got %u", resolve_on_default_count);
-  fail_unless(resolve_on_other_count == 0,
+  ck_assert_msg(resolve_on_other_count == 0,
     "Expected on_other count 0, got %u", resolve_on_other_count);
 
   mark_point();
@@ -3319,12 +3319,12 @@ START_TEST (jot_resolve_logfmt_xfer_path_test) {
   cmd->arg = pstrdup(p, "foo/bar");
   res = pr_jot_resolve_logfmt(p, cmd, NULL, logfmt, NULL,
     resolve_on_meta, resolve_on_default, resolve_on_other);
-  fail_unless(res == 0, "Failed to handle logfmt: %s", strerror(errno));
-  fail_unless(resolve_on_meta_count == 1,
+  ck_assert_msg(res == 0, "Failed to handle logfmt: %s", strerror(errno));
+  ck_assert_msg(resolve_on_meta_count == 1,
     "Expected on_meta count 1, got %u", resolve_on_meta_count);
-  fail_unless(resolve_on_default_count == 0,
+  ck_assert_msg(resolve_on_default_count == 0,
     "Expected on_default count 0, got %u", resolve_on_default_count);
-  fail_unless(resolve_on_other_count == 0,
+  ck_assert_msg(resolve_on_other_count == 0,
     "Expected on_other count 0, got %u", resolve_on_other_count);
 
   mark_point();
@@ -3334,12 +3334,12 @@ START_TEST (jot_resolve_logfmt_xfer_path_test) {
   cmd->arg = pstrdup(p, "foo/bar");
   res = pr_jot_resolve_logfmt(p, cmd, NULL, logfmt, NULL,
     resolve_on_meta, resolve_on_default, resolve_on_other);
-  fail_unless(res == 0, "Failed to handle logfmt: %s", strerror(errno));
-  fail_unless(resolve_on_meta_count == 1,
+  ck_assert_msg(res == 0, "Failed to handle logfmt: %s", strerror(errno));
+  ck_assert_msg(resolve_on_meta_count == 1,
     "Expected on_meta count 1, got %u", resolve_on_meta_count);
-  fail_unless(resolve_on_default_count == 0,
+  ck_assert_msg(resolve_on_default_count == 0,
     "Expected on_default count 0, got %u", resolve_on_default_count);
-  fail_unless(resolve_on_other_count == 0,
+  ck_assert_msg(resolve_on_other_count == 0,
     "Expected on_other count 0, got %u", resolve_on_other_count);
 }
 END_TEST
@@ -3359,12 +3359,12 @@ START_TEST (jot_resolve_logfmt_xfer_port_test) {
   cmd->cmd_class = CL_MISC;
   res = pr_jot_resolve_logfmt(p, cmd, NULL, logfmt, NULL,
     resolve_on_meta, resolve_on_default, resolve_on_other);
-  fail_unless(res == 0, "Failed to handle logfmt: %s", strerror(errno));
-  fail_unless(resolve_on_meta_count == 0,
+  ck_assert_msg(res == 0, "Failed to handle logfmt: %s", strerror(errno));
+  ck_assert_msg(resolve_on_meta_count == 0,
     "Expected on_meta count 0, got %u", resolve_on_meta_count);
-  fail_unless(resolve_on_default_count == 1,
+  ck_assert_msg(resolve_on_default_count == 1,
     "Expected on_default count 1, got %u", resolve_on_default_count);
-  fail_unless(resolve_on_other_count == 0,
+  ck_assert_msg(resolve_on_other_count == 0,
     "Expected on_other count 0, got %u", resolve_on_other_count);
 
   mark_point();
@@ -3374,12 +3374,12 @@ START_TEST (jot_resolve_logfmt_xfer_port_test) {
   session.data_port = 7777;
   res = pr_jot_resolve_logfmt(p, cmd, NULL, logfmt, NULL,
     resolve_on_meta, resolve_on_default, resolve_on_other);
-  fail_unless(res == 0, "Failed to handle logfmt: %s", strerror(errno));
-  fail_unless(resolve_on_meta_count == 1,
+  ck_assert_msg(res == 0, "Failed to handle logfmt: %s", strerror(errno));
+  ck_assert_msg(resolve_on_meta_count == 1,
     "Expected on_meta count 1, got %u", resolve_on_meta_count);
-  fail_unless(resolve_on_default_count == 0,
+  ck_assert_msg(resolve_on_default_count == 0,
     "Expected on_default count 0, got %u", resolve_on_default_count);
-  fail_unless(resolve_on_other_count == 0,
+  ck_assert_msg(resolve_on_other_count == 0,
     "Expected on_other count 0, got %u", resolve_on_other_count);
 
   mark_point();
@@ -3389,12 +3389,12 @@ START_TEST (jot_resolve_logfmt_xfer_port_test) {
   session.data_port = 7777;
   res = pr_jot_resolve_logfmt(p, cmd, NULL, logfmt, NULL,
     resolve_on_meta, resolve_on_default, resolve_on_other);
-  fail_unless(res == 0, "Failed to handle logfmt: %s", strerror(errno));
-  fail_unless(resolve_on_meta_count == 1,
+  ck_assert_msg(res == 0, "Failed to handle logfmt: %s", strerror(errno));
+  ck_assert_msg(resolve_on_meta_count == 1,
     "Expected on_meta count 1, got %u", resolve_on_meta_count);
-  fail_unless(resolve_on_default_count == 0,
+  ck_assert_msg(resolve_on_default_count == 0,
     "Expected on_default count 0, got %u", resolve_on_default_count);
-  fail_unless(resolve_on_other_count == 0,
+  ck_assert_msg(resolve_on_other_count == 0,
     "Expected on_other count 0, got %u", resolve_on_other_count);
 
   mark_point();
@@ -3404,12 +3404,12 @@ START_TEST (jot_resolve_logfmt_xfer_port_test) {
   session.data_port = 7777;
   res = pr_jot_resolve_logfmt(p, cmd, NULL, logfmt, NULL,
     resolve_on_meta, resolve_on_default, resolve_on_other);
-  fail_unless(res == 0, "Failed to handle logfmt: %s", strerror(errno));
-  fail_unless(resolve_on_meta_count == 1,
+  ck_assert_msg(res == 0, "Failed to handle logfmt: %s", strerror(errno));
+  ck_assert_msg(resolve_on_meta_count == 1,
     "Expected on_meta count 1, got %u", resolve_on_meta_count);
-  fail_unless(resolve_on_default_count == 0,
+  ck_assert_msg(resolve_on_default_count == 0,
     "Expected on_default count 0, got %u", resolve_on_default_count);
-  fail_unless(resolve_on_other_count == 0,
+  ck_assert_msg(resolve_on_other_count == 0,
     "Expected on_other count 0, got %u", resolve_on_other_count);
 
   mark_point();
@@ -3419,12 +3419,12 @@ START_TEST (jot_resolve_logfmt_xfer_port_test) {
   session.data_port = 7777;
   res = pr_jot_resolve_logfmt(p, cmd, NULL, logfmt, NULL,
     resolve_on_meta, resolve_on_default, resolve_on_other);
-  fail_unless(res == 0, "Failed to handle logfmt: %s", strerror(errno));
-  fail_unless(resolve_on_meta_count == 1,
+  ck_assert_msg(res == 0, "Failed to handle logfmt: %s", strerror(errno));
+  ck_assert_msg(resolve_on_meta_count == 1,
     "Expected on_meta count 1, got %u", resolve_on_meta_count);
-  fail_unless(resolve_on_default_count == 0,
+  ck_assert_msg(resolve_on_default_count == 0,
     "Expected on_default count 0, got %u", resolve_on_default_count);
-  fail_unless(resolve_on_other_count == 0,
+  ck_assert_msg(resolve_on_other_count == 0,
     "Expected on_other count 0, got %u", resolve_on_other_count);
 
   mark_point();
@@ -3434,12 +3434,12 @@ START_TEST (jot_resolve_logfmt_xfer_port_test) {
   session.data_port = 7777;
   res = pr_jot_resolve_logfmt(p, cmd, NULL, logfmt, NULL,
     resolve_on_meta, resolve_on_default, resolve_on_other);
-  fail_unless(res == 0, "Failed to handle logfmt: %s", strerror(errno));
-  fail_unless(resolve_on_meta_count == 1,
+  ck_assert_msg(res == 0, "Failed to handle logfmt: %s", strerror(errno));
+  ck_assert_msg(resolve_on_meta_count == 1,
     "Expected on_meta count 1, got %u", resolve_on_meta_count);
-  fail_unless(resolve_on_default_count == 0,
+  ck_assert_msg(resolve_on_default_count == 0,
     "Expected on_default count 0, got %u", resolve_on_default_count);
-  fail_unless(resolve_on_other_count == 0,
+  ck_assert_msg(resolve_on_other_count == 0,
     "Expected on_other count 0, got %u", resolve_on_other_count);
 
   mark_point();
@@ -3449,12 +3449,12 @@ START_TEST (jot_resolve_logfmt_xfer_port_test) {
   session.data_port = 7777;
   res = pr_jot_resolve_logfmt(p, cmd, NULL, logfmt, NULL,
     resolve_on_meta, resolve_on_default, resolve_on_other);
-  fail_unless(res == 0, "Failed to handle logfmt: %s", strerror(errno));
-  fail_unless(resolve_on_meta_count == 1,
+  ck_assert_msg(res == 0, "Failed to handle logfmt: %s", strerror(errno));
+  ck_assert_msg(resolve_on_meta_count == 1,
     "Expected on_meta count 1, got %u", resolve_on_meta_count);
-  fail_unless(resolve_on_default_count == 0,
+  ck_assert_msg(resolve_on_default_count == 0,
     "Expected on_default count 0, got %u", resolve_on_default_count);
-  fail_unless(resolve_on_other_count == 0,
+  ck_assert_msg(resolve_on_other_count == 0,
     "Expected on_other count 0, got %u", resolve_on_other_count);
 
   mark_point();
@@ -3464,12 +3464,12 @@ START_TEST (jot_resolve_logfmt_xfer_port_test) {
   session.data_port = 7777;
   res = pr_jot_resolve_logfmt(p, cmd, NULL, logfmt, NULL,
     resolve_on_meta, resolve_on_default, resolve_on_other);
-  fail_unless(res == 0, "Failed to handle logfmt: %s", strerror(errno));
-  fail_unless(resolve_on_meta_count == 1,
+  ck_assert_msg(res == 0, "Failed to handle logfmt: %s", strerror(errno));
+  ck_assert_msg(resolve_on_meta_count == 1,
     "Expected on_meta count 1, got %u", resolve_on_meta_count);
-  fail_unless(resolve_on_default_count == 0,
+  ck_assert_msg(resolve_on_default_count == 0,
     "Expected on_default count 0, got %u", resolve_on_default_count);
-  fail_unless(resolve_on_other_count == 0,
+  ck_assert_msg(resolve_on_other_count == 0,
     "Expected on_other count 0, got %u", resolve_on_other_count);
 
   mark_point();
@@ -3479,12 +3479,12 @@ START_TEST (jot_resolve_logfmt_xfer_port_test) {
   session.data_port = 7777;
   res = pr_jot_resolve_logfmt(p, cmd, NULL, logfmt, NULL,
     resolve_on_meta, resolve_on_default, resolve_on_other);
-  fail_unless(res == 0, "Failed to handle logfmt: %s", strerror(errno));
-  fail_unless(resolve_on_meta_count == 1,
+  ck_assert_msg(res == 0, "Failed to handle logfmt: %s", strerror(errno));
+  ck_assert_msg(resolve_on_meta_count == 1,
     "Expected on_meta count 1, got %u", resolve_on_meta_count);
-  fail_unless(resolve_on_default_count == 0,
+  ck_assert_msg(resolve_on_default_count == 0,
     "Expected on_default count 0, got %u", resolve_on_default_count);
-  fail_unless(resolve_on_other_count == 0,
+  ck_assert_msg(resolve_on_other_count == 0,
     "Expected on_other count 0, got %u", resolve_on_other_count);
 
   mark_point();
@@ -3494,12 +3494,12 @@ START_TEST (jot_resolve_logfmt_xfer_port_test) {
   session.data_port = 7777;
   res = pr_jot_resolve_logfmt(p, cmd, NULL, logfmt, NULL,
     resolve_on_meta, resolve_on_default, resolve_on_other);
-  fail_unless(res == 0, "Failed to handle logfmt: %s", strerror(errno));
-  fail_unless(resolve_on_meta_count == 1,
+  ck_assert_msg(res == 0, "Failed to handle logfmt: %s", strerror(errno));
+  ck_assert_msg(resolve_on_meta_count == 1,
     "Expected on_meta count 1, got %u", resolve_on_meta_count);
-  fail_unless(resolve_on_default_count == 0,
+  ck_assert_msg(resolve_on_default_count == 0,
     "Expected on_default count 0, got %u", resolve_on_default_count);
-  fail_unless(resolve_on_other_count == 0,
+  ck_assert_msg(resolve_on_other_count == 0,
     "Expected on_other count 0, got %u", resolve_on_other_count);
 
   mark_point();
@@ -3509,12 +3509,12 @@ START_TEST (jot_resolve_logfmt_xfer_port_test) {
   session.data_port = 7777;
   res = pr_jot_resolve_logfmt(p, cmd, NULL, logfmt, NULL,
     resolve_on_meta, resolve_on_default, resolve_on_other);
-  fail_unless(res == 0, "Failed to handle logfmt: %s", strerror(errno));
-  fail_unless(resolve_on_meta_count == 1,
+  ck_assert_msg(res == 0, "Failed to handle logfmt: %s", strerror(errno));
+  ck_assert_msg(resolve_on_meta_count == 1,
     "Expected on_meta count 1, got %u", resolve_on_meta_count);
-  fail_unless(resolve_on_default_count == 0,
+  ck_assert_msg(resolve_on_default_count == 0,
     "Expected on_default count 0, got %u", resolve_on_default_count);
-  fail_unless(resolve_on_other_count == 0,
+  ck_assert_msg(resolve_on_other_count == 0,
     "Expected on_other count 0, got %u", resolve_on_other_count);
 
   mark_point();
@@ -3524,12 +3524,12 @@ START_TEST (jot_resolve_logfmt_xfer_port_test) {
   session.data_port = 7777;
   res = pr_jot_resolve_logfmt(p, cmd, NULL, logfmt, NULL,
     resolve_on_meta, resolve_on_default, resolve_on_other);
-  fail_unless(res == 0, "Failed to handle logfmt: %s", strerror(errno));
-  fail_unless(resolve_on_meta_count == 1,
+  ck_assert_msg(res == 0, "Failed to handle logfmt: %s", strerror(errno));
+  ck_assert_msg(resolve_on_meta_count == 1,
     "Expected on_meta count 1, got %u", resolve_on_meta_count);
-  fail_unless(resolve_on_default_count == 0,
+  ck_assert_msg(resolve_on_default_count == 0,
     "Expected on_default count 0, got %u", resolve_on_default_count);
-  fail_unless(resolve_on_other_count == 0,
+  ck_assert_msg(resolve_on_other_count == 0,
     "Expected on_other count 0, got %u", resolve_on_other_count);
 
   session.data_port = 0;
@@ -3551,12 +3551,12 @@ START_TEST (jot_resolve_logfmt_xfer_type_test) {
   cmd->cmd_class = CL_MISC;
   res = pr_jot_resolve_logfmt(p, cmd, NULL, logfmt, NULL,
     resolve_on_meta, resolve_on_default, resolve_on_other);
-  fail_unless(res == 0, "Failed to handle logfmt: %s", strerror(errno));
-  fail_unless(resolve_on_meta_count == 0,
+  ck_assert_msg(res == 0, "Failed to handle logfmt: %s", strerror(errno));
+  ck_assert_msg(resolve_on_meta_count == 0,
     "Expected on_meta count 0, got %u", resolve_on_meta_count);
-  fail_unless(resolve_on_default_count == 1,
+  ck_assert_msg(resolve_on_default_count == 1,
     "Expected on_default count 1, got %u", resolve_on_default_count);
-  fail_unless(resolve_on_other_count == 0,
+  ck_assert_msg(resolve_on_other_count == 0,
     "Expected on_other count 0, got %u", resolve_on_other_count);
 
   mark_point();
@@ -3566,12 +3566,12 @@ START_TEST (jot_resolve_logfmt_xfer_type_test) {
   session.sf_flags = SF_ASCII;
   res = pr_jot_resolve_logfmt(p, cmd, NULL, logfmt, NULL,
     resolve_on_meta, resolve_on_default, resolve_on_other);
-  fail_unless(res == 0, "Failed to handle logfmt: %s", strerror(errno));
-  fail_unless(resolve_on_meta_count == 1,
+  ck_assert_msg(res == 0, "Failed to handle logfmt: %s", strerror(errno));
+  ck_assert_msg(resolve_on_meta_count == 1,
     "Expected on_meta count 1, got %u", resolve_on_meta_count);
-  fail_unless(resolve_on_default_count == 0,
+  ck_assert_msg(resolve_on_default_count == 0,
     "Expected on_default count 0, got %u", resolve_on_default_count);
-  fail_unless(resolve_on_other_count == 0,
+  ck_assert_msg(resolve_on_other_count == 0,
     "Expected on_other count 0, got %u", resolve_on_other_count);
 
   mark_point();
@@ -3581,12 +3581,12 @@ START_TEST (jot_resolve_logfmt_xfer_type_test) {
   session.sf_flags = SF_ASCII_OVERRIDE;
   res = pr_jot_resolve_logfmt(p, cmd, NULL, logfmt, NULL,
     resolve_on_meta, resolve_on_default, resolve_on_other);
-  fail_unless(res == 0, "Failed to handle logfmt: %s", strerror(errno));
-  fail_unless(resolve_on_meta_count == 1,
+  ck_assert_msg(res == 0, "Failed to handle logfmt: %s", strerror(errno));
+  ck_assert_msg(resolve_on_meta_count == 1,
     "Expected on_meta count 1, got %u", resolve_on_meta_count);
-  fail_unless(resolve_on_default_count == 0,
+  ck_assert_msg(resolve_on_default_count == 0,
     "Expected on_default count 0, got %u", resolve_on_default_count);
-  fail_unless(resolve_on_other_count == 0,
+  ck_assert_msg(resolve_on_other_count == 0,
     "Expected on_other count 0, got %u", resolve_on_other_count);
 
   session.sf_flags = 0;
@@ -3597,12 +3597,12 @@ START_TEST (jot_resolve_logfmt_xfer_type_test) {
   cmd->cmd_class = CL_MISC;
   res = pr_jot_resolve_logfmt(p, cmd, NULL, logfmt, NULL,
     resolve_on_meta, resolve_on_default, resolve_on_other);
-  fail_unless(res == 0, "Failed to handle logfmt: %s", strerror(errno));
-  fail_unless(resolve_on_meta_count == 1,
+  ck_assert_msg(res == 0, "Failed to handle logfmt: %s", strerror(errno));
+  ck_assert_msg(resolve_on_meta_count == 1,
     "Expected on_meta count 1, got %u", resolve_on_meta_count);
-  fail_unless(resolve_on_default_count == 0,
+  ck_assert_msg(resolve_on_default_count == 0,
     "Expected on_default count 0, got %u", resolve_on_default_count);
-  fail_unless(resolve_on_other_count == 0,
+  ck_assert_msg(resolve_on_other_count == 0,
     "Expected on_other count 0, got %u", resolve_on_other_count);
 
   mark_point();
@@ -3612,12 +3612,12 @@ START_TEST (jot_resolve_logfmt_xfer_type_test) {
   tests_stubs_set_protocol("sftp");
   res = pr_jot_resolve_logfmt(p, cmd, NULL, logfmt, NULL,
     resolve_on_meta, resolve_on_default, resolve_on_other);
-  fail_unless(res == 0, "Failed to handle logfmt: %s", strerror(errno));
-  fail_unless(resolve_on_meta_count == 1,
+  ck_assert_msg(res == 0, "Failed to handle logfmt: %s", strerror(errno));
+  ck_assert_msg(resolve_on_meta_count == 1,
     "Expected on_meta count 1, got %u", resolve_on_meta_count);
-  fail_unless(resolve_on_default_count == 0,
+  ck_assert_msg(resolve_on_default_count == 0,
     "Expected on_default count 0, got %u", resolve_on_default_count);
-  fail_unless(resolve_on_other_count == 0,
+  ck_assert_msg(resolve_on_other_count == 0,
     "Expected on_other count 0, got %u", resolve_on_other_count);
 
   mark_point();
@@ -3627,12 +3627,12 @@ START_TEST (jot_resolve_logfmt_xfer_type_test) {
   tests_stubs_set_protocol("scp");
   res = pr_jot_resolve_logfmt(p, cmd, NULL, logfmt, NULL,
     resolve_on_meta, resolve_on_default, resolve_on_other);
-  fail_unless(res == 0, "Failed to handle logfmt: %s", strerror(errno));
-  fail_unless(resolve_on_meta_count == 1,
+  ck_assert_msg(res == 0, "Failed to handle logfmt: %s", strerror(errno));
+  ck_assert_msg(resolve_on_meta_count == 1,
     "Expected on_meta count 1, got %u", resolve_on_meta_count);
-  fail_unless(resolve_on_default_count == 0,
+  ck_assert_msg(resolve_on_default_count == 0,
     "Expected on_default count 0, got %u", resolve_on_default_count);
-  fail_unless(resolve_on_other_count == 0,
+  ck_assert_msg(resolve_on_other_count == 0,
     "Expected on_other count 0, got %u", resolve_on_other_count);
 
   tests_stubs_set_protocol(NULL);
@@ -3654,12 +3654,12 @@ START_TEST (jot_resolve_logfmt_xfer_status_test) {
   cmd->cmd_class = CL_MISC;
   res = pr_jot_resolve_logfmt(p, cmd, NULL, logfmt, NULL,
     resolve_on_meta, resolve_on_default, resolve_on_other);
-  fail_unless(res == 0, "Failed to handle logfmt: %s", strerror(errno));
-  fail_unless(resolve_on_meta_count == 0,
+  ck_assert_msg(res == 0, "Failed to handle logfmt: %s", strerror(errno));
+  ck_assert_msg(resolve_on_meta_count == 0,
     "Expected on_meta count 0, got %u", resolve_on_meta_count);
-  fail_unless(resolve_on_default_count == 1,
+  ck_assert_msg(resolve_on_default_count == 1,
     "Expected on_default count 1, got %u", resolve_on_default_count);
-  fail_unless(resolve_on_other_count == 0,
+  ck_assert_msg(resolve_on_other_count == 0,
     "Expected on_other count 0, got %u", resolve_on_other_count);
 
   mark_point();
@@ -3668,12 +3668,12 @@ START_TEST (jot_resolve_logfmt_xfer_status_test) {
   cmd->cmd_class = CL_MISC;
   res = pr_jot_resolve_logfmt(p, cmd, NULL, logfmt, NULL,
     resolve_on_meta, resolve_on_default, resolve_on_other);
-  fail_unless(res == 0, "Failed to handle logfmt: %s", strerror(errno));
-  fail_unless(resolve_on_meta_count == 1,
+  ck_assert_msg(res == 0, "Failed to handle logfmt: %s", strerror(errno));
+  ck_assert_msg(resolve_on_meta_count == 1,
     "Expected on_meta count 1, got %u", resolve_on_meta_count);
-  fail_unless(resolve_on_default_count == 0,
+  ck_assert_msg(resolve_on_default_count == 0,
     "Expected on_default count 0, got %u", resolve_on_default_count);
-  fail_unless(resolve_on_other_count == 0,
+  ck_assert_msg(resolve_on_other_count == 0,
     "Expected on_other count 0, got %u", resolve_on_other_count);
 
   mark_point();
@@ -3683,12 +3683,12 @@ START_TEST (jot_resolve_logfmt_xfer_status_test) {
   tests_stubs_set_protocol("ftps");
   res = pr_jot_resolve_logfmt(p, cmd, NULL, logfmt, NULL,
     resolve_on_meta, resolve_on_default, resolve_on_other);
-  fail_unless(res == 0, "Failed to handle logfmt: %s", strerror(errno));
-  fail_unless(resolve_on_meta_count == 1,
+  ck_assert_msg(res == 0, "Failed to handle logfmt: %s", strerror(errno));
+  ck_assert_msg(resolve_on_meta_count == 1,
     "Expected on_meta count 1, got %u", resolve_on_meta_count);
-  fail_unless(resolve_on_default_count == 0,
+  ck_assert_msg(resolve_on_default_count == 0,
     "Expected on_default count 0, got %u", resolve_on_default_count);
-  fail_unless(resolve_on_other_count == 0,
+  ck_assert_msg(resolve_on_other_count == 0,
     "Expected on_other count 0, got %u", resolve_on_other_count);
 
   tests_stubs_set_protocol(NULL);
@@ -3702,12 +3702,12 @@ START_TEST (jot_resolve_logfmt_xfer_status_test) {
   pr_response_add("500", "foo %s", "bar");
   res = pr_jot_resolve_logfmt(p, cmd, NULL, logfmt, NULL,
     resolve_on_meta, resolve_on_default, resolve_on_other);
-  fail_unless(res == 0, "Failed to handle logfmt: %s", strerror(errno));
-  fail_unless(resolve_on_meta_count == 1,
+  ck_assert_msg(res == 0, "Failed to handle logfmt: %s", strerror(errno));
+  ck_assert_msg(resolve_on_meta_count == 1,
     "Expected on_meta count 1, got %u", resolve_on_meta_count);
-  fail_unless(resolve_on_default_count == 0,
+  ck_assert_msg(resolve_on_default_count == 0,
     "Expected on_default count 0, got %u", resolve_on_default_count);
-  fail_unless(resolve_on_other_count == 0,
+  ck_assert_msg(resolve_on_other_count == 0,
     "Expected on_other count 0, got %u", resolve_on_other_count);
 
   pr_response_clear(&resp_list);
@@ -3721,12 +3721,12 @@ START_TEST (jot_resolve_logfmt_xfer_status_test) {
   pr_response_add("123", "foo %s", "bar");
   res = pr_jot_resolve_logfmt(p, cmd, NULL, logfmt, NULL,
     resolve_on_meta, resolve_on_default, resolve_on_other);
-  fail_unless(res == 0, "Failed to handle logfmt: %s", strerror(errno));
-  fail_unless(resolve_on_meta_count == 1,
+  ck_assert_msg(res == 0, "Failed to handle logfmt: %s", strerror(errno));
+  ck_assert_msg(resolve_on_meta_count == 1,
     "Expected on_meta count 1, got %u", resolve_on_meta_count);
-  fail_unless(resolve_on_default_count == 0,
+  ck_assert_msg(resolve_on_default_count == 0,
     "Expected on_default count 0, got %u", resolve_on_default_count);
-  fail_unless(resolve_on_other_count == 0,
+  ck_assert_msg(resolve_on_other_count == 0,
     "Expected on_other count 0, got %u", resolve_on_other_count);
 
   pr_response_clear(&resp_list);
@@ -3740,12 +3740,12 @@ START_TEST (jot_resolve_logfmt_xfer_status_test) {
   pr_response_add("234", "foo %s", "bar");
   res = pr_jot_resolve_logfmt(p, cmd, NULL, logfmt, NULL,
     resolve_on_meta, resolve_on_default, resolve_on_other);
-  fail_unless(res == 0, "Failed to handle logfmt: %s", strerror(errno));
-  fail_unless(resolve_on_meta_count == 1,
+  ck_assert_msg(res == 0, "Failed to handle logfmt: %s", strerror(errno));
+  ck_assert_msg(resolve_on_meta_count == 1,
     "Expected on_meta count 1, got %u", resolve_on_meta_count);
-  fail_unless(resolve_on_default_count == 0,
+  ck_assert_msg(resolve_on_default_count == 0,
     "Expected on_default count 0, got %u", resolve_on_default_count);
-  fail_unless(resolve_on_other_count == 0,
+  ck_assert_msg(resolve_on_other_count == 0,
     "Expected on_other count 0, got %u", resolve_on_other_count);
 
   pr_response_clear(&resp_list);
@@ -3759,12 +3759,12 @@ START_TEST (jot_resolve_logfmt_xfer_status_test) {
   pr_response_add("234", "foo %s", "bar");
   res = pr_jot_resolve_logfmt(p, cmd, NULL, logfmt, NULL,
     resolve_on_meta, resolve_on_default, resolve_on_other);
-  fail_unless(res == 0, "Failed to handle logfmt: %s", strerror(errno));
-  fail_unless(resolve_on_meta_count == 1,
+  ck_assert_msg(res == 0, "Failed to handle logfmt: %s", strerror(errno));
+  ck_assert_msg(resolve_on_meta_count == 1,
     "Expected on_meta count 1, got %u", resolve_on_meta_count);
-  fail_unless(resolve_on_default_count == 0,
+  ck_assert_msg(resolve_on_default_count == 0,
     "Expected on_default count 0, got %u", resolve_on_default_count);
-  fail_unless(resolve_on_other_count == 0,
+  ck_assert_msg(resolve_on_other_count == 0,
     "Expected on_other count 0, got %u", resolve_on_other_count);
 
   pr_response_clear(&resp_list);
@@ -3777,12 +3777,12 @@ START_TEST (jot_resolve_logfmt_xfer_status_test) {
   session.sf_flags = SF_ABORT;
   res = pr_jot_resolve_logfmt(p, cmd, NULL, logfmt, NULL,
     resolve_on_meta, resolve_on_default, resolve_on_other);
-  fail_unless(res == 0, "Failed to handle logfmt: %s", strerror(errno));
-  fail_unless(resolve_on_meta_count == 1,
+  ck_assert_msg(res == 0, "Failed to handle logfmt: %s", strerror(errno));
+  ck_assert_msg(resolve_on_meta_count == 1,
     "Expected on_meta count 1, got %u", resolve_on_meta_count);
-  fail_unless(resolve_on_default_count == 0,
+  ck_assert_msg(resolve_on_default_count == 0,
     "Expected on_default count 0, got %u", resolve_on_default_count);
-  fail_unless(resolve_on_other_count == 0,
+  ck_assert_msg(resolve_on_other_count == 0,
     "Expected on_other count 0, got %u", resolve_on_other_count);
 
   session.sf_flags = 0;
@@ -3796,12 +3796,12 @@ START_TEST (jot_resolve_logfmt_xfer_status_test) {
   tests_stubs_set_protocol("sftp");
   res = pr_jot_resolve_logfmt(p, cmd, NULL, logfmt, NULL,
     resolve_on_meta, resolve_on_default, resolve_on_other);
-  fail_unless(res == 0, "Failed to handle logfmt: %s", strerror(errno));
-  fail_unless(resolve_on_meta_count == 1,
+  ck_assert_msg(res == 0, "Failed to handle logfmt: %s", strerror(errno));
+  ck_assert_msg(resolve_on_meta_count == 1,
     "Expected on_meta count 1, got %u", resolve_on_meta_count);
-  fail_unless(resolve_on_default_count == 0,
+  ck_assert_msg(resolve_on_default_count == 0,
     "Expected on_default count 0, got %u", resolve_on_default_count);
-  fail_unless(resolve_on_other_count == 0,
+  ck_assert_msg(resolve_on_other_count == 0,
     "Expected on_other count 0, got %u", resolve_on_other_count);
 
   mark_point();
@@ -3812,12 +3812,12 @@ START_TEST (jot_resolve_logfmt_xfer_status_test) {
   tests_stubs_set_protocol("sftp");
   res = pr_jot_resolve_logfmt(p, cmd, NULL, logfmt, NULL,
     resolve_on_meta, resolve_on_default, resolve_on_other);
-  fail_unless(res == 0, "Failed to handle logfmt: %s", strerror(errno));
-  fail_unless(resolve_on_meta_count == 1,
+  ck_assert_msg(res == 0, "Failed to handle logfmt: %s", strerror(errno));
+  ck_assert_msg(resolve_on_meta_count == 1,
     "Expected on_meta count 1, got %u", resolve_on_meta_count);
-  fail_unless(resolve_on_default_count == 0,
+  ck_assert_msg(resolve_on_default_count == 0,
     "Expected on_default count 0, got %u", resolve_on_default_count);
-  fail_unless(resolve_on_other_count == 0,
+  ck_assert_msg(resolve_on_other_count == 0,
     "Expected on_other count 0, got %u", resolve_on_other_count);
 
   tests_stubs_set_protocol(NULL);
@@ -3839,12 +3839,12 @@ START_TEST (jot_resolve_logfmt_xfer_failure_test) {
   cmd->cmd_class = CL_MISC;
   res = pr_jot_resolve_logfmt(p, cmd, NULL, logfmt, NULL,
     resolve_on_meta, resolve_on_default, resolve_on_other);
-  fail_unless(res == 0, "Failed to handle logfmt: %s", strerror(errno));
-  fail_unless(resolve_on_meta_count == 0,
+  ck_assert_msg(res == 0, "Failed to handle logfmt: %s", strerror(errno));
+  ck_assert_msg(resolve_on_meta_count == 0,
     "Expected on_meta count 0, got %u", resolve_on_meta_count);
-  fail_unless(resolve_on_default_count == 1,
+  ck_assert_msg(resolve_on_default_count == 1,
     "Expected on_default count 1, got %u", resolve_on_default_count);
-  fail_unless(resolve_on_other_count == 0,
+  ck_assert_msg(resolve_on_other_count == 0,
     "Expected on_other count 0, got %u", resolve_on_other_count);
 
   mark_point();
@@ -3854,12 +3854,12 @@ START_TEST (jot_resolve_logfmt_xfer_failure_test) {
   tests_stubs_set_protocol("ftps");
   res = pr_jot_resolve_logfmt(p, cmd, NULL, logfmt, NULL,
     resolve_on_meta, resolve_on_default, resolve_on_other);
-  fail_unless(res == 0, "Failed to handle logfmt: %s", strerror(errno));
-  fail_unless(resolve_on_meta_count == 1,
+  ck_assert_msg(res == 0, "Failed to handle logfmt: %s", strerror(errno));
+  ck_assert_msg(resolve_on_meta_count == 1,
     "Expected on_meta count 1, got %u", resolve_on_meta_count);
-  fail_unless(resolve_on_default_count == 0,
+  ck_assert_msg(resolve_on_default_count == 0,
     "Expected on_default count 0, got %u", resolve_on_default_count);
-  fail_unless(resolve_on_other_count == 0,
+  ck_assert_msg(resolve_on_other_count == 0,
     "Expected on_other count 0, got %u", resolve_on_other_count);
 
   tests_stubs_set_protocol(NULL);
@@ -3872,12 +3872,12 @@ START_TEST (jot_resolve_logfmt_xfer_failure_test) {
   session.sf_flags = SF_ABORT;
   res = pr_jot_resolve_logfmt(p, cmd, NULL, logfmt, NULL,
     resolve_on_meta, resolve_on_default, resolve_on_other);
-  fail_unless(res == 0, "Failed to handle logfmt: %s", strerror(errno));
-  fail_unless(resolve_on_meta_count == 1,
+  ck_assert_msg(res == 0, "Failed to handle logfmt: %s", strerror(errno));
+  ck_assert_msg(resolve_on_meta_count == 1,
     "Expected on_meta count 1, got %u", resolve_on_meta_count);
-  fail_unless(resolve_on_default_count == 0,
+  ck_assert_msg(resolve_on_default_count == 0,
     "Expected on_default count 0, got %u", resolve_on_default_count);
-  fail_unless(resolve_on_other_count == 0,
+  ck_assert_msg(resolve_on_other_count == 0,
     "Expected on_other count 0, got %u", resolve_on_other_count);
 
   session.sf_flags = 0;
@@ -3891,12 +3891,12 @@ START_TEST (jot_resolve_logfmt_xfer_failure_test) {
   pr_response_add("543", "foo %s", "BAR BAZ");
   res = pr_jot_resolve_logfmt(p, cmd, NULL, logfmt, NULL,
     resolve_on_meta, resolve_on_default, resolve_on_other);
-  fail_unless(res == 0, "Failed to handle logfmt: %s", strerror(errno));
-  fail_unless(resolve_on_meta_count == 1,
+  ck_assert_msg(res == 0, "Failed to handle logfmt: %s", strerror(errno));
+  ck_assert_msg(resolve_on_meta_count == 1,
     "Expected on_meta count 1, got %u", resolve_on_meta_count);
-  fail_unless(resolve_on_default_count == 0,
+  ck_assert_msg(resolve_on_default_count == 0,
     "Expected on_default count 0, got %u", resolve_on_default_count);
-  fail_unless(resolve_on_other_count == 0,
+  ck_assert_msg(resolve_on_other_count == 0,
     "Expected on_other count 0, got %u", resolve_on_other_count);
 
   pr_response_clear(&resp_list);
@@ -3911,12 +3911,12 @@ START_TEST (jot_resolve_logfmt_xfer_failure_test) {
   pr_response_add("123", "foo %s", "BAR BAZ");
   res = pr_jot_resolve_logfmt(p, cmd, NULL, logfmt, NULL,
     resolve_on_meta, resolve_on_default, resolve_on_other);
-  fail_unless(res == 0, "Failed to handle logfmt: %s", strerror(errno));
-  fail_unless(resolve_on_meta_count == 0,
+  ck_assert_msg(res == 0, "Failed to handle logfmt: %s", strerror(errno));
+  ck_assert_msg(resolve_on_meta_count == 0,
     "Expected on_meta count 0, got %u", resolve_on_meta_count);
-  fail_unless(resolve_on_default_count == 1,
+  ck_assert_msg(resolve_on_default_count == 1,
     "Expected on_default count 1, got %u", resolve_on_default_count);
-  fail_unless(resolve_on_other_count == 0,
+  ck_assert_msg(resolve_on_other_count == 0,
     "Expected on_other count 0, got %u", resolve_on_other_count);
 
   pr_response_clear(&resp_list);
@@ -3931,12 +3931,12 @@ START_TEST (jot_resolve_logfmt_xfer_failure_test) {
   pr_response_add("234", "foo %s", "BAR BAZ");
   res = pr_jot_resolve_logfmt(p, cmd, NULL, logfmt, NULL,
     resolve_on_meta, resolve_on_default, resolve_on_other);
-  fail_unless(res == 0, "Failed to handle logfmt: %s", strerror(errno));
-  fail_unless(resolve_on_meta_count == 0,
+  ck_assert_msg(res == 0, "Failed to handle logfmt: %s", strerror(errno));
+  ck_assert_msg(resolve_on_meta_count == 0,
     "Expected on_meta count 0, got %u", resolve_on_meta_count);
-  fail_unless(resolve_on_default_count == 1,
+  ck_assert_msg(resolve_on_default_count == 1,
     "Expected on_default count 1, got %u", resolve_on_default_count);
-  fail_unless(resolve_on_other_count == 0,
+  ck_assert_msg(resolve_on_other_count == 0,
     "Expected on_other count 0, got %u", resolve_on_other_count);
 
   pr_response_clear(&resp_list);
@@ -3949,12 +3949,12 @@ START_TEST (jot_resolve_logfmt_xfer_failure_test) {
   tests_stubs_set_protocol("sftp");
   res = pr_jot_resolve_logfmt(p, cmd, NULL, logfmt, NULL,
     resolve_on_meta, resolve_on_default, resolve_on_other);
-  fail_unless(res == 0, "Failed to handle logfmt: %s", strerror(errno));
-  fail_unless(resolve_on_meta_count == 1,
+  ck_assert_msg(res == 0, "Failed to handle logfmt: %s", strerror(errno));
+  ck_assert_msg(resolve_on_meta_count == 1,
     "Expected on_meta count 1, got %u", resolve_on_meta_count);
-  fail_unless(resolve_on_default_count == 0,
+  ck_assert_msg(resolve_on_default_count == 0,
     "Expected on_default count 0, got %u", resolve_on_default_count);
-  fail_unless(resolve_on_other_count == 0,
+  ck_assert_msg(resolve_on_other_count == 0,
     "Expected on_other count 0, got %u", resolve_on_other_count);
 
   tests_stubs_set_protocol(NULL);
@@ -3976,12 +3976,12 @@ START_TEST (jot_resolve_logfmt_dir_name_test) {
   cmd->cmd_class = CL_MISC;
   res = pr_jot_resolve_logfmt(p, cmd, NULL, logfmt, NULL,
     resolve_on_meta, resolve_on_default, resolve_on_other);
-  fail_unless(res == 0, "Failed to handle logfmt: %s", strerror(errno));
-  fail_unless(resolve_on_meta_count == 1,
+  ck_assert_msg(res == 0, "Failed to handle logfmt: %s", strerror(errno));
+  ck_assert_msg(resolve_on_meta_count == 1,
     "Expected on_meta count 1, got %u", resolve_on_meta_count);
-  fail_unless(resolve_on_default_count == 0,
+  ck_assert_msg(resolve_on_default_count == 0,
     "Expected on_default count 0, got %u", resolve_on_default_count);
-  fail_unless(resolve_on_other_count == 0,
+  ck_assert_msg(resolve_on_other_count == 0,
     "Expected on_other count 0, got %u", resolve_on_other_count);
 
   mark_point();
@@ -3990,12 +3990,12 @@ START_TEST (jot_resolve_logfmt_dir_name_test) {
   cmd->cmd_class = CL_MISC;
   res = pr_jot_resolve_logfmt(p, cmd, NULL, logfmt, NULL,
     resolve_on_meta, resolve_on_default, resolve_on_other);
-  fail_unless(res == 0, "Failed to handle logfmt: %s", strerror(errno));
-  fail_unless(resolve_on_meta_count == 0,
+  ck_assert_msg(res == 0, "Failed to handle logfmt: %s", strerror(errno));
+  ck_assert_msg(resolve_on_meta_count == 0,
     "Expected on_meta count 0, got %u", resolve_on_meta_count);
-  fail_unless(resolve_on_default_count == 1,
+  ck_assert_msg(resolve_on_default_count == 1,
     "Expected on_default count 1, got %u", resolve_on_default_count);
-  fail_unless(resolve_on_other_count == 0,
+  ck_assert_msg(resolve_on_other_count == 0,
     "Expected on_other count 0, got %u", resolve_on_other_count);
 
   mark_point();
@@ -4005,12 +4005,12 @@ START_TEST (jot_resolve_logfmt_dir_name_test) {
   cmd->arg = pstrdup(p, "foo");
   res = pr_jot_resolve_logfmt(p, cmd, NULL, logfmt, NULL,
     resolve_on_meta, resolve_on_default, resolve_on_other);
-  fail_unless(res == 0, "Failed to handle logfmt: %s", strerror(errno));
-  fail_unless(resolve_on_meta_count == 1,
+  ck_assert_msg(res == 0, "Failed to handle logfmt: %s", strerror(errno));
+  ck_assert_msg(resolve_on_meta_count == 1,
     "Expected on_meta count 1, got %u", resolve_on_meta_count);
-  fail_unless(resolve_on_default_count == 0,
+  ck_assert_msg(resolve_on_default_count == 0,
     "Expected on_default count 0, got %u", resolve_on_default_count);
-  fail_unless(resolve_on_other_count == 0,
+  ck_assert_msg(resolve_on_other_count == 0,
     "Expected on_other count 0, got %u", resolve_on_other_count);
 
   mark_point();
@@ -4020,12 +4020,12 @@ START_TEST (jot_resolve_logfmt_dir_name_test) {
   cmd->arg = pstrdup(p, "/foo");
   res = pr_jot_resolve_logfmt(p, cmd, NULL, logfmt, NULL,
     resolve_on_meta, resolve_on_default, resolve_on_other);
-  fail_unless(res == 0, "Failed to handle logfmt: %s", strerror(errno));
-  fail_unless(resolve_on_meta_count == 1,
+  ck_assert_msg(res == 0, "Failed to handle logfmt: %s", strerror(errno));
+  ck_assert_msg(resolve_on_meta_count == 1,
     "Expected on_meta count 1, got %u", resolve_on_meta_count);
-  fail_unless(resolve_on_default_count == 0,
+  ck_assert_msg(resolve_on_default_count == 0,
     "Expected on_default count 0, got %u", resolve_on_default_count);
-  fail_unless(resolve_on_other_count == 0,
+  ck_assert_msg(resolve_on_other_count == 0,
     "Expected on_other count 0, got %u", resolve_on_other_count);
 
   mark_point();
@@ -4035,12 +4035,12 @@ START_TEST (jot_resolve_logfmt_dir_name_test) {
   cmd->arg = pstrdup(p, "/foo/");
   res = pr_jot_resolve_logfmt(p, cmd, NULL, logfmt, NULL,
     resolve_on_meta, resolve_on_default, resolve_on_other);
-  fail_unless(res == 0, "Failed to handle logfmt: %s", strerror(errno));
-  fail_unless(resolve_on_meta_count == 1,
+  ck_assert_msg(res == 0, "Failed to handle logfmt: %s", strerror(errno));
+  ck_assert_msg(resolve_on_meta_count == 1,
     "Expected on_meta count 1, got %u", resolve_on_meta_count);
-  fail_unless(resolve_on_default_count == 0,
+  ck_assert_msg(resolve_on_default_count == 0,
     "Expected on_default count 0, got %u", resolve_on_default_count);
-  fail_unless(resolve_on_other_count == 0,
+  ck_assert_msg(resolve_on_other_count == 0,
     "Expected on_other count 0, got %u", resolve_on_other_count);
 
   mark_point();
@@ -4050,12 +4050,12 @@ START_TEST (jot_resolve_logfmt_dir_name_test) {
   cmd->arg = pstrdup(p, "foo/");
   res = pr_jot_resolve_logfmt(p, cmd, NULL, logfmt, NULL,
     resolve_on_meta, resolve_on_default, resolve_on_other);
-  fail_unless(res == 0, "Failed to handle logfmt: %s", strerror(errno));
-  fail_unless(resolve_on_meta_count == 1,
+  ck_assert_msg(res == 0, "Failed to handle logfmt: %s", strerror(errno));
+  ck_assert_msg(resolve_on_meta_count == 1,
     "Expected on_meta count 1, got %u", resolve_on_meta_count);
-  fail_unless(resolve_on_default_count == 0,
+  ck_assert_msg(resolve_on_default_count == 0,
     "Expected on_default count 0, got %u", resolve_on_default_count);
-  fail_unless(resolve_on_other_count == 0,
+  ck_assert_msg(resolve_on_other_count == 0,
     "Expected on_other count 0, got %u", resolve_on_other_count);
 
   mark_point();
@@ -4065,12 +4065,12 @@ START_TEST (jot_resolve_logfmt_dir_name_test) {
   cmd->arg = pstrdup(p, "foo/");
   res = pr_jot_resolve_logfmt(p, cmd, NULL, logfmt, NULL,
     resolve_on_meta, resolve_on_default, resolve_on_other);
-  fail_unless(res == 0, "Failed to handle logfmt: %s", strerror(errno));
-  fail_unless(resolve_on_meta_count == 1,
+  ck_assert_msg(res == 0, "Failed to handle logfmt: %s", strerror(errno));
+  ck_assert_msg(resolve_on_meta_count == 1,
     "Expected on_meta count 1, got %u", resolve_on_meta_count);
-  fail_unless(resolve_on_default_count == 0,
+  ck_assert_msg(resolve_on_default_count == 0,
     "Expected on_default count 0, got %u", resolve_on_default_count);
-  fail_unless(resolve_on_other_count == 0,
+  ck_assert_msg(resolve_on_other_count == 0,
     "Expected on_other count 0, got %u", resolve_on_other_count);
 
   mark_point();
@@ -4080,12 +4080,12 @@ START_TEST (jot_resolve_logfmt_dir_name_test) {
   cmd->arg = pstrdup(p, "foo/");
   res = pr_jot_resolve_logfmt(p, cmd, NULL, logfmt, NULL,
     resolve_on_meta, resolve_on_default, resolve_on_other);
-  fail_unless(res == 0, "Failed to handle logfmt: %s", strerror(errno));
-  fail_unless(resolve_on_meta_count == 1,
+  ck_assert_msg(res == 0, "Failed to handle logfmt: %s", strerror(errno));
+  ck_assert_msg(resolve_on_meta_count == 1,
     "Expected on_meta count 1, got %u", resolve_on_meta_count);
-  fail_unless(resolve_on_default_count == 0,
+  ck_assert_msg(resolve_on_default_count == 0,
     "Expected on_default count 0, got %u", resolve_on_default_count);
-  fail_unless(resolve_on_other_count == 0,
+  ck_assert_msg(resolve_on_other_count == 0,
     "Expected on_other count 0, got %u", resolve_on_other_count);
 
   mark_point();
@@ -4095,12 +4095,12 @@ START_TEST (jot_resolve_logfmt_dir_name_test) {
   cmd->arg = pstrdup(p, "foo/");
   res = pr_jot_resolve_logfmt(p, cmd, NULL, logfmt, NULL,
     resolve_on_meta, resolve_on_default, resolve_on_other);
-  fail_unless(res == 0, "Failed to handle logfmt: %s", strerror(errno));
-  fail_unless(resolve_on_meta_count == 1,
+  ck_assert_msg(res == 0, "Failed to handle logfmt: %s", strerror(errno));
+  ck_assert_msg(resolve_on_meta_count == 1,
     "Expected on_meta count 1, got %u", resolve_on_meta_count);
-  fail_unless(resolve_on_default_count == 0,
+  ck_assert_msg(resolve_on_default_count == 0,
     "Expected on_default count 0, got %u", resolve_on_default_count);
-  fail_unless(resolve_on_other_count == 0,
+  ck_assert_msg(resolve_on_other_count == 0,
     "Expected on_other count 0, got %u", resolve_on_other_count);
 
   mark_point();
@@ -4110,12 +4110,12 @@ START_TEST (jot_resolve_logfmt_dir_name_test) {
   cmd->arg = pstrdup(p, "foo/");
   res = pr_jot_resolve_logfmt(p, cmd, NULL, logfmt, NULL,
     resolve_on_meta, resolve_on_default, resolve_on_other);
-  fail_unless(res == 0, "Failed to handle logfmt: %s", strerror(errno));
-  fail_unless(resolve_on_meta_count == 1,
+  ck_assert_msg(res == 0, "Failed to handle logfmt: %s", strerror(errno));
+  ck_assert_msg(resolve_on_meta_count == 1,
     "Expected on_meta count 1, got %u", resolve_on_meta_count);
-  fail_unless(resolve_on_default_count == 0,
+  ck_assert_msg(resolve_on_default_count == 0,
     "Expected on_default count 0, got %u", resolve_on_default_count);
-  fail_unless(resolve_on_other_count == 0,
+  ck_assert_msg(resolve_on_other_count == 0,
     "Expected on_other count 0, got %u", resolve_on_other_count);
 
   mark_point();
@@ -4125,12 +4125,12 @@ START_TEST (jot_resolve_logfmt_dir_name_test) {
   cmd->arg = pstrdup(p, "foo/");
   res = pr_jot_resolve_logfmt(p, cmd, NULL, logfmt, NULL,
     resolve_on_meta, resolve_on_default, resolve_on_other);
-  fail_unless(res == 0, "Failed to handle logfmt: %s", strerror(errno));
-  fail_unless(resolve_on_meta_count == 1,
+  ck_assert_msg(res == 0, "Failed to handle logfmt: %s", strerror(errno));
+  ck_assert_msg(resolve_on_meta_count == 1,
     "Expected on_meta count 1, got %u", resolve_on_meta_count);
-  fail_unless(resolve_on_default_count == 0,
+  ck_assert_msg(resolve_on_default_count == 0,
     "Expected on_default count 0, got %u", resolve_on_default_count);
-  fail_unless(resolve_on_other_count == 0,
+  ck_assert_msg(resolve_on_other_count == 0,
     "Expected on_other count 0, got %u", resolve_on_other_count);
 
   mark_point();
@@ -4140,12 +4140,12 @@ START_TEST (jot_resolve_logfmt_dir_name_test) {
   cmd->arg = pstrdup(p, "foo/");
   res = pr_jot_resolve_logfmt(p, cmd, NULL, logfmt, NULL,
     resolve_on_meta, resolve_on_default, resolve_on_other);
-  fail_unless(res == 0, "Failed to handle logfmt: %s", strerror(errno));
-  fail_unless(resolve_on_meta_count == 1,
+  ck_assert_msg(res == 0, "Failed to handle logfmt: %s", strerror(errno));
+  ck_assert_msg(resolve_on_meta_count == 1,
     "Expected on_meta count 1, got %u", resolve_on_meta_count);
-  fail_unless(resolve_on_default_count == 0,
+  ck_assert_msg(resolve_on_default_count == 0,
     "Expected on_default count 0, got %u", resolve_on_default_count);
-  fail_unless(resolve_on_other_count == 0,
+  ck_assert_msg(resolve_on_other_count == 0,
     "Expected on_other count 0, got %u", resolve_on_other_count);
 }
 END_TEST
@@ -4165,12 +4165,12 @@ START_TEST (jot_resolve_logfmt_dir_path_test) {
   cmd->cmd_class = CL_MISC;
   res = pr_jot_resolve_logfmt(p, cmd, NULL, logfmt, NULL,
     resolve_on_meta, resolve_on_default, resolve_on_other);
-  fail_unless(res == 0, "Failed to handle logfmt: %s", strerror(errno));
-  fail_unless(resolve_on_meta_count == 0,
+  ck_assert_msg(res == 0, "Failed to handle logfmt: %s", strerror(errno));
+  ck_assert_msg(resolve_on_meta_count == 0,
     "Expected on_meta count 0, got %u", resolve_on_meta_count);
-  fail_unless(resolve_on_default_count == 1,
+  ck_assert_msg(resolve_on_default_count == 1,
     "Expected on_default count 1, got %u", resolve_on_default_count);
-  fail_unless(resolve_on_other_count == 0,
+  ck_assert_msg(resolve_on_other_count == 0,
     "Expected on_other count 0, got %u", resolve_on_other_count);
 
   mark_point();
@@ -4180,12 +4180,12 @@ START_TEST (jot_resolve_logfmt_dir_path_test) {
   cmd->arg = pstrdup(p, "/foo/bar/baz");
   res = pr_jot_resolve_logfmt(p, cmd, NULL, logfmt, NULL,
     resolve_on_meta, resolve_on_default, resolve_on_other);
-  fail_unless(res == 0, "Failed to handle logfmt: %s", strerror(errno));
-  fail_unless(resolve_on_meta_count == 1,
+  ck_assert_msg(res == 0, "Failed to handle logfmt: %s", strerror(errno));
+  ck_assert_msg(resolve_on_meta_count == 1,
     "Expected on_meta count 1, got %u", resolve_on_meta_count);
-  fail_unless(resolve_on_default_count == 0,
+  ck_assert_msg(resolve_on_default_count == 0,
     "Expected on_default count 0, got %u", resolve_on_default_count);
-  fail_unless(resolve_on_other_count == 0,
+  ck_assert_msg(resolve_on_other_count == 0,
     "Expected on_other count 0, got %u", resolve_on_other_count);
 
   mark_point();
@@ -4195,12 +4195,12 @@ START_TEST (jot_resolve_logfmt_dir_path_test) {
   cmd->arg = pstrdup(p, "/foo/bar/baz");
   res = pr_jot_resolve_logfmt(p, cmd, NULL, logfmt, NULL,
     resolve_on_meta, resolve_on_default, resolve_on_other);
-  fail_unless(res == 0, "Failed to handle logfmt: %s", strerror(errno));
-  fail_unless(resolve_on_meta_count == 1,
+  ck_assert_msg(res == 0, "Failed to handle logfmt: %s", strerror(errno));
+  ck_assert_msg(resolve_on_meta_count == 1,
     "Expected on_meta count 1, got %u", resolve_on_meta_count);
-  fail_unless(resolve_on_default_count == 0,
+  ck_assert_msg(resolve_on_default_count == 0,
     "Expected on_default count 0, got %u", resolve_on_default_count);
-  fail_unless(resolve_on_other_count == 0,
+  ck_assert_msg(resolve_on_other_count == 0,
     "Expected on_other count 0, got %u", resolve_on_other_count);
 
   mark_point();
@@ -4210,12 +4210,12 @@ START_TEST (jot_resolve_logfmt_dir_path_test) {
   cmd->arg = pstrdup(p, "/foo/bar/baz");
   res = pr_jot_resolve_logfmt(p, cmd, NULL, logfmt, NULL,
     resolve_on_meta, resolve_on_default, resolve_on_other);
-  fail_unless(res == 0, "Failed to handle logfmt: %s", strerror(errno));
-  fail_unless(resolve_on_meta_count == 1,
+  ck_assert_msg(res == 0, "Failed to handle logfmt: %s", strerror(errno));
+  ck_assert_msg(resolve_on_meta_count == 1,
     "Expected on_meta count 1, got %u", resolve_on_meta_count);
-  fail_unless(resolve_on_default_count == 0,
+  ck_assert_msg(resolve_on_default_count == 0,
     "Expected on_default count 0, got %u", resolve_on_default_count);
-  fail_unless(resolve_on_other_count == 0,
+  ck_assert_msg(resolve_on_other_count == 0,
     "Expected on_other count 0, got %u", resolve_on_other_count);
 
   mark_point();
@@ -4225,12 +4225,12 @@ START_TEST (jot_resolve_logfmt_dir_path_test) {
   cmd->arg = pstrdup(p, "/foo/bar/baz");
   res = pr_jot_resolve_logfmt(p, cmd, NULL, logfmt, NULL,
     resolve_on_meta, resolve_on_default, resolve_on_other);
-  fail_unless(res == 0, "Failed to handle logfmt: %s", strerror(errno));
-  fail_unless(resolve_on_meta_count == 1,
+  ck_assert_msg(res == 0, "Failed to handle logfmt: %s", strerror(errno));
+  ck_assert_msg(resolve_on_meta_count == 1,
     "Expected on_meta count 1, got %u", resolve_on_meta_count);
-  fail_unless(resolve_on_default_count == 0,
+  ck_assert_msg(resolve_on_default_count == 0,
     "Expected on_default count 0, got %u", resolve_on_default_count);
-  fail_unless(resolve_on_other_count == 0,
+  ck_assert_msg(resolve_on_other_count == 0,
     "Expected on_other count 0, got %u", resolve_on_other_count);
 
   mark_point();
@@ -4240,12 +4240,12 @@ START_TEST (jot_resolve_logfmt_dir_path_test) {
   cmd->arg = pstrdup(p, "/foo/bar/baz");
   res = pr_jot_resolve_logfmt(p, cmd, NULL, logfmt, NULL,
     resolve_on_meta, resolve_on_default, resolve_on_other);
-  fail_unless(res == 0, "Failed to handle logfmt: %s", strerror(errno));
-  fail_unless(resolve_on_meta_count == 1,
+  ck_assert_msg(res == 0, "Failed to handle logfmt: %s", strerror(errno));
+  ck_assert_msg(resolve_on_meta_count == 1,
     "Expected on_meta count 1, got %u", resolve_on_meta_count);
-  fail_unless(resolve_on_default_count == 0,
+  ck_assert_msg(resolve_on_default_count == 0,
     "Expected on_default count 0, got %u", resolve_on_default_count);
-  fail_unless(resolve_on_other_count == 0,
+  ck_assert_msg(resolve_on_other_count == 0,
     "Expected on_other count 0, got %u", resolve_on_other_count);
 
   mark_point();
@@ -4255,12 +4255,12 @@ START_TEST (jot_resolve_logfmt_dir_path_test) {
   cmd->arg = pstrdup(p, "/foo/bar/baz");
   res = pr_jot_resolve_logfmt(p, cmd, NULL, logfmt, NULL,
     resolve_on_meta, resolve_on_default, resolve_on_other);
-  fail_unless(res == 0, "Failed to handle logfmt: %s", strerror(errno));
-  fail_unless(resolve_on_meta_count == 1,
+  ck_assert_msg(res == 0, "Failed to handle logfmt: %s", strerror(errno));
+  ck_assert_msg(resolve_on_meta_count == 1,
     "Expected on_meta count 1, got %u", resolve_on_meta_count);
-  fail_unless(resolve_on_default_count == 0,
+  ck_assert_msg(resolve_on_default_count == 0,
     "Expected on_default count 0, got %u", resolve_on_default_count);
-  fail_unless(resolve_on_other_count == 0,
+  ck_assert_msg(resolve_on_other_count == 0,
     "Expected on_other count 0, got %u", resolve_on_other_count);
 
   mark_point();
@@ -4270,12 +4270,12 @@ START_TEST (jot_resolve_logfmt_dir_path_test) {
   cmd->arg = pstrdup(p, "/foo/bar/baz");
   res = pr_jot_resolve_logfmt(p, cmd, NULL, logfmt, NULL,
     resolve_on_meta, resolve_on_default, resolve_on_other);
-  fail_unless(res == 0, "Failed to handle logfmt: %s", strerror(errno));
-  fail_unless(resolve_on_meta_count == 1,
+  ck_assert_msg(res == 0, "Failed to handle logfmt: %s", strerror(errno));
+  ck_assert_msg(resolve_on_meta_count == 1,
     "Expected on_meta count 1, got %u", resolve_on_meta_count);
-  fail_unless(resolve_on_default_count == 0,
+  ck_assert_msg(resolve_on_default_count == 0,
     "Expected on_default count 0, got %u", resolve_on_default_count);
-  fail_unless(resolve_on_other_count == 0,
+  ck_assert_msg(resolve_on_other_count == 0,
     "Expected on_other count 0, got %u", resolve_on_other_count);
 
   mark_point();
@@ -4285,12 +4285,12 @@ START_TEST (jot_resolve_logfmt_dir_path_test) {
   cmd->arg = pstrdup(p, "/foo/bar/baz");
   res = pr_jot_resolve_logfmt(p, cmd, NULL, logfmt, NULL,
     resolve_on_meta, resolve_on_default, resolve_on_other);
-  fail_unless(res == 0, "Failed to handle logfmt: %s", strerror(errno));
-  fail_unless(resolve_on_meta_count == 1,
+  ck_assert_msg(res == 0, "Failed to handle logfmt: %s", strerror(errno));
+  ck_assert_msg(resolve_on_meta_count == 1,
     "Expected on_meta count 1, got %u", resolve_on_meta_count);
-  fail_unless(resolve_on_default_count == 0,
+  ck_assert_msg(resolve_on_default_count == 0,
     "Expected on_default count 0, got %u", resolve_on_default_count);
-  fail_unless(resolve_on_other_count == 0,
+  ck_assert_msg(resolve_on_other_count == 0,
     "Expected on_other count 0, got %u", resolve_on_other_count);
 
   mark_point();
@@ -4300,12 +4300,12 @@ START_TEST (jot_resolve_logfmt_dir_path_test) {
   cmd->arg = pstrdup(p, "/foo/bar/baz");
   res = pr_jot_resolve_logfmt(p, cmd, NULL, logfmt, NULL,
     resolve_on_meta, resolve_on_default, resolve_on_other);
-  fail_unless(res == 0, "Failed to handle logfmt: %s", strerror(errno));
-  fail_unless(resolve_on_meta_count == 1,
+  ck_assert_msg(res == 0, "Failed to handle logfmt: %s", strerror(errno));
+  ck_assert_msg(resolve_on_meta_count == 1,
     "Expected on_meta count 1, got %u", resolve_on_meta_count);
-  fail_unless(resolve_on_default_count == 0,
+  ck_assert_msg(resolve_on_default_count == 0,
     "Expected on_default count 0, got %u", resolve_on_default_count);
-  fail_unless(resolve_on_other_count == 0,
+  ck_assert_msg(resolve_on_other_count == 0,
     "Expected on_other count 0, got %u", resolve_on_other_count);
 
   mark_point();
@@ -4314,12 +4314,12 @@ START_TEST (jot_resolve_logfmt_dir_path_test) {
   cmd->cmd_class = CL_MISC;
   res = pr_jot_resolve_logfmt(p, cmd, NULL, logfmt, NULL,
     resolve_on_meta, resolve_on_default, resolve_on_other);
-  fail_unless(res == 0, "Failed to handle logfmt: %s", strerror(errno));
-  fail_unless(resolve_on_meta_count == 1,
+  ck_assert_msg(res == 0, "Failed to handle logfmt: %s", strerror(errno));
+  ck_assert_msg(resolve_on_meta_count == 1,
     "Expected on_meta count 1, got %u", resolve_on_meta_count);
-  fail_unless(resolve_on_default_count == 0,
+  ck_assert_msg(resolve_on_default_count == 0,
     "Expected on_default count 0, got %u", resolve_on_default_count);
-  fail_unless(resolve_on_other_count == 0,
+  ck_assert_msg(resolve_on_other_count == 0,
     "Expected on_other count 0, got %u", resolve_on_other_count);
 
   mark_point();
@@ -4329,12 +4329,12 @@ START_TEST (jot_resolve_logfmt_dir_path_test) {
   session.chroot_path = "/foo/bar/baz/";
   res = pr_jot_resolve_logfmt(p, cmd, NULL, logfmt, NULL,
     resolve_on_meta, resolve_on_default, resolve_on_other);
-  fail_unless(res == 0, "Failed to handle logfmt: %s", strerror(errno));
-  fail_unless(resolve_on_meta_count == 1,
+  ck_assert_msg(res == 0, "Failed to handle logfmt: %s", strerror(errno));
+  ck_assert_msg(resolve_on_meta_count == 1,
     "Expected on_meta count 1, got %u", resolve_on_meta_count);
-  fail_unless(resolve_on_default_count == 0,
+  ck_assert_msg(resolve_on_default_count == 0,
     "Expected on_default count 0, got %u", resolve_on_default_count);
-  fail_unless(resolve_on_other_count == 0,
+  ck_assert_msg(resolve_on_other_count == 0,
     "Expected on_other count 0, got %u", resolve_on_other_count);
 
   session.chroot_path = NULL;
@@ -4356,12 +4356,12 @@ START_TEST (jot_resolve_logfmt_cmd_params_test) {
   resolve_on_meta_count = resolve_on_default_count = resolve_on_other_count = 0;
   res = pr_jot_resolve_logfmt(p, cmd, NULL, logfmt, NULL,
     resolve_on_meta, resolve_on_default, resolve_on_other);
-  fail_unless(res == 0, "Failed to handle logfmt: %s", strerror(errno));
-  fail_unless(resolve_on_meta_count == 0,
+  ck_assert_msg(res == 0, "Failed to handle logfmt: %s", strerror(errno));
+  ck_assert_msg(resolve_on_meta_count == 0,
     "Expected on_meta count 0, got %u", resolve_on_meta_count);
-  fail_unless(resolve_on_default_count == 1,
+  ck_assert_msg(resolve_on_default_count == 1,
     "Expected on_default count 1, got %u", resolve_on_default_count);
-  fail_unless(resolve_on_other_count == 0,
+  ck_assert_msg(resolve_on_other_count == 0,
     "Expected on_other count 0, got %u", resolve_on_other_count);
 
   mark_point();
@@ -4369,12 +4369,12 @@ START_TEST (jot_resolve_logfmt_cmd_params_test) {
   resolve_on_meta_count = resolve_on_default_count = resolve_on_other_count = 0;
   res = pr_jot_resolve_logfmt(p, cmd, NULL, logfmt, NULL,
     resolve_on_meta, resolve_on_default, resolve_on_other);
-  fail_unless(res == 0, "Failed to handle logfmt: %s", strerror(errno));
-  fail_unless(resolve_on_meta_count == 0,
+  ck_assert_msg(res == 0, "Failed to handle logfmt: %s", strerror(errno));
+  ck_assert_msg(resolve_on_meta_count == 0,
     "Expected on_meta count 0, got %u", resolve_on_meta_count);
-  fail_unless(resolve_on_default_count == 1,
+  ck_assert_msg(resolve_on_default_count == 1,
     "Expected on_default count 1, got %u", resolve_on_default_count);
-  fail_unless(resolve_on_other_count == 0,
+  ck_assert_msg(resolve_on_other_count == 0,
     "Expected on_other count 0, got %u", resolve_on_other_count);
 
   mark_point();
@@ -4382,12 +4382,12 @@ START_TEST (jot_resolve_logfmt_cmd_params_test) {
   resolve_on_meta_count = resolve_on_default_count = resolve_on_other_count = 0;
   res = pr_jot_resolve_logfmt(p, cmd, NULL, logfmt, NULL,
     resolve_on_meta, resolve_on_default, resolve_on_other);
-  fail_unless(res == 0, "Failed to handle logfmt: %s", strerror(errno));
-  fail_unless(resolve_on_meta_count == 0,
+  ck_assert_msg(res == 0, "Failed to handle logfmt: %s", strerror(errno));
+  ck_assert_msg(resolve_on_meta_count == 0,
     "Expected on_meta count 0, got %u", resolve_on_meta_count);
-  fail_unless(resolve_on_default_count == 1,
+  ck_assert_msg(resolve_on_default_count == 1,
     "Expected on_default count 1, got %u", resolve_on_default_count);
-  fail_unless(resolve_on_other_count == 0,
+  ck_assert_msg(resolve_on_other_count == 0,
     "Expected on_other count 0, got %u", resolve_on_other_count);
 
   mark_point();
@@ -4397,12 +4397,12 @@ START_TEST (jot_resolve_logfmt_cmd_params_test) {
   resolve_on_meta_count = resolve_on_default_count = resolve_on_other_count = 0;
   res = pr_jot_resolve_logfmt(p, cmd, NULL, logfmt, NULL,
     resolve_on_meta, resolve_on_default, resolve_on_other);
-  fail_unless(res == 0, "Failed to handle logfmt: %s", strerror(errno));
-  fail_unless(resolve_on_meta_count == 1,
+  ck_assert_msg(res == 0, "Failed to handle logfmt: %s", strerror(errno));
+  ck_assert_msg(resolve_on_meta_count == 1,
     "Expected on_meta count 1, got %u", resolve_on_meta_count);
-  fail_unless(resolve_on_default_count == 0,
+  ck_assert_msg(resolve_on_default_count == 0,
     "Expected on_default count 0, got %u", resolve_on_default_count);
-  fail_unless(resolve_on_other_count == 0,
+  ck_assert_msg(resolve_on_other_count == 0,
     "Expected on_other count 0, got %u", resolve_on_other_count);
 
   mark_point();
@@ -4411,12 +4411,12 @@ START_TEST (jot_resolve_logfmt_cmd_params_test) {
   resolve_on_meta_count = resolve_on_default_count = resolve_on_other_count = 0;
   res = pr_jot_resolve_logfmt(p, cmd, NULL, logfmt, NULL,
     resolve_on_meta, resolve_on_default, resolve_on_other);
-  fail_unless(res == 0, "Failed to handle logfmt: %s", strerror(errno));
-  fail_unless(resolve_on_meta_count == 1,
+  ck_assert_msg(res == 0, "Failed to handle logfmt: %s", strerror(errno));
+  ck_assert_msg(resolve_on_meta_count == 1,
     "Expected on_meta count 1, got %u", resolve_on_meta_count);
-  fail_unless(resolve_on_default_count == 0,
+  ck_assert_msg(resolve_on_default_count == 0,
     "Expected on_default count 0, got %u", resolve_on_default_count);
-  fail_unless(resolve_on_other_count == 0,
+  ck_assert_msg(resolve_on_other_count == 0,
     "Expected on_other count 0, got %u", resolve_on_other_count);
 
   mark_point();
@@ -4425,12 +4425,12 @@ START_TEST (jot_resolve_logfmt_cmd_params_test) {
   resolve_on_meta_count = resolve_on_default_count = resolve_on_other_count = 0;
   res = pr_jot_resolve_logfmt(p, cmd, NULL, logfmt, NULL,
     resolve_on_meta, resolve_on_default, resolve_on_other);
-  fail_unless(res == 0, "Failed to handle logfmt: %s", strerror(errno));
-  fail_unless(resolve_on_meta_count == 1,
+  ck_assert_msg(res == 0, "Failed to handle logfmt: %s", strerror(errno));
+  ck_assert_msg(resolve_on_meta_count == 1,
     "Expected on_meta count 1, got %u", resolve_on_meta_count);
-  fail_unless(resolve_on_default_count == 0,
+  ck_assert_msg(resolve_on_default_count == 0,
     "Expected on_default count 0, got %u", resolve_on_default_count);
-  fail_unless(resolve_on_other_count == 0,
+  ck_assert_msg(resolve_on_other_count == 0,
     "Expected on_other count 0, got %u", resolve_on_other_count);
 }
 END_TEST
@@ -4451,12 +4451,12 @@ START_TEST (jot_resolve_logfmt_rename_from_test) {
   resolve_on_meta_count = resolve_on_default_count = resolve_on_other_count = 0;
   res = pr_jot_resolve_logfmt(p, cmd, NULL, logfmt, NULL,
     resolve_on_meta, resolve_on_default, resolve_on_other);
-  fail_unless(res == 0, "Failed to handle logfmt: %s", strerror(errno));
-  fail_unless(resolve_on_meta_count == 0,
+  ck_assert_msg(res == 0, "Failed to handle logfmt: %s", strerror(errno));
+  ck_assert_msg(resolve_on_meta_count == 0,
     "Expected on_meta count 0, got %u", resolve_on_meta_count);
-  fail_unless(resolve_on_default_count == 1,
+  ck_assert_msg(resolve_on_default_count == 1,
     "Expected on_default count 1, got %u", resolve_on_default_count);
-  fail_unless(resolve_on_other_count == 0,
+  ck_assert_msg(resolve_on_other_count == 0,
     "Expected on_other count 0, got %u", resolve_on_other_count);
 
   mark_point();
@@ -4465,12 +4465,12 @@ START_TEST (jot_resolve_logfmt_rename_from_test) {
   resolve_on_meta_count = resolve_on_default_count = resolve_on_other_count = 0;
   res = pr_jot_resolve_logfmt(p, cmd, NULL, logfmt, NULL,
     resolve_on_meta, resolve_on_default, resolve_on_other);
-  fail_unless(res == 0, "Failed to handle logfmt: %s", strerror(errno));
-  fail_unless(resolve_on_meta_count == 0,
+  ck_assert_msg(res == 0, "Failed to handle logfmt: %s", strerror(errno));
+  ck_assert_msg(resolve_on_meta_count == 0,
     "Expected on_meta count 0, got %u", resolve_on_meta_count);
-  fail_unless(resolve_on_default_count == 1,
+  ck_assert_msg(resolve_on_default_count == 1,
     "Expected on_default count 1, got %u", resolve_on_default_count);
-  fail_unless(resolve_on_other_count == 0,
+  ck_assert_msg(resolve_on_other_count == 0,
     "Expected on_other count 0, got %u", resolve_on_other_count);
 
   mark_point();
@@ -4480,12 +4480,12 @@ START_TEST (jot_resolve_logfmt_rename_from_test) {
   pr_table_add_dup(session.notes, "mod_core.rnfr-path", rnfr_path, 0);
   res = pr_jot_resolve_logfmt(p, cmd, NULL, logfmt, NULL,
     resolve_on_meta, resolve_on_default, resolve_on_other);
-  fail_unless(res == 0, "Failed to handle logfmt: %s", strerror(errno));
-  fail_unless(resolve_on_meta_count == 1,
+  ck_assert_msg(res == 0, "Failed to handle logfmt: %s", strerror(errno));
+  ck_assert_msg(resolve_on_meta_count == 1,
     "Expected on_meta count 1, got %u", resolve_on_meta_count);
-  fail_unless(resolve_on_default_count == 0,
+  ck_assert_msg(resolve_on_default_count == 0,
     "Expected on_default count 0, got %u", resolve_on_default_count);
-  fail_unless(resolve_on_other_count == 0,
+  ck_assert_msg(resolve_on_other_count == 0,
     "Expected on_other count 0, got %u", resolve_on_other_count);
 
   pr_table_empty(session.notes);
@@ -4509,12 +4509,12 @@ START_TEST (jot_resolve_logfmt_eos_reason_test) {
   resolve_on_meta_count = resolve_on_default_count = resolve_on_other_count = 0;
   res = pr_jot_resolve_logfmt(p, cmd, NULL, logfmt, NULL,
     resolve_on_meta, resolve_on_default, resolve_on_other);
-  fail_unless(res == 0, "Failed to handle logfmt: %s", strerror(errno));
-  fail_unless(resolve_on_meta_count == 0,
+  ck_assert_msg(res == 0, "Failed to handle logfmt: %s", strerror(errno));
+  ck_assert_msg(resolve_on_meta_count == 0,
     "Expected on_meta count 0, got %u", resolve_on_meta_count);
-  fail_unless(resolve_on_default_count == 1,
+  ck_assert_msg(resolve_on_default_count == 1,
     "Expected on_default count 1, got %u", resolve_on_default_count);
-  fail_unless(resolve_on_other_count == 0,
+  ck_assert_msg(resolve_on_other_count == 0,
     "Expected on_other count 0, got %u", resolve_on_other_count);
 
   mark_point();
@@ -4522,12 +4522,12 @@ START_TEST (jot_resolve_logfmt_eos_reason_test) {
   session.disconnect_reason = -1;
   res = pr_jot_resolve_logfmt(p, cmd, NULL, logfmt, NULL,
     resolve_on_meta, resolve_on_default, resolve_on_other);
-  fail_unless(res == 0, "Failed to handle logfmt: %s", strerror(errno));
-  fail_unless(resolve_on_meta_count == 0,
+  ck_assert_msg(res == 0, "Failed to handle logfmt: %s", strerror(errno));
+  ck_assert_msg(resolve_on_meta_count == 0,
     "Expected on_meta count 0, got %u", resolve_on_meta_count);
-  fail_unless(resolve_on_default_count == 1,
+  ck_assert_msg(resolve_on_default_count == 1,
     "Expected on_default count 1, got %u", resolve_on_default_count);
-  fail_unless(resolve_on_other_count == 0,
+  ck_assert_msg(resolve_on_other_count == 0,
     "Expected on_other count 0, got %u", resolve_on_other_count);
 
   mark_point();
@@ -4535,12 +4535,12 @@ START_TEST (jot_resolve_logfmt_eos_reason_test) {
   session.disconnect_reason = PR_SESS_DISCONNECT_BANNED;
   res = pr_jot_resolve_logfmt(p, cmd, NULL, logfmt, NULL,
     resolve_on_meta, resolve_on_default, resolve_on_other);
-  fail_unless(res == 0, "Failed to handle logfmt: %s", strerror(errno));
-  fail_unless(resolve_on_meta_count == 1,
+  ck_assert_msg(res == 0, "Failed to handle logfmt: %s", strerror(errno));
+  ck_assert_msg(resolve_on_meta_count == 1,
     "Expected on_meta count 1, got %u", resolve_on_meta_count);
-  fail_unless(resolve_on_default_count == 0,
+  ck_assert_msg(resolve_on_default_count == 0,
     "Expected on_default count 0, got %u", resolve_on_default_count);
-  fail_unless(resolve_on_other_count == 0,
+  ck_assert_msg(resolve_on_other_count == 0,
     "Expected on_other count 0, got %u", resolve_on_other_count);
 
   session.disconnect_reason = 0;
@@ -4563,12 +4563,12 @@ START_TEST (jot_resolve_logfmt_vhost_ip_test) {
   resolve_on_meta_count = resolve_on_default_count = resolve_on_other_count = 0;
   res = pr_jot_resolve_logfmt(p, cmd, NULL, logfmt, NULL,
     resolve_on_meta, resolve_on_default, resolve_on_other);
-  fail_unless(res == 0, "Failed to handle logfmt: %s", strerror(errno));
-  fail_unless(resolve_on_meta_count == 0,
+  ck_assert_msg(res == 0, "Failed to handle logfmt: %s", strerror(errno));
+  ck_assert_msg(resolve_on_meta_count == 0,
     "Expected on_meta count 0, got %u", resolve_on_meta_count);
-  fail_unless(resolve_on_default_count == 1,
+  ck_assert_msg(resolve_on_default_count == 1,
     "Expected on_default count 1, got %u", resolve_on_default_count);
-  fail_unless(resolve_on_other_count == 0,
+  ck_assert_msg(resolve_on_other_count == 0,
     "Expected on_other count 0, got %u", resolve_on_other_count);
 
   mark_point();
@@ -4578,12 +4578,12 @@ START_TEST (jot_resolve_logfmt_vhost_ip_test) {
   cmd->server = server;
   res = pr_jot_resolve_logfmt(p, cmd, NULL, logfmt, NULL,
     resolve_on_meta, resolve_on_default, resolve_on_other);
-  fail_unless(res == 0, "Failed to handle logfmt: %s", strerror(errno));
-  fail_unless(resolve_on_meta_count == 1,
+  ck_assert_msg(res == 0, "Failed to handle logfmt: %s", strerror(errno));
+  ck_assert_msg(resolve_on_meta_count == 1,
     "Expected on_meta count 1, got %u", resolve_on_meta_count);
-  fail_unless(resolve_on_default_count == 0,
+  ck_assert_msg(resolve_on_default_count == 0,
     "Expected on_default count 0, got %u", resolve_on_default_count);
-  fail_unless(resolve_on_other_count == 0,
+  ck_assert_msg(resolve_on_other_count == 0,
     "Expected on_other count 0, got %u", resolve_on_other_count);
 }
 END_TEST
@@ -4607,8 +4607,8 @@ START_TEST (jot_resolve_logfmt_filters_test) {
   mark_point();
   res = pr_jot_resolve_logfmt(p, cmd, jot_filters, logfmt, NULL,
     resolve_on_meta, NULL, NULL);
-  fail_unless(res == 0, "Failed to handle logfmt: %s", strerror(errno));
-  fail_unless(resolve_on_meta_count == 1,
+  ck_assert_msg(res == 0, "Failed to handle logfmt: %s", strerror(errno));
+  ck_assert_msg(resolve_on_meta_count == 1,
     "Expected on_meta count 1, got %u", resolve_on_meta_count);
 
   /* With an ALL filter, and no command class. */
@@ -4621,8 +4621,8 @@ START_TEST (jot_resolve_logfmt_filters_test) {
   mark_point();
   res = pr_jot_resolve_logfmt(p, cmd, jot_filters, logfmt, NULL,
     resolve_on_meta, NULL, NULL);
-  fail_unless(res == 0, "Failed to handle logfmt: %s", strerror(errno));
-  fail_unless(resolve_on_meta_count == 1,
+  ck_assert_msg(res == 0, "Failed to handle logfmt: %s", strerror(errno));
+  ck_assert_msg(resolve_on_meta_count == 1,
     "Expected on_meta count 1, got %u", resolve_on_meta_count);
 
   /* With explicit filters that allow the class. */
@@ -4635,8 +4635,8 @@ START_TEST (jot_resolve_logfmt_filters_test) {
   mark_point();
   res = pr_jot_resolve_logfmt(p, cmd, jot_filters, logfmt, NULL,
     resolve_on_meta, NULL, NULL);
-  fail_unless(res == 0, "Failed to handle logfmt: %s", strerror(errno));
-  fail_unless(resolve_on_meta_count == 1,
+  ck_assert_msg(res == 0, "Failed to handle logfmt: %s", strerror(errno));
+  ck_assert_msg(resolve_on_meta_count == 1,
     "Expected on_meta count 1, got %u", resolve_on_meta_count);
 
   /* With explicit filters that ignore the class. */
@@ -4647,10 +4647,10 @@ START_TEST (jot_resolve_logfmt_filters_test) {
   mark_point();
   res = pr_jot_resolve_logfmt(p, cmd, jot_filters, logfmt, NULL,
     resolve_on_meta, NULL, NULL);
-  fail_unless(res < 0, "Failed to handle filtered logfmt");
-  fail_unless(errno == EPERM, "Expected EPERM (%d), got %s (%d)", EPERM,
+  ck_assert_msg(res < 0, "Failed to handle filtered logfmt");
+  ck_assert_msg(errno == EPERM, "Expected EPERM (%d), got %s (%d)", EPERM,
     strerror(errno), errno);
-  fail_unless(resolve_on_meta_count == 0,
+  ck_assert_msg(resolve_on_meta_count == 0,
     "Expected on_meta count 0, got %u", resolve_on_meta_count);
 
   /* With explicit filters that do not match the class. */
@@ -4661,10 +4661,10 @@ START_TEST (jot_resolve_logfmt_filters_test) {
   mark_point();
   res = pr_jot_resolve_logfmt(p, cmd, jot_filters, logfmt, NULL,
     resolve_on_meta, NULL, NULL);
-  fail_unless(res < 0, "Failed to handle filtered logfmt");
-  fail_unless(errno == EPERM, "Expected EPERM (%d), got %s (%d)", EPERM,
+  ck_assert_msg(res < 0, "Failed to handle filtered logfmt");
+  ck_assert_msg(errno == EPERM, "Expected EPERM (%d), got %s (%d)", EPERM,
     strerror(errno), errno);
-  fail_unless(resolve_on_meta_count == 0,
+  ck_assert_msg(resolve_on_meta_count == 0,
     "Expected on_meta count 0, got %u", resolve_on_meta_count);
 
   /* With explicit filters that allow the command. Note that this REQUIRES
@@ -4680,8 +4680,8 @@ START_TEST (jot_resolve_logfmt_filters_test) {
   mark_point();
   res = pr_jot_resolve_logfmt(p, cmd, jot_filters, logfmt, NULL,
     resolve_on_meta, NULL, NULL);
-  fail_unless(res == 0, "Failed to handle logfmt: %s", strerror(errno));
-  fail_unless(resolve_on_meta_count == 1,
+  ck_assert_msg(res == 0, "Failed to handle logfmt: %s", strerror(errno));
+  ck_assert_msg(resolve_on_meta_count == 1,
     "Expected on_meta count 1, got %u", resolve_on_meta_count);
 
   /* With explicit filters that ignore the command. */
@@ -4692,10 +4692,10 @@ START_TEST (jot_resolve_logfmt_filters_test) {
   mark_point();
   res = pr_jot_resolve_logfmt(p, cmd, jot_filters, logfmt, NULL,
     resolve_on_meta, NULL, NULL);
-  fail_unless(res < 0, "Failed to handle filtered logfmt");
-  fail_unless(errno == EPERM, "Expected EPERM (%d), got %s (%d)", EPERM,
+  ck_assert_msg(res < 0, "Failed to handle filtered logfmt");
+  ck_assert_msg(errno == EPERM, "Expected EPERM (%d), got %s (%d)", EPERM,
     strerror(errno), errno);
-  fail_unless(resolve_on_meta_count == 0,
+  ck_assert_msg(resolve_on_meta_count == 0,
     "Expected on_meta count 0, got %u", resolve_on_meta_count);
 
   /* With explicit filters that do not match the command. */
@@ -4706,10 +4706,10 @@ START_TEST (jot_resolve_logfmt_filters_test) {
   mark_point();
   res = pr_jot_resolve_logfmt(p, cmd, jot_filters, logfmt, NULL,
     resolve_on_meta, NULL, NULL);
-  fail_unless(res < 0, "Failed to handle filtered logfmt");
-  fail_unless(errno == EPERM, "Expected EPERM (%d), got %s (%d)", EPERM,
+  ck_assert_msg(res < 0, "Failed to handle filtered logfmt");
+  ck_assert_msg(errno == EPERM, "Expected EPERM (%d), got %s (%d)", EPERM,
     strerror(errno), errno);
-  fail_unless(resolve_on_meta_count == 0,
+  ck_assert_msg(resolve_on_meta_count == 0,
     "Expected on_meta count 0, got %u", resolve_on_meta_count);
 }
 END_TEST
@@ -4728,10 +4728,10 @@ START_TEST (jot_resolve_logfmt_on_default_test) {
   mark_point();
   res = pr_jot_resolve_logfmt(p, cmd, NULL, logfmt, NULL,
     resolve_on_meta, resolve_on_default, NULL);
-  fail_unless(res == 0, "Failed to handle logfmt: %s", strerror(errno));
-  fail_unless(resolve_on_meta_count == 0,
+  ck_assert_msg(res == 0, "Failed to handle logfmt: %s", strerror(errno));
+  ck_assert_msg(resolve_on_meta_count == 0,
     "Expected on_meta count 0, got %u", resolve_on_meta_count);
-  fail_unless(resolve_on_default_count == 1,
+  ck_assert_msg(resolve_on_default_count == 1,
     "Expected on_default count 1, got %u", resolve_on_default_count);
 }
 END_TEST
@@ -4750,12 +4750,12 @@ START_TEST (jot_resolve_logfmt_on_other_test) {
   mark_point();
   res = pr_jot_resolve_logfmt(p, cmd, NULL, logfmt, NULL,
     resolve_on_meta, resolve_on_default, resolve_on_other);
-  fail_unless(res == 0, "Failed to handle logfmt: %s", strerror(errno));
-  fail_unless(resolve_on_meta_count == 0,
+  ck_assert_msg(res == 0, "Failed to handle logfmt: %s", strerror(errno));
+  ck_assert_msg(resolve_on_meta_count == 0,
     "Expected on_meta count 0, got %u", resolve_on_meta_count);
-  fail_unless(resolve_on_default_count == 0,
+  ck_assert_msg(resolve_on_default_count == 0,
     "Expected on_default count 0, got %u", resolve_on_default_count);
-  fail_unless(resolve_on_other_count == 1,
+  ck_assert_msg(resolve_on_other_count == 1,
     "Expected on_other count 1, got %u", resolve_on_other_count);
 }
 END_TEST
@@ -4776,12 +4776,12 @@ START_TEST (jot_resolve_logfmt_connect_test) {
   mark_point();
   res = pr_jot_resolve_logfmt(p, cmd, NULL, logfmt, NULL,
     resolve_on_meta, resolve_on_default, resolve_on_other);
-  fail_unless(res == 0, "Failed to handle logfmt: %s", strerror(errno));
-  fail_unless(resolve_on_meta_count == 1,
+  ck_assert_msg(res == 0, "Failed to handle logfmt: %s", strerror(errno));
+  ck_assert_msg(resolve_on_meta_count == 1,
     "Expected on_meta count 1, got %u", resolve_on_meta_count);
-  fail_unless(resolve_on_default_count == 0,
+  ck_assert_msg(resolve_on_default_count == 0,
     "Expected on_default count 0, got %u", resolve_on_default_count);
-  fail_unless(resolve_on_other_count == 0,
+  ck_assert_msg(resolve_on_other_count == 0,
     "Expected on_other count 0, got %u", resolve_on_other_count);
 
   resolve_on_meta_count = resolve_on_default_count = resolve_on_other_count = 0;
@@ -4790,12 +4790,12 @@ START_TEST (jot_resolve_logfmt_connect_test) {
   mark_point();
   res = pr_jot_resolve_logfmt(p, cmd, NULL, logfmt, NULL,
     resolve_on_meta, resolve_on_default, resolve_on_other);
-  fail_unless(res == 0, "Failed to handle logfmt: %s", strerror(errno));
-  fail_unless(resolve_on_meta_count == 0,
+  ck_assert_msg(res == 0, "Failed to handle logfmt: %s", strerror(errno));
+  ck_assert_msg(resolve_on_meta_count == 0,
     "Expected on_meta count 0, got %u", resolve_on_meta_count);
-  fail_unless(resolve_on_default_count == 0,
+  ck_assert_msg(resolve_on_default_count == 0,
     "Expected on_default count 0, got %u", resolve_on_default_count);
-  fail_unless(resolve_on_other_count == 0,
+  ck_assert_msg(resolve_on_other_count == 0,
     "Expected on_other count 0, got %u", resolve_on_other_count);
 }
 END_TEST
@@ -4816,12 +4816,12 @@ START_TEST (jot_resolve_logfmt_disconnect_test) {
   mark_point();
   res = pr_jot_resolve_logfmt(p, cmd, NULL, logfmt, NULL,
     resolve_on_meta, resolve_on_default, resolve_on_other);
-  fail_unless(res == 0, "Failed to handle logfmt: %s", strerror(errno));
-  fail_unless(resolve_on_meta_count == 1,
+  ck_assert_msg(res == 0, "Failed to handle logfmt: %s", strerror(errno));
+  ck_assert_msg(resolve_on_meta_count == 1,
     "Expected on_meta count 1, got %u", resolve_on_meta_count);
-  fail_unless(resolve_on_default_count == 0,
+  ck_assert_msg(resolve_on_default_count == 0,
     "Expected on_default count 0, got %u", resolve_on_default_count);
-  fail_unless(resolve_on_other_count == 0,
+  ck_assert_msg(resolve_on_other_count == 0,
     "Expected on_other count 0, got %u", resolve_on_other_count);
 
   resolve_on_meta_count = resolve_on_default_count = resolve_on_other_count = 0;
@@ -4830,12 +4830,12 @@ START_TEST (jot_resolve_logfmt_disconnect_test) {
   mark_point();
   res = pr_jot_resolve_logfmt(p, cmd, NULL, logfmt, NULL,
     resolve_on_meta, resolve_on_default, resolve_on_other);
-  fail_unless(res == 0, "Failed to handle logfmt: %s", strerror(errno));
-  fail_unless(resolve_on_meta_count == 0,
+  ck_assert_msg(res == 0, "Failed to handle logfmt: %s", strerror(errno));
+  ck_assert_msg(resolve_on_meta_count == 0,
     "Expected on_meta count 0, got %u", resolve_on_meta_count);
-  fail_unless(resolve_on_default_count == 0,
+  ck_assert_msg(resolve_on_default_count == 0,
     "Expected on_default count 0, got %u", resolve_on_default_count);
-  fail_unless(resolve_on_other_count == 0,
+  ck_assert_msg(resolve_on_other_count == 0,
     "Expected on_other count 0, got %u", resolve_on_other_count);
 }
 END_TEST
@@ -4863,12 +4863,12 @@ START_TEST (jot_resolve_logfmt_custom_test) {
   mark_point();
   res = pr_jot_resolve_logfmt(p, cmd, NULL, logfmt, NULL,
     resolve_on_meta, resolve_on_default, resolve_on_other);
-  fail_unless(res == 0, "Failed to handle logfmt: %s", strerror(errno));
-  fail_unless(resolve_on_meta_count == 1,
+  ck_assert_msg(res == 0, "Failed to handle logfmt: %s", strerror(errno));
+  ck_assert_msg(resolve_on_meta_count == 1,
     "Expected on_meta count 1, got %u", resolve_on_meta_count);
-  fail_unless(resolve_on_default_count == 0,
+  ck_assert_msg(resolve_on_default_count == 0,
     "Expected on_default count 0, got %u", resolve_on_default_count);
-  fail_unless(resolve_on_other_count == 0,
+  ck_assert_msg(resolve_on_other_count == 0,
     "Expected on_other count 0, got %u", resolve_on_other_count);
 }
 END_TEST
@@ -4891,15 +4891,15 @@ START_TEST (jot_resolve_logfmts_test) {
     mark_point();
     res = pr_jot_resolve_logfmt(p, cmd, NULL, logfmt, NULL,
       resolve_on_meta, resolve_on_default, resolve_on_other);
-    fail_unless(res == 0, "Failed to handle logfmt_id %u: %s", logfmt[1],
+    ck_assert_msg(res == 0, "Failed to handle logfmt_id %u: %s", logfmt[1],
       strerror(errno));
   }
 
-  fail_unless(resolve_on_meta_count == 20,
+  ck_assert_msg(resolve_on_meta_count == 20,
     "Expected on_meta count 20, got %u", resolve_on_meta_count);
-  fail_unless(resolve_on_default_count == 28,
+  ck_assert_msg(resolve_on_default_count == 28,
     "Expected on_default count 28, got %u", resolve_on_default_count);
-  fail_unless(resolve_on_other_count == 0,
+  ck_assert_msg(resolve_on_other_count == 0,
     "Expected on_other count 0, got %u", resolve_on_other_count);
 }
 END_TEST
@@ -4918,14 +4918,14 @@ START_TEST (jot_scan_logfmt_test) {
 
   mark_point();
   res = pr_jot_scan_logfmt(NULL, NULL, 0, NULL, NULL, 0);
-  fail_unless(res < 0, "Failed to handle null pool");
-  fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+  ck_assert_msg(res < 0, "Failed to handle null pool");
+  ck_assert_msg(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
     strerror(errno), errno);
 
   mark_point();
   res = pr_jot_scan_logfmt(p, NULL, 0, NULL, NULL, 0);
-  fail_unless(res < 0, "Failed to handle null logfmt");
-  fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+  ck_assert_msg(res < 0, "Failed to handle null logfmt");
+  ck_assert_msg(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
     strerror(errno), errno);
 
   logfmt[0] = LOGFMT_META_START;
@@ -4943,14 +4943,14 @@ START_TEST (jot_scan_logfmt_test) {
 
   mark_point();
   res = pr_jot_scan_logfmt(p, logfmt, 0, NULL, NULL, 0);
-  fail_unless(res < 0, "Failed to handle null on_meta");
-  fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+  ck_assert_msg(res < 0, "Failed to handle null on_meta");
+  ck_assert_msg(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
     strerror(errno), errno);
 
   mark_point();
   res = pr_jot_scan_logfmt(p, logfmt, 0, NULL, scan_on_meta, 0);
-  fail_unless(res < 0, "Failed to handle invalid LogFormat ID");
-  fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+  ck_assert_msg(res < 0, "Failed to handle invalid LogFormat ID");
+  ck_assert_msg(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
     strerror(errno), errno);
 
   scan_on_meta_count = 0;
@@ -4958,9 +4958,9 @@ START_TEST (jot_scan_logfmt_test) {
   mark_point();
   res = pr_jot_scan_logfmt(p, logfmt, LOGFMT_META_ENV_VAR, NULL, scan_on_meta,
     0);
-  fail_unless(res == 0, "Failed to scan logmt for ENV_VAR: %s",
+  ck_assert_msg(res == 0, "Failed to scan logmt for ENV_VAR: %s",
     strerror(errno));
-  fail_unless(scan_on_meta_count == 0, "Expected scan_on_meta 0, got %u",
+  ck_assert_msg(scan_on_meta_count == 0, "Expected scan_on_meta 0, got %u",
     scan_on_meta_count);
 
   scan_on_meta_count = 0;
@@ -4968,9 +4968,9 @@ START_TEST (jot_scan_logfmt_test) {
   mark_point();
   res = pr_jot_scan_logfmt(p, logfmt, LOGFMT_META_CUSTOM, NULL, scan_on_meta,
     0);
-  fail_unless(res == 0, "Failed to scan logmt for CUSTOM: %s",
+  ck_assert_msg(res == 0, "Failed to scan logmt for CUSTOM: %s",
     strerror(errno));
-  fail_unless(scan_on_meta_count == 1, "Expected scan_on_meta 1, got %u",
+  ck_assert_msg(scan_on_meta_count == 1, "Expected scan_on_meta 1, got %u",
     scan_on_meta_count);
 }
 END_TEST
@@ -4984,28 +4984,28 @@ START_TEST (jot_on_json_test) {
 
   mark_point();
   res = pr_jot_on_json(NULL, NULL, 0, NULL, NULL);
-  fail_unless(res < 0, "Failed to handle null pool");
-  fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+  ck_assert_msg(res < 0, "Failed to handle null pool");
+  ck_assert_msg(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
     strerror(errno), errno);
 
   mark_point();
   res = pr_jot_on_json(p, NULL, 0, NULL, NULL);
-  fail_unless(res < 0, "Failed to handle null ctx");
-  fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+  ck_assert_msg(res < 0, "Failed to handle null ctx");
+  ck_assert_msg(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
     strerror(errno), errno);
 
   ctx = pcalloc(p, sizeof(pr_jot_ctx_t));
 
   mark_point();
   res = pr_jot_on_json(p, ctx, 0, NULL, NULL);
-  fail_unless(res < 0, "Failed to handle null val");
-  fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+  ck_assert_msg(res < 0, "Failed to handle null val");
+  ck_assert_msg(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
     strerror(errno), errno);
 
   mark_point();
   res = pr_jot_on_json(p, ctx, 0, NULL, &num);
-  fail_unless(res < 0, "Failed to handle null ctx->log");
-  fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+  ck_assert_msg(res < 0, "Failed to handle null ctx->log");
+  ck_assert_msg(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
     strerror(errno), errno);
 
   json = pr_json_object_alloc(p);
@@ -5013,16 +5013,16 @@ START_TEST (jot_on_json_test) {
 
   mark_point();
   res = pr_jot_on_json(p, ctx, 0, NULL, &num);
-  fail_unless(res < 0, "Failed to handle null ctx->user_data");
-  fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+  ck_assert_msg(res < 0, "Failed to handle null ctx->user_data");
+  ck_assert_msg(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
     strerror(errno), errno);
 
   ctx->user_data = pr_table_alloc(p, 0);
 
   mark_point();
   res = pr_jot_on_json(p, ctx, 0, NULL, &num);
-  fail_unless(res < 0, "Failed to handle null JSON info");
-  fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+  ck_assert_msg(res < 0, "Failed to handle null JSON info");
+  ck_assert_msg(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
     strerror(errno), errno);
 
   ctx->user_data = pr_jot_get_logfmt2json(p);
@@ -5030,25 +5030,25 @@ START_TEST (jot_on_json_test) {
   mark_point();
   truth = FALSE;
   res = pr_jot_on_json(p, ctx, LOGFMT_META_CONNECT, NULL, &truth);
-  fail_unless(res == 0, "Failed to handle LOGFMT_META_CONNECT: %s",
+  ck_assert_msg(res == 0, "Failed to handle LOGFMT_META_CONNECT: %s",
     strerror(errno));
 
   mark_point();
   num = 2476;
   res = pr_jot_on_json(p, ctx, LOGFMT_META_PID, NULL, &num);
-  fail_unless(res == 0, "Failed to handle LOGFMT_META_PID: %s",
+  ck_assert_msg(res == 0, "Failed to handle LOGFMT_META_PID: %s",
     strerror(errno));
 
   mark_point();
   text = "lorem ipsum";
   res = pr_jot_on_json(p, ctx, LOGFMT_META_IDENT_USER, NULL, text);
-  fail_unless(res == 0, "Failed to handle LOGFMT_META_IDENT_USER: %s",
+  ck_assert_msg(res == 0, "Failed to handle LOGFMT_META_IDENT_USER: %s",
     strerror(errno));
 
   mark_point();
   text = "alef bet vet";
   res = pr_jot_on_json(p, ctx, LOGFMT_META_USER, "USER_KEY", text);
-  fail_unless(res == 0, "Failed to handle LOGFMT_META_USER: %s",
+  ck_assert_msg(res == 0, "Failed to handle LOGFMT_META_USER: %s",
     strerror(errno));
 
   (void) pr_json_object_free(json);
@@ -5060,13 +5060,13 @@ START_TEST (jot_get_logfmt2json_test) {
 
   mark_point();
   res = pr_jot_get_logfmt2json(NULL);
-  fail_unless(res == NULL, "Failed to handle null pool");
-  fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+  ck_assert_msg(res == NULL, "Failed to handle null pool");
+  ck_assert_msg(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
     strerror(errno), errno);
 
   mark_point();
   res = pr_jot_get_logfmt2json(p);
-  fail_unless(res != NULL, "Failed to get map: %s", strerror(errno));
+  ck_assert_msg(res != NULL, "Failed to get map: %s", strerror(errno));
 }
 END_TEST
 
@@ -5076,20 +5076,20 @@ START_TEST (jot_get_logfmt_id_name_test) {
 
   mark_point();
   res = pr_jot_get_logfmt_id_name(0);
-  fail_unless(res == NULL, "Failed to handle invalid logfmt_id");
-  fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+  ck_assert_msg(res == NULL, "Failed to handle invalid logfmt_id");
+  ck_assert_msg(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
     strerror(errno), errno);
 
   /* Currently, the max known LogFormat meta/ID is 54 (XFER_PORT). */
   for (i = 2; i < 55; i++) {
     mark_point();
     res = pr_jot_get_logfmt_id_name(i);
-    fail_unless(res != NULL, "Failed to get name for LogFormat ID %u: %s",
+    ck_assert_msg(res != NULL, "Failed to get name for LogFormat ID %u: %s",
       i, strerror(errno)); 
   }
 
   res = pr_jot_get_logfmt_id_name(LOGFMT_META_CUSTOM);
-  fail_unless(res != NULL, "Failed to get name for LogFormat ID %u: %s",
+  ck_assert_msg(res != NULL, "Failed to get name for LogFormat ID %u: %s",
     LOGFMT_META_CUSTOM, strerror(errno)); 
 }
 END_TEST
