@@ -242,7 +242,14 @@ START_TEST (netaddr_get_addr2_test) {
   res = pr_netaddr_get_addr2(p, name, NULL, flags);
   fail_unless(res == NULL, "Resolved name '%s' to IP address unexpectedly",
     name);
-  fail_unless(errno == ENOENT, "Failed to set errno to ENOENT");
+  fail_unless(errno == ENOENT, "Expected ENOENT (%d), got %d (%s)", ENOENT,
+    strerror(errno), errno);
+
+  flags = PR_NETADDR_GET_ADDR_FL_EXCL_CACHE;
+  name = "127.0.0.1";
+  res = pr_netaddr_get_addr2(p, name, NULL, flags);
+  fail_if(res == NULL, "Failed to resolve name '%s' to IP address: %s",
+    strerror(errno));
 }
 END_TEST
 
