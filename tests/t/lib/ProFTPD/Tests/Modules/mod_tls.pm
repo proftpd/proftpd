@@ -3824,50 +3824,25 @@ sub tls_list_with_no_session_reuse_required_opt {
 sub tls_list_fails_tls_required_by_dir_bug2178 {
   my $self = shift;
   my $tmpdir = $self->{tmpdir};
-
-  my $config_file = "$tmpdir/tls.conf";
-  my $pid_file = File::Spec->rel2abs("$tmpdir/tls.pid");
-  my $scoreboard_file = File::Spec->rel2abs("$tmpdir/tls.scoreboard");
-
-  my $log_file = test_get_logfile();
-
-  my $auth_user_file = File::Spec->rel2abs("$tmpdir/tls.passwd");
-  my $auth_group_file = File::Spec->rel2abs("$tmpdir/tls.group");
-
-  my $user = 'proftpd';
-  my $passwd = 'test';
-  my $group = 'ftpd';
-  my $home_dir = File::Spec->rel2abs($tmpdir);
-  my $uid = 500;
-  my $gid = 500;
-
-  # Make sure that, if we're running as root, that the home directory has
-  # permissions/privs set for the account we create
-  if ($< == 0) {
-    unless (chmod(0755, $home_dir)) {
-      die("Can't set perms on $home_dir to 0755: $!");
-    }
-
-    unless (chown($uid, $gid, $home_dir)) {
-      die("Can't set owner of $home_dir to $uid/$gid: $!");
-    }
-  }
-
-  auth_user_write($auth_user_file, $user, $passwd, $uid, $gid, $home_dir,
-    '/bin/bash');
-  auth_group_write($auth_group_file, $group, $gid, $user);
+  my $setup = test_setup($tmpdir, 'tls');
 
   my $server_cert = File::Spec->rel2abs('t/etc/modules/mod_tls/server-cert.pem');
   my $client_cert = File::Spec->rel2abs('t/etc/modules/mod_tls/client-cert.pem');
   my $ca_cert = File::Spec->rel2abs('t/etc/modules/mod_tls/ca-cert.pem');
 
-  my $config = {
-    PidFile => $pid_file,
-    ScoreboardFile => $scoreboard_file,
-    SystemLog => $log_file,
+  my $home_dir = $setup->{home_dir};
+  if ($^O eq 'darwin') {
+    # MacOS-specific hack
+    $home_dir = '/private' . $home_dir;
+  }
 
-    AuthUserFile => $auth_user_file,
-    AuthGroupFile => $auth_group_file,
+  my $config = {
+    PidFile => $setup->{pid_file},
+    ScoreboardFile => $setup->{scoreboard_file},
+    SystemLog => $setup->{log_file},
+
+    AuthUserFile => $setup->{auth_user_file},
+    AuthGroupFile => $setup->{auth_group_file},
 
     Directory => {
       $home_dir => {
@@ -3882,7 +3857,7 @@ sub tls_list_fails_tls_required_by_dir_bug2178 {
 
       'mod_tls.c' => {
         TLSEngine => 'on',
-        TLSLog => $log_file,
+        TLSLog => $setup->{log_file},
         TLSRequired => 'off',
         TLSRSACertificateFile => $server_cert,
         TLSCACertificateFile => $ca_cert,
@@ -3891,7 +3866,8 @@ sub tls_list_fails_tls_required_by_dir_bug2178 {
     },
   };
 
-  my ($port, $config_user, $config_group) = config_write($config_file, $config);
+  my ($port, $config_user, $config_group) = config_write($setup->{config_file},
+    $config);
 
   # Open pipes, for use between the parent and child processes.  Specifically,
   # the child will indicate when it's done with its test by writing a message
@@ -3931,7 +3907,7 @@ sub tls_list_fails_tls_required_by_dir_bug2178 {
         SSL_Client_Certificate => $ssl_opts,
       );
 
-      unless ($client->login($user, $passwd)) {
+      unless ($client->login($setup->{user}, $setup->{passwd})) {
         die("Can't login: " . $client->last_message());
       }
 
@@ -3946,9 +3922,8 @@ sub tls_list_fails_tls_required_by_dir_bug2178 {
 
       my $expected = '522 SSL/TLS required on the data channel';
       $self->assert($expected eq $resp_msg,
-        test_msg("Expected '$expected', got '$resp_msg'"));
+        test_msg("Expected response '$expected', got '$resp_msg'"));
     };
-
     if ($@) {
       $ex = $@;
     }
@@ -3957,7 +3932,7 @@ sub tls_list_fails_tls_required_by_dir_bug2178 {
     $wfh->flush();
 
   } else {
-    eval { server_wait($config_file, $rfh) };
+    eval { server_wait($setup->{config_file}, $rfh) };
     if ($@) {
       warn($@);
       exit 1;
@@ -3967,18 +3942,10 @@ sub tls_list_fails_tls_required_by_dir_bug2178 {
   }
 
   # Stop server
-  server_stop($pid_file);
-
+  server_stop($setup->{pid_file});
   $self->assert_child_ok($pid);
 
-  if ($ex) {
-    test_append_logfile($log_file, $ex);
-    unlink($log_file);
-
-    die($ex);
-  }
-
-  unlink($log_file);
+  test_cleanup($setup->{log_file}, $ex);
 }
 
 sub tls_list_ok_tls_required_by_dir_bug2178 {
@@ -4677,41 +4644,9 @@ sub tls_implicit_ssl_bug3266 {
 sub tls_client_cert_verify_failed_embedded_nul_bug3275 {
   my $self = shift;
   my $tmpdir = $self->{tmpdir};
-
-  my $config_file = "$tmpdir/tls.conf";
-  my $pid_file = File::Spec->rel2abs("$tmpdir/tls.pid");
-  my $scoreboard_file = File::Spec->rel2abs("$tmpdir/tls.scoreboard");
-
-  my $log_file = test_get_logfile();
-
-  my $auth_user_file = File::Spec->rel2abs("$tmpdir/tls.passwd");
-  my $auth_group_file = File::Spec->rel2abs("$tmpdir/tls.group");
-
-  my $user = 'proftpd';
-  my $passwd = 'test';
-  my $group = 'ftpd';
-  my $home_dir = File::Spec->rel2abs($tmpdir);
-  my $uid = 500;
-  my $gid = 500;
-
-  # Make sure that, if we're running as root, that the home directory has
-  # permissions/privs set for the account we create
-  if ($< == 0) {
-    unless (chmod(0755, $home_dir)) {
-      die("Can't set perms on $home_dir to 0755: $!");
-    }
-
-    unless (chown($uid, $gid, $home_dir)) {
-      die("Can't set owner of $home_dir to $uid/$gid: $!");
-    }
-  }
-
-  auth_user_write($auth_user_file, $user, $passwd, $uid, $gid, $home_dir,
-    '/bin/bash');
-  auth_group_write($auth_group_file, $group, $gid, $user);
+  my $setup = test_setup($tmpdir, 'tls');
 
   my $server_cert = File::Spec->rel2abs('t/etc/modules/mod_tls/server-cert.pem');
-#  my $ca_cert = File::Spec->rel2abs('t/etc/modules/mod_tls/ca-cert.pem');
   my $ca_cert = File::Spec->rel2abs('t/etc/modules/mod_tls/ca-nul-subjaltname.pem');
 
   # The cert/key with embedded NULs in the subjAltName field were obtained
@@ -4723,12 +4658,14 @@ sub tls_client_cert_verify_failed_embedded_nul_bug3275 {
   my $client_key = File::Spec->rel2abs('t/etc/modules/mod_tls/key-nul-subjaltname.pem');
 
   my $config = {
-    PidFile => $pid_file,
-    ScoreboardFile => $scoreboard_file,
-    SystemLog => $log_file,
+    PidFile => $setup->{pid_file},
+    ScoreboardFile => $setup->{scoreboard_file},
+    SystemLog => $setup->{log_file},
+    TraceLog => $setup->{log_file},
+    Trace => 'tls:30',
 
-    AuthUserFile => $auth_user_file,
-    AuthGroupFile => $auth_group_file,
+    AuthUserFile => $setup->{auth_user_file},
+    AuthGroupFile => $setup->{auth_group_file},
 
     IfModules => {
       'mod_delay.c' => {
@@ -4737,7 +4674,7 @@ sub tls_client_cert_verify_failed_embedded_nul_bug3275 {
 
       'mod_tls.c' => {
         TLSEngine => 'on',
-        TLSLog => $log_file,
+        TLSLog => $setup->{log_file},
         TLSRequired => 'on',
         TLSRSACertificateFile => $server_cert,
         TLSCACertificateFile => $ca_cert,
@@ -4746,7 +4683,7 @@ sub tls_client_cert_verify_failed_embedded_nul_bug3275 {
 
         # To trigger Bug#3275, we need to verify the subjAltName field in
         # the present cert, which means enabling DNS resolution
-        TLSOptions => 'dNSNameRequired',
+        TLSOptions => 'EnableDiags dNSNameRequired',
 
         # We need to enable reverse DNS resolution as well, for this to work
         UseReverseDNS => 'on',
@@ -4754,7 +4691,8 @@ sub tls_client_cert_verify_failed_embedded_nul_bug3275 {
     },
   };
 
-  my ($port, $config_user, $config_group) = config_write($config_file, $config);
+  my ($port, $config_user, $config_group) = config_write($setup->{config_file},
+    $config);
 
   # Open pipes, for use between the parent and child processes.  Specifically,
   # the child will indicate when it's done with its test by writing a message
@@ -4776,41 +4714,39 @@ sub tls_client_cert_verify_failed_embedded_nul_bug3275 {
       # Give the server a chance to start up
       sleep(2);
 
-      my $client;
+      # IO::Socket::SSL options
+      my $ssl_opts = {
+        SSL_use_cert => 1,
+        SSL_ca_file => $ca_cert,
+        SSL_cert_file => $client_cert,
+        SSL_key_file => $client_key,
+        SSL_verify_mode => SSL_VERIFY_NONE(),
+      };
+
+      my $client = Net::FTPSSL->new('127.0.0.1',
+        Croak => 1,
+        Encryption => 'E',
+        Port => $port,
+        SSL_Client_Certificate => $ssl_opts,
+      );
+
+      # Net::FTPSSL is rather stupid, and treats the initial 234 response
+      # code (indicating that the SSL/TLS handshake should proceed) as
+      # indicating success _of the handshake_.
+      #
+      # Thus if we want to test if the handshake succeeded, we have to
+      # act as if it did succeed, then try to login (which should fail).
+      # Sigh.
 
       eval {
-        # IO::Socket::SSL options
-        my $ssl_opts = {
-          SSL_use_cert => 1,
-          SSL_cert_file => $client_cert,
-          SSL_key_file => $client_key,
-        };
-
-        $client = Net::FTPSSL->new('127.0.0.1',
-          Croak => 1,
-          Encryption => 'E',
-          Port => $port,
-          SSL_Client_Certificate => $ssl_opts,
-        );
-
-        # Net::FTPSSL is rather stupid, and treats the initial 234 response
-        # code (indicating that the SSL/TLS handshake should proceed) as
-        # indicating success _of the handshake_.
-        #
-        # Thus if we want to test if the handshake succeeded, we have to
-        # act as if it did succeed, then try to login (which should fail).
-        # Sigh.
-
-        unless ($client->login($user, $passwd)) {
+        unless ($client->login($setup->{user}, $setup->{passwd})) {
           die("Can't login: " . $client->last_message());
         }
       };
-
-      if ($@) {
-        die($@);
+      unless ($@) {
+        die("Login succeeded unexpectedly");
       }
     };
-
     if ($@) {
       $ex = $@;
     }
@@ -4819,7 +4755,7 @@ sub tls_client_cert_verify_failed_embedded_nul_bug3275 {
     $wfh->flush();
 
   } else {
-    eval { server_wait($config_file, $rfh) };
+    eval { server_wait($setup->{config_file}, $rfh) };
     if ($@) {
       warn($@);
       exit 1;
@@ -4829,40 +4765,48 @@ sub tls_client_cert_verify_failed_embedded_nul_bug3275 {
   }
 
   # Stop server
-  server_stop($pid_file);
-
+  server_stop($setup->{pid_file});
   $self->assert_child_ok($pid);
 
   unless ($ex) {
-    die("Test succeeded unexpectedly");
+    test_cleanup($setup->{log_file}, "Test succeeded unexpectedly");
   }
 
   # Not quite done yet.  To make sure that this test did as expected, we
   # need to examine the log file, and look for the phrase 'spoof attempt'.
   # That indicates that mod_tls saw the embedded NUL.
-  if (open(my $fh, "< $log_file")) {
-    my $ok = 0;
+  eval {
+    if (open(my $fh, "< $setup->{log_file}")) {
+      my $ok = 0;
 
-    while (my $line = <$fh>) {
-      chomp($line);
+      while (my $line = <$fh>) {
+        chomp($line);
 
-      if ($line =~ /spoof attempt/) {
-        $ok = 1;
-        last;
+        if ($ENV{TEST_VERBOSE}) {
+          print STDERR "# $line\n";
+        }
+
+        if ($line =~ /spoof attempt/) {
+          $ok = 1;
+          last;
+        }
       }
+
+      close($fh);
+
+      unless ($ok) {
+        die("Expected TLSLog 'spoof attempt' not found as expected");
+      }
+
+    } else {
+      die("Can't read $setup->{log_file}: $!");
     }
-
-    close($fh);
-
-    unless ($ok) {
-      die("Expected TLSLog 'spoof attempt' not found as expected");
-    }
-
-  } else {
-    die("Can't read $log_file: $!");
+  };
+  if ($@) {
+    $ex = $@;
   }
 
-  unlink($log_file);
+  test_cleanup($setup->{log_file}, $ex);
 }
 
 sub tls_opts_std_env_vars {
