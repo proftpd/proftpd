@@ -257,12 +257,36 @@ int pr_ipbind_add_binds(server_rec *serv) {
         return -1;
       }
 
-      PR_CREATE_IPBIND(serv, addr, serv->ServerPort);
-      PR_OPEN_IPBIND(addr, serv->ServerPort, listen_conn, FALSE, FALSE, TRUE);
+      res = pr_ipbind_create(serv, addr, serv->ServerPort);
+      if (res < 0) {
+        pr_log_pri(PR_LOG_NOTICE,
+          "%s:%d: notice: unable to create ipbind '%s#%u': %s", __FILE__,
+          __LINE__, serv->ServerAddress, serv->ServerPort, strerror(errno));
+      }
+
+      res = pr_ipbind_open(addr, serv->ServerPort, listen_conn, FALSE, FALSE,
+        TRUE);
+      if (res < 0) {
+        pr_log_pri(PR_LOG_NOTICE,
+          "%s:%d: notice: unable to open ipbind '%s': %s", __FILE__, __LINE__,
+          pr_netaddr_get_ipstr(addr), strerror(errno));
+      }
 
     } else {
-      PR_CREATE_IPBIND(serv, addr, serv->ServerPort);
-      PR_OPEN_IPBIND(addr, serv->ServerPort, serv->listen, FALSE, FALSE, TRUE);
+      res = pr_ipbind_create(serv, addr, serv->ServerPort);
+      if (res < 0) {
+        pr_log_pri(PR_LOG_NOTICE,
+          "%s:%d: notice: unable to create ipbind '%s#%u': %s", __FILE__,
+          __LINE__, serv->ServerAddress, serv->ServerPort, strerror(errno));
+      }
+
+      res = pr_ipbind_open(addr, serv->ServerPort, serv->listen, FALSE, FALSE,
+        TRUE);
+      if (res < 0) {
+        pr_log_pri(PR_LOG_NOTICE,
+          "%s:%d: notice: unable to open ipbind '%s': %s", __FILE__, __LINE__,
+          pr_netaddr_get_ipstr(addr), strerror(errno));
+      }
     }
 
     c = find_config_next(c, c->next, CONF_PARAM, "_bind_", FALSE);
@@ -1218,10 +1242,28 @@ static int init_inetd_bindings(void) {
     is_default = TRUE;
   }
 
-  PR_CREATE_IPBIND(main_server, main_server->addr, main_server->ServerPort);
-  PR_OPEN_IPBIND(main_server->addr, main_server->ServerPort,
+  res = pr_ipbind_create(main_server, main_server->addr,
+    main_server->ServerPort);
+  if (res < 0) {
+    pr_log_pri(PR_LOG_NOTICE,
+      "%s:%d: notice: unable to create ipbind '%s#%u': %s", __FILE__, __LINE__,
+      main_server->ServerAddress, main_server->ServerPort, strerror(errno));
+  }
+
+  res = pr_ipbind_open(main_server->addr, main_server->ServerPort,
     main_server->listen, is_default, TRUE, TRUE);
-  PR_ADD_IPBINDS(main_server);
+  if (res < 0) {
+    pr_log_pri(PR_LOG_NOTICE,
+      "%s:%d: notice: unable to open ipbind '%s': %s", __FILE__, __LINE__,
+      pr_netaddr_get_ipstr(main_server->addr), strerror(errno));
+  }
+
+  res = pr_ipbind_add_binds(main_server);
+  if (res < 0) {
+    pr_log_pri(PR_LOG_NOTICE,
+      "%s:%d: notice: unable to add binds to ipbind '%s': %s", __FILE__,
+      __LINE__, main_server->ServerAddress, strerror(errno));
+  }
 
   /* Now attach the faked connection to all virtual servers. */
   for (serv = main_server->next; serv; serv = serv->next) {
@@ -1242,10 +1284,27 @@ static int init_inetd_bindings(void) {
       is_default = TRUE;
     }
 
-    PR_CREATE_IPBIND(serv, serv->addr, serv->ServerPort);
-    PR_OPEN_IPBIND(serv->addr, serv->ServerPort, serv->listen, is_default,
-      FALSE, TRUE);
-    PR_ADD_IPBINDS(serv);
+    res = pr_ipbind_create(serv, serv->addr, serv->ServerPort);
+    if (res < 0) {
+      pr_log_pri(PR_LOG_NOTICE,
+        "%s:%d: notice: unable to create ipbind '%s#%u': %s", __FILE__,
+        __LINE__, serv->ServerAddress, serv->ServerPort, strerror(errno));
+    }
+
+    res = pr_ipbind_open(serv->addr, serv->ServerPort, serv->listen,
+      is_default, FALSE, TRUE);
+    if (res < 0) {
+      pr_log_pri(PR_LOG_NOTICE,
+        "%s:%d: notice: unable to open ipbind '%s': %s", __FILE__, __LINE__,
+        pr_netaddr_get_ipstr(serv->addr), strerror(errno));
+    }
+
+    res = pr_ipbind_add_binds(serv);
+    if (res < 0) {
+      pr_log_pri(PR_LOG_NOTICE,
+        "%s:%d: notice: unable to add binds to ipbind '%s': %s", __FILE__,
+        __LINE__, serv->ServerAddress, strerror(errno));
+    }
   }
 
   return 0;
@@ -1444,12 +1503,32 @@ static int init_standalone_bindings(void) {
     is_default = TRUE;
   }
 
-  if (main_server->ServerPort ||
-      is_default) {
-    PR_CREATE_IPBIND(main_server, main_server->addr, main_server->ServerPort);
-    PR_OPEN_IPBIND(main_server->addr, main_server->ServerPort,
+  if (main_server->ServerPort > 0 ||
+      is_default == TRUE) {
+
+    res = pr_ipbind_create(main_server, main_server->addr,
+      main_server->ServerPort);
+    if (res < 0) {
+      pr_log_pri(PR_LOG_NOTICE,
+        "%s:%d: notice: unable to create ipbind '%s#%u': %s", __FILE__,
+        __LINE__, main_server->ServerAddress, main_server->ServerPort,
+        strerror(errno));
+    }
+
+    res = pr_ipbind_open(main_server->addr, main_server->ServerPort,
       main_server->listen, is_default, TRUE, TRUE);
-    PR_ADD_IPBINDS(main_server);
+    if (res < 0) {
+      pr_log_pri(PR_LOG_NOTICE,
+        "%s:%d: notice: unable to open ipbind '%s': %s", __FILE__, __LINE__,
+        pr_netaddr_get_ipstr(main_server->addr), strerror(errno));
+    }
+
+    res = pr_ipbind_add_binds(main_server);
+    if (res < 0) {
+      pr_log_pri(PR_LOG_NOTICE,
+        "%s:%d: notice: unable to add binds to ipbind '%s': %s", __FILE__,
+        __LINE__, main_server->ServerAddress, strerror(errno));
+    }
   }
 
   for (serv = main_server->next; serv; serv = serv->next) {
@@ -1494,18 +1573,52 @@ static int init_standalone_bindings(void) {
           return -1;
         }
 
-        PR_CREATE_IPBIND(serv, serv->addr, serv->ServerPort);
-        PR_OPEN_IPBIND(serv->addr, serv->ServerPort, serv->listen, is_default,
-          FALSE, TRUE);
-        PR_ADD_IPBINDS(serv);
+        res = pr_ipbind_create(serv, serv->addr, serv->ServerPort);
+        if (res < 0) {
+          pr_log_pri(PR_LOG_NOTICE,
+            "%s:%d: notice: unable to create ipbind '%s#%u': %s", __FILE__,
+            __LINE__, serv->ServerAddress, serv->ServerPort, strerror(errno));
+        }
+
+        res = pr_ipbind_open(serv->addr, serv->ServerPort, serv->listen,
+          is_default, FALSE, TRUE);
+        if (res < 0) {
+          pr_log_pri(PR_LOG_NOTICE,
+            "%s:%d: notice: unable to open ipbind '%s': %s", __FILE__, __LINE__,
+            pr_netaddr_get_ipstr(serv->addr), strerror(errno));
+        }
+
+        res = pr_ipbind_add_binds(serv);
+        if (res < 0) {
+          pr_log_pri(PR_LOG_NOTICE,
+            "%s:%d: notice: unable to add binds to ipbind '%s': %s", __FILE__,
+            __LINE__, serv->ServerAddress, strerror(errno));
+        }
 
       } else if (is_default) {
         serv->listen = NULL;
 
-        PR_CREATE_IPBIND(serv, serv->addr, serv->ServerPort);
-        PR_OPEN_IPBIND(serv->addr, serv->ServerPort, serv->listen, is_default,
-          FALSE, TRUE);
-        PR_ADD_IPBINDS(serv);
+        res = pr_ipbind_create(serv, serv->addr, serv->ServerPort);
+        if (res < 0) {
+          pr_log_pri(PR_LOG_NOTICE,
+            "%s:%d: notice: unable to create ipbind '%s#%u': %s", __FILE__,
+            __LINE__, serv->ServerAddress, serv->ServerPort, strerror(errno));
+        }
+
+        res = pr_ipbind_open(serv->addr, serv->ServerPort, serv->listen,
+          is_default, FALSE, TRUE);
+        if (res < 0) {
+          pr_log_pri(PR_LOG_NOTICE,
+            "%s:%d: notice: unable to open ipbind '%s': %s", __FILE__, __LINE__,
+            pr_netaddr_get_ipstr(serv->addr), strerror(errno));
+        }
+
+        res = pr_ipbind_add_binds(serv);
+        if (res < 0) {
+          pr_log_pri(PR_LOG_NOTICE,
+            "%s:%d: notice: unable to add binds to ipbind '%s': %s", __FILE__,
+            __LINE__, serv->ServerAddress, strerror(errno));
+        }
 
       } else {
         serv->listen = NULL;
@@ -1527,10 +1640,27 @@ static int init_standalone_bindings(void) {
       serv->listen = main_server->listen;
       register_cleanup2(serv->listen->pool, &serv->listen, server_cleanup_cb);
 
-      PR_CREATE_IPBIND(serv, serv->addr, serv->ServerPort);
-      PR_OPEN_IPBIND(serv->addr, serv->ServerPort, NULL, is_default, FALSE,
-        TRUE);
-      PR_ADD_IPBINDS(serv);
+      res = pr_ipbind_create(serv, serv->addr, serv->ServerPort);
+      if (res < 0) {
+        pr_log_pri(PR_LOG_NOTICE,
+          "%s:%d: notice: unable to create ipbind '%s#%u': %s", __FILE__,
+          __LINE__, serv->ServerAddress, serv->ServerPort, strerror(errno));
+      }
+
+      res = pr_ipbind_open(serv->addr, serv->ServerPort, NULL, is_default,
+        FALSE, TRUE);
+      if (res < 0) {
+        pr_log_pri(PR_LOG_NOTICE,
+          "%s:%d: notice: unable to open ipbind '%s': %s", __FILE__, __LINE__,
+          pr_netaddr_get_ipstr(serv->addr), strerror(errno));
+      }
+
+      res = pr_ipbind_add_binds(serv);
+      if (res < 0) {
+        pr_log_pri(PR_LOG_NOTICE,
+          "%s:%d: notice: unable to add binds to ipbind '%s': %s", __FILE__,
+          __LINE__, serv->ServerAddress, strerror(errno));
+      }
     }
 
     /* Process any ServerAlias directives AFTER the server's ipbind has been
