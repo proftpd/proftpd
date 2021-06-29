@@ -1,6 +1,6 @@
 /*
  * ProFTPD - mod_sftp message format
- * Copyright (c) 2008-2020 TJ Saunders
+ * Copyright (c) 2008-2021 TJ Saunders
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -36,7 +36,7 @@ EC_POINT *sftp_msg_read_ecpoint(pool *, unsigned char **, uint32_t *,
 #endif /* PR_USE_OPENSSL_ECC */
 uint32_t sftp_msg_read_int(pool *, unsigned char **, uint32_t *);
 uint64_t sftp_msg_read_long(pool *, unsigned char **, uint32_t *);
-BIGNUM *sftp_msg_read_mpint(pool *, unsigned char **, uint32_t *);
+const BIGNUM *sftp_msg_read_mpint(pool *, unsigned char **, uint32_t *);
 char *sftp_msg_read_string(pool *, unsigned char **, uint32_t *);
 
 /* Variant of the Message Read API whose return value indicates the number
@@ -52,7 +52,8 @@ uint32_t sftp_msg_read_ecpoint2(pool *, unsigned char **, uint32_t *,
 #endif /* PR_USE_OPENSSL_ECC */
 uint32_t sftp_msg_read_int2(pool *, unsigned char **, uint32_t *, uint32_t *);
 uint32_t sftp_msg_read_long2(pool *, unsigned char **, uint32_t *, uint64_t *);
-uint32_t sftp_msg_read_mpint2(pool *, unsigned char **, uint32_t *, BIGNUM **);
+uint32_t sftp_msg_read_mpint2(pool *, unsigned char **, uint32_t *,
+  const BIGNUM **);
 uint32_t sftp_msg_read_string2(pool *, unsigned char **, uint32_t *, char **);
 
 uint32_t sftp_msg_write_byte(unsigned char **, uint32_t *, unsigned char);

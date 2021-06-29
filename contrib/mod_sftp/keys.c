@@ -1110,7 +1110,7 @@ static uint32_t read_pkey_from_data(pool *p, unsigned char *pkey_data,
 
   if (strncmp(pkey_type, "ssh-rsa", 8) == 0) {
     RSA *rsa;
-    BIGNUM *rsa_e = NULL, *rsa_n = NULL, *rsa_d = NULL;
+    const BIGNUM *rsa_e = NULL, *rsa_n = NULL, *rsa_d = NULL;
 
     *pkey = EVP_PKEY_new();
     if (*pkey == NULL) {
@@ -1150,8 +1150,8 @@ static uint32_t read_pkey_from_data(pool *p, unsigned char *pkey_data,
     }
     len += res;
 
-    if (openssh_format) {
-      BIGNUM *rsa_p, *rsa_q, *rsa_iqmp;
+    if (openssh_format == TRUE) {
+      const BIGNUM *rsa_p, *rsa_q, *rsa_iqmp;
 
       /* The OpenSSH private key format encodes more factors. */
 
@@ -1203,8 +1203,8 @@ static uint32_t read_pkey_from_data(pool *p, unsigned char *pkey_data,
 
 #if OPENSSL_VERSION_NUMBER >= 0x10100000L && \
     !defined(HAVE_LIBRESSL)
-      RSA_set0_crt_params(rsa, NULL, NULL, rsa_iqmp);
-      RSA_set0_factors(rsa, rsa_p, rsa_q);
+      RSA_set0_crt_params(rsa, NULL, NULL, (BIGNUM *) rsa_iqmp);
+      RSA_set0_factors(rsa, (BIGNUM *) rsa_p, (BIGNUM *) rsa_q);
 #else
       rsa->iqmp = rsa_iqmp;
       rsa->p = rsa_p;
@@ -1216,7 +1216,7 @@ static uint32_t read_pkey_from_data(pool *p, unsigned char *pkey_data,
        */
 #if OPENSSL_VERSION_NUMBER >= 0x10100000L && \
     !defined(HAVE_LIBRESSL)
-      RSA_set0_key(rsa, rsa_e, rsa_n, rsa_d);
+      RSA_set0_key(rsa, (BIGNUM *) rsa_e, (BIGNUM *) rsa_n, (BIGNUM *) rsa_d);
 #else
       rsa->e = rsa_n;
       rsa->n = rsa_e;
@@ -1225,7 +1225,7 @@ static uint32_t read_pkey_from_data(pool *p, unsigned char *pkey_data,
     } else {
 #if OPENSSL_VERSION_NUMBER >= 0x10100000L && \
     !defined(HAVE_LIBRESSL)
-      RSA_set0_key(rsa, rsa_n, rsa_e, rsa_d);
+      RSA_set0_key(rsa, (BIGNUM *) rsa_n, (BIGNUM *) rsa_e, (BIGNUM *) rsa_d);
 #else
       rsa->e = rsa_e;
       rsa->n = rsa_n;
@@ -1249,7 +1249,7 @@ static uint32_t read_pkey_from_data(pool *p, unsigned char *pkey_data,
   } else if (strncmp(pkey_type, "ssh-dss", 8) == 0) {
 #if !defined(OPENSSL_NO_DSA)
     DSA *dsa;
-    BIGNUM *dsa_p, *dsa_q, *dsa_g, *dsa_pub_key, *dsa_priv_key = NULL;
+    const BIGNUM *dsa_p, *dsa_q, *dsa_g, *dsa_pub_key, *dsa_priv_key = NULL;
 
     *pkey = EVP_PKEY_new();
     if (*pkey == NULL) {
@@ -1311,7 +1311,7 @@ static uint32_t read_pkey_from_data(pool *p, unsigned char *pkey_data,
     }
     len += res;
 
-    if (openssh_format) {
+    if (openssh_format == TRUE) {
       res = sftp_msg_read_mpint2(p, &pkey_data, &pkey_datalen, &dsa_priv_key);
       if (res == 0) {
         (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
@@ -1326,8 +1326,8 @@ static uint32_t read_pkey_from_data(pool *p, unsigned char *pkey_data,
 
 #if OPENSSL_VERSION_NUMBER >= 0x10100000L && \
     !defined(HAVE_LIBRESSL)
-    DSA_set0_pqg(dsa, dsa_p, dsa_q, dsa_g);
-    DSA_set0_key(dsa, dsa_pub_key, dsa_priv_key);
+    DSA_set0_pqg(dsa, (BIGNUM *) dsa_p, (BIGNUM *) dsa_q, (BIGNUM *) dsa_g);
+    DSA_set0_key(dsa, (BIGNUM *) dsa_pub_key, (BIGNUM *) dsa_priv_key);
 #else
     dsa->p = dsa_p;
     dsa->q = dsa_q;
@@ -1465,7 +1465,7 @@ static uint32_t read_pkey_from_data(pool *p, unsigned char *pkey_data,
     }
 
     if (openssh_format) {
-      BIGNUM *ec_priv_key = NULL;
+      const BIGNUM *ec_priv_key = NULL;
 
       res = sftp_msg_read_mpint2(p, &pkey_data, &pkey_datalen, &ec_priv_key);
       if (res == 0) {
@@ -1931,8 +1931,8 @@ static int get_pkey_type(EVP_PKEY *pkey) {
 static int rsa_compare_keys(pool *p, EVP_PKEY *remote_pkey,
     EVP_PKEY *local_pkey) {
   RSA *remote_rsa = NULL, *local_rsa = NULL;
-  BIGNUM *remote_rsa_e = NULL, *local_rsa_e = NULL;
-  BIGNUM *remote_rsa_n = NULL, *local_rsa_n = NULL;
+  const BIGNUM *remote_rsa_e = NULL, *local_rsa_e = NULL;
+  const BIGNUM *remote_rsa_n = NULL, *local_rsa_n = NULL;
   int res = 0;
 
   local_rsa = EVP_PKEY_get1_RSA(local_pkey);
@@ -1997,9 +1997,9 @@ static int rsa_compare_keys(pool *p, EVP_PKEY *remote_pkey,
 static int dsa_compare_keys(pool *p, EVP_PKEY *remote_pkey,
     EVP_PKEY *local_pkey) {
   DSA *remote_dsa = NULL, *local_dsa = NULL;
-  BIGNUM *remote_dsa_p, *remote_dsa_q, *remote_dsa_g;
-  BIGNUM *local_dsa_p, *local_dsa_q, *local_dsa_g;
-  BIGNUM *remote_dsa_pub_key, *local_dsa_pub_key;
+  const BIGNUM *remote_dsa_p, *remote_dsa_q, *remote_dsa_g;
+  const BIGNUM *local_dsa_p, *local_dsa_q, *local_dsa_g;
+  const BIGNUM *remote_dsa_pub_key, *local_dsa_pub_key;
   int res = 0;
 
   local_dsa = EVP_PKEY_get1_DSA(local_pkey);
@@ -3573,7 +3573,7 @@ int sftp_keys_get_hostkey(pool *p, const char *path) {
 static int get_rsa_hostkey_data(pool *p, unsigned char **buf,
     unsigned char **ptr, uint32_t *buflen) {
   RSA *rsa;
-  BIGNUM *rsa_n = NULL, *rsa_e = NULL;
+  const BIGNUM *rsa_n = NULL, *rsa_e = NULL;
 
   rsa = EVP_PKEY_get1_RSA(sftp_rsa_hostkey->pkey);
   if (rsa == NULL) {
@@ -3604,7 +3604,7 @@ static int get_rsa_hostkey_data(pool *p, unsigned char **buf,
 static int get_dsa_hostkey_data(pool *p, unsigned char **buf,
     unsigned char **ptr, uint32_t *buflen) {
   DSA *dsa;
-  BIGNUM *dsa_p = NULL, *dsa_q = NULL, *dsa_g = NULL, *dsa_pub_key = NULL;
+  const BIGNUM *dsa_p = NULL, *dsa_q = NULL, *dsa_g = NULL, *dsa_pub_key = NULL;
 
   dsa = EVP_PKEY_get1_DSA(sftp_dsa_hostkey->pkey);
   if (dsa == NULL) {
@@ -4114,7 +4114,7 @@ static const unsigned char *dsa_sign_data(pool *p, const unsigned char *data,
     size_t datalen, size_t *siglen) {
   DSA *dsa;
   DSA_SIG *sig;
-  BIGNUM *sig_r = NULL, *sig_s = NULL;
+  const BIGNUM *sig_r = NULL, *sig_s = NULL;
 #if OPENSSL_VERSION_NUMBER < 0x10100000L || \
     defined(HAVE_LIBRESSL)
   EVP_MD_CTX ctx;
@@ -4241,7 +4241,7 @@ static const unsigned char *ecdsa_sign_data(pool *p, const unsigned char *data,
   EVP_PKEY *pkey = NULL;
   EC_KEY *ec = NULL;
   ECDSA_SIG *sig;
-  BIGNUM *sig_r = NULL, *sig_s = NULL;
+  const BIGNUM *sig_r = NULL, *sig_s = NULL;
 #if OPENSSL_VERSION_NUMBER < 0x10100000L || \
     defined(HAVE_LIBRESSL)
   EVP_MD_CTX ctx;
@@ -4787,7 +4787,7 @@ static int dsa_verify_signed_data(pool *p, EVP_PKEY *pkey,
   EVP_MD_CTX *pctx;
   DSA *dsa;
   DSA_SIG *dsa_sig;
-  BIGNUM *sig_r, *sig_s;
+  const BIGNUM *sig_r, *sig_s;
   uint32_t len, sig_len;
   unsigned char digest[EVP_MAX_MD_SIZE], *sig;
   unsigned int digest_len = 0;
@@ -4844,7 +4844,7 @@ static int dsa_verify_signed_data(pool *p, EVP_PKEY *pkey,
   sig_s = dsa_sig->s;
 #endif /* prior to OpenSSL-1.1.0 */
 
-  sig_r = BN_bin2bn(sig, 20, sig_r);
+  sig_r = BN_bin2bn(sig, 20, (BIGNUM *) sig_r);
   if (sig_r == NULL) {
     (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
       "error obtaining 'r' DSA signature component: %s",
@@ -4854,12 +4854,12 @@ static int dsa_verify_signed_data(pool *p, EVP_PKEY *pkey,
     return -1;
   }
 
-  sig_s = BN_bin2bn(sig + 20, 20, sig_s);
+  sig_s = BN_bin2bn(sig + 20, 20, (BIGNUM *) sig_s);
   if (sig_s == NULL) {
     (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
       "error obtaining 's' DSA signature component: %s",
       sftp_crypto_get_errors());
-    BN_clear_free(sig_r);
+    BN_clear_free((BIGNUM *) sig_r);
     DSA_free(dsa);
     DSA_SIG_free(dsa_sig);
     return -1;
@@ -4884,7 +4884,7 @@ static int dsa_verify_signed_data(pool *p, EVP_PKEY *pkey,
 #if OPENSSL_VERSION_NUMBER >= 0x10100000L && \
     !defined(HAVE_LIBRESSL)
 # if OPENSSL_VERSION_NUMBER >= 0x10100006L
-  DSA_SIG_set0(dsa_sig, sig_r, sig_s);
+  DSA_SIG_set0(dsa_sig, (BIGNUM *) sig_r, (BIGNUM *) sig_s);
 # else
   /* XXX What to do here? */
 # endif /* prior to OpenSSL-1.1.0-pre6 */
@@ -4922,7 +4922,7 @@ static int ecdsa_verify_signed_data(pool *p, EVP_PKEY *pkey,
   const EVP_MD *md = NULL;
   EC_KEY *ec;
   ECDSA_SIG *ecdsa_sig;
-  BIGNUM *sig_r, *sig_s;
+  const BIGNUM *sig_r, *sig_s;
   uint32_t len, sig_len;
   unsigned char digest[EVP_MAX_MD_SIZE], *sig;
   unsigned int digest_len = 0;
@@ -5040,7 +5040,7 @@ static int ecdsa_verify_signed_data(pool *p, EVP_PKEY *pkey,
 #if OPENSSL_VERSION_NUMBER >= 0x10100000L && \
     !defined(HAVE_LIBRESSL)
 # if OPENSSL_VERSION_NUMBER >= 0x10100006L
-  ECDSA_SIG_set0(ecdsa_sig, sig_r, sig_s);
+  ECDSA_SIG_set0(ecdsa_sig, (BIGNUM *) sig_r, (BIGNUM *) sig_s);
 # else
   /* XXX What to do here? */
 # endif /* prior to OpenSSL-1.1.0-pre6 */

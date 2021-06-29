@@ -820,8 +820,8 @@ static int tls_sess_cache_remove(void);
 static int tls_sess_cache_status(pr_ctrls_t *, int);
 #endif /* PR_USE_CTRLS */
 static int tls_sess_cache_add_sess_cb(SSL *, SSL_SESSION *);
-static SSL_SESSION *tls_sess_cache_get_sess_cb(SSL *, unsigned char *, int,
-  int *);
+static SSL_SESSION *tls_sess_cache_get_sess_cb(SSL *, const unsigned char *,
+  int, int *);
 static void tls_sess_cache_delete_sess_cb(SSL_CTX *, SSL_SESSION *);
 
 /* OCSP response cache API */
@@ -6924,7 +6924,7 @@ static int tls_generate_session_ticket_cb(SSL *ssl, void *user_data) {
   } else {
     if (pr_trace_get_level(trace_channel) >= 19) {
       register unsigned int i;
-      unsigned char *ticket_appdata;
+      const unsigned char *ticket_appdata;
       BIO *bio;
       char *text = NULL;
       long text_len = 0;
@@ -6987,11 +6987,11 @@ static void get_session_ticket_appdata(SSL *ssl, SSL_SESSION *ssl_session) {
    * SSL_SESSION_get0_ticket_appdata.
    */
   tls_data_ticket_appdata_len = appdata_len;
-  memcpy(tls_data_ticket_appdata, appdata, appdata_len);
+  memcpy((void *) tls_data_ticket_appdata, appdata, appdata_len);
 
   if (pr_trace_get_level(trace_channel) >= 19) {
     register unsigned int i;
-    unsigned char *ticket_appdata;
+    const unsigned char *ticket_appdata;
     BIO *bio;
     char *text = NULL;
     long text_len = 0;
@@ -7812,7 +7812,7 @@ static int tls_accept(conn_t *conn, unsigned char on_data) {
 
             ssl_opts = SSL_get_options(ssl);
 
-#ifdef SSL_OP_NO_SSLv2
+#if defined(SSL_OP_NO_SSLv2)
             if (ssl_opts & SSL_OP_NO_SSLv2) {
               proto_str = pstrcat(tmp_pool, proto_str, *proto_str ? ", " : "",
                 "SSLv2", NULL);
@@ -8185,7 +8185,7 @@ static int tls_accept(conn_t *conn, unsigned char on_data) {
                 tls_ctrl_ticket_appdata_len == tls_data_ticket_appdata_len) {
               if (pr_trace_get_level(trace_channel) >= 19) {
                 register unsigned int i;
-                unsigned char *ticket_appdata;
+                const unsigned char *ticket_appdata;
                 BIO *bio;
                 char *text = NULL;
                 long text_len = 0;
@@ -9843,7 +9843,7 @@ static void tls_setup_cert_environ(pool *p, const char *env_prefix,
   if (tls_opts & TLS_OPT_STD_ENV_VARS) {
     char buf[80] = {'\0'};
     ASN1_INTEGER *serial = X509_get_serialNumber(cert);
-    X509_ALGOR *algo;
+    const X509_ALGOR *algo;
     X509_PUBKEY *pubkey;
 
     memset(buf, '\0', sizeof(buf));
@@ -9939,7 +9939,7 @@ static void tls_setup_cert_environ(pool *p, const char *env_prefix,
     bio = BIO_new(BIO_s_mem());
 #if OPENSSL_VERSION_NUMBER >= 0x10100000L
     pubkey = X509_get_X509_PUBKEY(cert);
-    X509_PUBKEY_get0_param(NULL, NULL, NULL, &algo, pubkey);
+    X509_PUBKEY_get0_param(NULL, NULL, NULL, (X509_ALGOR **) &algo, pubkey);
 #else
     pubkey = cert->cert_info->key;
     algo = pubkey->algor;
@@ -10450,7 +10450,7 @@ static int tls_verify_crl(int ok, X509_STORE_CTX *ctx) {
       n = sk_X509_REVOKED_num(X509_CRL_get_REVOKED(crl));
       for (j = 0; j < n; j++) {
         X509_REVOKED *revoked;
-        ASN1_INTEGER *sn;
+        const ASN1_INTEGER *sn;
 
         revoked = sk_X509_REVOKED_value(X509_CRL_get_REVOKED(crl), j);
         if (revoked == NULL) {
@@ -11811,8 +11811,8 @@ static int tls_sess_cache_add_sess_cb(SSL *ssl, SSL_SESSION *sess) {
   return 0;
 }
 
-static SSL_SESSION *tls_sess_cache_get_sess_cb(SSL *ssl, unsigned char *id,
-    int sess_id_len, int *do_copy) {
+static SSL_SESSION *tls_sess_cache_get_sess_cb(SSL *ssl,
+    const unsigned char *id, int sess_id_len, int *do_copy) {
   SSL_SESSION *sess;
   const unsigned char *sess_id;
 
@@ -16913,7 +16913,8 @@ static int tls_ssl_set_session_id_context(server_rec *s, SSL *ssl) {
   return 0;
 }
 
-static char *get_sess_id_text(BIO *bio, unsigned char *id, unsigned int idsz) {
+static char *get_sess_id_text(BIO *bio, const unsigned char *id,
+    unsigned int idsz) {
   register unsigned int i;
   char *data = NULL;
   long datalen;
@@ -16987,8 +16988,8 @@ static int tls_sni_sess_tab_add_cb(SSL *ssl, SSL_SESSION *sess) {
   return 0;
 }
 
-static SSL_SESSION *tls_sni_sess_tab_get_cb(SSL *ssl, unsigned char *sess_id,
-    int sess_id_len, int *do_copy) {
+static SSL_SESSION *tls_sni_sess_tab_get_cb(SSL *ssl,
+    const unsigned char *sess_id, int sess_id_len, int *do_copy) {
   SSL_SESSION *sess = NULL;
   const void *val;
   BIO *bio;
