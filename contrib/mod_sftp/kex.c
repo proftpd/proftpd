@@ -125,7 +125,7 @@ struct sftp_kex {
 
   /* For generating the session ID */
   DH *dh;
-  BIGNUM *e;
+  const BIGNUM *e;
   const EVP_MD *hash;
 
   const BIGNUM *k;
@@ -356,7 +356,7 @@ static const unsigned char *calculate_h(struct sftp_kex *kex,
   if (EVP_DigestInit(pctx, kex->hash) != 1) {
     (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
       "error initializing message digest: %s", sftp_crypto_get_errors());
-    BN_clear_free(kex->e);
+    BN_clear_free((BIGNUM *) kex->e);
     kex->e = NULL;
     pr_memscrub(ptr, bufsz);
 # if OPENSSL_VERSION_NUMBER >= 0x10100000LL && \
@@ -373,7 +373,7 @@ static const unsigned char *calculate_h(struct sftp_kex *kex,
   if (EVP_DigestUpdate(pctx, ptr, (bufsz - buflen)) != 1) {
     (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
       "error updating message digest: %s", sftp_crypto_get_errors());
-    BN_clear_free(kex->e);
+    BN_clear_free((BIGNUM *) kex->e);
     kex->e = NULL;
     pr_memscrub(ptr, bufsz);
 # if OPENSSL_VERSION_NUMBER >= 0x10100000LL && \
@@ -390,7 +390,7 @@ static const unsigned char *calculate_h(struct sftp_kex *kex,
   if (EVP_DigestFinal(pctx, kex_digest_buf, hlen) != 1) {
     (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
       "error finalizing message digest: %s", sftp_crypto_get_errors());
-    BN_clear_free(kex->e);
+    BN_clear_free((BIGNUM *) kex->e);
     kex->e = NULL;
     pr_memscrub(ptr, bufsz);
 # if OPENSSL_VERSION_NUMBER >= 0x10100000LL && \
@@ -408,7 +408,7 @@ static const unsigned char *calculate_h(struct sftp_kex *kex,
   EVP_MD_CTX_free(pctx);
 #endif /* OpenSSL-1.1.0 and later */
 
-  BN_clear_free(kex->e);
+  BN_clear_free((BIGNUM *) kex->e);
   kex->e = NULL;
 
   pr_memscrub(ptr, bufsz);
@@ -507,7 +507,7 @@ static const unsigned char *calculate_gex_h(struct sftp_kex *kex,
   if (EVP_DigestInit(pctx, kex->hash) != 1) {
     (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
       "error initializing message digest: %s", sftp_crypto_get_errors());
-    BN_clear_free(kex->e);
+    BN_clear_free((BIGNUM *) kex->e);
     kex->e = NULL;
     pr_memscrub(ptr, bufsz);
 # if OPENSSL_VERSION_NUMBER >= 0x10100000LL && \
@@ -524,7 +524,7 @@ static const unsigned char *calculate_gex_h(struct sftp_kex *kex,
   if (EVP_DigestUpdate(pctx, ptr, (bufsz - buflen)) != 1) {
     (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
       "error updating message digest: %s", sftp_crypto_get_errors());
-    BN_clear_free(kex->e);
+    BN_clear_free((BIGNUM *) kex->e);
     kex->e = NULL;
     pr_memscrub(ptr, bufsz);
 # if OPENSSL_VERSION_NUMBER >= 0x10100000LL && \
@@ -541,7 +541,7 @@ static const unsigned char *calculate_gex_h(struct sftp_kex *kex,
   if (EVP_DigestFinal(pctx, kex_digest_buf, hlen) != 1) {
     (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
       "error finalizing message digest: %s", sftp_crypto_get_errors());
-    BN_clear_free(kex->e);
+    BN_clear_free((BIGNUM *) kex->e);
     kex->e = NULL;
     pr_memscrub(ptr, bufsz);
 # if OPENSSL_VERSION_NUMBER >= 0x10100000LL && \
@@ -558,7 +558,7 @@ static const unsigned char *calculate_gex_h(struct sftp_kex *kex,
     !defined(HAVE_LIBRESSL)
   EVP_MD_CTX_free(pctx);
 #endif /* OpenSSL-1.1.0 and later */
-  BN_clear_free(kex->e);
+  BN_clear_free((BIGNUM *) kex->e);
   kex->e = NULL;
   pr_memscrub(ptr, bufsz);
 
@@ -746,7 +746,7 @@ static const unsigned char *calculate_ecdh_h(struct sftp_kex *kex,
   if (EVP_DigestInit(pctx, kex->hash) != 1) {
     (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
       "error initializing message digest: %s", sftp_crypto_get_errors());
-    BN_clear_free(kex->e);
+    BN_clear_free((BIGNUM *) kex->e);
     kex->e = NULL;
     pr_memscrub(ptr, bufsz);
 # if OPENSSL_VERSION_NUMBER >= 0x10100000LL && \
@@ -763,7 +763,7 @@ static const unsigned char *calculate_ecdh_h(struct sftp_kex *kex,
   if (EVP_DigestUpdate(pctx, ptr, (bufsz - buflen)) != 1) {
     (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
       "error updating message digest: %s", sftp_crypto_get_errors());
-    BN_clear_free(kex->e);
+    BN_clear_free((BIGNUM *) kex->e);
     kex->e = NULL;
     pr_memscrub(ptr, bufsz);
 # if OPENSSL_VERSION_NUMBER >= 0x10100000LL && \
@@ -780,7 +780,7 @@ static const unsigned char *calculate_ecdh_h(struct sftp_kex *kex,
   if (EVP_DigestFinal(pctx, kex_digest_buf, hlen) != 1) {
     (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
       "error finalizing message digest: %s", sftp_crypto_get_errors());
-    BN_clear_free(kex->e);
+    BN_clear_free((BIGNUM *) kex->e);
     kex->e = NULL;
     pr_memscrub(ptr, bufsz);
 # if OPENSSL_VERSION_NUMBER >= 0x10100000LL && \
@@ -797,7 +797,7 @@ static const unsigned char *calculate_ecdh_h(struct sftp_kex *kex,
     !defined(HAVE_LIBRESSL)
   EVP_MD_CTX_free(pctx);
 #endif /* OpenSSL-1.1.0 and later */
-  BN_clear_free(kex->e);
+  BN_clear_free((BIGNUM *) kex->e);
   kex->e = NULL;
   pr_memscrub(ptr, bufsz);
 
@@ -1769,7 +1769,7 @@ static void destroy_kex(struct sftp_kex *kex) {
     }
 
     if (kex->e) {
-      BN_clear_free(kex->e);
+      BN_clear_free((BIGNUM *) kex->e);
       kex->e = NULL;
     }
 
