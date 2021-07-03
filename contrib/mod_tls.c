@@ -2583,7 +2583,12 @@ static int tls_cert_match_dns_san(pool *p, X509 *cert, const char *dns_name) {
         char *dns_san;
         size_t dns_sanlen;
 
+#if OPENSSL_VERSION_NUMBER >= 0x10100000L && \
+    !defined(HAVE_LIBRESSL)
+        dns_san = (char *) ASN1_STRING_get0_data(alt_name->d.ia5);
+#else
         dns_san = (char *) ASN1_STRING_data(alt_name->d.ia5);
+#endif /* OpenSSL 1.1.x and later */
         dns_sanlen = strlen(dns_san);
 
         /* Check for subjectAltName values which contain embedded NULs.
@@ -2645,7 +2650,7 @@ static int tls_cert_match_ip_san(pool *p, X509 *cert, const char *ipstr) {
 
       alt_name = sk_GENERAL_NAME_value(sans, i);
       if (alt_name->type == GEN_IPADD) {
-        unsigned char *san_data = NULL;
+        const unsigned char *san_data = NULL;
         int have_ipstr = FALSE, san_datalen;
 #ifdef PR_USE_IPV6
         char san_ipstr[INET6_ADDRSTRLEN + 1] = {'\0'};
@@ -2653,7 +2658,13 @@ static int tls_cert_match_ip_san(pool *p, X509 *cert, const char *ipstr) {
         char san_ipstr[INET_ADDRSTRLEN + 1] = {'\0'};
 #endif /* PR_USE_IPV6 */
 
+#if OPENSSL_VERSION_NUMBER >= 0x10100000L && \
+    !defined(HAVE_LIBRESSL)
+        san_data = ASN1_STRING_get0_data(alt_name->d.ip);
+#else
         san_data = ASN1_STRING_data(alt_name->d.ip);
+#endif /* OpenSSL 1.1.x and later */
+
         memset(san_ipstr, '\0', sizeof(san_ipstr));
 
         san_datalen = ASN1_STRING_length(alt_name->d.ip);
@@ -2777,7 +2788,12 @@ static int tls_cert_match_cn(pool *p, X509 *cert, const char *name,
     return 0;
   }
 
+#if OPENSSL_VERSION_NUMBER >= 0x10100000L && \
+    !defined(HAVE_LIBRESSL)
+  cn_str = (char *) ASN1_STRING_get0_data(cn_asn1);
+#else
   cn_str = (char *) ASN1_STRING_data(cn_asn1);
+#endif /* OpenSSL 1.1.x and later */
 
   /* Check for CommonName values which contain embedded NULs.  This can cause
    * verification problems (spoofing), e.g. if the string is
@@ -9285,7 +9301,7 @@ static int tls_dotlogin_allow(const char *user) {
 static int tls_cert_to_user(const char *user_name, const char *field_name) {
   X509 *client_cert = NULL;
   unsigned char allow_user = FALSE;
-  unsigned char *field_value = NULL;
+  const unsigned char *field_value = NULL;
 
   if (!(tls_flags & TLS_SESS_ON_CTRL) ||
       ctrl_ssl == NULL ||
@@ -9312,7 +9328,7 @@ static int tls_cert_to_user(const char *user_name, const char *field_name) {
       X509_NAME_ENTRY *entry;
       ASN1_STRING *data;
       int data_len;
-      unsigned char *data_str = NULL;
+      const unsigned char *data_str = NULL;
 
       pr_signals_handle();
 
@@ -9324,7 +9340,12 @@ static int tls_cert_to_user(const char *user_name, const char *field_name) {
       entry = X509_NAME_get_entry(name, pos);
       data = X509_NAME_ENTRY_get_data(entry);
       data_len = ASN1_STRING_length(data);
+#if OPENSSL_VERSION_NUMBER >= 0x10100000L && \
+    !defined(HAVE_LIBRESSL)
+      data_str = ASN1_STRING_get0_data(data);
+#else
       data_str = ASN1_STRING_data(data);
+#endif /* OpenSSL 1.1.x and later */
 
       /* Watch for any embedded NULs, which can cause verification
        * problems via spoofing.
@@ -9367,10 +9388,16 @@ static int tls_cert_to_user(const char *user_name, const char *field_name) {
         /* We're only looking for the Email type. */
         if (name->type == GEN_EMAIL) {
           int data_len;
-          unsigned char *data_str = NULL;
+          const unsigned char *data_str = NULL;
 
           data_len = ASN1_STRING_length(name->d.ia5);
+
+#if OPENSSL_VERSION_NUMBER >= 0x10100000L && \
+    !defined(HAVE_LIBRESSL)
+          data_str = ASN1_STRING_get0_data(name->d.ia5);
+#else 
           data_str = ASN1_STRING_data(name->d.ia5);
+#endif /* OpenSSL 1.1.x and later */
 
           /* Watch for any embedded NULs, which can cause verification
            * problems via spoofing.
@@ -9424,12 +9451,17 @@ static int tls_cert_to_user(const char *user_name, const char *field_name) {
         if (OBJ_obj2txt(oid, sizeof(oid)-1, asn_object, 1) > 0) {
           if (strcmp(oid, field_name) == 0) {
             ASN1_OCTET_STRING *asn_data = NULL;
-            unsigned char *asn_datastr = NULL;
+            const unsigned char *asn_datastr = NULL;
             int asn_datalen;
 
             asn_data = X509_EXTENSION_get_data(ext);
             asn_datalen = ASN1_STRING_length(asn_data);
+#if OPENSSL_VERSION_NUMBER >= 0x10100000L && \
+    !defined(HAVE_LIBRESSL)
+            asn_datastr = ASN1_STRING_get0_data(asn_data);
+#else     
             asn_datastr = ASN1_STRING_data(asn_data);
+#endif /* OpenSSL 1.1.x and later */
 
             /* Watch for any embedded NULs, which can cause verification
              * problems via spoofing.
@@ -9728,7 +9760,7 @@ static void tls_setup_cert_dn_environ(const char *env_prefix, X509_NAME *name) {
 
   for (i = 0; i < nentries; i++) {
     X509_NAME_ENTRY *entry;
-    unsigned char *entry_data;
+    const unsigned char *entry_data;
     int nid, entry_len;
 
     pr_signals_handle();
@@ -9736,7 +9768,7 @@ static void tls_setup_cert_dn_environ(const char *env_prefix, X509_NAME *name) {
 #if OPENSSL_VERSION_NUMBER >= 0x10100000L
     entry = X509_NAME_get_entry(name, i);
     nid = OBJ_obj2nid(X509_NAME_ENTRY_get_object(entry));
-    entry_data = ASN1_STRING_data(X509_NAME_ENTRY_get_data(entry));
+    entry_data = ASN1_STRING_get0_data(X509_NAME_ENTRY_get_data(entry));
     entry_len = ASN1_STRING_length(X509_NAME_ENTRY_get_data(entry));
 #else
     entry = sk_X509_NAME_ENTRY_value(name->entries, i);
@@ -10353,14 +10385,14 @@ static int tls_verify_crl(int ok, X509_STORE_CTX *ctx) {
 
       BIO_printf(b, ", lastUpdate: ");
 #if OPENSSL_VERSION_NUMBER >= 0x10100000L
-      ASN1_UTCTIME_print(b, X509_CRL_get_lastUpdate(crl));
+      ASN1_UTCTIME_print(b, X509_CRL_get0_lastUpdate(crl));
 #else
       ASN1_UTCTIME_print(b, crl->crl->lastUpdate);
 #endif /* OpenSSL-1.1.x and later */
 
       BIO_printf(b, ", nextUpdate: ");
 #if OPENSSL_VERSION_NUMBER >= 0x10100000L
-      ASN1_UTCTIME_print(b, X509_CRL_get_nextUpdate(crl));
+      ASN1_UTCTIME_print(b, X509_CRL_get0_nextUpdate(crl));
 #else
       ASN1_UTCTIME_print(b, crl->crl->nextUpdate);
 #endif /* OpenSSL-1.1.x and later */
@@ -10393,7 +10425,13 @@ static int tls_verify_crl(int ok, X509_STORE_CTX *ctx) {
       }
 
       /* Check date of CRL to make sure it's not expired */
+#if OPENSSL_VERSION_NUMBER >= 0x10100000L && \
+    !defined(HAVE_LIBRESSL)
+      res = X509_cmp_current_time(X509_CRL_get0_nextUpdate(crl));
+#else
       res = X509_cmp_current_time(X509_CRL_get_nextUpdate(crl));
+#endif /* OpenSSL 1.1.x and later */
+
       if (res == 0) {
         tls_log("CRL has invalid nextUpdate field: %s", tls_get_errors());
 
