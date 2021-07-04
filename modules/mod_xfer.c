@@ -2,7 +2,7 @@
  * ProFTPD - FTP server daemon
  * Copyright (c) 1997, 1998 Public Flood Software
  * Copyright (c) 1999, 2000 MacGyver aka Habeeb J. Dihu <macgyver@tos.net>
- * Copyright (c) 2001-2020 The ProFTPD Project team
+ * Copyright (c) 2001-2021 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -2503,6 +2503,16 @@ MODRET xfer_pre_retr(cmd_rec *cmd) {
 
   pr_fs_clear_cache2(decoded_path);
   dir = dir_realpath(cmd->tmp_pool, decoded_path);
+  if (dir == NULL) {
+    /* Try using dir_best_path(), as xfer_pre_stor() does.
+     *
+     * Without this fallback, certain use cases (such as SFTP downloads using
+     * mod_sftp + mod_vroot) fail unexpectedly, with misleading
+     * "denied by <Limit> configuration" errors.
+     */
+    dir = dir_best_path(cmd->tmp_pool, decoded_path);
+  }
+
   if (dir == NULL ||
       !dir_check(cmd->tmp_pool, cmd, cmd->group, dir, NULL)) {
     int xerrno = errno;
