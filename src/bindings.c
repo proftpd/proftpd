@@ -1371,7 +1371,7 @@ static unsigned int process_serveralias(server_rec *s) {
       ipbind = elts[i];
 
       pr_trace_msg(trace_channel, 7, "adding ServerAlias '%s' to server '%s'",
-        c->argv[0], s->ServerName);
+        (char *) c->argv[0], s->ServerName);
 
       res = pr_namebind_create(s, c->argv[0], ipbind, s->addr, s->ServerPort);
       if (res == 0) {
