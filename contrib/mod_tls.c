@@ -7597,7 +7597,7 @@ static int tls_accept(conn_t *conn, unsigned char on_data) {
 
             ssl_opts = SSL_get_options(ssl);
 
-#ifdef SSL_OP_NO_SSLv2
+#if SSL_OP_NO_SSLv2
             if (ssl_opts & SSL_OP_NO_SSLv2) {
               proto_str = pstrcat(tmp_pool, proto_str, *proto_str ? ", " : "",
                 "SSLv2", NULL);
@@ -7654,6 +7654,60 @@ static int tls_accept(conn_t *conn, unsigned char on_data) {
             }
             break;
           }
+
+#if defined(SSL_R_VERSION_TOO_LOW)
+          case SSL_R_VERSION_TOO_LOW: {
+            int client_version;
+
+            client_version = SSL_client_version(ssl);
+            switch (client_version) {
+# if defined(SSL3_VERSION) && defined(OPENSSL_NO_SSL3)
+              case SSL3_VERSION:
+                tls_log("%s: %s lacks support for client requested TLS "
+                  "protocol version: %s", msg, OPENSSL_VERSION_TEXT,
+                  SSL_get_version(ssl));
+                break;
+# endif /* SSLv3 and OPENSSL_NO_SSL3 */
+
+# if defined(TLS1_VERSION) && defined(OPENSSL_NO_TLS1)
+              case TLS1_VERSION:
+                tls_log("%s: %s lacks support for client requested TLS "
+                  "protocol version: %s", msg, OPENSSL_VERSION_TEXT,
+                  SSL_get_version(ssl));
+                break;
+# endif /* TLSv1 and OPENSSL_NO_TLS1 */
+
+# if defined(TLS1_1_VERSION) && defined(OPENSSL_NO_TLS1_1)
+              case TLS1_1_VERSION:
+                tls_log("%s: %s lacks support for client requested TLS "
+                  "protocol version: %s", msg, OPENSSL_VERSION_TEXT,
+                  SSL_get_version(ssl));
+                break;
+# endif /* TLSv1.1 and OPENSSL_NO_TLS1_1 */
+
+# if defined(TLS1_2_VERSION) && defined(OPENSSL_NO_TLS1_2)
+              case TLS1_2_VERSION:
+                tls_log("%s: %s lacks support for client requested TLS "
+                  "protocol version: %s", msg, OPENSSL_VERSION_TEXT,
+                  SSL_get_version(ssl));
+                break;
+# endif /* TLSv1.2 and OPENSSL_NO_TLS1_2 */
+
+# if defined(TLS1_3_VERSION) && defined(OPENSSL_NO_TLS1_3)
+              case TLS1_3_VERSION:
+                tls_log("%s: %s lacks support for client requested TLS "
+                  "protocol version: %s", msg, OPENSSL_VERSION_TEXT,
+                  SSL_get_version(ssl));
+                break;
+# endif /* TLSv1.3 and OPENSSL_NO_TLS1_3 */
+
+              default:
+                tls_log("%s: perhaps client requested unsupported TLS protocol "
+                  "version: %s", msg, SSL_get_version(ssl));
+            }
+            break;
+          }
+#endif /* SSL_R_VERSION_TOO_LOW */
 
           default:
             break;
