@@ -9,6 +9,7 @@ use File::Copy;
 use File::Path qw(mkpath);
 use File::Spec;
 use IO::Handle;
+use IPC::Open3;
 use Socket;
 
 use ProFTPD::TestSuite::FTP;
@@ -499,6 +500,10 @@ my $TESTS = {
     test_class => [qw(bug forking)],
   },
 
+  tls_old_protocols_issue1273 => {
+    order => ++$order,
+    test_class => [qw(bug forking)],
+  },
 };
 
 sub new {
@@ -14233,6 +14238,177 @@ sub tls_fxp_issue618 {
   # Stop server
   server_stop($setup->{pid_file});
   $self->assert_child_ok($pid);
+
+  test_cleanup($setup->{log_file}, $ex);
+}
+
+sub tls_old_protocols_issue1273 {
+  my $self = shift;
+  my $tmpdir = $self->{tmpdir};
+  my $setup = test_setup($tmpdir, 'tls');
+
+  my $cert_file = File::Spec->rel2abs('t/etc/modules/mod_tls/server-cert.pem');
+  my $ca_file = File::Spec->rel2abs('t/etc/modules/mod_tls/ca-cert.pem');
+
+  my $tls_opts = 'NoSessionReuseRequired UseImplicitSSL';
+  if ($ENV{TEST_VERBOSE}) {
+    $tls_opts .= ' EnableDiags';
+  }
+
+  my $timeout_idle = 15;
+
+  my $config = {
+    PidFile => $setup->{pid_file},
+    ScoreboardFile => $setup->{scoreboard_file},
+    SystemLog => $setup->{log_file},
+    TraceLog => $setup->{log_file},
+    Trace => 'command:20 response:20 data:20 netio:20 tls:20',
+
+    AuthUserFile => $setup->{auth_user_file},
+    AuthGroupFile => $setup->{auth_group_file},
+
+    AllowForeignAddress => 'on',
+    AllowOverwrite => 'on',
+    TimeoutIdle => $timeout_idle,
+
+    IfModules => {
+      'mod_delay.c' => {
+        DelayEngine => 'off',
+      },
+
+      'mod_tls.c' => {
+        TLSEngine => 'on',
+        TLSLog => $setup->{log_file},
+        TLSProtocol => 'SSLv23',
+        TLSRequired => 'on',
+        TLSRSACertificateFile => $cert_file,
+        TLSCACertificateFile => $ca_file,
+        TLSOptions => $tls_opts,
+      },
+    },
+  };
+
+  my ($port, $config_user, $config_group) = config_write($setup->{config_file},
+    $config);
+
+  # Open pipes, for use between the parent and child processes.  Specifically,
+  # the child will indicate when it's done with its test by writing a message
+  # to the parent.
+  my ($rfh, $wfh);
+  unless (pipe($rfh, $wfh)) {
+    die("Can't open pipe: $!");
+  }
+
+  my $ex;
+
+  # Fork child
+  $self->handle_sigchld();
+  defined(my $pid = fork()) or die("Can't fork: $!");
+  if ($pid) {
+    eval {
+      sleep(2);
+
+      # We use an older OpenSSL version for the older protocols.
+      # Allow server to start up
+      my $openssl = '/Users/tj/local/openssl-0.9.8d/bin/openssl';
+
+      # Explicitly use SSLv3, which has been disabled by default in
+      # OpenSSL-1.1.x; see:
+      #   https://github.com/openssl/openssl/issues/4989
+
+      my @cmd = (
+        $openssl,
+        's_client',
+        '-connect',
+        "127.0.0.1:$port",
+        '-ssl3',
+      );
+
+      my $tls_rh = IO::Handle->new();
+      my $tls_wh = IO::Handle->new();
+      my $tls_eh = IO::Handle->new();
+
+      $tls_wh->autoflush(1);
+
+      local $SIG{CHLD} = 'DEFAULT';
+
+      if ($ENV{TEST_VERBOSE}) {
+        print STDERR "Executing: ", join(' ', @cmd), "\n";
+      }
+
+      my $tls_pid = open3($tls_wh, $tls_rh, $tls_eh, @cmd);
+      print $tls_wh "quit\n";
+      waitpid($tls_pid, 0);
+
+      my ($res, $cipher_str, $err_str, $out_str);
+      if ($? >> 8) {
+        $err_str = join('', <$tls_eh>);
+        $res = 0;
+
+      } else {
+        my $output = [<$tls_rh>];
+
+        if ($ENV{TEST_VERBOSE}) {
+          $out_str = join('', @$output);
+          print STDERR "Stdout: $out_str\n";
+
+          $err_str = join('', <$tls_eh>);
+          print STDERR "Stderr: $err_str\n";
+        }
+
+        $res = 1;
+      }
+
+      unless ($res) {
+        die("Can't talk to server: $err_str");
+      }
+    };
+    if ($@) {
+      $ex = $@;
+    }
+
+    $wfh->print("done\n");
+    $wfh->flush();
+
+  } else {
+    eval { server_wait($setup->{config_file}, $rfh, $timeout_idle + 5) };
+    if ($@) {
+      warn($@);
+      exit 1;
+    }
+
+    exit 0;
+  }
+
+  # Stop server
+  server_stop($setup->{pid_file});
+  $self->assert_child_ok($pid);
+  test_cleanup($setup->{log_file}, $ex) if $ex;
+
+  eval {
+    if (open(my $fh, "< $setup->{log_file}")) {
+      my $seen = 0;
+
+      while (my $line = <$fh>) {
+        chomp($line);
+
+        if ($line =~ /OpenSSL.*?lacks support for client requested/) {
+          $seen = 1;
+          last;
+        }
+      }
+
+      close($fh);
+
+      $self->assert($seen, test_msg("Did not see expected log message"));
+
+    } else {
+      die("Can't read $setup->{log_file}: $!");
+    }
+  };
+  if ($@) {
+    $ex = $@;
+  }
 
   test_cleanup($setup->{log_file}, $ex);
 }
