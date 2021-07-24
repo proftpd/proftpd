@@ -4437,6 +4437,18 @@ START_TEST (fs_join_path_test) {
   fail_unless(path != NULL, "Failed to join path: %s", strerror(errno));
   fail_unless(strcmp(path, "/foo/bar") == 0, "Expected '/foo/bar', got '%s'",
     path);
+
+  mark_point();
+  components = make_array(p, 0, sizeof(char **));
+
+  *((char **) push_array(components)) = pstrdup(p, "foo");
+  *((char **) push_array(components)) = pstrdup(p, "bar");
+  *((char **) push_array(components)) = pstrdup(p, "baz");
+
+  path = pr_fs_join_path(p, components, components->nelts);
+  fail_unless(path != NULL, "Failed to join path: %s", strerror(errno));
+  fail_unless(strcmp(path, "foo/bar/baz") == 0,
+    "Expected 'foo/bar/baz', got '%s'", path);
 }
 END_TEST
 
