@@ -3083,7 +3083,7 @@ static int unwrap_openssh_private_key(pool *p, const char *path,
   char *cipher_name, *kdf_name;
   unsigned char *buf, *data = NULL, *kdf_data, *encrypted_data;
   size_t data_len = 0, magicsz;
-  uint32_t bufsz, buflen, kdf_len = 0, key_count = 0, encrypted_len = 0;
+  uint32_t buflen, kdf_len = 0, key_count = 0, encrypted_len = 0;
   struct openssh_cipher *cipher = NULL;
   int xerrno = 0;
 
@@ -3117,7 +3117,7 @@ static int unwrap_openssh_private_key(pool *p, const char *path,
   data_len -= magicsz;
 
   buf = data;
-  bufsz = buflen = data_len;
+  buflen = data_len;
 
   cipher_name = sftp_msg_read_string(p, &buf, &buflen);
   kdf_name = sftp_msg_read_string(p, &buf, &buflen);
