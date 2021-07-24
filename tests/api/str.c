@@ -1,6 +1,6 @@
 /*
  * ProFTPD - FTP server testsuite
- * Copyright (c) 2008-2020 The ProFTPD Project team
+ * Copyright (c) 2008-2021 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -1620,7 +1620,7 @@ END_TEST
 START_TEST (text_to_array_test) {
   register unsigned int i;
   array_header *res;
-  const char *text;
+  const char *text, *elt;
 
   mark_point();
   res = pr_str_text_to_array(NULL, NULL, ',');
@@ -1634,41 +1634,39 @@ START_TEST (text_to_array_test) {
   fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
     strerror(errno), errno);
 
+  mark_point();
   text = "";
-
-  mark_point();
   res = pr_str_text_to_array(p, text, ',');
   fail_unless(res != NULL, "Failed to handle text '%s': %s", text,
     strerror(errno));
   fail_unless(res->nelts == 0, "Expected 0 items, got %u", res->nelts);
 
+  mark_point();
   text = ",";
-
-  mark_point();
   res = pr_str_text_to_array(p, text, ',');
   fail_unless(res != NULL, "Failed to handle text '%s': %s", text,
     strerror(errno));
   fail_unless(res->nelts == 0, "Expected 0 items, got %u", res->nelts);
 
+  mark_point();
   text = ",,,";
-
-  mark_point();
   res = pr_str_text_to_array(p, text, ',');
   fail_unless(res != NULL, "Failed to handle text '%s': %s", text,
     strerror(errno));
   fail_unless(res->nelts == 0, "Expected 0 items, got %u", res->nelts);
 
-  text = "foo";
-
   mark_point();
+  text = "foo";
   res = pr_str_text_to_array(p, text, ',');
   fail_unless(res != NULL, "Failed to handle text '%s': %s", text,
     strerror(errno));
   fail_unless(res->nelts == 1, "Expected 1 item, got %u", res->nelts);
-
-  text = "foo,foo,foo";
+  elt = ((char **) res->elts)[0];
+  fail_unless(elt != NULL, "Expected non-null item");
+  fail_unless(strcmp(elt, text) == 0, "Expected '%s', got '%s'", text, elt);
 
   mark_point();
+  text = "foo,foo,foo";
   res = pr_str_text_to_array(p, text, ',');
   fail_unless(res != NULL, "Failed to handle text '%s': %s", text,
     strerror(errno));
@@ -1684,9 +1682,8 @@ START_TEST (text_to_array_test) {
       "Expected '%s' at index %u, got '%s'", expected, i, item);
   }
 
-  text = "foo,foo,foo,";
-
   mark_point();
+  text = "foo,foo,foo,";
   res = pr_str_text_to_array(p, text, ',');
   fail_unless(res != NULL, "Failed to handle text '%s': %s", text,
     strerror(errno));
@@ -1697,21 +1694,68 @@ START_TEST (text_to_array_test) {
     item = ((char **) res->elts)[i];
     fail_unless(item != NULL, "Expected item at index %u, got null", i);
 
-    if (i == 3) {
-      expected = "";
-
-    } else {
-      expected = "foo";
-    }
-
+    expected = "foo";
     fail_unless(strcmp(item, expected) == 0,
       "Expected '%s' at index %u, got '%s'", expected, i, item);
   }
 
-  text = "foo|foo|foo";
-
   mark_point();
+  text = "foo|foo|foo";
   res = pr_str_text_to_array(p, text, '|');
+  fail_unless(res != NULL, "Failed to handle text '%s': %s", text,
+    strerror(errno));
+  fail_unless(res->nelts == 3, "Expected 3 items, got %u", res->nelts);
+  for (i = 0; i < res->nelts; i++) {
+    char *item, *expected;
+
+    item = ((char **) res->elts)[i];
+    fail_unless(item != NULL, "Expected item at index %u, got null", i);
+
+    expected = "foo";
+    fail_unless(strcmp(item, expected) == 0,
+      "Expected '%s' at index %u, got '%s'", expected, i, item);
+  }
+
+  /* With a leading delimiter character. */
+  mark_point();
+  text = "/foo/foo/foo";
+  res = pr_str_text_to_array(p, text, '/');
+  fail_unless(res != NULL, "Failed to handle text '%s': %s", text,
+    strerror(errno));
+  fail_unless(res->nelts == 3, "Expected 3 items, got %u", res->nelts);
+  for (i = 0; i < res->nelts; i++) {
+    char *item, *expected;
+
+    item = ((char **) res->elts)[i];
+    fail_unless(item != NULL, "Expected item at index %u, got null", i);
+
+    expected = "foo";
+    fail_unless(strcmp(item, expected) == 0,
+      "Expected '%s' at index %u, got '%s'", expected, i, item);
+  }
+
+  /* With a trailing delimiter character. */
+  mark_point();
+  text = "/foo/foo/foo/";
+  res = pr_str_text_to_array(p, text, '/');
+  fail_unless(res != NULL, "Failed to handle text '%s': %s", text,
+    strerror(errno));
+  fail_unless(res->nelts == 3, "Expected 3 items, got %u", res->nelts);
+  for (i = 0; i < res->nelts; i++) {
+    char *item, *expected;
+
+    item = ((char **) res->elts)[i];
+    fail_unless(item != NULL, "Expected item at index %u, got null", i);
+
+    expected = "foo";
+    fail_unless(strcmp(item, expected) == 0,
+      "Expected '%s' at index %u, got '%s'", expected, i, item);
+  }
+
+  /* Without leading or trailing delimiter characters. */
+  mark_point();
+  text = "foo/foo/foo";
+  res = pr_str_text_to_array(p, text, '/');
   fail_unless(res != NULL, "Failed to handle text '%s': %s", text,
     strerror(errno));
   fail_unless(res->nelts == 3, "Expected 3 items, got %u", res->nelts);

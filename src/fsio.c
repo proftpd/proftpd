@@ -2,7 +2,7 @@
  * ProFTPD - FTP server daemon
  * Copyright (c) 1997, 1998 Public Flood Software
  * Copyright (c) 1999, 2000 MacGyver aka Habeeb J. Dihu <macgyver@tos.net>
- * Copyright (c) 2001-2020 The ProFTPD Project
+ * Copyright (c) 2001-2021 The ProFTPD Project
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -3500,11 +3500,13 @@ array_header *pr_fs_split_path(pool *p, const char *path) {
     return NULL;
   }
 
-  buflen = strlen(buf);
+  pr_trace_msg(trace_channel, 18, "splitting cleaned path '%s' (was '%s')",
+    buf, path);
 
   /* Special-case handling of just "/", since pr_str_text_to_array() will
    * "eat" that delimiter.
    */
+  buflen = strlen(buf);
   if (buflen == 1 &&
       buf[0] == '/') {
     pr_trace_msg(trace_channel, 18, "split path '%s' into 1 component", path);

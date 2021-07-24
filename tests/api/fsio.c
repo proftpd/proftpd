@@ -4280,6 +4280,21 @@ START_TEST (fs_split_path_test) {
   fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
     strerror(errno), errno);
 
+  path = ".";
+
+  mark_point();
+  res = pr_fs_split_path(p, path);
+  fail_unless(res != NULL, "Failed to split path '%s': %s", path,
+    strerror(errno));
+  fail_unless(res->nelts == 1, "Expected 1, got %u", res->nelts);
+  elt = ((char **) res->elts)[0];
+
+  /* Note: pr_fs_split_path() cleans the path into an absolute path.  And
+   * the default "cwd" test setting is "/", so yes, this is surprising but
+   * expected.  Subject to change in the future.
+   */
+  fail_unless(strcmp(elt, "/") == 0, "Expected '/', got '%s'", elt);
+
   path = "/";
 
   mark_point();
