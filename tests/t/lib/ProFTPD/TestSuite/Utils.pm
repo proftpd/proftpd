@@ -1287,10 +1287,10 @@ sub testsuite_get_runnable_tests {
         }
       }
     }
+  }
 
-    foreach my $skip_test (@$skip_tests) {
-      delete($tests->{$skip_test});
-    }
+  foreach my $skip_test (@$skip_tests) {
+    delete($tests->{$skip_test});
   }
 
   # Special handling of any 'mod_*' test classes; if the compiled proftpd
@@ -1311,10 +1311,10 @@ sub testsuite_get_runnable_tests {
         }
       }
     }
+  }
 
-    foreach my $skip_test (@$skip_tests) {
-      delete($tests->{$skip_test});
-    }
+  foreach my $skip_test (@$skip_tests) {
+    delete($tests->{$skip_test});
   }
 
   # Special handling of the 'norootprivs' test class; unless we are running
@@ -1334,10 +1334,10 @@ sub testsuite_get_runnable_tests {
         push(@$skip_tests, $test);
       }
     }
- 
-    foreach my $skip_test (@$skip_tests) {
-      delete($tests->{$skip_test});
-    }
+  }
+
+  foreach my $skip_test (@$skip_tests) {
+    delete($tests->{$skip_test});
   }
 
   # Special handling of any 'os_*' test classes; if the machine running
@@ -1354,10 +1354,10 @@ sub testsuite_get_runnable_tests {
         }
       }
     }
+  }
 
-    foreach my $skip_test (@$skip_tests) {
-      delete($tests->{$skip_test});
-    }
+  foreach my $skip_test (@$skip_tests) {
+    delete($tests->{$skip_test});
   }
 
   # Special handling of the 'rootprivs' test class: unless we are running
@@ -1377,21 +1377,21 @@ sub testsuite_get_runnable_tests {
         push(@$skip_tests, $test);
       }
     }
- 
-    foreach my $skip_test (@$skip_tests) {
-      delete($tests->{$skip_test});
-    }
+  }
+
+  foreach my $skip_test (@$skip_tests) {
+    delete($tests->{$skip_test});
   }
 
   my $runnables = [];
 
   if (defined($ENV{PROFTPD_TEST_ENABLE_CLASS})) {
-    my $test_classes = [split(':', $ENV{PROFTPD_TEST_ENABLE_CLASS})];
+    my $enabled_classes = [split(':', $ENV{PROFTPD_TEST_ENABLE_CLASS})];
 
-    foreach my $test_class (@$test_classes) {
+    foreach my $enabled_class (@$enabled_classes) {
       foreach my $test (keys(%$tests)) {
-        foreach my $class (@{ $tests->{$test}->{test_class} }) {
-          if ($class eq $test_class) {
+        foreach my $test_class (@{ $tests->{$test}->{test_class} }) {
+          if ($test_class eq $enabled_class) {
             push(@$runnables, $test);
             last;
           }
@@ -1404,27 +1404,23 @@ sub testsuite_get_runnable_tests {
   }
 
   if (defined($ENV{PROFTPD_TEST_DISABLE_CLASS})) {
-    my $test_classes = [split(':', $ENV{PROFTPD_TEST_DISABLE_CLASS})];
+    my $disabled_classes = [split(':', $ENV{PROFTPD_TEST_DISABLE_CLASS})];
     my $new_runnables = [];
 
     foreach my $test (@$runnables) {
       my $skip_test = 0;
 
-      foreach my $test_class (@$test_classes) {
-        foreach my $class (@{ $tests->{$test}->{test_class} }) {
-          if ($class eq $test_class) {
+      foreach my $disabled_class (@$disabled_classes) {
+        foreach my $test_class (@{ $tests->{$test}->{test_class} }) {
+          if ($test_class eq $disabled_class) {
             $skip_test = 1;
             last;
           }
-
-          if ($skip_test) {
-            last;
-          }
         }
+      }
 
-        unless ($skip_test) {
-          push(@$new_runnables, $test);
-        }
+      unless ($skip_test) {
+        push(@$new_runnables, $test);
       }
     }
 
@@ -1433,6 +1429,7 @@ sub testsuite_get_runnable_tests {
 
   if (scalar(@$runnables) > 0) {
     $runnables = [sort { $tests->{$a}->{order} <=> $tests->{$b}->{order} } @$runnables];
+
   } else { 
     $runnables = [qw(testsuite_empty_test)];
   }
