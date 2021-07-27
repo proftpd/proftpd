@@ -1236,6 +1236,10 @@ sub test_setup {
     }
   }
 
+  auth_user_write($auth_user_file, $user, $passwd, $uid, $gid, $home_dir,
+    '/bin/bash');
+  auth_group_write($auth_group_file, $group, $gid, $user);
+
   # If we are NOT running with root privs, then the default UID/GID cannot
   # be provided by the session.  So we will use the current UID/GID in such
   # cases.
@@ -1243,10 +1247,6 @@ sub test_setup {
     $uid = $<;
     $gid = $(;
   }
-
-  auth_user_write($auth_user_file, $user, $passwd, $uid, $gid, $home_dir,
-    '/bin/bash');
-  auth_group_write($auth_group_file, $group, $gid, $user);
 
   my $setup = {
     auth_user_file => $auth_user_file,
