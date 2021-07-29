@@ -3575,6 +3575,7 @@ char *pr_fs_join_path(pool *p, array_header *components, size_t count) {
   }
 
   path = ((char **) components->elts)[0];
+  path = pstrdup(p, path);
 
   for (i = 1; i < count; i++) {
     char *elt;
