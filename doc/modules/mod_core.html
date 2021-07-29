@@ -3295,8 +3295,10 @@ supports UTF8.  What is wrong?<br>
 <font color=blue>Answer</font>: FileZilla parses the <code>FEAT</code> response
 to determine whether the FTP server supports the UTF-8 encoding.  However, the
 <i>format</i> of the <code>FEAT</code> response can confuse FileZilla's
-detection code.  For example, if your <code>proftpd.conf</code> uses:
+detection code.  For example, if your <code>proftpd.conf</code> uses
+the deprecated <code>MultilineRFC2228</code> directive:
 <pre>
+  # This directive is deprecated, and should be removed
   MultilineRFC2228 on
 </pre>
 this causes ProFTPD's <code>FEAT</code> response format to be different than
@@ -3304,11 +3306,9 @@ FileZilla expects, which can lead to the above "does not support non-ASCII
 characters" message.
 
 <p>
-The solution is to use:
-<pre>
-  MultilineRFC2228 off
-</pre>
-in your <code>proftpd.conf</code> (or simply remove that directive entirely).
+The solution is to use remove use of the deprecated
+<code>MultilineRFC2228</code> directive in your <code>proftpd.conf</code>
+(or simply remove that directive entirely).
 
 <p>
 <hr>
