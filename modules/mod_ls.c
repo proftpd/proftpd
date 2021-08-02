@@ -3211,7 +3211,7 @@ MODRET ls_nlst(cmd_rec *cmd) {
       p = *path;
       path++;
 
-      if (*p == '.' && (!opt_A || is_dotdir(p))) {
+      if (opt_A == 0 && *p == '.' && is_dotdir(p)) {
         continue;
       }
 
