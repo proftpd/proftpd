@@ -19,6 +19,7 @@
 --------------------------------
 - Issue 1273 - Improve mod_tls log messages for unsupported older TLS protocol
   requests.
+- Issue 1284 - Fix memory disclosure to RADIUS servers by mod_radius.
 
 1.3.7b - Released 13-Jun-2021
 --------------------------------
