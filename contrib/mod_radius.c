@@ -2325,8 +2325,10 @@ static void radius_add_passwd(radius_packet_t *packet, unsigned char type,
   if (pwlen == 0) {
     pwlen = RADIUS_PASSWD_LEN;
 
-  } if ((pwlen & (RADIUS_PASSWD_LEN - 1)) != 0) {
-    /* pwlen is not a multiple of RADIUS_PASSWD_LEN, need to prepare a proper buffer */
+  } else if ((pwlen & (RADIUS_PASSWD_LEN - 1)) != 0) {
+    /* pwlen is not a multiple of RADIUS_PASSWD_LEN, need to prepare a proper
+     * buffer.
+     */
     memcpy(pwhash, passwd, pwlen);
 
     /* Round up the length. */
@@ -2334,11 +2336,11 @@ static void radius_add_passwd(radius_packet_t *packet, unsigned char type,
 
     /* Truncate the length, as necessary. */
     pwlen &= ~(RADIUS_PASSWD_LEN - 1);
+
   } else {
     /* pwlen is a multiple of RADIUS_PASSWD_LEN, we can just use it. */
     memcpy(pwhash, passwd, pwlen);
   }
-
 
   /* Find the password attribute. */
   attrib = radius_get_attrib(packet, RADIUS_PASSWORD);
