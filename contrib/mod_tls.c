@@ -78,7 +78,7 @@
 # include <sys/mman.h>
 #endif
 
-#define MOD_TLS_VERSION		"mod_tls/2.9.1"
+#define MOD_TLS_VERSION		"mod_tls/2.9.2"
 
 /* Make sure the version of proftpd is as necessary. */
 #if PROFTPD_VERSION_NUMBER < 0x0001030602
@@ -716,11 +716,11 @@ static int tls_handshake_timer_id = -1;
 static int tls_verify_depth = TLS_DEFAULT_VERIFY_DEPTH;
 
 #if OPENSSL_VERSION_NUMBER > 0x000907000L
-/* Renegotiate control channel on TLS sessions after 4 hours, by default. */
-static int tls_ctrl_renegotiate_timeout = 14400;
+/* No default renegotiation of control channel on TLS sessions. */
+static int tls_ctrl_renegotiate_timeout = 0;
 
-/* Renegotiate data channel on TLS sessions after 1 gigabyte, by default. */
-static off_t tls_data_renegotiate_limit = 1024 * 1024 * 1024;
+/* No default renegotiation of data channel on TLS sessions. */
+static off_t tls_data_renegotiate_limit = 0;
 static off_t tls_data_renegotiate_current = 0;
 
 /* Timeout given for renegotiations to occur before the TLS session is
@@ -729,7 +729,7 @@ static off_t tls_data_renegotiate_current = 0;
 static int tls_renegotiate_timeout = 30;
 
 /* Is client acceptance of a requested renegotiation required? */
-static unsigned char tls_renegotiate_required = TRUE;
+static unsigned char tls_renegotiate_required = FALSE;
 #endif
 
 #define TLS_NETIO_NOTE		"mod_tls.SSL"
@@ -4051,7 +4051,7 @@ static int tls_renegotiate_timeout_cb(CALLBACK_FRAME) {
       tls_log("%s", "control channel TLS session renegotiated");
       tls_flags &= ~TLS_SESS_CTRL_RENEGOTIATING;
 
-    } else if (tls_renegotiate_required) {
+    } else if (tls_renegotiate_required == TRUE) {
       tls_log("%s", "requested TLS renegotiation timed out on control channel");
       tls_log("%s", "shutting down control channel TLS session");
       tls_end_sess(ctrl_ssl, session.c, 0);
@@ -4088,7 +4088,7 @@ static int tls_renegotiate_timeout_cb(CALLBACK_FRAME) {
       tls_flags &= ~TLS_SESS_DATA_RENEGOTIATING;
       tls_data_renegotiate_current = 0;
 
-    } else if (tls_renegotiate_required) {
+    } else if (tls_renegotiate_required == TRUE) {
       tls_log("%s", "requested TLS renegotiation timed out on data channel");
       tls_log("%s", "shutting down data channel TLS session");
       tls_end_sess(ssl, session.d, 0);
@@ -14663,8 +14663,10 @@ MODRET set_tlsrenegotiate(cmd_rec *cmd) {
   register unsigned int i = 0;
   config_rec *c = NULL;
 
-  if (cmd->argc-1 < 1 || cmd->argc-1 > 8)
+  if (cmd->argc-1 < 1 ||
+      cmd->argc-1 > 8) {
     CONF_ERROR(cmd, "wrong number of parameters");
+  }
 
   CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL);
 
@@ -14685,29 +14687,24 @@ MODRET set_tlsrenegotiate(cmd_rec *cmd) {
 
   for (i = 1; i < cmd->argc;) {
     if (strcmp(cmd->argv[i], "ctrl") == 0) {
-      int secs = atoi(cmd->argv[i+1]);
+      int secs;
 
-      if (secs > 0) {
-        *((int *) c->argv[0]) = secs;
-
-      } else {
-        CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, cmd->argv[i],
-          " must be greater than zero: '", cmd->argv[i+1], "'", NULL));
-      }
+      secs = atoi(cmd->argv[i+1]);
+      *((int *) c->argv[0]) = secs;
 
       i += 2;
 
     } else if (strcmp(cmd->argv[i], "data") == 0) {
-      char *tmp = NULL;
-      unsigned long kbytes = strtoul(cmd->argv[i+1], &tmp, 10);
+      char *ptr = NULL;
+      unsigned long kbytes;
 
-      if (!(tmp && *tmp)) {
-        *((off_t *) c->argv[1]) = (off_t) kbytes * 1024;
-
-      } else {
+      kbytes = strtoul(cmd->argv[i+1], &ptr, 10);
+      if (ptr && *ptr) {
         CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, cmd->argv[i],
-          " must be greater than zero: '", cmd->argv[i+1], "'", NULL));
+          " must be valid number: '", cmd->argv[i+1], "'", NULL));
       }
+
+      *((off_t *) c->argv[1]) = (off_t) kbytes * 1024;
 
       i += 2;
 
