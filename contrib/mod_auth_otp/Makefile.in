@@ -19,7 +19,8 @@ SHARED_MODULE_OBJS=mod_auth_otp.lo base32.lo otp.lo crypto.lo db.lo
 UTILS_LIBS=@UTILS_LIBS@
 UTILS_OBJS=base32.o otp.o crypto.o auth-otp.o
 UTILS_API_OBJS=../../src/pool.o \
-  ../../src/str.o
+  ../../src/str.o \
+  ../../lib/prbase.a
 
 # Necessary redefinitions
 INCLUDES=-I. -I../.. -I../../include -I$(top_srcdir)/../../include @INCLUDES@

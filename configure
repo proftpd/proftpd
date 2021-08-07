@@ -17255,8 +17255,6 @@ $as_echo "#define PR_USE_PCRE 1" >>confdefs.h
       # fiddle with CPPFLAGS, LDFLAGS
       CPPFLAGS="$CPPFLAGS $ac_build_addl_includes"
       LDFLAGS="$LDFLAGS $ac_build_addl_libdirs"
-
-            LIBS=`echo "$LIBS" | sed -e 's/-lsupp//g'`;
       LIBS="$LIBS -lpcre -lpcreposix"
 
       { $as_echo "$as_me:${as_lineno-$LINENO}: checking for PCRE's pcre_free_study" >&5
@@ -17303,7 +17301,7 @@ fi
 rm -f core conftest.err conftest.$ac_objext \
     conftest$ac_exeext conftest.$ac_ext
 
-      # restore CPPFLAGS, LDFLAGS
+      # restore CPPFLAGS, LDFLAGS, LIBS
       CPPFLAGS="$saved_cppflags"
       LDFLAGS="$saved_ldflags"
       LIBS="$saved_libs"
@@ -17337,8 +17335,6 @@ fi
       # fiddle with CPPFLAGS, LDFLAGS
       CPPFLAGS="$CPPFLAGS $ac_build_addl_includes"
       LDFLAGS="$LDFLAGS $ac_build_addl_libdirs"
-
-            LIBS=`echo "$LIBS" | sed -e 's/-lsupp//g'`;
       LIBS="$LIBS -lhiredis"
 
       { $as_echo "$as_me:${as_lineno-$LINENO}: checking for Hiredis' redisReconnect" >&5
@@ -17382,7 +17378,7 @@ fi
 rm -f core conftest.err conftest.$ac_objext \
     conftest$ac_exeext conftest.$ac_ext
 
-      # restore CPPFLAGS, LDFLAGS
+      # restore CPPFLAGS, LDFLAGS, LIBS
       CPPFLAGS="$saved_cppflags"
       LDFLAGS="$saved_ldflags"
       LIBS="$saved_libs"
@@ -23876,8 +23872,6 @@ rm -f core *.core core.conftest.* gmon.out bb.out conftest$ac_exeext \
 fi
 
 
-LIBS="-lsupp $LIBS"
-
 ac_shared_module_dirs=
 ac_static_module_dirs=
 
@@ -24031,8 +24025,6 @@ if test x"$pr_use_mysql" = xyes; then
 
     CPPFLAGS="$CPPFLAGS $ac_build_addl_includes"
   LDFLAGS="$LDFLAGS $ac_build_addl_libdirs"
-
-    LIBS=`echo "$LIBS" | sed -e 's/-lsupp//g'`;
   LIBS="$LIBS -lm -lmysqlclient -lz"
 
   { $as_echo "$as_me:${as_lineno-$LINENO}: checking for mysql_get_option" >&5
@@ -24365,8 +24357,6 @@ $as_echo "#define PR_USE_OPENSSL 1" >>confdefs.h
   { $as_echo "$as_me:${as_lineno-$LINENO}: checking whether OpenSSL is compiled with FIPS support" >&5
 $as_echo_n "checking whether OpenSSL is compiled with FIPS support... " >&6; }
   saved_libs="$LIBS"
-
-    LIBS=`echo "$LIBS" | sed -e 's/-lsupp//g'`;
   LIBS="$LIBS -lcrypto"
 
   if test "$cross_compiling" = yes; then :
@@ -24406,8 +24396,6 @@ fi
   { $as_echo "$as_me:${as_lineno-$LINENO}: checking whether linking with OpenSSL functions succeeds" >&5
 $as_echo_n "checking whether linking with OpenSSL functions succeeds... " >&6; }
   saved_libs="$LIBS"
-
-    LIBS=`echo "$LIBS" | sed -e 's/-lsupp//g'`;
   LIBS="-lcrypto $LIBS"
 
   cat confdefs.h - <<_ACEOF >conftest.$ac_ext
@@ -24474,8 +24462,6 @@ rm -f core conftest.err conftest.$ac_objext \
       { $as_echo "$as_me:${as_lineno-$LINENO}: checking whether linking with OpenSSL functions requires -lz" >&5
 $as_echo_n "checking whether linking with OpenSSL functions requires -lz... " >&6; }
       saved_libs="$LIBS"
-
-            LIBS=`echo "$LIBS" | sed -e 's/-lsupp//g'`;
       LIBS="-lcrypto -lz $LIBS"
 
       cat confdefs.h - <<_ACEOF >conftest.$ac_ext
@@ -24522,8 +24508,6 @@ rm -f core conftest.err conftest.$ac_objext \
   { $as_echo "$as_me:${as_lineno-$LINENO}: checking whether OpenSSL has complete ECC support" >&5
 $as_echo_n "checking whether OpenSSL has complete ECC support... " >&6; }
   saved_libs="$LIBS"
-
-    LIBS=`echo "$LIBS" | sed -e 's/-lsupp//g'`;
   LIBS="-lcrypto $LIBS"
 
   cat confdefs.h - <<_ACEOF >conftest.$ac_ext
@@ -24572,8 +24556,6 @@ rm -f core conftest.err conftest.$ac_objext \
   { $as_echo "$as_me:${as_lineno-$LINENO}: checking whether OpenSSL has EVP_CipherInit_ex support" >&5
 $as_echo_n "checking whether OpenSSL has EVP_CipherInit_ex support... " >&6; }
   saved_libs="$LIBS"
-
-    LIBS=`echo "$LIBS" | sed -e 's/-lsupp//g'`;
   LIBS="-lcrypto $LIBS"
 
   cat confdefs.h - <<_ACEOF >conftest.$ac_ext
@@ -24613,8 +24595,6 @@ rm -f core conftest.err conftest.$ac_objext \
   { $as_echo "$as_me:${as_lineno-$LINENO}: checking whether OpenSSL has ALPN support" >&5
 $as_echo_n "checking whether OpenSSL has ALPN support... " >&6; }
   saved_libs="$LIBS"
-
-    LIBS=`echo "$LIBS" | sed -e 's/-lsupp//g'`;
   LIBS="-lcrypto -lssl $LIBS"
 
   cat confdefs.h - <<_ACEOF >conftest.$ac_ext
@@ -24661,8 +24641,6 @@ rm -f core conftest.err conftest.$ac_objext \
   { $as_echo "$as_me:${as_lineno-$LINENO}: checking whether OpenSSL has NPN support" >&5
 $as_echo_n "checking whether OpenSSL has NPN support... " >&6; }
   saved_libs="$LIBS"
-
-    LIBS=`echo "$LIBS" | sed -e 's/-lsupp//g'`;
   LIBS="-lcrypto -lssl $LIBS"
 
   cat confdefs.h - <<_ACEOF >conftest.$ac_ext
@@ -24709,8 +24687,6 @@ rm -f core conftest.err conftest.$ac_objext \
   { $as_echo "$as_me:${as_lineno-$LINENO}: checking whether OpenSSL has OCSP support" >&5
 $as_echo_n "checking whether OpenSSL has OCSP support... " >&6; }
   saved_libs="$LIBS"
-
-    LIBS=`echo "$LIBS" | sed -e 's/-lsupp//g'`;
   LIBS="-lcrypto -lssl $LIBS"
 
   cat confdefs.h - <<_ACEOF >conftest.$ac_ext
@@ -24759,8 +24735,6 @@ rm -f core conftest.err conftest.$ac_objext \
   { $as_echo "$as_me:${as_lineno-$LINENO}: checking whether OpenSSL has SSL num tickets support" >&5
 $as_echo_n "checking whether OpenSSL has SSL num tickets support... " >&6; }
   saved_libs="$LIBS"
-
-    LIBS=`echo "$LIBS" | sed -e 's/-lsupp//g'`;
   LIBS="-lcrypto -lssl $LIBS"
 
   cat confdefs.h - <<_ACEOF >conftest.$ac_ext
@@ -24800,8 +24774,6 @@ rm -f core conftest.err conftest.$ac_objext \
   { $as_echo "$as_me:${as_lineno-$LINENO}: checking whether OpenSSL has SSL read ahead support" >&5
 $as_echo_n "checking whether OpenSSL has SSL read ahead support... " >&6; }
   saved_libs="$LIBS"
-
-    LIBS=`echo "$LIBS" | sed -e 's/-lsupp//g'`;
   LIBS="-lcrypto -lssl $LIBS"
 
   cat confdefs.h - <<_ACEOF >conftest.$ac_ext
@@ -24841,8 +24813,6 @@ rm -f core conftest.err conftest.$ac_objext \
   { $as_echo "$as_me:${as_lineno-$LINENO}: checking whether OpenSSL has SSL session ID context set support" >&5
 $as_echo_n "checking whether OpenSSL has SSL session ID context set support... " >&6; }
   saved_libs="$LIBS"
-
-    LIBS=`echo "$LIBS" | sed -e 's/-lsupp//g'`;
   LIBS="-lcrypto -lssl $LIBS"
 
   cat confdefs.h - <<_ACEOF >conftest.$ac_ext
@@ -24882,8 +24852,6 @@ rm -f core conftest.err conftest.$ac_objext \
   { $as_echo "$as_me:${as_lineno-$LINENO}: checking whether OpenSSL has SSL session ticket callback support" >&5
 $as_echo_n "checking whether OpenSSL has SSL session ticket callback support... " >&6; }
   saved_libs="$LIBS"
-
-    LIBS=`echo "$LIBS" | sed -e 's/-lsupp//g'`;
   LIBS="-lcrypto -lssl $LIBS"
 
   cat confdefs.h - <<_ACEOF >conftest.$ac_ext
@@ -24974,8 +24942,6 @@ fi
 
 
     saved_libs="$LIBS"
-
-        LIBS=`echo "$LIBS" | sed -e 's/-lsupp//g'`;
     LIBS="-lcrypto -lssl $LIBS"
     { $as_echo "$as_me:${as_lineno-$LINENO}: checking for redisInitiateSSL in -lhiredis_ssl" >&5
 $as_echo_n "checking for redisInitiateSSL in -lhiredis_ssl... " >&6; }
@@ -25035,8 +25001,6 @@ if test x"$pr_use_postgres" = xyes; then
   # fiddle with CPPFLAGS, LDFLAGS
   CPPFLAGS="$CPPFLAGS $ac_build_addl_includes"
   LDFLAGS="$LDFLAGS $ac_build_addl_libdirs"
-
-    LIBS=`echo "$LIBS" | sed -e 's/-lsupp//g'`;
   LIBS="$LIBS -lm -lpq"
 
   { $as_echo "$as_me:${as_lineno-$LINENO}: checking for Postgres's PQescapeStringConn" >&5
@@ -25176,7 +25140,7 @@ fi
 rm -f core conftest.err conftest.$ac_objext \
     conftest$ac_exeext conftest.$ac_ext
 
-  # restore CPPFLAGS, LDFLAGS
+  # restore CPPFLAGS, LDFLAGS, LIBS
   CPPFLAGS="$saved_cppflags"
   LDFLAGS="$saved_ldflags"
   LIBS="$saved_libs"

@@ -29,8 +29,8 @@
 
 /* ProFTPD support library definitions. */
 
-#ifndef PR_LIBSUPP_H
-#define PR_LIBSUPP_H
+#ifndef PR_BASE_H
+#define PR_BASE_H
 
 #include <glibc-glob.h>
 
@@ -102,4 +102,4 @@ void pr_os_already_has_vsnprintf(void);
 void pr_os_already_has_snprintf_and_vsnprintf(void);
 #endif /* !HAVE_VSNPRINTF || !HAVE_SNPRINTF */
 
-#endif /* PR_LIBSUPP_H */
+#endif /* PR_BASE_H */

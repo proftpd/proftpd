@@ -27,16 +27,16 @@ Makefile: Makefile.in ../config.status
 libltdl: dummy
 	cd libltdl/ && $(MAKE)
 
-libsupp.a: $(LIB_OBJS)
-	$(AR) rc libsupp.a $(LIB_OBJS)
-	$(RANLIB) libsupp.a
+prbase.a: $(LIB_OBJS)
+	$(AR) rc prbase.a $(LIB_OBJS)
+	$(RANLIB) prbase.a
 
-lib: libsupp.a $(LIB_DEPS)
+lib: prbase.a $(LIB_DEPS)
 
 install:
 
 clean:
-	$(RM) *.o libsupp.a
+	$(RM) *.o prbase.a
 	$(LIBTOOL) --mode=clean $(RM) `echo $(LIB_OBJS) | sed 's/\.o$\/.lo/g'`
 	test -z $(LIB_DEPS) || (cd libltdl/ && $(MAKE) clean)
 

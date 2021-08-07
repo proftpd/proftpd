@@ -104,14 +104,14 @@ STATIC_MODULE_OBJS=@STATIC_MODULE_OBJS@
 STATIC_MODULE_SRCS=@STATIC_MODULE_SRCS@
 
 BUILD_STATIC_MODULE_ARCHIVES=@BUILD_STATIC_MODULE_ARCHIVES@
-BUILD_STATIC_MODULE_OBJS=@BUILD_STATIC_MODULE_OBJS@ modules/module_glue.o
+BUILD_STATIC_MODULE_OBJS=@BUILD_STATIC_MODULE_OBJS@ modules/module_glue.o lib/prbase.a
 
 FTPCOUNT_OBJS=ftpcount.o scoreboard.o misc.o
 BUILD_FTPCOUNT_OBJS=utils/ftpcount.o utils/scoreboard.o utils/misc.o
 
 FTPDCTL_OBJS=ftpdctl.o pool.o netaddr.o log.o ctrls.o
 BUILD_FTPDCTL_OBJS=src/ftpdctl.o src/pool.o src/str.o src/netaddr.o src/log.o \
-  src/ctrls.o
+  src/ctrls.o lib/prbase.a
 
 FTPSCRUB_OBJS=ftpscrub.o scoreboard.o misc.o
 BUILD_FTPSCRUB_OBJS=utils/ftpscrub.o utils/scoreboard.o utils/misc.o
@@ -123,4 +123,4 @@ FTPTOP_OBJS=ftptop.o scoreboard.o misc.o
 BUILD_FTPTOP_OBJS=utils/ftptop.o utils/scoreboard.o utils/misc.o
 
 FTPWHO_OBJS=ftpwho.o scoreboard.o misc.o
-BUILD_FTPWHO_OBJS=utils/ftpwho.o utils/scoreboard.o utils/misc.o
+BUILD_FTPWHO_OBJS=utils/ftpwho.o utils/scoreboard.o utils/misc.o lib/prbase.a
