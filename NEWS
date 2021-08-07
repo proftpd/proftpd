@@ -20,6 +20,8 @@
 - Issue 1273 - Improve mod_tls log messages for unsupported older TLS protocol
   requests.
 - Issue 1284 - Fix memory disclosure to RADIUS servers by mod_radius.
+- Issue 1282 - Properly handle <VirtualHost> sections that use interface/device
+  names.
 
 1.3.7b - Released 13-Jun-2021
 --------------------------------
