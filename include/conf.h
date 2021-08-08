@@ -2,7 +2,7 @@
  * ProFTPD - FTP server daemon
  * Copyright (c) 1997, 1998 Public Flood Software
  * Copyright (c) 1999, 2000 MacGyver aka Habeeb J. Dihu <macgyver@tos.net>
- * Copyright (c) 2001-2020 The ProFTPD Project team
+ * Copyright (c) 2001-2021 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -64,6 +64,7 @@
  * not for the support library.
  */
 
+#include "base.h"
 #include "pool.h"
 #include "str.h"
 #include "ascii.h"
@@ -101,7 +102,6 @@
 #include "scoreboard.h"
 #include "data.h"
 #include "display.h"
-#include "libsupp.h"
 #include "fsio.h"
 #include "mkhome.h"
 #include "ctrls.h"

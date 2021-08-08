@@ -863,9 +863,6 @@ AC_ARG_ENABLE(pcre,
       # fiddle with CPPFLAGS, LDFLAGS
       CPPFLAGS="$CPPFLAGS $ac_build_addl_includes"
       LDFLAGS="$LDFLAGS $ac_build_addl_libdirs"
-
-      dnl Splice out -lsupp, since that library hasn't been built yet
-      LIBS=`echo "$LIBS" | sed -e 's/-lsupp//g'`;
       LIBS="$LIBS -lpcre -lpcreposix"
 
       AC_MSG_CHECKING([for PCRE's pcre_free_study])
@@ -894,7 +891,7 @@ AC_ARG_ENABLE(pcre,
         ]
       )
 
-      # restore CPPFLAGS, LDFLAGS
+      # restore CPPFLAGS, LDFLAGS, LIBS
       CPPFLAGS="$saved_cppflags"
       LDFLAGS="$saved_ldflags"
       LIBS="$saved_libs"
@@ -922,9 +919,6 @@ AC_ARG_ENABLE(redis,
       # fiddle with CPPFLAGS, LDFLAGS
       CPPFLAGS="$CPPFLAGS $ac_build_addl_includes"
       LDFLAGS="$LDFLAGS $ac_build_addl_libdirs"
-
-      dnl Splice out -lsupp, since that library hasn't been built yet
-      LIBS=`echo "$LIBS" | sed -e 's/-lsupp//g'`;
       LIBS="$LIBS -lhiredis"
 
       AC_MSG_CHECKING([for Hiredis' redisReconnect])
@@ -950,7 +944,7 @@ AC_ARG_ENABLE(redis,
         ]
       )
 
-      # restore CPPFLAGS, LDFLAGS
+      # restore CPPFLAGS, LDFLAGS, LIBS
       CPPFLAGS="$saved_cppflags"
       LDFLAGS="$saved_ldflags"
       LIBS="$saved_libs"
@@ -2995,9 +2989,6 @@ AC_TRY_RUN(
   AC_MSG_RESULT(cross-compiling); AC_DEFINE(HAVE_LU, 1, [Define if you have %lu support])
 )
 
-dnl Add the proftpd support library
-LIBS="-lsupp $LIBS"
-
 dnl Module handling.
 ac_shared_module_dirs=
 ac_static_module_dirs=
@@ -3158,9 +3149,6 @@ if test x"$pr_use_mysql" = xyes; then
   dnl Fiddle with CPPFLAGS, LDFLAGS
   CPPFLAGS="$CPPFLAGS $ac_build_addl_includes"
   LDFLAGS="$LDFLAGS $ac_build_addl_libdirs"
-
-  dnl Splice out -lsupp FROM LIBS, since that library hasn't been built yet
-  LIBS=`echo "$LIBS" | sed -e 's/-lsupp//g'`;
   LIBS="$LIBS -lm -lmysqlclient -lz"
 
   AC_MSG_CHECKING([for mysql_get_option])
@@ -3355,7 +3343,7 @@ if test x"$pr_use_mysql" = xyes; then
     ]
   )
 
-  dnl Restore CPPFLAGS, LDFLAGS
+  dnl Restore CPPFLAGS, LDFLAGS, LIBS
   CPPFLAGS="$saved_cppflags"
   LDFLAGS="$saved_ldflags"
   LIBS="$saved_libs"
@@ -3367,9 +3355,6 @@ if test x"$pr_use_openssl" = xyes; then
 
   AC_MSG_CHECKING([whether OpenSSL is compiled with FIPS support])
   saved_libs="$LIBS"
-
-  dnl Splice out -lsupp, since that library hasn't been built yet
-  LIBS=`echo "$LIBS" | sed -e 's/-lsupp//g'`;
   LIBS="$LIBS -lcrypto"
 
   AC_TRY_RUN(
@@ -3392,9 +3377,6 @@ if test x"$pr_use_openssl" = xyes; then
 
   AC_MSG_CHECKING([whether linking with OpenSSL functions succeeds])
   saved_libs="$LIBS"
-
-  dnl Splice out -lsupp, since that library hasn't been built yet
-  LIBS=`echo "$LIBS" | sed -e 's/-lsupp//g'`;
   LIBS="-lcrypto $LIBS"
 
   AC_TRY_LINK(
@@ -3432,9 +3414,6 @@ if test x"$pr_use_openssl" = xyes; then
 
       AC_MSG_CHECKING([whether linking with OpenSSL functions requires -lz])
       saved_libs="$LIBS"
-
-      dnl Splice out -lsupp, since that library hasn't been built yet
-      LIBS=`echo "$LIBS" | sed -e 's/-lsupp//g'`;
       LIBS="-lcrypto -lz $LIBS"
 
       AC_TRY_LINK(
@@ -3462,9 +3441,6 @@ if test x"$pr_use_openssl" = xyes; then
 
   AC_MSG_CHECKING([whether OpenSSL has complete ECC support])
   saved_libs="$LIBS"
-
-  dnl Splice out -lsupp, since that library hasn't been built yet
-  LIBS=`echo "$LIBS" | sed -e 's/-lsupp//g'`;
   LIBS="-lcrypto $LIBS"
 
   AC_TRY_LINK(
@@ -3495,9 +3471,6 @@ if test x"$pr_use_openssl" = xyes; then
 
   AC_MSG_CHECKING([whether OpenSSL has EVP_CipherInit_ex support])
   saved_libs="$LIBS"
-
-  dnl Splice out -lsupp, since that library hasn't been built yet
-  LIBS=`echo "$LIBS" | sed -e 's/-lsupp//g'`;
   LIBS="-lcrypto $LIBS"
 
   AC_TRY_LINK(
@@ -3519,9 +3492,6 @@ if test x"$pr_use_openssl" = xyes; then
 
   AC_MSG_CHECKING([whether OpenSSL has ALPN support])
   saved_libs="$LIBS"
-
-  dnl Splice out -lsupp, since that library hasn't been built yet
-  LIBS=`echo "$LIBS" | sed -e 's/-lsupp//g'`;
   LIBS="-lcrypto -lssl $LIBS"
 
   AC_TRY_LINK(
@@ -3550,9 +3520,6 @@ if test x"$pr_use_openssl" = xyes; then
 
   AC_MSG_CHECKING([whether OpenSSL has NPN support])
   saved_libs="$LIBS"
-
-  dnl Splice out -lsupp, since that library hasn't been built yet
-  LIBS=`echo "$LIBS" | sed -e 's/-lsupp//g'`;
   LIBS="-lcrypto -lssl $LIBS"
 
   AC_TRY_LINK(
@@ -3581,9 +3548,6 @@ if test x"$pr_use_openssl" = xyes; then
 
   AC_MSG_CHECKING([whether OpenSSL has OCSP support])
   saved_libs="$LIBS"
-
-  dnl Splice out -lsupp, since that library hasn't been built yet
-  LIBS=`echo "$LIBS" | sed -e 's/-lsupp//g'`;
   LIBS="-lcrypto -lssl $LIBS"
 
   AC_TRY_LINK(
@@ -3614,9 +3578,6 @@ if test x"$pr_use_openssl" = xyes; then
 
   AC_MSG_CHECKING([whether OpenSSL has SSL num tickets support])
   saved_libs="$LIBS"
-
-  dnl Splice out -lsupp, since that library hasn't been built yet
-  LIBS=`echo "$LIBS" | sed -e 's/-lsupp//g'`;
   LIBS="-lcrypto -lssl $LIBS"
 
   AC_TRY_LINK(
@@ -3638,9 +3599,6 @@ if test x"$pr_use_openssl" = xyes; then
 
   AC_MSG_CHECKING([whether OpenSSL has SSL read ahead support])
   saved_libs="$LIBS"
-
-  dnl Splice out -lsupp, since that library hasn't been built yet
-  LIBS=`echo "$LIBS" | sed -e 's/-lsupp//g'`;
   LIBS="-lcrypto -lssl $LIBS"
 
   AC_TRY_LINK(
@@ -3662,9 +3620,6 @@ if test x"$pr_use_openssl" = xyes; then
 
   AC_MSG_CHECKING([whether OpenSSL has SSL session ID context set support])
   saved_libs="$LIBS"
-
-  dnl Splice out -lsupp, since that library hasn't been built yet
-  LIBS=`echo "$LIBS" | sed -e 's/-lsupp//g'`;
   LIBS="-lcrypto -lssl $LIBS"
 
   AC_TRY_LINK(
@@ -3686,9 +3641,6 @@ if test x"$pr_use_openssl" = xyes; then
 
   AC_MSG_CHECKING([whether OpenSSL has SSL session ticket callback support])
   saved_libs="$LIBS"
-
-  dnl Splice out -lsupp, since that library hasn't been built yet
-  LIBS=`echo "$LIBS" | sed -e 's/-lsupp//g'`;
   LIBS="-lcrypto -lssl $LIBS"
 
   AC_TRY_LINK(
@@ -3757,9 +3709,6 @@ if test x"$pr_use_openssl" = xyes; then
     )
 
     saved_libs="$LIBS"
-
-    dnl Splice out -lsupp, since that library hasn't been built yet
-    LIBS=`echo "$LIBS" | sed -e 's/-lsupp//g'`;
     LIBS="-lcrypto -lssl $LIBS"
     AC_CHECK_LIB(hiredis_ssl, redisInitiateSSL,
       [AC_DEFINE(HAVE_HIREDIS_REDISINITIATESSL, 1, [Define if hiredis_ssl has redisInitiateSSL function.])
@@ -3779,9 +3728,6 @@ if test x"$pr_use_postgres" = xyes; then
   # fiddle with CPPFLAGS, LDFLAGS
   CPPFLAGS="$CPPFLAGS $ac_build_addl_includes"
   LDFLAGS="$LDFLAGS $ac_build_addl_libdirs"
-
-  dnl Splice out -lsupp, since that library hasn't been built yet
-  LIBS=`echo "$LIBS" | sed -e 's/-lsupp//g'`;
   LIBS="$LIBS -lm -lpq"
 
   AC_MSG_CHECKING([for Postgres's PQescapeStringConn])
@@ -3867,7 +3813,7 @@ if test x"$pr_use_postgres" = xyes; then
     ]
   )
 
-  # restore CPPFLAGS, LDFLAGS
+  # restore CPPFLAGS, LDFLAGS, LIBS
   CPPFLAGS="$saved_cppflags"
   LDFLAGS="$saved_ldflags"
   LIBS="$saved_libs"
