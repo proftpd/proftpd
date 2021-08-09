@@ -1,7 +1,7 @@
 /*
  * ProFTPD - FTP server daemon
  * Copyright (c) 1997, 1998 Public Flood Software
- * Copyright (c) 2001-2020 The ProFTPD Project team
+ * Copyright (c) 2001-2021 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -479,6 +479,22 @@ MODRET site_help(cmd_rec *cmd) {
    * the former (it's mentioned in RFC959), whereas the latter is more
    * syntactically correct.
    */
+
+  if (!dir_check_limits(cmd, session.dir_config, "SITE_HELP", FALSE)) {
+    int xerrno = EACCES;
+
+    pr_log_debug(DEBUG8, "SITE HELP denied by <Limit> configuration");
+
+    /* Returning 501 is the best we can do.  It would be nicer if RFC959 allowed
+     * 550 as a possible response.
+     */
+    pr_response_add_err(R_501, "%s: %s", (char *) cmd->argv[0],
+      strerror(xerrno));
+
+    pr_cmd_set_errno(cmd, xerrno);
+    errno = xerrno;
+    return PR_ERROR(cmd);
+  }
 
   if (cmd->argc == 1 || (cmd->argc == 2 &&
       ((strcasecmp(cmd->argv[0], "SITE") == 0 &&
