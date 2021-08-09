@@ -4694,6 +4694,23 @@ MODRET core_epsv(cmd_rec *cmd) {
 }
 
 MODRET core_help(cmd_rec *cmd) {
+  if (!dir_check(cmd->tmp_pool, cmd, cmd->group, session.vwd, NULL)) {
+    int xerrno = EACCES;
+
+    pr_log_debug(DEBUG7, "%s command denied by <Limit> configuration",
+      (char *) cmd->argv[0]);
+
+    /* Returning 501 is the best we can do.  It would be nicer if RFC959 allowed
+     * 550 as a possible response.
+     */
+    pr_response_add_err(R_501, "%s: %s", (char *) cmd->argv[0],
+      strerror(xerrno));
+
+    pr_cmd_set_errno(cmd, xerrno);
+    errno = xerrno;
+    return PR_ERROR(cmd);
+  }
+
   if (cmd->argc == 1) {
     pr_help_add_response(cmd, NULL);
 
