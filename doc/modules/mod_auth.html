@@ -755,7 +755,7 @@ home directories is "REWRITE_HOME".  Thus would you use:
 <pre>
   &lt;IfModule mod_rewrite.c&gt;
     RewriteEngine on
-    RewrlteLog /path/to/rewrite.log
+    RewriteLog /path/to/rewrite.log
 
     RewriteCondition %m REWRITE_HOME
     RewriteRule (.*) /my/new/prefix$1
