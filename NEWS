@@ -22,6 +22,8 @@
 - Issue 1284 - Fix memory disclosure to RADIUS servers by mod_radius.
 - Issue 1282 - Properly handle <VirtualHost> sections that use interface/device
   names.
+- Issue 1300 - PCRE expressions with capture groups are not being handled
+  properly.
 
 1.3.7b - Released 13-Jun-2021
 --------------------------------
