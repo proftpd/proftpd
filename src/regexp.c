@@ -39,8 +39,9 @@ struct regexp_rec {
   /* Owning module */
   module *m;
 
-  /* Copy of the original regular expression pattern */
+  /* Copy of the original regular expression pattern, flags */
   const char *pattern;
+  int flags;
 
   /* For callers wishing to use POSIX REs */
   regex_t *re;
@@ -62,8 +63,9 @@ struct regexp_rec {
   /* Owning module */
   module *m;
 
-  /* Copy of the original regular expression pattern */
+  /* Copy of the original regular expression pattern, flags */
   const char *pattern;
+  int flags;
 
   /* For callers wishing to use POSIX REs */
   regex_t *re;
@@ -73,6 +75,12 @@ struct regexp_rec {
 
 static pool *regexp_pool = NULL;
 static array_header *regexp_list = NULL;
+
+#if defined(PR_USE_PCRE)
+static int regexp_use_posix = FALSE;
+#else
+static int regexp_use_posix = TRUE;
+#endif /* PR_USE_PCRE */
 
 static const char *trace_channel = "regexp";
 
@@ -188,6 +196,7 @@ static int regexp_compile_pcre(pr_regex_t *pre, const char *pattern,
   pr_trace_msg(trace_channel, 9, "compiling pattern '%s' into PCRE regex",
     pattern);
   pre->pattern = pstrdup(pre->regex_pool, pattern);
+  pre->flags = flags;
 
   pre->pcre = pcre_compile(pattern, flags, &(pre->pcre_errstr), &err_offset,
     NULL);
@@ -240,6 +249,8 @@ int pr_regexp_compile_posix(pr_regex_t *pre, const char *pattern, int flags) {
   flags |= REG_EXTENDED;
 #endif /* REG_EXTENDED */
 
+  pre->flags = flags;
+
   pre->re = pcalloc(pre->regex_pool, sizeof(regex_t));
   res = regcomp(pre->re, pattern, flags);
 
@@ -249,6 +260,10 @@ int pr_regexp_compile_posix(pr_regex_t *pre, const char *pattern, int flags) {
 int pr_regexp_compile(pr_regex_t *pre, const char *pattern, int flags) {
 #if defined(PR_USE_PCRE)
   int pcre_flags = 0;
+
+  if (regexp_use_posix == TRUE) {
+    return pr_regexp_compile_posix(pre, pattern, flags);
+  }
 
   /* Provide a simple mapping of POSIX regcomp(3) flags to
    * PCRE pcre_compile() flags.  The ProFTPD code tends not to use many
@@ -536,11 +551,21 @@ int pr_regexp_exec(pr_regex_t *pre, const char *text, size_t nmatches,
 
 #if defined(PR_USE_PCRE)
   if (pre->pcre != NULL) {
-    return regexp_exec_pcre(pre, text, nmatches, matches, flags, match_limit,
-      match_limit_recursion);
+
+    /* What if the given pre was compiled via PCRE, but we are told to only
+     * use POSIX?  In this case, we need to compile+exec on demand.
+     */
+    if (regexp_use_posix == FALSE) {
+      return regexp_exec_pcre(pre, text, nmatches, matches, flags, match_limit,
+        match_limit_recursion);
+    }
+
+    res = pr_regexp_compile_posix(pre, pre->pattern, pre->flags);
+    if (res < 0) {
+      return -1;
+    }
   }
 #endif /* PR_USE_PCRE */
-
   res = regexp_exec_posix(pre, text, nmatches, matches, flags);
 
   /* Make sure that we return a negative value to indicate a failed match;
@@ -560,6 +585,46 @@ int pr_regexp_set_limits(unsigned long match_limit,
   pcre_match_limit = match_limit;
   pcre_match_limit_recursion = match_limit_recursion;
 #endif
+
+  return 0;
+}
+
+int pr_regexp_set_engine(const char *engine) {
+  if (engine == NULL) {
+    /* Restore the default. */
+#if defined(PR_USE_PCRE)
+    regexp_use_posix = FALSE;
+#else
+    regexp_use_posix = TRUE;
+#endif /* PR_USE_PCRE */
+    pr_trace_msg(trace_channel, 19, "%s", "restored default regexp engine");
+    return 0;
+  }
+
+  if (strcasecmp(engine, "POSIX") != 0 &&
+      strcasecmp(engine, "PCRE") != 0) {
+    errno = EINVAL;
+    return -1;
+  }
+
+#if defined(PR_USE_PCRE)
+  /* We already use PCRE by default, but are being explicitly requested to
+   * only use POSIX.
+   */
+  if (strcasecmp(engine, "POSIX") == 0) {
+    regexp_use_posix = TRUE;
+    pr_trace_msg(trace_channel, 19, "%s",
+      "changed regexp engine from PCRE to POSIX");
+  }
+#else
+  /* We only use POSIX, but are being requested to use PCRE. */
+  if (strcasecmp(engine, "PCRE") == 0) {
+    errno = ENOSYS;
+    return -1;
+  }
+
+  regexp_use_posix = TRUE;
+#endif /* PR_USE_PCRE */
 
   return 0;
 }

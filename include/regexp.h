@@ -89,6 +89,13 @@ int pr_regexp_exec(pr_regex_t *pre, const char *str, size_t nmatches,
 int pr_regexp_set_limits(unsigned long match_limit,
   unsigned long match_limit_recursion);
 
+/* Set the "engine" to use for regular expressions, e.g. "POSIX" or "PCRE".
+ * The engine value is handled case-insensitively.  This is useful for treating
+ * all regular expressions as POSIX expressions, regardless of PCRE support,
+ * as when there are PCRE implementation issues.
+ */
+int pr_regexp_set_engine(const char *engine);
+
 /* For internal use only */
 void init_regexp(void);
 

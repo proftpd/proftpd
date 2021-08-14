@@ -430,6 +430,39 @@ START_TEST (regexp_cleanup_test) {
 }
 END_TEST
 
+START_TEST (regexp_set_engine_test) {
+  int res;
+
+  mark_point();
+  res = pr_regexp_set_engine(NULL);
+  fail_unless(res == 0,
+    "Failed to restore default engine: %s", strerror(errno));
+
+  mark_point();
+  res = pr_regexp_set_engine("foobar");
+  fail_unless(res < 0, "Failed to handle unknown engine");
+  fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+    strerror(errno), errno);
+
+  mark_point();
+  res = pr_regexp_set_engine("posix");
+  fail_unless(res == 0, "Failed to handle POSIX engine: %s", strerror(errno));
+
+  mark_point();
+  res = pr_regexp_set_engine("pcre");
+#if defined(PR_USE_PCRE)
+  fail_unless(res == 0, "Failed to handle PCRE engine: %s", strerror(errno));
+#else
+  fail_unless(res < 0,
+    "Failed to handle PCRE engine when lacking PCRE support");
+  fail_unless(errno == ENOSYS, "Expected ENOSYS (%d), got %s (%d)", ENOSYS,
+    strerror(errno), errno);
+#endif /* PR_USE_PCRE */
+
+  (void) pr_regexp_set_engine(NULL);
+}
+END_TEST
+
 Suite *tests_get_regexp_suite(void) {
   Suite *suite;
   TCase *testcase;
@@ -454,6 +487,7 @@ Suite *tests_get_regexp_suite(void) {
   tcase_add_test(testcase, regexp_get_pattern_test);
   tcase_add_test(testcase, regexp_set_limits_test);
   tcase_add_test(testcase, regexp_cleanup_test);
+  tcase_add_test(testcase, regexp_set_engine_test);
 
   suite_add_tcase(suite, testcase);
   return suite;
