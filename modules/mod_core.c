@@ -1867,11 +1867,12 @@ MODRET set_protocols(cmd_rec *cmd) {
   return PR_HANDLED(cmd);
 }
 
-/* usage: RegexOptions [MatchLimit limit] [MatchLimitRecursion limit]
+/* usage: RegexOptions [Engine engine] [MatchLimit limit] [MatchLimitRecursion limit]
  */
 MODRET set_regexoptions(cmd_rec *cmd) {
   register unsigned int i;
   config_rec *c;
+  char *engine = NULL;
   unsigned long match_limit = 0, match_limit_recursion = 0;
   int npairs;
 
@@ -1892,7 +1893,19 @@ MODRET set_regexoptions(cmd_rec *cmd) {
    */
 
   for (i = 1; i < cmd->argc; i++) {
-    if (strcmp(cmd->argv[i], "MatchLimit") == 0) {
+    if (strcmp(cmd->argv[i], "Engine") == 0) {
+      engine = cmd->argv[i+1];
+
+      if (strcasecmp(engine, "POSIX") != 0 &&
+          strcasecmp(engine, "PCRE") != 0) {
+        CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "bad Engine value: ",
+          engine, NULL));
+      }
+
+      /* Don't forget to advance i past the value. */
+      i += 2;
+
+    } else if (strcmp(cmd->argv[i], "MatchLimit") == 0) {
       char *ptr = NULL;
 
       match_limit = strtoul(cmd->argv[i+1], &ptr, 10);
@@ -1922,11 +1935,14 @@ MODRET set_regexoptions(cmd_rec *cmd) {
     }
   }
 
-  c = add_config_param(cmd->argv[0], 2, NULL, NULL);
+  c = add_config_param(cmd->argv[0], 3, NULL, NULL, NULL);
   c->argv[0] = palloc(c->pool, sizeof(unsigned long));
   *((unsigned long *) c->argv[0]) = match_limit;
   c->argv[1] = palloc(c->pool, sizeof(unsigned long));
   *((unsigned long *) c->argv[1]) = match_limit_recursion;
+  if (engine != NULL) {
+    c->argv[2] = pstrdup(c->pool, engine);
+  }
 
   return PR_HANDLED(cmd);
 }
@@ -5103,6 +5119,7 @@ MODRET core_post_host(cmd_rec *cmd) {
     }
 
     /* Restore the original RegexOptions values. */
+    pr_regexp_set_engine(NULL);
     pr_regexp_set_limits(0, 0);
 
     /* Remove any configured SetEnvs. */
@@ -6844,15 +6861,19 @@ static int core_sess_init(void) {
   c = find_config(main_server->conf, CONF_PARAM, "RegexOptions", FALSE);
   if (c != NULL) {
     unsigned long match_limit, match_limit_recursion;
+    const char *engine = NULL;
 
     match_limit = *((unsigned long *) c->argv[0]);
     match_limit_recursion = *((unsigned long *) c->argv[1]);
+    engine = c->argv[2];
 
     pr_trace_msg("regexp", 4,
-      "using regex options: match limit = %lu, match limit recursion = %lu",
+      "using regex options: engine = %s, match limit = %lu, "
+      "match limit recursion = %lu", engine ? engine : "(default)",
       match_limit, match_limit_recursion);
 
     pr_regexp_set_limits(match_limit, match_limit_recursion);
+    pr_regexp_set_engine(engine);
   }
 
   /* Check for configured SetEnvs. */
