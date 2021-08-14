@@ -612,9 +612,20 @@ int pr_regexp_set_engine(const char *engine) {
    * only use POSIX.
    */
   if (strcasecmp(engine, "POSIX") == 0) {
+    if (regexp_use_posix == FALSE) {
+      pr_trace_msg(trace_channel, 19, "%s",
+        "changed regexp engine from PCRE to POSIX");
+    }
+
     regexp_use_posix = TRUE;
-    pr_trace_msg(trace_channel, 19, "%s",
-      "changed regexp engine from PCRE to POSIX");
+
+  } else {
+    if (regexp_use_posix == TRUE) {
+      pr_trace_msg(trace_channel, 19, "%s",
+        "changed regexp engine from POSIX to PCRE");
+    }
+
+    regexp_use_posix = FALSE;
   }
 #else
   /* We only use POSIX, but are being requested to use PCRE. */
