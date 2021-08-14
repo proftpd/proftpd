@@ -236,6 +236,24 @@ static void sftp_cmd_loop(server_rec *s, conn_t *conn) {
   char buf[256];
   const char *k, *v;
 
+  /* Include the client, server IP addresses, ports in the SFTPLog; add the
+   * session ID, if present, as well.
+   */
+  k = "UNIQUE_ID";
+  v = pr_table_get(session.notes, k, NULL);
+  if (v != NULL) {
+    (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
+      "client (%s:%d) connected to server (%s:%d) [session ID %s]",
+      pr_netaddr_get_ipstr(session.c->remote_addr), session.c->remote_port,
+      pr_netaddr_get_ipstr(session.c->local_addr), session.c->local_port, v);
+
+  } else {
+    (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
+      "client (%s:%d) connected to server (%s:%d)",
+      pr_netaddr_get_ipstr(session.c->remote_addr), session.c->remote_port,
+      pr_netaddr_get_ipstr(session.c->local_addr), session.c->local_port);
+  }
+
   sftp_conn = conn;
   pr_session_set_protocol("ssh2");
 
@@ -2222,7 +2240,7 @@ static int sftp_sess_init(void) {
 #if OPENSSL_VERSION_NUMBER > 0x000907000L
   /* Handle any requested crypto accelerators/drivers. */
   c = find_config(main_server->conf, CONF_PARAM, "SFTPCryptoDevice", FALSE);
-  if (c) {
+  if (c != NULL) {
     if (sftp_crypto_set_driver(c->argv[0]) < 0) {
       (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
         "unable use SFTPCryptoDevice '%s': %s", (const char *) c->argv[0],
@@ -2256,7 +2274,7 @@ static int sftp_sess_init(void) {
    */
 
   c = find_config(main_server->conf, CONF_PARAM, "SFTPHostKey", FALSE);
-  while (c) {
+  while (c != NULL) {
     const char *path = c->argv[0];
     int flags = *((int *) c->argv[1]);
 
@@ -2276,7 +2294,7 @@ static int sftp_sess_init(void) {
   }
 
   c = find_config(main_server->conf, CONF_PARAM, "SFTPHostKey", FALSE);
-  while (c) {
+  while (c != NULL) {
     int flags = *((int *) c->argv[1]);
 
     if (flags != 0) {
@@ -2374,12 +2392,12 @@ static int sftp_sess_init(void) {
   }
 
   c = find_config(main_server->conf, CONF_PARAM, "SFTPMaxChannels", FALSE);
-  if (c) {
+  if (c != NULL) {
     sftp_channel_set_max_count(*((unsigned int *) c->argv[0]));
   }
 
   c = find_config(main_server->conf, CONF_PARAM, "DisplayLogin", FALSE);
-  if (c) {
+  if (c != NULL) {
     const char *path;
 
     path = c->argv[0];
@@ -2390,7 +2408,7 @@ static int sftp_sess_init(void) {
   }
 
   c = find_config(main_server->conf, CONF_PARAM, "ServerIdent", FALSE);
-  if (c) {
+  if (c != NULL) {
     if (*((unsigned char *) c->argv[0]) == FALSE) {
       /* The admin configured "ServerIdent off".  Set the version string to
        * just "mod_sftp", and that's it, no version.
@@ -2412,21 +2430,21 @@ static int sftp_sess_init(void) {
   }
 
   c = find_config(main_server->conf, CONF_PARAM, "TimesGMT", FALSE);
-  if (c) {
+  if (c != NULL) {
     times_gmt = *((unsigned char *) c->argv[0]);
   }
 
   pr_response_block(TRUE);
 
   c = find_config(main_server->conf, CONF_PARAM, "SFTPExtensions", FALSE);
-  if (c) {
+  if (c != NULL) {
     sftp_fxp_set_extensions(*((unsigned long *) c->argv[0]));
   }
 
   sftp_fxp_use_gmt(times_gmt);
 
   c = find_config(main_server->conf, CONF_PARAM, "SFTPClientAlive", FALSE);
-  if (c) {
+  if (c != NULL) {
     unsigned int count, interval;
 
     count = *((unsigned int *) c->argv[0]);
@@ -2441,7 +2459,7 @@ static int sftp_sess_init(void) {
 
   /* Check for any rekey policy. */
   c = find_config(main_server->conf, CONF_PARAM, "SFTPRekey", FALSE);
-  if (c) {
+  if (c != NULL) {
     int rekey;
 
     /* The possible int values here are:
@@ -2498,7 +2516,7 @@ static int sftp_sess_init(void) {
    * exchanged, based on the configured policy.
    */
   c = find_config(main_server->conf, CONF_PARAM, "SFTPTrafficPolicy", FALSE);
-  if (c) {
+  if (c != NULL) {
     const char *policy = c->argv[0];
 
     if (sftp_tap_set_policy(policy) < 0) {
@@ -2523,7 +2541,7 @@ static int sftp_sess_init(void) {
    */
 
   c = find_config(main_server->conf, CONF_PARAM, "UseEncoding", FALSE);
-  if (c) {
+  if (c != NULL) {
     if (c->argc == 2) {
       char *charset;
 
