@@ -1,6 +1,6 @@
 /*
  * ProFTPD - FTP server daemon
- * Copyright (c) 2004-2020 The ProFTPD Project team
+ * Copyright (c) 2004-2021 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -457,12 +457,33 @@ int pr_parser_parse_file(pool *p, const char *path, config_rec *start,
   buf = pcalloc(tmp_pool, bufsz + 1);
 
   while (pr_parser_read_line(buf, bufsz) != NULL) {
+    pool *parsed_pool;
+    pr_parsed_line_t *parsed_line;
+
     pr_signals_handle();
+
+    /* Note that pr_parser_parse_line modifies the contents of the buffer,
+     * so we want to make copy beforehand.
+     */
+
+    parsed_pool = make_sub_pool(tmp_pool);
+    parsed_line = pcalloc(parsed_pool, sizeof(pr_parsed_line_t));
+    parsed_line->text = pstrdup(parsed_pool, buf);
+    parsed_line->source_file = report_path;
+    parsed_line->source_lineno = cs->cs_lineno;
 
     cmd = pr_parser_parse_line(tmp_pool, buf, 0);
     if (cmd == NULL) {
+      destroy_pool(parsed_pool);
       continue;
     }
+
+    /* Generate an event about the parsed line of text, for any interested
+     * parties.
+     */
+    parsed_line->cmd = cmd;
+    pr_event_generate("core.parsed-line", parsed_line);
+    destroy_pool(parsed_pool);
 
     if (cmd->argc) {
       conftable *conftab;
