@@ -1,6 +1,6 @@
 /*
  * ProFTPD - FTP server daemon
- * Copyright (c) 2014-2020 The ProFTPD Project team
+ * Copyright (c) 2014-2021 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -205,7 +205,12 @@ void pr_config_dump(void (*dumpf)(const char *, ...), xaset_t *s,
     }
 
     if (c->subset) {
-      pr_config_dump(dumpf, c->subset, pstrcat(c->pool, indent, " ", NULL));
+      pool *iter_pool;
+
+      iter_pool = make_sub_pool(c->pool);
+      pr_pool_tag(iter_pool, "config dump scratch pool");
+      pr_config_dump(dumpf, c->subset, pstrcat(iter_pool, indent, " ", NULL));
+      destroy_pool(iter_pool);
     }
   }
 }
