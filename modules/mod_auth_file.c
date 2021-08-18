@@ -1422,7 +1422,7 @@ MODRET set_authgroupfile(cmd_rec *cmd) {
   }
 
   if (!(auth_file_opts & AUTH_FILE_OPT_INSECURE_PERMS)) {
-    int res, xerno;
+    int res, xerrno;
 
     /* Make sure the configured file has the correct permissions.  Note that
      * AuthGroupFiles, unlike AuthUserFiles, do not contain any sensitive
