@@ -1616,14 +1616,22 @@ MODRET set_authgroupfile(cmd_rec *cmd) {
   }
 
   if (!(auth_file_opts & AUTH_FILE_OPT_INSECURE_PERMS)) {
+    int res, xerrno;
+
     /* Make sure the configured file has the correct permissions.  Note that
      * AuthGroupFiles, unlike AuthUserFiles, do not contain any sensitive
      * information, and can thus be world-readable.
      */
     flags = PR_AUTH_FILE_FL_ALLOW_WORLD_READABLE;
-    if (af_check_file(cmd->tmp_pool, cmd->argv[0], path, flags) < 0) {
+
+    PRIVS_ROOT
+    res = af_check_file(cmd->tmp_pool, cmd->argv[0], path, flags);
+    xerrno = errno;
+    PRIVS_RELINQUISH
+
+    if (res < 0) {
       CONF_ERROR(cmd, pstrcat(cmd->tmp_pool,
-        "unable to use ", path, ": ", strerror(errno), NULL));
+        "unable to use ", path, ": ", strerror(xerrno), NULL));
     }
   }
 
@@ -1747,14 +1755,22 @@ MODRET set_authuserfile(cmd_rec *cmd) {
   }
 
   if (!(auth_file_opts & AUTH_FILE_OPT_INSECURE_PERMS)) {
+    int res, xerrno;
+
     /* Make sure the configured file has the correct permissions.  Note that
      * AuthUserFiles, unlike AuthGroupFiles, DO contain any sensitive
      * information, and thus CANNOT be world-readable.
      */
     flags = 0;
-    if (af_check_file(cmd->tmp_pool, cmd->argv[0], path, flags) < 0) {
+
+    PRIVS_ROOT
+    res = af_check_file(cmd->tmp_pool, cmd->argv[0], path, flags);
+    xerrno = errno;
+    PRIVS_RELINQUISH
+
+    if (res < 0) {
       CONF_ERROR(cmd, pstrcat(cmd->tmp_pool,
-        "unable to use ", path, ": ", strerror(errno), NULL));
+        "unable to use ", path, ": ", strerror(xerrno), NULL));
     }
   }
 

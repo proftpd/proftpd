@@ -29,6 +29,10 @@
 - Issue 1296 - Support <Limit> configurations for HELP command.
 - Issue 1300 - PCRE expressions with capture groups are not being handled
   properly.
+- Issue 1307 - AuthUserFile permissions check fails during SIGHUP, causing
+  ProFTPD to stop.
+- Issue 1286 - Add support for the libidn2 library, over libidn, for e.g.
+  mod_rewrite mappings.
 
 1.3.8rc1 - Released 13-Jun-2021
 --------------------------------

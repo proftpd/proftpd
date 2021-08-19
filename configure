@@ -19758,7 +19758,7 @@ fi
 done
 
 
-for ac_header in netinet/tcp.h arpa/inet.h idna.h libintl.h
+for ac_header in netinet/tcp.h arpa/inet.h idn2.h idna.h libintl.h
 do :
   as_ac_Header=`$as_echo "ac_cv_header_$ac_header" | $as_tr_sh`
 ac_fn_c_check_header_mongrel "$LINENO" "$ac_header" "$as_ac_Header" "$ac_includes_default"
@@ -21284,6 +21284,47 @@ $as_echo "no" >&6; }
 fi
 rm -f core conftest.err conftest.$ac_objext \
     conftest$ac_exeext conftest.$ac_ext
+
+{ $as_echo "$as_me:${as_lineno-$LINENO}: checking for idn2_to_ascii_8z" >&5
+$as_echo_n "checking for idn2_to_ascii_8z... " >&6; }
+cat confdefs.h - <<_ACEOF >conftest.$ac_ext
+/* end confdefs.h.  */
+
+    #include <sys/types.h>
+    #ifdef HAVE_IDN2_H
+    #  include <idn2.h>
+    #endif
+
+int
+main ()
+{
+
+    int flags = 0, res = 0;
+    const char *input = NULL;
+    char *output = NULL;
+    res = idn2_to_ascii_8z(input, &output, flags);
+
+  ;
+  return 0;
+}
+_ACEOF
+if ac_fn_c_try_compile "$LINENO"; then :
+
+    { $as_echo "$as_me:${as_lineno-$LINENO}: result: yes" >&5
+$as_echo "yes" >&6; }
+
+$as_echo "#define HAVE_IDN2_TO_ASCII_8Z 1" >>confdefs.h
+
+    MAIN_LIBS="$MAIN_LIBS -lidn2"
+
+else
+
+    { $as_echo "$as_me:${as_lineno-$LINENO}: result: no" >&5
+$as_echo "no" >&6; }
+
+
+fi
+rm -f core conftest.err conftest.$ac_objext conftest.$ac_ext
 
 { $as_echo "$as_me:${as_lineno-$LINENO}: checking for idna_to_ascii_8z" >&5
 $as_echo_n "checking for idna_to_ascii_8z... " >&6; }
