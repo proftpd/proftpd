@@ -73,6 +73,8 @@ jobs:
           yum install -y GeoIP-devel
           # for mod_ldap
           yum install -y openldap-devel cyrus-sasl-devel
+          # for mod_rewrite
+          yum install -y libidn2-devel
           # for memcache support
           yum install -y libmemcached-devel
           # for redis support
@@ -133,6 +135,8 @@ jobs:
           apt-get install -y libldap2-dev libsasl2-dev
           # for mod_ldap runtime support for SCRAM
           apt-get install -y libsasl2-modules-gssapi-mit
+          # for mod_rewrite
+          apt-get install -y libidn2-dev
           # for memcache support
           apt-get install -y libmemcached-dev
           # for redis support
