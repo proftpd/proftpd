@@ -504,6 +504,11 @@ my $TESTS = {
     order => ++$order,
     test_class => [qw(bug forking)],
   },
+
+  tls_curl_download_largefile_renegotiate_bug4443 => {
+    order => ++$order,
+    test_class => [qw(bug forking slow)],
+  },
 };
 
 sub new {
@@ -12707,7 +12712,7 @@ sub tls_config_tlsrenegotiate_upload {
       }
 
       # Allow the renegotiation timeout to fire
-      sleep($reneg_timeout + 1);
+      sleep($reneg_timeout + 2);
 
       $client->quot('NOOP');
       $client->quit();
@@ -12747,7 +12752,7 @@ sub tls_config_tlsrenegotiate_upload {
             print STDERR "# $line\n";
           }
 
-          if ($count >= 5) {
+          if ($count >= 3) {
             $ok = 1;
             last;
           }
@@ -14409,6 +14414,155 @@ sub tls_old_protocols_issue1273 {
   if ($@) {
     $ex = $@;
   }
+
+  test_cleanup($setup->{log_file}, $ex);
+}
+
+sub tls_curl_download_largefile_renegotiate_bug4443 {
+  my $self = shift;
+  my $tmpdir = $self->{tmpdir};
+  my $setup = test_setup($tmpdir, 'tls');
+
+  my $cert_file = File::Spec->rel2abs('t/etc/modules/mod_tls/server-cert.pem');
+  my $ca_file = File::Spec->rel2abs('t/etc/modules/mod_tls/ca-cert.pem');
+
+  # Create a file that is 1GB plus 24 bytes.
+  my $test_len = (2 ** 30) + 24;
+  my $test_file = File::Spec->rel2abs("$tmpdir/test.dat");
+  if (open(my $fh, "> $test_file")) {
+
+    # Seek to the 1GB limit, then fill the rest with 'A'
+    unless (seek($fh, (2 ** 30), 0)) {
+       die("Can't seek to 1GB length: $!");
+    }
+
+    print $fh "A" x 24;
+
+    unless (close($fh)) {
+      die("Can't write $test_file: $!");
+    }
+
+  } else {
+    die("Can't open $test_file: $!");
+  }
+
+  my $config = {
+    PidFile => $setup->{pid_file},
+    ScoreboardFile => $setup->{scoreboard_file},
+    SystemLog => $setup->{log_file},
+    TraceLog => $setup->{log_file},
+    Trace => 'tls:20',
+
+    AuthUserFile => $setup->{auth_user_file},
+    AuthGroupFile => $setup->{auth_group_file},
+
+    IfModules => {
+      'mod_delay.c' => {
+        DelayEngine => 'off',
+      },
+
+      'mod_tls.c' => {
+        TLSEngine => 'on',
+        TLSLog => $setup->{log_file},
+        TLSRequired => 'on',
+        TLSRSACertificateFile => $cert_file,
+        TLSCACertificateFile => $ca_file,
+        TLSOptions => 'EnableDiags NoSessionReuseRequired',
+      },
+    },
+  };
+
+  my ($port, $config_user, $config_group) = config_write($setup->{config_file},
+    $config);
+
+  # Open pipes, for use between the parent and child processes.  Specifically,
+  # the child will indicate when it's done with its test by writing a message
+  # to the parent.
+  my ($rfh, $wfh);
+  unless (pipe($rfh, $wfh)) {
+    die("Can't open pipe: $!");
+  }
+
+  my $ex;
+
+  # Fork child
+  $self->handle_sigchld();
+  defined(my $pid = fork()) or die("Can't fork: $!");
+  if ($pid) {
+    eval {
+      # Give the server a chance to start up
+      sleep(2);
+
+      my $curl = 'curl';
+
+      my $curl_cmd = [
+        $curl,
+        '-kvs',
+        '-o',
+        '/dev/null',
+        '--user',
+        "$setup->{user}:$setup->{passwd}",
+        '--ftp-ssl',
+        "ftp://127.0.0.1:$port/test.dat"
+      ];
+
+      my $curl_rh = IO::Handle->new();
+      my $curl_wh = IO::Handle->new();
+      my $curl_eh = IO::Handle->new();
+
+      $curl_wh->autoflush(1);
+
+      local $SIG{CHLD} = 'DEFAULT';
+
+      # Give the server a chance to start up
+      sleep(2);
+
+      if ($ENV{TEST_VERBOSE}) {
+        print STDERR "Executing: ", join(' ', @$curl_cmd), "\n";
+      }
+
+      my $curl_pid = open3($curl_wh, $curl_rh, $curl_eh, @$curl_cmd);
+      waitpid($curl_pid, 0);
+      my $exit_status = $?;
+
+      my ($res, $errstr);
+      if ($exit_status >> 8 == 0) {
+        $errstr = join('', <$curl_eh>);
+        $res = 0;
+
+      } else {
+        $errstr = join('', <$curl_eh>);
+        if ($ENV{TEST_VERBOSE}) {
+          print STDERR "Stderr: $errstr\n";
+        }
+
+        $res = 1;
+      }
+
+      unless ($res == 0) {
+        die("Can't download from FTPS server: $errstr");
+      }
+    };
+    if ($@) {
+      $ex = $@;
+    }
+
+    $wfh->print("done\n");
+    $wfh->flush();
+
+  } else {
+    eval { server_wait($setup->{config_file}, $rfh, 60) };
+    if ($@) {
+      warn($@);
+      exit 1;
+    }
+
+    exit 0;
+  }
+
+  # Stop server
+  server_stop($setup->{pid_file});
+  $self->assert_child_ok($pid);
 
   test_cleanup($setup->{log_file}, $ex);
 }
