@@ -31,11 +31,24 @@ extern xaset_t *server_list;
 extern server_rec *main_server;
 
 static pr_ipbind_t *ipbind_table[PR_BINDINGS_TABLE_SIZE];
+static int ipbind_table_initialized = FALSE;
+
 static pool *binding_pool = NULL;
 static pr_ipbind_t *ipbind_default_server = NULL,
                    *ipbind_localhost_server = NULL;
 
 static const char *trace_channel = "binding";
+
+static void trace_ipbind_table(void);
+
+static void init_ipbind_table(void) {
+  if (ipbind_table_initialized == TRUE) {
+    return;
+  }
+
+  memset(ipbind_table, 0, sizeof(ipbind_table));
+  ipbind_table_initialized = TRUE;
+}
 
 /* Server cleanup callback function */
 static void server_cleanup_cb(void *conn) {
@@ -451,6 +464,9 @@ int pr_ipbind_create(server_rec *server, const pr_netaddr_t *addr,
     return -1;
   }
 
+  /* Ensure the ipbind table has been initialized. */
+  init_ipbind_table();
+
   i = ipbind_hash_addr(addr);
   pr_trace_msg(trace_channel, 29, "hashed address '%s' to index %u",
     pr_netaddr_get_ipstr(addr), i);
@@ -565,6 +581,9 @@ pr_ipbind_t *pr_ipbind_find(const pr_netaddr_t *addr, unsigned int port,
     errno = EINVAL;
     return NULL;
   }
+
+  /* Ensure the ipbind table has been initialized. */
+  init_ipbind_table();
 
   i = ipbind_hash_addr(addr);
 
@@ -1186,6 +1205,7 @@ void free_bindings(void) {
   }
 
   memset(ipbind_table, 0, sizeof(ipbind_table));
+  ipbind_table_initialized = FALSE;
 
   /* Mark all listening conns as "unclaimed"; any that remaining unclaimed
    * after init_bindings() can be closed.
@@ -1460,7 +1480,8 @@ static int init_standalone_bindings(void) {
   server_rec *serv = NULL;
   unsigned char *default_server = NULL, is_default = FALSE;
 
-  memset(ipbind_table, 0, sizeof(ipbind_table));
+  /* Ensure the ipbind table has been initialized. */
+  init_ipbind_table();
 
   /* If a port is set to zero, the address/port is not bound to a socket
    * at all.
