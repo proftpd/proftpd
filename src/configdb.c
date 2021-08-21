@@ -105,6 +105,11 @@ config_rec *pr_config_add_set(xaset_t **set, const char *name, int flags) {
     xaset_insert_end(*set, (xasetmember_t *) c);
   }
 
+  /* Generate an event about the added config, for any interested parties.
+   * This is useful for tracking the origins of the config tree.
+   */
+  pr_event_generate("core.added-config", c);
+
   return c;
 }
 
