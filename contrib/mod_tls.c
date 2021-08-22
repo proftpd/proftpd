@@ -2513,7 +2513,7 @@ static void tls_msg_cb(int io_flag, int version, int content_type,
   } else if (version == 0 &&
              content_type == SSL3_RT_HEADER &&
              buflen == SSL3_RT_HEADER_LENGTH) {
-    const char *msg;
+    const unsigned char *msg;
     const char *record_type;
     int msg_len;
 
