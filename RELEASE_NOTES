@@ -11,7 +11,7 @@ ChangeLog files.
 
   + Fix memory disclosure to RADIUS servers by mod_radius (Issue #1284).
 
-  + PCRE expressions with capture groups are not being handled properly
+  + PCRE expressions with capture groups were not being handled properly
     (Issue #1300).
 
   + Add support for the libidn2 library, over libidn, for e.g. mod_rewrite
