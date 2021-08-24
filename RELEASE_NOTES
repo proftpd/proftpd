@@ -9,11 +9,33 @@ ChangeLog files.
 1.3.8rc2
 ---------
 
+  + Fix memory disclosure to RADIUS servers by mod_radius (Issue #1284).
+
+  + PCRE expressions with capture groups were not being handled properly
+    (Issue #1300).
+
+  + Add support for the libidn2 library, over libidn, for e.g. mod_rewrite
+    mappings (Issue #1286).
+
+
   + Changed Directives
 
-    RegexOptions Engine (Issue #1300)
+    RegexOptions Engine
 
-    TLSRenegotiate defaults (Bug #4443)
+      The RegexOptions directive now supports explicitly configuring which
+      regular expression "engine" to use, POSIX or PCRE.  Thus ProFTPD
+      installations with PCRE support enabled (via the --enable-pcre configure
+      option) can be told to treat all regular expressions as POSIX expressions
+      at run-time.
+
+    TLSRenegotiate default behavior
+
+      The TLSRenegotiate directive configures when the mod_tls module requests
+      TLS renegotations on both control and data connections.  TLS
+      renegotiations, as a protocol feature, have a long and sordid history
+      of abuse; many TLS libraries/clients no longer implement them, or
+      disable support for renegotiation by default.  Thus mod_tls will no
+      longer request TLS renegotations by default now, either.
 
 
 1.3.8rc1
