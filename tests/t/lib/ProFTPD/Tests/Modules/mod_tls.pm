@@ -509,6 +509,12 @@ my $TESTS = {
     order => ++$order,
     test_class => [qw(bug forking slow)],
   },
+
+  tls_useimplicitssl_tcp_connect_only => {
+    order => ++$order,
+    test_class => [qw(bug forking)],
+  },
+
 };
 
 sub new {
@@ -14563,6 +14569,130 @@ sub tls_curl_download_largefile_renegotiate_bug4443 {
   # Stop server
   server_stop($setup->{pid_file});
   $self->assert_child_ok($pid);
+
+  test_cleanup($setup->{log_file}, $ex);
+}
+
+sub tls_useimplicitssl_tcp_connect_only {
+  my $self = shift;
+  my $tmpdir = $self->{tmpdir};
+  my $setup = test_setup($tmpdir, 'tls');
+
+  my $cert_file = File::Spec->rel2abs('t/etc/modules/mod_tls/server-cert.pem');
+  my $ca_file = File::Spec->rel2abs('t/etc/modules/mod_tls/ca-cert.pem');
+
+  my $config = {
+    PidFile => $setup->{pid_file},
+    ScoreboardFile => $setup->{scoreboard_file},
+    SystemLog => $setup->{log_file},
+    TraceLog => $setup->{log_file},
+    Trace => 'tls:20',
+
+    AuthUserFile => $setup->{auth_user_file},
+    AuthGroupFile => $setup->{auth_group_file},
+
+    IfModules => {
+      'mod_delay.c' => {
+        DelayEngine => 'off',
+      },
+
+      'mod_tls.c' => {
+        TLSEngine => 'on',
+        TLSLog => $setup->{log_file},
+        TLSRequired => 'off',
+        TLSOptions => 'EnableDiags UseImplicitSSL',
+        TLSRSACertificateFile => $cert_file,
+        TLSCACertificateFile => $ca_file,
+        TLSVerifyClient => 'off',
+      },
+    },
+  };
+
+  my ($port, $config_user, $config_group) = config_write($setup->{config_file},
+    $config);
+
+  # Open pipes, for use between the parent and child processes.  Specifically,
+  # the child will indicate when it's done with its test by writing a message
+  # to the parent.
+  my ($rfh, $wfh);
+  unless (pipe($rfh, $wfh)) {
+    die("Can't open pipe: $!");
+  }
+
+  my $ex;
+
+  # Fork child
+  $self->handle_sigchld();
+  defined(my $pid = fork()) or die("Can't fork: $!");
+  if ($pid) {
+    eval {
+      # Give the server a chance to start up
+      sleep(2);
+
+      my $tcp_opts = {
+        PeerAddr => '127.0.0.1',
+        PeerPort => $port,
+        Proto => 'tcp',
+        Timeout => 2,
+      };
+
+      my $client = IO::Socket::INET->new(%$tcp_opts);
+      unless ($client) {
+        die("Can't connect to FTPS server: $!");
+      }
+
+      sleep(1);
+      $client->close();
+    };
+    if ($@) {
+      $ex = $@;
+    }
+
+    $wfh->print("done\n");
+    $wfh->flush();
+
+  } else {
+    eval { server_wait($setup->{config_file}, $rfh) };
+    if ($@) {
+      warn($@);
+      exit 1;
+    }
+
+    exit 0;
+  }
+
+  # Stop server
+  server_stop($setup->{pid_file});
+  $self->assert_child_ok($pid);
+
+  eval {
+    if (open(my $fh, "< $setup->{log_file}")) {
+      my $ok = 1;
+
+      while (my $line = <$fh>) {
+        chomp($line);
+
+        if ($ENV{TEST_VERBOSE}) {
+          print STDERR "# $line\n";
+        }
+
+        if ($line =~ /mod_tls\.c: error initializing session/) {
+          $ok = 0;
+          last;
+        }
+      }
+
+      close($fh);
+
+      $self->assert($ok, test_msg("Saw undesirable log message unexpectedly"));
+
+    } else {
+      die("Can't read $setup->{log_file}: $!");
+    }
+  };
+  if ($@) {
+    $ex = $@;
+  }
 
   test_cleanup($setup->{log_file}, $ex);
 }
