@@ -1,6 +1,6 @@
 /*
  * ProFTPD: mod_auth_otp
- * Copyright (c) 2015-2017 TJ Saunders
+ * Copyright (c) 2015-2021 TJ Saunders
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -426,7 +426,7 @@ static int handle_user_otp(pool *p, const char *user, const char *user_otp,
   }
 
   pr_trace_msg(trace_channel, 3,
-    "counter one window ahead check failed, checking one window ahead");
+    "counter one window behind check failed, checking one window ahead");
 
   switch (auth_otp_algo) {
     case AUTH_OTP_ALGO_TOTP_SHA1:
