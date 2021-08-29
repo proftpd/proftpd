@@ -2,7 +2,7 @@
  * ProFTPD - FTP server daemon
  * Copyright (c) 1997, 1998 Public Flood Software
  * Copyright (c) 1999, 2000 MacGyver aka Habeeb J. Dihu <macgyver@tos.net>
- * Copyright (c) 2001-2020 The ProFTPD Project team
+ * Copyright (c) 2001-2021 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -1773,23 +1773,32 @@ static void daemon_loop(void) {
   }
 }
 
-static void daemonize(void) {
+/* Returns 1 for the background daemon process, 0 for the foreground process,
+ * and -1 if there was an error.
+ */
+static int daemonize(void) {
 #ifndef HAVE_SETSID
   int ttyfd;
 #endif
+  pid_t pid;
 
   /* Fork off and have parent exit.
    */
-  switch (fork()) {
+  pid = fork();
+  switch (pid) {
     case -1:
       perror("fork(2) error");
-      exit(1);
+      return -1;
 
     case 0:
+      /* Child process; keep going. */
       break;
 
-    default: 
-      exit(0);
+    default:
+      /* Parent process; we're done. */
+      pr_log_pri(PR_LOG_DEBUG, "forked daemon process (PID %lu)",
+        (unsigned long) pid);
+      return 0;
   }
 
 #ifdef HAVE_SETSID
@@ -1833,6 +1842,7 @@ static void daemonize(void) {
   mpid = getpid();
 
   pr_fsio_chdir("/", 0);
+  return 1;
 }
 
 static void inetd_main(void) {
@@ -1902,7 +1912,13 @@ static void standalone_main(void) {
 
   } else {
     log_stderr(FALSE);
-    daemonize();
+    res = daemonize();
+    if (res != 1) {
+      /* We're either the foreground process, or there was an error.  Either
+       * way, we're done.
+       */
+      return;
+    }
   }
 
   PRIVS_ROOT
@@ -1939,14 +1955,14 @@ static void standalone_main(void) {
 
   init_bindings();
 
-  pr_log_pri(PR_LOG_NOTICE, "ProFTPD %s (built %s) standalone mode STARTUP",
-    PROFTPD_VERSION_TEXT " " PR_STATUS, BUILD_STAMP);
-
   if (pr_pidfile_write() < 0) {
-    fprintf(stderr, "error opening PidFile '%s': %s\n", pr_pidfile_get(),
+    pr_log_pri(PR_LOG_ERR, "error writing PidFile '%s': %s", pr_pidfile_get(),
       strerror(errno));
     exit(1);
   }
+
+  pr_log_pri(PR_LOG_NOTICE, "ProFTPD %s (built %s) standalone mode STARTUP",
+    PROFTPD_VERSION_TEXT " " PR_STATUS, BUILD_STAMP);
 
   daemon_loop();
 }

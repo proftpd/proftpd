@@ -29,16 +29,17 @@ jobs:
 
     env:
       PACKAGE_VERSION: 1.3.8rc2
+      PROFTPD_MODULES: mod_sql:mod_sql_mysql:mod_sql_odbc:mod_sql_postgres:mod_sql_sqlite:mod_sql_passwd:mod_sftp:mod_sftp_sql:mod_sftp_pam:mod_tls:mod_tls_fscache:mod_tls_shmcache:mod_tls_memcache:mod_tls_redis:mod_ban:mod_copy:mod_ctrls_admin:mod_deflate:mod_dnsbl:mod_dynmasq:mod_exec:mod_facl:mod_geoip:mod_ifversion:mod_ldap:mod_load:mod_log_forensic:mod_qos:mod_quotatab:mod_quotatab_file:mod_quotatab_ldap:mod_quotatab_radius:mod_quotatab_sql:mod_radius:mod_readme:mod_rewrite:mod_shaper:mod_site_misc:mod_snmp:mod_wrap:mod_wrap2:mod_wrap2_file:mod_wrap2_redis:mod_wrap2_sql:mod_digest:mod_auth_otp:mod_statcache:mod_unique_id:mod_ifsession
       REDIS_HOST: redis
 
     strategy:
       matrix:
         compiler:
-          - gcc
           - clang
+          - gcc
         container:
-          - ubuntu:18.04
           - centos:8
+          - ubuntu:18.04
 
     container: ${{ matrix.container }}
 
@@ -64,7 +65,7 @@ jobs:
           # for unit tests
           yum install -y check-devel https://cbs.centos.org/kojifiles/packages/subunit/1.4.0/1.el8/x86_64/subunit-1.4.0-1.el8.x86_64.rpm https://cbs.centos.org/kojifiles/packages/subunit/1.4.0/1.el8/x86_64/subunit-devel-1.4.0-1.el8.x86_64.rpm
           # for mod_lang
-          yum install -y gettext-devel
+          yum install -y gettext-devel glibc-all-langpacks
           # for xattr support
           yum install -y libattr-devel
           # for mod_cap
@@ -120,11 +121,11 @@ jobs:
           # Need to add other repos for e.g. libsodium
           apt-get update -qq
           # for builds
-          apt-get install -y git make
+          apt-get install -y clang git make
           # for unit tests
           apt-get install -y check libsubunit-dev
           # for mod_lang
-          apt-get install -y gettext
+          apt-get install -y gettext locales-all
           # for xattr support
           apt-get install -y libattr1-dev
           # for mod_cap
@@ -163,6 +164,11 @@ jobs:
           apt-get install -y ncurses-dev
           # for zlib support
           apt-get install -y zlib1g-dev
+
+          # for logging
+          apt-get install -y rsyslog
+          service rsyslog start
+
           # for static code analysis
           # - sudo apt-get install -y cppcheck
           # - sudo apt-get install rats
@@ -170,10 +176,10 @@ jobs:
           # for test code coverage
           apt-get install -y lcov ruby
           gem install coveralls-lcov
+
           # for HTML validation
           apt-get install -y tidy
-          # for clang
-          apt-get install -y clang
+
           # for debugging
           clang --version
           gcc --version
@@ -189,7 +195,7 @@ jobs:
         env:
           CC: ${{ matrix.compiler }}
         run: |
-          ./configure LIBS="-lodbc -lm -lsubunit -lrt -pthread" --enable-devel=coverage --enable-ctrls --enable-facl --enable-memcache --enable-nls --enable-pcre --enable-redis --enable-tests --with-modules=mod_sql:mod_sql_mysql:mod_sql_odbc:mod_sql_postgres:mod_sql_sqlite:mod_sql_passwd:mod_sftp:mod_sftp_sql:mod_sftp_pam:mod_tls:mod_tls_fscache:mod_tls_shmcache:mod_tls_memcache:mod_tls_redis:mod_ban:mod_copy:mod_ctrls_admin:mod_deflate:mod_dnsbl:mod_dynmasq:mod_exec:mod_facl:mod_geoip:mod_ifversion:mod_ldap:mod_load:mod_log_forensic:mod_qos:mod_quotatab:mod_quotatab_file:mod_quotatab_ldap:mod_quotatab_radius:mod_quotatab_sql:mod_radius:mod_readme:mod_rewrite:mod_shaper:mod_site_misc:mod_snmp:mod_wrap:mod_wrap2:mod_wrap2_file:mod_wrap2_redis:mod_wrap2_sql:mod_digest:mod_auth_otp:mod_statcache:mod_unique_id:mod_ifsession
+          ./configure LIBS="-lodbc -lm -lsubunit -lrt -pthread" --enable-devel=coverage --enable-ctrls --enable-facl --enable-memcache --enable-nls --enable-pcre --enable-redis --enable-tests --with-modules=$PROFTPD_MODULES
           make
 
       - name: Run unit tests
@@ -199,15 +205,47 @@ jobs:
           make TEST_VERBOSE=1 check-api
 
       - name: Install with static modules
+        env:
+          CC: ${{ matrix.compiler }}
         run: |
+          make clean
+          ./configure LIBS="-lodbc" --enable-ctrls --enable-facl --enable-memcache --enable-nls --enable-pcre --enable-redis --with-modules=$PROFTPD_MODULES
+          make
           make install
+
+      - name: Run restart tests
+        env:
+          CC: ${{ matrix.compiler }}
+          PROFTPD_TEST_BIN: /usr/local/sbin/proftpd
+          PROFTPD_TEST_PIDFILE: /usr/local/var/proftpd.pid
+        # Note that the default config assumes user 'nobody', group 'nogroup',
+        # which do not exist in the default images of all distributions.
+        if: ${{ matrix.container == 'ubuntu:18.04' }}
+        run: |
+          test -e $PROFTPD_TEST_BIN
+          $PROFTPD_TEST_BIN
+          kill -0 $(cat $PROFTPD_TEST_PIDFILE)
+          kill -HUP $(cat $PROFTPD_TEST_PIDFILE)
+
+          kill -0 $(cat $PROFTPD_TEST_PIDFILE)
+          kill -HUP $(cat $PROFTPD_TEST_PIDFILE)
+
+          kill -0 $(cat $PROFTPD_TEST_PIDFILE)
+          kill -HUP $(cat $PROFTPD_TEST_PIDFILE)
+
+          kill -0 $(cat $PROFTPD_TEST_PIDFILE)
+          kill -TERM $(cat $PROFTPD_TEST_PIDFILE)
+
+          # Given the daemon a chance to clean up
+          sleep 1
+          ! test -f $PROFTPD_TEST_PIDFILE
 
       - name: Build with shared modules
         env:
           CC: ${{ matrix.compiler }}
         run: |
           make clean
-          ./configure LIBS="-lodbc -lm -lsubunit -lrt -pthread" --enable-devel --enable-ctrls --enable-dso --enable-facl --enable-memcache --enable-nls --enable-pcre --enable-tests --with-shared=mod_sql:mod_sql_mysql:mod_sql_odbc:mod_sql_postgres:mod_sql_sqlite:mod_sql_passwd:mod_sftp:mod_sftp_sql:mod_sftp_pam:mod_tls:mod_tls_fscache:mod_tls_shmcache:mod_tls_memcache:mod_ban:mod_copy:mod_ctrls_admin:mod_deflate:mod_dnsbl:mod_dynmasq:mod_exec:mod_facl:mod_geoip:mod_ifversion:mod_ldap:mod_load:mod_log_forensic:mod_qos:mod_quotatab:mod_quotatab_file:mod_quotatab_ldap:mod_quotatab_radius:mod_quotatab_sql:mod_radius:mod_readme:mod_rewrite:mod_shaper:mod_site_misc:mod_snmp:mod_wrap:mod_wrap2:mod_wrap2_file:mod_wrap2_redis:mod_wrap2_sql:mod_digest:mod_auth_otp:mod_statcache:mod_unique_id:mod_ifsession
+          ./configure LIBS="-lodbc -lm -lsubunit -lrt -pthread" --enable-devel --enable-ctrls --enable-dso --enable-facl --enable-memcache --enable-nls --enable-pcre --enable-tests --with-shared=$PROFTPD_MODULES
           make
 
       - name: Install with shared modules
