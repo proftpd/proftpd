@@ -127,8 +127,13 @@ static int auth_otp_kbdint_authenticate(sftp_kbdint_driver_t *driver,
     (void) pr_log_writefile(auth_otp_logfd, MOD_AUTH_OTP_VERSION,
       "no info for user '%s' found in AuthOTPTable, skipping "
       "SSH2 keyboard-interactive challenge", user);
-    errno = xerrno;
-    return -1;
+
+    if (auth_otp_opts & AUTH_OTP_OPT_REQUIRE_TABLE_ENTRY) {
+      errno = xerrno;
+      return -1;
+    }
+
+    return 0;
   }
 
   challenge = pcalloc(driver->driver_pool, sizeof(sftp_kbdint_challenge_t));
