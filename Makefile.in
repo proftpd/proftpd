@@ -146,6 +146,7 @@ install-libs: $(DESTDIR)$(libdir)/proftpd
 
 install-headers: $(DESTDIR)$(includedir)/proftpd
 	$(INSTALL_MAN) $(top_builddir)/config.h $(DESTDIR)$(includedir)/proftpd/config.h
+	$(INSTALL_MAN) $(top_builddir)/Make.rules $(DESTDIR)$(includedir)/proftpd/Make.rules
 	cd include/ && $(MAKE) install
 
 install-pkgconfig: $(DESTDIR)$(pkgconfigdir)
