@@ -76,6 +76,16 @@ my $TESTS = {
     test_class => [qw(forking mod_auth_otp mod_sftp mod_sql mod_sql_sqlite)],
   },
 
+  auth_otp_sftp_publickey_plus_totp_lacking_table_entry_issue1319 => {
+    order => ++$order,
+    test_class => [qw(forking mod_auth_otp mod_sftp mod_sql mod_sql_sqlite)],
+  },
+
+  auth_otp_sftp_password_plus_totp_lacking_table_entry_issue1319 => {
+    order => ++$order,
+    test_class => [qw(forking mod_auth_otp mod_sftp mod_sql mod_sql_sqlite)],
+  },
+
 };
 
 sub new {
@@ -83,7 +93,6 @@ sub new {
 }
 
 sub list_tests {
-
   # Check for the required Perl modules:
   #
   #  Authen-OATH
@@ -179,10 +188,9 @@ sub auth_otp_sftp_hotp_login_ok {
   # mod_auth_otp wants this secret to be base32-encoded, for interoperability
   # with Google Authenticator.
   require MIME::Base32;
-  MIME::Base32->import('RFC');
 
   my $secret = 'Sup3rS3Cr3t';
-  my $base32_secret = MIME::Base32::encode($secret);
+  my $base32_secret = MIME::Base32::encode_base32($secret);
   my $counter = 777;
   my $bad_secret = 'B@d1YK3pts3kr3T!';
 
@@ -340,10 +348,9 @@ sub auth_otp_sftp_hotp_login_failed {
   # mod_auth_otp wants this secret to be base32-encoded, for interoperability
   # with Google Authenticator.
   require MIME::Base32;
-  MIME::Base32->import('RFC');
 
   my $secret = 'Sup3rS3Cr3t';
-  my $base32_secret = MIME::Base32::encode($secret);
+  my $base32_secret = MIME::Base32::encode_base32($secret);
   my $counter = 777;
   my $bad_secret = 'B@d1YK3pts3kr3T!';
 
@@ -504,10 +511,9 @@ sub auth_otp_sftp_totp_login_ok {
   # mod_auth_otp wants this secret to be base32-encoded, for interoperability
   # with Google Authenticator.
   require MIME::Base32;
-  MIME::Base32->import('RFC');
 
   my $secret = 'Sup3rS3Cr3t';
-  my $base32_secret = MIME::Base32::encode($secret);
+  my $base32_secret = MIME::Base32::encode_base32($secret);
   my $counter = 777;
 
   if (open(my $fh, "> $db_script")) {
@@ -664,10 +670,9 @@ sub auth_otp_sftp_totp_login_failed {
   # mod_auth_otp wants this secret to be base32-encoded, for interoperability
   # with Google Authenticator.
   require MIME::Base32;
-  MIME::Base32->import('RFC');
 
   my $secret = 'Sup3rS3Cr3t';
-  my $base32_secret = MIME::Base32::encode($secret);
+  my $base32_secret = MIME::Base32::encode_base32($secret);
   my $counter = 777;
   my $bad_secret = 'B@d1YK3pts3kr3T!';
 
@@ -828,10 +833,9 @@ sub auth_otp_sftp_totp_login_authoritative {
   # mod_auth_otp wants this secret to be base32-encoded, for interoperability
   # with Google Authenticator.
   require MIME::Base32;
-  MIME::Base32->import('RFC');
 
   my $secret = 'Sup3rS3Cr3t';
-  my $base32_secret = MIME::Base32::encode($secret);
+  my $base32_secret = MIME::Base32::encode_base32($secret);
   my $counter = 777;
 
   if (open(my $fh, "> $db_script")) {
@@ -989,10 +993,9 @@ sub auth_otp_sftp_totp_login_authoritative_failed {
   # mod_auth_otp wants this secret to be base32-encoded, for interoperability
   # with Google Authenticator.
   require MIME::Base32;
-  MIME::Base32->import('RFC');
 
   my $secret = 'Sup3rS3Cr3t';
-  my $base32_secret = MIME::Base32::encode($secret);
+  my $base32_secret = MIME::Base32::encode_base32($secret);
   my $counter = 777;
   my $bad_secret = 'B@d1YK3pts3kr3T!';
 
@@ -1154,10 +1157,9 @@ sub auth_otp_sftp_password_failed {
   # mod_auth_otp wants this secret to be base32-encoded, for interoperability
   # with Google Authenticator.
   require MIME::Base32;
-  MIME::Base32->import('RFC');
 
   my $secret = 'Sup3rS3Cr3t';
-  my $base32_secret = MIME::Base32::encode($secret);
+  my $base32_secret = MIME::Base32::encode_base32($secret);
   my $counter = 777;
   my $bad_secret = 'B@d1YK3pts3kr3T!';
 
@@ -1314,7 +1316,6 @@ sub auth_otp_sftp_publickey_plus_totp_ok {
   # mod_auth_otp wants this secret to be base32-encoded, for interoperability
   # with Google Authenticator.
   require MIME::Base32;
-  eval { MIME::Base32->import('RFC') };
 
   my $secret = 'Sup3rS3Cr3t';
   my $base32_secret = MIME::Base32::encode_base32($secret);
@@ -1490,7 +1491,6 @@ sub auth_otp_sftp_password_plus_totp_ok {
   # mod_auth_otp wants this secret to be base32-encoded, for interoperability
   # with Google Authenticator.
   require MIME::Base32;
-  eval { MIME::Base32->import('RFC') };
 
   my $secret = 'Sup3rS3Cr3t';
   my $base32_secret = MIME::Base32::encode_base32($secret);
@@ -1526,7 +1526,7 @@ EOS
     ScoreboardFile => $setup->{scoreboard_file},
     SystemLog => $setup->{log_file},
     TraceLog => $setup->{log_file},
-    Trace => 'ssh2:20 auth_otp:20',
+    Trace => 'ssh2:20 auth_otp:20 auth:20',
 
     AuthUserFile => $setup->{auth_user_file},
     AuthGroupFile => $setup->{auth_group_file},
@@ -1655,7 +1655,6 @@ sub auth_otp_sftp_publickey_plus_totp_with_display_verification_code_opt {
   # mod_auth_otp wants this secret to be base32-encoded, for interoperability
   # with Google Authenticator.
   require MIME::Base32;
-  eval { MIME::Base32->import('RFC') };
 
   my $secret = 'Sup3rS3Cr3t';
   my $base32_secret = MIME::Base32::encode_base32($secret);
@@ -1848,7 +1847,6 @@ sub auth_otp_sftp_password_plus_totp_with_display_verification_code_opt {
   # mod_auth_otp wants this secret to be base32-encoded, for interoperability
   # with Google Authenticator.
   require MIME::Base32;
-  eval { MIME::Base32->import('RFC') };
 
   my $secret = 'Sup3rS3Cr3t';
   my $base32_secret = MIME::Base32::encode_base32($secret);
@@ -1985,6 +1983,326 @@ EOS
 
             return ($totp);
           })) {
+        my ($err_code, $err_name, $err_str) = $ssh2->error();
+        die("Can't login to SSH2 server with TOTP: [$err_name] ($err_code) $err_str");
+      }
+
+      my $sftp = $ssh2->sftp();
+      $sftp = undef;
+      $ssh2->disconnect();
+    };
+    if ($@) {
+      $ex = $@;
+    }
+
+    $wfh->print("done\n");
+    $wfh->flush();
+
+  } else {
+    eval { server_wait($setup->{config_file}, $rfh) };
+    if ($@) {
+      warn($@);
+      exit 1;
+    }
+
+    exit 0;
+  }
+
+  # Stop server
+  server_stop($setup->{pid_file});
+  $self->assert_child_ok($pid);
+
+  test_cleanup($setup->{log_file}, $ex);
+}
+
+sub auth_otp_sftp_publickey_plus_totp_lacking_table_entry_issue1319 {
+  my $self = shift;
+  my $tmpdir = $self->{tmpdir};
+  my $setup = test_setup($tmpdir, 'auth_otp');
+
+  my $secret = 'Sup3rS3Cr3t';
+  my $db_file = File::Spec->rel2abs("$tmpdir/proftpd.db");
+
+  # Build up sqlite3 command to create TOTP tables
+  my $db_script = File::Spec->rel2abs("$tmpdir/totp.sql");
+
+  if (open(my $fh, "> $db_script")) {
+    print $fh <<EOS;
+CREATE TABLE auth_otp (
+  user TEXT PRIMARY KEY,
+  secret TEXT,
+  counter INTEGER
+);
+EOS
+
+    unless (close($fh)) {
+      die("Can't write $db_script: $!");
+    }
+
+  } else {
+    die("Can't open $db_script: $!");
+  }
+
+  my $cmd = "sqlite3 $db_file < $db_script";
+  build_db($cmd, $db_script, $db_file);
+
+  my $rsa_host_key = File::Spec->rel2abs('t/etc/modules/mod_auth_otp/ssh_host_rsa_key');
+  my $dsa_host_key = File::Spec->rel2abs('t/etc/modules/mod_auth_otp/ssh_host_dsa_key');
+
+  my $rsa_priv_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/test_rsa_key');
+  my $rsa_pub_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/test_rsa_key.pub');
+  my $rsa_rfc4716_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/authorized_rsa_keys');
+
+  my $authorized_keys = File::Spec->rel2abs("$tmpdir/.authorized_keys");
+  unless (copy($rsa_rfc4716_key, $authorized_keys)) {
+    die("Can't copy $rsa_rfc4716_key to $authorized_keys: $!");
+  }
+
+  my $config = {
+    PidFile => $setup->{pid_file},
+    ScoreboardFile => $setup->{scoreboard_file},
+    SystemLog => $setup->{log_file},
+    TraceLog => $setup->{log_file},
+    Trace => 'ssh2:20 auth_otp:20 auth:20',
+
+    AuthUserFile => $setup->{auth_user_file},
+    AuthGroupFile => $setup->{auth_group_file},
+
+    IfModules => {
+      'mod_delay.c' => {
+        DelayEngine => 'off',
+      },
+
+      'mod_auth_otp.c' => {
+        AuthOTPEngine => 'on',
+        AuthOTPLog => $setup->{log_file},
+        AuthOTPAlgorithm => 'totp',
+
+        # Assumes default table names, column names
+        AuthOTPTable => 'sql:/get-user-totp/update-user-totp',
+      },
+
+      'mod_sftp.c' => [
+        "SFTPEngine on",
+        "SFTPLog $setup->{log_file}",
+        "SFTPHostKey $rsa_host_key",
+        "SFTPHostKey $dsa_host_key",
+        "SFTPAuthorizedUserKeys file:~/.authorized_keys",
+
+        # Configure mod_sftp to require the publickey+keyboard-interactive
+        # methods.
+        'SFTPAuthMethods publickey+keyboard-interactive',
+      ],
+
+      'mod_sql.c' => [
+        'SQLEngine log',
+        'SQLBackend sqlite3',
+        "SQLConnectInfo $db_file",
+        "SQLLogFile $setup->{log_file}",
+
+        'SQLNamedQuery get-user-totp SELECT "secret, counter FROM auth_otp WHERE user = \'%{0}\'"',
+        'SQLNamedQuery update-user-totp UPDATE "counter = %{1} WHERE user = \'%{0}\'" auth_otp',
+      ],
+    },
+  };
+
+  my ($port, $config_user, $config_group) = config_write($setup->{config_file},
+    $config);
+
+  # Open pipes, for use between the parent and child processes.  Specifically,
+  # the child will indicate when it's done with its test by writing a message
+  # to the parent.
+  my ($rfh, $wfh);
+  unless (pipe($rfh, $wfh)) {
+    die("Can't open pipe: $!");
+  }
+
+  my $ex;
+
+  require Authen::OATH;
+  require Net::SSH2;
+
+  # Fork child
+  $self->handle_sigchld();
+  defined(my $pid = fork()) or die("Can't fork: $!");
+  if ($pid) {
+    eval {
+      sleep(2);
+
+      my $ssh2 = Net::SSH2->new();
+      unless ($ssh2->connect('127.0.0.1', $port)) {
+        my ($err_code, $err_name, $err_str) = $ssh2->error();
+        die("Can't connect to SSH2 server: [$err_name] ($err_code) $err_str");
+      }
+
+      # NOTE: We deliberately ignore any failures here, since Net::SSH2 is not
+      # sophisticated enough to deal with SSH servers that require multiple
+      # different auth methods in success, as for 2FA.
+      $ssh2->auth_publickey($setup->{user}, $rsa_pub_key, $rsa_priv_key);
+
+      # Calculate TOTP
+      my $oath = Authen::OATH->new();
+      my $totp = $oath->totp($secret);
+      if ($ENV{TEST_VERBOSE}) {
+        print STDERR "# Generated TOTP $totp for current time\n";
+      }
+
+      unless ($ssh2->auth_keyboard($setup->{user}, $totp)) {
+        my ($err_code, $err_name, $err_str) = $ssh2->error();
+        die("Can't login to SSH2 server with TOTP: [$err_name] ($err_code) $err_str");
+      }
+
+      my $sftp = $ssh2->sftp();
+      $sftp = undef;
+      $ssh2->disconnect();
+    };
+    if ($@) {
+      $ex = $@;
+    }
+
+    $wfh->print("done\n");
+    $wfh->flush();
+
+  } else {
+    eval { server_wait($setup->{config_file}, $rfh) };
+    if ($@) {
+      warn($@);
+      exit 1;
+    }
+
+    exit 0;
+  }
+
+  # Stop server
+  server_stop($setup->{pid_file});
+  $self->assert_child_ok($pid);
+
+  test_cleanup($setup->{log_file}, $ex);
+}
+
+sub auth_otp_sftp_password_plus_totp_lacking_table_entry_issue1319 {
+  my $self = shift;
+  my $tmpdir = $self->{tmpdir};
+  my $setup = test_setup($tmpdir, 'auth_otp');
+
+  my $secret = 'Sup3rS3Cr3t';
+  my $db_file = File::Spec->rel2abs("$tmpdir/proftpd.db");
+
+  # Build up sqlite3 command to create TOTP tables
+  my $db_script = File::Spec->rel2abs("$tmpdir/totp.sql");
+
+  if (open(my $fh, "> $db_script")) {
+    print $fh <<EOS;
+CREATE TABLE auth_otp (
+  user TEXT PRIMARY KEY,
+  secret TEXT,
+  counter INTEGER
+);
+EOS
+
+    unless (close($fh)) {
+      die("Can't write $db_script: $!");
+    }
+
+  } else {
+    die("Can't open $db_script: $!");
+  }
+
+  my $cmd = "sqlite3 $db_file < $db_script";
+  build_db($cmd, $db_script, $db_file);
+
+  my $rsa_host_key = File::Spec->rel2abs('t/etc/modules/mod_auth_otp/ssh_host_rsa_key');
+  my $dsa_host_key = File::Spec->rel2abs('t/etc/modules/mod_auth_otp/ssh_host_dsa_key');
+
+  my $config = {
+    PidFile => $setup->{pid_file},
+    ScoreboardFile => $setup->{scoreboard_file},
+    SystemLog => $setup->{log_file},
+    TraceLog => $setup->{log_file},
+    Trace => 'ssh2:20 auth_otp:20 auth:20',
+
+    AuthUserFile => $setup->{auth_user_file},
+    AuthGroupFile => $setup->{auth_group_file},
+
+    IfModules => {
+      'mod_delay.c' => {
+        DelayEngine => 'off',
+      },
+
+      'mod_auth_otp.c' => {
+        AuthOTPEngine => 'on',
+        AuthOTPLog => $setup->{log_file},
+        AuthOTPAlgorithm => 'totp',
+
+        # Assumes default table names, column names
+        AuthOTPTable => 'sql:/get-user-totp/update-user-totp',
+      },
+
+      'mod_sftp.c' => [
+        "SFTPEngine on",
+        "SFTPLog $setup->{log_file}",
+        "SFTPHostKey $rsa_host_key",
+        "SFTPHostKey $dsa_host_key",
+
+        # Configure mod_sftp to require the password+keyboard-interactive
+        # methods.
+        'SFTPAuthMethods password+keyboard-interactive',
+      ],
+
+      'mod_sql.c' => [
+        'SQLEngine log',
+        'SQLBackend sqlite3',
+        "SQLConnectInfo $db_file",
+        "SQLLogFile $setup->{log_file}",
+
+        'SQLNamedQuery get-user-totp SELECT "secret, counter FROM auth_otp WHERE user = \'%{0}\'"',
+        'SQLNamedQuery update-user-totp UPDATE "counter = %{1} WHERE user = \'%{0}\'" auth_otp',
+      ],
+    },
+  };
+
+  my ($port, $config_user, $config_group) = config_write($setup->{config_file},
+    $config);
+
+  # Open pipes, for use between the parent and child processes.  Specifically,
+  # the child will indicate when it's done with its test by writing a message
+  # to the parent.
+  my ($rfh, $wfh);
+  unless (pipe($rfh, $wfh)) {
+    die("Can't open pipe: $!");
+  }
+
+  my $ex;
+
+  require Authen::OATH;
+  require Net::SSH2;
+
+  # Fork child
+  $self->handle_sigchld();
+  defined(my $pid = fork()) or die("Can't fork: $!");
+  if ($pid) {
+    eval {
+      sleep(2);
+
+      my $ssh2 = Net::SSH2->new();
+      unless ($ssh2->connect('127.0.0.1', $port)) {
+        my ($err_code, $err_name, $err_str) = $ssh2->error();
+        die("Can't connect to SSH2 server: [$err_name] ($err_code) $err_str");
+      }
+
+      # NOTE: We deliberately ignore any failures here, since Net::SSH2 is not
+      # sophisticated enough to deal with SSH servers that require multiple
+      # different auth methods in success, as for 2FA.
+      $ssh2->auth_password($setup->{user}, $setup->{passwd});
+
+      # Calculate TOTP
+      my $oath = Authen::OATH->new();
+      my $totp = $oath->totp($secret);
+      if ($ENV{TEST_VERBOSE}) {
+        print STDERR "# Generated TOTP $totp for current time\n";
+      }
+
+      unless ($ssh2->auth_keyboard($setup->{user}, $totp)) {
         my ($err_code, $err_name, $err_str) = $ssh2->error();
         die("Can't login to SSH2 server with TOTP: [$err_name] ($err_code) $err_str");
       }
