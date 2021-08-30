@@ -15,7 +15,7 @@
   where `N' is the issue number.
 -----------------------------------------------------------------------------
 
-1.3.8rc2
+1.3.8rc2 - Released 29-Aug-2021
 --------------------------------
 - Bug 4401 - mod_sftp crashes when handling aes256-ctr OpenSSH-specific key
   with some old OpenSSL versions.
