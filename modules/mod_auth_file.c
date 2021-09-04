@@ -362,6 +362,9 @@ static char *members[MAXMEMBERS+1];
 static char *af_getgrentline(char **buf, int *buflen, pr_fh_t *fh,
     unsigned int *lineno) {
   char *cp = *buf;
+  int original_buflen;
+
+  original_buflen = *buflen;
 
   while (pr_fsio_gets(cp, (*buflen) - (cp - *buf), fh) != NULL) {
     pr_signals_handle();
@@ -373,8 +376,12 @@ static char *af_getgrentline(char **buf, int *buflen, pr_fh_t *fh,
       return *buf;
     }
 
-    /* No -- allocate a larger buffer, doubling buflen. */
-    *buflen += *buflen;
+    /* No -- allocate a larger buffer.  Note that doubling the buflen
+     * each time may cause issues; fgetgrent(3) would increment the
+     * allocated buffer by the original buffer length each time.  So we
+     * do the same (Issue #1321).
+     */
+    *buflen += original_buflen;
 
     {
       char *new_buf;

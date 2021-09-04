@@ -1210,6 +1210,8 @@ sub test_setup {
   my $gid = shift;
   $gid = 500 unless defined($gid);
   my $home_dir = shift;
+  my $groups = shift;
+  $groups = $user unless defined($groups);
 
   my $config_file = "$tmpdir/$name.conf";
   my $pid_file = File::Spec->rel2abs("$tmpdir/$name.pid");
@@ -1238,7 +1240,7 @@ sub test_setup {
 
   auth_user_write($auth_user_file, $user, $passwd, $uid, $gid, $home_dir,
     '/bin/bash');
-  auth_group_write($auth_group_file, $group, $gid, $user);
+  auth_group_write($auth_group_file, $group, $gid, $groups);
 
   # If we are NOT running with root privs, then the default UID/GID cannot
   # be provided by the session.  So we will use the current UID/GID in such
