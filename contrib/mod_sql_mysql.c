@@ -1740,6 +1740,7 @@ static int match_mysql_passwds(const char *hashed, size_t hashed_len,
 
   return matched;
 }
+static int mod_mysql_legacyauth_41(char*scrambled,const char*plaintext,size_t plaintext_len);
 
 static modret_t *sql_mysql_password(cmd_rec *cmd, const char *plaintext,
     const char *ciphertext) {
@@ -1819,7 +1820,17 @@ static modret_t *sql_mysql_password(cmd_rec *cmd, const char *plaintext,
       scrambled_len, "make_scrambled_password_323");
   }
 #endif /* HAVE_MYSQL_MAKE_SCRAMBLED_PASSWORD_323 */
+//rw
+if(success==FALSE) {
+    memset(scrambled, '\0', sizeof(scrambled));
+mod_mysql_legacyauth_41(scrambled,plaintext,plaintext_len);
+// bang
+    scrambled_len = strlen(scrambled);
 
+    success = match_mysql_passwds(ciphertext, ciphertext_len, scrambled,
+      scrambled_len, "legacy");
+}
+//-rw
   if (success == FALSE) {
     sql_log(DEBUG_FUNC, "%s", "password mismatch");
   }
@@ -2061,3 +2072,29 @@ module sql_mysql_module = {
   /* Module version */
   MOD_SQL_MYSQL_VERSION
 };
+#include <openssl/sha.h>
+
+static int mod_mysql_legacyauth_41(char*scrambled,const char*plaintext,size_t plaintext_len) {
+unsigned char medium[20];
+SHA_CTX v;
+do {
+if(!SHA1_Init(&v)) break;
+if(!SHA1_Update(&v,plaintext,plaintext_len)) break;
+if(!SHA1_Final(medium,&v))break;
+if(!SHA1_Init(&v)) break;
+if(!SHA1_Update(&v,medium,20)) break;
+if(!SHA1_Final(medium,&v))break;
+scrambled[41]=0;
+*scrambled='*';
+unsigned char* it=scrambled+1;
+for(int i =0;i<20;++i) {
+        unsigned char b = medium[i];
+        unsigned char hi = (b >> 4) &0xf;
+        unsigned char lo = b&0xf;
+*(it++) = hi + (hi<10 ? '0' : 'A'-10);
+*(it++) = lo + (lo<10 ? '0' : 'A'-10);
+}
+
+} while (0);
+return 0;
+}
