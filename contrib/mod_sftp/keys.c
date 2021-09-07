@@ -5596,6 +5596,23 @@ static const unsigned char *prove_hostkey(pool *p,
   return hsig;
 }
 
+static int prove_hostkeys_failed(pool *p) {
+  unsigned char *buf, *ptr;
+  uint32_t buflen, bufsz;
+  struct ssh2_packet *pkt;
+
+  pkt = sftp_ssh2_packet_create(p);
+  buflen = bufsz = 256;
+  ptr = buf = palloc(pkt->pool, bufsz);
+
+  sftp_msg_write_byte(&buf, &buflen, SFTP_SSH2_MSG_REQUEST_FAILURE);
+
+  pkt->payload = ptr;
+  pkt->payload_len = (bufsz - buflen);
+
+  return sftp_ssh2_packet_write(sftp_conn->wfd, pkt);
+}
+
 /* Handle "hostkeys-prove-00@openssh.com" GLOBAL_REQUEST from client. */
 int sftp_keys_prove_hostkeys(pool *p, int want_reply, unsigned char *buf,
     uint32_t buflen) {
@@ -5610,7 +5627,7 @@ int sftp_keys_prove_hostkeys(pool *p, int want_reply, unsigned char *buf,
   }
 
   if (sftp_opts & SFTP_OPT_NO_HOSTKEY_ROTATION) {
-    return 0;
+    return prove_hostkeys_failed(p);
   }
 
   pr_trace_msg(trace_channel, 16,
@@ -5635,9 +5652,11 @@ int sftp_keys_prove_hostkeys(pool *p, int want_reply, unsigned char *buf,
     hostkey_data = sftp_msg_read_data(p, &buf, &buflen, hostkey_datalen);
 
     hsig = prove_hostkey(p, hostkey_data, hostkey_datalen, &hsiglen);
-    if (hsig != NULL) {
-      sftp_msg_write_data(&buf2, &buflen2, hsig, hsiglen, TRUE);
+    if (hsig == NULL) {
+      return prove_hostkeys_failed(p);
     }
+
+    sftp_msg_write_data(&buf2, &buflen2, hsig, hsiglen, TRUE);
   }
 
   pkt2->payload = ptr2;
