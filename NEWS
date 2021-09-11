@@ -18,6 +18,7 @@
 1.3.7d
 --------------------------------
 - Issue 1321 - Crash with long lines in AuthGroupFile due to large realloc(3).
+- Issue 1325 - NLST does not behave consistently for relative paths.
 
 1.3.7c - Released 29-Aug-2021
 --------------------------------
