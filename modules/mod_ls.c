@@ -3211,10 +3211,6 @@ MODRET ls_nlst(cmd_rec *cmd) {
       p = *path;
       path++;
 
-      if (*p == '.' && (!opt_A || is_dotdir(p))) {
-        continue;
-      }
-
       pr_fs_clear_cache2(p);
       if (pr_fsio_stat(p, &st) == 0) {
         /* If it's a directory... */
@@ -3255,6 +3251,8 @@ MODRET ls_nlst(cmd_rec *cmd) {
     targetlen = strlen(target);
     while (targetlen >= 1 &&
            target[targetlen-1] == '/') {
+      pr_signals_handle();
+
       if (strcmp(target, "/") == 0) {
         break;
       }
