@@ -443,7 +443,7 @@ static int regexp_exec_pcre(pr_regex_t *pre, const char *text,
 
   if (ovector_count > 0) {
     /* Populate the provided POSIX regmatch_t array with the PCRE data. */
-    register unsigned int i;
+    register int i;
 
     for (i = 0; i < res; i++) {
       matches[i].rm_so = ovector[i * 2];

@@ -5390,7 +5390,7 @@ int sftp_keys_send_hostkeys(pool *p) {
   res = sftp_keys_have_ecdsa_hostkey(tmp_pool, &nids);
 #if defined(PR_USE_OPENSSL_ECC)
   if (res > 0) {
-    register unsigned int i;
+    register int i;
 
     for (i = 0; i < res; i++) {
       enum sftp_key_type_e key_type;
