@@ -195,7 +195,7 @@ jobs:
         env:
           CC: ${{ matrix.compiler }}
         run: |
-          ./configure LIBS="-lodbc -lm -lsubunit -lrt -pthread" --enable-devel=coverage --enable-ctrls --enable-facl --enable-memcache --enable-nls --enable-pcre --enable-redis --enable-tests --with-modules=$PROFTPD_MODULES
+          ./configure LIBS="-lodbc -lm -lsubunit -lrt -pthread" --enable-devel=coverage:fortify --enable-ctrls --enable-facl --enable-memcache --enable-nls --enable-pcre --enable-redis --enable-tests --with-modules=$PROFTPD_MODULES
           make
 
       - name: Run unit tests

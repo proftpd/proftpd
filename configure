@@ -17823,6 +17823,15 @@ $as_echo "no" >&6; }
         pr_devel_libs="--coverage $pr_devel_libs"
       fi
 
+      if test `echo $enableval | grep -c fortify` = "1" ; then
+        pr_devel_cflags="-D_FORTIFY_SOURCE=2 $pr_devel_cflags"
+
+        # In order for `-D_FORTIFY_SOURCE=2` to work, we also need to
+        # disable some of the default --enable-devel flags, specifically `-O0`;
+        # we can use `-O2` instead.
+        pr_devel_cflags=`echo "$pr_devel_cflags" | sed -e 's/-O0/-O2/'`
+      fi
+
       if test `echo $enableval | grep -c nodaemon` = "1" ; then
         pr_devel_cflags="-DPR_DEVEL_NO_DAEMON $pr_devel_cflags"
       fi
