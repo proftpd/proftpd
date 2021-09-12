@@ -29,7 +29,6 @@ jobs:
 
     env:
       PACKAGE_VERSION: 1.3.8rc3
-      PROFTPD_MODULES: mod_sql:mod_sql_mysql:mod_sql_odbc:mod_sql_postgres:mod_sql_sqlite:mod_sql_passwd:mod_sftp:mod_sftp_sql:mod_sftp_pam:mod_tls:mod_tls_fscache:mod_tls_shmcache:mod_tls_memcache:mod_tls_redis:mod_ban:mod_copy:mod_ctrls_admin:mod_deflate:mod_dnsbl:mod_dynmasq:mod_exec:mod_facl:mod_geoip:mod_ifversion:mod_ldap:mod_load:mod_log_forensic:mod_qos:mod_quotatab:mod_quotatab_file:mod_quotatab_ldap:mod_quotatab_radius:mod_quotatab_sql:mod_radius:mod_readme:mod_rewrite:mod_shaper:mod_site_misc:mod_snmp:mod_wrap:mod_wrap2:mod_wrap2_file:mod_wrap2_redis:mod_wrap2_sql:mod_digest:mod_auth_otp:mod_statcache:mod_unique_id:mod_ifsession
       REDIS_HOST: redis
 
     strategy:
@@ -38,6 +37,7 @@ jobs:
           - clang
           - gcc
         container:
+          - alpine:3.14
           - centos:8
           - ubuntu:18.04
 
@@ -48,13 +48,71 @@ jobs:
         uses: actions/checkout@v2
 
       - name: Whitespace check
+        if: ${{ matrix.container == 'ubuntu:18.04' }}
         run: |
+          apt-get update -qq
+          apt-get install -y git
           if [[ -n $(git diff --check HEAD^) ]]; then
             echo "You must remove whitespace before submitting a pull request"
             echo ""
             git diff --check HEAD^
             exit 1
           fi
+
+      - name: Install Alpine packages
+        if: ${{ matrix.container == 'alpine:3.14' }}
+        run: |
+          apk update
+          # for builds
+          apk add bash build-base clang compiler-rt-static gcc make zlib-dev
+          # for unit tests
+          apk add check check-dev subunit subunit-dev
+
+          # for mod_lang
+          apk add gettext-dev
+          # for xattr support
+          apk add attr-dev libattr
+          # for mod_cap
+          apk add libcap-dev
+          # for mod_geoip
+          apk add geoip-dev
+          # for mod_ldap
+          apk add cyrus-sasl-dev libldap openldap-dev
+          # for mod_rewrite
+          apk add libidn2-dev
+          # for memcache support
+          apk add libmemcached-dev
+          # for redis support
+          apk add hiredis-dev hiredis-ssl
+          # for mod_sql_mysql
+          apk add mariadb-connector-c-dev
+          # for PAM support
+          apk add linux-pam-dev
+          # for mod_sql_postgres
+          apk add libpq postgresql-dev
+          # for mod_sql_odbc
+          apk add unixodbc-dev
+          # for OpenSSL support
+          apk add openssl openssl-dev
+          # for Sodium support
+          apk add libsodium-dev
+          # for mod_sql_sqlite
+          apk add sqlite sqlite-dev
+          # NOTE: Alpine does not support mod_wrap, due to lack of tcpwrappers
+          # for PCRE support
+          apk add pcre-dev
+          # for ftptop
+          apk add ncurses-dev
+          # for zlib support
+          apk add zlib-dev
+
+          # for debugging
+          clang --version
+          gcc --version
+          openssl version -a
+
+          # The modules to build are distro-specific
+          echo "PROFTPD_MODULES=mod_sql:mod_sql_mysql:mod_sql_odbc:mod_sql_postgres:mod_sql_sqlite:mod_sql_passwd:mod_sftp:mod_sftp_sql:mod_sftp_pam:mod_tls:mod_tls_fscache:mod_tls_shmcache:mod_tls_memcache:mod_tls_redis:mod_ban:mod_copy:mod_ctrls_admin:mod_deflate:mod_dnsbl:mod_dynmasq:mod_exec:mod_facl:mod_geoip:mod_ifversion:mod_ldap:mod_load:mod_log_forensic:mod_qos:mod_quotatab:mod_quotatab_file:mod_quotatab_ldap:mod_quotatab_radius:mod_quotatab_sql:mod_radius:mod_readme:mod_rewrite:mod_shaper:mod_site_misc:mod_snmp:mod_wrap2:mod_wrap2_file:mod_wrap2_redis:mod_wrap2_sql:mod_digest:mod_auth_otp:mod_statcache:mod_unique_id:mod_ifsession" >> $GITHUB_ENV
 
       - name: Install Centos packages
         if: ${{ matrix.container == 'centos:8' }}
@@ -110,6 +168,10 @@ jobs:
           # for HTML validation
           # for clang
           yum install -y clang
+
+          # The modules to build are distro-specific
+          echo "PROFTPD_MODULES=mod_sql:mod_sql_mysql:mod_sql_odbc:mod_sql_postgres:mod_sql_sqlite:mod_sql_passwd:mod_sftp:mod_sftp_sql:mod_sftp_pam:mod_tls:mod_tls_fscache:mod_tls_shmcache:mod_tls_memcache:mod_tls_redis:mod_ban:mod_copy:mod_ctrls_admin:mod_deflate:mod_dnsbl:mod_dynmasq:mod_exec:mod_facl:mod_geoip:mod_ifversion:mod_ldap:mod_load:mod_log_forensic:mod_qos:mod_quotatab:mod_quotatab_file:mod_quotatab_ldap:mod_quotatab_radius:mod_quotatab_sql:mod_radius:mod_readme:mod_rewrite:mod_shaper:mod_site_misc:mod_snmp:mod_wrap:mod_wrap2:mod_wrap2_file:mod_wrap2_redis:mod_wrap2_sql:mod_digest:mod_auth_otp:mod_statcache:mod_unique_id:mod_ifsession" >> $GITHUB_ENV
+
           # for debugging
           clang --version
           gcc --version
@@ -180,6 +242,10 @@ jobs:
           # for HTML validation
           apt-get install -y tidy
 
+          # The modules to build are distro-specific
+          echo "PROFTPD_MODULES=mod_sql:mod_sql_mysql:mod_sql_odbc:mod_sql_postgres:mod_sql_sqlite:mod_sql_passwd:mod_sftp:mod_sftp_sql:mod_sftp_pam:mod_tls:mod_tls_fscache:mod_tls_shmcache:mod_tls_memcache:mod_tls_redis:mod_ban:mod_copy:mod_ctrls_admin:mod_deflate:mod_dnsbl:mod_dynmasq:mod_exec:mod_facl:mod_geoip:mod_ifversion:mod_ldap:mod_load:mod_log_forensic:mod_qos:mod_quotatab:mod_quotatab_file:mod_quotatab_ldap:mod_quotatab_radius:mod_quotatab_sql:mod_radius:mod_readme:mod_rewrite:mod_shaper:mod_site_misc:mod_snmp:mod_wrap:mod_wrap2:mod_wrap2_file:mod_wrap2_redis:mod_wrap2_sql:mod_digest:mod_auth_otp:mod_statcache:mod_unique_id:mod_ifsession" >> $GITHUB_ENV
+
+          # for debugging
           # for debugging
           clang --version
           gcc --version
@@ -195,12 +261,14 @@ jobs:
         env:
           CC: ${{ matrix.compiler }}
         run: |
-          ./configure LIBS="-lodbc -lm -lsubunit -lrt -pthread" --enable-devel=coverage:fortify --enable-ctrls --enable-facl --enable-memcache --enable-nls --enable-pcre --enable-redis --enable-tests --with-modules=$PROFTPD_MODULES
+          ./configure LIBS="-lodbc -lm -lsubunit -lrt -pthread" --enable-devel=coverage:fortify --enable-ctrls --enable-facl --enable-memcache --enable-nls --enable-pcre --enable-redis --enable-tests --with-modules="${{ env.PROFTPD_MODULES }}"
           make
 
       - name: Run unit tests
         env:
           CC: ${{ matrix.compiler }}
+        # Note: Skip the unit tests on Alpine
+        if: ${{ matrix.container != 'alpine:3.14' }}
         run: |
           make TEST_VERBOSE=1 check-api
 
@@ -209,7 +277,7 @@ jobs:
           CC: ${{ matrix.compiler }}
         run: |
           make clean
-          ./configure LIBS="-lodbc" --enable-ctrls --enable-facl --enable-memcache --enable-nls --enable-pcre --enable-redis --with-modules=$PROFTPD_MODULES
+          ./configure LIBS="-lodbc" --enable-ctrls --enable-facl --enable-memcache --enable-nls --enable-pcre --enable-redis --with-modules="${{ env.PROFTPD_MODULES }}"
           make
           make install
 
@@ -245,7 +313,7 @@ jobs:
           CC: ${{ matrix.compiler }}
         run: |
           make clean
-          ./configure LIBS="-lodbc -lm -lsubunit -lrt -pthread" --enable-devel --enable-ctrls --enable-dso --enable-facl --enable-memcache --enable-nls --enable-pcre --enable-tests --with-shared=$PROFTPD_MODULES
+          ./configure LIBS="-lodbc -lm -lsubunit -lrt -pthread" --enable-devel=fortify --enable-ctrls --enable-dso --enable-facl --enable-memcache --enable-nls --enable-pcre --enable-tests --with-shared="${{ env.PROFTPD_MODULES }}"
           make
 
       - name: Install with shared modules
