@@ -1,6 +1,6 @@
 /*
  * ProFTPD: mod_auth_otp
- * Copyright (c) 2015-2017 TJ Saunders
+ * Copyright (c) 2015-2021 TJ Saunders
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -127,8 +127,13 @@ static int auth_otp_kbdint_authenticate(sftp_kbdint_driver_t *driver,
     (void) pr_log_writefile(auth_otp_logfd, MOD_AUTH_OTP_VERSION,
       "no info for user '%s' found in AuthOTPTable, skipping "
       "SSH2 keyboard-interactive challenge", user);
-    errno = xerrno;
-    return -1;
+
+    if (auth_otp_opts & AUTH_OTP_OPT_REQUIRE_TABLE_ENTRY) {
+      errno = xerrno;
+      return -1;
+    }
+
+    return 0;
   }
 
   challenge = pcalloc(driver->driver_pool, sizeof(sftp_kbdint_challenge_t));
@@ -426,7 +431,7 @@ static int handle_user_otp(pool *p, const char *user, const char *user_otp,
   }
 
   pr_trace_msg(trace_channel, 3,
-    "counter one window ahead check failed, checking one window ahead");
+    "counter one window behind check failed, checking one window ahead");
 
   switch (auth_otp_algo) {
     case AUTH_OTP_ALGO_TOTP_SHA1:

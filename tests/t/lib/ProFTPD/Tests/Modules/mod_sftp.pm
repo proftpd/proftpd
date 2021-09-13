@@ -1829,6 +1829,11 @@ my $TESTS = {
     test_class => [qw(forking mod_ifsession scp ssh2)],
   },
 
+  sftp_ext_hostkey_rotation_issue1323 => {
+    order => ++$order,
+    test_class => [qw(bug forking sftp ssh2)],
+  },
+
 };
 
 sub get_sftplog {
@@ -63063,6 +63068,216 @@ EOC
   }
 
   unlink($log_file);
+}
+
+sub sftp_ext_hostkey_rotation_issue1323 {
+  my $self = shift;
+  my $tmpdir = $self->{tmpdir};
+  my $setup = test_setup($tmpdir, 'sftp');
+
+  my $rsa_host_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/ssh_host_rsa_key');
+  my $dsa_host_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/ssh_host_dsa_key');
+
+  my $rsa_priv_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/test_rsa_key');
+  my $rsa_pub_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/test_rsa_key.pub');
+  my $rsa_rfc4716_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/authorized_rsa_keys');
+
+  my $authorized_keys = File::Spec->rel2abs("$tmpdir/.authorized_keys");
+  unless (copy($rsa_rfc4716_key, $authorized_keys)) {
+    die("Can't copy $rsa_rfc4716_key to $authorized_keys: $!");
+  }
+
+  my $batch_file = File::Spec->rel2abs("$tmpdir/sftp-batch.txt");
+  if (open(my $fh, "> $batch_file")) {
+    print $fh "ls\n";
+
+    unless (close($fh)) {
+      die("Can't write $batch_file: $!");
+    }
+
+  } else {
+    die("Can't open $batch_file: $!");
+  }
+
+  my $config = {
+    PidFile => $setup->{pid_file},
+    ScoreboardFile => $setup->{scoreboard_file},
+    SystemLog => $setup->{log_file},
+    TraceLog => $setup->{log_file},
+    Trace => 'ssh2:20 sftp:20',
+
+    AuthUserFile => $setup->{auth_user_file},
+    AuthGroupFile => $setup->{auth_group_file},
+
+    IfModules => {
+      'mod_delay.c' => {
+        DelayEngine => 'off',
+      },
+
+      'mod_sftp.c' => [
+        "SFTPEngine on",
+        "SFTPLog $setup->{log_file}",
+        "SFTPHostKey $rsa_host_key",
+        "SFTPHostKey $dsa_host_key",
+        "SFTPAuthorizedUserKeys file:~/.authorized_keys",
+      ],
+    },
+  };
+
+  my ($port, $config_user, $config_group) = config_write($setup->{config_file},
+    $config);
+
+  # Before OpenSSH will actually honor the UpdateHostkeys directive, it
+  # must trust at least one of the hostkeys.  Thus we use `ssh-keyscan`
+  # to determine what the known_hosts entry of our RSA hostkey would look
+  # like, and tell OpenSSH to use that.
+  my $known_hosts_file = File::Spec->rel2abs("$tmpdir/known_hosts");
+  if (open(my $fh, "> $known_hosts_file")) {
+    print $fh "[127.0.0.1]:$port ssh-rsa AAAAB3NzaC1yc2EAAAABIwAAAQEAyzvasQY4M70dkgZejKTpWMWZzh6QESXoNMkJ1o+Ui+flJ74bzNtVt2AnK71qcJUSbRMQfwKksy60Nm6R+2Qc0uGX+/CEzXSJjQJdp5xOc0caVnQSgUpxyrmkFUgu4RDgDKCbs5jJAlxL8AvcFfjC50X+0Oz3IkSajUIzsuo9Mgf87i+cf1JCEFOoqeocLZnoUiRSeUn5u0lNM6nsU1VWBUhLhHBBiVwap66h0RzYi9C+57kC8/QcR8JqKHllyo48jja71YyxNv6WstC1PN/BUx81aXGS1b/R7bidKZIOY3qmRGD5rWNm0zqAPI06ObtNxYFHEG/xIM88mYrvO5fq5Q==\n";
+    unless (close($fh)) {
+      die("Can't write $known_hosts_file: $!");
+    }
+
+  } else {
+    die("Can't open $known_hosts_file: $!");
+  }
+
+  # Open pipes, for use between the parent and child processes.  Specifically,
+  # the child will indicate when it's done with its test by writing a message
+  # to the parent.
+  my ($rfh, $wfh);
+  unless (pipe($rfh, $wfh)) {
+    die("Can't open pipe: $!");
+  }
+
+  my $ex;
+
+  # Ignore SIGPIPE
+  local $SIG{PIPE} = sub { };
+
+  # Fork child
+  $self->handle_sigchld();
+  defined(my $pid = fork()) or die("Can't fork: $!");
+  if ($pid) {
+    eval {
+      my $sftp = '/Users/tj/local/openssh-7.9p1/bin/sftp';
+
+      my @cmd = (
+        $sftp,
+        '-oBatchMode=yes',
+        '-oCheckHostIP=no',
+        '-oCompression=yes',
+        "-oPort=$port",
+        "-oIdentityFile=$rsa_priv_key",
+        '-oPubkeyAuthentication=yes',
+        '-oStrictHostKeyChecking=no',
+        '-oUpdateHostkeys=yes',
+        "-oUserKnownHostsFile=$known_hosts_file",
+        '-oHostKeyAlgorithms=ssh-rsa,ssh-dss',
+        '-vvv',
+        '-b',
+        "$batch_file",
+        "$setup->{user}\@127.0.0.1",
+      );
+
+      my $sftp_rh = IO::Handle->new();
+      my $sftp_wh = IO::Handle->new();
+      my $sftp_eh = IO::Handle->new();
+
+      $sftp_wh->autoflush(1);
+
+      sleep(1);
+
+      local $SIG{CHLD} = 'DEFAULT';
+
+      # Make sure that the perms on the priv key are what OpenSSH wants
+      unless (chmod(0400, $rsa_priv_key)) {
+        die("Can't set perms on $rsa_priv_key to 0400: $!");
+      }
+
+      if ($ENV{TEST_VERBOSE}) {
+        print STDERR "Executing: ", join(' ', @cmd), "\n";
+      }
+
+      my $sftp_pid = open3($sftp_wh, $sftp_rh, $sftp_eh, @cmd);
+      waitpid($sftp_pid, 0);
+      my $exit_status = $?;
+
+      # Restore the perms on the priv key
+      unless (chmod(0644, $rsa_priv_key)) {
+        die("Can't set perms on $rsa_priv_key to 0644: $!");
+      }
+
+      my ($res, $errstr);
+      if ($exit_status >> 8 == 0) {
+        $errstr = join('', <$sftp_eh>);
+        $res = 0;
+
+      } else {
+        $errstr = join('', <$sftp_eh>);
+        $res = 1;
+      }
+
+      if ($ENV{TEST_VERBOSE}) {
+        print STDERR "Stderr: $errstr\n";
+      }
+
+      unless ($res == 0) {
+        die("Can't list files on server: $errstr");
+      }
+    };
+    if ($@) {
+      $ex = $@;
+    }
+
+    $wfh->print("done\n");
+    $wfh->flush();
+
+  } else {
+    eval { server_wait($setup->{config_file}, $rfh) };
+    if ($@) {
+      warn($@);
+      exit 1;
+    }
+
+    exit 0;
+  }
+
+  # Stop server
+  server_stop($setup->{pid_file});
+  $self->assert_child_ok($pid);
+
+  eval {
+    if (open(my $fh, "< $known_hosts_file")) {
+      my $ok = 0;
+
+      while (my $line = <$fh>) {
+        chomp($line);
+
+        if ($ENV{TEST_VERBOSE}) {
+          print STDERR "# $line\n";
+        }
+
+        if ($line =~ /ssh-dss/) {
+          $ok = 1;
+          last;
+        }
+      }
+
+      close($fh);
+
+      $self->assert($ok,
+        test_msg("Did not see expected 'ssh-dss' entry in UserKnownHostsFile"));
+
+    } else {
+      die("Can't read $known_hosts_file: $!");
+    }
+  };
+  if ($@) {
+    $ex = $@;
+  }
+
+  test_cleanup($setup->{log_file}, $ex);
 }
 
 1;

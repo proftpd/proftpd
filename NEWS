@@ -15,7 +15,12 @@
   where `N' is the issue number.
 -----------------------------------------------------------------------------
 
-1.3.8rc2
+1.3.8rc3
+--------------------------------
+- Issue 1323 - Support SSH hostkey rotation via OpenSSH extensions.
+- Issue 1325 - NLST does not behave consistently for relative paths.
+
+1.3.8rc2 - Released 29-Aug-2021
 --------------------------------
 - Bug 4401 - mod_sftp crashes when handling aes256-ctr OpenSSH-specific key
   with some old OpenSSL versions.
@@ -37,6 +42,8 @@
   renegotiations on control/data connections are not requested by default.
   TLS renegotiations have a long and sordid history; many SSL/TLS libraries no
   longer implement them, or disable them by default.
+- Issue 1319 - mod_auth_otp should honor RequireTableEntry semantics for SFTP
+  logins.
 
 1.3.8rc1 - Released 13-Jun-2021
 --------------------------------

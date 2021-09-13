@@ -1409,7 +1409,7 @@ START_TEST (data_xfer_peek_nonsocket_test) {
   strm_fd = PR_NETIO_FD(session.c->instrm);
   PR_NETIO_FD(session.c->instrm) = fd;
 
-  write(fd, "FOO\r\n", 5);
+  (void) write(fd, "FOO\r\n", 5);
   rewind_fd(fd);
 
   mark_point();

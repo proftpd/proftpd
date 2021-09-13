@@ -18935,8 +18935,11 @@ static int tls_sess_init(void) {
     if (tls_accept(session.c, FALSE) < 0) {
       tls_log("%s", "implicit SSL/TLS negotiation failed on control channel");
 
-      errno = EACCES;
-      return -1;
+      /* Rather than returning an error to the init callback, we disconnect
+       * the session ourselves here.  Makes for slightly nicer logging.
+       */
+      pr_session_disconnect(&tls_module, PR_SESS_DISCONNECT_CLIENT_EOF,
+        "Failed TLS handshake");
     }
 
     tls_flags |= TLS_SESS_ON_CTRL;

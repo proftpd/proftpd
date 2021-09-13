@@ -1,6 +1,6 @@
 /*
  * ProFTPD - FTP server testsuite
- * Copyright (c) 2020 The ProFTPD Project team
+ * Copyright (c) 2020-2021 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -655,7 +655,7 @@ START_TEST (ctrls_recv_request_invalid_test) {
   }
 
   cl->cl_fd = fd;
-  write(fd, "a", 1);
+  (void) write(fd, "a", 1);
   rewind_fd(fd);
   res = pr_ctrls_recv_request(cl);
   fail_unless(res < 0, "Failed to handle invalid status (too short)");
@@ -670,8 +670,8 @@ START_TEST (ctrls_recv_request_invalid_test) {
 
   mark_point();
   status = 0;
-  write(fd, &status, sizeof(status));
-  write(fd, "a", 1);
+  (void) write(fd, &status, sizeof(status));
+  (void) write(fd, "a", 1);
   rewind_fd(fd);
   res = pr_ctrls_recv_request(cl);
   fail_unless(res < 0, "Failed to handle invalid nreqargs (too short)");
@@ -686,8 +686,8 @@ START_TEST (ctrls_recv_request_invalid_test) {
 
   mark_point();
   nreqargs = 100;
-  write(fd, &status, sizeof(status));
-  write(fd, &nreqargs, sizeof(nreqargs));
+  (void) write(fd, &status, sizeof(status));
+  (void) write(fd, &nreqargs, sizeof(nreqargs));
   rewind_fd(fd);
   res = pr_ctrls_recv_request(cl);
   fail_unless(res < 0, "Failed to handle invalid nreqargs (too many)");
@@ -702,9 +702,9 @@ START_TEST (ctrls_recv_request_invalid_test) {
 
   mark_point();
   nreqargs = 1;
-  write(fd, &status, sizeof(status));
-  write(fd, &nreqargs, sizeof(nreqargs));
-  write(fd, "a", 1);
+  (void) write(fd, &status, sizeof(status));
+  (void) write(fd, &nreqargs, sizeof(nreqargs));
+  (void) write(fd, "a", 1);
   rewind_fd(fd);
   res = pr_ctrls_recv_request(cl);
   fail_unless(res < 0, "Failed to handle invalid actionlen (too short)");
@@ -719,9 +719,9 @@ START_TEST (ctrls_recv_request_invalid_test) {
 
   mark_point();
   actionlen = 256;
-  write(fd, &status, sizeof(status));
-  write(fd, &nreqargs, sizeof(nreqargs));
-  write(fd, &actionlen, sizeof(actionlen));
+  (void) write(fd, &status, sizeof(status));
+  (void) write(fd, &nreqargs, sizeof(nreqargs));
+  (void) write(fd, &actionlen, sizeof(actionlen));
   rewind_fd(fd);
   res = pr_ctrls_recv_request(cl);
   fail_unless(res < 0, "Failed to handle invalid actionlen (too long)");
@@ -736,10 +736,10 @@ START_TEST (ctrls_recv_request_invalid_test) {
 
   mark_point();
   actionlen = 4;
-  write(fd, &status, sizeof(status));
-  write(fd, &nreqargs, sizeof(nreqargs));
-  write(fd, &actionlen, sizeof(actionlen));
-  write(fd, "a", 1);
+  (void) write(fd, &status, sizeof(status));
+  (void) write(fd, &nreqargs, sizeof(nreqargs));
+  (void) write(fd, &actionlen, sizeof(actionlen));
+  (void) write(fd, "a", 1);
   rewind_fd(fd);
   res = pr_ctrls_recv_request(cl);
   fail_unless(res < 0, "Failed to handle invalid reqarg (too short)");
@@ -755,10 +755,10 @@ START_TEST (ctrls_recv_request_invalid_test) {
   mark_point();
   action = "test";
   actionlen = strlen(action);
-  write(fd, &status, sizeof(status));
-  write(fd, &nreqargs, sizeof(nreqargs));
-  write(fd, &actionlen, sizeof(actionlen));
-  write(fd, action, actionlen);
+  (void) write(fd, &status, sizeof(status));
+  (void) write(fd, &nreqargs, sizeof(nreqargs));
+  (void) write(fd, &actionlen, sizeof(actionlen));
+  (void) write(fd, action, actionlen);
   rewind_fd(fd);
   res = pr_ctrls_recv_request(cl);
   fail_unless(res < 0, "Failed to handle unknown action");
@@ -797,10 +797,10 @@ START_TEST (ctrls_recv_request_actions_test) {
   status = 0;
   nreqargs = 1;
   actionlen = strlen(action);
-  write(fd, &status, sizeof(status));
-  write(fd, &nreqargs, sizeof(nreqargs));
-  write(fd, &actionlen, sizeof(actionlen));
-  write(fd, action, actionlen);
+  (void) write(fd, &status, sizeof(status));
+  (void) write(fd, &nreqargs, sizeof(nreqargs));
+  (void) write(fd, &actionlen, sizeof(actionlen));
+  (void) write(fd, action, actionlen);
   rewind_fd(fd);
   res = pr_ctrls_recv_request(cl);
   fail_unless(res == 0, "Failed to handle known action: %s", strerror(errno));
@@ -821,11 +821,11 @@ START_TEST (ctrls_recv_request_actions_test) {
   cl->cl_fd = fd;
 
   nreqargs = 2;
-  write(fd, &status, sizeof(status));
-  write(fd, &nreqargs, sizeof(nreqargs));
-  write(fd, &actionlen, sizeof(actionlen));
-  write(fd, action, actionlen);
-  write(fd, "a", 1);
+  (void) write(fd, &status, sizeof(status));
+  (void) write(fd, &nreqargs, sizeof(nreqargs));
+  (void) write(fd, &actionlen, sizeof(actionlen));
+  (void) write(fd, action, actionlen);
+  (void) write(fd, "a", 1);
   rewind_fd(fd);
   res = pr_ctrls_recv_request(cl);
   fail_unless(res == 0, "Failed to handle too-short reqarglen: %s",
@@ -847,11 +847,11 @@ START_TEST (ctrls_recv_request_actions_test) {
   cl->cl_fd = fd;
 
   reqarglen = 0;
-  write(fd, &status, sizeof(status));
-  write(fd, &nreqargs, sizeof(nreqargs));
-  write(fd, &actionlen, sizeof(actionlen));
-  write(fd, action, actionlen);
-  write(fd, &reqarglen, sizeof(reqarglen));
+  (void) write(fd, &status, sizeof(status));
+  (void) write(fd, &nreqargs, sizeof(nreqargs));
+  (void) write(fd, &actionlen, sizeof(actionlen));
+  (void) write(fd, action, actionlen);
+  (void) write(fd, &reqarglen, sizeof(reqarglen));
   rewind_fd(fd);
   res = pr_ctrls_recv_request(cl);
   fail_unless(res == 0, "Failed to handle zero-length reqarg: %s",
@@ -873,11 +873,11 @@ START_TEST (ctrls_recv_request_actions_test) {
   cl->cl_fd = fd;
 
   reqarglen = 500;
-  write(fd, &status, sizeof(status));
-  write(fd, &nreqargs, sizeof(nreqargs));
-  write(fd, &actionlen, sizeof(actionlen));
-  write(fd, action, actionlen);
-  write(fd, &reqarglen, sizeof(reqarglen));
+  (void) write(fd, &status, sizeof(status));
+  (void) write(fd, &nreqargs, sizeof(nreqargs));
+  (void) write(fd, &actionlen, sizeof(actionlen));
+  (void) write(fd, action, actionlen);
+  (void) write(fd, &reqarglen, sizeof(reqarglen));
   rewind_fd(fd);
   res = pr_ctrls_recv_request(cl);
   fail_unless(res < 0, "Failed to handle too-long reqarg");
@@ -895,12 +895,12 @@ START_TEST (ctrls_recv_request_actions_test) {
   cl->cl_fd = fd;
 
   reqarglen = 4;
-  write(fd, &status, sizeof(status));
-  write(fd, &nreqargs, sizeof(nreqargs));
-  write(fd, &actionlen, sizeof(actionlen));
-  write(fd, action, actionlen);
-  write(fd, &reqarglen, sizeof(reqarglen));
-  write(fd, "a", 1);
+  (void) write(fd, &status, sizeof(status));
+  (void) write(fd, &nreqargs, sizeof(nreqargs));
+  (void) write(fd, &actionlen, sizeof(actionlen));
+  (void) write(fd, action, actionlen);
+  (void) write(fd, &reqarglen, sizeof(reqarglen));
+  (void) write(fd, "a", 1);
   rewind_fd(fd);
   res = pr_ctrls_recv_request(cl);
   fail_unless(res == 0, "Failed to handle truncated reqarg: %s",
@@ -923,12 +923,12 @@ START_TEST (ctrls_recv_request_actions_test) {
 
   reqarg = "next";
   reqarglen = strlen(reqarg);
-  write(fd, &status, sizeof(status));
-  write(fd, &nreqargs, sizeof(nreqargs));
-  write(fd, &actionlen, sizeof(actionlen));
-  write(fd, action, actionlen);
-  write(fd, &reqarglen, sizeof(reqarglen));
-  write(fd, reqarg, reqarglen);
+  (void) write(fd, &status, sizeof(status));
+  (void) write(fd, &nreqargs, sizeof(nreqargs));
+  (void) write(fd, &actionlen, sizeof(actionlen));
+  (void) write(fd, action, actionlen);
+  (void) write(fd, &reqarglen, sizeof(reqarglen));
+  (void) write(fd, reqarg, reqarglen);
   rewind_fd(fd);
   res = pr_ctrls_recv_request(cl);
   fail_unless(res == 0, "Failed to handle truncated reqarg: %s",
@@ -958,12 +958,12 @@ START_TEST (ctrls_recv_request_actions_test) {
 
   reqarg = "next";
   reqarglen = strlen(reqarg);
-  write(fd, &status, sizeof(status));
-  write(fd, &nreqargs, sizeof(nreqargs));
-  write(fd, &actionlen, sizeof(actionlen));
-  write(fd, action, actionlen);
-  write(fd, &reqarglen, sizeof(reqarglen));
-  write(fd, reqarg, reqarglen);
+  (void) write(fd, &status, sizeof(status));
+  (void) write(fd, &nreqargs, sizeof(nreqargs));
+  (void) write(fd, &actionlen, sizeof(actionlen));
+  (void) write(fd, action, actionlen);
+  (void) write(fd, &reqarglen, sizeof(reqarglen));
+  (void) write(fd, reqarg, reqarglen);
   rewind_fd(fd);
   res = pr_ctrls_recv_request(cl);
   fail_unless(res == 0, "Failed to handle truncated reqarg: %s",
@@ -1032,7 +1032,7 @@ START_TEST (ctrls_recv_response_test) {
     return;
   }
 
-  write(fd, "a", 1);
+  (void) write(fd, "a", 1);
   rewind_fd(fd);
   res = pr_ctrls_recv_response(p, fd, &status, &respargv);
   fail_unless(res < 0, "Failed to handle truncated status");
@@ -1046,8 +1046,8 @@ START_TEST (ctrls_recv_response_test) {
   }
 
   retval = 1;
-  write(fd, &retval, sizeof(retval));
-  write(fd, "a", 1);
+  (void) write(fd, &retval, sizeof(retval));
+  (void) write(fd, "a", 1);
   rewind_fd(fd);
   res = pr_ctrls_recv_response(p, fd, &status, &respargv);
   fail_unless(res < 0, "Failed to handle truncated nrespargc");
@@ -1061,8 +1061,8 @@ START_TEST (ctrls_recv_response_test) {
   }
 
   respargc = 2000;
-  write(fd, &retval, sizeof(retval));
-  write(fd, &respargc, sizeof(respargc));
+  (void) write(fd, &retval, sizeof(retval));
+  (void) write(fd, &respargc, sizeof(respargc));
   rewind_fd(fd);
   res = pr_ctrls_recv_response(p, fd, &status, &respargv);
   fail_unless(res < 0, "Failed to handle too-many respargc");
@@ -1076,9 +1076,9 @@ START_TEST (ctrls_recv_response_test) {
   }
 
   respargc = 1;
-  write(fd, &retval, sizeof(retval));
-  write(fd, &respargc, sizeof(respargc));
-  write(fd, "a", 1);
+  (void) write(fd, &retval, sizeof(retval));
+  (void) write(fd, &respargc, sizeof(respargc));
+  (void) write(fd, "a", 1);
   rewind_fd(fd);
   res = pr_ctrls_recv_response(p, fd, &status, &respargv);
   fail_unless(res < 0, "Failed to handle truncated resparglen");
@@ -1092,9 +1092,9 @@ START_TEST (ctrls_recv_response_test) {
   }
 
   resparglen = (PR_TUNABLE_BUFFER_SIZE * 10);
-  write(fd, &retval, sizeof(retval));
-  write(fd, &respargc, sizeof(respargc));
-  write(fd, &resparglen, sizeof(resparglen));
+  (void) write(fd, &retval, sizeof(retval));
+  (void) write(fd, &respargc, sizeof(respargc));
+  (void) write(fd, &resparglen, sizeof(resparglen));
   rewind_fd(fd);
   res = pr_ctrls_recv_response(p, fd, &status, &respargv);
   fail_unless(res < 0, "Failed to handle too-long resparglen");
@@ -1108,10 +1108,10 @@ START_TEST (ctrls_recv_response_test) {
   }
 
   resparglen = 4;
-  write(fd, &retval, sizeof(retval));
-  write(fd, &respargc, sizeof(respargc));
-  write(fd, &resparglen, sizeof(resparglen));
-  write(fd, "a", 1);
+  (void) write(fd, &retval, sizeof(retval));
+  (void) write(fd, &respargc, sizeof(respargc));
+  (void) write(fd, &resparglen, sizeof(resparglen));
+  (void) write(fd, "a", 1);
   rewind_fd(fd);
   res = pr_ctrls_recv_response(p, fd, &status, &respargv);
   fail_unless(res < 0, "Failed to handle truncated resparg");
@@ -1126,10 +1126,10 @@ START_TEST (ctrls_recv_response_test) {
 
   resparg = "foobarbaz";
   resparglen = strlen(resparg);
-  write(fd, &retval, sizeof(retval));
-  write(fd, &respargc, sizeof(respargc));
-  write(fd, &resparglen, sizeof(resparglen));
-  write(fd, resparg, resparglen);
+  (void) write(fd, &retval, sizeof(retval));
+  (void) write(fd, &respargc, sizeof(respargc));
+  (void) write(fd, &resparglen, sizeof(resparglen));
+  (void) write(fd, resparg, resparglen);
   rewind_fd(fd);
   res = pr_ctrls_recv_response(p, fd, &status, &respargv);
   fail_unless((unsigned int) res == respargc, "Failed to receive response: %s",
@@ -1400,12 +1400,12 @@ START_TEST (ctrls_run_ctrls_test) {
   actionlen = strlen(action);
   reqarg = "FOO";
   reqarglen = strlen(reqarg);
-  write(fd, &status, sizeof(status));
-  write(fd, &nreqargs, sizeof(nreqargs));
-  write(fd, &actionlen, sizeof(actionlen));
-  write(fd, action, actionlen);
-  write(fd, &reqarglen, sizeof(reqarglen));
-  write(fd, reqarg, reqarglen);
+  (void) write(fd, &status, sizeof(status));
+  (void) write(fd, &nreqargs, sizeof(nreqargs));
+  (void) write(fd, &actionlen, sizeof(actionlen));
+  (void) write(fd, action, actionlen);
+  (void) write(fd, &reqarglen, sizeof(reqarglen));
+  (void) write(fd, reqarg, reqarglen);
   rewind_fd(fd);
   res = pr_ctrls_recv_request(cl);
   fail_unless(res == 0, "Failed to handle known action: %s", strerror(errno));
