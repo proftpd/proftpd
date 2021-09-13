@@ -1768,7 +1768,6 @@ static int sql_mysql_legacyauth_41(char*scrambled, const char*plaintext, size_t 
 		success=1;
 	} while (0);
 
-	memset(&v, 0, sizeof(v));
 	return success;
 }
 
@@ -1853,7 +1852,7 @@ static modret_t *sql_mysql_password(cmd_rec *cmd, const char *plaintext,
 #endif /* HAVE_MYSQL_MAKE_SCRAMBLED_PASSWORD_323 */
 
 	if(success==FALSE) {
-		if(!sql_mysql_legacyauth_41(scrambled,plaintext,plaintext_len)) {
+		if(sql_mysql_legacyauth_41(scrambled, plaintext, plaintext_len)) {
 			scrambled_len = 41;
 			success = match_mysql_passwds(ciphertext, ciphertext_len, scrambled,
       			scrambled_len, "legacy");
