@@ -1,6 +1,6 @@
 /*
  * ProFTPD - mod_sftp key mgmt (keys)
- * Copyright (c) 2008-2020 TJ Saunders
+ * Copyright (c) 2008-2021 TJ Saunders
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -70,6 +70,11 @@ int sftp_keys_verify_signed_data(pool *, const char *,
 
 /* Sets minimum key sizes. */
 int sftp_keys_set_key_limits(int rsa_min, int dsa_min, int ec_min);
+
+/* Used for supporting the OpenSSH hostkey rotation mechanism. */
+int sftp_keys_send_hostkeys(pool *p);
+int sftp_keys_prove_hostkeys(pool *p, int want_reply, unsigned char *buf,
+  uint32_t buflen);
 
 int sftp_keys_clear_dsa_hostkey(void);
 int sftp_keys_clear_ecdsa_hostkey(void);

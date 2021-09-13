@@ -31,6 +31,7 @@
 #include "mac.h"
 #include "compress.h"
 #include "kex.h"
+#include "keys.h"
 #include "service.h"
 #include "auth.h"
 #include "channel.h"
@@ -322,14 +323,14 @@ int sftp_ssh2_packet_sock_read(int sockfd, void *buf, size_t reqlen,
   return reqlen;
 }
 
-static char peek_mesg_type(struct ssh2_packet *pkt) {
-  char mesg_type;
+static char peek_msg_type(struct ssh2_packet *pkt) {
+  char msg_type;
 
-  memmove(&mesg_type, pkt->payload, sizeof(char));
-  return mesg_type;
+  memmove(&msg_type, pkt->payload, sizeof(char));
+  return msg_type;
 }
 
-static void handle_global_request_mesg(struct ssh2_packet *pkt) {
+static void handle_global_request_msg(struct ssh2_packet *pkt) {
   unsigned char *buf, *ptr;
   uint32_t buflen;
   char *request_name;
@@ -340,6 +341,17 @@ static void handle_global_request_mesg(struct ssh2_packet *pkt) {
 
   request_name = sftp_msg_read_string(pkt->pool, &buf, &buflen);
   want_reply = sftp_msg_read_bool(pkt->pool, &buf, &buflen);
+
+  /* Handle any requests to prove hostkeys, per OpenSSH hostkey rotation,
+   * separately.
+   */
+  if (strcmp(request_name, "hostkeys-prove-00@openssh.com") == 0) {
+    (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
+      "client sent GLOBAL_REQUEST for '%s', handling", request_name);
+    sftp_keys_prove_hostkeys(pkt->pool, want_reply, buf, buflen);
+    destroy_pool(pkt->pool);
+    return;
+  }
 
   (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
     "client sent GLOBAL_REQUEST for '%s', denying", request_name);
@@ -368,13 +380,13 @@ static void handle_global_request_mesg(struct ssh2_packet *pkt) {
   destroy_pool(pkt->pool);
 }
 
-static void handle_client_alive_mesg(struct ssh2_packet *pkt, char mesg_type) {
-  const char *mesg_desc;
+static void handle_client_alive_msg(struct ssh2_packet *pkt, char msg_type) {
+  const char *msg_desc;
 
-  mesg_desc = sftp_ssh2_packet_get_mesg_type_desc(mesg_type);
+  msg_desc = sftp_ssh2_packet_get_msg_type_desc(msg_type);
 
   pr_trace_msg(trace_channel, 12,
-    "client sent %s message, considering client alive", mesg_desc);
+    "client sent %s message, considering client alive", msg_desc);
 
   client_alive_count = 0;
   destroy_pool(pkt->pool);
@@ -692,18 +704,18 @@ int sftp_ssh2_packet_get_last_sent(time_t *tp) {
   return 0;
 }
 
-char sftp_ssh2_packet_get_mesg_type(struct ssh2_packet *pkt) {
-  char mesg_type;
+char sftp_ssh2_packet_get_msg_type(struct ssh2_packet *pkt) {
+  char msg_type;
 
-  memmove(&mesg_type, pkt->payload, sizeof(char));
+  memmove(&msg_type, pkt->payload, sizeof(char));
   pkt->payload += sizeof(char);
   pkt->payload_len -= sizeof(char);
 
-  return mesg_type;
+  return msg_type;
 }
 
-const char *sftp_ssh2_packet_get_mesg_type_desc(unsigned char mesg_type) {
-  switch (mesg_type) {
+const char *sftp_ssh2_packet_get_msg_type_desc(unsigned char msg_type) {
+  switch (msg_type) {
     case SFTP_SSH2_MSG_DISCONNECT:
       return "SSH_MSG_DISCONNECT";
 
@@ -1095,7 +1107,7 @@ static struct iovec packet_iov[SFTP_SSH2_PACKET_IOVSZ];
 static unsigned int packet_niov = 0;
 
 int sftp_ssh2_packet_send(int sockfd, struct ssh2_packet *pkt) {
-  unsigned char buf[SFTP_MAX_PACKET_LEN * 2], mesg_type;
+  unsigned char buf[SFTP_MAX_PACKET_LEN * 2], msg_type;
   size_t buflen = 0, bufsz = SFTP_MAX_PACKET_LEN;
   uint32_t packet_len = 0;
   int res, write_len = 0, block_alarms = FALSE;
@@ -1119,7 +1131,7 @@ int sftp_ssh2_packet_send(int sockfd, struct ssh2_packet *pkt) {
     memset(packet_iov, 0, sizeof(packet_iov));
   }
 
-  mesg_type = peek_mesg_type(pkt);
+  msg_type = peek_msg_type(pkt);
 
   if (sftp_compress_write_data(pkt) < 0) {
     int xerrno = errno;
@@ -1315,7 +1327,7 @@ int sftp_ssh2_packet_send(int sockfd, struct ssh2_packet *pkt) {
   packet_server_seqno++;
 
   pr_trace_msg(trace_channel, 3, "sent %s (%d) packet (%d bytes)",
-    sftp_ssh2_packet_get_mesg_type_desc(mesg_type), mesg_type, res);
+    sftp_ssh2_packet_get_msg_type_desc(msg_type), msg_type, res);
 
   if (block_alarms == TRUE) {
     /* Now that we've written out the packet, we can be interrupted again. */
@@ -1506,7 +1518,7 @@ void sftp_ssh2_packet_handle_unimplemented(struct ssh2_packet *pkt) {
 
 int sftp_ssh2_packet_handle(void) {
   struct ssh2_packet *pkt;
-  char mesg_type;
+  char msg_type;
   int res;
 
   pkt = sftp_ssh2_packet_create(sftp_pool);
@@ -1516,9 +1528,9 @@ int sftp_ssh2_packet_handle(void) {
     SFTP_DISCONNECT_CONN(SFTP_SSH2_DISCONNECT_BY_APPLICATION, NULL);
   }
 
-  mesg_type = sftp_ssh2_packet_get_mesg_type(pkt);
+  msg_type = sftp_ssh2_packet_get_msg_type(pkt);
   pr_trace_msg(trace_channel, 3, "received %s (%d) packet",
-    sftp_ssh2_packet_get_mesg_type_desc(mesg_type), mesg_type);
+    sftp_ssh2_packet_get_msg_type_desc(msg_type), msg_type);
 
   pr_response_clear(&resp_list);
   pr_response_clear(&resp_err_list);
@@ -1529,7 +1541,7 @@ int sftp_ssh2_packet_handle(void) {
    * the protocol is supposed to work.
    */
   
-  switch (mesg_type) {
+  switch (msg_type) {
     case SFTP_SSH2_MSG_DEBUG:
       sftp_ssh2_packet_handle_debug(pkt);
       break;
@@ -1539,14 +1551,14 @@ int sftp_ssh2_packet_handle(void) {
       break;
 
     case SFTP_SSH2_MSG_GLOBAL_REQUEST:
-      handle_global_request_mesg(pkt);
+      handle_global_request_msg(pkt);
       break;
 
     case SFTP_SSH2_MSG_REQUEST_SUCCESS:
     case SFTP_SSH2_MSG_REQUEST_FAILURE:
     case SFTP_SSH2_MSG_CHANNEL_SUCCESS:
     case SFTP_SSH2_MSG_CHANNEL_FAILURE:
-      handle_client_alive_mesg(pkt, mesg_type);
+      handle_client_alive_msg(pkt, msg_type);
       break;
 
     case SFTP_SSH2_MSG_IGNORE:
@@ -1625,7 +1637,7 @@ int sftp_ssh2_packet_handle(void) {
       } else {
         (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
           "unable to handle %s (%d) message: wrong message order",
-          sftp_ssh2_packet_get_mesg_type_desc(mesg_type), mesg_type);
+          sftp_ssh2_packet_get_msg_type_desc(msg_type), msg_type);
       }
 
     case SFTP_SSH2_MSG_SERVICE_REQUEST:
@@ -1640,7 +1652,7 @@ int sftp_ssh2_packet_handle(void) {
       } else {
         (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
           "unable to handle %s (%d) message: Key exchange required",
-          sftp_ssh2_packet_get_mesg_type_desc(mesg_type), mesg_type);
+          sftp_ssh2_packet_get_msg_type_desc(msg_type), msg_type);
       }
 
     case SFTP_SSH2_MSG_USER_AUTH_REQUEST:
@@ -1653,7 +1665,7 @@ int sftp_ssh2_packet_handle(void) {
         if (sftp_sess_state & SFTP_SESS_STATE_HAVE_AUTH) {
           (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
             "ignoring %s (%d) message: Connection already authenticated",
-            sftp_ssh2_packet_get_mesg_type_desc(mesg_type), mesg_type);
+            sftp_ssh2_packet_get_msg_type_desc(msg_type), msg_type);
 
         } else {
           int ok;
@@ -1672,7 +1684,7 @@ int sftp_ssh2_packet_handle(void) {
       } else {
         (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
           "unable to handle %s (%d) message: Service request required",
-          sftp_ssh2_packet_get_mesg_type_desc(mesg_type), mesg_type);
+          sftp_ssh2_packet_get_msg_type_desc(msg_type), msg_type);
       }
 
     case SFTP_SSH2_MSG_CHANNEL_OPEN:
@@ -1682,7 +1694,7 @@ int sftp_ssh2_packet_handle(void) {
     case SFTP_SSH2_MSG_CHANNEL_EOF:
     case SFTP_SSH2_MSG_CHANNEL_WINDOW_ADJUST:
       if (sftp_sess_state & SFTP_SESS_STATE_HAVE_AUTH) {
-        if (sftp_channel_handle(pkt, mesg_type) < 0) {
+        if (sftp_channel_handle(pkt, msg_type) < 0) {
           SFTP_DISCONNECT_CONN(SFTP_SSH2_DISCONNECT_BY_APPLICATION, NULL);
         }
 
@@ -1691,7 +1703,7 @@ int sftp_ssh2_packet_handle(void) {
       } else {
         (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
           "unable to handle %s (%d) message: User authentication required",
-          sftp_ssh2_packet_get_mesg_type_desc(mesg_type), mesg_type);
+          sftp_ssh2_packet_get_msg_type_desc(msg_type), msg_type);
       }
 
     default:
@@ -1699,7 +1711,7 @@ int sftp_ssh2_packet_handle(void) {
 
       (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
         "unhandled %s (%d) message, disconnecting",
-        sftp_ssh2_packet_get_mesg_type_desc(mesg_type), mesg_type);
+        sftp_ssh2_packet_get_msg_type_desc(msg_type), msg_type);
       SFTP_DISCONNECT_CONN(SFTP_SSH2_DISCONNECT_BY_APPLICATION,
         "Unsupported protocol sequence");
   }

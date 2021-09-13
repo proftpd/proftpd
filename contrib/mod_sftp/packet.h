@@ -1,6 +1,6 @@
 /*
  * ProFTPD - mod_sftp packet IO
- * Copyright (c) 2008-2020 TJ Saunders
+ * Copyright (c) 2008-2021 TJ Saunders
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -62,8 +62,8 @@ struct sftp_packet {
 };
 
 struct ssh2_packet *sftp_ssh2_packet_create(pool *);
-char sftp_ssh2_packet_get_mesg_type(struct ssh2_packet *);
-const char *sftp_ssh2_packet_get_mesg_type_desc(unsigned char);
+char sftp_ssh2_packet_get_msg_type(struct ssh2_packet *);
+const char *sftp_ssh2_packet_get_msg_type_desc(unsigned char);
 
 /* Returns a struct timeval populated with the time we last received an SSH2
  * packet from the client.

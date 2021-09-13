@@ -1556,6 +1556,7 @@ static int handle_userauth_req(struct ssh2_packet *pkt, char **service) {
     sftp_services = services;
   }
 
+  sftp_keys_send_hostkeys(pkt->pool);
   return 1;
 }
 

@@ -1534,6 +1534,9 @@ MODRET set_sftpoptions(cmd_rec *cmd) {
     } else if (strcmp(cmd->argv[i], "NoExtensionNegotiation") == 0) {
       opts |= SFTP_OPT_NO_EXT_INFO;
 
+    } else if (strcmp(cmd->argv[i], "NoHostkeyRotation") == 0) {
+      opts |= SFTP_OPT_NO_HOSTKEY_ROTATION;
+
     } else {
       CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, ": unknown SFTPOption '",
         cmd->argv[i], "'", NULL));
@@ -2626,4 +2629,3 @@ module sftp_module = {
   /* Module version */
   MOD_SFTP_VERSION
 };
-
