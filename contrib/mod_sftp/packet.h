@@ -43,6 +43,10 @@ struct ssh2_packet {
   /* Must be at least 4 bytes of padding, with a maximum of 255 bytes. */
   unsigned char *padding;
 
+  /* Additional Authenticated Data (AAD). */
+  unsigned char *aad;
+  uint32_t aad_len;
+
   /* Message Authentication Code. */
   unsigned char *mac;
   uint32_t mac_len;

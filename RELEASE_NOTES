@@ -9,11 +9,17 @@ ChangeLog files.
 1.3.8rc3
 ---------
 
+  + Support for the AES-GCM ciphers "aes128-gcm@openssh.com" and
+    "aes256-gcm@openssh.com" have been added to mod_sftp.
+
   + Support SSH hostkey rotation via OpenSSH "hostkeys-00@openssh.com" and
     "hostkeys-prove-00@openssh.com" extensions.
 
 
   + Changed Directives
+
+    SFTPCiphers
+      "aes128-gcm@openssh.com", "aes256-gcm@openssh.com" (Bug #3759)
 
     SFTPOptions NoHostkeyRotation
 

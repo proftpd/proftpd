@@ -874,7 +874,7 @@ static int get_dh_nbits(struct sftp_kex *kex) {
   const EVP_MD *digest;
 
   algo = kex->session_names->c2s_encrypt_algo;
-  cipher = sftp_crypto_get_cipher(algo, NULL, NULL);
+  cipher = sftp_crypto_get_cipher(algo, NULL, NULL, NULL);
   if (cipher != NULL) {
     int block_size, key_len;
 
@@ -896,7 +896,7 @@ static int get_dh_nbits(struct sftp_kex *kex) {
   }
 
   algo = kex->session_names->s2c_encrypt_algo;
-  cipher = sftp_crypto_get_cipher(algo, NULL, NULL);
+  cipher = sftp_crypto_get_cipher(algo, NULL, NULL, NULL);
   if (cipher != NULL) {
     int block_size, key_len;
 
@@ -2261,24 +2261,32 @@ static int get_session_names(struct sftp_kex *kex, int *correct_guess) {
   pr_trace_msg(trace_channel, 8, "server-sent client MAC algorithms: %s",
     server_list);
 
-  shared = sftp_misc_namelist_shared(kex->pool, client_list, server_list);
-  if (shared) {
-    if (setup_c2s_mac_algo(kex, shared) < 0) {
+  /* Ignore MAC/digests when authenticated encryption algorithms are used. */
+  if (sftp_cipher_get_read_auth_size() == 0) {
+    shared = sftp_misc_namelist_shared(kex->pool, client_list, server_list);
+    if (shared != NULL) {
+      if (setup_c2s_mac_algo(kex, shared) < 0) {
+        destroy_pool(tmp_pool);
+        return -1;
+      }
+
+      (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
+        " + Session client-to-server MAC: %s", shared);
+      pr_trace_msg(trace_channel, 20,
+        "session client-to-server MAC algorithm: %s", shared);
+
+    } else {
+      (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
+        "no shared client-to-server MAC algorithm found (client sent '%s', "
+        "server sent '%s')", client_list, server_list);
       destroy_pool(tmp_pool);
       return -1;
     }
 
-    (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
-      " + Session client-to-server MAC: %s", shared);
-    pr_trace_msg(trace_channel, 20,
-      "session client-to-server MAC algorithm: %s", shared);
-
   } else {
-    (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
-      "no shared client-to-server MAC algorithm found (client sent '%s', "
-      "server sent '%s')", client_list, server_list);
-    destroy_pool(tmp_pool);
-    return -1;
+    pr_trace_msg(trace_channel, 8, "ignoring MAC algorithms due to use of "
+      "client-to-server authenticated cipher algorithm '%s'",
+      kex->session_names->c2s_encrypt_algo);
   }
 
   client_list = kex->client_names->s2c_mac_algo;
@@ -2289,24 +2297,32 @@ static int get_session_names(struct sftp_kex *kex, int *correct_guess) {
   pr_trace_msg(trace_channel, 8, "server-sent server MAC algorithms: %s",
     server_list);
 
-  shared = sftp_misc_namelist_shared(kex->pool, client_list, server_list);
-  if (shared) {
-    if (setup_s2c_mac_algo(kex, shared) < 0) {
+  /* Ignore MAC/digests when authenticated encryption algorithms are used. */
+  if (sftp_cipher_get_write_auth_size() == 0) {
+    shared = sftp_misc_namelist_shared(kex->pool, client_list, server_list);
+    if (shared != NULL) {
+      if (setup_s2c_mac_algo(kex, shared) < 0) {
+        destroy_pool(tmp_pool);
+        return -1;
+      }
+
+      (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
+        " + Session server-to-client MAC: %s", shared);
+      pr_trace_msg(trace_channel, 20,
+        "session server-to-client MAC algorithm: %s", shared);
+
+    } else {
+      (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
+        "no shared server-to-client MAC algorithm found (client sent '%s', "
+        "server sent '%s')", client_list, server_list);
       destroy_pool(tmp_pool);
       return -1;
     }
 
-    (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
-      " + Session server-to-client MAC: %s", shared);
-    pr_trace_msg(trace_channel, 20,
-      "session server-to-client MAC algorithm: %s", shared);
-
   } else {
-    (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
-      "no shared server-to-client MAC algorithm found (client sent '%s', "
-      "server sent '%s')", client_list, server_list);
-    destroy_pool(tmp_pool);
-    return -1;
+    pr_trace_msg(trace_channel, 8, "ignoring MAC algorithms due to use of "
+      "server-to-client authenticated cipher algorithm '%s'",
+      kex->session_names->s2c_encrypt_algo);
   }
 
   client_list = kex->client_names->c2s_comp_algo;
