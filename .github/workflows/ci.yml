@@ -147,7 +147,7 @@ jobs:
           # for mod_sql_odbc
           yum install -y unixODBC-devel
           # for OpenSSL support
-          yum install -y openssl-devel
+          yum install -y openssl openssl-devel
           # for Sodium support
           yum install -y libsodium-devel
           # for mod_sql_sqlite

@@ -1,6 +1,6 @@
 /*
  * ProFTPD - mod_sftp MACs
- * Copyright (c) 2008-2020 TJ Saunders
+ * Copyright (c) 2008-2021 TJ Saunders
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -27,6 +27,7 @@
 #include "msg.h"
 #include "packet.h"
 #include "crypto.h"
+#include "cipher.h"
 #include "mac.h"
 #include "session.h"
 #include "disconnect.h"
@@ -663,6 +664,11 @@ int sftp_mac_set_read_algo(const char *algo) {
   uint32_t mac_len;
   unsigned int idx = read_mac_idx;
 
+  /* For authenticated encryption ciphers, there is no separate MAC. */
+  if (sftp_cipher_get_read_auth_size() > 0) {
+    return 0;
+  }
+
   if (read_macs[idx].key) {
     /* If we have an existing key, it means that we are currently rekeying. */
     idx = get_next_read_index();
@@ -727,6 +733,11 @@ int sftp_mac_set_read_key(pool *p, const EVP_MD *hash, const BIGNUM *k,
   HMAC_CTX *hmac_ctx;
   struct umac_ctx *umac_ctx;
 
+  /* For authenticated encryption ciphers, there is no separate MAC. */
+  if (sftp_cipher_get_read_auth_size() > 0) {
+    return 0;
+  }
+
   switch_read_mac();
 
   mac = &(read_macs[read_mac_idx]);
@@ -776,6 +787,11 @@ int sftp_mac_read_data(struct ssh2_packet *pkt) {
   struct umac_ctx *umac_ctx;
   int res;
 
+  /* For authenticated encryption ciphers, there is no separate MAC. */
+  if (sftp_cipher_get_read_auth_size() > 0) {
+    return 0;
+  }
+
   mac = &(read_macs[read_mac_idx]);
   hmac_ctx = hmac_read_ctxs[read_mac_idx];
   umac_ctx = umac_read_ctxs[read_mac_idx];
@@ -806,6 +822,11 @@ const char *sftp_mac_get_write_algo(void) {
 int sftp_mac_set_write_algo(const char *algo) {
   uint32_t mac_len;
   unsigned int idx = write_mac_idx;
+
+  /* For authenticated encryption ciphers, there is no separate MAC. */
+  if (sftp_cipher_get_write_auth_size() > 0) {
+    return 0;
+  }
 
   if (write_macs[idx].key) {
     /* If we have an existing key, it means that we are currently rekeying. */
@@ -870,6 +891,11 @@ int sftp_mac_set_write_key(pool *p, const EVP_MD *hash, const BIGNUM *k,
   HMAC_CTX *hmac_ctx;
   struct umac_ctx *umac_ctx;
 
+  /* For authenticated encryption ciphers, there is no separate MAC. */
+  if (sftp_cipher_get_write_auth_size() > 0) {
+    return 0;
+  }
+
   switch_write_mac();
 
   mac = &(write_macs[write_mac_idx]);
@@ -910,6 +936,11 @@ int sftp_mac_write_data(struct ssh2_packet *pkt) {
   HMAC_CTX *hmac_ctx;
   struct umac_ctx *umac_ctx;
   int res;
+
+  /* For authenticated encryption ciphers, there is no separate MAC. */
+  if (sftp_cipher_get_write_auth_size() > 0) {
+    return 0;
+  }
 
   mac = &(write_macs[write_mac_idx]);
   hmac_ctx = hmac_write_ctxs[write_mac_idx];

@@ -52,6 +52,9 @@
 /* Define if you have OpenSSL with EVP_aes_256_ctr support. */
 #undef HAVE_EVP_AES_256_CTR_OPENSSL
 
+/* Define if you have OpenSSL with EVP_aes_256_gcm support. */
+#undef HAVE_EVP_AES_256_GCM_OPENSSL
+
 /* Define if you have OpenSSL with SHA256 support. */
 #undef HAVE_SHA256_OPENSSL
 

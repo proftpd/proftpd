@@ -480,23 +480,31 @@ static void read_packet_discard(int sockfd) {
 static int read_packet_len(int sockfd, struct ssh2_packet *pkt,
     unsigned char *buf, size_t *offset, size_t *buflen, size_t bufsz) {
   uint32_t packet_len = 0, len = 0;
-  size_t blocksz; 
+  size_t readsz;
   int res;
   unsigned char *ptr = NULL;
 
-  blocksz = sftp_cipher_get_block_size();
+  readsz = sftp_cipher_get_read_block_size();
 
   /* Since the packet length may be encrypted, we need to read in the first
    * cipher_block_size bytes from the socket, and try to decrypt them, to know
    * how many more bytes there are in the packet.
    */
 
-  res = sftp_ssh2_packet_sock_read(sockfd, buf, blocksz, 0);
-  if (res < 0)
+  if (pkt->aad_len > 0) {
+    /* If we are dealing with an authenticated encryption algorithm, read
+     * enough to include the AAD and the first block.
+     */
+    readsz += pkt->aad_len;
+  }
+
+  res = sftp_ssh2_packet_sock_read(sockfd, buf, readsz, 0);
+  if (res < 0) {
     return res;
+  }
 
   len = res;
-  if (sftp_cipher_read_data(pkt->pool, buf, blocksz, &ptr, &len) < 0) {
+  if (sftp_cipher_read_data(pkt, buf, readsz, &ptr, &len) < 0) {
     return -1;
   }
 
@@ -543,10 +551,13 @@ static int read_packet_payload(int sockfd, struct ssh2_packet *pkt,
   unsigned char *ptr = NULL;
   int res;
   uint32_t payload_len = pkt->payload_len, padding_len = pkt->padding_len,
-    data_len, len = 0;
+    auth_len = 0, data_len, len = 0;
 
-  if (payload_len + padding_len == 0)
+  auth_len = sftp_cipher_get_read_auth_size();
+
+  if (payload_len + padding_len + auth_len == 0) {
     return 0;
+  }
 
   if (payload_len > 0) {
     /* We don't want to reject the packet outright yet; but we can ignore
@@ -616,9 +627,10 @@ static int read_packet_payload(int sockfd, struct ssh2_packet *pkt,
     }
   }
 
-  data_len = payload_len + padding_len;
-  if (data_len == 0)
+  data_len = payload_len + padding_len + auth_len;
+  if (data_len == 0) {
     return 0;
+  }
 
   if (data_len > bufsz) {
     (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
@@ -634,8 +646,7 @@ static int read_packet_payload(int sockfd, struct ssh2_packet *pkt,
   }
  
   len = res;
-  if (sftp_cipher_read_data(pkt->pool, buf + *offset, data_len, &ptr,
-      &len) < 0) {
+  if (sftp_cipher_read_data(pkt, buf + *offset, data_len, &ptr, &len) < 0) {
     return -1;
   }
 
@@ -654,12 +665,14 @@ static int read_packet_mac(int sockfd, struct ssh2_packet *pkt,
   int res;
   uint32_t mac_len = pkt->mac_len;
 
-  if (mac_len == 0)
+  if (mac_len == 0) {
     return 0;
+  }
 
   res = sftp_ssh2_packet_sock_read(sockfd, buf, mac_len, 0);
-  if (res < 0)
+  if (res < 0) {
     return res;
+  }
 
   pkt->mac = palloc(pkt->pool, pkt->mac_len);
   memmove(pkt->mac, buf, res);
@@ -680,6 +693,8 @@ struct ssh2_packet *sftp_ssh2_packet_create(pool *p) {
   pkt->payload = NULL;
   pkt->payload_len = 0;
   pkt->padding_len = 0;
+  pkt->aad = NULL;
+  pkt->aad_len = 0;
 
   return pkt;
 }
@@ -841,12 +856,20 @@ int sftp_ssh2_packet_set_client_alive(unsigned int max, unsigned int interval) {
 
 int sftp_ssh2_packet_read(int sockfd, struct ssh2_packet *pkt) {
   unsigned char buf[SFTP_MAX_PACKET_LEN];
-  size_t buflen, bufsz = SFTP_MAX_PACKET_LEN, offset = 0;
+  size_t buflen, bufsz = SFTP_MAX_PACKET_LEN, offset = 0, auth_len = 0;
 
   pr_session_set_idle();
 
-  while (1) {
-    uint32_t req_blocksz;
+  auth_len = sftp_cipher_get_read_auth_size();
+  if (auth_len > 0) {
+    /* Authenticated encryption ciphers do not encrypt the packet length,
+     * and instead use it as Additional Authenticated Data (AAD).
+     */
+    pkt->aad_len = sizeof(uint32_t);
+  }
+
+  while (TRUE) {
+    uint32_t encrypted_datasz, req_blocksz;
     int res;
 
     pr_signals_handle();
@@ -921,6 +944,7 @@ int sftp_ssh2_packet_read(int sockfd, struct ssh2_packet *pkt) {
     }
 
     pkt->seqno = packet_client_seqno;
+
     if (sftp_mac_read_data(pkt) < 0) {
       (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
         "unable to verify MAC on packet from socket %d", sockfd);
@@ -987,13 +1011,18 @@ int sftp_ssh2_packet_read(int sockfd, struct ssh2_packet *pkt) {
      * value.
      */
 
-    req_blocksz = MAX(8, sftp_cipher_get_block_size());
+    req_blocksz = MAX(8, sftp_cipher_get_read_block_size());
+    encrypted_datasz = pkt->packet_len + sizeof(uint32_t);
 
-    if ((pkt->packet_len + sizeof(uint32_t)) % req_blocksz != 0) {
+    /* If AAD bytes are present, they are not encrypted. */
+    if (pkt->aad_len > 0) {
+      encrypted_datasz -= pkt->aad_len;
+    }
+
+    if (encrypted_datasz % req_blocksz != 0) {
       (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
         "packet length (%lu) not a multiple of the required block size (%lu)",
-        (unsigned long) pkt->packet_len + sizeof(uint32_t),
-        (unsigned long) req_blocksz);
+        (unsigned long) encrypted_datasz, (unsigned long) req_blocksz);
       read_packet_discard(sockfd);
       return -1;
     }
@@ -1062,7 +1091,7 @@ static int write_packet_padding(struct ssh2_packet *pkt) {
   uint32_t packet_len = 0;
   size_t blocksz;
 
-  blocksz = sftp_cipher_get_block_size();
+  blocksz = sftp_cipher_get_write_block_size();
 
   /* RFC 4253, section 6, says that the random padding is calculated
    * as follows:
@@ -1082,6 +1111,12 @@ static int write_packet_padding(struct ssh2_packet *pkt) {
    */
 
   packet_len = sizeof(uint32_t) + sizeof(char) + pkt->payload_len;
+  if (pkt->aad_len > 0) {
+    /* Packet length is not encrypted for encrypted authentication, or
+     * Encrypt-Then-MAC modes.
+     */
+    packet_len -= pkt->aad_len;
+  }
 
   pkt->padding_len = (char) (blocksz - (packet_len % blocksz));
   if (pkt->padding_len < 4) {
@@ -1109,7 +1144,7 @@ static unsigned int packet_niov = 0;
 int sftp_ssh2_packet_send(int sockfd, struct ssh2_packet *pkt) {
   unsigned char buf[SFTP_MAX_PACKET_LEN * 2], msg_type;
   size_t buflen = 0, bufsz = SFTP_MAX_PACKET_LEN;
-  uint32_t packet_len = 0;
+  uint32_t packet_len = 0, auth_len = 0;
   int res, write_len = 0, block_alarms = FALSE;
 
   /* No interruptions, please.  If, for example, we are interrupted here
@@ -1124,6 +1159,14 @@ int sftp_ssh2_packet_send(int sockfd, struct ssh2_packet *pkt) {
 
   if (block_alarms == TRUE) {
     pr_alarms_block();
+  }
+
+  auth_len = sftp_cipher_get_write_auth_size();
+  if (auth_len > 0) {
+    /* Authenticated encryption ciphers do not encrypt the packet length,
+     * and instead use it as Additional Authenticated Data (AAD).
+     */
+    pkt->aad_len = sizeof(uint32_t);
   }
 
   /* Clear the iovec array before sending the data, if possible. */
@@ -1194,12 +1237,25 @@ int sftp_ssh2_packet_send(int sockfd, struct ssh2_packet *pkt) {
       packet_niov++;
     }
 
+    if (pkt->aad_len > 0) {
+      pr_trace_msg(trace_channel, 20, "sending %lu bytes of packet AAD data",
+        (unsigned long) pkt->aad_len);
+      packet_iov[packet_niov].iov_base = (void *) pkt->aad;
+      packet_iov[packet_niov].iov_len = pkt->aad_len;
+      write_len += packet_iov[packet_niov].iov_len;
+      packet_niov++;
+    }
+
+    pr_trace_msg(trace_channel, 20, "sending %lu bytes of packet payload data",
+      (unsigned long) buflen);
     packet_iov[packet_niov].iov_base = (void *) buf;
     packet_iov[packet_niov].iov_len = buflen;
     write_len += packet_iov[packet_niov].iov_len;
     packet_niov++;
 
     if (pkt->mac_len > 0) {
+      pr_trace_msg(trace_channel, 20, "sending %lu bytes of packet MAC data",
+        (unsigned long) pkt->mac_len);
       packet_iov[packet_niov].iov_base = (void *) pkt->mac;
       packet_iov[packet_niov].iov_len = pkt->mac_len;
       write_len += packet_iov[packet_niov].iov_len;
@@ -1522,7 +1578,6 @@ int sftp_ssh2_packet_handle(void) {
   int res;
 
   pkt = sftp_ssh2_packet_create(sftp_pool);
-
   res = sftp_ssh2_packet_read(sftp_conn->rfd, pkt);
   if (res < 0) {
     SFTP_DISCONNECT_CONN(SFTP_SSH2_DISCONNECT_BY_APPLICATION, NULL);

@@ -2803,7 +2803,7 @@ static struct openssh_cipher *get_openssh_cipher(const char *name) {
    * implementation.
    */
 
-  cipher->cipher = sftp_crypto_get_cipher(name, NULL, NULL);
+  cipher->cipher = sftp_crypto_get_cipher(name, NULL, NULL, NULL);
   if (cipher->cipher == NULL) {
     errno = ENOSYS;
     return NULL;
