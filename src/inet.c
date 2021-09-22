@@ -264,7 +264,8 @@ static conn_t *init_conn(pool *p, int fd, const pr_netaddr_t *bind_addr,
 #if defined(SOLARIS2) || defined(FREEBSD2) || defined(FREEBSD3) || \
     defined(FREEBSD4) || defined(FREEBSD5) || defined(FREEBSD6) || \
     defined(FREEBSD7) || defined(FREEBSD8) || defined(FREEBSD9) || \
-    defined(FREEBSD10) || defined(FREEBSD11) || \
+    defined(FREEBSD10) || defined(FREEBSD11) || defined(FREEBSD12) || \
+    defined(FREEBSD13) || \
     defined(__OpenBSD__) || defined(__NetBSD__) || \
     defined(DARWIN6) || defined(DARWIN7) || defined(DARWIN8) || \
     defined(DARWIN9) || defined(DARWIN10) || defined(DARWIN11) || \
@@ -291,7 +292,8 @@ static conn_t *init_conn(pool *p, int fd, const pr_netaddr_t *bind_addr,
 #if defined(SOLARIS2) || defined(FREEBSD2) || defined(FREEBSD3) || \
     defined(FREEBSD4) || defined(FREEBSD5) || defined(FREEBSD6) || \
     defined(FREEBSD7) || defined(FREEBSD8) || defined(FREEBSD9) || \
-    defined(FREEBSD10) || defined(FREEBSD11) || \
+    defined(FREEBSD10) || defined(FREEBSD11) || defined(FREEBSD12) || \
+    defined(FREEBSD13) || \
     defined(__OpenBSD__) || defined(__NetBSD__) || \
     defined(DARWIN6) || defined(DARWIN7) || defined(DARWIN8) || \
     defined(DARWIN9) || defined(DARWIN10) || defined(DARWIN11) || \
