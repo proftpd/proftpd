@@ -22,6 +22,8 @@
 - Bug 3759 - Support AES Galois Counter Mode (AES-GCM) in SSH.  Support for
   the "aes128-gcm@openssh.com" and "aes256-gcm@openssh.com" ciphers has been
   added to mod_sftp.
+- Issue 1333 - Implement an LDAPConnectTimeout directive, to configure the
+  timeout used when connecting to LDAP servers.
 
 1.3.8rc2 - Released 29-Aug-2021
 --------------------------------
