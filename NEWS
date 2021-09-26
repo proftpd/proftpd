@@ -24,6 +24,7 @@
   added to mod_sftp.
 - Issue 1333 - Implement an LDAPConnectTimeout directive, to configure the
   timeout used when connecting to LDAP servers.
+- Issue 1330 - Implement OpenSSH "Encrypt-Then-MAC" (ETM) algorithm extensions.
 
 1.3.8rc2 - Released 29-Aug-2021
 --------------------------------

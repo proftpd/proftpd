@@ -26,6 +26,9 @@ ChangeLog files.
     SFTPCiphers
       "aes128-gcm@openssh.com", "aes256-gcm@openssh.com" (Bug #3759)
 
+    SFTPDigests
+      "hmac-md5-etm@openssh.com", ... (Issue #1330)
+
     SFTPOptions NoHostkeyRotation
 
 

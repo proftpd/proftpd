@@ -611,11 +611,17 @@ MAC digest algorithms that <code>mod_sftp</code> should use.  The current list
 of supported MAC algorithms is:
 <ul>
   <li>hmac-sha2-256
+  <li>hmac-sha2-256-etm@openssh.com
   <li>hmac-sha2-512
+  <li>hmac-sha2-512-etm@openssh.com
   <li>hmac-sha1
+  <li>hmac-sha1-etm@openssh.com
   <li>hmac-sha1-96
+  <li>hmac-sha1-96-etm@openssh.com
   <li>umac-64@openssh.com
+  <li>umac-64-etm@openssh.com
   <li>umac-128@openssh.com
+  <li>umac-128-etm@openssh.com
 </ul>
 By default, all of the above MAC algorithms are presented to the client,
 in the above order, during the key exchange.  <b>Note</b> that some algorithms
@@ -628,6 +634,7 @@ presented to clients by default.  These algorithms must be <em>explicitly</em>
 configured via <code>SFTPDigests</code> to be available for use by clients:
 <ul>
   <li>hmac-md5
+  <li>hmac-md5-etm@openssh.com
   <li>hmac-md5-96
   <li>hmac-ripemd160
 </ul>
@@ -646,14 +653,20 @@ For comparison, the MAC algorithms used by OpenSSH (depending on the version)
 by default are:
 <ul>
   <li>hmac-md5
+  <li>hmac-md5-etm@openssh.com
   <li>hmac-sha1
+  <li>hmac-sha1-etm@openssh.com
   <li>hmac-sha2-256
+  <li>hmac-sha2-256-etm@openssh.com
   <li>hmac-sha2-512
+  <li>hmac-sha2-512-etm@openssh.com
   <li>hmac-ripemd160
   <li>hmac-sha1-96
   <li>hmac-md5-96
   <li>umac-64@openssh.com
+  <li>umac-64-etm@openssh.com
   <li>umac-128@openssh.com
+  <li>umac-128-etm@openssh.com
 </ul>
 Thus if you wanted to configure <code>mod_sftp</code> to present the same
 MAC algorithms as OpenSSH, you would use:
