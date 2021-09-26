@@ -16,6 +16,11 @@ ChangeLog files.
     "hostkeys-prove-00@openssh.com" extensions.
 
 
+  + New Directives
+
+    LDAPConnectTimeout (Issue #1333)
+
+
   + Changed Directives
 
     SFTPCiphers
