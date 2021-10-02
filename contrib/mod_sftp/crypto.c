@@ -169,20 +169,28 @@ static struct sftp_digest digests[] = {
    */
 #ifdef HAVE_SHA256_OPENSSL
   { "hmac-sha2-256",	"sha256",		EVP_sha256,	0, TRUE, TRUE },
+  { "hmac-sha2-256-etm@openssh.com", "sha256",	EVP_sha256,	0, TRUE, TRUE },
 #endif /* SHA256 support in OpenSSL */
 #ifdef HAVE_SHA512_OPENSSL
   { "hmac-sha2-512",	"sha512",		EVP_sha512,	0, TRUE, TRUE },
+  { "hmac-sha2-512-etm@openssh.com", "sha512",	EVP_sha512,	0, TRUE, TRUE },
 #endif /* SHA512 support in OpenSSL */
   { "hmac-sha1",	"sha1",		EVP_sha1,	0, 	TRUE, TRUE },
+  { "hmac-sha1-etm@openssh.com", "sha1",EVP_sha1,	0, 	TRUE, TRUE },
   { "hmac-sha1-96",	"sha1",		EVP_sha1,	12,	TRUE, TRUE },
+  { "hmac-sha1-96-etm@openssh.com", "sha1", EVP_sha1,	12, 	TRUE, TRUE },
   { "hmac-md5",		"md5",		EVP_md5,	0,	FALSE, FALSE },
+  { "hmac-md5-etm@openssh.com", "md5",	EVP_md5,	0, 	FALSE, TRUE },
   { "hmac-md5-96",	"md5",		EVP_md5,	12,	FALSE, FALSE },
+  { "hmac-md5-96-etm@openssh.com", "md5", EVP_md5,	12, 	FALSE, TRUE },
 #if !defined(OPENSSL_NO_RIPEMD)
   { "hmac-ripemd160",	"rmd160",	EVP_ripemd160,	0,	FALSE, FALSE },
 #endif /* !OPENSSL_NO_RIPEMD */
 #if OPENSSL_VERSION_NUMBER > 0x000907000L
   { "umac-64@openssh.com", NULL,	NULL,		8,	TRUE, FALSE },
+  { "umac-64-etm@openssh.com", NULL,	NULL,		8,	TRUE, FALSE },
   { "umac-128@openssh.com", NULL,	NULL,		16,	TRUE, FALSE },
+  { "umac-128-etm@openssh.com", NULL,	NULL,		16,	TRUE, FALSE },
 #endif /* OpenSSL-0.9.7 or later */
   { "none",		"null",		EVP_md_null,	0,	FALSE, TRUE },
   { NULL, NULL, NULL, 0, FALSE, FALSE }
@@ -1046,10 +1054,12 @@ const EVP_MD *sftp_crypto_get_digest(const char *name, uint32_t *mac_len) {
       const EVP_MD *digest = NULL;
 
 #if OPENSSL_VERSION_NUMBER > 0x000907000L
-      if (strncmp(name, "umac-64@openssh.com", 12) == 0) {
+      if (strcmp(name, "umac-64@openssh.com") == 0 ||
+          strcmp(name, "umac-64-etm@openssh.com") == 0) {
         digest = get_umac64_digest();
 
-      } else if (strncmp(name, "umac-128@openssh.com", 13) == 0) {
+      } else if (strcmp(name, "umac-128@openssh.com") == 0 ||
+                 strcmp(name, "umac-128-etm@openssh.com") == 0) {
         digest = get_umac128_digest();
 #else
       if (FALSE) {
@@ -1237,7 +1247,7 @@ const char *sftp_crypto_get_kexinit_digest_list(pool *p) {
           }
 #endif /* OPENSSL_FIPS */
 
-          if (strncmp(c->argv[i], "none", 5) != 0) {
+          if (strcmp(c->argv[i], "none") != 0) {
             if (digests[j].openssl_name != NULL &&
                 EVP_get_digestbyname(digests[j].openssl_name) != NULL) {
               res = pstrcat(p, res, *res ? "," : "",
@@ -1245,8 +1255,10 @@ const char *sftp_crypto_get_kexinit_digest_list(pool *p) {
 
             } else {
               /* The umac-64/umac-128 digests are special cases. */
-              if (strncmp(digests[j].name, "umac-64@openssh.com", 12) == 0 ||
-                  strncmp(digests[j].name, "umac-128@openssh.com", 13) == 0) {
+              if (strcmp(digests[j].name, "umac-64@openssh.com") == 0 ||
+                  strcmp(digests[j].name, "umac-64-etm@openssh.com") == 0 ||
+                  strcmp(digests[j].name, "umac-128@openssh.com") == 0 ||
+                  strcmp(digests[j].name, "umac-128-etm@openssh.com") == 0) {
                 res = pstrcat(p, res, *res ? "," : "",
                   pstrdup(p, digests[j].name), NULL);
 
@@ -1284,7 +1296,7 @@ const char *sftp_crypto_get_kexinit_digest_list(pool *p) {
           }
 #endif /* OPENSSL_FIPS */
 
-        if (strncmp(digests[i].name, "none", 5) != 0) {
+        if (strcmp(digests[i].name, "none") != 0) {
           if (digests[i].openssl_name != NULL &&
               EVP_get_digestbyname(digests[i].openssl_name) != NULL) {
             res = pstrcat(p, res, *res ? "," : "",
@@ -1292,8 +1304,10 @@ const char *sftp_crypto_get_kexinit_digest_list(pool *p) {
 
           } else {
             /* The umac-64/umac-128 digests are special cases. */
-            if (strncmp(digests[i].name, "umac-64@openssh.com", 12) == 0 ||
-                strncmp(digests[i].name, "umac-128@openssh.com", 13) == 0) {
+            if (strcmp(digests[i].name, "umac-64@openssh.com") == 0 ||
+                strcmp(digests[i].name, "umac-64-etm@openssh.com") == 0 ||
+                strcmp(digests[i].name, "umac-128@openssh.com") == 0 ||
+                strcmp(digests[i].name, "umac-128-etm@openssh.com") == 0) {
               res = pstrcat(p, res, *res ? "," : "",
                 pstrdup(p, digests[i].name), NULL);
 

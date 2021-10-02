@@ -479,7 +479,7 @@ int sftp_cipher_set_read_key(pool *p, const EVP_MD *hash, const BIGNUM *k,
   pctx = read_ctxs[read_cipher_idx];
 
   bufsz = buflen = SFTP_CIPHER_BUFSZ;
-  ptr = buf = sftp_msg_getbuf(p, bufsz);
+  ptr = buf = palloc(p, bufsz);
 
   /* Need to use SSH2-style format of K for the IV and key. */
   sftp_msg_write_mpint(&buf, &buflen, k);
@@ -626,38 +626,31 @@ int sftp_cipher_read_data(struct ssh2_packet *pkt, unsigned char *data,
 
       /* Allocate a buffer that's large enough. */
       bufsz = (data_len + read_blocksz - 1);
-      ptr = buf2 = palloc(pkt->pool, bufsz);
+      ptr = buf2 = pcalloc(pkt->pool, bufsz);
 
     } else {
       ptr = buf2 = *buf;
     }
 
-    if (pkt->packet_len == 0 &&
-        auth_len > 0) {
-      unsigned char prev_iv[1];
-
+    if (pkt->packet_len == 0) {
+      if (auth_len > 0) {
 #if defined(EVP_CTRL_GCM_IV_GEN)
-      /* Increment the IV. */
-      if (EVP_CIPHER_CTX_ctrl(pctx, EVP_CTRL_GCM_IV_GEN, 1, prev_iv) != 1) {
-        (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
-          "error incrementing %s IV data for client: %s", cipher->algo,
-          sftp_crypto_get_errors());
-        errno = EIO;
-        return -1;
-      }
-#endif
+        unsigned char prev_iv[1];
 
-      if (pkt->aad_len > 0 &&
-          pkt->aad == NULL) {
-        if (EVP_Cipher(pctx, NULL, data, pkt->aad_len) < 0) {
+        /* Increment the IV. */
+        if (EVP_CIPHER_CTX_ctrl(pctx, EVP_CTRL_GCM_IV_GEN, 1, prev_iv) != 1) {
           (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
-            "error setting %s AAD data for client: %s", cipher->algo,
+            "error incrementing %s IV data for client: %s", cipher->algo,
             sftp_crypto_get_errors());
           errno = EIO;
           return -1;
         }
+#endif
+      }
 
-        pkt->aad = palloc(pkt->pool, pkt->aad_len);
+      if (pkt->aad_len > 0 &&
+          pkt->aad == NULL) {
+        pkt->aad = pcalloc(pkt->pool, pkt->aad_len);
         memcpy(pkt->aad, data, pkt->aad_len);
         memcpy(ptr, data, pkt->aad_len);
 
@@ -668,6 +661,16 @@ int sftp_cipher_read_data(struct ssh2_packet *pkt, unsigned char *data,
         data += pkt->aad_len;
         data_len -= pkt->aad_len;
         output_buflen -= pkt->aad_len;
+
+        if (auth_len > 0) {
+          if (EVP_Cipher(pctx, NULL, pkt->aad, pkt->aad_len) < 0) {
+            (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
+              "error setting %s AAD data for client: %s", cipher->algo,
+              sftp_crypto_get_errors());
+            errno = EIO;
+            return -1;
+          }
+        }
       }
     }
 
@@ -819,7 +822,7 @@ int sftp_cipher_set_write_key(pool *p, const EVP_MD *hash, const BIGNUM *k,
   pctx = write_ctxs[write_cipher_idx];
 
   bufsz = buflen = SFTP_CIPHER_BUFSZ;
-  ptr = buf = sftp_msg_getbuf(p, bufsz);
+  ptr = buf = palloc(p, bufsz);
 
   /* Need to use SSH2-style format of K for the IV and key. */
   sftp_msg_write_mpint(&buf, &buflen, k);
@@ -964,15 +967,18 @@ int sftp_cipher_write_data(struct ssh2_packet *pkt, unsigned char *buf,
        * Encrypt-Then-MAC modes.
        */
       datasz -= pkt->aad_len;
+
+      /* And, for ETM modes, we may need a little more space. */
+      datasz += sftp_cipher_get_write_block_size();
     }
 
     datalen = datasz;
     ptr = data = palloc(pkt->pool, datasz);
 
     if (auth_len > 0) {
+#if defined(EVP_CTRL_GCM_IV_GEN)
       unsigned char prev_iv[1];
 
-#if defined(EVP_CTRL_GCM_IV_GEN)
       /* Increment the IV. */
       if (EVP_CIPHER_CTX_ctrl(pctx, EVP_CTRL_GCM_IV_GEN, 1, prev_iv) != 1) {
         (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
@@ -982,14 +988,17 @@ int sftp_cipher_write_data(struct ssh2_packet *pkt, unsigned char *buf,
         return -1;
       }
 #endif
+    }
 
-      if (pkt->aad_len > 0) {
-        uint32_t packet_len;
+    if (pkt->aad_len > 0 &&
+        pkt->aad == NULL) {
+      uint32_t packet_len;
 
-        packet_len = htonl(pkt->packet_len);
-        pkt->aad = palloc(pkt->pool, pkt->aad_len);
-        memcpy(pkt->aad, &packet_len, pkt->aad_len);
+      packet_len = htonl(pkt->packet_len);
+      pkt->aad = pcalloc(pkt->pool, pkt->aad_len);
+      memcpy(pkt->aad, &packet_len, pkt->aad_len);
 
+      if (auth_len > 0) {
         if (EVP_Cipher(pctx, NULL, pkt->aad, pkt->aad_len) < 0) {
           (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
             "error setting %s AAD (%lu bytes) for client: %s", cipher->algo,
