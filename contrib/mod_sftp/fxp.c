@@ -12461,7 +12461,7 @@ static int fxp_handle_stat(struct fxp_packet *fxp) {
   cmd_name = cmd->argv[0];
   pr_cmd_set_name(cmd, "STAT");
 
-  if (!dir_check(fxp->pool, cmd, G_READ, path, NULL)) {
+  if (!dir_check(fxp->pool, cmd, G_NONE, path, NULL)) {
     uint32_t status_code = SSH2_FX_PERMISSION_DENIED;
 
     pr_cmd_set_name(cmd, cmd_name);
