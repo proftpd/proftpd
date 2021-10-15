@@ -1,6 +1,6 @@
 .TH proftpd 8 "July 2000"
 .\" Process with
-.\" groff -man -Tascii proftpd.1 
+.\" groff -man -Tascii proftpd.1
 .\"
 .SH NAME
 proftpd \- Professional configurable, secure file transfer protocol server
@@ -17,7 +17,7 @@ proftpd \- Professional configurable, secure file transfer protocol server
 ]
 .SH DESCRIPTION
 .B proftpd
-is the Professional File Transfer Protocol (FTP) server daemon.  The server 
+is the Professional File Transfer Protocol (FTP) server daemon.  The server
 may be invoked by the Internet "super-server" inetd(8) each time a
 connection to the FTP service is made, or alternatively it can be run as a
 standalone daemon.
@@ -47,12 +47,13 @@ Display a short usage description, including all available options.
 Runs the proftpd process in standalone mode (must be configured as such in
 the configuration file), but does not background the process or
 disassociate it from the controlling tty.  Additionally, all output (log
-or debug messages) are sent to stderr, rather than the syslog mechanism. 
-Most often used with the \fB-d option\fP for debugging. 
+or debug messages) are sent to stderr, rather than the syslog mechanism.
+Most often used with the \fB-d option\fP for debugging.
 .TP
 .B \-q,\--quiet
 Quiet mode; don't send logging information to standard error when running
 with the \fB-n option\fP.
+Logs are directed to the configured log output (syslog or logfile) instead.
 .TP
 .B \-v,\--version
 Displays the version number of ProFTPD to stdout.
@@ -140,7 +141,7 @@ can be found on
 .PP
 Full documentation on ProFTPD, including configuration and FAQs, is available at
 .BR http://www.proftpd.org/
-.PP 
+.PP
 For help/support, try the ProFTPD mailing lists, detailed on
 .BR http://www.proftpd.org/lists.html
 .PP
