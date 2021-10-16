@@ -89,7 +89,7 @@ struct listener_rec {
 
 conn_t *pr_ipbind_get_listening_conn(server_rec *server,
     const pr_netaddr_t *addr, unsigned int port) {
-  conn_t *l;
+  conn_t *l, *sl;
   pool *p;
   struct listener_rec *lr;
 
@@ -153,9 +153,15 @@ conn_t *pr_ipbind_get_listening_conn(server_rec *server,
     return NULL;
   }
 
-  /* Inform any interested listeners that this socket was opened. */
+  /* Inform any interested listeners that this socket was opened.  In order
+   * to convey the discovered conn_t `l` to the event listener, we set it
+   * on the server `s` temporarily.
+   */
+  sl = server->listen;
+  server->listen = l;
   pr_inet_generate_socket_event("core.ctrl-listen", server, l->local_addr,
     l->listen_fd);
+  server->listen = sl;
 
   lr = pcalloc(p, sizeof(struct listener_rec));
   lr->pool = p;

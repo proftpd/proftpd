@@ -1124,8 +1124,9 @@ MODRET set_socketoptions(cmd_rec *cmd) {
   register unsigned int i = 0;
 
   /* Make sure we have the right number of parameters. */
-  if ((cmd->argc-1) % 2 != 0)
+  if ((cmd->argc - 1) % 2 != 0) {
    CONF_ERROR(cmd, "bad number of parameters");
+  }
 
   CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL);
 
@@ -1251,6 +1252,19 @@ MODRET set_socketoptions(cmd_rec *cmd) {
       } else {
         cmd->server->tcp_keepalive->keepalive_enabled = b;
       }
+
+      /* Don't forget to increment the iterator. */
+      i++;
+
+    } else if (strcasecmp(cmd->argv[i], "reuseport") == 0) {
+      int b;
+
+      b = get_boolean(cmd, i + 1);
+      if (b == -1) {
+        CONF_ERROR(cmd, "reuseport must have Boolean parameter");
+      }
+
+      cmd->server->tcp_reuse_port = b;
 
       /* Don't forget to increment the iterator. */
       i++;

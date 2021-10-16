@@ -151,6 +151,7 @@ int pr_inet_set_nonblock(pool *, conn_t *);
 int pr_inet_set_proto_cork(int, int);
 int pr_inet_set_proto_nodelay(pool *, conn_t *, int);
 int pr_inet_set_proto_opts(pool *, conn_t *, int, int, int, int);
+int pr_inet_set_reuse_port(pool *p, conn_t *conn, int reuse_port);
 int pr_inet_set_socket_opts(pool *, conn_t *, int, int, struct tcp_keepalive *);
 int pr_inet_set_socket_opts2(pool *, conn_t *, int, int, struct tcp_keepalive *,
   int);

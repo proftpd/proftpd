@@ -36,6 +36,8 @@ ChangeLog files.
 
     SFTPOptions NoHostkeyRotation
 
+    SocketOptions reuseport
+
 
 1.3.8rc2
 ---------
