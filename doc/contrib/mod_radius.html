@@ -608,8 +608,8 @@ use only, and should be removed from any production configuration.
 <b>Frequently Asked Questions</b><br>
 
 <p><a name="SELinuxUDP">
-<font color=red>Question</font>: Why is ProFTPD trying open UDP sockets,
-which are blocked by my SELinux policies?<br>
+<font color=red>Question</font>: Why is ProFTPD trying to open UDP sockets
+that are blocked by my SELinux policies?<br>
 <font color=blue>Answer</font>: The RADIUS protocol uses UDP, and thus using
 the <code>mod_radius</code> module means that ProFTPD will open UDP sockets.
 In terms of SELinux policies, RADIUS is very similar to NIS in its use of
