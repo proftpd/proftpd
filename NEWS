@@ -25,6 +25,8 @@
 - Issue 1333 - Implement an LDAPConnectTimeout directive, to configure the
   timeout used when connecting to LDAP servers.
 - Issue 1330 - Implement OpenSSH "Encrypt-Then-MAC" (ETM) algorithm extensions.
+- Issue 1346 - Implement AllowForeignAddress class matching for passive data
+  transfers.
 
 1.3.8rc2 - Released 29-Aug-2021
 --------------------------------
