@@ -19,7 +19,7 @@
 --------------------------------
 - Issue 1321 - Crash with long lines in AuthGroupFile due to large realloc(3).
 - Issue 1325 - NLST does not behave consistently for relative paths.
-- Issue 1364 - Implement AllowForeignAddress class matching for passive data
+- Issue 1346 - Implement AllowForeignAddress class matching for passive data
   transfers.
 
 1.3.7c - Released 29-Aug-2021
