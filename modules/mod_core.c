@@ -1549,19 +1549,22 @@ MODRET set_group(cmd_rec *cmd) {
 MODRET set_trace(cmd_rec *cmd) {
 #ifdef PR_USE_TRACE
   register unsigned int i;
-  int per_session = FALSE;
+  int per_session = FALSE, ctx = 0;
   unsigned int idx = 1;
 
   if (cmd->argc-1 < 1) {
     CONF_ERROR(cmd, "wrong number of parameters");
   }
-  CHECK_CONF(cmd, CONF_ROOT);
+  CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL);
+
+  ctx = (cmd->config && cmd->config->config_type != CONF_PARAM ?
+     cmd->config->config_type : cmd->server->config_type ?
+     cmd->server->config_type : CONF_ROOT);
 
   /* Look for the optional "session" keyword, which will indicate that these
    * Trace settings are to be applied to a session process only.
    */
   if (strcasecmp(cmd->argv[1], "session") == 0) {
-
     /* If this is the only parameter, it's a config error. */
     if (cmd->argc == 2) {
       CONF_ERROR(cmd, "wrong number of parameters");
@@ -1569,6 +1572,15 @@ MODRET set_trace(cmd_rec *cmd) {
 
     per_session = TRUE;
     idx = 2;
+  }
+
+  /* If this directive appears in a <VirtualHost> or <Global> context,
+   * automatically handle it as if the "session" keyword has been used.
+   */
+
+  if ((ctx & CONF_VIRTUAL) ||
+      (ctx & CONF_GLOBAL)) {
+    per_session = TRUE;
   }
 
   if (per_session == FALSE) {
@@ -1608,7 +1620,7 @@ MODRET set_trace(cmd_rec *cmd) {
      */
 
     c = add_config_param(cmd->argv[0], 0);
-    c->argc = cmd->argc - 2;
+    c->argc = cmd->argc - idx;
     c->argv = pcalloc(c->pool, ((c->argc + 1) * sizeof(void *))); 
 
     for (i = idx; i < cmd->argc; i++) {
@@ -6878,8 +6890,7 @@ static int core_sess_init(void) {
 
   /* Check for configured SetEnvs. */
   c = find_config(main_server->conf, CONF_PARAM, "SetEnv", FALSE);
-
-  while (c) {
+  while (c != NULL) {
     if (pr_env_set(session.pool, c->argv[0], c->argv[1]) < 0) {
       pr_log_debug(DEBUG1, "unable to set environment variable '%s': %s",
         (char *) c->argv[0], strerror(errno));
@@ -6893,8 +6904,7 @@ static int core_sess_init(void) {
 
   /* Check for configured UnsetEnvs. */
   c = find_config(main_server->conf, CONF_PARAM, "UnsetEnv", FALSE);
-
-  while (c) {
+  while (c != NULL) {
     if (pr_env_unset(session.pool, c->argv[0]) < 0) {
       pr_log_debug(DEBUG1, "unable to unset environment variable '%s': %s",
         (char *) c->argv[0], strerror(errno));
