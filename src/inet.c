@@ -1599,29 +1599,41 @@ conn_t *pr_inet_accept(pool *p, conn_t *d, conn_t *c, int rfd, int wfd,
 
         } else {
           char *class_name;
-          const pr_class_t *cls;
 
+          /* Check the data connection remote address against BOTH the
+           * control connection remote address AND the configured <Class>.
+           */
           class_name = allow_foreign_addr_config->argv[1];
-          cls = pr_class_find(class_name);
-          if (cls != NULL) {
-            if (pr_class_satisfied(p, cls, &na) != TRUE) {
-              pr_log_debug(DEBUG8, "<Class> '%s' not satisfied by foreign "
-                "address '%s'", class_name, pr_netaddr_get_ipstr(&na));
 
-              pr_log_pri(PR_LOG_NOTICE,
-                "SECURITY VIOLATION: Passive connection from foreign IP "
-                "address %s rejected (does not match <Class %s>).",
-                pr_netaddr_get_ipstr(&na), class_name);
+          if (pr_netaddr_cmp(&na, c->remote_addr) != 0) {
+            const pr_class_t *cls;
 
-              (void) close(fd);
-              d->mode = CM_ERROR;
-              d->xerrno = EACCES;
-              return NULL;
+            cls = pr_class_find(class_name);
+            if (cls != NULL) {
+              if (pr_class_satisfied(p, cls, &na) != TRUE) {
+                pr_log_debug(DEBUG8, "<Class> '%s' not satisfied by foreign "
+                  "address '%s'", class_name, pr_netaddr_get_ipstr(&na));
+
+                pr_log_pri(PR_LOG_NOTICE,
+                  "SECURITY VIOLATION: Passive connection from foreign IP "
+                  "address %s rejected (does not match <Class %s>).",
+                  pr_netaddr_get_ipstr(&na), class_name);
+
+                (void) close(fd);
+                d->mode = CM_ERROR;
+                d->xerrno = EACCES;
+                return NULL;
+              }
+
+            } else {
+              pr_log_debug(DEBUG8, "<Class> '%s' not found for filtering "
+                "AllowForeignAddress", class_name);
             }
 
           } else {
-            pr_log_debug(DEBUG8, "<Class> '%s' not found for filtering "
-              "AllowForeignAddress", class_name);
+            pr_log_debug(DEBUG9, "Passive connection from IP address '%s' "
+              "matches control connection address; skipping <Class> '%s'",
+              pr_netaddr_get_ipstr(&na), class_name);
           }
         }
       }

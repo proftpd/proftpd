@@ -592,21 +592,20 @@ EOC
       # class restriction.
 
       my $conn = $client->list_raw();
-      if ($conn) {
-        die("LIST succeeded unexpectedly");
+      unless ($conn) {
+        die("LIST failed: " . $client->response_code() . ' ' .
+          $client->response_msg());
       }
 
-      my $resp_code = $client->response_code();
-      my $resp_msg = $client->response_msg();
+      my $buf;
+      $conn->read($buf, 8192, 30);
+      eval { $conn->close() };
 
-      my $expected = 425;
-      $self->assert($expected == $resp_code,
-        "Expected response code $expected, got $resp_code");
+      my ($resp_code, $resp_msg);
+      $resp_code = $client->response_code();
+      $resp_msg = $client->response_msg();
 
-      $expected = 'Unable to build data connection:';
-      $self->assert(qr/$expected/, $resp_msg,
-        "Expected response message '$expected', got '$resp_msg'");
-
+      $self->assert_transfer_ok($resp_code, $resp_msg);
       $client->quit();
     };
     if ($@) {
@@ -632,7 +631,7 @@ EOC
 
   eval {
     if (open(my $fh, "< $setup->{log_file}")) {
-      my $ok = 0;
+      my $ok = 1;
 
       while (my $line = <$fh>) {
         chomp($line);
@@ -641,8 +640,12 @@ EOC
           print STDERR "$line\n";
         }
 
-        if ($line =~ /SECURITY VIOLATION: Passive connection from foreign IP address \S+ rejected \(does not match <Class \S+>\)/) {
-          $ok = 1;
+        if ($line =~ /SECURITY VIOLATION/) {
+          $ok = 0;
+          last;
+        }
+
+        if ($line =~ /Passive connection from IP address \S+ matches control connection address; skipping <Class> '\S+'/) {
           last;
         }
       }
