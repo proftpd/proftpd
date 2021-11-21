@@ -99,8 +99,8 @@ jobs:
           # for mod_sql_sqlite
           apk add sqlite sqlite-dev
           # NOTE: Alpine does not support mod_wrap, due to lack of tcpwrappers
-          # for PCRE support
-          apk add pcre-dev
+          # for PCRE2 support
+          apk add pcre2-dev
           # for ftptop
           apk add ncurses-dev
           # for zlib support
@@ -154,8 +154,8 @@ jobs:
           yum install -y sqlite-devel
           # for mod_wrap
           yum install -y libnsl2-devel https://pkgs.dyn.su/el8/extras/x86_64/tcp_wrappers-libs-7.6-77.el8.x86_64.rpm https://pkgs.dyn.su/el8/extras/x86_64/tcp_wrappers-devel-7.6-77.el8.x86_64.rpm
-          # for PCRE support
-          yum install -y pcre-devel
+          # for PCRE2 support
+          yum install -y pcre2-devel
           # for ftptop
           yum install -y ncurses-devel
           # for zlib support
@@ -220,8 +220,8 @@ jobs:
           apt-get install -y libsqlite3-dev sqlite3
           # for mod_wrap
           apt-get install -y libwrap0-dev
-          # for PCRE support
-          apt-get install -y libpcre3-dev
+          # for PCRE2 support
+          apt-get install -y libpcre2-dev libpcre2-posix0
           # for ftptop
           apt-get install -y ncurses-dev
           # for zlib support
@@ -261,7 +261,7 @@ jobs:
         env:
           CC: ${{ matrix.compiler }}
         run: |
-          ./configure LIBS="-lodbc -lm -lsubunit -lrt -pthread" --enable-devel=coverage:fortify --enable-ctrls --enable-facl --enable-memcache --enable-nls --enable-pcre --enable-redis --enable-tests --with-modules="${{ env.PROFTPD_MODULES }}"
+          ./configure LIBS="-lodbc -lm -lsubunit -lrt -pthread" --enable-devel=coverage:fortify --enable-ctrls --enable-facl --enable-memcache --enable-nls --enable-pcre2 --enable-redis --enable-tests --with-modules="${{ env.PROFTPD_MODULES }}"
           make
 
       - name: Run unit tests
@@ -277,7 +277,7 @@ jobs:
           CC: ${{ matrix.compiler }}
         run: |
           make clean
-          ./configure LIBS="-lodbc" --enable-ctrls --enable-facl --enable-memcache --enable-nls --enable-pcre --enable-redis --with-modules="${{ env.PROFTPD_MODULES }}"
+          ./configure LIBS="-lodbc" --enable-ctrls --enable-facl --enable-memcache --enable-nls --enable-pcre2 --enable-redis --with-modules="${{ env.PROFTPD_MODULES }}"
           make
           make install
 
@@ -313,7 +313,7 @@ jobs:
           CC: ${{ matrix.compiler }}
         run: |
           make clean
-          ./configure LIBS="-lodbc -lm -lsubunit -lrt -pthread" --enable-devel=fortify --enable-ctrls --enable-dso --enable-facl --enable-memcache --enable-nls --enable-pcre --enable-tests --with-shared="${{ env.PROFTPD_MODULES }}"
+          ./configure LIBS="-lodbc -lm -lsubunit -lrt -pthread" --enable-devel=fortify --enable-ctrls --enable-dso --enable-facl --enable-memcache --enable-nls --enable-pcre2 --enable-tests --with-shared="${{ env.PROFTPD_MODULES }}"
           make
 
       - name: Install with shared modules
@@ -349,7 +349,7 @@ jobs:
         if: ${{ matrix.compiler == 'clang' && matrix.container == 'ubuntu:18.04' }}
         run: |
           make clean
-          ./configure LIBS="-lm -lsubunit -lrt -pthread" --enable-devel --enable-ctrls --enable-facl --enable-memcache --enable-nls --enable-pcre --enable-redis --enable-tests
+          ./configure LIBS="-lm -lsubunit -lrt -pthread" --enable-devel --enable-ctrls --enable-facl --enable-memcache --enable-nls --enable-pcre2 --enable-redis --enable-tests
           make
           export ASAN_SYMBOLIZER_PATH=$(readlink -f $(which llvm-symbolizer-10))
           make check-api

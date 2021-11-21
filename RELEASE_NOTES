@@ -15,6 +15,8 @@ ChangeLog files.
   + Support SSH hostkey rotation via OpenSSH "hostkeys-00@openssh.com" and
     "hostkeys-prove-00@openssh.com" extensions.
 
+  + Support use of PCRE2, rather than PCRE, via the `--enable-pcre2` configure
+    option.
 
   + New Directives
 
@@ -22,6 +24,9 @@ ChangeLog files.
 
 
   + Changed Directives
+
+    RegexOptions
+      Engine PCRE2 (Issue #1353)
 
     SFTPCiphers
       "aes128-gcm@openssh.com", "aes256-gcm@openssh.com" (Bug #3759)

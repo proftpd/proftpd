@@ -967,6 +967,7 @@ enable_nonblocking_log_open
 enable_ncurses
 enable_openssl_api_compat
 enable_pcre
+enable_pcre2
 enable_redis
 enable_force_setpassent
 enable_ipv6
@@ -1666,6 +1667,8 @@ Optional Features:
                           (default=no)
 
   --enable-pcre           enable use of PCRE for POSIX regular expressions
+                          rather than the system library (default=no)
+  --enable-pcre2          enable use of PCRE2 for POSIX regular expressions
                           rather than the system library (default=no)
   --enable-redis          enable support for Redis (default=no)
 
@@ -4617,13 +4620,13 @@ if ${lt_cv_nm_interface+:} false; then :
 else
   lt_cv_nm_interface="BSD nm"
   echo "int some_variable = 0;" > conftest.$ac_ext
-  (eval echo "\"\$as_me:4620: $ac_compile\"" >&5)
+  (eval echo "\"\$as_me:4623: $ac_compile\"" >&5)
   (eval "$ac_compile" 2>conftest.err)
   cat conftest.err >&5
-  (eval echo "\"\$as_me:4623: $NM \\\"conftest.$ac_objext\\\"\"" >&5)
+  (eval echo "\"\$as_me:4626: $NM \\\"conftest.$ac_objext\\\"\"" >&5)
   (eval "$NM \"conftest.$ac_objext\"" 2>conftest.err > conftest.out)
   cat conftest.err >&5
-  (eval echo "\"\$as_me:4626: output\"" >&5)
+  (eval echo "\"\$as_me:4629: output\"" >&5)
   cat conftest.out >&5
   if $GREP 'External.*some_variable' conftest.out > /dev/null; then
     lt_cv_nm_interface="MS dumpbin"
@@ -5829,7 +5832,7 @@ ia64-*-hpux*)
   ;;
 *-*-irix6*)
   # Find out which ABI we are using.
-  echo '#line 5832 "configure"' > conftest.$ac_ext
+  echo '#line 5835 "configure"' > conftest.$ac_ext
   if { { eval echo "\"\$as_me\":${as_lineno-$LINENO}: \"$ac_compile\""; } >&5
   (eval $ac_compile) 2>&5
   ac_status=$?
@@ -7357,11 +7360,11 @@ else
    -e 's:.*FLAGS}\{0,1\} :&$lt_compiler_flag :; t' \
    -e 's: [^ ]*conftest\.: $lt_compiler_flag&:; t' \
    -e 's:$: $lt_compiler_flag:'`
-   (eval echo "\"\$as_me:7360: $lt_compile\"" >&5)
+   (eval echo "\"\$as_me:7363: $lt_compile\"" >&5)
    (eval "$lt_compile" 2>conftest.err)
    ac_status=$?
    cat conftest.err >&5
-   echo "$as_me:7364: \$? = $ac_status" >&5
+   echo "$as_me:7367: \$? = $ac_status" >&5
    if (exit $ac_status) && test -s "$ac_outfile"; then
      # The compiler can only warn and ignore the option if not recognized
      # So say no if there are warnings other than the usual output.
@@ -7696,11 +7699,11 @@ else
    -e 's:.*FLAGS}\{0,1\} :&$lt_compiler_flag :; t' \
    -e 's: [^ ]*conftest\.: $lt_compiler_flag&:; t' \
    -e 's:$: $lt_compiler_flag:'`
-   (eval echo "\"\$as_me:7699: $lt_compile\"" >&5)
+   (eval echo "\"\$as_me:7702: $lt_compile\"" >&5)
    (eval "$lt_compile" 2>conftest.err)
    ac_status=$?
    cat conftest.err >&5
-   echo "$as_me:7703: \$? = $ac_status" >&5
+   echo "$as_me:7706: \$? = $ac_status" >&5
    if (exit $ac_status) && test -s "$ac_outfile"; then
      # The compiler can only warn and ignore the option if not recognized
      # So say no if there are warnings other than the usual output.
@@ -7801,11 +7804,11 @@ else
    -e 's:.*FLAGS}\{0,1\} :&$lt_compiler_flag :; t' \
    -e 's: [^ ]*conftest\.: $lt_compiler_flag&:; t' \
    -e 's:$: $lt_compiler_flag:'`
-   (eval echo "\"\$as_me:7804: $lt_compile\"" >&5)
+   (eval echo "\"\$as_me:7807: $lt_compile\"" >&5)
    (eval "$lt_compile" 2>out/conftest.err)
    ac_status=$?
    cat out/conftest.err >&5
-   echo "$as_me:7808: \$? = $ac_status" >&5
+   echo "$as_me:7811: \$? = $ac_status" >&5
    if (exit $ac_status) && test -s out/conftest2.$ac_objext
    then
      # The compiler can only warn and ignore the option if not recognized
@@ -7856,11 +7859,11 @@ else
    -e 's:.*FLAGS}\{0,1\} :&$lt_compiler_flag :; t' \
    -e 's: [^ ]*conftest\.: $lt_compiler_flag&:; t' \
    -e 's:$: $lt_compiler_flag:'`
-   (eval echo "\"\$as_me:7859: $lt_compile\"" >&5)
+   (eval echo "\"\$as_me:7862: $lt_compile\"" >&5)
    (eval "$lt_compile" 2>out/conftest.err)
    ac_status=$?
    cat out/conftest.err >&5
-   echo "$as_me:7863: \$? = $ac_status" >&5
+   echo "$as_me:7866: \$? = $ac_status" >&5
    if (exit $ac_status) && test -s out/conftest2.$ac_objext
    then
      # The compiler can only warn and ignore the option if not recognized
@@ -10236,7 +10239,7 @@ else
   lt_dlunknown=0; lt_dlno_uscore=1; lt_dlneed_uscore=2
   lt_status=$lt_dlunknown
   cat > conftest.$ac_ext <<_LT_EOF
-#line 10239 "configure"
+#line 10242 "configure"
 #include "confdefs.h"
 
 #if HAVE_DLFCN_H
@@ -10332,7 +10335,7 @@ else
   lt_dlunknown=0; lt_dlno_uscore=1; lt_dlneed_uscore=2
   lt_status=$lt_dlunknown
   cat > conftest.$ac_ext <<_LT_EOF
-#line 10335 "configure"
+#line 10338 "configure"
 #include "confdefs.h"
 
 #if HAVE_DLFCN_H
@@ -13508,11 +13511,11 @@ else
    -e 's:.*FLAGS}\{0,1\} :&$lt_compiler_flag :; t' \
    -e 's: [^ ]*conftest\.: $lt_compiler_flag&:; t' \
    -e 's:$: $lt_compiler_flag:'`
-   (eval echo "\"\$as_me:13511: $lt_compile\"" >&5)
+   (eval echo "\"\$as_me:13514: $lt_compile\"" >&5)
    (eval "$lt_compile" 2>conftest.err)
    ac_status=$?
    cat conftest.err >&5
-   echo "$as_me:13515: \$? = $ac_status" >&5
+   echo "$as_me:13518: \$? = $ac_status" >&5
    if (exit $ac_status) && test -s "$ac_outfile"; then
      # The compiler can only warn and ignore the option if not recognized
      # So say no if there are warnings other than the usual output.
@@ -13607,11 +13610,11 @@ else
    -e 's:.*FLAGS}\{0,1\} :&$lt_compiler_flag :; t' \
    -e 's: [^ ]*conftest\.: $lt_compiler_flag&:; t' \
    -e 's:$: $lt_compiler_flag:'`
-   (eval echo "\"\$as_me:13610: $lt_compile\"" >&5)
+   (eval echo "\"\$as_me:13613: $lt_compile\"" >&5)
    (eval "$lt_compile" 2>out/conftest.err)
    ac_status=$?
    cat out/conftest.err >&5
-   echo "$as_me:13614: \$? = $ac_status" >&5
+   echo "$as_me:13617: \$? = $ac_status" >&5
    if (exit $ac_status) && test -s out/conftest2.$ac_objext
    then
      # The compiler can only warn and ignore the option if not recognized
@@ -13659,11 +13662,11 @@ else
    -e 's:.*FLAGS}\{0,1\} :&$lt_compiler_flag :; t' \
    -e 's: [^ ]*conftest\.: $lt_compiler_flag&:; t' \
    -e 's:$: $lt_compiler_flag:'`
-   (eval echo "\"\$as_me:13662: $lt_compile\"" >&5)
+   (eval echo "\"\$as_me:13665: $lt_compile\"" >&5)
    (eval "$lt_compile" 2>out/conftest.err)
    ac_status=$?
    cat out/conftest.err >&5
-   echo "$as_me:13666: \$? = $ac_status" >&5
+   echo "$as_me:13669: \$? = $ac_status" >&5
    if (exit $ac_status) && test -s out/conftest2.$ac_objext
    then
      # The compiler can only warn and ignore the option if not recognized
@@ -16316,7 +16319,7 @@ else
   lt_dlunknown=0; lt_dlno_uscore=1; lt_dlneed_uscore=2
   lt_status=$lt_dlunknown
   cat > conftest.$ac_ext <<_LT_EOF
-#line 16319 "configure"
+#line 16322 "configure"
 #include "confdefs.h"
 
 #if HAVE_DLFCN_H
@@ -17242,6 +17245,10 @@ fi
 if test "${enable_pcre+set}" = set; then :
   enableval=$enable_pcre;
     if test x"$enableval" = xyes ; then
+      if test x"$enable_pcre2" == xyes ; then
+        as_fn_error $? "cannot support both PCRE and PCRE2 at the same time -- aborting" "$LINENO" 5
+      fi
+
 
 $as_echo "#define PR_USE_PCRE 1" >>confdefs.h
 
@@ -17289,6 +17296,129 @@ if ac_fn_c_try_link "$LINENO"; then :
 $as_echo "yes" >&6; }
 
 $as_echo "#define HAVE_PCRE_PCRE_FREE_STUDY 1" >>confdefs.h
+
+
+else
+
+          { $as_echo "$as_me:${as_lineno-$LINENO}: result: no" >&5
+$as_echo "no" >&6; }
+
+
+fi
+rm -f core conftest.err conftest.$ac_objext \
+    conftest$ac_exeext conftest.$ac_ext
+
+      # restore CPPFLAGS, LDFLAGS, LIBS
+      CPPFLAGS="$saved_cppflags"
+      LDFLAGS="$saved_ldflags"
+      LIBS="$saved_libs"
+    fi
+
+fi
+
+
+# Check whether --enable-pcre2 was given.
+if test "${enable_pcre2+set}" = set; then :
+  enableval=$enable_pcre2;
+    if test x"$enableval" = xyes ; then
+      if test x"$enable_pcre" == xyes ; then
+        as_fn_error $? "cannot support both PCRE and PCRE2 at the same time -- aborting" "$LINENO" 5
+      fi
+
+
+$as_echo "#define PR_USE_PCRE2 1" >>confdefs.h
+
+      ac_build_addl_libs="$ac_build_addl_libs -lpcre2-posix -lpcre2-8"
+
+      # Check for other PCRE2-specific functionality here
+      saved_ldflags="$LDFLAGS"
+      saved_libs="$LIBS"
+      saved_cppflags="$CPPFLAGS"
+
+      # fiddle with CPPFLAGS, LDFLAGS
+      CPPFLAGS="$CPPFLAGS $ac_build_addl_includes"
+      LDFLAGS="$LDFLAGS $ac_build_addl_libdirs"
+      LIBS="$LIBS -lpcre2-8 -lpcre2-posix"
+
+      { $as_echo "$as_me:${as_lineno-$LINENO}: checking for PCRE2's pcre2_jit_compile" >&5
+$as_echo_n "checking for PCRE2's pcre2_jit_compile... " >&6; }
+      cat confdefs.h - <<_ACEOF >conftest.$ac_ext
+/* end confdefs.h.  */
+ #ifdef HAVE_STDDEF_H
+          # include <stddef.h>
+          #endif
+          #ifdef HAVE_STDLIB_H
+          # include <stdlib.h>
+          #endif
+          #ifdef HAVE_SYS_TYPES_H
+          # include <sys/types.h>
+          #endif
+          #define PCRE2_CODE_UNIT_WIDTH 8
+          #include <pcre2.h>
+
+int
+main ()
+{
+
+          pcre2_code *code = NULL;
+          (void) pcre2_jit_compile(code, 0);
+
+  ;
+  return 0;
+}
+_ACEOF
+if ac_fn_c_try_link "$LINENO"; then :
+
+          { $as_echo "$as_me:${as_lineno-$LINENO}: result: yes" >&5
+$as_echo "yes" >&6; }
+
+$as_echo "#define HAVE_PCRE2_PCRE2_JIT_COMPILE 1" >>confdefs.h
+
+
+else
+
+          { $as_echo "$as_me:${as_lineno-$LINENO}: result: no" >&5
+$as_echo "no" >&6; }
+
+
+fi
+rm -f core conftest.err conftest.$ac_objext \
+    conftest$ac_exeext conftest.$ac_ext
+
+      { $as_echo "$as_me:${as_lineno-$LINENO}: checking for PCRE2's POSIX wrappers" >&5
+$as_echo_n "checking for PCRE2's POSIX wrappers... " >&6; }
+      cat confdefs.h - <<_ACEOF >conftest.$ac_ext
+/* end confdefs.h.  */
+ #ifdef HAVE_STDDEF_H
+          # include <stddef.h>
+          #endif
+          #ifdef HAVE_STDLIB_H
+          # include <stdlib.h>
+          #endif
+          #ifdef HAVE_SYS_TYPES_H
+          # include <sys/types.h>
+          #endif
+          #define PCRE2_CODE_UNIT_WIDTH 8
+          #include <pcre2.h>
+          #include <pcre2posix.h>
+
+int
+main ()
+{
+
+          regex_t *re = NULL;
+          (void) pcre2_regcomp(re, NULL, 0);
+
+  ;
+  return 0;
+}
+_ACEOF
+if ac_fn_c_try_link "$LINENO"; then :
+
+          { $as_echo "$as_me:${as_lineno-$LINENO}: result: yes" >&5
+$as_echo "yes" >&6; }
+
+$as_echo "#define HAVE_PCRE2_PCRE2_REGCOMP 1" >>confdefs.h
 
 
 else

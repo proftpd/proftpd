@@ -1909,7 +1909,8 @@ MODRET set_regexoptions(cmd_rec *cmd) {
       engine = cmd->argv[i+1];
 
       if (strcasecmp(engine, "POSIX") != 0 &&
-          strcasecmp(engine, "PCRE") != 0) {
+          strcasecmp(engine, "PCRE") != 0 &&
+          strcasecmp(engine, "PCRE2") != 0) {
         CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "bad Engine value: ",
           engine, NULL));
       }

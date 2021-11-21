@@ -2146,6 +2146,12 @@ static void show_settings(void) {
   printf("%s", "    - PCRE support\n");
 #endif /* PR_USE_PCRE */
 
+#ifdef PR_USE_PCRE2
+  printf("%s", "    + PCRE2 support\n");
+#else
+  printf("%s", "    - PCRE2 support\n");
+#endif /* PR_USE_PCRE2 */
+
 #ifdef PR_USE_FACL
   printf("%s", "    + POSIX ACL support\n");
 #else
