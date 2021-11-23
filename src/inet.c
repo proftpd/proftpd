@@ -333,6 +333,22 @@ static conn_t *init_conn(pool *p, int fd, const pr_netaddr_t *bind_addr,
         strerror(errno));
     }
 
+    /* Allow port reuse, if requested. */
+    if (main_server != NULL &&
+        main_server->tcp_reuse_port != -1) {
+      res = pr_inet_set_reuse_port(p, c, main_server->tcp_reuse_port);
+      if (res < 0) {
+        pr_trace_msg(trace_channel, 8,
+          "error setting socket fd %d reuseport = %d: %s", fd,
+          main_server->tcp_reuse_port,
+        strerror(errno));
+
+      } else {
+        pr_trace_msg(trace_channel, 8, "set socket fd %d reuseport = %d",
+          fd, main_server->tcp_reuse_port);
+      }
+    }
+
     /* Allow socket keepalive messages by default.  However, if
      * "SocketOptions keepalive off" is in effect, then explicitly
      * disable keepalives.
@@ -1094,7 +1110,6 @@ int pr_inet_set_socket_opts2(pool *p, conn_t *c, int rcvbuf, int sndbuf,
     c->rcvbuf = (rcvbuf ? rcvbuf : crcvbuf);
   }
 
-#if defined(SO_REUSEPORT)
   if (reuse_port != -1) {
     /* Note that we only want to use this socket option if we are NOT the
      * master/parent daemon.  Otherwise, we would allow multiple daemon
@@ -1102,19 +1117,12 @@ int pr_inet_set_socket_opts2(pool *p, conn_t *c, int rcvbuf, int sndbuf,
      * and madness (see Issue #622).
      */
     if (!is_master) {
-      if (setsockopt(c->listen_fd, SOL_SOCKET, SO_REUSEPORT,
-          (void *) &reuse_port, sizeof(reuse_port)) < 0) {
-        pr_log_pri(PR_LOG_NOTICE,
-          "error setting SO_REUSEPORT on fd %d: %s", c->listen_fd,
-          strerror(errno));
-
-      } else {
+      if (pr_inet_set_reuse_port(p, c, reuse_port) == 0) {
         pr_trace_msg("data", 8,
           "set socket fd %d reuseport = %d", c->listen_fd, reuse_port);
       }
     }
   }
-#endif /* SO_REUSEPORT */
 
   return 0;
 }
@@ -1122,6 +1130,31 @@ int pr_inet_set_socket_opts2(pool *p, conn_t *c, int rcvbuf, int sndbuf,
 int pr_inet_set_socket_opts(pool *p, conn_t *c, int rcvbuf, int sndbuf,
     struct tcp_keepalive *tcp_keepalive) {
   return pr_inet_set_socket_opts2(p, c, rcvbuf, sndbuf, tcp_keepalive, -1);
+}
+
+int pr_inet_set_reuse_port(pool *p, conn_t *c, int reuse_port) {
+  int res = -1;
+
+  if (p == NULL ||
+      c == NULL ||
+      reuse_port < 0) {
+    errno = EINVAL;
+    return -1;
+  }
+
+#if defined(SO_REUSEPORT)
+  res = setsockopt(c->listen_fd, SOL_SOCKET, SO_REUSEPORT, (void *) &reuse_port,
+    sizeof(reuse_port));
+  if (res < 0) {
+    pr_log_pri(PR_LOG_NOTICE,
+      "error setting SO_REUSEPORT on fd %d: %s", c->listen_fd,
+      strerror(errno));
+  }
+#else
+  errno = ENOSYS;
+#endif /* SO_REUSEPORT */
+
+  return res;
 }
 
 #ifdef SO_OOBINLINE

@@ -897,6 +897,9 @@ server_rec *pr_parser_server_ctxt_open(const char *addrstr) {
   s->sid = ++parser_sid;
   s->notes = pr_table_nalloc(p, 0, 8);
 
+  /* TCP port reuse is disabled by default. */
+  s->tcp_reuse_port = -1;
+
   /* TCP KeepAlive is enabled by default, with the system defaults. */
   s->tcp_keepalive = palloc(s->pool, sizeof(struct tcp_keepalive));
   s->tcp_keepalive->keepalive_enabled = TRUE;

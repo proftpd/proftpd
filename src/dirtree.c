@@ -2828,6 +2828,9 @@ void init_dirtree(void) {
   main_server->sid = 1;
   main_server->notes = pr_table_nalloc(dirtree_pool, 0, 8);
 
+  /* TCP port reuse is disabled by default. */
+  main_server->tcp_reuse_port = -1;
+
   /* TCP KeepAlive is enabled by default, with the system defaults. */
   main_server->tcp_keepalive = palloc(main_server->pool,
     sizeof(struct tcp_keepalive));
