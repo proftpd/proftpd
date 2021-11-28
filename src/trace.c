@@ -166,6 +166,7 @@ static int trace_write(const char *channel, int level, const char *msg,
     buflen += len;
   }
 
+  destroy_pool(tmp_pool);
   buf[sizeof(buf)-1] = '\0';
 
   if (buflen < (sizeof(buf) - 1)) {
@@ -191,7 +192,6 @@ static int trace_write(const char *channel, int level, const char *msg,
     return 0;
   }
 
-  destroy_pool(tmp_pool);
   return write(trace_logfd, buf, buflen);
 }
 
