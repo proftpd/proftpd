@@ -2525,11 +2525,13 @@ static int handle_hostkey(pool *p, EVP_PKEY *pkey,
       sftp_rsa_hostkey->agent_path = agent_path;
 
       if (file_path != NULL) {
-        pr_trace_msg(trace_channel, 4, "using '%s' as RSA hostkey", file_path);
+        pr_trace_msg(trace_channel, 4, "using '%s' as RSA hostkey (%d bits)",
+          file_path, EVP_PKEY_bits(pkey));
 
       } else if (agent_path != NULL) {
         pr_trace_msg(trace_channel, 4,
-          "using RSA hostkey from SSH agent at '%s'", agent_path);
+          "using RSA hostkey (%d bits) from SSH agent at '%s'",
+          EVP_PKEY_bits(pkey), agent_path);
       }
 
       break;
@@ -2557,11 +2559,13 @@ static int handle_hostkey(pool *p, EVP_PKEY *pkey,
       sftp_dsa_hostkey->agent_path = agent_path;
 
       if (file_path != NULL) {
-        pr_trace_msg(trace_channel, 4, "using '%s' as DSA hostkey", file_path);
+        pr_trace_msg(trace_channel, 4, "using '%s' as DSA hostkey (%d bits)",
+          file_path, EVP_PKEY_bits(pkey));
 
       } else if (agent_path != NULL) {
         pr_trace_msg(trace_channel, 4,
-          "using DSA hostkey from SSH agent at '%s'", agent_path);
+          "using DSA hostkey (%d bits) from SSH agent at '%s'",
+          EVP_PKEY_bits(pkey), agent_path);
       }
 
       break;
@@ -2625,11 +2629,13 @@ static int handle_hostkey(pool *p, EVP_PKEY *pkey,
 
           if (file_path != NULL) {
             (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
-              "using '%s' as 256-bit ECDSA hostkey", file_path);
+              "using '%s' as 256-bit ECDSA hostkey (%d bits)", file_path,
+              EVP_PKEY_bits(pkey));
 
           } else if (agent_path != NULL) {
             (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
-              "using 256-bit ECDSA hostkey from SSH agent at '%s'", agent_path);
+              "using 256-bit ECDSA hostkey (%d bits) from SSH agent at '%s'",
+              EVP_PKEY_bits(pkey), agent_path);
           }
 
           break;
@@ -2657,11 +2663,13 @@ static int handle_hostkey(pool *p, EVP_PKEY *pkey,
 
           if (file_path != NULL) {
             (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
-              "using '%s' as 384-bit ECDSA hostkey", file_path);
+              "using '%s' as 384-bit ECDSA hostkey (%d bits)", file_path,
+              EVP_PKEY_bits(pkey));
 
           } else if (agent_path != NULL) {
             (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
-              "using 384-bit ECDSA hostkey from SSH agent at '%s'", agent_path);
+              "using 384-bit ECDSA hostkey (%d bits) from SSH agent at '%s'",
+              EVP_PKEY_bits(pkey), agent_path);
           }
 
           break;
@@ -2689,11 +2697,13 @@ static int handle_hostkey(pool *p, EVP_PKEY *pkey,
 
           if (file_path != NULL) {
             (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
-              "using '%s' as 521-bit ECDSA hostkey", file_path);
+              "using '%s' as 521-bit ECDSA hostkey (%d bits)", file_path,
+              EVP_PKEY_bits(pkey));
 
           } else if (agent_path != NULL) {
             (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
-              "using 521-bit hostkey from SSH agent at '%s'", agent_path);
+              "using 521-bit hostkey (%d bits) from SSH agent at '%s'",
+              EVP_PKEY_bits(pkey), agent_path);
           }
 
           break;
