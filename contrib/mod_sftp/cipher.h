@@ -45,15 +45,15 @@ size_t sftp_cipher_get_write_auth_size(void);
 
 const char *sftp_cipher_get_read_algo(void);
 int sftp_cipher_set_read_algo(const char *algo);
-int sftp_cipher_set_read_key(pool *p, const EVP_MD *md, const BIGNUM *k,
-  const char *h, uint32_t hlen, int role);
+int sftp_cipher_set_read_key(pool *p, const EVP_MD *md, const unsigned char *k,
+  uint32_t klen, const char *h, uint32_t hlen, int role);
 int sftp_cipher_read_data(struct ssh2_packet *pkt, unsigned char *data,
   uint32_t data_len, unsigned char **buf, uint32_t *buflen);
 
 const char *sftp_cipher_get_write_algo(void);
 int sftp_cipher_set_write_algo(const char *algo);
-int sftp_cipher_set_write_key(pool *p, const EVP_MD *md, const BIGNUM *k,
-  const char *h, uint32_t hlen, int role);
+int sftp_cipher_set_write_key(pool *p, const EVP_MD *md, const unsigned char *k,
+  uint32_t klen, const char *h, uint32_t hlen, int role);
 int sftp_cipher_write_data(struct ssh2_packet *pkt, unsigned char *buf,
   size_t *buflen);
 

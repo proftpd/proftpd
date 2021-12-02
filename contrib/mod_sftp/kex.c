@@ -2646,44 +2646,58 @@ static void set_env_var(pool *p, const char *k, const char *v) {
 }
 
 static int set_session_keys(struct sftp_kex *kex) {
-  const char *k;
+  unsigned char *buf, *ptr;
+  uint32_t buflen, bufsz, klen;
+  const char *write_algo;
   int comp_read_flags, comp_write_flags;
 
-  if (sftp_cipher_set_read_key(kex_pool, kex->hash, kex->k, kex->h,
+  bufsz = buflen = 256;
+  ptr = buf = palloc(kex_pool, bufsz);
+
+  /* Need to use SSH2-style format of K for the key. */
+  klen = sftp_msg_write_mpint(&buf, &buflen, kex->k);
+
+  if (sftp_cipher_set_read_key(kex_pool, kex->hash, ptr, klen, kex->h,
       kex->hlen, SFTP_ROLE_SERVER) < 0) {
+    pr_memscrub(ptr, bufsz);
     return -1;
   }
 
-  if (sftp_cipher_set_write_key(kex_pool, kex->hash, kex->k, kex->h,
+  if (sftp_cipher_set_write_key(kex_pool, kex->hash, ptr, klen, kex->h,
       kex->hlen, SFTP_ROLE_SERVER) < 0) {
+    pr_memscrub(ptr, bufsz);
     return -1;
   }
 
-  if (sftp_mac_set_read_key(kex_pool, kex->hash, kex->k, kex->h,
+  if (sftp_mac_set_read_key(kex_pool, kex->hash, ptr, klen, kex->h,
       kex->hlen, SFTP_ROLE_SERVER) < 0) {
+    pr_memscrub(ptr, bufsz);
     return -1;
   }
 
-  if (sftp_mac_set_write_key(kex_pool, kex->hash, kex->k, kex->h,
+  if (sftp_mac_set_write_key(kex_pool, kex->hash, ptr, klen, kex->h,
       kex->hlen, SFTP_ROLE_SERVER) < 0) {
+    pr_memscrub(ptr, bufsz);
     return -1;
   }
+
+  pr_memscrub(ptr, bufsz);
 
   comp_read_flags = comp_write_flags = SFTP_COMPRESS_FL_NEW_KEY;
 
   /* If we are rekeying, AND the existing compression is "delayed", then
    * we need to use slightly different compression flags.
    */
-  if (kex_rekey_kex) {
+  if (kex_rekey_kex != NULL) {
     const char *algo;
 
     algo = sftp_compress_get_read_algo();
-    if (strncmp(algo, "zlib@openssh.com", 17) == 0) {
+    if (strcmp(algo, "zlib@openssh.com") == 0) {
       comp_read_flags = SFTP_COMPRESS_FL_AUTHENTICATED;
     }
 
     algo = sftp_compress_get_write_algo();
-    if (strncmp(algo, "zlib@openssh.com", 17) == 0) {
+    if (strcmp(algo, "zlib@openssh.com") == 0) {
       comp_write_flags = SFTP_COMPRESS_FL_AUTHENTICATED;
     }
   }
@@ -2734,8 +2748,8 @@ static int set_session_keys(struct sftp_kex *kex) {
   /* If any CBC mode ciphers have been negotiated for the server-to-client
    * stream, then we need to use the 'rogaway' TAP policy.
    */
-  k = sftp_cipher_get_write_algo();
-  if (strncmp(k + strlen(k) - 4, "-cbc", 4) == 0) {
+  write_algo = sftp_cipher_get_write_algo();
+  if (strncmp(write_algo + strlen(write_algo) - 4, "-cbc", 4) == 0) {
     const char *policy = "rogaway";
 
     pr_trace_msg("ssh2", 4, "CBC mode cipher chosen for server-to-client "

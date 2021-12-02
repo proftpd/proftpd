@@ -76,9 +76,6 @@ static size_t write_blockszs[2] = {
   SFTP_CIPHER_DEFAULT_BLOCK_SZ
 };
 
-/* Buffer size for reading/writing keys */
-#define SFTP_CIPHER_BUFSZ			4096
-
 static unsigned int read_cipher_idx = 0;
 static unsigned int write_cipher_idx = 0;
 
@@ -250,7 +247,7 @@ static int set_cipher_iv(struct sftp_cipher *cipher, const EVP_MD *hash,
 
 static int set_cipher_key(struct sftp_cipher *cipher, const EVP_MD *hash,
     const unsigned char *k, uint32_t klen, const char *h, uint32_t hlen,
-    char *letter, const unsigned char *id, uint32_t id_len) {
+    char letter, const unsigned char *id, uint32_t id_len) {
   EVP_MD_CTX *ctx;
   unsigned char *key = NULL;
   size_t key_sz = 0;
@@ -286,7 +283,7 @@ static int set_cipher_key(struct sftp_cipher *cipher, const EVP_MD *hash,
   EVP_DigestInit(ctx, hash);
   EVP_DigestUpdate(ctx, k, klen);
   EVP_DigestUpdate(ctx, h, hlen);
-  EVP_DigestUpdate(ctx, letter, sizeof(char));
+  EVP_DigestUpdate(ctx, &letter, sizeof(letter));
   EVP_DigestUpdate(ctx, (char *) id, id_len);
   EVP_DigestFinal(ctx, key, &key_len);
   EVP_MD_CTX_destroy(ctx);
@@ -463,12 +460,12 @@ int sftp_cipher_set_read_algo(const char *algo) {
   return 0;
 }
 
-int sftp_cipher_set_read_key(pool *p, const EVP_MD *hash, const BIGNUM *k,
-    const char *h, uint32_t hlen, int role) {
+int sftp_cipher_set_read_key(pool *p, const EVP_MD *hash,
+    const unsigned char *k, uint32_t klen, const char *h, uint32_t hlen,
+    int role) {
   const unsigned char *id = NULL;
-  unsigned char *buf, *ptr;
   char letter;
-  uint32_t buflen, bufsz, id_len;
+  uint32_t id_len;
   int key_len, auth_len;
   struct sftp_cipher *cipher;
   EVP_CIPHER_CTX *pctx;
@@ -477,12 +474,6 @@ int sftp_cipher_set_read_key(pool *p, const EVP_MD *hash, const BIGNUM *k,
 
   cipher = &(read_ciphers[read_cipher_idx]);
   pctx = read_ctxs[read_cipher_idx];
-
-  bufsz = buflen = SFTP_CIPHER_BUFSZ;
-  ptr = buf = palloc(p, bufsz);
-
-  /* Need to use SSH2-style format of K for the IV and key. */
-  sftp_msg_write_mpint(&buf, &buflen, k);
 
   id_len = sftp_session_get_id(&id);
 
@@ -497,9 +488,7 @@ int sftp_cipher_set_read_key(pool *p, const EVP_MD *hash, const BIGNUM *k,
    * server-to-client IV: HASH(K || H || "B" || session_id)
    */
   letter = (role == SFTP_ROLE_SERVER ? 'A' : 'B');
-  if (set_cipher_iv(cipher, hash, ptr, (bufsz - buflen), h, hlen, &letter, id,
-      id_len) < 0) {
-    pr_memscrub(ptr, bufsz);
+  if (set_cipher_iv(cipher, hash, k, klen, h, hlen, &letter, id, id_len) < 0) {
     return -1;
   }
 
@@ -507,9 +496,7 @@ int sftp_cipher_set_read_key(pool *p, const EVP_MD *hash, const BIGNUM *k,
    * server-to-client key: HASH(K || H || "D" || session_id)
    */
   letter = (role == SFTP_ROLE_SERVER ? 'C' : 'D');
-  if (set_cipher_key(cipher, hash, ptr, (bufsz - buflen), h, hlen, &letter,
-      id, id_len) < 0) {
-    pr_memscrub(ptr, bufsz);
+  if (set_cipher_key(cipher, hash, k, klen, h, hlen, letter, id, id_len) < 0) {
     return -1;
   }
 
@@ -529,7 +516,6 @@ int sftp_cipher_set_read_key(pool *p, const EVP_MD *hash, const BIGNUM *k,
     (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
       "error initializing %s cipher for decryption: %s", cipher->algo,
       sftp_crypto_get_errors());
-    pr_memscrub(ptr, bufsz);
     return -1;
   }
 
@@ -541,7 +527,6 @@ int sftp_cipher_set_read_key(pool *p, const EVP_MD *hash, const BIGNUM *k,
       (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
         "error configuring %s cipher for decryption: %s", cipher->algo,
         sftp_crypto_get_errors());
-      pr_memscrub(ptr, bufsz);
       return -1;
     }
 #endif /* EVP_CTRL_GCM_SET_IV_FIXED */
@@ -558,7 +543,6 @@ int sftp_cipher_set_read_key(pool *p, const EVP_MD *hash, const BIGNUM *k,
       (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
         "error setting key length (%d bytes) for %s cipher for decryption: %s",
         key_len, cipher->algo, sftp_crypto_get_errors());
-      pr_memscrub(ptr, bufsz);
       return -1;
     }
 
@@ -575,16 +559,12 @@ int sftp_cipher_set_read_key(pool *p, const EVP_MD *hash, const BIGNUM *k,
     (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
       "error re-initializing %s cipher for decryption: %s", cipher->algo,
       sftp_crypto_get_errors());
-    pr_memscrub(ptr, bufsz);
     return -1;
   }
 
   if (set_cipher_discarded(cipher, pctx) < 0) {
-    pr_memscrub(ptr, bufsz);
     return -1;
   }
-
-  pr_memscrub(ptr, bufsz);
 
   if (strcmp(cipher->algo, "aes128-gcm@openssh.com") == 0 ||
       strcmp(cipher->algo, "aes256-gcm@openssh.com") == 0) {
@@ -806,12 +786,12 @@ int sftp_cipher_set_write_algo(const char *algo) {
   return 0;
 }
 
-int sftp_cipher_set_write_key(pool *p, const EVP_MD *hash, const BIGNUM *k,
-    const char *h, uint32_t hlen, int role) {
+int sftp_cipher_set_write_key(pool *p, const EVP_MD *hash,
+    const unsigned char *k, uint32_t klen, const char *h, uint32_t hlen,
+    int role) {
   const unsigned char *id = NULL;
-  unsigned char *buf, *ptr;
   char letter;
-  uint32_t buflen, bufsz, id_len;
+  uint32_t id_len;
   int key_len, auth_len;
   struct sftp_cipher *cipher;
   EVP_CIPHER_CTX *pctx;
@@ -820,12 +800,6 @@ int sftp_cipher_set_write_key(pool *p, const EVP_MD *hash, const BIGNUM *k,
 
   cipher = &(write_ciphers[write_cipher_idx]);
   pctx = write_ctxs[write_cipher_idx];
-
-  bufsz = buflen = SFTP_CIPHER_BUFSZ;
-  ptr = buf = palloc(p, bufsz);
-
-  /* Need to use SSH2-style format of K for the IV and key. */
-  sftp_msg_write_mpint(&buf, &buflen, k);
 
   id_len = sftp_session_get_id(&id);
 
@@ -840,9 +814,7 @@ int sftp_cipher_set_write_key(pool *p, const EVP_MD *hash, const BIGNUM *k,
    * server-to-client IV: HASH(K || H || "B" || session_id)
    */
   letter = (role == SFTP_ROLE_SERVER ? 'B' : 'A');
-  if (set_cipher_iv(cipher, hash, ptr, (bufsz - buflen), h, hlen, &letter, id,
-      id_len) < 0) {
-    pr_memscrub(ptr, bufsz);
+  if (set_cipher_iv(cipher, hash, k, klen, h, hlen, &letter, id, id_len) < 0) {
     return -1;
   }
 
@@ -850,9 +822,7 @@ int sftp_cipher_set_write_key(pool *p, const EVP_MD *hash, const BIGNUM *k,
    * server-to-client key: HASH(K || H || "D" || session_id)
    */
   letter = (role == SFTP_ROLE_SERVER ? 'D' : 'C');
-  if (set_cipher_key(cipher, hash, ptr, (bufsz - buflen), h, hlen, &letter,
-      id, id_len) < 0) {
-    pr_memscrub(ptr, bufsz);
+  if (set_cipher_key(cipher, hash, k, klen, h, hlen, letter, id, id_len) < 0) {
     return -1;
   }
 
@@ -872,7 +842,6 @@ int sftp_cipher_set_write_key(pool *p, const EVP_MD *hash, const BIGNUM *k,
     (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
       "error initializing %s cipher for encryption: %s", cipher->algo,
       sftp_crypto_get_errors());
-    pr_memscrub(ptr, bufsz);
     return -1;
   }
 
@@ -884,7 +853,6 @@ int sftp_cipher_set_write_key(pool *p, const EVP_MD *hash, const BIGNUM *k,
       (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
         "error configuring %s cipher for encryption: %s", cipher->algo,
         sftp_crypto_get_errors());
-      pr_memscrub(ptr, bufsz);
       return -1;
     }
 #endif /* EVP_CTRL_GCM_SET_IV_FIXED */
@@ -901,7 +869,6 @@ int sftp_cipher_set_write_key(pool *p, const EVP_MD *hash, const BIGNUM *k,
       (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
         "error setting key length (%d bytes) for %s cipher for decryption: %s",
         key_len, cipher->algo, sftp_crypto_get_errors());
-      pr_memscrub(ptr, bufsz);
       return -1;
     }
 
@@ -918,16 +885,12 @@ int sftp_cipher_set_write_key(pool *p, const EVP_MD *hash, const BIGNUM *k,
     (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
       "error re-initializing %s cipher for encryption: %s", cipher->algo,
       sftp_crypto_get_errors());
-    pr_memscrub(ptr, bufsz);
     return -1;
   }
 
   if (set_cipher_discarded(cipher, pctx) < 0) {
-    pr_memscrub(ptr, bufsz);
     return -1;
   }
-
-  pr_memscrub(ptr, bufsz);
 
   if (strcmp(cipher->algo, "aes128-gcm@openssh.com") == 0 ||
       strcmp(cipher->algo, "aes256-gcm@openssh.com") == 0) {
