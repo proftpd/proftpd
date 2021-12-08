@@ -1954,8 +1954,54 @@ MODRET xfer_stor(cmd_rec *cmd) {
       err = NULL;
 
     } else {
-      pr_log_debug(DEBUG4, "unable to open '%s' for writing: %s", cmd->arg,
-        strerror(xerrno));
+      if (xerrno == EACCES) {
+        const char *sticky_bit_path = NULL;
+        char *parent_path, *ptr;
+
+        /* For "Permission denied" errors, do a little more introspection,
+         * to provide more context, as for sticky-bit situations
+         * (like Bug#4418).  Ideally this is something a module like
+         * mod_explain might do.
+         */
+
+        parent_path = pstrdup(cmd->tmp_pool, path);
+        ptr = strrchr(parent_path, '/');
+        while (ptr != NULL &&
+               ptr != parent_path) {
+          int res;
+          struct stat pst;
+
+          pr_signals_handle();
+
+          *ptr = '\0';
+          res = pr_fsio_stat(parent_path, &pst);
+          if (res < 0) {
+            break;
+          }
+
+          if (S_ISDIR(pst.st_mode) &&
+              (pst.st_mode & S_ISVTX)) {
+            sticky_bit_path = parent_path;
+            break;
+          }
+
+          ptr = strrchr(parent_path, '/');
+        }
+
+        if (sticky_bit_path != NULL) {
+          pr_log_debug(DEBUG4, "unable to open '%s' for writing (%s); check "
+            "sticky bit set on parent directory '%s'", session.xfer.path,
+            strerror(xerrno), sticky_bit_path);
+
+        } else {
+          pr_log_debug(DEBUG4, "unable to open '%s' for writing: %s", cmd->arg,
+            strerror(xerrno));
+        }
+
+      } else {
+        pr_log_debug(DEBUG4, "unable to open '%s' for writing: %s", cmd->arg,
+          strerror(xerrno));
+      }
     }
 
     pr_response_add_err(R_550, "%s: %s", cmd->arg, strerror(xerrno));
