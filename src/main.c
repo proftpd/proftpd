@@ -2301,6 +2301,9 @@ int main(int argc, char *argv[], char **envp) {
   mode_t *main_umask = NULL;
   socklen_t peerlen;
   struct sockaddr peer;
+#if defined(PR_USE_NLS) && defined(HAVE_LOCALE_H)
+  const char *env_lang = NULL, *env_locale = NULL;
+#endif
 
 #ifdef HAVE_SET_AUTH_PARAMETERS
   (void) set_auth_parameters(argc, argv);
@@ -2535,31 +2538,37 @@ int main(int argc, char *argv[], char **envp) {
 #endif /* PR_USE_CTRLS */
 
   var_init();
-  modules_init();
 
-#ifdef PR_USE_NLS
-# ifdef HAVE_LOCALE_H
+#if defined(PR_USE_NLS)
+# if defined(HAVE_LOCALE_H)
   /* Initialize the locale based on environment variables. */
-  if (setlocale(LC_ALL, "") == NULL) {
-    const char *env_lang;
+  env_lang = pr_env_get(permanent_pool, "LANG");
 
-    env_lang = pr_env_get(permanent_pool, "LANG");
+  env_locale = setlocale(LC_ALL, "");
+  if (env_locale == NULL) {
     pr_log_pri(PR_LOG_WARNING, "warning: unknown/unsupported LANG environment "
-      "variable '%s', ignoring", env_lang);
-
-    setlocale(LC_ALL, "C");
+      "variable '%s', ignoring", env_lang != NULL ? env_lang : "(null)");
+    (void) setlocale(LC_ALL, "C");
 
   } else {
+    pr_log_debug(DEBUG9, "using '%s' locale based on LANG=%s environment "
+      "variable", env_locale, env_lang != NULL ? env_lang : "(null)");
+
     /* Make sure that LC_NUMERIC is always set to "C", so as not to interfere
      * with formatting of strings (like printing out floats in SQL query
      * strings).
      */
-    setlocale(LC_NUMERIC, "C");
+    (void) setlocale(LC_NUMERIC, "C");
   }
 # endif /* !HAVE_LOCALE_H */
 
   encode_init();
 #endif /* PR_USE_NLS */
+
+  /* Note that modules MUST be initialized AFTER the locale, so that we
+   * are consistent in handling of strings via _e.g._ tolower(3); see Bug#4466.
+   */
+  modules_init();
 
   /* Now, once the modules have had a chance to initialize themselves
    * but before the configuration stream is actually parsed, check
