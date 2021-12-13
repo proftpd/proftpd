@@ -82,9 +82,6 @@ static struct umac_ctx *umac_write_ctxs[2];
 
 static size_t mac_blockszs[2] = { 0, 0 };
 
-/* Buffer size for reading/writing keys */
-#define SFTP_MAC_BUFSZ				4096
-
 static unsigned int read_mac_idx = 0;
 static unsigned int write_mac_idx = 0;
 
@@ -426,7 +423,7 @@ static int get_mac(struct ssh2_packet *pkt, struct sftp_mac *mac,
 
 static int set_mac_key(struct sftp_mac *mac, const EVP_MD *hash,
     const unsigned char *k, uint32_t klen, const char *h, uint32_t hlen,
-    char *letter, const unsigned char *id, uint32_t id_len) {
+    char letter, const unsigned char *id, uint32_t id_len) {
 #if OPENSSL_VERSION_NUMBER < 0x10100000L || \
     defined(HAVE_LIBRESSL)
   EVP_MD_CTX ctx;
@@ -509,9 +506,9 @@ static int set_mac_key(struct sftp_mac *mac, const EVP_MD *hash,
 #endif
 
 #if OPENSSL_VERSION_NUMBER >= 0x000907000L
-  if (EVP_DigestUpdate(pctx, letter, sizeof(char)) != 1) {
+  if (EVP_DigestUpdate(pctx, &letter, sizeof(letter)) != 1) {
     (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
-      "error updating message digest with '%c': %s", *letter,
+      "error updating message digest with '%c': %s", letter,
       sftp_crypto_get_errors());
     free(key);
 # if OPENSSL_VERSION_NUMBER >= 0x10100000L && \
@@ -521,7 +518,7 @@ static int set_mac_key(struct sftp_mac *mac, const EVP_MD *hash,
     return -1;
   }
 #else
-  EVP_DigestUpdate(pctx, letter, sizeof(char));
+  EVP_DigestUpdate(pctx, &letter, sizeof(letter));
 #endif
 
 #if OPENSSL_VERSION_NUMBER >= 0x000907000L
@@ -772,11 +769,10 @@ int sftp_mac_set_read_algo(const char *algo) {
   return 0;
 }
 
-int sftp_mac_set_read_key(pool *p, const EVP_MD *hash, const BIGNUM *k,
-    const char *h, uint32_t hlen, int role) {
+int sftp_mac_set_read_key(pool *p, const EVP_MD *hash, const unsigned char *k,
+    uint32_t klen, const char *h, uint32_t hlen, int role) {
   const unsigned char *id = NULL;
-  unsigned char *buf, *ptr;
-  uint32_t buflen, bufsz, id_len;
+  uint32_t id_len;
   char letter;
   size_t blocksz;
   struct sftp_mac *mac;
@@ -794,12 +790,6 @@ int sftp_mac_set_read_key(pool *p, const EVP_MD *hash, const BIGNUM *k,
   hmac_ctx = hmac_read_ctxs[read_mac_idx];
   umac_ctx = umac_read_ctxs[read_mac_idx];
 
-  bufsz = buflen = SFTP_MAC_BUFSZ;
-  ptr = buf = palloc(p, bufsz);
-
-  /* Need to use SSH2-style format of K for the key. */
-  sftp_msg_write_mpint(&buf, &buflen, k);
-
   id_len = sftp_session_get_id(&id);
 
   /* The letters used depend on the role; see:
@@ -813,7 +803,7 @@ int sftp_mac_set_read_key(pool *p, const EVP_MD *hash, const BIGNUM *k,
    * server-to-client HASH(K || H || "F" || session_id)
    */
   letter = (role == SFTP_ROLE_SERVER ? 'E' : 'F');
-  set_mac_key(mac, hash, ptr, (bufsz - buflen), h, hlen, &letter, id, id_len);
+  set_mac_key(mac, hash, k, klen, h, hlen, letter, id, id_len);
 
   if (init_mac(p, mac, hmac_ctx, umac_ctx) < 0) {
     return -1;
@@ -826,7 +816,6 @@ int sftp_mac_set_read_key(pool *p, const EVP_MD *hash, const BIGNUM *k,
     blocksz = mac->mac_len;
   }
 
-  pr_memscrub(ptr, bufsz);
   sftp_mac_set_block_size(blocksz);
   return 0;
 }
@@ -954,11 +943,10 @@ int sftp_mac_set_write_algo(const char *algo) {
   return 0;
 }
 
-int sftp_mac_set_write_key(pool *p, const EVP_MD *hash, const BIGNUM *k,
-    const char *h, uint32_t hlen, int role) {
+int sftp_mac_set_write_key(pool *p, const EVP_MD *hash, const unsigned char *k,
+    uint32_t klen, const char *h, uint32_t hlen, int role) {
   const unsigned char *id = NULL;
-  unsigned char *buf, *ptr;
-  uint32_t buflen, bufsz, id_len;
+  uint32_t id_len;
   char letter;
   struct sftp_mac *mac;
   HMAC_CTX *hmac_ctx;
@@ -975,12 +963,6 @@ int sftp_mac_set_write_key(pool *p, const EVP_MD *hash, const BIGNUM *k,
   hmac_ctx = hmac_write_ctxs[write_mac_idx];
   umac_ctx = umac_write_ctxs[write_mac_idx];
 
-  bufsz = buflen = SFTP_MAC_BUFSZ;
-  ptr = buf = palloc(p, bufsz);
-
-  /* Need to use SSH2-style format of K for the key. */
-  sftp_msg_write_mpint(&buf, &buflen, k);
-
   id_len = sftp_session_get_id(&id);
 
   /* The letters used depend on the role; see:
@@ -994,13 +976,12 @@ int sftp_mac_set_write_key(pool *p, const EVP_MD *hash, const BIGNUM *k,
    * server-to-client HASH(K || H || "F" || session_id)
    */
   letter = (role == SFTP_ROLE_SERVER ? 'F' : 'E');
-  set_mac_key(mac, hash, ptr, (bufsz - buflen), h, hlen, &letter, id, id_len);
+  set_mac_key(mac, hash, k, klen, h, hlen, letter, id, id_len);
 
   if (init_mac(p, mac, hmac_ctx, umac_ctx) < 0) {
     return -1;
   }
 
-  pr_memscrub(ptr, bufsz);
   return 0;
 }
 
