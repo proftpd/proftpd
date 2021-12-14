@@ -3566,7 +3566,7 @@ int sftp_keys_get_hostkey(pool *p, const char *path) {
    * SSH agent.
    */
   if (strncmp(path, "agent:", 6) != 0) {
-    pr_trace_msg(trace_channel, 9,  "loading host key from file '%s'", path);
+    pr_trace_msg(trace_channel, 9, "loading host key from file '%s'", path);
     res = load_file_hostkey(p, path);
 
   } else {
@@ -3575,7 +3575,7 @@ int sftp_keys_get_hostkey(pool *p, const char *path) {
     /* Skip past the "agent:" prefix. */
     agent_path = (path + 6);
 
-    pr_trace_msg(trace_channel, 9,  "loading host keys from SSH agent at '%s'",
+    pr_trace_msg(trace_channel, 9, "loading host keys from SSH agent at '%s'",
       agent_path);
     res = load_agent_hostkeys(p, agent_path);
   }
@@ -5754,5 +5754,6 @@ void sftp_keys_free(void) {
 
   sftp_keys_clear_dsa_hostkey();
   sftp_keys_clear_ecdsa_hostkey();
+  sftp_keys_clear_ed25519_hostkey();
   sftp_keys_clear_rsa_hostkey();
 }
