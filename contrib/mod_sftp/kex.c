@@ -2651,6 +2651,9 @@ static int set_session_keys(struct sftp_kex *kex) {
   const char *write_algo;
   int comp_read_flags, comp_write_flags;
 
+  /* To date, the kex algo that has generated the largest K that I have
+   * seen so far is "diffie-hellman-group18-sha512".
+   */
   bufsz = buflen = 2048;
   ptr = buf = palloc(kex_pool, bufsz);
 
