@@ -2651,7 +2651,7 @@ static int set_session_keys(struct sftp_kex *kex) {
   const char *write_algo;
   int comp_read_flags, comp_write_flags;
 
-  bufsz = buflen = 256;
+  bufsz = buflen = 1024;
   ptr = buf = palloc(kex_pool, bufsz);
 
   /* Need to use SSH2-style format of K for the key. */
