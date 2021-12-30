@@ -4058,7 +4058,7 @@ static const unsigned char *get_rsa_signed_data(pool *p,
 
   /* XXX Is this buffer large enough?  Too large? */
   buflen = bufsz = SFTP_MAX_SIG_SZ;
-  ptr = buf = sftp_msg_getbuf(p, bufsz);
+  ptr = buf = palloc(p, bufsz);
 
   /* Now build up the signature, SSH2-style */
   sftp_msg_write_string(&buf, &buflen, sig_name);
@@ -4233,7 +4233,7 @@ static const unsigned char *dsa_sign_data(pool *p, const unsigned char *data,
 
   /* XXX Is this buffer large enough?  Too large? */
   buflen = bufsz = SFTP_MAX_SIG_SZ;
-  ptr = buf = sftp_msg_getbuf(p, bufsz);
+  ptr = buf = palloc(p, bufsz);
 
   /* Now build up the signature, SSH2-style */
   sftp_msg_write_string(&buf, &buflen, "ssh-dss");
@@ -4342,7 +4342,7 @@ static const unsigned char *ecdsa_sign_data(pool *p, const unsigned char *data,
   }
 
   buflen = bufsz = SFTP_MAX_SIG_SZ;
-  ptr = buf = sftp_msg_getbuf(p, bufsz);
+  ptr = buf = palloc(p, bufsz);
 
 #if OPENSSL_VERSION_NUMBER >= 0x10100000L && \
     !defined(HAVE_LIBRESSL)
@@ -4397,7 +4397,7 @@ static const unsigned char *ecdsa_sign_data(pool *p, const unsigned char *data,
 
   /* XXX Is this buffer large enough?  Too large? */
   buflen = bufsz = SFTP_MAX_SIG_SZ;
-  ptr = buf = sftp_msg_getbuf(p, bufsz);
+  ptr = buf = palloc(p, bufsz);
 
   /* Now build up the signature, SSH2-style */
   switch (nid) {
@@ -4466,7 +4466,7 @@ static const unsigned char *ed25519_sign_data(pool *p,
 
   /* XXX Is this buffer large enough?  Too large? */
   buflen = bufsz = SFTP_MAX_SIG_SZ;
-  ptr = buf = sftp_msg_getbuf(p, bufsz);
+  ptr = buf = palloc(p, bufsz);
 
   /* Now build up the signature, SSH2-style */
   sftp_msg_write_string(&buf, &buflen, "ssh-ed25519");
