@@ -2655,7 +2655,7 @@ static int set_session_keys(struct sftp_kex *kex) {
    * seen so far is "diffie-hellman-group18-sha512".
    */
   bufsz = buflen = 2048;
-  ptr = buf = palloc(kex_pool, bufsz);
+  ptr = buf = sftp_msg_getbuf(kex_pool, bufsz);
 
   /* Need to use SSH2-style format of K for the key. */
   klen = sftp_msg_write_mpint(&buf, &buflen, kex->k);

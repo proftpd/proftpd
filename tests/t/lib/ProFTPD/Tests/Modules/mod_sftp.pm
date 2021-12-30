@@ -488,12 +488,12 @@ my $TESTS = {
 
   ssh2_ext_auth_publickey_openssh_rsa_bug4221 => {
     order => ++$order,
-    test_class => [qw(forking ssh2)],
+    test_class => [qw(feature_sodium forking ssh2)],
   },
 
   ssh2_ext_auth_publickey_openssh_ed25519_bug4221 => {
     order => ++$order,
-    test_class => [qw(forking ssh2)],
+    test_class => [qw(feature_sodium forking ssh2)],
   },
 
   # This fails because of a bug in Net::SSH2; I've filed a bug report
@@ -1925,9 +1925,13 @@ sub list_tests {
 
   # These tests are unstable (i.e. buggy), and should only be run manually.
   #
-  # Some of them are buggy due to Net::SSH2 issues; perhaps they should be
+  # TODO: Some of them are buggy due to Net::SSH2 issues; perhaps they should be
   # written to use the external sftp(1) command?
   my $skipped_tests = {
+    ssh2_cipher_c2s_arcfour => 1,
+    ssh2_cipher_s2c_arcfour => 1,
+    ssh2_compress_c2s_zlib => 1,
+    ssh2_compress_s2c_zlib => 1,
     ssh2_hostkey_rsa_only => 1,
     ssh2_auth_no_authorized_keys => 1,
     ssh2_hostkey_dss_only => 1,
@@ -3365,6 +3369,7 @@ EOC
         "-oIdentityFile=$rsa_priv_key",
         '-oPubkeyAuthentication=yes',
         '-oStrictHostKeyChecking=no',
+        '-oUserKnownHostsFile=/dev/null',
         '-vvv',
         '-b',
         $batch_file,
@@ -3615,6 +3620,7 @@ EOC
         "-oIdentityFile=$rsa_priv_key",
         '-oPubkeyAuthentication=yes',
         '-oStrictHostKeyChecking=no',
+        '-oUserKnownHostsFile=/dev/null',
         '-vvv',
         '-b',
         $batch_file,
@@ -3865,6 +3871,7 @@ EOC
         "-oIdentityFile=$rsa_priv_key",
         '-oPubkeyAuthentication=yes',
         '-oStrictHostKeyChecking=no',
+        '-oUserKnownHostsFile=/dev/null',
         '-vvv',
         '-b',
         $batch_file,
@@ -4347,6 +4354,7 @@ EOC
         "-oIdentityFile=$rsa_priv_key",
         '-oPubkeyAuthentication=yes',
         '-oStrictHostKeyChecking=no',
+        '-oUserKnownHostsFile=/dev/null',
         '-vvv',
         '-b',
         $batch_file,
@@ -4526,6 +4534,7 @@ EOC
         "-oIdentityFile=$rsa_priv_key",
         '-oPubkeyAuthentication=yes',
         '-oStrictHostKeyChecking=no',
+        '-oUserKnownHostsFile=/dev/null',
         '-vvv',
         '-b',
         $batch_file,
@@ -5004,6 +5013,7 @@ sub ssh2_hostkey_dss_bug3634 {
         "-oIdentityFile=$dsa_priv_key",
         '-oPubkeyAuthentication=yes',
         '-oStrictHostKeyChecking=no',
+        '-oUserKnownHostsFile=/dev/null',
         '-vvv',
         '-b',
         "$batch_file",
@@ -5383,6 +5393,7 @@ EOC
         "-oIdentityFile=$rsa_priv_key",
         '-oPubkeyAuthentication=yes',
         '-oStrictHostKeyChecking=no',
+        '-oUserKnownHostsFile=/dev/null',
         '-vvv',
         '-b',
         $batch_file,
@@ -5632,6 +5643,7 @@ EOC
         "-oIdentityFile=$rsa_priv_key",
         '-oPubkeyAuthentication=yes',
         '-oStrictHostKeyChecking=no',
+        '-oUserKnownHostsFile=/dev/null',
         '-vvv',
         '-b',
         $batch_file,
@@ -5881,6 +5893,7 @@ EOC
         "-oIdentityFile=$rsa_priv_key",
         '-oPubkeyAuthentication=yes',
         '-oStrictHostKeyChecking=no',
+        '-oUserKnownHostsFile=/dev/null',
         '-vvv',
         '-b',
         $batch_file,
@@ -6079,6 +6092,7 @@ sub ssh2_ext_hostkey_openssh_rsa_issue793 {
         "-oIdentityFile=$rsa_priv_key",
         '-oPubkeyAuthentication=yes',
         '-oStrictHostKeyChecking=no',
+        '-oUserKnownHostsFile=/dev/null',
         '-vvv',
         '-b',
         $batch_file,
@@ -6268,6 +6282,7 @@ sub ssh2_ext_hostkey_openssh_rsa_passphraseprovider_issue793 {
         "-oIdentityFile=$rsa_priv_key",
         '-oPubkeyAuthentication=yes',
         '-oStrictHostKeyChecking=no',
+        '-oUserKnownHostsFile=/dev/null',
         '-vvv',
         '-b',
         $batch_file,
@@ -6471,6 +6486,7 @@ EOC
         "-oIdentityFile=$rsa_priv_key",
         '-oPubkeyAuthentication=yes',
         '-oStrictHostKeyChecking=no',
+        '-oUserKnownHostsFile=/dev/null',
         '-vvv',
         '-b',
         $batch_file,
@@ -6672,6 +6688,7 @@ EOC
         "-oIdentityFile=$rsa_priv_key",
         '-oPubkeyAuthentication=yes',
         '-oStrictHostKeyChecking=no',
+        '-oUserKnownHostsFile=/dev/null',
         '-vvv',
         '-b',
         $batch_file,
@@ -6873,6 +6890,7 @@ EOC
         "-oIdentityFile=$rsa_priv_key",
         '-oPubkeyAuthentication=yes',
         '-oStrictHostKeyChecking=no',
+        '-oUserKnownHostsFile=/dev/null',
         '-vvv',
         '-b',
         $batch_file,
@@ -7077,6 +7095,7 @@ EOC
         "-oIdentityFile=$rsa_priv_key",
         '-oPubkeyAuthentication=yes',
         '-oStrictHostKeyChecking=no',
+        '-oUserKnownHostsFile=/dev/null',
         '-vvv',
         '-b',
         $batch_file,
@@ -7281,6 +7300,7 @@ EOC
         "-oIdentityFile=$rsa_priv_key",
         '-oPubkeyAuthentication=yes',
         '-oStrictHostKeyChecking=no',
+        '-oUserKnownHostsFile=/dev/null',
         '-vvv',
         '-b',
         $batch_file,
@@ -7986,7 +8006,7 @@ sub ssh2_cipher_c2s_arcfour {
 
       sleep(1);
 
-      my $cipher = 'arcfour,aes256-cbc';
+      my $cipher = 'arcfour256,aes256-cbc';
       $ssh2->method('crypt_cs', $cipher);
 
       unless ($ssh2->connect('127.0.0.1', $port)) {
@@ -9598,6 +9618,7 @@ sub ssh2_ext_cipher_aes128_gcm {
         "-oIdentityFile=$rsa_priv_key",
         '-oPubkeyAuthentication=yes',
         '-oStrictHostKeyChecking=no',
+        '-oUserKnownHostsFile=/dev/null',
         '-vvv',
         '-b',
         "$batch_file",
@@ -9766,6 +9787,7 @@ sub ssh2_ext_cipher_aes256_gcm {
         "-oIdentityFile=$rsa_priv_key",
         '-oPubkeyAuthentication=yes',
         '-oStrictHostKeyChecking=no',
+        '-oUserKnownHostsFile=/dev/null',
         '-vvv',
         '-b',
         "$batch_file",
@@ -11600,6 +11622,7 @@ EOC
         "-oIdentityFile=$rsa_priv_key",
         '-oPubkeyAuthentication=yes',
         '-oStrictHostKeyChecking=no',
+        '-oUserKnownHostsFile=/dev/null',
         '-vvv',
         '-b',
         $batch_file,
@@ -11783,6 +11806,7 @@ sub ssh2_ext_mac_hmac_md5_etm_openssh {
         "-oIdentityFile=$rsa_priv_key",
         '-oPubkeyAuthentication=yes',
         '-oStrictHostKeyChecking=no',
+        '-oUserKnownHostsFile=/dev/null',
         '-vvv',
         '-b',
         $batch_file,
@@ -11948,6 +11972,7 @@ sub ssh2_ext_mac_hmac_sha1_etm_openssh {
         "-oIdentityFile=$rsa_priv_key",
         '-oPubkeyAuthentication=yes',
         '-oStrictHostKeyChecking=no',
+        '-oUserKnownHostsFile=/dev/null',
         '-vvv',
         '-b',
         $batch_file,
@@ -12113,6 +12138,7 @@ sub ssh2_ext_mac_hmac_sha256_etm_openssh {
         "-oIdentityFile=$rsa_priv_key",
         '-oPubkeyAuthentication=yes',
         '-oStrictHostKeyChecking=no',
+        '-oUserKnownHostsFile=/dev/null',
         '-vvv',
         '-b',
         $batch_file,
@@ -12278,6 +12304,7 @@ sub ssh2_ext_mac_hmac_sha512_etm_openssh {
         "-oIdentityFile=$rsa_priv_key",
         '-oPubkeyAuthentication=yes',
         '-oStrictHostKeyChecking=no',
+        '-oUserKnownHostsFile=/dev/null',
         '-vvv',
         '-b',
         $batch_file,
@@ -12443,6 +12470,7 @@ sub ssh2_ext_mac_umac_64_etm_openssh {
         "-oIdentityFile=$rsa_priv_key",
         '-oPubkeyAuthentication=yes',
         '-oStrictHostKeyChecking=no',
+        '-oUserKnownHostsFile=/dev/null',
         '-vvv',
         '-b',
         $batch_file,
@@ -12608,6 +12636,7 @@ sub ssh2_ext_mac_umac_128_etm_openssh {
         "-oIdentityFile=$rsa_priv_key",
         '-oPubkeyAuthentication=yes',
         '-oStrictHostKeyChecking=no',
+        '-oUserKnownHostsFile=/dev/null',
         '-vvv',
         '-b',
         $batch_file,
@@ -14698,6 +14727,7 @@ EOC
         "-oIdentityFile=$rsa_priv_key",
         '-oPubkeyAuthentication=yes',
         '-oStrictHostKeyChecking=no',
+        '-oUserKnownHostsFile=/dev/null',
         '-vvv',
         '-b',
         $batch_file,
@@ -14902,6 +14932,7 @@ EOC
         "-oIdentityFile=$rsa_priv_key",
         '-oPubkeyAuthentication=yes',
         '-oStrictHostKeyChecking=no',
+        '-oUserKnownHostsFile=/dev/null',
         '-vvv',
         '-b',
         $batch_file,
@@ -15831,6 +15862,7 @@ sub ssh2_ext_auth_publickey_ecdsa256 {
         "-oIdentityFile=$ecdsa256_priv_key",
         '-oPubkeyAuthentication=yes',
         '-oStrictHostKeyChecking=no',
+        '-oUserKnownHostsFile=/dev/null',
         '-vvv',
         '-b',
         $batch_file,
@@ -16061,6 +16093,7 @@ sub ssh2_ext_auth_publickey_ecdsa384 {
         "-oIdentityFile=$ecdsa384_priv_key",
         '-oPubkeyAuthentication=yes',
         '-oStrictHostKeyChecking=no',
+        '-oUserKnownHostsFile=/dev/null',
         '-vvv',
         '-b',
         $batch_file,
@@ -16291,6 +16324,7 @@ sub ssh2_ext_auth_publickey_ecdsa521 {
         "-oIdentityFile=$ecdsa521_priv_key",
         '-oPubkeyAuthentication=yes',
         '-oStrictHostKeyChecking=no',
+        '-oUserKnownHostsFile=/dev/null',
         '-vvv',
         '-b',
         $batch_file,
@@ -16494,6 +16528,7 @@ sub ssh2_ext_auth_publickey_openssh_rsa_bug4221 {
         "-oIdentityFile=$openssh_rsa_priv_key",
         '-oPubkeyAuthentication=yes',
         '-oStrictHostKeyChecking=no',
+        '-oUserKnownHostsFile=/dev/null',
         '-vvv',
         '-b',
         $batch_file,
@@ -16702,6 +16737,7 @@ EOC
         "-oIdentityFile=$openssh_ed25519_priv_key",
         '-oPubkeyAuthentication=yes',
         '-oStrictHostKeyChecking=no',
+        '-oUserKnownHostsFile=/dev/null',
         '-vvv',
         '-b',
         $batch_file,
@@ -27837,6 +27873,7 @@ sub sftp_ext_upload_bug3550 {
         "-oIdentityFile=$rsa_priv_key",
         '-oPubkeyAuthentication=yes',
         '-oStrictHostKeyChecking=no',
+        '-oUserKnownHostsFile=/dev/null',
         '-vvv',
         '-b',
         "$batch_file",
@@ -29203,6 +29240,7 @@ sub sftp_ext_download_bug3550 {
         "-oIdentityFile=$rsa_priv_key",
         '-oPubkeyAuthentication=yes',
         '-oStrictHostKeyChecking=no',
+        '-oUserKnownHostsFile=/dev/null',
         '-vvv',
         '-b',
         "$batch_file",
@@ -29460,6 +29498,7 @@ sub sftp_ext_download_server_rekey {
         "-oIdentityFile=$rsa_priv_key",
         '-oPubkeyAuthentication=yes',
         '-oStrictHostKeyChecking=no',
+        '-oUserKnownHostsFile=/dev/null',
         '-vvv',
         '-b',
         "$batch_file",
@@ -29687,6 +29726,7 @@ sub sftp_ext_download_rekey_rsa1024_hostkey_bug4097 {
         "-oIdentityFile=$rsa_priv_key",
         '-oPubkeyAuthentication=yes',
         '-oStrictHostKeyChecking=no',
+        '-oUserKnownHostsFile=/dev/null',
         '-vvv',
         '-b',
         "$batch_file",
@@ -35477,11 +35517,19 @@ sub sftp_config_client_alive {
       # it process any messages it may have received from mod_sftp, like
       # the client alive checks.
 
-      for (my $i = 0; $i < 10; $i++) {
+      for (my $i = 0; $i < 3; $i++) {
+        if ($ENV{TEST_VERBOSE}) {
+          print STDERR "# Sending REALPATH request #", $i+1, "\n";
+        }
+
         $sftp->realpath('.');
 
         my $delay = $client_alive_interval + 1;
         sleep($delay);
+      }
+
+      if ($ENV{TEST_VERBOSE}) {
+        print STDERR "# Closing SFTP channel\n";
       }
 
       $sftp = undef;
@@ -40301,7 +40349,7 @@ sub sftp_config_serverident_on {
       chomp($version_id);
       $telnet->close();
 
-      my $expected = 'SSH-2.0-mod_sftp/\d*\.\d*\.\d*';
+      my $expected = 'SSH-2.0-mod_sftp';
       $self->assert(qr/$expected/, $version_id,
         test_msg("Expected SSH version identification '$expected', received '$version_id'"));
     };
@@ -55134,6 +55182,7 @@ sub scp_ext_null_ptr_issue1043 {
         "-oIdentityFile=$rsa_priv_key",
         '-oPubkeyAuthentication=yes',
         '-oStrictHostKeyChecking=no',
+        '-oUserKnownHostsFile=/dev/null',
         "$setup->{user}\@127.0.0.1",
         'scp'
       );
@@ -55426,6 +55475,7 @@ sub scp_ext_upload_recursive_dir_bug3447 {
         "-oIdentityFile=$rsa_priv_key",
         '-oPubkeyAuthentication=yes',
         '-oStrictHostKeyChecking=no',
+        '-oUserKnownHostsFile=/dev/null',
         "$src_dir/",
         "$user\@127.0.0.1:dst.d/",
       );
@@ -55725,6 +55775,7 @@ sub scp_ext_upload_recursive_dir_bug3792 {
         "-oIdentityFile=$rsa_priv_key",
         '-oPubkeyAuthentication=yes',
         '-oStrictHostKeyChecking=no',
+        '-oUserKnownHostsFile=/dev/null',
         "$src_dir/",
         "$user\@127.0.0.1:dst.d/",
       );
@@ -56038,6 +56089,7 @@ sub scp_ext_upload_recursive_dir_bug4004 {
         "-oIdentityFile=$rsa_priv_key",
         '-oPubkeyAuthentication=yes',
         '-oStrictHostKeyChecking=no',
+        '-oUserKnownHostsFile=/dev/null',
         "$src_dir/",
         "$user\@127.0.0.1:dst.d/",
       );
@@ -56296,6 +56348,7 @@ sub scp_ext_upload_recursive_dirs_bug4257 {
         "-oIdentityFile=$rsa_priv_key",
         '-oPubkeyAuthentication=yes',
         '-oStrictHostKeyChecking=no',
+        '-oUserKnownHostsFile=/dev/null',
         "$src1_dir",
         "$src2_dir",
         "$src3_dir",
@@ -56518,6 +56571,7 @@ sub scp_ext_upload_different_name_bug3425 {
         "-oIdentityFile=$rsa_priv_key",
         '-oPubkeyAuthentication=yes',
         '-oStrictHostKeyChecking=no',
+        '-oUserKnownHostsFile=/dev/null',
         "$src_file",
         "$user\@127.0.0.1:bar.txt",
       );
@@ -56716,6 +56770,7 @@ sub scp_ext_upload_recursive_empty_dir {
         "-oIdentityFile=$rsa_priv_key",
         '-oPubkeyAuthentication=yes',
         '-oStrictHostKeyChecking=no',
+        '-oUserKnownHostsFile=/dev/null',
         "$src_dir/",
         "$user\@127.0.0.1:dst.d/",
       );
@@ -56936,6 +56991,7 @@ sub scp_ext_upload_shorter_file_bug4013 {
         "-oIdentityFile=$rsa_priv_key",
         '-oPubkeyAuthentication=yes',
         '-oStrictHostKeyChecking=no',
+        '-oUserKnownHostsFile=/dev/null',
         "$test_file2",
         "$user\@127.0.0.1:.",
       );
@@ -57151,6 +57207,7 @@ sub scp_ext_upload_file_with_timestamp_bug4026 {
         "-oIdentityFile=$rsa_priv_key",
         '-oPubkeyAuthentication=yes',
         '-oStrictHostKeyChecking=no',
+        '-oUserKnownHostsFile=/dev/null',
         "$src_file",
         "$user\@127.0.0.1:sub.d/dst.txt",
       );
@@ -58683,6 +58740,7 @@ sub scp_ext_download_bug3544 {
         "-oIdentityFile=$rsa_priv_key",
         '-oPubkeyAuthentication=yes',
         '-oStrictHostKeyChecking=no',
+        '-oUserKnownHostsFile=/dev/null',
         "$user\@127.0.0.1:$config_file",
         "$dst_file",
       );
@@ -58879,6 +58937,7 @@ sub scp_ext_download_bug3798 {
         "-oIdentityFile=$rsa_priv_key",
         '-oPubkeyAuthentication=yes',
         '-oStrictHostKeyChecking=no',
+        '-oUserKnownHostsFile=/dev/null',
         "$user\@127.0.0.1:$test_file",
         "$dst_file",
       );
@@ -59076,6 +59135,7 @@ sub scp_ext_download_glob_single_match_bug3904 {
         "-oIdentityFile=$rsa_priv_key",
         '-oPubkeyAuthentication=yes',
         '-oStrictHostKeyChecking=no',
+        '-oUserKnownHostsFile=/dev/null',
         "$user\@127.0.0.1:$test_file",
         "$dst_file",
       );
@@ -59302,6 +59362,7 @@ sub scp_ext_download_glob_multiple_matches_bug3904 {
         "-oIdentityFile=$rsa_priv_key",
         '-oPubkeyAuthentication=yes',
         '-oStrictHostKeyChecking=no',
+        '-oUserKnownHostsFile=/dev/null',
         "$user\@127.0.0.1:$src_glob",
         "$dst_dir",
       );
@@ -59590,6 +59651,7 @@ sub scp_ext_download_recursive_dir_bug3456 {
         "-oIdentityFile=$rsa_priv_key",
         '-oPubkeyAuthentication=yes',
         '-oStrictHostKeyChecking=no',
+        '-oUserKnownHostsFile=/dev/null',
         "$user\@127.0.0.1:src.d/",
         "$dst_dir",
       );
@@ -59815,6 +59877,7 @@ sub scp_ext_download_recursive_empty_dir {
         "-oIdentityFile=$rsa_priv_key",
         '-oPubkeyAuthentication=yes',
         '-oStrictHostKeyChecking=no',
+        '-oUserKnownHostsFile=/dev/null',
         "$user\@127.0.0.1:src.d/",
         "$dst_dir",
       );
@@ -60015,6 +60078,7 @@ sub scp_ext_download_glob_no_matches_bug3935 {
         "-oIdentityFile=$rsa_priv_key",
         '-oPubkeyAuthentication=yes',
         '-oStrictHostKeyChecking=no',
+        '-oUserKnownHostsFile=/dev/null',
         "$user\@127.0.0.1:src.d/*",
         "$dst_dir",
       );
