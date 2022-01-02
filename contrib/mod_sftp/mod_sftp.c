@@ -254,6 +254,7 @@ static void sftp_cmd_loop(server_rec *s, conn_t *conn) {
       pr_netaddr_get_ipstr(session.c->local_addr), session.c->local_port);
   }
 
+  sftp_ssh2_packet_set_handler(NULL);
   sftp_conn = conn;
   pr_session_set_protocol("ssh2");
 
@@ -323,7 +324,7 @@ static void sftp_cmd_loop(server_rec *s, conn_t *conn) {
   while (TRUE) {
     pr_signals_handle();
 
-    res = sftp_ssh2_packet_handle();
+    res = sftp_ssh2_packet_process(sftp_pool);
     if (res < 0) {
       break;
     }
@@ -1678,6 +1679,26 @@ MODRET set_sftptrafficpolicy(cmd_rec *cmd) {
   return PR_HANDLED(cmd);
 }
 
+/* Hook handlers
+ */
+
+MODRET sftp_hook_get_packet_write(cmd_rec *cmd) {
+  if (cmd->argc != 1) {
+    return PR_ERROR_MSG(cmd, NULL, "wrong number of arguments");
+  }
+
+  return mod_create_data(cmd, sftp_ssh2_packet_write);
+}
+
+MODRET sftp_hook_set_packet_handler(cmd_rec *cmd) {
+  if (cmd->argc != 1) {
+    return PR_ERROR_MSG(cmd, NULL, "wrong number of arguments");
+  }
+
+  sftp_ssh2_packet_set_handler(cmd->argv[0]);
+  return PR_HANDLED(cmd);
+}
+
 /* Event handlers
  */
 
@@ -2601,6 +2622,14 @@ static conftable sftp_conftab[] = {
   { NULL }
 };
 
+static cmdtable sftp_cmdtab[] = {
+  /* Module hooks */
+  { HOOK, "sftp_get_packet_write",	G_NONE, sftp_hook_get_packet_write, FALSE, FALSE },
+  { HOOK, "sftp_set_packet_handler",	G_NONE, sftp_hook_set_packet_handler, FALSE, FALSE },
+
+  { 0, NULL }
+};
+
 module sftp_module = {
   /* Always NULL */
   NULL, NULL,
@@ -2615,7 +2644,7 @@ module sftp_module = {
   sftp_conftab,
 
   /* Module command handler table */
-  NULL,
+  sftp_cmdtab,
 
   /* Module authentication handler table */
   NULL,

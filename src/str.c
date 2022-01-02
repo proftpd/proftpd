@@ -1,6 +1,6 @@
 /*
  * ProFTPD - FTP server daemon
- * Copyright (c) 2008-2020 The ProFTPD Project team
+ * Copyright (c) 2008-2021 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -885,6 +885,33 @@ array_header *pr_str_text_to_array(pool *p, const char *text, char delimiter) {
   }
 
   return items;
+}
+
+char *pr_str_array_to_text(pool *p, const array_header *items,
+    const char *delimiter) {
+  register unsigned int i;
+  char **elts, *text = "";
+
+  if (p == NULL ||
+      items == NULL ||
+      delimiter == NULL) {
+    errno = EINVAL;
+    return NULL;
+  }
+
+  if (items->nelts == 0) {
+    return pstrdup(p, "");
+  }
+
+  elts = items->elts;
+  for (i = 0; i < items->nelts; i++) {
+    char *elt;
+
+    elt = elts[i];
+    text = pstrcat(p, text, *text ? delimiter : "", elt, NULL);
+  }
+
+  return text;
 }
 
 int pr_str2uid(const char *val, uid_t *uid) {

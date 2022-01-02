@@ -247,7 +247,8 @@ static int check_otp_code(pool *p, const char *user, const char *user_otp,
       res == PR_AUTH_RFC2228_OK) {
     return 0;
   }
- 
+
+  pr_trace_msg(trace_channel, 1, "error checking auth code: %d", res);
   return -1;
 }
 

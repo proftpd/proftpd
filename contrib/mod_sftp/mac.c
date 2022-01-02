@@ -178,6 +178,10 @@ static void clear_mac(struct sftp_mac *mac) {
 
 static int init_mac(pool *p, struct sftp_mac *mac, HMAC_CTX *hmac_ctx,
     struct umac_ctx *umac_ctx) {
+  if (strcmp(mac->algo, "none") == 0) {
+    return 0;
+  }
+
 #if OPENSSL_VERSION_NUMBER >= 0x10100000L && \
     !defined(HAVE_LIBRESSL)
   HMAC_CTX_reset(hmac_ctx);
@@ -226,7 +230,8 @@ static int get_mac(struct ssh2_packet *pkt, struct sftp_mac *mac,
   uint32_t buflen, bufsz = 0, mac_len = 0;
 
   if (mac->algo_type == SFTP_MAC_ALGO_TYPE_HMAC) {
-    bufsz = (sizeof(uint32_t) * 2) + pkt->packet_len;
+    /* Always leave a little extra room in the buffer. */
+    bufsz = (sizeof(uint32_t) * 2) + pkt->packet_len + 64;
     mac_data = pcalloc(pkt->pool, EVP_MAX_MD_SIZE);
 
     if (etm_mac == TRUE) {
@@ -293,7 +298,8 @@ static int get_mac(struct ssh2_packet *pkt, struct sftp_mac *mac,
     unsigned char nonce[8], *nonce_ptr;
     uint32_t nonce_len = 0;
 
-    bufsz = sizeof(uint32_t) + pkt->packet_len;
+    /* Always leave a little extra room in the buffer. */
+    bufsz = sizeof(uint32_t) + pkt->packet_len + 64;
     mac_data = pcalloc(pkt->pool, EVP_MAX_MD_SIZE);
 
     if (etm_mac == TRUE) {
@@ -436,6 +442,10 @@ static int set_mac_key(struct sftp_mac *mac, const EVP_MD *hash,
   key_sz = sftp_crypto_get_size(EVP_MD_block_size(mac->digest),
     EVP_MD_size(hash)); 
   if (key_sz == 0) {
+    if (strcmp(mac->algo, "none") == 0) {
+      return 0;
+    }
+
     (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
       "unable to determine key length for MAC '%s'", mac->algo);
     errno = EINVAL;
@@ -679,7 +689,8 @@ void sftp_mac_set_block_size(size_t blocksz) {
 }
 
 const char *sftp_mac_get_read_algo(void) {
-  if (read_macs[read_mac_idx].key) {
+  if (read_macs[read_mac_idx].key != NULL ||
+      strcmp(read_macs[read_mac_idx].algo, "none") == 0) {
     return read_macs[read_mac_idx].algo;
   }
 
