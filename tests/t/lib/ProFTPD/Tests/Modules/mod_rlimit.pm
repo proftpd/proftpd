@@ -36,7 +36,7 @@ sub rlimit_memory {
   my $tmpdir = $self->{tmpdir};
   my $setup = test_setup($tmpdir, 'rlimit');
 
-  my $rlimit_mem = '32K';
+  my $rlimit_mem = '64M';
 
   my $config = {
     PidFile => $setup->{pid_file},
@@ -47,6 +47,7 @@ sub rlimit_memory {
 
     AuthUserFile => $setup->{auth_user_file},
     AuthGroupFile => $setup->{auth_group_file},
+    AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
       'mod_delay.c' => {
@@ -99,7 +100,6 @@ sub rlimit_memory {
 
       $client->quit();
     };
-
     if ($@) {
       $ex = $@;
     }

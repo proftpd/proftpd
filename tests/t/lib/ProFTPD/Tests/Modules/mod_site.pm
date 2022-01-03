@@ -27,27 +27,28 @@ my $TESTS = {
     test_class => [qw(forking)],
   },
 
-  site_chrgrp_ok => {
+  site_chgrp_ok => {
     order => ++$order,
     test_class => [qw(forking rootprivs)],
   },
 
-  site_chrgrp_abs_symlink => {
+  site_chgrp_abs_symlink => {
     order => ++$order,
     test_class => [qw(forking rootprivs)],
   },
 
-  site_chrgrp_abs_symlink_chrooted_bug4219 => {
+  # Rolled back per Bug#4332
+  site_chgrp_abs_symlink_chrooted_bug4219 => {
     order => ++$order,
-    test_class => [qw(bug forking rootprivs)],
+    test_class => [qw(bug forking inprogress rootprivs)],
   },
 
-  site_chrgrp_rel_symlink => {
+  site_chgrp_rel_symlink => {
     order => ++$order,
     test_class => [qw(forking rootprivs)],
   },
 
-  site_chrgrp_rel_symlink_chrooted_bug4219 => {
+  site_chgrp_rel_symlink_chrooted_bug4219 => {
     order => ++$order,
     test_class => [qw(bug forking rootprivs)],
   },
@@ -75,9 +76,10 @@ my $TESTS = {
     test_class => [qw(forking)],
   },
 
+  # Rolled back per Bug#4332
   site_chmod_abs_symlink_chrooted_bug4219 => {
     order => ++$order,
-    test_class => [qw(bug forking rootprivs)],
+    test_class => [qw(bug forking inprogress rootprivs)],
   },
 
   site_chmod_rel_symlink => {
@@ -144,6 +146,7 @@ sub site_help_ok {
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
+    AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
       'mod_delay.c' => {
@@ -289,6 +292,7 @@ sub site_help_chgrp_ok {
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
+    AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
       'mod_delay.c' => {
@@ -400,6 +404,7 @@ sub site_chgrp_ok {
 
     AuthUserFile => $setup->{auth_user_file},
     AuthGroupFile => $setup->{auth_group_file},
+    AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
       'mod_delay.c' => {
@@ -512,6 +517,7 @@ sub site_chgrp_abs_symlink {
 
     AuthUserFile => $setup->{auth_user_file},
     AuthGroupFile => $setup->{auth_group_file},
+    AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
       'mod_delay.c' => {
@@ -594,9 +600,25 @@ sub site_chgrp_abs_symlink_chrooted_bug4219 {
   my $test_dir = File::Spec->rel2abs("$tmpdir/test.d");
   mkpath($test_dir);
 
+  # Make sure that, if we're running as root, that the test dir has
+  # permissions/privs set for the account we create
+  if ($< == 0) {
+    unless (chown($setup->{uid}, $setup->{gid}, $test_dir)) {
+      die("Can't set owner of $test_dir to $setup->{uid}/$setup->{gid}: $!");
+    }
+  }
+
   my $test_file = File::Spec->rel2abs("$test_dir/test.txt");
   if (open(my $fh, "> $test_file")) {
     close($fh);
+
+    # Make sure that, if we're running as root, that the test file has
+    # permissions/privs set for the account we create
+    if ($< == 0) {
+      unless (chown($setup->{uid}, $setup->{gid}, $test_file)) {
+        die("Can't set owner of $test_file to $setup->{uid}/$setup->{gid}: $!");
+      }
+    }
 
   } else {
     die("Can't open $test_file: $!");
@@ -614,12 +636,6 @@ sub site_chgrp_abs_symlink_chrooted_bug4219 {
     die("Can't symlink $test_symlink to $dst_path: $!");
   }
 
-  if ($< == 0) {
-    unless (chown($setup->{uid}, 0, $test_file)) {
-      die("Can't set owner of $test_file to $setup->{uid}/0: $!");
-    }
-  }
-
   my $config = {
     PidFile => $setup->{pid_file},
     ScoreboardFile => $setup->{scoreboard_file},
@@ -629,6 +645,7 @@ sub site_chgrp_abs_symlink_chrooted_bug4219 {
 
     AuthUserFile => $setup->{auth_user_file},
     AuthGroupFile => $setup->{auth_group_file},
+    AuthOrder => 'mod_auth_file.c',
 
     DefaultRoot => '~',
 
@@ -752,6 +769,7 @@ sub site_chgrp_rel_symlink {
 
     AuthUserFile => $setup->{auth_user_file},
     AuthGroupFile => $setup->{auth_group_file},
+    AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
       'mod_delay.c' => {
@@ -873,6 +891,7 @@ sub site_chgrp_rel_symlink_chrooted_bug4219 {
 
     AuthUserFile => $setup->{auth_user_file},
     AuthGroupFile => $setup->{auth_group_file},
+    AuthOrder => 'mod_auth_file.c',
 
     DefaultRoot => '~',
 
@@ -1002,6 +1021,7 @@ sub site_chmod_no_login {
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
+    AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
       'mod_delay.c' => {
@@ -1133,6 +1153,7 @@ sub site_chmod_numeric_ok {
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
+    AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
       'mod_delay.c' => {
@@ -1243,6 +1264,7 @@ sub site_chmod_symbolic_ok {
 
     AuthUserFile => $setup->{auth_user_file},
     AuthGroupFile => $setup->{auth_group_file},
+    AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
       'mod_delay.c' => {
@@ -1361,6 +1383,7 @@ sub site_chmod_abs_symlink {
 
     AuthUserFile => $setup->{auth_user_file},
     AuthGroupFile => $setup->{auth_group_file},
+    AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
       'mod_delay.c' => {
@@ -1479,6 +1502,7 @@ sub site_chmod_abs_symlink_chrooted_bug4219 {
 
     AuthUserFile => $setup->{auth_user_file},
     AuthGroupFile => $setup->{auth_group_file},
+    AuthOrder => 'mod_auth_file.c',
 
     DefaultRoot => '~',
 
@@ -1603,6 +1627,7 @@ sub site_chmod_rel_symlink {
 
     AuthUserFile => $setup->{auth_user_file},
     AuthGroupFile => $setup->{auth_group_file},
+    AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
       'mod_delay.c' => {
@@ -1725,6 +1750,7 @@ sub site_chmod_rel_symlink_chrooted_bug4219 {
 
     AuthUserFile => $setup->{auth_user_file},
     AuthGroupFile => $setup->{auth_group_file},
+    AuthOrder => 'mod_auth_file.c',
 
     DefaultRoot => '~',
 

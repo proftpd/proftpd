@@ -46,9 +46,10 @@ my $TESTS = {
     test_class => [qw(bug forking)],
   },
 
+  # Rolled back per Bug#4332
   mlst_symlink_showsymlinks_on_chrooted_bug4219 => {
     order => ++$order,
-    test_class => [qw(bug forking rootprivs)],
+    test_class => [qw(bug forking inprogress rootprivs)],
   },
 
   mlst_symlink_showsymlinks_on_use_slink => {
@@ -56,9 +57,10 @@ my $TESTS = {
     test_class => [qw(forking)],
   },
 
+  # Rolled back per Bug#4332
   mlst_symlink_showsymlinks_on_use_slink_chrooted_bug4219 => {
     order => ++$order,
-    test_class => [qw(bug forking rootprivs)],
+    test_class => [qw(bug forking inprogress rootprivs)],
   },
 
   mlst_no_path_ok => {
@@ -120,6 +122,7 @@ sub mlst_file_ok {
 
     AuthUserFile => $setup->{auth_user_file},
     AuthGroupFile => $setup->{auth_group_file},
+    AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
       'mod_delay.c' => {
@@ -151,17 +154,16 @@ sub mlst_file_ok {
 
       my ($resp_code, $resp_msg) = $client->mlst('cmds.conf');
 
-      my $expected;
-
-      $expected = 250;
+      my $expected = 250;
       $self->assert($expected == $resp_code,
         test_msg("Expected response code $expected, got $resp_code"));
 
-      $expected = 'modify=\d+;perm=adfr(w)?;size=\d+;type=file;unique=\S+;UNIX.group=\d+;UNIX.mode=\d+;UNIX.owner=\d+; \/.*\/cmds\.conf$';
+      $expected = 'modify=\d+;perm=adfr(w)?;size=\d+;type=file;unique=\S+;UNIX.group=\d+;UNIX.groupname=\S+;UNIX.mode=\d+;UNIX.owner=\d+;UNIX.ownername=\S+; \/.*\/cmds\.conf$';
       $self->assert(qr/$expected/, $resp_msg,
         test_msg("Expected response message '$expected', got '$resp_msg'"));
-    };
 
+      $client->quit();
+    };
     if ($@) {
       $ex = $@;
     }
@@ -198,6 +200,8 @@ sub mlst_file_chrooted_ok {
 
     AuthUserFile => $setup->{auth_user_file},
     AuthGroupFile => $setup->{auth_group_file},
+    AuthOrder => 'mod_auth_file.c',
+
     DefaultRoot => '~',
 
     IfModules => {
@@ -230,17 +234,16 @@ sub mlst_file_chrooted_ok {
 
       my ($resp_code, $resp_msg) = $client->mlst('cmds.conf');
 
-      my $expected;
-
-      $expected = 250;
+      my $expected = 250;
       $self->assert($expected == $resp_code,
         test_msg("Expected response code $expected, got $resp_code"));
 
-      $expected = 'modify=\d+;perm=adfr(w)?;size=\d+;type=file;unique=\S+;UNIX.group=\d+;UNIX.mode=\d+;UNIX.owner=\d+; /cmds.conf$';
+      $expected = 'modify=\d+;perm=adfr(w)?;size=\d+;type=file;unique=\S+;UNIX.group=\d+;UNIX.groupname=\S+;UNIX.mode=\d+;UNIX.owner=\d+;UNIX.ownername=\S+; (\/.*)?\/cmds\.conf$';
       $self->assert(qr/$expected/, $resp_msg,
         test_msg("Expected response message '$expected', got '$resp_msg'"));
-    };
 
+      $client->quit();
+    };
     if ($@) {
       $ex = $@;
     }
@@ -311,6 +314,7 @@ sub mlst_dir_ok {
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
+    AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
       'mod_delay.c' => {
@@ -341,18 +345,16 @@ sub mlst_dir_ok {
 
       my ($resp_code, $resp_msg) = $client->mlst($sub_dir);
 
-      my $expected;
-      $expected = 250;
+      my $expected = 250;
       $self->assert($expected == $resp_code,
         test_msg("Expected response code $expected, got $resp_code"));
 
-      $expected = ('modify=\d+;perm=flcdmpe;type=dir;unique=\S+;UNIX.group=\d+;UNIX.mode=\d+;UNIX.owner=\d+; \/.*\/foo$');
+      $expected = ('modify=\d+;perm=flcdmpe;type=dir;unique=\S+;UNIX.group=\d+;UNIX.groupname=\S+;UNIX.mode=\d+;UNIX.owner=\d+;UNIX.ownername=\S+; \/.*\/foo$');
       $self->assert(qr/$expected/, $resp_msg,
         test_msg("Expected response message '$expected', got '$resp_msg'"));
 
       $client->quit();
     };
-
     if ($@) {
       $ex = $@;
     }
@@ -428,6 +430,7 @@ sub mlst_dir_cwd_bug4198 {
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
+    AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
       'mod_delay.c' => {
@@ -458,20 +461,18 @@ sub mlst_dir_cwd_bug4198 {
 
       my ($resp_code, $resp_msg) = $client->mlst('.');
 
-      my $expected;
-      $expected = 250;
+      my $expected = 250;
       $self->assert($expected == $resp_code,
         test_msg("Expected response code $expected, got $resp_code"));
 
       # Note that, per Bug#4198, we do NOT expect to see a type fact of
       # "cdir" here, just "dir".
-      $expected = ('modify=\d+;perm=flcdmpe;type=dir;unique=\S+;UNIX.group=\d+;UNIX.mode=\d+;UNIX.owner=\d+; \/.*$');
+      $expected = ('modify=\d+;perm=flcdmpe;type=dir;unique=\S+;UNIX.group=\d+;UNIX.groupname=\S+;UNIX.mode=\d+;UNIX.owner=\d+;UNIX.ownername=\S+; \/.*$');
       $self->assert(qr/$expected/, $resp_msg,
         test_msg("Expected response message '$expected', got '$resp_msg'"));
 
       $client->quit();
     };
-
     if ($@) {
       $ex = $@;
     }
@@ -533,6 +534,8 @@ sub mlst_symlink_showsymlinks_off_bug3318 {
 
     AuthUserFile => $setup->{auth_user_file},
     AuthGroupFile => $setup->{auth_group_file},
+    AuthOrder => 'mod_auth_file.c',
+
     ShowSymlinks => 'off',
 
     IfModules => {
@@ -565,17 +568,16 @@ sub mlst_symlink_showsymlinks_off_bug3318 {
 
       my ($resp_code, $resp_msg) = $client->mlst('test.lnk');
 
-      my $expected;
-
-      $expected = 250;
+      my $expected = 250;
       $self->assert($expected == $resp_code,
         test_msg("Expected response code $expected, got $resp_code"));
 
-      $expected = 'modify=\d+;perm=adfr(w)?;size=\d+;type=file;unique=\S+;UNIX.group=\d+;UNIX.mode=\d+;UNIX.owner=\d+; \/.*\/test\.lnk$';
+      $expected = 'modify=\d+;perm=adfr(w)?;size=\d+;type=file;unique=\S+;UNIX.group=\d+;UNIX.groupname=\S+;UNIX.mode=\d+;UNIX.owner=\d+;UNIX.ownername=\S+; \/.*\/test\.lnk$';
       $self->assert(qr/$expected/, $resp_msg,
         test_msg("Expected response message '$expected', got '$resp_msg'"));
-    };
 
+      $client->quit();
+    };
     if ($@) {
       $ex = $@;
     }
@@ -629,6 +631,8 @@ sub mlst_symlink_showsymlinks_on_bug3318 {
 
     AuthUserFile => $setup->{auth_user_file},
     AuthGroupFile => $setup->{auth_group_file},
+    AuthOrder => 'mod_auth_file.c',
+
     ShowSymlinks => 'on',
 
     IfModules => {
@@ -661,17 +665,16 @@ sub mlst_symlink_showsymlinks_on_bug3318 {
 
       my ($resp_code, $resp_msg) = $client->mlst('test.lnk');
 
-      my $expected;
-
-      $expected = 250;
+      my $expected = 250;
       $self->assert($expected == $resp_code,
         test_msg("Expected response code $expected, got $resp_code"));
 
-      $expected = 'modify=\d+;perm=adfr(w)?;size=\d+;type=OS.unix=symlink;unique=\S+;UNIX.group=\d+;UNIX.mode=\d+;UNIX.owner=\d+; \/.*\/test\.txt$';
+      $expected = 'modify=\d+;perm=adfr(w)?;size=\d+;type=OS.unix=symlink;unique=\S+;UNIX.group=\d+;UNIX.groupname=\S+;UNIX.mode=\d+;UNIX.owner=\d+;UNIX.ownername=\S+; \/.*\/test\.txt$';
       $self->assert(qr/$expected/, $resp_msg,
         test_msg("Expected response message '$expected', got '$resp_msg'"));
-    };
 
+      $client->quit();
+    };
     if ($@) {
       $ex = $@;
     }
@@ -709,6 +712,14 @@ sub mlst_symlink_showsymlinks_on_chrooted_bug4219 {
       die("Can't write $test_file: $!");
     }
 
+    # Make sure that, if we're running as root, that the test file has
+    # permissions/privs set for the account we create
+    if ($< == 0) {
+      unless (chown($setup->{uid}, $setup->{gid}, $test_file)) {
+        die("Can't set owner of $test_file to $setup->{uid}/$setup->{gid}: $!");
+      }
+    }
+
   } else {
     die("Can't open $test_file: $!");
   }
@@ -732,6 +743,7 @@ sub mlst_symlink_showsymlinks_on_chrooted_bug4219 {
 
     AuthUserFile => $setup->{auth_user_file},
     AuthGroupFile => $setup->{auth_group_file},
+    AuthOrder => 'mod_auth_file.c',
 
     DefaultRoot => '~',
     ShowSymlinks => 'on',
@@ -766,17 +778,16 @@ sub mlst_symlink_showsymlinks_on_chrooted_bug4219 {
 
       my ($resp_code, $resp_msg) = $client->mlst('test.lnk');
 
-      my $expected;
-
-      $expected = 250;
+      my $expected = 250;
       $self->assert($expected == $resp_code,
         test_msg("Expected response code $expected, got $resp_code"));
 
-      $expected = 'modify=\d+;perm=(a)?dfr(w)?;size=\d+;type=OS.unix=symlink;unique=\S+;UNIX.group=\d+;UNIX.mode=\d+;UNIX.owner=\d+; \/test\.lnk$';
+      $expected = 'modify=\d+;perm=(a)?dfr(w)?;size=\d+;type=OS.unix=symlink;unique=\S+;UNIX.group=\d+;UNIX.groupname=\S+;UNIX.mode=\d+;UNIX.owner=\d+;UNIX.ownername=\S+; \/test\.lnk$';
       $self->assert(qr/$expected/, $resp_msg,
         test_msg("Expected response message '$expected', got '$resp_msg'"));
-    };
 
+      $client->quit();
+    };
     if ($@) {
       $ex = $@;
     }
@@ -837,6 +848,7 @@ sub mlst_symlink_showsymlinks_on_use_slink {
 
     AuthUserFile => $setup->{auth_user_file},
     AuthGroupFile => $setup->{auth_group_file},
+    AuthOrder => 'mod_auth_file.c',
 
     FactsOptions => 'UseSlink',
     ShowSymlinks => 'on',
@@ -871,17 +883,16 @@ sub mlst_symlink_showsymlinks_on_use_slink {
 
       my ($resp_code, $resp_msg) = $client->mlst('test.lnk');
 
-      my $expected;
-
-      $expected = 250;
+      my $expected = 250;
       $self->assert($expected == $resp_code,
         test_msg("Expected response code $expected, got $resp_code"));
 
-      $expected = ' modify=\d+;perm=adfr(w)?;size=\d+;type=OS.unix=slink:' . $dst_path . ';unique=\S+;UNIX.group=\d+;UNIX.mode=\d+;UNIX.owner=\d+; \/.*\/test\.lnk$';
+      $expected = ' modify=\d+;perm=adfr(w)?;size=\d+;type=OS.unix=slink:' . $dst_path . ';unique=\S+;UNIX.group=\d+;UNIX.groupname=\S+;UNIX.mode=\d+;UNIX.owner=\d+;UNIX.ownername=\S+; \/.*\/test\.lnk$';
       $self->assert(qr/$expected/, $resp_msg,
         test_msg("Expected response message '$expected', got '$resp_msg'"));
-    };
 
+      $client->quit();
+    };
     if ($@) {
       $ex = $@;
     }
@@ -950,6 +961,7 @@ sub mlst_symlink_showsymlinks_on_use_slink_chrooted_bug4219 {
 
     AuthUserFile => $setup->{auth_user_file},
     AuthGroupFile => $setup->{auth_group_file},
+    AuthOrder => 'mod_auth_file.c',
 
     DefaultRoot => '~',
     FactsOptions => 'UseSlink',
@@ -985,17 +997,16 @@ sub mlst_symlink_showsymlinks_on_use_slink_chrooted_bug4219 {
 
       my ($resp_code, $resp_msg) = $client->mlst('test.lnk');
 
-      my $expected;
-
-      $expected = 250;
+      my $expected = 250;
       $self->assert($expected == $resp_code,
         test_msg("Expected response code $expected, got $resp_code"));
 
-      $expected = ' modify=\d+;perm=(a)?dfr(w)?;size=\d+;type=OS.unix=slink:\/test\.txt;unique=\S+;UNIX.group=\d+;UNIX.mode=\d+;UNIX.owner=\d+; \/test\.lnk$';
+      $expected = ' modify=\d+;perm=(a)?dfr(w)?;size=\d+;type=OS.unix=slink:\/test\.txt;unique=\S+;UNIX.group=\d+;UNIX.groupname=\S+;UNIX.mode=\d+;UNIX.owner=\d+;UNIX.ownername=\S+; \/test\.lnk$';
       $self->assert(qr/$expected/, $resp_msg,
         test_msg("Expected response message '$expected', got '$resp_msg'"));
-    };
 
+      $client->quit();
+    };
     if ($@) {
       $ex = $@;
     }
@@ -1066,6 +1077,7 @@ sub mlst_no_path_ok {
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
+    AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
       'mod_delay.c' => {
@@ -1092,23 +1104,20 @@ sub mlst_no_path_ok {
   if ($pid) {
     eval {
       my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
-
       $client->login($user, $passwd);
 
-      my ($resp_code, $resp_msg);
-      ($resp_code, $resp_msg) = $client->mlst();
+      my ($resp_code, $resp_msg) = $client->mlst();
 
-      my $expected;
-
-      $expected = 250;
+      my $expected = 250;
       $self->assert($expected == $resp_code,
         test_msg("Expected $expected, got $resp_code"));
 
-      $expected = ('modify=\d+;perm=flcdmpe;type=dir;unique=\S+;UNIX.group=\d+;UNIX.mode=\d+;UNIX.owner=\d+; \/(.*?)$');
+      $expected = ('modify=\d+;perm=flcdmpe;type=dir;unique=\S+;UNIX.group=\d+;UNIX.groupname=\S+;UNIX.mode=\d+;UNIX.owner=\d+;UNIX.ownername=\S+; \/(.*?)$');
       $self->assert(qr/$expected/, $resp_msg,
         test_msg("Expected '$expected', got '$resp_msg'"));
-    };
 
+      $client->quit();
+    };
     if ($@) {
       $ex = $@;
     }
@@ -1186,6 +1195,7 @@ sub mlst_fails_enoent {
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
+    AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
       'mod_delay.c' => {
@@ -1215,27 +1225,24 @@ sub mlst_fails_enoent {
 
       $client->login($user, $passwd);
 
-      my ($resp_code, $resp_msg);
-      eval { ($resp_code, $resp_msg) = $client->mlst($sub_dir) };
+      eval { $client->mlst($sub_dir) };
       unless ($@) {
         die("MLST succeeded unexpectedly");
-
-      } else {
-        $resp_code = $client->response_code();
-        $resp_msg = $client->response_msg();
       }
 
-      my $expected;
+      my $resp_code = $client->response_code();
+      my $resp_msg = $client->response_msg();
 
-      $expected = 550;
+      my $expected = 550;
       $self->assert($expected == $resp_code,
         test_msg("Expected $expected, got $resp_code"));
 
       $expected = "'$sub_dir' cannot be listed";
       $self->assert($expected eq $resp_msg,
         test_msg("Expected '$expected', got '$resp_msg'"));
-    };
 
+      $client->quit();
+    };
     if ($@) {
       $ex = $@;
     }
@@ -1322,6 +1329,7 @@ sub mlst_fails_eperm {
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
+    AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
       'mod_delay.c' => {
@@ -1353,27 +1361,24 @@ sub mlst_fails_eperm {
 
       chmod(0660, $sub_dir);
 
-      my ($resp_code, $resp_msg);
-      eval { ($resp_code, $resp_msg) = $client->mlst($test_file) };
+      eval { $client->mlst($test_file) };
       unless ($@) {
-        die("MLST succeeded unexpectedly ($resp_code $resp_msg)");
-
-      } else {
-        $resp_code = $client->response_code();
-        $resp_msg = $client->response_msg();
+        die("MLST succeeded unexpectedly");
       }
 
-      my $expected;
+      my $resp_code = $client->response_code();
+      my $resp_msg = $client->response_msg();
 
-      $expected = 550;
+      my $expected = 550;
       $self->assert($expected == $resp_code,
         test_msg("Expected $expected, got $resp_code"));
 
       $expected = "'$test_file' cannot be listed";
       $self->assert($expected eq $resp_msg,
         test_msg("Expected '$expected', got '$resp_msg'"));
-    };
 
+      $client->quit();
+    };
     if ($@) {
       $ex = $@;
     }
@@ -1457,6 +1462,7 @@ sub mlst_hidden_file_ok {
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
+    AuthOrder => 'mod_auth_file.c',
 
     Directory => {
       '/' => {
@@ -1489,15 +1495,11 @@ sub mlst_hidden_file_ok {
   if ($pid) {
     eval {
       my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
-
       $client->login($user, $passwd);
 
-      my ($resp_code, $resp_msg);
-      ($resp_code, $resp_msg) = $client->mlst('test.foo');
+      my ($resp_code, $resp_msg) = $client->mlst('test.foo');
 
-      my $expected;
-
-      $expected = 250;
+      my $expected = 250;
       $self->assert($expected == $resp_code,
         test_msg("Expected $expected, got $resp_code"));
 
@@ -1507,8 +1509,9 @@ sub mlst_hidden_file_ok {
       $expected = 'End of list';
       $self->assert($expected eq $resp_msg,
         test_msg("Expected '$expected', got '$resp_msg'"));
-    };
 
+      $client->quit();
+    };
     if ($@) {
       $ex = $@;
     }
@@ -1592,6 +1595,7 @@ sub mlst_path_with_spaces_ok {
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
+    AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
       'mod_delay.c' => {
@@ -1618,23 +1622,20 @@ sub mlst_path_with_spaces_ok {
   if ($pid) {
     eval {
       my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
-
       $client->login($user, $passwd);
 
-      my ($resp_code, $resp_msg);
-      ($resp_code, $resp_msg) = $client->mlst('foo bar');
+      my ($resp_code, $resp_msg) = $client->mlst('foo bar');
 
-      my $expected;
-
-      $expected = 250;
+      my $expected = 250;
       $self->assert($expected == $resp_code,
         test_msg("Expected $expected, got $resp_code"));
 
-      $expected = 'modify=\d+;perm=adfr(w)?;size=\d+;type=file;unique=\S+;UNIX.group=\d+;UNIX.mode=\d+;UNIX.owner=\d+; \/.*\/foo bar$';
+      $expected = 'modify=\d+;perm=adfr(w)?;size=\d+;type=file;unique=\S+;UNIX.group=\d+;UNIX.groupname=\S+;UNIX.mode=\d+;UNIX.owner=\d+;UNIX.ownername=\S+; \/.*\/foo bar$';
       $self->assert(qr/$expected/, $resp_msg,
         test_msg("Expected '$expected', got '$resp_msg'"));
-    };
 
+      $client->quit();
+    };
     if ($@) {
       $ex = $@;
     }
@@ -1719,6 +1720,7 @@ sub mlst_nonascii_chars_bug3032 {
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
+    AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
       'mod_delay.c' => {
@@ -1745,23 +1747,20 @@ sub mlst_nonascii_chars_bug3032 {
   if ($pid) {
     eval {
       my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
-
       $client->login($user, $passwd);
 
-      my ($resp_code, $resp_msg);
-      ($resp_code, $resp_msg) = $client->mlst($test_name);
+      my ($resp_code, $resp_msg) = $client->mlst($test_name);
 
-      my $expected;
-
-      $expected = 250;
+      my $expected = 250;
       $self->assert($expected == $resp_code,
         test_msg("Expected $expected, got $resp_code"));
 
-      $expected = 'modify=\d+;perm=adfr(w)?;size=\d+;type=file;unique=\S+;UNIX.group=\d+;UNIX.mode=\d+;UNIX.owner=\d+; \/.*\/' . $test_name;
+      $expected = 'modify=\d+;perm=adfr(w)?;size=\d+;type=file;unique=\S+;UNIX.group=\d+;UNIX.groupname=\S+;UNIX.mode=\d+;UNIX.owner=\d+;UNIX.ownername=\S+; \/.*\/' . $test_name;
       $self->assert(qr/$expected/, $resp_msg,
         test_msg("Expected '$expected', got '$resp_msg'"));
-    };
 
+      $client->quit();
+    };
     if ($@) {
       $ex = $@;
     }
@@ -1852,6 +1851,7 @@ sub mlst_greek_letters {
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
+    AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
       'mod_delay.c' => {
@@ -1878,23 +1878,20 @@ sub mlst_greek_letters {
   if ($pid) {
     eval {
       my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
-
       $client->login($user, $passwd);
 
-      my ($resp_code, $resp_msg);
-      ($resp_code, $resp_msg) = $client->mlst($test_name);
+      my ($resp_code, $resp_msg) = $client->mlst($test_name);
 
-      my $expected;
-
-      $expected = 250;
+      my $expected = 250;
       $self->assert($expected == $resp_code,
         test_msg("Expected $expected, got $resp_code"));
 
-      $expected = 'modify=\d+;perm=adfr(w)?;size=\d+;type=file;unique=\S+;UNIX.group=\d+;UNIX.mode=\d+;UNIX.owner=\d+; \/*.*\/' . $test_name . '$';
+      $expected = 'modify=\d+;perm=adfr(w)?;size=\d+;type=file;unique=\S+;UNIX.group=\d+;UNIX.groupname=\S+;UNIX.mode=\d+;UNIX.owner=\d+;UNIX.ownername=\S+; \/*.*\/' . $test_name . '$';
       $self->assert(qr/$expected/, $resp_msg,
         test_msg("Expected '$expected', got '$resp_msg'"));
-    };
 
+      $client->quit();
+    };
     if ($@) {
       $ex = $@;
     }

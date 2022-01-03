@@ -33,17 +33,12 @@ sub list_tests {
 sub syst_ok {
   my $self = shift;
   my $tmpdir = $self->{tmpdir};
-
-  my $config_file = "$tmpdir/cmds.conf";
-  my $pid_file = File::Spec->rel2abs("$tmpdir/cmds.pid");
-  my $scoreboard_file = File::Spec->rel2abs("$tmpdir/cmds.scoreboard");
-
-  my $log_file = test_get_logfile();
+  my $setup = test_setup($tmpdir, 'cmds');
 
   my $config = {
-    PidFile => $pid_file,
-    ScoreboardFile => $scoreboard_file,
-    SystemLog => $log_file,
+    PidFile => $setup->{pid_file},
+    ScoreboardFile => $setup->{scoreboard_file},
+    SystemLog => $setup->{log_file},
 
     IfModules => {
       'mod_delay.c' => {
@@ -52,7 +47,8 @@ sub syst_ok {
     },
   };
 
-  my ($port, $config_user, $config_group) = config_write($config_file, $config);
+  my ($port, $config_user, $config_group) = config_write($setup->{config_file},
+    $config);
 
   # Open pipes, for use between the parent and child processes.  Specifically,
   # the child will indicate when it's done with its test by writing a message
@@ -71,20 +67,18 @@ sub syst_ok {
     eval {
       my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
 
-      my ($resp_code, $resp_msg);
-      ($resp_code, $resp_msg) = $client->syst();
+      my ($resp_code, $resp_msg) = $client->syst();
 
-      my $expected;
-
-      $expected = 215;
+      my $expected = 215;
       $self->assert($expected == $resp_code,
-        test_msg("Expected $expected, got $resp_code"));
+        test_msg("Expected response code $expected, got $resp_code"));
 
       $expected = "UNIX Type: L8";
       $self->assert($expected eq $resp_msg,
-        test_msg("Expected '$expected', got '$resp_msg'"));
-    };
+        test_msg("Expected response message '$expected', got '$resp_msg'"));
 
+      $client->quit();
+    };
     if ($@) {
       $ex = $@;
     }
@@ -93,7 +87,7 @@ sub syst_ok {
     $wfh->flush();
 
   } else {
-    eval { server_wait($config_file, $rfh) };
+    eval { server_wait($setup->{config_file}, $rfh) };
     if ($@) {
       warn($@);
       exit 1;
@@ -103,18 +97,10 @@ sub syst_ok {
   }
 
   # Stop server
-  server_stop($pid_file);
-
+  server_stop($setup->{pid_file});
   $self->assert_child_ok($pid);
 
-  if ($ex) {
-    test_append_logfile($log_file, $ex);
-    unlink($log_file);
-
-    die($ex);
-  }
-
-  unlink($log_file);
+  test_cleanup($setup->{log_file}, $ex);
 }
 
 1;

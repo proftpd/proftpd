@@ -70,6 +70,9 @@ sub noop_ok {
   defined(my $pid = fork()) or die("Can't fork: $!");
   if ($pid) {
     eval {
+      # Allow server to start up
+      sleep(1);
+
       my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port, 1, 1);
       my ($resp_code, $resp_msg) = $client->noop();
 
@@ -80,8 +83,9 @@ sub noop_ok {
       $expected = "NOOP command successful";
       $self->assert($expected eq $resp_msg,
         "Expected response message '$expected', got '$resp_msg'");
-    };
 
+      $client->quit();
+    };
     if ($@) {
       $ex = $@;
     }

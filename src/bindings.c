@@ -500,7 +500,7 @@ int pr_ipbind_create(server_rec *server, const pr_netaddr_t *addr,
     if (c == NULL) {
       pr_log_pri(PR_LOG_WARNING, "notice: '%s' (%s:%u) already bound to '%s'",
         server->ServerName, pr_netaddr_get_ipstr(addr), port,
-        ipbind->ib_server->ServerName);
+        existing->ib_server->ServerName);
       errno = EADDRINUSE;
       return -1;
     }

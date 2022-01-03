@@ -221,6 +221,7 @@ sub login_plaintext_fails_empty_password_bug4139 {
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
+    AuthOrder => 'mod_auth_file.c',
 
     AllowEmptyPasswords => 'off',
 
@@ -346,6 +347,7 @@ sub login_anonymous_ok {
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
+    AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
       'mod_delay.c' => {
@@ -477,6 +479,7 @@ sub login_anonymous_with_delay_ok {
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
+    AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
       'mod_delay.c' => {
@@ -606,6 +609,7 @@ sub login_anonymous_user_alias_ok {
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
+    AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
       'mod_delay.c' => {
@@ -832,6 +836,7 @@ sub login_anonymous_fails_empty_password_bug4139 {
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
+    AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
       'mod_delay.c' => {
@@ -985,6 +990,7 @@ sub login_anonymous_symlink_dir_ok {
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
+    AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
       'mod_delay.c' => {
@@ -1134,6 +1140,7 @@ sub login_anonymous_allowchrootsymlinks_bug3852 {
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
+    AuthOrder => 'mod_auth_file.c',
 
     AllowChrootSymlinks => 'off',
 
@@ -1227,48 +1234,16 @@ sub login_anonymous_allowchrootsymlinks_bug3852 {
 sub login_multiple_attempts_per_conn {
   my $self = shift;
   my $tmpdir = $self->{tmpdir};
-
-  my $config_file = "$tmpdir/login.conf";
-  my $pid_file = File::Spec->rel2abs("$tmpdir/login.pid");
-  my $scoreboard_file = File::Spec->rel2abs("$tmpdir/login.scoreboard");
-
-  my $log_file = test_get_logfile();
-
-  my $auth_user_file = File::Spec->rel2abs("$tmpdir/login.passwd");
-  my $auth_group_file = File::Spec->rel2abs("$tmpdir/login.group");
-
-  my $test_file = File::Spec->rel2abs($config_file);
-
-  my $user = 'proftpd';
-  my $passwd = 'test';
-  my $group = 'ftpd';
-  my $home_dir = File::Spec->rel2abs($tmpdir);
-  my $uid = 500;
-  my $gid = 500;
-
-  # Make sure that, if we're running as root, that the home directory has
-  # permissions/privs set for the account we create
-  if ($< == 0) {
-    unless (chmod(0755, $home_dir)) {
-      die("Can't set perms on $home_dir to 0755: $!");
-    }
-
-    unless (chown($uid, $gid, $home_dir)) {
-      die("Can't set owner of $home_dir to $uid/$gid: $!");
-    }
-  }
-
-  auth_user_write($auth_user_file, $user, $passwd, $uid, $gid, $home_dir,
-    '/bin/bash');
-  auth_group_write($auth_group_file, $group, $gid, $user);
+  my $setup = test_setup($tmpdir, 'login');
 
   my $config = {
-    PidFile => $pid_file,
-    ScoreboardFile => $scoreboard_file,
-    SystemLog => $log_file,
+    PidFile => $setup->{pid_file},
+    ScoreboardFile => $setup->{scoreboard_file},
+    SystemLog => $setup->{log_file},
 
-    AuthUserFile => $auth_user_file,
-    AuthGroupFile => $auth_group_file,
+    AuthUserFile => $setup->{auth_user_file},
+    AuthGroupFile => $setup->{auth_group_file},
+    AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
       'mod_delay.c' => {
@@ -1277,7 +1252,8 @@ sub login_multiple_attempts_per_conn {
     },
   };
 
-  my ($port, $config_user, $config_group) = config_write($config_file, $config);
+  my ($port, $config_user, $config_group) = config_write($setup->{config_file},
+    $config);
 
   # Open pipes, for use between the parent and child processes.  Specifically,
   # the child will indicate when it's done with its test by writing a message
@@ -1294,15 +1270,18 @@ sub login_multiple_attempts_per_conn {
   defined(my $pid = fork()) or die("Can't fork: $!");
   if ($pid) {
     eval {
+      # Allow server to start up
+      sleep(2);
+
       my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
-      eval { $client->login($user, 'foo') };
+      eval { $client->login($setup->{user}, 'foo') };
       unless ($@) {
         die("Login succeeded unexpectedly");
       }
 
-      $client->login($user, $passwd);
+      $client->login($setup->{user}, $setup->{passwd});
+      $client->quit();
     };
-
     if ($@) {
       $ex = $@;
     }
@@ -1311,7 +1290,7 @@ sub login_multiple_attempts_per_conn {
     $wfh->flush();
 
   } else {
-    eval { server_wait($config_file, $rfh) };
+    eval { server_wait($setup->{config_file}, $rfh) };
     if ($@) {
       warn($@);
       exit 1;
@@ -1321,18 +1300,10 @@ sub login_multiple_attempts_per_conn {
   }
 
   # Stop server
-  server_stop($pid_file);
-
+  server_stop($setup->{pid_file});
   $self->assert_child_ok($pid);
 
-  if ($ex) {
-    test_append_logfile($log_file, $ex);
-    unlink($log_file);
-
-    die($ex);
-  }
-
-  unlink($log_file);
+  test_cleanup($setup->{log_file}, $ex);
 }
 
 sub login_regular_with_anon_defined_bug3307 {
@@ -1381,6 +1352,7 @@ sub login_regular_with_anon_defined_bug3307 {
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
+    AuthOrder => 'mod_auth_file.c',
 
     Anonymous => {
       $home_dir => {
@@ -1508,6 +1480,7 @@ sub login_fails_bad_sequence {
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
+    AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
       'mod_delay.c' => {
@@ -1597,6 +1570,7 @@ sub login_reauthenticate_fails_bug3736 {
 
     AuthUserFile => $setup->{auth_user_file},
     AuthGroupFile => $setup->{auth_group_file},
+    AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
       'mod_delay.c' => {
@@ -1623,6 +1597,9 @@ sub login_reauthenticate_fails_bug3736 {
   defined(my $pid = fork()) or die("Can't fork: $!");
   if ($pid) {
     eval {
+      # Allow server to start up
+      sleep(1);
+
       my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
       $client->login($setup->{user}, $setup->{passwd});
 
@@ -1680,6 +1657,7 @@ sub login_reauthenticate_ok_same_user_bug4217 {
 
     AuthUserFile => $setup->{auth_user_file},
     AuthGroupFile => $setup->{auth_group_file},
+    AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
       'mod_delay.c' => {
@@ -1755,6 +1733,7 @@ sub login_reauthenticate_fails_different_user_bug4217 {
 
     AuthUserFile => $setup->{auth_user_file},
     AuthGroupFile => $setup->{auth_group_file},
+    AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
       'mod_delay.c' => {
@@ -1838,6 +1817,7 @@ sub login_reauthenticate_fails_extra_pass_bug4217 {
 
     AuthUserFile => $setup->{auth_user_file},
     AuthGroupFile => $setup->{auth_group_file},
+    AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
       'mod_delay.c' => {
@@ -1924,6 +1904,10 @@ sub login_logging_bad_password_issue693 {
     Trace => 'auth:20',
 
     IfModules => {
+      'mod_auth_pam.c' => {
+        AuthPAM => 'off',
+      },
+
       'mod_delay.c' => {
         DelayEngine => 'off',
       },

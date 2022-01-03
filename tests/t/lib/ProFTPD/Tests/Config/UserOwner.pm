@@ -95,6 +95,7 @@ sub userowner_file {
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
+    AuthOrder => 'mod_auth_file.c',
 
     Directory => {
       '~' => {
@@ -238,6 +239,7 @@ sub userowner_dir {
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
+    AuthOrder => 'mod_auth_file.c',
 
     Directory => {
       '~' => {
@@ -355,6 +357,7 @@ sub userowner_failed_norootprivs {
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
+    AuthOrder => 'mod_auth_file.c',
 
     Directory => {
       '~' => {
@@ -459,49 +462,31 @@ sub userowner_failed_norootprivs {
 sub userowner_anon_mkd {
   my $self = shift;
   my $tmpdir = $self->{tmpdir};
-
-  my $config_file = "$tmpdir/config.conf";
-  my $pid_file = File::Spec->rel2abs("$tmpdir/config.pid");
-  my $scoreboard_file = File::Spec->rel2abs("$tmpdir/config.scoreboard");
-
-  my $log_file = test_get_logfile();
-
-  my $auth_user_file = File::Spec->rel2abs("$tmpdir/config.passwd");
-  my $auth_group_file = File::Spec->rel2abs("$tmpdir/config.group");
+  my $setup = test_setup($tmpdir, 'config');
 
   my ($config_user, $config_group) = config_get_identity();
   my $anon_dir = File::Spec->rel2abs($tmpdir);
-  my $uid = 500;
-  my $gid = 500;
 
-  # Make sure that, if we're running as root, that the home directory has
-  # permissions/privs set for the account we create
-  if ($< == 0) {
-    unless (chmod(0755, $anon_dir)) {
-      die("Can't set perms on $anon_dir to 0755: $!");
-    }
-
-    unless (chown($uid, $gid, $anon_dir)) {
-      die("Can't set owner of $anon_dir to $uid/$gid: $!");
-    }
-  }
-
-  auth_user_write($auth_user_file, $config_user, 'foo', $uid, $gid, '/tmp',
-    '/bin/bash'); 
-  auth_group_write($auth_group_file, $config_group, $gid, $config_user);
+  auth_user_write($setup->{auth_user_file}, $config_user, 'foo',
+    $setup->{uid}, $setup->{gid}, '/tmp', '/bin/bash'); 
+  auth_user_write($setup->{auth_user_file}, 'root', 'foo', 0, 0, '/tmp',
+    '/bin/bash');
+  auth_group_write($setup->{auth_group_file}, $config_group, $setup->{gid},
+    $config_user);
 
   my $test_dir = File::Spec->rel2abs("$anon_dir/test.d");
   my $owner_uid = 0;
 
   my $config = {
-    PidFile => $pid_file,
-    ScoreboardFile => $scoreboard_file,
-    SystemLog => $log_file,
-    TraceLog => $log_file,
-    Trace => 'fsio:10 fileperms:10',
+    PidFile => $setup->{pid_file},
+    ScoreboardFile => $setup->{scoreboard_file},
+    SystemLog => $setup->{log_file},
+    TraceLog => $setup->{log_file},
+    Trace => 'directory:10 fsio:10 fileperms:10',
 
-    AuthUserFile => $auth_user_file,
-    AuthGroupFile => $auth_group_file,
+    AuthUserFile => $setup->{auth_user_file},
+    AuthGroupFile => $setup->{auth_group_file},
+    AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
       'mod_cap.c' => {
@@ -526,7 +511,7 @@ sub userowner_anon_mkd {
     },
   };
 
-  my ($port, $user, $group) = config_write($config_file, $config);
+  my ($port, $user, $group) = config_write($setup->{config_file}, $config);
 
   # Open pipes, for use between the parent and child processes.  Specifically,
   # the child will indicate when it's done with its test by writing a message
@@ -543,14 +528,15 @@ sub userowner_anon_mkd {
   defined(my $pid = fork()) or die("Can't fork: $!");
   if ($pid) {
     eval {
+      # Allow server to start up
+      sleep(1);
+
       my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
       $client->login('anonymous', 'ftp@nospam.org');
 
       my ($resp_code, $resp_msg) = $client->mkd('test.d');
 
-      my $expected;
-
-      $expected = 257;
+      my $expected = 257;
       $self->assert($expected == $resp_code,
         test_msg("Expected response code $expected, got $resp_code"));
 
@@ -567,7 +553,6 @@ sub userowner_anon_mkd {
       $self->assert($owner_uid == $owning_uid,
         test_msg("Expected owner UID $owner_uid, got $owning_uid"));
     };
-
     if ($@) {
       $ex = $@;
     }
@@ -576,7 +561,7 @@ sub userowner_anon_mkd {
     $wfh->flush();
 
   } else {
-    eval { server_wait($config_file, $rfh) };
+    eval { server_wait($setup->{config_file}, $rfh) };
     if ($@) {
       warn($@);
       exit 1;
@@ -586,18 +571,10 @@ sub userowner_anon_mkd {
   }
 
   # Stop server
-  server_stop($pid_file);
-
+  server_stop($setup->{pid_file});
   $self->assert_child_ok($pid);
 
-  if ($ex) {
-    test_append_logfile($log_file, $ex);
-    unlink($log_file);
-
-    die($ex);
-  }
-
-  unlink($log_file);
+  test_cleanup($setup->{log_file}, $ex);
 }
 
 1;

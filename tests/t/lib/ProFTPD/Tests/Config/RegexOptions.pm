@@ -18,7 +18,7 @@ my $order = 0;
 my $TESTS = {
   regexoptions_posix_engine_issue1300 => {
     order => ++$order,
-    test_class => [qw(feature_pcre forking)],
+    test_class => [qw(feature_pcre2 forking)],
   },
 
 };
@@ -45,6 +45,7 @@ sub regexoptions_posix_engine_issue1300 {
 
     AuthUserFile => $setup->{auth_user_file},
     AuthGroupFile => $setup->{auth_group_file},
+    AuthOrder => 'mod_auth_file.c',
     DefaultChdir => '~',
 
     DenyFilter => '\*.*/',
@@ -115,7 +116,7 @@ sub regexoptions_posix_engine_issue1300 {
           print STDERR "# $line\n";
         }
 
-        if ($line =~ /<regexp:\d+>: changed regexp engine from PCRE to POSIX/) {
+        if ($line =~ /<regexp:\d+>: changed regexp engine from PCRE(\d+)? to POSIX/) {
           $engine_ok = 1;
         }
 

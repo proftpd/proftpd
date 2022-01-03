@@ -27,9 +27,10 @@ my $TESTS = {
     test_class => [qw(forking)],
   },
 
+  # Rolled back per Bug#4332
   cwd_abs_symlink_chrooted_bug4219 => {
     order => ++$order,
-    test_class => [qw(bug forking rootprivs)],
+    test_class => [qw(bug forking inprogress rootprivs)],
   },
 
   cwd_rel_symlink => {
@@ -62,9 +63,10 @@ my $TESTS = {
     test_class => [qw(forking)],
   },
 
+  # Rolled back per Bug#4332
   cwd_fails_abs_symlink_enotdir_chrooted_bug4219 => {
     order => ++$order,
-    test_class => [qw(bug forking rootprivs)],
+    test_class => [qw(bug forking inprogress rootprivs)],
   },
 
   cwd_fails_rel_symlink_enotdir => {
@@ -152,6 +154,7 @@ sub cwd_ok {
 
     AuthUserFile => $setup->{auth_user_file},
     AuthGroupFile => $setup->{auth_group_file},
+    AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
       'mod_delay.c' => {
@@ -247,6 +250,7 @@ sub cwd_abs_symlink {
 
     AuthUserFile => $setup->{auth_user_file},
     AuthGroupFile => $setup->{auth_group_file},
+    AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
       'mod_delay.c' => {
@@ -320,18 +324,8 @@ sub cwd_abs_symlink_chrooted_bug4219 {
   my $sub_dir = File::Spec->rel2abs("$tmpdir/sub.d/test.d");
   mkpath($sub_dir);
 
-  my $test_symlink = File::Spec->rel2abs("$tmpdir/sub.d/test.lnk");
-
-  my $dst_path = $sub_dir;
-  if ($^O eq 'darwin') {
-    # MacOSX-specific hack
-    $dst_path = '/private' . $dst_path;
-  }
-
-  unless (symlink($dst_path, $test_symlink)) {
-    die("Can't symlink '$test_symlink' to '$dst_path': $!");
-  }
-
+  # Make sure that, if we're running as root, that the sub directory has
+  # permissions/privs set for the account we create
   if ($< == 0) {
     unless (chmod(0755, $sub_dir)) {
       die("Can't set perms on $sub_dir to 0755: $!");
@@ -340,6 +334,20 @@ sub cwd_abs_symlink_chrooted_bug4219 {
     unless (chown($setup->{uid}, $setup->{gid}, $sub_dir)) {
       die("Can't set owner of $sub_dir to $setup->{uid}/$setup->{gid}: $!");
     }
+  }
+
+#  my $test_symlink = File::Spec->rel2abs("$tmpdir/sub.d/test.lnk");
+  my $test_symlink = File::Spec->rel2abs("/sub.d/test.lnk");
+
+  my $dst_path = $sub_dir;
+  if ($^O eq 'darwin') {
+    # MacOSX-specific hack
+    $dst_path = '/private' . $dst_path;
+  }
+
+#  unless (symlink($dst_path, $test_symlink)) {
+  unless (symlink($test_symlink, $dst_path)) {
+    die("Can't symlink '$test_symlink' to '$dst_path': $!");
   }
 
   my $config = {
@@ -351,6 +359,7 @@ sub cwd_abs_symlink_chrooted_bug4219 {
 
     AuthUserFile => $setup->{auth_user_file},
     AuthGroupFile => $setup->{auth_group_file},
+    AuthOrder => 'mod_auth_file.c',
 
     DefaultRoot => '~',
 
@@ -462,6 +471,7 @@ sub cwd_rel_symlink {
 
     AuthUserFile => $setup->{auth_user_file},
     AuthGroupFile => $setup->{auth_group_file},
+    AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
       'mod_delay.c' => {
@@ -571,6 +581,7 @@ sub cwd_rel_symlink_chrooted_bug4219 {
 
     AuthUserFile => $setup->{auth_user_file},
     AuthGroupFile => $setup->{auth_group_file},
+    AuthOrder => 'mod_auth_file.c',
 
     DefaultRoot => '~',
 
@@ -652,6 +663,7 @@ sub cwd_fails_enoent {
 
     AuthUserFile => $setup->{auth_user_file},
     AuthGroupFile => $setup->{auth_group_file},
+    AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
       'mod_delay.c' => {
@@ -747,6 +759,7 @@ sub cwd_fails_eperm {
 
     AuthUserFile => $setup->{auth_user_file},
     AuthGroupFile => $setup->{auth_group_file},
+    AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
       'mod_delay.c' => {
@@ -842,6 +855,7 @@ sub cwd_fails_enotdir {
 
     AuthUserFile => $setup->{auth_user_file},
     AuthGroupFile => $setup->{auth_group_file},
+    AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
       'mod_delay.c' => {
@@ -942,6 +956,7 @@ sub cwd_fails_abs_symlink_enotdir {
 
     AuthUserFile => $setup->{auth_user_file},
     AuthGroupFile => $setup->{auth_group_file},
+    AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
       'mod_delay.c' => {
@@ -1048,6 +1063,7 @@ sub cwd_fails_abs_symlink_enotdir_chrooted_bug4219 {
 
     AuthUserFile => $setup->{auth_user_file},
     AuthGroupFile => $setup->{auth_group_file},
+    AuthOrder => 'mod_auth_file.c',
 
     DefaultRoot => '~',
 
@@ -1160,6 +1176,7 @@ sub cwd_fails_rel_symlink_enotdir {
 
     AuthUserFile => $setup->{auth_user_file},
     AuthGroupFile => $setup->{auth_group_file},
+    AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
       'mod_delay.c' => {
@@ -1270,6 +1287,7 @@ sub cwd_fails_rel_symlink_enotdir_chrooted_bug4219 {
 
     AuthUserFile => $setup->{auth_user_file},
     AuthGroupFile => $setup->{auth_group_file},
+    AuthOrder => 'mod_auth_file.c',
 
     DefaultRoot => '~',
 
@@ -1368,6 +1386,7 @@ sub xcwd_ok {
 
     AuthUserFile => $setup->{auth_user_file},
     AuthGroupFile => $setup->{auth_group_file},
+    AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
       'mod_delay.c' => {
@@ -1507,6 +1526,7 @@ sub cwd_symlinks_traversing_bug3297 {
 
     AuthUserFile => $setup->{auth_user_file},
     AuthGroupFile => $setup->{auth_group_file},
+    AuthOrder => 'mod_auth_file.c',
 
     ShowSymlinks => 'on',
     DefaultRoot => '~',
@@ -1691,6 +1711,7 @@ sub cwd_symlinks_oneshot_bug3297 {
 
     AuthUserFile => $setup->{auth_user_file},
     AuthGroupFile => $setup->{auth_group_file},
+    AuthOrder => 'mod_auth_file.c',
 
     ShowSymlinks => 'on',
     DefaultRoot => '~',
@@ -1793,6 +1814,7 @@ sub cwd_long_path_bug3730 {
 
     AuthUserFile => $setup->{auth_user_file},
     AuthGroupFile => $setup->{auth_group_file},
+    AuthOrder => 'mod_auth_file.c',
 
     CommandBufferSize => $cmd_bufsz,
     DefaultRoot => '~',
@@ -1823,13 +1845,17 @@ sub cwd_long_path_bug3730 {
   defined(my $pid = fork()) or die("Can't fork: $!");
   if ($pid) {
     eval {
+      # Allow server to start up
+      sleep(1);
+
       my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port, 0, 1);
       $client->login($setup->{user}, $setup->{passwd});
+
+      # This command will be silently ignored, but the session will NOT be
+      # terminated.
       eval { $client->cwd($long_path) };
-      eval { $client->quit() };
-      unless ($@) {
-        die("QUIT succeeded unexpectedly");
-      }
+
+      $client->quit();
     };
     if ($@) {
       $ex = $@;
@@ -1880,6 +1906,7 @@ sub cwd_tilde_ok {
 
     AuthUserFile => $setup->{auth_user_file},
     AuthGroupFile => $setup->{auth_group_file},
+    AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
       'mod_delay.c' => {
@@ -1988,6 +2015,7 @@ sub cwd_tilde_user_ok {
 
     AuthUserFile => $setup->{auth_user_file},
     AuthGroupFile => $setup->{auth_group_file},
+    AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
       'mod_delay.c' => {
@@ -2085,6 +2113,7 @@ sub cwd_tilde_chrooted_bug3785 {
 
     AuthUserFile => $setup->{auth_user_file},
     AuthGroupFile => $setup->{auth_group_file},
+    AuthOrder => 'mod_auth_file.c',
     DefaultRoot => '~',
 
     IfModules => {
@@ -2205,6 +2234,7 @@ sub cwd_tilde_user_chrooted_bug3785 {
 
     AuthUserFile => $setup->{auth_user_file},
     AuthGroupFile => $setup->{auth_group_file},
+    AuthOrder => 'mod_auth_file.c',
     DefaultRoot => '~',
 
     IfModules => {

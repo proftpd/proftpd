@@ -90,6 +90,7 @@ sub dirfakegroup_list {
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
+    AuthOrder => 'mod_auth_file.c',
 
     DirFakeGroup => "on $fake_group",
 
@@ -262,6 +263,7 @@ sub dirfakegroup_mlsd_bug3604 {
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
+    AuthOrder => 'mod_auth_file.c',
 
     DirFakeGroup => "on $fake_group",
 
@@ -438,6 +440,7 @@ sub dirfakegroup_mlst_bug3604 {
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
+    AuthOrder => 'mod_auth_file.c',
 
     DirFakeGroup => "on $fake_group",
 
@@ -468,16 +471,13 @@ sub dirfakegroup_mlst_bug3604 {
       my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
       $client->login($user, $passwd);
 
-      my ($resp_code, $resp_msg);
-      ($resp_code, $resp_msg) = $client->mlst('config.conf');
+      my ($resp_code, $resp_msg) = $client->mlst('config.conf');
 
-      my $expected;
-
-      $expected = 250;
+      my $expected = 250;
       $self->assert($expected == $resp_code,
         test_msg("Expected $expected, got $resp_code"));
 
-      $expected = 'modify=\d+;perm=adfr(w)?;size=\d+;type=file;unique=\S+;UNIX.group=(\d+);UNIX.mode=\d+;UNIX.owner=\d+; (.*?)\/config\.conf$';
+      $expected = 'modify=\d+;perm=adfr(w)?;size=\d+;type=file;unique=\S+;UNIX.group=(\d+);UNIX.groupname=(\S+);UNIX.mode=\d+;UNIX.owner=\d+;UNIX.ownername=\S+; (.*?)\/config\.conf$';
       $self->assert(qr/$expected/, $resp_msg,
         test_msg("Expected '$expected', got '$resp_msg'"));
 
@@ -485,11 +485,13 @@ sub dirfakegroup_mlst_bug3604 {
 
       $resp_msg =~ /$expected/;
       my $file_gid = $2;
+      my $file_group = $3;
 
       $self->assert($file_gid == $fake_gid,
-        test_msg("Expected $fake_gid, got $file_gid"));
+        test_msg("Expected GID $fake_gid, got $file_gid"));
+      $self->assert($file_group eq $fake_group,
+        test_msg("Expected group '$fake_group', got '$file_group'"));
     };
-
     if ($@) {
       $ex = $@;
     }

@@ -1,6 +1,6 @@
 /*
  * ProFTPD - FTP server daemon
- * Copyright (c) 2013-2020 The ProFTPD Project team
+ * Copyright (c) 2013-2022 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -638,8 +638,9 @@ static int rlimit_set_cpu(int scope) {
         strerror(xerrno));
 
     } else {
-      pr_log_debug(DEBUG2, "set CPU resource limits for %s",
-        scope == DAEMON_SCOPE ? "daemon" : "session");
+      pr_log_debug(DEBUG2, "set CPU resource limits for %s (current %lu, "
+        "max %lu)", scope == DAEMON_SCOPE ? "daemon" : "session",
+        (unsigned long) current, (unsigned long) max);
     }
 
     c = find_config_next(c, c->next, CONF_PARAM, "RLimitCPU", FALSE);

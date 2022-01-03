@@ -54,7 +54,7 @@ my $order = 0;
 #
 # Well, almost.  ServerIdent supports the %v variable for ServerName, but
 # currently has no variable for version (e.g. %{version}) or server address.
-# And %L really should reflect a MasquerAddress setting.
+# And %L really should reflect a MasqueradeAddress setting.
 
 my $TESTS = {
   deferwelcome_off_serverident_off => {
@@ -233,11 +233,10 @@ sub deferwelcome_off_serverident_on {
       $self->assert($expected == $resp_code,
         test_msg("Expected response code $expected, got $resp_code"));
 
-      $expected = 'ProFTPD \S+ Server \(ProFTPD\) \[\S+\]';
+      $expected = 'ProFTPD Server \(ProFTPD\) \[\S+\]';
       $self->assert(qr/$expected/, $resp_msg,
         test_msg("Expected response message '$expected', got '$resp_msg'"));
     };
-
     if ($@) {
       $ex = $@;
     }
@@ -411,11 +410,10 @@ sub deferwelcome_on_serverident_on {
       $self->assert($expected == $resp_code,
         test_msg("Expected response code $expected, got $resp_code"));
 
-      $expected = 'ProFTPD \S+ Server ready\.';
+      $expected = 'ProFTPD Server ready\.';
       $self->assert(qr/$expected/, $resp_msg,
         test_msg("Expected response message '$expected', got '$resp_msg'"));
     };
-
     if ($@) {
       $ex = $@;
     }

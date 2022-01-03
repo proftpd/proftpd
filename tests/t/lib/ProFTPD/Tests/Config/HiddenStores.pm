@@ -121,8 +121,9 @@ sub hiddenstores_on {
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
-    DefaultChdir => '~',
+    AuthOrder => 'mod_auth_file.c',
 
+    DefaultChdir => '~',
     HiddenStores => 'on',
 
     IfModules => {
@@ -271,9 +272,10 @@ sub hiddenstores_bug3156 {
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
-    DefaultChdir => '~',
+    AuthOrder => 'mod_auth_file.c',
 
     AllowRetrieveRestart => 'on',
+    DefaultChdir => '~',
     HiddenStores => 'on',
 
     IfModules => {
@@ -415,8 +417,9 @@ sub hiddenstores_prefix_bug3294 {
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
-    DefaultChdir => '~',
+    AuthOrder => 'mod_auth_file.c',
 
+    DefaultChdir => '~',
     HiddenStores => $hiddenstore_prefix,
 
     IfModules => {
@@ -556,8 +559,9 @@ sub hiddenstores_bool_prefix_bug3294 {
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
-    DefaultChdir => '~',
+    AuthOrder => 'mod_auth_file.c',
 
+    DefaultChdir => '~',
     HiddenStores => $hiddenstore_prefix,
 
     IfModules => {
@@ -698,8 +702,9 @@ sub hiddenstores_suffix_bug3872 {
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
-    DefaultChdir => '~',
+    AuthOrder => 'mod_auth_file.c',
 
+    DefaultChdir => '~',
     HiddenStores => "$hiddenstore_prefix $hiddenstore_suffix",
 
     IfModules => {
@@ -851,8 +856,9 @@ sub hiddenstores_pid_var_bug4062 {
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
-    DefaultChdir => '~',
+    AuthOrder => 'mod_auth_file.c',
 
+    DefaultChdir => '~',
     HiddenStores => '.in. .%P',
 
     IfModules => {
@@ -963,8 +969,9 @@ sub hiddenstores_timeout_idle_bug4035 {
 
     AuthUserFile => $setup->{auth_user_file},
     AuthGroupFile => $setup->{auth_group_file},
-    DefaultChdir => '~',
+    AuthOrder => 'mod_auth_file.c',
 
+    DefaultChdir => '~',
     HiddenStores => 'on',
     TimeoutIdle => $timeout_idle,
 
@@ -1079,8 +1086,9 @@ sub hiddenstores_timeout_notransfer_bug4035 {
 
     AuthUserFile => $setup->{auth_user_file},
     AuthGroupFile => $setup->{auth_group_file},
-    DefaultChdir => '~',
+    AuthOrder => 'mod_auth_file.c',
 
+    DefaultChdir => '~',
     HiddenStores => 'on',
     TimeoutNoTransfer => $timeout_noxfer,
 
@@ -1193,8 +1201,9 @@ sub hiddenstores_timeout_stalled_bug4035 {
 
     AuthUserFile => $setup->{auth_user_file},
     AuthGroupFile => $setup->{auth_group_file},
-    DefaultChdir => '~',
+    AuthOrder => 'mod_auth_file.c',
 
+    DefaultChdir => '~',
     HiddenStores => 'on',
     TimeoutStalled => $timeout_stalled,
 
@@ -1223,6 +1232,9 @@ sub hiddenstores_timeout_stalled_bug4035 {
   defined(my $pid = fork()) or die("Can't fork: $!");
   if ($pid) {
     eval {
+      # Allow server to start up
+      sleep(1);
+
       my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
       $client->login($setup->{user}, $setup->{passwd});
 
@@ -1232,20 +1244,23 @@ sub hiddenstores_timeout_stalled_bug4035 {
           $client->response_msg());
       }
 
-      # Sleep for longer than the TimeoutStalled
-      sleep($timeout_stalled + 1);
+      if ($ENV{TEST_VERBOSE}) {
+        print STDERR "# Delaying for more than TimeoutStalled ($timeout_stalled secs)\n";
+      }
 
       my $buf = "Hello, World!\n";
       $conn->write($buf, length($buf), 25);
+
+      # Sleep for longer than the TimeoutStalled
+      sleep($timeout_stalled + 1);
 
       if (-f $hidden_file) {
         die("File $hidden_file exists unexpectedly");
       }
 
-      eval { $conn->close() };
-
       my $resp_code = $client->response_code();
       my $resp_msg = $client->response_msg();
+
       $self->assert_transfer_ok($resp_code, $resp_msg);
 
       eval { $client->quit() };
@@ -1267,7 +1282,6 @@ sub hiddenstores_timeout_stalled_bug4035 {
         die("File $test_file exists unexpectedly");
       }
     };
-
     if ($@) {
       $ex = $@;
     }
@@ -1276,7 +1290,7 @@ sub hiddenstores_timeout_stalled_bug4035 {
     $wfh->flush();
 
   } else {
-    eval { server_wait($setup->{config_file}, $rfh) };
+    eval { server_wait($setup->{config_file}, $rfh, 15) };
     if ($@) {
       warn($@);
       exit 1;
@@ -1287,7 +1301,6 @@ sub hiddenstores_timeout_stalled_bug4035 {
 
   # Stop server
   server_stop($setup->{pid_file});
-
   $self->assert_child_ok($pid);
 
   test_cleanup($setup->{log_file}, $ex);
@@ -1312,8 +1325,9 @@ sub hiddenstores_timeout_session_bug4035 {
 
     AuthUserFile => $setup->{auth_user_file},
     AuthGroupFile => $setup->{auth_group_file},
-    DefaultChdir => '~',
+    AuthOrder => 'mod_auth_file.c',
 
+    DefaultChdir => '~',
     HiddenStores => 'on',
     TimeoutSession => $timeout_session,
 

@@ -50,6 +50,8 @@ sub limit_help_issue1296 {
 
     AuthUserFile => $setup->{auth_user_file},
     AuthGroupFile => $setup->{auth_group_file},
+    AuthOrder => 'mod_auth_file.c',
+
     DefaultChdir => '~',
 
     IfModules => {
@@ -158,6 +160,8 @@ sub limit_site_help_issue1296 {
 
     AuthUserFile => $setup->{auth_user_file},
     AuthGroupFile => $setup->{auth_group_file},
+    AuthOrder => 'mod_auth_file.c',
+
     DefaultChdir => '~',
 
     IfModules => {

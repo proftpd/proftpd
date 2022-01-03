@@ -38,38 +38,7 @@ sub list_tests {
 sub chmod_octal_ok {
   my $self = shift;
   my $tmpdir = $self->{tmpdir};
-
-  my $config_file = "$tmpdir/cmds.conf";
-  my $pid_file = File::Spec->rel2abs("$tmpdir/cmds.pid");
-  my $scoreboard_file = File::Spec->rel2abs("$tmpdir/cmds.scoreboard");
-
-  my $log_file = test_get_logfile();
-
-  my $auth_user_file = File::Spec->rel2abs("$tmpdir/cmds.passwd");
-  my $auth_group_file = File::Spec->rel2abs("$tmpdir/cmds.group");
-
-  my $user = 'proftpd';
-  my $passwd = 'test';
-  my $group = 'ftpd';
-  my $home_dir = File::Spec->rel2abs($tmpdir);
-  my $uid = 500;
-  my $gid = 500;
-
-  # Make sure that, if we're running as root, that the home directory has
-  # permissions/privs set for the account we create
-  if ($< == 0) {
-    unless (chmod(0755, $home_dir)) {
-      die("Can't set perms on $home_dir to 0755: $!");
-    }
-
-    unless (chown($uid, $gid, $home_dir)) {
-      die("Can't set owner of $home_dir to $uid/$gid: $!");
-    }
-  }
-
-  auth_user_write($auth_user_file, $user, $passwd, $uid, $gid, $home_dir,
-    '/bin/bash');
-  auth_group_write($auth_group_file, $group, $gid, $user);
+  my $setup = test_setup($tmpdir, 'cmds');
 
   my $test_file = File::Spec->rel2abs("$tmpdir/test.txt");
   if (open(my $fh, "> $test_file")) {
@@ -78,17 +47,26 @@ sub chmod_octal_ok {
       die("Can't write $test_file: $!");
     }
 
+    # Make sure that, if we're running as root, that the test file has
+    # permissions/privs set for the account we create
+    if ($< == 0) {
+      unless (chown($setup->{uid}, $setup->{gid}, $test_file)) {
+        die("Can't set owner of $test_file to $setup->{uid}/$setup->{gid}: $!");
+      }
+    }
+
   } else {
     die("Can't open $test_file: $!");
   }
 
   my $config = {
-    PidFile => $pid_file,
-    ScoreboardFile => $scoreboard_file,
-    SystemLog => $log_file,
+    PidFile => $setup->{pid_file},
+    ScoreboardFile => $setup->{scoreboard_file},
+    SystemLog => $setup->{log_file},
 
-    AuthUserFile => $auth_user_file,
-    AuthGroupFile => $auth_group_file,
+    AuthUserFile => $setup->{auth_user_file},
+    AuthGroupFile => $setup->{auth_group_file},
+    AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
       'mod_delay.c' => {
@@ -97,7 +75,8 @@ sub chmod_octal_ok {
     },
   };
 
-  my ($port, $config_user, $config_group) = config_write($config_file, $config);
+  my ($port, $config_user, $config_group) = config_write($setup->{config_file},
+    $config);
 
   # Open pipes, for use between the parent and child processes.  Specifically,
   # the child will indicate when it's done with its test by writing a message
@@ -114,30 +93,32 @@ sub chmod_octal_ok {
   defined(my $pid = fork()) or die("Can't fork: $!");
   if ($pid) {
     eval {
+      # Allow server to start up
+      sleep(1);
+
       my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
-      $client->login($user, $passwd);
+      $client->login($setup->{user}, $setup->{passwd});
 
       $client->site('CHMOD', '444', 'test.txt');
 
       my $resp_code = $client->response_code();
       my $resp_msg = $client->response_msg(); 
 
-      my $expected;
-
-      $expected = 200;
+      my $expected = 200;
       $self->assert($expected == $resp_code,
-        test_msg("Expected $expected, got $resp_code"));
+        test_msg("Expected response code $expected, got $resp_code"));
 
       $expected = 'SITE CHMOD command successful';
       $self->assert($expected eq $resp_msg,
-        test_msg("Expected '$expected', got '$resp_msg'"));
+        test_msg("Expected response message '$expected', got '$resp_msg'"));
 
       my $file_mode = sprintf("%lo", (stat($test_file))[2] & 07777);
       $expected = '444';
       $self->assert($expected eq $file_mode,
         test_msg("Expected '$expected', got '$file_mode'"));
-    };
 
+      $client->quit();
+    };
     if ($@) {
       $ex = $@;
     }
@@ -146,7 +127,7 @@ sub chmod_octal_ok {
     $wfh->flush();
 
   } else {
-    eval { server_wait($config_file, $rfh) };
+    eval { server_wait($setup->{config_file}, $rfh) };
     if ($@) {
       warn($@);
       exit 1;
@@ -156,61 +137,30 @@ sub chmod_octal_ok {
   }
 
   # Stop server
-  server_stop($pid_file);
-
+  server_stop($setup->{pid_file});
   $self->assert_child_ok($pid);
 
-  if ($ex) {
-    test_append_logfile($log_file, $ex);
-    unlink($log_file);
-
-    die($ex);
-  }
-
-  unlink($log_file);
+  test_cleanup($setup->{log_file}, $ex);
 }
 
 sub chmod_limit_denied_ftpaccess {
   my $self = shift;
   my $tmpdir = $self->{tmpdir};
-
-  my $config_file = "$tmpdir/cmds.conf";
-  my $pid_file = File::Spec->rel2abs("$tmpdir/cmds.pid");
-  my $scoreboard_file = File::Spec->rel2abs("$tmpdir/cmds.scoreboard");
-
-  my $log_file = test_get_logfile();
-
-  my $auth_user_file = File::Spec->rel2abs("$tmpdir/cmds.passwd");
-  my $auth_group_file = File::Spec->rel2abs("$tmpdir/cmds.group");
-
-  my $user = 'proftpd';
-  my $passwd = 'test';
-  my $group = 'ftpd';
-  my $home_dir = File::Spec->rel2abs($tmpdir);
-  my $uid = 500;
-  my $gid = 500;
-
-  # Make sure that, if we're running as root, that the home directory has
-  # permissions/privs set for the account we create
-  if ($< == 0) {
-    unless (chmod(0755, $home_dir)) {
-      die("Can't set perms on $home_dir to 0755: $!");
-    }
-
-    unless (chown($uid, $gid, $home_dir)) {
-      die("Can't set owner of $home_dir to $uid/$gid: $!");
-    }
-  }
-
-  auth_user_write($auth_user_file, $user, $passwd, $uid, $gid, $home_dir,
-    '/bin/bash');
-  auth_group_write($auth_group_file, $group, $gid, $user);
+  my $setup = test_setup($tmpdir, 'cmds');
 
   my $test_file = File::Spec->rel2abs("$tmpdir/test.txt");
   if (open(my $fh, "> $test_file")) {
     print $fh "Hello, World!\n";
     unless (close($fh)) {
       die("Can't write $test_file: $!");
+    }
+
+    # Make sure that, if we're running as root, that the test file has
+    # permissions/privs set for the account we create
+    if ($< == 0) {
+      unless (chown($setup->{uid}, $setup->{gid}, $test_file)) {
+        die("Can't set owner of $test_file to $setup->{uid}/$setup->{gid}: $!");
+      }
     }
 
   } else {
@@ -221,7 +171,7 @@ sub chmod_limit_denied_ftpaccess {
   if (open(my $fh, "> $ftpaccess_file")) {
     print $fh <<EOC;
 <Limit SITE_CHMOD>
-  DenyUser $user
+  DenyUser $setup->{user}
 </Limit>
 EOC
     unless (close($fh)) {
@@ -233,13 +183,15 @@ EOC
   }
 
   my $config = {
-    PidFile => $pid_file,
-    ScoreboardFile => $scoreboard_file,
-    SystemLog => $log_file,
+    PidFile => $setup->{pid_file},
+    ScoreboardFile => $setup->{scoreboard_file},
+    SystemLog => $setup->{log_file},
+
+    AuthUserFile => $setup->{auth_user_file},
+    AuthGroupFile => $setup->{auth_group_file},
+    AuthOrder => 'mod_auth_file.c',
 
     AllowOverride => 'on',
-    AuthUserFile => $auth_user_file,
-    AuthGroupFile => $auth_group_file,
 
     IfModules => {
       'mod_delay.c' => {
@@ -248,7 +200,8 @@ EOC
     },
   };
 
-  my ($port, $config_user, $config_group) = config_write($config_file, $config);
+  my ($port, $config_user, $config_group) = config_write($setup->{config_file},
+    $config);
 
   # Open pipes, for use between the parent and child processes.  Specifically,
   # the child will indicate when it's done with its test by writing a message
@@ -265,8 +218,11 @@ EOC
   defined(my $pid = fork()) or die("Can't fork: $!");
   if ($pid) {
     eval {
+      # Allow server to start up
+      sleep(1);
+
       my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
-      $client->login($user, $passwd);
+      $client->login($setup->{user}, $setup->{passwd});
 
       eval { $client->site('CHMOD', '444', 'test.txt') };
       unless ($@) {
@@ -276,17 +232,16 @@ EOC
       my $resp_code = $client->response_code();
       my $resp_msg = $client->response_msg(); 
 
-      my $expected;
-
-      $expected = 550;
+      my $expected = 550;
       $self->assert($expected == $resp_code,
-        test_msg("Expected $expected, got $resp_code"));
+        test_msg("Expected response code $expected, got $resp_code"));
 
       $expected = 'CHMOD 444 test.txt: Permission denied';
       $self->assert($expected eq $resp_msg,
-        test_msg("Expected '$expected', got '$resp_msg'"));
-    };
+        test_msg("Expected response message '$expected', got '$resp_msg'"));
 
+      $client->quit();
+    };
     if ($@) {
       $ex = $@;
     }
@@ -295,7 +250,7 @@ EOC
     $wfh->flush();
 
   } else {
-    eval { server_wait($config_file, $rfh) };
+    eval { server_wait($setup->{config_file}, $rfh) };
     if ($@) {
       warn($@);
       exit 1;
@@ -305,18 +260,10 @@ EOC
   }
 
   # Stop server
-  server_stop($pid_file);
-
+  server_stop($setup->{pid_file});
   $self->assert_child_ok($pid);
 
-  if ($ex) {
-    test_append_logfile($log_file, $ex);
-    unlink($log_file);
-
-    die($ex);
-  }
-
-  unlink($log_file);
+  test_cleanup($setup->{log_file}, $ex);
 }
 
 1;

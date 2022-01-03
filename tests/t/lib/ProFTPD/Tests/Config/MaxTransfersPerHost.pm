@@ -40,17 +40,47 @@ sub maxtransfersperhost_retr {
   my $tmpdir = $self->{tmpdir};
   my $setup = test_setup($tmpdir, 'config');
 
-  my $test_file = File::Spec->rel2abs($setup->{config_file});
+  my $test_file = File::Spec->rel2abs("$tmpdir/test.dat");
+  if (open(my $fh, "> $test_file")) {
+    for (my $i = 0; $i < 1000; $i++) {
+      print $fh 'AbCdEfGh' x 327680;
+    }
+
+    unless (close($fh)) {
+      die("Can't write $test_file: $!");
+    }
+
+    # Make sure that, if we're running as root, that the test file has
+    # permissions/privs set for the account we create
+    if ($< == 0) {
+      unless (chown($setup->{uid}, $setup->{gid}, $test_file)) {
+        die("Can't set owner of $test_file to $setup->{uid}/$setup->{gid}: $!");
+      }
+    }
+
+  } else {
+    die("Can't open $test_file: $!");
+  }
+
   my $max_transfers = 1;
 
   my $config = {
     PidFile => $setup->{pid_file},
     ScoreboardFile => $setup->{scoreboard_file},
     SystemLog => $setup->{log_file},
+    TraceLog => $setup->{log_file},
+    Trace => 'command:10 xfer:20',
 
     AuthUserFile => $setup->{auth_user_file},
     AuthGroupFile => $setup->{auth_group_file}, 
+    AuthOrder => 'mod_auth_file.c',
+
     MaxTransfersPerHost => "RETR $max_transfers",
+
+    # These are necessary, to have the server address match the IP to
+    # which the client connects.
+    DefaultAddress => '127.0.0.1',
+    SocketBindTight => 'on',
 
     IfModules => {
       'mod_delay.c' => {
@@ -85,6 +115,7 @@ sub maxtransfersperhost_retr {
         die("RETR failed: " . $client1->response_code() . " " .
           $client1->response_msg());
       }
+      sleep(1);
 
       my $client2 = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
       $client2->login($setup->{user}, $setup->{passwd});
@@ -96,9 +127,7 @@ sub maxtransfersperhost_retr {
       my $resp_code = $client2->response_code();
       my $resp_msg = $client2->response_msg();
 
-      my $expected;
-
-      $expected = 451;
+      my $expected = 451;
       $self->assert($expected == $resp_code,
         test_msg("Expected response code $expected, got $resp_code"));
 
@@ -109,7 +138,6 @@ sub maxtransfersperhost_retr {
       $client1->quit();
       $client2->quit();
     };
-
     if ($@) {
       $ex = $@;
     }
@@ -129,8 +157,8 @@ sub maxtransfersperhost_retr {
 
   # Stop server
   server_stop($setup->{pid_file});
-
   $self->assert_child_ok($pid);
+
   test_cleanup($setup->{log_file}, $ex);
 }
 
@@ -139,7 +167,28 @@ sub maxtransfersperhost_retr_custom_message {
   my $tmpdir = $self->{tmpdir};
   my $setup = test_setup($tmpdir, 'config');
 
-  my $test_file = File::Spec->rel2abs($setup->{config_file});
+  my $test_file = File::Spec->rel2abs("$tmpdir/test.dat");
+  if (open(my $fh, "> $test_file")) {
+    for (my $i = 0; $i < 1000; $i++) {
+      print $fh 'AbCdEfGh' x 327680;
+    }
+
+    unless (close($fh)) {
+      die("Can't write $test_file: $!");
+    }
+
+    # Make sure that, if we're running as root, that the test file has
+    # permissions/privs set for the account we create
+    if ($< == 0) {
+      unless (chown($setup->{uid}, $setup->{gid}, $test_file)) {
+        die("Can't set owner of $test_file to $setup->{uid}/$setup->{gid}: $!");
+      }
+    }
+
+  } else {
+    die("Can't open $test_file: $!");
+  }
+
   my $max_transfers = 1;
 
   my $config = {
@@ -149,7 +198,14 @@ sub maxtransfersperhost_retr_custom_message {
 
     AuthUserFile => $setup->{auth_user_file},
     AuthGroupFile => $setup->{auth_group_file}, 
+    AuthOrder => 'mod_auth_file.c',
+
     MaxTransfersPerHost => "RETR $max_transfers \"Too many transfers from your host\"",
+
+    # These are necessary, to have the server address match the IP to
+    # which the client connects.
+    DefaultAddress => '127.0.0.1',
+    SocketBindTight => 'on',
 
     IfModules => {
       'mod_delay.c' => {
@@ -184,6 +240,7 @@ sub maxtransfersperhost_retr_custom_message {
         die("RETR failed: " . $client1->response_code() . " " .
           $client1->response_msg());
       }
+      sleep(1);
 
       my $client2 = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
       $client2->login($setup->{user}, $setup->{passwd});
@@ -195,9 +252,7 @@ sub maxtransfersperhost_retr_custom_message {
       my $resp_code = $client2->response_code();
       my $resp_msg = $client2->response_msg();
 
-      my $expected;
-
-      $expected = 451;
+      my $expected = 451;
       $self->assert($expected == $resp_code,
         test_msg("Expected response code $expected, got $resp_code"));
 
@@ -208,7 +263,6 @@ sub maxtransfersperhost_retr_custom_message {
       $client1->quit();
       $client2->quit();
     };
-
     if ($@) {
       $ex = $@;
     }
@@ -228,8 +282,8 @@ sub maxtransfersperhost_retr_custom_message {
 
   # Stop server
   server_stop($setup->{pid_file});
-
   $self->assert_child_ok($pid);
+
   test_cleanup($setup->{log_file}, $ex);
 }
 

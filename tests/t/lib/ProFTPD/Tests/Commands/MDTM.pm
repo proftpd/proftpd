@@ -27,9 +27,10 @@ my $TESTS = {
     test_class => [qw(forking)],
   },
 
+  # Rolled back per Bug#4332
   mdtm_abs_symlink_chrooted_bug4219 => {
     order => ++$order,
-    test_class => [qw(bug forking rootprivs)],
+    test_class => [qw(bug forking inprogress rootprivs)],
   },
 
   mdtm_rel_symlink => {
@@ -102,6 +103,7 @@ sub mdtm_ok {
 
     AuthUserFile => $setup->{auth_user_file},
     AuthGroupFile => $setup->{auth_group_file},
+    AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
       'mod_delay.c' => {
@@ -200,6 +202,7 @@ sub mdtm_abs_symlink {
 
     AuthUserFile => $setup->{auth_user_file},
     AuthGroupFile => $setup->{auth_group_file},
+    AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
       'mod_delay.c' => {
@@ -300,6 +303,8 @@ sub mdtm_abs_symlink_chrooted_bug4219 {
 
     AuthUserFile => $setup->{auth_user_file},
     AuthGroupFile => $setup->{auth_group_file},
+    AuthOrder => 'mod_auth_file.c',
+
     DefaultRoot => '~',
 
     IfModules => {
@@ -403,6 +408,7 @@ sub mdtm_rel_symlink {
 
     AuthUserFile => $setup->{auth_user_file},
     AuthGroupFile => $setup->{auth_group_file},
+    AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
       'mod_delay.c' => {
@@ -474,9 +480,25 @@ sub mdtm_rel_symlink_chrooted_bug4219 {
   my $test_dir = File::Spec->rel2abs("$tmpdir/test.d");
   mkpath($test_dir);
 
+  # Make sure that, if we're running as root, that the test dir has
+  # permissions/privs set for the account we create
+  if ($< == 0) {
+    unless (chown($setup->{uid}, $setup->{gid}, $test_dir)) {
+      die("Can't set owner of $test_dir to $setup->{uid}/$setup->{gid}: $!");
+    }
+  }
+
   my $test_file = File::Spec->rel2abs("$test_dir/test.txt");
   if (open(my $fh, "> $test_file")) {
     close($fh);
+
+    # Make sure that, if we're running as root, that the test file has
+    # permissions/privs set for the account we create
+    if ($< == 0) {
+      unless (chown($setup->{uid}, $setup->{gid}, $test_file)) {
+        die("Can't set owner of $test_file to $setup->{uid}/$setup->{gid}: $!");
+      }
+    }
 
   } else {
     die("Can't create $test_file: $!");
@@ -505,6 +527,7 @@ sub mdtm_rel_symlink_chrooted_bug4219 {
 
     AuthUserFile => $setup->{auth_user_file},
     AuthGroupFile => $setup->{auth_group_file},
+    AuthOrder => 'mod_auth_file.c',
 
     DefaultRoot => '~',
 
@@ -584,6 +607,7 @@ sub mdtm_fails_enoent {
 
     AuthUserFile => $setup->{auth_user_file},
     AuthGroupFile => $setup->{auth_group_file},
+    AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
       'mod_delay.c' => {
@@ -682,6 +706,7 @@ sub mdtm_fails_abs_symlink_enoent {
 
     AuthUserFile => $setup->{auth_user_file},
     AuthGroupFile => $setup->{auth_group_file},
+    AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
       'mod_delay.c' => {
@@ -780,6 +805,7 @@ sub mdtm_fails_abs_symlink_enoent_chrooted_bug4219 {
 
     AuthUserFile => $setup->{auth_user_file},
     AuthGroupFile => $setup->{auth_group_file},
+    AuthOrder => 'mod_auth_file.c',
 
     DefaultRoot => '~',
 
@@ -885,6 +911,7 @@ sub mdtm_fails_rel_symlink_enoent {
 
     AuthUserFile => $setup->{auth_user_file},
     AuthGroupFile => $setup->{auth_group_file},
+    AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
       'mod_delay.c' => {
@@ -989,6 +1016,7 @@ sub mdtm_fails_rel_symlink_enoent_chrooted_bug4219 {
 
     AuthUserFile => $setup->{auth_user_file},
     AuthGroupFile => $setup->{auth_group_file},
+    AuthOrder => 'mod_auth_file.c',
 
     DefaultRoot => '~',
 
@@ -1082,6 +1110,7 @@ sub mdtm_fails_eperm {
 
     AuthUserFile => $setup->{auth_user_file},
     AuthGroupFile => $setup->{auth_group_file},
+    AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
       'mod_delay.c' => {

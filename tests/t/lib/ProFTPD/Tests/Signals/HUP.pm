@@ -45,17 +45,12 @@ sub list_tests {
 sub hup_daemon_ok {
   my $self = shift;
   my $tmpdir = $self->{tmpdir};
-
-  my $config_file = "$tmpdir/signals.conf";
-  my $pid_file = File::Spec->rel2abs("$tmpdir/signals.pid");
-  my $scoreboard_file = File::Spec->rel2abs("$tmpdir/signals.scoreboard");
-
-  my $log_file = test_get_logfile();
+  my $setup = test_setup($tmpdir, 'signals');
 
   my $config = {
-    PidFile => $pid_file,
-    ScoreboardFile => $scoreboard_file,
-    SystemLog => $log_file,
+    PidFile => $setup->{pid_file},
+    ScoreboardFile => $setup->{scoreboard_file},
+    SystemLog => $setup->{log_file},
 
     ServerIdent => 'on foo',
 
@@ -66,48 +61,51 @@ sub hup_daemon_ok {
     },
   };
 
-  my ($port, $config_user, $config_group) = config_write($config_file, $config);
+  my ($port, $config_user, $config_group) = config_write($setup->{config_file},
+    $config);
 
   # Start server
-  server_start($config_file); 
+  server_start($setup->{config_file});
   sleep(2);
 
   my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
 
   my $resp_code = $client->response_code();
   my $resp_msg = $client->response_msg();
+  $client->quit();
 
-  my $expected;
-    
-  $expected = 220;
+  my $expected = 220;
   $self->assert($expected == $resp_code,
-    test_msg("Expected $expected, got $resp_code"));
+    test_msg("Expected response code $expected, got $resp_code"));
 
   $expected = "foo";
   $self->assert($expected eq $resp_msg,
-    test_msg("Expected '$expected', got '$resp_msg'"));
+    test_msg("Expected response message '$expected', got '$resp_msg'"));
 
   # Now change the config a little, and send the HUP signal
   $config->{ServerIdent} = 'on bar';
-  ($port, $config_user, $config_group) = config_write($config_file, $config);
-  server_restart($pid_file);
+
+  my $other_port;
+  ($other_port, $config_user, $config_group) = config_write(
+    $setup->{config_file}, $config);
+  server_restart($setup->{pid_file});
   sleep(2);
 
   $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
-
   $resp_code = $client->response_code();
   $resp_msg = $client->response_msg();
+  $client->quit();
 
   $expected = 220;
   $self->assert($expected == $resp_code,
-    test_msg("Expected $expected, got $resp_code"));
+    test_msg("Expected response code $expected, got $resp_code"));
 
   $expected = "bar";
   $self->assert($expected eq $resp_msg,
-    test_msg("Expected '$expected', got '$resp_msg'"));
+    test_msg("Expected response message '$expected', got '$resp_msg'"));
 
-  server_stop($pid_file);
-  unlink($log_file);
+  server_stop($setup->{pid_file});
+  test_cleanup($setup->{log_file}, undef);
 }
 
 sub hup_directory_bug3610 {
@@ -353,38 +351,7 @@ sub upload_file {
 sub hup_allowoverwrite_bug3740 {
   my $self = shift;
   my $tmpdir = $self->{tmpdir};
-
-  my $config_file = "$tmpdir/signals.conf";
-  my $pid_file = File::Spec->rel2abs("$tmpdir/signals.pid");
-  my $scoreboard_file = File::Spec->rel2abs("$tmpdir/signals.scoreboard");
-
-  my $log_file = test_get_logfile();
-
-  my $auth_user_file = File::Spec->rel2abs("$tmpdir/cmds.passwd");
-  my $auth_group_file = File::Spec->rel2abs("$tmpdir/cmds.group");
-
-  my $user = 'proftpd';
-  my $passwd = 'test';
-  my $group = 'ftpd';
-  my $home_dir = File::Spec->rel2abs($tmpdir);
-  my $uid = 500;
-  my $gid = 500;
-
-  # Make sure that, if we're running as root, that the home directory has
-  # permissions/privs set for the account we create
-  if ($< == 0) {
-    unless (chmod(0755, $home_dir)) {
-      die("Can't set perms on $home_dir to 0755: $!");
-    }
-
-    unless (chown($uid, $gid, $home_dir)) {
-      die("Can't set owner of $home_dir to $uid/$gid: $!");
-    }
-  }
-
-  auth_user_write($auth_user_file, $user, $passwd, $uid, $gid, $home_dir,
-    '/bin/bash');
-  auth_group_write($auth_group_file, $group, $gid, $user);
+  my $setup = test_setup($tmpdir, 'signals');
 
   my $test_file = File::Spec->rel2abs("$tmpdir/test.txt");
   if (open(my $fh, "> $test_file")) {
@@ -394,17 +361,26 @@ sub hup_allowoverwrite_bug3740 {
       die("Can't write $test_file: $!");
     }
 
+    # Make sure that, if we're running as root, that the test file has
+    # permissions/privs set for the account we create
+    if ($< == 0) {
+      unless (chown($setup->{uid}, $setup->{gid}, $test_file)) {
+        die("Can't set owner of $test_file to $setup->{uid}/$setup->{gid}: $!");
+      }
+    }
+
   } else {
     die("Can't open $test_file: $!");
   }
 
   my $config = {
-    PidFile => $pid_file,
-    ScoreboardFile => $scoreboard_file,
-    SystemLog => $log_file,
+    PidFile => $setup->{pid_file},
+    ScoreboardFile => $setup->{scoreboard_file},
+    SystemLog => $setup->{log_file},
 
-    AuthUserFile => $auth_user_file,
-    AuthGroupFile => $auth_group_file,
+    AuthUserFile => $setup->{auth_user_file},
+    AuthGroupFile => $setup->{auth_group_file},
+    AuthOrder => 'mod_auth_file.c',
 
     AllowOverwrite => 'on',
  
@@ -415,11 +391,12 @@ sub hup_allowoverwrite_bug3740 {
     },
   };
 
-  my ($port, $config_user, $config_group) = config_write($config_file, $config);
+  my ($port, $config_user, $config_group) = config_write($setup->{config_file},
+    $config);
 
   # Add a <VirtualHost> to the config.  This appears to be a key factor
   # in causing Bug#3740, according to the bug report.
-  if (open(my $fh, ">> $config_file")) {
+  if (open(my $fh, ">> $setup->{config_file}")) {
     my $vhost_port = $port + 200;
 
     print $fh <<EOC;
@@ -430,15 +407,15 @@ sub hup_allowoverwrite_bug3740 {
 </VirtualHost>
 EOC
     unless (close($fh)) {
-      die("Can't write $config_file: $!");
+      die("Can't write $setup->{config_file}: $!");
     }
 
   } else {
-    die("Can't read $config_file: $!");
+    die("Can't read $setup->{config_file}: $!");
   }
 
   # Start server
-  server_start($config_file); 
+  server_start($setup->{config_file}); 
 
   my $nattempts = 10;
 
@@ -447,7 +424,7 @@ EOC
       print STDERR "Upload attempt #", $i + 1, "...";
     }
 
-    eval { upload_file($port, $user, $passwd, 'test.txt') };
+    eval { upload_file($port, $setup->{user}, $setup->{passwd}, 'test.txt') };
     if ($@) {
       my $ex = $@;
 
@@ -455,10 +432,8 @@ EOC
         print STDERR "FAILED\n";
       }
 
-      server_stop($pid_file);
-      test_append_logfile($log_file, $ex);
-      unlink($log_file);
-
+      server_stop($setup->{pid_file});
+      test_cleanup($setup->{log_file}, $ex);
       die($ex);
     }
 
@@ -466,11 +441,11 @@ EOC
       print STDERR "OK\n";
     }
 
-    server_restart($pid_file);
+    server_restart($setup->{pid_file});
   }
 
-  server_stop($pid_file);
-  unlink($log_file);
+  server_stop($setup->{pid_file});
+  test_cleanup($setup->{log_file}, undef);
 }
 
 1;

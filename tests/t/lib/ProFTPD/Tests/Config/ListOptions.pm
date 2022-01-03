@@ -138,7 +138,7 @@ sub listoptions_opt_t {
       }
 
       my $mtime = (time() - ($count * 10));
-      unless (utime(undef, $mtime, $path)) {
+      unless (utime(0, $mtime, $path)) {
         die("Can't change mtime for $path: $!");
       }
 
@@ -154,6 +154,7 @@ sub listoptions_opt_t {
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
+    AuthOrder => 'mod_auth_file.c',
 
     ListOptions => '-t',
 
@@ -308,6 +309,7 @@ sub listoptions_opt_1_list {
 
     AuthUserFile => $setup->{auth_user_file},
     AuthGroupFile => $setup->{auth_group_file},
+    AuthOrder => 'mod_auth_file.c',
 
     ListOptions => '"-A -1" strict',
 
@@ -443,6 +445,7 @@ sub listoptions_opt_1_nlst {
 
     AuthUserFile => $setup->{auth_user_file},
     AuthGroupFile => $setup->{auth_group_file},
+    AuthOrder => 'mod_auth_file.c',
 
     ListOptions => '"-A -1" strict',
 
@@ -613,6 +616,7 @@ sub listoptions_opt_1_nlst_simple_glob {
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
+    AuthOrder => 'mod_auth_file.c',
 
     ListOptions => '"-A -1" strict',
 
@@ -787,6 +791,7 @@ sub listoptions_opt_1_nlst_complex_glob {
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
+    AuthOrder => 'mod_auth_file.c',
 
     DefaultRoot => '~',
     ListOptions => '"-A -1" strict',
@@ -962,9 +967,10 @@ sub listoptions_listonly {
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
-    TimeoutLinger => 1,
+    AuthOrder => 'mod_auth_file.c',
 
     ListOptions => '"-A -1" LISTOnly',
+    TimeoutLinger => 1,
 
     IfModules => {
       'mod_delay.c' => {
@@ -1177,9 +1183,10 @@ sub listoptions_nlstonly {
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
-    TimeoutLinger => 1,
+    AuthOrder => 'mod_auth_file.c',
 
     ListOptions => '"-A -1" NLSTOnly',
+    TimeoutLinger => 1,
 
     IfModules => {
       'mod_delay.c' => {
@@ -1366,9 +1373,10 @@ sub listoptions_sortednlst_bug4267 {
 
     AuthUserFile => $setup->{auth_user_file},
     AuthGroupFile => $setup->{auth_group_file},
-    TimeoutLinger => 1,
+    AuthOrder => 'mod_auth_file.c',
 
     ListOptions => '"" SortedNLST',
+    TimeoutLinger => 1,
 
     IfModules => {
       'mod_delay.c' => {
@@ -1540,6 +1548,7 @@ sub listoptions_maxfiles {
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
+    AuthOrder => 'mod_auth_file.c',
 
     TimeoutIdle => $timeout + 15,
     TimeoutNoTransfer => $timeout + 15,
@@ -1684,6 +1693,7 @@ sub listoptions_nlstnamesonly_issue251 {
 
     AuthUserFile => $setup->{auth_user_file},
     AuthGroupFile => $setup->{auth_group_file},
+    AuthOrder => 'mod_auth_file.c',
 
     ListOptions => '"-A -1 NLSTOnly"',
 

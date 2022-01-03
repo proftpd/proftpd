@@ -149,46 +149,16 @@ sub list_tests {
 sub auth_user_file_id_range_ok {
   my $self = shift;
   my $tmpdir = $self->{tmpdir};
-
-  my $config_file = "$tmpdir/authfile.conf";
-  my $pid_file = File::Spec->rel2abs("$tmpdir/authfile.pid");
-  my $scoreboard_file = File::Spec->rel2abs("$tmpdir/authfile.scoreboard");
-
-  my $log_file = test_get_logfile();
-
-  my $auth_user_file = File::Spec->rel2abs("$tmpdir/authfile.passwd");
-  my $auth_group_file = File::Spec->rel2abs("$tmpdir/authfile.group");
-
-  my $user = 'proftpd';
-  my $passwd = 'test';
-  my $group = 'ftpd';
-  my $home_dir = File::Spec->rel2abs($tmpdir);
-  my $uid = 500;
-  my $gid = 500;
-
-  # Make sure that, if we're running as root, that the home directory has
-  # permissions/privs set for the account we create
-  if ($< == 0) {
-    unless (chmod(0755, $home_dir)) {
-      die("Can't set perms on $home_dir to 0755: $!");
-    }
-
-    unless (chown($uid, $gid, $home_dir)) {
-      die("Can't set owner of $home_dir to $uid/$gid: $!");
-    }
-  }
-
-  auth_user_write($auth_user_file, $user, $passwd, $uid, $gid, $home_dir,
-    '/bin/bash');
-  auth_group_write($auth_group_file, $group, $gid, $user);
+  my $setup = test_setup($tmpdir, 'authfile');
 
   my $config = {
-    PidFile => $pid_file,
-    ScoreboardFile => $scoreboard_file,
-    SystemLog => $log_file,
+    PidFile => $setup->{pid_file},
+    ScoreboardFile => $setup->{scoreboard_file},
+    SystemLog => $setup->{log_file},
 
-    AuthUserFile => "$auth_user_file id 100-500",
-    AuthGroupFile => $auth_group_file,
+    AuthUserFile => "$setup->{auth_user_file} id 100-$setup->{uid}",
+    AuthGroupFile => $setup->{auth_group_file},
+    AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
       'mod_delay.c' => {
@@ -197,7 +167,8 @@ sub auth_user_file_id_range_ok {
     },
   };
 
-  my ($port, $config_user, $config_group) = config_write($config_file, $config);
+  my ($port, $config_user, $config_group) = config_write($setup->{config_file},
+    $config);
 
   # Open pipes, for use between the parent and child processes.  Specifically,
   # the child will indicate when it's done with its test by writing a message
@@ -214,11 +185,13 @@ sub auth_user_file_id_range_ok {
   defined(my $pid = fork()) or die("Can't fork: $!");
   if ($pid) {
     eval {
+      # Allow server to start up
+      sleep(1);
+
       my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
-      $client->login($user, $passwd);
+      $client->login($setup->{user}, $setup->{passwd});
       $client->quit();
     };
-
     if ($@) {
       $ex = $@;
     }
@@ -227,7 +200,7 @@ sub auth_user_file_id_range_ok {
     $wfh->flush();
 
   } else {
-    eval { server_wait($config_file, $rfh) };
+    eval { server_wait($setup->{config_file}, $rfh) };
     if ($@) {
       warn($@);
       exit 1;
@@ -237,63 +210,25 @@ sub auth_user_file_id_range_ok {
   }
 
   # Stop server
-  server_stop($pid_file);
-
+  server_stop($setup->{pid_file});
   $self->assert_child_ok($pid);
 
-  if ($ex) {
-    test_append_logfile($log_file, $ex);
-    unlink($log_file);
-
-    die($ex);
-  }
-
-  unlink($log_file);
+  test_cleanup($setup->{log_file}, $ex);
 }
 
 sub auth_user_file_id_range_failed {
   my $self = shift;
   my $tmpdir = $self->{tmpdir};
-
-  my $config_file = "$tmpdir/authfile.conf";
-  my $pid_file = File::Spec->rel2abs("$tmpdir/authfile.pid");
-  my $scoreboard_file = File::Spec->rel2abs("$tmpdir/authfile.scoreboard");
-
-  my $log_file = test_get_logfile();
-
-  my $auth_user_file = File::Spec->rel2abs("$tmpdir/authfile.passwd");
-  my $auth_group_file = File::Spec->rel2abs("$tmpdir/authfile.group");
-
-  my $user = 'proftpd';
-  my $passwd = 'test';
-  my $group = 'ftpd';
-  my $home_dir = File::Spec->rel2abs($tmpdir);
-  my $uid = 1000;
-  my $gid = 1000;
-
-  # Make sure that, if we're running as root, that the home directory has
-  # permissions/privs set for the account we create
-  if ($< == 0) {
-    unless (chmod(0755, $home_dir)) {
-      die("Can't set perms on $home_dir to 0755: $!");
-    }
-
-    unless (chown($uid, $gid, $home_dir)) {
-      die("Can't set owner of $home_dir to $uid/$gid: $!");
-    }
-  }
-
-  auth_user_write($auth_user_file, $user, $passwd, $uid, $gid, $home_dir,
-    '/bin/bash');
-  auth_group_write($auth_group_file, $group, $gid, $user);
+  my $setup = test_setup($tmpdir, 'authfile');
 
   my $config = {
-    PidFile => $pid_file,
-    ScoreboardFile => $scoreboard_file,
-    SystemLog => $log_file,
+    PidFile => $setup->{pid_file},
+    ScoreboardFile => $setup->{scoreboard_file},
+    SystemLog => $setup->{log_file},
 
-    AuthUserFile => "$auth_user_file id 100-500",
-    AuthGroupFile => $auth_group_file,
+    AuthUserFile => "$setup->{auth_user_file} id 100-200",
+    AuthGroupFile => $setup->{auth_group_file},
+    AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
       'mod_delay.c' => {
@@ -302,7 +237,8 @@ sub auth_user_file_id_range_failed {
     },
   };
 
-  my ($port, $config_user, $config_group) = config_write($config_file, $config);
+  my ($port, $config_user, $config_group) = config_write($setup->{config_file},
+    $config);
 
   # Open pipes, for use between the parent and child processes.  Specifically,
   # the child will indicate when it's done with its test by writing a message
@@ -319,15 +255,17 @@ sub auth_user_file_id_range_failed {
   defined(my $pid = fork()) or die("Can't fork: $!");
   if ($pid) {
     eval {
+      # Allow server to start up
+      sleep(1);
+
       my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
-      eval { $client->login($user, $passwd) };
+      eval { $client->login($setup->{user}, $setup->{passwd}) };
       unless ($@) {
         die("Login succeeded unexpectedly");
       }
 
       $client->quit();
     };
-
     if ($@) {
       $ex = $@;
     }
@@ -336,7 +274,7 @@ sub auth_user_file_id_range_failed {
     $wfh->flush();
 
   } else {
-    eval { server_wait($config_file, $rfh) };
+    eval { server_wait($setup->{config_file}, $rfh) };
     if ($@) {
       warn($@);
       exit 1;
@@ -346,18 +284,10 @@ sub auth_user_file_id_range_failed {
   }
 
   # Stop server
-  server_stop($pid_file);
-
+  server_stop($setup->{pid_file});
   $self->assert_child_ok($pid);
 
-  if ($ex) {
-    test_append_logfile($log_file, $ex);
-    unlink($log_file);
-
-    die($ex);
-  }
-
-  unlink($log_file);
+  test_cleanup($setup->{log_file}, $ex);
 }
 
 sub auth_user_file_home_filter_ok {
@@ -404,6 +334,7 @@ sub auth_user_file_home_filter_ok {
 
     AuthUserFile => "$auth_user_file home $user\$",
     AuthGroupFile => $auth_group_file,
+    AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
       'mod_delay.c' => {
@@ -509,6 +440,7 @@ sub auth_user_file_home_filter_failed {
 
     AuthUserFile => "$auth_user_file home ^3133tH\@x0R\$",
     AuthGroupFile => $auth_group_file,
+    AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
       'mod_delay.c' => {
@@ -618,6 +550,7 @@ sub auth_user_file_name_filter_ok {
 
     AuthUserFile => "$auth_user_file name ^$user\$",
     AuthGroupFile => $auth_group_file,
+    AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
       'mod_delay.c' => {
@@ -723,6 +656,7 @@ sub auth_user_file_name_filter_failed {
 
     AuthUserFile => "$auth_user_file name ^3133tH\@x0R\$",
     AuthGroupFile => $auth_group_file,
+    AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
       'mod_delay.c' => {
@@ -832,6 +766,7 @@ sub auth_group_file_id_range_ok {
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => "$auth_group_file id 100-500",
+    AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
       'mod_delay.c' => {
@@ -953,6 +888,7 @@ sub auth_group_file_id_range_failed {
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => "$auth_group_file id 100-500",
+    AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
       'mod_delay.c' => {
@@ -1078,6 +1014,7 @@ sub auth_group_file_name_filter_ok {
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => "$auth_group_file name ^$group\$",
+    AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
       'mod_delay.c' => {
@@ -1199,6 +1136,7 @@ sub auth_group_file_name_filter_failed {
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => "$auth_group_file name ^3133tH\@x0R\$",
+    AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
       'mod_delay.c' => {
@@ -1285,45 +1223,19 @@ sub auth_user_file_at_symbol_ok {
   my $self = shift;
   my $tmpdir = $self->{tmpdir};
 
-  my $config_file = "$tmpdir/authfile.conf";
-  my $pid_file = File::Spec->rel2abs("$tmpdir/authfile.pid");
-  my $scoreboard_file = File::Spec->rel2abs("$tmpdir/authfile.scoreboard");
-
-  my $log_file = test_get_logfile();
-
-  my $auth_user_file = File::Spec->rel2abs("$tmpdir/authfile.passwd");
-  my $auth_group_file = File::Spec->rel2abs("$tmpdir/authfile.group");
-
   my $user = 'proftpd@proftpd.org';
-  my $passwd = 'test';
-  my $group = 'ftpd';
-  my $home_dir = File::Spec->rel2abs($tmpdir);
-  my $uid = 500;
-  my $gid = 500;
-
-  # Make sure that, if we're running as root, that the home directory has
-  # permissions/privs set for the account we create
-  if ($< == 0) {
-    unless (chmod(0755, $home_dir)) {
-      die("Can't set perms on $home_dir to 0755: $!");
-    }
-
-    unless (chown($uid, $gid, $home_dir)) {
-      die("Can't set owner of $home_dir to $uid/$gid: $!");
-    }
-  }
-
-  auth_user_write($auth_user_file, $user, $passwd, $uid, $gid, $home_dir,
-    '/bin/bash');
-  auth_group_write($auth_group_file, $group, $gid, $user);
+  my $setup = test_setup($tmpdir, 'authfile', $user);
 
   my $config = {
-    PidFile => $pid_file,
-    ScoreboardFile => $scoreboard_file,
-    SystemLog => $log_file,
+    PidFile => $setup->{pid_file},
+    ScoreboardFile => $setup->{scoreboard_file},
+    SystemLog => $setup->{log_file},
+    TraceLog => $setup->{log_file},
+    Trace => 'DEFAULT:20 auth.file:30',
 
-    AuthUserFile => $auth_user_file,
-    AuthGroupFile => $auth_group_file,
+    AuthUserFile => $setup->{auth_user_file},
+    AuthGroupFile => $setup->{auth_group_file},
+    AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
       'mod_delay.c' => {
@@ -1332,7 +1244,8 @@ sub auth_user_file_at_symbol_ok {
     },
   };
 
-  my ($port, $config_user, $config_group) = config_write($config_file, $config);
+  my ($port, $config_user, $config_group) = config_write($setup->{config_file},
+    $config);
 
   # Open pipes, for use between the parent and child processes.  Specifically,
   # the child will indicate when it's done with its test by writing a message
@@ -1349,11 +1262,13 @@ sub auth_user_file_at_symbol_ok {
   defined(my $pid = fork()) or die("Can't fork: $!");
   if ($pid) {
     eval {
+      # Allow server to start up
+      sleep(1);
+
       my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
-      $client->login($user, $passwd);
+      $client->login($setup->{user}, $setup->{passwd});
       $client->quit();
     };
-
     if ($@) {
       $ex = $@;
     }
@@ -1362,7 +1277,7 @@ sub auth_user_file_at_symbol_ok {
     $wfh->flush();
 
   } else {
-    eval { server_wait($config_file, $rfh) };
+    eval { server_wait($setup->{config_file}, $rfh) };
     if ($@) {
       warn($@);
       exit 1;
@@ -1372,18 +1287,10 @@ sub auth_user_file_at_symbol_ok {
   }
 
   # Stop server
-  server_stop($pid_file);
-
+  server_stop($setup->{pid_file});
   $self->assert_child_ok($pid);
 
-  if ($ex) {
-    test_append_logfile($log_file, $ex);
-    unlink($log_file);
-
-    die($ex);
-  }
-
-  unlink($log_file);
+  test_cleanup($setup->{log_file}, $ex);
 }
 
 sub auth_user_file_world_readable_bug3892 {
@@ -1435,6 +1342,7 @@ sub auth_user_file_world_readable_bug3892 {
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
+    AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
       'mod_delay.c' => {
@@ -1508,6 +1416,7 @@ sub auth_user_file_world_writable_bug3892 {
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
+    AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
       'mod_delay.c' => {
@@ -1537,34 +1446,43 @@ sub auth_user_file_world_readable_insecure_perms_opt {
   my $tmpdir = $self->{tmpdir};
   my $setup = test_setup($tmpdir, 'authfile');
 
+  my ($server_user, $server_group) = config_get_identity();
+  if ($< == 0) {
+    $server_user = 'root';
+  }
+
   # Deliberately set world-readable perms on the AuthUserFile, to trigger
   # the checks done for Bug#3892.
   unless (chmod(0444, $setup->{auth_user_file})) {
     die("Can't set perms on $setup->{auth_user_file}: $!");
   }
 
-  my $config = {
-    PidFile => $setup->{pid_file},
-    ScoreboardFile => $setup->{scoreboard_file},
-    SystemLog => $setup->{log_file},
+  # Note that we set this AuthFileOption here using an array, so that the
+  # order of the directives is deterministic!
+  my $config = [
+    "PidFile $setup->{pid_file}",
+    "ScoreboardFile $setup->{scoreboard_file}",
+    "SystemLog $setup->{log_file}",
+    "TraceLog $setup->{log_file}",
+    'Trace DEFAULT:20 auth.file:30',
 
-    IfModules => {
-      'mod_delay.c' => {
-        DelayEngine => 'off',
-      },
-    },
-  };
+    'AuthFileOptions InsecurePerms',
+    "AuthUserFile $setup->{auth_user_file}",
+    "AuthGroupFile $setup->{auth_group_file}",
+    'AuthOrder mod_auth_file.c',
+
+    "User $server_user",
+    "Group $server_group",
+  ];
 
   my ($port, $config_user, $config_group) = config_write($setup->{config_file},
     $config);
 
-  # Note that we set this AuthFileOption here using an array, so that the
-  # order of the directives is deterministic!
   if (open(my $fh, ">> $setup->{config_file}")) {
     print $fh <<EOC;
-AuthFileOptions InsecurePerms
-AuthUserFile $setup->{auth_user_file}
-AuthGroupFile $setup->{auth_group_file}
+<IfModule mod_delay.c>
+  DelayEngine off
+</IfModule>
 EOC
     unless (close($fh)) {
       die("Can't write $setup->{config_file}: $!");
@@ -1576,7 +1494,7 @@ EOC
 
   my $ex;
 
-  eval { server_start($setup->{config_file}, $setup->{pid_file}) };
+  eval { server_start($setup->{config_file}, $setup->{pid_file}, undef, 3) };
   if ($@) {
     $ex = $@;
 
@@ -1636,6 +1554,7 @@ sub auth_group_file_world_readable_bug3892 {
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
+    AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
       'mod_delay.c' => {
@@ -1708,6 +1627,7 @@ sub auth_group_file_world_writable_bug3892 {
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
+    AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
       'mod_delay.c' => {
@@ -1781,6 +1701,7 @@ sub auth_user_file_world_writable_parent_dir_bug3892 {
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
+    AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
       'mod_delay.c' => {
@@ -1885,6 +1806,7 @@ sub auth_user_file_symlink_world_writable_parent_dir_bug3892 {
 
     AuthUserFile => $auth_user_symlink,
     AuthGroupFile => $auth_group_file,
+    AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
       'mod_delay.c' => {
@@ -1927,6 +1849,7 @@ sub auth_user_file_bad_syntax_bug3985 {
 
     AuthUserFile => $setup->{auth_user_file},
     AuthGroupFile => $setup->{auth_group_file},
+    AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
       'mod_delay.c' => {
@@ -2001,6 +1924,7 @@ sub auth_group_file_bad_syntax_bug3985 {
 
     AuthUserFile => $setup->{auth_user_file},
     AuthGroupFile => $setup->{auth_group_file},
+    AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
       'mod_delay.c' => {
@@ -2107,6 +2031,7 @@ sub auth_user_file_bad_syntax_check_issue490 {
 AuthFileOptions SyntaxCheck
 AuthUserFile $setup->{auth_user_file}
 AuthGroupFile $setup->{auth_group_file}
+AuthOrder mod_auth_file.c
 EOC
     unless (close($fh)) {
       die("Can't write $setup->{log_file}: $!");
@@ -2140,7 +2065,7 @@ sub auth_group_file_bad_syntax_check_issue490 {
     ScoreboardFile => $setup->{scoreboard_file},
     SystemLog => $setup->{log_file},
     TraceLog => $setup->{log_file},
-    Trace => 'auth.file:20',
+    Trace => 'DEFAULT:10 auth.file:20',
 
     IfModules => {
       'mod_delay.c' => {
@@ -2171,7 +2096,7 @@ EOC
 
   my $ex;
 
-  eval { server_start($setup->{config_file}, $setup->{pid_file}) };
+  eval { server_start($setup->{config_file}, $setup->{pid_file}, undef, 3) };
   unless ($@) {
     server_stop($setup->{pid_file});
     $ex = "Server started up unexpectedly with AuthUserFile with bad entries";
@@ -2198,13 +2123,11 @@ sub auth_file_symlink_segfault_bug4145 {
     die("Can't chdir to $authfiles_dir: $!");
   }
 
-  my $rel_path = File::Spec->abs2rel($tmpdir);
-
-  unless (symlink("$rel_path/authfile.passwd", 'passwd.lnk')) {
+  unless (symlink("../../authfile.passwd", 'passwd.lnk')) {
     die("Can't symlink '$setup->{auth_user_file}' to 'passwd.lnk': $!");
   }
 
-  unless (symlink("$rel_path/authfile.group", 'group.lnk')) {
+  unless (symlink("../..//authfile.group", 'group.lnk')) {
     die("Can't symlink '$setup->{auth_group_file}' to 'group.lnk': $!");
   }
 
@@ -2212,8 +2135,8 @@ sub auth_file_symlink_segfault_bug4145 {
     die("Can't chdir to $cwd: $!");
   }
 
-  my $auth_user_symlink = File::Spec->rel2abs($authfiles_dir) . "/passwd.lnk";
-  my $auth_group_symlink = File::Spec->rel2abs($authfiles_dir) . "/group.lnk";
+  my $auth_user_symlink = "$authfiles_dir/passwd.lnk";
+  my $auth_group_symlink = "$authfiles_dir/group.lnk";
 
   # Make sure that, if we're running as root, that the home directory has
   # permissions/privs set for the account we create
@@ -2236,9 +2159,12 @@ sub auth_file_symlink_segfault_bug4145 {
     PidFile => $setup->{pid_file},
     ScoreboardFile => $setup->{scoreboard_file},
     SystemLog => $setup->{log_file},
+    TraceLog => $setup->{log_file},
+    Trace => 'auth.file:20',
 
     AuthUserFile => $auth_user_symlink,
     AuthGroupFile => $auth_group_symlink,
+    AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
       'mod_delay.c' => {
@@ -2308,13 +2234,21 @@ sub auth_file_line_too_long_issue1321 {
   my $setup = test_setup($tmpdir, 'authfile', undef, undef, undef, undef, undef,
     undef, $groups);
 
+  my $timeout_login = 10;
+
   my $config = {
     PidFile => $setup->{pid_file},
     ScoreboardFile => $setup->{scoreboard_file},
     SystemLog => $setup->{log_file},
+    TraceLog => $setup->{log_file},
+    Trace => 'auth.file:30',
 
     AuthUserFile => $setup->{auth_user_file},
     AuthGroupFile => $setup->{auth_group_file},
+    AuthOrder => 'mod_auth_file.c',
+
+    TimeoutIdle => $timeout_login,
+    TimeoutLogin => $timeout_login,
 
     IfModules => {
       'mod_delay.c' => {
@@ -2341,7 +2275,7 @@ sub auth_file_line_too_long_issue1321 {
   defined(my $pid = fork()) or die("Can't fork: $!");
   if ($pid) {
     eval {
-      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
+      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port, 0, 3, 30);
       $client->login($setup->{user}, $setup->{passwd});
       $client->quit();
     };

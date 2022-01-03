@@ -218,6 +218,10 @@ sub ftpasswd_lock_unlock_bug3994 {
 
     AuthUserFile => $setup->{auth_user_file},
     AuthGroupFile => $setup->{auth_group_file},
+    AuthOrder => 'mod_auth_file.c',
+
+    # Necessary for the 2nd server start to reuse the port
+    SocketOptions => 'ReusePort on',
 
     IfModules => {
       'mod_delay.c' => {
@@ -254,8 +258,11 @@ sub ftpasswd_lock_unlock_bug3994 {
   defined(my $pid = fork()) or die("Can't fork: $!");
   if ($pid) {
     eval {
+      # Allow server to start up
+      sleep(1);
+
       # Try to login; should fail
-      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port, 1);
+      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port, 0, 1, 5);
       eval { $client->login($setup->{user}, $setup->{passwd}) };
       unless ($@) {
         die("Login succeeded unexpectedly");
@@ -307,8 +314,10 @@ sub ftpasswd_lock_unlock_bug3994 {
   defined($pid = fork()) or die("Can't fork: $!");
   if ($pid) {
     eval {
-      sleep(1);
-      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port, 1);
+      # Allow server to start up
+      sleep(2);
+
+      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port, 0, 2, 5);
       $client->login($setup->{user}, $setup->{passwd});
       $client->quit();
     };
@@ -350,6 +359,7 @@ sub ftpasswd_change_home_issue566 {
 
     AuthUserFile => $setup->{auth_user_file},
     AuthGroupFile => $setup->{auth_group_file},
+    AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
       'mod_delay.c' => {
@@ -473,6 +483,7 @@ sub ftpasswd_delete_member_from_group_issue620 {
 
     AuthUserFile => $setup->{auth_user_file},
     AuthGroupFile => $setup->{auth_group_file},
+    AuthOrder => 'mod_auth_file.c',
 
     Limit => {
       LOGIN => {
@@ -593,6 +604,7 @@ sub ftpasswd_add_member_to_group_issue625 {
 
     AuthUserFile => $setup->{auth_user_file},
     AuthGroupFile => $setup->{auth_group_file},
+    AuthOrder => 'mod_auth_file.c',
 
     Limit => {
       LOGIN => {

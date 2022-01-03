@@ -154,6 +154,28 @@ sub list_tests {
   return testsuite_get_runnable_tests($TESTS);
 }
 
+sub get_redis_server {
+  my $redis_server = '127.0.0.1';
+  if (defined($ENV{REDIS_HOST})) {
+    $redis_server = $ENV{REDIS_HOST};
+  }
+
+  return $redis_server;
+}
+
+sub get_redis_config {
+  my $setup = shift;
+  my $redis_server = get_redis_server();
+
+  $redis_config = {
+    RedisEngine => 'on',
+    RedisLog => $setup->{log_file},
+    RedisServer => "$redis_server:6379",
+  };
+
+  return $redis_config;
+}
+
 sub provision_redis {
   my $allowed_key = shift;
   my $allowed = shift;
@@ -164,6 +186,7 @@ sub provision_redis {
 
   require Redis;
   my $redis = Redis->new(
+    server => get_redis_server(),
     reconnect => 5,
     every => 250_000
   );
@@ -201,6 +224,8 @@ sub wrap2_allow_msg {
   # XXX Create allow, deny lists in Redis, and populate them
   my $timeout_idle = 30;
 
+  my $redis_config = get_redis_config($setup);
+
   my $config = {
     PidFile => $setup->{pid_file},
     ScoreboardFile => $setup->{scoreboard_file},
@@ -215,11 +240,7 @@ sub wrap2_allow_msg {
         DelayEngine => 'off',
       },
 
-      'mod_redis.c' => {
-        RedisEngine => 'on',
-        RedisServer => '127.0.0.1:6379',
-        RedisLog => $setup->{log_file},
-      },
+      'mod_redis.c' => $redis_config,
 
       'mod_wrap2_redis.c' => {
         WrapEngine => 'on',
@@ -295,6 +316,8 @@ sub wrap2_deny_msg {
   my $tmpdir = $self->{tmpdir};
   my $setup = test_setup($tmpdir, 'wrap2');
 
+  my $redis_config = get_redis_config($setup);
+
   # Create allow, deny lists in Redis, and populate them
   my $allowed_key = 'ftpallow';
   my $denied_key = 'ftpdeny';
@@ -316,11 +339,7 @@ sub wrap2_deny_msg {
         DelayEngine => 'off',
       },
 
-      'mod_redis.c' => {
-        RedisEngine => 'on',
-        RedisServer => '127.0.0.1:6379',
-        RedisLog => $setup->{log_file},
-      },
+      'mod_redis.c' => $redis_config,
 
       'mod_wrap2_redis.c' => {
         WrapEngine => 'on',
@@ -398,6 +417,8 @@ sub wrap2_engine {
   my $tmpdir = $self->{tmpdir};
   my $setup = test_setup($tmpdir, 'wrap2');
 
+  my $redis_config = get_redis_config($setup);
+
   # Create allow, deny lists in Redis, and populate them
   my $allowed_key = 'ftpallow';
   my $denied_key = 'ftpdeny';
@@ -419,11 +440,7 @@ sub wrap2_engine {
         DelayEngine => 'off',
       },
 
-      'mod_redis.c' => {
-        RedisEngine => 'on',
-        RedisServer => '127.0.0.1:6379',
-        RedisLog => $setup->{log_file},
-      },
+      'mod_redis.c' => $redis_config,
 
       'mod_wrap2_redis.c' => {
         WrapEngine => 'off',
@@ -497,6 +514,8 @@ sub wrap2_redis_allow_list {
   my $tmpdir = $self->{tmpdir};
   my $setup = test_setup($tmpdir, 'wrap2');
 
+  my $redis_config = get_redis_config($setup);
+
   # Create allow, deny lists in Redis, and populate them
   my $allowed_key = 'ftpallow';
   my $denied_key = 'ftpdeny';
@@ -518,11 +537,7 @@ sub wrap2_redis_allow_list {
         DelayEngine => 'off',
       },
 
-      'mod_redis.c' => {
-        RedisEngine => 'on',
-        RedisServer => '127.0.0.1:6379',
-        RedisLog => $setup->{log_file},
-      },
+      'mod_redis.c' => $redis_config,
 
       'mod_wrap2_redis.c' => {
         WrapEngine => 'on',
@@ -624,6 +639,8 @@ sub wrap2_redis_allow_set {
   my $tmpdir = $self->{tmpdir};
   my $setup = test_setup($tmpdir, 'wrap2');
 
+  my $redis_config = get_redis_config($setup);
+
   # Create allow, deny lists in Redis, and populate them
   my $allowed_key = 'ftpallow';
   my $denied_key = 'ftpdeny';
@@ -647,11 +664,7 @@ sub wrap2_redis_allow_set {
         DelayEngine => 'off',
       },
 
-      'mod_redis.c' => {
-        RedisEngine => 'on',
-        RedisServer => '127.0.0.1:6379',
-        RedisLog => $setup->{log_file},
-      },
+      'mod_redis.c' => $redis_config,
 
       'mod_wrap2_redis.c' => {
         WrapEngine => 'on',
@@ -754,6 +767,8 @@ sub wrap2_redis_allow_list_multi_rows_multi_entries {
   my $tmpdir = $self->{tmpdir};
   my $setup = test_setup($tmpdir, 'wrap2');
 
+  my $redis_config = get_redis_config($setup);
+
   # Create allow, deny lists in Redis, and populate them
   my $allowed_key = 'ftpallow';
   my $denied_key = 'ftpdeny';
@@ -781,11 +796,7 @@ sub wrap2_redis_allow_list_multi_rows_multi_entries {
         DelayEngine => 'off',
       },
 
-      'mod_redis.c' => {
-        RedisEngine => 'on',
-        RedisServer => '127.0.0.1:6379',
-        RedisLog => $setup->{log_file},
-      },
+      'mod_redis.c' => $redis_config,
 
       'mod_wrap2_redis.c' => {
         WrapEngine => 'on',
@@ -858,6 +869,8 @@ sub wrap2_redis_allow_list_all {
   my $tmpdir = $self->{tmpdir};
   my $setup = test_setup($tmpdir, 'wrap2');
 
+  my $redis_config = get_redis_config($setup);
+
   # Create allow, deny lists in Redis, and populate them
   my $allowed_key = 'ftpallow';
   my $denied_key = 'ftpdeny';
@@ -881,11 +894,7 @@ sub wrap2_redis_allow_list_all {
         DelayEngine => 'off',
       },
 
-      'mod_redis.c' => {
-        RedisEngine => 'on',
-        RedisServer => '127.0.0.1:6379',
-        RedisLog => $setup->{log_file},
-      },
+      'mod_redis.c' => $redis_config,
 
       'mod_wrap2_redis.c' => {
         WrapEngine => 'on',
@@ -957,6 +966,8 @@ sub wrap2_redis_deny_list_ip_addr {
   my $tmpdir = $self->{tmpdir};
   my $setup = test_setup($tmpdir, 'wrap2');
 
+  my $redis_config = get_redis_config($setup);
+
   # Create allow, deny lists in Redis, and populate them
   my $allowed_key = 'ftpallow';
   my $denied_key = 'ftpdeny';
@@ -978,11 +989,7 @@ sub wrap2_redis_deny_list_ip_addr {
         DelayEngine => 'off',
       },
 
-      'mod_redis.c' => {
-        RedisEngine => 'on',
-        RedisServer => '127.0.0.1:6379',
-        RedisLog => $setup->{log_file},
-      },
+      'mod_redis.c' => $redis_config,
 
       'mod_wrap2_redis.c' => {
         WrapEngine => 'on',
@@ -1094,6 +1101,8 @@ sub wrap2_redis_deny_set_ip_addr {
   my $tmpdir = $self->{tmpdir};
   my $setup = test_setup($tmpdir, 'wrap2');
 
+  my $redis_config = get_redis_config($setup);
+
   # Create allow, deny lists in Redis, and populate them
   my $allowed_key = 'ftpallow';
   my $denied_key = 'ftpdeny';
@@ -1115,11 +1124,7 @@ sub wrap2_redis_deny_set_ip_addr {
         DelayEngine => 'off',
       },
 
-      'mod_redis.c' => {
-        RedisEngine => 'on',
-        RedisServer => '127.0.0.1:6379',
-        RedisLog => $setup->{log_file},
-      },
+      'mod_redis.c' => $redis_config,
 
       'mod_wrap2_redis.c' => {
         WrapEngine => 'on',
@@ -1231,6 +1236,8 @@ sub wrap2_redis_deny_list_ipv4_netmask {
   my $tmpdir = $self->{tmpdir};
   my $setup = test_setup($tmpdir, 'wrap2');
 
+  my $redis_config = get_redis_config($setup);
+
   # Create allow, deny lists in Redis, and populate them
   my $allowed_key = 'ftpallow';
   my $denied_key = 'ftpdeny';
@@ -1252,11 +1259,7 @@ sub wrap2_redis_deny_list_ipv4_netmask {
         DelayEngine => 'off',
       },
 
-      'mod_redis.c' => {
-        RedisEngine => 'on',
-        RedisServer => '127.0.0.1:6379',
-        RedisLog => $setup->{log_file},
-      },
+      'mod_redis.c' => $redis_config,
 
       'mod_wrap2_redis.c' => {
         WrapEngine => 'on',
@@ -1369,6 +1372,8 @@ sub wrap2_redis_deny_list_ipv4mappedv6_netmask {
   my $tmpdir = $self->{tmpdir};
   my $setup = test_setup($tmpdir, 'wrap2');
 
+  my $redis_config = get_redis_config($setup);
+
   # Create allow, deny lists in Redis, and populate them
   my $allowed_key = 'ftpallow';
   my $denied_key = 'ftpdeny';
@@ -1392,11 +1397,7 @@ sub wrap2_redis_deny_list_ipv4mappedv6_netmask {
         DelayEngine => 'off',
       },
 
-      'mod_redis.c' => {
-        RedisEngine => 'on',
-        RedisServer => '127.0.0.1:6379',
-        RedisLog => $setup->{log_file},
-      },
+      'mod_redis.c' => $redis_config,
 
       'mod_wrap2_redis.c' => {
         WrapEngine => 'on',
@@ -1512,6 +1513,8 @@ sub wrap2_redis_deny_list_ipv6_netmask_bug3606 {
   my $tmpdir = $self->{tmpdir};
   my $setup = test_setup($tmpdir, 'wrap2');
 
+  my $redis_config = get_redis_config($setup);
+
   # Create allow, deny lists in Redis, and populate them
   my $allowed_key = 'ftpallow';
   my $denied_key = 'ftpdeny';
@@ -1536,11 +1539,7 @@ sub wrap2_redis_deny_list_ipv6_netmask_bug3606 {
         DelayEngine => 'off',
       },
 
-      'mod_redis.c' => {
-        RedisEngine => 'on',
-        RedisServer => '127.0.0.1:6379',
-        RedisLog => $setup->{log_file},
-      },
+      'mod_redis.c' => $redis_config,
 
       'mod_wrap2_redis.c' => {
         WrapEngine => 'on',
@@ -1693,6 +1692,8 @@ sub wrap2_redis_deny_list_dns_name {
   my $tmpdir = $self->{tmpdir};
   my $setup = test_setup($tmpdir, 'wrap2');
 
+  my $redis_config = get_redis_config($setup);
+
   # Create allow, deny lists in Redis, and populate them
   my $allowed_key = 'ftpallow';
   my $denied_key = 'ftpdeny';
@@ -1715,11 +1716,7 @@ sub wrap2_redis_deny_list_dns_name {
         DelayEngine => 'off',
       },
 
-      'mod_redis.c' => {
-        RedisEngine => 'on',
-        RedisServer => '127.0.0.1:6379',
-        RedisLog => $setup->{log_file},
-      },
+      'mod_redis.c' => $redis_config,
 
       'mod_wrap2_redis.c' => {
         WrapEngine => 'on',
@@ -1831,6 +1828,8 @@ sub wrap2_redis_deny_list_dns_domain_bug3558 {
   my $tmpdir = $self->{tmpdir};
   my $setup = test_setup($tmpdir, 'wrap2');
 
+  my $redis_config = get_redis_config($setup);
+
   # Create allow, deny lists in Redis, and populate them
   my $allowed_key = 'ftpallow';
   my $denied_key = 'ftpdeny';
@@ -1856,11 +1855,7 @@ sub wrap2_redis_deny_list_dns_domain_bug3558 {
         DelayEngine => 'off',
       },
 
-      'mod_redis.c' => {
-        RedisEngine => 'on',
-        RedisServer => '127.0.0.1:6379',
-        RedisLog => $setup->{log_file},
-      },
+      'mod_redis.c' => $redis_config,
 
       'mod_wrap2_redis.c' => {
         WrapEngine => 'on',
@@ -1972,6 +1967,8 @@ sub wrap2_redis_user_lists {
   my $tmpdir = $self->{tmpdir};
   my $setup = test_setup($tmpdir, 'wrap2');
 
+  my $redis_config = get_redis_config($setup);
+
   # Create allow, deny lists in Redis, and populate them
   my $allowed_key = 'ftpallow';
   my $denied_key = "ftpdeny.$setup->{user}";
@@ -1996,11 +1993,7 @@ sub wrap2_redis_user_lists {
         DelayEngine => 'off',
       },
 
-      'mod_redis.c' => {
-        RedisEngine => 'on',
-        RedisServer => '127.0.0.1:6379',
-        RedisLog => $setup->{log_file},
-      },
+      'mod_redis.c' => $redis_config,
 
       'mod_wrap2_redis.c' => {
         WrapEngine => 'on',
@@ -2132,6 +2125,8 @@ sub wrap2_redis_group_lists {
   my $tmpdir = $self->{tmpdir};
   my $setup = test_setup($tmpdir, 'wrap2');
 
+  my $redis_config = get_redis_config($setup);
+
   # Create allow, deny lists in Redis, and populate them
   my $allowed_key = 'ftpallow';
   my $denied_key = "ftpdeny.$setup->{group}";
@@ -2156,11 +2151,7 @@ sub wrap2_redis_group_lists {
         DelayEngine => 'off',
       },
 
-      'mod_redis.c' => {
-        RedisEngine => 'on',
-        RedisServer => '127.0.0.1:6379',
-        RedisLog => $setup->{log_file},
-      },
+      'mod_redis.c' => $redis_config,
 
       'mod_wrap2_redis.c' => {
         WrapEngine => 'on',
@@ -2292,6 +2283,8 @@ sub wrap2_bug3341 {
   my $tmpdir = $self->{tmpdir};
   my $setup = test_setup($tmpdir, 'wrap2');
 
+  my $redis_config = get_redis_config($setup);
+
   # Create allow, deny lists in Redis, and populate them
   my $allowed_key = 'ftpallow';
   my $denied_key = 'ftpdeny';
@@ -2315,11 +2308,7 @@ sub wrap2_bug3341 {
         DelayEngine => 'off',
       },
 
-      'mod_redis.c' => {
-        RedisEngine => 'on',
-        RedisServer => '127.0.0.1:6379',
-        RedisLog => $setup->{log_file},
-      },
+      'mod_redis.c' => $redis_config,
 
       'mod_wrap2_redis.c' => {
         WrapEngine => 'on',
@@ -2426,6 +2415,8 @@ sub wrap2_redis_opt_check_on_connect_bug3508 {
   my $tmpdir = $self->{tmpdir};
   my $setup = test_setup($tmpdir, 'wrap2');
 
+  my $redis_config = get_redis_config($setup);
+
   # Create allow, deny lists in Redis, and populate them
   my $allowed_key = 'ftpallow';
   my $denied_key = 'ftpdeny';
@@ -2447,11 +2438,7 @@ sub wrap2_redis_opt_check_on_connect_bug3508 {
         DelayEngine => 'off',
       },
 
-      'mod_redis.c' => {
-        RedisEngine => 'on',
-        RedisServer => '127.0.0.1:6379',
-        RedisLog => $setup->{log_file},
-      },
+      'mod_redis.c' => $redis_config,
 
       'mod_wrap2_redis.c' => {
         WrapEngine => 'on',
@@ -2553,6 +2540,8 @@ sub wrap2_allow_msg_bug3538 {
   my $tmpdir = $self->{tmpdir};
   my $setup = test_setup($tmpdir, 'wrap2');
 
+  my $redis_config = get_redis_config($setup);
+
   # Create allow, deny lists in Redis, and populate them
   my $allowed_key = 'ftpallow';
   my $denied_key = 'ftpdeny';
@@ -2575,11 +2564,7 @@ sub wrap2_allow_msg_bug3538 {
         DelayEngine => 'off',
       },
 
-      'mod_redis.c' => {
-        RedisEngine => 'on',
-        RedisServer => '127.0.0.1:6379',
-        RedisLog => $setup->{log_file},
-      },
+      'mod_redis.c' => $redis_config,
 
       'mod_wrap2_redis.c' => {
         WrapEngine => 'on',
@@ -2661,6 +2646,8 @@ sub wrap2_allow_msg_anon_bug3538 {
   my $tmpdir = $self->{tmpdir};
   my $setup = test_setup($tmpdir, 'wrap2');
 
+  my $redis_config = get_redis_config($setup);
+
   # Create allow, deny lists in Redis, and populate them
   my $allowed_key = 'ftpallow';
   my $denied_key = 'ftpdeny';
@@ -2696,11 +2683,7 @@ sub wrap2_allow_msg_anon_bug3538 {
         DelayEngine => 'off',
       },
 
-      'mod_redis.c' => {
-        RedisEngine => 'on',
-        RedisServer => '127.0.0.1:6379',
-        RedisLog => $setup->{log_file},
-      },
+      'mod_redis.c' => $redis_config,
 
       'mod_wrap2_redis.c' => {
         WrapEngine => 'on',
@@ -2782,6 +2765,8 @@ sub wrap2_redis_deny_event_exec_bug3209 {
   my $tmpdir = $self->{tmpdir};
   my $setup = test_setup($tmpdir, 'wrap2');
 
+  my $redis_config = get_redis_config($setup);
+
   # Create allow, deny lists in Redis, and populate them
   my $allowed_key = 'ftpallow';
   my $denied_key = 'ftpdeny';
@@ -2832,11 +2817,7 @@ EOS
         ExecOnEvent => "mod_wrap.connection-denied $spawn_script %a",
       },
 
-      'mod_redis.c' => {
-        RedisEngine => 'on',
-        RedisServer => '127.0.0.1:6379',
-        RedisLog => $setup->{log_file},
-      },
+      'mod_redis.c' => $redis_config,
 
       'mod_wrap2_redis.c' => {
         WrapEngine => 'on',

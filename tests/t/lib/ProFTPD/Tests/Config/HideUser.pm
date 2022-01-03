@@ -48,60 +48,33 @@ sub list_tests {
 sub hideuser_explicit_user {
   my $self = shift;
   my $tmpdir = $self->{tmpdir};
-
-  my $config_file = "$tmpdir/config.conf";
-  my $pid_file = File::Spec->rel2abs("$tmpdir/config.pid");
-  my $scoreboard_file = File::Spec->rel2abs("$tmpdir/config.scoreboard");
-
-  my $log_file = test_get_logfile();
-
-  my $auth_user_file = File::Spec->rel2abs("$tmpdir/config.passwd");
-  my $auth_group_file = File::Spec->rel2abs("$tmpdir/config.group");
-
-  my $user = 'proftpd';
-  my $passwd = 'test';
-  my $group = 'ftpd';
-  my $home_dir = File::Spec->rel2abs($tmpdir);
-  my $uid = 500;
-  my $gid = 500;
-
-  # Make sure that, if we're running as root, that the home directory has
-  # permissions/privs set for the account we create
-  if ($< == 0) {
-    unless (chmod(0755, $home_dir)) {
-      die("Can't set perms on $home_dir to 0755: $!");
-    }
-
-    unless (chown($uid, $gid, $home_dir)) {
-      die("Can't set owner of $home_dir to $uid/$gid: $!");
-    }
-  }
-
-  auth_user_write($auth_user_file, $user, $passwd, $uid, $gid, $home_dir,
-    '/bin/bash'); 
-  auth_group_write($auth_group_file, $group, $gid, $user);
+  my $setup = test_setup($tmpdir, 'config');
 
   my $test_file = File::Spec->rel2abs("$tmpdir/test.txt");
   if (open(my $fh, "> $test_file")) {
     close($fh);
 
+    # Make sure that, if we're running as root, that the test file has
+    # permissions/privs set for the account we create
+    if ($< == 0) {
+      unless (chown($setup->{uid}, $setup->{gid}, $test_file)) {
+        die("Can't set owner of $test_file to $setup->{uid}/$setup->{gid}: $!");
+      }
+    }
+
   } else {
     die("Can't open $test_file: $!");
   }
 
-  unless (chown($uid, $gid, $test_file)) {
-    die("Can't set owner of $test_file to $uid/$gid: $!");
-  }
-
   my $config = {
-    PidFile => $pid_file,
-    ScoreboardFile => $scoreboard_file,
-    SystemLog => $log_file,
-    TraceLog => $log_file,
+    PidFile => $setup->{pid_file},
+    ScoreboardFile => $setup->{scoreboard_file},
+    SystemLog => $setup->{log_file},
+    TraceLog => $setup->{log_file},
     Trace => 'DEFAULT:10',
 
-    AuthUserFile => $auth_user_file,
-    AuthGroupFile => $auth_group_file,
+    AuthUserFile => $setup->{auth_user_file},
+    AuthGroupFile => $setup->{auth_group_file},
 
     Directory => {
       '~' => {
@@ -110,13 +83,18 @@ sub hideuser_explicit_user {
     },
 
     IfModules => {
+      'mod_auth_pam.c' => {
+        AuthPAM => 'off',
+      },
+
       'mod_delay.c' => {
         DelayEngine => 'off',
       },
     },
   };
 
-  my ($port, $config_user, $config_group) = config_write($config_file, $config);
+  my ($port, $config_user, $config_group) = config_write($setup->{config_file},
+    $config);
 
   # Open pipes, for use between the parent and child processes.  Specifically,
   # the child will indicate when it's done with its test by writing a message
@@ -133,8 +111,11 @@ sub hideuser_explicit_user {
   defined(my $pid = fork()) or die("Can't fork: $!");
   if ($pid) {
     eval {
+      # Allow server to start up
+      sleep(1);
+
       my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
-      $client->login($user, $passwd);
+      $client->login($setup->{user}, $setup->{passwd});
 
       my $conn = $client->list_raw('');
       unless ($conn) {
@@ -144,21 +125,15 @@ sub hideuser_explicit_user {
 
       my $buf;
       $conn->read($buf, 8192, 30);
-      $conn->close();
+      eval { $conn->close() };
 
-      my ($resp_code, $resp_msg);
-      $resp_code = $client->response_code();
-      $resp_msg = $client->response_msg();
+      if ($ENV{TEST_VERBOSE}) {
+        print STDERR "# response:\n$buf\n";
+      }
 
-      my $expected;
-
-      $expected = 226;
-      $self->assert($expected == $resp_code,
-        test_msg("Expected $expected, got $resp_code"));
-
-      $expected = "Transfer complete";
-      $self->assert($expected eq $resp_msg,
-        test_msg("Expected '$expected', got '$resp_msg'"));
+      my $resp_code = $client->response_code();
+      my $resp_msg = $client->response_msg();
+      $self->assert_transfer_ok($resp_code, $resp_msg);
 
       $client->quit();
 
@@ -172,7 +147,7 @@ sub hideuser_explicit_user {
         }
       }
 
-      $expected = {
+      my $expected = {
         'test.txt' => 1,
       };
 
@@ -194,9 +169,7 @@ sub hideuser_explicit_user {
       unless ($count == scalar(keys(%$expected))) {
         die("Unexpected count ($count) of names appeared in LIST data");
       }
-
     };
-
     if ($@) {
       $ex = $@;
     }
@@ -205,7 +178,7 @@ sub hideuser_explicit_user {
     $wfh->flush();
 
   } else {
-    eval { server_wait($config_file, $rfh) };
+    eval { server_wait($setup->{config_file}, $rfh) };
     if ($@) {
       warn($@);
       exit 1;
@@ -215,77 +188,43 @@ sub hideuser_explicit_user {
   }
 
   # Stop server
-  server_stop($pid_file);
-
+  server_stop($setup->{pid_file});
   $self->assert_child_ok($pid);
 
-  if ($ex) {
-    test_append_logfile($log_file, $ex);
-    unlink($log_file);
-
-    die($ex);
-  }
-
-  unlink($log_file);
+  test_cleanup($setup->{log_file}, $ex);
 }
 
 sub hideuser_session_user {
   my $self = shift;
   my $tmpdir = $self->{tmpdir};
-
-  my $config_file = "$tmpdir/config.conf";
-  my $pid_file = File::Spec->rel2abs("$tmpdir/config.pid");
-  my $scoreboard_file = File::Spec->rel2abs("$tmpdir/config.scoreboard");
-
-  my $log_file = test_get_logfile();
-
-  my $auth_user_file = File::Spec->rel2abs("$tmpdir/config.passwd");
-  my $auth_group_file = File::Spec->rel2abs("$tmpdir/config.group");
-
-  my $user = 'proftpd';
-  my $passwd = 'test';
-  my $group = 'ftpd';
-  my $home_dir = File::Spec->rel2abs($tmpdir);
-  my $uid = 500;
-  my $gid = 500;
-
-  # Make sure that, if we're running as root, that the home directory has
-  # permissions/privs set for the account we create
-  if ($< == 0) {
-    unless (chmod(0755, $home_dir)) {
-      die("Can't set perms on $home_dir to 0755: $!");
-    }
-
-    unless (chown($uid, $gid, $home_dir)) {
-      die("Can't set owner of $home_dir to $uid/$gid: $!");
-    }
-  }
-
-  auth_user_write($auth_user_file, $user, $passwd, $uid, $gid, $home_dir,
-    '/bin/bash'); 
-  auth_group_write($auth_group_file, $group, $gid, $user);
+  my $setup = test_setup($tmpdir, 'config');
 
   my $test_file = File::Spec->rel2abs("$tmpdir/test.txt");
   if (open(my $fh, "> $test_file")) {
     close($fh);
 
+    # Make sure that, if we're running as root, that the test file has
+    # permissions/privs set for the account we create
+    if ($< == 0) {
+      unless (chown($setup->{uid}, $setup->{gid}, $test_file)) {
+        die("Can't set owner of $test_file to $setup->{uid}/$setup->{gid}: $!");
+      }
+    }
+
   } else {
     die("Can't open $test_file: $!");
   }
 
-  unless (chown($uid, $gid, $test_file)) {
-    die("Can't set owner of $test_file to $uid/$gid: $!");
-  }
-
   my $config = {
-    PidFile => $pid_file,
-    ScoreboardFile => $scoreboard_file,
-    SystemLog => $log_file,
-    TraceLog => $log_file,
+    PidFile => $setup->{pid_file},
+    ScoreboardFile => $setup->{scoreboard_file},
+    SystemLog => $setup->{log_file},
+    TraceLog => $setup->{log_file},
     Trace => 'DEFAULT:10',
 
-    AuthUserFile => $auth_user_file,
-    AuthGroupFile => $auth_group_file,
+    AuthUserFile => $setup->{auth_user_file},
+    AuthGroupFile => $setup->{auth_group_file},
+    AuthOrder => 'mod_auth_file.c',
 
     Directory => {
       '~' => {
@@ -300,7 +239,8 @@ sub hideuser_session_user {
     },
   };
 
-  my ($port, $config_user, $config_group) = config_write($config_file, $config);
+  my ($port, $config_user, $config_group) = config_write($setup->{config_file},
+    $config);
 
   # Open pipes, for use between the parent and child processes.  Specifically,
   # the child will indicate when it's done with its test by writing a message
@@ -317,8 +257,11 @@ sub hideuser_session_user {
   defined(my $pid = fork()) or die("Can't fork: $!");
   if ($pid) {
     eval {
+      # Allow server to start up
+      sleep(1);
+
       my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
-      $client->login($user, $passwd);
+      $client->login($setup->{user}, $setup->{passwd});
 
       my $conn = $client->list_raw('');
       unless ($conn) {
@@ -328,21 +271,15 @@ sub hideuser_session_user {
 
       my $buf;
       $conn->read($buf, 8192, 30);
-      $conn->close();
+      eval { $conn->close() };
 
-      my ($resp_code, $resp_msg);
-      $resp_code = $client->response_code();
-      $resp_msg = $client->response_msg();
+      if ($ENV{TEST_VERBOSE}) {
+        print STDERR "# response:\n$buf\n";
+      }
 
-      my $expected;
-
-      $expected = 226;
-      $self->assert($expected == $resp_code,
-        test_msg("Expected $expected, got $resp_code"));
-
-      $expected = "Transfer complete";
-      $self->assert($expected eq $resp_msg,
-        test_msg("Expected '$expected', got '$resp_msg'"));
+      my $resp_code = $client->response_code();
+      my $resp_msg = $client->response_msg();
+      $self->assert_transfer_ok($resp_code, $resp_msg);
 
       $client->quit();
 
@@ -356,10 +293,11 @@ sub hideuser_session_user {
         }
       }
 
-      $expected = {
+      my $expected = {
         'config.conf' => 1,
         'config.pid' => 1,
         'config.scoreboard' => 1,
+        'config.scoreboard.lck' => 1,
         'config.passwd' => 1,
         'config.group' => 1,
       };
@@ -382,9 +320,7 @@ sub hideuser_session_user {
       unless ($count == scalar(keys(%$expected))) {
         die("Unexpected count ($count) of names appeared in LIST data");
       }
-
     };
-
     if ($@) {
       $ex = $@;
     }
@@ -393,7 +329,7 @@ sub hideuser_session_user {
     $wfh->flush();
 
   } else {
-    eval { server_wait($config_file, $rfh) };
+    eval { server_wait($setup->{config_file}, $rfh) };
     if ($@) {
       warn($@);
       exit 1;
@@ -403,18 +339,10 @@ sub hideuser_session_user {
   }
 
   # Stop server
-  server_stop($pid_file);
-
+  server_stop($setup->{pid_file});
   $self->assert_child_ok($pid);
 
-  if ($ex) {
-    test_append_logfile($log_file, $ex);
-    unlink($log_file);
-
-    die($ex);
-  }
-
-  unlink($log_file);
+  test_cleanup($setup->{log_file}, $ex);
 }
 
 sub hideuser_not_session_user {
@@ -474,6 +402,7 @@ sub hideuser_not_session_user {
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
+    AuthOrder => 'mod_auth_file.c',
 
     Directory => {
       '~' => {
@@ -658,6 +587,7 @@ sub hideuser_virtual_user_bug3934 {
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
+    AuthOrder => 'mod_auth_file.c',
 
     Directory => {
       '/' => {

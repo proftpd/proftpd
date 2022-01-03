@@ -63,6 +63,7 @@ sub feat_ok {
 
     AuthUserFile => $setup->{auth_user_file},
     AuthGroupFile => $setup->{auth_group_file},
+    AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
       'mod_delay.c' => {
@@ -77,6 +78,13 @@ sub feat_ok {
   my $have_nls = feature_have_feature_enabled('nls');
   if ($have_nls) {
     $expected_nfeat += 2;
+  }
+
+  my $have_digest = feature_have_module_compiled('mod_digest.c');
+  if ($have_digest) {
+    # For the following commands added by mod_digest: HASH, MD5, XCRC, XMD5,
+    #  XSHA, XSHA1, XSHA256, and XSHA512.
+    $expected_nfeat += 8;
   }
 
   my $have_site_misc = feature_have_module_compiled('mod_site_misc.c');
@@ -120,6 +128,13 @@ sub feat_ok {
       $self->assert($expected == $resp_code,
         test_msg("Expected response code $expected, got $resp_code"));
 
+      if ($ENV{TEST_VERBOSE}) {
+        print STDERR "# Features:\n";
+        for (my $i = 0; $i < scalar(@$resp_msgs); $i++) {
+          print STDERR "#  $resp_msgs->[$i]\n";
+        }
+      }
+
       my $nfeat = scalar(@$resp_msgs);
       $self->assert($expected_nfeat == $nfeat,
         test_msg("Expected $expected_nfeat features, got $nfeat"));
@@ -140,6 +155,17 @@ sub feat_ok {
         ' SIZE' => 1,
         'End' => 1,
       };
+
+      if ($have_digest) {
+        $feats->{' HASH CRC32;MD5;SHA-1*;SHA-256;SHA-512;'} = 1;
+        $feats->{' MD5'} = 1;
+        $feats->{' XCRC'} = 1;
+        $feats->{' XMD5'} = 1;
+        $feats->{' XSHA'} = 1;
+        $feats->{' XSHA1'} = 1;
+        $feats->{' XSHA256'} = 1;
+        $feats->{' XSHA512'} = 1;
+      }
 
       if ($have_nls) {
         $feats->{' UTF8'} = 1;
@@ -166,6 +192,11 @@ sub feat_ok {
       }
 
       for (my $i = 0; $i < $nfeat; $i++) {
+        # Special handling for LANG, due to the variance in the values
+        if ($resp_msgs->[$i] =~ /LANG/) {
+          next;
+        }
+
         $self->assert(defined($feats->{$resp_msgs->[$i]}), ,
           test_msg("Unexpected FEAT '$resp_msgs->[$i]'"));
       }
@@ -207,6 +238,7 @@ sub feat_crlf {
 
     AuthUserFile => $setup->{auth_user_file},
     AuthGroupFile => $setup->{auth_group_file},
+    AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
       'mod_delay.c' => {
@@ -379,6 +411,13 @@ sub feat_eprt_limit_issue1383 {
     $expected_nfeat += 2;
   }
 
+  my $have_digest = feature_have_module_compiled('mod_digest.c');
+  if ($have_digest) {
+    # For the following commands added by mod_digest: HASH, MD5, XCRC, XMD5,
+    #  XSHA, XSHA1, XSHA256, and XSHA512.
+    $expected_nfeat += 8;
+  }
+
   my $have_site_misc = feature_have_module_compiled('mod_site_misc.c');
   if ($have_site_misc) {
     # For the following SITE commands added by mod_site_misc: MKDIR,
@@ -454,6 +493,17 @@ EOC
         'End' => 1,
       };
 
+      if ($have_digest) {
+        $feats->{' HASH CRC32;MD5;SHA-1*;SHA-256;SHA-512;'} = 1;
+        $feats->{' MD5'} = 1;
+        $feats->{' XCRC'} = 1;
+        $feats->{' XMD5'} = 1;
+        $feats->{' XSHA'} = 1;
+        $feats->{' XSHA1'} = 1;
+        $feats->{' XSHA256'} = 1;
+        $feats->{' XSHA512'} = 1;
+      }
+
       if ($have_nls) {
         $feats->{' UTF8'} = 1;
 
@@ -479,6 +529,11 @@ EOC
       }
 
       for (my $i = 0; $i < $nfeat; $i++) {
+        # Special handling for LANG, due to the variance in the values
+        if ($resp_msgs->[$i] =~ /LANG/) {
+          next;
+        }
+
         $self->assert(defined($feats->{$resp_msgs->[$i]}), ,
           test_msg("Unexpected FEAT '$resp_msgs->[$i]'"));
       }
@@ -534,6 +589,13 @@ sub feat_epsv_limit_issue1383 {
   my $have_nls = feature_have_feature_enabled('nls');
   if ($have_nls) {
     $expected_nfeat += 2;
+  }
+
+  my $have_digest = feature_have_module_compiled('mod_digest.c');
+  if ($have_digest) {
+    # For the following commands added by mod_digest: HASH, MD5, XCRC, XMD5,
+    #  XSHA, XSHA1, XSHA256, and XSHA512.
+    $expected_nfeat += 8;
   }
 
   my $have_site_misc = feature_have_module_compiled('mod_site_misc.c');
@@ -611,6 +673,17 @@ EOC
         'End' => 1,
       };
 
+      if ($have_digest) {
+        $feats->{' HASH CRC32;MD5;SHA-1*;SHA-256;SHA-512;'} = 1;
+        $feats->{' MD5'} = 1;
+        $feats->{' XCRC'} = 1;
+        $feats->{' XMD5'} = 1;
+        $feats->{' XSHA'} = 1;
+        $feats->{' XSHA1'} = 1;
+        $feats->{' XSHA256'} = 1;
+        $feats->{' XSHA512'} = 1;
+      }
+
       if ($have_nls) {
         $feats->{' UTF8'} = 1;
 
@@ -636,6 +709,11 @@ EOC
       }
 
       for (my $i = 0; $i < $nfeat; $i++) {
+        # Special handling for LANG, due to the variance in the values
+        if ($resp_msgs->[$i] =~ /LANG/) {
+          next;
+        }
+
         $self->assert(defined($feats->{$resp_msgs->[$i]}), ,
           test_msg("Unexpected FEAT '$resp_msgs->[$i]'"));
       }
@@ -691,6 +769,13 @@ sub feat_eprt_epsv_limit_issue1383 {
   my $have_nls = feature_have_feature_enabled('nls');
   if ($have_nls) {
     $expected_nfeat += 2;
+  }
+
+  my $have_digest = feature_have_module_compiled('mod_digest.c');
+  if ($have_digest) {
+    # For the following commands added by mod_digest: HASH, MD5, XCRC, XMD5,
+    #  XSHA, XSHA1, XSHA256, and XSHA512.
+    $expected_nfeat += 8;
   }
 
   my $have_site_misc = feature_have_module_compiled('mod_site_misc.c');
@@ -767,6 +852,17 @@ EOC
         'End' => 1,
       };
 
+      if ($have_digest) {
+        $feats->{' HASH CRC32;MD5;SHA-1*;SHA-256;SHA-512;'} = 1;
+        $feats->{' MD5'} = 1;
+        $feats->{' XCRC'} = 1;
+        $feats->{' XMD5'} = 1;
+        $feats->{' XSHA'} = 1;
+        $feats->{' XSHA1'} = 1;
+        $feats->{' XSHA256'} = 1;
+        $feats->{' XSHA512'} = 1;
+      }
+
       if ($have_nls) {
         $feats->{' UTF8'} = 1;
 
@@ -792,6 +888,11 @@ EOC
       }
 
       for (my $i = 0; $i < $nfeat; $i++) {
+        # Special handling for LANG, due to the variance in the values
+        if ($resp_msgs->[$i] =~ /LANG/) {
+          next;
+        }
+
         $self->assert(defined($feats->{$resp_msgs->[$i]}), ,
           test_msg("Unexpected FEAT '$resp_msgs->[$i]'"));
       }
