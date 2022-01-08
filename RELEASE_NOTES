@@ -20,6 +20,8 @@ ChangeLog files.
 
   + New Directives
 
+    FactsDefault (Issue #1367)
+
     LDAPConnectTimeout (Issue #1333)
 
 
@@ -36,7 +38,7 @@ ChangeLog files.
 
     SFTPOptions NoHostkeyRotation
 
-    SocketOptions reuseport
+    SocketOptions ReusePort
 
 
 1.3.8rc2
