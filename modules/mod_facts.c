@@ -1,6 +1,6 @@
 /*
  * ProFTPD: mod_facts -- a module for handling "facts" [RFC3659]
- * Copyright (c) 2007-2020 The ProFTPD Project
+ * Copyright (c) 2007-2022 The ProFTPD Project
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -26,7 +26,7 @@
 #include "privs.h"
 #include "error.h"
 
-#define MOD_FACTS_VERSION		"mod_facts/0.6"
+#define MOD_FACTS_VERSION		"mod_facts/0.7"
 
 #if PROFTPD_VERSION_NUMBER < 0x0001030101
 # error "ProFTPD 1.3.1rc1 or later required"
@@ -46,6 +46,19 @@ static unsigned long facts_opts = 0;
 #define FACTS_OPT_SHOW_MEDIA_TYPE	0x00100
 #define FACTS_OPT_SHOW_UNIX_OWNER_NAME	0x00200
 #define FACTS_OPT_SHOW_UNIX_GROUP_NAME	0x00400
+
+/* By default, we show most of the facts; see FactsDefault. */
+#define FACTS_OPT_SHOW_DEFAULT \
+  FACTS_OPT_SHOW_MODIFY|\
+  FACTS_OPT_SHOW_PERM|\
+  FACTS_OPT_SHOW_SIZE|\
+  FACTS_OPT_SHOW_TYPE|\
+  FACTS_OPT_SHOW_UNIQUE|\
+  FACTS_OPT_SHOW_UNIX_GROUP|\
+  FACTS_OPT_SHOW_UNIX_GROUP_NAME|\
+  FACTS_OPT_SHOW_UNIX_MODE|\
+  FACTS_OPT_SHOW_UNIX_OWNER|\
+  FACTS_OPT_SHOW_UNIX_OWNER_NAME
 
 static unsigned long facts_mlinfo_opts = 0;
 #define FACTS_MLINFO_FL_SHOW_SYMLINKS			0x00001
@@ -73,6 +86,54 @@ static int facts_sess_init(void);
 
 /* Support functions
  */
+
+static int facts_get_show_opt(const char *fact) {
+  if (strcasecmp(fact, "modify") == 0) {
+    return FACTS_OPT_SHOW_MODIFY;
+  }
+
+  if (strcasecmp(fact, "perm") == 0) {
+    return FACTS_OPT_SHOW_PERM;
+  }
+
+  if (strcasecmp(fact, "size") == 0) {
+    return FACTS_OPT_SHOW_SIZE;
+  }
+
+  if (strcasecmp(fact, "type") == 0) {
+    return FACTS_OPT_SHOW_TYPE;
+  }
+
+  if (strcasecmp(fact, "unique") == 0) {
+    return FACTS_OPT_SHOW_UNIQUE;
+  }
+
+  if (strcasecmp(fact, "UNIX.group") == 0) {
+    return FACTS_OPT_SHOW_UNIX_GROUP;
+  }
+
+  if (strcasecmp(fact, "UNIX.groupname") == 0) {
+    return FACTS_OPT_SHOW_UNIX_GROUP_NAME;
+  }
+
+  if (strcasecmp(fact, "UNIX.mode") == 0) {
+    return FACTS_OPT_SHOW_UNIX_MODE;
+  }
+
+  if (strcasecmp(fact, "UNIX.owner") == 0) {
+    return FACTS_OPT_SHOW_UNIX_OWNER;
+  }
+
+  if (strcasecmp(fact, "UNIX.ownername") == 0) {
+    return FACTS_OPT_SHOW_UNIX_OWNER_NAME;
+  }
+
+  if (strcasecmp(fact, "media-type") == 0) {
+    return FACTS_OPT_SHOW_MEDIA_TYPE;
+  }
+
+  return -1;
+}
 
 static int facts_filters_allow_path(cmd_rec *cmd, const char *path) {
 #ifdef PR_USE_REGEX
@@ -294,7 +355,14 @@ static size_t facts_mlinfo_fmt(struct mlinfo *info, char *buf, size_t bufsz,
 
   if (!(facts_mlinfo_opts & FACTS_MLINFO_FL_NO_NAMES)) {
     if (facts_opts & FACTS_OPT_SHOW_UNIX_GROUP_NAME) {
-      len = pr_snprintf(ptr, bufsz - buflen, "UNIX.groupname=%s;", info->group);
+      const char *group;
+
+      /* In order to be compliant with RFC 3659, Section 7.4, we must ensure
+       * that the group name NOT contain the space character.
+       */
+      group = sreplace(info->pool, info->group, " ", "_", NULL);
+
+      len = pr_snprintf(ptr, bufsz - buflen, "UNIX.groupname=%s;", group);
       buflen += len;
       ptr = buf + buflen;
     }
@@ -316,7 +384,14 @@ static size_t facts_mlinfo_fmt(struct mlinfo *info, char *buf, size_t bufsz,
 
   if (!(facts_mlinfo_opts & FACTS_MLINFO_FL_NO_NAMES)) {
     if (facts_opts & FACTS_OPT_SHOW_UNIX_OWNER_NAME) {
-      len = pr_snprintf(ptr, bufsz - buflen, "UNIX.ownername=%s;", info->user);
+      const char *user;
+
+      /* In order to be compliant with RFC 3659, Section 7.4, we must ensure
+       * that the user name NOT contain the space character.
+       */
+      user = sreplace(info->pool, info->user, " ", "_", NULL);
+
+      len = pr_snprintf(ptr, bufsz - buflen, "UNIX.ownername=%s;", user);
       buflen += len;
       ptr = buf + buflen;
     }
@@ -1848,53 +1923,53 @@ MODRET facts_opts_mlst(cmd_rec *cmd) {
   facts = cmd->argv[1];
   ptr = strchr(facts, ';');
 
-  while (ptr) {
+  while (ptr != NULL) {
     pr_signals_handle();
 
     *ptr = '\0';
 
     if (strcasecmp(facts, "modify") == 0) {
-      facts_opts |= FACTS_OPT_SHOW_MODIFY;
+      facts_opts |= facts_get_show_opt(facts);
       resp_str = pstrcat(cmd->tmp_pool, resp_str, "modify;", NULL);
 
     } else if (strcasecmp(facts, "perm") == 0) {
-      facts_opts |= FACTS_OPT_SHOW_PERM;
+      facts_opts |= facts_get_show_opt(facts);
       resp_str = pstrcat(cmd->tmp_pool, resp_str, "perm;", NULL);
 
     } else if (strcasecmp(facts, "size") == 0) {
-      facts_opts |= FACTS_OPT_SHOW_SIZE;
+      facts_opts |= facts_get_show_opt(facts);
       resp_str = pstrcat(cmd->tmp_pool, resp_str, "size;", NULL);
 
     } else if (strcasecmp(facts, "type") == 0) {
-      facts_opts |= FACTS_OPT_SHOW_TYPE;
+      facts_opts |= facts_get_show_opt(facts);
       resp_str = pstrcat(cmd->tmp_pool, resp_str, "type;", NULL);
 
     } else if (strcasecmp(facts, "unique") == 0) {
-      facts_opts |= FACTS_OPT_SHOW_UNIQUE;
+      facts_opts |= facts_get_show_opt(facts);
       resp_str = pstrcat(cmd->tmp_pool, resp_str, "unique;", NULL);
 
     } else if (strcasecmp(facts, "UNIX.group") == 0) {
-      facts_opts |= FACTS_OPT_SHOW_UNIX_GROUP;
+      facts_opts |= facts_get_show_opt(facts);
       resp_str = pstrcat(cmd->tmp_pool, resp_str, "UNIX.group;", NULL);
 
     } else if (strcasecmp(facts, "UNIX.groupname") == 0) {
-      facts_opts |= FACTS_OPT_SHOW_UNIX_GROUP_NAME;
+      facts_opts |= facts_get_show_opt(facts);
       resp_str = pstrcat(cmd->tmp_pool, resp_str, "UNIX.groupname;", NULL);
 
     } else if (strcasecmp(facts, "UNIX.mode") == 0) {
-      facts_opts |= FACTS_OPT_SHOW_UNIX_MODE;
+      facts_opts |= facts_get_show_opt(facts);
       resp_str = pstrcat(cmd->tmp_pool, resp_str, "UNIX.mode;", NULL);
 
     } else if (strcasecmp(facts, "UNIX.owner") == 0) {
-      facts_opts |= FACTS_OPT_SHOW_UNIX_OWNER;
+      facts_opts |= facts_get_show_opt(facts);
       resp_str = pstrcat(cmd->tmp_pool, resp_str, "UNIX.owner;", NULL);
 
     } else if (strcasecmp(facts, "UNIX.ownername") == 0) {
-      facts_opts |= FACTS_OPT_SHOW_UNIX_OWNER_NAME;
+      facts_opts |= facts_get_show_opt(facts);
       resp_str = pstrcat(cmd->tmp_pool, resp_str, "UNIX.ownername;", NULL);
 
     } else if (strcasecmp(facts, "media-type") == 0) {
-      facts_opts |= FACTS_OPT_SHOW_MEDIA_TYPE;
+      facts_opts |= facts_get_show_opt(facts);
       resp_str = pstrcat(cmd->tmp_pool, resp_str, "media-type;", NULL);
 
     } else {
@@ -1932,6 +2007,38 @@ MODRET set_factsadvertise(cmd_rec *cmd) {
   c = add_config_param(cmd->argv[0], 1, NULL);
   c->argv[0] = pcalloc(c->pool, sizeof(int));
   *((int *) c->argv[0]) = bool;
+
+  return PR_HANDLED(cmd);
+}
+
+/* usage: FactsDefault fact1 ... factN */
+MODRET set_factsdefault(cmd_rec *cmd) {
+  register unsigned int i;
+  config_rec *c;
+  unsigned long opts = 0UL;
+
+  if (cmd->argc-1 == 0) {
+    CONF_ERROR(cmd, "wrong number of parameters");
+  }
+
+  CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL);
+
+  c = add_config_param(cmd->argv[0], 1, NULL);
+
+  for (i = 1; i < cmd->argc; i++) {
+    int show_opt;
+
+    show_opt = facts_get_show_opt(cmd->argv[i]);
+    if (show_opt < 0) {
+      CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, ": unknown fact '",
+        cmd->argv[i], "'", NULL));
+    }
+
+    opts |= show_opt;
+  }
+
+  c->argv[0] = palloc(c->pool, sizeof(unsigned long));
+  *((unsigned long *) c->argv[0]) = opts;
 
   return PR_HANDLED(cmd);
 }
@@ -2018,11 +2125,7 @@ static int facts_sess_init(void) {
   pr_event_register(&facts_module, "core.session-reinit",
     facts_sess_reinit_ev, NULL);
 
-  facts_opts = FACTS_OPT_SHOW_MODIFY|FACTS_OPT_SHOW_PERM|FACTS_OPT_SHOW_SIZE|
-    FACTS_OPT_SHOW_TYPE|FACTS_OPT_SHOW_UNIQUE|
-    FACTS_OPT_SHOW_UNIX_GROUP|FACTS_OPT_SHOW_UNIX_GROUP_NAME|
-    FACTS_OPT_SHOW_UNIX_MODE|FACTS_OPT_SHOW_UNIX_OWNER|
-    FACTS_OPT_SHOW_UNIX_OWNER_NAME;
+  facts_opts = FACTS_OPT_SHOW_DEFAULT;
 
   c = find_config(main_server->conf, CONF_PARAM, "FactsAdvertise", FALSE);
   if (c != NULL) {
@@ -2031,6 +2134,11 @@ static int facts_sess_init(void) {
 
   if (advertise == FALSE) {
     return 0;
+  }
+
+  c = find_config(main_server->conf, CONF_PARAM, "FactsDefault", FALSE);
+  if (c != NULL) {
+    facts_opts = *((unsigned long *) c->argv[0]);
   }
 
   c = find_config(main_server->conf, CONF_PARAM, "FactsOptions", FALSE);
@@ -2076,6 +2184,7 @@ static int facts_sess_init(void) {
 
 static conftable facts_conftab[] = {
   { "FactsAdvertise",	set_factsadvertise,	NULL },
+  { "FactsDefault",	set_factsdefault,	NULL },
   { "FactsOptions",	set_factsoptions,	NULL },
   { NULL }
 };
