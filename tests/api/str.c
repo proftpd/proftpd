@@ -1772,6 +1772,63 @@ START_TEST (text_to_array_test) {
 }
 END_TEST
 
+START_TEST (array_to_text_test) {
+  array_header *items;
+  const char *delimiter;
+  char *res, *expected;
+
+  mark_point();
+  res = pr_str_array_to_text(NULL, NULL, NULL);
+  fail_unless(res == NULL, "Failed to handle null pool");
+  fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+    strerror(errno), errno);
+
+  mark_point();
+  res = pr_str_array_to_text(p, NULL, NULL);
+  fail_unless(res == NULL, "Failed to handle null items");
+  fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+    strerror(errno), errno);
+
+  items = make_array(p, 0, sizeof(char *));
+
+  mark_point();
+  res = pr_str_array_to_text(p, items, NULL);
+  fail_unless(res == NULL, "Failed to handle null delimiter");
+  fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+    strerror(errno), errno);
+
+  delimiter = ":";
+  expected = "";
+
+  mark_point();
+  res = pr_str_array_to_text(p, items, delimiter);
+  fail_unless(res != NULL, "Error converting items to text: %s",
+    strerror(errno));
+  fail_unless(strcmp(res, expected) == 0, "Expected '%s', got '%s'", expected,
+    res);
+
+  *((char **) push_array(items)) = pstrdup(p, "foo");
+  expected = "foo";
+
+  mark_point();
+  res = pr_str_array_to_text(p, items, delimiter);
+  fail_unless(res != NULL, "Error converting items to text: %s",
+    strerror(errno));
+  fail_unless(strcmp(res, expected) == 0, "Expected '%s', got '%s'", expected,
+    res);
+
+  *((char **) push_array(items)) = pstrdup(p, "bar");
+  expected = "foo:bar";
+
+  mark_point();
+  res = pr_str_array_to_text(p, items, delimiter);
+  fail_unless(res != NULL, "Error converting items to text: %s",
+    strerror(errno));
+  fail_unless(strcmp(res, expected) == 0, "Expected '%s', got '%s'", expected,
+    res);
+}
+END_TEST
+
 Suite *tests_get_str_suite(void) {
   Suite *suite;
   TCase *testcase;
@@ -1813,6 +1870,7 @@ Suite *tests_get_str_suite(void) {
   tcase_add_test(testcase, str_quote_test);
   tcase_add_test(testcase, quote_dir_test);
   tcase_add_test(testcase, text_to_array_test);
+  tcase_add_test(testcase, array_to_text_test);
 
   suite_add_tcase(suite, testcase);
   return suite;

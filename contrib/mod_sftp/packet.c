@@ -44,6 +44,9 @@ extern pr_response_t *resp_list, *resp_err_list;
 
 extern module sftp_module;
 
+/* Customizable callback for handling all SSH2 packets. */
+static int (*packet_handler)(void *) = NULL;
+
 static uint32_t packet_client_seqno = 0;
 static uint32_t packet_server_seqno = 0;
 
@@ -217,15 +220,25 @@ int sftp_ssh2_packet_sock_read(int sockfd, void *buf, size_t reqlen,
     return 0;
   }
 
+  /* Generate an event for the read poll we're about to do, for listeners
+   * like mod_proxy that always want to do similar polling, as part of this
+   * event loop in mod_sftp.
+   */
+  pr_event_generate("mod_sftp.ssh2.read-poll", NULL);
+
   errno = 0;
 
   ptr = buf;
   remainlen = reqlen;
 
   while (remainlen > 0) {
-    int res;
+    int res, xerrno;
 
-    if (packet_poll(sockfd, SFTP_PACKET_IO_RD) < 0) {
+    res = packet_poll(sockfd, SFTP_PACKET_IO_RD);
+    xerrno = errno;
+
+    if (res < 0) {
+      errno = xerrno;
       return -1;
     }
 
@@ -235,7 +248,7 @@ int sftp_ssh2_packet_sock_read(int sockfd, void *buf, size_t reqlen,
     res = read(sockfd, ptr, remainlen);
     while (res <= 0) {
       if (res < 0) {
-        int xerrno = errno;
+        xerrno = errno;
 
         if (xerrno == EINTR) {
           pr_signals_handle();
@@ -735,6 +748,7 @@ struct ssh2_packet *sftp_ssh2_packet_create(pool *p) {
 
   pkt = pcalloc(tmp_pool, sizeof(struct ssh2_packet));
   pkt->pool = tmp_pool;
+  pkt->m = &sftp_module;
   pkt->packet_len = 0;
   pkt->payload = NULL;
   pkt->payload_len = 0;
@@ -1314,6 +1328,10 @@ int sftp_ssh2_packet_send(int sockfd, struct ssh2_packet *pkt) {
 
   msg_type = peek_msg_type(pkt);
 
+  pr_trace_msg(trace_channel, 20, "sending %lu bytes of %s (%d) payload",
+    (unsigned long) pkt->payload_len,
+    sftp_ssh2_packet_get_msg_type_desc(msg_type), msg_type);
+
   if (sftp_compress_write_data(pkt) < 0) {
     int xerrno = errno;
 
@@ -1747,24 +1765,14 @@ void sftp_ssh2_packet_handle_unimplemented(struct ssh2_packet *pkt) {
   destroy_pool(pkt->pool);
 }
 
-int sftp_ssh2_packet_handle(void) {
+static int handle_ssh2_packet(void *data) {
   struct ssh2_packet *pkt;
   char msg_type;
-  int res;
 
-  pkt = sftp_ssh2_packet_create(sftp_pool);
-  res = sftp_ssh2_packet_read(sftp_conn->rfd, pkt);
-  if (res < 0) {
-    SFTP_DISCONNECT_CONN(SFTP_SSH2_DISCONNECT_BY_APPLICATION, NULL);
-  }
-
+  pkt = data;
   msg_type = sftp_ssh2_packet_get_msg_type(pkt);
   pr_trace_msg(trace_channel, 3, "received %s (%d) packet",
     sftp_ssh2_packet_get_msg_type_desc(msg_type), msg_type);
-
-  pr_response_clear(&resp_list);
-  pr_response_clear(&resp_err_list);
-  pr_response_set_pool(pkt->pool);
 
   /* Note: Some of the SSH messages will be handled regardless of the
    * sftp_sess_state flags; this is intentional, and is the way that
@@ -1830,8 +1838,6 @@ int sftp_ssh2_packet_handle(void) {
         SFTP_DISCONNECT_CONN(SFTP_SSH2_DISCONNECT_BY_APPLICATION, NULL);
       }
 
-      sftp_sess_state |= SFTP_SESS_STATE_HAVE_KEX;
-
       if (pr_trace_get_level(timing_channel)) {
         unsigned long elapsed_ms;
         uint64_t finish_ms;
@@ -1842,6 +1848,9 @@ int sftp_ssh2_packet_handle(void) {
         pr_trace_msg(timing_channel, 4,
           "SSH key exchange duration: %lu ms", elapsed_ms);
       }
+
+      sftp_sess_state |= SFTP_SESS_STATE_HAVE_KEX;
+      pr_event_generate("mod_sftp.ssh2.kex.completed", NULL);
 
       /* If we just finished rekeying, drain any of the pending channel
        * data which may have built up during the rekeying exchange.
@@ -1946,8 +1955,46 @@ int sftp_ssh2_packet_handle(void) {
         "Unsupported protocol sequence");
   }
 
+  return 0;
+}
+
+int sftp_ssh2_packet_process(pool *p) {
+  struct ssh2_packet *pkt;
+  int res, xerrno;
+
+  pkt = sftp_ssh2_packet_create(p);
+  res = sftp_ssh2_packet_read(sftp_conn->rfd, pkt);
+  if (res < 0) {
+    SFTP_DISCONNECT_CONN(SFTP_SSH2_DISCONNECT_BY_APPLICATION, NULL);
+  }
+
+  pr_response_clear(&resp_list);
+  pr_response_clear(&resp_err_list);
+  pr_response_set_pool(pkt->pool);
+
+  /* If a custom handler rejects this packet with ENOSYS, it means we need
+   * to fall back to handling it ourselves.  Our own handler never returns
+   * ENOSYS.
+   */
+  res = (packet_handler)((void *) pkt);
+  xerrno = errno;
+
+  if (res < 0 &&
+      xerrno == ENOSYS) {
+    (void) handle_ssh2_packet((void *) pkt);
+  }
+
   pr_response_set_pool(NULL);
   return 0;
+}
+
+void sftp_ssh2_packet_set_handler(int (*handler)(void *)) {
+  if (handler == NULL) {
+    packet_handler = handle_ssh2_packet;
+
+  } else {
+    packet_handler = handler;
+  }
 }
 
 int sftp_ssh2_packet_rekey_reset(void) {

@@ -920,10 +920,13 @@ int sftp_cipher_write_data(struct ssh2_packet *pkt, unsigned char *buf,
   pctx = write_ctxs[write_cipher_idx];
   auth_len = sftp_cipher_get_write_auth_size();
 
-  if (cipher->key) {
+  if (cipher->key != NULL) {
     int res;
     unsigned char *data, *ptr;
-    uint32_t datalen, datasz = sizeof(uint32_t) + pkt->packet_len;
+    uint32_t datalen, datasz;
+
+    /* Always leave a little extra room in the buffer. */
+    datasz = sizeof(uint32_t) + pkt->packet_len + 64;
 
     if (pkt->aad_len > 0) {
       /* Packet length is not encrypted for authentication encryption, or
