@@ -2,7 +2,7 @@
  * mod_tls - An RFC2228 SSL/TLS module for ProFTPD
  *
  * Copyright (c) 2000-2002 Peter 'Luna' Runestig <peter@runestig.com>
- * Copyright (c) 2002-2021 TJ Saunders <tj@castaglia.org>
+ * Copyright (c) 2002-2022 TJ Saunders <tj@castaglia.org>
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without modifi-
@@ -17027,7 +17027,7 @@ static char *get_sess_id_text(BIO *bio, const unsigned char *id,
     data[datalen] = '\0';
 
   } else {
-    data = "UKNOWN";
+    data = "UNKNOWN";
   }
 
   return data;
