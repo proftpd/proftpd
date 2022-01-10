@@ -844,7 +844,7 @@ static cmd_rec *make_ftp_cmd(pool *p, char *buf, size_t buflen, int flags) {
   cmd->argc++;
 
   /* Make a copy of the command argument; we need to scan through it,
-   * looking for any CR+NUL sequences, per RFC 2460, Section 3.1.
+   * looking for any CR+NUL sequences, per RFC 2640, Section 3.1.
    *
    * Note for future readers that this scanning may cause problems for
    * commands such as ADAT, ENC, and MIC.  Per RFC 2228, the arguments for
