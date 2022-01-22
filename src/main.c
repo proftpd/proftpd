@@ -2,7 +2,7 @@
  * ProFTPD - FTP server daemon
  * Copyright (c) 1997, 1998 Public Flood Software
  * Copyright (c) 1999, 2000 MacGyver aka Habeeb J. Dihu <macgyver@tos.net>
- * Copyright (c) 2001-2021 The ProFTPD Project team
+ * Copyright (c) 2001-2022 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -1967,6 +1967,59 @@ static void standalone_main(void) {
   daemon_loop();
 }
 
+static int conftab_cmp(const void *a, const void *b) {
+  const conftable *tab1, *tab2;
+
+  tab1 = *((conftable **) a);
+  tab2 = *((conftable **) b);
+  return strcmp(tab1->directive, tab2->directive);
+}
+
+/* Similar to the `get_all_directives` function in src/parser.c, except
+ * that we sort the directives, and display their associated/implementing
+ * modules.
+ */
+static void list_directives(void) {
+  register unsigned int i;
+  pool *tmp_pool;
+  array_header *directives;
+  conftable *tab;
+  int idx;
+  unsigned int hash;
+
+  tmp_pool = make_sub_pool(permanent_pool);
+  directives = make_array(tmp_pool, 1, sizeof(conftable **));
+
+  idx = -1;
+  hash = 0;
+  tab = pr_stash_get_symbol2(PR_SYM_CONF, NULL, NULL, &idx, &hash);
+  while (idx != -1) {
+    pr_signals_handle();
+
+    if (tab != NULL) {
+      *((conftable **) push_array(directives)) = tab;
+
+    } else {
+      idx++;
+    }
+
+    tab = pr_stash_get_symbol2(PR_SYM_CONF, NULL, tab, &idx, &hash);
+  }
+
+  qsort((void *) directives->elts, directives->nelts, sizeof(conftable **),
+    conftab_cmp);
+
+  printf("Configuration Directives:\n");
+  for (i = 0; i < directives->nelts; i++) {
+    conftable *conftab;
+
+    conftab = ((conftable **) directives->elts)[i];
+    printf("  %s (from mod_%s)\n", conftab->directive, conftab->m->name);
+  }
+
+  destroy_pool(tmp_pool);
+}
+
 extern char *optarg;
 extern int optind, opterr, optopt;
 
@@ -2508,8 +2561,7 @@ int main(int argc, char *argv[], char **envp) {
     exit(1);
   }
 
-  if (show_version &&
-      show_version == 1) {
+  if (show_version == 1) {
     printf("%s", "ProFTPD Version " PROFTPD_VERSION_TEXT "\n");
     exit(0);
   }
@@ -2611,12 +2663,18 @@ int main(int argc, char *argv[], char **envp) {
 
   pr_event_generate("core.postparse", NULL);
 
-  if (show_version == 2) {
+  if (show_version >= 2) {
     printf("ProFTPD Version: %s", PROFTPD_VERSION_TEXT " " PR_STATUS "\n");
     printf("  Scoreboard Version: %08x\n", PR_SCOREBOARD_VERSION); 
     printf("  Built: %s\n\n", BUILD_STAMP);
 
     modules_list2(NULL, PR_MODULES_LIST_FL_SHOW_VERSION);
+
+    if (show_version >= 3) {
+      printf("\n");
+      list_directives();
+    }
+
     exit(0);
   }
 

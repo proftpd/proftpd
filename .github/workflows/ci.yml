@@ -363,4 +363,4 @@ jobs:
       - name: Check HTML docs
         if: ${{ matrix.container == 'ubuntu:18.04' }}
         run: |
-          for f in $(/bin/ls doc/contrib/*.html doc/howto/*.html doc/modules/*.html doc/utils/*.html); do echo "Processing $f"; tidy -errors -omit -q $f; done || exit 0
+          for f in $(/bin/ls doc/contrib/*.html doc/directives/*.html doc/howto/*.html doc/modules/*.html doc/utils/*.html); do echo "Processing $f"; tidy -errors -omit -q $f; done || exit 0
