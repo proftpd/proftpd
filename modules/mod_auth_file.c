@@ -385,6 +385,7 @@ static char *af_getgrentline(char **buf, int *buflen, pr_fh_t *fh,
 
     {
       char *new_buf;
+      size_t old_off = cp - *buf;
 
       new_buf = realloc(*buf, *buflen);
       if (new_buf == NULL) {
@@ -392,9 +393,9 @@ static char *af_getgrentline(char **buf, int *buflen, pr_fh_t *fh,
       }
 
       *buf = new_buf;
+      cp = *buf + old_off;
     }
 
-    cp = *buf + (cp - *buf);
     cp = strchr(cp, '\0');
   }
 
