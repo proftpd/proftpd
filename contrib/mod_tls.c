@@ -17523,6 +17523,15 @@ static int tls_ctx_set_dsa_cert(SSL_CTX *ctx, X509 **dsa_cert) {
         tls_dsa_key_file, tls_get_errors());
       return -1;
     }
+
+    res = SSL_CTX_use_certificate_chain_file(ctx, tls_dsa_key_file);
+    if (res != 1) {
+      PRIVS_RELINQUISH
+
+      tls_log("error loading optional chain from TLSDSACertificateKeyFile '%s': %s",
+        tls_dsa_key_file, tls_get_errors());
+      return -1;
+    }
   }
   PRIVS_RELINQUISH
 
@@ -17603,6 +17612,15 @@ static int tls_ctx_set_ec_cert(SSL_CTX *ctx, X509 **ec_cert) {
       PRIVS_RELINQUISH
 
       tls_log("error checking key from TLSECCertificateKeyFile '%s': %s",
+        tls_ec_key_file, tls_get_errors());
+      return -1;
+    }
+
+    res = SSL_CTX_use_certificate_chain_file(ctx, tls_ec_key_file);
+    if (res != 1) {
+      PRIVS_RELINQUISH
+
+      tls_log("error loading optional chain from TLSECCertificateKeyFile '%s': %s",
         tls_ec_key_file, tls_get_errors());
       return -1;
     }
@@ -17899,6 +17917,15 @@ static int tls_ctx_set_rsa_cert(SSL_CTX *ctx, X509 **rsa_cert) {
       pr_log_pri(PR_LOG_NOTICE, MOD_TLS_VERSION
         ": error checking key from TLSRSACertificateKeyFile '%s': %s",
         tls_rsa_key_file, errors);
+      return -1;
+    }
+
+    res = SSL_CTX_use_certificate_chain_file(ctx, tls_rsa_key_file);
+    if (res != 1) {
+      PRIVS_RELINQUISH
+
+      tls_log("error loading optional chain from TLSRSACertificateKeyFile '%s': %s",
+        tls_rsa_key_file, tls_get_errors());
       return -1;
     }
   }
