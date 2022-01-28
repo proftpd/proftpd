@@ -1,7 +1,7 @@
 /*
  * ProFTPD: mod_auth_file - file-based authentication module that supports
  *                          restrictions on the file contents
- * Copyright (c) 2002-2021 The ProFTPD Project team
+ * Copyright (c) 2002-2022 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -325,24 +325,35 @@ static struct passwd *af_getpasswd(const char *buf, unsigned int lineno) {
 #define NGRPFIELDS      4
 
 static char *grpbuf = NULL;
+static size_t grpbufsz = 0;
 static struct group grent;
 static char *grpfields[NGRPFIELDS];
 static char *members[MAXMEMBERS+1];
 
-static char *af_getgrentline(char **buf, int *buflen, pr_fh_t *fh,
+static char *af_getgrentline(char **buf, size_t *bufsz, pr_fh_t *fh,
     unsigned int *lineno) {
-  char *cp = *buf;
-  int original_buflen;
+  char *ptr, *res;
+  size_t original_bufsz, buflen;
 
-  original_buflen = *buflen;
+  original_bufsz = *bufsz;
+  buflen = *bufsz;
 
-  while (pr_fsio_gets(cp, (*buflen) - (cp - *buf), fh) != NULL) {
+  /* Try to keep our unfilled buffer zeroed out, so that strlen(3) et al
+   * work as expected.
+   */
+  memset(*buf, '\0', *bufsz);
+
+  ptr = *buf;
+  res = pr_fsio_gets(ptr, buflen, fh);
+  while (res != NULL) {
     pr_signals_handle();
 
-    (*lineno)++;
-
     /* Is this a full line? */
-    if (strchr(cp, '\n')) {
+    if (strchr(*buf, '\n') != NULL) {
+      pr_trace_msg(trace_channel, 25,
+        "found LF, returning line: '%s' (%lu bytes)", *buf,
+        (unsigned long) strlen(*buf));
+      (*lineno)++;
       return *buf;
     }
 
@@ -351,26 +362,37 @@ static char *af_getgrentline(char **buf, int *buflen, pr_fh_t *fh,
      * allocated buffer by the original buffer length each time.  So we
      * do the same (Issue #1321).
      */
-    *buflen += original_buflen;
-
     {
+      size_t new_bufsz;
       char *new_buf;
 
-      new_buf = realloc(*buf, *buflen);
+      pr_trace_msg(trace_channel, 25, "getgrentline() buffer (%lu bytes): "
+        "'%.*s'", (unsigned long) *bufsz, (int) *bufsz, *buf);
+
+      pr_trace_msg(trace_channel, 19,
+        "no LF found in group line, increasing buffer (%lu bytes) by %lu bytes",
+        (unsigned long) *bufsz, (unsigned long) original_bufsz);
+      new_bufsz = *bufsz + original_bufsz;
+
+      new_buf = realloc(*buf, new_bufsz);
       if (new_buf == NULL) {
         break;
       }
 
+      ptr = new_buf + *bufsz;
       *buf = new_buf;
+      *bufsz = new_bufsz;
+      buflen = original_bufsz;
+
+      memset(ptr, '\0', buflen);
     }
 
-    cp = *buf + (cp - *buf);
-    cp = strchr(cp, '\0');
+    res = pr_fsio_gets(ptr, buflen, fh);
   }
 
   free(*buf);
   *buf = NULL;
-  *buflen = 0;
+  *bufsz = 0;
 
   return NULL;
 }
@@ -401,11 +423,16 @@ static struct group *af_getgrp(const char *buf, unsigned int lineno) {
 
   i = strlen(buf) + 1;
 
-  if (!grpbuf) {
+  if (grpbuf == NULL) {
+    grpbufsz = i;
     grpbuf = malloc(i);
 
-  } else {
+  } else if (grpbufsz < (size_t) i) {
     char *new_buf;
+
+    pr_trace_msg(trace_channel, 19,
+      "parsing group line '%s' (%lu bytes), allocating %lu bytes via "
+      "realloc(3)", buf, (unsigned long) i, (unsigned long) i);
 
     new_buf = realloc(grpbuf, i);
     if (new_buf == NULL) {
@@ -413,10 +440,12 @@ static struct group *af_getgrp(const char *buf, unsigned int lineno) {
     }
 
     grpbuf = new_buf;
+    grpbufsz = i;
   }
 
-  if (!grpbuf)
+  if (grpbuf == NULL) {
     return NULL;
+  }
 
   sstrncpy(grpbuf, buf, i);
 
@@ -524,7 +553,16 @@ static struct group *af_getgrent(pool *p) {
 
   while (TRUE) {
     char *cp = NULL, *buf = NULL;
-    int buflen = PR_TUNABLE_BUFFER_SIZE;
+    size_t buflen;
+
+    buflen = PR_TUNABLE_BUFFER_SIZE;
+
+    if (af_group_file->af_file_fh->fh_iosz > 0) {
+      /* This aligns our group(5) buffer with the preferred filesystem read
+       * block size.
+       */
+      buflen = af_group_file->af_file_fh->fh_iosz;
+    }
 
     pr_signals_handle();
 
@@ -533,6 +571,11 @@ static struct group *af_getgrent(pool *p) {
       pr_log_pri(PR_LOG_ALERT, "Out of memory!");
       _exit(1);
     }
+
+    pr_trace_msg(trace_channel, 19,
+      "getgrent(3): allocated buffer %p (%lu bytes)", buf,
+      (unsigned long) buflen);
+
     grp = NULL;
 
     while (af_getgrentline(&buf, &buflen, af_group_file->af_file_fh,
@@ -635,6 +678,12 @@ static int af_setgrent(pool *p) {
         pbuf->current = pbuf->buf;
         pbuf->remaining = pbuf->buflen;
       }
+
+      if (grpbuf != NULL) {
+        free(grpbuf);
+        grpbuf = NULL;
+      }
+      grpbufsz = 0;
 
       return 0;
     }
