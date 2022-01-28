@@ -610,10 +610,14 @@ static struct group *af_getgrent(pool *p, int flags,
     char *cp = NULL, *buf = NULL;
     size_t buflen;
 
-    /* This aligns our group(5) buffer with the preferred filesystem read
-     * block size.
-     */
-    buflen = af_group_file->af_file_fh->fh_iosz;
+    buflen = PR_TUNABLE_BUFFER_SIZE;
+
+    if (af_group_file->af_file_fh->fh_iosz > 0) {
+      /* This aligns our group(5) buffer with the preferred filesystem read
+       * block size.
+       */
+      buflen = af_group_file->af_file_fh->fh_iosz;
+    }
 
     pr_signals_handle();
 
