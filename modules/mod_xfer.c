@@ -1022,9 +1022,8 @@ static void stor_abort(pool *p) {
         } 
       }
     }
-  }
 
-  if (session.xfer.path != NULL) {
+  } else if (session.xfer.path != NULL) {
     if (delete_stores != NULL &&
         *delete_stores == TRUE) {
       pr_log_debug(DEBUG5, "removing aborted file '%s'", session.xfer.path);
@@ -1037,14 +1036,16 @@ static void stor_abort(pool *p) {
         pr_error_set_why(err, pstrcat(tmp_pool, "delete aborted file '",
           session.xfer.path, "'", NULL));
 
-        if (err != NULL) {
-          pr_log_debug(DEBUG0, "%s", pr_error_strerror(err, 0));
-          pr_error_destroy(err);
-          err = NULL;
+        if (xerrno != ENOENT) {
+          if (err != NULL) {
+            pr_log_debug(DEBUG0, "%s", pr_error_strerror(err, 0));
+            pr_error_destroy(err);
+            err = NULL;
 
-        } else {
-          pr_log_debug(DEBUG0, "error deleting aborted file '%s': %s",
-            session.xfer.path, strerror(xerrno));
+          } else {
+            pr_log_debug(DEBUG0, "error deleting aborted file '%s': %s",
+              session.xfer.path, strerror(xerrno));
+          }
         }
       }
     }
