@@ -2,7 +2,7 @@
  * ProFTPD - FTP server daemon
  * Copyright (c) 1997, 1998 Public Flood Software
  * Copyright (c) 1999, 2000 MacGyver aka Habeeb J. Dihu <macgyver@tos.net>
- * Copyright (c) 2001-2021 The ProFTPD Project team
+ * Copyright (c) 2001-2022 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -4628,7 +4628,7 @@ MODRET core_epsv(cmd_rec *cmd) {
   }
 
   /* If we already have a passive listen data connection open, kill it. */
-  if (session.d) {
+  if (session.d != NULL) {
     pr_inet_close(session.d->pool, session.d);
     session.d = NULL;
   }
@@ -4717,6 +4717,10 @@ MODRET core_epsv(cmd_rec *cmd) {
    * will be no need for NAT, and hence no need for masquerading.  This
    * may be true in an ideal world, but I think it more likely that current
    * clients will simply use EPSV, rather than PASV, in existing IPv4 networks.
+   *
+   * Note that this also means that EPSV cannot be use for site-to-site (FXP)
+   * transfers; the EPSV response is not allowed to contain a different
+   * network address.
    *
    * Disable the honoring of MasqueradeAddress for EPSV until this can
    * be officially determined (Bug#2369).  See also Bug#3862.
@@ -6609,6 +6613,47 @@ static void core_exit_ev(const void *event_data, void *user_data) {
   pr_fs_statcache_free();
 }
 
+static void core_postparse_ev(const void *event_data, void *user_data) {
+  cmd_rec *cmd;
+  int res;
+  pool *tmp_pool;
+
+  /* If the EPRT and/or EPSV commands have been denied by configuration, e.g.:
+   *
+   *  <Limit EPRT EPSV>
+   *    DenyAll
+   *  </Limit>
+   *
+   * then we will also exclude them from the FEAT response.  Some badly
+   * behaved clients will try to use EPSV (which cannot honor the
+   * MasqueradeAddress directive, needed in NAT environments), and if that
+   * fails, they fall back to using PORT (and not PASV as expected).
+   *
+   * Thus for such tricky situations, we check for <Limit> configurations for
+   * this commands; if limited, we omit them from FEAT.  This is why we need
+   * to wait until the configuration has been parsed, to do this check.
+   * See Issue#1383.
+   */
+
+  tmp_pool = make_sub_pool(permanent_pool);
+
+  cmd = pr_cmd_alloc(tmp_pool, 1, pstrdup(tmp_pool, C_EPRT), NULL);
+  res = dir_check_limits(cmd, NULL, C_EPRT, FALSE);
+  if (res == 1) {
+    pr_feat_add(C_EPRT);
+  }
+
+  destroy_pool(cmd->pool);
+  cmd = pr_cmd_alloc(tmp_pool, 1, pstrdup(tmp_pool, C_EPSV), NULL);
+  res = dir_check_limits(cmd, NULL, C_EPSV, FALSE);
+  if (res == 1) {
+    pr_feat_add(C_EPSV);
+  }
+
+  destroy_pool(cmd->pool);
+  destroy_pool(tmp_pool);
+}
+
 static void core_restart_ev(const void *event_data, void *user_data) {
   pr_fs_statcache_reset();
   pr_scoreboard_scrub();
@@ -6704,13 +6749,12 @@ static int core_init(void) {
    * list, to be displayed in response to a FEAT command.
    */
   pr_feat_add(C_CLNT);
-  pr_feat_add(C_EPRT);
-  pr_feat_add(C_EPSV);
   pr_feat_add(C_MDTM);
   pr_feat_add("REST STREAM");
   pr_feat_add(C_SIZE);
   pr_feat_add(C_HOST);
 
+  pr_event_register(&core_module, "core.postparse", core_postparse_ev, NULL);
   pr_event_register(&core_module, "core.restart", core_restart_ev, NULL);
   pr_event_register(&core_module, "core.startup", core_startup_ev, NULL);
 
