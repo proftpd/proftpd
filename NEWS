@@ -21,6 +21,8 @@
 - Issue 1325 - NLST does not behave consistently for relative paths.
 - Issue 1346 - Implement AllowForeignAddress class matching for passive data
   transfers.
+- Bug 4467 - DeleteAbortedStores removes successfully transferred files
+  unexpectedly.
 
 1.3.7c - Released 29-Aug-2021
 --------------------------------
