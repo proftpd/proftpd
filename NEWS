@@ -31,6 +31,8 @@
 - Bug 4466 - ProFTPD won't start with several locales.
 - Issue 1367 - Auth sources providing space-bearing user/group names cause
   compliance issues with MLSD/MLST responses.
+- Bug 4467 - DeleteAbortedStores removes successfully transferred files
+  unexpectedly.
 
 1.3.8rc2 - Released 29-Aug-2021
 --------------------------------
