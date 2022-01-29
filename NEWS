@@ -33,6 +33,8 @@
   compliance issues with MLSD/MLST responses.
 - Bug 4467 - DeleteAbortedStores removes successfully transferred files
   unexpectedly.
+- Issue 1383 - Omit EPRT/EPSV from FEAT response when denied by <Limit>
+  configuration.
 
 1.3.8rc2 - Released 29-Aug-2021
 --------------------------------
