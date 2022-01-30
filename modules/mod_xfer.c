@@ -2,7 +2,7 @@
  * ProFTPD - FTP server daemon
  * Copyright (c) 1997, 1998 Public Flood Software
  * Copyright (c) 1999, 2000 MacGyver aka Habeeb J. Dihu <macgyver@tos.net>
- * Copyright (c) 2001-2021 The ProFTPD Project team
+ * Copyright (c) 2001-2022 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -62,8 +62,9 @@ static float use_sendfile_pct = -1.0;
 static int xfer_check_limit(cmd_rec *);
 
 /* TransferOptions */
-#define PR_XFER_OPT_HANDLE_ALLO		0x0001
-#define PR_XFER_OPT_IGNORE_ASCII	0x0002
+#define PR_XFER_OPT_HANDLE_ALLO			0x0001
+#define PR_XFER_OPT_IGNORE_ASCII		0x0002
+#define PR_XFER_OPT_ALLOW_SYMLINK_UPLOAD	0x0004
 static unsigned long xfer_opts = PR_XFER_OPT_HANDLE_ALLO;
 
 static void xfer_exit_ev(const void *, void *);
@@ -1296,10 +1297,10 @@ MODRET xfer_post_mode(cmd_rec *cmd) {
  */
 MODRET xfer_pre_stor(cmd_rec *cmd) {
   char *decoded_path, *path;
-  mode_t fmode;
+  mode_t fmode = (mode_t) 0;
   unsigned char *allow_overwrite = NULL, *allow_restart = NULL;
   config_rec *c;
-  int res;
+  int res, is_file = FALSE;
 
   if (cmd->argc < 2) {
     pr_response_add_err(R_500, _("'%s' not understood"),
@@ -1377,39 +1378,57 @@ MODRET xfer_pre_stor(cmd_rec *cmd) {
 
   allow_overwrite = get_param_ptr(CURRENT_CONF, "AllowOverwrite", FALSE);
 
-  if (fmode && (session.xfer.xfer_type != STOR_APPEND) &&
-      (!allow_overwrite || *allow_overwrite == FALSE)) {
-    pr_log_debug(DEBUG6, "AllowOverwrite denied permission for %s", cmd->arg);
-    pr_response_add_err(R_550, _("%s: Overwrite permission denied"), cmd->arg);
+  if (fmode != 0) {
+    if (session.xfer.xfer_type != STOR_APPEND &&
+        (!allow_overwrite || *allow_overwrite == FALSE)) {
+      pr_log_debug(DEBUG6, "AllowOverwrite denied permission for %s", cmd->arg);
+      pr_response_add_err(R_550, _("%s: Overwrite permission denied"), cmd->arg);
 
-    pr_cmd_set_errno(cmd, EACCES);
-    errno = EACCES;
-    return PR_ERROR(cmd);
-  }
-
-  if (fmode &&
-      !S_ISREG(fmode) &&
-      !S_ISFIFO(fmode)) {
-
-    /* Make an exception for the non-regular /dev/null file.  This will allow
-     * network link testing by uploading as much data as necessary directly
-     * to /dev/null.
-     *
-     * On Linux, allow another exception for /dev/full; this is useful for
-     * tests which want to simulate running out-of-space scenarios.
-     */
-    if (strcasecmp(path, "/dev/null") != 0
-#ifdef LINUX
-        && strcasecmp(path, "/dev/full") != 0
-#endif
-       ) {
-      pr_response_add_err(R_550, _("%s: Not a regular file"), cmd->arg);
-
-      /* Deliberately use EISDIR for anything non-file (e.g. directories). */
-      pr_cmd_set_errno(cmd, EISDIR);
-      errno = EISDIR;
+      pr_cmd_set_errno(cmd, EACCES);
+      errno = EACCES;
       return PR_ERROR(cmd);
     }
+
+    if (S_ISREG(fmode) ||
+        S_ISFIFO(fmode)) {
+      is_file = TRUE;
+
+    } else {
+      /* Make an exception for the non-regular /dev/null file.  This will allow
+       * network link testing by uploading as much data as necessary directly
+       * to /dev/null.
+       *
+       * On Linux, allow another exception for /dev/full; this is useful for
+       * tests which want to simulate running out-of-space scenarios.
+       */
+      if (strcasecmp(path, "/dev/null") == 0
+#ifdef LINUX
+          || strcasecmp(path, "/dev/full") == 0
+#endif
+        ) {
+        is_file = TRUE;
+      }
+
+      if (is_file == FALSE &&
+          S_ISLNK(fmode) &&
+          (xfer_opts & PR_XFER_OPT_ALLOW_SYMLINK_UPLOAD)) {
+        /* We are allowing uploading to symlinks. */
+        is_file = TRUE;
+      }
+    }
+
+  } else {
+    /* If we cannot discover the mode, assume it is a file. */
+    is_file = TRUE;
+  }
+
+  if (is_file == FALSE) {
+    pr_response_add_err(R_550, _("%s: Not a regular file"), cmd->arg);
+
+    /* Deliberately use EISDIR for anything non-file (e.g. directories). */
+    pr_cmd_set_errno(cmd, EISDIR);
+    errno = EISDIR;
+    return PR_ERROR(cmd);
   }
 
   /* If restarting, check permissions on this directory, if
@@ -3875,6 +3894,10 @@ MODRET set_transferoptions(cmd_rec *cmd) {
   for (i = 1; i < cmd->argc; i++) {
     if (strcasecmp(cmd->argv[i], "IgnoreASCII") == 0) {
       opts |= PR_XFER_OPT_IGNORE_ASCII;
+
+    } else if (strcasecmp(cmd->argv[i], "AllowSymlinkUpload") == 0 ||
+               strcasecmp(cmd->argv[i], "AllowSymlinkUploads") == 0) {
+      opts |= PR_XFER_OPT_ALLOW_SYMLINK_UPLOAD;
 
     } else {
       CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, ": unknown TransferOption '",

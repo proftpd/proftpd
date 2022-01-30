@@ -791,6 +791,10 @@ sub stor_abs_symlink {
 
     AuthUserFile => $setup->{auth_user_file},
     AuthGroupFile => $setup->{auth_group_file},
+    AuthOrder => 'mod_auth_file.c',
+
+    AllowOverwrite => 'on',
+    TransferOptions => 'AllowSymlinkUpload',
 
     IfModules => {
       'mod_delay.c' => {
@@ -1032,6 +1036,10 @@ sub stor_rel_symlink {
 
     AuthUserFile => $setup->{auth_user_file},
     AuthGroupFile => $setup->{auth_group_file},
+    AuthOrder => 'mod_auth_file.c',
+
+    AllowOverwrite => 'on',
+    TransferOptions => 'AllowSymlinkUpload',
 
     IfModules => {
       'mod_delay.c' => {
@@ -1614,6 +1622,10 @@ sub stor_fails_abs_symlink_dir_enoent {
 
     AuthUserFile => $setup->{auth_user_file},
     AuthGroupFile => $setup->{auth_group_file},
+    AuthOrder => 'mod_auth_file.c',
+
+    AllowOverwrite => 'on',
+    TransferOptions => 'AllowSymlinkUpload',
 
     IfModules => {
       'mod_delay.c' => {
@@ -1851,6 +1863,10 @@ sub stor_fails_rel_symlink_dir_enoent {
 
     AuthUserFile => $setup->{auth_user_file},
     AuthGroupFile => $setup->{auth_group_file},
+    AuthOrder => 'mod_auth_file.c',
+
+    AllowOverwrite => 'on',
+    TransferOptions => 'AllowSymlinkUpload',
 
     IfModules => {
       'mod_delay.c' => {
