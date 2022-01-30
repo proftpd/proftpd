@@ -1,6 +1,6 @@
 /*
  * ProFTPD - FTP server daemon
- * Copyright (c) 2001-2020 The ProFTPD Project team
+ * Copyright (c) 2001-2022 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -988,8 +988,7 @@ int pr_namebind_create(server_rec *server, const char *name,
 
 pr_namebind_t *pr_namebind_find(const char *name, const pr_netaddr_t *addr,
     unsigned int port, unsigned char skip_inactive) {
-  pr_ipbind_t *ipbind = NULL;
-  pr_namebind_t *namebind = NULL;
+  pr_ipbind_t *ipbind = NULL, *iter;
 
   if (name == NULL ||
       addr == NULL) {
@@ -1035,22 +1034,28 @@ pr_namebind_t *pr_namebind_find(const char *name, const pr_netaddr_t *addr,
     return NULL;
   }
 
-  if (ipbind->ib_namebinds == NULL) {
-    pr_trace_msg(trace_channel, 17,
-      "ipbind %p (server %p) for %s#%u has no namebinds", ipbind,
-      ipbind->ib_server, pr_netaddr_get_ipstr(addr), port);
-    return NULL;
+  /* Now we need to search this ipbind list, to see if any of them have a
+   * matching namebind.
+   */
 
-  } else {
+  for (iter = ipbind; iter; iter = iter->ib_next) {
     register unsigned int i = 0;
-    pr_namebind_t **namebinds = (pr_namebind_t **) ipbind->ib_namebinds->elts;
+    pr_namebind_t *namebind = NULL, **namebinds = NULL;
 
+    if (iter->ib_namebinds == NULL) {
+      pr_trace_msg(trace_channel, 17,
+        "ipbind %p (server %p) for %s#%u has no namebinds", iter,
+        iter->ib_server, pr_netaddr_get_ipstr(addr), port);
+      continue;
+    }
+
+    namebinds = (pr_namebind_t **) iter->ib_namebinds->elts;
     pr_trace_msg(trace_channel, 17,
-      "ipbind %p (server %p) for %s#%u has namebinds (%d)", ipbind,
-      ipbind->ib_server, pr_netaddr_get_ipstr(addr), port,
-      ipbind->ib_namebinds->nelts);
+      "ipbind %p (server %p) for %s#%u has namebinds (%d)", iter,
+      iter->ib_server, pr_netaddr_get_ipstr(addr), port,
+      iter->ib_namebinds->nelts);
 
-    for (i = 0; i < ipbind->ib_namebinds->nelts; i++) {
+    for (i = 0; i < iter->ib_namebinds->nelts; i++) {
       namebind = namebinds[i];
       if (namebind == NULL) {
         continue;
