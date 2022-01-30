@@ -35,6 +35,7 @@
   unexpectedly.
 - Issue 1383 - Omit EPRT/EPSV from FEAT response when denied by <Limit>
   configuration.
+- Issue 1379 - Support uploading to symlinked files.
 
 1.3.8rc2 - Released 29-Aug-2021
 --------------------------------

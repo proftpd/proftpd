@@ -40,6 +40,8 @@ ChangeLog files.
 
     SocketOptions ReusePort
 
+    TransferOptions AllowSymlinkUpload (Issue #1379)
+
 
 1.3.8rc2
 ---------
