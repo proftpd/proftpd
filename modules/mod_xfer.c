@@ -312,19 +312,34 @@ static int xfer_check_limit(cmd_rec *cmd) {
        * address to be counted.
        */
       if (strcmp(score->sce_server_addr, server_addr) != 0) {
+        pr_trace_msg(trace_channel, 25,
+          "MaxTransfersPerHost: server address '%s' does not match '%s', "
+          "skipping", server_addr, score->sce_server_addr);
         continue;
       }
 
       if (strcmp(score->sce_client_addr, client_addr) != 0) {
+        pr_trace_msg(trace_channel, 25,
+          "MaxTransfersPerHost: client address '%s' does not match '%s', "
+          "skipping", client_addr, score->sce_client_addr);
         continue;
       }
 
-      if (strcmp(score->sce_cmd, xfer_cmd) == 0) {
-        curr++;
+      if (strcmp(score->sce_cmd, xfer_cmd) != 0) {
+        pr_trace_msg(trace_channel, 25,
+          "MaxTransfersPerHost: current command '%s' does not match '%s', "
+          "skipping", xfer_cmd, score->sce_cmd);
+        continue;
       }
+
+      curr++;
     }
 
     pr_restore_scoreboard();
+
+    pr_trace_msg(trace_channel, 19,
+      "MaxTransfersPerHost: %s (current = %u, max = %u) for client '%s'",
+      xfer_cmd, curr, max, client_addr);
 
     if (curr >= max) {
       char maxn[20];
@@ -388,19 +403,34 @@ static int xfer_check_limit(cmd_rec *cmd) {
       pr_signals_handle();
 
       if (strcmp(score->sce_server_addr, server_addr) != 0) {
+        pr_trace_msg(trace_channel, 25,
+          "MaxTransfersPerUser: server address '%s' does not match '%s', "
+          "skipping", server_addr, score->sce_server_addr);
         continue;
       }
 
       if (strcmp(score->sce_user, session.user) != 0) {
+        pr_trace_msg(trace_channel, 25,
+          "MaxTransfersPerUser: user '%s' does not match '%s', skipping",
+          session.user, score->sce_user);
         continue;
       }
 
       if (strcmp(score->sce_cmd, xfer_cmd) == 0) {
-        curr++;
+        pr_trace_msg(trace_channel, 25,
+          "MaxTransfersPerUser: command '%s' does not match '%s', skipping",
+          xfer_cmd, score->sce_cmd);
+        continue;
       }
+
+      curr++;
     }
 
     pr_restore_scoreboard();
+
+    pr_trace_msg(trace_channel, 19,
+      "MaxTransfersPerUser: %s (current = %u, max = %u) for user '%s'",
+      xfer_cmd, curr, max, session.user);
 
     if (curr >= max) {
       char maxn[20];
