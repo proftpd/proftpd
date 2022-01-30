@@ -1,6 +1,6 @@
 /*
  * ProFTPD - FTP server daemon
- * Copyright (c) 2001-2021 The ProFTPD Project team
+ * Copyright (c) 2001-2022 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -1083,64 +1083,64 @@ pr_namebind_t *pr_namebind_find(const char *name, const pr_netaddr_t *addr,
     pr_namebind_t *namebind = NULL, **namebinds = NULL;
 
     if (iter->ib_namebinds == NULL) {
-    pr_trace_msg(trace_channel, 17,
+      pr_trace_msg(trace_channel, 17,
         "ipbind %p (server %p) for %s#%u has no namebinds", iter,
         iter->ib_server, pr_netaddr_get_ipstr(addr), port);
       continue;
-  }
+    }
 
     namebinds = (pr_namebind_t **) iter->ib_namebinds->elts;
-  pr_trace_msg(trace_channel, 17,
+    pr_trace_msg(trace_channel, 17,
       "ipbind %p (server %p) for %s#%u has namebinds (%d)", iter,
       iter->ib_server, pr_netaddr_get_ipstr(addr), port,
       iter->ib_namebinds->nelts);
 
     for (i = 0; i < iter->ib_namebinds->nelts; i++) {
-    namebind = namebinds[i];
-    if (namebind == NULL) {
-      continue;
-    }
+      namebind = namebinds[i];
+      if (namebind == NULL) {
+        continue;
+      }
 
-    /* Skip inactive namebinds */
-    if (skip_inactive == TRUE &&
-        namebind->nb_isactive == FALSE) {
-      pr_trace_msg(trace_channel, 17,
-        "namebind #%u: %s is inactive, skipping", i, namebind->nb_name);
-      continue;
-    }
+      /* Skip inactive namebinds */
+      if (skip_inactive == TRUE &&
+          namebind->nb_isactive == FALSE) {
+        pr_trace_msg(trace_channel, 17,
+          "namebind #%u: %s is inactive, skipping", i, namebind->nb_name);
+        continue;
+      }
 
-    /* At present, this looks for an exactly matching name.  In the future,
-     * we may want to have something like Apache's matching scheme, which
-     * looks for the most specific domain to the most general.  Note that
-     * that scheme, however, is specific to DNS; should any other naming
-     * scheme be desired, that sort of matching will be unnecessary.
-     */
-    if (namebind->nb_name != NULL) {
-      pr_trace_msg(trace_channel, 17,
-        "namebind #%u: %s (%s)", i, namebind->nb_name,
-        namebind->nb_isactive ? "active" : "inactive");
+      /* At present, this looks for an exactly matching name.  In the future,
+       * we may want to have something like Apache's matching scheme, which
+       * looks for the most specific domain to the most general.  Note that
+       * that scheme, however, is specific to DNS; should any other naming
+       * scheme be desired, that sort of matching will be unnecessary.
+       */
+      if (namebind->nb_name != NULL) {
+        pr_trace_msg(trace_channel, 17,
+          "namebind #%u: %s (%s)", i, namebind->nb_name,
+          namebind->nb_isactive ? "active" : "inactive");
 
-      if (namebind->nb_iswildcard == FALSE) {
-        if (strcasecmp(namebind->nb_name, name) == 0) {
-          return namebind;
-        }
+        if (namebind->nb_iswildcard == FALSE) {
+          if (strcasecmp(namebind->nb_name, name) == 0) {
+            return namebind;
+          }
 
-      } else {
-        int match_flags = PR_FNM_NOESCAPE|PR_FNM_CASEFOLD;
+        } else {
+          int match_flags = PR_FNM_NOESCAPE|PR_FNM_CASEFOLD;
 
-        if (pr_fnmatch(namebind->nb_name, name, match_flags) == 0) {
+          if (pr_fnmatch(namebind->nb_name, name, match_flags) == 0) {
+            pr_trace_msg(trace_channel, 9,
+              "matched name '%s' against pattern '%s'", name,
+              namebind->nb_name);
+            return namebind;
+          }
+
           pr_trace_msg(trace_channel, 9,
-            "matched name '%s' against pattern '%s'", name,
+            "failed to match name '%s' against pattern '%s'", name,
             namebind->nb_name);
-          return namebind;
         }
-
-        pr_trace_msg(trace_channel, 9,
-          "failed to match name '%s' against pattern '%s'", name,
-          namebind->nb_name);
       }
     }
-  }
   }
 
   return NULL;
