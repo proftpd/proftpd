@@ -28,7 +28,7 @@ libltdl: dummy
 	cd libltdl/ && $(MAKE)
 
 prbase.a: $(LIB_OBJS)
-	$(AR) rc prbase.a $(LIB_OBJS)
+	$(AR) rc prbase.a $(patsubst %.o,.libs/%.o,$(LIB_OBJS))
 	$(RANLIB) prbase.a
 
 lib: prbase.a $(LIB_DEPS)
