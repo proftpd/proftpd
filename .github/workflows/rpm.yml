@@ -37,6 +37,9 @@ jobs:
       - name: Configure Centos 8 repos
         if: ${{ matrix.container == 'centos:8' }}
         run: |
+          # Centos 8 reached EOL on Dec 31 2021
+          sed -i 's/mirrorlist/#mirrorlist/g' /etc/yum.repos.d/CentOS-Linux-*
+          sed -i 's|#baseurl=http://mirror.centos.org|baseurl=http://vault.centos.org|g' /etc/yum.repos.d/CentOS-Linux-*
           # Need to add other repos for e.g. libsodium
           yum install -y dnf-plugins-core epel-release
           yum config-manager --set-enabled powertools
