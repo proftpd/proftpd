@@ -2023,7 +2023,7 @@ static void list_directives(void) {
 extern char *optarg;
 extern int optind, opterr, optopt;
 
-#ifdef HAVE_GETOPT_LONG
+#if defined(HAVE_GETOPT_LONG)
 static struct option opts[] = {
   { "nocollision",    0, NULL, 'N' },
   { "nodaemon",	      0, NULL, 'n' },
@@ -2044,8 +2044,54 @@ static struct option opts[] = {
 };
 #endif /* HAVE_GETOPT_LONG */
 
+/* If there is an /etc/os-release file, display its contents; see:
+ *   https://www.freedesktop.org/software/systemd/man/os-release.html
+ */
+static void show_os_release(void) {
+  const char *os_release_path = "/etc/os-release";
+  FILE *fh;
+  char *line = NULL;
+  size_t linelen = 0;
+  ssize_t nread = 0;
+
+  fh = fopen(os_release_path, "r");
+  if (fh == NULL) {
+    return;
+  }
+
+  printf("%s", "  OS/Release:\n");
+
+  nread = getline(&line, &linelen, fh);
+  while (nread >= 0) {
+    int skip_line = FALSE;
+
+    pr_signals_handle();
+
+    /* Skip any lines containing uninteresting info. */
+    if (strstr(line, "COLOR") != NULL ||
+        strstr(line, "LOGO") != NULL ||
+        strstr(line, "_URL") != NULL) {
+      skip_line = TRUE;
+    }
+
+    if (skip_line == TRUE) {
+      nread = getline(&line, &linelen, fh);
+      continue;
+    }
+
+    printf("    %s", line);
+    nread = getline(&line, &linelen, fh);
+  }
+
+  if (line != NULL) {
+    free(line);
+  }
+
+  (void) fclose(fh);
+}
+
 static void show_settings(void) {
-#ifdef HAVE_UNAME
+#if defined(HAVE_UNAME)
   int res;
   struct utsname uts;
 #endif /* !HAVE_UNAME */
@@ -2053,7 +2099,7 @@ static void show_settings(void) {
   printf("%s", "Compile-time Settings:\n");
   printf("%s", "  Version: " PROFTPD_VERSION_TEXT " " PR_STATUS "\n");
 
-#ifdef HAVE_UNAME
+#if defined(HAVE_UNAME)
   /* We use uname(2) to get the 'machine', which will tell us whether
    * we're a 32- or 64-bit machine.
    */
@@ -2068,6 +2114,8 @@ static void show_settings(void) {
 #else
   printf("%s", "  Platform: " PR_PLATFORM " [unknown]\n");
 #endif /* !HAVE_UNAME */
+
+  show_os_release();
 
   printf("%s", "  Built: " BUILD_STAMP "\n");
   printf("%s", "  Built With:\n    configure " PR_BUILD_OPTS "\n\n");
