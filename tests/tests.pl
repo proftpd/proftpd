@@ -171,6 +171,7 @@ if (scalar(@ARGV) > 0) {
     t/config/rlimitopenfiles.t
     t/config/rootrevoke.t
     t/config/serveradmin.t
+    t/config/serveralias.t
     t/config/serverident.t
     t/config/setenv.t
     t/config/showsymlinks.t
