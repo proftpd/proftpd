@@ -2491,6 +2491,16 @@ MODRET xfer_pre_retr(cmd_rec *cmd) {
 
   pr_fs_clear_cache2(decoded_path);
   dir = dir_realpath(cmd->tmp_pool, decoded_path);
+  if (dir == NULL) {
+    /* Try using dir_best_path(), as xfer_pre_stor() does.
+     *
+     * Without this fallback, certain use cases (such as SFTP downloads using
+     * mod_sftp + mod_vroot) fail unexpectedly, with misleading
+     * "denied by <Limit> configuration" errors.
+     */
+    dir = dir_best_path(cmd->tmp_pool, decoded_path);
+  }
+
   if (dir == NULL ||
       !dir_check(cmd->tmp_pool, cmd, cmd->group, dir, NULL)) {
     int xerrno = errno;
