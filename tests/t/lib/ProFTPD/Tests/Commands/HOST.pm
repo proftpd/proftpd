@@ -229,6 +229,7 @@ sub host_after_login_fails {
 
     AuthUserFile => $setup->{auth_user_file},
     AuthGroupFile => $setup->{auth_group_file},
+    AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
       'mod_delay.c' => {
@@ -314,6 +315,8 @@ sub host_literal_ipv6_fails_useipv6_off {
 
     AuthUserFile => $setup->{auth_user_file},
     AuthGroupFile => $setup->{auth_group_file},
+    AuthOrder => 'mod_auth_file.c',
+
     UseIPv6 => 'off',
 
     IfModules => {
@@ -400,6 +403,8 @@ sub host_literal_ipv6_with_port_fails {
 
     AuthUserFile => $setup->{auth_user_file},
     AuthGroupFile => $setup->{auth_group_file},
+    AuthOrder => 'mod_auth_file.c',
+
     UseIPv6 => 'on',
 
     IfModules => {
@@ -486,6 +491,7 @@ sub host_invalid_ipv4_fails {
 
     AuthUserFile => $setup->{auth_user_file},
     AuthGroupFile => $setup->{auth_group_file},
+    AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
       'mod_delay.c' => {
@@ -571,6 +577,7 @@ sub host_ipv4_with_port_fails {
 
     AuthUserFile => $setup->{auth_user_file},
     AuthGroupFile => $setup->{auth_group_file},
+    AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
       'mod_delay.c' => {
@@ -656,6 +663,7 @@ sub host_unknown_host_fails {
 
     AuthUserFile => $setup->{auth_user_file},
     AuthGroupFile => $setup->{auth_group_file},
+    AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
       'mod_delay.c' => {
@@ -741,6 +749,7 @@ sub host_known_ipv4_same_host_ok {
 
     AuthUserFile => $setup->{auth_user_file},
     AuthGroupFile => $setup->{auth_group_file},
+    AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
       'mod_delay.c' => {
@@ -822,6 +831,8 @@ sub host_known_ipv6_same_host_ok {
 
     AuthUserFile => $setup->{auth_user_file},
     AuthGroupFile => $setup->{auth_group_file},
+    AuthOrder => 'mod_auth_file.c',
+
     UseIPv6 => 'on',
     DefaultAddress => '::1',
 
@@ -912,6 +923,7 @@ sub host_known_ipv4_different_host_fails {
 
     AuthUserFile => $setup->{auth_user_file},
     AuthGroupFile => $setup->{auth_group_file},
+    AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
       'mod_delay.c' => {
@@ -1018,6 +1030,8 @@ sub host_known_ipv6_different_host_fails {
 
     AuthUserFile => $setup->{auth_user_file},
     AuthGroupFile => $setup->{auth_group_file},
+    AuthOrder => 'mod_auth_file.c',
+
     UseIPv6 => 'on',
     DefaultAddress => '::1',
 
@@ -1122,6 +1136,7 @@ sub host_known_dns_ok {
 
     AuthUserFile => $setup->{auth_user_file},
     AuthGroupFile => $setup->{auth_group_file},
+    AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
       'mod_delay.c' => {
@@ -1221,6 +1236,7 @@ sub host_config_limit_denied {
 
     AuthUserFile => $setup->{auth_user_file},
     AuthGroupFile => $setup->{auth_group_file},
+    AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
       'mod_delay.c' => {
@@ -1326,6 +1342,7 @@ sub host_before_feat_ok {
 
     AuthUserFile => $setup->{auth_user_file},
     AuthGroupFile => $setup->{auth_group_file},
+    AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
       'mod_delay.c' => {
@@ -1429,7 +1446,6 @@ EOC
 
   # Stop server
   server_stop($setup->{pid_file});
-
   $self->assert_child_ok($pid);
 
   test_cleanup($setup->{log_file}, $ex);
@@ -1450,9 +1466,22 @@ sub host_after_feat_ok {
     PidFile => $setup->{pid_file},
     ScoreboardFile => $setup->{scoreboard_file},
     SystemLog => $setup->{log_file},
+    TraceLog => $setup->{log_file},
+    Trace => 'binding:20 tls:30',
 
     AuthUserFile => $setup->{auth_user_file},
     AuthGroupFile => $setup->{auth_group_file},
+    AuthOrder => 'mod_auth_file.c',
+
+    # Interestingly, these are needed to ensure that the ipbind uses 127.0.0.1,
+    # rather than 0.0.0.0.  That way, it will match the IP address to which the
+    # client connects.  Also, SocketBindTight is needed, lets the code match
+    # the non-wildcard binding first.
+    #
+    # TODO: These are interesting edge cases to explore further!
+    DefaultAddress => '127.0.0.1',
+    ServerName => '"Primary Virtual Host"',
+    SocketBindTight => 'on',
 
     IfModules => {
       'mod_delay.c' => {
@@ -1474,7 +1503,7 @@ sub host_after_feat_ok {
   TLSEngine on
   TLSLog $setup->{log_file}
   TLSRSACertificateFile $cert_file
-  TLSCACertificateFile $ca_file
+#  TLSCACertificateFile $ca_file
 </VirtualHost>
 EOC
     unless (close($fh)) {
@@ -1506,9 +1535,7 @@ EOC
       my $resp_code = $client->response_code();
       my $resp_msgs = $client->response_msgs();
 
-      my $expected;
-
-      $expected = 211;
+      my $expected = 211;
       $self->assert($expected == $resp_code,
         test_msg("Expected response code $expected, got $resp_code"));
 
@@ -1537,7 +1564,6 @@ EOC
 
       $client->quit();
     };
-
     if ($@) {
       $ex = $@;
     }
@@ -1557,7 +1583,6 @@ EOC
 
   # Stop server
   server_stop($setup->{pid_file});
-
   $self->assert_child_ok($pid);
 
   test_cleanup($setup->{log_file}, $ex);

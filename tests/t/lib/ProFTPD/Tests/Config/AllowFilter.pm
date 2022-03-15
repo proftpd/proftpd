@@ -147,9 +147,10 @@ sub allowfilter_dele_allowed {
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
-    DefaultChdir => '~',
+    AuthOrder => 'mod_auth_file.c',
 
     AllowOverwrite => 'on',
+    DefaultChdir => '~',
 
     IfModules => {
       'mod_delay.c' => {
@@ -285,6 +286,8 @@ sub allowfilter_dele_denied {
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
+    AuthOrder => 'mod_auth_file.c',
+
     DefaultChdir => '~',
 
     IfModules => {
@@ -422,9 +425,10 @@ sub allowfilter_mkd_allowed {
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
-    DefaultChdir => '~',
+    AuthOrder => 'mod_auth_file.c',
 
     AllowOverwrite => 'on',
+    DefaultChdir => '~',
 
     IfModules => {
       'mod_delay.c' => {
@@ -555,9 +559,10 @@ sub allowfilter_mkd_denied {
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
-    DefaultChdir => '~',
+    AuthOrder => 'mod_auth_file.c',
 
     AllowOverwrite => 'on',
+    DefaultChdir => '~',
 
     IfModules => {
       'mod_delay.c' => {
@@ -694,9 +699,10 @@ sub allowfilter_rmd_allowed {
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
-    DefaultChdir => '~',
+    AuthOrder => 'mod_auth_file.c',
 
     AllowOverwrite => 'on',
+    DefaultChdir => '~',
 
     IfModules => {
       'mod_delay.c' => {
@@ -822,9 +828,10 @@ sub allowfilter_rmd_denied {
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
-    DefaultChdir => '~',
+    AuthOrder => 'mod_auth_file.c',
 
     AllowOverwrite => 'on',
+    DefaultChdir => '~',
 
     IfModules => {
       'mod_delay.c' => {
@@ -961,9 +968,10 @@ sub allowfilter_rnfr_allowed {
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
-    DefaultChdir => '~',
+    AuthOrder => 'mod_auth_file.c',
 
     AllowOverwrite => 'on',
+    DefaultChdir => '~',
 
     IfModules => {
       'mod_delay.c' => {
@@ -1089,9 +1097,10 @@ sub allowfilter_rnfr_denied {
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
-    DefaultChdir => '~',
+    AuthOrder => 'mod_auth_file.c',
 
     AllowOverwrite => 'on',
+    DefaultChdir => '~',
 
     IfModules => {
       'mod_delay.c' => {
@@ -1229,9 +1238,10 @@ sub allowfilter_rnto_allowed {
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
-    DefaultChdir => '~',
+    AuthOrder => 'mod_auth_file.c',
 
     AllowOverwrite => 'on',
+    DefaultChdir => '~',
 
     IfModules => {
       'mod_delay.c' => {
@@ -1360,9 +1370,10 @@ sub allowfilter_rnto_denied {
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
-    DefaultChdir => '~',
+    AuthOrder => 'mod_auth_file.c',
 
     AllowOverwrite => 'on',
+    DefaultChdir => '~',
 
     IfModules => {
       'mod_delay.c' => {
@@ -1410,19 +1421,16 @@ sub allowfilter_rnto_denied {
       my $resp_code = $client->response_code();
       my $resp_msg = $client->response_msg();
 
-      my $expected;
-
-      $expected = 550;
+      my $expected = 550;
       $self->assert($expected == $resp_code,
-        test_msg("Expected $expected, got $resp_code"));
+        test_msg("Expected response code $expected, got $resp_code"));
 
-      $expected = "Rename $dirname: Operation not permitted";
+      $expected = "$dirname: Operation not permitted";
       $self->assert($expected eq $resp_msg,
-        test_msg("Expected '$expected', got '$resp_msg'"));
+        test_msg("Expected response message '$expected', got '$resp_msg'"));
 
       $client->quit();
     };
-
     if ($@) {
       $ex = $@;
     }
@@ -1498,9 +1506,10 @@ sub allowfilter_stor_allowed {
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
-    DefaultChdir => '~',
+    AuthOrder => 'mod_auth_file.c',
 
     AllowOverwrite => 'on',
+    DefaultChdir => '~',
 
     IfModules => {
       'mod_delay.c' => {
@@ -1637,9 +1646,10 @@ sub allowfilter_stor_denied {
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
-    DefaultChdir => '~',
+    AuthOrder => 'mod_auth_file.c',
 
     AllowOverwrite => 'on',
+    DefaultChdir => '~',
 
     IfModules => {
       'mod_delay.c' => {
@@ -1774,9 +1784,10 @@ sub allowfilter_stor_denied_nocase_bug3592 {
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
-    DefaultChdir => '~',
+    AuthOrder => 'mod_auth_file.c',
 
     AllowOverwrite => 'on',
+    DefaultChdir => '~',
 
     IfModules => {
       'mod_delay.c' => {
@@ -1917,9 +1928,10 @@ sub allowfilter_stor_denied_nocase_bug3609 {
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
-    DefaultChdir => '~',
+    AuthOrder => 'mod_auth_file.c',
 
     AllowOverwrite => 'on',
+    DefaultChdir => '~',
 
     IfModules => {
       'mod_delay.c' => {

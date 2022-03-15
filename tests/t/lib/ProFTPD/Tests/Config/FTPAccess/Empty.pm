@@ -113,6 +113,7 @@ sub empty_bug3240 {
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
+    AuthOrder => 'mod_auth_file.c',
 
     AllowOverride => 'on',
 
@@ -271,9 +272,10 @@ sub empty_bug3279 {
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
-    DefaultRoot => '~',
+    AuthOrder => 'mod_auth_file.c',
 
     AllowOverride => 'on',
+    DefaultRoot => '~',
 
     IfModules => {
       'mod_delay.c' => {
@@ -351,6 +353,7 @@ EOD
         'config.passwd' => 1,
         'config.pid' => 1,
         'config.scoreboard' => 1,
+        'config.scoreboard.lck' => 1,
       };
 
       my $ok = 1;
@@ -490,10 +493,11 @@ EOC
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
-    DefaultRoot => '~',
+    AuthOrder => 'mod_auth_file.c',
 
     AllowOverride => 'on',
     ListOptions => '-la',
+    DefaultRoot => '~',
 
     IfModules => {
       'mod_delay.c' => {

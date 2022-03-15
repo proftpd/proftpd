@@ -53,48 +53,19 @@ sub list_tests {
 sub systemlog_default {
   my $self = shift;
   my $tmpdir = $self->{tmpdir};
+  my $setup = test_setup($tmpdir, 'systemlog');
 
-  my $config_file = "$tmpdir/systemlog.conf";
-  my $pid_file = File::Spec->rel2abs("$tmpdir/systemlog.pid");
-  my $scoreboard_file = File::Spec->rel2abs("$tmpdir/systemlog.scoreboard");
-
-  my $log_file = test_get_logfile();
-
-  my $auth_user_file = File::Spec->rel2abs("$tmpdir/systemlog.passwd");
-  my $auth_group_file = File::Spec->rel2abs("$tmpdir/systemlog.group");
-
-  my $test_file = File::Spec->rel2abs($config_file);
-
-  my $user = 'proftpd';
-  my $passwd = 'test';
-  my $group = 'ftpd';
-  my $home_dir = File::Spec->rel2abs($tmpdir);
-  my $uid = 500;
-  my $gid = 500;
-
-  # Make sure that, if we're running as root, that the home directory has
-  # permissions/privs set for the account we create
-  if ($< == 0) {
-    unless (chmod(0755, $home_dir)) {
-      die("Can't set perms on $home_dir to 0755: $!");
-    }
-
-    unless (chown($uid, $gid, $home_dir)) {
-      die("Can't set owner of $home_dir to $uid/$gid: $!");
-    }
-  }
-
-  auth_user_write($auth_user_file, $user, $passwd, $uid, $gid, $home_dir,
-    '/bin/bash');
-  auth_group_write($auth_group_file, $group, $gid, $user);
+  my $test_file = File::Spec->rel2abs($setup->{config_file});
 
   my $config = {
-    PidFile => $pid_file,
-    ScoreboardFile => $scoreboard_file,
-    SystemLog => $log_file,
+    PidFile => $setup->{pid_file},
+    ScoreboardFile => $setup->{scoreboard_file},
+    SystemLog => $setup->{log_file},
+    SyslogLevel => 'INFO',
 
-    AuthUserFile => $auth_user_file,
-    AuthGroupFile => $auth_group_file,
+    AuthUserFile => $setup->{auth_user_file},
+    AuthGroupFile => $setup->{auth_group_file},
+    AuthOrder => 'mod_auth_file.c',
 
     TransferLog => 'none',
 
@@ -105,7 +76,8 @@ sub systemlog_default {
     },
   };
 
-  my ($port, $config_user, $config_group) = config_write($config_file, $config);
+  my ($port, $config_user, $config_group) = config_write($setup->{config_file},
+    $config);
 
   # Open pipes, for use between the parent and child processes.  Specifically,
   # the child will indicate when it's done with its test by writing a message
@@ -122,11 +94,13 @@ sub systemlog_default {
   defined(my $pid = fork()) or die("Can't fork: $!");
   if ($pid) {
     eval {
+      # Allow server to start up
+      sleep(1);
+
       my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
-      $client->login($user, $passwd);
+      $client->login($setup->{user}, $setup->{passwd});
       $client->quit();
     };
-
     if ($@) {
       $ex = $@;
     }
@@ -135,7 +109,7 @@ sub systemlog_default {
     $wfh->flush();
 
   } else {
-    eval { server_wait($config_file, $rfh) };
+    eval { server_wait($setup->{config_file}, $rfh) };
     if ($@) {
       warn($@);
       exit 1;
@@ -145,12 +119,11 @@ sub systemlog_default {
   }
 
   # Stop server
-  server_stop($pid_file);
-
+  server_stop($setup->{pid_file});
   $self->assert_child_ok($pid);
 
   eval {
-    if (open(my $fh, "< $log_file")) {
+    if (open(my $fh, "< $setup->{log_file}")) {
 
       # We should see the following, in the order defined:
       #
@@ -165,6 +138,10 @@ sub systemlog_default {
       while (my $line = <$fh>) {
         chomp($line);
 
+        if ($ENV{TEST_VERBOSE}) {
+          print STDERR "# $line\n";
+        }
+
         if (!$saw_opened) {
           if ($line =~ /FTP session opened/) {
             $saw_opened = 1;
@@ -172,7 +149,7 @@ sub systemlog_default {
 
         } else {
           if (!$saw_login) {
-            if ($line =~ /USER $user: Login successful/) {
+            if ($line =~ /USER $setup->{user}: Login successful/) {
               $saw_login = 1;
             }
 
@@ -190,25 +167,18 @@ sub systemlog_default {
       close($fh);
 
       $self->assert($saw_opened, test_msg("Expected 'FTP session opened' message not seen"));
-      $self->assert($saw_login, test_msg("Expected 'USER $user: Login successful' message not seen"));
+      $self->assert($saw_login, test_msg("Expected 'USER $setup->{user}: Login successful' message not seen"));
       $self->assert($saw_closed, test_msg("Expected 'FTP session closed' message not seen"));
 
     } else {
-      die("Can't read $log_file: $!");
+      die("Can't read $setup->{log_file}: $!");
     }
   };
   if ($@) {
     $ex = $@;
   }
 
-  if ($ex) {
-    test_append_logfile($log_file, $ex);
-    unlink($log_file);
-
-    die($ex);
-  }
-
-  unlink($log_file);
+  test_cleanup($setup->{log_file}, $ex);
 }
 
 sub systemlog_with_sysloglevel_crit {
@@ -256,6 +226,7 @@ sub systemlog_with_sysloglevel_crit {
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
+    AuthOrder => 'mod_auth_file.c',
 
     SyslogLevel => 'crit',
     TransferLog => 'none',
@@ -416,6 +387,7 @@ sub systemlog_with_debuglevel {
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
+    AuthOrder => 'mod_auth_file.c',
 
     DebugLevel => 4,
 
@@ -559,6 +531,7 @@ sub systemlog_ifclass_matching_class_bug3832 {
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
+    AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
       'mod_delay.c' => {
@@ -673,48 +646,20 @@ EOC
 sub systemlog_ifclass_not_matching_class_bug3832 {
   my $self = shift;
   my $tmpdir = $self->{tmpdir};
+  my $setup = test_setup($tmpdir, 'systemlog');
 
-  my $config_file = "$tmpdir/systemlog.conf";
-  my $pid_file = File::Spec->rel2abs("$tmpdir/systemlog.pid");
-  my $scoreboard_file = File::Spec->rel2abs("$tmpdir/systemlog.scoreboard");
-
-  my $auth_user_file = File::Spec->rel2abs("$tmpdir/systemlog.passwd");
-  my $auth_group_file = File::Spec->rel2abs("$tmpdir/systemlog.group");
-
-  my $test_file = File::Spec->rel2abs($config_file);
-
-  my $user = 'proftpd';
-  my $passwd = 'test';
-  my $group = 'ftpd';
-  my $home_dir = File::Spec->rel2abs($tmpdir);
-  my $uid = 500;
-  my $gid = 500;
-
-  # Make sure that, if we're running as root, that the home directory has
-  # permissions/privs set for the account we create
-  if ($< == 0) {
-    unless (chmod(0755, $home_dir)) {
-      die("Can't set perms on $home_dir to 0755: $!");
-    }
-
-    unless (chown($uid, $gid, $home_dir)) {
-      die("Can't set owner of $home_dir to $uid/$gid: $!");
-    }
-  }
-
-  auth_user_write($auth_user_file, $user, $passwd, $uid, $gid, $home_dir,
-    '/bin/bash');
-  auth_group_write($auth_group_file, $group, $gid, $user);
-
+  my $test_file = File::Spec->rel2abs($setup->{config_file});
   my $system_log = File::Spec->rel2abs("$tmpdir/system.log");
 
   my $config = {
-    PidFile => $pid_file,
-    ScoreboardFile => $scoreboard_file,
+    PidFile => $setup->{pid_file},
+    ScoreboardFile => $setup->{scoreboard_file},
     SystemLog => $system_log,
+    SyslogLevel => 'INFO',
 
-    AuthUserFile => $auth_user_file,
-    AuthGroupFile => $auth_group_file,
+    AuthUserFile => $setup->{auth_user_file},
+    AuthGroupFile => $setup->{auth_group_file},
+    AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
       'mod_delay.c' => {
@@ -723,10 +668,11 @@ sub systemlog_ifclass_not_matching_class_bug3832 {
     },
   };
 
-  my ($port, $config_user, $config_group) = config_write($config_file, $config);
+  my ($port, $config_user, $config_group) = config_write($setup->{config_file},
+    $config);
 
   # Append the mod_ifsession config to the end of the config file
-  if (open(my $fh, ">> $config_file")) {
+  if (open(my $fh, ">> $setup->{config_file}")) {
     print $fh <<EOC;
 <Class local>
   From 127.0.0.1
@@ -737,11 +683,11 @@ sub systemlog_ifclass_not_matching_class_bug3832 {
 </IfClass>
 EOC
     unless (close($fh)) {
-      die("Can't write $config_file: $!");
+      die("Can't write $setup->{config_file}: $!");
     }
 
   } else {
-    die("Can't open $config_file: $!");
+    die("Can't open $setup->{config_file}: $!");
   }
 
   # Open pipes, for use between the parent and child processes.  Specifically,
@@ -759,8 +705,11 @@ EOC
   defined(my $pid = fork()) or die("Can't fork: $!");
   if ($pid) {
     eval {
+      # Allow server to start up
+      sleep(1);
+
       my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
-      $client->login($user, $passwd);
+      $client->login($setup->{user}, $setup->{passwd});
       $client->type('ascii');
 
       my $conn = $client->retr_raw($test_file);
@@ -770,11 +719,11 @@ EOC
       }
 
       my $buf;
-      $conn->read($buf, 8192, 25);
-      eval { $conn->close() };
+      while ($conn->read($buf, 8192, 25) > 0) {
+      }
+      eval { $conn->close(5) };
       $client->quit();
     };
-
     if ($@) {
       $ex = $@;
     }
@@ -783,7 +732,7 @@ EOC
     $wfh->flush();
 
   } else {
-    eval { server_wait($config_file, $rfh) };
+    eval { server_wait($setup->{config_file}, $rfh) };
     if ($@) {
       warn($@);
       exit 1;
@@ -793,37 +742,39 @@ EOC
   }
 
   # Stop server
-  server_stop($pid_file);
-
+  server_stop($setup->{pid_file});
   $self->assert_child_ok($pid);
 
-  if (open(my $fh, "< $system_log")) {
-    my $sess_nlines = 0;
-    while (my $line = <$fh>) {
-      chomp($line);
+  eval {
+    if (open(my $fh, "< $system_log")) {
+      my $sess_nlines = 0;
 
-      if ($line =~ /session (opened|closed)/) {
-        $sess_nlines++;
+      while (my $line = <$fh>) {
+        chomp($line);
+
+        if ($ENV{TEST_VERBOSE}) {
+          print STDERR "# $line\n";
+        }
+
+        if ($line =~ /session (opened|closed)/) {
+          $sess_nlines++;
+        }
       }
+
+      close($fh);
+
+      $self->assert($sess_nlines > 0,
+        test_msg("Expected lines in $system_log, got none"));
+
+    } else {
+      die("Can't read $system_log: $!");
     }
-
-    close($fh);
-
-    $self->assert($sess_nlines > 0,
-      test_msg("Expected lines in $system_log, got none"));
-
-  } else {
-    die("Can't read $system_log: $!");
+  };
+  if ($@) {
+    $ex = $@;
   }
 
-  if ($ex) {
-    test_append_logfile($system_log, $ex);
-    unlink($system_log);
-
-    die($ex);
-  }
-
-  unlink($system_log);
+  test_cleanup($setup->{log_file}, $ex);
 }
 
 1;

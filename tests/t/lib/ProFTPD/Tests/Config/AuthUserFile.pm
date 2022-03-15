@@ -15,7 +15,7 @@ $| = 1;
 my $order = 0;
 
 my $TESTS = {
-  authuserfile_empty_passwd => {
+  authuserfile_empty_passwd_osx => {
     order => ++$order,
     test_class => [qw(bug forking os_darwin)],
   },
@@ -30,7 +30,7 @@ sub list_tests {
   return testsuite_get_runnable_tests($TESTS);
 }
 
-sub authuserfile_empty_passwd {
+sub authuserfile_empty_passwd_osx {
   my $self = shift;
   my $tmpdir = $self->{tmpdir};
 

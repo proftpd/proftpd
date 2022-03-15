@@ -56,6 +56,7 @@ sub logoptions_no_timestamp {
 
     AuthUserFile => $setup->{auth_user_file},
     AuthGroupFile => $setup->{auth_group_file},
+    AuthOrder => 'mod_auth_file.c',
 
     LogOptions => '-Timestamp',
 
@@ -155,6 +156,7 @@ sub logoptions_no_hostname {
 
     AuthUserFile => $setup->{auth_user_file},
     AuthGroupFile => $setup->{auth_group_file},
+    AuthOrder => 'mod_auth_file.c',
 
     LogOptions => '-Hostname',
 
@@ -255,6 +257,7 @@ sub logoptions_no_virtualhost {
 
     AuthUserFile => $setup->{auth_user_file},
     AuthGroupFile => $setup->{auth_group_file},
+    AuthOrder => 'mod_auth_file.c',
 
     LogOptions => '-VirtualHost',
 
@@ -283,6 +286,9 @@ sub logoptions_no_virtualhost {
   defined(my $pid = fork()) or die("Can't fork: $!");
   if ($pid) {
     eval {
+      # Allow server to start up
+      sleep(1);
+
       my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
       $client->login($setup->{user}, $setup->{passwd});
       $client->quit();
@@ -354,6 +360,7 @@ sub logoptions_use_rolebasedprocesslabels {
 
     AuthUserFile => $setup->{auth_user_file},
     AuthGroupFile => $setup->{auth_group_file},
+    AuthOrder => 'mod_auth_file.c',
 
     LogOptions => '+RoleBasedProcessLabels',
 
@@ -382,6 +389,9 @@ sub logoptions_use_rolebasedprocesslabels {
   defined(my $pid = fork()) or die("Can't fork: $!");
   if ($pid) {
     eval {
+      # Allow server to start up
+      sleep(1);
+
       my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
       $client->login($setup->{user}, $setup->{passwd});
       $client->quit();

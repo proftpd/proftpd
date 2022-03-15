@@ -69,7 +69,7 @@ if (scalar(@ARGV) > 0) {
     t/commands/rmd.t
     t/commands/dele.t
     t/commands/mdtm.t
-    t/commands/size.t 
+    t/commands/size.t
     t/commands/mode.t
     t/commands/stru.t
     t/commands/allo.t
@@ -122,12 +122,13 @@ if (scalar(@ARGV) > 0) {
     t/config/deferwelcome.t
     t/config/deleteabortedstores.t
     t/config/denyfilter.t
+    t/config/directory.t
     t/config/dirfakegroup.t
     t/config/dirfakemode.t
     t/config/dirfakeuser.t
     t/config/displaychdir.t
     t/config/displayconnect.t
-    t/config/displayfiletransfer.t 
+    t/config/displayfiletransfer.t
     t/config/displaylogin.t
     t/config/displayquit.t
     t/config/envvars.t
@@ -185,6 +186,7 @@ if (scalar(@ARGV) > 0) {
     t/config/timeoutstalled.t
     t/config/trace.t
     t/config/traceoptions.t
+    t/config/transferoptions.t
     t/config/transferrate.t
     t/config/umask.t
     t/config/useftpusers.t
@@ -201,13 +203,15 @@ if (scalar(@ARGV) > 0) {
     t/config/ftpaccess/merging.t
     t/config/ftpaccess/retr.t
     t/config/limit/anonymous.t
+    t/config/limit/filters.t
+    t/config/limit/help.t
     t/config/limit/login.t
     t/config/limit/mfmt.t
     t/config/limit/opts.t
     t/config/limit/rmd.t
-    t/config/limit/xmkd.t
-    t/config/limit/filters.t
     t/config/limit/subdirs.t
+    t/config/limit/xmkd.t
+    t/contrib/ftpasswd.t
     t/logging/extendedlog.t
     t/logging/serverlog.t
     t/logging/systemlog.t
@@ -542,8 +546,8 @@ if (defined($opts->{C})) {
   $ENV{PROFTPD_TEST_ENABLE_CLASS} = join(':', @{ $opts->{C} });
 
 } else {
-  # Disable all 'inprogress' and 'slow' tests by default
-  $ENV{PROFTPD_TEST_DISABLE_CLASS} = 'inprogress:slow';
+  # Disable all 'flaky', 'inprogress' and 'slow' tests by default
+  $ENV{PROFTPD_TEST_DISABLE_CLASS} = 'flaky:inprogress:slow';
 }
 
 if (defined($opts->{F})) {

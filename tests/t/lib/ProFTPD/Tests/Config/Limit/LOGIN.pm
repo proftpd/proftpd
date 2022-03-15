@@ -87,7 +87,7 @@ sub login_limit_ip_glob_range_bug3484 {
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
-    UseIPv6 => 'off',
+    AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
       'mod_delay.c' => {
@@ -217,7 +217,7 @@ sub login_limit_allowgroup_backslash {
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
-    UseIPv6 => 'off',
+    AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
       'mod_delay.c' => {
@@ -335,7 +335,7 @@ sub login_limit_multiple_sections {
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
-    UseIPv6 => 'off',
+    AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
       'mod_delay.c' => {

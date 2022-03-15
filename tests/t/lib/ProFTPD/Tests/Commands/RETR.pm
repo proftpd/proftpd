@@ -52,9 +52,10 @@ my $TESTS = {
     test_class => [qw(forking)],
   },
 
+  # Rolled back per Bug#4332
   retr_abs_symlink_chrooted_bug4219 => {
     order => ++$order,
-    test_class => [qw(bug forking rootprivs)],
+    test_class => [qw(bug forking inprogress rootprivs)],
   },
 
   retr_rel_symlink => {
@@ -97,9 +98,10 @@ my $TESTS = {
     test_class => [qw(forking)],
   },
 
+  # Rolled back per Bug#4332
   retr_fails_abs_symlink_enoent_chrooted_bug4219 => {
     order => ++$order,
-    test_class => [qw(forking rootprivs)],
+    test_class => [qw(forking inprogress rootprivs)],
   },
 
   retr_fails_rel_symlink_enoent => {
@@ -119,7 +121,7 @@ my $TESTS = {
 
   retr_ok_dir_with_spaces => {
     order => ++$order,
-    test_class => [qw(forking)],
+    test_class => [qw(flaky forking)],
   },
 
   retr_leading_whitespace => {
@@ -161,6 +163,7 @@ sub retr_ok_raw_active {
 
     AuthUserFile => $setup->{auth_user_file},
     AuthGroupFile => $setup->{auth_group_file},
+    AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
       'mod_delay.c' => {
@@ -226,7 +229,6 @@ sub retr_ok_raw_active {
 
   # Stop server
   server_stop($setup->{pid_file});
-
   $self->assert_child_ok($pid);
 
   test_cleanup($setup->{log_file}, $ex);
@@ -237,7 +239,25 @@ sub retr_ok_raw_active_multiple_downloads {
   my $tmpdir = $self->{tmpdir};
   my $setup = test_setup($tmpdir, 'cmds');
 
-  my $test_file = File::Spec->rel2abs($setup->{config_file});
+  my $test_file = File::Spec->rel2abs("$tmpdir/test.dat");
+  if (open(my $fh, "> $test_file")) {
+    print $fh "Hello, World!\n";
+
+    unless (close($fh)) {
+      die("Can't write $test_file: $!");
+    }
+
+    # Make sure that, if we're running as root, that the test file has
+    # permissions/privs set for the account we create
+    if ($< == 0) {
+      unless (chown($setup->{uid}, $setup->{gid}, $test_file)) {
+        die("Can't set owner of $test_file to $setup->{uid}/$setup->{gid}: $!");
+      }
+    }
+
+  } else {
+    die("Can't open $test_file: $!");
+  }
 
   my $config = {
     PidFile => $setup->{pid_file},
@@ -248,6 +268,7 @@ sub retr_ok_raw_active_multiple_downloads {
 
     AuthUserFile => $setup->{auth_user_file},
     AuthGroupFile => $setup->{auth_group_file},
+    AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
       'mod_delay.c' => {
@@ -274,23 +295,28 @@ sub retr_ok_raw_active_multiple_downloads {
   defined(my $pid = fork()) or die("Can't fork: $!");
   if ($pid) {
     eval {
-      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port, 1, 1);
+      # Allow server to start up
+      sleep(1);
+
+      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port, 1, 2);
       $client->login($setup->{user}, $setup->{passwd});
 
       for (my $i = 0; $i < 5; $i++) {
-        my $conn = $client->retr_raw($test_file);
+        my $conn = $client->retr_raw('test.dat');
         unless ($conn) {
           die("Failed to RETR: " . $client->response_code() . " " .
             $client->response_msg());
         }
+        sleep(1);
 
         my $buf;
         $conn->read($buf, 8192, 30);
-        eval { $conn->close() };
+        eval { $conn->close(5) };
 
         my $resp_code = $client->response_code();
         my $resp_msg = $client->response_msg();
         $self->assert_transfer_ok($resp_code, $resp_msg);
+        sleep(1);
       }
 
       $client->quit();
@@ -303,7 +329,7 @@ sub retr_ok_raw_active_multiple_downloads {
     $wfh->flush();
 
   } else {
-    eval { server_wait($setup->{config_file}, $rfh) };
+    eval { server_wait($setup->{config_file}, $rfh, 30) };
     if ($@) {
       warn($@);
       exit 1;
@@ -333,6 +359,7 @@ sub retr_ok_raw_passive {
 
     AuthUserFile => $setup->{auth_user_file},
     AuthGroupFile => $setup->{auth_group_file},
+    AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
       'mod_delay.c' => {
@@ -432,6 +459,7 @@ sub retr_ok_file {
 
     AuthUserFile => $setup->{auth_user_file},
     AuthGroupFile => $setup->{auth_group_file},
+    AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
       'mod_delay.c' => {
@@ -467,16 +495,19 @@ sub retr_ok_file {
           $client->response_msg());
       }
 
+      my $size = 0;
       my $buf;
-      $conn->read($buf, 8192, 30);
-      my $size = $conn->bytes_read();
-      eval { $conn->close() };
+      while ($conn->read($buf, 8192, 30) > 0) {
+        $size += length($buf);
+      }
+      eval { $conn->close(5) };
+
+      $client->quit();
 
       my $expected = 6;
       $self->assert($expected == $size,
         test_msg("Expected $expected, got $size"));
     };
-
     if ($@) {
       $ex = $@;
     }
@@ -496,7 +527,6 @@ sub retr_ok_file {
 
   # Stop server
   server_stop($setup->{pid_file});
-
   $self->assert_child_ok($pid);
 
   test_cleanup($setup->{log_file}, $ex);
@@ -550,6 +580,7 @@ sub retr_ok_ascii_file_bug4237 {
 
     AuthUserFile => $setup->{auth_user_file},
     AuthGroupFile => $setup->{auth_group_file},
+    AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
       'mod_delay.c' => {
@@ -745,6 +776,7 @@ sub retr_ok_ascii_file_bug4277 {
 
     AuthUserFile => $setup->{auth_user_file},
     AuthGroupFile => $setup->{auth_group_file},
+    AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
       'mod_delay.c' => {
@@ -922,6 +954,7 @@ sub retr_abs_symlink {
 
     AuthUserFile => $setup->{auth_user_file},
     AuthGroupFile => $setup->{auth_group_file},
+    AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
       'mod_delay.c' => {
@@ -1038,6 +1071,7 @@ sub retr_abs_symlink_chrooted_bug4219 {
 
     AuthUserFile => $setup->{auth_user_file},
     AuthGroupFile => $setup->{auth_group_file},
+    AuthOrder => 'mod_auth_file.c',
 
     DefaultRoot => '~',
 
@@ -1160,6 +1194,7 @@ sub retr_rel_symlink {
 
     AuthUserFile => $setup->{auth_user_file},
     AuthGroupFile => $setup->{auth_group_file},
+    AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
       'mod_delay.c' => {
@@ -1245,12 +1280,32 @@ sub retr_rel_symlink_chrooted_bug4219 {
   my $test_dir = File::Spec->rel2abs("$tmpdir/test.d");
   mkpath($test_dir);
 
+  # Make sure that, if we're running as root, that the sub directory has
+  # permissions/privs set for the account we create
+  if ($< == 0) {
+    unless (chmod(0755, $test_dir)) {
+      die("Can't set perms on $test_dir to 0755: $!");
+    }
+
+    unless (chown($setup->{uid}, $setup->{gid}, $test_dir)) {
+      die("Can't set owner of $test_dir to $setup->{uid}/$setup->{gid}: $!");
+    }
+  }
+
   my $test_file = File::Spec->rel2abs("$test_dir/test.txt");
   if (open(my $fh, "> $test_file")) {
     print $fh "Foo!\n";
 
     unless (close($fh)) {
       die("Unable to write $test_file: $!");
+    }
+
+    # Make sure that, if we're running as root, that the test file has
+    # permissions/privs set for the account we create
+    if ($< == 0) {
+      unless (chown($setup->{uid}, $setup->{gid}, $test_file)) {
+        die("Can't set owner of $test_file to $setup->{uid}/$setup->{gid}: $!");
+      }
     }
 
   } else {
@@ -1280,6 +1335,7 @@ sub retr_rel_symlink_chrooted_bug4219 {
 
     AuthUserFile => $setup->{auth_user_file},
     AuthGroupFile => $setup->{auth_group_file},
+    AuthOrder => 'mod_auth_file.c',
 
     DefaultRoot => '~',
 
@@ -1308,6 +1364,9 @@ sub retr_rel_symlink_chrooted_bug4219 {
   defined(my $pid = fork()) or die("Can't fork: $!");
   if ($pid) {
     eval {
+      # Allow server to start up
+      sleep(1);
+
       my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port, 0, 1);
       $client->login($setup->{user}, $setup->{passwd});
       $client->type('binary');
@@ -1322,7 +1381,7 @@ sub retr_rel_symlink_chrooted_bug4219 {
       my $buf;
       $conn->read($buf, 8192, 30);
       my $size = $conn->bytes_read();
-      eval { $conn->close() };
+      eval { $conn->close(5) };
 
       my $resp_code = $client->response_code();
       my $resp_msg = $client->response_msg();
@@ -1333,7 +1392,6 @@ sub retr_rel_symlink_chrooted_bug4219 {
       $self->assert($expected == $size,
         test_msg("Expected size $expected, got $size"));
     };
-
     if ($@) {
       $ex = $@;
     }
@@ -1353,7 +1411,6 @@ sub retr_rel_symlink_chrooted_bug4219 {
 
   # Stop server
   server_stop($setup->{pid_file});
-
   $self->assert_child_ok($pid);
 
   test_cleanup($setup->{log_file}, $ex);
@@ -1371,6 +1428,7 @@ sub retr_fails_not_reg {
 
     AuthUserFile => $setup->{auth_user_file},
     AuthGroupFile => $setup->{auth_group_file},
+    AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
       'mod_delay.c' => {
@@ -1538,6 +1596,7 @@ sub retr_fails_no_path {
 
     AuthUserFile => $setup->{auth_user_file},
     AuthGroupFile => $setup->{auth_group_file},
+    AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
       'mod_delay.c' => {
@@ -1623,6 +1682,7 @@ sub retr_fails_enoent {
 
     AuthUserFile => $setup->{auth_user_file},
     AuthGroupFile => $setup->{auth_group_file},
+    AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
       'mod_delay.c' => {
@@ -1713,6 +1773,7 @@ sub retr_fails_enoent_glob {
 
     AuthUserFile => $setup->{auth_user_file},
     AuthGroupFile => $setup->{auth_group_file},
+    AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
       'mod_delay.c' => {
@@ -1798,6 +1859,18 @@ sub retr_fails_abs_symlink_enoent {
   my $test_dir = File::Spec->rel2abs("$tmpdir/test.d");
   mkpath($test_dir);
 
+  # Make sure that, if we're running as root, that the sub directory has
+  # permissions/privs set for the account we create
+  if ($< == 0) {
+    unless (chmod(0755, $test_dir)) {
+      die("Can't set perms on $test_dir to 0755: $!");
+    }
+
+    unless (chown($setup->{uid}, $setup->{gid}, $test_dir)) {
+      die("Can't set owner of $test_dir to $setup->{uid}/$setup->{gid}: $!");
+    }
+  }
+
   my $test_file = File::Spec->rel2abs("$test_dir/test.txt");
   my $test_symlink = File::Spec->rel2abs("$test_dir/test.lnk");
 
@@ -1812,6 +1885,7 @@ sub retr_fails_abs_symlink_enoent {
 
     AuthUserFile => $setup->{auth_user_file},
     AuthGroupFile => $setup->{auth_group_file},
+    AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
       'mod_delay.c' => {
@@ -1838,6 +1912,9 @@ sub retr_fails_abs_symlink_enoent {
   defined(my $pid = fork()) or die("Can't fork: $!");
   if ($pid) {
     eval {
+      # Allow server to start up
+      sleep(1);
+
       my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port, 0, 1);
       $client->login($setup->{user}, $setup->{passwd});
 
@@ -1855,11 +1932,10 @@ sub retr_fails_abs_symlink_enoent {
       $self->assert($expected == $resp_code,
         test_msg("Expected response code $expected, got $resp_code"));
 
-      $expected = "$path: No such file or directory";
-      $self->assert($expected eq $resp_msg,
+      $expected = "$path: (No such file or directory|Not a regular file)";
+      $self->assert(qr/$expected/, $resp_msg,
         test_msg("Expected response message '$expected', got '$resp_msg'"));
     };
-
     if ($@) {
       $ex = $@;
     }
@@ -1879,7 +1955,6 @@ sub retr_fails_abs_symlink_enoent {
 
   # Stop server
   server_stop($setup->{pid_file});
-
   $self->assert_child_ok($pid);
 
   test_cleanup($setup->{log_file}, $ex);
@@ -1913,6 +1988,7 @@ sub retr_fails_abs_symlink_enoent_chrooted_bug4219 {
 
     AuthUserFile => $setup->{auth_user_file},
     AuthGroupFile => $setup->{auth_group_file},
+    AuthOrder => 'mod_auth_file.c',
 
     DefaultRoot => '~',
 
@@ -1958,11 +2034,10 @@ sub retr_fails_abs_symlink_enoent_chrooted_bug4219 {
       $self->assert($expected == $resp_code,
         test_msg("Expected response code $expected, got $resp_code"));
 
-      $expected = "$path: No such file or directory";
-      $self->assert($expected eq $resp_msg,
+      $expected = "$path: (No such file or directory|Not a regular file)";
+      $self->assert(qr/$expected/, $resp_msg,
         test_msg("Expected response message '$expected', got '$resp_msg'"));
     };
-
     if ($@) {
       $ex = $@;
     }
@@ -1982,7 +2057,6 @@ sub retr_fails_abs_symlink_enoent_chrooted_bug4219 {
 
   # Stop server
   server_stop($setup->{pid_file});
-
   $self->assert_child_ok($pid);
 
   test_cleanup($setup->{log_file}, $ex);
@@ -1996,6 +2070,18 @@ sub retr_fails_rel_symlink_enoent {
   my $test_dir = File::Spec->rel2abs("$tmpdir/test.d");
   mkpath($test_dir);
 
+  # Make sure that, if we're running as root, that the sub directory has
+  # permissions/privs set for the account we create
+  if ($< == 0) {
+    unless (chmod(0755, $test_dir)) {
+      die("Can't set perms on $test_dir to 0755: $!");
+    }
+
+    unless (chown($setup->{uid}, $setup->{gid}, $test_dir)) {
+      die("Can't set owner of $test_dir to $setup->{uid}/$setup->{gid}: $!");
+    }
+  }
+
   # Change to the test directory in order to create a relative path in the
   # symlink we need
 
@@ -2019,6 +2105,7 @@ sub retr_fails_rel_symlink_enoent {
 
     AuthUserFile => $setup->{auth_user_file},
     AuthGroupFile => $setup->{auth_group_file},
+    AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
       'mod_delay.c' => {
@@ -2045,6 +2132,9 @@ sub retr_fails_rel_symlink_enoent {
   defined(my $pid = fork()) or die("Can't fork: $!");
   if ($pid) {
     eval {
+      # Allow server to start up
+      sleep(1);
+
       my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port, 0, 1);
       $client->login($setup->{user}, $setup->{passwd});
 
@@ -2062,11 +2152,10 @@ sub retr_fails_rel_symlink_enoent {
       $self->assert($expected == $resp_code,
         test_msg("Expected response code $expected, got $resp_code"));
 
-      $expected = "$path: No such file or directory";
-      $self->assert($expected eq $resp_msg,
+      $expected = "$path: (No such file or directory|Not a regular file)";
+      $self->assert(qr/$expected/, $resp_msg,
         test_msg("Expected response message '$expected', got '$resp_msg'"));
     };
-
     if ($@) {
       $ex = $@;
     }
@@ -2086,7 +2175,6 @@ sub retr_fails_rel_symlink_enoent {
 
   # Stop server
   server_stop($setup->{pid_file});
-
   $self->assert_child_ok($pid);
 
   test_cleanup($setup->{log_file}, $ex);
@@ -2099,6 +2187,18 @@ sub retr_fails_rel_symlink_enoent_chrooted_bug4219 {
 
   my $test_dir = File::Spec->rel2abs("$tmpdir/test.d");
   mkpath($test_dir);
+
+  # Make sure that, if we're running as root, that the sub directory has
+  # permissions/privs set for the account we create
+  if ($< == 0) {
+    unless (chmod(0755, $test_dir)) {
+      die("Can't set perms on $test_dir to 0755: $!");
+    }
+
+    unless (chown($setup->{uid}, $setup->{gid}, $test_dir)) {
+      die("Can't set owner of $test_dir to $setup->{uid}/$setup->{gid}: $!");
+    }
+  }
 
   # Change to the test directory in order to create a relative path in the
   # symlink we need
@@ -2123,6 +2223,7 @@ sub retr_fails_rel_symlink_enoent_chrooted_bug4219 {
 
     AuthUserFile => $setup->{auth_user_file},
     AuthGroupFile => $setup->{auth_group_file},
+    AuthOrder => 'mod_auth_file.c',
 
     DefaultRoot => '~',
 
@@ -2168,11 +2269,10 @@ sub retr_fails_rel_symlink_enoent_chrooted_bug4219 {
       $self->assert($expected == $resp_code,
         test_msg("Expected response code $expected, got $resp_code"));
 
-      $expected = "$path: No such file or directory";
-      $self->assert($expected eq $resp_msg,
+      $expected = "$path: (No such file or directory|Not a regular file)";
+      $self->assert(qr/$expected/, $resp_msg,
         test_msg("Expected response message '$expected', got '$resp_msg'"));
     };
-
     if ($@) {
       $ex = $@;
     }
@@ -2192,7 +2292,6 @@ sub retr_fails_rel_symlink_enoent_chrooted_bug4219 {
 
   # Stop server
   server_stop($setup->{pid_file});
-
   $self->assert_child_ok($pid);
 
   test_cleanup($setup->{log_file}, $ex);
@@ -2221,6 +2320,7 @@ sub retr_fails_eperm {
 
     AuthUserFile => $setup->{auth_user_file},
     AuthGroupFile => $setup->{auth_group_file},
+    AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
       'mod_delay.c' => {
@@ -2331,6 +2431,7 @@ sub retr_ok_dir_with_spaces {
 
     AuthUserFile => $setup->{auth_user_file},
     AuthGroupFile => $setup->{auth_group_file},
+    AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
       'mod_delay.c' => {
@@ -2357,6 +2458,9 @@ sub retr_ok_dir_with_spaces {
   defined(my $pid = fork()) or die("Can't fork: $!");
   if ($pid) {
     eval {
+      # Allow server to start up
+      sleep(1);
+
       my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port, 0, 1);
       $client->login($setup->{user}, $setup->{passwd});
 
@@ -2368,15 +2472,12 @@ sub retr_ok_dir_with_spaces {
 
       my $buf;
       $conn->read($buf, 8192, 30);
-      eval { $conn->close() };
+      eval { $conn->close(5) };
 
-      my ($resp_code, $resp_msg);
-      $resp_code = $client->response_code();
-      $resp_msg = $client->response_msg();
-
+      my $resp_code = $client->response_code();
+      my $resp_msg = $client->response_msg();
       $self->assert_transfer_ok($resp_code, $resp_msg);
     };
-
     if ($@) {
       $ex = $@;
     }
@@ -2396,7 +2497,6 @@ sub retr_ok_dir_with_spaces {
 
   # Stop server
   server_stop($setup->{pid_file});
-
   $self->assert_child_ok($pid);
 
   test_cleanup($setup->{log_file}, $ex);
@@ -2414,6 +2514,14 @@ sub retr_leading_whitespace {
       die("Can't write $test_file: $!");
     }
 
+    # Make sure that, if we're running as root, that the test file has
+    # permissions/privs set for the account we create
+    if ($< == 0) {
+      unless (chown($setup->{uid}, $setup->{gid}, $test_file)) {
+        die("Can't set owner of $test_file to $setup->{uid}/$setup->{gid}: $!");
+      }
+    }
+
   } else {
     die("Can't open $test_file: $!");
   }
@@ -2427,6 +2535,7 @@ sub retr_leading_whitespace {
 
     AuthUserFile => $setup->{auth_user_file},
     AuthGroupFile => $setup->{auth_group_file},
+    AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
       'mod_delay.c' => {
@@ -2453,6 +2562,9 @@ sub retr_leading_whitespace {
   defined(my $pid = fork()) or die("Can't fork: $!");
   if ($pid) {
     eval {
+      # Allow server to start up
+      sleep(1);
+
       my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port, 0, 1);
       $client->login($setup->{user}, $setup->{passwd});
 
@@ -2464,11 +2576,10 @@ sub retr_leading_whitespace {
 
       my $buf;
       $conn->read($buf, 8192, 30);
-      eval { $conn->close() };
+      eval { $conn->close(5) };
 
-      my ($resp_code, $resp_msg);
-      $resp_code = $client->response_code();
-      $resp_msg = $client->response_msg();
+      my $resp_code = $client->response_code();
+      my $resp_msg = $client->response_msg();
 
       $self->assert_transfer_ok($resp_code, $resp_msg);
 
@@ -2477,7 +2588,6 @@ sub retr_leading_whitespace {
       $self->assert($expected == $buflen,
         test_msg("Expected download byte count $expected, got $buflen"));
     };
-
     if ($@) {
       $ex = $@;
     }
@@ -2497,7 +2607,6 @@ sub retr_leading_whitespace {
 
   # Stop server
   server_stop($setup->{pid_file});
-
   $self->assert_child_ok($pid);
 
   test_cleanup($setup->{log_file}, $ex);
@@ -2520,6 +2629,14 @@ sub retr_bug3496 {
       die("Can't write $test_file: $!");
     }
 
+    # Make sure that, if we're running as root, that the test file has
+    # permissions/privs set for the account we create
+    if ($< == 0) {
+      unless (chown($setup->{uid}, $setup->{gid}, $test_file)) {
+        die("Can't set owner of $test_file to $setup->{uid}/$setup->{gid}: $!");
+      }
+    }
+
   } else {
     die("Can't open $test_file: $!");
   }
@@ -2533,6 +2650,8 @@ sub retr_bug3496 {
 
     AuthUserFile => $setup->{auth_user_file},
     AuthGroupFile => $setup->{auth_group_file},
+    AuthOrder => 'mod_auth_file.c',
+
     MaxInstances => 1,
 
     IfModules => {
@@ -2560,8 +2679,7 @@ sub retr_bug3496 {
   defined(my $pid = fork()) or die("Can't fork: $!");
   if ($pid) {
     eval {
-      # When run too quickly with the other tests, this test can fail.  So
-      # pause a little here.
+      # Allow server to start up
       sleep(1);
 
       my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port, 1, 1);
@@ -2575,11 +2693,11 @@ sub retr_bug3496 {
 
       # Close the _control_ connection immediately
       $client->{ftp}->close();
+      sleep(1);
 
       my $client2 = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port, 1, 1);
       $client2->login($setup->{user}, $setup->{passwd});
     };
-
     if ($@) {
       $ex = $@;
     }
@@ -2599,7 +2717,6 @@ sub retr_bug3496 {
 
   # Stop server
   server_stop($setup->{pid_file});
-
   $self->assert_child_ok($pid);
 
   test_cleanup($setup->{log_file}, $ex);
@@ -2619,6 +2736,7 @@ sub retr_2nd_transfer_terminates_1st_transfer_bug4010 {
 
     AuthUserFile => $setup->{auth_user_file},
     AuthGroupFile => $setup->{auth_group_file},
+    AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
       'mod_delay.c' => {

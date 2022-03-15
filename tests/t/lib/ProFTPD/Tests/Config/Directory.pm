@@ -1,7 +1,7 @@
 package ProFTPD::Tests::Config::Directory;
 
 use lib qw(t/lib);
-use base qw(Test::Unit::TestCase ProFTPD::TestSuite::Child);
+use base qw(ProFTPD::TestSuite::Child);
 use strict;
 
 use Data::Dumper;
@@ -41,30 +41,8 @@ sub list_tests {
   return testsuite_get_runnable_tests($TESTS);
 }
 
-sub set_up {
-  my $self = shift;
-  $self->{tmpdir} = testsuite_get_tmp_dir();
-
-  # Create temporary scratch dir
-  eval { mkpath($self->{tmpdir}) };
-  if ($@) {
-    my $abs_path = File::Spec->rel2abs($self->{tmpdir});
-    die("Can't create dir $abs_path: $@");
-  }
-}
-
-sub tear_down {
-  my $self = shift;
-
-  # Remove temporary scratch dir
-  if ($self->{tmpdir}) {
-    eval { rmtree($self->{tmpdir}) };
-  }
-
-  undef $self;
-}
-
-my ($prev_name, $prev_namelen);
+my $prev_name = undef;
+my $prev_namelen = undef;
 
 sub get_name {
   my $name_len = shift;
@@ -122,47 +100,18 @@ sub get_name {
 sub dir_wide_layout {
   my $self = shift;
   my $tmpdir = $self->{tmpdir};
-
-  my $config_file = "$tmpdir/dir.conf";
-  my $pid_file = File::Spec->rel2abs("$tmpdir/dir.pid");
-  my $scoreboard_file = File::Spec->rel2abs("$tmpdir/dir.scoreboard");
-
-  my $log_file = File::Spec->rel2abs('tests.log');
-
-  my $auth_user_file = File::Spec->rel2abs("$tmpdir/dir.passwd");
-  my $auth_group_file = File::Spec->rel2abs("$tmpdir/dir.group");
-
-  my $user = 'proftpd';
-  my $passwd = 'test';
-  my $home_dir = File::Spec->rel2abs($tmpdir);
-  my $uid = 500;
-  my $gid = 500;
-
-  # Make sure that, if we're running as root, that the home directory has
-  # permissions/privs set for the account we create
-  if ($< == 0) {
-    unless (chmod(0755, $home_dir)) {
-      die("Can't set perms on $home_dir to 0755: $!");
-    }
-
-    unless (chown($uid, $gid, $home_dir)) {
-      die("Can't set owner of $home_dir to $uid/$gid: $!");
-    }
-  }
- 
-  auth_user_write($auth_user_file, $user, $passwd, $uid, $gid, $home_dir,
-    '/bin/bash');
-  auth_group_write($auth_group_file, 'ftpd', $gid, $user);
+  my $setup = test_setup($tmpdir, 'dir');
 
   my $config = {
-    PidFile => $pid_file,
-    ScoreboardFile => $scoreboard_file,
-    SystemLog => $log_file,
-    TraceLog => $log_file,
+    PidFile => $setup->{pid_file},
+    ScoreboardFile => $setup->{scoreboard_file},
+    SystemLog => $setup->{log_file},
+    TraceLog => $setup->{log_file},
     Trace => 'directory:10',
 
-    AuthUserFile => $auth_user_file,
-    AuthGroupFile => $auth_group_file,
+    AuthUserFile => $setup->{auth_user_file},
+    AuthGroupFile => $setup->{auth_group_file},
+    AuthOrder => 'mod_auth_file.c',
 
     DefaultChdir => '~',
 
@@ -179,7 +128,8 @@ sub dir_wide_layout {
     },
   };
 
-  my ($port, $config_user, $config_group) = config_write($config_file, $config);
+  my ($port, $config_user, $config_group) = config_write($setup->{config_file},
+    $config);
 
   # Append our mess of many wide <Directory> sections to the config:
   #
@@ -193,14 +143,27 @@ sub dir_wide_layout {
 
   my $target_dir;
 
-  if (open(my $fh, ">> $config_file")) {
+  if (open(my $fh, ">> $setup->{config_file}")) {
     my $width = 1000;
     my $namelen = 3;
 
     for (my $i = 0; $i < $width; $i++) {
-      my $target_dir = get_name($namelen, 1);
+      $target_dir = get_name($namelen, 1);
       my $dir = File::Spec->rel2abs("$tmpdir/$target_dir");
+
+      if ($ENV{TEST_VERBOSE}) {
+        print STDERR "# Creating $dir\n";
+      }
+
       mkpath($dir);
+
+      # Make sure that, if we're running as root, that the test dir has
+      # permissions/privs set for the account we create
+      if ($< == 0) {
+        unless (chown($setup->{uid}, $setup->{gid}, $dir)) {
+          die("Can't set owner of $dir to $setup->{uid}/$setup->{gid}: $!");
+        }
+      }
 
       print $fh <<EOD;
 <Directory ~/$target_dir>
@@ -210,15 +173,19 @@ EOD
     }
 
     unless (close($fh)) {
-      die("Can't write $config_file: $!");
+      die("Can't write $setup->{config_file}: $!");
     }
 
   } else {
-    die("Can't open $config_file: $!");
+    die("Can't open $setup->{config_file}: $!");
   }
 
   # To test the worst-case scenario, the target directory (to which we will
   # write a file) should be the _last_ in the list.
+
+  if ($ENV{TEST_VERBOSE}) {
+    print STDERR "# target directory: $target_dir\n";
+  }
 
   # Open pipes, for use between the parent and child processes.  Specifically,
   # the child will indicate when it's done with its test by writing a message
@@ -235,10 +202,11 @@ EOD
   defined(my $pid = fork()) or die("Can't fork: $!");
   if ($pid) {
     eval {
-      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
-      $client->login($user, $passwd);
+      # Allow server to start up
+      sleep(1);
 
-      my ($resp_code, $resp_msg);
+      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port, 0, 10);
+      $client->login($setup->{user}, $setup->{passwd});
 
       my $start_time = [gettimeofday()];
 
@@ -249,24 +217,18 @@ EOD
       }
 
       my $elapsed = tv_interval($start_time);
-print STDERR "Elapsed: ", Dumper($elapsed);
+      if ($ENV{TEST_VERBOSE}) {
+        print STDERR "# elapsed: $elapsed\n";
+      }
 
-      $conn->close();
+      eval { $conn->close() };
 
-      $resp_code = $client->response_code();
-      $resp_msg = $client->response_msg();
+      my $resp_code = $client->response_code();
+      my $resp_msg = $client->response_msg();
+      $self->assert_transfer_ok($resp_code, $resp_msg);
 
-      my $expected;
-
-      $expected = 226;
-      $self->assert($expected == $resp_code,
-        test_msg("Expected '$expected', got '$resp_code'"));
-
-      $expected = "Transfer complete";
-      $self->assert($expected eq $resp_msg,
-        test_msg("Expected '$expected', got '$resp_msg'"));
+      $client->quit();
     };
-
     if ($@) {
       $ex = $@;
     }
@@ -275,7 +237,7 @@ print STDERR "Elapsed: ", Dumper($elapsed);
     $wfh->flush();
 
   } else {
-    eval { server_wait($config_file, $rfh) };
+    eval { server_wait($setup->{config_file}, $rfh) };
     if ($@) {
       warn($@);
       exit 1;
@@ -285,15 +247,10 @@ print STDERR "Elapsed: ", Dumper($elapsed);
   }
 
   # Stop server
-  server_stop($pid_file);
-
+  server_stop($setup->{pid_file});
   $self->assert_child_ok($pid);
 
-  if ($ex) {
-    die($ex);
-  }
-
-  unlink($log_file);
+  test_cleanup($setup->{log_file}, $ex);
 }
 
 1;

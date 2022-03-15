@@ -53,10 +53,10 @@ sub ftpdctl {
 
   my $ftpdctl_bin;
   if ($ENV{PROFTPD_TEST_PATH}) {
-    $ftpdctl_bin = "$ENV{PROFTPD_TEST_PATH}/ftpdctl";
+    $ftpdctl_bin = File::Spec->rel2abs("$ENV{PROFTPD_TEST_PATH}/../ftpdctl");
 
   } else {
-    $ftpdctl_bin = '../ftpdctl';
+    $ftpdctl_bin = File::Spec->rel2abs('../ftpdctl');
   }
 
   my $cmd = "$ftpdctl_bin -s $sock_file $ctrl_cmd";

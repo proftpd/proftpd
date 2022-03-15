@@ -5,6 +5,7 @@ use strict;
 use Carp;
 use Net::FTP;
 use POSIX qw(:sys_wait_h);
+use Socket;
 
 my $conn_ex;
 
@@ -71,6 +72,11 @@ sub new {
     ${*$ftp}{net_ftp_firewall_type} = $ENV{FTP_FIREWALL_TYPE};
   }
 
+  # The Net::FTP constructor does not provide a way to set SO_REUSEADDR for
+  # us, so we do it ourselves.  This is particularly useful for running the
+  # full integration testsuite on _e.g._ localhost.
+  $ftp->setsockopt(SOL_SOCKET, SO_REUSEADDR, 1);
+
   my $self = {
     addr => $addr,
     ftp => $ftp,
@@ -89,7 +95,6 @@ sub read_response {
   $self->{ftp}->response();
 
   my $resp_code = $self->response_code();
-
   if (wantarray()) {
     return ($resp_code, $self->response_msg());
   }
@@ -167,13 +172,23 @@ sub response_uniq {
   } else {
     $uniq = $self->{ftp}->unique_name();
     unless ($uniq) {
-      my @msgs = $self->{ftp}->message;
-      if (scalar(@msgs) > 1) {
-        my $tmp = $msgs[0];
+      my $msgs = $self->{ftp}->message;
 
-        if ($tmp =~ /^FILE:\s+(\S+)$/) {
-          $uniq = $1;
-        }
+      my $tmp;
+      if (ref($msgs) eq '') {
+        $tmp = $msgs;
+
+      } elsif (ref($msgs) eq 'SCALAR') {
+        $tmp = $$msgs;
+
+      } elsif (ref($msgs) eq 'ARRAY') {
+        $tmp = $msgs->[0];
+      }
+
+      chomp($tmp);
+
+      if ($tmp =~ /^FILE:\s+(\S+)$/) {
+        $uniq = $1;
       }
     }
   }

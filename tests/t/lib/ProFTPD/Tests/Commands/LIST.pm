@@ -153,9 +153,10 @@ my $TESTS = {
     test_class => [qw(forking)],
   },
 
+  # Rolled back per Bug#4332
   list_showsymlinks_on_chrooted_bug4219 => {
     order => ++$order,
-    test_class => [qw(bug forking rootprivs)],
+    test_class => [qw(bug forking inprogress rootprivs)],
   },
 
   list_glob_bug2367 => {
@@ -271,6 +272,7 @@ sub list_ok_raw_active {
 
     AuthUserFile => $setup->{auth_user_file},
     AuthGroupFile => $setup->{auth_group_file},
+    AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
       'mod_delay.c' => {
@@ -385,6 +387,7 @@ sub list_ok_raw_passive {
 
     AuthUserFile => $setup->{auth_user_file},
     AuthGroupFile => $setup->{auth_group_file},
+    AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
       'mod_delay.c' => {
@@ -435,6 +438,8 @@ sub list_ok_raw_passive {
       my $res = {};
       my $lines = [split(/(\r)?\n/, $buf)];
       foreach my $line (@$lines) {
+        next unless defined($line);
+
         if ($line =~ /^\S+\s+\d+\s+\S+\s+\S+\s+.*?\s+(\S+)$/) {
           $res->{$1} = 1;
         }
@@ -501,6 +506,7 @@ sub list_ok_file {
 
     AuthUserFile => $setup->{auth_user_file},
     AuthGroupFile => $setup->{auth_group_file},
+    AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
       'mod_delay.c' => {
@@ -611,6 +617,7 @@ sub list_file_rel_paths_bug4259 {
 
     AuthUserFile => $setup->{auth_user_file},
     AuthGroupFile => $setup->{auth_group_file},
+    AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
       'mod_delay.c' => {
@@ -786,6 +793,7 @@ sub list_file_after_upload {
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
+    AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
       'mod_delay.c' => {
@@ -956,6 +964,7 @@ sub list_ok_dir {
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
+    AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
       'mod_delay.c' => {
@@ -1089,6 +1098,7 @@ sub list_dir_twice {
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
+    AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
       'mod_delay.c' => {
@@ -1249,6 +1259,7 @@ sub list_ok_no_path {
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
+    AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
       'mod_delay.c' => {
@@ -1376,6 +1387,7 @@ sub list_ok_glob {
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
+    AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
       'mod_delay.c' => {
@@ -1602,6 +1614,7 @@ sub list_fails_enoent {
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
+    AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
       'mod_delay.c' => {
@@ -1730,6 +1743,7 @@ sub list_fails_enoent_glob {
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
+    AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
       'mod_delay.c' => {
@@ -1856,6 +1870,7 @@ sub list_fails_eperm {
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
+    AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
       'mod_delay.c' => {
@@ -2009,6 +2024,7 @@ sub list_bug2821 {
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
+    AuthOrder => 'mod_auth_file.c',
 
     TimeoutIdle => $timeout + 15,
     TimeoutNoTransfer => $timeout + 15,
@@ -2185,6 +2201,7 @@ sub list_unsorted_buffering_bug4060 {
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
+    AuthOrder => 'mod_auth_file.c',
 
     TimeoutIdle => $timeout + 15,
     TimeoutNoTransfer => $timeout + 15,
@@ -2348,6 +2365,7 @@ sub list_opt_C {
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
+    AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
       'mod_delay.c' => {
@@ -2506,6 +2524,7 @@ sub list_nonascii_chars_bug3032 {
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
+    AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
       'mod_delay.c' => {
@@ -2654,6 +2673,7 @@ sub list_leading_whitespace_bug3268 {
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
+    AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
       'mod_delay.c' => {
@@ -2807,6 +2827,7 @@ sub list_leading_whitespace_with_opts_bug3268 {
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
+    AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
       'mod_delay.c' => {
@@ -2960,6 +2981,7 @@ sub list_leading_whitespace_with_strict_opts_bug3268 {
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
+    AuthOrder => 'mod_auth_file.c',
 
     ListOptions => '"-a +R" strict',
 
@@ -3193,6 +3215,7 @@ EOL
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
+    AuthOrder => 'mod_auth_file.c',
 
     AllowOverride => 'on',
     DefaultRoot => '~',
@@ -3347,6 +3370,7 @@ sub list_symlink_issue697 {
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
+    AuthOrder => 'mod_auth_file.c',
 
     AllowOverride => 'on',
     DefaultRoot => '~',
@@ -3446,6 +3470,18 @@ sub list_symlink_issue940 {
   my $src_symlink = File::Spec->rel2abs("$test_dir/src.lnk");
   mkpath($dst_dir);
 
+  # Make sure that, if we're running as root, that the sub directory has
+  # permissions/privs set for the account we create
+  if ($< == 0) {
+    unless (chmod(0755, $dst_dir, $test_dir)) {
+      die("Can't set perms on $dst_dir, $test_dir to 0755: $!");
+    }
+
+    unless (chown($setup->{uid}, $setup->{gid}, $dst_dir, $test_dir)) {
+      die("Can't set owner of $dst_dir, $test_dir to $setup->{uid}/$setup->{gid}: $!");
+    }
+  }
+
   my $cwd = getcwd();
   unless (chdir($test_dir)) {
     die("Can't chdir to $test_dir: $!");
@@ -3467,6 +3503,8 @@ sub list_symlink_issue940 {
 
     AuthUserFile => $setup->{auth_user_file},
     AuthGroupFile => $setup->{auth_group_file},
+    AuthOrder => 'mod_auth_file.c',
+
     ListOptions => '-la',
 
     IfModules => {
@@ -3527,7 +3565,7 @@ sub list_symlink_issue940 {
       }
 
       my $file = 'src.link -> dst.d';
-      my $expected = 'lrwxr-xr-x';
+      my $expected = 'lrwxrwxrwx';
       $self->assert($res->{$file} eq $expected,
         test_msg("Expected '$expected', got '$res->{$file}' for '$file'"));
 
@@ -3656,6 +3694,7 @@ sub list_symlink_rel_with_double_slash_bug3719 {
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
+    AuthOrder => 'mod_auth_file.c',
 
     DefaultRoot => '~',
 
@@ -3810,6 +3849,7 @@ sub list_showsymlinks_off {
 
     AuthUserFile => $setup->{auth_user_file},
     AuthGroupFile => $setup->{auth_group_file},
+    AuthOrder => 'mod_auth_file.c',
 
     ShowSymlinks => 'off',
 
@@ -3944,6 +3984,7 @@ sub list_showsymlinks_off_chrooted_bug4219 {
 
     AuthUserFile => $setup->{auth_user_file},
     AuthGroupFile => $setup->{auth_group_file},
+    AuthOrder => 'mod_auth_file.c',
 
     DefaultRoot => '~',
     ShowSymlinks => 'off',
@@ -4079,6 +4120,7 @@ sub list_showsymlinks_on {
 
     AuthUserFile => $setup->{auth_user_file},
     AuthGroupFile => $setup->{auth_group_file},
+    AuthOrder => 'mod_auth_file.c',
 
     ShowSymlinks => 'on',
 
@@ -4213,6 +4255,7 @@ sub list_showsymlinks_on_chrooted_bug4219 {
 
     AuthUserFile => $setup->{auth_user_file},
     AuthGroupFile => $setup->{auth_group_file},
+    AuthOrder => 'mod_auth_file.c',
 
     DefaultRoot => '~',
     ShowSymlinks => 'on',
@@ -4275,7 +4318,7 @@ sub list_showsymlinks_on_chrooted_bug4219 {
       $buf =~ /$expected/;
       my $finfo = $1;
 
-      $expected = 'baz -> /bar/baz';
+      $expected = 'baz -> ../bar/baz';
       $self->assert($expected eq $finfo,
         test_msg("Expected '$expected', got '$finfo'"));
     };
@@ -4348,6 +4391,7 @@ sub list_glob_bug2367 {
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
+    AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
       'mod_delay.c' => {
@@ -4479,6 +4523,7 @@ sub list_glob_legit_dir_name {
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
+    AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
       'mod_delay.c' => {
@@ -4610,6 +4655,7 @@ sub list_glob_legit_dir_name_bug3407 {
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
+    AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
       'mod_delay.c' => {
@@ -4761,6 +4807,7 @@ sub list_opt_c {
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
+    AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
       'mod_delay.c' => {
@@ -4921,6 +4968,7 @@ sub list_opt_u {
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
+    AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
       'mod_delay.c' => {
@@ -5068,6 +5116,7 @@ sub list_dash_filename_bug3476 {
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
+    AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
       'mod_delay.c' => {
@@ -5202,6 +5251,7 @@ sub list_opt_noerrorifabsent_bug3506 {
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
+    AuthOrder => 'mod_auth_file.c',
 
     ListOptions => '"" NoErrorIfAbsent',
 
@@ -5362,6 +5412,7 @@ sub list_slashstar_bug3529 {
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
+    AuthOrder => 'mod_auth_file.c',
 
     DefaultRoot => '~',
 
@@ -5545,6 +5596,7 @@ sub list_star_bug3529 {
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
+    AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
       'mod_delay.c' => {
@@ -5727,6 +5779,7 @@ sub list_opt_R {
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
+    AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
       'mod_delay.c' => {
@@ -5922,6 +5975,7 @@ sub list_opt_R_self_symlinked_dir_bug3719 {
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
+    AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
       'mod_delay.c' => {
@@ -6118,6 +6172,7 @@ sub list_opt_R_self_complex_symlinked_dir_bug3719 {
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
+    AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
       'mod_delay.c' => {
@@ -6319,6 +6374,7 @@ sub list_opt_R_rel_symlinked_file_bug3719 {
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
+    AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
       'mod_delay.c' => {
@@ -6462,6 +6518,7 @@ sub list_option_parsing {
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
+    AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
       'mod_delay.c' => {
@@ -6559,6 +6616,18 @@ sub list_symlink_rel_path_chrooted_bug4322 {
   my $dst_dir = File::Spec->rel2abs("$tmpdir/$dst_path");
   mkpath($dst_dir);
 
+  # Make sure that, if we're running as root, that the sub directory has
+  # permissions/privs set for the account we create
+  if ($< == 0) {
+    unless (chmod(0755, $dst_dir)) {
+      die("Can't set perms on $dst_dir to 0755: $!");
+    }
+
+    unless (chown($setup->{uid}, $setup->{gid}, $dst_dir)) {
+      die("Can't set owner of $dst_dir to $setup->{uid}/$setup->{gid}: $!");
+    }
+  }
+
   my $cwd = getcwd();
   unless (chdir("$tmpdir")) {
     die("Can't chdir to $tmpdir: $!");
@@ -6593,6 +6662,8 @@ sub list_symlink_rel_path_chrooted_bug4322 {
 
     AuthUserFile => $setup->{auth_user_file},
     AuthGroupFile => $setup->{auth_group_file},
+    AuthOrder => 'mod_auth_file.c',
+
     DefaultRoot => '~',
 
     IfModules => {
@@ -6646,6 +6717,8 @@ sub list_symlink_rel_path_chrooted_bug4322 {
       my $lines = [split(/(\r)?\n/, $buf)];
       my $line_count = 0;
       foreach my $line (@$lines) {
+        next unless defined($line);
+
         if ($line =~ /\s+(\S+)$/) {
           $line_count++;
           $res->{$1} = 1;
@@ -6659,12 +6732,12 @@ sub list_symlink_rel_path_chrooted_bug4322 {
       # The keys are the filenames; we have two symlinks pointing to the same
       # file.  Hence the different line vs key counts.
       my $list_count = scalar(keys(%$res));
-      $expected = 8;
+      $expected = 9;
       $self->assert($list_count == $expected,
         "Expected $expected entries, got $list_count");
 
-      $self->assert($res->{'/domains/test.oxilion.nl/public_html'},
-        "Expected '/domains/test.oxilion.nl/public_html'");
+      $self->assert($res->{'domains/test.oxilion.nl/public_html'},
+        "Expected 'domains/test.oxilion.nl/public_html'");
     };
     if ($@) {
       $ex = $@;
@@ -6698,6 +6771,18 @@ sub list_symlink_rel_path_subdir_chrooted_bug4322 {
   my $dst_path = 'domains/test.oxilion.nl/public_html';
   my $dst_dir = File::Spec->rel2abs("$tmpdir/test.d/$dst_path");
   mkpath($dst_dir);
+
+  # Make sure that, if we're running as root, that the sub directory has
+  # permissions/privs set for the account we create
+  if ($< == 0) {
+    unless (chmod(0755, $dst_dir)) {
+      die("Can't set perms on $dst_dir to 0755: $!");
+    }
+
+    unless (chown($setup->{uid}, $setup->{gid}, $dst_dir)) {
+      die("Can't set owner of $dst_dir to $setup->{uid}/$setup->{gid}: $!");
+    }
+  }
 
   my $cwd = getcwd();
   unless (chdir("$tmpdir/test.d")) {
@@ -6733,6 +6818,8 @@ sub list_symlink_rel_path_subdir_chrooted_bug4322 {
 
     AuthUserFile => $setup->{auth_user_file},
     AuthGroupFile => $setup->{auth_group_file},
+    AuthOrder => 'mod_auth_file.c',
+
     DefaultRoot => '~',
 
     IfModules => {
@@ -6786,6 +6873,8 @@ sub list_symlink_rel_path_subdir_chrooted_bug4322 {
       my $lines = [split(/(\r)?\n/, $buf)];
       my $line_count = 0;
       foreach my $line (@$lines) {
+        next unless defined($line);
+
         if ($line =~ /\s+(\S+)$/) {
           $line_count++;
           $res->{$1} = 1;
@@ -6799,12 +6888,12 @@ sub list_symlink_rel_path_subdir_chrooted_bug4322 {
       # The keys are the filenames; we have two symlinks pointing to the same
       # file.  Hence the different line vs key counts.
       my $list_count = scalar(keys(%$res));
-      $expected = 2;
+      $expected = 3;
       $self->assert($list_count == $expected,
         "Expected $expected entries, got $list_count");
 
-      $self->assert($res->{'/domains/test.oxilion.nl/public_html'},
-        "Expected '/domains/test.oxilion.nl/public_html'");
+      $self->assert($res->{'domains/test.oxilion.nl/public_html'},
+        "Expected 'domains/test.oxilion.nl/public_html'");
     };
     if ($@) {
       $ex = $@;
@@ -6839,6 +6928,18 @@ sub list_symlink_rel_path_subdir_cwd_chrooted_bug4322 {
   my $dst_dir = File::Spec->rel2abs("$tmpdir/test.d/$dst_path");
   mkpath($dst_dir);
 
+  # Make sure that, if we're running as root, that the sub directory has
+  # permissions/privs set for the account we create
+  if ($< == 0) {
+    unless (chmod(0755, $dst_dir)) {
+      die("Can't set perms on $dst_dir to 0755: $!");
+    }
+
+    unless (chown($setup->{uid}, $setup->{gid}, $dst_dir)) {
+      die("Can't set owner of $dst_dir to $setup->{uid}/$setup->{gid}: $!");
+    }
+  }
+
   my $cwd = getcwd();
   unless (chdir("$tmpdir/test.d")) {
     die("Can't chdir to $tmpdir: $!");
@@ -6856,16 +6957,6 @@ sub list_symlink_rel_path_subdir_cwd_chrooted_bug4322 {
     die("Can't chdir to $cwd: $!");
   }
 
-  if ($< == 0) {
-    unless (chmod(0755, $dst_dir)) {
-      die("Can't set perms on $dst_dir to 0755: $!");
-    }
-
-    unless (chown($setup->{uid}, $setup->{gid}, $dst_dir)) {
-      die("Can't set owner of $dst_dir to $setup->{uid}/$setup->{gid}: $!");
-    }
-  }
-
   my $config = {
     PidFile => $setup->{pid_file},
     ScoreboardFile => $setup->{scoreboard_file},
@@ -6873,6 +6964,8 @@ sub list_symlink_rel_path_subdir_cwd_chrooted_bug4322 {
 
     AuthUserFile => $setup->{auth_user_file},
     AuthGroupFile => $setup->{auth_group_file},
+    AuthOrder => 'mod_auth_file.c',
+
     DefaultRoot => '~',
 
     IfModules => {
@@ -6900,6 +6993,9 @@ sub list_symlink_rel_path_subdir_cwd_chrooted_bug4322 {
   defined(my $pid = fork()) or die("Can't fork: $!");
   if ($pid) {
     eval {
+      # Allow server to start up
+      sleep(1);
+
       my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
       $client->login($setup->{user}, $setup->{passwd});
       $client->cwd('test.d');
@@ -6927,6 +7023,8 @@ sub list_symlink_rel_path_subdir_cwd_chrooted_bug4322 {
       my $lines = [split(/(\r)?\n/, $buf)];
       my $line_count = 0;
       foreach my $line (@$lines) {
+        next unless defined($line);
+
         if ($line =~ /\s+(\S+)$/) {
           $line_count++;
           $res->{$1} = 1;
@@ -6940,12 +7038,12 @@ sub list_symlink_rel_path_subdir_cwd_chrooted_bug4322 {
       # The keys are the filenames; we have two symlinks pointing to the same
       # file.  Hence the different line vs key counts.
       my $list_count = scalar(keys(%$res));
-      $expected = 2;
+      $expected = 3;
       $self->assert($list_count == $expected,
         "Expected $expected entries, got $list_count");
 
-      $self->assert($res->{'/domains/test.oxilion.nl/public_html'},
-        "Expected '/domains/test.oxilion.nl/public_html'");
+      $self->assert($res->{'domains/test.oxilion.nl/public_html'},
+        "Expected 'domains/test.oxilion.nl/public_html'");
     };
     if ($@) {
       $ex = $@;
@@ -6986,6 +7084,7 @@ sub list_style_windows {
 
     AuthUserFile => $setup->{auth_user_file},
     AuthGroupFile => $setup->{auth_group_file},
+    AuthOrder => 'mod_auth_file.c',
 
     ListStyle => 'Windows',
 
@@ -7043,6 +7142,8 @@ sub list_style_windows {
       my $res = {};
       my $lines = [split(/(\r)?\n/, $buf)];
       foreach my $line (@$lines) {
+        next unless defined($line);
+
         if ($line =~ /^\S+\s+\S+\s+(\S+)?\s+(\d+)?\s+(\S+)$/) {
           $res->{$3} = 1;
         }

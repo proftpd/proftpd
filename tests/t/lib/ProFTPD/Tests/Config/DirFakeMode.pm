@@ -85,6 +85,7 @@ sub dirfakemode_list {
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
+    AuthOrder => 'mod_auth_file.c',
 
     DirFakeMode => '0311',
 
@@ -261,6 +262,7 @@ sub dirfakemode_mlsd_bug3604 {
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
+    AuthOrder => 'mod_auth_file.c',
 
     DirFakeMode => $fake_mode,
 
@@ -438,6 +440,7 @@ sub dirfakemode_mlst_bug3604 {
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
+    AuthOrder => 'mod_auth_file.c',
 
     DirFakeMode => $fake_mode,
 
@@ -477,7 +480,7 @@ sub dirfakemode_mlst_bug3604 {
       $self->assert($expected == $resp_code,
         test_msg("Expected $expected, got $resp_code"));
 
-      $expected = 'modify=\d+;perm=adfr(w)?;size=\d+;type=file;unique=\S+;UNIX.group=\d+;UNIX.mode=(\d+);UNIX.owner=\d+; (.*?)\/config\.conf$';
+      $expected = 'modify=\d+;perm=adfr(w)?;size=\d+;type=file;unique=\S+;UNIX.group=\d+;UNIX.groupname=\S+;UNIX.mode=(\d+);UNIX.owner=\d+;UNIX.ownername=\S+; (.*?)\/config\.conf$';
       $self->assert(qr/$expected/, $resp_msg,
         test_msg("Expected '$expected', got '$resp_msg'"));
 

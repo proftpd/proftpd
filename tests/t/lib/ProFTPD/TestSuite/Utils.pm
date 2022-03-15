@@ -463,10 +463,11 @@ sub config_write {
     }
 
     unless (grep(/^User /, @$config) > 0) {
-      push(@$config, "User $user_name");
-
       if ($< == 0) {
         push(@$config, "User root");
+
+      } else {
+        push(@$config, "User $user_name");
       }
     }
 
@@ -897,7 +898,7 @@ sub server_signal {
   my $pid_file = shift;
   croak("Missing PID file argument") unless $pid_file;
   my $signal_name = shift;
-  $signal_name = 'HUP' unless $signal_name;
+  $signal_name = 'HUP' unless defined($signal_name);
 
   my $pid;
   if (open(my $fh, "< $pid_file")) {
@@ -911,21 +912,24 @@ sub server_signal {
 
   my $cmd = "kill -$signal_name $pid";
 
+  my $label = 'Signalling';
+
   if ($ENV{TEST_VERBOSE}) {
-    my $label = 'Signalling';
     if ($signal_name eq 'HUP') {
       $label = 'Restarting';
+
+    } elsif ($signal_name eq '0') {
+      $label = 'Testing';
     }
 
-    print STDERR "$label server: $cmd\n";
+    print STDERR "$label server (as UID $<, GID $(, PID $$): $cmd\n";
   }
 
-  my @output = `$cmd`;
-  if ($? != 0) {
-    return undef;
+  if (system($cmd) == 0) {
+    return 1;
   }
 
-  return 1;
+  return undef;
 }
 
 sub server_restart {
@@ -941,6 +945,8 @@ sub server_start {
   my $pid_file = shift;
   my $server_opts = shift;
   $server_opts = {} unless defined($server_opts);
+  my $server_wait = shift;
+  $server_wait = 1 unless defined($server_wait);
 
   # Make sure that the config file is an absolute path
   my $abs_config_file = File::Spec->rel2abs($config_file);
@@ -974,7 +980,8 @@ sub server_start {
   }
 
   if ($ENV{TEST_VERBOSE}) {
-    $cmd .= " -d10";
+#    $cmd .= " -d10";
+    $cmd .= " -d10 2>&1";
 
   } else {
     $cmd .= " > /dev/null 2>&1";
@@ -986,12 +993,16 @@ sub server_start {
 
   my @output = `$cmd`;
 
+  if ($ENV{TEST_VERBOSE}) {
+    print STDERR "# Output: ", join('', @output), "\n";
+  }
+
   # Ideally we would use the return value from the command to determine
   # whether the server started successfully or not.  But proftpd's exit
   # codes are not that nice yet, sadly.  Instead, we'll use the PidFile
   # written out by the server, if provided.
   if ($pid_file) {
-    sleep(1);
+    sleep($server_wait);
 
     my $pid;
     if (open(my $fh, "< $pid_file")) {
@@ -1012,9 +1023,8 @@ sub server_start {
       $cmd .= " 2>/dev/null";
     }
 
-    @output = `$cmd`;
-    if ($? != 0) {
-      croak("server failed to start");
+    if (system($cmd) != 0) {
+      croak("server failed to start ($?)");
     }
   }
 }
@@ -1155,6 +1165,8 @@ sub test_append_logfile {
 
 sub test_cleanup {
   my $log_file = shift;
+  return unless defined($log_file);
+
   my $ex = shift;
   my $keep_logfile = shift;
   $keep_logfile = 0 unless $keep_logfile;

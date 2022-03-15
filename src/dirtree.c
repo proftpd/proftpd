@@ -1986,7 +1986,7 @@ int dir_check(pool *pp, cmd_rec *cmd, const char *group, const char *path,
    * session.dir_config.
    */
   session.dir_config = c = dir_match_path(p, fullpath);
-  if (session.dir_config) {
+  if (session.dir_config != NULL) {
     pr_trace_msg("directory", 2, "matched <Directory %s> for '%s'",
       session.dir_config->name, fullpath);
   }

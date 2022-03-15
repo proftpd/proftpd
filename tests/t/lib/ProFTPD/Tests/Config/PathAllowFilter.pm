@@ -116,6 +116,7 @@ sub pathallowfilter_dele_allowed {
 
     AuthUserFile => $setup->{auth_user_file},
     AuthGroupFile => $setup->{auth_group_file},
+    AuthOrder => 'mod_auth_file.c',
     DefaultChdir => '~',
 
     AllowOverwrite => 'on',
@@ -197,6 +198,7 @@ sub pathallowfilter_dele_denied {
 
     AuthUserFile => $setup->{auth_user_file},
     AuthGroupFile => $setup->{auth_group_file},
+    AuthOrder => 'mod_auth_file.c',
     DefaultChdir => '~',
 
     PathAllowFilter => '\.txt$',
@@ -287,6 +289,7 @@ sub pathallowfilter_mkd_allowed {
 
     AuthUserFile => $setup->{auth_user_file},
     AuthGroupFile => $setup->{auth_group_file},
+    AuthOrder => 'mod_auth_file.c',
     DefaultChdir => '~',
 
     AllowOverwrite => 'on',
@@ -373,6 +376,7 @@ sub pathallowfilter_mkd_denied {
 
     AuthUserFile => $setup->{auth_user_file},
     AuthGroupFile => $setup->{auth_group_file},
+    AuthOrder => 'mod_auth_file.c',
     DefaultChdir => '~',
 
     AllowOverwrite => 'on',
@@ -464,6 +468,7 @@ sub pathallowfilter_rmd_allowed {
 
     AuthUserFile => $setup->{auth_user_file},
     AuthGroupFile => $setup->{auth_group_file},
+    AuthOrder => 'mod_auth_file.c',
     DefaultChdir => '~',
 
     AllowOverwrite => 'on',
@@ -545,6 +550,7 @@ sub pathallowfilter_rmd_denied {
 
     AuthUserFile => $setup->{auth_user_file},
     AuthGroupFile => $setup->{auth_group_file},
+    AuthOrder => 'mod_auth_file.c',
     DefaultChdir => '~',
 
     AllowOverwrite => 'on',
@@ -636,6 +642,7 @@ sub pathallowfilter_rnfr_allowed {
 
     AuthUserFile => $setup->{auth_user_file},
     AuthGroupFile => $setup->{auth_group_file},
+    AuthOrder => 'mod_auth_file.c',
     DefaultChdir => '~',
 
     AllowOverwrite => 'on',
@@ -717,6 +724,7 @@ sub pathallowfilter_rnfr_denied {
 
     AuthUserFile => $setup->{auth_user_file},
     AuthGroupFile => $setup->{auth_group_file},
+    AuthOrder => 'mod_auth_file.c',
     DefaultChdir => '~',
 
     AllowOverwrite => 'on',
@@ -815,6 +823,7 @@ sub pathallowfilter_rnto_allowed {
 
     AuthUserFile => $setup->{auth_user_file},
     AuthGroupFile => $setup->{auth_group_file},
+    AuthOrder => 'mod_auth_file.c',
     DefaultChdir => '~',
 
     AllowOverwrite => 'on',
@@ -899,6 +908,7 @@ sub pathallowfilter_rnto_denied {
 
     AuthUserFile => $setup->{auth_user_file},
     AuthGroupFile => $setup->{auth_group_file},
+    AuthOrder => 'mod_auth_file.c',
     DefaultChdir => '~',
 
     AllowOverwrite => 'on',
@@ -989,6 +999,7 @@ sub pathallowfilter_stor_allowed {
 
     AuthUserFile => $setup->{auth_user_file},
     AuthGroupFile => $setup->{auth_group_file},
+    AuthOrder => 'mod_auth_file.c',
     DefaultChdir => '~',
 
     AllowOverwrite => 'on',
@@ -1081,6 +1092,7 @@ sub pathallowfilter_stor_denied {
 
     AuthUserFile => $setup->{auth_user_file},
     AuthGroupFile => $setup->{auth_group_file},
+    AuthOrder => 'mod_auth_file.c',
     DefaultChdir => '~',
 
     AllowOverwrite => 'on',
@@ -1170,6 +1182,7 @@ sub pathallowfilter_stor_denied_nocase_bug3592 {
 
     AuthUserFile => $setup->{auth_user_file},
     AuthGroupFile => $setup->{auth_group_file},
+    AuthOrder => 'mod_auth_file.c',
     DefaultChdir => '~',
 
     AllowOverwrite => 'on',
@@ -1266,6 +1279,7 @@ sub pathallowfilter_stor_denied_nocase_bug3609 {
 
     AuthUserFile => $setup->{auth_user_file},
     AuthGroupFile => $setup->{auth_group_file},
+    AuthOrder => 'mod_auth_file.c',
     DefaultChdir => '~',
 
     AllowOverwrite => 'on',

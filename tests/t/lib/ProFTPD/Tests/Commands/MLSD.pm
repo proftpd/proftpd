@@ -107,9 +107,10 @@ my $TESTS = {
     test_class => [qw(bug forking rootprivs)],
   },
 
+  # Rolled back per Bug#4332
   mlsd_symlink_showsymlinks_on_use_slink_chrooted_bug4219 => {
     order => ++$order,
-    test_class => [qw(bug forking rootprivs)],
+    test_class => [qw(bug forking inprogress rootprivs)],
   },
 
   mlsd_symlinked_dir_bug3859 => {
@@ -165,6 +166,7 @@ sub mlsd_ok_raw_active {
 
     AuthUserFile => $setup->{auth_user_file},
     AuthGroupFile => $setup->{auth_group_file},
+    AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
       'mod_delay.c' => {
@@ -216,6 +218,8 @@ sub mlsd_ok_raw_active {
         test_msg("Expected several MLSD lines, got " . scalar(@$lines)));
 
       foreach my $line (@$lines) {
+        next unless defined($line);
+
         if ($line =~ /^modify=\S+;perm=\S+;type=\S+;unique=\S+;UNIX\.group=\d+;UNIX\.groupname=\S+;UNIX\.mode=\d+;UNIX\.owner=\d+;UNIX\.ownername=\S+; (.*?)$/) {
           $res->{$1} = 1;
         }
@@ -313,6 +317,7 @@ sub mlsd_ok_raw_passive {
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
+    AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
       'mod_delay.c' => {
@@ -356,6 +361,8 @@ sub mlsd_ok_raw_passive {
       my $res = {};
       my $lines = [split(/\r\n/, $buf)];
       foreach my $line (@$lines) {
+        next unless defined($line);
+
         if ($line =~ /^modify=\S+;perm=\S+;type=\S+;unique=\S+;UNIX\.group=\d+;UNIX\.groupname=\S+;UNIX\.mode=\d+;UNIX\.owner=\d+;UNIX\.ownername=\S+; (.*?)$/) {
           $res->{$1} = 1;
         }
@@ -463,6 +470,7 @@ sub mlsd_fails_file {
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
+    AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
       'mod_delay.c' => {
@@ -584,6 +592,7 @@ sub mlsd_ok_cwd_dir {
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
+    AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
       'mod_delay.c' => {
@@ -626,6 +635,8 @@ sub mlsd_ok_cwd_dir {
       my $res = {};
       my $lines = [split(/\r\n/, $buf)];
       foreach my $line (@$lines) {
+        next unless defined($line);
+
         if ($line =~ /^modify=\S+;perm=\S+;type=(\S+);unique=\S+;UNIX\.group=\d+;UNIX\.groupname=\S+;UNIX\.mode=\d+;UNIX\.owner=\d+;UNIX\.ownername=\S+; (.*?)$/) {
           $res->{$2} = $1;
         }
@@ -723,6 +734,7 @@ sub mlsd_ok_other_dir_bug4198 {
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
+    AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
       'mod_delay.c' => {
@@ -768,6 +780,8 @@ sub mlsd_ok_other_dir_bug4198 {
       my $res = {};
       my $lines = [split(/\r\n/, $buf)];
       foreach my $line (@$lines) {
+        next unless defined($line);
+
         if ($line =~ /^modify=\S+;perm=\S+;type=(\S+);unique=\S+;UNIX\.group=\d+;UNIX\.groupname=\S+;UNIX\.mode=\d+;UNIX\.owner=\d+;UNIX\.ownername=\S+; (.*?)$/) {
           $res->{$2} = $1;
         }
@@ -838,6 +852,7 @@ sub mlsd_ok_chrooted_dir {
 
     AuthUserFile => $setup->{auth_user_file},
     AuthGroupFile => $setup->{auth_group_file},
+    AuthOrder => 'mod_auth_file.c',
 
     DefaultRoot => '~',
 
@@ -887,6 +902,8 @@ sub mlsd_ok_chrooted_dir {
       my $res = {};
       my $lines = [split(/\r\n/, $buf)];
       foreach my $line (@$lines) {
+        next unless defined($line);
+
         if ($line =~ /^modify=\S+;perm=\S+;type=\S+;unique=\S+;UNIX\.group=\d+;UNIX\.groupname=\S+;UNIX\.mode=\d+;UNIX\.owner=\d+;UNIX\.ownername=\S+; (.*?)$/) {
           $res->{$1} = 1;
         }
@@ -966,6 +983,7 @@ sub mlsd_ok_empty_dir {
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
+    AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
       'mod_delay.c' => {
@@ -1008,6 +1026,8 @@ sub mlsd_ok_empty_dir {
       my $res = {};
       my $lines = [split(/\r\n/, $buf)];
       foreach my $line (@$lines) {
+        next unless defined($line);
+
         if ($line =~ /^modify=\S+;perm=\S+;type=(\S+);unique=\S+;UNIX\.group=\d+;UNIX\.groupname=\S+;UNIX\.mode=\d+;UNIX\.owner=\d+;UNIX\.ownername=\S+; (.*?)$/) {
           $res->{$2} = $1;
         }
@@ -1106,6 +1126,7 @@ sub mlsd_ok_no_path {
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
+    AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
       'mod_delay.c' => {
@@ -1148,6 +1169,8 @@ sub mlsd_ok_no_path {
       my $res = {};
       my $lines = [split(/\r\n/, $buf)];
       foreach my $line (@$lines) {
+        next unless defined($line);
+
         if ($line =~ /^modify=\S+;perm=\S+;type=\S+;unique=\S+;UNIX\.group=\d+;UNIX\.groupname=\S+;UNIX\.mode=\d+;UNIX\.owner=\d+;UNIX\.ownername=\S+; (.*?)$/) {
           $res->{$1} = 1;
         }
@@ -1236,6 +1259,7 @@ sub mlsd_ok_glob {
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
+    AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
       'mod_delay.c' => {
@@ -1451,6 +1475,7 @@ sub mlsd_fails_enoent {
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
+    AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
       'mod_delay.c' => {
@@ -1588,6 +1613,7 @@ sub mlsd_fails_eperm {
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
+    AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
       'mod_delay.c' => {
@@ -1722,6 +1748,7 @@ sub mlsd_ok_hidden_file {
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
+    AuthOrder => 'mod_auth_file.c',
 
     Directory => {
       '/' => {
@@ -1770,6 +1797,8 @@ sub mlsd_ok_hidden_file {
       my $res = {};
       my $lines = [split(/\r\n/, $buf)];
       foreach my $line (@$lines) {
+        next unless defined($line);
+
         if ($line =~ /^modify=\S+;perm=\S+;type=\S+;unique=\S+;UNIX\.group=\d+;UNIX\.groupname=\S+;UNIX\.mode=\d+;UNIX\.owner=\d+;UNIX\.ownername=\S+; (.*?)$/) {
           $res->{$1} = 1;
         }
@@ -1862,6 +1891,7 @@ sub mlsd_ok_path_with_spaces {
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
+    AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
       'mod_delay.c' => {
@@ -1904,6 +1934,8 @@ sub mlsd_ok_path_with_spaces {
       my $res = {};
       my $lines = [split(/\r\n/, $buf)];
       foreach my $line (@$lines) {
+        next unless defined($line);
+
         if ($line =~ /^modify=\S+;perm=\S+;type=\S+;unique=\S+;UNIX\.group=\d+;UNIX\.groupname=\S+;UNIX\.mode=\d+;UNIX\.owner=\d+;UNIX\.ownername=\S+; (.*?)$/) {
           $res->{$1} = 1;
         }
@@ -1992,6 +2024,7 @@ sub mlsd_nonascii_chars_bug3032 {
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
+    AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
       'mod_delay.c' => {
@@ -2034,6 +2067,8 @@ sub mlsd_nonascii_chars_bug3032 {
       my $res = {};
       my $lines = [split(/\r\n/, $buf)];
       foreach my $line (@$lines) {
+        next unless defined($line);
+
         if ($line =~ /^modify=\S+;perm=\S+;type=\S+;unique=\S+;UNIX\.group=\d+;UNIX\.groupname=\S+;UNIX\.mode=\d+;UNIX\.owner=\d+;UNIX\.ownername=\S+; (.*?)$/) {
           $res->{$1} = 1;
         }
@@ -2131,6 +2166,7 @@ sub mlsd_symlink_showsymlinks_off_bug3318 {
 
     AuthUserFile => $setup->{auth_user_file},
     AuthGroupFile => $setup->{auth_group_file},
+    AuthOrder => 'mod_auth_file.c',
 
     ShowSymlinks => 'off',
 
@@ -2180,6 +2216,8 @@ sub mlsd_symlink_showsymlinks_off_bug3318 {
       my $res = {};
       my $lines = [split(/\r\n/, $buf)];
       foreach my $line (@$lines) {
+        next unless defined($line);
+
         if ($line =~ /^modify=\S+;perm=\S+;type=\S+;unique=(\S+);UNIX\.group=\d+;UNIX\.groupname=\S+;UNIX\.mode=\d+;UNIX\.owner=\d+;UNIX\.ownername=\S+; (.*?)$/) {
           $res->{$2} = $1;
         }
@@ -2277,6 +2315,8 @@ sub mlsd_symlink_showsymlinks_on_bug3318 {
 
     AuthUserFile => $setup->{auth_user_file},
     AuthGroupFile => $setup->{auth_group_file},
+    AuthOrder => 'mod_auth_file.c',
+
     ShowSymlinks => 'on',
 
     IfModules => {
@@ -2325,6 +2365,8 @@ sub mlsd_symlink_showsymlinks_on_bug3318 {
       my $res = {};
       my $lines = [split(/\r\n/, $buf)];
       foreach my $line (@$lines) {
+        next unless defined($line);
+
         if ($line =~ /^modify=\S+;perm=\S+;type=(\S+);unique=(\S+);UNIX\.group=\d+;UNIX\.groupname=\S+;UNIX\.mode=\d+;UNIX\.owner=\d+;UNIX\.ownername=\S+; (.*?)$/) {
           $res->{$3} = { type => $1, unique => $2 };
         }
@@ -2431,6 +2473,7 @@ sub mlsd_symlink_showsymlinks_on_chrooted_bug4219 {
 
     AuthUserFile => $setup->{auth_user_file},
     AuthGroupFile => $setup->{auth_group_file},
+    AuthOrder => 'mod_auth_file.c',
 
     DefaultRoot => '~',
     ShowSymlinks => 'on',
@@ -2481,6 +2524,8 @@ sub mlsd_symlink_showsymlinks_on_chrooted_bug4219 {
       my $res = {};
       my $lines = [split(/\r\n/, $buf)];
       foreach my $line (@$lines) {
+        next unless defined($line);
+
         if ($line =~ /^modify=\S+;perm=\S+;type=(\S+);unique=(\S+);UNIX\.group=\d+;UNIX\.groupname=\S+;UNIX\.mode=\d+;UNIX\.owner=\d+;UNIX\.ownername=\S+; (.*?)$/) {
           $res->{$3} = { type => $1, unique => $2 };
         }
@@ -2539,11 +2584,29 @@ sub mlsd_symlink_showsymlinks_on_use_slink_chrooted_bug4219 {
   my $foo_dir = File::Spec->rel2abs("$setup->{home_dir}/foo");
   mkpath($foo_dir);
 
+  if ($< == 0) {
+    unless (chmod(0755, $foo_dir)) {
+      die("Can't set perms on $foo_dir to 0755: $!");
+    }
+
+    unless (chown($setup->{uid}, $setup->{gid}, $foo_dir)) {
+      die("Can't set owner of $foo_dir to $setup->{uid}/$setup->{gid}: $!");
+    }
+  }
+
   my $test_file = File::Spec->rel2abs("$foo_dir/test.txt");
   if (open(my $fh, "> $test_file")) {
     print $fh "Hello, World!\n";
     unless (close($fh)) {
       die("Can't write $test_file: $!");
+    }
+
+    # Make sure that, if we're running as root, that the test file has
+    # permissions/privs set for the account we create
+    if ($< == 0) {
+      unless (chown($setup->{uid}, $setup->{gid}, $test_file)) {
+        die("Can't set owner of $test_file to $setup->{uid}/$setup->{gid}: $!");
+      }
     }
 
   } else {
@@ -2566,18 +2629,6 @@ sub mlsd_symlink_showsymlinks_on_use_slink_chrooted_bug4219 {
     die("Can't chdir to $cwd: $!");
   }
 
-  # Make sure that, if we're running as root, that the home directory has
-  # permissions/privs set for the account we create
-  if ($< == 0) {
-    unless (chmod(0755, $foo_dir)) {
-      die("Can't set perms on $foo_dir to 0755: $!");
-    }
-
-    unless (chown($setup->{uid}, $setup->{gid}, $foo_dir)) {
-      die("Can't set owner of $foo_dir to $setup->{uid}/$setup->{gid}: $!");
-    }
-  }
-
   my $config = {
     PidFile => $setup->{pid_file},
     ScoreboardFile => $setup->{scoreboard_file},
@@ -2587,6 +2638,7 @@ sub mlsd_symlink_showsymlinks_on_use_slink_chrooted_bug4219 {
 
     AuthUserFile => $setup->{auth_user_file},
     AuthGroupFile => $setup->{auth_group_file},
+    AuthOrder => 'mod_auth_file.c',
 
     DefaultRoot => '~',
     FactsOptions => 'UseSlink',
@@ -2638,6 +2690,8 @@ sub mlsd_symlink_showsymlinks_on_use_slink_chrooted_bug4219 {
       my $res = {};
       my $lines = [split(/\r\n/, $buf)];
       foreach my $line (@$lines) {
+        next unless defined($line);
+
         if ($line =~ /^modify=\S+;perm=\S+;type=(\S+);unique=(\S+);UNIX\.group=\d+;UNIX\.groupname=\S+;UNIX\.mode=\d+;UNIX\.owner=\d+;UNIX\.ownername=\S+; (.*?)$/) {
           $res->{$3} = { type => $1, unique => $2 };
         }
@@ -2755,6 +2809,7 @@ sub mlsd_symlinked_dir_bug3859 {
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
+    AuthOrder => 'mod_auth_file.c',
 
     # Note: use the default ShowSymlinks setting
 
@@ -2799,6 +2854,8 @@ sub mlsd_symlinked_dir_bug3859 {
       my $res = {};
       my $lines = [split(/\r\n/, $buf)];
       foreach my $line (@$lines) {
+        next unless defined($line);
+
         if ($line =~ /^modify=\S+;perm=\S+;type=(\S+);unique=(\S+);UNIX\.group=\d+;UNIX\.groupname=\S+;UNIX\.mode=\d+;UNIX\.owner=\d+;UNIX\.ownername=\S+; (.*?)$/) {
           $res->{$3} = { type => $1, unique => $2 };
         }
@@ -2923,6 +2980,7 @@ sub mlsd_symlinked_dir_showsymlinks_off_bug3859 {
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
+    AuthOrder => 'mod_auth_file.c',
 
     ShowSymlinks => 'off',
 
@@ -2967,6 +3025,8 @@ sub mlsd_symlinked_dir_showsymlinks_off_bug3859 {
       my $res = {};
       my $lines = [split(/\r\n/, $buf)];
       foreach my $line (@$lines) {
+        next unless defined($line);
+
         if ($line =~ /^modify=\S+;perm=\S+;type=(\S+);unique=(\S+);UNIX\.group=\d+;UNIX\.groupname=\S+;UNIX\.mode=\d+;UNIX\.owner=\d+;UNIX\.ownername=\S+; (.*?)$/) {
           $res->{$3} = { type => $1, unique => $2 };
         }
@@ -3065,6 +3125,7 @@ sub mlsd_wide_dir {
 
     AuthUserFile => $setup->{auth_user_file},
     AuthGroupFile => $setup->{auth_group_file},
+    AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
       'mod_delay.c' => {
@@ -3118,6 +3179,8 @@ sub mlsd_wide_dir {
         my $res = {};
         my $lines = [split(/\r\n/, $buf)];
         foreach my $line (@$lines) {
+          next unless defined($line);
+
           if ($line =~ /^modify=\S+;perm=\S+;type=\S+;unique=\S+;UNIX\.group=\d+;UNIX\.groupname=\S+;UNIX\.mode=\d+;UNIX\.owner=\d+;UNIX\.ownername=\S+; (.*?)$/) {
             $res->{$1} = 1;
           }
@@ -3208,6 +3271,8 @@ sub mlsd_symlink_rel_path_chrooted_bug4322 {
 
     AuthUserFile => $setup->{auth_user_file},
     AuthGroupFile => $setup->{auth_group_file},
+    AuthOrder => 'mod_auth_file.c',
+
     ShowSymlinks => 'on',
     DefaultRoot => '~',
 
@@ -3258,6 +3323,8 @@ sub mlsd_symlink_rel_path_chrooted_bug4322 {
       my $lines = [split(/(\r)?\n/, $buf)];
 
       foreach my $line (@$lines) {
+        next unless defined($line);
+
         if ($line =~ /^modify=\S+;perm=\S+;type=(\S+);unique=(\S+);UNIX\.group=\d+;UNIX\.groupname=\S+;UNIX\.mode=\d+;UNIX\.owner=\d+;UNIX\.ownername=\S+; (.*?)$/) {
           $res->{$3} = { type => $1, unique => $2 };
         }
@@ -3350,6 +3417,8 @@ sub mlsd_symlink_rel_path_subdir_chrooted_bug4322 {
 
     AuthUserFile => $setup->{auth_user_file},
     AuthGroupFile => $setup->{auth_group_file},
+    AuthOrder => 'mod_auth_file.c',
+
     ShowSymlinks => 'on',
     DefaultRoot => '~',
 
@@ -3400,6 +3469,8 @@ sub mlsd_symlink_rel_path_subdir_chrooted_bug4322 {
       my $lines = [split(/(\r)?\n/, $buf)];
 
       foreach my $line (@$lines) {
+        next unless defined($line);
+
         if ($line =~ /^modify=\S+;perm=\S+;type=(\S+);unique=(\S+);UNIX\.group=\d+;UNIX\.groupname=\S+;UNIX\.mode=\d+;UNIX\.owner=\d+;UNIX\.ownername=\S+; (.*?)$/) {
           $res->{$3} = { type => $1, unique => $2 };
         }
@@ -3492,6 +3563,8 @@ sub mlsd_symlink_rel_path_subdir_cwd_chrooted_bug4322 {
 
     AuthUserFile => $setup->{auth_user_file},
     AuthGroupFile => $setup->{auth_group_file},
+    AuthOrder => 'mod_auth_file.c',
+
     ShowSymlinks => 'on',
     DefaultRoot => '~',
 
@@ -3541,8 +3614,9 @@ sub mlsd_symlink_rel_path_subdir_cwd_chrooted_bug4322 {
 
       my $res = {};
       my $lines = [split(/(\r)?\n/, $buf)];
-
       foreach my $line (@$lines) {
+        next unless defined($line);
+
         if ($line =~ /^modify=\S+;perm=\S+;type=(\S+);unique=(\S+);UNIX\.group=\d+;UNIX\.groupname=\S+;UNIX\.mode=\d+;UNIX\.owner=\d+;UNIX\.ownername=\S+; (.*?)$/) {
           $res->{$3} = { type => $1, unique => $2 };
         }

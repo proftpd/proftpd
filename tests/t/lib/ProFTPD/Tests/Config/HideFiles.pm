@@ -196,6 +196,8 @@ EOF
 
     AuthUserFile => $setup->{auth_user_file},
     AuthGroupFile => $setup->{auth_group_file},
+    AuthOrder => 'mod_auth_file.c',
+
     AllowOverride => 'on',
     DefaultChdir => '~',
 
@@ -323,6 +325,8 @@ sub hidefiles_list_issue1279 {
 
     AuthUserFile => $setup->{auth_user_file},
     AuthGroupFile => $setup->{auth_group_file},
+    AuthOrder => 'mod_auth_file.c',
+
     AllowOverride => 'on',
     DefaultChdir => '~',
 
@@ -504,6 +508,8 @@ EOF
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
+    AuthOrder => 'mod_auth_file.c',
+
     AllowOverride => 'on',
 
     Anonymous => {
@@ -692,6 +698,8 @@ EOF
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
+    AuthOrder => 'mod_auth_file.c',
+
     AllowOverride => 'on',
     DefaultChdir => '~',
 
@@ -861,6 +869,8 @@ EOF
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
+    AuthOrder => 'mod_auth_file.c',
+
     AllowOverride => 'on',
 
     Anonymous => {
@@ -1024,6 +1034,7 @@ sub hidefiles_bug3130 {
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
+    AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
       'mod_delay.c' => {
@@ -1184,6 +1195,7 @@ sub hidefiles_per_user_ok {
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
+    AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
       'mod_delay.c' => {
@@ -1347,6 +1359,7 @@ sub hidefiles_per_not_user_ok {
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
+    AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
       'mod_delay.c' => {
@@ -1534,6 +1547,7 @@ sub hidefiles_anon_list_rel_path_bug3226 {
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
+    AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
       'mod_delay.c' => {
@@ -1733,6 +1747,7 @@ sub hidefiles_anon_nlst_rel_path_bug3226 {
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
+    AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
       'mod_delay.c' => {
@@ -1930,6 +1945,7 @@ sub hidefiles_anon_list_abs_path_bug3226 {
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
+    AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
       'mod_delay.c' => {
@@ -2130,6 +2146,7 @@ sub hidefiles_anon_nlst_abs_path_bug3226 {
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
+    AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
       'mod_delay.c' => {
@@ -2327,6 +2344,7 @@ sub hidefiles_negated_bug3276 {
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
+    AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
       'mod_delay.c' => {
@@ -2463,38 +2481,7 @@ EOD
 sub hidefiles_negated_chroot_bug3276 {
   my $self = shift;
   my $tmpdir = $self->{tmpdir};
-
-  my $config_file = "$tmpdir/config.conf";
-  my $pid_file = File::Spec->rel2abs("$tmpdir/config.pid");
-  my $scoreboard_file = File::Spec->rel2abs("$tmpdir/config.scoreboard");
-
-  my $auth_user_file = File::Spec->rel2abs("$tmpdir/config.passwd");
-  my $auth_group_file = File::Spec->rel2abs("$tmpdir/config.group");
-
-  my $log_file = test_get_logfile();
-
-  my $user = 'proftpd';
-  my $passwd = 'test';
-  my $group = 'ftpd';
-  my $home_dir = File::Spec->rel2abs($tmpdir);
-  my $uid = 500;
-  my $gid = 500;
-
-  auth_user_write($auth_user_file, $user, $passwd, $uid, $gid, $home_dir,
-    '/bin/bash');
-  auth_group_write($auth_group_file, $group, $gid, $user);
-
-  # Make sure that, if we're running as root, that the home directory has
-  # permissions/privs set for the account we create
-  if ($< == 0) {
-    unless (chmod(0755, $home_dir)) {
-      die("Can't set perms on $home_dir to 0755: $!");
-    }
-
-    unless (chown($uid, $gid, $home_dir)) {
-      die("Can't set owner of $home_dir to $uid/$gid: $!");
-    }
-  }
+  my $setup = test_setup($tmpdir, 'config');
 
   my $test_files = [qw(
     perf
@@ -2506,21 +2493,32 @@ sub hidefiles_negated_chroot_bug3276 {
   )];
 
   foreach my $test_file (@$test_files) {
-    if (open(my $fh, "> $home_dir/$test_file")) {
+    my $test_path = File::Spec->rel2abs("$tmpdir/$test_file");
+
+    if (open(my $fh, "> $test_path")) {
       close($fh);
 
+      # Make sure that, if we're running as root, that the test file has
+      # permissions/privs set for the account we create
+      if ($< == 0) {
+        unless (chown($setup->{uid}, $setup->{gid}, $test_path)) {
+          die("Can't set owner of $test_path to $setup->{uid}/$setup->{gid}: $!");
+        }
+      }
+
     } else {
-      die("Can't write test file $home_dir/$test_file: $!");
+      die("Can't write test file $test_path: $!");
     }
   }
 
   my $config = {
-    PidFile => $pid_file,
-    ScoreboardFile => $scoreboard_file,
-    SystemLog => $log_file,
+    PidFile => $setup->{pid_file},
+    ScoreboardFile => $setup->{scoreboard_file},
+    SystemLog => $setup->{log_file},
 
-    AuthUserFile => $auth_user_file,
-    AuthGroupFile => $auth_group_file,
+    AuthUserFile => $setup->{auth_user_file},
+    AuthGroupFile => $setup->{auth_group_file},
+    AuthOrder => 'mod_auth_file.c',
 
     DefaultRoot => '~',
 
@@ -2531,12 +2529,13 @@ sub hidefiles_negated_chroot_bug3276 {
     },
   };
 
-  my ($port, $config_user, $config_group) = config_write($config_file, $config);
+  my ($port, $config_user, $config_group) = config_write($setup->{config_file},
+    $config);
 
-  if (open(my $fh, ">> $config_file")) {
+  if (open(my $fh, ">> $setup->{config_file}")) {
     print $fh <<EOD;
 <Directory />
-  HideFiles !(^\$|remedydev|remedytest)
+  HideFiles !(^\$|^\/\$|remedydev|remedytest)
   HideNoAccess on
   <Limit DIRS>
     IgnoreHidden on
@@ -2545,11 +2544,11 @@ sub hidefiles_negated_chroot_bug3276 {
 EOD
 
     unless (close($fh)) {
-      die("Can't write $config_file: $!");
+      die("Can't write $setup->{config_file}: $!");
     }
 
   } else {
-    die("Can't open $config_file: $!");
+    die("Can't open $setup->{config_file}: $!");
   }
 
   # Open pipes, for use between the parent and child processes.  Specifically,
@@ -2567,8 +2566,11 @@ EOD
   defined(my $pid = fork()) or die("Can't fork: $!");
   if ($pid) {
     eval {
+      # Allow server to start up
+      sleep(1);
+
       my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
-      $client->login($user, $passwd);
+      $client->login($setup->{user}, $setup->{passwd});
 
       my $conn = $client->list_raw();
       unless ($conn) {
@@ -2581,7 +2583,11 @@ EOD
       while ($conn->read($tmp, 8192, 30)) {
         $buf .= $tmp;
       }
-      $conn->close();
+      eval { $conn->close() };
+
+      if ($ENV{TEST_VERBOSE}) {
+        print STDERR "# response:\n$buf\n";
+      }
 
       # We have to be careful of the fact that readdir returns directory
       # entries in an unordered fashion.
@@ -2618,7 +2624,6 @@ EOD
 
       $client->quit();
     };
-
     if ($@) {
       $ex = $@;
     }
@@ -2627,7 +2632,7 @@ EOD
     $wfh->flush();
 
   } else {
-    eval { server_wait($config_file, $rfh) };
+    eval { server_wait($setup->{config_file}, $rfh) };
     if ($@) {
       warn($@);
       exit 1;
@@ -2637,55 +2642,16 @@ EOD
   }
 
   # Stop server
-  server_stop($pid_file);
-
+  server_stop($setup->{pid_file});
   $self->assert_child_ok($pid);
 
-  if ($ex) {
-    test_append_logfile($log_file, $ex);
-    unlink($log_file);
-
-    die($ex);
-  }
-
-  unlink($log_file);
+  test_cleanup($setup->{log_file}, $ex);
 }
 
 sub hidefiles_negated_chroot_subdirs_visible_bug3276 {
   my $self = shift;
   my $tmpdir = $self->{tmpdir};
-
-  my $config_file = "$tmpdir/config.conf";
-  my $pid_file = File::Spec->rel2abs("$tmpdir/config.pid");
-  my $scoreboard_file = File::Spec->rel2abs("$tmpdir/config.scoreboard");
-
-  my $auth_user_file = File::Spec->rel2abs("$tmpdir/config.passwd");
-  my $auth_group_file = File::Spec->rel2abs("$tmpdir/config.group");
-
-  my $log_file = test_get_logfile();
-
-  my $user = 'proftpd';
-  my $passwd = 'test';
-  my $group = 'ftpd';
-  my $home_dir = File::Spec->rel2abs($tmpdir);
-  my $uid = 500;
-  my $gid = 500;
-
-  auth_user_write($auth_user_file, $user, $passwd, $uid, $gid, $home_dir,
-    '/bin/bash');
-  auth_group_write($auth_group_file, $group, $gid, $user);
-
-  # Make sure that, if we're running as root, that the home directory has
-  # permissions/privs set for the account we create
-  if ($< == 0) {
-    unless (chmod(0755, $home_dir)) {
-      die("Can't set perms on $home_dir to 0755: $!");
-    }
-
-    unless (chown($uid, $gid, $home_dir)) {
-      die("Can't set owner of $home_dir to $uid/$gid: $!");
-    }
-  }
+  my $setup = test_setup($tmpdir, 'config');
 
   my $test_files = [qw(
     perf
@@ -2695,11 +2661,20 @@ sub hidefiles_negated_chroot_subdirs_visible_bug3276 {
   )];
 
   foreach my $test_file (@$test_files) {
-    if (open(my $fh, "> $home_dir/$test_file")) {
+    my $test_path = File::Spec->rel2abs("$tmpdir/$test_file");
+    if (open(my $fh, "> $test_path")) {
       close($fh);
 
+      # Make sure that, if we're running as root, that the test file has
+      # permissions/privs set for the account we create
+      if ($< == 0) {
+        unless (chown($setup->{uid}, $setup->{gid}, $test_path)) {
+          die("Can't set owner of $test_path to $setup->{uid}/$setup->{gid}: $!");
+        }
+      }
+
     } else {
-      die("Can't write test file $home_dir/$test_file: $!");
+      die("Can't write test file $test_path: $!");
     }
   }
 
@@ -2711,16 +2686,26 @@ sub hidefiles_negated_chroot_subdirs_visible_bug3276 {
   )];
 
   foreach my $test_dir (@$test_dirs) {
-    mkpath("$home_dir/$test_dir");
+    my $test_path = File::Spec->rel2abs("$tmpdir/$test_dir");
+    mkpath($test_path);
+
+    # Make sure that, if we're running as root, that the test directory has
+    # permissions/privs set for the account we create
+    if ($< == 0) {
+      unless (chown($setup->{uid}, $setup->{gid}, $test_path)) {
+        die("Can't set owner of $test_path to $setup->{uid}/$setup->{gid}: $!");
+      }
+    }
   }
 
   my $config = {
-    PidFile => $pid_file,
-    ScoreboardFile => $scoreboard_file,
-    SystemLog => $log_file,
+    PidFile => $setup->{pid_file},
+    ScoreboardFile => $setup->{scoreboard_file},
+    SystemLog => $setup->{log_file},
 
-    AuthUserFile => $auth_user_file,
-    AuthGroupFile => $auth_group_file,
+    AuthUserFile => $setup->{auth_user_file},
+    AuthGroupFile => $setup->{auth_group_file},
+    AuthOrder => 'mod_auth_file.c',
 
     DefaultRoot => '~',
 
@@ -2731,12 +2716,13 @@ sub hidefiles_negated_chroot_subdirs_visible_bug3276 {
     },
   };
 
-  my ($port, $config_user, $config_group) = config_write($config_file, $config);
+  my ($port, $config_user, $config_group) = config_write($setup->{config_file},
+    $config);
 
-  if (open(my $fh, ">> $config_file")) {
+  if (open(my $fh, ">> $setup->{config_file}")) {
     print $fh <<EOD;
 <Directory ~>
-  HideFiles !(^\$|remedydev|remedytest)
+  HideFiles !(^\$|^\/\$|remedydev|remedytest)
   HideNoAccess on
   <Limit DIRS>
     IgnoreHidden on
@@ -2753,11 +2739,11 @@ sub hidefiles_negated_chroot_subdirs_visible_bug3276 {
 EOD
 
     unless (close($fh)) {
-      die("Can't write $config_file: $!");
+      die("Can't write $setup->{config_file}: $!");
     }
 
   } else {
-    die("Can't open $config_file: $!");
+    die("Can't open $setup->{config_file}: $!");
   }
 
   # Open pipes, for use between the parent and child processes.  Specifically,
@@ -2775,8 +2761,11 @@ EOD
   defined(my $pid = fork()) or die("Can't fork: $!");
   if ($pid) {
     eval {
+      # Allow server to start up
+      sleep(1);
+
       my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
-      $client->login($user, $passwd);
+      $client->login($setup->{user}, $setup->{passwd});
 
       my $conn = $client->list_raw();
       unless ($conn) {
@@ -2789,7 +2778,11 @@ EOD
       while ($conn->read($tmp, 8192, 30)) {
         $buf .= $tmp;
       }
-      $conn->close();
+      eval { $conn->close() };
+
+      if ($ENV{TEST_VERBOSE}) {
+        print STDERR "# response:\n$buf\n";
+      }
 
       # We have to be careful of the fact that readdir returns directory
       # entries in an unordered fashion.
@@ -2837,7 +2830,11 @@ EOD
       while ($conn->read($tmp, 8192, 30)) {
         $buf .= $tmp;
       }
-      $conn->close();
+      eval { $conn->close() };
+
+      if ($ENV{TEST_VERBOSE}) {
+        print STDERR "# response:\n$buf\n";
+      }
 
       # We have to be careful of the fact that readdir returns directory
       # entries in an unordered fashion.
@@ -2873,7 +2870,6 @@ EOD
 
       $client->quit();
     };
-
     if ($@) {
       $ex = $@;
     }
@@ -2882,7 +2878,7 @@ EOD
     $wfh->flush();
 
   } else {
-    eval { server_wait($config_file, $rfh) };
+    eval { server_wait($setup->{config_file}, $rfh) };
     if ($@) {
       warn($@);
       exit 1;
@@ -2892,18 +2888,10 @@ EOD
   }
 
   # Stop server
-  server_stop($pid_file);
-
+  server_stop($setup->{pid_file});
   $self->assert_child_ok($pid);
 
-  if ($ex) {
-    test_append_logfile($log_file, $ex);
-    unlink($log_file);
-
-    die($ex);
-  }
-
-  unlink($log_file);
+  test_cleanup($setup->{log_file}, $ex);
 }
 
 sub hidefiles_none_per_user_bug3397 {
@@ -2950,6 +2938,7 @@ sub hidefiles_none_per_user_bug3397 {
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
+    AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
       'mod_delay.c' => {
@@ -3133,6 +3122,8 @@ EOF
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
+    AuthOrder => 'mod_auth_file.c',
+
     AllowOverride => 'on',
     DefaultChdir => '~',
 
@@ -3273,6 +3264,8 @@ EOF
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
+    AuthOrder => 'mod_auth_file.c',
+
     AllowOverride => 'on',
     DefaultChdir => '~',
 
@@ -3439,6 +3432,8 @@ sub hidefiles_mlsd_dotfiles {
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
+    AuthOrder => 'mod_auth_file.c',
+
     DefaultChdir => '~',
 
     IfModules => {
@@ -3618,6 +3613,8 @@ sub hidefiles_stat {
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
+    AuthOrder => 'mod_auth_file.c',
+
     DefaultChdir => '~',
 
     Directory => {
@@ -3747,13 +3744,12 @@ sub hidefiles_directory_pcre {
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
+    AuthOrder => 'mod_auth_file.c',
+
     DefaultChdir => '~',
 
     TimeoutIdle => $timeout_idle,
     TimeoutLogin => $timeout_login,
-
-    Directory => {
-    },
 
     IfModules => {
       'mod_delay.c' => {
@@ -3877,6 +3873,7 @@ sub hidefiles_list_symlink_bug3924 {
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
+    AuthOrder => 'mod_auth_file.c',
 
     Directory => { 
       '/' => {
@@ -4057,6 +4054,7 @@ sub hidefiles_mlsd_symlink_bug3924 {
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
+    AuthOrder => 'mod_auth_file.c',
 
     Directory => { 
       '/' => {
@@ -4229,6 +4227,7 @@ sub hidefiles_multi_dirs {
 
     AuthUserFile => $setup->{auth_user_file},
     AuthGroupFile => $setup->{auth_group_file},
+    AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
       'mod_delay.c' => {

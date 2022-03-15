@@ -171,21 +171,12 @@ static int af_check_file(pool *p, const char *name, const char *path,
       return -1;
     }
 
-    /* Follow the link to the target path; that path will then have its
-     * parent directory checked.
+    /* The path contained in the symlink might itself be relative, thus
+     * we need to make sure that we get an absolute path (Bug#4145).
      */
     memset(buf, '\0', sizeof(buf));
-    res = pr_fsio_readlink(path, buf, sizeof(buf)-1);
-    if (res > 0) {
-
-      /* The path contained in the symlink might itself be relative, thus
-       * we need to make sure that we get an absolute path (Bug#4145).
-       */
-      path = dir_abs_path(p, buf, FALSE);
-      if (path != NULL) {
-        orig_path = path;
-      }
-    }
+    pr_fs_clean_path(path, buf, sizeof(buf)-1);
+    orig_path = pstrdup(p, buf);
 
     res = stat(orig_path, &st);
     if (res < 0) {

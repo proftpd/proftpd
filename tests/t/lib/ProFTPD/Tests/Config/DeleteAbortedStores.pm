@@ -101,8 +101,9 @@ sub deleteabortedstores_conn_aborted_ok {
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
-    DefaultChdir => '~',
+    AuthOrder => 'mod_auth_file.c',
 
+    DefaultChdir => '~',
     HiddenStores => 'on',
     DeleteAbortedStores => 'on',
 
@@ -198,53 +199,23 @@ sub deleteabortedstores_conn_aborted_ok {
 sub deleteabortedstores_cmd_abort_ok {
   my $self = shift;
   my $tmpdir = $self->{tmpdir};
-
-  my $config_file = "$tmpdir/config.conf";
-  my $pid_file = File::Spec->rel2abs("$tmpdir/config.pid");
-  my $scoreboard_file = File::Spec->rel2abs("$tmpdir/config.scoreboard");
-
-  my $log_file = test_get_logfile();
-
-  my $auth_user_file = File::Spec->rel2abs("$tmpdir/config.passwd");
-  my $auth_group_file = File::Spec->rel2abs("$tmpdir/config.group");
-
-  my $user = 'proftpd';
-  my $passwd = 'test';
-  my $group = 'ftpd';
-  my $home_dir = File::Spec->rel2abs($tmpdir);
-  my $uid = 500;
-  my $gid = 500;
-
-  # Make sure that, if we're running as root, that the home directory has
-  # permissions/privs set for the account we create
-  if ($< == 0) {
-    unless (chmod(0755, $home_dir)) {
-      die("Can't set perms on $home_dir to 0755: $!");
-    }
-
-    unless (chown($uid, $gid, $home_dir)) {
-      die("Can't set owner of $home_dir to $uid/$gid: $!");
-    }
-  }
-
-  auth_user_write($auth_user_file, $user, $passwd, $uid, $gid, $home_dir,
-    '/bin/bash');
-  auth_group_write($auth_group_file, $group, $gid, $user);
+  my $setup = test_setup($tmpdir, 'config');
 
   my $hidden_file = File::Spec->rel2abs("$tmpdir/.in.test.txt.");
   my $test_file = File::Spec->rel2abs("$tmpdir/test.txt");
 
   my $config = {
-    PidFile => $pid_file,
-    ScoreboardFile => $scoreboard_file,
-    SystemLog => $log_file,
-    TraceLog => $log_file,
+    PidFile => $setup->{pid_file},
+    ScoreboardFile => $setup->{scoreboard_file},
+    SystemLog => $setup->{log_file},
+    TraceLog => $setup->{log_file},
     Trace => 'DEFAULT:10',
 
-    AuthUserFile => $auth_user_file,
-    AuthGroupFile => $auth_group_file,
-    DefaultChdir => '~',
+    AuthUserFile => $setup->{auth_user_file},
+    AuthGroupFile => $setup->{auth_group_file},
+    AuthOrder => 'mod_auth_file.c',
 
+    DefaultChdir => '~',
     HiddenStores => 'on',
     DeleteAbortedStores => 'on',
     TimeoutLinger => 1,
@@ -256,7 +227,8 @@ sub deleteabortedstores_cmd_abort_ok {
     },
   };
 
-  my ($port, $config_user, $config_group) = config_write($config_file, $config);
+  my ($port, $config_user, $config_group) = config_write($setup->{config_file},
+    $config);
 
   # Open pipes, for use between the parent and child processes.  Specifically,
   # the child will indicate when it's done with its test by writing a message
@@ -273,8 +245,11 @@ sub deleteabortedstores_cmd_abort_ok {
   defined(my $pid = fork()) or die("Can't fork: $!");
   if ($pid) {
     eval {
+      # Allow server to start up
+      sleep(1);
+
       my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
-      $client->login($user, $passwd);
+      $client->login($setup->{user}, $setup->{passwd});
 
       my $conn = $client->stor_raw('test.txt');
       unless ($conn) {
@@ -290,13 +265,11 @@ sub deleteabortedstores_cmd_abort_ok {
       }
 
       eval { $client->quote('ABOR') };
-
       my $resp_code = $client->response_code();
       my $resp_msg = $client->response_msg();
       $self->assert_transfer_ok($resp_code, $resp_msg, 1);
 
       eval { $conn->close() };
-
       $client->quit();
 
       if (-f $test_file) {
@@ -307,7 +280,6 @@ sub deleteabortedstores_cmd_abort_ok {
         die("File $hidden_file exists unexpectedly");
       }
     };
-
     if ($@) {
       $ex = $@;
     }
@@ -316,7 +288,7 @@ sub deleteabortedstores_cmd_abort_ok {
     $wfh->flush();
 
   } else {
-    eval { server_wait($config_file, $rfh) };
+    eval { server_wait($setup->{config_file}, $rfh) };
     if ($@) {
       warn($@);
       exit 1;
@@ -326,68 +298,30 @@ sub deleteabortedstores_cmd_abort_ok {
   }
 
   # Stop server
-  server_stop($pid_file);
-
+  server_stop($setup->{pid_file});
   $self->assert_child_ok($pid);
 
-  if ($ex) {
-    test_append_logfile($log_file, $ex);
-    unlink($log_file);
-
-    die($ex);
-  }
-
-  unlink($log_file);
+  test_cleanup($setup->{log_file}, $ex);
 }
 
 sub deleteabortedstores_conn_aborted_bug3917 {
   my $self = shift;
   my $tmpdir = $self->{tmpdir};
-
-  my $config_file = "$tmpdir/config.conf";
-  my $pid_file = File::Spec->rel2abs("$tmpdir/config.pid");
-  my $scoreboard_file = File::Spec->rel2abs("$tmpdir/config.scoreboard");
-
-  my $log_file = test_get_logfile();
-
-  my $auth_user_file = File::Spec->rel2abs("$tmpdir/config.passwd");
-  my $auth_group_file = File::Spec->rel2abs("$tmpdir/config.group");
-
-  my $user = 'proftpd';
-  my $passwd = 'test';
-  my $group = 'ftpd';
-  my $home_dir = File::Spec->rel2abs($tmpdir);
-  my $uid = 500;
-  my $gid = 500;
-
-  # Make sure that, if we're running as root, that the home directory has
-  # permissions/privs set for the account we create
-  if ($< == 0) {
-    unless (chmod(0755, $home_dir)) {
-      die("Can't set perms on $home_dir to 0755: $!");
-    }
-
-    unless (chown($uid, $gid, $home_dir)) {
-      die("Can't set owner of $home_dir to $uid/$gid: $!");
-    }
-  }
-
-  auth_user_write($auth_user_file, $user, $passwd, $uid, $gid, $home_dir,
-    '/bin/bash');
-  auth_group_write($auth_group_file, $group, $gid, $user);
+  my $setup = test_setup($tmpdir, 'config');
 
   my $hidden_file = File::Spec->rel2abs("$tmpdir/.in.test.txt.");
   my $test_file = File::Spec->rel2abs("$tmpdir/test.txt");
 
   my $config = {
-    PidFile => $pid_file,
-    ScoreboardFile => $scoreboard_file,
-    SystemLog => $log_file,
+    PidFile => $setup->{pid_file},
+    ScoreboardFile => $setup->{scoreboard_file},
+    SystemLog => $setup->{log_file},
 
-    AuthUserFile => $auth_user_file,
-    AuthGroupFile => $auth_group_file,
+    AuthUserFile => $setup->{auth_user_file},
+    AuthGroupFile => $setup->{auth_group_file},
+    AuthOrder => 'mod_auth_file.c',
+
     DefaultChdir => '~',
-
     HiddenStores => 'on',
 
     IfModules => {
@@ -397,7 +331,8 @@ sub deleteabortedstores_conn_aborted_bug3917 {
     },
   };
 
-  my ($port, $config_user, $config_group) = config_write($config_file, $config);
+  my ($port, $config_user, $config_group) = config_write($setup->{config_file},
+    $config);
 
   # Open pipes, for use between the parent and child processes.  Specifically,
   # the child will indicate when it's done with its test by writing a message
@@ -414,8 +349,11 @@ sub deleteabortedstores_conn_aborted_bug3917 {
   defined(my $pid = fork()) or die("Can't fork: $!");
   if ($pid) {
     eval {
+      # Allow server to start up
+      sleep(1);
+
       my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
-      $client->login($user, $passwd);
+      $client->login($setup->{user}, $setup->{passwd});
 
       my $conn = $client->stor_raw('test.txt');
       unless ($conn) {
@@ -434,7 +372,9 @@ sub deleteabortedstores_conn_aborted_bug3917 {
 
       my $resp_code = $client->response_code();
       my $resp_msg = $client->response_msg();
-      $self->assert_transfer_ok($resp_code, $resp_msg, 1);
+      if ($resp_code != 426) {
+        $self->assert_transfer_ok($resp_code, $resp_msg, 1);
+      }
 
       $client->quit();
 
@@ -446,7 +386,6 @@ sub deleteabortedstores_conn_aborted_bug3917 {
         die("File $hidden_file exists unexpectedly");
       }
     };
-
     if ($@) {
       $ex = $@;
     }
@@ -455,7 +394,7 @@ sub deleteabortedstores_conn_aborted_bug3917 {
     $wfh->flush();
 
   } else {
-    eval { server_wait($config_file, $rfh) };
+    eval { server_wait($setup->{config_file}, $rfh) };
     if ($@) {
       warn($@);
       exit 1;
@@ -465,18 +404,10 @@ sub deleteabortedstores_conn_aborted_bug3917 {
   }
 
   # Stop server
-  server_stop($pid_file);
-
+  server_stop($setup->{pid_file});
   $self->assert_child_ok($pid);
 
-  if ($ex) {
-    test_append_logfile($log_file, $ex);
-    unlink($log_file);
-
-    die($ex);
-  }
-
-  unlink($log_file);
+  test_cleanup($setup->{log_file}, $ex);
 }
 
 sub deleteabortedstores_hiddenstores_on_timeout_idle_bug4035 {
@@ -496,8 +427,9 @@ sub deleteabortedstores_hiddenstores_on_timeout_idle_bug4035 {
 
     AuthUserFile => $setup->{auth_user_file},
     AuthGroupFile => $setup->{auth_group_file},
-    DefaultChdir => '~',
+    AuthOrder => 'mod_auth_file.c',
 
+    DefaultChdir => '~',
     HiddenStores => 'on',
     DeleteAbortedStores => 'on',
     TimeoutIdle => $timeout_idle,
@@ -598,15 +530,25 @@ sub deleteabortedstores_hiddenstores_on_timeout_stalled_bug4035 {
 
   my $timeout_stalled = 2;
 
+  # The expected log messages are debug log messages, so we need to ensure
+  # that debug logging is enabled regardless of the TEST_VERBOSE environment
+  # variable.
+  my $debug_level = 5;
+  if ($ENV{TEST_VERBOSE}) {
+    $debug_level = 10;
+  }
+
   my $config = {
     PidFile => $setup->{pid_file},
     ScoreboardFile => $setup->{scoreboard_file},
     SystemLog => $setup->{log_file},
+    DebugLevel => $debug_level,
 
     AuthUserFile => $setup->{auth_user_file},
     AuthGroupFile => $setup->{auth_group_file},
-    DefaultChdir => '~',
+    AuthOrder => 'mod_auth_file.c',
 
+    DefaultChdir => '~',
     HiddenStores => 'on',
     DeleteAbortedStores => 'on',
     TimeoutStalled => $timeout_stalled,
@@ -636,7 +578,10 @@ sub deleteabortedstores_hiddenstores_on_timeout_stalled_bug4035 {
   defined(my $pid = fork()) or die("Can't fork: $!");
   if ($pid) {
     eval {
-      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
+      # Allow server to start up
+      sleep(1);
+
+      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port, 0, 5);
       $client->login($setup->{user}, $setup->{passwd});
 
       my $conn = $client->stor_raw('test.txt');
@@ -644,6 +589,10 @@ sub deleteabortedstores_hiddenstores_on_timeout_stalled_bug4035 {
         die("Failed to STOR test.txt: " . $client->response_code() . " " .
           $client->response_msg());
       }
+
+      # Get our initial response
+      my $resp_code = $client->response_code();
+      my $resp_msg = $client->response_msg();
 
       my $buf = "Hello, World!\n";
       $conn->write($buf, length($buf), 25);
@@ -658,11 +607,7 @@ sub deleteabortedstores_hiddenstores_on_timeout_stalled_bug4035 {
       }
 
       sleep($timeout_stalled + 2);
-
       eval { $conn->close() };
-
-      my $resp_code = $client->response_code();
-      my $resp_msg = $client->response_msg();
       $self->assert_transfer_ok($resp_code, $resp_msg);
 
       $self->assert(!-f $test_file,
@@ -679,7 +624,7 @@ sub deleteabortedstores_hiddenstores_on_timeout_stalled_bug4035 {
     $wfh->flush();
 
   } else {
-    eval { server_wait($setup->{config_file}, $rfh) };
+    eval { server_wait($setup->{config_file}, $rfh, 15) };
     if ($@) {
       warn($@);
       exit 1;
@@ -747,15 +692,25 @@ sub deleteabortedstores_hiddenstores_on_xfer_aborted_bug4467 {
     die("Can't open $test_file: $!");
   }
 
+  # The expected log messages are debug log messages, so we need to ensure
+  # that debug logging is enabled regardless of the TEST_VERBOSE environment
+  # variable.
+  my $debug_level = 5;
+  if ($ENV{TEST_VERBOSE}) {
+    $debug_level = 10;
+  }
+
   my $config = {
     PidFile => $setup->{pid_file},
     ScoreboardFile => $setup->{scoreboard_file},
     SystemLog => $setup->{log_file},
+    DebugLevel => $debug_level,
 
     AuthUserFile => $setup->{auth_user_file},
     AuthGroupFile => $setup->{auth_group_file},
-    DefaultChdir => '~',
+    AuthOrder => 'mod_auth_file.c',
 
+    DefaultChdir => '~',
     HiddenStores => 'on',
     DeleteAbortedStores => 'on',
     AllowOverwrite => 'on',
@@ -785,6 +740,9 @@ sub deleteabortedstores_hiddenstores_on_xfer_aborted_bug4467 {
   defined(my $pid = fork()) or die("Can't fork: $!");
   if ($pid) {
     eval {
+      # Allow server to start up
+      sleep(1);
+
       my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
       $client->login($setup->{user}, $setup->{passwd});
 
@@ -805,8 +763,9 @@ sub deleteabortedstores_hiddenstores_on_xfer_aborted_bug4467 {
 
       my $resp_code = $client->response_code();
       my $resp_msg = $client->response_msg();
-      $self->assert_transfer_ok($resp_code, $resp_msg, 1);
-
+      if ($resp_code != 426) {
+        $self->assert_transfer_ok($resp_code, $resp_msg, 1);
+      }
       eval { $conn->close() };
 
       $self->assert(-f $test_file,
@@ -851,7 +810,7 @@ sub deleteabortedstores_hiddenstores_on_xfer_aborted_bug4467 {
         if ($line =~ /removing aborted HiddenStores file '(.*?)'$/) {
           my $hidden_path = $1;
 
-          if ($hidden_path =~ /\.in\.test\.txt\.$/) {
+          if ($hidden_path =~ /\.in\.test\.txt\./) {
             $hidden_path_ok = 1;
           }
         }

@@ -77,9 +77,10 @@ my $TESTS = {
     test_class => [qw(forking)],
   },
 
+  # Rolled back per Bug#4332
   appe_ok_abs_symlink_existing_chrooted_bug4219 => {
     order => ++$order,
-    test_class => [qw(bug forking rootprivs)],
+    test_class => [qw(bug forking inprogress rootprivs)],
   },
 
   appe_fails_not_reg => {
@@ -149,6 +150,7 @@ sub appe_ok_raw_active {
 
     AuthUserFile => $setup->{auth_user_file},
     AuthGroupFile => $setup->{auth_group_file},
+    AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
       'mod_delay.c' => {
@@ -230,6 +232,7 @@ sub appe_ok_raw_passive {
 
     AuthUserFile => $setup->{auth_user_file},
     AuthGroupFile => $setup->{auth_group_file},
+    AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
       'mod_delay.c' => {
@@ -313,6 +316,7 @@ sub appe_ok_file_new {
 
     AuthUserFile => $setup->{auth_user_file},
     AuthGroupFile => $setup->{auth_group_file},
+    AuthOrder => 'mod_auth_file.c',
 
     AllowOverwrite => 'on',
     AllowStoreRestart => 'on',
@@ -423,6 +427,7 @@ sub appe_ok_file_existing {
 
     AuthUserFile => $setup->{auth_user_file},
     AuthGroupFile => $setup->{auth_group_file},
+    AuthOrder => 'mod_auth_file.c',
 
     AllowOverwrite => 'on',
     AllowStoreRestart => 'on',
@@ -513,6 +518,7 @@ sub appe_ok_files_new_and_existing_bug3612 {
 
     AuthUserFile => $setup->{auth_user_file},
     AuthGroupFile => $setup->{auth_group_file},
+    AuthOrder => 'mod_auth_file.c',
 
     AllowOverwrite => 'on',
     AllowStoreRestart => 'on',
@@ -660,13 +666,6 @@ sub appe_fails_abs_symlink_new {
   my $test_dir = File::Spec->rel2abs("$tmpdir/test.d");
   mkpath($test_dir);
 
-  my $test_file = File::Spec->rel2abs("$test_dir/test.txt");
-  my $test_symlink = File::Spec->rel2abs("$test_dir/test.lnk");
-
-  unless (symlink($test_file, $test_symlink)) {
-    die("Can't symlink $test_symlink to $test_file: $!");
-  }
-
   if ($< == 0) {
     unless (chmod(0755, $test_dir)) {
       die("Can't set perms on $test_dir to 0755: $!");
@@ -677,6 +676,13 @@ sub appe_fails_abs_symlink_new {
     }
   }
 
+  my $test_file = File::Spec->rel2abs("$test_dir/test.txt");
+  my $test_symlink = File::Spec->rel2abs("$test_dir/test.lnk");
+
+  unless (symlink($test_file, $test_symlink)) {
+    die("Can't symlink $test_symlink to $test_file: $!");
+  }
+
   my $config = {
     PidFile => $setup->{pid_file},
     ScoreboardFile => $setup->{scoreboard_file},
@@ -684,6 +690,7 @@ sub appe_fails_abs_symlink_new {
 
     AuthUserFile => $setup->{auth_user_file},
     AuthGroupFile => $setup->{auth_group_file},
+    AuthOrder => 'mod_auth_file.c',
 
     AllowOverwrite => 'on',
     AllowStoreRestart => 'on',
@@ -713,12 +720,16 @@ sub appe_fails_abs_symlink_new {
   defined(my $pid = fork()) or die("Can't fork: $!");
   if ($pid) {
     eval {
+      # Allow server to start up
+      sleep(1);
+
       my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port, 0, 1);
       $client->login($setup->{user}, $setup->{passwd});
 
-      my $conn = $client->appe_raw('test.d/test.lnk');
+      my $path = 'test.d/test.lnk';
+      my $conn = $client->appe_raw($path);
       if ($conn) {
-        die("APPE succeeded unexpectedly");
+        die("APPE to symlink succeeded unexpectedly");
       }
 
       # In this case, we SHOULD expect failure, since we have a dangling
@@ -734,7 +745,7 @@ sub appe_fails_abs_symlink_new {
       $self->assert($expected == $resp_code,
         test_msg("Expected response code $expected, got $resp_code"));
 
-      $expected = 'test.d/test.lnk: Not a regular file';
+      $expected = "$path: Not a regular file";
       $self->assert($expected eq $resp_msg,
         test_msg("Expected response message $expected, got $resp_msg"));
     };
@@ -770,13 +781,6 @@ sub appe_fails_abs_symlink_new_chrooted_bug4219 {
   my $test_dir = File::Spec->rel2abs("$tmpdir/test.d");
   mkpath($test_dir);
 
-  my $test_file = File::Spec->rel2abs("$test_dir/test.txt");
-  my $test_symlink = File::Spec->rel2abs("$test_dir/test.lnk");
-
-  unless (symlink($test_file, $test_symlink)) {
-    die("Can't symlink $test_symlink to $test_file: $!");
-  }
-
   if ($< == 0) {
     unless (chmod(0755, $test_dir)) {
       die("Can't set perms on $test_dir to 0755: $!");
@@ -785,6 +789,13 @@ sub appe_fails_abs_symlink_new_chrooted_bug4219 {
     unless (chown($setup->{uid}, $setup->{gid}, $test_dir)) {
       die("Can't set owner of $test_dir to $setup->{uid}/$setup->{gid}: $!");
     }
+  }
+
+  my $test_file = File::Spec->rel2abs("$test_dir/test.txt");
+  my $test_symlink = File::Spec->rel2abs("$test_dir/test.lnk");
+
+  unless (symlink($test_file, $test_symlink)) {
+    die("Can't symlink $test_symlink to $test_file: $!");
   }
 
   my $config = {
@@ -796,6 +807,7 @@ sub appe_fails_abs_symlink_new_chrooted_bug4219 {
 
     AuthUserFile => $setup->{auth_user_file},
     AuthGroupFile => $setup->{auth_group_file},
+    AuthOrder => 'mod_auth_file.c',
 
     AllowOverwrite => 'on',
     AllowStoreRestart => 'on',
@@ -883,6 +895,16 @@ sub appe_fails_rel_symlink_new {
   my $test_dir = File::Spec->rel2abs("$tmpdir/test.d");
   mkpath($test_dir);
 
+  if ($< == 0) {
+    unless (chmod(0755, $test_dir)) {
+      die("Can't set perms on $test_dir to 0755: $!");
+    }
+
+    unless (chown($setup->{uid}, $setup->{gid}, $test_dir)) {
+      die("Can't set owner of $test_dir to $setup->{uid}/$setup->{gid}: $!");
+    }
+  }
+
   my $test_file = File::Spec->rel2abs("$test_dir/test.txt");
 
   # Change to the test directory in order to create a relative path in the
@@ -901,16 +923,6 @@ sub appe_fails_rel_symlink_new {
     die("Can't chdir to $cwd: $!");
   }
 
-  if ($< == 0) {
-    unless (chmod(0755, $test_dir)) {
-      die("Can't set perms on $test_dir to 0755: $!");
-    }
-
-    unless (chown($setup->{uid}, $setup->{gid}, $test_dir)) {
-      die("Can't set owner of $test_dir to $setup->{uid}/$setup->{gid}: $!");
-    }
-  }
-
   my $config = {
     PidFile => $setup->{pid_file},
     ScoreboardFile => $setup->{scoreboard_file},
@@ -918,6 +930,7 @@ sub appe_fails_rel_symlink_new {
 
     AuthUserFile => $setup->{auth_user_file},
     AuthGroupFile => $setup->{auth_group_file},
+    AuthOrder => 'mod_auth_file.c',
 
     AllowOverwrite => 'on',
     AllowStoreRestart => 'on',
@@ -1004,6 +1017,16 @@ sub appe_fails_rel_symlink_new_chrooted_bug4219 {
   my $test_dir = File::Spec->rel2abs("$tmpdir/test.d");
   mkpath($test_dir);
 
+  if ($< == 0) {
+    unless (chmod(0755, $test_dir)) {
+      die("Can't set perms on $test_dir to 0755: $!");
+    }
+
+    unless (chown($setup->{uid}, $setup->{gid}, $test_dir)) {
+      die("Can't set owner of $test_dir to $setup->{uid}/$setup->{gid}: $!");
+    }
+  }
+
   my $test_file = File::Spec->rel2abs("$test_dir/test.txt");
 
   # Change to the test directory in order to create a relative path in the
@@ -1022,16 +1045,6 @@ sub appe_fails_rel_symlink_new_chrooted_bug4219 {
     die("Can't chdir to $cwd: $!");
   }
 
-  if ($< == 0) {
-    unless (chmod(0755, $test_dir)) {
-      die("Can't set perms on $test_dir to 0755: $!");
-    }
-
-    unless (chown($setup->{uid}, $setup->{gid}, $test_dir)) {
-      die("Can't set owner of $test_dir to $setup->{uid}/$setup->{gid}: $!");
-    }
-  }
-
   my $config = {
     PidFile => $setup->{pid_file},
     ScoreboardFile => $setup->{scoreboard_file},
@@ -1039,6 +1052,7 @@ sub appe_fails_rel_symlink_new_chrooted_bug4219 {
 
     AuthUserFile => $setup->{auth_user_file},
     AuthGroupFile => $setup->{auth_group_file},
+    AuthOrder => 'mod_auth_file.c',
 
     AllowOverwrite => 'on',
     AllowStoreRestart => 'on',
@@ -1159,6 +1173,7 @@ sub appe_ok_abs_symlink_existing {
 
     AuthUserFile => $setup->{auth_user_file},
     AuthGroupFile => $setup->{auth_group_file},
+    AuthOrder => 'mod_auth_file.c',
 
     AllowOverwrite => 'on',
     AllowStoreRestart => 'on',
@@ -1242,10 +1257,28 @@ sub appe_ok_abs_symlink_existing_chrooted_bug4219 {
   my $test_dir = File::Spec->rel2abs("$tmpdir/test.d");
   mkpath($test_dir);
 
+  if ($< == 0) {
+    unless (chmod(0755, $test_dir)) {
+      die("Can't set perms on $test_dir to 0755: $!");
+    }
+
+    unless (chown($setup->{uid}, $setup->{gid}, $test_dir)) {
+      die("Can't set owner of $test_dir to $setup->{uid}/$setup->{gid}: $!");
+    }
+  }
+
   my $test_file = File::Spec->rel2abs("$test_dir/test.txt");
   if (open(my $fh, "> $test_file")) {
     unless (close($fh)) {
       die("Can't write $test_file: $!");
+    }
+
+    # Make sure that, if we're running as root, that the test file has
+    # permissions/privs set for the account we create
+    if ($< == 0) {
+      unless (chown($setup->{uid}, $setup->{gid}, $test_file)) {
+        die("Can't set owner of $test_file to $setup->{uid}/$setup->{gid}: $!");
+      }
     }
 
   } else {
@@ -1264,16 +1297,6 @@ sub appe_ok_abs_symlink_existing_chrooted_bug4219 {
     die("Can't symlink '$test_symlink' to '$dst_path': $!");
   }
 
-  if ($< == 0) {
-    unless (chmod(0755, $test_dir)) {
-      die("Can't set perms on $test_dir to 0755: $!");
-    }
-
-    unless (chown($setup->{uid}, $setup->{gid}, $test_dir, $test_file)) {
-      die("Can't set owner of $test_dir to $setup->{uid}/$setup->{gid}: $!");
-    }
-  }
-
   my $config = {
     PidFile => $setup->{pid_file},
     ScoreboardFile => $setup->{scoreboard_file},
@@ -1283,6 +1306,7 @@ sub appe_ok_abs_symlink_existing_chrooted_bug4219 {
 
     AuthUserFile => $setup->{auth_user_file},
     AuthGroupFile => $setup->{auth_group_file},
+    AuthOrder => 'mod_auth_file.c',
 
     AllowOverwrite => 'on',
     AllowStoreRestart => 'on',
@@ -1410,6 +1434,7 @@ sub appe_ok_rel_symlink_existing {
 
     AuthUserFile => $setup->{auth_user_file},
     AuthGroupFile => $setup->{auth_group_file},
+    AuthOrder => 'mod_auth_file.c',
 
     AllowOverwrite => 'on',
     AllowStoreRestart => 'on',
@@ -1538,6 +1563,7 @@ sub appe_ok_rel_symlink_existing_chrooted_bug4219 {
 
     AuthUserFile => $setup->{auth_user_file},
     AuthGroupFile => $setup->{auth_group_file},
+    AuthOrder => 'mod_auth_file.c',
 
     AllowOverwrite => 'on',
     AllowStoreRestart => 'on',
@@ -1626,6 +1652,7 @@ sub appe_fails_not_reg {
 
     AuthUserFile => $setup->{auth_user_file},
     AuthGroupFile => $setup->{auth_group_file},
+    AuthOrder => 'mod_auth_file.c',
 
     AllowOverwrite => 'on',
 
@@ -1738,6 +1765,7 @@ sub appe_fails_abs_symlink_not_reg {
 
     AuthUserFile => $setup->{auth_user_file},
     AuthGroupFile => $setup->{auth_group_file},
+    AuthOrder => 'mod_auth_file.c',
 
     AllowOverwrite => 'on',
 
@@ -1844,6 +1872,7 @@ sub appe_fails_abs_symlink_not_reg_chrooted_bug4219 {
 
     AuthUserFile => $setup->{auth_user_file},
     AuthGroupFile => $setup->{auth_group_file},
+    AuthOrder => 'mod_auth_file.c',
 
     AllowOverwrite => 'on',
     DefaultRoot => '~',
@@ -1961,6 +1990,7 @@ sub appe_fails_rel_symlink_not_reg {
 
     AuthUserFile => $setup->{auth_user_file},
     AuthGroupFile => $setup->{auth_group_file},
+    AuthOrder => 'mod_auth_file.c',
 
     AllowOverwrite => 'on',
 
@@ -2077,6 +2107,7 @@ sub appe_fails_rel_symlink_not_reg_chrooted_bug4219 {
 
     AuthUserFile => $setup->{auth_user_file},
     AuthGroupFile => $setup->{auth_group_file},
+    AuthOrder => 'mod_auth_file.c',
 
     AllowOverwrite => 'on',
     DefaultRoot => '~',
@@ -2244,6 +2275,7 @@ sub appe_fails_no_path {
 
     AuthUserFile => $setup->{auth_user_file},
     AuthGroupFile => $setup->{auth_group_file},
+    AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
       'mod_delay.c' => {
@@ -2354,6 +2386,7 @@ sub appe_fails_eperm {
 
     AuthUserFile => $setup->{auth_user_file},
     AuthGroupFile => $setup->{auth_group_file},
+    AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
       'mod_delay.c' => {
@@ -2444,6 +2477,7 @@ sub appe_hiddenstores_bug4144 {
 
     AuthUserFile => $setup->{auth_user_file},
     AuthGroupFile => $setup->{auth_group_file},
+    AuthOrder => 'mod_auth_file.c',
 
     HiddenStores => 'on',
 

@@ -109,11 +109,22 @@ sub list_tests {
   return testsuite_get_runnable_tests($TESTS);
 }
 
+sub get_redis_server {
+  my $redis_server = '127.0.0.1';
+  if (defined($ENV{REDIS_HOST})) {
+    $redis_server = $ENV{REDIS_HOST};
+  }
+
+  return $redis_server;
+}
+
 sub redis_list_delete {
   my $key = shift;
+  my $redis_server = get_redis_server();
 
   require Redis;
   my $redis = Redis->new(
+    server => "$redis_server:6379",
     reconnect => 5,
     every => 250_000
   );
@@ -125,9 +136,11 @@ sub redis_list_delete {
 
 sub redis_list_getall {
   my $key = shift;
+  my $redis_server = get_redis_server();
 
   require Redis;
   my $redis = Redis->new(
+    server => "$redis_server:6379",
     reconnect => 5,
     every => 250_000
   );
@@ -143,6 +156,7 @@ sub redis_log_on_command {
   my $tmpdir = $self->{tmpdir};
   my $setup = test_setup($tmpdir, 'redis');
 
+  my $redis_server = get_redis_server();
   my $fmt_name = 'custom';
   redis_list_delete($fmt_name);
 
@@ -155,6 +169,7 @@ sub redis_log_on_command {
 
     AuthUserFile => $setup->{auth_user_file},
     AuthGroupFile => $setup->{auth_group_file},
+    AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
       'mod_delay.c' => {
@@ -164,7 +179,7 @@ sub redis_log_on_command {
       # Note: we need to use arrays here, since order of directives matters.
       'mod_redis.c' => [
         'RedisEngine on',
-        'RedisServer 127.0.0.1:6379',
+        "RedisServer $redis_server:6379",
         "RedisLog $setup->{log_file}",
         "LogFormat $fmt_name \"%a %u\"",
         "RedisLogOnCommand PASS $fmt_name",
@@ -229,6 +244,11 @@ sub redis_log_on_command {
   eval {
     my $data = redis_list_getall($fmt_name);
 
+    if ($ENV{TEST_VERBOSE}) {
+      use Data::Dumper;
+      print STDERR "# Redis data: ", Dumper($data), "\n";
+    }
+
     my $nrecords = scalar(@$data);
     $self->assert($nrecords == 1, "Expected 1 record, got $nrecords");
 
@@ -255,6 +275,7 @@ sub redis_log_on_command_custom_key {
   my $tmpdir = $self->{tmpdir};
   my $setup = test_setup($tmpdir, 'redis');
 
+  my $redis_server = get_redis_server();
   my $fmt_name = 'custom';
   my $key_name = "ftp.$setup->{user}.PASS";
   redis_list_delete($key_name);
@@ -268,6 +289,7 @@ sub redis_log_on_command_custom_key {
 
     AuthUserFile => $setup->{auth_user_file},
     AuthGroupFile => $setup->{auth_group_file},
+    AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
       'mod_delay.c' => {
@@ -277,7 +299,7 @@ sub redis_log_on_command_custom_key {
       # Note: we need to use arrays here, since order of directives matters.
       'mod_redis.c' => [
         'RedisEngine on',
-        'RedisServer 127.0.0.1:6379',
+        "RedisServer $redis_server:6379",
         "RedisLog $setup->{log_file}",
         "LogFormat $fmt_name \"%a %u\"",
         "RedisLogOnCommand PASS $fmt_name ftp.%u.%m",
@@ -376,6 +398,7 @@ sub redis_log_on_command_per_dir {
   my $sub_dir = File::Spec->rel2abs("$tmpdir/test.d");
   mkpath($sub_dir);
 
+  my $redis_server = get_redis_server();
   my $fmt_name = 'custom';
   redis_list_delete($fmt_name);
 
@@ -388,6 +411,7 @@ sub redis_log_on_command_per_dir {
 
     AuthUserFile => $setup->{auth_user_file},
     AuthGroupFile => $setup->{auth_group_file},
+    AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
       'mod_delay.c' => {
@@ -408,7 +432,7 @@ sub redis_log_on_command_per_dir {
     print $fh <<EOC;
 <IfModule mod_redis.c>
   RedisEngine on
-  RedisServer 127.0.0.1:6379
+  RedisServer $redis_server:6379
   RedisLog $setup->{log_file}
   LogFormat $fmt_name "%a %u"
 
@@ -505,6 +529,15 @@ sub redis_log_on_command_per_dir_none {
   my $sub_dir = File::Spec->rel2abs("$tmpdir/test.d");
   mkpath($sub_dir);
 
+  # Make sure that, if we're running as root, that the test dir has
+  # permissions/privs set for the account we create
+  if ($< == 0) {
+    unless (chown($setup->{uid}, $setup->{gid}, $sub_dir)) {
+      die("Can't set owner of $sub_dir to $setup->{uid}/$setup->{gid}: $!");
+    }
+  }
+
+  my $redis_server = get_redis_server();
   my $fmt_name = 'custom';
   redis_list_delete($fmt_name);
 
@@ -517,6 +550,7 @@ sub redis_log_on_command_per_dir_none {
 
     AuthUserFile => $setup->{auth_user_file},
     AuthGroupFile => $setup->{auth_group_file},
+    AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
       'mod_delay.c' => {
@@ -537,7 +571,7 @@ sub redis_log_on_command_per_dir_none {
     print $fh <<EOC;
 <IfModule mod_redis.c>
   RedisEngine on
-  RedisServer 127.0.0.1:6379
+  RedisServer $redis_server:6379
   RedisLog $setup->{log_file}
   LogFormat $fmt_name "%a %u"
 
@@ -610,7 +644,7 @@ EOC
     }
 
     my $nrecords = scalar(@$data);
-    $self->assert($nrecords == 0, "Expected 0 records, got $nrecords");
+    $self->assert($nrecords == 1, "Expected 1 record, got $nrecords");
   };
   if ($@) {
     $ex = $@;
@@ -627,6 +661,7 @@ sub redis_log_on_command_per_dir_none2 {
   my $sub_dir = File::Spec->rel2abs("$tmpdir/test.d");
   mkpath($sub_dir);
 
+  my $redis_server = get_redis_server();
   my $fmt_name = 'custom';
   redis_list_delete($fmt_name);
 
@@ -639,6 +674,7 @@ sub redis_log_on_command_per_dir_none2 {
 
     AuthUserFile => $setup->{auth_user_file},
     AuthGroupFile => $setup->{auth_group_file},
+    AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
       'mod_delay.c' => {
@@ -659,7 +695,7 @@ sub redis_log_on_command_per_dir_none2 {
     print $fh <<EOC;
 <IfModule mod_redis.c>
   RedisEngine on
-  RedisServer 127.0.0.1:6379
+  RedisServer $redis_server:6379
   RedisLog $setup->{log_file}
   LogFormat $fmt_name "%a %u"
 
@@ -746,6 +782,7 @@ sub redis_log_on_event {
   my $tmpdir = $self->{tmpdir};
   my $setup = test_setup($tmpdir, 'redis');
 
+  my $redis_server = get_redis_server();
   my $fmt_name = 'custom';
   redis_list_delete($fmt_name);
 
@@ -758,6 +795,7 @@ sub redis_log_on_event {
 
     AuthUserFile => $setup->{auth_user_file},
     AuthGroupFile => $setup->{auth_group_file},
+    AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
       'mod_delay.c' => {
@@ -767,7 +805,7 @@ sub redis_log_on_event {
       # Note: we need to use arrays here, since order of directives matters.
       'mod_redis.c' => [
         'RedisEngine on',
-        'RedisServer 127.0.0.1:6379',
+        "RedisServer $redis_server:6379",
         "RedisLog $setup->{log_file}",
         "LogFormat $fmt_name \"%A %a %b %c %D %d %E %{epoch} %F %f %{gid} %g %H %h %I %{iso8601} %J %L %l %m %O %P %p %{protocol} %R %r %{remote-port} %S %s %T %t %U %u %{uid} %V %v %{version}\"",
         "RedisLogOnEvent ALL $fmt_name",
@@ -793,6 +831,9 @@ sub redis_log_on_event {
   defined(my $pid = fork()) or die("Can't fork: $!");
   if ($pid) {
     eval {
+      # Allow server to start up
+      sleep(1);
+
       my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
       $client->login($setup->{user}, $setup->{passwd});
 
@@ -808,6 +849,7 @@ sub redis_log_on_event {
         "Expected response message '$expected', got '$resp_msg'");
 
       $client->quit();
+      sleep(1);
     };
     if ($@) {
       $ex = $@;
@@ -865,6 +907,7 @@ sub redis_log_on_event_custom_key {
   my $tmpdir = $self->{tmpdir};
   my $setup = test_setup($tmpdir, 'redis');
 
+  my $redis_server = get_redis_server();
   my $fmt_name = 'custom';
   my $key_name = 'ftp.127.0.0.1';
   redis_list_delete($key_name);
@@ -878,6 +921,7 @@ sub redis_log_on_event_custom_key {
 
     AuthUserFile => $setup->{auth_user_file},
     AuthGroupFile => $setup->{auth_group_file},
+    AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
       'mod_delay.c' => {
@@ -887,7 +931,7 @@ sub redis_log_on_event_custom_key {
       # Note: we need to use arrays here, since order of directives matters.
       'mod_redis.c' => [
         'RedisEngine on',
-        'RedisServer 127.0.0.1:6379',
+        "RedisServer $redis_server:6379",
         "RedisLog $setup->{log_file}",
         "LogFormat $fmt_name \"%A %a %b %c %D %d %E %{epoch} %F %f %{gid} %g %H %h %I %{iso8601} %J %L %l %m %O %P %p %{protocol} %R %r %{remote-port} %S %s %T %t %U %u %{uid} %V %v %{version}\"",
         "RedisLogOnEvent ALL $fmt_name ftp.%a",
@@ -913,6 +957,9 @@ sub redis_log_on_event_custom_key {
   defined(my $pid = fork()) or die("Can't fork: $!");
   if ($pid) {
     eval {
+      # Allow server to start up
+      sleep(1);
+
       my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
       $client->login($setup->{user}, $setup->{passwd});
 
@@ -928,6 +975,7 @@ sub redis_log_on_event_custom_key {
         "Expected response message '$expected', got '$resp_msg'");
 
       $client->quit();
+      sleep(1);
     };
     if ($@) {
       $ex = $@;
@@ -988,6 +1036,7 @@ sub redis_log_on_event_per_dir {
   my $sub_dir = File::Spec->rel2abs("$tmpdir/test.d");
   mkpath($sub_dir);
 
+  my $redis_server = get_redis_server();
   my $fmt_name = 'custom';
   redis_list_delete($fmt_name);
 
@@ -1000,6 +1049,7 @@ sub redis_log_on_event_per_dir {
 
     AuthUserFile => $setup->{auth_user_file},
     AuthGroupFile => $setup->{auth_group_file},
+    AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
       'mod_delay.c' => {
@@ -1020,7 +1070,7 @@ sub redis_log_on_event_per_dir {
     print $fh <<EOC;
 <IfModule mod_redis.c>
   RedisEngine on
-  RedisServer 127.0.0.1:6379
+  RedisServer $redis_server:6379
   RedisLog $setup->{log_file}
   LogFormat $fmt_name "%a %u"
 
@@ -1117,6 +1167,7 @@ sub redis_log_on_event_per_dir_none {
   my $sub_dir = File::Spec->rel2abs("$tmpdir/test.d");
   mkpath($sub_dir);
 
+  my $redis_server = get_redis_server();
   my $fmt_name = 'custom';
   redis_list_delete($fmt_name);
 
@@ -1129,6 +1180,7 @@ sub redis_log_on_event_per_dir_none {
 
     AuthUserFile => $setup->{auth_user_file},
     AuthGroupFile => $setup->{auth_group_file},
+    AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
       'mod_delay.c' => {
@@ -1149,7 +1201,7 @@ sub redis_log_on_event_per_dir_none {
     print $fh <<EOC;
 <IfModule mod_redis.c>
   RedisEngine on
-  RedisServer 127.0.0.1:6379
+  RedisServer $redis_server:6379
   RedisLog $setup->{log_file}
   LogFormat $fmt_name "%a %u"
 
@@ -1222,7 +1274,7 @@ EOC
     }
 
     my $nrecords = scalar(@$data);
-    $self->assert($nrecords == 0, "Expected 0 records, got $nrecords");
+    $self->assert($nrecords == 1, "Expected 1 record, got $nrecords");
   };
   if ($@) {
     $ex = $@;
@@ -1239,6 +1291,7 @@ sub redis_log_on_event_per_dir_none2 {
   my $sub_dir = File::Spec->rel2abs("$tmpdir/test.d");
   mkpath($sub_dir);
 
+  my $redis_server = get_redis_server();
   my $fmt_name = 'custom';
   redis_list_delete($fmt_name);
 
@@ -1251,6 +1304,7 @@ sub redis_log_on_event_per_dir_none2 {
 
     AuthUserFile => $setup->{auth_user_file},
     AuthGroupFile => $setup->{auth_group_file},
+    AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
       'mod_delay.c' => {
@@ -1271,7 +1325,7 @@ sub redis_log_on_event_per_dir_none2 {
     print $fh <<EOC;
 <IfModule mod_redis.c>
   RedisEngine on
-  RedisServer 127.0.0.1:6379
+  RedisServer $redis_server:6379
   RedisLog $setup->{log_file}
   LogFormat $fmt_name "%a %u"
 
@@ -1353,11 +1407,12 @@ EOC
   test_cleanup($setup->{log_file}, $ex);
 }
 
-sub redis_log_fmt_extra_with_log_on_commmand {
+sub redis_log_fmt_extra_with_log_on_command {
   my $self = shift;
   my $tmpdir = $self->{tmpdir};
   my $setup = test_setup($tmpdir, 'redis');
 
+  my $redis_server = get_redis_server();
   my $fmt_name = 'custom';
   redis_list_delete($fmt_name);
 
@@ -1370,6 +1425,7 @@ sub redis_log_fmt_extra_with_log_on_commmand {
 
     AuthUserFile => $setup->{auth_user_file},
     AuthGroupFile => $setup->{auth_group_file},
+    AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
       'mod_delay.c' => {
@@ -1379,7 +1435,7 @@ sub redis_log_fmt_extra_with_log_on_commmand {
       # Note: we need to use arrays here, since order of directives matters.
       'mod_redis.c' => [
         'RedisEngine on',
-        'RedisServer 127.0.0.1:6379',
+        "RedisServer $redis_server:6379",
         "RedisLog $setup->{log_file}",
         "LogFormat $fmt_name \"%a %u\"",
         "RedisLogOnCommand PASS $fmt_name",
@@ -1477,6 +1533,7 @@ sub redis_log_fmt_extra_with_log_on_event {
   my $tmpdir = $self->{tmpdir};
   my $setup = test_setup($tmpdir, 'redis');
 
+  my $redis_server = get_redis_server();
   my $fmt_name = 'custom';
   redis_list_delete($fmt_name);
 
@@ -1489,6 +1546,7 @@ sub redis_log_fmt_extra_with_log_on_event {
 
     AuthUserFile => $setup->{auth_user_file},
     AuthGroupFile => $setup->{auth_group_file},
+    AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
       'mod_delay.c' => {
@@ -1500,7 +1558,7 @@ sub redis_log_fmt_extra_with_log_on_event {
       # Note: we need to use arrays here, since order of directives matters.
       'mod_redis.c' => [
         'RedisEngine on',
-        'RedisServer 127.0.0.1:6379',
+        "RedisServer $redis_server:6379",
         "RedisLog $setup->{log_file}",
         "LogFormat $fmt_name \"%A %a %b %c %D %d %E %{epoch} %F %f %{gid} %g %H %h %I %{iso8601} %J %L %l %m %O %P %p %{protocol} %R %r %{remote-port} %S %s %T %t %U %u %{uid} %V %v %{version}\"",
         "RedisLogOnEvent ALL $fmt_name",
@@ -1527,12 +1585,16 @@ sub redis_log_fmt_extra_with_log_on_event {
   defined(my $pid = fork()) or die("Can't fork: $!");
   if ($pid) {
     eval {
+      # Allow server to start up
+      sleep(1);
+
       my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
       $client->login($setup->{user}, $setup->{passwd});
 
       my $resp_code = $client->response_code();
       my $resp_msg = $client->response_msg(0);
       $client->quit();
+      sleep(1);
 
       my $expected = 230;
       $self->assert($expected == $resp_code,

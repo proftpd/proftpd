@@ -91,6 +91,7 @@ sub stat_file {
 
     AuthUserFile => $setup->{auth_user_file},
     AuthGroupFile => $setup->{auth_group_file},
+    AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
       'mod_delay.c' => {
@@ -183,6 +184,7 @@ sub stat_dir {
 
     AuthUserFile => $setup->{auth_user_file},
     AuthGroupFile => $setup->{auth_group_file},
+    AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
       'mod_delay.c' => {
@@ -297,6 +299,7 @@ sub stat_dir_with_files_bug3990 {
 
     AuthUserFile => $setup->{auth_user_file},
     AuthGroupFile => $setup->{auth_group_file},
+    AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
       'mod_delay.c' => {
@@ -420,6 +423,7 @@ sub stat_symlink_showsymlinks_off {
 
     AuthUserFile => $setup->{auth_user_file},
     AuthGroupFile => $setup->{auth_group_file},
+    AuthOrder => 'mod_auth_file.c',
 
     ShowSymlinks => 'off',
 
@@ -502,10 +506,28 @@ sub stat_symlink_showsymlinks_on {
   my $test_dir = File::Spec->rel2abs("$tmpdir/test.d");
   mkpath($test_dir);
 
+  if ($< == 0) {
+    unless (chmod(0755, $test_dir)) {
+      die("Can't set perms on $test_dir to 0755: $!");
+    }
+
+    unless (chown($setup->{uid}, $setup->{gid}, $test_dir)) {
+      die("Can't set owner of $test_dir to $setup->{uid}/$setup->{gid}: $!");
+    }
+  }
+
   my $test_file = File::Spec->rel2abs("$test_dir/test.txt");
   if (open(my $fh, "> $test_file")) {
     unless (close($fh)) {
       die("Can't write $test_file: $!");
+    }
+
+    # Make sure that, if we're running as root, that the test file has
+    # permissions/privs set for the account we create
+    if ($< == 0) {
+      unless (chown($setup->{uid}, $setup->{gid}, $test_file)) {
+        die("Can't set owner of $test_file to $setup->{uid}/$setup->{gid}: $!");
+      }
     }
 
   } else {
@@ -528,16 +550,6 @@ sub stat_symlink_showsymlinks_on {
     die("Can't chdir to $cwd: $!");
   }
 
-  if ($< == 0) {
-    unless (chmod(0755, $test_dir)) {
-      die("Can't set perms on $test_dir to 0755: $!");
-    }
-
-    unless (chown($setup->{uid}, $setup->{gid}, $test_dir)) {
-      die("Can't set owner of $test_dir to $setup->{uid}/$setup->{gid}: $!");
-    }
-  }
-
   my $config = {
     PidFile => $setup->{pid_file},
     ScoreboardFile => $setup->{scoreboard_file},
@@ -545,6 +557,7 @@ sub stat_symlink_showsymlinks_on {
 
     AuthUserFile => $setup->{auth_user_file},
     AuthGroupFile => $setup->{auth_group_file},
+    AuthOrder => 'mod_auth_file.c',
 
     ShowSymlinks => 'on',
 
@@ -595,7 +608,7 @@ sub stat_symlink_showsymlinks_on {
       $self->assert(qr/$expected/, $resp_msg,
         test_msg("Expected response message '$expected', got '$resp_msg'"));
 
-      $expected = '.*?test\.d\/test\.lnk \-> test\.d\/test\.txt$';
+      $expected = '.*?test\.d\/test\.lnk \-> \.\/test\.txt$';
       $self->assert(qr/$expected/, $resp_msg,
         test_msg("Expected response message '$expected', got '$resp_msg'"));
     };
@@ -674,6 +687,7 @@ sub stat_symlink_showsymlinks_off_chrooted_bug4219 {
 
     AuthUserFile => $setup->{auth_user_file},
     AuthGroupFile => $setup->{auth_group_file},
+    AuthOrder => 'mod_auth_file.c',
 
     DefaultRoot => '~',
     ShowSymlinks => 'off',
@@ -757,10 +771,28 @@ sub stat_symlink_showsymlinks_on_chrooted_bug4219 {
   my $test_dir = File::Spec->rel2abs("$tmpdir/test.d");
   mkpath($test_dir);
 
+  if ($< == 0) {
+    unless (chmod(0755, $test_dir)) {
+      die("Can't set perms on $test_dir to 0755: $!");
+    }
+
+    unless (chown($setup->{uid}, $setup->{gid}, $test_dir)) {
+      die("Can't set owner of $test_dir to $setup->{uid}/$setup->{gid}: $!");
+    }
+  }
+
   my $test_file = File::Spec->rel2abs("$test_dir/test.txt");
   if (open(my $fh, "> $test_file")) {
     unless (close($fh)) {
       die("Can't write $test_file: $!");
+    }
+
+    # Make sure that, if we're running as root, that the test file has
+    # permissions/privs set for the account we create
+    if ($< == 0) {
+      unless (chown($setup->{uid}, $setup->{gid}, $test_file)) {
+        die("Can't set owner of $test_file to $setup->{uid}/$setup->{gid}: $!");
+      }
     }
 
   } else {
@@ -783,16 +815,6 @@ sub stat_symlink_showsymlinks_on_chrooted_bug4219 {
     die("Can't chdir to $cwd: $!");
   }
 
-  if ($< == 0) {
-    unless (chmod(0755, $test_dir)) {
-      die("Can't set perms on $test_dir to 0755: $!");
-    }
-
-    unless (chown($setup->{uid}, $setup->{gid}, $test_dir)) {
-      die("Can't set owner of $test_dir to $setup->{uid}/$setup->{gid}: $!");
-    }
-  }
-
   my $config = {
     PidFile => $setup->{pid_file},
     ScoreboardFile => $setup->{scoreboard_file},
@@ -800,6 +822,7 @@ sub stat_symlink_showsymlinks_on_chrooted_bug4219 {
 
     AuthUserFile => $setup->{auth_user_file},
     AuthGroupFile => $setup->{auth_group_file},
+    AuthOrder => 'mod_auth_file.c',
 
     DefaultRoot => '~',
     ShowSymlinks => 'on',
@@ -851,7 +874,7 @@ sub stat_symlink_showsymlinks_on_chrooted_bug4219 {
       $self->assert(qr/$expected/, $resp_msg,
         test_msg("Expected response message '$expected', got '$resp_msg'"));
 
-      $expected = '.*?test\.d\/test\.lnk \-> \/test\.d\/test\.txt$';
+      $expected = '.*?test\.d\/test\.lnk \-> \.\/test\.txt$';
       $self->assert(qr/$expected/, $resp_msg,
         test_msg("Expected response message '$expected', got '$resp_msg'"));
     };
@@ -891,6 +914,7 @@ sub stat_system {
 
     AuthUserFile => $setup->{auth_user_file},
     AuthGroupFile => $setup->{auth_group_file},
+    AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
       'mod_delay.c' => {
@@ -965,6 +989,7 @@ sub stat_enoent {
 
     AuthUserFile => $setup->{auth_user_file},
     AuthGroupFile => $setup->{auth_group_file},
+    AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
       'mod_delay.c' => {
@@ -1049,6 +1074,7 @@ sub stat_listoptions_bug3295 {
 
     AuthUserFile => $setup->{auth_user_file},
     AuthGroupFile => $setup->{auth_group_file},
+    AuthOrder => 'mod_auth_file.c',
 
     ListOptions => '-1',
 

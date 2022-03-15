@@ -5630,6 +5630,10 @@ MODRET core_mkd(cmd_rec *cmd) {
     return PR_ERROR(cmd);
   }
 
+  pr_trace_msg("fileperms", 9, "%s, user '%s' (UID %s, GID %s): "
+    "creating directory '%s'", (char *) cmd->argv[0], session.user,
+    pr_uid2str(cmd->tmp_pool, session.fsuid),
+    pr_gid2str(cmd->tmp_pool, session.fsgid), dir);
   if (pr_fsio_smkdir(cmd->tmp_pool, dir, 0777, session.fsuid,
       session.fsgid) < 0) {
     int xerrno = errno;

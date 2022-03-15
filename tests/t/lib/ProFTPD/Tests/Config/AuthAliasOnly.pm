@@ -69,6 +69,7 @@ sub authaliasonly_on {
 
     AuthUserFile => $setup->{auth_user_file},
     AuthGroupFile => $setup->{auth_group_file},
+    AuthOrder => 'mod_auth_file.c',
 
     UserAlias => "$alias $setup->{user}",
     AuthAliasOnly => 'on',
@@ -181,6 +182,7 @@ sub authaliasonly_off_anon_bug2070 {
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
+    AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
       'mod_delay.c' => {
@@ -321,6 +323,7 @@ sub authaliasonly_on_anon_bug3501 {
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
+    AuthOrder => 'mod_auth_file.c',
 
     Anonymous => {
       $home_dir => {
@@ -461,6 +464,7 @@ sub authaliasonly_on_system_bug3501 {
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
+    AuthOrder => 'mod_auth_file.c',
 
     Anonymous => {
       $home_dir => {
@@ -552,6 +556,12 @@ sub authaliasonly_on_anon_bug4255 {
 
   my ($config_user, $config_group) = config_get_identity();
 
+  if ($config_user ne $setup->{user}) {
+    # Need to ensure this user has an entry in the AuthUserFile, too
+    auth_user_write($setup->{auth_user_file}, $config_user, 'foobar',
+      $setup->{uid}, $setup->{gid}, $setup->{home_dir}, '/bin/bash'); 
+  }
+
   my $config = {
     PidFile => $setup->{pid_file},
     ScoreboardFile => $setup->{scoreboard_file},
@@ -564,6 +574,8 @@ sub authaliasonly_on_anon_bug4255 {
 
     AuthUserFile => $setup->{auth_user_file},
     AuthGroupFile => $setup->{auth_group_file},
+    AuthOrder => 'mod_auth_file.c',
+
     AuthAliasOnly => 'on',
 
     Anonymous => {
@@ -601,11 +613,12 @@ sub authaliasonly_on_anon_bug4255 {
   defined(my $pid = fork()) or die("Can't fork: $!");
   if ($pid) {
     eval {
+      # Allow server to start up
       sleep(1);
 
       # First, try logging in as user 'anonymous', i.e. the alias.
-      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port, 0, 1);
-      my ($resp_code, $resp_msg) = $client->user("anonymous");
+      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port, 0);
+      my ($resp_code, $resp_msg) = $client->user('anonymous');
 
       my $expected = 331;
       $self->assert($expected == $resp_code,
@@ -627,7 +640,6 @@ sub authaliasonly_on_anon_bug4255 {
 
       $client->quit();
     };
-
     if ($@) {
       $ex = $@;
     }

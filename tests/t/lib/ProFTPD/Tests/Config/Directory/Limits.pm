@@ -158,6 +158,7 @@ sub limits_with_glob_then_nonglob_dirs_for_same_path {
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
+    AuthOrder => 'mod_auth_file.c',
 
     DefaultChdir => '~',
 
@@ -318,6 +319,7 @@ sub limits_with_nonglob_then_glob_dirs_for_same_path {
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
+    AuthOrder => 'mod_auth_file.c',
 
     DefaultChdir => '~',
 
@@ -490,6 +492,7 @@ sub limits_with_glob_denied_delete_bug3146 {
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
+    AuthOrder => 'mod_auth_file.c',
 
     DefaultChdir => '~',
 
@@ -658,6 +661,7 @@ sub limits_without_glob_denied_delete_bug3146 {
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
+    AuthOrder => 'mod_auth_file.c',
 
     DefaultChdir => '~',
 
@@ -768,57 +772,40 @@ sub limits_commands_comma_space_delimited_deferred_paths_bug3147 {
   #  http://forums.proftpd.org/smf/index.php/topic,3648.0
   #  http://bugs.proftpd.org/show_bug.cgi?id=3147
 
-  my $config_file = "$tmpdir/dir.conf";
-  my $pid_file = File::Spec->rel2abs("$tmpdir/dir.pid");
-  my $scoreboard_file = File::Spec->rel2abs("$tmpdir/dir.scoreboard");
+  my $home_dir = File::Spec->rel2abs("$tmpdir/home/proftpd");
+  my $setup = test_setup($tmpdir, 'dir', undef, undef, undef, undef, undef,
+    $home_dir);
 
-  my $log_file = test_get_logfile();
-
-  my $auth_user_file = File::Spec->rel2abs("$tmpdir/dir.passwd");
-  my $auth_group_file = File::Spec->rel2abs("$tmpdir/dir.group");
-
-  my $user = 'proftpd';
-  my $passwd = 'test';
-  my $group = 'ftpd';
-  my $home_dir = File::Spec->rel2abs("$tmpdir/home/$user");
-  my $uid = 500;
-  my $gid = 500;
-
-  mkpath($home_dir);
-
-  my $sub_dir = File::Spec->rel2abs("$tmpdir/home/$user/upload");
+  my $sub_dir = File::Spec->rel2abs("$tmpdir/home/$setup->{user}/upload");
   mkpath($sub_dir);
 
   # Make sure that, if we're running as root, that the home directory has
   # permissions/privs set for the account we create
   if ($< == 0) {
-    unless (chmod(0755, $home_dir, $sub_dir)) {
-      die("Can't set perms on $home_dir, $sub_dir to 0755: $!");
+    unless (chmod(0755, $sub_dir)) {
+      die("Can't set perms on $sub_dir to 0755: $!");
     }
 
-    unless (chown($uid, $gid, $home_dir, $sub_dir)) {
-      die("Can't set owner of $home_dir, $sub_dir to $uid/$gid: $!");
+    unless (chown($setup->{uid}, $setup->{gid}, $sub_dir)) {
+      die("Can't set owner of $sub_dir to $setup->{uid}/$setup->{gid}: $!");
     }
   }
  
-  auth_user_write($auth_user_file, $user, $passwd, $uid, $gid, $home_dir,
-    '/bin/bash');
-  auth_group_write($auth_group_file, $group, $gid, $user);
-
   my $config = {
-    PidFile => $pid_file,
-    ScoreboardFile => $scoreboard_file,
-    SystemLog => $log_file,
-    TraceLog => $log_file,
+    PidFile => $setup->{pid_file},
+    ScoreboardFile => $setup->{scoreboard_file},
+    SystemLog => $setup->{log_file},
+    TraceLog => $setup->{log_file},
     Trace => 'DEFAULT:10 fsio:0 directory:10 lock:0',
 
-    AuthUserFile => $auth_user_file,
-    AuthGroupFile => $auth_group_file,
+    AuthUserFile => $setup->{auth_user_file},
+    AuthGroupFile => $setup->{auth_group_file},
+    AuthOrder => 'mod_auth_file.c',
 
     DefaultChdir => '~',
 
     Directory => {
-      "~$user" => {
+      "~$setup->{user}" => {
         Limit => {
           'WRITE' => {
             DenyAll => '',
@@ -830,7 +817,7 @@ sub limits_commands_comma_space_delimited_deferred_paths_bug3147 {
       # in the <Limit> section was not properly handling commas after the
       # command names.
 
-      "~$user/upload" => {
+      "~$setup->{user}/upload" => {
         Limit => {
           'STOR, APPE, MKD, RMD, RNTO, STOU, XMKD, XRMD' => {
             AllowAll => '',
@@ -846,7 +833,8 @@ sub limits_commands_comma_space_delimited_deferred_paths_bug3147 {
     },
   };
 
-  my ($port, $config_user, $config_group) = config_write($config_file, $config);
+  my ($port, $config_user, $config_group) = config_write($setup->{config_file},
+    $config);
 
   # Open pipes, for use between the parent and child processes.  Specifically,
   # the child will indicate when it's done with its test by writing a message
@@ -863,10 +851,11 @@ sub limits_commands_comma_space_delimited_deferred_paths_bug3147 {
   defined(my $pid = fork()) or die("Can't fork: $!");
   if ($pid) {
     eval {
-      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
-      $client->login($user, $passwd);
+      # Allow server to start up
+      sleep(1);
 
-      my ($resp_code, $resp_msg);
+      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
+      $client->login($setup->{user}, $setup->{passwd});
 
       my $conn = $client->stor_raw('upload/test.txt');
       unless ($conn) {
@@ -876,22 +865,14 @@ sub limits_commands_comma_space_delimited_deferred_paths_bug3147 {
 
       my $buf = "Hello, World!\n";
       $conn->write($buf, length($buf));
-      $conn->close();
+      eval { $conn->close() };
 
-      $resp_code = $client->response_code();
-      $resp_msg = $client->response_msg();
+      my $resp_code = $client->response_code();
+      my $resp_msg = $client->response_msg();
+      $self->assert_transfer_ok($resp_code, $resp_msg);
 
-      my $expected;
-
-      $expected = 226;
-      $self->assert($expected == $resp_code,
-        test_msg("Expected $expected, got $resp_code"));
-
-      $expected = "Transfer complete";
-      $self->assert($expected eq $resp_msg,
-        test_msg("Expected '$expected', got '$resp_msg'"));
+      $client->quit();
     };
-
     if ($@) {
       $ex = $@;
     }
@@ -900,7 +881,7 @@ sub limits_commands_comma_space_delimited_deferred_paths_bug3147 {
     $wfh->flush();
 
   } else {
-    eval { server_wait($config_file, $rfh) };
+    eval { server_wait($setup->{config_file}, $rfh) };
     if ($@) {
       warn($@);
       exit 1;
@@ -910,18 +891,10 @@ sub limits_commands_comma_space_delimited_deferred_paths_bug3147 {
   }
 
   # Stop server
-  server_stop($pid_file);
-
+  server_stop($setup->{pid_file});
   $self->assert_child_ok($pid);
 
-  if ($ex) {
-    test_append_logfile($log_file, $ex);
-    unlink($log_file);
-
-    die($ex);
-  }
-
-  unlink($log_file);
+  test_cleanup($setup->{log_file}, $ex);
 }
 
 sub limits_commands_comma_delimited_deferred_paths_bug3147 {
@@ -933,57 +906,40 @@ sub limits_commands_comma_delimited_deferred_paths_bug3147 {
   #  http://forums.proftpd.org/smf/index.php/topic,3648.0
   #  http://bugs.proftpd.org/show_bug.cgi?id=3147
 
-  my $config_file = "$tmpdir/dir.conf";
-  my $pid_file = File::Spec->rel2abs("$tmpdir/dir.pid");
-  my $scoreboard_file = File::Spec->rel2abs("$tmpdir/dir.scoreboard");
+  my $home_dir = File::Spec->rel2abs("$tmpdir/home/proftpd");
+  my $setup = test_setup($tmpdir, 'dir', undef, undef, undef, undef, undef,
+    $home_dir);
 
-  my $log_file = test_get_logfile();
-
-  my $auth_user_file = File::Spec->rel2abs("$tmpdir/dir.passwd");
-  my $auth_group_file = File::Spec->rel2abs("$tmpdir/dir.group");
-
-  my $user = 'proftpd';
-  my $passwd = 'test';
-  my $group = 'ftpd';
-  my $home_dir = File::Spec->rel2abs("$tmpdir/home/$user");
-  my $uid = 500;
-  my $gid = 500;
-
-  mkpath($home_dir);
-
-  my $sub_dir = File::Spec->rel2abs("$tmpdir/home/$user/upload");
+  my $sub_dir = File::Spec->rel2abs("$tmpdir/home/$setup->{user}/upload");
   mkpath($sub_dir);
 
   # Make sure that, if we're running as root, that the home directory has
   # permissions/privs set for the account we create
   if ($< == 0) {
-    unless (chmod(0755, $home_dir, $sub_dir)) {
-      die("Can't set perms on $home_dir, $sub_dir to 0755: $!");
+    unless (chmod(0755, $sub_dir)) {
+      die("Can't set perms on $sub_dir to 0755: $!");
     }
 
-    unless (chown($uid, $gid, $home_dir, $sub_dir)) {
-      die("Can't set owner of $home_dir, $sub_dir to $uid/$gid: $!");
+    unless (chown($setup->{uid}, $setup->{gid}, $sub_dir)) {
+      die("Can't set owner of $sub_dir to $setup->{uid}/$setup->{gid}: $!");
     }
   }
  
-  auth_user_write($auth_user_file, $user, $passwd, $uid, $gid, $home_dir,
-    '/bin/bash');
-  auth_group_write($auth_group_file, $group, $gid, $user);
-
   my $config = {
-    PidFile => $pid_file,
-    ScoreboardFile => $scoreboard_file,
-    SystemLog => $log_file,
-    TraceLog => $log_file,
+    PidFile => $setup->{pid_file},
+    ScoreboardFile => $setup->{scoreboard_file},
+    SystemLog => $setup->{log_file},
+    TraceLog => $setup->{log_file},
     Trace => 'DEFAULT:10 fsio:0 directory:10 lock:0',
 
-    AuthUserFile => $auth_user_file,
-    AuthGroupFile => $auth_group_file,
+    AuthUserFile => $setup->{auth_user_file},
+    AuthGroupFile => $setup->{auth_group_file},
+    AuthOrder => 'mod_auth_file.c',
 
     DefaultChdir => '~',
 
     Directory => {
-      "~$user" => {
+      "~$setup->{user}" => {
         Limit => {
           'WRITE' => {
             DenyAll => '',
@@ -995,7 +951,7 @@ sub limits_commands_comma_delimited_deferred_paths_bug3147 {
       # in the <Limit> section was not properly handling commas after the
       # command names.
 
-      "~$user/upload" => {
+      "~$setup->{user}/upload" => {
         Limit => {
           'STOR,APPE,MKD,RMD,RNTO,STOU,XMKD,XRMD' => {
             AllowAll => '',
@@ -1011,7 +967,8 @@ sub limits_commands_comma_delimited_deferred_paths_bug3147 {
     },
   };
 
-  my ($port, $config_user, $config_group) = config_write($config_file, $config);
+  my ($port, $config_user, $config_group) = config_write($setup->{config_file},
+    $config);
 
   # Open pipes, for use between the parent and child processes.  Specifically,
   # the child will indicate when it's done with its test by writing a message
@@ -1028,10 +985,11 @@ sub limits_commands_comma_delimited_deferred_paths_bug3147 {
   defined(my $pid = fork()) or die("Can't fork: $!");
   if ($pid) {
     eval {
-      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
-      $client->login($user, $passwd);
+      # Allow server to start up
+      sleep(1);
 
-      my ($resp_code, $resp_msg);
+      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
+      $client->login($setup->{user}, $setup->{passwd});
 
       my $conn = $client->stor_raw('upload/test.txt');
       unless ($conn) {
@@ -1041,22 +999,14 @@ sub limits_commands_comma_delimited_deferred_paths_bug3147 {
 
       my $buf = "Hello, World!\n";
       $conn->write($buf, length($buf));
-      $conn->close();
+      eval { $conn->close() };
 
-      $resp_code = $client->response_code();
-      $resp_msg = $client->response_msg();
+      my $resp_code = $client->response_code();
+      my $resp_msg = $client->response_msg();
+      $self->assert_transfer_ok($resp_code, $resp_msg);
 
-      my $expected;
-
-      $expected = 226;
-      $self->assert($expected == $resp_code,
-        test_msg("Expected $expected, got $resp_code"));
-
-      $expected = "Transfer complete";
-      $self->assert($expected eq $resp_msg,
-        test_msg("Expected '$expected', got '$resp_msg'"));
+      $client->quit();
     };
-
     if ($@) {
       $ex = $@;
     }
@@ -1065,7 +1015,7 @@ sub limits_commands_comma_delimited_deferred_paths_bug3147 {
     $wfh->flush();
 
   } else {
-    eval { server_wait($config_file, $rfh) };
+    eval { server_wait($setup->{config_file}, $rfh) };
     if ($@) {
       warn($@);
       exit 1;
@@ -1075,100 +1025,52 @@ sub limits_commands_comma_delimited_deferred_paths_bug3147 {
   }
 
   # Stop server
-  server_stop($pid_file);
-
+  server_stop($setup->{pid_file});
   $self->assert_child_ok($pid);
 
-  if ($ex) {
-    test_append_logfile($log_file, $ex);
-    unlink($log_file);
-
-    die($ex);
-  }
-
-  unlink($log_file);
+  test_cleanup($setup->{log_file}, $ex);
 }
 
 sub limits_commands_no_commas_deferred_paths_bug3147 {
   my $self = shift;
   my $tmpdir = $self->{tmpdir};
 
+  my $home_dir = File::Spec->rel2abs("$tmpdir/home/proftpd");
+  my $setup = test_setup($tmpdir, 'dir', undef, undef, undef, undef, undef,
+    $home_dir);
+
   # This config is from:
   #
   #  http://forums.proftpd.org/smf/index.php/topic,3648.0
   #  http://bugs.proftpd.org/show_bug.cgi?id=3147
 
-  my $config_file = "$tmpdir/dir.conf";
-  my $pid_file = File::Spec->rel2abs("$tmpdir/dir.pid");
-  my $scoreboard_file = File::Spec->rel2abs("$tmpdir/dir.scoreboard");
-
-  my $log_file = test_get_logfile();
-
-  my $auth_user_file = File::Spec->rel2abs("$tmpdir/dir.passwd");
-  my $auth_group_file = File::Spec->rel2abs("$tmpdir/dir.group");
-
-  my $user = 'proftpd';
-  my $passwd = 'test';
-  my $group = 'ftpd';
-  my $home_dir = File::Spec->rel2abs("$tmpdir/home/$user");
-  my $uid = 500;
-  my $gid = 500;
-
-  mkpath($home_dir);
-
-  my $sub_dir = File::Spec->rel2abs("$tmpdir/home/$user/upload");
+  my $sub_dir = File::Spec->rel2abs("$home_dir/upload");
   mkpath($sub_dir);
 
   # Make sure that, if we're running as root, that the home directory has
   # permissions/privs set for the account we create
   if ($< == 0) {
-    unless (chmod(0755, $home_dir, $sub_dir)) {
-      die("Can't set perms on $home_dir, $sub_dir to 0755: $!");
+    unless (chmod(0755, $sub_dir)) {
+      die("Can't set perms on $sub_dir to 0755: $!");
     }
 
-    unless (chown($uid, $gid, $home_dir, $sub_dir)) {
-      die("Can't set owner of $home_dir, $sub_dir to $uid/$gid: $!");
+    unless (chown($setup->{uid}, $setup->{gid}, $sub_dir)) {
+      die("Can't set owner of $sub_dir to $setup->{uid}/$setup->{gid}: $!");
     }
   }
  
-  auth_user_write($auth_user_file, $user, $passwd, $uid, $gid, $home_dir,
-    '/bin/bash');
-  auth_group_write($auth_group_file, $group, $gid, $user);
-
   my $config = {
-    PidFile => $pid_file,
-    ScoreboardFile => $scoreboard_file,
-    SystemLog => $log_file,
-    TraceLog => $log_file,
+    PidFile => $setup->{pid_file},
+    ScoreboardFile => $setup->{scoreboard_file},
+    SystemLog => $setup->{log_file},
+    TraceLog => $setup->{log_file},
     Trace => 'DEFAULT:10 fsio:0 directory:10 lock:0',
 
-    AuthUserFile => $auth_user_file,
-    AuthGroupFile => $auth_group_file,
+    AuthUserFile => $setup->{auth_user_file},
+    AuthGroupFile => $setup->{auth_group_file},
+    AuthOrder => 'mod_auth_file.c',
 
     DefaultChdir => '~',
-
-    Directory => {
-      "~$user" => {
-        Limit => {
-          'WRITE' => {
-            DenyAll => '',
-          },
-        },
-      },
-
-      # Bug#3147 happened because proftpd's parsing of the list of commands
-      # in the <Limit> section was not properly handling commas after the
-      # command names.  Make sure the fix for Bug#3147 doesn't break command
-      # lists which DO NOT use commas.
-
-      "~$user/upload" => {
-        Limit => {
-          'STOR APPE MKD RMD RNTO STOU XMKD XRMD' => {
-            AllowAll => '',
-          },
-        },
-      },
-    },
 
     IfModules => {
       'mod_delay.c' => {
@@ -1177,7 +1079,35 @@ sub limits_commands_no_commas_deferred_paths_bug3147 {
     },
   };
 
-  my ($port, $config_user, $config_group) = config_write($config_file, $config);
+  my ($port, $config_user, $config_group) = config_write($setup->{config_file},
+    $config);
+
+  if (open(my $fh, ">> $setup->{config_file}")) {
+    print $fh <<EOD;
+<Directory ~$setup->{user}>
+  <Limit WRITE>
+    DenyAll
+  </Limit>
+</Directory>
+
+# Bug#3147 happened because ProFTPD's parsing of the list of commands in the
+# <Limit> section was not properly handling commas after the command names.
+# Make sure the fix for Bug#3147 doesn't break command lists which DO NOT use
+# commas.
+
+<Directory ~$setup->{user}/upload>
+  <Limit STOR APPE MKD RMD RNTO STOU XMKD XRMD>
+    AllowAll
+  </Limit>
+</Directory>
+EOD
+    unless (close($fh)) {
+      die("Can't write $setup->{config_file}: $!");
+    }
+
+  } else {
+    die("Can't open $setup->{config_file}: $!");
+  }
 
   # Open pipes, for use between the parent and child processes.  Specifically,
   # the child will indicate when it's done with its test by writing a message
@@ -1194,10 +1124,11 @@ sub limits_commands_no_commas_deferred_paths_bug3147 {
   defined(my $pid = fork()) or die("Can't fork: $!");
   if ($pid) {
     eval {
-      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
-      $client->login($user, $passwd);
+      # Allow server to start up
+      sleep(1);
 
-      my ($resp_code, $resp_msg);
+      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
+      $client->login($setup->{user}, $setup->{passwd});
 
       my $conn = $client->stor_raw('upload/test.txt');
       unless ($conn) {
@@ -1207,22 +1138,14 @@ sub limits_commands_no_commas_deferred_paths_bug3147 {
 
       my $buf = "Hello, World!\n";
       $conn->write($buf, length($buf));
-      $conn->close();
+      eval { $conn->close() };
 
-      $resp_code = $client->response_code();
-      $resp_msg = $client->response_msg();
+      my $resp_code = $client->response_code();
+      my $resp_msg = $client->response_msg();
+      $self->assert_transfer_ok($resp_code, $resp_msg);
 
-      my $expected;
-
-      $expected = 226;
-      $self->assert($expected == $resp_code,
-        test_msg("Expected $expected, got $resp_code"));
-
-      $expected = "Transfer complete";
-      $self->assert($expected eq $resp_msg,
-        test_msg("Expected '$expected', got '$resp_msg'"));
+      $client->quit();
     };
-
     if ($@) {
       $ex = $@;
     }
@@ -1231,7 +1154,7 @@ sub limits_commands_no_commas_deferred_paths_bug3147 {
     $wfh->flush();
 
   } else {
-    eval { server_wait($config_file, $rfh) };
+    eval { server_wait($setup->{config_file}, $rfh) };
     if ($@) {
       warn($@);
       exit 1;
@@ -1241,18 +1164,10 @@ sub limits_commands_no_commas_deferred_paths_bug3147 {
   }
 
   # Stop server
-  server_stop($pid_file);
-
+  server_stop($setup->{pid_file});
   $self->assert_child_ok($pid);
 
-  if ($ex) {
-    test_append_logfile($log_file, $ex);
-    unlink($log_file);
-
-    die($ex);
-  }
-
-  unlink($log_file);
+  test_cleanup($setup->{log_file}, $ex);
 }
 
 sub limits_rename_dir_ok_write_denied {
@@ -1305,6 +1220,7 @@ sub limits_rename_dir_ok_write_denied {
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
+    AuthOrder => 'mod_auth_file.c',
 
     DefaultChdir => '~',
 
@@ -1418,57 +1334,40 @@ sub limits_rename_dir_failed_rnfr_denied {
   my $self = shift;
   my $tmpdir = $self->{tmpdir};
 
-  my $config_file = "$tmpdir/dir.conf";
-  my $pid_file = File::Spec->rel2abs("$tmpdir/dir.pid");
-  my $scoreboard_file = File::Spec->rel2abs("$tmpdir/dir.scoreboard");
+  my $home_dir = File::Spec->rel2abs("$tmpdir/home/proftpd");
+  my $setup = test_setup($tmpdir, 'dir', undef, undef, undef, undef, undef,
+    $home_dir);
 
-  my $log_file = test_get_logfile();
-
-  my $auth_user_file = File::Spec->rel2abs("$tmpdir/dir.passwd");
-  my $auth_group_file = File::Spec->rel2abs("$tmpdir/dir.group");
-
-  my $user = 'proftpd';
-  my $passwd = 'test';
-  my $group = 'ftpd';
-  my $home_dir = File::Spec->rel2abs("$tmpdir/home/$user");
-  my $uid = 500;
-  my $gid = 500;
-
-  mkpath($home_dir);
-
-  my $sub_dir = File::Spec->rel2abs("$tmpdir/home/$user/upload");
+  my $sub_dir = File::Spec->rel2abs("$tmpdir/home/$setup->{user}/upload");
   mkpath($sub_dir);
 
   # Make sure that, if we're running as root, that the home directory has
   # permissions/privs set for the account we create
   if ($< == 0) {
-    unless (chmod(0755, $home_dir, $sub_dir)) {
-      die("Can't set perms on $home_dir, $sub_dir to 0755: $!");
+    unless (chmod(0755, $sub_dir)) {
+      die("Can't set perms on $sub_dir to 0755: $!");
     }
 
-    unless (chown($uid, $gid, $home_dir, $sub_dir)) {
-      die("Can't set owner of $home_dir, $sub_dir to $uid/$gid: $!");
+    unless (chown($setup->{uid}, $setup->{gid}, $sub_dir)) {
+      die("Can't set owner of $sub_dir to $setup->{uid}/$setup->{gid}: $!");
     }
   }
  
-  auth_user_write($auth_user_file, $user, $passwd, $uid, $gid, $home_dir,
-    '/bin/bash');
-  auth_group_write($auth_group_file, $group, $gid, $user);
-
   my $config = {
-    PidFile => $pid_file,
-    ScoreboardFile => $scoreboard_file,
-    SystemLog => $log_file,
-    TraceLog => $log_file,
+    PidFile => $setup->{pid_file},
+    ScoreboardFile => $setup->{scoreboard_file},
+    SystemLog => $setup->{log_file},
+    TraceLog => $setup->{log_file},
     Trace => 'DEFAULT:10 fsio:0 directory:10 lock:0',
 
-    AuthUserFile => $auth_user_file,
-    AuthGroupFile => $auth_group_file,
+    AuthUserFile => $setup->{auth_user_file},
+    AuthGroupFile => $setup->{auth_group_file},
+    AuthOrder => 'mod_auth_file.c',
 
     DefaultChdir => '~',
 
     Directory => {
-      "~$user/*" => {
+      "~$setup->{user}/*" => {
         Limit => {
           'CWD XCWD RNFR RNTO' => {
             AllowAll => '',
@@ -1480,7 +1379,7 @@ sub limits_rename_dir_failed_rnfr_denied {
         },
       },
 
-      "~$user/upload" => {
+      "~$setup->{user}/upload" => {
         Limit => {
           'RNFR' => {
             DenyAll => '',
@@ -1496,7 +1395,8 @@ sub limits_rename_dir_failed_rnfr_denied {
     },
   };
 
-  my ($port, $config_user, $config_group) = config_write($config_file, $config);
+  my ($port, $config_user, $config_group) = config_write($setup->{config_file},
+    $config);
 
   # Open pipes, for use between the parent and child processes.  Specifically,
   # the child will indicate when it's done with its test by writing a message
@@ -1513,31 +1413,30 @@ sub limits_rename_dir_failed_rnfr_denied {
   defined(my $pid = fork()) or die("Can't fork: $!");
   if ($pid) {
     eval {
-      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
-      $client->login($user, $passwd);
+      # Allow server to start up
+      sleep(1);
 
-      my ($resp_code, $resp_msg);
+      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
+      $client->login($setup->{user}, $setup->{passwd});
 
       eval { $client->rnfr('upload') };
       unless ($@) {
         die("RNFR upload succeeded unexpectedly");
-
-      } else {
-        $resp_code = $client->response_code();
-        $resp_msg = $client->response_msg();
       }
 
-      my $expected;
+      my $resp_code = $client->response_code();
+      my $resp_msg = $client->response_msg();
 
-      $expected = 550;
+      my $expected = 550;
       $self->assert($expected == $resp_code,
-        test_msg("Expected $expected, got $resp_code"));
+        test_msg("Expected response code $expected, got $resp_code"));
 
       $expected = "upload: Operation not permitted";
       $self->assert($expected eq $resp_msg,
-        test_msg("Expected '$expected', got '$resp_msg'"));
-    };
+        test_msg("Expected response message '$expected', got '$resp_msg'"));
 
+      $client->quit();
+    };
     if ($@) {
       $ex = $@;
     }
@@ -1546,7 +1445,7 @@ sub limits_rename_dir_failed_rnfr_denied {
     $wfh->flush();
 
   } else {
-    eval { server_wait($config_file, $rfh) };
+    eval { server_wait($setup->{config_file}, $rfh) };
     if ($@) {
       warn($@);
       exit 1;
@@ -1556,18 +1455,10 @@ sub limits_rename_dir_failed_rnfr_denied {
   }
 
   # Stop server
-  server_stop($pid_file);
-
+  server_stop($setup->{pid_file});
   $self->assert_child_ok($pid);
 
-  if ($ex) {
-    test_append_logfile($log_file, $ex);
-    unlink($log_file);
-
-    die($ex);
-  }
-
-  unlink($log_file);
+  test_cleanup($setup->{log_file}, $ex);
 }
 
 sub limits_one_char_dir_bug3337 {
@@ -1625,6 +1516,8 @@ sub limits_one_char_dir_bug3337 {
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
+    AuthOrder => 'mod_auth_file.c',
+
     DefaultChdir => '~',
 
     Directory => {
@@ -1822,6 +1715,8 @@ sub limits_symlink_dir_bug3166 {
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
+    AuthOrder => 'mod_auth_file.c',
+
     DefaultRoot => '~',
 
     IfModules => {
@@ -1998,6 +1893,7 @@ sub limits_anon_dir_abs_path_bug3283 {
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
+    AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
       'mod_delay.c' => {
@@ -2179,6 +2075,7 @@ sub limits_with_multi_globs_denied_delete {
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
+    AuthOrder => 'mod_auth_file.c',
 
     DefaultChdir => '~',
 
@@ -2330,6 +2227,7 @@ sub limits_retr_bug3915 {
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
+    AuthOrder => 'mod_auth_file.c',
 
     DefaultChdir => '~',
 
@@ -2486,6 +2384,7 @@ sub limits_retr_bug3915_chrooted {
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
+    AuthOrder => 'mod_auth_file.c',
 
     DefaultRoot => '~',
 
@@ -2653,6 +2552,7 @@ sub limits_stor_with_multiple_groups_chrooted {
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
+    AuthOrder => 'mod_auth_file.c',
 
     DefaultRoot => '~',
 

@@ -430,6 +430,9 @@ sub authorder_pam_authoritative {
     '/bin/bash'); 
   auth_group_write($auth_group_file, $group, $gid, $user);
 
+  my $timeout_idle = 5;
+  my $timeout_login = 5;
+
   my $config = {
     PidFile => $pid_file,
     ScoreboardFile => $scoreboard_file,
@@ -440,6 +443,9 @@ sub authorder_pam_authoritative {
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
     AuthOrder => 'mod_auth_pam.c* mod_auth_unix.c mod_auth_file.c',
+
+    TimeoutIdle => $timeout_idle,
+    TimeoutLogin => $timeout_login,
 
     IfModules => {
       'mod_delay.c' => {
@@ -465,7 +471,7 @@ sub authorder_pam_authoritative {
   defined(my $pid = fork()) or die("Can't fork: $!");
   if ($pid) {
     eval {
-      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
+      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port, 0, 5);
 
       eval { $client->login($user, $passwd) };
       unless ($@) {
@@ -484,9 +490,7 @@ sub authorder_pam_authoritative {
       $expected = 'Login incorrect.';
       $self->assert($expected eq $resp_msg,
         test_msg("Expected '$expected', got '$resp_msg'"));
-
     };
-
     if ($@) {
       $ex = $@;
     }
@@ -495,7 +499,7 @@ sub authorder_pam_authoritative {
     $wfh->flush();
 
   } else {
-    eval { server_wait($config_file, $rfh) };
+    eval { server_wait($config_file, $rfh, 30) };
     if ($@) {
       warn($@);
       exit 1;

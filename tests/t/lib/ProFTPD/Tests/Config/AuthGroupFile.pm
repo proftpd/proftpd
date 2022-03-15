@@ -128,7 +128,6 @@ sub authgroupfile_bug3347 {
 
       $client->quit();
     };
-
     if ($@) {
       $ex = $@;
     }

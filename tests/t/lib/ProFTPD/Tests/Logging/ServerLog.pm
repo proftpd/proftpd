@@ -80,6 +80,7 @@ sub serverlog_ifclass_matching_class_bug3832 {
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
+    AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
       'mod_delay.c' => {
@@ -178,48 +179,19 @@ EOC
 sub serverlog_ifclass_not_matching_class_bug3832 {
   my $self = shift;
   my $tmpdir = $self->{tmpdir};
+  my $setup = test_setup($tmpdir, 'serverlog');
 
-  my $config_file = "$tmpdir/serverlog.conf";
-  my $pid_file = File::Spec->rel2abs("$tmpdir/serverlog.pid");
-  my $scoreboard_file = File::Spec->rel2abs("$tmpdir/serverlog.scoreboard");
-
-  my $auth_user_file = File::Spec->rel2abs("$tmpdir/serverlog.passwd");
-  my $auth_group_file = File::Spec->rel2abs("$tmpdir/serverlog.group");
-
-  my $test_file = File::Spec->rel2abs($config_file);
-
-  my $user = 'proftpd';
-  my $passwd = 'test';
-  my $group = 'ftpd';
-  my $home_dir = File::Spec->rel2abs($tmpdir);
-  my $uid = 500;
-  my $gid = 500;
-
-  # Make sure that, if we're running as root, that the home directory has
-  # permissions/privs set for the account we create
-  if ($< == 0) {
-    unless (chmod(0755, $home_dir)) {
-      die("Can't set perms on $home_dir to 0755: $!");
-    }
-
-    unless (chown($uid, $gid, $home_dir)) {
-      die("Can't set owner of $home_dir to $uid/$gid: $!");
-    }
-  }
-
-  auth_user_write($auth_user_file, $user, $passwd, $uid, $gid, $home_dir,
-    '/bin/bash');
-  auth_group_write($auth_group_file, $group, $gid, $user);
-
+  my $test_file = File::Spec->rel2abs($setup->{config_file});
   my $server_log = File::Spec->rel2abs("$tmpdir/server.log");
 
   my $config = {
-    PidFile => $pid_file,
-    ScoreboardFile => $scoreboard_file,
+    PidFile => $setup->{pid_file},
+    ScoreboardFile => $setup->{scoreboard_file},
     ServerLog => $server_log,
 
-    AuthUserFile => $auth_user_file,
-    AuthGroupFile => $auth_group_file,
+    AuthUserFile => $setup->{auth_user_file},
+    AuthGroupFile => $setup->{auth_group_file},
+    AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
       'mod_delay.c' => {
@@ -228,10 +200,11 @@ sub serverlog_ifclass_not_matching_class_bug3832 {
     },
   };
 
-  my ($port, $config_user, $config_group) = config_write($config_file, $config);
+  my ($port, $config_user, $config_group) = config_write($setup->{config_file},
+    $config);
 
   # Append the mod_ifsession config to the end of the config file
-  if (open(my $fh, ">> $config_file")) {
+  if (open(my $fh, ">> $setup->{config_file}")) {
     print $fh <<EOC;
 <Class local>
   From 127.0.0.1
@@ -242,11 +215,11 @@ sub serverlog_ifclass_not_matching_class_bug3832 {
 </IfClass>
 EOC
     unless (close($fh)) {
-      die("Can't write $config_file: $!");
+      die("Can't write $setup->{config_file}: $!");
     }
 
   } else {
-    die("Can't open $config_file: $!");
+    die("Can't open $setup->{config_file}: $!");
   }
 
   # Open pipes, for use between the parent and child processes.  Specifically,
@@ -264,8 +237,11 @@ EOC
   defined(my $pid = fork()) or die("Can't fork: $!");
   if ($pid) {
     eval {
+      # Allow server to start up
+      sleep(1);
+
       my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
-      $client->login($user, $passwd);
+      $client->login($setup->{user}, $setup->{passwd});
       $client->type('ascii');
 
       my $conn = $client->retr_raw($test_file);
@@ -275,11 +251,11 @@ EOC
       }
 
       my $buf;
-      $conn->read($buf, 8192, 25);
-      eval { $conn->close() };
+      while ($conn->read($buf, 8192, 25) > 0) {
+      }
+      eval { $conn->close(5) };
       $client->quit();
     };
-
     if ($@) {
       $ex = $@;
     }
@@ -288,7 +264,7 @@ EOC
     $wfh->flush();
 
   } else {
-    eval { server_wait($config_file, $rfh) };
+    eval { server_wait($setup->{config_file}, $rfh) };
     if ($@) {
       warn($@);
       exit 1;
@@ -298,37 +274,38 @@ EOC
   }
 
   # Stop server
-  server_stop($pid_file);
-
+  server_stop($setup->{pid_file});
   $self->assert_child_ok($pid);
 
-  if (open(my $fh, "< $server_log")) {
-    my $sess_nlines = 0;
-    while (my $line = <$fh>) {
-      chomp($line);
+  eval {
+    if (open(my $fh, "< $server_log")) {
+      my $sess_nlines = 0;
+      while (my $line = <$fh>) {
+        chomp($line);
 
-      if ($line =~ /session (opened|closed)/) {
-        $sess_nlines++;
+        if ($ENV{TEST_VERBOSE}) {
+          print STDERR "# $line\n";
+        }
+
+        if ($line =~ /session (opened|closed)/) {
+          $sess_nlines++;
+        }
       }
+
+      close($fh);
+
+      $self->assert($sess_nlines > 0,
+        test_msg("Expected lines in $server_log, got none"));
+
+    } else {
+      die("Can't read $server_log: $!");
     }
-
-    close($fh);
-
-    $self->assert($sess_nlines > 0,
-      test_msg("Expected lines in $server_log, got none"));
-
-  } else {
-    die("Can't read $server_log: $!");
+  };
+  if ($@) {
+    $ex = $@;
   }
 
-  if ($ex) {
-    test_append_logfile($server_log, $ex);
-    unlink($server_log);
-
-    die($ex);
-  }
-
-  unlink($server_log);
+  test_cleanup($setup->{log_file}, $ex);
 }
 
 1;
