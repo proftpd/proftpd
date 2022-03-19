@@ -2,7 +2,7 @@
  * ProFTPD - FTP server daemon
  * Copyright (c) 1997, 1998 Public Flood Software
  * Copyright (c) 1999, 2000 MacGyver aka Habeeb J. Dihu <macgyver@tos.net>
- * Copyright (c) 2001-2021 The ProFTPD Project team
+ * Copyright (c) 2001-2022 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -974,7 +974,7 @@ int pr_inet_set_socket_opts2(pool *p, conn_t *c, int rcvbuf, int sndbuf,
           /* DragonFly BSD uses millsecs as the KEEPIDLE unit. */
           val *= 1000;
 # endif /* DragonFly BSD */
-          if (setsockopt(c->listen_fd, SOL_SOCKET, TCP_KEEPIDLE, (void *)
+          if (setsockopt(c->listen_fd, IPPROTO_TCP, TCP_KEEPIDLE, (void *)
               &val, sizeof(int)) < 0) {
             pr_log_pri(PR_LOG_NOTICE,
               "error setting TCP_KEEPIDLE %d on fd %d: %s", val, c->listen_fd,
@@ -990,7 +990,7 @@ int pr_inet_set_socket_opts2(pool *p, conn_t *c, int rcvbuf, int sndbuf,
 #if defined(TCP_KEEPCNT)
         val = tcp_keepalive->keepalive_count;
         if (val != -1) {
-          if (setsockopt(c->listen_fd, SOL_SOCKET, TCP_KEEPCNT, (void *)
+          if (setsockopt(c->listen_fd, IPPROTO_TCP, TCP_KEEPCNT, (void *)
               &val, sizeof(int)) < 0) {
             pr_log_pri(PR_LOG_NOTICE,
               "error setting TCP_KEEPCNT %d on fd %d: %s", val, c->listen_fd,
@@ -1010,7 +1010,7 @@ int pr_inet_set_socket_opts2(pool *p, conn_t *c, int rcvbuf, int sndbuf,
           /* DragonFly BSD uses millsecs as the KEEPINTVL unit. */
           val *= 1000;
 # endif /* DragonFly BSD */
-          if (setsockopt(c->listen_fd, SOL_SOCKET, TCP_KEEPINTVL, (void *)
+          if (setsockopt(c->listen_fd, IPPROTO_TCP, TCP_KEEPINTVL, (void *)
               &val, sizeof(int)) < 0) {
             pr_log_pri(PR_LOG_NOTICE,
               "error setting TCP_KEEPINTVL %d on fd %d: %s", val, c->listen_fd,
