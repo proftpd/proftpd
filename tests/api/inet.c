@@ -392,6 +392,61 @@ START_TEST (inet_set_proto_cork_test) {
 }
 END_TEST
 
+START_TEST (inet_set_proto_keepalive_test) {
+  int fd, sockfd, port = INPORT_ANY, res;
+  conn_t *conn;
+  struct tcp_keepalive keepalive;
+
+  mark_point();
+  res = pr_inet_set_proto_keepalive(NULL, NULL, NULL);
+  fail_unless(res < 0, "Failed to handle null pool");
+  fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+    strerror(errno), errno);
+
+  mark_point();
+  res = pr_inet_set_proto_keepalive(p, NULL, NULL);
+  fail_unless(res < 0, "Failed to handle null conn");
+  fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+    strerror(errno), errno);
+
+  mark_point();
+  conn = pr_inet_create_conn(p, -1, NULL, port, FALSE);
+  fail_unless(conn != NULL, "Failed to create conn: %s", strerror(errno));
+
+  mark_point();
+  res = pr_inet_set_proto_keepalive(p, conn, NULL);
+  fail_unless(res < 0, "Failed to handle null keepalive");
+  fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+    strerror(errno), errno);
+
+  mark_point();
+  conn->listen_fd = -1;
+  keepalive.keepalive_enabled = 1;
+  keepalive.keepalive_idle = 1;
+  keepalive.keepalive_count = 2;
+  keepalive.keepalive_intvl = 3;
+  res = pr_inet_set_proto_keepalive(p, conn, &keepalive);
+  fail_unless(res < 0, "Failed to handle bad listen fd");
+  fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+    strerror(errno), errno);
+
+  mark_point();
+  sockfd = devnull_fd();
+  if (sockfd < 0) {
+    return;
+  }
+
+  fd = conn->listen_fd;
+  conn->listen_fd = sockfd;
+  res = pr_inet_set_proto_keepalive(p, conn, &keepalive);
+  fail_unless(res == 0, "Failed to set socket opts: %s", strerror(errno));
+  conn->listen_fd = fd;
+
+  (void) close(sockfd);
+  pr_inet_close(p, conn);
+}
+END_TEST
+
 START_TEST (inet_set_proto_nodelay_test) {
   int fd, sockfd, port = INPORT_ANY, res;
   conn_t *conn;
@@ -580,7 +635,7 @@ START_TEST (inet_set_proto_opts_ipv6_test) {
 END_TEST
 
 START_TEST (inet_set_reuse_port_test) {
-  int fd, port = INPORT_ANY, res;
+  int port = INPORT_ANY, res;
   conn_t *conn;
 
   mark_point();
@@ -1108,6 +1163,7 @@ Suite *tests_get_inet_suite(void) {
   tcase_add_test(testcase, inet_set_async_test);
   tcase_add_test(testcase, inet_set_block_test);
   tcase_add_test(testcase, inet_set_proto_cork_test);
+  tcase_add_test(testcase, inet_set_proto_keepalive_test);
   tcase_add_test(testcase, inet_set_proto_nodelay_test);
   tcase_add_test(testcase, inet_set_proto_opts_test);
   tcase_add_test(testcase, inet_set_proto_opts_ipv6_test);
