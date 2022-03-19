@@ -38,6 +38,8 @@
 - Issue 1379 - Support uploading to symlinked files.
 - Issue 1401 - Keepalive socket options should be set using IPPROTO_TCP, not
   SOL_SOCKET.
+- Issue 1402 - TCP keepalive SocketOptions should apply to control as well as
+  data connection.
 
 1.3.8rc2 - Released 29-Aug-2021
 --------------------------------

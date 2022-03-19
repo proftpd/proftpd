@@ -6885,6 +6885,19 @@ static int core_sess_init(void) {
 
   init_auth();
 
+  /* Enable any TCP keepalive options on the control connection (Issue #1402).
+   * Note that ctrl conns do not have listening fds, but this function uses
+   * that fd (due to compatibility with data conns), so we temporarily assign
+   * that struct member.
+   */
+  session.c->listen_fd = session.c->wfd;
+  if (pr_inet_set_proto_keepalive(session.pool, session.c,
+      main_server->tcp_keepalive) < 0) {
+    pr_log_debug(DEBUG9, "error setting ctrl conn TCP keepalive: %s",
+      strerror(errno));
+  }
+  session.c->listen_fd = -1;
+
   /* Start the idle timer. */
 
   c = find_config(main_server->conf, CONF_PARAM, "TimeoutIdle", FALSE);

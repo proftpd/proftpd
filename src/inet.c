@@ -942,6 +942,118 @@ int pr_inet_set_proto_opts(pool *p, conn_t *c, int mss, int nodelay,
   return 0;
 }
 
+int pr_inet_set_proto_keepalive(pool *p, conn_t *c,
+    struct tcp_keepalive *tcp_keepalive) {
+  int keepalive = 1, val = -1;
+
+  if (p == NULL ||
+      c == NULL ||
+      tcp_keepalive == NULL) {
+    errno = EINVAL;
+    return -1;
+  }
+
+  if (c->listen_fd < 0) {
+    errno = EINVAL;
+    return -1;
+  }
+
+  keepalive = tcp_keepalive->keepalive_enabled;
+
+  pr_trace_msg(trace_channel, 17, "%s SO_KEEPALIVE on socket fd %d",
+    keepalive ? "enabling" : "disabling", c->listen_fd);
+  if (setsockopt(c->listen_fd, SOL_SOCKET, SO_KEEPALIVE, (void *) &keepalive,
+      sizeof(int)) < 0) {
+    pr_log_pri(PR_LOG_NOTICE, "error setting listen fd SO_KEEPALIVE: %s",
+      strerror(errno));
+    return 0;
+  }
+
+  if (keepalive == 0) {
+    return 0;
+  }
+
+  /* We only try to set the TCP keepalive specifics if SO_KEEPALIVE was
+   * enabled successfully.
+   */
+  pr_trace_msg(trace_channel, 15, "enabled SO_KEEPALIVE on socket fd %d",
+    c->listen_fd);
+
+  /* On Mac OS, the socket option is TCP_KEEPALIVE rather than
+   * TCP_KEEPIDLE.
+   */
+#if defined(TCP_KEEPIDLE) || defined(TCP_KEEPALIVE)
+  val = tcp_keepalive->keepalive_idle;
+  if (val != -1) {
+    int option_name;
+
+# if defined(TCP_KEEPALIVE)
+    option_name = TCP_KEEPALIVE;
+# else
+    option_name = TCP_KEEPIDLE;
+# endif /* TCP_KEEPALIVE or TCP_KEEPIDLE */
+
+# ifdef __DragonFly__
+    /* DragonFly BSD uses millsecs as the KEEPIDLE unit. */
+    val *= 1000;
+# endif /* DragonFly BSD */
+    if (setsockopt(c->listen_fd, IPPROTO_TCP, option_name, (void *) &val,
+        sizeof(int)) < 0) {
+      pr_log_pri(PR_LOG_NOTICE,
+        "error setting TCP_KEEPIDLE %d on fd %d: %s", val, c->listen_fd,
+       strerror(errno));
+
+    } else {
+      pr_trace_msg(trace_channel, 15,
+        "enabled TCP_KEEPIDLE %d on socket fd %d", val, c->listen_fd);
+    }
+  }
+#endif /* TCP_KEEPIDLE */
+
+#if defined(TCP_KEEPCNT)
+  val = tcp_keepalive->keepalive_count;
+  if (val != -1) {
+    if (setsockopt(c->listen_fd, IPPROTO_TCP, TCP_KEEPCNT, (void *) &val,
+        sizeof(int)) < 0) {
+      pr_log_pri(PR_LOG_NOTICE,
+        "error setting TCP_KEEPCNT %d on fd %d: %s", val, c->listen_fd,
+        strerror(errno));
+
+    } else {
+      pr_trace_msg(trace_channel, 15,
+        "enabled TCP_KEEPCNT %d on socket fd %d", val, c->listen_fd);
+    }
+  }
+#endif /* TCP_KEEPCNT */
+
+#if defined(TCP_KEEPINTVL)
+  val = tcp_keepalive->keepalive_intvl;
+  if (val != -1) {
+# ifdef __DragonFly__
+    /* DragonFly BSD uses millsecs as the KEEPINTVL unit. */
+    val *= 1000;
+# endif /* DragonFly BSD */
+    if (setsockopt(c->listen_fd, IPPROTO_TCP, TCP_KEEPINTVL, (void *) &val,
+        sizeof(int)) < 0) {
+      pr_log_pri(PR_LOG_NOTICE,
+        "error setting TCP_KEEPINTVL %d on fd %d: %s", val, c->listen_fd,
+        strerror(errno));
+
+    } else {
+      pr_trace_msg(trace_channel, 15,
+        "enabled TCP_KEEPINTVL %d on socket fd %d", val, c->listen_fd);
+    }
+  }
+#endif /* TCP_KEEPINTVL */
+
+  /* Avoid compiler warnings on platforms which do not support any
+   * of the above TCP keepalive macros.
+   */
+  (void) val;
+
+  return 0;
+}
+
 /* Set socket options on a connection.  */
 int pr_inet_set_socket_opts2(pool *p, conn_t *c, int rcvbuf, int sndbuf,
     struct tcp_keepalive *tcp_keepalive, int reuse_port) {
@@ -959,93 +1071,10 @@ int pr_inet_set_socket_opts2(pool *p, conn_t *c, int rcvbuf, int sndbuf,
    */
 
   if (c->listen_fd != -1) {
-    int keepalive = 1;
     int crcvbuf = 0, csndbuf = 0;
     socklen_t len;
 
-    if (tcp_keepalive != NULL) {
-      keepalive = tcp_keepalive->keepalive_enabled;
-    }
-
-    pr_trace_msg(trace_channel, 17, "%s SO_KEEPALIVE on socket fd %d",
-      keepalive ? "enabling" : "disabling", c->listen_fd);
-    if (setsockopt(c->listen_fd, SOL_SOCKET, SO_KEEPALIVE, (void *)
-        &keepalive, sizeof(int)) < 0) {
-      pr_log_pri(PR_LOG_NOTICE, "error setting listen fd SO_KEEPALIVE: %s",
-        strerror(errno));
-
-    } else {
-      /* We only try to set the TCP keepalive specifics if SO_KEEPALIVE was
-       * set successfully.
-       */
-      pr_trace_msg(trace_channel, 15,
-        "enabled SO_KEEPALIVE on socket fd %d", c->listen_fd);
-
-      if (tcp_keepalive != NULL) {
-        int val = 0;
-
-#if defined(TCP_KEEPIDLE)
-        val = tcp_keepalive->keepalive_idle;
-        if (val != -1) {
-# ifdef __DragonFly__
-          /* DragonFly BSD uses millsecs as the KEEPIDLE unit. */
-          val *= 1000;
-# endif /* DragonFly BSD */
-          if (setsockopt(c->listen_fd, IPPROTO_TCP, TCP_KEEPIDLE, (void *)
-              &val, sizeof(int)) < 0) {
-            pr_log_pri(PR_LOG_NOTICE,
-              "error setting TCP_KEEPIDLE %d on fd %d: %s", val, c->listen_fd,
-              strerror(errno));
-
-          } else {
-            pr_trace_msg(trace_channel, 15,
-              "enabled TCP_KEEPIDLE %d on socket fd %d", val, c->listen_fd);
-          }
-        }
-#endif /* TCP_KEEPIDLE */
-
-#if defined(TCP_KEEPCNT)
-        val = tcp_keepalive->keepalive_count;
-        if (val != -1) {
-          if (setsockopt(c->listen_fd, IPPROTO_TCP, TCP_KEEPCNT, (void *)
-              &val, sizeof(int)) < 0) {
-            pr_log_pri(PR_LOG_NOTICE,
-              "error setting TCP_KEEPCNT %d on fd %d: %s", val, c->listen_fd,
-              strerror(errno));
-
-          } else {
-            pr_trace_msg(trace_channel, 15,
-              "enabled TCP_KEEPCNT %d on socket fd %d", val, c->listen_fd);
-          }
-        }
-#endif /* TCP_KEEPCNT */
-
-#if defined(TCP_KEEPINTVL)
-        val = tcp_keepalive->keepalive_intvl;
-        if (val != -1) {
-# ifdef __DragonFly__
-          /* DragonFly BSD uses millsecs as the KEEPINTVL unit. */
-          val *= 1000;
-# endif /* DragonFly BSD */
-          if (setsockopt(c->listen_fd, IPPROTO_TCP, TCP_KEEPINTVL, (void *)
-              &val, sizeof(int)) < 0) {
-            pr_log_pri(PR_LOG_NOTICE,
-              "error setting TCP_KEEPINTVL %d on fd %d: %s", val, c->listen_fd,
-              strerror(errno));
-
-          } else {
-            pr_trace_msg(trace_channel, 15,
-              "enabled TCP_KEEPINTVL %d on socket fd %d", val, c->listen_fd);
-          }
-        }
-#endif /* TCP_KEEPINTVL */
-
-        /* Avoid compiler warnings on platforms which do not support any
-         * of the above TCP keepalive macros.
-         */
-        (void) val;
-      }
-    }
+    (void) pr_inet_set_proto_keepalive(p, c, tcp_keepalive);
 
     if (sndbuf > 0) {
       len = sizeof(csndbuf);
