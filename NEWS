@@ -23,6 +23,8 @@
   transfers.
 - Bug 4467 - DeleteAbortedStores removes successfully transferred files
   unexpectedly.
+- Issue 1401 - Keepalive socket options should be set using IPPROTO_TCP, not
+  SOL_SOCKET.
 
 1.3.7c - Released 29-Aug-2021
 --------------------------------
