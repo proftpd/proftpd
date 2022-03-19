@@ -2,7 +2,7 @@
  * ProFTPD - FTP server daemon
  * Copyright (c) 1997, 1998 Public Flood Software
  * Copyright (c) 1999, 2000 MacGyver aka Habeeb J. Dihu <macgyver@tos.net>
- * Copyright (c) 2001-2020 The ProFTPD Project team
+ * Copyright (c) 2001-2022 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -6779,6 +6779,19 @@ static int core_sess_init(void) {
   unsigned long fs_opts = 0UL;
 
   init_auth();
+
+  /* Enable any TCP keepalive options on the control connection (Issue #1402).
+   * Note that ctrl conns do not have listening fds, but this function uses
+   * that fd (due to compatibility with data conns), so we temporarily assign
+   * that struct member.
+   */
+  session.c->listen_fd = session.c->wfd;
+  if (pr_inet_set_proto_keepalive(session.pool, session.c,
+      main_server->tcp_keepalive) < 0) {
+    pr_log_debug(DEBUG9, "error setting ctrl conn TCP keepalive: %s",
+      strerror(errno));
+  }
+  session.c->listen_fd = -1;
 
   c = find_config(main_server->conf, CONF_PARAM, "MultilineRFC2228", FALSE);
   if (c != NULL) {
