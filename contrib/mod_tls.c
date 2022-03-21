@@ -10240,19 +10240,42 @@ static int tls_verify_cb(int ok, X509_STORE_CTX *ctx) {
   }
 
   c = find_config(main_server->conf, CONF_PARAM, "TLSVerifyOrder", FALSE);
-  if (c) {
+  if (c != NULL) {
     register unsigned int i;
 
     for (i = 0; i < c->argc; i++) {
       char *mech = c->argv[i];
 
-      if (strncasecmp(mech, "crl", 4) == 0) {
+      if (strcasecmp(mech, "crl") == 0) {
         ok = tls_verify_crl(ok, ctx);
+        if (!ok) {
+          int crl_verify_err = 0;
+
+#if OPENSSL_VERSION_NUMBER >= 0x10100000L
+          crl_verify_err = X509_STORE_CTX_get_error(ctx);
+#else
+          crl_verify_err = ctx->error;
+#endif /* OpenSSL-1.1.x and later */
+
+         /* If we use the wrong public key to verify the CRL (as for an empty
+          * CRL, or a CRL signed by a different CA/key than the offered cert),
+          * then this could fail in an expected manner (Bug #4468).
+          */
+          if (crl_verify_err == X509_V_ERR_CRL_SIGNATURE_FAILURE) {
+#if OPENSSL_VERSION_NUMBER >= 0x10100000L
+            X509_STORE_CTX_set_error(ctx, 0);
+#else
+            ctx->error = 0;
+#endif /* OpenSSL-1.1.x and later */
+            ok = 1;
+          }
+        }
+
         if (!ok) {
           break;
         }
 
-      } else if (strncasecmp(mech, "ocsp", 5) == 0) {
+      } else if (strcasecmp(mech, "ocsp") == 0) {
         ok = tls_verify_ocsp(ok, ctx);
         if (!ok) {
           break;
@@ -10266,6 +10289,28 @@ static int tls_verify_cb(int ok, X509_STORE_CTX *ctx) {
      * any AIA attributes (i.e. no use of OCSP).
      */
     ok = tls_verify_crl(ok, ctx);
+    if (!ok) {
+      int crl_verify_err = 0;
+
+#if OPENSSL_VERSION_NUMBER >= 0x10100000L
+      crl_verify_err = X509_STORE_CTX_get_error(ctx);
+#else
+      crl_verify_err = ctx->error;
+#endif /* OpenSSL-1.1.x and later */
+
+     /* If we use the wrong public key to verify the CRL (as for an empty
+      * CRL, or a CRL signed by a different CA/key than the offered cert),
+      * then this could fail in an expected manner (Bug #4468).
+      */
+      if (crl_verify_err == X509_V_ERR_CRL_SIGNATURE_FAILURE) {
+#if OPENSSL_VERSION_NUMBER >= 0x10100000L
+        X509_STORE_CTX_set_error(ctx, 0);
+#else
+        ctx->error = 0;
+#endif /* OpenSSL-1.1.x and later */
+        ok = 1;
+      }
+    }
   }
 
   if (!ok) {
@@ -10363,7 +10408,7 @@ static int tls_verify_crl(int ok, X509_STORE_CTX *ctx) {
   /* Unless a revocation store for CRLs was created we cannot do any
    * CRL-based verification, of course.
    */
-  if (!tls_crl_store) {
+  if (tls_crl_store == NULL) {
     return ok;
   }
 
@@ -10474,7 +10519,7 @@ static int tls_verify_crl(int ok, X509_STORE_CTX *ctx) {
 
       /* Verify the signature on this CRL */
       res = X509_CRL_verify(crl, pubkey);
-      if (pubkey) {
+      if (pubkey != NULL) {
         EVP_PKEY_free(pubkey);
       }
 
