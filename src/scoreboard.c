@@ -1,6 +1,6 @@
 /*
  * ProFTPD - FTP server daemon
- * Copyright (c) 2001-2020 The ProFTPD Project team
+ * Copyright (c) 2001-2022 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -127,11 +127,11 @@ static const char *get_lock_type(struct flock *lock) {
 
   switch (lock->l_type) {
     case F_RDLCK:
-      lock_type = "read";
+      lock_type = "read-lock";
       break;
 
     case F_WRLCK:
-      lock_type = "write";
+      lock_type = "write-lock";
       break;
 
     case F_UNLCK:
@@ -161,7 +161,7 @@ int pr_lock_scoreboard(int mutex_fd, int lock_type) {
     return -1;
   }
 
-  pr_trace_msg("lock", 9, "attempt #%u to %s-lock scoreboard mutex fd %d",
+  pr_trace_msg("lock", 9, "attempt #%u to %s scoreboard mutex fd %d",
     nattempts, lock_label, mutex_fd);
 
   while (fcntl(mutex_fd, F_SETLK, &lock) < 0) {
@@ -173,14 +173,14 @@ int pr_lock_scoreboard(int mutex_fd, int lock_type) {
     }
 
     pr_trace_msg("lock", 3,
-      "%s-lock (attempt #%u) of scoreboard mutex fd %d failed: %s",
-      lock_label, nattempts, mutex_fd, strerror(xerrno));
+      "%s (attempt #%u) of scoreboard mutex fd %d failed: %s", lock_label,
+      nattempts, mutex_fd, strerror(xerrno));
     if (xerrno == EACCES) {
       struct flock locker;
 
       /* Get the PID of the process blocking this lock. */
       if (fcntl(mutex_fd, F_GETLK, &locker) == 0) {
-        pr_trace_msg("lock", 3, "process ID %lu has blocking %s lock on "
+        pr_trace_msg("lock", 3, "process ID %lu has blocking %s on "
           "scoreboard mutex fd %d", (unsigned long) locker.l_pid,
           get_lock_type(&locker), mutex_fd);
       }
@@ -201,14 +201,14 @@ int pr_lock_scoreboard(int mutex_fd, int lock_type) {
 
         errno = 0;
         pr_trace_msg("lock", 9,
-          "attempt #%u to %s-lock scoreboard mutex fd %d", nattempts,
-          lock_label, mutex_fd);
+          "attempt #%u to %s scoreboard mutex fd %d", nattempts, lock_label,
+          mutex_fd);
         continue;
       }
 
-      pr_trace_msg("lock", 9, "unable to acquire %s-lock on "
-        "scoreboard mutex fd %d after %u attempts: %s", lock_label, mutex_fd,
-        nattempts, strerror(xerrno));
+      pr_trace_msg("lock", 9, "unable to acquire %s on scoreboard mutex fd %d "
+        "after %u attempts: %s", lock_label, mutex_fd, nattempts,
+        strerror(xerrno));
     }
 
     errno = xerrno;
@@ -216,7 +216,7 @@ int pr_lock_scoreboard(int mutex_fd, int lock_type) {
   }
 
   pr_trace_msg("lock", 9,
-    "%s-lock of scoreboard mutex fd %d successful after %u %s", lock_label,
+    "%s of scoreboard mutex fd %d successful after %u %s", lock_label,
     mutex_fd, nattempts, nattempts != 1 ? "attempts" : "attempt");
 
   return 0;

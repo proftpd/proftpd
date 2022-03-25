@@ -40,6 +40,7 @@ ProFTPD source distribution:
 <h2>Directives</h2>
 <ul>
   <li><a href="#FactsAdvertise">FactsAdvertise</a>
+  <li><a href="#FactsDefault">FactsDefault</a>
   <li><a href="#FactsOptions">FactsOptions</a>
 </ul>
 
@@ -73,6 +74,48 @@ you can disable the advertising of support for those commands using
     FactsAdvertise off
   &lt;/IfModule&gt;
 </pre>
+
+<hr>
+<h3><a name="FactsAdvertise">FactsDefault</a></h3>
+<strong>Syntax:</strong> FactsDefault <em>fact1 ...</em><br>
+<strong>Default:</strong> None</br>
+<strong>Context:</strong> server config, <code>&lt;VirtualHost&gt;</code>, <code>&lt;Global&gt;</code><br>
+<strong>Module:</strong> mod_facts<br>
+<strong>Compatibility:</strong> 1.3.8rc3 and later
+
+<p>
+The <code>FactsDefault</code> directive configures the default list of facts
+to include in responses to <code>MLSD</code>/<code>MLST</code> FTP commands.
+
+The supported <em>fact</em> names are:
+<ul>
+  <li><code>media-type</code> (file media type, where known)
+  <li><code>modify</code> (file modification timestamp)
+  <li><code>perm</code> (file permissions)
+  <li><code>size</code> (file size in bytes)
+  <li><code>type</code> (file type, per <a href="https://datatracker.ietf.org/doc/html/rfc3659#section-7.5.1">RFC 3659, Section 7.5.1</a>)
+  <li><code>unique</code> (unique file identifier)
+  <li><code>UNIX.group</code> (file numeric UNIX group ID)
+  <li><code>UNIX.groupname</code> (file textual UNIX group name)
+  <li><code>UNIX.mode</code> (file numeric UNIX permissions/mode)
+  <li><code>UNIX.owner</code> (file numeric UNIX user ID)
+  <li><code>UNIX.ownername</code> (file textual UNIX user name)
+</ul>
+
+<p>
+By default, the <code>mod_facts</code> module will provide the following facts:
+<ul>
+  <li><code>modify</code>
+  <li><code>perm</code>
+  <li><code>size</code>
+  <li><code>type</code>
+  <li><code>unique</code>
+  <li><code>UNIX.group</code>
+  <li><code>UNIX.groupname</code>
+  <li><code>UNIX.mode</code>
+  <li><code>UNIX.owner</code>
+  <li><code>UNIX.ownername</code>
+</ul>
 
 <hr>
 <h3><a name="FactsOptions">FactsOptions</a></h3>

@@ -501,6 +501,12 @@
 /* Define if you have the PCRE pcre_free_study function.  */
 #undef HAVE_PCRE_PCRE_FREE_STUDY
 
+/* Define if you have the PCRE2 pcre2_jit_compile function.  */
+#undef HAVE_PCRE2_PCRE2_JIT_COMPILE
+
+/* Define if you have the PCRE2 pcre2_regcomp function.  */
+#undef HAVE_PCRE2_PCRE2_REGCOMP
+
 /* Define if you have the perm_copy_fd function.  */
 #undef HAVE_PERM_COPY_FD
 
@@ -1168,6 +1174,9 @@
 
 /* Define if using PCRE support.  */
 #undef PR_USE_PCRE
+
+/* Define if using PCRE2 support.  */
+#undef PR_USE_PCRE2
 
 /* Define if sendfile support, if available, should be used.  */
 #undef PR_USE_SENDFILE

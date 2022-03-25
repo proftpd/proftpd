@@ -2,7 +2,7 @@
  * ProFTPD - FTP server daemon
  * Copyright (c) 1997, 1998 Public Flood Software
  * Copyright (c) 1999, 2000 MacGyver aka Habeeb J. Dihu <macgyver@tos.net>
- * Copyright (c) 2001-2021 The ProFTPD Project team
+ * Copyright (c) 2001-2022 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -62,8 +62,9 @@ static float use_sendfile_pct = -1.0;
 static int xfer_check_limit(cmd_rec *);
 
 /* TransferOptions */
-#define PR_XFER_OPT_HANDLE_ALLO		0x0001
-#define PR_XFER_OPT_IGNORE_ASCII	0x0002
+#define PR_XFER_OPT_HANDLE_ALLO			0x0001
+#define PR_XFER_OPT_IGNORE_ASCII		0x0002
+#define PR_XFER_OPT_ALLOW_SYMLINK_UPLOAD	0x0004
 static unsigned long xfer_opts = PR_XFER_OPT_HANDLE_ALLO;
 
 static void xfer_exit_ev(const void *, void *);
@@ -311,19 +312,34 @@ static int xfer_check_limit(cmd_rec *cmd) {
        * address to be counted.
        */
       if (strcmp(score->sce_server_addr, server_addr) != 0) {
+        pr_trace_msg(trace_channel, 25,
+          "MaxTransfersPerHost: server address '%s' does not match '%s', "
+          "skipping", server_addr, score->sce_server_addr);
         continue;
       }
 
       if (strcmp(score->sce_client_addr, client_addr) != 0) {
+        pr_trace_msg(trace_channel, 25,
+          "MaxTransfersPerHost: client address '%s' does not match '%s', "
+          "skipping", client_addr, score->sce_client_addr);
         continue;
       }
 
-      if (strcmp(score->sce_cmd, xfer_cmd) == 0) {
-        curr++;
+      if (strcmp(score->sce_cmd, xfer_cmd) != 0) {
+        pr_trace_msg(trace_channel, 25,
+          "MaxTransfersPerHost: current command '%s' does not match '%s', "
+          "skipping", xfer_cmd, score->sce_cmd);
+        continue;
       }
+
+      curr++;
     }
 
     pr_restore_scoreboard();
+
+    pr_trace_msg(trace_channel, 19,
+      "MaxTransfersPerHost: %s (current = %u, max = %u) for client '%s'",
+      xfer_cmd, curr, max, client_addr);
 
     if (curr >= max) {
       char maxn[20];
@@ -387,19 +403,34 @@ static int xfer_check_limit(cmd_rec *cmd) {
       pr_signals_handle();
 
       if (strcmp(score->sce_server_addr, server_addr) != 0) {
+        pr_trace_msg(trace_channel, 25,
+          "MaxTransfersPerUser: server address '%s' does not match '%s', "
+          "skipping", server_addr, score->sce_server_addr);
         continue;
       }
 
       if (strcmp(score->sce_user, session.user) != 0) {
+        pr_trace_msg(trace_channel, 25,
+          "MaxTransfersPerUser: user '%s' does not match '%s', skipping",
+          session.user, score->sce_user);
         continue;
       }
 
       if (strcmp(score->sce_cmd, xfer_cmd) == 0) {
-        curr++;
+        pr_trace_msg(trace_channel, 25,
+          "MaxTransfersPerUser: command '%s' does not match '%s', skipping",
+          xfer_cmd, score->sce_cmd);
+        continue;
       }
+
+      curr++;
     }
 
     pr_restore_scoreboard();
+
+    pr_trace_msg(trace_channel, 19,
+      "MaxTransfersPerUser: %s (current = %u, max = %u) for user '%s'",
+      xfer_cmd, curr, max, session.user);
 
     if (curr >= max) {
       char maxn[20];
@@ -1022,9 +1053,8 @@ static void stor_abort(pool *p) {
         } 
       }
     }
-  }
 
-  if (session.xfer.path != NULL) {
+  } else if (session.xfer.path != NULL) {
     if (delete_stores != NULL &&
         *delete_stores == TRUE) {
       pr_log_debug(DEBUG5, "removing aborted file '%s'", session.xfer.path);
@@ -1037,14 +1067,16 @@ static void stor_abort(pool *p) {
         pr_error_set_why(err, pstrcat(tmp_pool, "delete aborted file '",
           session.xfer.path, "'", NULL));
 
-        if (err != NULL) {
-          pr_log_debug(DEBUG0, "%s", pr_error_strerror(err, 0));
-          pr_error_destroy(err);
-          err = NULL;
+        if (xerrno != ENOENT) {
+          if (err != NULL) {
+            pr_log_debug(DEBUG0, "%s", pr_error_strerror(err, 0));
+            pr_error_destroy(err);
+            err = NULL;
 
-        } else {
-          pr_log_debug(DEBUG0, "error deleting aborted file '%s': %s",
-            session.xfer.path, strerror(xerrno));
+          } else {
+            pr_log_debug(DEBUG0, "error deleting aborted file '%s': %s",
+              session.xfer.path, strerror(xerrno));
+          }
         }
       }
     }
@@ -1295,10 +1327,10 @@ MODRET xfer_post_mode(cmd_rec *cmd) {
  */
 MODRET xfer_pre_stor(cmd_rec *cmd) {
   char *decoded_path, *path;
-  mode_t fmode;
+  mode_t fmode = (mode_t) 0;
   unsigned char *allow_overwrite = NULL, *allow_restart = NULL;
   config_rec *c;
-  int res;
+  int res, is_file = FALSE;
 
   if (cmd->argc < 2) {
     pr_response_add_err(R_500, _("'%s' not understood"),
@@ -1376,39 +1408,57 @@ MODRET xfer_pre_stor(cmd_rec *cmd) {
 
   allow_overwrite = get_param_ptr(CURRENT_CONF, "AllowOverwrite", FALSE);
 
-  if (fmode && (session.xfer.xfer_type != STOR_APPEND) &&
-      (!allow_overwrite || *allow_overwrite == FALSE)) {
-    pr_log_debug(DEBUG6, "AllowOverwrite denied permission for %s", cmd->arg);
-    pr_response_add_err(R_550, _("%s: Overwrite permission denied"), cmd->arg);
+  if (fmode != 0) {
+    if (session.xfer.xfer_type != STOR_APPEND &&
+        (!allow_overwrite || *allow_overwrite == FALSE)) {
+      pr_log_debug(DEBUG6, "AllowOverwrite denied permission for %s", cmd->arg);
+      pr_response_add_err(R_550, _("%s: Overwrite permission denied"), cmd->arg);
 
-    pr_cmd_set_errno(cmd, EACCES);
-    errno = EACCES;
-    return PR_ERROR(cmd);
-  }
-
-  if (fmode &&
-      !S_ISREG(fmode) &&
-      !S_ISFIFO(fmode)) {
-
-    /* Make an exception for the non-regular /dev/null file.  This will allow
-     * network link testing by uploading as much data as necessary directly
-     * to /dev/null.
-     *
-     * On Linux, allow another exception for /dev/full; this is useful for
-     * tests which want to simulate running out-of-space scenarios.
-     */
-    if (strcasecmp(path, "/dev/null") != 0
-#ifdef LINUX
-        && strcasecmp(path, "/dev/full") != 0
-#endif
-       ) {
-      pr_response_add_err(R_550, _("%s: Not a regular file"), cmd->arg);
-
-      /* Deliberately use EISDIR for anything non-file (e.g. directories). */
-      pr_cmd_set_errno(cmd, EISDIR);
-      errno = EISDIR;
+      pr_cmd_set_errno(cmd, EACCES);
+      errno = EACCES;
       return PR_ERROR(cmd);
     }
+
+    if (S_ISREG(fmode) ||
+        S_ISFIFO(fmode)) {
+      is_file = TRUE;
+
+    } else {
+      /* Make an exception for the non-regular /dev/null file.  This will allow
+       * network link testing by uploading as much data as necessary directly
+       * to /dev/null.
+       *
+       * On Linux, allow another exception for /dev/full; this is useful for
+       * tests which want to simulate running out-of-space scenarios.
+       */
+      if (strcasecmp(path, "/dev/null") == 0
+#ifdef LINUX
+          || strcasecmp(path, "/dev/full") == 0
+#endif
+        ) {
+        is_file = TRUE;
+      }
+
+      if (is_file == FALSE &&
+          S_ISLNK(fmode) &&
+          (xfer_opts & PR_XFER_OPT_ALLOW_SYMLINK_UPLOAD)) {
+        /* We are allowing uploading to symlinks. */
+        is_file = TRUE;
+      }
+    }
+
+  } else {
+    /* If we cannot discover the mode, assume it is a file. */
+    is_file = TRUE;
+  }
+
+  if (is_file == FALSE) {
+    pr_response_add_err(R_550, _("%s: Not a regular file"), cmd->arg);
+
+    /* Deliberately use EISDIR for anything non-file (e.g. directories). */
+    pr_cmd_set_errno(cmd, EISDIR);
+    errno = EISDIR;
+    return PR_ERROR(cmd);
   }
 
   /* If restarting, check permissions on this directory, if
@@ -3874,6 +3924,10 @@ MODRET set_transferoptions(cmd_rec *cmd) {
   for (i = 1; i < cmd->argc; i++) {
     if (strcasecmp(cmd->argv[i], "IgnoreASCII") == 0) {
       opts |= PR_XFER_OPT_IGNORE_ASCII;
+
+    } else if (strcasecmp(cmd->argv[i], "AllowSymlinkUpload") == 0 ||
+               strcasecmp(cmd->argv[i], "AllowSymlinkUploads") == 0) {
+      opts |= PR_XFER_OPT_ALLOW_SYMLINK_UPLOAD;
 
     } else {
       CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, ": unknown TransferOption '",

@@ -2,7 +2,7 @@
  * mod_tls - An RFC2228 SSL/TLS module for ProFTPD
  *
  * Copyright (c) 2000-2002 Peter 'Luna' Runestig <peter@runestig.com>
- * Copyright (c) 2002-2021 TJ Saunders <tj@castaglia.org>
+ * Copyright (c) 2002-2022 TJ Saunders <tj@castaglia.org>
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without modifi-
@@ -17027,7 +17027,7 @@ static char *get_sess_id_text(BIO *bio, const unsigned char *id,
     data[datalen] = '\0';
 
   } else {
-    data = "UKNOWN";
+    data = "UNKNOWN";
   }
 
   return data;
@@ -18935,8 +18935,11 @@ static int tls_sess_init(void) {
     if (tls_accept(session.c, FALSE) < 0) {
       tls_log("%s", "implicit SSL/TLS negotiation failed on control channel");
 
-      errno = EACCES;
-      return -1;
+      /* Rather than returning an error to the init callback, we disconnect
+       * the session ourselves here.  Makes for slightly nicer logging.
+       */
+      pr_session_disconnect(&tls_module, PR_SESS_DISCONNECT_CLIENT_EOF,
+        "Failed TLS handshake");
     }
 
     tls_flags |= TLS_SESS_ON_CTRL;

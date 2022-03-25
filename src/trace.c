@@ -1,6 +1,6 @@
 /*
  * ProFTPD - FTP server daemon
- * Copyright (c) 2006-2021 The ProFTPD Project team
+ * Copyright (c) 2006-2022 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -49,6 +49,7 @@ static const char *trace_channels[] = {
   "ctrls",
   "data",
   "delay",
+  "directory",
   "dns",
   "dso",
   "encode",
@@ -166,6 +167,7 @@ static int trace_write(const char *channel, int level, const char *msg,
     buflen += len;
   }
 
+  destroy_pool(tmp_pool);
   buf[sizeof(buf)-1] = '\0';
 
   if (buflen < (sizeof(buf) - 1)) {
@@ -191,7 +193,6 @@ static int trace_write(const char *channel, int level, const char *msg,
     return 0;
   }
 
-  destroy_pool(tmp_pool);
   return write(trace_logfd, buf, buflen);
 }
 

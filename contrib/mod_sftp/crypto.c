@@ -44,6 +44,9 @@ struct sftp_cipher {
   const char *name;
   const char *openssl_name;
 
+  /* Used mostly for AEAD algorithms like GCM. */
+  size_t auth_len;
+
   /* Used mostly for the RC4/ArcFour algorithms, for mitigating attacks
    * based on the first N bytes of the keystream.
    */
@@ -83,30 +86,35 @@ static struct sftp_cipher ciphers[] = {
    * sftp_crypto_get_cipher(), as special cases.
    */
 #if OPENSSL_VERSION_NUMBER > 0x000907000L
-  { "aes256-ctr",	NULL,		0,	NULL,	TRUE, TRUE },
-  { "aes192-ctr",	NULL,		0,	NULL,	TRUE, TRUE },
-  { "aes128-ctr",	NULL,		0,	NULL,	TRUE, TRUE },
+  { "aes256-ctr",	NULL,		0, 0,	NULL,	TRUE, TRUE },
+  { "aes192-ctr",	NULL,		0, 0,	NULL,	TRUE, TRUE },
+  { "aes128-ctr",	NULL,		0, 0,	NULL,	TRUE, TRUE },
+
+# if defined(HAVE_EVP_AES_256_GCM_OPENSSL)
+  { "aes256-gcm@openssh.com", "aes-256-gcm", 16, 0, EVP_aes_256_gcm, TRUE, TRUE },
+  { "aes128-gcm@openssh.com", "aes-128-gcm", 16, 0, EVP_aes_128_gcm, TRUE, TRUE },
+# endif
 
 # ifndef HAVE_AES_CRIPPLED_OPENSSL
-  { "aes256-cbc",	"aes-256-cbc",	0,	EVP_aes_256_cbc, TRUE, TRUE },
-  { "aes192-cbc",	"aes-192-cbc",	0,	EVP_aes_192_cbc, TRUE, TRUE },
+  { "aes256-cbc",	"aes-256-cbc",	0, 0,	EVP_aes_256_cbc, TRUE, TRUE },
+  { "aes192-cbc",	"aes-192-cbc",	0, 0,	EVP_aes_192_cbc, TRUE, TRUE },
 # endif /* !HAVE_AES_CRIPPLED_OPENSSL */
 
-  { "aes128-cbc",	"aes-128-cbc",	0,	EVP_aes_128_cbc, TRUE, TRUE },
+  { "aes128-cbc",	"aes-128-cbc",	0, 0,	EVP_aes_128_cbc, TRUE, TRUE },
 #endif
 
 #if !defined(OPENSSL_NO_BF)
-  { "blowfish-ctr",	NULL,		0,	NULL,	FALSE, FALSE },
-  { "blowfish-cbc",	"bf-cbc",	0,	EVP_bf_cbc, FALSE, FALSE },
+  { "blowfish-ctr",	NULL,		0, 0,	NULL,	FALSE, FALSE },
+  { "blowfish-cbc",	"bf-cbc",	0, 0,	EVP_bf_cbc, FALSE, FALSE },
 #endif /* !OPENSSL_NO_BF */
 
 #if !defined(OPENSSL_NO_CAST)
-  { "cast128-cbc",	"cast5-cbc",	0,	EVP_cast5_cbc, TRUE, FALSE },
+  { "cast128-cbc",	"cast5-cbc",	0, 0,	EVP_cast5_cbc, TRUE, FALSE },
 #endif /* !OPENSSL_NO_CAST */
 
 #if !defined(OPENSSL_NO_RC4)
-  { "arcfour256",	"rc4",		1536,	EVP_rc4, FALSE, FALSE },
-  { "arcfour128",	"rc4",		1536,	EVP_rc4, FALSE, FALSE },
+  { "arcfour256",	"rc4",		0, 1536, EVP_rc4, FALSE, FALSE },
+  { "arcfour128",	"rc4",		0, 1536, EVP_rc4, FALSE, FALSE },
 #endif /* !OPENSSL_NO_RC4 */
 
 #if 0
@@ -116,17 +124,20 @@ static struct sftp_cipher ciphers[] = {
    * If there is a hue and cry, I might add this to the code BUT it would
    * require explicit configuration via SFTPCiphers, and would generate
    * warnings about its unsafe use.
+   *
+   * Even then, RFC 8758 explicitly deprecates/removes RC4 (all variants)
+   * from SSH.
    */
-  { "arcfour",		"rc4",		0,	EVP_rc4, FALSE, FALSE },
+  { "arcfour",		"rc4",		0, 0,	EVP_rc4, FALSE, FALSE },
 #endif
 
 #if !defined(OPENSSL_NO_DES)
-  { "3des-ctr",		NULL,		0,	NULL, TRUE, TRUE },
-  { "3des-cbc",		"des-ede3-cbc",	0,	EVP_des_ede3_cbc, TRUE, TRUE },
+  { "3des-ctr",		NULL,		0, 0,	NULL, TRUE, TRUE },
+  { "3des-cbc",		"des-ede3-cbc",	0, 0,	EVP_des_ede3_cbc, TRUE, TRUE },
 #endif /* !OPENSSL_NO_DES */
 
-  { "none",		"null",		0,	EVP_enc_null, FALSE, TRUE },
-  { NULL, NULL, 0, NULL, FALSE, FALSE }
+  { "none",		"null",		0, 0,	EVP_enc_null, FALSE, TRUE },
+  { NULL, NULL, 0, 0, NULL, FALSE, FALSE }
 };
 
 struct sftp_digest {
@@ -158,20 +169,28 @@ static struct sftp_digest digests[] = {
    */
 #ifdef HAVE_SHA256_OPENSSL
   { "hmac-sha2-256",	"sha256",		EVP_sha256,	0, TRUE, TRUE },
+  { "hmac-sha2-256-etm@openssh.com", "sha256",	EVP_sha256,	0, TRUE, TRUE },
 #endif /* SHA256 support in OpenSSL */
 #ifdef HAVE_SHA512_OPENSSL
   { "hmac-sha2-512",	"sha512",		EVP_sha512,	0, TRUE, TRUE },
+  { "hmac-sha2-512-etm@openssh.com", "sha512",	EVP_sha512,	0, TRUE, TRUE },
 #endif /* SHA512 support in OpenSSL */
   { "hmac-sha1",	"sha1",		EVP_sha1,	0, 	TRUE, TRUE },
+  { "hmac-sha1-etm@openssh.com", "sha1",EVP_sha1,	0, 	TRUE, TRUE },
   { "hmac-sha1-96",	"sha1",		EVP_sha1,	12,	TRUE, TRUE },
+  { "hmac-sha1-96-etm@openssh.com", "sha1", EVP_sha1,	12, 	TRUE, TRUE },
   { "hmac-md5",		"md5",		EVP_md5,	0,	FALSE, FALSE },
+  { "hmac-md5-etm@openssh.com", "md5",	EVP_md5,	0, 	FALSE, TRUE },
   { "hmac-md5-96",	"md5",		EVP_md5,	12,	FALSE, FALSE },
+  { "hmac-md5-96-etm@openssh.com", "md5", EVP_md5,	12, 	FALSE, TRUE },
 #if !defined(OPENSSL_NO_RIPEMD)
   { "hmac-ripemd160",	"rmd160",	EVP_ripemd160,	0,	FALSE, FALSE },
 #endif /* !OPENSSL_NO_RIPEMD */
 #if OPENSSL_VERSION_NUMBER > 0x000907000L
   { "umac-64@openssh.com", NULL,	NULL,		8,	TRUE, FALSE },
+  { "umac-64-etm@openssh.com", NULL,	NULL,		8,	TRUE, FALSE },
   { "umac-128@openssh.com", NULL,	NULL,		16,	TRUE, FALSE },
+  { "umac-128-etm@openssh.com", NULL,	NULL,		16,	TRUE, FALSE },
 #endif /* OpenSSL-0.9.7 or later */
   { "none",		"null",		EVP_md_null,	0,	FALSE, TRUE },
   { NULL, NULL, NULL, 0, FALSE, FALSE }
@@ -954,14 +973,14 @@ static const EVP_MD *get_umac128_digest(void) {
 #endif /* OpenSSL older than 0.9.7 */
 
 const EVP_CIPHER *sftp_crypto_get_cipher(const char *name, size_t *key_len,
-    size_t *discard_len) {
+    size_t *auth_len, size_t *discard_len) {
   register unsigned int i;
 
   for (i = 0; ciphers[i].name; i++) {
     if (strcmp(ciphers[i].name, name) == 0) {
       const EVP_CIPHER *cipher;
 
-      if (strncmp(name, "blowfish-ctr", 13) == 0) {
+      if (strcmp(name, "blowfish-ctr") == 0) {
 #if !defined(OPENSSL_NO_BF)
         cipher = get_bf_ctr_cipher();
 #else
@@ -972,7 +991,7 @@ const EVP_CIPHER *sftp_crypto_get_cipher(const char *name, size_t *key_len,
 #endif /* !OPENSSL_NO_BF */
 
 #if OPENSSL_VERSION_NUMBER > 0x000907000L
-      } else if (strncmp(name, "3des-ctr", 9) == 0) {
+      } else if (strcmp(name, "3des-ctr") == 0) {
 # if !defined(OPENSSL_NO_DES)
         cipher = get_des3_ctr_cipher();
 # else
@@ -982,13 +1001,13 @@ const EVP_CIPHER *sftp_crypto_get_cipher(const char *name, size_t *key_len,
         return NULL;
 # endif /* !OPENSSL_NO_DES */
 
-      } else if (strncmp(name, "aes256-ctr", 11) == 0) {
+      } else if (strcmp(name, "aes256-ctr") == 0) {
         cipher = get_aes_ctr_cipher(32);
 
-      } else if (strncmp(name, "aes192-ctr", 11) == 0) {
+      } else if (strcmp(name, "aes192-ctr") == 0) {
         cipher = get_aes_ctr_cipher(24);
 
-      } else if (strncmp(name, "aes128-ctr", 11) == 0) {
+      } else if (strcmp(name, "aes128-ctr") == 0) {
         cipher = get_aes_ctr_cipher(16);
 #endif /* OpenSSL older than 0.9.7 */
 
@@ -996,8 +1015,8 @@ const EVP_CIPHER *sftp_crypto_get_cipher(const char *name, size_t *key_len,
         cipher = ciphers[i].get_type();
       }
 
-      if (key_len) {
-        if (strncmp(name, "arcfour256", 11) != 0) {
+      if (key_len != NULL) {
+        if (strcmp(name, "arcfour256") != 0) {
           *key_len = 0;
 
         } else {
@@ -1009,7 +1028,11 @@ const EVP_CIPHER *sftp_crypto_get_cipher(const char *name, size_t *key_len,
         }
       }
 
-      if (discard_len) {
+      if (auth_len != NULL) {
+        *auth_len = ciphers[i].auth_len;
+      }
+
+      if (discard_len != NULL) {
         *discard_len = ciphers[i].discard_len;
       }
 
@@ -1031,10 +1054,12 @@ const EVP_MD *sftp_crypto_get_digest(const char *name, uint32_t *mac_len) {
       const EVP_MD *digest = NULL;
 
 #if OPENSSL_VERSION_NUMBER > 0x000907000L
-      if (strncmp(name, "umac-64@openssh.com", 12) == 0) {
+      if (strcmp(name, "umac-64@openssh.com") == 0 ||
+          strcmp(name, "umac-64-etm@openssh.com") == 0) {
         digest = get_umac64_digest();
 
-      } else if (strncmp(name, "umac-128@openssh.com", 13) == 0) {
+      } else if (strcmp(name, "umac-128@openssh.com") == 0 ||
+                 strcmp(name, "umac-128-etm@openssh.com") == 0) {
         digest = get_umac128_digest();
 #else
       if (FALSE) {
@@ -1088,20 +1113,24 @@ const char *sftp_crypto_get_kexinit_cipher_list(pool *p) {
             }
           }
 #endif /* OPENSSL_FIPS */
-          if (strncmp(c->argv[i], "none", 5) != 0) {
+          if (strcmp(c->argv[i], "none") != 0) {
             if (EVP_get_cipherbyname(ciphers[j].openssl_name) != NULL) {
               res = pstrcat(p, res, *res ? "," : "",
                 pstrdup(p, ciphers[j].name), NULL);
 
             } else {
-              /* The CTR modes are special cases. */
+              /* The CTR and GCM modes are special cases. */
 
-              if (strncmp(ciphers[j].name, "blowfish-ctr", 13) == 0 ||
-                  strncmp(ciphers[j].name, "3des-ctr", 9) == 0
+              if (strcmp(ciphers[j].name, "blowfish-ctr") == 0 ||
+                  strcmp(ciphers[j].name, "3des-ctr") == 0
 #if OPENSSL_VERSION_NUMBER > 0x000907000L
-                  || strncmp(ciphers[j].name, "aes256-ctr", 11) == 0 ||
-                  strncmp(ciphers[j].name, "aes192-ctr", 11) == 0 ||
-                  strncmp(ciphers[j].name, "aes128-ctr", 11) == 0
+                  || strcmp(ciphers[j].name, "aes256-ctr") == 0 ||
+                  strcmp(ciphers[j].name, "aes192-ctr") == 0 ||
+                  strcmp(ciphers[j].name, "aes128-ctr") == 0
+#endif
+#if defined(HAVE_EVP_AES_256_GCM_OPENSSL)
+                  || strcmp(ciphers[j].name, "aes128-gcm@openssh.com") == 0 ||
+                  strcmp(ciphers[j].name, "aes256-gcm@openssh.com") == 0
 #endif
                   ) {
                 res = pstrcat(p, res, *res ? "," : "",
@@ -1141,20 +1170,24 @@ const char *sftp_crypto_get_kexinit_cipher_list(pool *p) {
           }
 #endif /* OPENSSL_FIPS */
 
-        if (strncmp(ciphers[i].name, "none", 5) != 0) {
+        if (strcmp(ciphers[i].name, "none") != 0) {
           if (EVP_get_cipherbyname(ciphers[i].openssl_name) != NULL) {
             res = pstrcat(p, res, *res ? "," : "",
               pstrdup(p, ciphers[i].name), NULL);
 
           } else {
-            /* The CTR modes are special cases. */
+            /* The CTR and GCM modes are special cases. */
 
-            if (strncmp(ciphers[i].name, "blowfish-ctr", 13) == 0 ||
-                strncmp(ciphers[i].name, "3des-ctr", 9) == 0
+            if (strcmp(ciphers[i].name, "blowfish-ctr") == 0 ||
+                strcmp(ciphers[i].name, "3des-ctr") == 0
 #if OPENSSL_VERSION_NUMBER > 0x000907000L
-                || strncmp(ciphers[i].name, "aes256-ctr", 11) == 0 ||
-                strncmp(ciphers[i].name, "aes192-ctr", 11) == 0 ||
-                strncmp(ciphers[i].name, "aes128-ctr", 11) == 0
+                || strcmp(ciphers[i].name, "aes256-ctr") == 0 ||
+                strcmp(ciphers[i].name, "aes192-ctr") == 0 ||
+                strcmp(ciphers[i].name, "aes128-ctr") == 0
+#endif
+#if defined(HAVE_EVP_AES_256_GCM_OPENSSL)
+                || strcmp(ciphers[i].name, "aes128-gcm@openssh.com") == 0 ||
+                strcmp(ciphers[i].name, "aes256-gcm@openssh.com") == 0
 #endif
                 ) {
               res = pstrcat(p, res, *res ? "," : "",
@@ -1214,7 +1247,7 @@ const char *sftp_crypto_get_kexinit_digest_list(pool *p) {
           }
 #endif /* OPENSSL_FIPS */
 
-          if (strncmp(c->argv[i], "none", 5) != 0) {
+          if (strcmp(c->argv[i], "none") != 0) {
             if (digests[j].openssl_name != NULL &&
                 EVP_get_digestbyname(digests[j].openssl_name) != NULL) {
               res = pstrcat(p, res, *res ? "," : "",
@@ -1222,8 +1255,10 @@ const char *sftp_crypto_get_kexinit_digest_list(pool *p) {
 
             } else {
               /* The umac-64/umac-128 digests are special cases. */
-              if (strncmp(digests[j].name, "umac-64@openssh.com", 12) == 0 ||
-                  strncmp(digests[j].name, "umac-128@openssh.com", 13) == 0) {
+              if (strcmp(digests[j].name, "umac-64@openssh.com") == 0 ||
+                  strcmp(digests[j].name, "umac-64-etm@openssh.com") == 0 ||
+                  strcmp(digests[j].name, "umac-128@openssh.com") == 0 ||
+                  strcmp(digests[j].name, "umac-128-etm@openssh.com") == 0) {
                 res = pstrcat(p, res, *res ? "," : "",
                   pstrdup(p, digests[j].name), NULL);
 
@@ -1261,7 +1296,7 @@ const char *sftp_crypto_get_kexinit_digest_list(pool *p) {
           }
 #endif /* OPENSSL_FIPS */
 
-        if (strncmp(digests[i].name, "none", 5) != 0) {
+        if (strcmp(digests[i].name, "none") != 0) {
           if (digests[i].openssl_name != NULL &&
               EVP_get_digestbyname(digests[i].openssl_name) != NULL) {
             res = pstrcat(p, res, *res ? "," : "",
@@ -1269,8 +1304,10 @@ const char *sftp_crypto_get_kexinit_digest_list(pool *p) {
 
           } else {
             /* The umac-64/umac-128 digests are special cases. */
-            if (strncmp(digests[i].name, "umac-64@openssh.com", 12) == 0 ||
-                strncmp(digests[i].name, "umac-128@openssh.com", 13) == 0) {
+            if (strcmp(digests[i].name, "umac-64@openssh.com") == 0 ||
+                strcmp(digests[i].name, "umac-64-etm@openssh.com") == 0 ||
+                strcmp(digests[i].name, "umac-128@openssh.com") == 0 ||
+                strcmp(digests[i].name, "umac-128-etm@openssh.com") == 0) {
               res = pstrcat(p, res, *res ? "," : "",
                 pstrdup(p, digests[i].name), NULL);
 

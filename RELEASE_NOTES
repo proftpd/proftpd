@@ -6,6 +6,43 @@ This file contains a description of the major changes to ProFTPD for the
 releases.  More information on these changes can be found in the NEWS and
 ChangeLog files.
 
+1.3.8rc3
+---------
+
+  + Support for the AES-GCM ciphers "aes128-gcm@openssh.com" and
+    "aes256-gcm@openssh.com" have been added to mod_sftp.
+
+  + Support SSH hostkey rotation via OpenSSH "hostkeys-00@openssh.com" and
+    "hostkeys-prove-00@openssh.com" extensions.
+
+  + Support use of PCRE2, rather than PCRE, via the `--enable-pcre2` configure
+    option.
+
+  + New Directives
+
+    FactsDefault (Issue #1367)
+
+    LDAPConnectTimeout (Issue #1333)
+
+
+  + Changed Directives
+
+    RegexOptions
+      Engine PCRE2 (Issue #1353)
+
+    SFTPCiphers
+      "aes128-gcm@openssh.com", "aes256-gcm@openssh.com" (Bug #3759)
+
+    SFTPDigests
+      "hmac-md5-etm@openssh.com", ... (Issue #1330)
+
+    SFTPOptions NoHostkeyRotation
+
+    SocketOptions ReusePort
+
+    TransferOptions AllowSymlinkUpload (Issue #1379)
+
+
 1.3.8rc2
 ---------
 
@@ -36,6 +73,13 @@ ChangeLog files.
       of abuse; many TLS libraries/clients no longer implement them, or
       disable support for renegotiation by default.  Thus mod_tls will no
       longer request TLS renegotations by default now, either.
+
+
+  + Developer Notes
+
+    The generated Make.rules file will now be installed alongside the
+    installed ProFTPD headers.  It contains build rules used by third-party
+    modules that use multiple source files.
 
 
 1.3.8rc1

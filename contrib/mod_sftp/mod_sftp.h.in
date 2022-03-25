@@ -1,6 +1,6 @@
 /*
  * ProFTPD - mod_sftp
- * Copyright (c) 2008-2020 TJ Saunders
+ * Copyright (c) 2008-2021 TJ Saunders
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -52,13 +52,16 @@
 /* Define if you have OpenSSL with EVP_aes_256_ctr support. */
 #undef HAVE_EVP_AES_256_CTR_OPENSSL
 
+/* Define if you have OpenSSL with EVP_aes_256_gcm support. */
+#undef HAVE_EVP_AES_256_GCM_OPENSSL
+
 /* Define if you have OpenSSL with SHA256 support. */
 #undef HAVE_SHA256_OPENSSL
 
 /* Define if you have OpenSSL with SHA512 support. */
 #undef HAVE_SHA512_OPENSSL
 
-#define MOD_SFTP_VERSION	"mod_sftp/1.0.1"
+#define MOD_SFTP_VERSION	"mod_sftp/1.1.0"
 
 /* Make sure the version of proftpd is as necessary. */
 #if PROFTPD_VERSION_NUMBER < 0x0001030402
@@ -131,6 +134,7 @@
 #define SFTP_OPT_IGNORE_SFTP_SET_XATTRS		0x04000
 #define SFTP_OPT_INCLUDE_SFTP_TIMES		0x08000
 #define SFTP_OPT_NO_EXT_INFO			0x10000
+#define SFTP_OPT_NO_HOSTKEY_ROTATION		0x20000
 
 /* mod_sftp service flags */
 #define SFTP_SERVICE_FL_SFTP		0x0001

@@ -24,12 +24,15 @@
 
 #include "mod_sftp.h"
 
+#include "ssh2.h"
 #include "msg.h"
 #include "packet.h"
 #include "crypto.h"
+#include "kex.h"
 #include "keys.h"
 #include "agent.h"
 #include "interop.h"
+#include "session.h"
 #include "bcrypt.h"
 #if defined(PR_USE_SODIUM)
 # include <sodium.h>
@@ -2522,11 +2525,13 @@ static int handle_hostkey(pool *p, EVP_PKEY *pkey,
       sftp_rsa_hostkey->agent_path = agent_path;
 
       if (file_path != NULL) {
-        pr_trace_msg(trace_channel, 4, "using '%s' as RSA hostkey", file_path);
+        pr_trace_msg(trace_channel, 4, "using '%s' as RSA hostkey (%d bits)",
+          file_path, EVP_PKEY_bits(pkey));
 
       } else if (agent_path != NULL) {
         pr_trace_msg(trace_channel, 4,
-          "using RSA hostkey from SSH agent at '%s'", agent_path);
+          "using RSA hostkey (%d bits) from SSH agent at '%s'",
+          EVP_PKEY_bits(pkey), agent_path);
       }
 
       break;
@@ -2554,11 +2559,13 @@ static int handle_hostkey(pool *p, EVP_PKEY *pkey,
       sftp_dsa_hostkey->agent_path = agent_path;
 
       if (file_path != NULL) {
-        pr_trace_msg(trace_channel, 4, "using '%s' as DSA hostkey", file_path);
+        pr_trace_msg(trace_channel, 4, "using '%s' as DSA hostkey (%d bits)",
+          file_path, EVP_PKEY_bits(pkey));
 
       } else if (agent_path != NULL) {
         pr_trace_msg(trace_channel, 4,
-          "using DSA hostkey from SSH agent at '%s'", agent_path);
+          "using DSA hostkey (%d bits) from SSH agent at '%s'",
+          EVP_PKEY_bits(pkey), agent_path);
       }
 
       break;
@@ -2622,11 +2629,13 @@ static int handle_hostkey(pool *p, EVP_PKEY *pkey,
 
           if (file_path != NULL) {
             (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
-              "using '%s' as 256-bit ECDSA hostkey", file_path);
+              "using '%s' as 256-bit ECDSA hostkey (%d bits)", file_path,
+              EVP_PKEY_bits(pkey));
 
           } else if (agent_path != NULL) {
             (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
-              "using 256-bit ECDSA hostkey from SSH agent at '%s'", agent_path);
+              "using 256-bit ECDSA hostkey (%d bits) from SSH agent at '%s'",
+              EVP_PKEY_bits(pkey), agent_path);
           }
 
           break;
@@ -2654,11 +2663,13 @@ static int handle_hostkey(pool *p, EVP_PKEY *pkey,
 
           if (file_path != NULL) {
             (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
-              "using '%s' as 384-bit ECDSA hostkey", file_path);
+              "using '%s' as 384-bit ECDSA hostkey (%d bits)", file_path,
+              EVP_PKEY_bits(pkey));
 
           } else if (agent_path != NULL) {
             (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
-              "using 384-bit ECDSA hostkey from SSH agent at '%s'", agent_path);
+              "using 384-bit ECDSA hostkey (%d bits) from SSH agent at '%s'",
+              EVP_PKEY_bits(pkey), agent_path);
           }
 
           break;
@@ -2686,11 +2697,13 @@ static int handle_hostkey(pool *p, EVP_PKEY *pkey,
 
           if (file_path != NULL) {
             (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
-              "using '%s' as 521-bit ECDSA hostkey", file_path);
+              "using '%s' as 521-bit ECDSA hostkey (%d bits)", file_path,
+              EVP_PKEY_bits(pkey));
 
           } else if (agent_path != NULL) {
             (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
-              "using 521-bit hostkey from SSH agent at '%s'", agent_path);
+              "using 521-bit hostkey (%d bits) from SSH agent at '%s'",
+              EVP_PKEY_bits(pkey), agent_path);
           }
 
           break;
@@ -2800,7 +2813,7 @@ static struct openssh_cipher *get_openssh_cipher(const char *name) {
    * implementation.
    */
 
-  cipher->cipher = sftp_crypto_get_cipher(name, NULL, NULL);
+  cipher->cipher = sftp_crypto_get_cipher(name, NULL, NULL, NULL);
   if (cipher->cipher == NULL) {
     errno = ENOSYS;
     return NULL;
@@ -3553,7 +3566,7 @@ int sftp_keys_get_hostkey(pool *p, const char *path) {
    * SSH agent.
    */
   if (strncmp(path, "agent:", 6) != 0) {
-    pr_trace_msg(trace_channel, 9,  "loading host key from file '%s'", path);
+    pr_trace_msg(trace_channel, 9, "loading host key from file '%s'", path);
     res = load_file_hostkey(p, path);
 
   } else {
@@ -3562,7 +3575,7 @@ int sftp_keys_get_hostkey(pool *p, const char *path) {
     /* Skip past the "agent:" prefix. */
     agent_path = (path + 6);
 
-    pr_trace_msg(trace_channel, 9,  "loading host keys from SSH agent at '%s'",
+    pr_trace_msg(trace_channel, 9, "loading host keys from SSH agent at '%s'",
       agent_path);
     res = load_agent_hostkeys(p, agent_path);
   }
@@ -4045,7 +4058,7 @@ static const unsigned char *get_rsa_signed_data(pool *p,
 
   /* XXX Is this buffer large enough?  Too large? */
   buflen = bufsz = SFTP_MAX_SIG_SZ;
-  ptr = buf = sftp_msg_getbuf(p, bufsz);
+  ptr = buf = palloc(p, bufsz);
 
   /* Now build up the signature, SSH2-style */
   sftp_msg_write_string(&buf, &buflen, sig_name);
@@ -4220,7 +4233,7 @@ static const unsigned char *dsa_sign_data(pool *p, const unsigned char *data,
 
   /* XXX Is this buffer large enough?  Too large? */
   buflen = bufsz = SFTP_MAX_SIG_SZ;
-  ptr = buf = sftp_msg_getbuf(p, bufsz);
+  ptr = buf = palloc(p, bufsz);
 
   /* Now build up the signature, SSH2-style */
   sftp_msg_write_string(&buf, &buflen, "ssh-dss");
@@ -4329,7 +4342,7 @@ static const unsigned char *ecdsa_sign_data(pool *p, const unsigned char *data,
   }
 
   buflen = bufsz = SFTP_MAX_SIG_SZ;
-  ptr = buf = sftp_msg_getbuf(p, bufsz);
+  ptr = buf = palloc(p, bufsz);
 
 #if OPENSSL_VERSION_NUMBER >= 0x10100000L && \
     !defined(HAVE_LIBRESSL)
@@ -4384,7 +4397,7 @@ static const unsigned char *ecdsa_sign_data(pool *p, const unsigned char *data,
 
   /* XXX Is this buffer large enough?  Too large? */
   buflen = bufsz = SFTP_MAX_SIG_SZ;
-  ptr = buf = sftp_msg_getbuf(p, bufsz);
+  ptr = buf = palloc(p, bufsz);
 
   /* Now build up the signature, SSH2-style */
   switch (nid) {
@@ -4453,7 +4466,7 @@ static const unsigned char *ed25519_sign_data(pool *p,
 
   /* XXX Is this buffer large enough?  Too large? */
   buflen = bufsz = SFTP_MAX_SIG_SZ;
-  ptr = buf = sftp_msg_getbuf(p, bufsz);
+  ptr = buf = palloc(p, bufsz);
 
   /* Now build up the signature, SSH2-style */
   sftp_msg_write_string(&buf, &buflen, "ssh-ed25519");
@@ -5324,6 +5337,351 @@ int sftp_keys_set_key_limits(int rsa_min, int dsa_min, int ec_min) {
   return 0;
 }
 
+/* Send "hostkeys-00@openssh.com" GLOBAL_REQUEST with our hostkeys. */
+int sftp_keys_send_hostkeys(pool *p) {
+  int res, *nids = NULL;
+  pool *tmp_pool;
+  struct ssh2_packet *pkt;
+  unsigned char *buf, *ptr;
+  const unsigned char *hostkey_data = NULL;
+  uint32_t buflen, bufsz, hostkey_datalen = 0;
+
+  if (!sftp_interop_supports_feature(SFTP_SSH2_FEAT_HOSTKEYS)) {
+    return 0;
+  }
+
+  if (sftp_opts & SFTP_OPT_NO_HOSTKEY_ROTATION) {
+    return 0;
+  }
+
+  tmp_pool = make_sub_pool(p);
+  pr_pool_tag(tmp_pool, "hostkeys-00@openssh.com pool");
+  pkt = sftp_ssh2_packet_create(tmp_pool);
+
+  /* Allocate 32K, for all of the possible hostkeys. */
+  buflen = bufsz = 32768;
+  ptr = buf = palloc(pkt->pool, bufsz);
+
+  sftp_msg_write_byte(&buf, &buflen, SFTP_SSH2_MSG_GLOBAL_REQUEST);
+  sftp_msg_write_string(&buf, &buflen, "hostkeys-00@openssh.com");
+  sftp_msg_write_bool(&buf, &buflen, FALSE);
+
+  res = sftp_keys_have_rsa_hostkey();
+  if (res == 0) {
+    hostkey_data = sftp_keys_get_hostkey_data(tmp_pool, SFTP_KEY_RSA,
+      &hostkey_datalen);
+    if (hostkey_data != NULL) {
+      pr_trace_msg(trace_channel, 17, "adding RSA hostkey to hostkeys message");
+      sftp_msg_write_data(&buf, &buflen, hostkey_data, hostkey_datalen, TRUE);
+    }
+  }
+
+  res = sftp_keys_have_dsa_hostkey();
+  if (res == 0) {
+    hostkey_data = sftp_keys_get_hostkey_data(tmp_pool, SFTP_KEY_DSA,
+      &hostkey_datalen);
+    if (hostkey_data != NULL) {
+      pr_trace_msg(trace_channel, 17, "adding DSA hostkey to hostkeys message");
+      sftp_msg_write_data(&buf, &buflen, hostkey_data, hostkey_datalen, TRUE);
+    }
+  }
+
+  res = sftp_keys_have_ed25519_hostkey();
+  if (res == 0) {
+    hostkey_data = sftp_keys_get_hostkey_data(tmp_pool, SFTP_KEY_ED25519,
+      &hostkey_datalen);
+    if (hostkey_data != NULL) {
+      pr_trace_msg(trace_channel, 17,
+        "adding Ed25519 hostkey to hostkeys message");
+      sftp_msg_write_data(&buf, &buflen, hostkey_data, hostkey_datalen, TRUE);
+    }
+  }
+
+  res = sftp_keys_have_ecdsa_hostkey(tmp_pool, &nids);
+#if defined(PR_USE_OPENSSL_ECC)
+  if (res > 0) {
+    register int i;
+
+    for (i = 0; i < res; i++) {
+      enum sftp_key_type_e key_type;
+      const char *key_desc;
+
+      switch (nids[i]) {
+        case NID_X9_62_prime256v1:
+          key_type = SFTP_KEY_ECDSA_256;
+          key_desc = "ECDSA256";
+          break;
+
+        case NID_secp384r1:
+          key_type = SFTP_KEY_ECDSA_384;
+          key_desc = "ECDSA384";
+          break;
+
+        case NID_secp521r1:
+          key_type = SFTP_KEY_ECDSA_521;
+          key_desc = "ECDSA521";
+          break;
+
+        default:
+          continue;
+      }
+
+      hostkey_data = sftp_keys_get_hostkey_data(tmp_pool, key_type,
+        &hostkey_datalen);
+      if (hostkey_data != NULL) {
+        pr_trace_msg(trace_channel, 17,
+          "adding %s hostkey to hostkeys message", key_desc);
+        sftp_msg_write_data(&buf, &buflen, hostkey_data, hostkey_datalen, TRUE);
+      }
+    }
+  }
+#endif /* PR_USE_OPENSSL_ECC */
+
+  pkt->payload = ptr;
+  pkt->payload_len = (bufsz - buflen);
+
+  pr_trace_msg(trace_channel, 17,
+    "sending 'hostkeys-00@openssh.com' GLOBAL_REQUEST (%lu bytes)",
+    (unsigned long) pkt->payload_len);
+  (void) sftp_ssh2_packet_write(sftp_conn->wfd, pkt);
+  destroy_pool(tmp_pool);
+
+  return 0;
+}
+
+static enum sftp_key_type_e get_hostkey_type(pool *p,
+    const unsigned char *hostkey_data, uint32_t hostkey_datalen) {
+  unsigned char *buf;
+  uint32_t buflen;
+  char *key_desc;
+  enum sftp_key_type_e key_type = SFTP_KEY_UNKNOWN;
+
+  buf = (unsigned char *) hostkey_data;
+  buflen = hostkey_datalen;
+  key_desc = sftp_msg_read_string(p, &buf, &buflen);
+
+  if (strcmp(key_desc, "ssh-rsa") == 0) {
+    key_type = SFTP_KEY_RSA;
+
+  } else if (strcmp(key_desc, "ssh-dss") == 0) {
+    key_type = SFTP_KEY_DSA;
+
+  } else if (strcmp(key_desc, "ssh-ed25519") == 0) {
+    key_type = SFTP_KEY_ED25519;
+
+  } else if (strcmp(key_desc, "ecdsa-sha2-nistp256") == 0) {
+    key_type = SFTP_KEY_ECDSA_256;
+
+  } else if (strcmp(key_desc, "ecdsa-sha2-nistp384") == 0) {
+    key_type = SFTP_KEY_ECDSA_384;
+
+  } else if (strcmp(key_desc, "ecdsa-sha2-nistp521") == 0) {
+    key_type = SFTP_KEY_ECDSA_521;
+  }
+
+  return key_type;
+}
+
+static int have_hostkey(pool *p, enum sftp_key_type_e hostkey_type,
+    const unsigned char *hostkey_data, uint32_t hostkey_datalen) {
+  const unsigned char *local_hostkey_data = NULL;
+  uint32_t local_hostkey_datalen = 0;
+
+  switch (hostkey_type) {
+    case SFTP_KEY_RSA:
+    case SFTP_KEY_RSA_SHA256:
+    case SFTP_KEY_RSA_SHA512:
+      if (sftp_keys_have_rsa_hostkey() == 0) {
+        local_hostkey_data = sftp_keys_get_hostkey_data(p, hostkey_type,
+          &local_hostkey_datalen);
+      }
+      break;
+
+    case SFTP_KEY_DSA:
+      if (sftp_keys_have_dsa_hostkey() == 0) {
+        local_hostkey_data = sftp_keys_get_hostkey_data(p, hostkey_type,
+          &local_hostkey_datalen);
+      }
+      break;
+
+    case SFTP_KEY_ED25519:
+      if (sftp_keys_have_ed25519_hostkey() == 0) {
+        local_hostkey_data = sftp_keys_get_hostkey_data(p, hostkey_type,
+          &local_hostkey_datalen);
+      }
+      break;
+
+    case SFTP_KEY_ECDSA_256:
+    case SFTP_KEY_ECDSA_384:
+    case SFTP_KEY_ECDSA_521:
+      if (sftp_keys_have_ecdsa_hostkey(p, NULL) > 0) {
+        local_hostkey_data = sftp_keys_get_hostkey_data(p, hostkey_type,
+          &local_hostkey_datalen);
+      }
+      break;
+
+    default:
+      /* Unknown. */
+      break;
+  }
+
+  if (local_hostkey_data == NULL) {
+    return -1;
+  }
+
+  if (hostkey_datalen != local_hostkey_datalen) {
+    return -1;
+  }
+
+  if (memcmp(hostkey_data, local_hostkey_data, hostkey_datalen) != 0) {
+    return -1;
+  }
+
+  return 0;
+}
+
+static const unsigned char *prove_hostkey(pool *p,
+    const unsigned char *hostkey_data, uint32_t hostkey_datalen,
+    size_t *hsiglen) {
+  pool *tmp_pool;
+  enum sftp_key_type_e hostkey_type;
+  const unsigned char *session_id, *hsig;
+  unsigned char *buf, *ptr;
+  uint32_t buflen, bufsz, session_idsz;
+
+  tmp_pool = make_sub_pool(p);
+  pr_pool_tag(tmp_pool, "hostkeys-prove-00@openssh.com pool");
+
+  buflen = bufsz = 8192;
+  ptr = buf = palloc(tmp_pool, bufsz);
+
+  sftp_msg_write_string(&buf, &buflen, "hostkeys-prove-00@openssh.com");
+  session_idsz = sftp_session_get_id(&session_id);
+  sftp_msg_write_data(&buf, &buflen, session_id, session_idsz, TRUE);
+  sftp_msg_write_data(&buf, &buflen, hostkey_data, hostkey_datalen, TRUE);
+
+  hostkey_type = get_hostkey_type(tmp_pool, hostkey_data, hostkey_datalen);
+
+  pr_trace_msg(trace_channel, 17, "proving possession of %s hostkey",
+    get_key_type_desc(hostkey_type));
+
+  /* Is this even one of our hostkeys? Use the detected hostkey type to
+   * make for a faster search.
+   */
+  if (have_hostkey(tmp_pool, hostkey_type, hostkey_data, hostkey_datalen) < 0) {
+    pr_trace_msg(trace_channel, 7, "unknown %s hostkey proof requested",
+      get_key_type_desc(hostkey_type));
+    destroy_pool(tmp_pool);
+    return NULL;
+  }
+
+  /* Note that the hostkey type used for signing, for RSA keys, should take
+   * into account the KEX hostkey sig type, such as for SHA256/SHA512 signatures
+   * for RSA keys.
+   */
+  if (hostkey_type == SFTP_KEY_RSA) {
+    enum sftp_key_type_e kex_hostkey_type;
+
+    kex_hostkey_type = sftp_kex_get_hostkey_type();
+    switch (kex_hostkey_type) {
+      case SFTP_KEY_RSA:
+      case SFTP_KEY_RSA_SHA256:
+      case SFTP_KEY_RSA_SHA512:
+        hostkey_type = kex_hostkey_type;
+        break;
+
+      default:
+        /* Ignore */
+        break;
+    }
+  }
+
+  hsig = sftp_keys_sign_data(p, hostkey_type, ptr, (bufsz - buflen), hsiglen);
+  if (hsig == NULL) {
+    (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
+      "error proving hostkey");
+  }
+
+  destroy_pool(tmp_pool);
+  return hsig;
+}
+
+static int prove_hostkeys_failed(pool *p) {
+  unsigned char *buf, *ptr;
+  uint32_t buflen, bufsz;
+  struct ssh2_packet *pkt;
+
+  pkt = sftp_ssh2_packet_create(p);
+  buflen = bufsz = 256;
+  ptr = buf = palloc(pkt->pool, bufsz);
+
+  sftp_msg_write_byte(&buf, &buflen, SFTP_SSH2_MSG_REQUEST_FAILURE);
+
+  pkt->payload = ptr;
+  pkt->payload_len = (bufsz - buflen);
+
+  return sftp_ssh2_packet_write(sftp_conn->wfd, pkt);
+}
+
+/* Handle "hostkeys-prove-00@openssh.com" GLOBAL_REQUEST from client. */
+int sftp_keys_prove_hostkeys(pool *p, int want_reply, unsigned char *buf,
+    uint32_t buflen) {
+  int res;
+  unsigned char *buf2, *ptr2;
+  uint32_t buflen2, bufsz2;
+  struct ssh2_packet *pkt2;
+
+  /* No point in doing the work, if the client does not care about a reply. */
+  if (want_reply == FALSE) {
+    return 0;
+  }
+
+  if (sftp_opts & SFTP_OPT_NO_HOSTKEY_ROTATION) {
+    return prove_hostkeys_failed(p);
+  }
+
+  pr_trace_msg(trace_channel, 16,
+    "handling 'hostkeys-prove-00@openssh.sh' request (%lu bytes)",
+    (unsigned long) buflen);
+
+  pkt2 = sftp_ssh2_packet_create(p);
+  buflen2 = bufsz2 = 32768;
+  ptr2 = buf2 = palloc(pkt2->pool, bufsz2);
+
+  sftp_msg_write_byte(&buf2, &buflen2, SFTP_SSH2_MSG_REQUEST_SUCCESS);
+
+  while (buflen != 0) {
+    const unsigned char *hsig = NULL;
+    unsigned char *hostkey_data = NULL;
+    uint32_t hostkey_datalen = 0;
+    size_t hsiglen = 0;
+
+    pr_signals_handle();
+
+    hostkey_datalen = sftp_msg_read_int(p, &buf, &buflen);
+    hostkey_data = sftp_msg_read_data(p, &buf, &buflen, hostkey_datalen);
+
+    hsig = prove_hostkey(p, hostkey_data, hostkey_datalen, &hsiglen);
+    if (hsig == NULL) {
+      return prove_hostkeys_failed(p);
+    }
+
+    sftp_msg_write_data(&buf2, &buflen2, hsig, hsiglen, TRUE);
+  }
+
+  pkt2->payload = ptr2;
+  pkt2->payload_len = (bufsz2 - buflen2);
+
+  res = sftp_ssh2_packet_write(sftp_conn->wfd, pkt2);
+  if (res < 0) {
+    (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
+      "error writing 'hostkeys-prove-00@openssh.com' response: %s",
+      strerror(errno));
+  }
+
+  return 0;
+}
+
 int sftp_keys_set_passphrase_provider(const char *provider) {
   if (provider == NULL) {
     errno = EINVAL;
@@ -5396,5 +5754,6 @@ void sftp_keys_free(void) {
 
   sftp_keys_clear_dsa_hostkey();
   sftp_keys_clear_ecdsa_hostkey();
+  sftp_keys_clear_ed25519_hostkey();
   sftp_keys_clear_rsa_hostkey();
 }

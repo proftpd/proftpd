@@ -2,7 +2,7 @@
  * ProFTPD - FTP server daemon
  * Copyright (c) 1997, 1998 Public Flood Software
  * Copyright (c) 1999, 2000 MacGyver aka Habeeb J. Dihu <macgyver@tos.net>
- * Copyright (c) 2001-2021 The ProFTPD Project team
+ * Copyright (c) 2001-2022 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -1124,8 +1124,9 @@ MODRET set_socketoptions(cmd_rec *cmd) {
   register unsigned int i = 0;
 
   /* Make sure we have the right number of parameters. */
-  if ((cmd->argc-1) % 2 != 0)
+  if ((cmd->argc - 1) % 2 != 0) {
    CONF_ERROR(cmd, "bad number of parameters");
+  }
 
   CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL);
 
@@ -1251,6 +1252,19 @@ MODRET set_socketoptions(cmd_rec *cmd) {
       } else {
         cmd->server->tcp_keepalive->keepalive_enabled = b;
       }
+
+      /* Don't forget to increment the iterator. */
+      i++;
+
+    } else if (strcasecmp(cmd->argv[i], "reuseport") == 0) {
+      int b;
+
+      b = get_boolean(cmd, i + 1);
+      if (b == -1) {
+        CONF_ERROR(cmd, "reuseport must have Boolean parameter");
+      }
+
+      cmd->server->tcp_reuse_port = b;
 
       /* Don't forget to increment the iterator. */
       i++;
@@ -1549,19 +1563,22 @@ MODRET set_group(cmd_rec *cmd) {
 MODRET set_trace(cmd_rec *cmd) {
 #ifdef PR_USE_TRACE
   register unsigned int i;
-  int per_session = FALSE;
+  int per_session = FALSE, ctx = 0;
   unsigned int idx = 1;
 
   if (cmd->argc-1 < 1) {
     CONF_ERROR(cmd, "wrong number of parameters");
   }
-  CHECK_CONF(cmd, CONF_ROOT);
+  CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL);
+
+  ctx = (cmd->config && cmd->config->config_type != CONF_PARAM ?
+     cmd->config->config_type : cmd->server->config_type ?
+     cmd->server->config_type : CONF_ROOT);
 
   /* Look for the optional "session" keyword, which will indicate that these
    * Trace settings are to be applied to a session process only.
    */
   if (strcasecmp(cmd->argv[1], "session") == 0) {
-
     /* If this is the only parameter, it's a config error. */
     if (cmd->argc == 2) {
       CONF_ERROR(cmd, "wrong number of parameters");
@@ -1569,6 +1586,15 @@ MODRET set_trace(cmd_rec *cmd) {
 
     per_session = TRUE;
     idx = 2;
+  }
+
+  /* If this directive appears in a <VirtualHost> or <Global> context,
+   * automatically handle it as if the "session" keyword has been used.
+   */
+
+  if ((ctx & CONF_VIRTUAL) ||
+      (ctx & CONF_GLOBAL)) {
+    per_session = TRUE;
   }
 
   if (per_session == FALSE) {
@@ -1608,7 +1634,7 @@ MODRET set_trace(cmd_rec *cmd) {
      */
 
     c = add_config_param(cmd->argv[0], 0);
-    c->argc = cmd->argc - 2;
+    c->argc = cmd->argc - idx;
     c->argv = pcalloc(c->pool, ((c->argc + 1) * sizeof(void *))); 
 
     for (i = idx; i < cmd->argc; i++) {
@@ -1897,7 +1923,8 @@ MODRET set_regexoptions(cmd_rec *cmd) {
       engine = cmd->argv[i+1];
 
       if (strcasecmp(engine, "POSIX") != 0 &&
-          strcasecmp(engine, "PCRE") != 0) {
+          strcasecmp(engine, "PCRE") != 0 &&
+          strcasecmp(engine, "PCRE2") != 0) {
         CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "bad Engine value: ",
           engine, NULL));
       }
@@ -4601,7 +4628,7 @@ MODRET core_epsv(cmd_rec *cmd) {
   }
 
   /* If we already have a passive listen data connection open, kill it. */
-  if (session.d) {
+  if (session.d != NULL) {
     pr_inet_close(session.d->pool, session.d);
     session.d = NULL;
   }
@@ -4690,6 +4717,10 @@ MODRET core_epsv(cmd_rec *cmd) {
    * will be no need for NAT, and hence no need for masquerading.  This
    * may be true in an ideal world, but I think it more likely that current
    * clients will simply use EPSV, rather than PASV, in existing IPv4 networks.
+   *
+   * Note that this also means that EPSV cannot be use for site-to-site (FXP)
+   * transfers; the EPSV response is not allowed to contain a different
+   * network address.
    *
    * Disable the honoring of MasqueradeAddress for EPSV until this can
    * be officially determined (Bug#2369).  See also Bug#3862.
@@ -6582,6 +6613,47 @@ static void core_exit_ev(const void *event_data, void *user_data) {
   pr_fs_statcache_free();
 }
 
+static void core_postparse_ev(const void *event_data, void *user_data) {
+  cmd_rec *cmd;
+  int res;
+  pool *tmp_pool;
+
+  /* If the EPRT and/or EPSV commands have been denied by configuration, e.g.:
+   *
+   *  <Limit EPRT EPSV>
+   *    DenyAll
+   *  </Limit>
+   *
+   * then we will also exclude them from the FEAT response.  Some badly
+   * behaved clients will try to use EPSV (which cannot honor the
+   * MasqueradeAddress directive, needed in NAT environments), and if that
+   * fails, they fall back to using PORT (and not PASV as expected).
+   *
+   * Thus for such tricky situations, we check for <Limit> configurations for
+   * this commands; if limited, we omit them from FEAT.  This is why we need
+   * to wait until the configuration has been parsed, to do this check.
+   * See Issue#1383.
+   */
+
+  tmp_pool = make_sub_pool(permanent_pool);
+
+  cmd = pr_cmd_alloc(tmp_pool, 1, pstrdup(tmp_pool, C_EPRT), NULL);
+  res = dir_check_limits(cmd, NULL, C_EPRT, FALSE);
+  if (res == 1) {
+    pr_feat_add(C_EPRT);
+  }
+
+  destroy_pool(cmd->pool);
+  cmd = pr_cmd_alloc(tmp_pool, 1, pstrdup(tmp_pool, C_EPSV), NULL);
+  res = dir_check_limits(cmd, NULL, C_EPSV, FALSE);
+  if (res == 1) {
+    pr_feat_add(C_EPSV);
+  }
+
+  destroy_pool(cmd->pool);
+  destroy_pool(tmp_pool);
+}
+
 static void core_restart_ev(const void *event_data, void *user_data) {
   pr_fs_statcache_reset();
   pr_scoreboard_scrub();
@@ -6677,13 +6749,12 @@ static int core_init(void) {
    * list, to be displayed in response to a FEAT command.
    */
   pr_feat_add(C_CLNT);
-  pr_feat_add(C_EPRT);
-  pr_feat_add(C_EPSV);
   pr_feat_add(C_MDTM);
   pr_feat_add("REST STREAM");
   pr_feat_add(C_SIZE);
   pr_feat_add(C_HOST);
 
+  pr_event_register(&core_module, "core.postparse", core_postparse_ev, NULL);
   pr_event_register(&core_module, "core.restart", core_restart_ev, NULL);
   pr_event_register(&core_module, "core.startup", core_startup_ev, NULL);
 
@@ -6814,6 +6885,19 @@ static int core_sess_init(void) {
 
   init_auth();
 
+  /* Enable any TCP keepalive options on the control connection (Issue #1402).
+   * Note that ctrl conns do not have listening fds, but this function uses
+   * that fd (due to compatibility with data conns), so we temporarily assign
+   * that struct member.
+   */
+  session.c->listen_fd = session.c->wfd;
+  if (pr_inet_set_proto_keepalive(session.pool, session.c,
+      main_server->tcp_keepalive) < 0) {
+    pr_log_debug(DEBUG9, "error setting ctrl conn TCP keepalive: %s",
+      strerror(errno));
+  }
+  session.c->listen_fd = -1;
+
   /* Start the idle timer. */
 
   c = find_config(main_server->conf, CONF_PARAM, "TimeoutIdle", FALSE);
@@ -6878,8 +6962,7 @@ static int core_sess_init(void) {
 
   /* Check for configured SetEnvs. */
   c = find_config(main_server->conf, CONF_PARAM, "SetEnv", FALSE);
-
-  while (c) {
+  while (c != NULL) {
     if (pr_env_set(session.pool, c->argv[0], c->argv[1]) < 0) {
       pr_log_debug(DEBUG1, "unable to set environment variable '%s': %s",
         (char *) c->argv[0], strerror(errno));
@@ -6893,8 +6976,7 @@ static int core_sess_init(void) {
 
   /* Check for configured UnsetEnvs. */
   c = find_config(main_server->conf, CONF_PARAM, "UnsetEnv", FALSE);
-
-  while (c) {
+  while (c != NULL) {
     if (pr_env_unset(session.pool, c->argv[0]) < 0) {
       pr_log_debug(DEBUG1, "unable to unset environment variable '%s': %s",
         (char *) c->argv[0], strerror(errno));

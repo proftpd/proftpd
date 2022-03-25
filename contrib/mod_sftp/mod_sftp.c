@@ -254,6 +254,7 @@ static void sftp_cmd_loop(server_rec *s, conn_t *conn) {
       pr_netaddr_get_ipstr(session.c->local_addr), session.c->local_port);
   }
 
+  sftp_ssh2_packet_set_handler(NULL);
   sftp_conn = conn;
   pr_session_set_protocol("ssh2");
 
@@ -323,7 +324,7 @@ static void sftp_cmd_loop(server_rec *s, conn_t *conn) {
   while (TRUE) {
     pr_signals_handle();
 
-    res = sftp_ssh2_packet_handle();
+    res = sftp_ssh2_packet_process(sftp_pool);
     if (res < 0) {
       break;
     }
@@ -490,7 +491,7 @@ MODRET set_sftpciphers(cmd_rec *cmd) {
   CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL);
 
   for (i = 1; i < cmd->argc; i++) {
-    if (sftp_crypto_get_cipher(cmd->argv[i], NULL, NULL) == NULL) {
+    if (sftp_crypto_get_cipher(cmd->argv[i], NULL, NULL, NULL) == NULL) {
       CONF_ERROR(cmd, pstrcat(cmd->tmp_pool,
         "unsupported cipher algorithm: ", (char *) cmd->argv[i], NULL));
     }
@@ -1534,6 +1535,9 @@ MODRET set_sftpoptions(cmd_rec *cmd) {
     } else if (strcmp(cmd->argv[i], "NoExtensionNegotiation") == 0) {
       opts |= SFTP_OPT_NO_EXT_INFO;
 
+    } else if (strcmp(cmd->argv[i], "NoHostkeyRotation") == 0) {
+      opts |= SFTP_OPT_NO_HOSTKEY_ROTATION;
+
     } else {
       CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, ": unknown SFTPOption '",
         cmd->argv[i], "'", NULL));
@@ -1672,6 +1676,26 @@ MODRET set_sftptrafficpolicy(cmd_rec *cmd) {
   }
 
   (void) add_config_param_str(cmd->argv[0], 1, cmd->argv[1]);
+  return PR_HANDLED(cmd);
+}
+
+/* Hook handlers
+ */
+
+MODRET sftp_hook_get_packet_write(cmd_rec *cmd) {
+  if (cmd->argc != 1) {
+    return PR_ERROR_MSG(cmd, NULL, "wrong number of arguments");
+  }
+
+  return mod_create_data(cmd, sftp_ssh2_packet_write);
+}
+
+MODRET sftp_hook_set_packet_handler(cmd_rec *cmd) {
+  if (cmd->argc != 1) {
+    return PR_ERROR_MSG(cmd, NULL, "wrong number of arguments");
+  }
+
+  sftp_ssh2_packet_set_handler(cmd->argv[0]);
   return PR_HANDLED(cmd);
 }
 
@@ -2598,6 +2622,14 @@ static conftable sftp_conftab[] = {
   { NULL }
 };
 
+static cmdtable sftp_cmdtab[] = {
+  /* Module hooks */
+  { HOOK, "sftp_get_packet_write",	G_NONE, sftp_hook_get_packet_write, FALSE, FALSE },
+  { HOOK, "sftp_set_packet_handler",	G_NONE, sftp_hook_set_packet_handler, FALSE, FALSE },
+
+  { 0, NULL }
+};
+
 module sftp_module = {
   /* Always NULL */
   NULL, NULL,
@@ -2612,7 +2644,7 @@ module sftp_module = {
   sftp_conftab,
 
   /* Module command handler table */
-  NULL,
+  sftp_cmdtab,
 
   /* Module authentication handler table */
   NULL,
@@ -2626,4 +2658,3 @@ module sftp_module = {
   /* Module version */
   MOD_SFTP_VERSION
 };
-

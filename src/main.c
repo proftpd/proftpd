@@ -2,7 +2,7 @@
  * ProFTPD - FTP server daemon
  * Copyright (c) 1997, 1998 Public Flood Software
  * Copyright (c) 1999, 2000 MacGyver aka Habeeb J. Dihu <macgyver@tos.net>
- * Copyright (c) 2001-2020 The ProFTPD Project team
+ * Copyright (c) 2001-2022 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -844,7 +844,7 @@ static cmd_rec *make_ftp_cmd(pool *p, char *buf, size_t buflen, int flags) {
   cmd->argc++;
 
   /* Make a copy of the command argument; we need to scan through it,
-   * looking for any CR+NUL sequences, per RFC 2460, Section 3.1.
+   * looking for any CR+NUL sequences, per RFC 2640, Section 3.1.
    *
    * Note for future readers that this scanning may cause problems for
    * commands such as ADAT, ENC, and MIC.  Per RFC 2228, the arguments for
@@ -1773,23 +1773,32 @@ static void daemon_loop(void) {
   }
 }
 
-static void daemonize(void) {
+/* Returns 1 for the background daemon process, 0 for the foreground process,
+ * and -1 if there was an error.
+ */
+static int daemonize(void) {
 #ifndef HAVE_SETSID
   int ttyfd;
 #endif
+  pid_t pid;
 
   /* Fork off and have parent exit.
    */
-  switch (fork()) {
+  pid = fork();
+  switch (pid) {
     case -1:
       perror("fork(2) error");
-      exit(1);
+      return -1;
 
     case 0:
+      /* Child process; keep going. */
       break;
 
-    default: 
-      exit(0);
+    default:
+      /* Parent process; we're done. */
+      pr_log_pri(PR_LOG_DEBUG, "forked daemon process (PID %lu)",
+        (unsigned long) pid);
+      return 0;
   }
 
 #ifdef HAVE_SETSID
@@ -1833,6 +1842,7 @@ static void daemonize(void) {
   mpid = getpid();
 
   pr_fsio_chdir("/", 0);
+  return 1;
 }
 
 static void inetd_main(void) {
@@ -1902,7 +1912,13 @@ static void standalone_main(void) {
 
   } else {
     log_stderr(FALSE);
-    daemonize();
+    res = daemonize();
+    if (res != 1) {
+      /* We're either the foreground process, or there was an error.  Either
+       * way, we're done.
+       */
+      return;
+    }
   }
 
   PRIVS_ROOT
@@ -1939,22 +1955,75 @@ static void standalone_main(void) {
 
   init_bindings();
 
-  pr_log_pri(PR_LOG_NOTICE, "ProFTPD %s (built %s) standalone mode STARTUP",
-    PROFTPD_VERSION_TEXT " " PR_STATUS, BUILD_STAMP);
-
   if (pr_pidfile_write() < 0) {
-    fprintf(stderr, "error opening PidFile '%s': %s\n", pr_pidfile_get(),
+    pr_log_pri(PR_LOG_ERR, "error writing PidFile '%s': %s", pr_pidfile_get(),
       strerror(errno));
     exit(1);
   }
 
+  pr_log_pri(PR_LOG_NOTICE, "ProFTPD %s (built %s) standalone mode STARTUP",
+    PROFTPD_VERSION_TEXT " " PR_STATUS, BUILD_STAMP);
+
   daemon_loop();
+}
+
+static int conftab_cmp(const void *a, const void *b) {
+  const conftable *tab1, *tab2;
+
+  tab1 = *((conftable **) a);
+  tab2 = *((conftable **) b);
+  return strcmp(tab1->directive, tab2->directive);
+}
+
+/* Similar to the `get_all_directives` function in src/parser.c, except
+ * that we sort the directives, and display their associated/implementing
+ * modules.
+ */
+static void list_directives(void) {
+  register unsigned int i;
+  pool *tmp_pool;
+  array_header *directives;
+  conftable *tab;
+  int idx;
+  unsigned int hash;
+
+  tmp_pool = make_sub_pool(permanent_pool);
+  directives = make_array(tmp_pool, 1, sizeof(conftable **));
+
+  idx = -1;
+  hash = 0;
+  tab = pr_stash_get_symbol2(PR_SYM_CONF, NULL, NULL, &idx, &hash);
+  while (idx != -1) {
+    pr_signals_handle();
+
+    if (tab != NULL) {
+      *((conftable **) push_array(directives)) = tab;
+
+    } else {
+      idx++;
+    }
+
+    tab = pr_stash_get_symbol2(PR_SYM_CONF, NULL, tab, &idx, &hash);
+  }
+
+  qsort((void *) directives->elts, directives->nelts, sizeof(conftable **),
+    conftab_cmp);
+
+  printf("Configuration Directives:\n");
+  for (i = 0; i < directives->nelts; i++) {
+    conftable *conftab;
+
+    conftab = ((conftable **) directives->elts)[i];
+    printf("  %s (from mod_%s)\n", conftab->directive, conftab->m->name);
+  }
+
+  destroy_pool(tmp_pool);
 }
 
 extern char *optarg;
 extern int optind, opterr, optopt;
 
-#ifdef HAVE_GETOPT_LONG
+#if defined(HAVE_GETOPT_LONG)
 static struct option opts[] = {
   { "nocollision",    0, NULL, 'N' },
   { "nodaemon",	      0, NULL, 'n' },
@@ -1975,8 +2044,54 @@ static struct option opts[] = {
 };
 #endif /* HAVE_GETOPT_LONG */
 
+/* If there is an /etc/os-release file, display its contents; see:
+ *   https://www.freedesktop.org/software/systemd/man/os-release.html
+ */
+static void show_os_release(void) {
+  const char *os_release_path = "/etc/os-release";
+  FILE *fh;
+  char *line = NULL;
+  size_t linelen = 0;
+  ssize_t nread = 0;
+
+  fh = fopen(os_release_path, "r");
+  if (fh == NULL) {
+    return;
+  }
+
+  printf("%s", "  OS/Release:\n");
+
+  nread = getline(&line, &linelen, fh);
+  while (nread >= 0) {
+    int skip_line = FALSE;
+
+    pr_signals_handle();
+
+    /* Skip any lines containing uninteresting info. */
+    if (strstr(line, "COLOR") != NULL ||
+        strstr(line, "LOGO") != NULL ||
+        strstr(line, "_URL") != NULL) {
+      skip_line = TRUE;
+    }
+
+    if (skip_line == TRUE) {
+      nread = getline(&line, &linelen, fh);
+      continue;
+    }
+
+    printf("    %s", line);
+    nread = getline(&line, &linelen, fh);
+  }
+
+  if (line != NULL) {
+    free(line);
+  }
+
+  (void) fclose(fh);
+}
+
 static void show_settings(void) {
-#ifdef HAVE_UNAME
+#if defined(HAVE_UNAME)
   int res;
   struct utsname uts;
 #endif /* !HAVE_UNAME */
@@ -1984,7 +2099,7 @@ static void show_settings(void) {
   printf("%s", "Compile-time Settings:\n");
   printf("%s", "  Version: " PROFTPD_VERSION_TEXT " " PR_STATUS "\n");
 
-#ifdef HAVE_UNAME
+#if defined(HAVE_UNAME)
   /* We use uname(2) to get the 'machine', which will tell us whether
    * we're a 32- or 64-bit machine.
    */
@@ -1999,6 +2114,8 @@ static void show_settings(void) {
 #else
   printf("%s", "  Platform: " PR_PLATFORM " [unknown]\n");
 #endif /* !HAVE_UNAME */
+
+  show_os_release();
 
   printf("%s", "  Built: " BUILD_STAMP "\n");
   printf("%s", "  Built With:\n    configure " PR_BUILD_OPTS "\n\n");
@@ -2129,6 +2246,12 @@ static void show_settings(void) {
 #else
   printf("%s", "    - PCRE support\n");
 #endif /* PR_USE_PCRE */
+
+#ifdef PR_USE_PCRE2
+  printf("%s", "    + PCRE2 support\n");
+#else
+  printf("%s", "    - PCRE2 support\n");
+#endif /* PR_USE_PCRE2 */
 
 #ifdef PR_USE_FACL
   printf("%s", "    + POSIX ACL support\n");
@@ -2279,6 +2402,9 @@ int main(int argc, char *argv[], char **envp) {
   mode_t *main_umask = NULL;
   socklen_t peerlen;
   struct sockaddr peer;
+#if defined(PR_USE_NLS) && defined(HAVE_LOCALE_H)
+  const char *env_lang = NULL, *env_locale = NULL;
+#endif
 
 #ifdef HAVE_SET_AUTH_PARAMETERS
   (void) set_auth_parameters(argc, argv);
@@ -2483,8 +2609,7 @@ int main(int argc, char *argv[], char **envp) {
     exit(1);
   }
 
-  if (show_version &&
-      show_version == 1) {
+  if (show_version == 1) {
     printf("%s", "ProFTPD Version " PROFTPD_VERSION_TEXT "\n");
     exit(0);
   }
@@ -2513,31 +2638,37 @@ int main(int argc, char *argv[], char **envp) {
 #endif /* PR_USE_CTRLS */
 
   var_init();
-  modules_init();
 
-#ifdef PR_USE_NLS
-# ifdef HAVE_LOCALE_H
+#if defined(PR_USE_NLS)
+# if defined(HAVE_LOCALE_H)
   /* Initialize the locale based on environment variables. */
-  if (setlocale(LC_ALL, "") == NULL) {
-    const char *env_lang;
+  env_lang = pr_env_get(permanent_pool, "LANG");
 
-    env_lang = pr_env_get(permanent_pool, "LANG");
+  env_locale = setlocale(LC_ALL, "");
+  if (env_locale == NULL) {
     pr_log_pri(PR_LOG_WARNING, "warning: unknown/unsupported LANG environment "
-      "variable '%s', ignoring", env_lang);
-
-    setlocale(LC_ALL, "C");
+      "variable '%s', ignoring", env_lang != NULL ? env_lang : "(null)");
+    (void) setlocale(LC_ALL, "C");
 
   } else {
+    pr_log_debug(DEBUG9, "using '%s' locale based on LANG=%s environment "
+      "variable", env_locale, env_lang != NULL ? env_lang : "(null)");
+
     /* Make sure that LC_NUMERIC is always set to "C", so as not to interfere
      * with formatting of strings (like printing out floats in SQL query
      * strings).
      */
-    setlocale(LC_NUMERIC, "C");
+    (void) setlocale(LC_NUMERIC, "C");
   }
 # endif /* !HAVE_LOCALE_H */
 
   encode_init();
 #endif /* PR_USE_NLS */
+
+  /* Note that modules MUST be initialized AFTER the locale, so that we
+   * are consistent in handling of strings via _e.g._ tolower(3); see Bug#4466.
+   */
+  modules_init();
 
   /* Now, once the modules have had a chance to initialize themselves
    * but before the configuration stream is actually parsed, check
@@ -2580,12 +2711,18 @@ int main(int argc, char *argv[], char **envp) {
 
   pr_event_generate("core.postparse", NULL);
 
-  if (show_version == 2) {
+  if (show_version >= 2) {
     printf("ProFTPD Version: %s", PROFTPD_VERSION_TEXT " " PR_STATUS "\n");
     printf("  Scoreboard Version: %08x\n", PR_SCOREBOARD_VERSION); 
     printf("  Built: %s\n\n", BUILD_STAMP);
 
     modules_list2(NULL, PR_MODULES_LIST_FL_SHOW_VERSION);
+
+    if (show_version >= 3) {
+      printf("\n");
+      list_directives();
+    }
+
     exit(0);
   }
 

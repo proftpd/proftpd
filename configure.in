@@ -852,6 +852,10 @@ AC_ARG_ENABLE(pcre,
   )],
   [
     if test x"$enableval" = xyes ; then
+      if test x"$enable_pcre2" == xyes ; then
+        AC_MSG_ERROR([cannot support both PCRE and PCRE2 at the same time -- aborting])
+      fi
+
       AC_DEFINE(PR_USE_PCRE, 1, [Define if using PCRE support.])
       ac_build_addl_libs="$ac_build_addl_libs -lpcreposix -lpcre"
 
@@ -885,6 +889,92 @@ AC_ARG_ENABLE(pcre,
         [
           AC_MSG_RESULT(yes)
           AC_DEFINE(HAVE_PCRE_PCRE_FREE_STUDY, 1, [Define if you have PCRE's pcre_free_study])
+        ],
+        [
+          AC_MSG_RESULT(no)
+        ]
+      )
+
+      # restore CPPFLAGS, LDFLAGS, LIBS
+      CPPFLAGS="$saved_cppflags"
+      LDFLAGS="$saved_ldflags"
+      LIBS="$saved_libs"
+    fi
+  ])
+
+AC_ARG_ENABLE(pcre2,
+  [AC_HELP_STRING(
+    [--enable-pcre2],
+    [enable use of PCRE2 for POSIX regular expressions rather than the system library (default=no)],
+  )],
+  [
+    if test x"$enableval" = xyes ; then
+      if test x"$enable_pcre" == xyes ; then
+        AC_MSG_ERROR([cannot support both PCRE and PCRE2 at the same time -- aborting])
+      fi
+
+      AC_DEFINE(PR_USE_PCRE2, 1, [Define if using PCRE2 support.])
+      ac_build_addl_libs="$ac_build_addl_libs -lpcre2-posix -lpcre2-8"
+
+      # Check for other PCRE2-specific functionality here
+      saved_ldflags="$LDFLAGS"
+      saved_libs="$LIBS"
+      saved_cppflags="$CPPFLAGS"
+
+      # fiddle with CPPFLAGS, LDFLAGS
+      CPPFLAGS="$CPPFLAGS $ac_build_addl_includes"
+      LDFLAGS="$LDFLAGS $ac_build_addl_libdirs"
+      LIBS="$LIBS -lpcre2-8 -lpcre2-posix"
+
+      AC_MSG_CHECKING([for PCRE2's pcre2_jit_compile])
+      AC_TRY_LINK(
+        [ #ifdef HAVE_STDDEF_H
+          # include <stddef.h>
+          #endif
+          #ifdef HAVE_STDLIB_H
+          # include <stdlib.h>
+          #endif
+          #ifdef HAVE_SYS_TYPES_H
+          # include <sys/types.h>
+          #endif
+          #define PCRE2_CODE_UNIT_WIDTH 8
+          #include <pcre2.h>
+        ],
+        [
+          pcre2_code *code = NULL;
+          (void) pcre2_jit_compile(code, 0);
+        ],
+        [
+          AC_MSG_RESULT(yes)
+          AC_DEFINE(HAVE_PCRE2_PCRE2_JIT_COMPILE, 1, [Define if you have PCRE2's pcre2_jit_compile])
+        ],
+        [
+          AC_MSG_RESULT(no)
+        ]
+      )
+
+      AC_MSG_CHECKING([for PCRE2's POSIX wrappers])
+      AC_TRY_LINK(
+        [ #ifdef HAVE_STDDEF_H
+          # include <stddef.h>
+          #endif
+          #ifdef HAVE_STDLIB_H
+          # include <stdlib.h>
+          #endif
+          #ifdef HAVE_SYS_TYPES_H
+          # include <sys/types.h>
+          #endif
+          #define PCRE2_CODE_UNIT_WIDTH 8
+          #include <pcre2.h>
+          #include <pcre2posix.h>
+        ],
+        [
+          regex_t *re = NULL;
+          (void) pcre2_regcomp(re, NULL, 0);
+        ],
+        [
+          AC_MSG_RESULT(yes)
+          AC_DEFINE(HAVE_PCRE2_PCRE2_REGCOMP, 1, [Define if you have PCRE2's pcre2_regcomp])
         ],
         [
           AC_MSG_RESULT(no)
@@ -1119,6 +1209,15 @@ AC_ARG_ENABLE(devel,
       if test `echo $enableval | grep -c coverage` = "1" ; then
         pr_devel_cflags="-DPR_DEVEL_COVERAGE --coverage $pr_devel_cflags"
         pr_devel_libs="--coverage $pr_devel_libs"
+      fi
+
+      if test `echo $enableval | grep -c fortify` = "1" ; then
+        pr_devel_cflags="-D_FORTIFY_SOURCE=2 $pr_devel_cflags"
+
+        # In order for `-D_FORTIFY_SOURCE=2` to work, we also need to
+        # disable some of the default --enable-devel flags, specifically `-O0`;
+        # we can use `-O2` instead.
+        pr_devel_cflags=`echo "$pr_devel_cflags" | sed -e 's/-O0/-O2/'`
       fi
 
       if test `echo $enableval | grep -c nodaemon` = "1" ; then

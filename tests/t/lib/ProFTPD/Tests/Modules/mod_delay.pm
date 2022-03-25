@@ -321,50 +321,19 @@ sub delay_warm_table {
 sub delay_extra_user_cmd_bug3622 {
   my $self = shift;
   my $tmpdir = $self->{tmpdir};
+  my $setup = test_setup($tmpdir, 'delay');
 
-  my $config_file = "$tmpdir/delay.conf";
-  my $pid_file = File::Spec->rel2abs("$tmpdir/delay.pid");
-  my $scoreboard_file = File::Spec->rel2abs("$tmpdir/delay.scoreboard");
-
-  my $log_file = test_get_logfile();
-
-  my $auth_user_file = File::Spec->rel2abs("$tmpdir/delay.passwd");
-  my $auth_group_file = File::Spec->rel2abs("$tmpdir/delay.group");
-
-  my $user = 'proftpd';
-  my $passwd = 'test';
-  my $group = 'ftpd';
-  my $home_dir = File::Spec->rel2abs($tmpdir);
-  my $uid = 500;
-  my $gid = 500;
-
-  # Make sure that, if we're running as root, that the home directory has
-  # permissions/privs set for the account we create
-  if ($< == 0) {
-    unless (chmod(0755, $home_dir)) {
-      die("Can't set perms on $home_dir to 0755: $!");
-    }
-
-    unless (chown($uid, $gid, $home_dir)) {
-      die("Can't set owner of $home_dir to $uid/$gid: $!");
-    }
-  }
-
-  auth_user_write($auth_user_file, $user, $passwd, $uid, $gid, $home_dir,
-    '/bin/bash');
-  auth_group_write($auth_group_file, $group, $gid, $user);
-
-  my $delay_tab = File::Spec->rel2abs("$home_dir/delay.tab");
+  my $delay_tab = File::Spec->rel2abs("$tmpdir/delay.tab");
 
   my $config = {
-    PidFile => $pid_file,
-    ScoreboardFile => $scoreboard_file,
-    SystemLog => $log_file,
-    TraceLog => $log_file,
+    PidFile => $setup->{pid_file},
+    ScoreboardFile => $setup->{scoreboard_file},
+    SystemLog => $setup->{log_file},
+    TraceLog => $setup->{log_file},
     Trace => 'delay:20',
 
-    AuthUserFile => $auth_user_file,
-    AuthGroupFile => $auth_group_file,
+    AuthUserFile => $setup->{auth_user_file},
+    AuthGroupFile => $setup->{auth_group_file},
 
     IfModules => {
       'mod_delay.c' => {
@@ -373,7 +342,8 @@ sub delay_extra_user_cmd_bug3622 {
     },
   };
 
-  my ($port, $config_user, $config_group) = config_write($config_file, $config);
+  my ($port, $config_user, $config_group) = config_write($setup->{config_file},
+    $config);
 
   # Open pipes, for use between the parent and child processes.  Specifically,
   # the child will indicate when it's done with its test by writing a message
@@ -391,29 +361,28 @@ sub delay_extra_user_cmd_bug3622 {
   if ($pid) {
     eval {
       my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
-      $client->login($user, $passwd);
+      $client->login($setup->{user}, $setup->{passwd});
 
-      eval { $client->user($user) };
-      unless ($@) {
-        die("Second USER command succeeded unexpectedly");
+      # Note that, with Bug#4217, a second USER command will succeed.
+      eval { $client->user($setup->{user}) };
+      if ($@) {
+        die("USER failed: " . $client->response_code() . ' ' .
+          $client->response_msg());
       }
 
       my $resp_code = $client->response_code();
       my $resp_msg = $client->response_msg();
 
-      my $expected;
-
-      $expected = 500;
+      my $expected = 230;
       $self->assert($expected == $resp_code,
         test_msg("Expected response code $expected, got $resp_code"));
 
-      $expected = 'Bad sequence of commands';
+      $expected = "User $setup->{user} logged in";
       $self->assert($expected eq $resp_msg,
         test_msg("Expected response message '$expected', got '$resp_msg'"));
 
       $client->quit();
     };
-
     if ($@) {
       $ex = $@;
     }
@@ -422,7 +391,7 @@ sub delay_extra_user_cmd_bug3622 {
     $wfh->flush();
 
   } else {
-    eval { server_wait($config_file, $rfh) };
+    eval { server_wait($setup->{config_file}, $rfh) };
     if ($@) {
       warn($@);
       exit 1;
@@ -432,54 +401,52 @@ sub delay_extra_user_cmd_bug3622 {
   }
 
   # Stop server
-  server_stop($pid_file);
-
+  server_stop($setup->{pid_file});
   $self->assert_child_ok($pid);
 
-  if ($ex) {
-    test_append_logfile($log_file, $ex);
-    unlink($log_file);
-
-    die($ex);
-  }
+  test_cleanup($setup->{log_file}, $ex) if $ex;
 
   # Examine the TraceLog, looking for "unable to load DelayTable" messages.
   # There shouldn't be any.
 
-  if (open(my $fh, "< $log_file")) {
-    my $ok = 1;
-
-    while (my $line = <$fh>) {
-      chomp($line);
-
+  eval {
+    if (open(my $fh, "< $setup->{log_file}")) {
+      my $ok = 1;
       my $expected = '\[\d+\]\s+<(\S+):(\d+)>: (.*?)$';
 
-      if ($line =~ /$expected/) {
-        my $trace_channel = $1;
-        my $trace_level = $2;
-        my $trace_msg = $3;
+      while (my $line = <$fh>) {
+        chomp($line);
 
-        next unless $trace_channel eq 'delay';
+        if ($ENV{TEST_VERBOSE}) {
+          print STDERR "# $line\n";
+        }
 
-        if ($trace_msg =~ /unable to load DelayTable/) {
-          $ok = 0;
-          last;
+        if ($line =~ /$expected/) {
+          my $trace_channel = $1;
+          my $trace_level = $2;
+          my $trace_msg = $3;
+
+          next unless $trace_channel eq 'delay';
+
+          if ($trace_msg =~ /unable to load DelayTable/) {
+            $ok = 0;
+            last;
+          }
         }
       }
+
+      close($fh);
+      $self->assert($ok, test_msg("Trace messages appeared unexpectedly"));
+
+    } else {
+      die("Can't open $setup->{log_file}: $!");
     }
-
-    close($fh);
-
-    $self->assert($ok, test_msg("Trace messages appeared unexpectedly"));
-
-  } else {
-    test_append_logfile($log_file, $ex);
-    unlink($log_file);
-
-    die("Can't open $log_file: $!");
+  };
+  if ($@) {
+    $ex = $@;
   }
 
-  unlink($log_file);
+  test_cleanup($setup->{log_file}, $ex);
 }
 
 sub delay_extra_pass_cmd_bug3622 {
@@ -797,50 +764,19 @@ sub delay_table_none_bug4020 {
 sub delay_delayonevent_user_bug4020 {
   my $self = shift;
   my $tmpdir = $self->{tmpdir};
-
-  my $config_file = "$tmpdir/delay.conf";
-  my $pid_file = File::Spec->rel2abs("$tmpdir/delay.pid");
-  my $scoreboard_file = File::Spec->rel2abs("$tmpdir/delay.scoreboard");
-
-  my $log_file = test_get_logfile();
-
-  my $auth_user_file = File::Spec->rel2abs("$tmpdir/delay.passwd");
-  my $auth_group_file = File::Spec->rel2abs("$tmpdir/delay.group");
-
-  my $user = 'proftpd';
-  my $passwd = 'test';
-  my $group = 'ftpd';
-  my $home_dir = File::Spec->rel2abs($tmpdir);
-  my $uid = 500;
-  my $gid = 500;
-
-  # Make sure that, if we're running as root, that the home directory has
-  # permissions/privs set for the account we create
-  if ($< == 0) {
-    unless (chmod(0755, $home_dir)) {
-      die("Can't set perms on $home_dir to 0755: $!");
-    }
-
-    unless (chown($uid, $gid, $home_dir)) {
-      die("Can't set owner of $home_dir to $uid/$gid: $!");
-    }
-  }
-
-  auth_user_write($auth_user_file, $user, $passwd, $uid, $gid, $home_dir,
-    '/bin/bash');
-  auth_group_write($auth_group_file, $group, $gid, $user);
+  my $setup = test_setup($tmpdir, 'delay');
 
   my $user_delay_secs = 2;
 
   my $config = {
-    PidFile => $pid_file,
-    ScoreboardFile => $scoreboard_file,
-    SystemLog => $log_file,
-    TraceLog => $log_file,
+    PidFile => $setup->{pid_file},
+    ScoreboardFile => $setup->{scoreboard_file},
+    SystemLog => $setup->{log_file},
+    TraceLog => $setup->{log_file},
     Trace => 'delay:20',
 
-    AuthUserFile => $auth_user_file,
-    AuthGroupFile => $auth_group_file,
+    AuthUserFile => $setup->{auth_user_file},
+    AuthGroupFile => $setup->{auth_group_file},
 
     IfModules => {
       'mod_delay.c' => {
@@ -850,7 +786,8 @@ sub delay_delayonevent_user_bug4020 {
     },
   };
 
-  my ($port, $config_user, $config_group) = config_write($config_file, $config);
+  my ($port, $config_user, $config_group) = config_write($setup->{config_file},
+    $config);
 
   # Open pipes, for use between the parent and child processes.  Specifically,
   # the child will indicate when it's done with its test by writing a message
@@ -867,10 +804,11 @@ sub delay_delayonevent_user_bug4020 {
   defined(my $pid = fork()) or die("Can't fork: $!");
   if ($pid) {
     eval {
-      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
+      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port, 0,
+        $user_delay_secs + 2);
 
       my $start = [gettimeofday()];        
-      $client->login($user, $passwd);
+      $client->login($setup->{user}, $setup->{passwd});
       my $elapsed = tv_interval($start);
 
       $client->quit();
@@ -883,7 +821,6 @@ sub delay_delayonevent_user_bug4020 {
         die("Expected at least $user_delay_secs sec delay, got $elapsed");
       }
     };
-
     if ($@) {
       $ex = $@;
     }
@@ -892,7 +829,7 @@ sub delay_delayonevent_user_bug4020 {
     $wfh->flush();
 
   } else {
-    eval { server_wait($config_file, $rfh) };
+    eval { server_wait($setup->{config_file}, $rfh) };
     if ($@) {
       warn($@);
       exit 1;
@@ -902,67 +839,28 @@ sub delay_delayonevent_user_bug4020 {
   }
 
   # Stop server
-  server_stop($pid_file);
-
+  server_stop($setup->{pid_file});
   $self->assert_child_ok($pid);
 
-  if ($ex) {
-    test_append_logfile($log_file, $ex);
-    unlink($log_file);
-
-    die($ex);
-  }
-
-  unlink($log_file);
+  test_cleanup($setup->{log_file}, $ex);
 }
 
 sub delay_delayonevent_pass_bug4020 {
   my $self = shift;
   my $tmpdir = $self->{tmpdir};
-
-  my $config_file = "$tmpdir/delay.conf";
-  my $pid_file = File::Spec->rel2abs("$tmpdir/delay.pid");
-  my $scoreboard_file = File::Spec->rel2abs("$tmpdir/delay.scoreboard");
-
-  my $log_file = test_get_logfile();
-
-  my $auth_user_file = File::Spec->rel2abs("$tmpdir/delay.passwd");
-  my $auth_group_file = File::Spec->rel2abs("$tmpdir/delay.group");
-
-  my $user = 'proftpd';
-  my $passwd = 'test';
-  my $group = 'ftpd';
-  my $home_dir = File::Spec->rel2abs($tmpdir);
-  my $uid = 500;
-  my $gid = 500;
-
-  # Make sure that, if we're running as root, that the home directory has
-  # permissions/privs set for the account we create
-  if ($< == 0) {
-    unless (chmod(0755, $home_dir)) {
-      die("Can't set perms on $home_dir to 0755: $!");
-    }
-
-    unless (chown($uid, $gid, $home_dir)) {
-      die("Can't set owner of $home_dir to $uid/$gid: $!");
-    }
-  }
-
-  auth_user_write($auth_user_file, $user, $passwd, $uid, $gid, $home_dir,
-    '/bin/bash');
-  auth_group_write($auth_group_file, $group, $gid, $user);
+  my $setup = test_setup($tmpdir, 'delay');
 
   my $pass_delay_secs = 2;
 
   my $config = {
-    PidFile => $pid_file,
-    ScoreboardFile => $scoreboard_file,
-    SystemLog => $log_file,
-    TraceLog => $log_file,
+    PidFile => $setup->{pid_file},
+    ScoreboardFile => $setup->{scoreboard_file},
+    SystemLog => $setup->{log_file},
+    TraceLog => $setup->{log_file},
     Trace => 'delay:20',
 
-    AuthUserFile => $auth_user_file,
-    AuthGroupFile => $auth_group_file,
+    AuthUserFile => $setup->{auth_user_file},
+    AuthGroupFile => $setup->{auth_group_file},
 
     IfModules => {
       'mod_delay.c' => {
@@ -972,7 +870,8 @@ sub delay_delayonevent_pass_bug4020 {
     },
   };
 
-  my ($port, $config_user, $config_group) = config_write($config_file, $config);
+  my ($port, $config_user, $config_group) = config_write($setup->{config_file},
+    $config);
 
   # Open pipes, for use between the parent and child processes.  Specifically,
   # the child will indicate when it's done with its test by writing a message
@@ -989,10 +888,11 @@ sub delay_delayonevent_pass_bug4020 {
   defined(my $pid = fork()) or die("Can't fork: $!");
   if ($pid) {
     eval {
-      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
+      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port, 0,
+        $pass_delay_secs + 2);
 
       my $start = [gettimeofday()];        
-      eval { $client->login($user, 'foobar') };
+      eval { $client->login($setup->{user}, 'foobar') };
       unless ($@) {
         die("Login succeeded unexpectedly");
       }
@@ -1007,7 +907,7 @@ sub delay_delayonevent_pass_bug4020 {
       }
 
       $start = [gettimeofday()];        
-      $client->login($user, $passwd);
+      $client->login($setup->{user}, $setup->{passwd});
       $elapsed = tv_interval($start);
 
       $client->quit();
@@ -1020,7 +920,6 @@ sub delay_delayonevent_pass_bug4020 {
         die("Expected at least $pass_delay_secs sec delay, got $elapsed");
       }
     };
-
     if ($@) {
       $ex = $@;
     }
@@ -1029,7 +928,7 @@ sub delay_delayonevent_pass_bug4020 {
     $wfh->flush();
 
   } else {
-    eval { server_wait($config_file, $rfh) };
+    eval { server_wait($setup->{config_file}, $rfh) };
     if ($@) {
       warn($@);
       exit 1;
@@ -1039,67 +938,28 @@ sub delay_delayonevent_pass_bug4020 {
   }
 
   # Stop server
-  server_stop($pid_file);
-
+  server_stop($setup->{pid_file});
   $self->assert_child_ok($pid);
 
-  if ($ex) {
-    test_append_logfile($log_file, $ex);
-    unlink($log_file);
-
-    die($ex);
-  }
-
-  unlink($log_file);
+  test_cleanup($setup->{log_file}, $ex);
 }
 
 sub delay_delayonevent_failedlogin_bug4020 {
   my $self = shift;
   my $tmpdir = $self->{tmpdir};
-
-  my $config_file = "$tmpdir/delay.conf";
-  my $pid_file = File::Spec->rel2abs("$tmpdir/delay.pid");
-  my $scoreboard_file = File::Spec->rel2abs("$tmpdir/delay.scoreboard");
-
-  my $log_file = test_get_logfile();
-
-  my $auth_user_file = File::Spec->rel2abs("$tmpdir/delay.passwd");
-  my $auth_group_file = File::Spec->rel2abs("$tmpdir/delay.group");
-
-  my $user = 'proftpd';
-  my $passwd = 'test';
-  my $group = 'ftpd';
-  my $home_dir = File::Spec->rel2abs($tmpdir);
-  my $uid = 500;
-  my $gid = 500;
-
-  # Make sure that, if we're running as root, that the home directory has
-  # permissions/privs set for the account we create
-  if ($< == 0) {
-    unless (chmod(0755, $home_dir)) {
-      die("Can't set perms on $home_dir to 0755: $!");
-    }
-
-    unless (chown($uid, $gid, $home_dir)) {
-      die("Can't set owner of $home_dir to $uid/$gid: $!");
-    }
-  }
-
-  auth_user_write($auth_user_file, $user, $passwd, $uid, $gid, $home_dir,
-    '/bin/bash');
-  auth_group_write($auth_group_file, $group, $gid, $user);
+  my $setup = test_setup($tmpdir, 'delay');
 
   my $failed_delay_secs = 2;
 
   my $config = {
-    PidFile => $pid_file,
-    ScoreboardFile => $scoreboard_file,
-    SystemLog => $log_file,
-    TraceLog => $log_file,
+    PidFile => $setup->{pid_file},
+    ScoreboardFile => $setup->{scoreboard_file},
+    SystemLog => $setup->{log_file},
+    TraceLog => $setup->{log_file},
     Trace => 'delay:20',
 
-    AuthUserFile => $auth_user_file,
-    AuthGroupFile => $auth_group_file,
+    AuthUserFile => $setup->{auth_user_file},
+    AuthGroupFile => $setup->{auth_group_file},
 
     IfModules => {
       'mod_delay.c' => {
@@ -1109,7 +969,8 @@ sub delay_delayonevent_failedlogin_bug4020 {
     },
   };
 
-  my ($port, $config_user, $config_group) = config_write($config_file, $config);
+  my ($port, $config_user, $config_group) = config_write($setup->{config_file},
+    $config);
 
   # Open pipes, for use between the parent and child processes.  Specifically,
   # the child will indicate when it's done with its test by writing a message
@@ -1126,10 +987,11 @@ sub delay_delayonevent_failedlogin_bug4020 {
   defined(my $pid = fork()) or die("Can't fork: $!");
   if ($pid) {
     eval {
-      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
+      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port, 0,
+        $failed_delay_secs + 2);
 
       my $start = [gettimeofday()];        
-      eval { $client->login($user, 'foobar') };
+      eval { $client->login($setup->{user}, 'foobar') };
       unless ($@) {
         die("Login succeeded unexpectedly");
       }
@@ -1144,7 +1006,7 @@ sub delay_delayonevent_failedlogin_bug4020 {
       }
 
       $start = [gettimeofday()];
-      $client->login($user, $passwd);
+      $client->login($setup->{user}, $setup->{passwd});
       $elapsed = tv_interval($start);
 
       if ($ENV{TEST_VERBOSE}) {
@@ -1153,7 +1015,6 @@ sub delay_delayonevent_failedlogin_bug4020 {
 
       $client->quit();
     };
-
     if ($@) {
       $ex = $@;
     }
@@ -1162,7 +1023,7 @@ sub delay_delayonevent_failedlogin_bug4020 {
     $wfh->flush();
 
   } else {
-    eval { server_wait($config_file, $rfh) };
+    eval { server_wait($setup->{config_file}, $rfh) };
     if ($@) {
       warn($@);
       exit 1;
@@ -1172,67 +1033,28 @@ sub delay_delayonevent_failedlogin_bug4020 {
   }
 
   # Stop server
-  server_stop($pid_file);
-
+  server_stop($setup->{pid_file});
   $self->assert_child_ok($pid);
 
-  if ($ex) {
-    test_append_logfile($log_file, $ex);
-    unlink($log_file);
-
-    die($ex);
-  }
-
-  unlink($log_file);
+  test_cleanup($setup->{log_file}, $ex);
 }
 
 sub delay_delayonevent_user_pass_bug4020 {
   my $self = shift;
   my $tmpdir = $self->{tmpdir};
-
-  my $config_file = "$tmpdir/delay.conf";
-  my $pid_file = File::Spec->rel2abs("$tmpdir/delay.pid");
-  my $scoreboard_file = File::Spec->rel2abs("$tmpdir/delay.scoreboard");
-
-  my $log_file = test_get_logfile();
-
-  my $auth_user_file = File::Spec->rel2abs("$tmpdir/delay.passwd");
-  my $auth_group_file = File::Spec->rel2abs("$tmpdir/delay.group");
-
-  my $user = 'proftpd';
-  my $passwd = 'test';
-  my $group = 'ftpd';
-  my $home_dir = File::Spec->rel2abs($tmpdir);
-  my $uid = 500;
-  my $gid = 500;
-
-  # Make sure that, if we're running as root, that the home directory has
-  # permissions/privs set for the account we create
-  if ($< == 0) {
-    unless (chmod(0755, $home_dir)) {
-      die("Can't set perms on $home_dir to 0755: $!");
-    }
-
-    unless (chown($uid, $gid, $home_dir)) {
-      die("Can't set owner of $home_dir to $uid/$gid: $!");
-    }
-  }
-
-  auth_user_write($auth_user_file, $user, $passwd, $uid, $gid, $home_dir,
-    '/bin/bash');
-  auth_group_write($auth_group_file, $group, $gid, $user);
+  my $setup = test_setup($tmpdir, 'delay');
 
   my $login_delay_secs = 4;
 
   my $config = {
-    PidFile => $pid_file,
-    ScoreboardFile => $scoreboard_file,
-    SystemLog => $log_file,
-    TraceLog => $log_file,
+    PidFile => $setup->{pid_file},
+    ScoreboardFile => $setup->{scoreboard_file},
+    SystemLog => $setup->{log_file},
+    TraceLog => $setup->{log_file},
     Trace => 'delay:20',
 
-    AuthUserFile => $auth_user_file,
-    AuthGroupFile => $auth_group_file,
+    AuthUserFile => $setup->{auth_user_file},
+    AuthGroupFile => $setup->{auth_group_file},
 
     IfModules => {
       'mod_delay.c' => [
@@ -1243,7 +1065,8 @@ sub delay_delayonevent_user_pass_bug4020 {
     },
   };
 
-  my ($port, $config_user, $config_group) = config_write($config_file, $config);
+  my ($port, $config_user, $config_group) = config_write($setup->{config_file},
+    $config);
 
   # Open pipes, for use between the parent and child processes.  Specifically,
   # the child will indicate when it's done with its test by writing a message
@@ -1260,10 +1083,11 @@ sub delay_delayonevent_user_pass_bug4020 {
   defined(my $pid = fork()) or die("Can't fork: $!");
   if ($pid) {
     eval {
-      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
+      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port, 0,
+        $login_delay_secs + 2);
 
       my $start = [gettimeofday()];        
-      $client->login($user, $passwd);
+      $client->login($setup->{user}, $setup->{passwd});
       my $elapsed = tv_interval($start);
 
       $client->quit();
@@ -1276,7 +1100,6 @@ sub delay_delayonevent_user_pass_bug4020 {
         die("Expected at least $login_delay_secs sec delay, got $elapsed");
       }
     };
-
     if ($@) {
       $ex = $@;
     }
@@ -1285,7 +1108,7 @@ sub delay_delayonevent_user_pass_bug4020 {
     $wfh->flush();
 
   } else {
-    eval { server_wait($config_file, $rfh) };
+    eval { server_wait($setup->{config_file}, $rfh) };
     if ($@) {
       warn($@);
       exit 1;
@@ -1295,18 +1118,10 @@ sub delay_delayonevent_user_pass_bug4020 {
   }
 
   # Stop server
-  server_stop($pid_file);
-
+  server_stop($setup->{pid_file});
   $self->assert_child_ok($pid);
 
-  if ($ex) {
-    test_append_logfile($log_file, $ex);
-    unlink($log_file);
-
-    die($ex);
-  }
-
-  unlink($log_file);
+  test_cleanup($setup->{log_file}, $ex);
 }
 
 1;

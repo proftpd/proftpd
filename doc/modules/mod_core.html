@@ -2167,6 +2167,7 @@ The <em>Engine</em> parameter configures the particular implementation
 following:
 <ul>
   <li>PCRE
+  <li>PCRE2
   <li>POSIX
 </ul>
 This is most useful for specifying that ProFTPD should handle all regular
@@ -2533,7 +2534,7 @@ See also: <a href="#DefaultServer"><code>DefaultServer</code></a>
 <p>
 <hr>
 <h3><a name="SocketOptions">SocketOptions</a></h3>
-<strong>Syntax:</strong> SocketOptions <em>[maxseg <i>byte-count</i>] [rcvbuf <i>byte-count</i>] [sndbuf <i>byte-count</i>] [keepalive "on"|"off"|spec]</em><br>
+<strong>Syntax:</strong> SocketOptions <em>[maxseg <i>byte-count</i>] [rcvbuf <i>byte-count</i>] [sndbuf <i>byte-count</i>] [keepalive "on"|"off"|spec] [reuseport "on"|"off"]</em><br>
 <strong>Default:</strong> None<br>
 <strong>Context:</strong> server config, <code>&lt;VirtualHost&gt;</code><br>
 <strong>Module:</strong> mod_core<br>
@@ -2598,6 +2599,16 @@ then <code>proftpd</code> will assume that the <em>keepalive</em> configuration
 is equivalent to:
 <pre>
   SocketOptions keepalive on
+</pre>
+
+<p>
+In <code>proftpd-1.3.8rc4</code>, the <code>SocketOptions</code> directive
+gained support for the <em>reuseport</em> parameter.  By default,
+<code>proftpd</code> does <b>not</b> enable the TCP "reuse port" value.
+However, this setting can be useful in very specific situations.  To enable
+TCP port reuse for the control socket, use:
+<pre>
+  SocketOptions reuseport on
 </pre>
 
 <p>

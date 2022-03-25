@@ -1,6 +1,6 @@
 /*
  * ProFTPD - mod_sftp interoperability
- * Copyright (c) 2008-2016 TJ Saunders
+ * Copyright (c) 2008-2021 TJ Saunders
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -44,7 +44,8 @@ static unsigned int default_flags =
   SFTP_SSH2_FEAT_SERVICE_IN_HOST_SIG |
   SFTP_SSH2_FEAT_SERVICE_IN_PUBKEY_SIG |
   SFTP_SSH2_FEAT_HAVE_PUBKEY_ALGO_IN_DSA_SIG |
-  SFTP_SSH2_FEAT_NO_DATA_WHILE_REKEYING;
+  SFTP_SSH2_FEAT_NO_DATA_WHILE_REKEYING |
+  SFTP_SSH2_FEAT_HOSTKEYS;
 
 struct sftp_version_pattern {
   const char *pattern;
@@ -53,6 +54,7 @@ struct sftp_version_pattern {
 };
 
 static struct sftp_version_pattern known_versions[] = {
+  { "^Cisco-1\\..*",		SFTP_SSH2_FEAT_HOSTKEYS,		NULL },
 
   { "^OpenSSH-2\\.0.*|"
     "^OpenSSH-2\\.1.*|"
@@ -76,6 +78,18 @@ static struct sftp_version_pattern known_versions[] = {
   { ".*MindTerm.*",		0,					NULL },
 
   { "^Sun_SSH_1\\.0.*",		SFTP_SSH2_FEAT_REKEYING,		NULL },
+
+  { "^TeraTerm SSH.*|"
+    "^TTSSH/1\\.5\\..*|"
+    "^TTSSH/2\\.1.*|"
+    "^TTSSH/2\\.2.*|"
+    "^TTSSH/2\\.3.*|"
+    "^TTSSH/2\\.4.*|"
+    "^TTSSH/2\\.5.*|"
+    "^TTSSH/2\\.6.*|"
+    "^TTSSH/2\\.70.*|"
+    "^TTSSH/2\\.71.*|"
+    "^TTSSH/2\\.72.*",		SFTP_SSH2_FEAT_HOSTKEYS,		NULL },
 
   { "^2\\.1\\.0.*|"
     "^2\\.1 .*",		SFTP_SSH2_FEAT_HAVE_PUBKEY_ALGO_IN_DSA_SIG|
