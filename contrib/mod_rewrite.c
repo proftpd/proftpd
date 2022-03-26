@@ -1,6 +1,6 @@
 /*
  * ProFTPD: mod_rewrite -- a module for rewriting FTP commands
- * Copyright (c) 2001-2021 TJ Saunders
+ * Copyright (c) 2001-2022 TJ Saunders
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -1880,9 +1880,13 @@ static int rewrite_open_fifo(config_rec *c) {
 
   fd = open(fifo, O_RDWR|O_NONBLOCK);
   if (fd < 0) {
-    rewrite_log("rewrite_open_fifo(): unable to open FIFO '%s': %s", fifo,
-      strerror(errno));
+    int xerrno = errno;
+
     pr_signals_unblock();
+    rewrite_log("rewrite_open_fifo(): unable to open FIFO '%s': %s", fifo,
+      strerror(xerrno));
+
+    errno = xerrno;
     return -1;
   }
 
@@ -1896,6 +1900,7 @@ static int rewrite_open_fifo(config_rec *c) {
   /* Add the file descriptor into the config_rec. */
   *((int *) c->argv[3]) = fd;
 
+  pr_signals_unblock();
   return 0;
 }
 
@@ -2084,8 +2089,9 @@ static void rewrite_openlog(void) {
   int res = 0, xerrno = 0;
 
   /* Sanity checks */
-  if (rewrite_logfd >= 0)
+  if (rewrite_logfd >= 0) {
     return;
+  }
 
   rewrite_logfile = get_param_ptr(main_server->conf, "RewriteLog", FALSE);
   if (rewrite_logfile == NULL) {

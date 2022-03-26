@@ -2,7 +2,7 @@
  * ProFTPD: mod_ctrls -- a module implementing the ftpdctl local socket
  *          server, as well as several utility functions for other Controls
  *          modules
- * Copyright (c) 2000-2020 TJ Saunders
+ * Copyright (c) 2000-2022 TJ Saunders
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -477,6 +477,7 @@ static int ctrls_listen(const char *sock_file) {
     if (res < 0) {
       int xerrno = errno;
 
+      pr_signals_unblock();
       pr_log_pri(PR_LOG_NOTICE, MOD_CTRLS_VERSION
         ": error duplicating ctrls socket: %s", strerror(xerrno));
       (void) close(sockfd);
@@ -492,6 +493,7 @@ static int ctrls_listen(const char *sock_file) {
   if (fcntl(sockfd, F_SETFD, FD_CLOEXEC) < 0) {
     int xerrno = errno;
 
+    pr_signals_unblock();
     pr_log_pri(PR_LOG_WARNING,
       "unable to set CLO_EXEC on ctrls socket fd %d: %s", sockfd,
       strerror(xerrno));
