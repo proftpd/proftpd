@@ -1,6 +1,6 @@
 /*
  * ProFTPD - FTP server daemon
- * Copyright (c) 2003-2020 The ProFTPD Project team
+ * Copyright (c) 2003-2022 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -123,7 +123,11 @@ static int create_path(pool *p, const char *path, const char *user,
 
   currpath = "/";
   while (tmppath && *tmppath) {
-    char *currdir = strsep(&tmppath, "/");
+    char *currdir;
+
+    pr_signals_handle();
+
+    currdir = strsep(&tmppath, "/");
     currpath = pdircat(p, currpath, currdir, NULL);
 
     /* If tmppath is NULL, we are creating the last part of the path, so we
@@ -136,8 +140,6 @@ static int create_path(pool *p, const char *path, const char *user,
     } else { 
       create_dir(currpath, dir_uid, dir_gid, dir_mode);
     }
-
-    pr_signals_handle();
   }
 
   pr_trace_msg(trace_channel, 5, "home directory '%s' created", path);

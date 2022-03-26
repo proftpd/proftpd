@@ -1,6 +1,6 @@
 /*
  * ProFTPD - FTP server daemon
- * Copyright (c) 2008-2021 The ProFTPD Project team
+ * Copyright (c) 2008-2022 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -124,6 +124,8 @@ static const char *str_vreplace(pool *p, unsigned int max_replaces,
 
     for (mptr = matches, rptr = replaces; *mptr; mptr++, rptr++) {
       size_t mlen;
+
+      pr_signals_handle();
 
       mlen = strlen(*mptr);
       rlen = strlen(*rptr);

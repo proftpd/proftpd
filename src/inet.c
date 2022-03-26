@@ -627,6 +627,8 @@ conn_t *pr_inet_create_conn_portrange(pool *p, const pr_netaddr_t *bind_addr,
 
   for (attempt = 3; attempt > 0 && !c; attempt--) {
     for (i = range_len - 1; i >= 0 && !c; i--) {
+      pr_signals_handle();
+
       /* If this is the first attempt through the range, randomize
        * the order of the port numbers used.
        */

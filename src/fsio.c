@@ -2,7 +2,7 @@
  * ProFTPD - FTP server daemon
  * Copyright (c) 1997, 1998 Public Flood Software
  * Copyright (c) 1999, 2000 MacGyver aka Habeeb J. Dihu <macgyver@tos.net>
- * Copyright (c) 2001-2021 The ProFTPD Project
+ * Copyright (c) 2001-2022 The ProFTPD Project
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -3649,7 +3649,10 @@ void pr_fs_virtual_path(const char *path, char *buf, size_t buflen) {
   /* main loop */
   while (fini--) {
     where = curpath;
+
     while (*where != '\0') {
+      pr_signals_handle();
+
       if (strncmp(where, ".", 2) == 0) {
         where++;
         continue;
@@ -6441,7 +6444,7 @@ int pr_fsio_chroot(const char *path) {
 
         /* Need to do this for any stacked FSs as well. */
         next = tmpfs->fs_next;
-        while (next) {
+        while (next != NULL) {
           pr_signals_handle();
 
           memmove(next->fs_path, next->fs_path + strlen(path),

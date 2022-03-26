@@ -2,7 +2,7 @@
  * ProFTPD - FTP server daemon
  * Copyright (c) 1997, 1998 Public Flood Software
  * Copyright (c) 1999, 2000 MacGyver aka Habeeb J. Dihu <macgyver@tos.net>
- * Copyright (c) 2001-2021 The ProFTPD Project
+ * Copyright (c) 2001-2022 The ProFTPD Project
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -1373,7 +1373,7 @@ static int listdir(cmd_rec *cmd, pool *workp, const char *resp_code,
   }
 
   PR_DEVEL_CLOCK(dir = sreaddir(".", opt_U ? FALSE : TRUE));
-  if (dir) {
+  if (dir != NULL) {
     char **s;
     char **r;
 
@@ -1381,6 +1381,8 @@ static int listdir(cmd_rec *cmd, pool *workp, const char *resp_code,
 
     s = dir;
     while (*s) {
+      pr_signals_handle();
+
       if (**s == '.') {
         if (!opt_a && (!opt_A || is_dotdir(*s))) {
           d = 0;
@@ -1420,6 +1422,7 @@ static int listdir(cmd_rec *cmd, pool *workp, const char *resp_code,
        */
       i = 0;
       while (dir[i] != NULL) {
+        pr_signals_handle();
         free(dir[i++]);
       }
       free(dir);
@@ -1499,6 +1502,7 @@ static int listdir(cmd_rec *cmd, pool *workp, const char *resp_code,
            */
           i = 0;
           while (dir[i] != NULL) {
+            pr_signals_handle();
             free(dir[i++]);
           }
           free(dir);
@@ -1525,6 +1529,7 @@ static int listdir(cmd_rec *cmd, pool *workp, const char *resp_code,
            */
           i = 0;
           while (dir[i] != NULL) {
+            pr_signals_handle();
             free(dir[i++]);
           }
           free(dir);
@@ -1547,9 +1552,10 @@ static int listdir(cmd_rec *cmd, pool *workp, const char *resp_code,
   /* Explicitly free the memory allocated for containing the list of
    * filenames.
    */
-  if (dir) {
+  if (dir != NULL) {
     i = 0;
     while (dir[i] != NULL) {
+      pr_signals_handle();
       free(dir[i++]);
     }
     free(dir);
@@ -2579,6 +2585,7 @@ static int nlstdir(cmd_rec *cmd, const char *dir) {
    */
   i = 0;
   while (list[i] != NULL) {
+    pr_signals_handle();
     free(list[i++]);
   }
   free(list);

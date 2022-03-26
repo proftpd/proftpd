@@ -1,6 +1,6 @@
 /*
  * ProFTPD - FTP server daemon
- * Copyright (c) 2001-2020 The ProFTPD Project team
+ * Copyright (c) 2001-2022 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -191,7 +191,7 @@ static int core_netio_poll_cb(pr_netio_stream_t *nstrm) {
   }
 
   tval.tv_sec = ((nstrm->strm_flags & PR_NETIO_SESS_INTR) ?
-    nstrm->strm_interval: 60);
+    nstrm->strm_interval : 60);
   tval.tv_usec = 0;
 
   res = select(nstrm->strm_fd + 1, rfdsp, wfdsp, NULL, &tval);
@@ -892,7 +892,9 @@ int pr_netio_poll(pr_netio_stream_t *nstrm) {
 
         if (nstrm->strm_flags & PR_NETIO_SESS_INTR) {
           errno = nstrm->strm_errno = xerrno;
-          return -1;
+
+          /* Per SESS_INTR description in netio.h, return -2 here. */
+          return -2;
         }
 
         /* Otherwise, restart the call */

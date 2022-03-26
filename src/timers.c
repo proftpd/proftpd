@@ -1,7 +1,7 @@
 /*
  * ProFTPD - FTP server daemon
  * Copyright (c) 1997, 1998 Public Flood Software
- * Copyright (c) 2001-2020 The ProFTPD Project team
+ * Copyright (c) 2001-2022 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -165,6 +165,8 @@ static int process_timers(int elapsed) {
   /* Put the recycled timers back into the main timer list. */
   t = (struct timer *) recycled->xas_list;
   while (t != NULL) {
+    pr_signals_handle();
+
     xaset_remove(recycled, (xasetmember_t *) t);
     xaset_insert_sort(timers, (xasetmember_t *) t, TRUE);
     t = (struct timer *) recycled->xas_list;
@@ -291,6 +293,8 @@ void handle_alarm(void) {
       alarm_pending++;
     }
   }
+
+  pr_signals_handle();
 }
 
 int pr_timer_reset(int timerno, module *mod) {

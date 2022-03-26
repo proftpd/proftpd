@@ -2,7 +2,7 @@
  * ProFTPD - FTP server daemon
  * Copyright (c) 1997, 1998 Public Flood Software
  * Copyright (c) 1999, 2000 MacGyver aka Habeeb J. Dihu <macgyver@tos.net>
- * Copyright (c) 2001-2020 The ProFTPD Project team
+ * Copyright (c) 2001-2022 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -101,12 +101,14 @@ void pr_signals_block(void) {
 void pr_signals_unblock(void) {
   if (sigs_nblocked == 0) {
     pr_trace_msg("signal", 5, "signals already unblocked");
+    pr_signals_handle();
     return;
   }
 
   if (sigs_nblocked == 1) {
     mask_signals(FALSE);
     pr_trace_msg("signal", 5, "signals unblocked");
+    pr_signals_handle();
 
   } else {
     pr_trace_msg("signal", 9, "signals already unblocked (block count = %u)",
@@ -322,6 +324,8 @@ char *dir_best_path(pool *p, const char *path) {
   pr_fs_clean_path(pstrdup(p, workpath), workpath, sizeof(workpath)-1);
 
   while (!fini && *workpath) {
+    pr_signals_handle();
+
     if (pr_fs_resolve_path(workpath, realpath_buf,
         sizeof(realpath_buf)-1, 0) != -1) {
       break;

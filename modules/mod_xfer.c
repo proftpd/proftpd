@@ -93,7 +93,8 @@ static off_t find_max_nbytes(char *directive) {
     have_all_limit = FALSE;
 
   c = find_config(CURRENT_CONF, CONF_PARAM, directive, FALSE);
-  while (c) {
+  while (c != NULL) {
+    pr_signals_handle();
 
     /* This check is for more than three arguments: one argument is the
      * classifier (i.e. "user", "group", or "class"), one argument is
