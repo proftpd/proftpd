@@ -230,6 +230,7 @@ MODRET start_ifdefine(cmd_rec *cmd) {
    */
   while (ifdefine_ctx_count && (config_line = pr_parser_read_line(buf,
       sizeof(buf))) != NULL) {
+    pr_signals_handle();
 
     if (strncasecmp(config_line, "<IfDefine", 9) == 0) {
       ifdefine_ctx_count++;
@@ -5155,7 +5156,7 @@ MODRET core_post_host(cmd_rec *cmd) {
 
     /* Remove any configured SetEnvs. */
     c = find_config(session.prev_server->conf, CONF_PARAM, "SetEnv", FALSE);
-    while (c) {
+    while (c != NULL) {
       pr_signals_handle();
 
       if (pr_env_unset(session.pool, c->argv[0]) < 0) {
@@ -6963,6 +6964,8 @@ static int core_sess_init(void) {
   /* Check for configured SetEnvs. */
   c = find_config(main_server->conf, CONF_PARAM, "SetEnv", FALSE);
   while (c != NULL) {
+    pr_signals_handle();
+
     if (pr_env_set(session.pool, c->argv[0], c->argv[1]) < 0) {
       pr_log_debug(DEBUG1, "unable to set environment variable '%s': %s",
         (char *) c->argv[0], strerror(errno));
@@ -6977,6 +6980,8 @@ static int core_sess_init(void) {
   /* Check for configured UnsetEnvs. */
   c = find_config(main_server->conf, CONF_PARAM, "UnsetEnv", FALSE);
   while (c != NULL) {
+    pr_signals_handle();
+
     if (pr_env_unset(session.pool, c->argv[0]) < 0) {
       pr_log_debug(DEBUG1, "unable to unset environment variable '%s': %s",
         (char *) c->argv[0], strerror(errno));
@@ -7048,14 +7053,13 @@ static int core_sess_init(void) {
     pr_timer_remove(core_scrub_timer_id, &core_module);
 
   } else if (ServerType == SERVER_INETD) {
-
     /* If we're running as 'ServerType inetd', scrub the scoreboard here.
      * For standalone ServerTypes, the scoreboard scrubber will handle
      * things itself.
      */
 
     c = find_config(main_server->conf, CONF_PARAM, "ScoreboardScrub", FALSE);
-    if (c) {
+    if (c != NULL) {
       if (*((int *) c->argv[0]) == TRUE) {
         pr_scoreboard_scrub();
       }

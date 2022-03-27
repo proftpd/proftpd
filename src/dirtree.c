@@ -2,7 +2,7 @@
  * ProFTPD - FTP server daemon
  * Copyright (c) 1997, 1998 Public Flood Software
  * Copyright (c) 1999, 2000 MacGyver aka Habeeb J. Dihu <macgyver@tos.net>
- * Copyright (c) 2001-2021 The ProFTPD Project team
+ * Copyright (c) 2001-2022 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -428,6 +428,15 @@ void kludge_enable_umask(void) {
 
 static size_t _strmatch(register char *s1, register char *s2) {
   register size_t len = 0;
+
+  if (s1 == NULL ||
+      s2 == NULL) {
+    return 0;
+  }
+
+  if (s1 == s2) {
+    return strlen(s1);
+  }
 
   while (*s1 &&
          *s2 &&
@@ -2153,6 +2162,8 @@ static config_rec *find_best_dir(xaset_t *set, char *path, size_t *matchlen) {
   pathlen = strlen(path);
 
   for (c = (config_rec *) set->xas_list; c; c = c->next) {
+    pr_signals_handle();
+
     if (c->config_type == CONF_DIR) {
       /* Note: this comparison of pointers, rather than of strings, is
        * intentional.  DO NOT CHANGE THIS TO A strcmp()!

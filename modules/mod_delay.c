@@ -1,7 +1,7 @@
 /*
  * ProFTPD: mod_delay -- a module for adding arbitrary delays to the FTP
  *                       session lifecycle
- * Copyright (c) 2004-2020 TJ Saunders
+ * Copyright (c) 2004-2022 TJ Saunders
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -1315,23 +1315,30 @@ static int delay_handle_reset(pr_ctrls_t *ctrl, int reqargc,
   lock.l_len = 0;
 
   while (fcntl(fh->fh_fd, F_SETLKW, &lock) < 0) {
-    if (errno == EINTR) {
+    xerrno = errno;
+
+    if (xerrno == EINTR) {
       pr_signals_handle();
       continue;
-
-    } else {
-      pr_ctrls_add_response(ctrl,
-        "unable to obtain write lock on DelayTable '%s': %s",
-         fh->fh_path, strerror(errno));
-      pr_fsio_close(fh);
-      return -1;
     }
+
+    pr_ctrls_add_response(ctrl,
+      "unable to obtain write lock on DelayTable '%s': %s",
+       fh->fh_path, strerror(xerrno));
+    pr_fsio_close(fh);
+
+    errno = xerrno;
+    return -1;
   }
 
   if (pr_fsio_ftruncate(fh, 0) < 0) {
+    xerrno = errno;
+
     pr_ctrls_add_response(ctrl,
-      "error truncating DelayTable '%s': %s", fh->fh_path, strerror(errno));
+      "error truncating DelayTable '%s': %s", fh->fh_path, strerror(xerrno));
     pr_fsio_close(fh);
+
+    errno = xerrno;
     return -1;
   }
 
@@ -1342,9 +1349,13 @@ static int delay_handle_reset(pr_ctrls_t *ctrl, int reqargc,
   }
 
   if (pr_fsio_close(fh) < 0) {
+    xerrno = errno;
+
     pr_ctrls_add_response(ctrl,
       "error closing DelayTable '%s': %s", delay_tab.dt_path,
-      strerror(errno));
+      strerror(xerrno));
+
+    errno = xerrno;
     return -1;
   }
 
