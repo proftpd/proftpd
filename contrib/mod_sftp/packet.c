@@ -1,6 +1,6 @@
 /*
  * ProFTPD - mod_sftp packet IO
- * Copyright (c) 2008-2021 TJ Saunders
+ * Copyright (c) 2008-2022 TJ Saunders
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -388,6 +388,42 @@ static void handle_global_request_msg(struct ssh2_packet *pkt) {
       (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
         "error writing REQUEST_FAILURE message: %s", strerror(errno));
     }
+  }
+
+  destroy_pool(pkt->pool);
+}
+
+static void handle_unknown_msg(struct ssh2_packet *pkt, char msg_type) {
+  unsigned char *buf, *ptr;
+  struct ssh2_packet *pkt2;
+  uint32_t buflen, bufsz;
+  int res;
+
+  pr_event_generate("ssh2.invalid-packet", pkt);
+
+  /* Per RFC 4253, Section 11.4, we should NOT disconnect the client here
+   * for unknown messages, but instead we MUST respond with
+   * SSH_MSG_UNINMPLEMENTED, and otherwise ignore the message.
+   */
+
+  (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
+    "unhandled %s (%d) message, ignoring",
+    sftp_ssh2_packet_get_msg_type_desc(msg_type), msg_type);
+
+  buflen = bufsz = 1024;
+  ptr = buf = palloc(pkt->pool, bufsz);
+
+  sftp_msg_write_byte(&buf, &buflen, SFTP_SSH2_MSG_UNIMPLEMENTED);
+  sftp_msg_write_int(&buf, &buflen, pkt->seqno);
+
+  pkt2 = sftp_ssh2_packet_create(pkt->pool);
+  pkt2->payload = ptr;
+  pkt2->payload_len = (bufsz - buflen);
+
+  res = sftp_ssh2_packet_write(sftp_conn->wfd, pkt2);
+  if (res < 0) {
+    (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
+      "error writing UNIMPLEMENTED message: %s", strerror(errno));
   }
 
   destroy_pool(pkt->pool);
@@ -1946,13 +1982,7 @@ static int handle_ssh2_packet(void *data) {
       }
 
     default:
-      pr_event_generate("ssh2.invalid-packet", pkt);
-
-      (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
-        "unhandled %s (%d) message, disconnecting",
-        sftp_ssh2_packet_get_msg_type_desc(msg_type), msg_type);
-      SFTP_DISCONNECT_CONN(SFTP_SSH2_DISCONNECT_BY_APPLICATION,
-        "Unsupported protocol sequence");
+      handle_unknown_msg(pkt, msg_type);
   }
 
   return 0;
