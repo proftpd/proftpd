@@ -257,12 +257,12 @@ my $TESTS = {
     test_class => [qw(forking ssh2)],
   },
 
-  ssh2_ext_cipher_aes128_gcm => {
+  ssh2_ext_cipher_aes128_gcm_bug3759 => {
     order => ++$order,
     test_class => [qw(forking ssh2)],
   },
 
-  ssh2_ext_cipher_aes256_gcm => {
+  ssh2_ext_cipher_aes256_gcm_bug3759 => {
     order => ++$order,
     test_class => [qw(forking ssh2)],
   },
@@ -9530,7 +9530,7 @@ sub ssh2_cipher_s2c_none {
   unlink($log_file);
 }
 
-sub ssh2_ext_cipher_aes128_gcm {
+sub ssh2_ext_cipher_aes128_gcm_bug3759 {
   my $self = shift;
   my $tmpdir = $self->{tmpdir};
   my $setup = test_setup($tmpdir, 'sftp');
@@ -9699,7 +9699,7 @@ sub ssh2_ext_cipher_aes128_gcm {
   test_cleanup($setup->{log_file}, $ex);
 }
 
-sub ssh2_ext_cipher_aes256_gcm {
+sub ssh2_ext_cipher_aes256_gcm_bug3759 {
   my $self = shift;
   my $tmpdir = $self->{tmpdir};
   my $setup = test_setup($tmpdir, 'sftp');

@@ -1,6 +1,6 @@
 /*
  * ProFTPD - mod_sftp MACs
- * Copyright (c) 2008-2021 TJ Saunders
+ * Copyright (c) 2008-2022 TJ Saunders
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -694,7 +694,11 @@ const char *sftp_mac_get_read_algo(void) {
     return read_macs[read_mac_idx].algo;
   }
 
-  return NULL;
+  /* It is possible for there to be no MAC, as for some ciphers such as
+   * AES-GCM.  Rather than returning NULL here, we indicate this by returning
+   * the empty string (see Issue #1411).
+   */
+  return "";
 }
 
 int sftp_mac_is_read_etm(void) {
@@ -868,7 +872,11 @@ const char *sftp_mac_get_write_algo(void) {
     return write_macs[write_mac_idx].algo;
   }
 
-  return NULL;
+  /* It is possible for there to be no MAC, as for some ciphers such as
+   * AES-GCM.  Rather than returning NULL here, we indicate this by returning
+   * the empty string (see Issue #1411).
+   */
+  return "";
 }
 
 int sftp_mac_is_write_etm(void) {
