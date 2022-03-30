@@ -496,11 +496,8 @@ my $TESTS = {
     test_class => [qw(feature_sodium forking ssh2)],
   },
 
-  # This fails because of a bug in Net::SSH2; I've filed a bug report
-  # with fix for it:
-  #
+  # Bugfix for older versions, see:
   #  http://rt.cpan.org/Ticket/Display.html?id=49584
-  #
   ssh2_auth_no_authorized_keys => {
     order => ++$order,
     test_class => [qw(forking ssh2)],
@@ -527,6 +524,11 @@ my $TESTS = {
   },
 
   ssh2_auth_publickey_publickey_chain_bug4153 => {
+    order => ++$order,
+    test_class => [qw(bug forking ssh2)],
+  },
+
+  ssh2_auth_publickey_bad_format_issue1400 => {
     order => ++$order,
     test_class => [qw(bug forking ssh2)],
   },
@@ -1933,7 +1935,6 @@ sub list_tests {
     ssh2_compress_c2s_zlib => 1,
     ssh2_compress_s2c_zlib => 1,
     ssh2_hostkey_rsa_only => 1,
-    ssh2_auth_no_authorized_keys => 1,
     ssh2_hostkey_dss_only => 1,
     ssh2_hostkey_dss_bug3634 => 1,
   };
@@ -16826,51 +16827,21 @@ EOC
 sub ssh2_auth_no_authorized_keys {
   my $self = shift;
   my $tmpdir = $self->{tmpdir};
-
-  my $config_file = "$tmpdir/sftp.conf";
-  my $pid_file = File::Spec->rel2abs("$tmpdir/sftp.pid");
-  my $scoreboard_file = File::Spec->rel2abs("$tmpdir/sftp.scoreboard");
-
-  my $log_file = test_get_logfile();
-
-  my $auth_user_file = File::Spec->rel2abs("$tmpdir/sftp.passwd");
-  my $auth_group_file = File::Spec->rel2abs("$tmpdir/sftp.group");
-
-  my $user = 'proftpd';
-  my $passwd = 'test';
-  my $group = 'ftpd';
-  my $home_dir = File::Spec->rel2abs($tmpdir);
-  my $uid = 500;
-  my $gid = 500;
-
-  # Make sure that, if we're running as root, that the home directory has
-  # permissions/privs set for the account we create
-  if ($< == 0) {
-    unless (chmod(0755, $home_dir)) {
-      die("Can't set perms on $home_dir to 0755: $!");
-    }
-
-    unless (chown($uid, $gid, $home_dir)) {
-      die("Can't set owner of $home_dir to $uid/$gid: $!");
-    }
-  }
-
-  auth_user_write($auth_user_file, $user, $passwd, $uid, $gid, $home_dir,
-    '/bin/bash');
-  auth_group_write($auth_group_file, $group, $gid, $user);
+  my $setup = test_setup($tmpdir, 'sftp');
 
   my $rsa_host_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/ssh_host_rsa_key');
   my $dsa_host_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/ssh_host_dsa_key');
 
   my $config = {
-    PidFile => $pid_file,
-    ScoreboardFile => $scoreboard_file,
-    SystemLog => $log_file,
-    TraceLog => $log_file,
+    PidFile => $setup->{pid_file},
+    ScoreboardFile => $setup->{scoreboard_file},
+    SystemLog => $setup->{log_file},
+    TraceLog => $setup->{log_file},
     Trace => 'DEFAULT:10 ssh2:20 sftp:20 scp:20',
 
-    AuthUserFile => $auth_user_file,
-    AuthGroupFile => $auth_group_file,
+    AuthUserFile => $setup->{auth_user_file},
+    AuthGroupFile => $setup->{auth_group_file},
+    AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
       'mod_delay.c' => {
@@ -16879,14 +16850,15 @@ sub ssh2_auth_no_authorized_keys {
 
       'mod_sftp.c' => [
         "SFTPEngine on",
-        "SFTPLog $log_file",
+        "SFTPLog $setup->{log_file}",
         "SFTPHostKey $rsa_host_key",
         "SFTPHostKey $dsa_host_key",
       ],
     },
   };
 
-  my ($port, $config_user, $config_group) = config_write($config_file, $config);
+  my ($port, $config_user, $config_group) = config_write($setup->{config_file},
+    $config);
 
   my $have_sftp_pam = feature_have_module_compiled('mod_sftp_pam.c');
 
@@ -16916,7 +16888,7 @@ sub ssh2_auth_no_authorized_keys {
         die("Can't connect to SSH2 server: [$err_name] ($err_code) $err_str");
       }
 
-      my $auth_meths = [$ssh2->auth_list($user)];
+      my $auth_meths = [$ssh2->auth_list($setup->{user})];
       foreach my $meth (@$auth_meths) {
         # With no configured SFTPAuthorizedUserKeys nor SFTPAuthorizedHostKeys,
         # we should NOT see 'publickey' or 'hostbased' in the authentication
@@ -16936,7 +16908,6 @@ sub ssh2_auth_no_authorized_keys {
 
       $ssh2->disconnect();
     };
-
     if ($@) {
       $ex = $@;
     }
@@ -16945,7 +16916,7 @@ sub ssh2_auth_no_authorized_keys {
     $wfh->flush();
 
   } else {
-    eval { server_wait($config_file, $rfh) };
+    eval { server_wait($setup->{config_file}, $rfh) };
     if ($@) {
       warn($@);
       exit 1;
@@ -16955,18 +16926,10 @@ sub ssh2_auth_no_authorized_keys {
   }
 
   # Stop server
-  server_stop($pid_file);
-
+  server_stop($setup->{pid_file});
   $self->assert_child_ok($pid);
 
-  if ($ex) {
-    test_append_logfile($log_file, $ex);
-    unlink($log_file);
-
-    die($ex);
-  }
-
-  unlink($log_file);
+  test_cleanup($setup->{log_file}, $ex);
 }
 
 sub ssh2_auth_password_failed {
@@ -17698,6 +17661,139 @@ sub ssh2_auth_publickey_publickey_chain_bug4153 {
   }
 
   unlink($log_file);
+}
+
+sub ssh2_auth_publickey_bad_format_issue1400 {
+  my $self = shift;
+  my $tmpdir = $self->{tmpdir};
+  my $setup = test_setup($tmpdir, 'sftp');
+
+  my $rsa_host_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/ssh_host_rsa_key');
+  my $dsa_host_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/ssh_host_dsa_key');
+
+  my $rsa_priv_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/test_rsa_key');
+  my $rsa_pub_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/test_rsa_key.pub');
+
+  my $authorized_keys = File::Spec->rel2abs("$tmpdir/.authorized_keys");
+
+  # To trigger Issue#1400, we deliberate use the non-RFC4716-formatted
+  # public key here.
+  unless (copy($rsa_pub_key, $authorized_keys)) {
+    die("Can't copy $rsa_pub_key to $authorized_keys: $!");
+  }
+
+  my $config = {
+    PidFile => $setup->{pid_file},
+    ScoreboardFile => $setup->{scoreboard_file},
+    SystemLog => $setup->{log_file},
+    TraceLog => $setup->{log_file},
+    Trace => 'DEFAULT:10 ssh2:20 sftp:20',
+
+    AuthUserFile => $setup->{auth_user_file},
+    AuthGroupFile => $setup->{auth_group_file},
+    AuthOrder => 'mod_auth_file.c',
+
+    IfModules => {
+      'mod_delay.c' => {
+        DelayEngine => 'off',
+      },
+
+      'mod_sftp.c' => [
+        "SFTPEngine on",
+        "SFTPLog $setup->{log_file}",
+        "SFTPHostKey $rsa_host_key",
+        "SFTPHostKey $dsa_host_key",
+        "SFTPAuthorizedUserKeys file:~/.authorized_keys",
+        "SFTPAuthMethods publickey",
+      ],
+    },
+  };
+
+  my ($port, $config_user, $config_group) = config_write($setup->{config_file},
+    $config);
+
+  # Open pipes, for use between the parent and child processes.  Specifically,
+  # the child will indicate when it's done with its test by writing a message
+  # to the parent.
+  my ($rfh, $wfh);
+  unless (pipe($rfh, $wfh)) {
+    die("Can't open pipe: $!");
+  }
+
+  require Net::SSH2;
+
+  my $ex;
+
+  # Fork child
+  $self->handle_sigchld();
+  defined(my $pid = fork()) or die("Can't fork: $!");
+  if ($pid) {
+    eval {
+      my $ssh2 = Net::SSH2->new();
+
+      sleep(1);
+
+      unless ($ssh2->connect('127.0.0.1', $port)) {
+        my ($err_code, $err_name, $err_str) = $ssh2->error();
+        die("Can't connect to SSH2 server: [$err_name] ($err_code) $err_str");
+      }
+
+      if ($ssh2->auth_publickey($setup->{user}, $rsa_pub_key, $rsa_priv_key)) {
+        die("Login succeeded unexpectedly with publickey authentication");
+      }
+
+      $ssh2->disconnect();
+    };
+    if ($@) {
+      $ex = $@;
+    }
+
+    $wfh->print("done\n");
+    $wfh->flush();
+
+  } else {
+    eval { server_wait($setup->{config_file}, $rfh) };
+    if ($@) {
+      warn($@);
+      exit 1;
+    }
+
+    exit 0;
+  }
+
+  # Stop server
+  server_stop($setup->{pid_file});
+  $self->assert_child_ok($pid);
+
+  eval {
+    if (open(my $fh, "< $setup->{log_file}")) {
+      my $saw_msg = 0;
+
+      while (my $line = <$fh>) {
+        chomp($line);
+
+        if ($ENV{TEST_VERBOSE}) {
+          print STDERR "# $line\n";
+        }
+
+        if ($line =~ /perhaps keys are not RFC4716/) {
+          $saw_msg = 1;
+          last;
+        }
+      }
+
+      close($fh);
+      $self->assert($saw_msg, test_msg("Did not see expected SFTPLog message"));
+
+    } else {
+      die("Can't read $setup->{log_file}: $!");
+    }
+  };
+  if ($@) {
+    $ex = $@;
+  }
+
+  test_cleanup($setup->{log_file}, $ex);
 }
 
 sub ssh2_interop_scanner {
