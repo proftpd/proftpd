@@ -1,6 +1,6 @@
 /*
  * ProFTPD - mod_sftp
- * Copyright (c) 2008-2021 TJ Saunders
+ * Copyright (c) 2008-2022 TJ Saunders
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -1079,7 +1079,7 @@ MODRET set_sftpextensions(cmd_rec *cmd) {
 
     ext++;
 
-    if (strncasecmp(ext, "checkFile", 10) == 0) {
+    if (strcasecmp(ext, "checkFile") == 0) {
       switch (action) {
         case '-':
           ext_flags &= ~SFTP_FXP_EXT_CHECK_FILE;
@@ -1090,7 +1090,7 @@ MODRET set_sftpextensions(cmd_rec *cmd) {
           break;
       }
 
-    } else if (strncasecmp(ext, "copyFile", 9) == 0) {
+    } else if (strcasecmp(ext, "copyFile") == 0) {
       switch (action) {
         case '-':
           ext_flags &= ~SFTP_FXP_EXT_COPY_FILE;
@@ -1101,7 +1101,7 @@ MODRET set_sftpextensions(cmd_rec *cmd) {
           break;
       }
 
-    } else if (strncasecmp(ext, "fsync", 6) == 0) {
+    } else if (strcasecmp(ext, "fsync") == 0) {
       switch (action) {
         case '-':
           ext_flags &= ~SFTP_FXP_EXT_FSYNC;
@@ -1112,7 +1112,7 @@ MODRET set_sftpextensions(cmd_rec *cmd) {
           break;
       }
 
-    } else if (strncasecmp(ext, "vendorID", 9) == 0) {
+    } else if (strcasecmp(ext, "vendorID") == 0) {
       switch (action) {
         case '-':
           ext_flags &= ~SFTP_FXP_EXT_VENDOR_ID;
@@ -1123,7 +1123,7 @@ MODRET set_sftpextensions(cmd_rec *cmd) {
           break;
       }
 
-    } else if (strncasecmp(ext, "versionSelect", 14) == 0) {
+    } else if (strcasecmp(ext, "versionSelect") == 0) {
       switch (action) {
         case '-':
           ext_flags &= ~SFTP_FXP_EXT_VERSION_SELECT;
@@ -1134,7 +1134,7 @@ MODRET set_sftpextensions(cmd_rec *cmd) {
           break;
       }
 
-    } else if (strncasecmp(ext, "posixRename", 12) == 0) {
+    } else if (strcasecmp(ext, "posixRename") == 0) {
       switch (action) {
         case '-':
           ext_flags &= ~SFTP_FXP_EXT_POSIX_RENAME;
@@ -1145,7 +1145,7 @@ MODRET set_sftpextensions(cmd_rec *cmd) {
           break;
       }
 
-    } else if (strncasecmp(ext, "spaceAvailable", 15) == 0) {
+    } else if (strcasecmp(ext, "spaceAvailable") == 0) {
 #ifdef HAVE_SYS_STATVFS_H
       switch (action) {
         case '-':
@@ -1161,8 +1161,7 @@ MODRET set_sftpextensions(cmd_rec *cmd) {
         "on this system; requires statvfs(3) support", cmd->argv[0]);
 #endif /* !HAVE_SYS_STATVFS_H */
 
-
-    } else if (strncasecmp(ext, "statvfs", 8) == 0) {
+    } else if (strcasecmp(ext, "statvfs") == 0) {
 #ifdef HAVE_SYS_STATVFS_H
       switch (action) {
         case '-':
@@ -1178,7 +1177,7 @@ MODRET set_sftpextensions(cmd_rec *cmd) {
         "on this system; requires statvfs(3) support", cmd->argv[0]);
 #endif /* !HAVE_SYS_STATVFS_H */
 
-    } else if (strncasecmp(ext, "hardlink", 9) == 0) {
+    } else if (strcasecmp(ext, "hardlink") == 0) {
       switch (action) {
         case '-':
           ext_flags &= ~SFTP_FXP_EXT_HARDLINK;
@@ -1189,7 +1188,18 @@ MODRET set_sftpextensions(cmd_rec *cmd) {
           break;
       }
 
-    } else if (strncasecmp(ext, "xattr", 8) == 0) {
+    } else if (strcasecmp(ext, "homeDirectory") == 0) {
+      switch (action) {
+        case '-':
+          ext_flags &= ~SFTP_FXP_EXT_HOMEDIR;
+          break;
+
+        case '+':
+          ext_flags |= SFTP_FXP_EXT_HOMEDIR;
+          break;
+      }
+
+    } else if (strcasecmp(ext, "xattr") == 0) {
 #ifdef HAVE_SYS_XATTR_H
       switch (action) {
         case '-':
