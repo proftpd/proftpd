@@ -2,7 +2,7 @@
  * ProFTPD: mod_sql -- SQL frontend
  * Copyright (c) 1998-1999 Johnie Ingram.
  * Copyright (c) 2001 Andrew Houghton.
- * Copyright (c) 2004-2021 TJ Saunders
+ * Copyright (c) 2004-2022 TJ Saunders
  *  
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -1032,13 +1032,13 @@ static int sql_resolve_on_default(pool *p, pr_jot_ctx_t *jot_ctx,
         text_len = strlen(text);
         break;
 
+      case LOGFMT_META_BYTES_SENT:
       case LOGFMT_META_SECONDS:
         text = "0.0";
         text_len = strlen(text);
         break;
 
       case LOGFMT_META_BASENAME:
-      case LOGFMT_META_BYTES_SENT:
       case LOGFMT_META_CLASS:
       case LOGFMT_META_FILENAME:
       case LOGFMT_META_FILE_OFFSET:
