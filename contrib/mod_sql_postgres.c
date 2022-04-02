@@ -375,6 +375,9 @@ MODRET cmd_open(cmd_rec *cmd) {
   conn_entry_t *entry = NULL;
   db_conn_t *conn = NULL;
   const char *server_version = NULL;
+#if defined(PR_USE_NLS)
+  const char *encoding = NULL;
+#endif /* PR_USE_NLS */
 
   sql_log(DEBUG_FUNC, "%s", "entering \tpostgres cmd_open");
 
@@ -496,21 +499,23 @@ MODRET cmd_open(cmd_rec *cmd) {
   }
 
 #if defined(PR_USE_NLS)
-  if (pr_encode_get_encoding() != NULL) {
-    const char *encoding;
-
+  encoding = pr_encode_get_encoding();
+  if (encoding != NULL) {
     encoding = get_postgres_encoding(pr_encode_get_encoding());
 
-    /* Configure the connection for the current local character set. */
-    if (PQsetClientEncoding(conn->postgres, encoding) < 0) {
-      sql_log(DEBUG_FUNC, "%s", "exiting \tpostgres cmd_open");
-      return build_error(cmd, conn);
-    }
-
-    sql_log(DEBUG_FUNC, "Postgres connection character set now '%s' "
-      "(from '%s')", pg_encoding_to_char(PQclientEncoding(conn->postgres)),
-      pr_encode_get_encoding());
+  } else {
+    encoding = "UTF8";
   }
+
+  /* Configure the connection for the current local character set. */
+  if (PQsetClientEncoding(conn->postgres, encoding) < 0) {
+    sql_log(DEBUG_FUNC, "%s", "exiting \tpostgres cmd_open");
+    return build_error(cmd, conn);
+  }
+
+  sql_log(DEBUG_FUNC, "Postgres connection character set now '%s' "
+    "(from '%s')", pg_encoding_to_char(PQclientEncoding(conn->postgres)),
+    encoding);
 #endif /* !PR_USE_NLS */
 
 #if defined(HAVE_POSTGRES_PQGETSSL)

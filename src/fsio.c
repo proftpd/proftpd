@@ -3327,7 +3327,7 @@ int pr_fs_use_encoding(int bool) {
 }
 
 char *pr_fs_decode_path2(pool *p, const char *path, int flags) {
-#ifdef PR_USE_NLS
+#if defined(PR_USE_NLS)
   size_t outlen;
   char *res;
 
@@ -3337,7 +3337,7 @@ char *pr_fs_decode_path2(pool *p, const char *path, int flags) {
     return NULL;
   }
 
-  if (!use_encoding) {
+  if (use_encoding == FALSE) {
     return (char *) path;
   }
 
@@ -3355,11 +3355,11 @@ char *pr_fs_decode_path2(pool *p, const char *path, int flags) {
       size_t pathlen, raw_pathlen;
 
       pathlen = strlen(path);
-      raw_pathlen = (pathlen * 5) + 1;
+      raw_pathlen = (pathlen * 8) + 1;
       raw_path = pcalloc(p, raw_pathlen + 1);
 
       for (i = 0; i < pathlen; i++) {
-        pr_snprintf((char *) (raw_path + (i * 5)), (raw_pathlen - 1) - (i * 5),
+        pr_snprintf((char *) (raw_path + (i * 8)), (raw_pathlen - 1) - (i * 8),
           "0x%02x ", (unsigned char) path[i]);
       }
 
@@ -3430,11 +3430,11 @@ char *pr_fs_encode_path(pool *p, const char *path) {
       size_t pathlen, raw_pathlen;
       
       pathlen = strlen(path);
-      raw_pathlen = (pathlen * 5) + 1;
+      raw_pathlen = (pathlen * 8) + 1;
       raw_path = pcalloc(p, raw_pathlen + 1);
 
       for (i = 0; i < pathlen; i++) {
-        pr_snprintf((char *) (raw_path + (i * 5)), (raw_pathlen - 1) - (i * 5),
+        pr_snprintf((char *) (raw_path + (i * 8)), (raw_pathlen - 1) - (i * 8),
           "0x%02x ", (unsigned char) path[i]);
       }
 
