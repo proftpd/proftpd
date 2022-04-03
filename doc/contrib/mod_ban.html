@@ -175,7 +175,7 @@ commenting out all <code>mod_ban</code> directives.
 <h3><a name="BanLog">BanLog</a></h3>
 <strong>Syntax:</strong> BanLog <em>path|&quot;none&quot;</em><br>
 <strong>Default:</strong> None<br>
-<strong>Context:</strong> server config<br>
+<strong>Context:</strong> server config, <code>&lt;Global&gt;</code><br>
 <strong>Module:</strong> mod_ban<br>
 <strong>Compatibility:</strong> 1.2.10rc1 and later
 
@@ -195,7 +195,7 @@ If <em>path</em> is &quot;none&quot;, no logging will be done at all.
 <h3><a name="BanMessage">BanMessage</a></h3>
 <strong>Syntax:</strong> BanMessage <em>mesg</em><br>
 <strong>Default:</strong> None<br>
-<strong>Context:</strong> server config<br>
+<strong>Context:</strong> server config, <code>&lt;Global&gt;</code><br>
 <strong>Module:</strong> mod_ban<br>
 <strong>Compatibility:</strong> 1.2.10rc1 and later
 
@@ -220,7 +220,7 @@ Example:
 <h3><a name="BanOnEvent">BanOnEvent</a></h3>
 <strong>Syntax:</strong> BanOnEvent <em>event freq expires [mesg]</em><br>
 <strong>Default:</strong> None<br>
-<strong>Context:</strong> server config<br>
+<strong>Context:</strong> server config, <code>&lt;Global&gt;</code><br>
 <strong>Module:</strong> mod_ban<br>
 <strong>Compatibility:</strong> 1.2.10rc1 and later
 
@@ -746,7 +746,7 @@ login as root.  How would I do this?<br>
 <br><hr>
 
 <font size=2><b><i>
-&copy; Copyright 2004-2021 TJ Saunders<br>
+&copy; Copyright 2004-2022 TJ Saunders<br>
  All Rights Reserved<br>
 </i></b></font>
 
