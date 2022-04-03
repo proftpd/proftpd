@@ -2030,19 +2030,18 @@ the PID of the daemon process.
 <h3><a name="Port">Port</a></h3>
 <strong>Syntax:</strong> Port <em>number</em><br>
 <strong>Default:</strong> Port 21<br>
-<strong>Context:</strong> server config, <code>&lt;VirtualHost&gt;</code><br>
+<strong>Context:</strong> server config, <code>&lt;VirtualHost&gt;</code>, <code>&lt;Global&gt;</code><br>
 <strong>Module:</strong> mod_core<br>
 <strong>Compatibility:</strong> 0.99.0 and later
 
 <p>
-The <code>Port</code> directive configures the TCP port to which
-<code>proftpd</code> will listen while running in standalone mode.  This
-directive has <em>no effect</em> when used on a server running in inetd mode;
-see <a href="#ServerType"><code>ServerType</code></a>.  The directive can be
-used in conjunction with
-<a href="#VirtualHost"><code>&lt;VirtualHost&gt;</code></a> in order to run a
-virtual server on the same IP address as the master server, but listening on a
-different port.
+The <code>Port</code> directive configures the TCP port to which ProFTPD will
+listen while running in standalone mode.  This directive has <em>no effect</em>
+when used on a server running in inetd mode; see
+<a href="#ServerType"><code>ServerType</code></a>.  The directive can be used
+in conjunction with <a href="#VirtualHost"><code>&lt;VirtualHost&gt;</code></a>
+in order to run a virtual server on the same IP address as the master server,
+but listening on a different port.
 
 <p>
 For any server, either <code>&lt;VirtualHost&gt;</code> <i>or</i> "server

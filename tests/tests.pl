@@ -161,6 +161,7 @@ if (scalar(@ARGV) > 0) {
     t/config/pathallowfilter.t
     t/config/pathdenyfilter.t
     t/config/pidfile.t
+    t/config/port.t
     t/config/protocols.t
     t/config/regexoptions.t
     t/config/requirevalidshell.t
