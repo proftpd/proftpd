@@ -794,12 +794,12 @@ MODRET set_scoreboardscrub(cmd_rec *cmd) {
   return PR_HANDLED(cmd);
 }
 
-MODRET set_serverport(cmd_rec *cmd) {
-  server_rec *s = cmd->server;
-  int port;
+MODRET set_port(cmd_rec *cmd) {
+  config_rec *c;
+  int ctx, port;
 
   CHECK_ARGS(cmd, 1);
-  CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL);
+  CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL);
 
   port = atoi(cmd->argv[1]);
   if (port < 0 ||
@@ -807,7 +807,21 @@ MODRET set_serverport(cmd_rec *cmd) {
     CONF_ERROR(cmd, "value must be between 0 and 65535");
   }
 
-  s->ServerPort = port;
+  c = add_config_param(cmd->argv[0], 1, NULL);
+  c->argv[0] = pcalloc(c->pool, sizeof(int));
+  *((int *) c->argv[0]) = port;
+
+  /* For backward compatibility, if we are in the "server config" or the
+   * <VirtualHost> context, set the port number on the vhost now, too.
+   */
+  ctx = (cmd->config && cmd->config->config_type != CONF_PARAM ?
+    cmd->config->config_type : cmd->server->config_type ?
+    cmd->server->config_type : CONF_ROOT);
+  if (ctx == CONF_ROOT ||
+      ctx == CONF_VIRTUAL) {
+    cmd->server->ServerPort = port;
+  }
+
   return PR_HANDLED(cmd);
 }
 
@@ -6616,6 +6630,7 @@ static void core_exit_ev(const void *event_data, void *user_data) {
 }
 
 static void core_postparse_ev(const void *event_data, void *user_data) {
+  server_rec *s;
   cmd_rec *cmd;
   int res;
   pool *tmp_pool;
@@ -6654,6 +6669,20 @@ static void core_postparse_ev(const void *event_data, void *user_data) {
 
   destroy_pool(cmd->pool);
   destroy_pool(tmp_pool);
+
+  /* Since the Port directive is allowed in <Global> sections (see Issue #1418),
+   * we need to check here for the Port to use, on a per-vhost basis.
+   */
+  for (s = (server_rec *) server_list->xas_list; s; s = s->next) {
+    int *server_port;
+
+    pr_signals_handle();
+
+    server_port = get_param_ptr(s->conf, "Port", FALSE);
+    if (server_port != NULL) {
+      s->ServerPort = *server_port;
+    }
+  }
 }
 
 static void core_restart_ev(const void *event_data, void *user_data) {
@@ -7241,7 +7270,7 @@ static conftable core_conftab[] = {
   { "PathAllowFilter",		set_pathallowfilter,		NULL },
   { "PathDenyFilter",		set_pathdenyfilter,		NULL },
   { "PidFile",			set_pidfile,	 		NULL },
-  { "Port",			set_serverport, 		NULL },
+  { "Port",			set_port, 			NULL },
   { "ProcessTitles",		set_processtitles,		NULL },
   { "Protocols",		set_protocols,			NULL },
   { "RegexOptions",		set_regexoptions,		NULL },
