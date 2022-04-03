@@ -1,8 +1,7 @@
 /*
  * ProFTPD: mod_sql_postgres -- Support for connecting to Postgres databases.
- * Time-stamp: <1999-10-04 03:21:21 root>
  * Copyright (c) 2001 Andrew Houghton
- * Copyright (c) 2004-2020 TJ Saunders
+ * Copyright (c) 2004-2022 TJ Saunders
  *  
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -504,6 +503,9 @@ MODRET cmd_open(cmd_rec *cmd) {
     encoding = get_postgres_encoding(pr_encode_get_encoding());
 
   } else {
+    pr_trace_msg(trace_channel, 3, "no encoding found (%s), using 'UTF8'",
+      strerror(errno));
+
     encoding = "UTF8";
   }
 
