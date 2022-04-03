@@ -1,6 +1,6 @@
 /*
  * ProFTPD: mod_ban -- a module implementing ban lists using the Controls API
- * Copyright (c) 2004-2021 TJ Saunders
+ * Copyright (c) 2004-2022 TJ Saunders
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -2952,7 +2952,7 @@ MODRET set_banengine(cmd_rec *cmd) {
 /* usage: BanLog path|"none" */
 MODRET set_banlog(cmd_rec *cmd) {
   CHECK_ARGS(cmd, 1);
-  CHECK_CONF(cmd, CONF_ROOT);
+  CHECK_CONF(cmd, CONF_ROOT|CONF_GLOBAL);
 
   if (strcasecmp(cmd->argv[1], "none") != 0 &&
       pr_fs_valid_path(cmd->argv[1]) < 0) {
@@ -2966,7 +2966,7 @@ MODRET set_banlog(cmd_rec *cmd) {
 /* usage: BanMessage message */
 MODRET set_banmessage(cmd_rec *cmd) {
   CHECK_ARGS(cmd, 1);
-  CHECK_CONF(cmd, CONF_ROOT);
+  CHECK_CONF(cmd, CONF_ROOT|CONF_GLOBAL);
 
   ban_message = pstrdup(ban_pool, cmd->argv[1]);
   return PR_HANDLED(cmd);
@@ -2979,7 +2979,7 @@ MODRET set_banonevent(cmd_rec *cmd) {
   char *tmp;
 
   CHECK_ARGS(cmd, 3);
-  CHECK_CONF(cmd, CONF_ROOT);
+  CHECK_CONF(cmd, CONF_ROOT|CONF_GLOBAL);
 
   bee = pcalloc(ban_pool, sizeof(struct ban_event_entry));
 
@@ -3636,8 +3636,8 @@ static void ban_postparse_ev(const void *event_data, void *user_data) {
   }
 
   /* Open the BanLog. */
-  if (ban_log &&
-      strncasecmp(ban_log, "none", 5) != 0) {
+  if (ban_log != NULL &&
+      strcasecmp(ban_log, "none") != 0) {
     int res;
 
     PRIVS_ROOT
