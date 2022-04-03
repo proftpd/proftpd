@@ -599,6 +599,9 @@ MODRET cmd_open(cmd_rec *cmd) {
 #if defined(PR_USE_NLS)
   encoding = pr_encode_get_encoding();
   if (encoding == NULL) {
+    pr_trace_msg(trace_channel, 3, "no encoding found (%s), using 'UTF-8'",
+      strerror(errno));
+
     encoding = "UTF-8";
   }
 
