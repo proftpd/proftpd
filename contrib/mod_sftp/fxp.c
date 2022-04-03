@@ -5068,6 +5068,17 @@ static int fxp_handle_ext_homedir(struct fxp_packet *fxp, const char *name) {
     return fxp_packet_write(resp);
   }
 
+  /* If we are chrooted, and the chroot path matches the home directory, then
+   * we should tell the client that the home directory is just `/`.
+   *
+   * Then the question is: what if we are chrooted, but the chroot path does
+   * NOT match the user's home directory?
+   */
+  if (session.chroot_path != NULL &&
+      strcmp(session.chroot_path, path) == 0) {
+    path = pstrdup(fxp->pool, "/");
+  }
+
   pr_trace_msg(trace_channel, 8, "sending response: NAME 1 %s %s",
     path, fxp_strattrs(fxp->pool, &st, NULL));
 
