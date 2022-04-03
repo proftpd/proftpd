@@ -1538,6 +1538,8 @@ static void trace_ipbind_table(void) {
           namebind = elts[k];
           pr_trace_msg(trace_channel, 25, "      #%u: %p", k+1, namebind);
           pr_trace_msg(trace_channel, 25, "        name: %s",
+            namebind->nb_server->ServerName);
+          pr_trace_msg(trace_channel, 25, "        alias: %s",
             namebind->nb_name);
           pr_trace_msg(trace_channel, 25, "        server: %p",
             namebind->nb_server);
