@@ -1664,7 +1664,8 @@ MODRET set_tracelog(cmd_rec *cmd) {
   if (cmd->argc-1 != 1) {
     CONF_ERROR(cmd, "wrong number of parameters");
   }
-  CHECK_CONF(cmd, CONF_ROOT);
+
+  CHECK_CONF(cmd, CONF_ROOT|CONF_GLOBAL);
 
   if (pr_fs_valid_path(cmd->argv[1]) < 0) {
     CONF_ERROR(cmd, "must be an absolute path");
@@ -2770,7 +2771,7 @@ MODRET end_anonymous(cmd_rec *cmd) {
 
 MODRET add_class(cmd_rec *cmd) {
   CHECK_ARGS(cmd, 1);
-  CHECK_CONF(cmd, CONF_ROOT);
+  CHECK_CONF(cmd, CONF_ROOT|CONF_GLOBAL);
 
   if (pr_class_open(main_server->pool, cmd->argv[1]) < 0) {
     CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "error creating <Class ",
