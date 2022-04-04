@@ -2548,9 +2548,16 @@ int fixup_servers(xaset_t *list) {
   fixup_globals(list);
 
   s = (server_rec *) list->xas_list;
+
   if (s != NULL &&
       s->ServerName == NULL) {
-    s->ServerName = pstrdup(s->pool, "ProFTPD");
+    c = find_config(s->conf, CONF_PARAM, "ServerAlias", FALSE);
+    if (c != NULL) {
+      s->ServerName = pstrdup(s->pool, c->argv[0]);
+
+    } else {
+      s->ServerName = pstrdup(s->pool, "ProFTPD");
+    }
   }
 
   for (; s; s = next_s) {
@@ -2626,8 +2633,16 @@ int fixup_servers(xaset_t *list) {
     }
 
     if (s->ServerName == NULL) {
-      server_rec *m = (server_rec *) list->xas_list;
-      s->ServerName = pstrdup(s->pool, m->ServerName);
+      c = find_config(s->conf, CONF_PARAM, "ServerAlias", FALSE);
+      if (c != NULL) {
+        s->ServerName = pstrdup(s->pool, c->argv[0]);
+
+      } else {
+        server_rec *m;
+
+        m = (server_rec *) list->xas_list;
+        s->ServerName = pstrdup(s->pool, m->ServerName);
+      }
     }
 
     if (s->tcp_rcvbuf_len == 0) {
