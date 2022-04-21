@@ -5863,7 +5863,7 @@ CLASS="COMMAND"
 >DefaultAddress</B
 >  [  <CODE
 CLASS="OPTION"
->dns-names|ip-addresses seperated with spaces</CODE
+>ip-address|dns-name|device/interface-name [ip-address|dns-name|device/interface-name ...]</CODE
 >]</P
 ><P
 ></P
@@ -5908,7 +5908,7 @@ CLASS="SYNOPSIS"
 ></DT
 ><DD
 ><P
->1.2.7rc1 and later</P
+>1.2.7rc1 and later (device/interface name only supported in 1.3.5rc1 and later)</P
 ></DD
 ></DL
 ></DIV
@@ -5926,7 +5926,8 @@ to, the default behaviour is to select whatever IP the system reports
 as being the primary IP.</P
 ><P
 >Starting with ProFTPD 1.3.0rc1 it's possible to use more than one FQDN or IP
-Address. With this change the old Bind directive has been deprecated.</P
+Address. With this change the old Bind directive has been deprecated. 
+ProFTPD 1.3.5rc1 added support for specifying teh device/interface name.</P
 ></DIV
 ><DIV
 CLASS="REFSECT1"
@@ -5957,7 +5958,10 @@ Port&nbsp;21<br>
 DefaultAddress&nbsp;192.168.10.30<br>
 <br>
 ##&nbsp;Since&nbsp;1.3.0rc1&nbsp;it's&nbsp;also&nbsp;possible&nbsp;to&nbsp;use&nbsp;the&nbsp;following:<br>
-#&nbsp;DefaultAddress&nbsp;192.168.10.30&nbsp;my.domain.tld</P
+#&nbsp;DefaultAddress&nbsp;192.168.10.30&nbsp;my.domain.tld<br>
+<br>
+##&nbsp;Since&nbsp;1.3.5rc1&nbsp;it's&nbsp;also&nbsp;possible&nbsp;to&nbsp;use&nbsp;the&nbsp;following:<br>
+#&nbsp;DefaultAddress&nbsp;eth0&nbsp;192.168.10.30&nbsp;my.domain.tld</P
 ></DIV
 ><H1
 ><A
@@ -15805,7 +15809,7 @@ CLASS="COMMAND"
 >MasqueradeAddress</B
 >  [  <CODE
 CLASS="OPTION"
->MasqueradeAddress ip-address|dns-hostname</CODE
+>MasqueradeAddress ip-address|dns-name|device/interface-name</CODE
 >]</P
 ><P
 ></P
@@ -15850,7 +15854,7 @@ CLASS="SYNOPSIS"
 ></DT
 ><DD
 ><P
->1.2.2 and later</P
+>1.2.2 and later (device/interface name only supported in 1.3.5rc1 and later)</P
 ></DD
 ></DL
 ></DIV
@@ -15887,7 +15891,10 @@ NAME="AEN5789"
 >Examples</H2
 ><P
 CLASS="LITERALLAYOUT"
->&nbsp;&nbsp;&nbsp;&nbsp;MasqueradeAddress&nbsp;nat-gw.mydomain.com</P
+>&nbsp;&nbsp;&nbsp;&nbsp;MasqueradeAddress&nbsp;nat-gw.mydomain.com<br>
+<br>
+##&nbsp;Since&nbsp;1.3.5rc1&nbsp;it's&nbsp;also&nbsp;possible&nbsp;to&nbsp;use&nbsp;the&nbsp;following:<br>
+&nbsp;&nbsp;&nbsp;&nbsp;MasqueradeAddress&nbsp;eth0</P
 ><P
 ></P
 ></DIV
@@ -32914,7 +32921,7 @@ CLASS="COMMAND"
 >VirtualHost</B
 >  [  <CODE
 CLASS="OPTION"
->&lt;VirtualHost addresses seperated by spaces&gt;</CODE
+>&lt;VirtualHost ip-address|dns-name|device/interface-name [ip-address|dns-name|device/interface-name ...]&gt;</CODE
 >]</P
 ><P
 ></P
@@ -32959,7 +32966,7 @@ CLASS="SYNOPSIS"
 ></DT
 ><DD
 ><P
->0.99.0 and later</P
+>0.99.0 and later (device/interface name only supported in 1.3.7c and later)</P
 ></DD
 ></DL
 ></DIV
@@ -33031,7 +33038,13 @@ NAME="AEN12495"
 ><P
 >&lt;VirtualHost host1.domain.com host2.domain.com&gt;
             ...
-&lt;/VirtualHost&gt;</P
+&lt;/VirtualHost&gt;<br>
+<br>
+&nbsp;Since&nbsp;1.3.5rc1&nbsp;it's&nbsp;also&nbsp;possible&nbsp;to&nbsp;use&nbsp;the&nbsp;following:<br>
+&lt;VirtualHost&nbsp;eth0&nbsp;192.168.10.30&nbsp;host1.domain.com&nbsp;host2.domain.com&gt;
+            ...
+&lt;/VirtualHost&gt;
+</P
 ></DIV
 ><H1
 ><A
