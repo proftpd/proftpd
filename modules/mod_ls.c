@@ -1234,16 +1234,21 @@ static char **sreaddir(const char *dirname, const int sort) {
 
   pr_fs_clear_cache2(dirname);
   if (pr_fsio_stat(dirname, &st) < 0) {
+    pr_log_debug(DEBUG8, "error checking '%s': %s",
+      dirname, strerror(errno));
     return NULL;
   }
 
   if (!S_ISDIR(st.st_mode)) {
     errno = ENOTDIR;
+    pr_log_debug(DEBUG8, "'%s' is not a direcory", dirname);
     return NULL;
   }
 
   d = pr_fsio_opendir(dirname);
   if (d == NULL) {
+    pr_log_debug(DEBUG8, "unable to open directory '%s': %s",
+      dirname, strerror(errno));
     return NULL;
   }
 
