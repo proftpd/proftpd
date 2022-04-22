@@ -550,6 +550,9 @@ MODRET auth_post_pass(cmd_rec *cmd) {
    */
   if (pr_fsio_stat(session.cwd, &st) != -1) {
     build_dyn_config(cmd->tmp_pool, session.cwd, &st, TRUE);
+  } else {
+    pr_log_debug(DEBUG8, "unable to stat %s: %s", session.cwd,
+                 strerror(errno));
   }
 
   have_user_timeout = have_group_timeout = have_class_timeout =

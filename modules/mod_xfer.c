@@ -1754,6 +1754,9 @@ MODRET xfer_post_stor(cmd_rec *cmd) {
       *file_size = st.st_size;
       (void) pr_table_add(cmd->notes, "mod_xfer.file-size", file_size,
         sizeof(off_t));
+    } else {
+      pr_log_debug(DEBUG8,
+        "error checking %s: %s", cmd->arg, strerror(errno));
     }
   }
 
@@ -1795,6 +1798,9 @@ MODRET xfer_post_stou(cmd_rec *cmd) {
     *file_size = st.st_size;
     (void) pr_table_add(cmd->notes, "mod_xfer.file-size", file_size,
       sizeof(off_t));
+  } else {
+    pr_log_debug(DEBUG8,
+      "error checking %s: %s", cmd->arg, strerror(errno));
   }
 
   return PR_DECLINED(cmd);
@@ -2663,6 +2669,9 @@ MODRET xfer_post_retr(cmd_rec *cmd) {
       *file_size = st.st_size;
       (void) pr_table_add(cmd->notes, "mod_xfer.file-size", file_size,
         sizeof(off_t));
+    } else {
+      pr_log_debug(DEBUG8,
+        "error checking %s: %s", cmd->arg, strerror(errno));
     }
   }
 

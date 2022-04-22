@@ -421,6 +421,8 @@ static int sys_access(pr_fs_t *fs, const char *path, int mode, uid_t uid,
   struct stat st;
 
   if (pr_fsio_stat(path, &st) < 0) {
+    pr_log_debug(DEBUG8,
+      "error checking %s: %s", path, strerror(errno));
     return -1;
   }
 
