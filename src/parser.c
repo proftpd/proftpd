@@ -400,6 +400,8 @@ int pr_parser_parse_file(pool *p, const char *path, config_rec *start,
   fh = pr_fsio_open(path, O_RDONLY);
   if (fh == NULL) {
     int xerrno = errno;
+    pr_trace_msg(trace_channel, 6, "unable to open path '%s': %s", path,
+      strerror(errno));
 
     destroy_pool(tmp_pool);
 
@@ -411,6 +413,8 @@ int pr_parser_parse_file(pool *p, const char *path, config_rec *start,
   memset(&st, 0, sizeof(st));
   if (pr_fsio_fstat(fh, &st) < 0) {
     int xerrno = errno;
+    pr_trace_msg(trace_channel, 6, "error checking path '%s': %s", path,
+      strerror(errno));
 
     pr_fsio_close(fh);
     destroy_pool(tmp_pool);

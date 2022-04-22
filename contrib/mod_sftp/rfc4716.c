@@ -540,7 +540,7 @@ static sftp_keystore_t *filestore_open(pool *parent_pool,
   }
 
   if (pr_fsio_set_block(fh) < 0) {
-   xerrno = errno;
+    xerrno = errno;
 
     destroy_pool(filestore_pool);
     (void) pr_fsio_close(fh);
@@ -554,6 +554,8 @@ static sftp_keystore_t *filestore_open(pool *parent_pool,
   if (pr_fsio_fstat(fh, &st) < 0) {
     xerrno = errno;
 
+    pr_trace_msg(trace_channel, 6,
+      "error checking path '%s': %s", path, strerror(errno));
     destroy_pool(filestore_pool);
     (void) pr_fsio_close(fh);
 
@@ -562,6 +564,8 @@ static sftp_keystore_t *filestore_open(pool *parent_pool,
   }
 
   if (S_ISDIR(st.st_mode)) {
+    pr_trace_msg(trace_channel, 6,
+      "path '%s' can not be a directory", path);
     destroy_pool(filestore_pool);
     (void) pr_fsio_close(fh);
 
