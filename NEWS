@@ -46,6 +46,8 @@
   RFC-compliant manner, ignoring rather than disconnecting.
 - Issue 1418 - Improve handling of some globally applied configuration
   directives.
+- Issue 1369 - Name-based virtual hosts not working as expected after upgrade
+  from 1.3.7a to 1.3.7b.
 
 1.3.8rc2 - Released 29-Aug-2021
 --------------------------------

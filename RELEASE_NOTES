@@ -9,40 +9,79 @@ ChangeLog files.
 1.3.8rc3
 ---------
 
+  + Improved consistency/support for name-based virtual hosts.
+
   + Support for the AES-GCM ciphers "aes128-gcm@openssh.com" and
     "aes256-gcm@openssh.com" have been added to mod_sftp.
 
   + Support SSH hostkey rotation via OpenSSH "hostkeys-00@openssh.com" and
     "hostkeys-prove-00@openssh.com" extensions.
 
+  + Support for the "home-directory" SFTP extenssion.
+
   + Support use of PCRE2, rather than PCRE, via the `--enable-pcre2` configure
     option.
 
+
   + New Directives
 
-    FactsDefault (Issue #1367)
+    FactsDefault
 
-    LDAPConnectTimeout (Issue #1333)
+      This directive can be used to explicitly configure the list of "facts"
+      returned, per path, in the MLSD/MLSD FTP responses.
+      See doc/modules/mod_facts.html#FactsDefault for more details.
+
+    LDAPConnectTimeout
+
+      When connecting to LDAP servers, use this directive to configure
+      a longer timeout, if necessary.  See
+      doc/contrib/mod_ldap.html#LDAPConnectTimeout for more information.
 
 
   + Changed Directives
 
     RegexOptions
-      Engine PCRE2 (Issue #1353)
+
+      With the additional support for the PCRE2 library, the RegexOptions
+      directive now supports explicitly selecting that as the regex "engine";
+      see doc/modules/mod_core.html#RegexOptions for details.
 
     SFTPCiphers
-      "aes128-gcm@openssh.com", "aes256-gcm@openssh.com" (Bug #3759)
+
+      The OpenSSH-specific AES GCM ciphers are now implemented; see
+      doc/contrib/mod_sftp.html#SFTPCiphers.
 
     SFTPDigests
-      "hmac-md5-etm@openssh.com", ... (Issue #1330)
+
+      The OpenSSH-specific Encrypt-Then-MAC (ETM) digests are now supported;
+      see doc/contrib/mod_sftp.html#SFTPDigests.
 
     SFTPExtensions homeDirectory
 
+      The `mod_sftp` module supports the SFTP extension for querying a
+      user's home directory (once the client has authenticated).  Use
+      the SFTPExtensions directive to disable support for this extension if
+      necessary.
+
     SFTPOptions NoHostkeyRotation
+
+      The `mod_sftp` module now supports the OpenSSH-specific "hostkey"
+      extensions, for hostkey rotation.  Use this option to disable support
+      for those extensions where needed; see
+      doc/contrib/mod_sftp.html#SFTPOptions.
 
     SocketOptions ReusePort
 
-    TransferOptions AllowSymlinkUpload (Issue #1379)
+      The SocketOptions directive now support configuring the `SO_REUSEPORT`
+      socket option, for cases where this is useful, such as specific
+      ProFTPD + Docker networking situations.
+
+    TransferOptions AllowSymlinkUpload
+
+      In past releases, ProFTPD allows uploads to symlinks; this was
+      inadvertently broken at some point.  Such uploading to symlinks is
+      possible once more, using this new TransferOption.
+      See doc/modules/mod_xfer.html#TransferOptions.
 
 
 1.3.8rc2
