@@ -4648,8 +4648,12 @@ static int fxp_handle_ext_copy_file(struct fxp_packet *fxp, char *src,
       return fxp_packet_write(resp);
     }
   } else {
+    xerrno = errno;
+
     pr_trace_msg(trace_channel, 8,
-      "error stat'ing '%s': %s", dst, strerror(errno));
+      "error stat'ing '%s': %s", dst, strerror(xerrno));
+
+    errno = xerrno;
   }
 
   if (fxp_path_pass_regex_filters(fxp->pool, "COPY", src) < 0 ||

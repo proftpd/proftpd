@@ -68,8 +68,11 @@ static int facl_access(pr_fs_t *fs, const char *path, int mode, uid_t uid,
 
   pr_fs_clear_cache2(path);
   if (pr_fsio_stat(path, &st) < 0) {
+    int xerrno = errno;
     pr_trace_msg(trace_channel, 8,
-      "error stat'ing '%s': %s", path, strerror(errno));
+      "error stat'ing '%s': %s", path, strerror(xerrno));
+
+    errno = xerrno;
     return -1;
   }
 
@@ -983,8 +986,11 @@ static int facl_fsio_access(pr_fs_t *fs, const char *path, int mode,
 
   pr_fs_clear_cache2(path);
   if (pr_fsio_stat(path, &st) < 0) {
+    xerrno = errno;
     pr_trace_msg(trace_channel, 8,
-      "error stat'ing '%s': %s", path, strerror(errno));
+      "error stat'ing '%s': %s", path, strerror(xerrno));
+
+    errno = xerrno;
     return -1;
   }
 

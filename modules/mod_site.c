@@ -285,8 +285,11 @@ MODRET site_chmod(cmd_rec *cmd) {
     if (pr_fsio_stat(dir, &st) != -1) {
       curr_mode = st.st_mode;
     } else {
+      int xerrno = errno;
       pr_log_debug(DEBUG8,
-        "error checking %s: %s", dir, strerror(errno));
+        "error checking %s: %s", dir, strerror(xerrno));
+
+      errno = xerrno;
     }
 
     while (TRUE) {
