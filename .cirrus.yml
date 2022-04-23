@@ -10,7 +10,7 @@ task:
     CIRRUS_CLONE_DEPTH: 10
 
   pkginstall_script:
-    - pkg update -f
+    - IGNORE_OSVERSION=yes pkg update -f
     - pkg install -y check
     - pkg install -y cyrus-sasl
     - pkg install -y gcc
