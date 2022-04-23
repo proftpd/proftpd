@@ -555,7 +555,7 @@ static sftp_keystore_t *filestore_open(pool *parent_pool,
     xerrno = errno;
 
     pr_trace_msg(trace_channel, 6,
-      "error checking path '%s': %s", path, strerror(errno));
+      "error checking path '%s': %s", path, strerror(xerrno));
     destroy_pool(filestore_pool);
     (void) pr_fsio_close(fh);
 
