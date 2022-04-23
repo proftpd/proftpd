@@ -9,6 +9,8 @@ ChangeLog files.
 1.3.7d
 ---------
 
+  + Improved consistency/support for name-based virtual hosts.
+
   + Fixed crashes due to very long lines in AuthGroupFiles (Issue #1321).
 
 
