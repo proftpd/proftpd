@@ -241,19 +241,18 @@ static void tab_key_free(pr_table_t *tab, pr_table_key_t *k) {
  */
 
 static pr_table_entry_t *tab_entry_alloc(pr_table_t *tab) {
-  pr_table_entry_t *e;
+  pr_table_entry_t *e = NULL;
 
   /* Try to find a free entry on the free list first... */
-  if (tab->free_ents) {
+  if (tab->free_ents != NULL) {
     e = tab->free_ents;
     tab->free_ents = e->next;
     e->next = NULL;
 
-    return e;
+  } else {
+    /* ...otherwise, allocate a new entry. */
+    e = pcalloc(tab->pool, sizeof(pr_table_entry_t));
   }
-
-  /* ...otherwise, allocate a new entry. */
-  e = pcalloc(tab->pool, sizeof(pr_table_entry_t));
 
   return e;
 }
@@ -426,7 +425,7 @@ int pr_table_kadd(pr_table_t *tab, const void *key_data, size_t key_datasz,
   /* Find the current chain entry at this index. */
   e = tab->chains[idx];
   if (e != NULL) {
-    pr_table_entry_t *ei;
+    pr_table_entry_t *ei = NULL;
 
     /* There is a chain at this index.  Next step is to see if any entry
      * on this chain has the exact same key.  If so, increase the entry ref

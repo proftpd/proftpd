@@ -1,6 +1,6 @@
 /*
  * auth-otp: HOTP/TOTP tool for ProFTPD mod_auth_otp module
- * Copyright 2016-2021 The ProFTPD Project team
+ * Copyright 2016-2022 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -109,7 +109,13 @@ module *pr_module_get(const char *name) {
   return NULL;
 }
 
+void pr_signals_block(void) {
+}
+
 void pr_signals_handle(void) {
+}
+
+void pr_signals_unblock(void) {
 }
 
 int pr_snprintf(char *buf, size_t bufsz, const char *fmt, ...) {

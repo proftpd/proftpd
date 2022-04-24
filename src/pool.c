@@ -2,7 +2,7 @@
  * ProFTPD - FTP server daemon
  * Copyright (c) 1997, 1998 Public Flood Software
  * Copyright (c) 1999, 2000 MacGyver aka Habeeb J. Dihu <macgyver@tos.net>
- * Copyright (c) 2001-2021 The ProFTPD Project team
+ * Copyright (c) 2001-2022 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -152,7 +152,7 @@ static void chk_on_blk_list(union block_hdr *blok, union block_hdr *free_blk,
 #endif /* PR_USE_DEVEL */
 }
 
-/* Free a chain of blocks -- _must_ call with alarms blocked. */
+/* Free a chain of blocks -- _must_ call with signals blocked. */
 
 static void free_blocks(union block_hdr *blok, const char *pool_tag) {
   /* Puts new blocks at head of block list, point next pointer of
@@ -468,7 +468,7 @@ const char *pr_pool_get_tag(pool *p) {
 static void pool_release_free_block_list(void) {
   union block_hdr *blok = NULL, *next = NULL;
 
-  pr_alarms_block();
+  pr_signals_block();
 
   for (blok = block_freelist; blok; blok = next) {
     next = blok->h.next;
@@ -476,14 +476,14 @@ static void pool_release_free_block_list(void) {
   }
   block_freelist = NULL;
 
-  pr_alarms_unblock();
+  pr_signals_unblock();
 }
 
 struct pool_rec *make_sub_pool(struct pool_rec *p) {
   union block_hdr *blok;
   pool *new_pool;
 
-  pr_alarms_block();
+  pr_signals_block();
 
   blok = new_block(0, FALSE);
 
@@ -505,7 +505,7 @@ struct pool_rec *make_sub_pool(struct pool_rec *p) {
     p->sub_pools = new_pool;
   }
 
-  pr_alarms_unblock();
+  pr_signals_unblock();
 
   return new_pool;
 }
@@ -514,7 +514,7 @@ struct pool_rec *pr_pool_create_sz(struct pool_rec *p, size_t sz) {
   union block_hdr *blok;
   pool *new_pool;
 
-  pr_alarms_block();
+  pr_signals_block();
 
   blok = new_block(sz + POOL_HDR_BYTES, TRUE);
 
@@ -536,7 +536,7 @@ struct pool_rec *pr_pool_create_sz(struct pool_rec *p, size_t sz) {
     p->sub_pools = new_pool;
   }
 
-  pr_alarms_unblock();
+  pr_signals_unblock();
 
   return new_pool;
 }
@@ -564,14 +564,14 @@ static void clear_pool(struct pool_rec *p) {
     return;
   }
 
-  pr_alarms_block();
+  pr_signals_block();
 
   /* Run through any cleanups. */
   run_cleanups(p->cleanups);
   p->cleanups = NULL;
 
   /* Destroy subpools. */
-  while (p->sub_pools) {
+  while (p->sub_pools != NULL) {
     destroy_pool(p->sub_pools);
   }
 
@@ -584,7 +584,7 @@ static void clear_pool(struct pool_rec *p) {
   p->first->h.first_avail = p->free_first_avail;
 
   p->tag = NULL;
-  pr_alarms_unblock();
+  pr_signals_unblock();
 }
 
 void destroy_pool(pool *p) {
@@ -592,18 +592,18 @@ void destroy_pool(pool *p) {
     return;
   }
 
-  pr_alarms_block();
+  pr_signals_block();
 
-  if (p->parent) {
+  if (p->parent != NULL) {
     if (p->parent->sub_pools == p) {
       p->parent->sub_pools = p->sub_next;
     }
 
-    if (p->sub_prev) {
+    if (p->sub_prev != NULL) {
       p->sub_prev->sub_next = p->sub_next;
     }
 
-    if (p->sub_next) {
+    if (p->sub_next != NULL) {
       p->sub_next->sub_prev = p->sub_prev;
     }
   }
@@ -611,7 +611,7 @@ void destroy_pool(pool *p) {
   clear_pool(p);
   free_blocks(p->first, p->tag);
 
-  pr_alarms_unblock();
+  pr_signals_unblock();
 
 #ifdef PR_DEVEL_NO_POOL_FREELIST
   /* If configured explicitly to do so, call free(3) on the freelist after
@@ -667,7 +667,7 @@ static void *alloc_pool(struct pool_rec *p, size_t reqsz, int exact) {
   }
 
   /* Need a new one that's big enough */
-  pr_alarms_block();
+  pr_signals_block();
 
   blok = new_block(sz, exact);
   p->last->h.next = blok;
@@ -676,7 +676,7 @@ static void *alloc_pool(struct pool_rec *p, size_t reqsz, int exact) {
   first_avail = blok->h.first_avail;
   blok->h.first_avail = sz + (char *) blok->h.first_avail;
 
-  pr_alarms_unblock();
+  pr_signals_unblock();
   return (void *) first_avail;
 }
 

@@ -33,7 +33,7 @@ extern volatile unsigned int recvd_signal_flags;
 struct timer {
   struct timer *next, *prev;
 
-  long count;                   /* Amount of time remaining */
+  long remaining;               /* Amount of time remaining */
   long interval;                /* Original length of timer */
 
   int timerno;                  /* Caller dependent timer number */
@@ -44,34 +44,61 @@ struct timer {
   const char *desc;		/* Description of timer, provided by caller */
 };
 
+#define PR_TIMER_DEFAULT_INTERVAL	5
 #define PR_TIMER_DYNAMIC_TIMERNO	1024
 
+static time_t _alarmed_time = 0;
 static int _current_timeout = 0;
 static int _total_time = 0;
 static int _sleep_sem = 0;
-static int alarms_blocked = 0, alarm_pending = 0;
+static unsigned int alarms_blocked = 0;
+static unsigned int alarms_pending = 0;
 static xaset_t *timers = NULL;
 static xaset_t *recycled = NULL;
 static xaset_t *free_timers = NULL;
 static int _indispatch = 0;
 static int dynamic_timerno = PR_TIMER_DYNAMIC_TIMERNO;
 static unsigned int nalarms = 0;
-static time_t _alarmed_time = 0;
 
 static pool *timer_pool = NULL;
 
 static const char *trace_channel = "timer";
 
 static int timer_cmp(struct timer *t1, struct timer *t2) {
-  if (t1->count < t2->count) {
+  if (t1->remaining < t2->remaining) {
     return -1;
   }
 
-  if (t1->count > t2->count) {
+  if (t1->remaining > t2->remaining) {
     return 1;
   }
 
   return 0;
+}
+
+/* The value we return is a proposed timeout, for the next call to alarm(3).
+ * We start with the simple count of timers in our list.
+ *
+ * But then we reduce the number; some of the timers' intervals may less than
+ * the number of total timers.
+ */
+static int default_interval(xaset_t *timers) {
+  int interval;
+  struct timer *head;
+
+  head = (struct timer *) timers->xas_list;
+  interval = head->remaining;
+
+  if (interval > PR_TIMER_DEFAULT_INTERVAL) {
+    interval = PR_TIMER_DEFAULT_INTERVAL;
+  }
+
+  pr_trace_msg(trace_channel, 17,
+    "using default interval (%ds) for next alarm, based on lead timer "
+    "ID %d ('%s', for module '%s', interval %lds, remaining %lds)", interval,
+    head->timerno, head->desc ? head->desc : "<unknown>",
+    head->mod ? head->mod->name : "<none>", head->interval, head->remaining);
+  return interval;
 }
 
 /* This function does the work of iterating through the list of registered
@@ -87,6 +114,10 @@ static int process_timers(int elapsed) {
     recycled = xaset_create(timer_pool, NULL);
   }
 
+  pr_trace_msg(trace_channel, 19,
+    "processing timers (elapsed = %ds, alarms blocked = %u)", elapsed,
+    alarms_blocked);
+
   if (elapsed == 0 &&
       recycled->xas_list == NULL) {
     if (timers == NULL) {
@@ -94,16 +125,7 @@ static int process_timers(int elapsed) {
     }
 
     if (timers->xas_list != NULL) {
-      /* The value we return is a proposed timeout, for the next call to
-       * alarm(3).  We start with the simple count of timers in our list.
-       *
-       * But then we reduce the number; some of the timers' intervals may
-       * less than the number of total timers.
-       */
-      res = ((struct timer *) timers->xas_list)->count;
-      if (res > 5) {
-        res = 5;
-      }
+      res = default_interval(timers);
     }
 
     return res;
@@ -117,17 +139,17 @@ static int process_timers(int elapsed) {
   pr_alarms_block();
   _indispatch++;
 
-  if (elapsed) {
+  if (elapsed > 0) {
     for (t = (struct timer *) timers->xas_list; t; t = next) {
       /* If this timer has already been handled, skip */
       next = t->next;
 
-      if (t->remove) {
+      if (t->remove == TRUE) {
         /* Move the timer onto the free_timers chain, for later reuse. */
         xaset_remove(timers, (xasetmember_t *) t);
         xaset_insert(free_timers, (xasetmember_t *) t);
 
-      } else if ((t->count -= elapsed) <= 0) {
+      } else if ((t->remaining -= elapsed) <= 0) {
         /* This timer's interval has elapsed, so trigger its callback. */
 
         pr_trace_msg(trace_channel, 4,
@@ -137,7 +159,7 @@ static int process_timers(int elapsed) {
           t->desc ? t->desc : "<unknown>",
           t->mod ? t->mod->name : "<none>", t->callback);
 
-        if (t->callback(t->interval, t->timerno, t->interval - t->count,
+        if (t->callback(t->interval, t->timerno, t->interval - t->remaining,
             t->mod) == 0) {
 
           /* A return value of zero means this timer is done, and can be
@@ -155,7 +177,7 @@ static int process_timers(int elapsed) {
             t->desc ? t->desc : "<unknown>");
 
           xaset_remove(timers, (xasetmember_t *) t);
-          t->count = t->interval;
+          t->remaining = t->interval;
           xaset_insert(recycled, (xasetmember_t *) t);
         }
       }
@@ -176,20 +198,11 @@ static int process_timers(int elapsed) {
   pr_alarms_unblock();
 
   /* If no active timers remain in the list, there is no reason to set the
-   * SIGALRM handle.
+   * SIGALRM handler.
    */
 
   if (timers->xas_list != NULL) {
-    /* The value we return is a proposed timeout, for the next call to
-     * alarm(3).  We start with the simple count of timers in our list.
-     *
-     * But then we reduce the number; some of the timers' intervals may
-     * less than the number of total timers.
-     */
-    res = ((struct timer *) timers->xas_list)->count;
-    if (res > 5) {
-      res = 5;
-    }
+    res = default_interval(timers);
   }
 
   return res;
@@ -266,32 +279,39 @@ void handle_alarm(void) {
    */
 
   /* It's possible that alarms are blocked when this function is
-   * called, if so, increment alarm_pending and exit swiftly.
+   * called.  If so, increment alarms_pending and exit swiftly.
    */
-  while (nalarms) {
+
+  if (alarms_blocked == TRUE) {
+    alarms_pending++;
+    return;
+  }
+
+  while (nalarms > 0) {
+    int alarm_elapsed, new_timeout;
+    time_t now;
+
     nalarms = 0;
 
-    if (!alarms_blocked) {
-      int alarm_elapsed, new_timeout;
-      time_t now;
+    /* Clear any pending ALRM signals. */
+    alarm(0);
 
-      /* Clear any pending ALRM signals. */
-      alarm(0);
+    /* Determine how much time has elapsed since we last processed timers. */
+    time(&now);
 
-      /* Determine how much time has elapsed since we last processed timers. */
-      time(&now);
-      alarm_elapsed = _alarmed_time > 0 ? (int) (now - _alarmed_time) : 0;
-
-      new_timeout = _total_time + alarm_elapsed;
-      _total_time = 0;
-      new_timeout = process_timers(new_timeout);
-
-      _alarmed_time = now;
-      alarm(_current_timeout = new_timeout);
+    if (_alarmed_time > 0) {
+      alarm_elapsed = (int) (now - _alarmed_time);
 
     } else {
-      alarm_pending++;
+      alarm_elapsed = 0;
     }
+
+    new_timeout = _total_time + alarm_elapsed;
+    _total_time = 0;
+    new_timeout = _current_timeout = process_timers(new_timeout);
+
+    _alarmed_time = now;
+    alarm(new_timeout);
   }
 
   pr_signals_handle();
@@ -319,7 +339,7 @@ int pr_timer_reset(int timerno, module *mod) {
   for (t = (struct timer *) timers->xas_list; t; t = t->next) {
     if (t->timerno == timerno &&
         (t->mod == mod || mod == ANY_MODULE)) {
-      t->count = t->interval;
+      t->remaining = t->interval;
       xaset_remove(timers, (xasetmember_t *) t);
       xaset_insert(recycled, (xasetmember_t *) t);
       nalarms++;
@@ -363,7 +383,7 @@ int pr_timer_remove(int timerno, module *mod) {
       nremoved++;
 
       if (_indispatch) {
-        t->remove++;
+        t->remove = TRUE;
 
       } else {
         xaset_remove(timers, (xasetmember_t *) t);
@@ -463,10 +483,10 @@ int pr_timer_add(int seconds, int timerno, module *mod, callback_t cb,
   }
 
   t->timerno = timerno;
-  t->count = t->interval = seconds;
+  t->remaining = t->interval = seconds;
   t->callback = cb;
   t->mod = mod;
-  t->remove = 0;
+  t->remove = FALSE;
   t->desc = desc;
 
   /* If called while _indispatch, add to the recycled list to prevent
@@ -511,9 +531,13 @@ void pr_alarms_block(void) {
 }
 
 void pr_alarms_unblock(void) {
-  --alarms_blocked;
-  if (alarms_blocked == 0 && alarm_pending) {
-    alarm_pending = 0;
+  if (alarms_blocked > 0) {
+    --alarms_blocked;
+  }
+
+  if (alarms_blocked == 0 &&
+      alarms_pending > 0) {
+    alarms_pending = 0;
     nalarms++;
     handle_alarm();
   }
@@ -569,21 +593,22 @@ int pr_timer_usleep(unsigned long usecs) {
 }
 
 void timers_init(void) {
-
   /* Reset some of the key static variables. */
+  _alarmed_time = 0;
   _current_timeout = 0;
   _total_time = 0;
+  alarms_pending = 0;
   nalarms = 0;
-  _alarmed_time = 0;
   dynamic_timerno = PR_TIMER_DYNAMIC_TIMERNO;
 
   /* Don't inherit the parent's timer lists. */
+  alarm(0);
   timers = NULL;
   recycled = NULL;
   free_timers = NULL;
 
   /* Reset the timer pool. */
-  if (timer_pool) {
+  if (timer_pool != NULL) {
     destroy_pool(timer_pool);
   }
 

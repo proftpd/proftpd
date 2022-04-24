@@ -88,11 +88,6 @@ static void mask_signals(unsigned char block) {
 void pr_signals_block(void) {
   if (sigs_nblocked == 0) {
     mask_signals(TRUE);
-    pr_trace_msg("signal", 5, "signals blocked");
-
-  } else {
-    pr_trace_msg("signal", 9, "signals already blocked (block count = %u)",
-      sigs_nblocked);
   }
 
   sigs_nblocked++;
@@ -100,22 +95,15 @@ void pr_signals_block(void) {
 
 void pr_signals_unblock(void) {
   if (sigs_nblocked == 0) {
-    pr_trace_msg("signal", 5, "signals already unblocked");
     pr_signals_handle();
     return;
   }
 
-  if (sigs_nblocked == 1) {
-    mask_signals(FALSE);
-    pr_trace_msg("signal", 5, "signals unblocked");
-    pr_signals_handle();
-
-  } else {
-    pr_trace_msg("signal", 9, "signals already unblocked (block count = %u)",
-      sigs_nblocked);
-  }
-
   sigs_nblocked--;
+  if (sigs_nblocked == 0) {
+    mask_signals(FALSE);
+    pr_signals_handle();
+  }
 }
 
 void schedule(void (*cb)(void *, void *, void *, void *), int nloops,
