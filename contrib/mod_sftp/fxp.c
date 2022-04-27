@@ -10257,7 +10257,7 @@ static int fxp_handle_read(struct fxp_packet *fxp) {
 
     } else {
       /* Assume EOF */
-      pr_throttle_pause(offset, TRUE);
+      pr_throttle_pause(offset, TRUE, 0);
       xerrno = EOF;
     }
 
@@ -10284,7 +10284,7 @@ static int fxp_handle_read(struct fxp_packet *fxp) {
     return fxp_packet_write(resp);
   }
 
-  pr_throttle_pause(offset, FALSE);
+  pr_throttle_pause(offset, FALSE, 0);
 
   pr_trace_msg(trace_channel, 8, "sending response: DATA (%lu bytes)",
     (unsigned long) res);
@@ -13205,7 +13205,7 @@ static int fxp_handle_write(struct fxp_packet *fxp) {
     pr_timer_reset(PR_TIMER_STALLED, ANY_MODULE);
   }
 
-  pr_throttle_pause(offset, FALSE);
+  pr_throttle_pause(offset, FALSE, 0);
 
   if (res < 0) {
     const char *reason;

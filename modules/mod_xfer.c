@@ -2186,7 +2186,7 @@ MODRET xfer_stor(cmd_rec *cmd) {
     }
 
     /* If no throttling is configured, this does nothing. */
-    pr_throttle_pause(nbytes_stored, FALSE);
+    pr_throttle_pause(nbytes_stored, FALSE, nbytes_stored);
 
     if (session.range_len > 0) {
       if (nbytes_stored == upload_len) {
@@ -2256,7 +2256,7 @@ MODRET xfer_stor(cmd_rec *cmd) {
   }
 
   /* If no throttling is configured, this does nothing. */
-  pr_throttle_pause(nbytes_stored, TRUE);
+  pr_throttle_pause(nbytes_stored, TRUE, nbytes_stored);
 
   if (stor_complete(cmd->pool) < 0) {
     xerrno = errno;
@@ -2932,6 +2932,8 @@ MODRET xfer_retr(cmd_rec *cmd) {
   }
 
   while (nbytes_sent != download_len) {
+    int force_scoreboard_update = FALSE;
+
     pr_signals_handle();
 
     if (XFER_ABORTED) {
@@ -2996,10 +2998,7 @@ MODRET xfer_retr(cmd_rec *cmd) {
 
     if ((nbytes_sent / cnt_steps) != cnt_next) {
       cnt_next = nbytes_sent / cnt_steps;
-
-      pr_scoreboard_entry_update(session.pid,
-        PR_SCORE_XFER_DONE, nbytes_sent,
-        NULL);
+      force_scoreboard_update = TRUE;
     }
 
     /* If no throttling is configured, this simply updates the scoreboard.
@@ -3008,7 +3007,8 @@ MODRET xfer_retr(cmd_rec *cmd) {
      * former does not.  (When handling STOR, this is not an issue: different
      * end-of-loop conditions).
      */
-    pr_throttle_pause(session.xfer.total_bytes, FALSE);
+    pr_throttle_pause(session.xfer.total_bytes, force_scoreboard_update,
+      nbytes_sent);
   }
 
   if (XFER_ABORTED) {
@@ -3026,7 +3026,7 @@ MODRET xfer_retr(cmd_rec *cmd) {
    * former does not.  (When handling STOR, this is not an issue: different
    * end-of-loop conditions).
    */
-  pr_throttle_pause(session.xfer.total_bytes, TRUE);
+  pr_throttle_pause(session.xfer.total_bytes, TRUE, nbytes_sent);
 
   retr_complete(cmd->pool);
   xfer_displayfile();
