@@ -1837,7 +1837,7 @@ static void sftp_postparse_ev(const void *event_data, void *user_data) {
 
   c = find_config(main_server->conf, CONF_PARAM, "SFTPPassPhraseProvider",
     FALSE);
-  if (c) {
+  if (c != NULL) {
     sftp_keys_set_passphrase_provider(c->argv[0]);
   }
 
@@ -1860,10 +1860,12 @@ static void sftp_postparse_ev(const void *event_data, void *user_data) {
    * will never succeed.
    *
    * While here, we also check for unsupported configuration directives, and
-   * warn if found.
+   * warn if found.  And we also look to see if the same vhost has both
+   * SFTP and TLS (via mod_tls) enabled; that is an invalid configuration.
    */
   for (s = (server_rec *) server_list->xas_list; s; s = s->next) {
-    int supports_hostbased = FALSE, supports_publickey = FALSE, use_sftp = FALSE;
+    int supports_hostbased = FALSE, supports_publickey = FALSE;
+    int use_sftp = FALSE, use_tls = FALSE;
 
     c = find_config(s->conf, CONF_PARAM, "SFTPEngine", FALSE);
     if (c != NULL) {
@@ -1873,6 +1875,18 @@ static void sftp_postparse_ev(const void *event_data, void *user_data) {
     if (use_sftp == FALSE) {
       /* No need to check further if mod_sftp is not enabled. */
       continue;
+    }
+
+    c = find_config(s->conf, CONF_PARAM, "TLSEngine", FALSE);
+    if (c != NULL) {
+      use_tls = *((unsigned char *) c->argv[0]);
+    }
+
+    if (use_tls == TRUE) {
+      pr_log_pri(PR_LOG_WARNING, MOD_SFTP_VERSION
+        ": Server '%s': cannot support both FTPS (TLSEngine on) and "
+        "SFTP (SFTPEngine on) for the same host", s->ServerName);
+      pr_session_disconnect(&sftp_module, PR_SESS_DISCONNECT_BAD_CONFIG, NULL);
     }
 
     c = find_config(s->conf, CONF_PARAM, "SFTPAuthorizedHostKeys", FALSE);
