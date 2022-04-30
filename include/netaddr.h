@@ -1,6 +1,6 @@
 /*
  * ProFTPD - FTP server daemon
- * Copyright (c) 2003-2021 The ProFTPD Project team
+ * Copyright (c) 2003-2022 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -417,6 +417,9 @@ int pr_netaddr_is_loopback(const pr_netaddr_t *);
 /* Returns TRUE if the given pr_netaddr_t contains an RFC1918 address,
  * FALSE otherwise.  Note that -1 will be returned if there was an error,
  * with errno set appropriately.
+ *
+ * Note that host/loopback addresses (127.0.0.0/8) will also be treated
+ * as "private", just like RFC1918 addresses, as well.
  */
 int pr_netaddr_is_rfc1918(const pr_netaddr_t *);
 

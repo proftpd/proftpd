@@ -1,6 +1,6 @@
 /*
  * ProFTPD - FTP server daemon
- * Copyright (c) 2003-2021 The ProFTPD Project team
+ * Copyright (c) 2003-2022 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -2171,6 +2171,14 @@ static int is_10_xxx_addr(uint32_t addrno) {
     (const unsigned char *) &rfc1918_addrno, 8);
 }
 
+static int is_127_xxx_addr(uint32_t addrno) {
+  uint32_t rfc1918_addrno;
+
+  rfc1918_addrno = htonl(0x7f000000);
+  return addr_ncmp((const unsigned char *) &addrno,
+    (const unsigned char *) &rfc1918_addrno, 8);
+}
+
 static int is_172_16_xx_addr(uint32_t addrno) {
   uint32_t rfc1918_addrno;
 
@@ -2187,11 +2195,19 @@ static int is_192_168_xx_addr(uint32_t addrno) {
     (const unsigned char *) &rfc1918_addrno, 16);
 }
 
+/* Technically this function check for "private" addresses, not just the
+ * RFC 1918-defined private network ranges.
+ */
 int pr_netaddr_is_rfc1918(const pr_netaddr_t *na) {
   if (na == NULL) {
     errno = EINVAL;
     return -1;
   }
+
+  /* Note that, for our purposes, the 127.0.0.0/8 subnet is considered
+   * "private" (host-only, i.e. loopback addresses), thus we treat it as an
+   * RFC 1918 address.
+   */
 
   switch (pr_netaddr_get_family(na)) {
     case AF_INET: {
@@ -2200,6 +2216,7 @@ int pr_netaddr_is_rfc1918(const pr_netaddr_t *na) {
       addrno = pr_netaddr_get_addrno(na);
       if (is_192_168_xx_addr(addrno) == 0 ||
           is_172_16_xx_addr(addrno) == 0 ||
+          is_127_xxx_addr(addrno) == 0 ||
           is_10_xxx_addr(addrno) == 0) {
           return TRUE;
       }

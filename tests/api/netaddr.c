@@ -1,6 +1,6 @@
 /*
  * ProFTPD - FTP server testsuite
- * Copyright (c) 2008-2021 The ProFTPD Project team
+ * Copyright (c) 2008-2022 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -1261,13 +1261,12 @@ START_TEST (netaddr_is_rfc1918_test) {
   fail_unless(addr != NULL, "Failed to get addr for '%s': %s", name,
     strerror(errno));
   res = pr_netaddr_is_rfc1918(addr);
-  fail_unless(res == FALSE, "Failed to handle non-RFC1918 IPv4 address");
-  fail_unless(errno == EINVAL, "Failed to set errno to EINVAL, got %s (%d)",
-    strerror(errno), errno);
+  fail_unless(res == TRUE, "Expected 'true' for private/loopback address '%s'",
+    name);
 
   name = "::1";
   addr = pr_netaddr_get_addr(p, name, NULL);
-#ifdef PR_USE_IPV6
+#if defined(PR_USE_IPV6)
   fail_unless(addr != NULL, "Failed to get addr for '%s': %s", name,
     strerror(errno));
   res = pr_netaddr_is_rfc1918(addr);
