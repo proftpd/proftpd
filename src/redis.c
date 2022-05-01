@@ -1,6 +1,6 @@
 /*
  * ProFTPD - FTP server daemon
- * Copyright (c) 2017-2021 The ProFTPD Project team
+ * Copyright (c) 2017-2022 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -1140,7 +1140,7 @@ int pr_redis_hash_getall(pool *p, pr_redis_t *redis, module *m,
     int xerrno = errno;
 
     pr_trace_msg(trace_channel, 2,
-      "error entire hash using key '%s': %s", key, strerror(xerrno));
+      "error getting entire hash using key '%s': %s", key, strerror(xerrno));
 
     errno = xerrno;
     return -1;
@@ -3097,6 +3097,11 @@ int pr_redis_hash_kgetall(pool *p, pr_redis_t *redis, module *m,
             "error adding key (%lu bytes), value (%lu bytes) to hash: %s",
             (unsigned long) key_datasz, (unsigned long) value_datasz,
             strerror(errno));
+
+        } else {
+          pr_trace_msg(trace_channel, 25,
+            "added key (%lu bytes), value (%lu bytes) to hash",
+            (unsigned long) key_datasz, (unsigned long) value_datasz);
         }
       }
     }
