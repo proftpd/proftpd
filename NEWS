@@ -19,6 +19,8 @@
 --------------------------------
 - Issue 1434 - mod_sftp should fail on startup when SFTP and TLS are both
   enabled for a vhost.
+- Issue 1440 - DelayTable not properly using documented default value.  This
+  is a regression caused by the changes for Bug#4020.
 
 1.3.8rc3 - Released 23-Apr-2022
 --------------------------------

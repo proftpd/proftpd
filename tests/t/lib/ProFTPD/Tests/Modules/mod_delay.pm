@@ -62,6 +62,11 @@ my $TESTS = {
     test_class => [qw(bug forking)],
   },
 
+  delay_table_default_issue1440 => {
+    order => ++$order,
+    test_class => [qw(bug forking)],
+  },
+
 };
 
 sub new {
@@ -264,7 +269,7 @@ sub delay_warm_table {
       for (my $i = 0; $i < $nlogins; $i++) {
         my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
 
-        my $start = [gettimeofday()];        
+        my $start = [gettimeofday()];
         $client->login($user, $passwd);
         my $elapsed = tv_interval($start);
  
@@ -807,7 +812,7 @@ sub delay_delayonevent_user_bug4020 {
       my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port, 0,
         $user_delay_secs + 2);
 
-      my $start = [gettimeofday()];        
+      my $start = [gettimeofday()];
       $client->login($setup->{user}, $setup->{passwd});
       my $elapsed = tv_interval($start);
 
@@ -891,7 +896,7 @@ sub delay_delayonevent_pass_bug4020 {
       my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port, 0,
         $pass_delay_secs + 2);
 
-      my $start = [gettimeofday()];        
+      my $start = [gettimeofday()];
       eval { $client->login($setup->{user}, 'foobar') };
       unless ($@) {
         die("Login succeeded unexpectedly");
@@ -906,7 +911,7 @@ sub delay_delayonevent_pass_bug4020 {
         die("Expected at least $pass_delay_secs sec delay, got $elapsed");
       }
 
-      $start = [gettimeofday()];        
+      $start = [gettimeofday()];
       $client->login($setup->{user}, $setup->{passwd});
       $elapsed = tv_interval($start);
 
@@ -990,7 +995,7 @@ sub delay_delayonevent_failedlogin_bug4020 {
       my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port, 0,
         $failed_delay_secs + 2);
 
-      my $start = [gettimeofday()];        
+      my $start = [gettimeofday()];
       eval { $client->login($setup->{user}, 'foobar') };
       unless ($@) {
         die("Login succeeded unexpectedly");
@@ -1086,7 +1091,7 @@ sub delay_delayonevent_user_pass_bug4020 {
       my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port, 0,
         $login_delay_secs + 2);
 
-      my $start = [gettimeofday()];        
+      my $start = [gettimeofday()];
       $client->login($setup->{user}, $setup->{passwd});
       my $elapsed = tv_interval($start);
 
@@ -1120,6 +1125,118 @@ sub delay_delayonevent_user_pass_bug4020 {
   # Stop server
   server_stop($setup->{pid_file});
   $self->assert_child_ok($pid);
+
+  test_cleanup($setup->{log_file}, $ex);
+}
+
+sub delay_table_default_issue1440 {
+  my $self = shift;
+  my $tmpdir = $self->{tmpdir};
+  my $setup = test_setup($tmpdir, 'delay');
+
+  my $config = {
+    PidFile => $setup->{pid_file},
+    ScoreboardFile => $setup->{scoreboard_file},
+    SystemLog => $setup->{log_file},
+    TraceLog => $setup->{log_file},
+    Trace => 'delay:20',
+
+    AuthUserFile => $setup->{auth_user_file},
+    AuthGroupFile => $setup->{auth_group_file},
+    AuthOrder => 'mod_auth_file.c',
+
+    IfModules => {
+      'mod_delay.c' => {
+        'DelayEngine on',
+      },
+    },
+  };
+
+  my ($port, $config_user, $config_group) = config_write($setup->{config_file},
+    $config);
+
+  # Open pipes, for use between the parent and child processes.  Specifically,
+  # the child will indicate when it's done with its test by writing a message
+  # to the parent.
+  my ($rfh, $wfh);
+  unless (pipe($rfh, $wfh)) {
+    die("Can't open pipe: $!");
+  }
+
+  my $ex;
+
+  # Fork child
+  $self->handle_sigchld();
+  defined(my $pid = fork()) or die("Can't fork: $!");
+  if ($pid) {
+    eval {
+      # Allow for server startup
+      sleep(1);
+
+      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port, 0, 2);
+
+      my $start = [gettimeofday()];
+      $client->login($setup->{user}, $setup->{passwd});
+      my $elapsed = tv_interval($start);
+
+      $client->quit();
+
+      if ($ENV{TEST_VERBOSE}) {
+        print STDERR "Elapsed login time: $elapsed secs\n";
+      }
+    };
+    if ($@) {
+      $ex = $@;
+    }
+
+    $wfh->print("done\n");
+    $wfh->flush();
+
+  } else {
+    eval { server_wait($setup->{config_file}, $rfh) };
+    if ($@) {
+      warn($@);
+      exit 1;
+    }
+
+    exit 0;
+  }
+
+  # Stop server
+  server_stop($setup->{pid_file});
+  $self->assert_child_ok($pid);
+
+# mod_delay/0.7: no DelayOnEvent rules configured with "DelayTable none" in effect, disabling module
+
+  eval {
+    if (open(my $fh, "< $setup->{log_file}")) {
+      my $saw_delaytable_none = 0;
+
+      while (my $line = <$fh>) {
+        chomp($line);
+
+        if ($ENV{TEST_VERBOSE}) {
+          print STDERR "# $line\n";
+        }
+
+        if ($line =~ /.*?DelayTable none.*?in effect, disabling module/) {
+          $saw_delaytable_none = 1;
+          last;
+        }
+      }
+
+      close($fh);
+
+      $self->assert($saw_delaytable_none == 0,
+        test_msg("Saw 'DelayTable none' in effect unexpectedly"));
+
+    } else {
+      die("Can't read $setup->{log_file}: $!");
+    }
+  };
+  if ($@) {
+    $ex = $@;
+  }
 
   test_cleanup($setup->{log_file}, $ex);
 }

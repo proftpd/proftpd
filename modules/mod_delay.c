@@ -29,7 +29,7 @@
 #include "conf.h"
 #include "privs.h"
 
-#define MOD_DELAY_VERSION		"mod_delay/0.7"
+#define MOD_DELAY_VERSION		"mod_delay/0.8"
 
 /* Make sure the version of proftpd is as necessary. */
 #if PROFTPD_VERSION_NUMBER < 0x0001021001
@@ -1857,8 +1857,6 @@ static void delay_postparse_ev(const void *event_data, void *user_data) {
     return;
   }
 
-  delay_tab.dt_enabled = FALSE;
-
   c = find_config(main_server->conf, CONF_PARAM, "DelayTable", FALSE);
   if (c != NULL) {
     const char *table = NULL;
@@ -1867,10 +1865,13 @@ static void delay_postparse_ev(const void *event_data, void *user_data) {
     if (table != NULL) {
       delay_tab.dt_enabled = TRUE;
       delay_tab.dt_path = table;
+
+    } else {
+      delay_tab.dt_enabled = FALSE;
     }
   }
 
-  if (delay_tab.dt_enabled) {
+  if (delay_tab.dt_enabled == TRUE) {
     (void) delay_table_init();
   }
 }
@@ -2005,6 +2006,7 @@ static void delay_shutdown_ev(const void *event_data, void *user_data) {
 
 static int delay_init(void) {
   delay_tab.dt_path = PR_RUN_DIR "/proftpd.delay";
+  delay_tab.dt_enabled = TRUE;
   delay_tab.dt_data = NULL;
 
 #if defined(PR_SHARED_MODULE)
