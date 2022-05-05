@@ -1,6 +1,6 @@
 /*
  * ProFTPD - mod_sftp user authentication
- * Copyright (c) 2008-2021 TJ Saunders
+ * Copyright (c) 2008-2022 TJ Saunders
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -64,6 +64,9 @@ static int auth_sent_userauth_success = FALSE;
 
 static const char *auth_user = NULL;
 static const char *auth_service = NULL;
+
+/* Customizable callback for handling successful SSH authentication. */
+static int (*success_handler)(pool *, const char *) = NULL;
 
 static const char *trace_channel = "ssh2";
 
@@ -434,7 +437,7 @@ static int setup_env(pool *p, const char *user) {
   session.wtmp_log = TRUE;
 
   c = find_config(main_server->conf, CONF_PARAM, "WtmpLog", FALSE);
-  if (c &&
+  if (c != NULL &&
       *((unsigned char *) c->argv[0]) == FALSE) {
     session.wtmp_log = FALSE;
   }
@@ -472,9 +475,9 @@ static int setup_env(pool *p, const char *user) {
       session.c->remote_addr);
   }
 
-#ifdef PR_USE_LASTLOG
+#if defined(PR_USE_LASTLOG)
   c = find_config(main_server->conf, CONF_PARAM, "UseLastlog", FALSE);
-  if (c &&
+  if (c != NULL &&
       *((unsigned char *) c->argv[0]) == TRUE) {
     if (sess_ttyname == NULL) {
       sess_ttyname = pr_session_get_ttyname(p);
@@ -493,7 +496,7 @@ static int setup_env(pool *p, const char *user) {
     xferlog = c->argv[0];
   }
 
-  if (strncasecmp(xferlog, "none", 5) == 0) {
+  if (strcasecmp(xferlog, "none") == 0) {
     xferlog_open(NULL);
 
   } else {
@@ -512,7 +515,7 @@ static int setup_env(pool *p, const char *user) {
   }
 
   default_root = get_default_root(session.pool);
-  if (default_root) {
+  if (default_root != NULL) {
     ensure_open_passwd(p);
 
     if (pr_auth_chroot(default_root) < 0) {
@@ -585,7 +588,7 @@ static int setup_env(pool *p, const char *user) {
   }
 
   c = find_config(main_server->conf, CONF_PARAM, "ShowSymlinks", FALSE);
-  if (c) {
+  if (c != NULL) {
     if (*((unsigned char *) c->argv[0]) == TRUE) {
       show_symlinks = TRUE;
     }
@@ -667,7 +670,7 @@ static int setup_env(pool *p, const char *user) {
 
   session.user = pstrdup(session.pool, session.user);
 
-  if (session.group) {
+  if (session.group != NULL) {
     session.group = pstrdup(session.pool, session.group);
   }
 
@@ -1096,6 +1099,16 @@ static void incr_auth_attempts(const char *user, cmd_rec *pass_cmd) {
   }
 }
 
+static int handle_auth_success(pool *p, const char *user) {
+  int res = 0;
+
+  if (success_handler != NULL) {
+    res = (success_handler)(p, user);
+  }
+
+  return res;
+}
+
 /* Return -1 on error, 0 to continue, and 1 if the authentication succeeded. */
 static int handle_userauth_req(struct ssh2_packet *pkt, char **service) {
   unsigned char *buf;
@@ -1482,7 +1495,8 @@ static int handle_userauth_req(struct ssh2_packet *pkt, char **service) {
    * Right?
    */
 
-  if (setup_env(pkt->pool, user) < 0) {
+  res = handle_auth_success(pkt->pool, user);
+  if (res < 0) {
     dispatch_cmd_err(pass_cmd);
 
     pr_cmd_dispatch_phase(cmd, POST_CMD_ERR, 0);
@@ -1896,5 +1910,10 @@ int sftp_auth_init(void) {
     }
   }
 
+  sftp_auth_set_success_handler(setup_env);
   return 0;
+}
+
+void sftp_auth_set_success_handler(int (*handler)(pool *, const char *)) {
+  success_handler = handler;
 }

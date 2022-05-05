@@ -1700,6 +1700,15 @@ MODRET sftp_hook_get_packet_write(cmd_rec *cmd) {
   return mod_create_data(cmd, sftp_ssh2_packet_write);
 }
 
+MODRET sftp_hook_set_auth_success_handler(cmd_rec *cmd) {
+  if (cmd->argc != 1) {
+    return PR_ERROR_MSG(cmd, NULL, "wrong number of arguments");
+  }
+
+  sftp_auth_set_success_handler(cmd->argv[0]);
+  return PR_HANDLED(cmd);
+}
+
 MODRET sftp_hook_set_packet_handler(cmd_rec *cmd) {
   if (cmd->argc != 1) {
     return PR_ERROR_MSG(cmd, NULL, "wrong number of arguments");
@@ -2649,6 +2658,7 @@ static conftable sftp_conftab[] = {
 static cmdtable sftp_cmdtab[] = {
   /* Module hooks */
   { HOOK, "sftp_get_packet_write",	G_NONE, sftp_hook_get_packet_write, FALSE, FALSE },
+  { HOOK, "sftp_set_auth_success_handler", G_NONE, sftp_hook_set_auth_success_handler, FALSE, FALSE },
   { HOOK, "sftp_set_packet_handler",	G_NONE, sftp_hook_set_packet_handler, FALSE, FALSE },
 
   { 0, NULL }
