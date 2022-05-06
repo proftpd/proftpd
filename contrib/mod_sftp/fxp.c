@@ -4007,21 +4007,62 @@ static void fxp_version_add_supported2_ext(pool *p, unsigned char **buf,
 
 /* SFTP Extension handlers */
 
+/* Returns -1 on error, 0 on EOF, and 1 on successful block read. */
+static int read_file_block(pr_fh_t *fh, EVP_MD_CTX *pctx, size_t blocksz,
+    void *buf, size_t bufsz) {
+  size_t len, total_len;
+
+  total_len = blocksz;
+
+  len = bufsz;
+  if (blocksz < bufsz) {
+    len = blocksz;
+  }
+
+  while (total_len != 0) {
+    ssize_t nread;
+    int xerrno;
+
+    nread = pr_fsio_read(fh, buf, len);
+    xerrno = errno;
+
+    if (nread < 0) {
+      if (xerrno == EINTR) {
+        pr_signals_handle();
+        continue;
+      }
+
+      return -1;
+    }
+
+    if (nread == 0) {
+      /* EOF */
+      return 0;
+    }
+
+    EVP_DigestUpdate(pctx, buf, nread);
+    total_len -= nread;
+  }
+
+  return 1;
+}
+
 static int fxp_handle_ext_check_file(struct fxp_packet *fxp, char *digest_list,
     char *path, off_t offset, off_t len, uint32_t blocksz) {
+  register unsigned int i;
   unsigned char *buf, *ptr;
   char *supported_digests;
   const char *digest_name, *reason;
   uint32_t buflen, bufsz, expected_buflen, status_code;
   struct fxp_packet *resp;
-  int data_len, res, xerrno = 0;
+  int res, xerrno = 0;
   struct stat st;
   pr_fh_t *fh;
   cmd_rec *cmd;
-  unsigned long nblocks;
-  off_t range_len, total_len = 0;
+  unsigned long block_count;
+  off_t range_len;
   void *data;
-  BIO *bio;
+  size_t datasz;
 #if OPENSSL_VERSION_NUMBER < 0x10100000L || \
     defined(HAVE_LIBRESSL)
   EVP_MD_CTX md_ctx;
@@ -4236,20 +4277,21 @@ static int fxp_handle_ext_check_file(struct fxp_packet *fxp, char *digest_list,
   }
 
   if (blocksz == 0) {
-    nblocks = 1;
+    block_count = 1;
+    blocksz = range_len;
 
   } else {
-    nblocks = (unsigned long) (range_len / blocksz);
+    block_count = (unsigned long) (range_len / blocksz);
     if (range_len % blocksz != 0) {
-      nblocks++;
+      block_count++;
     }
   }
 
   pr_trace_msg(trace_channel, 15, "for check-file request on '%s', "
-    "calculate %s digest of %lu %s", path, digest_name, nblocks,
-    nblocks == 1 ? "block/checksum" : "nblocks/checksums");
+    "calculate %s digest of %lu %s", path, digest_name, block_count,
+    block_count == 1 ? "block/checksum" : "blocks/checksums");
 
-  fh = pr_fsio_open(path, O_RDONLY|O_NONBLOCK);
+  fh = pr_fsio_open(path, O_RDONLY);
   if (fh == NULL) {
     xerrno = errno;
 
@@ -4341,12 +4383,12 @@ static int fxp_handle_ext_check_file(struct fxp_packet *fxp, char *digest_list,
    * length prefix.
    */
   expected_buflen = FXP_RESPONSE_DATA_DEFAULT_SZ +
-    (nblocks * (EVP_MAX_MD_SIZE + 4));
+    (block_count * (EVP_MAX_MD_SIZE + 4));
   if (buflen < expected_buflen) {
     pr_trace_msg(trace_channel, 15, "allocated larger buffer (%lu bytes) for "
       "check-file request on '%s', %s digest, %lu %s",
-      (unsigned long) expected_buflen, path, digest_name, nblocks,
-      nblocks == 1 ? "block/checksum" : "nblocks/checksums");
+      (unsigned long) expected_buflen, path, digest_name, block_count,
+      block_count == 1 ? "block/checksum" : "blocks/checksums");
 
     buflen = bufsz = expected_buflen;
     buf = ptr = palloc(fxp->pool, bufsz);
@@ -4360,38 +4402,32 @@ static int fxp_handle_ext_check_file(struct fxp_packet *fxp, char *digest_list,
   pctx = EVP_MD_CTX_new();
 #endif /* prior to OpenSSL-1.1.0 */
 
-  bio = BIO_new(BIO_s_fd());
-  BIO_set_fd(bio, PR_FH_FD(fh), BIO_NOCLOSE);
-
   sftp_msg_write_byte(&buf, &buflen, SFTP_SSH2_FXP_EXTENDED_REPLY);
   sftp_msg_write_int(&buf, &buflen, fxp->request_id);
   sftp_msg_write_string(&buf, &buflen, digest_name);
 
   pr_trace_msg(trace_channel, 8,
     "sending response: EXTENDED_REPLY %s digest of %lu %s", digest_name,
-    nblocks, nblocks == 1 ? "block" : "blocks");
+    block_count, block_count == 1 ? "block" : "blocks");
 
-  if (blocksz == 0) {
-    data_len = st.st_blksize;
+  datasz = st.st_blksize * 4;
+  data = palloc(fxp->pool, datasz);
 
-  } else {
-    data_len = blocksz;
-  }
+  for (i = 0; i < block_count; i++) {
+    unsigned char digest[EVP_MAX_MD_SIZE];
+    unsigned int digest_len = 0;
 
-  data = palloc(fxp->pool, data_len);
-
-  while (TRUE) {
     pr_signals_handle();
+    EVP_MD_CTX_reset(pctx);
+    EVP_DigestInit(pctx, md);
 
-    res = BIO_read(bio, data, data_len);
+    pr_trace_msg(trace_channel, 19,
+      "reading block %lu (block size %" PR_LU ") from '%s'", block_count,
+      (pr_off_t) blocksz, path);
+    res = read_file_block(fh, pctx, blocksz, data, datasz);
+    xerrno = errno;
+
     if (res < 0) {
-      if (BIO_should_read(bio)) {
-        continue;
-      }
-
-      /* error */
-      xerrno = errno;
-
       pr_fsio_close(fh);
 
       (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
@@ -4417,8 +4453,6 @@ static int fxp_handle_ext_check_file(struct fxp_packet *fxp, char *digest_list,
       resp->payload_sz = (bufsz - buflen);
 
       /* Cleanup. */
-      BIO_free(bio);
-
 #if OPENSSL_VERSION_NUMBER < 0x10100000L || \
     defined(HAVE_LIBRESSL)
       EVP_MD_CTX_cleanup(pctx);
@@ -4427,54 +4461,23 @@ static int fxp_handle_ext_check_file(struct fxp_packet *fxp, char *digest_list,
 #endif /* prior to OpenSSL-1.1.0 */
 
       return fxp_packet_write(resp);
-
-    } else if (res == 0) {
-      if (BIO_should_retry(bio) != 0) {
-        continue;
-      }
-
-      /* EOF */
-      break;
     }
 
-    if (blocksz != 0) {
-      unsigned char digest[EVP_MAX_MD_SIZE];
-      unsigned int digest_len = 0;
-
-      EVP_DigestInit(pctx, md);
-      EVP_DigestUpdate(pctx, data, res);
-      EVP_DigestFinal(pctx, digest, &digest_len);
-
-      sftp_msg_write_data(&buf, &buflen, digest, digest_len, FALSE);
-
-      total_len += res; 
-      if (len > 0 &&
-          total_len >= len) {
-        break;
-      }
-    }
-  }
-
-  if (blocksz == 0) {
-    unsigned char digest[EVP_MAX_MD_SIZE];
-    unsigned int digest_len = 0;
-
-    EVP_DigestInit(pctx, md);
-    EVP_DigestUpdate(pctx, data, res);
     EVP_DigestFinal(pctx, digest, &digest_len);
-
     sftp_msg_write_data(&buf, &buflen, digest, digest_len, FALSE);
+    pr_trace_msg(trace_channel, 19,
+      "completed block %lu (block size %" PR_LU" ) of '%s'", block_count,
+      (pr_off_t) blocksz, path);
   }
 
   /* Cleanup. */
-  BIO_free(bio);
+  pr_fsio_close(fh);
 #if OPENSSL_VERSION_NUMBER < 0x10100000L || \
     defined(HAVE_LIBRESSL)
   EVP_MD_CTX_cleanup(pctx);
 #else
   EVP_MD_CTX_free(pctx);
 #endif /* prior to OpenSSL-1.1.0 */
-  pr_fsio_close(fh);
 
   resp = fxp_packet_create(fxp->pool, fxp->channel_id);
   resp->payload = ptr;
