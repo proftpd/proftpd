@@ -1,6 +1,6 @@
 /*
  * ProFTPD - mod_sftp interoperability
- * Copyright (c) 2008-2021 TJ Saunders
+ * Copyright (c) 2008-2022 TJ Saunders
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -276,7 +276,7 @@ int sftp_interop_handle_version(pool *p, const char *client_version) {
   /* Now iterate through any SFTPClientMatch rules. */
 
   c = find_config(main_server->conf, CONF_PARAM, "SFTPClientMatch", FALSE);
-  while (c) {
+  while (c != NULL) {
     int res;
     char *pattern;
     pr_regex_t *pre;
@@ -304,6 +304,9 @@ int sftp_interop_handle_version(pool *p, const char *client_version) {
        *  channelWindowSize
        *  channelPacketSize
        *  pessimisticNewkeys
+       *  sftpCiphers
+       *  sftpDigests
+       *  sftpKeyExchanges
        *  sftpMinProtocolVersion
        *  sftpMaxProtocolVersion
        *  sftpUTF8ProtocolVersion (only if NLS support is enabled)
@@ -348,6 +351,45 @@ int sftp_interop_handle_version(pool *p, const char *client_version) {
         if (pessimistic_newkeys) {
           default_flags |= SFTP_SSH2_FEAT_PESSIMISTIC_NEWKEYS;
         } 
+      }
+
+      v = pr_table_get(tab, "sftpCiphers", NULL);
+      if (v != NULL) {
+        config_rec *ciphers;
+
+        ciphers = *((config_rec **) v);
+
+        pr_trace_msg(trace_channel, 16,
+          "setting new SSH ciphers, per SFTPClientMatch");
+
+        remove_config(main_server->conf, "SFTPCiphers", FALSE);
+        pr_config_add_config_to_set(main_server->conf, ciphers, 0);
+      }
+
+      v = pr_table_get(tab, "sftpDigests", NULL);
+      if (v != NULL) {
+        config_rec *digests;
+
+        digests = *((config_rec **) v);
+
+        pr_trace_msg(trace_channel, 16,
+          "setting new SSH digests, per SFTPClientMatch");
+
+        remove_config(main_server->conf, "SFTPDigests", FALSE);
+        pr_config_add_config_to_set(main_server->conf, digests, 0);
+      }
+
+      v = pr_table_get(tab, "sftpKeyExchanges", NULL);
+      if (v != NULL) {
+        config_rec *key_exchanges;
+
+        key_exchanges = *((config_rec **) v);
+
+        pr_trace_msg(trace_channel, 16,
+          "setting new SSH key exchanges, per SFTPClientMatch");
+
+        remove_config(main_server->conf, "SFTPKeyExchanges", FALSE);
+        pr_config_add_config_to_set(main_server->conf, key_exchanges, 0);
       }
 
       v = pr_table_get(tab, "sftpMinProtocolVersion", NULL);

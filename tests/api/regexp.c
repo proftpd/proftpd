@@ -1,6 +1,6 @@
 /*
  * ProFTPD - FTP server testsuite
- * Copyright (c) 2008-2021 The ProFTPD Project team
+ * Copyright (c) 2008-2022 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -296,7 +296,8 @@ START_TEST (regexp_exec_test) {
 }
 END_TEST
 
-#if !defined(PR_USE_PCRE)
+#if !defined(PR_USE_PCRE2) && \
+    !defined(PR_USE_PCRE)
 START_TEST (regexp_capture_posix_test) {
   register unsigned int i;
   pr_regex_t *pre = NULL;
@@ -344,7 +345,7 @@ START_TEST (regexp_capture_posix_test) {
   pr_regexp_free(NULL, pre);
 }
 END_TEST
-#endif /* PR_USE_PCRE */
+#endif /* !PR_USE_PCRE2 and !PR_USE_PCRE */
 
 #if defined(PR_USE_PCRE)
 START_TEST (regexp_capture_pcre_test) {

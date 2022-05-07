@@ -1,6 +1,6 @@
 /*
  * ProFTPD - FTP server testsuite
- * Copyright (c) 2014-2020 The ProFTPD Project team
+ * Copyright (c) 2014-2022 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -63,6 +63,54 @@ START_TEST (config_init_config_test) {
 
   mark_point();
   init_config();
+}
+END_TEST
+
+START_TEST (config_alloc_test) {
+  config_rec *c;
+  int config_type = CONF_PARAM;
+
+  mark_point();
+  c = pr_config_alloc(NULL, NULL, 0);
+  fail_unless(c == NULL, "Failed to handle null pool");
+  fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+    strerror(errno), errno);
+
+  mark_point();
+  c = pr_config_alloc(p, NULL, config_type);
+  fail_unless(c != NULL, "Failed to handle null argument: %s", strerror(errno));
+  fail_unless(c->name == NULL, "Failed to handle null name");
+  fail_unless(c->config_type == config_type, "Failed to set config type");
+
+  mark_point();
+  c = pr_config_alloc(p, "foobar", config_type);
+  fail_unless(c != NULL, "Failed to allocate config_rec: %s", strerror(errno));
+  fail_unless(c->name != NULL, "Failed to handle name");
+  fail_unless(c->config_type == config_type, "Failed to set config type");
+}
+END_TEST
+
+START_TEST (config_add_config_to_set_test) {
+  xaset_t *set;
+  config_rec *c;
+
+  mark_point();
+  c = pr_config_add_config_to_set(NULL, NULL, 0);
+  fail_unless(c == NULL, "Failed to handle null set");
+  fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+    strerror(errno), errno);
+
+  mark_point();
+  set = xaset_create(p, NULL);
+  c = pr_config_add_config_to_set(set, NULL, 0);
+  fail_unless(c == NULL, "Failed to handle null set");
+  fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+    strerror(errno), errno);
+
+  mark_point();
+  c = pr_config_alloc(p, "foobar", 0);
+  c = pr_config_add_config_to_set(set, c, 0);
+  fail_unless(c != NULL, "Failed to add config to set: %s", strerror(errno));
 }
 END_TEST
 
@@ -722,6 +770,8 @@ Suite *tests_get_config_suite(void) {
   tcase_add_checked_fixture(testcase, set_up, tear_down);
 
   tcase_add_test(testcase, config_init_config_test);
+  tcase_add_test(testcase, config_alloc_test);
+  tcase_add_test(testcase, config_add_config_to_set_test);
   tcase_add_test(testcase, config_add_config_test);
   tcase_add_test(testcase, config_add_config_param_test);
   tcase_add_test(testcase, config_add_config_param_set_test);

@@ -196,6 +196,30 @@ static struct sftp_digest digests[] = {
   { NULL, NULL, NULL, 0, FALSE, FALSE }
 };
 
+static const char *key_exchanges[] = {
+  "diffie-hellman-group1-sha1",
+  "diffie-hellman-group14-sha1",
+#if (OPENSSL_VERSION_NUMBER > 0x000907000L && defined(OPENSSL_FIPS)) || \
+    (OPENSSL_VERSION_NUMBER > 0x000908000L)
+  "diffie-hellman-group14-sha256",
+  "diffie-hellman-group16-sha512",
+  "diffie-hellman-group18-sha512",
+  "diffie-hellman-group-exchange-sha256",
+#endif
+  "diffie-hellman-group-exchange-sha1",
+#ifdef PR_USE_OPENSSL_ECC
+  "ecdh-sha2-nistp256",
+  "ecdh-sha2-nistp384",
+  "ecdh-sha2-nistp521",
+#endif /* PR_USE_OPENSSL_ECC */
+#if defined(HAVE_SODIUM_H) && defined(HAVE_SHA256_OPENSSL)
+  "curve25519-sha256",
+  "curve25519-sha256@libssh.org",
+#endif /* HAVE_SODIUM_H and HAVE_SHA256_OPENSSL */
+  "rsa1024-sha1",
+  NULL
+};
+
 static const char *trace_channel = "ssh2";
 
 static void ctr_incr(unsigned char *ctr, size_t len) {
@@ -1118,6 +1142,26 @@ const EVP_MD *sftp_crypto_get_digest(const char *name, uint32_t *mac_len) {
   (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
     "no digest matching '%s' found", name);
   return NULL;
+}
+
+int sftp_crypto_is_key_exchange(const char *name) {
+  register unsigned int i;
+
+  if (name == NULL) {
+    errno = EINVAL;
+    return -1;
+  }
+
+  for (i = 0; key_exchanges[i]; i++) {
+    if (strcmp(key_exchanges[i], name) == 0) {
+      return TRUE;
+    }
+  }
+
+  (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
+    "no key exchange matching '%s' found", name);
+  errno = ENOENT;
+  return -1;
 }
 
 const char *sftp_crypto_get_kexinit_cipher_list(pool *p) {
