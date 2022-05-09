@@ -1,6 +1,6 @@
 /*
  * ProFTPD - mod_sftp OpenSSL interface
- * Copyright (c) 2008-2021 TJ Saunders
+ * Copyright (c) 2008-2022 TJ Saunders
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -587,7 +587,10 @@ static int init_aes_ctr(EVP_CIPHER_CTX *ctx, const unsigned char *key,
     nbits = EVP_CIPHER_CTX_key_length(ctx) * 8;
 # endif
 
-    AES_set_encrypt_key(key, nbits, &(ace->key));
+    if (AES_set_encrypt_key(key, nbits, &(ace->key)) != 0) {
+      pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
+        "error setting AES CTR mode encryption key");
+    }
   }
 
   if (iv != NULL) {
@@ -619,12 +622,14 @@ static int do_aes_ctr(EVP_CIPHER_CTX *ctx, unsigned char *dst,
   unsigned char buf[AES_BLOCK_SIZE];
 # endif
 
-  if (len == 0)
+  if (len == 0) {
     return 1;
+  }
 
   ace = EVP_CIPHER_CTX_get_app_data(ctx);
-  if (ace == NULL)
+  if (ace == NULL) {
     return 0;
+  }
 
 # if OPENSSL_VERSION_NUMBER <= 0x0090704fL || \
      OPENSSL_VERSION_NUMBER >= 0x10100000L
@@ -740,8 +745,19 @@ static const EVP_CIPHER *get_aes_ctr_cipher(int key_len) {
   EVP_CIPHER_meth_set_cleanup(cipher, cleanup_aes_ctr);
   EVP_CIPHER_meth_set_do_cipher(cipher, do_aes_ctr);
 
-  flags = EVP_CIPH_CBC_MODE|EVP_CIPH_VARIABLE_LENGTH|EVP_CIPH_ALWAYS_CALL_INIT|EVP_CIPH_CUSTOM_IV;
-#ifdef OPENSSL_FIPS
+  flags = EVP_CIPH_VARIABLE_LENGTH|EVP_CIPH_ALWAYS_CALL_INIT|EVP_CIPH_CUSTOM_IV;
+
+#if defined(EVP_CIPH_CTR_MODE)
+  flags |= EVP_CIPH_CTR_MODE;
+# else
+  flags |= EVP_CIPH_CBC_MODE;
+#endif /* EVP_CIPH_CTR_MODE */
+
+#if defined(EVP_CIPH_FLAG_CUSTOM_CIPHER)
+  flags |= EVP_CIPH_FLAG_CUSTOM_CIPHER;
+#endif /* EVP_CIPH_FLAG_CUSTOM_CIPHER */
+
+#if defined(OPENSSL_FIPS)
   flags |= EVP_CIPH_FLAG_FIPS;
 #endif /* OPENSSL_FIPS */
 
@@ -759,8 +775,18 @@ static const EVP_CIPHER *get_aes_ctr_cipher(int key_len) {
   aes_ctr_cipher.init = init_aes_ctr;
   aes_ctr_cipher.cleanup = cleanup_aes_ctr;
   aes_ctr_cipher.do_cipher = do_aes_ctr;
+  aes_ctr_cipher.flags = EVP_CIPH_VARIABLE_LENGTH|EVP_CIPH_ALWAYS_CALL_INIT|EVP_CIPH_CUSTOM_IV;
 
-  aes_ctr_cipher.flags = EVP_CIPH_CBC_MODE|EVP_CIPH_VARIABLE_LENGTH|EVP_CIPH_ALWAYS_CALL_INIT|EVP_CIPH_CUSTOM_IV;
+# if defined(EVP_CIPH_CTR_MODE)
+  aes_ctr_cipher.flags |= EVP_CIPH_CTR_MODE;
+# else
+  aes_ctr_cipher.flags |= EVP_CIPH_CBC_MODE;
+# endif /* EVP_CIPH_CTR_MODE */
+
+# if defined(EVP_CIPH_FLAG_CUSTOM_CIPHER)
+  aes_ctr_cipher.flags |= EVP_CIPH_FLAG_CUSTOM_CIPHER;
+# endif /* EVP_CIPH_FLAG_CUSTOM_CIPHER */
+
 # ifdef OPENSSL_FIPS
   aes_ctr_cipher.flags |= EVP_CIPH_FLAG_FIPS;
 # endif /* OPENSSL_FIPS */
@@ -1002,13 +1028,25 @@ const EVP_CIPHER *sftp_crypto_get_cipher(const char *name, size_t *key_len,
 # endif /* !OPENSSL_NO_DES */
 
       } else if (strcmp(name, "aes256-ctr") == 0) {
+# if defined(HAVE_EVP_AES_256_CTR_OPENSSL)
+        cipher = EVP_aes_256_ctr();
+# else
         cipher = get_aes_ctr_cipher(32);
+# endif /* HAVE_EVP_AES_256_CTR_OPENSSL */
 
       } else if (strcmp(name, "aes192-ctr") == 0) {
+# if defined(HAVE_EVP_AES_192_CTR_OPENSSL)
+        cipher = EVP_aes_192_ctr();
+# else
         cipher = get_aes_ctr_cipher(24);
+# endif /* HAVE_EVP_AES_192_CTR_OPENSSL */
 
       } else if (strcmp(name, "aes128-ctr") == 0) {
+# if defined(HAVE_EVP_AES_128_CTR_OPENSSL)
+        cipher = EVP_aes_128_ctr();
+# else
         cipher = get_aes_ctr_cipher(16);
+# endif /* HAVE_EVP_AES_128_CTR_OPENSSL */
 #endif /* OpenSSL older than 0.9.7 */
 
       } else {
