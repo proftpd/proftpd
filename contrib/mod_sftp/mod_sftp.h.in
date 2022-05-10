@@ -1,6 +1,6 @@
 /*
  * ProFTPD - mod_sftp
- * Copyright (c) 2008-2020 TJ Saunders
+ * Copyright (c) 2008-2022 TJ Saunders
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -49,8 +49,17 @@
 /* Define if you have OpenSSL with crippled AES support. */
 #undef HAVE_AES_CRIPPLED_OPENSSL
 
+/* Define if you have OpenSSL with EVP_aes_128_ctr support. */
+#undef HAVE_EVP_AES_128_CTR_OPENSSL
+
+/* Define if you have OpenSSL with EVP_aes_192_ctr support. */
+#undef HAVE_EVP_AES_192_CTR_OPENSSL
+
 /* Define if you have OpenSSL with EVP_aes_256_ctr support. */
 #undef HAVE_EVP_AES_256_CTR_OPENSSL
+
+/* Define if you have OpenSSL with OSSL_PROVIDER_load support. */
+#undef HAVE_OSSL_PROVIDER_LOAD_OPENSSL
 
 /* Define if you have OpenSSL with SHA256 support. */
 #undef HAVE_SHA256_OPENSSL
@@ -93,6 +102,9 @@
 # include <openssl/ec.h>
 # include <openssl/ecdh.h>
 #endif /* PR_USE_OPENSSL_ECC */
+#if defined(HAVE_OSSL_PROVIDER_LOAD_OPENSSL)
+# include <openssl/provider.h>
+#endif /* HAVE_OSSL_PROVIDER_LOAD_OPENSSL */
 
 /* Define if you have the LibreSSL library.  */
 #if defined(LIBRESSL_VERSION_NUMBER)

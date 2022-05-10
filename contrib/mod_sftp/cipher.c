@@ -1,6 +1,6 @@
 /*
  * ProFTPD - mod_sftp ciphers
- * Copyright (c) 2008-2020 TJ Saunders
+ * Copyright (c) 2008-2022 TJ Saunders
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -192,14 +192,40 @@ static int set_cipher_iv(struct sftp_cipher *cipher, const EVP_MD *hash,
   }
 
   ctx = EVP_MD_CTX_create();
-  EVP_DigestInit(ctx, hash);
+  if (EVP_DigestInit(ctx, hash) != 1) {
+    (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
+      "unable to initialize MD context for '%s': %s", EVP_MD_name(hash),
+      sftp_crypto_get_errors());
+    free(iv);
+    errno = EINVAL;
+    return -1;
+  }
+
   if (sftp_interop_supports_feature(SFTP_SSH2_FEAT_CIPHER_USE_K)) {
     EVP_DigestUpdate(ctx, k, klen);
   }
-  EVP_DigestUpdate(ctx, h, hlen);
+
+  if (EVP_DigestUpdate(ctx, h, hlen) != 1) {
+    (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
+      "unable to update MD context for '%s': %s", EVP_MD_name(hash),
+      sftp_crypto_get_errors());
+    free(iv);
+    errno = EINVAL;
+    return -1;
+  }
+
   EVP_DigestUpdate(ctx, letter, sizeof(char));
   EVP_DigestUpdate(ctx, (char *) id, id_len);
-  EVP_DigestFinal(ctx, iv, &iv_len);
+
+  if (EVP_DigestFinal(ctx, iv, &iv_len) != 1) {
+    (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
+      "unable to finish MD context for '%s': %s", EVP_MD_name(hash),
+      sftp_crypto_get_errors());
+    free(iv);
+    errno = EINVAL;
+    return -1;
+  }
+
   EVP_MD_CTX_destroy(ctx);
 
   /* If we need more, keep hashing, as per RFC, until we have enough
@@ -264,12 +290,37 @@ static int set_cipher_key(struct sftp_cipher *cipher, const EVP_MD *hash,
   }
 
   ctx = EVP_MD_CTX_create();
-  EVP_DigestInit(ctx, hash);
-  EVP_DigestUpdate(ctx, k, klen);
+  if (EVP_DigestInit(ctx, hash) != 1) {
+    (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
+      "unable to initialize MD context for '%s': %s", EVP_MD_name(hash),
+      sftp_crypto_get_errors());
+    free(key);
+    errno = EINVAL;
+    return -1;
+  }
+
+  if (EVP_DigestUpdate(ctx, k, klen) != 1) {
+    (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
+      "unable to update MD context for '%s': %s", EVP_MD_name(hash),
+      sftp_crypto_get_errors());
+    free(key);
+    errno = EINVAL;
+    return -1;
+  }
+
   EVP_DigestUpdate(ctx, h, hlen);
   EVP_DigestUpdate(ctx, letter, sizeof(char));
   EVP_DigestUpdate(ctx, (char *) id, id_len);
-  EVP_DigestFinal(ctx, key, &key_len);
+
+  if (EVP_DigestFinal(ctx, key, &key_len) != 1) {
+    (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
+      "unable to finish MD context for '%s': %s", EVP_MD_name(hash),
+      sftp_crypto_get_errors());
+    free(key);
+    errno = EINVAL;
+    return -1;
+  }
+
   EVP_MD_CTX_destroy(ctx);
 
   pr_trace_msg(trace_channel, 19, "hashed data to produce key (%lu bytes)",
@@ -507,7 +558,19 @@ int sftp_cipher_set_read_key(pool *p, const EVP_MD *hash, const BIGNUM *k,
   }
 
   pr_memscrub(ptr, bufsz);
-  sftp_cipher_set_block_size(EVP_CIPHER_block_size(cipher->cipher));
+
+  if (strcmp(cipher->algo, "aes128-ctr") == 0 ||
+      strcmp(cipher->algo, "aes192-ctr") == 0 ||
+      strcmp(cipher->algo, "aes256-ctr") == 0) {
+    /* For some reason, OpenSSL returns 8 for the AES block size (even
+     * though the AES block size is 16, per RFC 5647), but OpenSSH wants 16.
+     */
+    sftp_cipher_set_block_size(16);
+
+  } else {
+    sftp_cipher_set_block_size(EVP_CIPHER_block_size(cipher->cipher));
+  }
+
   return 0;
 }
 
