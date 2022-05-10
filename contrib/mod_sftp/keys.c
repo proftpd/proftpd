@@ -1,6 +1,6 @@
 /*
  * ProFTPD - mod_sftp key mgmt (keys)
- * Copyright (c) 2008-2021 TJ Saunders
+ * Copyright (c) 2008-2022 TJ Saunders
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -2930,7 +2930,7 @@ static int decrypt_openssh_data(pool *p, const char *path,
    * trailing AEAD bytes.  Need to fix that in the future.
    */
 
-  if (EVP_Cipher(cipher_ctx, buf, encrypted_data, encrypted_len) != 1) {
+  if (EVP_Cipher(cipher_ctx, buf, encrypted_data, encrypted_len) < 0) {
     /* This might happen due to a wrong/bad passphrase. */
     pr_trace_msg(trace_channel, 3,
       "error decrypting %s data for key: %s", cipher->algo,
