@@ -15,6 +15,10 @@
   where `N' is the issue number.
 -----------------------------------------------------------------------------
 
+1.3.7e
+--------------------------------
+- Issue 1448 - Ensure that mod_sftp algorithms work properly with OpenSSL 3.x.
+
 1.3.7d - Released 23-Apr-2022
 --------------------------------
 - Issue 1321 - Crash with long lines in AuthGroupFile due to large realloc(3).

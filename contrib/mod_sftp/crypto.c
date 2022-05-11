@@ -1,6 +1,6 @@
 /*
  * ProFTPD - mod_sftp OpenSSL interface
- * Copyright (c) 2008-2017 TJ Saunders
+ * Copyright (c) 2008-2022 TJ Saunders
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -983,13 +983,25 @@ const EVP_CIPHER *sftp_crypto_get_cipher(const char *name, size_t *key_len,
 # endif /* !OPENSSL_NO_DES */
 
       } else if (strncmp(name, "aes256-ctr", 11) == 0) {
+# if defined(HAVE_EVP_AES_256_CTR_OPENSSL)
+        cipher = EVP_aes_256_ctr();
+# else
         cipher = get_aes_ctr_cipher(32);
+# endif /* HAVE_EVP_AES_256_CTR_OPENSSL */
 
       } else if (strncmp(name, "aes192-ctr", 11) == 0) {
+# if defined(HAVE_EVP_AES_192_CTR_OPENSSL)
+        cipher = EVP_aes_192_ctr();
+# else
         cipher = get_aes_ctr_cipher(24);
+# endif /* HAVE_EVP_AES_192_CTR_OPENSSL */
 
       } else if (strncmp(name, "aes128-ctr", 11) == 0) {
+# if defined(HAVE_EVP_AES_128_CTR_OPENSSL)
+        cipher = EVP_aes_128_ctr();
+# else
         cipher = get_aes_ctr_cipher(16);
+# endif /* HAVE_EVP_AES_128_CTR_OPENSSL */
 #endif /* OpenSSL older than 0.9.7 */
 
       } else {

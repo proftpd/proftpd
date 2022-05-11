@@ -1,6 +1,6 @@
 /*
  * ProFTPD - mod_sftp
- * Copyright (c) 2008-2020 TJ Saunders
+ * Copyright (c) 2008-2022 TJ Saunders
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -71,6 +71,10 @@ static const char *sftp_server_version = SFTP_ID_DEFAULT_STRING;
 #define SFTP_HOSTKEY_FL_CLEAR_DSA_KEY		0x002
 #define SFTP_HOSTKEY_FL_CLEAR_ECDSA_KEY		0x004
 #define SFTP_HOSTKEY_FL_CLEAR_ED25519_KEY	0x008
+
+#if defined(HAVE_OSSL_PROVIDER_LOAD_OPENSSL)
+static OSSL_PROVIDER *legacy_provider = NULL;
+#endif /* HAVE_OSSL_PROVIDER_LOAD_OPENSSL */
 
 static const char *trace_channel = "ssh2";
 
@@ -1881,6 +1885,13 @@ static void sftp_shutdown_ev(const void *event_data, void *user_data) {
   /* Clean up the OpenSSL stuff. */
   sftp_crypto_free(0);
 
+#if defined(HAVE_OSSL_PROVIDER_LOAD_OPENSSL)
+  if (legacy_provider != NULL) {
+    OSSL_PROVIDER_unload(legacy_provider);
+    legacy_provider = NULL;
+  }
+#endif /* HAVE_OSSL_PROVIDER_LOAD_OPENSSL */
+
   destroy_pool(sftp_pool);
   sftp_pool = NULL;
 
@@ -2034,6 +2045,13 @@ static int sftp_init(void) {
       sodium_version);
   }
 #endif /* HAVE_SODIUM_H */
+
+#if defined(HAVE_OSSL_PROVIDER_LOAD_OPENSSL)
+  /* Load the "legacy" OpenSSL algorithm provider, for those SSH algorithms
+   * that require support of algorithms that OpenSSL deemed "legacy".
+   */
+  legacy_provider = OSSL_PROVIDER_load(NULL, "legacy");
+#endif /* HAVE_OSSL_PROVIDER_LOAD_OPENSSL */
 
   sftp_keystore_init();
   sftp_cipher_init();
