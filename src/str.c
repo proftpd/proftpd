@@ -1426,4 +1426,3 @@ int pr_str_is_fnmatch(const char *str) {
 
   return FALSE;
 }
-

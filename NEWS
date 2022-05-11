@@ -21,6 +21,8 @@
   enabled for a vhost.
 - Issue 1440 - DelayTable not properly using documented default value.  This
   is a regression caused by the changes for Bug#4020.
+- Issue 1444 - Support customizing SSH ciphers, digests, key exchanges via
+  SFTPClientMatch.
 - Issue 1448 - Ensure that mod_sftp algorithms work properly with OpenSSL 3.x.
 
 1.3.8rc3 - Released 23-Apr-2022

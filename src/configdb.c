@@ -1,6 +1,6 @@
 /*
  * ProFTPD - FTP server daemon
- * Copyright (c) 2014-2021 The ProFTPD Project team
+ * Copyright (c) 2014-2022 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -47,68 +47,90 @@ static unsigned int config_id = 0;
 
 static const char *trace_channel = "config";
 
-/* Adds a config_rec to the specified set */
-config_rec *pr_config_add_set(xaset_t **set, const char *name, int flags) {
-  pool *conf_pool = NULL, *set_pool = NULL;
-  config_rec *c, *parent = NULL;
+config_rec *pr_config_alloc(pool *p, const char *name, int config_type) {
+  config_rec *c;
 
-  if (set == NULL) {
+  if (p == NULL) {
     errno = EINVAL;
     return NULL;
   }
- 
-  if (!*set) {
-    /* Allocate a subpool from permanent_pool for the set. */
-    set_pool = make_sub_pool(permanent_pool);
-    pr_pool_tag(set_pool, "config set pool");
 
-    *set = xaset_create(set_pool, NULL);
-    (*set)->pool = set_pool;
+  pr_pool_tag(p, "config_rec pool");
+  c = (config_rec *) pcalloc(p, sizeof(config_rec));
+  c->pool = p;
+  c->config_type = config_type;
 
-    /* Now, make a subpool for the config_rec to be allocated.  The default
-     * pool size (PR_TUNABLE_NEW_POOL_SIZE, 512 by default) is a bit large
-     * for config_rec pools; use a smaller size.
-     */
-    conf_pool = pr_pool_create_sz(set_pool, 128);
-
-  } else {
-
-    /* Find the parent set for the config_rec to be allocated. */
-    if ((*set)->xas_list) {
-      parent = ((config_rec *) ((*set)->xas_list))->parent;
-    }
-
-    /* Now, make a subpool for the config_rec to be allocated.  The default
-     * pool size (PR_TUNABLE_NEW_POOL_SIZE, 512 by default) is a bit large
-     * for config_rec pools; use a smaller size.  Allocate the subpool
-     * from the parent's pool.
-     */
-    conf_pool = pr_pool_create_sz((*set)->pool, 128);
-  }
-
-  pr_pool_tag(conf_pool, "config_rec pool");
-
-  c = (config_rec *) pcalloc(conf_pool, sizeof(config_rec));
-  c->pool = conf_pool;
-  c->set = *set;
-  c->parent = parent;
-
-  if (name) {
-    c->name = pstrdup(conf_pool, name);
+  if (name != NULL) {
+    c->name = pstrdup(p, name);
     c->config_id = pr_config_set_id(c->name);
   }
 
+  return c;
+}
+
+/* Add the given config_rec to the specified set */
+config_rec *pr_config_add_config_to_set(xaset_t *set, config_rec *c,
+    int flags) {
+  config_rec *parent = NULL;
+
+  if (set == NULL ||
+      c == NULL) {
+    errno = EINVAL;
+    return NULL;
+  }
+
+  /* Find the parent set for the config_rec to be allocated. */
+  if (set->xas_list != NULL) {
+    parent = ((config_rec *) (set->xas_list))->parent;
+  }
+
+  c->set = set;
+  c->parent = parent;
+
   if (flags & PR_CONFIG_FL_INSERT_HEAD) {
-    xaset_insert(*set, (xasetmember_t *) c);
-    
+    xaset_insert(set, (xasetmember_t *) c);
+
   } else {
-    xaset_insert_end(*set, (xasetmember_t *) c);
+    xaset_insert_end(set, (xasetmember_t *) c);
   }
 
   /* Generate an event about the added config, for any interested parties.
    * This is useful for tracking the origins of the config tree.
    */
   pr_event_generate("core.added-config", c);
+
+  return c;
+}
+
+/* Adds an automatically allocated config_rec to the specified set */
+config_rec *pr_config_add_set(xaset_t **set, const char *name, int flags) {
+  pool *conf_pool = NULL;
+  config_rec *c;
+
+  if (set == NULL) {
+    errno = EINVAL;
+    return NULL;
+  }
+
+  if (!*set) {
+    pool *set_pool;
+
+    /* Allocate a subpool from permanent_pool for the set. */
+    set_pool = make_sub_pool(permanent_pool);
+    pr_pool_tag(set_pool, "config set pool");
+
+    *set = xaset_create(set_pool, NULL);
+    (*set)->pool = set_pool;
+  }
+
+  /* Now, make a subpool for the config_rec to be allocated.  The default
+   * pool size (PR_TUNABLE_NEW_POOL_SIZE, 512 by default) is a bit large
+   * for config_rec pools; use a smaller size.
+   */
+  conf_pool = pr_pool_create_sz((*set)->pool, 128);
+
+  c = pr_config_alloc(conf_pool, name, 0);
+  pr_config_add_config_to_set(*set, c, flags);
 
   return c;
 }
