@@ -3398,8 +3398,8 @@ static void ban_anonrejectpasswords_ev(const void *event_data,
 
 static void ban_badprotocol_ev(const void *event_data, void *user_data) {
 
-  /* For this event, event_data is the client. */
-  conn_t *c = (conn_t *) event_data;
+  /* For this event, event_data is the bad command in question. */
+  conn_t *c = session.c;
   const char *ipstr;
 
   /* user_data is a template of the ban event entry. */
