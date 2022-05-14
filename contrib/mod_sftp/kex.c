@@ -2682,7 +2682,6 @@ static void set_env_var(pool *p, const char *k, const char *v) {
 static int set_session_keys(struct sftp_kex *kex) {
   unsigned char *buf, *ptr;
   uint32_t buflen, bufsz, klen;
-  const char *write_algo;
   int comp_read_flags, comp_write_flags;
 
   /* To date, the kex algo that has generated the largest K that I have
@@ -2795,22 +2794,6 @@ static int set_session_keys(struct sftp_kex *kex) {
   sftp_ssh2_packet_rekey_reset();
   kex_rekey_kex = NULL;
 
-  /* If any CBC mode ciphers have been negotiated for the server-to-client
-   * stream, then we need to use the 'rogaway' TAP policy.
-   */
-  write_algo = sftp_cipher_get_write_algo();
-  if (strncmp(write_algo + strlen(write_algo) - 4, "-cbc", 4) == 0) {
-    const char *policy = "rogaway";
-
-    pr_trace_msg("ssh2", 4, "CBC mode cipher chosen for server-to-client "
-      "messages, automatically enabling '%s' TAP policy", policy);
-
-    if (sftp_tap_set_policy(policy) < 0) {
-      (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
-        "error setting TrafficPolicy '%s': %s", policy, strerror(errno));
-    }
-  }
- 
   return 0;
 }
 
@@ -4592,6 +4575,7 @@ int sftp_kex_handle(struct ssh2_packet *pkt) {
   char msg_type;
   struct sftp_kex *kex;
   cmd_rec *cmd;
+  const char *write_algo;
 
   /* We may already have a kex structure, either from the client
    * initial connect (kex_first_kex not null), or because we
@@ -4925,6 +4909,22 @@ int sftp_kex_handle(struct ssh2_packet *pkt) {
 
     destroy_pool(pkt2->pool);
     cmd = NULL;
+  }
+
+  /* If any CBC mode ciphers have been negotiated for the server-to-client
+   * stream, then we need to use the 'rogaway' TAP policy.
+   */
+  write_algo = sftp_cipher_get_write_algo();
+  if (strncmp(write_algo + strlen(write_algo) - 4, "-cbc", 4) == 0) {
+    const char *policy = "rogaway";
+
+    pr_trace_msg("ssh2", 4, "CBC mode cipher chosen for server-to-client "
+      "messages, automatically enabling '%s' TAP policy", policy);
+
+    if (sftp_tap_set_policy(policy) < 0) {
+      (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
+        "error setting TrafficPolicy '%s': %s", policy, strerror(errno));
+    }
   }
 
   /* Reset this flag for the next time through. */
