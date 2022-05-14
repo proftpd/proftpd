@@ -1596,71 +1596,148 @@ static const char *get_kexinit_exchange_list(pool *p) {
 }
 
 static const char *get_kexinit_hostkey_algo_list(pool *p) {
-#ifdef PR_USE_OPENSSL_ECC
-  int *nids = NULL, res;
-#endif /* PR_USE_OPENSSL_ECC */
+  register unsigned int i;
+  config_rec *c;
+  array_header *hostkey_algos;
   char *list = "";
 
   /* Our list of supported hostkey algorithms depends on the hostkeys
    * that have been configured.  Show a preference for RSA over DSA,
    * and ECDSA over both RSA and DSA, and ED25519 over all.
-   *
-   * XXX Should this be configurable later?
    */
+  hostkey_algos = make_array(p, 1, sizeof(char *));
 
-  if (sftp_keys_have_ed25519_hostkey() == 0) {
-    list = pstrcat(p, list, *list ? "," : "", "ssh-ed25519", NULL);
-  }
-
-#ifdef PR_USE_OPENSSL_ECC
-  res = sftp_keys_have_ecdsa_hostkey(p, &nids);
-  if (res > 0) {
-    register int i;
-
-    for (i = 0; i < res; i++) {
-      char *algo_name = NULL;
-
-      switch (nids[i]) {
-        case NID_X9_62_prime256v1:
-          algo_name = "ecdsa-sha2-nistp256";
-          break;
-
-        case NID_secp384r1:
-          algo_name = "ecdsa-sha2-nistp384";
-          break;
-
-        case NID_secp521r1:
-          algo_name = "ecdsa-sha2-nistp521";
-          break;
-
-        default:
-          (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
-            "unknown/unsupported ECDSA NID %d, skipping", nids[i]);
-          break;
-      }
-
-      if (algo_name != NULL) {
-        list = pstrcat(p, list, *list ? "," : "", algo_name, NULL);
-      }
+  c = find_config(main_server->conf, CONF_PARAM, "SFTPHostKeys", FALSE);
+  if (c != NULL) {
+    for (i = 0; i < c->argc; i++) {
+      *((char **) push_array(hostkey_algos)) = pstrdup(p, c->argv[i]);
     }
+
+  } else {
+    /* Create our default list of host key algorithms, in preference order. */
+    *((char **) push_array(hostkey_algos)) = pstrdup(p, "ssh-ed25519");
+    *((char **) push_array(hostkey_algos)) = pstrdup(p, "ecdsa-sha2-nistp256");
+    *((char **) push_array(hostkey_algos)) = pstrdup(p, "ecdsa-sha2-nistp384");
+    *((char **) push_array(hostkey_algos)) = pstrdup(p, "ecdsa-sha2-nistp521");
+    *((char **) push_array(hostkey_algos)) = pstrdup(p, "rsa-sha2-512");
+    *((char **) push_array(hostkey_algos)) = pstrdup(p, "rsa-sha2-256");
+    *((char **) push_array(hostkey_algos)) = pstrdup(p, "ssh-rsa");
+    *((char **) push_array(hostkey_algos)) = pstrdup(p, "ssh-dss");
   }
+
+  for (i = 0; i < hostkey_algos->nelts; i++) {
+    const char *algo;
+    int have_key = FALSE, supported_algo = FALSE;
+
+    algo = ((char **) hostkey_algos->elts)[i];
+
+    if (strcmp(algo, "ssh-ed25519") == 0) {
+#if defined(PR_USE_SODIUM)
+      supported_algo = TRUE;
+#endif /* PR_USE_SODIUM */
+
+      if (sftp_keys_have_ed25519_hostkey() == 0) {
+        have_key = TRUE;
+      }
+
+#if defined(PR_USE_OPENSSL_ECC)
+    } else if (strcmp(algo, "ecdsa-sha2-nistp256") == 0) {
+      int *nids = NULL, res;
+
+      supported_algo = TRUE;
+      res = sftp_keys_have_ecdsa_hostkey(p, &nids);
+      if (res > 0) {
+        register int j;
+
+        for (j = 0; j < res; i++) {
+          if (nids[j] == NID_X9_62_prime256v1) {
+            have_key = TRUE;
+            break;
+          }
+        }
+      }
+
+    } else if (strcmp(algo, "ecdsa-sha2-nistp384") == 0) {
+      int *nids = NULL, res;
+
+      supported_algo = TRUE;
+      res = sftp_keys_have_ecdsa_hostkey(p, &nids);
+      if (res > 0) {
+        register int j;
+
+        for (j = 0; j < res; i++) {
+          if (nids[j] == NID_secp384r1) {
+            have_key = TRUE;
+            break;
+          }
+        }
+      }
+
+    } else if (strcmp(algo, "ecdsa-sha2-nistp521") == 0) {
+      int *nids = NULL, res;
+
+      supported_algo = TRUE;
+      res = sftp_keys_have_ecdsa_hostkey(p, &nids);
+      if (res > 0) {
+        register int j;
+
+        for (j = 0; j < res; i++) {
+          if (nids[j] == NID_secp521r1) {
+            have_key = TRUE;
+            break;
+          }
+        }
+      }
 #endif /* PR_USE_OPENSSL_ECC */
 
-  if (sftp_keys_have_rsa_hostkey() == 0) {
 #if defined(HAVE_SHA512_OPENSSL)
-    list = pstrcat(p, list, *list ? "," : "", "rsa-sha2-512", NULL);
+    } else if (strcmp(algo, "rsa-sha2-512") == 0) {
+      supported_algo = TRUE;
+
+      if (sftp_keys_have_rsa_hostkey() == 0) {
+        have_key = TRUE;
+      }
 #endif /* HAVE_SHA512_OPENSSL */
 
 #if defined(HAVE_SHA256_OPENSSL)
-    list = pstrcat(p, list, *list ? "," : "", "rsa-sha2-256", NULL);
+    } else if (strcmp(algo, "rsa-sha2-256") == 0) {
+      supported_algo = TRUE;
+
+      if (sftp_keys_have_rsa_hostkey() == 0) {
+        have_key = TRUE;
+      }
 #endif /* HAVE_SHA256_OPENSSL */
 
-    list = pstrcat(p, list, *list ? "," : "", "ssh-rsa", NULL);
-  }
+    } else if (strcmp(algo, "ssh-rsa") == 0) {
+      supported_algo = TRUE;
 
-  if (sftp_keys_have_dsa_hostkey() == 0) {
-    list = pstrcat(p, list, *list ? "," : "", "ssh-dss", NULL);
-  } 
+      if (sftp_keys_have_rsa_hostkey() == 0) {
+        have_key = TRUE;
+      }
+
+    } else if (strcmp(algo, "ssh-dss") == 0) {
+      supported_algo = TRUE;
+
+      if (sftp_keys_have_dsa_hostkey() == 0) {
+        have_key = TRUE;
+      }
+    }
+
+    if (supported_algo == TRUE &&
+        have_key == TRUE) {
+      list = pstrcat(p, list, *list ? "," : "", algo, NULL);
+
+    } else {
+      if (supported_algo == FALSE) {
+        pr_trace_msg(trace_channel, 19,
+          "omitting host key algorithm '%s' due to lack of support", algo);
+
+      } else {
+        pr_trace_msg(trace_channel, 19,
+          "omitting host key algorithm '%s' due to lack of key", algo);
+      }
+    }
+  }
 
   return list;
 }
@@ -2009,62 +2086,64 @@ static int setup_kex_algo(struct sftp_kex *kex, const char *algo) {
 }
 
 static int setup_hostkey_algo(struct sftp_kex *kex, const char *algo) {
+  int res = -1;
+
   kex->session_names->server_hostkey_algo = (char *) algo;
 
   if (strcmp(algo, "ssh-dss") == 0) {
     kex->use_hostkey_type = kex_used_hostkey_type = SFTP_KEY_DSA;
-    return 0;
-  }
+    res = 0;
 
-  if (strcmp(algo, "ssh-rsa") == 0) {
+  } else if (strcmp(algo, "ssh-rsa") == 0) {
     kex->use_hostkey_type = kex_used_hostkey_type = SFTP_KEY_RSA;
-    return 0;
-  }
+    res = 0;
 
 #if defined(HAVE_SHA256_OPENSSL)
-  if (strcmp(algo, "rsa-sha2-256") == 0) {
+  } else if (strcmp(algo, "rsa-sha2-256") == 0) {
     kex->use_hostkey_type = kex_used_hostkey_type = SFTP_KEY_RSA_SHA256;
-    return 0;
-  }
+    res = 0;
 #endif /* HAVE_SHA256_OPENSSL */
 
 #if defined(HAVE_SHA512_OPENSSL)
-  if (strcmp(algo, "rsa-sha2-512") == 0) {
+  } else if (strcmp(algo, "rsa-sha2-512") == 0) {
     kex->use_hostkey_type = kex_used_hostkey_type = SFTP_KEY_RSA_SHA512;
-    return 0;
-  }
+    res = 0;
 #endif /* HAVE_SHA512_OPENSSL */
 
-#ifdef PR_USE_OPENSSL_ECC
-  if (strcmp(algo, "ecdsa-sha2-nistp256") == 0) {
+#if defined(PR_USE_OPENSSL_ECC)
+  } else if (strcmp(algo, "ecdsa-sha2-nistp256") == 0) {
     kex->use_hostkey_type = kex_used_hostkey_type = SFTP_KEY_ECDSA_256;
-    return 0;
-  }
+    res = 0;
 
-  if (strcmp(algo, "ecdsa-sha2-nistp384") == 0) {
+  } else if (strcmp(algo, "ecdsa-sha2-nistp384") == 0) {
     kex->use_hostkey_type = kex_used_hostkey_type = SFTP_KEY_ECDSA_384;
-    return 0;
-  }
+    res = 0;
 
-  if (strcmp(algo, "ecdsa-sha2-nistp521") == 0) {
+  } else if (strcmp(algo, "ecdsa-sha2-nistp521") == 0) {
     kex->use_hostkey_type = kex_used_hostkey_type = SFTP_KEY_ECDSA_521;
-    return 0;
-  }
+    res = 0;
 #endif /* PR_USE_OPENSSL_ECC */
 
-#ifdef PR_USE_SODIUM
-  if (strcmp(algo, "ssh-ed25519") == 0) {
+#if defined(PR_USE_SODIUM)
+  } else if (strcmp(algo, "ssh-ed25519") == 0) {
     kex->use_hostkey_type = kex_used_hostkey_type = SFTP_KEY_ED25519;
-    return 0;
-  }
+    res = 0;
 #endif /* PR_USE_SODIUM */
+  }
 
   /* XXX Need to handle "x509v3-ssh-dss", "x509v3-ssh-rsa", "x509v3-sign"
    * algorithms here.
    */
 
-  errno = EINVAL;
-  return -1;
+  if (res < 0) {
+    errno = EINVAL;
+    return -1;
+  }
+
+  (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
+    " + Session host key algorithm: %s", algo);
+  pr_trace_msg(trace_channel, 20, "session host key algorithm: %s", algo);
+  return 0;
 }
 
 static int setup_c2s_encrypt_algo(struct sftp_kex *kex, const char *algo) {

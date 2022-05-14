@@ -11,6 +11,10 @@ ChangeLog files.
 
   + Ensure that mod_sftp algorithms work properly when OpenSSL 3.x is used.
 
+  + New Directives
+
+    SFTPHostKeys (Issue #1457)
+
   + Changed Directives
 
     SFTPClientMatch (Issue #1444)

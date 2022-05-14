@@ -200,6 +200,26 @@ static struct sftp_digest digests[] = {
   { NULL, NULL, NULL, 0, FALSE, FALSE }
 };
 
+static const char *hostkey_algos[] = {
+#if defined(PR_USE_SODIUM)
+  "ssh-ed25519",
+#endif /* PR_USE_SODIUM */
+#if defined(PR_USE_OPENSSL_ECC)
+  "ecdsa-sha2-nistp256",
+  "ecdsa-sha2-nistp384",
+  "ecdsa-sha2-nistp521",
+#endif /* PR_USE_OPENSSL_ECC */
+#if defined(HAVE_SHA512_OPENSSL)
+  "rsa-sha2-512",
+#endif /* HAVE_SHA512_OPENSSL */
+#if defined(HAVE_SHA256_OPENSSL)
+  "rsa-sha2-256",
+#endif /* HAVE_SHA256_OPENSSL */
+  "ssh-rsa",
+  "ssh-dss",
+  NULL
+};
+
 static const char *key_exchanges[] = {
   "diffie-hellman-group1-sha1",
   "diffie-hellman-group14-sha1",
@@ -1161,6 +1181,26 @@ const EVP_MD *sftp_crypto_get_digest(const char *name, uint32_t *mac_len) {
   (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
     "no digest matching '%s' found", name);
   return NULL;
+}
+
+int sftp_crypto_is_hostkey(const char *name) {
+  register unsigned int i;
+
+  if (name == NULL) {
+    errno = EINVAL;
+    return -1;
+  }
+
+  for (i = 0; hostkey_algos[i]; i++) {
+    if (strcmp(hostkey_algos[i], name) == 0) {
+      return TRUE;
+    }
+  }
+
+  (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
+    "no hostkey matching '%s' found", name);
+  errno = ENOENT;
+  return -1;
 }
 
 int sftp_crypto_is_key_exchange(const char *name) {

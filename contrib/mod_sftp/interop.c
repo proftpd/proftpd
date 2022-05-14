@@ -306,6 +306,7 @@ int sftp_interop_handle_version(pool *p, const char *client_version) {
        *  pessimisticNewkeys
        *  sftpCiphers
        *  sftpDigests
+       *  sftpHostKeys
        *  sftpKeyExchanges
        *  sftpMinProtocolVersion
        *  sftpMaxProtocolVersion
@@ -377,6 +378,19 @@ int sftp_interop_handle_version(pool *p, const char *client_version) {
 
         remove_config(main_server->conf, "SFTPDigests", FALSE);
         pr_config_add_config_to_set(main_server->conf, digests, 0);
+      }
+
+      v = pr_table_get(tab, "sftpHostKeys", NULL);
+      if (v != NULL) {
+        config_rec *hostkeys;
+
+        hostkeys = *((config_rec **) v);
+
+        pr_trace_msg(trace_channel, 16,
+          "setting new SSH host key algorithms, per SFTPClientMatch");
+
+        remove_config(main_server->conf, "SFTPHostKeys", FALSE);
+        pr_config_add_config_to_set(main_server->conf, hostkeys, 0);
       }
 
       v = pr_table_get(tab, "sftpKeyExchanges", NULL);

@@ -26,6 +26,8 @@
 - Issue 1448 - Ensure that mod_sftp algorithms work properly with OpenSSL 3.x.
 - Issue 1445 - BanOnEvent BadProtocol triggers segfault.
 - Issue 1439 - SFTP "check-file" implementation computes incorrect results.
+- Issue 1457 - Implement SFTPHostKeys directive for configuring the SSH host
+  key algorithms.
 
 1.3.8rc3 - Released 23-Apr-2022
 --------------------------------

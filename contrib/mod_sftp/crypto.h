@@ -31,6 +31,7 @@ void sftp_crypto_free(int);
 const EVP_CIPHER *sftp_crypto_get_cipher(const char *name, size_t *key_len,
   size_t *auth_len, size_t *discard_len);
 const EVP_MD *sftp_crypto_get_digest(const char *, uint32_t *);
+int sftp_crypto_is_hostkey(const char *name);
 int sftp_crypto_is_key_exchange(const char *name);
 int sftp_crypto_set_driver(const char *);
 const char *sftp_crypto_get_kexinit_cipher_list(pool *);

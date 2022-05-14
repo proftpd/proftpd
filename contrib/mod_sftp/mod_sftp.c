@@ -844,7 +844,7 @@ MODRET set_sftpclientmatch(cmd_rec *cmd) {
       set_pessimistic_kexinit_opt(cmd->server);
 
       /* Don't forget to advance i past the key/values */
-      i = j+1;
+      i++;
 
     } else if (strcmp(cmd->argv[i], "sftpDigests") == 0) {
       register unsigned int j;
@@ -891,7 +891,54 @@ MODRET set_sftpclientmatch(cmd_rec *cmd) {
       set_pessimistic_kexinit_opt(cmd->server);
 
       /* Don't forget to advance i past the key/values */
-      i = j+1;
+      i++;
+
+    } else if (strcmp(cmd->argv[i], "sftpHostKeys") == 0) {
+      register unsigned int j;
+      array_header *algos = NULL;
+      config_rec *hostkeys = NULL;
+      void *value = NULL;
+
+      algos = pr_str_text_to_array(cmd->tmp_pool, cmd->argv[i + 1], ',');
+      if (algos == NULL) {
+        modret_t *mr;
+
+        mr = mod_create_ret(cmd, TRUE, NULL, pstrcat(cmd->tmp_pool,
+          (char *) cmd->argv[0], ": error parsing host key list '",
+          (char *) cmd->argv[i+1], ": ", strerror(errno), NULL));
+        return mr;
+      }
+
+      hostkeys = create_config(c->pool, "SFTPHostKeys", algos->nelts);
+      for (j = 0; j < algos->nelts; j++) {
+        const char *algo;
+
+        algo = ((char **) algos->elts)[j];
+        if (sftp_crypto_is_hostkey(algo) < 0) {
+          CONF_ERROR(cmd, pstrcat(cmd->tmp_pool,
+            "unsupported host key algorithm: ", algo, NULL));
+        }
+
+        hostkeys->argv[j] = pstrdup(hostkeys->pool, algo);
+      }
+
+      value = palloc(c->pool, sizeof(config_rec *));
+      *((config_rec **) value) = hostkeys;
+
+      if (pr_table_add(tab, pstrdup(c->pool, "sftpHostKeys"), value,
+          sizeof(config_rec *)) < 0) {
+        CONF_ERROR(cmd, pstrcat(cmd->tmp_pool,
+          "error storing 'sftpHostKeys' value: ", strerror(errno), NULL));
+      }
+
+      /* NOTE: In order for these banner-specific ciphers to take effect,
+       * we need to wait until we've seen the client banner, which means
+       * automatically enabling the PessimisticKexinit SFTPOption.
+       */
+      set_pessimistic_kexinit_opt(cmd->server);
+
+      /* Don't forget to advance i past the key/values */
+      i++;
 
     } else if (strcmp(cmd->argv[i], "sftpKeyExchanges") == 0) {
       register unsigned int j;
@@ -938,7 +985,7 @@ MODRET set_sftpclientmatch(cmd_rec *cmd) {
       set_pessimistic_kexinit_opt(cmd->server);
 
       /* Don't forget to advance i past the key/values */
-      i = j+1;
+      i++;
 
     } else if (strcmp(cmd->argv[i], "sftpProtocolVersion") == 0) {
       void *min_value, *max_value;
@@ -1113,7 +1160,7 @@ MODRET set_sftpclientmatch(cmd_rec *cmd) {
       CONF_ERROR(cmd, "'sftpUTF8ProtocolVersion' requires NLS support (--enable-nls)");
 #endif /* PR_USE_NLS */
     } else {
-      CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, ": unknown SFTPClientMatch key: '",
+      CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "unknown SFTPClientMatch key: '",
         cmd->argv[i], "'", NULL));
     }
   }
@@ -1499,6 +1546,35 @@ MODRET set_sftphostkey(cmd_rec *cmd) {
   c->argv[0] = pstrdup(c->pool, path);
   c->argv[1] = palloc(c->pool, sizeof(int));
   *((int *) c->argv[1]) = flags;
+  return PR_HANDLED(cmd);
+}
+
+/* usage: SFTPHostKeys list */
+MODRET set_sftphostkeys(cmd_rec *cmd) {
+  register unsigned int i;
+  config_rec *c;
+  xaset_t *set = NULL;
+
+  if (cmd->argc < 2) {
+    CONF_ERROR(cmd, "Wrong number of parameters");
+  }
+
+  CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL);
+
+  for (i = 1; i < cmd->argc; i++) {
+    if (sftp_crypto_is_hostkey(cmd->argv[i]) < 0) {
+      CONF_ERROR(cmd, pstrcat(cmd->tmp_pool,
+        "unsupported host key algorithm: ", (char *) cmd->argv[i], NULL));
+    }
+  }
+
+  set = cmd->server->conf;
+  c = create_config(set->pool, cmd->argv[0], cmd->argc-1);
+  for (i = 1; i < cmd->argc; i++) {
+    c->argv[i-1] = pstrdup(c->pool, cmd->argv[i]);
+  }
+
+  pr_config_add_config_to_set(set, c, 0);
   return PR_HANDLED(cmd);
 }
 
@@ -2831,6 +2907,7 @@ static conftable sftp_conftab[] = {
   { "SFTPEngine",		set_sftpengine,			NULL },
   { "SFTPExtensions",		set_sftpextensions,		NULL },
   { "SFTPHostKey",		set_sftphostkey,		NULL },
+  { "SFTPHostKeys",		set_sftphostkeys,		NULL },
   { "SFTPKeyBlacklist",		set_sftpkeyblacklist,		NULL },
   { "SFTPKeyExchanges",		set_sftpkeyexchanges,		NULL },
   { "SFTPKeyLimits",		set_sftpkeylimits,		NULL },
