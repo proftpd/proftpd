@@ -1,6 +1,6 @@
 /*
  * ProFTPD - FTP server testsuite
- * Copyright (c) 2008-2021 The ProFTPD Project team
+ * Copyright (c) 2008-2022 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -898,6 +898,9 @@ Suite *tests_get_netacl_suite(void) {
   tcase_add_test(testcase, netacl_dup_test);
   tcase_add_test(testcase, netacl_match_test);
   tcase_add_test(testcase, netacl_get_negated_test);
+
+  /* Some of the network-related tests may take a little longer. */
+  tcase_set_timeout(testcase, 30);
 
   suite_add_tcase(suite, testcase);
   return suite;
