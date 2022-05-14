@@ -124,7 +124,7 @@ jobs:
           # for unit tests
           yum install -y check-devel https://cbs.centos.org/kojifiles/packages/subunit/1.4.0/1.el8/x86_64/subunit-1.4.0-1.el8.x86_64.rpm https://cbs.centos.org/kojifiles/packages/subunit/1.4.0/1.el8/x86_64/subunit-devel-1.4.0-1.el8.x86_64.rpm
           # for mod_lang
-          yum install -y gettext-devel glibc-all-langpacks
+          yum install -y gettext-devel glibc-all-langpacks glibc-gconv-extra
           # for xattr support
           yum install -y libattr-devel
           # for mod_cap
