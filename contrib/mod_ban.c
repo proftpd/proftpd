@@ -1,6 +1,6 @@
 /*
  * ProFTPD: mod_ban -- a module implementing ban lists using the Controls API
- * Copyright (c) 2004-2020 TJ Saunders
+ * Copyright (c) 2004-2022 TJ Saunders
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -3163,8 +3163,8 @@ static void ban_anonrejectpasswords_ev(const void *event_data,
 
 static void ban_badprotocol_ev(const void *event_data, void *user_data) {
 
-  /* For this event, event_data is the client. */
-  conn_t *c = (conn_t *) event_data;
+  /* For this event, event_data is the bad command in question. */
+  conn_t *c = session.c;
   const char *ipstr;
 
   /* user_data is a template of the ban event entry. */
