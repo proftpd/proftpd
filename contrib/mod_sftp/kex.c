@@ -1,6 +1,6 @@
 /*
  * ProFTPD - mod_sftp key exchange (kex)
- * Copyright (c) 2008-2021 TJ Saunders
+ * Copyright (c) 2008-2022 TJ Saunders
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -2208,7 +2208,7 @@ static int get_session_names(struct sftp_kex *kex, int *correct_guess) {
     "server-sent host key algorithms: %s", server_list);
 
   shared = sftp_misc_namelist_shared(kex->pool, client_list, server_list);
-  if (shared) {
+  if (shared != NULL) {
     if (setup_hostkey_algo(kex, shared) < 0) {
       destroy_pool(tmp_pool);
       return -1;
@@ -2236,7 +2236,7 @@ static int get_session_names(struct sftp_kex *kex, int *correct_guess) {
     server_list);
 
   shared = sftp_misc_namelist_shared(kex->pool, client_list, server_list);
-  if (shared) {
+  if (shared != NULL) {
     if (setup_c2s_encrypt_algo(kex, shared) < 0) {
       destroy_pool(tmp_pool);
       return -1;
@@ -2264,7 +2264,7 @@ static int get_session_names(struct sftp_kex *kex, int *correct_guess) {
     server_list);
 
   shared = sftp_misc_namelist_shared(kex->pool, client_list, server_list);
-  if (shared) {
+  if (shared != NULL) {
     if (setup_s2c_encrypt_algo(kex, shared) < 0) {
       destroy_pool(tmp_pool);
       return -1;
@@ -2292,7 +2292,7 @@ static int get_session_names(struct sftp_kex *kex, int *correct_guess) {
     server_list);
 
   /* Ignore MAC/digests when authenticated encryption algorithms are used. */
-  if (sftp_cipher_get_read_auth_size() == 0) {
+  if (sftp_cipher_get_read_auth_size2() == 0) {
     shared = sftp_misc_namelist_shared(kex->pool, client_list, server_list);
     if (shared != NULL) {
       if (setup_c2s_mac_algo(kex, shared) < 0) {
@@ -2317,6 +2317,8 @@ static int get_session_names(struct sftp_kex *kex, int *correct_guess) {
     pr_trace_msg(trace_channel, 8, "ignoring MAC algorithms due to use of "
       "client-to-server authenticated cipher algorithm '%s'",
       kex->session_names->c2s_encrypt_algo);
+    pr_trace_msg(trace_channel, 20,
+      "session client-to-server MAC algorithm: <implicit>");
   }
 
   client_list = kex->client_names->s2c_mac_algo;
@@ -2328,7 +2330,7 @@ static int get_session_names(struct sftp_kex *kex, int *correct_guess) {
     server_list);
 
   /* Ignore MAC/digests when authenticated encryption algorithms are used. */
-  if (sftp_cipher_get_write_auth_size() == 0) {
+  if (sftp_cipher_get_write_auth_size2() == 0) {
     shared = sftp_misc_namelist_shared(kex->pool, client_list, server_list);
     if (shared != NULL) {
       if (setup_s2c_mac_algo(kex, shared) < 0) {
@@ -2353,6 +2355,8 @@ static int get_session_names(struct sftp_kex *kex, int *correct_guess) {
     pr_trace_msg(trace_channel, 8, "ignoring MAC algorithms due to use of "
       "server-to-client authenticated cipher algorithm '%s'",
       kex->session_names->s2c_encrypt_algo);
+    pr_trace_msg(trace_channel, 20,
+      "session server-to-client MAC algorithm: <implicit>");
   }
 
   client_list = kex->client_names->c2s_comp_algo;
@@ -2364,7 +2368,7 @@ static int get_session_names(struct sftp_kex *kex, int *correct_guess) {
     "server-sent client compression algorithms: %s", server_list);
 
   shared = sftp_misc_namelist_shared(kex->pool, client_list, server_list);
-  if (shared) {
+  if (shared != NULL) {
     if (setup_c2s_comp_algo(kex, shared) < 0) {
       destroy_pool(tmp_pool);
       return -1;
@@ -2392,7 +2396,7 @@ static int get_session_names(struct sftp_kex *kex, int *correct_guess) {
     "server-sent server compression algorithms: %s", server_list);
 
   shared = sftp_misc_namelist_shared(kex->pool, client_list, server_list);
-  if (shared) {
+  if (shared != NULL) {
     if (setup_s2c_comp_algo(kex, shared) < 0) {
       destroy_pool(tmp_pool);
       return -1;
@@ -2420,7 +2424,7 @@ static int get_session_names(struct sftp_kex *kex, int *correct_guess) {
     "server-sent client languages: %s", client_list);
 
   shared = sftp_misc_namelist_shared(kex->pool, client_list, server_list);
-  if (shared) {
+  if (shared != NULL) {
     if (setup_c2s_lang(kex, shared) < 0) {
       destroy_pool(tmp_pool);
       return -1;
@@ -2451,7 +2455,7 @@ static int get_session_names(struct sftp_kex *kex, int *correct_guess) {
     "server-sent server languages: %s", client_list);
 
   shared = sftp_misc_namelist_shared(kex->pool, client_list, server_list);
-  if (shared) {
+  if (shared != NULL) {
     if (setup_s2c_lang(kex, shared) < 0) {
       destroy_pool(tmp_pool);
       return -1;
@@ -2747,10 +2751,23 @@ static int set_session_keys(struct sftp_kex *kex) {
     sftp_cipher_get_read_algo());
   set_env_var(session.pool, "SFTP_SERVER_CIPHER_ALGO",
     sftp_cipher_get_write_algo());
-  set_env_var(session.pool, "SFTP_CLIENT_MAC_ALGO",
-    sftp_mac_get_read_algo());
-  set_env_var(session.pool, "SFTP_SERVER_MAC_ALGO",
-    sftp_mac_get_write_algo());
+
+  if (sftp_cipher_get_read_auth_size2() == 0) {
+    set_env_var(session.pool, "SFTP_CLIENT_MAC_ALGO",
+      sftp_mac_get_read_algo());
+
+  } else {
+    set_env_var(session.pool, "SFTP_CLIENT_MAC_ALGO", "implicit");
+  }
+
+  if (sftp_cipher_get_write_auth_size2() == 0) {
+    set_env_var(session.pool, "SFTP_SERVER_MAC_ALGO",
+      sftp_mac_get_write_algo());
+
+  } else {
+    set_env_var(session.pool, "SFTP_SERVER_MAC_ALGO", "implicit");
+  }
+
   set_env_var(session.pool, "SFTP_CLIENT_COMPRESSION_ALGO",
     sftp_compress_get_read_algo());
   set_env_var(session.pool, "SFTP_SERVER_COMPRESSION_ALGO",

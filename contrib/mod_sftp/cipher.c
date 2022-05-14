@@ -411,15 +411,32 @@ static int set_cipher_discarded(struct sftp_cipher *cipher,
   return 0;
 }
 
+/* These accessors to get the authenticated data length for the read, write
+ * ciphers are used during packet IO, and thus do not return the AAD lengths
+ * until those ciphers are keyed.
+ *
+ * However, during KEX, there are times when we want to know the ADD lengths
+ * after the algorithms are selected, but before they are keyed.  Thus for
+ * those cases, we have the accessor variants.
+ */
+
+size_t sftp_cipher_get_read_auth_size2(void) {
+  return read_ciphers[read_cipher_idx].auth_len;
+}
+
 size_t sftp_cipher_get_read_auth_size(void) {
   /* Do not indicate the read cipher authentication tag size until the
    * cipher has been keyed.
    */
   if (read_ciphers[read_cipher_idx].key != NULL) {
-    return read_ciphers[read_cipher_idx].auth_len;
+    return sftp_cipher_get_read_auth_size2();
   }
 
   return 0;
+}
+
+size_t sftp_cipher_get_write_auth_size2(void) {
+  return write_ciphers[write_cipher_idx].auth_len;
 }
 
 size_t sftp_cipher_get_write_auth_size(void) {
@@ -427,7 +444,7 @@ size_t sftp_cipher_get_write_auth_size(void) {
    * cipher has been keyed.
    */
   if (write_ciphers[write_cipher_idx].key != NULL) {
-    return write_ciphers[write_cipher_idx].auth_len;
+    return sftp_cipher_get_write_auth_size2();
   }
 
   return 0;
