@@ -1,6 +1,6 @@
 /*
  * ProFTPD - mod_sftp cipher mgmt
- * Copyright (c) 2008-2021 TJ Saunders
+ * Copyright (c) 2008-2022 TJ Saunders
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -41,7 +41,9 @@ void sftp_cipher_set_write_block_size(size_t);
 
 /* Returns the cipher authenticated data size, or zero. */
 size_t sftp_cipher_get_read_auth_size(void);
+size_t sftp_cipher_get_read_auth_size2(void);
 size_t sftp_cipher_get_write_auth_size(void);
+size_t sftp_cipher_get_write_auth_size2(void);
 
 const char *sftp_cipher_get_read_algo(void);
 int sftp_cipher_set_read_algo(const char *algo);
