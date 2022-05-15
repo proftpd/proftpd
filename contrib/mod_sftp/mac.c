@@ -690,7 +690,8 @@ void sftp_mac_set_block_size(size_t blocksz) {
 
 const char *sftp_mac_get_read_algo(void) {
   if (read_macs[read_mac_idx].key != NULL ||
-      strcmp(read_macs[read_mac_idx].algo, "none") == 0) {
+      (read_macs[read_mac_idx].algo != NULL &&
+       strcmp(read_macs[read_mac_idx].algo, "none") == 0)) {
     return read_macs[read_mac_idx].algo;
   }
 
@@ -868,7 +869,9 @@ int sftp_mac_read_data(struct ssh2_packet *pkt) {
 }
 
 const char *sftp_mac_get_write_algo(void) {
-  if (write_macs[write_mac_idx].key) {
+  if (write_macs[write_mac_idx].key != NULL ||
+      (write_macs[write_mac_idx].algo != NULL &&
+       strcmp(write_macs[write_mac_idx].algo, "none") == 0)) {
     return write_macs[write_mac_idx].algo;
   }
 
