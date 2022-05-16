@@ -697,9 +697,9 @@ const char *sftp_mac_get_read_algo(void) {
 
   /* It is possible for there to be no MAC, as for some ciphers such as
    * AES-GCM.  Rather than returning NULL here, we indicate this by returning
-   * the empty string (see Issue #1411).
+   * a string (see Issue #1411).
    */
-  return "";
+  return "implicit";
 }
 
 int sftp_mac_is_read_etm(void) {
@@ -877,9 +877,9 @@ const char *sftp_mac_get_write_algo(void) {
 
   /* It is possible for there to be no MAC, as for some ciphers such as
    * AES-GCM.  Rather than returning NULL here, we indicate this by returning
-   * the empty string (see Issue #1411).
+   * a string (see Issue #1411).
    */
-  return "";
+  return "implicit";
 }
 
 int sftp_mac_is_write_etm(void) {

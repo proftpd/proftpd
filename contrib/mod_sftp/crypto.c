@@ -1063,6 +1063,11 @@ const EVP_CIPHER *sftp_crypto_get_cipher(const char *name, size_t *key_len,
     size_t *auth_len, size_t *discard_len) {
   register unsigned int i;
 
+  if (name == NULL) {
+    errno = EINVAL;
+    return NULL;
+  }
+
   for (i = 0; ciphers[i].name; i++) {
     if (strcmp(ciphers[i].name, name) == 0) {
       const EVP_CIPHER *cipher;
@@ -1149,6 +1154,11 @@ const EVP_CIPHER *sftp_crypto_get_cipher(const char *name, size_t *key_len,
 
 const EVP_MD *sftp_crypto_get_digest(const char *name, uint32_t *mac_len) {
   register unsigned int i;
+
+  if (name == NULL) {
+    errno = EINVAL;
+    return NULL;
+  }
 
   for (i = 0; digests[i].name; i++) {
     if (strcmp(digests[i].name, name) == 0) {
