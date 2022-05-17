@@ -1629,6 +1629,8 @@ static const char *get_kexinit_hostkey_algo_list(pool *p) {
     const char *algo;
     int have_key = FALSE, supported_algo = FALSE;
 
+    pr_signals_handle();
+
     algo = ((char **) hostkey_algos->elts)[i];
 
     if (strcmp(algo, "ssh-ed25519") == 0) {
@@ -1649,7 +1651,7 @@ static const char *get_kexinit_hostkey_algo_list(pool *p) {
       if (res > 0) {
         register int j;
 
-        for (j = 0; j < res; i++) {
+        for (j = 0; j < res; j++) {
           if (nids[j] == NID_X9_62_prime256v1) {
             have_key = TRUE;
             break;
@@ -1665,7 +1667,7 @@ static const char *get_kexinit_hostkey_algo_list(pool *p) {
       if (res > 0) {
         register int j;
 
-        for (j = 0; j < res; i++) {
+        for (j = 0; j < res; j++) {
           if (nids[j] == NID_secp384r1) {
             have_key = TRUE;
             break;
@@ -1681,7 +1683,7 @@ static const char *get_kexinit_hostkey_algo_list(pool *p) {
       if (res > 0) {
         register int j;
 
-        for (j = 0; j < res; i++) {
+        for (j = 0; j < res; j++) {
           if (nids[j] == NID_secp521r1) {
             have_key = TRUE;
             break;
