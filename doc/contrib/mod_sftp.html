@@ -907,6 +907,7 @@ The <code>SFTPHostKeys</code> directive is used to specify the list of host
 key algorithms that <code>mod_sftp</code> should use.  The current list
 of supported host key algorithms is:
 <ul>
+  <li>ssh-ed448
   <li>ssh-ed25519
   <li>ecdsa-sha2-nistp256
   <li>ecdsa-sha2-nistp384
@@ -971,7 +972,8 @@ The <code>SFTPKeyExchanges</code> directive is used to specify the list of
 key exchange algorithms that <code>mod_sftp</code> should use.  The current list
 of supported key exchange algorithms is:
 <ul>
-  <li>curve25519-sha256@libssh.org
+  <li>curve448-sha512
+  <li>curve25519-sha256
   <li>ecdh-sha2-nistp521
   <li>ecdh-sha2-nistp384
   <li>ecdh-sha2-nistp256
@@ -996,6 +998,13 @@ configure the <code>SFTPKeyExchanges</code> list to <b>explicitly</b> include
 this algorithm, <i>or</i> use the following in your configuration:
 <pre>
   SFTPOptions AllowWeakDH
+</pre>
+
+<p>
+<b>Note</b> that the <code>curve448-sha512</code> key exchange algorithm
+requires an Ed448 SSH host key.  To generate such a key, use:
+<pre>
+  openssl genpkey -out /etc/ssh/ssh_host_ed448_key -algorithm ED448
 </pre>
 
 <p>
@@ -2799,7 +2808,8 @@ are:
 And to do this, you might use something like this in your configuration:
 <pre>
   SFTPKeyExchanges \
-    curve25519-sha256@libssh.org \
+    curve448-sha512 \
+    curve25519-sha256 \
     ecdh-sha2-nistp521 \
     ecdh-sha2-nistp384 \
     ecdh-sha2-nistp256 \

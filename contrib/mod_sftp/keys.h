@@ -1,6 +1,6 @@
 /*
  * ProFTPD - mod_sftp key mgmt (keys)
- * Copyright (c) 2008-2021 TJ Saunders
+ * Copyright (c) 2008-2022 TJ Saunders
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -35,6 +35,7 @@ enum sftp_key_type_e {
   SFTP_KEY_ECDSA_384,
   SFTP_KEY_ECDSA_521,
   SFTP_KEY_ED25519,
+  SFTP_KEY_ED448,
   SFTP_KEY_RSA_SHA256,
   SFTP_KEY_RSA_SHA512
 };
@@ -79,10 +80,12 @@ int sftp_keys_prove_hostkeys(pool *p, int want_reply, unsigned char *buf,
 int sftp_keys_clear_dsa_hostkey(void);
 int sftp_keys_clear_ecdsa_hostkey(void);
 int sftp_keys_clear_ed25519_hostkey(void);
+int sftp_keys_clear_ed448_hostkey(void);
 int sftp_keys_clear_rsa_hostkey(void);
 int sftp_keys_have_dsa_hostkey(void);
 int sftp_keys_have_ecdsa_hostkey(pool *, int **);
 int sftp_keys_have_ed25519_hostkey(void);
+int sftp_keys_have_ed448_hostkey(void);
 int sftp_keys_have_rsa_hostkey(void);
 
 #endif /* MOD_SFTP_KEYS_H */
