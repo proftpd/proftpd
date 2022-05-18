@@ -118,6 +118,16 @@ int sftp_auth_hostbased(struct ssh2_packet *pkt, cmd_rec *pass_cmd,
     pubkey_type = SFTP_KEY_ECDSA_521;
 #endif /* PR_USE_OPENSSL_ECC */
 
+#if defined(PR_USE_SODIUM)
+  } else if (strcmp(hostkey_algo, "ssh-ed25519") == 0) {
+    pubkey_type = SFTP_KEY_ED25519;
+#endif /* PR_USE_SODIUM */
+
+#if defined(HAVE_X448_OPENSSL)
+  } else if (strcmp(hostkey_algo, "ssh-ed448") == 0) {
+    pubkey_type = SFTP_KEY_ED448;
+#endif /* HAVE_X448_OPENSSL */
+
   /* XXX Need to support X509v3 certs here */
 
   } else {
