@@ -4929,7 +4929,12 @@ int sftp_keys_verify_pubkey_type(pool *p, unsigned char *pubkey_data,
 
         pklen = sftp_msg_read_int(p, &pubkey_data, &pubkey_len);
 
-        res = (pklen == (uint32_t) CURVE448_SIZE);
+        res = FALSE;
+        if (pklen == (uint32_t) CURVE448_SIZE ||
+            pklen == ((uint32_t) CURVE448_SIZE + 1)) {
+          res = TRUE;
+        }
+
         if (res == FALSE) {
           pr_trace_msg(trace_channel, 8,
            "Ed448 public key length (%lu bytes) does not match expected "
@@ -5532,7 +5537,8 @@ static int ed448_verify_signed_data(pool *p,
     return -1;
   }
 
-  if (public_keylen != CURVE448_SIZE) {
+  if (public_keylen != CURVE448_SIZE &&
+      public_keylen != (CURVE448_SIZE + 1)) {
     (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
       "invalid Ed448 public key length (%lu bytes), expected %lu bytes",
       (unsigned long) public_keylen, (unsigned long) CURVE448_SIZE);
