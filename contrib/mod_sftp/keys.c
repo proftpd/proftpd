@@ -1479,7 +1479,7 @@ static uint32_t read_pkey_from_data(pool *p, unsigned char *pkey_data,
       return 0;
     }
 
-    if (openssh_format) {
+    if (openssh_format == TRUE) {
       const BIGNUM *ec_priv_key = NULL;
 
       res = sftp_msg_read_mpint2(p, &pkey_data, &pkey_datalen, &ec_priv_key);
@@ -1524,10 +1524,6 @@ static uint32_t read_pkey_from_data(pool *p, unsigned char *pkey_data,
 
 #if defined(PR_USE_SODIUM)
   } else if (strcmp(pkey_type, "ssh-ed25519") == 0) {
-    /* XXX Should we return error, if openssh_format != TRUE?  Not sure how
-     * else we would see such keys.
-     */
-
     if (key_type != NULL) {
       *key_type = SFTP_KEY_ED25519;
     }
@@ -1535,10 +1531,6 @@ static uint32_t read_pkey_from_data(pool *p, unsigned char *pkey_data,
 
 #if defined(HAVE_X448_OPENSSL)
   } else if (strcmp(pkey_type, "ssh-ed448") == 0) {
-    /* XXX Should we return error, if openssh_format != TRUE?  Not sure how
-     * else we would see such keys.
-     */
-
     if (key_type != NULL) {
       *key_type = SFTP_KEY_ED448;
     }
@@ -3043,6 +3035,10 @@ static int deserialize_openssh_private_key(pool *p, const char *path,
     unsigned char **data, uint32_t *data_len, enum sftp_key_type_e *key_type,
     EVP_PKEY **pkey, unsigned char **key, uint32_t *keylen) {
   uint32_t len = 0;
+  const char *pkey_type;
+  uint32_t public_keylen = 0, secret_keylen = 0;
+  unsigned char *public_key = NULL, *secret_key = NULL;
+  int have_extra_public_key = FALSE;
 
   len = read_pkey_from_data(p, *data, *data_len, pkey, key_type, TRUE);
   if (len == 0) {
@@ -3056,37 +3052,79 @@ static int deserialize_openssh_private_key(pool *p, const char *path,
   (*data) += len;
   (*data_len) -= len;
 
-  if (*key_type == SFTP_KEY_ED25519) {
-    const char *pkey_type = "ssh-ed25519";
-    uint32_t public_keylen = 0, secret_keylen = 0;
-    unsigned char *public_key = NULL, *secret_key = NULL;
+  switch (*key_type) {
+    case SFTP_KEY_DSA:
+    case SFTP_KEY_RSA:
+    case SFTP_KEY_ECDSA_256:
+    case SFTP_KEY_ECDSA_384:
+    case SFTP_KEY_ECDSA_521:
+    case SFTP_KEY_RSA_SHA256:
+    case SFTP_KEY_RSA_SHA512:
+      return 0;
 
-    public_keylen = sftp_msg_read_int(p, data, data_len);
-    public_key = sftp_msg_read_data(p, data, data_len, public_keylen);
-    if (public_key == NULL) {
-      pr_trace_msg(trace_channel, 2,
-        "error reading %s key: invalid/supported key format", pkey_type);
-      errno = EINVAL;
-      return -1;
-    }
+    case SFTP_KEY_ED25519:
+      pkey_type = "ssh-ed25519";
+      break;
 
-    secret_keylen = sftp_msg_read_int(p, data, data_len);
-    secret_key = sftp_msg_read_data(p, data, data_len, secret_keylen);
-    if (secret_key == NULL) {
-      pr_trace_msg(trace_channel, 2,
-        "error reading %s key: invalid/supported key format", pkey_type);
-      errno = EINVAL;
-      return -1;
-    }
+    case SFTP_KEY_ED448:
+      pkey_type = "ssh-ed448";
+      break;
 
-    /* The Ed25519 secret key is what we need to extract. */
-    *key = secret_key;
-    *keylen = secret_keylen;
-
-  } else {
-    *key = NULL;
-    *keylen = 0;
+    case SFTP_KEY_UNKNOWN:
+    default:
+      *key = NULL;
+      *keylen = 0;
+      return 0;
   }
+
+  public_keylen = sftp_msg_read_int(p, data, data_len);
+  public_key = sftp_msg_read_data(p, data, data_len, public_keylen);
+  if (public_key == NULL) {
+    pr_trace_msg(trace_channel, 2,
+      "error reading %s key: invalid/supported key format", pkey_type);
+    errno = EINVAL;
+    return -1;
+  }
+
+  secret_keylen = sftp_msg_read_int(p, data, data_len);
+
+  /* NOTE: PuTTY's puttygen adds the public key _again_, in the second half
+   * of the secret key data, per commments in its
+   * `sshecc.c#eddsa_new_priv_openssh` function.  Thus if this secret key
+   * length is larger than expected for Ed448 keys, only use the first half of
+   * it.  Ugh.  This "divide in half" hack only works for these keys where the
+   * private and public key sizes are the same.
+   */
+  switch (*key_type) {
+    case SFTP_KEY_ED448:
+#if defined(HAVE_X448_OPENSSL) && defined(HAVE_SHA512_OPENSSL)
+      if (secret_keylen > (CURVE448_SIZE + 1)) {
+        have_extra_public_key = TRUE;
+        secret_keylen /= 2;
+      }
+#endif /* HAVE_X448_OPENSSL and HAVE_SHA512_OPENSSL */
+      break;
+
+    default:
+      break;
+  }
+
+  secret_key = sftp_msg_read_data(p, data, data_len, secret_keylen);
+  if (secret_key == NULL) {
+    pr_trace_msg(trace_channel, 2,
+      "error reading %s key: invalid/supported key format", pkey_type);
+    errno = EINVAL;
+    return -1;
+  }
+
+  if (have_extra_public_key == TRUE) {
+    /* Read (and ignore) the rest of the secret data */
+    (void) sftp_msg_read_data(p, data, data_len, secret_keylen);
+  }
+
+  /* The secret key is what we need to extract. */
+  *key = secret_key;
+  *keylen = secret_keylen;
 
   return 0;
 }
@@ -4635,7 +4673,6 @@ static const unsigned char *ecdsa_sign_data(pool *p, const unsigned char *data,
 #if defined(PR_USE_SODIUM)
 static const unsigned char *ed25519_sign_data(pool *p,
     const unsigned char *data, size_t datalen, size_t *siglen) {
-
   unsigned char *buf, *ptr, *sig_buf, *sig_ptr;
   uint32_t bufsz, buflen, sig_buflen, sig_bufsz;
   unsigned long long slen;
