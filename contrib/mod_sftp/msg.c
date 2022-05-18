@@ -1,6 +1,6 @@
 /*
  * ProFTPD - mod_sftp message format
- * Copyright (c) 2008-2021 TJ Saunders
+ * Copyright (c) 2008-2022 TJ Saunders
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -28,7 +28,7 @@
 #include "crypto.h"
 #include "disconnect.h"
 
-#ifdef PR_USE_OPENSSL_ECC
+#if defined(PR_USE_OPENSSL_ECC)
 /* Max GFp field length = 528 bits.  SEC1 uncompressed encoding uses 2
  * bitstring points.  SEC1 specifies a 1 byte point type header.
  */
@@ -366,7 +366,7 @@ char *sftp_msg_read_string(pool *p, unsigned char **buf, uint32_t *buflen) {
   return str;
 }
 
-#ifdef PR_USE_OPENSSL_ECC
+#if defined(PR_USE_OPENSSL_ECC)
 uint32_t sftp_msg_read_ecpoint2(pool *p, unsigned char **buf, uint32_t *buflen,
     const EC_GROUP *curve, EC_POINT **point) {
   BN_CTX *bn_ctx;
@@ -627,7 +627,7 @@ uint32_t sftp_msg_write_string(unsigned char **buf, uint32_t *buflen,
     TRUE);
 }
 
-#ifdef PR_USE_OPENSSL_ECC
+#if defined(PR_USE_OPENSSL_ECC)
 uint32_t sftp_msg_write_ecpoint(unsigned char **buf, uint32_t *buflen,
     const EC_GROUP *curve, const EC_POINT *point) {
   unsigned char *data = NULL;

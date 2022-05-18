@@ -300,6 +300,28 @@ AC_TRY_LINK(
   ]
 )
 
+AC_MSG_CHECKING([whether OpenSSL supports X448 algorithm])
+LIBS="-lcrypto $LIBS"
+
+AC_TRY_LINK(
+  [
+    #include <openssl/evp.h>
+  ],
+  [
+    EVP_PKEY_CTX *pctx;
+    pctx = EVP_PKEY_CTX_new_id(NID_X448, NULL);
+  ],
+  [
+    AC_MSG_RESULT(yes)
+    AC_DEFINE(HAVE_X448_OPENSSL, 1, [OpenSSL supports X448 algorithm])
+    LIBS="$saved_libs"
+  ],
+  [
+    AC_MSG_RESULT(no)
+    LIBS="$saved_libs"
+  ]
+)
+
 LIBS="$saved_libs"
 
 INCLUDES="$ac_build_addl_includes"

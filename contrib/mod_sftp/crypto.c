@@ -204,6 +204,9 @@ static const char *hostkey_algos[] = {
 #if defined(PR_USE_SODIUM)
   "ssh-ed25519",
 #endif /* PR_USE_SODIUM */
+#if defined(HAVE_X448_OPENSSL)
+  "ssh-ed448",
+#endif /* HAVE_X448_OPENSSL */
 #if defined(PR_USE_OPENSSL_ECC)
   "ecdsa-sha2-nistp256",
   "ecdsa-sha2-nistp384",
@@ -231,7 +234,7 @@ static const char *key_exchanges[] = {
   "diffie-hellman-group-exchange-sha256",
 #endif
   "diffie-hellman-group-exchange-sha1",
-#ifdef PR_USE_OPENSSL_ECC
+#if defined(PR_USE_OPENSSL_ECC)
   "ecdh-sha2-nistp256",
   "ecdh-sha2-nistp384",
   "ecdh-sha2-nistp521",
@@ -240,6 +243,9 @@ static const char *key_exchanges[] = {
   "curve25519-sha256",
   "curve25519-sha256@libssh.org",
 #endif /* HAVE_SODIUM_H and HAVE_SHA256_OPENSSL */
+#if defined(HAVE_X448_OPENSSL) && defined(HAVE_SHA512_OPENSSL)
+  "curve448-sha512",
+#endif /* HAVE_X448_OPENSSL and HAVE_SHA512_OPENSSL */
   "rsa1024-sha1",
   NULL
 };

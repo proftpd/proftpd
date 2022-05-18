@@ -1,6 +1,6 @@
 /*
  * ProFTPD - mod_sftp message format
- * Copyright (c) 2008-2021 TJ Saunders
+ * Copyright (c) 2008-2022 TJ Saunders
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -30,7 +30,7 @@
 unsigned char sftp_msg_read_byte(pool *, unsigned char **, uint32_t *);
 int sftp_msg_read_bool(pool *, unsigned char **, uint32_t *);
 unsigned char *sftp_msg_read_data(pool *, unsigned char **, uint32_t *, size_t);
-#ifdef PR_USE_OPENSSL_ECC
+#if defined(PR_USE_OPENSSL_ECC)
 EC_POINT *sftp_msg_read_ecpoint(pool *, unsigned char **, uint32_t *,
   const EC_GROUP *, EC_POINT *);
 #endif /* PR_USE_OPENSSL_ECC */
@@ -46,7 +46,7 @@ char *sftp_msg_read_string(pool *, unsigned char **, uint32_t *);
 uint32_t sftp_msg_read_byte2(pool *, unsigned char **, uint32_t *, unsigned char *);
 uint32_t sftp_msg_read_bool2(pool *, unsigned char **, uint32_t *, int *);
 uint32_t sftp_msg_read_data2(pool *, unsigned char **, uint32_t *, size_t, unsigned char **);
-#ifdef PR_USE_OPENSSL_ECC
+#if defined(PR_USE_OPENSSL_ECC)
 uint32_t sftp_msg_read_ecpoint2(pool *, unsigned char **, uint32_t *,
   const EC_GROUP *, EC_POINT **);
 #endif /* PR_USE_OPENSSL_ECC */
@@ -60,7 +60,7 @@ uint32_t sftp_msg_write_byte(unsigned char **, uint32_t *, unsigned char);
 uint32_t sftp_msg_write_bool(unsigned char **, uint32_t *, unsigned char);
 uint32_t sftp_msg_write_data(unsigned char **, uint32_t *,
   const unsigned char *, size_t, int);
-#ifdef PR_USE_OPENSSL_ECC
+#if defined(PR_USE_OPENSSL_ECC)
 uint32_t sftp_msg_write_ecpoint(unsigned char **, uint32_t *, const EC_GROUP *,
   const EC_POINT *);
 #endif /* PR_USE_OPENSSL_ECC */
