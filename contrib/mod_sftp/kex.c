@@ -47,10 +47,10 @@
 # define CURVE448_SIZE		56
 #endif /* HAVE_X448_OPENSSL and HAVE_SHA512_OPENSSL */
 
-/* Define the minimum DH group length we allow (unless the AllowWeakDH
- * SFTPOption is used).
+/* Define the minimum DH group length we allow ourselves to use/prefer (unless
+ * the AllowWeakDH SFTPOption is used).
  */
-#define SFTP_DH_MIN_LEN			2048
+#define SFTP_DH_PREF_MIN_LEN	2048
 
 extern pr_response_t *resp_list, *resp_err_list;
 extern module sftp_module;
@@ -3204,21 +3204,35 @@ static int get_dh_gex_group(struct sftp_kex *kex, uint32_t min,
     dhparam_path = c->argv[0];
   }
 
-  /* If the preferred DH is less than SFTP_DH_MIN_LEN, AND the AllowWeakDH
-   * SFTPOption is not used, then use a pref of SFTP_DH_MIN_LEN (Bug#4184).
+  /* If the preferred DH is less than SFTP_DH_PREF_MIN_LEN, AND the AllowWeakDH
+   * SFTPOption is not used, then use a pref of SFTP_DH_PREF_MIN_LEN (Bug#4184).
    */
-  if (pref < SFTP_DH_MIN_LEN) {
-    if (!(sftp_opts & SFTP_OPT_ALLOW_WEAK_DH)) {
-      pref = SFTP_DH_MIN_LEN;
-
-    } else {
+  if (pref < SFTP_DH_PREF_MIN_LEN) {
+    if (sftp_opts & SFTP_OPT_ALLOW_WEAK_DH) {
       pr_trace_msg(trace_channel, 14,
        "client prefers relatively weak DH group size (%lu) but AllowWeakDH "
        "SFTPOption in effect", (unsigned long) pref);
+
+    } else {
+      pref = SFTP_DH_PREF_MIN_LEN;
+      /* Make sure we don't exceed the client's max supported size. */
+      if (max <= SFTP_DH_PREF_MIN_LEN) {
+        pr_trace_msg(trace_channel, 14,
+          "client prefers relatively weak DH group size (%lu), adjusting "
+          "preferred size to our preferred size (%lu)", (unsigned long) pref,
+          (unsigned long) SFTP_DH_PREF_MIN_LEN);
+        pref = SFTP_DH_PREF_MIN_LEN;
+
+      } else {
+        pr_trace_msg(trace_channel, 14,
+          "client prefers relatively weak DH group size (%lu), and does not "
+          "handle our preferred size (%lu)", (unsigned long) pref,
+          (unsigned long) SFTP_DH_PREF_MIN_LEN);
+      }
     }
   }
 
-  if (dhparam_path) {
+  if (dhparam_path != NULL) {
     if (kex_dhparams_fp != NULL) {
       /* Rewind to the start of the file. */
       fseek(kex_dhparams_fp, 0, SEEK_SET);
@@ -3694,6 +3708,11 @@ static int handle_kex_dh_gex(struct ssh2_packet *pkt, struct sftp_kex *kex,
 
   pr_cmd_dispatch_phase(cmd, LOG_CMD, 0);
   destroy_pool(pkt->pool);
+
+   pr_trace_msg(trace_channel, 9,
+     "read DH_GEX_GROUP message from client: DH group size min = %lu, "
+     "preferred = %lu, max = %lu bits", (unsigned long) min,
+     (unsigned long) pref, (unsigned long) max);
 
   pkt = sftp_ssh2_packet_create(kex_pool);
   res = write_dh_gex_group(pkt, kex, min, pref, max);
