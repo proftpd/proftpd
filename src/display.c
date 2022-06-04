@@ -447,12 +447,19 @@ int pr_display_file(const char *path, const char *fs, const char *resp_code,
 
   fh = pr_fsio_open_canon(path, O_RDONLY);
   if (fh == NULL) {
+    xerrno = errno;
+    pr_trace_msg("display", 4, "unable to open file '%s': %s",
+      path, strerror(xerrno));
+
+    errno = xerrno;
     return -1;
   }
 
   res = pr_fsio_fstat(fh, &st);
   if (res < 0) {
     xerrno = errno;
+    pr_trace_msg("display", 4, "unable to stat file '%s': %s",
+      path, strerror(xerrno));
 
     pr_fsio_close(fh);
 
@@ -462,7 +469,11 @@ int pr_display_file(const char *path, const char *fs, const char *resp_code,
 
   if (S_ISDIR(st.st_mode)) {
     pr_fsio_close(fh);
-    errno = EISDIR;
+    xerrno = EISDIR;
+
+    pr_trace_msg("display", 4, "display file can not be a directory '%s': %s",
+      path, strerror(xerrno));
+    errno = xerrno;
     return -1;
   }
 
