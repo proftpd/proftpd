@@ -1,6 +1,6 @@
 /*
  * ProFTPD - FTP server daemon
- * Copyright (c) 2004-2020 The ProFTPD Project team
+ * Copyright (c) 2004-2022 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -29,6 +29,8 @@
 static int first_msg_sent = FALSE;
 static const char *first_msg = NULL;
 static const char *prev_msg = NULL;
+
+static const char *trace_channel = "display";
 
 /* Note: The size provided by pr_fs_getsize2() is in KB, not bytes. */
 static void format_size_str(char *buf, size_t buflen, off_t size) {
@@ -446,9 +448,10 @@ int pr_display_file(const char *path, const char *fs, const char *resp_code,
   }
 
   fh = pr_fsio_open_canon(path, O_RDONLY);
+  xerrno = errno;
+
   if (fh == NULL) {
-    xerrno = errno;
-    pr_trace_msg("display", 4, "unable to open file '%s': %s",
+    pr_trace_msg(trace_channel, 4, "unable to open file '%s': %s",
       path, strerror(xerrno));
 
     errno = xerrno;
@@ -456,9 +459,10 @@ int pr_display_file(const char *path, const char *fs, const char *resp_code,
   }
 
   res = pr_fsio_fstat(fh, &st);
+  xerrno = errno;
+
   if (res < 0) {
-    xerrno = errno;
-    pr_trace_msg("display", 4, "unable to stat file '%s': %s",
+    pr_trace_msg(trace_channel, 4, "unable to stat file '%s': %s",
       path, strerror(xerrno));
 
     pr_fsio_close(fh);
@@ -471,8 +475,9 @@ int pr_display_file(const char *path, const char *fs, const char *resp_code,
     pr_fsio_close(fh);
     xerrno = EISDIR;
 
-    pr_trace_msg("display", 4, "display file can not be a directory '%s': %s",
-      path, strerror(xerrno));
+    pr_trace_msg(trace_channel, 4,
+      "display file can not be a directory '%s': %s", path, strerror(xerrno));
+
     errno = xerrno;
     return -1;
   }
