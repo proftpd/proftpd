@@ -552,18 +552,6 @@ static unsigned int tls_npkeys = 0;
 #define TLS_DEFAULT_CIPHER_SUITE	"DEFAULT:!ADH:!EXPORT:!DES"
 #define TLS_DEFAULT_NEXT_PROTO		"ftp"
 
-/* SSL record/buffer sizes */
-#define TLS_HANDSHAKE_WRITE_BUFFER_SIZE			1400
-
-/* SSL adaptive buffer sizes/values */
-#define TLS_DATA_ADAPTIVE_WRITE_MIN_BUFFER_SIZE		(4 * 1024)
-#define TLS_DATA_ADAPTIVE_WRITE_MAX_BUFFER_SIZE		(16 * 1024)
-#define TLS_DATA_ADAPTIVE_WRITE_BOOST_THRESHOLD		(1024 * 1024)
-#define TLS_DATA_ADAPTIVE_WRITE_BOOST_INTERVAL_MS	1000
-
-static uint64_t tls_data_adaptive_bytes_written_ms = 0L;
-static off_t tls_data_adaptive_bytes_written_count = 0;
-
 /* Module variables */
 #if OPENSSL_VERSION_NUMBER > 0x000907000L
 static const char *tls_crypto_device = NULL;
@@ -7609,17 +7597,6 @@ static int tls_accept(conn_t *conn, unsigned char on_data) {
   rbio = BIO_new_socket(conn->rfd, FALSE);
   wbio = BIO_new_socket(conn->wfd, FALSE);
 
-  /* During handshakes, set the write buffer size smaller, so that we do not
-   * overflow the (new) connection's TCP CWND size and force another round
-   * trip.
-   *
-   * Then, later, we set a larger buffer size, but ONLY if we are doing a data
-   * transfer.  For the control connection, the interactions/messages are
-   * assumed to be small, thus there's no need for the larger buffer size.
-   * Right?
-   */
-  (void) BIO_set_write_buf_size(wbio, TLS_HANDSHAKE_WRITE_BUFFER_SIZE);
-
   SSL_set_bio(ssl, rbio, wbio);
 
 #if !defined(OPENSSL_NO_TLSEXT)
@@ -8007,11 +7984,6 @@ static int tls_accept(conn_t *conn, unsigned char on_data) {
       /* Restore the previous session cache mode. */
       SSL_CTX_set_session_cache_mode(ssl_ctx, cache_mode);
     }
-
-    (void) BIO_set_write_buf_size(wbio,
-      TLS_DATA_ADAPTIVE_WRITE_MIN_BUFFER_SIZE);
-    tls_data_adaptive_bytes_written_ms = 0L;
-    tls_data_adaptive_bytes_written_count = 0;
   }
 
   /* Disable the handshake timer. */
@@ -11075,35 +11047,6 @@ static ssize_t tls_write(SSL *ssl, const void *buf, size_t len) {
         tls_fatal_error(err, lineno);
         break;
     }
-  }
-
-  if (ssl != ctrl_ssl) {
-    BIO *wbio;
-    uint64_t now;
-
-    (void) pr_gettimeofday_millis(&now);
-    tls_data_adaptive_bytes_written_count += count;
-    wbio = SSL_get_wbio(ssl);
-
-    if (tls_data_adaptive_bytes_written_count >= TLS_DATA_ADAPTIVE_WRITE_BOOST_THRESHOLD) {
-      /* Boost the buffer size if we've written more than the "boost"
-       * threshold.
-       */
-      (void) BIO_set_write_buf_size(wbio,
-        TLS_DATA_ADAPTIVE_WRITE_MAX_BUFFER_SIZE);
-    }
-
-    if (now > (tls_data_adaptive_bytes_written_ms + TLS_DATA_ADAPTIVE_WRITE_BOOST_INTERVAL_MS)) {
-      /* If it's been longer than the boost interval since our last write,
-       * then reset the buffer size to the smaller version, assuming
-       * congestion (and thus closing of the TCP congestion window).
-       */
-      tls_data_adaptive_bytes_written_count = 0;
-      (void) BIO_set_write_buf_size(wbio,
-        TLS_DATA_ADAPTIVE_WRITE_MIN_BUFFER_SIZE);
-    }
-
-    tls_data_adaptive_bytes_written_ms = now;
   }
 
   errno = xerrno;
