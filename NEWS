@@ -29,6 +29,8 @@
 - Issue 1457 - Implement SFTPHostKeys directive for configuring the SSH host
   key algorithms.
 - Issue 1437 - Implement the "curve448-sha512" SSH key exchange algorithm.
+- Issue 1472 - Include directive broken when using wildcards for directory
+  components.
 
 1.3.8rc3 - Released 23-Apr-2022
 --------------------------------

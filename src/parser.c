@@ -1,6 +1,6 @@
 /*
  * ProFTPD - FTP server daemon
- * Copyright (c) 2004-2021 The ProFTPD Project team
+ * Copyright (c) 2004-2022 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -996,7 +996,9 @@ static int parse_wildcard_config_path(pool *p, const char *path,
    * for directories within the parent.
    */
 
+  parent_path = pstrdup(tmp_pool, "/");
   component = path + 1;
+
   while (TRUE) {
     int last_component = FALSE;
     char *ptr;
@@ -1018,10 +1020,6 @@ static int parse_wildcard_config_path(pool *p, const char *path,
 
       name_pattern = pstrndup(tmp_pool, component, component_len);
 
-      if (parent_path == NULL) {
-        parent_path = pstrndup(tmp_pool, "/", 1);
-      }
-
       if (ptr != NULL) {
         suffix_path = pstrdup(tmp_pool, ptr + 1);
       }
@@ -1029,15 +1027,10 @@ static int parse_wildcard_config_path(pool *p, const char *path,
       break;
     }
 
-    if (parent_path != NULL) {
-      parent_path = pdircat(tmp_pool, parent_path,
-        pstrndup(tmp_pool, component, component_len), NULL);
+    parent_path = pdircat(tmp_pool, parent_path,
+      pstrndup(tmp_pool, component, component_len), NULL);
 
-    } else {
-      parent_path = pstrndup(tmp_pool, "/", 1);
-    }
-
-    if (last_component) {
+    if (last_component == TRUE) {
       break;
     }
 
@@ -1050,6 +1043,9 @@ static int parse_wildcard_config_path(pool *p, const char *path,
     errno = ENOENT;
     return -1;
   }
+
+  pr_trace_msg(trace_channel, 19, "generated globbed name pattern '%s/%s'",
+    parent_path, name_pattern);
 
   pr_fs_clear_cache2(parent_path);
   res = pr_fsio_lstat(parent_path, &st);
@@ -1109,8 +1105,8 @@ static int parse_wildcard_config_path(pool *p, const char *path,
 
     if (pr_fnmatch(name_pattern, dent->d_name, PR_FNM_PERIOD) == 0) {
       pr_trace_msg(trace_channel, 17,
-        "matched '%s' path with wildcard pattern '%s'", dent->d_name,
-        name_pattern);
+        "matched '%s/%s' path with wildcard pattern '%s/%s'", parent_path,
+        dent->d_name, parent_path, name_pattern);
 
       *((char **) push_array(globbed_dirs)) = pdircat(tmp_pool, parent_path,
         dent->d_name, suffix_path, NULL);
