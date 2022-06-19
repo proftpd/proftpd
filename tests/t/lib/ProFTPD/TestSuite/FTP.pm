@@ -3,6 +3,7 @@ package ProFTPD::TestSuite::FTP;
 use strict;
 
 use Carp;
+use Net::INET6Glue::FTP;
 use Net::FTP;
 use POSIX qw(:sys_wait_h);
 
