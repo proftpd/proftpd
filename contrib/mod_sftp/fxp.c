@@ -4418,7 +4418,13 @@ static int fxp_handle_ext_check_file(struct fxp_packet *fxp, char *digest_list,
     unsigned int digest_len = 0;
 
     pr_signals_handle();
+#if OPENSSL_VERSION_NUMBER < 0x10100000L || \
+    defined(HAVE_LIBRESSL)
+    EVP_MD_CTX_cleanup(pctx);
+    EVP_MD_CTX_init(pctx);
+#else
     EVP_MD_CTX_reset(pctx);
+#endif /* prior to OpenSSL-1.1.0 */
     EVP_DigestInit(pctx, md);
 
     pr_trace_msg(trace_channel, 19,
