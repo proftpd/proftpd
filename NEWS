@@ -31,6 +31,8 @@
 - Issue 1437 - Implement the "curve448-sha512" SSH key exchange algorithm.
 - Issue 1472 - Include directive broken when using wildcards for directory
   components.
+- Bug 4485 - mod_sftp fails to build using OpenSSL 1.0.x: undefined reference
+  to `EVP_MD_CTX_reset'.
 
 1.3.8rc3 - Released 23-Apr-2022
 --------------------------------
