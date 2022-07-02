@@ -33,6 +33,8 @@
   components.
 - Bug 4485 - mod_sftp fails to build using OpenSSL 1.0.x: undefined reference
   to `EVP_MD_CTX_reset'.
+- Issue 1476 - Reload after omitting explicit ModulePath value causes fatal
+  module load failures.
 
 1.3.8rc3 - Released 23-Apr-2022
 --------------------------------
