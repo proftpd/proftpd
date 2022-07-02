@@ -12944,7 +12944,7 @@ MODRET tls_auth(cmd_rec *cmd) {
       tls_log("%s", "TLS/TLS-C negotiation failed on control channel");
 
       if (tls_required_on_ctrl == 1) {
-        pr_response_send(R_550, _("TLS handshake failed"));
+        pr_response_send_async(R_421, _("TLS handshake failed"));
         pr_session_disconnect(&tls_module, PR_SESS_DISCONNECT_CONFIG_ACL,
           "TLSRequired");
       }
@@ -12953,7 +12953,7 @@ MODRET tls_auth(cmd_rec *cmd) {
        * commands from the client.  In reality, this gibberish is probably
        * more encrypted data from the client.
        */
-      pr_response_send(R_550, _("TLS handshake failed"));
+      pr_response_send_async(R_421, _("TLS handshake failed"));
       pr_session_disconnect(&tls_module, PR_SESS_DISCONNECT_BY_APPLICATION,
         NULL);
     }
@@ -12997,7 +12997,7 @@ MODRET tls_auth(cmd_rec *cmd) {
       tls_log("%s", "SSL/TLS-P negotiation failed on control channel");
 
       if (tls_required_on_ctrl == 1) {
-        pr_response_send(R_550, _("TLS handshake failed"));
+        pr_response_send_async(R_421, _("TLS handshake failed"));
         pr_session_disconnect(&tls_module, PR_SESS_DISCONNECT_CONFIG_ACL,
           "TLSRequired");
       }
@@ -13006,7 +13006,7 @@ MODRET tls_auth(cmd_rec *cmd) {
        * commands from the client.  In reality, this gibberish is probably
        * more encrypted data from the client.
        */
-      pr_response_send(R_550, _("TLS handshake failed"));
+      pr_response_send_async(R_421, _("TLS handshake failed"));
       pr_session_disconnect(&tls_module, PR_SESS_DISCONNECT_BY_APPLICATION,
         NULL);
     }
@@ -18881,6 +18881,7 @@ static int tls_sess_init(void) {
       /* Rather than returning an error to the init callback, we disconnect
        * the session ourselves here.  Makes for slightly nicer logging.
        */
+      pr_response_send_async(R_421, _("TLS handshake failed"));
       pr_session_disconnect(&tls_module, PR_SESS_DISCONNECT_CLIENT_EOF,
         "Failed TLS handshake");
     }

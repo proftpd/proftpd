@@ -515,6 +515,16 @@ my $TESTS = {
     test_class => [qw(bug forking)],
   },
 
+  tls_explicit_plaintext_fallback_issue192 => {
+    order => ++$order,
+    test_class => [qw(bug forking)],
+  },
+
+  tls_implicit_plaintext_fallback_issue192 => {
+    order => ++$order,
+    test_class => [qw(bug forking)],
+  },
+
 };
 
 sub new {
@@ -14693,6 +14703,322 @@ sub tls_useimplicitssl_tcp_connect_only {
   if ($@) {
     $ex = $@;
   }
+
+  test_cleanup($setup->{log_file}, $ex);
+}
+
+sub tls_explicit_plaintext_fallback_issue192 {
+  my $self = shift;
+  my $tmpdir = $self->{tmpdir};
+  my $setup = test_setup($tmpdir, 'tls');
+
+  my $cert_file = File::Spec->rel2abs('t/etc/modules/mod_tls/server-cert.pem');
+  my $ca_file = File::Spec->rel2abs('t/etc/modules/mod_tls/ca-cert.pem');
+
+  # To force a TLS handshake failure, we'll configure the client to use a
+  # protocol version (e.g. TLSv1) that the server won't support.
+
+  my $config = {
+    PidFile => $setup->{pid_file},
+    ScoreboardFile => $setup->{scoreboard_file},
+    SystemLog => $setup->{log_file},
+    TraceLog => $setup->{log_file},
+    Trace => 'binding:20 command:20 response:20 tls:20',
+
+    AuthUserFile => $setup->{auth_user_file},
+    AuthGroupFile => $setup->{auth_group_file},
+    AuthOrder => 'mod_auth_file.c',
+
+    IfModules => {
+      'mod_delay.c' => {
+        DelayEngine => 'off',
+      },
+
+      'mod_tls.c' => {
+        TLSEngine => 'on',
+        TLSLog => $setup->{log_file},
+        TLSRequired => 'on',
+        TLSRSACertificateFile => $cert_file,
+        TLSCACertificateFile => $ca_file,
+        TLSProtocol => 'TLSv1.1 TLSv1.2',
+        TLSOptions => 'EnableDiags',
+      },
+    },
+  };
+
+  my ($port, $config_user, $config_group) = config_write($setup->{config_file},
+    $config);
+
+  # Open pipes, for use between the parent and child processes.  Specifically,
+  # the child will indicate when it's done with its test by writing a message
+  # to the parent.
+  my ($rfh, $wfh);
+  unless (pipe($rfh, $wfh)) {
+    die("Can't open pipe: $!");
+  }
+
+  require Net::FTPSSL;
+
+  my $ex;
+
+  # Ignore SIGPIPE (generated when writing to a closed TCP socket).
+  local $SIG{PIPE} = sub { };
+
+  # Fork child
+  $self->handle_sigchld();
+  defined(my $pid = fork()) or die("Can't fork: $!");
+  if ($pid) {
+    eval {
+      # Give the server a chance to start up
+      sleep(2);
+
+      # Note that we cannot use Net::FTPSSL here, as it makes assumptions which
+      # complicate the testing of this use case.  Thus we do it manually.
+
+      my $client = IO::Socket::INET->new(
+        PeerHost => '127.0.0.1',
+        PeerPort => $port,
+        Proto => 'tcp',
+        Type => SOCK_STREAM,
+        Timeout => 10
+      );
+      unless ($client) {
+        croak("Can't connect to 127.0.0.1:$port: $!");
+      }
+
+      # Read the banner
+      my $banner = <$client>;
+      if ($ENV{TEST_VERBOSE}) {
+        print STDOUT "# Received banner: $banner\n";
+      }
+
+      # Send the AUTH command
+      my $cmd = "AUTH TLS\r\n";
+      if ($ENV{TEST_VERBOSE}) {
+        print STDOUT "# Sending command: $cmd";
+      }
+
+      $client->print($cmd);
+      $client->flush();
+
+      # Read the AUTH response
+      my $resp = <$client>;
+      if ($ENV{TEST_VERBOSE}) {
+        print STDOUT "# Received response: $resp\n";
+      }
+
+      my $expected = "234 AUTH TLS successful\r\n";
+      unless ($expected eq $resp) {
+        croak("Expected response '$expected', got '$resp'");
+      }
+
+      # Now perform the SSL handshake
+      if ($ENV{TEST_VERBOSE}) {
+        $IO::Socket::SSL::DEBUG = 3;
+      }
+
+      my $ssl_opts = {
+        SSL_verify_mode => IO::Socket::SSL::SSL_VERIFY_NONE(),
+      };
+
+      my $res = IO::Socket::SSL->start_SSL($client, $ssl_opts);
+      if ($res) {
+        croak("TLS handshake succeeded unexpectedly");
+      }
+
+      # Due to mod_tls implementation, where we close the ctrl connection on
+      # TLS handshake failure (to avoid any plaintext fallback issues, as some
+      # security scanners/tools like to nag about), we should expect to read
+      # an async 421 response here.  It may take a little while for the buffers
+      # to flush, so add a little delay to allow for that time.
+      sleep(1);
+
+      $cmd = "FEAT\r\n";
+      if ($ENV{TEST_VERBOSE}) {
+        print STDOUT "# Sending command: $cmd";
+      }
+
+      $client->print($cmd);
+      $client->flush();
+
+      # Read the FEAT response
+      my $resp = <$client>;
+      if ($ENV{TEST_VERBOSE}) {
+        print STDOUT "# Received response: $resp\n";
+      }
+
+      my $expected = "421 TLS handshake failed\r\n";
+      unless ($expected eq $resp) {
+        croak("Expected response '$expected', got '$resp'");
+      }
+
+      $client->close();
+    };
+    if ($@) {
+      $ex = $@;
+    }
+
+    $wfh->print("done\n");
+    $wfh->flush();
+
+  } else {
+    eval { server_wait($setup->{config_file}, $rfh) };
+    if ($@) {
+      warn($@);
+      exit 1;
+    }
+
+    exit 0;
+  }
+
+  # Stop server
+  server_stop($setup->{pid_file});
+  $self->assert_child_ok($pid);
+
+  test_cleanup($setup->{log_file}, $ex);
+}
+
+sub tls_implicit_plaintext_fallback_issue192 {
+  my $self = shift;
+  my $tmpdir = $self->{tmpdir};
+  my $setup = test_setup($tmpdir, 'tls');
+
+  my $cert_file = File::Spec->rel2abs('t/etc/modules/mod_tls/server-cert.pem');
+  my $ca_file = File::Spec->rel2abs('t/etc/modules/mod_tls/ca-cert.pem');
+
+  # To force a TLS handshake failure, we'll configure the client to use a
+  # protocol version (e.g. TLSv1) that the server won't support.
+
+  my $config = {
+    PidFile => $setup->{pid_file},
+    ScoreboardFile => $setup->{scoreboard_file},
+    SystemLog => $setup->{log_file},
+    TraceLog => $setup->{log_file},
+    Trace => 'binding:20 command:20 response:20 tls:20',
+
+    AuthUserFile => $setup->{auth_user_file},
+    AuthGroupFile => $setup->{auth_group_file},
+    AuthOrder => 'mod_auth_file.c',
+
+    IfModules => {
+      'mod_delay.c' => {
+        DelayEngine => 'off',
+      },
+
+      'mod_tls.c' => {
+        TLSEngine => 'on',
+        TLSLog => $setup->{log_file},
+        TLSRequired => 'on',
+        TLSRSACertificateFile => $cert_file,
+        TLSCACertificateFile => $ca_file,
+        TLSProtocol => 'TLSv1.1 TLSv1.2',
+        TLSOptions => 'EnableDiags UseImplicitSSL',
+      },
+    },
+  };
+
+  my ($port, $config_user, $config_group) = config_write($setup->{config_file},
+    $config);
+
+  # Open pipes, for use between the parent and child processes.  Specifically,
+  # the child will indicate when it's done with its test by writing a message
+  # to the parent.
+  my ($rfh, $wfh);
+  unless (pipe($rfh, $wfh)) {
+    die("Can't open pipe: $!");
+  }
+
+  require Net::FTPSSL;
+
+  my $ex;
+
+  # Ignore SIGPIPE (generated when writing to a closed TCP socket).
+  local $SIG{PIPE} = sub { };
+
+  # Fork child
+  $self->handle_sigchld();
+  defined(my $pid = fork()) or die("Can't fork: $!");
+  if ($pid) {
+    eval {
+      # Give the server a chance to start up
+      sleep(2);
+
+      # Note that we cannot use Net::FTPSSL here, as it makes assumptions which
+      # complicate the testing of this use case.  Thus we do it manually.
+
+      my $client = IO::Socket::INET->new(
+        PeerHost => '127.0.0.1',
+        PeerPort => $port,
+        Proto => 'tcp',
+        Type => SOCK_STREAM,
+        Timeout => 10
+      );
+      unless ($client) {
+        croak("Can't connect to 127.0.0.1:$port: $!");
+      }
+
+      # Now perform the SSL handshake
+      if ($ENV{TEST_VERBOSE}) {
+        $IO::Socket::SSL::DEBUG = 3;
+      }
+
+      my $ssl_opts = {
+        SSL_verify_mode => IO::Socket::SSL::SSL_VERIFY_NONE(),
+      };
+
+      my $res = IO::Socket::SSL->start_SSL($client, $ssl_opts);
+      if ($res) {
+        croak("TLS handshake succeeded unexpectedly");
+      }
+
+      # Due to mod_tls implementation, where we close the ctrl connection on
+      # TLS handshake failure (to avoid any plaintext fallback issues, as some
+      # security scanners/tools like to nag about), we should expect to read
+      # an async 421 response here.  It may take a little while for the buffers
+      # to flush, so add a little delay to allow for that time.
+      sleep(1);
+
+      my $cmd = "FEAT\r\n";
+      if ($ENV{TEST_VERBOSE}) {
+        print STDOUT "# Sending command: $cmd";
+      }
+
+      $client->print($cmd);
+      $client->flush();
+
+      # Read the FEAT response
+      my $resp = <$client>;
+      if ($ENV{TEST_VERBOSE}) {
+        print STDOUT "# Received response: $resp\n";
+      }
+
+      my $expected = "421 TLS handshake failed\r\n";
+      unless ($expected eq $resp) {
+        croak("Expected response '$expected', got '$resp'");
+      }
+
+      $client->close();
+    };
+    if ($@) {
+      $ex = $@;
+    }
+
+    $wfh->print("done\n");
+    $wfh->flush();
+
+  } else {
+    eval { server_wait($setup->{config_file}, $rfh) };
+    if ($@) {
+      warn($@);
+      exit 1;
+    }
+
+    exit 0;
+  }
+
+  # Stop server
+  server_stop($setup->{pid_file});
+  $self->assert_child_ok($pid);
 
   test_cleanup($setup->{log_file}, $ex);
 }
