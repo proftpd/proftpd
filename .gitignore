@@ -30,6 +30,7 @@ Make.modules
 lib/libcap/_makenames
 lib/libcap/cap_names.h
 lib/libcap/cap_names.sed
+lib/libltdl/argz.h
 lib/libltdl/stamp-h1
 module-libs.txt
 modules/module_glue.c
