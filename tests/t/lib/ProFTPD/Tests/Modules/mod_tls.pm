@@ -50,6 +50,11 @@ my $TESTS = {
     test_class => [qw(forking)],
   },
 
+  tls_crl_file_other_ca_bug4468 => {
+    order => ++$order,
+    test_class => [qw(bug forking)],
+  },
+
   tls_login_with_sni_issue850 => {
     order => ++$order,
     test_class => [qw(forking)],
@@ -1197,38 +1202,7 @@ sub tls_dh_ciphersuite {
 sub tls_crl_file_ok {
   my $self = shift;
   my $tmpdir = $self->{tmpdir};
-
-  my $config_file = "$tmpdir/tls.conf";
-  my $pid_file = File::Spec->rel2abs("$tmpdir/tls.pid");
-  my $scoreboard_file = File::Spec->rel2abs("$tmpdir/tls.scoreboard");
-
-  my $log_file = test_get_logfile();
-
-  my $auth_user_file = File::Spec->rel2abs("$tmpdir/tls.passwd");
-  my $auth_group_file = File::Spec->rel2abs("$tmpdir/tls.group");
-
-  my $user = 'proftpd';
-  my $passwd = 'test';
-  my $group = 'ftpd';
-  my $home_dir = File::Spec->rel2abs($tmpdir);
-  my $uid = 500;
-  my $gid = 500;
-
-  # Make sure that, if we're running as root, that the home directory has
-  # permissions/privs set for the account we create
-  if ($< == 0) {
-    unless (chmod(0755, $home_dir)) {
-      die("Can't set perms on $home_dir to 0755: $!");
-    }
-
-    unless (chown($uid, $gid, $home_dir)) {
-      die("Can't set owner of $home_dir to $uid/$gid: $!");
-    }
-  }
-
-  auth_user_write($auth_user_file, $user, $passwd, $uid, $gid, $home_dir,
-    '/bin/bash');
-  auth_group_write($auth_group_file, $group, $gid, $user);
+  my $setup = test_setup($tmpdir, 'tls');
 
   my $server_cert = File::Spec->rel2abs('t/etc/modules/mod_tls/crl-server-cert.pem');
   my $client_cert = File::Spec->rel2abs('t/etc/modules/mod_tls/crl-client-cert.pem');
@@ -1236,12 +1210,15 @@ sub tls_crl_file_ok {
   my $crl_file = File::Spec->rel2abs('t/etc/modules/mod_tls/crl-ca-revoked.pem');
 
   my $config = {
-    PidFile => $pid_file,
-    ScoreboardFile => $scoreboard_file,
-    SystemLog => $log_file,
+    PidFile => $setup->{pid_file},
+    ScoreboardFile => $setup->{scoreboard_file},
+    SystemLog => $setup->{log_file},
+    TraceLog => $setup->{log_file},
+    Trace => 'tls:30',
 
-    AuthUserFile => $auth_user_file,
-    AuthGroupFile => $auth_group_file,
+    AuthUserFile => $setup->{auth_user_file},
+    AuthGroupFile => $setup->{auth_group_file},
+    AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
       'mod_delay.c' => {
@@ -1250,7 +1227,7 @@ sub tls_crl_file_ok {
 
       'mod_tls.c' => {
         TLSEngine => 'on',
-        TLSLog => $log_file,
+        TLSLog => $setup->{log_file},
         TLSRequired => 'on',
         TLSRSACertificateFile => $server_cert,
         TLSCACertificateFile => $ca_cert,
@@ -1263,7 +1240,8 @@ sub tls_crl_file_ok {
     },
   };
 
-  my ($port, $config_user, $config_group) = config_write($config_file, $config);
+  my ($port, $config_user, $config_group) = config_write($setup->{config_file},
+    $config);
 
   # Open pipes, for use between the parent and child processes.  Specifically,
   # the child will indicate when it's done with its test by writing a message
@@ -1315,7 +1293,6 @@ sub tls_crl_file_ok {
       $self->assert(qr/$expected/, $errstr,
         test_msg("Expected '$expected', got '$errstr'"));
     };
-
     if ($@) {
       $ex = $@;
     }
@@ -1324,7 +1301,7 @@ sub tls_crl_file_ok {
     $wfh->flush();
 
   } else {
-    eval { server_wait($config_file, $rfh) };
+    eval { server_wait($setup->{config_file}, $rfh) };
     if ($@) {
       warn($@);
       exit 1;
@@ -1334,18 +1311,118 @@ sub tls_crl_file_ok {
   }
 
   # Stop server
-  server_stop($pid_file);
-
+  server_stop($setup->{pid_file});
   $self->assert_child_ok($pid);
 
-  if ($ex) {
-    test_append_logfile($log_file, $ex);
-    unlink($log_file);
+  test_cleanup($setup->{log_file}, $ex);
+}
 
-    die($ex);
+sub tls_crl_file_other_ca_bug4468 {
+  my $self = shift;
+  my $tmpdir = $self->{tmpdir};
+  my $setup = test_setup($tmpdir, 'tls');
+
+  my $server_cert = File::Spec->rel2abs('t/etc/modules/mod_tls/server-cert.pem');
+  my $client_cert = File::Spec->rel2abs('t/etc/modules/mod_tls/client-cert.pem');
+  my $ca_cert = File::Spec->rel2abs('t/etc/modules/mod_tls/ca-cert.pem');
+  my $crl_file = File::Spec->rel2abs('t/etc/modules/mod_tls/ca-crl-empty.pem');
+
+  my $config = {
+    PidFile => $setup->{pid_file},
+    ScoreboardFile => $setup->{scoreboard_file},
+    SystemLog => $setup->{log_file},
+    TraceLog => $setup->{log_file},
+    Trace => 'tls:30',
+
+    AuthUserFile => $setup->{auth_user_file},
+    AuthGroupFile => $setup->{auth_group_file},
+    AuthOrder => 'mod_auth_file.c',
+
+    IfModules => {
+      'mod_delay.c' => {
+        DelayEngine => 'off',
+      },
+
+      'mod_tls.c' => {
+        TLSEngine => 'on',
+        TLSLog => $setup->{log_file},
+        TLSRequired => 'on',
+        TLSRSACertificateFile => $server_cert,
+        TLSCACertificateFile => $ca_cert,
+
+        # Verifying clients via CRLs only works when verification is
+        # explicitly enabled.
+        TLSCARevocationFile => $crl_file,
+        TLSVerifyClient => 'on',
+      },
+    },
+  };
+
+  my ($port, $config_user, $config_group) = config_write($setup->{config_file},
+    $config);
+
+  # Open pipes, for use between the parent and child processes.  Specifically,
+  # the child will indicate when it's done with its test by writing a message
+  # to the parent.
+  my ($rfh, $wfh);
+  unless (pipe($rfh, $wfh)) {
+    die("Can't open pipe: $!");
   }
 
-  unlink($log_file);
+  require Net::FTPSSL;
+
+  my $ex;
+
+  # Fork child
+  $self->handle_sigchld();
+  defined(my $pid = fork()) or die("Can't fork: $!");
+  if ($pid) {
+    eval {
+      # Give the server a chance to start up
+      sleep(2);
+
+      my $client;
+
+      # IO::Socket::SSL options
+      my $ssl_opts = {
+        SSL_use_cert => 1,
+        SSL_cert_file => $client_cert,
+        SSL_key_file => $client_cert,
+        SSL_ca_file => $ca_cert,
+      };
+
+      $client = Net::FTPSSL->new('127.0.0.1',
+        Croak => 1,
+        Encryption => 'E',
+        Port => $port,
+        SSL_Client_Certificate => $ssl_opts,
+      );
+
+      $client->login($setup->{user}, $setup->{passwd});
+      $client->quit();
+    };
+    if ($@) {
+      $ex = $@;
+    }
+
+    $wfh->print("done\n");
+    $wfh->flush();
+
+  } else {
+    eval { server_wait($setup->{config_file}, $rfh) };
+    if ($@) {
+      warn($@);
+      exit 1;
+    }
+
+    exit 0;
+  }
+
+  # Stop server
+  server_stop($setup->{pid_file});
+  $self->assert_child_ok($pid);
+
+  test_cleanup($setup->{log_file}, $ex);
 }
 
 sub tls_login_with_sni_issue850 {
