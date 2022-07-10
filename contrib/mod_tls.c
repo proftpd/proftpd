@@ -100,8 +100,7 @@ static DH *get_dh(BIGNUM *p, BIGNUM *g) {
     return NULL;
   }
 
-#if OPENSSL_VERSION_NUMBER >= 0x10100000L && \
-    !defined(HAVE_LIBRESSL)
+#if OPENSSL_VERSION_NUMBER >= 0x10100000L
   if (DH_set0_pqg(dh, p, NULL, g) != 1) {
     pr_trace_msg(trace_channel, 3, "error setting DH p/q parameters: %s",
       ERR_error_string(ERR_get_error(), NULL));
@@ -120,8 +119,7 @@ static X509 *read_cert(FILE *fh, SSL_CTX *ctx) {
   pem_password_cb *cb;
   void *cb_data;
 
-#if OPENSSL_VERSION_NUMBER >= 0x10100000L && \
-    !defined(HAVE_LIBRESSL)
+#if OPENSSL_VERSION_NUMBER >= 0x10100000L
   cb = SSL_CTX_get_default_passwd_cb(ctx);
   cb_data = SSL_CTX_get_default_passwd_cb_userdata(ctx);
 #else
@@ -958,8 +956,7 @@ static const char *tls_get_fingerprint_from_file(pool *p, const char *path,
     EVP_PKEY *pkey;
 
     now = time(NULL);
-#if OPENSSL_VERSION_NUMBER < 0x10100000L || \
-    defined(HAVE_LIBRESSL)
+#if OPENSSL_VERSION_NUMBER < 0x10100000L
     cert_end_ts = X509_get_notAfter(cert);
 #else
     cert_end_ts = X509_get0_notAfter(cert);
@@ -2581,8 +2578,7 @@ static int tls_cert_match_dns_san(pool *p, X509 *cert, const char *dns_name) {
         char *dns_san;
         size_t dns_sanlen;
 
-#if OPENSSL_VERSION_NUMBER >= 0x10100000L && \
-    !defined(HAVE_LIBRESSL)
+#if OPENSSL_VERSION_NUMBER >= 0x10100000L
         dns_san = (char *) ASN1_STRING_get0_data(alt_name->d.ia5);
 #else
         dns_san = (char *) ASN1_STRING_data(alt_name->d.ia5);
@@ -2656,8 +2652,7 @@ static int tls_cert_match_ip_san(pool *p, X509 *cert, const char *ipstr) {
         char san_ipstr[INET_ADDRSTRLEN + 1] = {'\0'};
 #endif /* PR_USE_IPV6 */
 
-#if OPENSSL_VERSION_NUMBER >= 0x10100000L && \
-    !defined(HAVE_LIBRESSL)
+#if OPENSSL_VERSION_NUMBER >= 0x10100000L
         san_data = ASN1_STRING_get0_data(alt_name->d.ip);
 #else
         san_data = ASN1_STRING_data(alt_name->d.ip);
@@ -2786,8 +2781,7 @@ static int tls_cert_match_cn(pool *p, X509 *cert, const char *name,
     return 0;
   }
 
-#if OPENSSL_VERSION_NUMBER >= 0x10100000L && \
-    !defined(HAVE_LIBRESSL)
+#if OPENSSL_VERSION_NUMBER >= 0x10100000L
   cn_str = (char *) ASN1_STRING_get0_data(cn_asn1);
 #else
   cn_str = (char *) ASN1_STRING_data(cn_asn1);
@@ -4030,7 +4024,8 @@ static int tls_renegotiate_timeout_cb(CALLBACK_FRAME) {
     int ctrl_renegotiated = FALSE;
 
     switch (SSL_version(ctrl_ssl)) {
-# if defined(TLS1_3_VERSION)
+# if defined(TLS1_3_VERSION) && \
+     !defined(HAVE_LIBRESSL)
       case TLS1_3_VERSION:
         if (SSL_get_key_update_type(ctrl_ssl) == SSL_KEY_UPDATE_NONE) {
           ctrl_renegotiated = TRUE;
@@ -4066,7 +4061,8 @@ static int tls_renegotiate_timeout_cb(CALLBACK_FRAME) {
 
     ssl = (SSL *) pr_table_get(tls_data_wr_nstrm->notes, TLS_NETIO_NOTE, NULL);
     switch (SSL_version(ssl)) {
-# if defined(TLS1_3_VERSION)
+# if defined(TLS1_3_VERSION) && \
+     !defined(HAVE_LIBRESSL)
       case TLS1_3_VERSION:
         if (SSL_get_key_update_type(ssl) == SSL_KEY_UPDATE_NONE) {
           data_renegotiated = TRUE;
@@ -4106,7 +4102,8 @@ static int tls_ctrl_renegotiate_cb(CALLBACK_FRAME) {
 
   if (tls_flags & TLS_SESS_ON_CTRL) {
     switch (SSL_version(ctrl_ssl)) {
-#if defined(TLS1_3_VERSION)
+#if defined(TLS1_3_VERSION) && \
+    !defined(HAVE_LIBRESSL)
       /* If we're a TLSv1.3 session, use SSL_key_update() to request new
        * session keys; TLSv1.3 does not support renegotiations.
        */
@@ -4533,8 +4530,7 @@ static int tls_sni_cb(SSL *ssl, int *alert_desc, void *user_data) {
         ctx = SSL_get_SSL_CTX(ssl);
         ctx_options = SSL_CTX_get_options(ctx);
 
-#if OPENSSL_VERSION_NUMBER >= 0x10100000L && \
-    !defined(HAVE_LIBRESSL)
+#if OPENSSL_VERSION_NUMBER >= 0x10100000L
         sess_version = SSL_SESSION_get_protocol_version(sess);
 #else
         sess_version = sess->ssl_version;
@@ -5902,7 +5898,10 @@ static time_t ASN1_TIME_seconds(const ASN1_TIME *a) {
   return t;
 }
 
-static int ASN1_TIME_diff(int *pday, int *psec, const ASN1_TIME *from,
+#if !defined(HAVE_LIBRESSL)
+static
+#endif
+int ASN1_TIME_diff(int *pday, int *psec, const ASN1_TIME *from,
     const ASN1_TIME *to) {
   time_t from_secs, to_secs, diff_secs;
   long diff_days;
@@ -6188,8 +6187,7 @@ static int tls_cert_must_staple(X509 *cert, int *v2) {
   register int i;
   int ext_count = 0, must_staple = FALSE;
 
-#if OPENSSL_VERSION_NUMBER >= 0x10100000L && \
-    !defined(HAVE_LIBRESSL)
+#if OPENSSL_VERSION_NUMBER >= 0x10100000L
   ext_count = X509_get_ext_count(cert);
 #else
   X509_CINF *ci;
@@ -6209,8 +6207,7 @@ static int tls_cert_must_staple(X509 *cert, int *v2) {
     X509_EXTENSION *ext;
     ASN1_OBJECT *obj;
 
-#if OPENSSL_VERSION_NUMBER >= 0x10100000L && \
-    !defined(HAVE_LIBRESSL)
+#if OPENSSL_VERSION_NUMBER >= 0x10100000L
     ext = X509_get_ext(cert, i);
 #else
     ext = sk_X509_EXTENSION_value(exts, i);
@@ -6225,8 +6222,7 @@ static int tls_cert_must_staple(X509 *cert, int *v2) {
       char status_request[] = TLS_X509V3_TLS_FEAT_STATUS_REQUEST;
       ASN1_OCTET_STRING *value;
 
-#if OPENSSL_VERSION_NUMBER >= 0x10100000L && \
-    !defined(HAVE_LIBRESSL)
+#if OPENSSL_VERSION_NUMBER >= 0x10100000L
       value = X509_EXTENSION_get_data(ext);
 #else
       value = ext->value;
@@ -9305,8 +9301,7 @@ static int tls_dotlogin_allow(const char *user) {
 
     pr_signals_handle();
 
-#if OPENSSL_VERSION_NUMBER >= 0x10100000L && \
-    !defined(HAVE_LIBRESSL)
+#if OPENSSL_VERSION_NUMBER >= 0x10100000L
     X509_get0_signature(&client_sig, NULL, client_cert);
     X509_get0_signature(&file_sig, NULL, file_cert);
 #else
@@ -9376,8 +9371,7 @@ static int tls_cert_to_user(const char *user_name, const char *field_name) {
       entry = X509_NAME_get_entry(name, pos);
       data = X509_NAME_ENTRY_get_data(entry);
       data_len = ASN1_STRING_length(data);
-#if OPENSSL_VERSION_NUMBER >= 0x10100000L && \
-    !defined(HAVE_LIBRESSL)
+#if OPENSSL_VERSION_NUMBER >= 0x10100000L
       data_str = ASN1_STRING_get0_data(data);
 #else
       data_str = ASN1_STRING_data(data);
@@ -9428,8 +9422,7 @@ static int tls_cert_to_user(const char *user_name, const char *field_name) {
 
           data_len = ASN1_STRING_length(name->d.ia5);
 
-#if OPENSSL_VERSION_NUMBER >= 0x10100000L && \
-    !defined(HAVE_LIBRESSL)
+#if OPENSSL_VERSION_NUMBER >= 0x10100000L
           data_str = ASN1_STRING_get0_data(name->d.ia5);
 #else 
           data_str = ASN1_STRING_data(name->d.ia5);
@@ -9492,8 +9485,7 @@ static int tls_cert_to_user(const char *user_name, const char *field_name) {
 
             asn_data = X509_EXTENSION_get_data(ext);
             asn_datalen = ASN1_STRING_length(asn_data);
-#if OPENSSL_VERSION_NUMBER >= 0x10100000L && \
-    !defined(HAVE_LIBRESSL)
+#if OPENSSL_VERSION_NUMBER >= 0x10100000L
             asn_datastr = ASN1_STRING_get0_data(asn_data);
 #else     
             asn_datastr = ASN1_STRING_data(asn_data);
@@ -9956,8 +9948,7 @@ static void tls_setup_cert_environ(pool *p, const char *env_prefix,
     tls_setup_cert_ext_environ(pstrcat(p, env_prefix, "EXT_", NULL), cert);
 
     bio = BIO_new(BIO_s_mem());
-#if OPENSSL_VERSION_NUMBER < 0x10100000L || \
-    defined(HAVE_LIBRESSL)
+#if OPENSSL_VERSION_NUMBER < 0x10100000L
     ASN1_TIME_print(bio, X509_get_notBefore(cert));
 #else
     ASN1_TIME_print(bio, X509_get0_notBefore(cert));
@@ -9972,8 +9963,7 @@ static void tls_setup_cert_environ(pool *p, const char *env_prefix,
     BIO_free(bio);
 
     bio = BIO_new(BIO_s_mem());
-#if OPENSSL_VERSION_NUMBER < 0x10100000L || \
-    defined(HAVE_LIBRESSL)
+#if OPENSSL_VERSION_NUMBER < 0x10100000L
     ASN1_TIME_print(bio, X509_get_notAfter(cert));
 #else
     ASN1_TIME_print(bio, X509_get0_notAfter(cert));
@@ -9988,8 +9978,7 @@ static void tls_setup_cert_environ(pool *p, const char *env_prefix,
     BIO_free(bio);
 
     bio = BIO_new(BIO_s_mem());
-#if OPENSSL_VERSION_NUMBER >= 0x10100000L && \
-    !defined(HAVE_LIBRESSL)
+#if OPENSSL_VERSION_NUMBER >= 0x10100000L
     X509_get0_signature(NULL, &algo, cert);
 #else
     algo = cert->cert_info->signature;
@@ -10445,8 +10434,7 @@ static int tls_verify_crl(int ok, X509_STORE_CTX *ctx) {
 #if OPENSSL_VERSION_NUMBER >= 0x10100000L && \
     !defined(HAVE_LIBRESSL)
   crls = X509_STORE_CTX_get1_crls(store_ctx, issuer);
-#elif OPENSSL_VERSION_NUMBER >= 0x10000000L && \
-      !defined(HAVE_LIBRESSL)
+#elif OPENSSL_VERSION_NUMBER >= 0x10000000L
   crls = X509_STORE_get1_crls(store_ctx, issuer);
 #else
   /* Your OpenSSL is before 1.0.0.  You really need to upgrade. */
@@ -10506,8 +10494,7 @@ static int tls_verify_crl(int ok, X509_STORE_CTX *ctx) {
       }
 
       /* Check date of CRL to make sure it's not expired */
-#if OPENSSL_VERSION_NUMBER >= 0x10100000L && \
-    !defined(HAVE_LIBRESSL)
+#if OPENSSL_VERSION_NUMBER >= 0x10100000L
       res = X509_cmp_current_time(X509_CRL_get0_nextUpdate(crl));
 #else
       res = X509_cmp_current_time(X509_CRL_get_nextUpdate(crl));
@@ -10551,8 +10538,7 @@ static int tls_verify_crl(int ok, X509_STORE_CTX *ctx) {
 #if OPENSSL_VERSION_NUMBER >= 0x10100000L && \
     !defined(HAVE_LIBRESSL)
   crls = X509_STORE_CTX_get1_crls(store_ctx, subject);
-#elif OPENSSL_VERSION_NUMBER >= 0x10000000L && \
-      !defined(HAVE_LIBRESSL)
+#elif OPENSSL_VERSION_NUMBER >= 0x10000000L
   crls = X509_STORE_get1_crls(store_ctx, subject);
 #else
   /* Your OpenSSL is before 1.0.0.  You really need to upgrade. */
@@ -10575,8 +10561,7 @@ static int tls_verify_crl(int ok, X509_STORE_CTX *ctx) {
         if (revoked == NULL) {
           continue;
         }
-#if OPENSSL_VERSION_NUMBER >= 0x10100000L && \
-    !defined(HAVE_LIBRESSL)
+#if OPENSSL_VERSION_NUMBER >= 0x10100000L
         sn = X509_REVOKED_get0_serialNumber(revoked);
 #else
         sn = revoked->serialNumber;
@@ -10841,8 +10826,7 @@ static int tls_verify_ocsp_url(X509_STORE_CTX *ctx, X509 *cert,
     return FALSE;
   }
 
-#if OPENSSL_VERSION_NUMBER >= 0x10100000L && \
-    !defined(HAVE_LIBRESSL)
+#if OPENSSL_VERSION_NUMBER >= 0x10100000L
   store = X509_STORE_CTX_get0_store(ctx);
 #else
   store = ctx->ctx;
@@ -12314,7 +12298,8 @@ static void tls_data_renegotiate(SSL *ssl) {
       tls_data_renegotiate_current >= tls_data_renegotiate_limit) {
 
     switch (SSL_version(ssl)) {
-# if defined(TLS1_3_VERSION)
+# if defined(TLS1_3_VERSION) && \
+     !defined(HAVE_LIBRESSL)
       /* If we're a TLSv1.3 session, use SSL_key_update() to request new
        * session keys; TLSv1.3 does not support renegotiations.
        */
@@ -16646,8 +16631,7 @@ static void tls_lookup_all(server_rec *s) {
 
   /* TLSServerInfoFile */
 #if !defined(OPENSSL_NO_TLSEXT)
-# if OPENSSL_VERSION_NUMBER >= 0x10002000L && \
-     !defined(HAVE_LIBRESSL)
+# if OPENSSL_VERSION_NUMBER >= 0x10002000L
   c = find_config(s->conf, CONF_PARAM, "TLSServerInfoFile", FALSE);
   if (c != NULL) {
     tls_serverinfo_file = c->argv[0];
@@ -16689,8 +16673,7 @@ static void tls_lookup_all(server_rec *s) {
 /* SSL setters */
 
 static int tls_ssl_set_cert_chain(SSL *ssl) {
-#if OPENSSL_VERSION_NUMBER >= 0x10100000L && \
-    !defined(HAVE_LIBRESSL)
+#if OPENSSL_VERSION_NUMBER >= 0x10100000L
   int res;
 
   if (tls_ca_chain == NULL) {
@@ -18615,8 +18598,7 @@ static int tls_init(void) {
    * For now, we only log if there is a difference.
    */
 
-#if OPENSSL_VERSION_NUMBER < 0x10100000L || \
-    defined(HAVE_LIBRESSL)
+#if OPENSSL_VERSION_NUMBER < 0x10100000L
   openssl_version = SSLeay();
 #else
   openssl_version = OpenSSL_version_num();
@@ -18638,8 +18620,7 @@ static int tls_init(void) {
     if (unexpected_version_mismatch == TRUE) {
       const char *version_text = NULL;
 
-#if OPENSSL_VERSION_NUMBER < 0x10100000L || \
-    defined(HAVE_LIBRESSL)
+#if OPENSSL_VERSION_NUMBER < 0x10100000L
       version_text = SSLeay_version(SSLEAY_VERSION);
 #else
       version_text = OpenSSL_version(OPENSSL_VERSION);
