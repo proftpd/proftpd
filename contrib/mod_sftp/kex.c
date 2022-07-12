@@ -1,6 +1,6 @@
 /*
  * ProFTPD - mod_sftp key exchange (kex)
- * Copyright (c) 2008-2020 TJ Saunders
+ * Copyright (c) 2008-2022 TJ Saunders
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -1245,32 +1245,17 @@ static int finish_dh(struct sftp_kex *kex) {
     }
 
     if (have_good_dh(kex->dh, kex->e) < 0) {
-      dh_pub_key = NULL;
-      dh_priv_key = NULL;
-
-#if OPENSSL_VERSION_NUMBER >= 0x10100000L && \
-    !defined(HAVE_LIBRESSL)
-      DH_get0_key(kex->dh, &dh_pub_key, &dh_priv_key);
-#else
-      dh_pub_key = kex->dh->pub_key;
-      dh_priv_key = kex->dh->priv_key;
-#endif /* prior to OpenSSL-1.1.0 */
-
-      if (dh_priv_key != NULL) {
-        BN_clear_free(dh_priv_key);
+#if OPENSSL_VERSION_NUMBER < 0x10100000L || \
+    defined(HAVE_LIBRESSL)
+      if (kex->dh->priv_key != NULL) {
+        BN_clear_free(kex->dh->priv_key);
+        kex->dh->priv_key = NULL;
       }
 
-      if (dh_pub_key != NULL) {
-        BN_clear_free(dh_pub_key);
+      if (kex->dh->pub_key != NULL) {
+        BN_clear_free(kex->dh->pub_key);
+        kex->dh->pub_key = NULL;
       }
-
-#if OPENSSL_VERSION_NUMBER >= 0x10100000L
-      /* Per the docs, this is a no-no -- but its the only way to actually
-       * set the public DH key to null.
-       */
-      dh_pub_key = dh_priv_key = NULL;
-#else
-      kex->dh->pub_key = kex->dh->priv_key = NULL;
 #endif /* prior to OpenSSL-1.1.0 */
 
       continue;

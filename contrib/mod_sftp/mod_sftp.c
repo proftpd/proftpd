@@ -2571,4 +2571,3 @@ module sftp_module = {
   /* Module version */
   MOD_SFTP_VERSION
 };
-

@@ -96,7 +96,9 @@ static struct sftp_cipher ciphers[] = {
 #endif
 
 #if !defined(OPENSSL_NO_BF)
+# if OPENSSL_VERSION_NUMBER < 0x30000000L
   { "blowfish-ctr",	NULL,		0,	NULL,	FALSE, FALSE },
+# endif /* Prior to OpenSSL 3.x */
   { "blowfish-cbc",	"bf-cbc",	0,	EVP_bf_cbc, FALSE, FALSE },
 #endif /* !OPENSSL_NO_BF */
 
@@ -121,7 +123,9 @@ static struct sftp_cipher ciphers[] = {
 #endif
 
 #if !defined(OPENSSL_NO_DES)
+# if OPENSSL_VERSION_NUMBER < 0x30000000L
   { "3des-ctr",		NULL,		0,	NULL, TRUE, TRUE },
+# endif /* Prior to OpenSSL 3.x */
   { "3des-cbc",		"des-ede3-cbc",	0,	EVP_des_ede3_cbc, TRUE, TRUE },
 #endif /* !OPENSSL_NO_DES */
 
@@ -179,6 +183,7 @@ static struct sftp_digest digests[] = {
 
 static const char *trace_channel = "ssh2";
 
+#if OPENSSL_VERSION_NUMBER < 0x30000000L
 static void ctr_incr(unsigned char *ctr, size_t len) {
   register int i;
 
@@ -193,8 +198,10 @@ static void ctr_incr(unsigned char *ctr, size_t len) {
     }
   }
 }
+#endif /* Prior to OpenSSL 3.x */
 
-#if !defined(OPENSSL_NO_BF)
+#if !defined(OPENSSL_NO_BF) && \
+    OPENSSL_VERSION_NUMBER < 0x30000000L
 /* Blowfish CTR mode implementation */
 
 struct bf_ctr_ex {
@@ -353,7 +360,8 @@ static const EVP_CIPHER *get_bf_ctr_cipher(void) {
 
 #if OPENSSL_VERSION_NUMBER > 0x000907000L
 
-# if !defined(OPENSSL_NO_DES)
+# if !defined(OPENSSL_NO_DES) && \
+     OPENSSL_VERSION_NUMBER < 0x30000000L
 /* 3DES CTR mode implementation */
 
 struct des3_ctr_ex {
@@ -486,8 +494,8 @@ static int do_des3_ctr(EVP_CIPHER_CTX *ctx, unsigned char *dst,
 static const EVP_CIPHER *get_des3_ctr_cipher(void) {
   EVP_CIPHER *cipher;
 
-#if OPENSSL_VERSION_NUMBER >= 0x10100000L && \
-    !defined(HAVE_LIBRESSL)
+# if OPENSSL_VERSION_NUMBER >= 0x10100000L && \
+     !defined(HAVE_LIBRESSL)
   unsigned long flags;
 
   /* XXX TODO: At some point, we also need to call EVP_CIPHER_meth_free() on
@@ -500,13 +508,13 @@ static const EVP_CIPHER *get_des3_ctr_cipher(void) {
   EVP_CIPHER_meth_set_do_cipher(cipher, do_des3_ctr);
 
   flags = EVP_CIPH_CBC_MODE|EVP_CIPH_VARIABLE_LENGTH|EVP_CIPH_ALWAYS_CALL_INIT|EVP_CIPH_CUSTOM_IV;
-#ifdef OPENSSL_FIPS
+#  ifdef OPENSSL_FIPS
   flags |= EVP_CIPH_FLAG_FIPS;
-#endif /* OPENSSL_FIPS */
+#  endif /* OPENSSL_FIPS */
 
   EVP_CIPHER_meth_set_flags(cipher, flags);
 
-#else
+# else
   static EVP_CIPHER des3_ctr_cipher;
 
   memset(&des3_ctr_cipher, 0, sizeof(EVP_CIPHER));
@@ -520,17 +528,20 @@ static const EVP_CIPHER *get_des3_ctr_cipher(void) {
   des3_ctr_cipher.do_cipher = do_des3_ctr;
 
   des3_ctr_cipher.flags = EVP_CIPH_CBC_MODE|EVP_CIPH_VARIABLE_LENGTH|EVP_CIPH_ALWAYS_CALL_INIT|EVP_CIPH_CUSTOM_IV;
-#ifdef OPENSSL_FIPS
+#  ifdef OPENSSL_FIPS
   des3_ctr_cipher.flags |= EVP_CIPH_FLAG_FIPS;
-#endif /* OPENSSL_FIPS */
+#  endif /* OPENSSL_FIPS */
 
   cipher = &des3_ctr_cipher;
-#endif /* prior to OpenSSL-1.1.0 */
+# endif /* prior to OpenSSL-1.1.0 */
 
   return cipher;
 }
-# endif /* !OPENSSL_NO_DES */
+#endif /* !OPENSSL_NO_DES and prior to OpenSSL 3.x */
 
+#if !defined(HAVE_EVP_AES_256_CTR_OPENSSL) && \
+    !defined(HAVE_EVP_AES_192_CTR_OPENSSL) && \
+    !defined(HAVE_EVP_AES_128_CTR_OPENSSL)
 /* AES CTR mode implementation */
 struct aes_ctr_ex {
   AES_KEY key;
@@ -751,6 +762,7 @@ static const EVP_CIPHER *get_aes_ctr_cipher(int key_len) {
 
   return cipher;
 }
+#endif /* OpenSSL implements AES CTR modes */
 
 static int update_umac64(EVP_MD_CTX *ctx, const void *data, size_t len) {
   int res;
@@ -957,12 +969,18 @@ const EVP_CIPHER *sftp_crypto_get_cipher(const char *name, size_t *key_len,
     size_t *discard_len) {
   register unsigned int i;
 
+  if (name == NULL) {
+    errno = EINVAL;
+    return NULL;
+  }
+
   for (i = 0; ciphers[i].name; i++) {
     if (strcmp(ciphers[i].name, name) == 0) {
       const EVP_CIPHER *cipher;
 
-      if (strncmp(name, "blowfish-ctr", 13) == 0) {
-#if !defined(OPENSSL_NO_BF)
+      if (strcmp(name, "blowfish-ctr") == 0) {
+#if !defined(OPENSSL_NO_BF) && \
+    OPENSSL_VERSION_NUMBER < 0x30000000L
         cipher = get_bf_ctr_cipher();
 #else
         (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
@@ -972,8 +990,9 @@ const EVP_CIPHER *sftp_crypto_get_cipher(const char *name, size_t *key_len,
 #endif /* !OPENSSL_NO_BF */
 
 #if OPENSSL_VERSION_NUMBER > 0x000907000L
-      } else if (strncmp(name, "3des-ctr", 9) == 0) {
-# if !defined(OPENSSL_NO_DES)
+      } else if (strcmp(name, "3des-ctr") == 0) {
+# if !defined(OPENSSL_NO_DES) && \
+     OPENSSL_VERSION_NUMBER < 0x30000000L
         cipher = get_des3_ctr_cipher();
 # else
         (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
@@ -982,21 +1001,21 @@ const EVP_CIPHER *sftp_crypto_get_cipher(const char *name, size_t *key_len,
         return NULL;
 # endif /* !OPENSSL_NO_DES */
 
-      } else if (strncmp(name, "aes256-ctr", 11) == 0) {
+      } else if (strcmp(name, "aes256-ctr") == 0) {
 # if defined(HAVE_EVP_AES_256_CTR_OPENSSL)
         cipher = EVP_aes_256_ctr();
 # else
         cipher = get_aes_ctr_cipher(32);
 # endif /* HAVE_EVP_AES_256_CTR_OPENSSL */
 
-      } else if (strncmp(name, "aes192-ctr", 11) == 0) {
+      } else if (strcmp(name, "aes192-ctr") == 0) {
 # if defined(HAVE_EVP_AES_192_CTR_OPENSSL)
         cipher = EVP_aes_192_ctr();
 # else
         cipher = get_aes_ctr_cipher(24);
 # endif /* HAVE_EVP_AES_192_CTR_OPENSSL */
 
-      } else if (strncmp(name, "aes128-ctr", 11) == 0) {
+      } else if (strcmp(name, "aes128-ctr") == 0) {
 # if defined(HAVE_EVP_AES_128_CTR_OPENSSL)
         cipher = EVP_aes_128_ctr();
 # else
