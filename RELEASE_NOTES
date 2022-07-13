@@ -11,15 +11,32 @@ ChangeLog files.
 
   + Ensure that mod_sftp algorithms work properly when OpenSSL 3.x is used.
 
+
   + New Directives
 
-    SFTPHostKeys (Issue #1457)
+    SFTPHostKeys
+
+      This directive for the mod_sftp module can be used to specify
+      the list of SSH host key algorithms that will be presented to
+      clients; see doc/contrib/mod_sftp.html#SFTPHostKeys for more
+      information.
+
 
   + Changed Directives
 
     SFTPClientMatch (Issue #1444)
 
-    SFTPKeyExchanges curve448-512 (Issue #1437)
+      The SFTPClientMatch directive has been expanded to allow setting
+      some SSH algorithms based on the matched client banner, including
+      encryption and signature algorithms.  See
+      doc/contrib/mod_sftp.html#SFTPClientMatch for details.
+
+    SFTPKeyExchanges
+
+      The mod_sftp module now supports the "curve448-sha512" key
+      exchange algorithm, and the SFTPKeyExchanges directive has been
+      updated accordingly.  See
+      doc/contrib/mod_sftp.html#SFTPKeyExchanges.
 
 
 1.3.8rc3
