@@ -97,7 +97,13 @@ static void switch_read_cipher(void) {
   /* First, clear the context of the existing read cipher, if any. */
   if (read_ciphers[read_cipher_idx].key) {
     clear_cipher(&(read_ciphers[read_cipher_idx]));
+
+#if OPENSSL_VERSION_NUMBER < 0x10100000L || \
+    defined(HAVE_LIBRESSL)
     if (EVP_CIPHER_CTX_cleanup(read_ctxs[read_cipher_idx]) != 1) {
+#else
+    if (EVP_CIPHER_CTX_reset(read_ctxs[read_cipher_idx]) != 1) {
+#endif /* OpenSSL-1.1.x and later */
       (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
         "error clearing cipher context: %s", sftp_crypto_get_errors());
     }
@@ -118,7 +124,13 @@ static void switch_write_cipher(void) {
   /* First, clear the context of the existing read cipher, if any. */
   if (write_ciphers[write_cipher_idx].key) {
     clear_cipher(&(write_ciphers[write_cipher_idx]));
+
+#if OPENSSL_VERSION_NUMBER < 0x10100000L || \
+    defined(HAVE_LIBRESSL)
     if (EVP_CIPHER_CTX_cleanup(write_ctxs[write_cipher_idx]) != 1) {
+#else
+    if (EVP_CIPHER_CTX_reset(write_ctxs[write_cipher_idx]) != 1) {
+#endif /* OpenSSL-1.1.x and later */
       (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
         "error clearing cipher context: %s", sftp_crypto_get_errors());
     }
@@ -464,17 +476,12 @@ int sftp_cipher_set_read_key(pool *p, const EVP_MD *hash, const BIGNUM *k,
   uint32_t buflen, bufsz, id_len;
   int key_len;
   struct sftp_cipher *cipher;
-  EVP_CIPHER_CTX *cipher_ctx;
+  EVP_CIPHER_CTX *pctx;
 
   switch_read_cipher();
 
   cipher = &(read_ciphers[read_cipher_idx]);
-  cipher_ctx = read_ctxs[read_cipher_idx];
-
-  /* XXX EVP_CIPHER_CTX_init() first appeared in OpenSSL 0.9.7.  What to do
-   * for older OpenSSL installations?
-   */
-  EVP_CIPHER_CTX_init(cipher_ctx);
+  pctx = read_ctxs[read_cipher_idx];
 
   bufsz = buflen = SFTP_CIPHER_BUFSZ;
   ptr = buf = sftp_msg_getbuf(p, bufsz);
@@ -511,11 +518,17 @@ int sftp_cipher_set_read_key(pool *p, const EVP_MD *hash, const BIGNUM *k,
     return -1;
   }
 
-#if defined(PR_USE_OPENSSL_EVP_CIPHERINIT_EX)
-  if (EVP_CipherInit_ex(cipher_ctx, cipher->cipher, NULL, NULL,
-    cipher->iv, 0) != 1) {
+#if OPENSSL_VERSION_NUMBER < 0x10100000L || \
+    defined(HAVE_LIBRESSL)
+  EVP_CIPHER_CTX_init(pctx);
 #else
-  if (EVP_CipherInit(cipher_ctx, cipher->cipher, NULL, cipher->iv, 0) != 1) {
+  EVP_CIPHER_CTX_reset(pctx);
+#endif /* prior to OpenSSL-1.1.0 */
+
+#if defined(PR_USE_OPENSSL_EVP_CIPHERINIT_EX)
+  if (EVP_CipherInit_ex(pctx, cipher->cipher, NULL, NULL, cipher->iv, 0) != 1) {
+#else
+  if (EVP_CipherInit(pctx, cipher->cipher, NULL, cipher->iv, 0) != 1) {
 #endif /* PR_USE_OPENSSL_EVP_CIPHERINIT_EX */
     (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
       "error initializing %s cipher for decryption: %s", cipher->algo,
@@ -527,7 +540,7 @@ int sftp_cipher_set_read_key(pool *p, const EVP_MD *hash, const BIGNUM *k,
   /* Next, set the key length. */
   key_len = (int) cipher->key_len;
   if (key_len > 0) {
-    if (EVP_CIPHER_CTX_set_key_length(cipher_ctx, key_len) != 1) {
+    if (EVP_CIPHER_CTX_set_key_length(pctx, key_len) != 1) {
       (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
         "error setting key length (%d bytes) for %s cipher for decryption: %s",
         key_len, cipher->algo, sftp_crypto_get_errors());
@@ -541,9 +554,9 @@ int sftp_cipher_set_read_key(pool *p, const EVP_MD *hash, const BIGNUM *k,
   }
 
 #if defined(PR_USE_OPENSSL_EVP_CIPHERINIT_EX)
-  if (EVP_CipherInit_ex(cipher_ctx, NULL, NULL, cipher->key, NULL, -1) != 1) {
+  if (EVP_CipherInit_ex(pctx, NULL, NULL, cipher->key, NULL, -1) != 1) {
 #else
-  if (EVP_CipherInit(cipher_ctx, NULL, cipher->key, NULL, -1) != 1) {
+  if (EVP_CipherInit(pctx, NULL, cipher->key, NULL, -1) != 1) {
 #endif /* PR_USE_OPENSSL_EVP_CIPHERINIT_EX */
     (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
       "error re-initializing %s cipher for decryption: %s", cipher->algo,
@@ -552,7 +565,7 @@ int sftp_cipher_set_read_key(pool *p, const EVP_MD *hash, const BIGNUM *k,
     return -1;
   }
 
-  if (set_cipher_discarded(cipher, cipher_ctx) < 0) {
+  if (set_cipher_discarded(cipher, pctx) < 0) {
     pr_memscrub(ptr, bufsz);
     return -1;
   }
@@ -577,14 +590,14 @@ int sftp_cipher_set_read_key(pool *p, const EVP_MD *hash, const BIGNUM *k,
 int sftp_cipher_read_data(pool *p, unsigned char *data, uint32_t data_len,
     unsigned char **buf, uint32_t *buflen) {
   struct sftp_cipher *cipher;
-  EVP_CIPHER_CTX *cipher_ctx;
+  EVP_CIPHER_CTX *pctx;
   size_t cipher_blocksz;
 
   cipher = &(read_ciphers[read_cipher_idx]);
-  cipher_ctx = read_ctxs[read_cipher_idx];
+  pctx = read_ctxs[read_cipher_idx];
   cipher_blocksz = cipher_blockszs[read_cipher_idx];
 
-  if (cipher->key) {
+  if (cipher->key != NULL) {
     int res;
     unsigned char *ptr = NULL;
 
@@ -606,8 +619,8 @@ int sftp_cipher_read_data(pool *p, unsigned char *data, uint32_t data_len,
       ptr = *buf;
     }
 
-    res = EVP_Cipher(cipher_ctx, ptr, data, data_len);
-    if (res != 1) {
+    res = EVP_Cipher(pctx, ptr, data, data_len);
+    if (res < 0) {
       (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
         "error decrypting %s data from client: %s", cipher->algo,
         sftp_crypto_get_errors());
@@ -638,7 +651,7 @@ int sftp_cipher_set_write_algo(const char *algo) {
   unsigned int idx = write_cipher_idx;
   size_t key_len = 0, discard_len = 0;
 
-  if (write_ciphers[idx].key) {
+  if (write_ciphers[idx].key != NULL) {
     /* If we have an existing key, it means that we are currently rekeying. */
     idx = get_next_write_index();
   }
@@ -686,17 +699,12 @@ int sftp_cipher_set_write_key(pool *p, const EVP_MD *hash, const BIGNUM *k,
   uint32_t buflen, bufsz, id_len;
   int key_len;
   struct sftp_cipher *cipher;
-  EVP_CIPHER_CTX *cipher_ctx;
+  EVP_CIPHER_CTX *pctx;
 
   switch_write_cipher();
 
   cipher = &(write_ciphers[write_cipher_idx]);
-  cipher_ctx = write_ctxs[write_cipher_idx];
-
-  /* XXX EVP_CIPHER_CTX_init() first appeared in OpenSSL 0.9.7.  What to do
-   * for older OpenSSL installations?
-   */
-  EVP_CIPHER_CTX_init(cipher_ctx);
+  pctx = write_ctxs[write_cipher_idx];
 
   bufsz = buflen = SFTP_CIPHER_BUFSZ;
   ptr = buf = sftp_msg_getbuf(p, bufsz);
@@ -733,11 +741,17 @@ int sftp_cipher_set_write_key(pool *p, const EVP_MD *hash, const BIGNUM *k,
     return -1;
   }
 
-#if defined(PR_USE_OPENSSL_EVP_CIPHERINIT_EX)
-  if (EVP_CipherInit_ex(cipher_ctx, cipher->cipher, NULL, NULL,
-    cipher->iv, 1) != 1) {
+#if OPENSSL_VERSION_NUMBER < 0x10100000L || \
+    defined(HAVE_LIBRESSL)
+  EVP_CIPHER_CTX_init(pctx);
 #else
-  if (EVP_CipherInit(cipher_ctx, cipher->cipher, NULL, cipher->iv, 1) != 1) {
+  EVP_CIPHER_CTX_reset(pctx);
+#endif
+
+#if defined(PR_USE_OPENSSL_EVP_CIPHERINIT_EX)
+  if (EVP_CipherInit_ex(pctx, cipher->cipher, NULL, NULL, cipher->iv, 1) != 1) {
+#else
+  if (EVP_CipherInit(pctx, cipher->cipher, NULL, cipher->iv, 1) != 1) {
 #endif /* PR_USE_OPENSSL_EVP_CIPHERINIT_EX */
     (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
       "error initializing %s cipher for encryption: %s", cipher->algo,
@@ -749,7 +763,7 @@ int sftp_cipher_set_write_key(pool *p, const EVP_MD *hash, const BIGNUM *k,
   /* Next, set the key length. */
   key_len = (int) cipher->key_len;
   if (key_len > 0) {
-    if (EVP_CIPHER_CTX_set_key_length(cipher_ctx, key_len) != 1) {
+    if (EVP_CIPHER_CTX_set_key_length(pctx, key_len) != 1) {
       (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
         "error setting key length (%d bytes) for %s cipher for decryption: %s",
         key_len, cipher->algo, sftp_crypto_get_errors());
@@ -763,9 +777,9 @@ int sftp_cipher_set_write_key(pool *p, const EVP_MD *hash, const BIGNUM *k,
   }
 
 #if defined(PR_USE_OPENSSL_EVP_CIPHERINIT_EX)
-  if (EVP_CipherInit_ex(cipher_ctx, NULL, NULL, cipher->key, NULL, -1) != 1) {
+  if (EVP_CipherInit_ex(pctx, NULL, NULL, cipher->key, NULL, -1) != 1) {
 #else
-  if (EVP_CipherInit(cipher_ctx, NULL, cipher->key, NULL, -1) != 1) {
+  if (EVP_CipherInit(pctx, NULL, cipher->key, NULL, -1) != 1) {
 #endif /* PR_USE_OPENSSL_EVP_CIPHERINIT_EX */
     (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
       "error re-initializing %s cipher for encryption: %s", cipher->algo,
@@ -774,7 +788,7 @@ int sftp_cipher_set_write_key(pool *p, const EVP_MD *hash, const BIGNUM *k,
     return -1;
   }
 
-  if (set_cipher_discarded(cipher, cipher_ctx) < 0) {
+  if (set_cipher_discarded(cipher, pctx) < 0) {
     pr_memscrub(ptr, bufsz);
     return -1;
   }
@@ -786,12 +800,12 @@ int sftp_cipher_set_write_key(pool *p, const EVP_MD *hash, const BIGNUM *k,
 int sftp_cipher_write_data(struct ssh2_packet *pkt, unsigned char *buf,
     size_t *buflen) {
   struct sftp_cipher *cipher;
-  EVP_CIPHER_CTX *cipher_ctx;
+  EVP_CIPHER_CTX *pctx;
 
   cipher = &(write_ciphers[write_cipher_idx]);
-  cipher_ctx = write_ctxs[write_cipher_idx];
+  pctx = write_ctxs[write_cipher_idx];
 
-  if (cipher->key) {
+  if (cipher->key != NULL) {
     int res;
     unsigned char *data, *ptr;
     uint32_t datalen, datasz = sizeof(uint32_t) + pkt->packet_len;
@@ -804,8 +818,8 @@ int sftp_cipher_write_data(struct ssh2_packet *pkt, unsigned char *buf,
     sftp_msg_write_data(&data, &datalen, pkt->payload, pkt->payload_len, FALSE);
     sftp_msg_write_data(&data, &datalen, pkt->padding, pkt->padding_len, FALSE);
 
-    res = EVP_Cipher(cipher_ctx, buf, ptr, (datasz - datalen));
-    if (res != 1) {
+    res = EVP_Cipher(pctx, buf, ptr, (datasz - datalen));
+    if (res < 0) {
       (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
         "error encrypting %s data for client: %s", cipher->algo,
         sftp_crypto_get_errors());
