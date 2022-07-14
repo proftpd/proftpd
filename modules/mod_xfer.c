@@ -2678,7 +2678,7 @@ MODRET xfer_retr(cmd_rec *cmd) {
   unsigned char have_limit = FALSE;
   long bufsz, len = 0;
   off_t start_offset = 0, download_len = 0;
-  off_t curr_offset, curr_pos = 0, nbytes_sent = 0, cnt_steps = 0, cnt_next = 0;
+  off_t curr_offset, curr_pos = 0, nbytes_sent = 0;
   pr_error_t *err = NULL;
 
   /* Prepare for any potential throttling. */
@@ -2853,11 +2853,6 @@ MODRET xfer_retr(cmd_rec *cmd) {
 
   pr_alarms_unblock();
 
-  cnt_steps = session.xfer.file_size / 100;
-  if (cnt_steps == 0) {
-    cnt_steps = 1;
-  }
-
   if (session.range_len > 0) {
     if (curr_pos + session.range_len > st.st_size) {
       /* If the RANG end point is past the end of our file, ignore it and
@@ -2932,8 +2927,6 @@ MODRET xfer_retr(cmd_rec *cmd) {
   }
 
   while (nbytes_sent != download_len) {
-    int force_scoreboard_update = FALSE;
-
     pr_signals_handle();
 
     if (XFER_ABORTED) {
@@ -2996,19 +2989,13 @@ MODRET xfer_retr(cmd_rec *cmd) {
     nbytes_sent += len;
     curr_offset += len;
 
-    if ((nbytes_sent / cnt_steps) != cnt_next) {
-      cnt_next = nbytes_sent / cnt_steps;
-      force_scoreboard_update = TRUE;
-    }
-
     /* If no throttling is configured, this simply updates the scoreboard.
      * In this case, we want to use session.xfer.total_bytes, rather than
      * nbytes_sent, as the latter incorporates a REST position and the
      * former does not.  (When handling STOR, this is not an issue: different
      * end-of-loop conditions).
      */
-    pr_throttle_pause(session.xfer.total_bytes, force_scoreboard_update,
-      nbytes_sent);
+    pr_throttle_pause(session.xfer.total_bytes, FALSE, nbytes_sent);
   }
 
   if (XFER_ABORTED) {

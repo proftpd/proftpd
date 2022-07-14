@@ -36,6 +36,7 @@
 - Issue 1476 - Reload after omitting explicit ModulePath value causes fatal
   module load failures.
 - Issue 1433 - Update PR_SCORE_XFER_DONE in pr_throttle_pause
+- Issue 1484 - Scoreboard updates should happen at regular time intervals
 
 1.3.8rc3 - Released 23-Apr-2022
 --------------------------------
