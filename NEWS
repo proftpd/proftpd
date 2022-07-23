@@ -15,7 +15,7 @@
   where `N' is the issue number.
 -----------------------------------------------------------------------------
 
-1.3.8rc4
+1.3.8rc4 - Released 23-Jul-2022
 --------------------------------
 - Issue 1434 - mod_sftp should fail on startup when SFTP and TLS are both
   enabled for a vhost.
