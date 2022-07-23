@@ -1,7 +1,7 @@
 /*
  * ProFTPD: mod_statcache -- a module implementing caching of stat(2),
  *                           fstat(2), and lstat(2) calls
- * Copyright (c) 2013-2021 TJ Saunders
+ * Copyright (c) 2013-2022 TJ Saunders
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -421,14 +421,13 @@ static uint32_t statcache_stats_get_rejects(void) {
 #endif /* PR_USE_CTRLS */
 
 static int statcache_stats_decr_count(uint32_t decr) {
-  uint32_t *count = NULL, *highest = NULL;
+  uint32_t *count = NULL;
 
   if (decr == 0) {
     return 0;
   }
 
   count = statcache_table_stats;
-  highest = statcache_table_stats + 1;
 
   /* Prevent underflow. */
   if (*count < decr) {

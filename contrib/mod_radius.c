@@ -1,6 +1,6 @@
 /*
  * ProFTPD: mod_radius -- a module for RADIUS authentication and accounting
- * Copyright (c) 2001-2021 TJ Saunders
+ * Copyright (c) 2001-2022 TJ Saunders
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -2506,9 +2506,8 @@ static radius_attrib_t *radius_get_attrib(radius_packet_t *packet,
 static radius_attrib_t *radius_get_vendor_attrib(radius_packet_t *packet,
     unsigned char type) {
   radius_attrib_t *attrib = (radius_attrib_t *) &packet->data;
-  int len = ntohs(packet->length) - RADIUS_HEADER_LEN;
 
-  while (attrib) {
+  while (attrib != NULL) {
     unsigned int vendor_id = 0;
 
     pr_signals_handle();
@@ -2521,7 +2520,6 @@ static radius_attrib_t *radius_get_vendor_attrib(radius_packet_t *packet,
     }
 
     if (attrib->type != RADIUS_VENDOR_SPECIFIC) {
-      len -= attrib->length;
       attrib = (radius_attrib_t *) ((char *) attrib + attrib->length);
       continue;
     }
@@ -2533,7 +2531,6 @@ static radius_attrib_t *radius_get_vendor_attrib(radius_packet_t *packet,
     }
 
     if (vendor_id != radius_vendor_id) {
-      len -= attrib->length;
       attrib = (radius_attrib_t *) ((char *) attrib + attrib->length);
       continue;
     }
@@ -2546,7 +2543,6 @@ static radius_attrib_t *radius_get_vendor_attrib(radius_packet_t *packet,
 
       /* Does this VSA have the type requested? */
       if (vsa->type != type) {
-        len -= attrib->length;
         attrib = (radius_attrib_t *) ((char *) attrib + attrib->length);
         continue;
       }
