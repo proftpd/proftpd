@@ -24,7 +24,7 @@ ChangeLog files.
 
   + Changed Directives
 
-    SFTPClientMatch (Issue #1444)
+    SFTPClientMatch
 
       The SFTPClientMatch directive has been expanded to allow setting
       some SSH algorithms based on the matched client banner, including
