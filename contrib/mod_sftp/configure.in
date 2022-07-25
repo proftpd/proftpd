@@ -308,7 +308,10 @@ AC_TRY_LINK(
     #include <openssl/evp.h>
   ],
   [
+    EVP_PKEY *pkey;
     EVP_PKEY_CTX *pctx;
+
+    pkey = EVP_PKEY_new_raw_private_key(EVP_PKEY_X448, NULL, NULL, 0);
     pctx = EVP_PKEY_CTX_new_id(NID_X448, NULL);
   ],
   [
