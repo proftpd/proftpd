@@ -490,7 +490,7 @@ START_TEST (auth_setpwent_test) {
   char *sym_name = "setpwent";
 
   pr_auth_setpwent(p);
-  fail_unless(setpwent_count == 0, "Expected call count 0, got %u",
+  ck_assert_msg(setpwent_count == 0, "Expected call count 0, got %u",
     setpwent_count);
   mark_point();
   
@@ -501,11 +501,11 @@ START_TEST (auth_setpwent_test) {
   authtab.handler = handle_setpwent;
   authtab.m = &testsuite_module;
   res = pr_stash_add_symbol(PR_SYM_AUTH, &authtab);
-  fail_unless(res == 0, "Failed to add '%s' AUTH symbol: %s", sym_name,
+  ck_assert_msg(res == 0, "Failed to add '%s' AUTH symbol: %s", sym_name,
     strerror(errno));
 
   pr_auth_setpwent(p);
-  fail_unless(setpwent_count == 1, "Expected call count 1, got %u",
+  ck_assert_msg(setpwent_count == 1, "Expected call count 1, got %u",
     setpwent_count);
 
   pr_stash_remove_symbol(PR_SYM_AUTH, sym_name, &testsuite_module);
@@ -518,7 +518,7 @@ START_TEST (auth_endpwent_test) {
   char *sym_name = "endpwent";
 
   pr_auth_endpwent(p);
-  fail_unless(endpwent_count == 0, "Expected call count 0, got %u",
+  ck_assert_msg(endpwent_count == 0, "Expected call count 0, got %u",
     endpwent_count);
   mark_point();
   
@@ -529,11 +529,11 @@ START_TEST (auth_endpwent_test) {
   authtab.handler = handle_endpwent;
   authtab.m = &testsuite_module;
   res = pr_stash_add_symbol(PR_SYM_AUTH, &authtab);
-  fail_unless(res == 0, "Failed to add '%s' AUTH symbol: %s", sym_name,
+  ck_assert_msg(res == 0, "Failed to add '%s' AUTH symbol: %s", sym_name,
     strerror(errno));
 
   pr_auth_endpwent(p);
-  fail_unless(endpwent_count == 1, "Expected call count 1, got %u",
+  ck_assert_msg(endpwent_count == 1, "Expected call count 1, got %u",
     endpwent_count);
 
   pr_stash_remove_symbol(PR_SYM_AUTH, sym_name, &testsuite_module);
@@ -549,13 +549,13 @@ START_TEST (auth_getpwent_test) {
   getpwent_count = 0;
 
   pw = pr_auth_getpwent(NULL);
-  fail_unless(pw == NULL, "Found pwent unexpectedly");
-  fail_unless(errno == EINVAL, "Failed to set errno to EINVAL, got %d (%s)",
+  ck_assert_msg(pw == NULL, "Found pwent unexpectedly");
+  ck_assert_msg(errno == EINVAL, "Failed to set errno to EINVAL, got %d (%s)",
     errno, strerror(errno));
 
   pw = pr_auth_getpwent(p);
-  fail_unless(pw == NULL, "Found pwent unexpectedly");
-  fail_unless(getpwent_count == 0, "Expected call count 0, got %u",
+  ck_assert_msg(pw == NULL, "Found pwent unexpectedly");
+  ck_assert_msg(getpwent_count == 0, "Expected call count 0, got %u",
     getpwent_count);
   mark_point();
   
@@ -566,26 +566,26 @@ START_TEST (auth_getpwent_test) {
   authtab.handler = handle_getpwent;
   authtab.m = &testsuite_module;
   res = pr_stash_add_symbol(PR_SYM_AUTH, &authtab);
-  fail_unless(res == 0, "Failed to add '%s' AUTH symbol: %s", sym_name,
+  ck_assert_msg(res == 0, "Failed to add '%s' AUTH symbol: %s", sym_name,
     strerror(errno));
 
   pw = pr_auth_getpwent(p);
-  fail_unless(pw != NULL, "Failed to find pwent: %s", strerror(errno));
-  fail_unless(getpwent_count == 1, "Expected call count 1, got %u",
+  ck_assert_msg(pw != NULL, "Failed to find pwent: %s", strerror(errno));
+  ck_assert_msg(getpwent_count == 1, "Expected call count 1, got %u",
     getpwent_count);
 
   pw = pr_auth_getpwent(p);
-  fail_unless(pw == NULL, "Failed to avoid pwent with bad UID");
-  fail_unless(errno == ENOENT, "Expected ENOENT (%d), got %s (%d)", ENOENT,
+  ck_assert_msg(pw == NULL, "Failed to avoid pwent with bad UID");
+  ck_assert_msg(errno == ENOENT, "Expected ENOENT (%d), got %s (%d)", ENOENT,
     strerror(errno), errno);
-  fail_unless(getpwent_count == 2, "Expected call count 2, got %u",
+  ck_assert_msg(getpwent_count == 2, "Expected call count 2, got %u",
     getpwent_count);
 
   pw = pr_auth_getpwent(p);
-  fail_unless(pw == NULL, "Failed to avoid pwent with bad GID");
-  fail_unless(errno == ENOENT, "Expected ENOENT (%d), got %s (%d)", ENOENT,
+  ck_assert_msg(pw == NULL, "Failed to avoid pwent with bad GID");
+  ck_assert_msg(errno == ENOENT, "Expected ENOENT (%d), got %s (%d)", ENOENT,
     strerror(errno), errno);
-  fail_unless(getpwent_count == 3, "Expected call count 3, got %u",
+  ck_assert_msg(getpwent_count == 3, "Expected call count 3, got %u",
     getpwent_count);
 
   pr_auth_endpwent(p);
@@ -600,13 +600,13 @@ START_TEST (auth_getpwnam_test) {
   char *sym_name = "getpwnam";
 
   pw = pr_auth_getpwnam(NULL, NULL);
-  fail_unless(pw == NULL, "Found pwnam unexpectedly");
-  fail_unless(errno == EINVAL, "Failed to set errno to EINVAL, got %d (%s)",
+  ck_assert_msg(pw == NULL, "Found pwnam unexpectedly");
+  ck_assert_msg(errno == EINVAL, "Failed to set errno to EINVAL, got %d (%s)",
     errno, strerror(errno));
 
   pw = pr_auth_getpwnam(p, PR_TEST_AUTH_NAME);
-  fail_unless(pw == NULL, "Found pwnam unexpectedly");
-  fail_unless(getpwnam_count == 0, "Expected call count 0, got %u",
+  ck_assert_msg(pw == NULL, "Found pwnam unexpectedly");
+  ck_assert_msg(getpwnam_count == 0, "Expected call count 0, got %u",
     getpwnam_count);
   mark_point();
   
@@ -617,40 +617,40 @@ START_TEST (auth_getpwnam_test) {
   authtab.handler = handle_getpwnam;
   authtab.m = &testsuite_module;
   res = pr_stash_add_symbol(PR_SYM_AUTH, &authtab);
-  fail_unless(res == 0, "Failed to add '%s' AUTH symbol: %s", sym_name,
+  ck_assert_msg(res == 0, "Failed to add '%s' AUTH symbol: %s", sym_name,
     strerror(errno));
 
   mark_point();
 
   pw = pr_auth_getpwnam(p, PR_TEST_AUTH_NOBODY);
-  fail_unless(pw == NULL, "Found user '%s' unexpectedly", PR_TEST_AUTH_NOBODY);
-  fail_unless(errno == ENOENT, "Expected ENOENT (%d), got %s (%d)", ENOENT,
+  ck_assert_msg(pw == NULL, "Found user '%s' unexpectedly", PR_TEST_AUTH_NOBODY);
+  ck_assert_msg(errno == ENOENT, "Expected ENOENT (%d), got %s (%d)", ENOENT,
     strerror(errno), errno);
 
   pw = pr_auth_getpwnam(p, PR_TEST_AUTH_NOBODY2);
-  fail_unless(pw == NULL, "Found user '%s' unexpectedly", PR_TEST_AUTH_NOBODY2);
-  fail_unless(errno == ENOENT, "Expected ENOENT (%d), got %s (%d)", ENOENT,
+  ck_assert_msg(pw == NULL, "Found user '%s' unexpectedly", PR_TEST_AUTH_NOBODY2);
+  ck_assert_msg(errno == ENOENT, "Expected ENOENT (%d), got %s (%d)", ENOENT,
     strerror(errno), errno);
 
   pw = pr_auth_getpwnam(p, PR_TEST_AUTH_NAME);
-  fail_unless(pw != NULL, "Failed to find user '%s': %s", PR_TEST_AUTH_NAME,
+  ck_assert_msg(pw != NULL, "Failed to find user '%s': %s", PR_TEST_AUTH_NAME,
     strerror(errno));
-  fail_unless(getpwnam_count == 3, "Expected call count 3, got %u",
+  ck_assert_msg(getpwnam_count == 3, "Expected call count 3, got %u",
     getpwnam_count);
 
   pw = pr_auth_getpwnam(p, PR_TEST_AUTH_NAME);
-  fail_unless(pw != NULL, "Failed to find user '%s': %s", PR_TEST_AUTH_NAME,
+  ck_assert_msg(pw != NULL, "Failed to find user '%s': %s", PR_TEST_AUTH_NAME,
     strerror(errno));
-  fail_unless(getpwnam_count == 4, "Expected call count 4, got %u",
+  ck_assert_msg(getpwnam_count == 4, "Expected call count 4, got %u",
     getpwnam_count);
 
   mark_point();
 
   pw = pr_auth_getpwnam(p, "other");
-  fail_unless(pw == NULL, "Found pwnam for user 'other' unexpectedly");
-  fail_unless(errno == ENOENT, "Failed to set errno to ENOENT, got %d (%s)",
+  ck_assert_msg(pw == NULL, "Found pwnam for user 'other' unexpectedly");
+  ck_assert_msg(errno == ENOENT, "Failed to set errno to ENOENT, got %d (%s)",
     errno, strerror(errno));
-  fail_unless(getpwnam_count == 5, "Expected call count 5, got %u",
+  ck_assert_msg(getpwnam_count == 5, "Expected call count 5, got %u",
     getpwnam_count);
 
   pr_auth_endpwent(p);
@@ -665,13 +665,13 @@ START_TEST (auth_getpwuid_test) {
   char *sym_name = "getpwuid";
 
   pw = pr_auth_getpwuid(NULL, -1);
-  fail_unless(pw == NULL, "Found pwuid unexpectedly");
-  fail_unless(errno == EINVAL, "Failed to set errno to EINVAL, got %d (%s)",
+  ck_assert_msg(pw == NULL, "Found pwuid unexpectedly");
+  ck_assert_msg(errno == EINVAL, "Failed to set errno to EINVAL, got %d (%s)",
     errno, strerror(errno));
 
   pw = pr_auth_getpwuid(p, PR_TEST_AUTH_UID);
-  fail_unless(pw == NULL, "Found pwuid unexpectedly");
-  fail_unless(getpwuid_count == 0, "Expected call count 0, got %u",
+  ck_assert_msg(pw == NULL, "Found pwuid unexpectedly");
+  ck_assert_msg(getpwuid_count == 0, "Expected call count 0, got %u",
     getpwuid_count);
   mark_point();
   
@@ -682,34 +682,34 @@ START_TEST (auth_getpwuid_test) {
   authtab.handler = handle_getpwuid;
   authtab.m = &testsuite_module;
   res = pr_stash_add_symbol(PR_SYM_AUTH, &authtab);
-  fail_unless(res == 0, "Failed to add '%s' AUTH symbol: %s", sym_name,
+  ck_assert_msg(res == 0, "Failed to add '%s' AUTH symbol: %s", sym_name,
     strerror(errno));
 
   mark_point();
 
   pw = pr_auth_getpwuid(p, PR_TEST_AUTH_UID);
-  fail_unless(pw != NULL, "Failed to find pwuid: %s", strerror(errno));
-  fail_unless(getpwuid_count == 1, "Expected call count 1, got %u",
+  ck_assert_msg(pw != NULL, "Failed to find pwuid: %s", strerror(errno));
+  ck_assert_msg(getpwuid_count == 1, "Expected call count 1, got %u",
     getpwuid_count);
 
   pw = pr_auth_getpwuid(p, PR_TEST_AUTH_NOUID);
-  fail_unless(pw == NULL, "Found pwuid for NOUID unexpectedly");
-  fail_unless(errno == ENOENT, "Expected ENOENT (%d), got %s (%d)", ENOENT,
+  ck_assert_msg(pw == NULL, "Found pwuid for NOUID unexpectedly");
+  ck_assert_msg(errno == ENOENT, "Expected ENOENT (%d), got %s (%d)", ENOENT,
     strerror(errno), errno);
 
   pw = pr_auth_getpwuid(p, PR_TEST_AUTH_NOUID2);
-  fail_unless(pw == NULL, "Found pwuid for NOUID2 unexpectedly");
-  fail_unless(errno == ENOENT, "Expected ENOENT (%d), got %s (%d)", ENOENT,
+  ck_assert_msg(pw == NULL, "Found pwuid for NOUID2 unexpectedly");
+  ck_assert_msg(errno == ENOENT, "Expected ENOENT (%d), got %s (%d)", ENOENT,
     strerror(errno), errno);
 
   mark_point();
 
   pw = pr_auth_getpwuid(p, 5);
-  fail_unless(pw == NULL, "Found pwuid for UID 5 unexpectedly");
-  fail_unless(errno == ENOENT, "Expected ENOENT (%d), got %s (%d)", ENOENT,
+  ck_assert_msg(pw == NULL, "Found pwuid for UID 5 unexpectedly");
+  ck_assert_msg(errno == ENOENT, "Expected ENOENT (%d), got %s (%d)", ENOENT,
     strerror(errno), errno);
 
-  fail_unless(getpwuid_count == 4, "Expected call count 4, got %u",
+  ck_assert_msg(getpwuid_count == 4, "Expected call count 4, got %u",
     getpwuid_count);
 
   pr_stash_remove_symbol(PR_SYM_AUTH, sym_name, &testsuite_module);
@@ -725,13 +725,13 @@ START_TEST (auth_name2uid_test) {
   pr_auth_cache_set(FALSE, PR_AUTH_CACHE_FL_BAD_NAME2UID);
 
   uid = pr_auth_name2uid(NULL, NULL);
-  fail_unless(uid == (uid_t) -1, "Found UID unexpectedly");
-  fail_unless(errno == EINVAL, "Failed to set errno to EINVAL, got %d (%s)",
+  ck_assert_msg(uid == (uid_t) -1, "Found UID unexpectedly");
+  ck_assert_msg(errno == EINVAL, "Failed to set errno to EINVAL, got %d (%s)",
     errno, strerror(errno));
 
   uid = pr_auth_name2uid(p, PR_TEST_AUTH_NAME);
-  fail_unless(uid == (uid_t) -1, "Found UID unexpectedly");
-  fail_unless(name2uid_count == 0, "Expected call count 0, got %u",
+  ck_assert_msg(uid == (uid_t) -1, "Found UID unexpectedly");
+  ck_assert_msg(name2uid_count == 0, "Expected call count 0, got %u",
     name2uid_count);
   mark_point();
   
@@ -742,15 +742,15 @@ START_TEST (auth_name2uid_test) {
   authtab.handler = handle_name2uid;
   authtab.m = &testsuite_module;
   res = pr_stash_add_symbol(PR_SYM_AUTH, &authtab);
-  fail_unless(res == 0, "Failed to add '%s' AUTH symbol: %s", sym_name,
+  ck_assert_msg(res == 0, "Failed to add '%s' AUTH symbol: %s", sym_name,
     strerror(errno));
 
   mark_point();
 
   uid = pr_auth_name2uid(p, PR_TEST_AUTH_NAME);
-  fail_unless(uid == PR_TEST_AUTH_UID, "Expected UID %lu, got %lu",
+  ck_assert_msg(uid == PR_TEST_AUTH_UID, "Expected UID %lu, got %lu",
     (unsigned long) PR_TEST_AUTH_UID, (unsigned long) uid);
-  fail_unless(name2uid_count == 1, "Expected call count 1, got %u",
+  ck_assert_msg(name2uid_count == 1, "Expected call count 1, got %u",
     name2uid_count);
 
   mark_point();
@@ -758,9 +758,9 @@ START_TEST (auth_name2uid_test) {
   /* Call again; the call counter should NOT increment due to caching. */
 
   uid = pr_auth_name2uid(p, PR_TEST_AUTH_NAME);
-  fail_unless(uid == PR_TEST_AUTH_UID, "Expected UID %lu, got %lu",
+  ck_assert_msg(uid == PR_TEST_AUTH_UID, "Expected UID %lu, got %lu",
     (unsigned long) PR_TEST_AUTH_UID, (unsigned long) uid);
-  fail_unless(name2uid_count == 1, "Expected call count 1, got %u",
+  ck_assert_msg(name2uid_count == 1, "Expected call count 1, got %u",
     name2uid_count);
 
   pr_stash_remove_symbol(PR_SYM_AUTH, sym_name, &testsuite_module);
@@ -776,17 +776,17 @@ START_TEST (auth_uid2name_test) {
   pr_auth_cache_set(FALSE, PR_AUTH_CACHE_FL_BAD_UID2NAME);
 
   name = pr_auth_uid2name(NULL, -1);
-  fail_unless(name == NULL, "Found name unexpectedly: %s", name);
-  fail_unless(errno == EINVAL, "Failed to set errno to EINVAL, got %d (%s)",
+  ck_assert_msg(name == NULL, "Found name unexpectedly: %s", name);
+  ck_assert_msg(errno == EINVAL, "Failed to set errno to EINVAL, got %d (%s)",
     errno, strerror(errno));
   mark_point();
 
   name = pr_auth_uid2name(p, PR_TEST_AUTH_UID);
-  fail_unless(name != NULL, "Failed to find name for UID %lu: %s",
+  ck_assert_msg(name != NULL, "Failed to find name for UID %lu: %s",
     (unsigned long) PR_TEST_AUTH_UID, strerror(errno));
-  fail_unless(strcmp(name, PR_TEST_AUTH_UID_STR) == 0,
+  ck_assert_msg(strcmp(name, PR_TEST_AUTH_UID_STR) == 0,
      "Expected name '%s', got '%s'", PR_TEST_AUTH_UID_STR, name);
-  fail_unless(uid2name_count == 0, "Expected call count 0, got %u",
+  ck_assert_msg(uid2name_count == 0, "Expected call count 0, got %u",
     uid2name_count);
   mark_point();
   
@@ -797,16 +797,16 @@ START_TEST (auth_uid2name_test) {
   authtab.handler = handle_uid2name;
   authtab.m = &testsuite_module;
   res = pr_stash_add_symbol(PR_SYM_AUTH, &authtab);
-  fail_unless(res == 0, "Failed to add '%s' AUTH symbol: %s", sym_name,
+  ck_assert_msg(res == 0, "Failed to add '%s' AUTH symbol: %s", sym_name,
     strerror(errno));
 
   mark_point();
 
   name = pr_auth_uid2name(p, PR_TEST_AUTH_UID);
-  fail_unless(name != NULL, "Expected name, got null");
-  fail_unless(strcmp(name, PR_TEST_AUTH_NAME) == 0,
+  ck_assert_msg(name != NULL, "Expected name, got null");
+  ck_assert_msg(strcmp(name, PR_TEST_AUTH_NAME) == 0,
     "Expected name '%s', got '%s'", PR_TEST_AUTH_NAME, name);
-  fail_unless(uid2name_count == 1, "Expected call count 1, got %u",
+  ck_assert_msg(uid2name_count == 1, "Expected call count 1, got %u",
     uid2name_count);
 
   pr_stash_remove_symbol(PR_SYM_AUTH, sym_name, &testsuite_module);
@@ -819,7 +819,7 @@ START_TEST (auth_setgrent_test) {
   char *sym_name = "setgrent";
 
   pr_auth_setgrent(p);
-  fail_unless(setgrent_count == 0, "Expected call count 0, got %u",
+  ck_assert_msg(setgrent_count == 0, "Expected call count 0, got %u",
     setgrent_count);
   mark_point();
   
@@ -830,11 +830,11 @@ START_TEST (auth_setgrent_test) {
   authtab.handler = handle_setgrent;
   authtab.m = &testsuite_module;
   res = pr_stash_add_symbol(PR_SYM_AUTH, &authtab);
-  fail_unless(res == 0, "Failed to add '%s' AUTH symbol: %s", sym_name,
+  ck_assert_msg(res == 0, "Failed to add '%s' AUTH symbol: %s", sym_name,
     strerror(errno));
 
   pr_auth_setgrent(p);
-  fail_unless(setgrent_count == 1, "Expected call count 1, got %u",
+  ck_assert_msg(setgrent_count == 1, "Expected call count 1, got %u",
     setgrent_count);
 
   pr_stash_remove_symbol(PR_SYM_AUTH, sym_name, &testsuite_module);
@@ -847,7 +847,7 @@ START_TEST (auth_endgrent_test) {
   char *sym_name = "endgrent";
 
   pr_auth_endgrent(p);
-  fail_unless(endgrent_count == 0, "Expected call count 0, got %u",
+  ck_assert_msg(endgrent_count == 0, "Expected call count 0, got %u",
     endgrent_count);
   mark_point();
   
@@ -858,11 +858,11 @@ START_TEST (auth_endgrent_test) {
   authtab.handler = handle_endgrent;
   authtab.m = &testsuite_module;
   res = pr_stash_add_symbol(PR_SYM_AUTH, &authtab);
-  fail_unless(res == 0, "Failed to add '%s' AUTH symbol: %s", sym_name,
+  ck_assert_msg(res == 0, "Failed to add '%s' AUTH symbol: %s", sym_name,
     strerror(errno));
 
   pr_auth_endgrent(p);
-  fail_unless(endgrent_count == 1, "Expected call count 1, got %u",
+  ck_assert_msg(endgrent_count == 1, "Expected call count 1, got %u",
     endgrent_count);
 
   pr_stash_remove_symbol(PR_SYM_AUTH, sym_name, &testsuite_module);
@@ -876,13 +876,13 @@ START_TEST (auth_getgrent_test) {
   char *sym_name = "getgrent";
 
   gr = pr_auth_getgrent(NULL);
-  fail_unless(gr == NULL, "Found grent unexpectedly");
-  fail_unless(errno == EINVAL, "Failed to set errno to EINVAL, got %d (%s)",
+  ck_assert_msg(gr == NULL, "Found grent unexpectedly");
+  ck_assert_msg(errno == EINVAL, "Failed to set errno to EINVAL, got %d (%s)",
     errno, strerror(errno));
 
   gr = pr_auth_getgrent(p);
-  fail_unless(gr == NULL, "Found grent unexpectedly");
-  fail_unless(getgrent_count == 0, "Expected call count 0, got %u",
+  ck_assert_msg(gr == NULL, "Found grent unexpectedly");
+  ck_assert_msg(getgrent_count == 0, "Expected call count 0, got %u",
     getgrent_count);
   mark_point();
   
@@ -893,19 +893,19 @@ START_TEST (auth_getgrent_test) {
   authtab.handler = handle_getgrent;
   authtab.m = &testsuite_module;
   res = pr_stash_add_symbol(PR_SYM_AUTH, &authtab);
-  fail_unless(res == 0, "Failed to add '%s' AUTH symbol: %s", sym_name,
+  ck_assert_msg(res == 0, "Failed to add '%s' AUTH symbol: %s", sym_name,
     strerror(errno));
 
   gr = pr_auth_getgrent(p);
-  fail_unless(gr != NULL, "Failed to find grent: %s", strerror(errno));
-  fail_unless(getgrent_count == 1, "Expected call count 1, got %u",
+  ck_assert_msg(gr != NULL, "Failed to find grent: %s", strerror(errno));
+  ck_assert_msg(getgrent_count == 1, "Expected call count 1, got %u",
     getgrent_count);
 
   gr = pr_auth_getgrent(p);
-  fail_unless(gr == NULL, "Failed to avoid grent with bad GID");
-  fail_unless(errno == ENOENT, "Expected ENOENT (%d), got %s (%d)", ENOENT,
+  ck_assert_msg(gr == NULL, "Failed to avoid grent with bad GID");
+  ck_assert_msg(errno == ENOENT, "Expected ENOENT (%d), got %s (%d)", ENOENT,
     strerror(errno), errno);
-  fail_unless(getgrent_count == 2, "Expected call count 2, got %u",
+  ck_assert_msg(getgrent_count == 2, "Expected call count 2, got %u",
     getgrent_count);
 
   pr_auth_endgrent(p);
@@ -920,13 +920,13 @@ START_TEST (auth_getgrnam_test) {
   char *sym_name = "getgrnam";
 
   gr = pr_auth_getgrnam(NULL, NULL);
-  fail_unless(gr == NULL, "Found grnam unexpectedly");
-  fail_unless(errno == EINVAL, "Failed to set errno to EINVAL, got %d (%s)",
+  ck_assert_msg(gr == NULL, "Found grnam unexpectedly");
+  ck_assert_msg(errno == EINVAL, "Failed to set errno to EINVAL, got %d (%s)",
     errno, strerror(errno));
 
   gr = pr_auth_getgrnam(p, PR_TEST_AUTH_NAME);
-  fail_unless(gr == NULL, "Found grnam unexpectedly");
-  fail_unless(getgrnam_count == 0, "Expected call count 0, got %u",
+  ck_assert_msg(gr == NULL, "Found grnam unexpectedly");
+  ck_assert_msg(getgrnam_count == 0, "Expected call count 0, got %u",
     getgrnam_count);
   mark_point();
   
@@ -937,29 +937,29 @@ START_TEST (auth_getgrnam_test) {
   authtab.handler = handle_getgrnam;
   authtab.m = &testsuite_module;
   res = pr_stash_add_symbol(PR_SYM_AUTH, &authtab);
-  fail_unless(res == 0, "Failed to add '%s' AUTH symbol: %s", sym_name,
+  ck_assert_msg(res == 0, "Failed to add '%s' AUTH symbol: %s", sym_name,
     strerror(errno));
 
   mark_point();
 
   gr = pr_auth_getgrnam(p, PR_TEST_AUTH_NOGROUP);
-  fail_unless(gr == NULL, "Found group '%s' unexpectedly",
+  ck_assert_msg(gr == NULL, "Found group '%s' unexpectedly",
     PR_TEST_AUTH_NOGROUP);
-  fail_unless(errno == ENOENT, "Expected ENOENT (%d), got %s (%d)", ENOENT,
+  ck_assert_msg(errno == ENOENT, "Expected ENOENT (%d), got %s (%d)", ENOENT,
     strerror(errno), errno);
 
   gr = pr_auth_getgrnam(p, PR_TEST_AUTH_NAME);
-  fail_unless(gr != NULL, "Failed to find grnam: %s", strerror(errno));
-  fail_unless(getgrnam_count == 2, "Expected call count 2, got %u",
+  ck_assert_msg(gr != NULL, "Failed to find grnam: %s", strerror(errno));
+  ck_assert_msg(getgrnam_count == 2, "Expected call count 2, got %u",
     getgrnam_count);
 
   mark_point();
 
   gr = pr_auth_getgrnam(p, "other");
-  fail_unless(gr == NULL, "Found grnam for user 'other' unexpectedly");
-  fail_unless(errno == ENOENT, "Failed to set errno to ENOENT, got %d (%s)",
+  ck_assert_msg(gr == NULL, "Found grnam for user 'other' unexpectedly");
+  ck_assert_msg(errno == ENOENT, "Failed to set errno to ENOENT, got %d (%s)",
     errno, strerror(errno));
-  fail_unless(getgrnam_count == 3, "Expected call count 3, got %u",
+  ck_assert_msg(getgrnam_count == 3, "Expected call count 3, got %u",
     getgrnam_count);
 
   pr_stash_remove_symbol(PR_SYM_AUTH, sym_name, &testsuite_module);
@@ -973,13 +973,13 @@ START_TEST (auth_getgrgid_test) {
   char *sym_name = "getgrgid";
 
   gr = pr_auth_getgrgid(NULL, -1);
-  fail_unless(gr == NULL, "Found grgid unexpectedly");
-  fail_unless(errno == EINVAL, "Failed to set errno to EINVAL, got %d (%s)",
+  ck_assert_msg(gr == NULL, "Found grgid unexpectedly");
+  ck_assert_msg(errno == EINVAL, "Failed to set errno to EINVAL, got %d (%s)",
     errno, strerror(errno));
 
   gr = pr_auth_getgrgid(p, PR_TEST_AUTH_GID);
-  fail_unless(gr == NULL, "Found grgid unexpectedly");
-  fail_unless(getgrgid_count == 0, "Expected call count 0, got %u",
+  ck_assert_msg(gr == NULL, "Found grgid unexpectedly");
+  ck_assert_msg(getgrgid_count == 0, "Expected call count 0, got %u",
     getgrgid_count);
   mark_point();
   
@@ -990,29 +990,29 @@ START_TEST (auth_getgrgid_test) {
   authtab.handler = handle_getgrgid;
   authtab.m = &testsuite_module;
   res = pr_stash_add_symbol(PR_SYM_AUTH, &authtab);
-  fail_unless(res == 0, "Failed to add '%s' AUTH symbol: %s", sym_name,
+  ck_assert_msg(res == 0, "Failed to add '%s' AUTH symbol: %s", sym_name,
     strerror(errno));
 
   mark_point();
 
   gr = pr_auth_getgrgid(p, PR_TEST_AUTH_GID);
-  fail_unless(gr != NULL, "Failed to find grgid: %s", strerror(errno));
-  fail_unless(getgrgid_count == 1, "Expected call count 1, got %u",
+  ck_assert_msg(gr != NULL, "Failed to find grgid: %s", strerror(errno));
+  ck_assert_msg(getgrgid_count == 1, "Expected call count 1, got %u",
     getgrgid_count);
 
   gr = pr_auth_getgrgid(p, PR_TEST_AUTH_NOGID);
-  fail_unless(gr == NULL, "Found grgid for NOGID unexpectedly");
-  fail_unless(errno == ENOENT, "Expected ENOENT (%d), got %s (%d)", ENOENT,
+  ck_assert_msg(gr == NULL, "Found grgid for NOGID unexpectedly");
+  ck_assert_msg(errno == ENOENT, "Expected ENOENT (%d), got %s (%d)", ENOENT,
     strerror(errno), errno);
 
   mark_point();
 
   gr = pr_auth_getgrgid(p, 5);
-  fail_unless(gr == NULL, "Found grgid for GID 5 unexpectedly");
-  fail_unless(errno == ENOENT, "Expected ENOENT (%d), got %s (%d)", ENOENT,
+  ck_assert_msg(gr == NULL, "Found grgid for GID 5 unexpectedly");
+  ck_assert_msg(errno == ENOENT, "Expected ENOENT (%d), got %s (%d)", ENOENT,
     strerror(errno), errno);
 
-  fail_unless(getgrgid_count == 3, "Expected call count 3, got %u",
+  ck_assert_msg(getgrgid_count == 3, "Expected call count 3, got %u",
     getgrgid_count);
 
   pr_stash_remove_symbol(PR_SYM_AUTH, sym_name, &testsuite_module);
@@ -1028,13 +1028,13 @@ START_TEST (auth_name2gid_test) {
   pr_auth_cache_set(FALSE, PR_AUTH_CACHE_FL_BAD_NAME2GID);
 
   gid = pr_auth_name2gid(NULL, NULL);
-  fail_unless(gid == (gid_t) -1, "Found GID unexpectedly");
-  fail_unless(errno == EINVAL, "Failed to set errno to EINVAL, got %d (%s)",
+  ck_assert_msg(gid == (gid_t) -1, "Found GID unexpectedly");
+  ck_assert_msg(errno == EINVAL, "Failed to set errno to EINVAL, got %d (%s)",
     errno, strerror(errno));
 
   gid = pr_auth_name2gid(p, PR_TEST_AUTH_NAME);
-  fail_unless(gid == (gid_t) -1, "Found GID unexpectedly");
-  fail_unless(name2gid_count == 0, "Expected call count 0, got %u",
+  ck_assert_msg(gid == (gid_t) -1, "Found GID unexpectedly");
+  ck_assert_msg(name2gid_count == 0, "Expected call count 0, got %u",
     name2gid_count);
   mark_point();
   
@@ -1045,15 +1045,15 @@ START_TEST (auth_name2gid_test) {
   authtab.handler = handle_name2gid;
   authtab.m = &testsuite_module;
   res = pr_stash_add_symbol(PR_SYM_AUTH, &authtab);
-  fail_unless(res == 0, "Failed to add '%s' AUTH symbol: %s", sym_name,
+  ck_assert_msg(res == 0, "Failed to add '%s' AUTH symbol: %s", sym_name,
     strerror(errno));
 
   mark_point();
 
   gid = pr_auth_name2gid(p, PR_TEST_AUTH_NAME);
-  fail_unless(gid == PR_TEST_AUTH_GID, "Expected GID %lu, got %lu",
+  ck_assert_msg(gid == PR_TEST_AUTH_GID, "Expected GID %lu, got %lu",
     (unsigned long) PR_TEST_AUTH_GID, (unsigned long) gid);
-  fail_unless(name2gid_count == 1, "Expected call count 1, got %u",
+  ck_assert_msg(name2gid_count == 1, "Expected call count 1, got %u",
     name2gid_count);
 
   mark_point();
@@ -1061,9 +1061,9 @@ START_TEST (auth_name2gid_test) {
   /* Call again; the call counter should NOT increment due to caching. */
 
   gid = pr_auth_name2gid(p, PR_TEST_AUTH_NAME);
-  fail_unless(gid == PR_TEST_AUTH_GID, "Expected GID %lu, got %lu",
+  ck_assert_msg(gid == PR_TEST_AUTH_GID, "Expected GID %lu, got %lu",
     (unsigned long) PR_TEST_AUTH_GID, (unsigned long) gid);
-  fail_unless(name2gid_count == 1, "Expected call count 1, got %u",
+  ck_assert_msg(name2gid_count == 1, "Expected call count 1, got %u",
     name2gid_count);
 
   pr_stash_remove_symbol(PR_SYM_AUTH, sym_name, &testsuite_module);
@@ -1079,17 +1079,17 @@ START_TEST (auth_gid2name_test) {
   pr_auth_cache_set(FALSE, PR_AUTH_CACHE_FL_BAD_GID2NAME);
 
   name = pr_auth_gid2name(NULL, -1);
-  fail_unless(name == NULL, "Found name unexpectedly: %s", name);
-  fail_unless(errno == EINVAL, "Failed to set errno to EINVAL, got %d (%s)",
+  ck_assert_msg(name == NULL, "Found name unexpectedly: %s", name);
+  ck_assert_msg(errno == EINVAL, "Failed to set errno to EINVAL, got %d (%s)",
     errno, strerror(errno));
   mark_point();
 
   name = pr_auth_gid2name(p, PR_TEST_AUTH_GID);
-  fail_unless(name != NULL, "Failed to find name for GID %lu: %s",
+  ck_assert_msg(name != NULL, "Failed to find name for GID %lu: %s",
     (unsigned long) PR_TEST_AUTH_GID, strerror(errno));
-  fail_unless(strcmp(name, PR_TEST_AUTH_GID_STR) == 0,
+  ck_assert_msg(strcmp(name, PR_TEST_AUTH_GID_STR) == 0,
      "Expected name '%s', got '%s'", PR_TEST_AUTH_GID_STR, name);
-  fail_unless(gid2name_count == 0, "Expected call count 0, got %u",
+  ck_assert_msg(gid2name_count == 0, "Expected call count 0, got %u",
     gid2name_count);
   mark_point();
   
@@ -1100,16 +1100,16 @@ START_TEST (auth_gid2name_test) {
   authtab.handler = handle_gid2name;
   authtab.m = &testsuite_module;
   res = pr_stash_add_symbol(PR_SYM_AUTH, &authtab);
-  fail_unless(res == 0, "Failed to add '%s' AUTH symbol: %s", sym_name,
+  ck_assert_msg(res == 0, "Failed to add '%s' AUTH symbol: %s", sym_name,
     strerror(errno));
 
   mark_point();
 
   name = pr_auth_gid2name(p, PR_TEST_AUTH_GID);
-  fail_unless(name != NULL, "Expected name, got null");
-  fail_unless(strcmp(name, PR_TEST_AUTH_NAME) == 0,
+  ck_assert_msg(name != NULL, "Expected name, got null");
+  ck_assert_msg(strcmp(name, PR_TEST_AUTH_NAME) == 0,
     "Expected name '%s', got '%s'", PR_TEST_AUTH_NAME, name);
-  fail_unless(gid2name_count == 1, "Expected call count 1, got %u",
+  ck_assert_msg(gid2name_count == 1, "Expected call count 1, got %u",
     gid2name_count);
 
   pr_stash_remove_symbol(PR_SYM_AUTH, sym_name, &testsuite_module);
@@ -1123,13 +1123,13 @@ START_TEST (auth_getgroups_test) {
   char *sym_name = "getgroups";
 
   res = pr_auth_getgroups(NULL, NULL, NULL, NULL);
-  fail_unless(res < 0, "Failed to handle null arguments");
-  fail_unless(errno == EINVAL, "Failed to set errno to EINVAL, got %d (%s)",
+  ck_assert_msg(res < 0, "Failed to handle null arguments");
+  ck_assert_msg(errno == EINVAL, "Failed to set errno to EINVAL, got %d (%s)",
     errno, strerror(errno));
 
   res = pr_auth_getgroups(p, PR_TEST_AUTH_NAME, &gids, NULL);
-  fail_unless(res < 0, "Found groups for '%s' unexpectedly", PR_TEST_AUTH_NAME);
-  fail_unless(getgroups_count == 0, "Expected call count 0, got %u",
+  ck_assert_msg(res < 0, "Found groups for '%s' unexpectedly", PR_TEST_AUTH_NAME);
+  ck_assert_msg(getgroups_count == 0, "Expected call count 0, got %u",
     getgroups_count);
   mark_point();
   
@@ -1140,20 +1140,20 @@ START_TEST (auth_getgroups_test) {
   authtab.handler = handle_getgroups;
   authtab.m = &testsuite_module;
   res = pr_stash_add_symbol(PR_SYM_AUTH, &authtab);
-  fail_unless(res == 0, "Failed to add '%s' AUTH symbol: %s", sym_name,
+  ck_assert_msg(res == 0, "Failed to add '%s' AUTH symbol: %s", sym_name,
     strerror(errno));
 
   mark_point();
 
   res = pr_auth_getgroups(p, PR_TEST_AUTH_NAME, &gids, &names);
-  fail_unless(res > 0, "Expected group count 1 for '%s', got %d: %s",
+  ck_assert_msg(res > 0, "Expected group count 1 for '%s', got %d: %s",
     PR_TEST_AUTH_NAME, res, strerror(errno));
-  fail_unless(getgroups_count == 1, "Expected call count 1, got %u",
+  ck_assert_msg(getgroups_count == 1, "Expected call count 1, got %u",
     getgroups_count);
 
   res = pr_auth_getgroups(p, "other", &gids, &names);
-  fail_unless(res < 0, "Found groups for 'other' unexpectedly");
-  fail_unless(getgroups_count == 2, "Expected call count 2, got %u",
+  ck_assert_msg(res < 0, "Found groups for 'other' unexpectedly");
+  ck_assert_msg(getgroups_count == 2, "Expected call count 2, got %u",
     getgroups_count);
 
   pr_stash_remove_symbol(PR_SYM_AUTH, sym_name, &testsuite_module);
@@ -1173,25 +1173,25 @@ START_TEST (auth_cache_uid2name_test) {
   authtab.handler = handle_uid2name;
   authtab.m = &testsuite_module;
   res = pr_stash_add_symbol(PR_SYM_AUTH, &authtab);
-  fail_unless(res == 0, "Failed to add '%s' AUTH symbol: %s", sym_name,
+  ck_assert_msg(res == 0, "Failed to add '%s' AUTH symbol: %s", sym_name,
     strerror(errno));
 
   mark_point();
 
   name = pr_auth_uid2name(p, PR_TEST_AUTH_UID);
-  fail_unless(name != NULL, "Expected name, got null");
-  fail_unless(strcmp(name, PR_TEST_AUTH_NAME) == 0,
+  ck_assert_msg(name != NULL, "Expected name, got null");
+  ck_assert_msg(strcmp(name, PR_TEST_AUTH_NAME) == 0,
     "Expected name '%s', got '%s'", PR_TEST_AUTH_NAME, name);
-  fail_unless(uid2name_count == 1, "Expected call count 1, got %u",
+  ck_assert_msg(uid2name_count == 1, "Expected call count 1, got %u",
     uid2name_count);
 
   /* Call again; the call counter should NOT increment due to caching. */
 
   name = pr_auth_uid2name(p, PR_TEST_AUTH_UID);
-  fail_unless(name != NULL, "Expected name, got null");
-  fail_unless(strcmp(name, PR_TEST_AUTH_NAME) == 0,
+  ck_assert_msg(name != NULL, "Expected name, got null");
+  ck_assert_msg(strcmp(name, PR_TEST_AUTH_NAME) == 0,
     "Expected name '%s', got '%s'", PR_TEST_AUTH_NAME, name);
-  fail_unless(uid2name_count == 1, "Expected call count 1, got %u",
+  ck_assert_msg(uid2name_count == 1, "Expected call count 1, got %u",
     uid2name_count);
 
   pr_stash_remove_symbol(PR_SYM_AUTH, sym_name, &testsuite_module);
@@ -1211,25 +1211,25 @@ START_TEST (auth_cache_gid2name_test) {
   authtab.handler = handle_gid2name;
   authtab.m = &testsuite_module;
   res = pr_stash_add_symbol(PR_SYM_AUTH, &authtab);
-  fail_unless(res == 0, "Failed to add '%s' AUTH symbol: %s", sym_name,
+  ck_assert_msg(res == 0, "Failed to add '%s' AUTH symbol: %s", sym_name,
     strerror(errno));
 
   mark_point();
 
   name = pr_auth_gid2name(p, PR_TEST_AUTH_GID);
-  fail_unless(name != NULL, "Expected name, got null");
-  fail_unless(strcmp(name, PR_TEST_AUTH_NAME) == 0,
+  ck_assert_msg(name != NULL, "Expected name, got null");
+  ck_assert_msg(strcmp(name, PR_TEST_AUTH_NAME) == 0,
     "Expected name '%s', got '%s'", PR_TEST_AUTH_NAME, name);
-  fail_unless(gid2name_count == 1, "Expected call count 1, got %u",
+  ck_assert_msg(gid2name_count == 1, "Expected call count 1, got %u",
     gid2name_count);
 
   /* Call again; the call counter should NOT increment due to caching. */
 
   name = pr_auth_gid2name(p, PR_TEST_AUTH_GID);
-  fail_unless(name != NULL, "Expected name, got null");
-  fail_unless(strcmp(name, PR_TEST_AUTH_NAME) == 0,
+  ck_assert_msg(name != NULL, "Expected name, got null");
+  ck_assert_msg(strcmp(name, PR_TEST_AUTH_NAME) == 0,
     "Expected name '%s', got '%s'", PR_TEST_AUTH_NAME, name);
-  fail_unless(gid2name_count == 1, "Expected call count 1, got %u",
+  ck_assert_msg(gid2name_count == 1, "Expected call count 1, got %u",
     gid2name_count);
 
   pr_stash_remove_symbol(PR_SYM_AUTH, sym_name, &testsuite_module);
@@ -1249,25 +1249,25 @@ START_TEST (auth_cache_uid2name_failed_test) {
   authtab.handler = decline_uid2name;
   authtab.m = &testsuite_module;
   res = pr_stash_add_symbol(PR_SYM_AUTH, &authtab);
-  fail_unless(res == 0, "Failed to add '%s' AUTH symbol: %s", sym_name,
+  ck_assert_msg(res == 0, "Failed to add '%s' AUTH symbol: %s", sym_name,
     strerror(errno));
 
   mark_point();
 
   name = pr_auth_uid2name(p, PR_TEST_AUTH_UID);
-  fail_unless(name != NULL, "Expected name, got null");
-  fail_unless(strcmp(name, PR_TEST_AUTH_UID_STR) == 0,
+  ck_assert_msg(name != NULL, "Expected name, got null");
+  ck_assert_msg(strcmp(name, PR_TEST_AUTH_UID_STR) == 0,
     "Expected name '%s', got '%s'", PR_TEST_AUTH_UID_STR, name);
-  fail_unless(uid2name_count == 1, "Expected call count 1, got %u",
+  ck_assert_msg(uid2name_count == 1, "Expected call count 1, got %u",
     uid2name_count);
 
   /* Call again; the call counter should NOT increment due to caching. */
 
   name = pr_auth_uid2name(p, PR_TEST_AUTH_UID);
-  fail_unless(name != NULL, "Expected name, got null");
-  fail_unless(strcmp(name, PR_TEST_AUTH_UID_STR) == 0,
+  ck_assert_msg(name != NULL, "Expected name, got null");
+  ck_assert_msg(strcmp(name, PR_TEST_AUTH_UID_STR) == 0,
     "Expected name '%s', got '%s'", PR_TEST_AUTH_UID_STR, name);
-  fail_unless(uid2name_count == 1, "Expected call count 1, got %u",
+  ck_assert_msg(uid2name_count == 1, "Expected call count 1, got %u",
     uid2name_count);
 
   pr_stash_remove_symbol(PR_SYM_AUTH, sym_name, &testsuite_module);
@@ -1287,25 +1287,25 @@ START_TEST (auth_cache_gid2name_failed_test) {
   authtab.handler = decline_gid2name;
   authtab.m = &testsuite_module;
   res = pr_stash_add_symbol(PR_SYM_AUTH, &authtab);
-  fail_unless(res == 0, "Failed to add '%s' AUTH symbol: %s", sym_name,
+  ck_assert_msg(res == 0, "Failed to add '%s' AUTH symbol: %s", sym_name,
     strerror(errno));
 
   mark_point();
 
   name = pr_auth_gid2name(p, PR_TEST_AUTH_GID);
-  fail_unless(name != NULL, "Expected name, got null");
-  fail_unless(strcmp(name, PR_TEST_AUTH_GID_STR) == 0,
+  ck_assert_msg(name != NULL, "Expected name, got null");
+  ck_assert_msg(strcmp(name, PR_TEST_AUTH_GID_STR) == 0,
     "Expected name '%s', got '%s'", PR_TEST_AUTH_GID_STR, name);
-  fail_unless(gid2name_count == 1, "Expected call count 1, got %u",
+  ck_assert_msg(gid2name_count == 1, "Expected call count 1, got %u",
     gid2name_count);
 
   /* Call again; the call counter should NOT increment due to caching. */
 
   name = pr_auth_gid2name(p, PR_TEST_AUTH_GID);
-  fail_unless(name != NULL, "Expected name, got null");
-  fail_unless(strcmp(name, PR_TEST_AUTH_GID_STR) == 0,
+  ck_assert_msg(name != NULL, "Expected name, got null");
+  ck_assert_msg(strcmp(name, PR_TEST_AUTH_GID_STR) == 0,
     "Expected name '%s', got '%s'", PR_TEST_AUTH_GID_STR, name);
-  fail_unless(gid2name_count == 1, "Expected call count 1, got %u",
+  ck_assert_msg(gid2name_count == 1, "Expected call count 1, got %u",
     gid2name_count);
 
   pr_stash_remove_symbol(PR_SYM_AUTH, sym_name, &testsuite_module);
@@ -1325,21 +1325,21 @@ START_TEST (auth_cache_name2uid_failed_test) {
   authtab.handler = decline_name2uid;
   authtab.m = &testsuite_module;
   res = pr_stash_add_symbol(PR_SYM_AUTH, &authtab);
-  fail_unless(res == 0, "Failed to add '%s' AUTH symbol: %s", sym_name,
+  ck_assert_msg(res == 0, "Failed to add '%s' AUTH symbol: %s", sym_name,
     strerror(errno));
 
   mark_point();
 
   uid = pr_auth_name2uid(p, PR_TEST_AUTH_NAME);
-  fail_unless(uid == (uid_t) -1, "Expected -1, got %lu", (unsigned long) uid);
-  fail_unless(name2uid_count == 1, "Expected call count 1, got %u",
+  ck_assert_msg(uid == (uid_t) -1, "Expected -1, got %lu", (unsigned long) uid);
+  ck_assert_msg(name2uid_count == 1, "Expected call count 1, got %u",
     name2uid_count);
 
   /* Call again; the call counter should NOT increment due to caching. */
 
   uid = pr_auth_name2uid(p, PR_TEST_AUTH_NAME);
-  fail_unless(uid == (uid_t) -1, "Expected -1, got %lu", (unsigned long) uid);
-  fail_unless(name2uid_count == 1, "Expected call count 1, got %u",
+  ck_assert_msg(uid == (uid_t) -1, "Expected -1, got %lu", (unsigned long) uid);
+  ck_assert_msg(name2uid_count == 1, "Expected call count 1, got %u",
     name2uid_count);
 
   pr_stash_remove_symbol(PR_SYM_AUTH, sym_name, &testsuite_module);
@@ -1359,21 +1359,21 @@ START_TEST (auth_cache_name2gid_failed_test) {
   authtab.handler = decline_name2gid;
   authtab.m = &testsuite_module;
   res = pr_stash_add_symbol(PR_SYM_AUTH, &authtab);
-  fail_unless(res == 0, "Failed to add '%s' AUTH symbol: %s", sym_name,
+  ck_assert_msg(res == 0, "Failed to add '%s' AUTH symbol: %s", sym_name,
     strerror(errno));
 
   mark_point();
 
   gid = pr_auth_name2gid(p, PR_TEST_AUTH_NAME);
-  fail_unless(gid == (gid_t) -1, "Expected -1, got %lu", (unsigned long) gid);
-  fail_unless(name2gid_count == 1, "Expected call count 1, got %u",
+  ck_assert_msg(gid == (gid_t) -1, "Expected -1, got %lu", (unsigned long) gid);
+  ck_assert_msg(name2gid_count == 1, "Expected call count 1, got %u",
     name2gid_count);
 
   /* Call again; the call counter should NOT increment due to caching. */
 
   gid = pr_auth_name2gid(p, PR_TEST_AUTH_NAME);
-  fail_unless(gid == (gid_t) -1, "Expected -1, got %lu", (unsigned long) gid);
-  fail_unless(name2gid_count == 1, "Expected call count 1, got %u",
+  ck_assert_msg(gid == (gid_t) -1, "Expected -1, got %lu", (unsigned long) gid);
+  ck_assert_msg(name2gid_count == 1, "Expected call count 1, got %u",
     name2gid_count);
 
   pr_stash_remove_symbol(PR_SYM_AUTH, sym_name, &testsuite_module);
@@ -1396,13 +1396,13 @@ START_TEST (auth_cache_clear_test) {
   authtab.handler = decline_name2gid;
   authtab.m = &testsuite_module;
   res = pr_stash_add_symbol(PR_SYM_AUTH, &authtab);
-  fail_unless(res == 0, "Failed to add '%s' AUTH symbol: %s", sym_name,
+  ck_assert_msg(res == 0, "Failed to add '%s' AUTH symbol: %s", sym_name,
     strerror(errno));
 
   mark_point();
   gid = pr_auth_name2gid(p, PR_TEST_AUTH_NAME);
-  fail_unless(gid == (gid_t) -1, "Expected -1, got %lu", (unsigned long) gid);
-  fail_unless(name2gid_count == 1, "Expected call count 1, got %u",
+  ck_assert_msg(gid == (gid_t) -1, "Expected -1, got %lu", (unsigned long) gid);
+  ck_assert_msg(name2gid_count == 1, "Expected call count 1, got %u",
     name2gid_count);
 
   mark_point();
@@ -1415,16 +1415,16 @@ START_TEST (auth_cache_set_test) {
   unsigned int flags = PR_AUTH_CACHE_FL_UID2NAME|PR_AUTH_CACHE_FL_GID2NAME|PR_AUTH_CACHE_FL_AUTH_MODULE|PR_AUTH_CACHE_FL_NAME2UID|PR_AUTH_CACHE_FL_NAME2GID|PR_AUTH_CACHE_FL_BAD_UID2NAME|PR_AUTH_CACHE_FL_BAD_GID2NAME|PR_AUTH_CACHE_FL_BAD_NAME2UID|PR_AUTH_CACHE_FL_BAD_NAME2GID;
 
   res = pr_auth_cache_set(-1, 0);
-  fail_unless(res < 0, "Failed to handle invalid setting");
-  fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+  ck_assert_msg(res < 0, "Failed to handle invalid setting");
+  ck_assert_msg(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
     strerror(errno), errno);
 
   res = pr_auth_cache_set(TRUE, flags);
-  fail_unless(res == 0, "Failed to enable all auth cache settings: %s",
+  ck_assert_msg(res == 0, "Failed to enable all auth cache settings: %s",
     strerror(errno));
 
   res = pr_auth_cache_set(FALSE, flags);
-  fail_unless(res == 0, "Failed to disable all auth cache settings: %s",
+  ck_assert_msg(res == 0, "Failed to disable all auth cache settings: %s",
     strerror(errno));
 
   (void) pr_auth_cache_set(TRUE, PR_AUTH_CACHE_FL_DEFAULT);
@@ -1437,8 +1437,8 @@ START_TEST (auth_clear_auth_only_module_test) {
   (void) pr_auth_cache_set(TRUE, PR_AUTH_CACHE_FL_AUTH_MODULE);
 
   res = pr_auth_clear_auth_only_modules();
-  fail_unless(res < 0, "Failed to handle no auth module list");
-  fail_unless(errno == EPERM, "Expected EPERM (%d), got %s (%d)", EPERM,
+  ck_assert_msg(res < 0, "Failed to handle no auth module list");
+  ck_assert_msg(errno == EPERM, "Expected EPERM (%d), got %s (%d)", EPERM,
     strerror(errno), errno);
 }
 END_TEST
@@ -1450,21 +1450,21 @@ START_TEST (auth_add_auth_only_module_test) {
   (void) pr_auth_cache_set(TRUE, PR_AUTH_CACHE_FL_AUTH_MODULE);
 
   res = pr_auth_add_auth_only_module(NULL);
-  fail_unless(res < 0, "Failed to handle null arguments");
-  fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+  ck_assert_msg(res < 0, "Failed to handle null arguments");
+  ck_assert_msg(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
     strerror(errno), errno);
 
   res = pr_auth_add_auth_only_module(name);
-  fail_unless(res == 0, "Failed to add auth-only module '%s': %s", name,
+  ck_assert_msg(res == 0, "Failed to add auth-only module '%s': %s", name,
     strerror(errno));
 
   res = pr_auth_add_auth_only_module(name);
-  fail_unless(res < 0, "Failed to handle duplicate auth-only module");
-  fail_unless(errno == EEXIST, "Expected EEXIST (%d), got %s (%d)", EEXIST,
+  ck_assert_msg(res < 0, "Failed to handle duplicate auth-only module");
+  ck_assert_msg(errno == EEXIST, "Expected EEXIST (%d), got %s (%d)", EEXIST,
     strerror(errno), errno);
 
   res = pr_auth_clear_auth_only_modules();
-  fail_unless(res == 0, "Failed to clear auth-only modules: %s",
+  ck_assert_msg(res == 0, "Failed to clear auth-only modules: %s",
     strerror(errno));
 }
 END_TEST
@@ -1476,21 +1476,21 @@ START_TEST (auth_remove_auth_only_module_test) {
   (void) pr_auth_cache_set(TRUE, PR_AUTH_CACHE_FL_AUTH_MODULE);
 
   res = pr_auth_remove_auth_only_module(NULL);
-  fail_unless(res < 0, "Failed to handle null arguments");
-  fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+  ck_assert_msg(res < 0, "Failed to handle null arguments");
+  ck_assert_msg(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
     strerror(errno), errno);
 
   res = pr_auth_remove_auth_only_module(name);
-  fail_unless(res < 0, "Failed to handle empty auth-only module list");
-  fail_unless(errno == EPERM, "Expected EPERM (%d), got %s (%d)", EPERM,
+  ck_assert_msg(res < 0, "Failed to handle empty auth-only module list");
+  ck_assert_msg(errno == EPERM, "Expected EPERM (%d), got %s (%d)", EPERM,
     strerror(errno), errno);
 
   res = pr_auth_add_auth_only_module(name);
-  fail_unless(res == 0, "Failed to add auth-only module '%s': %s", name,
+  ck_assert_msg(res == 0, "Failed to add auth-only module '%s': %s", name,
     strerror(errno));
 
   res = pr_auth_remove_auth_only_module(name);
-  fail_unless(res == 0, "Failed to remove auth-only module '%s': %s", name,
+  ck_assert_msg(res == 0, "Failed to remove auth-only module '%s': %s", name,
     strerror(errno));
 
   (void) pr_auth_clear_auth_only_modules();
@@ -1503,18 +1503,18 @@ START_TEST (auth_authenticate_test) {
   char *sym_name = "auth";
 
   res = pr_auth_authenticate(NULL, NULL, NULL);
-  fail_unless(res < 0, "Failed to handle null arguments");
-  fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+  ck_assert_msg(res < 0, "Failed to handle null arguments");
+  ck_assert_msg(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
     strerror(errno), errno);
 
   res = pr_auth_authenticate(p, NULL, NULL);
-  fail_unless(res < 0, "Failed to handle null name");
-  fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+  ck_assert_msg(res < 0, "Failed to handle null name");
+  ck_assert_msg(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
     strerror(errno), errno);
 
   res = pr_auth_authenticate(p, PR_TEST_AUTH_NAME, NULL);
-  fail_unless(res < 0, "Failed to handle null password");
-  fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+  ck_assert_msg(res < 0, "Failed to handle null password");
+  ck_assert_msg(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
     strerror(errno), errno);
 
   /* Load the appropriate AUTH symbol, and call it. */
@@ -1524,27 +1524,27 @@ START_TEST (auth_authenticate_test) {
   authtab.handler = handle_authn;
   authtab.m = &testsuite_module;
   res = pr_stash_add_symbol(PR_SYM_AUTH, &authtab);
-  fail_unless(res == 0, "Failed to add '%s' AUTH symbol: %s", sym_name,
+  ck_assert_msg(res == 0, "Failed to add '%s' AUTH symbol: %s", sym_name,
     strerror(errno));
 
   res = pr_auth_authenticate(p, "other", "foobar");
-  fail_unless(res == PR_AUTH_NOPWD,
+  ck_assert_msg(res == PR_AUTH_NOPWD,
     "Authenticated user 'other' unexpectedly (expected %d, got %d)",
     PR_AUTH_NOPWD, res);
 
   res = pr_auth_authenticate(p, PR_TEST_AUTH_NAME, "foobar");
-  fail_unless(res == PR_AUTH_BADPWD,
+  ck_assert_msg(res == PR_AUTH_BADPWD,
     "Authenticated user '%s' unexpectedly (expected %d, got %d)",
     PR_TEST_AUTH_NAME, PR_AUTH_BADPWD, res);
 
   res = pr_auth_authenticate(p, PR_TEST_AUTH_NAME, PR_TEST_AUTH_PASSWD);
-  fail_unless(res == PR_AUTH_OK,
+  ck_assert_msg(res == PR_AUTH_OK,
     "Failed to authenticate user '%s' (expected %d, got %d)",
     PR_TEST_AUTH_NAME, PR_AUTH_OK, res);
 
   authtab.auth_flags |= PR_AUTH_FL_REQUIRED;
   res = pr_auth_authenticate(p, PR_TEST_AUTH_NAME, PR_TEST_AUTH_PASSWD);
-  fail_unless(res == PR_AUTH_OK,
+  ck_assert_msg(res == PR_AUTH_OK,
     "Failed to authenticate user '%s' (expected %d, got %d)",
     PR_TEST_AUTH_NAME, PR_AUTH_OK, res);
   authtab.auth_flags &= ~PR_AUTH_FL_REQUIRED;
@@ -1552,32 +1552,32 @@ START_TEST (auth_authenticate_test) {
   (void) pr_auth_cache_set(TRUE, PR_AUTH_CACHE_FL_AUTH_MODULE);
 
   res = pr_auth_add_auth_only_module("foo.bar");
-  fail_unless(res == 0, "Failed to add auth-only module: %s", strerror(errno));
+  ck_assert_msg(res == 0, "Failed to add auth-only module: %s", strerror(errno));
 
   res = pr_auth_add_auth_only_module("mod_testsuite.c");
-  fail_unless(res == 0, "Failed to add auth-only module: %s", strerror(errno));
+  ck_assert_msg(res == 0, "Failed to add auth-only module: %s", strerror(errno));
 
   res = pr_module_load(&testsuite_module);
-  fail_unless(res == 0, "Failed to load module: %s", strerror(errno));
+  ck_assert_msg(res == 0, "Failed to load module: %s", strerror(errno));
 
   res = pr_auth_authenticate(p, "foo", "bar");
-  fail_unless(res == PR_AUTH_NOPWD,
+  ck_assert_msg(res == PR_AUTH_NOPWD,
     "Failed to handle unknown user 'foo' (expected %d, got %d)", PR_AUTH_NOPWD,
     res);
 
   res = pr_auth_authenticate(p, PR_TEST_AUTH_NAME, "bar");
-  fail_unless(res == PR_AUTH_BADPWD,
+  ck_assert_msg(res == PR_AUTH_BADPWD,
     "Failed to handle user '%s' with bad password (expected %d, got %d)",
     PR_TEST_AUTH_NAME, PR_AUTH_BADPWD, res);
 
   res = pr_auth_authenticate(p, PR_TEST_AUTH_NAME, PR_TEST_AUTH_PASSWD);
-  fail_unless(res == PR_AUTH_OK,
+  ck_assert_msg(res == PR_AUTH_OK,
     "Failed to authenticate user '%s' (expected %d, got %d)",
     PR_TEST_AUTH_NAME, PR_AUTH_OK, res);
 
   authn_rfc2228 = TRUE;
   res = pr_auth_authenticate(p, PR_TEST_AUTH_NAME, PR_TEST_AUTH_PASSWD);
-  fail_unless(res == PR_AUTH_RFC2228_OK,
+  ck_assert_msg(res == PR_AUTH_RFC2228_OK,
     "Failed to authenticate user '%s' (expected %d, got %d)",
     PR_TEST_AUTH_NAME, PR_AUTH_RFC2228_OK, res);
 
@@ -1586,7 +1586,7 @@ START_TEST (auth_authenticate_test) {
 
   authn_rfc2228 = TRUE;
   res = pr_auth_authenticate(p, PR_TEST_AUTH_NAME, PR_TEST_AUTH_PASSWD);
-  fail_unless(res == PR_AUTH_RFC2228_OK,
+  ck_assert_msg(res == PR_AUTH_RFC2228_OK,
     "Failed to authenticate user '%s' (expected %d, got %d)",
     PR_TEST_AUTH_NAME, PR_AUTH_RFC2228_OK, res);
 
@@ -1600,17 +1600,17 @@ START_TEST (auth_authorize_test) {
   char *sym_name = "authorize";
 
   res = pr_auth_authorize(NULL, NULL);
-  fail_unless(res < 0, "Failed to handle null arguments");
-  fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+  ck_assert_msg(res < 0, "Failed to handle null arguments");
+  ck_assert_msg(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
     strerror(errno), errno);
 
   res = pr_auth_authorize(p, NULL);
-  fail_unless(res < 0, "Failed to handle null name");
-  fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+  ck_assert_msg(res < 0, "Failed to handle null name");
+  ck_assert_msg(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
     strerror(errno), errno);
 
   res = pr_auth_authorize(p, PR_TEST_AUTH_NAME);
-  fail_unless(res > 0, "Failed to handle missing handler");
+  ck_assert_msg(res > 0, "Failed to handle missing handler");
 
   /* Load the appropriate AUTH symbol, and call it. */
 
@@ -1619,29 +1619,29 @@ START_TEST (auth_authorize_test) {
   authtab.handler = handle_authz;
   authtab.m = &testsuite_module;
   res = pr_stash_add_symbol(PR_SYM_AUTH, &authtab);
-  fail_unless(res == 0, "Failed to add '%s' AUTH symbol: %s", sym_name,
+  ck_assert_msg(res == 0, "Failed to add '%s' AUTH symbol: %s", sym_name,
     strerror(errno));
 
   res = pr_auth_authorize(p, "other");
-  fail_unless(res == PR_AUTH_NOPWD,
+  ck_assert_msg(res == PR_AUTH_NOPWD,
     "Authorized user 'other' unexpectedly (expected %d, got %d)",
     PR_AUTH_NOPWD, res);
 
   res = pr_auth_authorize(p, PR_TEST_AUTH_NAME);
-  fail_unless(res == PR_AUTH_OK,
+  ck_assert_msg(res == PR_AUTH_OK,
     "Failed to authorize user '%s' (expected %d, got %d)",
     PR_TEST_AUTH_NAME, PR_AUTH_OK, res);
 
   (void) pr_auth_cache_set(TRUE, PR_AUTH_CACHE_FL_AUTH_MODULE);
 
   res = pr_auth_add_auth_only_module("foo.bar");
-  fail_unless(res == 0, "Failed to add auth-only module: %s", strerror(errno));
+  ck_assert_msg(res == 0, "Failed to add auth-only module: %s", strerror(errno));
 
   res = pr_auth_add_auth_only_module(testsuite_module.name);
-  fail_unless(res == 0, "Failed to add auth-only module: %s", strerror(errno));
+  ck_assert_msg(res == 0, "Failed to add auth-only module: %s", strerror(errno));
 
   res = pr_auth_authorize(p, PR_TEST_AUTH_NAME);
-  fail_unless(res == PR_AUTH_OK,
+  ck_assert_msg(res == PR_AUTH_OK,
     "Failed to authorize user '%s' (expected %d, got %d)",
     PR_TEST_AUTH_NAME, PR_AUTH_OK, res);
 
@@ -1679,60 +1679,60 @@ START_TEST (auth_check_errors_test) {
 
   mark_point();
   res = pr_auth_check(NULL, NULL, NULL, NULL);
-  fail_unless(res < 0, "Failed to handle null arguments");
-  fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+  ck_assert_msg(res < 0, "Failed to handle null arguments");
+  ck_assert_msg(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
     strerror(errno), errno);
 
   mark_point();
   res = pr_auth_check(p, NULL, NULL, NULL);
-  fail_unless(res < 0, "Failed to handle null name");
-  fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+  ck_assert_msg(res < 0, "Failed to handle null name");
+  ck_assert_msg(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
     strerror(errno), errno);
 
   mark_point();
   name = PR_TEST_AUTH_NAME;
   res = pr_auth_check(p, NULL, name, NULL);
-  fail_unless(res < 0, "Failed to handle null cleartext password");
-  fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+  ck_assert_msg(res < 0, "Failed to handle null cleartext password");
+  ck_assert_msg(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
     strerror(errno), errno);
 
   mark_point();
   cleartext_passwd = PR_TEST_AUTH_PASSWD;
   res = pr_auth_check(p, NULL, name, cleartext_passwd);
-  fail_unless(res == PR_AUTH_BADPWD, "Expected %d, got %d", PR_AUTH_BADPWD,
+  ck_assert_msg(res == PR_AUTH_BADPWD, "Expected %d, got %d", PR_AUTH_BADPWD,
     res);
 
   res = pr_module_load(&testsuite_module);
-  fail_unless(res == 0, "Failed to load module: %s", strerror(errno));
+  ck_assert_msg(res == 0, "Failed to load module: %s", strerror(errno));
 
   memset(&authtab, 0, sizeof(authtab));
   authtab.name = sym_name;
   authtab.handler = handle_check_error;
   authtab.m = &testsuite_module;
   res = pr_stash_add_symbol(PR_SYM_AUTH, &authtab);
-  fail_unless(res == 0, "Failed to add '%s' AUTH symbol: %s", sym_name,
+  ck_assert_msg(res == 0, "Failed to add '%s' AUTH symbol: %s", sym_name,
     strerror(errno));
 
   (void) pr_auth_cache_set(TRUE, PR_AUTH_CACHE_FL_AUTH_MODULE);
   res = pr_auth_add_auth_only_module("mod_testsuite.c");
-  fail_unless(res == 0, "Failed to add auth-only module: %s", strerror(errno));
+  ck_assert_msg(res == 0, "Failed to add auth-only module: %s", strerror(errno));
 
   for (i = 0; test_errorcodes[i] != 0; i++) {
     mark_point();
     test_check_errorcode = test_errorcodes[i];
     res = pr_auth_check(p, "", name, cleartext_passwd);
-    fail_unless(res == test_check_errorcode, "Expected %d, got %d",
+    ck_assert_msg(res == test_check_errorcode, "Expected %d, got %d",
       test_check_errorcode, res);
   }
 
   mark_point();
   test_check_errorcode = PR_AUTH_OK_NO_PASS;
   res = pr_auth_check(p, "", name, cleartext_passwd);
-  fail_unless(res == test_check_errorcode, "Expected %d, got %d",
+  ck_assert_msg(res == test_check_errorcode, "Expected %d, got %d",
     test_check_errorcode, res);
 
   res = pr_module_unload(&testsuite_module);
-  fail_unless(res == 0, "Failed to unload module: %s", strerror(errno));
+  ck_assert_msg(res == 0, "Failed to unload module: %s", strerror(errno));
   (void) pr_auth_clear_auth_only_modules();
   pr_stash_remove_symbol(PR_SYM_AUTH, sym_name, &testsuite_module);
 }
@@ -1751,43 +1751,43 @@ START_TEST (auth_check_valid_test) {
   authtab.handler = handle_check;
   authtab.m = &testsuite_module;
   res = pr_stash_add_symbol(PR_SYM_AUTH, &authtab);
-  fail_unless(res == 0, "Failed to add '%s' AUTH symbol: %s", sym_name,
+  ck_assert_msg(res == 0, "Failed to add '%s' AUTH symbol: %s", sym_name,
     strerror(errno));
 
   mark_point();
   cleartext_passwd = PR_TEST_AUTH_PASSWD;
   res = pr_auth_check(p, NULL, "other", cleartext_passwd);
-  fail_unless(res == PR_AUTH_BADPWD, "Expected %d, got %d", PR_AUTH_BADPWD,
+  ck_assert_msg(res == PR_AUTH_BADPWD, "Expected %d, got %d", PR_AUTH_BADPWD,
     res);
 
   mark_point();
   name = PR_TEST_AUTH_NAME;
   res = pr_auth_check(p, "foo", name, cleartext_passwd);
-  fail_unless(res == PR_AUTH_BADPWD, "Expected %d, got %d", PR_AUTH_BADPWD,
+  ck_assert_msg(res == PR_AUTH_BADPWD, "Expected %d, got %d", PR_AUTH_BADPWD,
     res);
 
   mark_point();
   res = pr_auth_check(p, NULL, name, cleartext_passwd);
-  fail_unless(res == PR_AUTH_BADPWD, "Expected %d, got %d", PR_AUTH_BADPWD,
+  ck_assert_msg(res == PR_AUTH_BADPWD, "Expected %d, got %d", PR_AUTH_BADPWD,
     res);
 
   mark_point();
   ciphertext_passwd = PR_TEST_AUTH_PASSWD;
   res = pr_auth_check(p, ciphertext_passwd, name, cleartext_passwd);
-  fail_unless(res == PR_AUTH_OK, "Expected %d, got %d", PR_AUTH_OK, res);
+  ck_assert_msg(res == PR_AUTH_OK, "Expected %d, got %d", PR_AUTH_OK, res);
 
   (void) pr_auth_cache_set(TRUE, PR_AUTH_CACHE_FL_AUTH_MODULE);
 
   res = pr_auth_add_auth_only_module("foo.bar");
-  fail_unless(res == 0, "Failed to add auth-only module: %s", strerror(errno));
+  ck_assert_msg(res == 0, "Failed to add auth-only module: %s", strerror(errno));
 
   res = pr_auth_add_auth_only_module("mod_testsuite.c");
-  fail_unless(res == 0, "Failed to add auth-only module: %s", strerror(errno));
+  ck_assert_msg(res == 0, "Failed to add auth-only module: %s", strerror(errno));
 
   mark_point();
   check_rfc2228 = TRUE;
   res = pr_auth_check(p, ciphertext_passwd, name, cleartext_passwd);
-  fail_unless(res == PR_AUTH_RFC2228_OK,
+  ck_assert_msg(res == PR_AUTH_RFC2228_OK,
     "Failed to check user '%s' (expected %d, got %d)", name,
     PR_AUTH_RFC2228_OK, res);
 
@@ -1803,18 +1803,18 @@ START_TEST (auth_requires_pass_test) {
   char *sym_name = "requires_pass";
 
   res = pr_auth_requires_pass(NULL, NULL);
-  fail_unless(res < 0, "Failed to handle null arguments");
-  fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+  ck_assert_msg(res < 0, "Failed to handle null arguments");
+  ck_assert_msg(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
     strerror(errno), errno);
 
   res = pr_auth_requires_pass(p, NULL);
-  fail_unless(res < 0, "Failed to handle null name");
-  fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+  ck_assert_msg(res < 0, "Failed to handle null name");
+  ck_assert_msg(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
     strerror(errno), errno);
 
   name = "other";
   res = pr_auth_requires_pass(p, name);
-  fail_unless(res == TRUE, "Unknown users should require passwords (got %d)",
+  ck_assert_msg(res == TRUE, "Unknown users should require passwords (got %d)",
     res);
 
   /* Load the appropriate AUTH symbol, and call it. */
@@ -1824,16 +1824,16 @@ START_TEST (auth_requires_pass_test) {
   authtab.handler = handle_requires_pass;
   authtab.m = &testsuite_module;
   res = pr_stash_add_symbol(PR_SYM_AUTH, &authtab);
-  fail_unless(res == 0, "Failed to add '%s' AUTH symbol: %s", sym_name,
+  ck_assert_msg(res == 0, "Failed to add '%s' AUTH symbol: %s", sym_name,
     strerror(errno));
 
   res = pr_auth_requires_pass(p, name);
-  fail_unless(res == TRUE, "Unknown users should require passwords (got %d)",
+  ck_assert_msg(res == TRUE, "Unknown users should require passwords (got %d)",
     res);
 
   name = PR_TEST_AUTH_NAME;
   res = pr_auth_requires_pass(p, name);
-  fail_unless(res == FALSE, "Known users should NOT require passwords (got %d)",
+  ck_assert_msg(res == FALSE, "Known users should NOT require passwords (got %d)",
     res);
 }
 END_TEST
@@ -1846,7 +1846,7 @@ START_TEST (auth_get_anon_config_test) {
   mark_point();
   login_user = "test";
   res = pr_auth_get_anon_config(NULL, NULL, NULL, NULL);
-  fail_unless(res == NULL, "Failed to handle null arguments");
+  ck_assert_msg(res == NULL, "Failed to handle null arguments");
 
   mark_point();
   /* UserAlias alias realname */
@@ -1861,21 +1861,21 @@ START_TEST (auth_get_anon_config_test) {
   login_user = "test";
   anon_user = "anon";
   res = pr_auth_get_anon_config(p, &login_user, &real_user, &anon_user);
-  fail_unless(res == NULL, "Failed to handle UserAlias with mismatched alias");
-  fail_unless(login_user == NULL, "Failed to set login_user to null");
-  fail_unless(anon_user == NULL, "Failed to set anon_user to null");
+  ck_assert_msg(res == NULL, "Failed to handle UserAlias with mismatched alias");
+  ck_assert_msg(login_user == NULL, "Failed to set login_user to null");
+  ck_assert_msg(anon_user == NULL, "Failed to set anon_user to null");
 
   mark_point();
   login_user = "test";
   c->argv[0] = pstrdup(c->pool, "*");
   res = pr_auth_get_anon_config(p, &login_user, &real_user, &anon_user);
-  fail_unless(res == NULL, "Failed to handle UserAlias with globbed alias");
+  ck_assert_msg(res == NULL, "Failed to handle UserAlias with globbed alias");
 
   mark_point();
   login_user = "test";
   c->argv[0] = pstrdup(c->pool, login_user);
   res = pr_auth_get_anon_config(p, &login_user, &real_user, &anon_user);
-  fail_unless(res == NULL, "Failed to handle UserAlias with matching alias");
+  ck_assert_msg(res == NULL, "Failed to handle UserAlias with matching alias");
 
   mark_point();
   login_user = "test";
@@ -1886,8 +1886,8 @@ START_TEST (auth_get_anon_config_test) {
   *((unsigned char *) c2->argv[0]) = TRUE;
   c->parent = anon_config;
   res = pr_auth_get_anon_config(p, &login_user, &real_user, &anon_user);
-  fail_unless(res != NULL, "Failed to handle UserAlias with matching alias and <Anonymous> config");
-  fail_unless(res == anon_config, "Expected <Anonymous> config %p, got %p",
+  ck_assert_msg(res != NULL, "Failed to handle UserAlias with matching alias and <Anonymous> config");
+  ck_assert_msg(res == anon_config, "Expected <Anonymous> config %p, got %p",
     anon_config, res);
 
   mark_point();
@@ -1898,11 +1898,11 @@ START_TEST (auth_get_anon_config_test) {
   c2->argv[0] = pstrdup(c2->pool, "BAZ");
   res = pr_auth_get_anon_config(p, &login_user, &real_user, &anon_user);
 
-  fail_unless(res != NULL, "Failed to handle UserAlias with matching alias and <Anonymous> config");
-  fail_unless(res == anon_config, "Expected <Anonymous> config %p, got %p",
+  ck_assert_msg(res != NULL, "Failed to handle UserAlias with matching alias and <Anonymous> config");
+  ck_assert_msg(res == anon_config, "Expected <Anonymous> config %p, got %p",
     anon_config, res);
-  fail_unless(real_user != NULL, "Expected real_user, got NULL");
-  fail_unless(strcmp(real_user, "BAZ") == 0, "Expected real_user 'BAZ', got '%s'", real_user);
+  ck_assert_msg(real_user != NULL, "Expected real_user, got NULL");
+  ck_assert_msg(strcmp(real_user, "BAZ") == 0, "Expected real_user 'BAZ', got '%s'", real_user);
 
   (void) remove_config(test_server->conf, "AuthAliasOnly", TRUE);
   (void) remove_config(test_server->conf, "UserAlias", FALSE);
@@ -1915,15 +1915,15 @@ START_TEST (auth_chroot_test) {
 
   mark_point();
   res = pr_auth_chroot(NULL);
-  fail_unless(res < 0, "Failed to handle null argument");
-  fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+  ck_assert_msg(res < 0, "Failed to handle null argument");
+  ck_assert_msg(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
     strerror(errno), errno);
 
   mark_point();
   path = "tmp";
   res = pr_auth_chroot(path);
-  fail_unless(res < 0, "Failed to chroot to '%s': %s", path, strerror(errno));
-  fail_unless(errno == EINVAL || errno == ENOENT,
+  ck_assert_msg(res < 0, "Failed to chroot to '%s': %s", path, strerror(errno));
+  ck_assert_msg(errno == EINVAL || errno == ENOENT,
     "Expected EINVAL (%d) or ENOENT (%d), got %s (%d)", EINVAL, ENOENT,
     strerror(errno), errno);
 
@@ -1933,8 +1933,8 @@ START_TEST (auth_chroot_test) {
   mark_point();
   path = "/tmp";
   res = pr_auth_chroot(path);
-  fail_unless(res < 0, "Failed to chroot to '%s': %s", path, strerror(errno));
-  fail_unless(errno == ENOENT || errno == EPERM || errno == EINVAL,
+  ck_assert_msg(res < 0, "Failed to chroot to '%s': %s", path, strerror(errno));
+  ck_assert_msg(errno == ENOENT || errno == EPERM || errno == EINVAL,
     "Expected ENOENT (%d), EPERM (%d) or EINVAL (%d), got %s (%d)",
     ENOENT, EPERM, EINVAL, strerror(errno), errno);
 
@@ -1943,8 +1943,8 @@ START_TEST (auth_chroot_test) {
   session.pool = p;
   path = "/tmp";
   res = pr_auth_chroot(path);
-  fail_unless(res < 0, "Failed to chroot to '%s': %s", path, strerror(errno));
-  fail_unless(errno == ENOENT || errno == EPERM || errno == EINVAL,
+  ck_assert_msg(res < 0, "Failed to chroot to '%s': %s", path, strerror(errno));
+  ck_assert_msg(errno == ENOENT || errno == EPERM || errno == EINVAL,
     "Expected ENOENT (%d), EPERM (%d) or EINVAL (%d), got %s (%d)",
     ENOENT, EPERM, EINVAL, strerror(errno), errno);
 
@@ -1952,8 +1952,8 @@ START_TEST (auth_chroot_test) {
   mark_point();
   path = "/tmp";
   res = pr_auth_chroot(path);
-  fail_unless(res < 0, "Failed to chroot to '%s': %s", path, strerror(errno));
-  fail_unless(errno == ENOENT || errno == EPERM || errno == EINVAL,
+  ck_assert_msg(res < 0, "Failed to chroot to '%s': %s", path, strerror(errno));
+  ck_assert_msg(errno == ENOENT || errno == EPERM || errno == EINVAL,
     "Expected ENOENT (%d), EPERM (%d) or EINVAL (%d), got %s (%d)",
     ENOENT, EPERM, EINVAL, strerror(errno), errno);
 
@@ -1968,16 +1968,16 @@ START_TEST (auth_banned_by_ftpusers_test) {
 
   mark_point();
   res = pr_auth_banned_by_ftpusers(NULL, NULL);
-  fail_unless(res == FALSE, "Failed to handle null arguments");
+  ck_assert_msg(res == FALSE, "Failed to handle null arguments");
 
   mark_point();
   res = pr_auth_banned_by_ftpusers(test_server->conf, NULL);
-  fail_unless(res == FALSE, "Failed to handle null user");
+  ck_assert_msg(res == FALSE, "Failed to handle null user");
 
   mark_point();
   name = "testsuite";
   res = pr_auth_banned_by_ftpusers(test_server->conf, name);
-  fail_unless(res == FALSE, "Expected FALSE, got %d", res);
+  ck_assert_msg(res == FALSE, "Expected FALSE, got %d", res);
 
   /* UseFtpUsers off */
   mark_point();
@@ -1986,7 +1986,7 @@ START_TEST (auth_banned_by_ftpusers_test) {
   *((unsigned char *) c->argv[0]) = FALSE;
 
   res = pr_auth_banned_by_ftpusers(test_server->conf, name);
-  fail_unless(res == FALSE, "Failed to handle UseFtpUsers off (got %d)",
+  ck_assert_msg(res == FALSE, "Failed to handle UseFtpUsers off (got %d)",
     res);
 
   (void) remove_config(test_server->conf, "UseFtpUsers", FALSE);
@@ -2000,21 +2000,21 @@ START_TEST (auth_is_valid_shell_test) {
 
   mark_point();
   res = pr_auth_is_valid_shell(NULL, NULL);
-  fail_unless(res == TRUE, "Failed to handle null arguments");
+  ck_assert_msg(res == TRUE, "Failed to handle null arguments");
 
   mark_point();
   res = pr_auth_is_valid_shell(test_server->conf, NULL);
-  fail_unless(res == TRUE, "Failed to handle null shell");
+  ck_assert_msg(res == TRUE, "Failed to handle null shell");
 
   shell = "/foo/bar";
   res = pr_auth_is_valid_shell(test_server->conf, shell);
-  fail_unless(res == FALSE, "Failed to handle invalid shell '%s' (got %d)",
+  ck_assert_msg(res == FALSE, "Failed to handle invalid shell '%s' (got %d)",
     shell, res);
 
   mark_point();
   shell = "/bin/sh";
   res = pr_auth_is_valid_shell(test_server->conf, shell);
-  fail_unless(res == TRUE, "Failed to handle valid shell '%s' (got %d)",
+  ck_assert_msg(res == TRUE, "Failed to handle valid shell '%s' (got %d)",
     shell, res);
 
   /* RequireValidShell off */
@@ -2025,7 +2025,7 @@ START_TEST (auth_is_valid_shell_test) {
 
   shell = "/foo/bar";
   res = pr_auth_is_valid_shell(test_server->conf, shell);
-  fail_unless(res == TRUE, "Failed to handle RequireValidShell off (got %d)",
+  ck_assert_msg(res == TRUE, "Failed to handle RequireValidShell off (got %d)",
     res);
 
   (void) remove_config(test_server->conf, "RequireValidShell", FALSE);
@@ -2042,46 +2042,46 @@ START_TEST (auth_set_groups_test) {
 
     mark_point();
     res = set_groups(NULL, 0, NULL);
-    fail_unless(res == 0, "Failed to handle zero primary gid: %s",
+    ck_assert_msg(res == 0, "Failed to handle zero primary gid: %s",
       strerror(errno));
 
     mark_point();
     res = set_groups(p, 0, NULL);
-    fail_unless(res == 0, "Failed to handle zero primary gid: %s",
+    ck_assert_msg(res == 0, "Failed to handle zero primary gid: %s",
       strerror(errno));
 
     mark_point();
     res = set_groups(NULL, gid, NULL);
-    fail_unless(res == 0, "Failed to handle current primary gid: %s",
+    ck_assert_msg(res == 0, "Failed to handle current primary gid: %s",
       strerror(errno));
 
   } else {
     mark_point();
     res = set_groups(NULL, 0, NULL);
-    fail_unless(res < 0, "Failed to handle zero primary gid: %s",
+    ck_assert_msg(res < 0, "Failed to handle zero primary gid: %s",
       strerror(errno));
-    fail_unless(errno == ENOSYS, "Expected ENOSYS (%d), got %s (%d)", ENOSYS,
+    ck_assert_msg(errno == ENOSYS, "Expected ENOSYS (%d), got %s (%d)", ENOSYS,
       strerror(errno), errno);
 
     mark_point();
     res = set_groups(p, 0, NULL);
-    fail_unless(res < 0, "Failed to handle zero primary gid: %s",
+    ck_assert_msg(res < 0, "Failed to handle zero primary gid: %s",
       strerror(errno));
-    fail_unless(errno == ENOSYS, "Expected ENOSYS (%d), got %s (%d)", ENOSYS,
+    ck_assert_msg(errno == ENOSYS, "Expected ENOSYS (%d), got %s (%d)", ENOSYS,
       strerror(errno), errno);
 
     mark_point();
     res = set_groups(p, 1, NULL);
-    fail_unless(res < 0, "Failed to handle non-root primary gid: %s",
+    ck_assert_msg(res < 0, "Failed to handle non-root primary gid: %s",
       strerror(errno));
-    fail_unless(errno == ENOSYS, "Expected ENOSYS (%d), got %s (%d)", ENOSYS,
+    ck_assert_msg(errno == ENOSYS, "Expected ENOSYS (%d), got %s (%d)", ENOSYS,
       strerror(errno), errno);
 
     mark_point();
     res = set_groups(p, getgid(), NULL);
-    fail_unless(res < 0, "Failed to handle current primary gid: %s",
+    ck_assert_msg(res < 0, "Failed to handle current primary gid: %s",
       strerror(errno));
-    fail_unless(errno == ENOSYS, "Expected ENOSYS (%d), got %s (%d)", ENOSYS,
+    ck_assert_msg(errno == ENOSYS, "Expected ENOSYS (%d), got %s (%d)", ENOSYS,
       strerror(errno), errno);
   }
 }
@@ -2092,19 +2092,19 @@ START_TEST (auth_get_home_test) {
   config_rec *c;
 
   res = pr_auth_get_home(NULL, NULL);
-  fail_unless(res == NULL, "Failed to handle null arguments");
-  fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+  ck_assert_msg(res == NULL, "Failed to handle null arguments");
+  ck_assert_msg(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
     strerror(errno), errno);
 
   res = pr_auth_get_home(p, NULL);
-  fail_unless(res == NULL, "Failed to handle null home");
-  fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+  ck_assert_msg(res == NULL, "Failed to handle null home");
+  ck_assert_msg(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
     strerror(errno), errno);
 
   home = "/testsuite";
   res = pr_auth_get_home(p, home);
-  fail_unless(res != NULL, "Failed to get home: %s", strerror(errno));
-  fail_unless(strcmp(home, res) == 0, "Expected '%s', got '%s'", home, res);  
+  ck_assert_msg(res != NULL, "Failed to get home: %s", strerror(errno));
+  ck_assert_msg(strcmp(home, res) == 0, "Expected '%s', got '%s'", home, res);  
 
   /* RewriteHome off */
   mark_point();
@@ -2113,23 +2113,23 @@ START_TEST (auth_get_home_test) {
   *((int *) c->argv[0]) = FALSE;
 
   res = pr_auth_get_home(p, home);
-  fail_unless(res != NULL, "Failed to get home: %s", strerror(errno));
-  fail_unless(strcmp(home, res) == 0,
+  ck_assert_msg(res != NULL, "Failed to get home: %s", strerror(errno));
+  ck_assert_msg(strcmp(home, res) == 0,
     "Failed to handle RewriteHome off, got '%s'", res);
 
   /* RewriteHome on */
   mark_point();
   *((int *) c->argv[0]) = TRUE;
   res = pr_auth_get_home(p, home);
-  fail_unless(res != NULL, "Failed to get home: %s", strerror(errno));
-  fail_unless(strcmp(home, res) == 0,
+  ck_assert_msg(res != NULL, "Failed to get home: %s", strerror(errno));
+  ck_assert_msg(strcmp(home, res) == 0,
     "Failed to handle RewriteHome on, got '%s'", res);
 
   mark_point();
   session.notes = pr_table_alloc(p, 2);
   res = pr_auth_get_home(p, home);
-  fail_unless(res != NULL, "Failed to get home: %s", strerror(errno));
-  fail_unless(strcmp(home, res) == 0,
+  ck_assert_msg(res != NULL, "Failed to get home: %s", strerror(errno));
+  ck_assert_msg(strcmp(home, res) == 0,
     "Failed to handle RewriteHome on, got '%s'", res);
 
   (void) pr_table_empty(session.notes);
@@ -2145,20 +2145,20 @@ START_TEST (auth_set_max_password_len_test) {
   size_t res;
 
   res = pr_auth_set_max_password_len(p, 1);
-  fail_unless(res == PR_TUNABLE_PASSWORD_MAX,
+  ck_assert_msg(res == PR_TUNABLE_PASSWORD_MAX,
     "Expected %lu, got %lu", (unsigned long) PR_TUNABLE_PASSWORD_MAX,
     (unsigned long) res);
 
   checked = pr_auth_check(p, NULL, PR_TEST_AUTH_NAME, PR_TEST_AUTH_PASSWD);
-  fail_unless(checked < 0, "Failed to reject too-long password");
-  fail_unless(errno == EPERM, "Expected EPERM (%d), got %s (%d)", EPERM,
+  ck_assert_msg(checked < 0, "Failed to reject too-long password");
+  ck_assert_msg(errno == EPERM, "Expected EPERM (%d), got %s (%d)", EPERM,
     strerror(errno), errno);
 
   res = pr_auth_set_max_password_len(p, 0);
-  fail_unless(res == 1, "Expected %lu, got %lu", 1, (unsigned long) res);
+  ck_assert_msg(res == 1, "Expected %d, got %lu", 1, (unsigned long) res);
 
   res = pr_auth_set_max_password_len(p, 0);
-  fail_unless(res == PR_TUNABLE_PASSWORD_MAX,
+  ck_assert_msg(res == PR_TUNABLE_PASSWORD_MAX,
     "Expected %lu, got %lu", (unsigned long) PR_TUNABLE_PASSWORD_MAX,
     (unsigned long) res);
 }
@@ -2169,33 +2169,33 @@ START_TEST (auth_bcrypt_test) {
   size_t hashed_len;
 
   res = pr_auth_bcrypt(NULL, NULL, NULL, NULL);
-  fail_unless(res == NULL, "Failed to handle null pool argument");
-  fail_unless(errno == EINVAL, "Expected EINVAL (%d), got '%s' (%d)", EINVAL,
+  ck_assert_msg(res == NULL, "Failed to handle null pool argument");
+  ck_assert_msg(errno == EINVAL, "Expected EINVAL (%d), got '%s' (%d)", EINVAL,
     strerror(errno), errno);
 
   res = pr_auth_bcrypt(p, NULL, NULL, NULL);
-  fail_unless(res == NULL, "Failed to handle null key argument");
-  fail_unless(errno == EINVAL, "Expected EINVAL (%d), got '%s' (%d)", EINVAL,
+  ck_assert_msg(res == NULL, "Failed to handle null key argument");
+  ck_assert_msg(errno == EINVAL, "Expected EINVAL (%d), got '%s' (%d)", EINVAL,
     strerror(errno), errno);
 
   res = pr_auth_bcrypt(p, "", NULL, NULL);
-  fail_unless(res == NULL, "Failed to handle null salt argument");
-  fail_unless(errno == EINVAL, "Expected EINVAL (%d), got '%s' (%d)", EINVAL,
+  ck_assert_msg(res == NULL, "Failed to handle null salt argument");
+  ck_assert_msg(errno == EINVAL, "Expected EINVAL (%d), got '%s' (%d)", EINVAL,
     strerror(errno), errno);
 
   res = pr_auth_bcrypt(p, "", "", NULL);
-  fail_unless(res == NULL, "Failed to handle null hashed_len argument");
-  fail_unless(errno == EINVAL, "Expected EINVAL (%d), got '%s' (%d)", EINVAL,
+  ck_assert_msg(res == NULL, "Failed to handle null hashed_len argument");
+  ck_assert_msg(errno == EINVAL, "Expected EINVAL (%d), got '%s' (%d)", EINVAL,
     strerror(errno), errno);
 
   res = pr_auth_bcrypt(p, "", "", &hashed_len);
-  fail_unless(res == NULL, "Failed to handle empty strings");
-  fail_unless(errno == EINVAL, "Expected EINVAL (%d), got '%s' (%d)", EINVAL,
+  ck_assert_msg(res == NULL, "Failed to handle empty strings");
+  ck_assert_msg(errno == EINVAL, "Expected EINVAL (%d), got '%s' (%d)", EINVAL,
     strerror(errno), errno);
 
   res = pr_auth_bcrypt(p, "foo", "$1", &hashed_len);
-  fail_unless(res == NULL, "Failed to handle invalid salt");
-  fail_unless(errno == EINVAL, "Expected EINVAL (%d), got '%s' (%d)", EINVAL,
+  ck_assert_msg(res == NULL, "Failed to handle invalid salt");
+  ck_assert_msg(errno == EINVAL, "Expected EINVAL (%d), got '%s' (%d)", EINVAL,
     strerror(errno), errno);
 
   /* TODO: Add more tests of the invalid salt constructions: bcrypt version
@@ -2205,7 +2205,7 @@ START_TEST (auth_bcrypt_test) {
   res = pr_auth_bcrypt(p, "password",
     "$2b$12$IoFxXvbRQUKssPqFacJFFuZl1KXl5ULppqf0aLFjwCFnLRh3NbYSG",
     &hashed_len);
-  fail_unless(res != NULL, "Failed to handle valid key and salt");
+  ck_assert_msg(res != NULL, "Failed to handle valid key and salt");
 }
 END_TEST
 

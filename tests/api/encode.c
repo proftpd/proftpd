@@ -66,29 +66,29 @@ START_TEST (encode_encode_str_test) {
 
   mark_point();
   res = pr_encode_str(NULL, NULL, 0, NULL);
-  fail_unless(res == NULL, "Failed to handle null arguments");
-  fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+  ck_assert_msg(res == NULL, "Failed to handle null arguments");
+  ck_assert_msg(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
     strerror(errno), errno);
 
   mark_point();
   res = pr_encode_str(p, NULL, 0, NULL);
-  fail_unless(res == NULL, "Failed to handle null input string");
-  fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+  ck_assert_msg(res == NULL, "Failed to handle null input string");
+  ck_assert_msg(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
     strerror(errno), errno);
 
   mark_point();
   in_str = "OK";
   in_len = 2;
   res = pr_encode_str(p, in_str, in_len, NULL);
-  fail_unless(res == NULL, "Failed to handle null output string len");
-  fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+  ck_assert_msg(res == NULL, "Failed to handle null output string len");
+  ck_assert_msg(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
     strerror(errno), errno);
 
   mark_point();
   res = pr_encode_str(p, in_str, in_len, &out_len);
-  fail_unless(res != NULL, "Failed to encode '%s': %s", in_str,
+  ck_assert_msg(res != NULL, "Failed to encode '%s': %s", in_str,
     strerror(errno));
-  fail_unless(strcmp(res, in_str) == 0, "Expected '%s', got '%s'", in_str,
+  ck_assert_msg(strcmp(res, in_str) == 0, "Expected '%s', got '%s'", in_str,
     res);
 
   mark_point();
@@ -98,8 +98,8 @@ START_TEST (encode_encode_str_test) {
   in_str = junk;
   in_len = sizeof(junk);
   res = pr_encode_str(p, in_str, in_len, &out_len);
-  fail_unless(res == NULL, "Failed to handle bad input");
-  fail_unless(errno == EILSEQ, "Expected EILSEQ (%d), got %s (%d)", EILSEQ,
+  ck_assert_msg(res == NULL, "Failed to handle bad input");
+  ck_assert_msg(errno == EILSEQ, "Expected EILSEQ (%d), got %s (%d)", EILSEQ,
     strerror(errno), errno);
 }
 END_TEST
@@ -112,29 +112,29 @@ START_TEST (encode_decode_str_test) {
 
   mark_point();
   res = pr_decode_str(NULL, NULL, 0, NULL);
-  fail_unless(res == NULL, "Failed to handle null arguments");
-  fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+  ck_assert_msg(res == NULL, "Failed to handle null arguments");
+  ck_assert_msg(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
     strerror(errno), errno);
 
   mark_point();
   res = pr_decode_str(p, NULL, 0, NULL);
-  fail_unless(res == NULL, "Failed to handle null input string");
-  fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+  ck_assert_msg(res == NULL, "Failed to handle null input string");
+  ck_assert_msg(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
     strerror(errno), errno);
 
   mark_point();
   in_str = "OK";
   in_len = 2;
   res = pr_decode_str(p, in_str, in_len, NULL);
-  fail_unless(res == NULL, "Failed to handle null output string len");
-  fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+  ck_assert_msg(res == NULL, "Failed to handle null output string len");
+  ck_assert_msg(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
     strerror(errno), errno);
 
   mark_point();
   res = pr_decode_str(p, in_str, in_len, &out_len);
-  fail_unless(res != NULL, "Failed to decode '%s': %s", in_str,
+  ck_assert_msg(res != NULL, "Failed to decode '%s': %s", in_str,
     strerror(errno));
-  fail_unless(strcmp(res, in_str) == 0, "Expected '%s', got '%s'", in_str,
+  ck_assert_msg(strcmp(res, in_str) == 0, "Expected '%s', got '%s'", in_str,
     res);
 
   mark_point();
@@ -144,8 +144,8 @@ START_TEST (encode_decode_str_test) {
   in_str = junk;
   in_len = sizeof(junk);
   res = pr_decode_str(p, in_str, in_len, &out_len);
-  fail_unless(res == NULL, "Failed to handle bad input");
-  fail_unless(errno == EILSEQ, "Expected EILSEQ (%d), got %s (%d)", EILSEQ,
+  ck_assert_msg(res == NULL, "Failed to handle bad input");
+  ck_assert_msg(errno == EILSEQ, "Expected EILSEQ (%d), got %s (%d)", EILSEQ,
     strerror(errno), errno);
 }
 END_TEST
@@ -155,53 +155,53 @@ START_TEST (encode_charset_test) {
   const char *charset, *encoding;
 
   charset = pr_encode_get_charset();
-  fail_unless(charset != NULL, "Failed to get current charset: %s",
+  ck_assert_msg(charset != NULL, "Failed to get current charset: %s",
     strerror(errno));
 
   res = pr_encode_is_utf8(NULL);
-  fail_unless(res == -1, "Failed to handle null arguments");
-  fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+  ck_assert_msg(res == -1, "Failed to handle null arguments");
+  ck_assert_msg(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
     strerror(errno), errno);
 
   charset = "utf8";
   res = pr_encode_is_utf8(charset);
-  fail_unless(res == TRUE, "Expected TRUE for '%s', got %d", charset, res);
+  ck_assert_msg(res == TRUE, "Expected TRUE for '%s', got %d", charset, res);
 
   charset = "utf-8";
   res = pr_encode_is_utf8(charset);
-  fail_unless(res == TRUE, "Expected TRUE for '%s', got %d", charset, res);
+  ck_assert_msg(res == TRUE, "Expected TRUE for '%s', got %d", charset, res);
 
   charset = "ascii";
   res = pr_encode_is_utf8(charset);
-  fail_unless(res == FALSE, "Expected FALSE for '%s', got %d", charset, res);
+  ck_assert_msg(res == FALSE, "Expected FALSE for '%s', got %d", charset, res);
 
   res = pr_encode_set_charset_encoding(NULL, NULL);
-  fail_unless(res < 0, "Failed to handle null arguments");
-  fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+  ck_assert_msg(res < 0, "Failed to handle null arguments");
+  ck_assert_msg(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
     strerror(errno), errno);
 
   charset = "us-ascii";
   res = pr_encode_set_charset_encoding(charset, NULL);
-  fail_unless(res < 0, "Failed to handle null encoding");
-  fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+  ck_assert_msg(res < 0, "Failed to handle null encoding");
+  ck_assert_msg(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
     strerror(errno), errno);
 
   encoding = "utf-8";
   res = pr_encode_set_charset_encoding(charset, encoding);
-  fail_unless(res == 0, "Failed to set charset '%s', encoding '%s': %s",
+  ck_assert_msg(res == 0, "Failed to set charset '%s', encoding '%s': %s",
     charset, encoding, strerror(errno));
 
   charset = "foo";
   res = pr_encode_set_charset_encoding(charset, encoding);
-  fail_unless(res < 0, "Failed to handle bad charset '%s'", charset);
-  fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+  ck_assert_msg(res < 0, "Failed to handle bad charset '%s'", charset);
+  ck_assert_msg(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
     strerror(errno), errno);
 
   charset = "us-ascii";
   encoding = "foo";
   res = pr_encode_set_charset_encoding(charset, encoding);
-  fail_unless(res < 0, "Failed to handle bad encoding '%s'", encoding);
-  fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+  ck_assert_msg(res < 0, "Failed to handle bad encoding '%s'", encoding);
+  ck_assert_msg(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
     strerror(errno), errno);
 }
 END_TEST
@@ -211,36 +211,36 @@ START_TEST (encode_encoding_test) {
   const char *encoding;
 
   res = pr_encode_enable_encoding(NULL);
-  fail_unless(res < 0, "Failed to handle null arguments");
-  fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+  ck_assert_msg(res < 0, "Failed to handle null arguments");
+  ck_assert_msg(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
     strerror(errno), errno);
 
   encoding = "utf-8";
   res = pr_encode_enable_encoding(encoding);
-  fail_unless(res == 0, "Failed to enable encoding '%s': %s", encoding,
+  ck_assert_msg(res == 0, "Failed to enable encoding '%s': %s", encoding,
     strerror(errno));
 
   encoding = "iso-8859-1";
   res = pr_encode_enable_encoding(encoding);
-  fail_unless(res == 0, "Failed to enable encoding '%s': %s", encoding,
+  ck_assert_msg(res == 0, "Failed to enable encoding '%s': %s", encoding,
     strerror(errno));
 
   encoding = "foo";
   res = pr_encode_enable_encoding(encoding);
-  fail_unless(res < 0, "Failed to handle bad encoding '%s'", encoding);
-  fail_unless(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+  ck_assert_msg(res < 0, "Failed to handle bad encoding '%s'", encoding);
+  ck_assert_msg(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
     strerror(errno), errno);
 
   pr_encode_disable_encoding();
 
   encoding = "utf-8";
   res = pr_encode_enable_encoding(encoding);
-  fail_unless(res == 0, "Failed to enable encoding '%s': %s", encoding,
+  ck_assert_msg(res == 0, "Failed to enable encoding '%s': %s", encoding,
     strerror(errno));
 
   encoding = pr_encode_get_encoding();
-  fail_unless(encoding != NULL, "Failed to get encoding: %s", strerror(errno));
-  fail_unless(strcasecmp(encoding, "utf-8") == 0,
+  ck_assert_msg(encoding != NULL, "Failed to get encoding: %s", strerror(errno));
+  ck_assert_msg(strcasecmp(encoding, "utf-8") == 0,
     "Expected 'utf-8', got '%s'", encoding);
 }
 END_TEST
@@ -249,13 +249,13 @@ START_TEST (encode_policy_test) {
   unsigned long res;
 
   res = pr_encode_get_policy();
-  fail_unless(res == 0, "Expected policy 0, got %lu", res);
+  ck_assert_msg(res == 0, "Expected policy 0, got %lu", res);
 
   res = pr_encode_set_policy(7);
-  fail_unless(res == 0, "Expected policy 0, got %lu", res);
+  ck_assert_msg(res == 0, "Expected policy 0, got %lu", res);
 
   res = pr_encode_get_policy();
-  fail_unless(res == 7, "Expected policy 7, got %lu", res);
+  ck_assert_msg(res == 7, "Expected policy 7, got %lu", res);
 
   (void) pr_encode_set_policy(0);
 }
@@ -275,7 +275,7 @@ START_TEST (encode_supports_telnet_iac_test) {
   };
 
   res = pr_encode_supports_telnet_iac();
-  fail_unless(res == TRUE, "Expected TRUE, got %d", res);
+  ck_assert_msg(res == TRUE, "Expected TRUE, got %d", res);
 
   charset = "us-ascii";
 
@@ -283,16 +283,16 @@ START_TEST (encode_supports_telnet_iac_test) {
     encoding = non_iac_encodings[i];
 
     res = pr_encode_set_charset_encoding(charset, encoding);
-    fail_unless(res == 0, "Failed to set charset '%s', encoding '%s': %s",
+    ck_assert_msg(res == 0, "Failed to set charset '%s', encoding '%s': %s",
       charset, encoding, strerror(errno));
 
     res = pr_encode_supports_telnet_iac();
-    fail_unless(res == FALSE, "Expected FALSE, got %d", res);
+    ck_assert_msg(res == FALSE, "Expected FALSE, got %d", res);
   }
 
   encoding = "utf-8";
   res = pr_encode_set_charset_encoding(charset, encoding);
-  fail_unless(res == 0, "Failed to set charset '%s', encoding '%s': %s",
+  ck_assert_msg(res == 0, "Failed to set charset '%s', encoding '%s': %s",
     charset, encoding, strerror(errno));
 }
 END_TEST
