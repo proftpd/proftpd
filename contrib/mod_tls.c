@@ -9322,8 +9322,39 @@ static int tls_dotlogin_allow(const char *user) {
       allow_user = TRUE;
     }
 
+    if (allow_user == FALSE) {
+      BIO *bio;
+      char *data;
+      long datalen;
+      unsigned long nameflags, skipflags;
+
+      nameflags = XN_FLAG_ONELINE;
+      skipflags = X509_FLAG_NO_PUBKEY|X509_FLAG_NO_EXTENSIONS|X509_FLAG_NO_SIGDUMP|X509_FLAG_NO_AUX;
+#ifdef X509_FLAG_NO_ATTRIBUTES
+      skipflags |= X509_FLAG_NO_ATTRIBUTES;
+#endif
+#ifdef X509_FLAG_NO_IDS
+      skipflags |= X509_FLAG_NO_IDS;
+#endif
+
+      tls_log(".tlslogin local/remote certificate MISMATCH");
+      bio = BIO_new(BIO_s_mem());
+      X509_print_ex(bio, file_cert, nameflags, skipflags);
+      datalen = BIO_get_mem_data(bio, &data);
+      data[datalen] = '\0';
+      tls_log(".tlslogin local file certificate:\n%.*s", (int) datalen, data);
+      BIO_free(bio);
+
+      bio = BIO_new(BIO_s_mem());
+      X509_print_ex(bio, client_cert, nameflags, skipflags);
+      datalen = BIO_get_mem_data(bio, &data);
+      data[datalen] = '\0';
+      tls_log(".tlslogin remote client certificate:\n%.*s", (int) datalen, data);
+      BIO_free(bio);
+    }
+
     X509_free(file_cert);
-    if (allow_user) {
+    if (allow_user == TRUE) {
       break;
     }
   }
