@@ -41,6 +41,22 @@
 #define BLF_MAXKEYLEN ((BLF_N-2)*4)	/* 448 bits */
 #define BLF_MAXUTILIZED ((BLF_N+2)*4)	/* 576 bits */
 
+#ifdef	SOLARIS2
+
+#ifndef	u_int32_t
+#define	u_int32_t	uint32_t
+#endif
+
+#ifndef	u_int16_t
+#define	u_int16_t	uint16_t
+#endif
+
+#ifndef	u_int8_t
+#define	u_int8_t	uint8_t
+#endif
+
+#endif
+
 /* Blowfish context */
 typedef struct BlowfishContext {
 	u_int32_t S[4][256];	/* S-Boxes */
