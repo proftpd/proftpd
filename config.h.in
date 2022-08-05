@@ -258,6 +258,15 @@
 /* The number of bytes in a gid_t.  */
 #undef SIZEOF_GID_T
 
+/* Define if you have the `u_int8_t` type defined.  */
+#undef HAVE_U_INT8_T
+
+/* Define if you have the `u_int16_t` type defined.  */
+#undef HAVE_U_INT16_T
+
+/* Define if you have the `u_int32_t` type defined.  */
+#undef HAVE_U_INT32_T
+
 /* Define if you have the authenticate function.  */
 #undef HAVE_AUTHENTICATE
 
