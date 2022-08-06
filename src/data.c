@@ -460,13 +460,13 @@ void pr_data_clear_xfer_pool(void) {
 }
 
 void pr_data_reset(void) {
-  if (session.d &&
-      session.d->pool) {
-    destroy_pool(session.d->pool);
-  }
-
   /* Clear any leftover state from previous transfers. */
   pr_ascii_ftp_reset();
+
+  if (session.d != NULL &&
+      session.d->pool != NULL) {
+    destroy_pool(session.d->pool);
+  }
 
   session.d = NULL;
   session.sf_flags &= (SF_ALL^(SF_ABORT|SF_POST_ABORT|SF_XFER|SF_PASSIVE|SF_ASCII_OVERRIDE|SF_EPSV_ALL));
