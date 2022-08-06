@@ -5131,6 +5131,7 @@ int pr_fsio_close(pr_fh_t *fh) {
   if (fh->fh_pool != NULL) {
     destroy_pool(fh->fh_pool);
     fh->fh_pool = NULL;
+    fh->fh_path = NULL;
   }
 
   errno = xerrno;

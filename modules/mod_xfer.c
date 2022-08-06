@@ -994,13 +994,20 @@ static void stor_abort(pool *p) {
   tmp_pool = make_sub_pool(p);
 
   if (stor_fh != NULL) {
+    const char *fh_path;
+
+    /* Note that FSIO close() will destroy the fh pool, including the path.
+     * So make a copy, for logging.
+     */
+    fh_path = pstrdup(tmp_pool, stor_fh->fh_path);
+
     res = pr_fsio_close_with_error(tmp_pool, stor_fh, &err);
     xerrno = errno;
 
     if (res < 0) {
       pr_error_set_where(err, &xfer_module, __FILE__, __LINE__ - 4);
-      pr_error_set_why(err, pstrcat(tmp_pool, "close file '", stor_fh->fh_path,
-        "'", NULL));
+      pr_error_set_why(err, pstrcat(tmp_pool, "close file '", fh_path, "'",
+        NULL));
 
       if (err != NULL) {
         pr_log_pri(PR_LOG_NOTICE, "%s", pr_error_strerror(err, 0));
@@ -1008,8 +1015,8 @@ static void stor_abort(pool *p) {
         err = NULL;
 
       } else {
-        pr_log_pri(PR_LOG_NOTICE, "notice: error closing '%s': %s",
-         stor_fh->fh_path, strerror(xerrno));
+        pr_log_pri(PR_LOG_NOTICE, "notice: error closing '%s': %s", fh_path,
+          strerror(xerrno));
       }
  
       errno = xerrno;
@@ -1091,15 +1098,22 @@ static int stor_complete(pool *p) {
   int res, xerrno = 0;
   pool *tmp_pool;
   pr_error_t *err = NULL;
+  const char *fh_path;
 
   tmp_pool = make_sub_pool(p);
+
+  /* Note that FSIO close() will destroy the fh pool, including the path.
+   * So make a copy, for logging.
+   */
+  fh_path = pstrdup(tmp_pool, stor_fh->fh_path);
+
   res = pr_fsio_close_with_error(tmp_pool, stor_fh, &err);
   xerrno = errno;
 
   if (res < 0) {
     pr_error_set_where(err, &xfer_module, __FILE__, __LINE__ - 4);
-    pr_error_set_why(err, pstrcat(tmp_pool, "close uploaded file '",
-      stor_fh->fh_path, "'", NULL));
+    pr_error_set_why(err, pstrcat(tmp_pool, "close uploaded file '", fh_path,
+      "'", NULL));
 
     if (err != NULL) {
       pr_log_pri(PR_LOG_NOTICE, "%s", pr_error_strerror(err, 0));
@@ -1107,8 +1121,8 @@ static int stor_complete(pool *p) {
       err = NULL;
 
     } else {
-      pr_log_pri(PR_LOG_NOTICE, "notice: error closing '%s': %s",
-        stor_fh->fh_path, strerror(xerrno));
+      pr_log_pri(PR_LOG_NOTICE, "notice: error closing '%s': %s", fh_path,
+        strerror(xerrno));
     }
 
     /* We will unlink failed writes, but only if it's a HiddenStores file.
@@ -3328,9 +3342,8 @@ MODRET xfer_err_cleanup(cmd_rec *cmd) {
     }
   }
 
-  pr_data_clear_xfer_pool();
-
-  memset(&session.xfer, '\0', sizeof(session.xfer));
+  pr_data_reset();
+  pr_data_cleanup();
 
   /* Don't forget to clear any possible RANG/REST parameters as well. */
   session.range_start = session.range_len = 0;
@@ -4189,7 +4202,7 @@ static void xfer_exit_ev(const void *event_data, void *user_data) {
   }
 
   if (session.sf_flags & SF_XFER) {
-    cmd_rec *cmd;
+    cmd_rec *cmd = NULL;
 
     pr_data_abort(0, FALSE);
 
