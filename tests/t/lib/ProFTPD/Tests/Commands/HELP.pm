@@ -84,8 +84,8 @@ sub help_ok {
   my ($port, $config_user, $config_group) = config_write($config_file, $config);
 
   my $auth_helps = [
-    ' NOOP    FEAT    OPTS    AUTH*   CCC*    CONF*   ENC*    MIC*    ',
-    ' PBSZ*   PROT*   TYPE    STRU    MODE    RETR    STOR    STOU    ',
+    ' NOOP    FEAT    OPTS    HOST    CLNT    AUTH*   CCC*    CONF*   ',
+    ' ENC*    MIC*    PBSZ*   PROT*   TYPE    STRU    MODE    RETR    ',
   ];
 
   # Open pipes, for use between the parent and child processes.  Specifically,
@@ -123,11 +123,11 @@ sub help_ok {
       my $helps = [(
         'The following commands are recognized (* =>\'s unimplemented):',
         ' CWD     XCWD    CDUP    XCUP    SMNT*   QUIT    PORT    PASV    ',
-        ' EPRT    EPSV    ALLO*   RNFR    RNTO    DELE    MDTM    RMD     ',
+        ' EPRT    EPSV    ALLO    RNFR    RNTO    DELE    MDTM    RMD     ',
         ' XRMD    MKD     XMKD    PWD     XPWD    SIZE    SYST    HELP    ',
         @$auth_helps,
-        ' APPE    REST    ABOR    USER    PASS    ACCT*   REIN*   LIST    ',
-        ' NLST    STAT    SITE    MLSD    MLST    ',
+        ' STOR    STOU    APPE    REST    ABOR    RANG    USER    PASS    ',
+        ' ACCT*   REIN*   LIST    NLST    STAT    SITE    MLSD    MLST    ',
         'Direct comments to root@127.0.0.1',
       )];
 
