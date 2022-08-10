@@ -3527,7 +3527,12 @@ sub list_symlink_issue940 {
       }
 
       my $file = 'src.link -> dst.d';
-      my $expected = 'lrwxr-xr-x';
+      my $expected;
+      if ($^O eq 'solaris') {
+        $expected = 'lrwxrwxrwx';
+      } else {
+        $expected = 'lrwxr-xr-x';
+      }
       $self->assert($res->{$file} eq $expected,
         test_msg("Expected '$expected', got '$res->{$file}' for '$file'"));
 
