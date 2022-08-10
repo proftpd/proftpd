@@ -963,7 +963,11 @@ sub rmd_fails_enotempty {
       $self->assert($expected == $resp_code,
         test_msg("Expected response code $expected, got $resp_code"));
 
-      $expected = "$test_dir: Directory not empty";
+      if ($^O eq 'solaris') {
+        $expected = "$test_dir: File exists";
+      } else {
+        $expected = "$test_dir: Directory not empty";
+      }
       $self->assert($expected eq $resp_msg,
         test_msg("Expected response message '$expected', got '$resp_msg'"));
     };
