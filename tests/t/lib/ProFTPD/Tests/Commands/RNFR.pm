@@ -1518,7 +1518,11 @@ sub rnfr_limit_bug3698 {
       $self->assert($expected == $resp_code,
         test_msg("Expected response code $expected, got $resp_code"));
 
-      $expected = "sub.d/foo: Operation not permitted";
+      if ($^O eq 'solaris') {
+        $expected = "sub.d/foo: Insufficient privileges";
+      } else {
+        $expected = "sub.d/foo: Operation not permitted";
+      }
       $self->assert($expected eq $resp_msg,
         test_msg("Expected response message '$expected', got '$resp_msg'"));
     };

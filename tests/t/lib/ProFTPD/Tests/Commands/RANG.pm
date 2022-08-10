@@ -2170,7 +2170,11 @@ EOC
       $self->assert($expected == $resp_code,
         test_msg("Expected response code $expected, got $resp_code"));
 
-      $expected = "RANG: Operation not permitted";
+      if ($^O eq 'solaris') {
+        $expected = "RANG: Insufficient privileges";
+      } else {
+        $expected = "RANG: Operation not permitted";
+      }
       $self->assert($expected eq $resp_msg,
         test_msg("Expected response message '$expected', got '$resp_msg'"));
 

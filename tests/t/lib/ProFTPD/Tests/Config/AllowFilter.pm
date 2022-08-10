@@ -338,7 +338,11 @@ sub allowfilter_dele_denied {
       $self->assert($expected == $resp_code,
         test_msg("Expected response code $expected, got $resp_code"));
 
-      $expected = "$filename: Operation not permitted";
+      if ($^O eq 'solaris') {
+        $expected = "$filename: Insufficient privileges";
+      } else {
+        $expected = "$filename: Operation not permitted";
+      }
       $self->assert($expected eq $resp_msg,
         test_msg("Expected response message '$expected', got '$resp_msg'"));
 
@@ -1144,7 +1148,11 @@ sub allowfilter_rnfr_denied {
       $self->assert($expected == $resp_code,
         test_msg("Expected $expected, got $resp_code"));
 
-      $expected = "$dirname: Operation not permitted";
+      if ($^O eq 'solaris') {
+        $expected = "$dirname: Insufficient privileges";
+      } else {
+        $expected = "$dirname: Operation not permitted";
+      }
       $self->assert($expected eq $resp_msg,
         test_msg("Expected '$expected', got '$resp_msg'"));
 
@@ -1416,7 +1424,11 @@ sub allowfilter_rnto_denied {
       $self->assert($expected == $resp_code,
         test_msg("Expected $expected, got $resp_code"));
 
-      $expected = "Rename $dirname: Operation not permitted";
+      if ($^O eq 'solaris') {
+        $expected = "$dirname: Insufficient privileges";
+      } else {
+        $expected = "Rename $dirname: Operation not permitted";
+      }
       $self->assert($expected eq $resp_msg,
         test_msg("Expected '$expected', got '$resp_msg'"));
 
@@ -1692,7 +1704,11 @@ sub allowfilter_stor_denied {
       $self->assert($expected == $resp_code,
         test_msg("Expected $expected, got $resp_code"));
 
-      $expected = "$filename: Operation not permitted";
+      if ($^O eq 'solaris') {
+        $expected = "$filename: Insufficient privileges";
+      } else {
+        $expected = "$filename: Operation not permitted";
+      }
       $self->assert($expected eq $resp_msg,
         test_msg("Expected '$expected', got '$resp_msg'"));
 

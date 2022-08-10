@@ -268,7 +268,11 @@ sub filter_dele_deny_bug2067 {
       $self->assert($expected == $resp_code,
         test_msg("Expected $expected, got $resp_code"));
 
-      $expected = "test.txt: Operation not permitted";
+      if ($^O eq 'solaris') {
+        $expected = "test.txt: Insufficient privileges";
+      } else {
+        $expected = "test.txt: Operation not permitted";
+      }
       $self->assert($expected eq $resp_msg,
         test_msg("Expected '$expected', got '$resp_msg'"));
     };
@@ -406,7 +410,11 @@ EOC
       $self->assert($expected == $resp_code,
         test_msg("Expected $expected, got $resp_code"));
 
-      $expected = 'test.txt: Operation not permitted';
+      if ($^O eq 'solaris') {
+        $expected = 'test.txt: Insufficient privileges';
+      } else {
+        $expected = 'test.txt: Operation not permitted';
+      }
       $self->assert($expected eq $resp_msg,
         test_msg("Expected '$expected', got '$resp_msg'"));
     };

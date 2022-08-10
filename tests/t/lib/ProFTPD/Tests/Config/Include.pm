@@ -162,7 +162,11 @@ EOC
       $self->assert($expected == $resp_code,
         test_msg("Expected response code $expected, got $resp_code"));
 
-      $expected = "$filename: Operation not permitted";
+      if ($^O eq 'solaris') {
+        $expected = "$filename: Insufficient privileges";
+      } else {
+        $expected = "$filename: Operation not permitted";
+      }
       $self->assert($expected eq $resp_msg,
         test_msg("Expected response message '$expected', got '$resp_msg'"));
 
@@ -322,7 +326,11 @@ EOC
       $self->assert($expected == $resp_code,
         test_msg("Expected response code $expected, got $resp_code"));
 
-      $expected = "$filename: Operation not permitted";
+      if ($^O eq 'solaris') {
+        $expected = "$filename: Insufficient privileges";
+      } else {
+        $expected = "$filename: Operation not permitted";
+      }
       $self->assert($expected eq $resp_msg,
         test_msg("Expected response message '$expected', got '$resp_msg'"));
 
@@ -506,7 +514,11 @@ EOC
       $self->assert($expected == $resp_code,
         test_msg("Expected response code $expected, got $resp_code"));
 
-      $expected = "$filename: Operation not permitted";
+      if ($^O eq 'solaris') {
+        $expected = "$filename: Insufficient privileges";
+      } else {
+        $expected = "$filename: Operation not permitted";
+      }
       $self->assert($expected eq $resp_msg,
         test_msg("Expected response message '$expected', got '$resp_msg'"));
 
@@ -835,7 +847,11 @@ EOC
       $self->assert($expected == $resp_code,
         test_msg("Expected response code $expected, got $resp_code"));
 
-      $expected = "$filename: Operation not permitted";
+      if ($^O eq 'solaris') {
+        $expected = "$filename: Insufficient privileges";
+      } else {
+        $expected = "$filename: Operation not permitted";
+      }
       $self->assert($expected eq $resp_msg,
         test_msg("Expected response message '$expected', got '$resp_msg'"));
 
