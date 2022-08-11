@@ -1855,7 +1855,11 @@ sub retr_fails_abs_symlink_enoent {
       $self->assert($expected == $resp_code,
         test_msg("Expected response code $expected, got $resp_code"));
 
-      $expected = "$path: No such file or directory";
+      if ($^O eq 'solaris') {
+        $expected = "$path: Not a regular file";
+      } else {
+        $expected = "$path: No such file or directory";
+      }
       $self->assert($expected eq $resp_msg,
         test_msg("Expected response message '$expected', got '$resp_msg'"));
     };
@@ -2062,7 +2066,11 @@ sub retr_fails_rel_symlink_enoent {
       $self->assert($expected == $resp_code,
         test_msg("Expected response code $expected, got $resp_code"));
 
-      $expected = "$path: No such file or directory";
+      if ($^O eq 'solaris') {
+        $expected = "$path: Not a regular file";
+      } else {
+        $expected = "$path: No such file or directory";
+      }
       $self->assert($expected eq $resp_msg,
         test_msg("Expected response message '$expected', got '$resp_msg'"));
     };
