@@ -2575,6 +2575,7 @@ sub retr_bug3496 {
 
       # Close the _control_ connection immediately
       $client->{ftp}->close();
+      sleep(6);
 
       my $client2 = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port, 1, 1);
       $client2->login($setup->{user}, $setup->{passwd});
