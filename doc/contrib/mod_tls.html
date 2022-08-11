@@ -132,8 +132,8 @@ appear in the <code>TLSLog</code>:
 This means that the <code>SSL_CERT_DIR</code> environment variable, if set,
 will be used to determine the location of a CA certificate directory, to be
 used when verifying clients.  Note, though, that this directive is only
-meaningful if <code>TLSVerifyClient</code> is set to <em>on</em>; otherwise,
-no client verification occurs.
+meaningful if <code>TLSVerifyClient</code> is set to <em>on</em> or
+<em>optional</em>; otherwise, no client verification occurs.
 
 <p>
 See also: <a href="#TLSCACertificatePath"><code>TLSCACertificatePath</code></a>
@@ -2377,7 +2377,7 @@ in your <code>configure</code> command, <i>e.g.</i>:
 <p>
 <hr>
 <font size=2><b><i>
-&copy; Copyright 2002-2021 TJ Saunders<br>
+&copy; Copyright 2002-2022 TJ Saunders<br>
  All Rights Reserved<br>
 </i></b></font>
 <hr>
