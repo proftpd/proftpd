@@ -1699,8 +1699,14 @@ sub showsymlinks_off_mlsd_rel_symlinked_file {
 
       my $res = {};
       my $lines = [split(/\n/, $buf)];
+      my $regex;
+      if ($^O eq 'solaris') {
+        $regex = '^modify=\S+;perm=\S+;type=\S+;unique=(\S+);UNIX\.group=\d+;UNIX.groupname=\S+;UNIX\.mode=\d+;UNIX.owner=\d+;UNIX.ownername=\S+; (.*?)$';
+      } else {
+        $regex = '^modify=\S+;perm=\S+;type=\S+;unique=(\S+);UNIX\.group=\d+;UNIX\.mode=\d+;UNIX.owner=\d+; (.*?)$';
+      }
       foreach my $line (@$lines) {
-        if ($line =~ /^modify=\S+;perm=\S+;type=\S+;unique=(\S+);UNIX\.group=\d+;UNIX\.mode=\d+;UNIX.owner=\d+; (.*?)$/) {
+        if ($line =~ /$regex/) {
           $res->{$2} = $1;
         }
       }
@@ -1866,8 +1872,14 @@ sub showsymlinks_on_mlsd_rel_symlinked_file {
 
       my $res = {};
       my $lines = [split(/\n/, $buf)];
+      my $regex;
+      if ($^O eq 'solaris') {
+        $regex = '^modify=\S+;perm=\S+;type=(\S+);unique=(\S+);UNIX\.group=\d+;UNIX.groupname=\S+;UNIX\.mode=\d+;UNIX.owner=\d+;UNIX.ownername=\S+; (.*?)$';
+      } else {
+        $regex = '^modify=\S+;perm=\S+;type=(\S+);unique=(\S+);UNIX\.group=\d+;UNIX\.mode=\d+;UNIX.owner=\d+; (.*?)$';
+      }
       foreach my $line (@$lines) {
-        if ($line =~ /^modify=\S+;perm=\S+;type=(\S+);unique=(\S+);UNIX\.group=\d+;UNIX\.mode=\d+;UNIX.owner=\d+; (.*?)$/) {
+        if ($line =~ /$regex/) {
           $res->{$3} = { type => $1, unique => $2 };
         }
       }
@@ -2032,8 +2044,14 @@ sub showsymlinks_off_mlsd_rel_symlinked_dir {
 
       my $res = {};
       my $lines = [split(/\n/, $buf)];
+      my $regex;
+      if ($^O eq 'solaris') {
+        $regex = '^modify=\S+;perm=\S+;type=\S+;unique=(\S+);UNIX\.group=\d+;UNIX.groupname=\S+;UNIX\.mode=\d+;UNIX.owner=\d+;UNIX.ownername=\S+; (.*?)$';
+      } else {
+        $regex = '^modify=\S+;perm=\S+;type=\S+;unique=(\S+);UNIX\.group=\d+;UNIX\.mode=\d+;UNIX.owner=\d+; (.*?)$';
+      }
       foreach my $line (@$lines) {
-        if ($line =~ /^modify=\S+;perm=\S+;type=\S+;unique=(\S+);UNIX\.group=\d+;UNIX\.mode=\d+;UNIX.owner=\d+; (.*?)$/) {
+        if ($line =~ /$regex/) {
           $res->{$2} = $1;
         }
       }
@@ -2191,8 +2209,14 @@ sub showsymlinks_on_mlsd_rel_symlinked_dir {
 
       my $res = {};
       my $lines = [split(/\n/, $buf)];
+      my $regex;
+      if ($^O eq 'solaris') {
+        $regex = '^modify=\S+;perm=\S+;type=(\S+);unique=(\S+);UNIX\.group=\d+;UNIX.groupname=\S+;UNIX\.mode=\d+;UNIX.owner=\d+;UNIX.ownername=\S+; (.*?)$';
+      } else {
+        $regex = '^modify=\S+;perm=\S+;type=(\S+);unique=(\S+);UNIX\.group=\d+;UNIX\.mode=\d+;UNIX.owner=\d+; (.*?)$';
+      }
       foreach my $line (@$lines) {
-        if ($line =~ /^modify=\S+;perm=\S+;type=(\S+);unique=(\S+);UNIX\.group=\d+;UNIX\.mode=\d+;UNIX.owner=\d+; (.*?)$/) {
+        if ($line =~ /$regex/) {
           $res->{$3} = { type => $1, unique => $2 };
         }
       }
@@ -2368,7 +2392,11 @@ sub showsymlinks_off_mlst_rel_symlinked_file {
         $test_symlink = ('/private' . $test_symlink);
       }
 
-      $expected = 'modify=\d+;perm=adfr(w)?;size=\d+;type=file;unique=\S+;UNIX.group=\d+;UNIX.mode=\d+;UNIX.owner=\d+; ' . $test_symlink . '$';
+      if ($^O eq 'solaris') {
+        $expected = 'modify=\d+;perm=adfr(w)?;size=\d+;type=file;unique=\S+;UNIX.group=\d+;UNIX.groupname=\S+;UNIX.mode=\d+;UNIX.owner=\d+;UNIX.ownername=\S+; ' . $test_symlink . '$';
+      } else {
+        $expected = 'modify=\d+;perm=adfr(w)?;size=\d+;type=file;unique=\S+;UNIX.group=\d+;UNIX.mode=\d+;UNIX.owner=\d+; ' . $test_symlink . '$';
+      }
       $self->assert(qr/$expected/, $resp_msg,
         test_msg("Expected '$expected', got '$resp_msg'"));
     };
@@ -2675,7 +2703,11 @@ sub showsymlinks_on_mlst_rel_symlinked_file {
         $test_file = ('/private' . $test_file);
       }
 
-      $expected = 'modify=\d+;perm=adfr(w)?;size=\d+;type=OS.unix=symlink;unique=\S+;UNIX.group=\d+;UNIX.mode=\d+;UNIX.owner=\d+; ' . $test_file . '$';
+      if ($^O eq 'solaris') {
+        $expected = 'modify=\d+;perm=adfr(w)?;size=\d+;type=OS.unix=symlink;unique=\S+;UNIX.group=\d+;UNIX.groupname=\S+;UNIX.mode=\d+;UNIX.owner=\d+;UNIX.ownername=\S+; ' . $test_file . '$';
+      } else {
+        $expected = 'modify=\d+;perm=adfr(w)?;size=\d+;type=OS.unix=symlink;unique=\S+;UNIX.group=\d+;UNIX.mode=\d+;UNIX.owner=\d+; ' . $test_file . '$';
+      }
       $self->assert(qr/$expected/, $resp_msg,
         test_msg("Expected '$expected', got '$resp_msg'"));
     };
@@ -2974,7 +3006,11 @@ sub showsymlinks_off_mlst_rel_symlinked_dir {
         $test_symlink = ('/private' . $test_symlink);
       }
 
-      $expected = 'modify=\d+;perm=adfr(w)?;size=\d+;type=dir;unique=\S+;UNIX.group=\d+;UNIX.mode=\d+;UNIX.owner=\d+; ' . $test_symlink . '$';
+      if ($^O eq 'solaris') {
+        $expected = 'modify=\d+;perm=adfr(w)?;size=\d+;type=dir;unique=\S+;UNIX.group=\d+;UNIX.groupname=\S+;UNIX.mode=\d+;UNIX.owner=\d+;UNIX.ownername=\S+; ' . $test_symlink . '$';
+      } else {
+        $expected = 'modify=\d+;perm=adfr(w)?;size=\d+;type=dir;unique=\S+;UNIX.group=\d+;UNIX.mode=\d+;UNIX.owner=\d+; ' . $test_symlink . '$';
+      }
       $self->assert(qr/$expected/, $resp_msg,
         test_msg("Expected '$expected', got '$resp_msg'"));
     };
@@ -3265,7 +3301,11 @@ sub showsymlinks_on_mlst_rel_symlinked_dir {
         $test_dir = ('/private' . $test_dir);
       }
 
-      $expected = 'modify=\d+;perm=adfr(w)?;size=\d+;type=OS.unix=symlink;unique=\S+;UNIX.group=\d+;UNIX.mode=\d+;UNIX.owner=\d+; ' . $test_dir . '$';
+      if ($^O eq 'solaris') {
+        $expected = 'modify=\d+;perm=adfr(w)?;size=\d+;type=OS.unix=symlink;unique=\S+;UNIX.group=\d+;UNIX.groupname=\S+;UNIX.mode=\d+;UNIX.owner=\d+;UNIX.ownername=\S+; ' . $test_dir . '$';
+      } else {
+        $expected = 'modify=\d+;perm=adfr(w)?;size=\d+;type=OS.unix=symlink;unique=\S+;UNIX.group=\d+;UNIX.mode=\d+;UNIX.owner=\d+; ' . $test_dir . '$';
+      }
       $self->assert(qr/$expected/, $resp_msg,
         test_msg("Expected '$expected', got '$resp_msg'"));
     };
