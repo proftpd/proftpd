@@ -997,7 +997,7 @@ static int parse_wildcard_config_path(pool *p, const char *path,
    */
 
   parent_path = pstrdup(tmp_pool, "/");
-  component = path + 1;
+  component = path;
 
   while (TRUE) {
     int last_component = FALSE;
