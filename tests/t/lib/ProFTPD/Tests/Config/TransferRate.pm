@@ -278,7 +278,11 @@ sub transferrate_stor_ok {
   defined(my $pid = fork()) or die("Can't fork: $!");
   if ($pid) {
     eval {
-      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
+      #
+      # 0, source port (any)
+      # 2, connection time out
+      # 30, command time out (plenty, transfer should take ~10secs)
+      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port, 0, 2, 30);
       $client->login($user, $passwd);
       $client->type('binary');
 
