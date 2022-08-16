@@ -6588,7 +6588,7 @@ sub extlog_eos_reason_timeoutstalled {
 
       # Perl's Net::Cmd module uses a very non-standard 599 code to
       # indicate that the connection is closed
-      $expected = 599;
+      $expected = 421;
       $self->assert($expected == $resp_code,
         test_msg("Expected $expected, got $resp_code"));
 
@@ -9671,7 +9671,7 @@ EOC
 
       # Perl's Net::Cmd module uses a very non-standard 599 code to
       # indicate that the connection is closed
-      $expected = 599;
+      $expected = 421;
       $self->assert($expected == $resp_code,
         test_msg("Expected $expected, got $resp_code"));
 

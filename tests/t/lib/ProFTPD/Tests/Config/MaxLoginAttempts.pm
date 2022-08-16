@@ -106,7 +106,7 @@ sub maxloginattempts_one {
       $resp_code = $client->response_code();
       $resp_msg = $client->response_msg(0);
 
-      $expected = 599;
+      $expected = 421;
       $self->assert($expected == $resp_code,
         test_msg("Expected response code $expected, got $resp_code"));
     };
@@ -243,7 +243,7 @@ sub maxloginattempts_absent {
       my $resp_code = $client->response_code();
       my $resp_msg = $client->response_msg(0);
 
-      my $expected = 599;
+      my $expected = 421;
       $self->assert($expected == $resp_code,
         test_msg("Expected response code $expected, got $resp_code"));
     };
