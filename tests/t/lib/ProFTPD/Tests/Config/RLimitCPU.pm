@@ -334,7 +334,8 @@ sub rlimitcpu_session_min {
   defined(my $pid = fork()) or die("Can't fork: $!");
   if ($pid) {
     eval {
-      eval { ProFTPD::TestSuite::FTP->new('127.0.0.1', $port, 0, 1) };
+      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port, 0, 2, 2);
+      eval { $client->login($user, $passwd); };
       unless ($@) {
         die("Connecting to server succeeded unexpectedly");
       }
