@@ -989,7 +989,7 @@ int pr_inet_set_proto_keepalive(pool *p, conn_t *c,
   if (val != -1) {
     int option_name;
 
-# if defined(TCP_KEEPALIVE)
+#ifndef TCP_KEEPIDLE
     option_name = TCP_KEEPALIVE;
 # else
     option_name = TCP_KEEPIDLE;
