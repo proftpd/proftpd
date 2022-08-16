@@ -1957,6 +1957,66 @@ MODRET sftp_post_pass(cmd_rec *cmd) {
     sftp_channel_set_max_count(*((unsigned int *) c->argv[0]));
   }
 
+  c = find_config(main_server->conf, CONF_PARAM, "SFTPExtensions", FALSE);
+  if (c != NULL) {
+    sftp_fxp_set_extensions(*((unsigned long *) c->argv[0]));
+  }
+
+  /* Check for any rekey policy. */
+  c = find_config(main_server->conf, CONF_PARAM, "SFTPRekey", FALSE);
+  if (c != NULL) {
+    int rekey;
+
+    /* The possible int values here are:
+     *
+     * 0 (disable rekeying)
+     * 1 (enable rekeying, with parameters)
+     */
+
+    rekey = *((int *) c->argv[0]);
+    if (rekey) {
+      int rekey_interval;
+      off_t rekey_size;
+
+      rekey_interval = *((int *) c->argv[1]);
+      rekey_size = *((off_t *) c->argv[2]);
+
+      pr_trace_msg("ssh2", 6, "SSH2 rekeys requested after %d secs "
+        "or %" PR_LU " bytes", rekey_interval, (pr_off_t) rekey_size);
+      sftp_kex_rekey_set_interval(rekey_interval);
+      sftp_ssh2_packet_rekey_set_size(rekey_size);
+
+      if (c->argc == 4) {
+        int rekey_timeout;
+
+        rekey_timeout = *((int *) c->argv[3]);
+
+        pr_trace_msg("ssh2", 6, "SSH2 rekeying has %d %s to complete",
+          rekey_timeout, rekey_timeout != 1 ? "secs" : "sec");
+        sftp_kex_rekey_set_timeout(rekey_timeout);
+      }
+
+    } else {
+      sftp_kex_rekey_set_interval(0);
+      sftp_kex_rekey_set_timeout(0);
+      sftp_ssh2_packet_rekey_set_seqno(0);
+      sftp_ssh2_packet_rekey_set_size(0);
+
+      pr_trace_msg("ssh2", 6,
+        "SSH2 server-requested rekeys disabled by SFTPRekey");
+    }
+
+  } else {
+
+    /* Set the default rekey values: 1 hour (3600 secs) and 2 GB.
+     * Also, as per RFC4344, rekeys will be requested whenever the
+     * packet sequence numbers reach rollover; these are handled by
+     * default in packet.c.
+     */
+    sftp_kex_rekey_set_interval(3600);
+    sftp_ssh2_packet_rekey_set_size((off_t) 2147483648UL);
+  }
+
   return PR_DECLINED(cmd);
 }
 
@@ -2771,14 +2831,9 @@ static int sftp_sess_init(void) {
     times_gmt = *((unsigned char *) c->argv[0]);
   }
 
-  pr_response_block(TRUE);
-
-  c = find_config(main_server->conf, CONF_PARAM, "SFTPExtensions", FALSE);
-  if (c != NULL) {
-    sftp_fxp_set_extensions(*((unsigned long *) c->argv[0]));
-  }
-
   sftp_fxp_use_gmt(times_gmt);
+
+  pr_response_block(TRUE);
 
   c = find_config(main_server->conf, CONF_PARAM, "SFTPClientAlive", FALSE);
   if (c != NULL) {
@@ -2792,61 +2847,6 @@ static int sftp_sess_init(void) {
     pr_trace_msg("ssh2", 7,
       "client alive checks requested after %u secs, up to %u times",
       interval, count);
-  }
-
-  /* Check for any rekey policy. */
-  c = find_config(main_server->conf, CONF_PARAM, "SFTPRekey", FALSE);
-  if (c != NULL) {
-    int rekey;
-
-    /* The possible int values here are:
-     *
-     * 0 (disable rekeying)
-     * 1 (enable rekeying, with parameters)
-     */
-
-    rekey = *((int *) c->argv[0]);
-    if (rekey) {
-      int rekey_interval;
-      off_t rekey_size;
-
-      rekey_interval = *((int *) c->argv[1]);
-      rekey_size = *((off_t *) c->argv[2]);
-
-      pr_trace_msg("ssh2", 6, "SSH2 rekeys requested after %d secs "
-        "or %" PR_LU " bytes", rekey_interval, (pr_off_t) rekey_size);
-      sftp_kex_rekey_set_interval(rekey_interval);
-      sftp_ssh2_packet_rekey_set_size(rekey_size);
-
-      if (c->argc == 4) {
-        int rekey_timeout;
-
-        rekey_timeout = *((int *) c->argv[3]);
-
-        pr_trace_msg("ssh2", 6, "SSH2 rekeying has %d %s to complete",
-          rekey_timeout, rekey_timeout != 1 ? "secs" : "sec");
-        sftp_kex_rekey_set_timeout(rekey_timeout);
-      }
-
-    } else {
-      sftp_kex_rekey_set_interval(0);
-      sftp_kex_rekey_set_timeout(0);
-      sftp_ssh2_packet_rekey_set_seqno(0);
-      sftp_ssh2_packet_rekey_set_size(0);
-
-      pr_trace_msg("ssh2", 6,
-        "SSH2 server-requested rekeys disabled by SFTPRekey");
-    }
-
-  } else {
-
-    /* Set the default rekey values: 1 hour (3600 secs) and 2 GB.
-     * Also, as per RFC4344, rekeys will be requested whenever the
-     * packet sequence numbers reach rollover; these are handled by
-     * default in packet.c.
-     */
-    sftp_kex_rekey_set_interval(3600);
-    sftp_ssh2_packet_rekey_set_size((off_t) 2147483648UL);
   }
 
   /* Enable traffic analysis protection (TAP) after keys have been
