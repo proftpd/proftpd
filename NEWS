@@ -21,6 +21,7 @@
   X448 check.
 - Issue 1494 - 1.3.8rc4 failing to build on Solaris due to missing type
   declarations.
+- Issue 1500 - mod_ifsession doesn't change the effect of SFTPMaxChannels.
 
 1.3.8rc4 - Released 23-Jul-2022
 --------------------------------
