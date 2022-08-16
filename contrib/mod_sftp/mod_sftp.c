@@ -1939,6 +1939,27 @@ MODRET set_sftptrafficpolicy(cmd_rec *cmd) {
   return PR_HANDLED(cmd);
 }
 
+/* Command handlers
+ */
+
+MODRET sftp_post_pass(cmd_rec *cmd) {
+  config_rec *c;
+
+  if (sftp_engine == FALSE) {
+    return PR_DECLINED(cmd);
+  }
+
+  /* We look up SFTPMaxChannels here, post-authentication, to honor any
+   * mod_ifsession changes (see Issue #1500).
+   */
+  c = find_config(main_server->conf, CONF_PARAM, "SFTPMaxChannels", FALSE);
+  if (c != NULL) {
+    sftp_channel_set_max_count(*((unsigned int *) c->argv[0]));
+  }
+
+  return PR_DECLINED(cmd);
+}
+
 /* Hook handlers
  */
 
@@ -2712,11 +2733,6 @@ static int sftp_sess_init(void) {
     }
   }
 
-  c = find_config(main_server->conf, CONF_PARAM, "SFTPMaxChannels", FALSE);
-  if (c != NULL) {
-    sftp_channel_set_max_count(*((unsigned int *) c->argv[0]));
-  }
-
   c = find_config(main_server->conf, CONF_PARAM, "DisplayLogin", FALSE);
   if (c != NULL) {
     const char *path;
@@ -2921,6 +2937,8 @@ static conftable sftp_conftab[] = {
 };
 
 static cmdtable sftp_cmdtab[] = {
+  { POST_CMD,	C_PASS,	G_NONE,	sftp_post_pass,	FALSE,	FALSE },
+
   /* Module hooks */
   { HOOK, "sftp_get_packet_write",	G_NONE, sftp_hook_get_packet_write, FALSE, FALSE },
   { HOOK, "sftp_set_auth_success_handler", G_NONE, sftp_hook_set_auth_success_handler, FALSE, FALSE },
