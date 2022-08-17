@@ -6592,7 +6592,7 @@ sub extlog_eos_reason_timeoutstalled {
       $self->assert($expected == $resp_code,
         test_msg("Expected $expected, got $resp_code"));
 
-      $expected = "Connection closed";
+      $expected = "[Net::FTP] Connection closed";
       $self->assert($expected eq $resp_msg,
         test_msg("Expected '$expected', got '$resp_msg'"));
     };
@@ -9675,7 +9675,7 @@ EOC
       $self->assert($expected == $resp_code,
         test_msg("Expected $expected, got $resp_code"));
 
-      $expected = "Connection closed";
+      $expected = "[Net::FTP] Connection closed";
       $self->assert($expected eq $resp_msg,
         test_msg("Expected '$expected', got '$resp_msg'"));
     };
