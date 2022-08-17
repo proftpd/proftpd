@@ -89,7 +89,7 @@ sub hup_daemon_ok {
 
   # Now change the config a little, and send the HUP signal
   $config->{ServerIdent} = 'on bar';
-  ($port, $config_user, $config_group) = config_write($config_file, $config);
+  config_write($config_file, $config);
   server_restart($pid_file);
   sleep(2);
 
