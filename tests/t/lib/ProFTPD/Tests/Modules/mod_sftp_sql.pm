@@ -68,7 +68,7 @@ my $TESTS = {
     test_class => [qw(bug forking ssh2)],
   },
 
-  ssh2_auth_publickey_rsa_sql_fp_env_vars => {
+  ssh2_auth_publickey_rsa_sql_fp_note_vars => {
     order => ++$order,
     test_class => [qw(forking ssh2)],
   },
@@ -85,12 +85,12 @@ my $TESTS = {
 
   ssh2_ext_auth_publickey_openssh_ed25519_sql_bug4221 => {
     order => ++$order,
-    test_class => [qw(bug forking ssh2)],
+    test_class => [qw(bug feature_sodium forking ssh2)],
   },
 
   ssh2_ext_auth_publickey_openssh_ed25519_sql_rfc4716_bug4221 => {
     order => ++$order,
-    test_class => [qw(bug forking ssh2)],
+    test_class => [qw(bug feature_sodium forking ssh2)],
   },
 
   ssh2_auth_publickey_rsa_sql_null_values_issue1246 => {
@@ -1998,7 +1998,7 @@ sub get_sessions {
   return split(/\|/, $res);
 }
 
-sub ssh2_auth_publickey_rsa_sql_fp_env_vars {
+sub ssh2_auth_publickey_rsa_sql_fp_note_vars {
   my $self = shift;
   my $tmpdir = $self->{tmpdir};
 
@@ -2099,7 +2099,7 @@ EOS
         "SQLConnectInfo $db_file",
         "SQLLogFile $log_file",
         'SQLNamedQuery get-user-authorized-keys SELECT "key FROM sftpuserkeys WHERE name = \'%{0}\'"',
-        'SQLNamedQuery log_user_key FREEFORM "INSERT INTO sftpsessions (user, key_fingerprint, key_fingerprint_algo) VALUES (\'%u\', \'%{env:SFTP_USER_PUBLICKEY_FINGERPRINT}\', \'%{env:SFTP_USER_PUBLICKEY_FINGERPRINT_ALGO}\')"',
+        'SQLNamedQuery log_user_key FREEFORM "INSERT INTO sftpsessions (user, key_fingerprint, key_fingerprint_algo) VALUES (\'%u\', \'%{note:SFTP_USER_PUBLICKEY_FINGERPRINT}\', \'%{note:SFTP_USER_PUBLICKEY_FINGERPRINT_ALGO}\')"',
         'SQLLog INIT log_user_key',
       ],
 
