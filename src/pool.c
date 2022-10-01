@@ -2,7 +2,7 @@
  * ProFTPD - FTP server daemon
  * Copyright (c) 1997, 1998 Public Flood Software
  * Copyright (c) 1999, 2000 MacGyver aka Habeeb J. Dihu <macgyver@tos.net>
- * Copyright (c) 2001-2021 The ProFTPD Project team
+ * Copyright (c) 2001-2022 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -170,9 +170,18 @@ static void free_blocks(union block_hdr *blok, const char *pool_tag) {
 
   /* Adjust first_avail pointers */
 
-  while (blok->h.next) {
+  while (blok->h.next != NULL) {
     chk_on_blk_list(blok, old_free_list, pool_tag);
     blok->h.first_avail = (char *) (blok + 1);
+
+    /* Watch for self-referential pools (although I'm not sure how this happens,
+     * exactly).
+     */
+    if (blok->h.next == blok) {
+      blok->h.next = NULL;
+      break;
+    }
+
     blok = blok->h.next;
   }
 
