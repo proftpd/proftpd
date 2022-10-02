@@ -125,6 +125,11 @@ my $TESTS = {
     test_class => [qw(bug forking)],
   },
 
+  tls_login_before_auth_without_opt_allow_per_user_issue1533 => {
+    order => ++$order,
+    test_class => [qw(bug forking)],
+  },
+
   tls_list_no_session_reuse => {
     order => ++$order,
     test_class => [qw(forking)],
@@ -1447,6 +1452,7 @@ sub tls_login_with_sni_issue850 {
 
     AuthUserFile => $setup->{auth_user_file},
     AuthGroupFile => $setup->{auth_group_file},
+    AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
       'mod_delay.c' => {
@@ -1477,6 +1483,8 @@ sub tls_login_with_sni_issue850 {
     # This happens because colliding ipbinds are added to the _head_ of
     # the list; the last one added is thus first in the list.  And we
     # return the first matching ipbind in pr_ipbind_find().
+    #
+    # As of Issue#1369, we also use first-match-wins.
 
     print $fh <<EOC;
 <VirtualHost 127.0.0.1>
@@ -1565,13 +1573,28 @@ EOC
       }
 
       my $errstr = IO::Socket::SSL::errstr();
-      if ($ENV{TEST_VERBOSE}) {
-        print STDERR "# TLS Handshake failed: $errstr\n";
-      }
+      if ($errstr) {
+        if ($ENV{TEST_VERBOSE}) {
+          print STDERR "# TLS Handshake failed: $errstr\n";
+        }
 
-      my $expected = 'handshake failure|unrecognized name';
-      $self->assert(qr/$expected/, $errstr,
-        test_msg("Expected '$expected', got '$errstr'"));
+        my $expected = 'handshake failure|unrecognized name';
+        $self->assert(qr/$expected/, $errstr,
+          test_msg("Expected TLS error '$expected', got '$errstr'"));
+
+      } else {
+        my $errstr = $Net::FTPSSL::ERRSTR;
+
+        if ($ENV{TEST_VERBOSE}) {
+          print STDERR "# $errstr\n";
+        }
+
+        # Since the vhost to which we connected (first match wins) does not
+        # have TLSEngine enabled, the AUTH command will be rejected.
+        my $expected = '500 AUTH not understood';
+        $self->assert(qr/$expected/, $errstr,
+          test_msg("Expected AUTH error '$expected', got '$errstr'"));
+      }
     };
     if ($@) {
       $ex = $@;
@@ -1736,13 +1759,28 @@ EOC
       }
 
       my $errstr = IO::Socket::SSL::errstr();
-      if ($ENV{TEST_VERBOSE}) {
-        print STDERR "# TLS Handshake failed: $errstr\n";
-      }
+      if ($errstr) {
+        if ($ENV{TEST_VERBOSE}) {
+          print STDERR "# TLS Handshake failed: $errstr\n";
+        }
 
-      my $expected = 'handshake failure|unrecognized name';
-      $self->assert(qr/$expected/, $errstr,
-        test_msg("Expected '$expected', got '$errstr'"));
+        my $expected = 'handshake failure|unrecognized name';
+        $self->assert(qr/$expected/, $errstr,
+          test_msg("Expected TLS error '$expected', got '$errstr'"));
+
+      } else {
+        my $errstr = $Net::FTPSSL::ERRSTR;
+
+        if ($ENV{TEST_VERBOSE}) {
+          print STDERR "# $errstr\n";
+        }
+
+        # Since the vhost to which we connected (first match wins) does not
+        # have TLSEngine enabled, the AUTH command will be rejected.
+        my $expected = '500 AUTH not understood';
+        $self->assert(qr/$expected/, $errstr,
+          test_msg("Expected AUTH error '$expected', got '$errstr'"));
+      }
     };
     if ($@) {
       $ex = $@;
@@ -2217,32 +2255,13 @@ sub tls_login_with_sni_ignored_issue850 {
 
   my $host = 'castaglia';
 
-  # Configure a name-based <VirtualHost> for our testing.
+  # Configure a name-based <VirtualHost> for our testing; remember that first
+  # IP/port match wins, then first SNI match.
   if (open(my $fh, ">> $setup->{config_file}")) {
     print $fh <<EOC;
 <VirtualHost 127.0.0.1>
-  ServerName "Alias-based ProFTPD"
-  ServerAlias $host
-  Port $port
-
-  AuthUserFile $setup->{auth_user_file}
-  AuthGroupFile $setup->{auth_group_file}
-  AuthOrder mod_auth_file.c
-  TransferLog none
-  WtmpLog off
-
-  <IfModule mod_delay.c>
-    DelayEngine off
-  </IfModule>
-
-  <Limit LOGIN>
-    DenyAll
-  </Limit>
-</VirtualHost>
-
-<VirtualHost 127.0.0.1>
   ServerName "Name-based ProFTPD"
-  ServerAlias default
+  ServerAlias $host
   Port $port
 
   AuthUserFile $setup->{auth_user_file}
@@ -2263,6 +2282,26 @@ sub tls_login_with_sni_ignored_issue850 {
     TLSCACertificateFile $ca_file
     TLSOptions EnableDiags IgnoreSNI
   </IfModule>
+</VirtualHost>
+
+<VirtualHost 127.0.0.1>
+  ServerName "Alias-based ProFTPD"
+  ServerAlias default
+  Port $port
+
+  AuthUserFile $setup->{auth_user_file}
+  AuthGroupFile $setup->{auth_group_file}
+  AuthOrder mod_auth_file.c
+  TransferLog none
+  WtmpLog off
+
+  <IfModule mod_delay.c>
+    DelayEngine off
+  </IfModule>
+
+  <Limit LOGIN>
+    DenyAll
+  </Limit>
 </VirtualHost>
 EOC
     unless (close($fh)) {
@@ -2360,6 +2399,7 @@ sub tls_login_with_sni_mismatched_host_issue850 {
 
     AuthUserFile => $setup->{auth_user_file},
     AuthGroupFile => $setup->{auth_group_file},
+    AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
       'mod_delay.c' => {
@@ -2374,31 +2414,10 @@ sub tls_login_with_sni_mismatched_host_issue850 {
   my $host = 'castaglia';
   my $other_host = 'ftp.nospam.org';
 
-  # Configure name-based <VirtualHost> sections for our testing.
+  # Configure a name-based <VirtualHost> for our testing; remember that first
+  # IP/port match wins, then first SNI match.
   if (open(my $fh, ">> $setup->{config_file}")) {
     print $fh <<EOC;
-<VirtualHost 127.0.0.1>
-  ServerName "Other ProFTPD"
-  ServerAlias $other_host
-  Port $port
-
-  AuthUserFile $setup->{auth_user_file}
-  AuthGroupFile $setup->{auth_group_file}
-  AuthOrder mod_auth_file.c
-
-  <IfModule mod_delay.c>
-    DelayEngine off
-  </IfModule>
-
-  <IfModule mod_tls.c>
-    TLSEngine off
-  </IfModule>
-
-  <Limit LOGIN>
-    DenyAll
-  </Limit>
-</VirtualHost>
-
 <VirtualHost 127.0.0.1>
   ServerName "Alias-based ProFTPD"
   ServerAlias $host
@@ -2420,6 +2439,28 @@ sub tls_login_with_sni_mismatched_host_issue850 {
     TLSCACertificateFile $rsa_ca_file
     TLSOptions EnableDiags
   </IfModule>
+</VirtualHost>
+
+<VirtualHost 127.0.0.1>
+  ServerName "Other ProFTPD"
+  ServerAlias $other_host
+  Port $port
+
+  AuthUserFile $setup->{auth_user_file}
+  AuthGroupFile $setup->{auth_group_file}
+  AuthOrder mod_auth_file.c
+
+  <IfModule mod_delay.c>
+    DelayEngine off
+  </IfModule>
+
+  <IfModule mod_tls.c>
+    TLSEngine off
+  </IfModule>
+
+  <Limit LOGIN>
+    DenyAll
+  </Limit>
 </VirtualHost>
 EOC
     unless (close($fh)) {
@@ -2537,9 +2578,35 @@ sub tls_login_with_sni_matching_host_issue850 {
 
   my $host = 'castaglia';
 
-  # Configure name-based <VirtualHost> sections for our testing.
+  # Configure a name-based <VirtualHost> for our testing; remember that first
+  # IP/port match wins, then first SNI match.
   if (open(my $fh, ">> $setup->{config_file}")) {
     print $fh <<EOC;
+<VirtualHost 127.0.0.1>
+  ServerName "Name-based ProFTPD"
+  ServerAlias default
+  Port $port
+
+  AuthUserFile $setup->{auth_user_file}
+  AuthGroupFile $setup->{auth_group_file}
+  AuthOrder mod_auth_file.c
+  TransferLog none
+  WtmpLog off
+
+  <IfModule mod_delay.c>
+    DelayEngine off
+  </IfModule>
+
+  <IfModule mod_tls.c>
+    TLSEngine on
+    TLSLog $setup->{log_file}
+    TLSRequired on
+    TLSRSACertificateFile $rsa_cert_file
+    TLSCACertificateFile $rsa_ca_file
+    TLSOptions EnableDiags
+  </IfModule>
+</VirtualHost>
+
 <VirtualHost 127.0.0.1>
   ServerName "Alias-based ProFTPD"
   ServerAlias $host
@@ -2567,31 +2634,6 @@ sub tls_login_with_sni_matching_host_issue850 {
   <Limit LOGIN>
     DenyAll
   </Limit>
-</VirtualHost>
-
-<VirtualHost 127.0.0.1>
-  ServerName "Name-based ProFTPD"
-  ServerAlias default
-  Port $port
-
-  AuthUserFile $setup->{auth_user_file}
-  AuthGroupFile $setup->{auth_group_file}
-  AuthOrder mod_auth_file.c
-  TransferLog none
-  WtmpLog off
-
-  <IfModule mod_delay.c>
-    DelayEngine off
-  </IfModule>
-
-  <IfModule mod_tls.c>
-    TLSEngine on
-    TLSLog $setup->{log_file}
-    TLSRequired on
-    TLSRSACertificateFile $rsa_cert_file
-    TLSCACertificateFile $rsa_ca_file
-    TLSOptions EnableDiags
-  </IfModule>
 </VirtualHost>
 EOC
     unless (close($fh)) {
@@ -2709,9 +2751,35 @@ sub tls_login_with_sni_matching_host_case_insensitive_issue850 {
 
   my $host = 'Castaglia';
 
-  # Configure name-based <VirtualHost> sections for our testing.
+  # Configure a name-based <VirtualHost> for our testing; remember that first
+  # IP/port match wins, then first SNI match.
   if (open(my $fh, ">> $setup->{config_file}")) {
     print $fh <<EOC;
+<VirtualHost 127.0.0.1>
+  ServerName "Name-based ProFTPD"
+  ServerAlias default
+  Port $port
+
+  AuthUserFile $setup->{auth_user_file}
+  AuthGroupFile $setup->{auth_group_file}
+  AuthOrder mod_auth_file.c
+  TransferLog none
+  WtmpLog off
+
+  <IfModule mod_delay.c>
+    DelayEngine off
+  </IfModule>
+
+  <IfModule mod_tls.c>
+    TLSEngine on
+    TLSLog $setup->{log_file}
+    TLSRequired on
+    TLSRSACertificateFile $rsa_cert_file
+    TLSCACertificateFile $rsa_ca_file
+    TLSOptions EnableDiags
+  </IfModule>
+</VirtualHost>
+
 <VirtualHost 127.0.0.1>
   ServerName "Alias-based ProFTPD"
   ServerAlias $host
@@ -2739,31 +2807,6 @@ sub tls_login_with_sni_matching_host_case_insensitive_issue850 {
   <Limit LOGIN>
     DenyAll
   </Limit>
-</VirtualHost>
-
-<VirtualHost 127.0.0.1>
-  ServerName "Name-based ProFTPD"
-  ServerAlias default
-  Port $port
-
-  AuthUserFile $setup->{auth_user_file}
-  AuthGroupFile $setup->{auth_group_file}
-  AuthOrder mod_auth_file.c
-  TransferLog none
-  WtmpLog off
-
-  <IfModule mod_delay.c>
-    DelayEngine off
-  </IfModule>
-
-  <IfModule mod_tls.c>
-    TLSEngine on
-    TLSLog $setup->{log_file}
-    TLSRequired on
-    TLSRSACertificateFile $rsa_cert_file
-    TLSCACertificateFile $rsa_ca_file
-    TLSOptions EnableDiags
-  </IfModule>
 </VirtualHost>
 EOC
     unless (close($fh)) {
@@ -2878,9 +2921,36 @@ sub tls_login_with_sni_mismatched_protocol_version_issue850 {
 
   my $host = 'castaglia';
 
-  # Configure name-based <VirtualHost> sections for our testing.
+  # Configure a name-based <VirtualHost> for our testing; remember that first
+  # IP/port match wins, then first SNI match.
   if (open(my $fh, ">> $setup->{config_file}")) {
     print $fh <<EOC;
+<VirtualHost 127.0.0.1>
+  ServerName "Name-based ProFTPD"
+  ServerAlias default
+  Port $port
+
+  AuthUserFile $setup->{auth_user_file}
+  AuthGroupFile $setup->{auth_group_file}
+  AuthOrder mod_auth_file.c
+  TransferLog none
+  WtmpLog off
+
+  <IfModule mod_delay.c>
+    DelayEngine off
+  </IfModule>
+
+  <IfModule mod_tls.c>
+    TLSEngine on
+    TLSLog $setup->{log_file}
+    TLSRequired on
+    TLSECCertificateFile $ec_cert_file
+    TLSCACertificateFile $ec_ca_file
+    TLSOptions EnableDiags
+    TLSProtocol SSLv3 TLSv1.0
+  </IfModule>
+</VirtualHost>
+
 <VirtualHost 127.0.0.1>
   ServerName "Alias-based ProFTPD"
   ServerAlias $host
@@ -2909,32 +2979,6 @@ sub tls_login_with_sni_mismatched_protocol_version_issue850 {
   <Limit LOGIN>
     DenyAll
   </Limit>
-</VirtualHost>
-
-<VirtualHost 127.0.0.1>
-  ServerName "Name-based ProFTPD"
-  ServerAlias default
-  Port $port
-
-  AuthUserFile $setup->{auth_user_file}
-  AuthGroupFile $setup->{auth_group_file}
-  AuthOrder mod_auth_file.c
-  TransferLog none
-  WtmpLog off
-
-  <IfModule mod_delay.c>
-    DelayEngine off
-  </IfModule>
-
-  <IfModule mod_tls.c>
-    TLSEngine on
-    TLSLog $setup->{log_file}
-    TLSRequired on
-    TLSECCertificateFile $ec_cert_file
-    TLSCACertificateFile $ec_ca_file
-    TLSOptions EnableDiags
-    TLSProtocol SSLv3 TLSv1.0
-  </IfModule>
 </VirtualHost>
 EOC
     unless (close($fh)) {
@@ -3619,6 +3663,108 @@ EOC
       if ($resp_code != '2') {
         die("HOST failed: " . $client->last_message());
       }
+
+      $client->quit();
+    };
+    if ($@) {
+      $ex = $@;
+    }
+
+    $wfh->print("done\n");
+    $wfh->flush();
+
+  } else {
+    eval { server_wait($setup->{config_file}, $rfh) };
+    if ($@) {
+      warn($@);
+      exit 1;
+    }
+
+    exit 0;
+  }
+
+  # Stop server
+  server_stop($setup->{pid_file});
+  $self->assert_child_ok($pid);
+
+  test_cleanup($setup->{log_file}, $ex);
+}
+
+sub tls_login_before_auth_without_opt_allow_per_user_issue1533 {
+  my $self = shift;
+  my $tmpdir = $self->{tmpdir};
+  my $setup = test_setup($tmpdir, 'tls');
+
+  my $cert_file = File::Spec->rel2abs('t/etc/modules/mod_tls/server-cert.pem');
+  my $ca_file = File::Spec->rel2abs('t/etc/modules/mod_tls/ca-cert.pem');
+
+  my $config = {
+    PidFile => $setup->{pid_file},
+    ScoreboardFile => $setup->{scoreboard_file},
+    SystemLog => $setup->{log_file},
+    TraceLog => $setup->{log_file},
+    Trace => 'tls:20',
+
+    AuthUserFile => $setup->{auth_user_file},
+    AuthGroupFile => $setup->{auth_group_file},
+    AuthOrder => 'mod_auth_file.c',
+
+    IfModules => {
+      'mod_delay.c' => {
+        DelayEngine => 'off',
+      },
+
+      'mod_tls.c' => {
+        TLSEngine => 'on',
+        TLSLog => $setup->{log_file},
+        TLSRequired => 'off',
+        TLSRSACertificateFile => $cert_file,
+        TLSCACertificateFile => $ca_file,
+      },
+    },
+  };
+
+  my ($port, $config_user, $config_group) = config_write($setup->{config_file},
+    $config);
+
+  # Open pipes, for use between the parent and child processes.  Specifically,
+  # the child will indicate when it's done with its test by writing a message
+  # to the parent.
+  my ($rfh, $wfh);
+  unless (pipe($rfh, $wfh)) {
+    die("Can't open pipe: $!");
+  }
+
+  my $ex;
+
+  # Fork child
+  $self->handle_sigchld();
+  defined(my $pid = fork()) or die("Can't fork: $!");
+  if ($pid) {
+    eval {
+      # Give the server a chance to start up
+      sleep(2);
+
+      # With this config, we should not be able to do a TLS handshake after
+      # authenticating.
+      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
+      $client->login($setup->{user}, $setup->{passwd});
+
+      eval { $client->quote('AUTH', 'TLS') };
+      unless ($@) {
+        die("AUTH succeeded unexpectedly");
+      }
+
+      my $resp_code = $client->response_code();
+      my $resp_msg = $client->response_msg();
+
+      my $expected = 534;
+      $self->assert($expected == $resp_code,
+        test_msg("Expected response code $expected, got $resp_code"));
+
+      $expected = 'Unwilling to accept security parameters';
+      $self->assert($expected eq $resp_msg,
+        test_msg("Expected response message '$expected', got '$resp_msg'"));
 
       $client->quit();
     };
@@ -5729,50 +5875,20 @@ EOC
 sub tls_opts_allow_per_user_tlsrequired_on_user_login_bug3325 {
   my $self = shift;
   my $tmpdir = $self->{tmpdir};
-
-  my $config_file = "$tmpdir/tls.conf";
-  my $pid_file = File::Spec->rel2abs("$tmpdir/tls.pid");
-  my $scoreboard_file = File::Spec->rel2abs("$tmpdir/tls.scoreboard");
-
-  my $log_file = test_get_logfile();
-
-  my $auth_user_file = File::Spec->rel2abs("$tmpdir/tls.passwd");
-  my $auth_group_file = File::Spec->rel2abs("$tmpdir/tls.group");
-
-  my $user = 'proftpd';
-  my $passwd = 'test';
-  my $group = 'ftpd';
-  my $home_dir = File::Spec->rel2abs($tmpdir);
-  my $uid = 500;
-  my $gid = 500;
-
-  # Make sure that, if we're running as root, that the home directory has
-  # permissions/privs set for the account we create
-  if ($< == 0) {
-    unless (chmod(0755, $home_dir)) {
-      die("Can't set perms on $home_dir to 0755: $!");
-    }
-
-    unless (chown($uid, $gid, $home_dir)) {
-      die("Can't set owner of $home_dir to $uid/$gid: $!");
-    }
-  }
-
-  auth_user_write($auth_user_file, $user, $passwd, $uid, $gid, $home_dir,
-    '/bin/bash');
-  auth_group_write($auth_group_file, $group, $gid, $user);
+  my $setup = test_setup($tmpdir, 'tls');
 
   my $client_cert = File::Spec->rel2abs('t/etc/modules/mod_tls/client-cert.pem');
   my $cert_file = File::Spec->rel2abs('t/etc/modules/mod_tls/server-cert.pem');
   my $ca_file = File::Spec->rel2abs('t/etc/modules/mod_tls/ca-cert.pem');
 
   my $config = {
-    PidFile => $pid_file,
-    ScoreboardFile => $scoreboard_file,
-    SystemLog => $log_file,
+    PidFile => $setup->{pid_file},
+    ScoreboardFile => $setup->{scoreboard_file},
+    SystemLog => $setup->{log_file},
 
-    AuthUserFile => $auth_user_file,
-    AuthGroupFile => $auth_group_file,
+    AuthUserFile => $setup->{auth_user_file},
+    AuthGroupFile => $setup->{auth_group_file},
+    AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
       'mod_delay.c' => {
@@ -5781,7 +5897,7 @@ sub tls_opts_allow_per_user_tlsrequired_on_user_login_bug3325 {
 
       'mod_tls.c' => {
         TLSEngine => 'on',
-        TLSLog => $log_file,
+        TLSLog => $setup->{log_file},
         TLSRequired => 'on',
         TLSRSACertificateFile => $cert_file,
         TLSCACertificateFile => $ca_file,
@@ -5790,13 +5906,14 @@ sub tls_opts_allow_per_user_tlsrequired_on_user_login_bug3325 {
     },
   };
 
-  my ($port, $config_user, $config_group) = config_write($config_file, $config);
+  my ($port, $config_user, $config_group) = config_write($setup->{config_file},
+    $config);
 
   my ($anon_user, $anon_group) = config_get_identity();
 
-  if (open(my $fh, ">> $config_file")) {
+  if (open(my $fh, ">> $setup->{config_file}")) {
     print $fh <<EOC;
-<Anonymous $home_dir>
+<Anonymous $setup->{home_dir}>
   User $anon_user
   Group $anon_group
   UserAlias anonymous $anon_user
@@ -5805,11 +5922,11 @@ sub tls_opts_allow_per_user_tlsrequired_on_user_login_bug3325 {
 </Anonymous>
 EOC
     unless (close($fh)) {
-      die("Can't write $config_file: $!");
+      die("Can't write $setup->{config_file}: $!");
     }
 
   } else {
-    die("Can't open $config_file: $!");
+    die("Can't open $setup->{config_file}: $!");
   }
 
   # Open pipes, for use between the parent and child processes.  Specifically,
@@ -5832,10 +5949,10 @@ EOC
       # Give the server a chance to start up
       sleep(2);
 
-      # With this config, we should not be able to login without SSL/TLS
+      # With this config, we should not be able to login without SSL/TLS.
       my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
 
-      eval { $client->login($user, $passwd) };
+      eval { $client->login($setup->{user}, $setup->{passwd}) };
       unless ($@) {
         die("Login succeeded unexpectedly");
       }
@@ -5843,17 +5960,17 @@ EOC
       my $resp_code = $client->response_code();
       my $resp_msg = $client->response_msg();
 
-      my $expected;
-
-      $expected = 530;
+      my $expected = 530;
       $self->assert($expected == $resp_code,
-        test_msg("Expected $expected, got $resp_code"));
+        test_msg("Expected response code $expected, got $resp_code"));
 
-      $expected = "Login incorrect.";
+      $expected = 'Login incorrect.';
       $self->assert($expected eq $resp_msg,
-        test_msg("Expected '$expected', got '$resp_msg'"));
-    };
+        test_msg("Expected response message '$expected', got '$resp_msg'"));
 
+      # Note that we explicitly do not send a QUIT command, since it would fail
+      # due to the TLS requirement, and the lack of a successful TLS handshake.
+    };
     if ($@) {
       $ex = $@;
     }
@@ -5862,7 +5979,7 @@ EOC
     $wfh->flush();
 
   } else {
-    eval { server_wait($config_file, $rfh) };
+    eval { server_wait($setup->{config_file}, $rfh) };
     if ($@) {
       warn($@);
       exit 1;
@@ -5872,18 +5989,10 @@ EOC
   }
 
   # Stop server
-  server_stop($pid_file);
-
+  server_stop($setup->{pid_file});
   $self->assert_child_ok($pid);
 
-  if ($ex) {
-    test_append_logfile($log_file, $ex);
-    unlink($log_file);
-
-    die($ex);
-  }
-
-  unlink($log_file);
+  test_cleanup($setup->{log_file}, $ex);
 }
 
 sub tls_opts_allow_per_user_tlsrequired_auth_user_login_bug3325 {

@@ -12947,8 +12947,9 @@ MODRET tls_any(cmd_rec *cmd) {
 MODRET tls_auth(cmd_rec *cmd) {
   register unsigned int i = 0;
   char *mode;
+  unsigned char *authenticated = NULL;
 
-  if (!tls_engine) {
+  if (tls_engine == FALSE) {
     return PR_DECLINED(cmd);
   }
 
@@ -12992,6 +12993,22 @@ MODRET tls_auth(cmd_rec *cmd) {
       tls_pkcs12_file == NULL) {
     tls_log("Unable to accept AUTH %s due to lack of certificates", cmd->arg);
     pr_response_add_err(R_431, _("Necessary security resource unavailable"));
+
+    pr_cmd_set_errno(cmd, EPERM);
+    errno = EPERM;
+    return PR_ERROR(cmd);
+  }
+
+  /* If the client has already authenticated via USER/PASS, AND if the
+   * AllowPerUser TLSOption is NOT in effect, then do not allow the AUTH
+   * command.
+   */
+  authenticated = get_param_ptr(cmd->server->conf, "authenticated", FALSE);
+  if (authenticated != NULL &&
+      *authenticated == TRUE &&
+      !(tls_opts & TLS_OPT_ALLOW_PER_USER)) {
+    tls_log("Unwilling to accept AUTH after USER/PASS authentication for this session unless AllowPerUser TLSOption is used");
+    pr_response_add_err(R_534, _("Unwilling to accept security parameters"));
 
     pr_cmd_set_errno(cmd, EPERM);
     errno = EPERM;
