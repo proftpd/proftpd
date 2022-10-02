@@ -15,6 +15,11 @@
   where `N' is the issue number.
 -----------------------------------------------------------------------------
 
+1.3.7f
+--------------------------------
+- Issue 1533 - mod_tls module unexpectedly allows TLS handshake after
+  authentication in some configurations.
+
 1.3.7e - Released 23-Jul-2022
 --------------------------------
 - Issue 1448 - Ensure that mod_sftp algorithms work properly with OpenSSL 3.x.

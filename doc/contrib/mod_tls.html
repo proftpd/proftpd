@@ -826,8 +826,9 @@ The currently implemented options are:
     <code>TLSRequired on</code> or <code>TLSRequired ctrl</code> are in
     effect, it will be possible for the connecting client to send
     usernames and password <i>unprotected</i> before <code>mod_tls</code>
-    rejects the connection.  This results in a slightly weaker security
-    policy enforcement; please consider carefully if this tradeoff is
+    rejects the connection; those credentials could be intercepted and/or
+    manipulated before they reach the server.  This results in a weaker
+    security policy enforcement; please consider carefully if this tradeoff is
     acceptable for your site.
 
     <p>
@@ -2337,7 +2338,7 @@ in your <code>configure</code> command, <i>e.g.</i>:
 <p>
 <hr>
 <font size=2><b><i>
-&copy; Copyright 2002-2021 TJ Saunders<br>
+&copy; Copyright 2002-2022 TJ Saunders<br>
  All Rights Reserved<br>
 </i></b></font>
 <hr>
