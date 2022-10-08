@@ -649,11 +649,12 @@ sub list_file_rel_paths_bug4259 {
 
       my $buf;
       $conn->read($buf, 8192, 30);
-      eval { $conn->close() };
 
       my $resp_code = $client->response_code();
       my $resp_msg = $client->response_msg();
       $self->assert_transfer_ok($resp_code, $resp_msg);
+
+      eval { $conn->close() };
 
       if ($ENV{TEST_VERBOSE}) {
         print STDERR "# response: $buf\n";
@@ -686,11 +687,12 @@ sub list_file_rel_paths_bug4259 {
 
       $buf = '';
       $conn->read($buf, 8192, 30);
-      eval { $conn->close() };
 
       $resp_code = $client->response_code();
       $resp_msg = $client->response_msg();
       $self->assert_transfer_ok($resp_code, $resp_msg);
+
+      eval { $conn->close() };
 
       if ($ENV{TEST_VERBOSE}) {
         print STDERR "# response: $buf\n";
@@ -832,11 +834,12 @@ sub list_file_after_upload {
       my $start = [gettimeofday()];
       my $buf = "ABCD" x 10240;
       $conn->write($buf, length($buf), 30);
-      eval { $conn->close() };
 
       my $resp_code = $client->response_code();
       my $resp_msg = $client->response_msg();
       $self->assert_transfer_ok($resp_code, $resp_msg);
+
+      eval { $conn->close() };
 
       my $elapsed = tv_interval($start);
       if ($ENV{TEST_VERBOSE}) {
@@ -855,11 +858,12 @@ sub list_file_after_upload {
 
       $buf = '';
       $conn->read($buf, 8192, 30);
-      eval { $conn->close() };
 
       $resp_code = $client->response_code();
       $resp_msg = $client->response_msg();
       $self->assert_transfer_ok($resp_code, $resp_msg);
+
+      eval { $conn->close() };
 
       $client->quit();
 
@@ -3542,11 +3546,12 @@ sub list_symlink_issue940 {
 
       $buf = '';
       $conn->read($buf, 8192, 30);
-      eval { $conn->close() };
 
       $resp_code = $client->response_code();
       $resp_msg = $client->response_msg();
       $self->assert_transfer_ok($resp_code, $resp_msg);
+
+      eval { $conn->close() };
 
       if ($ENV{TEST_VERBOSE}) {
         print STDERR "# RESPONSE:\n$buf\n";

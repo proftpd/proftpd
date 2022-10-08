@@ -826,13 +826,15 @@ sub listoptions_opt_1_nlst_complex_glob {
 
       my $buf;
       $conn->read($buf, 16384, 25);
-      eval { $conn->close() };
 
       my $resp_code = $client->response_code();
       my $resp_msg = $client->response_msg();
-      $client->quit();
 
       $self->assert_transfer_ok($resp_code, $resp_msg);
+
+      eval { $conn->close() };
+      $client->quit();
+
 
       # We have to be careful of the fact that readdir returns directory
       # entries in an unordered fashion.
@@ -1218,12 +1220,12 @@ sub listoptions_nlstonly {
 
       my $buf;
       $conn->read($buf, 16384, 25);
-      eval { $conn->close() };
       sleep(2);
 
       my $resp_code = $client->response_code();
       my $resp_msg = $client->response_msg();
       $self->assert_transfer_ok($resp_code, $resp_msg);
+      eval { $conn->close() };
       $client->quit();
 
       # We have to be careful of the fact that readdir returns directory
@@ -1259,12 +1261,12 @@ sub listoptions_nlstonly {
 
       $buf = '';
       $conn->read($buf, 16384, 25);
-      eval { $conn->close() };
       sleep(2);
 
       $resp_code = $client->response_code();
       $resp_msg = $client->response_msg();
       $self->assert_transfer_ok($resp_code, $resp_msg);
+      eval { $conn->close() };
       $client->quit();
 
       # We have to be careful of the fact that readdir returns directory
@@ -1414,12 +1416,12 @@ sub listoptions_sortednlst_bug4267 {
         $tmp = '';
         $res = $conn->read($tmp, 8192, 5);
       }
-      eval { $conn->close() };
       sleep(2);
 
       my $resp_code = $client->response_code();
       my $resp_msg = $client->response_msg();
       $self->assert_transfer_ok($resp_code, $resp_msg);
+      eval { $conn->close() };
 
       if ($ENV{TEST_VERBOSE}) {
         print STDERR "buf:\n$buf\n";
@@ -1586,12 +1588,13 @@ sub listoptions_maxfiles {
         $buf .= $tmp;
       }
 
-      eval { $conn->close() };
-
       my $resp_code = $client->response_code();
       my $resp_msg = $client->response_msg();
 
       $self->assert_transfer_ok($resp_code, $resp_msg);
+
+      eval { $conn->close() };
+
       $client->quit();
 
       # We have to be careful of the fact that readdir returns directory
@@ -1723,11 +1726,11 @@ sub listoptions_nlstnamesonly_issue251 {
 
       my $buf;
       $conn->read($buf, 16384, 25);
-      eval { $conn->close() };
-
       my $resp_code = $client->response_code();
       my $resp_msg = $client->response_msg();
       $self->assert_transfer_ok($resp_code, $resp_msg);
+
+      eval { $conn->close() };
 
       $client->quit();
 

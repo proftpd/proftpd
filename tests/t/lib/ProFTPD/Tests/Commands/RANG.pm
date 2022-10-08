@@ -1102,11 +1102,11 @@ sub rang_retr_ok_with_sendfile {
 
       my $buf;
       my $len = $conn->read($buf, 1024);
-      eval { $conn->close() };
 
       my $resp_code = $client->response_code();
       my $resp_msg = $client->response_msg();
       $self->assert_transfer_ok($resp_code, $resp_msg);
+      eval { $conn->close() };
       $client->quit();
 
       $self->assert($len == 3, "Expected len 3, got $len");
@@ -1200,11 +1200,11 @@ sub rang_retr_ok_no_sendfile {
 
       my $buf;
       my $len = $conn->read($buf, 1024);
-      eval { $conn->close() };
 
       my $resp_code = $client->response_code();
       my $resp_msg = $client->response_msg();
       $self->assert_transfer_ok($resp_code, $resp_msg);
+      eval { $conn->close() };
       $client->quit();
 
       $self->assert($len == 3, "Expected len 3, got $len");
@@ -1297,11 +1297,11 @@ sub rang_retr_ok_end_exceeds_file_size {
 
       my $buf;
       my $len = $conn->read($buf, 1024);
-      eval { $conn->close() };
 
       my $resp_code = $client->response_code();
       my $resp_msg = $client->response_msg();
       $self->assert_transfer_ok($resp_code, $resp_msg);
+      eval { $conn->close() };
       $client->quit();
 
       $self->assert($len == 14, "Expected len 14, got $len");

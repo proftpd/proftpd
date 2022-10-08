@@ -286,11 +286,12 @@ sub retr_ok_raw_active_multiple_downloads {
 
         my $buf;
         $conn->read($buf, 8192, 30);
-        eval { $conn->close() };
 
         my $resp_code = $client->response_code();
         my $resp_msg = $client->response_msg();
         $self->assert_transfer_ok($resp_code, $resp_msg);
+
+        eval { $conn->close() };
       }
 
       $client->quit();
@@ -374,13 +375,13 @@ sub retr_ok_raw_passive {
 
       my $buf;
       $conn->read($buf, 8192, 30);
-      eval { $conn->close() };
 
       my ($resp_code, $resp_msg);
       $resp_code = $client->response_code();
       $resp_msg = $client->response_msg();
-
       $self->assert_transfer_ok($resp_code, $resp_msg);
+
+      eval { $conn->close() };
     };
 
     if ($@) {
@@ -962,11 +963,13 @@ sub retr_abs_symlink {
       my $buf;
       $conn->read($buf, 8192, 30);
       my $size = $conn->bytes_read();
-      eval { $conn->close() };
 
       my $resp_code = $client->response_code();
       my $resp_msg = $client->response_msg();
       $self->assert_transfer_ok($resp_code, $resp_msg);
+
+      eval { $conn->close() };
+
       $client->quit();
 
       my $expected = 5;
@@ -1200,11 +1203,11 @@ sub retr_rel_symlink {
       my $buf;
       $conn->read($buf, 8192, 30);
       my $size = $conn->bytes_read();
-      eval { $conn->close() };
 
       my $resp_code = $client->response_code();
       my $resp_msg = $client->response_msg();
       $self->assert_transfer_ok($resp_code, $resp_msg);
+      eval { $conn->close() };
       $client->quit();
 
       my $expected = 5;
@@ -2368,11 +2371,12 @@ sub retr_ok_dir_with_spaces {
 
       my $buf;
       $conn->read($buf, 8192, 30);
-      eval { $conn->close() };
 
       my ($resp_code, $resp_msg);
       $resp_code = $client->response_code();
       $resp_msg = $client->response_msg();
+
+      eval { $conn->close() };
 
       $self->assert_transfer_ok($resp_code, $resp_msg);
     };
@@ -2464,11 +2468,12 @@ sub retr_leading_whitespace {
 
       my $buf;
       $conn->read($buf, 8192, 30);
-      eval { $conn->close() };
 
       my ($resp_code, $resp_msg);
       $resp_code = $client->response_code();
       $resp_msg = $client->response_msg();
+
+      eval { $conn->close() };
 
       $self->assert_transfer_ok($resp_code, $resp_msg);
 

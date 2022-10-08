@@ -129,11 +129,12 @@ sub hidenoaccess_ok {
 
       my $buf;
       $conn->read($buf, 8192, 25);
-      eval { $conn->close() };
 
       my $resp_code = $client->response_code();
       my $resp_msg = $client->response_msg();
       $self->assert_transfer_ok($resp_code, $resp_msg);
+
+      eval { $conn->close() };
 
       $client->quit();
 
@@ -305,11 +306,12 @@ sub hidenoaccess_with_directory_glob {
 
       my $buf;
       $conn->read($buf, 8192, 25);
-      eval { $conn->close() };
 
       my $resp_code = $client->response_code();
       my $resp_msg = $client->response_msg();
       $self->assert_transfer_ok($resp_code, $resp_msg);
+
+      eval { $conn->close() };
 
       $client->quit();
 

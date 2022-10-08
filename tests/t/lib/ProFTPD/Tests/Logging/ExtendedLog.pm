@@ -568,10 +568,10 @@ sub extlog_retr_default {
 
       my $buf;
       $conn->read($buf, 8192, 30);
-      eval { $conn->close() };
 
       my $resp_code = $client->response_code();
       my $resp_msg = $client->response_msg();
+      eval { $conn->close() };
       $self->assert_transfer_ok($resp_code, $resp_msg);
 
       $client->quit();
@@ -653,6 +653,11 @@ sub extlog_retr_default {
           $self->assert($expected == $xfer_len,
             "Expected tranferred bytes $expected, got $xfer_len");
 
+        } elsif ($line =~ /\"ABOR\" (\d+) /) {
+          my $resp_code = $1;
+          my $expected = '226';
+          $self->assert($expected eq $resp_code,
+            "Expected response code '$expected', got '$resp_code'");
         } elsif ($line =~ /\"QUIT\" (\d+) /) {
           my $resp_code = $1;
 
@@ -9272,12 +9277,12 @@ EOC
           $client->response_code());
       }
 
+      my $resp_code = $client->response_code();
+      my $resp_msg = $client->response_msg();
+
       my $buf;
       $conn->read($buf, 12, 25);
       eval { $conn->abort() };
-
-      my $resp_code = $client->response_code();
-      my $resp_msg = $client->response_msg();
 
       $self->assert_transfer_ok($resp_code, $resp_msg, 1);
       $client->quit();
@@ -9310,6 +9315,7 @@ EOC
   eval {
     if (open(my $fh, "< $ext_log")) {
       my $expected_xfer_status = 0;
+      my $expected_abor_status = 0;
 
       while (my $line = <$fh>) {
         chomp($line);
@@ -9319,9 +9325,13 @@ EOC
           my $xfer_status = $2;
 
           if ($cmd eq 'RETR') {
-            if ($xfer_status eq 'cancelled') {
+            if ($xfer_status eq 'success') {
               $expected_xfer_status = 1;
-              last;
+            }
+          }
+          if ($cmd eq 'ABOR') {
+            if ($xfer_status eq 'cancelled') {
+              $expected_abor_status = 1;
             }
           }
         }
@@ -9330,6 +9340,9 @@ EOC
       close($fh);
 
       $self->assert($expected_xfer_status,
+        test_msg("Did not see expected transfer status in ExtendedLog"));
+
+      $self->assert($expected_abor_status,
         test_msg("Did not see expected transfer status in ExtendedLog"));
 
     } else {
