@@ -305,8 +305,8 @@ jobs:
           kill -0 $(cat $PROFTPD_TEST_PIDFILE)
           kill -TERM $(cat $PROFTPD_TEST_PIDFILE)
 
-          # Given the daemon a chance to clean up
-          sleep 1
+          # Give the daemon a chance to clean up
+          sleep 3
           ! test -f $PROFTPD_TEST_PIDFILE
 
       - name: Build with shared modules
