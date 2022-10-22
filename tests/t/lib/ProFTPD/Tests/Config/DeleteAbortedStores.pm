@@ -101,8 +101,9 @@ sub deleteabortedstores_conn_aborted_ok {
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
-    DefaultChdir => '~',
+    AuthOrder => 'mod_auth_file.c',
 
+    DefaultChdir => '~',
     HiddenStores => 'on',
     DeleteAbortedStores => 'on',
 
@@ -243,8 +244,9 @@ sub deleteabortedstores_cmd_abort_ok {
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
-    DefaultChdir => '~',
+    AuthOrder => 'mod_auth_file.c',
 
+    DefaultChdir => '~',
     HiddenStores => 'on',
     DeleteAbortedStores => 'on',
     TimeoutLinger => 1,
@@ -386,8 +388,9 @@ sub deleteabortedstores_conn_aborted_bug3917 {
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
-    DefaultChdir => '~',
+    AuthOrder => 'mod_auth_file.c',
 
+    DefaultChdir => '~',
     HiddenStores => 'on',
 
     IfModules => {
@@ -496,8 +499,9 @@ sub deleteabortedstores_hiddenstores_on_timeout_idle_bug4035 {
 
     AuthUserFile => $setup->{auth_user_file},
     AuthGroupFile => $setup->{auth_group_file},
-    DefaultChdir => '~',
+    AuthOrder => 'mod_auth_file.c',
 
+    DefaultChdir => '~',
     HiddenStores => 'on',
     DeleteAbortedStores => 'on',
     TimeoutIdle => $timeout_idle,
@@ -605,8 +609,9 @@ sub deleteabortedstores_hiddenstores_on_timeout_stalled_bug4035 {
 
     AuthUserFile => $setup->{auth_user_file},
     AuthGroupFile => $setup->{auth_group_file},
-    DefaultChdir => '~',
+    AuthOrder => 'mod_auth_file.c',
 
+    DefaultChdir => '~',
     HiddenStores => 'on',
     DeleteAbortedStores => 'on',
     TimeoutStalled => $timeout_stalled,
@@ -754,8 +759,9 @@ sub deleteabortedstores_hiddenstores_on_xfer_aborted_bug4467 {
 
     AuthUserFile => $setup->{auth_user_file},
     AuthGroupFile => $setup->{auth_group_file},
-    DefaultChdir => '~',
+    AuthOrder => 'mod_auth_file.c',
 
+    DefaultChdir => '~',
     HiddenStores => 'on',
     DeleteAbortedStores => 'on',
     AllowOverwrite => 'on',

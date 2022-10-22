@@ -76,6 +76,7 @@ sub trace_ok {
 
     AuthUserFile => $setup->{auth_user_file},
     AuthGroupFile => $setup->{auth_group_file},
+    AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
       'mod_delay.c' => {
@@ -222,6 +223,7 @@ sub trace_ifclass_ok {
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
+    AuthOrder => 'mod_auth_file.c',
 
     Class => {
       $class => {
@@ -391,6 +393,7 @@ sub trace_ifuser_ok {
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
+    AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
       'mod_delay.c' => {
@@ -554,6 +557,7 @@ sub trace_ifgroup_ok {
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
+    AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
       'mod_delay.c' => {
@@ -684,6 +688,7 @@ sub trace_level_range_bug3617 {
 
     AuthUserFile => $setup->{auth_user_file},
     AuthGroupFile => $setup->{auth_group_file},
+    AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
       'mod_delay.c' => {
@@ -830,6 +835,7 @@ sub trace_session_level_range_bug3617 {
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
+    AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
       'mod_delay.c' => {
@@ -951,6 +957,7 @@ sub trace_level_per_vhost {
     Global => {
       AuthUserFile => $setup->{auth_user_file},
       AuthGroupFile => $setup->{auth_group_file},
+      AuthOrder => 'mod_auth_file.c',
       Trace => 'DEFAULT:10',
     },
   };

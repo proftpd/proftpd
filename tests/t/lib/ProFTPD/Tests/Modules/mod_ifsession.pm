@@ -184,9 +184,11 @@ sub ifuser_allowoverwrite {
     ScoreboardFile => $scoreboard_file,
     SystemLog => $log_file,
 
-    AllowOverride => 'on',
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
+    AuthOrder => 'mod_auth_file.c',
+
+    AllowOverride => 'on',
 
     IfModules => {
       'mod_delay.c' => {
@@ -341,10 +343,11 @@ sub ifgroup_dir_allow_mkd_bug3467 {
     ScoreboardFile => $scoreboard_file,
     SystemLog => $log_file,
 
-    AllowOverride => 'on',
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
+    AuthOrder => 'mod_auth_file.c',
 
+    AllowOverride => 'on',
     DefaultRoot => "~ $group",
 
     IfModules => {
@@ -483,6 +486,7 @@ sub ifuser_dir_allow_mkd_bug3467 {
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
+    AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
       'mod_delay.c' => {
@@ -625,6 +629,7 @@ sub ifclass_dir_allow_mkd_bug3467 {
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
+    AuthOrder => 'mod_auth_file.c',
     
     IfModules => {
       'mod_delay.c' => {
@@ -735,6 +740,7 @@ sub ifuser_login_deny_by_ip  {
 
     AuthUserFile => $setup->{auth_user_file},
     AuthGroupFile => $setup->{auth_group_file},
+    AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
       'mod_delay.c' => {
@@ -826,6 +832,7 @@ sub ifuser_login_deny_by_user  {
 
     AuthUserFile => $setup->{auth_user_file},
     AuthGroupFile => $setup->{auth_group_file},
+    AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
       'mod_delay.c' => {
@@ -949,6 +956,7 @@ sub ifgroup_ifclass_login_allowclass_bug3547 {
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
+    AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
       'mod_delay.c' => {
@@ -1091,6 +1099,7 @@ sub ifuser_regex_login_deny_by_ip_bug3625  {
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
+    AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
       'mod_delay.c' => {
@@ -1226,6 +1235,7 @@ sub ifauthenticated_bug3629 {
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
+    AuthOrder => 'mod_auth_file.c',
 
     AllowOverwrite => 'on',
 
@@ -1393,6 +1403,8 @@ sub ifgroup_displaylogin_bug3882 {
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
+    AuthOrder => 'mod_auth_file.c',
+
     DefaultRoot => '~',
 
     IfModules => {
@@ -1542,6 +1554,8 @@ sub ifgroup_dir_allow_stor_bug3881 {
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
+    AuthOrder => 'mod_auth_file.c',
+
     DefaultRoot => '~',
 
     IfModules => {
@@ -1719,6 +1733,8 @@ sub ifgroup_dir_allow_stor_bug3881_sftp {
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
+    AuthOrder => 'mod_auth_file.c',
+
     DefaultRoot => '~',
 
     IfModules => {
@@ -1917,6 +1933,7 @@ sub ifclass_global_no_logging {
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
+    AuthOrder => 'mod_auth_file.c',
     
     IfModules => {
       'mod_delay.c' => {
@@ -2097,6 +2114,7 @@ sub ifuser_no_pass_bug4199 {
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
+    AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
       'mod_delay.c' => {
@@ -2247,6 +2265,7 @@ sub ifclass_and_not_classes {
 
     AuthUserFile => $setup->{auth_user_file},
     AuthGroupFile => $setup->{auth_group_file},
+    AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
       'mod_delay.c' => {
@@ -2352,6 +2371,7 @@ sub ifuser_directory_bug4315 {
 
     AuthUserFile => $setup->{auth_user_file},
     AuthGroupFile => $setup->{auth_group_file},
+    AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
       'mod_delay.c' => {

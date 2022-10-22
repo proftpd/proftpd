@@ -133,6 +133,7 @@ sub sftp_pam_failed_login_attempts_bug3921 {
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
+    AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
       'mod_delay.c' => {

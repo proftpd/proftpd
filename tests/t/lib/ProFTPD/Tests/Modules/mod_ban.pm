@@ -160,6 +160,7 @@ sub ban_on_event_max_login_attempts {
 
     AuthUserFile => $setup->{auth_user_file},
     AuthGroupFile => $setup->{auth_group_file},
+    AuthOrder => 'mod_auth_file.c',
 
     MaxLoginAttempts => 2,
 
@@ -290,6 +291,7 @@ sub ban_on_event_max_login_attempts_from_user {
 
     AuthUserFile => $setup->{auth_user_file},
     AuthGroupFile => $setup->{auth_group_file},
+    AuthOrder => 'mod_auth_file.c',
 
     MaxLoginAttempts => 2,
 
@@ -484,6 +486,7 @@ sub ban_message {
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
+    AuthOrder => 'mod_auth_file.c',
 
     MaxLoginAttempts => 2,
 
@@ -651,6 +654,7 @@ sub ban_ifclass_engine_on {
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
+    AuthOrder => 'mod_auth_file.c',
 
     MaxLoginAttempts => 2,
 
@@ -841,6 +845,7 @@ sub ban_ifclass_engine_off {
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
+    AuthOrder => 'mod_auth_file.c',
 
     MaxLoginAttempts => 1,
 
@@ -1011,6 +1016,7 @@ sub ban_max_logins_exceeded_bug3281 {
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
+    AuthOrder => 'mod_auth_file.c',
 
     MaxLoginAttempts => 2,
 
@@ -1163,6 +1169,7 @@ sub ban_timeout_login_exceeded_bug3281 {
 
     AuthUserFile => $setup->{auth_user_file},
     AuthGroupFile => $setup->{auth_group_file},
+    AuthOrder => 'mod_auth_file.c',
 
     TimeoutLogin => $timeout_login,
 
@@ -1306,6 +1313,7 @@ sub ban_engine_vhost_bug3355 {
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
+    AuthOrder => 'mod_auth_file.c',
 
     MaxLoginAttempts => $max_login_attempts,
 
@@ -1335,6 +1343,8 @@ sub ban_engine_vhost_bug3355 {
   Port $vhost_port
   AuthUserFile $auth_user_file
   AuthGroupFile $auth_group_file
+  AuthOrder mod_auth_file.c
+
   MaxLoginAttempts $max_login_attempts
   <IfModule mod_ban.c>
     BanEngine off
@@ -1492,6 +1502,7 @@ sub ban_unhandled_cmd {
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
+    AuthOrder => 'mod_auth_file.c',
 
     MaxLoginAttempts => 1,
 
@@ -1673,6 +1684,7 @@ sub ban_on_event_client_connect_rate {
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
+    AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
       'mod_ban.c' => {
@@ -1840,6 +1852,7 @@ sub ban_sighup_bug3751 {
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
+    AuthOrder => 'mod_auth_file.c',
 
     MaxLoginAttempts => 2,
 
@@ -1955,6 +1968,7 @@ sub ban_on_event_tlshandshake {
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
+    AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
       'mod_ban.c' => {
@@ -2129,6 +2143,8 @@ sub ban_on_event_rootlogin {
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
+    AuthOrder => 'mod_auth_file.c',
+
     RootLogin => 'off',
 
     IfModules => {
@@ -2310,6 +2326,8 @@ sub ban_on_event_rootlogin_userdefined {
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
+    AuthOrder => 'mod_auth_file.c',
+
     RootLogin => 'off',
 
     IfModules => {
@@ -2451,6 +2469,7 @@ sub ban_opt_any_server_issue1010 {
 
     AuthUserFile => $setup->{auth_user_file},
     AuthGroupFile => $setup->{auth_group_file},
+    AuthOrder => 'mod_auth_file.c',
 
     MaxLoginAttempts => 2,
 

@@ -902,9 +902,11 @@ EOC
     ScoreboardFile => $setup->{scoreboard_file},
     SystemLog => $setup->{log_file},
 
-    AllowOverride => 'on',
     AuthUserFile => $setup->{auth_user_file},
     AuthGroupFile => $setup->{auth_group_file},
+    AuthOrder => 'mod_auth_file.c',
+
+    AllowOverride => 'on',
     DefaultChdir => '~',
 
     IfModules => {

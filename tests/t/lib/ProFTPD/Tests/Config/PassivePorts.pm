@@ -103,6 +103,8 @@ sub pasv_ports_server_config {
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
+    AuthOrder => 'mod_auth_file.c',
+
     PassivePorts => "$min_port $max_port",
 
     IfModules => {
@@ -246,6 +248,7 @@ sub pasv_ports_global {
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
+    AuthOrder => 'mod_auth_file.c',
 
     Global => {
       PassivePorts => "$min_port $max_port",
