@@ -1,6 +1,6 @@
 /*
  * ProFTPD: mod_sql_sqlite -- Support for connecting to SQLite databases
- * Copyright (c) 2004-2021 TJ Saunders
+ * Copyright (c) 2004-2022 TJ Saunders
  *  
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -1120,6 +1120,11 @@ static int sql_sqlite_init(void) {
     sql_sqlite_mod_load_ev, NULL);
   pr_event_register(&sql_sqlite_module, "core.module-unload",
     sql_sqlite_mod_unload_ev, NULL);
+
+#if defined(SQLITE_CONFIG_SINGLETHREAD)
+  /* Tell SQLite that we are not a multi-threaded application. */
+  sqlite3_config(SQLITE_CONFIG_SINGLETHREAD);
+#endif /* SQLITE_CONFIG_SINGLETHREAD */
 
 #if defined(SQLITE_CONFIG_LOG)
   sqlite3_config(SQLITE_CONFIG_LOG, db_err, NULL);
