@@ -530,6 +530,8 @@ sub extlog_retr_default {
 
     AuthUserFile => $setup->{auth_user_file},
     AuthGroupFile => $setup->{auth_group_file},
+    AuthOrder => 'mod_auth_file.c',
+
     ExtendedLog => "$ext_log ALL",
 
     IfModules => {
@@ -725,6 +727,7 @@ sub extlog_retr_bug3137 {
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
+    AuthOrder => 'mod_auth_file.c',
 
     LogFormat => 'custom "%f"',
     ExtendedLog => "$ext_log READ custom",
@@ -879,6 +882,7 @@ sub extlog_stor_bug3137 {
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
+    AuthOrder => 'mod_auth_file.c',
 
     LogFormat => 'custom "%f"',
     ExtendedLog => "$ext_log WRITE custom",
@@ -1029,6 +1033,7 @@ sub extlog_site_cmds_bug3171 {
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
+    AuthOrder => 'mod_auth_file.c',
 
     LogFormat => 'custom "%m"',
     ExtendedLog => "$ext_log ALL custom",
@@ -1184,6 +1189,7 @@ sub extlog_mlsd_var_d_D_f_F_bug3950 {
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
+    AuthOrder => 'mod_auth_file.c',
 
     LogFormat => 'custom "%d %D %f %F"',
     ExtendedLog => "$ext_log DIRS custom",
@@ -1361,6 +1367,7 @@ sub extlog_sftp_mlsd_var_d_D_f_F_bug3950 {
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
+    AuthOrder => 'mod_auth_file.c',
 
     LogFormat => 'custom "%m: %d %D %f %F"',
     ExtendedLog => "$ext_log DIRS custom",
@@ -1581,6 +1588,7 @@ sub extlog_mfmt_var_d_D_f_F {
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
+    AuthOrder => 'mod_auth_file.c',
 
     LogFormat => 'custom "%m: %d %D %f %F"',
     ExtendedLog => "$ext_log WRITE custom",
@@ -1767,6 +1775,7 @@ sub extlog_protocol {
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
+    AuthOrder => 'mod_auth_file.c',
 
     LogFormat => 'custom "%{protocol}"',
     ExtendedLog => "$ext_log ALL custom",
@@ -1902,6 +1911,7 @@ sub extlog_protocol_version_quoted_bug3383 {
 
     AuthUserFile => $setup->{auth_user_file},
     AuthGroupFile => $setup->{auth_group_file},
+    AuthOrder => 'mod_auth_file.c',
 
     LogFormat => 'custom "\"%{protocol}\" \"%{version}\""',
     ExtendedLog => "$ext_log ALL custom",
@@ -2016,6 +2026,7 @@ sub extlog_remote_port {
 
     AuthUserFile => $setup->{auth_user_file},
     AuthGroupFile => $setup->{auth_group_file},
+    AuthOrder => 'mod_auth_file.c',
 
     LogFormat => 'custom "%m: %{remote-port}"',
     ExtendedLog => "$ext_log ALL custom",
@@ -2161,6 +2172,7 @@ sub extlog_rename_from {
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
+    AuthOrder => 'mod_auth_file.c',
 
     LogFormat => 'custom "%m: %w %f"',
     ExtendedLog => "$ext_log WRITE custom",
@@ -2337,6 +2349,7 @@ sub extlog_sftp_rename_from {
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
+    AuthOrder => 'mod_auth_file.c',
 
     LogFormat => 'custom "%w %f"',
     ExtendedLog => "$ext_log WRITE custom",
@@ -2568,6 +2581,7 @@ sub extlog_ext_sftp_posix_rename_bug3949 {
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
+    AuthOrder => 'mod_auth_file.c',
 
     LogFormat => 'custom "%w %f"',
     ExtendedLog => "$ext_log WRITE custom",
@@ -2799,6 +2813,7 @@ sub extlog_orig_user {
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
+    AuthOrder => 'mod_auth_file.c',
 
     LogFormat => 'custom "%U"',
     ExtendedLog => "$ext_log AUTH custom",
@@ -2946,6 +2961,7 @@ sub extlog_bug1908 {
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
+    AuthOrder => 'mod_auth_file.c',
 
     ExtendedLog => "$ext_log READ",
 
@@ -3120,6 +3136,7 @@ sub extlog_file_modified_bug3457 {
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
+    AuthOrder => 'mod_auth_file.c',
 
     AllowOverwrite => 'on',
     LogFormat => 'custom "%{file-modified}"',
@@ -3266,6 +3283,7 @@ sub extlog_dele_bug3469 {
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
+    AuthOrder => 'mod_auth_file.c',
 
     LogFormat => 'custom "%m %f"',
     ExtendedLog => "$ext_log ALL custom",
@@ -3416,6 +3434,7 @@ sub extlog_client_dir_bug3395 {
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
+    AuthOrder => 'mod_auth_file.c',
 
     LogFormat => 'custom "%m %d"',
     ExtendedLog => "$ext_log ALL custom",
@@ -3561,8 +3580,9 @@ sub extlog_client_dir_chroot_bug3395 {
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
-    DefaultRoot => '~',
+    AuthOrder => 'mod_auth_file.c',
 
+    DefaultRoot => '~',
     LogFormat => 'custom "%m %d"',
     ExtendedLog => "$ext_log ALL custom",
 
@@ -3703,6 +3723,7 @@ sub extlog_device_full {
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
+    AuthOrder => 'mod_auth_file.c',
 
     LogFormat => 'custom "%m %d"',
     ExtendedLog => "$ext_log ALL custom",
@@ -3816,6 +3837,7 @@ sub extlog_uid_bug3390 {
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
+    AuthOrder => 'mod_auth_file.c',
 
     LogFormat => 'custom "%{uid}"',
     ExtendedLog => "$ext_log READ custom",
@@ -3952,6 +3974,7 @@ sub extlog_gid_bug3390 {
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
+    AuthOrder => 'mod_auth_file.c',
 
     LogFormat => 'custom "%{gid}"',
     ExtendedLog => "$ext_log READ custom",
@@ -4090,6 +4113,7 @@ sub extlog_pass_ok_var_s_bug3528 {
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
+    AuthOrder => 'mod_auth_file.c',
 
     LogFormat => 'custom "%m %s %S"',
     ExtendedLog => "$ext_log AUTH custom",
@@ -4202,6 +4226,7 @@ sub extlog_pass_failed_var_s_bug3528 {
 
     AuthUserFile => $setup->{auth_user_file},
     AuthGroupFile => $setup->{auth_group_file},
+    AuthOrder => 'mod_auth_file.c',
 
     LogFormat => 'custom "%m %s %S"',
     ExtendedLog => "$ext_log AUTH custom",
@@ -4356,6 +4381,7 @@ sub extlog_ftp_raw_bytes_bug3554 {
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
+    AuthOrder => 'mod_auth_file.c',
 
     LogFormat => 'custom "%{protocol} %m \"%S\" %I %O"',
     ExtendedLog => "$ext_log ALL custom",
@@ -4533,6 +4559,7 @@ sub extlog_ftp_sendfile_raw_bytes_bug3554 {
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
+    AuthOrder => 'mod_auth_file.c',
 
     LogFormat => 'custom "%{protocol} %m \"%S\" %I %O"',
     ExtendedLog => "$ext_log ALL custom",
@@ -4703,11 +4730,12 @@ sub extlog_ftp_deflate_raw_bytes_bug3554 {
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
-    TimeoutLinger => 1,
+    AuthOrder => 'mod_auth_file.c',
 
     LogFormat => 'custom "%{protocol} %m \"%S\" %I %O"',
     ExtendedLog => "$ext_log ALL custom",
     ServerIdent => 'on "FTP Server"',
+    TimeoutLinger => 1,
 
     IfModules => {
       'mod_deflate.c' => {
@@ -4892,6 +4920,7 @@ sub extlog_ftps_raw_bytes_bug3554 {
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
+    AuthOrder => 'mod_auth_file.c',
 
     LogFormat => 'custom "%{protocol} %m \"%S\" %I %O"',
     ExtendedLog => "$ext_log ALL custom",
@@ -5082,6 +5111,7 @@ sub extlog_sftp_raw_bytes_bug3554 {
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
+    AuthOrder => 'mod_auth_file.c',
 
     LogFormat => 'custom "%{protocol} %m \"%S\" %I %O"',
     ExtendedLog => "$ext_log ALL custom",
@@ -5292,6 +5322,7 @@ sub extlog_scp_raw_bytes_bug3554 {
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
+    AuthOrder => 'mod_auth_file.c',
 
     LogFormat => 'custom "%{protocol} %m \"%S\" %I %O"',
     ExtendedLog => "$ext_log ALL custom",
@@ -5444,6 +5475,7 @@ sub extlog_exit_bug3559 {
 
     AuthUserFile => $setup->{auth_user_file},
     AuthGroupFile => $setup->{auth_group_file},
+    AuthOrder => 'mod_auth_file.c',
 
     LogFormat => 'custom "%{protocol} %L %m \"%S\" %I %O"',
     ExtendedLog => "$ext_log EXIT custom",
@@ -5621,6 +5653,7 @@ sub extlog_eos_reason_quit {
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
+    AuthOrder => 'mod_auth_file.c',
 
     LogFormat => 'custom "%{protocol} %m eos_reason=\"%E\""',
     ExtendedLog => "$ext_log EXIT custom",
@@ -5765,6 +5798,7 @@ sub extlog_eos_reason_eof {
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
+    AuthOrder => 'mod_auth_file.c',
 
     LogFormat => 'custom "%{protocol} %m eos_reason=\"%E\""',
     ExtendedLog => "$ext_log EXIT custom",
@@ -5911,6 +5945,7 @@ sub extlog_eos_reason_timeoutidle {
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
+    AuthOrder => 'mod_auth_file.c',
 
     LogFormat => 'custom "%{protocol} %m eos_reason=\"%E\""',
     ExtendedLog => "$ext_log EXIT custom",
@@ -6061,6 +6096,7 @@ sub extlog_eos_reason_timeoutlogin {
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
+    AuthOrder => 'mod_auth_file.c',
 
     LogFormat => 'custom "%{protocol} %m eos_reason=\"%E\""',
     ExtendedLog => "$ext_log EXIT custom",
@@ -6212,6 +6248,7 @@ sub extlog_eos_reason_timeoutnotransfer {
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
+    AuthOrder => 'mod_auth_file.c',
 
     LogFormat => 'custom "%{protocol} %m eos_reason=\"%E\""',
     ExtendedLog => "$ext_log EXIT custom",
@@ -6379,6 +6416,7 @@ sub extlog_eos_reason_timeoutsession {
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
+    AuthOrder => 'mod_auth_file.c',
 
     LogFormat => 'custom "%{protocol} %m eos_reason=\"%E\""',
     ExtendedLog => "$ext_log EXIT custom",
@@ -6531,6 +6569,7 @@ sub extlog_eos_reason_timeoutstalled {
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
+    AuthOrder => 'mod_auth_file.c',
 
     LogFormat => 'custom "%{protocol} %m eos_reason=\"%E\""',
     ExtendedLog => "$ext_log EXIT custom",
@@ -6705,6 +6744,7 @@ sub extlog_vars_H_L_matching_server_bug3620 {
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
+    AuthOrder => 'mod_auth_file.c',
 
     LogFormat => 'custom "%L %H"',
     ExtendedLog => "$ext_log AUTH custom",
@@ -6814,6 +6854,7 @@ sub extlog_vars_H_L_default_server_bug3620 {
 
     AuthUserFile => $setup->{auth_user_file},
     AuthGroupFile => $setup->{auth_group_file},
+    AuthOrder => 'mod_auth_file.c',
 
     DefaultServer => 'off',
     SocketBindTight => 'off',
@@ -6845,6 +6886,8 @@ sub extlog_vars_H_L_default_server_bug3620 {
 
   AuthUserFile $setup->{auth_user_file}
   AuthGroupFile $setup->{auth_group_file}
+  AuthOrder mod_auth_file.c
+
   RequireValidShell off
   WtmpLog off
 
@@ -6983,6 +7026,7 @@ sub extlog_user_pass {
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
+    AuthOrder => 'mod_auth_file.c',
 
     LogFormat => 'custom "%m: %U %A"',
     ExtendedLog => "$ext_log AUTH custom",
@@ -7127,6 +7171,7 @@ sub extlog_anon_user_pass {
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
+    AuthOrder => 'mod_auth_file.c',
 
     LogFormat => 'custom "%m: %U %A"',
     ExtendedLog => "$ext_log AUTH custom",
@@ -7295,6 +7340,7 @@ sub extlog_cmd_resp {
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
+    AuthOrder => 'mod_auth_file.c',
 
     LogFormat => 'custom "%m %J [%r] = %s %S"',
     ExtendedLog => "$ext_log ALL custom",
@@ -7449,6 +7495,7 @@ sub extlog_xfer_timeout_bug3696 {
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
+    AuthOrder => 'mod_auth_file.c',
 
     LogFormat => 'custom "%f"',
     ExtendedLog => "$ext_log WRITE custom",
@@ -7607,6 +7654,7 @@ sub extlog_sftp_xfer_timeout_bug3696 {
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
+    AuthOrder => 'mod_auth_file.c',
 
     LogFormat => 'custom "%f"',
     ExtendedLog => "$ext_log WRITE custom",
@@ -7793,6 +7841,7 @@ sub extlog_var_r {
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
+    AuthOrder => 'mod_auth_file.c',
 
     LogFormat => 'custom "%r"',
     ExtendedLog => "$ext_log ALL custom",
@@ -7956,6 +8005,7 @@ sub extlog_pass_var_r {
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
+    AuthOrder => 'mod_auth_file.c',
 
     LogFormat => 'custom "%r"',
     ExtendedLog => "$ext_log AUTH custom",
@@ -8097,6 +8147,7 @@ sub extlog_sftp_pass_var_r {
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
+    AuthOrder => 'mod_auth_file.c',
 
     LogFormat => 'custom "%r"',
     ExtendedLog => "$ext_log AUTH custom",
@@ -8292,6 +8343,7 @@ sub extlog_sftp_retr_var_s_bug3948 {
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
+    AuthOrder => 'mod_auth_file.c',
 
     LogFormat => 'custom "%m %s"',
     ExtendedLog => "$ext_log READ custom",
@@ -8495,6 +8547,7 @@ sub extlog_sftp_stor_var_s_bug3948 {
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
+    AuthOrder => 'mod_auth_file.c',
 
     AllowOverwrite => 'on',
     LogFormat => 'custom "%m %s"',
@@ -8699,6 +8752,7 @@ sub extlog_abor {
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
+    AuthOrder => 'mod_auth_file.c',
 
     LogFormat => 'custom "%m"',
     ExtendedLog => "$ext_log ALL custom",
@@ -8874,6 +8928,7 @@ sub extlog_xfer_status_nonxfer {
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
+    AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
       'mod_delay.c' => {
@@ -9041,6 +9096,7 @@ sub extlog_xfer_status_success {
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
+    AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
       'mod_delay.c' => {
@@ -9225,6 +9281,7 @@ sub extlog_xfer_status_cancelled {
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
+    AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
       'mod_delay.c' => {
@@ -9408,6 +9465,7 @@ sub extlog_xfer_status_failed {
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
+    AuthOrder => 'mod_auth_file.c',
 
     # This is used to trigger a download failure
     MaxRetrieveFileSize => '12 B',
@@ -9601,6 +9659,7 @@ sub extlog_xfer_status_timeout {
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
+    AuthOrder => 'mod_auth_file.c',
 
     # This is used to tickle the "timeout" transfer status
     TimeoutStalled => $timeout_stalled,
@@ -9805,6 +9864,7 @@ sub extlog_xfer_failure_none {
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
+    AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
       'mod_delay.c' => {
@@ -9987,6 +10047,7 @@ sub extlog_xfer_failure_reason {
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
+    AuthOrder => 'mod_auth_file.c',
 
     # This is used to trigger a download failure
     MaxRetrieveFileSize => '12 B',
@@ -10212,6 +10273,8 @@ sub extlog_ftps_xfer_status_cancelled {
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
+    AuthOrder => 'mod_auth_file.c',
+
     TimeoutIdle => $timeout_idle,
 
     IfModules => {
@@ -10458,6 +10521,8 @@ sub extlog_ftps_xfer_status_failed {
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
+    AuthOrder => 'mod_auth_file.c',
+
     TimeoutIdle => $timeout_idle,
 
     IfModules => {
@@ -10652,6 +10717,7 @@ sub extlog_login_maxclients_bug3811 {
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
+    AuthOrder => 'mod_auth_file.c',
 
     LogFormat => 'custom "%m %s"',
     ExtendedLog => "$ext_log AUTH custom",
@@ -10822,6 +10888,7 @@ sub extlog_login_maxclientsperclass_bug3811 {
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
+    AuthOrder => 'mod_auth_file.c',
 
     LogFormat => 'custom "%m %s"',
     ExtendedLog => "$ext_log AUTH custom",
@@ -11006,6 +11073,7 @@ sub extlog_login_maxclientsperhost_bug3811 {
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
+    AuthOrder => 'mod_auth_file.c',
 
     LogFormat => 'custom "%m %s"',
     ExtendedLog => "$ext_log AUTH custom",
@@ -11175,6 +11243,7 @@ sub extlog_login_maxclientsperuser_bug3811 {
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
+    AuthOrder => 'mod_auth_file.c',
 
     LogFormat => 'custom "%m %s"',
     ExtendedLog => "$ext_log AUTH custom",
@@ -11342,6 +11411,7 @@ sub extlog_preauth_var_U_bug3822 {
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
+    AuthOrder => 'mod_auth_file.c',
 
     LogFormat => 'custom "%m %U"',
     ExtendedLog => "$ext_log ALL custom",
@@ -11488,6 +11558,7 @@ sub extlog_preauth_var_u_bug3822 {
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
+    AuthOrder => 'mod_auth_file.c',
 
     LogFormat => 'custom "%m %u"',
     ExtendedLog => "$ext_log ALL custom",
@@ -11606,6 +11677,7 @@ sub extlog_micros_ts_bug3889 {
 
     AuthUserFile => $setup->{auth_user_file},
     AuthGroupFile => $setup->{auth_group_file},
+    AuthOrder => 'mod_auth_file.c',
 
     LogFormat => 'custom "%{%Y-%m-%d %H:%M:%S}t,%{microsecs} %f"',
     ExtendedLog => "$ext_log READ custom",
@@ -11759,6 +11831,7 @@ sub extlog_millis_ts_bug3889 {
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
+    AuthOrder => 'mod_auth_file.c',
 
     LogFormat => 'custom "%{%Y-%m-%d %H:%M:%S}t,%{millisecs} %f"',
     ExtendedLog => "$ext_log READ custom",
@@ -11880,6 +11953,7 @@ sub extlog_iso8601_ts_bug3889 {
 
     AuthUserFile => $setup->{auth_user_file},
     AuthGroupFile => $setup->{auth_group_file},
+    AuthOrder => 'mod_auth_file.c',
 
     LogFormat => 'custom "%{ISO8601} %f"',
     ExtendedLog => "$ext_log READ custom",
@@ -12042,6 +12116,7 @@ sub extlog_dirs_class_var_f_bug3966 {
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
+    AuthOrder => 'mod_auth_file.c',
 
     LogFormat => 'custom "%m: %f"',
     ExtendedLog => "$ext_log DIRS custom",
@@ -12235,6 +12310,7 @@ sub extlog_var_basename_bug3987 {
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
+    AuthOrder => 'mod_auth_file.c',
 
     LogFormat => 'custom "%{basename}"',
     ExtendedLog => "$ext_log READ custom",
@@ -12380,6 +12456,7 @@ sub extlog_exclusion_bug4067 {
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
+    AuthOrder => 'mod_auth_file.c',
 
     LogFormat => 'custom "%m"',
     ExtendedLog => "$ext_log ALL,!AUTH custom",
@@ -12535,6 +12612,7 @@ sub extlog_sftp_ssh_sftp_bug4067 {
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
+    AuthOrder => 'mod_auth_file.c',
 
     LogFormat => 'custom "%m"',
     ExtendedLog => "$ext_log SFTP custom",
@@ -12733,6 +12811,7 @@ sub extlog_sftp_ssh_sftp_exclusion_bug4067 {
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
+    AuthOrder => 'mod_auth_file.c',
 
     LogFormat => 'custom "%m"',
     ExtendedLog => "$ext_log DIRS,!SSH,!SFTP custom",
@@ -12930,6 +13009,7 @@ sub extlog_sftp_read_write_bug4067 {
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
+    AuthOrder => 'mod_auth_file.c',
 
     LogFormat => 'custom "%m"',
     ExtendedLog => "$ext_log READ,WRITE custom",
@@ -13150,6 +13230,7 @@ sub extlog_sftp_xfer_status_filtered {
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
+    AuthOrder => 'mod_auth_file.c',
 
     PathDenyFilter => '^.*\.csv$',
     LogFormat => 'custom "%m %{transfer-status}"',
@@ -13334,6 +13415,7 @@ sub extlog_var_file_offset {
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
+    AuthOrder => 'mod_auth_file.c',
 
     LogFormat => 'custom "%f: %{file-offset}"',
     ExtendedLog => "$ext_log READ custom",
@@ -13476,6 +13558,7 @@ sub extlog_var_file_size_retr {
 
     AuthUserFile => $setup->{auth_user_file},
     AuthGroupFile => $setup->{auth_group_file},
+    AuthOrder => 'mod_auth_file.c',
 
     LogFormat => 'custom "%f: %{file-size}"',
     ExtendedLog => "$ext_log READ custom",
@@ -13611,6 +13694,7 @@ sub extlog_sftp_var_file_size_retr {
 
     AuthUserFile => $setup->{auth_user_file},
     AuthGroupFile => $setup->{auth_group_file},
+    AuthOrder => 'mod_auth_file.c',
 
     LogFormat => 'custom "%m: %f: %{file-size}"',
     ExtendedLog => "$ext_log READ custom",
@@ -13783,6 +13867,7 @@ sub extlog_var_file_size_stor {
 
     AuthUserFile => $setup->{auth_user_file},
     AuthGroupFile => $setup->{auth_group_file},
+    AuthOrder => 'mod_auth_file.c',
 
     LogFormat => 'custom "%f: %{file-size}"',
     ExtendedLog => "$ext_log WRITE custom",
@@ -13916,6 +14001,7 @@ sub extlog_sftp_var_file_size_stor {
 
     AuthUserFile => $setup->{auth_user_file},
     AuthGroupFile => $setup->{auth_group_file},
+    AuthOrder => 'mod_auth_file.c',
 
     LogFormat => 'custom "%m: %f: %{file-size}"',
     ExtendedLog => "$ext_log WRITE custom",
@@ -14083,6 +14169,7 @@ sub extlog_var_transfer_type_retr {
 
     AuthUserFile => $setup->{auth_user_file},
     AuthGroupFile => $setup->{auth_group_file},
+    AuthOrder => 'mod_auth_file.c',
 
     LogFormat => 'custom "%f: %{transfer-type}"',
     ExtendedLog => "$ext_log READ custom",
@@ -14237,6 +14324,7 @@ sub extlog_var_transfer_type_stor {
 
     AuthUserFile => $setup->{auth_user_file},
     AuthGroupFile => $setup->{auth_group_file},
+    AuthOrder => 'mod_auth_file.c',
 
     LogFormat => 'custom "%f: %{transfer-type}"',
     ExtendedLog => "$ext_log WRITE custom",
@@ -14401,6 +14489,7 @@ sub extlog_file_transfer_secs {
 
     AuthUserFile => $setup->{auth_user_file},
     AuthGroupFile => $setup->{auth_group_file},
+    AuthOrder => 'mod_auth_file.c',
 
     # Throttle the transfer, to aid in the timing
     TransferRate => 'RETR 1',
@@ -14548,6 +14637,7 @@ sub extlog_file_transfer_millisecs_bug4218 {
 
     AuthUserFile => $setup->{auth_user_file},
     AuthGroupFile => $setup->{auth_group_file},
+    AuthOrder => 'mod_auth_file.c',
 
     # Throttle the transfer, to aid in the timing
     TransferRate => 'RETR 1',
@@ -14695,6 +14785,7 @@ sub extlog_response_millisecs_bug4218 {
 
     AuthUserFile => $setup->{auth_user_file},
     AuthGroupFile => $setup->{auth_group_file},
+    AuthOrder => 'mod_auth_file.c',
 
     # Throttle the transfer, to aid in the timing
     TransferRate => 'RETR 1',
@@ -14826,6 +14917,7 @@ sub extlog_stor_var_f_xfer_timed_out {
 
     AuthUserFile => $setup->{auth_user_file},
     AuthGroupFile => $setup->{auth_group_file},
+    AuthOrder => 'mod_auth_file.c',
 
     LogFormat => 'custom "%m %s: %f"',
     ExtendedLog => "$ext_log ALL custom",
@@ -14963,6 +15055,7 @@ sub extlog_write_invalid_cmd_bug4313 {
 
     AuthUserFile => $setup->{auth_user_file},
     AuthGroupFile => $setup->{auth_group_file},
+    AuthOrder => 'mod_auth_file.c',
 
     LogFormat => 'custom "%r"',
     ExtendedLog => "$ext_log WRITE custom",
@@ -15071,6 +15164,7 @@ sub extlog_xfer_port_nonxfer_issue912 {
 
     AuthUserFile => $setup->{auth_user_file},
     AuthGroupFile => $setup->{auth_group_file},
+    AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
       'mod_delay.c' => {
@@ -15202,6 +15296,7 @@ sub extlog_xfer_port_success_issue912 {
 
     AuthUserFile => $setup->{auth_user_file},
     AuthGroupFile => $setup->{auth_group_file},
+    AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
       'mod_delay.c' => {
@@ -15367,6 +15462,7 @@ sub extlog_sftp_xfer_port_issue912 {
 
     AuthUserFile => $setup->{auth_user_file},
     AuthGroupFile => $setup->{auth_group_file},
+    AuthOrder => 'mod_auth_file.c',
 
     LogFormat => 'custom "%m %{transfer-port}"',
     ExtendedLog => "$ext_log ALL custom",

@@ -196,6 +196,8 @@ EOF
 
     AuthUserFile => $setup->{auth_user_file},
     AuthGroupFile => $setup->{auth_group_file},
+    AuthOrder => 'mod_auth_file.c',
+
     AllowOverride => 'on',
     DefaultChdir => '~',
 
@@ -323,6 +325,8 @@ sub hidefiles_list_issue1279 {
 
     AuthUserFile => $setup->{auth_user_file},
     AuthGroupFile => $setup->{auth_group_file},
+    AuthOrder => 'mod_auth_file.c',
+
     AllowOverride => 'on',
     DefaultChdir => '~',
 
@@ -504,6 +508,8 @@ EOF
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
+    AuthOrder => 'mod_auth_file.c',
+
     AllowOverride => 'on',
 
     Anonymous => {
@@ -692,6 +698,8 @@ EOF
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
+    AuthOrder => 'mod_auth_file.c',
+
     AllowOverride => 'on',
     DefaultChdir => '~',
 
@@ -861,6 +869,8 @@ EOF
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
+    AuthOrder => 'mod_auth_file.c',
+
     AllowOverride => 'on',
 
     Anonymous => {
@@ -1024,6 +1034,7 @@ sub hidefiles_bug3130 {
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
+    AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
       'mod_delay.c' => {
@@ -1184,6 +1195,7 @@ sub hidefiles_per_user_ok {
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
+    AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
       'mod_delay.c' => {
@@ -1347,6 +1359,7 @@ sub hidefiles_per_not_user_ok {
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
+    AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
       'mod_delay.c' => {
@@ -1534,6 +1547,7 @@ sub hidefiles_anon_list_rel_path_bug3226 {
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
+    AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
       'mod_delay.c' => {
@@ -1733,6 +1747,7 @@ sub hidefiles_anon_nlst_rel_path_bug3226 {
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
+    AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
       'mod_delay.c' => {
@@ -1930,6 +1945,7 @@ sub hidefiles_anon_list_abs_path_bug3226 {
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
+    AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
       'mod_delay.c' => {
@@ -2130,6 +2146,7 @@ sub hidefiles_anon_nlst_abs_path_bug3226 {
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
+    AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
       'mod_delay.c' => {
@@ -2327,6 +2344,7 @@ sub hidefiles_negated_bug3276 {
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
+    AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
       'mod_delay.c' => {
@@ -2521,6 +2539,7 @@ sub hidefiles_negated_chroot_bug3276 {
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
+    AuthOrder => 'mod_auth_file.c',
 
     DefaultRoot => '~',
 
@@ -2721,6 +2740,7 @@ sub hidefiles_negated_chroot_subdirs_visible_bug3276 {
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
+    AuthOrder => 'mod_auth_file.c',
 
     DefaultRoot => '~',
 
@@ -2950,6 +2970,7 @@ sub hidefiles_none_per_user_bug3397 {
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
+    AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
       'mod_delay.c' => {
@@ -3133,6 +3154,8 @@ EOF
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
+    AuthOrder => 'mod_auth_file.c',
+
     AllowOverride => 'on',
     DefaultChdir => '~',
 
@@ -3273,6 +3296,8 @@ EOF
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
+    AuthOrder => 'mod_auth_file.c',
+
     AllowOverride => 'on',
     DefaultChdir => '~',
 
@@ -3439,6 +3464,8 @@ sub hidefiles_mlsd_dotfiles {
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
+    AuthOrder => 'mod_auth_file.c',
+
     DefaultChdir => '~',
 
     IfModules => {
@@ -3618,6 +3645,8 @@ sub hidefiles_stat {
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
+    AuthOrder => 'mod_auth_file.c',
+
     DefaultChdir => '~',
 
     Directory => {
@@ -3747,6 +3776,8 @@ sub hidefiles_directory_pcre {
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
+    AuthOrder => 'mod_auth_file.c',
+
     DefaultChdir => '~',
 
     TimeoutIdle => $timeout_idle,
@@ -3877,6 +3908,7 @@ sub hidefiles_list_symlink_bug3924 {
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
+    AuthOrder => 'mod_auth_file.c',
 
     Directory => { 
       '/' => {
@@ -4057,6 +4089,7 @@ sub hidefiles_mlsd_symlink_bug3924 {
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
+    AuthOrder => 'mod_auth_file.c',
 
     Directory => { 
       '/' => {
@@ -4229,6 +4262,7 @@ sub hidefiles_multi_dirs {
 
     AuthUserFile => $setup->{auth_user_file},
     AuthGroupFile => $setup->{auth_group_file},
+    AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
       'mod_delay.c' => {

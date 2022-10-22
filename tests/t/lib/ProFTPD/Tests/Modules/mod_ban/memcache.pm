@@ -75,6 +75,7 @@ sub ban_memcache_max_login_attempts {
 
     AuthUserFile => $setup->{auth_user_file},
     AuthGroupFile => $setup->{auth_group_file},
+    AuthOrder => 'mod_auth_file.c',
 
     MaxLoginAttempts => 1,
 
@@ -254,6 +255,7 @@ sub ban_memcache_json_max_login_attempts_bug4056 {
 
     AuthUserFile => $setup->{auth_user_file},
     AuthGroupFile => $setup->{auth_group_file},
+    AuthOrder => 'mod_auth_file.c',
 
     MaxLoginAttempts => 1,
 

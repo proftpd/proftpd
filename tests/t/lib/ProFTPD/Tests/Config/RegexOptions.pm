@@ -45,8 +45,9 @@ sub regexoptions_posix_engine_issue1300 {
 
     AuthUserFile => $setup->{auth_user_file},
     AuthGroupFile => $setup->{auth_group_file},
-    DefaultChdir => '~',
+    AuthOrder => 'mod_auth_file.c',
 
+    DefaultChdir => '~',
     DenyFilter => '\*.*/',
     RegexOptions => 'Engine POSIX',
 

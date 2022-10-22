@@ -81,6 +81,7 @@ sub socketoptions_none {
 
     AuthUserFile => $setup->{auth_user_file},
     AuthGroupFile => $setup->{auth_group_file},
+    AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
       'mod_delay.c' => {
@@ -207,6 +208,7 @@ sub socketoptions_rcvbuf_bug3607 {
 
     AuthUserFile => $setup->{auth_user_file},
     AuthGroupFile => $setup->{auth_group_file},
+    AuthOrder => 'mod_auth_file.c',
 
     SocketOptions => "rcvbuf $rcvbufsz",
 
@@ -354,6 +356,7 @@ sub socketoptions_sndbuf_bug3607 {
 
     AuthUserFile => $setup->{auth_user_file},
     AuthGroupFile => $setup->{auth_group_file},
+    AuthOrder => 'mod_auth_file.c',
 
     SocketOptions => "sndbuf $sndbufsz",
 
@@ -503,6 +506,7 @@ sub socketoptions_keepalive_on {
 
     AuthUserFile => $setup->{auth_user_file},
     AuthGroupFile => $setup->{auth_group_file},
+    AuthOrder => 'mod_auth_file.c',
 
     PassivePorts => "41200 43400",
     SocketOptions => "keepalive on",
@@ -603,6 +607,7 @@ sub socketoptions_keepalive_off {
 
     AuthUserFile => $setup->{auth_user_file},
     AuthGroupFile => $setup->{auth_group_file},
+    AuthOrder => 'mod_auth_file.c',
 
     PassivePorts => "41200 43400",
     SocketOptions => "keepalive off",

@@ -1248,6 +1248,13 @@ sub test_setup {
   if ($< != 0) {
     $uid = $<;
     $gid = $(;
+
+    # If `$(` returns a space-separated list of numbers, we want to only
+    # use the first one.
+    if ($gid =~ / /) {
+      my $gids = [split(/\s+/, $gid)];
+      $gid = $gids->[0];
+    }
   }
 
   my $setup = {

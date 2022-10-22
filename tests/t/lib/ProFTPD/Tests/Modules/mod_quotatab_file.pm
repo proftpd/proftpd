@@ -204,6 +204,7 @@ sub quotatab_file_single_suppl_group {
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
+    AuthOrder => 'mod_auth_file.c',
 
     DefaultChdir => '~',
 
@@ -382,6 +383,7 @@ sub quotatab_file_all_limit {
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
+    AuthOrder => 'mod_auth_file.c',
 
     DefaultChdir => '~',
 
@@ -618,6 +620,7 @@ sub quotatab_file_bytes_download_zero {
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
+    AuthOrder => 'mod_auth_file.c',
 
     DefaultChdir => '~',
 

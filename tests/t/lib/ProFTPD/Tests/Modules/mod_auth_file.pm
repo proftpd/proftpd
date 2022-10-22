@@ -189,6 +189,7 @@ sub auth_user_file_id_range_ok {
 
     AuthUserFile => "$auth_user_file id 100-500",
     AuthGroupFile => $auth_group_file,
+    AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
       'mod_delay.c' => {
@@ -294,6 +295,7 @@ sub auth_user_file_id_range_failed {
 
     AuthUserFile => "$auth_user_file id 100-500",
     AuthGroupFile => $auth_group_file,
+    AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
       'mod_delay.c' => {
@@ -404,6 +406,7 @@ sub auth_user_file_home_filter_ok {
 
     AuthUserFile => "$auth_user_file home $user\$",
     AuthGroupFile => $auth_group_file,
+    AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
       'mod_delay.c' => {
@@ -509,6 +512,7 @@ sub auth_user_file_home_filter_failed {
 
     AuthUserFile => "$auth_user_file home ^3133tH\@x0R\$",
     AuthGroupFile => $auth_group_file,
+    AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
       'mod_delay.c' => {
@@ -618,6 +622,7 @@ sub auth_user_file_name_filter_ok {
 
     AuthUserFile => "$auth_user_file name ^$user\$",
     AuthGroupFile => $auth_group_file,
+    AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
       'mod_delay.c' => {
@@ -723,6 +728,7 @@ sub auth_user_file_name_filter_failed {
 
     AuthUserFile => "$auth_user_file name ^3133tH\@x0R\$",
     AuthGroupFile => $auth_group_file,
+    AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
       'mod_delay.c' => {
@@ -832,6 +838,7 @@ sub auth_group_file_id_range_ok {
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => "$auth_group_file id 100-500",
+    AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
       'mod_delay.c' => {
@@ -953,6 +960,7 @@ sub auth_group_file_id_range_failed {
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => "$auth_group_file id 100-500",
+    AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
       'mod_delay.c' => {
@@ -1078,6 +1086,7 @@ sub auth_group_file_name_filter_ok {
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => "$auth_group_file name ^$group\$",
+    AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
       'mod_delay.c' => {
@@ -1199,6 +1208,7 @@ sub auth_group_file_name_filter_failed {
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => "$auth_group_file name ^3133tH\@x0R\$",
+    AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
       'mod_delay.c' => {
@@ -1324,6 +1334,7 @@ sub auth_user_file_at_symbol_ok {
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
+    AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
       'mod_delay.c' => {
@@ -1435,6 +1446,7 @@ sub auth_user_file_world_readable_bug3892 {
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
+    AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
       'mod_delay.c' => {
@@ -1508,6 +1520,7 @@ sub auth_user_file_world_writable_bug3892 {
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
+    AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
       'mod_delay.c' => {
@@ -1565,6 +1578,7 @@ sub auth_user_file_world_readable_insecure_perms_opt {
 AuthFileOptions InsecurePerms
 AuthUserFile $setup->{auth_user_file}
 AuthGroupFile $setup->{auth_group_file}
+AuthOrder mod_auth_file.c
 EOC
     unless (close($fh)) {
       die("Can't write $setup->{config_file}: $!");
@@ -1636,6 +1650,7 @@ sub auth_group_file_world_readable_bug3892 {
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
+    AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
       'mod_delay.c' => {
@@ -1708,6 +1723,7 @@ sub auth_group_file_world_writable_bug3892 {
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
+    AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
       'mod_delay.c' => {
@@ -1781,6 +1797,7 @@ sub auth_user_file_world_writable_parent_dir_bug3892 {
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
+    AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
       'mod_delay.c' => {
@@ -1885,6 +1902,7 @@ sub auth_user_file_symlink_world_writable_parent_dir_bug3892 {
 
     AuthUserFile => $auth_user_symlink,
     AuthGroupFile => $auth_group_file,
+    AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
       'mod_delay.c' => {
@@ -1927,6 +1945,7 @@ sub auth_user_file_bad_syntax_bug3985 {
 
     AuthUserFile => $setup->{auth_user_file},
     AuthGroupFile => $setup->{auth_group_file},
+    AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
       'mod_delay.c' => {
@@ -2001,6 +2020,7 @@ sub auth_group_file_bad_syntax_bug3985 {
 
     AuthUserFile => $setup->{auth_user_file},
     AuthGroupFile => $setup->{auth_group_file},
+    AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
       'mod_delay.c' => {
@@ -2107,6 +2127,7 @@ sub auth_user_file_bad_syntax_check_issue490 {
 AuthFileOptions SyntaxCheck
 AuthUserFile $setup->{auth_user_file}
 AuthGroupFile $setup->{auth_group_file}
+AuthOrder mod_auth_file.c
 EOC
     unless (close($fh)) {
       die("Can't write $setup->{log_file}: $!");
@@ -2160,6 +2181,7 @@ AuthUserFile $setup->{auth_user_file}
 
 AuthFileOptions SyntaxCheck
 AuthGroupFile $setup->{auth_group_file}
+AuthOrder mod_auth_file.c
 EOC
     unless (close($fh)) {
       die("Can't write $setup->{log_file}: $!");
@@ -2239,6 +2261,7 @@ sub auth_file_symlink_segfault_bug4145 {
 
     AuthUserFile => $auth_user_symlink,
     AuthGroupFile => $auth_group_symlink,
+    AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
       'mod_delay.c' => {
@@ -2315,6 +2338,7 @@ sub auth_file_line_too_long_issue1321 {
 
     AuthUserFile => $setup->{auth_user_file},
     AuthGroupFile => $setup->{auth_group_file},
+    AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
       'mod_delay.c' => {

@@ -2062,6 +2062,7 @@ sub ssh2_connect_bad_version_bad_format {
 
     AuthUserFile => $setup->{auth_user_file},
     AuthGroupFile => $setup->{auth_group_file},
+    AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
       'mod_delay.c' => {
@@ -2169,6 +2170,7 @@ sub ssh2_connect_bad_version_unsupported_proto_version {
 
     AuthUserFile => $setup->{auth_user_file},
     AuthGroupFile => $setup->{auth_group_file},
+    AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
       'mod_delay.c' => {
@@ -2276,6 +2278,7 @@ sub ssh2_connect_bad_version_too_long {
 
     AuthUserFile => $setup->{auth_user_file},
     AuthGroupFile => $setup->{auth_group_file},
+    AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
       'mod_delay.c' => {
@@ -2383,6 +2386,7 @@ sub ssh2_connect_bad_version_too_short {
 
     AuthUserFile => $setup->{auth_user_file},
     AuthGroupFile => $setup->{auth_group_file},
+    AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
       'mod_delay.c' => {
@@ -2490,6 +2494,7 @@ sub ssh2_connect_version_with_comments {
 
     AuthUserFile => $setup->{auth_user_file},
     AuthGroupFile => $setup->{auth_group_file},
+    AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
       'mod_delay.c' => {
@@ -2628,6 +2633,7 @@ sub ssh2_connect_version_bug3918 {
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
+    AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
       'mod_delay.c' => {
@@ -2795,6 +2801,8 @@ sub ssh2_connect_timeout_login {
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
+    AuthOrder => 'mod_auth_file.c',
+
     TimeoutLogin => 3,
 
     IfModules => {
@@ -2900,6 +2908,7 @@ sub ssh2_kex_dh_group1_sha1 {
 
     AuthUserFile => $setup->{auth_user_file},
     AuthGroupFile => $setup->{auth_group_file},
+    AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
       'mod_delay.c' => {
@@ -3027,6 +3036,7 @@ sub ssh2_kex_dh_group14_sha1 {
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
+    AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
       'mod_delay.c' => {
@@ -3160,6 +3170,7 @@ sub ssh2_kex_dh_gex_sha1 {
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
+    AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
       'mod_delay.c' => {
@@ -3345,6 +3356,7 @@ EOC
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
+    AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
       'mod_delay.c' => {
@@ -3596,6 +3608,7 @@ EOC
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
+    AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
       'mod_delay.c' => {
@@ -3847,6 +3860,7 @@ EOC
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
+    AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
       'mod_delay.c' => {
@@ -4046,6 +4060,7 @@ sub ssh2_hostkey_rsa {
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
+    AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
       'mod_delay.c' => {
@@ -4178,6 +4193,7 @@ sub ssh2_hostkey_rsa_only {
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
+    AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
       'mod_delay.c' => {
@@ -4330,6 +4346,7 @@ EOC
 
     AuthUserFile => $setup->{auth_user_file},
     AuthGroupFile => $setup->{auth_group_file},
+    AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
       'mod_delay.c' => {
@@ -4514,6 +4531,7 @@ EOC
 
     AuthUserFile => $setup->{auth_user_file},
     AuthGroupFile => $setup->{auth_group_file},
+    AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
       'mod_delay.c' => {
@@ -4690,6 +4708,7 @@ sub ssh2_hostkey_dss {
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
+    AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
       'mod_delay.c' => {
@@ -4822,6 +4841,7 @@ sub ssh2_hostkey_dss_only {
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
+    AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
       'mod_delay.c' => {
@@ -4994,6 +5014,7 @@ sub ssh2_hostkey_dss_bug3634 {
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
+    AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
       'mod_delay.c' => {
@@ -5183,6 +5204,7 @@ sub ssh2_hostkey_passphraseprovider_bug3851 {
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
+    AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
       'mod_delay.c' => {
@@ -5369,6 +5391,7 @@ EOC
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
+    AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
       'mod_delay.c' => {
@@ -5619,6 +5642,7 @@ EOC
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
+    AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
       'mod_delay.c' => {
@@ -5869,6 +5893,7 @@ EOC
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
+    AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
       'mod_delay.c' => {
@@ -6074,6 +6099,7 @@ sub ssh2_ext_hostkey_openssh_rsa_issue793 {
 
     AuthUserFile => $setup->{auth_user_file},
     AuthGroupFile => $setup->{auth_group_file},
+    AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
       'mod_delay.c' => {
@@ -6262,6 +6288,7 @@ sub ssh2_ext_hostkey_openssh_rsa_passphraseprovider_issue793 {
 
     AuthUserFile => $setup->{auth_user_file},
     AuthGroupFile => $setup->{auth_group_file},
+    AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
       'mod_delay.c' => {
@@ -6464,6 +6491,7 @@ EOC
 
     AuthUserFile => $setup->{auth_user_file},
     AuthGroupFile => $setup->{auth_group_file},
+    AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
       'mod_delay.c' => {
@@ -6668,6 +6696,7 @@ EOC
 
     AuthUserFile => $setup->{auth_user_file},
     AuthGroupFile => $setup->{auth_group_file},
+    AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
       'mod_delay.c' => {
@@ -6870,6 +6899,7 @@ EOC
 
     AuthUserFile => $setup->{auth_user_file},
     AuthGroupFile => $setup->{auth_group_file},
+    AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
       'mod_delay.c' => {
@@ -7073,6 +7103,7 @@ EOC
 
     AuthUserFile => $setup->{auth_user_file},
     AuthGroupFile => $setup->{auth_group_file},
+    AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
       'mod_delay.c' => {
@@ -7278,6 +7309,7 @@ EOC
 
     AuthUserFile => $setup->{auth_user_file},
     AuthGroupFile => $setup->{auth_group_file},
+    AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
       'mod_delay.c' => {
@@ -7465,6 +7497,7 @@ sub ssh2_cipher_c2s_aes256_cbc {
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
+    AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
       'mod_delay.c' => {
@@ -7598,6 +7631,7 @@ sub ssh2_cipher_c2s_aes192_cbc {
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
+    AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
       'mod_delay.c' => {
@@ -7731,6 +7765,7 @@ sub ssh2_cipher_c2s_aes128_cbc {
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
+    AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
       'mod_delay.c' => {
@@ -7864,6 +7899,7 @@ sub ssh2_cipher_c2s_blowfish_cbc {
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
+    AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
       'mod_delay.c' => {
@@ -7998,6 +8034,7 @@ sub ssh2_cipher_c2s_arcfour {
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
+    AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
       'mod_delay.c' => {
@@ -8234,6 +8271,7 @@ sub ssh2_cipher_c2s_3des_cbc {
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
+    AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
       'mod_delay.c' => {
@@ -8367,6 +8405,7 @@ sub ssh2_cipher_c2s_none {
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
+    AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
       'mod_delay.c' => {
@@ -8598,6 +8637,7 @@ sub ssh2_cipher_s2c_aes192_cbc {
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
+    AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
       'mod_delay.c' => {
@@ -8731,6 +8771,7 @@ sub ssh2_cipher_s2c_aes128_cbc {
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
+    AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
       'mod_delay.c' => {
@@ -8864,6 +8905,7 @@ sub ssh2_cipher_s2c_blowfish_cbc {
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
+    AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
       'mod_delay.c' => {
@@ -8998,6 +9040,7 @@ sub ssh2_cipher_s2c_arcfour {
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
+    AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
       'mod_delay.c' => {
@@ -9234,6 +9277,7 @@ sub ssh2_cipher_s2c_3des_cbc {
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
+    AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
       'mod_delay.c' => {
@@ -9367,6 +9411,7 @@ sub ssh2_cipher_s2c_none {
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
+    AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
       'mod_delay.c' => {
@@ -9491,6 +9536,7 @@ sub ssh2_ext_cipher_aes128_gcm_bug3759 {
 
     AuthUserFile => $setup->{auth_user_file},
     AuthGroupFile => $setup->{auth_group_file},
+    AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
       'mod_delay.c' => {
@@ -9660,6 +9706,7 @@ sub ssh2_ext_cipher_aes256_gcm_bug3759 {
 
     AuthUserFile => $setup->{auth_user_file},
     AuthGroupFile => $setup->{auth_group_file},
+    AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
       'mod_delay.c' => {
@@ -9839,6 +9886,7 @@ sub ssh2_mac_c2s_hmac_sha1 {
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
+    AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
       'mod_delay.c' => {
@@ -9972,6 +10020,7 @@ sub ssh2_mac_c2s_hmac_sha1_96 {
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
+    AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
       'mod_delay.c' => {
@@ -10105,6 +10154,7 @@ sub ssh2_mac_c2s_hmac_md5 {
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
+    AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
       'mod_delay.c' => {
@@ -10239,6 +10289,7 @@ sub ssh2_mac_c2s_hmac_md5_96 {
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
+    AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
       'mod_delay.c' => {
@@ -10373,6 +10424,7 @@ sub ssh2_mac_c2s_hmac_ripemd160 {
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
+    AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
       'mod_delay.c' => {
@@ -10507,6 +10559,7 @@ sub ssh2_mac_c2s_none {
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
+    AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
       'mod_delay.c' => {
@@ -10641,6 +10694,7 @@ sub ssh2_mac_s2c_hmac_sha1 {
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
+    AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
       'mod_delay.c' => {
@@ -10774,6 +10828,7 @@ sub ssh2_mac_s2c_hmac_sha1_96 {
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
+    AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
       'mod_delay.c' => {
@@ -10907,6 +10962,7 @@ sub ssh2_mac_s2c_hmac_md5 {
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
+    AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
       'mod_delay.c' => {
@@ -11041,6 +11097,7 @@ sub ssh2_mac_s2c_hmac_md5_96 {
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
+    AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
       'mod_delay.c' => {
@@ -11175,6 +11232,7 @@ sub ssh2_mac_s2c_hmac_ripemd160 {
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
+    AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
       'mod_delay.c' => {
@@ -11309,6 +11367,7 @@ sub ssh2_mac_s2c_none {
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
+    AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
       'mod_delay.c' => {
@@ -11494,6 +11553,7 @@ EOC
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
+    AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
       'mod_delay.c' => {
@@ -11679,6 +11739,7 @@ sub ssh2_ext_mac_hmac_md5_etm_openssh {
 
     AuthUserFile => $setup->{auth_user_file},
     AuthGroupFile => $setup->{auth_group_file},
+    AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
       'mod_delay.c' => {
@@ -11846,6 +11907,7 @@ sub ssh2_ext_mac_hmac_sha1_etm_openssh {
 
     AuthUserFile => $setup->{auth_user_file},
     AuthGroupFile => $setup->{auth_group_file},
+    AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
       'mod_delay.c' => {
@@ -12012,6 +12074,7 @@ sub ssh2_ext_mac_hmac_sha256_etm_openssh {
 
     AuthUserFile => $setup->{auth_user_file},
     AuthGroupFile => $setup->{auth_group_file},
+    AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
       'mod_delay.c' => {
@@ -12178,6 +12241,7 @@ sub ssh2_ext_mac_hmac_sha512_etm_openssh {
 
     AuthUserFile => $setup->{auth_user_file},
     AuthGroupFile => $setup->{auth_group_file},
+    AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
       'mod_delay.c' => {
@@ -12344,6 +12408,7 @@ sub ssh2_ext_mac_umac_64_etm_openssh {
 
     AuthUserFile => $setup->{auth_user_file},
     AuthGroupFile => $setup->{auth_group_file},
+    AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
       'mod_delay.c' => {
@@ -12510,6 +12575,7 @@ sub ssh2_ext_mac_umac_128_etm_openssh {
 
     AuthUserFile => $setup->{auth_user_file},
     AuthGroupFile => $setup->{auth_group_file},
+    AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
       'mod_delay.c' => {
@@ -12686,6 +12752,7 @@ sub ssh2_compress_c2s_none {
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
+    AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
       'mod_delay.c' => {
@@ -12819,6 +12886,7 @@ sub ssh2_compress_c2s_zlib {
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
+    AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
       'mod_delay.c' => {
@@ -12954,6 +13022,7 @@ sub ssh2_compress_s2c_none {
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
+    AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
       'mod_delay.c' => {
@@ -13087,6 +13156,7 @@ sub ssh2_compress_s2c_zlib {
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
+    AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
       'mod_delay.c' => {
@@ -13231,6 +13301,7 @@ sub ssh2_auth_hostbased {
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
+    AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
       'mod_delay.c' => {
@@ -13373,6 +13444,7 @@ sub ssh2_auth_publickey_rsa_no_match_bug3493 {
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
+    AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
       'mod_delay.c' => {
@@ -13514,6 +13586,7 @@ sub ssh2_auth_publickey_rsa_with_match_bug3493 {
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
+    AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
       'mod_delay.c' => {
@@ -13630,6 +13703,7 @@ sub ssh2_auth_publickey_rsa2048_2nd_key {
 
     AuthUserFile => $setup->{auth_user_file},
     AuthGroupFile => $setup->{auth_group_file},
+    AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
       'mod_delay.c' => {
@@ -13766,6 +13840,7 @@ sub ssh2_auth_publickey_rsa2048 {
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
+    AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
       'mod_delay.c' => {
@@ -13911,6 +13986,7 @@ sub ssh2_auth_publickey_rsa2048_no_nl {
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
+    AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
       'mod_delay.c' => {
@@ -14021,6 +14097,7 @@ sub ssh2_auth_publickey_rsa2048_min_4096_bug4233 {
 
     AuthUserFile => $setup->{auth_user_file},
     AuthGroupFile => $setup->{auth_group_file},
+    AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
       'mod_delay.c' => {
@@ -14164,6 +14241,7 @@ sub ssh2_auth_publickey_rsa4096 {
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
+    AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
       'mod_delay.c' => {
@@ -14305,6 +14383,7 @@ sub ssh2_auth_publickey_rsa8192 {
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
+    AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
       'mod_delay.c' => {
@@ -14448,6 +14527,8 @@ sub ssh2_auth_publickey_rsa16384 {
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
+    AuthOrder => 'mod_auth_file.c',
+
     TimeoutIdle => $timeout_idle,
 
     IfModules => {
@@ -14599,6 +14680,7 @@ EOC
 
     AuthUserFile => $setup->{auth_user_file},
     AuthGroupFile => $setup->{auth_group_file},
+    AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
       'mod_delay.c' => {
@@ -14804,6 +14886,7 @@ EOC
 
     AuthUserFile => $setup->{auth_user_file},
     AuthGroupFile => $setup->{auth_group_file},
+    AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
       'mod_delay.c' => {
@@ -14999,6 +15082,7 @@ sub ssh2_auth_publickey_dsa1024 {
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
+    AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
       'mod_delay.c' => {
@@ -15140,6 +15224,7 @@ sub ssh2_auth_publickey_dsa2048 {
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
+    AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
       'mod_delay.c' => {
@@ -15281,6 +15366,7 @@ sub ssh2_auth_publickey_dsa4096 {
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
+    AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
       'mod_delay.c' => {
@@ -15422,6 +15508,7 @@ sub ssh2_auth_publickey_dsa8192 {
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
+    AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
       'mod_delay.c' => {
@@ -15566,6 +15653,7 @@ sub ssh2_auth_publickey_user_var_bug3315 {
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
+    AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
       'mod_delay.c' => {
@@ -15735,6 +15823,7 @@ sub ssh2_ext_auth_publickey_ecdsa256 {
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
+    AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
       'mod_delay.c' => {
@@ -15966,6 +16055,7 @@ sub ssh2_ext_auth_publickey_ecdsa384 {
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
+    AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
       'mod_delay.c' => {
@@ -16197,6 +16287,7 @@ sub ssh2_ext_auth_publickey_ecdsa521 {
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
+    AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
       'mod_delay.c' => {
@@ -16401,6 +16492,7 @@ sub ssh2_ext_auth_publickey_openssh_rsa_bug4221 {
 
     AuthUserFile => $setup->{auth_user_file},
     AuthGroupFile => $setup->{auth_group_file},
+    AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
       'mod_delay.c' => {
@@ -16608,6 +16700,7 @@ EOC
 
     AuthUserFile => $setup->{auth_user_file},
     AuthGroupFile => $setup->{auth_group_file},
+    AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
       'mod_delay.c' => {
@@ -16871,6 +16964,7 @@ sub ssh2_auth_password_failed {
 
     AuthUserFile => $setup->{auth_user_file},
     AuthGroupFile => $setup->{auth_group_file},
+    AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
       'mod_delay.c' => {
@@ -17000,6 +17094,7 @@ sub ssh2_auth_kbdint_failed_password_ok {
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
+    AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
       'mod_delay.c' => {
@@ -17164,6 +17259,7 @@ sub ssh2_auth_twice {
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
+    AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
       'mod_delay.c' => {
@@ -17328,6 +17424,7 @@ sub ssh2_auth_publickey_password_chain_bug4153 {
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
+    AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
       'mod_delay.c' => {
@@ -17489,6 +17586,7 @@ sub ssh2_auth_publickey_publickey_chain_bug4153 {
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
+    AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
       'mod_delay.c' => {
@@ -17768,6 +17866,7 @@ sub ssh2_interop_scanner {
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
+    AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
       'mod_delay.c' => {
@@ -17921,6 +18020,7 @@ sub ssh2_interop_probe {
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
+    AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
       'mod_delay.c' => {
@@ -18072,6 +18172,7 @@ sub ssh2_channel_failed_ptyreq {
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
+    AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
       'mod_delay.c' => {
@@ -18215,6 +18316,7 @@ sub ssh2_channel_failed_shell {
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
+    AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
       'mod_delay.c' => {
@@ -18358,6 +18460,7 @@ sub ssh2_channel_failed_exec_cmd {
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
+    AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
       'mod_delay.c' => {
@@ -18503,6 +18606,7 @@ sub ssh2_channel_env_default {
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
+    AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
       'mod_delay.c' => {
@@ -18667,6 +18771,7 @@ sub ssh2_channel_env_accept_glob_char {
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
+    AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
       'mod_delay.c' => {
@@ -18837,6 +18942,7 @@ sub ssh2_channel_env_accept_single_char {
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
+    AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
       'mod_delay.c' => {
@@ -19006,6 +19112,7 @@ sub ssh2_channel_max_exceeded {
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
+    AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
       'mod_delay.c' => {
@@ -19155,6 +19262,7 @@ sub ssh2_disconnect_client {
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
+    AuthOrder => 'mod_auth_file.c',
 
     TimeoutIdle => $timeout_idle,
 
@@ -19295,6 +19403,7 @@ sub sftp_without_auth {
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
+    AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
       'mod_delay.c' => {
@@ -19405,6 +19514,7 @@ sub sftp_stat {
 
     AuthUserFile => $setup->{auth_user_file},
     AuthGroupFile => $setup->{auth_group_file},
+    AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
       'mod_delay.c' => {
@@ -19566,6 +19676,7 @@ sub sftp_stat_abs_symlink {
 
     AuthUserFile => $setup->{auth_user_file},
     AuthGroupFile => $setup->{auth_group_file},
+    AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
       'mod_delay.c' => {
@@ -19725,6 +19836,7 @@ sub sftp_stat_abs_symlink_chrooted_bug4219 {
 
     AuthUserFile => $setup->{auth_user_file},
     AuthGroupFile => $setup->{auth_group_file},
+    AuthOrder => 'mod_auth_file.c',
 
     DefaultRoot => '~',
 
@@ -19882,6 +19994,7 @@ sub sftp_stat_abs_symlink_enoent {
 
     AuthUserFile => $setup->{auth_user_file},
     AuthGroupFile => $setup->{auth_group_file},
+    AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
       'mod_delay.c' => {
@@ -20018,6 +20131,7 @@ sub sftp_stat_abs_symlink_enoent_chrooted_bug4219 {
 
     AuthUserFile => $setup->{auth_user_file},
     AuthGroupFile => $setup->{auth_group_file},
+    AuthOrder => 'mod_auth_file.c',
 
     DefaultRoot => '~',
 
@@ -20172,6 +20286,7 @@ sub sftp_stat_rel_symlink {
 
     AuthUserFile => $setup->{auth_user_file},
     AuthGroupFile => $setup->{auth_group_file},
+    AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
       'mod_delay.c' => {
@@ -20335,6 +20450,7 @@ sub sftp_stat_rel_symlink_chrooted_bug4219 {
 
     AuthUserFile => $setup->{auth_user_file},
     AuthGroupFile => $setup->{auth_group_file},
+    AuthOrder => 'mod_auth_file.c',
 
     DefaultRoot => '~',
 
@@ -20497,6 +20613,7 @@ sub sftp_stat_rel_symlink_enoent {
 
     AuthUserFile => $setup->{auth_user_file},
     AuthGroupFile => $setup->{auth_group_file},
+    AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
       'mod_delay.c' => {
@@ -20638,6 +20755,7 @@ sub sftp_stat_rel_symlink_enoent_chrooted_bug4219 {
 
     AuthUserFile => $setup->{auth_user_file},
     AuthGroupFile => $setup->{auth_group_file},
+    AuthOrder => 'mod_auth_file.c',
 
     DefaultRoot => '~',
 
@@ -20781,6 +20899,7 @@ sub sftp_fstat {
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
+    AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
       'mod_delay.c' => {
@@ -20953,6 +21072,7 @@ sub sftp_lstat {
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
+    AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
       'mod_delay.c' => {
@@ -21103,6 +21223,7 @@ sub sftp_setstat {
 
     AuthUserFile => $setup->{auth_user_file},
     AuthGroupFile => $setup->{auth_group_file},
+    AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
       'mod_delay.c' => {
@@ -21258,6 +21379,7 @@ sub sftp_setstat_sgid {
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
+    AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
       'mod_delay.c' => {
@@ -21417,6 +21539,7 @@ sub sftp_setstat_abs_symlink {
 
     AuthUserFile => $setup->{auth_user_file},
     AuthGroupFile => $setup->{auth_group_file},
+    AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
       'mod_delay.c' => {
@@ -21574,6 +21697,7 @@ sub sftp_setstat_abs_symlink_chrooted_bug4219 {
 
     AuthUserFile => $setup->{auth_user_file},
     AuthGroupFile => $setup->{auth_group_file},
+    AuthOrder => 'mod_auth_file.c',
 
     DefaultRoot => '~',
 
@@ -21726,6 +21850,7 @@ sub sftp_setstat_abs_symlink_enoent {
 
     AuthUserFile => $setup->{auth_user_file},
     AuthGroupFile => $setup->{auth_group_file},
+    AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
       'mod_delay.c' => {
@@ -21865,6 +21990,7 @@ sub sftp_setstat_abs_symlink_enoent_chrooted_bug4219 {
 
     AuthUserFile => $setup->{auth_user_file},
     AuthGroupFile => $setup->{auth_group_file},
+    AuthOrder => 'mod_auth_file.c',
 
     DefaultRoot => '~',
 
@@ -22017,6 +22143,7 @@ sub sftp_setstat_rel_symlink {
 
     AuthUserFile => $setup->{auth_user_file},
     AuthGroupFile => $setup->{auth_group_file},
+    AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
       'mod_delay.c' => {
@@ -22178,6 +22305,7 @@ sub sftp_setstat_rel_symlink_chrooted_bug4219 {
 
     AuthUserFile => $setup->{auth_user_file},
     AuthGroupFile => $setup->{auth_group_file},
+    AuthOrder => 'mod_auth_file.c',
 
     DefaultRoot => '~',
 
@@ -22335,6 +22463,7 @@ sub sftp_setstat_rel_symlink_enoent {
 
     AuthUserFile => $setup->{auth_user_file},
     AuthGroupFile => $setup->{auth_group_file},
+    AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
       'mod_delay.c' => {
@@ -22479,6 +22608,7 @@ sub sftp_setstat_rel_symlink_enoent_chrooted_bug4219 {
 
     AuthUserFile => $setup->{auth_user_file},
     AuthGroupFile => $setup->{auth_group_file},
+    AuthOrder => 'mod_auth_file.c',
 
     DefaultRoot => '~',
 
@@ -22625,6 +22755,7 @@ sub sftp_fsetstat {
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
+    AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
       'mod_delay.c' => {
@@ -22798,6 +22929,7 @@ sub sftp_realpath {
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
+    AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
       'mod_delay.c' => {
@@ -22964,6 +23096,7 @@ sub sftp_realpath_file {
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
+    AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
       'mod_delay.c' => {
@@ -23143,6 +23276,7 @@ sub sftp_realpath_symlink_file {
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
+    AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
       'mod_delay.c' => {
@@ -23325,6 +23459,8 @@ sub sftp_realpath_symlink_file_chrooted {
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
+    AuthOrder => 'mod_auth_file.c',
+
     DefaultRoot => '~',
 
     IfModules => {
@@ -23479,6 +23615,7 @@ sub sftp_realpath_dir {
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
+    AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
       'mod_delay.c' => {
@@ -23650,6 +23787,7 @@ sub sftp_realpath_symlink_dir {
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
+    AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
       'mod_delay.c' => {
@@ -23824,6 +23962,8 @@ sub sftp_realpath_symlink_dir_chrooted {
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
+    AuthOrder => 'mod_auth_file.c',
+
     DefaultRoot => '~',
 
     IfModules => {
@@ -23977,6 +24117,7 @@ sub sftp_open_enoent_bug3345 {
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
+    AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
       'mod_delay.c' => {
@@ -24135,6 +24276,8 @@ sub sftp_open_trunc_bug3449 {
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
+    AuthOrder => 'mod_auth_file.c',
+
     AllowOverwrite => 'on',
 
     IfModules => {
@@ -24343,6 +24486,8 @@ sub sftp_open_creat {
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
+    AuthOrder => 'mod_auth_file.c',
+
     AllowOverwrite => 'on',
 
     IfModules => {
@@ -24497,6 +24642,8 @@ sub sftp_open_creat_excl {
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
+    AuthOrder => 'mod_auth_file.c',
+
     AllowOverwrite => 'on',
 
     IfModules => {
@@ -24677,6 +24824,8 @@ sub sftp_open_append_bug3450 {
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
+    AuthOrder => 'mod_auth_file.c',
+
     AllowOverwrite => 'on',
     AllowStoreRestart => 'on',
 
@@ -24854,6 +25003,8 @@ sub sftp_open_rdonly {
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
+    AuthOrder => 'mod_auth_file.c',
+
     AllowOverwrite => 'on',
     AllowStoreRestart => 'on',
 
@@ -25024,6 +25175,8 @@ sub sftp_open_wronly {
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
+    AuthOrder => 'mod_auth_file.c',
+
     AllowOverwrite => 'on',
     AllowStoreRestart => 'on',
 
@@ -25194,6 +25347,8 @@ sub sftp_open_rdwr {
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
+    AuthOrder => 'mod_auth_file.c',
+
     AllowOverwrite => 'on',
     AllowStoreRestart => 'on',
 
@@ -25371,6 +25526,8 @@ sub sftp_open_abs_symlink {
 
     AuthUserFile => $setup->{auth_user_file},
     AuthGroupFile => $setup->{auth_group_file},
+    AuthOrder => 'mod_auth_file.c',
+
     AllowOverwrite => 'on',
     AllowStoreRestart => 'on',
 
@@ -25536,6 +25693,7 @@ sub sftp_open_abs_symlink_chrooted_bug4219 {
 
     AuthUserFile => $setup->{auth_user_file},
     AuthGroupFile => $setup->{auth_group_file},
+    AuthOrder => 'mod_auth_file.c',
 
     AllowOverwrite => 'on',
     AllowStoreRestart => 'on',
@@ -25691,6 +25849,8 @@ sub sftp_open_abs_symlink_enoent {
 
     AuthUserFile => $setup->{auth_user_file},
     AuthGroupFile => $setup->{auth_group_file},
+    AuthOrder => 'mod_auth_file.c',
+
     AllowOverwrite => 'on',
     AllowStoreRestart => 'on',
 
@@ -25829,6 +25989,7 @@ sub sftp_open_abs_symlink_enoent_chrooted_bug4219 {
 
     AuthUserFile => $setup->{auth_user_file},
     AuthGroupFile => $setup->{auth_group_file},
+    AuthOrder => 'mod_auth_file.c',
 
     AllowOverwrite => 'on',
     AllowStoreRestart => 'on',
@@ -25985,6 +26146,8 @@ sub sftp_open_rel_symlink {
 
     AuthUserFile => $setup->{auth_user_file},
     AuthGroupFile => $setup->{auth_group_file},
+    AuthOrder => 'mod_auth_file.c',
+
     AllowOverwrite => 'on',
     AllowStoreRestart => 'on',
 
@@ -26154,6 +26317,7 @@ sub sftp_open_rel_symlink_chrooted_bug4219 {
 
     AuthUserFile => $setup->{auth_user_file},
     AuthGroupFile => $setup->{auth_group_file},
+    AuthOrder => 'mod_auth_file.c',
 
     AllowOverwrite => 'on',
     AllowStoreRestart => 'on',
@@ -26314,6 +26478,8 @@ sub sftp_open_rel_symlink_enoent {
 
     AuthUserFile => $setup->{auth_user_file},
     AuthGroupFile => $setup->{auth_group_file},
+    AuthOrder => 'mod_auth_file.c',
+
     AllowOverwrite => 'on',
     AllowStoreRestart => 'on',
 
@@ -26457,6 +26623,7 @@ sub sftp_open_rel_symlink_enoent_chrooted_bug4219 {
 
     AuthUserFile => $setup->{auth_user_file},
     AuthGroupFile => $setup->{auth_group_file},
+    AuthOrder => 'mod_auth_file.c',
 
     AllowOverwrite => 'on',
     AllowStoreRestart => 'on',
@@ -26602,6 +26769,7 @@ sub sftp_upload {
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
+    AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
       'mod_delay.c' => {
@@ -26757,6 +26925,7 @@ sub sftp_upload_with_compression {
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
+    AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
       'mod_delay.c' => {
@@ -26922,6 +27091,7 @@ sub sftp_upload_zero_len_file {
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
+    AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
       'mod_delay.c' => {
@@ -27112,6 +27282,7 @@ sub sftp_upload_largefile {
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
+    AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
       'mod_delay.c' => {
@@ -27301,6 +27472,8 @@ sub sftp_upload_device_full {
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
+    AuthOrder => 'mod_auth_file.c',
+
     AllowOverwrite => 'on',
 
     IfModules => {
@@ -27476,6 +27649,8 @@ sub sftp_upload_fifo_bug3312 {
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
+    AuthOrder => 'mod_auth_file.c',
+
     AllowOverwrite => 'on',
 
     IfModules => {
@@ -27632,6 +27807,8 @@ sub sftp_upload_fifo_bug3313 {
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
+    AuthOrder => 'mod_auth_file.c',
+
     AllowOverwrite => 'on',
 
     IfModules => {
@@ -28030,6 +28207,7 @@ sub sftp_download {
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
+    AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
       'mod_delay.c' => {
@@ -28212,6 +28390,7 @@ sub sftp_download_with_compression {
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
+    AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
       'mod_delay.c' => {
@@ -28378,6 +28557,7 @@ sub sftp_download_with_compression_rekeying {
 
     AuthUserFile => $setup->{auth_user_file},
     AuthGroupFile => $setup->{auth_group_file},
+    AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
       'mod_delay.c' => {
@@ -28567,6 +28747,7 @@ sub sftp_download_zero_len_file {
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
+    AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
       'mod_delay.c' => {
@@ -28765,6 +28946,7 @@ sub sftp_download_largefile {
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
+    AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
       'mod_delay.c' => {
@@ -28958,6 +29140,7 @@ sub sftp_download_fifo_bug3314 {
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
+    AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
       'mod_delay.c' => {
@@ -29167,6 +29350,7 @@ sub sftp_ext_download_bug3550 {
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
+    AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
       'mod_delay.c' => {
@@ -29429,6 +29613,7 @@ sub sftp_ext_download_server_rekey {
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
+    AuthOrder => 'mod_auth_file.c',
 
     TimeoutIdle => $timeout_idle,
 
@@ -29655,6 +29840,7 @@ sub sftp_ext_download_rekey_rsa1024_hostkey_bug4097 {
 
     AuthUserFile => $setup->{auth_user_file},
     AuthGroupFile => $setup->{auth_group_file},
+    AuthOrder => 'mod_auth_file.c',
 
     TimeoutIdle => $timeout_idle,
 
@@ -29855,6 +30041,7 @@ sub sftp_download_server_rekey {
 
     AuthUserFile => $setup->{auth_user_file},
     AuthGroupFile => $setup->{auth_group_file},
+    AuthOrder => 'mod_auth_file.c',
 
     TimeoutIdle => $timeout_idle,
 
@@ -30037,6 +30224,7 @@ sub sftp_download_readonly_bug3787 {
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
+    AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
       'mod_delay.c' => {
@@ -30200,6 +30388,7 @@ sub sftp_readdir {
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
+    AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
       'mod_delay.c' => {
@@ -30393,6 +30582,7 @@ sub sftp_readdir_abs_symlink_dir {
 
     AuthUserFile => $setup->{auth_user_file},
     AuthGroupFile => $setup->{auth_group_file},
+    AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
       'mod_delay.c' => {
@@ -30573,6 +30763,7 @@ sub sftp_readdir_abs_symlink_dir_chrooted_bug4219 {
 
     AuthUserFile => $setup->{auth_user_file},
     AuthGroupFile => $setup->{auth_group_file},
+    AuthOrder => 'mod_auth_file.c',
 
     DefaultRoot => '~',
 
@@ -30772,6 +30963,7 @@ sub sftp_readdir_abs_symlink_dir_vroot {
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
+    AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
       'mod_delay.c' => {
@@ -30970,6 +31162,7 @@ sub sftp_readdir_rel_symlink_dir {
 
     AuthUserFile => $setup->{auth_user_file},
     AuthGroupFile => $setup->{auth_group_file},
+    AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
       'mod_delay.c' => {
@@ -31154,6 +31347,7 @@ sub sftp_readdir_rel_symlink_dir_chrooted_bug4219 {
 
     AuthUserFile => $setup->{auth_user_file},
     AuthGroupFile => $setup->{auth_group_file},
+    AuthOrder => 'mod_auth_file.c',
 
     DefaultRoot => '~',
 
@@ -31364,6 +31558,7 @@ sub sftp_readdir_wide_dir {
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
+    AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
       'mod_delay.c' => {
@@ -31589,6 +31784,7 @@ sub sftp_readdir_with_removes {
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
+    AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
       'mod_delay.c' => {
@@ -31805,6 +32001,7 @@ sub sftp_mkdir {
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
+    AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
       'mod_delay.c' => {
@@ -31956,6 +32153,7 @@ sub sftp_mkdir_eexist {
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
+    AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
       'mod_delay.c' => {
@@ -32089,6 +32287,7 @@ sub sftp_mkdir_abs_symlink_eexist {
 
     AuthUserFile => $setup->{auth_user_file},
     AuthGroupFile => $setup->{auth_group_file},
+    AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
       'mod_delay.c' => {
@@ -32214,6 +32413,7 @@ sub sftp_mkdir_abs_symlink_eexist_chrooted_bug4219 {
 
     AuthUserFile => $setup->{auth_user_file},
     AuthGroupFile => $setup->{auth_group_file},
+    AuthOrder => 'mod_auth_file.c',
 
     DefaultRoot => '~',
 
@@ -32346,6 +32546,7 @@ sub sftp_mkdir_rel_symlink_eexist {
 
     AuthUserFile => $setup->{auth_user_file},
     AuthGroupFile => $setup->{auth_group_file},
+    AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
       'mod_delay.c' => {
@@ -32476,6 +32677,7 @@ sub sftp_mkdir_rel_symlink_eexist_chrooted_bug4219 {
 
     AuthUserFile => $setup->{auth_user_file},
     AuthGroupFile => $setup->{auth_group_file},
+    AuthOrder => 'mod_auth_file.c',
 
     DefaultRoot => '~',
 
@@ -32623,6 +32825,7 @@ sub sftp_mkdir_readdir_bug3481 {
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
+    AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
       'mod_delay.c' => {
@@ -32803,6 +33006,7 @@ sub sftp_rmdir {
 
     AuthUserFile => $setup->{auth_user_file},
     AuthGroupFile => $setup->{auth_group_file},
+    AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
       'mod_delay.c' => {
@@ -32957,6 +33161,7 @@ sub sftp_rmdir_dir_not_empty {
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
+    AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
       'mod_delay.c' => {
@@ -33107,6 +33312,7 @@ sub sftp_rmdir_abs_symlink {
 
     AuthUserFile => $setup->{auth_user_file},
     AuthGroupFile => $setup->{auth_group_file},
+    AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
       'mod_delay.c' => {
@@ -33244,6 +33450,7 @@ sub sftp_rmdir_abs_symlink_chrooted_bug4219 {
 
     AuthUserFile => $setup->{auth_user_file},
     AuthGroupFile => $setup->{auth_group_file},
+    AuthOrder => 'mod_auth_file.c',
 
     DefaultRoot => '~',
 
@@ -33387,6 +33594,7 @@ sub sftp_rmdir_rel_symlink {
 
     AuthUserFile => $setup->{auth_user_file},
     AuthGroupFile => $setup->{auth_group_file},
+    AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
       'mod_delay.c' => {
@@ -33528,6 +33736,7 @@ sub sftp_rmdir_rel_symlink_chrooted_bug4219 {
 
     AuthUserFile => $setup->{auth_user_file},
     AuthGroupFile => $setup->{auth_group_file},
+    AuthOrder => 'mod_auth_file.c',
 
     DefaultRoot => '~',
 
@@ -33682,6 +33891,7 @@ sub sftp_remove {
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
+    AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
       'mod_delay.c' => {
@@ -33844,6 +34054,7 @@ sub sftp_rename {
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
+    AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
       'mod_delay.c' => {
@@ -33979,6 +34190,7 @@ sub sftp_symlink {
 
     AuthUserFile => $setup->{auth_user_file},
     AuthGroupFile => $setup->{auth_group_file},
+    AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
       'mod_delay.c' => {
@@ -34115,6 +34327,7 @@ sub sftp_symlink_dst_already_exists {
 
     AuthUserFile => $setup->{auth_user_file},
     AuthGroupFile => $setup->{auth_group_file},
+    AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
       'mod_delay.c' => {
@@ -34263,6 +34476,7 @@ sub sftp_symlink_src_does_not_exist {
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
+    AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
       'mod_delay.c' => {
@@ -34397,6 +34611,7 @@ sub sftp_readlink_abs_dst {
 
     AuthUserFile => $setup->{auth_user_file},
     AuthGroupFile => $setup->{auth_group_file},
+    AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
       'mod_delay.c' => {
@@ -34530,6 +34745,8 @@ sub sftp_readlink_abs_dst_chrooted_bug4219 {
 
     AuthUserFile => $setup->{auth_user_file},
     AuthGroupFile => $setup->{auth_group_file},
+    AuthOrder => 'mod_auth_file.c',
+
     DefaultRoot => '~',
 
     IfModules => {
@@ -34662,6 +34879,7 @@ sub sftp_readlink_rel_dst {
 
     AuthUserFile => $setup->{auth_user_file},
     AuthGroupFile => $setup->{auth_group_file},
+    AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
       'mod_delay.c' => {
@@ -34789,6 +35007,8 @@ sub sftp_readlink_rel_dst_chrooted_bug4219 {
 
     AuthUserFile => $setup->{auth_user_file},
     AuthGroupFile => $setup->{auth_group_file},
+    AuthOrder => 'mod_auth_file.c',
+
     DefaultRoot => '~',
 
     IfModules => {
@@ -34947,6 +35167,7 @@ sub sftp_readlink_symlink_dir_bug4140 {
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
+    AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
       'mod_delay.c' => {
@@ -35102,6 +35323,7 @@ sub sftp_config_allowoverwrite {
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
+    AuthOrder => 'mod_auth_file.c',
 
     Directory => {
       '~' => {
@@ -35271,6 +35493,7 @@ sub sftp_config_allowstorerestart {
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
+    AuthOrder => 'mod_auth_file.c',
 
     Directory => {
       '~' => {
@@ -35434,6 +35657,8 @@ sub sftp_config_client_alive {
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
+    AuthOrder => 'mod_auth_file.c',
+
     TimeoutIdle => $timeout_idle,
 
     IfModules => {
@@ -35569,6 +35794,7 @@ sub sftp_config_client_match {
 
     AuthUserFile => $setup->{auth_user_file},
     AuthGroupFile => $setup->{auth_group_file},
+    AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
       'mod_delay.c' => {
@@ -35681,6 +35907,7 @@ sub sftp_config_client_match_no_matching_protocol_version_issue1200 {
 
     AuthUserFile => $setup->{auth_user_file},
     AuthGroupFile => $setup->{auth_group_file},
+    AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
       'mod_delay.c' => {
@@ -36441,6 +36668,7 @@ sub sftp_config_createhome {
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
+    AuthOrder => 'mod_auth_file.c',
 
     CreateHome => "on 711 homegid $home_gid",
 
@@ -36613,6 +36841,8 @@ sub sftp_config_defaultchdir {
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
+    AuthOrder => 'mod_auth_file.c',
+
     DefaultChdir => '~/public_sftp',
 
     IfModules => {
@@ -36811,6 +37041,7 @@ sub sftp_config_deleteabortedstores {
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
+    AuthOrder => 'mod_auth_file.c',
 
     HiddenStores => 'on',
     DeleteAbortedStores => 'on',
@@ -36982,6 +37213,7 @@ sub sftp_config_dirfakemode {
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
+    AuthOrder => 'mod_auth_file.c',
 
     DirFakeMode => '0310',
 
@@ -37197,6 +37429,7 @@ sub sftp_config_hiddenstores {
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
+    AuthOrder => 'mod_auth_file.c',
 
     HiddenStores => 'on',
 
@@ -37382,6 +37615,7 @@ sub sftp_config_hidefiles_abs_path {
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
+    AuthOrder => 'mod_auth_file.c',
 
     Directory => {
       '/' => {
@@ -37596,6 +37830,7 @@ sub sftp_config_hidefiles_deferred_path_bug3470 {
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
+    AuthOrder => 'mod_auth_file.c',
 
     Directory => {
       '~' => {
@@ -37810,6 +38045,8 @@ sub sftp_config_hidefiles_deferred_path_chroot_bug3470 {
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
+    AuthOrder => 'mod_auth_file.c',
+
     DefaultRoot => '~',
 
     Directory => {
@@ -38030,6 +38267,7 @@ sub sftp_config_hidefiles_symlink_bug3924 {
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
+    AuthOrder => 'mod_auth_file.c',
 
     Directory => {
       '/' => {
@@ -38248,6 +38486,7 @@ sub sftp_config_hidenoaccess {
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
+    AuthOrder => 'mod_auth_file.c',
 
     Directory => {
       '~' => {
@@ -38468,6 +38707,8 @@ sub sftp_config_max_clients_per_host_bug3630 {
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
+    AuthOrder => 'mod_auth_file.c',
+
     MaxClientsPerHost => $max_clients_per_host,
 
     IfModules => {
@@ -38590,6 +38831,7 @@ sub sftp_auth_logging_bad_password_issue693 {
 
     AuthUserFile => $setup->{auth_user_file},
     AuthGroupFile => $setup->{auth_group_file},
+    AuthOrder => 'mod_auth_file.c',
 
     # Note that this test looks at the generated logging for verifying the
     # behavior, thus we set the DebugLevel appropriately.
@@ -38739,6 +38981,7 @@ sub sftp_auth_logging_bad_password_max_login_attempts_issue693 {
 
     AuthUserFile => $setup->{auth_user_file},
     AuthGroupFile => $setup->{auth_group_file},
+    AuthOrder => 'mod_auth_file.c',
 
     # Note that we specifically want 2 here, to test the handling of the
     # initial non-fatal attempt, and the second fatal
@@ -38898,6 +39141,7 @@ sub sftp_auth_logging_publickey_then_password_issue693 {
 
     AuthUserFile => $setup->{auth_user_file},
     AuthGroupFile => $setup->{auth_group_file},
+    AuthOrder => 'mod_auth_file.c',
 
     # Note that this test looks at the generated logging for verifying the
     # behavior, thus we set the DebugLevel appropriately.
@@ -39057,6 +39301,7 @@ sub sftp_auth_logging_publickey_then_password_max_login_attempts_issue693 {
 
     AuthUserFile => $setup->{auth_user_file},
     AuthGroupFile => $setup->{auth_group_file},
+    AuthOrder => 'mod_auth_file.c',
 
     # Note that we specifically want 2 here, to test the handling of the
     # initial non-fatal attempt, and the second fatal
@@ -39220,6 +39465,8 @@ sub sftp_config_max_login_attempts_via_password {
 
     AuthUserFile => $setup->{auth_user_file},
     AuthGroupFile => $setup->{auth_group_file},
+    AuthOrder => 'mod_auth_file.c',
+
     MaxLoginAttempts => 1,
 
     # Note that this test looks at the generated logging for verifying the
@@ -39377,6 +39624,8 @@ sub sftp_config_max_login_attempts_via_publickey {
 
     AuthUserFile => $setup->{auth_user_file},
     AuthGroupFile => $setup->{auth_group_file},
+    AuthOrder => 'mod_auth_file.c',
+
     MaxLoginAttempts => 1,
 
     # Note that this test looks at the generated logging for verifying the
@@ -39559,6 +39808,8 @@ sub sftp_config_max_login_attempts_none_bug4087 {
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
+    AuthOrder => 'mod_auth_file.c',
+
     MaxLoginAttempts => 'none',
 
     IfModules => {
@@ -39717,6 +39968,7 @@ sub sftp_config_pathdenyfilter_file {
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
+    AuthOrder => 'mod_auth_file.c',
 
     PathDenyFilter => '\.ext$',
 
@@ -39876,6 +40128,7 @@ sub sftp_config_pathdenyfilter_dir {
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
+    AuthOrder => 'mod_auth_file.c',
 
     PathDenyFilter => '\.dir$',
 
@@ -40049,6 +40302,8 @@ sub sftp_config_rekey_short_timeout_failed {
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
+    AuthOrder => 'mod_auth_file.c',
+
     TimeoutIdle => $timeout_idle,
 
     IfModules => {
@@ -40241,6 +40496,8 @@ sub sftp_config_rekey_long_timeout_ok {
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
+    AuthOrder => 'mod_auth_file.c',
+
     TimeoutIdle => $timeout_idle,
 
     IfModules => {
@@ -40417,6 +40674,7 @@ sub sftp_config_rootlogin {
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
+    AuthOrder => 'mod_auth_file.c',
 
     RootLogin => 'off',
 
@@ -40550,6 +40808,7 @@ sub sftp_config_protocols {
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
+    AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
       'mod_delay.c' => {
@@ -40696,6 +40955,8 @@ sub sftp_config_serverident_off {
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
+    AuthOrder => 'mod_auth_file.c',
+
     ServerIdent => 'off',
 
     IfModules => {
@@ -40859,6 +41120,8 @@ sub sftp_config_serverident_on {
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
+    AuthOrder => 'mod_auth_file.c',
+
     ServerIdent => 'on',
 
     IfModules => {
@@ -41024,6 +41287,8 @@ sub sftp_config_serverident_on_custom {
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
+    AuthOrder => 'mod_auth_file.c',
+
     ServerIdent => "on $custom_id",
 
     IfModules => {
@@ -41189,6 +41454,8 @@ sub sftp_config_timeoutidle {
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
+    AuthOrder => 'mod_auth_file.c',
+
     TimeoutIdle => $timeout_idle,
 
     IfModules => {
@@ -41373,6 +41640,8 @@ sub sftp_config_timeoutlogin {
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
+    AuthOrder => 'mod_auth_file.c',
+
     TimeoutLogin => $timeout_login,
 
     IfModules => {
@@ -41516,6 +41785,8 @@ sub sftp_config_timeoutnotransfer_download {
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
+    AuthOrder => 'mod_auth_file.c',
+
     TimeoutNoTransfer => $timeout_noxfer,
 
     IfModules => {
@@ -41680,6 +41951,8 @@ sub sftp_config_timeoutnotransfer_readdir {
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
+    AuthOrder => 'mod_auth_file.c',
+
     TimeoutNoTransfer => $timeout_noxfer,
 
     IfModules => {
@@ -41844,6 +42117,8 @@ sub sftp_config_timeoutnotransfer_upload {
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
+    AuthOrder => 'mod_auth_file.c',
+
     TimeoutNoTransfer => $timeout_noxfer,
 
     IfModules => {
@@ -42020,6 +42295,8 @@ sub sftp_config_timeoutstalled {
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
+    AuthOrder => 'mod_auth_file.c',
+
     TimeoutStalled => $timeout_stalled,
 
     IfModules => {
@@ -42189,6 +42466,7 @@ sub sftp_config_ignore_upload_perms_upload {
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
+    AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
       'mod_delay.c' => {
@@ -42356,6 +42634,7 @@ sub sftp_config_ignore_upload_perms_mkdir_bug3680 {
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
+    AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
       'mod_delay.c' => {
@@ -42527,6 +42806,7 @@ sub sftp_config_ignore_set_perms_bug3599 {
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
+    AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
       'mod_delay.c' => {
@@ -42704,6 +42984,7 @@ sub sftp_config_ignore_set_times_bug3706 {
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
+    AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
       'mod_delay.c' => {
@@ -42886,6 +43167,7 @@ sub sftp_config_ignore_set_owners_bug3757 {
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
+    AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
       'mod_delay.c' => {
@@ -43061,6 +43343,8 @@ sub sftp_config_userowner {
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
+    AuthOrder => 'mod_auth_file.c',
+
     RootRevoke => 'off',
 
     Directory => {
@@ -43239,6 +43523,8 @@ sub sftp_config_groupowner_file_nonmember {
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
+    AuthOrder => 'mod_auth_file.c',
+
 #    RootRevoke => 'off',
 
     Directory => {
@@ -43430,6 +43716,8 @@ sub sftp_config_groupowner_file_member_norootprivs {
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
+    AuthOrder => 'mod_auth_file.c',
+
     RootLogin => $root_login,
 
     Directory => {
@@ -43622,6 +43910,8 @@ sub sftp_config_groupowner_dir_member_norootprivs_bug3765 {
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
+    AuthOrder => 'mod_auth_file.c',
+
     DefaultChdir => '~',
 
     Directory => {
@@ -43865,6 +44155,7 @@ EOF
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
+    AuthOrder => 'mod_auth_file.c',
 
     AllowOverride => 'on',
     PathDenyFilter => '"\\\\.ftpaccess$"',
@@ -44066,6 +44357,7 @@ sub sftp_config_limit_appe {
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
+    AuthOrder => 'mod_auth_file.c',
 
     Directory => {
       '~' => {
@@ -44231,6 +44523,7 @@ sub sftp_config_limit_chmod {
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
+    AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
       'mod_delay.c' => {
@@ -44395,6 +44688,7 @@ sub sftp_config_limit_chgrp_bug3757 {
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
+    AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
       'mod_delay.c' => {
@@ -44565,6 +44859,7 @@ sub sftp_config_limit_list {
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
+    AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
       'mod_delay.c' => {
@@ -44757,6 +45052,7 @@ sub sftp_config_limit_nlst {
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
+    AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
       'mod_delay.c' => {
@@ -44951,6 +45247,8 @@ sub sftp_config_limit_allowfilter_stor_allowed {
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
+    AuthOrder => 'mod_auth_file.c',
+
     DefaultChdir => '~/test.d',
 
     IfModules => {
@@ -45117,6 +45415,7 @@ sub sftp_config_limit_allowfilter_stor_denied {
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
+    AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
       'mod_delay.c' => {
@@ -45276,6 +45575,7 @@ sub sftp_config_limit_dirs_realpath_bug3871 {
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
+    AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
       'mod_delay.c' => {
@@ -45454,6 +45754,7 @@ sub sftp_config_limit_readdir {
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
+    AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
       'mod_delay.c' => {
@@ -45638,6 +45939,7 @@ sub sftp_config_limit_fsetstat_bug3753 {
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
+    AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
       'mod_delay.c' => {
@@ -45831,6 +46133,7 @@ sub sftp_config_limit_mkdir_bug3753 {
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
+    AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
       'mod_delay.c' => {
@@ -45996,6 +46299,7 @@ sub sftp_config_limit_opendir_bug3753 {
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
+    AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
       'mod_delay.c' => {
@@ -46162,6 +46466,7 @@ sub sftp_config_limit_readdir_bug3753 {
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
+    AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
       'mod_delay.c' => {
@@ -46397,6 +46702,7 @@ sub sftp_config_limit_readlink_bug3753 {
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
+    AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
       'mod_delay.c' => {
@@ -46573,6 +46879,7 @@ sub sftp_config_limit_remove_bug3753 {
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
+    AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
       'mod_delay.c' => {
@@ -46753,6 +47060,7 @@ sub sftp_config_limit_rename_bug3753 {
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
+    AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
       'mod_delay.c' => {
@@ -46925,6 +47233,7 @@ sub sftp_config_limit_rmdir_bug3753 {
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
+    AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
       'mod_delay.c' => {
@@ -47059,6 +47368,8 @@ sub sftp_config_maxclientsperuser_issue750 {
 
     AuthUserFile => $setup->{auth_user_file},
     AuthGroupFile => $setup->{auth_group_file},
+    AuthOrder => 'mod_auth_file.c',
+
     MaxClientsPerUser => 1,
 
     IfModules => {
@@ -47216,6 +47527,7 @@ sub sftp_multi_channels {
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
+    AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
       'mod_delay.c' => {
@@ -47353,6 +47665,7 @@ sub sftp_config_serverlog_issue1227 {
 
     AuthUserFile => $setup->{auth_user_file},
     AuthGroupFile => $setup->{auth_group_file},
+    AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
       'mod_delay.c' => {
@@ -47508,6 +47821,7 @@ sub sftp_config_insecure_hostkey_perms_bug4098 {
 
     AuthUserFile => $setup->{auth_user_file},
     AuthGroupFile => $setup->{auth_group_file},
+    AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
       'mod_delay.c' => {
@@ -47568,6 +47882,7 @@ sub sftp_config_allow_empty_passwords_off_bug4309 {
 
     AuthUserFile => $setup->{auth_user_file},
     AuthGroupFile => $setup->{auth_group_file},
+    AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
       'mod_delay.c' => {
@@ -47768,6 +48083,7 @@ sub sftp_multi_channel_downloads {
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
+    AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
       'mod_delay.c' => {
@@ -48027,6 +48343,7 @@ sub sftp_log_xferlog_download {
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
+    AuthOrder => 'mod_auth_file.c',
 
     TransferLog => $xferlog_file,
 
@@ -48288,6 +48605,8 @@ sub sftp_log_xferlog_download_incomplete {
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
+    AuthOrder => 'mod_auth_file.c',
+
     TransferLog => $xferlog_file,
 
     IfModules => {
@@ -48537,6 +48856,7 @@ sub sftp_log_xferlog_delete {
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
+    AuthOrder => 'mod_auth_file.c',
 
     TransferLog => $xferlog_file,
 
@@ -48775,8 +49095,9 @@ sub sftp_log_xferlog_delete_chrooted {
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
-    DefaultRoot => '~',
+    AuthOrder => 'mod_auth_file.c',
 
+    DefaultRoot => '~',
     TransferLog => $xferlog_file,
 
     IfModules => {
@@ -49000,6 +49321,7 @@ sub sftp_log_xferlog_upload {
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
+    AuthOrder => 'mod_auth_file.c',
 
     TransferLog => $xferlog_file,
 
@@ -49241,6 +49563,8 @@ sub sftp_log_xferlog_upload_incomplete {
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
+    AuthOrder => 'mod_auth_file.c',
+
     TransferLog => $xferlog_file,
 
     IfModules => {
@@ -49481,6 +49805,7 @@ sub sftp_log_extlog_auth_bug3845 {
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
+    AuthOrder => 'mod_auth_file.c',
 
     LogFormat => 'login "\"%r\" %s"',
     ExtendedLog => "$extlog_file AUTH login",
@@ -49668,6 +49993,7 @@ sub sftp_log_extlog_reads {
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
+    AuthOrder => 'mod_auth_file.c',
 
     LogFormat => 'transfer "%m \"%F\""',
     ExtendedLog => "$extlog_file READ transfer",
@@ -49856,6 +50182,7 @@ sub sftp_log_extlog_read_close {
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
+    AuthOrder => 'mod_auth_file.c',
 
     LogFormat => 'transfer "%m \"%F\""',
     ExtendedLog => "$extlog_file READ transfer",
@@ -50061,6 +50388,7 @@ sub sftp_log_extlog_write_close {
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
+    AuthOrder => 'mod_auth_file.c',
 
     LogFormat => 'transfer "%m \"%F\""',
     ExtendedLog => "$extlog_file WRITE transfer",
@@ -50283,6 +50611,7 @@ sub sftp_log_extlog_var_s_reads {
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
+    AuthOrder => 'mod_auth_file.c',
 
     LogFormat => 'response "%r %s"',
     ExtendedLog => "$extlog_file READ response",
@@ -50537,6 +50866,7 @@ sub sftp_log_extlog_var_s_writes {
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
+    AuthOrder => 'mod_auth_file.c',
 
     LogFormat => 'response "%r %s"',
     ExtendedLog => "$extlog_file WRITE response",
@@ -50768,6 +51098,7 @@ sub sftp_log_extlog_file_modified_bug3457 {
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
+    AuthOrder => 'mod_auth_file.c',
 
     AllowOverwrite => 'on',
     LogFormat => 'custom "%{file-modified}"',
@@ -50952,6 +51283,7 @@ sub sftp_log_extlog_retr_file_size {
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
+    AuthOrder => 'mod_auth_file.c',
 
     LogFormat => 'transfer "%m %b',
     ExtendedLog => "$extlog_file READ transfer",
@@ -51171,6 +51503,7 @@ sub sftp_log_extlog_putty_mget_retr_file_size_bug3560 {
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
+    AuthOrder => 'mod_auth_file.c',
 
     LogFormat => 'transfer "%m %b',
     ExtendedLog => "$extlog_file READ transfer",
@@ -51431,8 +51764,9 @@ sub sftp_log_extlog_var_F_mkdir_rmdir_bug3591 {
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
-    DefaultRoot => '~',
+    AuthOrder => 'mod_auth_file.c',
 
+    DefaultRoot => '~',
     LogFormat => 'dirlog "%m %F"',
     ExtendedLog => "$extlog_file WRITE dirlog",
 
@@ -51651,6 +51985,7 @@ sub sftp_log_extlog_var_w_rename_bug3029 {
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
+    AuthOrder => 'mod_auth_file.c',
 
     LogFormat => 'rename "%m: %w %f"',
     ExtendedLog => "$extlog_file ALL rename",
@@ -51898,6 +52233,7 @@ sub sftp_log_extlog_var_f_remove {
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
+    AuthOrder => 'mod_auth_file.c',
 
     LogFormat => 'delete "%m %f"',
     ExtendedLog => "$extlog_file WRITE delete",
@@ -52091,6 +52427,7 @@ sub sftp_log_extlog_var_f_write {
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
+    AuthOrder => 'mod_auth_file.c',
 
     LogFormat => 'writes "%f: %r"',
     ExtendedLog => "$extlog_file WRITE writes",
@@ -52289,8 +52626,9 @@ sub sftp_log_extlog_var_f_write_chrooted {
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
-    DefaultRoot => '~',
+    AuthOrder => 'mod_auth_file.c',
 
+    DefaultRoot => '~',
     LogFormat => 'writes "%f: %r"',
     ExtendedLog => "$extlog_file WRITE writes",
 
@@ -52488,6 +52826,7 @@ sub sftp_log_extlog_var_r_write {
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
+    AuthOrder => 'mod_auth_file.c',
 
     LogFormat => 'writes "%r"',
     ExtendedLog => "$extlog_file WRITE writes",
@@ -52690,6 +53029,7 @@ sub sftp_log_extlog_var_note_bug3707 {
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
+    AuthOrder => 'mod_auth_file.c',
 
     LogFormat => 'requestID "%m %f id=%{note:sftp.file-handle}"',
     ExtendedLog => "$extlog_file READ requestID",
@@ -52940,6 +53280,7 @@ sub sftp_log_extlog_var_s_remove_bug3873 {
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
+    AuthOrder => 'mod_auth_file.c',
 
     LogFormat => 'delete "%m %f %s"',
     ExtendedLog => "$extlog_file WRITE delete",
@@ -53165,6 +53506,7 @@ sub sftp_log_extlog_env_banner_bug4065 {
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
+    AuthOrder => 'mod_auth_file.c',
 
     LogFormat => 'banner "%m: banner=%{SFTP_CLIENT_BANNER}e"',
     ExtendedLog => "$extlog_file ALL banner",
@@ -53341,6 +53683,7 @@ sub sftp_log_extlog_userauth_full_request {
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
+    AuthOrder => 'mod_auth_file.c',
 
     LogFormat => 'userauth "%m: %r"',
     ExtendedLog => "$extlog_file AUTH userauth",
@@ -53518,6 +53861,7 @@ sub sftp_sighup {
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
+    AuthOrder => 'mod_auth_file.c',
 
     DenyFilter => '\*/',
 
@@ -53962,6 +54306,7 @@ sub sftp_wrap_login_allowed_bug3352 {
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
+    AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
       'mod_delay.c' => {
@@ -54132,6 +54477,7 @@ sub sftp_wrap_login_denied_bug3352 {
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
+    AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
       'mod_delay.c' => {
@@ -54239,6 +54585,7 @@ sub scp_upload {
 
     AuthUserFile => $setup->{auth_user_file},
     AuthGroupFile => $setup->{auth_group_file},
+    AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
       'mod_delay.c' => {
@@ -54384,6 +54731,7 @@ sub scp_upload_zero_len_file {
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
+    AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
       'mod_delay.c' => {
@@ -54532,6 +54880,7 @@ sub scp_upload_largefile {
 
     AuthUserFile => $setup->{auth_user_file},
     AuthGroupFile => $setup->{auth_group_file},
+    AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
       'mod_delay.c' => {
@@ -54698,6 +55047,7 @@ sub scp_upload_abs_symlink {
 
     AuthUserFile => $setup->{auth_user_file},
     AuthGroupFile => $setup->{auth_group_file},
+    AuthOrder => 'mod_auth_file.c',
 
     AllowOverwrite => 'on',
 
@@ -54841,6 +55191,7 @@ sub scp_upload_abs_symlink_chrooted_bug4219 {
 
     AuthUserFile => $setup->{auth_user_file},
     AuthGroupFile => $setup->{auth_group_file},
+    AuthOrder => 'mod_auth_file.c',
 
     AllowOverwrite => 'on',
     DefaultRoot => '~',
@@ -54989,6 +55340,7 @@ sub scp_upload_rel_symlink {
 
     AuthUserFile => $setup->{auth_user_file},
     AuthGroupFile => $setup->{auth_group_file},
+    AuthOrder => 'mod_auth_file.c',
 
     AllowOverwrite => 'on',
 
@@ -55136,6 +55488,7 @@ sub scp_upload_rel_symlink_chrooted_bug4219 {
 
     AuthUserFile => $setup->{auth_user_file},
     AuthGroupFile => $setup->{auth_group_file},
+    AuthOrder => 'mod_auth_file.c',
 
     AllowOverwrite => 'on',
     DefaultRoot => '~',
@@ -55280,6 +55633,7 @@ sub scp_upload_subdir_enoent {
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
+    AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
       'mod_delay.c' => {
@@ -55427,6 +55781,7 @@ sub scp_upload_subdir_enoent_with_limits {
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
+    AuthOrder => 'mod_auth_file.c',
 
     DefaultRoot => '~',
 
@@ -55604,6 +55959,8 @@ sub scp_upload_fifo_bug3312 {
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
+    AuthOrder => 'mod_auth_file.c',
+
     AllowOverwrite => 'on',
 
     IfModules => {
@@ -55755,6 +56112,8 @@ sub scp_upload_fifo_bug3313 {
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
+    AuthOrder => 'mod_auth_file.c',
+
     AllowOverwrite => 'on',
 
     IfModules => {
@@ -55873,6 +56232,7 @@ sub scp_ext_null_ptr_issue1043 {
 
     AuthUserFile => $setup->{auth_user_file},
     AuthGroupFile => $setup->{auth_group_file},
+    AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
       'mod_delay.c' => {
@@ -56166,6 +56526,7 @@ sub scp_ext_upload_recursive_dir_bug3447 {
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
+    AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
       'mod_delay.c' => {
@@ -56464,6 +56825,7 @@ sub scp_ext_upload_recursive_dir_bug3792 {
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
+    AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
       'mod_delay.c' => {
@@ -56777,6 +57139,8 @@ sub scp_ext_upload_recursive_dir_bug4004 {
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
+    AuthOrder => 'mod_auth_file.c',
+
     Umask => '002',
 
     IfModules => {
@@ -57036,6 +57400,8 @@ sub scp_ext_upload_recursive_dirs_bug4257 {
 
     AuthUserFile => $setup->{auth_user_file},
     AuthGroupFile => $setup->{auth_group_file},
+    AuthOrder => 'mod_auth_file.c',
+
     Umask => '002',
 
     IfModules => {
@@ -57263,6 +57629,7 @@ sub scp_ext_upload_different_name_bug3425 {
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
+    AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
       'mod_delay.c' => {
@@ -57461,6 +57828,7 @@ sub scp_ext_upload_recursive_empty_dir {
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
+    AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
       'mod_delay.c' => {
@@ -57682,6 +58050,8 @@ sub scp_ext_upload_shorter_file_bug4013 {
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
+    AuthOrder => 'mod_auth_file.c',
+
     AllowOverwrite => 'on',
 
     IfModules => {
@@ -57896,6 +58266,8 @@ sub scp_ext_upload_file_with_timestamp_bug4026 {
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
+    AuthOrder => 'mod_auth_file.c',
+
     AllowOverwrite => 'on',
     DefaultRoot => '~',
 
@@ -58057,6 +58429,7 @@ sub scp_download {
 
     AuthUserFile => $setup->{auth_user_file},
     AuthGroupFile => $setup->{auth_group_file},
+    AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
       'mod_delay.c' => {
@@ -58195,6 +58568,7 @@ sub scp_download_enoent_bug3798 {
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
+    AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
       'mod_delay.c' => {
@@ -58344,6 +58718,7 @@ sub scp_download_zero_len_file {
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
+    AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
       'mod_delay.c' => {
@@ -58526,6 +58901,7 @@ sub scp_download_largefile {
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
+    AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
       'mod_delay.c' => {
@@ -58691,6 +59067,7 @@ sub scp_download_fifo_bug3314 {
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
+    AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
       'mod_delay.c' => {
@@ -58842,6 +59219,7 @@ sub scp_download_abs_symlink {
 
     AuthUserFile => $setup->{auth_user_file},
     AuthGroupFile => $setup->{auth_group_file},
+    AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
       'mod_delay.c' => {
@@ -58985,6 +59363,7 @@ sub scp_download_abs_symlink_chrooted_bug4219 {
 
     AuthUserFile => $setup->{auth_user_file},
     AuthGroupFile => $setup->{auth_group_file},
+    AuthOrder => 'mod_auth_file.c',
 
     DefaultRoot => '~',
 
@@ -59134,6 +59513,7 @@ sub scp_download_rel_symlink {
 
     AuthUserFile => $setup->{auth_user_file},
     AuthGroupFile => $setup->{auth_group_file},
+    AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
       'mod_delay.c' => {
@@ -59281,6 +59661,7 @@ sub scp_download_rel_symlink_chrooted_bug4219 {
 
     AuthUserFile => $setup->{auth_user_file},
     AuthGroupFile => $setup->{auth_group_file},
+    AuthOrder => 'mod_auth_file.c',
 
     DefaultRoot => '~',
 
@@ -59432,6 +59813,7 @@ sub scp_ext_download_bug3544 {
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
+    AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
       'mod_delay.c' => {
@@ -59629,6 +60011,7 @@ sub scp_ext_download_bug3798 {
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
+    AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
       'mod_delay.c' => {
@@ -59827,6 +60210,7 @@ sub scp_ext_download_glob_single_match_bug3904 {
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
+    AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
       'mod_delay.c' => {
@@ -60054,6 +60438,7 @@ sub scp_ext_download_glob_multiple_matches_bug3904 {
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
+    AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
       'mod_delay.c' => {
@@ -60342,6 +60727,7 @@ sub scp_ext_download_recursive_dir_bug3456 {
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
+    AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
       'mod_delay.c' => {
@@ -60568,6 +60954,7 @@ sub scp_ext_download_recursive_empty_dir {
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
+    AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
       'mod_delay.c' => {
@@ -60770,6 +61157,7 @@ sub scp_ext_download_glob_no_matches_bug3935 {
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
+    AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
       'mod_delay.c' => {
@@ -60947,6 +61335,7 @@ sub scp_config_ignore_upload_perms {
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
+    AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
       'mod_delay.c' => {
@@ -61121,6 +61510,7 @@ sub scp_config_ignore_upload_times {
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
+    AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
       'mod_delay.c' => {
@@ -61281,6 +61671,7 @@ sub scp_config_hiddenstores {
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
+    AuthOrder => 'mod_auth_file.c',
 
     HiddenStores => 'on',
 
@@ -61435,6 +61826,7 @@ sub scp_config_subdir_upload_allowed {
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
+    AuthOrder => 'mod_auth_file.c',
 
     # Provide a specific <Directory> configuration which should only allow
     # uploads to a sub directory, not to the parent directory.  Apparently
@@ -61596,6 +61988,7 @@ sub scp_config_protocols {
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
+    AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
       'mod_delay.c' => {
@@ -61749,6 +62142,8 @@ sub scp_config_userowner {
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
+    AuthOrder => 'mod_auth_file.c',
+
     RootRevoke => 'off',
 
     Directory => {
@@ -61910,6 +62305,8 @@ sub scp_config_groupowner_file_nonmember {
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
+    AuthOrder => 'mod_auth_file.c',
+
     RootRevoke => 'off',
 
     Directory => {
@@ -62084,6 +62481,8 @@ sub scp_config_groupowner_file_member_norootprivs {
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
+    AuthOrder => 'mod_auth_file.c',
+
     RootLogin => $root_login,
 
     Directory => {
@@ -62255,6 +62654,7 @@ sub scp_log_extlog_var_f_upload {
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
+    AuthOrder => 'mod_auth_file.c',
 
     LogFormat => 'transfer "%f %F"',
     ExtendedLog => "$extlog_file WRITE transfer",
@@ -62457,6 +62857,7 @@ sub scp_log_extlog_file_modified_bug3457 {
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
+    AuthOrder => 'mod_auth_file.c',
 
     AllowOverwrite => 'on',
     LogFormat => 'custom "%{file-modified}"',
@@ -62599,6 +63000,7 @@ sub scp_log_extlog_var_file_size_download_issue676 {
 
     AuthUserFile => $setup->{auth_user_file},
     AuthGroupFile => $setup->{auth_group_file},
+    AuthOrder => 'mod_auth_file.c',
 
     AllowOverwrite => 'on',
     LogFormat => 'custom "%{file-size}"',
@@ -62765,6 +63167,7 @@ sub scp_log_xferlog_download {
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
+    AuthOrder => 'mod_auth_file.c',
 
     TransferLog => $xferlog_file,
 
@@ -63011,6 +63414,7 @@ sub scp_log_xferlog_upload {
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
+    AuthOrder => 'mod_auth_file.c',
 
     TransferLog => $xferlog_file,
 
@@ -63304,10 +63708,12 @@ EOS
     TraceLog => $log_file,
     Trace => 'DEFAULT:10 ssh2:20 sftp:20 scp:20',
 
-    AllowOverwrite => 'on',
-    AllowStoreRestart => 'on',
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
+    AuthOrder => 'mod_auth_file.c',
+
+    AllowOverwrite => 'on',
+    AllowStoreRestart => 'on',
 
     IfModules => {
       'mod_delay.c' => {
@@ -63558,6 +63964,7 @@ EOS
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
+    AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
       'mod_delay.c' => {
@@ -63765,6 +64172,7 @@ EOS
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
+    AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
       'mod_delay.c' => {
@@ -63991,6 +64399,7 @@ EOS
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
+    AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
       'mod_delay.c' => {
@@ -64227,6 +64636,7 @@ EOS
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
+    AuthOrder => 'mod_auth_file.c',
 
     AllowOverwrite => 'on',
     AllowStoreRestart => 'on',
@@ -64466,6 +64876,7 @@ EOS
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
+    AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
       'mod_delay.c' => {
@@ -64697,6 +65108,7 @@ EOS
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
+    AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
       'mod_delay.c' => {
@@ -64928,6 +65340,7 @@ EOS
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
+    AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
       'mod_delay.c' => {
@@ -65122,6 +65535,7 @@ sub scp_ifsess_protocols {
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
+    AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
       'mod_delay.c' => {
@@ -65278,6 +65692,7 @@ sub sftp_ext_hostkey_rotation_issue1323 {
 
     AuthUserFile => $setup->{auth_user_file},
     AuthGroupFile => $setup->{auth_group_file},
+    AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
       'mod_delay.c' => {

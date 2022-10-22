@@ -105,6 +105,7 @@ sub timeoutstalled_ok {
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
+    AuthOrder => 'mod_auth_file.c',
 
     TimeoutStalled => $timeout_stalled,
 
@@ -237,6 +238,7 @@ sub timeoutstalled_exceeded_list {
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
+    AuthOrder => 'mod_auth_file.c',
 
     TimeoutStalled => $timeout_stalled,
 
@@ -376,6 +378,7 @@ sub timeoutstalled_exceeded_nlst {
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
+    AuthOrder => 'mod_auth_file.c',
 
     TimeoutStalled => $timeout_stalled,
 
@@ -515,6 +518,7 @@ sub timeoutstalled_exceeded_mlsd {
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
+    AuthOrder => 'mod_auth_file.c',
 
     TimeoutStalled => $timeout_stalled,
 
@@ -654,6 +658,7 @@ sub timeoutstalled_exceeded_retr {
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
+    AuthOrder => 'mod_auth_file.c',
 
     TimeoutStalled => $timeout_stalled,
 
@@ -793,6 +798,7 @@ sub timeoutstalled_exceeded_stor {
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
+    AuthOrder => 'mod_auth_file.c',
 
     TimeoutStalled => $timeout_stalled,
 
@@ -932,6 +938,7 @@ sub timeoutstalled_exceeded_retr_usesendfile_on {
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
+    AuthOrder => 'mod_auth_file.c',
 
     TimeoutStalled => $timeout_stalled,
     UseSendfile => 'on',

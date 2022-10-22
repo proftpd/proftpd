@@ -231,6 +231,7 @@ sub abor_retr_binary_ok {
 
     AuthUserFile => $setup->{auth_user_file},
     AuthGroupFile => $setup->{auth_group_file},
+    AuthOrder => 'mod_auth_file.c',
 
     TimeoutLinger => 5,
 
@@ -330,6 +331,7 @@ sub abor_retr_ascii_ok {
 
     AuthUserFile => $setup->{auth_user_file},
     AuthGroupFile => $setup->{auth_group_file},
+    AuthOrder => 'mod_auth_file.c',
 
     TimeoutLinger => 5,
 
@@ -439,6 +441,7 @@ sub abor_retr_ascii_largefile_ok {
 
     AuthUserFile => $setup->{auth_user_file},
     AuthGroupFile => $setup->{auth_group_file},
+    AuthOrder => 'mod_auth_file.c',
 
     TimeoutLinger => 5,
 
@@ -564,6 +567,7 @@ sub abor_retr_ascii_largefile_followed_by_list_ok {
 
     AuthUserFile => $setup->{auth_user_file},
     AuthGroupFile => $setup->{auth_group_file},
+    AuthOrder => 'mod_auth_file.c',
 
     TimeoutLinger => 5,
 
@@ -724,6 +728,7 @@ sub abor_retr_binary_largefile_followed_by_retr_ok {
 
     AuthUserFile => $setup->{auth_user_file},
     AuthGroupFile => $setup->{auth_group_file},
+    AuthOrder => 'mod_auth_file.c',
 
     TimeoutLinger => 1,
     TimeoutIdle => 15,
@@ -861,6 +866,7 @@ sub abor_retr_binary_largefile_with_sendfile {
 
     AuthUserFile => $setup->{auth_user_file},
     AuthGroupFile => $setup->{auth_group_file},
+    AuthOrder => 'mod_auth_file.c',
 
     TimeoutLinger => 5,
 
@@ -990,6 +996,7 @@ sub abor_retr_binary_largefile_without_sendfile {
 
     AuthUserFile => $setup->{auth_user_file},
     AuthGroupFile => $setup->{auth_group_file},
+    AuthOrder => 'mod_auth_file.c',
 
     TimeoutLinger => 5,
     UseSendfile => 'off',
@@ -1106,6 +1113,7 @@ sub abor_stor_binary_ok {
 
     AuthUserFile => $setup->{auth_user_file},
     AuthGroupFile => $setup->{auth_group_file},
+    AuthOrder => 'mod_auth_file.c',
 
     TimeoutLinger => 5,
 
@@ -1221,6 +1229,7 @@ sub abor_stor_ascii_ok {
 
     AuthUserFile => $setup->{auth_user_file},
     AuthGroupFile => $setup->{auth_group_file},
+    AuthOrder => 'mod_auth_file.c',
 
     TimeoutLinger => 5,
 
@@ -1336,6 +1345,7 @@ sub abor_with_cyrillic_encoding_ok {
 
     AuthUserFile => $setup->{auth_user_file},
     AuthGroupFile => $setup->{auth_group_file},
+    AuthOrder => 'mod_auth_file.c',
 
     TimeoutLinger => 15,
 
@@ -1455,6 +1465,7 @@ sub abor_no_xfer_ok {
 
     AuthUserFile => $setup->{auth_user_file},
     AuthGroupFile => $setup->{auth_group_file},
+    AuthOrder => 'mod_auth_file.c',
 
     TimeoutLinger => 5,
 
@@ -1540,6 +1551,7 @@ sub abor_list_ok {
 
     AuthUserFile => $setup->{auth_user_file},
     AuthGroupFile => $setup->{auth_group_file},
+    AuthOrder => 'mod_auth_file.c',
 
     TimeoutLinger => 5,
 
@@ -1668,6 +1680,7 @@ sub abor_mlsd_ok {
 
     AuthUserFile => $setup->{auth_user_file},
     AuthGroupFile => $setup->{auth_group_file},
+    AuthOrder => 'mod_auth_file.c',
 
     TimeoutLinger => 5,
 
@@ -1791,6 +1804,7 @@ sub abor_only_retr_ascii {
 
     AuthUserFile => $setup->{auth_user_file},
     AuthGroupFile => $setup->{auth_group_file},
+    AuthOrder => 'mod_auth_file.c',
 
     TimeoutLinger => 5,
 
@@ -1916,6 +1930,7 @@ sub abor_only_retr_binary_with_sendfile {
 
     AuthUserFile => $setup->{auth_user_file},
     AuthGroupFile => $setup->{auth_group_file},
+    AuthOrder => 'mod_auth_file.c',
 
     TimeoutLinger => 5,
 
@@ -2048,6 +2063,7 @@ sub abor_only_retr_binary_without_sendfile {
 
     AuthUserFile => $setup->{auth_user_file},
     AuthGroupFile => $setup->{auth_group_file},
+    AuthOrder => 'mod_auth_file.c',
 
     TimeoutLinger => 5,
     UseSendfile => 'off',
@@ -2166,6 +2182,7 @@ sub abor_only_stor_ascii {
 
     AuthUserFile => $setup->{auth_user_file},
     AuthGroupFile => $setup->{auth_group_file},
+    AuthOrder => 'mod_auth_file.c',
 
     TimeoutLinger => 5,
 
@@ -2281,6 +2298,7 @@ sub abor_only_stor_binary {
 
     AuthUserFile => $setup->{auth_user_file},
     AuthGroupFile => $setup->{auth_group_file},
+    AuthOrder => 'mod_auth_file.c',
 
     TimeoutLinger => 5,
 
@@ -2394,6 +2412,7 @@ sub abor_only_list {
 
     AuthUserFile => $setup->{auth_user_file},
     AuthGroupFile => $setup->{auth_group_file},
+    AuthOrder => 'mod_auth_file.c',
 
     TimeoutLinger => 5,
 
@@ -2522,6 +2541,7 @@ sub abor_only_mlsd {
 
     AuthUserFile => $setup->{auth_user_file},
     AuthGroupFile => $setup->{auth_group_file},
+    AuthOrder => 'mod_auth_file.c',
 
     TimeoutLinger => 5,
 
@@ -2635,6 +2655,7 @@ sub abor_only_no_xfer {
 
     AuthUserFile => $setup->{auth_user_file},
     AuthGroupFile => $setup->{auth_group_file},
+    AuthOrder => 'mod_auth_file.c',
 
     TimeoutLinger => 5,
 
@@ -2733,6 +2754,7 @@ sub data_eof_retr_ascii {
 
     AuthUserFile => $setup->{auth_user_file},
     AuthGroupFile => $setup->{auth_group_file},
+    AuthOrder => 'mod_auth_file.c',
 
     TimeoutLinger => 5,
 
@@ -2853,6 +2875,7 @@ sub data_eof_retr_binary_with_sendfile {
 
     AuthUserFile => $setup->{auth_user_file},
     AuthGroupFile => $setup->{auth_group_file},
+    AuthOrder => 'mod_auth_file.c',
 
     TimeoutLinger => 5,
 
@@ -2967,6 +2990,7 @@ sub data_eof_retr_binary_without_sendfile {
 
     AuthUserFile => $setup->{auth_user_file},
     AuthGroupFile => $setup->{auth_group_file},
+    AuthOrder => 'mod_auth_file.c',
 
     TimeoutLinger => 5,
     UseSendfile => 'off',
@@ -3078,6 +3102,7 @@ sub data_eof_stor_ascii {
 
     AuthUserFile => $setup->{auth_user_file},
     AuthGroupFile => $setup->{auth_group_file},
+    AuthOrder => 'mod_auth_file.c',
 
     TimeoutLinger => 5,
 
@@ -3185,6 +3210,7 @@ sub data_eof_stor_binary {
 
     AuthUserFile => $setup->{auth_user_file},
     AuthGroupFile => $setup->{auth_group_file},
+    AuthOrder => 'mod_auth_file.c',
 
     TimeoutLinger => 5,
 
@@ -3290,6 +3316,7 @@ sub data_eof_list {
 
     AuthUserFile => $setup->{auth_user_file},
     AuthGroupFile => $setup->{auth_group_file},
+    AuthOrder => 'mod_auth_file.c',
 
     TimeoutLinger => 5,
 
@@ -3413,6 +3440,7 @@ sub data_eof_mlsd {
 
     AuthUserFile => $setup->{auth_user_file},
     AuthGroupFile => $setup->{auth_group_file},
+    AuthOrder => 'mod_auth_file.c',
 
     TimeoutLinger => 5,
 
@@ -3531,6 +3559,7 @@ sub data_eof_before_abor_retr_ascii {
 
     AuthUserFile => $setup->{auth_user_file},
     AuthGroupFile => $setup->{auth_group_file},
+    AuthOrder => 'mod_auth_file.c',
 
     TimeoutLinger => 5,
 
@@ -3665,6 +3694,7 @@ sub data_eof_before_abor_retr_binary_with_sendfile {
 
     AuthUserFile => $setup->{auth_user_file},
     AuthGroupFile => $setup->{auth_group_file},
+    AuthOrder => 'mod_auth_file.c',
 
     TimeoutLinger => 5,
 
@@ -3805,6 +3835,7 @@ sub data_eof_before_abor_retr_binary_without_sendfile {
 
     AuthUserFile => $setup->{auth_user_file},
     AuthGroupFile => $setup->{auth_group_file},
+    AuthOrder => 'mod_auth_file.c',
 
     TimeoutLinger => 5,
     UseSendfile => 'off',
@@ -3930,6 +3961,7 @@ sub data_eof_before_abor_stor_ascii {
 
     AuthUserFile => $setup->{auth_user_file},
     AuthGroupFile => $setup->{auth_group_file},
+    AuthOrder => 'mod_auth_file.c',
 
     TimeoutLinger => 5,
 
@@ -4051,6 +4083,7 @@ sub data_eof_before_abor_stor_binary {
 
     AuthUserFile => $setup->{auth_user_file},
     AuthGroupFile => $setup->{auth_group_file},
+    AuthOrder => 'mod_auth_file.c',
 
     TimeoutLinger => 5,
 
@@ -4170,6 +4203,7 @@ sub data_eof_before_abor_list {
 
     AuthUserFile => $setup->{auth_user_file},
     AuthGroupFile => $setup->{auth_group_file},
+    AuthOrder => 'mod_auth_file.c',
 
     TimeoutLinger => 5,
 
@@ -4307,6 +4341,7 @@ sub data_eof_before_abor_mlsd {
 
     AuthUserFile => $setup->{auth_user_file},
     AuthGroupFile => $setup->{auth_group_file},
+    AuthOrder => 'mod_auth_file.c',
 
     TimeoutLinger => 5,
 
