@@ -47,6 +47,15 @@ sub new {
     $opts{Timeout} = $cmd_timeout;
   }
 
+  # Newer versions of libnet changed where/how timeouts are implemented
+  # in the base classes used by Net::FTP.  Make sure we provide the necessary
+  # timeouts that WE want.  Silly classes.
+  if ($Net::FTP::VERSION >= 3) {
+    my $callback_timeout = 3;
+    $callback_timeout = $cmd_timeout if defined($cmd_timeout);
+    $Net::Cmd::timeout = sub { $callback_timeout };
+  }
+
   while (1) {
     if (time() - $now > $conn_timeout) {
       croak("Unable to connect to $addr:$port: Timed out after $conn_timeout secs");
