@@ -22,7 +22,7 @@ task:
     - pkg install -y libmemcached
     - pkg install -y mysql57-client
     - pkg install -y ncurses
-    - pkg install -y openldap24-client
+    - pkg install -y openldap26-client
     - pkg install -y openssl
     - pkg install -y pcre
     - pkg install -y postgresql10-client
