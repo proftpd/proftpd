@@ -24,6 +24,7 @@
 - Issue 1500 - mod_ifsession doesn't change the effect of SFTPMaxChannels.
 - Issue 1533 - mod_tls module unexpectedly allows TLS handshake after
   authentication in some configurations.
+- Issue 1528 - Disable FSCachePolicy by default.
 
 1.3.8rc4 - Released 23-Jul-2022
 --------------------------------

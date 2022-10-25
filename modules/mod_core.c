@@ -6542,7 +6542,7 @@ MODRET core_post_pass(cmd_rec *cmd) {
     size = *((unsigned int *) c->argv[1]);
     max_age = *((unsigned int *) c->argv[2]);
 
-    if (engine) {
+    if (engine == TRUE) {
       pr_fs_statcache_set_policy(size, max_age, 0);
 
     } else {
@@ -6551,8 +6551,7 @@ MODRET core_post_pass(cmd_rec *cmd) {
 
   } else {
     /* Set the default statcache policy. */
-    pr_fs_statcache_set_policy(PR_TUNABLE_FS_STATCACHE_SIZE,
-      PR_TUNABLE_FS_STATCACHE_MAX_AGE, 0);
+    pr_fs_statcache_set_policy(0, 0, 0);
   }
 
   /* Register an exit handler here, for clearing the statcache. */
