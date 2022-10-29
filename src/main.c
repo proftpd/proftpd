@@ -1495,6 +1495,8 @@ static void fork_server(int fd, conn_t *l, unsigned char no_fork) {
     pr_session_disconnect(NULL, PR_SESS_DISCONNECT_SESSION_INIT_FAILED, NULL);
   }
 
+  pr_event_generate("core.connected", conn);
+
   pr_log_debug(DEBUG4, "connected - local  : %s:%d",
     pr_netaddr_get_ipstr(session.c->local_addr), session.c->local_port);
   pr_log_debug(DEBUG4, "connected - remote : %s:%d",
