@@ -1538,42 +1538,19 @@ sub extlog_sftp_mlsd_var_d_D_f_F_bug3950 {
 sub extlog_mfmt_var_d_D_f_F {
   my $self = shift;
   my $tmpdir = $self->{tmpdir};
-
-  my $config_file = "$tmpdir/extlog.conf";
-  my $pid_file = File::Spec->rel2abs("$tmpdir/extlog.pid");
-  my $scoreboard_file = File::Spec->rel2abs("$tmpdir/extlog.scoreboard");
-
-  my $log_file = test_get_logfile();
-
-  my $auth_user_file = File::Spec->rel2abs("$tmpdir/extlog.passwd");
-  my $auth_group_file = File::Spec->rel2abs("$tmpdir/extlog.group");
-
-  my $user = 'proftpd';
-  my $passwd = 'test';
-  my $group = 'ftpd';
-  my $home_dir = File::Spec->rel2abs($tmpdir);
-  my $uid = 500;
-  my $gid = 500;
-
-  # Make sure that, if we're running as root, that the home directory has
-  # permissions/privs set for the account we create
-  if ($< == 0) {
-    unless (chmod(0755, $home_dir)) {
-      die("Can't set perms on $home_dir to 0755: $!");
-    }
-
-    unless (chown($uid, $gid, $home_dir)) {
-      die("Can't set owner of $home_dir to $uid/$gid: $!");
-    }
-  }
-
-  auth_user_write($auth_user_file, $user, $passwd, $uid, $gid, $home_dir,
-    '/bin/bash');
-  auth_group_write($auth_group_file, $group, $gid, $user);
+  my $setup = test_setup($tmpdir, 'extlog');
 
   my $test_file = File::Spec->rel2abs("$tmpdir/test.txt");
   if (open(my $fh, "> $test_file")) {
     close($fh);
+
+    # Make sure that, if we're running as root, that the test file has
+    # permissions/privs set for the account we create
+    if ($< == 0) {
+      unless (chown($setup->{uid}, $setup->{gid}, $test_file)) {
+        die("Can't set owner of $test_file to $setup->{uid}/$setup->{gid}: $!");
+      }
+    }
 
   } else {
     die("Can't open $test_file: $!");
@@ -1582,12 +1559,12 @@ sub extlog_mfmt_var_d_D_f_F {
   my $ext_log = File::Spec->rel2abs("$tmpdir/custom.log");
 
   my $config = {
-    PidFile => $pid_file,
-    ScoreboardFile => $scoreboard_file,
-    SystemLog => $log_file,
+    PidFile => $setup->{pid_file},
+    ScoreboardFile => $setup->{scoreboard_file},
+    SystemLog => $setup->{log_file},
 
-    AuthUserFile => $auth_user_file,
-    AuthGroupFile => $auth_group_file,
+    AuthUserFile => $setup->{auth_user_file},
+    AuthGroupFile => $setup->{auth_group_file},
     AuthOrder => 'mod_auth_file.c',
 
     LogFormat => 'custom "%m: %d %D %f %F"',
@@ -1600,7 +1577,8 @@ sub extlog_mfmt_var_d_D_f_F {
     },
   };
 
-  my ($port, $config_user, $config_group) = config_write($config_file, $config);
+  my ($port, $config_user, $config_group) = config_write($setup->{config_file},
+    $config);
 
   # Open pipes, for use between the parent and child processes.  Specifically,
   # the child will indicate when it's done with its test by writing a message
@@ -1617,14 +1595,15 @@ sub extlog_mfmt_var_d_D_f_F {
   defined(my $pid = fork()) or die("Can't fork: $!");
   if ($pid) {
     eval {
+      # Allow for server startup
+      sleep(1);
+
       my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
-      $client->login($user, $passwd);
+      $client->login($setup->{user}, $setup->{passwd});
 
       my ($resp_code, $resp_msg) = $client->mfmt('20020717210715', 'test.txt');
 
-      my $expected;
-
-      $expected = 213;
+      my $expected = 213;
       $self->assert($expected == $resp_code,
         test_msg("Expected response code $expected, got $resp_code"));
 
@@ -1634,7 +1613,6 @@ sub extlog_mfmt_var_d_D_f_F {
 
       $client->quit();
     };
-
     if ($@) {
       $ex = $@;
     }
@@ -1643,7 +1621,7 @@ sub extlog_mfmt_var_d_D_f_F {
     $wfh->flush();
 
   } else {
-    eval { server_wait($config_file, $rfh) };
+    eval { server_wait($setup->{config_file}, $rfh) };
     if ($@) {
       warn($@);
       exit 1;
@@ -1653,8 +1631,7 @@ sub extlog_mfmt_var_d_D_f_F {
   }
 
   # Stop server
-  server_stop($pid_file);
-
+  server_stop($setup->{pid_file});
   $self->assert_child_ok($pid);
 
   # Now, read in the ExtendedLog, and see whether the %f variable was
@@ -1675,6 +1652,8 @@ sub extlog_mfmt_var_d_D_f_F {
           my $xfer_path = $4;
 
           next unless $cmd eq 'MFMT';
+
+          my $home_dir = $setup->{home_dir};
 
           if ($^O eq 'darwin') {
             # MacOSX-specific hack
@@ -1712,14 +1691,7 @@ sub extlog_mfmt_var_d_D_f_F {
     $ex = $@;
   }
 
-  if ($ex) {
-    test_append_logfile($log_file, $ex);
-    unlink($log_file);
-
-    die($ex);
-  }
-
-  unlink($log_file);
+  test_cleanup($setup->{log_file}, $ex);
 }
 
 sub extlog_protocol {
@@ -3083,44 +3055,21 @@ sub extlog_bug1908 {
 sub extlog_file_modified_bug3457 {
   my $self = shift;
   my $tmpdir = $self->{tmpdir};
+  my $setup = test_setup($tmpdir, 'extlog');
 
-  my $config_file = "$tmpdir/extlog.conf";
-  my $pid_file = File::Spec->rel2abs("$tmpdir/extlog.pid");
-  my $scoreboard_file = File::Spec->rel2abs("$tmpdir/extlog.scoreboard");
-
-  my $log_file = test_get_logfile();
-
-  my $auth_user_file = File::Spec->rel2abs("$tmpdir/extlog.passwd");
-  my $auth_group_file = File::Spec->rel2abs("$tmpdir/extlog.group");
-
-  my $user = 'proftpd';
-  my $passwd = 'test';
-  my $group = 'ftpd';
-  my $home_dir = File::Spec->rel2abs($tmpdir);
-  my $uid = 500;
-  my $gid = 500;
-
-  # Make sure that, if we're running as root, that the home directory has
-  # permissions/privs set for the account we create
-  if ($< == 0) {
-    unless (chmod(0755, $home_dir)) {
-      die("Can't set perms on $home_dir to 0755: $!");
-    }
-
-    unless (chown($uid, $gid, $home_dir)) {
-      die("Can't set owner of $home_dir to $uid/$gid: $!");
-    }
-  }
-
-  auth_user_write($auth_user_file, $user, $passwd, $uid, $gid, $home_dir,
-    '/bin/bash');
-  auth_group_write($auth_group_file, $group, $gid, $user);
-
-  my $test_file = File::Spec->rel2abs("$home_dir/test.txt");
+  my $test_file = File::Spec->rel2abs("$tmpdir/test.txt");
   if (open(my $fh, "> $test_file")) {
     print $fh "Hello, world!\n";
     unless (close($fh)) {
       die("Can't write $test_file: $!");
+    }
+
+    # Make sure that, if we're running as root, that the test file has
+    # permissions/privs set for the account we create
+    if ($< == 0) {
+      unless (chown($setup->{uid}, $setup->{gid}, $test_file)) {
+        die("Can't set owner of $test_file to $setup->{uid}/$setup->{gid}: $!");
+      }
     }
 
   } else {
@@ -3130,12 +3079,12 @@ sub extlog_file_modified_bug3457 {
   my $ext_log = File::Spec->rel2abs("$tmpdir/custom.log");
 
   my $config = {
-    PidFile => $pid_file,
-    ScoreboardFile => $scoreboard_file,
-    SystemLog => $log_file,
+    PidFile => $setup->{pid_file},
+    ScoreboardFile => $setup->{scoreboard_file},
+    SystemLog => $setup->{log_file},
 
-    AuthUserFile => $auth_user_file,
-    AuthGroupFile => $auth_group_file,
+    AuthUserFile => $setup->{auth_user_file},
+    AuthGroupFile => $setup->{auth_group_file},
     AuthOrder => 'mod_auth_file.c',
 
     AllowOverwrite => 'on',
@@ -3149,7 +3098,8 @@ sub extlog_file_modified_bug3457 {
     },
   };
 
-  my ($port, $config_user, $config_group) = config_write($config_file, $config);
+  my ($port, $config_user, $config_group) = config_write($setup->{config_file},
+    $config);
 
   # Open pipes, for use between the parent and child processes.  Specifically,
   # the child will indicate when it's done with its test by writing a message
@@ -3166,8 +3116,11 @@ sub extlog_file_modified_bug3457 {
   defined(my $pid = fork()) or die("Can't fork: $!");
   if ($pid) {
     eval {
+      # Allow for server startup
+      sleep(1);
+
       my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
-      $client->login($user, $passwd);
+      $client->login($setup->{user}, $setup->{passwd});
 
       my $conn = $client->stor_raw('test.txt');
       unless ($conn) {
@@ -3187,7 +3140,7 @@ sub extlog_file_modified_bug3457 {
     $wfh->flush();
 
   } else {
-    eval { server_wait($config_file, $rfh) };
+    eval { server_wait($setup->{config_file}, $rfh) };
     if ($@) {
       warn($@);
       exit 1;
@@ -3197,33 +3150,30 @@ sub extlog_file_modified_bug3457 {
   }
 
   # Stop server
-  server_stop($pid_file);
-
+  server_stop($setup->{pid_file});
   $self->assert_child_ok($pid);
 
   # Now, read in the ExtendedLog, and see whether the %{file-modified}
   # variable was properly written out.
-  if (open(my $fh, "< $ext_log")) {
-    my $line = <$fh>;
-    chomp($line);
-    close($fh);
+  eval {
+    if (open(my $fh, "< $ext_log")) {
+      my $line = <$fh>;
+      chomp($line);
+      close($fh);
 
-    my $expected = 'true';
-    $self->assert($expected eq $line,
-      test_msg("Expected '$expected', got '$line'"));
+      my $expected = 'true';
+      $self->assert($expected eq $line,
+        test_msg("Expected '$expected', got '$line'"));
 
-  } else {
-    die("Can't read $ext_log: $!");
+    } else {
+      die("Can't read $ext_log: $!");
+    }
+  };
+  if ($@) {
+    $ex = $@;
   }
 
-  if ($ex) {
-    test_append_logfile($log_file, $ex);
-    unlink($log_file);
-
-    die($ex);
-  }
-
-  unlink($log_file);
+  test_cleanup($setup->{log_file}, $ex);
 }
 
 sub extlog_dele_bug3469 {
@@ -4649,16 +4599,18 @@ sub extlog_ftp_sendfile_raw_bytes_bug3554 {
         # Only watch for the QUIT command, to get the session total.
         next unless $cmd eq 'QUIT';
 
-        my $expected = 60;
-        $self->assert($expected == $bytes_in,
-          test_msg("Expected $expected, got $bytes_in"));
-
         # Why would this number vary so widely?  It's because of the notation
         # used to express the port number in a PASV response.  That port
         # number is ephemeral, chosen by the kernel.
 
-        my $expected_min = 284;
-        my $expected_max = 288;
+        my $expected_min = 60;
+        my $expected_max = 70;
+        $self->assert($expected_min <= $bytes_in &&
+                      $expected_max >= $bytes_in,
+          test_msg("Expected $expected_min - $expected_max, got $bytes_in"));
+
+        $expected_min = 284;
+        $expected_max = 288;
         $self->assert($expected_min <= $bytes_out &&
                       $expected_max >= $bytes_out,
           test_msg("Expected $expected_min - $expected_max, got $bytes_out"));
@@ -6521,54 +6473,22 @@ sub extlog_eos_reason_timeoutsession {
 sub extlog_eos_reason_timeoutstalled {
   my $self = shift;
   my $tmpdir = $self->{tmpdir};
+  my $setup = test_setup($tmpdir, 'extlog');
 
-  my $config_file = "$tmpdir/extlog.conf";
-  my $pid_file = File::Spec->rel2abs("$tmpdir/extlog.pid");
-  my $scoreboard_file = File::Spec->rel2abs("$tmpdir/extlog.scoreboard");
-
-  my $log_file = test_get_logfile();
-
-  my $auth_user_file = File::Spec->rel2abs("$tmpdir/extlog.passwd");
-  my $auth_group_file = File::Spec->rel2abs("$tmpdir/extlog.group");
-
-  my $test_file = File::Spec->rel2abs($config_file);
-
-  my $user = 'proftpd';
-  my $passwd = 'test';
-  my $group = 'ftpd';
-  my $home_dir = File::Spec->rel2abs($tmpdir);
-  my $uid = 500;
-  my $gid = 500;
-
-  # Make sure that, if we're running as root, that the home directory has
-  # permissions/privs set for the account we create
-  if ($< == 0) {
-    unless (chmod(0755, $home_dir)) {
-      die("Can't set perms on $home_dir to 0755: $!");
-    }
-
-    unless (chown($uid, $gid, $home_dir)) {
-      die("Can't set owner of $home_dir to $uid/$gid: $!");
-    }
-  }
-
-  auth_user_write($auth_user_file, $user, $passwd, $uid, $gid, $home_dir,
-    '/bin/bash');
-  auth_group_write($auth_group_file, $group, $gid, $user);
-
+  my $test_file = File::Spec->rel2abs($setup->{config_file});
   my $ext_log = File::Spec->rel2abs("$tmpdir/custom.log");
 
   my $timeout_stalled = 1;
 
   my $config = {
-    PidFile => $pid_file,
-    ScoreboardFile => $scoreboard_file,
-    SystemLog => $log_file,
-    TraceLog => $log_file,
+    PidFile => $setup->{pid_file},
+    ScoreboardFile => $setup->{scoreboard_file},
+    SystemLog => $setup->{log_file},
+    TraceLog => $setup->{log_file},
     Trace => 'response:10',
 
-    AuthUserFile => $auth_user_file,
-    AuthGroupFile => $auth_group_file,
+    AuthUserFile => $setup->{auth_user_file},
+    AuthGroupFile => $setup->{auth_group_file},
     AuthOrder => 'mod_auth_file.c',
 
     LogFormat => 'custom "%{protocol} %m eos_reason=\"%E\""',
@@ -6582,7 +6502,8 @@ sub extlog_eos_reason_timeoutstalled {
     },
   };
 
-  my ($port, $config_user, $config_group) = config_write($config_file, $config);
+  my ($port, $config_user, $config_group) = config_write($setup->{config_file},
+    $config);
 
   # Open pipes, for use between the parent and child processes.  Specifically,
   # the child will indicate when it's done with its test by writing a message
@@ -6599,10 +6520,13 @@ sub extlog_eos_reason_timeoutstalled {
   defined(my $pid = fork()) or die("Can't fork: $!");
   if ($pid) {
     eval {
-      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
-      $client->login($user, $passwd);
+      # Allow for server startup
+      sleep(1);
 
-      my $conn = $client->list_raw($home_dir);
+      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
+      $client->login($setup->{user}, $setup->{passwd});
+
+      my $conn = $client->list_raw('.');
       unless ($conn) {
         die("LIST failed: " . $client->response_code() . " " .
           $client->response_msg());
@@ -6623,19 +6547,15 @@ sub extlog_eos_reason_timeoutstalled {
       my $resp_code = $client->response_code();
       my $resp_msg = $client->response_msg();
 
-      my $expected;
-
       # Perl's Net::Cmd module uses a very non-standard 599 code to
-      # indicate that the connection is closed
-      $expected = 599;
-      $self->assert($expected == $resp_code,
-        test_msg("Expected $expected, got $resp_code"));
+      # indicate that the connection is closed, depending on version.
+      $self->assert($resp_code == 421 || $resp_code == 599,
+        test_msg("Expected response code 421 or 599, got $resp_code"));
 
-      $expected = "Connection closed";
-      $self->assert($expected eq $resp_msg,
-        test_msg("Expected '$expected', got '$resp_msg'"));
+      my $expected = "Connection closed";
+      $self->assert(qr/$expected/, $resp_msg,
+        test_msg("Expected response message '$expected', got '$resp_msg'"));
     };
-
     if ($@) {
       $ex = $@;
     }
@@ -6644,7 +6564,7 @@ sub extlog_eos_reason_timeoutstalled {
     $wfh->flush();
 
   } else {
-    eval { server_wait($config_file, $rfh) };
+    eval { server_wait($setup->{config_file}, $rfh) };
     if ($@) {
       warn($@);
       exit 1;
@@ -6654,49 +6574,50 @@ sub extlog_eos_reason_timeoutstalled {
   }
 
   # Stop server
-  server_stop($pid_file);
-
+  server_stop($setup->{pid_file});
   $self->assert_child_ok($pid);
 
-  # Now, read in the ExtendedLog, and see whether the %I/%O variables
-  # are properly populated
-  if (open(my $fh, "< $ext_log")) {
-    my $ok = 0;
+  # Now, read in the ExtendedLog, and see whether the %E variable is
+  # properly populated
+  eval {
+    if (open(my $fh, "< $ext_log")) {
+      my $ok = 0;
 
-    while (my $line = <$fh>) {
-      chomp($line);
+      while (my $line = <$fh>) {
+        chomp($line);
 
-      if ($line =~ /^\S+ (\S+) eos_reason="(.*?)"/) {
-        my $cmd = $1;
-        my $reason = $2;
+        if ($ENV{TEST_VERBOSE}) {
+          print STDERR "# $line\n";
+        }
 
-        # Only watch for the EXIT command, to get the end-of-session reason.
-        next unless $cmd eq 'EXIT';
+        if ($line =~ /^\S+ (\S+) eos_reason="(.*?)"/) {
+          my $cmd = $1;
+          my $reason = $2;
 
-        my $expected = "TimeoutStalled during data transfer";
-        $self->assert(qr/$expected/, $reason,
-          test_msg("Expected failure reason '$expected', got '$reason'"));
+          # Only watch for the EXIT command, to get the end-of-session reason.
+          next unless $cmd eq 'EXIT';
 
-        $ok = 1;
+          my $expected = "TimeoutStalled during data transfer";
+          $self->assert(qr/$expected/, $reason,
+            test_msg("Expected failure reason '$expected', got '$reason'"));
+
+          $ok = 1;
+        }
       }
+
+      close($fh);
+      $self->assert($ok == 1,
+        test_msg("Did not find expected ExtendedLog lines"));
+
+    } else {
+      die("Can't read $ext_log: $!");
     }
-
-    close($fh);
-    $self->assert($ok == 1,
-      test_msg("Did not find expected ExtendedLog lines"));
-
-  } else {
-    die("Can't read $ext_log: $!");
+  };
+  if ($@) {
+    $ex = $@;
   }
 
-  if ($ex) {
-    test_append_logfile($log_file, $ex);
-    unlink($log_file);
-
-    die($ex);
-  }
-
-  unlink($log_file);
+  test_cleanup($setup->{log_file}, $ex);
 }
 
 sub extlog_vars_H_L_matching_server_bug3620 {
@@ -9603,38 +9524,7 @@ EOC
 sub extlog_xfer_status_timeout {
   my $self = shift;
   my $tmpdir = $self->{tmpdir};
-
-  my $config_file = "$tmpdir/extlog.conf";
-  my $pid_file = File::Spec->rel2abs("$tmpdir/extlog.pid");
-  my $scoreboard_file = File::Spec->rel2abs("$tmpdir/extlog.scoreboard");
-
-  my $log_file = test_get_logfile();
-
-  my $auth_user_file = File::Spec->rel2abs("$tmpdir/extlog.passwd");
-  my $auth_group_file = File::Spec->rel2abs("$tmpdir/extlog.group");
-
-  my $user = 'proftpd';
-  my $passwd = 'test';
-  my $group = 'ftpd';
-  my $home_dir = File::Spec->rel2abs($tmpdir);
-  my $uid = 500;
-  my $gid = 500;
-
-  # Make sure that, if we're running as root, that the home directory has
-  # permissions/privs set for the account we create
-  if ($< == 0) {
-    unless (chmod(0755, $home_dir)) {
-      die("Can't set perms on $home_dir to 0755: $!");
-    }
-
-    unless (chown($uid, $gid, $home_dir)) {
-      die("Can't set owner of $home_dir to $uid/$gid: $!");
-    }
-  }
-
-  auth_user_write($auth_user_file, $user, $passwd, $uid, $gid, $home_dir,
-    '/bin/bash');
-  auth_group_write($auth_group_file, $group, $gid, $user);
+  my $setup = test_setup($tmpdir, 'extlog');
 
   my $ext_log = File::Spec->rel2abs("$tmpdir/custom.log");
 
@@ -9653,12 +9543,12 @@ sub extlog_xfer_status_timeout {
   my $timeout_stalled = 1;
 
   my $config = {
-    PidFile => $pid_file,
-    ScoreboardFile => $scoreboard_file,
-    SystemLog => $log_file,
+    PidFile => $setup->{pid_file},
+    ScoreboardFile => $setup->{scoreboard_file},
+    SystemLog => $setup->{log_file},
 
-    AuthUserFile => $auth_user_file,
-    AuthGroupFile => $auth_group_file,
+    AuthUserFile => $setup->{auth_user_file},
+    AuthGroupFile => $setup->{auth_group_file},
     AuthOrder => 'mod_auth_file.c',
 
     # This is used to tickle the "timeout" transfer status
@@ -9671,19 +9561,20 @@ sub extlog_xfer_status_timeout {
     },
   };
 
-  my ($port, $config_user, $config_group) = config_write($config_file, $config);
+  my ($port, $config_user, $config_group) = config_write($setup->{config_file},
+    $config);
 
-  if (open(my $fh, ">> $config_file")) {
+  if (open(my $fh, ">> $setup->{config_file}")) {
     print $fh <<EOC;
 LogFormat custom "%m %{transfer-status}"
 ExtendedLog $ext_log READ custom
 EOC
     unless (close($fh)) {
-      die("Can't write $config_file: $!");
+      die("Can't write $setup->{config_file}: $!");
     }
 
   } else {
-    die("Can't open $config_file: $!");
+    die("Can't open $setup->{config_file}: $!");
   }
 
   # Open pipes, for use between the parent and child processes.  Specifically,
@@ -9701,8 +9592,11 @@ EOC
   defined(my $pid = fork()) or die("Can't fork: $!");
   if ($pid) {
     eval {
+      # Allow for server startup
+      sleep(1);
+
       my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
-      $client->login($user, $passwd);
+      $client->login($setup->{user}, $setup->{passwd});
       $client->type('ascii');
 
       my $conn = $client->retr_raw('test.txt');
@@ -9726,19 +9620,15 @@ EOC
       my $resp_code = $client->response_code();
       my $resp_msg = $client->response_msg();
 
-      my $expected;
-
       # Perl's Net::Cmd module uses a very non-standard 599 code to
-      # indicate that the connection is closed
-      $expected = 599;
-      $self->assert($expected == $resp_code,
-        test_msg("Expected $expected, got $resp_code"));
+      # indicate that the connection is closed, depending on version.
+      $self->assert($resp_code == 421 || $resp_code == 599,
+        test_msg("Expected response code 421 or 599, got $resp_code"));
 
-      $expected = "Connection closed";
-      $self->assert($expected eq $resp_msg,
-        test_msg("Expected '$expected', got '$resp_msg'"));
+      my $expected = "Connection closed";
+      $self->assert(qr/$expected/, $resp_msg,
+        test_msg("Expected response message '$expected', got '$resp_msg'"));
     };
-
     if ($@) {
       $ex = $@;
     }
@@ -9747,7 +9637,7 @@ EOC
     $wfh->flush();
 
   } else {
-    eval { server_wait($config_file, $rfh) };
+    eval { server_wait($setup->{config_file}, $rfh) };
     if ($@) {
       warn($@);
       exit 1;
@@ -9757,8 +9647,7 @@ EOC
   }
 
   # Stop server
-  server_stop($pid_file);
-
+  server_stop($setup->{pid_file});
   $self->assert_child_ok($pid);
 
   # Now, read in the ExtendedLog, and see whether the %{transfer-status}
@@ -9769,6 +9658,10 @@ EOC
 
       while (my $line = <$fh>) {
         chomp($line);
+
+        if ($ENV{TEST_VERBOSE}) {
+          print STDERR "# $line\n";
+        }
 
         if ($line =~ /^(\S+) (.*)?$/) {
           my $cmd = $1;
@@ -9792,19 +9685,11 @@ EOC
       die("Can't read $ext_log: $!");
     }
   };
-
   if ($@) {
     $ex = $@;
   }
 
-  if ($ex) {
-    test_append_logfile($log_file, $ex);
-    unlink($log_file);
-
-    die($ex);
-  }
-
-  unlink($log_file);
+  test_cleanup($setup->{log_file}, $ex);
 }
 
 sub extlog_xfer_failure_none {
@@ -14903,6 +14788,18 @@ sub extlog_stor_var_f_xfer_timed_out {
   my $sub_dir = File::Spec->rel2abs("$tmpdir/sub.d");
   mkpath($sub_dir);
 
+  # Make sure that, if we're running as root, that the sub directory has
+  # permissions/privs set for the account we create
+  if ($< == 0) {
+    unless (chmod(0755, $sub_dir)) {
+      die("Can't set perms on $sub_dir to 0755: $!");
+    }
+
+    unless (chown($setup->{uid}, $setup->{gid}, $sub_dir)) {
+      die("Can't set owner of $sub_dir to $setup->{uid}/$setup->{gid}: $!");
+    }
+  }
+
   my $dst_file = File::Spec->rel2abs("$sub_dir/dst.dat");
   my $timeout_stalled = 2;
 
@@ -15025,7 +14922,7 @@ sub extlog_stor_var_f_xfer_timed_out {
 
       close($fh);
 
-      $self->assert($first_ok and $second_ok,
+      $self->assert($first_ok && $second_ok,
         test_msg("Expected ExtendedLog messages did not appear"));
 
     } else {
