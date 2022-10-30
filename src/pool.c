@@ -2,7 +2,7 @@
  * ProFTPD - FTP server daemon
  * Copyright (c) 1997, 1998 Public Flood Software
  * Copyright (c) 1999, 2000 MacGyver aka Habeeb J. Dihu <macgyver@tos.net>
- * Copyright (c) 2001-2021 The ProFTPD Project team
+ * Copyright (c) 2001-2022 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -498,7 +498,7 @@ struct pool_rec *make_sub_pool(struct pool_rec *p) {
     new_pool->parent = p;
     new_pool->sub_next = p->sub_pools;
 
-    if (new_pool->sub_next) {
+    if (new_pool->sub_next != NULL) {
       new_pool->sub_next->sub_prev = new_pool;
     }
 
@@ -529,7 +529,7 @@ struct pool_rec *pr_pool_create_sz(struct pool_rec *p, size_t sz) {
     new_pool->parent = p;
     new_pool->sub_next = p->sub_pools;
 
-    if (new_pool->sub_next) {
+    if (new_pool->sub_next != NULL) {
       new_pool->sub_next->sub_prev = new_pool;
     }
 
@@ -571,7 +571,7 @@ static void clear_pool(struct pool_rec *p) {
   p->cleanups = NULL;
 
   /* Destroy subpools. */
-  while (p->sub_pools) {
+  while (p->sub_pools != NULL) {
     destroy_pool(p->sub_pools);
   }
 
@@ -594,16 +594,16 @@ void destroy_pool(pool *p) {
 
   pr_alarms_block();
 
-  if (p->parent) {
+  if (p->parent != NULL) {
     if (p->parent->sub_pools == p) {
       p->parent->sub_pools = p->sub_next;
     }
 
-    if (p->sub_prev) {
+    if (p->sub_prev != NULL) {
       p->sub_prev->sub_next = p->sub_next;
     }
 
-    if (p->sub_next) {
+    if (p->sub_next != NULL) {
       p->sub_next->sub_prev = p->sub_prev;
     }
   }
@@ -613,13 +613,13 @@ void destroy_pool(pool *p) {
 
   pr_alarms_unblock();
 
-#ifdef PR_DEVEL_NO_POOL_FREELIST
+#if defined(PR_DEVEL_NO_POOL_FREELIST)
   /* If configured explicitly to do so, call free(3) on the freelist after
    * a pool is destroyed.  This can be useful for tracking down use-after-free
    * and other memory issues using libraries such as dmalloc.
    */
   pool_release_free_block_list();
-#endif /* PR_EVEL_NO_POOL_FREELIST */
+#endif /* PR_DEVEL_NO_POOL_FREELIST */
 }
 
 /* Allocation interface...

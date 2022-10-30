@@ -723,7 +723,6 @@ pr_netio_stream_t *pr_netio_open(pool *parent_pool, int strm_type, int fd,
 
     default:
       destroy_pool(nstrm->strm_pool);
-      nstrm->strm_pool = NULL;
       errno = EINVAL;
       res = NULL;
   }
