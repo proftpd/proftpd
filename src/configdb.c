@@ -55,13 +55,12 @@ config_rec *pr_config_alloc(pool *p, const char *name, int config_type) {
     return NULL;
   }
 
-  pr_pool_tag(p, "config_rec pool");
   c = (config_rec *) pcalloc(p, sizeof(config_rec));
   c->pool = p;
   c->config_type = config_type;
 
   if (name != NULL) {
-    c->name = pstrdup(p, name);
+    c->name = pstrdup(c->pool, name);
     c->config_id = pr_config_set_id(c->name);
   }
 
@@ -128,6 +127,7 @@ config_rec *pr_config_add_set(xaset_t **set, const char *name, int flags) {
    * for config_rec pools; use a smaller size.
    */
   conf_pool = pr_pool_create_sz((*set)->pool, 128);
+  pr_pool_tag(conf_pool, "config_rec pool");
 
   c = pr_config_alloc(conf_pool, name, 0);
   pr_config_add_config_to_set(*set, c, flags);

@@ -68,16 +68,19 @@ static struct config_src *parser_sources = NULL;
  */
 
 static struct config_src *add_config_source(pr_fh_t *fh) {
-  pool *p = pr_pool_create_sz(parser_pool, PARSER_CONFIG_SRC_POOL_SZ);
-  struct config_src *cs = pcalloc(p, sizeof(struct config_src));
+  pool *p;
+  struct config_src *cs;
 
+  p = pr_pool_create_sz(parser_pool, PARSER_CONFIG_SRC_POOL_SZ);
   pr_pool_tag(p, "configuration source pool");
-  cs->cs_next = NULL;
+
+  cs = pcalloc(p, sizeof(struct config_src));
   cs->cs_pool = p;
+  cs->cs_next = NULL;
   cs->cs_fh = fh;
   cs->cs_lineno = 0;
 
-  if (!parser_sources) {
+  if (parser_sources == NULL) {
     parser_sources = cs;
 
   } else {
@@ -529,8 +532,9 @@ int pr_parser_parse_file(pool *p, const char *path, config_rec *start,
           &cmd->stash_index, &cmd->stash_hash);
       }
 
-      if (cmd->tmp_pool) {
+      if (cmd->tmp_pool != NULL) {
         destroy_pool(cmd->tmp_pool);
+        cmd->tmp_pool = NULL;
       }
 
       if (found == FALSE) {
