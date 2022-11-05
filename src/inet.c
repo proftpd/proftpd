@@ -685,7 +685,6 @@ void pr_inet_close(pool *p, conn_t *c) {
 
   if (c->pool != NULL) {
     destroy_pool(c->pool);
-    c->pool = NULL;
   }
 }
 
@@ -697,7 +696,7 @@ void pr_inet_lingering_close(pool *p, conn_t *c, long linger) {
 
   (void) pr_inet_set_block(p, c);
 
-  if (c->outstrm) {
+  if (c->outstrm != NULL) {
     pr_netio_lingering_close(c->outstrm, linger);
   }
 
@@ -722,7 +721,7 @@ void pr_inet_lingering_abort(pool *p, conn_t *c, long linger) {
 
   (void) pr_inet_set_block(p, c);
 
-  if (c->instrm) {
+  if (c->instrm != NULL) {
     pr_netio_lingering_abort(c->instrm, linger);
   }
 
@@ -2038,7 +2037,7 @@ void init_inet(void) {
   endprotoent();
 #endif
 
-  if (inet_pool) {
+  if (inet_pool != NULL) {
     destroy_pool(inet_pool);
   }
 

@@ -2208,7 +2208,6 @@ pr_fs_t *pr_register_fs(pool *p, const char *name, const char *path) {
         name, path);
 
       destroy_pool(fs->fs_pool);
-      fs->fs_pool = NULL;
 
       errno = xerrno;
       return NULL;
@@ -2451,7 +2450,6 @@ int pr_unregister_fs(const char *path) {
   fs = pr_remove_fs(path);
   if (fs != NULL) {
     destroy_pool(fs->fs_pool);
-    fs->fs_pool = NULL;
     return 0;
   }
 
@@ -4989,7 +4987,6 @@ pr_fh_t *pr_fsio_open_canon(const char *name, int flags) {
     int xerrno = errno;
 
     destroy_pool(fh->fh_pool);
-    fh->fh_pool = NULL;
 
     errno = xerrno;
     return NULL;
@@ -5050,7 +5047,6 @@ pr_fh_t *pr_fsio_open(const char *name, int flags) {
     int xerrno = errno;
 
     destroy_pool(fh->fh_pool);
-    fh->fh_pool = NULL;
 
     errno = xerrno;
     return NULL;
@@ -5130,8 +5126,6 @@ int pr_fsio_close(pr_fh_t *fh) {
 
   if (fh->fh_pool != NULL) {
     destroy_pool(fh->fh_pool);
-    fh->fh_pool = NULL;
-    fh->fh_path = NULL;
   }
 
   errno = xerrno;
