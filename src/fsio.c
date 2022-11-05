@@ -3939,7 +3939,6 @@ static pr_fs_t *find_opendir(void *dir, int closing) {
       }
 
       destroy_pool(fsod->pool);
-      fsod->pool = NULL;
     }
   }
 
