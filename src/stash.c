@@ -1,6 +1,6 @@
 /*
  * ProFTPD - FTP server daemon
- * Copyright (c) 2010-2021 The ProFTPD Project team
+ * Copyright (c) 2010-2022 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -75,10 +75,10 @@ static struct stash *sym_alloc(void) {
    * bytes by default) is a bit large for symbols.
    */
   sub_pool = pr_pool_create_sz(symbol_pool, PR_SYM_POOL_SIZE);
+  pr_pool_tag(sub_pool, "symbol");
 
   sym = pcalloc(sub_pool, sizeof(struct stash));
   sym->sym_pool = sub_pool; 
-  pr_pool_tag(sub_pool, "symbol");
 
   return sym;
 }

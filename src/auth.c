@@ -2,7 +2,7 @@
  * ProFTPD - FTP server daemon
  * Copyright (c) 1997, 1998 Public Flood Software
  * Copyright (c) 1999, 2000 MacGyver aka Habeeb J. Dihu <macgyver@tos.net>
- * Copyright (c) 2001-2020 The ProFTPD Project team
+ * Copyright (c) 2001-2022 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -365,7 +365,7 @@ static int groupcache_get(const char *name, gid_t *gid) {
 static cmd_rec *make_cmd(pool *cp, unsigned int argc, ...) {
   va_list args;
   cmd_rec *c;
-  pool *sub_pool;
+  pool *sub_pool, *tmp_pool;
 
   c = pcalloc(cp, sizeof(cmd_rec));
   c->argc = argc;
@@ -390,7 +390,12 @@ static cmd_rec *make_cmd(pool *cp, unsigned int argc, ...) {
 
   /* Make sure we provide pool and tmp_pool for the consumers. */
   sub_pool = make_sub_pool(cp);
-  c->pool = c->tmp_pool = sub_pool;
+  pr_pool_tag(sub_pool, "auth cmd subpool");
+  c->pool = sub_pool;
+
+  tmp_pool = make_sub_pool(c->pool);
+  pr_pool_tag(tmp_pool, "auth cmd tmp pool");
+  c->tmp_pool = tmp_pool;
 
   return c;
 }

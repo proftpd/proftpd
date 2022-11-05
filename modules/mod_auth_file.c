@@ -1077,6 +1077,7 @@ static int af_check_group_syntax(pool *p, const char *path) {
     pr_log_pri(PR_LOG_WARNING,
       "error: unable to open AuthGroupFile file '%s': %s",
       af_group_file->af_path, strerror(xerrno));
+    af_group_file = NULL;
     errno = xerrno;
     return -1;
   }
@@ -1120,6 +1121,7 @@ static int af_check_user_syntax(pool *p, const char *path) {
     pr_log_pri(PR_LOG_WARNING,
       "error: unable to open AuthUserFile file '%s': %s",
       af_user_file->af_path, strerror(xerrno));
+    af_user_file = NULL;
     errno = xerrno;
     return -1;
   }
