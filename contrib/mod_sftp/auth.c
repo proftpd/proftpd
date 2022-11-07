@@ -1308,7 +1308,7 @@ static int handle_userauth_req(struct ssh2_packet *pkt, char **service) {
       if (res < 0) {
         pr_event_generate("mod_sftp.ssh2.auth-publickey.failed", NULL);
 
-      } else {
+      } else if (res == 1) {
         pr_event_generate("mod_sftp.ssh2.auth-publickey", NULL);
       }
 
@@ -1341,7 +1341,7 @@ static int handle_userauth_req(struct ssh2_packet *pkt, char **service) {
       if (res < 0) {
         pr_event_generate("mod_sftp.ssh2.auth-kbdint.failed", NULL);
 
-      } else {
+      } else if (res == 1) {
         pr_event_generate("mod_sftp.ssh2.auth-kbdint", NULL);
       }
 
@@ -1374,7 +1374,7 @@ static int handle_userauth_req(struct ssh2_packet *pkt, char **service) {
       if (res < 0) {
         pr_event_generate("mod_sftp.ssh2.auth-password.failed", NULL);
 
-      } else {
+      } else if (res == 1) {
         pr_event_generate("mod_sftp.ssh2.auth-password", NULL);
       }
 
@@ -1407,7 +1407,7 @@ static int handle_userauth_req(struct ssh2_packet *pkt, char **service) {
       if (res < 0) {
         pr_event_generate("mod_sftp.ssh2.auth-hostbased.failed", NULL);
 
-      } else {
+      } else if (res == 1) {
         pr_event_generate("mod_sftp.ssh2.auth-hostbased", NULL);
       }
 
