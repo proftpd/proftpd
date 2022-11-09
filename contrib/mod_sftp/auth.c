@@ -306,6 +306,7 @@ static int setup_env(pool *p, const char *user) {
   struct passwd *pw;
   config_rec *c;
   int login_acl, i, res, root_revoke = TRUE, show_symlinks = FALSE, xerrno;
+  int auth_code = PR_AUTH_OK;
   struct stat st;
   const char *default_chdir, *default_root, *home_dir;
   const char *sess_ttyname = NULL, *xferlog = NULL;
@@ -316,11 +317,13 @@ static int setup_env(pool *p, const char *user) {
   pw = pr_auth_getpwnam(p, user);
   if (pw == NULL) {
     xerrno = errno;
+    auth_code = PR_AUTH_NOPWD;
 
     /* This is highly unlikely to happen...*/
     pr_log_auth(PR_LOG_NOTICE,
       "USER %s (Login failed): Unable to retrieve user information: %s", user,
       strerror(xerrno));
+    pr_event_generate("mod_auth.authentication-code", &auth_code);
 
     errno = xerrno;
     return -1;
@@ -502,6 +505,8 @@ static int setup_env(pool *p, const char *user) {
   } else {
     xferlog_open(xferlog);
   }
+
+  pr_event_generate("mod_auth.authentication-code", &auth_code);
 
   res = set_groups(p, pw->pw_gid, session.gids);
   xerrno = errno;
