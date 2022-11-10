@@ -1344,11 +1344,12 @@ static int setup_env(pool *p, cmd_rec *cmd, const char *user, char *pass) {
     goto auth_failure;
   }
 
-  if (c) {
+  if (c != NULL) {
     struct group *grp = NULL;
     unsigned char *add_userdir = NULL;
     const char *u;
     char *chroot_dir;
+    int auth_code = PR_AUTH_OK;
 
     u = pr_table_get(session.notes, "mod_auth.orig-user", NULL);
     add_userdir = get_param_ptr(c->subset, "UserDirRoot", FALSE);
@@ -1473,7 +1474,7 @@ static int setup_env(pool *p, cmd_rec *cmd, const char *user, char *pass) {
       }
     }
 
-    if (session.chroot_path &&
+    if (session.chroot_path != NULL &&
         pr_fsio_access(session.chroot_path, X_OK, session.uid,
           session.gid, session.gids) != 0) {
       session.chroot_path = NULL;
@@ -1481,6 +1482,8 @@ static int setup_env(pool *p, cmd_rec *cmd, const char *user, char *pass) {
     } else {
       session.chroot_path = pstrdup(session.pool, session.chroot_path);
     }
+
+    pr_event_generate("mod_auth.authentication-code", &auth_code);
 
     /* Return all privileges back to that of the daemon, for now. */
     PRIVS_ROOT
