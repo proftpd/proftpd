@@ -6624,6 +6624,10 @@ static const char *core_get_xfer_bytes_str(void *data, size_t datasz) {
 /* Event handlers
  */
 
+static void core_connected_ev(const void *event_data, void *user_data) {
+  session_set_connected();
+}
+
 static void core_exit_ev(const void *event_data, void *user_data) {
   pr_fs_statcache_free();
 }
@@ -6784,6 +6788,7 @@ static int core_init(void) {
   pr_feat_add(C_SIZE);
   pr_feat_add(C_HOST);
 
+  pr_event_register(&core_module, "core.connected", core_connected_ev, NULL);
   pr_event_register(&core_module, "core.postparse", core_postparse_ev, NULL);
   pr_event_register(&core_module, "core.restart", core_restart_ev, NULL);
   pr_event_register(&core_module, "core.startup", core_startup_ev, NULL);

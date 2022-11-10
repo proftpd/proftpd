@@ -25,6 +25,8 @@
 - Issue 1533 - mod_tls module unexpectedly allows TLS handshake after
   authentication in some configurations.
 - Issue 1528 - Disable FSCachePolicy by default.
+- Issue 1539 - Avoid logging "session closed" messages unless there is a
+  corresponding "session opened" log message, to avoid user confusion.
 
 1.3.8rc4 - Released 23-Jul-2022
 --------------------------------
