@@ -391,14 +391,8 @@ MODRET set_include(cmd_rec *cmd) {
   PRIVS_RELINQUISH
 
   if (res < 0) {
-    if (xerrno != EINVAL) {
-      pr_log_pri(PR_LOG_WARNING, "warning: unable to include '%s': %s",
-        (char *) cmd->argv[1], strerror(xerrno));
-
-    } else {
-      CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "error including '",
-        (char *) cmd->argv[1], "': ", strerror(xerrno), NULL));
-    }
+    CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "error including '",
+      (char *) cmd->argv[1], "': ", strerror(xerrno), NULL));
   }
 
   return PR_HANDLED(cmd);
