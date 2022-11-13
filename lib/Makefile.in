@@ -36,7 +36,7 @@ lib: prbase.a $(LIB_DEPS)
 install:
 
 clean:
-	$(RM) *.o prbase.a
+	$(RM) *.o *.gcda *.gcno prbase.a
 	$(LIBTOOL) --mode=clean $(RM) `echo $(LIB_OBJS) | sed 's/\.o$\/.lo/g'`
 	test -z $(LIB_DEPS) || (cd libltdl/ && $(MAKE) clean)
 

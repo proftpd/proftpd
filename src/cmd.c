@@ -1,6 +1,6 @@
 /*
  * ProFTPD - FTP server daemon
- * Copyright (c) 2009-2020 The ProFTPD Project team
+ * Copyright (c) 2009-2022 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -108,6 +108,7 @@ static struct cmd_entry cmd_ids[] = {
   { C_HOST,	4 },	/* PR_CMD_HOST_ID (58) */
   { C_CLNT,	4 },	/* PR_CMD_CLNT_ID (59) */
   { C_RANG,	4 },	/* PR_CMD_RANG_ID (60) */
+  { C_CSID,	4 },	/* PR_CMD_CSID_ID (61) */
 
   { NULL,	0 }
 };

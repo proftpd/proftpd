@@ -1,6 +1,6 @@
 /*
  * ProFTPD - FTP server API testsuite
- * Copyright (c) 2011-2020 The ProFTPD Project team
+ * Copyright (c) 2011-2022 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -273,6 +273,10 @@ START_TEST (cmd_get_id_test) {
   res = pr_cmd_get_id(C_RANG);
   ck_assert_msg(res == PR_CMD_RANG_ID, "Expected cmd ID %d for '%s', got %d",
     PR_CMD_RANG_ID, C_RANG, res);
+
+  res = pr_cmd_get_id(C_CSID);
+  ck_assert_msg(res == PR_CMD_CSID_ID, "Expected cmd ID %d for '%s', got %d",
+    PR_CMD_CSID_ID, C_CSID, res);
 
   /* RFC 2228 commands */
   res = pr_cmd_get_id(C_ADAT);
