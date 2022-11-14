@@ -72,8 +72,8 @@ sub feat_ok {
     },
   };
 
-  # By default, we expect to see 14 lines in the FEAT response
-  my $expected_nfeat = 14;
+  # By default, we expect to see 15 lines in the FEAT response
+  my $expected_nfeat = 15;
 
   my $have_nls = feature_have_feature_enabled('nls');
   if ($have_nls) {
@@ -128,6 +128,7 @@ sub feat_ok {
       my $feats = {
         'Features:' => 1,
         ' CLNT' => 1,
+        ' CSID' => 1,
         ' EPRT' => 1,
         ' EPSV' => 1,
         ' HOST' => 1,
@@ -374,8 +375,8 @@ sub feat_eprt_limit_issue1383 {
     },
   };
 
-  # By default, we expect to see 13 lines in the FEAT response
-  my $expected_nfeat = 13;
+  # By default, we expect to see 14 lines in the FEAT response
+  my $expected_nfeat = 14;
 
   my $have_nls = feature_have_feature_enabled('nls');
   if ($have_nls) {
@@ -444,6 +445,7 @@ EOC
       my $feats = {
         'Features:' => 1,
         ' CLNT' => 1,
+        ' CSID' => 1,
         ' EPSV' => 1,
         ' HOST' => 1,
         ' MDTM' => 1,
@@ -532,8 +534,8 @@ sub feat_epsv_limit_issue1383 {
     },
   };
 
-  # By default, we expect to see 13 lines in the FEAT response
-  my $expected_nfeat = 13;
+  # By default, we expect to see 14 lines in the FEAT response
+  my $expected_nfeat = 14;
 
   my $have_nls = feature_have_feature_enabled('nls');
   if ($have_nls) {
@@ -602,6 +604,7 @@ EOC
       my $feats = {
         'Features:' => 1,
         ' CLNT' => 1,
+        ' CSID' => 1,
         ' EPRT' => 1,
         ' HOST' => 1,
         ' MDTM' => 1,
@@ -690,8 +693,8 @@ sub feat_eprt_epsv_limit_issue1383 {
     },
   };
 
-  # By default, we expect to see 12 lines in the FEAT response
-  my $expected_nfeat = 12;
+  # By default, we expect to see 13 lines in the FEAT response
+  my $expected_nfeat = 13;
 
   my $have_nls = feature_have_feature_enabled('nls');
   if ($have_nls) {
@@ -760,6 +763,7 @@ EOC
       my $feats = {
         'Features:' => 1,
         ' CLNT' => 1,
+        ' CSID' => 1,
         ' HOST' => 1,
         ' MDTM' => 1,
         ' MFMT' => 1,

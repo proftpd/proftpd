@@ -6912,6 +6912,7 @@ static int core_init(void) {
    * list, to be displayed in response to a FEAT command.
    */
   pr_feat_add(C_CLNT);
+  pr_feat_add(C_CSID);
   pr_feat_add(C_MDTM);
   pr_feat_add("REST STREAM");
   pr_feat_add(C_SIZE);
