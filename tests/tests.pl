@@ -100,6 +100,7 @@ if (scalar(@ARGV) > 0) {
     t/commands/opts.t
     t/commands/host.t
     t/commands/clnt.t
+    t/commands/csid.t
     t/commands/site/chgrp.t
     t/commands/site/chmod.t
     t/config/accessdenymsg.t

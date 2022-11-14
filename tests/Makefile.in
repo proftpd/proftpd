@@ -148,4 +148,4 @@ check-utils:
 check: check-api running-tests
 
 clean:
-	$(LIBTOOL) --mode=clean $(RM) *.o *.gcda *.gcno api/*.o api-tests$(EXEEXT) api-tests.log
+	$(LIBTOOL) --mode=clean $(RM) *.o *.gcda *.gcno api/*.o api/*.gcda api/*.gcno api-tests$(EXEEXT) api-tests.log

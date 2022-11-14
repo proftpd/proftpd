@@ -5185,12 +5185,11 @@ MODRET core_post_host(cmd_rec *cmd) {
     /* Restore original AuthOrder. */
     reset_server_auth_order();
 
-#ifdef PR_USE_TRACE
+#if defined(PR_USE_TRACE)
     /* XXX Restore original Trace settings. */
 
     /* Restore original TraceOptions settings. */
     (void) pr_trace_set_options(PR_TRACE_OPT_DEFAULT);
-
 #endif /* PR_USE_TRACE */
 
     /* Remove the variables set via pr_var_set(). */
@@ -5222,7 +5221,137 @@ MODRET core_post_host(cmd_rec *cmd) {
 }
 
 MODRET core_clnt(cmd_rec *cmd) {
+  (void) pr_table_add_dup(session.notes,
+    pstrdup(session.pool, "clnt"), cmd->arg, 0);
   pr_response_add(R_200, _("OK"));
+  return PR_HANDLED(cmd);
+}
+
+static pr_table_t *parse_client_facts(pool *p, char *text) {
+  array_header *facts;
+  pr_table_t *facts_tab = NULL;
+
+  facts = pr_str_text_to_array(p, text, ';');
+  if (facts != NULL) {
+    register unsigned int i;
+
+    facts_tab = pr_table_alloc(p, 0);
+
+    for (i = 0; i < facts->nelts; i++) {
+      char *fact, *ptr;
+      size_t fact_len;
+
+      fact = ((char **) (facts->elts))[i];
+      fact_len = strlen(fact);
+
+      if (fact_len == 0) {
+        continue;
+      }
+
+      ptr = strchr(fact, '=');
+      if (ptr == NULL) {
+        /* Ignore invalid facts. */
+        pr_log_debug(DEBUG0, "ignoring invalid client-sent CSID fact '%s'",
+          fact);
+        continue;
+      }
+
+      /* Skip any leading whitespace. */
+      while (PR_ISSPACE(*fact)) {
+        pr_signals_handle();
+        fact++;
+      }
+
+      if (strncasecmp(fact, "Name", ptr - fact) == 0) {
+        pr_log_debug(DEBUG9, "client sent CSID Name fact: '%s'", ptr+1);
+        (void) pr_table_add_dup(facts_tab, pstrdup(p, "Name"), ptr+1, 0);
+        continue;
+      }
+
+      if (strncasecmp(fact, "Version", ptr - fact) == 0) {
+        pr_log_debug(DEBUG9, "client sent CSID Version fact: '%s'", ptr+1);
+        (void) pr_table_add_dup(facts_tab, pstrdup(p, "Version"), ptr+1, 0);
+        continue;
+      }
+
+      if (strncasecmp(fact, "Vendor", ptr - fact) == 0) {
+        pr_log_debug(DEBUG9, "client sent CSID Vendor fact: '%s'", ptr+1);
+        (void) pr_table_add_dup(facts_tab, pstrdup(p, "Vendor"), ptr+1, 0);
+        continue;
+      }
+
+      /* Ignore unknown/unsupported facts. */
+      pr_log_debug(DEBUG0, "ignoring unknown client-sent CSID fact '%s'", fact);
+    }
+  }
+
+  return facts_tab;
+}
+
+MODRET core_csid(cmd_rec *cmd) {
+  config_rec *c;
+  int use_server_ident = TRUE;
+  pr_table_t *client_facts = NULL;
+  char server_text[PR_TUNABLE_BUFFER_SIZE];
+
+  /* Parse the client-provided facts.  Sadly, per IETF Draft, if there are
+   * issues parsing the client-provided text, or if the client does not provide
+   * the "required" facts, they are to be silently ignored, but not rejected.
+   */
+  client_facts = parse_client_facts(cmd->tmp_pool, cmd->arg);
+  if (client_facts != NULL &&
+      pr_table_count(client_facts) > 0) {
+    const char *key;
+    const void *val;
+    size_t valsz;
+
+    key = "Name";
+    val = pr_table_get(client_facts, key, &valsz);
+    if (val != NULL) {
+      (void) pr_table_add_dup(session.notes,
+        pstrdup(session.pool, "csid.name"), val, valsz);
+    }
+
+    key = "Version";
+    val = pr_table_get(client_facts, key, &valsz);
+    if (val != NULL) {
+      (void) pr_table_add_dup(session.notes,
+        pstrdup(session.pool, "csid.version"), val, valsz);
+    }
+
+    key = "Vendor";
+    val = pr_table_get(client_facts, key, &valsz);
+    if (val != NULL) {
+      (void) pr_table_add_dup(session.notes,
+        pstrdup(session.pool, "csid.vendor"), val, valsz);
+    }
+  }
+
+  c = find_config(main_server->conf, CONF_PARAM, "ServerIdent", FALSE);
+  if (c != NULL) {
+    use_server_ident = *((unsigned char *) c->argv[0]);
+
+    /* What if the admin has configured an explicit string via
+     * "ServerIdent on <text>"?
+     *
+     * Perhaps we ignore that custom text, on the assumption that the actual
+     * server info here is being provided to a successfully authenticated (and
+     * thus allowed) client, rather than to some random client on the Internet.
+     */
+  }
+
+  memset(server_text, '\0', sizeof(server_text));
+
+  if (use_server_ident == TRUE) {
+    (void) pr_snprintf(server_text, sizeof(server_text),
+      "name=ProFTPD;version=%s;casesensitive=1;", PROFTPD_VERSION_TEXT);
+
+  } else {
+    (void) pr_snprintf(server_text, sizeof(server_text), "%s",
+      "casesensitive=1;");
+  }
+
+  pr_response_add(R_200, "%s", server_text);
   return PR_HANDLED(cmd);
 }
 
@@ -7350,6 +7479,7 @@ static cmdtable core_cmdtab[] = {
   { CMD, C_HOST, G_NONE,  core_host,	FALSE,	FALSE,	CL_AUTH },
   { POST_CMD, C_HOST, G_NONE, core_post_host, FALSE, FALSE },
   { CMD, C_CLNT, G_NONE,  core_clnt,	FALSE,	FALSE,	CL_INFO },
+  { CMD, C_CSID, G_NONE,  core_csid,	TRUE,	FALSE,	CL_INFO },
 
   { 0, NULL }
 };

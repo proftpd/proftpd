@@ -1775,6 +1775,32 @@ sub clnt {
   }
 }
 
+sub csid {
+  my $self = shift;
+  my $info = shift;
+  $info = 'ProFTPD::TestSuite::FTP' unless defined($info);
+  my $code;
+
+  $code = $self->{ftp}->quot('CSID', $info);
+  unless ($code) {
+    croak("CSID command failed: " .  $self->{ftp}->code . ' ' .
+      $self->response_msg());
+  }
+
+  if ($code == 4 || $code == 5) {
+    croak("CSID command failed: " .  $self->{ftp}->code . ' ' .
+      $self->response_msg());
+  }
+
+  my $msg = $self->response_msg();
+  if (wantarray()) {
+    return ($self->{ftp}->code, $msg);
+
+  } else {
+    return $msg;
+  }
+}
+
 sub abort {
   my $self = shift;
 
