@@ -5695,7 +5695,8 @@ int sftp_keys_verify_signed_data(pool *p, const char *pubkey_algo,
 
 #if defined(HAVE_SHA256_OPENSSL)
   } else if (strcmp(sig_type, "rsa-sha2-256") == 0) {
-    if (strcmp(pubkey_algo, sig_type) != 0) {
+    if (strcmp(pubkey_algo, sig_type) != 0 &&
+        strcmp(pubkey_algo, "ssh-rsa") != 0) {
       (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
         "unable to verify signed data: signature type '%s' does not match "
         "publickey algorithm '%s'", sig_type, pubkey_algo);
@@ -5709,7 +5710,8 @@ int sftp_keys_verify_signed_data(pool *p, const char *pubkey_algo,
 
 #if defined(HAVE_SHA512_OPENSSL)
   } else if (strcmp(sig_type, "rsa-sha2-512") == 0) {
-    if (strcmp(pubkey_algo, sig_type) != 0) {
+    if (strcmp(pubkey_algo, sig_type) != 0 &&
+        strcmp(pubkey_algo, "ssh-rsa") != 0) {
       (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
         "unable to verify signed data: signature type '%s' does not match "
         "publickey algorithm '%s'", sig_type, pubkey_algo);
