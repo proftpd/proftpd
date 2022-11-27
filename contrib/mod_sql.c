@@ -4470,6 +4470,7 @@ MODRET sql_auth_name2gid(cmd_rec *cmd) {
 
 MODRET sql_auth_getgroups(cmd_rec *cmd) {
   int res;
+  void *val;
 
   if (!SQL_GROUPS ||
       !(cmap.engine & SQL_ENGINE_FL_AUTH)) {
@@ -4484,8 +4485,11 @@ MODRET sql_auth_getgroups(cmd_rec *cmd) {
     return PR_DECLINED(cmd); 
   }
 
+  val = palloc(cmd->tmp_pool, sizeof(int));
+  *((int *) val) = res;
+
   sql_log(DEBUG_FUNC, "%s", "<<< cmd_getgroups");
-  return mod_create_data(cmd, (void *) &res);
+  return mod_create_data(cmd, val);
 }
 
 /* XXX mod_ratio hacks. */
