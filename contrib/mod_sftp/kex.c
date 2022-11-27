@@ -1928,7 +1928,6 @@ static void destroy_kex(struct sftp_kex *kex) {
 
     if (kex->pool != NULL) {
       destroy_pool(kex->pool);
-      kex->pool = NULL;
     }
   }
 
@@ -2979,7 +2978,7 @@ static int write_dh_reply(struct ssh2_packet *pkt, struct sftp_kex *kex) {
     return -1;
   }
 
-  kex->h = palloc(pkt->pool, hlen);
+  kex->h = palloc(kex->pool, hlen);
   kex->hlen = hlen;
   memcpy((char *) kex->h, h, kex->hlen);
 
@@ -3630,7 +3629,7 @@ static int write_dh_gex_reply(struct ssh2_packet *pkt, struct sftp_kex *kex,
     return -1;
   } 
 
-  kex->h = palloc(pkt->pool, hlen);
+  kex->h = palloc(kex->pool, hlen);
   kex->hlen = hlen;
   memcpy((char *) kex->h, h, kex->hlen);
 
@@ -3939,7 +3938,7 @@ static int write_kexrsa_done(struct ssh2_packet *pkt, struct sftp_kex *kex) {
     return -1;
   } 
 
-  kex->h = palloc(pkt->pool, hlen);
+  kex->h = palloc(kex->pool, hlen);
   kex->hlen = hlen;
   memcpy((char *) kex->h, h, kex->hlen);
 
@@ -4319,7 +4318,7 @@ static int write_curve25519_reply(struct ssh2_packet *pkt,
     return -1;
   }
 
-  kex->h = palloc(pkt->pool, hlen);
+  kex->h = palloc(kex->pool, hlen);
   kex->hlen = hlen;
   memcpy((char *) kex->h, h, kex->hlen);
 
@@ -4760,7 +4759,7 @@ static int write_curve448_reply(struct ssh2_packet *pkt, struct sftp_kex *kex) {
     return -1;
   }
 
-  kex->h = palloc(pkt->pool, hlen);
+  kex->h = palloc(kex->pool, hlen);
   kex->hlen = hlen;
   memcpy((char *) kex->h, h, kex->hlen);
 
@@ -4953,7 +4952,7 @@ static int write_ecdh_reply(struct ssh2_packet *pkt, struct sftp_kex *kex) {
     return -1;
   }
 
-  kex->h = palloc(pkt->pool, hlen);
+  kex->h = palloc(kex->pool, hlen);
   kex->hlen = hlen;
   memcpy((char *) kex->h, h, kex->hlen);
 
@@ -5498,7 +5497,7 @@ int sftp_kex_handle(struct ssh2_packet *pkt) {
       return -1;
     }
 
-    cmd = pr_cmd_alloc(pkt2->pool, 1, pstrdup(pkt->pool, "EXT_INFO"));
+    cmd = pr_cmd_alloc(pkt2->pool, 1, pstrdup(pkt2->pool, "EXT_INFO"));
     cmd->arg = "";
     cmd->cmd_class = CL_AUTH|CL_SSH;
 
