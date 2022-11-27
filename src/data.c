@@ -2,7 +2,7 @@
  * ProFTPD - FTP server daemon
  * Copyright (c) 1997, 1998 Public Flood Software
  * Copyright (c) 1999, 2000 MacGyver aka Habeeb J. Dihu <macgyver@tos.net>
- * Copyright (c) 2001-2021 The ProFTPD Project team
+ * Copyright (c) 2001-2022 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -1158,6 +1158,7 @@ static void poll_ctrl(void) {
         int curr_cmd_id = 0, title_len = -1;
         const char *curr_cmd = NULL, *sce_cmd = NULL, *sce_cmd_arg = NULL;
         cmd_rec *curr_cmd_rec = NULL;
+        pool *resp_pool;
 
         pr_trace_msg(trace_channel, 5,
           "client sent '%s' command during data transfer, dispatching",
@@ -1175,6 +1176,10 @@ static void poll_ctrl(void) {
         sce_cmd = pr_scoreboard_entry_get(PR_SCORE_CMD);
         sce_cmd_arg = pr_scoreboard_entry_get(PR_SCORE_CMD_ARG);
 
+        resp_list = resp_err_list = NULL;
+        resp_pool = pr_response_get_pool();
+
+        pr_response_set_pool(cmd->pool);
         pr_cmd_dispatch(cmd);
 
         pr_scoreboard_entry_update(session.pid,
@@ -1186,7 +1191,10 @@ static void poll_ctrl(void) {
           pr_proctitle_set_str(title_buf);
         }
 
+        pr_response_flush(&resp_list);
+        pr_response_set_pool(resp_pool);
         destroy_pool(cmd->pool);
+
         session.curr_cmd = curr_cmd;
         session.curr_cmd_id = curr_cmd_id;
         session.curr_cmd_rec = curr_cmd_rec;
