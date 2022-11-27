@@ -19,6 +19,8 @@
 --------------------------------
 - Issue 1533 - mod_tls module unexpectedly allows TLS handshake after
   authentication in some configurations.
+- Bug 4491 - unable to verify signed data: signature type 'rsa-sha2-512' does
+  not match publickey algorithm 'ssh-rsa'.
 
 1.3.7e - Released 23-Jul-2022
 --------------------------------
