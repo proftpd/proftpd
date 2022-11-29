@@ -17245,7 +17245,7 @@ fi
 if test "${enable_pcre+set}" = set; then :
   enableval=$enable_pcre;
     if test x"$enableval" = xyes ; then
-      if test x"$enable_pcre2" == xyes ; then
+      if test x"$enable_pcre2" = xyes ; then
         as_fn_error $? "cannot support both PCRE and PCRE2 at the same time -- aborting" "$LINENO" 5
       fi
 
@@ -17321,7 +17321,7 @@ fi
 if test "${enable_pcre2+set}" = set; then :
   enableval=$enable_pcre2;
     if test x"$enableval" = xyes ; then
-      if test x"$enable_pcre" == xyes ; then
+      if test x"$enable_pcre" = xyes ; then
         as_fn_error $? "cannot support both PCRE and PCRE2 at the same time -- aborting" "$LINENO" 5
       fi
 
@@ -23675,7 +23675,7 @@ $as_echo "#define PR_USE_OPENSSL_API_COMPAT 1" >>confdefs.h
 
 fi
 
-if test x"$enable_ident" == xyes ; then
+if test x"$enable_ident" = xyes ; then
   ac_static_modules="mod_ident.o $ac_static_modules"
   ac_build_static_modules="modules/mod_ident.o $ac_build_static_modules"
 fi
