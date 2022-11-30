@@ -140,6 +140,7 @@ if (scalar(@ARGV) > 0) {
     t/config/hidenoaccess.t
     t/config/hideuser.t
     t/config/ifdefine.t
+    t/config/ifmodule.t
     t/config/include.t
     t/config/listoptions.t
     t/config/logoptions.t

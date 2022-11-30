@@ -324,6 +324,11 @@ MODRET start_ifmodule(cmd_rec *cmd) {
  * will be silently ignored.
  */
 MODRET end_ifmodule(cmd_rec *cmd) {
+  if (cmd->argc != 1) {
+    CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "wrong number of parameters: ",
+      cmd->arg, NULL));
+  }
+
   return PR_HANDLED(cmd);
 }
 
