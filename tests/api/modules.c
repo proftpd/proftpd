@@ -1,6 +1,6 @@
 /*
  * ProFTPD - FTP server testsuite
- * Copyright (c) 2008-2017 The ProFTPD Project team
+ * Copyright (c) 2008-2022 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -35,13 +35,14 @@ static void set_up(void) {
     p = permanent_pool = make_sub_pool(NULL);
   }
 
+  init_stash();
   modules_init();
 }
 
 static void tear_down(void) {
   loaded_modules = NULL;
 
-  if (p) {
+  if (p != NULL) {
     destroy_pool(p);
     p = permanent_pool = NULL;
   } 

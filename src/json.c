@@ -1,6 +1,6 @@
 /*
  * ProFTPD - FTP server daemon
- * Copyright (c) 2017-2020 The ProFTPD Project team
+ * Copyright (c) 2017-2022 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -168,8 +168,6 @@ int pr_json_object_free(pr_json_object_t *json) {
   json->object = NULL;
 
   destroy_pool(json->pool);
-  json->pool = NULL;
-
   return 0;
 }
 
@@ -469,7 +467,7 @@ int pr_json_object_foreach(pool *p, const pr_json_object_t *json,
   }
 
   for (iter = json_first_child(json->object); iter != NULL; iter = iter->next) {
-    int res, val_type;
+    int res, val_type, xerrno;
     const void *val = NULL;
     size_t valsz = 0;
 
@@ -477,7 +475,7 @@ int pr_json_object_foreach(pool *p, const pr_json_object_t *json,
 
     val_type = get_type(iter);
     if (val_type < 0) {
-      int xerrno = errno;
+      xerrno = errno;
 
       pr_trace_msg(trace_channel, 9, "unknown value type %d in object",
         (int) iter->tag);
@@ -533,7 +531,23 @@ int pr_json_object_foreach(pool *p, const pr_json_object_t *json,
     }
 
     res = (cb)(iter->key, val_type, val, valsz, user_data);
+    xerrno = errno;
+
+    switch (val_type) {
+      case PR_JSON_TYPE_ARRAY:
+        pr_json_array_free((pr_json_array_t *) val);
+        break;
+
+      case PR_JSON_TYPE_OBJECT:
+        pr_json_object_free((pr_json_object_t *) val);
+        break;
+
+      default:
+        break;
+    }
+
     if (res < 0) {
+      errno = xerrno;
       return -1;
     }
   }
@@ -689,8 +703,6 @@ int pr_json_array_free(pr_json_array_t *json) {
   json->array = NULL;
 
   destroy_pool(json->pool);
-  json->pool = NULL;
-
   return 0;
 }
 
@@ -707,7 +719,7 @@ int pr_json_array_foreach(pool *p, const pr_json_array_t *json,
   }
 
   for (iter = json_first_child(json->array); iter != NULL; iter = iter->next) {
-    int res, val_type;
+    int res, val_type, xerrno;
     const void *val = NULL;
     size_t valsz = 0;
 
@@ -715,7 +727,7 @@ int pr_json_array_foreach(pool *p, const pr_json_array_t *json,
 
     val_type = get_type(iter);
     if (val_type < 0) {
-      int xerrno = errno;
+      xerrno = errno;
 
       pr_trace_msg(trace_channel, 9, "unknown value type %d in array",
         (int) iter->tag);
@@ -771,7 +783,23 @@ int pr_json_array_foreach(pool *p, const pr_json_array_t *json,
     }
 
     res = (cb)(val_type, val, valsz, user_data);
+    xerrno = errno;
+
+    switch (val_type) {
+      case PR_JSON_TYPE_ARRAY:
+        pr_json_array_free((pr_json_array_t *) val);
+        break;
+
+      case PR_JSON_TYPE_OBJECT:
+        pr_json_object_free((pr_json_object_t *) val);
+        break;
+
+      default:
+        break;
+    }
+
     if (res < 0) {
+      errno = xerrno;
       return -1;
     }
   }

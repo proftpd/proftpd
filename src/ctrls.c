@@ -1,6 +1,6 @@
 /*
  * ProFTPD - FTP server daemon
- * Copyright (c) 2001-2021 The ProFTPD Project team
+ * Copyright (c) 2001-2022 The ProFTPD Project team
  *  
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -311,13 +311,15 @@ int pr_ctrls_register(const module *mod, const char *action,
 }
 
 int pr_ctrls_unregister(module *mod, const char *action) {
-  ctrls_action_t *act = NULL;
+  ctrls_action_t *act = NULL, *next_act = NULL;
   unsigned char have_action = FALSE;
 
   /* Make sure that ctrls are blocked while we're doing this */
   pr_block_ctrls();
 
-  for (act = ctrls_action_list; act; act = act->next) {
+  for (act = ctrls_action_list; act != NULL; act = next_act) {
+    next_act = act->next;
+
     if ((action == NULL || strcmp(act->action, action) == 0) &&
         (act->module == mod || mod == ANY_MODULE || mod == NULL)) {
       have_action = TRUE;
@@ -511,7 +513,6 @@ int pr_ctrls_flush_response(pr_ctrls_t *ctrl) {
 int pr_ctrls_parse_msg(pool *msg_pool, char *msg, unsigned int *msgargc,
     char ***msgargv) {
   char *tmp = msg, *str = NULL;
-  pool *tmp_pool = NULL;
   array_header *msgs = NULL;
 
   /* Sanity checks */
@@ -522,14 +523,11 @@ int pr_ctrls_parse_msg(pool *msg_pool, char *msg, unsigned int *msgargc,
     return -1;
   }
 
-  tmp_pool = make_sub_pool(msg_pool);
-
   /* Allocate an array_header, and push each space-delimited string
-   * (respecting quotes and escapes) into the array.  Once done,
-   * destroy the array.
+   * (respecting quotes and escapes) into the array.
    */
  
-  msgs = make_array(tmp_pool, 0, sizeof(char *));
+  msgs = make_array(msg_pool, 0, sizeof(char *));
 
   while ((str = ctrls_sep(&tmp)) != NULL) {
     *((char **) push_array(msgs)) = pstrdup(msg_pool, str);
@@ -538,7 +536,6 @@ int pr_ctrls_parse_msg(pool *msg_pool, char *msg, unsigned int *msgargc,
   *msgargc = msgs->nelts;
   *msgargv = (char **) msgs->elts;
 
-  destroy_pool(tmp_pool);
   return 0;
 }
 
