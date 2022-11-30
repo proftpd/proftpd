@@ -541,7 +541,7 @@ START_TEST (data_open_active_rootrevoke_test) {
 END_TEST
 
 START_TEST (data_open_passive_test) {
-  int dir = PR_NETIO_IO_RD, port = INPORT_ANY, sockfd = -1, res;
+  int dir = PR_NETIO_IO_RD, fd, port = INPORT_ANY, sockfd = -1, res;
   conn_t *data_conn;
 
   /* Set the session flags for a passive transfer data connection. */
@@ -583,6 +583,7 @@ START_TEST (data_open_passive_test) {
 
   mark_point();
   data_conn = pr_inet_create_conn(p, sockfd, NULL, port, FALSE);
+  fd = data_conn->listen_fd;
   data_conn->listen_fd = 0;
   session.d = data_conn;
   session.sf_flags |= SF_PASSIVE;
@@ -590,12 +591,14 @@ START_TEST (data_open_passive_test) {
   ck_assert_msg(res < 0, "Opened passive READ data connection unexpectedly");
   ck_assert_msg(errno == ENOTSOCK, "Expected ENOTSOCK (%d), got %s (%d)",
     ENOTSOCK, strerror(errno), errno);
+  (void) close(fd);
 
   /* Open a WRITing data transfer connection...*/
   dir = PR_NETIO_IO_WR;
 
   mark_point();
   data_conn = pr_inet_create_conn(p, sockfd, NULL, port, FALSE);
+  fd = data_conn->listen_fd;
   data_conn->listen_fd = 1;
   session.d = data_conn;
   session.sf_flags |= SF_PASSIVE;
@@ -604,6 +607,7 @@ START_TEST (data_open_passive_test) {
   ck_assert_msg(res < 0, "Opened passive WRITE data connection unexpectedly");
   ck_assert_msg(errno == ENOTSOCK, "Expected ENOTSOCK (%d), got %s (%d)",
     ENOTSOCK, strerror(errno), errno);
+  (void) close(fd);
 
   mark_point();
   session.sf_flags |= SF_PASSIVE;
