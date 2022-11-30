@@ -737,30 +737,23 @@ int pr_config_remove(xaset_t *set, const char *name, int flags, int recurse) {
     found_set = c->set;
     xaset_remove(found_set, (xasetmember_t *) c);
 
-    /* If the set is empty, and has no more contained members in the xas_list,
-     * destroy the set.
-     */
-    if (!found_set->xas_list) {
+    c->set = NULL;
+    (void) pr_table_remove(config_tab, name, NULL);
 
+    if (found_set->xas_list == NULL) {
       /* First, set any pointers to the container of the set to NULL. */
-      if (c->parent &&
+      if (c->parent != NULL &&
           c->parent->subset == found_set) {
         c->parent->subset = NULL;
 
       } else if (s && s->conf == found_set) {
         s->conf = NULL;
       }
+    }
 
-      if (!(flags & PR_CONFIG_FL_PRESERVE_ENTRY)) {
-        /* Next, destroy the set's pool, which destroys the set as well. */
-        destroy_pool(found_set->pool);
-      }
-
-    } else {
-      if (!(flags & PR_CONFIG_FL_PRESERVE_ENTRY)) {
-        /* If the set was not empty, destroy only the requested config_rec. */
-        destroy_pool(c->pool);
-      }
+    if (!(flags & PR_CONFIG_FL_PRESERVE_ENTRY)) {
+      /* If the set was not empty, destroy only the requested config_rec. */
+      destroy_pool(c->pool);
     }
   }
 

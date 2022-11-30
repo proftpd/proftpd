@@ -1,6 +1,6 @@
 /*
  * ProFTPD - FTP server testsuite
- * Copyright (c) 2017-2021 The ProFTPD Project team
+ * Copyright (c) 2017-2022 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -1911,7 +1911,7 @@ START_TEST(json_array_append_object_test) {
 
   val = NULL;
   idx = 0;
- 
+
   mark_point();
   res = pr_json_array_get_object(p, json, idx, &val);
   ck_assert_msg(res == 0, "Failed to handle existing index %u: %s", idx,

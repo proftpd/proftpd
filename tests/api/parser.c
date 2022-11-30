@@ -1,6 +1,6 @@
 /*
  * ProFTPD - FTP server testsuite
- * Copyright (c) 2014-2021 The ProFTPD Project team
+ * Copyright (c) 2014-2022 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -46,6 +46,7 @@ static void set_up(void) {
   init_fs();
   pr_fs_statcache_set_policy(PR_TUNABLE_FS_STATCACHE_SIZE,
     PR_TUNABLE_FS_STATCACHE_MAX_AGE, 0);
+  init_stash();
   modules_init();
 
   if (getenv("TEST_VERBOSE") != NULL) {

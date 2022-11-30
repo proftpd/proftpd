@@ -1,6 +1,6 @@
 /*
  * ProFTPD - FTP server testsuite
- * Copyright (c) 2015-2021 The ProFTPD Project team
+ * Copyright (c) 2015-2022 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -557,10 +557,12 @@ START_TEST (data_open_passive_test) {
    * be non-NULL.
    */
   session.c = pr_inet_create_conn(p, sockfd, NULL, port, FALSE);
-  ck_assert_msg(session.c != NULL, "Failed to create conn: %s", strerror(errno));
+  ck_assert_msg(session.c != NULL, "Failed to create conn: %s",
+    strerror(errno));
 
   session.d = data_conn = pr_inet_create_conn(p, sockfd, NULL, port, FALSE);
-  ck_assert_msg(session.d != NULL, "Failed to create conn: %s", strerror(errno));
+  ck_assert_msg(session.d != NULL, "Failed to create conn: %s",
+    strerror(errno));
 
   /* Reset the session flags after every failed open. */
   session.sf_flags |= SF_PASSIVE;
@@ -574,11 +576,14 @@ START_TEST (data_open_passive_test) {
     strerror(errno), errno);
 
   /* Note: we also need session.c to have valid local/remote_addr, too! */
-  session.c->local_addr = session.c->remote_addr = pr_netaddr_get_addr(p, "127.0.0.1", NULL);
+  session.c->local_addr = session.c->remote_addr = pr_netaddr_get_addr(p,
+    "127.0.0.1", NULL);
   ck_assert_msg(session.c->remote_addr != NULL, "Failed to get address: %s",
     strerror(errno));
 
   mark_point();
+  data_conn = pr_inet_create_conn(p, sockfd, NULL, port, FALSE);
+  data_conn->listen_fd = 0;
   session.d = data_conn;
   session.sf_flags |= SF_PASSIVE;
   res = pr_data_open(NULL, NULL, dir, 0);
@@ -590,6 +595,8 @@ START_TEST (data_open_passive_test) {
   dir = PR_NETIO_IO_WR;
 
   mark_point();
+  data_conn = pr_inet_create_conn(p, sockfd, NULL, port, FALSE);
+  data_conn->listen_fd = 1;
   session.d = data_conn;
   session.sf_flags |= SF_PASSIVE;
   session.xfer.p = NULL;

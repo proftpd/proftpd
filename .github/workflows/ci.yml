@@ -247,7 +247,6 @@ jobs:
           echo "PROFTPD_MODULES=mod_sql:mod_sql_mysql:mod_sql_odbc:mod_sql_postgres:mod_sql_sqlite:mod_sql_passwd:mod_sftp:mod_sftp_sql:mod_sftp_pam:mod_tls:mod_tls_fscache:mod_tls_shmcache:mod_tls_memcache:mod_tls_redis:mod_ban:mod_copy:mod_ctrls_admin:mod_deflate:mod_dnsbl:mod_dynmasq:mod_exec:mod_facl:mod_geoip:mod_ifversion:mod_ldap:mod_load:mod_log_forensic:mod_qos:mod_quotatab:mod_quotatab_file:mod_quotatab_ldap:mod_quotatab_radius:mod_quotatab_sql:mod_radius:mod_readme:mod_rewrite:mod_shaper:mod_site_misc:mod_snmp:mod_wrap:mod_wrap2:mod_wrap2_file:mod_wrap2_redis:mod_wrap2_sql:mod_digest:mod_auth_otp:mod_statcache:mod_unique_id:mod_ifsession" >> $GITHUB_ENV
 
           # for debugging
-          # for debugging
           clang --version
           gcc --version
           lcov --version
@@ -349,7 +348,7 @@ jobs:
         env:
           ASAN_OPTIONS: abort_on_error=1,check_initialization_order=true,debug=true,detect_invalid_pointer_pairs=2,detect_leaks=1,detect_stack_use_after_return=true,strict_string_checks=true,verbosity=0
           CC: ${{ matrix.compiler }}
-          CFLAGS: -fsanitize=address,undefined
+          CFLAGS: -fsanitize=address,undefined -DPR_DEVEL_NO_POOL_FREELIST
           LDFLAGS: -fsanitize=address,undefined
         if: ${{ matrix.compiler == 'clang' && matrix.container == 'ubuntu:18.04' }}
         run: |
