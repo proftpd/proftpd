@@ -584,7 +584,7 @@ START_TEST (data_open_passive_test) {
   mark_point();
   data_conn = pr_inet_create_conn(p, sockfd, NULL, port, FALSE);
   fd = data_conn->listen_fd;
-  data_conn->listen_fd = 0;
+  data_conn->listen_fd = dup(0);
   session.d = data_conn;
   session.sf_flags |= SF_PASSIVE;
   res = pr_data_open(NULL, NULL, dir, 0);
@@ -599,7 +599,7 @@ START_TEST (data_open_passive_test) {
   mark_point();
   data_conn = pr_inet_create_conn(p, sockfd, NULL, port, FALSE);
   fd = data_conn->listen_fd;
-  data_conn->listen_fd = 1;
+  data_conn->listen_fd = dup(1);
   session.d = data_conn;
   session.sf_flags |= SF_PASSIVE;
   session.xfer.p = NULL;
