@@ -1400,10 +1400,6 @@ START_TEST (netio_telnet_gets2_random_data_test) {
   ck_assert_msg(res > 0, "Failed to get string from stream: (%d) %s",
     xerrno, strerror(xerrno));
 
-  ck_assert_msg(pbuf->remaining == (size_t) xfer_bufsz,
-    "Expected %d remaining bytes, got %lu", xfer_bufsz,
-    (unsigned long) pbuf->remaining);
-
   pr_netio_close(in);
   pr_netio_close(out);
 }
