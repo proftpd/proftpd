@@ -1,6 +1,6 @@
 /*
  * ProFTPD - FTP server testsuite
- * Copyright (c) 2008-2021 The ProFTPD Project team
+ * Copyright (c) 2008-2022 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -76,6 +76,7 @@ static void set_up(void) {
   }
 
   init_netio();
+  pr_random_init();
   xfer_bufsz = pr_config_get_server_xfer_bufsz(PR_NETIO_IO_RD);
 
   if (getenv("TEST_VERBOSE") != NULL) {
@@ -1193,6 +1194,49 @@ START_TEST (netio_telnet_gets_eof_test) {
 }
 END_TEST
 
+START_TEST (netio_telnet_gets_random_data_test) {
+  register unsigned int i;
+  char *buf, *res;
+  size_t bufsz;
+  pr_netio_stream_t *in, *out;
+  pr_buffer_t *pbuf;
+  int xerrno;
+
+  in = pr_netio_open(p, PR_NETIO_STRM_CTRL, -1, PR_NETIO_IO_RD);
+  out = pr_netio_open(p, PR_NETIO_STRM_CTRL, -1, PR_NETIO_IO_WR);
+
+  pbuf = pr_netio_buffer_alloc(in);
+
+  /* Fill the input buffer with random values; save the last two bytes for
+   * the CRLF.
+   */
+  for (i = 0; i < (pbuf->buflen - 2); i++) {
+    long r;
+
+    r = pr_random_next(CHAR_MIN, CHAR_MAX);
+    pbuf->buf[i] = (char) r;
+  }
+  pbuf->buf[i++] = '\r';
+  pbuf->buf[i++] = '\n';
+
+  pbuf->remaining = 0;
+  pbuf->current = pbuf->buf;
+
+  /* Make sure our output buffer is of sufficient size. */
+  bufsz = pbuf->buflen + 1;
+  buf = pcalloc(p, bufsz);
+
+  res = pr_netio_telnet_gets(buf, bufsz, in, out);
+  xerrno = errno;
+
+  ck_assert_msg(res != NULL, "Failed to get string from stream: (%d) %s",
+    xerrno, strerror(xerrno));
+
+  pr_netio_close(in);
+  pr_netio_close(out);
+}
+END_TEST
+
 START_TEST (netio_telnet_gets2_single_line_test) {
   int res;
   char buf[256], *cmd;
@@ -1308,6 +1352,54 @@ START_TEST (netio_telnet_gets2_single_line_lf_test) {
 
   ck_assert_msg((size_t) res == cmd_len, "Expected length %lu, got %d",
     (unsigned long) cmd_len, res);
+  ck_assert_msg(pbuf->remaining == (size_t) xfer_bufsz,
+    "Expected %d remaining bytes, got %lu", xfer_bufsz,
+    (unsigned long) pbuf->remaining);
+
+  pr_netio_close(in);
+  pr_netio_close(out);
+}
+END_TEST
+
+START_TEST (netio_telnet_gets2_random_data_test) {
+  register unsigned int i;
+  int res;
+  char *buf;
+  size_t bufsz;
+  pr_netio_stream_t *in, *out;
+  pr_buffer_t *pbuf;
+  int xerrno;
+
+  in = pr_netio_open(p, PR_NETIO_STRM_CTRL, -1, PR_NETIO_IO_RD);
+  out = pr_netio_open(p, PR_NETIO_STRM_CTRL, -1, PR_NETIO_IO_WR);
+
+  pbuf = pr_netio_buffer_alloc(in);
+
+  /* Fill the input buffer with random values; save the last two bytes for
+   * the CRLF.
+   */
+  for (i = 0; i < (pbuf->buflen - 2); i++) {
+    long r;
+
+    r = pr_random_next(CHAR_MIN, CHAR_MAX);
+    pbuf->buf[i] = (char) r;
+  }
+  pbuf->buf[i++] = '\r';
+  pbuf->buf[i++] = '\n';
+
+  pbuf->remaining = 0;
+  pbuf->current = pbuf->buf;
+
+  /* Make sure our output buffer is of sufficient size. */
+  bufsz = pbuf->buflen + 1;
+  buf = pcalloc(p, bufsz);
+
+  res = pr_netio_telnet_gets2(buf, bufsz, in, out);
+  xerrno = errno;
+
+  ck_assert_msg(res > 0, "Failed to get string from stream: (%d) %s",
+    xerrno, strerror(xerrno));
+
   ck_assert_msg(pbuf->remaining == (size_t) xfer_bufsz,
     "Expected %d remaining bytes, got %lu", xfer_bufsz,
     (unsigned long) pbuf->remaining);
@@ -2400,10 +2492,12 @@ Suite *tests_get_netio_suite(void) {
   tcase_add_test(testcase, netio_telnet_gets_bug3521_test);
   tcase_add_test(testcase, netio_telnet_gets_bug3697_test);
   tcase_add_test(testcase, netio_telnet_gets_eof_test);
+  tcase_add_test(testcase, netio_telnet_gets_random_data_test);
 
   tcase_add_test(testcase, netio_telnet_gets2_single_line_test);
   tcase_add_test(testcase, netio_telnet_gets2_single_line_crnul_test);
   tcase_add_test(testcase, netio_telnet_gets2_single_line_lf_test);
+  tcase_add_test(testcase, netio_telnet_gets2_random_data_test);
 
   tcase_add_test(testcase, netio_read_test);
   tcase_add_test(testcase, netio_gets_test);

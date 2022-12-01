@@ -1687,13 +1687,13 @@ int pr_netio_telnet_gets2(char *buf, size_t bufsz,
     return -1;
   }
 
-#ifdef PR_USE_NLS
+#if defined(PR_USE_NLS)
   handle_iac = pr_encode_supports_telnet_iac();
 #endif /* PR_USE_NLS */
 
   buflen--;
 
-  if (in_nstrm->strm_buf) {
+  if (in_nstrm->strm_buf != NULL) {
     pbuf = in_nstrm->strm_buf;
 
   } else {
@@ -1738,6 +1738,9 @@ int pr_netio_telnet_gets2(char *buf, size_t bufsz,
            toread--) {
       pr_signals_handle();
 
+      /* Note that `cp` here is declared to be `unsigned char`; this is where
+       * the signedness of the bytes in the input buffer is changed to unsigned.
+       */
       cp = *pbuf->current++;
       pbuf->remaining++;
 
@@ -1779,7 +1782,7 @@ int pr_netio_telnet_gets2(char *buf, size_t bufsz,
                  * of the switch, and let that handle the writing of the
                  * current byte into the output buffer.
                  */
-                *bp++ = TELNET_IAC;
+                *bp++ = (char) TELNET_IAC;
                 buflen--;
 
                 telnet_mode = 0;
@@ -1858,7 +1861,7 @@ int pr_netio_telnet_gets2(char *buf, size_t bufsz,
     }
   }
 
-  if (!saw_newline) {
+  if (saw_newline == FALSE) {
     /* If we haven't seen a newline, then assume the client is deliberately
      * sending a too-long command, trying to exploit buffer sizes and make
      * the server make some possibly bad assumptions.
@@ -1869,7 +1872,7 @@ int pr_netio_telnet_gets2(char *buf, size_t bufsz,
     return -1;
   }
 
-  if (!properly_terminated_prev_command) {
+  if (properly_terminated_prev_command == FALSE) {
     properly_terminated_prev_command = TRUE;
     pr_log_pri(PR_LOG_NOTICE, "client sent too-long command, ignoring");
     errno = E2BIG;

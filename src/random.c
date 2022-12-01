@@ -48,6 +48,6 @@ long pr_random_next(long min, long max) {
   r = (long) rand();
 #endif /* HAVE_RANDOM */
 
-  scaled = r % (max - min + 1) + min;
+  scaled = (r % (max - min + 1)) + min;
   return scaled;
 }
