@@ -55,7 +55,7 @@ static int auth_otp_engine = FALSE;
 static unsigned int auth_otp_algo = AUTH_OTP_ALGO_TOTP_SHA1;
 static struct auth_otp_db *dbh = NULL;
 static config_rec *auth_otp_db_config = NULL;
-static int auth_otp_auth_code = PR_AUTH_BADPWD;
+static int auth_otp_auth_code = PR_AUTH_NOPWD;
 
 /* Necessary prototypes */
 static int auth_otp_sess_init(void);
@@ -419,7 +419,7 @@ static int handle_user_otp(pool *p, const char *user, const char *user_otp,
       if (auth_otp_opts & AUTH_OTP_OPT_REQUIRE_TABLE_ENTRY) {
         (void) pr_log_writefile(auth_otp_logfd, MOD_AUTH_OTP_VERSION,
           "FAILED: user '%s' does not have entry in OTP tables", user);
-        auth_otp_auth_code = PR_AUTH_BADPWD;
+        auth_otp_auth_code = PR_AUTH_NOPWD;
         return -1;
       }
     }
@@ -572,15 +572,13 @@ MODRET auth_otp_auth(cmd_rec *cmd) {
 
     proto = pr_session_get_protocol(0);
     if (strcmp(proto, "ssh2") == 0) {
-      /* We should already have done the keyboard-interactive challenge by
-       * this point in the session.
-       *
-       * XXX TODO: What if we have NOT done kbdint here for SSH, as for
-       * "password" with an OTP value?
-       */
+      if (auth_otp_auth_code == PR_AUTH_OK ||
+          auth_otp_auth_code == PR_AUTH_RFC2228_OK) {
+        /* Indicate HANDLED. */
+        res = 1;
 
-      if (auth_otp_auth_code != PR_AUTH_OK &&
-          auth_otp_auth_code != PR_AUTH_RFC2228_OK) {
+      } else if (auth_otp_auth_code == PR_AUTH_BADPWD) {
+        /* We've already tried, and the OTP was wrong. */
         if (authoritative == TRUE) {
           /* Indicate ERROR. */
           res = -1;
@@ -591,8 +589,7 @@ MODRET auth_otp_auth(cmd_rec *cmd) {
         }
 
       } else {
-        /* Indicate HANDLED. */
-        res = 1;
+        res = handle_user_otp(cmd->tmp_pool, user, user_otp, authoritative);
       }
 
     } else {
