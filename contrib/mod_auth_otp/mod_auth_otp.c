@@ -36,7 +36,7 @@
 #endif /* HAVE_SFTP */
 
 /* mod_auth_otp option flags */
-#define AUTH_OTP_OPT_STANDARD_RESPONSE		0x001
+#define AUTH_OTP_OPT_FTP_STANDARD_RESPONSE	0x001
 #define AUTH_OTP_OPT_REQUIRE_TABLE_ENTRY	0x002
 #define AUTH_OTP_OPT_DISPLAY_VERIFICATION_CODE	0x004
 
@@ -743,8 +743,9 @@ MODRET set_authotpoptions(cmd_rec *cmd) {
   c = add_config_param(cmd->argv[0], 1, NULL);
 
   for (i = 1; i < cmd->argc; i++) {
-    if (strcmp(cmd->argv[i], "StandardResponse") == 0) {
-      opts |= AUTH_OTP_OPT_STANDARD_RESPONSE;
+    if (strcmp(cmd->argv[i], "FTPStandardResponse") == 0 ||
+        strcmp(cmd->argv[i], "StandardResponse") == 0) {
+      opts |= AUTH_OTP_OPT_FTP_STANDARD_RESPONSE;
 
     } else if (strcmp(cmd->argv[i], "RequireTableEntry") == 0) {
       opts |= AUTH_OTP_OPT_REQUIRE_TABLE_ENTRY;
@@ -857,7 +858,7 @@ MODRET auth_otp_post_user(cmd_rec *cmd) {
    * OTPs from the connecting client.
    */
 
-  if (!(auth_otp_opts & AUTH_OTP_OPT_STANDARD_RESPONSE)) {
+  if (!(auth_otp_opts & AUTH_OTP_OPT_FTP_STANDARD_RESPONSE)) {
     pr_response_clear(&resp_list);
 #if defined(HAVE_SFTP)
     /* Note: for some reason, when building with mod_sftp, the '_' function
