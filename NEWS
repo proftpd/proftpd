@@ -30,6 +30,8 @@
 - Issue 1550 - Implement support for the CSID FTP command.
 - Bug 4491 - unable to verify signed data: signature type 'rsa-sha2-512' does
   not match publickey algorithm 'ssh-rsa'.
+- Issue 1560 - mod_auth_otp improperly allows keyboard-interactive logins for
+  users lacking OTP entries.
 
 1.3.8rc4 - Released 23-Jul-2022
 --------------------------------

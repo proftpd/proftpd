@@ -1,6 +1,6 @@
 /*
  * ProFTPD: mod_auth_otp
- * Copyright (c) 2015-2021 TJ Saunders
+ * Copyright (c) 2015-2022 TJ Saunders
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -27,11 +27,13 @@
  */
 
 #include "mod_auth_otp.h"
-#if defined(HAVE_SFTP)
-# include "mod_sftp.h"
-#endif /* HAVE_SFTP */
 #include "db.h"
 #include "otp.h"
+
+#if defined(HAVE_SFTP)
+# include "mod_sftp.h"
+# include "contrib/mod_sftp/auth.h"
+#endif /* HAVE_SFTP */
 
 /* mod_auth_otp option flags */
 #define AUTH_OTP_OPT_STANDARD_RESPONSE		0x001
@@ -69,6 +71,37 @@ static sftp_kbdint_driver_t auth_otp_kbdint_driver;
 static const char *trace_channel = "auth_otp";
 
 #if defined(HAVE_SFTP)
+static int auth_otp_sftp_allow_basic_kbdint(pool *p) {
+  register unsigned int i;
+  config_rec *c;
+  array_header *auth_chains;
+
+  c = find_config(main_server->conf, CONF_PARAM, "SFTPAuthMethods", FALSE);
+  if (c == NULL) {
+    /* Basic "keyboard-interactive" authentication is allowed by default. */
+    return TRUE;
+  }
+
+  auth_chains = c->argv[0];
+
+  for (i = 0; i < auth_chains->nelts; i++) {
+    struct sftp_auth_chain *auth_chain;
+    struct sftp_auth_method *meth;
+
+    auth_chain = ((struct sftp_auth_chain **) auth_chains->elts)[i];
+    if (auth_chain->methods->nelts > 1) {
+      continue;
+    }
+
+    meth = ((struct sftp_auth_method **) auth_chain->methods->elts)[0];
+    if (meth->method_id == SFTP_AUTH_FL_METH_KBDINT) {
+      return TRUE;
+    }
+  }
+
+  return FALSE;
+}
+
 static int auth_otp_kbdint_open(sftp_kbdint_driver_t *driver,
     const char *user) {
   const char *tabinfo;
@@ -133,6 +166,27 @@ static int auth_otp_kbdint_authenticate(sftp_kbdint_driver_t *driver,
       return -1;
     }
 
+    /* Note that we do not want to return zero here for missing entries
+     * blindly.  Why not?
+     *
+     * Consider the case where kbdint authentication by itself is selected
+     * by the client.  No matter what the client would send, it would "succeed"
+     * the authentication here, as there is no data for comparison.
+     *
+     * Issue #1319 concerns the use case where we want to support the opt-in
+     * nature of the module, and honor the REQUIRE_TABLE_ENTRY option for
+     * SSH logins.
+     *
+     * To support both cases, then, we double-check here the actual
+     * SFTPAuthMethods configuration.  If it allows kbdint authentication
+     * by itself, then we return an error here, lest we allow clients in
+     * without proper authentication.
+     */
+    if (auth_otp_sftp_allow_basic_kbdint(driver->driver_pool) == TRUE) {
+      errno = ENOENT;
+      return -1;
+    }
+
     return 0;
   }
 
@@ -186,11 +240,12 @@ static int auth_otp_kbdint_close(sftp_kbdint_driver_t *driver) {
     dbh = NULL;
   }
   
-  if (driver->driver_pool) {
+  if (driver->driver_pool != NULL) {
     destroy_pool(driver->driver_pool);
     driver->driver_pool = NULL;
   }
 
+  auth_otp_auth_code = PR_AUTH_BADPWD;
   return 0;
 }
 #endif /* HAVE_SFTP */
@@ -360,7 +415,7 @@ static int handle_user_otp(pool *p, const char *user, const char *user_otp,
      * because again, we don't have the necessary data for computing the code.
      */
 
-    if (authoritative) {
+    if (authoritative == TRUE) {
       if (auth_otp_opts & AUTH_OTP_OPT_REQUIRE_TABLE_ENTRY) {
         (void) pr_log_writefile(auth_otp_logfd, MOD_AUTH_OTP_VERSION,
           "FAILED: user '%s' does not have entry in OTP tables", user);
@@ -383,6 +438,8 @@ static int handle_user_otp(pool *p, const char *user, const char *user_otp,
      * e.g. for clock drift.
      */
     update_otp_counter(p, user, counter + 1);
+
+    auth_otp_auth_code = PR_AUTH_OK;
     return 1;
   }
 
@@ -428,6 +485,8 @@ static int handle_user_otp(pool *p, const char *user, const char *user_otp,
      * for HOTP.  Hmm.
      */
     update_otp_counter(p, user, counter + 1);
+
+    auth_otp_auth_code = PR_AUTH_OK;
     return 1;
   }
 
@@ -464,12 +523,14 @@ static int handle_user_otp(pool *p, const char *user, const char *user_otp,
      * for HOTP.  Hmm.
      */
     update_otp_counter(p, user, counter + 1);
+
+    auth_otp_auth_code = PR_AUTH_OK;
     return 1;
   }
 
   pr_memscrub((char *) secret, secret_len);
 
-  if (authoritative) {
+  if (authoritative == TRUE) {
     (void) pr_log_writefile(auth_otp_logfd, MOD_AUTH_OTP_VERSION,
       "FAILED: user '%s' provided invalid OTP code", user);
     auth_otp_auth_code = PR_AUTH_BADPWD;
@@ -506,18 +567,21 @@ MODRET auth_otp_auth(cmd_rec *cmd) {
   }
 
 #if defined(HAVE_SFTP)
-  if (auth_otp_using_sftp) {
+  if (auth_otp_using_sftp == TRUE) {
     const char *proto = NULL;
 
     proto = pr_session_get_protocol(0);
     if (strcmp(proto, "ssh2") == 0) {
       /* We should already have done the keyboard-interactive challenge by
        * this point in the session.
+       *
+       * XXX TODO: What if we have NOT done kbdint here for SSH, as for
+       * "password" with an OTP value?
        */
 
       if (auth_otp_auth_code != PR_AUTH_OK &&
           auth_otp_auth_code != PR_AUTH_RFC2228_OK) {
-        if (authoritative) {
+        if (authoritative == TRUE) {
           /* Indicate ERROR. */
           res = -1;
 
@@ -614,12 +678,12 @@ MODRET set_authotpalgo(cmd_rec *cmd) {
              strcasecmp(cmd->argv[1], "totp-sha1") == 0) {
     algo = AUTH_OTP_ALGO_TOTP_SHA1;
 
-#ifdef HAVE_SHA256_OPENSSL
+#if defined(HAVE_SHA256_OPENSSL)
   } else if (strcasecmp(cmd->argv[1], "totp-sha256") == 0) {
     algo = AUTH_OTP_ALGO_TOTP_SHA256;
 #endif /* SHA256 OpenSSL support */
 
-#ifdef HAVE_SHA512_OPENSSL
+#if defined(HAVE_SHA512_OPENSSL)
   } else if (strcasecmp(cmd->argv[1], "totp-sha512") == 0) {
     algo = AUTH_OTP_ALGO_TOTP_SHA512;
 #endif /* SHA512 OpenSSL support */
@@ -936,7 +1000,7 @@ static int auth_otp_sess_init(void) {
 
   if (auth_otp_engine == FALSE) {
 #if defined(HAVE_SFTP)
-    if (auth_otp_using_sftp) {
+    if (auth_otp_using_sftp == TRUE) {
       sftp_kbdint_unregister_driver("auth_otp");
     }
 #endif /* HAVE_SFTP */
@@ -989,7 +1053,7 @@ static int auth_otp_sess_init(void) {
     auth_otp_logfd = -1;
 
 #if defined(HAVE_SFTP)
-    if (auth_otp_using_sftp) {
+    if (auth_otp_using_sftp == TRUE) {
       sftp_kbdint_unregister_driver("auth_otp");
     }
 #endif /* HAVE_SFTP */

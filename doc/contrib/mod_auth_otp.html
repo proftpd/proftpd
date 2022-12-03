@@ -356,8 +356,12 @@ Now, if you want <code>mod_sftp</code> to <b>only</b> try to use one-time
 passwords (or public keys), and <b>not</b> normal passwords, then you might
 use a <code>mod_sftp</code> configuration like this:
 <pre>
-  SFTPAuthMethods publickey keyboard-interactive
+  SFTPAuthMethods publickey password+keyboard-interactive
 </pre>
+If you allow the "keyboard-interactive" authentication method by itself,
+<i>and</i> the user does not have an OTP entry, then that authentication will
+fail, <b>regardless</b> of any <code>RequireTableEntry</code>
+<code>AuthOTPOption</code> configuration (or lack of).
 
 <p>
 <b>Module Load Order and <code>mod_sftp</code></b><br>
@@ -468,7 +472,7 @@ Then follow the usual steps:
 <p>
 <hr>
 <font size=2><b><i>
-&copy; Copyright 2015-2019 TJ Saunders<br>
+&copy; Copyright 2015-2022 TJ Saunders<br>
  All Rights Reserved<br>
 </i></b></font>
 <hr>
