@@ -64,7 +64,7 @@ my $TESTS = {
   },
 
   # AuthOTPOptions tests
-  auth_otp_opt_std_response => {
+  auth_otp_opt_ftp_std_response => {
     order => ++$order,
     test_class => [qw(forking mod_auth_otp mod_sql mod_sql_sqlite)],
   },
@@ -1534,7 +1534,7 @@ EOS
   test_cleanup($setup->{log_file}, $ex);
 }
 
-sub auth_otp_opt_std_response {
+sub auth_otp_opt_ftp_std_response {
   my $self = shift;
   my $tmpdir = $self->{tmpdir};
   my $setup = test_setup($tmpdir, 'auth_otp');
@@ -1593,7 +1593,7 @@ EOS
         AuthOTPEngine => 'on',
         AuthOTPLog => $setup->{log_file},
         AuthOTPAlgorithm => 'hotp',
-        AuthOTPOptions => 'StandardResponse',
+        AuthOTPOptions => 'FTPStandardResponse',
 
         # Assumes default table names, column names
         AuthOTPTable => 'sql:/get-user-hotp/update-user-hotp',

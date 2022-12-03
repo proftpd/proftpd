@@ -134,7 +134,7 @@ behavior of <code>mod_auth_otp</code>.
 <p>
 For example:
 <pre>
-  AuthOTPOptions StandardResponse
+  AuthOTPOptions FTPStandardResponse
 </pre>
 
 <p>
@@ -149,6 +149,21 @@ The currently implemented options are:
     <pre>
       AuthOTPOptions DisplayVerificationCode
     </pre>
+  </li>
+
+  <p>
+  <li><code>FTPStandardResponse</code><br>
+    <p>
+    When <code>mod_auth_otp</code> is handling FTP sessions, it will respond
+    to a <code>USER</code> command with a response message indicating the
+    expectation of a one-time password:
+    <pre>
+      331 One-time password required for <i>user</i>
+    </pre>
+    However, this change of the response message "leaks" information about
+    the server configuration, <i>i.e.</i> that OTPs will be used.  To
+    tell <code>mod_auth_otp</code> to continue using the standard/normal
+    response message, use this option.
   </li>
 
   <p>
@@ -173,21 +188,6 @@ The currently implemented options are:
       AuthOrder mod_auth_otp.c* ...
       AuthOTPOptions RequireTableEntry StandardResponse
     </pre>
-  </li>
-
-  <p>
-  <li><code>StandardResponse</code><br>
-    <p>
-    When <code>mod_auth_otp</code> is handling FTP sessions, it will respond
-    to a <code>USER</code> command with a response message indicating the
-    expectation of a one-time password:
-    <pre>
-      331 One-time password required for <i>user</i>
-    </pre>
-    However, this change of the response message "leaks" information about
-    the server configuration, <i>i.e.</i> that OTPs will be used.  To
-    tell <code>mod_auth_otp</code> to continue using the standard/normal
-    response message, use this option.
   </li>
 </ul>
 
@@ -324,7 +324,7 @@ have been provisioned with the necessary shared key.  To prevent
 continue using the standard FTP response messages, use the following in
 your configuration for <code>mod_auth_otp</code>:
 <pre>
-  AuthOTPOptions StandardResponse
+  AuthOTPOptions FTPStandardResponse
 </pre>
 
 <p>
@@ -339,7 +339,7 @@ you would use:
 
   # Use the standard FTP response message, and fail the login if we find
   # a user that has not been provisioned.
-  AuthOTPOptions RequireTableEntry StandardResponse
+  AuthOTPOptions FTPStandardResponse RequireTableEntry
 </pre>
 
 <p>
