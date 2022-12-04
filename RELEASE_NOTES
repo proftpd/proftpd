@@ -11,10 +11,13 @@ ChangeLog files.
 
   + Implement support for the CSID FTP command, from an IETF Draft.
 
+  + The mod_auth_otp module improperly allowed keyboard-interactive
+    authentication to succeed for users lacking OTP entries.
+
 
   + Changed Directives
 
-    FSCachePolicy (Issue #1528)
+    FSCachePolicy
 
       The default value for FSCachePolicy is now "off".
 
