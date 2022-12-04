@@ -10227,7 +10227,7 @@ static void tls_setup_notes(pool *p, SSL *ssl) {
       (void) pr_table_add_dup(session.notes, "TLS_SERVER_NAME", sni, 0);
     }
 
-    (void) pr_table_add_dup(session.notes, "TLS_LIBRARY_VERSIONS",
+    (void) pr_table_add_dup(session.notes, "TLS_LIBRARY_VERSION",
       OPENSSL_VERSION_TEXT, 0);
   }
 }
