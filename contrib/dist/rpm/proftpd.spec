@@ -53,7 +53,7 @@
 # RHEL5 and clones don't have suitably recent versions of pcre/libmemcached
 # so use --with rhel5 to inhibit those features when using --with everything
 
-%global proftpd_version			1.3.8rc5
+%global proftpd_version			1.3.8
 
 # rc_version should be incremented for each RC release, and reset back to 1
 # AFTER each stable release.
@@ -73,7 +73,7 @@
 
 %global usecvsversion             	0%{?_with_cvs:1}
 
-%global proftpd_cvs_version_main	1.3.7
+%global proftpd_cvs_version_main	1.3.8
 %global proftpd_cvs_version_date  	20150527
 
 # Spec default assumes that a gzipped tarball is used, since nightly CVS builds,
