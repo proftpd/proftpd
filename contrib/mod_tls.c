@@ -10112,7 +10112,7 @@ static void tls_setup_environ(pool *p, SSL *ssl) {
 
     /* Process the TLS cipher-related environ variables. */
     cipher = (SSL_CIPHER *) SSL_get_current_cipher(ssl);
-    if (cipher) {
+    if (cipher != NULL) {
       char buf[10] = {'\0'};
       int cipher_bits_used = 0, cipher_bits_possible = 0;
 
@@ -10158,7 +10158,7 @@ static void tls_setup_environ(pool *p, SSL *ssl) {
   }
 
   sk_cert_chain = SSL_get_peer_cert_chain(ssl);
-  if (sk_cert_chain) {
+  if (sk_cert_chain != NULL) {
     register int i;
     char *data = NULL;
     long datalen = 0;
@@ -10221,15 +10221,15 @@ static void tls_setup_notes(pool *p, SSL *ssl) {
   if (cipher != NULL) {
     (void) pr_table_add_dup(session.notes, "TLS_CIPHER",
       SSL_CIPHER_get_name(cipher), 0);
-
-    sni = pr_table_get(session.notes, "mod_tls.sni", NULL);
-    if (sni != NULL) {
-      (void) pr_table_add_dup(session.notes, "TLS_SERVER_NAME", sni, 0);
-    }
-
-    (void) pr_table_add_dup(session.notes, "TLS_LIBRARY_VERSION",
-      OPENSSL_VERSION_TEXT, 0);
   }
+
+  sni = pr_table_get(session.notes, "mod_tls.sni", NULL);
+  if (sni != NULL) {
+    (void) pr_table_add_dup(session.notes, "TLS_SERVER_NAME", sni, 0);
+  }
+
+  (void) pr_table_add_dup(session.notes, "TLS_LIBRARY_VERSION",
+    OPENSSL_VERSION_TEXT, 0);
 }
 
 static int tls_verify_cb(int ok, X509_STORE_CTX *ctx) {
