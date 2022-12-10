@@ -85,7 +85,7 @@ int nodaemon = 0;
 
 static int no_forking = FALSE;
 static int quiet = 0;
-static int shutting_down = 0;
+static int shutting_down = FALSE;
 static int syntax_check = 0;
 
 /* Command handling */
@@ -1384,7 +1384,7 @@ static void fork_server(int fd, conn_t *l, unsigned char no_fork) {
   pr_netaddr_set_sess_addrs();
 
   /* Check and see if we are shutting down. */
-  if (shutting_down) {
+  if (shutting_down == TRUE) {
     time_t now;
 
     time(&now);
@@ -1555,20 +1555,20 @@ static void disc_children(void) {
 }
 
 static void daemon_loop(void) {
+  static int running = 0;
   fd_set listenfds;
   conn_t *listen_conn;
   int i, err_count = 0, fd, xerrno = 0;
   unsigned long nconnects = 0UL;
   time_t last_error;
   struct timeval tv;
-  static int running = 0;
 
   pr_proctitle_set("(accepting connections)");
 
   time(&last_error);
 
   while (TRUE) {
-    int maxfd;
+    int maxfd, res;
 
     run_schedule();
 
@@ -1579,27 +1579,24 @@ static void daemon_loop(void) {
     maxfd = semaphore_fds(&listenfds, maxfd);
 
     /* Check for ftp shutdown message file */
-    switch (check_shutmsg(permanent_pool, PR_SHUTMSG_PATH, &shut, &deny,
-        &disc, shutmsg, sizeof(shutmsg))) {
-      case 1:
-        if (!shutting_down) {
-          disc_children();
-        }
-        shutting_down = TRUE;
-        break;
+    res = check_shutmsg(permanent_pool, PR_SHUTMSG_PATH, &shut, &deny, &disc,
+      shutmsg, sizeof(shutmsg));
+    if (res == 1) {
+      if (shutting_down == FALSE) {
+        disc_children();
+      }
+      shutting_down = TRUE;
 
-      default:
-        shutting_down = FALSE;
-        deny = disc = (time_t) 0;
-        break;
+    } else {
+      shutting_down = FALSE;
+      deny = disc = (time_t) 0;
     }
 
-    if (shutting_down) {
+    if (shutting_down == TRUE) {
       tv.tv_sec = 5L;
       tv.tv_usec = 0L;
 
     } else {
-
       tv.tv_sec = PR_TUNABLE_SELECT_TIMEOUT;
       tv.tv_usec = 0L;
     }
@@ -1608,7 +1605,8 @@ static void daemon_loop(void) {
      * AND shutting_down (a flag signalling the present of /etc/shutmsg) are
      * true, then log an error stating this -- but don't stop the server.
      */
-    if (shutting_down && !running) {
+    if (shutting_down == TRUE &&
+        !running) {
 
       /* Check the value of the deny time_t struct w/ the current time.
        * If the deny time has passed, log that all incoming connections

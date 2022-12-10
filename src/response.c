@@ -1,6 +1,6 @@
 /*
  * ProFTPD - FTP server daemon
- * Copyright (c) 2001-2020 The ProFTPD Project team
+ * Copyright (c) 2001-2022 The ProFTPD Project team
  *  
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -54,15 +54,6 @@ static const char *trace_channel = "response";
     pr_netio_printf((strm), "%s", resp_handler_cb(resp_pool, (fmt), (msg))); \
   else \
     pr_netio_printf((strm), (fmt), (msg));
-
-#define RESPONSE_WRITE_STR_ASYNC(strm, fmt, msg) \
-  pr_trace_msg(trace_channel, 1, pstrcat(session.pool, "async: ", (fmt), NULL), \
-    (msg)); \
-  if (resp_handler_cb) \
-    pr_netio_printf_async((strm), "%s", resp_handler_cb(resp_pool, (fmt), \
-      (msg))); \
-  else \
-    pr_netio_printf_async((strm), (fmt), (msg));
 
 pool *pr_response_get_pool(void) {
   return resp_pool;
@@ -369,7 +360,15 @@ void pr_response_send_async(const char *resp_numeric, const char *fmt, ...) {
   resp_last_response_msg = pstrdup(resp_pool, buf + len + 1);
 
   sstrcat(buf + res, "\r\n", sizeof(buf));
-  RESPONSE_WRITE_STR_ASYNC(session.c->outstrm, "%s", buf)
+
+  pr_trace_msg(trace_channel, 1, "async: %s", buf);
+  if (resp_handler_cb != NULL) {
+    pr_netio_printf_async(session.c->outstrm, "%s",
+      resp_handler_cb(resp_pool, "%s", buf));
+
+  } else {
+    pr_netio_printf_async(session.c->outstrm, "%s", buf);
+  }
 }
 
 void pr_response_send(const char *resp_numeric, const char *fmt, ...) {

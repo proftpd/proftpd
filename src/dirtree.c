@@ -2427,6 +2427,10 @@ static void copy_recur(xaset_t **set, pool *p, config_rec *c,
   }
 
   newconf = pr_config_add_set(set, c->name, 0);
+  if (newconf == NULL) {
+    return;
+  }
+
   newconf->config_type = c->config_type;
   newconf->flags = c->flags;
   newconf->parent = new_parent;
@@ -2447,7 +2451,7 @@ static void copy_recur(xaset_t **set, pool *p, config_rec *c,
     }
   }
 
-  if (c->subset) {
+  if (c->subset != NULL) {
     for (c = (config_rec *) c->subset->xas_list; c; c = c->next) {
       pr_signals_handle();
       copy_recur(&newconf->subset, p, c, newconf);

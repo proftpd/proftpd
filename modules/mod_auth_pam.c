@@ -2,7 +2,7 @@
  * ProFTPD: mod_auth_pam -- Support for PAM-style authentication.
  * Copyright (c) 1998, 1999, 2000 Habeeb J. Dihu aka
  *   MacGyver <macgyver@tos.net>, All Rights Reserved.
- * Copyright 2000-2020 The ProFTPD Project
+ * Copyright 2000-2022 The ProFTPD Project
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -495,14 +495,11 @@ MODRET pam_auth(cmd_rec *cmd) {
     pr_trace_msg(trace_channel, 1,
       "pam_open_session() failed: %s", pam_strerror(pamh, res));
 
-    switch (res) {
-      case PAM_SESSION_ERR:
-        retval = PR_AUTH_INIT_ERROR;
-        break;
+    if (res == PAM_SESSION_ERR) {
+      retval = PR_AUTH_INIT_ERROR;
 
-      default:
-        retval = PR_AUTH_DISABLEDPWD;
-        break;
+    } else {
+      retval = PR_AUTH_DISABLEDPWD;
     }
 
     pr_log_pri(PR_LOG_NOTICE, MOD_AUTH_PAM_VERSION
