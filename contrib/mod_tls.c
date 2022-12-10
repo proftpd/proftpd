@@ -2740,9 +2740,8 @@ static int tls_cert_match_ip_san(pool *p, X509 *cert, const char *ipstr) {
   return matched;
 }
 
-static int tls_cert_match_cn(pool *p, X509 *cert, const char *name,
-    int allow_wildcards) {
-  int matched = 0, idx = -1;
+static char *tls_get_cert_cn(pool *p, X509 *cert) {
+  int idx = -1;
   X509_NAME *subj_name = NULL;
   X509_NAME_ENTRY *cn_entry = NULL;
   ASN1_STRING *cn_asn1 = NULL;
@@ -2754,36 +2753,29 @@ static int tls_cert_match_cn(pool *p, X509 *cert, const char *name,
    */
   subj_name = X509_get_subject_name(cert);
   if (subj_name == NULL) {
-    pr_trace_msg(trace_channel, 12,
-      "unable to check certificate CommonName against '%s': "
-      "unable to get Subject", name);
-    return 0;
+    errno = ENOENT;
+    return NULL;
   }
 
   idx = X509_NAME_get_index_by_NID(subj_name, NID_commonName, -1);
   if (idx < 0) {
-    pr_trace_msg(trace_channel, 12,
-      "unable to check certificate CommonName against '%s': "
-      "no CommoName attribute found", name);
-    return 0;
+    errno = ENOENT;
+    return NULL;
   }
 
   cn_entry = X509_NAME_get_entry(subj_name, idx);
   if (cn_entry == NULL) {
-    pr_trace_msg(trace_channel, 12,
-      "unable to check certificate CommonName against '%s': "
-      "error obtaining CommoName attribute found: %s", name, tls_get_errors());
-    return 0;
+    errno = ENOENT;
+    return NULL;
   }
 
   /* Convert the CN field to a string, by way of an ASN1 object. */
   cn_asn1 = X509_NAME_ENTRY_get_data(cn_entry);
   if (cn_asn1 == NULL) {
     pr_trace_msg(trace_channel, 12,
-      "unable to check certificate CommonName against '%s': "
-      "error converting CommoName attribute to ASN.1: %s", name,
-      tls_get_errors());
-    return 0;
+      "error converting CommoName attribute to ASN.1: %s", tls_get_errors());
+    errno = EPERM;
+    return NULL;
   }
 
 #if OPENSSL_VERSION_NUMBER >= 0x10100000L && \
@@ -2807,6 +2799,20 @@ static int tls_cert_match_cn(pool *p, X509 *cert, const char *name,
     tls_log("suspicious CommonName value: '%s'",
       get_printable_subjaltname(p, (const char *) cn_str,
         ASN1_STRING_length(cn_asn1)));
+    errno = EPERM;
+    return NULL;
+  }
+
+  return pstrdup(p, cn_str);
+}
+
+static int tls_cert_match_cn(pool *p, X509 *cert, const char *name,
+    int allow_wildcards) {
+  int matched = 0;
+  char *cert_cn = NULL;
+
+  cert_cn = tls_get_cert_cn(p, cert);
+  if (cert_cn == NULL) {
     return 0;
   }
 
@@ -2815,12 +2821,12 @@ static int tls_cert_match_cn(pool *p, X509 *cert, const char *name,
    * the case-insensitivity won't hurt anything.  In fact, it's needed for
    * e.g. IPv6 addresses.
    */
-  if (strncasecmp(name, cn_str, cn_len + 1) == 0) {
+  if (strcasecmp(name, cert_cn) == 0) {
     matched = 1;
   }
 
   if (matched == 0 &&
-      allow_wildcards) {
+      allow_wildcards == TRUE) {
 
     /* XXX Implement wildcard checking. */
   }
@@ -10209,6 +10215,7 @@ static void tls_setup_environ(pool *p, SSL *ssl) {
 }
 
 static void tls_setup_notes(pool *p, SSL *ssl) {
+  X509 *client_cert = NULL;
   SSL_CIPHER *cipher = NULL;
   const char *sni = NULL;
 
@@ -10226,6 +10233,52 @@ static void tls_setup_notes(pool *p, SSL *ssl) {
   sni = pr_table_get(session.notes, "mod_tls.sni", NULL);
   if (sni != NULL) {
     (void) pr_table_add_dup(session.notes, "TLS_SERVER_NAME", sni, 0);
+  }
+
+  client_cert = SSL_get_peer_certificate(ssl);
+  if (client_cert != NULL) {
+    const X509_ALGOR *algo = NULL;
+    X509_PUBKEY *pubkey = NULL;
+    BIO *bio = NULL;
+    char *data = NULL;
+    long datalen = 0;
+
+    /* Client cert CN */
+    data = tls_get_cert_cn(p, client_cert);
+    if (data != NULL) {
+      (void) pr_table_add_dup(session.notes, "TLS_CLIENT_S_DN_CN", data, 0);
+    }
+
+    /* Client cert key algo */
+    bio = BIO_new(BIO_s_mem());
+#if OPENSSL_VERSION_NUMBER >= 0x10100000L
+    pubkey = X509_get_X509_PUBKEY(client_cert);
+    X509_PUBKEY_get0_param(NULL, NULL, NULL, (X509_ALGOR **) &algo, pubkey);
+#else
+    pubkey = cert->cert_info->key;
+    algo = pubkey->algor;
+#endif /* OpenSSL-1.1.x and later */
+    i2a_ASN1_OBJECT(bio, algo->algorithm);
+    datalen = BIO_get_mem_data(bio, &data);
+    data[datalen] = '\0';
+
+    (void) pr_table_add_dup(session.notes, "TLS_CLIENT_A_KEY", data, 0);
+    BIO_free(bio);
+
+    /* Client cert signature algorithm. */
+    bio = BIO_new(BIO_s_mem());
+#if OPENSSL_VERSION_NUMBER >= 0x10100000L && \
+    !defined(HAVE_LIBRESSL)
+    X509_get0_signature(NULL, &algo, client_cert);
+#else
+    algo = cert->cert_info->signature;
+#endif /* OpenSSL-1.1.x and later */
+    i2a_ASN1_OBJECT(bio, algo->algorithm);
+    datalen = BIO_get_mem_data(bio, &data);
+    data[datalen] = '\0';
+
+    (void) pr_table_add_dup(session.notes, "TLS_CLIENT_A_SIG", data, 0);
+    BIO_free(bio);
   }
 
   (void) pr_table_add_dup(session.notes, "TLS_LIBRARY_VERSION",
