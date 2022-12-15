@@ -1318,7 +1318,8 @@ MODRET set_tcpbacklog(cmd_rec *cmd) {
     CONF_ERROR(cmd, "parameter must be a number between 1 and 255");
   }
 
-#ifdef SOMAXCONN
+#if defined(SOMAXCONN) && \
+    SOMAXCONN < 255
   if (backlog > SOMAXCONN) {
     char str[32];
 

@@ -380,6 +380,10 @@ static config_rec *copy_config_from(const config_rec *src, config_rec *dst) {
   }
 
   c = pr_config_add_set(&dst->subset, src->name, 0);
+  if (c == NULL) {
+    return NULL;
+  }
+
   c->config_type = src->config_type;
   c->flags = src->flags;
   c->config_id = src->config_id;
