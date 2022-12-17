@@ -3,9 +3,9 @@
 ## Status
 
 [![GitHub Actions CI Status](https://github.com/proftpd/proftpd/actions/workflows/ci.yml/badge.svg?branch=master)](https://github.com/proftpd/proftpd/actions/workflows/ci.yml)
-[![TravisCI Build Status](https://travis-ci.com/proftpd/proftpd.svg?branch=master)](https://travis-ci.com/proftpd/proftpd)
 [![CirrusCI Build Status](https://api.cirrus-ci.com/github/proftpd/proftpd.svg?branch=master)](https://cirrus-ci.com/github/proftpd/proftpd)
 [![Coverage Status](https://coveralls.io/repos/github/proftpd/proftpd/badge.svg?branch=master)](https://coveralls.io/github/proftpd/proftpd?branch=master)
+[![CodeQL Analysis](https://github.com/proftpd/proftpd/actions/workflows/codeql.yml/badge.svg)](https://github.com/proftpd/proftpd/actions/workflows/codeql.yml)
 [![Coverity Scan Status](https://scan.coverity.com/projects/198/badge.svg)](https://scan.coverity.com/projects/198)
 [![C/C++ Language Grade](https://img.shields.io/lgtm/grade/cpp/g/proftpd/proftpd.svg?logo=lgtm&logoWidth=18)](https://lgtm.com/projects/g/proftpd/proftpd/context:cpp)
 [![Release](https://img.shields.io/badge/release-1.3.8-brightgreen)](https://github.com/proftpd/proftpd/releases/latest)
