@@ -10255,7 +10255,7 @@ static void tls_setup_notes(pool *p, SSL *ssl) {
     pubkey = X509_get_X509_PUBKEY(client_cert);
     X509_PUBKEY_get0_param(NULL, NULL, NULL, (X509_ALGOR **) &algo, pubkey);
 #else
-    pubkey = cert->cert_info->key;
+    pubkey = client_cert->cert_info->key;
     algo = pubkey->algor;
 #endif /* OpenSSL-1.1.x and later */
     i2a_ASN1_OBJECT(bio, algo->algorithm);
@@ -10271,7 +10271,7 @@ static void tls_setup_notes(pool *p, SSL *ssl) {
     !defined(HAVE_LIBRESSL)
     X509_get0_signature(NULL, &algo, client_cert);
 #else
-    algo = cert->cert_info->signature;
+    algo = client_cert->cert_info->signature;
 #endif /* OpenSSL-1.1.x and later */
     i2a_ASN1_OBJECT(bio, algo->algorithm);
     datalen = BIO_get_mem_data(bio, &data);
