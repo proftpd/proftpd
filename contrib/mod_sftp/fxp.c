@@ -3646,7 +3646,7 @@ static void fxp_version_add_version_ext(pool *p, unsigned char **buf,
           "3", NULL);
         break;
 
-#ifdef PR_USE_NLS
+#if defined(PR_USE_NLS)
       /* We can only advertise support for these protocol versions if
        * --enable-nls has been used, as they require UTF8 support.
        */
@@ -3664,7 +3664,7 @@ static void fxp_version_add_version_ext(pool *p, unsigned char **buf,
         versions_str = pstrcat(p, versions_str, *versions_str ? "," : "",
           "6", NULL);
         break;
-#endif
+#endif /* PR_USE_NLS */
     }
   }
 
@@ -3682,6 +3682,73 @@ static void fxp_version_add_version_ext(pool *p, unsigned char **buf,
    * connection.
    */
   allow_version_select = TRUE;
+}
+
+static void fxp_version_add_std_exts(pool *p, unsigned char **buf,
+    uint32_t *buflen) {
+
+  /* These are the "standard" SFTP extensions.
+   * See draft-ietf-secsh-filexfer-extensions-00.
+   *
+   * The possible extensions to advertise here are:
+   *  check-file
+   *  copy-file
+   *  home-directory
+   *  space-available
+   *  vendor-id
+   */
+
+  if (fxp_ext_flags & SFTP_FXP_EXT_CHECK_FILE) {
+    struct fxp_extpair ext;
+
+    ext.ext_name = "check-file";
+    ext.ext_data = (unsigned char *) "1";
+    ext.ext_datalen = 1;
+
+    pr_trace_msg(trace_channel, 11, "+ SFTP extension: %s = '%s'", ext.ext_name,
+      ext.ext_data);
+    fxp_msg_write_extpair(buf, buflen, &ext);
+  }
+
+  if (fxp_ext_flags & SFTP_FXP_EXT_COPY_FILE) {
+    struct fxp_extpair ext;
+
+    ext.ext_name = "copy-file";
+    ext.ext_data = (unsigned char *) "1";
+    ext.ext_datalen = 1;
+
+    pr_trace_msg(trace_channel, 11, "+ SFTP extension: %s = '%s'", ext.ext_name,
+      ext.ext_data);
+    fxp_msg_write_extpair(buf, buflen, &ext);
+  }
+
+  if (fxp_ext_flags & SFTP_FXP_EXT_HOMEDIR) {
+    struct fxp_extpair ext;
+
+    ext.ext_name = "home-directory";
+    ext.ext_data = (unsigned char *) "1";
+    ext.ext_datalen = 1;
+
+    pr_trace_msg(trace_channel, 11, "+ SFTP extension: %s = '%s'", ext.ext_name,
+      ext.ext_data);
+    fxp_msg_write_extpair(buf, buflen, &ext);
+  }
+
+  if (fxp_ext_flags & SFTP_FXP_EXT_SPACE_AVAIL) {
+    struct fxp_extpair ext;
+
+    ext.ext_name = "space-available";
+    ext.ext_data = (unsigned char *) "1";
+    ext.ext_datalen = 1;
+
+    pr_trace_msg(trace_channel, 11, "+ SFTP extension: %s = '%s'", ext.ext_name,
+      ext.ext_data);
+    fxp_msg_write_extpair(buf, buflen, &ext);
+  }
+
+  if (fxp_ext_flags & SFTP_FXP_EXT_VENDOR_ID) {
+    fxp_version_add_vendor_id_ext(p, buf, buflen);
+  }
 }
 
 static void fxp_version_add_openssh_exts(pool *p, unsigned char **buf,
@@ -3714,7 +3781,7 @@ static void fxp_version_add_openssh_exts(pool *p, unsigned char **buf,
     fxp_msg_write_extpair(buf, buflen, &ext);
   }
 
-#ifdef HAVE_SYS_STATVFS_H
+#if defined(HAVE_SYS_STATVFS_H)
   if (fxp_ext_flags & SFTP_FXP_EXT_STATVFS) {
     struct fxp_extpair ext;
 
@@ -3734,24 +3801,12 @@ static void fxp_version_add_openssh_exts(pool *p, unsigned char **buf,
       ext.ext_name, ext.ext_data);
     fxp_msg_write_extpair(buf, buflen, &ext);
   }
-#endif
+#endif /* HAVE_SYS_STATVFS_H */
 
   if (fxp_ext_flags & SFTP_FXP_EXT_HARDLINK) {
     struct fxp_extpair ext;
 
     ext.ext_name = "hardlink@openssh.com";
-    ext.ext_data = (unsigned char *) "1";
-    ext.ext_datalen = 1;
-
-    pr_trace_msg(trace_channel, 11, "+ SFTP extension: %s = '%s'", ext.ext_name,
-      ext.ext_data);
-    fxp_msg_write_extpair(buf, buflen, &ext);
-  }
-
-  if (fxp_ext_flags & SFTP_FXP_EXT_HOMEDIR) {
-    struct fxp_extpair ext;
-
-    ext.ext_name = "home-directory";
     ext.ext_data = (unsigned char *) "1";
     ext.ext_datalen = 1;
 
@@ -3790,10 +3845,9 @@ static void fxp_version_add_newline_ext(pool *p, unsigned char **buf,
 static void fxp_version_add_supported_ext(pool *p, unsigned char **buf,
     uint32_t *buflen) {
   struct fxp_extpair ext;
-  uint32_t attrs_len, attrs_sz, exts_len, exts_sz;
-  unsigned char *attrs_buf, *attrs_ptr, *exts_buf, *exts_ptr;
+  uint32_t attrs_len, attrs_sz;
+  unsigned char *attrs_buf, *attrs_ptr;
   uint32_t file_mask, bits_mask, open_mask, access_mask, max_read_size;
-  unsigned int ext_count;
 
   ext.ext_name = "supported";
 
@@ -3822,60 +3876,8 @@ static void fxp_version_add_supported_ext(pool *p, unsigned char **buf,
   sftp_msg_write_int(&attrs_buf, &attrs_len, access_mask);
   sftp_msg_write_int(&attrs_buf, &attrs_len, max_read_size);
 
-  /* The possible extensions to advertise here are:
-   *
-   *  check-file
-   *  copy-file
-   *  space-available
-   *  vendor-id
-   */
-
-  ext_count = 4;
-
-  if (!(fxp_ext_flags & SFTP_FXP_EXT_CHECK_FILE)) {
-    ext_count--;
-  }
-
-  if (!(fxp_ext_flags & SFTP_FXP_EXT_COPY_FILE)) {
-    ext_count--;
-  }
-
-  if (!(fxp_ext_flags & SFTP_FXP_EXT_SPACE_AVAIL)) {
-    ext_count--;
-  }
-
-  /* We don't decrement the extension count if the 'vendor-id' extension
-   * is disabled.  By advertisting the 'vendor-id' extension here, we are
-   * telling the client that it can send us its vendor information.
-   */
-
-  exts_len = exts_sz = 256;
-  exts_buf = exts_ptr = palloc(p, exts_sz);
-
-  if (fxp_ext_flags & SFTP_FXP_EXT_CHECK_FILE) {
-    pr_trace_msg(trace_channel, 11, "%s", "+ SFTP extension: check-file");
-    sftp_msg_write_string(&exts_buf, &exts_len, "check-file");
-  }
-
-  if (fxp_ext_flags & SFTP_FXP_EXT_COPY_FILE) {
-    pr_trace_msg(trace_channel, 11, "%s", "+ SFTP extension: copy-file");
-    sftp_msg_write_string(&exts_buf, &exts_len, "copy-file");
-  }
-
-  if (fxp_ext_flags & SFTP_FXP_EXT_SPACE_AVAIL) {
-    pr_trace_msg(trace_channel, 11, "%s",
-      "+ SFTP extension: space-available");
-    sftp_msg_write_string(&exts_buf, &exts_len, "space-available");
-  }
-
-  /* We always send the 'vendor-id' extension; it lets the client know
-   * that it can send its vendor information to us.
-   */
-  pr_trace_msg(trace_channel, 11, "%s", "+ SFTP extension: vendor-id");
-  sftp_msg_write_string(&exts_buf, &exts_len, "vendor-id");
-
-  sftp_msg_write_data(&attrs_buf, &attrs_len, exts_ptr, (exts_sz - exts_len),
-    FALSE);
+  /* Attribute extensions */
+  sftp_msg_write_int(&attrs_buf, &attrs_len, 0);
 
   ext.ext_data = attrs_ptr;
   ext.ext_datalen = (attrs_sz - attrs_len);
@@ -3891,7 +3893,6 @@ static void fxp_version_add_supported2_ext(pool *p, unsigned char **buf,
   unsigned char *attrs_buf, *attrs_ptr;
   uint32_t file_mask, bits_mask, open_mask, access_mask, max_read_size;
   uint16_t open_lock_mask, lock_mask;
-  unsigned int ext_count;
 
   ext.ext_name = "supported2";
 
@@ -3900,7 +3901,7 @@ static void fxp_version_add_supported2_ext(pool *p, unsigned char **buf,
 
   file_mask = SSH2_FX_ATTR_SIZE|SSH2_FX_ATTR_PERMISSIONS|
     SSH2_FX_ATTR_ACCESSTIME|SSH2_FX_ATTR_MODIFYTIME|SSH2_FX_ATTR_OWNERGROUP;
-#ifdef PR_USE_XATTR
+#if defined(PR_USE_XATTR)
   file_mask |= SSH2_FX_ATTR_EXTENDED;
 #endif /* PR_USE_XATTR */
 
@@ -3939,65 +3940,6 @@ static void fxp_version_add_supported2_ext(pool *p, unsigned char **buf,
   /* Attribute extensions */
   sftp_msg_write_int(&attrs_buf, &attrs_len, 0);
 
-  /* The possible extensions to advertise here are:
-   *
-   *  check-file
-   *  copy-file
-   *  space-available
-   *  vendor-id
-   *
-   * Note that we don't have to advertise the @openssh.com extensions, since
-   * they occur for protocol versions which don't support 'supported2'.  And
-   * we don't have to list 'version-select', since the sending of the
-   * 'versions' extension in our VERSION automatically enables use of this
-   * extension by the client.
-   */
-  ext_count = 4;
-
-  if (!(fxp_ext_flags & SFTP_FXP_EXT_CHECK_FILE)) {
-    ext_count--;
-  }
-
-  if (!(fxp_ext_flags & SFTP_FXP_EXT_COPY_FILE)) {
-    ext_count--;
-  }
-
-  if (!(fxp_ext_flags & SFTP_FXP_EXT_SPACE_AVAIL)) {
-    ext_count--;
-  }
-
-  /* We don't decrement the extension count if the 'vendor-id' extension
-   * is disabled.  By advertisting the 'vendor-id' extension here, we are
-   * telling the client that it can send us its vendor information.
-   */
-
-  /* Additional protocol extensions (why these appear in 'supported2' is
-   * confusing to me, too).
-   */
-  sftp_msg_write_int(&attrs_buf, &attrs_len, ext_count);
-
-  if (fxp_ext_flags & SFTP_FXP_EXT_CHECK_FILE) {
-    pr_trace_msg(trace_channel, 11, "%s", "+ SFTP extension: check-file");
-    sftp_msg_write_string(&attrs_buf, &attrs_len, "check-file");
-  }
-
-  if (fxp_ext_flags & SFTP_FXP_EXT_COPY_FILE) {
-    pr_trace_msg(trace_channel, 11, "%s", "+ SFTP extension: copy-file");
-    sftp_msg_write_string(&attrs_buf, &attrs_len, "copy-file");
-  }
-
-  if (fxp_ext_flags & SFTP_FXP_EXT_SPACE_AVAIL) {
-    pr_trace_msg(trace_channel, 11, "%s",
-      "+ SFTP extension: space-available");
-    sftp_msg_write_string(&attrs_buf, &attrs_len, "space-available");
-  }
-
-  /* We always send the 'vendor-id' extension; it lets the client know
-   * that it can send its vendor information to us.
-   */
-  pr_trace_msg(trace_channel, 11, "%s", "+ SFTP extension: vendor-id");
-  sftp_msg_write_string(&attrs_buf, &attrs_len, "vendor-id");
- 
   ext.ext_data = attrs_ptr;
   ext.ext_datalen = (attrs_sz - attrs_len);
 
@@ -7184,7 +7126,7 @@ static int fxp_handle_extended(struct fxp_packet *fxp) {
     return res;
   }
 
-#ifdef HAVE_SYS_STATVFS_H
+#if defined(HAVE_SYS_STATVFS_H)
   if ((fxp_ext_flags & SFTP_FXP_EXT_SPACE_AVAIL) &&
       strcmp(ext_request_name, "space-available") == 0) {
     char *path;
@@ -7261,9 +7203,9 @@ static int fxp_handle_extended(struct fxp_packet *fxp) {
 
     return res;
   }
-#endif
+#endif /* HAVE_SYS_STATVFS_H */
 
-#ifdef PR_USE_XATTR
+#if defined(PR_USE_XATTR)
   if (fxp_ext_flags & SFTP_FXP_EXT_XATTR) {
     if (strcmp(ext_request_name, "fgetxattr@proftpd.org") == 0) {
       const char *handle, *name;
@@ -7969,10 +7911,6 @@ static int fxp_handle_init(struct fxp_packet *fxp) {
 
   sftp_msg_write_int(&buf, &buflen, fxp_session->client_version);
 
-  if (fxp_ext_flags & SFTP_FXP_EXT_VENDOR_ID) {
-    fxp_version_add_vendor_id_ext(fxp->pool, &buf, &buflen);
-  }
-
   fxp_version_add_version_ext(fxp->pool, &buf, &buflen);
 
   if (fxp_session->client_version >= 4) {
@@ -7987,6 +7925,7 @@ static int fxp_handle_init(struct fxp_packet *fxp) {
     fxp_version_add_supported2_ext(fxp->pool, &buf, &buflen);
   }
 
+  fxp_version_add_std_exts(fxp->pool, &buf, &buflen);
   fxp_version_add_openssh_exts(fxp->pool, &buf, &buflen);
 
   /* Look up the FSOptions here, for use later (Issue #593).  We do not need
