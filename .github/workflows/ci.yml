@@ -205,7 +205,7 @@ jobs:
           # for mod_ldap runtime support for SCRAM
           apt-get install -y libsasl2-modules-gssapi-mit
           # for mod_rewrite
-          apt-get install -y libidn2-0-dev
+          apt-get install -y libidn11-dev
           # for memcache support
           apt-get install -y libmemcached-dev
           # for redis support
@@ -323,20 +323,20 @@ jobs:
         run: |
           lcov --directory . --zerocounters
 
-      - name: Build with static modules on Ubuntu 14.04
+      - name: Build with static modules (Ubuntu 14.04)
+        env:
+          CC: ${{ matrix.compiler }}
         # Note that on Ubuntu 14.04, the PCRE2 library is not available, thus
         # we use --enable-pcre instead of --enable-pcre2
         if: ${{ matrix.container == 'ubuntu:14.04' }}
-        env:
-          CC: ${{ matrix.compiler }}
         run: |
           ./configure LIBS="-lodbc -lm -lsubunit -lrt -pthread" --enable-devel=coverage:fortify --enable-ctrls --enable-facl --enable-memcache --enable-nls --enable-pcre --enable-redis --enable-tests --with-modules="${{ env.PROFTPD_MODULES }}"
           make
 
-      - name: Build with static modules
-        if: ${{ matrix.container != 'ubuntu:14.04' }}
+      - name: Build with static modules (non-Ubuntu 14.04)
         env:
           CC: ${{ matrix.compiler }}
+        if: ${{ matrix.container != 'ubuntu:14.04' }}
         run: |
           ./configure LIBS="-lodbc -lm -lsubunit -lrt -pthread" --enable-devel=coverage:fortify --enable-ctrls --enable-facl --enable-memcache --enable-nls --enable-pcre2 --enable-redis --enable-tests --with-modules="${{ env.PROFTPD_MODULES }}"
           make
@@ -349,7 +349,7 @@ jobs:
         # On recent (as of 2022-11-13) AlmaLinux with clang and the
         # `--enable-devel=fortify` configure settings, some of the unit tests
         # inexplicably fail.  So skip clang unit tests, for now.
-        if: ${{ matrix.compiler == 'gcc' && matrix.container != 'alpine:3.14' }}
+        if: ${{ matrix.compiler == 'gcc' && matrix.container != 'alpine:3.14' && matrix.container != 'ubuntu:14.04' }}
         run: |
           make TEST_VERBOSE=1 check-api
 
@@ -366,9 +366,22 @@ jobs:
           # upload coverage info to coveralls
           coveralls-lcov --repo-token="$COVERALLS_REPO_TOKEN" --service-name=github --service-job-id="$GITHUB_RUN_ID" --branch="$GITHUB_REF" coverage.info
 
-      - name: Install with static modules
+      - name: Install with static modules (Ubuntu 14.04)
         env:
           CC: ${{ matrix.compiler }}
+        # Note that on Ubuntu 14.04, the PCRE2 library is not available, thus
+        # we use --enable-pcre instead of --enable-pcre2
+        if: ${{ matrix.container == 'ubuntu:14.04' }}
+        run: |
+          make clean
+          ./configure LIBS="-lodbc" --enable-ctrls --enable-devel --enable-facl --enable-memcache --enable-nls --enable-pcre --enable-redis --with-modules="${{ env.PROFTPD_MODULES }}"
+          make
+          make install
+
+      - name: Install with static modules (non-Ubuntu 14.04)
+        env:
+          CC: ${{ matrix.compiler }}
+        if: ${{ matrix.container != 'ubuntu:14.04' }}
         run: |
           make clean
           ./configure LIBS="-lodbc" --enable-ctrls --enable-facl --enable-memcache --enable-nls --enable-pcre2 --enable-redis --with-modules="${{ env.PROFTPD_MODULES }}"
@@ -402,9 +415,21 @@ jobs:
           sleep 1
           ! test -f $PROFTPD_TEST_PIDFILE
 
-      - name: Build with shared modules
+      - name: Build with shared modules (Ubuntu 14.04)
         env:
           CC: ${{ matrix.compiler }}
+        # Note that on Ubuntu 14.04, the PCRE2 library is not available, thus
+        # we use --enable-pcre instead of --enable-pcre2
+        if: ${{ matrix.container == 'ubuntu:14.04' }}
+        run: |
+          make clean
+          ./configure LIBS="-lodbc -lm -lsubunit -lrt -pthread" --enable-devel=fortify --enable-ctrls --enable-dso --enable-facl --enable-memcache --enable-nls --enable-pcre --enable-tests --with-shared="${{ env.PROFTPD_MODULES }}"
+          make
+
+      - name: Build with shared modules (non-Ubuntu 14.04)
+        env:
+          CC: ${{ matrix.compiler }}
+        if: ${{ matrix.container != 'ubuntu:14.04' }}
         run: |
           make clean
           ./configure LIBS="-lodbc -lm -lsubunit -lrt -pthread" --enable-devel=fortify --enable-ctrls --enable-dso --enable-facl --enable-memcache --enable-nls --enable-pcre2 --enable-tests --with-shared="${{ env.PROFTPD_MODULES }}"
