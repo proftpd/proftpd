@@ -43,6 +43,7 @@ jobs:
         container:
           - almalinux:8
           - alpine:3.14
+          - ubuntu:14.04
           - ubuntu:18.04
 
     container: ${{ matrix.container }}
@@ -182,7 +183,68 @@ jobs:
           gcc --version
           openssl version -a
 
-      - name: Install Ubuntu packages
+      - name: Install Ubuntu 14.04 packages
+        if: ${{ matrix.container == 'ubuntu:14.04' }}
+        run: |
+          # Need to add other repos for e.g. libsodium
+          apt-get update -qq
+          # for builds
+          apt-get install -y clang gcc git make
+          # for unit tests
+          apt-get install -y check libsubunit-dev
+          # for mod_lang
+          apt-get install -y gettext
+          # for xattr support
+          apt-get install -y libattr1-dev
+          # for mod_cap
+          apt-get install -y libcap-dev
+          # for mod_geoip
+          apt-get install -y libgeoip-dev
+          # for mod_ldap
+          apt-get install -y libldap2-dev libsasl2-dev
+          # for mod_ldap runtime support for SCRAM
+          apt-get install -y libsasl2-modules-gssapi-mit
+          # for mod_rewrite
+          apt-get install -y libidn2-0-dev
+          # for memcache support
+          apt-get install -y libmemcached-dev
+          # for redis support
+          apt-get install -y libhiredis-dev
+          # for mod_sql_mysql
+          apt-get install -y libmysqlclient-dev
+          # for PAM support
+          apt-get install -y libpam-dev
+          # for mod_sql_postgres
+          apt-get install -y libpq-dev
+          # for mod_sql_odbc
+          apt-get install -y unixodbc-dev
+          # for OpenSSL support
+          apt-get install -y libssl-dev
+          # for Sodium support
+          apt-get install -y --force-yes libsodium-dev
+          # for mod_sql_sqlite
+          apt-get install -y libsqlite3-dev sqlite3
+          # for mod_wrap
+          apt-get install -y libwrap0-dev
+          # for PCRE2 support
+          apt-get install -y libpcre3-dev
+          # for ftptop
+          apt-get install -y ncurses-dev
+          # for zlib support
+          apt-get install -y zlib1g-dev
+
+          # for logging
+          apt-get install -y rsyslog
+
+          # The modules to build are distro-specific
+          echo "PROFTPD_MODULES=mod_sql:mod_sql_mysql:mod_sql_odbc:mod_sql_postgres:mod_sql_sqlite:mod_sql_passwd:mod_sftp:mod_sftp_sql:mod_sftp_pam:mod_tls:mod_tls_fscache:mod_tls_shmcache:mod_tls_memcache:mod_tls_redis:mod_ban:mod_copy:mod_ctrls_admin:mod_deflate:mod_dnsbl:mod_dynmasq:mod_exec:mod_facl:mod_geoip:mod_ifversion:mod_ldap:mod_load:mod_log_forensic:mod_qos:mod_quotatab:mod_quotatab_file:mod_quotatab_ldap:mod_quotatab_radius:mod_quotatab_sql:mod_radius:mod_readme:mod_rewrite:mod_shaper:mod_site_misc:mod_snmp:mod_wrap:mod_wrap2:mod_wrap2_file:mod_wrap2_redis:mod_wrap2_sql:mod_digest:mod_auth_otp:mod_statcache:mod_unique_id:mod_ifsession" >> $GITHUB_ENV
+
+          # for debugging
+          clang --version
+          gcc --version
+          openssl version -a
+
+      - name: Install Ubuntu 18.04 packages
         if: ${{ matrix.container == 'ubuntu:18.04' }}
         run: |
           # Need to add other repos for e.g. libsodium
@@ -261,7 +323,18 @@ jobs:
         run: |
           lcov --directory . --zerocounters
 
+      - name: Build with static modules on Ubuntu 14.04
+        # Note that on Ubuntu 14.04, the PCRE2 library is not available, thus
+        # we use --enable-pcre instead of --enable-pcre2
+        if: ${{ matrix.container == 'ubuntu:14.04' }}
+        env:
+          CC: ${{ matrix.compiler }}
+        run: |
+          ./configure LIBS="-lodbc -lm -lsubunit -lrt -pthread" --enable-devel=coverage:fortify --enable-ctrls --enable-facl --enable-memcache --enable-nls --enable-pcre --enable-redis --enable-tests --with-modules="${{ env.PROFTPD_MODULES }}"
+          make
+
       - name: Build with static modules
+        if: ${{ matrix.container != 'ubuntu:14.04' }}
         env:
           CC: ${{ matrix.compiler }}
         run: |
