@@ -4254,15 +4254,15 @@ static int fxp_handle_ext_check_file(struct fxp_packet *fxp, char *digest_list,
     return fxp_packet_write(resp);
   }
 
-  supported_digests = "md5,sha1";
-#ifdef HAVE_SHA256_OPENSSL
-  supported_digests = pstrcat(fxp->pool, supported_digests, ",sha224,sha256",
+  supported_digests = "sha1,md5";
+#if defined(HAVE_SHA256_OPENSSL)
+  supported_digests = pstrcat(fxp->pool, "sha256,sha224,", supported_digests,
     NULL);
-#endif
-#ifdef HAVE_SHA512_OPENSSL
-  supported_digests = pstrcat(fxp->pool, supported_digests, ",sha384,sha512",
+#endif /* HAVE_SHA256_OPENSSL */
+#if defined(HAVE_SHA512_OPENSSL)
+  supported_digests = pstrcat(fxp->pool, "sha512,sha384,", supported_digests,
     NULL);
-#endif
+#endif /* HAVE_SHA512_OPENSSL */
 
   digest_name = sftp_misc_namelist_shared(fxp->pool, digest_list,
     supported_digests);
