@@ -3684,6 +3684,78 @@ static void fxp_version_add_version_ext(pool *p, unsigned char **buf,
   allow_version_select = TRUE;
 }
 
+/* The difference between "add_std_exts" and "add_std_ext_names" is that the
+ * latter only includes the text names and NO VALUES, intended for use in the
+ * "supported" and "supported2" extension lists.  Yes, this leads to redundant
+ * and similar (but not quite duplicated) advertising of these same extensions.
+ */
+
+static void fxp_version_add_std_ext_names(pool *p, unsigned char **buf,
+    uint32_t *buflen) {
+  unsigned int ext_count = 0;
+
+  /* These are the "standard" SFTP extensions.
+   * See draft-ietf-secsh-filexfer-extensions-00.
+   *
+   * The possible extensions to advertise here are:
+   *  check-file
+   *  copy-file
+   *  home-directory
+   *  space-available
+   *  vendor-id
+   */
+
+  if (fxp_ext_flags & SFTP_FXP_EXT_CHECK_FILE) {
+    ext_count++;
+  }
+
+  if (fxp_ext_flags & SFTP_FXP_EXT_COPY_FILE) {
+    ext_count++;
+  }
+
+  if (fxp_ext_flags & SFTP_FXP_EXT_HOMEDIR) {
+    ext_count++;
+  }
+
+  if (fxp_ext_flags & SFTP_FXP_EXT_SPACE_AVAIL) {
+    ext_count++;
+  }
+
+  if (fxp_ext_flags & SFTP_FXP_EXT_VENDOR_ID) {
+    ext_count++;
+  }
+
+  /* Extension names */
+  sftp_msg_write_int(buf, buflen, ext_count);
+
+  if (fxp_ext_flags & SFTP_FXP_EXT_CHECK_FILE) {
+    pr_trace_msg(trace_channel, 11, "%s", "+ SFTP extension name: check-file");
+    sftp_msg_write_string(buf, buflen, "check-file");
+  }
+
+  if (fxp_ext_flags & SFTP_FXP_EXT_COPY_FILE) {
+    pr_trace_msg(trace_channel, 11, "%s", "+ SFTP extension name: copy-file");
+    sftp_msg_write_string(buf, buflen, "copy-file");
+  }
+
+  if (fxp_ext_flags & SFTP_FXP_EXT_HOMEDIR) {
+    pr_trace_msg(trace_channel, 11, "%s",
+      "+ SFTP extension name: home-directory");
+    sftp_msg_write_string(buf, buflen, "home-directory");
+  }
+
+  if (fxp_ext_flags & SFTP_FXP_EXT_SPACE_AVAIL) {
+    pr_trace_msg(trace_channel, 11, "%s",
+      "+ SFTP extension name: space-available");
+    sftp_msg_write_string(buf, buflen, "space-available");
+  }
+
+  if (fxp_ext_flags & SFTP_FXP_EXT_VENDOR_ID) {
+    pr_trace_msg(trace_channel, 11, "%s", "+ SFTP extension name: vendor-id");
+    sftp_msg_write_string(buf, buflen, "vendor-id");
+  }
+}
+
 static void fxp_version_add_std_exts(pool *p, unsigned char **buf,
     uint32_t *buflen) {
 
@@ -3879,6 +3951,9 @@ static void fxp_version_add_supported_ext(pool *p, unsigned char **buf,
   /* Attribute extensions */
   sftp_msg_write_int(&attrs_buf, &attrs_len, 0);
 
+  /* Protocol extensions */
+  fxp_version_add_std_ext_names(p, &attrs_buf, &attrs_len);
+
   ext.ext_data = attrs_ptr;
   ext.ext_datalen = (attrs_sz - attrs_len);
 
@@ -3939,6 +4014,9 @@ static void fxp_version_add_supported2_ext(pool *p, unsigned char **buf,
 
   /* Attribute extensions */
   sftp_msg_write_int(&attrs_buf, &attrs_len, 0);
+
+  /* Protocol extensions */
+  fxp_version_add_std_ext_names(p, &attrs_buf, &attrs_len);
 
   ext.ext_data = attrs_ptr;
   ext.ext_datalen = (attrs_sz - attrs_len);
