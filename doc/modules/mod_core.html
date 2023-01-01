@@ -2863,7 +2863,7 @@ closure.  This delay is necessary for properly handling some FTP clients.
 If the client aborts a transfer and there is a long delay, this lingering close
 is the most likely culprit.  So if you encounter this delay, set
 <code>TimeoutLinger</code> to a low number to remove the delay.  The maximum
-allowed <em>seconds</em> is 65535 (108 minutes).
+allowed <em>seconds</em> is 65535 (18 hours).
 
 <p>
 For the curious, here are the full details: some FTP clients will close their
@@ -3341,7 +3341,7 @@ The solution is to use remove use of the deprecated
 <p>
 <hr>
 <font size=2><b><i>
-&copy; Copyright 2000-2022 The ProFTPD Project<br>
+&copy; Copyright 2000-2023 The ProFTPD Project<br>
  All Rights Reserved<br>
 </i></b></font>
 <hr>
