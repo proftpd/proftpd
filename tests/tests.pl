@@ -108,6 +108,7 @@ if (scalar(@ARGV) > 0) {
     t/config/allowfilter.t
     t/config/allowforeignaddress.t
     t/config/allowoverwrite.t
+    t/config/allowstorerestart.t
     t/config/anonrejectpasswords.t
     t/config/anonrequirepassword.t
     t/config/authaliasonly.t
