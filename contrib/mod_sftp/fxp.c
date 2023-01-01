@@ -4289,11 +4289,11 @@ static int fxp_handle_ext_check_file(struct fxp_packet *fxp, char *digest_list,
     return fxp_packet_write(resp);
   }
 
-  if (len == 0) {
-    range_len = st.st_size - offset;
+  if (len != 0) {
+    range_len = len;
 
   } else {
-    range_len = offset + len;
+    range_len = st.st_size - offset;
   }
 
   if (blocksz == 0) {
