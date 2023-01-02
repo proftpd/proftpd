@@ -1,6 +1,6 @@
 /*
  * ProFTPD - FTP server daemon
- * Copyright (c) 2001-2022 The ProFTPD Project team
+ * Copyright (c) 2001-2023 The ProFTPD Project team
  *  
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -27,19 +27,19 @@
 #include "conf.h"
 #include "privs.h"
 
-#ifdef HAVE_UCRED_H
+#if defined(HAVE_UCRED_H)
 # include <ucred.h>
 #endif /* !HAVE_UCRED_H */
 
-#ifdef HAVE_SYS_UCRED_H
+#if defined(HAVE_SYS_UCRED_H)
 # include <sys/ucred.h>
 #endif /* !HAVE_SYS_UCRED_H */
 
-#ifdef HAVE_SYS_UIO_H
+#if defined(HAVE_SYS_UIO_H)
 # include <sys/uio.h>
 #endif /* !HAVE_SYS_UIO_H */
 
-#ifdef PR_USE_CTRLS
+#if defined(PR_USE_CTRLS)
 
 #include "mod_ctrls.h"
 
@@ -114,9 +114,11 @@ static pr_ctrls_t *ctrls_prepare(ctrls_action_t *act) {
 
 static ctrls_action_t *ctrls_action_new(void) {
   ctrls_action_t *act = NULL;
-  pool *sub_pool = make_sub_pool(ctrls_pool);
+  pool *sub_pool = NULL;
 
+  sub_pool = make_sub_pool(ctrls_pool);
   pr_pool_tag(sub_pool, "ctrls action subpool");
+
   act = pcalloc(sub_pool, sizeof(ctrls_action_t));
   act->pool = sub_pool;
 
@@ -196,56 +198,6 @@ int pr_ctrls_free(pr_ctrls_t *ctrl) {
 
   pr_unblock_ctrls();
   return 0;
-}
-
-static char *ctrls_sep(char **str) {
-  char *ret = NULL, *dst = NULL;
-  unsigned char quoted = FALSE;
-
-  /* Sanity checks */
-  if (str == NULL ||
-      !*str ||
-      !**str) {
-    errno = EINVAL;
-    return NULL;
-  }
-
-  while (**str &&
-         PR_ISSPACE(**str)) {
-    (*str)++;
-  }
-
-  if (!**str) {
-    return NULL;
-  }
-
-  ret = dst = *str;
-
-  if (**str == '\"') {
-    quoted = TRUE;
-    (*str)++;
-  }
-
-  while (**str &&
-         (quoted ? (**str != '\"') : !PR_ISSPACE(**str))) {
-
-    if (**str == '\\' && quoted) {
-      /* Escaped char */
-      if (*((*str) + 1)) {
-        *dst = *(++(*str));
-      }
-    }
-
-    *dst++ = **str;
-    ++(*str);
-  }
-
-  if (**str) {
-    (*str)++;
-  }
-  *dst = '\0';
-
-  return ret;
 }
 
 int pr_ctrls_register(const module *mod, const char *action,
@@ -506,35 +458,6 @@ int pr_ctrls_flush_response(pr_ctrls_t *ctrl) {
       return -1;
     }
   }
-
-  return 0;
-}
-
-int pr_ctrls_parse_msg(pool *msg_pool, char *msg, unsigned int *msgargc,
-    char ***msgargv) {
-  char *tmp = msg, *str = NULL;
-  array_header *msgs = NULL;
-
-  /* Sanity checks */
-  if (msg_pool == NULL ||
-      msgargc == NULL ||
-      msgargv == NULL) {
-    errno = EINVAL;
-    return -1;
-  }
-
-  /* Allocate an array_header, and push each space-delimited string
-   * (respecting quotes and escapes) into the array.
-   */
- 
-  msgs = make_array(msg_pool, 0, sizeof(char *));
-
-  while ((str = ctrls_sep(&tmp)) != NULL) {
-    *((char **) push_array(msgs)) = pstrdup(msg_pool, str);
-  }
-
-  *msgargc = msgs->nelts;
-  *msgargv = (char **) msgs->elts;
 
   return 0;
 }
@@ -1093,7 +1016,7 @@ int pr_get_registered_actions(pr_ctrls_t *ctrl, int flags) {
   }
 
   /* Are ctrls blocked? */
-  if (ctrls_blocked) {
+  if (ctrls_blocked == TRUE) {
     errno = EPERM;
     return -1;
   }
@@ -1154,13 +1077,14 @@ int pr_set_registered_actions(module *mod, const char *action,
   }
 
   /* Are ctrls blocked? */
-  if (ctrls_blocked) {
+  if (ctrls_blocked == TRUE) {
     errno = EPERM;
     return -1;
   }
 
   for (act = ctrls_action_list; act; act = act->next) {
-    if (skip_disabled && (act->flags & PR_CTRLS_ACT_DISABLED)) {
+    if (skip_disabled == TRUE &&
+        (act->flags & PR_CTRLS_ACT_DISABLED)) {
       continue;
     }
 
@@ -1520,23 +1444,28 @@ static int ctrls_get_creds_local(int fd, uid_t *uid, gid_t *gid,
 #if defined(HAVE_STRUCT_CMSGCRED)
     memcpy(&cred, CMSG_DATA(hdr), sizeof(struct cmsgcred));
 
-    if (uid)
+    if (uid != NULL) {
       *uid = cred.cmcred_uid;
+    }
 
-    if (gid)
+    if (gid != NULL) {
       *gid = cred.cmcred_gid;
+    }
 
-    if (pid)
+    if (pid != NULL) {
       *pid = cred.cmcred_pid;
+    }
 
 #elif defined(HAVE_STRUCT_SOCKCRED)
     memcpy(&cred, CMSG_DATA(hdr), sizeof(struct sockcred));
 
-    if (uid)
+    if (uid != NULL) {
       *uid = cred.sc_uid;
+    }
 
-    if (gid)
+    if (gid != NULL) {
       *gid = cred.sc_gid;
+    }
 #endif
 
     return 0;
@@ -1763,7 +1692,7 @@ int pr_run_ctrls(module *mod, const char *action) {
   time_t now;
 
   /* Are ctrls blocked? */
-  if (ctrls_blocked) {
+  if (ctrls_blocked == TRUE) {
     errno = EPERM;
     return -1;
   }

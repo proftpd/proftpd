@@ -1,6 +1,6 @@
 /*
  * ProFTPD - FTP server testsuite
- * Copyright (c) 2020-2021 The ProFTPD Project team
+ * Copyright (c) 2020-2023 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -521,90 +521,6 @@ START_TEST (ctrls_flush_response_test) {
   ck_assert_msg(res < 0, "Failed to handle bad fd");
   ck_assert_msg(errno == EBADF, "Expected EBADF (%d), got %s (%d)", EBADF,
     strerror(errno), errno);
-}
-END_TEST
-
-START_TEST (ctrls_parse_msg_test) {
-  int res;
-  char *msg, **msgargv = NULL;
-  unsigned int msgargc = 0;
-
-  mark_point();
-  res = pr_ctrls_parse_msg(NULL, NULL, NULL, NULL);
-  ck_assert_msg(res < 0, "Failed to handle null pool");
-  ck_assert_msg(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
-    strerror(errno), errno);
-
-  mark_point();
-  res = pr_ctrls_parse_msg(p, NULL, NULL, NULL);
-  ck_assert_msg(res < 0, "Failed to handle null msg");
-  ck_assert_msg(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
-    strerror(errno), errno);
-
-  mark_point();
-  msg = "foo 'bar' baz";
-  res = pr_ctrls_parse_msg(p, msg, NULL, NULL);
-  ck_assert_msg(res < 0, "Failed to handle null msgargc");
-  ck_assert_msg(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
-    strerror(errno), errno);
-
-  mark_point();
-  msg = "foo 'bar' baz";
-  res = pr_ctrls_parse_msg(p, msg, &msgargc, NULL);
-  ck_assert_msg(res < 0, "Failed to handle null msgargv");
-  ck_assert_msg(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
-    strerror(errno), errno);
-
-  mark_point();
-  msg = pstrdup(p, "foo 'Bar' BAZ");
-  res = pr_ctrls_parse_msg(p, msg, &msgargc, &msgargv);
-  ck_assert_msg(res == 0, "Failed to parse msg '%s': %s", msg, strerror(errno));
-  ck_assert_msg(msgargc == 3, "Expected msgargc 3, got %u", msgargc);
-  ck_assert_msg(msgargv != NULL, "Expected msgargv, got null");
-  ck_assert_msg(strcmp(msgargv[0], "foo") == 0,
-    "Expected 'foo', got '%s'", msgargv[0]);
-  ck_assert_msg(strcmp(msgargv[1], "'Bar'") == 0,
-    "Expected 'Bar', got '%s'", msgargv[1]);
-  ck_assert_msg(strcmp(msgargv[2], "BAZ") == 0,
-    "Expected 'BAZ', got '%s'", msgargv[2]);
-  mark_point();
-  msg = pstrdup(p, "foo\'s 'Bar\\\'s' BAZ");
-  res = pr_ctrls_parse_msg(p, msg, &msgargc, &msgargv);
-  ck_assert_msg(res == 0, "Failed to parse msg '%s': %s", msg, strerror(errno));
-  ck_assert_msg(msgargc == 3, "Expected msgargc 3, got %u", msgargc);
-  ck_assert_msg(msgargv != NULL, "Expected msgargv, got null");
-  ck_assert_msg(strcmp(msgargv[0], "foo's") == 0,
-    "Expected 'foo's', got '%s'", msgargv[0]);
-  ck_assert_msg(strcmp(msgargv[1], "'Bar\\\'s'") == 0,
-    "Expected 'Bar\\\'s', got '%s'", msgargv[1]);
-  ck_assert_msg(strcmp(msgargv[2], "BAZ") == 0,
-    "Expected 'BAZ', got '%s'", msgargv[2]);
-
-  mark_point();
-  msg = pstrdup(p, "foo 'Bar' BAZ");
-  res = pr_ctrls_parse_msg(p, msg, &msgargc, &msgargv);
-  ck_assert_msg(res == 0, "Failed to parse msg '%s': %s", msg, strerror(errno));
-  ck_assert_msg(msgargc == 3, "Expected msgargc 3, got %u", msgargc);
-  ck_assert_msg(msgargv != NULL, "Expected msgargv, got null");
-  ck_assert_msg(strcmp(msgargv[0], "foo") == 0,
-    "Expected 'foo', got '%s'", msgargv[0]);
-  ck_assert_msg(strcmp(msgargv[1], "'Bar'") == 0,
-    "Expected 'Bar', got '%s'", msgargv[1]);
-  ck_assert_msg(strcmp(msgargv[2], "BAZ") == 0,
-    "Expected 'BAZ', got '%s'", msgargv[2]);
-
-  mark_point();
-  msg = pstrdup(p, "foo \"Bar\\\'s\" BAZ");
-  res = pr_ctrls_parse_msg(p, msg, &msgargc, &msgargv);
-  ck_assert_msg(res == 0, "Failed to parse msg '%s': %s", msg, strerror(errno));
-  ck_assert_msg(msgargc == 3, "Expected msgargc 3, got %u", msgargc);
-  ck_assert_msg(msgargv != NULL, "Expected msgargv, got null");
-  ck_assert_msg(strcmp(msgargv[0], "foo") == 0,
-    "Expected 'foo', got '%s'", msgargv[0]);
-  ck_assert_msg(strcmp(msgargv[1], "Bar's") == 0,
-    "Expected 'Bar's', got '%s'", msgargv[1]);
-  ck_assert_msg(strcmp(msgargv[2], "BAZ") == 0,
-    "Expected 'BAZ', got '%s'", msgargv[2]);
 }
 END_TEST
 
@@ -2241,7 +2157,6 @@ Suite *tests_get_ctrls_suite(void) {
   tcase_add_test(testcase, ctrls_copy_resps_test);
   tcase_add_test(testcase, ctrls_send_msg_test);
   tcase_add_test(testcase, ctrls_flush_response_test);
-  tcase_add_test(testcase, ctrls_parse_msg_test);
   tcase_add_test(testcase, ctrls_recv_request_invalid_test);
   tcase_add_test(testcase, ctrls_recv_request_actions_test);
   tcase_add_test(testcase, ctrls_recv_response_test);
