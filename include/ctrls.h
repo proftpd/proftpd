@@ -1,6 +1,6 @@
 /*
  * ProFTPD - FTP server daemon
- * Copyright (c) 2001-2020 The ProFTPD Project team
+ * Copyright (c) 2001-2023 The ProFTPD Project team
  *  
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -185,14 +185,6 @@ int pr_ctrls_copy_resps(pr_ctrls_t *src_ctrl, pr_ctrls_t *dest_ctrl);
  * out to the client.  Returns 0 on success.
  */
 int pr_ctrls_flush_response(pr_ctrls_t *ctrl);
-
-/* Parses the given string into the argc, argv pointers, creating inputs
- * suitable for passing to pr_ctrls_send_msg().  The argv array of strings
- * is allocated from the given pool.  Provided as a utility function.
- * Returns -1 on error, 0 if successful.
- */
-int pr_ctrls_parse_msg(pool *msg_pool, char *msg, unsigned int *msgargc,
-  char ***msgargv);
 
 /* Reads a client control request from the given client.  Returns -1 with errno
  * set to EOF if there is nothing to read from the client socket, or errno set
