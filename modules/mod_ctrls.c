@@ -2,7 +2,7 @@
  * ProFTPD: mod_ctrls -- a module implementing the ftpdctl local socket
  *          server, as well as several utility functions for other Controls
  *          modules
- * Copyright (c) 2000-2022 TJ Saunders
+ * Copyright (c) 2000-2023 TJ Saunders
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -251,35 +251,45 @@ static void ctrls_cls_read(void) {
 
   cl = cl_list;
   while (cl != NULL) {
+    int res, xerrno;
+
     pr_signals_handle();
 
-    if (pr_ctrls_recv_request(cl) < 0) {
+    res = pr_ctrls_recv_request(cl);
+    xerrno = errno;
 
-      if (errno == EOF) {
-        ;
- 
-      } else if (errno == EINVAL) {
+    if (res < 0) {
+      switch (xerrno) {
+        case EOF:
+          break;
 
-        /* Unsupported action requested */
-        if (cl->cl_flags == 0) {
-          cl->cl_flags = PR_CTRLS_CL_NOACTION;
-        }
+        case EINVAL:
+          /* Unsupported action requested */
+          if (cl->cl_flags == 0) {
+            cl->cl_flags = PR_CTRLS_CL_NOACTION;
+          }
 
-        pr_ctrls_log(MOD_CTRLS_VERSION,
-          "recvd from %s/%s client: (invalid action)", cl->cl_user,
-          cl->cl_group);
+          pr_ctrls_log(MOD_CTRLS_VERSION,
+            "recvd from %s/%s client: (invalid action)", cl->cl_user,
+            cl->cl_group);
+          break;
 
-      } else if (errno == EAGAIN ||
-                 errno == EWOULDBLOCK) {
+        case EAGAIN:
+#if defined(EAGAIN) && \
+    defined(EWOULDBLOCK) && \
+    EWOULDBLOCK != EAGAIN
+        case EWOULDBLOCK:
+#endif
+          /* Malicious/blocked client */
+          if (cl->cl_flags == 0) {
+            cl->cl_flags = PR_CTRLS_CL_BLOCKED;
+          }
+          break;
 
-        /* Malicious/blocked client */
-        if (cl->cl_flags == 0) {
-          cl->cl_flags = PR_CTRLS_CL_BLOCKED;
-        }
-
-      } else {
-        pr_ctrls_log(MOD_CTRLS_VERSION,
-          "error: unable to receive client request: %s", strerror(errno)); 
+        default:
+          pr_ctrls_log(MOD_CTRLS_VERSION,
+            "error: unable to receive client request: %s", strerror(errno));
+          break;
       }
 
     } else {
@@ -343,7 +353,7 @@ static int ctrls_cls_write(void) {
       char *msg = "access denied";
 
       /* ACL-denied access */
-      if (pr_ctrls_send_msg(cl->cl_fd, -1, 1, &msg) < 0) {
+      if (pr_ctrls_send_response(ctrls_pool, cl->cl_fd, -1, 1, &msg) < 0) {
         pr_ctrls_log(MOD_CTRLS_VERSION,
           "error: unable to send response to %s/%s client: %s",
           cl->cl_user, cl->cl_group, strerror(errno));
@@ -357,7 +367,7 @@ static int ctrls_cls_write(void) {
       char *msg = "unsupported action requested";
 
       /* Unsupported action -- no matching controls */
-      if (pr_ctrls_send_msg(cl->cl_fd, -1, 1, &msg) < 0) {
+      if (pr_ctrls_send_response(ctrls_pool, cl->cl_fd, -1, 1, &msg) < 0) {
         pr_ctrls_log(MOD_CTRLS_VERSION,
           "error: unable to send response to %s/%s client: %s",
           cl->cl_user, cl->cl_group, strerror(errno));
@@ -370,7 +380,7 @@ static int ctrls_cls_write(void) {
     } else if (cl->cl_flags == PR_CTRLS_CL_BLOCKED) {
       char *msg = "blocked connection";
 
-      if (pr_ctrls_send_msg(cl->cl_fd, -1, 1, &msg) < 0) {
+      if (pr_ctrls_send_response(ctrls_pool, cl->cl_fd, -1, 1, &msg) < 0) {
         pr_ctrls_log(MOD_CTRLS_VERSION,
           "error: unable to send response to %s/%s client: %s",
           cl->cl_user, cl->cl_group, strerror(errno));
@@ -381,7 +391,6 @@ static int ctrls_cls_write(void) {
       }
 
     } else if (cl->cl_flags == PR_CTRLS_CL_HAVEREQ) {
-
       if (cl->cl_ctrls != NULL &&
           cl->cl_ctrls->nelts > 0) {
         register unsigned int i = 0;
@@ -393,8 +402,9 @@ static int ctrls_cls_write(void) {
           if ((ctrlv[i])->ctrls_cb_retval < 1) {
 
             /* Make sure the callback(s) added responses */
-            if ((ctrlv[i])->ctrls_cb_resps) {
-              if (pr_ctrls_send_msg(cl->cl_fd, (ctrlv[i])->ctrls_cb_retval,
+            if ((ctrlv[i])->ctrls_cb_resps != NULL) {
+              if (pr_ctrls_send_response(ctrls_pool, cl->cl_fd,
+                  (ctrlv[i])->ctrls_cb_retval,
                   (ctrlv[i])->ctrls_cb_resps->nelts,
                   (char **) (ctrlv[i])->ctrls_cb_resps->elts) < 0) {
                 pr_ctrls_log(MOD_CTRLS_VERSION,
