@@ -191,18 +191,16 @@ int pr_ctrls_flush_response(pr_ctrls_t *ctrl);
  * to the appropriate error for other problems. Returns 0 on success.
  */
 int pr_ctrls_recv_request(pr_ctrls_cl_t *cl);
+int pr_ctrls_send_request(pool *p, int fd, const char *action,
+  unsigned int argc, char **argv);
 
-/* respargv can be NULL, as when the client does not care to know the
- * response messages, just that a response was successfully received.
- * Returns respargc, or -1 if there was an error.
+/* argv can be NULL, as when the client does not care to know the response
+ * messages, just that a response was successfully received.  Returns argc,
+ * or -1 if there was an error.
  */
-int pr_ctrls_recv_response(pool *resp_pool, int ctrls_sockfd, int *status,
-  char ***respargv);
-
-/* Useful for core routines that themselves want to send a control message
- */
-int pr_ctrls_send_msg(int sockfd, int msgstatus, unsigned int msgargc,
-  char **msgargv);
+int pr_ctrls_recv_response(pool *p, int fd, int *status, char ***argv);
+int pr_ctrls_send_response(pool *p, int fd, int status, unsigned int argc,
+  char **argv);
 
 /* Determine whether the given socket mode is for a Unix domain socket.
  * Returns zero if true, -1 otherwise.

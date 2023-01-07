@@ -41,6 +41,7 @@ static void set_up(void) {
 
   if (getenv("TEST_VERBOSE") != NULL) {
     pr_trace_set_levels("ctrls", 1, 20);
+    pr_trace_set_levels("json", 1, 20);
   }
 
   init_ctrls2("/tmp/test.sock");
@@ -49,6 +50,7 @@ static void set_up(void) {
 static void tear_down(void) {
   if (getenv("TEST_VERBOSE") != NULL) {
     pr_trace_set_levels("ctrls", 0, 0);
+    pr_trace_set_levels("json", 0, 0);
   }
 
   if (p != NULL) {
@@ -434,33 +436,94 @@ START_TEST (ctrls_copy_resps_test) {
 }
 END_TEST
 
-START_TEST (ctrls_send_msg_test) {
-  int fd, res, status;
+START_TEST (ctrls_send_request_test) {
+  int fd, res;
+  char *action = "foo";
   unsigned int msgargc = 1;
-  char *msgargv[] = { "foo", NULL };
+  char *msgargv[] = { "bar", NULL };
 
   mark_point();
-  res = pr_ctrls_send_msg(-1, 0, 0, NULL);
+  res = pr_ctrls_send_request(NULL, -1, NULL, 0, NULL);
+  ck_assert_msg(res < 0, "Failed to handle null pool");
+  ck_assert_msg(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+    strerror(errno), errno);
+
+  mark_point();
+  res = pr_ctrls_send_request(p, -1, NULL, 0, NULL);
   ck_assert_msg(res < 0, "Failed to handle invalid fd");
   ck_assert_msg(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
     strerror(errno), errno);
 
   mark_point();
   fd = 7;
-  res = pr_ctrls_send_msg(fd, 0, 0, NULL);
+  res = pr_ctrls_send_request(p, fd, NULL, 0, NULL);
+  ck_assert_msg(res < 0, "Failed to handle null action");
+  ck_assert_msg(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+    strerror(errno), errno);
+
+  mark_point();
+  res = pr_ctrls_send_request(p, fd, action, msgargc, NULL);
+  ck_assert_msg(res < 0, "Failed to handle mismatched argc/argv");
+  ck_assert_msg(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+    strerror(errno), errno);
+
+  mark_point();
+  fd = 7777;
+  res = pr_ctrls_send_request(p, fd, action, msgargc, msgargv);
+  ck_assert_msg(res < 0, "Failed to handle invalid fd");
+  ck_assert_msg(errno == EBADF, "Expected EBADF (%d), got %s (%d)", EBADF,
+    strerror(errno), errno);
+
+  fd = devnull_fd();
+  if (fd < 0) {
+    return;
+  }
+
+  mark_point();
+  res = pr_ctrls_send_request(p, fd, action, msgargc, msgargv);
+  ck_assert_msg(res == 0, "Failed to send ctrl message: %s", strerror(errno));
+
+  (void) close(fd);
+}
+END_TEST
+
+START_TEST (ctrls_send_response_test) {
+  int fd, res, status;
+  unsigned int msgargc = 1;
+  char *msgargv[] = { "foo", NULL };
+
+  mark_point();
+  res = pr_ctrls_send_response(NULL, -1, 0, 0, NULL);
+  ck_assert_msg(res < 0, "Failed to handle null pool");
+  ck_assert_msg(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+    strerror(errno), errno);
+
+  mark_point();
+  res = pr_ctrls_send_response(p, -1, 0, 0, NULL);
+  ck_assert_msg(res < 0, "Failed to handle invalid fd");
+  ck_assert_msg(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+    strerror(errno), errno);
+
+  mark_point();
+  fd = devnull_fd();
+  if (fd < 0) {
+    return;
+  }
+  res = pr_ctrls_send_response(p, fd, 0, 0, NULL);
   ck_assert_msg(res == 0, "Failed to send zero ctrl messages: %s",
     strerror(errno));
 
   mark_point();
-  fd = 7;
-  res = pr_ctrls_send_msg(fd, 0, msgargc, NULL);
-  ck_assert_msg(res == 0, "Failed to send zero ctrl messages: %s",
-    strerror(errno));
+  res = pr_ctrls_send_response(p, fd, 0, msgargc, NULL);
+  ck_assert_msg(res < 0, "Failed to handle missing argv");
+  ck_assert_msg(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+    strerror(errno), errno);
+  (void) close(fd);
 
   mark_point();
   fd = 7777;
   status = -24;
-  res = pr_ctrls_send_msg(fd, status, msgargc, msgargv);
+  res = pr_ctrls_send_response(p, fd, status, msgargc, msgargv);
   ck_assert_msg(res < 0, "Failed to handle invalid fd");
   ck_assert_msg(errno == EBADF, "Expected EBADF (%d), got %s (%d)", EBADF,
     strerror(errno), errno);
@@ -472,7 +535,7 @@ START_TEST (ctrls_send_msg_test) {
 
   mark_point();
   status = -24;
-  res = pr_ctrls_send_msg(fd, status, msgargc, msgargv);
+  res = pr_ctrls_send_response(p, fd, status, msgargc, msgargv);
   ck_assert_msg(res == 0, "Failed to send ctrl message: %s", strerror(errno));
 
   (void) close(fd);
@@ -525,9 +588,9 @@ START_TEST (ctrls_flush_response_test) {
 END_TEST
 
 START_TEST (ctrls_recv_request_invalid_test) {
-  int fd, res, status;
-  unsigned int nreqargs, actionlen;
-  char *action;
+  int fd, res;
+  uint32_t msglen;
+  char *msg = NULL;
   pr_ctrls_cl_t *cl;
 
   mark_point();
@@ -574,7 +637,7 @@ START_TEST (ctrls_recv_request_invalid_test) {
   (void) write(fd, "a", 1);
   rewind_fd(fd);
   res = pr_ctrls_recv_request(cl);
-  ck_assert_msg(res < 0, "Failed to handle invalid status (too short)");
+  ck_assert_msg(res < 0, "Failed to handle invalid msglen (too short)");
   ck_assert_msg(errno == EPERM, "Expected EPERM (%d), got %s (%d)", EPERM,
     strerror(errno), errno);
 
@@ -585,12 +648,12 @@ START_TEST (ctrls_recv_request_invalid_test) {
   cl->cl_fd = fd;
 
   mark_point();
-  status = 0;
-  (void) write(fd, &status, sizeof(status));
+  msglen = 2;
+  (void) write(fd, &msglen, sizeof(msglen));
   (void) write(fd, "a", 1);
   rewind_fd(fd);
   res = pr_ctrls_recv_request(cl);
-  ck_assert_msg(res < 0, "Failed to handle invalid nreqargs (too short)");
+  ck_assert_msg(res < 0, "Failed to handle invalid message (too short)");
   ck_assert_msg(errno == EPERM, "Expected EPERM (%d), got %s (%d)", EPERM,
     strerror(errno), errno);
 
@@ -601,13 +664,13 @@ START_TEST (ctrls_recv_request_invalid_test) {
   cl->cl_fd = fd;
 
   mark_point();
-  nreqargs = 100;
-  (void) write(fd, &status, sizeof(status));
-  (void) write(fd, &nreqargs, sizeof(nreqargs));
+  msglen = 2;
+  (void) write(fd, &msglen, sizeof(msglen));
+  (void) write(fd, "aa", 2);
   rewind_fd(fd);
   res = pr_ctrls_recv_request(cl);
-  ck_assert_msg(res < 0, "Failed to handle invalid nreqargs (too many)");
-  ck_assert_msg(errno == ENOMEM, "Expected ENOMEM (%d), got %s (%d)", ENOMEM,
+  ck_assert_msg(res < 0, "Failed to handle invalid message (wrong format)");
+  ck_assert_msg(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
     strerror(errno), errno);
 
   fd = reset_fd(fd);
@@ -617,14 +680,14 @@ START_TEST (ctrls_recv_request_invalid_test) {
   cl->cl_fd = fd;
 
   mark_point();
-  nreqargs = 1;
-  (void) write(fd, &status, sizeof(status));
-  (void) write(fd, &nreqargs, sizeof(nreqargs));
-  (void) write(fd, "a", 1);
+  msg = "{}";
+  msglen = strlen(msg);
+  (void) write(fd, &msglen, sizeof(msglen));
+  (void) write(fd, msg, msglen);
   rewind_fd(fd);
   res = pr_ctrls_recv_request(cl);
-  ck_assert_msg(res < 0, "Failed to handle invalid actionlen (too short)");
-  ck_assert_msg(errno == EPERM, "Expected EPERM (%d), got %s (%d)", EPERM,
+  ck_assert_msg(res < 0, "Failed to handle invalid message (missing 'action')");
+  ck_assert_msg(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
     strerror(errno), errno);
 
   fd = reset_fd(fd);
@@ -634,14 +697,14 @@ START_TEST (ctrls_recv_request_invalid_test) {
   cl->cl_fd = fd;
 
   mark_point();
-  actionlen = 256;
-  (void) write(fd, &status, sizeof(status));
-  (void) write(fd, &nreqargs, sizeof(nreqargs));
-  (void) write(fd, &actionlen, sizeof(actionlen));
+  msg = "{\"action\":\"foo\"}";
+  msglen = strlen(msg);
+  (void) write(fd, &msglen, sizeof(msglen));
+  (void) write(fd, msg, msglen);
   rewind_fd(fd);
   res = pr_ctrls_recv_request(cl);
-  ck_assert_msg(res < 0, "Failed to handle invalid actionlen (too long)");
-  ck_assert_msg(errno == ENOMEM, "Expected ENOMEM (%d), got %s (%d)", ENOMEM,
+  ck_assert_msg(res < 0, "Failed to handle invalid message (missing 'args')");
+  ck_assert_msg(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
     strerror(errno), errno);
 
   fd = reset_fd(fd);
@@ -651,30 +714,10 @@ START_TEST (ctrls_recv_request_invalid_test) {
   cl->cl_fd = fd;
 
   mark_point();
-  actionlen = 4;
-  (void) write(fd, &status, sizeof(status));
-  (void) write(fd, &nreqargs, sizeof(nreqargs));
-  (void) write(fd, &actionlen, sizeof(actionlen));
-  (void) write(fd, "a", 1);
-  rewind_fd(fd);
-  res = pr_ctrls_recv_request(cl);
-  ck_assert_msg(res < 0, "Failed to handle invalid reqarg (too short)");
-  ck_assert_msg(errno == EPERM, "Expected EPERM (%d), got %s (%d)", EPERM,
-    strerror(errno), errno);
-
-  fd = reset_fd(fd);
-  if (fd < 0) {
-    return;
-  }
-  cl->cl_fd = fd;
-
-  mark_point();
-  action = "test";
-  actionlen = strlen(action);
-  (void) write(fd, &status, sizeof(status));
-  (void) write(fd, &nreqargs, sizeof(nreqargs));
-  (void) write(fd, &actionlen, sizeof(actionlen));
-  (void) write(fd, action, actionlen);
+  msg = "{\"action\":\"test\",\"args\":[1,2,3,4,5,6,7,8,9,10]}";
+  msglen = strlen(msg);
+  (void) write(fd, &msglen, sizeof(msglen));
+  (void) write(fd, msg, msglen);
   rewind_fd(fd);
   res = pr_ctrls_recv_request(cl);
   ck_assert_msg(res < 0, "Failed to handle unknown action");
@@ -685,10 +728,11 @@ START_TEST (ctrls_recv_request_invalid_test) {
 }
 END_TEST
 
-START_TEST (ctrls_recv_request_actions_test) {
-  int fd, res, status;
-  unsigned int nreqargs, actionlen, reqarglen;
-  const char *action, *desc, *reqarg;
+START_TEST (ctrls_recv_request_valid_test) {
+  int fd, res;
+  uint32_t msglen = 0;
+  char *msg = NULL;
+  const char *action, *desc;
   pr_ctrls_cl_t *cl;
   pr_ctrls_t *ctrl;
   module m;
@@ -710,13 +754,10 @@ START_TEST (ctrls_recv_request_actions_test) {
   cl->cl_ctrls = make_array(p, 0, sizeof(pr_ctrls_t *));
   cl->cl_fd = fd;
 
-  status = 0;
-  nreqargs = 1;
-  actionlen = strlen(action);
-  (void) write(fd, &status, sizeof(status));
-  (void) write(fd, &nreqargs, sizeof(nreqargs));
-  (void) write(fd, &actionlen, sizeof(actionlen));
-  (void) write(fd, action, actionlen);
+  msg = "{\"action\":\"test\",\"args\":[]}";
+  msglen = strlen(msg);
+  (void) write(fd, &msglen, sizeof(msglen));
+  (void) write(fd, msg, msglen);
   rewind_fd(fd);
   res = pr_ctrls_recv_request(cl);
   ck_assert_msg(res == 0, "Failed to handle known action: %s", strerror(errno));
@@ -736,23 +777,20 @@ START_TEST (ctrls_recv_request_actions_test) {
   clear_array(cl->cl_ctrls);
   cl->cl_fd = fd;
 
-  nreqargs = 2;
-  (void) write(fd, &status, sizeof(status));
-  (void) write(fd, &nreqargs, sizeof(nreqargs));
-  (void) write(fd, &actionlen, sizeof(actionlen));
-  (void) write(fd, action, actionlen);
-  (void) write(fd, "a", 1);
+  msg = "{\"action\":\"test\",\"args\":[\"a\"]}";
+  msglen = strlen(msg);
+  (void) write(fd, &msglen, sizeof(msglen));
+  (void) write(fd, msg, msglen);
   rewind_fd(fd);
   res = pr_ctrls_recv_request(cl);
-  ck_assert_msg(res == 0, "Failed to handle too-short reqarglen: %s",
-    strerror(errno));
+  ck_assert_msg(res == 0, "Failed to handle known action: %s", strerror(errno));
   ck_assert_msg(cl->cl_ctrls->nelts == 1, "Expected 1 ctrl, got %d",
     cl->cl_ctrls->nelts);
   ctrl = ((pr_ctrls_t **) cl->cl_ctrls->elts)[0];
   ck_assert_msg(ctrl->ctrls_flags & PR_CTRLS_REQUESTED,
     "Expected PR_CTRLS_REQUESTED flag, got %lu", ctrl->ctrls_flags);
-  ck_assert_msg(ctrl->ctrls_cb_args == NULL,
-    "Expected no callback args, got %p", ctrl->ctrls_cb_args);
+  ck_assert_msg(ctrl->ctrls_cb_args != NULL,
+    "Expected callback args, got %p", ctrl->ctrls_cb_args);
 
   mark_point();
   fd = reset_fd(fd);
@@ -762,92 +800,13 @@ START_TEST (ctrls_recv_request_actions_test) {
   clear_array(cl->cl_ctrls);
   cl->cl_fd = fd;
 
-  reqarglen = 0;
-  (void) write(fd, &status, sizeof(status));
-  (void) write(fd, &nreqargs, sizeof(nreqargs));
-  (void) write(fd, &actionlen, sizeof(actionlen));
-  (void) write(fd, action, actionlen);
-  (void) write(fd, &reqarglen, sizeof(reqarglen));
+  msg = "{\"action\":\"test\",\"args\":[\"next\"]}";
+  msglen = strlen(msg);
+  (void) write(fd, &msglen, sizeof(msglen));
+  (void) write(fd, msg, msglen);
   rewind_fd(fd);
   res = pr_ctrls_recv_request(cl);
-  ck_assert_msg(res == 0, "Failed to handle zero-length reqarg: %s",
-    strerror(errno));
-  ck_assert_msg(cl->cl_ctrls->nelts == 1, "Expected 1 ctrl, got %d",
-    cl->cl_ctrls->nelts);
-  ctrl = ((pr_ctrls_t **) cl->cl_ctrls->elts)[0];
-  ck_assert_msg(ctrl->ctrls_flags & PR_CTRLS_REQUESTED,
-    "Expected PR_CTRLS_REQUESTED flag, got %lu", ctrl->ctrls_flags);
-  ck_assert_msg(ctrl->ctrls_cb_args == NULL,
-    "Expected no callback args, got %p", ctrl->ctrls_cb_args);
-
-  mark_point();
-  fd = reset_fd(fd);
-  if (fd < 0) {
-    return;
-  }
-  clear_array(cl->cl_ctrls);
-  cl->cl_fd = fd;
-
-  reqarglen = 500;
-  (void) write(fd, &status, sizeof(status));
-  (void) write(fd, &nreqargs, sizeof(nreqargs));
-  (void) write(fd, &actionlen, sizeof(actionlen));
-  (void) write(fd, action, actionlen);
-  (void) write(fd, &reqarglen, sizeof(reqarglen));
-  rewind_fd(fd);
-  res = pr_ctrls_recv_request(cl);
-  ck_assert_msg(res < 0, "Failed to handle too-long reqarg");
-  ck_assert_msg(errno == ENOMEM, "Expected ENOMEM (%d), got %s (%d)", ENOMEM,
-    strerror(errno), errno);
-  ck_assert_msg(cl->cl_ctrls->nelts == 0, "Expected 0 ctrl, got %d",
-    cl->cl_ctrls->nelts);
-
-  mark_point();
-  fd = reset_fd(fd);
-  if (fd < 0) {
-    return;
-  }
-  clear_array(cl->cl_ctrls);
-  cl->cl_fd = fd;
-
-  reqarglen = 4;
-  (void) write(fd, &status, sizeof(status));
-  (void) write(fd, &nreqargs, sizeof(nreqargs));
-  (void) write(fd, &actionlen, sizeof(actionlen));
-  (void) write(fd, action, actionlen);
-  (void) write(fd, &reqarglen, sizeof(reqarglen));
-  (void) write(fd, "a", 1);
-  rewind_fd(fd);
-  res = pr_ctrls_recv_request(cl);
-  ck_assert_msg(res == 0, "Failed to handle truncated reqarg: %s",
-    strerror(errno));
-  ck_assert_msg(cl->cl_ctrls->nelts == 1, "Expected 1 ctrl, got %d",
-    cl->cl_ctrls->nelts);
-  ctrl = ((pr_ctrls_t **) cl->cl_ctrls->elts)[0];
-  ck_assert_msg(ctrl->ctrls_flags & PR_CTRLS_REQUESTED,
-    "Expected PR_CTRLS_REQUESTED flag, got %lu", ctrl->ctrls_flags);
-  ck_assert_msg(ctrl->ctrls_cb_args == NULL,
-    "Expected no callback args, got %p", ctrl->ctrls_cb_args);
-
-  mark_point();
-  fd = reset_fd(fd);
-  if (fd < 0) {
-    return;
-  }
-  clear_array(cl->cl_ctrls);
-  cl->cl_fd = fd;
-
-  reqarg = "next";
-  reqarglen = strlen(reqarg);
-  (void) write(fd, &status, sizeof(status));
-  (void) write(fd, &nreqargs, sizeof(nreqargs));
-  (void) write(fd, &actionlen, sizeof(actionlen));
-  (void) write(fd, action, actionlen);
-  (void) write(fd, &reqarglen, sizeof(reqarglen));
-  (void) write(fd, reqarg, reqarglen);
-  rewind_fd(fd);
-  res = pr_ctrls_recv_request(cl);
-  ck_assert_msg(res == 0, "Failed to handle truncated reqarg: %s",
+  ck_assert_msg(res == 0, "Failed to handle valid request: %s",
     strerror(errno));
   ck_assert_msg(cl->cl_ctrls->nelts == 1, "Expected 1 ctrl, got %d",
     cl->cl_ctrls->nelts);
@@ -872,17 +831,13 @@ START_TEST (ctrls_recv_request_actions_test) {
   clear_array(cl->cl_ctrls);
   cl->cl_fd = fd;
 
-  reqarg = "next";
-  reqarglen = strlen(reqarg);
-  (void) write(fd, &status, sizeof(status));
-  (void) write(fd, &nreqargs, sizeof(nreqargs));
-  (void) write(fd, &actionlen, sizeof(actionlen));
-  (void) write(fd, action, actionlen);
-  (void) write(fd, &reqarglen, sizeof(reqarglen));
-  (void) write(fd, reqarg, reqarglen);
+  msg = "{\"action\":\"test\",\"args\":[\"next\"]}";
+  msglen = strlen(msg);
+  (void) write(fd, &msglen, sizeof(msglen));
+  (void) write(fd, msg, msglen);
   rewind_fd(fd);
   res = pr_ctrls_recv_request(cl);
-  ck_assert_msg(res == 0, "Failed to handle truncated reqarg: %s",
+  ck_assert_msg(res == 0, "Failed to handle valid request: %s",
     strerror(errno));
   ck_assert_msg(cl->cl_ctrls->nelts == 2, "Expected 2 ctrl, got %d",
     cl->cl_ctrls->nelts);
@@ -907,9 +862,9 @@ START_TEST (ctrls_recv_request_actions_test) {
 END_TEST
 
 START_TEST (ctrls_recv_response_test) {
-  int fd, res, retval, status;
-  unsigned int respargc, resparglen;
-  char *resparg, **respargv = NULL, *resp;
+  int fd, res, status;
+  uint32_t msglen;
+  char *msg = NULL;
 
   mark_point();
   res = pr_ctrls_recv_response(NULL, -1, NULL, NULL);
@@ -924,21 +879,14 @@ START_TEST (ctrls_recv_response_test) {
     strerror(errno), errno);
 
   mark_point();
-  res = pr_ctrls_recv_response(p, 0, NULL, NULL);
-  ck_assert_msg(res < 0, "Failed to handle null status");
-  ck_assert_msg(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
-    strerror(errno), errno);
-
-  mark_point();
-  fd = devnull_fd();
+  fd = tmpfile_fd();
   if (fd < 0) {
     return;
   }
 
-  errno = 0;
-  res = pr_ctrls_recv_response(p, fd, &status, &respargv);
-  ck_assert_msg(res < 0, "Failed to handle no response");
-  ck_assert_msg(errno == EPERM, "Expected EPERM (%d), got %s (%d)", EPERM,
+  res = pr_ctrls_recv_response(p, fd, NULL, NULL);
+  ck_assert_msg(res < 0, "Failed to handle null status");
+  ck_assert_msg(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
     strerror(errno), errno);
   (void) close(fd);
 
@@ -950,111 +898,105 @@ START_TEST (ctrls_recv_response_test) {
 
   (void) write(fd, "a", 1);
   rewind_fd(fd);
-  res = pr_ctrls_recv_response(p, fd, &status, &respargv);
-  ck_assert_msg(res < 0, "Failed to handle truncated status");
+  res = pr_ctrls_recv_response(p, fd, &status, NULL);
+  ck_assert_msg(res < 0, "Failed to handle invalid msglen (too short)");
   ck_assert_msg(errno == EPERM, "Expected EPERM (%d), got %s (%d)", EPERM,
     strerror(errno), errno);
 
-  mark_point();
   fd = reset_fd(fd);
   if (fd < 0) {
     return;
   }
 
-  retval = 1;
-  (void) write(fd, &retval, sizeof(retval));
+  mark_point();
+  msglen = 2;
+  (void) write(fd, &msglen, sizeof(msglen));
   (void) write(fd, "a", 1);
   rewind_fd(fd);
-  res = pr_ctrls_recv_response(p, fd, &status, &respargv);
-  ck_assert_msg(res < 0, "Failed to handle truncated nrespargc");
+  res = pr_ctrls_recv_response(p, fd, &status, NULL);
+  ck_assert_msg(res < 0, "Failed to handle invalid message (too short)");
   ck_assert_msg(errno == EPERM, "Expected EPERM (%d), got %s (%d)", EPERM,
     strerror(errno), errno);
 
-  mark_point();
   fd = reset_fd(fd);
   if (fd < 0) {
     return;
   }
 
-  respargc = 2000;
-  (void) write(fd, &retval, sizeof(retval));
-  (void) write(fd, &respargc, sizeof(respargc));
+  mark_point();
+  msglen = 2;
+  (void) write(fd, &msglen, sizeof(msglen));
+  (void) write(fd, "aa", 2);
   rewind_fd(fd);
-  res = pr_ctrls_recv_response(p, fd, &status, &respargv);
-  ck_assert_msg(res < 0, "Failed to handle too-many respargc");
-  ck_assert_msg(errno == ENOMEM, "Expected ENOMEM (%d), got %s (%d)", ENOMEM,
+  res = pr_ctrls_recv_response(p, fd, &status, NULL);
+  ck_assert_msg(res < 0, "Failed to handle invalid message (wrong format)");
+  ck_assert_msg(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
     strerror(errno), errno);
 
-  mark_point();
   fd = reset_fd(fd);
   if (fd < 0) {
     return;
   }
 
-  respargc = 1;
-  (void) write(fd, &retval, sizeof(retval));
-  (void) write(fd, &respargc, sizeof(respargc));
-  (void) write(fd, "a", 1);
+  mark_point();
+  msg = "{}";
+  msglen = strlen(msg);
+  (void) write(fd, &msglen, sizeof(msglen));
+  (void) write(fd, msg, msglen);
   rewind_fd(fd);
-  res = pr_ctrls_recv_response(p, fd, &status, &respargv);
-  ck_assert_msg(res < 0, "Failed to handle truncated resparglen");
-  ck_assert_msg(errno == EPERM, "Expected EPERM (%d), got %s (%d)", EPERM,
+  res = pr_ctrls_recv_response(p, fd, &status, NULL);
+  ck_assert_msg(res < 0, "Failed to handle invalid message (missing 'status')");
+  ck_assert_msg(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
     strerror(errno), errno);
 
-  mark_point();
   fd = reset_fd(fd);
   if (fd < 0) {
     return;
   }
 
-  resparglen = (PR_TUNABLE_BUFFER_SIZE * 10);
-  (void) write(fd, &retval, sizeof(retval));
-  (void) write(fd, &respargc, sizeof(respargc));
-  (void) write(fd, &resparglen, sizeof(resparglen));
+  mark_point();
+  msg = "{\"status\":0}";
+  msglen = strlen(msg);
+  (void) write(fd, &msglen, sizeof(msglen));
+  (void) write(fd, msg, msglen);
   rewind_fd(fd);
-  res = pr_ctrls_recv_response(p, fd, &status, &respargv);
-  ck_assert_msg(res < 0, "Failed to handle too-long resparglen");
-  ck_assert_msg(errno == ENOMEM, "Expected ENOMEM (%d), got %s (%d)", ENOMEM,
+  res = pr_ctrls_recv_response(p, fd, &status, NULL);
+  ck_assert_msg(res < 0,
+    "Failed to handle invalid message (missing 'responses')");
+  ck_assert_msg(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
     strerror(errno), errno);
 
-  mark_point();
   fd = reset_fd(fd);
   if (fd < 0) {
     return;
   }
 
-  resparglen = 4;
-  (void) write(fd, &retval, sizeof(retval));
-  (void) write(fd, &respargc, sizeof(respargc));
-  (void) write(fd, &resparglen, sizeof(resparglen));
-  (void) write(fd, "a", 1);
+  mark_point();
+  msg = "{\"status\":0,\"responses\":[1]}";
+  msglen = strlen(msg);
+  (void) write(fd, &msglen, sizeof(msglen));
+  (void) write(fd, msg, msglen);
   rewind_fd(fd);
-  res = pr_ctrls_recv_response(p, fd, &status, &respargv);
-  ck_assert_msg(res < 0, "Failed to handle truncated resparg");
-  ck_assert_msg(errno == EPERM, "Expected EPERM (%d), got %s (%d)", EPERM,
+  res = pr_ctrls_recv_response(p, fd, &status, NULL);
+  ck_assert_msg(res < 0,
+    "Failed to handle invalid message (non-text response)");
+  ck_assert_msg(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
     strerror(errno), errno);
 
-  mark_point();
   fd = reset_fd(fd);
   if (fd < 0) {
     return;
   }
 
-  resparg = "foobarbaz";
-  resparglen = strlen(resparg);
-  (void) write(fd, &retval, sizeof(retval));
-  (void) write(fd, &respargc, sizeof(respargc));
-  (void) write(fd, &resparglen, sizeof(resparglen));
-  (void) write(fd, resparg, resparglen);
+  mark_point();
+  msg = "{\"status\":0,\"responses\":[\"ok\"]}";
+  msglen = strlen(msg);
+  (void) write(fd, &msglen, sizeof(msglen));
+  (void) write(fd, msg, msglen);
   rewind_fd(fd);
-  res = pr_ctrls_recv_response(p, fd, &status, &respargv);
-  ck_assert_msg((unsigned int) res == respargc, "Failed to receive response: %s",
+  res = pr_ctrls_recv_response(p, fd, &status, NULL);
+  ck_assert_msg(res == 1, "Failed to handle valid response: %s",
     strerror(errno));
-  ck_assert_msg(status == retval, "Expected %d, got %d", retval, status);
-  ck_assert_msg(respargv != NULL, "Expected respargv, got NULL");
-  resp = respargv[0];
-  ck_assert_msg(strcmp(resp, resparg) == 0, "Expected '%s', got '%s'",
-    resparg, resp);
 
   (void) close(fd);
 }
@@ -1255,9 +1197,10 @@ START_TEST (ctrls_check_actions_test) {
 END_TEST
 
 START_TEST (ctrls_run_ctrls_test) {
-  int fd, res, status;
-  unsigned int nreqargs, actionlen, reqarglen;
-  const char *action, *desc, *reqarg;
+  int fd, res;
+  uint32_t msglen = 0;
+  char *msg = NULL;
+  const char *action, *desc;
   pr_ctrls_cl_t *cl;
   pr_ctrls_t *ctrl;
   module m, m2;
@@ -1311,17 +1254,10 @@ START_TEST (ctrls_run_ctrls_test) {
   cl->cl_ctrls = make_array(p, 0, sizeof(pr_ctrls_t *));
   cl->cl_fd = fd;
 
-  status = 0;
-  nreqargs = 2;
-  actionlen = strlen(action);
-  reqarg = "FOO";
-  reqarglen = strlen(reqarg);
-  (void) write(fd, &status, sizeof(status));
-  (void) write(fd, &nreqargs, sizeof(nreqargs));
-  (void) write(fd, &actionlen, sizeof(actionlen));
-  (void) write(fd, action, actionlen);
-  (void) write(fd, &reqarglen, sizeof(reqarglen));
-  (void) write(fd, reqarg, reqarglen);
+  msg = "{\"action\":\"test\",\"args\":[\"FOO\"]}";
+  msglen = strlen(msg);
+  (void) write(fd, &msglen, sizeof(msglen));
+  (void) write(fd, msg, msglen);
   rewind_fd(fd);
   res = pr_ctrls_recv_request(cl);
   ck_assert_msg(res == 0, "Failed to handle known action: %s", strerror(errno));
@@ -2155,11 +2091,13 @@ Suite *tests_get_ctrls_suite(void) {
   tcase_add_test(testcase, ctrls_add_response_test);
   tcase_add_test(testcase, ctrls_copy_args_test);
   tcase_add_test(testcase, ctrls_copy_resps_test);
-  tcase_add_test(testcase, ctrls_send_msg_test);
+  tcase_add_test(testcase, ctrls_send_request_test);
+  tcase_add_test(testcase, ctrls_send_response_test);
   tcase_add_test(testcase, ctrls_flush_response_test);
   tcase_add_test(testcase, ctrls_recv_request_invalid_test);
-  tcase_add_test(testcase, ctrls_recv_request_actions_test);
+  tcase_add_test(testcase, ctrls_recv_request_valid_test);
   tcase_add_test(testcase, ctrls_recv_response_test);
+
   tcase_add_test(testcase, ctrls_issock_unix_test);
   tcase_add_test(testcase, ctrls_get_registered_actions_test);
   tcase_add_test(testcase, ctrls_set_registered_actions_test);
