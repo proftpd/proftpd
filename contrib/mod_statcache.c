@@ -1,7 +1,7 @@
 /*
  * ProFTPD: mod_statcache -- a module implementing caching of stat(2),
  *                           fstat(2), and lstat(2) calls
- * Copyright (c) 2013-2022 TJ Saunders
+ * Copyright (c) 2013-2023 TJ Saunders
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -1807,22 +1807,22 @@ static int statcache_fsio_futimes(pr_fh_t *fh, int fd, struct timeval *tvs) {
 static int statcache_handle_statcache(pr_ctrls_t *ctrl, int reqargc,
     char **reqargv) {
   /* Check the ban ACL */
-  if (!pr_ctrls_check_acl(ctrl, statcache_acttab, "statcache")) {
+  if (pr_ctrls_check_acl(ctrl, statcache_acttab, "statcache") != TRUE) {
 
     /* Access denied */
     pr_ctrls_add_response(ctrl, "access denied");
-    return -1;
+    return PR_CTRLS_STATUS_ACCESS_DENIED;
   }
 
   /* Sanity check */
   if (reqargv == NULL) {
     pr_ctrls_add_response(ctrl, "missing parameters");
-    return -1;
+    return PR_CTRLS_STATUS_WRONG_PARAMETERS;
   }
 
   if (statcache_engine != TRUE) {
     pr_ctrls_add_response(ctrl, MOD_STATCACHE_VERSION " not enabled");
-    return -1;
+    return PR_CTRLS_STATUS_UNSUPPORTED_OPERATION;
   }
 
   /* Check for options. */
@@ -1835,7 +1835,7 @@ static int statcache_handle_statcache(pr_ctrls_t *ctrl, int reqargc,
     if (statcache_rlock_stats(statcache_tabfh->fh_fd) < 0) {
       pr_ctrls_add_response(ctrl, "error locking shared memory: %s",
         strerror(errno));
-      return -1;
+      return PR_CTRLS_STATUS_INTERNAL_ERROR;
     }
 
     count = statcache_stats_get_count();
@@ -1878,7 +1878,7 @@ static int statcache_handle_statcache(pr_ctrls_t *ctrl, int reqargc,
     if (statcache_rlock_table(statcache_tabfh->fh_fd) < 0) {
       pr_ctrls_add_response(ctrl, "error locking shared memory: %s",
         strerror(errno));
-      return -1;
+      return PR_CTRLS_STATUS_INTERNAL_ERROR;
     }
 
     pr_log_debug(DEBUG7, MOD_STATCACHE_VERSION ": dumping statcache");
@@ -1922,12 +1922,11 @@ static int statcache_handle_statcache(pr_ctrls_t *ctrl, int reqargc,
   } else {
     pr_ctrls_add_response(ctrl, "unknown statcache action requested: '%s'",
       reqargv[0]);
-    return -1;
+    return PR_CTRLS_STATUS_UNSUPPORTED_OPERATION;
   }
 
-  return 0;
+  return PR_CTRLS_STATUS_OK;
 }
-
 #endif /* PR_USE_CTRLS */
 
 /* Configuration handlers
@@ -1971,10 +1970,7 @@ MODRET set_statcachectrlsacls(cmd_rec *cmd) {
   CHECK_ARGS(cmd, 4);
   CHECK_CONF(cmd, CONF_ROOT);
 
-  /* We can cheat here, and use the ctrls_parse_acl() routine to
-   * separate the given string...
-   */
-  actions = ctrls_parse_acl(cmd->tmp_pool, cmd->argv[1]);
+  actions = pr_ctrls_parse_acl(cmd->tmp_pool, cmd->argv[1]);
 
   /* Check the second parameter to make sure it is "allow" or "deny" */
   if (strcmp(cmd->argv[2], "allow") != 0 &&

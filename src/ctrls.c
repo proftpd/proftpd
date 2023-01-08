@@ -143,7 +143,7 @@ pr_ctrls_t *pr_ctrls_alloc(void) {
      * to 1; this tells the Controls layer that it is "pending", not yet
      * handled.
      */
-    ctrl->ctrls_cb_retval = 1;
+    ctrl->ctrls_cb_retval = PR_CTRLS_STATUS_PENDING;
   }
 
   return ctrl;
@@ -177,7 +177,7 @@ int pr_ctrls_free(pr_ctrls_t *ctrl) {
   ctrl->ctrls_module = NULL;
   ctrl->ctrls_action = NULL;
   ctrl->ctrls_cb = NULL;
-  ctrl->ctrls_cb_retval = 1;
+  ctrl->ctrls_cb_retval = PR_CTRLS_STATUS_PENDING;
   ctrl->ctrls_flags = 0;
 
   if (ctrl->ctrls_tmp_pool != NULL) {
@@ -772,7 +772,7 @@ int pr_ctrls_recv_request(pr_ctrls_cl_t *cl) {
   *((pr_ctrls_t **) push_array(cl->cl_ctrls)) = ctrl;
 
   /* Set the flag that this control is ready to go */
-  ctrl->ctrls_flags |= PR_CTRLS_REQUESTED;
+  ctrl->ctrls_flags |= PR_CTRLS_FL_REQUESTED;
   ctrl->ctrls_cl = cl;
 
   /* Copy the populated ctrl object args to ctrl objects for all other
@@ -787,7 +787,7 @@ int pr_ctrls_recv_request(pr_ctrls_cl_t *cl) {
     *((pr_ctrls_t **) push_array(cl->cl_ctrls)) = next_ctrl;
 
     /* Set the flag that this control is ready to go. */ 
-    next_ctrl->ctrls_flags |= PR_CTRLS_REQUESTED;
+    next_ctrl->ctrls_flags |= PR_CTRLS_FL_REQUESTED;
     next_ctrl->ctrls_cl = cl;
 
     next_ctrl = ctrls_lookup_next_action(NULL, TRUE);
@@ -1786,6 +1786,8 @@ int pr_run_ctrls(module *mod, const char *action) {
   now = time(NULL);
 
   for (ctrl = ctrls_active_list; ctrl; ctrl = ctrl->ctrls_next) {
+    int res;
+
     if (mod != NULL &&
         ctrl->ctrls_module != NULL &&
         ctrl->ctrls_module != mod) {
@@ -1812,7 +1814,7 @@ int pr_run_ctrls(module *mod, const char *action) {
     }
 
     /* Is it time to trigger this ctrl? */
-    if (!(ctrl->ctrls_flags & PR_CTRLS_REQUESTED)) {
+    if (!(ctrl->ctrls_flags & PR_CTRLS_FL_REQUESTED)) {
       pr_trace_msg(trace_channel, 19,
         "skipping ctrl due to missing CTRLS_REQUESTED flag");
       continue;
@@ -1822,7 +1824,7 @@ int pr_run_ctrls(module *mod, const char *action) {
       pr_trace_msg(trace_channel, 19,
         "skipping ctrl because it is still pending: now = %lu, ctrl when = %lu",
         (unsigned long) now, (unsigned long) ctrl->ctrls_when);
-      ctrl->ctrls_flags |= PR_CTRLS_PENDING;
+      ctrl->ctrls_flags |= PR_CTRLS_FL_PENDING;
       pr_ctrls_add_response(ctrl, "request pending");
       continue;
     }
@@ -1837,20 +1839,26 @@ int pr_run_ctrls(module *mod, const char *action) {
     }
 
     pr_unblock_ctrls();
-    ctrl->ctrls_cb_retval = ctrl->ctrls_cb(ctrl,
+    res = ctrl->ctrls_cb(ctrl,
       (ctrl->ctrls_cb_args ? ctrl->ctrls_cb_args->nelts : 0),
       (ctrl->ctrls_cb_args ? (char **) ctrl->ctrls_cb_args->elts : NULL));
     pr_block_ctrls();
 
     pr_trace_msg(trace_channel, 19,
-      "ran '%s' ctrl, callback value = %d", ctrl->ctrls_action,
-      ctrl->ctrls_cb_retval);
+      "ran '%s' ctrl, callback value = %d", ctrl->ctrls_action, res);
 
-    if (ctrl->ctrls_cb_retval < 1) {
-      ctrl->ctrls_flags &= ~PR_CTRLS_REQUESTED;
-      ctrl->ctrls_flags &= ~PR_CTRLS_PENDING;
-      ctrl->ctrls_flags |= PR_CTRLS_HANDLED;
+    if (res >= PR_CTRLS_STATUS_PENDING) {
+      pr_trace_msg(trace_channel, 1, "'%s' ctrl returned inappropriate "
+        "value %d, treating as GENERIC_ERROR (%d)", ctrl->ctrls_action, res,
+        PR_CTRLS_STATUS_GENERIC_ERROR);
+      res = PR_CTRLS_STATUS_GENERIC_ERROR;
     }
+
+    ctrl->ctrls_flags &= ~PR_CTRLS_FL_REQUESTED;
+    ctrl->ctrls_flags &= ~PR_CTRLS_FL_PENDING;
+    ctrl->ctrls_flags |= PR_CTRLS_FL_HANDLED;
+
+    ctrl->ctrls_cb_retval = res;
   }
 
   return 0;
@@ -1878,7 +1886,7 @@ int pr_ctrls_reset(void) {
    */
 
   for (ctrl = ctrls_active_list; ctrl; ctrl = ctrl->ctrls_next) {
-    if (ctrl->ctrls_cb_retval < 1) {
+    if (ctrl->ctrls_cb_retval < PR_CTRLS_STATUS_PENDING) {
       pr_ctrls_free(ctrl);
     }
   }
