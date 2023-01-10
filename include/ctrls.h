@@ -123,9 +123,9 @@ typedef struct ctrls_obj {
 
 } pr_ctrls_t;
 
-#define PR_CTRLS_REQUESTED		0x00001
-#define PR_CTRLS_HANDLED		0x00002
-#define PR_CTRLS_PENDING		0x00004
+#define PR_CTRLS_FL_REQUESTED		0x00001
+#define PR_CTRLS_FL_HANDLED		0x00002
+#define PR_CTRLS_FL_PENDING		0x00004
 
 #define PR_CTRLS_ACT_SOLITARY		0x00010
 #define PR_CTRLS_ACT_DISABLED		0x00020
@@ -135,6 +135,22 @@ typedef struct ctrls_obj {
 #define CTRLS_GET_DESC			9
 
 /* Controls API */
+
+/* Control action exit status values */
+
+/* Note: For internal use only */
+#define PR_CTRLS_STATUS_PENDING			1
+#define PR_CTRLS_STATUS_OK			0
+/* Note: Used for backward compatibility */
+#define PR_CTRLS_STATUS_GENERIC_ERROR		-1
+#define PR_CTRLS_STATUS_ACCESS_DENIED		-2
+#define PR_CTRLS_STATUS_WRONG_PARAMETERS 	-3
+/* Example: "no such server/address", "unknown module" */
+#define PR_CTRLS_STATUS_SUBJECT_NOT_FOUND 	-4
+#define PR_CTRLS_STATUS_OPERATION_DENIED	-5
+#define PR_CTRLS_STATUS_OPERATION_IGNORED	-6
+#define PR_CTRLS_STATUS_UNSUPPORTED_OPERATION	-7
+#define PR_CTRLS_STATUS_INTERNAL_ERROR		-8
 
 /* Register a control handler for the given action with the Controls layer,
  * to be available to requesting clients.  Returns the ID of the registered

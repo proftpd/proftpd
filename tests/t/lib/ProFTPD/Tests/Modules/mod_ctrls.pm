@@ -25,6 +25,11 @@ my $TESTS = {
     test_class => [qw(forking)],
   },
 
+  ctrls_lsctrl_access_denied_issue1114 => {
+    order => ++$order,
+    test_class => [qw(bug forking)],
+  },
+
   ctrls_sighup_bug3756 => {
     order => ++$order,
     test_class => [qw(bug forking os_linux)],
@@ -71,7 +76,9 @@ sub ftpdctl {
   }
 
   my @lines = `$cmd`;
-  return \@lines;
+  my $exit_status = $? >> 8;
+
+  return ($exit_status, \@lines);
 }
 
 sub get_server_pid {
@@ -157,19 +164,22 @@ sub ctrls_lsctrl_ok {
   sleep(2);
 
   eval {
-    my $lines = ftpdctl($ctrls_sock, 'lsctrl', $poll_interval);
+    my ($exit_status, $lines) = ftpdctl($ctrls_sock, 'lsctrl', $poll_interval);
     if ($ENV{TEST_VERBOSE}) {
-      print STDERR "# ftpdctl:\n";
+      print STDERR "# ftpdctl: (exit status $exit_status)\n";
       foreach my $line (@$lines) {
         chomp($line);
         print STDERR "#  $line\n";
       }
     }
 
+    my $expected = 0;
+    $self->assert($exit_status == $expected,
+      test_msg("Expected exit status $expected, got $exit_status"));
+
     $lines = [grep { /mod_ctrls\.c/ } @$lines];
 
-    my $expected = 4;
-
+    $expected = 4;
     my $matches = scalar(@$lines);
     $self->assert($expected == $matches,
       test_msg("Expected $expected, got $matches"));
@@ -238,19 +248,22 @@ sub ctrls_lsctrl_system_user_ok {
   sleep(1);
 
   eval {
-    my $lines = ftpdctl($ctrls_sock, 'lsctrl');
+    my ($exit_status, $lines) = ftpdctl($ctrls_sock, 'lsctrl');
     if ($ENV{TEST_VERBOSE}) {
-      print STDERR "# ftpdctl:\n";
+      print STDERR "# ftpdctl: (exit status $exit_status)\n";
       foreach my $line (@$lines) {
         chomp($line);
         print STDERR "#  $line\n";
       }
     }
 
+    my $expected = 0;
+    $self->assert($exit_status == $expected,
+      test_msg("Expected exit status $expected, got $exit_status"));
+
     $lines = [grep { /mod_ctrls\.c/ } @$lines];
 
-    my $expected = 4;
-
+    $expected = 4;
     my $matches = scalar(@$lines);
     $self->assert($expected == $matches,
       test_msg("Expected $expected, got $matches"));
@@ -266,6 +279,88 @@ sub ctrls_lsctrl_system_user_ok {
     $self->assert($expected eq $actions,
       test_msg("Expected '$expected', got '$actions'"));
   }; 
+  if ($@) {
+    $ex = $@;
+  }
+
+  server_stop($setup->{pid_file});
+  test_cleanup($setup->{log_file}, $ex);
+}
+
+sub ctrls_lsctrl_access_denied_issue1114 {
+  my $self = shift;
+  my $tmpdir = $self->{tmpdir};
+  my $setup = test_setup($tmpdir, 'ctrls');
+
+  my $ctrls_sock = File::Spec->rel2abs("$tmpdir/ctrls.sock");
+
+  my $config = {
+    PidFile => $setup->{pid_file},
+    ScoreboardFile => $setup->{scoreboard_file},
+    SystemLog => $setup->{log_file},
+    TraceLog => $setup->{log_file},
+    Trace => 'DEFAULT:10',
+
+    AuthUserFile => $setup->{auth_user_file},
+    AuthGroupFile => $setup->{auth_group_file},
+    AuthOrder => 'mod_auth_file.c',
+
+    IfModules => {
+      'mod_ctrls.c' => {
+        ControlsEngine => 'on',
+        ControlsLog => $setup->{log_file},
+        ControlsSocket => $ctrls_sock,
+        ControlsACLs => 'all deny user *',
+        ControlsSocketACL => 'deny user *',
+      },
+
+      'mod_delay.c' => {
+        DelayEngine => 'off',
+      },
+    },
+  };
+
+  my ($port, $config_user, $config_group) = config_write($setup->{config_file},
+    $config);
+
+  my $ex;
+
+  # Start server
+  server_start($setup->{config_file});
+  sleep(1);
+
+  eval {
+    my ($exit_status, $lines) = ftpdctl($ctrls_sock, 'lsctrl');
+    if ($ENV{TEST_VERBOSE}) {
+      print STDERR "# ftpdctl: (exit status $exit_status)\n";
+      foreach my $line (@$lines) {
+        chomp($line);
+        print STDERR "#  $line\n";
+      }
+    }
+
+    my $expected = 2;
+    $self->assert($exit_status == $expected,
+      test_msg("Expected exit status $expected, got $exit_status"));
+
+    $lines = [grep { /access/ } @$lines];
+
+    $expected = 1;
+    my $matches = scalar(@$lines);
+    $self->assert($expected == $matches,
+      test_msg("Expected line count $expected, got $matches"));
+
+    my $actions = '';
+    foreach my $line (@$lines) {
+      if ($line =~ /^ftpdctl: (.*?)$/) {
+        $actions .= "$1";
+      }
+    }
+
+    $expected = 'access denied';
+    $self->assert($expected eq $actions,
+      test_msg("Expected '$expected', got '$actions'"));
+  };
   if ($@) {
     $ex = $@;
   }

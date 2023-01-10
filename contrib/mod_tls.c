@@ -2,7 +2,7 @@
  * mod_tls - An RFC2228 SSL/TLS module for ProFTPD
  *
  * Copyright (c) 2000-2002 Peter 'Luna' Runestig <peter@runestig.com>
- * Copyright (c) 2002-2022 TJ Saunders <tj@castaglia.org>
+ * Copyright (c) 2002-2023 TJ Saunders <tj@castaglia.org>
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without modifi-
@@ -11669,7 +11669,7 @@ static int tls_ocsp_cache_status(pr_ctrls_t *ctrl, int flags) {
 /* Controls
  */
 
-#ifdef PR_USE_CTRLS
+#if defined(PR_USE_CTRLS)
 static int tls_handle_sesscache_clear(pr_ctrls_t *ctrl, int reqargc,
     char **reqargv) {
   int res;
@@ -11678,15 +11678,13 @@ static int tls_handle_sesscache_clear(pr_ctrls_t *ctrl, int reqargc,
   if (res < 0) {
     pr_ctrls_add_response(ctrl,
       "tls sesscache: error clearing session cache: %s", strerror(errno));
-
-  } else {
-    pr_ctrls_add_response(ctrl, "tls sesscache: cleared %d %s from '%s' "
-      "session cache", res, res != 1 ? "sessions" : "session",
-      tls_sess_cache->cache_name);
-    res = 0;
+    return PR_CTRLS_STATUS_INTERNAL_ERROR;
   }
 
-  return res;
+  pr_ctrls_add_response(ctrl, "tls sesscache: cleared %d %s from '%s' "
+    "session cache", res, res != 1 ? "sessions" : "session",
+    tls_sess_cache->cache_name);
+  return PR_CTRLS_STATUS_OK;
 }
 
 static int tls_handle_sesscache_info(pr_ctrls_t *ctrl, int reqargc,
@@ -11705,7 +11703,7 @@ static int tls_handle_sesscache_info(pr_ctrls_t *ctrl, int reqargc,
       case '?':
         pr_ctrls_add_response(ctrl,
           "tls sesscache: unsupported parameter: '%s'", reqargv[1]);
-        return -1;
+        return PR_CTRLS_STATUS_WRONG_PARAMETERS;
     }
   }
 
@@ -11714,12 +11712,10 @@ static int tls_handle_sesscache_info(pr_ctrls_t *ctrl, int reqargc,
     pr_ctrls_add_response(ctrl,
       "tls sesscache: error obtaining session cache status: %s",
       strerror(errno));
-
-  } else {
-    res = 0;
+    return PR_CTRLS_STATUS_INTERNAL_ERROR;
   }
 
-  return res;
+  return PR_CTRLS_STATUS_OK;
 }
 
 static int tls_handle_sesscache_remove(pr_ctrls_t *ctrl, int reqargc,
@@ -11730,14 +11726,12 @@ static int tls_handle_sesscache_remove(pr_ctrls_t *ctrl, int reqargc,
   if (res < 0) {
     pr_ctrls_add_response(ctrl,
       "tls sesscache: error removing session cache: %s", strerror(errno));
-
-  } else {
-    pr_ctrls_add_response(ctrl, "tls sesscache: removed '%s' session cache",
-      tls_sess_cache->cache_name);
-    res = 0;
+    return PR_CTRLS_STATUS_INTERNAL_ERROR;
   }
 
-  return res;
+  pr_ctrls_add_response(ctrl, "tls sesscache: removed '%s' session cache",
+    tls_sess_cache->cache_name);
+  return PR_CTRLS_STATUS_OK;
 }
 
 static int tls_handle_sesscache(pr_ctrls_t *ctrl, int reqargc, char **reqargv) {
@@ -11746,32 +11740,32 @@ static int tls_handle_sesscache(pr_ctrls_t *ctrl, int reqargc, char **reqargv) {
   if (reqargc == 0 ||
       reqargv == NULL) {
     pr_ctrls_add_response(ctrl, "tls sesscache: missing required parameters");
-    return -1;
+    return PR_CTRLS_STATUS_WRONG_PARAMETERS;
   }
 
-  if (strncmp(reqargv[0], "info", 5) == 0) {
+  if (strcmp(reqargv[0], "info") == 0) {
     /* Check the ACLs. */
-    if (!pr_ctrls_check_acl(ctrl, tls_acttab, "info")) {
+    if (pr_ctrls_check_acl(ctrl, tls_acttab, "info") != TRUE) {
       pr_ctrls_add_response(ctrl, "access denied");
-      return -1;
+      return PR_CTRLS_STATUS_ACCESS_DENIED;
     }
 
     return tls_handle_sesscache_info(ctrl, reqargc, reqargv);
 
-  } else if (strncmp(reqargv[0], "clear", 6) == 0) {
+  } else if (strcmp(reqargv[0], "clear") == 0) {
     /* Check the ACLs. */
-    if (!pr_ctrls_check_acl(ctrl, tls_acttab, "clear")) {
+    if (pr_ctrls_check_acl(ctrl, tls_acttab, "clear") != TRUE) {
       pr_ctrls_add_response(ctrl, "access denied");
-      return -1;
+      return PR_CTRLS_STATUS_ACCESS_DENIED;
     }
 
     return tls_handle_sesscache_clear(ctrl, reqargc, reqargv);
 
-  } else if (strncmp(reqargv[0], "remove", 7) == 0) {
+  } else if (strcmp(reqargv[0], "remove") == 0) {
     /* Check the ACLs. */
-    if (!pr_ctrls_check_acl(ctrl, tls_acttab, "remove")) {
+    if (pr_ctrls_check_acl(ctrl, tls_acttab, "remove") != TRUE) {
       pr_ctrls_add_response(ctrl, "access denied");
-      return -1;
+      return PR_CTRLS_STATUS_ACCESS_DENIED;
     }
 
     return tls_handle_sesscache_remove(ctrl, reqargc, reqargv);
@@ -11779,7 +11773,7 @@ static int tls_handle_sesscache(pr_ctrls_t *ctrl, int reqargc, char **reqargv) {
 
   pr_ctrls_add_response(ctrl, "tls sesscache: unknown sesscache action: '%s'",
     reqargv[0]);
-  return -1;
+  return PR_CTRLS_STATUS_UNSUPPORTED_OPERATION;
 }
 
 static int tls_handle_ocspcache_info(pr_ctrls_t *ctrl, int reqargc,
@@ -11794,7 +11788,7 @@ static int tls_handle_ocspcache_info(pr_ctrls_t *ctrl, int reqargc,
       case '?':
         pr_ctrls_add_response(ctrl,
           "tls ocspcache: unsupported parameter: '%s'", reqargv[1]);
-        return -1;
+        return PR_CTRLS_STATUS_WRONG_PARAMETERS;
     }
   }
 
@@ -11803,12 +11797,10 @@ static int tls_handle_ocspcache_info(pr_ctrls_t *ctrl, int reqargc,
     pr_ctrls_add_response(ctrl,
       "tls ocspcache: error obtaining OCSP cache status: %s",
       strerror(errno));
-
-  } else {
-    res = 0;
+    return PR_CTRLS_STATUS_INTERNAL_ERROR;
   }
 
-  return res;
+  return PR_CTRLS_STATUS_OK;
 }
 
 static int tls_handle_ocspcache_clear(pr_ctrls_t *ctrl, int reqargc,
@@ -11819,15 +11811,13 @@ static int tls_handle_ocspcache_clear(pr_ctrls_t *ctrl, int reqargc,
   if (res < 0) {
     pr_ctrls_add_response(ctrl,
       "tls ocspcache: error clearing OCSP cache: %s", strerror(errno));
-
-  } else {
-    pr_ctrls_add_response(ctrl, "tls ocspcache: cleared %d %s from '%s' "
-      "OCSP cache", res, res != 1 ? "responses" : "response",
-      tls_ocsp_cache->cache_name);
-    res = 0;
+    return PR_CTRLS_STATUS_INTERNAL_ERROR;
   }
 
-  return res;
+  pr_ctrls_add_response(ctrl, "tls ocspcache: cleared %d %s from '%s' "
+    "OCSP cache", res, res != 1 ? "responses" : "response",
+    tls_ocsp_cache->cache_name);
+  return PR_CTRLS_STATUS_OK;
 }
 
 static int tls_handle_ocspcache_remove(pr_ctrls_t *ctrl, int reqargc,
@@ -11838,14 +11828,12 @@ static int tls_handle_ocspcache_remove(pr_ctrls_t *ctrl, int reqargc,
   if (res < 0) {
     pr_ctrls_add_response(ctrl,
       "tls ocspcache: error removing OCSP cache: %s", strerror(errno));
-
-  } else {
-    pr_ctrls_add_response(ctrl, "tls sesscache: removed '%s' OCSP cache",
-      tls_ocsp_cache->cache_name);
-    res = 0;
+    return PR_CTRLS_STATUS_INTERNAL_ERROR;
   }
 
-  return res;
+  pr_ctrls_add_response(ctrl, "tls sesscache: removed '%s' OCSP cache",
+    tls_ocsp_cache->cache_name);
+  return PR_CTRLS_STATUS_OK;
 }
 
 static int tls_handle_ocspcache(pr_ctrls_t *ctrl, int reqargc, char **reqargv) {
@@ -11853,32 +11841,32 @@ static int tls_handle_ocspcache(pr_ctrls_t *ctrl, int reqargc, char **reqargv) {
   if (reqargc == 0 ||
       reqargv == NULL) {
     pr_ctrls_add_response(ctrl, "tls ocspcache: missing required parameters");
-    return -1;
+    return PR_CTRLS_STATUS_WRONG_PARAMETERS;
   }
 
-  if (strncmp(reqargv[0], "info", 5) == 0) {
+  if (strcmp(reqargv[0], "info") == 0) {
     /* Check the ACLs. */
-    if (!pr_ctrls_check_acl(ctrl, tls_acttab, "info")) {
+    if (pr_ctrls_check_acl(ctrl, tls_acttab, "info") != TRUE) {
       pr_ctrls_add_response(ctrl, "access denied");
-      return -1;
+      return PR_CTRLS_STATUS_ACCESS_DENIED;
     }
 
     return tls_handle_ocspcache_info(ctrl, reqargc, reqargv);
 
-  } else if (strncmp(reqargv[0], "clear", 6) == 0) {
+  } else if (strcmp(reqargv[0], "clear") == 0) {
     /* Check the ACLs. */
-    if (!pr_ctrls_check_acl(ctrl, tls_acttab, "clear")) {
+    if (pr_ctrls_check_acl(ctrl, tls_acttab, "clear") != TRUE) {
       pr_ctrls_add_response(ctrl, "access denied");
-      return -1;
+      return PR_CTRLS_STATUS_ACCESS_DENIED;
     }
 
     return tls_handle_ocspcache_clear(ctrl, reqargc, reqargv);
 
-  } else if (strncmp(reqargv[0], "remove", 7) == 0) {
+  } else if (strcmp(reqargv[0], "remove") == 0) {
     /* Check the ACLs. */
-    if (!pr_ctrls_check_acl(ctrl, tls_acttab, "remove")) {
+    if (pr_ctrls_check_acl(ctrl, tls_acttab, "remove") != TRUE) {
       pr_ctrls_add_response(ctrl, "access denied");
-      return -1;
+      return PR_CTRLS_STATUS_ACCESS_DENIED;
     }
 
     return tls_handle_ocspcache_remove(ctrl, reqargc, reqargv);
@@ -11886,7 +11874,7 @@ static int tls_handle_ocspcache(pr_ctrls_t *ctrl, int reqargc, char **reqargv) {
 
   pr_ctrls_add_response(ctrl, "tls ocspcache: unknown ocspcache action: '%s'",
     reqargv[0]);
-  return -1;
+  return PR_CTRLS_STATUS_UNSUPPORTED_OPERATION;
 }
 
 /* Our main ftpdctl action handler */
@@ -11895,34 +11883,34 @@ static int tls_handle_tls(pr_ctrls_t *ctrl, int reqargc, char **reqargv) {
   /* Sanity check */
   if (reqargc == 0 ||
       reqargv == NULL) {
-    pr_ctrls_add_response(ctrl, "tls: missing required parameters");
-    return -1;
+    pr_ctrls_add_response(ctrl, "missing required parameters");
+    return PR_CTRLS_STATUS_WRONG_PARAMETERS;
   }
 
-  if (strncmp(reqargv[0], "sesscache", 10) == 0) {
+  if (strcmp(reqargv[0], "sesscache") == 0) {
     /* Check the ACLs. */
-    if (!pr_ctrls_check_acl(ctrl, tls_acttab, "sesscache")) {
+    if (pr_ctrls_check_acl(ctrl, tls_acttab, "sesscache") != TRUE) {
       pr_ctrls_add_response(ctrl, "access denied");
-      return -1;
+      return PR_CTRLS_STATUS_ACCESS_DENIED;
     }
 
     return tls_handle_sesscache(ctrl, --reqargc, ++reqargv);
   }
 
-  if (strncmp(reqargv[0], "ocspcache", 10) == 0) {
+  if (strcmp(reqargv[0], "ocspcache") == 0) {
     /* Check the ACLs. */
-    if (!pr_ctrls_check_acl(ctrl, tls_acttab, "ocspcache")) {
+    if (pr_ctrls_check_acl(ctrl, tls_acttab, "ocspcache") != TRUE) {
       pr_ctrls_add_response(ctrl, "access denied");
-      return -1;
+      return PR_CTRLS_STATUS_ACCESS_DENIED;
     }
 
     return tls_handle_ocspcache(ctrl, --reqargc, ++reqargv);
   }
 
-  pr_ctrls_add_response(ctrl, "tls: unknown tls action: '%s'", reqargv[0]);
-  return -1;
+  pr_ctrls_add_response(ctrl, "unknown tls action: '%s'", reqargv[0]);
+  return PR_CTRLS_STATUS_UNSUPPORTED_OPERATION;
 }
-#endif
+#endif /* PR_USE_CTRLS */
 
 /* TLSSessionCache callbacks
  */
@@ -13965,26 +13953,23 @@ MODRET set_tlsciphersuite(cmd_rec *cmd) {
 
 /* usage: TLSControlsACLs actions|all allow|deny user|group list */
 MODRET set_tlsctrlsacls(cmd_rec *cmd) {
-#ifdef PR_USE_CTRLS
+#if defined(PR_USE_CTRLS)
   char *bad_action = NULL, **actions = NULL;
 
   CHECK_ARGS(cmd, 4);
   CHECK_CONF(cmd, CONF_ROOT);
 
-  /* We can cheat here, and use the ctrls_parse_acl() routine to
-   * separate the given string...
-   */
-  actions = ctrls_parse_acl(cmd->tmp_pool, cmd->argv[1]);
+  actions = pr_ctrls_parse_acl(cmd->tmp_pool, cmd->argv[1]);
 
   /* Check the second parameter to make sure it is "allow" or "deny" */
-  if (strncmp(cmd->argv[2], "allow", 6) != 0 &&
-      strncmp(cmd->argv[2], "deny", 5) != 0) {
+  if (strcmp(cmd->argv[2], "allow") != 0 &&
+      strcmp(cmd->argv[2], "deny") != 0) {
     CONF_ERROR(cmd, "second parameter must be 'allow' or 'deny'");
   }
 
   /* Check the third parameter to make sure it is "user" or "group" */
-  if (strncmp(cmd->argv[3], "user", 5) != 0 &&
-      strncmp(cmd->argv[3], "group", 6) != 0) {
+  if (strcmp(cmd->argv[3], "user") != 0 &&
+      strcmp(cmd->argv[3], "group") != 0) {
     CONF_ERROR(cmd, "third parameter must be 'user' or 'group'");
   }
 

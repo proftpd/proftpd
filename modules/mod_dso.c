@@ -1,6 +1,6 @@
 /*
  * ProFTPD: mod_dso -- support for loading/unloading modules at run-time
- * Copyright (c) 2004-2022 TJ Saunders <tj@castaglia.org>
+ * Copyright (c) 2004-2023 TJ Saunders <tj@castaglia.org>
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -335,47 +335,51 @@ static int dso_handle_insmod(pr_ctrls_t *ctrl, int reqargc,
   register int i;
 
   /* Check the ACL. */
-  if (!pr_ctrls_check_acl(ctrl, dso_acttab, "insmod")) {
+  if (pr_ctrls_check_acl(ctrl, dso_acttab, "insmod") != TRUE) {
 
     /* Access denied. */
     pr_ctrls_add_response(ctrl, "access denied");
-    return -1;
+    return PR_CTRLS_STATUS_ACCESS_DENIED;
   }
 
   /* Sanity check */
   if (reqargc == 0 ||
       reqargv == NULL) {
     pr_ctrls_add_response(ctrl, "missing required parameters");
-    return -1;
+    return PR_CTRLS_STATUS_WRONG_PARAMETERS;
   }
 
   for (i = 0; i < reqargc; i++) {
-    if (dso_load_module(ctrl->ctrls_tmp_pool, reqargv[i]) < 0) {
-      int xerrno = errno;
+    int res, xerrno;
 
+    res = dso_load_module(ctrl->ctrls_tmp_pool, reqargv[i]);
+    xerrno = errno;
+
+    if (res < 0) {
       /* Make the error messages a little more relevant. */
       switch (xerrno) {
         case EINVAL:
           pr_ctrls_add_response(ctrl, "error loading '%s': Bad module name",
             reqargv[i]);
-          break;
+          return PR_CTRLS_STATUS_SUBJECT_NOT_FOUND;
 
         case EEXIST:
           pr_ctrls_add_response(ctrl, "error loading '%s': Already loaded",
             reqargv[i]);
-          break;
+          return PR_CTRLS_STATUS_OPERATION_IGNORED;
 
         default:
           pr_ctrls_add_response(ctrl, "error loading '%s': %s", reqargv[i],
             strerror(xerrno));
-          break;
+          return PR_CTRLS_STATUS_INTERNAL_ERROR;
       }
 
-    } else
+    } else {
       pr_ctrls_add_response(ctrl, "'%s' loaded", reqargv[i]);
+    }
   }
   
-  return 0;
+  return PR_CTRLS_STATUS_OK;
 }
 
 static int dso_handle_lsmod(pr_ctrls_t *ctrl, int reqargc,
@@ -383,16 +387,16 @@ static int dso_handle_lsmod(pr_ctrls_t *ctrl, int reqargc,
   module *m;
 
   /* Check the ACL. */
-  if (!pr_ctrls_check_acl(ctrl, dso_acttab, "lsmod")) {
+  if (pr_ctrls_check_acl(ctrl, dso_acttab, "lsmod") != TRUE) {
 
     /* Access denied. */
     pr_ctrls_add_response(ctrl, "access denied");
-    return -1;
+    return PR_CTRLS_STATUS_ACCESS_DENIED;
   }
 
   if (reqargc != 0) {
     pr_ctrls_add_response(ctrl, "wrong number of parameters");
-    return -1;
+    return PR_CTRLS_STATUS_WRONG_PARAMETERS;
   }
 
   /* We want to show the modules as `proftpd -l` shows them, in module
@@ -402,10 +406,11 @@ static int dso_handle_lsmod(pr_ctrls_t *ctrl, int reqargc,
   for (m = loaded_modules; m && m->next; m = m->next);
 
   pr_ctrls_add_response(ctrl, "Loaded Modules:");
-  for (; m; m = m->prev)
+  for (; m; m = m->prev) {
     pr_ctrls_add_response(ctrl, "  mod_%s.c", m->name);
+  }
 
-  return 0;
+  return PR_CTRLS_STATUS_OK;
 }
 
 static int dso_handle_rmmod(pr_ctrls_t *ctrl, int reqargc,
@@ -413,38 +418,42 @@ static int dso_handle_rmmod(pr_ctrls_t *ctrl, int reqargc,
   register int i;
 
   /* Check the ACL. */
-  if (!pr_ctrls_check_acl(ctrl, dso_acttab, "rmmod")) {
+  if (pr_ctrls_check_acl(ctrl, dso_acttab, "rmmod") != TRUE) {
 
     /* Access denied. */
     pr_ctrls_add_response(ctrl, "access denied");
-    return -1;
+    return PR_CTRLS_STATUS_ACCESS_DENIED;
   }
 
   /* Sanity check */
-  if (reqargc == 0 || reqargv == NULL) {
+  if (reqargc == 0 ||
+      reqargv == NULL) {
     pr_ctrls_add_response(ctrl, "missing required parameters");
-    return -1;
+    return PR_CTRLS_STATUS_WRONG_PARAMETERS;
   }
 
   for (i = 0; i < reqargc; i++) {
-    if (dso_unload_module_by_name(reqargv[i]) < 0) {
-      int xerrno = errno;
+    int res, xerrno;
 
+    res = dso_unload_module_by_name(reqargv[i]);
+    xerrno = errno;
+
+    if (res < 0) {
       switch (xerrno) {
         case EINVAL:
           pr_ctrls_add_response(ctrl, "error unloading '%s': Bad module name",
             reqargv[i]);
-          break;
+          return PR_CTRLS_STATUS_SUBJECT_NOT_FOUND;
 
         case ENOENT:
           pr_ctrls_add_response(ctrl, "error unloading '%s': Module not loaded",
             reqargv[i]);
-          break;
+          return PR_CTRLS_STATUS_SUBJECT_NOT_FOUND;
 
         default:
           pr_ctrls_add_response(ctrl, "error unloading '%s': %s",
             reqargv[i], strerror(errno));
-          break;
+          return PR_CTRLS_STATUS_INTERNAL_ERROR;
       }
 
     } else {
@@ -452,7 +461,7 @@ static int dso_handle_rmmod(pr_ctrls_t *ctrl, int reqargc,
     }
   }
 
-  return 0;
+  return PR_CTRLS_STATUS_OK;
 }
 #endif /* PR_USE_CTRLS */
 
@@ -501,21 +510,24 @@ MODRET set_modulectrlsacls(cmd_rec *cmd) {
   CHECK_ARGS(cmd, 4);
   CHECK_CONF(cmd, CONF_ROOT);
 
-  actions = ctrls_parse_acl(cmd->tmp_pool, cmd->argv[1]);
+  actions = pr_ctrls_parse_acl(cmd->tmp_pool, cmd->argv[1]);
 
   if (strcmp(cmd->argv[2], "allow") != 0 &&
-      strcmp(cmd->argv[2], "deny") != 0)
+      strcmp(cmd->argv[2], "deny") != 0) {
     CONF_ERROR(cmd, "second parameter must be 'allow' or 'deny'");
+  }
 
   if (strcmp(cmd->argv[3], "user") != 0 &&
-      strcmp(cmd->argv[3], "group") != 0)
+      strcmp(cmd->argv[3], "group") != 0) {
     CONF_ERROR(cmd, "third parameter must be 'user' or 'group'");
+  }
 
   bad_action = pr_ctrls_set_module_acls(dso_acttab, dso_pool, actions,
     cmd->argv[2], cmd->argv[3], cmd->argv[4]);
-  if (bad_action != NULL)
+  if (bad_action != NULL) {
     CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, ": unknown action: '",
       bad_action, "'", NULL));
+  }
 
   return PR_HANDLED(cmd);
 #else

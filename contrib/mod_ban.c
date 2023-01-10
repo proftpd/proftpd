@@ -1,6 +1,6 @@
 /*
  * ProFTPD: mod_ban -- a module implementing ban lists using the Controls API
- * Copyright (c) 2004-2022 TJ Saunders
+ * Copyright (c) 2004-2023 TJ Saunders
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -1914,13 +1914,13 @@ static int ban_handle_info(pr_ctrls_t *ctrl, int reqargc, char **reqargv) {
       case '?':
         pr_ctrls_add_response(ctrl, "unsupported parameter: '%s'",
           reqargv[0]);
-        return -1;
+        return PR_CTRLS_STATUS_WRONG_PARAMETERS;
     }
   }
 
   if (ban_lock_shm(LOCK_SH) < 0) {
     pr_ctrls_add_response(ctrl, "error locking shm: %s", strerror(errno));
-    return -1;
+    return PR_CTRLS_STATUS_INTERNAL_ERROR;
   }
 
   (void) pr_log_writefile(ban_logfd, MOD_BAN_VERSION, "showing ban lists");
@@ -1938,7 +1938,7 @@ static int ban_handle_info(pr_ctrls_t *ctrl, int reqargc, char **reqargv) {
         pr_ctrls_add_response(ctrl, "  %s",
           ban_lists->bans.bl_entries[i].be_name);
 
-        if (verbose) {
+        if (verbose == TRUE) {
           server_rec *s;
 
           pr_ctrls_add_response(ctrl, "    Reason: %s",
@@ -1976,7 +1976,7 @@ static int ban_handle_info(pr_ctrls_t *ctrl, int reqargc, char **reqargv) {
         pr_ctrls_add_response(ctrl, "  %s",
           ban_lists->bans.bl_entries[i].be_name);
 
-        if (verbose) {
+        if (verbose == TRUE) {
           server_rec *s;
 
           pr_ctrls_add_response(ctrl, "    Reason: %s",
@@ -2018,7 +2018,7 @@ static int ban_handle_info(pr_ctrls_t *ctrl, int reqargc, char **reqargv) {
         pr_ctrls_add_response(ctrl, "  %s",
           ban_lists->bans.bl_entries[i].be_name);
 
-        if (verbose) {
+        if (verbose == TRUE) {
           server_rec *s;
 
           pr_ctrls_add_response(ctrl, "    Reason: %s",
@@ -2060,7 +2060,7 @@ static int ban_handle_info(pr_ctrls_t *ctrl, int reqargc, char **reqargv) {
         pr_ctrls_add_response(ctrl, "  %s",
           ban_lists->bans.bl_entries[i].be_name);
 
-        if (verbose) {
+        if (verbose == TRUE) {
           server_rec *s;
 
           pr_ctrls_add_response(ctrl, "    Reason: %s",
@@ -2094,7 +2094,7 @@ static int ban_handle_info(pr_ctrls_t *ctrl, int reqargc, char **reqargv) {
 
 /* XXX need a way to clear the event list, too, I think...? */
 
-  if (show_events) {
+  if (show_events == TRUE) {
     pr_ctrls_add_response(ctrl, "%s", "");
 
     if (ban_lists->events.bel_listlen) {
@@ -2150,6 +2150,9 @@ static int ban_handle_info(pr_ctrls_t *ctrl, int reqargc, char **reqargv) {
             }
 
             break;
+
+          default:
+            break;
         }
       }
 
@@ -2159,8 +2162,7 @@ static int ban_handle_info(pr_ctrls_t *ctrl, int reqargc, char **reqargv) {
   }
 
   ban_lock_shm(LOCK_UN);
-
-  return 0;
+  return PR_CTRLS_STATUS_OK;
 }
 
 static int ban_handle_ban(pr_ctrls_t *ctrl, int reqargc,
@@ -2169,22 +2171,22 @@ static int ban_handle_ban(pr_ctrls_t *ctrl, int reqargc,
   unsigned int sid = 0;
 
   /* Check the ban ACL */
-  if (!pr_ctrls_check_acl(ctrl, ban_acttab, "ban")) {
+  if (pr_ctrls_check_acl(ctrl, ban_acttab, "ban") != TRUE) {
 
     /* Access denied */
     pr_ctrls_add_response(ctrl, "access denied");
-    return -1;
+    return PR_CTRLS_STATUS_ACCESS_DENIED;
   }
 
   /* Sanity check */
   if (reqargv == NULL) {
     pr_ctrls_add_response(ctrl, "missing parameters");
-    return -1;
+    return PR_CTRLS_STATUS_WRONG_PARAMETERS;
   }
 
   if (ban_engine_overall != TRUE) {
     pr_ctrls_add_response(ctrl, MOD_BAN_VERSION " not enabled");
-    return -1;
+    return PR_CTRLS_STATUS_OPERATION_DENIED;
   }
 
   pr_getopt_reset();
@@ -2202,7 +2204,7 @@ static int ban_handle_ban(pr_ctrls_t *ctrl, int reqargc,
         case 's':
           if (!optarg) {
             pr_ctrls_add_response(ctrl, "-s requires server address");
-            return -1;
+            return PR_CTRLS_STATUS_WRONG_PARAMETERS;
           }
           server_str = pstrdup(ctrl->ctrls_tmp_pool, optarg);
           break;
@@ -2210,7 +2212,7 @@ static int ban_handle_ban(pr_ctrls_t *ctrl, int reqargc,
         case '?':
           pr_ctrls_add_response(ctrl, "unsupported option: '%c'",
             (char) optopt);
-          return -1;
+          return PR_CTRLS_STATUS_WRONG_PARAMETERS;
       }
     }
 
@@ -2230,14 +2232,14 @@ static int ban_handle_ban(pr_ctrls_t *ctrl, int reqargc,
       if (server_addr == NULL) {
         pr_ctrls_add_response(ctrl, "no such server '%s#%u'", server_str,
           server_port);
-        return -1;
+        return PR_CTRLS_STATUS_SUBJECT_NOT_FOUND;
       }
 
       res = ban_get_sid_by_addr(server_addr, server_port);
       if (res < 0) {
         pr_ctrls_add_response(ctrl, "no such server '%s#%u'", server_str,
           server_port);
-        return -1;
+        return PR_CTRLS_STATUS_SUBJECT_NOT_FOUND;
       }
 
       sid = res;
@@ -2253,12 +2255,12 @@ static int ban_handle_ban(pr_ctrls_t *ctrl, int reqargc,
 
     if (reqargc < 2) {
       pr_ctrls_add_response(ctrl, "missing parameters");
-      return -1;
+      return PR_CTRLS_STATUS_WRONG_PARAMETERS;
     }
 
     if (ban_lock_shm(LOCK_EX) < 0) {
       pr_ctrls_add_response(ctrl, "error locking shm: %s", strerror(errno));
-      return -1;
+      return PR_CTRLS_STATUS_INTERNAL_ERROR;
     }
 
     /* Add each given user name to the list */
@@ -2298,12 +2300,12 @@ static int ban_handle_ban(pr_ctrls_t *ctrl, int reqargc,
 
     if (reqargc < 2) {
       pr_ctrls_add_response(ctrl, "missing parameters");
-      return -1;
+      return PR_CTRLS_STATUS_WRONG_PARAMETERS;
     }
 
     if (ban_lock_shm(LOCK_EX) < 0) {
       pr_ctrls_add_response(ctrl, "error locking shm: %s", strerror(errno));
-      return -1;
+      return PR_CTRLS_STATUS_INTERNAL_ERROR;
     }
 
     /* Add each given user/host to the list */
@@ -2343,12 +2345,12 @@ static int ban_handle_ban(pr_ctrls_t *ctrl, int reqargc,
 
     if (reqargc < 2) {
       pr_ctrls_add_response(ctrl, "missing parameters");
-      return -1;
+      return PR_CTRLS_STATUS_WRONG_PARAMETERS;
     }
 
     if (ban_lock_shm(LOCK_EX) < 0) {
       pr_ctrls_add_response(ctrl, "error locking shm: %s", strerror(errno));
-      return -1;
+      return PR_CTRLS_STATUS_INTERNAL_ERROR;
     }
 
     /* Add each site to the list */
@@ -2395,12 +2397,12 @@ static int ban_handle_ban(pr_ctrls_t *ctrl, int reqargc,
 
     if (reqargc < 2) {
       pr_ctrls_add_response(ctrl, "missing parameters");
-      return -1;
+      return PR_CTRLS_STATUS_WRONG_PARAMETERS;
     }
 
     if (ban_lock_shm(LOCK_EX) < 0) {
       pr_ctrls_add_response(ctrl, "error locking shm: %s", strerror(errno));
-      return -1;
+      return PR_CTRLS_STATUS_INTERNAL_ERROR;
     }
 
     /* Add each given class name to the list */
@@ -2442,10 +2444,10 @@ static int ban_handle_ban(pr_ctrls_t *ctrl, int reqargc,
   } else {
     pr_ctrls_add_response(ctrl, "unknown ban action requested: '%s'",
       reqargv[0]);
-    return -1;
+    return PR_CTRLS_STATUS_UNSUPPORTED_OPERATION;
   }
 
-  return 0;
+  return PR_CTRLS_STATUS_OK;
 }
 
 static int ban_handle_permit(pr_ctrls_t *ctrl, int reqargc,
@@ -2457,23 +2459,23 @@ static int ban_handle_permit(pr_ctrls_t *ctrl, int reqargc,
   char *server_str = NULL;
 
   /* Check the permit ACL */
-  if (!pr_ctrls_check_acl(ctrl, ban_acttab, "permit")) {
+  if (pr_ctrls_check_acl(ctrl, ban_acttab, "permit") != TRUE) {
 
     /* Access denied */
     pr_ctrls_add_response(ctrl, "access denied");
-    return -1;
+    return PR_CTRLS_STATUS_ACCESS_DENIED;
   }
 
   /* Sanity check */
   if (reqargc < 2 ||
       reqargv == NULL) {
     pr_ctrls_add_response(ctrl, "missing parameters");
-    return -1;
+    return PR_CTRLS_STATUS_WRONG_PARAMETERS;
   }
 
   if (ban_engine_overall != TRUE) {
     pr_ctrls_add_response(ctrl, MOD_BAN_VERSION " not enabled");
-    return -1;
+    return PR_CTRLS_STATUS_OPERATION_DENIED;
   }
 
   /* Check for options. */
@@ -2484,7 +2486,7 @@ static int ban_handle_permit(pr_ctrls_t *ctrl, int reqargc,
       case 's':
         if (!optarg) {
           pr_ctrls_add_response(ctrl, "-s requires server address");
-          return -1;
+          return PR_CTRLS_STATUS_WRONG_PARAMETERS;
         }
         server_str = pstrdup(ctrl->ctrls_tmp_pool, optarg);
         break;
@@ -2492,7 +2494,7 @@ static int ban_handle_permit(pr_ctrls_t *ctrl, int reqargc,
       case '?':
         pr_ctrls_add_response(ctrl, "unsupported parameter: '%c'",
           (char) optopt);
-        return -1;
+        return PR_CTRLS_STATUS_WRONG_PARAMETERS;
     }
   }
 
@@ -2512,14 +2514,14 @@ static int ban_handle_permit(pr_ctrls_t *ctrl, int reqargc,
     if (server_addr == NULL) {
       pr_ctrls_add_response(ctrl, "no such server '%s#%u'", server_str,
         server_port);
-      return -1;
+      return PR_CTRLS_STATUS_SUBJECT_NOT_FOUND;
     }
 
     res = ban_get_sid_by_addr(server_addr, server_port);
     if (res < 0) {
       pr_ctrls_add_response(ctrl, "no such server '%s#%u'", server_str,
         server_port);
-      return -1;
+      return PR_CTRLS_STATUS_SUBJECT_NOT_FOUND;
     }
 
     sid = res;
@@ -2534,12 +2536,12 @@ static int ban_handle_permit(pr_ctrls_t *ctrl, int reqargc,
     if (ban_lists->bans.bl_listlen == 0) {
       pr_ctrls_add_response(ctrl, "permit request unnecessary");
       pr_ctrls_add_response(ctrl, "no users are banned");
-      return 0;
+      return PR_CTRLS_STATUS_OPERATION_IGNORED;
     }
 
     if (ban_lock_shm(LOCK_EX) < 0) {
       pr_ctrls_add_response(ctrl, "error locking shm: %s", strerror(errno));
-      return -1;
+      return PR_CTRLS_STATUS_INTERNAL_ERROR;
     }
 
     if (strcmp(reqargv[optind], "*") == 0) {
@@ -2583,12 +2585,12 @@ static int ban_handle_permit(pr_ctrls_t *ctrl, int reqargc,
     if (ban_lists->bans.bl_listlen == 0) {
       pr_ctrls_add_response(ctrl, "permit request unnecessary");
       pr_ctrls_add_response(ctrl, "no user@hosts are banned");
-      return 0;
+      return PR_CTRLS_STATUS_OPERATION_IGNORED;
     }
 
     if (ban_lock_shm(LOCK_EX) < 0) {
       pr_ctrls_add_response(ctrl, "error locking shm: %s", strerror(errno));
-      return -1;
+      return PR_CTRLS_STATUS_INTERNAL_ERROR;
     }
 
     if (strcmp(reqargv[optind], "*") == 0) {
@@ -2633,12 +2635,12 @@ static int ban_handle_permit(pr_ctrls_t *ctrl, int reqargc,
     if (ban_lists->bans.bl_listlen == 0) {
       pr_ctrls_add_response(ctrl, "permit request unnecessary");
       pr_ctrls_add_response(ctrl, "no hosts are banned");
-      return 0;
+      return PR_CTRLS_STATUS_OPERATION_IGNORED;
     }
 
     if (ban_lock_shm(LOCK_EX) < 0) {
       pr_ctrls_add_response(ctrl, "error locking shm: %s", strerror(errno));
-      return -1;
+      return PR_CTRLS_STATUS_INTERNAL_ERROR;
     }
 
     if (strcmp(reqargv[optind], "*") == 0) {
@@ -2691,12 +2693,12 @@ static int ban_handle_permit(pr_ctrls_t *ctrl, int reqargc,
     if (ban_lists->bans.bl_listlen == 0) {
       pr_ctrls_add_response(ctrl, "permit request unnecessary");
       pr_ctrls_add_response(ctrl, "no classes are banned");
-      return 0;
+      return PR_CTRLS_STATUS_OPERATION_IGNORED;
     }
 
     if (ban_lock_shm(LOCK_EX) < 0) {
       pr_ctrls_add_response(ctrl, "error locking shm: %s", strerror(errno));
-      return -1;
+      return PR_CTRLS_STATUS_INTERNAL_ERROR;
     }
 
     if (strcmp(reqargv[optind], "*") == 0) {
@@ -2737,10 +2739,10 @@ static int ban_handle_permit(pr_ctrls_t *ctrl, int reqargc,
   } else {
     pr_ctrls_add_response(ctrl, "unknown ban action requested: '%s'",
       reqargv[0]);
-    return -1;
+    return PR_CTRLS_STATUS_UNSUPPORTED_OPERATION;
   }
 
-  return 0;
+  return PR_CTRLS_STATUS_OK;
 }
 
 /* Command handlers
@@ -2877,26 +2879,26 @@ MODRET set_banctrlsacls(cmd_rec *cmd) {
   CHECK_ARGS(cmd, 4);
   CHECK_CONF(cmd, CONF_ROOT);
 
-  /* We can cheat here, and use the ctrls_parse_acl() routine to
-   * separate the given string...
-   */
-  actions = ctrls_parse_acl(cmd->tmp_pool, cmd->argv[1]);
+  actions = pr_ctrls_parse_acl(cmd->tmp_pool, cmd->argv[1]);
 
   /* Check the second parameter to make sure it is "allow" or "deny" */
   if (strcmp(cmd->argv[2], "allow") != 0 &&
-      strcmp(cmd->argv[2], "deny") != 0)
+      strcmp(cmd->argv[2], "deny") != 0) {
     CONF_ERROR(cmd, "second parameter must be 'allow' or 'deny'");
+  }
 
   /* Check the third parameter to make sure it is "user" or "group" */
   if (strcmp(cmd->argv[3], "user") != 0 &&
-      strcmp(cmd->argv[3], "group") != 0)
+      strcmp(cmd->argv[3], "group") != 0) {
     CONF_ERROR(cmd, "third parameter must be 'user' or 'group'");
+  }
 
   bad_action = pr_ctrls_set_module_acls(ban_acttab, ban_pool, actions,
     cmd->argv[2], cmd->argv[3], cmd->argv[4]);
-  if (bad_action != NULL)
+  if (bad_action != NULL) {
     CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, ": unknown action: '",
       bad_action, "'", NULL));
+  }
 
   return PR_HANDLED(cmd);
 }

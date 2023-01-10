@@ -1,6 +1,6 @@
 /*
  * ProFTPD: mod_ctrls_admin -- a module implementing admin control handlers
- * Copyright (c) 2000-2020 TJ Saunders
+ * Copyright (c) 2000-2023 TJ Saunders
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -89,7 +89,7 @@ static int respcmp(const void *a, const void *b) {
   return strcmp(*((char **) a), *((char **) b));
 }
 
-#ifdef PR_USE_DEVEL
+#if defined(PR_USE_DEVEL)
 static pr_ctrls_t *mem_ctrl = NULL;
 
 static void mem_printf(const char *fmt, ...) {
@@ -232,20 +232,20 @@ static int ctrls_handle_config_set(pr_ctrls_t *ctrl, int reqargc,
       reqargv == NULL) {
     pr_ctrls_add_response(ctrl,
       "config set: missing required parameters");
-    return -1;
+    return PR_CTRLS_STATUS_WRONG_PARAMETERS;
   }
 
   name = reqargv[0];
   s = ctrls_config_find_server(ctrl, name);
   if (s == NULL) {
-    return -1;
+    return PR_CTRLS_STATUS_SUBJECT_NOT_FOUND;
   }
 
   res = pr_parser_prepare(ctrl->ctrls_tmp_pool, NULL);
   if (res < 0) {
     pr_ctrls_add_response(ctrl, "config set: error preparing parser: %s",
       strerror(errno));
-    return -1;
+    return PR_CTRLS_STATUS_INTERNAL_ERROR;
   }
 
   res = pr_parser_server_ctxt_push(s);
@@ -253,7 +253,7 @@ static int ctrls_handle_config_set(pr_ctrls_t *ctrl, int reqargc,
     pr_ctrls_add_response(ctrl,
       "config set: error adding server to parser stack: %s", strerror(errno));
     (void) pr_parser_cleanup();
-    return -1;
+    return PR_CTRLS_STATUS_INTERNAL_ERROR;
   }
 
   text = "";
@@ -268,7 +268,7 @@ static int ctrls_handle_config_set(pr_ctrls_t *ctrl, int reqargc,
     pr_ctrls_add_response(ctrl, "config set: error parsing config data: %s",
       strerror(errno));
     (void) pr_parser_cleanup();
-    return -1;
+    return PR_CTRLS_STATUS_INTERNAL_ERROR;
   }
 
   c = find_config(s->conf, CONF_PARAM, cmd->argv[0], FALSE);
@@ -299,7 +299,7 @@ static int ctrls_handle_config_set(pr_ctrls_t *ctrl, int reqargc,
   }
 
   (void) pr_parser_cleanup();
-  return 0;
+  return PR_CTRLS_STATUS_OK;
 }
 
 static int ctrls_handle_config_remove(pr_ctrls_t *ctrl, int reqargc,
@@ -318,26 +318,26 @@ static int ctrls_handle_config_remove(pr_ctrls_t *ctrl, int reqargc,
       reqargv == NULL) {
     pr_ctrls_add_response(ctrl,
       "config remove: missing required parameters");
-    return -1;
+    return PR_CTRLS_STATUS_WRONG_PARAMETERS;
   }
 
   if (reqargc != 2) {
     pr_ctrls_add_response(ctrl,
       "config remove: wrong number of parameters");
-    return -1;
+    return PR_CTRLS_STATUS_WRONG_PARAMETERS;
   }
 
   name = reqargv[0];
   s = ctrls_config_find_server(ctrl, name);
   if (s == NULL) {
-    return -1;
+    return PR_CTRLS_STATUS_SUBJECT_NOT_FOUND;
   }
 
   res = pr_parser_prepare(ctrl->ctrls_tmp_pool, NULL);
   if (res < 0) {
     pr_ctrls_add_response(ctrl, "config remove: error preparing parser: %s",
       strerror(errno));
-    return -1;
+    return PR_CTRLS_STATUS_INTERNAL_ERROR;
   }
 
   res = pr_parser_server_ctxt_push(s);
@@ -346,22 +346,23 @@ static int ctrls_handle_config_remove(pr_ctrls_t *ctrl, int reqargc,
       "config remove: error adding server to parser stack: %s",
       strerror(errno));
     (void) pr_parser_cleanup();
-    return -1;
+    return PR_CTRLS_STATUS_INTERNAL_ERROR;
   }
 
   directive = reqargv[1];
   res = remove_config(s->conf, directive, FALSE);
-  if (res == TRUE) {
-    pr_ctrls_add_response(ctrl, "config remove: %s removed", directive);
-    pr_config_merge_down(s->conf, TRUE);
-
-  } else {
+  if (res != TRUE) {
     pr_ctrls_add_response(ctrl, "config remove: %s not found in configuration",
       directive);
+    (void) pr_parser_cleanup();
+    return PR_CTRLS_STATUS_SUBJECT_NOT_FOUND;
   }
 
+  pr_ctrls_add_response(ctrl, "config remove: %s removed", directive);
+  pr_config_merge_down(s->conf, TRUE);
+
   (void) pr_parser_cleanup();
-  return 0;
+  return PR_CTRLS_STATUS_OK;
 }
 
 static int ctrls_handle_config(pr_ctrls_t *ctrl, int reqargc,
@@ -371,36 +372,36 @@ static int ctrls_handle_config(pr_ctrls_t *ctrl, int reqargc,
   if (reqargc == 0 ||
       reqargv == NULL) {
     pr_ctrls_add_response(ctrl, "config: missing required parameters");
-    return -1;
+    return PR_CTRLS_STATUS_WRONG_PARAMETERS;
   }
 
-  if (strncmp(reqargv[0], "set", 4) == 0) {
+  if (strcmp(reqargv[0], "set") == 0) {
     return ctrls_handle_config_set(ctrl, --reqargc, ++reqargv);
 
-  } else if (strncmp(reqargv[0], "remove", 7) == 0) {
+  } else if (strcmp(reqargv[0], "remove") == 0) {
     return ctrls_handle_config_remove(ctrl, --reqargc, ++reqargv);
   }
 
   pr_ctrls_add_response(ctrl, "config: unknown config action: '%s'",
     reqargv[0]);
-  return -1;
+  return PR_CTRLS_STATUS_UNSUPPORTED_OPERATION;
 }
 
 static int ctrls_handle_debug(pr_ctrls_t *ctrl, int reqargc,
     char **reqargv) {
 
   /* Check the debug ACL */
-  if (!pr_ctrls_check_acl(ctrl, ctrls_admin_acttab, "debug")) {
-
+  if (pr_ctrls_check_acl(ctrl, ctrls_admin_acttab, "debug") != TRUE) {
     /* Access denied */
     pr_ctrls_add_response(ctrl, "access denied");
-    return -1;
+    return PR_CTRLS_STATUS_ACCESS_DENIED;
   }
 
   /* Sanity check */
-  if (reqargc == 0 || reqargv == NULL) {
+  if (reqargc == 0 ||
+      reqargv == NULL) {
     pr_ctrls_add_response(ctrl, "debug: missing required parameters");
-    return -1;
+    return PR_CTRLS_STATUS_WRONG_PARAMETERS;
   }
 
   /* Handle 'debug level' requests */
@@ -410,7 +411,7 @@ static int ctrls_handle_debug(pr_ctrls_t *ctrl, int reqargc,
     if (reqargc != 1 &&
         reqargc != 2) {
       pr_ctrls_add_response(ctrl, "debug: wrong number of parameters");
-      return -1;
+      return PR_CTRLS_STATUS_WRONG_PARAMETERS;
     }
 
     if (reqargc == 1) {
@@ -425,7 +426,7 @@ static int ctrls_handle_debug(pr_ctrls_t *ctrl, int reqargc,
       level = atoi(reqargv[1]);
       if (level < 0) {
         pr_ctrls_add_response(ctrl, "debug level must not be negative");
-        return -1; 
+        return PR_CTRLS_STATUS_WRONG_PARAMETERS;
       }
   
       pr_log_setdebuglevel(level);
@@ -433,14 +434,14 @@ static int ctrls_handle_debug(pr_ctrls_t *ctrl, int reqargc,
       pr_ctrls_add_response(ctrl, "debug level set to %d", level);
     }
 
-#ifdef PR_USE_DEVEL
+#if defined(PR_USE_DEVEL)
   /* Handle 'debug memory' requests */
   } else if (strcmp(reqargv[0], "mem") == 0 ||
              strcmp(reqargv[0], "memory") == 0) {
 
     if (reqargc != 1) {
       pr_ctrls_add_response(ctrl, "debug: too many parameters");
-      return -1;
+      return PR_CTRLS_STATUS_WRONG_PARAMETERS;
     }
 
     mem_ctrl = ctrl;
@@ -448,15 +449,14 @@ static int ctrls_handle_debug(pr_ctrls_t *ctrl, int reqargc,
     mem_ctrl = NULL;
 
     pr_ctrls_log(MOD_CTRLS_ADMIN_VERSION, "debug: dumped memory info");
-
 #endif /* PR_USE_DEVEL */
 
   } else {
     pr_ctrls_add_response(ctrl, "unknown debug action: '%s'", reqargv[0]);
-    return -1;
+    return PR_CTRLS_STATUS_UNSUPPORTED_OPERATION;
   }
 
-  return 0;
+  return PR_CTRLS_STATUS_OK;
 }
 
 static int ctrls_handle_dns(pr_ctrls_t *ctrl, int reqargc,
@@ -464,31 +464,33 @@ static int ctrls_handle_dns(pr_ctrls_t *ctrl, int reqargc,
   int bool;
 
   /* Check the dns ACL */
-  if (!pr_ctrls_check_acl(ctrl, ctrls_admin_acttab, "dns")) {
+  if (pr_ctrls_check_acl(ctrl, ctrls_admin_acttab, "dns") != TRUE) {
 
     /* Access denied */
     pr_ctrls_add_response(ctrl, "access denied");
-    return -1;
+    return PR_CTRLS_STATUS_ACCESS_DENIED;
   }
 
   /* Sanity check */
-  if (reqargc == 0 || reqargv == NULL) {
+  if (reqargc == 0 ||
+      reqargv == NULL) {
     pr_ctrls_add_response(ctrl, "dns: missing required parameters");
-    return -1;
+    return PR_CTRLS_STATUS_WRONG_PARAMETERS;
   }
 
   if (reqargc != 1 &&
       reqargc != 2) {
     pr_ctrls_add_response(ctrl, "dns: wrong number of parameters");
-    return -1;
+    return PR_CTRLS_STATUS_WRONG_PARAMETERS;
   }
 
   if (reqargc == 2 &&
       strcmp(reqargv[0], "cache") == 0) {
+
     if (strcmp(reqargv[1], "clear") != 0) {
       pr_ctrls_add_response(ctrl,
         "dns: error: expected 'clear' command: '%s'", reqargv[1]);
-      return -1;
+      return PR_CTRLS_STATUS_WRONG_PARAMETERS;
     }
 
     pr_netaddr_clear_cache();
@@ -496,10 +498,11 @@ static int ctrls_handle_dns(pr_ctrls_t *ctrl, int reqargc,
     
   } else {
     bool = pr_str_is_boolean(reqargv[0]);
+
     if (bool == -1) {
       pr_ctrls_add_response(ctrl,
         "dns: error: expected Boolean parameter: '%s'", reqargv[0]);
-      return -1;
+      return PR_CTRLS_STATUS_WRONG_PARAMETERS;
     }
 
     ServerUseReverseDNS = bool;
@@ -510,31 +513,34 @@ static int ctrls_handle_dns(pr_ctrls_t *ctrl, int reqargc,
       bool ? "on" : "off");
   }
 
-  return 0;
+  return PR_CTRLS_STATUS_OK;
 }
 
 static int admin_addr_down(pr_ctrls_t *ctrl, const pr_netaddr_t *addr,
     unsigned int port) {
+  int res, xerrno;
 
   pr_ctrls_log(MOD_CTRLS_ADMIN_VERSION, "down: disabling %s#%u",
     pr_netaddr_get_ipstr(addr), port);
 
-  if (pr_ipbind_close(addr, port, FALSE) < 0) {
-    if (errno == ENOENT) {
+  res = pr_ipbind_close(addr, port, FALSE);
+  xerrno = errno;
+
+  if (res < 0) {
+    if (xerrno == ENOENT) {
       pr_ctrls_add_response(ctrl, "down: no such server: %s#%u",
         pr_netaddr_get_ipstr(addr), port);
-
-    } else {
-      pr_ctrls_add_response(ctrl, "down: %s#%u already disabled",
-        pr_netaddr_get_ipstr(addr), port);
+      return PR_CTRLS_STATUS_SUBJECT_NOT_FOUND;
     }
 
-  } else {
-    pr_ctrls_add_response(ctrl, "down: %s#%u disabled",
+    pr_ctrls_add_response(ctrl, "down: %s#%u already disabled",
       pr_netaddr_get_ipstr(addr), port);
+    return PR_CTRLS_STATUS_OPERATION_IGNORED;
   }
 
-  return 0;
+  pr_ctrls_add_response(ctrl, "down: %s#%u disabled",
+    pr_netaddr_get_ipstr(addr), port);
+  return PR_CTRLS_STATUS_OK;
 }
 
 static int ctrls_handle_down(pr_ctrls_t *ctrl, int reqargc,
@@ -546,17 +552,17 @@ static int ctrls_handle_down(pr_ctrls_t *ctrl, int reqargc,
    */
 
   /* Check the 'down' ACL */
-  if (!pr_ctrls_check_acl(ctrl, ctrls_admin_acttab, "down")) {
-
+  if (pr_ctrls_check_acl(ctrl, ctrls_admin_acttab, "down") != TRUE) {
     /* Access denied */
     pr_ctrls_add_response(ctrl, "access denied");
-    return -1;
+    return PR_CTRLS_STATUS_ACCESS_DENIED;
   }
 
   /* Sanity check */
-  if (reqargc < 1 || reqargv == NULL) {
+  if (reqargc < 1 ||
+      reqargv == NULL) {
     pr_ctrls_add_response(ctrl, "down: missing required parameters");
-    return -1;
+    return PR_CTRLS_STATUS_WRONG_PARAMETERS;
   }
 
   for (i = 0; i < reqargc; i++) {
@@ -569,7 +575,7 @@ static int ctrls_handle_down(pr_ctrls_t *ctrl, int reqargc,
     if (strcasecmp(server_str, "all") == 0) {
       pr_ipbind_close(NULL, 0, FALSE);
       pr_ctrls_add_response(ctrl, "down: all servers disabled");
-      return 0;
+      return PR_CTRLS_STATUS_OK;
     }
 
     tmp = strchr(server_str, '#');
@@ -597,17 +603,17 @@ static int ctrls_handle_down(pr_ctrls_t *ctrl, int reqargc,
     }
   }
 
-  return 0;
+  return PR_CTRLS_STATUS_OK;
 }
 
 static int ctrls_handle_get(pr_ctrls_t *ctrl, int reqargc,
     char **reqargv) {
-  int res = 0;
 
   /* Sanity check */
-  if (reqargc == 0 || reqargv == NULL) {
+  if (reqargc == 0 ||
+      reqargv == NULL) {
     pr_ctrls_add_response(ctrl, "get: missing required parameters");
-    return -1;
+    return PR_CTRLS_STATUS_WRONG_PARAMETERS;
   }
 
   /* Handle 'get config' requests */
@@ -625,69 +631,60 @@ static int ctrls_handle_get(pr_ctrls_t *ctrl, int reqargc,
          * be retrievable, but are Boolean values instead of strings.  Hmmm.
          */
 
-        if ((c = find_config(main_server->conf, CONF_PARAM, reqargv[i],
-            FALSE)) != NULL) {
+        c = find_config(main_server->conf, CONF_PARAM, reqargv[i], FALSE);
+        if (c != NULL) {
+          pr_ctrls_add_response(ctrl, "%s: not retrievable", reqargv[i]);
 
-#if 0
-          /* Not yet supported */
-          if (c->flags & CF_GCTRL)
-            pr_ctrls_add_response(ctrl, "%s: %s", reqargv[i],
-              (char *) c->argv[0]);
-          else
-#endif
-            pr_ctrls_add_response(ctrl, "%s: not retrievable", reqargv[i]);
-
-        } else
+        } else {
           pr_ctrls_add_response(ctrl, "%s: directive not found", reqargv[i]);
+        }
       }
 
     } else {
       pr_ctrls_add_response(ctrl, "%s: missing parameters", reqargv[0]);
-      res = -1;
+      return PR_CTRLS_STATUS_WRONG_PARAMETERS;
     }
 
   /* Handle 'get directives' requests */
   } else if (strcmp(reqargv[0], "directives") == 0) {
+    conftable *conftab;
+    int stash_idx = -1;
+    unsigned int stash_hash = 0;
 
-    if (reqargc == 1) {
-      conftable *conftab;
-      int stash_idx = -1;
-      unsigned int stash_hash = 0;
+    if (reqargc != 1) {
+      pr_ctrls_add_response(ctrl, "%s: wrong number of parameters", reqargv[0]);
+      return PR_CTRLS_STATUS_WRONG_PARAMETERS;
+    }
 
-      /* Create a list of all known configuration directives. */
+    /* Create a list of all known configuration directives. */
 
-      conftab = pr_stash_get_symbol2(PR_SYM_CONF, NULL, NULL, &stash_idx,
-        &stash_hash);
-      while (stash_idx != -1) {
-        pr_signals_handle();
+    conftab = pr_stash_get_symbol2(PR_SYM_CONF, NULL, NULL, &stash_idx,
+      &stash_hash);
+    while (stash_idx != -1) {
+      pr_signals_handle();
 
-        if (conftab) {
-          pr_ctrls_add_response(ctrl, "%s (mod_%s.c)", conftab->directive,
-            conftab->m->name);
+      if (conftab != NULL) {
+        pr_ctrls_add_response(ctrl, "%s (mod_%s.c)", conftab->directive,
+          conftab->m->name);
 
-        } else {
-          stash_idx++;
-        }
-
-        conftab = pr_stash_get_symbol2(PR_SYM_CONF, NULL, conftab, &stash_idx,
-          &stash_hash);
+      } else {
+        stash_idx++;
       }
 
-      /* Be nice, and sort the directives lexicographically */
-      qsort(ctrl->ctrls_cb_resps->elts, ctrl->ctrls_cb_resps->nelts,
-        sizeof(char *), respcmp);
-
-    } else {
-      pr_ctrls_add_response(ctrl, "%s: wrong number of parameters", reqargv[0]);
-      res = -1;
+      conftab = pr_stash_get_symbol2(PR_SYM_CONF, NULL, conftab, &stash_idx,
+        &stash_hash);
     }
+
+    /* Be nice, and sort the directives lexicographically */
+    qsort(ctrl->ctrls_cb_resps->elts, ctrl->ctrls_cb_resps->nelts,
+      sizeof(char *), respcmp);
 
   } else {
     pr_ctrls_add_response(ctrl, "unknown get type requested: '%s'", reqargv[0]);
-    res = -1;
+    return PR_CTRLS_STATUS_UNSUPPORTED_OPERATION;
   }
 
-  return res;
+  return PR_CTRLS_STATUS_OK;
 }
 
 static int ctrls_handle_kick(pr_ctrls_t *ctrl, int reqargc,
@@ -695,18 +692,18 @@ static int ctrls_handle_kick(pr_ctrls_t *ctrl, int reqargc,
   int res = 0;
 
   /* Check the kick ACL */
-  if (!pr_ctrls_check_acl(ctrl, ctrls_admin_acttab, "kick")) {
+  if (pr_ctrls_check_acl(ctrl, ctrls_admin_acttab, "kick") != TRUE) {
 
     /* Access denied */
     pr_ctrls_add_response(ctrl, "access denied");
-    return -1;
+    return PR_CTRLS_STATUS_ACCESS_DENIED;
   }
 
   /* Sanity check */
   if (reqargc == 0 ||
       reqargv == NULL) {
     pr_ctrls_add_response(ctrl, "missing required parameters");
-    return -1;
+    return PR_CTRLS_STATUS_WRONG_PARAMETERS;
   }
 
   /* Handle 'kick user' requests. */
@@ -724,20 +721,20 @@ static int ctrls_handle_kick(pr_ctrls_t *ctrl, int reqargc,
           kicked_max = atoi(optarg);
           if (kicked_max < 1) {
             pr_ctrls_add_response(ctrl, "bad number: %s", optarg);
-            return -1;
+            return PR_CTRLS_STATUS_WRONG_PARAMETERS;
           }
           break;
 
         case '?':
           pr_ctrls_add_response(ctrl, "unsupported option: '%c'",
             (char) optopt);
-          return -1;
+          return PR_CTRLS_STATUS_WRONG_PARAMETERS;
       }
     }
 
     if (optind == reqargc) {
       pr_ctrls_add_response(ctrl, "kick user: missing required user name(s)");
-      return -1;
+      return PR_CTRLS_STATUS_WRONG_PARAMETERS;
     }
 
     /* Iterate through the scoreboard, and send a SIGTERM to each
@@ -751,7 +748,7 @@ static int ctrls_handle_kick(pr_ctrls_t *ctrl, int reqargc,
           strerror(errno));
         pr_ctrls_add_response(ctrl, "error rewinding scoreboard: %s",
           strerror(errno));
-        return -1;
+        return PR_CTRLS_STATUS_INTERNAL_ERROR;
       }
 
       while ((score = pr_scoreboard_entry_read()) != NULL) {
@@ -788,7 +785,7 @@ static int ctrls_handle_kick(pr_ctrls_t *ctrl, int reqargc,
           strerror(errno));
       }
 
-      if (kicked_user) {
+      if (kicked_user == TRUE) {
         if (kicked_max > 0) {
           pr_ctrls_add_response(ctrl, "kicked user '%s' (%d clients)",
             reqargv[i], kicked_max);
@@ -824,20 +821,20 @@ static int ctrls_handle_kick(pr_ctrls_t *ctrl, int reqargc,
           kicked_max = atoi(optarg);
           if (kicked_max < 1) {
             pr_ctrls_add_response(ctrl, "bad number: %s", optarg);
-            return -1;
+            return PR_CTRLS_STATUS_WRONG_PARAMETERS;
           }
           break;
 
         case '?':
           pr_ctrls_add_response(ctrl, "unsupported option: '%c'",
             (char) optopt);
-          return -1;
+          return PR_CTRLS_STATUS_WRONG_PARAMETERS;
       }
     }
 
     if (optind == reqargc) {
       pr_ctrls_add_response(ctrl, "kick host: missing required host(s)");
-      return -1;
+      return PR_CTRLS_STATUS_WRONG_PARAMETERS;
     }
 
     /* Iterate through the scoreboard, and send a SIGTERM to each
@@ -864,7 +861,7 @@ static int ctrls_handle_kick(pr_ctrls_t *ctrl, int reqargc,
           strerror(errno));
         pr_ctrls_add_response(ctrl, "error rewinding scoreboard: %s",
           strerror(errno));
-        return -1;
+        return PR_CTRLS_STATUS_INTERNAL_ERROR;
       }
 
       while ((score = pr_scoreboard_entry_read()) != NULL) {
@@ -886,7 +883,7 @@ static int ctrls_handle_kick(pr_ctrls_t *ctrl, int reqargc,
       }
       pr_restore_scoreboard();
 
-      if (kicked_host) {
+      if (kicked_host == TRUE) {
         if (kicked_max > 0) {
           pr_ctrls_add_response(ctrl, "kicked host '%s' (%d clients)", addr,
             kicked_max);
@@ -922,20 +919,20 @@ static int ctrls_handle_kick(pr_ctrls_t *ctrl, int reqargc,
           kicked_max = atoi(optarg);
           if (kicked_max < 1) {
             pr_ctrls_add_response(ctrl, "bad client number: %s", optarg);
-            return -1;
+            return PR_CTRLS_STATUS_WRONG_PARAMETERS;
           }
           break;
 
         case '?':
           pr_ctrls_add_response(ctrl, "unsupported option: '%c'",
             (char) optopt);
-          return -1;
+          return PR_CTRLS_STATUS_WRONG_PARAMETERS;
       }
     }
 
     if (optind == reqargc) {
       pr_ctrls_add_response(ctrl, "kick class: missing required class name(s)");
-      return -1;
+      return PR_CTRLS_STATUS_WRONG_PARAMETERS;
     }
 
     /* Iterate through the scoreboard, and send a SIGTERM to each
@@ -949,7 +946,7 @@ static int ctrls_handle_kick(pr_ctrls_t *ctrl, int reqargc,
           strerror(errno));
         pr_ctrls_add_response(ctrl, "error rewinding scoreboard: %s",
           strerror(errno));
-        return -1;
+        return PR_CTRLS_STATUS_INTERNAL_ERROR;
       }
 
       while ((score = pr_scoreboard_entry_read()) != NULL) {
@@ -986,7 +983,7 @@ static int ctrls_handle_kick(pr_ctrls_t *ctrl, int reqargc,
           strerror(errno));
       }
 
-      if (kicked_class) {
+      if (kicked_class == TRUE) {
         if (kicked_max > 0) {
           pr_ctrls_add_response(ctrl, "kicked class '%s' (%d clients)",
             reqargv[i], kicked_max);
@@ -1011,27 +1008,27 @@ static int ctrls_handle_kick(pr_ctrls_t *ctrl, int reqargc,
   } else {
     pr_ctrls_add_response(ctrl, "unknown kick type requested: '%s'",
       reqargv[0]);
-    res = -1;
+    return PR_CTRLS_STATUS_UNSUPPORTED_OPERATION;
   }
 
-  return res;
+  return PR_CTRLS_STATUS_OK;
 }
 
 static int ctrls_handle_restart(pr_ctrls_t *ctrl, int reqargc,
     char **reqargv) {
 
   /* Check the restart ACL */
-  if (!pr_ctrls_check_acl(ctrl, ctrls_admin_acttab, "restart")) {
+  if (pr_ctrls_check_acl(ctrl, ctrls_admin_acttab, "restart") != TRUE) {
 
     /* Access denied */
     pr_ctrls_add_response(ctrl, "access denied");
-    return -1;
+    return PR_CTRLS_STATUS_ACCESS_DENIED;
   }
 
   /* Be pedantic */
   if (reqargc > 1) {
     pr_ctrls_add_response(ctrl, "wrong number of parameters");
-    return -1;
+    return PR_CTRLS_STATUS_WRONG_PARAMETERS;
   }
 
   if (reqargc == 0) {
@@ -1052,35 +1049,36 @@ static int ctrls_handle_restart(pr_ctrls_t *ctrl, int reqargc,
           ctrls_admin_nrestarts, ctrls_admin_nrestarts != 1 ? "times" : "time",
           tm->tm_year+1900, tm->tm_mon+1, tm->tm_mday, tm->tm_hour, tm->tm_min,
           tm->tm_sec);
+
       } else {
         pr_ctrls_add_response(ctrl, "error obtaining GMT timestamp: %s",
           strerror(errno));
-        return -1;
+        return PR_CTRLS_STATUS_INTERNAL_ERROR;
       }
 
     } else {
       pr_ctrls_add_response(ctrl, "unsupported parameter '%s'", reqargv[0]);
-      return -1;
+      return PR_CTRLS_STATUS_WRONG_PARAMETERS;
     }
   }
 
-  return 0;
+  return PR_CTRLS_STATUS_OK;
 }
 
 static int ctrls_handle_scoreboard(pr_ctrls_t *ctrl, int reqargc,
     char **reqargv) {
 
   /* Check the scoreboard ACL. */
-  if (!pr_ctrls_check_acl(ctrl, ctrls_admin_acttab, "scoreboard")) {
+  if (pr_ctrls_check_acl(ctrl, ctrls_admin_acttab, "scoreboard") != TRUE) {
 
     /* Access denied. */
     pr_ctrls_add_response(ctrl, "access denied");
-    return -1;
+    return PR_CTRLS_STATUS_ACCESS_DENIED;
   }
 
   if (reqargc != 1) {
     pr_ctrls_add_response(ctrl, "wrong number of parameters");
-    return -1;
+    return PR_CTRLS_STATUS_WRONG_PARAMETERS;
   }
 
   if (strcmp(reqargv[0], "clean") == 0 ||
@@ -1088,11 +1086,11 @@ static int ctrls_handle_scoreboard(pr_ctrls_t *ctrl, int reqargc,
 
     pr_scoreboard_scrub();
     pr_ctrls_add_response(ctrl, "scrubbed scoreboard");
-    return 0;
+    return PR_CTRLS_STATUS_OK;
   }
 
   pr_ctrls_add_response(ctrl, "unknown scoreboard action '%s'", reqargv[0]);
-  return -1;
+  return PR_CTRLS_STATUS_UNSUPPORTED_OPERATION;
 }
 
 static int ctrls_handle_shutdown(pr_ctrls_t *ctrl, int reqargc,
@@ -1102,11 +1100,11 @@ static int ctrls_handle_shutdown(pr_ctrls_t *ctrl, int reqargc,
   char **respargv = NULL;
 
   /* Check the shutdown ACL */
-  if (!pr_ctrls_check_acl(ctrl, ctrls_admin_acttab, "shutdown")) {
+  if (pr_ctrls_check_acl(ctrl, ctrls_admin_acttab, "shutdown") != TRUE) {
 
     /* Access denied */
     pr_ctrls_add_response(ctrl, "access denied");
-    return -1;
+    return PR_CTRLS_STATUS_ACCESS_DENIED;
   }
 
   /* Add a response */
@@ -1181,7 +1179,7 @@ static int ctrls_handle_shutdown(pr_ctrls_t *ctrl, int reqargc,
   respargv = ctrl->ctrls_cb_resps->elts;
 
   /* Manually tweak the return value, for the benefit of the client */
-  ctrl->ctrls_cb_retval = 0;
+  ctrl->ctrls_cb_retval = PR_CTRLS_STATUS_OK;
 
   if (pr_ctrls_flush_response(ctrl) < 0) {
     pr_ctrls_log(MOD_CTRLS_ADMIN_VERSION,
@@ -1202,7 +1200,7 @@ static int ctrls_handle_shutdown(pr_ctrls_t *ctrl, int reqargc,
   /* Shutdown by raising SIGTERM.  Easy. */
   raise(SIGTERM);
 
-  return 0;
+  return PR_CTRLS_STATUS_OK;
 }
 
 static int admin_addr_status(pr_ctrls_t *ctrl, const pr_netaddr_t *addr,
@@ -1218,12 +1216,12 @@ static int admin_addr_status(pr_ctrls_t *ctrl, const pr_netaddr_t *addr,
     pr_ctrls_add_response(ctrl,
       "status: no server associated with %s#%u", pr_netaddr_get_ipstr(addr),
       port);
-    return -1;
+    return PR_CTRLS_STATUS_SUBJECT_NOT_FOUND;
   }
 
   pr_ctrls_add_response(ctrl, "status: %s#%u %s", pr_netaddr_get_ipstr(addr),
     port, ipbind->ib_isactive ? "UP" : "DOWN");
-  return 0;
+  return PR_CTRLS_STATUS_OK;
 }
 
 static int ctrls_handle_status(pr_ctrls_t *ctrl, int reqargc,
@@ -1231,17 +1229,18 @@ static int ctrls_handle_status(pr_ctrls_t *ctrl, int reqargc,
   register int i = 0;
 
   /* Check the status ACL. */
-  if (!pr_ctrls_check_acl(ctrl, ctrls_admin_acttab, "status")) {
+  if (pr_ctrls_check_acl(ctrl, ctrls_admin_acttab, "status") != TRUE) {
 
     /* Access denied. */
     pr_ctrls_add_response(ctrl, "access denied");
-    return -1;
+    return PR_CTRLS_STATUS_ACCESS_DENIED;
   }
 
   /* Sanity check */ 
-  if (reqargc < 1 || reqargv == NULL) {
+  if (reqargc < 1 ||
+      reqargv == NULL) {
     pr_ctrls_add_response(ctrl, "status: missing required parameters");
-    return -1;
+    return PR_CTRLS_STATUS_WRONG_PARAMETERS;
   }
 
   for (i = 0; i < reqargc; i++) {
@@ -1263,7 +1262,7 @@ static int ctrls_handle_status(pr_ctrls_t *ctrl, int reqargc,
           ipbind->ib_port, ipbind->ib_isactive ? "UP" : "DOWN");
       }
 
-      return 0;
+      return PR_CTRLS_STATUS_OK;
     }
 
     tmp = strchr(server_str, '#');
@@ -1293,25 +1292,25 @@ static int ctrls_handle_status(pr_ctrls_t *ctrl, int reqargc,
     }
   }
 
-  return 0;
+  return PR_CTRLS_STATUS_OK;
 }
 
 static int ctrls_handle_trace(pr_ctrls_t *ctrl, int reqargc,
     char **reqargv) {
-#ifdef PR_USE_TRACE
-
+#if defined(PR_USE_TRACE)
   /* Check the trace ACL. */
-  if (!pr_ctrls_check_acl(ctrl, ctrls_admin_acttab, "trace")) {
+  if (pr_ctrls_check_acl(ctrl, ctrls_admin_acttab, "trace") != TRUE) {
 
     /* Access denied. */
     pr_ctrls_add_response(ctrl, "access denied");
-    return -1;
+    return PR_CTRLS_STATUS_ACCESS_DENIED;
   }
 
   /* Sanity check */
-  if (reqargc < 1 || reqargv == NULL) {
+  if (reqargc < 1 ||
+      reqargv == NULL) {
     pr_ctrls_add_response(ctrl, "trace: missing required parameters");
-    return -1;
+    return PR_CTRLS_STATUS_WRONG_PARAMETERS;
   }
 
   if (strcmp(reqargv[0], "info") != 0) {
@@ -1325,7 +1324,7 @@ static int ctrls_handle_trace(pr_ctrls_t *ctrl, int reqargc,
       if (tmp == NULL) {
         pr_ctrls_add_response(ctrl, "trace: badly formatted parameter: '%s'",
           reqargv[i]);
-        return -1;
+        return PR_CTRLS_STATUS_WRONG_PARAMETERS;
       }
 
       channel = reqargv[i];
@@ -1337,18 +1336,17 @@ static int ctrls_handle_trace(pr_ctrls_t *ctrl, int reqargc,
           pr_ctrls_add_response(ctrl,
             "trace: error setting channel '%s' to levels %d-%d: %s", channel,
             min_level, max_level, strerror(errno));
-          return -1;
-
-        } else {
-          pr_ctrls_add_response(ctrl, "trace: set channel '%s' to levels %d-%d",
-            channel, min_level, max_level);
+          return PR_CTRLS_STATUS_INTERNAL_ERROR;
         }
+
+        pr_ctrls_add_response(ctrl, "trace: set channel '%s' to levels %d-%d",
+          channel, min_level, max_level);
 
       } else {
         pr_ctrls_add_response(ctrl,
           "trace: error parsing level '%s' for channel '%s': %s", tmp + 1,
           channel, strerror(errno));
-        return -1;
+        return PR_CTRLS_STATUS_WRONG_PARAMETERS;
       }
     }
  
@@ -1368,7 +1366,7 @@ static int ctrls_handle_trace(pr_ctrls_t *ctrl, int reqargc,
         pr_signals_handle();
 
         value = pr_table_get(trace_tab, (const char *) key, NULL);
-        if (value) {
+        if (value != NULL) {
           pr_ctrls_add_response(ctrl, "%10s %-6d", (const char *) key,
             *((int *) value));
         }
@@ -1381,10 +1379,10 @@ static int ctrls_handle_trace(pr_ctrls_t *ctrl, int reqargc,
     }
   }
  
-  return 0;
+  return PR_CTRLS_STATUS_OK;
 #else
   pr_ctrls_add_response(ctrl, "trace: requires trace support (--enable-trace");
-  return -1;
+  return PR_CTRLS_STATUS_OPERATION_DENIED;
 #endif /* PR_USE_TRACE */
 }
 
@@ -1399,15 +1397,14 @@ static int admin_addr_up(pr_ctrls_t *ctrl, const pr_netaddr_t *addr,
     pr_ctrls_add_response(ctrl,
       "up: no server associated with %s#%u", pr_netaddr_get_ipstr(addr),
       port);
-    errno = ENOENT;
-    return -1;
+    return PR_CTRLS_STATUS_SUBJECT_NOT_FOUND;
   }
 
   /* If this ipbind is already active, abort now. */
-  if (ipbind->ib_isactive) {
+  if (ipbind->ib_isactive == TRUE) {
     pr_ctrls_add_response(ctrl, "up: %s#%u already enabled",
       pr_netaddr_get_ipstr(addr), port);
-    return 0;
+    return PR_CTRLS_STATUS_OPERATION_IGNORED;
   }
 
   /* Determine whether this server_rec needs a listening connection
@@ -1425,20 +1422,19 @@ static int admin_addr_up(pr_ctrls_t *ctrl, const pr_netaddr_t *addr,
   pr_ctrls_log(MOD_CTRLS_ADMIN_VERSION, "up: attempting to enable %s#%u",
     pr_netaddr_get_ipstr(addr), port);
 
-  PR_OPEN_IPBIND(ipbind->ib_server->addr, ipbind->ib_server->ServerPort,
+  res = pr_ipbind_open(ipbind->ib_server->addr, ipbind->ib_server->ServerPort,
     ipbind->ib_server->listen, FALSE, FALSE, TRUE);
-
   if (res < 0) {
     pr_ctrls_add_response(ctrl, "up: no server listening on %s#%u",
       pr_netaddr_get_ipstr(addr), port);
-
-  } else {
-    pr_ctrls_add_response(ctrl, "up: %s#%u enabled",
-      pr_netaddr_get_ipstr(addr), port);
+    return PR_CTRLS_STATUS_SUBJECT_NOT_FOUND;
   }
 
-  PR_ADD_IPBINDS(ipbind->ib_server);
-  return 0;
+  pr_ctrls_add_response(ctrl, "up: %s#%u enabled", pr_netaddr_get_ipstr(addr),
+    port);
+
+  (void) pr_ipbind_add_binds(ipbind->ib_server);
+  return PR_CTRLS_STATUS_OK;
 }
 
 static int ctrls_handle_up(pr_ctrls_t *ctrl, int reqargc,
@@ -1450,17 +1446,18 @@ static int ctrls_handle_up(pr_ctrls_t *ctrl, int reqargc,
    */
 
   /* Check the 'up' ACL */
-  if (!pr_ctrls_check_acl(ctrl, ctrls_admin_acttab, "up")) {
+  if (pr_ctrls_check_acl(ctrl, ctrls_admin_acttab, "up") != TRUE) {
 
     /* Access denied */
     pr_ctrls_add_response(ctrl, "access denied");
-    return -1;
+    return PR_CTRLS_STATUS_ACCESS_DENIED;
   }
 
   /* Sanity check */
-  if (reqargc < 1 || reqargv == NULL) {
+  if (reqargc < 1 ||
+      reqargv == NULL) {
     pr_ctrls_add_response(ctrl, "up: missing required parameters");
-    return -1;
+    return PR_CTRLS_STATUS_WRONG_PARAMETERS;
   }
 
   for (i = 0; i < reqargc; i++) {
@@ -1479,11 +1476,11 @@ static int ctrls_handle_up(pr_ctrls_t *ctrl, int reqargc,
     if (server_addr == NULL) {
       pr_ctrls_add_response(ctrl, "up: unable to resolve address for '%s'",
         server_str);
-      return -1;
+      return PR_CTRLS_STATUS_INTERNAL_ERROR;
     }
 
     if (admin_addr_up(ctrl, server_addr, server_port) < 0) {
-      return -1;
+      return PR_CTRLS_STATUS_INTERNAL_ERROR;
     }
 
     if (addrs != NULL) {
@@ -1492,13 +1489,13 @@ static int ctrls_handle_up(pr_ctrls_t *ctrl, int reqargc,
 
       for (j = 0; j < addrs->nelts; j++) {
         if (admin_addr_up(ctrl, elts[j], server_port) < 0) {
-          return -1;
+          return PR_CTRLS_STATUS_INTERNAL_ERROR;
         }
       }
     }
   }
 
-  return 0;
+  return PR_CTRLS_STATUS_OK;
 }
 
 /* Configuration handlers
@@ -1511,26 +1508,26 @@ MODRET set_adminctrlsacls(cmd_rec *cmd) {
   CHECK_ARGS(cmd, 4);
   CHECK_CONF(cmd, CONF_ROOT);
 
-  /* We can cheat here, and use the ctrls_parse_acl() routine to
-   * separate the given string...
-   */
-  actions = ctrls_parse_acl(cmd->tmp_pool, cmd->argv[1]);
+  actions = pr_ctrls_parse_acl(cmd->tmp_pool, cmd->argv[1]);
 
   /* Check the second parameter to make sure it is "allow" or "deny" */
   if (strcmp(cmd->argv[2], "allow") != 0 &&
-      strcmp(cmd->argv[2], "deny") != 0)
+      strcmp(cmd->argv[2], "deny") != 0) {
     CONF_ERROR(cmd, "second parameter must be 'allow' or 'deny'");
+  }
 
   /* Check the third parameter to make sure it is "user" or "group" */
   if (strcmp(cmd->argv[3], "user") != 0 &&
-      strcmp(cmd->argv[3], "group") != 0)
+      strcmp(cmd->argv[3], "group") != 0) {
     CONF_ERROR(cmd, "third parameter must be 'user' or 'group'");
+  }
 
   bad_action = pr_ctrls_set_module_acls(ctrls_admin_acttab, ctrls_admin_pool,
     actions, cmd->argv[2], cmd->argv[3], cmd->argv[4]);
-  if (bad_action != NULL)
+  if (bad_action != NULL) {
     CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, ": unknown action: '",
       bad_action, "'", NULL));
+  }
 
   return PR_HANDLED(cmd);
 }
@@ -1566,10 +1563,7 @@ MODRET set_adminctrlsengine(cmd_rec *cmd) {
      * the list.  If not in the list, unregister that control.
      */
 
-    /* We can cheat here, and use the ctrls_parse_acl() routine to
-     * separate the given string...
-     */
-    actions = ctrls_parse_acl(cmd->tmp_pool, cmd->argv[1]);
+    actions = pr_ctrls_parse_acl(cmd->tmp_pool, cmd->argv[1]);
 
     res = pr_ctrls_unregister_module_actions2(ctrls_admin_acttab, actions,
       &ctrls_admin_module, &bad_action);

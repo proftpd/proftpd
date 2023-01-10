@@ -343,6 +343,11 @@ int main(int argc, char *argv[]) {
     exit(1);
   }
 
+  if (verbose == TRUE) {
+    fprintf(stdout, "%s: received response status: %d\n", program,
+      status);
+  }
+
   if (respargv != NULL) {
     for (i = 0; i < respargc; i++) {
       fprintf(stdout, "%s: %s\n", program, respargv[i]);
@@ -355,7 +360,10 @@ int main(int argc, char *argv[]) {
   (void) close(sockfd);
   destroy_pool(ctl_pool);
 
-  return 0;
+  /* Controls action status values are zero or negative, thus we need to
+   * convert them to appropriate Unix exit status values.
+   */
+  return (status * -1);
 }
 
 #else

@@ -764,8 +764,8 @@ START_TEST (ctrls_recv_request_valid_test) {
   ck_assert_msg(cl->cl_ctrls->nelts == 1, "Expected 1 ctrl, got %d",
     cl->cl_ctrls->nelts);
   ctrl = ((pr_ctrls_t **) cl->cl_ctrls->elts)[0];
-  ck_assert_msg(ctrl->ctrls_flags & PR_CTRLS_REQUESTED,
-    "Expected PR_CTRLS_REQUESTED flag, got %lu", ctrl->ctrls_flags);
+  ck_assert_msg(ctrl->ctrls_flags & PR_CTRLS_FL_REQUESTED,
+    "Expected PR_CTRLS_FL_REQUESTED flag, got %lu", ctrl->ctrls_flags);
   ck_assert_msg(ctrl->ctrls_cb_args == NULL,
     "Expected no callback args, got %p", ctrl->ctrls_cb_args);
 
@@ -787,8 +787,8 @@ START_TEST (ctrls_recv_request_valid_test) {
   ck_assert_msg(cl->cl_ctrls->nelts == 1, "Expected 1 ctrl, got %d",
     cl->cl_ctrls->nelts);
   ctrl = ((pr_ctrls_t **) cl->cl_ctrls->elts)[0];
-  ck_assert_msg(ctrl->ctrls_flags & PR_CTRLS_REQUESTED,
-    "Expected PR_CTRLS_REQUESTED flag, got %lu", ctrl->ctrls_flags);
+  ck_assert_msg(ctrl->ctrls_flags & PR_CTRLS_FL_REQUESTED,
+    "Expected PR_CTRLS_FL_REQUESTED flag, got %lu", ctrl->ctrls_flags);
   ck_assert_msg(ctrl->ctrls_cb_args != NULL,
     "Expected callback args, got %p", ctrl->ctrls_cb_args);
 
@@ -811,8 +811,8 @@ START_TEST (ctrls_recv_request_valid_test) {
   ck_assert_msg(cl->cl_ctrls->nelts == 1, "Expected 1 ctrl, got %d",
     cl->cl_ctrls->nelts);
   ctrl = ((pr_ctrls_t **) cl->cl_ctrls->elts)[0];
-  ck_assert_msg(ctrl->ctrls_flags & PR_CTRLS_REQUESTED,
-    "Expected PR_CTRLS_REQUESTED flag, got %lu", ctrl->ctrls_flags);
+  ck_assert_msg(ctrl->ctrls_flags & PR_CTRLS_FL_REQUESTED,
+    "Expected PR_CTRLS_FL_REQUESTED flag, got %lu", ctrl->ctrls_flags);
   ck_assert_msg(ctrl->ctrls_cb_args != NULL, "Expected callback args, got NULL");
   ck_assert_msg(ctrl->ctrls_cb_args->nelts == 1,
     "Expected 1 callback arg, got %d", ctrl->ctrls_cb_args->nelts);
@@ -843,15 +843,15 @@ START_TEST (ctrls_recv_request_valid_test) {
     cl->cl_ctrls->nelts);
 
   ctrl = ((pr_ctrls_t **) cl->cl_ctrls->elts)[0];
-  ck_assert_msg(ctrl->ctrls_flags & PR_CTRLS_REQUESTED,
-    "Expected PR_CTRLS_REQUESTED flag, got %lu", ctrl->ctrls_flags);
+  ck_assert_msg(ctrl->ctrls_flags & PR_CTRLS_FL_REQUESTED,
+    "Expected PR_CTRLS_FL_REQUESTED flag, got %lu", ctrl->ctrls_flags);
   ck_assert_msg(ctrl->ctrls_cb_args != NULL, "Expected callback args, got NULL");
   ck_assert_msg(ctrl->ctrls_cb_args->nelts == 1,
     "Expected 1 callback arg, got %d", ctrl->ctrls_cb_args->nelts);
 
   ctrl = ((pr_ctrls_t **) cl->cl_ctrls->elts)[1];
-  ck_assert_msg(ctrl->ctrls_flags & PR_CTRLS_REQUESTED,
-    "Expected PR_CTRLS_REQUESTED flag, got %lu", ctrl->ctrls_flags);
+  ck_assert_msg(ctrl->ctrls_flags & PR_CTRLS_FL_REQUESTED,
+    "Expected PR_CTRLS_FL_REQUESTED flag, got %lu", ctrl->ctrls_flags);
   ck_assert_msg(ctrl->ctrls_cb_args != NULL, "Expected callback args, got NULL");
   ck_assert_msg(ctrl->ctrls_cb_args->nelts == 1,
     "Expected 1 callback arg, got %d", ctrl->ctrls_cb_args->nelts);
@@ -1282,13 +1282,13 @@ START_TEST (ctrls_run_ctrls_test) {
   mark_point();
   cl->cl_flags = PR_CTRLS_CL_HAVEREQ;
   ctrl->ctrls_flags &= ~PR_CTRLS_ACT_DISABLED;
-  ctrl->ctrls_flags &= ~PR_CTRLS_REQUESTED;
+  ctrl->ctrls_flags &= ~PR_CTRLS_FL_REQUESTED;
   res = pr_run_ctrls(&m, NULL);
   ck_assert_msg(res == 0, "Failed to run ctrls: %s", strerror(errno));
 
   mark_point();
   cl->cl_flags = PR_CTRLS_CL_HAVEREQ;
-  ctrl->ctrls_flags |= PR_CTRLS_REQUESTED;
+  ctrl->ctrls_flags |= PR_CTRLS_FL_REQUESTED;
   now = time(NULL);
   ctrl->ctrls_when = now + 10;
   res = pr_run_ctrls(&m, NULL);
@@ -1296,15 +1296,15 @@ START_TEST (ctrls_run_ctrls_test) {
 
   mark_point();
   cl->cl_flags = PR_CTRLS_CL_HAVEREQ;
-  ctrl->ctrls_flags &= PR_CTRLS_PENDING;
-  ctrl->ctrls_flags |= PR_CTRLS_REQUESTED;
+  ctrl->ctrls_flags &= PR_CTRLS_FL_PENDING;
+  ctrl->ctrls_flags |= PR_CTRLS_FL_REQUESTED;
   ctrl->ctrls_when = now - 10;
   res = pr_run_ctrls(&m, "test2");
   ck_assert_msg(res == 0, "Failed to run ctrls: %s", strerror(errno));
 
   mark_point();
   cl->cl_flags = PR_CTRLS_CL_HAVEREQ;
-  ctrl->ctrls_flags |= PR_CTRLS_REQUESTED;
+  ctrl->ctrls_flags |= PR_CTRLS_FL_REQUESTED;
   res = pr_run_ctrls(&m, "test");
   ck_assert_msg(res == 0, "Failed to run ctrls: %s", strerror(errno));
 

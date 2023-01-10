@@ -1,7 +1,7 @@
 /*
  * ProFTPD: mod_delay -- a module for adding arbitrary delays to the FTP
  *                       session lifecycle
- * Copyright (c) 2004-2022 TJ Saunders
+ * Copyright (c) 2004-2023 TJ Saunders
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -1155,8 +1155,7 @@ static int delay_handle_info(pr_ctrls_t *ctrl, int reqargc,
     pr_ctrls_add_response(ctrl,
       "warning: unable to open DelayTable '%s': %s", delay_tab.dt_path,
       strerror(xerrno));
-    errno = xerrno;
-    return -1;
+    return PR_CTRLS_STATUS_INTERNAL_ERROR;
   }
 
   delay_tab.dt_fd = fh->fh_fd;
@@ -1176,8 +1175,7 @@ static int delay_handle_info(pr_ctrls_t *ctrl, int reqargc,
     delay_tab.dt_fd = -1;
     delay_tab.dt_data = NULL;
 
-    errno = xerrno;
-    return -1;
+    return PR_CTRLS_STATUS_INTERNAL_ERROR;
   }
 
   tmp_pool = make_sub_pool(delay_pool);
@@ -1226,8 +1224,9 @@ static int delay_handle_info(pr_ctrls_t *ctrl, int reqargc,
         }
       }
 
-      if (strlen(vals) > 0)
+      if (strlen(vals) > 0) {
         pr_ctrls_add_response(ctrl, "    %s", vals);
+      }
     }
 
     pr_ctrls_add_response(ctrl, "%s", "");
@@ -1268,8 +1267,9 @@ static int delay_handle_info(pr_ctrls_t *ctrl, int reqargc,
         }
       }
 
-      if (strlen(vals) > 0)
+      if (strlen(vals) > 0) {
         pr_ctrls_add_response(ctrl, "    %s", vals);
+      }
     }
 
     pr_ctrls_add_response(ctrl, "%s", "");
@@ -1287,7 +1287,7 @@ static int delay_handle_info(pr_ctrls_t *ctrl, int reqargc,
   delay_tab.dt_data = NULL;
 
   destroy_pool(tmp_pool);
-  return 0;
+  return PR_CTRLS_STATUS_OK;
 }
 
 static int delay_handle_reset(pr_ctrls_t *ctrl, int reqargc,
@@ -1305,8 +1305,7 @@ static int delay_handle_reset(pr_ctrls_t *ctrl, int reqargc,
     pr_ctrls_add_response(ctrl,
       "unable to open DelayTable '%s': %s", delay_tab.dt_path,
       strerror(xerrno));
-    errno = xerrno;
-    return -1;
+    return PR_CTRLS_STATUS_INTERNAL_ERROR;
   }
 
   lock.l_type = F_WRLCK;
@@ -1327,8 +1326,7 @@ static int delay_handle_reset(pr_ctrls_t *ctrl, int reqargc,
        fh->fh_path, strerror(xerrno));
     pr_fsio_close(fh);
 
-    errno = xerrno;
-    return -1;
+    return PR_CTRLS_STATUS_INTERNAL_ERROR;
   }
 
   if (pr_fsio_ftruncate(fh, 0) < 0) {
@@ -1338,8 +1336,7 @@ static int delay_handle_reset(pr_ctrls_t *ctrl, int reqargc,
       "error truncating DelayTable '%s': %s", fh->fh_path, strerror(xerrno));
     pr_fsio_close(fh);
 
-    errno = xerrno;
-    return -1;
+    return PR_CTRLS_STATUS_INTERNAL_ERROR;
   }
 
   lock.l_type = F_UNLCK;
@@ -1355,12 +1352,11 @@ static int delay_handle_reset(pr_ctrls_t *ctrl, int reqargc,
       "error closing DelayTable '%s': %s", delay_tab.dt_path,
       strerror(xerrno));
 
-    errno = xerrno;
-    return -1;
+    return PR_CTRLS_STATUS_INTERNAL_ERROR;
   }
 
   pr_ctrls_add_response(ctrl, "DelayTable '%s' reset", delay_tab.dt_path);
-  return 0;
+  return PR_CTRLS_STATUS_OK;
 }
 
 static int delay_handle_delay(pr_ctrls_t *ctrl, int reqargc,
@@ -1368,38 +1364,35 @@ static int delay_handle_delay(pr_ctrls_t *ctrl, int reqargc,
 
   if (delay_tab.dt_enabled == FALSE) {
     pr_ctrls_add_response(ctrl, "delay: DelayTable disabled");
-    return -1;
+    return PR_CTRLS_STATUS_OPERATION_DENIED;
   }
 
   if (reqargc == 0 ||
       reqargv == NULL) {
     pr_ctrls_add_response(ctrl, "delay: missing required parameters");
-    return -1;
+    return PR_CTRLS_STATUS_WRONG_PARAMETERS;
   }
 
   if (strcmp(reqargv[0], "info") == 0) {
-
-    if (!pr_ctrls_check_acl(ctrl, delay_acttab, "info")) {
+    if (pr_ctrls_check_acl(ctrl, delay_acttab, "info") != TRUE) {
       pr_ctrls_add_response(ctrl, "access denied");
-      return -1;
+      return PR_CTRLS_STATUS_ACCESS_DENIED;
     }
 
     return delay_handle_info(ctrl, --reqargc, ++reqargv);
 
   } else if (strcmp(reqargv[0], "reset") == 0) {
-
-    if (!pr_ctrls_check_acl(ctrl, delay_acttab, "reset")) {
+    if (pr_ctrls_check_acl(ctrl, delay_acttab, "reset") != TRUE) {
       pr_ctrls_add_response(ctrl, "access denied");
-      return -1;
+      return PR_CTRLS_STATUS_ACCESS_DENIED;
     }
 
     return delay_handle_reset(ctrl, --reqargc, ++reqargv);
   }
 
   pr_ctrls_add_response(ctrl, "unknown delay action: '%s'", reqargv[0]);
-  return -1;
+  return PR_CTRLS_STATUS_UNSUPPORTED_OPERATION;
 }
-
 #endif /* PR_USE_CTRLS */
 
 /* Configuration handlers
@@ -1413,23 +1406,26 @@ MODRET set_delayctrlsacls(cmd_rec *cmd) {
   CHECK_ARGS(cmd, 4);
   CHECK_CONF(cmd, CONF_ROOT);
 
-  actions = ctrls_parse_acl(cmd->tmp_pool, cmd->argv[1]);
+  actions = pr_ctrls_parse_acl(cmd->tmp_pool, cmd->argv[1]);
 
   /* Check the second parameter to make sure it is "allow" or "deny" */
   if (strcmp(cmd->argv[2], "allow") != 0 &&
-      strcmp(cmd->argv[2], "deny") != 0)
+      strcmp(cmd->argv[2], "deny") != 0) {
     CONF_ERROR(cmd, "second parameter must be 'allow' or 'deny'");
+  }
 
   /* Check the third parameter to make sure it is "user" or "group" */
   if (strcmp(cmd->argv[3], "user") != 0 &&
-      strcmp(cmd->argv[3], "group") != 0)
+      strcmp(cmd->argv[3], "group") != 0) {
     CONF_ERROR(cmd, "third parameter must be 'user' or 'group'");
+  }
 
   bad_action = pr_ctrls_set_module_acls(delay_acttab, delay_pool, actions,
     cmd->argv[2], cmd->argv[3], cmd->argv[4]);
-  if (bad_action != NULL)
+  if (bad_action != NULL) {
     CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, ": unknown delay action: '",
       bad_action, "'", NULL));
+  }
 
   return PR_HANDLED(cmd);
 #else
