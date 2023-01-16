@@ -13160,6 +13160,30 @@ static int fxp_handle_write(struct fxp_packet *fxp) {
     return fxp_packet_write(resp);
   }
 
+  /* If the open flags have O_APPEND, treat this as an APPE command, rather
+   * than a STOR command.
+   *
+   * Note that this means that the offset provided by the client in this
+   * WRITE requested is ignored, per SFTP Draft:
+   *
+   *  SSH_FXF_APPEND_DATA
+   *    Data is always written at the end of the file.  The offset field
+   *    of SSH_FXP_WRITE requests is ignored.
+   *
+   * Instead, we override the offset to the current size of the file.
+   */
+  if (fxh->fh_flags & O_APPEND) {
+    pr_trace_msg(trace_channel, 5, "ignoring WRITE offset %" PR_LU " for file "
+      "opened for appending, using file size %" PR_LU " as offset instead",
+      (pr_off_t) offset, (pr_off_t) fxh->fh_st->st_size);
+    offset = fxh->fh_st->st_size;
+
+    cmd2 = fxp_cmd_alloc(fxp->pool, C_APPE, NULL);
+
+  } else {
+    cmd2 = fxp_cmd_alloc(fxp->pool, C_STOR, NULL);
+  }
+
   if (S_ISREG(fxh->fh_st->st_mode)) {
     off_t *file_offset;
 
@@ -13168,16 +13192,6 @@ static int fxp_handle_write(struct fxp_packet *fxp) {
     *file_offset = (off_t) offset;
     (void) pr_table_add(cmd->notes, "mod_xfer.file-offset", file_offset,
       sizeof(off_t));
-  }
-
-  /* If the open flags have O_APPEND, treat this as an APPE command, rather
-   * than a STOR command.
-   */
-  if (!(fxh->fh_flags & O_APPEND)) {
-    cmd2 = fxp_cmd_alloc(fxp->pool, C_STOR, NULL);
-
-  } else {
-    cmd2 = fxp_cmd_alloc(fxp->pool, C_APPE, NULL);
   }
 
   pbuf = pcalloc(fxp->pool, sizeof(pr_buffer_t));
