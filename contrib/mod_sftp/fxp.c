@@ -1,6 +1,6 @@
 /*
  * ProFTPD - mod_sftp sftp
- * Copyright (c) 2008-2022 TJ Saunders
+ * Copyright (c) 2008-2023 TJ Saunders
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -1524,8 +1524,7 @@ static int fxp_attrs_set(pr_fh_t *fh, const char *path, struct stat *attrs,
   }
 
   if (attr_flags & SSH2_FX_ATTR_SIZE) {
-    if (attrs->st_size &&
-        st.st_size != attrs->st_size) {
+    if (st.st_size != attrs->st_size) {
 
       /* If we're dealing with a FIFO, just pretend that the truncate(2)
        * succeeded; FIFOs don't handle truncation well.  And it won't
