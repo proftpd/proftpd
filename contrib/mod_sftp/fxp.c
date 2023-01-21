@@ -4091,9 +4091,9 @@ static int fxp_handle_ext_check_file(struct fxp_packet *fxp, char *digest_list,
   void *data;
   size_t datasz;
 #if OPENSSL_VERSION_NUMBER < 0x10100000L || \
-    defined(HAVE_LIBRESSL)
+    (defined(HAVE_LIBRESSL) && LIBRESSL_VERSION_NUMBER < 0x3050000L)
   EVP_MD_CTX md_ctx;
-#endif /* prior to OpenSSL-1.1.0 */
+#endif /* prior to OpenSSL-1.1.0/LibreSSL-3.5.0 */
   EVP_MD_CTX *pctx;
   const EVP_MD *md;
 
@@ -4422,12 +4422,12 @@ static int fxp_handle_ext_check_file(struct fxp_packet *fxp, char *digest_list,
   }
 
 #if OPENSSL_VERSION_NUMBER < 0x10100000L || \
-    defined(HAVE_LIBRESSL)
+    (defined(HAVE_LIBRESSL) && LIBRESSL_VERSION_NUMBER < 0x3050000L)
   pctx = &md_ctx;
   EVP_MD_CTX_init(pctx);
 #else
   pctx = EVP_MD_CTX_new();
-#endif /* prior to OpenSSL-1.1.0 */
+#endif /* prior to OpenSSL-1.1.0/LibreSSL-3.5.0 */
 
   sftp_msg_write_byte(&buf, &buflen, SFTP_SSH2_FXP_EXTENDED_REPLY);
   sftp_msg_write_int(&buf, &buflen, fxp->request_id);
@@ -4446,12 +4446,12 @@ static int fxp_handle_ext_check_file(struct fxp_packet *fxp, char *digest_list,
 
     pr_signals_handle();
 #if OPENSSL_VERSION_NUMBER < 0x10100000L || \
-    defined(HAVE_LIBRESSL)
+    (defined(HAVE_LIBRESSL) && LIBRESSL_VERSION_NUMBER < 0x3050000L)
     EVP_MD_CTX_cleanup(pctx);
     EVP_MD_CTX_init(pctx);
 #else
     EVP_MD_CTX_reset(pctx);
-#endif /* prior to OpenSSL-1.1.0 */
+#endif /* OpenSSL-1.1.0/LibreSSL-3.5.0 and later */
     EVP_DigestInit(pctx, md);
 
     pr_trace_msg(trace_channel, 19,
