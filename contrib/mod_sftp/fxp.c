@@ -1,6 +1,6 @@
 /*
  * ProFTPD - mod_sftp sftp
- * Copyright (c) 2008-2022 TJ Saunders
+ * Copyright (c) 2008-2023 TJ Saunders
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -1372,7 +1372,7 @@ static int fxp_attrs_set(pr_fh_t *fh, const char *path, struct stat *attrs,
     uint32_t attr_flags, array_header *xattrs, unsigned char **buf,
     uint32_t *buflen, struct fxp_packet *fxp) {
   struct stat st;
-  int res;
+  int res, xerrno;
 
   /* Note: path is never null; it is always passed by the caller.  fh MAY be
    * null, depending on whether the caller already has a file handle or not.
@@ -1380,16 +1380,17 @@ static int fxp_attrs_set(pr_fh_t *fh, const char *path, struct stat *attrs,
 
   if (fh != NULL) {
     res = pr_fsio_fstat(fh, &st);
+    xerrno = errno;
 
   } else {
     pr_fs_clear_cache2(path);
     res = pr_fsio_lstat(path, &st);
+    xerrno = errno;
   }
 
   if (res < 0) {
     uint32_t status_code;
     const char *reason;
-    int xerrno = errno;
 
     (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
       "error checking '%s': %s", path, strerror(xerrno));
@@ -1423,16 +1424,17 @@ static int fxp_attrs_set(pr_fh_t *fh, const char *path, struct stat *attrs,
       } else {
         if (fh != NULL) {
           res = pr_fsio_fchmod(fh, attrs->st_mode);
+          xerrno = errno;
 
         } else {
           res = pr_fsio_chmod(path, attrs->st_mode);
+          xerrno = errno;
         }
       }
 
       if (res < 0) {
         uint32_t status_code;
         const char *reason;
-        int xerrno = errno;
 
         (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
           "error changing permissions of '%s' to 0%o: %s", path,
@@ -1473,7 +1475,7 @@ static int fxp_attrs_set(pr_fh_t *fh, const char *path, struct stat *attrs,
       do_chown = TRUE;
     }
 
-    if (do_chown) {
+    if (do_chown == TRUE) {
       cmd_rec *cmd;
 
       cmd = fxp_cmd_alloc(fxp->pool, "SITE_CHGRP", pstrdup(fxp->pool, path));
@@ -1487,16 +1489,17 @@ static int fxp_attrs_set(pr_fh_t *fh, const char *path, struct stat *attrs,
       } else {
         if (fh != NULL) {
           res = pr_fsio_fchown(fh, client_uid, client_gid);
+          xerrno = errno;
 
         } else {
           res = pr_fsio_chown(path, client_uid, client_gid);
+          xerrno = errno;
         }
       }
 
       if (res < 0) {
         uint32_t status_code;
         const char *reason;
-        int xerrno = errno;
 
         (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
           "error changing ownership of '%s' to UID %s, GID %s: %s",
@@ -1524,8 +1527,7 @@ static int fxp_attrs_set(pr_fh_t *fh, const char *path, struct stat *attrs,
   }
 
   if (attr_flags & SSH2_FX_ATTR_SIZE) {
-    if (attrs->st_size &&
-        st.st_size != attrs->st_size) {
+    if (st.st_size != attrs->st_size) {
 
       /* If we're dealing with a FIFO, just pretend that the truncate(2)
        * succeeded; FIFOs don't handle truncation well.  And it won't
@@ -1534,9 +1536,11 @@ static int fxp_attrs_set(pr_fh_t *fh, const char *path, struct stat *attrs,
       if (S_ISREG(st.st_mode)) {
         if (fh != NULL) {
           res = pr_fsio_ftruncate(fh, attrs->st_size);
+          xerrno = errno;
 
         } else {
           res = pr_fsio_truncate(path, attrs->st_size);
+          xerrno = errno;
         }
 
       } else {
@@ -1546,7 +1550,6 @@ static int fxp_attrs_set(pr_fh_t *fh, const char *path, struct stat *attrs,
       if (res < 0) {
         uint32_t status_code;
         const char *reason;
-        int xerrno = errno;
 
         (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
           "error changing size of '%s' from %" PR_LU " bytes to %" PR_LU
@@ -1586,15 +1589,16 @@ static int fxp_attrs_set(pr_fh_t *fh, const char *path, struct stat *attrs,
 
       if (fh != NULL) {
         res = pr_fsio_futimes(fh, tvs);
+        xerrno = errno;
 
       } else {
         res = pr_fsio_utimes(path, tvs);
+        xerrno = errno;
       }
 
       if (res < 0) {
         uint32_t status_code;
         const char *reason;
-        int xerrno = errno;
 
         (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
           "error changing access/modification times '%s': %s", path,
@@ -1626,7 +1630,7 @@ static int fxp_attrs_set(pr_fh_t *fh, const char *path, struct stat *attrs,
      * preserving the principle of least surprise.
      */
     if (attr_flags & SSH2_FX_ATTR_EXTENDED) {
-#ifdef PR_USE_XATTR
+#if defined(PR_USE_XATTR)
       if (xattrs != NULL &&
           xattrs->nelts > 0) {
         register unsigned int i;
@@ -1647,16 +1651,17 @@ static int fxp_attrs_set(pr_fh_t *fh, const char *path, struct stat *attrs,
           if (fh != NULL) {
             res = pr_fsio_fsetxattr(fxp->pool, fh, xattr_name, xattr_val,
               xattr_valsz, 0);
+            xerrno = errno;
 
           } else {
             res = pr_fsio_lsetxattr(fxp->pool, path, xattr_name, xattr_val,
               xattr_valsz, 0);
+            xerrno = errno;
           }
 
           if (res < 0) {
             uint32_t status_code;
             const char *reason;
-            int xerrno = errno;
 
             (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
               "error setting xattr '%s' (%lu bytes) on '%s': %s", xattr_name,
@@ -1693,15 +1698,16 @@ static int fxp_attrs_set(pr_fh_t *fh, const char *path, struct stat *attrs,
 
         if (fh != NULL) {
           res = pr_fsio_futimes(fh, tvs);
+          xerrno = errno;
 
         } else {
           res = pr_fsio_utimes(path, tvs);
+          xerrno = errno;
         }
 
         if (res < 0) {
           uint32_t status_code;
           const char *reason;
-          int xerrno = errno;
 
           (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
             "error changing access time '%s': %s", path, strerror(xerrno));
@@ -1737,15 +1743,16 @@ static int fxp_attrs_set(pr_fh_t *fh, const char *path, struct stat *attrs,
 
         if (fh != NULL) {
           res = pr_fsio_futimes(fh, tvs);
+          xerrno = errno;
 
         } else {
           res = pr_fsio_utimes(path, tvs);
+          xerrno = errno;
         }
 
         if (res < 0) {
           uint32_t status_code;
           const char *reason;
-          int xerrno = errno;
 
           (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
             "error changing modification time '%s': %s", path,
