@@ -1,6 +1,6 @@
 /*
  * ProFTPD: mod_rewrite -- a module for rewriting FTP commands
- * Copyright (c) 2001-2022 TJ Saunders
+ * Copyright (c) 2001-2023 TJ Saunders
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -35,7 +35,7 @@
 # include <idn2.h>
 #endif /* HAVE_IDN2_H */
 
-#define MOD_REWRITE_VERSION		"mod_rewrite/1.1"
+#define MOD_REWRITE_VERSION		"mod_rewrite/1.2"
 
 /* Make sure the version of proftpd is as necessary. */
 #if PROFTPD_VERSION_NUMBER < 0x0001030701
@@ -2227,6 +2227,8 @@ MODRET set_rewritecondition(cmd_rec *cmd) {
     }
 
     rewrite_cond_pool = make_sub_pool(rewrite_pool);
+    pr_pool_tag(rewrite_cond_pool, "RewriteCondition pool");
+
     rewrite_conds = make_array(rewrite_cond_pool, 0, sizeof(config_rec *));
   }
 
@@ -2612,7 +2614,7 @@ MODRET set_rewriterule(cmd_rec *cmd) {
   /* Attach the list of conditions to the config_rec.  Don't forget to
    * clear/reset the list when done.
    */
-  if (rewrite_conds) {
+  if (rewrite_conds != NULL) {
     config_rec **arg_conds = NULL, **conf_conds = NULL;
 
     /* Allocate space for an array of rewrite_conds->nelts + 1.  The extra
@@ -2635,7 +2637,14 @@ MODRET set_rewriterule(cmd_rec *cmd) {
     rewrite_conds = NULL;
 
   } else {
-    c->argv[3] = NULL;
+    /* If there are no preceding RewriteConditions, consider this a
+     * configuration error; see Bug#4495.
+     *
+     * For the case where a RewriteRule is deliberately intended to be
+     * applied to any/all commands, then it needs a RewriteCondition explicitly
+     * allowing this.
+     */
+    CONF_ERROR(cmd, "missing required preceding RewriteCondition");
   }
 
   c->argv[4] = pcalloc(c->pool, sizeof(unsigned int));
@@ -2907,7 +2916,7 @@ static void rewrite_mod_unload_ev(const void *event_data, void *user_data) {
 static void rewrite_restart_ev(const void *event_data, void *user_data) {
   pr_regexp_free(&rewrite_module, NULL);
 
-  if (rewrite_pool) {
+  if (rewrite_pool != NULL) {
     destroy_pool(rewrite_pool);
     rewrite_cond_pool = NULL;
     rewrite_conds = NULL;
