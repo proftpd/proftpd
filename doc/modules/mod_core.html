@@ -1075,7 +1075,7 @@ text file that will be displayed to the user when they initially connect,
 <i>before</i> they login.  The <em>filename</em> can be either relative or
 absolute.  In the case of a relative filename, the file is searched for
 starting in the home directory of the <code>User</code> as which the server is
-running.  As this can lead confusion, absolute pathnames are <i>highly
+running.  As this can lead to confusion, absolute pathnames are <i>highly
 recommended</i>.  If <em>filename</em> cannot be found or accessed, no error
 occurs and nothing is logged or displayed to the client.
 
@@ -1105,7 +1105,7 @@ searched for starting in the home directory of the logged-in user.  <b>Note</b>:
 if the session is restricted via <code>chroot</code>, either by the
 <code>DefaultRoot</code> directive or because its an
 <code>&lt;Anonymous&gt;</code> login, then <em>filename</em> must reside
-within the <code>chroot()</code> directory.  As this can lead confusion,
+within the <code>chroot()</code> directory.  As this can lead to confusion,
 absolute pathnames are <i>highly recommended</i>.  If <em>filename</em> cannot
 be found or accessed, no error occurs and nothing is logged or displayed to
 the client.
