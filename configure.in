@@ -1,7 +1,7 @@
 dnl ProFTPD - FTP server daemon
 dnl Copyright (c) 1997, 1998 Public Flood Software
 dnl Copyright (c) 1999, 2000 MacGyver aka Habeeb J. Dihu <macgyver@tos.net>
-dnl Copyright (c) 2001-2022 The ProFTPD Project team
+dnl Copyright (c) 2001-2023 The ProFTPD Project team
 dnl
 dnl This program is free software; you can redistribute it and/or modify
 dnl it under the terms of the GNU General Public License as published by
@@ -2371,8 +2371,8 @@ AC_CACHE_CHECK(
   if test "$pr_cv_func_facl" = "none"; then
     old_ldflags=$LDFLAGS
     old_libs=$LIBS
-    new_ldflags=`echo "$LDFLAGS" | sed -e 's/-L\$(top_srcdir)\/lib//g'`
-    LDFLAGS="$new_ldflags"
+    new_ldflags=`echo "$LDFLAGS" | sed -e 's/-Wl\.*\/lib //g'`
+    LDFLAGS="-L\$(top_builddir)/lib $new_ldflags"
     LIBS="-lacl $LIBS"
     AC_TRY_LINK(
       [ #include <sys/types.h>

@@ -259,6 +259,8 @@ jobs:
           apt-get install -y libattr1-dev
           # for mod_cap
           apt-get install -y libcap-dev
+          # for mod_facl
+          apt-get install -y libacl1-dev
           # for mod_geoip
           apt-get install -y libgeoip-dev
           # for mod_ldap
