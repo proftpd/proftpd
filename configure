@@ -22280,8 +22280,8 @@ rm -f core conftest.err conftest.$ac_objext \
     if test "$pr_cv_func_facl" = "none"; then
     old_ldflags=$LDFLAGS
     old_libs=$LIBS
-    new_ldflags=`echo "$LDFLAGS" | sed -e 's/-L\$(top_srcdir)\/lib//g'`
-    LDFLAGS="$new_ldflags"
+    new_ldflags=`echo "$LDFLAGS" | sed -e 's/-Wl\.*\/lib //g'`
+    LDFLAGS="-L\$(top_builddir)/lib $new_ldflags"
     LIBS="-lacl $LIBS"
     cat confdefs.h - <<_ACEOF >conftest.$ac_ext
 /* end confdefs.h.  */
