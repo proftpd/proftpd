@@ -2058,7 +2058,9 @@ AC_TRY_LINK(
 )
 
 AC_MSG_CHECKING([for idn2_to_ascii_8z])
-AC_TRY_COMPILE(
+old_libs=$LIBS
+LIBS="-lidn2 $LIBS"
+AC_TRY_LINK(
   [
     #include <sys/types.h>
     #ifdef HAVE_IDN2_H
@@ -2075,14 +2077,19 @@ AC_TRY_COMPILE(
     AC_MSG_RESULT(yes)
     AC_DEFINE(HAVE_IDN2_TO_ASCII_8Z, 1, [Define if you have idn2_to_ascii_8z])
     MAIN_LIBS="$MAIN_LIBS -lidn2"
+    ac_orig_libs="$ac_orig_libs -lidn2"
+    SHARED_MODULE_LIBS="$SHARED_MODULE_LIBS -lidn2"
   ],
   [
     AC_MSG_RESULT(no)
+    LIBS=$old_libs
   ]
 )
 
 AC_MSG_CHECKING([for idna_to_ascii_8z])
-AC_TRY_COMPILE(
+old_libs=$LIBS
+LIBS="-lidn $LIBS"
+AC_TRY_LINK(
   [
     #include <sys/types.h>
     #ifdef HAVE_IDNA_H
@@ -2099,9 +2106,12 @@ AC_TRY_COMPILE(
     AC_MSG_RESULT(yes)
     AC_DEFINE(HAVE_IDNA_TO_ASCII_8Z, 1, [Define if you have idna_to_ascii_8z])
     MAIN_LIBS="$MAIN_LIBS -lidn"
+    ac_orig_libs="$ac_orig_libs -lidn"
+    SHARED_MODULE_LIBS="$SHARED_MODULE_LIBS -lidn"
   ],
   [
     AC_MSG_RESULT(no)
+    LIBS=$old_libs
   ]
 )
 
