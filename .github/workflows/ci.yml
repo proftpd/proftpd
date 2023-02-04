@@ -42,7 +42,7 @@ jobs:
           - gcc
         container:
           - almalinux:8
-          - alpine:3.14
+          - alpine:3.15
           - ubuntu:14.04
           - ubuntu:18.04
 
@@ -50,7 +50,7 @@ jobs:
 
     steps:
       - name: Checkout source code
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3
 
       - name: Whitespace check
         if: ${{ matrix.container == 'ubuntu:18.04' }}
@@ -65,7 +65,7 @@ jobs:
           fi
 
       - name: Install Alpine packages
-        if: ${{ matrix.container == 'alpine:3.14' }}
+        if: ${{ matrix.container == 'alpine:3.15' }}
         run: |
           apk update
           # for builds
@@ -351,7 +351,7 @@ jobs:
         # On recent (as of 2022-11-13) AlmaLinux with clang and the
         # `--enable-devel=fortify` configure settings, some of the unit tests
         # inexplicably fail.  So skip clang unit tests, for now.
-        if: ${{ matrix.compiler == 'gcc' && matrix.container != 'alpine:3.14' && matrix.container != 'ubuntu:14.04' }}
+        if: ${{ matrix.compiler == 'gcc' && matrix.container != 'alpine:3.15' && matrix.container != 'ubuntu:14.04' }}
         run: |
           make TEST_VERBOSE=1 check-api
 
