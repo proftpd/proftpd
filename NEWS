@@ -23,6 +23,8 @@
   for appending.
 - Issue 1568 - Build-time detection of Linux POSIX ACL support broken since
   1.3.8rc2.
+- Issue 1590 - Unable to load mod_rewrite as a dynamic module due to
+  incomplete/missing library linker flags.
 
 1.3.8 - Released 04-Dec-2022
 --------------------------------
