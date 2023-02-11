@@ -1,6 +1,6 @@
 /*
  * ProFTPD - mod_sftp
- * Copyright (c) 2008-2022 TJ Saunders
+ * Copyright (c) 2008-2023 TJ Saunders
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -112,7 +112,12 @@
 # include <openssl/provider.h>
 #endif /* HAVE_OSSL_PROVIDER_LOAD_OPENSSL */
 
-/* Define if you have the LibreSSL library.  */
+/* Define if you have the LibreSSL library.
+ *
+ * Note that in LibreSSL-3.5.0, the structs became opaque, as they are in
+ * OpenSSL-1.1.0, and thus these version-dependent macros became more
+ * complex.
+ */
 #if defined(LIBRESSL_VERSION_NUMBER)
 # define HAVE_LIBRESSL	1
 #endif
