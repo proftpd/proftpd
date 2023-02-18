@@ -178,6 +178,8 @@ static struct openssh_cipher ciphers[] = {
   { NULL,          0,  0, 0, 0, NULL, NULL }
 };
 
+static void free_hostkey_bio(BIO *);
+static BIO *load_file_hostkey_bio(pool *p, int fd);
 #if defined(HAVE_X448_OPENSSL)
 static int handle_ed448_hostkey(pool *p, const unsigned char *key_data,
     uint32_t key_datalen, const char *file_path);
@@ -795,9 +797,9 @@ static int get_passphrase_cb(char *buf, int buflen, int rwflag, void *d) {
 }
 
 static int get_passphrase(struct sftp_pkey *k, const char *path) {
-  pool *tmp_pool;
+  pool *tmp_pool = NULL;
   char prompt[256];
-  FILE *fp = NULL;
+  BIO *bio = NULL;
   EVP_PKEY *pkey = NULL;
   unsigned char *key_data = NULL;
   uint32_t key_datalen = 0;
@@ -845,23 +847,31 @@ static int get_passphrase(struct sftp_pkey *k, const char *path) {
     return -1;
   }
 
+  tmp_pool = make_sub_pool(sftp_pool);
+  pr_pool_tag(tmp_pool, "SFTP Passphrase pool");
+
   openssh_format = is_openssh_private_key(fd);
   if (openssh_format != TRUE) {
-    fp = fdopen(fd, "r");
-    if (fp == NULL) {
+    /* Rather than using OpenSSL's PEM_read_PrivateKey and the underlying C
+     * library's FILE routines, dealing with unbuffered file handles and
+     * byte-by-byte reads from OpenSSL, we instead provision the file data
+     * into a memory BIO, and let OpenSSL read from that.
+     *
+     * This allows OpenSSL to maintain its byte-by-byte reads, while we read
+     * the file data using filesystem block-sized reads.
+     */
+
+    bio = load_file_hostkey_bio(tmp_pool, fd);
+    if (bio == NULL) {
       xerrno = errno;
 
       (void) close(fd);
+      destroy_pool(tmp_pool);
       SYSerr(SYS_F_FOPEN, xerrno);
 
       errno = xerrno;
       return -1;
     }
-
-    /* As the file contains sensitive data, we do not want it lingering
-     * around in stdio buffers.
-     */
-    (void) setvbuf(fp, NULL, _IONBF, 0);
 
   } else {
     pr_trace_msg(trace_channel, 9,
@@ -893,9 +903,6 @@ static int get_passphrase(struct sftp_pkey *k, const char *path) {
   dup2(STDERR_FILENO, prompt_fd);
   dup2(STDOUT_FILENO, STDERR_FILENO);
 
-  tmp_pool = make_sub_pool(sftp_pool);
-  pr_pool_tag(tmp_pool, "SFTP Passphrase pool");
-
   /* The user gets three tries to enter the correct passphrase. */
   for (attempt = 0; attempt < 3; attempt++) {
 
@@ -903,14 +910,14 @@ static int get_passphrase(struct sftp_pkey *k, const char *path) {
     pr_signals_handle();
 
     if (openssh_format == FALSE) {
-      pkey = PEM_read_PrivateKey(fp, NULL, get_passphrase_cb, &pdata);
+      pkey = PEM_read_bio_PrivateKey(bio, NULL, get_passphrase_cb, &pdata);
       if (pkey != NULL) {
         break;
       }
 
-      if (fseek(fp, 0, SEEK_SET) < 0) {
+      if (BIO_reset(bio) < 0) {
         pr_trace_msg(trace_channel, 3,
-          "error rewinding file handle for '%s': %s", path, strerror(errno));
+          "error resetting BIO for '%s': %s", path, strerror(errno));
       }
 
     } else {
@@ -961,8 +968,8 @@ static int get_passphrase(struct sftp_pkey *k, const char *path) {
     fprintf(stderr, "\nWrong passphrase for this key.  Please try again.\n");
   }
 
-  if (fp != NULL) {
-    fclose(fp);
+  if (bio != NULL) {
+    free_hostkey_bio(bio);
   }
 
   /* Restore the normal stderr logging. */
@@ -3635,9 +3642,99 @@ static int load_openssh_hostkey(pool *p, const char *path, int fd) {
   return res;
 }
 
+static void free_hostkey_bio(BIO *bio) {
+  char *data = NULL;
+  long datalen = 0;
+
+  /* "Rewind" the pointer to the start of the buffer, for scrubbing. */
+  BIO_reset(bio);
+
+  datalen = BIO_get_mem_data(bio, &data);
+  if (data != NULL &&
+      datalen > 0) {
+    pr_memscrub(data, datalen);
+  }
+
+  BIO_free(bio);
+}
+
+static BIO *load_file_hostkey_bio(pool *p, int fd) {
+  int res, xerrno;
+  BIO *bio = NULL, *readonly_bio = NULL;
+  struct stat st;
+  unsigned char *buf = NULL;
+  size_t bufsz;
+  char *data = NULL, *ptr = NULL;
+  long datalen = 0;
+
+  memset(&st, 0, sizeof(st));
+  res = fstat(fd, &st);
+  if (res < 0) {
+    return NULL;
+  }
+
+  bufsz = st.st_blksize;
+  buf = palloc(p, bufsz);
+  bio = BIO_new(BIO_s_mem());
+
+  res = read(fd, buf, bufsz);
+  xerrno = errno;
+
+  if (res < 0) {
+    BIO_free(bio);
+
+    errno = xerrno;
+    return NULL;
+  }
+
+  while (res > 0) {
+    pr_signals_handle();
+
+    BIO_write(bio, buf, res);
+    pr_memscrub(buf, res);
+
+    res = read(fd, buf, bufsz);
+    xerrno = errno;
+
+    if (res < 0) {
+      BIO_free(bio);
+
+      errno = xerrno;
+      return NULL;
+    }
+  }
+
+  /* Now we create a read-only memory BIO for this hostkey data.  This is
+   * specifically for the on-startup use case, where the admin might mistype
+   * the passphrase for a passphrase-protected hostkey, and need to retry
+   * the decryption process.  The data in a normal read/write memory BIO is
+   * consumed from the BIO on read, meaning that that BIO would not be usable
+   * for a subsequent decryption attempt.
+   */
+  datalen = BIO_get_mem_data(bio, &ptr);
+  if (ptr == NULL ||
+      datalen == 0) {
+    BIO_free(bio);
+
+    errno = EIO;
+    return NULL;
+  }
+
+  /* Make a copy of the data, so that we can destroy the original BIO without
+   * losing this data.
+   */
+  data = palloc(p, datalen);
+  memcpy(data, ptr, datalen);
+  BIO_free(bio);
+
+  readonly_bio = BIO_new_mem_buf(data, datalen);
+  return readonly_bio;
+}
+
 static int load_file_hostkey(pool *p, const char *path) {
   int fd, xerrno = 0, openssh_format = FALSE, public_key_format = FALSE;
-  FILE *fp;
+  pool *tmp_pool = NULL;
+  BIO *bio;
   EVP_PKEY *pkey;
 
   pr_signals_block();
@@ -3710,33 +3807,40 @@ static int load_file_hostkey(pool *p, const char *path) {
     return res;
   }
 
-  /* OpenSSL's APIs prefer stdio file handles. */
-  fp = fdopen(fd, "r");
-  if (fp == NULL) {
+  /* Rather than using OpenSSL's PEM_read_PrivateKey and the underlying C
+   * library's FILE routines, dealing with unbuffered file handles and
+   * byte-by-byte reads from OpenSSL, we instead provision the file data
+   * into a memory BIO, and let OpenSSL read from that.
+   *
+   * This allows OpenSSL to maintain its byte-by-byte reads, while we read
+   * the file data using filesystem block-sized reads.
+   */
+  tmp_pool = make_sub_pool(p);
+  pr_pool_tag(tmp_pool, "SFTP hostkey BIO pool");
+
+  bio = load_file_hostkey_bio(tmp_pool, fd);
+  if (bio == NULL) {
     xerrno = errno;
 
     (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
-      "error opening stdio handle on fd %d: %s", fd, strerror(xerrno));
+      "error reading data from fd %d: %s", fd, strerror(xerrno));
     (void) close(fd);
+    destroy_pool(tmp_pool);
 
     errno = xerrno;
     return -1;
   }
 
-  /* As the file contains sensitive data, we do not want it lingering
-   * around in stdio buffers.
-   */
-  (void) setvbuf(fp, NULL, _IONBF, 0);
-
   if (server_pkey != NULL) {
-    pkey = PEM_read_PrivateKey(fp, NULL, pkey_cb, (void *) server_pkey);
+    pkey = PEM_read_bio_PrivateKey(bio, NULL, pkey_cb, (void *) server_pkey);
 
   } else {
     /* Assume that the key is not passphrase-protected. */
-    pkey = PEM_read_PrivateKey(fp, NULL, NULL, "");
+    pkey = PEM_read_bio_PrivateKey(bio, NULL, NULL, "");
   }
 
-  fclose(fp);
+  free_hostkey_bio(bio);
+  destroy_pool(tmp_pool);
 
   if (pkey == NULL) {
     (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
