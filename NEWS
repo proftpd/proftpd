@@ -25,6 +25,8 @@
   1.3.8rc2.
 - Issue 1590 - Unable to load mod_rewrite as a dynamic module due to
   incomplete/missing library linker flags.
+- Issue 1597 - <Class> section is allowed to be in <Global>, but From directive
+  is not.
 
 1.3.8 - Released 04-Dec-2022
 --------------------------------
