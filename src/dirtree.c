@@ -2,7 +2,7 @@
  * ProFTPD - FTP server daemon
  * Copyright (c) 1997, 1998 Public Flood Software
  * Copyright (c) 1999, 2000 MacGyver aka Habeeb J. Dihu <macgyver@tos.net>
- * Copyright (c) 2001-2022 The ProFTPD Project team
+ * Copyright (c) 2001-2023 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -2875,11 +2875,17 @@ void init_dirtree(void) {
 /* These functions are used by modules to help parse configuration. */
 
 unsigned char check_context(cmd_rec *cmd, int allowed) {
-  int ctxt = (cmd->config && cmd->config->config_type != CONF_PARAM ?
-     cmd->config->config_type : cmd->server->config_type ?
-     cmd->server->config_type : CONF_ROOT);
+  int ctx;
 
-  if (ctxt & allowed) {
+  if (cmd == NULL) {
+    return FALSE;
+  }
+
+  ctx = (cmd->config && cmd->config->config_type != CONF_PARAM ?
+    cmd->config->config_type : cmd->server->config_type ?
+    cmd->server->config_type : CONF_ROOT);
+
+  if (ctx & allowed) {
     return TRUE;
   }
 
@@ -2889,36 +2895,50 @@ unsigned char check_context(cmd_rec *cmd, int allowed) {
 
 char *get_context_name(cmd_rec *cmd) {
   static char cbuf[20];
+  char *ctx_name = NULL;
 
-  if (!cmd->config || cmd->config->config_type == CONF_PARAM) {
+  if (cmd->config == NULL ||
+      cmd->config->config_type == CONF_PARAM) {
     if (cmd->server->config_type == CONF_VIRTUAL) {
-      return "<VirtualHost>";
-    }
+      ctx_name = "<VirtualHost>";
 
-    return "server config";
+    } else {
+      ctx_name = "server config";
+    }
+  }
+
+  if (ctx_name != NULL) {
+    return ctx_name;
   }
 
   switch (cmd->config->config_type) {
     case CONF_DIR:
-      return "<Directory>";
+      ctx_name = "<Directory>";
+      break;
 
     case CONF_ANON:
-      return "<Anonymous>";
+      ctx_name = "<Anonymous>";
+      break;
 
     case CONF_CLASS:
-      return "<Class>";
+      ctx_name = "<Class>";
+      break;
 
     case CONF_LIMIT:
-      return "<Limit>";
+      ctx_name = "<Limit>";
+      break;
 
     case CONF_DYNDIR:
-      return ".ftpaccess";
+      ctx_name = ".ftpaccess";
+      break;
 
     case CONF_GLOBAL:
-      return "<Global>";
+      ctx_name = "<Global>";
+      break;
 
     case CONF_USERDATA:
-      return "user data";
+      ctx_name = "user data";
+      break;
 
     default:
       /* XXX should dispatch to modules here, to allow them to create and
@@ -2926,8 +2946,10 @@ char *get_context_name(cmd_rec *cmd) {
        */
       memset(cbuf, '\0', sizeof(cbuf));
       pr_snprintf(cbuf, sizeof(cbuf), "%d", cmd->config->config_type);
-      return cbuf;
+      ctx_name = cbuf;
   }
+
+  return ctx_name;
 }
 
 int get_boolean(cmd_rec *cmd, int av) {

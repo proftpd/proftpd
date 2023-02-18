@@ -2,7 +2,7 @@
  * ProFTPD - FTP server daemon
  * Copyright (c) 1997, 1998 Public Flood Software
  * Copyright (c) 1999, 2000 MacGyver aka Habeeb J. Dihu <macgyver@tos.net>
- * Copyright (c) 2001-2022 The ProFTPD Project team
+ * Copyright (c) 2001-2023 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -2789,6 +2789,8 @@ MODRET end_anonymous(cmd_rec *cmd) {
 }
 
 MODRET add_class(cmd_rec *cmd) {
+  config_rec *c;
+
   CHECK_ARGS(cmd, 1);
   CHECK_CONF(cmd, CONF_ROOT|CONF_GLOBAL);
 
@@ -2797,15 +2799,25 @@ MODRET add_class(cmd_rec *cmd) {
       cmd->argv[1], ">: ", strerror(errno), NULL));
   }
 
+  c = pr_parser_config_ctxt_open("Class");
+  c->config_type = CONF_CLASS;
+
   return PR_HANDLED(cmd);
 }
 
 MODRET end_class(cmd_rec *cmd) {
+  int empty_ctx = FALSE;
+
   if (cmd->argc > 1) {
     CONF_ERROR(cmd, "wrong number of parameters");
   }
 
   CHECK_CONF(cmd, CONF_CLASS);
+
+  pr_parser_config_ctxt_close(&empty_ctx);
+  if (empty_ctx == TRUE) {
+    pr_log_debug(DEBUG3, "%s: ignoring empty section", (char *) cmd->argv[0]);
+  }
 
   if (pr_class_close() < 0) {
     pr_log_pri(PR_LOG_WARNING, "warning: empty <Class> definition");
