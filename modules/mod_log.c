@@ -2,7 +2,7 @@
  * ProFTPD - FTP server daemon
  * Copyright (c) 1997, 1998 Public Flood Software
  * Copyright (c) 1999, 2000 MacGyver aka Habeeb J. Dihu <macgyver@tos.net>
- * Copyright (c) 2001-2022 The ProFTPD Project team
+ * Copyright (c) 2001-2023 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -638,6 +638,7 @@ static int resolve_on_meta(pool *p, pr_jot_ctx_t *jot_ctx,
       case LOGFMT_META_VHOST_IP:
       case LOGFMT_META_XFER_FAILURE:
       case LOGFMT_META_XFER_PATH:
+      case LOGFMT_META_XFER_SPEED:
       case LOGFMT_META_XFER_STATUS:
       case LOGFMT_META_XFER_TYPE:
       default:
@@ -690,6 +691,7 @@ static int resolve_on_default(pool *p, pr_jot_ctx_t *jot_ctx,
       case LOGFMT_META_XFER_MS:
       case LOGFMT_META_XFER_PATH:
       case LOGFMT_META_XFER_PORT:
+      case LOGFMT_META_XFER_SPEED:
       case LOGFMT_META_XFER_STATUS:
       case LOGFMT_META_XFER_TYPE:
         text = "-";

@@ -1,6 +1,6 @@
 /*
  * ProFTPD - FTP server testsuite
- * Copyright (c) 2020 The ProFTPD Project team
+ * Copyright (c) 2020-2023 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -594,6 +594,7 @@ START_TEST (jot_parse_logfmt_long_vars_test) {
     "%{transfer-failure}",
     "%{transfer-millisecs}",
     "%{transfer-port}",
+    "%{transfer-speed}",
     "%{transfer-status}",
     "%{transfer-type}",
     "%{uid}",

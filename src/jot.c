@@ -1,6 +1,6 @@
 /*
  * ProFTPD - FTP server daemon
- * Copyright (c) 2017-2020 The ProFTPD Project team
+ * Copyright (c) 2017-2023 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -284,6 +284,10 @@ const char *pr_jot_get_logfmt_id_name(unsigned char logfmt_id) {
       name = "XFER_PORT";
       break;
 
+    case LOGFMT_META_XFER_SPEED:
+      name = "XFER_SPEED";
+      break;
+
     case LOGFMT_META_XFER_TYPE:
       name = "XFER_TYPE";
       break;
@@ -417,6 +421,8 @@ pr_table_t *pr_jot_get_logfmt2json(pool *p) {
     PR_JOT_LOGFMT_XFER_FAILURE_KEY, PR_JSON_TYPE_STRING);
   add_json_info(p, map, LOGFMT_META_XFER_PORT, PR_JOT_LOGFMT_XFER_PORT_KEY,
     PR_JSON_TYPE_NUMBER);
+  add_json_info(p, map, LOGFMT_META_XFER_SPEED, PR_JOT_LOGFMT_XFER_SPEED_KEY,
+    PR_JSON_TYPE_STRING);
   add_json_info(p, map, LOGFMT_META_XFER_TYPE, PR_JOT_LOGFMT_XFER_TYPE_KEY,
     PR_JSON_TYPE_STRING);
   add_json_info(p, map, LOGFMT_META_MICROSECS, PR_JOT_LOGFMT_MICROSECS_KEY,
@@ -1062,6 +1068,51 @@ static int get_meta_transfer_port(cmd_rec *cmd) {
   }
 
   return transfer_port;
+}
+
+static const char *get_meta_transfer_speed(cmd_rec *cmd) {
+  const off_t *size_note = NULL;
+  uint64_t start_ms = 0, end_ms = 0;
+  double file_size = 0.0, xfer_ms = 0.0, xfer_speed = 0.0;
+  char text[64];
+
+  if (is_data_xfer_cmd(cmd) != TRUE) {
+    return NULL;
+  }
+
+  size_note = pr_table_get(cmd->notes, "mod_xfer.file-size", NULL);
+  if (size_note == NULL) {
+    return NULL;
+  }
+
+  if (session.xfer.p == NULL ||
+      (session.xfer.start_time.tv_sec == 0 &&
+       session.xfer.start_time.tv_usec == 0)) {
+    return NULL;
+  }
+
+  file_size = (double) *size_note;
+
+  pr_timeval2millis(&(session.xfer.start_time), &start_ms);
+  pr_gettimeofday_millis(&end_ms);
+
+  xfer_ms = end_ms - start_ms;
+
+  if (xfer_ms <= 0.0) {
+    xfer_ms = 0.1;
+  }
+
+  if (file_size > (off_t) 0) {
+    xfer_speed = ((file_size / 1024) / (xfer_ms / 1000));
+
+  } else {
+    xfer_speed = 0.0;
+  }
+
+  memset(text, '\0', sizeof(text));
+  pr_snprintf(text, sizeof(text)-1, "%.2fKB/s", xfer_speed);
+
+  return pstrdup(cmd->pool, text);
 }
 
 static const char *get_meta_transfer_type(cmd_rec *cmd) {
@@ -1860,6 +1911,20 @@ static int resolve_logfmt_id(pool *p, unsigned char logfmt_id,
       break;
     }
 
+    case LOGFMT_META_XFER_SPEED: {
+      const char *transfer_speed;
+
+      transfer_speed = get_meta_transfer_speed(cmd);
+      if (transfer_speed != NULL) {
+        res = (on_meta)(p, ctx, logfmt_id, NULL, transfer_speed);
+
+      } else {
+        res = (on_default)(p, ctx, logfmt_id);
+      }
+
+      break;
+    }
+
     case LOGFMT_META_XFER_TYPE: {
       const char *transfer_type;
 
@@ -2556,6 +2621,11 @@ static int parse_long_id(const char *text, unsigned char *logfmt_id,
   if (strncmp(text, "{transfer-port}", 15) == 0) {
     *logfmt_id = LOGFMT_META_XFER_PORT;
     return 15;
+  }
+
+  if (strncmp(text, "{transfer-speed}", 16) == 0) {
+    *logfmt_id = LOGFMT_META_XFER_SPEED;
+    return 16;
   }
 
   if (strncmp(text, "{transfer-status}", 17) == 0) {

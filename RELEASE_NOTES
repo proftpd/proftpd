@@ -9,6 +9,11 @@ ChangeLog files.
 1.3.9rc1
 ---------
 
+  + Changed Directives
+
+      LogFormat %{transfer-speed} (Issue #535)
+
+
   + Developer Notes
 
     Removed the unused `pr_ctrls_parse_msg` Controls API function.

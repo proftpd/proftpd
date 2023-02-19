@@ -2,7 +2,7 @@
  * ProFTPD: mod_sql -- SQL frontend
  * Copyright (c) 1998-1999 Johnie Ingram.
  * Copyright (c) 2001 Andrew Houghton.
- * Copyright (c) 2004-2022 TJ Saunders
+ * Copyright (c) 2004-2023 TJ Saunders
  *  
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -952,7 +952,7 @@ static int sql_resolve_on_meta(pool *p, pr_jot_ctx_t *jot_ctx,
           }
         }
 
-        if (is_numeric_tag) {
+        if (is_numeric_tag == TRUE) {
           int idx;
 
           idx = resolve_numeric_val(cmd, val_text);
@@ -997,6 +997,7 @@ static int sql_resolve_on_meta(pool *p, pr_jot_ctx_t *jot_ctx,
       case LOGFMT_META_VHOST_IP:
       case LOGFMT_META_XFER_FAILURE:
       case LOGFMT_META_XFER_PATH:
+      case LOGFMT_META_XFER_SPEED:
       case LOGFMT_META_XFER_STATUS:
       case LOGFMT_META_XFER_TYPE:
       default:
