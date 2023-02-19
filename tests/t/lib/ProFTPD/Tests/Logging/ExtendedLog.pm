@@ -477,6 +477,31 @@ my $TESTS = {
     test_class => [qw(forking mod_sftp)],
   },
 
+  extlog_xfer_speed_nonxfer_issue535 => {
+    order => ++$order,
+    test_class => [qw(forking)],
+  },
+
+  extlog_xfer_speed_download_issue535 => {
+    order => ++$order,
+    test_class => [qw(forking)],
+  },
+
+  extlog_xfer_speed_download_zero_len_issue535 => {
+    order => ++$order,
+    test_class => [qw(forking)],
+  },
+
+  extlog_xfer_speed_upload_issue535 => {
+    order => ++$order,
+    test_class => [qw(forking)],
+  },
+
+  extlog_xfer_speed_upload_zero_len_issue535 => {
+    order => ++$order,
+    test_class => [qw(forking)],
+  },
+
   # XXX Need unit tests for all LogFormat variables
 };
 
@@ -15491,6 +15516,824 @@ sub extlog_sftp_xfer_port_issue912 {
 
       $self->assert($expected_xfer_port,
         test_msg("Did not see expected transfer port in ExtendedLog"));
+
+    } else {
+      die("Can't read $ext_log: $!");
+    }
+  };
+  if ($@) {
+    $ex = $@;
+  }
+
+  test_cleanup($setup->{log_file}, $ex);
+}
+
+sub extlog_xfer_speed_nonxfer_issue535 {
+  my $self = shift;
+  my $tmpdir = $self->{tmpdir};
+  my $setup = test_setup($tmpdir, 'extlog');
+
+  my $ext_log = File::Spec->rel2abs("$tmpdir/custom.log");
+
+  my $test_file = File::Spec->rel2abs("$tmpdir/test.txt");
+  if (open(my $fh, "> $test_file")) {
+    print $fh "A" x 1024;
+
+    unless (close($fh)) {
+      die("Can't write $test_file: $!");
+    }
+
+  } else {
+    die("Can't open $test_file: $!");
+  }
+
+  my $config = {
+    PidFile => $setup->{pid_file},
+    ScoreboardFile => $setup->{scoreboard_file},
+    SystemLog => $setup->{log_file},
+
+    AuthUserFile => $setup->{auth_user_file},
+    AuthGroupFile => $setup->{auth_group_file},
+    AuthOrder => 'mod_auth_file.c',
+
+    IfModules => {
+      'mod_delay.c' => {
+        DelayEngine => 'off',
+      },
+    },
+  };
+
+  my ($port, $config_user, $config_group) = config_write($setup->{config_file},
+    $config);
+
+  if (open(my $fh, ">> $setup->{config_file}")) {
+    print $fh <<EOC;
+LogFormat custom "%m %{transfer-speed}"
+ExtendedLog $ext_log ALL custom
+EOC
+    unless (close($fh)) {
+      die("Can't write $setup->{config_file}: $!");
+    }
+
+  } else {
+    die("Can't open $setup->{config_file}: $!");
+  }
+
+  # Open pipes, for use between the parent and child processes.  Specifically,
+  # the child will indicate when it's done with its test by writing a message
+  # to the parent.
+  my ($rfh, $wfh);
+  unless (pipe($rfh, $wfh)) {
+    die("Can't open pipe: $!");
+  }
+
+  my $ex;
+
+  # Fork child
+  $self->handle_sigchld();
+  defined(my $pid = fork()) or die("Can't fork: $!");
+  if ($pid) {
+    eval {
+      # Allow for server startup
+      sleep(2);
+
+      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
+      $client->login($setup->{user}, $setup->{passwd});
+      $client->pwd();
+      $client->quit();
+    };
+    if ($@) {
+      $ex = $@;
+    }
+
+    $wfh->print("done\n");
+    $wfh->flush();
+
+  } else {
+    eval { server_wait($setup->{config_file}, $rfh) };
+    if ($@) {
+      warn($@);
+      exit 1;
+    }
+
+    exit 0;
+  }
+
+  # Stop server
+  server_stop($setup->{pid_file});
+  $self->assert_child_ok($pid);
+
+  # Now, read in the ExtendedLog, and see whether the %{transfer-speed}
+  # variable was properly written out.
+  eval {
+    if (open(my $fh, "< $ext_log")) {
+      my $unexpected_xfer_speed = 0;
+
+      while (my $line = <$fh>) {
+        chomp($line);
+
+        if ($ENV{TEST_VERBOSE}) {
+          print STDERR "# $line\n";
+        }
+
+        if ($line =~ /^(\S+) (.*)?$/) {
+          my $cmd = $1;
+          my $xfer_speed = $2;
+
+          if ($xfer_speed ne '-') {
+            $unexpected_xfer_speed = 1;
+            last;
+          }
+        }
+      }
+
+      close($fh);
+
+      $self->assert(!$unexpected_xfer_speed,
+        test_msg("Saw unexpected transfer speed in ExtendedLog"));
+
+    } else {
+      die("Can't read $ext_log: $!");
+    }
+  };
+  if ($@) {
+    $ex = $@;
+  }
+
+  test_cleanup($setup->{log_file}, $ex);
+}
+
+sub extlog_xfer_speed_download_issue535 {
+  my $self = shift;
+  my $tmpdir = $self->{tmpdir};
+  my $setup = test_setup($tmpdir, 'extlog');
+
+  my $ext_log = File::Spec->rel2abs("$tmpdir/custom.log");
+
+  my $test_file = File::Spec->rel2abs("$tmpdir/test.txt");
+  if (open(my $fh, "> $test_file")) {
+    print $fh "A" x 1024;
+
+    unless (close($fh)) {
+      die("Can't write $test_file: $!");
+    }
+
+  } else {
+    die("Can't open $test_file: $!");
+  }
+
+  my $config = {
+    PidFile => $setup->{pid_file},
+    ScoreboardFile => $setup->{scoreboard_file},
+    SystemLog => $setup->{log_file},
+
+    AuthUserFile => $setup->{auth_user_file},
+    AuthGroupFile => $setup->{auth_group_file},
+    AuthOrder => 'mod_auth_file.c',
+
+    IfModules => {
+      'mod_delay.c' => {
+        DelayEngine => 'off',
+      },
+    },
+  };
+
+  my ($port, $config_user, $config_group) = config_write($setup->{config_file},
+    $config);
+
+  if (open(my $fh, ">> $setup->{config_file}")) {
+    print $fh <<EOC;
+LogFormat custom "%m %{transfer-speed}"
+ExtendedLog $ext_log ALL custom
+EOC
+    unless (close($fh)) {
+      die("Can't write $setup->{config_file}: $!");
+    }
+
+  } else {
+    die("Can't open $setup->{config_file}: $!");
+  }
+
+  # Open pipes, for use between the parent and child processes.  Specifically,
+  # the child will indicate when it's done with its test by writing a message
+  # to the parent.
+  my ($rfh, $wfh);
+  unless (pipe($rfh, $wfh)) {
+    die("Can't open pipe: $!");
+  }
+
+  my $ex;
+
+  # Fork child
+  $self->handle_sigchld();
+  defined(my $pid = fork()) or die("Can't fork: $!");
+  if ($pid) {
+    eval {
+      # Allow for server startup
+      sleep(2);
+
+      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
+      $client->login($setup->{user}, $setup->{passwd});
+
+      my $conn = $client->retr_raw('test.txt');
+      unless ($conn) {
+        die("RETR test.txt failed: " . $client->response_code() . " " .
+          $client->response_code());
+      }
+
+      my $buf;
+      while ($conn->read($buf, 16382, 25)) {
+      }
+      eval { $conn->close() };
+
+      my $resp_code = $client->response_code();
+      my $resp_msg = $client->response_msg();
+
+      $self->assert_transfer_ok($resp_code, $resp_msg);
+      $client->quit();
+
+      # Now use an active transfer
+      $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port, 1);
+      $client->login($setup->{user}, $setup->{passwd});
+
+      $conn = $client->retr_raw('test.txt');
+      unless ($conn) {
+        die("RETR test.txt failed: " . $client->response_code() . " " .
+          $client->response_code());
+      }
+
+      $buf = '';
+      while ($conn->read($buf, 16382, 25)) {
+      }
+      eval { $conn->close() };
+
+      $resp_code = $client->response_code();
+      $resp_msg = $client->response_msg();
+
+      $self->assert_transfer_ok($resp_code, $resp_msg);
+      $client->quit();
+    };
+    if ($@) {
+      $ex = $@;
+    }
+
+    $wfh->print("done\n");
+    $wfh->flush();
+
+  } else {
+    eval { server_wait($setup->{config_file}, $rfh) };
+    if ($@) {
+      warn($@);
+      exit 1;
+    }
+
+    exit 0;
+  }
+
+  # Stop server
+  server_stop($setup->{pid_file});
+  $self->assert_child_ok($pid);
+
+  # Now, read in the ExtendedLog, and see whether the %{transfer-speed}
+  # variable was properly written out.
+  eval {
+    if (open(my $fh, "< $ext_log")) {
+      my $expected_xfer_speed = 0;
+
+      while (my $line = <$fh>) {
+        chomp($line);
+
+        if ($ENV{TEST_VERBOSE}) {
+          print STDERR "# $line\n";
+        }
+
+        if ($line =~ /^(\S+) (.*)?$/) {
+          my $cmd = $1;
+          my $xfer_speed = $2;
+
+          if ($cmd eq 'RETR') {
+            if ($xfer_speed =~ /\d+KB\/s/) {
+              $expected_xfer_speed = 1;
+
+            } else {
+              $expected_xfer_speed = 0;
+            }
+          }
+        }
+      }
+
+      close($fh);
+
+      $self->assert($expected_xfer_speed,
+        test_msg("Did not see expected transfer speed in ExtendedLog"));
+
+    } else {
+      die("Can't read $ext_log: $!");
+    }
+  };
+  if ($@) {
+    $ex = $@;
+  }
+
+  test_cleanup($setup->{log_file}, $ex);
+}
+
+sub extlog_xfer_speed_download_zero_len_issue535 {
+  my $self = shift;
+  my $tmpdir = $self->{tmpdir};
+  my $setup = test_setup($tmpdir, 'extlog');
+
+  my $ext_log = File::Spec->rel2abs("$tmpdir/custom.log");
+
+  my $test_file = File::Spec->rel2abs("$tmpdir/test.txt");
+  if (open(my $fh, "> $test_file")) {
+    unless (close($fh)) {
+      die("Can't write $test_file: $!");
+    }
+
+  } else {
+    die("Can't open $test_file: $!");
+  }
+
+  my $config = {
+    PidFile => $setup->{pid_file},
+    ScoreboardFile => $setup->{scoreboard_file},
+    SystemLog => $setup->{log_file},
+
+    AuthUserFile => $setup->{auth_user_file},
+    AuthGroupFile => $setup->{auth_group_file},
+    AuthOrder => 'mod_auth_file.c',
+
+    IfModules => {
+      'mod_delay.c' => {
+        DelayEngine => 'off',
+      },
+    },
+  };
+
+  my ($port, $config_user, $config_group) = config_write($setup->{config_file},
+    $config);
+
+  if (open(my $fh, ">> $setup->{config_file}")) {
+    print $fh <<EOC;
+LogFormat custom "%m %{transfer-speed}"
+ExtendedLog $ext_log ALL custom
+EOC
+    unless (close($fh)) {
+      die("Can't write $setup->{config_file}: $!");
+    }
+
+  } else {
+    die("Can't open $setup->{config_file}: $!");
+  }
+
+  # Open pipes, for use between the parent and child processes.  Specifically,
+  # the child will indicate when it's done with its test by writing a message
+  # to the parent.
+  my ($rfh, $wfh);
+  unless (pipe($rfh, $wfh)) {
+    die("Can't open pipe: $!");
+  }
+
+  my $ex;
+
+  # Fork child
+  $self->handle_sigchld();
+  defined(my $pid = fork()) or die("Can't fork: $!");
+  if ($pid) {
+    eval {
+      # Allow for server startup
+      sleep(2);
+
+      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
+      $client->login($setup->{user}, $setup->{passwd});
+
+      my $conn = $client->retr_raw('test.txt');
+      unless ($conn) {
+        die("RETR test.txt failed: " . $client->response_code() . " " .
+          $client->response_code());
+      }
+
+      my $buf;
+      while ($conn->read($buf, 16382, 25)) {
+      }
+      eval { $conn->close() };
+
+      my $resp_code = $client->response_code();
+      my $resp_msg = $client->response_msg();
+
+      $self->assert_transfer_ok($resp_code, $resp_msg);
+      $client->quit();
+
+      # Now use an active transfer
+      $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port, 1);
+      $client->login($setup->{user}, $setup->{passwd});
+
+      $conn = $client->retr_raw('test.txt');
+      unless ($conn) {
+        die("RETR test.txt failed: " . $client->response_code() . " " .
+          $client->response_code());
+      }
+
+      $buf = '';
+      while ($conn->read($buf, 16382, 25)) {
+      }
+      eval { $conn->close() };
+
+      $resp_code = $client->response_code();
+      $resp_msg = $client->response_msg();
+
+      $self->assert_transfer_ok($resp_code, $resp_msg);
+      $client->quit();
+    };
+    if ($@) {
+      $ex = $@;
+    }
+
+    $wfh->print("done\n");
+    $wfh->flush();
+
+  } else {
+    eval { server_wait($setup->{config_file}, $rfh) };
+    if ($@) {
+      warn($@);
+      exit 1;
+    }
+
+    exit 0;
+  }
+
+  # Stop server
+  server_stop($setup->{pid_file});
+  $self->assert_child_ok($pid);
+
+  # Now, read in the ExtendedLog, and see whether the %{transfer-speed}
+  # variable was properly written out.
+  eval {
+    if (open(my $fh, "< $ext_log")) {
+      my $expected_xfer_speed = 0;
+
+      while (my $line = <$fh>) {
+        chomp($line);
+
+        if ($ENV{TEST_VERBOSE}) {
+          print STDERR "# $line\n";
+        }
+
+        if ($line =~ /^(\S+) (.*)?$/) {
+          my $cmd = $1;
+          my $xfer_speed = $2;
+
+          if ($cmd eq 'RETR') {
+            if ($xfer_speed =~ /\d+KB\/s/) {
+              $expected_xfer_speed = 1;
+
+            } else {
+              $expected_xfer_speed = 0;
+            }
+          }
+        }
+      }
+
+      close($fh);
+
+      $self->assert($expected_xfer_speed,
+        test_msg("Did not see expected transfer speed in ExtendedLog"));
+
+    } else {
+      die("Can't read $ext_log: $!");
+    }
+  };
+  if ($@) {
+    $ex = $@;
+  }
+
+  test_cleanup($setup->{log_file}, $ex);
+}
+
+sub extlog_xfer_speed_upload_issue535 {
+  my $self = shift;
+  my $tmpdir = $self->{tmpdir};
+  my $setup = test_setup($tmpdir, 'extlog');
+
+  my $ext_log = File::Spec->rel2abs("$tmpdir/custom.log");
+
+  my $test_file = File::Spec->rel2abs("$tmpdir/test.txt");
+
+  my $config = {
+    PidFile => $setup->{pid_file},
+    ScoreboardFile => $setup->{scoreboard_file},
+    SystemLog => $setup->{log_file},
+
+    AuthUserFile => $setup->{auth_user_file},
+    AuthGroupFile => $setup->{auth_group_file},
+    AuthOrder => 'mod_auth_file.c',
+
+    AllowOverwrite => 'on',
+
+    IfModules => {
+      'mod_delay.c' => {
+        DelayEngine => 'off',
+      },
+    },
+  };
+
+  my ($port, $config_user, $config_group) = config_write($setup->{config_file},
+    $config);
+
+  if (open(my $fh, ">> $setup->{config_file}")) {
+    print $fh <<EOC;
+LogFormat custom "%m %{transfer-speed}"
+ExtendedLog $ext_log ALL custom
+EOC
+    unless (close($fh)) {
+      die("Can't write $setup->{config_file}: $!");
+    }
+
+  } else {
+    die("Can't open $setup->{config_file}: $!");
+  }
+
+  # Open pipes, for use between the parent and child processes.  Specifically,
+  # the child will indicate when it's done with its test by writing a message
+  # to the parent.
+  my ($rfh, $wfh);
+  unless (pipe($rfh, $wfh)) {
+    die("Can't open pipe: $!");
+  }
+
+  my $ex;
+
+  # Fork child
+  $self->handle_sigchld();
+  defined(my $pid = fork()) or die("Can't fork: $!");
+  if ($pid) {
+    eval {
+      # Allow for server startup
+      sleep(2);
+
+      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
+      $client->login($setup->{user}, $setup->{passwd});
+
+      my $conn = $client->stor_raw('test.txt');
+      unless ($conn) {
+        die("STOR test.txt failed: " . $client->response_code() . " " .
+          $client->response_code());
+      }
+
+      my $buf = 'A' x 1024;
+      $conn->write($buf, length($buf), 25);
+      eval { $conn->close() };
+
+      my $resp_code = $client->response_code();
+      my $resp_msg = $client->response_msg();
+
+      $self->assert_transfer_ok($resp_code, $resp_msg);
+      $client->quit();
+
+      # Now use an active transfer
+      $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port, 1);
+      $client->login($setup->{user}, $setup->{passwd});
+
+      $conn = $client->stor_raw('test.txt');
+      unless ($conn) {
+        die("STOR test.txt failed: " . $client->response_code() . " " .
+          $client->response_code());
+      }
+
+      $buf = 'B' x 1024;
+      $conn->write($buf, length($buf), 25);
+
+      # Now we deliberately delay the close, to see the different transfer
+      # speed logged.
+      sleep(2);
+      eval { $conn->close() };
+
+      $resp_code = $client->response_code();
+      $resp_msg = $client->response_msg();
+
+      $self->assert_transfer_ok($resp_code, $resp_msg);
+      $client->quit();
+    };
+    if ($@) {
+      $ex = $@;
+    }
+
+    $wfh->print("done\n");
+    $wfh->flush();
+
+  } else {
+    eval { server_wait($setup->{config_file}, $rfh) };
+    if ($@) {
+      warn($@);
+      exit 1;
+    }
+
+    exit 0;
+  }
+
+  # Stop server
+  server_stop($setup->{pid_file});
+  $self->assert_child_ok($pid);
+
+  # Now, read in the ExtendedLog, and see whether the %{transfer-speed}
+  # variable was properly written out.
+  eval {
+    if (open(my $fh, "< $ext_log")) {
+      my $expected_xfer_speed = 0;
+
+      while (my $line = <$fh>) {
+        chomp($line);
+
+        if ($ENV{TEST_VERBOSE}) {
+          print STDERR "# $line\n";
+        }
+
+        if ($line =~ /^(\S+) (.*)?$/) {
+          my $cmd = $1;
+          my $xfer_speed = $2;
+
+          if ($cmd eq 'STOR') {
+            if ($xfer_speed =~ /\d+KB\/s/) {
+              $expected_xfer_speed = 1;
+
+            } else {
+              $expected_xfer_speed = 0;
+            }
+          }
+        }
+      }
+
+      close($fh);
+
+      $self->assert($expected_xfer_speed,
+        test_msg("Did not see expected transfer speed in ExtendedLog"));
+
+    } else {
+      die("Can't read $ext_log: $!");
+    }
+  };
+  if ($@) {
+    $ex = $@;
+  }
+
+  test_cleanup($setup->{log_file}, $ex);
+}
+
+sub extlog_xfer_speed_upload_zero_len_issue535 {
+  my $self = shift;
+  my $tmpdir = $self->{tmpdir};
+  my $setup = test_setup($tmpdir, 'extlog');
+
+  my $ext_log = File::Spec->rel2abs("$tmpdir/custom.log");
+
+  my $test_file = File::Spec->rel2abs("$tmpdir/test.txt");
+
+  my $config = {
+    PidFile => $setup->{pid_file},
+    ScoreboardFile => $setup->{scoreboard_file},
+    SystemLog => $setup->{log_file},
+
+    AuthUserFile => $setup->{auth_user_file},
+    AuthGroupFile => $setup->{auth_group_file},
+    AuthOrder => 'mod_auth_file.c',
+
+    AllowOverwrite => 'on',
+
+    IfModules => {
+      'mod_delay.c' => {
+        DelayEngine => 'off',
+      },
+    },
+  };
+
+  my ($port, $config_user, $config_group) = config_write($setup->{config_file},
+    $config);
+
+  if (open(my $fh, ">> $setup->{config_file}")) {
+    print $fh <<EOC;
+LogFormat custom "%m %{transfer-speed}"
+ExtendedLog $ext_log ALL custom
+EOC
+    unless (close($fh)) {
+      die("Can't write $setup->{config_file}: $!");
+    }
+
+  } else {
+    die("Can't open $setup->{config_file}: $!");
+  }
+
+  # Open pipes, for use between the parent and child processes.  Specifically,
+  # the child will indicate when it's done with its test by writing a message
+  # to the parent.
+  my ($rfh, $wfh);
+  unless (pipe($rfh, $wfh)) {
+    die("Can't open pipe: $!");
+  }
+
+  my $ex;
+
+  # Fork child
+  $self->handle_sigchld();
+  defined(my $pid = fork()) or die("Can't fork: $!");
+  if ($pid) {
+    eval {
+      # Allow for server startup
+      sleep(2);
+
+      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
+      $client->login($setup->{user}, $setup->{passwd});
+
+      my $conn = $client->stor_raw('test.txt');
+      unless ($conn) {
+        die("STOR test.txt failed: " . $client->response_code() . " " .
+          $client->response_code());
+      }
+
+      # Close the data connection without writing anything.
+      eval { $conn->close(5) };
+
+      my $resp_code = $client->response_code();
+      my $resp_msg = $client->response_msg();
+
+      $self->assert_transfer_ok($resp_code, $resp_msg);
+      $client->quit();
+
+      # Now use an active transfer
+      $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port, 1);
+      $client->login($setup->{user}, $setup->{passwd});
+
+      $conn = $client->stor_raw('test.txt');
+      unless ($conn) {
+        die("STOR test.txt failed: " . $client->response_code() . " " .
+          $client->response_code());
+      }
+
+      # Now we deliberately delay the close, to see the different transfer
+      # speed logged.
+      sleep(2);
+
+      eval { $conn->close(5) };
+
+      $resp_code = $client->response_code();
+      $resp_msg = $client->response_msg();
+
+      $self->assert_transfer_ok($resp_code, $resp_msg);
+      $client->quit();
+    };
+    if ($@) {
+      $ex = $@;
+    }
+
+    $wfh->print("done\n");
+    $wfh->flush();
+
+  } else {
+    eval { server_wait($setup->{config_file}, $rfh) };
+    if ($@) {
+      warn($@);
+      exit 1;
+    }
+
+    exit 0;
+  }
+
+  # Stop server
+  server_stop($setup->{pid_file});
+  $self->assert_child_ok($pid);
+
+  # Now, read in the ExtendedLog, and see whether the %{transfer-speed}
+  # variable was properly written out.
+  eval {
+    if (open(my $fh, "< $ext_log")) {
+      my $expected_xfer_speed = 0;
+
+      while (my $line = <$fh>) {
+        chomp($line);
+
+        if ($ENV{TEST_VERBOSE}) {
+          print STDERR "# $line\n";
+        }
+
+        if ($line =~ /^(\S+) (.*)?$/) {
+          my $cmd = $1;
+          my $xfer_speed = $2;
+
+          if ($cmd eq 'STOR') {
+            if ($xfer_speed =~ /\d+KB\/s/) {
+              $expected_xfer_speed = 1;
+
+            } else {
+              $expected_xfer_speed = 0;
+            }
+          }
+        }
+      }
+
+      close($fh);
+
+      $self->assert($expected_xfer_speed,
+        test_msg("Did not see expected transfer speed in ExtendedLog"));
 
     } else {
       die("Can't read $ext_log: $!");
