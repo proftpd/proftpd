@@ -16593,23 +16593,14 @@ static void tls_lookup_all(server_rec *s) {
    */
   tls_dsa_cert_file = get_param_ptr(s->conf, "TLSDSACertificateFile", FALSE);
   tls_dsa_key_file = get_param_ptr(s->conf, "TLSDSACertificateKeyFile", FALSE);
-  if (tls_dsa_key_file == NULL) {
-    tls_dsa_key_file = tls_dsa_cert_file;
-  }
 
   tls_ec_cert_file = get_param_ptr(s->conf, "TLSECCertificateFile", FALSE);
   tls_ec_key_file = get_param_ptr(s->conf, "TLSECCertificateKeyFile", FALSE);
-  if (tls_ec_key_file == NULL) {
-    tls_ec_key_file = tls_ec_cert_file;
-  }
 
   tls_pkcs12_file = get_param_ptr(s->conf, "TLSPKCS12File", FALSE);
 
   tls_rsa_cert_file = get_param_ptr(s->conf, "TLSRSACertificateFile", FALSE);
   tls_rsa_key_file = get_param_ptr(s->conf, "TLSRSACertificateKeyFile", FALSE);
-  if (tls_rsa_key_file == NULL) {
-    tls_rsa_key_file = tls_rsa_cert_file;
-  }
 
   /* TLSCipherSuite */
   c = find_config(s->conf, CONF_PARAM, "TLSCipherSuite", FALSE);
@@ -17546,10 +17537,16 @@ static int tls_ctx_set_dsa_cert(SSL_CTX *ctx, X509 **dsa_cert) {
     return -1;
   }
 
-  /* As the file may contain sensitive data, we do not want it lingering
-   * around in stdio buffers.
+  /* Assume that if no separate TLSDSACertificateKeyFile was configured (or
+   * that if the configured TLSDSACertificateKeyFile is to the same path as
+   * the TLSDSACertificateFile), that the cert and key are in the same file.
+   * In that case, the file contains sensitive data, and we do not want it
+   * lingering around in stdio buffers.
    */
-  (void) setvbuf(fh, NULL, _IONBF, 0);
+  if (tls_dsa_key_file == NULL ||
+      strcmp(tls_dsa_cert_file, tls_dsa_key_file) == 0) {
+    (void) setvbuf(fh, NULL, _IONBF, 0);
+  }
 
   cert = read_cert(fh, ctx);
   if (cert == NULL) {
@@ -17580,7 +17577,7 @@ static int tls_ctx_set_dsa_cert(SSL_CTX *ctx, X509 **dsa_cert) {
     tls_dsa_cert_file);
 
   if (tls_dsa_key_file != NULL) {
-    if (tls_pkey) {
+    if (tls_pkey != NULL) {
       tls_pkey->flags |= TLS_PKEY_USE_DSA;
       tls_pkey->flags &= ~(TLS_PKEY_USE_RSA|TLS_PKEY_USE_EC);
     }
@@ -17629,10 +17626,16 @@ static int tls_ctx_set_ec_cert(SSL_CTX *ctx, X509 **ec_cert) {
     return -1;
   }
 
-  /* As the file may contain sensitive data, we do not want it lingering
-   * around in stdio buffers.
+  /* Assume that if no separate TLSECCertificateKeyFile was configured (or
+   * that if the configured TLSECCertificateKeyFile is to the same path as
+   * the TLSECCertificateFile), that the cert and key are in the same file.
+   * In that case, the file contains sensitive data, and we do not want it
+   * lingering around in stdio buffers.
    */
-  (void) setvbuf(fh, NULL, _IONBF, 0);
+  if (tls_ec_key_file == NULL ||
+      strcmp(tls_ec_cert_file, tls_ec_key_file) == 0) {
+    (void) setvbuf(fh, NULL, _IONBF, 0);
+  }
 
   cert = read_cert(fh, ctx);
   if (cert == NULL) {
@@ -17663,7 +17666,7 @@ static int tls_ctx_set_ec_cert(SSL_CTX *ctx, X509 **ec_cert) {
     tls_ec_cert_file);
 
   if (tls_ec_key_file != NULL) {
-    if (tls_pkey) {
+    if (tls_pkey != NULL) {
       tls_pkey->flags |= TLS_PKEY_USE_EC;
       tls_pkey->flags &= ~(TLS_PKEY_USE_RSA|TLS_PKEY_USE_DSA);
     }
@@ -17908,10 +17911,16 @@ static int tls_ctx_set_rsa_cert(SSL_CTX *ctx, X509 **rsa_cert) {
     return -1;
   }
 
-  /* As the file may contain sensitive data, we do not want it lingering
-   * around in stdio buffers.
+  /* Assume that if no separate TLSRSACertificateKeyFile was configured (or
+   * that if the configured TLSRSACertificateKeyFile is to the same path as
+   * the TLSRSACertificateFile), that the cert and key are in the same file.
+   * In that case, the file contains sensitive data, and we do not want it
+   * lingering around in stdio buffers.
    */
-  (void) setvbuf(fh, NULL, _IONBF, 0);
+  if (tls_rsa_key_file == NULL ||
+      strcmp(tls_rsa_cert_file, tls_rsa_key_file) == 0) {
+    (void) setvbuf(fh, NULL, _IONBF, 0);
+  }
 
   cert = read_cert(fh, ctx);
   if (cert == NULL) {
@@ -17944,7 +17953,7 @@ static int tls_ctx_set_rsa_cert(SSL_CTX *ctx, X509 **rsa_cert) {
     tls_rsa_cert_file);
 
   if (tls_rsa_key_file != NULL) {
-    if (tls_pkey) {
+    if (tls_pkey != NULL) {
       tls_pkey->flags |= TLS_PKEY_USE_RSA;
       tls_pkey->flags &= ~(TLS_PKEY_USE_DSA|TLS_PKEY_USE_EC);
     }
