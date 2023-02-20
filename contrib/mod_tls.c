@@ -17521,6 +17521,7 @@ static int tls_ctx_set_dsa_cert(SSL_CTX *ctx, X509 **dsa_cert) {
   X509 *cert;
   FILE *fh = NULL;
   int res, xerrno;
+  const char *key_file = NULL;
 
   if (tls_dsa_cert_file == NULL) {
     return 0;
@@ -17576,29 +17577,33 @@ static int tls_ctx_set_dsa_cert(SSL_CTX *ctx, X509 **dsa_cert) {
   pr_trace_msg(trace_channel, 19, "loaded DSA server certificate from '%s'",
     tls_dsa_cert_file);
 
-  if (tls_dsa_key_file != NULL) {
-    if (tls_pkey != NULL) {
-      tls_pkey->flags |= TLS_PKEY_USE_DSA;
-      tls_pkey->flags &= ~(TLS_PKEY_USE_RSA|TLS_PKEY_USE_EC);
-    }
+  key_file = tls_dsa_key_file;
+  if (key_file == NULL) {
+    /* Assume the private key is in the cert file. */
+    key_file = tls_dsa_cert_file;
+  }
 
-    res = SSL_CTX_use_PrivateKey_file(ctx, tls_dsa_key_file, X509_FILETYPE_PEM);
-    if (res <= 0) {
-      PRIVS_RELINQUISH
+  if (tls_pkey != NULL) {
+    tls_pkey->flags |= TLS_PKEY_USE_DSA;
+    tls_pkey->flags &= ~(TLS_PKEY_USE_RSA|TLS_PKEY_USE_EC);
+  }
 
-      tls_log("error loading TLSDSACertificateKeyFile '%s': %s",
-        tls_dsa_key_file, tls_get_errors());
-      return -1;
-    }
+  res = SSL_CTX_use_PrivateKey_file(ctx, key_file, X509_FILETYPE_PEM);
+  if (res <= 0) {
+    PRIVS_RELINQUISH
 
-    res = SSL_CTX_check_private_key(ctx);
-    if (res != 1) {
-      PRIVS_RELINQUISH
+    tls_log("error loading TLSDSACertificateKeyFile '%s': %s", key_file,
+      tls_get_errors());
+    return -1;
+  }
 
-      tls_log("error checking key from TLSDSACertificateKeyFile '%s': %s",
-        tls_dsa_key_file, tls_get_errors());
-      return -1;
-    }
+  res = SSL_CTX_check_private_key(ctx);
+  if (res != 1) {
+    PRIVS_RELINQUISH
+
+    tls_log("error checking key from TLSDSACertificateKeyFile '%s': %s",
+      key_file, tls_get_errors());
+    return -1;
   }
   PRIVS_RELINQUISH
 
@@ -17610,6 +17615,7 @@ static int tls_ctx_set_ec_cert(SSL_CTX *ctx, X509 **ec_cert) {
   X509 *cert;
   FILE *fh = NULL;
   int res, xerrno;
+  const char *key_file = NULL;
 
   if (tls_ec_cert_file == NULL) {
     return 0;
@@ -17665,29 +17671,33 @@ static int tls_ctx_set_ec_cert(SSL_CTX *ctx, X509 **ec_cert) {
   pr_trace_msg(trace_channel, 19, "loaded EC server certificate from '%s'",
     tls_ec_cert_file);
 
-  if (tls_ec_key_file != NULL) {
-    if (tls_pkey != NULL) {
-      tls_pkey->flags |= TLS_PKEY_USE_EC;
-      tls_pkey->flags &= ~(TLS_PKEY_USE_RSA|TLS_PKEY_USE_DSA);
-    }
+  key_file = tls_ec_key_file;
+  if (key_file == NULL) {
+    /* Assume the private key is in the cert file. */
+    key_file = tls_ec_cert_file;
+  }
 
-    res = SSL_CTX_use_PrivateKey_file(ctx, tls_ec_key_file, X509_FILETYPE_PEM);
-    if (res <= 0) {
-      PRIVS_RELINQUISH
+  if (tls_pkey != NULL) {
+    tls_pkey->flags |= TLS_PKEY_USE_EC;
+    tls_pkey->flags &= ~(TLS_PKEY_USE_RSA|TLS_PKEY_USE_DSA);
+  }
 
-      tls_log("error loading TLSECCertificateKeyFile '%s': %s",
-        tls_ec_key_file, tls_get_errors());
-      return -1;
-    }
+  res = SSL_CTX_use_PrivateKey_file(ctx, key_file, X509_FILETYPE_PEM);
+  if (res <= 0) {
+    PRIVS_RELINQUISH
 
-    res = SSL_CTX_check_private_key(ctx);
-    if (res != 1) {
-      PRIVS_RELINQUISH
+    tls_log("error loading TLSECCertificateKeyFile '%s': %s", key_file,
+      tls_get_errors());
+    return -1;
+  }
 
-      tls_log("error checking key from TLSECCertificateKeyFile '%s': %s",
-        tls_ec_key_file, tls_get_errors());
-      return -1;
-    }
+  res = SSL_CTX_check_private_key(ctx);
+  if (res != 1) {
+    PRIVS_RELINQUISH
+
+    tls_log("error checking key from TLSECCertificateKeyFile '%s': %s",
+      key_file, tls_get_errors());
+    return -1;
   }
 
   PRIVS_RELINQUISH
@@ -17894,6 +17904,7 @@ static int tls_ctx_set_rsa_cert(SSL_CTX *ctx, X509 **rsa_cert) {
   X509 *cert;
   FILE *fh = NULL;
   int res, xerrno;
+  const char *key_file = NULL;
 
   if (tls_rsa_cert_file == NULL) {
     return 0;
@@ -17952,43 +17963,45 @@ static int tls_ctx_set_rsa_cert(SSL_CTX *ctx, X509 **rsa_cert) {
   pr_trace_msg(trace_channel, 19, "loaded RSA server certificate from '%s'",
     tls_rsa_cert_file);
 
-  if (tls_rsa_key_file != NULL) {
-    if (tls_pkey != NULL) {
-      tls_pkey->flags |= TLS_PKEY_USE_RSA;
-      tls_pkey->flags &= ~(TLS_PKEY_USE_DSA|TLS_PKEY_USE_EC);
-    }
+  key_file = tls_rsa_key_file;
+  if (key_file == NULL) {
+    /* Assume the private key is in the cert file. */
+    key_file = tls_rsa_cert_file;
+  }
 
-    res = SSL_CTX_use_PrivateKey_file(ctx, tls_rsa_key_file, X509_FILETYPE_PEM);
-    if (res <= 0) {
-      const char *errors;
+  if (tls_pkey != NULL) {
+    tls_pkey->flags |= TLS_PKEY_USE_RSA;
+    tls_pkey->flags &= ~(TLS_PKEY_USE_DSA|TLS_PKEY_USE_EC);
+  }
 
-      PRIVS_RELINQUISH
-      errors = tls_get_errors();
+  res = SSL_CTX_use_PrivateKey_file(ctx, key_file, X509_FILETYPE_PEM);
+  if (res <= 0) {
+    const char *errors;
 
-      pr_trace_msg(trace_channel, 3,
-        "error loading TLSRSACertificateKeyFile '%s': %s", tls_rsa_key_file,
-        errors);
-      pr_log_pri(PR_LOG_NOTICE, MOD_TLS_VERSION
-        ": error loading TLSRSACertificateKeyFile '%s': %s", tls_rsa_key_file,
-        errors);
-      return -1;
-    }
+    PRIVS_RELINQUISH
+    errors = tls_get_errors();
 
-    res = SSL_CTX_check_private_key(ctx);
-    if (res != 1) {
-      const char *errors;
+    pr_trace_msg(trace_channel, 3,
+      "error loading TLSRSACertificateKeyFile '%s': %s", key_file, errors);
+    pr_log_pri(PR_LOG_NOTICE, MOD_TLS_VERSION
+      ": error loading TLSRSACertificateKeyFile '%s': %s", key_file, errors);
+    return -1;
+  }
 
-      PRIVS_RELINQUISH
-      errors = tls_get_errors();
+  res = SSL_CTX_check_private_key(ctx);
+  if (res != 1) {
+    const char *errors;
 
-      pr_trace_msg(trace_channel, 3,
-        "error checking key from TLSRSACertificateKeyFile '%s': %s",
-        tls_rsa_key_file, errors);
-      pr_log_pri(PR_LOG_NOTICE, MOD_TLS_VERSION
-        ": error checking key from TLSRSACertificateKeyFile '%s': %s",
-        tls_rsa_key_file, errors);
-      return -1;
-    }
+    PRIVS_RELINQUISH
+    errors = tls_get_errors();
+
+    pr_trace_msg(trace_channel, 3,
+      "error checking key from TLSRSACertificateKeyFile '%s': %s", key_file,
+      errors);
+    pr_log_pri(PR_LOG_NOTICE, MOD_TLS_VERSION
+      ": error checking key from TLSRSACertificateKeyFile '%s': %s", key_file,
+      errors);
+    return -1;
   }
   PRIVS_RELINQUISH
 
