@@ -3428,6 +3428,7 @@ static int read_openssh_private_key(pool *p, const char *path, int fd,
     if (res < 0) {
       pr_log_debug(DEBUG0, MOD_SFTP_VERSION ": error reading '%s': %s",
         path, strerror(xerrno));
+      pr_memscrub(input_ptr, st.st_size);
       destroy_pool(tmp_pool);
       errno = xerrno;
       return -1;
@@ -3479,6 +3480,7 @@ static int read_openssh_private_key(pool *p, const char *path, int fd,
   xerrno = errno;
 
   if (res < 0) {
+    pr_memscrub(input_ptr, st.st_size);
     destroy_pool(tmp_pool);
     errno = xerrno;
     return -1;
