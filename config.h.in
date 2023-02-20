@@ -1145,6 +1145,9 @@
 /* Define if using OPENSSL_API_COMPAT.  */
 #undef PR_USE_OPENSSL_API_COMPAT
 
+/* Define if using OpenSSL has BIO_s_secmem().  */
+#undef PR_USE_OPENSSL_BIO_SECMEM
+
 /* Define if OpenSSL Elliptic Curve Cryptography (ECC) support, if available,
  * should be used.
  */

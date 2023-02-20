@@ -3578,6 +3578,27 @@ if test x"$pr_use_openssl" = xyes; then
     ]
   )
 
+  AC_MSG_CHECKING([whether OpenSSL has BIO_s_secmem support])
+  saved_libs="$LIBS"
+  LIBS="-lcrypto $LIBS"
+
+  AC_TRY_LINK(
+    [
+      #include <openssl/bio.h>
+    ],
+    [
+      BIO *bio = BIO_s_secmem();
+    ],
+    [
+      AC_MSG_RESULT(yes)
+      AC_DEFINE(PR_USE_OPENSSL_BIO_SECMEM, 1, [Define if your OpenSSL supports BIO_s_secmem])
+    ],
+    [
+      AC_MSG_RESULT(no)
+    ]
+  )
+  LIBS="$saved_libs"
+
   AC_MSG_CHECKING([whether OpenSSL has complete ECC support])
   saved_libs="$LIBS"
   LIBS="-lcrypto $LIBS"

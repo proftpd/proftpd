@@ -3675,7 +3675,11 @@ static BIO *load_file_hostkey_bio(pool *p, int fd) {
 
   bufsz = st.st_blksize;
   buf = palloc(p, bufsz);
+#if defined(PR_USE_OPENSSL_BIO_SECMEM)
+  bio = BIO_new(BIO_s_secmem());
+#else
   bio = BIO_new(BIO_s_mem());
+#endif /* PR_USE_OPENSSL_BIO_SECMEM */
 
   res = read(fd, buf, bufsz);
   xerrno = errno;
