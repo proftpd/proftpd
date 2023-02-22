@@ -1088,6 +1088,234 @@ MODRET ifsess_post_pass(cmd_rec *cmd) {
   return PR_DECLINED(cmd);
 }
 
+MODRET ifsess_post_user(cmd_rec *cmd) {
+  register unsigned int i = 0;
+  config_rec *c = NULL;
+  char *smtpauthmethods = NULL;
+  pool *tmp_pool = make_sub_pool(session.pool);
+  array_header *group_remove_list = make_array(tmp_pool, 1,
+    sizeof(config_rec *));
+  array_header *user_remove_list = make_array(tmp_pool, 1,
+    sizeof(config_rec *));
+  const char *user = NULL, *group = NULL, *sess_user, *sess_group;
+  array_header *gids = NULL, *groups = NULL, *sess_groups = NULL;
+  struct passwd *pw = NULL;
+  struct group *gr = NULL;
+
+  user = cmd->arg;
+  if (user == NULL) {
+    return PR_DECLINED(cmd);
+  }
+
+  pw = pr_auth_getpwnam(cmd->tmp_pool, user);
+  if (pw == NULL) {
+    pr_trace_msg(trace_channel, 9,
+      "unable to lookup user '%s' (%s), skipping pre-PASS handling",
+      user, strerror(errno));
+    return PR_DECLINED(cmd);
+  }
+
+  gr = pr_auth_getgrgid(cmd->tmp_pool, pw->pw_gid);
+  if (gr != NULL) {
+    group = gr->gr_name;
+  }
+
+  (void) pr_auth_getgroups(cmd->tmp_pool, user, &gids, &groups);
+ 
+  /* Temporarily set session.user, session.group, session.groups, for the
+   * sake of the pr_eval_*() function calls.
+   */
+  sess_user = session.user;
+  sess_group = session.group;
+  sess_groups = session.groups;
+
+  session.user = user;
+  session.group = group;
+  session.groups = groups;
+
+  /* Unfortunately, I can't assign my own context types for these custom
+   * contexts, otherwise the existing directives would not be allowed in
+   * them.  Good to know for the future, though, when developing modules that
+   * want to have their own complete contexts (e.g. mod_time-3.0).
+   *
+   * However, I _can_ add a directive config_rec to these contexts that has
+   * its own custom config_type.  And by using -1 as the context type when
+   * searching via find_config(), it will match any context as long as the
+   * name also matches.  Note: using a type of -1 and a name of NULL will
+   * result in a scan of the whole in-memory db.  Hmm...
+   */
+
+  /* Since this is before authentication, we ignore IfAuthenticated
+   * blocks and go straight to IfGroup.
+   */
+  c = find_config(main_server->conf, -1, IFSESS_GROUP_TEXT, FALSE);
+  while (c != NULL) {
+    config_rec *list = NULL;
+
+    pr_signals_handle();
+
+    list = find_config(c->subset, IFSESS_GROUP_NUMBER, NULL, FALSE);
+    if (list != NULL) {
+      unsigned char mergein = FALSE;
+
+#ifdef PR_USE_REGEX
+      if (*((unsigned char *) list->argv[1]) == PR_EXPR_EVAL_REGEX) {
+        pr_regex_t *pre = list->argv[2];
+
+        if (session.group != NULL) {
+          if (pr_regexp_exec(pre, session.group, 0, NULL, 0, 0, 0) == 0) {
+            smtpauthmethods = get_param_ptr(c->subset, "SFTPAuthMethods", FALSE);
+            if (smtpauthmethods != NULL) {
+              mergein = TRUE;
+	    }
+          }
+        }
+
+        if (mergein == FALSE &&
+            session.groups != NULL) {
+          register int j = 0;
+
+          for (j = session.groups->nelts-1; j >= 0; j--) {
+            char *suppl_group;
+
+            suppl_group = *(((char **) session.groups->elts) + j);
+
+            if (pr_regexp_exec(pre, suppl_group, 0, NULL, 0, 0, 0) == 0) {
+              smtpauthmethods = get_param_ptr(c->subset, "SFTPAuthMethods", FALSE);
+              if (smtpauthmethods != NULL) {
+                mergein = TRUE;
+	      }
+              break;
+            }
+          }
+        }
+
+      } else
+#endif /* regex support */
+    
+      if (*((unsigned char *) list->argv[1]) == PR_EXPR_EVAL_OR &&
+          pr_expr_eval_group_or((char **) &list->argv[2]) == TRUE) {
+        smtpauthmethods = get_param_ptr(c->subset, "SFTPAuthMethods", FALSE);
+        if (smtpauthmethods != NULL) {
+          mergein = TRUE;
+	}
+
+      } else if (*((unsigned char *) list->argv[1]) == PR_EXPR_EVAL_AND &&
+          pr_expr_eval_group_and((char **) &list->argv[2]) == TRUE) {
+        smtpauthmethods = get_param_ptr(c->subset, "SFTPAuthMethods", FALSE);
+        if (smtpauthmethods != NULL) {
+          mergein = TRUE;
+	}
+      }
+
+      if (mergein == TRUE) {
+        pr_log_debug(DEBUG2, MOD_IFSESSION_VERSION
+          ": merging <IfGroup %s> directives in", (char *) list->argv[0]);
+        ifsess_dup_set(session.pool, main_server->conf, c->subset);
+
+        /* Add this config_rec pointer to the list of pointers to be
+         * removed later.
+         */
+        *((config_rec **) push_array(group_remove_list)) = c;
+
+      } else {
+        pr_log_debug(DEBUG9, MOD_IFSESSION_VERSION
+          ": <IfGroup %s> not matched, skipping", (char *) list->argv[0]);
+      }
+    }
+
+    /* Note: it would be more efficient, memory-wise, to destroy the
+     * memory pool of the removed config_rec.  However, the dup'd data
+     * from that config_rec may point to memory within the pool being
+     * freed; and once freed, that memory becomes fair game, and thus may
+     * (and probably will) be overwritten.  This means that, for now,
+     * keep the removed config_rec's memory around, rather than calling
+     * destroy_pool(c->pool) if removed_c is TRUE.
+     */
+
+    c = find_config_next(c, c->next, -1, IFSESS_GROUP_TEXT, FALSE);
+  }
+
+  /* Now, remove any <IfGroup> config_recs that have been merged in. */
+  for (i = 0; i < group_remove_list->nelts; i++) {
+    c = ((config_rec **) group_remove_list->elts)[i];
+    xaset_remove(main_server->conf, (xasetmember_t *) c);
+  }
+
+  c = find_config(main_server->conf, -1, IFSESS_USER_TEXT, FALSE);
+  while (c != NULL) {
+    config_rec *list = NULL;
+
+    pr_signals_handle();
+
+    list = find_config(c->subset, IFSESS_USER_NUMBER, NULL, FALSE);
+    if (list != NULL) {
+      unsigned char mergein = FALSE;
+
+#ifdef PR_USE_REGEX
+      if (*((unsigned char *) list->argv[1]) == PR_EXPR_EVAL_REGEX) {
+        pr_regex_t *pre = list->argv[2];
+
+        if (pr_regexp_exec(pre, session.user, 0, NULL, 0, 0, 0) == 0) {
+          smtpauthmethods = get_param_ptr(c->subset, "SFTPAuthMethods", FALSE);
+          if (smtpauthmethods != NULL) {
+            mergein = TRUE;
+	  }
+        }
+
+      } else
+#endif /* regex support */
+
+      if (*((unsigned char *) list->argv[1]) == PR_EXPR_EVAL_OR &&
+          pr_expr_eval_user_or((char **) &list->argv[2]) == TRUE) {
+        smtpauthmethods = get_param_ptr(c->subset, "SFTPAuthMethods", FALSE);
+        if (smtpauthmethods != NULL) {
+          mergein = TRUE;
+	}
+
+      } else if (*((unsigned char *) list->argv[1]) == PR_EXPR_EVAL_AND &&
+          pr_expr_eval_user_and((char **) &list->argv[2]) == TRUE) {
+        smtpauthmethods = get_param_ptr(c->subset, "SFTPAuthMethods", FALSE);
+        if (smtpauthmethods != NULL) {
+          mergein = TRUE;
+	}
+      }
+
+      if (mergein == TRUE) {
+        pr_log_debug(DEBUG2, MOD_IFSESSION_VERSION
+          ": merging <IfUser %s> directives in", (char *) list->argv[0]);
+        ifsess_dup_set(session.pool, main_server->conf, c->subset);
+
+        /* Add this config_rec pointer to the list of pointers to be
+         * removed later.
+         */
+        *((config_rec **) push_array(user_remove_list)) = c;
+
+      } else {
+        pr_log_debug(DEBUG9, MOD_IFSESSION_VERSION
+          ": <IfUser %s> not matched, skipping", (char *) list->argv[0]);
+      }
+    }
+
+    c = find_config_next(c, c->next, -1, IFSESS_USER_TEXT, FALSE);
+  }
+
+  /* Now, remove any <IfUser> config_recs that have been merged in. */
+  for (i = 0; i < user_remove_list->nelts; i++) {
+    c = ((config_rec **) user_remove_list->elts)[i];
+    xaset_remove(main_server->conf, (xasetmember_t *) c);
+  }
+
+  /* Restore the original session.user, session.group, session.groups values. */
+  session.user = sess_user;
+  session.group = sess_group;
+  session.groups = sess_groups;
+
+  destroy_pool(tmp_pool);
+
+  return PR_DECLINED(cmd);
+}
+
 /* Event handlers
  */
 
@@ -1175,6 +1403,7 @@ static conftable ifsess_conftab[] = {
 static cmdtable ifsess_cmdtab[] = {
   { PRE_CMD,	C_PASS, G_NONE, ifsess_pre_pass, FALSE, FALSE },
   { POST_CMD,	C_PASS, G_NONE, ifsess_post_pass, FALSE, FALSE },
+  { POST_CMD,	C_USER, G_NONE, ifsess_post_user, FALSE, FALSE },
   { 0, NULL }
 };
 
