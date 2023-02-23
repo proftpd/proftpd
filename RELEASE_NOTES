@@ -9,6 +9,11 @@ ChangeLog files.
 1.3.9rc1
 ---------
 
+  + New Directives
+
+      IfSessionOptions PerUnauthenticatedUser
+
+
   + Changed Directives
 
       LogFormat %{transfer-speed} (Issue #535)
