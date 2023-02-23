@@ -1,7 +1,7 @@
 /*
  * ProFTPD: mod_ifsession -- a module supporting conditional
  *                            per-user/group/class configuration contexts.
- * Copyright (c) 2002-2021 TJ Saunders
+ * Copyright (c) 2002-2023 TJ Saunders
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -44,10 +44,14 @@
 #define IFSESS_AUTHN_NUMBER	103
 #define	IFSESS_AUTHN_TEXT	"<IfAuthenticated>"
 
+/* mod_ifsession options */
+#define IFSESS_OPT_PER_UNAUTHED_USER	0x001
+
 module ifsession_module;
 
 static int ifsess_ctx = -1;
 static int ifsess_merged = FALSE;
+static unsigned long ifsess_opts = 0UL;
 
 /* For storing the home directory of user, symlinks resolved. */
 static const char *ifsess_home_dir = NULL;
@@ -346,12 +350,69 @@ void ifsess_resolve_server_dirs(server_rec *s) {
   }
 }
 
-static int ifsess_sess_merge_class(void) {
+static int ifsess_sess_merge_authn(pool *p) {
   register unsigned int i = 0;
   config_rec *c = NULL;
-  pool *tmp_pool = make_sub_pool(session.pool);
-  array_header *class_remove_list = make_array(tmp_pool, 1,
-    sizeof(config_rec *));
+  pool *tmp_pool;
+  array_header *authn_remove_list;
+
+  tmp_pool = make_sub_pool(p);
+  pr_pool_tag(tmp_pool, "<IfAuthenticated> merge pool");
+
+  authn_remove_list = make_array(tmp_pool, 1, sizeof(config_rec *));
+
+  c = find_config(main_server->conf, -1, IFSESS_AUTHN_TEXT, FALSE);
+  while (c != NULL) {
+    config_rec *list = NULL;
+
+    pr_signals_handle();
+
+    list = find_config(c->subset, IFSESS_AUTHN_NUMBER, NULL, FALSE);
+    if (list != NULL) {
+      pr_log_debug(DEBUG2, MOD_IFSESSION_VERSION
+        ": merging <IfAuthenticated> directives in");
+      ifsess_dup_set(session.pool, main_server->conf, c->subset);
+
+      /* Add this config_rec pointer to the list of pointers to be
+       * removed later.
+       */
+      *((config_rec **) push_array(authn_remove_list)) = c;
+      ifsess_resolve_server_dirs(main_server);
+      resolve_deferred_dirs(main_server);
+
+      /* We need to call fixup_dirs() twice: once for any added <Directory>
+       * sections that use absolute paths, and again for any added <Directory>
+       * sections that use deferred-resolution paths (e.g. "~").
+       */
+      fixup_dirs(main_server, CF_SILENT);
+      fixup_dirs(main_server, CF_DEFER|CF_SILENT);
+
+      ifsess_merged = TRUE;
+    }
+
+    c = find_config_next(c, c->next, -1, IFSESS_AUTHN_TEXT, FALSE);
+  }
+
+  /* Now, remove any <IfAuthenticated> config_recs that have been merged in. */
+  for (i = 0; i < authn_remove_list->nelts; i++) {
+    c = ((config_rec **) authn_remove_list->elts)[i];
+    xaset_remove(main_server->conf, (xasetmember_t *) c);
+  }
+
+  destroy_pool(tmp_pool);
+  return 0;
+}
+
+static int ifsess_sess_merge_class(pool *p) {
+  register unsigned int i = 0;
+  config_rec *c = NULL;
+  pool *tmp_pool;
+  array_header *class_remove_list;
+
+  tmp_pool = make_sub_pool(p);
+  pr_pool_tag(tmp_pool, "<IfClass> merge pool");
+
+  class_remove_list = make_array(tmp_pool, 1, sizeof(config_rec *));
 
   c = find_config(main_server->conf, -1, IFSESS_CLASS_TEXT, FALSE);
   while (c != NULL) {
@@ -363,7 +424,7 @@ static int ifsess_sess_merge_class(void) {
     if (list != NULL) {
       unsigned char mergein = FALSE;
 
-#ifdef PR_USE_REGEX
+#if defined(PR_USE_REGEX)
       if (*((unsigned char *) list->argv[1]) == PR_EXPR_EVAL_REGEX) {
         pr_regex_t *pre = list->argv[2];
 
@@ -390,7 +451,7 @@ static int ifsess_sess_merge_class(void) {
         mergein = TRUE;
       }
 
-      if (mergein) {
+      if (mergein == TRUE) {
         pr_log_debug(DEBUG2, MOD_IFSESSION_VERSION
           ": merging <IfClass %s> directives in", (char *) list->argv[0]);
         ifsess_dup_set(session.pool, main_server->conf, c->subset);
@@ -426,8 +487,241 @@ static int ifsess_sess_merge_class(void) {
   return 0;
 }
 
+static int ifsess_sess_merge_group(pool *p) {
+  register unsigned int i = 0;
+  config_rec *c = NULL;
+  pool *tmp_pool;
+  array_header *group_remove_list;
+
+  tmp_pool = make_sub_pool(p);
+  pr_pool_tag(tmp_pool, "<IfGroup> merge pool");
+
+  group_remove_list = make_array(tmp_pool, 1, sizeof(config_rec *));
+
+  c = find_config(main_server->conf, -1, IFSESS_GROUP_TEXT, FALSE);
+  while (c != NULL) {
+    config_rec *list = NULL;
+
+    pr_signals_handle();
+
+    list = find_config(c->subset, IFSESS_GROUP_NUMBER, NULL, FALSE);
+    if (list != NULL) {
+      unsigned char mergein = FALSE;
+
+#if defined(PR_USE_REGEX)
+      if (*((unsigned char *) list->argv[1]) == PR_EXPR_EVAL_REGEX) {
+        pr_regex_t *pre = list->argv[2];
+
+        if (session.group != NULL) {
+          pr_log_debug(DEBUG8, MOD_IFSESSION_VERSION
+            ": evaluating regexp pattern '%s' against subject '%s'",
+            pr_regexp_get_pattern(pre), session.group);
+
+          if (pr_regexp_exec(pre, session.group, 0, NULL, 0, 0, 0) == 0) {
+            mergein = TRUE;
+          }
+        }
+
+        if (mergein == FALSE &&
+            session.groups != NULL) {
+          register int j = 0;
+
+          for (j = session.groups->nelts-1; j >= 0; j--) {
+            char *suppl_group;
+
+            suppl_group = *(((char **) session.groups->elts) + j);
+
+            pr_log_debug(DEBUG8, MOD_IFSESSION_VERSION
+              ": evaluating regexp pattern '%s' against subject '%s'",
+              pr_regexp_get_pattern(pre), suppl_group);
+
+            if (pr_regexp_exec(pre, suppl_group, 0, NULL, 0, 0, 0) == 0) {
+              mergein = TRUE;
+              break;
+            }
+          }
+        }
+
+      } else
+#endif /* regex support */
+
+      if (*((unsigned char *) list->argv[1]) == PR_EXPR_EVAL_OR &&
+          pr_expr_eval_group_or((char **) &list->argv[2]) == TRUE) {
+        mergein = TRUE;
+
+      } else if (*((unsigned char *) list->argv[1]) == PR_EXPR_EVAL_AND &&
+          pr_expr_eval_group_and((char **) &list->argv[2]) == TRUE) {
+        mergein = TRUE;
+      }
+
+      if (mergein == TRUE) {
+        pr_log_debug(DEBUG2, MOD_IFSESSION_VERSION
+          ": merging <IfGroup %s> directives in", (char *) list->argv[0]);
+        ifsess_dup_set(session.pool, main_server->conf, c->subset);
+
+        /* Add this config_rec pointer to the list of pointers to be
+         * removed later.
+         */
+        *((config_rec **) push_array(group_remove_list)) = c;
+
+        ifsess_resolve_server_dirs(main_server);
+        resolve_deferred_dirs(main_server);
+
+        /* We need to call fixup_dirs() twice: once for any added <Directory>
+         * sections that use absolute paths, and again for any added <Directory>
+         * sections that use deferred-resolution paths (e.g. "~").
+         */
+        fixup_dirs(main_server, CF_SILENT);
+        fixup_dirs(main_server, CF_DEFER|CF_SILENT);
+
+        ifsess_merged = TRUE;
+
+      } else {
+        pr_log_debug(DEBUG9, MOD_IFSESSION_VERSION
+          ": <IfGroup %s> not matched, skipping", (char *) list->argv[0]);
+      }
+    }
+
+    /* Note: it would be more efficient, memory-wise, to destroy the
+     * memory pool of the removed config_rec.  However, the dup'd data
+     * from that config_rec may point to memory within the pool being
+     * freed; and once freed, that memory becomes fair game, and thus may
+     * (and probably will) be overwritten.  This means that, for now,
+     * keep the removed config_rec's memory around, rather than calling
+     * destroy_pool(c->pool) if removed_c is TRUE.
+     */
+
+    c = find_config_next(c, c->next, -1, IFSESS_GROUP_TEXT, FALSE);
+  }
+
+  /* Now, remove any <IfGroup> config_recs that have been merged in. */
+  for (i = 0; i < group_remove_list->nelts; i++) {
+    c = ((config_rec **) group_remove_list->elts)[i];
+    xaset_remove(main_server->conf, (xasetmember_t *) c);
+  }
+
+  destroy_pool(tmp_pool);
+  return 0;
+}
+
+static int ifsess_sess_merge_user(pool *p) {
+  register unsigned int i = 0;
+  config_rec *c = NULL;
+  pool *tmp_pool;
+  array_header *user_remove_list;
+
+  tmp_pool = make_sub_pool(p);
+  pr_pool_tag(tmp_pool, "<IfUser> merge pool");
+
+  user_remove_list = make_array(tmp_pool, 1, sizeof(config_rec *));
+
+  c = find_config(main_server->conf, -1, IFSESS_USER_TEXT, FALSE);
+  while (c != NULL) {
+    config_rec *list = NULL;
+
+    pr_signals_handle();
+
+    list = find_config(c->subset, IFSESS_USER_NUMBER, NULL, FALSE);
+    if (list != NULL) {
+      unsigned char mergein = FALSE;
+
+#if defined(PR_USE_REGEX)
+      if (*((unsigned char *) list->argv[1]) == PR_EXPR_EVAL_REGEX) {
+        pr_regex_t *pre = list->argv[2];
+
+        pr_log_debug(DEBUG8, MOD_IFSESSION_VERSION
+          ": evaluating regexp pattern '%s' against subject '%s'",
+          pr_regexp_get_pattern(pre), session.user);
+
+        if (pr_regexp_exec(pre, session.user, 0, NULL, 0, 0, 0) == 0) {
+          mergein = TRUE;
+        }
+
+      } else
+#endif /* regex support */
+
+      if (*((unsigned char *) list->argv[1]) == PR_EXPR_EVAL_OR &&
+          pr_expr_eval_user_or((char **) &list->argv[2]) == TRUE) {
+        mergein = TRUE;
+
+      } else if (*((unsigned char *) list->argv[1]) == PR_EXPR_EVAL_AND &&
+          pr_expr_eval_user_and((char **) &list->argv[2]) == TRUE) {
+        mergein = TRUE;
+      }
+
+      if (mergein == TRUE) {
+        pr_log_debug(DEBUG2, MOD_IFSESSION_VERSION
+          ": merging <IfUser %s> directives in", (char *) list->argv[0]);
+        ifsess_dup_set(session.pool, main_server->conf, c->subset);
+
+        /* Add this config_rec pointer to the list of pointers to be
+         * removed later.
+         */
+        *((config_rec **) push_array(user_remove_list)) = c;
+
+        ifsess_resolve_server_dirs(main_server);
+        resolve_deferred_dirs(main_server);
+
+        /* We need to call fixup_dirs() twice: once for any added <Directory>
+         * sections that use absolute paths, and again for any added <Directory>
+         * sections that use deferred-resolution paths (e.g. "~").
+         */
+        fixup_dirs(main_server, CF_SILENT);
+        fixup_dirs(main_server, CF_DEFER|CF_SILENT);
+
+        ifsess_merged = TRUE;
+
+      } else {
+        pr_log_debug(DEBUG9, MOD_IFSESSION_VERSION
+          ": <IfUser %s> not matched, skipping", (char *) list->argv[0]);
+      }
+    }
+
+    c = find_config_next(c, c->next, -1, IFSESS_USER_TEXT, FALSE);
+  }
+
+  /* Now, remove any <IfUser> config_recs that have been merged in. */
+  for (i = 0; i < user_remove_list->nelts; i++) {
+    c = ((config_rec **) user_remove_list->elts)[i];
+    xaset_remove(main_server->conf, (xasetmember_t *) c);
+  }
+
+  destroy_pool(tmp_pool);
+  return 0;
+}
+
 /* Configuration handlers
  */
+
+/* usage: IfSessionOptions opt1 ... */
+MODRET set_ifsessopts(cmd_rec *cmd) {
+  config_rec *c = NULL;
+  register unsigned int i = 0;
+  unsigned long opts = 0UL;
+
+  if (cmd->argc-1 == 0) {
+    CONF_ERROR(cmd, "wrong number of parameters");
+  }
+
+  CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL);
+
+  c = add_config_param(cmd->argv[0], 1, NULL);
+
+  for (i = 1; i < cmd->argc; i++) {
+    if (strcmp(cmd->argv[i], "PerUnauthenticatedUser") == 0) {
+      opts |= IFSESS_OPT_PER_UNAUTHED_USER;
+
+    } else {
+      CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, ": unknown IfSessionOption '",
+        cmd->argv[i], "'", NULL));
+    }
+  }
+
+  c->argv[0] = pcalloc(c->pool, sizeof(unsigned long));
+  *((unsigned long *) c->argv[0]) = opts;
+
+  return PR_HANDLED(cmd);
+}
 
 MODRET start_ifctxt(cmd_rec *cmd) {
   config_rec *c = NULL;
@@ -488,18 +782,18 @@ MODRET start_ifctxt(cmd_rec *cmd) {
    * regular expression?
    */
   if (cmd->argc-1 > 1) {
-    if (strncmp(cmd->argv[1], "AND", 4) == 0) {
+    if (strcmp(cmd->argv[1], "AND") == 0) {
       eval_type = PR_EXPR_EVAL_AND;
       argc = cmd->argc-2;
       argv = cmd->argv+1;
 
-    } else if (strncmp(cmd->argv[1], "OR", 3) == 0) {
+    } else if (strcmp(cmd->argv[1], "OR") == 0) {
       eval_type = PR_EXPR_EVAL_OR;
       argc = cmd->argc-2;
       argv = cmd->argv+1;
 
-    } else if (strncmp(cmd->argv[1], "regex", 6) == 0) {
-#ifdef PR_USE_REGEX
+    } else if (strcmp(cmd->argv[1], "regex") == 0) {
+#if defined(PR_USE_REGEX)
       pr_regex_t *pre = NULL;
       int res = 0;
 
@@ -655,14 +949,14 @@ MODRET ifsess_pre_pass(cmd_rec *cmd) {
   session.groups = groups;
 
   c = find_config(main_server->conf, -1, IFSESS_GROUP_TEXT, FALSE);
-  while (c) {
+  while (c != NULL) {
     config_rec *list = NULL;
 
     pr_signals_handle();
 
     list = find_config(c->subset, IFSESS_GROUP_NUMBER, NULL, FALSE);
     if (list != NULL) {
-#ifdef PR_USE_REGEX
+#if defined(PR_USE_REGEX)
       if (*((unsigned char *) list->argv[1]) == PR_EXPR_EVAL_REGEX) {
         pr_regex_t *pre = list->argv[2];
 
@@ -727,14 +1021,14 @@ MODRET ifsess_pre_pass(cmd_rec *cmd) {
   }
 
   c = find_config(main_server->conf, -1, IFSESS_USER_TEXT, FALSE);
-  while (c) {
+  while (c != NULL) {
     config_rec *list = NULL;
 
     pr_signals_handle();
 
     list = find_config(c->subset, IFSESS_USER_NUMBER, NULL, FALSE);
     if (list != NULL) {
-#ifdef PR_USE_REGEX
+#if defined(PR_USE_REGEX)
       if (*((unsigned char *) list->argv[1]) == PR_EXPR_EVAL_REGEX) {
         pr_regex_t *pre = list->argv[2];
 
@@ -818,17 +1112,6 @@ MODRET ifsess_pre_pass(cmd_rec *cmd) {
 }
 
 MODRET ifsess_post_pass(cmd_rec *cmd) {
-  register unsigned int i = 0;
-  config_rec *c = NULL;
-  int found = 0;
-  pool *tmp_pool = make_sub_pool(session.pool);
-  array_header *authn_remove_list = make_array(tmp_pool, 1,
-    sizeof(config_rec *));
-  array_header *group_remove_list = make_array(tmp_pool, 1,
-    sizeof(config_rec *));
-  array_header *user_remove_list = make_array(tmp_pool, 1,
-    sizeof(config_rec *));
-
   /* Unfortunately, I can't assign my own context types for these custom
    * contexts, otherwise the existing directives would not be allowed in
    * them.  Good to know for the future, though, when developing modules that
@@ -841,221 +1124,13 @@ MODRET ifsess_post_pass(cmd_rec *cmd) {
    * result in a scan of the whole in-memory db.  Hmm...
    */
 
-  c = find_config(main_server->conf, -1, IFSESS_AUTHN_TEXT, FALSE);
-  while (c != NULL) {
-    config_rec *list = NULL;
-
-    pr_signals_handle();
-
-    list = find_config(c->subset, IFSESS_AUTHN_NUMBER, NULL, FALSE);
-    if (list != NULL) {
-      pr_log_debug(DEBUG2, MOD_IFSESSION_VERSION
-        ": merging <IfAuthenticated> directives in");
-      ifsess_dup_set(session.pool, main_server->conf, c->subset);
-
-      /* Add this config_rec pointer to the list of pointers to be
-       * removed later.
-       */
-      *((config_rec **) push_array(authn_remove_list)) = c;
-
-      ifsess_resolve_server_dirs(main_server);
-      resolve_deferred_dirs(main_server);
-
-      /* We need to call fixup_dirs() twice: once for any added <Directory>
-       * sections that use absolute paths, and again for any added <Directory>
-       * sections that use deferred-resolution paths (e.g. "~").
-       */
-      fixup_dirs(main_server, CF_SILENT);
-      fixup_dirs(main_server, CF_DEFER|CF_SILENT);
-
-      ifsess_merged = TRUE;
-    }
-
-    c = find_config_next(c, c->next, -1, IFSESS_AUTHN_TEXT, FALSE);
-  }
-
-  /* Now, remove any <IfAuthenticated> config_recs that have been merged in. */
-  for (i = 0; i < authn_remove_list->nelts; i++) {
-    c = ((config_rec **) authn_remove_list->elts)[i];
-    xaset_remove(main_server->conf, (xasetmember_t *) c);
-  }
-
-  c = find_config(main_server->conf, -1, IFSESS_GROUP_TEXT, FALSE);
-  while (c != NULL) {
-    config_rec *list = NULL;
-
-    pr_signals_handle();
-
-    list = find_config(c->subset, IFSESS_GROUP_NUMBER, NULL, FALSE);
-    if (list != NULL) {
-      unsigned char mergein = FALSE;
-
-#ifdef PR_USE_REGEX
-      if (*((unsigned char *) list->argv[1]) == PR_EXPR_EVAL_REGEX) {
-        pr_regex_t *pre = list->argv[2];
-
-        if (session.group != NULL) {
-          pr_log_debug(DEBUG8, MOD_IFSESSION_VERSION
-            ": evaluating regexp pattern '%s' against subject '%s'",
-            pr_regexp_get_pattern(pre), session.group);
-
-          if (pr_regexp_exec(pre, session.group, 0, NULL, 0, 0, 0) == 0) {
-            mergein = TRUE;
-          }
-        }
-
-        if (mergein == FALSE &&
-            session.groups != NULL) {
-          register int j = 0;
-
-          for (j = session.groups->nelts-1; j >= 0; j--) {
-            char *suppl_group;
-
-            suppl_group = *(((char **) session.groups->elts) + j);
-
-            pr_log_debug(DEBUG8, MOD_IFSESSION_VERSION
-              ": evaluating regexp pattern '%s' against subject '%s'",
-              pr_regexp_get_pattern(pre), suppl_group);
-
-            if (pr_regexp_exec(pre, suppl_group, 0, NULL, 0, 0, 0) == 0) {
-              mergein = TRUE;
-              break;
-            }
-          }
-        }
-
-      } else
-#endif /* regex support */
-    
-      if (*((unsigned char *) list->argv[1]) == PR_EXPR_EVAL_OR &&
-          pr_expr_eval_group_or((char **) &list->argv[2]) == TRUE) {
-        mergein = TRUE;
-
-      } else if (*((unsigned char *) list->argv[1]) == PR_EXPR_EVAL_AND &&
-          pr_expr_eval_group_and((char **) &list->argv[2]) == TRUE) {
-        mergein = TRUE;
-      }
-
-      if (mergein == TRUE) {
-        pr_log_debug(DEBUG2, MOD_IFSESSION_VERSION
-          ": merging <IfGroup %s> directives in", (char *) list->argv[0]);
-        ifsess_dup_set(session.pool, main_server->conf, c->subset);
-
-        /* Add this config_rec pointer to the list of pointers to be
-         * removed later.
-         */
-        *((config_rec **) push_array(group_remove_list)) = c;
-
-        ifsess_resolve_server_dirs(main_server);
-        resolve_deferred_dirs(main_server);
-
-        /* We need to call fixup_dirs() twice: once for any added <Directory>
-         * sections that use absolute paths, and again for any added <Directory>
-         * sections that use deferred-resolution paths (e.g. "~").
-         */
-        fixup_dirs(main_server, CF_SILENT);
-        fixup_dirs(main_server, CF_DEFER|CF_SILENT);
-
-        ifsess_merged = TRUE;
-
-      } else {
-        pr_log_debug(DEBUG9, MOD_IFSESSION_VERSION
-          ": <IfGroup %s> not matched, skipping", (char *) list->argv[0]);
-      }
-    }
-
-    /* Note: it would be more efficient, memory-wise, to destroy the
-     * memory pool of the removed config_rec.  However, the dup'd data
-     * from that config_rec may point to memory within the pool being
-     * freed; and once freed, that memory becomes fair game, and thus may
-     * (and probably will) be overwritten.  This means that, for now,
-     * keep the removed config_rec's memory around, rather than calling
-     * destroy_pool(c->pool) if removed_c is TRUE.
-     */
-
-    c = find_config_next(c, c->next, -1, IFSESS_GROUP_TEXT, FALSE);
-  }
-
-  /* Now, remove any <IfGroup> config_recs that have been merged in. */
-  for (i = 0; i < group_remove_list->nelts; i++) {
-    c = ((config_rec **) group_remove_list->elts)[i];
-    xaset_remove(main_server->conf, (xasetmember_t *) c);
-  }
-
-  c = find_config(main_server->conf, -1, IFSESS_USER_TEXT, FALSE);
-  while (c != NULL) {
-    config_rec *list = NULL;
-
-    pr_signals_handle();
-
-    list = find_config(c->subset, IFSESS_USER_NUMBER, NULL, FALSE);
-    if (list != NULL) {
-      unsigned char mergein = FALSE;
-
-#ifdef PR_USE_REGEX
-      if (*((unsigned char *) list->argv[1]) == PR_EXPR_EVAL_REGEX) {
-        pr_regex_t *pre = list->argv[2];
-
-        pr_log_debug(DEBUG8, MOD_IFSESSION_VERSION
-          ": evaluating regexp pattern '%s' against subject '%s'",
-          pr_regexp_get_pattern(pre), session.user);
-
-        if (pr_regexp_exec(pre, session.user, 0, NULL, 0, 0, 0) == 0) {
-          mergein = TRUE;
-        }
-
-      } else
-#endif /* regex support */
-
-      if (*((unsigned char *) list->argv[1]) == PR_EXPR_EVAL_OR &&
-          pr_expr_eval_user_or((char **) &list->argv[2]) == TRUE) {
-        mergein = TRUE;
-
-      } else if (*((unsigned char *) list->argv[1]) == PR_EXPR_EVAL_AND &&
-          pr_expr_eval_user_and((char **) &list->argv[2]) == TRUE) {
-        mergein = TRUE;
-      }
-
-      if (mergein == TRUE) {
-        pr_log_debug(DEBUG2, MOD_IFSESSION_VERSION
-          ": merging <IfUser %s> directives in", (char *) list->argv[0]);
-        ifsess_dup_set(session.pool, main_server->conf, c->subset);
-
-        /* Add this config_rec pointer to the list of pointers to be
-         * removed later.
-         */
-        *((config_rec **) push_array(user_remove_list)) = c;
-
-        ifsess_resolve_server_dirs(main_server);
-        resolve_deferred_dirs(main_server);
-
-        /* We need to call fixup_dirs() twice: once for any added <Directory>
-         * sections that use absolute paths, and again for any added <Directory>
-         * sections that use deferred-resolution paths (e.g. "~").
-         */
-        fixup_dirs(main_server, CF_SILENT);
-        fixup_dirs(main_server, CF_DEFER|CF_SILENT);
-
-        ifsess_merged = TRUE;
-
-      } else {
-        pr_log_debug(DEBUG9, MOD_IFSESSION_VERSION
-          ": <IfUser %s> not matched, skipping", (char *) list->argv[0]);
-      }
-    }
-
-    c = find_config_next(c, c->next, -1, IFSESS_USER_TEXT, FALSE);
-  }
-
-  /* Now, remove any <IfUser> config_recs that have been merged in. */
-  for (i = 0; i < user_remove_list->nelts; i++) {
-    c = ((config_rec **) user_remove_list->elts)[i];
-    xaset_remove(main_server->conf, (xasetmember_t *) c);
-  }
-
-  destroy_pool(tmp_pool);
+  (void) ifsess_sess_merge_authn(session.pool);
+  (void) ifsess_sess_merge_group(session.pool);
+  (void) ifsess_sess_merge_user(session.pool);
 
   if (ifsess_merged == TRUE) {
+    int found = 0;
+
     /* Try to honor any <Limit LOGIN> sections that may have been merged in. */
     if (!login_check_limits(TOPLEVEL_CONF, FALSE, TRUE, &found)) {
       pr_log_debug(DEBUG3, MOD_IFSESSION_VERSION
@@ -1088,6 +1163,60 @@ MODRET ifsess_post_pass(cmd_rec *cmd) {
   return PR_DECLINED(cmd);
 }
 
+MODRET ifsess_post_user(cmd_rec *cmd) {
+  const char *user, *group = NULL, *sess_user, *sess_group;
+  array_header *gids = NULL, *groups = NULL, *sess_groups = NULL;
+  struct passwd *pw = NULL;
+  struct group *gr = NULL;
+
+  /* Only handle the case where the PerUnauthenticatedUser option is in
+   * effect.
+   */
+  if (!(ifsess_opts & IFSESS_OPT_PER_UNAUTHED_USER)) {
+    return PR_DECLINED(cmd);
+  }
+
+  user = cmd->arg;
+  if (user == NULL) {
+    return PR_DECLINED(cmd);
+  }
+
+  pw = pr_auth_getpwnam(cmd->tmp_pool, user);
+  if (pw == NULL) {
+    pr_trace_msg(trace_channel, 9,
+      "unable to lookup user '%s' (%s), skipping pre-USER handling",
+      user, strerror(errno));
+    return PR_DECLINED(cmd);
+  }
+
+  gr = pr_auth_getgrgid(cmd->tmp_pool, pw->pw_gid);
+  if (gr != NULL) {
+    group = gr->gr_name;
+  }
+
+  (void) pr_auth_getgroups(cmd->tmp_pool, user, &gids, &groups);
+
+  /* Temporarily set session.user, session.group, session.groups, for the
+   * sake of the pr_eval_*() function calls.
+   */
+  sess_user = session.user;
+  sess_group = session.group;
+  sess_groups = session.groups;
+
+  session.user = user;
+  session.group = group;
+  session.groups = groups;
+
+  (void) ifsess_sess_merge_group(session.pool);
+  (void) ifsess_sess_merge_user(session.pool);
+
+  session.user = sess_user;
+  session.group = sess_group;
+  session.groups = sess_groups;
+
+  return PR_DECLINED(cmd);
+}
+
 /* Event handlers
  */
 
@@ -1095,11 +1224,13 @@ static void ifsess_chroot_ev(const void *event_data, void *user_data) {
   ifsess_home_dir = (const char *) event_data;
 }
 
-#ifdef PR_SHARED_MODULE
+#if defined(PR_SHARED_MODULE)
 static void ifsess_mod_unload_ev(const void *event_data, void *user_data) {
-  if (strcmp("mod_ifsession.c", (const char *) event_data) == 0) {
-    pr_event_unregister(&ifsession_module, NULL, NULL);
+  if (strcmp("mod_ifsession.c", (const char *) event_data) != 0) {
+    return;
   }
+
+  pr_event_unregister(&ifsession_module, NULL, NULL);
 }
 #endif /* PR_SHARED_MODULE */
 
@@ -1136,7 +1267,7 @@ static void ifsess_postparse_ev(const void *event_data, void *user_data) {
  */
 
 static int ifsess_init(void) {
-#ifdef PR_SHARED_MODULE
+#if defined(PR_SHARED_MODULE)
   pr_event_register(&ifsession_module, "core.module-unload",
     ifsess_mod_unload_ev, NULL);
 #endif /* PR_SHARED_MODULE */
@@ -1150,7 +1281,21 @@ static int ifsess_init(void) {
 }
 
 static int ifsess_sess_init(void) {
-  if (ifsess_sess_merge_class() < 0) {
+  config_rec *c;
+
+  c = find_config(main_server->conf, CONF_PARAM, "IfSessionOptions", FALSE);
+  while (c != NULL) {
+    unsigned long opts = 0UL;
+
+    pr_signals_handle();
+
+    opts = *((unsigned long *) c->argv[0]);
+    ifsess_opts |= opts;
+
+    c = find_config_next(c, c->next, CONF_PARAM, "IfSessionOptions", FALSE);
+  }
+
+  if (ifsess_sess_merge_class(session.pool) < 0) {
     return -1;
   }
 
@@ -1167,6 +1312,7 @@ static conftable ifsess_conftab[] = {
   { "</IfClass>",		end_ifctxt,	NULL },
   { IFSESS_GROUP_TEXT,		start_ifctxt,	NULL },
   { "</IfGroup>",		end_ifctxt,	NULL },
+  { "IfSessionOptions",		set_ifsessopts,	NULL },
   { IFSESS_USER_TEXT,		start_ifctxt,	NULL },
   { "</IfUser>",		end_ifctxt,	NULL },
   { NULL }
@@ -1175,6 +1321,7 @@ static conftable ifsess_conftab[] = {
 static cmdtable ifsess_cmdtab[] = {
   { PRE_CMD,	C_PASS, G_NONE, ifsess_pre_pass, FALSE, FALSE },
   { POST_CMD,	C_PASS, G_NONE, ifsess_post_pass, FALSE, FALSE },
+  { POST_CMD,	C_USER,	G_NONE,	ifsess_post_user, FALSE, FALSE },
   { 0, NULL }
 };
 
