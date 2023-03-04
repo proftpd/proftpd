@@ -1170,6 +1170,9 @@
 /* Define if OpenSSL OCSP support, if available, should be used.  */
 #undef PR_USE_OPENSSL_OCSP
 
+/* Define if OpenSSL OSSL_PROVIDER_load support, if available, should be used.  */
+#undef PR_USE_OPENSSL_OSSL_PROVIDER_LOAD
+
 /* Define if OpenSSL SSL num ticket support, if available, should be used.  */
 #undef PR_USE_OPENSSL_SSL_NUM_TICKETS
 

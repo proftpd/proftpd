@@ -24567,8 +24567,8 @@ $as_echo "#define PR_USE_OPENSSL 1" >>confdefs.h
 
   ac_build_addl_libs="$ac_build_addl_libs -lssl -lcrypto"
 
-  { $as_echo "$as_me:${as_lineno-$LINENO}: checking whether OpenSSL is compiled with FIPS support" >&5
-$as_echo_n "checking whether OpenSSL is compiled with FIPS support... " >&6; }
+  { $as_echo "$as_me:${as_lineno-$LINENO}: checking whether OpenSSL 1.x is compiled with FIPS support" >&5
+$as_echo_n "checking whether OpenSSL 1.x is compiled with FIPS support... " >&6; }
   saved_libs="$LIBS"
   LIBS="$LIBS -lcrypto"
 
@@ -24982,6 +24982,104 @@ $as_echo "no" >&6; }
 fi
 rm -f core conftest.err conftest.$ac_objext \
     conftest$ac_exeext conftest.$ac_ext
+  LIBS="$saved_libs"
+
+  { $as_echo "$as_me:${as_lineno-$LINENO}: checking whether OpenSSL has OSSL_PROVIDER_load support" >&5
+$as_echo_n "checking whether OpenSSL has OSSL_PROVIDER_load support... " >&6; }
+  saved_libs="$LIBS"
+  LIBS="-lcrypto $LIBS"
+
+  cat confdefs.h - <<_ACEOF >conftest.$ac_ext
+/* end confdefs.h.  */
+
+      #include <openssl/provider.h>
+
+int
+main ()
+{
+
+      OSSL_PROVIDER *provider;
+      provider = OSSL_PROVIDER_load(NULL, "default");
+
+  ;
+  return 0;
+}
+_ACEOF
+if ac_fn_c_try_link "$LINENO"; then :
+
+      { $as_echo "$as_me:${as_lineno-$LINENO}: result: yes" >&5
+$as_echo "yes" >&6; }
+
+$as_echo "#define PR_USE_OPENSSL_OSSL_PROVIDER_LOAD 1" >>confdefs.h
+
+      LIBS="$saved_libs"
+
+else
+
+      { $as_echo "$as_me:${as_lineno-$LINENO}: result: no" >&5
+$as_echo "no" >&6; }
+      LIBS="$saved_libs"
+
+
+fi
+rm -f core conftest.err conftest.$ac_objext \
+    conftest$ac_exeext conftest.$ac_ext
+  LIBS="$saved_libs"
+
+  { $as_echo "$as_me:${as_lineno-$LINENO}: checking whether OpenSSL 3.x has FIPS support" >&5
+$as_echo_n "checking whether OpenSSL 3.x has FIPS support... " >&6; }
+  saved_libs="$LIBS"
+  LIBS="-lcrypto $LIBS"
+
+  if test "$cross_compiling" = yes; then :
+  { { $as_echo "$as_me:${as_lineno-$LINENO}: error: in \`$ac_pwd':" >&5
+$as_echo "$as_me: error: in \`$ac_pwd':" >&2;}
+as_fn_error $? "cannot run test program while cross compiling
+See \`config.log' for more details" "$LINENO" 5; }
+else
+  cat confdefs.h - <<_ACEOF >conftest.$ac_ext
+/* end confdefs.h.  */
+
+      #include <openssl/err.h>
+      #if defined(PR_USE_OPENSSL_OSSL_PROVIDER_LOAD)
+      # include <openssl/provider.h>
+      #endif
+      int main(int argc, char **argv) {
+        #if defined(PR_USE_OPENSSL_OSSL_PROVIDER_LOAD)
+        OSSL_PROVIDER *provider;
+        ERR_load_crypto_strings();
+        provider = OSSL_PROVIDER_load(NULL, "fips");
+        if (provider == NULL) {
+          fprintf(stdout, "Failed to load FIPS provider\n");
+          ERR_print_errors_fp(stdout);
+          exit(1);
+        }
+        exit(0);
+        #else
+        exit(1);
+        #endif
+      }
+
+_ACEOF
+if ac_fn_c_try_run "$LINENO"; then :
+
+      { $as_echo "$as_me:${as_lineno-$LINENO}: result: yes" >&5
+$as_echo "yes" >&6; }
+
+$as_echo "#define PR_USE_OPENSSL_FIPS 1" >>confdefs.h
+
+
+else
+
+      { $as_echo "$as_me:${as_lineno-$LINENO}: result: no" >&5
+$as_echo "no" >&6; }
+
+
+fi
+rm -f core *.core core.conftest.* gmon.out bb.out conftest$ac_exeext \
+  conftest.$ac_objext conftest.beam conftest.$ac_ext
+fi
+
   LIBS="$saved_libs"
 
   { $as_echo "$as_me:${as_lineno-$LINENO}: checking whether OpenSSL has SSL num tickets support" >&5

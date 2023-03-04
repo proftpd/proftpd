@@ -3492,7 +3492,7 @@ if test x"$pr_use_openssl" = xyes; then
   AC_DEFINE(PR_USE_OPENSSL, 1, [Define if using OpenSSL support.])
   ac_build_addl_libs="$ac_build_addl_libs -lssl -lcrypto"
 
-  AC_MSG_CHECKING([whether OpenSSL is compiled with FIPS support])
+  AC_MSG_CHECKING([whether OpenSSL 1.x is compiled with FIPS support])
   saved_libs="$LIBS"
   LIBS="$LIBS -lcrypto"
 
@@ -3729,6 +3729,66 @@ if test x"$pr_use_openssl" = xyes; then
     [
       AC_MSG_RESULT(yes)
       AC_DEFINE(PR_USE_OPENSSL_OCSP, 1, [Define if your OpenSSL supports OCSP])
+    ],
+    [
+      AC_MSG_RESULT(no)
+    ]
+  )
+  LIBS="$saved_libs"
+
+  AC_MSG_CHECKING([whether OpenSSL has OSSL_PROVIDER_load support])
+  saved_libs="$LIBS"
+  LIBS="-lcrypto $LIBS"
+
+  AC_TRY_LINK(
+    [
+      #include <openssl/provider.h>
+    ],
+    [
+      OSSL_PROVIDER *provider;
+      provider = OSSL_PROVIDER_load(NULL, "default");
+    ],
+    [
+      AC_MSG_RESULT(yes)
+      AC_DEFINE(PR_USE_OPENSSL_OSSL_PROVIDER_LOAD, 1, [OpenSSL supports OSSL_PROVIDER_load])
+      LIBS="$saved_libs"
+    ],
+    [
+      AC_MSG_RESULT(no)
+      LIBS="$saved_libs"
+    ]
+  )
+  LIBS="$saved_libs"
+
+  AC_MSG_CHECKING([whether OpenSSL 3.x has FIPS support])
+  saved_libs="$LIBS"
+  LIBS="-lcrypto $LIBS"
+
+  AC_TRY_RUN(
+    [
+      #include <openssl/err.h>
+      #if defined(PR_USE_OPENSSL_OSSL_PROVIDER_LOAD)
+      # include <openssl/provider.h>
+      #endif
+      int main(int argc, char **argv) {
+        #if defined(PR_USE_OPENSSL_OSSL_PROVIDER_LOAD)
+        OSSL_PROVIDER *provider;
+        ERR_load_crypto_strings();
+        provider = OSSL_PROVIDER_load(NULL, "fips");
+        if (provider == NULL) {
+          fprintf(stdout, "Failed to load FIPS provider\n");
+          ERR_print_errors_fp(stdout);
+          exit(1);
+        }
+        exit(0);
+        #else
+        exit(1);
+        #endif
+      }
+    ],
+    [
+      AC_MSG_RESULT(yes)
+      AC_DEFINE(PR_USE_OPENSSL_FIPS, 1, [OpenSSL 3.x supports FIPS])
     ],
     [
       AC_MSG_RESULT(no)
