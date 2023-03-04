@@ -2,7 +2,7 @@
  * ProFTPD - FTP server daemon
  * Copyright (c) 1997, 1998 Public Flood Software
  * Copyright (c) 1999, 2000 MacGyver aka Habeeb J. Dihu <macgyver@tos.net>
- * Copyright (c) 2001-2020 The ProFTPD Project team
+ * Copyright (c) 2001-2023 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -489,6 +489,28 @@ void log_discard(void) {
   syslog_discard = TRUE;
 }
 
+static size_t add_log_ts(pool *p, char *buf, size_t bufsz) {
+  struct timeval now;
+  struct tm *tm = NULL;
+  unsigned long millis;
+  size_t len;
+
+  gettimeofday(&now, NULL);
+  tm = pr_localtime(p, (const time_t *) &(now.tv_sec));
+  if (tm == NULL) {
+    return 0;
+  }
+
+  len = strftime(buf, bufsz-1, "%Y-%m-%d %H:%M:%S", tm);
+  buf[bufsz-1] = '\0';
+
+  /* Convert microsecs to millisecs. */
+  millis = now.tv_usec / 1000;
+
+  len = pr_snprintf(buf + len, bufsz - len, ",%03lu ", millis);
+  return len;
+}
+
 static void log_write(int priority, int f, char *s, int discard) {
   int max_priority = 0, *ptr = NULL;
   char serverinfo[PR_TUNABLE_BUFFER_SIZE] = {'\0'};
@@ -532,29 +554,13 @@ static void log_write(int priority, int f, char *s, int discard) {
 
     if (log_opts & PR_LOG_OPT_USE_TIMESTAMP) {
       pool *tmp_pool;
-      struct timeval now;
-      struct tm *tm = NULL;
-      unsigned long millis;
 
       tmp_pool = make_sub_pool(permanent_pool);
       pr_pool_tag(tmp_pool, "Log message pool");
 
-      gettimeofday(&now, NULL);
-      tm = pr_localtime(tmp_pool, (const time_t *) &(now.tv_sec));
-      if (tm == NULL) {
-        destroy_pool(tmp_pool);
-        return;
-      }
-
-      len = strftime(buf, sizeof(buf)-1, "%Y-%m-%d %H:%M:%S", tm);
-      buflen = len;
-      buf[sizeof(buf)-1] = '\0';
+      len = add_log_ts(tmp_pool, buf, sizeof(buf));
       destroy_pool(tmp_pool);
 
-      /* Convert microsecs to millisecs. */
-      millis = now.tv_usec / 1000;
-
-      len = pr_snprintf(buf + buflen, sizeof(buf) - len, ",%03lu ", millis);
       buflen += len;
     }
 
@@ -641,29 +647,13 @@ static void log_write(int priority, int f, char *s, int discard) {
 
     if (log_opts & PR_LOG_OPT_USE_TIMESTAMP) {
       pool *tmp_pool;
-      struct timeval now;
-      struct tm *tm;
-      unsigned long millis;
 
       tmp_pool = make_sub_pool(permanent_pool);
       pr_pool_tag(tmp_pool, "Log message pool");
 
-      gettimeofday(&now, NULL);
-      tm = pr_localtime(tmp_pool, (const time_t *) &(now.tv_sec));
-      if (tm == NULL) {
-        destroy_pool(tmp_pool);
-        return;
-      }
-
-      len = strftime(buf, sizeof(buf), "%Y-%m-%d %H:%M:%S", tm);
-      buflen = len;
-      buf[sizeof(buf) - 1] = '\0';
+      len = add_log_ts(tmp_pool, buf, sizeof(buf));
       destroy_pool(tmp_pool);
 
-      /* Convert microsecs to millisecs. */
-      millis = now.tv_usec / 1000;
-
-      len = pr_snprintf(buf + buflen, sizeof(buf) - len, ",%03lu ", millis);
       buflen += len;
     }
 
