@@ -1692,6 +1692,116 @@ What about the <code>READ</code> and <code>WRITE</code> command groups?
   </li>
 </ul>
 
+<p><a name="ExtendedLog">
+<b>ExtenedLog and SFTP</b><br>
+Using <code>ExtendedLog</code> with mod_sftp works the same way as with
+FTP sessions, with a few minor differences:
+<ul>
+  <li>By default, a number of additional back-end commands are logged.  See the table
+    below for a list of all commands and their classes.
+  <li>In addition to their normal class, all mod_sftp commands belong to either the
+    SFTP or SSH classes, <b>EXCEPT</b>: <code>APPE</code>, <code>MLSD</code>,
+    <code>RETR</code>, <code>RNFR</code>, <code>RNTO</code>, <code>SITE</code>,
+    <code>STOR</code>, and <code>SYMLINK</code>.
+  <li>Disabling SSH logging (!SSH) only works with the ALL class, and <b>ALSO</b>
+    disabled SFTP class logging.  This means disabling ALL events other than those
+    listed as exceptions above.
+  <li>Adding the AUTH class after disabling SSH logging restores <b>JUST</b> the
+    USER and PASS events.
+</ul>
+<p>
+This table shoes all the supported command classes for mod_sftp:
+<p>
+<table border=1 summary="Command Classes">
+  <tr>
+    <td><b>Command Class</b></td>
+    <td><b>FTP Commands</b></td>
+  </tr>
+
+  <tr>
+    <td><code>ALL</code></td>
+    <td>All commands <i>except</i> the <code>EXIT</code> pseudo-command (<i>default</i>)</td>
+  </tr>
+
+  <tr>
+    <td><code>NONE</code></td>
+    <td>No commands</td>
+  </tr>
+
+  <tr>
+    <td><code>AUTH</code></td>
+    <td>Authentication commands: <code>DH_GEX_INIT</code>, <code>DH_GEX_REQUEST</code>,
+      <code>DH_GEX_REQUEST_OLD</code>, <code>DH_INIT</code>, <code>ECDH_INIT</code>,
+      <code>EXT_INFO</code>, <code>KEXINIT</code>, <code>KEXRSA_SECRET</code>,
+      <code>NEWKEYS</code>, <code>PASS</code>, <code>USER</code>, <code>USERAUTH_REQUEST</code>
+  </tr>
+
+  <tr>
+    <td><code>INFO</code></td>
+    <td>Informational commands: <code>REALPATH</code>
+  </tr>
+
+  <tr>
+    <td><code>DIRS</code></td>
+    <td>Directory commands: <code>MLSD</code>, <code>OPENDIR</code>, <code>READDIR</code>
+  </tr>
+
+  <tr>
+    <td><code>READ</code></td>
+    <td>File reading: <code>FSTAT</code>, <code>LSTAT</code>, <code>READ</code>,
+      <code>READLINK</code>, <code>RETR</code>, <code>STAT</code>
+  </tr>
+
+  <tr>
+    <td><code>WRITE</code></td>
+    <td>File/directory writing or creation: <code>APPE</code>, <code>FSETSTAT</code>,
+      <code>LINK</code>, <code>LOCK</code>, <code>MKDIR</code>, <code>REMOVE</code>,
+      <code>RMDIR</code>, <code>RNFR</code>, <code>RNTO</code>, <code>SETSTAT</code>,
+      <code>SITE</code>, <code>STOR</code>, <code>SYMLINK</code>, <code>UNLOCK</code>,
+      <code>WRITE</code>
+  </tr>
+
+  <tr>
+    <td><code>MISC</code></td>
+    <td>Miscellaneous commands: <code>CHANNEL_CLOSE</code>, <code>CHANNEL_EOF</code>,
+      <code>CHANNEL_OPEN</code>, <code>CHANNEL_REQUEST</code>, <code>CHANNEL_WINDOW_ADJUST</code>,
+      <code>EXTENDED</code>, <code>FSYNC</code>, <code>HARDLINK</code>, <code>HOMEDIR</code>,
+      <code>INIT</code>, <code>RENAME</code>, <code>RNFR</code>, <code>RNTO</code>,
+      <code>SERVICE_REQUEST</code>
+  </tr>
+
+  <tr>
+    <td><code>SFTP</code></td>
+    <td>SFTP specific commands: <code>CLOSE</code>, <code>EXTENDED</code>,
+      <code>FSETSTAT</code>, <code>FSTAT</code>, <code>FSYNC</code>, <code>HARDLINK</code>,
+      <code>HOMEDIR</code>, <code>INIT</code>, <code>LINK</code>, <code>LOCK</code>,
+      <code>LSTAT</code>, <code>MKDIR</code>, <code>OPEN</code>, <code>OPENDIR</code>,
+      <code>READ</code>, <code>READDIR</code>, <code>READLINK</code>,
+      <code>REALPATH</code>, <code>REMOVE</code>, <code>RENAME</code>,
+      <code>RETR</code>, <code>RMDIR</code>, <code>SETSTAT</code>, <code>STAT</code>,
+      <code>SYMLINK</code>, <code>STOR</code>, <code>UNLOCK</code>, <code>WRITE</code>
+  </tr>
+
+  <tr>
+    <td><code>SSH</code></td>
+    <td>SSH protocol commands: <code>CHANNEL_CLOSE</code>, <code>CHANNEL_EOF</code>,
+      <code>CHANNEL_OPEN</code>, <code>CHANNEL_REQUEST</code>, <code>CHANNEL_WINDOW_ADJUST</code>,
+      <code>DH_GEX_INIT</code>, <code>DH_GEX_REQUEST</code>, <code>DH_GEX_REQUEST_OLD</code>,
+      <code>DH_INIT</code>, <code>ECDH_INIT</code>, <code>EXT_INFO</code>,
+      <code>KEXINIT</code>, <code>KEXRSA_SECRET</code>, <code>NEWKEYS</code>,
+      <code>PASS</code>, <code>SERVICE_REQUEST</code>, <code>USER</code>,
+      <code>USERAUTH_REQUEST</code>
+  </tr>
+
+  <tr>
+    <td><code>EXIT</code></td>
+    <td>Logs the configured <code>LogFormat</code> at session exit.<br>
+        <b>NOTE</b>: <code>EXIT</code> is <b>not</b> part of the
+        <code>ALL</code> command class, in order to preserve
+        backward-compatible <code>ALL</code> behavior.</td>
+  </tr>
+</table>
+
 <p><a name="EnvironmentVariables">
 <b>Environment Variables</b><br>
 The <code>mod_sftp</code> module will set the following environment
