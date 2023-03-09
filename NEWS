@@ -40,6 +40,8 @@
 - Issue 535 - Implement LogFormat variable for data transfer average speed.
 - Issue 1596 - Optimize per-connection file I/O when reading SFTPHostKey from
   disk.
+- Issue 1610 - ProFTPD does not detect FIPS when using OpenSSL 3.x built with
+  FIPS support.
 
 1.3.8 - Released 04-Dec-2022
 --------------------------------
