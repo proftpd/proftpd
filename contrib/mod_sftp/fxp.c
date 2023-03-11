@@ -11690,7 +11690,7 @@ static int fxp_handle_rename(struct fxp_packet *fxp) {
   }
 
   cmd = fxp_cmd_alloc(fxp->pool, "RENAME", args);
-  cmd->cmd_class = CL_MISC|CL_SFTP;
+  cmd->cmd_class = CL_MISC|CL_WRITE|CL_SFTP;
   cmd->cmd_id = SFTP_CMD_ID;
  
   buflen = bufsz = FXP_RESPONSE_DATA_DEFAULT_SZ;
@@ -12898,7 +12898,7 @@ static int fxp_handle_symlink(struct fxp_packet *fxp) {
   args2 = pstrcat(fxp->pool, target_vpath, "\t", link_vpath, NULL);
   cmd2 = fxp_cmd_alloc(fxp->pool, "SYMLINK", args2);
   cmd2->cmd_class = CL_WRITE;
-  cmd->cmd_id = SFTP_CMD_ID;
+  cmd2->cmd_id = SFTP_CMD_ID;
 
   if (pr_cmd_dispatch_phase(cmd2, PRE_CMD, 0) < 0) {
     status_code = SSH2_FX_PERMISSION_DENIED;
