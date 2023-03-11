@@ -4538,7 +4538,7 @@ static int fxp_handle_ext_copy_file(struct fxp_packet *fxp, char *src,
   cmd = pr_cmd_alloc(fxp->pool, 4, pstrdup(fxp->pool, "SITE"),
     pstrdup(fxp->pool, "COPY"), src, dst);
   cmd->arg = pstrcat(fxp->pool, "COPY ", src, " ", dst, NULL);
-  cmd->cmd_class = CL_WRITE;
+  cmd->cmd_class = CL_MISC|CL_WRITE;
 
   buflen = bufsz = FXP_RESPONSE_DATA_DEFAULT_SZ;
   buf = ptr = palloc(fxp->pool, bufsz);
