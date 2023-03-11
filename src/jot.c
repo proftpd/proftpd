@@ -2088,6 +2088,10 @@ static int is_jottable_class(cmd_rec *cmd, int included_classes,
        * internally generated, and thus have special treatment.
        */
 
+      pr_trace_msg(trace_channel, 25,
+        "checking if '%s', with unknown command ID, is jottable",
+        (char *) cmd->argv[0]);
+
       if ((cmd->cmd_class & CL_CONNECT) ||
           (cmd->cmd_class & CL_DISCONNECT)) {
         if (cmd->cmd_class & included_classes) {
@@ -2106,6 +2110,10 @@ static int is_jottable_class(cmd_rec *cmd, int included_classes,
     }
 
   } else {
+    pr_trace_msg(trace_channel, 25,
+      "checking if '%s', with unknown command classes, is jottable",
+      (char *) cmd->argv[0]);
+
     /* If the logging class of this command is unknown (defaults to zero),
      * AND this filter logs ALL events, it is jottable.
      */
