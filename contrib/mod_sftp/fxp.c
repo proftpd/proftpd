@@ -4799,6 +4799,7 @@ static int fxp_handle_ext_fsync(struct fxp_packet *fxp,
 
   cmd = fxp_cmd_alloc(fxp->pool, "FSYNC", args);
   cmd->cmd_class = CL_MISC|CL_SFTP;
+  cmd->cmd_id = SFTP_CMD_ID;
   pr_cmd_dispatch_phase(cmd, PRE_CMD, 0);
 
   buflen = bufsz = FXP_RESPONSE_DATA_DEFAULT_SZ;
@@ -4863,6 +4864,7 @@ static int fxp_handle_ext_hardlink(struct fxp_packet *fxp, char *src,
 
   cmd = fxp_cmd_alloc(fxp->pool, "HARDLINK", args);
   cmd->cmd_class = CL_MISC|CL_SFTP;
+  cmd->cmd_id = SFTP_CMD_ID;
 
   buflen = bufsz = FXP_RESPONSE_DATA_DEFAULT_SZ;
   buf = ptr = palloc(fxp->pool, bufsz);
@@ -5047,6 +5049,7 @@ static int fxp_handle_ext_homedir(struct fxp_packet *fxp, const char *name) {
 
   cmd = fxp_cmd_alloc(fxp->pool, "HOMEDIR", args);
   cmd->cmd_class = CL_MISC|CL_SFTP;
+  cmd->cmd_id = SFTP_CMD_ID;
 
   buflen = bufsz = FXP_RESPONSE_DATA_DEFAULT_SZ;
   buf = ptr = palloc(fxp->pool, bufsz);
@@ -5162,7 +5165,7 @@ static int fxp_handle_ext_posix_rename(struct fxp_packet *fxp, char *src,
     src, dst);
 
   cmd = fxp_cmd_alloc(fxp->pool, "RENAME", args);
-  cmd->cmd_class = CL_MISC|CL_SFTP;
+  cmd->cmd_class = CL_MISC|CL_WRITE|CL_SFTP;
 
   buflen = bufsz = FXP_RESPONSE_DATA_DEFAULT_SZ;
   buf = ptr = palloc(fxp->pool, bufsz);
@@ -6600,6 +6603,7 @@ static int fxp_handle_close(struct fxp_packet *fxp) {
    * READ or WRITE once we know which it is.
    */
   cmd->cmd_class = CL_MISC|CL_SFTP;
+  cmd->cmd_id = SFTP_CMD_ID;
 
   pr_scoreboard_entry_update(session.pid,
     PR_SCORE_CMD, "%s", "CLOSE", NULL, NULL);
@@ -6671,7 +6675,7 @@ static int fxp_handle_close(struct fxp_packet *fxp) {
     curr_path = pstrdup(fxp->pool, fxh->fh->fh_path);
     real_path = curr_path;
 
-    if (fxh->fh_real_path) {
+    if (fxh->fh_real_path != NULL) {
       real_path = fxh->fh_real_path;
     }
 
@@ -6780,7 +6784,7 @@ static int fxp_handle_close(struct fxp_packet *fxp) {
     xfer_file_size = session.xfer.file_size;
     xfer_total_bytes = session.xfer.total_bytes;
 
-    if (cmd2) {
+    if (cmd2 != NULL) {
       if (fxh->fh_existed &&
           (pr_cmd_cmp(cmd2, PR_CMD_STOR_ID) == 0 ||
            pr_cmd_cmp(cmd2, PR_CMD_APPE_ID) == 0)) {
@@ -6812,7 +6816,6 @@ static int fxp_handle_close(struct fxp_packet *fxp) {
 
       if (res < 0 &&
           xerrno != EOF) {
-
         pr_response_add_err(R_451, "%s: %s", cmd2->arg, strerror(xerrno));
         fxp_cmd_dispatch_err(cmd2);
 
@@ -6871,7 +6874,7 @@ static int fxp_handle_close(struct fxp_packet *fxp) {
   /* Now re-populate the session.xfer struct, for mod_log's handling of
    * the CLOSE request.
    */
-  if (session.xfer.p) {
+  if (session.xfer.p != NULL) {
     destroy_pool(session.xfer.p);
   }
 
@@ -6913,6 +6916,7 @@ static int fxp_handle_extended(struct fxp_packet *fxp) {
 
   cmd = fxp_cmd_alloc(fxp->pool, "EXTENDED", ext_request_name);
   cmd->cmd_class = CL_MISC|CL_SFTP;
+  cmd->cmd_id = SFTP_CMD_ID;
 
   pr_scoreboard_entry_update(session.pid,
     PR_SCORE_CMD, "%s", "EXTENDED", NULL, NULL);
@@ -7479,6 +7483,7 @@ static int fxp_handle_fsetstat(struct fxp_packet *fxp) {
 
   cmd = fxp_cmd_alloc(fxp->pool, "FSETSTAT", name);
   cmd->cmd_class = CL_WRITE|CL_SFTP;
+  cmd->cmd_id = SFTP_CMD_ID;
 
   pr_scoreboard_entry_update(session.pid,
     PR_SCORE_CMD, "%s", "FSETSTAT", NULL, NULL);
@@ -7729,6 +7734,7 @@ static int fxp_handle_fstat(struct fxp_packet *fxp) {
 
   cmd = fxp_cmd_alloc(fxp->pool, "FSTAT", name);
   cmd->cmd_class = CL_READ|CL_SFTP;
+  cmd->cmd_id = SFTP_CMD_ID;
 
   pr_scoreboard_entry_update(session.pid,
     PR_SCORE_CMD, "%s", "FSTAT", NULL, NULL);
@@ -7924,6 +7930,7 @@ static int fxp_handle_init(struct fxp_packet *fxp) {
 
   cmd = fxp_cmd_alloc(fxp->pool, "INIT", version_str);
   cmd->cmd_class = CL_MISC|CL_SFTP;
+  cmd->cmd_id = SFTP_CMD_ID;
 
   pr_scoreboard_entry_update(session.pid,
     PR_SCORE_CMD, "%s", "INIT", NULL, NULL);
@@ -8066,6 +8073,7 @@ static int fxp_handle_link(struct fxp_packet *fxp) {
 
   cmd = fxp_cmd_alloc(fxp->pool, "LINK", args);
   cmd->cmd_class = CL_WRITE|CL_SFTP;
+  cmd->cmd_id = SFTP_CMD_ID;
 
   pr_scoreboard_entry_update(session.pid,
     PR_SCORE_CMD, "%s", "LINK", NULL, NULL);
@@ -8218,6 +8226,7 @@ static int fxp_handle_lock(struct fxp_packet *fxp) {
 
   cmd = fxp_cmd_alloc(fxp->pool, "LOCK", name);
   cmd->cmd_class = CL_WRITE|CL_SFTP;
+  cmd->cmd_id = SFTP_CMD_ID;
 
   pr_scoreboard_entry_update(session.pid,
     PR_SCORE_CMD, "%s", "LOCK", NULL, NULL);
@@ -8495,6 +8504,7 @@ static int fxp_handle_lstat(struct fxp_packet *fxp) {
 
   cmd = fxp_cmd_alloc(fxp->pool, "LSTAT", path);
   cmd->cmd_class = CL_READ|CL_SFTP;
+  cmd->cmd_id = SFTP_CMD_ID;
 
   fxb = pcalloc(fxp->pool, sizeof(struct fxp_buffer));
   fxb->bufsz = buflen = FXP_RESPONSE_NAME_DEFAULT_SZ;
@@ -8721,7 +8731,8 @@ static int fxp_handle_mkdir(struct fxp_packet *fxp) {
   buf = ptr = palloc(fxp->pool, bufsz);
 
   cmd = fxp_cmd_alloc(fxp->pool, "MKDIR", path);
-  cmd->cmd_class = CL_WRITE|CL_SFTP;
+  cmd->cmd_class = CL_DIRS|CL_WRITE|CL_SFTP;
+  cmd->cmd_id = SFTP_CMD_ID;
 
   if (pr_cmd_dispatch_phase(cmd, PRE_CMD, 0) < 0) {
     status_code = SSH2_FX_PERMISSION_DENIED;
@@ -8983,6 +8994,7 @@ static int fxp_handle_open(struct fxp_packet *fxp) {
    * READ or WRITE once we know which it is.
    */
   cmd->cmd_class = CL_MISC|CL_SFTP;
+  cmd->cmd_id = SFTP_CMD_ID;
 
   pr_scoreboard_entry_update(session.pid,
     PR_SCORE_CMD, "%s", "OPEN", NULL, NULL);
@@ -9732,6 +9744,7 @@ static int fxp_handle_opendir(struct fxp_packet *fxp) {
 
   cmd = fxp_cmd_alloc(fxp->pool, "OPENDIR", path);
   cmd->cmd_class = CL_DIRS|CL_SFTP;
+  cmd->cmd_id = SFTP_CMD_ID;
 
   buflen = bufsz = FXP_RESPONSE_DATA_DEFAULT_SZ;
   buf = ptr = palloc(fxp->pool, bufsz);
@@ -10078,6 +10091,7 @@ static int fxp_handle_read(struct fxp_packet *fxp) {
 
   cmd = fxp_cmd_alloc(fxp->pool, "READ", name);
   cmd->cmd_class = CL_READ|CL_SFTP;
+  cmd->cmd_id = SFTP_CMD_ID;
 
   pr_scoreboard_entry_update(session.pid,
     PR_SCORE_CMD, "%s", "READ", NULL, NULL);
@@ -10358,6 +10372,7 @@ static int fxp_handle_readdir(struct fxp_packet *fxp) {
 
   cmd = fxp_cmd_alloc(fxp->pool, "READDIR", name);
   cmd->cmd_class = CL_DIRS|CL_SFTP;
+  cmd->cmd_id = SFTP_CMD_ID;
   cmd->group = G_DIRS;
 
   pr_scoreboard_entry_update(session.pid,
@@ -10764,6 +10779,7 @@ static int fxp_handle_readlink(struct fxp_packet *fxp) {
 
   cmd = fxp_cmd_alloc(fxp->pool, "READLINK", path);
   cmd->cmd_class = CL_READ|CL_SFTP;
+  cmd->cmd_id = SFTP_CMD_ID;
 
   fxb = pcalloc(fxp->pool, sizeof(struct fxp_buffer));
   fxb->bufsz = buflen = FXP_RESPONSE_NAME_DEFAULT_SZ;
@@ -10983,7 +10999,8 @@ static int fxp_handle_realpath(struct fxp_packet *fxp) {
   }
 
   cmd = fxp_cmd_alloc(fxp->pool, "REALPATH", path);
-  cmd->cmd_class = CL_INFO|CL_SFTP;
+  cmd->cmd_class = CL_INFO|CL_DIRS|CL_SFTP;
+  cmd->cmd_id = SFTP_CMD_ID;
 
   if (fxp_session->client_version >= 6) {
     /* See Section 8.9 of:
@@ -11352,6 +11369,7 @@ static int fxp_handle_remove(struct fxp_packet *fxp) {
 
   cmd = fxp_cmd_alloc(fxp->pool, "REMOVE", path);
   cmd->cmd_class = CL_WRITE|CL_SFTP;
+  cmd->cmd_id = SFTP_CMD_ID;
 
   buflen = bufsz = FXP_RESPONSE_DATA_DEFAULT_SZ;
   buf = ptr = palloc(fxp->pool, bufsz);
@@ -11673,6 +11691,7 @@ static int fxp_handle_rename(struct fxp_packet *fxp) {
 
   cmd = fxp_cmd_alloc(fxp->pool, "RENAME", args);
   cmd->cmd_class = CL_MISC|CL_SFTP;
+  cmd->cmd_id = SFTP_CMD_ID;
  
   buflen = bufsz = FXP_RESPONSE_DATA_DEFAULT_SZ;
   buf = ptr = palloc(fxp->pool, bufsz);
@@ -12063,7 +12082,8 @@ static int fxp_handle_rmdir(struct fxp_packet *fxp) {
   }
 
   cmd = fxp_cmd_alloc(fxp->pool, "RMDIR", path);
-  cmd->cmd_class = CL_WRITE|CL_SFTP;
+  cmd->cmd_class = CL_DIRS|CL_WRITE|CL_SFTP;
+  cmd->cmd_id = SFTP_CMD_ID;
 
   buflen = bufsz = FXP_RESPONSE_DATA_DEFAULT_SZ;
   buf = ptr = palloc(fxp->pool, bufsz);
@@ -12349,6 +12369,7 @@ static int fxp_handle_setstat(struct fxp_packet *fxp) {
 
   cmd = fxp_cmd_alloc(fxp->pool, "SETSTAT", path);
   cmd->cmd_class = CL_WRITE|CL_SFTP;
+  cmd->cmd_id = SFTP_CMD_ID;
 
   buflen = bufsz = FXP_RESPONSE_DATA_DEFAULT_SZ;
   buf = ptr = palloc(fxp->pool, bufsz);
@@ -12569,6 +12590,7 @@ static int fxp_handle_stat(struct fxp_packet *fxp) {
 
   cmd = fxp_cmd_alloc(fxp->pool, "STAT", path);
   cmd->cmd_class = CL_READ|CL_SFTP;
+  cmd->cmd_id = SFTP_CMD_ID;
 
   fxb = pcalloc(fxp->pool, sizeof(struct fxp_buffer));
   fxb->bufsz = buflen = FXP_RESPONSE_NAME_DEFAULT_SZ;
@@ -12778,6 +12800,7 @@ static int fxp_handle_symlink(struct fxp_packet *fxp) {
 
   cmd = fxp_cmd_alloc(fxp->pool, "SYMLINK", args);
   cmd->cmd_class = CL_WRITE|CL_SFTP;
+  cmd->cmd_id = SFTP_CMD_ID;
 
   pr_scoreboard_entry_update(session.pid,
     PR_SCORE_CMD, "%s", "SYMLINK", NULL, NULL);
@@ -12875,6 +12898,7 @@ static int fxp_handle_symlink(struct fxp_packet *fxp) {
   args2 = pstrcat(fxp->pool, target_vpath, "\t", link_vpath, NULL);
   cmd2 = fxp_cmd_alloc(fxp->pool, "SYMLINK", args2);
   cmd2->cmd_class = CL_WRITE;
+  cmd->cmd_id = SFTP_CMD_ID;
 
   if (pr_cmd_dispatch_phase(cmd2, PRE_CMD, 0) < 0) {
     status_code = SSH2_FX_PERMISSION_DENIED;
@@ -13011,6 +13035,7 @@ static int fxp_handle_write(struct fxp_packet *fxp) {
     (pr_off_t) offset, (unsigned long) datalen);
   cmd = fxp_cmd_alloc(fxp->pool, "WRITE", cmd_arg);
   cmd->cmd_class = CL_WRITE|CL_SFTP;
+  cmd->cmd_id = SFTP_CMD_ID;
 
   pr_scoreboard_entry_update(session.pid,
     PR_SCORE_CMD, "%s", "WRITE", NULL, NULL);
@@ -13359,6 +13384,7 @@ static int fxp_handle_unlock(struct fxp_packet *fxp) {
 
   cmd = fxp_cmd_alloc(fxp->pool, "UNLOCK", name);
   cmd->cmd_class = CL_WRITE|CL_SFTP;
+  cmd->cmd_id = SFTP_CMD_ID;
 
   pr_scoreboard_entry_update(session.pid,
     PR_SCORE_CMD, "%s", "UNLOCK", NULL, NULL);
@@ -13952,7 +13978,7 @@ int sftp_fxp_close_session(uint32_t channel_id) {
         fxp_sessions = sess->next;
       }
 
-      if (sess->handle_tab) {
+      if (sess->handle_tab != NULL) {
         int count;
 
         count = pr_table_count(sess->handle_tab);

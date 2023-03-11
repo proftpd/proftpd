@@ -2135,18 +2135,19 @@ static int is_jottable(pool *p, cmd_rec *cmd, pr_jot_filters_t *filters) {
   int jottable = FALSE;
 
   if (filters == NULL) {
-    return TRUE;
+    jottable = TRUE;
   }
 
-  jottable = is_jottable_class(cmd, filters->included_classes,
-    filters->excluded_classes);
-  if (jottable == TRUE) {
-    return TRUE;
+  if (jottable == FALSE) {
+    jottable = is_jottable_class(cmd, filters->included_classes,
+      filters->excluded_classes);
   }
 
-  if (filters->cmd_ids != NULL) {
-    jottable = is_jottable_cmd(cmd, filters->cmd_ids->elts,
-      filters->cmd_ids->nelts);
+  if (jottable == FALSE) {
+    if (filters->cmd_ids != NULL) {
+      jottable = is_jottable_cmd(cmd, filters->cmd_ids->elts,
+        filters->cmd_ids->nelts);
+    }
   }
 
   return jottable;

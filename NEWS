@@ -42,6 +42,7 @@
   disk.
 - Issue 1610 - ProFTPD does not detect FIPS when using OpenSSL 3.x built with
   FIPS support.
+- Issue 1617 - ExtendedLog SSH, SFTP classes not working as expected.
 
 1.3.8 - Released 04-Dec-2022
 --------------------------------
