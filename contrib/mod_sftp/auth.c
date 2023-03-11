@@ -1,6 +1,6 @@
 /*
  * ProFTPD - mod_sftp user authentication
- * Copyright (c) 2008-2022 TJ Saunders
+ * Copyright (c) 2008-2023 TJ Saunders
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -647,7 +647,6 @@ static int setup_env(pool *p, const char *user) {
 
   /* Make sure directory config pointers are set correctly */
   cmd = pr_cmd_alloc(p, 1, C_PASS);
-  cmd->cmd_class = CL_AUTH|CL_SSH;
   cmd->arg = "";
   dir_check_full(p, cmd, G_NONE, session.cwd, NULL);
 
@@ -1130,11 +1129,9 @@ static int handle_userauth_req(struct ssh2_packet *pkt, char **service) {
   orig_user = sftp_msg_read_string(pkt->pool, &buf, &buflen);
 
   user_cmd = pr_cmd_alloc(pkt->pool, 2, pstrdup(pkt->pool, C_USER), orig_user);
-  user_cmd->cmd_class = CL_AUTH|CL_SSH;
   user_cmd->arg = (char *) orig_user;
 
   pass_cmd = pr_cmd_alloc(pkt->pool, 1, pstrdup(pkt->pool, C_PASS));
-  pass_cmd->cmd_class = CL_AUTH|CL_SSH;
   pass_cmd->arg = pstrdup(pkt->pool, "(hidden)");
 
   /* Dispatch these as PRE_CMDs, so that mod_delay's tactics can be used
@@ -1237,6 +1234,7 @@ static int handle_userauth_req(struct ssh2_packet *pkt, char **service) {
     pstrdup(pkt->pool, user), pstrdup(pkt->pool, method));
   cmd->arg = pstrcat(pkt->pool, user, " ", method, NULL);
   cmd->cmd_class = CL_AUTH|CL_SSH;
+  cmd->cmd_id = SFTP_CMD_ID;
 
   if (auth_attempts_max > 0 &&
       auth_attempts > auth_attempts_max) {
