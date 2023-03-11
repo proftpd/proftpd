@@ -168,6 +168,9 @@
 #define SFTP_ROLE_SERVER		1
 #define SFTP_ROLE_CLIENT		2
 
+/* mod_sftp generic/fake "command ID" for logging */
+#define SFTP_CMD_ID		128
+
 /* Miscellaneous */
 extern int sftp_logfd;
 extern const char *sftp_logname;
