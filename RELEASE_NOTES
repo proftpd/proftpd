@@ -16,6 +16,8 @@ ChangeLog files.
 
   + Changed Directives
 
+      ExtendedLog SEC class (Issue #1626)
+
       LogFormat %{transfer-speed} (Issue #535)
 
 
