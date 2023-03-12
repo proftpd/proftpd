@@ -3111,7 +3111,7 @@ static int handle_kex_dh(struct ssh2_packet *pkt, struct sftp_kex *kex) {
 
   cmd = pr_cmd_alloc(pkt->pool, 1, pstrdup(pkt->pool, "DH_INIT"));
   cmd->arg = "(data)";
-  cmd->cmd_class = CL_AUTH|CL_SSH;
+  cmd->cmd_class = CL_SEC|CL_SSH;
   cmd->cmd_id = SFTP_CMD_ID;
 
   pr_trace_msg(trace_channel, 9, "reading DH_INIT message from client");
@@ -3687,7 +3687,7 @@ static int handle_kex_dh_gex(struct ssh2_packet *pkt, struct sftp_kex *kex,
 
     cmd = pr_cmd_alloc(pkt->pool, 1, pstrdup(pkt->pool, "DH_GEX_REQUEST"));
     cmd->arg = "(data)";
-    cmd->cmd_class = CL_AUTH|CL_SSH;
+    cmd->cmd_class = CL_SEC|CL_SSH;
     cmd->cmd_id = SFTP_CMD_ID;
 
   } else {
@@ -3696,7 +3696,7 @@ static int handle_kex_dh_gex(struct ssh2_packet *pkt, struct sftp_kex *kex,
 
     cmd = pr_cmd_alloc(pkt->pool, 1, pstrdup(pkt->pool, "DH_GEX_REQUEST_OLD"));
     cmd->arg = "(data)";
-    cmd->cmd_class = CL_AUTH|CL_SSH;
+    cmd->cmd_class = CL_SEC|CL_SSH;
     cmd->cmd_id = SFTP_CMD_ID;
   }
 
@@ -3738,7 +3738,7 @@ static int handle_kex_dh_gex(struct ssh2_packet *pkt, struct sftp_kex *kex,
 
   cmd = pr_cmd_alloc(pkt->pool, 1, pstrdup(pkt->pool, "DH_GEX_INIT"));
   cmd->arg = "(data)";
-  cmd->cmd_class = CL_AUTH|CL_SSH;
+  cmd->cmd_class = CL_SEC|CL_SSH;
   cmd->cmd_id = SFTP_CMD_ID;
 
   pr_trace_msg(trace_channel, 9, "reading DH_GEX_INIT message from client");
@@ -4015,7 +4015,7 @@ static int handle_kex_rsa(struct sftp_kex *kex) {
 
   cmd = pr_cmd_alloc(pkt->pool, 1, pstrdup(pkt->pool, "KEXRSA_SECRET"));
   cmd->arg = "(data)";
-  cmd->cmd_class = CL_AUTH|CL_SSH;
+  cmd->cmd_class = CL_SEC|CL_SSH;
   cmd->cmd_id = SFTP_CMD_ID;
 
   pr_trace_msg(trace_channel, 9, "reading KEXRSA_SECRET message from client");
@@ -4371,7 +4371,7 @@ static int handle_kex_curve25519(struct ssh2_packet *pkt,
   req = "ECDH_INIT";
   cmd = pr_cmd_alloc(pkt->pool, 1, pstrdup(pkt->pool, req));
   cmd->arg = "(data)";
-  cmd->cmd_class = CL_AUTH|CL_SSH;
+  cmd->cmd_class = CL_SEC|CL_SSH;
   cmd->cmd_id = SFTP_CMD_ID;
 
   pr_trace_msg(trace_channel, 9, "reading %s message from client", req);
@@ -4813,7 +4813,7 @@ static int handle_kex_curve448(struct ssh2_packet *pkt, struct sftp_kex *kex) {
   req = "ECDH_INIT";
   cmd = pr_cmd_alloc(pkt->pool, 1, pstrdup(pkt->pool, req));
   cmd->arg = "(data)";
-  cmd->cmd_class = CL_AUTH|CL_SSH;
+  cmd->cmd_class = CL_SEC|CL_SSH;
   cmd->cmd_id = SFTP_CMD_ID;
 
   pr_trace_msg(trace_channel, 9, "reading %s message from client", req);
@@ -5007,7 +5007,7 @@ static int handle_kex_ecdh(struct ssh2_packet *pkt, struct sftp_kex *kex) {
   req = "ECDH_INIT";
   cmd = pr_cmd_alloc(pkt->pool, 1, pstrdup(pkt->pool, req));
   cmd->arg = "(data)";
-  cmd->cmd_class = CL_AUTH|CL_SSH;
+  cmd->cmd_class = CL_SEC|CL_SSH;
   cmd->cmd_id = SFTP_CMD_ID;
 
   pr_trace_msg(trace_channel, 9, "reading %s message from client", req);
@@ -5201,7 +5201,7 @@ int sftp_kex_handle(struct ssh2_packet *pkt) {
 
   cmd = pr_cmd_alloc(pkt->pool, 1, pstrdup(pkt->pool, "KEXINIT"));
   cmd->arg = "(data)";
-  cmd->cmd_class = CL_AUTH|CL_SSH;
+  cmd->cmd_class = CL_SEC|CL_SSH;
   cmd->cmd_id = SFTP_CMD_ID;
 
   pr_trace_msg(trace_channel, 9, "reading KEXINIT message from client");
@@ -5476,7 +5476,7 @@ int sftp_kex_handle(struct ssh2_packet *pkt) {
 
   cmd = pr_cmd_alloc(pkt->pool, 1, pstrdup(pkt->pool, "NEWKEYS"));
   cmd->arg = "";
-  cmd->cmd_class = CL_AUTH|CL_SSH;
+  cmd->cmd_class = CL_SEC|CL_SSH;
   cmd->cmd_id = SFTP_CMD_ID;
 
   pr_cmd_dispatch_phase(cmd, LOG_CMD, 0);
@@ -5511,7 +5511,7 @@ int sftp_kex_handle(struct ssh2_packet *pkt) {
 
     cmd = pr_cmd_alloc(pkt2->pool, 1, pstrdup(pkt2->pool, "EXT_INFO"));
     cmd->arg = "";
-    cmd->cmd_class = CL_AUTH|CL_SSH;
+    cmd->cmd_class = CL_INFO|CL_SSH;
     cmd->cmd_id = SFTP_CMD_ID;
 
     pr_cmd_dispatch_phase(cmd, LOG_CMD, 0);
