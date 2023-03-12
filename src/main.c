@@ -2,7 +2,7 @@
  * ProFTPD - FTP server daemon
  * Copyright (c) 1997, 1998 Public Flood Software
  * Copyright (c) 1999, 2000 MacGyver aka Habeeb J. Dihu <macgyver@tos.net>
- * Copyright (c) 2001-2022 The ProFTPD Project team
+ * Copyright (c) 2001-2023 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -101,7 +101,7 @@ static int semaphore_fds(fd_set *rfd, int maxfd) {
     pr_child_t *ch;
 
     for (ch = child_get(NULL); ch; ch = child_get(ch)) {
-      pr_signals_handle();
+      pr_signals_handle_without_delay();
 
       if (ch->ch_pipefd != -1) {
         FD_SET(ch->ch_pipefd, rfd);
@@ -1640,14 +1640,12 @@ static void daemon_loop(void) {
     xerrno = errno = 0;
 
     PR_DEVEL_CLOCK(i = select(maxfd + 1, &listenfds, NULL, NULL, &tv));
-    if (i < 0) {
-      xerrno = errno;
-    }
+    xerrno = errno;
 
-    if (i == -1 &&
+    if (i < 0 &&
         xerrno == EINTR) {
       errno = xerrno;
-      pr_signals_handle();
+      pr_signals_handle_without_delay();
 
       /* We handled our signal; clear errno. */
       xerrno = errno = 0;
@@ -1726,7 +1724,7 @@ static void daemon_loop(void) {
       }
     }
 
-    pr_signals_handle();
+    pr_signals_handle_without_delay();
 
     if (i < 0) {
       continue;
