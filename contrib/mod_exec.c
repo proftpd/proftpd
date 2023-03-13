@@ -1062,6 +1062,15 @@ static const char *exec_subst_var(pool *tmp_pool, const char *varstr,
     }
   }
 
+  ptr = strstr(varstr, "%S");
+  if (ptr != NULL) {
+    const void *sftp_nonfatal_note;
+
+    sftp_nonfatal_note = pr_table_get(cmd->notes, "mod_sftp.nonfatal-attempt", NULL);
+    varstr = sreplace(tmp_pool, varstr, "%S",
+      sftp_nonfatal_note ? sftp_nonfatal_note : "", NULL);
+  }
+
   ptr = strstr(varstr, "%U");
   if (ptr != NULL) {
     const char *user;
