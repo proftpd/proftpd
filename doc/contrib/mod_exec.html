@@ -167,10 +167,13 @@ corresponding value before the script is executed:
   <li><b>%h</b> - client's DNS name
   <li><b>%m</b> - FTP command (e.g. RETR, STOR, etc)
   <li><b>%r</b> - full FTP command
+  <li><b>%S</b> - SFTP non-fatal status - empty string if it is a fatal error, or the auth method in use if it's non-fatal
   <li><b>%U</b> - original username sent by client
   <li><b>%u</b> - name of local user
   <li><b>%v</b> - name of server handling session
+  <li><b>%V</b> - DNS name of the server IP handling session
   <li><b>%w</b> - RNFR path ("whence" a rename comes, <i>i.e.</i> the source path)
+  <li><b>%{time:&lt;format&gt;}</b> - the current time, formatted using strftime(&lt;format&gt;)
 </ul>
 The <i>value</i> parameter may be also be &quot;-&quot;, which indicates that
 the current value of the environment variable of name <i>key</i> should be
