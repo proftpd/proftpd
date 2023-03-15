@@ -1692,6 +1692,106 @@ What about the <code>READ</code> and <code>WRITE</code> command groups?
   </li>
 </ul>
 
+<p><a name="ExtendedLogClasses">
+Here is table of the supported <a href="../modules/mod_log.html#ExtendedLog"><code>ExtendedLog</code></a> directive <em>command classes</em> for SFTP sessions:
+<p>
+<table border=1 summary="Command Classes">
+  <tr>
+    <td><b>Command Class</b></td>
+    <td><b>SSH, SFTP Requests</b></td>
+  </tr>
+
+  <tr>
+    <td><code>ALL</code></td>
+    <td>All requests <i>except</i> the <code>EXIT</code> pseudo-command (<i>default</i>)</td>
+  </tr>
+
+  <tr>
+    <td><code>NONE</code></td>
+    <td>No requests</td>
+  </tr>
+
+  <tr>
+    <td><code>AUTH</code></td>
+    <td>Authentication requests: <code>USERAUTH_REQUEST</code></td>
+  </tr>
+
+  <tr>
+    <td><code>INFO</code></td>
+    <td>Informational commands: <code>EXT_INFO</code>
+      (SSH extension negotiation), <code>REALPATH</code></td>
+  </tr>
+
+  <tr>
+    <td><code>DIRS</code></td>
+    <td>Directory commands: <code>MKDIR</code>, <code>OPENDIR</code>,
+      <code>READDIR</code>, <code>REALPATH</code>, <code>RMDIR</code></td>
+  </tr>
+
+  <tr>
+    <td><code>READ</code></td>
+    <td>File reading: <code>CLOSE</code>, <code>FSTAT</code>,
+      <code>LSTAT</code>, <code>OPEN</code>, <code>READ</code>,
+      <code>READLINK</code>, <code>STAT</code></td>
+  </tr>
+
+  <tr>
+    <td><code>WRITE</code></td>
+    <td>File/directory writing or creation: <code>CLOSE</code>,
+      <code>FSETSTAT</code>, <code>LINK</code>, <code>LOCK</code>,
+      <code>MKDIR</code>, <code>OPEN</code>, <code>REMOVE</code>,
+      <code>RENAME</code>, <code>RMDIR</code>, <code>SETSTAT</code>,
+      <code>SYMLINK</code>, <code>WRITE</code>, <code>UNLOCK</code></td>
+  </tr>
+
+  <tr>
+    <td><code>MISC</code></td>
+    <td>Miscellaneous commands: <code>EXTENDED</code>, <code>FSYNC</code>,
+      <code>HARDLINK</code>, <code>HOMEDIR</code>, <code>INIT</code>,
+      <code>RENAME</code>, <code>SERVICE_REQUEST</code></td>
+  </tr>
+
+  <tr>
+    <td><code>SEC</code></td>
+    <td>SSH security requests: <code>DH_GEX_INIT</code>,
+      <code>DH_GEX_REQUEST</code>, <code>DH_INIT</code>, <code>ECDH_INIT</code>,
+      <code>KEXINIT</code>, <code>KEXRSA_SECRET</code>,
+      <code>NEWKEYS</code></td>
+  </tr>
+
+  <tr>
+    <td><code>SSH</code></td>
+    <td>SSH protocol requests: <code>CHANNEL_CLOSE</code>,
+      <code>CHANNEL_EOF</code>, <code>CHANNEL_OPEN</code>,
+      <code>CHANNEL_REQUEST</code>, <code>CHANNEL_WINDOW_ADJUST</code>,
+      <code>DH_GEX_INIT</code>, <code>DH_GEX_REQUEST</code>,
+      <code>DH_INIT</code>, <code>ECDH_INIT</code>, <code>EXT_INFO</code>,
+      <code>KEXINIT</code>, <code>KEXRSA_SECRET</code>, <code>NEWKEYS</code>,
+      <code>SERVICE_REQUEST</code>, <code>USERAUTH_REQUEST</code></td>
+  </tr>
+
+  <tr>
+    <td><code>SFTP</code></td>
+    <td>SFTP protocol requests: <code>CLOSE</code>, <code>EXTENDED</code>,
+      <code>FSETSTAT</code>, <code>FSTAT</code>, <code>FSYNC</code>,
+      <code>HARDLINK</code>, <code>HOMEDIR</code>, <code>INIT</code>,
+      <code>LINK</code>, <code>LOCK</code>, <code>LSTAT</code>,
+      <code>MKDIR</code>, <code>OPEN</code>, <code>OPENDIR</code>,
+      <code>READ</code>, <code>READDIR</code>, <code>READLINK</code>,
+      <code>REALPATH</code>, <code>REMOVE</code>, <code>RENAME</code>,
+      <code>RMDIR</code>, <code>SETSTAT</code>, <code>STAT</code>,
+      <code>SYMLINK</code>, <code>WRITE</code>, <code>UNLOCK</code></td>
+  </tr>
+
+  <tr>
+    <td><code>EXIT</code></td>
+    <td>Logs the configured <code>LogFormat</code> at session exit.<br>
+        <b>NOTE</b>: <code>EXIT</code> is <b>not</b> part of the
+        <code>ALL</code> command class, in order to preserve
+        backward-compatible <code>ALL</code> behavior.</td>
+  </tr>
+</table>
+
 <p><a name="EnvironmentVariables">
 <b>Environment Variables</b><br>
 The <code>mod_sftp</code> module will set the following environment
@@ -2843,7 +2943,7 @@ deal with this issue, then, you can hopefully upgrade to ProFTPD 1.3.6 or later,
 <p>
 <hr>
 <font size=2><b><i>
-&copy; Copyright 2008-2022 TJ Saunders<br>
+&copy; Copyright 2008-2023 TJ Saunders<br>
  All Rights Reserved<br>
 </i></b></font>
 <hr>
