@@ -236,6 +236,10 @@ const char *pr_jot_get_logfmt_id_name(unsigned char logfmt_id) {
       name = "NOTE_VAR";
       break;
 
+    case LOGFMT_META_VAR_VAR:
+      name = "VAR_VAR";
+      break;
+
     case LOGFMT_META_XFER_STATUS:
       name = "XFER_STATUS";
       break;
@@ -414,6 +418,8 @@ pr_table_t *pr_jot_get_logfmt2json(pool *p) {
   add_json_info(p, map, LOGFMT_META_VHOST_IP, PR_JOT_LOGFMT_VHOST_IP_KEY,
     PR_JSON_TYPE_STRING);
   add_json_info(p, map, LOGFMT_META_NOTE_VAR, PR_JOT_LOGFMT_NOTE_KEY,
+    PR_JSON_TYPE_STRING);
+  add_json_info(p, map, LOGFMT_META_VAR_VAR, PR_JOT_LOGFMT_VAR_KEY,
     PR_JSON_TYPE_STRING);
   add_json_info(p, map, LOGFMT_META_XFER_STATUS, PR_JOT_LOGFMT_XFER_STATUS_KEY,
     PR_JSON_TYPE_STRING);
@@ -874,6 +880,17 @@ static const char *get_meta_filename(cmd_rec *cmd) {
     }
   }
 
+  /* If we're in the PRE_CMD phase, then the filename can't be filled in
+   * with the above techniques.
+   */
+  if (session.curr_phase == PRE_CMD &&
+      filename == NULL) {
+    char *decoded_path;
+
+    decoded_path = pr_fs_decode_path(p, cmd->arg);
+    filename = dir_abs_path(p, decoded_path, TRUE);
+  }
+
   return filename;
 }
 
@@ -954,6 +971,17 @@ static const char *get_meta_transfer_path(cmd_rec *cmd) {
         pr_cmd_cmp(cmd, PR_CMD_XRMD_ID) == 0) {
       transfer_path = dir_best_path(p, pr_fs_decode_path(p, cmd->arg));
     }
+  }
+
+  /* If we're in the PRE_CMD phase, then the filename can't be filled in
+   * with the above techniques.
+   */
+  if (session.curr_phase == PRE_CMD &&
+      transfer_path == NULL) {
+    char *decoded_path;
+
+    decoded_path = pr_fs_decode_path(p, cmd->arg);
+    transfer_path = dir_best_path(p, decoded_path);
   }
 
   return transfer_path;
@@ -1839,6 +1867,36 @@ static int resolve_logfmt_id(pool *p, unsigned char logfmt_id,
       break;
     }
 
+    case LOGFMT_META_VAR_VAR: {
+      if (logfmt_data != NULL) {
+        char *key;
+        const char *var = NULL;
+
+        pr_trace_msg(trace_channel, 19,
+          "resolving VAR_VAR using var key '%s'", logfmt_data);
+
+        /* Note that the Var API is particular about its lookup keys; it
+         * expects the enclosing "%{...}" to be present.  Fun.
+         */
+        key = pstrcat(p, "%{", logfmt_data, "}", NULL);
+
+        var = pr_var_get(key);
+        if (var != NULL) {
+          char *field_name;
+
+          field_name = pstrcat(p, PR_JOT_LOGFMT_VAR_KEY, var, NULL);
+          res = (on_meta)(p, ctx, logfmt_id, field_name, var);
+
+        } else {
+          pr_trace_msg(trace_channel, 7, "error resolving VAR_VAR '%s': %s",
+            logfmt_data, strerror(errno));
+          res = (on_default)(p, ctx, logfmt_id);
+        }
+      }
+
+      break;
+    }
+
     case LOGFMT_META_XFER_STATUS: {
       const char *transfer_status;
 
@@ -2030,6 +2088,7 @@ static int resolve_meta(pool *p, unsigned char **logfmt, pr_jot_ctx_t *ctx,
     case LOGFMT_META_CUSTOM:
     case LOGFMT_META_ENV_VAR:
     case LOGFMT_META_NOTE_VAR:
+    case LOGFMT_META_VAR_VAR:
     case LOGFMT_META_TIME: {
       if (*(ptr + 1) == LOGFMT_META_START &&
           *(ptr + 2) == LOGFMT_META_ARG) {
@@ -2591,6 +2650,22 @@ static int parse_long_id(const char *text, unsigned char *logfmt_id,
     }
   }
 
+  if (strncmp(text, "{var:", 5) == 0) {
+    char *ptr;
+
+    ptr = strchr(text + 5, '}');
+    if (ptr != NULL) {
+      *logfmt_id = LOGFMT_META_VAR_VAR;
+      *logfmt_data = text + 5;
+      *logfmt_datalen = (ptr - text) - 5;
+
+      /* Advance 6 for the leading '{var:', and one more for the
+       * trailing '}' character.
+       */
+      return (6 + *logfmt_datalen);
+    }
+  }
+
   if (strncmp(text, "{protocol}", 10) == 0) {
     *logfmt_id = LOGFMT_META_PROTOCOL;
     return 10;
@@ -2892,6 +2967,7 @@ static int scan_meta(pool *p, unsigned char **logfmt, pr_jot_ctx_t *ctx,
     case LOGFMT_META_CUSTOM:
     case LOGFMT_META_ENV_VAR:
     case LOGFMT_META_NOTE_VAR:
+    case LOGFMT_META_VAR_VAR:
     case LOGFMT_META_TIME: {
       if (*(ptr + 1) == LOGFMT_META_START &&
           *(ptr + 2) == LOGFMT_META_ARG) {

@@ -76,6 +76,7 @@
 #define PR_JOT_LOGFMT_TIME_KEY		"local_time"
 #define PR_JOT_LOGFMT_UID_KEY		"uid"
 #define PR_JOT_LOGFMT_USER_KEY		"user"
+#define PR_JOT_LOGFMT_VAR_KEY		"VAR:"
 #define PR_JOT_LOGFMT_VERSION_KEY	"server_version"
 #define PR_JOT_LOGFMT_VHOST_IP_KEY	"server_ip"
 #define PR_JOT_LOGFMT_XFER_MS_KEY	"transfer_millis"
