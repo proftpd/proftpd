@@ -107,6 +107,11 @@ my $TESTS = {
     test_class => [qw(forking mod_ifsession)],
   },
 
+  exec_on_cmd_var_note_issue1630 => {
+    order => ++$order,
+    test_class => [qw(forking)],
+  },
+
 };
 
 sub new {
@@ -120,54 +125,25 @@ sub list_tests {
 sub exec_on_connect {
   my $self = shift;
   my $tmpdir = $self->{tmpdir};
-
-  my $config_file = "$tmpdir/exec.conf";
-  my $pid_file = File::Spec->rel2abs("$tmpdir/exec.pid");
-  my $scoreboard_file = File::Spec->rel2abs("$tmpdir/exec.scoreboard");
-
-  my $log_file = test_get_logfile();
-
-  my $auth_user_file = File::Spec->rel2abs("$tmpdir/exec.passwd");
-  my $auth_group_file = File::Spec->rel2abs("$tmpdir/exec.group");
-
-  my $user = 'proftpd';
-  my $passwd = 'test';
-  my $group = 'ftpd';
-  my $home_dir = File::Spec->rel2abs($tmpdir);
-  my $uid = 500;
-  my $gid = 500;
-  
-  # Make sure that, if we're running as root, that the home directory has
-  # permissions/privs set for the account we create
-  if ($< == 0) {
-    unless (chmod(0755, $home_dir)) {
-      die("Can't set perms on $home_dir to 0755: $!");
-    }
-
-    unless (chown($uid, $gid, $home_dir)) {
-      die("Can't set owner of $home_dir to $uid/$gid: $!");
-    }
-  }
-
-  auth_user_write($auth_user_file, $user, $passwd, $uid, $gid, $home_dir,
-    '/bin/bash');
-  auth_group_write($auth_group_file, $group, $gid, $user);
+  my $setup = test_setup($tmpdir, 'exec');
 
   my $connect_file = File::Spec->rel2abs("$tmpdir/connect.txt");
 
   my $config = {
-    PidFile => $pid_file,
-    ScoreboardFile => $scoreboard_file,
-    SystemLog => $log_file,
+    PidFile => $setup->{pid_file},
+    ScoreboardFile => $setup->{scoreboard_file},
+    SystemLog => $setup->{log_file},
+    TraceLog => $setup->{log_file},
+    Trace => 'exec:20 jot:20',
 
-    AuthUserFile => $auth_user_file,
-    AuthGroupFile => $auth_group_file,
+    AuthUserFile => $setup->{auth_user_file},
+    AuthGroupFile => $setup->{auth_group_file},
     AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
       'mod_exec.c' => {
         ExecEngine => 'on',
-        ExecLog => $log_file,
+        ExecLog => $setup->{log_file},
         ExecTimeout => 1,
         ExecOnConnect => "/bin/bash -c \"echo %a > $connect_file\"",
       },
@@ -178,7 +154,8 @@ sub exec_on_connect {
     },
   };
 
-  my ($port, $config_user, $config_group) = config_write($config_file, $config);
+  my ($port, $config_user, $config_group) = config_write($setup->{config_file},
+    $config);
 
   # Open pipes, for use between the parent and child processes.  Specifically,
   # the child will indicate when it's done with its test by writing a message
@@ -195,11 +172,13 @@ sub exec_on_connect {
   defined(my $pid = fork()) or die("Can't fork: $!");
   if ($pid) {
     eval {
-      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
-      $client->login($user, $passwd);
+      # Allow for server startup
+      sleep(2);
+
+      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port, 0, 5);
+      $client->login($setup->{user}, $setup->{passwd});
       $client->quit();
     };
-
     if ($@) {
       $ex = $@;
     }
@@ -208,7 +187,7 @@ sub exec_on_connect {
     $wfh->flush();
 
   } else {
-    eval { server_wait($config_file, $rfh) };
+    eval { server_wait($setup->{config_file}, $rfh) };
     if ($@) {
       warn($@);
       exit 1;
@@ -218,8 +197,7 @@ sub exec_on_connect {
   }
 
   # Stop server
-  server_stop($pid_file);
-
+  server_stop($setup->{pid_file});
   $self->assert_child_ok($pid);
 
   eval {
@@ -244,17 +222,10 @@ sub exec_on_connect {
     }
   };
   if ($@) {
-    $ex = $@;
+    $ex = $@ unless $ex;;
   }
 
-  if ($ex) {
-    test_append_logfile($log_file, $ex);
-    unlink($log_file);
-
-    die($ex);
-  }
-
-  unlink($log_file);
+  test_cleanup($setup->{log_file}, $ex);
 }
 
 sub exec_on_cmd {
@@ -335,7 +306,7 @@ sub exec_on_cmd {
   defined(my $pid = fork()) or die("Can't fork: $!");
   if ($pid) {
     eval {
-      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
+      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port, 0, 5);
       $client->login($user, $passwd);
       $client->list();
     };
@@ -390,54 +361,25 @@ sub exec_on_cmd {
 sub exec_on_cmd_var_total_bytes_xfer {
   my $self = shift;
   my $tmpdir = $self->{tmpdir};
-
-  my $config_file = "$tmpdir/exec.conf";
-  my $pid_file = File::Spec->rel2abs("$tmpdir/exec.pid");
-  my $scoreboard_file = File::Spec->rel2abs("$tmpdir/exec.scoreboard");
-
-  my $log_file = test_get_logfile();
-
-  my $auth_user_file = File::Spec->rel2abs("$tmpdir/exec.passwd");
-  my $auth_group_file = File::Spec->rel2abs("$tmpdir/exec.group");
-
-  my $user = 'proftpd';
-  my $passwd = 'test';
-  my $group = 'ftpd';
-  my $home_dir = File::Spec->rel2abs($tmpdir);
-  my $uid = 500;
-  my $gid = 500;
-  
-  # Make sure that, if we're running as root, that the home directory has
-  # permissions/privs set for the account we create
-  if ($< == 0) {
-    unless (chmod(0755, $home_dir)) {
-      die("Can't set perms on $home_dir to 0755: $!");
-    }
-
-    unless (chown($uid, $gid, $home_dir)) {
-      die("Can't set owner of $home_dir to $uid/$gid: $!");
-    }
-  }
-
-  auth_user_write($auth_user_file, $user, $passwd, $uid, $gid, $home_dir,
-    '/bin/bash');
-  auth_group_write($auth_group_file, $group, $gid, $user);
+  my $setup = test_setup($tmpdir, 'exec');
 
   my $cmd_file = File::Spec->rel2abs("$tmpdir/cmd.txt");
 
   my $config = {
-    PidFile => $pid_file,
-    ScoreboardFile => $scoreboard_file,
-    SystemLog => $log_file,
+    PidFile => $setup->{pid_file},
+    ScoreboardFile => $setup->{scoreboard_file},
+    SystemLog => $setup->{log_file},
+    TraceLog => $setup->{log_file},
+    Trace => 'exec:20 jot:20 var:20',
 
-    AuthUserFile => $auth_user_file,
-    AuthGroupFile => $auth_group_file,
+    AuthUserFile => $setup->{auth_user_file},
+    AuthGroupFile => $setup->{auth_group_file},
     AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
       'mod_exec.c' => {
         ExecEngine => 'on',
-        ExecLog => $log_file,
+        ExecLog => $setup->{log_file},
         ExecTimeout => 1,
         ExecOnCommand => "LIST,NLST /bin/bash -c \"echo %{total_bytes_xfer} > $cmd_file\"",
       },
@@ -448,7 +390,8 @@ sub exec_on_cmd_var_total_bytes_xfer {
     },
   };
 
-  my ($port, $config_user, $config_group) = config_write($config_file, $config);
+  my ($port, $config_user, $config_group) = config_write($setup->{config_file},
+    $config);
 
   # Open pipes, for use between the parent and child processes.  Specifically,
   # the child will indicate when it's done with its test by writing a message
@@ -465,11 +408,14 @@ sub exec_on_cmd_var_total_bytes_xfer {
   defined(my $pid = fork()) or die("Can't fork: $!");
   if ($pid) {
     eval {
-      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
-      $client->login($user, $passwd);
-      $client->list();
-    };
+      # Allow for server startup
+      sleep(2);
 
+      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port, 0, 5);
+      $client->login($setup->{user}, $setup->{passwd});
+      $client->list();
+      $client->quit();
+    };
     if ($@) {
       $ex = $@;
     }
@@ -478,7 +424,7 @@ sub exec_on_cmd_var_total_bytes_xfer {
     $wfh->flush();
 
   } else {
-    eval { server_wait($config_file, $rfh) };
+    eval { server_wait($setup->{config_file}, $rfh) };
     if ($@) {
       warn($@);
       exit 1;
@@ -488,70 +434,36 @@ sub exec_on_cmd_var_total_bytes_xfer {
   }
 
   # Stop server
-  server_stop($pid_file);
-
+  server_stop($setup->{pid_file});
   $self->assert_child_ok($pid);
 
-  if ($ex) {
-    test_append_logfile($log_file, $ex);
-    unlink($log_file);
+  eval {
+    if (open(my $fh, "< $cmd_file")) {
+      my $line = <$fh>;
+      close($fh);
 
-    die($ex);
+      chomp($line);
+
+      my $expected = '\d+';
+
+      $self->assert(qr/$expected/, $line,
+        test_msg("Expected '$expected', got '$line'"));
+
+    } else {
+      die("Can't read $cmd_file: $!");
+    }
+  };
+  if ($@) {
+    $ex = $@ unless $ex;
   }
 
-  if (open(my $fh, "< $cmd_file")) {
-    my $line = <$fh>;
-    close($fh);
-
-    chomp($line);
-
-    my $expected = '\d+';
-
-    $self->assert(qr/$expected/, $line,
-      test_msg("Expected '$expected', got '$line'"));
-
-  } else {
-    die("Can't read $cmd_file: $!");
-  }
-
-  unlink($log_file);
+  test_cleanup($setup->{log_file}, $ex);
 }
 
 sub exec_on_cmd_var_bytes_xfer {
   my $self = shift;
   my $tmpdir = $self->{tmpdir};
-
-  my $config_file = "$tmpdir/exec.conf";
-  my $pid_file = File::Spec->rel2abs("$tmpdir/exec.pid");
-  my $scoreboard_file = File::Spec->rel2abs("$tmpdir/exec.scoreboard");
-
-  my $log_file = test_get_logfile();
-
-  my $auth_user_file = File::Spec->rel2abs("$tmpdir/exec.passwd");
-  my $auth_group_file = File::Spec->rel2abs("$tmpdir/exec.group");
-
-  my $user = 'proftpd';
-  my $passwd = 'test';
-  my $group = 'ftpd';
-  my $home_dir = File::Spec->rel2abs($tmpdir);
-  my $uid = 500;
-  my $gid = 500;
-  
-  # Make sure that, if we're running as root, that the home directory has
-  # permissions/privs set for the account we create
-  if ($< == 0) {
-    unless (chmod(0755, $home_dir)) {
-      die("Can't set perms on $home_dir to 0755: $!");
-    }
-
-    unless (chown($uid, $gid, $home_dir)) {
-      die("Can't set owner of $home_dir to $uid/$gid: $!");
-    }
-  }
-
-  auth_user_write($auth_user_file, $user, $passwd, $uid, $gid, $home_dir,
-    '/bin/bash');
-  auth_group_write($auth_group_file, $group, $gid, $user);
+  my $setup = test_setup($tmpdir, 'exec');
 
   my $test_file = File::Spec->rel2abs("$tmpdir/test.txt");
   if (open(my $fh, "> $test_file")) {
@@ -568,18 +480,20 @@ sub exec_on_cmd_var_bytes_xfer {
   my $cmd_file = File::Spec->rel2abs("$tmpdir/cmd.txt");
 
   my $config = {
-    PidFile => $pid_file,
-    ScoreboardFile => $scoreboard_file,
-    SystemLog => $log_file,
+    PidFile => $setup->{pid_file},
+    ScoreboardFile => $setup->{scoreboard_file},
+    SystemLog => $setup->{log_file},
+    TraceLog => $setup->{log_file},
+    Trace => 'exec:20 jot:20 var:20',
 
-    AuthUserFile => $auth_user_file,
-    AuthGroupFile => $auth_group_file,
+    AuthUserFile => $setup->{auth_user_file},
+    AuthGroupFile => $setup->{auth_group_file},
     AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
       'mod_exec.c' => {
         ExecEngine => 'on',
-        ExecLog => $log_file,
+        ExecLog => $setup->{log_file},
         ExecTimeout => 1,
         ExecOnCommand => "RETR /bin/bash -c \"echo %{bytes_xfer} > $cmd_file\"",
       },
@@ -590,7 +504,8 @@ sub exec_on_cmd_var_bytes_xfer {
     },
   };
 
-  my ($port, $config_user, $config_group) = config_write($config_file, $config);
+  my ($port, $config_user, $config_group) = config_write($setup->{config_file},
+    $config);
 
   # Open pipes, for use between the parent and child processes.  Specifically,
   # the child will indicate when it's done with its test by writing a message
@@ -607,9 +522,12 @@ sub exec_on_cmd_var_bytes_xfer {
   defined(my $pid = fork()) or die("Can't fork: $!");
   if ($pid) {
     eval {
-      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
-      $client->login($user, $passwd);
-      
+      # Allow for server startup
+      sleep(2);
+
+      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port, 0, 5);
+      $client->login($setup->{user}, $setup->{passwd});
+
       my $conn = $client->retr_raw('test.txt');
       unless ($conn) {
         die("RETR test.txt failed: " . $client->response_code() . " " .
@@ -619,11 +537,10 @@ sub exec_on_cmd_var_bytes_xfer {
       my $buf;
       while ($conn->read($buf, 8192, 30)) {
       }
-      $conn->close();
+      eval { $conn->close() };
 
       $client->quit();
     };
-
     if ($@) {
       $ex = $@;
     }
@@ -632,7 +549,7 @@ sub exec_on_cmd_var_bytes_xfer {
     $wfh->flush();
 
   } else {
-    eval { server_wait($config_file, $rfh) };
+    eval { server_wait($setup->{config_file}, $rfh) };
     if ($@) {
       warn($@);
       exit 1;
@@ -642,86 +559,54 @@ sub exec_on_cmd_var_bytes_xfer {
   }
 
   # Stop server
-  server_stop($pid_file);
-
+  server_stop($setup->{pid_file});
   $self->assert_child_ok($pid);
 
-  if ($ex) {
-    test_append_logfile($log_file, $ex);
-    unlink($log_file);
+  eval {
+    if (open(my $fh, "< $cmd_file")) {
+      my $line = <$fh>;
+      close($fh);
 
-    die($ex);
+      chomp($line);
+
+      my $expected = '\d+';
+
+      $self->assert(qr/$expected/, $line,
+        test_msg("Expected '$expected', got '$line'"));
+
+    } else {
+      die("Can't read $cmd_file: $!");
+    }
+  };
+  if ($@) {
+    $ex = $@ unless $ex;
   }
 
-  if (open(my $fh, "< $cmd_file")) {
-    my $line = <$fh>;
-    close($fh);
-
-    chomp($line);
-
-    my $expected = '\d+';
-
-    $self->assert(qr/$expected/, $line,
-      test_msg("Expected '$expected', got '$line'"));
-
-  } else {
-    die("Can't read $cmd_file: $!");
-  }
-
-  unlink($log_file);
+  test_cleanup($setup->{log_file}, $ex);
 }
 
 sub exec_on_exit {
   my $self = shift;
   my $tmpdir = $self->{tmpdir};
-
-  my $config_file = "$tmpdir/exec.conf";
-  my $pid_file = File::Spec->rel2abs("$tmpdir/exec.pid");
-  my $scoreboard_file = File::Spec->rel2abs("$tmpdir/exec.scoreboard");
-
-  my $log_file = test_get_logfile();
-
-  my $auth_user_file = File::Spec->rel2abs("$tmpdir/exec.passwd");
-  my $auth_group_file = File::Spec->rel2abs("$tmpdir/exec.group");
-
-  my $user = 'proftpd';
-  my $passwd = 'test';
-  my $group = 'ftpd';
-  my $home_dir = File::Spec->rel2abs($tmpdir);
-  my $uid = 500;
-  my $gid = 500;
-  
-  # Make sure that, if we're running as root, that the home directory has
-  # permissions/privs set for the account we create
-  if ($< == 0) {
-    unless (chmod(0755, $home_dir)) {
-      die("Can't set perms on $home_dir to 0755: $!");
-    }
-
-    unless (chown($uid, $gid, $home_dir)) {
-      die("Can't set owner of $home_dir to $uid/$gid: $!");
-    }
-  }
-
-  auth_user_write($auth_user_file, $user, $passwd, $uid, $gid, $home_dir,
-    '/bin/bash');
-  auth_group_write($auth_group_file, $group, $gid, $user);
+  my $setup = test_setup($tmpdir, 'exec');
 
   my $exit_file = File::Spec->rel2abs("$tmpdir/exit.txt");
 
   my $config = {
-    PidFile => $pid_file,
-    ScoreboardFile => $scoreboard_file,
-    SystemLog => $log_file,
+    PidFile => $setup->{pid_file},
+    ScoreboardFile => $setup->{scoreboard_file},
+    SystemLog => $setup->{log_file},
+    TraceLog => $setup->{log_file},
+    Trace => 'exec:20 jot:20 var:20',
 
-    AuthUserFile => $auth_user_file,
-    AuthGroupFile => $auth_group_file,
+    AuthUserFile => $setup->{auth_user_file},
+    AuthGroupFile => $setup->{auth_group_file},
     AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
       'mod_exec.c' => {
         ExecEngine => 'on',
-        ExecLog => $log_file,
+        ExecLog => $setup->{log_file},
         ExecTimeout => 1,
         ExecOnExit => "/bin/bash -c \"echo %a > $exit_file\"",
       },
@@ -732,7 +617,8 @@ sub exec_on_exit {
     },
   };
 
-  my ($port, $config_user, $config_group) = config_write($config_file, $config);
+  my ($port, $config_user, $config_group) = config_write($setup->{config_file},
+    $config);
 
   # Open pipes, for use between the parent and child processes.  Specifically,
   # the child will indicate when it's done with its test by writing a message
@@ -749,11 +635,13 @@ sub exec_on_exit {
   defined(my $pid = fork()) or die("Can't fork: $!");
   if ($pid) {
     eval {
-      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
-      $client->login($user, $passwd);
+      # Allow for server startup
+      sleep(1);
+
+      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port, 0, 5);
+      $client->login($setup->{user}, $setup->{passwd});
       $client->quit();
     };
-
     if ($@) {
       $ex = $@;
     }
@@ -762,7 +650,7 @@ sub exec_on_exit {
     $wfh->flush();
 
   } else {
-    eval { server_wait($config_file, $rfh) };
+    eval { server_wait($setup->{config_file}, $rfh) };
     if ($@) {
       warn($@);
       exit 1;
@@ -772,33 +660,30 @@ sub exec_on_exit {
   }
 
   # Stop server
-  server_stop($pid_file);
-
+  server_stop($setup->{pid_file});
   $self->assert_child_ok($pid);
 
-  if ($ex) {
-    test_append_logfile($log_file, $ex);
-    unlink($log_file);
+  eval {
+    if (open(my $fh, "< $exit_file")) {
+      my $line = <$fh>;
+      close($fh);
 
-    die($ex);
+      chomp($line);
+
+      my $expected = '127.0.0.1';
+
+      $self->assert($expected eq $line,
+        test_msg("Expected '$expected', got '$line'"));
+
+    } else {
+      die("Can't read $exit_file: $!");
+    }
+  };
+  if ($@) {
+    $ex = $@ unless $ex;
   }
 
-  if (open(my $fh, "< $exit_file")) {
-    my $line = <$fh>;
-    close($fh);
-
-    chomp($line);
-
-    my $expected = '127.0.0.1';
-
-    $self->assert($expected eq $line,
-      test_msg("Expected '$expected', got '$line'"));
-
-  } else {
-    die("Can't read $exit_file: $!");
-  }
-
-  unlink($log_file);
+  test_cleanup($setup->{log_file}, $ex);
 }
 
 sub exec_on_error {
@@ -886,7 +771,7 @@ sub exec_on_error {
   defined(my $pid = fork()) or die("Can't fork: $!");
   if ($pid) {
     eval {
-      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
+      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port, 0, 5);
       $client->login($user, $passwd);
 
       my $conn = $client->stor_raw('foo.txt');
@@ -1161,7 +1046,7 @@ EOS
   defined(my $pid = fork()) or die("Can't fork: $!");
   if ($pid) {
     eval {
-      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
+      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port, 0, 5);
     };
 
     if ($@) {
@@ -1317,7 +1202,7 @@ EOS
   defined(my $pid = fork()) or die("Can't fork: $!");
   if ($pid) {
     eval {
-      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
+      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port, 0, 5);
     };
 
     if ($@) {
@@ -1380,38 +1265,7 @@ EOS
 sub exec_opt_send_stdout {
   my $self = shift;
   my $tmpdir = $self->{tmpdir};
-
-  my $config_file = "$tmpdir/exec.conf";
-  my $pid_file = File::Spec->rel2abs("$tmpdir/exec.pid");
-  my $scoreboard_file = File::Spec->rel2abs("$tmpdir/exec.scoreboard");
-
-  my $log_file = test_get_logfile();
-
-  my $auth_user_file = File::Spec->rel2abs("$tmpdir/exec.passwd");
-  my $auth_group_file = File::Spec->rel2abs("$tmpdir/exec.group");
-
-  my $user = 'proftpd';
-  my $passwd = 'test';
-  my $group = 'ftpd';
-  my $home_dir = File::Spec->rel2abs($tmpdir);
-  my $uid = 500;
-  my $gid = 500;
-  
-  # Make sure that, if we're running as root, that the home directory has
-  # permissions/privs set for the account we create
-  if ($< == 0) {
-    unless (chmod(0755, $home_dir)) {
-      die("Can't set perms on $home_dir to 0755: $!");
-    }
-
-    unless (chown($uid, $gid, $home_dir)) {
-      die("Can't set owner of $home_dir to $uid/$gid: $!");
-    }
-  }
-
-  auth_user_write($auth_user_file, $user, $passwd, $uid, $gid, $home_dir,
-    '/bin/bash');
-  auth_group_write($auth_group_file, $group, $gid, $user);
+  my $setup = test_setup($tmpdir, 'exec');
 
   my $script = File::Spec->rel2abs("$tmpdir/exec.pl");
   if (open(my $fh, "> $script")) {
@@ -1433,18 +1287,20 @@ EOS
   }
 
   my $config = {
-    PidFile => $pid_file,
-    ScoreboardFile => $scoreboard_file,
-    SystemLog => $log_file,
+    PidFile => $setup->{pid_file},
+    ScoreboardFile => $setup->{scoreboard_file},
+    SystemLog => $setup->{log_file},
+    TraceLog => $setup->{log_file},
+    Trace => 'exec:20 jot:20',
 
-    AuthUserFile => $auth_user_file,
-    AuthGroupFile => $auth_group_file,
+    AuthUserFile => $setup->{auth_user_file},
+    AuthGroupFile => $setup->{auth_group_file},
     AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
       'mod_exec.c' => {
         ExecEngine => 'on',
-        ExecLog => $log_file,
+        ExecLog => $setup->{log_file},
         ExecTimeout => 1,
         ExecOnConnect => "$script addr=%a",
         ExecOptions => 'sendStdout',
@@ -1456,7 +1312,8 @@ EOS
     },
   };
 
-  my ($port, $config_user, $config_group) = config_write($config_file, $config);
+  my ($port, $config_user, $config_group) = config_write($setup->{config_file},
+    $config);
 
   # Open pipes, for use between the parent and child processes.  Specifically,
   # the child will indicate when it's done with its test by writing a message
@@ -1473,22 +1330,23 @@ EOS
   defined(my $pid = fork()) or die("Can't fork: $!");
   if ($pid) {
     eval {
-      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
+      # Allow for server startup
+      sleep(2);
+
+      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port, 0, 5);
 
       my $resp_code = $client->response_code();
       my $resp_msg = $client->response_msg();
+      $client->quit();
 
-      my $expected;
-
-      $expected = 220;
+      my $expected = 220;
       $self->assert($expected == $resp_code,
-        test_msg("Expected $expected, got $resp_code"));
+        test_msg("Expected response code $expected, got $resp_code"));
 
       $expected = "addr=127.0.0.1";
       $self->assert($expected eq $resp_msg,
-        test_msg("Expected '$expected', got '$resp_msg'"));
+        test_msg("Expected response message '$expected', got '$resp_msg'"));
     };
-
     if ($@) {
       $ex = $@;
     }
@@ -1497,7 +1355,7 @@ EOS
     $wfh->flush();
 
   } else {
-    eval { server_wait($config_file, $rfh) };
+    eval { server_wait($setup->{config_file}, $rfh) };
     if ($@) {
       warn($@);
       exit 1;
@@ -1507,55 +1365,16 @@ EOS
   }
 
   # Stop server
-  server_stop($pid_file);
-
+  server_stop($setup->{pid_file});
   $self->assert_child_ok($pid);
 
-  if ($ex) {
-    test_append_logfile($log_file, $ex);
-    unlink($log_file);
-
-    die($ex);
-  }
-
-  unlink($log_file);
+  test_cleanup($setup->{log_file}, $ex);
 }
 
 sub exec_opt_use_stdin {
   my $self = shift;
   my $tmpdir = $self->{tmpdir};
-
-  my $config_file = "$tmpdir/exec.conf";
-  my $pid_file = File::Spec->rel2abs("$tmpdir/exec.pid");
-  my $scoreboard_file = File::Spec->rel2abs("$tmpdir/exec.scoreboard");
-
-  my $log_file = test_get_logfile();
-
-  my $auth_user_file = File::Spec->rel2abs("$tmpdir/exec.passwd");
-  my $auth_group_file = File::Spec->rel2abs("$tmpdir/exec.group");
-
-  my $user = 'proftpd';
-  my $passwd = 'test';
-  my $group = 'ftpd';
-  my $home_dir = File::Spec->rel2abs($tmpdir);
-  my $uid = 500;
-  my $gid = 500;
-  
-  # Make sure that, if we're running as root, that the home directory has
-  # permissions/privs set for the account we create
-  if ($< == 0) {
-    unless (chmod(0755, $home_dir)) {
-      die("Can't set perms on $home_dir to 0755: $!");
-    }
-
-    unless (chown($uid, $gid, $home_dir)) {
-      die("Can't set owner of $home_dir to $uid/$gid: $!");
-    }
-  }
-
-  auth_user_write($auth_user_file, $user, $passwd, $uid, $gid, $home_dir,
-    '/bin/bash');
-  auth_group_write($auth_group_file, $group, $gid, $user);
+  my $setup = test_setup($tmpdir, 'exec');
 
   my $script = File::Spec->rel2abs("$tmpdir/exec.pl");
   if (open(my $fh, "> $script")) {
@@ -1586,18 +1405,20 @@ EOS
   }
 
   my $config = {
-    PidFile => $pid_file,
-    ScoreboardFile => $scoreboard_file,
-    SystemLog => $log_file,
+    PidFile => $setup->{pid_file},
+    ScoreboardFile => $setup->{scoreboard_file},
+    SystemLog => $setup->{log_file},
+    TraceLog => $setup->{log_file},
+    Trace => 'exec:20 jot:20',
 
-    AuthUserFile => $auth_user_file,
-    AuthGroupFile => $auth_group_file,
+    AuthUserFile => $setup->{auth_user_file},
+    AuthGroupFile => $setup->{auth_group_file},
     AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
       'mod_exec.c' => {
         ExecEngine => 'on',
-        ExecLog => $log_file,
+        ExecLog => $setup->{log_file},
         ExecTimeout => 1,
         ExecBeforeCommand => "PASS $script 1 2 3 addr=%a user=%U",
         ExecOptions => 'logStdout useStdin',
@@ -1609,7 +1430,8 @@ EOS
     },
   };
 
-  my ($port, $config_user, $config_group) = config_write($config_file, $config);
+  my ($port, $config_user, $config_group) = config_write($setup->{config_file},
+    $config);
 
   # Open pipes, for use between the parent and child processes.  Specifically,
   # the child will indicate when it's done with its test by writing a message
@@ -1626,11 +1448,13 @@ EOS
   defined(my $pid = fork()) or die("Can't fork: $!");
   if ($pid) {
     eval {
-      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
-      $client->login($user, $passwd);
+      # Allow for server startup
+      sleep(2);
+
+      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port, 0, 5);
+      $client->login($setup->{user}, $setup->{passwd});
       $client->quit();
     };
-
     if ($@) {
       $ex = $@;
     }
@@ -1639,7 +1463,7 @@ EOS
     $wfh->flush();
 
   } else {
-    eval { server_wait($config_file, $rfh) };
+    eval { server_wait($setup->{config_file}, $rfh) };
     if ($@) {
       warn($@);
       exit 1;
@@ -1649,72 +1473,35 @@ EOS
   }
 
   # Stop server
-  server_stop($pid_file);
-
+  server_stop($setup->{pid_file});
   $self->assert_child_ok($pid);
 
-  if ($ex) {
-    test_append_logfile($log_file, $ex);
-    unlink($log_file);
-
-    die($ex);
-  }
-
-  unlink($log_file);
+  test_cleanup($setup->{log_file}, $ex);
 }
 
 sub exec_before_cmd_var_f_bug3432 {
   my $self = shift;
   my $tmpdir = $self->{tmpdir};
-
-  my $config_file = "$tmpdir/exec.conf";
-  my $pid_file = File::Spec->rel2abs("$tmpdir/exec.pid");
-  my $scoreboard_file = File::Spec->rel2abs("$tmpdir/exec.scoreboard");
-
-  my $log_file = test_get_logfile();
-
-  my $auth_user_file = File::Spec->rel2abs("$tmpdir/exec.passwd");
-  my $auth_group_file = File::Spec->rel2abs("$tmpdir/exec.group");
-
-  my $user = 'proftpd';
-  my $passwd = 'test';
-  my $group = 'ftpd';
-  my $home_dir = File::Spec->rel2abs($tmpdir);
-  my $uid = 500;
-  my $gid = 500;
-  
-  # Make sure that, if we're running as root, that the home directory has
-  # permissions/privs set for the account we create
-  if ($< == 0) {
-    unless (chmod(0755, $home_dir)) {
-      die("Can't set perms on $home_dir to 0755: $!");
-    }
-
-    unless (chown($uid, $gid, $home_dir)) {
-      die("Can't set owner of $home_dir to $uid/$gid: $!");
-    }
-  }
-
-  auth_user_write($auth_user_file, $user, $passwd, $uid, $gid, $home_dir,
-    '/bin/bash');
-  auth_group_write($auth_group_file, $group, $gid, $user);
+  my $setup = test_setup($tmpdir, 'exec');
 
   my $cmd_file = File::Spec->rel2abs("$tmpdir/cmd.txt");
   my $test_file = File::Spec->rel2abs("$tmpdir/test.txt");
 
   my $config = {
-    PidFile => $pid_file,
-    ScoreboardFile => $scoreboard_file,
-    SystemLog => $log_file,
+    PidFile => $setup->{pid_file},
+    ScoreboardFile => $setup->{scoreboard_file},
+    SystemLog => $setup->{log_file},
+    TraceLog => $setup->{log_file},
+    Trace => 'exec:20 jot:20',
 
-    AuthUserFile => $auth_user_file,
-    AuthGroupFile => $auth_group_file,
+    AuthUserFile => $setup->{auth_user_file},
+    AuthGroupFile => $setup->{auth_group_file},
     AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
       'mod_exec.c' => {
         ExecEngine => 'on',
-        ExecLog => $log_file,
+        ExecLog => $setup->{log_file},
         ExecTimeout => 1,
         ExecBeforeCommand => "STOR /bin/bash -c \"echo %f > $cmd_file\"",
       },
@@ -1725,7 +1512,8 @@ sub exec_before_cmd_var_f_bug3432 {
     },
   };
 
-  my ($port, $config_user, $config_group) = config_write($config_file, $config);
+  my ($port, $config_user, $config_group) = config_write($setup->{config_file},
+    $config);
 
   # Open pipes, for use between the parent and child processes.  Specifically,
   # the child will indicate when it's done with its test by writing a message
@@ -1742,8 +1530,11 @@ sub exec_before_cmd_var_f_bug3432 {
   defined(my $pid = fork()) or die("Can't fork: $!");
   if ($pid) {
     eval {
-      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
-      $client->login($user, $passwd);
+      # Allow for server startup
+      sleep(2);
+
+      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port, 0, 5);
+      $client->login($setup->{user}, $setup->{passwd});
 
       my $conn = $client->stor_raw('test.txt');
       unless ($conn) {
@@ -1751,10 +1542,9 @@ sub exec_before_cmd_var_f_bug3432 {
           $client->response_msg());
       }
 
-      $conn->close();
+      eval { $conn->close() };
       $client->quit();
     };
-
     if ($@) {
       $ex = $@;
     }
@@ -1763,7 +1553,7 @@ sub exec_before_cmd_var_f_bug3432 {
     $wfh->flush();
 
   } else {
-    eval { server_wait($config_file, $rfh) };
+    eval { server_wait($setup->{config_file}, $rfh) };
     if ($@) {
       warn($@);
       exit 1;
@@ -1773,85 +1563,56 @@ sub exec_before_cmd_var_f_bug3432 {
   }
 
   # Stop server
-  server_stop($pid_file);
-
+  server_stop($setup->{pid_file});
   $self->assert_child_ok($pid);
 
-  if ($ex) {
-    test_append_logfile($log_file, $ex);
-    unlink($log_file);
+  eval {
+    if (open(my $fh, "< $cmd_file")) {
+      my $line = <$fh>;
+      close($fh);
 
-    die($ex);
+      chomp($line);
+
+      if ($^O eq 'darwin') {
+        # MacOSX-ism
+        $test_file = '/private' . $test_file;
+      }
+
+      $self->assert($line eq $test_file,
+        test_msg("Expected '$test_file', got '$line'"));
+
+    } else {
+      die("Can't read $cmd_file: $!");
+    }
+  };
+  if ($@) {
+    $ex = $@ unless $ex;
   }
 
-  if (open(my $fh, "< $cmd_file")) {
-    my $line = <$fh>;
-    close($fh);
-
-    chomp($line);
-
-    $self->assert($line eq $test_file,
-      test_msg("Expected '$test_file', got '$line'"));
-
-  } else {
-    die("Can't read $cmd_file: $!");
-  }
-
-  unlink($log_file);
+  test_cleanup($setup->{log_file}, $ex);
 }
 
 sub exec_before_cmd_var_F_bug3432 {
   my $self = shift;
   my $tmpdir = $self->{tmpdir};
-
-  my $config_file = "$tmpdir/exec.conf";
-  my $pid_file = File::Spec->rel2abs("$tmpdir/exec.pid");
-  my $scoreboard_file = File::Spec->rel2abs("$tmpdir/exec.scoreboard");
-
-  my $log_file = test_get_logfile();
-
-  my $auth_user_file = File::Spec->rel2abs("$tmpdir/exec.passwd");
-  my $auth_group_file = File::Spec->rel2abs("$tmpdir/exec.group");
-
-  my $user = 'proftpd';
-  my $passwd = 'test';
-  my $group = 'ftpd';
-  my $home_dir = File::Spec->rel2abs($tmpdir);
-  my $uid = 500;
-  my $gid = 500;
-  
-  # Make sure that, if we're running as root, that the home directory has
-  # permissions/privs set for the account we create
-  if ($< == 0) {
-    unless (chmod(0755, $home_dir)) {
-      die("Can't set perms on $home_dir to 0755: $!");
-    }
-
-    unless (chown($uid, $gid, $home_dir)) {
-      die("Can't set owner of $home_dir to $uid/$gid: $!");
-    }
-  }
-
-  auth_user_write($auth_user_file, $user, $passwd, $uid, $gid, $home_dir,
-    '/bin/bash');
-  auth_group_write($auth_group_file, $group, $gid, $user);
+  my $setup  = test_setup($tmpdir, 'exec');
 
   my $cmd_file = File::Spec->rel2abs("$tmpdir/cmd.txt");
   my $test_file = File::Spec->rel2abs("$tmpdir/test.txt");
 
   my $config = {
-    PidFile => $pid_file,
-    ScoreboardFile => $scoreboard_file,
-    SystemLog => $log_file,
+    PidFile => $setup->{pid_file},
+    ScoreboardFile => $setup->{scoreboard_file},
+    SystemLog => $setup->{log_file},
 
-    AuthUserFile => $auth_user_file,
-    AuthGroupFile => $auth_group_file,
+    AuthUserFile => $setup->{auth_user_file},
+    AuthGroupFile => $setup->{auth_group_file},
     AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
       'mod_exec.c' => {
         ExecEngine => 'on',
-        ExecLog => $log_file,
+        ExecLog => $setup->{log_file},
         ExecTimeout => 1,
         ExecBeforeCommand => "STOR /bin/bash -c \"echo %F > $cmd_file\"",
       },
@@ -1862,7 +1623,8 @@ sub exec_before_cmd_var_F_bug3432 {
     },
   };
 
-  my ($port, $config_user, $config_group) = config_write($config_file, $config);
+  my ($port, $config_user, $config_group) = config_write($setup->{config_file},
+    $config);
 
   # Open pipes, for use between the parent and child processes.  Specifically,
   # the child will indicate when it's done with its test by writing a message
@@ -1879,8 +1641,11 @@ sub exec_before_cmd_var_F_bug3432 {
   defined(my $pid = fork()) or die("Can't fork: $!");
   if ($pid) {
     eval {
-      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
-      $client->login($user, $passwd);
+      # Allow for server startup
+      sleep(2);
+
+      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port, 0, 5);
+      $client->login($setup->{user}, $setup->{passwd});
 
       my $conn = $client->stor_raw('test.txt');
       unless ($conn) {
@@ -1888,10 +1653,9 @@ sub exec_before_cmd_var_F_bug3432 {
           $client->response_msg());
       }
 
-      $conn->close();
+      eval { $conn->close() };
       $client->quit();
     };
-
     if ($@) {
       $ex = $@;
     }
@@ -1900,7 +1664,7 @@ sub exec_before_cmd_var_F_bug3432 {
     $wfh->flush();
 
   } else {
-    eval { server_wait($config_file, $rfh) };
+    eval { server_wait($setup->{config_file}, $rfh) };
     if ($@) {
       warn($@);
       exit 1;
@@ -1910,31 +1674,33 @@ sub exec_before_cmd_var_F_bug3432 {
   }
 
   # Stop server
-  server_stop($pid_file);
-
+  server_stop($setup->{pid_file});
   $self->assert_child_ok($pid);
 
-  if ($ex) {
-    test_append_logfile($log_file, $ex);
-    unlink($log_file);
+  eval {
+    if (open(my $fh, "< $cmd_file")) {
+      my $line = <$fh>;
+      close($fh);
 
-    die($ex);
+      chomp($line);
+
+      if ($^O eq 'darwin') {
+        # MacOSX-ism
+        $test_file = '/private' . $test_file;
+      }
+
+      $self->assert($line eq $test_file,
+        test_msg("Expected '$test_file', got '$line'"));
+
+    } else {
+      die("Can't read $cmd_file: $!");
+    }
+  };
+  if ($@) {
+    $ex = $@ unless $ex;
   }
 
-  if (open(my $fh, "< $cmd_file")) {
-    my $line = <$fh>;
-    close($fh);
-
-    chomp($line);
-
-    $self->assert($line eq $test_file,
-      test_msg("Expected '$test_file', got '$line'"));
-
-  } else {
-    die("Can't read $cmd_file: $!");
-  }
-
-  unlink($log_file);
+  test_cleanup($setup->{log_file}, $ex);
 }
 
 sub exec_on_cmd_var_A_bug3479 {
@@ -2028,7 +1794,7 @@ sub exec_on_cmd_var_A_bug3479 {
   defined(my $pid = fork()) or die("Can't fork: $!");
   if ($pid) {
     eval {
-      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
+      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port, 0, 5);
       $client->login('anonymous', $passwd);
       $client->list();
       $client->quit();
@@ -2190,7 +1956,7 @@ EOS
   defined(my $pid = fork()) or die("Can't fork: $!");
   if ($pid) {
     eval {
-      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
+      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port, 0, 5);
       $client->login($user, $passwd);
     };
 
@@ -2360,7 +2126,7 @@ EOS
   defined(my $pid = fork()) or die("Can't fork: $!");
   if ($pid) {
     eval {
-      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
+      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port, 0, 5);
       $client->login($user, $passwd);
       $client->quit();
     };
@@ -2516,7 +2282,7 @@ EOC
   defined(my $pid = fork()) or die("Can't fork: $!");
   if ($pid) {
     eval {
-      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
+      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port, 0, 5);
       $client->login($user, $passwd);
       $client->cwd('test.d');
       $client->list();
@@ -2652,7 +2418,7 @@ EOC
   defined(my $pid = fork()) or die("Can't fork: $!");
   if ($pid) {
     eval {
-      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
+      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port, 0, 5);
       $client->login($user, $passwd);
       $client->list();
     };
@@ -2702,6 +2468,137 @@ EOC
   }
 
   unlink($log_file);
+}
+
+sub exec_on_cmd_var_note_issue1630 {
+  my $self = shift;
+  my $tmpdir = $self->{tmpdir};
+  my $setup = test_setup($tmpdir, 'exec');
+
+  my $cmd_file = File::Spec->rel2abs("$tmpdir/cmd.txt");
+  my $host = 'castaglia';
+
+  my $config = {
+    PidFile => $setup->{pid_file},
+    ScoreboardFile => $setup->{scoreboard_file},
+    SystemLog => $setup->{log_file},
+    TraceLog => $setup->{log_file},
+    Trace => 'exec:20 jot:20',
+
+    AuthUserFile => $setup->{auth_user_file},
+    AuthGroupFile => $setup->{auth_group_file},
+    AuthOrder => 'mod_auth_file.c',
+
+    DefaultServer => 'on',
+
+    IfModules => {
+      'mod_delay.c' => {
+        DelayEngine => 'off',
+      },
+    },
+  };
+
+  my ($port, $config_user, $config_group) = config_write($setup->{config_file},
+    $config);
+
+  if (open(my $fh, ">> $setup->{config_file}")) {
+    print $fh <<EOC;
+<VirtualHost 127.0.0.1>
+  ServerAlias $host
+  Port $port
+
+  AuthUserFile $setup->{auth_user_file}
+  AuthGroupFile $setup->{auth_group_file}
+  AuthOrder mod_auth_file.c
+
+  TransferLog none
+  WtmpLog off
+
+  <IfModule mod_delay.c>
+    DelayEngine off
+  </IfModule>
+
+  <IfModule mod_exec.c>
+    ExecEngine on
+    ExecLog $setup->{log_file}
+    ExecTimeout 1
+    ExecOnCommand PASS /bin/bash -c "echo %{note:mod_core.host} > $cmd_file"
+  </IfModule>
+</VirtualHost>
+EOC
+    unless (close($fh)) {
+      die("Can't write $setup->{config_file}: $!");
+    }
+
+  } else {
+    die("Can't open $setup->{config_file}: $!");
+  }
+
+  # Open pipes, for use between the parent and child processes.  Specifically,
+  # the child will indicate when it's done with its test by writing a message
+  # to the parent.
+  my ($rfh, $wfh);
+  unless (pipe($rfh, $wfh)) {
+    die("Can't open pipe: $!");
+  }
+
+  my $ex;
+
+  # Fork child
+  $self->handle_sigchld();
+  defined(my $pid = fork()) or die("Can't fork: $!");
+  if ($pid) {
+    eval {
+      # Allow for server startup
+      sleep(2);
+
+      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port, 0, 5);
+      $client->host($host);
+      $client->login($setup->{user}, $setup->{passwd});
+      $client->quit();
+    };
+    if ($@) {
+      $ex = $@;
+    }
+
+    $wfh->print("done\n");
+    $wfh->flush();
+
+  } else {
+    eval { server_wait($setup->{config_file}, $rfh) };
+    if ($@) {
+      warn($@);
+      exit 1;
+    }
+
+    exit 0;
+  }
+
+  # Stop server
+  server_stop($setup->{pid_file});
+  $self->assert_child_ok($pid);
+
+  eval {
+    if (open(my $fh, "< $cmd_file")) {
+      my $line = <$fh>;
+      close($fh);
+
+      chomp($line);
+
+      my $expected = 'castaglia';
+
+      $self->assert($expected eq $line,
+        test_msg("Expected '$expected', got '$line'"));
+
+    } else {
+      die("Can't read $cmd_file: $!");
+    }
+  };
+  if ($@) {
+    $ex = $@ unless $ex;
+  }
+
+  test_cleanup($setup->{log_file}, $ex);
 }
 
 1;

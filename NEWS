@@ -46,6 +46,7 @@
 - Issue 1623 - Reduce latency due to signal handling in the daemon process.
 - Issue 1626 - SSH key exchange requests should be classifed into the "SEC"
   ExtendedLog class.
+- Issue 1630 - Update mod_exec to use the Jot API for resolving variables.
 
 1.3.8 - Released 04-Dec-2022
 --------------------------------
