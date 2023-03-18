@@ -186,6 +186,9 @@
 /* Define to `int' if <sys/types.h> doesn't define.  */
 #undef pid_t
 
+/* Define if the listen(2) system call accepts backlog value of -1. */
+#undef LISTEN_NEGATIVE_BACKLOG
+
 /* Define as the return type of signal handlers (int or void).  */
 #undef RETSIGTYPE
 

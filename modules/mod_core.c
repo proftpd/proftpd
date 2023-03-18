@@ -1313,23 +1313,9 @@ MODRET set_tcpbacklog(cmd_rec *cmd) {
 
   backlog = atoi(cmd->argv[1]);
 
-  if (backlog < 1 ||
-      backlog > 255) {
-    CONF_ERROR(cmd, "parameter must be a number between 1 and 255");
+  if (backlog < 1) {
+    CONF_ERROR(cmd, "parameter must be greater than zero");
   }
-
-#if defined(SOMAXCONN) && \
-    SOMAXCONN < 255
-  if (backlog > SOMAXCONN) {
-    char str[32];
-
-    memset(str, '\0', sizeof(str));
-    pr_snprintf(str, sizeof(str)-1, "%u", (unsigned int) SOMAXCONN);
-
-    CONF_ERROR(cmd, pstrcat(cmd->tmp_pool,
-      "parameter must be less than SOMAXCONN (", str, ")", NULL));
-  }
-#endif
 
   tcpBackLog = backlog;
   return PR_HANDLED(cmd);
