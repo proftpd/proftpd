@@ -47,6 +47,7 @@
 - Issue 1626 - SSH key exchange requests should be classifed into the "SEC"
   ExtendedLog class.
 - Issue 1630 - Update mod_exec to use the Jot API for resolving variables.
+- Issue 1636 - Use system TCP backlog value by default.
 
 1.3.8 - Released 04-Dec-2022
 --------------------------------

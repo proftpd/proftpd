@@ -2753,14 +2753,14 @@ See also: <a href="#SyslogFacility"><code>SyslogFacility</code></a>,
 <hr>
 <h3><a name="TCPBacklog">TCPBacklog</a></h3>
 <strong>Syntax:</strong> TCPBacklog <em>backlog-size</em><br>
-<strong>Default:</strong> 5<br>
+<strong>Default:</strong> <em>system</em><br>
 <strong>Context:</strong> server config<br>
 <strong>Module:</strong> mod_core<br>
 <strong>Compatibility:</strong> 0.99.0 and later
 
 <p>
-The <code>TCPBacklog</code> directive controls the TCP connection queue
-size for listening sockets; this directive only applies to <code>proftpd</code>
+The <code>TCPBacklog</code> directive controls the TCP connection queue size
+for listening sockets; this directive only applies to <code>proftpd</code>
 when it is configured with "<code>ServerType standalone</code>".  It has
 <b>no effect</b> if "<code>ServerType inetd</code>" is configured.
 

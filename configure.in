@@ -3128,6 +3128,62 @@ AC_TRY_RUN(
   AC_MSG_RESULT(cross-compiling); AC_DEFINE(HAVE_LU, 1, [Define if you have %lu support])
 )
 
+dnl Run a small test program to see if the host's listen(2) function can
+dnl handle a negative backlog (Issue #1636).
+AC_MSG_CHECKING([whether listen supports negative backlog]);
+AC_TRY_RUN(
+  [
+    #include <errno.h>
+    #include <stdio.h>
+    #ifdef HAVE_STDLIB_H
+    # include <stdlib.h>
+    #endif
+    #ifdef HAVE_STRING_H
+    # include <string.h>
+    #endif
+    #ifdef HAVE_UNISTD_H
+    # include <unistd.h>
+    #endif
+    #ifdef HAVE_NETDB_H
+    # include <netdb.h>
+    #endif
+    #ifdef HAVE_SYS_SOCKET_H
+    # include <sys/socket.h>
+    #endif
+    int main(int argc, char *argv[]) {
+      struct protoent *pe;
+      int backlog = -1, proto = -1, fd, res;
+
+      pe = getprotobyname("tcp");
+      if (pe != NULL) {
+        proto = pe->p_proto;
+      }
+
+      fd = socket(AF_INET, SOCK_STREAM, proto);
+      if (fd < 0) {
+        fprintf(stderr, "error creating socket: %s\n", strerror(errno));
+        return 1;
+      }
+
+      res = listen(fd, backlog);
+      if (res < 0) {
+        fprintf(stderr, "error listening on socket: %s\n", strerror(errno));
+        return 1;
+      }
+
+      (void) close(fd);
+      return 0;
+    }
+  ],
+  [
+    AC_MSG_RESULT(yes);
+    AC_DEFINE(LISTEN_NEGATIVE_BACKLOG, 1, [Define if you have negative backlog support])
+  ],
+  [
+    AC_MSG_RESULT(no)
+  ]
+)
+
 dnl Module handling.
 ac_shared_module_dirs=
 ac_static_module_dirs=
