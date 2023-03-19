@@ -1,6 +1,6 @@
 /*
  * ProFTPD - FTP server testsuite
- * Copyright (c) 2008-2021 The ProFTPD Project team
+ * Copyright (c) 2008-2023 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -837,8 +837,7 @@ START_TEST (fsio_sys_access_dir_test) {
     strerror(errno));
 
   if (getenv("CI") == NULL &&
-      getenv("CIRRUS_CLONE_DEPTH") == NULL &&
-      getenv("TRAVIS") == NULL) {
+      getenv("CIRRUS_CLONE_DEPTH") == NULL) {
     uid_t other_uid;
     gid_t other_gid;
 
