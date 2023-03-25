@@ -690,6 +690,172 @@ static int ifsess_sess_merge_user(pool *p) {
   return 0;
 }
 
+static void ifsess_sess_process_displayfiles(void) {
+  config_rec *c;
+  char *displaylogin = NULL;
+  xaset_t *config_set = NULL;
+
+  /* Look for a DisplayLogin file which has an absolute path.  If we find one,
+   * open a filehandle, such that that file can be displayed even if the
+   * session is chrooted.  DisplayLogin files with relative paths will be
+   * handled after chroot, preserving the old behavior.
+   */
+
+  c = find_config(main_server->conf, -1, IFSESS_GROUP_TEXT, FALSE);
+  while (c != NULL) {
+    config_rec *list = NULL;
+
+    pr_signals_handle();
+
+    list = find_config(c->subset, IFSESS_GROUP_NUMBER, NULL, FALSE);
+    if (list != NULL) {
+#if defined(PR_USE_REGEX)
+      if (*((unsigned char *) list->argv[1]) == PR_EXPR_EVAL_REGEX) {
+        pr_regex_t *pre = list->argv[2];
+
+        if (session.group != NULL) {
+          if (pr_regexp_exec(pre, session.group, 0, NULL, 0, 0, 0) == 0) {
+            displaylogin = get_param_ptr(c->subset, "DisplayLogin", FALSE);
+            if (displaylogin != NULL) {
+              if (*displaylogin == '/') {
+                config_set = c->subset;
+              }
+            }
+          }
+        }
+
+        if (displaylogin == NULL &&
+            session.groups != NULL) {
+          register int j = 0;
+
+          for (j = session.groups->nelts-1; j >= 0; j--) {
+            char *suppl_group;
+
+            suppl_group = *(((char **) session.groups->elts) + j);
+
+            if (pr_regexp_exec(pre, suppl_group, 0, NULL, 0, 0, 0) == 0) {
+              displaylogin = get_param_ptr(c->subset, "DisplayLogin", FALSE);
+              if (displaylogin != NULL) {
+                if (*displaylogin == '/') {
+                  config_set = c->subset;
+                }
+              }
+
+              break;
+            }
+          }
+        }
+
+      } else
+#endif /* regex support */
+
+      if (*((unsigned char *) list->argv[1]) == PR_EXPR_EVAL_OR &&
+          pr_expr_eval_group_or((char **) &list->argv[2]) == TRUE) {
+        displaylogin = get_param_ptr(c->subset, "DisplayLogin", FALSE);
+        if (displaylogin != NULL) {
+          if (*displaylogin == '/') {
+            config_set = c->subset;
+          }
+        }
+
+      } else if (*((unsigned char *) list->argv[1]) == PR_EXPR_EVAL_AND &&
+          pr_expr_eval_group_and((char **) &list->argv[2]) == TRUE) {
+
+        displaylogin = get_param_ptr(c->subset, "DisplayLogin", FALSE);
+        if (displaylogin != NULL) {
+          if (*displaylogin == '/') {
+            config_set = c->subset;
+          }
+        }
+      }
+    }
+
+    c = find_config_next(c, c->next, -1, IFSESS_GROUP_TEXT, FALSE);
+  }
+
+  c = find_config(main_server->conf, -1, IFSESS_USER_TEXT, FALSE);
+  while (c != NULL) {
+    config_rec *list = NULL;
+
+    pr_signals_handle();
+
+    list = find_config(c->subset, IFSESS_USER_NUMBER, NULL, FALSE);
+    if (list != NULL) {
+#if defined(PR_USE_REGEX)
+      if (*((unsigned char *) list->argv[1]) == PR_EXPR_EVAL_REGEX) {
+        pr_regex_t *pre = list->argv[2];
+
+        if (pr_regexp_exec(pre, session.user, 0, NULL, 0, 0, 0) == 0) {
+          displaylogin = get_param_ptr(c->subset, "DisplayLogin", FALSE);
+          if (displaylogin != NULL) {
+            if (*displaylogin == '/') {
+              config_set = c->subset;
+            }
+          }
+        }
+
+      } else
+#endif /* regex support */
+
+      if (*((unsigned char *) list->argv[1]) == PR_EXPR_EVAL_OR &&
+          pr_expr_eval_user_or((char **) &list->argv[2]) == TRUE) {
+        displaylogin = get_param_ptr(c->subset, "DisplayLogin", FALSE);
+        if (displaylogin != NULL) {
+          if (*displaylogin == '/') {
+            config_set = c->subset;
+          }
+        }
+
+      } else if (*((unsigned char *) list->argv[1]) == PR_EXPR_EVAL_AND &&
+          pr_expr_eval_user_and((char **) &list->argv[2]) == TRUE) {
+        displaylogin = get_param_ptr(c->subset, "DisplayLogin", FALSE);
+        if (displaylogin != NULL) {
+          if (*displaylogin == '/') {
+            config_set = c->subset;
+          }
+        }
+      }
+    }
+
+    c = find_config_next(c, c->next, -1, IFSESS_USER_TEXT, FALSE);
+  }
+
+  if (displaylogin != NULL &&
+      config_set != NULL) {
+    displaylogin_fh = pr_fsio_open(displaylogin, O_RDONLY);
+    if (displaylogin_fh == NULL) {
+      pr_log_debug(DEBUG6, MOD_IFSESSION_VERSION
+        ": unable to open DisplayLogin file '%s': %s", displaylogin,
+        strerror(errno));
+
+    } else {
+      struct stat st;
+
+      if (pr_fsio_fstat(displaylogin_fh, &st) < 0) {
+        pr_log_debug(DEBUG6, MOD_IFSESSION_VERSION
+          ": unable to stat DisplayLogin file '%s': %s", displaylogin,
+          strerror(errno));
+        pr_fsio_close(displaylogin_fh);
+        displaylogin_fh = NULL;
+
+      } else {
+        if (S_ISDIR(st.st_mode)) {
+          errno = EISDIR;
+          pr_log_debug(DEBUG6, MOD_IFSESSION_VERSION
+            ": unable to use DisplayLogin file '%s': %s", displaylogin,
+            strerror(errno));
+          pr_fsio_close(displaylogin_fh);
+          displaylogin_fh = NULL;
+
+        } else {
+          /* Remove the directive from the set, since we'll be handling it. */
+          remove_config(config_set, "DisplayLogin", FALSE);
+        }
+      }
+    }
+  }
+}
+
 /* Configuration handlers
  */
 
@@ -902,215 +1068,6 @@ MODRET end_ifctxt(cmd_rec *cmd) {
 /* Command handlers
  */
 
-MODRET ifsess_pre_pass(cmd_rec *cmd) {
-  config_rec *c;
-  const char *user = NULL, *group = NULL, *sess_user, *sess_group;
-  char *displaylogin = NULL;
-  array_header *gids = NULL, *groups = NULL, *sess_groups = NULL;
-  struct passwd *pw = NULL;
-  struct group *gr = NULL;
-  xaset_t *config_set = NULL;
-
-  /* Look for a DisplayLogin file which has an absolute path.  If we find one,
-   * open a filehandle, such that that file can be displayed even if the
-   * session is chrooted.  DisplayLogin files with relative paths will be
-   * handled after chroot, preserving the old behavior.
-   */
-
-  user = pr_table_get(session.notes, "mod_auth.orig-user", NULL); 
-  if (user == NULL) {
-    return PR_DECLINED(cmd);
-  }
-
-  pw = pr_auth_getpwnam(cmd->tmp_pool, user);
-  if (pw == NULL) {
-    pr_trace_msg(trace_channel, 9,
-      "unable to lookup user '%s' (%s), skipping pre-PASS handling",
-      user, strerror(errno));
-    return PR_DECLINED(cmd);
-  }
- 
-  gr = pr_auth_getgrgid(cmd->tmp_pool, pw->pw_gid);
-  if (gr != NULL) {
-    group = gr->gr_name;
-  }
-
-  (void) pr_auth_getgroups(cmd->tmp_pool, user, &gids, &groups);
- 
-  /* Temporarily set session.user, session.group, session.groups, for the
-   * sake of the pr_eval_*() function calls.
-   */
-  sess_user = session.user;
-  sess_group = session.group;
-  sess_groups = session.groups;
-
-  session.user = user;
-  session.group = group;
-  session.groups = groups;
-
-  c = find_config(main_server->conf, -1, IFSESS_GROUP_TEXT, FALSE);
-  while (c != NULL) {
-    config_rec *list = NULL;
-
-    pr_signals_handle();
-
-    list = find_config(c->subset, IFSESS_GROUP_NUMBER, NULL, FALSE);
-    if (list != NULL) {
-#if defined(PR_USE_REGEX)
-      if (*((unsigned char *) list->argv[1]) == PR_EXPR_EVAL_REGEX) {
-        pr_regex_t *pre = list->argv[2];
-
-        if (session.group != NULL) {
-          if (pr_regexp_exec(pre, session.group, 0, NULL, 0, 0, 0) == 0) {
-            displaylogin = get_param_ptr(c->subset, "DisplayLogin", FALSE);
-            if (displaylogin != NULL) {
-              if (*displaylogin == '/') {
-                config_set = c->subset;
-              }
-            }
-          }
-        }
-
-        if (displaylogin == NULL &&
-            session.groups != NULL) {
-          register int j = 0;
-
-          for (j = session.groups->nelts-1; j >= 0; j--) {
-            char *suppl_group;
-
-            suppl_group = *(((char **) session.groups->elts) + j);
-
-            if (pr_regexp_exec(pre, suppl_group, 0, NULL, 0, 0, 0) == 0) {
-              displaylogin = get_param_ptr(c->subset, "DisplayLogin", FALSE);
-              if (displaylogin != NULL) {
-                if (*displaylogin == '/') {
-                  config_set = c->subset;
-                }
-              }
-
-              break;
-            }
-          }
-        }
-
-      } else
-#endif /* regex support */
-   
-      if (*((unsigned char *) list->argv[1]) == PR_EXPR_EVAL_OR &&
-          pr_expr_eval_group_or((char **) &list->argv[2]) == TRUE) {
-        displaylogin = get_param_ptr(c->subset, "DisplayLogin", FALSE);
-        if (displaylogin != NULL) {
-          if (*displaylogin == '/') {
-            config_set = c->subset;
-          }
-        }
-
-      } else if (*((unsigned char *) list->argv[1]) == PR_EXPR_EVAL_AND &&
-          pr_expr_eval_group_and((char **) &list->argv[2]) == TRUE) {
-
-        displaylogin = get_param_ptr(c->subset, "DisplayLogin", FALSE);
-        if (displaylogin != NULL) {
-          if (*displaylogin == '/') {
-            config_set = c->subset;
-          }
-        }
-      }
-    }
-
-    c = find_config_next(c, c->next, -1, IFSESS_GROUP_TEXT, FALSE);
-  }
-
-  c = find_config(main_server->conf, -1, IFSESS_USER_TEXT, FALSE);
-  while (c != NULL) {
-    config_rec *list = NULL;
-
-    pr_signals_handle();
-
-    list = find_config(c->subset, IFSESS_USER_NUMBER, NULL, FALSE);
-    if (list != NULL) {
-#if defined(PR_USE_REGEX)
-      if (*((unsigned char *) list->argv[1]) == PR_EXPR_EVAL_REGEX) {
-        pr_regex_t *pre = list->argv[2];
-
-        if (pr_regexp_exec(pre, session.user, 0, NULL, 0, 0, 0) == 0) {
-          displaylogin = get_param_ptr(c->subset, "DisplayLogin", FALSE);
-          if (displaylogin != NULL) {
-            if (*displaylogin == '/') {
-              config_set = c->subset;
-            }
-          }
-        }
-
-      } else
-#endif /* regex support */
-
-      if (*((unsigned char *) list->argv[1]) == PR_EXPR_EVAL_OR &&
-          pr_expr_eval_user_or((char **) &list->argv[2]) == TRUE) {
-        displaylogin = get_param_ptr(c->subset, "DisplayLogin", FALSE);
-        if (displaylogin != NULL) {
-          if (*displaylogin == '/') {
-            config_set = c->subset;
-          }
-        }
-
-      } else if (*((unsigned char *) list->argv[1]) == PR_EXPR_EVAL_AND &&
-          pr_expr_eval_user_and((char **) &list->argv[2]) == TRUE) {
-        displaylogin = get_param_ptr(c->subset, "DisplayLogin", FALSE);
-        if (displaylogin != NULL) {
-          if (*displaylogin == '/') {
-            config_set = c->subset;
-          }
-        }
-      }
-    }
-
-    c = find_config_next(c, c->next, -1, IFSESS_USER_TEXT, FALSE);
-  }
-
-  /* Restore the original session.user, session.group, session.groups values. */
-  session.user = sess_user;
-  session.group = sess_group;
-  session.groups = sess_groups;
-
-  if (displaylogin != NULL &&
-      config_set != NULL) {
-
-    displaylogin_fh = pr_fsio_open(displaylogin, O_RDONLY);
-    if (displaylogin_fh == NULL) {
-      pr_log_debug(DEBUG6,
-        MOD_IFSESSION_VERSION ": unable to open DisplayLogin file '%s': %s",
-        displaylogin, strerror(errno));
-
-    } else {
-      struct stat st;
-
-      if (pr_fsio_fstat(displaylogin_fh, &st) < 0) {
-        pr_log_debug(DEBUG6,
-          MOD_IFSESSION_VERSION ": unable to stat DisplayLogin file '%s': %s",
-          displaylogin, strerror(errno));
-        pr_fsio_close(displaylogin_fh);
-        displaylogin_fh = NULL;
-
-      } else {
-        if (S_ISDIR(st.st_mode)) {
-          errno = EISDIR;
-          pr_log_debug(DEBUG6,
-            MOD_IFSESSION_VERSION ": unable to use DisplayLogin file '%s': %s",
-            displaylogin, strerror(errno));
-          pr_fsio_close(displaylogin_fh);
-          displaylogin_fh = NULL;
-
-        } else {
-          /* Remove the directive from the set, since we'll be handling it. */
-          remove_config(config_set, "DisplayLogin", FALSE);
-        }
-      }
-    }
-  }
-
-  return PR_DECLINED(cmd);
-}
-
 MODRET ifsess_post_pass(cmd_rec *cmd) {
   /* Unfortunately, I can't assign my own context types for these custom
    * contexts, otherwise the existing directives would not be allowed in
@@ -1222,6 +1179,8 @@ MODRET ifsess_post_user(cmd_rec *cmd) {
 
 static void ifsess_chroot_ev(const void *event_data, void *user_data) {
   ifsess_home_dir = (const char *) event_data;
+
+  ifsess_sess_process_displayfiles();
 }
 
 #if defined(PR_SHARED_MODULE)
@@ -1272,8 +1231,6 @@ static int ifsess_init(void) {
     ifsess_mod_unload_ev, NULL);
 #endif /* PR_SHARED_MODULE */
 
-  pr_event_register(&ifsession_module, "core.chroot",
-    ifsess_chroot_ev, NULL);
   pr_event_register(&ifsession_module, "core.postparse",
     ifsess_postparse_ev, NULL);
 
@@ -1282,6 +1239,9 @@ static int ifsess_init(void) {
 
 static int ifsess_sess_init(void) {
   config_rec *c;
+
+  pr_event_register(&ifsession_module, "core.chroot",
+    ifsess_chroot_ev, NULL);
 
   c = find_config(main_server->conf, CONF_PARAM, "IfSessionOptions", FALSE);
   while (c != NULL) {
@@ -1319,7 +1279,6 @@ static conftable ifsess_conftab[] = {
 };
 
 static cmdtable ifsess_cmdtab[] = {
-  { PRE_CMD,	C_PASS, G_NONE, ifsess_pre_pass, FALSE, FALSE },
   { POST_CMD,	C_PASS, G_NONE, ifsess_post_pass, FALSE, FALSE },
   { POST_CMD,	C_USER,	G_NONE,	ifsess_post_user, FALSE, FALSE },
   { 0, NULL }
