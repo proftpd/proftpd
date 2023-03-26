@@ -49,7 +49,7 @@ sub maxtransfersperhost_retr {
     SystemLog => $setup->{log_file},
 
     AuthUserFile => $setup->{auth_user_file},
-    AuthGroupFile => $setup->{auth_group_file}, 
+    AuthGroupFile => $setup->{auth_group_file},
     AuthOrder => 'mod_auth_file.c',
 
     MaxTransfersPerHost => "RETR $max_transfers",
@@ -150,7 +150,7 @@ sub maxtransfersperhost_retr_custom_message {
     SystemLog => $setup->{log_file},
 
     AuthUserFile => $setup->{auth_user_file},
-    AuthGroupFile => $setup->{auth_group_file}, 
+    AuthGroupFile => $setup->{auth_group_file},
     AuthOrder => 'mod_auth_file.c',
 
     MaxTransfersPerHost => "RETR $max_transfers \"Too many transfers from your host\"",

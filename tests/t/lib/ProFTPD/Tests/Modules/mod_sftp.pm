@@ -2130,13 +2130,13 @@ sub ssh2_connect_bad_version_bad_format {
       my $len = read($sock, $resp, 64);
       $self->assert($len > 0, test_msg("Expected response, got none"));
 
-      chomp($resp); 
+      chomp($resp);
 
       my $expected = 'Protocol mismatch.';
       $self->assert(qr/$expected/, $resp,
         test_msg("Expected '$expected', got '$resp'"));
 
-      close($sock); 
+      close($sock);
     };
 
     if ($@) {
@@ -2238,13 +2238,13 @@ sub ssh2_connect_bad_version_unsupported_proto_version {
       my $len = read($sock, $resp, 64);
       $self->assert($len > 0, test_msg("Expected response, got none"));
 
-      chomp($resp); 
+      chomp($resp);
 
       my $expected = 'Protocol mismatch.';
       $self->assert(qr/$expected/, $resp,
         test_msg("Expected '$expected', got '$resp'"));
 
-      close($sock); 
+      close($sock);
     };
 
     if ($@) {
@@ -2346,13 +2346,13 @@ sub ssh2_connect_bad_version_too_long {
       my $len = read($sock, $resp, 64);
       $self->assert($len > 0, test_msg("Expected response, got none"));
 
-      chomp($resp); 
+      chomp($resp);
 
       my $expected = 'Protocol mismatch.';
       $self->assert(qr/$expected/, $resp,
         test_msg("Expected '$expected', got '$resp'"));
 
-      close($sock); 
+      close($sock);
     };
 
     if ($@) {
@@ -2454,13 +2454,13 @@ sub ssh2_connect_bad_version_too_short {
       my $len = read($sock, $resp, 64);
       $self->assert($len > 0, test_msg("Expected response, got none"));
 
-      chomp($resp); 
+      chomp($resp);
 
       my $expected = 'Protocol mismatch.';
       $self->assert(qr/$expected/, $resp,
         test_msg("Expected '$expected', got '$resp'"));
 
-      close($sock); 
+      close($sock);
     };
 
     if ($@) {
@@ -2562,13 +2562,13 @@ sub ssh2_connect_version_with_comments {
       my $len = read($sock, $resp, 64);
       $self->assert($len > 0, test_msg("Expected response, got none"));
 
-      chomp($resp); 
+      chomp($resp);
 
       my $expected = '^SSH-2.0-mod_sftp';
       $self->assert(qr/$expected/, $resp,
         test_msg("Expected '$expected', got '$resp'"));
 
-      close($sock); 
+      close($sock);
     };
 
     if ($@) {
@@ -2705,7 +2705,7 @@ sub ssh2_connect_version_bug3918 {
       print $sock "SSH-2.0-ProFTPD_mod_sftp_TestSuite\r\n";
       sleep(1);
 
-      close($sock); 
+      close($sock);
     };
 
     if ($@) {
@@ -2866,7 +2866,7 @@ sub ssh2_connect_timeout_login {
 
       print $sock "AAAA" x 1024;
 
-      close($sock); 
+      close($sock);
     };
 
     if ($@) {
@@ -17325,7 +17325,7 @@ sub ssh2_auth_twice {
 
       my $auth_timed_out = 0;
 
-      eval { 
+      eval {
         local %SIG;
         $SIG{ALRM} = sub { $auth_timed_out = 1; };
 
@@ -22961,8 +22961,8 @@ sub sftp_fsetstat {
         my ($err_code, $err_name, $err_str) = $ssh2->error();
         die("Can't use SFTP on SSH2 server: [$err_name] ($err_code) $err_str");
       }
-    
-      my $fh = $sftp->open('sftp.conf', O_RDONLY); 
+
+      my $fh = $sftp->open('sftp.conf', O_RDONLY);
       unless ($fh) {
         my ($err_code, $err_name) = $sftp->error();
         die("Can't open sftp.conf: [$err_name] ($err_code)");
@@ -22971,7 +22971,7 @@ sub sftp_fsetstat {
       my $res = $fh->setstat(
         atime => 0,
         mtime => 0,
-      ); 
+      );
       unless ($res) {
         my ($err_code, $err_name) = $sftp->error();
         die("Can't fsetstat sftp.conf: [$err_name] ($err_code)");
@@ -28233,7 +28233,7 @@ sub sftp_ext_upload_bug3550 {
   }
 
   my $expected_sz = (stat($src_file))[7];
- 
+
   my $dst_file = File::Spec->rel2abs("$tmpdir/test.dat");
 
   my $batch_file = File::Spec->rel2abs("$tmpdir/sftp-batch.txt");
@@ -29595,7 +29595,7 @@ sub sftp_ext_download_bug3550 {
   }
 
   my $expected_sz = (stat($orig_file))[7];
- 
+
   my $src_file = File::Spec->rel2abs("$tmpdir/test.dat");
   unless (copy($orig_file, $src_file)) {
     die("Can't copy $orig_file to $src_file: $!");
@@ -29856,7 +29856,7 @@ sub sftp_ext_download_server_rekey {
   }
 
   my $expected_sz = (stat($orig_file))[7];
- 
+
   my $src_file = File::Spec->rel2abs("$tmpdir/test.dat");
   unless (copy($orig_file, $src_file)) {
     die("Can't copy $orig_file to $src_file: $!");
@@ -30083,7 +30083,7 @@ sub sftp_ext_download_rekey_rsa1024_hostkey_bug4097 {
   }
 
   my $expected_sz = (stat($orig_file))[7];
- 
+
   my $src_file = File::Spec->rel2abs("$tmpdir/test.dat");
   unless (copy($orig_file, $src_file)) {
     die("Can't copy $orig_file to $src_file: $!");
@@ -33167,7 +33167,7 @@ sub sftp_mkdir_readdir_bug3481 {
       for (my $i = 0; $i < $count; $i++) {
         my $test_file = 'testdir/test_' . sprintf("%03s", $i);
 
-        my $fh = $sftp->open($test_file, O_CREAT, 0644); 
+        my $fh = $sftp->open($test_file, O_CREAT, 0644);
         unless ($fh) {
           my ($err_code, $err_name) = $sftp->error();
           die("OPEN $test_file failed: [$err_name] ($err_code)");
@@ -42854,7 +42854,7 @@ sub sftp_config_ignore_upload_perms_upload {
   my $expected = 0644;
   $self->assert($expected == $perms,
     test_msg("Expected '$expected', got '$perms'"));
-  
+
   unlink($log_file);
 }
 
@@ -43016,7 +43016,7 @@ sub sftp_config_ignore_upload_perms_mkdir_bug3680 {
   my $expected = 0755;
   $self->assert($expected == $perms,
     test_msg("Expected '$expected', got '$perms'"));
-  
+
   unlink($log_file);
 }
 
@@ -43066,7 +43066,7 @@ sub sftp_config_ignore_set_perms_bug3599 {
     unless (close($fh)) {
       die("Can't write $test_file: $!");
     }
- 
+
   } else {
     die("Can't open $test_file: $!");
   }
@@ -43192,7 +43192,7 @@ sub sftp_config_ignore_set_perms_bug3599 {
   my $expected = 0644;
   $self->assert($expected == $perms,
     test_msg("Expected '$expected', got '$perms'"));
-  
+
   unlink($log_file);
 }
 
@@ -43242,7 +43242,7 @@ sub sftp_config_ignore_set_times_bug3706 {
     unless (close($fh)) {
       die("Can't write $test_file: $!");
     }
- 
+
   } else {
     die("Can't open $test_file: $!");
   }
@@ -43375,7 +43375,7 @@ sub sftp_config_ignore_set_times_bug3706 {
   $expected = $test_mtime;
   $self->assert($expected == $new_mtime,
     test_msg("Expected mtime $expected, got $new_mtime"));
-  
+
   unlink($log_file);
 }
 
@@ -43425,7 +43425,7 @@ sub sftp_config_ignore_set_owners_bug3757 {
     unless (close($fh)) {
       die("Can't write $test_file: $!");
     }
- 
+
   } else {
     die("Can't open $test_file: $!");
   }
@@ -43558,7 +43558,7 @@ sub sftp_config_ignore_set_owners_bug3757 {
   $expected = $test_gid;
   $self->assert($expected == $new_gid,
     test_msg("Expected gid $expected, got $new_gid"));
-  
+
   unlink($log_file);
 }
 
@@ -44857,7 +44857,7 @@ sub sftp_config_limit_chmod {
         my ($err_code, $err_name, $err_str) = $ssh2->error();
         die("Can't use SFTP on SSH2 server: [$err_name] ($err_code) $err_str");
       }
-     
+
       my $res = $sftp->setstat('sftp.conf',
         mode => 0777,
       );
@@ -45024,7 +45024,7 @@ sub sftp_config_limit_chgrp_bug3757 {
         my ($err_code, $err_name, $err_str) = $ssh2->error();
         die("Can't use SFTP on SSH2 server: [$err_name] ($err_code) $err_str");
       }
-     
+
       my $res = $sftp->setstat('sftp.conf',
         uid => $uid,
         gid => $gid,
@@ -45193,7 +45193,7 @@ sub sftp_config_limit_list {
         my ($err_code, $err_name, $err_str) = $ssh2->error();
         die("Can't use SFTP on SSH2 server: [$err_name] ($err_code) $err_str");
       }
-    
+
       # Make sure that OPENDIR succeeds, but READDIR returns end-of-list.
       my $dir = $sftp->opendir('.');
       unless ($dir) {
@@ -45386,7 +45386,7 @@ sub sftp_config_limit_nlst {
         my ($err_code, $err_name, $err_str) = $ssh2->error();
         die("Can't use SFTP on SSH2 server: [$err_name] ($err_code) $err_str");
       }
-    
+
       # Make sure that OPENDIR succeeds, but READDIR returns end-of-list.
       my $dir = $sftp->opendir('.');
       unless ($dir) {
@@ -45584,7 +45584,7 @@ sub sftp_config_limit_allowfilter_stor_allowed {
         my ($err_code, $err_name, $err_str) = $ssh2->error();
         die("Can't use SFTP on SSH2 server: [$err_name] ($err_code) $err_str");
       }
-   
+
       my $fh = $sftp->open('test.txt', O_WRONLY|O_CREAT|O_TRUNC, 0644);
       unless ($fh) {
         my ($err_code, $err_name) = $sftp->error();
@@ -45750,7 +45750,7 @@ sub sftp_config_limit_allowfilter_stor_denied {
         my ($err_code, $err_name, $err_str) = $ssh2->error();
         die("Can't use SFTP on SSH2 server: [$err_name] ($err_code) $err_str");
       }
-   
+
       my $fh = $sftp->open('test.jpg', O_WRONLY|O_CREAT|O_TRUNC, 0644);
       if ($fh) {
         die("Open of test.jpg succeeded unexpectedly");
@@ -46284,9 +46284,9 @@ EOC
         my ($err_code, $err_name, $err_str) = $ssh2->error();
         die("Can't use SFTP on SSH2 server: [$err_name] ($err_code) $err_str");
       }
-   
-      my $file = 'sftp.conf'; 
-      my $fh = $sftp->open($file, O_RDONLY); 
+
+      my $file = 'sftp.conf';
+      my $fh = $sftp->open($file, O_RDONLY);
       unless ($fh) {
         my ($err_code, $err_name) = $sftp->error();
         die("Can't open $file: [$err_name] ($err_code)");
@@ -46295,7 +46295,7 @@ EOC
       my $res = $fh->setstat(
         atime => 0,
         mtime => 0,
-      ); 
+      );
       unless ($res) {
         my ($err_code, $err_name) = $sftp->error();
         die("Can't fsetstat $file: [$err_name] ($err_code)");
@@ -47855,7 +47855,7 @@ sub sftp_multi_channels {
 
       my $sftps = [];
 
-      for (my $i = 0; $i < 3; $i++) { 
+      for (my $i = 0; $i < 3; $i++) {
         my $sftp = $ssh2->sftp();
         unless ($sftp) {
           my ($err_code, $err_name, $err_str) = $ssh2->error();
@@ -47887,7 +47887,7 @@ sub sftp_multi_channels {
       for (my $i = 0; $i < scalar(@$sftps); $i++) {
         $sftps->[$i] = undef;
       }
- 
+
       $ssh2->disconnect();
     };
 
@@ -48446,7 +48446,7 @@ sub sftp_multi_channel_downloads {
       my $fhs = [];
       my $md5s = [];
 
-      for (my $i = 0; $i < 3; $i++) { 
+      for (my $i = 0; $i < 3; $i++) {
         my $sftp = $ssh2->sftp();
         unless ($sftp) {
           my ($err_code, $err_name, $err_str) = $ssh2->error();
@@ -48500,11 +48500,11 @@ sub sftp_multi_channel_downloads {
       for (my $i = 0; $i < scalar(@$fhs); $i++) {
         $fhs->[$i] = undef;
       }
- 
+
       for (my $i = 0; $i < scalar(@$sftps); $i++) {
         $sftps->[$i] = undef;
       }
- 
+
       $ssh2->disconnect();
 
       my $expected;
@@ -48950,7 +48950,7 @@ sub sftp_log_xferlog_download_incomplete {
       unless ($res) {
         my ($err_code, $err_name) = $sftp->error();
         die("Can't read test.txt: [$err_name] ($err_code)");
-      } 
+      }
 
       sleep(1);
 
@@ -49908,7 +49908,7 @@ sub sftp_log_xferlog_upload_incomplete {
       unless ($res) {
         my ($err_code, $err_name) = $sftp->error();
         die("Can't write test.txt: [$err_name] ($err_code)");
-      } 
+      }
 
       # Explicitly disconnect without closing the file, simulating an
       # aborted transfer.
@@ -50339,7 +50339,7 @@ sub sftp_log_extlog_reads {
       unless ($res) {
         my ($err_code, $err_name) = $sftp->error();
         die("Can't write test.txt: [$err_name] ($err_code)");
-      } 
+      }
 
       # Explicitly disconnect without closing the file, simulating an
       # aborted transfer.
@@ -50528,7 +50528,7 @@ sub sftp_log_extlog_read_close {
       unless ($res) {
         my ($err_code, $err_name) = $sftp->error();
         die("Can't write test.txt: [$err_name] ($err_code)");
-      } 
+      }
 
       $fh = undef;
 
@@ -51038,7 +51038,7 @@ sub sftp_log_extlog_var_s_reads {
         my $code = $2;
 
         my $expected;
- 
+
         if ($cmd eq 'OPEN') {
           $expected = '-';
 
@@ -51223,12 +51223,12 @@ EOC
 
       # This is expected to fail because of the <Limit>
       $fh->setstat(atime => 0, mtime => 0);
-   
+
       print $fh "abcd" x 1024, "\n";
 
       # This is expected to fail because of the <Limit>
       $fh->setstat(atime => 0, mtime => 0);
-  
+
       # Explicitly disconnect without closing the file, simulating an
       # aborted transfer.
       $ssh2->disconnect();
@@ -51275,7 +51275,7 @@ EOC
         my $code = $2;
 
         my $expected;
- 
+
         if ($cmd eq 'OPEN') {
           $expected = '-';
 
@@ -52385,7 +52385,7 @@ sub sftp_log_extlog_var_w_rename_bug3029 {
           $expected = '-';
           $self->assert($expected eq $whence,
             test_msg("Expected '$expected', got '$whence'"));
- 
+
           $expected = $test_file1;
           if ($^O eq 'darwin') {
             # MacOSX-specific hack to deal with how it handles tmp files
@@ -53657,7 +53657,7 @@ EOC
       }
 
       $sftp = undef;
-      $ssh2->disconnect(); 
+      $ssh2->disconnect();
     };
 
     if ($@) {
@@ -53842,7 +53842,7 @@ sub sftp_log_extlog_env_banner_bug4065 {
       }
 
       $sftp = undef;
-      $ssh2->disconnect(); 
+      $ssh2->disconnect();
     };
 
     if ($@) {
@@ -54019,7 +54019,7 @@ sub sftp_log_extlog_userauth_full_request {
       }
 
       $sftp = undef;
-      $ssh2->disconnect(); 
+      $ssh2->disconnect();
     };
 
     if ($@) {
@@ -54642,7 +54642,7 @@ sub sftp_wrap_login_allowed_bug3352 {
         my ($err_code, $err_name, $err_str) = $ssh2->error();
         die("Can't use SFTP on SSH2 server: [$err_name] ($err_code) $err_str");
       }
-      
+
       $sftp = undef;
       $ssh2->disconnect();
     };
@@ -56775,7 +56775,7 @@ sub scp_ext_upload_recursive_dir_bug3447 {
   for (my $i = 0; $i < $count; $i++) {
     my $filename = 'aa' . sprintf("%03s", $i);
     my $src_file = File::Spec->rel2abs("$src_subdir/$filename");
-    
+
     if (open(my $fh, "> $src_file")) {
       print $fh "ABCDefgh" x 8192;
 
@@ -56788,7 +56788,7 @@ sub scp_ext_upload_recursive_dir_bug3447 {
     }
   }
 
-  my $dst_dir = File::Spec->rel2abs("$tmpdir/dst.d"); 
+  my $dst_dir = File::Spec->rel2abs("$tmpdir/dst.d");
   mkpath($dst_dir);
 
   my $config = {
@@ -57074,7 +57074,7 @@ sub scp_ext_upload_recursive_dir_bug3792 {
   for (my $i = 0; $i < $count; $i++) {
     my $filename = 'aa' . sprintf("%03s", $i);
     my $src_file = File::Spec->rel2abs("$src_subdir/$filename");
-    
+
     if (open(my $fh, "> $src_file")) {
       print $fh "ABCDefgh" x 8192;
 
@@ -57087,7 +57087,7 @@ sub scp_ext_upload_recursive_dir_bug3792 {
     }
   }
 
-  my $dst_dir = File::Spec->rel2abs("$tmpdir/dst.d"); 
+  my $dst_dir = File::Spec->rel2abs("$tmpdir/dst.d");
   mkpath($dst_dir);
 
   my $config = {
@@ -57388,7 +57388,7 @@ sub scp_ext_upload_recursive_dir_bug4004 {
   for (my $i = 0; $i < $count; $i++) {
     my $filename = 'aa' . sprintf("%03s", $i);
     my $src_file = File::Spec->rel2abs("$src_subdir/$filename");
-    
+
     if (open(my $fh, "> $src_file")) {
       print $fh "ABCDefgh" x 8192;
 
@@ -57401,7 +57401,7 @@ sub scp_ext_upload_recursive_dir_bug4004 {
     }
   }
 
-  my $dst_dir = File::Spec->rel2abs("$tmpdir/dst.d"); 
+  my $dst_dir = File::Spec->rel2abs("$tmpdir/dst.d");
   mkpath($dst_dir);
 
   my $config = {
@@ -58090,7 +58090,7 @@ sub scp_ext_upload_recursive_empty_dir {
   my $src_dir = File::Spec->rel2abs("$tmpdir/src.d");
   mkpath($src_dir);
 
-  my $dst_dir = File::Spec->rel2abs("$tmpdir/dst.d"); 
+  my $dst_dir = File::Spec->rel2abs("$tmpdir/dst.d");
   mkpath($dst_dir);
 
   my $config = {
@@ -58647,7 +58647,7 @@ sub scp_ext_upload_file_with_timestamp_bug4026 {
       $self->assert(-f $dst_file,
         test_msg("File $dst_file does not exist as expected"));
 
-      my ($atime, $mtime) = (stat($dst_file))[8,9]; 
+      my ($atime, $mtime) = (stat($dst_file))[8,9];
       $self->assert($atime == 0, test_msg("Expected atime 0, got $atime"));
       $self->assert($mtime == 0, test_msg("Expected mtime 0, got $mtime"));
     };
@@ -60974,7 +60974,7 @@ sub scp_ext_download_recursive_dir_bug3456 {
   for (my $i = 0; $i < $count; $i++) {
     my $filename = 'aa' . sprintf("%03s", $i);
     my $src_file = File::Spec->rel2abs("$src_subdir/$filename");
-    
+
     if (open(my $fh, "> $src_file")) {
       print $fh "ABCDefgh" x 8192;
 
@@ -60987,7 +60987,7 @@ sub scp_ext_download_recursive_dir_bug3456 {
     }
   }
 
-  my $dst_dir = File::Spec->rel2abs("$tmpdir/dst.d"); 
+  my $dst_dir = File::Spec->rel2abs("$tmpdir/dst.d");
   mkpath($dst_dir);
 
   my $timeout_idle = 60;
@@ -61214,7 +61214,7 @@ sub scp_ext_download_recursive_empty_dir {
   my $src_dir = File::Spec->rel2abs("$tmpdir/src.d");
   mkpath($src_dir);
 
-  my $dst_dir = File::Spec->rel2abs("$tmpdir/dst.d"); 
+  my $dst_dir = File::Spec->rel2abs("$tmpdir/dst.d");
   mkpath($dst_dir);
 
   my $timeout_idle = 60;
@@ -61417,7 +61417,7 @@ sub scp_ext_download_glob_no_matches_bug3935 {
   my $src_dir = File::Spec->rel2abs("$tmpdir/src.d");
   mkpath($src_dir);
 
-  my $dst_dir = File::Spec->rel2abs("$tmpdir/dst.d"); 
+  my $dst_dir = File::Spec->rel2abs("$tmpdir/dst.d");
   mkpath($dst_dir);
 
   my $timeout_idle = 60;
@@ -62693,7 +62693,7 @@ sub scp_config_groupowner_file_member_norootprivs {
   my $tmpdir = $self->{tmpdir};
 
   my ($config_user, $config_group) = config_get_identity();
- 
+
   my $members = [split(' ', (getgrnam($config_group))[3])];
   if (scalar(@$members) < 2) {
     print STDERR " + unable to run 'scp_config_groupowner_member_norootprivs' test without current user belonging to multiple groups, skipping\n";
@@ -62983,7 +62983,7 @@ sub scp_log_extlog_var_f_upload {
         die("Can't login to SSH2 server: [$err_name] ($err_code) $err_str");
       }
 
-      my $res = $ssh2->scp_put($test_file, 'upload.txt'); 
+      my $res = $ssh2->scp_put($test_file, 'upload.txt');
       unless ($res) {
         my ($err_code, $err_name, $err_str) = $ssh2->error();
         die("Can't upload $test_file to server: [$err_name] ($err_code) $err_str");
@@ -63187,7 +63187,7 @@ sub scp_log_extlog_file_modified_bug3457 {
         die("Can't login to SSH2 server: [$err_name] ($err_code) $err_str");
       }
 
-      my $res = $ssh2->scp_put($src_file, 'dst.txt'); 
+      my $res = $ssh2->scp_put($src_file, 'dst.txt');
       unless ($res) {
         my ($err_code, $err_name, $err_str) = $ssh2->error();
         die("Can't upload $src_file to server: [$err_name] ($err_code) $err_str");
@@ -63497,7 +63497,7 @@ sub scp_log_xferlog_download {
         die("Can't login to SSH2 server: [$err_name] ($err_code) $err_str");
       }
 
-      my $res = $ssh2->scp_get('sftp.conf', $test_file); 
+      my $res = $ssh2->scp_get('sftp.conf', $test_file);
       unless ($res) {
         my ($err_code, $err_name, $err_str) = $ssh2->error();
         die("Can't download sftp.conf from server: [$err_name] ($err_code) $err_str");
@@ -63742,7 +63742,7 @@ sub scp_log_xferlog_upload {
         die("Can't login to SSH2 server: [$err_name] ($err_code) $err_str");
       }
 
-      my $res = $ssh2->scp_put($test_file, 'upload.txt'); 
+      my $res = $ssh2->scp_put($test_file, 'upload.txt');
       unless ($res) {
         my ($err_code, $err_name, $err_str) = $ssh2->error();
         die("Can't upload $test_file to server: [$err_name] ($err_code) $err_str");
@@ -64155,7 +64155,7 @@ CREATE TABLE ftpusers (
   passwd TEXT,
   uid INTEGER,
   gid INTEGER,
-  homedir TEXT, 
+  homedir TEXT,
   shell TEXT,
   lastdir TEXT
 );

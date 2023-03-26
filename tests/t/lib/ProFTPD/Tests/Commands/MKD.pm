@@ -135,7 +135,7 @@ sub mkd_ok {
   my $setup = test_setup($tmpdir, 'cmds');
 
   my $sub_dir = File::Spec->rel2abs("$tmpdir/foo");
- 
+
   my $config = {
     PidFile => $setup->{pid_file},
     ScoreboardFile => $setup->{scoreboard_file},
@@ -646,7 +646,7 @@ sub mkd_umask_one_param_ok {
   my $setup = test_setup($tmpdir, 'cmds');
 
   my $sub_dir = File::Spec->rel2abs("$tmpdir/foo");
- 
+
   my $config = {
     PidFile => $setup->{pid_file},
     ScoreboardFile => $setup->{scoreboard_file},
@@ -735,7 +735,7 @@ sub mkd_umask_two_params_ok {
   my $setup = test_setup($tmpdir, 'cmds');
 
   my $sub_dir = File::Spec->rel2abs("$tmpdir/foo");
- 
+
   my $config = {
     PidFile => $setup->{pid_file},
     ScoreboardFile => $setup->{scoreboard_file},
@@ -824,7 +824,7 @@ sub mkd_with_spaces_ok {
   my $setup = test_setup($tmpdir, 'cmds');
 
   my $sub_dir = File::Spec->rel2abs("$tmpdir/foo bar");
- 
+
   my $config = {
     PidFile => $setup->{pid_file},
     ScoreboardFile => $setup->{scoreboard_file},
@@ -910,7 +910,7 @@ sub mkd_utf8_with_spaces_ok {
 
   my $sub_path = File::Spec->rel2abs("$tmpdir/$sub_dir");
   my $utf8_path = encode_utf8($sub_path);
- 
+
   my $config = {
     PidFile => $setup->{pid_file},
     ScoreboardFile => $setup->{scoreboard_file},
@@ -998,7 +998,7 @@ sub mkd_chrooted_ok {
   my $setup = test_setup($tmpdir, 'cmds');
 
   my $sub_dir = File::Spec->rel2abs("$tmpdir/foo");
- 
+
   my $config = {
     PidFile => $setup->{pid_file},
     ScoreboardFile => $setup->{scoreboard_file},
@@ -1090,7 +1090,7 @@ sub mkd_chrooted_with_cwd_ok {
   mkpath($sub_dir);
 
   my $test_dir = File::Spec->rel2abs("$tmpdir/foo/bar");
- 
+
   if ($< == 0) {
     unless (chmod(0755, $sub_dir)) {
       die("Can't set perms on $sub_dir to 0755: $!");
@@ -1100,7 +1100,7 @@ sub mkd_chrooted_with_cwd_ok {
       die("Can't set owner of $sub_dir to $setup->{uid}/$setup->{gid}: $!");
     }
   }
- 
+
   my $config = {
     PidFile => $setup->{pid_file},
     ScoreboardFile => $setup->{scoreboard_file},
@@ -1193,7 +1193,7 @@ sub mkd_sgid_umask_one_param_ok {
   mkpath($sub_dir);
 
   my $test_dir = File::Spec->rel2abs("$sub_dir/test.d");
- 
+
   if ($< == 0) {
     unless (chmod(0755, $sub_dir)) {
       die("Can't set perms on $sub_dir to 0755: $!");
@@ -1203,11 +1203,11 @@ sub mkd_sgid_umask_one_param_ok {
       die("Can't set owner of $sub_dir to $setup->{uid}/$setup->{gid}: $!");
     }
   }
- 
+
   # Make sure that our sub directory has the SGID bit set
   my $mode = 2755;
   unless (chmod($mode, $sub_dir)) {
-    die("Can't set perms on $sub_dir: $!"); 
+    die("Can't set perms on $sub_dir: $!");
   }
 
   my $config = {
@@ -1306,7 +1306,7 @@ sub mkd_sgid_umask_two_params_ok {
   mkpath($sub_dir);
 
   my $test_dir = File::Spec->rel2abs("$sub_dir/test.d");
- 
+
   if ($< == 0) {
     unless (chmod(0755, $sub_dir)) {
       die("Can't set perms on $sub_dir to 0755: $!");
@@ -1316,11 +1316,11 @@ sub mkd_sgid_umask_two_params_ok {
       die("Can't set owner of $sub_dir to $setup->{uid}/$setup->{gid}: $!");
     }
   }
- 
+
   # Make sure that our sub directory has the SGID bit set
   my $mode = 2755;
   unless (chmod($mode, $sub_dir)) {
-    die("Can't set perms on $sub_dir: $!"); 
+    die("Can't set perms on $sub_dir: $!");
   }
 
   my $config = {
@@ -1769,7 +1769,7 @@ sub mkd_digits_ok {
   my $setup = test_setup($tmpdir, 'cmds');
 
   my $sub_dir = File::Spec->rel2abs("$tmpdir/001");
- 
+
   my $config = {
     PidFile => $setup->{pid_file},
     ScoreboardFile => $setup->{scoreboard_file},
@@ -1858,7 +1858,7 @@ sub mkd_embedded_cr_bug4167 {
   my $setup = test_setup($tmpdir, 'cmds');
 
   my $sub_dir = File::Spec->rel2abs("$tmpdir/ab\015cd");
- 
+
   my $config = {
     PidFile => $setup->{pid_file},
     ScoreboardFile => $setup->{scoreboard_file},
@@ -1947,7 +1947,7 @@ sub mkd_embedded_lf_bug4167 {
   my $setup = test_setup($tmpdir, 'cmds');
 
   my $sub_dir = File::Spec->rel2abs("$tmpdir/ab\012cd");
- 
+
   my $config = {
     PidFile => $setup->{pid_file},
     ScoreboardFile => $setup->{scoreboard_file},
@@ -2068,7 +2068,7 @@ sub mkd_embedded_lf_bug4167 {
       $expected = "257 \"$sub_dir\" - Directory successfully created\r\n";
       $self->assert($expected eq $resp,
         test_msg("Expected response '$expected', got '$resp'"));
-      
+
       $cmd = "QUIT\r\n";
       if ($ENV{TEST_VERBOSE}) {
         print STDERR "# Sending: $cmd";

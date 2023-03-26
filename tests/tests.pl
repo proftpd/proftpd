@@ -58,6 +58,7 @@ if (scalar(@ARGV) > 0) {
     t/smtp.t
     t/ssh2.t
     t/logins.t
+    t/commands.t
     t/commands/user.t
     t/commands/pass.t
     t/commands/pwd.t
@@ -69,7 +70,7 @@ if (scalar(@ARGV) > 0) {
     t/commands/rmd.t
     t/commands/dele.t
     t/commands/mdtm.t
-    t/commands/size.t 
+    t/commands/size.t
     t/commands/mode.t
     t/commands/stru.t
     t/commands/allo.t
@@ -129,7 +130,7 @@ if (scalar(@ARGV) > 0) {
     t/config/dirfakeuser.t
     t/config/displaychdir.t
     t/config/displayconnect.t
-    t/config/displayfiletransfer.t 
+    t/config/displayfiletransfer.t
     t/config/displaylogin.t
     t/config/displayquit.t
     t/config/envvars.t

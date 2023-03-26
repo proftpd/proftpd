@@ -128,7 +128,7 @@ sub set_up {
   }
 }
 
-sub ifuser_allowoverwrite { 
+sub ifuser_allowoverwrite {
   my $self = shift;
   my $tmpdir = $self->{tmpdir};
 
@@ -290,7 +290,7 @@ EOC
   unlink($log_file);
 }
 
-sub ifgroup_dir_allow_mkd_bug3467 { 
+sub ifgroup_dir_allow_mkd_bug3467 {
   my $self = shift;
   my $tmpdir = $self->{tmpdir};
 
@@ -307,7 +307,7 @@ sub ifgroup_dir_allow_mkd_bug3467 {
 
   my $user = 'proftpd';
   my $passwd = 'test';
-  my $group = 'ftpd'; 
+  my $group = 'ftpd';
   my $home_dir = File::Spec->rel2abs($tmpdir);
   my $uid = 500;
   my $gid = 500;
@@ -407,7 +407,7 @@ EOC
       my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
       $client->login($user, $passwd);
 
-      $client->pwd(); 
+      $client->pwd();
       $client->mkd('foo');
       $client->quit();
     };
@@ -444,7 +444,7 @@ EOC
   unlink($log_file);
 }
 
-sub ifuser_dir_allow_mkd_bug3467 { 
+sub ifuser_dir_allow_mkd_bug3467 {
   my $self = shift;
   my $tmpdir = $self->{tmpdir};
 
@@ -461,7 +461,7 @@ sub ifuser_dir_allow_mkd_bug3467 {
 
   my $user = 'proftpd';
   my $passwd = 'test';
-  my $group = 'ftpd'; 
+  my $group = 'ftpd';
   my $home_dir = File::Spec->rel2abs($tmpdir);
   my $uid = 500;
   my $gid = 500;
@@ -587,7 +587,7 @@ EOC
   unlink($log_file);
 }
 
-sub ifclass_dir_allow_mkd_bug3467 { 
+sub ifclass_dir_allow_mkd_bug3467 {
   my $self = shift;
   my $tmpdir = $self->{tmpdir};
 
@@ -604,7 +604,7 @@ sub ifclass_dir_allow_mkd_bug3467 {
 
   my $user = 'proftpd';
   my $passwd = 'test';
-  my $group = 'ftpd'; 
+  my $group = 'ftpd';
   my $home_dir = File::Spec->rel2abs($tmpdir);
   my $uid = 500;
   my $gid = 500;
@@ -635,7 +635,7 @@ sub ifclass_dir_allow_mkd_bug3467 {
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
     AuthOrder => 'mod_auth_file.c',
-    
+
     IfModules => {
       'mod_delay.c' => {
         DelayEngine => 'off',
@@ -1187,7 +1187,7 @@ EOC
   unlink($log_file);
 }
 
-sub ifauthenticated_bug3629 { 
+sub ifauthenticated_bug3629 {
   my $self = shift;
   my $tmpdir = $self->{tmpdir};
 
@@ -1257,7 +1257,7 @@ sub ifauthenticated_bug3629 {
   if (open(my $fh, ">> $config_file")) {
     my $limit_dir = $home_dir;
     if ($^O eq 'darwin') {
-      # MacOSX hack 
+      # MacOSX hack
       $limit_dir = ('/private' . $home_dir);
     }
 
@@ -1466,7 +1466,7 @@ EOC
   test_cleanup($setup->{log_file}, $ex);
 }
 
-sub ifgroup_dir_allow_stor_bug3881 { 
+sub ifgroup_dir_allow_stor_bug3881 {
   my $self = shift;
   my $tmpdir = $self->{tmpdir};
 
@@ -1483,7 +1483,7 @@ sub ifgroup_dir_allow_stor_bug3881 {
 
   my $user = 'proftpd';
   my $passwd = 'test';
-  my $group = 'ftpd'; 
+  my $group = 'ftpd';
   my $home_dir = File::Spec->rel2abs("$tmpdir/users/$user");
   mkpath($home_dir);
   my $uid = 500;
@@ -1642,7 +1642,7 @@ EOC
   unlink($log_file);
 }
 
-sub ifgroup_dir_allow_stor_bug3881_sftp { 
+sub ifgroup_dir_allow_stor_bug3881_sftp {
   my $self = shift;
   my $tmpdir = $self->{tmpdir};
 
@@ -1659,7 +1659,7 @@ sub ifgroup_dir_allow_stor_bug3881_sftp {
 
   my $user = 'proftpd';
   my $passwd = 'test';
-  my $group = 'ftpd'; 
+  my $group = 'ftpd';
   my $home_dir = File::Spec->rel2abs("$tmpdir/users/$user");
   mkpath($home_dir);
   my $uid = 500;
@@ -1728,7 +1728,7 @@ sub ifgroup_dir_allow_stor_bug3881_sftp {
       # MacOSX hack
       $limit_dir = ('/private' . $limit_dir);
     }
- 
+
     # XXX Hack, for now:
     $limit_dir = '~/test.d';
 
@@ -1870,7 +1870,7 @@ sub ifclass_global_no_logging {
 
   my $user = 'proftpd';
   my $passwd = 'test';
-  my $group = 'ftpd'; 
+  my $group = 'ftpd';
   my $home_dir = File::Spec->rel2abs($tmpdir);
   my $uid = 500;
   my $gid = 500;
@@ -1901,7 +1901,7 @@ sub ifclass_global_no_logging {
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
     AuthOrder => 'mod_auth_file.c',
-    
+
     IfModules => {
       'mod_delay.c' => {
         DelayEngine => 'off',
@@ -2042,7 +2042,7 @@ sub ifuser_no_pass_bug4199 {
 
   my $user = 'proftpd';
   my $passwd = 'test';
-  my $group = 'ftpd'; 
+  my $group = 'ftpd';
   my $home_dir = File::Spec->rel2abs($tmpdir);
   my $uid = 500;
   my $gid = 500;

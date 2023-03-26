@@ -566,8 +566,8 @@ EOS
       my $oath = Authen::OATH->new();
       my $nattempts = 5;
       my $ok = 0;
-    
-      for (my $i = 0; $i < $nattempts; $i++) { 
+
+      for (my $i = 0; $i < $nattempts; $i++) {
         my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
 
         # Calculate HOTP
@@ -1160,7 +1160,7 @@ EOS
       sleep(2);
 
       my $oath = Authen::OATH->new();
-      my $nattempts = 3; 
+      my $nattempts = 3;
       my $now = time();
       my $ok = 0;
 

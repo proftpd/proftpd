@@ -634,7 +634,7 @@ sub extlog_retr_default {
       while (my $line = <$fh>) {
         chomp($line);
 
-        if ($ENV{TEST_VERBOSE}) { 
+        if ($ENV{TEST_VERBOSE}) {
           print STDERR "$line\n";
         }
 
@@ -837,7 +837,7 @@ sub extlog_retr_bug3137 {
     my $line = <$fh>;
     chomp($line);
 
-    if ($ENV{TEST_VERBOSE}) { 
+    if ($ENV{TEST_VERBOSE}) {
       print STDERR "$line\n";
     }
 
@@ -4589,7 +4589,7 @@ sub extlog_ftp_sendfile_raw_bytes_bug3554 {
       my $resp_msg = $client->response_msg();
       $client->quit();
 
-      $self->assert_transfer_ok($resp_code, $resp_msg); 
+      $self->assert_transfer_ok($resp_code, $resp_msg);
     };
 
     if ($@) {
@@ -11674,7 +11674,7 @@ sub extlog_micros_ts_bug3889 {
       close($fh);
 
       if ($line =~ /^\d{4}\-\d{2}\-\d{2} \d{2}:\d{2}:\d{2},\d{6}\s+(.*)?$/) {
-        my $file = $1; 
+        my $file = $1;
 
         # MacOSX hack
         if ($^O eq 'darwin') {
@@ -11823,7 +11823,7 @@ sub extlog_millis_ts_bug3889 {
     close($fh);
 
     if ($line =~ /^\d{4}\-\d{2}\-\d{2} \d{2}:\d{2}:\d{2},\d{3}\s+(.*)?$/) {
-      my $file = $1; 
+      my $file = $1;
 
       # MacOSX hack
       if ($^O eq 'darwin') {
@@ -11950,7 +11950,7 @@ sub extlog_iso8601_ts_bug3889 {
       close($fh);
 
       if ($line =~ /^\d{4}\-\d{2}\-\d{2} \d{2}:\d{2}:\d{2},\d{3}\s+(.*)?$/) {
-        my $file = $1; 
+        my $file = $1;
 
         # MacOSX hack
         if ($^O eq 'darwin') {
@@ -12146,7 +12146,7 @@ sub extlog_dirs_class_var_f_bug3966 {
           } else {
             $ok = 0;
           }
-       
+
           if ($ok == 0) {
             last;
           }

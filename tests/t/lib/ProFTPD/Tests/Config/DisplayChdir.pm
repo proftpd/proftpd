@@ -443,7 +443,7 @@ sub displaychdir_first_chdir {
       $client->cwd('..');
 
       $client->cwd('subdir');
- 
+
       $resp_code = $client->response_code();
       $resp_msg = $client->response_msg(0);
 
