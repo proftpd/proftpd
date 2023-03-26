@@ -631,8 +631,7 @@ MODRET site_post_cmd(cmd_rec *cmd) {
  */
 
 static int site_init(void) {
-
-  /* Add the commands handled by this module to the HELP list. */ 
+  /* Add the commands handled by this module to the HELP list. */
   pr_help_add(C_SITE, _("<sp> string"), TRUE);
 
   return 0;

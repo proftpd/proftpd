@@ -314,7 +314,7 @@ static int data_active_open(const char *reason, off_t size) {
     pr_inet_set_socket_opts2(session.d->pool, session.d,
       (main_server->tcp_rcvbuf_override ? main_server->tcp_rcvbuf_len : 0), 0,
       main_server->tcp_keepalive, 1);
-    
+
   } else {
     pr_inet_set_socket_opts2(session.d->pool, session.d,
       0, (main_server->tcp_sndbuf_override ? main_server->tcp_sndbuf_len : 0),
@@ -456,7 +456,7 @@ void pr_data_clear_xfer_pool(void) {
   xfer_type = session.xfer.xfer_type;
 
   memset(&session.xfer, 0, sizeof(session.xfer));
-  session.xfer.xfer_type = xfer_type;  
+  session.xfer.xfer_type = xfer_type;
 }
 
 void pr_data_reset(void) {
@@ -475,7 +475,7 @@ void pr_data_reset(void) {
 int pr_data_ignore_ascii(int ignore_ascii) {
   int res;
 
-  if (ignore_ascii != TRUE && 
+  if (ignore_ascii != TRUE &&
       ignore_ascii != FALSE) {
     errno = EINVAL;
     return -1;
@@ -1167,7 +1167,7 @@ static void poll_ctrl(void) {
         title_len = pr_proctitle_get(NULL, 0);
         if (title_len > 0) {
           title_buf = pcalloc(cmd->pool, title_len + 1);
-          pr_proctitle_get(title_buf, title_len + 1); 
+          pr_proctitle_get(title_buf, title_len + 1);
         }
 
         curr_cmd = session.curr_cmd;
@@ -1249,7 +1249,7 @@ int pr_data_xfer(char *cl_buf, size_t cl_size) {
     pr_trace_msg(trace_channel, 1,
       "data connection is null prior to data transfer (possibly from "
       "aborted transfer), returning '%s' error", strerror(xerrno));
-    pr_log_debug(DEBUG5, 
+    pr_log_debug(DEBUG5,
       "data connection is null prior to data transfer (possibly from "
        "aborted transfer), returning '%s' error", strerror(xerrno));
 
@@ -1280,7 +1280,7 @@ int pr_data_xfer(char *cl_buf, size_t cl_size) {
           session.xfer.bufsize - buflen, 1);
         while (len < 0) {
           int xerrno = errno;
- 
+
           if (xerrno == EAGAIN || xerrno == EINTR) {
             /* Since our socket is in non-blocking mode, read(2) can return
              * EAGAIN if there is no data yet for us.  Handle this by
@@ -1288,7 +1288,7 @@ int pr_data_xfer(char *cl_buf, size_t cl_size) {
              */
             errno = EINTR;
             pr_signals_handle();
-            
+
             len = pr_netio_read(session.d->instrm, buf + buflen,
               session.xfer.bufsize - buflen, 1);
             continue;
@@ -1411,7 +1411,7 @@ int pr_data_xfer(char *cl_buf, size_t cl_size) {
            */
           errno = EINTR;
           pr_signals_handle();
-           
+
           len = pr_netio_read(session.d->instrm, cl_buf, cl_size, 1);
           continue;
         }
@@ -1444,11 +1444,11 @@ int pr_data_xfer(char *cl_buf, size_t cl_size) {
         }
 
         total += len;
-      } 
+      }
     }
 
   } else { /* PR_NETIO_IO_WR */
-  
+
     while (cl_size) {
       int bwrote = 0;
       int buflen = cl_size;
@@ -1511,7 +1511,7 @@ int pr_data_xfer(char *cl_buf, size_t cl_size) {
            */
           errno = EINTR;
           pr_signals_handle();
-             
+
           bwrote = pr_netio_write(session.d->outstrm, session.xfer.buf,
             xferbuflen);
           continue;

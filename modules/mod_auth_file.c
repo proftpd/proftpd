@@ -1595,7 +1595,7 @@ MODRET authfile_chkpass(cmd_rec *cmd) {
   if (strcmp(crypted_pass, ciphertxt_pass) == 0) {
     session.auth_mech = "mod_auth_file.c";
     return PR_HANDLED(cmd);
-  }  
+  }
 
   return PR_DECLINED(cmd);
 }

@@ -2624,7 +2624,7 @@ static int tls_cert_match_dns_san(pool *p, X509 *cert, const char *dns_name) {
       }
 
       GENERAL_NAME_free(alt_name);
- 
+
       if (matched == 1) {
         break;
       }
@@ -2707,7 +2707,7 @@ static int tls_cert_match_ip_san(pool *p, X509 *cert, const char *ipstr) {
             pr_trace_msg(trace_channel, 8,
               "found cert iPAddress SAN matching '%s'", ipstr);
             matched = 1;
- 
+
           } else {
             if (san_datalen == 16) {
               /* We need to handle the case where the iPAddress SAN might
@@ -2733,7 +2733,7 @@ static int tls_cert_match_ip_san(pool *p, X509 *cert, const char *ipstr) {
       }
 
       GENERAL_NAME_free(alt_name);
- 
+
       if (matched == 1) {
         break;
       }
@@ -2835,7 +2835,7 @@ static int tls_cert_match_cn(pool *p, X509 *cert, const char *name,
 
     /* XXX Implement wildcard checking. */
   }
- 
+
   return matched;
 }
 
@@ -2969,7 +2969,7 @@ static int tls_check_server_cert(SSL *ssl, conn_t *conn) {
     return -1;
   }
 
-  /* XXX If using OpenSSL-1.0.2/1.1.0, we might be able to use: 
+  /* XXX If using OpenSSL-1.0.2/1.1.0, we might be able to use:
    * X509_match_host() and X509_match_ip()/X509_match_ip_asc().
    */
 
@@ -3386,7 +3386,7 @@ static int tls_exec_passphrase_provider(server_rec *s, char *buf, int buflen,
   }
 
   if (sigaction(SIGQUIT, &sa_quit, NULL) < 0) {
-    return -1; 
+    return -1;
   }
 
   if (sigprocmask(SIG_SETMASK, &set_save, NULL) < 0) {
@@ -3416,7 +3416,7 @@ static int tls_passphrase_cb(char *buf, int buflen, int rwflag, void *d) {
 
     /* Similar to Apache's mod_ssl, we want to be nice, and display an
      * informative message to the proftpd admin, telling them for what
-     * server they are being requested to provide a passphrase.  
+     * server they are being requested to provide a passphrase.
      */
 
     if (need_banner) {
@@ -3569,7 +3569,7 @@ static int tls_get_pkcs12_passwd(server_rec *s, FILE *fp, const char *prompt,
             break;
           }
         }
- 
+
         fprintf(stderr, "\nWrong password for this PKCS12 file.  Please try again.\n");
       }
     } else {
@@ -3594,7 +3594,7 @@ static int tls_get_pkcs12_passwd(server_rec *s, FILE *fp, const char *prompt,
    *
    * It looks like OpenSSL's pkcs12 command-line tool does not allow
    * passphrase-protected keys to be written into a PKCS12 structure;
-   * the key is decrypted first (hence, probably, the password protection 
+   * the key is decrypted first (hence, probably, the password protection
    * for the entire PKCS12 structure).  Can the same be assumed to be true
    * for PKCS12 files created via other applications?
    *
@@ -7157,7 +7157,7 @@ static EC_KEY *tls_ecdh_cb(SSL *ssl, int is_export, int keylen) {
 
 #if defined(PR_USE_OPENSSL_ALPN)
 static int tls_alpn_select_cb(SSL *ssl,
-    const unsigned char **selected_proto, unsigned char *selected_protolen, 
+    const unsigned char **selected_proto, unsigned char *selected_protolen,
     const unsigned char *advertised_proto, unsigned int advertised_protolen,
     void *user_data) {
   register unsigned int i;
@@ -7168,7 +7168,7 @@ static int tls_alpn_select_cb(SSL *ssl,
     "ALPN protocols advertised by client:");
   for (i = 0; i < advertised_protolen; i++) {
     pr_trace_msg(trace_channel, 9,
-      " %*s", advertised_proto[i], &(advertised_proto[i+1])); 
+      " %*s", advertised_proto[i], &(advertised_proto[i+1]));
     i += advertised_proto[i] + 1;
   }
 
@@ -8532,7 +8532,7 @@ static int tls_connect(conn_t *conn) {
 
   /* Disable TCP_NODELAY, now that the handshake is done. */
   (void) pr_inet_set_proto_nodelay(conn->pool, conn, 0);
- 
+
   /* Disable the handshake timer. */
   pr_timer_remove(tls_handshake_timer_id, &tls_module);
 
@@ -9473,7 +9473,7 @@ static int tls_cert_to_user(const char *user_name, const char *field_name) {
 #if OPENSSL_VERSION_NUMBER >= 0x10100000L && \
     !defined(HAVE_LIBRESSL)
           data_str = ASN1_STRING_get0_data(name->d.ia5);
-#else 
+#else
           data_str = ASN1_STRING_data(name->d.ia5);
 #endif /* OpenSSL 1.1.x and later */
 
@@ -9537,7 +9537,7 @@ static int tls_cert_to_user(const char *user_name, const char *field_name) {
 #if OPENSSL_VERSION_NUMBER >= 0x10100000L && \
     !defined(HAVE_LIBRESSL)
             asn_datastr = ASN1_STRING_get0_data(asn_data);
-#else     
+#else
             asn_datastr = ASN1_STRING_data(asn_data);
 #endif /* OpenSSL 1.1.x and later */
 
@@ -16476,7 +16476,7 @@ static void tls_lookup_stapling(server_rec *s) {
   } else {
     /* Reset to default. */
     tls_stapling_responder = NULL;
-  } 
+  }
 
   c = find_config(s->conf, CONF_PARAM, "TLSStaplingTimeout", FALSE);
   if (c != NULL) {
@@ -19072,16 +19072,15 @@ static int tls_sess_init(void) {
   return 0;
 }
 
-#ifdef PR_USE_CTRLS
+#if defined(PR_USE_CTRLS)
 static ctrls_acttab_t tls_acttab[] = {
   { "clear", NULL, NULL, NULL },
   { "info", NULL, NULL, NULL },
   { "ocspcache", NULL, NULL, NULL },
   { "sesscache", NULL, NULL, NULL },
- 
+
   { NULL, NULL, NULL, NULL }
 };
-
 #endif /* PR_USE_CTRLS */
 
 /* Module API tables
@@ -19090,8 +19089,8 @@ static ctrls_acttab_t tls_acttab[] = {
 static conftable tls_conftab[] = {
   { "TLSCACertificateFile",	set_tlscacertfile,	NULL },
   { "TLSCACertificatePath",	set_tlscacertpath,	NULL },
-  { "TLSCARevocationFile",      set_tlscacrlfile,       NULL }, 
-  { "TLSCARevocationPath",      set_tlscacrlpath,       NULL }, 
+  { "TLSCARevocationFile",      set_tlscacrlfile,       NULL },
+  { "TLSCARevocationPath",      set_tlscacrlpath,       NULL },
   { "TLSCertificateChainFile",	set_tlscertchain,	NULL },
   { "TLSCipherSuite",		set_tlsciphersuite,	NULL },
   { "TLSControlsACLs",		set_tlsctrlsacls,	NULL },

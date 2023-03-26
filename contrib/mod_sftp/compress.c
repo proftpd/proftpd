@@ -87,7 +87,7 @@ static void switch_read_compress(int flags) {
   /* First we can free up the read stream, kept from rekeying. */
   if (comp->use_zlib == flags &&
       comp->stream_ready) {
-  
+
     (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
       "done decompressing data: decompressed %" PR_LU " bytes to %" PR_LU
       " bytes of data (%.2f)", (pr_off_t) stream->total_in,
@@ -110,16 +110,16 @@ static void switch_read_compress(int flags) {
 }
 
 static void switch_write_compress(int flags) {
-  struct sftp_compress *comp; 
+  struct sftp_compress *comp;
   z_stream *stream;
- 
+
   comp = &(write_compresses[write_comp_idx]);
   stream = &(write_streams[write_comp_idx]);
- 
+
   /* First we can free up the write stream, kept from rekeying. */
   if (comp->use_zlib == flags &&
       comp->stream_ready) {
- 
+
     (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
       "done compressing data: compressed %" PR_LU " bytes to %" PR_LU
       " bytes of data (%.2f)", (pr_off_t) stream->total_in,
@@ -357,7 +357,7 @@ int sftp_compress_set_write_algo(const char *algo) {
 
   if (write_compresses[idx].stream_ready) {
     /* If we have an existing stream, it means that we are currently
-     * rekeying. 
+     * rekeying.
      */
     idx = get_next_write_index();
   }

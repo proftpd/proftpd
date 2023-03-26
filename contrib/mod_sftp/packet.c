@@ -106,7 +106,7 @@ static int packet_poll(int sockfd, int io) {
      */
 
     if (client_alive_interval > 0 &&
-        (!(sftp_sess_state & SFTP_SESS_STATE_REKEYING) && 
+        (!(sftp_sess_state & SFTP_SESS_STATE_REKEYING) &&
          (sftp_sess_state & SFTP_SESS_STATE_HAVE_AUTH))) {
       timeout = client_alive_interval;
       using_client_alive = TRUE;
@@ -451,7 +451,7 @@ static void is_client_alive(void) {
   if (++client_alive_count > client_alive_max) {
     (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
       "SFTPClientAlive threshold (max %u checks, %u sec interval) reached, "
-      "disconnecting client", client_alive_max, client_alive_interval);    
+      "disconnecting client", client_alive_max, client_alive_interval);
 
     /* XXX Generate an event for this? */
 
@@ -468,7 +468,7 @@ static void is_client_alive(void) {
   bufsz = buflen = 64;
   ptr = buf = palloc(tmp_pool, bufsz);
 
-  count = sftp_channel_opened(&channel_id);  
+  count = sftp_channel_opened(&channel_id);
   if (count > 0) {
     sftp_msg_write_byte(&buf, &buflen, SFTP_SSH2_MSG_CHANNEL_REQUEST);
     sftp_msg_write_int(&buf, &buflen, channel_id);
@@ -1004,7 +1004,7 @@ int sftp_ssh2_packet_read(int sockfd, struct ssh2_packet *pkt) {
      * we do NOT check that the packet length is sane here; we have to
      * wait until the MAC check succeeds.
      */
- 
+
     /* Note: Checking for the RFC4253-recommended minimum packet length
      * of 16 bytes causes KEX to fail (the NEWKEYS packet is 12 bytes).
      * Thus that particular check is omitted.
@@ -1814,7 +1814,7 @@ static int handle_ssh2_packet(void *data) {
    * sftp_sess_state flags; this is intentional, and is the way that
    * the protocol is supposed to work.
    */
-  
+
   switch (msg_type) {
     case SFTP_SSH2_MSG_DEBUG:
       sftp_ssh2_packet_handle_debug(pkt);
@@ -1863,7 +1863,7 @@ static int handle_ssh2_packet(void *data) {
             "Time before first SSH key exchange: %lu ms", elapsed_ms);
         }
       }
- 
+
       sftp_sess_state |= SFTP_SESS_STATE_REKEYING;
 
       /* Clear any current "have KEX" state. */

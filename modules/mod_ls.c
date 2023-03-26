@@ -241,8 +241,8 @@ static int ls_perms_full(pool *p, cmd_rec *cmd, const char *path, int *hidden) {
   if (fullpath == NULL) {
     fullpath = pstrdup(p, path);
   }
- 
-  if (use_canon) {
+
+  if (use_canon == TRUE) {
     res = dir_check_canon(p, cmd, cmd->group, fullpath, hidden);
 
   } else {
@@ -438,8 +438,7 @@ static void ls_done(cmd_rec *cmd) {
   }
 }
 
-static char units[6][2] = 
-  { "", "k", "M", "G", "T", "P" };
+static char units[6][2] = { "", "k", "M", "G", "T", "P" };
 
 static void ls_fmt_filesize(char *buf, size_t buflen, off_t sz) {
   if (!opt_h || sz < 1000) {
@@ -505,7 +504,7 @@ static int listfile(cmd_rec *cmd, pool *p, const char *resp_code,
         list_nfiles.max);
       list_nfiles.logged = TRUE;
     }
- 
+
     return 2;
   }
   list_nfiles.curr++;
@@ -1341,7 +1340,7 @@ static int listdir(cmd_rec *cmd, pool *workp, const char *resp_code,
         list_ndepth.max - 1);
       list_ndepth.logged = TRUE;
     }
- 
+
     return 1;
   }
 
@@ -2987,7 +2986,7 @@ MODRET ls_nlst(cmd_rec *cmd) {
     pr_signals_handle();
 
     flags = *((unsigned long *) c->argv[5]);
-    
+
     /* Make sure that this ListOptions can be applied to the NLST command.
      * If not, keep looking for other applicable ListOptions.
      */
@@ -3253,7 +3252,7 @@ MODRET ls_nlst(cmd_rec *cmd) {
      * file, just list the file.
      */
     struct stat st;
-    
+
     /* Remove any trailing separators. */
     targetlen = strlen(target);
     while (targetlen >= 1 &&
@@ -3525,7 +3524,7 @@ MODRET set_listoptions(cmd_rec *cmd) {
 
   c = add_config_param(cmd->argv[0], 6, NULL, NULL, NULL, NULL, NULL, NULL);
   c->flags |= CF_MERGEDOWN;
-  
+
   c->argv[0] = pstrdup(c->pool, cmd->argv[1]);
 
   /* The default "strict" setting. */
@@ -3546,7 +3545,7 @@ MODRET set_listoptions(cmd_rec *cmd) {
 
   /* The default flags */
   c->argv[5] = pcalloc(c->pool, sizeof(unsigned long));
- 
+
   /* Check for, and handle, optional arguments. */
   if (cmd->argc-1 >= 2) {
     register unsigned int i = 0;

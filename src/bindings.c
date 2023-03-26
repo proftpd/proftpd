@@ -137,7 +137,7 @@ conn_t *pr_ipbind_get_listening_conn(server_rec *server,
         use_elt = TRUE;
       }
 
-      if (use_elt) { 
+      if (use_elt == TRUE) {
         lr->claimed = TRUE;
         return lr->conn;
       }
@@ -151,7 +151,7 @@ conn_t *pr_ipbind_get_listening_conn(server_rec *server,
     listening_conn_list = xaset_create(listening_conn_pool, NULL);
   }
 
-  p = make_sub_pool(listening_conn_pool); 
+  p = make_sub_pool(listening_conn_pool);
   pr_pool_tag(p, "Listening conn subpool");
 
   l = pr_inet_create_conn(p, -1, addr, port, FALSE);
@@ -1208,10 +1208,10 @@ unsigned int pr_namebind_count(server_rec *srv) {
     return 0;
   }
 
-  ipbind = pr_ipbind_find(srv->addr, srv->ServerPort, FALSE); 
+  ipbind = pr_ipbind_find(srv->addr, srv->ServerPort, FALSE);
   if (ipbind != NULL &&
       ipbind->ib_namebinds != NULL) {
-    count = ipbind->ib_namebinds->nelts; 
+    count = ipbind->ib_namebinds->nelts;
   }
 
   return count;

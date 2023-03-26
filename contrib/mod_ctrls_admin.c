@@ -96,14 +96,14 @@ static void mem_printf(const char *fmt, ...) {
   char buf[PR_TUNABLE_BUFFER_SIZE];
   va_list msg;
 
-  memset(buf, '\0', sizeof(buf)); 
+  memset(buf, '\0', sizeof(buf));
 
   va_start(msg, fmt);
   pr_vsnprintf(buf, sizeof(buf), fmt, msg);
   va_end(msg);
- 
+
   buf[sizeof(buf)-1] = '\0';
- 
+
   pr_ctrls_add_response(mem_ctrl, "pool: %s", buf);
 }
 #endif /* !PR_USE_DEVEL */
@@ -428,7 +428,7 @@ static int ctrls_handle_debug(pr_ctrls_t *ctrl, int reqargc,
         pr_ctrls_add_response(ctrl, "debug level must not be negative");
         return PR_CTRLS_STATUS_WRONG_PARAMETERS;
       }
-  
+
       pr_log_setdebuglevel(level);
       pr_ctrls_log(MOD_CTRLS_ADMIN_VERSION, "debug: level set to %d", level);
       pr_ctrls_add_response(ctrl, "debug level set to %d", level);
@@ -495,7 +495,7 @@ static int ctrls_handle_dns(pr_ctrls_t *ctrl, int reqargc,
 
     pr_netaddr_clear_cache();
     pr_ctrls_add_response(ctrl, "dns: netaddr cache cleared");
-    
+
   } else {
     bool = pr_str_is_boolean(reqargv[0]);
 
@@ -1162,7 +1162,7 @@ static int ctrls_handle_shutdown(pr_ctrls_t *ctrl, int reqargc,
       sleep(waiting);
 
       child_update();
-      nkids = child_count();     
+      nkids = child_count();
 
       /* Always check for sent signals in a while() loop. */
       pr_signals_handle();
@@ -1236,7 +1236,7 @@ static int ctrls_handle_status(pr_ctrls_t *ctrl, int reqargc,
     return PR_CTRLS_STATUS_ACCESS_DENIED;
   }
 
-  /* Sanity check */ 
+  /* Sanity check */
   if (reqargc < 1 ||
       reqargv == NULL) {
     pr_ctrls_add_response(ctrl, "status: missing required parameters");
@@ -1256,7 +1256,7 @@ static int ctrls_handle_status(pr_ctrls_t *ctrl, int reqargc,
       pr_ctrls_log(MOD_CTRLS_ADMIN_VERSION, "status: checking all servers");
 
       while ((ipbind = pr_ipbind_get(ipbind)) != NULL) {
-        const char *ipbind_str = pr_netaddr_get_ipstr(ipbind->ib_addr); 
+        const char *ipbind_str = pr_netaddr_get_ipstr(ipbind->ib_addr);
 
         pr_ctrls_add_response(ctrl, "status: %s#%u %s", ipbind_str,
           ipbind->ib_port, ipbind->ib_isactive ? "UP" : "DOWN");
@@ -1349,7 +1349,7 @@ static int ctrls_handle_trace(pr_ctrls_t *ctrl, int reqargc,
         return PR_CTRLS_STATUS_WRONG_PARAMETERS;
       }
     }
- 
+
   } else {
     pr_table_t *trace_tab;
 
@@ -1378,7 +1378,7 @@ static int ctrls_handle_trace(pr_ctrls_t *ctrl, int reqargc,
       pr_ctrls_add_response(ctrl, "trace: no info available");
     }
   }
- 
+
   return PR_CTRLS_STATUS_OK;
 #else
   pr_ctrls_add_response(ctrl, "trace: requires trace support (--enable-trace");

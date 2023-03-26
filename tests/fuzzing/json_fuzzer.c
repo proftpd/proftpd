@@ -27,7 +27,7 @@
 #include <stdlib.h>
 #include "json.h"
 
-int LLVMFuzzerTestOneInput(const uint8_t *data, size_t size){        
+int LLVMFuzzerTestOneInput(const uint8_t *data, size_t size) {
     char *new_str = (char *)malloc(size+1);
     if (new_str == NULL) {
         return 0;
@@ -37,7 +37,7 @@ int LLVMFuzzerTestOneInput(const uint8_t *data, size_t size){
 
     pool *p = make_sub_pool(NULL);
     if (p != NULL) {
-        init_json();        
+        init_json();
         pr_json_object_t *json = pr_json_object_from_text(p, new_str);
         pr_json_object_free(json);
         finish_json();

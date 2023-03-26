@@ -334,7 +334,7 @@ int sftp_auth_publickey(struct ssh2_packet *pkt, cmd_rec *pass_cmd,
 
     /* XXX Need to pass the pubkey_type here as well, so that the
      * verification routines can handle different databases of keys/certs.
-     * 
+     *
      * For X509v3 certs, we will want a way to enforce/restrict which
      * user names can be used with the provided cert.  Perhaps a database
      * mapping cert fingerprints to user names/UIDs?  Configurable callback

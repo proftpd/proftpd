@@ -214,7 +214,7 @@ static pr_ctrls_cl_t *ctrls_add_cl(int cl_fd, uid_t cl_uid, gid_t cl_gid,
 
   pr_ctrls_log(MOD_CTRLS_VERSION,
     "accepted connection from %s/%s client", cl->cl_user, cl->cl_group);
- 
+
   return cl;
 }
 
@@ -644,9 +644,8 @@ static int ctrls_recv_cl_reqs(void) {
       errno = xerrno;
       return res;
     }
- 
-    if (FD_ISSET(ctrls_sockfd, &cl_rset)) {
 
+    if (FD_ISSET(ctrls_sockfd, &cl_rset)) {
       /* Make sure the ctrl socket is non-blocking */
       if (ctrls_setnonblock(ctrls_sockfd) < 0) {
         xerrno = errno;
@@ -702,7 +701,7 @@ static int ctrls_recv_cl_reqs(void) {
   /* Go through the client list */
   ctrls_cls_read();
 
-  return 0; 
+  return 0;
 }
 
 static int ctrls_send_cl_resps(void) {
@@ -1154,7 +1153,7 @@ MODRET set_ctrlssocketacl(cmd_rec *cmd) {
       CONF_ERROR(cmd, pstrcat(cmd->tmp_pool,
         "error configuring user socket ACL: ", strerror(errno), NULL));
     }
- 
+
   } else if (strcasecmp(cmd->argv[2], "group") == 0) {
     if (pr_ctrls_set_group_acl(ctrls_pool, &ctrls_sock_acl.acl_groups,
         cmd->argv[1], cmd->argv[3]) < 0) {
@@ -1312,7 +1311,7 @@ static void ctrls_restart_ev(const void *event_data, void *user_data) {
  */
 
 static int ctrls_init(void) {
-  register unsigned int i = 0; 
+  register unsigned int i = 0;
 
   /* Allocate the pool for this module's use */
   ctrls_pool = make_sub_pool(permanent_pool);
@@ -1355,16 +1354,16 @@ static int ctrls_sess_init(void) {
   /* Close the inherited socket */
   close(ctrls_sockfd);
   ctrls_sockfd = -1;
- 
+
   return 0;
 }
 
 static ctrls_acttab_t ctrls_acttab[] = {
   { "help",	"describe all registered controls", NULL,
     ctrls_handle_help },
-  { "insctrl",	"enable a disabled control", NULL, 
+  { "insctrl",	"enable a disabled control", NULL,
     ctrls_handle_insctrl },
-  { "lsctrl",	"list all registered controls", NULL, 
+  { "lsctrl",	"list all registered controls", NULL,
     ctrls_handle_lsctrl },
   { "rmctrl",	"disable a registered control", NULL,
     ctrls_handle_rmctrl },

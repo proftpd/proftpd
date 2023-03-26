@@ -160,7 +160,7 @@ static int lp_set_cap(void) {
       strerror(errno));
     return -1;
   }
- 
+
   return 0;
 }
 
@@ -316,7 +316,7 @@ MODRET cap_post_pass(cmd_rec *cmd) {
 
     if (cap_flags & CAP_USE_DAC_OVERRIDE) {
       pr_log_debug(DEBUG3, MOD_CAP_VERSION
-        ": adding CAP_DAC_OVERRIDE capability"); 
+        ": adding CAP_DAC_OVERRIDE capability");
     }
 
     if (cap_flags & CAP_USE_DAC_READ_SEARCH) {

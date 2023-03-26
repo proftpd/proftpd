@@ -183,7 +183,7 @@ static int exec_log(const char *fmt, ...) {
   va_start(msg, fmt);
   res = pr_log_vwritefile(exec_logfd, MOD_EXEC_VERSION, fmt, msg);
   va_end(msg);
-  
+
   return res;
 }
 
@@ -197,7 +197,7 @@ static int exec_match_cmd(cmd_rec *cmd, array_header *cmd_array) {
     if (strcasecmp(cmd->argv[0], cmds[i]) == 0) {
       return TRUE;
     }
- 
+
     if (cmd->group != NULL &&
         strcasecmp(cmds[i], cmd->group) == 0) {
       return TRUE;
@@ -518,7 +518,7 @@ static int exec_ssystem(cmd_rec *cmd, config_rec *c, int flags) {
      * of course).
      */
     tmp_pool = cmd ? cmd->tmp_pool : make_sub_pool(session.pool);
- 
+
     /* Don't forget to update the PID. */
     session.pid = getpid();
 
@@ -530,7 +530,7 @@ static int exec_ssystem(cmd_rec *cmd, config_rec *c, int flags) {
       env = exec_prepare_environ(tmp_pool, cmd);
 
       logfmts = c->argv[EXEC_IDX_LOGFMTS];
- 
+
       /* Perform any required substitution on the command arguments. */
       for (i = path_idx+1, j = 0; i < c->argc; i++, j++) {
         unsigned char *logfmt;
@@ -618,7 +618,7 @@ static int exec_ssystem(cmd_rec *cmd, config_rec *c, int flags) {
     errno = 0;
 
     /* If we are using stdin to convey all of the arguments, then we need
-     * not provide any sort of environment variables. 
+     * not provide any sort of environment variables.
      */
     if (exec_opts & EXEC_OPT_USE_STDIN) {
       char *args[] = { ptr + 1, NULL };
@@ -633,7 +633,7 @@ static int exec_ssystem(cmd_rec *cmd, config_rec *c, int flags) {
      * have been closed, and root privs have been revoked, there's little
      * chance of directing a message of execve() failure to proftpd's log
      * files.  execve() only returns if there's an error; the only way we
-     * can signal this to the waiting parent process is to exit with a 
+     * can signal this to the waiting parent process is to exit with a
      * non-zero value (the value of errno will do nicely).
      */
     exit(errno);
@@ -733,7 +733,7 @@ static int exec_ssystem(cmd_rec *cmd, config_rec *c, int flags) {
 
     (void) close(exec_stderr_pipe[1]);
     exec_stderr_pipe[1] = -1;
-  
+
     if ((exec_opts & EXEC_OPT_LOG_STDOUT) ||
         (exec_opts & EXEC_OPT_LOG_STDERR) ||
         (exec_opts & EXEC_OPT_SEND_STDOUT) ||
@@ -1526,7 +1526,7 @@ MODRET set_execengine(cmd_rec *cmd) {
 
   /* Also set this here, for the daemon process. */
   exec_engine = engine;
- 
+
   return PR_HANDLED(cmd);
 }
 
@@ -1673,7 +1673,7 @@ MODRET set_execonerror(cmd_rec *cmd) {
   }
 
   CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL|CONF_ANON|
-    CONF_DIR); 
+    CONF_DIR);
 
   path = cmd->argv[path_idx];
   if (*path != '/') {

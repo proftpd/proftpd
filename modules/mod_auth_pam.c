@@ -302,7 +302,7 @@ MODRET pam_auth(cmd_rec *cmd) {
   if (pam_pass_len > (PAM_MAX_MSG_SIZE + 1)) {
     pam_pass_len = PAM_MAX_MSG_SIZE + 1;
   }
- 
+
   pam_pass = malloc(pam_pass_len);
   if (pam_pass == NULL) {
     memset(pam_user, '\0', pam_user_len);

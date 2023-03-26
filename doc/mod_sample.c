@@ -9,7 +9,7 @@
  * Copyright (c) 1997, 1998 Public Flood Software
  * Copyright (c) 1999, 2000 MacGyver aka Habeeb J. Dihu <macgyver@tos.net>
  * Copyright (c) 2001-2016 The ProFTPD Project team
- *  
+ *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation; either version 2 of the License, or
@@ -126,7 +126,7 @@ MODRET sample_xfoo(cmd_rec *cmd) {
   return PR_HANDLED(cmd);
 }
 
-/* Configuration handlers 
+/* Configuration handlers
  */
 
 /* This sample configuration directive handler will get called
@@ -272,7 +272,7 @@ static conftable sample_conftab[] = {
  *
  * third  : command "group" (used for access control via Limit directives),
  *          this can be either G_DIRS (for commands related to directory
- *          listing), G_READ (for commands related to reading files), 
+ *          listing), G_READ (for commands related to reading files),
  *          G_WRITE (for commands related to file writing), or the
  *          special G_NONE for those commands against which the
  *          special <Limit READ|WRITE|DIRS> will not be applied.

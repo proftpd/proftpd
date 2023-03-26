@@ -115,7 +115,7 @@
 #endif
 
 /* Maximum path length.  GNU HURD (and some others) do not define
- * MAXPATHLEN.  POSIX' PATH_MAX is mandated to be at least 256 
+ * MAXPATHLEN.  POSIX' PATH_MAX is mandated to be at least 256
  * (according to some), so 1K, in the absence of MAXPATHLEN, should be
  * a reasonable default.
  */

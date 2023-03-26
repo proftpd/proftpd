@@ -89,7 +89,7 @@ typedef struct {
   time_t txt_mtime;
   char **txt_keys;
   char **txt_values;
-  unsigned int txt_nents; 
+  unsigned int txt_nents;
 } rewrite_map_txt_t;
 
 module rewrite_module;
@@ -217,7 +217,7 @@ static const char *rewrite_expand_var(cmd_rec *cmd, const char *subst_pattern,
 
       for (i = 2; i <= cmd->argc-1; i++) {
         tmp = pstrcat(cmd->tmp_pool, tmp, *tmp ? " " : "", cmd->argv[i], NULL);
-      } 
+      }
 
       return dir_abs_path(cmd->tmp_pool, tmp, FALSE);
 
@@ -391,7 +391,7 @@ static const char *rewrite_expand_var(cmd_rec *cmd, const char *subst_pattern,
       strerror(errno));
   }
 
-  rewrite_log("unknown variable: '%s'", var); 
+  rewrite_log("unknown variable: '%s'", var);
   return NULL;
 }
 
@@ -475,7 +475,7 @@ static unsigned int rewrite_parse_cond_flags(pool *p, const char *flags_str) {
     if (strcmp(opts[i], "nocase") == 0 ||
         strcmp(opts[i], "NC") == 0) {
       flags |= REWRITE_COND_FLAG_NOCASE;
-  
+
     } else if (strcmp(opts[i], "ornext") == 0 ||
                strcmp(opts[i], "OR") == 0) {
       flags |= REWRITE_COND_FLAG_ORNEXT;
@@ -733,7 +733,7 @@ static unsigned char rewrite_parse_map_str(char *str, rewrite_map_t *map) {
     substr = ++map_end;
     return TRUE;
   }
-  
+
   return FALSE;
 }
 
@@ -797,30 +797,33 @@ static unsigned char rewrite_parse_map_txt(rewrite_map_txt_t *txtmap) {
     for (pos = 0; pos < linelen && PR_ISSPACE(linebuf[pos]); pos++);
 
     /* Ignore comments and blank lines. */
-    if (linebuf[pos] == '#')
+    if (linebuf[pos] == '#') {
       continue;
+    }
 
-    if (pos == linelen)
-      continue; 
+    if (pos == linelen) {
+      continue;
+    }
 
     /* Only parse the first two non-whitespace strings.  Ignore everything
      * else.
      */
     key_so = pos;
     for (; pos < linelen; pos++) {
- 
+
       if (PR_ISSPACE(linebuf[pos])) {
-        if (!key_eo)
+        if (!key_eo) {
           key_eo = pos;
 
-        else if (val_so && !val_eo) {
+        } else if (val_so && !val_eo) {
           val_eo = pos;
           break;
         }
 
       } else {
-        if (key_eo && !val_so)
+        if (key_eo && !val_so) {
           val_so = pos;
+        }
       }
     }
 
@@ -842,13 +845,15 @@ static unsigned char rewrite_parse_map_txt(rewrite_map_txt_t *txtmap) {
 
   txtmap->txt_keys = (char **) pcalloc(txtmap->txt_pool,
     keys->nelts * sizeof(char *));
-  for (i = 0; i < keys->nelts; i++)
+  for (i = 0; i < keys->nelts; i++) {
     txtmap->txt_keys[i] = ((char **) keys->elts)[i];
+  }
 
   txtmap->txt_values = (char **) pcalloc(txtmap->txt_pool,
     vals->nelts * sizeof(char *));
-  for (i = 0; i < vals->nelts; i++)
+  for (i = 0; i < vals->nelts; i++) {
     txtmap->txt_values[i] = ((char **) vals->elts)[i];
+  }
 
   txtmap->txt_nents = vals->nelts;
 
@@ -1033,7 +1038,7 @@ static const char *rewrite_subst_backrefs(cmd_rec *cmd, const char *pattern,
       continue;
     }
 
-    /* Check for escaped backrefs. */ 
+    /* Check for escaped backrefs. */
     if (ptr > replacement_pattern) {
       if (matches == &rewrite_rule_matches) {
         /* If the character before ptr is itself a '$', then this is
@@ -1056,7 +1061,7 @@ static const char *rewrite_subst_backrefs(cmd_rec *cmd, const char *pattern,
             pr_trace_msg(trace_channel, 3,
               "error replacing '%s' with '%s' in '%s': %s", var, buf,
               replacement_pattern, strerror(errno));
-            
+
           } else {
             replacement_pattern = res;
           }
@@ -1085,7 +1090,7 @@ static const char *rewrite_subst_backrefs(cmd_rec *cmd, const char *pattern,
             pr_trace_msg(trace_channel, 3,
               "error replacing '%s' with '%s' in '%s': %s", var, buf,
               replacement_pattern, strerror(errno));
-            
+
           } else {
             replacement_pattern = res;
           }
@@ -1139,12 +1144,12 @@ static const char *rewrite_subst_backrefs(cmd_rec *cmd, const char *pattern,
         pr_trace_msg(trace_channel, 3,
           "error replacing '%s' with '%s' in '%s': %s", buf, value,
           replacement_pattern, strerror(errno));
-            
+
       } else {
         replacement_pattern = res;
       }
 
-      /* Undo the twiddling of the NUL character. */ 
+      /* Undo the twiddling of the NUL character. */
       (matches->match_string)[matches->match_groups[i].rm_eo] = tmp;
 
     } else {
@@ -1276,7 +1281,7 @@ static const char *rewrite_subst_maps(cmd_rec *cmd, const char *pattern) {
     while (c != NULL) {
       pr_signals_handle();
 
-      if (strcmp(c->argv[0], map.map_name) == 0) { 
+      if (strcmp(c->argv[0], map.map_name) == 0) {
         const char *lookup_value = NULL, *res;
         have_map = TRUE;
 
@@ -1537,7 +1542,7 @@ static const char *rewrite_subst_maps_int(cmd_rec *cmd, config_rec *c,
     rewrite_map_t *map) {
   const char *value = NULL;
   char *(*map_func)(pool *, char *) = (char *(*)(pool *, char *)) c->argv[2];
-   
+
   value = map_func(cmd->tmp_pool, map->map_lookup_key);
   if (value == NULL) {
     value = map->map_default_value;
@@ -1766,8 +1771,8 @@ static const char *rewrite_map_int_replaceall(pool *map_pool, char *key) {
 
   *ptr = '\0';
   value = str;
-  rewrite_log("rewrite_map_int_replaceall(): actual key: '%s'", value); 
- 
+  rewrite_log("rewrite_map_int_replaceall(): actual key: '%s'", value);
+
   str = ptr + 1;
 
   ptr = strchr(str, sep);
@@ -1779,7 +1784,7 @@ static const char *rewrite_map_int_replaceall(pool *map_pool, char *key) {
   *ptr = '\0';
   src = str;
   dst = ptr + 1;
-  
+
   rewrite_log("rewrite_map_int_replaceall(): replacing '%s' with '%s'", src,
     dst);
 
@@ -1926,7 +1931,7 @@ static int rewrite_read_fifo(int fd, char *buf, size_t buflen) {
     if (errno == EINTR) {
       pr_signals_handle();
       continue;
-    } 
+    }
 
     break;
   }
@@ -1971,7 +1976,7 @@ static void rewrite_wait_fifo(int fd) {
     /* Poll every half second. */
     tv.tv_sec = 0;
     tv.tv_usec = 500000;
- 
+
     select(0, NULL, NULL, NULL, &tv);
 
     if (ioctl(fd, FIONREAD, &size) < 0) {
@@ -2023,7 +2028,7 @@ static char *rewrite_map_int_utf8trans(pool *map_pool, char *key) {
 
     /* The key is not a properly formatted UTF-8 string. */
     rewrite_log("rewrite_map_int_utf8trans(): not a proper UTF-8 string: '%s'",
-      key);  
+      key);
     return NULL;
 
   } else if (ucs4strlen > 1) {
@@ -2326,7 +2331,7 @@ MODRET set_rewritecondition(cmd_rec *cmd) {
   c->config_type = CONF_PARAM;
   c->argc = 5;
   c->argv = pcalloc(c->pool, (c->argc+1) * sizeof(void *));
-  c->argv[0] = pstrdup(c->pool, cmd->argv[1]); 
+  c->argv[0] = pstrdup(c->pool, cmd->argv[1]);
   c->argv[1] = (void *) cond_data;
 
   c->argv[2] = palloc(c->pool, sizeof(unsigned char));
@@ -2360,7 +2365,7 @@ MODRET set_rewriteengine(cmd_rec *cmd) {
 
   /* Check for duplicates */
   if (get_param_ptr(cmd->server->conf, cmd->argv[0], FALSE) != NULL)
-    CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, cmd->argv[0], ": multiple "     
+    CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, cmd->argv[0], ": multiple "
      "instances not allowed for same server", NULL));
 
   c = add_config_param(cmd->argv[0], 1, NULL);
@@ -2425,12 +2430,12 @@ MODRET set_rewritelog(cmd_rec *cmd) {
   return PR_HANDLED(cmd);
 }
 
-/* usage: RewriteMap map-name map-type:map-source */ 
+/* usage: RewriteMap map-name map-type:map-source */
 MODRET set_rewritemap(cmd_rec *cmd) {
   config_rec *c = NULL;
   char *mapsrc = NULL;
   void *map = NULL;
-  
+
   CHECK_ARGS(cmd, 2);
   CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL);
 
@@ -2520,7 +2525,7 @@ MODRET set_rewritemap(cmd_rec *cmd) {
     }
 
     txtmap->txt_pool = txt_pool;
-    txtmap->txt_path = pstrdup(txt_pool, mapsrc);    
+    txtmap->txt_path = pstrdup(txt_pool, mapsrc);
 
     if (!rewrite_parse_map_txt(txtmap)) {
       pr_log_debug(DEBUG3, "%s: error parsing map file", (char *) cmd->argv[0]);
@@ -2533,7 +2538,7 @@ MODRET set_rewritemap(cmd_rec *cmd) {
   } else
     CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "invalid RewriteMap map type: '",
       cmd->argv[2], "'", NULL));
- 
+
   /* A defined map name is available within the scope of the server in
    * which it was defined.
    */
@@ -2704,7 +2709,7 @@ MODRET rewrite_fixup(cmd_rec *cmd) {
       for (i = 2; i <= cmd->argc-1; i++) {
         tmp = pstrcat(cmd->pool, tmp, *tmp ? " " : "", cmd->argv[i], NULL);
       }
- 
+
       cmd_arg = tmp;
 
     } else {
@@ -2814,7 +2819,7 @@ MODRET rewrite_fixup(cmd_rec *cmd) {
         /* There are no conditions. */
         exec_rule = TRUE;
       }
-    } 
+    }
 
     if (exec_rule) {
       const char *new_arg = NULL;
@@ -2931,7 +2936,7 @@ static void rewrite_rewrite_home_ev(const void *event_data, void *user_data) {
   const char *pw_dir;
   pool *tmp_pool;
   cmd_rec *cmd;
-  modret_t *mr; 
+  modret_t *mr;
 
   rewrite_log("handling 'mod_auth.rewrite-home' event");
   pw_dir = pr_table_get(session.notes, "mod_auth.home-dir", NULL);

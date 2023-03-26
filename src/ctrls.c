@@ -1,7 +1,7 @@
 /*
  * ProFTPD - FTP server daemon
  * Copyright (c) 2001-2023 The ProFTPD Project team
- *  
+ *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation; either version 2 of the License, or
@@ -251,7 +251,7 @@ int pr_ctrls_register(const module *mod, const char *action,
     act->next = ctrls_action_list;
     ctrls_action_list->prev = act;
   }
-  
+
   ctrls_action_list = act;
 
   pr_unblock_ctrls();
@@ -289,10 +289,10 @@ int pr_ctrls_unregister(module *mod, const char *action) {
         mod ? mod->name : "(none)", act->action);
 
       /* Destroy this action. */
-      destroy_pool(act->pool); 
+      destroy_pool(act->pool);
     }
   }
-  
+
   pr_unblock_ctrls();
 
   if (have_action == FALSE) {
@@ -786,7 +786,7 @@ int pr_ctrls_recv_request(pr_ctrls_cl_t *cl) {
     /* Add this ctrl object to the client object. */
     *((pr_ctrls_t **) push_array(cl->cl_ctrls)) = next_ctrl;
 
-    /* Set the flag that this control is ready to go. */ 
+    /* Set the flag that this control is ready to go. */
     next_ctrl->ctrls_flags |= PR_CTRLS_FL_REQUESTED;
     next_ctrl->ctrls_cl = cl;
 

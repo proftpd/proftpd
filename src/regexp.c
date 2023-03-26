@@ -409,7 +409,7 @@ size_t pr_regexp_error(int errcode, const pr_regex_t *pre, char *buf,
 #elif defined(PR_USE_PCRE)
   if (pre->pcre_errstr != NULL) {
     sstrncpy(buf, pre->pcre_errstr, bufsz);
-    return strlen(pre->pcre_errstr) + 1; 
+    return strlen(pre->pcre_errstr) + 1;
   }
 #endif /* PR_USE_PCRE */
 

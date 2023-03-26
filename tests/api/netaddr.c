@@ -85,7 +85,7 @@ START_TEST (netaddr_dup_test) {
 
   port = 7654;
   pr_netaddr_set_port2(addr, port);
-  
+
   res = pr_netaddr_dup(NULL, addr);
   ck_assert_msg(res == NULL, "Failed to handle null pool");
   ck_assert_msg(errno == EINVAL, "Failed to set errno to EINVAL");

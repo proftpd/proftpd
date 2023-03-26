@@ -168,7 +168,7 @@ static const char *dh_group1_str =
   "4FE1356D6D51C245E485B576625E7EC6F44C42E9A637ED6B0BFF5CB6F406B7ED"
   "EE386BFB5A899FA5AE9F24117C4B1FE649286651ECE65381FFFFFFFFFFFFFFFF";
 
-static const char *dh_group14_str = 
+static const char *dh_group14_str =
   "FFFFFFFFFFFFFFFFC90FDAA22168C234C4C6628B80DC1CD129024E088A67CC74"
   "020BBEA63B139B22514A08798E3404DDEF9519B3CD3A431B302B0A6DF25F1437"
   "4FE1356D6D51C245E485B576625E7EC6F44C42E9A637ED6B0BFF5CB6F406B7ED"
@@ -1240,7 +1240,7 @@ static int finish_dh(struct sftp_kex *kex) {
       attempts);
 
     dh_priv_key = BN_new();
-  
+
     /* Generate a random private exponent of the desired size, in bits. */
     if (!BN_rand(dh_priv_key, dh_nbits, 0, 0)) {
       (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
@@ -1483,12 +1483,12 @@ static int create_ecdh(struct sftp_kex *kex, int type) {
 }
 
 static int finish_ecdh(struct sftp_kex *kex) {
-  if (kex->ec) {
-    EC_KEY_free(kex->ec); 
+  if (kex->ec != NULL) {
+    EC_KEY_free(kex->ec);
     kex->ec = NULL;
   }
 
-  if (kex->client_point) {
+  if (kex->client_point != NULL) {
     EC_POINT_clear_free(kex->client_point);
     kex->client_point = NULL;
   }
@@ -1503,7 +1503,7 @@ static const char *get_preferred_name(pool *p, const char *names) {
 
   /* Advance to the first comma, or NUL. */
   for (i = 0; names[i] && names[i] != ','; i++);
-  
+
   if (names[i] == ',' ||
       names[i] == '\0') {
     char *pref;
@@ -3255,9 +3255,9 @@ static int get_dh_gex_group(struct sftp_kex *kex, uint32_t min,
       tmp_pool = make_sub_pool(kex->pool);
       pr_pool_tag(tmp_pool, "Kex DHparams selection pool");
 
-      smaller_dhs = make_array(tmp_pool, 1, sizeof(DH *)); 
-      pref_dhs = make_array(tmp_pool, 1, sizeof(DH *)); 
-      larger_dhs = make_array(tmp_pool, 1, sizeof(DH *)); 
+      smaller_dhs = make_array(tmp_pool, 1, sizeof(DH *));
+      pref_dhs = make_array(tmp_pool, 1, sizeof(DH *));
+      larger_dhs = make_array(tmp_pool, 1, sizeof(DH *));
 
       /* From Section 3 of RFC4419:
        *
@@ -3628,7 +3628,7 @@ static int write_dh_gex_reply(struct ssh2_packet *pkt, struct sftp_kex *kex,
     BN_clear_free((BIGNUM *) kex->k);
     kex->k = NULL;
     return -1;
-  } 
+  }
 
   kex->h = palloc(kex->pool, hlen);
   kex->hlen = hlen;
@@ -3940,7 +3940,7 @@ static int write_kexrsa_done(struct ssh2_packet *pkt, struct sftp_kex *kex) {
     kex->rsa_encrypted_len = 0;
 
     return -1;
-  } 
+  }
 
   kex->h = palloc(kex->pool, hlen);
   kex->hlen = hlen;
@@ -5066,8 +5066,8 @@ static struct ssh2_packet *read_kex_packet(pool *p, struct sftp_kex *kex,
     ntypes, ntypes != 1 ? "types" : "type");
 
   allowed_types = make_array(p, 1, sizeof(char));
- 
-  va_start(ap, ntypes);  
+
+  va_start(ap, ntypes);
 
   while (ntypes-- > 0) {
     *((char *) push_array(allowed_types)) = va_arg(ap, int);
@@ -5612,7 +5612,7 @@ int sftp_kex_rekey(void) {
   int res;
   struct ssh2_packet *pkt;
 
-  /* We cannot perform a rekey if we have not even finished the first kex. */ 
+  /* We cannot perform a rekey if we have not even finished the first kex. */
   if (!(sftp_sess_state & SFTP_SESS_STATE_HAVE_KEX)) {
     pr_trace_msg(trace_channel, 3,
       "unable to request rekey: KEX not completed");
@@ -5637,7 +5637,7 @@ int sftp_kex_rekey(void) {
     sftp_ssh2_packet_rekey_reset();
     return 0;
   }
- 
+
   /* If already rekeying, return now. */
   if (sftp_sess_state & SFTP_SESS_STATE_REKEYING) {
     pr_trace_msg(trace_channel, 17,
@@ -5747,7 +5747,7 @@ int sftp_kex_send_first_kexinit(void) {
   }
 
   /* The client has just connected to us.  We want to send our version
-   * ID string _and_ the KEXINIT in the same TCP packet, and save a 
+   * ID string _and_ the KEXINIT in the same TCP packet, and save a
    * TCP round trip (one TCP ACK for both messages, rather than one ACK
    * per message).  The packet API will automatically send the version
    * ID string along with the first packet we send; we just have to
@@ -5755,7 +5755,7 @@ int sftp_kex_send_first_kexinit(void) {
    */
   kex_first_kex = create_kex(kex_pool);
 
-  pkt = sftp_ssh2_packet_create(kex_pool); 
+  pkt = sftp_ssh2_packet_create(kex_pool);
   res = write_kexinit(pkt, kex_first_kex);
   if (res < 0) {
     destroy_kex(kex_first_kex);

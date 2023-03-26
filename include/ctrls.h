@@ -1,7 +1,7 @@
 /*
  * ProFTPD - FTP server daemon
  * Copyright (c) 2001-2023 The ProFTPD Project team
- *  
+ *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation; either version 2 of the License, or
@@ -91,7 +91,7 @@ typedef struct ctrls_obj {
 
   /* Control "action" */
   const char *ctrls_action;
- 
+
   /* Control trigger time.  If 0, triggers immediately */
   time_t ctrls_when;
 
@@ -184,7 +184,7 @@ int pr_ctrls_add_response(pr_ctrls_t *ctrl, const char *fmt, ...)
        ;
 #endif
 
-/* Meant for use in opening a client control socket, by ftpdctl and core 
+/* Meant for use in opening a client control socket, by ftpdctl and core
  * routines.  Connects to the control socket, and returns the socket descriptor
  * opened, or -1 if there was an error.
  */

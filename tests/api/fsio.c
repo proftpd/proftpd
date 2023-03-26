@@ -1387,7 +1387,7 @@ START_TEST (fsio_sys_utimes_chroot_guard_test) {
 
   res = pr_fsio_guard_chroot(TRUE);
   ck_assert_msg(res == FALSE, "Expected FALSE (%d), got %d", FALSE, res);
- 
+
   res = pr_fsio_utimes("/etc/foo.bar.baz", (struct timeval *) &tvs);
   ck_assert_msg(res < 0, "Set times on /etc/foo.bar.baz unexpectedly");
   ck_assert_msg(errno == EACCES, "Expected EACCES (%d), got %s %d", EACCES,
@@ -1407,7 +1407,7 @@ START_TEST (fsio_sys_futimes_test) {
   int res;
   struct timeval tvs[3];
   pr_fh_t *fh;
-  
+
   memset(tvs, 0, sizeof(tvs));
 
   res = pr_fsio_futimes(NULL, NULL);
@@ -2099,7 +2099,7 @@ START_TEST (fsio_sys_mkdir_chroot_guard_test) {
 
   res = pr_fsio_guard_chroot(TRUE);
   ck_assert_msg(res == FALSE, "Expected FALSE (%d), got %d", FALSE, res);
-  
+
   res = pr_fsio_mkdir("/etc/foo.bar.baz.d", mode);
   ck_assert_msg(res < 0, "Created /etc/foo.bar.baz.d unexpectedly");
   ck_assert_msg(errno == EACCES, "Expected EACCES (%d), got %s %d", EACCES,
@@ -2225,7 +2225,7 @@ START_TEST (fsio_sys_opendir_test) {
   res = pr_fsio_opendir(NULL);
   ck_assert_msg(res == NULL, "Failed to handle null arguments");
   ck_assert_msg(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
-    strerror(errno), errno); 
+    strerror(errno), errno);
 
   mark_point();
   path = "/etc/hosts";
@@ -3200,7 +3200,8 @@ START_TEST (fsio_statcache_clear_cache_test) {
   ck_assert_msg(res == expected, "Expected %d, got %d", expected, res);
 
   res = pr_fs_setcwd(cwd);
-  ck_assert_msg(res == 0, "Failed to set cwd to '%s': %s", cwd, strerror(errno)); 
+  ck_assert_msg(res == 0, "Failed to set cwd to '%s': %s", cwd,
+    strerror(errno));
 
   free(cwd);
 }
@@ -3771,17 +3772,17 @@ START_TEST (fs_dircat_test) {
   ok = b;
   res = pr_fs_dircat(buf, sizeof(buf)-1, a, b);
   ck_assert_msg(res == 0, "Failed to concatenate abs-path path second dir");
-  ck_assert_msg(strcmp(buf, ok) == 0, "Expected concatenated dir '%s', got '%s'",
-    ok, buf);
- 
+  ck_assert_msg(strcmp(buf, ok) == 0,
+    "Expected concatenated dir '%s', got '%s'", ok, buf);
+
   a = "foo";
   b = "bar";
   ok = "foo/bar";
   res = pr_fs_dircat(buf, sizeof(buf)-1, a, b);
   ck_assert_msg(res == 0, "Failed to concatenate two normal paths");
-  ck_assert_msg(strcmp(buf, ok) == 0, "Expected concatenated dir '%s', got '%s'",
-    ok, buf);
- 
+  ck_assert_msg(strcmp(buf, ok) == 0,
+    "Expected concatenated dir '%s', got '%s'", ok, buf);
+
   a = "foo/";
   b = "bar";
   ok = "foo/bar";

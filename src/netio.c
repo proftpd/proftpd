@@ -208,7 +208,7 @@ static int core_netio_poll_cb(pr_netio_stream_t *nstrm) {
     }
 
     errno = nstrm->strm_errno = xerrno;
-    break; 
+    break;
   }
 
   return res;
@@ -597,7 +597,7 @@ int pr_netio_lingering_abort(pr_netio_stream_t *nstrm, long linger) {
 
   /* Now continue with a normal lingering close. */
   return netio_lingering_close(nstrm, linger,
-    NETIO_LINGERING_CLOSE_FL_NO_SHUTDOWN);  
+    NETIO_LINGERING_CLOSE_FL_NO_SHUTDOWN);
 }
 
 int pr_netio_lingering_close(pr_netio_stream_t *nstrm, long linger) {
@@ -1123,7 +1123,7 @@ int pr_netio_write(pr_netio_stream_t *nstrm, char *buf, size_t buflen) {
       default:
         /* We have to potentially restart here as well, in case we get EINTR. */
         do {
-          pr_signals_handle(); 
+          pr_signals_handle();
           run_schedule();
 
           switch (nstrm->strm_type) {

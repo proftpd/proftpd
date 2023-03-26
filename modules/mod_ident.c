@@ -66,7 +66,7 @@ static char *ident_lookup(pool *p, conn_t *conn) {
 
   ident_nstrm = NULL;
   ident_timeout_triggered = FALSE;
-  
+
   ident_port = pr_inet_getservport(p, "ident", "tcp");
   if (ident_port == -1) {
     return NULL;

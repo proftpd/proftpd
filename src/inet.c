@@ -611,8 +611,8 @@ conn_t *pr_inet_create_conn_portrange(pool *p, const pr_netaddr_t *bind_addr,
   }
 
   /* Make sure the temporary inet work pool exists. */
-  if (!inet_pool) {
-    inet_pool = make_sub_pool(permanent_pool); 
+  if (inet_pool == NULL) {
+    inet_pool = make_sub_pool(permanent_pool);
     pr_pool_tag(inet_pool, "Inet Pool");
   }
 
@@ -764,7 +764,7 @@ int pr_inet_set_proto_cork(int sockfd, int cork) {
 
 #if defined(TCP_CORK)
   res = setsockopt(sockfd, tcp_level, TCP_CORK, (void *) &cork, sizeof(cork));
-  
+
 #elif defined(TCP_NOPUSH)
   res = setsockopt(sockfd, tcp_level, TCP_NOPUSH, (void *) &cork, sizeof(cork));
 #endif
@@ -1891,7 +1891,7 @@ conn_t *pr_inet_openrw(pool *p, conn_t *c, const pr_netaddr_t *addr,
 
       pr_trace_msg(trace_channel, 3,
         "error getting IP address for client: %s", strerror(xerrno));
- 
+
       errno = xerrno;
       return NULL;
     }
@@ -1967,7 +1967,7 @@ conn_t *pr_inet_openrw(pool *p, conn_t *c, const pr_netaddr_t *addr,
       continue;
     }
 
-    pr_log_pri(PR_LOG_WARNING, "error calling ioctl(RPROTDIS): %s", 
+    pr_log_pri(PR_LOG_WARNING, "error calling ioctl(RPROTDIS): %s",
       strerror(errno));
     break;
   }
@@ -2015,14 +2015,14 @@ void init_inet(void) {
    * headers.
    */
 #ifndef _AIX
-  pr = getprotobyname("ip"); 
+  pr = getprotobyname("ip");
   if (pr != NULL) {
     ip_proto = pr->p_proto;
   }
 #endif /* AIX */
 
-#ifdef PR_USE_IPV6
-  pr = getprotobyname("ipv6"); 
+#if defined(PR_USE_IPV6)
+  pr = getprotobyname("ipv6");
   if (pr != NULL) {
     ipv6_proto = pr->p_proto;
   }

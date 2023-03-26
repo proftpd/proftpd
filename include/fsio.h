@@ -413,7 +413,7 @@ char *pr_fs_decode_path(pool *, const char *);
  * flags can be used, for example, to request that if there are errors during
  * the decoding, the function NOT hide/mask them, as is done by default, but
  * convey them to the caller for handling at a higher code layer.
- */ 
+ */
 char *pr_fs_decode_path2(pool *, const char *, int);
 #define FSIO_DECODE_FL_TELL_ERRORS		0x001
 

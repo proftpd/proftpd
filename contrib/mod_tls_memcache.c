@@ -552,7 +552,7 @@ static int sess_cache_mcache_entry_delete(pool *p, const unsigned char *sess_id,
     errno = xerrno;
     return -1;
   }
- 
+
   return 0;
 }
 
@@ -737,7 +737,7 @@ static int sess_cache_open(tls_sess_cache_t *cache, char *info, long timeout) {
   /* Configure a namespace prefix for our memcached keys. */
   if (pr_memcache_conn_set_namespace(sess_mcache, &tls_memcache_module,
       "mod_tls_memcache.sessions.") < 0) {
-    pr_trace_msg(trace_channel, 2, 
+    pr_trace_msg(trace_channel, 2,
       "error setting memcache namespace prefix: %s", strerror(errno));
   }
 
@@ -933,7 +933,7 @@ static SSL_SESSION *sess_cache_get(tls_sess_cache_t *cache,
   SSL_SESSION *sess = NULL;
 
   pr_trace_msg(trace_channel, 9, "getting session from memcache cache %p",
-    cache); 
+    cache);
 
   /* Look for the requested session in the "large session" list first. */
   if (sesscache_sess_list != NULL) {
@@ -976,7 +976,7 @@ static SSL_SESSION *sess_cache_get(tls_sess_cache_t *cache,
       &entry) < 0) {
     return NULL;
   }
- 
+
   now = time(NULL);
   if (entry.expires > now) {
     TLS_D2I_SSL_SESSION_CONST unsigned char *ptr;
@@ -1077,7 +1077,7 @@ static int sess_cache_clear(tls_sess_cache_t *cache) {
 
   if (sesscache_sess_list != NULL) {
     struct sesscache_large_entry *entries;
-    
+
     entries = sesscache_sess_list->elts;
     for (i = 0; i < sesscache_sess_list->nelts; i++) {
       struct sesscache_large_entry *entry;
@@ -1167,7 +1167,7 @@ static int sess_cache_status(tls_sess_cache_t *cache,
         time_t ts;
 
         ptr = entry->sess_data;
-        sess = d2i_SSL_SESSION(NULL, &ptr, entry->sess_datalen); 
+        sess = d2i_SSL_SESSION(NULL, &ptr, entry->sess_datalen);
         if (sess == NULL) {
           pr_log_pri(PR_LOG_NOTICE, MOD_TLS_MEMCACHE_VERSION
             ": error retrieving session from cache: %s", mcache_get_errors());

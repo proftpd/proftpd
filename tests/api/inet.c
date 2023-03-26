@@ -65,7 +65,7 @@ static void tear_down(void) {
   if (p) {
     destroy_pool(p);
     p = permanent_pool = NULL;
-  } 
+  }
 }
 
 static int devnull_fd(void) {
@@ -304,7 +304,7 @@ END_TEST
 
 START_TEST (inet_set_block_test) {
   int fd, sockfd, port = INPORT_ANY, res;
-  conn_t *conn; 
+  conn_t *conn;
 
   mark_point();
   res = pr_inet_set_block(NULL, NULL);

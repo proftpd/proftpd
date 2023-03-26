@@ -5158,12 +5158,12 @@ START_TEST (jot_get_logfmt_id_name_test) {
     mark_point();
     res = pr_jot_get_logfmt_id_name(i);
     ck_assert_msg(res != NULL, "Failed to get name for LogFormat ID %u: %s",
-      i, strerror(errno)); 
+      i, strerror(errno));
   }
 
   res = pr_jot_get_logfmt_id_name(LOGFMT_META_CUSTOM);
   ck_assert_msg(res != NULL, "Failed to get name for LogFormat ID %u: %s",
-    LOGFMT_META_CUSTOM, strerror(errno)); 
+    LOGFMT_META_CUSTOM, strerror(errno));
 }
 END_TEST
 

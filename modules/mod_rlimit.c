@@ -598,7 +598,7 @@ static int rlimit_set_cpu(int scope) {
 
     pr_signals_handle();
 
-    if (scope == DAEMON_SCOPE) { 
+    if (scope == DAEMON_SCOPE) {
       /* Does this limit apply to the daemon? */
       if (c->argc == 3 &&
           strcasecmp(c->argv[0], "daemon") == 0) {
@@ -659,7 +659,7 @@ static int rlimit_set_files(int scope) {
 
     pr_signals_handle();
 
-    if (scope == DAEMON_SCOPE) { 
+    if (scope == DAEMON_SCOPE) {
       /* Does this limit apply to the daemon? */
       if (c->argc == 3 &&
           strcasecmp(c->argv[0], "daemon") == 0) {
@@ -720,7 +720,7 @@ static int rlimit_set_memory(int scope) {
 
     pr_signals_handle();
 
-    if (scope == DAEMON_SCOPE) { 
+    if (scope == DAEMON_SCOPE) {
       /* Does this limit apply to the daemon? */
       if (c->argc == 3 &&
           strcasecmp(c->argv[0], "daemon") == 0) {

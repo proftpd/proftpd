@@ -2089,7 +2089,7 @@ int pr_fs_copy_file2(const char *src, const char *dst, int flags,
       aclent_t *acls;
 
       acls = malloc(sizeof(aclent_t) * nents);
-      if (!acls) { 
+      if (acls == NULL) {
         pr_log_pri(PR_LOG_ALERT, "Out of memory!");
         exit(1);
       }
@@ -2369,7 +2369,7 @@ pr_fs_t *pr_unmount_fs(const char *path, const char *name) {
     if (strcmp(fsi->fs_path, path) == 0 &&
         (name ? strcmp(fsi->fs_name, name) == 0 : TRUE)) {
 
-      /* Exact match -- remove this FS.  If there is an FS underneath, pop 
+      /* Exact match -- remove this FS.  If there is an FS underneath, pop
        * the top FS off the stack.  Otherwise, allocate a new map.  Then
        * iterate through the old map, pushing all other FSs into the new map.
        * Destroy the old map.  Move the new map into place.
@@ -2419,11 +2419,11 @@ pr_fs_t *pr_unmount_fs(const char *path, const char *name) {
       }
 
       /* "Pop" this FS off the stack. */
-      if (fsi->fs_next) {
+      if (fsi->fs_next != NULL) {
         fsi->fs_next->fs_prev = NULL;
       }
       fs_objs[i] = fsi->fs_next;
-      fsi->fs_next = fsi->fs_prev = NULL; 
+      fsi->fs_next = fsi->fs_prev = NULL;
 
       chk_fs_map = TRUE;
       return fsi;
@@ -2615,7 +2615,7 @@ int pr_fs_dircat(char *buf, int buflen, const char *dir1, const char *dir2) {
 
   if ((dir1len + dir2len + 1) >= PR_TUNABLE_PATH_MAX) {
     errno = ENAMETOOLONG;
-    buf[0] = '\0';  
+    buf[0] = '\0';
     return -1;
   }
 
@@ -2790,7 +2790,7 @@ int pr_fs_interpolate(const char *path, char *buf, size_t buflen) {
     /* We're chrooted. */
     sstrncpy(buf, "/", buflen);
   }
- 
+
   currlen = strlen(buf);
 
   if (ptr != NULL &&
@@ -2802,7 +2802,7 @@ int pr_fs_interpolate(const char *path, char *buf, size_t buflen) {
   if (ptr != NULL) {
     sstrncpy(&buf[currlen], ptr, buflen - currlen);
   }
- 
+
   return 1;
 }
 
@@ -3363,7 +3363,7 @@ char *pr_fs_decode_path2(pool *p, const char *path, int flags) {
 
       pr_trace_msg("encode", 14, "unable to decode path (raw bytes): %s",
         raw_path);
-    } 
+    }
 
     if (flags & FSIO_DECODE_FL_TELL_ERRORS) {
       unsigned long policy;
@@ -3423,10 +3423,10 @@ char *pr_fs_encode_path(pool *p, const char *path) {
 
     if (pr_trace_get_level("encode") >= 14) {
       /* Write out the path we tried (and failed) to encode, in hex. */
-      register unsigned int i; 
+      register unsigned int i;
       unsigned char *raw_path;
       size_t pathlen, raw_pathlen;
-      
+
       pathlen = strlen(path);
       raw_pathlen = (pathlen * 8) + 1;
       raw_path = pcalloc(p, raw_pathlen + 1);
@@ -3438,7 +3438,7 @@ char *pr_fs_encode_path(pool *p, const char *path) {
 
       pr_trace_msg("encode", 14, "unable to encode path (raw bytes): %s",
         raw_path);
-    } 
+    }
 
     /* Note: At present, we do NOT return null here to callers; we assume
      * that all local names, being encoded for the remote client, are OK.
@@ -3914,7 +3914,7 @@ void *pr_fsio_opendir(const char *path) {
 static pr_fs_t *find_opendir(void *dir, int closing) {
   pr_fs_t *fs = NULL;
 
-  if (fsopendir_list) {
+  if (fsopendir_list != NULL) {
     fsopendir_t *fsod;
 
     for (fsod = fsopendir_list; fsod; fsod = fsod->next) {
@@ -3924,13 +3924,13 @@ static pr_fs_t *find_opendir(void *dir, int closing) {
         break;
       }
     }
-   
+
     if (closing && fsod) {
-      if (fsod->prev) {
+      if (fsod->prev != NULL) {
         fsod->prev->next = fsod->next;
       }
- 
-      if (fsod->next) {
+
+      if (fsod->next != NULL) {
         fsod->next->prev = fsod->prev;
       }
 
@@ -4129,7 +4129,7 @@ int pr_fsio_set_use_mkdtemp(int value) {
 
 /* Directory-specific "safe" chmod(2) which attempts to avoid/mitigate
  * symlink attacks.
- * 
+ *
  * To do this, we first open a file descriptor on the given path, using
  * O_NOFOLLOW to avoid symlinks.  If the fd is not to a directory, it's
  * an error.  Then we use fchmod(2) to set the perms.  There is still a
@@ -4184,7 +4184,7 @@ static int schmod_dir(pool *p, const char *path, mode_t perms, int use_root) {
     xerrno = ENOTDIR;
 
     (void) close(fd);
-  
+
     pr_trace_msg(trace_channel, 3,
       "schmod: unable to use path '%s': %s", path, strerror(xerrno));
 
@@ -4441,7 +4441,7 @@ int pr_fsio_smkdir(pool *p, const char *path, mode_t mode, uid_t uid,
     pr_trace_msg(trace_channel, 1,
       "mkdir(2) failed to create directory '%s' with perms %04o: %s", path,
       mode, strerror(xerrno));
-        
+
     errno = xerrno;
     return -1;
   }
@@ -4577,7 +4577,7 @@ int pr_fsio_smkdir(pool *p, const char *path, mode_t mode, uid_t uid,
         xerrno = EEXIST;
       }
 #endif /* ENOTEMPTY */
- 
+
       errno = xerrno;
       return -1;
     }
@@ -5486,7 +5486,7 @@ int pr_fsio_truncate(const char *path, off_t len) {
   if (res == 0) {
     pr_fs_clear_cache2(path);
   }
-  
+
   return res;
 }
 
@@ -6647,7 +6647,7 @@ char *pr_fsio_getline(char *buf, size_t buflen, pr_fh_t *fh,
           char *bufp;
 
           inlen -= 2;
-      
+
           /* Watch for commented lines when handling line continuations.
            * Advance past any leading whitespace, to see if the first
            * non-whitespace character is the comment character.
@@ -6658,7 +6658,7 @@ char *pr_fsio_getline(char *buf, size_t buflen, pr_fh_t *fh,
           if (*bufp == '#') {
             continue;
           }
- 
+
         } else {
           return start;
         }
@@ -6747,12 +6747,12 @@ void pr_fs_close_extra_fds(void) {
  */
 int pr_fs_get_usable_fd(int fd) {
   register int i;
-  int fdi, dup_fds[FSIO_MAX_DUPFDS], n; 
+  int fdi, dup_fds[FSIO_MAX_DUPFDS], n;
 
   if (fd > STDERR_FILENO) {
     return fd;
   }
- 
+
   memset(dup_fds, -1, sizeof(dup_fds));
   i = 0;
   n = -1;

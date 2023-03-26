@@ -32,12 +32,12 @@ extern module *loaded_modules;
 
 /* Currently running module */
 module *curr_module = NULL;
-  
+
 /* Used to track the priority for loaded modules. */
 static unsigned int curr_module_pri = 0;
 
 static const char *trace_channel = "module";
-  
+
 modret_t *pr_module_call(module *m, modret_t *(*func)(cmd_rec *),
     cmd_rec *cmd) {
   modret_t *res;
@@ -229,7 +229,7 @@ void modules_list2(int (*listf)(const char *, ...), int flags) {
         if (version != NULL) {
           listf("  %s\n", version);
 
-        } else {  
+        } else {
           listf("  mod_%s.c\n", m->name);
         }
 
@@ -400,7 +400,7 @@ int pr_module_unload(module *m) {
   if (pr_module_get(buf) == NULL) {
     errno = ENOENT;
     return -1;
-  } 
+  }
 
   /* Generate an event. */
   pr_event_generate("core.module-unload", buf);

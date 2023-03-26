@@ -222,7 +222,7 @@ int pr_var_set(pool *p, const char *name, const char *desc, int vtype,
         v->v_desc = (const char *) pstrdup(p, desc);
       }
 
-      v->v_type = PR_VAR_TYPE_STR; 
+      v->v_type = PR_VAR_TYPE_STR;
       v->v_val = pstrdup(p, (char *) val);
       v->v_datasz = strlen((char *) val);
       break;
@@ -234,7 +234,7 @@ int pr_var_set(pool *p, const char *name, const char *desc, int vtype,
         v->v_desc = (const char *) pstrdup(p, desc);
       }
 
-      v->v_type = PR_VAR_TYPE_FUNC; 
+      v->v_type = PR_VAR_TYPE_FUNC;
       v->v_val = val;
 
       if (data) {

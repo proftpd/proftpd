@@ -45,7 +45,7 @@ struct table_rec {
    *
    * For more information on attacks of this nature, see:
    *
-   *   http://www.cs.rice.edu/~scrosby/hash/CrosbyWallach_UsenixSec2003/   
+   *   http://www.cs.rice.edu/~scrosby/hash/CrosbyWallach_UsenixSec2003/
    */
   unsigned int seed;
 
@@ -133,7 +133,7 @@ static int key_cmp(const void *key1, size_t keysz1, const void *key2,
  * Here's a good article about this hashing algorithm, and about hashing
  * functions in general:
  *
- *  http://www.perl.com/pub/2002/10/01/hashes.html 
+ *  http://www.perl.com/pub/2002/10/01/hashes.html
  */
 static unsigned int key_hash(const void *key, size_t keysz) {
   unsigned int i = 0;
@@ -153,7 +153,7 @@ static unsigned int key_hash(const void *key, size_t keysz) {
     i = (i * 33) + c;
   }
 
-  return i; 
+  return i;
 }
 
 /* Default insertion is simply to add the given entry to the end of the
@@ -276,7 +276,7 @@ static void tab_entry_free(pr_table_t *tab, pr_table_entry_t *e) {
     }
 
     i->next = e;
- 
+
   } else {
     tab->free_ents = e;
   }
@@ -840,7 +840,7 @@ int pr_table_add_dup(pr_table_t *tab, const char *key_data,
 
   dup_data = pcalloc(tab->pool, value_datasz);
   memcpy(dup_data, value_data, value_datasz);
- 
+
   return pr_table_add(tab, key_data, dup_data, value_datasz);
 }
 
@@ -913,7 +913,7 @@ int pr_table_do(pr_table_t *tab, int (*cb)(const void *key_data,
 
       next_ent = ent->next;
 
-      if (!handling_signal) { 
+      if (!handling_signal) {
         pr_signals_handle();
       }
 
@@ -1001,7 +1001,7 @@ const void *pr_table_get(pr_table_t *tab, const char *key_data,
   }
 
   if (key_data) {
-    key_datasz = strlen(key_data) + 1;  
+    key_datasz = strlen(key_data) + 1;
   }
 
   return pr_table_kget(tab, key_data, key_datasz, value_datasz);
@@ -1150,7 +1150,7 @@ int pr_table_ctl(pr_table_t *tab, int cmd, void *arg) {
       }
 
       tab->nchains = new_nchains;
-      
+
       /* Note: by not freeing the memory of the previously allocated
        * chains, this constitutes a minor leak of the table's memory pool.
        */

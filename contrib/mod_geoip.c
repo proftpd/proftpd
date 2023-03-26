@@ -340,7 +340,7 @@ static int check_geoip_filters(geoip_policy_e policy) {
       pr_regex_t *filter_re;
       const char *filter_name, *filter_pattern, *filter_value;
 
-      filter = ((struct geoip_filter **) filters->elts)[i]; 
+      filter = ((struct geoip_filter **) filters->elts)[i];
       filter_id = filter->filter_id;
       filter_pattern = filter->filter_pattern;
       filter_re = filter->filter_re;
@@ -618,12 +618,12 @@ static void get_geoip_tables(array_header *geoips, int filter_flags,
     /* Make sure we open tables that are marked with the default
      * GEOIP_STANDARD flag, which has a value of zero.
      */
-    if (flags == GEOIP_STANDARD && skip_standard == TRUE) { 
+    if (flags == GEOIP_STANDARD && skip_standard == TRUE) {
       pr_trace_msg(trace_channel, 15,
         "skipping loading GeoIP table '%s'", path);
       c = find_config_next(c, c->next, CONF_PARAM, "GeoIPTable", FALSE);
       continue;
-    } 
+    }
 
     PRIVS_ROOT
     gi = GeoIP_open(path, flags);
@@ -643,7 +643,7 @@ static void get_geoip_tables(array_header *geoips, int filter_flags,
 
     if (gi != NULL) {
       if (use_utf8) {
-        GeoIP_set_charset(gi, GEOIP_CHARSET_UTF8); 
+        GeoIP_set_charset(gi, GEOIP_CHARSET_UTF8);
       }
 
       *((GeoIP **) push_array(geoips)) = gi;
@@ -1015,7 +1015,7 @@ static void get_geoip_data(array_header *geoips, const char *ip_addr) {
 }
 
 static void get_geoip_info(array_header *sess_geoips) {
-  const char *ip_addr; 
+  const char *ip_addr;
 
   ip_addr = pr_netaddr_get_ipstr(session.c->remote_addr);
 

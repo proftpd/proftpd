@@ -323,7 +323,7 @@ static pr_netio_stream_t *deflate_netio_open_cb(pr_netio_stream_t *nstrm,
             zstrm->msg ? zstrm->msg : deflate_zstrerror(res));
 
           (void) pr_log_writefile(deflate_logfd, MOD_DEFLATE_VERSION,
-            "error initializing for inflation: [%d] %s", res, 
+            "error initializing for inflation: [%d] %s", res,
             zstrm->msg ? zstrm->msg : deflate_zstrerror(res));
 
           errno = EINVAL;
@@ -535,7 +535,7 @@ static int deflate_netio_read_cb(pr_netio_stream_t *nstrm, char *buf,
 
           deflate_zbuf_ptr = deflate_zbuf = tmp;
           deflate_zbufsz = new_bufsz;
-        } 
+        }
 
         break;
 

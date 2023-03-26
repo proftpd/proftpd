@@ -1,7 +1,7 @@
 /*
  * ProFTPD: mod_sql_passwd -- Various SQL password handlers
  * Copyright (c) 2009-2021 TJ Saunders
- *  
+ *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation; either version 2 of the License, or
@@ -127,11 +127,11 @@ static cmd_rec *sql_passwd_cmd_create(pool *parent_pool,
   pool *cmd_pool = NULL;
   cmd_rec *cmd = NULL;
   va_list argp;
- 
+
   cmd_pool = make_sub_pool(parent_pool);
   cmd = (cmd_rec *) pcalloc(cmd_pool, sizeof(cmd_rec));
   cmd->pool = cmd_pool;
- 
+
   cmd->argc = argc;
   cmd->argv = pcalloc(cmd->pool, argc * sizeof(void *));
 
@@ -141,7 +141,7 @@ static cmd_rec *sql_passwd_cmd_create(pool *parent_pool,
   va_start(argp, argc);
   for (i = 0; i < argc; i++) {
     cmd->argv[i] = va_arg(argp, char *);
-  } 
+  }
   va_end(argp);
 
   return cmd;
@@ -656,7 +656,7 @@ static modret_t *sql_passwd_auth(cmd_rec *cmd, const char *plaintext,
         suffix_len = strlen((char *) suffix);
       }
 
-      pr_trace_msg(trace_channel, 9, 
+      pr_trace_msg(trace_channel, 9,
         "appending %lu bytes of %s-hashed file salt data",
         (unsigned long) suffix_len, digest);
     }
@@ -687,7 +687,7 @@ static modret_t *sql_passwd_auth(cmd_rec *cmd, const char *plaintext,
         suffix_len = strlen((char *) suffix);
       }
 
-      pr_trace_msg(trace_channel, 9, 
+      pr_trace_msg(trace_channel, 9,
         "appending %lu bytes of %s-hashed user salt data",
         (unsigned long) suffix_len, digest);
     }
@@ -717,7 +717,7 @@ static modret_t *sql_passwd_auth(cmd_rec *cmd, const char *plaintext,
     register unsigned int i;
     unsigned long nrounds = sql_passwd_nrounds - 1;
 
-    pr_trace_msg(trace_channel, 9, 
+    pr_trace_msg(trace_channel, 9,
       "transforming the data for another %lu %s", nrounds,
       nrounds != 1 ? "rounds" : "round");
 
@@ -1132,7 +1132,7 @@ MODRET sql_passwd_pre_pass(cmd_rec *cmd) {
 
       key = c->argv[0];
 
-      ptr = key + 5; 
+      ptr = key + 5;
       named_query = pstrcat(cmd->tmp_pool, "SQLNamedQuery_", ptr, NULL);
 
       c = find_config(main_server->conf, CONF_PARAM, named_query, FALSE);
@@ -1293,9 +1293,9 @@ MODRET sql_passwd_pre_pass(cmd_rec *cmd) {
 
       values = sql_data->elts;
 
-      /* Note: this ASSUMES that the value coming from the database is a 
+      /* Note: this ASSUMES that the value coming from the database is a
        * string.
-       */ 
+       */
       value_len = strlen(values[0]);
 
       sql_passwd_user_salt = sql_passwd_decode(session.pool,
@@ -1395,7 +1395,7 @@ MODRET set_sqlpasswdencoding(cmd_rec *cmd) {
     CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "unsupported encoding '",
       cmd->argv[1], "' configured", NULL));
   }
- 
+
   c = add_config_param(cmd->argv[0], 1, NULL);
   c->argv[0] = pcalloc(c->pool, sizeof(unsigned int));
   *((unsigned int *) c->argv[0]) = encoding;
@@ -1566,7 +1566,7 @@ MODRET set_sqlpasswdsaltfile(cmd_rec *cmd) {
     if (strcasecmp(cmd->argv[i], "Append") == 0) {
       flags &= ~SQL_PASSWD_SALT_FL_PREPEND;
       flags |= SQL_PASSWD_SALT_FL_APPEND;
- 
+
     } else if (strcasecmp(cmd->argv[i], "Prepend") == 0) {
       flags &= ~SQL_PASSWD_SALT_FL_APPEND;
       flags |= SQL_PASSWD_SALT_FL_PREPEND;
@@ -1631,7 +1631,7 @@ MODRET set_sqlpasswdusersalt(cmd_rec *cmd) {
     if (strcasecmp(cmd->argv[i], "Append") == 0) {
       flags &= ~SQL_PASSWD_SALT_FL_PREPEND;
       flags |= SQL_PASSWD_SALT_FL_APPEND;
- 
+
     } else if (strcasecmp(cmd->argv[i], "Prepend") == 0) {
       flags &= ~SQL_PASSWD_SALT_FL_APPEND;
       flags |= SQL_PASSWD_SALT_FL_PREPEND;
@@ -1863,7 +1863,7 @@ static int sql_passwd_sess_init(void) {
          */
         char buf[512];
         ssize_t nread;
-  
+
         /* Set this descriptor for blocking. */
         flags = fcntl(fd, F_GETFL);
         if (fcntl(fd, F_SETFL, flags & (U32BITS^O_NONBLOCK)) < 0) {
@@ -1871,7 +1871,7 @@ static int sql_passwd_sess_init(void) {
             ": error setting blocking mode on SQLPasswordSaltFile '%s': %s",
             path, strerror(errno));
         }
- 
+
         nread = read(fd, buf, sizeof(buf));
         while (nread > 0) {
           pr_signals_handle();

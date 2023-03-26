@@ -1655,15 +1655,15 @@ static int auth_unix_sess_init(void) {
     auth_unix_sess_reinit_ev, NULL);
 
   c = find_config(main_server->conf, CONF_PARAM, "AuthUnixOptions", FALSE);
-  if (c) {
+  if (c != NULL) {
     auth_unix_opts = *((unsigned long *) c->argv[0]);
   }
 
   c = find_config(main_server->conf, CONF_PARAM, "PersistentPasswd", FALSE);
-  if (c) {
+  if (c != NULL) {
     unix_persistent_passwd = *((int *) c->argv[0]);
   }
- 
+
   return 0;
 }
 

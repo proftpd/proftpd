@@ -251,7 +251,7 @@ static void usercache_add(const char *name, uid_t uid) {
       /* Allocate memory for a key out of the ID cache pool, so that this
        * name can be used as a key.
        */
-      cache_name = pstrdup(auth_pool, name); 
+      cache_name = pstrdup(auth_pool, name);
       cache_key = palloc(auth_pool, sizeof(uid_t));
       *cache_key = uid;
 
@@ -314,7 +314,7 @@ static void groupcache_add(const char *name, gid_t gid) {
       /* Allocate memory for a key out of the ID cache pool, so that this
        * name can be used as a key.
        */
-      cache_name = pstrdup(auth_pool, name); 
+      cache_name = pstrdup(auth_pool, name);
       cache_key = palloc(auth_pool, sizeof(gid_t));
       *cache_key = gid;
 
@@ -1513,14 +1513,14 @@ int pr_auth_getgroups(pool *p, const char *name, array_header **group_ids,
 
     if (group_names) {
       register unsigned int i;
-      char *strgroups = ""; 
+      char *strgroups = "";
       char **groups = (*group_names)->elts;
 
       for (i = 0; i < (*group_names)->nelts; i++) {
         pr_signals_handle();
         strgroups = pstrcat(p, strgroups, i != 0 ? ", " : "", groups[i], NULL);
       }
- 
+
       pr_log_debug(DEBUG10, "retrieved group %s: %s",
         (*group_names)->nelts == 1 ? "name" : "names",
         *strgroups ? strgroups : "(None; corrupted group file?)");
@@ -1680,7 +1680,7 @@ config_rec *pr_auth_get_anon_config(pool *p, const char **login_user,
         }
         break;
       }
- 
+
     } while ((c = find_config_next(c, c->next, CONF_ANON, NULL,
       FALSE)) != NULL);
 
@@ -1882,11 +1882,11 @@ int pr_auth_chroot(const char *path) {
   default_tz = ":/etc/localtime";
 #endif
 
-  tz = pr_env_get(session.pool, "TZ"); 
+  tz = pr_env_get(session.pool, "TZ");
   if (tz == NULL) {
     if (pr_env_set(session.pool, "TZ", pstrdup(permanent_pool,
         default_tz)) < 0) {
-      pr_log_debug(DEBUG0, "error setting TZ environment variable to " 
+      pr_log_debug(DEBUG0, "error setting TZ environment variable to "
         "'%s': %s", default_tz, strerror(errno));
 
     } else {
@@ -2096,7 +2096,7 @@ void pr_auth_cache_clear(void) {
     pr_table_empty(group_tab);
     pr_table_free(group_tab);
     group_tab = NULL;
-  }  
+  }
 }
 
 int pr_auth_cache_set(int enable, unsigned int flags) {

@@ -460,7 +460,7 @@ static void facts_mlinfobuf_init(void) {
 static int facts_mlinfobuf_add(struct mlinfo *info, int flags) {
   char buf[PR_TUNABLE_BUFFER_SIZE];
   size_t buflen;
- 
+
   buflen = facts_mlinfo_fmt(info, buf, sizeof(buf), flags);
 
   /* If this buffer will exceed the capacity of mlinfo_buf, then flush
@@ -645,7 +645,7 @@ static int facts_mlinfo_get(struct mlinfo *info, const char *path,
             targetlen = pr_fsio_readlink(path, target, sizeof(target)-1);
           }
 
-          if (targetlen < 0) { 
+          if (targetlen < 0) {
             int xerrno = errno;
 
             pr_log_debug(DEBUG4, MOD_FACTS_VERSION
@@ -1533,7 +1533,7 @@ MODRET facts_mlsd(cmd_rec *cmd) {
 
   fake_mode = get_param_ptr(get_dir_ctxt(cmd->tmp_pool, (char *) best_path),
     "DirFakeMode", FALSE);
- 
+
   c = find_config(get_dir_ctxt(cmd->tmp_pool, (char *) best_path), CONF_PARAM,
     "DirFakeUser", FALSE);
   if (c != NULL) {
@@ -1621,9 +1621,9 @@ MODRET facts_mlsd(cmd_rec *cmd) {
 
     /* Check that the file can be listed. */
     abs_path = dir_realpath(cmd->tmp_pool, rel_path);
-    if (abs_path) {
+    if (abs_path != NULL) {
       res = dir_check(cmd->tmp_pool, cmd, cmd->group, abs_path, &hidden);
-      
+
     } else {
       abs_path = dir_canonical_path(cmd->tmp_pool, rel_path);
       if (abs_path == NULL) {
@@ -2146,7 +2146,7 @@ static int facts_sess_init(void) {
     unsigned long opts;
 
     pr_signals_handle();
-  
+
     opts = *((unsigned long *) c->argv[0]);
     facts_mlinfo_opts |= opts;
 
