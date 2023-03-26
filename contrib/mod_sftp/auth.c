@@ -736,7 +736,7 @@ static int send_userauth_banner_file(void) {
 
     (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
       "unable to use SFTPDisplayBanner '%s': %s", path, strerror(xerrno));
-    
+
     pr_fsio_close(fh);
     return 0;
   }
@@ -1028,7 +1028,7 @@ static int send_userauth_methods(char partial_success) {
 
   (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
     "sending acceptable userauth methods: %s", auth_avail_meths);
-  
+
   sftp_msg_write_byte(&buf, &buflen, SFTP_SSH2_MSG_USER_AUTH_FAILURE);
   sftp_msg_write_string(&buf, &buflen, auth_avail_meths);
   sftp_msg_write_bool(&buf, &buflen, partial_success);
@@ -1548,7 +1548,7 @@ static int handle_userauth_req(struct ssh2_packet *pkt, char **service) {
     register unsigned int i;
     unsigned int services = 0UL;
     array_header *protocols;
-    char **elts; 
+    char **elts;
 
     protocols = c->argv[0];
     elts = protocols->elts;
@@ -1834,7 +1834,7 @@ int sftp_auth_send_banner(const char *banner) {
     banner = pstrcat(auth_pool, banner, "\r\n", NULL);
     banner_len = strlen(banner);
   }
- 
+
   pkt = sftp_ssh2_packet_create(auth_pool);
 
   buflen = bufsz = banner_len + 32;

@@ -486,7 +486,7 @@ static int shaper_rate_alter(unsigned int prio, long double downrate,
     *((unsigned int *) c->argv[3]) = prio;
 
     c->flags |= CF_MERGEDOWN_MULTI;
-  } 
+  }
 
   if (uprate > 0.0) {
     c = add_config_param_set(&main_server->conf, "TransferRate", 4, NULL,
@@ -767,7 +767,7 @@ static int shaper_table_init(pr_fh_t *fh) {
   if (lseek(fh->fh_fd, 0, SEEK_SET) < 0) {
     return -1;
   }
- 
+
   if (writev(fh->fh_fd, tab_iov, 6) < 0) {
     return -1;
   }
@@ -819,7 +819,7 @@ static int shaper_table_refresh(void) {
       "error reading ShaperTable header: %s", strerror(errno));
     return -1;
   }
- 
+
   /* For every session, read in its information and add it to the list.
    * For this, we need a pool for the session list.
    */
@@ -908,7 +908,7 @@ static void shaper_table_scrub(void) {
           "removed dead session (pid %u) from ShaperTable",
           (unsigned int) sess_list[i].sess_pid);
         send_tab = TRUE;
-      } 
+      }
 
     } else {
       struct shaper_sess *sess = push_array(new_sess_list);
@@ -999,10 +999,11 @@ static int shaper_table_send(void) {
       sess_list[i].sess_downrate, sess_list[i].sess_uprate);
 
     if (shaper_msg_send(sess_list[i].sess_pid, sess_list[i].sess_prio,
-        sess_list[i].sess_downrate, sess_list[i].sess_uprate) < 0) 
+        sess_list[i].sess_downrate, sess_list[i].sess_uprate) < 0) {
       (void) pr_log_writefile(shaper_logfd, MOD_SHAPER_VERSION,
         "error sending msg to pid %u: %s",
         (unsigned int) sess_list[i].sess_pid, strerror(errno));
+    }
   }
 
   return 0;
@@ -2268,7 +2269,7 @@ static void shaper_postparse_ev(const void *event_data, void *user_data) {
       pr_log_debug(DEBUG0, MOD_SHAPER_VERSION
         ": error using ShaperTable '%s': %s", shaper_tab_path,
         strerror(xerrno));
-      
+
       pr_fsio_close(fh);
       pr_session_disconnect(&shaper_module, PR_SESS_DISCONNECT_BAD_CONFIG,
         NULL);

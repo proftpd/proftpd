@@ -88,16 +88,16 @@ static int create_dir(const char *dir) {
 
 static int create_path(pool *p, const char *path) {
   struct stat st;
-  char *curr_path, *dup_path; 
- 
+  char *curr_path, *dup_path;
+
   pr_fs_clear_cache2(path);
   if (pr_fsio_stat(path, &st) == 0) {
     return 0;
   }
- 
+
   dup_path = pstrdup(p, path);
 
-  curr_path = "/"; 
+  curr_path = "/";
   while (dup_path &&
          *dup_path) {
     char *curr_dir;
@@ -288,7 +288,7 @@ static int copy_dir(pool *p, const char *src_dir, const char *dst_dir,
 
         } else {
           char *abs_path;
-          
+
           pr_cmd_dispatch_phase(cmd, POST_CMD, 0);
           pr_cmd_dispatch_phase(cmd, LOG_CMD, 0);
           pr_response_clear(&resp_list);
@@ -381,7 +381,7 @@ static int copy_paths(pool *p, const char *from, const char *to) {
     flags |= PR_FSIO_COPY_FILE_FL_NO_DELETE_ON_FAILURE;
   }
 
-  if (S_ISREG(st.st_mode)) { 
+  if (S_ISREG(st.st_mode)) {
     char *abs_path;
 
     pr_fs_clear_cache2(to);
@@ -675,7 +675,7 @@ MODRET copy_cpfr(cmd_rec *cmd) {
   if (authenticated == NULL ||
       *authenticated == FALSE) {
     pr_response_add_err(R_530, _("Please login with USER and PASS"));
-  
+
     pr_cmd_set_errno(cmd, EPERM);
     errno = EPERM;
     return PR_ERROR(cmd);

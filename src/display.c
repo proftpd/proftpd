@@ -79,7 +79,7 @@ static int display_add_line(pool *p, const char *resp_code,
     first_msg_sent = TRUE;
 
     prev_msg = pstrdup(p, resp_msg);
-    return 0; 
+    return 0;
   }
 
   if (prev_msg != NULL) {
@@ -486,7 +486,7 @@ int pr_display_file(const char *path, const char *fs, const char *resp_code,
   xerrno = errno;
 
   pr_fsio_close(fh);
- 
+
   errno = xerrno;
-  return res; 
+  return res;
 }

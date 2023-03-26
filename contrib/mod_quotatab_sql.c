@@ -197,7 +197,7 @@ static int sqltab_create(quota_table_t *sqltab, void *ptr) {
       strerror(errno));
     destroy_pool(tmp_pool);
     return -1;
-  } 
+  }
 
   destroy_pool(tmp_pool);
   return 0;

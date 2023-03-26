@@ -67,7 +67,7 @@ static const char *reverse_ip_addr(pool *p, const char *ip_addr) {
 
   res = pcalloc(p, addrlen);
   addr2 = pstrdup(p, ip_addr);
- 
+
   tmp = strrchr(addr2, '.');
   sstrcat(res, tmp+1, addrlen);
   sstrcat(res, ".", addrlen);
@@ -234,9 +234,9 @@ static int dnsbl_reject_conn(void) {
      */
     case DNSBL_POLICY_ALLOW_DENY: {
       c = find_config(main_server->conf, CONF_PARAM, "DNSBLDomain", FALSE);
-      while (c) {
+      while (c != NULL) {
         const char *domain;
-    
+
         pr_signals_handle();
 
         domain = c->argv[0];
@@ -274,11 +274,11 @@ static int dnsbl_reject_conn(void) {
           reject_conn = FALSE;
           break;
         }
-    
-        c = find_config_next(c, c->next, CONF_PARAM, "DNSBLDomain", FALSE);
-      } 
 
-      break; 
+        c = find_config_next(c, c->next, CONF_PARAM, "DNSBLDomain", FALSE);
+      }
+
+      break;
     }
   }
 
@@ -355,7 +355,7 @@ MODRET set_dnsblpolicy(cmd_rec *cmd) {
 
   if (strcasecmp(cmd->argv[1], "allow,deny") == 0) {
     policy = DNSBL_POLICY_ALLOW_DENY;
-  
+
   } else if (strcasecmp(cmd->argv[1], "deny,allow") == 0) {
     policy = DNSBL_POLICY_DENY_ALLOW;
 

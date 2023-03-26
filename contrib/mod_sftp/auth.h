@@ -31,7 +31,7 @@
 #define SFTP_AUTH_FL_METH_PUBLICKEY	0x001
 #define SFTP_AUTH_FL_METH_KBDINT	0x002
 #define SFTP_AUTH_FL_METH_PASSWORD	0x004
-#define SFTP_AUTH_FL_METH_HOSTBASED	0x008 
+#define SFTP_AUTH_FL_METH_HOSTBASED	0x008
 
 /* Structures which define a chain of authentication methods; when each method
  * in a chain has been satisfied, authentication succeeds.

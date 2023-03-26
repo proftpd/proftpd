@@ -1560,7 +1560,7 @@ static conftable redis_conftab[] = {
   { "RedisSentinel",		set_redissentinel,	NULL },
   { "RedisServer",		set_redisserver,	NULL },
   { "RedisTimeouts",		set_redistimeouts,	NULL },
- 
+
   { NULL }
 };
 

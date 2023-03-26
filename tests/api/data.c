@@ -86,7 +86,7 @@ static void tear_down(void) {
   if (p == NULL) {
     destroy_pool(p);
     p = session.pool = session.xfer.p = permanent_pool = NULL;
-  } 
+  }
 }
 
 static int tmpfile_fd(void) {
@@ -776,7 +776,7 @@ START_TEST (data_clear_xfer_pool_test) {
   pr_data_clear_xfer_pool();
   ck_assert_msg(session.xfer.p == NULL, "Failed to clear session.xfer.p");
 
-  session.xfer.xfer_type = xfer_type; 
+  session.xfer.xfer_type = xfer_type;
   session.xfer.p = make_sub_pool(p);
 
   mark_point();

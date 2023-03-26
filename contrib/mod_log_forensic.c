@@ -131,7 +131,7 @@ static void forensic_add_msg(unsigned int log_type, int log_level,
 
   /* Add this message into the ring. */
   sub_pool = pr_pool_create_sz(forensic_subpool, 128);
-  fm = pcalloc(sub_pool, sizeof(struct forensic_msg)); 
+  fm = pcalloc(sub_pool, sizeof(struct forensic_msg));
   fm->fm_pool = sub_pool;
   fm->fm_pool_msgno = forensic_subpool_msgno;
   fm->fm_log_type = log_type;
@@ -139,7 +139,7 @@ static void forensic_add_msg(unsigned int log_type, int log_level,
 
   fm_msg = palloc(fm->fm_pool, log_msglen + 1);
   memcpy(fm_msg, log_msg, log_msglen);
-  fm_msg[log_msglen] = '\0';   
+  fm_msg[log_msglen] = '\0';
 
   fm->fm_msg = fm_msg;
   fm->fm_msglen = log_msglen;
@@ -172,7 +172,7 @@ static const char *forensic_get_begin_marker(unsigned int criterion,
       break;
 
     case FORENSIC_CRIT_MODULE_CONFIG:
-      marker = "-----BEGIN MODULE CONFIG FORENSICS-----\n"; 
+      marker = "-----BEGIN MODULE CONFIG FORENSICS-----\n";
       break;
 
     case FORENSIC_CRIT_UNTIMELY_DEATH:
@@ -199,7 +199,7 @@ static const char *forensic_get_end_marker(unsigned int criterion,
     case FORENSIC_CRIT_MODULE_CONFIG:
       marker = "-----END MODULE CONFIG FORENSICS-----\n";
       break;
-    
+
     case FORENSIC_CRIT_UNTIMELY_DEATH:
       marker = "-----END UNTIMELY DEATH FORENSICS-----\n";
       break;
@@ -437,7 +437,7 @@ static void forensic_write_metadata(void) {
     iov[niov].iov_base = total_bytes_in_str;
     iov[niov].iov_len = res;
     niov++;
-  } 
+  }
 
   /* Total bytes out */
   iov[niov].iov_base = "Total-Bytes-Out: ";
@@ -655,7 +655,7 @@ MODRET set_forensiclogbuffersize(cmd_rec *cmd) {
   if (count == 0) {
     CONF_ERROR(cmd, "size must be greater than zero");
   }
- 
+
   c = add_config_param(cmd->argv[0], 1, NULL);
   c->argv[0] = palloc(c->pool, sizeof(unsigned int));
   *((unsigned int *) c->argv[0]) = count;

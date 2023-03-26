@@ -168,7 +168,7 @@ static void auth_sess_reinit_ev(const void *event_data, void *user_data) {
  */
 
 static int auth_init(void) {
-  /* Add the commands handled by this module to the HELP list. */ 
+  /* Add the commands handled by this module to the HELP list. */
   pr_help_add(C_USER, _("<sp> username"), TRUE);
   pr_help_add(C_PASS, _("<sp> password"), TRUE);
   pr_help_add(C_ACCT, _("is not implemented"), FALSE);
@@ -410,7 +410,7 @@ MODRET auth_err_pass(cmd_rec *cmd) {
     pr_session_disconnect(&auth_module, PR_SESS_DISCONNECT_CONFIG_ACL,
       "Denied by MaxLoginAttempts");
   }
-  
+
   return PR_HANDLED(cmd);
 }
 
@@ -952,7 +952,7 @@ static int get_default_root(pool *p, int allow_symlinks, const char **root) {
         char interp_dir[PR_TUNABLE_PATH_MAX + 1];
 
         memset(interp_dir, '\0', sizeof(interp_dir));
-        (void) pr_fs_interpolate(dir, interp_dir, sizeof(interp_dir)-1); 
+        (void) pr_fs_interpolate(dir, interp_dir, sizeof(interp_dir)-1);
 
         pr_log_pri(PR_LOG_NOTICE,
           "notice: unable to use DefaultRoot '%s' [resolved to '%s']: %s",
@@ -1059,7 +1059,7 @@ static int setup_env(pool *p, cmd_rec *cmd, const char *user, char *pass) {
       user, session.c->remote_name,
       pr_netaddr_get_ipstr(session.c->remote_addr),
       pr_netaddr_get_ipstr(session.c->local_addr), session.c->local_port);
-    pr_event_generate("mod_auth.authentication-code", &auth_code); 
+    pr_event_generate("mod_auth.authentication-code", &auth_code);
 
     goto auth_failure;
   }
@@ -1117,7 +1117,7 @@ static int setup_env(pool *p, cmd_rec *cmd, const char *user, char *pass) {
       !session.groups) {
     /* Get the supplemental groups.  Note that we only look up the
      * supplemental group credentials if we have not cached the group
-     * credentials before, in session.gids and session.groups.  
+     * credentials before, in session.gids and session.groups.
      *
      * Those credentials may have already been retrieved, as part of the
      * pr_auth_get_anon_config() call.
@@ -1168,7 +1168,7 @@ static int setup_env(pool *p, cmd_rec *cmd, const char *user, char *pass) {
           pr_regexp_error(re_res, pw_regex, errstr, sizeof(errstr));
           pr_log_auth(PR_LOG_NOTICE,
             "ANON %s: AnonRejectPasswords denies login", origuser);
- 
+
           pr_event_generate("mod_auth.anon-reject-passwords", session.c);
           goto auth_failure;
         }
@@ -2519,7 +2519,7 @@ MODRET auth_pre_pass(cmd_rec *cmd) {
           FALSE);
       }
     }
- 
+
     if (c != NULL) {
       int allow_empty_passwords;
 
@@ -2528,7 +2528,7 @@ MODRET auth_pre_pass(cmd_rec *cmd) {
         const char *proto;
         int reject_empty_passwd = FALSE, using_ssh2 = FALSE;
         size_t passwd_len = 0;
- 
+
         proto = pr_session_get_protocol(0);
         if (strcmp(proto, "ssh2") == 0) {
           using_ssh2 = TRUE;
@@ -3255,7 +3255,7 @@ MODRET set_createhome(cmd_rec *cmd) {
         char *tmp = NULL;
 
         dirmode = strtol(cmd->argv[++i], &tmp, 8);
- 
+
         if (tmp && *tmp) {
           CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "bad mode parameter: '",
             cmd->argv[i], "'", NULL));
@@ -3270,7 +3270,7 @@ MODRET set_createhome(cmd_rec *cmd) {
         if (strcmp(cmd->argv[i+1], "~") != 0) {
           uid_t uid;
 
-          if (pr_str2uid(cmd->argv[++i], &uid) < 0) { 
+          if (pr_str2uid(cmd->argv[++i], &uid) < 0) {
             CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "bad UID parameter: '",
               cmd->argv[i], "'", NULL));
           }
@@ -3278,7 +3278,7 @@ MODRET set_createhome(cmd_rec *cmd) {
           cuid = uid;
 
         } else {
-          cuid = (uid_t) -1;       
+          cuid = (uid_t) -1;
           i++;
         }
 
@@ -3355,7 +3355,7 @@ MODRET set_createhome(cmd_rec *cmd) {
   *((gid_t *) c->argv[6]) = hgid;
   c->argv[7] = pcalloc(c->pool, sizeof(unsigned long));
   *((unsigned long *) c->argv[7]) = flags;
- 
+
   return PR_HANDLED(cmd);
 }
 

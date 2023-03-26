@@ -371,8 +371,8 @@ int pr_define_add(const char *definition, int survive_restarts) {
     pr_pool_tag(defines_perm_pool, "Permanent Defines Pool");
   }
 
-  if (!defines_perm_list) {
-    defines_perm_list = make_array(defines_perm_pool, 0, sizeof(char *)); 
+  if (defines_perm_list == NULL) {
+    defines_perm_list = make_array(defines_perm_pool, 0, sizeof(char *));
   }
 
   *((char **) push_array(defines_perm_list)) =
@@ -745,7 +745,7 @@ static int dir_check_op(pool *p, xaset_t *set, int op, const char *path,
               if (file_gid == group_ids[i]) {
                 if (!inverted) {
                   pr_trace_msg("hiding", 8,
-                    "hiding file '%s' because of HideGroup %s", path, 
+                    "hiding file '%s' because of HideGroup %s", path,
                     hide_group);
                   res = FALSE;
                 }
@@ -1474,20 +1474,20 @@ int dir_check_limits(cmd_rec *cmd, config_rec *c, const char *cmd_name,
 
 /* Manage .ftpaccess dynamic directory sections
  *
- * build_dyn_config() is called to check for and then handle .ftpaccess 
+ * build_dyn_config() is called to check for and then handle .ftpaccess
  * files.  It determines:
  *
  *   - whether an .ftpaccess file exists in a directory
  *   - whether an existing .ftpaccess section for that file exists
  *   - whether a new .ftpaccess section needs to be constructed
- *   - whether an existing .ftpaccess section needs rebuilding 
- *         as its corresponding .ftpaccess file has been modified   
+ *   - whether an existing .ftpaccess section needs rebuilding
+ *         as its corresponding .ftpaccess file has been modified
  *   - whether an existing .ftpaccess section must now be removed
  *         as its corresponding .ftpaccess file has disappeared
  *
  * The routine must check for .ftpaccess files in each directory that is
- * a component of the path argument.  The input path may be for either a 
- * directory or file, and that may or may not already exist.  
+ * a component of the path argument.  The input path may be for either a
+ * directory or file, and that may or may not already exist.
  *
  * build_dyn_config() may be called with a path to:
  *
@@ -1496,7 +1496,7 @@ int dir_check_limits(cmd_rec *cmd, config_rec *c, const char *cmd_name,
  *   - a proposed directory         - start check in containing dir
  *   - a proposed file              - start check in containing dir
  *
- * As in 1.3.3b code, the key is that for path "/a/b/c", one of either 
+ * As in 1.3.3b code, the key is that for path "/a/b/c", one of either
  * "/a/b/c" or "/a/b" is an existing directory, or we MUST give up as we
  * cannot even start scanning for .ftpaccess files without a valid starting
  * directory.
@@ -1509,10 +1509,10 @@ void build_dyn_config(pool *p, const char *_path, struct stat *stp,
   int isfile, removed = 0;
   char *ptr = NULL;
 
-  /* Need three path strings: 
+  /* Need three path strings:
    *
    *  curr_dir_path: current relative directory path, for tracking our
-   *                 progress as we scan upwards 
+   *                 progress as we scan upwards
    *
    *  ftpaccess_path: current relative file path to the .ftpaccess file for
    *                  which to check.
@@ -1575,12 +1575,12 @@ void build_dyn_config(pool *p, const char *_path, struct stat *stp,
      *
      * The check for a string length greater than 1 character skips the
      * "/" case effectively.
-     */ 
+     */
 
     if (curr_dir_pathlen > 1 &&
       *(curr_dir_path + curr_dir_pathlen - 1) == '/') {
       *(curr_dir_path + curr_dir_pathlen - 1) = '\0';
-      curr_dir_pathlen--;  
+      curr_dir_pathlen--;
     }
 
     ftpaccess_path = pdircat(p, curr_dir_path, ".ftpaccess", NULL);
@@ -2528,7 +2528,7 @@ void fixup_dirs(server_rec *s, int flags) {
 
     return;
   }
- 
+
   reorder_dirs(s->conf, flags);
 
   /* Merge mergeable configuration items down. */
@@ -2573,7 +2573,7 @@ int fixup_servers(xaset_t *list) {
 
       s->ServerAddress = pr_netaddr_get_localaddr_str(s->pool);
       s->addr = pr_netaddr_get_addr(s->pool, s->ServerAddress, &addrs);
-     
+
       if (addrs != NULL) {
         register unsigned int i;
         pr_netaddr_t **elts = addrs->elts;
@@ -2602,7 +2602,7 @@ int fixup_servers(xaset_t *list) {
           }
         }
       }
- 
+
     } else {
       int flags = PR_NETADDR_GET_ADDR_FL_INCL_DEVICE;
 
@@ -2791,11 +2791,11 @@ static void set_tcp_bufsz(server_rec *s) {
   if (getsockopt(sockfd, SOL_SOCKET, SO_SNDBUF, (void *) &tcp_sndbufsz,
       &optlen) < 0) {
     s->tcp_sndbuf_len = tcp_sndbufsz = PR_TUNABLE_DEFAULT_SNDBUFSZ;
-    
+
     pr_log_debug(DEBUG3, "getsockopt error for SO_SNDBUF: %s", strerror(errno));
     pr_log_debug(DEBUG4, "using default TCP send buffer size of %d bytes",
       tcp_sndbufsz);
-  
+
   } else {
     pr_log_debug(DEBUG5, "using TCP send buffer size of %d bytes",
       tcp_sndbufsz);

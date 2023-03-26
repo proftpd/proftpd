@@ -2,7 +2,7 @@
  * ProFTPD: mod_digest - File hashing/checksumming module
  * Copyright (c) Mathias Berchtold <mb@smartftp.com>
  * Copyright (c) 2016-2023 TJ Saunders <tj@castaglia.org>
- * 
+ *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation; either version 2 of the License, or
@@ -2547,7 +2547,7 @@ MODRET digest_post_pass(cmd_rec *cmd) {
   if (digest_engine == FALSE) {
     return PR_DECLINED(cmd);
   }
-  
+
   c = find_config(CURRENT_CONF, CONF_PARAM, "DigestAlgorithms", FALSE);
   if (c != NULL) {
     digest_algos = *((unsigned long *) c->argv[0]);

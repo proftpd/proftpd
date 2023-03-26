@@ -3,7 +3,7 @@
  * Portions Copyright (c) 1998-1999 Johnie Ingram.
  * Copyright (c) 2002 James Dogopoulos.
  * Copyright (c) 2008-2017 The ProFTPD Project team
- *  
+ *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation; either version 2 of the License, or
@@ -56,7 +56,7 @@
      Netscape shows ratios; fixed recalculation in XRATIO.  Added
      CwdRatioMsg directive for showing equivalent URLs (always
      enabled).
-   
+
    * 1999-04-08: v2.0: Reformat and rewrite.  Add FileRatioErrMsg,
      ByteRatioErrMsg, and LeechRatioMsg directives and support for
      proftpd mod_mysql.
@@ -74,7 +74,7 @@ static struct
   int fstor, fretr, frate, fcred, brate, bcred;
   int files;
 
-  off_t bstor, bretr; 
+  off_t bstor, bretr;
   off_t bytes;
 
   char ftext [64],btext [64];
@@ -192,7 +192,7 @@ set_stats (const char *fstor, const char *fretr, const char *bstor,
     off_t res;
 
     res = strtoull(bstor, &tmp, 10);
-    if (tmp == NULL) 
+    if (tmp == NULL)
       stats.bstor = res;
   }
 
@@ -210,10 +210,10 @@ set_stats (const char *fstor, const char *fretr, const char *bstor,
     off_t res;
 
     res = strtoul(bstor, &tmp, 10);
-    if (tmp == NULL) 
+    if (tmp == NULL)
       stats.bstor = res;
   }
-    
+
   if (bretr) {
     char *tmp = NULL;
     off_t res;
@@ -381,7 +381,7 @@ MODRET calc_ratios (cmd_rec * cmd)
             return PR_DECLINED(cmd);
           }
         }
-      } 
+      }
     }
 
     c = find_config_next(c, c->next, CONF_PARAM, "GroupRatio", FALSE);
@@ -800,10 +800,10 @@ MODRET
 cmd_site (cmd_rec * cmd)
 {
   char buf[128] = {'\0'};
-  
+
   if (cmd->argc < 2)
     return PR_DECLINED(cmd);
-  
+
   if (strcasecmp(cmd->argv[1], "RATIO") == 0) {
     calc_ratios(cmd);
     pr_snprintf(buf, sizeof(buf), RATIO_STUFFS);
@@ -821,13 +821,13 @@ cmd_site (cmd_rec * cmd)
                    (unsigned long) (stats.bytes / 1024));
     return PR_HANDLED(cmd);
   }
-  
+
   if (strcasecmp (cmd->argv[1], "HELP") == 0) {
     pr_response_add(R_214,
 		 "The following SITE extensions are recognized:");
     pr_response_add(R_214, "RATIO " "-- show all ratios in effect");
   }
-  
+
   return PR_DECLINED (cmd);
 }
 

@@ -110,8 +110,8 @@ START_TEST (regexp_compile_test) {
     strerror(errno), errno);
 
   pattern = "[=foo";
-  res = pr_regexp_compile(pre, pattern, 0); 
-  ck_assert_msg(res != 0, "Successfully compiled pattern unexpectedly"); 
+  res = pr_regexp_compile(pre, pattern, 0);
+  ck_assert_msg(res != 0, "Successfully compiled pattern unexpectedly");
 
   errstrlen = pr_regexp_error(1, NULL, NULL, 0);
   ck_assert_msg(errstrlen == 0, "Failed to handle null arguments");

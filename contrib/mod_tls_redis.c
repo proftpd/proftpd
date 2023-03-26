@@ -467,7 +467,7 @@ static int sess_cache_redis_entry_delete(pool *p, const unsigned char *sess_id,
     errno = xerrno;
     return -1;
   }
- 
+
   return 0;
 }
 
@@ -596,7 +596,7 @@ static int sess_cache_open(tls_sess_cache_t *cache, char *info, long timeout) {
   /* Configure a namespace prefix for our Redis keys. */
   if (pr_redis_conn_set_namespace(sess_redis, &tls_redis_module,
       "mod_tls_redis.sessions.", 23) < 0) {
-    pr_trace_msg(trace_channel, 2, 
+    pr_trace_msg(trace_channel, 2,
       "error setting Redis namespace prefix: %s", strerror(errno));
   }
 
@@ -790,7 +790,7 @@ static SSL_SESSION *sess_cache_get(tls_sess_cache_t *cache,
   time_t now;
   SSL_SESSION *sess = NULL;
 
-  pr_trace_msg(trace_channel, 9, "getting session from Redis cache %p", cache); 
+  pr_trace_msg(trace_channel, 9, "getting session from Redis cache %p", cache);
 
   /* Look for the requested session in the "large session" list first. */
   if (sesscache_sess_list != NULL) {
@@ -833,7 +833,7 @@ static SSL_SESSION *sess_cache_get(tls_sess_cache_t *cache,
       &entry) < 0) {
     return NULL;
   }
- 
+
   now = time(NULL);
   if (entry.expires > now) {
     TLS_D2I_SSL_SESSION_CONST unsigned char *ptr;
@@ -932,7 +932,7 @@ static int sess_cache_clear(tls_sess_cache_t *cache) {
 
   if (sesscache_sess_list != NULL) {
     struct sesscache_large_entry *entries;
-    
+
     entries = sesscache_sess_list->elts;
     for (i = 0; i < sesscache_sess_list->nelts; i++) {
       struct sesscache_large_entry *entry;
@@ -1021,7 +1021,7 @@ static int sess_cache_status(tls_sess_cache_t *cache,
         time_t ts;
 
         ptr = entry->sess_data;
-        sess = d2i_SSL_SESSION(NULL, &ptr, entry->sess_datalen); 
+        sess = d2i_SSL_SESSION(NULL, &ptr, entry->sess_datalen);
         if (sess == NULL) {
           pr_log_pri(PR_LOG_NOTICE, MOD_TLS_REDIS_VERSION
             ": error retrieving session from cache: %s", redis_get_errors());

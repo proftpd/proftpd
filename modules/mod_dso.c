@@ -378,7 +378,7 @@ static int dso_handle_insmod(pr_ctrls_t *ctrl, int reqargc,
       pr_ctrls_add_response(ctrl, "'%s' loaded", reqargv[i]);
     }
   }
-  
+
   return PR_CTRLS_STATUS_OK;
 }
 
@@ -642,7 +642,7 @@ MODRET set_modulepath(cmd_rec *cmd) {
   res = pr_fsio_stat(cmd->argv[1], &st);
   if (res < 0) {
     CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "error checking '",
-      cmd->argv[1], "': ", strerror(errno), NULL)); 
+      cmd->argv[1], "': ", strerror(errno), NULL));
   }
 
   if (!S_ISDIR(st.st_mode)) {

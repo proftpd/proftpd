@@ -695,7 +695,7 @@ static int recv_filename(pool *p, uint32_t channel_id, char *name_str,
   if (sp->parent_dir == NULL) {
     if (!S_ISDIR(sp->st_mode)) {
       /* sp->path is not a directory; use it as the destination filename. */
-      sp->filename = pstrdup(scp_pool, sp->path); 
+      sp->filename = pstrdup(scp_pool, sp->path);
 
     } else {
       /* sp->path is a directory; append the source filename to it to get the
@@ -760,7 +760,7 @@ static int recv_finfo(pool *p, uint32_t channel_id, struct scp_path *sp,
   switch (data[0]) {
     case 'C':
       break;
- 
+
     case 'D':
       if (!(scp_opts & SFTP_SCP_OPT_RECURSE)) {
         pr_trace_msg(trace_channel, 3,
@@ -1500,7 +1500,7 @@ static int recv_path(pool *p, uint32_t channel_id, struct scp_path *sp,
     /* If the SFTPOption for ignoring perms for SCP uploads is set, then
      * skip the chmod on the upload file.
      */
-    if (!(sftp_opts & SFTP_OPT_IGNORE_SCP_UPLOAD_PERMS)) { 
+    if (!(sftp_opts & SFTP_OPT_IGNORE_SCP_UPLOAD_PERMS)) {
       pr_trace_msg(trace_channel, 9, "setting perms %04o on file '%s'",
         (unsigned int) sp->perms, sp->fh->fh_path);
 
@@ -1748,8 +1748,9 @@ static int send_dirinfo(pool *p, uint32_t channel_id, struct scp_path *sp,
   need_confirm = TRUE;
 
   res = sftp_channel_write_data(p, channel_id, ctrl_msg, ctrl_msglen);
-  if (res < 0) 
+  if (res < 0) {
     return -1;
+  }
 
   sp->sent_dirinfo = TRUE;
   return 0;
@@ -1915,7 +1916,7 @@ static int send_dir(pool *p, uint32_t channel_id, struct scp_path *sp,
    * directory handle.
    */
 
-  if (sp->dir_spi) { 
+  if (sp->dir_spi) {
     res = send_path(p, channel_id, sp->dir_spi);
     if (res <= 0) {
       return res;
@@ -2039,7 +2040,7 @@ static int send_path(pool *p, uint32_t channel_id, struct scp_path *sp) {
 
     if (pr_cmd_dispatch_phase(cmd, PRE_CMD, 0) < 0) {
       int xerrno = errno;
- 
+
       if (xerrno != EISDIR) {
         (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
           "scp download of '%s' blocked by '%s' handler", sp->path,
@@ -2629,7 +2630,7 @@ int sftp_scp_set_params(pool *p, uint32_t channel_id, array_header *req) {
               "matches found (%s)", reqargv[i], strerror(xerrno));
             write_confirm(p, channel_id, 1, pstrcat(p, reqargv[i], ": ",
               strerror(xerrno), NULL));
-            errno = xerrno; 
+            errno = xerrno;
             return 0;
         }
 
@@ -2652,7 +2653,7 @@ int sftp_scp_set_params(pool *p, uint32_t channel_id, array_header *req) {
           sp->path[pathlen-1] = '\0';
           sp->path = (sp->path + 1);
           pathlen -= 2;
-        } 
+        }
 
         /* Trim any trailing path separators.  It's important. */
         while (pathlen > 1 &&
@@ -2852,12 +2853,12 @@ int sftp_scp_close_session(uint32_t channel_id) {
                 /* Write out an 'incomplete' TransferLog entry for this. */
                 abs_path = sftp_misc_vroot_abs_path(scp_pool, elt->best_path,
                   TRUE);
-            
+
                 if (elt->recvlen > 0) {
                   xferlog_write(0, pr_netaddr_get_sess_remote_name(),
                     elt->recvlen, abs_path, 'b', 'i', 'r', session.user, 'i',
                     "_");
-            
+
                 } else {
                   xferlog_write(0, pr_netaddr_get_sess_remote_name(),
                     elt->sentlen, abs_path, 'b', 'o', 'r', session.user, 'i',

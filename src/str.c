@@ -243,9 +243,9 @@ char *sstrcat(char *dst, const char *src, size_t n) {
    * do for this particular case.
    */
   if (n > 1) {
-#ifdef HAVE_STRLCAT
+#if defined(HAVE_STRLCAT)
     strlcat(dst, src, n);
-  
+
 #else
     for (; *d && n > 1; d++, n--) {
     }
@@ -355,7 +355,7 @@ char *pdircat(pool *p, ...) {
     sstrcat(ptr, argp, len + 1);
     ptr += arglen;
     res_len += arglen;
- 
+
     last = (*res ? res[res_len-1] : 0);
   }
 
@@ -448,17 +448,17 @@ int pr_strnrstr(const char *s, size_t slen, const char *suffix,
 const char *pr_str_strip(pool *p, const char *str) {
   const char *dup_str, *start, *finish;
   size_t len = 0;
- 
+
   if (p == NULL ||
       str == NULL) {
     errno = EINVAL;
     return NULL;
   }
- 
+
   /* First, find the non-whitespace start of the given string */
   for (start = str; PR_ISSPACE(*start); start++) {
   }
- 
+
   /* Now, find the non-whitespace end of the given string */
   for (finish = &str[strlen(str)-1]; PR_ISSPACE(*finish); finish--) {
   }
@@ -933,7 +933,7 @@ int pr_str2uid(const char *val, uid_t *uid) {
   if (parse_ull(val, &ull) < 0) {
     return -1;
   }
-  *uid = ull; 
+  *uid = ull;
 
 # else
   if (parse_ul(val, &ul) < 0) {
@@ -969,7 +969,7 @@ int pr_str2gid(const char *val, gid_t *gid) {
   if (parse_ull(val, &ull) < 0) {
     return -1;
   }
-  *gid = ull; 
+  *gid = ull;
 
 # else
   if (parse_ul(val, &ul) < 0) {
@@ -1112,7 +1112,7 @@ int pr_str_get_duration(const char *str, int *duration) {
       if (duration != NULL) {
         *duration = (mins * 60);
       }
-  
+
       return 0;
     }
 
@@ -1136,7 +1136,7 @@ int pr_str_get_duration(const char *str, int *duration) {
       if (duration != NULL) {
         *duration = (hours * 60 * 60);
       }
- 
+
       return 0;
     }
 
@@ -1195,7 +1195,7 @@ int pr_str_get_nbytes(const char *str, const char *units, off_t *nbytes) {
 
   } else if (strncasecmp(units, "TB", 3) == 0) {
     factor = 1024.0 * 1024.0 * 1024.0 * 1024.0;
-  
+
   } else if (strncasecmp(units, "B", 2) == 0) {
     factor = 1.0;
 
@@ -1358,7 +1358,7 @@ int pr_str_is_boolean(const char *str) {
   if (strncasecmp(str, "yes", 4) == 0) {
     return TRUE;
   }
- 
+
   if (strncasecmp(str, "no", 3) == 0) {
     return FALSE;
   }

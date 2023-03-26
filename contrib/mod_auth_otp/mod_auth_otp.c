@@ -239,7 +239,7 @@ static int auth_otp_kbdint_close(sftp_kbdint_driver_t *driver) {
 
     dbh = NULL;
   }
-  
+
   if (driver->driver_pool != NULL) {
     destroy_pool(driver->driver_pool);
     driver->driver_pool = NULL;
@@ -430,7 +430,7 @@ static int handle_user_otp(pool *p, const char *user, const char *user_otp,
   res = check_otp_code(p, user, user_otp, secret, secret_len, counter);
   if (res == 0) {
     pr_memscrub((char *) secret, secret_len);
-    
+
     (void) pr_log_writefile(auth_otp_logfd, MOD_AUTH_OTP_VERSION,
       "SUCCESS: user '%s' provided valid OTP code", user);
 
@@ -454,7 +454,7 @@ static int handle_user_otp(pool *p, const char *user, const char *user_otp,
    */
   pr_trace_msg(trace_channel, 3,
     "current counter check failed, checking one window behind");
- 
+
   switch (auth_otp_algo) {
     case AUTH_OTP_ALGO_TOTP_SHA1:
     case AUTH_OTP_ALGO_TOTP_SHA256:
@@ -474,7 +474,7 @@ static int handle_user_otp(pool *p, const char *user, const char *user_otp,
     pr_trace_msg(trace_channel, 3,
       "counter check SUCCEEDED for one counter window behind; client is "
       "out-of-sync");
- 
+
     (void) pr_log_writefile(auth_otp_logfd, MOD_AUTH_OTP_VERSION,
       "SUCCESS: user '%s' provided valid OTP code", user);
 
@@ -512,7 +512,7 @@ static int handle_user_otp(pool *p, const char *user, const char *user_otp,
     pr_trace_msg(trace_channel, 3,
       "counter check SUCCEEDED for one counter window ahead; client is "
       "out-of-sync");
- 
+
     (void) pr_log_writefile(auth_otp_logfd, MOD_AUTH_OTP_VERSION,
       "SUCCESS: user '%s' provided valid OTP code", user);
 
@@ -1015,7 +1015,7 @@ static int auth_otp_sess_init(void) {
 
       pr_signals_block();
       PRIVS_ROOT
-      res = pr_log_openfile(path, &auth_otp_logfd, 0600); 
+      res = pr_log_openfile(path, &auth_otp_logfd, 0600);
       xerrno = errno;
       PRIVS_RELINQUISH
       pr_signals_unblock();

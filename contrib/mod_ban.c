@@ -1332,9 +1332,9 @@ static int ban_list_add(pool *p, unsigned int type, unsigned int sid,
       ban_lists->bans.bl_next_slot++;
       ban_lists->bans.bl_listlen++;
       break;
-      
+
     } else {
-      pr_signals_handle(); 
+      pr_signals_handle();
 
       if (ban_lists->bans.bl_next_slot == old_slot &&
           seen == TRUE) {
@@ -1563,7 +1563,7 @@ static int ban_list_remove(pool *p, unsigned int type, unsigned int sid,
         }
 
         memset(&(ban_lists->bans.bl_entries[i]), '\0',
-          sizeof(struct ban_entry)); 
+          sizeof(struct ban_entry));
 
         ban_lists->bans.bl_listlen--;
 
@@ -2265,7 +2265,7 @@ static int ban_handle_ban(pr_ctrls_t *ctrl, int reqargc,
 
     /* Add each given user name to the list */
     for (i = optind; i < reqargc; i++) {
-     
+
       /* Check for duplicates. */
       if (ban_list_exists(ctrl->ctrls_tmp_pool, BAN_TYPE_USER, sid, reqargv[i],
           NULL) < 0) {
@@ -2363,7 +2363,7 @@ static int ban_handle_ban(pr_ctrls_t *ctrl, int reqargc,
         pr_ctrls_add_response(ctrl, "ban: unknown host '%s'", reqargv[i]);
         continue;
       }
- 
+
       /* Check for duplicates. */
       if (ban_list_exists(ctrl->ctrls_tmp_pool, BAN_TYPE_HOST, sid,
           pr_netaddr_get_ipstr(site), NULL) < 0) {
@@ -2735,7 +2735,7 @@ static int ban_handle_permit(pr_ctrls_t *ctrl, int reqargc,
     }
 
     ban_lock_shm(LOCK_UN);
- 
+
   } else {
     pr_ctrls_add_response(ctrl, "unknown ban action requested: '%s'",
       reqargv[0]);
@@ -3077,12 +3077,12 @@ MODRET set_banonevent(cmd_rec *cmd) {
     bee->bee_type = BAN_EV_TYPE_MAX_CMD_RATE;
     pr_event_register(&ban_module, "core.max-command-rate",
       ban_maxcmdrate_ev, bee);
-  
+
   } else if (strcasecmp(cmd->argv[1], "MaxConnectionsPerHost") == 0) {
     bee->bee_type = BAN_EV_TYPE_MAX_CONN_PER_HOST;
     pr_event_register(&ban_module, "mod_auth.max-connections-per-host",
       ban_maxconnperhost_ev, bee);
-  
+
   } else if (strcasecmp(cmd->argv[1], "MaxHostsPerUser") == 0) {
     bee->bee_type = BAN_EV_TYPE_MAX_HOSTS_PER_USER;
     pr_event_register(&ban_module, "mod_auth.max-hosts-per-user",
@@ -3665,7 +3665,7 @@ static void ban_postparse_ev(const void *event_data, void *user_data) {
         pr_log_debug(DEBUG1, MOD_BAN_VERSION ": unable to open BanLog '%s': %s",
           ban_log, "parent directory is world-writable");
         break;
-    } 
+    }
   }
 
   /* Make sure the BanTable exists. */
@@ -3676,7 +3676,7 @@ static void ban_postparse_ev(const void *event_data, void *user_data) {
   }
 
   PRIVS_ROOT
-  ban_tabfh = pr_fsio_open(ban_table, O_RDWR|O_CREAT); 
+  ban_tabfh = pr_fsio_open(ban_table, O_RDWR|O_CREAT);
   xerrno = errno;
   PRIVS_RELINQUISH
 
@@ -3719,7 +3719,7 @@ static void ban_postparse_ev(const void *event_data, void *user_data) {
       (void) close(ban_tabfh->fh_fd);
       ban_tabfh->fh_fd = usable_fd;
     }
-  } 
+  }
 
   /* Get the shm for storing all of our ban info. */
   lists = ban_get_shm(ban_tabfh);
@@ -3870,10 +3870,10 @@ static void ban_timeoutlogin_ev(const void *event_data, void *user_data) {
 
 static void ban_timeoutnoxfer_ev(const void *event_data, void *user_data) {
   const char *ipstr = pr_netaddr_get_ipstr(session.c->remote_addr);
-  
+
   /* user_data is a template of the ban event entry. */
   struct ban_event_entry *tmpl = user_data;
-  
+
   if (ban_engine != TRUE) {
     return;
   }
@@ -3900,10 +3900,10 @@ static void ban_tlshandshake_ev(const void *event_data, void *user_data) {
 
 static void ban_unhandledcmd_ev(const void *event_data, void *user_data) {
   const char *ipstr = pr_netaddr_get_ipstr(session.c->remote_addr);
-  
+
   /* user_data is a template of the ban event entry. */
   struct ban_event_entry *tmpl = user_data;
-  
+
   if (ban_engine != TRUE) {
     return;
   }

@@ -353,7 +353,7 @@ static char *wrap2_get_hostname(wrap2_host_t *host) {
         sizeof(host->name));
 
       /* If the retrieved hostname ends in a trailing period, trim it off. */
-      namelen = strlen(host->name); 
+      namelen = strlen(host->name);
       if (host->name[namelen-1] == '.') {
         host->name[namelen-1] = '\0';
       }
@@ -554,7 +554,7 @@ static unsigned char wrap2_match_host(char *tok, wrap2_host_t *host) {
 
   } else if (tok[(len = strlen(tok)) - 1] == '.') {
     const char *ip_str;
- 
+
     /* Prefix */
 
     ip_str = wrap2_get_hostaddr(host);
@@ -608,7 +608,7 @@ static unsigned char wrap2_match_host(char *tok, wrap2_host_t *host) {
 
     return FALSE;
 
-#ifdef PR_USE_IPV6 
+#if defined(PR_USE_IPV6)
   } else if (pr_netaddr_use_ipv6() &&
              *tok == '[') {
     char *cp;
@@ -893,7 +893,7 @@ static unsigned char wrap2_match_list(array_header *list, wrap2_conn_t *conn,
         token = wrap2_skip_whitespace(tokens[j]);
         if (strcasecmp(token, "EXCEPT") == 0) {
           return (wrap2_match_list(list, conn, match_token, j+1) == 0);
-        } 
+        }
       }
 
       return TRUE;
@@ -1263,7 +1263,7 @@ static unsigned char wrap2_allow_access(wrap2_conn_t *conn) {
     if (res == WRAP2_TAB_DENY ||
         res == WRAP2_TAB_MATCH) {
       wrap2_allow_table = wrap2_deny_table = NULL;
-      return FALSE; 
+      return FALSE;
     }
 
   } else {
@@ -1625,7 +1625,7 @@ MODRET set_wraptables(cmd_rec *cmd) {
   register unsigned int i = 0;
   unsigned char have_registration = FALSE;
   config_rec *c = NULL;
-  
+
   CHECK_ARGS(cmd, 2);
   CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL|CONF_ANON);
 
@@ -1712,7 +1712,7 @@ MODRET set_wrapusertables(cmd_rec *cmd) {
 
   /* The tables are the first two parameters */
   *argv++ = pstrdup(c->pool, cmd->argv[2]);
-  *argv++ = pstrdup(c->pool, cmd->argv[3]); 
+  *argv++ = pstrdup(c->pool, cmd->argv[3]);
 
   /* Now populate the user-expression names */
   if (argc && acl) {
@@ -1794,10 +1794,10 @@ MODRET wrap2_pre_pass(cmd_rec *cmd) {
   /* Search first for user-specific access tables.  Multiple WrapUserTables
    * directives are allowed.
    */
-  
+
   c = find_config(wrap2_ctxt ? wrap2_ctxt->subset : main_server->conf,
     CONF_PARAM, "WrapUserTables", FALSE);
-  while (c) {
+  while (c != NULL) {
     array_header *user_array;
 
     pr_signals_handle();
@@ -1826,7 +1826,7 @@ MODRET wrap2_pre_pass(cmd_rec *cmd) {
 
   /* Next, search for group-specific access tables.  Multiple WrapGroupTables
    * directives are allowed.
-   */ 
+   */
   if (!have_tables) {
     c = find_config(wrap2_ctxt ? wrap2_ctxt->subset : main_server->conf,
       CONF_PARAM, "WrapGroupTables", FALSE);
@@ -1952,15 +1952,16 @@ MODRET wrap2_post_pass(cmd_rec *cmd) {
 }
 
 MODRET wrap2_post_pass_err(cmd_rec *cmd) {
-  if (!wrap2_engine)
+  if (wrap2_engine == FALSE) {
     return PR_DECLINED(cmd);
+  }
 
   /* Clear the values from the session struct as well, specifically
    * session.user.  Failure to do so caused Bug#3727.
    */
   session.user = NULL;
   session.group = NULL;
-   
+
   wrap2_ctxt = NULL;
   wrap2_allow_table = NULL;
   wrap2_deny_table = NULL;

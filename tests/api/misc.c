@@ -1098,7 +1098,7 @@ START_TEST (gmtime_test) {
   time_t now;
 
   mark_point();
-  res = pr_gmtime(NULL, NULL); 
+  res = pr_gmtime(NULL, NULL);
   ck_assert_msg(res == NULL, "Failed to handle null arguments");
   ck_assert_msg(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
     strerror(errno), errno);
@@ -1128,7 +1128,7 @@ START_TEST (localtime_test) {
   time_t now;
 
   mark_point();
-  res = pr_localtime(NULL, NULL); 
+  res = pr_localtime(NULL, NULL);
   ck_assert_msg(res == NULL, "Failed to handle null arguments");
   ck_assert_msg(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
     strerror(errno), errno);

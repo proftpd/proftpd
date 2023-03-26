@@ -72,7 +72,7 @@ int sftp_keystore_register_store(const char *store_type,
       store_open == NULL) {
     errno = EINVAL;
     return -1;
-  } 
+  }
 
   if (keystore_pool == NULL) {
     keystore_pool = make_sub_pool(permanent_pool);
@@ -125,7 +125,7 @@ int sftp_keystore_unregister_store(const char *store_type,
 
   store->prev = store->next = NULL;
   keystore_nstores--;
-  
+
   return 0;
 }
 

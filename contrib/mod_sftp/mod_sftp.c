@@ -134,7 +134,7 @@ static int sftp_get_client_version(conn_t *conn) {
         buf[i] = '\0';
         continue;
       }
- 
+
       if (buf[i] == '\n') {
         buf[i] = '\0';
         break;
@@ -272,7 +272,7 @@ static void sftp_cmd_loop(server_rec *s, conn_t *conn) {
     /* If we are being optimistic, we can reduce the connection latency
      * by sending our KEXINIT message now; this will have the server version
      * string automatically prepended.
-     */  
+     */
     res = sftp_kex_send_first_kexinit();
   }
 
@@ -554,7 +554,7 @@ MODRET set_sftpclientalive(cmd_rec *cmd) {
   *((unsigned int *) c->argv[0]) = count;
   c->argv[1] = palloc(c->pool, sizeof(unsigned int));
   *((unsigned int *) c->argv[1]) = interval;
- 
+
   return PR_HANDLED(cmd);
 }
 
@@ -1457,7 +1457,7 @@ MODRET set_sftpextensions(cmd_rec *cmd) {
 
     } else {
       CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "unknown extension: '",
-        ext, "'", NULL)); 
+        ext, "'", NULL));
     }
   }
 
@@ -1763,7 +1763,7 @@ MODRET set_sftpoptions(cmd_rec *cmd) {
        * as per the comments in RFC4253, Section 5.1.
        */
       opts |= SFTP_OPT_PESSIMISTIC_KEXINIT;
- 
+
     } else if (strcmp(cmd->argv[i], "PessimisticKexinit") == 0) {
       opts |= SFTP_OPT_PESSIMISTIC_KEXINIT;
 
@@ -1814,17 +1814,17 @@ MODRET set_sftpoptions(cmd_rec *cmd) {
 MODRET set_sftppassphraseprovider(cmd_rec *cmd) {
   struct stat st;
   char *path;
- 
+
   CHECK_ARGS(cmd, 1);
   CHECK_CONF(cmd, CONF_ROOT);
 
   path = cmd->argv[1];
- 
+
   if (*path != '/') {
     CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "must be a full path: '", path, "'",
       NULL));
   }
- 
+
   if (stat(path, &st) < 0) {
     CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "error checking '", path, "': ",
       strerror(errno), NULL));
@@ -2611,11 +2611,11 @@ static int sftp_sess_init(void) {
        * discussion on the OpenSSL developer list:
        *
        *  "The internal FIPS logic uses the default RNG to see the FIPS RNG
-       *   as part of the self test process..." 
-       */ 
+       *   as part of the self test process..."
+       */
       RAND_set_rand_method(NULL);
 
-      if (!FIPS_mode_set(1)) { 
+      if (!FIPS_mode_set(1)) {
         const char *errstr;
 
         errstr = sftp_crypto_get_errors();

@@ -73,7 +73,7 @@ typedef struct server_struc {
   /* If the tcp_rcvbuf_override/tcp_sndbuf_override flags are true, then
    * the corresponding buffer lengths are to be configured as socket options
    * via setsockopt(2).
-   */ 
+   */
   int tcp_rcvbuf_len;
   unsigned char tcp_rcvbuf_override;
 

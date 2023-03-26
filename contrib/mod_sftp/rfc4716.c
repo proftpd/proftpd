@@ -101,7 +101,7 @@ static char *filestore_getline(sftp_keystore_t *store, pool *p) {
         tmp = strchr(line, ':');
         if (tmp == NULL) {
           return line;
-        } 
+        }
 
         /* We have a header.  Make sure the header tag is not longer than
          * the specified length of 64 bytes, and that the header value is
@@ -155,7 +155,7 @@ static char *filestore_getline(sftp_keystore_t *store, pool *p) {
         tmp = strchr(line, ':');
         if (tmp == NULL) {
           return line;
-        } 
+        }
 
         /* We have a header.  Make sure the header tag is not longer than
          * the specified length of 64 bytes, and that the header value is
@@ -586,7 +586,7 @@ static sftp_keystore_t *filestore_open(pool *parent_pool,
       break;
 
     case SFTP_SSH2_USER_KEY_STORE:
-      store->verify_user_key = filestore_verify_user_key; 
+      store->verify_user_key = filestore_verify_user_key;
       break;
   }
 

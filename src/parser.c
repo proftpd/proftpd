@@ -442,7 +442,7 @@ int pr_parser_parse_file(pool *p, const char *path, config_rec *start,
    */
   if (st.st_mode & S_IWOTH) {
     pr_log_pri(PR_LOG_WARNING, "warning: config file '%s' is world-writable",
-     path); 
+     path);
   }
 
   fh->fh_iosz = st.st_blksize;

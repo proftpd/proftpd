@@ -91,7 +91,7 @@ static void dynmasq_refresh(void) {
           pr_log_debug(DEBUG2, MOD_DYNMASQ_VERSION
             ": MasqueradeAddress '%s' has not changed addresses", masq_addr);
         }
- 
+
       } else {
         pr_log_pri(PR_LOG_INFO, MOD_DYNMASQ_VERSION
           ": unable to resolve '%s', keeping previous address", masq_addr);

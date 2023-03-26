@@ -673,7 +673,7 @@ START_TEST (get_token2_test) {
     strerror(errno));
 
   ok = "bar";
-  ok_len = 3; 
+  ok_len = 3;
   ck_assert_msg(len == ok_len, "Expected len %lu, got %lu",
     (unsigned long) ok_len, (unsigned long) len);
   ck_assert_msg(strcmp(res, ok) == 0, "Expected '%s', got '%s'", ok, res);
@@ -683,7 +683,7 @@ START_TEST (get_token2_test) {
     strerror(errno));
 
   ok = "bazz";
-  ok_len = 4; 
+  ok_len = 4;
   ck_assert_msg(len == ok_len, "Expected len %lu, got %lu",
     (unsigned long) ok_len, (unsigned long) len);
   ck_assert_msg(strcmp(res, ok) == 0, "Expected '%s', got '%s'", ok, res);
@@ -791,7 +791,7 @@ START_TEST (get_word_utf8_test) {
    */
 
   path = "api/etc/str/utf8-space.txt";
-  fh = fopen(path, "r"); 
+  fh = fopen(path, "r");
   if (fh != NULL) {
     char *ok, *res, *str;
     size_t nread = 0, sz;

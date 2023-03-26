@@ -388,7 +388,7 @@ static int _dispatch(cmd_rec *cmd, int cmd_type, int validate, char *match) {
            * This will allow the cmd_rec to continue to be dispatched to
            * the other interested handlers (Bug#3633).
            */
-          if (cmd_type == LOG_CMD || 
+          if (cmd_type == LOG_CMD ||
               cmd_type == LOG_CMD_ERR) {
             success = 0;
           }
@@ -589,7 +589,7 @@ int pr_cmd_read(cmd_rec **res) {
         cmd->is_ftp = TRUE;
         cmd->protocol = "FTP";
       }
-    } 
+    }
   }
 
   return 0;
@@ -902,7 +902,7 @@ static cmd_rec *make_ftp_cmd(pool *p, char *buf, size_t buflen, int flags) {
 static void cmd_loop(server_rec *server, conn_t *c) {
 
   while (TRUE) {
-    int res = 0; 
+    int res = 0;
     cmd_rec *cmd = NULL;
 
     pr_signals_handle();
@@ -940,7 +940,7 @@ static void cmd_loop(server_rec *server, conn_t *c) {
         pr_session_disconnect(NULL, PR_SESS_DISCONNECT_BAD_PROTOCOL,
           cmd->protocol);
       }
- 
+
       pr_cmd_dispatch(cmd);
       destroy_pool(cmd->pool);
       session.curr_cmd = NULL;
@@ -1744,7 +1744,7 @@ static void daemon_loop(void) {
       if (ServerMaxInstances > 0 &&
           child_count() >= ServerMaxInstances) {
         pr_event_generate("core.max-instances", NULL);
-        
+
         pr_log_pri(PR_LOG_WARNING,
           "MaxInstances (%lu) reached, new connection denied",
           ServerMaxInstances);
@@ -2711,7 +2711,7 @@ int main(int argc, char *argv[], char **envp) {
 
   if (show_version >= 2) {
     printf("ProFTPD Version: %s", PROFTPD_VERSION_TEXT " " PR_STATUS "\n");
-    printf("  Scoreboard Version: %08x\n", PR_SCOREBOARD_VERSION); 
+    printf("  Scoreboard Version: %08x\n", PR_SCOREBOARD_VERSION);
     printf("  Built: %s\n\n", BUILD_STAMP);
 
     modules_list2(NULL, PR_MODULES_LIST_FL_SHOW_VERSION);

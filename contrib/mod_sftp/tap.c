@@ -239,7 +239,7 @@ int sftp_tap_send_packet(void) {
 
     destroy_pool(pkt->pool);
   }
- 
+
   return 0;
 }
 

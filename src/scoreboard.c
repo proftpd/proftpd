@@ -966,7 +966,7 @@ pr_scoreboard_entry_t *pr_scoreboard_entry_read(void) {
     /* Do not proceed if we cannot lock the scoreboard. */
     res = rlock_scoreboard();
     if (res < 0) {
-      return NULL; 
+      return NULL;
     }
   }
 
@@ -1378,8 +1378,8 @@ static int scoreboard_valid_pid(pid_t pid, pid_t curr_pgrp) {
 
   if (ServerType == SERVER_STANDALONE &&
       curr_pgrp > 0) {
-#ifdef HAVE_GETPGID
-    if (getpgid(pid) != curr_pgrp) { 
+#if defined(HAVE_GETPGID)
+    if (getpgid(pid) != curr_pgrp) {
       pr_trace_msg(trace_channel, 1, "scoreboard entry PID %lu process group "
         "does not match current process group, removing entry",
         (unsigned long) pid);
@@ -1432,12 +1432,12 @@ int pr_scoreboard_scrub(void) {
     return -1;
   }
 
-#ifdef HAVE_GETPGRP
+#if defined(HAVE_GETPGRP)
   curr_pgrp = getpgrp();
 #elif HAVE_GETPGID
   curr_pgrp = getpgid(0);
 #endif /* !HAVE_GETPGRP and !HAVE_GETPGID */
- 
+
   /* Skip past the scoreboard header. */
   curr_offset = lseek(fd, (off_t) sizeof(pr_scoreboard_header_t), SEEK_SET);
   if (curr_offset < 0) {
@@ -1451,7 +1451,7 @@ int pr_scoreboard_scrub(void) {
   }
 
   entry_lock.l_start = curr_offset;
- 
+
   PRIVS_ROOT
 
   while (TRUE) {

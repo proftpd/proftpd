@@ -57,7 +57,7 @@ static int utf8_convert(iconv_t conv, const char *inbuf, size_t *inbuflen,
 #if defined(LINUX) || defined(DARWIN6) || defined(DARWIN7) || \
     defined(DARWIN8) || defined(DARWIN9) || defined(DARWIN10) || \
     defined(DARWIN11) || defined(DARWIN12)
- 
+
     nconv = iconv(conv, (char **) &inbuf, inbuflen, &outbuf, outbuflen);
 #else
     nconv = iconv(conv, &inbuf, inbuflen, &outbuf, outbuflen);
@@ -177,7 +177,7 @@ int sftp_utf8_init(void) {
       "to '%s': %s", local_charset, "UTF-8", strerror(errno));
     return -1;
   }
- 
+
   decode_conv = iconv_open(local_charset, "UTF-8");
   if (decode_conv == (iconv_t) -1) {
     int xerrno = errno;
@@ -241,7 +241,7 @@ char *sftp_utf8_decode_str(pool *p, const char *str) {
       register unsigned int i;
       unsigned char *raw_str;
       size_t len, raw_len;
-      
+
       len = strlen(str);
       raw_len = (len * 5) + 1;
       raw_str = pcalloc(p, raw_len + 1);

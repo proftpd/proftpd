@@ -355,7 +355,7 @@ static pr_redis_t *make_redis_conn(pool *p, const char *host, int port,
   redisContext *ctx;
   struct timeval tv;
 
-  millis2timeval(&tv, redis_connect_millis); 
+  millis2timeval(&tv, redis_connect_millis);
 
   /* If the given redis "server" string starts with a '/' character, assume
    * that it is a Unix socket path.
@@ -597,7 +597,7 @@ pr_redis_t *pr_redis_conn_new(pool *p, module *m, unsigned long flags) {
 
     pr_redis_conn_destroy(redis);
     errno = xerrno;
-    return NULL;    
+    return NULL;
   }
 
   res = ping_server(redis);
@@ -618,7 +618,7 @@ pr_redis_t *pr_redis_conn_new(pool *p, module *m, unsigned long flags) {
 
     pr_redis_conn_destroy(redis);
     errno = xerrno;
-    return NULL;    
+    return NULL;
   }
 
   if (redis_password != NULL) {
@@ -925,7 +925,7 @@ char *pr_redis_get_str(pool *p, pr_redis_t *redis, module *m, const char *key) {
     pr_trace_msg(trace_channel, 2,
       "error getting data for key '%s': %s", key, strerror(xerrno));
 
-    errno = xerrno; 
+    errno = xerrno;
     return NULL;
   }
 
@@ -948,7 +948,7 @@ int pr_redis_incr(pr_redis_t *redis, module *m, const char *key, uint32_t incr,
     pr_trace_msg(trace_channel, 2,
       "error incrementing key '%s' by %lu: %s", key,
       (unsigned long) incr, strerror(xerrno));
- 
+
     errno = xerrno;
     return -1;
   }

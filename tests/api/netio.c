@@ -64,7 +64,7 @@ static int open_tmpfile(void) {
 
   tmp_path = "/tmp/netio-test.dat";
   fd = open(tmp_path, O_RDWR|O_CREAT, 0666);
-  ck_assert_msg(fd >= 0, "Failed to open '%s': %s", tmp_path, strerror(errno));  
+  ck_assert_msg(fd >= 0, "Failed to open '%s': %s", tmp_path, strerror(errno));
   tmp_fd = fd;
 
   return fd;
@@ -2213,7 +2213,7 @@ START_TEST (netio_poll_interval_test) {
   ck_assert_msg(nstrm != NULL, "Failed to open ctrl stream on fd %d: %s", fd,
     strerror(errno));
 
-  pr_netio_set_poll_interval(nstrm, interval); 
+  pr_netio_set_poll_interval(nstrm, interval);
   ck_assert_msg(nstrm->strm_interval == interval,
     "Expected stream interval %u, got %u", interval, nstrm->strm_interval);
   ck_assert_msg(nstrm->strm_flags & PR_NETIO_SESS_INTR,

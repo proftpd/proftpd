@@ -26,14 +26,14 @@
 #include "crypto.h"
 #include "umac.h"
 
-/* In OpenSSL 0.9.7, all des_ functions were renamed to DES_ to avoid 
- * clashes with older versions of libdes. 
- */ 
-#if OPENSSL_VERSION_NUMBER < 0x000907000L 
-# define DES_key_schedule des_key_schedule 
-# define DES_cblock des_cblock 
-# define DES_encrypt3 des_encrypt3 
-# define DES_set_key_unchecked des_set_key_unchecked 
+/* In OpenSSL 0.9.7, all des_ functions were renamed to DES_ to avoid
+ * clashes with older versions of libdes.
+ */
+#if OPENSSL_VERSION_NUMBER < 0x000907000L
+# define DES_key_schedule des_key_schedule
+# define DES_cblock des_cblock
+# define DES_encrypt3 des_encrypt3
+# define DES_set_key_unchecked des_set_key_unchecked
 #endif
 
 #if OPENSSL_VERSION_NUMBER > 0x000907000L
@@ -1306,7 +1306,7 @@ const char *sftp_crypto_get_kexinit_cipher_list(pool *p) {
                   ) {
                 res = pstrcat(p, res, *res ? "," : "",
                   pstrdup(p, ciphers[j].name), NULL);
-       
+
               } else {
                 pr_trace_msg(trace_channel, 3,
                   "unable to use '%s' cipher: Unsupported by OpenSSL",
@@ -1364,7 +1364,7 @@ const char *sftp_crypto_get_kexinit_cipher_list(pool *p) {
               res = pstrcat(p, res, *res ? "," : "",
                 pstrdup(p, ciphers[i].name), NULL);
 
-            } else {       
+            } else {
               pr_trace_msg(trace_channel, 3,
                 "unable to use '%s' cipher: Unsupported by OpenSSL",
                 ciphers[i].name);

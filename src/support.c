@@ -661,11 +661,11 @@ char *dir_abs_path(pool *p, const char *path, int interpolate) {
       if (strncmp(path, session.chroot_path,
           strlen(session.chroot_path)) != 0) {
         res = pdircat(p, session.chroot_path, path, NULL);
- 
+
       } else {
         res = pstrdup(p, path);
       }
- 
+
     } else {
       res = pstrdup(p, path);
     }
@@ -987,7 +987,7 @@ void pr_memscrub(void *ptr, size_t ptrlen) {
    */
   OPENSSL_cleanse(ptr, ptrlen);
 
-#else 
+#else
   unsigned char *p;
   size_t loop;
 

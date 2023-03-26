@@ -604,7 +604,7 @@ static int transmit_sendfile(off_t data_len, off_t *data_offset,
       } else if (pr_throttle_have_rate()) {
         pr_log_debug(DEBUG10, "declining use of sendfile due to TransferRate "
           "restrictions");
-    
+
       } else if (session.sf_flags & (SF_ASCII|SF_ASCII_OVERRIDE)) {
         pr_log_debug(DEBUG10, "declining use of sendfile for ASCII data");
 
@@ -1018,7 +1018,7 @@ static void stor_abort(pool *p) {
         pr_log_pri(PR_LOG_NOTICE, "notice: error closing '%s': %s", fh_path,
           strerror(xerrno));
       }
- 
+
       errno = xerrno;
     }
 
@@ -1058,7 +1058,7 @@ static void stor_abort(pool *p) {
 
           pr_error_destroy(err);
           err = NULL;
-        } 
+        }
       }
     }
 
@@ -1154,7 +1154,7 @@ static int stor_complete(pool *p) {
 
           pr_error_destroy(err);
           err = NULL;
-        } 
+        }
       }
     }
 
@@ -2230,7 +2230,7 @@ MODRET xfer_stor(cmd_rec *cmd) {
     pr_data_abort(0, FALSE);
 
     pr_cmd_set_errno(cmd, EIO);
-    errno = EIO; 
+    errno = EIO;
     return PR_ERROR(cmd);
   }
 
@@ -2418,7 +2418,7 @@ MODRET xfer_rest(cmd_rec *cmd) {
     pr_cmd_set_errno(cmd, EPERM);
     errno = EPERM;
     return PR_ERROR(cmd);
-  } 
+  }
 
   session.restart_pos = pos;
 
@@ -4134,7 +4134,7 @@ MODRET set_usesendfile(cmd_rec *cmd) {
       if (arglen > 1 &&
           arg[arglen-1] == '%') {
         char *ptr = NULL;
-  
+
         arg[arglen-1] = '\0';
 
 #ifdef HAVE_STRTOF
@@ -4168,7 +4168,7 @@ MODRET set_usesendfile(cmd_rec *cmd) {
 
     sendfile_len = nbytes;
     bool = TRUE;
-  
+
   } else {
     CONF_ERROR(cmd, "wrong number of parameters");
   }
@@ -4194,7 +4194,7 @@ static void xfer_exit_ev(const void *event_data, void *user_data) {
      /* An upload is occurring... */
     pr_trace_msg(trace_channel, 6, "session exiting, aborting upload");
     stor_abort(session.pool);
-  
+
   } else if (retr_fh != NULL) {
     /* A download is occurring... */
     pr_trace_msg(trace_channel, 6, "session exiting, aborting download");

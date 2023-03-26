@@ -165,7 +165,7 @@ int pr_table_set(pr_table_t *tab, const char *key_data,
  *
  *  PR_TABLE_CTL_SET_ENT_REMOVE
  *    Sets a callback that handles removing a table entry for its chain.
- *   
+ *
  *    The arg parameter must be a pointer to a function with the following
  *    signature:
  *

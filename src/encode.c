@@ -187,7 +187,7 @@ int encode_init(void) {
       errno = xerrno;
       return -1;
     }
- 
+
     decode_conv = iconv_open(local_charset, encoding);
     if (decode_conv == (iconv_t) -1) {
       int xerrno = errno;

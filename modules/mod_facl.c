@@ -918,7 +918,7 @@ static int check_solaris_facl(pool *p, const char *path, int mode, void *acl,
       }
       break;
 
-    default: 
+    default:
       if (have_mask_entry) {
         if ((ae.a_perm & mode) &&
             (acl_mask_entry.a_perm & mode)) {

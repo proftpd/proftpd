@@ -52,7 +52,7 @@ static void tear_down(void) {
   if (p) {
     destroy_pool(p);
     p = permanent_pool = NULL;
-  } 
+  }
 }
 
 /* Tests */
@@ -321,7 +321,7 @@ START_TEST (netacl_get_str_test) {
   acl_str = "None";
   acl = pr_netacl_create(p, acl_str);
   ck_assert_msg(acl != NULL, "Failed to create ACL: %s", strerror(errno));
- 
+
   ok = "none <none>";
   res = pr_netacl_get_str(p, acl);
   ck_assert_msg(res != NULL, "Failed to get ACL string: %s", strerror(errno));

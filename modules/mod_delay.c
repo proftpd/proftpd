@@ -243,7 +243,7 @@ static long delay_get_median(pool *p, unsigned int rownum, const char *protocol,
   struct delay_vals_rec *dv = NULL;
   long *tab_vals = NULL, median;
   array_header *list = make_array(p, 1, sizeof(long));
-  
+
   /* Calculate the median value of the current command's recorded values,
    * taking the protocol (e.g. "ftp", "ftps", "ssh2") into account.
    *
@@ -340,7 +340,7 @@ static void delay_signals_block(void) {
   if (delay_mask_signals(TRUE) < 0) {
     pr_trace_msg(trace_channel, 1,
       "error blocking signals: %s", strerror(errno));
-  }   
+  }
 }
 
 static void delay_signals_unblock(void) {
@@ -671,7 +671,7 @@ static int delay_table_init(void) {
 
       errno = xerrno;
       return -1;
-    } 
+    }
 
     /* Seek to the desired table size (actually, one byte less than the
      * desired size) and write a single byte, so that there's enough
@@ -959,7 +959,7 @@ static int delay_table_load(int lock_table) {
         }
       }
 
-      errno = xerrno; 
+      errno = xerrno;
       return -1;
     }
   }
@@ -1540,10 +1540,10 @@ MODRET delay_log_pass(cmd_rec *cmd) {
 }
 
 MODRET delay_log_pass_err(cmd_rec *cmd) {
-  if (delay_engine == FALSE) { 
+  if (delay_engine == FALSE) {
     return PR_DECLINED(cmd);
   }
-  
+
   if (delay_failed_login_min_delay > 0 ||
       delay_pass_min_delay > 0) {
     unsigned long interval = 0L, min_delay;
@@ -1552,7 +1552,7 @@ MODRET delay_log_pass_err(cmd_rec *cmd) {
     if (delay_pass_min_delay > min_delay) {
       min_delay = delay_pass_min_delay;
     }
-      
+
     if (delay_pass_delayed < min_delay) {
       interval = min_delay - delay_pass_delayed;
     }
@@ -1569,7 +1569,7 @@ MODRET delay_log_pass_err(cmd_rec *cmd) {
 }
 
 MODRET delay_log_user(cmd_rec *cmd) {
-  if (delay_engine == FALSE) { 
+  if (delay_engine == FALSE) {
     return PR_DECLINED(cmd);
   }
 
@@ -1724,7 +1724,7 @@ MODRET delay_post_user(cmd_rec *cmd) {
       *authenticated == TRUE) {
     return PR_DECLINED(cmd);
   }
- 
+
   rownum = delay_get_user_rownum(main_server->sid);
 
   /* Prepare for manipulating the table. */
@@ -1759,7 +1759,7 @@ MODRET delay_post_user(cmd_rec *cmd) {
   if (interval > DELAY_MAX_CONNECT_INTERVAL_USECS) {
     interval = DELAY_MAX_CONNECT_INTERVAL_USECS;
   }
- 
+
   pr_trace_msg(trace_channel, 9,
     "interval between connect and USER command: %ld usecs", interval);
 
@@ -1962,7 +1962,7 @@ static void delay_shutdown_ev(const void *event_data, void *user_data) {
     pr_trace_msg(trace_channel, 1,
       "unable to load DelayTable '%s' (fd %d) into memory: %s",
       delay_tab.dt_path, delay_tab.dt_fd, strerror(xerrno));
-    
+
     errno = xerrno;
     return;
   }
@@ -2136,7 +2136,7 @@ static int delay_sess_init(void) {
   delay_tab.dt_fd = fh->fh_fd;
   delay_tab.dt_data = NULL;
 
-  return 0;  
+  return 0;
 }
 
 /* Module API tables

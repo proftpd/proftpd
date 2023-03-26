@@ -414,7 +414,7 @@ static int radius_parse_var(char *var, int *attr_id, char **attr_default) {
     /* Empty string; nothing to do. */
     return 0;
   }
-  
+
   tmp_pool = make_sub_pool(radius_pool);
   var_cpy = pstrdup(tmp_pool, var);
 
@@ -452,7 +452,7 @@ static int radius_parse_var(char *var, int *attr_id, char **attr_default) {
   return 0;
 }
 
-static unsigned char radius_parse_gids_str(pool *p, char *gids_str, 
+static unsigned char radius_parse_gids_str(pool *p, char *gids_str,
     gid_t **gids, unsigned int *ngids) {
   char *val = NULL;
   array_header *group_ids = make_array(p, 0, sizeof(gid_t));
@@ -1356,7 +1356,7 @@ static void radius_process_group_info(config_rec *c) {
 
     radius_parse_var(param, &radius_addl_group_names_attr_id,
       &radius_addl_group_names_str);
-  
+
     /* Now, parse the default value provided. */
     if (!radius_parse_groups_str(c->pool, radius_addl_group_names_str,
         &groups, &ngroups)) {
@@ -1742,7 +1742,7 @@ static void radius_process_user_info(config_rec *c) {
 
   /* Process the shell string. */
   param = (char *) c->argv[3];
-  
+
   if (RADIUS_IS_VAR(param) == TRUE) {
     radius_parse_var(param, &radius_shell_attr_id, &radius_passwd.pw_shell);
 
@@ -2371,7 +2371,7 @@ static void radius_add_passwd(radius_packet_t *packet, unsigned char type,
 
   /* XOR the results. */
   radius_xor(pwhash, calculated, RADIUS_PASSWD_LEN);
-  
+
   /* For each step through: e[i] = p[i] ^ MD5(secret + e[i-1]) */
   for (i = 1; i < (pwlen >> 4); i++) {
 
@@ -2390,7 +2390,7 @@ static void radius_add_passwd(radius_packet_t *packet, unsigned char type,
   if (type == RADIUS_OLD_PASSWORD) {
     attrib = radius_get_attrib(packet, RADIUS_OLD_PASSWORD);
   }
- 
+
   if (attrib == NULL) {
     radius_add_attrib(packet, type, pwhash, pwlen);
 
@@ -2432,9 +2432,9 @@ static void radius_get_rnd_digest(radius_packet_t *packet) {
    */
   gettimeofday(&tv, &tz);
 
-  /* Add in some (possibly) hard to guess information. */      
+  /* Add in some (possibly) hard to guess information. */
   tv.tv_sec ^= (long) (getpid() * getppid());
-      
+
   /* Use MD5 to obtain (hopefully) cryptographically strong pseudo-random
    * numbers
    */
@@ -2574,8 +2574,8 @@ static void radius_build_packet(radius_packet_t *packet,
 
   /* Set the ID for the packet. */
   packet->id = packet->digest[0];
- 
-  /* Add the user attribute. */ 
+
+  /* Add the user attribute. */
   userlen = strlen((const char *) user);
   radius_add_attrib(packet, RADIUS_USER_NAME, user, userlen);
 
@@ -2683,14 +2683,14 @@ static void radius_build_packet(radius_packet_t *packet,
   radius_add_attrib(packet, RADIUS_NAS_PORT, (unsigned char *) &nas_port,
     sizeof(int));
 
-  /* Add a NAS port type attribute. */ 
+  /* Add a NAS port type attribute. */
   radius_add_attrib(packet, RADIUS_NAS_PORT_TYPE,
     (unsigned char *) &nas_port_type, sizeof(int));
 
   /* Add the calling station ID attribute (this is the IP of the connecting
    * client).
    */
-  caller_id = (char *) pr_netaddr_get_ipstr(pr_netaddr_get_sess_remote_addr()); 
+  caller_id = (char *) pr_netaddr_get_ipstr(pr_netaddr_get_sess_remote_addr());
 
   radius_add_attrib(packet, RADIUS_CALLING_STATION_ID,
     (const unsigned char *) caller_id, strlen(caller_id));
@@ -2720,7 +2720,7 @@ static radius_server_t *radius_make_server(pool *parent_pool) {
   server->timeout = DEFAULT_RADIUS_TIMEOUT;
   server->next = NULL;
 
-  return server; 
+  return server;
 }
 
 static int radius_open_socket(void) {
@@ -3141,7 +3141,7 @@ static int radius_stop_accting(void) {
     acct_status = htonl(RADIUS_ACCT_STATUS_STOP);
     radius_add_attrib(request, RADIUS_ACCT_STATUS_TYPE,
       (unsigned char *) &acct_status, sizeof(int));
- 
+
     radius_add_attrib(request, RADIUS_ACCT_SESSION_ID,
       (const unsigned char *) pid_str, pid_len);
 
@@ -3247,7 +3247,7 @@ static int radius_stop_accting(void) {
 }
 
 /* Verify the response packet from the server. */
-static int radius_verify_packet(radius_packet_t *req_packet, 
+static int radius_verify_packet(radius_packet_t *req_packet,
     radius_packet_t *resp_packet, const unsigned char *secret,
     size_t secret_len) {
   MD5_CTX ctx;
@@ -3848,8 +3848,8 @@ MODRET set_radiusauthserver(cmd_rec *cmd) {
     if (pr_str_get_duration(cmd->argv[3], &timeout) < 0) {
       CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "error parsing timeout value '",
         cmd->argv[1], "': ", strerror(errno), NULL));
-    } 
-    
+    }
+
     radius_server->timeout = timeout;
   }
 
@@ -4142,9 +4142,10 @@ MODRET set_radiususerinfo(cmd_rec *cmd) {
 
     /* Make sure it's a number, at least. */
     (void) strtoul(cmd->argv[2], &endp, 10);
-    if (endp && *endp)
+    if (endp && *endp) {
       CONF_ERROR(cmd, "invalid GID parameter: not a number");
-  } 
+    }
+  }
 
   if (!radius_have_var(cmd->argv[3])) {
     char *path;

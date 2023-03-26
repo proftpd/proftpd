@@ -113,7 +113,7 @@ static void switch_read_cipher(void) {
       (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
         "error clearing cipher context: %s", sftp_crypto_get_errors());
     }
- 
+
     read_blockszs[read_cipher_idx] = SFTP_CIPHER_DEFAULT_BLOCK_SZ;
 
     /* Now we can switch the index. */

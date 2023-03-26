@@ -32,7 +32,7 @@
 
 typedef struct regtab_obj {
   struct regtab_obj *prev, *next;
- 
+
   /* Table source type name */
   const char *regtab_name;
 
@@ -66,7 +66,7 @@ static quota_regtab_t *quotatab_backends = NULL;
 static unsigned int quotatab_nbackends = 0;
 
 /* Logging data */
-static int quota_logfd = -1; 
+static int quota_logfd = -1;
 static char *quota_logname = NULL;
 
 static unsigned char allow_site_quota = TRUE;
@@ -680,7 +680,7 @@ static int quotatab_scan_dir(pool *p, const char *path, uid_t uid,
             st.st_uid == uid) {
           *nbytes += st.st_size;
           *nfiles += 1;
-  
+
         } else if (gid != (gid_t) -1 &&
                    st.st_gid == gid) {
           *nbytes += st.st_size;
@@ -712,7 +712,7 @@ static int quotatab_scan_dir(pool *p, const char *path, uid_t uid,
     }
   }
 
-  pr_fsio_closedir(dirh); 
+  pr_fsio_closedir(dirh);
   return 0;
 }
 
@@ -1001,7 +1001,7 @@ unsigned char quotatab_lookup(quota_tabtype_t tab_type, void *ptr,
     }
 
     return tally_tab->tab_lookup(tally_tab, ptr, name, quota_type);
-  
+
   } else if (tab_type == TYPE_LIMIT) {
     int res;
 
@@ -1050,7 +1050,7 @@ static int quotatab_mutex_lock(int lock_type) {
 
     pr_trace_msg("lock", 3, "%s of QuotaLock fd %d failed: %s",
       lock_desc, quota_lockfd, strerror(xerrno));
-  
+
     if (xerrno == EACCES) {
       struct flock locker;
 
@@ -1103,8 +1103,8 @@ static int quotatab_rlock(quota_table_t *tab) {
 
     pr_trace_msg("lock", 9, "attempting to read-lock QuotaLock fd %d",
       quota_lockfd);
-   
-    while (tab->tab_rlock(tab) < 0) { 
+
+    while (tab->tab_rlock(tab) < 0) {
       int xerrno = errno;
 
       if (xerrno == EINTR) {
@@ -1341,7 +1341,7 @@ int quotatab_write(quota_tally_t *tally,
   /* Only update the tally if the value is not "unlimited". */
   if (sess_limit.files_in_avail != 0) {
 
-    /* Prevent underflows. As this is an unsigned data type, the 
+    /* Prevent underflows. As this is an unsigned data type, the
      * underflow check is not as straightforward as checking for a value
      * less than zero.
      */
@@ -1499,7 +1499,7 @@ MODRET set_quotadefault(cmd_rec *cmd) {
       strncasecmp(cmd->argv[1], "all", 4) != 0) {
     CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "unknown quota type '",
       (char *) cmd->argv[1], "' configured", NULL));
-  } 
+  }
 
   c->argv[0] = pstrdup(c->pool, cmd->argv[1]);
 
@@ -1734,7 +1734,7 @@ MODRET set_quotatable(cmd_rec *cmd) {
   CHECK_ARGS(cmd, 1);
   CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL);
 
-  /* Separate the parameter into the separate pieces.  The parameter is 
+  /* Separate the parameter into the separate pieces.  The parameter is
    * given as one string to enhance its similarity to URL syntax.
    */
   tmp = strchr(cmd->argv[1], ':');
@@ -1954,7 +1954,7 @@ MODRET quotatab_post_appe(cmd_rec *cmd) {
   }
 
   /* Check on the size of the appended-to file again, and use the difference
-   * in file size as the increment.  Make sure that no caching effects 
+   * in file size as the increment.  Make sure that no caching effects
    * mess with the stat.
    */
   pr_fs_clear_cache2(cmd->arg);
@@ -2064,7 +2064,7 @@ MODRET quotatab_post_appe_err(cmd_rec *cmd) {
   }
 
   /* Check on the size of the appended-to file again, and use the difference
-   * in file size as the increment.  Make sure that no caching effects 
+   * in file size as the increment.  Make sure that no caching effects
    * mess with the stat.
    */
   pr_fs_clear_cache2(cmd->arg);
@@ -2316,7 +2316,7 @@ MODRET quotatab_post_copy(cmd_rec *cmd) {
         /* If the destination file already existed, the number of bytes
          * copied is the current size less its previous size.  Unless its
          * current size is smaller than its previous size...
-         */ 
+         */
 
         if (st.st_size >= quotatab_disk_nbytes) {
           copy_bytes = st.st_size - quotatab_disk_nbytes;
@@ -2326,7 +2326,7 @@ MODRET quotatab_post_copy(cmd_rec *cmd) {
           dst_truncated = TRUE;
         }
       }
- 
+
     } else {
       if (!S_ISDIR(st.st_mode) ||
           (S_ISDIR(st.st_mode) && use_dirs == TRUE)) {
@@ -2530,8 +2530,9 @@ MODRET quotatab_pre_dele(cmd_rec *cmd) {
 MODRET quotatab_post_dele(cmd_rec *cmd) {
 
   /* sanity check */
-  if (!use_quotas)
-    return PR_DECLINED(cmd); 
+  if (use_quotas == FALSE) {
+    return PR_DECLINED(cmd);
+  }
 
   if (quotatab_ignore_path(cmd->tmp_pool, cmd->arg)) {
     quotatab_log("%s: path '%s' matched QuotaExcludeFilter '%s', ignoring",
@@ -2665,8 +2666,9 @@ MODRET quotatab_post_dele(cmd_rec *cmd) {
 MODRET quotatab_post_dele_err(cmd_rec *cmd) {
 
   /* sanity check */
-  if (!use_quotas)
-    return PR_DECLINED(cmd); 
+  if (use_quotas == FALSE) {
+    return PR_DECLINED(cmd);
+  }
 
   /* Clear the cached bytes. */
   quotatab_disk_nbytes = 0;
@@ -3389,7 +3391,7 @@ MODRET quotatab_post_retr(cmd_rec *cmd) {
   /* Check quotas to see if files download or total quota has been reached.
    * Report this to user if so.
    */
-  if (sess_limit.files_out_avail != 0 && 
+  if (sess_limit.files_out_avail != 0 &&
       sess_tally.files_out_used >= sess_limit.files_out_avail) {
 
     /* Report the reaching of the threshold. */
@@ -3575,18 +3577,18 @@ MODRET quotatab_post_rnto(cmd_rec *cmd) {
   /* Clear the cached bytes/files. */
   quotatab_disk_nbytes = 0;
   quotatab_disk_nfiles = 0;
-  
+
   return PR_DECLINED(cmd);
 }
 
 MODRET quotatab_pre_stor(cmd_rec *cmd) {
   struct stat st;
- 
+
   have_aborted_transfer = FALSE;
   have_err_response = FALSE;
 
   /* Sanity check */
-  if (!use_quotas) {
+  if (use_quotas == FALSE) {
     return PR_DECLINED(cmd);
   }
 
@@ -3672,7 +3674,7 @@ MODRET quotatab_pre_stor(cmd_rec *cmd) {
   /* Briefly cache the size (in bytes) of the file being appended to, so that
    * if successful, the byte counts can be adjusted correctly.  If the
    * stat fails, it means that a new file is being uploaded, so set the
-   * disk_nbytes to be zero. 
+   * disk_nbytes to be zero.
    */
   pr_fs_clear_cache2(cmd->arg);
   if (pr_fsio_lstat(cmd->arg, &st) < 0) {
@@ -3779,7 +3781,7 @@ MODRET quotatab_post_stor(cmd_rec *cmd) {
       } else {
         QUOTATAB_TALLY_WRITE(-store_bytes, 0, -session.xfer.total_bytes,
           -1, 0, -1);
-        
+
         /* Report the removal of the file. */
         quotatab_log("%s: quota reached: '%s' removed", (char *) cmd->argv[0],
           cmd->arg);
@@ -3792,7 +3794,7 @@ MODRET quotatab_post_stor(cmd_rec *cmd) {
              sess_tally.bytes_xfer_used >= sess_limit.bytes_xfer_avail) {
 
     if (!have_err_response) {
-      /* Report the reaching of the threshold. */ 
+      /* Report the reaching of the threshold. */
       quotatab_log("%s: quota reached: used %s", (char *) cmd->argv[0],
         DISPLAY_BYTES_XFER(cmd));
       pr_response_add(R_DUP, _("%s: notice: quota reached: used %s"),
@@ -3880,7 +3882,7 @@ MODRET quotatab_post_stor_err(cmd_rec *cmd) {
   if (have_aborted_transfer ||
       (session.sf_flags & (SF_ABORT|SF_POST_ABORT))) {
     unsigned char *delete_stores;
-    
+
     delete_stores = get_param_ptr(CURRENT_CONF, "DeleteAbortedStores", FALSE);
     if (delete_stores != NULL &&
         *delete_stores == TRUE) {
@@ -3888,12 +3890,12 @@ MODRET quotatab_post_stor_err(cmd_rec *cmd) {
         "skipping tally update", (char *) cmd->argv[0]);
       have_quota_update = 0;
       return PR_DECLINED(cmd);
-    } 
-  } 
+    }
+  }
 
   if (store_bytes > 0) {
     /* Check on the size of the stored file again, and use the difference
-     * in file size as the increment.  Make sure that no caching effects 
+     * in file size as the increment.  Make sure that no caching effects
      * mess with the stat.
      */
     pr_fs_clear_cache2(cmd->arg);
@@ -4385,7 +4387,7 @@ static int quotatab_init(void) {
     quotatab_mod_unload_ev, NULL);
 #endif
   pr_event_register(&quotatab_module, "core.restart", quotatab_restart_ev,
-    NULL); 
+    NULL);
 
   return 0;
 }

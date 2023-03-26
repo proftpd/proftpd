@@ -99,10 +99,10 @@ static struct ssh2_channel *alloc_channel(const char *type,
     uint32_t remote_max_packetsz) {
   struct ssh2_channel *chan = NULL;
   pool *sub_pool = NULL;
- 
+
   sub_pool = make_sub_pool(channel_pool);
   pr_pool_tag(sub_pool, "SSH2 channel pool");
-   
+
   chan = pcalloc(sub_pool, sizeof(struct ssh2_channel));
   chan->pool = sub_pool;
   chan->type = pstrdup(sub_pool, type);
@@ -523,7 +523,7 @@ static int process_channel_data(struct ssh2_channel *chan,
         strerror(errno));
     }
 
-    destroy_pool(resp->pool); 
+    destroy_pool(resp->pool);
     chan->local_windowsz += window_adjlen;
   }
 
@@ -1478,7 +1478,7 @@ int sftp_channel_init(void) {
   if (c) {
     while (c) {
       register unsigned int i;
-      array_header *envs; 
+      array_header *envs;
       char **elts;
 
       pr_signals_handle();
@@ -1491,7 +1491,7 @@ int sftp_channel_init(void) {
 
       c = find_config_next(c, c->next, CONF_PARAM, "SFTPAcceptEnv", FALSE);
     }
-   
+
   } else {
     /* Allow the LANG environment variable by default. */
     *((char **) push_array(accepted_envs)) = pstrdup(channel_pool, "LANG");
@@ -1561,13 +1561,15 @@ static int channel_write_data(pool *p, uint32_t channel_id,
 
     /* The maximum size of the CHANNEL_DATA payload we can send to the client
      * is the smaller of the remote window size and the remote packet size.
-     */ 
+     */
 
-    if (payload_len > chan->remote_max_packetsz)
+    if (payload_len > chan->remote_max_packetsz) {
       payload_len = chan->remote_max_packetsz;
+    }
 
-    if (payload_len > chan->remote_windowsz)
+    if (payload_len > chan->remote_windowsz) {
       payload_len = chan->remote_windowsz;
+    }
 
     if (payload_len > 0) {
       struct ssh2_packet *pkt;
@@ -1579,7 +1581,7 @@ static int channel_write_data(pool *p, uint32_t channel_id,
        * a possible data type ID (4 bytes),  and for the data length (4 bytes).
        */
       bufsz2 = buflen2 = payload_len + 13;
- 
+
       pkt = sftp_ssh2_packet_create(p);
       ptr2 = buf2 = palloc(pkt->pool, bufsz2);
 
