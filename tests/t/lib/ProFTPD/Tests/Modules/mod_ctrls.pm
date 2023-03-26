@@ -194,7 +194,7 @@ sub ctrls_lsctrl_ok {
     $expected = 'help insctrl lsctrl rmctrl ';
     $self->assert($expected eq $actions,
       test_msg("Expected '$expected', got '$actions'"));
-  }; 
+  };
   if ($@) {
     $ex = $@;
   }
@@ -278,7 +278,7 @@ sub ctrls_lsctrl_system_user_ok {
     $expected = 'help insctrl lsctrl rmctrl ';
     $self->assert($expected eq $actions,
       test_msg("Expected '$expected', got '$actions'"));
-  }; 
+  };
   if ($@) {
     $ex = $@;
   }
@@ -445,8 +445,7 @@ sub ctrls_sighup_bug3756 {
 
     $self->assert($orig_nfds == $restart_nfds,
       test_msg("Expected $orig_nfds open fds, found $restart_nfds"));
-  }; 
-
+  };
   if ($@) {
     $ex = $@;
   }

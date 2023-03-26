@@ -414,7 +414,7 @@ my $openssl = '/Users/tj/local/openssl-1.0.2d/bin/openssl';
         '-starttls',
         'ftp',
         '-sess_out',
-        $sessid_file, 
+        $sessid_file,
       );
 
       my $tls_rh = IO::Handle->new();
@@ -478,7 +478,7 @@ my $openssl = '/Users/tj/local/openssl-1.0.2d/bin/openssl';
         '-starttls',
         'ftp',
         '-sess_in',
-        $sessid_file, 
+        $sessid_file,
       );
 
       $tls_rh = IO::Handle->new();

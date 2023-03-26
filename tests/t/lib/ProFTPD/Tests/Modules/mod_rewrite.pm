@@ -294,7 +294,7 @@ sub rewrite_map_lowercase {
   my $home_dir = File::Spec->rel2abs($tmpdir);
   my $uid = 500;
   my $gid = 500;
- 
+
   my $sub_dir = File::Spec->rel2abs("$tmpdir/tmp");
   mkpath($sub_dir);
 
@@ -443,7 +443,7 @@ sub rewrite_map_spaces_underscores {
   my $home_dir = File::Spec->rel2abs($tmpdir);
   my $uid = 500;
   my $gid = 500;
- 
+
   my $sub_dir = File::Spec->rel2abs("$tmpdir/tmp");
   mkpath($sub_dir);
 
@@ -845,7 +845,7 @@ sub rewrite_rule_append_pid {
   my $home_dir = File::Spec->rel2abs($tmpdir);
   my $uid = 500;
   my $gid = 500;
- 
+
   # Make sure that, if we're running as root, that the home directory has
   # permissions/privs set for the account we create
   if ($< == 0) {
@@ -981,7 +981,7 @@ sub rewrite_bug2915 {
   my $home_dir = File::Spec->rel2abs($tmpdir);
   my $uid = 500;
   my $gid = 500;
- 
+
   my $sub_dir = File::Spec->rel2abs("$tmpdir/tmp");
   mkpath($sub_dir);
 
@@ -1127,7 +1127,7 @@ sub rewrite_bug3027 {
   my $home_dir = File::Spec->rel2abs($tmpdir);
   my $uid = 500;
   my $gid = 500;
- 
+
   # Make sure that, if we're running as root, that the home directory has
   # permissions/privs set for the account we create
   if ($< == 0) {
@@ -1275,7 +1275,7 @@ sub rewrite_bug3034 {
   my $home_dir = File::Spec->rel2abs($tmpdir);
   my $uid = 500;
   my $gid = 500;
- 
+
   # Make sure that, if we're running as root, that the home directory has
   # permissions/privs set for the account we create
   if ($< == 0) {
@@ -1415,7 +1415,7 @@ sub rewrite_bug3169 {
   my $home_dir = File::Spec->rel2abs($tmpdir);
   my $uid = 500;
   my $gid = 500;
- 
+
   # Make sure that, if we're running as root, that the home directory has
   # permissions/privs set for the account we create
   if ($< == 0) {
@@ -1569,7 +1569,7 @@ sub rewrite_map_unescape_bug3170 {
   my $home_dir = File::Spec->rel2abs($tmpdir);
   my $uid = 500;
   my $gid = 500;
- 
+
   # Make sure that, if we're running as root, that the home directory has
   # permissions/privs set for the account we create
   if ($< == 0) {
@@ -1718,7 +1718,7 @@ sub rewrite_cond_env_var_failed {
   my $home_dir = File::Spec->rel2abs($tmpdir);
   my $uid = 500;
   my $gid = 500;
- 
+
   my $sub_dir = File::Spec->rel2abs("$tmpdir/tmp");
   mkpath($sub_dir);
 
@@ -1876,7 +1876,7 @@ sub rewrite_cond_env_var_ok {
   my $home_dir = File::Spec->rel2abs($tmpdir);
   my $uid = 500;
   my $gid = 500;
- 
+
   my $sub_dir = File::Spec->rel2abs("$tmpdir/tmp");
   mkpath($sub_dir);
 
@@ -2028,7 +2028,7 @@ sub rewrite_rule_env_var_failed {
   my $home_dir = File::Spec->rel2abs($tmpdir);
   my $uid = 500;
   my $gid = 500;
- 
+
   my $test_file = 'foo.txt';
   my $test_path = File::Spec->rel2abs("$home_dir/$test_file");
 
@@ -2180,7 +2180,7 @@ sub rewrite_rule_env_var_ok {
   my $home_dir = File::Spec->rel2abs($tmpdir);
   my $uid = 500;
   my $gid = 500;
- 
+
   my $test_file = 'foo.txt';
   my $test_path = File::Spec->rel2abs("$home_dir/$test_file");
 
@@ -2333,7 +2333,7 @@ sub rewrite_escape_rule_backref_bug3028 {
     unless (close($fh)) {
       die("Can't write $test_file: $!");
     }
- 
+
   } else {
     die("Can't open $test_file: $!");
   }
@@ -2473,7 +2473,7 @@ sub rewrite_escape_cond_backref_bug3028 {
     unless (close($fh)) {
       die("Can't write $test_file: $!");
     }
- 
+
   } else {
     die("Can't open $test_file: $!");
   }
@@ -2613,7 +2613,7 @@ sub rewrite_cond_rename_var_bug3029 {
     unless (close($fh)) {
       die("Can't write $test_file: $!");
     }
- 
+
   } else {
     die("Can't open $test_file: $!");
   }
@@ -2743,7 +2743,7 @@ sub rewrite_cond_or_flags_bug3269 {
   my $home_dir = File::Spec->rel2abs($tmpdir);
   my $uid = 500;
   my $gid = 500;
- 
+
   # Make sure that, if we're running as root, that the home directory has
   # permissions/privs set for the account we create
   if ($< == 0) {
@@ -2880,7 +2880,7 @@ sub rewrite_cond_nc_flags {
   my $home_dir = File::Spec->rel2abs($tmpdir);
   my $uid = 500;
   my $gid = 500;
- 
+
   # Make sure that, if we're running as root, that the home directory has
   # permissions/privs set for the account we create
   if ($< == 0) {
@@ -2915,7 +2915,7 @@ sub rewrite_cond_nc_flags {
         'RewriteEngine on',
         "RewriteLog $log_file",
 
-        'RewriteCondition %u ^ProFTPD$ [NC]', 
+        'RewriteCondition %u ^ProFTPD$ [NC]',
         'RewriteCondition %m SIZE',
         'RewriteRule (.*) $1.%P',
       ],
@@ -3099,7 +3099,7 @@ sub rewrite_map_fifo_bug3611 {
       # everything.
       my $path = join('', reverse(split(//, $test_file)));
       my ($resp_code, $resp_msg) = $client->stat($path);
-      
+
       my $expected = 213;
       $self->assert($expected == $resp_code,
         test_msg("Expected response code $expected, got $resp_code"));
@@ -3175,7 +3175,7 @@ sub rewrite_rule_replaceall_backslash_with_slash {
   my $home_dir = File::Spec->rel2abs($tmpdir);
   my $uid = 500;
   my $gid = 500;
- 
+
   # Make sure that, if we're running as root, that the home directory has
   # permissions/privs set for the account we create
   if ($< == 0) {
@@ -3312,7 +3312,7 @@ sub rewrite_map_max_replace_bug3721 {
   my $home_dir = File::Spec->rel2abs($tmpdir);
   my $uid = 500;
   my $gid = 500;
- 
+
   my $sub_dir = File::Spec->rel2abs("$tmpdir/tmp");
   mkpath($sub_dir);
 
@@ -3598,7 +3598,7 @@ sub rewrite_cond_time_year_var_bug3673 {
   my $home_dir = File::Spec->rel2abs($tmpdir);
   my $uid = 500;
   my $gid = 500;
- 
+
   my $sub_dir = File::Spec->rel2abs("$tmpdir/tmp");
   mkpath($sub_dir);
 
@@ -3754,7 +3754,7 @@ sub rewrite_cond_time_mon_var_bug3673 {
   my $home_dir = File::Spec->rel2abs($tmpdir);
   my $uid = 500;
   my $gid = 500;
- 
+
   my $sub_dir = File::Spec->rel2abs("$tmpdir/tmp");
   mkpath($sub_dir);
 
@@ -3910,7 +3910,7 @@ sub rewrite_cond_time_day_var_bug3673 {
   my $home_dir = File::Spec->rel2abs($tmpdir);
   my $uid = 500;
   my $gid = 500;
- 
+
   my $sub_dir = File::Spec->rel2abs("$tmpdir/tmp");
   mkpath($sub_dir);
 
@@ -4066,7 +4066,7 @@ sub rewrite_cond_time_wday_var_bug3673 {
   my $home_dir = File::Spec->rel2abs($tmpdir);
   my $uid = 500;
   my $gid = 500;
- 
+
   my $sub_dir = File::Spec->rel2abs("$tmpdir/tmp");
   mkpath($sub_dir);
 
@@ -4222,7 +4222,7 @@ sub rewrite_cond_time_hour_var_bug3673 {
   my $home_dir = File::Spec->rel2abs($tmpdir);
   my $uid = 500;
   my $gid = 500;
- 
+
   my $sub_dir = File::Spec->rel2abs("$tmpdir/tmp");
   mkpath($sub_dir);
 
@@ -4378,7 +4378,7 @@ sub rewrite_cond_time_min_var_bug3673 {
   my $home_dir = File::Spec->rel2abs($tmpdir);
   my $uid = 500;
   my $gid = 500;
- 
+
   my $sub_dir = File::Spec->rel2abs("$tmpdir/tmp");
   mkpath($sub_dir);
 
@@ -4534,7 +4534,7 @@ sub rewrite_cond_time_sec_var_bug3673 {
   my $home_dir = File::Spec->rel2abs($tmpdir);
   my $uid = 500;
   my $gid = 500;
- 
+
   my $sub_dir = File::Spec->rel2abs("$tmpdir/tmp");
   mkpath($sub_dir);
 
@@ -4690,7 +4690,7 @@ sub rewrite_rule_time_year_var_bug3673 {
   my $home_dir = File::Spec->rel2abs($tmpdir);
   my $uid = 500;
   my $gid = 500;
- 
+
   my $sub_dir = File::Spec->rel2abs("$tmpdir/tmp");
   mkpath($sub_dir);
 
@@ -4842,7 +4842,7 @@ sub rewrite_rule_time_mon_var_bug3673 {
   my $home_dir = File::Spec->rel2abs($tmpdir);
   my $uid = 500;
   my $gid = 500;
- 
+
   my $sub_dir = File::Spec->rel2abs("$tmpdir/tmp");
   mkpath($sub_dir);
 
@@ -4994,7 +4994,7 @@ sub rewrite_rule_time_day_var_bug3673 {
   my $home_dir = File::Spec->rel2abs($tmpdir);
   my $uid = 500;
   my $gid = 500;
- 
+
   my $sub_dir = File::Spec->rel2abs("$tmpdir/tmp");
   mkpath($sub_dir);
 
@@ -5146,7 +5146,7 @@ sub rewrite_rule_time_wday_var_bug3673 {
   my $home_dir = File::Spec->rel2abs($tmpdir);
   my $uid = 500;
   my $gid = 500;
- 
+
   my $sub_dir = File::Spec->rel2abs("$tmpdir/tmp");
   mkpath($sub_dir);
 
@@ -5298,7 +5298,7 @@ sub rewrite_rule_time_hour_var_bug3673 {
   my $home_dir = File::Spec->rel2abs($tmpdir);
   my $uid = 500;
   my $gid = 500;
- 
+
   my $sub_dir = File::Spec->rel2abs("$tmpdir/tmp");
   mkpath($sub_dir);
 
@@ -5450,7 +5450,7 @@ sub rewrite_rule_time_min_var_bug3673 {
   my $home_dir = File::Spec->rel2abs($tmpdir);
   my $uid = 500;
   my $gid = 500;
- 
+
   my $sub_dir = File::Spec->rel2abs("$tmpdir/tmp");
   mkpath($sub_dir);
 
@@ -5602,7 +5602,7 @@ sub rewrite_bug3767 {
   my $home_dir = File::Spec->rel2abs($tmpdir);
   my $uid = 500;
   my $gid = 500;
- 
+
   my $sub_dir = File::Spec->rel2abs("$tmpdir/tmp");
   mkpath($sub_dir);
 
@@ -5749,7 +5749,7 @@ sub rewrite_bug4017 {
 
   my $test_dir = File::Spec->rel2abs("$tmpdir/foo.d");
   mkpath($test_dir);
- 
+
   # Make sure that, if we're running as root, that the home directory has
   # permissions/privs set for the account we create
   if ($< == 0) {
@@ -5888,7 +5888,7 @@ sub rewrite_using_pcre_bug4017 {
 
   my $test_dir = File::Spec->rel2abs("$tmpdir/foo.d");
   mkpath($test_dir);
- 
+
   # Make sure that, if we're running as root, that the home directory has
   # permissions/privs set for the account we create
   if ($< == 0) {

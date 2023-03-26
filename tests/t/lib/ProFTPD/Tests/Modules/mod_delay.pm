@@ -274,7 +274,7 @@ sub delay_warm_table {
         my $start = [gettimeofday()];
         $client->login($user, $passwd);
         my $elapsed = tv_interval($start);
- 
+
         $client->quit();
 
         if ($elapsed > $max_elapsed) {

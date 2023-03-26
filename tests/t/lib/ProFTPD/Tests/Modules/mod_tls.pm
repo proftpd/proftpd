@@ -3889,7 +3889,7 @@ sub tls_list_no_session_reuse {
       # Since we are requiring SSL session reuse for data transfers,
       # and this client is not using SSL session resumption, I expect
       # this data transfer to fail.
-      eval { 
+      eval {
         my $res = $client->list('.');
         if ($res) {
           die("LIST succeeded unexpectedly");
@@ -5380,9 +5380,9 @@ sub tls_opts_std_env_vars_client_vars {
         my $issuer_dn = $2;
 
         $self->assert(length($subj_dn) > 0,
-          test_msg("Expected subject DN, got '$subj_dn'"));      
+          test_msg("Expected subject DN, got '$subj_dn'"));
         $self->assert(length($issuer_dn) > 0,
-          test_msg("Expected issuer DN, got '$issuer_dn'"));      
+          test_msg("Expected issuer DN, got '$issuer_dn'"));
 
         $ok = 1;
         last;
@@ -5509,7 +5509,7 @@ sub tls_opts_ipaddr_required_ipv4 {
         );
       };
 
-      unless ($@) { 
+      unless ($@) {
         die("Connection to server succeeded unexpectedly");
       }
 
@@ -5665,7 +5665,7 @@ sub tls_opts_ipaddr_required_ipv6 {
         );
       };
 
-      unless ($@) { 
+      unless ($@) {
         die("Connection to server succeeded unexpectedly");
       }
 
@@ -6871,7 +6871,7 @@ sub tls_rest_2gb_last_byte {
   unless (open($tmp_fh, "> $tmp_file")) {
     die("Can't open $tmp_file: $!");
   }
- 
+
   my $config = {
     PidFile => $pid_file,
     ScoreboardFile => $scoreboard_file,
@@ -7083,7 +7083,7 @@ sub tls_rest_4gb_last_byte {
   unless (open($tmp_fh, "> $tmp_file")) {
     die("Can't open $tmp_file: $!");
   }
- 
+
   my $config = {
     PidFile => $pid_file,
     ScoreboardFile => $scoreboard_file,
@@ -8254,7 +8254,7 @@ sub tls_opts_commonname_required_bug3512 {
         );
       };
 
-      unless ($@) { 
+      unless ($@) {
         eval { $client->login($user, $passwd) };
         unless ($@) {
           die("Login succeeded unexpectedly");
@@ -8420,7 +8420,7 @@ sub tls_opts_dns_name_required {
         );
       };
 
-      unless ($@) { 
+      unless ($@) {
         eval { $client->login($user, $passwd) };
         unless ($@) {
           die("Login succeeded unexpectedly");
@@ -8586,7 +8586,7 @@ sub tls_opts_ip_addr_dns_name_cn_required {
         );
       };
 
-      unless ($@) { 
+      unless ($@) {
         eval { $client->login($user, $passwd) };
         unless ($@) {
           die("Login succeeded unexpectedly");
@@ -8751,7 +8751,7 @@ sub tls_site_chmod_ok {
 
       unless ($client->site("CHMOD 777 test.txt")) {
         die("SITE CHMOD failed: " . $client->last_message());
-      } 
+      }
 
       my $resp = $client->last_message();
 
@@ -10606,7 +10606,7 @@ sub tls_client_cert_verify_failed_selfsigned_cert_only_bug3742 {
         #
         #  error:14094418:SSL routines:SSL3_READ_BYTES:tlsv1 alert unknown ca
 
-        unless ($@) { 
+        unless ($@) {
           die("Successfully connected to FTPS server unexpectedly");
         }
 
@@ -10721,7 +10721,7 @@ sub tls_client_cert_verify_failed_selfsigned_cert_in_chain_bug3742 {
       close($infh);
 
       print $outfh $data;
-    
+
     } else {
       die("Can't read $cert: $!");
     }
@@ -10805,7 +10805,7 @@ sub tls_client_cert_verify_failed_selfsigned_cert_in_chain_bug3742 {
         #
         #  error:14094418:SSL routines:SSL3_READ_BYTES:tlsv1 alert unknown ca
 
-        unless ($@) { 
+        unless ($@) {
           die("Successfully connected to FTPS server unexpectedly");
         }
 
@@ -10890,7 +10890,7 @@ sub tls_client_cert_verify_ok_server_selfsigned_cert_in_chain_bug3742 {
       close($infh);
 
       print $outfh $data;
-    
+
     } else {
       die("Can't read $cert: $!");
     }
@@ -13616,8 +13616,8 @@ sub tls_sscn_toggle_bug3955 {
 
       } else {
         $resp_code = $client->quot('SSCN', 'ON');
-      } 
-      
+      }
+
       unless ($resp_code == 2) {
         die("SSCN failed: " . $client->last_message());
       }

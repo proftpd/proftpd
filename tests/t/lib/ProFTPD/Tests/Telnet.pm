@@ -165,7 +165,7 @@ sub telnet_iac_bug3521 {
         die("USER succeeded expectedly");
       }
 
-      my $ex = $client->errmsg();    
+      my $ex = $client->errmsg();
       unless ($ex =~ /^command\s+timed/) {
         die("Unexpected exception thrown: $ex");
       }

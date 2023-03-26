@@ -2703,7 +2703,7 @@ sub retr_2nd_transfer_terminates_1st_transfer_bug4010 {
       my $expected = 450;
       $self->assert($expected == $resp_code,
         test_msg("Expected response code $expected, got $resp_code"));
- 
+
       $conn1->read($tmpbuf, 8192, 30);
       $buf1 .= $tmpbuf;
 

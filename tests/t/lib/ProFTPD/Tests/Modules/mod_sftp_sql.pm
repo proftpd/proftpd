@@ -139,7 +139,7 @@ sub list_tests {
 sub set_up {
   my $self = shift;
   $self->SUPER::set_up(@_);
-  
+
   # Make sure that mod_sftp does not complain about permissions on the hostkey
   # files.
 

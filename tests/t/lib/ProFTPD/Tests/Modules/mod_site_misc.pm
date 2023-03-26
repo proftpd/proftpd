@@ -1578,7 +1578,7 @@ sub site_misc_symlink_ncftpd_chroot_bug {
 
       $resp_code = $client->response_code();
       $resp_msg = $client->response_msg();
-       
+
       $expected = 550;
       $self->assert($expected == $resp_code,
         test_msg("Expected $expected, got $resp_code"));
