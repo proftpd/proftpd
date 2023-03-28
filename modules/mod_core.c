@@ -5777,8 +5777,9 @@ MODRET core_mkd(cmd_rec *cmd) {
     return PR_ERROR(cmd);
   }
 
-  if (pr_fsio_smkdir(cmd->tmp_pool, dir, 0777, session.fsuid,
-      session.fsgid) < 0) {
+  res = pr_fsio_smkdir(cmd->tmp_pool, dir, 0777, session.fsuid, session.fsgid);
+  if (res < 0 &&
+      errno != EEXIST) {
     int xerrno = errno;
 
     (void) pr_trace_msg("fileperms", 1, "%s, user '%s' (UID %s, GID %s): "
