@@ -8664,7 +8664,7 @@ static int fxp_handle_lstat(struct fxp_packet *fxp) {
 static int fxp_handle_mkdir(struct fxp_packet *fxp) {
   unsigned char *buf, *ptr;
   char *attrs_str, *cmd_name, *path;
-  struct stat *attrs, st;
+  struct stat *attrs;
   int have_error = FALSE, res = 0;
   mode_t dir_mode;
   uint32_t attr_flags, buflen, bufsz, status_code;
@@ -8871,43 +8871,9 @@ static int fxp_handle_mkdir(struct fxp_packet *fxp) {
   (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
     "creating directory '%s' with mode 0%o", path, (unsigned int) dir_mode);
 
-  /* Check if the path already exists, to avoid unnecessary work. */
-  pr_fs_clear_cache2(path);
-  if (pr_fsio_lstat(path, &st) == 0) {
-    const char *reason;
-    int xerrno = EEXIST;
-
-    (void) pr_trace_msg("fileperms", 1, "MKDIR, user '%s' (UID %s, GID %s): "
-      "error making directory '%s': %s", session.user,
-      pr_uid2str(fxp->pool, session.uid), pr_gid2str(fxp->pool, session.gid),
-      path, strerror(xerrno));
-
-    (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
-      "MKDIR of '%s' failed: %s", path, strerror(xerrno));
-
-    status_code = fxp_errno2status(xerrno, &reason);
-
-    pr_trace_msg(trace_channel, 8, "sending response: STATUS %lu '%s' "
-      "('%s' [%d])", (unsigned long) status_code, reason, strerror(xerrno),
-      xerrno);
-
-    pr_response_add_err(R_550, "%s: %s", cmd2->arg, strerror(xerrno));
-    fxp_cmd_dispatch_err(cmd2);
-
-    fxp_status_write(fxp->pool, &buf, &buflen, fxp->request_id, status_code,
-      reason, NULL);
-
-    fxp_cmd_dispatch_err(cmd);
-
-    resp = fxp_packet_create(fxp->pool, fxp->channel_id);
-    resp->payload = ptr;
-    resp->payload_sz = (bufsz - buflen);
-
-    return fxp_packet_write(resp);
-  }
-
   res = pr_fsio_smkdir(fxp->pool, path, dir_mode, (uid_t) -1, (gid_t) -1);
-  if (res < 0) {
+  if (res < 0 &&
+      errno != EEXIST) {
     const char *reason;
     int xerrno = errno;
 

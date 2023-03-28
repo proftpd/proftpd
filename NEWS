@@ -48,6 +48,8 @@
   ExtendedLog class.
 - Issue 1630 - Update mod_exec to use the Jot API for resolving variables.
 - Issue 1636 - Use system TCP backlog value by default.
+- Issue 1639 - Gracefully handle directory creation requests when the directory
+  already exists.
 
 1.3.8 - Released 04-Dec-2022
 --------------------------------
