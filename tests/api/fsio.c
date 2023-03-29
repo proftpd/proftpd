@@ -3982,61 +3982,92 @@ START_TEST (fs_interpolate_test) {
 
   memset(buf, '\0', sizeof(buf));
 
+  mark_point();
   res = pr_fs_interpolate(NULL, NULL, 0);
   ck_assert_msg(res < 0, "Failed to handle null arguments");
   ck_assert_msg(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
     strerror(errno), errno);
 
+  mark_point();
   path = "/tmp";
   res = pr_fs_interpolate(path, NULL, 0);
   ck_assert_msg(res < 0, "Failed to handle null buffer");
   ck_assert_msg(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
     strerror(errno), errno);
 
+  mark_point();
   res = pr_fs_interpolate(path, buf, 0);
   ck_assert_msg(res < 0, "Failed to handle zero buffer length");
   ck_assert_msg(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
     strerror(errno), errno);
 
+  mark_point();
   res = pr_fs_interpolate(path, buf, sizeof(buf)-1);
   ck_assert_msg(res == 1, "Failed to interpolate path '%s': %s", path,
     strerror(errno));
   ck_assert_msg(strcmp(buf, path) == 0, "Expected '%s', got '%s'", path, buf);
 
+  mark_point();
   path = "~/foo/bar/baz/quzz/quzz.d";
   res = pr_fs_interpolate(path, buf, sizeof(buf)-1);
   ck_assert_msg(res == 1, "Failed to interpolate path '%s': %s", path,
     strerror(errno));
-  ck_assert_msg(strcmp(buf, path+1) == 0, "Expected '%s', got '%s'", path+1, buf);
+  ck_assert_msg(strcmp(buf, path+1) == 0, "Expected '%s', got '%s'",
+    path + 1, buf);
 
+  mark_point();
   path = "~";
   res = pr_fs_interpolate(path, buf, sizeof(buf)-1);
   ck_assert_msg(res == 1, "Failed to interpolate path '%s': %s", path,
     strerror(errno));
   ck_assert_msg(strcmp(buf, "/") == 0, "Expected '/', got '%s'", buf);
 
+  mark_point();
   session.chroot_path = "/tmp";
   res = pr_fs_interpolate(path, buf, sizeof(buf)-1);
   ck_assert_msg(res == 1, "Failed to interpolate path '%s': %s", path,
     strerror(errno));
-  ck_assert_msg(strcmp(buf, session.chroot_path) == 0, "Expected '%s', got '%s'",
-    session.chroot_path, buf);
+  ck_assert_msg(strcmp(buf, session.chroot_path) == 0,
+    "Expected '%s', got '%s'", session.chroot_path, buf);
 
   session.chroot_path = NULL;
 
+  mark_point();
+  session.user_homedir = "/foo";
+  res = pr_fs_interpolate(path, buf, sizeof(buf)-1);
+  ck_assert_msg(res == 1, "Failed to interpolate path '%s': %s", path,
+    strerror(errno));
+  ck_assert_msg(strcmp(buf, session.user_homedir) == 0,
+    "Expected '%s', got '%s'", session.user_homedir, buf);
+
+  session.user_homedir = NULL;
+
+  mark_point();
   path = "~foo.bar.baz.quzz";
   res = pr_fs_interpolate(path, buf, sizeof(buf)-1);
   ck_assert_msg(res < 0, "Interpolated '%s' unexpectedly", path);
   ck_assert_msg(errno == ENOENT, "Expected ENOENT (%d), got %s (%d)", ENOENT,
     strerror(errno), errno);
 
+  mark_point();
   session.user = "testsuite";
   path = "~/tmp.d/test.d/foo.d/bar.d";
   res = pr_fs_interpolate(path, buf, sizeof(buf)-1);
   ck_assert_msg(res < 0, "Interpolated '%s' unexpectedly", path);
   ck_assert_msg(errno == ENOENT, "Expected ENOENT (%d), got %s (%d)", ENOENT,
     strerror(errno), errno);
+
+  mark_point();
+  session.user_homedir = "/cached";
+  path = "~/tmp.d/test.d/foo.d/bar.d";
+  res = pr_fs_interpolate(path, buf, sizeof(buf)-1);
+  ck_assert_msg(res == 1, "Failed to interpolate path '%s': %s", path,
+    strerror(errno));
+  ck_assert_msg(strcmp(buf, "/cached/tmp.d/test.d/foo.d/bar.d") == 0,
+    "Expected '/cached/tmp.d/test.d/foo.d/bar.d', got '%s'", buf);
+
   session.user = NULL;
+  session.user_homedir = NULL;
 }
 END_TEST
 

@@ -2,7 +2,7 @@
  * ProFTPD - FTP server daemon
  * Copyright (c) 1997, 1998 Public Flood Software
  * Copyright (c) 1999, 2000 MacGyver aka Habeeb J. Dihu <macgyver@tos.net>
- * Copyright (c) 2001-2022 The ProFTPD Project
+ * Copyright (c) 2001-2023 The ProFTPD Project
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -2712,6 +2712,14 @@ int pr_fs_interpolate(const char *path, char *buf, size_t buflen) {
       sstrncpy(buf, session.chroot_path, buflen);
       return 1;
     }
+
+    /* If we are not chrooted, but we DO know the home directory of the
+     * current user, then interpolation is easy.
+     */
+    if (session.user_homedir != NULL) {
+      sstrncpy(buf, session.user_homedir, buflen);
+      return 1;
+    }
   }
 
   ptr = strchr(path, '/');
@@ -2760,31 +2768,38 @@ int pr_fs_interpolate(const char *path, char *buf, size_t buflen) {
   }
 
   if (user[0] != '\0') {
-    struct passwd *pw = NULL;
-    pool *p = NULL;
+    if (session.user != NULL &&
+        strcmp(user, session.user) == 0 &&
+        session.user_homedir != NULL) {
+      sstrncpy(buf, session.user_homedir, buflen);
 
-    /* We need to look up the info for the given username, and add it
-     * into the buffer.
-     *
-     * The permanent pool is used here, rather than session.pool, as path
-     * interpolation can occur during startup parsing, when session.pool does
-     * not exist.  It does not really matter, since the allocated sub pool
-     * is destroyed shortly.
-     */
-    p = make_sub_pool(permanent_pool);
-    pr_pool_tag(p, "pr_fs_interpolate() pool");
+    } else {
+      struct passwd *pw = NULL;
+      pool *p = NULL;
 
-    pw = pr_auth_getpwnam(p, user);
-    if (pw == NULL) {
+      /* We need to look up the info for the given username, and add it
+       * into the buffer.
+       *
+       * The permanent pool is used here, rather than session.pool, as path
+       * interpolation can occur during startup parsing, when session.pool does
+       * not exist.  It does not really matter, since the allocated sub pool
+       * is destroyed shortly.
+       */
+      p = make_sub_pool(permanent_pool);
+      pr_pool_tag(p, "pr_fs_interpolate() pool");
+
+      pw = pr_auth_getpwnam(p, user);
+      if (pw == NULL) {
+        destroy_pool(p);
+        errno = ENOENT;
+        return -1;
+      }
+
+      sstrncpy(buf, pw->pw_dir, buflen);
+
+      /* Done with pw, which means we can destroy the temporary pool now. */
       destroy_pool(p);
-      errno = ENOENT;
-      return -1;
     }
-
-    sstrncpy(buf, pw->pw_dir, buflen);
-
-    /* Done with pw, which means we can destroy the temporary pool now. */
-    destroy_pool(p);
 
   } else {
     /* We're chrooted. */

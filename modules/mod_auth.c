@@ -2,7 +2,7 @@
  * ProFTPD - FTP server daemon
  * Copyright (c) 1997, 1998 Public Flood Software
  * Copyright (c) 1999, 2000 MacGyver aka Habeeb J. Dihu <macgyver@tos.net>
- * Copyright (c) 2001-2022 The ProFTPD Project team
+ * Copyright (c) 2001-2023 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -1089,6 +1089,7 @@ static int setup_env(pool *p, cmd_rec *cmd, const char *user, char *pass) {
   }
 
   session.user = pstrdup(p, pw->pw_name);
+  session.user_homedir = pstrdup(p, pw->pw_dir);
   session.group = pstrdup(p, pr_auth_gid2name(p, pw->pw_gid));
 
   /* Set the login_uid and login_uid */
@@ -1926,6 +1927,10 @@ static int setup_env(pool *p, cmd_rec *cmd, const char *user, char *pass) {
    */
   session.user = pstrdup(session.pool, session.user);
 
+  if (session.user_homedir != NULL) {
+    session.user_homedir = pstrdup(session.pool, session.user_homedir);
+  }
+
   if (session.group != NULL) {
     session.group = pstrdup(session.pool, session.group);
   }
@@ -1948,7 +1953,7 @@ auth_failure:
   if (pass != NULL) {
     pr_memscrub(pass, strlen(pass));
   }
-  session.user = session.group = NULL;
+  session.user = session.user_homedir = session.group = NULL;
   session.gids = session.groups = NULL;
   session.wtmp_log = FALSE;
   return 0;
@@ -2450,6 +2455,7 @@ MODRET auth_user(cmd_rec *cmd) {
   session.gids = NULL;
   session.groups = NULL;
   session.user = NULL;
+  session.user_homedir = NULL;
   session.group = NULL;
 
   if (nopass) {

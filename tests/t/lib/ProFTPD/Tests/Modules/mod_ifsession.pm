@@ -1379,7 +1379,7 @@ sub ifgroup_displaylogin_bug3882 {
     AuthGroupFile => $setup->{auth_group_file},
     AuthOrder => 'mod_auth_file.c',
 
-#    DefaultRoot => '~',
+    DefaultRoot => '~',
 
     IfModules => {
       'mod_delay.c' => {
