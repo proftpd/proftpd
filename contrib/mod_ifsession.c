@@ -227,12 +227,16 @@ static char *ifsess_dir_interpolate(pool *p, const char *path) {
       *ptr++ = '\0';
     }
 
-    if (!*user) {
+    if (user[0] == '\0') {
       user = session.user;
 
       if (ifsess_home_dir != NULL) {
         /* We're chrooted; we already know the interpolated path. */
         interp_dir = (char *) ifsess_home_dir;
+
+      } else if (session.user_homedir != NULL) {
+        /* We are not chrooted, but we do know the user's home directory. */
+        interp_dir = (char *) session.user_homedir;
       }
     }
 
