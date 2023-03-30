@@ -1,6 +1,6 @@
 /*
  * ProFTPD - FTP server testsuite
- * Copyright (c) 2015-2020 The ProFTPD Project team
+ * Copyright (c) 2015-2022 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -168,11 +168,13 @@ START_TEST (dir_interpolate_test) {
   char *res;
   const char *path;
 
+  mark_point();
   res = dir_interpolate(NULL, NULL);
   ck_assert_msg(res == NULL, "Failed to handle null arguments");
   ck_assert_msg(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
     strerror(errno), errno);
 
+  mark_point();
   res = dir_interpolate(p, NULL);
   ck_assert_msg(res == NULL, "Failed to handle null path");
   ck_assert_msg(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
@@ -186,13 +188,26 @@ START_TEST (dir_interpolate_test) {
   ck_assert_msg(strcmp(res, path) == 0, "Expected '%s', got '%s'", path, res);
 
   mark_point();
-  path = "~foo.bar.bar.quxx.quzz/foo";
+  path = "~foo.bar.baz.quxx.quzz/foo";
   res = dir_interpolate(p, path);
   ck_assert_msg(path != NULL, "Failed to interpolate '%s': %s", path,
     strerror(errno));
-  ck_assert_msg(*path == '~', "Interpolated path with unknown user unexpectedly");
+  ck_assert_msg(*path == '~',
+    "Interpolated path with unknown user unexpectedly");
   ck_assert_msg(errno == ENOENT, "Expected ENOENT (%d), got %s (%d)", ENOENT,
     strerror(errno), errno);
+
+  mark_point();
+  session.user = "foo.bar.baz.quxx.quzz";
+  session.user_homedir = "/alef.d";
+  res = dir_interpolate(p, path);
+  ck_assert_msg(res != NULL, "Failed to interpolate '%s': %s", path,
+    strerror(errno));
+  ck_assert_msg(strcmp(res, "/alef.d/foo") == 0,
+    "Expected '/alef.d/foo', got '%s'", res);
+
+  session.user = NULL;
+  session.user_homedir = NULL;
 }
 END_TEST
 

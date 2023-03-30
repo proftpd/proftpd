@@ -2,7 +2,7 @@
  * ProFTPD - FTP server daemon
  * Copyright (c) 1997, 1998 Public Flood Software
  * Copyright (c) 1999, 2000 MacGyver aka Habeeb J. Dihu <macgyver@tos.net>
- * Copyright (c) 2001-2022 The ProFTPD Project team
+ * Copyright (c) 2001-2023 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -266,7 +266,6 @@ char *dir_interpolate(pool *p, const char *path) {
 
   if (*path == '~') {
     char *ptr, *user;
-    struct passwd *pw;
 
     user = pstrdup(p, path + 1);
     ptr = strchr(user, '/');
@@ -274,17 +273,26 @@ char *dir_interpolate(pool *p, const char *path) {
       *ptr++ = '\0';
     }
 
-    if (!*user) {
+    if (user[0] == '\0') {
       user = (char *) session.user;
     }
 
-    pw = pr_auth_getpwnam(p, user);
-    if (pw == NULL) {
-      errno = ENOENT;
-      return NULL;
-    }
+    if (session.user != NULL &&
+        strcmp(user, session.user) == 0 &&
+        session.user_homedir != NULL) {
+      res = pdircat(p, session.user_homedir, ptr, NULL);
 
-    res = pdircat(p, pw->pw_dir, ptr, NULL);
+    } else {
+      struct passwd *pw;
+
+      pw = pr_auth_getpwnam(p, user);
+      if (pw == NULL) {
+        errno = ENOENT;
+        return NULL;
+      }
+
+      res = pdircat(p, pw->pw_dir, ptr, NULL);
+    }
 
   } else {
     res = pstrdup(p, path);
