@@ -28,6 +28,8 @@
 - Issue 1597 - <Class> section is allowed to be in <Global>, but From directive
   is not.
 - Issue 1617 - ExtendedLog SSH, SFTP classes not working as expected.
+- Issue 1646 - mod_sftp does not handle multiple concurrent open file
+  handles/transfers well for logging.
 
 1.3.8 - Released 04-Dec-2022
 --------------------------------
