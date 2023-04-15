@@ -1,7 +1,7 @@
 /*
  * mod_ldap - LDAP password lookup module for ProFTPD
  * Copyright (c) 1999-2013, John Morrissey <jwm@horde.net>
- * Copyright (c) 2013-2021 The ProFTPD Project
+ * Copyright (c) 2013-2023 The ProFTPD Project
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -2842,11 +2842,23 @@ MODRET set_ldapusers(cmd_rec *cmd) {
 
   c = add_config_param(cmd->argv[0], cmd->argc - 1, NULL, NULL, NULL);
   c->argv[0] = pstrdup(c->pool, cmd->argv[1]);
+
   if (cmd->argc > 2) {
-    c->argv[1] = pstrdup(c->pool, cmd->argv[2]);
+    const char *filter;
+
+    filter = cmd->argv[2];
+    if (strcmp(filter, "") != 0) {
+      c->argv[1] = pstrdup(c->pool, filter);
+    }
   }
+
   if (cmd->argc > 3) {
-    c->argv[2] = pstrdup(c->pool, cmd->argv[3]);
+    const char *filter;
+
+    filter = cmd->argv[3];
+    if (strcmp(filter, "") != 0) {
+      c->argv[2] = pstrdup(c->pool, filter);
+    }
   }
 
   return PR_HANDLED(cmd);
@@ -2996,7 +3008,8 @@ MODRET set_ldapforcegenhdir(cmd_rec *cmd) {
   return PR_HANDLED(cmd);
 }
 
-MODRET set_ldapgrouplookups(cmd_rec *cmd) {
+/* usage: LDAPGroups base-dn [name-filter-template [uid-filter-template [member-filter-template]]] */
+MODRET set_ldapgroups(cmd_rec *cmd) {
   config_rec *c;
 
   CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL);
@@ -3007,16 +3020,41 @@ MODRET set_ldapgrouplookups(cmd_rec *cmd) {
 
   c = add_config_param(cmd->argv[0], cmd->argc - 1, NULL);
   c->argv[0] = pstrdup(c->pool, cmd->argv[1]);
+
   if (cmd->argc > 2) {
-    c->argv[1] = pstrdup(c->pool, cmd->argv[2]);
+    const char *filter;
+
+    filter = cmd->argv[2];
+    if (strcmp(filter, "") != 0) {
+      c->argv[1] = pstrdup(c->pool, filter);
+
+    } else {
+      c->argv[1] = NULL;
+    }
   }
 
   if (cmd->argc > 3) {
-    c->argv[2] = pstrdup(c->pool, cmd->argv[3]);
+    const char *filter;
+
+    filter = cmd->argv[3];
+    if (strcmp(filter, "") != 0) {
+      c->argv[2] = pstrdup(c->pool, filter);
+
+    } else {
+      c->argv[2] = NULL;
+    }
   }
 
   if (cmd->argc > 4) {
-    c->argv[3] = pstrdup(c->pool, cmd->argv[4]);
+    const char *filter;
+
+    filter = cmd->argv[4];
+    if (strcmp(filter, "") != 0) {
+      c->argv[3] = pstrdup(c->pool, filter);
+
+    } else {
+      c->argv[3] = NULL;
+    }
   }
 
   return PR_HANDLED(cmd);
@@ -3466,19 +3504,33 @@ static int ldap_sess_init(void) {
 
   c = find_config(main_server->conf, CONF_PARAM, "LDAPUsers", FALSE);
   if (c != NULL) {
+    const char *filter;
+
     ldap_do_users = TRUE;
     ldap_user_basedn = pstrdup(ldap_pool, c->argv[0]);
 
+    filter = NULL;
     if (c->argc > 1) {
-      ldap_user_name_filter = pstrdup(ldap_pool, c->argv[1]);
+      filter = c->argv[1];
+    }
+
+    if (filter != NULL &&
+        strcmp(filter, "") != 0) {
+      ldap_user_name_filter = pstrdup(ldap_pool, filter);
 
     } else {
       ldap_user_name_filter = pstrcat(ldap_pool,
         "(&(", ldap_attr_uid, "=%v)(objectclass=posixAccount))", NULL);
     }
 
+    filter = NULL;
     if (c->argc > 2) {
-      ldap_user_uid_filter = pstrdup(ldap_pool, c->argv[2]);
+      filter = c->argv[2];
+    }
+
+    if (filter != NULL &&
+        strcmp(filter, "") != 0) {
+      ldap_user_uid_filter = pstrdup(ldap_pool, filter);
 
     } else {
       ldap_user_uid_filter = pstrcat(ldap_pool,
@@ -3530,27 +3582,47 @@ static int ldap_sess_init(void) {
 
   c = find_config(main_server->conf, CONF_PARAM, "LDAPGroups", FALSE);
   if (c != NULL) {
+    const char *filter;
+
     ldap_do_groups = TRUE;
     ldap_gid_basedn = pstrdup(ldap_pool, c->argv[0]);
 
+    filter = NULL;
     if (c->argc > 1) {
-      ldap_group_name_filter = pstrdup(ldap_pool, c->argv[1]);
+      filter = c->argv[1];
+    }
+
+    if (filter != NULL &&
+        strcmp(filter, "") != 0) {
+      ldap_group_name_filter = pstrdup(ldap_pool, filter);
 
     } else {
       ldap_group_name_filter = pstrcat(ldap_pool,
         "(&(", ldap_attr_cn, "=%v)(objectclass=posixGroup))", NULL);
     }
 
+    filter = NULL;
     if (c->argc > 2) {
-      ldap_group_gid_filter = pstrdup(ldap_pool, c->argv[2]);
+      filter = c->argv[2];
+    }
+
+    if (filter != NULL &&
+        strcmp(filter, "") != 0) {
+      ldap_group_gid_filter = pstrdup(ldap_pool, filter);
 
     } else {
       ldap_group_gid_filter = pstrcat(ldap_pool,
         "(&(", ldap_attr_gidnumber, "=%v)(objectclass=posixGroup))", NULL);
     }
 
+    filter = NULL;
     if (c->argc > 3) {
-      ldap_group_member_filter = pstrdup(ldap_pool, c->argv[3]);
+      filter = c->argv[3];
+    }
+
+    if (filter != NULL &&
+        strcmp(filter, "") != 0) {
+      ldap_group_member_filter = pstrdup(ldap_pool, filter);
 
     } else {
       ldap_group_member_filter = pstrcat(ldap_pool,
@@ -3628,7 +3700,7 @@ static conftable ldap_conftab[] = {
   { "LDAPGenerateHomedirPrefix",set_ldapgenhdirprefix,		NULL },
   { "LDAPGenerateHomedirPrefixNoUsername",
 				set_ldapgenhdirprefixnouname,	NULL },
-  { "LDAPGroups",		set_ldapgrouplookups,		NULL },
+  { "LDAPGroups",		set_ldapgroups,			NULL },
   { "LDAPLog",			set_ldaplog,			NULL },
   { "LDAPProtocolVersion",	set_ldapprotoversion,		NULL },
   { "LDAPQueryTimeout",		set_ldapquerytimeout,		NULL },
