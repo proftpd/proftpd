@@ -159,7 +159,7 @@ jobs:
           # for mod_sql_sqlite
           yum install -y sqlite-devel
           # for mod_wrap
-          yum install -y libnsl2-devel https://pkgs.dyn.su/el8/extras/x86_64/tcp_wrappers-libs-7.6-77.el8.x86_64.rpm https://pkgs.dyn.su/el8/extras/x86_64/tcp_wrappers-devel-7.6-77.el8.x86_64.rpm
+          yum install -y libnsl2-devel https://rpmfind.net/linux/centos/7.9.2009/os/x86_64/Packages/tcp_wrappers-libs-7.6-77.el7.x86_64.rpm https://rpmfind.net/linux/centos/7.9.2009/os/x86_64/Packages/tcp_wrappers-devel-7.6-77.el7.x86_64.rpm
           # for PCRE2 support
           yum install -y pcre2-devel
           # for ftptop
