@@ -207,18 +207,25 @@ struct fxp_handle {
   /* For indicating whether the file existed prior to being opened/created. */
   int fh_existed;
 
-  /* For supporting the HiddenStores directive */
-  char *fh_real_path;
-
   /* For referencing information about the opened file; NOTE THAT THIS MAY
    * BE STALE.
    */
   struct stat *fh_st;
 
-  /* For tracking the number of bytes transferred for this file; for
-   * better TransferLog tracking.
+  /* This deliberately mimics the session.xfer struct, for updating
+   * session.xfer with the details of this filehandle (vs other filehandles
+   * open for the same session/channel concurrently); see Issue #1646.
    */
-  size_t fh_bytes_xferred;
+  struct {
+    int xfer_type;
+    int direction;
+    const char *filename;     /* Same as requested path */
+    const char *path;         /* Same as fxh->fh->fh_path */
+    const char *path_hidden;  /* Used for HiddenStores if applicable */
+    struct timeval start_time;
+    off_t file_size;
+    off_t total_bytes;
+  } xfer;
 
   void *dirh;
   const char *dir;
@@ -641,6 +648,36 @@ static void fxp_set_filehandle_note(cmd_rec *cmd, struct fxp_handle *fxh) {
         "error setting 'sftp.file-handle' note: %s", strerror(xerrno));
     }
   }
+}
+
+/* Copy the filehandle-specific details into the global session.xfer struct
+ * for use by the rest of the ProFTPD machinery.
+ */
+static void fxp_set_filehandle_sess_xfer(struct fxp_handle *fxh) {
+  if (session.xfer.p != NULL) {
+    destroy_pool(session.xfer.p);
+  }
+
+  memset(&session.xfer, 0, sizeof(session.xfer));
+
+  session.xfer.p = make_sub_pool(fxp_pool);
+  pr_pool_tag(session.xfer.p, "SFTP session transfer pool");
+
+  session.xfer.xfer_type = fxh->xfer.xfer_type;
+  session.xfer.direction = fxh->xfer.direction;
+
+  session.xfer.filename = pstrdup(session.xfer.p, fxh->xfer.filename);
+  session.xfer.path = pstrdup(session.xfer.p, fxh->xfer.path);
+  session.xfer.path_hidden = pstrdup(session.xfer.p, fxh->xfer.path_hidden);
+  if (session.xfer.path_hidden != NULL) {
+    /* If HiddenStores are in effect, this holds the actual destination path. */
+    session.xfer.path = session.xfer.path_hidden;
+  }
+
+  memcpy(&(session.xfer.start_time), &(fxh->xfer.start_time),
+    sizeof(session.xfer.start_time));
+  session.xfer.file_size = fxh->xfer.file_size;
+  session.xfer.total_bytes = fxh->xfer.total_bytes;
 }
 
 static void fxp_trace_v3_open_flags(pool *p, uint32_t flags) {
@@ -2986,7 +3023,8 @@ static struct fxp_handle *fxp_handle_create(pool *p) {
 static int fxp_handle_abort(const void *key_data, size_t key_datasz,
     const void *value_data, size_t value_datasz, void *user_data) {
   struct fxp_handle *fxh;
-  char *abs_path, *curr_path = NULL, *real_path = NULL;
+  const char *real_path = NULL;
+  char *abs_path, *curr_path = NULL;
   char direction;
   unsigned char *delete_aborted_stores = NULL;
   cmd_rec *cmd = NULL;
@@ -3022,8 +3060,8 @@ static int fxp_handle_abort(const void *key_data, size_t key_datasz,
 
   curr_path = pstrdup(fxh->pool, fxh->fh->fh_path);
   real_path = curr_path;
-  if (fxh->fh_real_path) {
-    real_path = fxh->fh_real_path;
+  if (fxh->xfer.path_hidden != NULL) {
+    real_path = fxh->xfer.path_hidden;
   }
 
   /* Write an 'incomplete' TransferLog entry for this. */
@@ -3082,10 +3120,15 @@ static int fxp_handle_abort(const void *key_data, size_t key_datasz,
     fxp_cmd_note_file_status(cmd, "failed");
   }
 
-  xferlog_write(0, pr_netaddr_get_sess_remote_name(), fxh->fh_bytes_xferred,
+  /* Populate the session.xfer struct with filehandle-specific details
+   * (Issue #1646)
+   */
+  fxp_set_filehandle_sess_xfer(fxh);
+
+  xferlog_write(0, pr_netaddr_get_sess_remote_name(), fxh->xfer.total_bytes,
     abs_path, 'b', direction, 'r', session.user, 'i', "_");
 
-  if (cmd) {
+  if (cmd != NULL) {
     pr_response_clear(&resp_list);
     pr_response_clear(&resp_err_list);
 
@@ -3101,7 +3144,7 @@ static int fxp_handle_abort(const void *key_data, size_t key_datasz,
   fxh->fh = NULL;
 
   if (fxh->fh_flags != O_RDONLY) {
-    if (fxh->fh_real_path) {
+    if (fxh->xfer.path_hidden != NULL) {
       /* This is a HiddenStores file. */
       if (delete_aborted_stores == NULL ||
           *delete_aborted_stores == TRUE) {
@@ -6582,21 +6625,16 @@ static int fxp_handle_ext_version_select(struct fxp_packet *fxp,
 /* Request handlers */
 
 static int fxp_handle_close(struct fxp_packet *fxp) {
-  int xerrno = 0, res = 0, xfer_direction = 0;
+  int xerrno = 0, res = 0;
   unsigned char *buf, *ptr;
-  char *name, *xfer_filename = NULL, *xfer_path = NULL;
+  char *name;
   const char *reason;
   uint32_t buflen, bufsz, status_code;
   struct fxp_handle *fxh;
   struct fxp_packet *resp;
   cmd_rec *cmd;
-  struct timeval xfer_start_time;
-  off_t xfer_file_size = 0, xfer_total_bytes = 0;
-
-  xfer_start_time.tv_sec = xfer_start_time.tv_usec = 0;
 
   name = sftp_msg_read_string(fxp->pool, &fxp->payload, &fxp->payload_sz);
-
   cmd = fxp_cmd_alloc(fxp->pool, "CLOSE", name);
 
   /* Set the command class to MISC for now; we'll change it later to
@@ -6669,14 +6707,15 @@ static int fxp_handle_close(struct fxp_packet *fxp) {
   pr_timer_remove(PR_TIMER_STALLED, ANY_MODULE);
 
   if (fxh->fh != NULL) {
-    char *curr_path = NULL, *real_path = NULL;
+    const char *real_path = NULL;
+    char *curr_path = NULL;
     cmd_rec *cmd2 = NULL;
 
     curr_path = pstrdup(fxp->pool, fxh->fh->fh_path);
     real_path = curr_path;
 
-    if (fxh->fh_real_path != NULL) {
-      real_path = fxh->fh_real_path;
+    if (fxh->xfer.path_hidden != NULL) {
+      real_path = fxh->xfer.path_hidden;
     }
 
     /* Set session.curr_cmd appropriately here, for any FSIO callbacks. */
@@ -6705,7 +6744,7 @@ static int fxp_handle_close(struct fxp_packet *fxp) {
     pr_scoreboard_entry_update(session.pid,
       PR_SCORE_CMD_ARG, "%s", real_path, NULL, NULL);
 
-    if (fxh->fh_real_path != NULL &&
+    if (fxh->xfer.path_hidden != NULL &&
         res == 0) {
       /* This is a HiddenStores file, and needs to be renamed to the real
        * path.
@@ -6776,13 +6815,7 @@ static int fxp_handle_close(struct fxp_packet *fxp) {
      * LogFormat variable for the CLOSE request.
      */
 
-    xfer_direction = session.xfer.direction;
-    xfer_filename = pstrdup(fxp->pool, session.xfer.filename);
-    xfer_path = pstrdup(fxp->pool, session.xfer.path);
-    memcpy(&xfer_start_time, &(session.xfer.start_time),
-      sizeof(struct timeval));
-    xfer_file_size = session.xfer.file_size;
-    xfer_total_bytes = session.xfer.total_bytes;
+    fxp_set_filehandle_sess_xfer(fxh);
 
     if (cmd2 != NULL) {
       if (fxh->fh_existed &&
@@ -6865,26 +6898,13 @@ static int fxp_handle_close(struct fxp_packet *fxp) {
       (unsigned long) status_code, reason);
   }
 
-  fxp_handle_delete(fxh);
-  destroy_pool(fxh->pool);
-
   fxp_status_write(fxp->pool, &buf, &buflen, fxp->request_id, status_code,
     reason, NULL);
 
   /* Now re-populate the session.xfer struct, for mod_log's handling of
    * the CLOSE request.
    */
-  if (session.xfer.p != NULL) {
-    destroy_pool(session.xfer.p);
-  }
-
-  session.xfer.p = fxp->pool;
-  session.xfer.direction = xfer_direction;
-  session.xfer.filename = xfer_filename;
-  session.xfer.path = xfer_path;
-  memcpy(&(session.xfer.start_time), &xfer_start_time, sizeof(struct timeval));
-  session.xfer.file_size = xfer_file_size;
-  session.xfer.total_bytes = xfer_total_bytes;
+  fxp_set_filehandle_sess_xfer(fxh);
 
   if (res < 0) {
     fxp_cmd_dispatch_err(cmd);
@@ -6893,7 +6913,13 @@ static int fxp_handle_close(struct fxp_packet *fxp) {
     fxp_cmd_dispatch(cmd);
   }
 
+  fxp_handle_delete(fxh);
+  destroy_pool(fxh->pool);
+
   /* Clear out session.xfer again. */
+  if (session.xfer.p != NULL) {
+    destroy_pool(session.xfer.p);
+  }
   memset(&session.xfer, 0, sizeof(session.xfer));
 
   resp = fxp_packet_create(fxp->pool, fxp->channel_id);
@@ -9208,7 +9234,7 @@ static int fxp_handle_open(struct fxp_packet *fxp) {
     }
   }
 
-  if (cmd2) {
+  if (cmd2 != NULL) {
     if (pr_cmd_dispatch_phase(cmd2, PRE_CMD, 0) < 0) {
       int xerrno = errno;
       const char *reason;
@@ -9263,6 +9289,9 @@ static int fxp_handle_open(struct fxp_packet *fxp) {
 
     path = cmd2->arg;
 
+    /* Note that session.xfer.xfer_type will have been set by the PRE_CMD
+     * dispatch above, by mod_xfer.
+     */
     if (session.xfer.xfer_type == STOR_HIDDEN) {
       const void *nfs;
 
@@ -9572,14 +9601,31 @@ static int fxp_handle_open(struct fxp_packet *fxp) {
     return fxp_packet_write(resp);
   }
 
+  /* Populate the filehandle fields, included the start-of-transfer details. */
   fxh->fh = fh;
   fxh->fh_flags = open_flags;
   fxh->fh_existed = file_existed;
   memcpy(fxh->fh_st, &st, sizeof(struct stat));
 
-  if (hiddenstore_path) {
-    fxh->fh_real_path = pstrdup(fxh->pool, path);
+  fxh->xfer.xfer_type = session.xfer.xfer_type;
+  fxh->xfer.filename = pstrdup(fxh->pool, orig_path);
+  fxh->xfer.path = pstrdup(fxh->pool, fxh->fh->fh_path);
+
+  if (hiddenstore_path != NULL) {
+    fxh->xfer.path_hidden = pstrdup(fxh->pool, path);
   }
+
+  memset(&(fxh->xfer.start_time), 0, sizeof(struct timeval));
+  gettimeofday(&(fxh->xfer.start_time), NULL);
+
+  if (file_existed == TRUE) {
+    fxh->xfer.file_size = st.st_size;
+
+  } else {
+    fxh->xfer.file_size = 0;
+  }
+
+  fxh->xfer.total_bytes = 0;
 
   if (fxp_handle_add(fxp->channel_id, fxh) < 0) {
     uint32_t status_code;
@@ -9623,18 +9669,6 @@ static int fxp_handle_open(struct fxp_packet *fxp) {
   sftp_msg_write_int(&buf, &buflen, fxp->request_id);
   sftp_msg_write_string(&buf, &buflen, fxh->name);
 
-  /* Clear out any transfer-specific data. */
-  if (session.xfer.p) {
-    destroy_pool(session.xfer.p);
-  }
-  memset(&session.xfer, 0, sizeof(session.xfer));
-
-  session.xfer.p = make_sub_pool(fxp_pool);
-  pr_pool_tag(session.xfer.p, "SFTP session transfer pool");
-  session.xfer.path = pstrdup(session.xfer.p, orig_path);
-  memset(&session.xfer.start_time, 0, sizeof(session.xfer.start_time));
-  gettimeofday(&session.xfer.start_time, NULL);
-
   if ((open_flags & O_APPEND) ||
       (open_flags & O_WRONLY) ||
       (open_flags & O_RDWR)) {
@@ -9642,7 +9676,7 @@ static int fxp_handle_open(struct fxp_packet *fxp) {
     /* Advise the platform that we will be only writing this file. */
     pr_fs_fadvise(PR_FH_FD(fxh->fh), 0, 0, PR_FS_FADVISE_DONTNEED);
 
-    session.xfer.direction = PR_NETIO_IO_RD;
+    fxh->xfer.direction = PR_NETIO_IO_RD;
 
   } else if (open_flags == O_RDONLY) {
     /* Advise the platform that we will be only reading this file, and that
@@ -9651,7 +9685,7 @@ static int fxp_handle_open(struct fxp_packet *fxp) {
     pr_fs_fadvise(PR_FH_FD(fxh->fh), 0, 0, PR_FS_FADVISE_SEQUENTIAL);
     pr_fs_fadvise(PR_FH_FD(fxh->fh), 0, 0, PR_FS_FADVISE_WILLNEED);
 
-    session.xfer.direction = PR_NETIO_IO_WR;
+    fxh->xfer.direction = PR_NETIO_IO_WR;
   }
 
   pr_timer_remove(PR_TIMER_STALLED, ANY_MODULE);
@@ -9664,6 +9698,11 @@ static int fxp_handle_open(struct fxp_packet *fxp) {
 
   /* Add a note containing the file handle for logging (Bug#3707). */
   fxp_set_filehandle_note(cmd, fxh);
+
+  /* Populate the session.xfer struct with filehandle-specific details
+   * (Issue #1646)
+   */
+  fxp_set_filehandle_sess_xfer(fxh);
 
   fxp_cmd_dispatch(cmd);
 
@@ -10308,10 +10347,10 @@ static int fxp_handle_read(struct fxp_packet *fxp) {
   resp->payload = ptr;
   resp->payload_sz = (bufsz - buflen);
 
-  fxh->fh_bytes_xferred += res;
-  session.xfer.total_bytes += res;
+  fxh->xfer.total_bytes += res;
   session.total_bytes += res;
 
+  fxp_set_filehandle_sess_xfer(fxh);
   fxp_cmd_dispatch(cmd);
 
   res = fxp_packet_write(resp);
@@ -13063,7 +13102,7 @@ static int fxp_handle_write(struct fxp_packet *fxp) {
 
   pr_scoreboard_entry_update(session.pid,
     PR_SCORE_CMD_ARG, "%s", fxh->fh->fh_path, NULL, NULL);
-  fxh->fh_bytes_xferred += datalen;
+  fxh->xfer.total_bytes += datalen;
 
   /* It would be nice to check the requested offset against the size of
    * the file.  However, the protocol specifically allows for sparse files,
@@ -13219,10 +13258,9 @@ static int fxp_handle_write(struct fxp_packet *fxp) {
 
     new_size = offset + res;
     if ((off_t) new_size > fxh->fh_st->st_size) {
-      fxh->fh_st->st_size = new_size;
+      fxh->fh_st->st_size = fxh->xfer.file_size = new_size;
     }
 
-    session.xfer.total_bytes += datalen;
     session.total_bytes += datalen;
   }
 
@@ -13324,6 +13362,7 @@ static int fxp_handle_write(struct fxp_packet *fxp) {
   fxp_status_write(fxp->pool, &buf, &buflen, fxp->request_id, status_code,
     fxp_strerror(status_code), NULL);
 
+  fxp_set_filehandle_sess_xfer(fxh);
   fxp_cmd_dispatch(cmd);
 
   resp = fxp_packet_create(fxp->pool, fxp->channel_id);
