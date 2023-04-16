@@ -7743,8 +7743,9 @@ static int tls_accept(conn_t *conn, unsigned char on_data) {
 
   if (res < 1) {
     const char *msg = "unable to accept TLS connection";
-    int errcode = SSL_get_error(ssl, res);
+    int errcode;
 
+    errcode = SSL_get_error(ssl, res);
     pr_signals_handle();
 
     if (tls_handshake_timed_out) {
@@ -7777,8 +7778,10 @@ static int tls_accept(conn_t *conn, unsigned char on_data) {
         break;
 
       case SSL_ERROR_SYSCALL: {
+        int xerrcode;
+
         /* Check to see if the OpenSSL error queue has info about this. */
-        int xerrcode = ERR_get_error();
+        xerrcode = ERR_peek_error();
 
         if (xerrcode == 0) {
           /* The OpenSSL error queue doesn't have any more info, so we'll
