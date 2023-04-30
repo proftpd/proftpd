@@ -28,7 +28,7 @@
 
 #include "conf.h"
 
-#define MOD_DIGEST_VERSION      "mod_digest/2.0.0"
+#define MOD_DIGEST_VERSION      "mod_digest/2.0.1"
 
 /* Define the custom commands/responses used. */
 #ifndef C_HASH
@@ -1032,7 +1032,7 @@ static int blacklisted_file(const char *path) {
 
 static int compute_digest(pool *p, const char *path, off_t start, off_t len,
     const EVP_MD *md, unsigned char *digest, unsigned int *digest_len,
-    time_t *mtime, void (*hash_progress_cb)(const char *, off_t)) {
+    time_t *mtime) {
   int res, xerrno = 0;
   pr_fh_t *fh;
   struct stat st;
@@ -1151,11 +1151,6 @@ static int compute_digest(pool *p, const char *path, off_t start, off_t len,
     }
 
     len -= res;
-
-    /* Every Nth iteration, invoke the progress callback. */
-    if ((iter_count % DIGEST_PROGRESS_NTH_ITER) == 0) {
-      (hash_progress_cb)(path, len);
-    }
 
     readsz = bufsz;
     if ((off_t) readsz > len) {
@@ -1705,8 +1700,7 @@ static int check_cache_size(cmd_rec *cmd) {
 }
 
 static char *get_digest(cmd_rec *cmd, unsigned long algo, const char *path,
-    time_t mtime, off_t start, size_t len, int flags,
-    void (*hash_progress_cb)(const char *, off_t)) {
+    time_t mtime, off_t start, size_t len, int flags) {
   int res;
   const EVP_MD *md;
   unsigned char *digest = NULL;
@@ -1755,7 +1749,7 @@ static char *get_digest(cmd_rec *cmd, unsigned long algo, const char *path,
   digest = palloc(cmd->tmp_pool, digest_len);
 
   res = compute_digest(cmd->tmp_pool, path, start, len, md, digest,
-    &digest_len, &mtime, hash_progress_cb);
+    &digest_len, &mtime);
   if (res < 0) {
     return NULL;
   }
@@ -1793,28 +1787,6 @@ static char *get_digest(cmd_rec *cmd, unsigned long algo, const char *path,
   }
 
   return hex_digest;
-}
-
-static void digest_progress_cb(const char *path, off_t remaining) {
-  int res;
-
-  pr_trace_msg(trace_channel, 19,
-    "%" PR_LU " bytes remaining for digesting of '%s'", (pr_off_t) remaining,
-    path);
-
-  /* Make sure to reset the idle timer, to prevent ProFTPD from timing out
-   * the session.
-   */
-  res = pr_timer_reset(PR_TIMER_IDLE, ANY_MODULE);
-  if (res < 0) {
-    pr_trace_msg(trace_channel, 15,
-      "error resetting TimeoutIdle timer: %s", strerror(errno));
-  }
-
-  /* AND write something on the control connection, to prevent any middleboxes
-   * from timing out the session.
-   */
-  pr_response_add(R_DUP, _("Computing..."));
 }
 
 static modret_t *digest_xcmd(cmd_rec *cmd, unsigned long algo) {
@@ -1964,11 +1936,10 @@ static modret_t *digest_xcmd(cmd_rec *cmd, unsigned long algo) {
     if (get_algo_md(algo) != NULL) {
       char *hex_digest;
 
-      pr_response_add(R_250, _("Computing %s digest"), get_algo_name(algo, 0));
       hex_digest = get_digest(cmd, algo, path, st.st_mtime, start_pos, len,
-        PR_STR_FL_HEX_USE_UC, digest_progress_cb);
+        PR_STR_FL_HEX_USE_UC);
       if (hex_digest != NULL) {
-        pr_response_add(R_DUP, "%s", hex_digest);
+        pr_response_add(R_213, "%s", hex_digest);
         return PR_HANDLED(cmd);
       }
 
@@ -2083,14 +2054,12 @@ MODRET digest_hash(cmd_rec *cmd) {
   pr_trace_msg(trace_channel, 14, "%s: using %s algorithm on path '%s'",
     (char *) cmd->argv[0], get_algo_name(digest_hash_algo, 0), path);
 
-  pr_response_add(R_213, _("Computing %s digest"),
-    get_algo_name(digest_hash_algo, DIGEST_ALGO_FL_IANA_STYLE));
   hex_digest = get_digest(cmd, digest_hash_algo, path, st.st_mtime, start_pos,
-    len, PR_STR_FL_HEX_USE_LC, digest_progress_cb);
+    len, PR_STR_FL_HEX_USE_LC);
   xerrno = errno;
 
   if (hex_digest != NULL) {
-    pr_response_add(R_DUP, "%s %" PR_LU "-%" PR_LU " %s %s",
+    pr_response_add(R_213, "%s %" PR_LU "-%" PR_LU " %s %s",
       get_algo_name(digest_hash_algo, DIGEST_ALGO_FL_IANA_STYLE),
       (pr_off_t) start_pos, (pr_off_t) end_pos, hex_digest, orig_path);
     return PR_HANDLED(cmd);
@@ -2667,13 +2636,13 @@ MODRET digest_md5(cmd_rec *cmd) {
   pr_trace_msg(trace_channel, 14, "%s: using %s algorithm on path '%s'",
     (char *) cmd->argv[0], get_algo_name(algo, 0), path);
 
-  pr_response_add(R_251, _("Computing %s digest"), get_algo_name(algo, 0));
   hex_digest = get_digest(cmd, algo, path, st.st_mtime, start_pos,
-    len, PR_STR_FL_HEX_USE_UC, digest_progress_cb);
+    len, PR_STR_FL_HEX_USE_UC);
   xerrno = errno;
 
   if (hex_digest != NULL) {
-    pr_response_add(R_DUP, "%s %s", orig_path, hex_digest);
+    /* MD5 responses use 251; see draft-twine-ftpmd5, Section 3.1. */
+    pr_response_add(R_251, "%s %s", orig_path, hex_digest);
     return PR_HANDLED(cmd);
   }
 
