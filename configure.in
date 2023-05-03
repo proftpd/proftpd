@@ -1477,7 +1477,7 @@ AC_ARG_ENABLE(transfer-buffer-size,
 
 dnl Checks for libraries.  Yes, this is the hard way, but it's necessary.
 AC_CACHE_CHECK(for standalone crypt,pr_cv_lib_standalone_crypt,
-  AC_TRY_LINK(,[crypt();],
+  AC_TRY_LINK([#include <crypt.h>],[crypt();],
   	pr_cv_lib_standalone_crypt="yes", pr_cv_lib_standalone_crypt="no" ))
 
 if test "$pr_cv_lib_standalone_crypt" = "no"; then
@@ -1485,7 +1485,7 @@ if test "$pr_cv_lib_standalone_crypt" = "no"; then
 fi
 
 AC_CACHE_CHECK(for standalone gethostbyname,pr_cv_lib_standalone_gethost,
-  AC_TRY_LINK(,[gethostbyname();],
+  AC_TRY_LINK([#include <netdb.h>],[gethostbyname();],
   	pr_cv_lib_standalone_gethost="yes",
 	pr_cv_lib_standalone_gethost="no" ))
 
@@ -1495,7 +1495,7 @@ if test "$pr_cv_lib_standalone_gethost" = "no"; then
 fi
 
 AC_CACHE_CHECK(for standalone inet_aton,pr_cv_lib_standalone_aton,
-  AC_TRY_LINK(,[inet_aton();],
+  AC_TRY_LINK([#include <arpa/inet.h>],[inet_aton();],
   	pr_cv_lib_standalone_aton="yes",
 	pr_cv_lib_standalone_aton="no" ))
 
@@ -1504,7 +1504,7 @@ if test "$pr_cv_lib_standalone_aton" = "no"; then
 fi
 
 AC_CACHE_CHECK(for standalone nsl functions,pr_cv_lib_standalone_nsl,[
-  AC_TRY_LINK(,[gethostent();],
+  AC_TRY_LINK([#include <netdb.h>],[gethostent();],
   pr_cv_lib_standalone_nsl="yes", pr_cv_lib_standalone_nsl="no") ])
 
 if test "$pr_cv_lib_standalone_nsl" = "no"; then
@@ -1512,7 +1512,7 @@ if test "$pr_cv_lib_standalone_nsl" = "no"; then
 fi
 
 AC_CACHE_CHECK(for standalone socket functions,pr_cv_lib_standalone_sockets,
-  AC_TRY_LINK(,[bind();],
+  AC_TRY_LINK([#include <sys/socket.h>],[bind();],
   pr_cv_lib_standalone_sockets="yes", pr_cv_lib_standalone_sockets="no"))
 
 if test "$pr_cv_lib_standalone_sockets" = "no"; then

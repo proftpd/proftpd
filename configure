@@ -18312,7 +18312,7 @@ if ${pr_cv_lib_standalone_crypt+:} false; then :
 else
   cat confdefs.h - <<_ACEOF >conftest.$ac_ext
 /* end confdefs.h.  */
-
+#include <crypt.h>
 int
 main ()
 {
@@ -18387,7 +18387,7 @@ if ${pr_cv_lib_standalone_gethost+:} false; then :
 else
   cat confdefs.h - <<_ACEOF >conftest.$ac_ext
 /* end confdefs.h.  */
-
+#include <netdb.h>
 int
 main ()
 {
@@ -18507,7 +18507,7 @@ if ${pr_cv_lib_standalone_aton+:} false; then :
 else
   cat confdefs.h - <<_ACEOF >conftest.$ac_ext
 /* end confdefs.h.  */
-
+#include <arpa/inet.h>
 int
 main ()
 {
@@ -18583,7 +18583,7 @@ else
 
   cat confdefs.h - <<_ACEOF >conftest.$ac_ext
 /* end confdefs.h.  */
-
+#include <netdb.h>
 int
 main ()
 {
@@ -18658,7 +18658,7 @@ if ${pr_cv_lib_standalone_sockets+:} false; then :
 else
   cat confdefs.h - <<_ACEOF >conftest.$ac_ext
 /* end confdefs.h.  */
-
+#include <sys/socket.h>
 int
 main ()
 {
