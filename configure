@@ -18305,6 +18305,20 @@ _ACEOF
 fi
 
 
+for ac_header in stddef.h crypt.h netdb.h arpa/inet.h sys/socket.h
+do :
+  as_ac_Header=`$as_echo "ac_cv_header_$ac_header" | $as_tr_sh`
+ac_fn_c_check_header_mongrel "$LINENO" "$ac_header" "$as_ac_Header" "$ac_includes_default"
+if eval test \"x\$"$as_ac_Header"\" = x"yes"; then :
+  cat >>confdefs.h <<_ACEOF
+#define `$as_echo "HAVE_$ac_header" | $as_tr_cpp` 1
+_ACEOF
+
+fi
+
+done
+
+
 { $as_echo "$as_me:${as_lineno-$LINENO}: checking for standalone crypt" >&5
 $as_echo_n "checking for standalone crypt... " >&6; }
 if ${pr_cv_lib_standalone_crypt+:} false; then :
@@ -18313,10 +18327,19 @@ else
   cat confdefs.h - <<_ACEOF >conftest.$ac_ext
 /* end confdefs.h.  */
 
+      #if HAVE_STDDEF_H
+      # include <stddef.h>
+      #endif
+      #if HAVE_CRYPT_H
+      # include <crypt.h>
+      #endif
+
 int
 main ()
 {
-crypt();
+
+      crypt(NULL, NULL);
+
   ;
   return 0;
 }
@@ -18388,10 +18411,19 @@ else
   cat confdefs.h - <<_ACEOF >conftest.$ac_ext
 /* end confdefs.h.  */
 
+      #if HAVE_STDDEF_H
+      # include <stddef.h>
+      #endif
+      #if HAVE_NETDB_H
+      # include <netdb.h>
+      #endif
+
 int
 main ()
 {
-gethostbyname();
+
+      gethostbyname(NULL);
+
   ;
   return 0;
 }
@@ -18508,10 +18540,19 @@ else
   cat confdefs.h - <<_ACEOF >conftest.$ac_ext
 /* end confdefs.h.  */
 
+      #if HAVE_STDDEF_H
+      # include <stddef.h>
+      #endif
+      #if HAVE_ARPA_INET_H
+      # include <arpa/inet.h>
+      #endif
+
 int
 main ()
 {
-inet_aton();
+
+      inet_aton(NULL, NULL);
+
   ;
   return 0;
 }
@@ -18584,10 +18625,16 @@ else
   cat confdefs.h - <<_ACEOF >conftest.$ac_ext
 /* end confdefs.h.  */
 
+      #if HAVE_NETDB_H
+      # include <netdb.h>
+      #endif
+
 int
 main ()
 {
-gethostent();
+
+      gethostent();
+
   ;
   return 0;
 }
@@ -18659,10 +18706,19 @@ else
   cat confdefs.h - <<_ACEOF >conftest.$ac_ext
 /* end confdefs.h.  */
 
+      #if HAVE_STDDEF_H
+      # include <stddef.h>
+      #endif
+      #if HAVE_SYS_SOCKET_H
+      # include <sys/socket.h>
+      #endif
+
 int
 main ()
 {
-bind();
+
+      bind(0, NULL, 0);
+
   ;
   return 0;
 }
