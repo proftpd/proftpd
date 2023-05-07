@@ -24366,6 +24366,18 @@ if test x"$pr_use_mysql" = xyes; then
   LDFLAGS="$LDFLAGS $ac_build_addl_libdirs"
   LIBS="$LIBS -lm -lmysqlclient -lz"
 
+  for ac_header in mysqld_error.h
+do :
+  ac_fn_c_check_header_mongrel "$LINENO" "mysqld_error.h" "ac_cv_header_mysqld_error_h" "$ac_includes_default"
+if test "x$ac_cv_header_mysqld_error_h" = xyes; then :
+  cat >>confdefs.h <<_ACEOF
+#define HAVE_MYSQLD_ERROR_H 1
+_ACEOF
+
+fi
+
+done
+
   { $as_echo "$as_me:${as_lineno-$LINENO}: checking for mysql_get_option" >&5
 $as_echo_n "checking for mysql_get_option... " >&6; }
   cat confdefs.h - <<_ACEOF >conftest.$ac_ext
