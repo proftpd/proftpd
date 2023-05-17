@@ -507,7 +507,7 @@ static size_t add_log_ts(pool *p, char *buf, size_t bufsz) {
   /* Convert microsecs to millisecs. */
   millis = now.tv_usec / 1000;
 
-  len = pr_snprintf(buf + len, bufsz - len, ",%03lu ", millis);
+  len += pr_snprintf(buf + len, bufsz - len, ",%03lu ", millis);
   return len;
 }
 
