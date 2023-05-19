@@ -39,7 +39,6 @@ void sftp_debug_message(unsigned char always_show, const char *fmt, ...) {
   const char *lang = "en-US";
   unsigned char *buf, *ptr;
   uint32_t buflen, bufsz;
-  int res;
   va_list msg;
 
   if (fmt == NULL) {
@@ -47,7 +46,7 @@ void sftp_debug_message(unsigned char always_show, const char *fmt, ...) {
   }
 
   va_start(msg, fmt);
-  res = pr_vsnprintf(debug_buf, sizeof(debug_buf), fmt, msg);
+  pr_vsnprintf(debug_buf, sizeof(debug_buf), fmt, msg);
   va_end(msg);
 
   debug_buf[sizeof(debug_buf) - 1] = '\0';
