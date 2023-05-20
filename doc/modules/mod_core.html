@@ -1530,12 +1530,23 @@ See also: <a href="#Define"><code>Define</code></a>
 <p>
 The <code>&lt;IfModule&gt;</code> and <code>&lt;/IfModule&gt;</code> define
 a <i>conditional</i> configuration section.  The directives appearing within
-that section are processed only if the <em>module-name</em> , used by
+that section are processed only if the <em>module-name</em>, used by
 <code>&lt;IfModule&gt;</code>, is present/loaded.  Otherwise, everything within
 the configuration section is skipped.
 
 <p>
-Example:
+The optional <em>!</em> character prefix to the <em>module-name</em> indicates
+that the section should be included if the named module is <b>not</b>
+present/loaded.
+
+<p>
+An <code>&lt;IfModule&gt;</code> section is <b>not</b> a separate
+configuration context like <code>&lt;VirtualHost&gt;</code> or
+<code>&lt;Directory&gt;</code>.  It is a condition, a way of telling the
+parse to include (or to skip) the enclosed section.
+
+<p>
+Examples:
 <pre>
   &lt;IfModule mod_load.c&gt;
     MaxLoad 10 "Access denied, server too busy"
