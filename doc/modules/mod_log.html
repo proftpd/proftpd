@@ -631,7 +631,7 @@ For having successful logins logged once more, use the following in your
 </pre>
 
 <p><a name="SystemdNodaemon">
-<font color=red>Question</font>: I configured <a href="#SystemLog><code>SystemLog</code></a> in my ProFTPD configuration, but ProFTPD still logs only to syslog.  What is missing?<br>
+<font color=red>Question</font>: I configured <a href="#SystemLog"><code>SystemLog</code></a> in my ProFTPD configuration, but ProFTPD still logs only to syslog.  What is missing?<br>
 <font color=blue>Answer</font>: The most common cause for this behavior is the
 use of <code>systemd</code> for running ProFTPD.  In particular, the <code>systemd</code> unit file for ProFTPD in some installations unexpectedly uses the
 <code>--nodaemon</code> command-line option, <i>e.g.</i>:
