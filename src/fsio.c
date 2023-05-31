@@ -4071,7 +4071,7 @@ int pr_fsio_mkdir(const char *path, mode_t mode) {
   res = (fs->mkdir)(fs, path, mode);
   xerrno = errno;
 
-  if (res == 0) {
+  if (res == 0 || xerrno == EEXIST) {
     pr_fs_clear_cache2(path);
   }
 
