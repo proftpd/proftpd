@@ -13375,33 +13375,43 @@ MODRET tls_post_pass(cmd_rec *cmd) {
 
     if (protocols_config != NULL) {
       register unsigned int i;
-      int allow_ftps = FALSE;
+      int allow_sess = FALSE;
       array_header *protocols;
       char **elts;
 
       protocols = protocols_config->argv[0];
       elts = protocols->elts;
 
-      /* We only want to check for 'ftps' in the configured Protocols list
-       * if the RFC2228 mechanism is "TLS".
-       */
-      if (session.rfc2228_mech != NULL &&
-          strncmp(session.rfc2228_mech, "TLS", 4) == 0) {
-        for (i = 0; i < protocols->nelts; i++) {
-          char *proto;
+      for (i = 0; i < protocols->nelts; i++) {
+        char *proto;
 
-          proto = elts[i];
-          if (proto != NULL) {
-            if (strncasecmp(proto, "ftps", 5) == 0) {
-              allow_ftps = TRUE;
+        proto = elts[i];
+        if (proto != NULL) {
+          /* We only want to check for 'ftps' in the configured Protocols list
+           * if the RFC2228 mechanism is "TLS".
+           */
+
+          if (strcasecmp(proto, "ftp") == 0) {
+            if (session.rfc2228_mech == NULL ||
+                strcmp(session.rfc2228_mech, "TLS") != 0) {
+              allow_sess = TRUE;
+              break;
+            }
+          }
+
+          if (strcasecmp(proto, "ftps") == 0) {
+            if (session.rfc2228_mech != NULL &&
+                strcmp(session.rfc2228_mech, "TLS") == 0) {
+              allow_sess = TRUE;
               break;
             }
           }
         }
       }
 
-      if (allow_ftps == FALSE) {
-        tls_log("ftps protocol denied by Protocols config");
+      if (allow_sess == FALSE) {
+        tls_log("%s protocol denied by Protocols config",
+          pr_session_get_protocol(0));
         pr_response_send(R_530, "%s", _("Login incorrect."));
         pr_session_disconnect(&tls_module, PR_SESS_DISCONNECT_CONFIG_ACL,
           "Denied by Protocols setting");
