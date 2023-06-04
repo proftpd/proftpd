@@ -1175,6 +1175,11 @@ MODRET ifsess_post_user(cmd_rec *cmd) {
   session.group = sess_group;
   session.groups = sess_groups;
 
+  /* Stash a session note indicated that we merged in per-user/group settings
+   * for an unauthenticated client, for use by e.g. mod_tls; see Issue #1640.
+   */
+  (void) pr_table_add_dup(session.notes,
+    "mod_ifsession.per-unauthenticated-user", "true", 0);
   return PR_DECLINED(cmd);
 }
 

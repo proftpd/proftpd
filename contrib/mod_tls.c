@@ -13471,6 +13471,65 @@ MODRET tls_post_pass(cmd_rec *cmd) {
   return PR_DECLINED(cmd);
 }
 
+MODRET tls_post_user(cmd_rec *cmd) {
+  const void *ifsess_note;
+  config_rec *c;
+
+  if (tls_engine == FALSE) {
+    return PR_DECLINED(cmd);
+  }
+
+  /* Look for a session note, stashed by mod_ifsession when its
+   * PerUnauthenticatedUser option is set.  That is our cue to honor any
+   * <IfUser>/<IfGroup> TLSRequired settings for this user.
+   */
+  ifsess_note = pr_table_get(session.notes,
+    "mod_ifsession.per-unauthenticated-user", NULL);
+  if (ifsess_note == NULL) {
+    return PR_DECLINED(cmd);
+  }
+
+  c = find_config(main_server->conf, CONF_PARAM, "TLSOptions", FALSE);
+  while (c != NULL) {
+    unsigned long opts = 0;
+
+    pr_signals_handle();
+
+    opts = *((unsigned long *) c->argv[0]);
+    tls_opts |= opts;
+
+    c = find_config_next(c, c->next, CONF_PARAM, "TLSOptions", FALSE);
+  }
+
+  if (!(tls_opts & TLS_OPT_ALLOW_PER_USER)) {
+    return PR_DECLINED(cmd);
+  }
+
+  c = find_config(main_server->conf, CONF_PARAM, "TLSRequired", FALSE);
+  if (c != NULL) {
+    tls_required_on_ctrl = *((int *) c->argv[0]);
+    tls_required_on_data = *((int *) c->argv[1]);
+    tls_required_on_auth = *((int *) c->argv[2]);
+
+    /* We cannot return PR_ERROR for the USER command at this point, since
+     * this is a POST_CMD handler.  Instead, we will simply check the
+     * TLSRequired policy, and if the current session does not make the
+     * cut, well, then the session gets cut.
+     */
+    if ((tls_required_on_ctrl == 1 ||
+         tls_required_on_auth == 1) &&
+        (!(tls_flags & TLS_SESS_ON_CTRL))) {
+      tls_log("SSL/TLS required but absent on control channel, "
+        "disconnecting");
+      pr_response_send(R_530, "%s", _("Login incorrect."));
+      pr_session_disconnect(&tls_module, PR_SESS_DISCONNECT_CONFIG_ACL,
+        "TLSRequired");
+    }
+  }
+
+  return PR_DECLINED(cmd);
+}
+
 MODRET tls_prot(cmd_rec *cmd) {
   char *prot;
 
@@ -19155,6 +19214,7 @@ static cmdtable tls_cmdtab[] = {
   { CMD,	C_PROT,	G_NONE,	tls_prot,	FALSE,	FALSE,	CL_SEC },
   { CMD,	"SSCN",	G_NONE,	tls_sscn,	TRUE,	FALSE,	CL_SEC },
   { POST_CMD,	C_PASS,	G_NONE,	tls_post_pass,	FALSE,	FALSE },
+  { POST_CMD,	C_USER,	G_NONE,	tls_post_user,	FALSE,	FALSE },
   { POST_CMD,	C_AUTH,	G_NONE,	tls_post_auth,	FALSE,	FALSE },
   { LOG_CMD,	C_AUTH,	G_NONE,	tls_log_auth,	FALSE,	FALSE },
   { LOG_CMD_ERR,C_AUTH,	G_NONE,	tls_log_auth,	FALSE,	FALSE },
