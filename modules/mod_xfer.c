@@ -2,7 +2,7 @@
  * ProFTPD - FTP server daemon
  * Copyright (c) 1997, 1998 Public Flood Software
  * Copyright (c) 1999, 2000 MacGyver aka Habeeb J. Dihu <macgyver@tos.net>
- * Copyright (c) 2001-2022 The ProFTPD Project team
+ * Copyright (c) 2001-2023 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -1307,6 +1307,83 @@ static int get_hidden_store_path(cmd_rec *cmd, const char *path,
 
   session.xfer.xfer_type = STOR_HIDDEN;
   return 0;
+}
+
+MODRET xfer_opts_rest(cmd_rec *cmd) {
+  register unsigned int i;
+  char *method, *xfer_cmd;
+  unsigned char *authenticated;
+
+  authenticated = get_param_ptr(cmd->server->conf, "authenticated", FALSE);
+  if (authenticated == NULL ||
+      *authenticated == FALSE) {
+    pr_response_add_err(R_501, _("Please login with USER and PASS"));
+
+    pr_cmd_set_errno(cmd, EPERM);
+    errno = EPERM;
+    return PR_ERROR(cmd);
+  }
+
+  method = pstrdup(cmd->tmp_pool, cmd->argv[0]);
+
+  /* Convert underscores to spaces in the method name, for prettier logging. */
+  for (i = 0; method[i]; i++) {
+    if (method[i] == '_') {
+      method[i] = ' ';
+    }
+  }
+
+  if (cmd->argc != 2) {
+    pr_response_add_err(R_501, _("'%s' not understood"), method);
+
+    pr_cmd_set_errno(cmd, EINVAL);
+    errno = EINVAL;
+    return PR_ERROR(cmd);
+  }
+
+  xfer_cmd = cmd->argv[1];
+  if (strcasecmp(xfer_cmd, C_RETR) == 0) {
+    unsigned char *allow_restart = NULL;
+
+    /* Do we allow resumed downloads? */
+    allow_restart = get_param_ptr(main_server->conf, "AllowRetrieveRestart",
+      FALSE);
+    if (allow_restart == NULL ||
+        *allow_restart == TRUE) {
+      pr_response_add(R_200, "%s", _("REST RETR allowed"));
+      return PR_HANDLED(cmd);
+    }
+
+    pr_response_add_err(R_451, "%s", _("REST RETR not allowed"));
+    pr_cmd_set_errno(cmd, EPERM);
+    errno = EPERM;
+    return PR_ERROR(cmd);
+  }
+
+  if (strcasecmp(xfer_cmd, C_STOR) == 0) {
+    unsigned char *allow_restart = NULL;
+
+    /* Do we allow resumed uploads? */
+    allow_restart = get_param_ptr(main_server->conf, "AllowStoreRestart",
+      FALSE);
+    if (allow_restart != NULL &&
+        *allow_restart == TRUE) {
+      pr_response_add(R_200, "%s", _("REST STOR allowed"));
+      return PR_HANDLED(cmd);
+    }
+
+    pr_response_add_err(R_451, "%s", _("REST STOR not allowed"));
+    pr_cmd_set_errno(cmd, EPERM);
+    errno = EPERM;
+    return PR_ERROR(cmd);
+  }
+
+  /* Otherwise, it's an OPTS REST query we do not support. */
+  pr_response_add_err(R_501, _("'%s' not understood"), method);
+
+  pr_cmd_set_errno(cmd, EINVAL);
+  errno = EINVAL;
+  return PR_ERROR(cmd);
 }
 
 MODRET xfer_post_prot(cmd_rec *cmd) {
@@ -4441,6 +4518,7 @@ static cmdtable xfer_cmdtab[] = {
   { LOG_CMD_ERR, C_APPE,G_NONE,  xfer_err_cleanup,  FALSE,  FALSE },
   { CMD,     C_ABOR,	G_NONE,	 xfer_abor,	TRUE,	TRUE,  CL_MISC  },
   { LOG_CMD, C_ABOR,	G_NONE,	 xfer_log_abor,	TRUE,	TRUE,  CL_MISC  },
+  { CMD,     C_OPTS "_REST", G_NONE, xfer_opts_rest, FALSE, FALSE },
   { CMD,     C_REST,	G_NONE,	 xfer_rest,	TRUE,	FALSE, CL_MISC  },
   { CMD,     C_RANG,	G_NONE,	 xfer_rang,	TRUE,	FALSE, CL_MISC  },
   { POST_CMD,C_PROT,	G_NONE,  xfer_post_prot,	FALSE,	FALSE },
