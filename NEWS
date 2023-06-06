@@ -58,6 +58,8 @@
   terminate the session abruptly.
 - Issue 1640 - Support terminating connection after USER command when TLS is
   required.
+- Issue 1676 - Support OPTS commands for querying configured policy for resumed
+  uploads, downloads.
 
 1.3.8 - Released 04-Dec-2022
 --------------------------------
