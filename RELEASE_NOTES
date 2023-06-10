@@ -249,6 +249,11 @@ ChangeLog files.
       Support for using TLS when connecting to Redis servers has been
       implemented; see doc/modules/mod_redis.html#RedisServer for details.
 
+    SFTPKeyExchanges
+
+      "curve25519-sha256" has been added as an alias/synonym for
+      "curve25519-sha256@libssh.org".
+
     TLSCipherSuite
       TLSv1.3 ciphersuites have different names, and are configured differently
       in OpenSSL.  To support configuration of TLSv1.3 ciphersuites, the
