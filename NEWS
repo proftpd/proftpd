@@ -60,6 +60,8 @@
   required.
 - Issue 1676 - Support OPTS commands for querying configured policy for resumed
   uploads, downloads.
+- Issue 1686 - MaxStoreFileSize for single user not properly honored for SFTP
+  uploads.
 
 1.3.8 - Released 04-Dec-2022
 --------------------------------

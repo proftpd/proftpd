@@ -13017,6 +13017,102 @@ static int fxp_handle_symlink(struct fxp_packet *fxp) {
   return fxp_packet_write(resp);
 }
 
+/* Similar to mod_xfer's find_max_nbytes() function. */
+static off_t find_max_store_nbytes(void) {
+  config_rec *c = NULL;
+  unsigned int ctxt_precedence = 0;
+  unsigned char have_user_limit, have_group_limit, have_class_limit,
+    have_all_limit;
+  off_t max_nbytes = 0UL;
+
+  have_user_limit = have_group_limit = have_class_limit =
+    have_all_limit = FALSE;
+
+  c = find_config(CURRENT_CONF, CONF_PARAM, "MaxStoreFileSize", FALSE);
+  while (c != NULL) {
+    pr_signals_handle();
+
+    /* This check is for more than three arguments: one argument is the
+     * classifier (i.e. "user", "group", or "class"), one argument is
+     * the precedence, one is the number of bytes; the remaining arguments
+     * are the individual items in the configured expression.
+     */
+
+    if (c->argc > 3) {
+      if (strcasecmp(c->argv[2], "user") == 0) {
+        if (pr_expr_eval_user_or((char **) &c->argv[3]) == TRUE) {
+          if (*((unsigned int *) c->argv[1]) > ctxt_precedence) {
+
+            /* Set the context precedence */
+            ctxt_precedence = *((unsigned int *) c->argv[1]);
+
+            max_nbytes = *((off_t *) c->argv[0]);
+
+            have_group_limit = have_class_limit = have_all_limit = FALSE;
+            have_user_limit = TRUE;
+          }
+        }
+
+      } else if (strcasecmp(c->argv[2], "group") == 0) {
+        if (pr_expr_eval_group_or((char **) &c->argv[3]) == TRUE) {
+          if (*((unsigned int *) c->argv[1]) > ctxt_precedence) {
+
+            /* Set the context precedence */
+            ctxt_precedence = *((unsigned int *) c->argv[1]);
+
+            max_nbytes = *((off_t *) c->argv[0]);
+
+            have_user_limit = have_class_limit = have_all_limit = FALSE;
+            have_group_limit = TRUE;
+          }
+        }
+
+      } else if (strcasecmp(c->argv[2], "class") == 0) {
+        if (pr_expr_eval_class_or((char **) &c->argv[3]) == TRUE) {
+          if (*((unsigned int *) c->argv[1]) > ctxt_precedence) {
+
+            /* Set the context precedence */
+            ctxt_precedence = *((unsigned int *) c->argv[1]);
+
+            max_nbytes = *((off_t *) c->argv[0]);
+
+            have_user_limit = have_group_limit = have_all_limit = FALSE;
+            have_class_limit = TRUE;
+          }
+        }
+      }
+
+    } else {
+      if (*((unsigned int *) c->argv[1]) > ctxt_precedence) {
+
+        /* Set the context precedence. */
+        ctxt_precedence = *((unsigned int *) c->argv[1]);
+
+        max_nbytes = *((off_t *) c->argv[0]);
+
+        have_user_limit = have_group_limit = have_class_limit = FALSE;
+        have_all_limit = TRUE;
+      }
+    }
+
+    c = find_config_next(c, c->next, CONF_PARAM, "MaxStoreFileSize", FALSE);
+  }
+
+  /* Print out some nice debugging information. */
+  if (max_nbytes > 0 &&
+      (have_user_limit ||
+       have_group_limit ||
+       have_class_limit ||
+       have_all_limit)) {
+    pr_log_debug(DEBUG5, "MaxStoreFileSize (%" PR_LU " bytes) in effect for %s",
+      (pr_off_t) max_nbytes,
+      have_user_limit ? "user " : have_group_limit ? "group " :
+      have_class_limit ? "class " : "all");
+  }
+
+  return max_nbytes;
+}
+
 static int fxp_handle_write(struct fxp_packet *fxp) {
   unsigned char *buf, *data, *ptr;
   char cmd_arg[256], *file, *name, *ptr2;
@@ -13304,16 +13400,9 @@ static int fxp_handle_write(struct fxp_packet *fxp) {
   }
 
   if (fxh->fh_st->st_size > 0) {
-    config_rec *c;
     off_t nbytes_max_store = 0;
 
-    /* Check MaxStoreFileSize */
-    c = find_config(get_dir_ctxt(fxp->pool, fxh->fh->fh_path), CONF_PARAM,
-      "MaxStoreFileSize", FALSE);
-    if (c != NULL) {
-      nbytes_max_store = *((off_t *) c->argv[0]);
-    }
-
+    nbytes_max_store = find_max_store_nbytes();
     if (nbytes_max_store > 0) {
       if (fxh->fh_st->st_size > nbytes_max_store) {
         const char *reason;
