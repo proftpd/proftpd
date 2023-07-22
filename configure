@@ -24935,6 +24935,45 @@ rm -f core conftest.err conftest.$ac_objext \
     conftest$ac_exeext conftest.$ac_ext
   LIBS="$saved_libs"
 
+  { $as_echo "$as_me:${as_lineno-$LINENO}: checking whether OpenSSL has ENGINE support" >&5
+$as_echo_n "checking whether OpenSSL has ENGINE support... " >&6; }
+  saved_libs="$LIBS"
+  LIBS="-lcrypto $LIBS"
+
+  cat confdefs.h - <<_ACEOF >conftest.$ac_ext
+/* end confdefs.h.  */
+
+      #include <openssl/engine.h>
+
+int
+main ()
+{
+
+      (void) ENGINE_set_default(NULL, 0);
+
+  ;
+  return 0;
+}
+_ACEOF
+if ac_fn_c_try_link "$LINENO"; then :
+
+      { $as_echo "$as_me:${as_lineno-$LINENO}: result: yes" >&5
+$as_echo "yes" >&6; }
+
+$as_echo "#define PR_USE_OPENSSL_ENGINE 1" >>confdefs.h
+
+
+else
+
+      { $as_echo "$as_me:${as_lineno-$LINENO}: result: no" >&5
+$as_echo "no" >&6; }
+
+
+fi
+rm -f core conftest.err conftest.$ac_objext \
+    conftest$ac_exeext conftest.$ac_ext
+  LIBS="$saved_libs"
+
   { $as_echo "$as_me:${as_lineno-$LINENO}: checking whether OpenSSL has EVP_CipherInit_ex support" >&5
 $as_echo_n "checking whether OpenSSL has EVP_CipherInit_ex support... " >&6; }
   saved_libs="$LIBS"
