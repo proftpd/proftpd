@@ -553,9 +553,10 @@ static unsigned int tls_npkeys = 0;
 #define TLS_DEFAULT_NEXT_PROTO		"ftp"
 
 /* Module variables */
-#if OPENSSL_VERSION_NUMBER > 0x000907000L
+#if OPENSSL_VERSION_NUMBER > 0x000907000L && \
+    defined(PR_USE_OPENSSL_ENGINE)
 static const char *tls_crypto_device = NULL;
-#endif
+#endif /* PR_USE_OPENSSL_ENGINE */
 static unsigned char tls_engine = FALSE;
 static unsigned long tls_flags = 0UL, tls_opts = 0UL;
 static pool *tls_pool = NULL;
@@ -1044,7 +1045,9 @@ static void tls_reset_state(void) {
 # endif /* TLS1_3_VERSION */
   tls_crl_file = NULL;
   tls_crl_path = NULL;
+# if defined(PR_USE_OPENSSL_ENGINE)
   tls_crypto_device = NULL;
+# endif /* PR_USE_OPENSSL_ENGINE */
   tls_dsa_cert_file = NULL;
   tls_dsa_key_file = NULL;
   tls_ec_cert_file = NULL;
@@ -8597,10 +8600,12 @@ static void tls_cleanup(int flags) {
 
 #if OPENSSL_VERSION_NUMBER > 0x000907000L && \
     OPENSSL_VERSION_NUMBER < 0x10100000L
+# if defined(PR_USE_OPENSSL_ENGINE)
   if (tls_crypto_device != NULL) {
     ENGINE_cleanup();
     tls_crypto_device = NULL;
   }
+# endif /* PR_USE_OPENSSL_ENGINE */
 #endif
 
   if (tls_crl_store != NULL) {
@@ -18876,9 +18881,10 @@ static int tls_sess_init(void) {
   /* Handle any requested crypto accelerators/drivers. */
   c = find_config(main_server->conf, CONF_PARAM, "TLSCryptoDevice", FALSE);
   if (c != NULL) {
+# if defined(PR_USE_OPENSSL_ENGINE)
     tls_crypto_device = (const char *) c->argv[0];
 
-    if (strncasecmp(tls_crypto_device, "ALL", 4) == 0) {
+    if (strcasecmp(tls_crypto_device, "ALL") == 0) {
       /* Load all ENGINE implementations bundled with OpenSSL. */
       ENGINE_load_builtin_engines();
       ENGINE_register_all_complete();
@@ -18935,6 +18941,9 @@ static int tls_sess_init(void) {
         tls_crypto_device = NULL;
       }
     }
+# else
+    tls_log("%s", "TLSCryptoDevice not supported by OpenSSL");
+# endif /* PR_USE_OPENSSL_ENGINE */
   }
 #endif
 

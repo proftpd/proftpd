@@ -32,6 +32,8 @@
   handles/transfers well for logging.
 - Issue 1679 - "TLSRequired off" plus Protocols directive causes mod_tls to
   terminate the session abruptly.
+- Issue 1689 - mod_tls fails to compile against OpenSSL 3.0.8 due to missing
+  ENGINE_METHOD_ flags.
 
 1.3.8 - Released 04-Dec-2022
 --------------------------------

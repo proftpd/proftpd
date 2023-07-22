@@ -3608,6 +3608,27 @@ if test x"$pr_use_openssl" = xyes; then
   )
   LIBS="$saved_libs"
 
+  AC_MSG_CHECKING([whether OpenSSL has ENGINE support])
+  saved_libs="$LIBS"
+  LIBS="-lcrypto $LIBS"
+
+  AC_TRY_LINK(
+    [
+      #include <openssl/engine.h>
+    ],
+    [
+      (void) ENGINE_set_default(NULL, 0);
+    ],
+    [
+      AC_MSG_RESULT(yes)
+      AC_DEFINE(PR_USE_OPENSSL_ENGINE, 1, [Define if your OpenSSL supports the ENGINE API])
+    ],
+    [
+      AC_MSG_RESULT(no)
+    ]
+  )
+  LIBS="$saved_libs"
+
   AC_MSG_CHECKING([whether OpenSSL has EVP_CipherInit_ex support])
   saved_libs="$LIBS"
   LIBS="-lcrypto $LIBS"
