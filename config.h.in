@@ -1160,6 +1160,9 @@
  */
 #undef PR_USE_OPENSSL_EVP_CIPHERINIT_EX
 
+/* Define if OpenSSL engine support, if available, should be used.  */
+#undef PR_USE_OPENSSL_ENGINE
+
 /* Define if OpenSSL support (with FIPS enabled), if available, should be
  * used.
  */

@@ -36,9 +36,10 @@
 # define DES_set_key_unchecked des_set_key_unchecked
 #endif
 
-#if OPENSSL_VERSION_NUMBER > 0x000907000L
+#if OPENSSL_VERSION_NUMBER > 0x000907000L && \
+    defined(PR_USE_OPENSSL_ENGINE)
 static const char *crypto_engine = NULL;
-#endif
+#endif /* PR_USE_OPENSSL_ENGINE */
 
 struct sftp_cipher {
   const char *name;
@@ -1581,10 +1582,12 @@ void sftp_crypto_free(int flags) {
 
 #if OPENSSL_VERSION_NUMBER > 0x000907000L && \
     OPENSSL_VERSION_NUMBER < 0x10100000L
-    if (crypto_engine) {
+# if defined(PR_USE_OPENSSL_ENGINE)
+    if (crypto_engine != NULL) {
       ENGINE_cleanup();
       crypto_engine = NULL;
     }
+# endif /* PR_USE_OPENSSL_ENGINE */
 #endif
 
 #if OPENSSL_VERSION_NUMBER >= 0x10000001L
@@ -1609,7 +1612,8 @@ void sftp_crypto_free(int flags) {
 }
 
 int sftp_crypto_set_driver(const char *driver) {
-#if OPENSSL_VERSION_NUMBER > 0x000907000L
+#if OPENSSL_VERSION_NUMBER > 0x000907000L && \
+    defined(PR_USE_OPENSSL_ENGINE)
   if (driver == NULL) {
     errno = EINVAL;
     return -1;
@@ -1617,7 +1621,7 @@ int sftp_crypto_set_driver(const char *driver) {
 
   crypto_engine = driver;
 
-  if (strncasecmp(driver, "ALL", 4) == 0) {
+  if (strcasecmp(driver, "ALL") == 0) {
     /* Load all ENGINE implementations bundled with OpenSSL. */
     ENGINE_load_builtin_engines();
     ENGINE_register_all_complete();
@@ -1632,7 +1636,7 @@ int sftp_crypto_set_driver(const char *driver) {
     ENGINE_load_builtin_engines();
 
     e = ENGINE_by_id(driver);
-    if (e) {
+    if (e != NULL) {
       if (ENGINE_init(e)) {
         if (ENGINE_set_default(e, ENGINE_METHOD_ALL)) {
           ENGINE_finish(e);
