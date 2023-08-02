@@ -348,7 +348,7 @@ void pr_response_send_async(const char *resp_numeric, const char *fmt, ...) {
   len = strlen(resp_numeric);
   sstrcat(buf + len, " ", sizeof(buf) - len);
 
-  max_len = sizeof(buf) - len;
+  max_len = sizeof(buf) - (len + 1);
 
   va_start(msg, fmt);
   res = pr_vsnprintf(buf + len + 1, max_len, fmt, msg);
@@ -359,7 +359,7 @@ void pr_response_send_async(const char *resp_numeric, const char *fmt, ...) {
   resp_last_response_code = pstrdup(resp_pool, resp_numeric);
   resp_last_response_msg = pstrdup(resp_pool, buf + len + 1);
 
-  sstrcat(buf + res, "\r\n", sizeof(buf));
+  sstrcat(buf + res, "\r\n", max_len - res);
 
   pr_trace_msg(trace_channel, 1, "async: %s", buf);
   if (resp_handler_cb != NULL) {
