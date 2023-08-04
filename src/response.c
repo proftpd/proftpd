@@ -1,6 +1,6 @@
 /*
  * ProFTPD - FTP server daemon
- * Copyright (c) 2001-2020 The ProFTPD Project team
+ * Copyright (c) 2001-2023 The ProFTPD Project team
  *  
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -357,7 +357,7 @@ void pr_response_send_async(const char *resp_numeric, const char *fmt, ...) {
   len = strlen(resp_numeric);
   sstrcat(buf + len, " ", sizeof(buf) - len);
   
-  max_len = sizeof(buf) - len;
+  max_len = sizeof(buf) - (len + 1);
   
   va_start(msg, fmt);
   res = pr_vsnprintf(buf + len + 1, max_len, fmt, msg);
@@ -368,7 +368,7 @@ void pr_response_send_async(const char *resp_numeric, const char *fmt, ...) {
   resp_last_response_code = pstrdup(resp_pool, resp_numeric);
   resp_last_response_msg = pstrdup(resp_pool, buf + len + 1);
 
-  sstrcat(buf + res, "\r\n", sizeof(buf));
+  sstrcat(buf + res, "\r\n", max_len - res);
   RESPONSE_WRITE_STR_ASYNC(session.c->outstrm, "%s", buf)
 }
 
