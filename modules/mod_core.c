@@ -61,6 +61,7 @@ static const char *trace_log = NULL;
 #endif /* PR_USE_TRACE */
 
 /* Necessary prototypes. */
+static void core_chroot_ev(const void *, void *);
 static void core_exit_ev(const void *, void *);
 static int core_sess_init(void);
 static void reset_server_auth_order(void);
@@ -3296,7 +3297,7 @@ MODRET set_ignorehidden(cmd_rec *cmd) {
 /* usage: DisplayChdir path [on|off] */
 MODRET set_displaychdir(cmd_rec *cmd) {
   config_rec *c = NULL;
-  int bool = FALSE;
+  int display_once = FALSE;
 
   if (cmd->argc-1 < 1 ||
       cmd->argc-1 > 2) {
@@ -3306,16 +3307,19 @@ MODRET set_displaychdir(cmd_rec *cmd) {
   CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL|CONF_ANON|CONF_DIR);
 
   if (cmd->argc-1 == 2) {
-    bool = get_boolean(cmd, 2);
-    if (bool < 0) {
+    display_once = get_boolean(cmd, 2);
+    if (display_once < 0) {
       CONF_ERROR(cmd, "expected Boolean parameter");
     }
   }
 
-  c = add_config_param(cmd->argv[0], 2, NULL, NULL);
+  /* Note that we allocate one extra slot, for a possible fh, as for
+   * absolute paths in a chrooted session (Issue #1688).
+   */
+  c = add_config_param(cmd->argv[0], 3, NULL, NULL, NULL);
   c->argv[0] = pstrdup(c->pool, cmd->argv[1]);
   c->argv[1] = pcalloc(c->pool, sizeof(int));
-  *((int *) c->argv[1]) = bool;
+  *((int *) c->argv[1]) = display_once;
 
   c->flags |= CF_MERGEDOWN;
   return PR_HANDLED(cmd);
@@ -5213,6 +5217,9 @@ MODRET core_post_host(cmd_rec *cmd) {
     /* Restore the original ProcessTitles setting. */
     pr_proctitle_set_static_str(NULL);
 
+    /* Unregister any event listeners. */
+    pr_event_unregister(&core_module, "core.chroot", core_chroot_ev);
+
     res = core_sess_init();
     if (res < 0) {
       pr_session_disconnect(&core_module,
@@ -5532,7 +5539,7 @@ MODRET core_chdir(cmd_rec *cmd, char *ndir) {
     PR_SCORE_CWD, session.cwd,
     NULL);
 
-  if (session.dir_config) {
+  if (session.dir_config != NULL) {
     c = find_config(session.dir_config->subset, CONF_PARAM, "DisplayChdir",
       FALSE);
   }
@@ -5549,16 +5556,20 @@ MODRET core_chdir(cmd_rec *cmd, char *ndir) {
 
   if (c != NULL) {
     time_t prev = 0;
+    int display_once = FALSE, display_now = FALSE, res = -1;
+    char *display_file = NULL;
+    pr_fh_t *display_fh = NULL;
 
-    char *display = c->argv[0];
-    int bool = *((int *) c->argv[1]);
+    display_file = c->argv[0];
+    display_once = *((int *) c->argv[1]);
+    display_fh = c->argv[2];
 
-    if (bool) {
+    if (display_once == TRUE) {
       /* XXX Get rid of this CONF_USERDATA instance; it's the only
        * occurrence of it in the source.  Use the session.notes table instead.
        */
       c = find_config(cmd->server->conf, CONF_USERDATA, session.cwd, FALSE);
-      if (!c) {
+      if (c == NULL) {
         time(&prev);
         c = pr_config_add_set(&cmd->server->conf, session.cwd, 0);
         c->config_type = CONF_USERDATA;
@@ -5576,13 +5587,39 @@ MODRET core_chdir(cmd_rec *cmd, char *ndir) {
       }
     }
 
-    if (pr_fsio_stat(display, &st) != -1 &&
-        !S_ISDIR(st.st_mode) &&
-        (bool ? st.st_mtime > prev : TRUE)) {
+    if (display_fh != NULL) {
+      res = pr_fsio_fstat(display_fh, &st);
+      if (res < 0) {
+        pr_log_debug(DEBUG3, "DisplayChdir: error checking '%s': %s",
+          display_fh->fh_path, strerror(errno));
+      }
 
-      if (pr_display_file(display, session.cwd, R_250, 0) < 0) {
-        pr_log_debug(DEBUG3, "error displaying '%s': %s", display,
-          strerror(errno));
+    } else {
+      res = pr_fsio_stat(display_file, &st);
+      if (res < 0) {
+        pr_log_debug(DEBUG3, "DisplayChdir: error checking '%s': %s",
+          display_file, strerror(errno));
+      }
+    }
+
+    if (res == 0 &&
+        !S_ISDIR(st.st_mode) &&
+        (display_once ? st.st_mtime > prev : TRUE)) {
+      display_now = TRUE;
+    }
+
+    if (display_now == TRUE) {
+      if (display_fh != NULL) {
+        if (pr_display_fh(display_fh, session.cwd, R_250, 0) < 0) {
+          pr_log_debug(DEBUG3, "DisplayChdir: error displaying '%s': %s",
+            display_fh->fh_path, strerror(errno));
+        }
+
+      } else {
+        if (pr_display_file(display_file, session.cwd, R_250, 0) < 0) {
+          pr_log_debug(DEBUG3, "DisplayChdir: error displaying '%s': %s",
+           display_file, strerror(errno));
+        }
       }
     }
   }
@@ -6756,6 +6793,37 @@ static const char *core_get_xfer_bytes_str(void *data, size_t datasz) {
 /* Event handlers
  */
 
+static void core_chroot_ev(const void *event_data, void *user_data) {
+  config_rec *c;
+
+  /* Look for any configured DisplayChdir directives that use absolute
+   * paths, and open filehandles on them prior to the chroot (Issue #1688).
+   */
+
+  c = find_config(main_server->conf, CONF_PARAM, "DisplayChdir", FALSE);
+  while (c != NULL) {
+    const char *path;
+
+    pr_signals_handle();
+
+    path = c->argv[0];
+    if (path[0] == '/') {
+      pr_fh_t *fh;
+
+      fh = pr_fsio_open(path, O_RDONLY);
+      if (fh == NULL) {
+        pr_log_debug(DEBUG6, "unable to open DisplayChdir file '%s': %s",
+          path, strerror(errno));
+
+      } else {
+        c->argv[2] = fh;
+      }
+    }
+
+    c = find_config_next(c, c->next, CONF_PARAM, "DisplayChdir", FALSE);
+  }
+}
+
 static void core_connected_ev(const void *event_data, void *user_data) {
   session_set_connected();
 }
@@ -7162,7 +7230,7 @@ static int core_sess_init(void) {
 
   set_server_auth_order();
 
-#ifdef PR_USE_TRACE
+#if defined(PR_USE_TRACE)
   /* Handle any session-specific Trace settings. */
   c = find_config(main_server->conf, CONF_PARAM, "Trace", FALSE);
   if (c != NULL) {
@@ -7290,6 +7358,9 @@ static int core_sess_init(void) {
     pr_log_debug(DEBUG6, "error setting %%{total_files_xfer} variable: %s",
       strerror(errno));
   }
+
+  /* Register our event listeners. */
+  pr_event_register(&core_module, "core.chroot", core_chroot_ev, NULL);
 
   /* Look for a DisplayQuit file which has an absolute path.  If we
    * find one, open a filehandle, such that that file can be displayed
