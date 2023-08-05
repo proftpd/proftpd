@@ -566,19 +566,20 @@ static struct sql_backend *sql_get_backend(const char *backend) {
 int sql_register_backend(const char *backend, cmdtable *cmdtab) {
   struct sql_backend *sb;
 
-  if (!backend || !cmdtab) {
+  if (backend == NULL ||
+      cmdtab == NULL) {
     errno = EINVAL;
     return -1;
   }
 
-  if (!sql_pool) {
+  if (sql_pool == NULL) {
     sql_pool = make_sub_pool(permanent_pool);
     pr_pool_tag(sql_pool, MOD_SQL_VERSION);
   }
 
   /* Check to see if this backend has already been registered. */
   sb = sql_get_backend(backend);
-  if (sb) {
+  if (sb != NULL) {
     errno = EEXIST;
     return -1;
   }
@@ -587,7 +588,7 @@ int sql_register_backend(const char *backend, cmdtable *cmdtab) {
   sb->backend = backend;
   sb->cmdtab = cmdtab;
 
-  if (sql_backends) {
+  if (sql_backends != NULL) {
     sql_backends->prev = sb;
     sb->next = sql_backends;
   }
@@ -605,14 +606,14 @@ int sql_register_backend(const char *backend, cmdtable *cmdtab) {
 int sql_unregister_backend(const char *backend) {
   struct sql_backend *sb;
 
-  if (!backend) {
+  if (backend == NULL) {
     errno = EINVAL;
     return -1;
   }
 
   /* Check to see if this backend has been registered. */
   sb = sql_get_backend(backend);
-  if (!sb) {
+  if (sb == NULL) {
     errno = ENOENT;
     return -1;
   }
@@ -634,7 +635,7 @@ int sql_unregister_backend(const char *backend) {
 #endif
 
   /* Remove this backend from the linked list. */
-  if (sb->prev) {
+  if (sb->prev != NULL) {
     sb->prev->next = sb->next;
 
   } else {
@@ -644,8 +645,9 @@ int sql_unregister_backend(const char *backend) {
     sql_backends = sb->next;
   }
 
-  if (sb->next)
+  if (sb->next != NULL) {
     sb->next->prev = sb->prev;
+  }
 
   sb->prev = sb->next = NULL;
 
@@ -683,7 +685,7 @@ static cmdtable *sql_set_backend(const char *backend) {
     sql_cmdtable = sql_backends->cmdtab;
 
   } else if (sql_nbackends > 1) {
-    if (backend) {
+    if (backend != NULL) {
       struct sql_backend *b;
 
       for (b = sql_backends; b; b = b->next) {
@@ -695,7 +697,7 @@ static cmdtable *sql_set_backend(const char *backend) {
       }
 
       /* If no match is found, default to using the last entry in the list. */
-      if (!sql_cmdtable) {
+      if (sql_cmdtable == NULL) {
         b = sql_backends;
         while (b->next != NULL) {
           pr_signals_handle();
@@ -5862,15 +5864,26 @@ static void sql_chroot_ev(const void *event_data, void *user_data) {
     pool *tmp_pool;
     struct sql_named_conn *snc;
 
+    cmdtable *curr_cmdtable = NULL;
+
+    /* Stash a pointer to the cmdtable of the current backend module, to
+     * be restored afterward (Issue #1659).
+     */
+    curr_cmdtable = sql_cmdtable;
+
     tmp_pool = make_sub_pool(session.pool);
 
     for (snc = sql_named_conns; snc; snc = snc->next) {
       pr_signals_handle();
 
+      sql_log(DEBUG_FUNC,
+        "ensuring presence of SQLNamedConnectInfo '%s' for SQLBackend '%s'",
+        snc->conn_name, snc->backend);
       if (snc->conn_policy == SQL_CONN_POLICY_PERSESSION) {
         cmd_rec *cmd;
         modret_t *mr; 
 
+        sql_set_backend(snc->backend);
         cmd = sql_make_cmd(tmp_pool, 1, snc->conn_name);
         mr = sql_dispatch(cmd, "sql_open");
         (void) check_response(mr, 0);
@@ -5879,6 +5892,9 @@ static void sql_chroot_ev(const void *event_data, void *user_data) {
     }
 
     destroy_pool(tmp_pool);
+
+    /* Restore the previous cmdtable (Issue #1659). */
+    sql_cmdtable = curr_cmdtable;
   }
 }
 
