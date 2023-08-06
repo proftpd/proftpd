@@ -1,6 +1,6 @@
 /*
  * ProFTPD - FTP server testsuite
- * Copyright (c) 2008-2021 The ProFTPD Project team
+ * Copyright (c) 2008-2023 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -700,19 +700,23 @@ END_TEST
 START_TEST (get_word_test) {
   char *ok, *res, *str;
 
+  mark_point();
   res = pr_str_get_word(NULL, 0);
   ck_assert_msg(res == NULL, "Failed to handle null arguments");
   ck_assert_msg(errno == EINVAL, "Failed to set errno to EINVAL");
 
+  mark_point();
   str = NULL;
   res = pr_str_get_word(&str, 0);
   ck_assert_msg(res == NULL, "Failed to handle null str argument");
   ck_assert_msg(errno == EINVAL, "Failed to set errno to EINVAL");
 
+  mark_point();
   str = pstrdup(p, "  ");
   res = pr_str_get_word(&str, 0);
   ck_assert_msg(res == NULL, "Failed to handle whitespace argument");
 
+  mark_point();
   str = pstrdup(p, " foo");
   res = pr_str_get_word(&str, PR_STR_FL_PRESERVE_WHITESPACE);
   ck_assert_msg(res != NULL, "Failed to handle whitespace argument: %s",
@@ -728,6 +732,7 @@ START_TEST (get_word_test) {
   ok = "foo";
   ck_assert_msg(strcmp(res, ok) == 0, "Expected '%s', got '%s'", ok, res);
 
+  mark_point();
   str = pstrdup(p, "  # foo");
   res = pr_str_get_word(&str, 0);
   ck_assert_msg(res == NULL, "Failed to handle commented argument");
@@ -747,6 +752,8 @@ START_TEST (get_word_test) {
   ck_assert_msg(strcmp(res, ok) == 0, "Expected '%s', got '%s'", ok, res);
 
   /* Test multiple embedded quotes. */
+
+  mark_point();
   str = pstrdup(p, "foo \"bar baz\" qux \"quz norf\"");
   res = pr_str_get_word(&str, 0);
   ck_assert_msg(res != NULL, "Failed to handle quoted argument: %s",
@@ -774,6 +781,46 @@ START_TEST (get_word_test) {
     strerror(errno));
 
   ok = "quz norf";
+  ck_assert_msg(strcmp(res, ok) == 0, "Expected '%s', got '%s'", ok, res);
+
+  /* Test embedded quotes with backslashes (Issue #1683). */
+  mark_point();
+
+  str = pstrdup(p, "\"\\\\SYST\"");
+  res = pr_str_get_word(&str, 0);
+  ck_assert_msg(res != NULL, "Failed to handle quoted argument: %s",
+    strerror(errno));
+
+  ok = "\\SYST";
+  ck_assert_msg(strcmp(res, ok) == 0, "Expected '%s', got '%s'", ok, res);
+
+  mark_point();
+  str = pstrdup(p, "\"\"\\\\SYST");
+  res = pr_str_get_word(&str, 0);
+  ck_assert_msg(res != NULL, "Failed to handle quoted argument: %s",
+    strerror(errno));
+
+  /* Note that pr_str_get_word() is intended to be called multiple times
+   * on an advancing buffer, effectively tokenizing the buffer.  This is
+   * why the function does NOT decrement its quote mode.
+   */
+  ok = "";
+  ck_assert_msg(strcmp(res, ok) == 0, "Expected '%s', got '%s'", ok, res);
+
+  /* Now do the same tests with the IGNORE_QUOTES flag */
+  mark_point();
+
+  str = ok = pstrdup(p, "\"\\\\SYST\"");
+  res = pr_str_get_word(&str, PR_STR_FL_IGNORE_QUOTES);
+  ck_assert_msg(res != NULL, "Failed to handle quoted argument: %s",
+    strerror(errno));
+  ck_assert_msg(strcmp(res, ok) == 0, "Expected '%s', got '%s'", ok, res);
+
+  mark_point();
+  str = ok = pstrdup(p, "\"\"\\\\SYST");
+  res = pr_str_get_word(&str, PR_STR_FL_IGNORE_QUOTES);
+  ck_assert_msg(res != NULL, "Failed to handle quoted argument: %s",
+    strerror(errno));
   ck_assert_msg(strcmp(res, ok) == 0, "Expected '%s', got '%s'", ok, res);
 }
 END_TEST

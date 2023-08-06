@@ -821,14 +821,35 @@ static cmd_rec *make_ftp_cmd(pool *p, char *buf, size_t buflen, int flags) {
     return NULL;
   }
 
+  /* By default, pr_str_get_word will handle quotes and backslashes for
+   * escaping characters.  This can produce words which are shorter, use
+   * fewer bytes than the corresponding input buffer.
+   *
+   * In this particular situation, we use the length of this initial word
+   * for determining the length of the remaining buffer bytes, assumed to
+   * contain the FTP command arguments.  If this initial word is thus
+   * unexpectedly "shorter", due to nonconformant FTP text, it can lead
+   * the subsequent buffer scan, looking for CRNUL sequencees, to access
+   * unexpected memory addresses (Issue #1683).
+   *
+   * Thus for this particular situation, we tell the function to ignore/skip
+   * such quote/backslash semantics, and treat them as any other character
+   * using the IGNORE_QUOTES flag.
+   */
+
   ptr = buf;
-  wrd = pr_str_get_word(&ptr, str_flags);
+  wrd = pr_str_get_word(&ptr, str_flags|PR_STR_FL_IGNORE_QUOTES);
   if (wrd == NULL) {
     /* Nothing there...bail out. */
     pr_trace_msg("ctrl", 5, "command '%s' is empty, ignoring", buf);
     errno = ENOENT;
     return NULL;
   }
+
+  /* Note that this first word is the FTP command.  This is why we make
+   * use of the ptr buffer, which advances through the input buffer as
+   * we read words from the buffer.
+   */
 
   subpool = make_sub_pool(p);
   pr_pool_tag(subpool, "make_ftp_cmd pool");
@@ -856,6 +877,7 @@ static cmd_rec *make_ftp_cmd(pool *p, char *buf, size_t buflen, int flags) {
   arg_len = buflen - strlen(wrd);
   arg = pcalloc(cmd->pool, arg_len + 1);
 
+  /* Remember that ptr here is advanced past the first word. */
   for (i = 0, j = 0; i < arg_len; i++) {
     pr_signals_handle();
     if (i > 1 &&
@@ -864,14 +886,13 @@ static cmd_rec *make_ftp_cmd(pool *p, char *buf, size_t buflen, int flags) {
 
       /* Strip out the NUL by simply not copying it into the new buffer. */
       have_crnul = TRUE;
+
     } else {
       arg[j++] = ptr[i];
     }
   }
 
-  cmd->arg = arg;
-
-  if (have_crnul) {
+  if (have_crnul == TRUE) {
     char *dup_arg;
 
     /* Now make a copy of the stripped argument; this is what we need to
@@ -881,6 +902,11 @@ static cmd_rec *make_ftp_cmd(pool *p, char *buf, size_t buflen, int flags) {
     ptr = dup_arg;
   }
 
+  cmd->arg = arg;
+
+  /* Now we can read the remamining words, as command arguments, from the
+   * input buffer.
+   */
   while ((wrd = pr_str_get_word(&ptr, str_flags)) != NULL) {
     pr_signals_handle();
     *((char **) push_array(tarr)) = pstrdup(cmd->pool, wrd);
