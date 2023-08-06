@@ -1,6 +1,6 @@
 /*
  * ProFTPD - FTP server daemon
- * Copyright (c) 2008-2022 The ProFTPD Project team
+ * Copyright (c) 2008-2023 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -1241,7 +1241,7 @@ int pr_str_get_nbytes(const char *str, const char *units, off_t *nbytes) {
 
 char *pr_str_get_word(char **cp, int flags) {
   char *res, *dst;
-  char quote_mode = 0;
+  int quote_mode = FALSE;
 
   if (cp == NULL ||
      !*cp ||
@@ -1270,24 +1270,28 @@ char *pr_str_get_word(char **cp, int flags) {
     }
   }
 
-  if (**cp == '\"') {
-    quote_mode++;
-    (*cp)++;
+  if (!(flags & PR_STR_FL_IGNORE_QUOTES)) {
+    if (**cp == '\"') {
+      quote_mode = TRUE;
+      (*cp)++;
+    }
   }
 
   while (**cp && (quote_mode ? (**cp != '\"') : !PR_ISSPACE(**cp))) {
     pr_signals_handle();
 
-    if (**cp == '\\' && quote_mode) {
-
+    if (**cp == '\\' &&
+        quote_mode == TRUE) {
       /* Escaped char */
       if (*((*cp)+1)) {
-        *dst = *(++(*cp));
+        *dst++ = *(++(*cp));
+        (*cp)++;
+        continue;
       }
     }
 
     *dst++ = **cp;
-    ++(*cp);
+    (*cp)++;
   }
 
   if (**cp) {
