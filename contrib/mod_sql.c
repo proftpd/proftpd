@@ -5902,6 +5902,7 @@ static void sql_exit_ev(const void *event_data, void *user_data) {
   config_rec *c;
   cmd_rec *cmd;
   modret_t *mr;
+  struct sql_backend *sb;
 
   if (cmap.engine == 0) {
     return;
@@ -5923,12 +5924,26 @@ static void sql_exit_ev(const void *event_data, void *user_data) {
     c = find_config_next(c, c->next, CONF_PARAM, "SQLLog_EXIT", FALSE);
   }
 
-  cmd = sql_make_cmd(session.pool, 0);
-  mr = sql_dispatch(cmd, "sql_exit");
-  (void) check_response(mr, SQL_LOG_FL_IGNORE_ERRORS);
+  for (sb = sql_backends; sb != NULL; sb = sb->next) {
+    cmdtable *curr_cmdtable = NULL;
+
+    pr_signals_handle();
+
+    /* Stash a pointer to the cmdtable of the current backend module, to
+     * be restored afterward (Issue #1697).
+     */
+    curr_cmdtable = sql_cmdtable;
+
+    sql_cmdtable = sb->cmdtab;
+    cmd = sql_make_cmd(session.pool, 0);
+    mr = sql_dispatch(cmd, "sql_exit");
+    (void) check_response(mr, SQL_LOG_FL_IGNORE_ERRORS);
+
+    /* Restore the previous cmdtable (Issue #1659). */
+    sql_cmdtable = curr_cmdtable;
+  }
 
   sql_closelog();
-  return;
 }
 
 #if defined(PR_SHARED_MODULE)
