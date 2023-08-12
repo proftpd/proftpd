@@ -13843,6 +13843,9 @@ int sftp_fxp_handle_packet(pool *p, void *ssh2, uint32_t channel_id,
     destroy_pool(fxp->pool);
     fxp_packet_set_packet(NULL);
 
+    /* Clear any possibly stale pointers. */
+    session.curr_cmd_rec = NULL;
+
     if (res < 0) {
       fxp_session = NULL;
       return res;

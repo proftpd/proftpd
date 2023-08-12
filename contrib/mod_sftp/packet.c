@@ -127,6 +127,9 @@ static int packet_poll(int sockfd, int io) {
     "using select(2)", (unsigned long) tv.tv_sec, sockfd,
     io == SFTP_PACKET_IO_RD ? "reading" : "writing");
 
+  /* Clear any possibly stale pointers. */
+  session.curr_cmd_rec = NULL;
+
   while (1) {
     pr_signals_handle();
 
