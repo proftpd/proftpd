@@ -29,12 +29,6 @@
 
 /* Legacy redefines, for compatibility (for a while). */
 
-/* The following macros first appeared in 1.3.4rc1. */
-#define is_fnmatch			pr_str_is_fnmatch
-
-/* The following macros first appeared in 1.3.4rc2. */
-#define end_login			pr_session_end
-
 /* The following macros first appeared in 1.3.6rc2. */
 #define _sql_make_cmd			sql_make_cmd
 
