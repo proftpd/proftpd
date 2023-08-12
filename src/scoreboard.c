@@ -1,6 +1,6 @@
 /*
  * ProFTPD - FTP server daemon
- * Copyright (c) 2001-2022 The ProFTPD Project team
+ * Copyright (c) 2001-2023 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -49,7 +49,9 @@ static unsigned char scoreboard_read_locked = FALSE;
 static unsigned char scoreboard_write_locked = FALSE;
 
 /* Max number of attempts for lock requests */
-#define SCOREBOARD_MAX_LOCK_ATTEMPTS	10
+#if !defined(SCOREBOARD_MAX_LOCK_ATTEMPTS)
+# define SCOREBOARD_MAX_LOCK_ATTEMPTS	10
+#endif
 
 static const char *trace_channel = "scoreboard";
 
