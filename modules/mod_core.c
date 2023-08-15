@@ -765,6 +765,36 @@ MODRET set_scoreboardmutex(cmd_rec *cmd) {
   return PR_HANDLED(cmd);
 }
 
+/* usage: ScoreboardOptions opt1 ... */
+MODRET set_scoreboardoptions(cmd_rec *cmd) {
+  register unsigned int i = 0;
+  config_rec *c = NULL;
+  unsigned long opts = 0UL;
+
+  if (cmd->argc-1 == 0) {
+    CONF_ERROR(cmd, "wrong number of parameters");
+  }
+
+  CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL);
+
+  c = add_config_param(cmd->argv[0], 1, NULL);
+
+  for (i = 1; i < cmd->argc; i++) {
+    if (strcasecmp(cmd->argv[i], "AllowMissingEntry") == 0) {
+      opts |= PR_SCOREBOARD_OPT_ALLOW_MISSING_ENTRY;
+
+    } else {
+      CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, ": unknown ScoreboardOption '",
+        cmd->argv[i], "'", NULL));
+    }
+  }
+
+  c->argv[0] = pcalloc(c->pool, sizeof(unsigned long));
+  *((unsigned long *) c->argv[0]) = opts;
+
+  return PR_HANDLED(cmd);
+}
+
 /* usage: ScoreboardScrub "on"|"off"|secs */
 MODRET set_scoreboardscrub(cmd_rec *cmd) {
   int bool = -1, nsecs = 0;
@@ -7485,6 +7515,7 @@ static conftable core_conftab[] = {
   { "Satisfy",			set_satisfy,			NULL },
   { "ScoreboardFile",		set_scoreboardfile,		NULL },
   { "ScoreboardMutex",		set_scoreboardmutex,		NULL },
+  { "ScoreboardOptions",	set_scoreboardoptions,		NULL },
   { "ScoreboardScrub",		set_scoreboardscrub,		NULL },
   { "ServerAdmin",		set_serveradmin,		NULL },
   { "ServerAlias",		set_serveralias,		NULL },

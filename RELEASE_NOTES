@@ -13,6 +13,8 @@ ChangeLog files.
 
       IfSessionOptions PerUnauthenticatedUser
 
+      ScoreboardOptions AllowMissingEntry (Issue #1700)
+
 
   + Changed Directives
 
