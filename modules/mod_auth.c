@@ -242,13 +242,39 @@ static int auth_sess_init(void) {
   pr_event_register(&auth_module, "core.exit", auth_exit_ev, NULL);
 
   if (auth_client_connected == FALSE) {
+    unsigned int scoreboard_opts = 0UL;
+
+    c = find_config(main_server->conf, CONF_PARAM, "ScoreboardOptions", FALSE);
+    while (c != NULL) {
+      unsigned long opts;
+
+      pr_signals_handle();
+
+      opts = *((unsigned long *) c->argv[0]);
+      scoreboard_opts |= opts;
+
+      c = find_config_next(c, c->next, CONF_PARAM, "ScoreboardOptions", FALSE);
+    }
+
     /* Create an entry in the scoreboard for this session, if we don't already
      * have one.
      */
     if (pr_scoreboard_entry_get(PR_SCORE_CLIENT_ADDR) == NULL) {
       if (pr_scoreboard_entry_add() < 0) {
-        pr_log_pri(PR_LOG_NOTICE, "notice: unable to add scoreboard entry: %s",
-          strerror(errno));
+
+        if (scoreboard_opts & PR_SCOREBOARD_OPT_ALLOW_MISSING_ENTRY) {
+          /* In this case, we simply log the error, but allow the session to
+           * continue while lacking a Scoreboard entry.
+           */
+          pr_log_pri(PR_LOG_NOTICE,
+            "notice: unable to add scoreboard entry: %s", strerror(errno));
+
+        } else {
+          pr_log_pri(PR_LOG_ERR,
+            "error: unable to add scoreboard entry: %s", strerror(errno));
+          pr_session_disconnect(&auth_module,
+            PR_SESS_DISCONNECT_SESSION_INIT_FAILED, "No ScoreboardFile entry");
+        }
       }
 
       pr_scoreboard_entry_update(session.pid,
