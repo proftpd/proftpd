@@ -134,10 +134,23 @@ static struct timeval delay_tv;
 #define DELAY_EVENT_USER_CMD		1
 #define DELAY_EVENT_PASS_CMD		2
 #define DELAY_EVENT_FAILED_LOGIN	3
+#define DELAY_EVENT_CONNECT		4
 
+/* DelayOnEvent Connect */
 static unsigned long delay_failed_login_min_delay = 0UL;
-static unsigned long delay_pass_min_delay = 0UL;
+static unsigned long delay_failed_login_max_delay = 0UL;
+
+/* DelayOnEvent FailedLogin */
+static unsigned long delay_connect_min_delay = 0UL;
+static unsigned long delay_connect_max_delay = 0UL;
+
+/* DelayOnEvent USER */
 static unsigned long delay_user_min_delay = 0UL;
+static unsigned long delay_user_max_delay = 0UL;
+
+/* DelayOnEvent PASS */
+static unsigned long delay_pass_min_delay = 0UL;
+static unsigned long delay_pass_max_delay = 0UL;
 
 static int delay_sess_init(void);
 static void delay_table_reset(void);
@@ -350,7 +363,7 @@ static void delay_signals_unblock(void) {
   }
 }
 
-static unsigned long delay_delay(unsigned long interval) {
+static unsigned long delay_inject_delay(unsigned long interval) {
   struct timeval tv;
   int res, xerrno;
 
@@ -375,30 +388,38 @@ static unsigned long delay_delay(unsigned long interval) {
   return interval;
 }
 
-static unsigned long delay_delay_with_jitter(long interval) {
-  long rand_usec;
+static unsigned long delay_inject_delay_with_jitter(long interval,
+    long max_jitter) {
+  long jitter_usec;
 
-  /* Add an additional delay of a random number of usecs, with a
-   * maximum of half of the given interval.
-   */
-  rand_usec = ((interval / 2.0) * rand()) / RAND_MAX;
+  if (max_jitter <= 0) {
+    /* Assume a max additional jitter of half of the given interval. */
+    max_jitter = (interval / 2);
+  }
+
+  /* Add an additional delay of a random number of usecs of jitter. */
+  jitter_usec = pr_random_next(0, max_jitter);
+
   pr_trace_msg(trace_channel, 8, "additional random delay of %ld usecs added",
-    (long int) rand_usec);
-  interval += rand_usec;
+    (long int) jitter_usec);
+  interval += jitter_usec;
 
   if (interval > DELAY_MAX_DELAY_USECS) {
     interval = DELAY_MAX_DELAY_USECS;
   }
 
-  return delay_delay(interval);
+  return delay_inject_delay(interval);
 }
 
 /* Similar to the pr_str_get_duration() function, but parses millisecond
  * values, not seconds.
+ *
+ * In addition, it can parse a min-max textual range.
  */
-static int delay_str_get_duration_ms(const char *str, long *duration) {
+static int delay_str_get_duration_ms(const char *str, long *min_duration,
+    long *max_duration) {
   unsigned int mins, secs;
-  long msecs;
+  long min_msecs, max_msecs;
   int flags = PR_STR_FL_IGNORE_CASE, has_suffix = FALSE;
   size_t len;
   char *ptr = NULL;
@@ -408,16 +429,43 @@ static int delay_str_get_duration_ms(const char *str, long *duration) {
     return -1;
   }
 
-  if (sscanf(str, "%2u:%2u.%4lu", &mins, &secs, &msecs) == 3) {
+  if (sscanf(str, "%2u:%2u.%4lu", &mins, &secs, &min_msecs) == 3) {
     if (mins > INT_MAX ||
         secs > INT_MAX ||
-        msecs > INT_MAX) {
+        min_msecs > INT_MAX) {
       errno = ERANGE;
       return -1;
     }
 
-    if (duration != NULL) {
-      *duration = (mins * 60 * 1000) + (secs * 1000) + msecs;
+    if (min_duration != NULL) {
+      *min_duration = (mins * 60 * 1000) + (secs * 1000) + min_msecs;
+    }
+
+    if (max_duration != NULL) {
+      *max_duration = (mins * 60 * 1000) + (secs * 1000) + min_msecs;
+    }
+
+    return 0;
+  }
+
+  if (sscanf(str, "%ld-%ld", &min_msecs, &max_msecs) == 2) {
+    if (min_msecs > INT_MAX ||
+        max_msecs > INT_MAX) {
+      errno = ERANGE;
+      return -1;
+    }
+
+    if (min_msecs >= max_msecs) {
+      errno = EINVAL;
+      return -1;
+    }
+
+    if (min_duration != NULL) {
+      *min_duration = min_msecs;
+    }
+
+    if (max_duration != NULL) {
+      *max_duration = max_msecs;
     }
 
     return 0;
@@ -433,14 +481,41 @@ static int delay_str_get_duration_ms(const char *str, long *duration) {
   if (has_suffix == TRUE) {
     /* Parse millisecs */
 
-    if (sscanf(str, "%ld", &msecs) == 1) {
-      if (msecs > INT_MAX) {
+    if (sscanf(str, "%ld", &min_msecs) == 1) {
+      if (min_msecs > INT_MAX) {
         errno = ERANGE;
         return -1;
       }
 
-      if (duration != NULL) {
-        *duration = msecs;
+      if (min_duration != NULL) {
+        *min_duration = min_msecs;
+      }
+
+      if (max_duration != NULL) {
+        *max_duration = min_msecs;
+      }
+
+      return 0;
+    }
+
+    if (sscanf(str, "%ld-%ld", &min_msecs, &max_msecs) == 2) {
+      if (min_msecs > INT_MAX ||
+          max_msecs > INT_MAX) {
+        errno = ERANGE;
+        return -1;
+      }
+
+      if (min_msecs >= max_msecs) {
+        errno = EINVAL;
+        return -1;
+      }
+
+      if (min_duration != NULL) {
+        *min_duration = min_msecs;
+      }
+
+      if (max_duration != NULL) {
+        *max_duration = max_msecs;
       }
 
       return 0;
@@ -454,7 +529,10 @@ static int delay_str_get_duration_ms(const char *str, long *duration) {
   if (has_suffix == FALSE) {
     has_suffix = pr_strnrstr(str, len, "sec", 3, flags);
   }
+
   if (has_suffix == TRUE) {
+    unsigned int max_secs;
+
     /* Parse seconds */
 
     if (sscanf(str, "%u", &secs) == 1) {
@@ -463,8 +541,35 @@ static int delay_str_get_duration_ms(const char *str, long *duration) {
         return -1;
       }
 
-      if (duration != NULL) {
-        *duration = (secs * 1000);
+      if (min_duration != NULL) {
+        *min_duration = (secs * 1000);
+      }
+
+      if (max_duration != NULL) {
+        *max_duration = (secs * 1000);
+      }
+
+      return 0;
+    }
+
+    if (sscanf(str, "%u-%u", &secs, &max_secs) == 2) {
+      if (secs > INT_MAX ||
+          max_secs > INT_MAX) {
+        errno = ERANGE;
+        return -1;
+      }
+
+      if (secs >= max_secs) {
+        errno = EINVAL;
+        return -1;
+      }
+
+      if (min_duration != NULL) {
+        *min_duration = (secs * 1000);
+      }
+
+      if (max_duration != NULL) {
+        *max_duration = (max_secs * 1000);
       }
 
       return 0;
@@ -475,21 +580,25 @@ static int delay_str_get_duration_ms(const char *str, long *duration) {
   }
 
   /* Use strtol(3) here, check for trailing garbage, etc. */
-  msecs = strtol(str, &ptr, 10);
+  min_msecs = strtol(str, &ptr, 10);
   if (ptr && *ptr) {
     /* Not a bare number, but a string with non-numeric characters. */
     errno = EINVAL;
     return -1;
   }
 
-  if (msecs < 0 ||
-      msecs > INT_MAX) {
+  if (min_msecs < 0 ||
+      min_msecs > INT_MAX) {
     errno = ERANGE;
     return -1;
   }
 
-  if (duration != NULL) {
-    *duration = msecs;
+  if (min_duration != NULL) {
+    *min_duration = min_msecs;
+  }
+
+  if (max_duration != NULL) {
+    *max_duration = min_msecs;
   }
 
   return 0;
@@ -1436,26 +1545,27 @@ MODRET set_delayctrlsacls(cmd_rec *cmd) {
 /* usage: DelayEngine on|off */
 MODRET set_delayengine(cmd_rec *cmd) {
   config_rec *c;
-  int bool;
+  int engine;
 
   CHECK_ARGS(cmd, 1);
   CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL);
 
-  bool = get_boolean(cmd, 1);
-  if (bool == -1)
+  engine = get_boolean(cmd, 1);
+  if (engine == -1) {
     CONF_ERROR(cmd, "expected Boolean parameter");
+  }
 
   c = add_config_param(cmd->argv[0], 1, NULL);
   c->argv[0] = pcalloc(c->pool, sizeof(unsigned int));
-  *((unsigned int *) c->argv[0]) = bool;
+  *((unsigned int *) c->argv[0]) = engine;
 
   return PR_HANDLED(cmd);
 }
 
-/* usage: DelayOnEvent event delay-millis */
+/* usage: DelayOnEvent event delay-millis|min-max */
 MODRET set_delayonevent(cmd_rec *cmd) {
   config_rec *c;
-  long delay_ms = -1;
+  long min_delay_ms = -1, max_delay_ms = -1;
   int event;
 
   CHECK_ARGS(cmd, 2);
@@ -1470,25 +1580,31 @@ MODRET set_delayonevent(cmd_rec *cmd) {
   } else if (strcmp(cmd->argv[1], "FailedLogin") == 0) {
     event = DELAY_EVENT_FAILED_LOGIN;
 
+  } else if (strcmp(cmd->argv[1], "Connect") == 0) {
+    event = DELAY_EVENT_CONNECT;
+
   } else {
     CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "unknown/unsupported event: ",
       cmd->argv[1], NULL));
   }
 
-  if (delay_str_get_duration_ms(cmd->argv[2], &delay_ms) < 0) {
+  if (delay_str_get_duration_ms(cmd->argv[2], &min_delay_ms,
+      &max_delay_ms) < 0) {
     CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "error parsing delay parameter '",
       cmd->argv[2], "': ", strerror(errno), NULL));
   }
 
-  c = add_config_param(cmd->argv[0], 2, NULL, NULL);
+  c = add_config_param(cmd->argv[0], 3, NULL, NULL, NULL);
   c->argv[0] = palloc(c->pool, sizeof(int));
   *((int *) c->argv[0]) = event;
   c->argv[1] = palloc(c->pool, sizeof(unsigned long));
+  c->argv[2] = palloc(c->pool, sizeof(unsigned long));
 
   /* Note: Even though we parsed the delay parameter in millisec, we
    * need to use microsecs internally, as that is the implemented interface.
    */
-  *((unsigned long *) c->argv[1]) = (delay_ms * 1000);
+  *((unsigned long *) c->argv[1]) = (min_delay_ms * 1000);
+  *((unsigned long *) c->argv[2]) = (max_delay_ms * 1000);
 
   return PR_HANDLED(cmd);
 }
@@ -1532,7 +1648,7 @@ MODRET delay_log_pass(cmd_rec *cmd) {
       pr_trace_msg(trace_channel, 9,
         "enforcing minimum PASS delay (%lu usec), adding %ld usec delay",
         delay_pass_min_delay, interval);
-      delay_delay(interval);
+      delay_inject_delay(interval);
     }
   }
 
@@ -1561,7 +1677,7 @@ MODRET delay_log_pass_err(cmd_rec *cmd) {
       pr_trace_msg(trace_channel, 9,
         "enforcing minimum failed login delay (%lu usec), adding %ld usec "
         "delay", delay_failed_login_min_delay, interval);
-      delay_delay(interval);
+      delay_inject_delay(interval);
     }
   }
 
@@ -1584,7 +1700,7 @@ MODRET delay_log_user(cmd_rec *cmd) {
       pr_trace_msg(trace_channel, 9,
         "enforcing minimum USER delay (%lu usec), adding %ld usec delay",
         delay_user_min_delay, interval);
-      delay_delay(interval);
+      delay_inject_delay(interval);
     }
   }
 
@@ -1683,7 +1799,7 @@ MODRET delay_post_pass(cmd_rec *cmd) {
       pr_trace_msg(trace_channel, 9,
         "interval (%ld usecs) less than selected median (%ld usecs), delaying",
         interval, median);
-      delay_pass_delayed = delay_delay_with_jitter(median - interval);
+      delay_pass_delayed = delay_inject_delay_with_jitter(median - interval, 0);
     }
 
   } else {
@@ -1800,7 +1916,7 @@ MODRET delay_post_user(cmd_rec *cmd) {
       pr_trace_msg(trace_channel, 9,
         "interval (%ld usecs) less than selected median (%ld usecs), delaying",
         interval, median);
-      delay_user_delayed = delay_delay_with_jitter(median - interval);
+      delay_user_delayed = delay_inject_delay_with_jitter(median - interval, 0);
     }
 
   } else {
@@ -1823,22 +1939,55 @@ MODRET delay_pre_user(cmd_rec *cmd) {
   return PR_DECLINED(cmd);
 }
 
-/* Event handlers
+/* Event listeners
  */
+
+static void delay_connect_ev(const void *event_data, void *user_data) {
+  config_rec *c;
+
+  if (delay_engine == FALSE) {
+    return;
+  }
+
+  c = find_config(main_server->conf, CONF_PARAM, "DelayOnEvent", FALSE);
+  while (c != NULL) {
+    int event;
+    unsigned long min_delay_usec, max_delay_usec;
+
+    pr_signals_handle();
+
+    event = *((int *) c->argv[0]);
+    min_delay_usec = *((unsigned long *) c->argv[1]);
+    max_delay_usec = *((unsigned long *) c->argv[2]);
+
+    if (event == DELAY_EVENT_CONNECT) {
+      delay_connect_min_delay = min_delay_usec;
+      delay_connect_max_delay = max_delay_usec;
+    }
+
+    c = find_config_next(c, c->next, CONF_PARAM, "DelayOnEvent", FALSE);
+  }
+
+  if (delay_connect_min_delay > 0) {
+    (void) delay_inject_delay_with_jitter(delay_connect_min_delay,
+      (delay_connect_max_delay - delay_connect_min_delay));
+  }
+}
 
 #if defined(PR_SHARED_MODULE)
 static void delay_mod_unload_ev(const void *event_data, void *user_data) {
-  if (strcmp("mod_delay.c", (const char *) event_data) == 0) {
-    /* Unregister ourselves from all events. */
-    pr_event_unregister(&delay_module, NULL, NULL);
-
-# ifdef PR_USE_CTRLS
-    pr_ctrls_unregister(&delay_module, "delay");
-# endif
-
+  if (strcmp("mod_delay.c", (const char *) event_data) != 0) {
+    return;
   }
+
+  /* Unregister ourselves from all events. */
+  pr_event_unregister(&delay_module, NULL, NULL);
+
+# if defined(PR_USE_CTRLS)
+  pr_ctrls_unregister(&delay_module, "delay");
+# endif /* PR_USE_CTRLS */
 }
-#endif
+#endif /* PR_SHARED_MODULE */
 
 static void delay_postparse_ev(const void *event_data, void *user_data) {
   config_rec *c;
@@ -2005,6 +2154,7 @@ static int delay_init(void) {
   delay_tab.dt_enabled = TRUE;
   delay_tab.dt_data = NULL;
 
+  pr_event_register(&delay_module, "core.connect", delay_connect_ev, NULL);
 #if defined(PR_SHARED_MODULE)
   pr_event_register(&delay_module, "core.module-unload", delay_mod_unload_ev,
     NULL);
@@ -2063,24 +2213,34 @@ static int delay_sess_init(void) {
   c = find_config(main_server->conf, CONF_PARAM, "DelayOnEvent", FALSE);
   while (c != NULL) {
     int event;
-    unsigned long delay_usec;
+    unsigned long min_delay_usec, max_delay_usec;
 
     pr_signals_handle();
 
     event = *((int *) c->argv[0]);
-    delay_usec = *((unsigned long *) c->argv[1]);
+    min_delay_usec = *((unsigned long *) c->argv[1]);
+    max_delay_usec = *((unsigned long *) c->argv[2]);
 
     switch (event) {
       case DELAY_EVENT_USER_CMD:
-        delay_user_min_delay = delay_usec;
+        delay_user_min_delay = min_delay_usec;
+        delay_user_max_delay = max_delay_usec;
         break;
 
       case DELAY_EVENT_PASS_CMD:
-        delay_pass_min_delay = delay_usec;
+        delay_pass_min_delay = min_delay_usec;
+        delay_pass_max_delay = max_delay_usec;
         break;
 
       case DELAY_EVENT_FAILED_LOGIN:
-        delay_failed_login_min_delay = delay_usec;
+        delay_failed_login_min_delay = min_delay_usec;
+        delay_failed_login_max_delay = max_delay_usec;
+        break;
+
+      case DELAY_EVENT_CONNECT:
+        /* We deliberately ignore the Connect event here, since it is
+         * handled already at connect time.
+         */
         break;
     }
 
