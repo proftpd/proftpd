@@ -71,6 +71,8 @@
   session exit.
 - Issue 1700 - Clients should be disconnected when unable to be added to the
   ScoreboardFile.
+- Issue 1701 - Support injecting random delay when clients connect via
+  DelayOnEvent.
 
 1.3.8 - Released 04-Dec-2022
 --------------------------------
