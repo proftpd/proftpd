@@ -52,6 +52,9 @@
  */
 #define SFTP_DH_PREF_MIN_LEN	2048
 
+/* Define the preferred buffer size for our KEX replies. */
+#define SFTP_KEX_REPLY_BUFSZ	8192
+
 extern pr_response_t *resp_list, *resp_err_list;
 extern module sftp_module;
 
@@ -3531,7 +3534,7 @@ static int write_dh_gex_group(struct ssh2_packet *pkt, struct sftp_kex *kex,
   }
 
   /* XXX Is this large enough?  Too large? */
-  buflen = bufsz = 4096;
+  buflen = bufsz = SFTP_KEX_REPLY_BUFSZ;
   ptr = buf = palloc(pkt->pool, bufsz);
 
   sftp_msg_write_byte(&buf, &buflen, SFTP_SSH2_MSG_KEX_DH_GEX_GROUP);
@@ -4343,7 +4346,7 @@ static int write_curve25519_reply(struct ssh2_packet *pkt,
   }
 
   /* XXX Is this large enough?  Too large? */
-  buflen = bufsz = 4096;
+  buflen = bufsz = SFTP_KEX_REPLY_BUFSZ;
   ptr = buf = palloc(pkt->pool, bufsz);
 
   sftp_msg_write_byte(&buf, &buflen, SFTP_SSH2_MSG_KEX_ECDH_REPLY);
@@ -4786,7 +4789,7 @@ static int write_curve448_reply(struct ssh2_packet *pkt, struct sftp_kex *kex) {
   }
 
   /* XXX Is this large enough?  Too large? */
-  buflen = bufsz = 4096;
+  buflen = bufsz = SFTP_KEX_REPLY_BUFSZ;
   ptr = buf = palloc(pkt->pool, bufsz);
 
   sftp_msg_write_byte(&buf, &buflen, SFTP_SSH2_MSG_KEX_ECDH_REPLY);
@@ -4980,7 +4983,7 @@ static int write_ecdh_reply(struct ssh2_packet *pkt, struct sftp_kex *kex) {
   }
 
   /* XXX Is this large enough?  Too large? */
-  buflen = bufsz = 4096;
+  buflen = bufsz = SFTP_KEX_REPLY_BUFSZ;
   ptr = buf = palloc(pkt->pool, bufsz);
 
   sftp_msg_write_byte(&buf, &buflen, SFTP_SSH2_MSG_KEX_ECDH_REPLY);
