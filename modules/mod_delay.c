@@ -1968,10 +1968,8 @@ static void delay_connect_ev(const void *event_data, void *user_data) {
     c = find_config_next(c, c->next, CONF_PARAM, "DelayOnEvent", FALSE);
   }
 
-  if (delay_connect_min_delay > 0) {
-    (void) delay_inject_delay_with_jitter(delay_connect_min_delay,
-      (delay_connect_max_delay - delay_connect_min_delay));
-  }
+  (void) delay_inject_delay_with_jitter(delay_connect_min_delay,
+    (delay_connect_max_delay - delay_connect_min_delay));
 }
 
 #if defined(PR_SHARED_MODULE)
