@@ -37,6 +37,8 @@
 - Issue 1659 - Unknown named connection error when using different SQL backends.
 - Issue 1697 - mod_sql is not properly closing all named backend connections on
   session exit.
+- Issue 1694 - SSH key exchanges fail unexpectedly with "unable to write X
+  bytes of raw data" errors due to small ProFTPD buffer.
 
 1.3.8 - Released 04-Dec-2022
 --------------------------------
