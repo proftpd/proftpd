@@ -52,6 +52,12 @@
  */
 #define SFTP_DH_PREF_MIN_LEN	2048
 
+/* Define the size of the buffer we use to compute H.  Note that this buffer
+ * needs to be large enough to contain the KEXINIT messages from both client
+ * and server; see Issue#1694.
+ */
+#define SFTP_KEX_H_BUFLEN	8192
+
 extern pr_response_t *resp_list, *resp_err_list;
 extern module sftp_module;
 
@@ -312,7 +318,7 @@ static const unsigned char *calculate_h(struct sftp_kex *kex,
   unsigned char *buf, *ptr;
   uint32_t buflen, bufsz;
 
-  bufsz = buflen = 8192;
+  bufsz = buflen = SFTP_KEX_H_BUFLEN;
 
   /* XXX Is this buffer large enough? Too large? */
   ptr = buf = sftp_msg_getbuf(kex_pool, bufsz);
@@ -441,7 +447,7 @@ static const unsigned char *calculate_gex_h(struct sftp_kex *kex,
   unsigned char *buf, *ptr;
   uint32_t buflen, bufsz;
 
-  bufsz = buflen = 8192;
+  bufsz = buflen = SFTP_KEX_H_BUFLEN;
 
   /* XXX Is this buffer large enough? Too large? */
   ptr = buf = sftp_msg_getbuf(kex_pool, bufsz);
@@ -590,7 +596,7 @@ static const unsigned char *calculate_kexrsa_h(struct sftp_kex *kex,
   unsigned char *buf, *ptr;
   uint32_t buflen, bufsz;
 
-  bufsz = buflen = 4096;
+  bufsz = buflen = SFTP_KEX_H_BUFLEN;
 
   /* XXX Is this buffer large enough? Too large? */
   ptr = buf = sftp_msg_getbuf(kex_pool, bufsz);
@@ -704,7 +710,7 @@ static const unsigned char *calculate_ecdh_h(struct sftp_kex *kex,
   unsigned char *buf, *ptr;
   uint32_t buflen, bufsz;
 
-  bufsz = buflen = 4096;
+  bufsz = buflen = SFTP_KEX_H_BUFLEN;
 
   /* XXX Is this buffer large enough? Too large? */
   ptr = buf = sftp_msg_getbuf(kex_pool, bufsz);
@@ -4148,7 +4154,7 @@ static const unsigned char *calculate_curve25519_h(struct sftp_kex *kex,
   unsigned char *buf, *ptr;
   uint32_t buflen, bufsz;
 
-  bufsz = buflen = 4096;
+  bufsz = buflen = SFTP_KEX_H_BUFLEN;
 
   /* XXX Is this buffer large enough? Too large? */
   ptr = buf = sftp_msg_getbuf(kex_pool, bufsz);
@@ -4592,7 +4598,7 @@ static const unsigned char *calculate_curve448_h(struct sftp_kex *kex,
   unsigned char *buf, *ptr;
   uint32_t buflen, bufsz;
 
-  bufsz = buflen = 4096;
+  bufsz = buflen = SFTP_KEX_H_BUFLEN;
 
   /* XXX Is this buffer large enough? Too large? */
   ptr = buf = sftp_msg_getbuf(kex_pool, bufsz);
