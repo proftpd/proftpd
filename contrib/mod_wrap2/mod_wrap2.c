@@ -365,7 +365,7 @@ static char *wrap2_get_hostname(wrap2_host_t *host) {
       wrap2_log("'UseReverseDNS off' in effect, NOT resolving %s to DNS name "
         "for comparison", pr_netaddr_get_ipstr(session.c->remote_addr));
 
-      sstrncpy(host->name, pr_netaddr_get_dnsstr(session.c->remote_addr),
+      sstrncpy(host->name, pr_netaddr_get_ipstr(session.c->remote_addr),
         sizeof(host->name));
       pr_netaddr_set_reverse_dns(reverse_dns);
     }
