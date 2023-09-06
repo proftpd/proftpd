@@ -75,6 +75,7 @@
   DelayOnEvent.
 - Issue 1694 - SSH key exchanges fail unexpectedly with "unable to write X
   bytes of raw data" errors due to small ProFTPD buffer.
+- Issue 1118 - Support OpenSSH FIDO security keys in mod_sftp.
 
 1.3.8 - Released 04-Dec-2022
 --------------------------------
