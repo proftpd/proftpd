@@ -1,6 +1,6 @@
 /*
  * ProFTPD: mod_wrap2 -- tcpwrappers-like access control
- * Copyright (c) 2000-2021 TJ Saunders
+ * Copyright (c) 2000-2023 TJ Saunders
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -362,12 +362,16 @@ static char *wrap2_get_hostname(wrap2_host_t *host) {
       remote_addr->na_have_dnsstr = TRUE;
 
     } else {
+      /* In order to probe the current UseReverseDNS value, we had to enable
+       * earlier.  Make sure we restore that previous value.
+       */
+      pr_netaddr_set_reverse_dns(reverse_dns);
+
       wrap2_log("'UseReverseDNS off' in effect, NOT resolving %s to DNS name "
         "for comparison", pr_netaddr_get_ipstr(session.c->remote_addr));
 
       sstrncpy(host->name, pr_netaddr_get_dnsstr(session.c->remote_addr),
         sizeof(host->name));
-      pr_netaddr_set_reverse_dns(reverse_dns);
     }
   }
 
