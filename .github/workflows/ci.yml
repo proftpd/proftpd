@@ -43,7 +43,10 @@ jobs:
         container:
           - almalinux:8
           - alpine:3.15
-          - ubuntu:14.04
+         # 2023-09-05: Disabled due to GitHub CI failure:
+         #
+         # W: Failed to fetch https://esm.ubuntu.com/ubuntu/dists/trusty-infra-security/main/binary-amd64/Packages  Hash Sum mismatch
+         # - ubuntu:14.04
           - ubuntu:18.04
 
     container: ${{ matrix.container }}

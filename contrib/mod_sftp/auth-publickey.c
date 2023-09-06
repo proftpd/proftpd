@@ -1,6 +1,6 @@
 /*
  * ProFTPD - mod_sftp 'publickey' user authentication
- * Copyright (c) 2008-2022 TJ Saunders
+ * Copyright (c) 2008-2023 TJ Saunders
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -150,11 +150,17 @@ int sftp_auth_publickey(struct ssh2_packet *pkt, cmd_rec *pass_cmd,
 
   } else if (strcmp(pubkey_algo, "ecdsa-sha2-nistp521") == 0) {
     pubkey_type = SFTP_KEY_ECDSA_521;
+
+  } else if (strcmp(pubkey_algo, "sk-ecdsa-sha2-nistp256@openssh.com") == 0) {
+    pubkey_type = SFTP_KEY_ECDSA_256_SK;
 #endif /* PR_USE_OPENSSL_ECC */
 
 #if defined(PR_USE_SODIUM)
   } else if (strcmp(pubkey_algo, "ssh-ed25519") == 0) {
     pubkey_type = SFTP_KEY_ED25519;
+
+  } else if (strcmp(pubkey_algo, "sk-ssh-ed25519@openssh.com") == 0) {
+    pubkey_type = SFTP_KEY_ED25519_SK;
 #endif /* PR_USE_SODIUM */
 
 #if defined(HAVE_X448_OPENSSL)

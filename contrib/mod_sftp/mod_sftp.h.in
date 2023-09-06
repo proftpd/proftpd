@@ -73,7 +73,7 @@
 /* Define if you have OpenSSL with X448 support. */
 #undef HAVE_X448_OPENSSL
 
-#define MOD_SFTP_VERSION	"mod_sftp/1.1.1"
+#define MOD_SFTP_VERSION	"mod_sftp/1.2.0"
 
 /* Make sure the version of proftpd is as necessary. */
 #if PROFTPD_VERSION_NUMBER < 0x0001030402
