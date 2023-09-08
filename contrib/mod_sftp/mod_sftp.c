@@ -1,6 +1,6 @@
 /*
  * ProFTPD - mod_sftp
- * Copyright (c) 2008-2022 TJ Saunders
+ * Copyright (c) 2008-2023 TJ Saunders
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -1797,6 +1797,12 @@ MODRET set_sftpoptions(cmd_rec *cmd) {
 
     } else if (strcmp(cmd->argv[i], "NoHostkeyRotation") == 0) {
       opts |= SFTP_OPT_NO_HOSTKEY_ROTATION;
+
+    } else if (strcmp(cmd->argv[i], "FIDOTouchRequired") == 0) {
+      opts |= SFTP_OPT_FIDO_TOUCH_REQUIRED;
+
+    } else if (strcmp(cmd->argv[i], "FIDOVerifyRequired") == 0) {
+      opts |= SFTP_OPT_FIDO_VERIFY_REQUIRED;
 
     } else {
       CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, ": unknown SFTPOption '",

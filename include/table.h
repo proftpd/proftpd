@@ -1,6 +1,6 @@
 /*
  * ProFTPD - FTP server daemon
- * Copyright (c) 2004-2017 The ProFTPD Project team
+ * Copyright (c) 2004-2023 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -235,6 +235,11 @@ int pr_table_ctl(pr_table_t *tab, int cmd, void *arg);
  * regard to collision avoidance, especially as the number of entries increases.
  */
 float pr_table_load(pr_table_t *tab);
+
+/* Copies the keys and values, exactly as they are, into the destination table
+ * from the source table.
+ */
+int pr_table_copy(pr_table_t *dst_tab, pr_table_t *src_tab, int flags);
 
 /* Dump table information. */
 void pr_table_dump(void (*)(const char *, ...), pr_table_t *tab);

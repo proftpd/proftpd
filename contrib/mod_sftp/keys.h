@@ -44,6 +44,16 @@ enum sftp_key_type_e {
   SFTP_KEY_ED25519_SK
 };
 
+/* Details learned during verification of signed data, such as for
+ * Security Keys (SK).
+ */
+struct sftp_verify_details {
+  int is_security_key;
+  const char *sk_application;
+  uint32_t sk_counter;
+  unsigned char sk_flags;
+};
+
 /* Returns a string of colon-separated lowercase hex characters, representing
  * the key "fingerprint" which has been run through the specified digest
  * algorithm.
@@ -75,7 +85,9 @@ int sftp_keys_verify_pubkey_type(pool *, unsigned char *, uint32_t,
   enum sftp_key_type_e);
 int sftp_keys_verify_signed_data(pool *, const char *,
   unsigned char *, uint32_t, unsigned char *, uint32_t,
-  unsigned char *, size_t);
+  unsigned char *, size_t, struct sftp_verify_details *);
+int sftp_keys_permit_key(pool *, const char *, const char *,
+  struct sftp_verify_details *, pr_table_t *);
 
 /* Sets minimum key sizes. */
 int sftp_keys_set_key_limits(int rsa_min, int dsa_min, int ec_min);

@@ -178,15 +178,6 @@ static struct openssh_cipher ciphers[] = {
   { NULL,          0,  0, 0, 0, NULL, NULL }
 };
 
-/* Security Keys (SK) */
-
-struct key_details {
-  int is_security_key;
-  const char *sk_application;
-  uint32_t sk_counter;
-  unsigned char sk_flags;
-};
-
 static void free_hostkey_bio(BIO *);
 static BIO *load_file_hostkey_bio(pool *p, int fd);
 #if defined(HAVE_X448_OPENSSL)
@@ -1129,7 +1120,7 @@ static int has_req_perms(int fd, const char *path) {
 
 static uint32_t read_pkey_from_data(pool *p, unsigned char *pkey_data,
     uint32_t pkey_datalen, EVP_PKEY **pkey, enum sftp_key_type_e *key_type,
-    struct key_details *details, int openssh_format) {
+    struct sftp_verify_details *details, int openssh_format) {
   char *pkey_type = NULL;
   uint32_t res, len = 0;
 
@@ -5584,7 +5575,7 @@ static int dsa_verify_signed_data(pool *p, EVP_PKEY *pkey,
 
 #if defined(PR_USE_OPENSSL_ECC)
 static int ecdsa_verify_signed_data(pool *p, EVP_PKEY *pkey,
-    struct key_details *details,
+    struct sftp_verify_details *details,
     unsigned char *signature, uint32_t signature_len,
     unsigned char *sig_data, size_t sig_datalen, char *sig_type) {
 #if OPENSSL_VERSION_NUMBER < 0x10100000L || \
@@ -5833,7 +5824,7 @@ static int ecdsa_verify_signed_data(pool *p, EVP_PKEY *pkey,
 #if defined(PR_USE_SODIUM)
 static int ed25519_verify_signed_data(pool *p,
     unsigned char *pubkey_data, uint32_t pubkey_datalen,
-    struct key_details *details,
+    struct sftp_verify_details *details,
     unsigned char *signature, uint32_t signature_len,
     unsigned char *sig_data, size_t sig_datalen) {
   char *pkey_type;
@@ -6129,9 +6120,9 @@ static int ed448_verify_signed_data(pool *p,
 int sftp_keys_verify_signed_data(pool *p, const char *pubkey_algo,
     unsigned char *pubkey_data, uint32_t pubkey_datalen,
     unsigned char *signature, uint32_t signature_len,
-    unsigned char *sig_data, size_t sig_datalen) {
+    unsigned char *sig_data, size_t sig_datalen,
+    struct sftp_verify_details *details) {
   EVP_PKEY *pkey = NULL;
-  struct key_details *key_details = NULL;
   char *sig_type;
   uint32_t len;
   int res = 0;
@@ -6145,9 +6136,8 @@ int sftp_keys_verify_signed_data(pool *p, const char *pubkey_algo,
     return -1;
   }
 
-  key_details = pcalloc(p, sizeof(struct key_details));
   len = read_pkey_from_data(p, pubkey_data, pubkey_datalen, &pkey, NULL,
-    key_details, FALSE);
+    details, FALSE);
   if (len == 0) {
     return -1;
   }
@@ -6232,7 +6222,7 @@ int sftp_keys_verify_signed_data(pool *p, const char *pubkey_algo,
       return -1;
     }
 
-    res = ecdsa_verify_signed_data(p, pkey, key_details, signature,
+    res = ecdsa_verify_signed_data(p, pkey, details, signature,
       signature_len, sig_data, sig_datalen, sig_type);
 #endif /* PR_USE_OPENSSL_ECC */
 
@@ -6240,7 +6230,7 @@ int sftp_keys_verify_signed_data(pool *p, const char *pubkey_algo,
   } else if (strcmp(sig_type, "ssh-ed25519") == 0 ||
              strcmp(sig_type, "sk-ssh-ed25519@openssh.com") == 0) {
     res = ed25519_verify_signed_data(p, pubkey_data, pubkey_datalen,
-      key_details, signature, signature_len, sig_data, sig_datalen);
+      details, signature, signature_len, sig_data, sig_datalen);
 #endif /* PR_USE_SODIUM */
 
 #if defined(HAVE_X448_OPENSSL)
@@ -6262,6 +6252,92 @@ int sftp_keys_verify_signed_data(pool *p, const char *pubkey_algo,
   }
 
   return res;
+}
+
+/* This is where we check for, enforce, any FIDO/SK policies. */
+int sftp_keys_permit_key(pool *p, const char *pubkey_algo, const char *username,
+    struct sftp_verify_details *details, pr_table_t *notes) {
+  int fido_touch_required, fido_verify_required;
+  const void *val;
+  size_t valsz = 0;
+
+  if (details->is_security_key == FALSE) {
+    return 0;
+  }
+
+  pr_trace_msg(trace_channel, 19, "checking security key policy: "
+    "application = '%s', flags = %d, counter = %lu", details->sk_application,
+    details->sk_flags, (unsigned long) details->sk_counter);
+
+  /* Is FIDO touch required? */
+  fido_touch_required = TRUE;
+
+  if (!(sftp_opts & SFTP_OPT_FIDO_TOUCH_REQUIRED)) {
+    val = pr_table_get(notes, SFTP_KEYSTORE_HEADER_FIDO_TOUCH_REQUIRED, &valsz);
+    if (val != NULL) {
+      const char *text;
+
+      text = val;
+      pr_trace_msg(trace_channel, 19,
+        "found %s verification note for key: '%s'",
+        SFTP_KEYSTORE_HEADER_FIDO_TOUCH_REQUIRED, text);
+
+      fido_touch_required = pr_str_is_boolean(text);
+    }
+  }
+
+  if (fido_touch_required == TRUE &&
+      !(details->sk_flags & SFTP_KEYS_SK_USER_PRESENCE_REQUIRED)) {
+    const pr_netaddr_t *remote_addr;
+
+    remote_addr = pr_netaddr_get_sess_remote_addr();
+
+    (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
+      "public key '%s' signature for %s from %.128s:%u rejected: "
+      "user presence (authenticator touch) requirement not met",
+      pubkey_algo, username, pr_netaddr_get_ipstr(remote_addr),
+      ntohs(pr_netaddr_get_port(remote_addr)));
+    errno = EACCES;
+    return -1;
+  }
+
+  /* Is FIDO verify required? */
+  fido_verify_required = FALSE;
+
+  if (!(sftp_opts & SFTP_OPT_FIDO_VERIFY_REQUIRED)) {
+    val = pr_table_get(notes, SFTP_KEYSTORE_HEADER_FIDO_VERIFY_REQUIRED,
+      &valsz);
+    if (val != NULL) {
+      const char *text;
+
+      text = val;
+      pr_trace_msg(trace_channel, 19,
+        "found %s verification note for key: '%s'",
+        SFTP_KEYSTORE_HEADER_FIDO_VERIFY_REQUIRED, text);
+
+      fido_verify_required = pr_str_is_boolean(text);
+    }
+
+  } else {
+    fido_verify_required = TRUE;
+  }
+
+  if (fido_verify_required == TRUE &&
+      !(details->sk_flags & SFTP_KEYS_SK_USER_VERIFICATION_REQUIRED)) {
+    const pr_netaddr_t *remote_addr;
+
+    remote_addr = pr_netaddr_get_sess_remote_addr();
+
+    (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
+      "public key '%s' signature for %s from %.128s:%u rejected: "
+      "user verification requirement not met",
+      pubkey_algo, username, pr_netaddr_get_ipstr(remote_addr),
+      ntohs(pr_netaddr_get_port(remote_addr)));
+    errno = EACCES;
+    return -1;
+  }
+
+  return 0;
 }
 
 int sftp_keys_set_key_limits(int rsa_min, int dsa_min, int ec_min) {

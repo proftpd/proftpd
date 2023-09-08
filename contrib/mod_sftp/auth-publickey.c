@@ -84,6 +84,8 @@ int sftp_auth_publickey(struct ssh2_packet *pkt, cmd_rec *pass_cmd,
     unsigned char **buf, uint32_t *buflen, int *send_userauth_fail) {
   int fp_algo_id = 0, have_signature, res;
   enum sftp_key_type_e pubkey_type;
+  struct sftp_verify_details *details = NULL;
+  pr_table_t *verify_notes = NULL;
   unsigned char *pubkey_data;
   char *pubkey_algo = NULL;
   const char *fp = NULL, *fp_algo = NULL;
@@ -347,8 +349,9 @@ int sftp_auth_publickey(struct ssh2_packet *pkt, cmd_rec *pass_cmd,
      * check (HOOK?), for modules to enforce.
      */
 
+    verify_notes = pr_table_nalloc(pkt->pool, 0, 1);
     if (sftp_keystore_verify_user_key(pkt->pool, user, pubkey_data,
-        pubkey_len) < 0) {
+        pubkey_len, verify_notes) < 0) {
       pr_log_auth(PR_LOG_NOTICE, "USER %s (Login failed): authentication "
         "via '%s' public key failed", user, pubkey_algo);
 
@@ -389,15 +392,30 @@ int sftp_auth_publickey(struct ssh2_packet *pkt, cmd_rec *pass_cmd,
 
     sftp_msg_write_data(&buf2, &buflen2, pubkey_data, pubkey_len, TRUE);
 
+    details = pcalloc(pkt->pool, sizeof(struct sftp_verify_details));
     if (sftp_keys_verify_signed_data(pkt->pool, pubkey_algo, pubkey_data,
         pubkey_len, signature_data, signature_len, (unsigned char *) ptr2,
-        (bufsz2 - buflen2)) < 0) {
+        (bufsz2 - buflen2), details) < 0) {
       (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
         "failed to verify '%s' signature on public key auth request for "
         "user '%s'", pubkey_algo, orig_user);
 
       pr_log_auth(PR_LOG_NOTICE, "USER %s (Login failed): signature "
         "verification of '%s' public key failed", user, pubkey_algo);
+
+      *send_userauth_fail = TRUE;
+      errno = EACCES;
+      return 0;
+    }
+
+    if (sftp_keys_permit_key(pkt->pool, pubkey_algo, orig_user, details,
+        verify_notes) < 0) {
+      (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
+        "unable to permit '%s' signature on public key auth request for "
+        "user '%s' due to security key policy", pubkey_algo, orig_user);
+
+      pr_log_auth(PR_LOG_NOTICE, "USER %s (Login failed): signature "
+        "validation of '%s' public key failed", user, pubkey_algo);
 
       *send_userauth_fail = TRUE;
       errno = EACCES;
