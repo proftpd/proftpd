@@ -24,6 +24,8 @@ ChangeLog files.
 
       LogFormat %{transfer-speed} (Issue #535)
 
+      SFTPOptions FIDOTouchRequired FIDOVerifyRequired (Issue #1118)
+
 
   + Developer Notes
 
