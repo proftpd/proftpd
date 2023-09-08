@@ -155,6 +155,8 @@
 #define SFTP_OPT_INCLUDE_SFTP_TIMES		0x08000
 #define SFTP_OPT_NO_EXT_INFO			0x10000
 #define SFTP_OPT_NO_HOSTKEY_ROTATION		0x20000
+#define SFTP_OPT_FIDO_TOUCH_REQUIRED		0x40000
+#define SFTP_OPT_FIDO_VERIFY_REQUIRED		0x80000
 
 /* mod_sftp service flags */
 #define SFTP_SERVICE_FL_SFTP		0x0001
@@ -259,11 +261,11 @@ typedef struct keystore_st {
   /* Verify the given host key.  Returns zero on success, -1 otherwise. */
   int (*verify_host_key)(struct keystore_st *store, pool *p, const char *user,
     const char *host_fqdn, const char *host_user, unsigned char *host_key,
-    uint32_t host_keylen);
+    uint32_t host_keylen, pr_table_t *key_notes);
 
   /* Verify the given user key.  Returns zero on success, -1 otherwise. */
   int (*verify_user_key)(struct keystore_st *store, pool *p, const char *user,
-    unsigned char *user_key, uint32_t user_keylen);
+    unsigned char *user_key, uint32_t user_keylen, pr_table_t *key_notes);
 
   /* Close this keystore, clean up any allocated resources.  Returns
    * zero on success, -1 otherwise (with errno set appropriately).
@@ -274,6 +276,12 @@ typedef struct keystore_st {
 
 #define SFTP_SSH2_HOST_KEY_STORE	0x01
 #define SFTP_SSH2_USER_KEY_STORE	0x02
+
+/* Known/supported RFC4716 headers. */
+#define SFTP_KEYSTORE_HEADER_COMMENT			"Comment"
+#define SFTP_KEYSTORE_HEADER_SUBJECT			"Subject"
+#define SFTP_KEYSTORE_HEADER_FIDO_TOUCH_REQUIRED	"X-FIDO-Touch-Required"
+#define SFTP_KEYSTORE_HEADER_FIDO_VERIFY_REQUIRED	"X-FIDO-Verify-Required"
 
 int sftp_keystore_register_store(const char *,
   sftp_keystore_t *(*store_open)(pool *, int, const char *, const char *),

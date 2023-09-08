@@ -39,6 +39,9 @@ module sftp_sql_module;
 struct sqlstore_key {
   const char *subject;
 
+  /* Optional headers */
+  pr_table_t *headers;
+
   /* Key data */
   unsigned char *key_data;
   uint32_t key_datalen;
@@ -208,6 +211,15 @@ static char *sqlstore_getline(pool *p, char **blob, size_t *bloblen) {
   return NULL;
 }
 
+static struct sqlstore_key *sqlstore_alloc_key(pool *p) {
+  struct sqlstore_key *key = NULL;
+
+  key = pcalloc(p, sizeof(struct sqlstore_key));
+  key->headers = pr_table_nalloc(p, 0, 1);
+
+  return key;
+}
+
 static struct sqlstore_key *sqlstore_get_key_raw(pool *p, char **blob,
     size_t *bloblen) {
   char chunk[SFTP_SQL_BUFSZ], *data = NULL;
@@ -268,7 +280,7 @@ static struct sqlstore_key *sqlstore_get_key_raw(pool *p, char **blob,
 
   if (data != NULL &&
       datalen > 0) {
-    key = pcalloc(p, sizeof(struct sqlstore_key));
+    key = sqlstore_alloc_key(p);
     key->key_data = pcalloc(p, datalen + 1);
     key->key_datalen = datalen;
     memcpy(key->key_data, data, datalen);
@@ -387,9 +399,26 @@ static struct sqlstore_key *sqlstore_get_key_rfc4716(pool *p, char **blob,
 
     } else {
       if (key != NULL) {
-        if (strstr(line, ": ") != NULL) {
-          if (strncasecmp(line, "Subject: ", 9) == 0) {
-            key->subject = pstrdup(p, line + 9);
+        char *ptr;
+
+        ptr = strstr(line, ": ");
+        if (ptr != NULL) {
+          /* We have a header. */
+          char *tag, *text;
+
+          tag = pstrndup(p, line, ptr - line);
+          text = pstrdup(p, ptr + 2);
+          if (pr_table_add(key->headers, tag, text, 0) < 0) {
+            pr_trace_msg(trace_channel, 4,
+              "failed to add header '%s' to notes: %s", tag, strerror(errno));
+
+          } else {
+            pr_trace_msg(trace_channel, 22, "added header '%s: %s' to notes",
+              tag, text);
+          }
+
+          if (strcasecmp(tag, SFTP_KEYSTORE_HEADER_SUBJECT) == 0) {
+            key->subject = text;
           }
 
         } else {
@@ -486,7 +515,8 @@ static int sqlstore_verify_key_raw(pool *p, struct sqlstore_data *store_data,
 
 static int sqlstore_verify_key_rfc4716(pool *p,
     struct sqlstore_data *store_data, int nrow, char *col_data,
-    size_t col_datalen, unsigned char *key_data, uint32_t key_datalen) {
+    size_t col_datalen, unsigned char *key_data, uint32_t key_datalen,
+    pr_table_t *headers) {
   struct sqlstore_key *key;
   int xerrno = EINVAL;
 
@@ -520,6 +550,11 @@ static int sqlstore_verify_key_rfc4716(pool *p,
       continue;
     }
 
+    if (pr_table_copy(headers, key->headers, 0) < 0) {
+      pr_trace_msg(trace_channel, 19, "error copying verify notes: %s",
+         strerror(errno));
+    }
+
     return 0;
   }
 
@@ -529,7 +564,7 @@ static int sqlstore_verify_key_rfc4716(pool *p,
 
 static int sqlstore_verify_host_key(sftp_keystore_t *store, pool *p,
     const char *user, const char *host_fqdn, const char *host_user,
-    unsigned char *key_data, uint32_t key_datalen) {
+    unsigned char *key_data, uint32_t key_datalen, pr_table_t *headers) {
   register unsigned int i;
   struct sqlstore_data *store_data;
   pool *tmp_pool;
@@ -603,7 +638,7 @@ static int sqlstore_verify_host_key(sftp_keystore_t *store, pool *p,
     col_datalen = strlen(values[i]);
 
     res = sqlstore_verify_key_rfc4716(p, store_data, i, col_data, col_datalen,
-      key_data, key_datalen);
+      key_data, key_datalen, headers);
     if (res == 0) {
       pr_trace_msg(trace_channel, 10, "found matching RFC4716 public key "
         "(row %u) for host '%s' using SQLNamedQuery '%s'", i+1, host_fqdn,
@@ -636,7 +671,8 @@ static int sqlstore_verify_host_key(sftp_keystore_t *store, pool *p,
 }
 
 static int sqlstore_verify_user_key(sftp_keystore_t *store, pool *p,
-    const char *user, unsigned char *key_data, uint32_t key_datalen) {
+    const char *user, unsigned char *key_data, uint32_t key_datalen,
+    pr_table_t *headers) {
   register unsigned int i;
   struct sqlstore_data *store_data;
   pool *tmp_pool;
@@ -710,7 +746,7 @@ static int sqlstore_verify_user_key(sftp_keystore_t *store, pool *p,
     col_datalen = strlen(values[i]);
 
     res = sqlstore_verify_key_rfc4716(p, store_data, i, col_data, col_datalen,
-      key_data, key_datalen);
+      key_data, key_datalen, headers);
     if (res == 0) {
       pr_trace_msg(trace_channel, 10, "found matching RFC4716 public key "
         "(row %u) for user '%s' using SQLNamedQuery '%s'", i+1, user,

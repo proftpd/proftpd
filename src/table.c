@@ -1,6 +1,6 @@
 /*
  * ProFTPD - FTP server daemon
- * Copyright (c) 2004-2020 The ProFTPD Project team
+ * Copyright (c) 2004-2023 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -1222,6 +1222,42 @@ float pr_table_load(pr_table_t *tab) {
 
   load_factor = (tab->nents / tab->nchains);
   return load_factor;
+}
+
+static int tab_copy_cb(const void *key_data, size_t key_datasz,
+    const void *value_data, size_t value_datasz, void *user_data) {
+  int res;
+  pr_table_t *dst_tab;
+
+  dst_tab = user_data;
+
+  res = pr_table_kexists(dst_tab, key_data, key_datasz);
+  if (res > 0) {
+    res = pr_table_kset(dst_tab, key_data, key_datasz, value_data,
+      value_datasz);
+
+  } else {
+    res = pr_table_kadd(dst_tab, key_data, key_datasz, value_data,
+      value_datasz);
+  }
+
+  return res;
+}
+
+int pr_table_copy(pr_table_t *dst_tab, pr_table_t *src_tab, int flags) {
+  int res;
+
+  if (dst_tab == NULL ||
+      src_tab == NULL) {
+    errno = EINVAL;
+    return -1;
+  }
+
+  /* Future flags may support a DEEP_COPY flag, which would use the
+   * dst_tab->pool.
+   */
+  res = pr_table_do(src_tab, tab_copy_cb, dst_tab, PR_TABLE_DO_FL_ALL);
+  return res;
 }
 
 void pr_table_dump(void (*dumpf)(const char *fmt, ...), pr_table_t *tab) {
