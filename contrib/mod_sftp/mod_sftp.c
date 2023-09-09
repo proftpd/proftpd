@@ -1438,6 +1438,17 @@ MODRET set_sftpextensions(cmd_rec *cmd) {
           break;
       }
 
+    } else if (strcasecmp(ext, "userGroupNames") == 0) {
+      switch (action) {
+        case '-':
+          ext_flags &= ~SFTP_FXP_EXT_USERGROUPNAMES;
+          break;
+
+        case '+':
+          ext_flags |= SFTP_FXP_EXT_USERGROUPNAMES;
+          break;
+      }
+
     } else if (strcasecmp(ext, "xattr") == 0) {
 #ifdef HAVE_SYS_XATTR_H
       switch (action) {

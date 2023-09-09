@@ -24,6 +24,10 @@ ChangeLog files.
 
       LogFormat %{transfer-speed} (Issue #535)
 
+      SFTPExtensions userGroupNames
+
+        Support for OpenSSH "users-groups-by-id@openssh.com" SFTP extension
+
       SFTPOptions FIDOTouchRequired FIDOVerifyRequired (Issue #1118)
 
 

@@ -3937,6 +3937,18 @@ static void fxp_version_add_openssh_exts(pool *p, unsigned char **buf,
     fxp_msg_write_extpair(buf, buflen, &ext);
   }
 
+  if (fxp_ext_flags & SFTP_FXP_EXT_USERGROUPNAMES) {
+    struct fxp_extpair ext;
+
+    ext.ext_name = "users-groups-by-id@openssh.com";
+    ext.ext_data = (unsigned char *) "1";
+    ext.ext_datalen = 1;
+
+    pr_trace_msg(trace_channel, 11, "+ SFTP extension: %s = '%s'", ext.ext_name,
+      ext.ext_data);
+    fxp_msg_write_extpair(buf, buflen, &ext);
+  }
+
   if (fxp_ext_flags & SFTP_FXP_EXT_XATTR) {
     struct fxp_extpair ext;
 
@@ -6446,6 +6458,116 @@ static int fxp_handle_ext_fsetxattr(struct fxp_packet *fxp, const char *handle,
 }
 #endif /* PR_USE_XATTR */
 
+static int fxp_handle_ext_user_group_names(struct fxp_packet *fxp) {
+  unsigned int uid_count, gid_count;
+  uint32_t uid_datalen, user_nameslen, user_namessz;
+  unsigned char *uid_data, *user_names, *user_names_ptr;
+  uint32_t gid_datalen, group_nameslen, group_namessz;
+  unsigned char *gid_data, *group_names, *group_names_ptr;
+  uint32_t buflen, bufsz;
+  unsigned char *buf, *ptr;
+  struct fxp_packet *resp;
+
+  uid_datalen = sftp_msg_read_int(fxp->pool, &fxp->payload, &fxp->payload_sz);
+  uid_data = sftp_msg_read_data(fxp->pool, &fxp->payload, &fxp->payload_sz,
+    uid_datalen);
+  uid_count = uid_datalen / sizeof(uint32_t);
+  pr_trace_msg(trace_channel, 19, "client requested names for %u UID%s",
+    uid_count, uid_count != 1 ? "s" : "");
+
+  gid_datalen = sftp_msg_read_int(fxp->pool, &fxp->payload, &fxp->payload_sz);
+  gid_data = sftp_msg_read_data(fxp->pool, &fxp->payload, &fxp->payload_sz,
+    gid_datalen);
+  gid_count = gid_datalen / sizeof(uint32_t);
+  pr_trace_msg(trace_channel, 19, "client requested names for %u GID%s",
+    gid_count, gid_count != 1 ? "s" : "");
+
+  if (uid_datalen > 0) {
+    user_namessz = user_nameslen = FXP_PACKET_DATA_DEFAULT_SZ;
+    user_names = user_names_ptr = palloc(fxp->pool, user_namessz);
+
+  } else {
+    user_namessz = user_nameslen = 0;
+    user_names = user_names_ptr = NULL;
+  }
+
+  while (uid_datalen > 0) {
+    uint32_t uid;
+    const char *name;
+
+    pr_signals_handle();
+
+    uid = sftp_msg_read_int(fxp->pool, &uid_data, &uid_datalen);
+    name = pr_auth_uid2name(fxp->pool, (uid_t) uid);
+    if (name == NULL) {
+      pr_trace_msg(trace_channel, 9,
+        "unable to resolve UID %lu to user name: %s", (unsigned long) uid,
+        strerror(errno));
+      name = pstrdup(fxp->pool, "");
+
+    } else {
+      pr_trace_msg(trace_channel, 19,
+        "resolved client-requested UID %lu to user '%s'", (unsigned long) uid,
+        name);
+    }
+
+    sftp_msg_write_data(&user_names, &user_nameslen,
+      (const unsigned char *) name, strlen(name), TRUE);
+  }
+
+  if (gid_datalen > 0) {
+    group_namessz = group_nameslen = FXP_PACKET_DATA_DEFAULT_SZ;
+    group_names = group_names_ptr = palloc(fxp->pool, group_namessz);
+
+  } else {
+    group_namessz = group_nameslen = 0;
+    group_names = group_names_ptr = NULL;
+  }
+
+  while (gid_datalen > 0) {
+    uint32_t gid;
+    const char *name;
+
+    pr_signals_handle();
+
+    gid = sftp_msg_read_int(fxp->pool, &gid_data, &gid_datalen);
+    name = pr_auth_gid2name(fxp->pool, (gid_t) gid);
+    if (name == NULL) {
+      pr_trace_msg(trace_channel, 9,
+        "unable to resolve GID %lu to group name: %s", (unsigned long) gid,
+        strerror(errno));
+      name = pstrdup(fxp->pool, "");
+
+    } else {
+      pr_trace_msg(trace_channel, 19,
+        "resolved client-requested GID %lu to group '%s'", (unsigned long) gid,
+        name);
+    }
+
+    sftp_msg_write_data(&group_names, &group_nameslen,
+      (const unsigned char *) name, strlen(name), TRUE);
+  }
+
+  buflen = bufsz = (FXP_PACKET_DATA_DEFAULT_SZ * 2);
+  buf = ptr = palloc(fxp->pool, bufsz);
+
+  sftp_msg_write_byte(&buf, &buflen, SFTP_SSH2_FXP_EXTENDED_REPLY);
+  /* Note: The current OpenSSH spec for this request is missing this
+   * request ID in its documented response.
+   */
+  sftp_msg_write_int(&buf, &buflen, fxp->request_id);
+  sftp_msg_write_data(&buf, &buflen, user_names_ptr,
+    user_namessz - user_nameslen, TRUE);
+  sftp_msg_write_data(&buf, &buflen, group_names_ptr,
+    group_namessz - group_nameslen, TRUE);
+
+  resp = fxp_packet_create(fxp->pool, fxp->channel_id);
+  resp->payload = ptr;
+  resp->payload_sz = (bufsz - buflen);
+
+  return fxp_packet_write(resp);
+}
+
 static int fxp_handle_ext_vendor_id(struct fxp_packet *fxp) {
   unsigned char *buf, *ptr;
   char *vendor_name, *product_name, *product_version;
@@ -7319,6 +7441,19 @@ static int fxp_handle_extended(struct fxp_packet *fxp) {
     return res;
   }
 #endif /* HAVE_SYS_STATVFS_H */
+
+  if ((fxp_ext_flags & SFTP_FXP_EXT_USERGROUPNAMES) &&
+      strcmp(ext_request_name, "users-groups-by-id@openssh.com") == 0) {
+    res = fxp_handle_ext_user_group_names(fxp);
+    if (res == 0) {
+      fxp_cmd_dispatch(cmd);
+
+    } else {
+      fxp_cmd_dispatch_err(cmd);
+    }
+
+    return res;
+  }
 
 #if defined(PR_USE_XATTR)
   if (fxp_ext_flags & SFTP_FXP_EXT_XATTR) {
