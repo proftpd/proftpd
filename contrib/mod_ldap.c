@@ -221,8 +221,10 @@ static struct timeval ldap_connecttimeout_tv;
 static struct timeval ldap_querytimeout_tv;
 #define PR_LDAP_QUERY_TIMEOUT_DEFAULT		5
 
+#define PR_LDAP_AUTO_DEFAULT_ID		-2
 static uid_t ldap_defaultuid = -1;
 static gid_t ldap_defaultgid = -1;
+
 static LDAP *ld = NULL;
 static array_header *cached_quota = NULL;
 static array_header *cached_ssh_pubkeys = NULL;
@@ -856,7 +858,30 @@ static struct passwd *pr_ldap_user_lookup(pool *p, char *filter_template,
           return NULL;
         }
 
-        pw->pw_uid = ldap_defaultuid;
+        if (ldap_defaultuid == (uid_t) PR_LDAP_AUTO_DEFAULT_ID) {
+          if (pw->pw_name != NULL) {
+            struct passwd *auto_pw;
+
+            auto_pw = getpwnam(pw->pw_name);
+            if (auto_pw != NULL) {
+              pw->pw_uid = auto_pw->pw_uid;
+
+            } else {
+              (void) pr_log_writefile(ldap_logfd, MOD_LDAP_VERSION,
+                "LDAPDefaultUID Auto in effect but failed automatic user "
+                "'%s' lookup: %s", pw->pw_name, strerror(errno));
+              return NULL;
+            }
+
+          } else {
+            (void) pr_log_writefile(ldap_logfd, MOD_LDAP_VERSION,
+              "LDAPDefaultUID Auto in effect but user name is missing");
+            return NULL;
+          }
+
+        } else {
+          pw->pw_uid = ldap_defaultuid;
+        }
         ++i;
 
         (void) pr_log_writefile(ldap_logfd, MOD_LDAP_VERSION,
@@ -875,7 +900,27 @@ static struct passwd *pr_ldap_user_lookup(pool *p, char *filter_template,
           return NULL;
         }
 
-        pw->pw_gid = ldap_defaultgid;
+        if (ldap_defaultgid == (gid_t) PR_LDAP_AUTO_DEFAULT_ID) {
+          if (pw->pw_name != NULL) {
+            struct passwd *auto_pw;
+
+            auto_pw = getpwnam(pw->pw_name);
+            if (auto_pw != NULL) {
+              pw->pw_gid = auto_pw->pw_gid;
+
+            } else {
+              (void) pr_log_writefile(ldap_logfd, MOD_LDAP_VERSION,
+                "LDAPDefaultGID Auto in effect but failed automatic user "
+                "'%s' lookup: %s", pw->pw_name, strerror(errno));
+              return NULL;
+            }
+
+          } else {
+            (void) pr_log_writefile(ldap_logfd, MOD_LDAP_VERSION,
+              "LDAPDefaultGID Auto in effect but user name is missing");
+            return NULL;
+          }
+        }
         ++i;
 
         (void) pr_log_writefile(ldap_logfd, MOD_LDAP_VERSION,
@@ -971,7 +1016,28 @@ static struct passwd *pr_ldap_user_lookup(pool *p, char *filter_template,
     } else if (strcasecmp(attrs[i], ldap_attr_uidnumber) == 0) {
       if (ldap_forcedefaultuid == TRUE &&
           ldap_defaultuid != (uid_t) -1) {
-        pw->pw_uid = ldap_defaultuid;
+
+        if (ldap_defaultuid == (uid_t) PR_LDAP_AUTO_DEFAULT_ID) {
+          struct passwd *auto_pw;
+
+          /* Note that we are deliberately bypassing our Auth API, and calling
+           * the system `getpwnam(3)` directly in order to "automatically"
+           * obtain the best UID.
+           */
+          auto_pw = getpwnam(pw->pw_name);
+          if (auto_pw != NULL) {
+            pw->pw_uid = auto_pw->pw_uid;
+
+          } else {
+            pr_trace_msg(trace_channel, 3,
+              "error automatically determining UID for user '%s': %s",
+              pw->pw_name, strerror(errno));
+            pw->pw_uid = ldap_defaultuid;
+          }
+
+        } else {
+          pw->pw_uid = ldap_defaultuid;
+        }
 
       } else {
         pw->pw_uid = (uid_t) strtoul(LDAP_VALUE(values, 0), NULL, 10);
@@ -980,7 +1046,28 @@ static struct passwd *pr_ldap_user_lookup(pool *p, char *filter_template,
     } else if (strcasecmp(attrs[i], ldap_attr_gidnumber) == 0) {
       if (ldap_forcedefaultgid == TRUE &&
           ldap_defaultgid != (gid_t) -1) {
-        pw->pw_gid = ldap_defaultgid;
+
+        if (ldap_defaultgid == (gid_t) PR_LDAP_AUTO_DEFAULT_ID) {
+          struct passwd *auto_pw;
+
+          /* Note that we are deliberately bypassing our Auth API, and calling
+           * the system `getpwnam(3)` directly in order to "automatically"
+           * obtain the best GID.
+           */
+          auto_pw = getpwnam(pw->pw_name);
+          if (auto_pw != NULL) {
+            pw->pw_gid = auto_pw->pw_gid;
+
+          } else {
+            pr_trace_msg(trace_channel, 3,
+              "error automatically determining primary GID for user '%s': %s",
+              pw->pw_name, strerror(errno));
+            pw->pw_gid = ldap_defaultgid;
+          }
+
+        } else {
+          pw->pw_gid = ldap_defaultgid;
+        }
 
       } else {
         pw->pw_gid = (gid_t) strtoul(LDAP_VALUE(values, 0), NULL, 10);
@@ -2874,8 +2961,13 @@ MODRET set_ldapdefaultuid(cmd_rec *cmd) {
   c = add_config_param(cmd->argv[0], 1, NULL);
   c->argv[0] = pcalloc(c->pool, sizeof(uid_t));
 
-  if (pr_str2uid(cmd->argv[1], &uid) < 0) {
-    CONF_ERROR(cmd, "LDAPDefaultUID: UID argument must be numeric");
+  if (strcasecmp(cmd->argv[1], "auto") == 0) {
+    uid = PR_LDAP_AUTO_DEFAULT_ID;
+
+  } else {
+    if (pr_str2uid(cmd->argv[1], &uid) < 0) {
+      CONF_ERROR(cmd, "LDAPDefaultUID: UID argument must be numeric");
+    }
   }
 
   *((uid_t *) c->argv[0]) = uid;
@@ -2892,8 +2984,13 @@ MODRET set_ldapdefaultgid(cmd_rec *cmd) {
   c = add_config_param(cmd->argv[0], 1, NULL);
   c->argv[0] = pcalloc(c->pool, sizeof(gid_t));
 
-  if (pr_str2gid(cmd->argv[1], &gid) < 0) {
-    CONF_ERROR(cmd, "LDAPDefaultGID: GID argument must be numeric");
+  if (strcasecmp(cmd->argv[1], "auto") == 0) {
+    gid = PR_LDAP_AUTO_DEFAULT_ID;
+
+  } else {
+    if (pr_str2gid(cmd->argv[1], &gid) < 0) {
+      CONF_ERROR(cmd, "LDAPDefaultGID: GID argument must be numeric");
+    }
   }
 
   *((gid_t *) c->argv[0]) = gid;
