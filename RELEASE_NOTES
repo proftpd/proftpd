@@ -22,6 +22,8 @@ ChangeLog files.
 
       ExtendedLog SEC class (Issue #1626)
 
+      LDAPDefaultGID, LDAPDefaultUID Auto (Issue #1716)
+
       LogFormat %{transfer-speed} (Issue #535)
 
       SFTPExtensions userGroupNames
