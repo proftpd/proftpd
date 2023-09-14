@@ -504,7 +504,6 @@ MODRET set_sftpauthorizedkeys(cmd_rec *cmd) {
 MODRET set_sftpciphers(cmd_rec *cmd) {
   register unsigned int i;
   config_rec *c;
-  xaset_t *set = NULL;
 
   if (cmd->argc < 2) {
     CONF_ERROR(cmd, "Wrong number of parameters");
@@ -519,13 +518,11 @@ MODRET set_sftpciphers(cmd_rec *cmd) {
     }
   }
 
-  set = cmd->server->conf;
-  c = create_config(set->pool, cmd->argv[0], cmd->argc-1);
+  c = add_config_param(cmd->argv[0], cmd->argc-1, NULL);
   for (i = 1; i < cmd->argc; i++) {
     c->argv[i-1] = pstrdup(c->pool, cmd->argv[i]);
   }
 
-  pr_config_add_config_to_set(set, c, 0);
   return PR_HANDLED(cmd);
 }
 
@@ -1239,7 +1236,6 @@ MODRET set_sftpdhparamfile(cmd_rec *cmd) {
 MODRET set_sftpdigests(cmd_rec *cmd) {
   register unsigned int i;
   config_rec *c;
-  xaset_t *set = NULL;
 
   if (cmd->argc < 2) {
     CONF_ERROR(cmd, "Wrong number of parameters");
@@ -1254,13 +1250,11 @@ MODRET set_sftpdigests(cmd_rec *cmd) {
     }
   }
 
-  set = cmd->server->conf;
-  c = create_config(set->pool, cmd->argv[0], cmd->argc-1);
+  c = add_config_param(cmd->argv[0], cmd->argc-1, NULL);
   for (i = 1; i < cmd->argc; i++) {
     c->argv[i-1] = pstrdup(c->pool, cmd->argv[i]);
   }
 
-  pr_config_add_config_to_set(set, c, 0);
   return PR_HANDLED(cmd);
 }
 
@@ -1553,7 +1547,6 @@ MODRET set_sftphostkey(cmd_rec *cmd) {
 MODRET set_sftphostkeys(cmd_rec *cmd) {
   register unsigned int i;
   config_rec *c;
-  xaset_t *set = NULL;
 
   if (cmd->argc < 2) {
     CONF_ERROR(cmd, "Wrong number of parameters");
@@ -1568,13 +1561,11 @@ MODRET set_sftphostkeys(cmd_rec *cmd) {
     }
   }
 
-  set = cmd->server->conf;
-  c = create_config(set->pool, cmd->argv[0], cmd->argc-1);
+  c = add_config_param(cmd->argv[0], cmd->argc-1, NULL);
   for (i = 1; i < cmd->argc; i++) {
     c->argv[i-1] = pstrdup(c->pool, cmd->argv[i]);
   }
 
-  pr_config_add_config_to_set(set, c, 0);
   return PR_HANDLED(cmd);
 }
 
@@ -1603,7 +1594,6 @@ MODRET set_sftpkeyblacklist(cmd_rec *cmd) {
 MODRET set_sftpkeyexchanges(cmd_rec *cmd) {
   register unsigned int i;
   config_rec *c;
-  xaset_t *set = NULL;
   char *exchanges = "";
 
   if (cmd->argc < 2) {
@@ -1619,15 +1609,13 @@ MODRET set_sftpkeyexchanges(cmd_rec *cmd) {
     }
   }
 
-  set = cmd->server->conf;
-  c = create_config(set->pool, cmd->argv[0], 1);
+  c = add_config_param(cmd->argv[0], 1, NULL);
   for (i = 1; i < cmd->argc; i++) {
     exchanges = pstrcat(c->pool, exchanges, *exchanges ? "," : "", cmd->argv[i],
       NULL);
   }
   c->argv[0] = exchanges;
 
-  pr_config_add_config_to_set(set, c, 0);
   return PR_HANDLED(cmd);
 }
 
