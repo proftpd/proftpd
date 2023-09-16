@@ -41,6 +41,7 @@
   bytes of raw data" errors due to small ProFTPD buffer.
 - Issue 1678 - High session memory usage caused by SFTP outgoing data buffering.
 - Issue 1683 - Out-of-bounds buffer read when handling FTP commands.
+- Issue 1712 - SFTP algorithm settings in <Global> section not being used.
 
 1.3.8 - Released 04-Dec-2022
 --------------------------------
