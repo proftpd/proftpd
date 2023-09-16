@@ -1,6 +1,6 @@
 /*
  * ProFTPD - mod_sftp SCP
- * Copyright (c) 2008-2021 TJ Saunders
+ * Copyright (c) 2008-2023 TJ Saunders
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -1188,13 +1188,13 @@ static int recv_data(pool *p, uint32_t channel_id, struct scp_path *sp,
           "receiving file data, received '%c'", data[writelen]);
       }
 
-      pr_throttle_pause(sp->recvlen, TRUE);
+      pr_throttle_pause(sp->recvlen, TRUE, 0);
 
       sp->recvd_data = TRUE;
       return 1;
     }
 
-    pr_throttle_pause(sp->recvlen, FALSE);
+    pr_throttle_pause(sp->recvlen, FALSE, 0);
 
   } else {
     /* We should have just one extra end-of-stream byte. */
@@ -1203,7 +1203,7 @@ static int recv_data(pool *p, uint32_t channel_id, struct scp_path *sp,
         "receiving file data, received '%c'", data[writelen]);
     }
 
-    pr_throttle_pause(sp->recvlen, TRUE);
+    pr_throttle_pause(sp->recvlen, TRUE, 0);
 
     sp->recvd_data = TRUE;
     return 1;
@@ -1846,10 +1846,10 @@ static int send_data(pool *p, uint32_t channel_id, struct scp_path *sp,
       chunk[chunklen++] = '\0';
       need_confirm = TRUE;
 
-      pr_throttle_pause(sp->sentlen, TRUE);
+      pr_throttle_pause(sp->sentlen, TRUE, 0);
 
     } else {
-      pr_throttle_pause(sp->sentlen, FALSE);
+      pr_throttle_pause(sp->sentlen, FALSE, 0);
     }
 
     pr_trace_msg(trace_channel, 3, "sending '%s' data (%lu bytes)", sp->path,
