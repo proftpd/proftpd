@@ -30,7 +30,7 @@
 static long double xfer_rate_kbps = 0.0, xfer_rate_bps = 0.0;
 static off_t xfer_rate_freebytes = 0.0;
 static int have_xfer_rate = FALSE;
-static unsigned int xfer_rate_scoreboard_updates = 0;
+static long xfer_rate_next_scoreboard_update = 0;
 
 /* Very similar to the {block,unblock}_signals() function, this masks most
  * of the same signals -- except for TERM.  This allows a throttling process
@@ -100,7 +100,7 @@ void pr_throttle_init(cmd_rec *cmd) {
   /* Make sure the variables are (re)initialized */
   xfer_rate_kbps = xfer_rate_bps = 0.0;
   xfer_rate_freebytes = 0;
-  xfer_rate_scoreboard_updates = 0;
+  xfer_rate_next_scoreboard_update = 0;
   have_xfer_rate = FALSE;
 
   c = find_config(CURRENT_CONF, CONF_PARAM, "TransferRate", FALSE);
@@ -209,7 +209,7 @@ void pr_throttle_init(cmd_rec *cmd) {
   }
 }
 
-void pr_throttle_pause(off_t xferlen, int xfer_ending) {
+void pr_throttle_pause(off_t xferlen, int force_scoreboard_update, off_t xfer_done) {
   long ideal = 0, elapsed = 0;
   off_t orig_xferlen = xferlen;
 
@@ -222,17 +222,17 @@ void pr_throttle_pause(off_t xferlen, int xfer_ending) {
 
   /* Perform no throttling if no throttling has been configured. */
   if (!have_xfer_rate) {
-    xfer_rate_scoreboard_updates++;
 
-    if (xfer_ending ||
-        xfer_rate_scoreboard_updates % PR_TUNABLE_XFER_SCOREBOARD_UPDATES == 0) {
+    if (force_scoreboard_update ||
+        elapsed > xfer_rate_next_scoreboard_update) {
       /* Update the scoreboard. */
       pr_scoreboard_entry_update(session.pid,
         PR_SCORE_XFER_LEN, orig_xferlen,
+        PR_SCORE_XFER_DONE, xfer_done,
         PR_SCORE_XFER_ELAPSED, (unsigned long) elapsed,
         NULL);
 
-      xfer_rate_scoreboard_updates = 0;
+      xfer_rate_next_scoreboard_update = elapsed + PR_TUNABLE_XFER_SCOREBOARD_UPDATES * 100;
     }
 
     return;
@@ -249,20 +249,19 @@ void pr_throttle_pause(off_t xferlen, int xfer_ending) {
       xferlen -= xfer_rate_freebytes;
 
     } else {
-      xfer_rate_scoreboard_updates++;
-
       /* The number of bytes transferred is less than the freebytes.  Just
        * update the scoreboard -- no throttling needed.
        */
 
-      if (xfer_ending ||
-          xfer_rate_scoreboard_updates % PR_TUNABLE_XFER_SCOREBOARD_UPDATES == 0) {
+      if (force_scoreboard_update ||
+          elapsed > xfer_rate_next_scoreboard_update) {
         pr_scoreboard_entry_update(session.pid,
           PR_SCORE_XFER_LEN, orig_xferlen,
+          PR_SCORE_XFER_DONE, xfer_done,
           PR_SCORE_XFER_ELAPSED, (unsigned long) elapsed,
           NULL);
 
-        xfer_rate_scoreboard_updates = 0;
+        xfer_rate_next_scoreboard_update = elapsed + PR_TUNABLE_XFER_SCOREBOARD_UPDATES * 100;
       }
 
       return;
@@ -314,6 +313,7 @@ void pr_throttle_pause(off_t xferlen, int xfer_ending) {
     /* Update the scoreboard. */
     pr_scoreboard_entry_update(session.pid,
       PR_SCORE_XFER_LEN, orig_xferlen,
+      PR_SCORE_XFER_DONE, xfer_done,
       PR_SCORE_XFER_ELAPSED, (unsigned long) ideal,
       NULL);
 
@@ -321,6 +321,7 @@ void pr_throttle_pause(off_t xferlen, int xfer_ending) {
     /* Update the scoreboard. */
     pr_scoreboard_entry_update(session.pid,
       PR_SCORE_XFER_LEN, orig_xferlen,
+      PR_SCORE_XFER_DONE, xfer_done,
       PR_SCORE_XFER_ELAPSED, (unsigned long) elapsed,
       NULL);
   }

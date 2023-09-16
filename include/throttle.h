@@ -29,6 +29,6 @@
 
 int pr_throttle_have_rate(void);
 void pr_throttle_init(cmd_rec *);
-void pr_throttle_pause(off_t, int);
+void pr_throttle_pause(off_t, int, off_t);
 
 #endif /* PR_THROTTLE_H */
