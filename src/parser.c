@@ -1287,7 +1287,8 @@ int parse_config_path2(pool *p, const char *path, unsigned int depth) {
     }
   }
 
-  pr_trace_msg(trace_channel, 3, "processing configuration directory '%s'", dup_path);
+  pr_trace_msg(trace_channel, 3, "processing configuration directory '%s'",
+    dup_path);
 
   dirh = pr_fsio_opendir(dup_path);
   if (dirh == NULL) {
@@ -1352,8 +1353,18 @@ int parse_config_path2(pool *p, const char *path, unsigned int depth) {
 
       if (res < 0) {
         pr_log_pri(PR_LOG_WARNING,
-          "error: unable to open parse file '%s': %s", file,
-          strerror(xerrno));
+          "error: unable to parse file '%s': %s", file, strerror(xerrno));
+        pr_log_pri(PR_LOG_WARNING, "%s",
+          "error: check `proftpd --configtest -d10` for details");
+
+        destroy_pool(tmp_pool);
+
+        /* Any error other than EINVAL is logged as a warning, but ignored,
+         * by the Include directive handler.  Thus we always return EINVAL
+         * here to halt further parsing (Issue #1721).
+         */
+        errno = EINVAL;
+        return -1;
       }
     }
   }
