@@ -13970,12 +13970,36 @@ MODRET set_tlsciphersuite(cmd_rec *cmd) {
   if (cmd->argc-1 == 1) {
     ciphersuite = cmd->argv[1];
 
+    /* Currently, OpenSSL ciphersuite names for TLSv1.3 all use underscores;
+     * ciphersuite names for TLSv1.2 and older do NOT use underscores.
+     *
+     * So if we see an underscore in the configured ciphersuites here, we
+     * know that the optional protocol parameter has NOT been used, and that
+     * a TLSv1.3 ciphersuite is being configured -- and that this situation
+     * will be silently ignored by OpenSSL.
+     */
+    if (strchr(ciphersuite, '_') != NULL) {
+      CONF_ERROR(cmd, pstrcat(cmd->tmp_pool,
+        "use of TLSv1.3 ciphersuite in '", ciphersuite,
+        "' requires protocol parameter; use 'TLSCipherSuite TLSv1.3 ",
+        ciphersuite, "'", NULL));
+    }
+
   } else if (cmd->argc-1 == 2) {
     char *protocol_text;
 
     protocol_text = cmd->argv[1];
     if (strcasecmp(protocol_text, "TLSv1.3") == 0) {
       protocol = TLS_PROTO_TLS_V1_3;
+
+    } else if (strcasecmp(protocol_text, "TLSv1.2") == 0) {
+      protocol = TLS_PROTO_TLS_V1_2;
+
+    } else if (strcasecmp(protocol_text, "TLSv1.1") == 0) {
+      protocol = TLS_PROTO_TLS_V1_1;
+
+    } else if (strcasecmp(protocol_text, "TLSv1.0") == 0) {
+      protocol = TLS_PROTO_TLS_V1;
 
     } else {
       CONF_ERROR(cmd, pstrcat(cmd->tmp_pool,
