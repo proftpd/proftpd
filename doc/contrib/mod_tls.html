@@ -308,7 +308,12 @@ If the SSL library supports TLSv1.3 (<i>e.g.</i> OpenSSL-1.1.1 and later), the
 <em>protocol specifier</em> "TLSv1.3" can be used to configure the cipher
 suites for that protocol:
 <pre>
-  # Configure TLSv1.3 ciphersuites
+  TLSProtocol TLSv1.2 TLSv1.3
+
+  # Configure ciphersuites for TLSv1.2 and older protocols
+  TLSCipherSuite TLSv1.2 ECDHE-ECDSA-AES256-GCM-SHA384:ECDHE-RSA-AES256-GCM-SHA384:DHE-RSA-AES256-GCM-SHA384:ECDHE-ECDSA-CHACHA20-POLY1305:ECDHE-RSA-CHACHA20-POLY1305:...
+
+  # Configure TLSv1.3 ciphersuites separately
   TLSCipherSuite TLSv1.3 TLS_CHACHA20_POLY1305_SHA256:TLS_AES_256_GCM_SHA384:TLS_AES_128_GCM_SHA256
 </pre>
 
