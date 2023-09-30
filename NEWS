@@ -82,6 +82,8 @@
   mod_ldap.
 - Issue 1712 - SFTP algorithm settings in <Global> section not being used.
 - Issue 1433 - Update upload progress in scoreboard when throttling.
+- Issue 1721 - Null pointer reference encountered for FTPS connection due to
+  config parser ignoring Include file problem.
 
 1.3.8 - Released 04-Dec-2022
 --------------------------------
