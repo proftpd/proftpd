@@ -13263,7 +13263,7 @@ static int fxp_handle_write(struct fxp_packet *fxp) {
   name = sftp_msg_read_string(fxp->pool, &fxp->payload, &fxp->payload_sz);
   offset = sftp_msg_read_long(fxp->pool, &fxp->payload, &fxp->payload_sz);
   datalen = sftp_msg_read_int(fxp->pool, &fxp->payload, &fxp->payload_sz);
-  data = sftp_msg_read_data(fxp->pool, &fxp->payload, &fxp->payload_sz,
+  data = sftp_msg_read_data_direct(fxp->pool, &fxp->payload, &fxp->payload_sz,
     datalen);
 
   memset(cmd_arg, '\0', sizeof(cmd_arg));
