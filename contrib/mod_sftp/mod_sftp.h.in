@@ -61,6 +61,17 @@
 /* Define if you have OpenSSL with EVP_aes_256_gcm support. */
 #undef HAVE_EVP_AES_256_GCM_OPENSSL
 
+/* Define if you have OpenSSL with EVP_chacha20 support.
+ *
+ * Note, however, that older LibreSSL versions have broken ChaCha20 support.
+ */
+#undef HAVE_EVP_CHACHA20_OPENSSL
+
+#if defined(HAVE_LIBRESSL) && \
+  LIBRESSL_VERSION_NUMBER < 0x3010000fL
+# undef HAVE_BROKEN_CHACHA20
+#endif
+
 /* Define if you have OpenSSL with OSSL_PROVIDER_load support. */
 #undef HAVE_OSSL_PROVIDER_LOAD_OPENSSL
 

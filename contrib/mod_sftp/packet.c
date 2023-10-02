@@ -1,6 +1,6 @@
 /*
  * ProFTPD - mod_sftp packet IO
- * Copyright (c) 2008-2022 TJ Saunders
+ * Copyright (c) 2008-2023 TJ Saunders
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -531,7 +531,7 @@ static void read_packet_discard(int sockfd) {
 
 static int read_packet_len(int sockfd, struct ssh2_packet *pkt,
     unsigned char *buf, size_t *offset, size_t *buflen, size_t bufsz,
-    int etm_mac) {
+    int etm_mac, int chachapoly) {
   uint32_t packet_len = 0, len = 0;
   size_t readsz;
   int res;
@@ -549,7 +549,8 @@ static int read_packet_len(int sockfd, struct ssh2_packet *pkt,
      * ETM mode, read enough to include the AAD.  For ETM modes, leave the
      * first block for later.
      */
-    if (etm_mac == TRUE) {
+    if (etm_mac == TRUE ||
+        chachapoly == TRUE) {
       readsz = pkt->aad_len;
 
     } else {
@@ -563,15 +564,12 @@ static int read_packet_len(int sockfd, struct ssh2_packet *pkt,
   }
 
   len = res;
-  if (sftp_cipher_read_data(pkt, buf, readsz, &ptr, &len) < 0) {
+  res = sftp_cipher_read_packet_len(pkt, buf, readsz, &ptr, &len, &packet_len);
+  if (res < 0) {
     return -1;
   }
 
-  memmove(&packet_len, ptr, sizeof(uint32_t));
-  pkt->packet_len = ntohl(packet_len);
-
-  ptr += sizeof(uint32_t);
-  len -= sizeof(uint32_t);
+  pkt->packet_len = packet_len;
 
   /* Copy the remaining unencrypted bytes from the block into the given
    * buffer.
@@ -607,7 +605,7 @@ static int read_packet_padding_len(int sockfd, struct ssh2_packet *pkt,
 
 static int read_packet_payload(int sockfd, struct ssh2_packet *pkt,
     unsigned char *buf, size_t *offset, size_t *buflen, size_t bufsz,
-    int etm_mac) {
+    int etm_mac, int chachapoly) {
   unsigned char *ptr = NULL;
   int res;
   uint32_t payload_len = pkt->payload_len, padding_len = 0, auth_len = 0,
@@ -620,7 +618,8 @@ static int read_packet_payload(int sockfd, struct ssh2_packet *pkt,
    * decrypt it, to find the padding.
    *
    * For ETM, we only want to find the payload and padding AFTER we've read
-   * the entire (encrypted) payload, MAC'd it, THEN decrypt it.
+   * the entire (encrypted) payload, MAC'd it, THEN decrypt it.  Similarly
+   * for ChaChaPoly.
    */
 
   if (pkt->padding_len > 0) {
@@ -630,7 +629,7 @@ static int read_packet_payload(int sockfd, struct ssh2_packet *pkt,
   auth_len = sftp_cipher_get_read_auth_size();
 
   if (payload_len + padding_len + auth_len == 0 &&
-      etm_mac == FALSE) {
+      etm_mac == FALSE && chachapoly == FALSE) {
     return 0;
   }
 
@@ -708,7 +707,8 @@ static int read_packet_payload(int sockfd, struct ssh2_packet *pkt,
     }
   }
 
-  if (etm_mac == TRUE) {
+  if (etm_mac == TRUE ||
+      chachapoly == TRUE) {
     data_len = pkt->packet_len;
 
   } else {
@@ -735,10 +735,11 @@ static int read_packet_payload(int sockfd, struct ssh2_packet *pkt,
   len = res;
 
   /* For ETM modes, we do NOT want to decrypt the data yet; we need to read/
-   * compare MACs first.
+   * compare MACs first.  Similarly for ChaChaPoly.
    */
 
-  if (etm_mac == TRUE) {
+  if (etm_mac == TRUE ||
+      chachapoly == TRUE) {
     *buflen = res;
 
   } else {
@@ -956,7 +957,7 @@ int sftp_ssh2_packet_set_client_alive(unsigned int max, unsigned int interval) {
 int sftp_ssh2_packet_read(int sockfd, struct ssh2_packet *pkt) {
   unsigned char buf[SFTP_MAX_PACKET_LEN];
   size_t buflen, bufsz = SFTP_MAX_PACKET_LEN, offset = 0, auth_len = 0;
-  int etm_mac = FALSE;
+  int chachapoly = FALSE, etm_mac = FALSE;
 
   pr_session_set_idle();
 
@@ -964,6 +965,9 @@ int sftp_ssh2_packet_read(int sockfd, struct ssh2_packet *pkt) {
   if (auth_len > 0) {
     /* Authenticated encryption ciphers do not encrypt the packet length,
      * and instead use it as Additional Authenticated Data (AAD).
+     *
+     * Note that OpenSSH's ChaCha/Poly cipher does encrypt the packet length,
+     * and uses it as AAD.
      */
     pkt->aad_len = sizeof(uint32_t);
   }
@@ -975,6 +979,11 @@ int sftp_ssh2_packet_read(int sockfd, struct ssh2_packet *pkt) {
      */
     pkt->aad_len = sizeof(uint32_t);
   }
+
+  /* OpenSSH's ChaChaPoly acts like an ETM cipher as well. */
+  chachapoly = sftp_cipher_is_read_chachapoly();
+
+  pkt->seqno = packet_client_seqno;
 
   while (TRUE) {
     uint32_t encrypted_datasz, req_blocksz;
@@ -990,7 +999,7 @@ int sftp_ssh2_packet_read(int sockfd, struct ssh2_packet *pkt) {
     memset(buf, 0, sizeof(buf));
 
     if (read_packet_len(sockfd, pkt, buf, &offset, &buflen, bufsz,
-        etm_mac) < 0) {
+        etm_mac, chachapoly) < 0) {
       (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
         "no data to be read from socket %d", sockfd);
       return -1;
@@ -1013,7 +1022,8 @@ int sftp_ssh2_packet_read(int sockfd, struct ssh2_packet *pkt) {
      * Thus that particular check is omitted.
      */
 
-    if (etm_mac == FALSE) {
+    if (etm_mac == FALSE &&
+        chachapoly == FALSE) {
       if (read_packet_padding_len(sockfd, pkt, buf, &offset, &buflen,
           bufsz) < 0) {
         (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
@@ -1026,27 +1036,34 @@ int sftp_ssh2_packet_read(int sockfd, struct ssh2_packet *pkt) {
         (unsigned int) pkt->padding_len);
 
       pkt->payload_len = (pkt->packet_len - pkt->padding_len - 1);
+      pr_trace_msg(trace_channel, 20, "SSH2 packet payload len = %lu bytes",
+        (unsigned long) pkt->payload_len);
     }
-
-    pr_trace_msg(trace_channel, 20, "SSH2 packet payload len = %lu bytes",
-      (unsigned long) pkt->payload_len);
 
     /* Read both payload and padding, since we may need to have both before
      * decrypting the data.
      */
     if (read_packet_payload(sockfd, pkt, buf, &offset, &buflen, bufsz,
-        etm_mac) < 0) {
+        etm_mac, chachapoly) < 0) {
       (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
         "unable to read payload from socket %d", sockfd);
       read_packet_discard(sockfd);
       return -1;
     }
 
-    pkt->mac_len = sftp_mac_get_block_size();
+    if (chachapoly == TRUE) {
+      /* The custom authentication tag for ChaChaPoly is 16 bytes. */
+      pkt->mac_len = 16;
+
+    } else {
+      pkt->mac_len = sftp_mac_get_block_size();
+    }
+
     pr_trace_msg(trace_channel, 20, "SSH2 packet MAC len = %lu bytes",
       (unsigned long) pkt->mac_len);
 
-    if (etm_mac == TRUE) {
+    if (etm_mac == TRUE ||
+        chachapoly == TRUE) {
       unsigned char *buf2;
       size_t buflen2, bufsz2;
 
@@ -1058,8 +1075,6 @@ int sftp_ssh2_packet_read(int sockfd, struct ssh2_packet *pkt) {
        */
       pkt->payload = buf;
       pkt->payload_len = buflen;
-
-      pkt->seqno = packet_client_seqno;
 
       if (read_packet_mac(sockfd, pkt, buf2) < 0) {
         (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
@@ -1105,6 +1120,9 @@ int sftp_ssh2_packet_read(int sockfd, struct ssh2_packet *pkt) {
         (unsigned int) pkt->padding_len);
 
       pkt->payload_len = (pkt->packet_len - pkt->padding_len - 1);
+      pr_trace_msg(trace_channel, 20, "SSH2 packet payload len = %lu bytes",
+        (unsigned long) pkt->payload_len);
+
       if (pkt->payload_len > 0) {
         pkt->payload = pcalloc(pkt->pool, pkt->payload_len);
         memmove(pkt->payload, buf2 + offset, pkt->payload_len);
@@ -1122,8 +1140,6 @@ int sftp_ssh2_packet_read(int sockfd, struct ssh2_packet *pkt) {
         read_packet_discard(sockfd);
         return -1;
       }
-
-      pkt->seqno = packet_client_seqno;
 
       if (sftp_mac_read_data(pkt) < 0) {
         (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
@@ -1195,7 +1211,9 @@ int sftp_ssh2_packet_read(int sockfd, struct ssh2_packet *pkt) {
     req_blocksz = MAX(8, sftp_cipher_get_read_block_size());
     encrypted_datasz = pkt->packet_len + sizeof(uint32_t);
 
-    /* If AAD bytes are present, they are not encrypted. */
+    /* If AAD bytes are present, they are not encrypted (except for
+     * ChaCha20).
+     */
     if (pkt->aad_len > 0) {
       encrypted_datasz -= pkt->aad_len;
     }
@@ -1308,6 +1326,8 @@ static int write_packet_padding(struct ssh2_packet *pkt) {
     pkt->padding_len += blocksz;
   }
 
+  pr_trace_msg(trace_channel, 20, "adding %u bytes of padding",
+    pkt->padding_len);
   pkt->padding = palloc(pkt->pool, pkt->padding_len);
 
   /* Fill the padding with pseudo-random data. */
@@ -1346,6 +1366,9 @@ int sftp_ssh2_packet_send(int sockfd, struct ssh2_packet *pkt) {
   if (auth_len > 0) {
     /* Authenticated encryption ciphers do not encrypt the packet length,
      * and instead use it as Additional Authenticated Data (AAD).
+     *
+     * The OpenSSH ChaChaPoly cipher does encrypt the packet length, on the
+     * other hand, and use a separate AAD.
      */
     pkt->aad_len = sizeof(uint32_t);
     pkt->aad = NULL;

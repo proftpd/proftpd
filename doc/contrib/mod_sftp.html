@@ -331,6 +331,7 @@ The <code>SFTPCiphers</code> directive is used to specify the list of
 cipher algorithms that <code>mod_sftp</code> should use.  The current list
 of supported cipher algorithms is, in the default order of preference:
 <ul>
+  <li>chacha20-poly1305@openssh.com
   <li>aes256-ctr
   <li>aes192-ctr
   <li>aes128-ctr
@@ -392,6 +393,7 @@ For comparison, the cipher algorithms used by OpenSSH by default are:
   <li>aes256-ctr
   <li>aes128-gcm@openssh.com
   <li>aes256-gcm@openssh.com
+  <li>chacha20-poly1305@openssh.com
 </ul>
 Thus if you wanted to configure <code>mod_sftp</code> to present the same
 cipher algorithms as OpenSSH, you would use:
@@ -399,7 +401,8 @@ cipher algorithms as OpenSSH, you would use:
   # Make mod_sftp present the same ciphers as OpenSSH
   SFTPCiphers aes128-cbc 3des-cbc blowfish-cbc cast128-cbc arcfour128 \
               arcfour256 aes192-cbc aes256-cbc aes128-ctr aes192-ctr aes256-ctr \
-              aes128-gcm@openssh.com aes256-gcm@openssh.com
+              aes128-gcm@openssh.com aes256-gcm@openssh.com \
+              chacha20-poly1305@openssh.com
 </pre>
 
 <p>
