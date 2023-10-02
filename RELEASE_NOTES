@@ -9,6 +9,9 @@ ChangeLog files.
 1.3.9rc1
 ---------
 
+  + Implemented the "chacha20-poly1305@openssh.com" SSH cipher algorithm.
+
+
   + New Directives
 
       IfSessionOptions PerUnauthenticatedUser
@@ -25,6 +28,8 @@ ChangeLog files.
       LDAPDefaultGID, LDAPDefaultUID Auto (Issue #1716)
 
       LogFormat %{transfer-speed} (Issue #535)
+
+      SFTPCiphers chacha20-poly1305@openssh.com (Issue #456)
 
       SFTPExtensions userGroupNames
 

@@ -86,6 +86,12 @@ static struct sftp_cipher ciphers[] = {
   /* The handling of NULL openssl_name and get_type fields is done in
    * sftp_crypto_get_cipher(), as special cases.
    */
+
+#if defined(HAVE_EVP_CHACHA20_OPENSSL) && \
+   !defined(HAVE_BROKEN_CHACHA20)
+  { "chacha20-poly1305@openssh.com", "chacha20", 16, 0, EVP_chacha20, TRUE, TRUE },
+#endif /* HAVE_EVP_CHACHA20_OPENSSL and !HAVE_BROKEN_CHACHA20 */
+
 #if OPENSSL_VERSION_NUMBER > 0x000907000L
   { "aes256-ctr",	NULL,		0, 0,	NULL,	TRUE, TRUE },
   { "aes192-ctr",	NULL,		0, 0,	NULL,	TRUE, TRUE },
@@ -1143,15 +1149,19 @@ const EVP_CIPHER *sftp_crypto_get_cipher(const char *name, size_t *key_len,
       }
 
       if (key_len != NULL) {
-        if (strcmp(name, "arcfour256") != 0) {
-          *key_len = 0;
-
-        } else {
+        if (strcmp(name, "arcfour256") == 0) {
           /* The arcfour256 cipher is special-cased here in order to use
            * a longer key (32 bytes), rather than the normal 16 bytes for the
            * RC4 cipher.
            */
+
           *key_len = 32;
+
+        } else if (strcmp(name, "chacha20-poly1305@openssh.com") == 0) {
+          *key_len = 64;
+
+        } else {
+          *key_len = 0;
         }
       }
 
@@ -1264,7 +1274,7 @@ const char *sftp_crypto_get_kexinit_cipher_list(pool *p) {
    */
 
   c = find_config(main_server->conf, CONF_PARAM, "SFTPCiphers", FALSE);
-  if (c) {
+  if (c != NULL) {
     register unsigned int i;
 
     for (i = 0; i < c->argc; i++) {
@@ -1272,7 +1282,7 @@ const char *sftp_crypto_get_kexinit_cipher_list(pool *p) {
 
       for (j = 0; ciphers[j].name; j++) {
         if (strcmp(c->argv[i], ciphers[j].name) == 0) {
-#ifdef OPENSSL_FIPS
+#if defined(OPENSSL_FIPS)
           if (FIPS_mode()) {
             /* If FIPS mode is enabled, check whether the cipher is allowed
              * for use.
@@ -1327,8 +1337,8 @@ const char *sftp_crypto_get_kexinit_cipher_list(pool *p) {
     register unsigned int i;
 
     for (i = 0; ciphers[i].name; i++) {
-      if (ciphers[i].enabled) {
-#ifdef OPENSSL_FIPS
+      if (ciphers[i].enabled == TRUE) {
+#if defined(OPENSSL_FIPS)
           if (FIPS_mode()) {
             /* If FIPS mode is enabled, check whether the cipher is allowed
              * for use.
