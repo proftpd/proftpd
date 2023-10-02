@@ -1,6 +1,6 @@
 /*
  * ProFTPD - mod_sftp message format
- * Copyright (c) 2008-2022 TJ Saunders
+ * Copyright (c) 2008-2023 TJ Saunders
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -118,6 +118,24 @@ int sftp_msg_read_bool(pool *p, unsigned char **buf, uint32_t *buflen) {
 
 uint32_t sftp_msg_read_data2(pool *p, unsigned char **buf,
     uint32_t *buflen, size_t datalen, unsigned char **data) {
+  uint32_t len;
+
+  len = sftp_msg_read_data2_direct(p, buf, buflen, datalen, data);
+  if (len == 0) {
+    return 0;
+  }
+
+  *data = palloc(p, datalen);
+
+  memcpy(*data, *buf, datalen);
+  (*buf) += datalen;
+  (*buflen) -= datalen;
+
+  return datalen;
+}
+
+uint32_t sftp_msg_read_data2_direct(pool *p, unsigned char **buf,
+    uint32_t *buflen, size_t datalen, unsigned char **data) {
   if (datalen == 0) {
     return 0;
   }
@@ -129,12 +147,7 @@ uint32_t sftp_msg_read_data2(pool *p, unsigned char **buf,
     return 0;
   }
 
-  *data = palloc(p, datalen);
-
-  memcpy(*data, *buf, datalen);
-  (*buf) += datalen;
-  (*buflen) -= datalen;
-
+  *data = *buf;
   return datalen;
 }
 
@@ -149,6 +162,28 @@ unsigned char *sftp_msg_read_data(pool *p, unsigned char **buf,
   }
 
   len = sftp_msg_read_data2(p, buf, buflen, datalen, &data);
+  if (len == 0) {
+    (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
+      "message format error: unable to read %lu bytes of raw data "
+      "(buflen = %lu)", (unsigned long) datalen, (unsigned long) *buflen);
+    pr_log_stacktrace(sftp_logfd, MOD_SFTP_VERSION);
+    SFTP_DISCONNECT_CONN(SFTP_SSH2_DISCONNECT_BY_APPLICATION, NULL);
+  }
+
+  return data;
+}
+
+unsigned char *sftp_msg_read_data_direct(pool *p, unsigned char **buf,
+    uint32_t *buflen, size_t datalen) {
+  unsigned char *data = NULL;
+  uint32_t len;
+
+  if (datalen == 0) {
+    errno = EINVAL;
+    return NULL;
+  }
+
+  len = sftp_msg_read_data2_direct(p, buf, buflen, datalen, &data);
   if (len == 0) {
     (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
       "message format error: unable to read %lu bytes of raw data "
