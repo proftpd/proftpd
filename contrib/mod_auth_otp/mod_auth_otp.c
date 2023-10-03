@@ -1,6 +1,6 @@
 /*
  * ProFTPD: mod_auth_otp
- * Copyright (c) 2015-2022 TJ Saunders
+ * Copyright (c) 2015-2023 TJ Saunders
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -37,7 +37,7 @@
 
 /* mod_auth_otp option flags */
 #define AUTH_OTP_OPT_FTP_STANDARD_RESPONSE	0x001
-#define AUTH_OTP_OPT_REQUIRE_TABLE_ENTRY	0x002
+#define AUTH_OTP_OPT_OPTIONAL_TABLE_ENTRY	0x002
 #define AUTH_OTP_OPT_DISPLAY_VERIFICATION_CODE	0x004
 
 #define AUTH_OTP_VERIFICATION_CODE_PROMPT	"Verification code: "
@@ -161,7 +161,7 @@ static int auth_otp_kbdint_authenticate(sftp_kbdint_driver_t *driver,
       "no info for user '%s' found in AuthOTPTable, skipping "
       "SSH2 keyboard-interactive challenge", user);
 
-    if (auth_otp_opts & AUTH_OTP_OPT_REQUIRE_TABLE_ENTRY) {
+    if (!(auth_otp_opts & AUTH_OTP_OPT_OPTIONAL_TABLE_ENTRY)) {
       errno = xerrno;
       return -1;
     }
@@ -416,7 +416,7 @@ static int handle_user_otp(pool *p, const char *user, const char *user_otp,
      */
 
     if (authoritative == TRUE) {
-      if (auth_otp_opts & AUTH_OTP_OPT_REQUIRE_TABLE_ENTRY) {
+      if (!(auth_otp_opts & AUTH_OTP_OPT_OPTIONAL_TABLE_ENTRY)) {
         (void) pr_log_writefile(auth_otp_logfd, MOD_AUTH_OTP_VERSION,
           "FAILED: user '%s' does not have entry in OTP tables", user);
         auth_otp_auth_code = PR_AUTH_NOPWD;
@@ -745,10 +745,15 @@ MODRET set_authotpoptions(cmd_rec *cmd) {
       opts |= AUTH_OTP_OPT_FTP_STANDARD_RESPONSE;
 
     } else if (strcmp(cmd->argv[i], "RequireTableEntry") == 0) {
-      opts |= AUTH_OTP_OPT_REQUIRE_TABLE_ENTRY;
+      /* This is the default; we keep this here for backward compatibility;
+       * see Issue #1562.
+       */
 
     } else if (strcmp(cmd->argv[i], "DisplayVerificationCode") == 0) {
       opts |= AUTH_OTP_OPT_DISPLAY_VERIFICATION_CODE;
+
+    } else if (strcmp(cmd->argv[i], "OptionalTableEntry") == 0) {
+      opts |= AUTH_OTP_OPT_OPTIONAL_TABLE_ENTRY;
 
     } else {
       CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, ": unknown AuthOTPOption: '",

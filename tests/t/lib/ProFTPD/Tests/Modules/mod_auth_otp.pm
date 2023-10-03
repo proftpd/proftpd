@@ -676,6 +676,9 @@ EOS
 
         # Assumes default table names, column names
         AuthOTPTable => 'sql:/get-user-hotp/update-user-hotp',
+
+        # Table entries are now required by default, per Issue #1562
+        AuthOTPOptions => 'OptionalTableEntry',
       },
 
       'mod_sql.c' => [
@@ -763,7 +766,6 @@ EOS
 
   # Stop server
   server_stop($setup->{pid_file});
-
   $self->assert_child_ok($pid);
 
   test_cleanup($setup->{log_file}, $ex);
@@ -1282,6 +1284,9 @@ EOS
 
         # Assumes default table names, column names
         AuthOTPTable => 'sql:/get-user-totp/update-user-totp',
+
+        # Table entries are now required by default, per Issue #1562
+        AuthOTPOptions => 'OptionalTableEntry',
       },
 
       'mod_sql.c' => [
@@ -1369,7 +1374,6 @@ EOS
 
   # Stop server
   server_stop($setup->{pid_file});
-
   $self->assert_child_ok($pid);
 
   test_cleanup($setup->{log_file}, $ex);
