@@ -11,6 +11,10 @@ ChangeLog files.
 
   + Implemented the "chacha20-poly1305@openssh.com" SSH cipher algorithm.
 
+  + The mod_auth_otp module now requires per-user entries in its tables
+    by default.  This is a change from previous versions, when such per-user
+    entries were optional.
+
 
   + New Directives
 
@@ -20,6 +24,8 @@ ChangeLog files.
 
 
   + Changed Directives
+
+      AuthOTPOptions OptionalTableEntry (Issue #1562)
 
       DelayOnEvent Connect (Issue #1701)
 
