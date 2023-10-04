@@ -6,12 +6,16 @@ on:
       - master
       - 1.3.8
     paths-ignore:
+      - NEWS
+      - RELEASE_NOTES
       - '**/*.md'
   pull_request:
     branches:
       - master
       - 1.3.8
     paths-ignore:
+      - NEWS
+      - RELEASE_NOTES
       - '**/*.md'
 
 jobs:

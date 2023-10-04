@@ -5,11 +5,15 @@ on:
     branches:
       - master
     paths-ignore:
+      - NEWS
+      - RELEASE_NOTES
       - '**/*.md'
   pull_request:
     branches:
       - master
     paths-ignore:
+      - NEWS
+      - RELEASE_NOTES
       - '**/*.md'
   schedule:
     - cron: "34 15 * * 4"
