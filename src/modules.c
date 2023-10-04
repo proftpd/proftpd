@@ -1,7 +1,7 @@
 /*
  * ProFTPD - FTP server daemon
  * Copyright (c) 1997, 1998 Public Flood Software
- * Copyright (c) 2001-2020 The ProFTPD Project team
+ * Copyright (c) 2001-2023 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -133,8 +133,9 @@ int modules_session_init(void) {
       if (m->sess_init() < 0) {
         int xerrno = errno;
 
-        pr_log_pri(PR_LOG_WARNING, "mod_%s.c: error initializing session: %s",
-          m->name, strerror(xerrno));
+        pr_log_pri(PR_LOG_WARNING,
+          "mod_%s.c: error initializing session (%s), check module logs "
+          "for details", m->name, strerror(xerrno));
 
         errno = xerrno;
         return -1;
