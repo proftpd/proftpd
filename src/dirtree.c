@@ -2710,7 +2710,7 @@ static void set_tcp_bufsz(server_rec *s) {
   socklen_t optlen = 0;
   struct protoent *p = NULL;
 
-#ifdef HAVE_SETPROTOENT
+#if defined(HAVE_SETPROTOENT)
   setprotoent(FALSE);
 #endif
 
@@ -2719,18 +2719,18 @@ static void set_tcp_bufsz(server_rec *s) {
     proto = p->p_proto;
   }
 
-#ifdef HAVE_ENDPROTOENT
+#if defined(HAVE_ENDPROTOENT)
   endprotoent();
 #endif
 
   if (p == NULL) {
-#ifndef PR_TUNABLE_RCVBUFSZ
+#if !defined(PR_TUNABLE_RCVBUFSZ)
     s->tcp_rcvbuf_len = tcp_rcvbufsz = PR_TUNABLE_DEFAULT_RCVBUFSZ;
 #else
     s->tcp_rcvbuf_len = tcp_rcvbufsz = PR_TUNABLE_RCVBUFSZ;
 #endif /* PR_TUNABLE_RCVBUFSZ */
 
-#ifndef PR_TUNABLE_SNDBUFSZ
+#if !defined(PR_TUNABLE_SNDBUFSZ)
     s->tcp_sndbuf_len = tcp_sndbufsz = PR_TUNABLE_DEFAULT_SNDBUFSZ;
 #else
     s->tcp_sndbuf_len = tcp_sndbufsz = PR_TUNABLE_SNDBUFSZ;
@@ -2739,11 +2739,11 @@ static void set_tcp_bufsz(server_rec *s) {
     pr_log_debug(DEBUG3, "getprotobyname error for 'tcp': %s", strerror(errno));
     pr_log_debug(DEBUG4, "using default TCP receive/send buffer sizes");
 
-#ifndef PR_TUNABLE_XFER_BUFFER_SIZE
-    /* Choose the smaller of the two TCP buffer sizes as the overall transfer
+#if !defined(PR_TUNABLE_XFER_BUFFER_SIZE)
+    /* Choose the larger of the two TCP buffer sizes as the overall transfer
      * size (for use by the data transfer layer).
      */
-     xfer_bufsz = tcp_sndbufsz < tcp_rcvbufsz ? tcp_sndbufsz : tcp_rcvbufsz;
+    xfer_bufsz = tcp_rcvbufsz > tcp_sndbufsz ? tcp_rcvbufsz : tcp_sndbufsz;
 #else
     xfer_bufsz = PR_TUNABLE_XFER_BUFFER_SIZE;
 #endif /* PR_TUNABLE_XFER_BUFFER_SIZE */
@@ -2762,7 +2762,7 @@ static void set_tcp_bufsz(server_rec *s) {
     return;
   }
 
-#ifndef PR_TUNABLE_RCVBUFSZ
+#if !defined(PR_TUNABLE_RCVBUFSZ)
   /* Determine the optimal size of the TCP receive buffer. */
   optlen = sizeof(tcp_rcvbufsz);
   if (getsockopt(sockfd, SOL_SOCKET, SO_RCVBUF, (void *) &tcp_rcvbufsz,
@@ -2774,6 +2774,13 @@ static void set_tcp_bufsz(server_rec *s) {
       tcp_rcvbufsz);
 
   } else {
+    /* Since we want to optimize for network data transfers, we ideally want
+     * large buffers.  So enforce a minimum buffer size that we like.
+     */
+    if (tcp_rcvbufsz < PR_TUNABLE_DEFAULT_RCVBUFSZ) {
+      tcp_rcvbufsz = PR_TUNABLE_DEFAULT_RCVBUFSZ;
+    }
+
     pr_log_debug(DEBUG5, "using TCP receive buffer size of %d bytes",
       tcp_rcvbufsz);
     s->tcp_rcvbuf_len = tcp_rcvbufsz;
@@ -2785,7 +2792,7 @@ static void set_tcp_bufsz(server_rec *s) {
     tcp_rcvbufsz);
 #endif /* PR_TUNABLE_RCVBUFSZ */
 
-#ifndef PR_TUNABLE_SNDBUFSZ
+#if !defined(PR_TUNABLE_SNDBUFSZ)
   /* Determine the optimal size of the TCP send buffer. */
   optlen = sizeof(tcp_sndbufsz);
   if (getsockopt(sockfd, SOL_SOCKET, SO_SNDBUF, (void *) &tcp_sndbufsz,
@@ -2797,6 +2804,13 @@ static void set_tcp_bufsz(server_rec *s) {
       tcp_sndbufsz);
 
   } else {
+    /* Since we want to optimize for network data transfers, we ideally want
+     * large buffers.  So enforce a minimum buffer size that we like.
+     */
+    if (tcp_sndbufsz < PR_TUNABLE_DEFAULT_SNDBUFSZ) {
+      tcp_sndbufsz = PR_TUNABLE_DEFAULT_SNDBUFSZ;
+    }
+
     pr_log_debug(DEBUG5, "using TCP send buffer size of %d bytes",
       tcp_sndbufsz);
     s->tcp_sndbuf_len = tcp_sndbufsz;
@@ -2808,10 +2822,10 @@ static void set_tcp_bufsz(server_rec *s) {
     tcp_sndbufsz);
 #endif /* PR_TUNABLE_SNDBUFSZ */
 
-  /* Choose the smaller of the two TCP buffer sizes as the overall transfer
+  /* Choose the larger of the two TCP buffer sizes as the overall transfer
    * size (for use by the data transfer layer).
    */
-   xfer_bufsz = tcp_sndbufsz < tcp_rcvbufsz ? tcp_sndbufsz : tcp_rcvbufsz;
+  xfer_bufsz = tcp_rcvbufsz > tcp_sndbufsz ? tcp_rcvbufsz : tcp_sndbufsz;
 
   (void) close(sockfd);
 }
