@@ -2,7 +2,7 @@
  * ProFTPD - FTP server daemon
  * Copyright (c) 1997, 1998 Public Flood Software
  * Copyright (c) 1999, 2000 MacGyver aka Habeeb J. Dihu <macgyver@tos.net>
- * Copyright (c) 2001-2022 The ProFTPD Project team
+ * Copyright (c) 2001-2023 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -1453,7 +1453,7 @@ int pr_data_xfer(char *cl_buf, size_t cl_size) {
       int bwrote = 0;
       int buflen = cl_size;
       unsigned int xferbuflen;
-      char *xfer_buf = NULL;
+      char *xferbuf = NULL, *ascii_buf = NULL;
 
       pr_signals_handle();
 
@@ -1461,10 +1461,8 @@ int pr_data_xfer(char *cl_buf, size_t cl_size) {
         buflen = pr_config_get_server_xfer_bufsz(PR_NETIO_IO_WR);
       }
 
+      xferbuf = cl_buf;
       xferbuflen = buflen;
-
-      /* Fill up our internal buffer. */
-      memcpy(session.xfer.buf, cl_buf, buflen);
 
       /* We use ASCII translation if:
        *
@@ -1482,6 +1480,9 @@ int pr_data_xfer(char *cl_buf, size_t cl_size) {
           pr_pool_tag(tmp_pool, "ASCII download");
         }
 
+        /* Fill up our internal buffer. */
+        memcpy(session.xfer.buf, cl_buf, buflen);
+
         /* Scan the internal buffer, looking for LFs with no preceding CRs.
          * Add CRs (and expand the internal buffer) as necessary. xferbuflen
          * will be adjusted so that it contains the length of data in
@@ -1494,34 +1495,36 @@ int pr_data_xfer(char *cl_buf, size_t cl_size) {
             strerror(errno));
 
         } else {
-          xfer_buf = session.xfer.buf;
+          ascii_buf = session.xfer.buf;
           session.xfer.buf = out;
           session.xfer.buflen = xferbuflen = outlen;
         }
+
+        xferbuf = session.xfer.buf;
       }
 
-      bwrote = pr_netio_write(session.d->outstrm, session.xfer.buf, xferbuflen);
+      bwrote = pr_netio_write(session.d->outstrm, xferbuf, xferbuflen);
       while (bwrote < 0) {
         int xerrno = errno;
 
-        if (xerrno == EAGAIN || xerrno == EINTR) {
-          /* Since our socket is in non-blocking mode, write(2) can return
+        if (xerrno == EAGAIN ||
+            xerrno == EINTR) {
+          /* Since our socket may be in non-blocking mode, write(2) can return
            * EAGAIN if there is not enough from for our data yet.  Handle
            * this by delaying temporarily, then trying again.
            */
           errno = EINTR;
           pr_signals_handle();
 
-          bwrote = pr_netio_write(session.d->outstrm, session.xfer.buf,
-            xferbuflen);
+          bwrote = pr_netio_write(session.d->outstrm, xferbuf, xferbuflen);
           continue;
         }
 
         destroy_pool(tmp_pool);
-        if (xfer_buf != NULL) {
+        if (ascii_buf != NULL) {
           /* Free up the malloc'd memory. */
           free(session.xfer.buf);
-          session.xfer.buf = xfer_buf;
+          session.xfer.buf = ascii_buf;
         }
 
         errno = xerrno;
@@ -1556,12 +1559,12 @@ int pr_data_xfer(char *cl_buf, size_t cl_size) {
         total += buflen;
       }
 
-      if (xfer_buf != NULL) {
+      if (ascii_buf != NULL) {
         /* Yes, we are using malloc et al here, rather than the memory pools.
          * See Bug#4352 for details.
          */
         free(session.xfer.buf);
-        session.xfer.buf = xfer_buf;
+        session.xfer.buf = ascii_buf;
       }
     }
 
