@@ -1,6 +1,6 @@
 /*
  * ProFTPD - FTP server testsuite
- * Copyright (c) 2015-2022 The ProFTPD Project team
+ * Copyright (c) 2015-2023 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -948,8 +948,12 @@ START_TEST (data_xfer_write_binary_test) {
   res = pr_data_xfer(buf, buflen);
   ck_assert_msg(res == (int) buflen, "Expected %lu, got %d",
     (unsigned long) buflen, res);
-  ck_assert_msg(strncmp(session.xfer.buf, buf, buflen) == 0,
-    "Expected '%s', got '%.100s'", buf, session.xfer.buf);
+
+  /* Now that we no longer do an egregious memcpy() into session.xfer.buf
+   * for binary transfers, we cannot use the contents of session.xfer.buf
+   * for additional assertions.  The integration tests can cover those
+   * assertions.
+   */
 }
 END_TEST
 
