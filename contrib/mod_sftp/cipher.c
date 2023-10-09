@@ -197,8 +197,11 @@ static unsigned int get_algo_type(const char *algo) {
       strlen(gcm_suffix), 0) == TRUE) {
     algo_type = SFTP_CIPHER_ALGO_GCM;
 
+#if defined(HAVE_EVP_CHACHA20_OPENSSL) && \
+   !defined(HAVE_BROKEN_CHACHA20)
   } else if (strcmp(algo, "chacha20-poly1305@openssh.com") == 0) {
     algo_type = SFTP_CIPHER_ALGO_CHACHA;
+#endif /* HAVE_EVP_CHACHA20_OPENSSL and !HAVE_BROKEN_CHACHA20 */
   }
 
   return algo_type;
@@ -477,7 +480,9 @@ static int compute_chachapoly_key(struct ssh2_packet *pkt,
 }
 #endif /* HAVE_EVP_CHACHA20_OPENSSL and !HAVE_BROKEN_CHACHA20 */
 
-#if !defined(HAVE_TIMINGSAFE_BCMP)
+#if !defined(HAVE_TIMINGSAFE_BCMP) && \
+    defined(HAVE_EVP_CHACHA20_OPENSSL) && \
+    !defined(HAVE_BROKEN_CHACHA20)
 static int timingsafe_bcmp(const void *b1, const void *b2, size_t n) {
   const unsigned char *p1 = b1, *p2 = b2;
   int ret = 0;
@@ -488,7 +493,7 @@ static int timingsafe_bcmp(const void *b1, const void *b2, size_t n) {
 
   return (ret != 0);
 }
-#endif /* HAVE_TIMINGSAFE_BCMP */
+#endif /* HAVE_TIMINGSAFE_BCMP and HAVE_EVP_CHACHA20_OPENSSL and !HAVE_BROKEN_CHACHA20 */
 
 /* These accessors to get the authenticated data length for the read, write
  * ciphers are used during packet IO, and thus do not return the AAD lengths
@@ -635,7 +640,10 @@ int sftp_cipher_set_read_key(pool *p, const EVP_MD *hash,
   cipher = &(read_ciphers[read_cipher_idx]);
   pctx = read_ctxs[read_cipher_idx];
   if (cipher->algo_type == SFTP_CIPHER_ALGO_CHACHA) {
+#if defined(HAVE_EVP_CHACHA20_OPENSSL) && \
+   !defined(HAVE_BROKEN_CHACHA20)
     hpctx = read_header_ctxs[read_cipher_idx];
+#endif /* HAVE_EVP_CHACHA20_OPENSSL and !HAVE_BROKEN_CHACHA20 */
   }
 
   id_len = sftp_session_get_id(&id);
@@ -799,7 +807,10 @@ int sftp_cipher_read_data(struct ssh2_packet *pkt, unsigned char *data,
   size_t auth_len = 0, read_blocksz;
   uint32_t output_buflen;
   unsigned char *ptr = NULL, *buf2 = NULL;
+#if defined(HAVE_EVP_CHACHA20_OPENSSL) && \
+   !defined(HAVE_BROKEN_CHACHA20)
   unsigned char chachapoly_key[POLY1305_KEYLEN];
+#endif /* HAVE_EVP_CHACHA20_OPENSSL and !HAVE_BROKEN_CHACHA20 */
 
   cipher = &(read_ciphers[read_cipher_idx]);
 
@@ -905,6 +916,8 @@ int sftp_cipher_read_data(struct ssh2_packet *pkt, unsigned char *data,
       data_len -= auth_len;
 
     } else if (cipher->algo_type == SFTP_CIPHER_ALGO_CHACHA) {
+#if defined(HAVE_EVP_CHACHA20_OPENSSL) && \
+   !defined(HAVE_BROKEN_CHACHA20)
       unsigned char chachapoly_tag[POLY1305_TAGLEN];
       pool *tag_pool;
       unsigned char *tag_buf;
@@ -942,6 +955,7 @@ int sftp_cipher_read_data(struct ssh2_packet *pkt, unsigned char *data,
         errno = EIO;
         return -1;
       }
+#endif /* HAVE_EVP_CHACHA20_OPENSSL and !HAVE_BROKEN_CHACHA20 */
     }
   }
 
@@ -1028,6 +1042,8 @@ int sftp_cipher_read_packet_len(struct ssh2_packet *pkt, unsigned char *data,
   }
 
   if (cipher->algo_type == SFTP_CIPHER_ALGO_CHACHA) {
+#if defined(HAVE_EVP_CHACHA20_OPENSSL) && \
+   !defined(HAVE_BROKEN_CHACHA20)
     unsigned char seqnobuf[16], *ptr;
     uint32_t len;
     EVP_CIPHER_CTX *hpctx;
@@ -1068,6 +1084,7 @@ int sftp_cipher_read_packet_len(struct ssh2_packet *pkt, unsigned char *data,
     *buflen = 0;
 
     return 0;
+#endif /* HAVE_EVP_CHACHA20_OPENSSL and !HAVE_BROKEN_CHACHA20 */
   }
 
   res = sftp_cipher_read_data(pkt, data, data_len, buf, buflen);
@@ -1160,7 +1177,10 @@ int sftp_cipher_set_write_key(pool *p, const EVP_MD *hash,
   cipher = &(write_ciphers[write_cipher_idx]);
   pctx = write_ctxs[write_cipher_idx];
   if (cipher->algo_type == SFTP_CIPHER_ALGO_CHACHA) {
+#if defined(HAVE_EVP_CHACHA20_OPENSSL) && \
+   !defined(HAVE_BROKEN_CHACHA20)
     hpctx = write_header_ctxs[write_cipher_idx];
+#endif /* HAVE_EVP_CHACHA20_OPENSSL and !HAVE_BROKEN_CHACHA20 */
   }
 
   id_len = sftp_session_get_id(&id);
@@ -1321,7 +1341,10 @@ int sftp_cipher_write_data(struct ssh2_packet *pkt, unsigned char *buf,
   struct sftp_cipher *cipher;
   EVP_CIPHER_CTX *pctx;
   size_t auth_len = 0;
+#if defined(HAVE_EVP_CHACHA20_OPENSSL) && \
+   !defined(HAVE_BROKEN_CHACHA20)
   unsigned char chachapoly_key[POLY1305_KEYLEN];
+#endif /* HAVE_EVP_CHACHA20_OPENSSL and !HAVE_BROKEN_CHACHA20 */
   unsigned char *data, *ptr;
   uint32_t datalen, datasz;
 
@@ -1367,9 +1390,12 @@ int sftp_cipher_write_data(struct ssh2_packet *pkt, unsigned char *buf,
       }
 #endif
     } else if (cipher->algo_type == SFTP_CIPHER_ALGO_CHACHA) {
+#if defined(HAVE_EVP_CHACHA20_OPENSSL) && \
+   !defined(HAVE_BROKEN_CHACHA20)
       if (compute_chachapoly_key(pkt, pctx, chachapoly_key) < 0) {
         return -1;
       }
+#endif /* HAVE_EVP_CHACHA20_OPENSSL and !HAVE_BROKEN_CHACHA20 */
     }
   }
 
@@ -1383,6 +1409,8 @@ int sftp_cipher_write_data(struct ssh2_packet *pkt, unsigned char *buf,
 
     if (auth_len > 0) {
       if (cipher->algo_type == SFTP_CIPHER_ALGO_CHACHA) {
+#if defined(HAVE_EVP_CHACHA20_OPENSSL) && \
+   !defined(HAVE_BROKEN_CHACHA20)
         unsigned char seqnobuf[16], *ptr;
         uint32_t len;
         EVP_CIPHER_CTX *hpctx;
@@ -1408,6 +1436,7 @@ int sftp_cipher_write_data(struct ssh2_packet *pkt, unsigned char *buf,
             sftp_crypto_get_errors());
           return -1;
         }
+#endif /* HAVE_EVP_CHACHA20_OPENSSL and !HAVE_BROKEN_CHACHA20 */
 
       } else {
         if (EVP_Cipher(pctx, NULL, pkt->aad, pkt->aad_len) < 0) {
@@ -1505,6 +1534,8 @@ int sftp_cipher_write_data(struct ssh2_packet *pkt, unsigned char *buf,
       }
 #endif
     } else if (cipher->algo_type == SFTP_CIPHER_ALGO_CHACHA) {
+#if defined(HAVE_EVP_CHACHA20_OPENSSL) && \
+   !defined(HAVE_BROKEN_CHACHA20)
       pool *tag_pool;
       unsigned char *tag_buf;
       size_t tag_bufsz;
@@ -1525,6 +1556,7 @@ int sftp_cipher_write_data(struct ssh2_packet *pkt, unsigned char *buf,
 
       poly1305_auth(tag_data, tag_buf, tag_bufsz, chachapoly_key);
       destroy_pool(tag_pool);
+#endif /* HAVE_EVP_CHACHA20_OPENSSL and !HAVE_BROKEN_CHACHA20 */
     }
 
     pkt->mac_len = tag_datalen;
