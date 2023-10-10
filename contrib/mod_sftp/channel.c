@@ -678,7 +678,7 @@ static int handle_channel_data(struct ssh2_packet *pkt, uint32_t *channel_id) {
   pr_trace_msg(trace_channel, 17,
     "processing %lu %s of data for channel ID %lu", (unsigned long) datalen,
     datalen != 1 ? "bytes" : "byte", (unsigned long) *channel_id);
-  data = sftp_msg_read_data(pkt->pool, &buf, &buflen, datalen);
+  data = sftp_msg_read_data_direct(pkt->pool, &buf, &buflen, datalen);
 
   return process_channel_data(chan, pkt, data, datalen);
 }

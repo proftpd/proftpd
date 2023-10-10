@@ -1788,7 +1788,7 @@ void sftp_ssh2_packet_handle_ext_info(struct ssh2_packet *pkt) {
       &pkt->payload_len);
     ext_datalen = sftp_msg_read_int(pkt->pool, &pkt->payload,
       &pkt->payload_len);
-    (void) sftp_msg_read_data(pkt->pool, &pkt->payload,
+    (void) sftp_msg_read_data_direct(pkt->pool, &pkt->payload,
       &pkt->payload_len, ext_datalen);
 
     pr_trace_msg(trace_channel, 9,
