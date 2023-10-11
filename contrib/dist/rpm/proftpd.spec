@@ -590,7 +590,7 @@ rm -rf %{_builddir}/%{name}-%{version}
 %config(noreplace) %{_sysconfdir}/xinetd.d/proftpd
 %config(noreplace) %{_sysconfdir}/PROFTPD-MIB.txt
 
-%doc COPYING CREDITS ChangeLog NEWS README.md RELEASE_NOTES README.modules
+%doc COPYING CREDITS ChangeLog NEWS README.md RELEASE_NOTES
 %doc contrib/README.contrib contrib/README.ratio
 %doc contrib/dist/systemd/README.systemd
 %doc doc/* sample-configurations/
@@ -604,7 +604,7 @@ rm -rf %{_builddir}/%{name}-%{version}
 
 %if 0%{?_with_ldap:1}
 %files ldap
-%doc README.LDAP contrib/mod_quotatab_ldap.ldif contrib/mod_quotatab_ldap.schema
+%doc contrib/mod_quotatab_ldap.ldif contrib/mod_quotatab_ldap.schema
 %{_libexecdir}/proftpd/mod_ldap.so
 %{_libexecdir}/proftpd/mod_quotatab_ldap.so
 %endif
