@@ -112,7 +112,12 @@
 # include <openssl/provider.h>
 #endif /* HAVE_OSSL_PROVIDER_LOAD_OPENSSL */
 
-/* Define if you have the LibreSSL library.  */
+/* Define if you have the LibreSSL library.
+ *
+ * Note that in LibreSSL-3.5.0, the structs became opaque, as they are in
+ * OpenSSL-1.1.0, and thus these version-dependent macros became more
+ * complex.
+ */
 #if defined(LIBRESSL_VERSION_NUMBER)
 # define HAVE_LIBRESSL	1
 #endif
