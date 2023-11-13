@@ -119,17 +119,15 @@ int sftp_msg_read_bool(pool *p, unsigned char **buf, uint32_t *buflen) {
 uint32_t sftp_msg_read_data2(pool *p, unsigned char **buf,
     uint32_t *buflen, size_t datalen, unsigned char **data) {
   uint32_t len;
+  unsigned char *ptr = NULL;
 
-  len = sftp_msg_read_data2_direct(p, buf, buflen, datalen, data);
+  len = sftp_msg_read_data2_direct(p, buf, buflen, datalen, &ptr);
   if (len == 0) {
     return 0;
   }
 
   *data = palloc(p, datalen);
-
-  memcpy(*data, *buf, datalen);
-  (*buf) += datalen;
-  (*buflen) -= datalen;
+  memcpy(*data, ptr, datalen);
 
   return datalen;
 }
@@ -148,6 +146,9 @@ uint32_t sftp_msg_read_data2_direct(pool *p, unsigned char **buf,
   }
 
   *data = *buf;
+  (*buf) += datalen;
+  (*buflen) -= datalen;
+
   return datalen;
 }
 
