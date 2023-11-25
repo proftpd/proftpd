@@ -2613,16 +2613,37 @@ int fixup_servers(xaset_t *list) {
     }
 
     if (s->addr == NULL) {
-      pr_log_pri(PR_LOG_WARNING,
-        "warning: unable to determine IP address of '%s'", s->ServerAddress);
+      int destroy_server = TRUE;
 
+      /* We now consider it a fatal error if we cannot resolve the IP address
+       * for the default/implicit "server config" virtual host (Issue #1746).
+       * Unless this virtual host has been disabled via "Port 0".
+       */
       if (s == main_server) {
-        main_server = NULL;
+        if (s->ServerPort > 0) {
+          pr_log_pri(PR_LOG_WARNING,
+            "fatal: unable to determine IP address of '%s' for '%s'; "
+            "consider using DefaultAddress to explicitly set the IP address",
+            s->ServerAddress, s->ServerName);
+          pr_session_end(0);
+        }
+
+        /* Many modules assume that the `main_server` variable is non-NULL
+         * at e.g. postparse time.  Thus in this special case, we will preserve
+         * this pointer, and NOT destroy its pool.
+         */
+        destroy_server = FALSE;
       }
 
+      pr_log_pri(PR_LOG_WARNING,
+        "warning: unable to determine IP address of '%s'", s->ServerAddress);
       xaset_remove(list, (xasetmember_t *) s);
-      destroy_pool(s->pool);
-      s->pool = NULL;
+
+      if (destroy_server == TRUE) {
+        destroy_pool(s->pool);
+        s->pool = NULL;
+      }
+
       continue;
     }
 

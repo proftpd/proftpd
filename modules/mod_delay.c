@@ -119,6 +119,8 @@ struct {
   int dt_fd;
   size_t dt_size;
   void *dt_data;
+  size_t dt_lookupsz;
+  unsigned int *dt_lookup;
 
 } delay_tab;
 
@@ -606,28 +608,33 @@ static int delay_str_get_duration_ms(const char *str, long *min_duration,
 
 /* There are two rows (USER and PASS) for each server ID (SID).
  *
- * The main server has a SID of 1.  Thus to access the USER row for SID 1,
- * the row index is 0; the PASS row for SID 1 has a row index of 1.
- *
- * The general formula for the USER row of a given SID is:
- *
- *   r = (sid * 2) - 2;
- *
- * and thus for accessing the PASS row, the formula is:
- *
- *   r = (sid * 2) - 1;
+ * To find the row number, we scan the lookup table by SID.  The USER row
+ * number is then the next value in the lookup table after the SID, the PASS
+ * row number is the next value in the lookup table after the USER row number.
  */
 static unsigned int delay_get_user_rownum(unsigned int sid) {
-  unsigned int r;
+  unsigned int i, r = -1;
 
-  r = (sid * 2) - 2;
+  for (i = 0; i < delay_tab.dt_lookupsz; i = i + 3) {
+    if (delay_tab.dt_lookup[i] == sid) {
+      r = delay_tab.dt_lookup[i+1];
+      break;
+    }
+  }
+
   return r;
 }
 
 static unsigned int delay_get_pass_rownum(unsigned int sid) {
-  unsigned int r;
+  unsigned int i, r = -1;
 
-  r = (sid * 2) - 1;
+  for (i = 0; i < delay_tab.dt_lookupsz; i = i + 3) {
+    if (delay_tab.dt_lookup[i] == sid) {
+      r = delay_tab.dt_lookup[i+2];
+      break;
+    }
+  }
+
   return r;
 }
 
@@ -663,11 +670,47 @@ static void delay_table_add_interval(unsigned int rownum, const char *protocol,
   }
 }
 
+/* Create a lookup table, of SID to USER/PASS row number.  We do this
+ * dynamically, since there is no guarantee that all SIDs will be present
+ * in the server_list; some virtual hosts (SIDs) may be omitted from that
+ * list due to misconfigurations (see Issue #1746).
+ */
+static void delay_table_init_lookup(void) {
+  off_t lookupsz;
+  server_rec *s;
+  unsigned int i, *lookup, r, server_count = 0;
+
+  for (s = (server_rec *) server_list->xas_list; s; s = s->next) {
+    server_count++;
+  }
+
+  lookupsz = server_count * 3 * sizeof(unsigned int);
+  lookup = pcalloc(delay_pool, lookupsz);
+
+  i = r = 0;
+  for (s = (server_rec *) server_list->xas_list; s; s = s->next) {
+    /* SID */
+    lookup[i] = s->sid;
+
+    /* SID-specific USER row */
+    lookup[i+1] = r;
+
+    /* SID-specific PASS row */
+    lookup[i+2] = r + 1;
+
+    i += 3;
+    r += 2;
+  }
+
+  delay_tab.dt_lookupsz = lookupsz;
+  delay_tab.dt_lookup = lookup;
+}
+
 static int delay_table_init(void) {
   pr_fh_t *fh;
   struct stat st;
   server_rec *s;
-  unsigned int nservers = 0;
+  unsigned int server_count = 0;
   off_t tab_size;
   int flags = O_RDWR|O_CREAT;
   int reset_table = FALSE, xerrno = 0;
@@ -684,10 +727,10 @@ static int delay_table_init(void) {
    */
 
   for (s = (server_rec *) server_list->xas_list; s; s = s->next) {
-    nservers++;
+    server_count++;
   }
 
-  tab_size = nservers * 2 * sizeof(struct delay_rec);
+  tab_size = server_count * 2 * sizeof(struct delay_rec);
 
   PRIVS_ROOT
   fh = pr_fsio_open(delay_tab.dt_path, flags);
@@ -752,7 +795,12 @@ static int delay_table_init(void) {
     reset_table = TRUE;
   }
 
-  if (reset_table) {
+  /* Initialize the lookup table before we possibly reset the table, as the
+   * reset process requires looking up the row numbers.
+   */
+  delay_table_init_lookup();
+
+  if (reset_table == TRUE) {
     struct flock lock;
 
     lock.l_type = F_WRLCK;
@@ -859,7 +907,7 @@ static int delay_table_init(void) {
     return -1;
   }
 
-  if (!reset_table) {
+  if (reset_table == FALSE) {
     struct delay_rec *row;
 
     for (s = (server_rec *) server_list->xas_list; s; s = s->next) {
@@ -899,7 +947,7 @@ static int delay_table_init(void) {
     }
   }
 
-  if (reset_table) {
+  if (reset_table == TRUE) {
     struct flock lock;
 
     lock.l_type = F_WRLCK;
@@ -1021,7 +1069,7 @@ static int delay_table_init(void) {
 static int delay_table_load(int lock_table) {
   struct flock lock;
 
-  if (lock_table) {
+  if (lock_table == TRUE) {
     lock.l_type = F_WRLCK;
     lock.l_whence = 0;
     lock.l_start = 0;
@@ -1174,7 +1222,7 @@ static int delay_table_wlock(unsigned int rownum) {
 
 static int delay_table_unload(int unlock_table) {
 
-  if (delay_tab.dt_data) {
+  if (delay_tab.dt_data != NULL) {
     pr_trace_msg(trace_channel, 8, "unmapping DelayTable '%s' from memory",
       delay_tab.dt_path);
     if (munmap(delay_tab.dt_data, delay_tab.dt_size) < 0) {
@@ -1193,7 +1241,7 @@ static int delay_table_unload(int unlock_table) {
     delay_tab.dt_data = NULL;
   }
 
-  if (unlock_table) {
+  if (unlock_table == TRUE) {
     struct flock lock;
     lock.l_type = F_UNLCK;
     lock.l_whence = SEEK_SET;
@@ -2026,9 +2074,10 @@ static void delay_restart_ev(const void *event_data, void *user_data) {
 
   delay_tab.dt_path = PR_RUN_DIR "/proftpd.delay";
   delay_tab.dt_data = NULL;
+  delay_tab.dt_lookup = NULL;
   delay_tab.dt_enabled = TRUE;
 
-  if (delay_pool) {
+  if (delay_pool != NULL) {
     destroy_pool(delay_pool);
   }
 

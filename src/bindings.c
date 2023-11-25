@@ -1,6 +1,6 @@
 /*
  * ProFTPD - FTP server daemon
- * Copyright (c) 2001-2022 The ProFTPD Project team
+ * Copyright (c) 2001-2023 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -1562,7 +1562,7 @@ static int init_standalone_bindings(void) {
   /* If a port is set to zero, the address/port is not bound to a socket
    * at all.
    */
-  if (main_server->ServerPort) {
+  if (main_server->ServerPort > 0) {
     /* If SocketBindTight is off, then pr_inet_create_conn() will
      * create and bind to a wildcard socket.  However, should it be an
      * IPv4 or an IPv6 wildcard socket?
@@ -1598,6 +1598,13 @@ static int init_standalone_bindings(void) {
   if (default_server != NULL &&
       *default_server == TRUE) {
     is_default = TRUE;
+  }
+
+  if (main_server->ServerPort == 0) {
+    /* If there is no server port, then this vhost cannot be treated as the
+     * DefaultServer.
+     */
+    is_default = FALSE;
   }
 
   if (main_server->ServerPort > 0 ||
@@ -1652,6 +1659,13 @@ static int init_standalone_bindings(void) {
         is_default = TRUE;
       }
 
+      if (serv->ServerPort == 0) {
+        /* If there is no server port, then this vhost cannot be treated as the
+         * DefaultServer.
+         */
+        is_default = FALSE;
+      }
+
       if (serv->ServerPort > 0) {
         if (SocketBindTight == FALSE) {
 #ifdef PR_USE_IPV6
@@ -1694,7 +1708,7 @@ static int init_standalone_bindings(void) {
             __LINE__, serv->ServerAddress, strerror(errno));
         }
 
-      } else if (is_default) {
+      } else if (is_default == TRUE) {
         serv->listen = NULL;
 
         res = pr_ipbind_create(serv, serv->addr, serv->ServerPort);
