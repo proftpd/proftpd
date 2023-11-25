@@ -1,7 +1,7 @@
 /*
  * ProFTPD: mod_quotatab -- a module for managing FTP byte/file quotas via
  *                          centralized tables
- * Copyright (c) 2001-2020 TJ Saunders
+ * Copyright (c) 2001-2023 TJ Saunders
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -50,6 +50,8 @@ typedef struct regtab_obj {
 module quotatab_module;
 
 /* Quota objects for the current session */
+static quota_type_t sess_quota_type;
+
 quota_deltas_t quotatab_deltas;
 static quota_table_t *limit_tab = NULL;
 static quota_limit_t sess_limit;
@@ -80,7 +82,7 @@ static unsigned long have_quota_update = 0;
 #define QUOTA_HAVE_READ_UPDATE			10000
 #define QUOTA_HAVE_WRITE_UPDATE			20000
 
-#ifdef PR_USE_REGEX
+#if defined(PR_USE_REGEX)
 static pr_regex_t *quota_exclude_pre = NULL;
 static const char *quota_exclude_filter = NULL;
 #endif
@@ -203,6 +205,29 @@ static int get_quota_exceeded_errno(int default_errno, char **errstr) {
   }
 
   return res;
+}
+
+static const char *get_quota_type_text(quota_type_t quota_type) {
+  const char *text;
+
+  switch (quota_type) {
+    case USER_QUOTA:
+      text = "user";
+      break;
+
+    case GROUP_QUOTA:
+      text = "group";
+      break;
+
+    case CLASS_QUOTA:
+      text = "class";
+      break;
+
+    default:
+      text = "all";
+  }
+
+  return text;
 }
 
 /* Quota units routines */
@@ -577,7 +602,7 @@ static int quotatab_ignore_path(pool *p, const char *path) {
     return FALSE;
   }
 
-#ifdef PR_USE_REGEX
+#if defined(PR_USE_REGEX)
   if (quota_exclude_pre == NULL) {
     return FALSE;
   }
@@ -1610,7 +1635,7 @@ MODRET set_quotaengine(cmd_rec *cmd) {
 
 /* usage: QuotaExcludeFilter regex|"none" */
 MODRET set_quotaexcludefilter(cmd_rec *cmd) {
-#ifdef PR_USE_REGEX
+#if defined(PR_USE_REGEX)
   pr_regex_t *pre = NULL;
   config_rec *c;
   int res;
@@ -1894,7 +1919,8 @@ MODRET quotatab_pre_appe(cmd_rec *cmd) {
       sess_tally.bytes_in_used >= sess_limit.bytes_in_avail) {
 
     /* Report the exceeding of the threshold. */
-    quotatab_log("%s denied: quota exceeded: used %s", (char *) cmd->argv[0],
+    quotatab_log("%s denied: %s quota exceeded: used %s",
+      get_quota_type_text(sess_quota_type), (char *) cmd->argv[0],
       DISPLAY_BYTES_IN(cmd));
     pr_response_add_err(R_552, _("%s denied: quota exceeded: used %s"),
       (char *) cmd->argv[0], DISPLAY_BYTES_IN(cmd));
@@ -1909,7 +1935,8 @@ MODRET quotatab_pre_appe(cmd_rec *cmd) {
       sess_tally.bytes_xfer_used >= sess_limit.bytes_xfer_avail) {
 
     /* Report the exceeding of the threshold. */
-    quotatab_log("%s denied: quota exceeded: used %s", (char *) cmd->argv[0],
+    quotatab_log("%s denied: %s quota exceeded: used %s",
+      get_quota_type_text(sess_quota_type), (char *) cmd->argv[0],
       DISPLAY_BYTES_XFER(cmd));
     pr_response_add_err(R_552, _("%s denied: quota exceeded: used %s"),
       (char *) cmd->argv[0], DISPLAY_BYTES_XFER(cmd));
@@ -2196,7 +2223,8 @@ MODRET quotatab_pre_copy(cmd_rec *cmd) {
       sess_tally.bytes_in_used >= sess_limit.bytes_in_avail) {
 
     /* Report the exceeding of the threshold. */
-    quotatab_log("%s denied: quota exceeded: used %s", (char *) cmd->argv[0],
+    quotatab_log("%s denied: %s quota exceeded: used %s",
+      get_quota_type_text(sess_quota_type), (char *) cmd->argv[0],
       DISPLAY_BYTES_IN(cmd));
     pr_response_add_err(R_552, _("%s denied: quota exceeded: used %s"),
       (char *) cmd->argv[0], DISPLAY_BYTES_IN(cmd));
@@ -2211,7 +2239,8 @@ MODRET quotatab_pre_copy(cmd_rec *cmd) {
              sess_tally.bytes_xfer_used >= sess_limit.bytes_xfer_avail) {
 
     /* Report the exceeding of the threshold. */
-    quotatab_log("%s denied: quota exceeded: used %s", (char *) cmd->argv[0],
+    quotatab_log("%s denied: %s quota exceeded: used %s",
+      get_quota_type_text(sess_quota_type), (char *) cmd->argv[0],
       DISPLAY_BYTES_XFER(cmd));
     pr_response_add_err(R_552, _("%s denied: quota exceeded: used %s"),
       (char *) cmd->argv[0], DISPLAY_BYTES_XFER(cmd));
@@ -2255,7 +2284,8 @@ MODRET quotatab_pre_copy(cmd_rec *cmd) {
         sess_tally.files_in_used >= sess_limit.files_in_avail) {
 
       /* Report the exceeding of the threshold. */
-      quotatab_log("%s denied: quota exceeded: used %s", (char *) cmd->argv[0],
+      quotatab_log("%s denied: %s quota exceeded: used %s",
+        get_quota_type_text(sess_quota_type), (char *) cmd->argv[0],
         DISPLAY_FILES_IN(cmd));
       pr_response_add_err(R_552, _("%s denied: quota exceeded: used %s"),
         (char *) cmd->argv[0], DISPLAY_FILES_IN(cmd));
@@ -2270,7 +2300,8 @@ MODRET quotatab_pre_copy(cmd_rec *cmd) {
                sess_tally.files_xfer_used >= sess_limit.files_xfer_avail) {
 
       /* Report the exceeding of the threshold. */
-      quotatab_log("%s denied: quota exceeded: used %s", (char *) cmd->argv[0],
+      quotatab_log("%s denied: %s quota exceeded: used %s",
+        get_quota_type_text(sess_quota_type), (char *) cmd->argv[0],
         DISPLAY_FILES_XFER(cmd));
       pr_response_add_err(R_552, _("%s denied: quota exceeded: used %s"),
         (char *) cmd->argv[0], DISPLAY_FILES_XFER(cmd));
@@ -3285,7 +3316,8 @@ MODRET quotatab_pre_retr(cmd_rec *cmd) {
       sess_tally.bytes_out_used >= sess_limit.bytes_out_avail) {
 
     /* Report the exceeding of the threshold. */
-    quotatab_log("%s denied: quota exceeded: used %s", (char *) cmd->argv[0],
+    quotatab_log("%s denied: %s quota exceeded: used %s",
+      get_quota_type_text(sess_quota_type), (char *) cmd->argv[0],
       DISPLAY_BYTES_OUT(cmd));
     pr_response_add_err(R_451, _("%s denied: quota exceeded: used %s"),
       (char *) cmd->argv[0], DISPLAY_BYTES_OUT(cmd));
@@ -3300,7 +3332,8 @@ MODRET quotatab_pre_retr(cmd_rec *cmd) {
       sess_tally.bytes_xfer_used >= sess_limit.bytes_xfer_avail) {
 
     /* Report the exceeding of the threshold. */
-    quotatab_log("%s denied: quota exceeded: used %s", (char *) cmd->argv[0],
+    quotatab_log("%s denied: %s quota exceeded: used %s",
+      get_quota_type_text(sess_quota_type), (char *) cmd->argv[0],
       DISPLAY_BYTES_XFER(cmd));
     pr_response_add_err(R_451, _("%s denied: quota exceeded: used %s"),
       (char *) cmd->argv[0], DISPLAY_BYTES_XFER(cmd));
@@ -3319,7 +3352,8 @@ MODRET quotatab_pre_retr(cmd_rec *cmd) {
       sess_tally.files_out_used >= sess_limit.files_out_avail) {
 
     /* Report the exceeding of the threshold. */
-    quotatab_log("%s denied: quota exceeded: used %s", (char *) cmd->argv[0],
+    quotatab_log("%s denied: %s quota exceeded: used %s",
+      get_quota_type_text(sess_quota_type), (char *) cmd->argv[0],
       DISPLAY_FILES_OUT(cmd));
     pr_response_add_err(R_451, _("%s denied: quota exceeded: used %s"),
       (char *) cmd->argv[0], DISPLAY_FILES_OUT(cmd));
@@ -3334,7 +3368,8 @@ MODRET quotatab_pre_retr(cmd_rec *cmd) {
       sess_tally.files_xfer_used >= sess_limit.files_xfer_avail) {
 
     /* Report the exceeding of the threshold. */
-    quotatab_log("%s: denied: quota exceeded: used %s", (char *) cmd->argv[0],
+    quotatab_log("%s: denied: %s quota exceeded: used %s",
+      get_quota_type_text(sess_quota_type), (char *) cmd->argv[0],
       DISPLAY_FILES_XFER(cmd));
     pr_response_add(R_451, _("%s denied: quota exceeded: used %s"),
       (char *) cmd->argv[0], DISPLAY_FILES_XFER(cmd));
@@ -3610,7 +3645,8 @@ MODRET quotatab_pre_stor(cmd_rec *cmd) {
       sess_tally.bytes_in_used >= sess_limit.bytes_in_avail) {
 
     /* Report the exceeding of the threshold. */
-    quotatab_log("%s denied: quota exceeded: used %s", (char *) cmd->argv[0],
+    quotatab_log("%s denied: %s quota exceeded: used %s",
+      get_quota_type_text(sess_quota_type), (char *) cmd->argv[0],
       DISPLAY_BYTES_IN(cmd));
     pr_response_add_err(R_552, _("%s denied: quota exceeded: used %s"),
       (char *) cmd->argv[0], DISPLAY_BYTES_IN(cmd));
@@ -3625,7 +3661,8 @@ MODRET quotatab_pre_stor(cmd_rec *cmd) {
       sess_tally.bytes_xfer_used >= sess_limit.bytes_xfer_avail) {
 
     /* Report the exceeding of the threshold. */
-    quotatab_log("%s denied: quota exceeded: used %s", (char *) cmd->argv[0],
+    quotatab_log("%s denied: %s quota exceeded: used %s",
+      get_quota_type_text(sess_quota_type), (char *) cmd->argv[0],
       DISPLAY_BYTES_XFER(cmd));
     pr_response_add_err(R_552, _("%s denied: quota exceeded: used %s"),
       (char *) cmd->argv[0], DISPLAY_BYTES_XFER(cmd));
@@ -3644,7 +3681,8 @@ MODRET quotatab_pre_stor(cmd_rec *cmd) {
       sess_tally.files_in_used >= sess_limit.files_in_avail) {
 
     /* Report the exceeding of the threshold. */
-    quotatab_log("%s denied: quota exceeded: used %s", (char *) cmd->argv[0],
+    quotatab_log("%s denied: %s quota exceeded: used %s",
+      get_quota_type_text(sess_quota_type), (char *) cmd->argv[0],
       DISPLAY_FILES_IN(cmd));
     pr_response_add_err(R_552, _("%s denied: quota exceeded: used %s"),
       (char *) cmd->argv[0], DISPLAY_FILES_IN(cmd));
@@ -3659,7 +3697,8 @@ MODRET quotatab_pre_stor(cmd_rec *cmd) {
       sess_tally.files_xfer_used >= sess_limit.files_xfer_avail) {
 
     /* Report the exceeding of the threshold. */
-    quotatab_log("%s denied: quota exceeded: used %s", (char *) cmd->argv[0],
+    quotatab_log("%s denied: %s quota exceeded: used %s",
+      get_quota_type_text(sess_quota_type), (char *) cmd->argv[0],
       DISPLAY_FILES_XFER(cmd));
     pr_response_add_err(R_552, _("%s denied: quota exceeded: used %s"),
       (char *) cmd->argv[0], DISPLAY_FILES_XFER(cmd));
