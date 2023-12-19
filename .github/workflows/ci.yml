@@ -4,9 +4,19 @@ on:
   push:
     branches:
       - 1.3.8
+    paths-ignore:
+      - NEWS
+      - RELEASE_NOTES
+      - '**/*.html'
+      - '**/*.md'
   pull_request:
     branches:
       - 1.3.8
+    paths-ignore:
+      - NEWS
+      - RELEASE_NOTES
+      - '**/*.html'
+      - '**/*.md'
 
 jobs:
   build:
