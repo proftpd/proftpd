@@ -8,6 +8,7 @@ on:
     paths-ignore:
       - NEWS
       - RELEASE_NOTES
+      - '**/*.html'
       - '**/*.md'
   pull_request:
     branches:
@@ -16,6 +17,7 @@ on:
     paths-ignore:
       - NEWS
       - RELEASE_NOTES
+      - '**/*.html'
       - '**/*.md'
 
 jobs:
