@@ -2066,6 +2066,18 @@ int sftp_ssh2_packet_rekey_set_size(off_t size) {
   return 0;
 }
 
+uint32_t sftp_ssh2_packet_get_client_seqno(void) {
+  return packet_client_seqno;
+}
+
+void sftp_ssh2_packet_reset_client_seqno(void) {
+  packet_client_seqno = 0;
+}
+
+void sftp_ssh2_packet_reset_server_seqno(void) {
+  packet_server_seqno = 0;
+}
+
 int sftp_ssh2_packet_send_version(void) {
   if (!sent_version_id) {
     int res;

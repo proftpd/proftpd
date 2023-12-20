@@ -1,6 +1,6 @@
 /*
  * ProFTPD - mod_sftp
- * Copyright (c) 2008-2022 TJ Saunders
+ * Copyright (c) 2008-2023 TJ Saunders
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -1718,8 +1718,9 @@ MODRET set_sftpoptions(cmd_rec *cmd) {
   config_rec *c;
   unsigned long opts = 0UL;
 
-  if (cmd->argc-1 == 0)
+  if (cmd->argc-1 == 0) {
     CONF_ERROR(cmd, "wrong number of parameters");
+  }
 
   CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL);
 
@@ -1785,6 +1786,9 @@ MODRET set_sftpoptions(cmd_rec *cmd) {
 
     } else if (strcmp(cmd->argv[i], "NoHostkeyRotation") == 0) {
       opts |= SFTP_OPT_NO_HOSTKEY_ROTATION;
+
+    } else if (strcmp(cmd->argv[i], "NoStrictKex") == 0) {
+      opts |= SFTP_OPT_NO_STRICT_KEX;
 
     } else {
       CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, ": unknown SFTPOption '",
