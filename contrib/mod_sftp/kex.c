@@ -166,6 +166,13 @@ static struct sftp_kex *kex_first_kex = NULL;
 static struct sftp_kex *kex_rekey_kex = NULL;
 static int kex_sent_kexinit = FALSE;
 
+/* Using strict kex?  Note that we maintain this value here, rather than
+ * in the sftp_kex struct, so that any "use strict KEX" flag set via the
+ * first KEXINIT is used through any subsequent KEXINITs.
+ */
+static int use_strict_kex = FALSE;
+static int kex_done_first_kex = FALSE;
+
 /* Diffie-Hellman group moduli */
 
 static const char *dh_group1_str =
@@ -1612,6 +1619,16 @@ static const char *get_kexinit_exchange_list(pool *p) {
     res = pstrcat(p, res, *res ? "," : "", pstrdup(p, "ext-info-s"), NULL);
   }
 
+  if (!(sftp_opts & SFTP_OPT_NO_STRICT_KEX)) {
+    /* Indicate support for OpenSSH's custom "strict KEX" mode extension,
+     * but only if we have not done/completed our first KEX.
+     */
+    if (kex_done_first_kex == FALSE) {
+      res = pstrcat(p, res, *res ? "," : "",
+        pstrdup(p, "kex-strict-s-v00@openssh.com"), NULL);
+    }
+  }
+
   return res;
 }
 
@@ -2322,6 +2339,21 @@ static int get_session_names(struct sftp_kex *kex, int *correct_guess) {
       "ext-info-c");
     pr_trace_msg(trace_channel, 20, "client %s EXT_INFO support",
       kex->use_ext_info ? "signaled" : "did not signal" );
+
+    if (!(sftp_opts & SFTP_OPT_NO_STRICT_KEX)) {
+      /* Did the client indicate "strict kex" support (Issue 1760)?
+       *
+       * Note that we only check for this if it is our first KEXINIT.
+       * The "strict kex" extension is ignored in any subsequent KEXINITs, as
+       * for rekeys.
+       */
+      if (kex_done_first_kex == FALSE) {
+        use_strict_kex = sftp_misc_namelist_contains(kex->pool,
+          client_list, "kex-strict-c-v00@openssh.com");
+        pr_trace_msg(trace_channel, 20, "client %s strict KEX support",
+          use_strict_kex ? "signaled" : "did not signal" );
+      }
+    }
 
   } else {
     (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
@@ -5058,7 +5090,6 @@ static int handle_kex_ecdh(struct ssh2_packet *pkt, struct sftp_kex *kex) {
   destroy_pool(pkt->pool);
   return 0;
 }
-
 #endif /* PR_USE_OPENSSL_ECC */
 
 static struct ssh2_packet *read_kex_packet(pool *p, struct sftp_kex *kex,
@@ -5109,6 +5140,10 @@ static struct ssh2_packet *read_kex_packet(pool *p, struct sftp_kex *kex,
     /* Per RFC 4253, Section 11, DEBUG, DISCONNECT, IGNORE, and UNIMPLEMENTED
      * messages can occur at any time, even during KEX.  We have to be prepared
      * for this, and Do The Right Thing(tm).
+     *
+     * However, due to the Terrapin attack, if we are using a "strict KEX"
+     * mode, then only DISCONNECT messages can occur during KEX; DEBUG,
+     * IGNORE, and UNIMPLEMENTED messages will lead to disconnecting.
      */
 
     msg_type = sftp_ssh2_packet_get_msg_type(pkt);
@@ -5137,35 +5172,43 @@ static struct ssh2_packet *read_kex_packet(pool *p, struct sftp_kex *kex,
     }
 
     switch (msg_type) {
-      case SFTP_SSH2_MSG_DEBUG:
-        sftp_ssh2_packet_handle_debug(pkt);
-        pr_response_set_pool(NULL);
-        pkt = NULL;
-        break;
-
+      /* DISCONNECT messages are always allowed. */
       case SFTP_SSH2_MSG_DISCONNECT:
         sftp_ssh2_packet_handle_disconnect(pkt);
         pr_response_set_pool(NULL);
         pkt = NULL;
         break;
 
+      case SFTP_SSH2_MSG_DEBUG:
+        if (use_strict_kex == FALSE) {
+          sftp_ssh2_packet_handle_debug(pkt);
+          pr_response_set_pool(NULL);
+          pkt = NULL;
+          break;
+        }
+
       case SFTP_SSH2_MSG_IGNORE:
-        sftp_ssh2_packet_handle_ignore(pkt);
-        pr_response_set_pool(NULL);
-        pkt = NULL;
-        break;
+        if (use_strict_kex == FALSE) {
+          sftp_ssh2_packet_handle_ignore(pkt);
+          pr_response_set_pool(NULL);
+          pkt = NULL;
+          break;
+        }
 
       case SFTP_SSH2_MSG_UNIMPLEMENTED:
-        sftp_ssh2_packet_handle_unimplemented(pkt);
-        pr_response_set_pool(NULL);
-        pkt = NULL;
-        break;
+        if (use_strict_kex == FALSE) {
+          sftp_ssh2_packet_handle_unimplemented(pkt);
+          pr_response_set_pool(NULL);
+          pkt = NULL;
+          break;
+        }
 
       default:
         /* For any other message type, it's considered a protocol error. */
         (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
-          "received %s (%d) unexpectedly, disconnecting",
-          sftp_ssh2_packet_get_msg_type_desc(msg_type), msg_type);
+          "received %s (%d) unexpectedly%s, disconnecting",
+          sftp_ssh2_packet_get_msg_type_desc(msg_type), msg_type,
+          use_strict_kex ? " during strict KEX" : "");
         pr_response_set_pool(NULL);
         destroy_kex(kex);
         destroy_pool(pkt->pool);
@@ -5187,7 +5230,7 @@ int sftp_kex_handle(struct ssh2_packet *pkt) {
    * initial connect (kex_first_kex not null), or because we
    * are in a server-initiated rekeying (kex_rekey_kex not null).
    */
-  if (kex_first_kex) {
+  if (kex_first_kex != NULL) {
     kex = kex_first_kex;
 
     /* We need to assign the client/server versions, which this struct
@@ -5196,7 +5239,7 @@ int sftp_kex_handle(struct ssh2_packet *pkt) {
     kex->client_version = kex_client_version;
     kex->server_version = kex_server_version;
 
-  } else if (kex_rekey_kex) {
+  } else if (kex_rekey_kex != NULL) {
     kex = kex_rekey_kex;
 
   } else {
@@ -5231,6 +5274,24 @@ int sftp_kex_handle(struct ssh2_packet *pkt) {
   if (get_session_names(kex, &correct_guess) < 0) {
     destroy_kex(kex);
     return -1;
+  }
+
+  if (use_strict_kex == TRUE &&
+      kex_done_first_kex == FALSE) {
+    uint32_t client_seqno;
+
+    client_seqno = sftp_ssh2_packet_get_client_seqno();
+    if (client_seqno != 1) {
+      /* Receiving any messages other than a KEXINIT as the first client
+       * message indicates the possibility of the Terrapin attack being
+       * conducted (Issue 1760).  Thus we disconnect the client in such
+       * cases.
+       */
+      (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
+        "'strict KEX' violation, as KEXINIT was not the first message; disconnecting");
+      destroy_kex(kex);
+      SFTP_DISCONNECT_CONN(SFTP_SSH2_DISCONNECT_BY_APPLICATION, NULL);
+    }
   }
 
   /* Once we have received the client KEXINIT message, we can compare what we
@@ -5291,7 +5352,7 @@ int sftp_kex_handle(struct ssh2_packet *pkt) {
 
       destroy_pool(pkt->pool);
 
-      if (!kex_sent_kexinit) {
+      if (kex_sent_kexinit == FALSE) {
         pkt = sftp_ssh2_packet_create(kex_pool);
         res = write_kexinit(pkt, kex);
         if (res < 0) {
@@ -5314,7 +5375,7 @@ int sftp_kex_handle(struct ssh2_packet *pkt) {
       }
     }
 
-    if (!kex_sent_kexinit) {
+    if (kex_sent_kexinit == FALSE) {
       pkt = sftp_ssh2_packet_create(kex_pool);
       res = write_kexinit(pkt, kex);
       if (res < 0) {
@@ -5445,7 +5506,7 @@ int sftp_kex_handle(struct ssh2_packet *pkt) {
     NULL, 1, SFTP_SSH2_MSG_NEWKEYS);
 
   /* If we didn't send our NEWKEYS message earlier, do it now. */
-  if (!sent_newkeys) {
+  if (sent_newkeys == FALSE) {
     struct ssh2_packet *pkt2;
 
     pr_trace_msg(trace_channel, 9, "sending NEWKEYS message to client");
@@ -5469,6 +5530,11 @@ int sftp_kex_handle(struct ssh2_packet *pkt) {
     destroy_pool(pkt2->pool);
   }
 
+  if (use_strict_kex == TRUE) {
+    sftp_ssh2_packet_reset_client_seqno();
+    sftp_ssh2_packet_reset_server_seqno();
+  }
+
   /* Last but certainly not least, set up the keys for encryption and
    * authentication, based on H and K.
    */
@@ -5488,6 +5554,9 @@ int sftp_kex_handle(struct ssh2_packet *pkt) {
   pr_cmd_dispatch_phase(cmd, LOG_CMD, 0);
   destroy_pool(pkt->pool);
   cmd = NULL;
+
+  /* We've now completed our KEX, possibly our first. */
+  kex_done_first_kex = TRUE;
 
   /* If extension negotiation has not been disabled, AND if we have not
    * received a service request, AND if the client sent "ext-info-c", THEN
@@ -5542,6 +5611,12 @@ int sftp_kex_handle(struct ssh2_packet *pkt) {
     }
   }
 
+  /* Only start the TAP timer after we have completed our first KEX.
+   * Otherwise, we risk sending "illegal" packets prior to, or during,
+   * a "strict KEX" session (Issue 1760).
+   */
+  sftp_tap_start_policy();
+
   /* Reset this flag for the next time through. */
   kex_sent_kexinit = FALSE;
 
@@ -5571,7 +5646,7 @@ int sftp_kex_free(void) {
     destroy_kex(rekey_kex);
   }
 
-  if (kex_pool) {
+  if (kex_pool != NULL) {
     destroy_pool(kex_pool);
     kex_pool = NULL;
   }
@@ -5747,7 +5822,7 @@ int sftp_kex_send_first_kexinit(void) {
   struct ssh2_packet *pkt;
   int res;
 
-  if (!kex_pool) {
+  if (kex_pool == NULL) {
     kex_pool = make_sub_pool(sftp_pool);
     pr_pool_tag(kex_pool, "Kex Pool");
   }
@@ -5782,4 +5857,3 @@ int sftp_kex_send_first_kexinit(void) {
   destroy_pool(pkt->pool);
   return 0;
 }
-

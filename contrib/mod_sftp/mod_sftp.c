@@ -1729,8 +1729,9 @@ MODRET set_sftpoptions(cmd_rec *cmd) {
   config_rec *c;
   unsigned long opts = 0UL;
 
-  if (cmd->argc-1 == 0)
+  if (cmd->argc-1 == 0) {
     CONF_ERROR(cmd, "wrong number of parameters");
+  }
 
   CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL);
 
@@ -1802,6 +1803,9 @@ MODRET set_sftpoptions(cmd_rec *cmd) {
 
     } else if (strcmp(cmd->argv[i], "FIDOVerifyRequired") == 0) {
       opts |= SFTP_OPT_FIDO_VERIFY_REQUIRED;
+
+    } else if (strcmp(cmd->argv[i], "NoStrictKex") == 0) {
+      opts |= SFTP_OPT_NO_STRICT_KEX;
 
     } else {
       CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, ": unknown SFTPOption '",
