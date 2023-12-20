@@ -6,6 +6,26 @@ This file contains a description of the major changes to ProFTPD for the
 releases.  More information on these changes can be found in the NEWS and
 ChangeLog files.
 
+1.3.9rc2
+---------
+
+  + Implemented SSH mitigations for the "Terrapin" SSH attack (CVE-2023-48795).
+
+  + Fixed compiling of 3rd party modules whose names match very specific
+    regular expression patterns.
+
+
+  + Changed Directives
+
+      SFTPOptions NoStrictKex
+
+        By default, mod_sftp uses a "strict KEX" mode as a mitigation for the
+        "Terrapin" SSH attack (CVE-2023-48795).  Use of this strict mode
+        may unexpectedly cause interoperability issues; this new SFTPOption
+        can be used to disable this mode if necessary.  See
+        doc/contrib/mod_sftp.html#SFTPOptions for more.
+
+
 1.3.9rc1
 ---------
 
