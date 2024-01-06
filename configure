@@ -21419,7 +21419,7 @@ main ()
 {
 
     size_t res, in_len = 0, out_len = 0;
-    const char *in = NULL;
+    char *in = NULL;
     char *out = NULL;
     res = iconv((iconv_t)-1, &in, &in_len, &out, &out_len);
 
