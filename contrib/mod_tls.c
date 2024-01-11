@@ -10057,6 +10057,7 @@ static void tls_setup_cert_environ(pool *p, const char *env_prefix,
     bio = BIO_new(BIO_s_mem());
 #if (OPENSSL_VERSION_NUMBER >= 0x10100000L && !defined(HAVE_LIBRESSL)) || \
     (defined(HAVE_LIBRESSL) && LIBRESSL_VERSION_NUMBER >= 0x3050000L)
+    pubkey = X509_get_X509_PUBKEY(cert);
     X509_PUBKEY_get0_param(NULL, NULL, NULL, (X509_ALGOR **) &algo, pubkey);
 #else
     pubkey = cert->cert_info->key;
