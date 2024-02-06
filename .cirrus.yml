@@ -24,7 +24,7 @@ task:
     - pkg install -y openldap26-client
     - pkg install -y openssl
     - pkg install -y pcre
-    - pkg install -y postgresql11-client
+    - pkg install -y postgresql13-client
     - pkg install -y sqlite3
     - pkg install -y unixODBC
     # For the Redis unit tests
