@@ -19,7 +19,7 @@ task:
     - pkg install -y libsodium
     - pkg install -y libmaxminddb
     - pkg install -y libmemcached
-    - pkg install -y mysql57-client
+    - pkg install -y mysql80-client
     - pkg install -y ncurses
     - pkg install -y openldap26-client
     - pkg install -y openssl
