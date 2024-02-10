@@ -1,6 +1,6 @@
 /*
  * ProFTPD - mod_sftp key exchange (kex)
- * Copyright (c) 2008-2023 TJ Saunders
+ * Copyright (c) 2008-2024 TJ Saunders
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -2821,10 +2821,10 @@ static int read_dh_init(struct ssh2_packet *pkt, struct sftp_kex *kex) {
   return 0;
 }
 
-/* Only set the given environment variable/value IFF it is not already
- * present.
+/* Only set the given note (and environment) variable/value IFF it is not
+ * already present.
  */
-static void set_env_var(pool *p, const char *k, const char *v) {
+static void set_note_var(pool *p, const char *k, const char *v) {
   const char *val;
   int have_val = FALSE;
 
@@ -2841,6 +2841,8 @@ static void set_env_var(pool *p, const char *k, const char *v) {
     pr_env_unset(p, k);
     pr_env_set(p, k, v);
   }
+
+  (void) pr_table_add_dup(session.notes, k, v, 0);
 }
 
 static int set_session_keys(struct sftp_kex *kex) {
@@ -2910,33 +2912,35 @@ static int set_session_keys(struct sftp_kex *kex) {
     return -1;
   }
 
-  set_env_var(session.pool, "SFTP_CLIENT_CIPHER_ALGO",
+  set_note_var(session.pool, "SFTP_CLIENT_CIPHER_ALGO",
     sftp_cipher_get_read_algo());
-  set_env_var(session.pool, "SFTP_SERVER_CIPHER_ALGO",
+  set_note_var(session.pool, "SFTP_SERVER_CIPHER_ALGO",
     sftp_cipher_get_write_algo());
 
   if (sftp_cipher_get_read_auth_size2() == 0) {
-    set_env_var(session.pool, "SFTP_CLIENT_MAC_ALGO",
+    set_note_var(session.pool, "SFTP_CLIENT_MAC_ALGO",
       sftp_mac_get_read_algo());
 
   } else {
-    set_env_var(session.pool, "SFTP_CLIENT_MAC_ALGO", "implicit");
+    set_note_var(session.pool, "SFTP_CLIENT_MAC_ALGO", "implicit");
   }
 
   if (sftp_cipher_get_write_auth_size2() == 0) {
-    set_env_var(session.pool, "SFTP_SERVER_MAC_ALGO",
+    set_note_var(session.pool, "SFTP_SERVER_MAC_ALGO",
       sftp_mac_get_write_algo());
 
   } else {
-    set_env_var(session.pool, "SFTP_SERVER_MAC_ALGO", "implicit");
+    set_note_var(session.pool, "SFTP_SERVER_MAC_ALGO", "implicit");
   }
 
-  set_env_var(session.pool, "SFTP_CLIENT_COMPRESSION_ALGO",
+  set_note_var(session.pool, "SFTP_CLIENT_COMPRESSION_ALGO",
     sftp_compress_get_read_algo());
-  set_env_var(session.pool, "SFTP_SERVER_COMPRESSION_ALGO",
+  set_note_var(session.pool, "SFTP_SERVER_COMPRESSION_ALGO",
     sftp_compress_get_write_algo());
-  set_env_var(session.pool, "SFTP_KEX_ALGO",
+  set_note_var(session.pool, "SFTP_KEX_ALGO",
     kex->session_names->kex_algo);
+  set_note_var(session.pool, "SFTP_HOST_KEY_ALGO",
+    kex->session_names->server_hostkey_algo);
 
   if (kex_rekey_interval > 0 &&
       kex_rekey_timerno == -1) {
