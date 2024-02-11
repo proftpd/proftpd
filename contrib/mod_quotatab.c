@@ -1,7 +1,7 @@
 /*
  * ProFTPD: mod_quotatab -- a module for managing FTP byte/file quotas via
  *                          centralized tables
- * Copyright (c) 2001-2023 TJ Saunders
+ * Copyright (c) 2001-2024 TJ Saunders
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -3181,10 +3181,66 @@ MODRET quotatab_post_pass(cmd_rec *cmd) {
      * return an error when reading/writing a file causes a limit to be reached.
      */
     if (sess_limit.quota_limit_type == HARD_LIMIT) {
-      pr_fs_t *fs = pr_register_fs(session.pool, "quotatab", "/");
-      if (fs) {
+      pr_fs_t *curr_fs = NULL, *our_fs = NULL;
+      int match = FALSE;
+
+      /* Note that we need to be aware of other modules' FS handlers, such
+       * as mod_vroot (see Issue #1764).
+       */
+      curr_fs = pr_get_fs("/", &match);
+
+      our_fs = pr_register_fs(session.pool, "quotatab", "/");
+      if (our_fs != NULL) {
         quotatab_log("quotatab fs registered");
-        fs->write = quotatab_fsio_write;
+
+        if (curr_fs != NULL) {
+          our_fs->fs_name = pstrcat(our_fs->fs_pool, "quotatab+",
+            curr_fs->fs_name, NULL);
+
+          /* Use all of the current FS handlers, EXCEPT for its write(2)
+           * callback.  That operation is the one we want to handle, in order
+           * to force a write failure if a quota is exceeded.
+           */
+          our_fs->stat = curr_fs->stat;
+          our_fs->fstat = curr_fs->fstat;
+          our_fs->lstat = curr_fs->lstat;
+          our_fs->rename = curr_fs->rename;
+          our_fs->unlink = curr_fs->unlink;
+          our_fs->open = curr_fs->open;
+          our_fs->close = curr_fs->close;
+          our_fs->read = curr_fs->read;
+          our_fs->pread = curr_fs->pread;
+          our_fs->lseek = curr_fs->lseek;
+          our_fs->link = curr_fs->link;
+          our_fs->readlink = curr_fs->readlink;
+          our_fs->symlink = curr_fs->symlink;
+          our_fs->ftruncate = curr_fs->ftruncate;
+          our_fs->truncate = curr_fs->truncate;
+          our_fs->chmod = curr_fs->chmod;
+          our_fs->fchmod = curr_fs->fchmod;
+          our_fs->chown = curr_fs->chown;
+          our_fs->fchown = curr_fs->fchown;
+          our_fs->lchown = curr_fs->lchown;
+          our_fs->access = curr_fs->access;
+          our_fs->faccess = curr_fs->faccess;
+          our_fs->utimes = curr_fs->utimes;
+          our_fs->futimes = curr_fs->futimes;
+          our_fs->fsync = curr_fs->fsync;
+
+          our_fs->chdir = curr_fs->chdir;
+          our_fs->opendir = curr_fs->opendir;
+          our_fs->closedir = curr_fs->closedir;
+          our_fs->readdir = curr_fs->readdir;
+          our_fs->mkdir = curr_fs->mkdir;
+          our_fs->rmdir = curr_fs->rmdir;
+        }
+
+        /* TODO: How to wrap the existing FS write/pwrite callbacks?
+         *
+         * For Issue #1764, this is not a problem due to the fact that
+         * mod_vroot does not override the system FS write callbacks.
+         */
+        our_fs->write = quotatab_fsio_write;
 
       } else {
         quotatab_log("error registering quotatab fs: %s", strerror(errno));
