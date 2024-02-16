@@ -9,6 +9,7 @@
 [![Coverity Scan Status](https://scan.coverity.com/projects/198/badge.svg)](https://scan.coverity.com/projects/198)
 [![Release](https://img.shields.io/badge/release-1.3.9rc2-brightgreen)](https://github.com/proftpd/proftpd/releases/latest)
 [![License](https://img.shields.io/badge/license-GPL-brightgreen.svg)](https://img.shields.io/badge/license-GPL-brightgreen.svg)
+[![deepcode](https://www.deepcode.ai/api/gh/badge?key=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJwbGF0Zm9ybTEiOiJnaCIsIm93bmVyMSI6InByb2Z0cGQiLCJyZXBvMSI6InByb2Z0cGQiLCJpbmNsdWRlTGludCI6ZmFsc2UsImF1dGhvcklkIjoyMTE3NiwiaWF0IjoxNjIzMTkxMzkzfQ.MdmKMI5x0B0mPA3AgFtRm5o8apR5YegZgL7WtJ94XTQ)](https://www.deepcode.ai/app/gh/proftpd/proftpd/_/dashboard?utm_content=gh%2Fproftpd%2Fproftpd)
 
 ## Introduction
 
