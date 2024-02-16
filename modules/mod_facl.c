@@ -1,6 +1,6 @@
 /*
  * ProFTPD - FTP server daemon
- * Copyright (c) 2004-2022 The ProFTPD Project team
+ * Copyright (c) 2004-2024 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -1292,7 +1292,8 @@ static void facl_mod_unload_ev(const void *event_data, void *user_data) {
 static void facl_postparse_ev(const void *event_data, void *user_data) {
 #if defined(PR_USE_FACL) && \
     defined(HAVE_POSIX_ACL)
-  pr_fs_t *fs;
+  pr_fs_t *curr_fs = NULL, *our_fs = NULL;
+  int match = FALSE;
 #endif /* PR_USE_FACL and HAVE_POSIX_ACL */
 
   if (facl_engine == FALSE) {
@@ -1301,8 +1302,13 @@ static void facl_postparse_ev(const void *event_data, void *user_data) {
 
 #if defined(PR_USE_FACL) && \
     defined(HAVE_POSIX_ACL)
-  fs = pr_register_fs(permanent_pool, "facl", "/");
-  if (fs == NULL) {
+  /* Note that we need to be aware of other modules' FS handlers, such
+   * as mod_vroot (see Issue #1780).
+   */
+  curr_fs = pr_get_fs("/", &match);
+
+  our_fs = pr_register_fs(permanent_pool, "facl", "/");
+  if (our_fs == NULL) {
     int xerrno = errno;
 
     pr_log_pri(PR_LOG_WARNING,
@@ -1312,9 +1318,56 @@ static void facl_postparse_ev(const void *event_data, void *user_data) {
   }
   pr_log_debug(DEBUG6, MOD_FACL_VERSION ": registered 'facl' FS");
 
-  /* Ensure that our ACL-checking handlers are used. */
-  fs->access = facl_fsio_access;
-  fs->faccess = facl_fsio_faccess;
+  if (curr_fs != NULL) {
+    our_fs->fs_name = pstrcat(our_fs->fs_pool, "facl+", curr_fs->fs_name, NULL);
+
+    /* Use all of the current FS handlers, EXCEPT for its access(3)
+     * callbacks.  Those operations are the ones we want to handle, in order
+     * to use our POSIX ACL checking.
+     */
+
+    our_fs->stat = curr_fs->stat;
+    our_fs->fstat = curr_fs->fstat;
+    our_fs->lstat = curr_fs->lstat;
+    our_fs->rename = curr_fs->rename;
+    our_fs->unlink = curr_fs->unlink;
+    our_fs->open = curr_fs->open;
+    our_fs->close = curr_fs->close;
+    our_fs->read = curr_fs->read;
+    our_fs->pread = curr_fs->pread;
+    our_fs->write = curr_fs->write;
+    our_fs->pwrite = curr_fs->pwrite;
+    our_fs->lseek = curr_fs->lseek;
+    our_fs->link = curr_fs->link;
+    our_fs->readlink = curr_fs->readlink;
+    our_fs->symlink = curr_fs->symlink;
+    our_fs->ftruncate = curr_fs->ftruncate;
+    our_fs->truncate = curr_fs->truncate;
+    our_fs->chmod = curr_fs->chmod;
+    our_fs->fchmod = curr_fs->fchmod;
+    our_fs->chown = curr_fs->chown;
+    our_fs->fchown = curr_fs->fchown;
+    our_fs->lchown = curr_fs->lchown;
+    our_fs->utimes = curr_fs->utimes;
+    our_fs->futimes = curr_fs->futimes;
+    our_fs->fsync = curr_fs->fsync;
+
+    our_fs->chdir = curr_fs->chdir;
+    our_fs->opendir = curr_fs->opendir;
+    our_fs->closedir = curr_fs->closedir;
+    our_fs->readdir = curr_fs->readdir;
+    our_fs->mkdir = curr_fs->mkdir;
+    our_fs->rmdir = curr_fs->rmdir;
+  }
+
+  /* TODO: How to wrap the existing FS access callbacks?
+   *
+   * For Issue #1780, this is not a problem due to the fact that
+   * mod_vroot does not override the system FS access callbacks.
+   */
+
+  our_fs->access = facl_fsio_access;
+  our_fs->faccess = facl_fsio_faccess;
 #endif /* PR_USE_FACL and HAVE_POSIX_ACL */
 }
 
