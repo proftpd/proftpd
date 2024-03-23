@@ -2601,6 +2601,7 @@ static uint32_t fxp_xattrs_write(pool *p, struct fxp_buffer *fxb,
         if (valsz > 0) {
           *((pr_buffer_t **) push_array(vals)) = val;
         }
+
       } else {
         /* Push the empty buffer into the list, so that the vals list
          * lines up with the names list.
