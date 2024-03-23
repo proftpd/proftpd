@@ -2,7 +2,7 @@
  * ProFTPD - FTP server daemon
  * Copyright (c) 1997, 1998 Public Flood Software
  * Copyright (c) 1999, 2000 MacGyver aka Habeeb J. Dihu <macgyver@tos.net>
- * Copyright (c) 2001-2022 The ProFTPD Project
+ * Copyright (c) 2001-2024 The ProFTPD Project
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -699,11 +699,11 @@ static ssize_t unix_flistxattr(int fd, char *namelist, size_t len) {
 
 static int sys_listxattr(pool *p, pr_fs_t *fs, const char *path,
     array_header **names) {
-  ssize_t res;
+  ssize_t res = 0;
   char *namelist = NULL;
   size_t len = 0;
 
-#ifdef PR_USE_XATTR
+#if defined(PR_USE_XATTR)
   /* We need to handle the different formats of namelists that listxattr et al
    * can provide.  On *BSDs, the namelist buffer uses length prefixes and no
    * terminating NULs; on Linux/Mac, the namelist buffer uses ONLY
@@ -720,12 +720,26 @@ static int sys_listxattr(pool *p, pr_fs_t *fs, const char *path,
     return -1;
   }
 
+  if (res == 0) {
+    /* No extended attributes found. */
+    pr_trace_msg(trace_channel, 15, "listxattr: found 0 xattr names for '%s'",
+      path);
+    return 0;
+  }
+
   len = res;
   namelist = palloc(p, len);
 
   res = unix_listxattr(path, namelist, len);
   if (res < 0) {
     return -1;
+  }
+
+  if (res == 0) {
+    /* No extended attributes found. */
+    pr_trace_msg(trace_channel, 15, "listxattr: found 0 xattr names for '%s'",
+      path);
+    return 0;
   }
 
   *names = parse_xattr_namelist(p, namelist, len);
@@ -765,11 +779,18 @@ static int sys_llistxattr(pool *p, pr_fs_t *fs, const char *path,
   char *namelist = NULL;
   size_t len = 0;
 
-#ifdef PR_USE_XATTR
+#if defined(PR_USE_XATTR)
   /* See sys_listxattr for a description of why we use this approach. */
   res = unix_llistxattr(path, NULL, 0);
   if (res < 0) {
     return -1;
+  }
+
+  if (res == 0) {
+    /* No extended attributes found. */
+    pr_trace_msg(trace_channel, 15, "llistxattr: found 0 xattr names for '%s'",
+      path);
+    return 0;
   }
 
   len = res;
@@ -778,6 +799,13 @@ static int sys_llistxattr(pool *p, pr_fs_t *fs, const char *path,
   res = unix_llistxattr(path, namelist, len);
   if (res < 0) {
     return -1;
+  }
+
+  if (res == 0) {
+    /* No extended attributes found. */
+    pr_trace_msg(trace_channel, 15, "llistxattr: found 0 xattr names for '%s'",
+      path);
+    return 0;
   }
 
   *names = parse_xattr_namelist(p, namelist, len);
@@ -816,11 +844,18 @@ static int sys_flistxattr(pool *p, pr_fh_t *fh, int fd, array_header **names) {
   char *namelist = NULL;
   size_t len = 0;
 
-#ifdef PR_USE_XATTR
+#if defined(PR_USE_XATTR)
   /* See sys_listxattr for a description of why we use this approach. */
   res = unix_flistxattr(fd, NULL, 0);
   if (res < 0) {
     return -1;
+  }
+
+  if (res == 0) {
+    /* No extended attributes found. */
+    pr_trace_msg(trace_channel, 15, "flistxattr: found 0 xattr names for '%s'",
+      fh->fh_path);
+    return 0;
   }
 
   len = res;
@@ -829,6 +864,13 @@ static int sys_flistxattr(pool *p, pr_fh_t *fh, int fd, array_header **names) {
   res = unix_flistxattr(fd, namelist, len);
   if (res < 0) {
     return -1;
+  }
+
+  if (res == 0) {
+    /* No extended attributes found. */
+    pr_trace_msg(trace_channel, 15, "flistxattr: found 0 xattr names for '%s'",
+      fh->fh_path);
+    return 0;
   }
 
   *names = parse_xattr_namelist(p, namelist, len);
