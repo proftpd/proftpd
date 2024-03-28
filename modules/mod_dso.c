@@ -1,6 +1,6 @@
 /*
  * ProFTPD: mod_dso -- support for loading/unloading modules at run-time
- * Copyright (c) 2004-2023 TJ Saunders <tj@castaglia.org>
+ * Copyright (c) 2004-2024 TJ Saunders <tj@castaglia.org>
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -29,6 +29,10 @@
 #include "mod_ctrls.h"
 #include "ltdl.h"
 
+#if defined(HAVE_DLFCN_H)
+# include <dlfcn.h>
+#endif /* HAVE_DLFCN_H */
+
 #define MOD_DSO_VERSION		"mod_dso/0.5"
 
 /* From modules/module_glue.c */
@@ -55,8 +59,21 @@ static int dso_load_file(char *path) {
 
   /* XXX Is this sufficient for loading an external library? */
   if (lt_dlopenext(path) == NULL) {
+    const char *dl_error = NULL;
+
+#if defined(HAVE_DLFCN_H)
+    /* Grab a copy of the dlerror(3) text as well, as we may be working
+     * around a libtool bug; see:
+     *   https://bug-libtool.gnu.narkive.com/eWFGvX8k/misleading-error-message-from-lt-dlopen
+     */
+    dl_error = dlerror();
+#endif /* HAVE_DLFCN_H */
+    if (dl_error == NULL) {
+      dl_error = lt_dlerror();
+    }
+
     pr_log_pri(PR_LOG_NOTICE, MOD_DSO_VERSION ": unable to open '%s': %s",
-      path, lt_dlerror());
+      path, dl_error);
     errno = EPERM;
     return -1;
   }
@@ -135,8 +152,20 @@ static int dso_load_module(pool *p, char *name) {
   mh = lt_dlopenadvise(path, advise);
   if (mh == NULL) {
     int xerrno = errno;
+    const char *dl_error = NULL;
 
     *ptr = '.';
+
+#if defined(HAVE_DLFCN_H)
+    /* Grab a copy of the dlerror(3) text as well, as we may be working
+     * around a libtool bug; see:
+     *   https://bug-libtool.gnu.narkive.com/eWFGvX8k/misleading-error-message-from-lt-dlopen
+     */
+    dl_error = dlerror();
+#endif /* HAVE_DLFCN_H */
+    if (dl_error == NULL) {
+      dl_error = lt_dlerror();
+    }
 
     /* Remember this errno value, for reporting later if we cannot resolve
      * the symbol from the main executable.
@@ -144,7 +173,7 @@ static int dso_load_module(pool *p, char *name) {
     module_load_errno = errno;
 
     pr_log_debug(DEBUG3, MOD_DSO_VERSION ": unable to dlopen '%s': %s (%s)",
-      name, lt_dlerror(), strerror(xerrno));
+      name, dl_error, strerror(xerrno));
 
     if (xerrno == ENOENT) {
       pr_log_pri(PR_LOG_NOTICE, MOD_DSO_VERSION

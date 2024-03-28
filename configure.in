@@ -1,7 +1,7 @@
 dnl ProFTPD - FTP server daemon
 dnl Copyright (c) 1997, 1998 Public Flood Software
 dnl Copyright (c) 1999, 2000 MacGyver aka Habeeb J. Dihu <macgyver@tos.net>
-dnl Copyright (c) 2001-2023 The ProFTPD Project team
+dnl Copyright (c) 2001-2024 The ProFTPD Project team
 dnl
 dnl This program is free software; you can redistribute it and/or modify
 dnl it under the terms of the GNU General Public License as published by
@@ -1694,7 +1694,7 @@ dnl Checks for header files.
 AC_HEADER_DIRENT
 AC_HEADER_STDC
 AC_HEADER_SYS_WAIT
-AC_CHECK_HEADERS(fcntl.h signal.h linux/prctl.h sys/ioctl.h sys/prctl.h sys/resource.h sys/time.h junistd.h memory.h)
+AC_CHECK_HEADERS(dlfcn.h fcntl.h signal.h linux/prctl.h sys/ioctl.h sys/prctl.h sys/resource.h sys/time.h junistd.h memory.h)
 if test x"$force_shadow" != xno ; then
   AC_CHECK_HEADERS(shadow.h,
     [ if test "$use_shadow" = "" && test -f /etc/shadow ; then
