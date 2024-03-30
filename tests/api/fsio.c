@@ -1457,6 +1457,28 @@ START_TEST (fsio_sys_fsync_test) {
 }
 END_TEST
 
+START_TEST (fsio_sys_realpath_test) {
+  const char *res;
+
+  mark_point();
+  res = pr_fsio_realpath(NULL, NULL);
+  ck_assert_msg(res == NULL, "Failed to handle null pool");
+  ck_assert_msg(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+    strerror(errno), errno);
+
+  mark_point();
+  res = pr_fsio_realpath(p, NULL);
+  ck_assert_msg(res == NULL, "Failed to handle null path");
+  ck_assert_msg(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+    strerror(errno), errno);
+
+  mark_point();
+  res = pr_fsio_realpath(p, "/tmp");
+  ck_assert_msg(res != NULL, "Failed to resolve path '/tmp': %s",
+    strerror(errno));
+}
+END_TEST
+
 START_TEST (fsio_sys_getxattr_test) {
   ssize_t res;
   const char *path, *name;
@@ -5236,6 +5258,8 @@ Suite *tests_get_fsio_suite(void) {
   tcase_add_test(testcase, fsio_sys_utimes_chroot_guard_test);
   tcase_add_test(testcase, fsio_sys_futimes_test);
   tcase_add_test(testcase, fsio_sys_fsync_test);
+
+  tcase_add_test(testcase, fsio_sys_realpath_test);
 
   /* Extended attribute tests */
   tcase_add_test(testcase, fsio_sys_getxattr_test);

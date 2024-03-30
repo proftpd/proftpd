@@ -479,6 +479,15 @@ static int sys_fsync(pr_fh_t *fh, int fd) {
   return res;
 }
 
+static const char *sys_realpath(pr_fs_t *fs, pool *p, const char *path) {
+  (void) fs;
+
+  /* The default implementation does NOT use the realpath(3) function, and
+   * instead is a pass-through.
+   */
+  return pstrdup(p, path);
+}
+
 static ssize_t sys_getxattr(pool *p, pr_fs_t *fs, const char *path,
     const char *name, void *val, size_t valsz) {
   ssize_t res = -1;
@@ -6080,6 +6089,35 @@ int pr_fsio_fsync(pr_fh_t *fh) {
   return res;
 }
 
+const char *pr_fsio_realpath(pool *p, const char *path) {
+  const char *res;
+  pr_fs_t *fs;
+
+  if (p == NULL ||
+      path == NULL) {
+    errno = EINVAL;
+    return NULL;
+  }
+
+  fs = lookup_file_fs(path, NULL, FSIO_FILE_REALPATH);
+  if (fs == NULL) {
+    return NULL;
+  }
+
+  /* Find the first non-NULL custom realpath handler.  If there are none,
+   * use the system realpath
+   */
+  while (fs && fs->fs_next && !fs->realpath) {
+    fs = fs->fs_next;
+  }
+
+  pr_trace_msg(trace_channel, 8, "using %s realpath() for path '%s'",
+    fs->fs_name, path);
+  res = (fs->realpath)(fs, p, path);
+
+  return res;
+}
+
 ssize_t pr_fsio_getxattr(pool *p, const char *path, const char *name, void *val,
     size_t valsz) {
   ssize_t res;
@@ -7501,6 +7539,7 @@ int init_fs(void) {
   root_fs->utimes = sys_utimes;
   root_fs->futimes = sys_futimes;
   root_fs->fsync = sys_fsync;
+  root_fs->realpath = sys_realpath;
 
   root_fs->getxattr = sys_getxattr;
   root_fs->lgetxattr = sys_lgetxattr;

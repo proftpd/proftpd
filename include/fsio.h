@@ -78,6 +78,7 @@
 #define FSIO_FILE_LREMOVEXATTR	0x1000000
 #define FSIO_FILE_SETXATTR	0x2000000
 #define FSIO_FILE_LSETXATTR	0x4000000
+#define FSIO_FILE_REALPATH	0x8000000
 
 /* Macro that defines the most common file ops */
 #define FSIO_FILE_COMMON	(FSIO_FILE_OPEN|FSIO_FILE_READ|FSIO_FILE_WRITE|\
@@ -157,6 +158,8 @@ struct fs_rec {
   int (*utimes)(pr_fs_t *, const char *, struct timeval *);
   int (*futimes)(pr_fh_t *, int, struct timeval *);
   int (*fsync)(pr_fh_t *, int);
+
+  const char *(*realpath)(pr_fs_t *, pool *p, const char *);
 
   /* Extended attribute support */
   ssize_t (*getxattr)(pool *, pr_fs_t *, const char *, const char *, void *,
@@ -286,6 +289,8 @@ int pr_fsio_utimes_with_root(const char *, struct timeval *);
 int pr_fsio_futimes(pr_fh_t *, struct timeval *);
 int pr_fsio_fsync(pr_fh_t *fh);
 off_t pr_fsio_lseek(pr_fh_t *, off_t, int);
+
+const char *pr_fsio_realpath(pool *p, const char *path);
 
 /* Extended attribute support */
 ssize_t pr_fsio_getxattr(pool *p, const char *, const char *, void *, size_t);

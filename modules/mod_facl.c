@@ -1,6 +1,6 @@
 /*
  * ProFTPD - FTP server daemon
- * Copyright (c) 2004-2022 The ProFTPD Project team
+ * Copyright (c) 2004-2024 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -974,6 +974,7 @@ static int check_facl(pool *p, const char *path, int mode, void *acl, int nents,
 
 static int facl_fsio_access(pr_fs_t *fs, const char *path, int mode,
     uid_t uid, gid_t gid, array_header *suppl_gids) {
+  const char *real_path = NULL;
   int nents = 0, res, xerrno;
   struct stat st;
   void *acls;
@@ -984,6 +985,14 @@ static int facl_fsio_access(pr_fs_t *fs, const char *path, int mode,
     return -1;
   }
 
+  tmp_pool = make_sub_pool(fs->fs_pool);
+  pr_pool_tag(tmp_pool, "mod_facl access(2) pool");
+
+  real_path = pr_fsio_realpath(tmp_pool, path);
+  if (real_path != NULL) {
+    path = real_path;
+  }
+
   /* Look up the acl for this path. */
 # if defined(HAVE_BSD_POSIX_ACL) || \
      defined(HAVE_LINUX_POSIX_ACL) || \
@@ -991,6 +1000,8 @@ static int facl_fsio_access(pr_fs_t *fs, const char *path, int mode,
   acls = acl_get_file(path, ACL_TYPE_ACCESS);
   if (acls == NULL) {
     xerrno = errno;
+
+    destroy_pool(tmp_pool);
 
     pr_trace_msg(trace_channel, 5, "unable to retrieve ACL for '%s': [%d] %s",
       path, xerrno, strerror(xerrno));
@@ -1021,6 +1032,8 @@ static int facl_fsio_access(pr_fs_t *fs, const char *path, int mode,
   if (nents < 0) {
     xerrno = errno;
 
+    destroy_pool(tmp_pool);
+
     pr_trace_msg(trace_channel, 5,
       "unable to retrieve ACL count for '%s': [%d] %s", path, xerrno,
       strerror(xerrno));
@@ -1048,11 +1061,6 @@ static int facl_fsio_access(pr_fs_t *fs, const char *path, int mode,
   pr_trace_msg(trace_channel, 10,
     "acl(2) returned %d ACL entries for path '%s'", nents, path);
 
-  if (tmp_pool == NULL) {
-    tmp_pool = make_sub_pool(fs->fs_pool);
-    pr_pool_tag(tmp_pool, "mod_facl access(2) pool");
-  }
-
   acls = pcalloc(tmp_pool, nents * sizeof(aclent_t));
 
   nents = acl(path, GETACL, nents, acls);
@@ -1060,7 +1068,6 @@ static int facl_fsio_access(pr_fs_t *fs, const char *path, int mode,
     xerrno = errno;
 
     destroy_pool(tmp_pool);
-    tmp_pool = NULL;
 
     pr_trace_msg(trace_channel, 5,
       "unable to retrieve ACL for '%s': [%d] %s", path, xerrno,
@@ -1087,11 +1094,6 @@ static int facl_fsio_access(pr_fs_t *fs, const char *path, int mode,
   }
 # endif
 
-  if (tmp_pool == NULL) {
-    tmp_pool = make_sub_pool(fs->fs_pool);
-    pr_pool_tag(tmp_pool, "mod_facl access(2) pool");
-  }
-
   res = check_facl(tmp_pool, path, mode, acls, nents, &st, uid, gid,
     suppl_gids);
   xerrno = errno;
@@ -1109,6 +1111,7 @@ static int facl_fsio_access(pr_fs_t *fs, const char *path, int mode,
 
 static int facl_fsio_faccess(pr_fh_t *fh, int mode, uid_t uid, gid_t gid,
     array_header *suppl_gids) {
+  const char *real_path = NULL;
   int nents = 0, res, xerrno;
   struct stat st;
   void *acls;
@@ -1224,7 +1227,12 @@ static int facl_fsio_faccess(pr_fh_t *fh, int mode, uid_t uid, gid_t gid,
     pr_pool_tag(tmp_pool, "mod_facl faccess(2) pool");
   }
 
-  res = check_facl(tmp_pool, fh->fh_path, mode, acls, nents, &st, uid, gid,
+  real_path = pr_fsio_realpath(tmp_pool, fh->fh_path);
+  if (real_path == NULL) {
+    real_path = fh->fh_path;
+  }
+
+  res = check_facl(tmp_pool, real_path, mode, acls, nents, &st, uid, gid,
     suppl_gids);
   xerrno = errno;
 
