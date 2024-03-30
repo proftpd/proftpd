@@ -2,7 +2,7 @@
  * ProFTPD - FTP server daemon
  * Copyright (c) 1997, 1998 Public Flood Software
  * Copyright (c) 1999, 2000 MacGyver aka Habeeb J. Dihu <macgyver@tos.net>
- * Copyright (c) 2001-2021 The ProFTPD Project
+ * Copyright (c) 2001-2024 The ProFTPD Project
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -112,8 +112,14 @@ struct fs_rec {
    */
   pr_fs_t *fs_next, *fs_prev;
 
-  /* Descriptive tag for this fs object */
+  /* Descriptive tag for this FS object */
   char *fs_name;
+
+  /* Original name for this FS object.  When FS handlers are inherited,
+   * the name of the FS will be automatically updated to contain the
+   * combined names, which changes things.
+   */
+  char *fs_original_name;
 
   char *fs_path;
 
@@ -355,6 +361,9 @@ int pr_fsio_puts(const char *, pr_fh_t *);
 int pr_fsio_set_block(pr_fh_t *);
 
 pr_fs_t *pr_register_fs(pool *, const char *, const char *);
+pr_fs_t *pr_register_fs2(pool *, const char *, const char *, int);
+#define PR_FSIO_REGISTER_FL_INHERIT_HANDLERS	0x00001
+
 pr_fs_t *pr_create_fs(pool *, const char *);
 pr_fs_t *pr_get_fs(const char *, int *);
 int pr_insert_fs(pr_fs_t *, const char *);

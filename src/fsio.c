@@ -2226,7 +2226,8 @@ int pr_fs_copy_file(const char *src, const char *dst) {
   return pr_fs_copy_file2(src, dst, 0, NULL);
 }
 
-pr_fs_t *pr_register_fs(pool *p, const char *name, const char *path) {
+pr_fs_t *pr_register_fs2(pool *p, const char *name, const char *path,
+    int flags) {
   pr_fs_t *fs = NULL;
   int xerrno = 0;
 
@@ -2242,26 +2243,82 @@ pr_fs_t *pr_register_fs(pool *p, const char *name, const char *path) {
   fs = pr_create_fs(p, name);
   xerrno = errno;
 
-  if (fs != NULL) {
-    if (pr_insert_fs(fs, path) == FALSE) {
-      xerrno = errno;
-
-      pr_trace_msg(trace_channel, 4, "error inserting FS '%s' at path '%s'",
-        name, path);
-
-      destroy_pool(fs->fs_pool);
-
-      errno = xerrno;
-      return NULL;
-    }
-
-  } else {
+  if (fs == NULL) {
     pr_trace_msg(trace_channel, 6, "error creating FS '%s': %s", name,
       strerror(errno));
+    errno = xerrno;
+    return NULL;
   }
 
-  errno = xerrno;
+  if (flags & PR_FSIO_REGISTER_FL_INHERIT_HANDLERS) {
+    pr_fs_t *curr_fs = NULL;
+    int match = FALSE;
+
+    /* Note that we need to be aware of other modules' FS handlers, such
+     * as mod_vroot (see Issue #1764, #1780).
+     */
+    curr_fs = pr_get_fs(path, &match);
+    if (curr_fs != NULL) {
+      fs->fs_name = pstrcat(fs->fs_pool, name, "+", curr_fs->fs_name, NULL);
+
+      /* Inherit all of the current FS handlers.  This makes it easy to
+       * preserve the functionality desired by all previously registered
+       * handlers.
+       */
+      fs->stat = curr_fs->stat;
+      fs->fstat = curr_fs->fstat;
+      fs->lstat = curr_fs->lstat;
+      fs->rename = curr_fs->rename;
+      fs->unlink = curr_fs->unlink;
+      fs->open = curr_fs->open;
+      fs->close = curr_fs->close;
+      fs->read = curr_fs->read;
+      fs->pread = curr_fs->pread;
+      fs->write = curr_fs->write;
+      fs->pwrite = curr_fs->pwrite;
+      fs->lseek = curr_fs->lseek;
+      fs->link = curr_fs->link;
+      fs->readlink = curr_fs->readlink;
+      fs->symlink = curr_fs->symlink;
+      fs->ftruncate = curr_fs->ftruncate;
+      fs->truncate = curr_fs->truncate;
+      fs->chmod = curr_fs->chmod;
+      fs->fchmod = curr_fs->fchmod;
+      fs->chown = curr_fs->chown;
+      fs->fchown = curr_fs->fchown;
+      fs->lchown = curr_fs->lchown;
+      fs->access = curr_fs->access;
+      fs->faccess = curr_fs->faccess;
+      fs->utimes = curr_fs->utimes;
+      fs->futimes = curr_fs->futimes;
+      fs->fsync = curr_fs->fsync;
+
+      fs->chdir = curr_fs->chdir;
+      fs->chroot = curr_fs->chroot;
+      fs->opendir = curr_fs->opendir;
+      fs->closedir = curr_fs->closedir;
+      fs->readdir = curr_fs->readdir;
+      fs->mkdir = curr_fs->mkdir;
+      fs->rmdir = curr_fs->rmdir;
+    }
+  }
+
+  if (pr_insert_fs(fs, path) == FALSE) {
+    xerrno = errno;
+
+    pr_trace_msg(trace_channel, 4, "error inserting FS '%s' at path '%s'",
+      name, path);
+
+    destroy_pool(fs->fs_pool);
+    errno = xerrno;
+    return NULL;
+  }
+
   return fs;
+}
+
+pr_fs_t *pr_register_fs(pool *p, const char *name, const char *path) {
+  return pr_register_fs2(p, name, path, PR_FSIO_REGISTER_FL_INHERIT_HANDLERS);
 }
 
 pr_fs_t *pr_create_fs(pool *p, const char *name) {
@@ -2283,6 +2340,7 @@ pr_fs_t *pr_create_fs(pool *p, const char *name) {
   fs->fs_pool = fs_pool;
   fs->fs_next = fs->fs_prev = NULL;
   fs->fs_name = pstrdup(fs->fs_pool, name);
+  fs->fs_original_name = fs->fs_name;
   fs->fs_next = root_fs;
   fs->allow_xdev_link = TRUE;
   fs->allow_xdev_rename = TRUE;
@@ -2351,7 +2409,7 @@ int pr_insert_fs(pr_fs_t *fs, const char *path) {
         /* An entry for this path already exists.  Make sure the FS being
          * mounted is not the same as the one already present.
          */
-        if (strcmp(fsi->fs_name, fs->fs_name) == 0) {
+        if (strcmp(fsi->fs_original_name, fs->fs_original_name) == 0) {
           pr_log_pri(PR_LOG_NOTICE,
             "error: duplicate fs paths not allowed: '%s'", cleaned_path);
           errno = EEXIST;
@@ -2409,7 +2467,7 @@ pr_fs_t *pr_unmount_fs(const char *path, const char *name) {
     fsi = fs_objs[i];
 
     if (strcmp(fsi->fs_path, path) == 0 &&
-        (name ? strcmp(fsi->fs_name, name) == 0 : TRUE)) {
+        (name ? strcmp(fsi->fs_original_name, name) == 0 : TRUE)) {
 
       /* Exact match -- remove this FS.  If there is an FS underneath, pop
        * the top FS off the stack.  Otherwise, allocate a new map.  Then
@@ -3820,7 +3878,6 @@ int pr_fsio_chdir_canon(const char *path, int hidesymlink) {
   pr_trace_msg(trace_channel, 8, "using %s chdir() for path '%s'", fs->fs_name,
     path);
   res = (fs->chdir)(fs, resbuf);
-
   if (res == 0) {
     /* chdir succeeded, so we set fs_cwd for future references. */
      fs_cwd = fs;

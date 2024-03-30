@@ -1,6 +1,6 @@
 /*
  * ProFTPD - FTP server testsuite
- * Copyright (c) 2008-2023 The ProFTPD Project team
+ * Copyright (c) 2008-2024 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -3489,7 +3489,37 @@ START_TEST (fs_register_fs_test) {
   fs = pr_register_fs(p, "testsuite", "/testsuite");
   ck_assert_msg(fs != NULL, "Failed to register FS: %s", strerror(errno));
 
-  fs2 = pr_register_fs(p, "testsuite", "/testsuite");
+  fs2 = pr_register_fs2(p, "testsuite", "/testsuite", 0);
+  ck_assert_msg(fs2 == NULL, "Failed to handle duplicate names");
+  ck_assert_msg(errno == EEXIST, "Expected EEXIST (%d), got %s (%d)", EEXIST,
+    strerror(errno), errno);
+
+  (void) pr_remove_fs("/testsuite");
+}
+END_TEST
+
+START_TEST (fs_register_fs2_test) {
+  pr_fs_t *fs, *fs2;
+
+  fs = pr_register_fs2(NULL, NULL, NULL, 0);
+  ck_assert_msg(fs == NULL, "Failed to handle null arguments");
+  ck_assert_msg(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+    strerror(errno), errno);
+
+  fs = pr_register_fs2(p, NULL, NULL, 0);
+  ck_assert_msg(fs == NULL, "Failed to handle null name");
+  ck_assert_msg(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+    strerror(errno), errno);
+
+  fs = pr_register_fs2(p, "testsuite", NULL, 0);
+  ck_assert_msg(fs == NULL, "Failed to handle null path");
+  ck_assert_msg(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+    strerror(errno), errno);
+
+  fs = pr_register_fs2(p, "testsuite", "/testsuite", 0);
+  ck_assert_msg(fs != NULL, "Failed to register FS: %s", strerror(errno));
+
+  fs2 = pr_register_fs2(p, "testsuite", "/testsuite", 0);
   ck_assert_msg(fs2 == NULL, "Failed to handle duplicate names");
   ck_assert_msg(errno == EEXIST, "Expected EEXIST (%d), got %s (%d)", EEXIST,
     strerror(errno), errno);
@@ -5264,6 +5294,7 @@ Suite *tests_get_fsio_suite(void) {
   tcase_add_test(testcase, fs_unmount_fs_test);
   tcase_add_test(testcase, fs_remove_fs_test);
   tcase_add_test(testcase, fs_register_fs_test);
+  tcase_add_test(testcase, fs_register_fs2_test);
   tcase_add_test(testcase, fs_unregister_fs_test);
   tcase_add_test(testcase, fs_resolve_fs_map_test);
 #if defined(PR_USE_DEVEL)
