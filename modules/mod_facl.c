@@ -51,15 +51,23 @@ static const char *trace_channel = "facl";
 #endif
 
 static int is_errno_eperm(int xerrno) {
-  if (xerrno == EPERM)
-    return 1;
+  if (xerrno == EPERM) {
+    return TRUE;
+  }
 
-#ifdef EOPNOTSUPP
-  if (xerrno == EOPNOTSUPP)
-    return 1;
+#if defined(ENOTSUP)
+  if (xerrno == ENOTSUP) {
+    return TRUE;
+  }
+#endif /* !ENOTSUP */
+
+#if defined(EOPNOTSUPP)
+  if (xerrno == EOPNOTSUPP) {
+    return TRUE;
+  }
 #endif /* !EOPNOTSUPP */
 
-  return 0;
+  return FALSE;
 }
 
 static int facl_access(pr_fs_t *fs, const char *path, int mode, uid_t uid,
@@ -1004,7 +1012,7 @@ static int facl_fsio_access(pr_fs_t *fs, const char *path, int mode,
     pr_trace_msg(trace_channel, 5, "unable to retrieve ACL for '%s': [%d] %s",
       path, xerrno, strerror(xerrno));
 
-    if (is_errno_eperm(xerrno)) {
+    if (is_errno_eperm(xerrno) == TRUE) {
       pr_trace_msg(trace_channel, 3, "ACL retrieval operation not supported "
         "for '%s', falling back to normal access check", path);
 
@@ -1037,7 +1045,7 @@ static int facl_fsio_access(pr_fs_t *fs, const char *path, int mode,
       "unable to retrieve ACL count for '%s': [%d] %s", path, xerrno,
       strerror(xerrno));
 
-    if (is_errno_eperm(xerrno)) {
+    if (is_errno_eperm(xerrno) == TRUE) {
       pr_trace_msg(trace_channel, 3, "ACL retrieval operation not supported "
         "for '%s', falling back to normal access check", path);
 
@@ -1073,7 +1081,7 @@ static int facl_fsio_access(pr_fs_t *fs, const char *path, int mode,
       "unable to retrieve ACL for '%s': [%d] %s", path, xerrno,
       strerror(xerrno));
 
-    if (is_errno_eperm(xerrno)) {
+    if (is_errno_eperm(xerrno) == TRUE) {
       pr_trace_msg(trace_channel, 3, "ACL retrieval operation not supported "
         "for '%s', falling back to normal access check", path);
 
@@ -1136,7 +1144,7 @@ static int facl_fsio_faccess(pr_fh_t *fh, int mode, uid_t uid, gid_t gid,
       "unable to retrieve ACL for '%s': [%d] %s", fh->fh_path, xerrno,
       strerror(xerrno));
 
-    if (is_errno_eperm(xerrno)) {
+    if (is_errno_eperm(xerrno) == TRUE) {
       pr_trace_msg(trace_channel, 3, "ACL retrieval operation not supported "
         "for '%s', falling back to normal access check", fh->fh_path);
 
@@ -1166,7 +1174,7 @@ static int facl_fsio_faccess(pr_fh_t *fh, int mode, uid_t uid, gid_t gid,
       "unable to retrieve ACL count for '%s': [%d] %s", fh->fh_path,
       xerrno, strerror(xerrno));
 
-    if (is_errno_eperm(xerrno)) {
+    if (is_errno_eperm(xerrno) == TRUE) {
       pr_trace_msg(trace_channel, 3, "ACL retrieval operation not supported "
         "for '%s', falling back to normal access check", fh->fh_path);
 
@@ -1204,7 +1212,7 @@ static int facl_fsio_faccess(pr_fh_t *fh, int mode, uid_t uid, gid_t gid,
       "unable to retrieve ACL for '%s': [%d] %s", fh->fh_path, xerrno,
       strerror(xerrno));
 
-    if (is_errno_eperm(xerrno)) {
+    if (is_errno_eperm(xerrno) == TRUE) {
       pr_trace_msg(trace_channel, 3, "ACL retrieval operation not supported "
         "for '%s', falling back to normal access check", fh->fh_path);
 
