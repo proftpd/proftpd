@@ -1001,8 +1001,6 @@ static int facl_fsio_access(pr_fs_t *fs, const char *path, int mode,
   if (acls == NULL) {
     xerrno = errno;
 
-    destroy_pool(tmp_pool);
-
     pr_trace_msg(trace_channel, 5, "unable to retrieve ACL for '%s': [%d] %s",
       path, xerrno, strerror(xerrno));
 
@@ -1015,13 +1013,16 @@ static int facl_fsio_access(pr_fs_t *fs, const char *path, int mode,
 
         pr_trace_msg(trace_channel, 6, "normal access check for '%s' "
           "failed: %s", path, strerror(xerrno));
+        destroy_pool(tmp_pool);
         errno = xerrno;
         return -1;
       }
 
+      destroy_pool(tmp_pool);
       return 0;
     }
 
+    destroy_pool(tmp_pool);
     errno = xerrno;
     return -1;
   }
@@ -1031,8 +1032,6 @@ static int facl_fsio_access(pr_fs_t *fs, const char *path, int mode,
   nents = acl(path, GETACLCNT, 0, NULL);
   if (nents < 0) {
     xerrno = errno;
-
-    destroy_pool(tmp_pool);
 
     pr_trace_msg(trace_channel, 5,
       "unable to retrieve ACL count for '%s': [%d] %s", path, xerrno,
@@ -1047,13 +1046,16 @@ static int facl_fsio_access(pr_fs_t *fs, const char *path, int mode,
 
         pr_trace_msg(trace_channel, 6, "normal access check for '%s' "
           "failed: %s", path, strerror(xerrno));
+        destroy_pool(tmp_pool);
         errno = xerrno;
         return -1;
       }
 
+      destroy_pool(tmp_pool);
       return 0;
     }
 
+    destroy_pool(tmp_pool);
     errno = xerrno;
     return -1;
   }
@@ -1066,8 +1068,6 @@ static int facl_fsio_access(pr_fs_t *fs, const char *path, int mode,
   nents = acl(path, GETACL, nents, acls);
   if (nents < 0) {
     xerrno = errno;
-
-    destroy_pool(tmp_pool);
 
     pr_trace_msg(trace_channel, 5,
       "unable to retrieve ACL for '%s': [%d] %s", path, xerrno,
@@ -1082,13 +1082,16 @@ static int facl_fsio_access(pr_fs_t *fs, const char *path, int mode,
 
         pr_trace_msg(trace_channel, 6, "normal access check for '%s' "
           "failed: %s", path, strerror(xerrno));
+        destroy_pool(tmp_pool);
         errno = xerrno;
         return -1;
       }
 
+      destroy_pool(tmp_pool);
       return 0;
     }
 
+    destroy_pool(tmp_pool);
     errno = xerrno;
     return -1;
   }
