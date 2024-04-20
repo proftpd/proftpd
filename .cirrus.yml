@@ -4,7 +4,6 @@ task:
   freebsd_instance:
     matrix:
       image_family: freebsd-13-2
-      image_family: freebsd-12-4
 
   env:
     CIRRUS_CLONE_DEPTH: 10
