@@ -1,6 +1,6 @@
 /*
  * ProFTPD - mod_sftp sftp
- * Copyright (c) 2008-2023 TJ Saunders
+ * Copyright (c) 2008-2024 TJ Saunders
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -5647,9 +5647,10 @@ static off_t get_user_bytes_unused(void *ptr) {
   return ((off_t) fs->f_bavail * (off_t) fs->f_frsize);
 }
 
-static int fxp_handle_ext_space_avail(struct fxp_packet *fxp, char *path) {
+static int fxp_handle_ext_space_avail(struct fxp_packet *fxp,
+    const char *path) {
   unsigned char *buf, *ptr;
-  const char *reason;
+  const char *real_path = NULL, *reason;
   uint32_t buflen, bufsz, status_code;
   struct fxp_packet *resp;
 
@@ -5673,6 +5674,11 @@ static int fxp_handle_ext_space_avail(struct fxp_packet *fxp, char *path) {
 
   buflen = bufsz = FXP_RESPONSE_DATA_DEFAULT_SZ;
   buf = ptr = palloc(fxp->pool, bufsz);
+
+  real_path = pr_fsio_realpath(fxp->pool, path);
+  if (real_path != NULL) {
+    path = real_path;
+  }
 
   if (statvfs(path, &fs) < 0) {
     int xerrno = errno;
@@ -5725,7 +5731,7 @@ static int fxp_handle_ext_space_avail(struct fxp_packet *fxp, char *path) {
 
 static int fxp_handle_ext_statvfs(struct fxp_packet *fxp, const char *path) {
   unsigned char *buf, *ptr;
-  const char *reason;
+  const char *real_path = NULL, *reason;
   uint32_t buflen, bufsz, status_code;
   struct fxp_packet *resp;
   uint64_t fs_id = 0, fs_flags = 0;
@@ -5747,6 +5753,11 @@ static int fxp_handle_ext_statvfs(struct fxp_packet *fxp, const char *path) {
 
   buflen = bufsz = FXP_RESPONSE_DATA_DEFAULT_SZ;
   buf = ptr = palloc(fxp->pool, bufsz);
+
+  real_path = pr_fsio_realpath(fxp->pool, path);
+  if (real_path != NULL) {
+    path = real_path;
+  }
 
   if (statvfs(path, &fs) < 0) {
     int xerrno = errno;
@@ -7369,7 +7380,7 @@ static int fxp_handle_extended(struct fxp_packet *fxp) {
 #if defined(HAVE_SYS_STATVFS_H)
   if ((fxp_ext_flags & SFTP_FXP_EXT_SPACE_AVAIL) &&
       strcmp(ext_request_name, "space-available") == 0) {
-    char *path;
+    const char *path;
 
     path = sftp_msg_read_string(fxp->pool, &fxp->payload, &fxp->payload_sz);
 
