@@ -1,6 +1,6 @@
 /*
  * ProFTPD: mod_sftp_sql -- SQL backend module for retrieving authorized keys
- * Copyright (c) 2008-2023 TJ Saunders
+ * Copyright (c) 2008-2024 TJ Saunders
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -96,7 +96,8 @@ static char *sqlstore_getline(pool *p, char **blob, size_t *bloblen) {
     return NULL;
   }
 
-  while (data != NULL && datalen > 0) {
+  while (data != NULL &&
+         datalen > 0) {
     char *ptr;
     size_t delimlen, linelen;
     int have_line_continuation = FALSE;
@@ -190,13 +191,28 @@ static char *sqlstore_getline(pool *p, char **blob, size_t *bloblen) {
       }
 
       /* Header value starts at 2 after the ':' (one for the mandatory
-       * space character.
+       * space character.  Make sure to check that we actually have text
+       * after the ':' character (see Issue #1529).
        */
-      header_valuelen = linelen - (header_taglen + 2);
-      if (header_valuelen > 1024) {
+      if (header_taglen + 2 < linelen) {
+        header_valuelen = linelen - (header_taglen + 2);
+        if (header_valuelen > 1024) {
+          (void) pr_log_writefile(sftp_logfd, MOD_SFTP_SQL_VERSION,
+            "header value too long (%u) in retrieved SQL data for '%s'",
+            header_valuelen, sqlstore_user);
+          errno = EINVAL;
+          return NULL;
+        }
+
+      } else {
         (void) pr_log_writefile(sftp_logfd, MOD_SFTP_SQL_VERSION,
-          "header value too long (%u) in retrieved SQL data for '%s'",
-          header_valuelen, sqlstore_user);
+          "empty/missing '%.*s' header value, ignoring", (int) header_taglen,
+          line);
+
+        /* Make sure we advance past this line. */
+        *blob = data;
+        *bloblen = datalen;
+
         errno = EINVAL;
         return NULL;
       }
