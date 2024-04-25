@@ -1,6 +1,6 @@
 /*
  * ProFTPD - mod_sftp
- * Copyright (c) 2008-2023 TJ Saunders
+ * Copyright (c) 2008-2024 TJ Saunders
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -1379,7 +1379,7 @@ MODRET set_sftpextensions(cmd_rec *cmd) {
       }
 
     } else if (strcasecmp(ext, "spaceAvailable") == 0) {
-#ifdef HAVE_SYS_STATVFS_H
+#if defined(HAVE_SYS_STATVFS_H)
       switch (action) {
         case '-':
           ext_flags &= ~SFTP_FXP_EXT_SPACE_AVAIL;
@@ -1395,7 +1395,7 @@ MODRET set_sftpextensions(cmd_rec *cmd) {
 #endif /* !HAVE_SYS_STATVFS_H */
 
     } else if (strcasecmp(ext, "statvfs") == 0) {
-#ifdef HAVE_SYS_STATVFS_H
+#if defined(HAVE_SYS_STATVFS_H)
       switch (action) {
         case '-':
           ext_flags &= ~SFTP_FXP_EXT_STATVFS;
@@ -1429,6 +1429,17 @@ MODRET set_sftpextensions(cmd_rec *cmd) {
 
         case '+':
           ext_flags |= SFTP_FXP_EXT_HOMEDIR;
+          break;
+      }
+
+    } else if (strcasecmp(ext, "limits") == 0) {
+      switch (action) {
+        case '-':
+          ext_flags &= ~SFTP_FXP_EXT_LIMITS;
+          break;
+
+        case '+':
+          ext_flags |= SFTP_FXP_EXT_LIMITS;
           break;
       }
 

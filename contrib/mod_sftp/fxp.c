@@ -3938,6 +3938,18 @@ static void fxp_version_add_openssh_exts(pool *p, unsigned char **buf,
     fxp_msg_write_extpair(buf, buflen, &ext);
   }
 
+  if (fxp_ext_flags & SFTP_FXP_EXT_LIMITS) {
+    struct fxp_extpair ext;
+
+    ext.ext_name = "limits@openssh.com";
+    ext.ext_data = (unsigned char *) "1";
+    ext.ext_datalen = 1;
+
+    pr_trace_msg(trace_channel, 11, "+ SFTP extension: %s = '%s'", ext.ext_name,
+      ext.ext_data);
+    fxp_msg_write_extpair(buf, buflen, &ext);
+  }
+
   if (fxp_ext_flags & SFTP_FXP_EXT_USERGROUPNAMES) {
     struct fxp_extpair ext;
 
@@ -5196,6 +5208,68 @@ static int fxp_handle_ext_homedir(struct fxp_packet *fxp, const char *name) {
   resp = fxp_packet_create(fxp->pool, fxp->channel_id);
   resp->payload = fxb->ptr;
   resp->payload_sz = (fxb->bufsz - buflen);
+
+  return fxp_packet_write(resp);
+}
+
+static int fxp_handle_ext_limits(struct fxp_packet *fxp) {
+  int res, xerrno = 0;
+  unsigned char *buf, *ptr;
+  uint32_t buflen, bufsz;
+  struct fxp_packet *resp;
+  cmd_rec *cmd = NULL;
+  uint32_t max_packet_len, max_read_len, max_write_len, max_open_fds = 0;
+  rlim_t curr_open_fds;
+
+  pr_scoreboard_entry_update(session.pid,
+    PR_SCORE_CMD, "%s", "LIMITS", NULL, NULL);
+  pr_scoreboard_entry_update(session.pid,
+    PR_SCORE_CMD_ARG, "", NULL, NULL);
+
+  pr_proctitle_set("%s - %s: LIMITS", session.user, session.proc_prefix);
+
+  cmd = fxp_cmd_alloc(fxp->pool, "LIMITS", "");
+  cmd->cmd_class = CL_MISC|CL_SFTP;
+  cmd->cmd_id = SFTP_CMD_ID;
+
+  buflen = bufsz = FXP_RESPONSE_DATA_DEFAULT_SZ;
+  buf = ptr = palloc(fxp->pool, bufsz);
+
+  max_packet_len = FXP_MAX_PACKET_LEN;
+  max_read_len = max_write_len = FXP_MAX_PACKET_LEN - 1024;
+
+  res = pr_rlimit_get_files(&curr_open_fds, NULL);
+  if (res < 0) {
+    xerrno = errno;
+
+    (void) pr_trace_msg(trace_channel, 29,
+      "error obtaining open fds rlimit: %s", strerror(xerrno));
+    max_open_fds = 0;
+
+  } else {
+    /* Allow for the Big Three (stdio), logging, and spares. */
+    if (curr_open_fds > 8) {
+      max_open_fds = (uint32_t) curr_open_fds - 8;
+    }
+  }
+
+  pr_trace_msg(trace_channel, 8,
+    "sending response: EXTENDED_REPLY limits@openssh.com: "
+    "max-packet-len = %lu, max-read-len = %lu, max-write-len = %lu, "
+    "max-open-handles = %lu", (unsigned long) max_packet_len,
+    (unsigned long) max_read_len, (unsigned long) max_write_len,
+    (unsigned long) max_open_fds);
+
+  sftp_msg_write_byte(&buf, &buflen, SFTP_SSH2_FXP_EXTENDED_REPLY);
+  sftp_msg_write_int(&buf, &buflen, fxp->request_id);
+  sftp_msg_write_long(&buf, &buflen, max_packet_len);
+  sftp_msg_write_long(&buf, &buflen, max_read_len);
+  sftp_msg_write_long(&buf, &buflen, max_write_len);
+  sftp_msg_write_long(&buf, &buflen, max_open_fds);
+
+  resp = fxp_packet_create(fxp->pool, fxp->channel_id);
+  resp->payload = ptr;
+  resp->payload_sz = (bufsz - buflen);
 
   return fxp_packet_write(resp);
 }
@@ -7344,6 +7418,19 @@ static int fxp_handle_extended(struct fxp_packet *fxp) {
     }
 
     res = fxp_handle_ext_homedir(fxp, name);
+    if (res == 0) {
+      fxp_cmd_dispatch(cmd);
+
+    } else {
+      fxp_cmd_dispatch_err(cmd);
+    }
+
+    return res;
+  }
+
+  if ((fxp_ext_flags & SFTP_FXP_EXT_LIMITS) &&
+      strcmp(ext_request_name, "limits@openssh.com") == 0) {
+    res = fxp_handle_ext_limits(fxp);
     if (res == 0) {
       fxp_cmd_dispatch(cmd);
 
