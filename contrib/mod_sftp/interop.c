@@ -1,6 +1,6 @@
 /*
  * ProFTPD - mod_sftp interoperability
- * Copyright (c) 2008-2022 TJ Saunders
+ * Copyright (c) 2008-2024 TJ Saunders
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -45,7 +45,8 @@ static unsigned int default_flags =
   SFTP_SSH2_FEAT_SERVICE_IN_PUBKEY_SIG |
   SFTP_SSH2_FEAT_HAVE_PUBKEY_ALGO_IN_DSA_SIG |
   SFTP_SSH2_FEAT_NO_DATA_WHILE_REKEYING |
-  SFTP_SSH2_FEAT_HOSTKEYS;
+  SFTP_SSH2_FEAT_HOSTKEYS |
+  SFTP_SSH2_FEAT_USE_FULL_FXP_LIMITS;
 
 struct sftp_version_pattern {
   const char *pattern;
@@ -70,6 +71,10 @@ static struct sftp_version_pattern known_versions[] = {
     "^OpenSSH_2\\.5\\.1.*|"
     "^OpenSSH_2\\.5\\.2.*|"
     "^OpenSSH_2\\.5\\.3.*",	SFTP_SSH2_FEAT_REKEYING,		NULL },
+
+  { "^OpenSSH_8\\..*|"
+    "^OpenSSH_9\\.0.*|"
+    "^OpenSSH_9\\.1.*",		SFTP_SSH2_FEAT_USE_FULL_FXP_LIMITS,	NULL },
 
   { "^OpenSSH.*",		0,					NULL },
 
