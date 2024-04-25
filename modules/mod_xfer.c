@@ -2,7 +2,7 @@
  * ProFTPD - FTP server daemon
  * Copyright (c) 1997, 1998 Public Flood Software
  * Copyright (c) 1999, 2000 MacGyver aka Habeeb J. Dihu <macgyver@tos.net>
- * Copyright (c) 2001-2023 The ProFTPD Project team
+ * Copyright (c) 2001-2024 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -1563,6 +1563,8 @@ MODRET xfer_pre_stor(cmd_rec *cmd) {
       (session.xfer.xfer_type == STOR_APPEND)) &&
      (!allow_restart || *allow_restart == FALSE)) {
 
+    pr_log_debug(DEBUG6, "AllowStoreRestart denied permission for %s",
+      cmd->arg);
     pr_response_add_err(R_451, _("%s: Append/Restart not permitted, try again"),
       cmd->arg);
     session.restart_pos = 0L;
