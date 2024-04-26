@@ -28,6 +28,7 @@
 #include "crypto.h"
 #include "packet.h"
 #include "disconnect.h"
+#include "interop.h"
 #include "channel.h"
 #include "auth.h"
 #include "display.h"
@@ -5251,6 +5252,26 @@ static int fxp_handle_ext_limits(struct fxp_packet *fxp) {
     if (curr_open_fds > 8) {
       max_open_fds = (uint32_t) curr_open_fds - 8;
     }
+  }
+
+  /* Older versions of OpenSSH just accepted our (larger) limits as-is,
+   * but then ran into client-side policies which forbade the use of such
+   * larger SFTP requests; it was a bug that was fixed in OpenSSH 9.2p1 and
+   * later.
+   *
+   * Unfortunately, this means that we need to be sensitive to those older
+   * OpenSSH versions, and to send shorter lengths to them.  Otherwise, users
+   * with older OpenSSH packages will be unfairly punished when their clients
+   * use this extension, then inexplicably fail with
+   * "Outbound message too long" errors"; see Issue #1288.
+   */
+
+  if (sftp_interop_supports_feature(SFTP_SSH2_FEAT_USE_FULL_FXP_LIMITS) == FALSE) {
+    /* In these older OpenSSH versions, their max packet is 256K. */
+    pr_trace_msg(trace_channel, 8,
+      "using shorter lengths for older OpenSSH client");
+    max_packet_len = (256 * 1024);
+    max_read_len = max_write_len = max_packet_len - 1024;
   }
 
   pr_trace_msg(trace_channel, 8,
