@@ -1,6 +1,6 @@
 /*
  * ProFTPD - mod_sftp ciphers
- * Copyright (c) 2008-2023 TJ Saunders
+ * Copyright (c) 2008-2024 TJ Saunders
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -832,7 +832,7 @@ int sftp_cipher_read_data(struct ssh2_packet *pkt, unsigned char *data,
 
     /* Allocate a buffer that's large enough. */
     bufsz = (data_len + read_blocksz - 1);
-    ptr = buf2 = pcalloc(pkt->pool, bufsz);
+    ptr = buf2 = palloc(pkt->pool, bufsz);
 
   } else {
     ptr = buf2 = *buf;
@@ -858,7 +858,7 @@ int sftp_cipher_read_data(struct ssh2_packet *pkt, unsigned char *data,
 
     if (pkt->aad_len > 0 &&
         pkt->aad == NULL) {
-      pkt->aad = pcalloc(pkt->pool, pkt->aad_len);
+      pkt->aad = palloc(pkt->pool, pkt->aad_len);
       memcpy(pkt->aad, data, pkt->aad_len);
       memcpy(ptr, data, pkt->aad_len);
 
@@ -1404,7 +1404,7 @@ int sftp_cipher_write_data(struct ssh2_packet *pkt, unsigned char *buf,
     uint32_t packet_len;
 
     packet_len = htonl(pkt->packet_len);
-    pkt->aad = pcalloc(pkt->pool, pkt->aad_len);
+    pkt->aad = palloc(pkt->pool, pkt->aad_len);
     memcpy(pkt->aad, &packet_len, pkt->aad_len);
 
     if (auth_len > 0) {
@@ -1520,7 +1520,7 @@ int sftp_cipher_write_data(struct ssh2_packet *pkt, unsigned char *buf,
     }
 
     tag_datalen = auth_len;
-    tag_data = pcalloc(pkt->pool, tag_datalen);
+    tag_data = palloc(pkt->pool, tag_datalen);
 
     if (cipher->algo_type == SFTP_CIPHER_ALGO_GCM) {
 #if defined(EVP_CTRL_GCM_GET_TAG)
