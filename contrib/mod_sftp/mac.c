@@ -1,6 +1,6 @@
 /*
  * ProFTPD - mod_sftp MACs
- * Copyright (c) 2008-2023 TJ Saunders
+ * Copyright (c) 2008-2024 TJ Saunders
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -254,7 +254,7 @@ static int get_mac(struct ssh2_packet *pkt, struct sftp_mac *mac,
   if (mac->algo_type == SFTP_MAC_ALGO_TYPE_HMAC) {
     /* Always leave a little extra room in the buffer. */
     bufsz = (sizeof(uint32_t) * 2) + pkt->packet_len + 64;
-    mac_data = pcalloc(pkt->pool, EVP_MAX_MD_SIZE);
+    mac_data = palloc(pkt->pool, EVP_MAX_MD_SIZE);
 
     if (etm_mac == TRUE) {
       bufsz += sftp_mac_get_block_size();
@@ -322,7 +322,7 @@ static int get_mac(struct ssh2_packet *pkt, struct sftp_mac *mac,
 
     /* Always leave a little extra room in the buffer. */
     bufsz = sizeof(uint32_t) + pkt->packet_len + 64;
-    mac_data = pcalloc(pkt->pool, EVP_MAX_MD_SIZE);
+    mac_data = palloc(pkt->pool, EVP_MAX_MD_SIZE);
 
     if (etm_mac == TRUE) {
       bufsz += sftp_mac_get_block_size();

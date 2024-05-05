@@ -1,6 +1,6 @@
 /*
  * ProFTPD - mod_sftp packet IO
- * Copyright (c) 2008-2023 TJ Saunders
+ * Copyright (c) 2008-2024 TJ Saunders
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -651,7 +651,7 @@ static int read_packet_payload(int sockfd, struct ssh2_packet *pkt,
       return -1;
     }
 
-    pkt->payload = pcalloc(pkt->pool, payload_len);
+    pkt->payload = palloc(pkt->pool, payload_len);
   }
 
   /* If there's data in the buffer we received, it's probably already part
@@ -681,7 +681,7 @@ static int read_packet_payload(int sockfd, struct ssh2_packet *pkt,
    * modes.
    */
   if (padding_len > 0) {
-    pkt->padding = pcalloc(pkt->pool, padding_len);
+    pkt->padding = palloc(pkt->pool, padding_len);
   }
 
   /* If there's data in the buffer we received, it's probably already part
@@ -773,7 +773,7 @@ static int read_packet_mac(int sockfd, struct ssh2_packet *pkt,
     return res;
   }
 
-  pkt->mac = pcalloc(pkt->pool, pkt->mac_len);
+  pkt->mac = palloc(pkt->pool, pkt->mac_len);
   memmove(pkt->mac, buf, res);
 
   return 0;
@@ -786,7 +786,7 @@ struct ssh2_packet *sftp_ssh2_packet_create(pool *p) {
   tmp_pool = make_sub_pool(p);
   pr_pool_tag(tmp_pool, "SSH2 packet pool");
 
-  pkt = pcalloc(tmp_pool, sizeof(struct ssh2_packet));
+  pkt = palloc(tmp_pool, sizeof(struct ssh2_packet));
   pkt->pool = tmp_pool;
   pkt->m = &sftp_module;
   pkt->packet_len = 0;
@@ -795,6 +795,9 @@ struct ssh2_packet *sftp_ssh2_packet_create(pool *p) {
   pkt->padding_len = 0;
   pkt->aad = NULL;
   pkt->aad_len = 0;
+  pkt->mac = NULL;
+  pkt->mac_len = 0;
+  pkt->seqno = 0;
 
   return pkt;
 }
@@ -996,7 +999,6 @@ int sftp_ssh2_packet_read(int sockfd, struct ssh2_packet *pkt) {
      */
 
     buflen = 0;
-    memset(buf, 0, sizeof(buf));
 
     if (read_packet_len(sockfd, pkt, buf, &offset, &buflen, bufsz,
         etm_mac, chachapoly) < 0) {
@@ -1068,7 +1070,7 @@ int sftp_ssh2_packet_read(int sockfd, struct ssh2_packet *pkt) {
       size_t buflen2, bufsz2;
 
       bufsz2 = buflen2 = pkt->mac_len;
-      buf2 = pcalloc(pkt->pool, bufsz2);
+      buf2 = palloc(pkt->pool, bufsz2);
 
       /* The MAC routines assume the presence of the necessary data in
        * pkt->payload, so we temporarily put our encrypted packet data there.
@@ -1099,7 +1101,7 @@ int sftp_ssh2_packet_read(int sockfd, struct ssh2_packet *pkt) {
        * packet from read_packet_payload().
        */
       bufsz2 = buflen2 = SFTP_MAX_PACKET_LEN;
-      buf2 = pcalloc(pkt->pool, bufsz2);
+      buf2 = palloc(pkt->pool, bufsz2);
 
       if (sftp_cipher_read_data(pkt, buf, buflen, &buf2,
           (uint32_t *) &buflen2) < 0) {
@@ -1124,16 +1126,14 @@ int sftp_ssh2_packet_read(int sockfd, struct ssh2_packet *pkt) {
         (unsigned long) pkt->payload_len);
 
       if (pkt->payload_len > 0) {
-        pkt->payload = pcalloc(pkt->pool, pkt->payload_len);
+        pkt->payload = palloc(pkt->pool, pkt->payload_len);
         memmove(pkt->payload, buf2 + offset, pkt->payload_len);
       }
 
-      pkt->padding = pcalloc(pkt->pool, pkt->padding_len);
+      pkt->padding = palloc(pkt->pool, pkt->padding_len);
       memmove(pkt->padding, buf2 + offset + pkt->payload_len, pkt->padding_len);
 
     } else {
-      memset(buf, 0, sizeof(buf));
-
       if (read_packet_mac(sockfd, pkt, buf) < 0) {
         (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
           "unable to read MAC from socket %d", sockfd);
@@ -1422,7 +1422,6 @@ int sftp_ssh2_packet_send(int sockfd, struct ssh2_packet *pkt) {
 
   pkt->seqno = packet_server_seqno;
 
-  memset(buf, 0, sizeof(buf));
   buflen = bufsz;
 
   if (etm_mac == TRUE) {

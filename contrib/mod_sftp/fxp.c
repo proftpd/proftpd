@@ -3528,7 +3528,7 @@ static struct fxp_packet *fxp_packet_read(uint32_t channel_id,
 
     if (fxp->payload == NULL) {
       /* Make sure we have a payload buffer allocated. */
-      fxp->payload = pcalloc(fxp->pool, fxp->payload_sz);
+      fxp->payload = palloc(fxp->pool, fxp->payload_sz);
       fxp->payload_len = 0;
     }
 
