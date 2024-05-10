@@ -208,6 +208,12 @@ struct fxp_handle {
   /* For indicating whether the file existed prior to being opened/created. */
   int fh_existed;
 
+  /* For caching the initial dir_check() results for subsequent READ/WRITE
+   * requests.
+   */
+  int fh_cached_read_dir_check, fh_have_cached_read_dir_check;
+  int fh_cached_write_dir_check, fh_have_cached_write_dir_check;
+
   /* For referencing information about the opened file; NOTE THAT THIS MAY
    * BE STALE.
    */
@@ -10468,7 +10474,13 @@ static int fxp_handle_read(struct fxp_packet *fxp) {
   cmd2 = fxp_cmd_alloc(fxp->pool, C_RETR, file);
   cmd2->cmd_class = CL_READ;
 
-  if (!dir_check(fxp->pool, cmd2, G_READ, fxh->fh->fh_path, NULL)) {
+  if (fxh->fh_have_cached_read_dir_check == FALSE) {
+    fxh->fh_cached_read_dir_check = dir_check(fxp->pool, cmd2, G_READ,
+      fxh->fh->fh_path, NULL);
+    fxh->fh_have_cached_read_dir_check = TRUE;
+  }
+
+  if (!(fxh->fh_cached_read_dir_check)) {
     uint32_t status_code = SSH2_FX_PERMISSION_DENIED;
 
     (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
@@ -13516,7 +13528,13 @@ static int fxp_handle_write(struct fxp_packet *fxp) {
   cmd2 = fxp_cmd_alloc(fxp->pool, C_STOR, file);
   cmd2->cmd_class = CL_WRITE;
 
-  if (!dir_check(fxp->pool, cmd2, G_WRITE, fxh->fh->fh_path, NULL)) {
+  if (fxh->fh_have_cached_write_dir_check == FALSE) {
+    fxh->fh_cached_write_dir_check = dir_check(fxp->pool, cmd2, G_WRITE,
+      fxh->fh->fh_path, NULL);
+    fxh->fh_have_cached_write_dir_check = TRUE;
+  }
+
+  if (!(fxh->fh_cached_write_dir_check)) {
     status_code = SSH2_FX_PERMISSION_DENIED;
 
     (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
