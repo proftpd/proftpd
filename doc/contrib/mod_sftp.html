@@ -912,8 +912,8 @@ The <code>SFTPHostKeys</code> directive is used to specify the list of host
 key algorithms that <code>mod_sftp</code> should use.  The current list
 of supported host key algorithms is:
 <ul>
-  <li>ssh-ed448
-  <li>ssh-ed25519
+  <li>ssh-ed25519 (<i>requires Sodium</i>)
+  <li>ssh-ed448 (<i>requires OpenSSL 1.1.1 or later</i>)
   <li>ecdsa-sha2-nistp256
   <li>ecdsa-sha2-nistp384
   <li>ecdsa-sha2-nistp521
