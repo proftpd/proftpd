@@ -1,6 +1,6 @@
 /*
  * ProFTPD - mod_sftp 'publickey' user authentication
- * Copyright (c) 2008-2023 TJ Saunders
+ * Copyright (c) 2008-2024 TJ Saunders
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -91,6 +91,7 @@ int sftp_auth_publickey(struct ssh2_packet *pkt, cmd_rec *pass_cmd,
   const char *fp = NULL, *fp_algo = NULL;
   uint32_t pubkey_len;
   struct passwd *pw;
+  config_rec *c;
 
   if (pr_cmd_dispatch_phase(pass_cmd, PRE_CMD, 0) < 0) {
     (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
@@ -127,57 +128,8 @@ int sftp_auth_publickey(struct ssh2_packet *pkt, cmd_rec *pass_cmd,
   pr_trace_msg(trace_channel, 9, "client sent '%s' public key %s",
     pubkey_algo, have_signature ? "with signature" : "without signature");
 
-  if (strcmp(pubkey_algo, "ssh-rsa") == 0) {
-    pubkey_type = SFTP_KEY_RSA;
-
-#if defined(HAVE_SHA256_OPENSSL)
-  } else if (strcmp(pubkey_algo, "rsa-sha2-256") == 0) {
-    pubkey_type = SFTP_KEY_RSA_SHA256;
-#endif /* HAVE_SHA256_OPENSSL */
-
-#if defined(HAVE_SHA512_OPENSSL)
-  } else if (strcmp(pubkey_algo, "rsa-sha2-512") == 0) {
-    pubkey_type = SFTP_KEY_RSA_SHA512;
-#endif /* HAVE_SHA512_OPENSSL */
-
-  } else if (strcmp(pubkey_algo, "ssh-dss") == 0) {
-    pubkey_type = SFTP_KEY_DSA;
-
-#if defined(PR_USE_OPENSSL_ECC)
-  } else if (strcmp(pubkey_algo, "ecdsa-sha2-nistp256") == 0) {
-    pubkey_type = SFTP_KEY_ECDSA_256;
-
-  } else if (strcmp(pubkey_algo, "ecdsa-sha2-nistp384") == 0) {
-    pubkey_type = SFTP_KEY_ECDSA_384;
-
-  } else if (strcmp(pubkey_algo, "ecdsa-sha2-nistp521") == 0) {
-    pubkey_type = SFTP_KEY_ECDSA_521;
-
-  } else if (strcmp(pubkey_algo, "sk-ecdsa-sha2-nistp256@openssh.com") == 0) {
-    pubkey_type = SFTP_KEY_ECDSA_256_SK;
-#endif /* PR_USE_OPENSSL_ECC */
-
-#if defined(PR_USE_SODIUM)
-  } else if (strcmp(pubkey_algo, "ssh-ed25519") == 0) {
-    pubkey_type = SFTP_KEY_ED25519;
-
-  } else if (strcmp(pubkey_algo, "sk-ssh-ed25519@openssh.com") == 0) {
-    pubkey_type = SFTP_KEY_ED25519_SK;
-#endif /* PR_USE_SODIUM */
-
-#if defined(HAVE_X448_OPENSSL)
-  } else if (strcmp(pubkey_algo, "ssh-ed448") == 0) {
-    pubkey_type = SFTP_KEY_ED448;
-#endif /* HAVE_X448_OPENSSL */
-
-  /* XXX This is where we would add support for X509 public keys, e.g.:
-   *
-   *  x509v3-ssh-dss
-   *  x509v3-ssh-rsa
-   *  x509v3-sign (older)
-   */
-
-  } else {
+  res = sftp_auth_publickey_isvalid(pubkey_algo, &pubkey_type);
+  if (res != TRUE) {
     (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
       "unsupported public key algorithm '%s' requested, rejecting request",
       pubkey_algo);
@@ -189,6 +141,37 @@ int sftp_auth_publickey(struct ssh2_packet *pkt, cmd_rec *pass_cmd,
     *send_userauth_fail = TRUE;
     errno = EINVAL;
     return 0;
+  }
+
+  /* We know that the provided public key algorithm is known/valid.  Now we
+   * have to check whether that algorithm has been enabled/disabled by
+   * configuration (Issue #1806).
+   */
+  c = find_config(main_server->conf, CONF_PARAM, "SFTPAuthPublicKeys", FALSE);
+  if (c != NULL) {
+    register unsigned int i;
+    int algo_enabled = FALSE;
+
+    for (i = 0; i < c->argc; i++) {
+      if (strcmp(pubkey_algo, (const char *) c->argv[i]) == 0) {
+        algo_enabled = TRUE;
+        break;
+      }
+    }
+
+    if (algo_enabled == FALSE) {
+      (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
+        "public key algorithm '%s' disabled by SFTPAuthPublicKeys, "
+        "rejecting request", pubkey_algo);
+
+      pr_log_auth(PR_LOG_NOTICE,
+        "USER %s (Login failed): public key algorithm '%s' disabled by "
+        "SFTPAuthPublicKeys", user, pubkey_algo);
+
+      *send_userauth_fail = TRUE;
+      errno = EINVAL;
+      return 0;
+    }
   }
 
   res = sftp_keys_verify_pubkey_type(pkt->pool, pubkey_data, pubkey_len,

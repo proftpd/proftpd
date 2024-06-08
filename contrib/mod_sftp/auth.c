@@ -1,6 +1,6 @@
 /*
  * ProFTPD - mod_sftp user authentication
- * Copyright (c) 2008-2023 TJ Saunders
+ * Copyright (c) 2008-2024 TJ Saunders
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -64,6 +64,36 @@ static int auth_sent_userauth_success = FALSE;
 
 static const char *auth_user = NULL;
 static const char *auth_service = NULL;
+
+struct sftp_auth_publickey {
+  const char *algo;
+  enum sftp_key_type_e key_type;
+};
+
+static struct sftp_auth_publickey publickeys[] = {
+  { "ssh-dss", SFTP_KEY_DSA },
+  { "ssh-rsa", SFTP_KEY_RSA },
+#if defined(HAVE_SHA256_OPENSSL)
+  { "rsa-sha2-256", SFTP_KEY_RSA_SHA256 },
+#endif /* HAVE_SHA256_OPENSSL */
+#if defined(HAVE_SHA512_OPENSSL)
+  { "rsa-sha2-512", SFTP_KEY_RSA_SHA512 },
+#endif /* HAVE_SHA512_OPENSSL */
+#if defined(PR_USE_OPENSSL_ECC)
+  { "ecdsa-sha2-nistp256", SFTP_KEY_ECDSA_256 },
+  { "ecdsa-sha2-nistp384", SFTP_KEY_ECDSA_384 },
+  { "ecdsa-sha2-nistp521", SFTP_KEY_ECDSA_521 },
+  { "sk-ecdsa-sha2-nistp256@openssh.com", SFTP_KEY_ECDSA_256_SK },
+#endif /* PR_USE_OPENSSL_ECC */
+#if defined(PR_USE_SODIUM)
+  { "ssh-ed25519", SFTP_KEY_ED25519 },
+  { "sk-ssh-ed25519@openssh.com", SFTP_KEY_ED25519_SK },
+#endif /* PR_USE_SODIUM */
+#if defined(HAVE_X448_OPENSSL)
+  { "ssh-ed448", SFTP_KEY_ED448 },
+#endif /* HAVE_X448_OPENSSL */
+  { NULL, 0 }
+};
 
 /* Customizable callback for handling successful SSH authentication. */
 static int (*success_handler)(pool *, const char *) = NULL;
@@ -1802,6 +1832,28 @@ array_header *sftp_auth_chain_parse_method_chain(pool *p,
 
 char *sftp_auth_get_default_dir(void) {
   return auth_default_dir;
+}
+
+int sftp_auth_publickey_isvalid(const char *algo,
+    enum sftp_key_type_e *pubkey_type) {
+  register unsigned int i;
+
+  if (algo == NULL) {
+    errno = EINVAL;
+    return -1;
+  }
+
+  for (i = 0; publickeys[i].algo != NULL; i++) {
+    if (strcmp(publickeys[i].algo, algo) == 0) {
+      if (pubkey_type != NULL) {
+        *pubkey_type = publickeys[i].key_type;
+      }
+
+      return TRUE;
+    }
+  }
+
+  return FALSE;
 }
 
 int sftp_auth_send_banner(const char *banner) {
