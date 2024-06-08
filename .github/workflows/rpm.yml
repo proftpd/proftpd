@@ -8,6 +8,7 @@ on:
     paths-ignore:
       - NEWS
       - RELEASE_NOTES
+      - 'doc/**'
       - '**/*.html'
       - '**/*.md'
   pull_request:
@@ -17,6 +18,7 @@ on:
     paths-ignore:
       - NEWS
       - RELEASE_NOTES
+      - 'doc/**'
       - '**/*.html'
       - '**/*.md'
 
