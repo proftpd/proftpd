@@ -1,6 +1,6 @@
 /*
  * ProFTPD - FTP server daemon
- * Copyright (c) 2017-2023 The ProFTPD Project team
+ * Copyright (c) 2017-2024 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -889,6 +889,13 @@ static const char *get_meta_filename(cmd_rec *cmd) {
 
     decoded_path = pr_fs_decode_path(p, cmd->arg);
     filename = dir_abs_path(p, decoded_path, TRUE);
+  }
+
+  /* Use the realpath FSIO function as well, in case of mod_vroot usage
+   * (Issue #1808).
+   */
+  if (filename != NULL) {
+    filename = pr_fsio_realpath(p, filename);
   }
 
   return filename;

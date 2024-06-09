@@ -5305,7 +5305,7 @@ static int fxp_handle_ext_posix_rename(struct fxp_packet *fxp, char *src,
     char *dst) {
   unsigned char *buf, *ptr;
   char *args;
-  const char *reason;
+  const char *abs_src, *reason;
   uint32_t buflen, bufsz, status_code;
   struct fxp_packet *resp;
   cmd_rec *cmd = NULL, *cmd2 = NULL, *cmd3 = NULL;
@@ -5382,8 +5382,12 @@ static int fxp_handle_ext_posix_rename(struct fxp_packet *fxp, char *src,
     return fxp_packet_write(resp);
   }
 
+  /* Make sure we store the absolute path for LogFormat %w (Issue #1808). */
+  abs_src = dir_abs_path(fxp->pool, src, FALSE);
+  abs_src = pr_fsio_realpath(fxp->pool, abs_src);
+
   if (pr_table_add(session.notes, "mod_core.rnfr-path",
-      pstrdup(session.pool, src), 0) < 0) {
+      pstrdup(session.pool, abs_src), 0) < 0) {
     if (errno != EEXIST) {
       pr_trace_msg(trace_channel, 8,
         "error setting 'mod_core.rnfr-path' note: %s", strerror(errno));
@@ -11905,7 +11909,7 @@ static int fxp_handle_remove(struct fxp_packet *fxp) {
 static int fxp_handle_rename(struct fxp_packet *fxp) {
   unsigned char *buf, *ptr;
   char *args, *old_path, *new_path;
-  const char *reason;
+  const char *abs_old_path, *reason;
   uint32_t buflen, bufsz, flags, status_code;
   struct fxp_packet *resp;
   cmd_rec *cmd = NULL, *cmd2 = NULL, *cmd3 = NULL;
@@ -12030,8 +12034,12 @@ static int fxp_handle_rename(struct fxp_packet *fxp) {
     return fxp_packet_write(resp);
   }
 
+  /* Make sure we store the absolute path for LogFormat %w (Issue #1808). */
+  abs_old_path = dir_abs_path(fxp->pool, old_path, FALSE);
+  abs_old_path = pr_fsio_realpath(fxp->pool, abs_old_path);
+
   if (pr_table_add(session.notes, "mod_core.rnfr-path",
-      pstrdup(session.pool, old_path), 0) < 0) {
+      pstrdup(session.pool, abs_old_path), 0) < 0) {
     if (errno != EEXIST) {
       pr_trace_msg(trace_channel, 8,
         "error setting 'mod_core.rnfr-path' note: %s", strerror(errno));
