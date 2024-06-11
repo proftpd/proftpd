@@ -160,8 +160,8 @@ int pr_event_register(module *m, const char *event,
         }
 
         if (evh->module != NULL) {
-          if (evl->handlers->next != NULL) {
-            evl->handlers->next->prev = evh;
+          if (evl->handlers != NULL) {
+            evl->handlers->prev = evh;
           }
 
           evh->next = evl->handlers;
