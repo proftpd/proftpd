@@ -377,26 +377,24 @@ MODRET sql_sqlite_open(cmd_rec *cmd) {
   /* Make sure we handle contention here, just like any other statement
    * (Issue#385).
    */
-  while (res != SQLITE_OK) {
-    if (res == SQLITE_BUSY) {
-      struct timeval tv;
+  while (res == SQLITE_BUSY) {
+    struct timeval tv;
 
-      nretries++;
-      sql_log(DEBUG_FUNC, "attempt #%u, database busy, trying '%s' again",
-        nretries, stmt);
+    nretries++;
+    sql_log(DEBUG_FUNC, "attempt #%u, database busy, trying '%s' again",
+      nretries, stmt);
 
-      /* Sleep for short bit, then try again. */
-      tv.tv_sec = 0;
-      tv.tv_usec = 500000L;
+    /* Sleep for short bit, then try again. */
+    tv.tv_sec = 0;
+    tv.tv_usec = 500000L;
 
-      if (select(0, NULL, NULL, NULL, &tv) < 0) {
-        if (errno == EINTR) {
-          pr_signals_handle();
-        }
+    if (select(0, NULL, NULL, NULL, &tv) < 0) {
+      if (errno == EINTR) {
+        pr_signals_handle();
       }
-
-      res = sqlite3_exec(conn->dbh, stmt, NULL, NULL, NULL);
     }
+
+    res = sqlite3_exec(conn->dbh, stmt, NULL, NULL, NULL);
   }
 
   if (res != SQLITE_OK) {
