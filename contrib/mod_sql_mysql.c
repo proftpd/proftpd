@@ -1,7 +1,7 @@
 /*
  * ProFTPD: mod_sql_mysql -- Support for connecting to MySQL databases.
  * Copyright (c) 2001 Andrew Houghton
- * Copyright (c) 2004-2022 TJ Saunders
+ * Copyright (c) 2004-2023 TJ Saunders
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -124,15 +124,16 @@
 /* Internal define used for debug and logging.  All backends are encouraged
  * to use the same format.
  */
-#define MOD_SQL_MYSQL_VERSION		"mod_sql_mysql/4.0.9"
+#define MOD_SQL_MYSQL_VERSION		"mod_sql_mysql/4.0.10"
 
 #define _MYSQL_PORT "3306"
 
 #include "conf.h"
 #include "../contrib/mod_sql.h"
 
-#include <mysql.h>
 #include <stdbool.h>
+#include <mysql.h>
+#include <mysqld_error.h>
 
 /* The my_make_scrambled_password{,_323} functions are not part of the public
  * MySQL API and are not declared in any of the MySQL header files. But the
@@ -201,7 +202,8 @@ struct conn_entry_struct {
 
 typedef struct conn_entry_struct conn_entry_t;
 
-#define DEF_CONN_POOL_SIZE 10
+#define DEF_CONN_POOL_SIZE	10
+#define MAX_LOCK_ATTEMPTS	10
 
 static pool *conn_pool = NULL;
 static array_header *conn_cache = NULL;
@@ -304,6 +306,43 @@ static int sql_timer_cb(CALLBACK_FRAME) {
   }
 
   return 0;
+}
+
+static int process_query_error(db_conn_t *conn, const char *query_text,
+    unsigned int nattempts) {
+  int error_code, res = -1;
+  const char *error_text;
+
+  error_code = mysql_errno(conn->mysql);
+  error_text = mysql_error(conn->mysql);
+
+  pr_trace_msg(trace_channel, 7, "'%s' query error: %s (%d)", query_text,
+    error_text, error_code);
+
+  switch (error_code) {
+    case ER_LOCK_DEADLOCK:
+    case ER_LOCK_WAIT_TIMEOUT:
+    case ER_LOCK_OR_ACTIVE_TRANSACTION:
+      /* Locking issue. Wait for a short time, then try again. */
+      if (nattempts < MAX_LOCK_ATTEMPTS) {
+        sql_log(DEBUG_FUNC,
+          "deadlock detected (%d %s), attempt %u/%u, retrying", error_code,
+          error_text, nattempts, MAX_LOCK_ATTEMPTS);
+        pr_timer_usleep(200 * 1000);
+        res = 0;
+
+      } else {
+        sql_log(DEBUG_FUNC,
+          "deadlock detected (%d %s), attempt %u/%u, failing", error_code,
+          error_text, nattempts, MAX_LOCK_ATTEMPTS);
+      }
+      break;
+
+    default:
+      break;
+  }
+
+  return res;
 }
 
 /* build_error: constructs a modret_t filled with error information;
@@ -1158,7 +1197,7 @@ MODRET cmd_select(cmd_rec *cmd) {
   }
 
   /* Log the query string */
-  sql_log(DEBUG_INFO, "query \"%s\"", query);
+  sql_log(DEBUG_INFO, "SELECT query \"%s\"", query);
 
   /* Perform the query.  if it doesn't work, log the error, close the
    * connection then return the error from the query processing.
@@ -1229,11 +1268,14 @@ MODRET cmd_select(cmd_rec *cmd) {
  *  none
  */
 MODRET cmd_insert(cmd_rec *cmd) {
+  int res;
+  unsigned int nattempts = 0;
   conn_entry_t *entry = NULL;
   db_conn_t *conn = NULL;
   modret_t *cmr = NULL;
   modret_t *dmr = NULL;
   char *query = NULL;
+  size_t query_len;
   cmd_rec *close_cmd;
 
   sql_log(DEBUG_FUNC, "%s", "entering \tmysql cmd_insert");
@@ -1272,13 +1314,28 @@ MODRET cmd_insert(cmd_rec *cmd) {
       cmd->argv[2], ") VALUES (", cmd->argv[3], ")", NULL);
   }
 
-  sql_log(DEBUG_INFO, "query \"%s\"", query);
+  /* Log the query string. */
+  sql_log(DEBUG_INFO, "INSERT query \"%s\"", query);
 
-  /* perform the query.  if it doesn't work, log the error, close the
+  /* Perform the query.  If it doesn't work, log the error, close the
    * connection (and log any errors there, too) then return the error
    * from the query processing.
    */
-  if (mysql_real_query(conn->mysql, query, strlen(query)) != 0) {
+  query_len = strlen(query);
+
+  nattempts++;
+  res = mysql_real_query(conn->mysql, query, query_len);
+  while (res != 0) {
+    if (process_query_error(conn, query, nattempts) == 0) {
+      nattempts++;
+      res = mysql_real_query(conn->mysql, query, query_len);
+      continue;
+    }
+
+    break;
+  }
+
+  if (res != 0) {
     dmr = build_error(cmd, conn);
 
     close_cmd = sql_make_cmd(cmd->tmp_pool, 1, entry->name);
@@ -1329,11 +1386,14 @@ MODRET cmd_insert(cmd_rec *cmd) {
  *  make sure this is handled correctly.
  */
 MODRET cmd_update(cmd_rec *cmd) {
+  int res;
+  unsigned int nattempts = 0;
   conn_entry_t *entry = NULL;
   db_conn_t *conn = NULL;
   modret_t *cmr = NULL;
   modret_t *dmr = NULL;
   char *query = NULL;
+  size_t query_len;
   cmd_rec *close_cmd;
 
   sql_log(DEBUG_FUNC, "%s", "entering \tmysql cmd_update");
@@ -1376,12 +1436,26 @@ MODRET cmd_update(cmd_rec *cmd) {
   }
 
   /* Log the query string */
-  sql_log(DEBUG_INFO, "query \"%s\"", query);
+  sql_log(DEBUG_INFO, "UPDATE query \"%s\"", query);
 
-  /* Perform the query.  if it doesn't work close the connection, then
+  /* Perform the query.  If it doesn't work close the connection, then
    * return the error from the query processing.
    */
-  if (mysql_real_query(conn->mysql, query, strlen(query)) != 0) {
+  query_len = strlen(query);
+
+  nattempts++;
+  res = mysql_real_query(conn->mysql, query, query_len);
+  while (res != 0) {
+    if (process_query_error(conn, query, nattempts) == 0) {
+      nattempts++;
+      res = mysql_real_query(conn->mysql, query, query_len);
+      continue;
+    }
+
+    break;
+  }
+
+  if (res != 0) {
     dmr = build_error(cmd, conn);
 
     close_cmd = sql_make_cmd(cmd->tmp_pool, 1, entry->name);
@@ -1457,11 +1531,14 @@ MODRET cmd_procedure(cmd_rec *cmd) {
  *  None.
  */
 MODRET cmd_query(cmd_rec *cmd) {
+  int res;
+  unsigned int nattempts = 0;
   conn_entry_t *entry = NULL;
   db_conn_t *conn = NULL;
   modret_t *cmr = NULL;
   modret_t *dmr = NULL;
   char *query = NULL;
+  size_t query_len;
   cmd_rec *close_cmd;
 
   sql_log(DEBUG_FUNC, "%s", "entering \tmysql cmd_query");
@@ -1491,12 +1568,26 @@ MODRET cmd_query(cmd_rec *cmd) {
   query = pstrcat(cmd->tmp_pool, cmd->argv[1], NULL);
 
   /* Log the query string */
-  sql_log(DEBUG_INFO, "query \"%s\"", query);
+  sql_log(DEBUG_INFO, "FREEFORM query \"%s\"", query);
 
   /* Perform the query.  if it doesn't work close the connection, then
    * return the error from the query processing.
    */
-  if (mysql_real_query(conn->mysql, query, strlen(query)) != 0) {
+  query_len = strlen(query);
+
+  nattempts++;
+  res = mysql_real_query(conn->mysql, query, query_len);
+  while (res != 0) {
+    if (process_query_error(conn, query, nattempts) == 0) {
+      nattempts++;
+      res = mysql_real_query(conn->mysql, query, query_len);
+      continue;
+    }
+
+    break;
+  }
+
+  if (res != 0) {
     dmr = build_error(cmd, conn);
 
     close_cmd = sql_make_cmd(cmd->tmp_pool, 1, entry->name);
