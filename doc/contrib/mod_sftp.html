@@ -126,6 +126,7 @@ questions, concerns, or suggestions regarding this module.
 <ul>
   <li><a href="#SFTPAcceptEnv">SFTPAcceptEnv</a>
   <li><a href="#SFTPAuthMethods">SFTPAuthMethods</a>
+  <li><a href="#SFTPAuthPublicKeys">SFTPAuthPublicKeys</a>
   <li><a href="#SFTPAuthorizedHostKeys">SFTPAuthorizedHostKeys</a>
   <li><a href="#SFTPAuthorizedUserKeys">SFTPAuthorizedUserKeys</a>
   <li><a href="#SFTPCiphers">SFTPCiphers</a>
@@ -243,6 +244,38 @@ RSA and a DSA public key, or multiple different RSA/DSA keys) using:
   # Require different keys for publickey authentication
   SFTPAuthMethods publickey+publickey
 </pre>
+
+<p>
+<hr>
+<h3><a name="SFTPAuthPublicKeys">SFTPAuthPublicKeys</a></h3>
+<strong>Syntax:</strong> SFTPAuthPublicKeys <em>algo1 ...</em><br>
+<strong>Default:</strong> <em>None</em><br>
+<strong>Context:</strong> server config, <code>&lt;VirtualHost&gt;</code>, <code>&lt;Global&gt;</code><br>
+<strong>Module:</strong> mod_sftp<br>
+<strong>Compatibility:</strong> 1.3.9rc3 and later
+
+<p>
+The <code>SFTPAuthPublicKeys</code> directive is used to specify the list of
+public key algorithms that <code>mod_sftp</code> allows during authentication.
+The current list of supported public key algorithms is:
+<ul>
+  <li>ssh-dss
+  <li>ssh-rsa
+  <li>rsa-sha2-256
+  <li>rsa-sha2-512
+  <li>ecdsa-sha2-nistp256
+  <li>ecdsa-sha2-nistp384
+  <li>ecdsa-sha2-nistp521
+  <li>sk-ecdsa-sha2-nistp256@openssh.com
+  <li>ssh-ed25519 (<i>requires Sodium</i>)
+  <li>sk-ssh-ed25519@openssh.com (<i>requires Sodium</i>)
+  <li>ssh-ed448 (<i>requires OpenSSL 1.1.1 or later</i>)
+</ul>
+By default, all of the above public key algorithms are allowed.
+
+<p>
+In general, there is no need to use this directive unless specific public key
+algorithms must be used (or avoided).
 
 <p>
 <hr>

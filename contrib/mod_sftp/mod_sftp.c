@@ -449,6 +449,33 @@ MODRET set_sftpauthmeths(cmd_rec *cmd) {
   return PR_HANDLED(cmd);
 }
 
+/* usage: SFTPAuthPublicKeys list */
+MODRET set_sftpauthpublickeys(cmd_rec *cmd) {
+  register unsigned int i;
+  config_rec *c;
+
+  if (cmd->argc < 2) {
+    CONF_ERROR(cmd, "Wrong number of parameters");
+  }
+
+  CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL);
+
+  for (i = 1; i < cmd->argc; i++) {
+    if (sftp_auth_publickey_isvalid(cmd->argv[i], NULL) < 0) {
+      CONF_ERROR(cmd, pstrcat(cmd->tmp_pool,
+        "unsupported auth public key algorithm: ", (char *) cmd->argv[i],
+        NULL));
+    }
+  }
+
+  c = add_config_param(cmd->argv[0], cmd->argc-1, NULL);
+  for (i = 1; i < cmd->argc; i++) {
+    c->argv[i-1] = pstrdup(c->pool, cmd->argv[i]);
+  }
+
+  return PR_HANDLED(cmd);
+}
+
 /* usage: SFTPAuthorized{Host,User}Keys store1 ... */
 MODRET set_sftpauthorizedkeys(cmd_rec *cmd) {
   register unsigned int i;
@@ -2930,6 +2957,7 @@ static int sftp_sess_init(void) {
 static conftable sftp_conftab[] = {
   { "SFTPAcceptEnv",		set_sftpacceptenv,		NULL },
   { "SFTPAuthMethods",		set_sftpauthmeths,		NULL },
+  { "SFTPAuthPublicKeys",	set_sftpauthpublickeys,		NULL },
   { "SFTPAuthorizedHostKeys",	set_sftpauthorizedkeys,		NULL },
   { "SFTPAuthorizedUserKeys",	set_sftpauthorizedkeys,		NULL },
   { "SFTPCiphers",		set_sftpciphers,		NULL },

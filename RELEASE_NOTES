@@ -9,6 +9,10 @@ ChangeLog files.
 1.3.9rc3
 ---------
 
+  + New Directives
+
+      SFTPAuthPublicKeys (Issue #1806)
+
   + Changed Directives
 
       SFTPExtensions limits (Issue #1798)
