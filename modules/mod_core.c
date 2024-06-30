@@ -2,7 +2,7 @@
  * ProFTPD - FTP server daemon
  * Copyright (c) 1997, 1998 Public Flood Software
  * Copyright (c) 1999, 2000 MacGyver aka Habeeb J. Dihu <macgyver@tos.net>
- * Copyright (c) 2001-2023 The ProFTPD Project team
+ * Copyright (c) 2001-2024 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -6210,8 +6210,8 @@ MODRET core_rnto(cmd_rec *cmd) {
 
   CHECK_CMD_MIN_ARGS(cmd, 2);
 
-  if (!session.xfer.path) {
-    if (session.xfer.p) {
+  if (session.xfer.path == NULL) {
+    if (session.xfer.p != NULL) {
       destroy_pool(session.xfer.p);
       memset(&session.xfer, '\0', sizeof(session.xfer));
     }
@@ -6420,6 +6420,7 @@ MODRET core_rnto_cleanup(cmd_rec *cmd) {
 
 MODRET core_rnfr(cmd_rec *cmd) {
   int res;
+  const char *abs_path;
   char *decoded_path, *path;
 
   CHECK_CMD_MIN_ARGS(cmd, 2);
@@ -6465,8 +6466,13 @@ MODRET core_rnfr(cmd_rec *cmd) {
       return PR_ERROR(cmd);
   }
 
+  abs_path = dir_abs_path(cmd->tmp_pool, path, FALSE);
+
   /* Allow renaming a symlink, even a dangling one. */
   path = dir_canonical_path(cmd->tmp_pool, path);
+  if (abs_path == NULL) {
+    abs_path = path;
+  }
 
   if (path == NULL ||
       !dir_check(cmd->tmp_pool, cmd, cmd->group, path, NULL) ||
@@ -6481,7 +6487,7 @@ MODRET core_rnfr(cmd_rec *cmd) {
   }
 
   /* We store the path in session.xfer.path */
-  if (session.xfer.p) {
+  if (session.xfer.p != NULL) {
     destroy_pool(session.xfer.p);
     memset(&session.xfer, '\0', sizeof(session.xfer));
   }
@@ -6491,8 +6497,11 @@ MODRET core_rnfr(cmd_rec *cmd) {
 
   session.xfer.path = pstrdup(session.xfer.p, path);
 
+  /* Make sure we store the absolute path for LogFormat %w (Issue #1808). */
+  abs_path = pr_fsio_realpath(session.xfer.p, abs_path);
+
   pr_table_add(session.notes, "mod_core.rnfr-path",
-    pstrdup(session.xfer.p, session.xfer.path), 0);
+    pstrdup(session.xfer.p, abs_path), 0);
 
   pr_response_add(R_350,
     _("File or directory exists, ready for destination name"));

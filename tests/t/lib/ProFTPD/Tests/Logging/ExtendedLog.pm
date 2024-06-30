@@ -2465,6 +2465,10 @@ sub extlog_sftp_rename_from {
       my $line = <$fh>;
       chomp($line);
 
+      if ($ENV{TEST_VERBOSE}) {
+        print STDERR "# $line\n";
+      }
+
       if ($^O eq 'darwin') {
         # MacOSX-specific hack
         $src_file = '/private' . $src_file;
@@ -2477,6 +2481,10 @@ sub extlog_sftp_rename_from {
 
       $line = <$fh>;
       chomp($line);
+
+      if ($ENV{TEST_VERBOSE}) {
+        print STDERR "# $line\n";
+      }
 
       $expected = "$src_file $dst_file";
       $self->assert($expected eq $line,
