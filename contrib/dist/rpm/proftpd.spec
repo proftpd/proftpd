@@ -84,7 +84,7 @@
 
 # Handle optional functionality
 #
-# --with everything (for all optional functionality)
+# --with everything (for all optional functionality EXCEPT mod_wrap)
 # --with rhel5 inhibits features not available on RHEL5 and clones
 # --with rhel6 inhibits features not available on RHEL6 and clones
 %if 0%{?_with_everything:1}
@@ -102,7 +102,11 @@
 %global _with_postgresql 1
 %global _with_ssl 1
 %global _with_sodium 1
+#
+# --with wrap (for mod_wrap)
+%if 0%{?_with_wrap:1}
 %global _with_wrap 1
+%endif
 %endif
 #
 # --with geoip (for mod_geoip)
