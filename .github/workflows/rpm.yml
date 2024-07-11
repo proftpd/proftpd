@@ -26,6 +26,14 @@ jobs:
   build:
     runs-on: ubuntu-latest
 
+    env:
+      # We need to avoid using NodeJS v20, because it doesn't work with
+      # older glibc versions.  See:
+      #  https://github.com/actions/checkout/issues/1809.
+      ACTIONS_RUNNER_FORCED_INTERNAL_NODE_VERSION: node16
+      ACTIONS_RUNNER_FORCE_ACTIONS_NODE_VERSION: node16
+      ACTIONS_ALLOW_USE_UNSECURE_NODE_VERSION: true
+
     strategy:
       matrix:
         container:
@@ -44,8 +52,6 @@ jobs:
           yum install -y dnf-plugins-core epel-release yum-utils
           dnf config-manager --enable epel
           dnf config-manager --set-enabled powertools
-          # for mod_wrap
-          yum install -y libnsl2-devel https://rpmfind.net/linux/centos/7.9.2009/os/x86_64/Packages/tcp_wrappers-libs-7.6-77.el7.x86_64.rpm https://rpmfind.net/linux/centos/7.9.2009/os/x86_64/Packages/tcp_wrappers-devel-7.6-77.el7.x86_64.rpm
 
       - name: Install packages
         run: |
