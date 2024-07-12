@@ -69,7 +69,9 @@
 #include <openssl/pkcs12.h>
 #include <openssl/rand.h>
 #if OPENSSL_VERSION_NUMBER > 0x000907000L
-# include <openssl/engine.h>
+# ifdef PR_USE_OPENSSL_ENGINE
+#  include <openssl/engine.h>
+# endif /* PR_USE_OPENSSL_ENGINE */
 # ifdef PR_USE_OPENSSL_OCSP
 #  include <openssl/ocsp.h>
 # endif /* PR_USE_OPENSSL_OCSP */
