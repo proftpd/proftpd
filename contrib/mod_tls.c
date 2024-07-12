@@ -4681,7 +4681,7 @@ static void tls_tlsext_cb(SSL *ssl, int server, int type,
         "[tls.tlsext] TLS %s extension \"%s\" (ID %d, %d %s)%.*s",
         server ? "server" : "client", extension_name, type,
         tlsext_datalen, tlsext_datalen != 1 ? "bytes" : "byte",
-        (int) ext_infolen, ext_info);
+        (int) ext_infolen, ext_info != NULL ? ext_info : "");
 
       if (bio != NULL) {
         BIO_free(bio);
@@ -4807,7 +4807,7 @@ static void tls_tlsext_cb(SSL *ssl, int server, int type,
         "[tls.tlsext] TLS %s extension \"%s\" (ID %d, %d %s)%.*s",
         server ? "server" : "client", extension_name, type,
         tlsext_datalen, tlsext_datalen != 1 ? "bytes" : "byte",
-        (int) ext_infolen, ext_info);
+        (int) ext_infolen, ext_info != NULL ? ext_info : "");
 
       if (bio != NULL) {
         BIO_free(bio);
@@ -4920,7 +4920,7 @@ static void tls_tlsext_cb(SSL *ssl, int server, int type,
         "[tls.tlsext] TLS %s extension \"%s\" (ID %d, %d %s)%.*s",
         server ? "server" : "client", extension_name, type,
         tlsext_datalen, tlsext_datalen != 1 ? "bytes" : "byte",
-        (int) ext_infolen, ext_info);
+        (int) ext_infolen, ext_info != NULL ? ext_info : "");
 
       if (bio != NULL) {
         BIO_free(bio);
@@ -4975,7 +4975,7 @@ static void tls_tlsext_cb(SSL *ssl, int server, int type,
         "[tls.tlsext] TLS %s extension \"%s\" (ID %d, %d %s)%.*s",
         server ? "server" : "client", extension_name, type,
         tlsext_datalen, tlsext_datalen != 1 ? "bytes" : "byte",
-        (int) ext_infolen, ext_info);
+        (int) ext_infolen, ext_info != NULL ? ext_info : "");
 
       if (bio != NULL) {
         BIO_free(bio);
