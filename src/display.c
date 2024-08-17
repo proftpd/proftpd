@@ -26,6 +26,8 @@
 
 #include "conf.h"
 
+#define DISPLAY_BUFFER_SIZE	32
+
 static int first_msg_sent = FALSE;
 static const char *first_msg = NULL;
 static const char *prev_msg = NULL;
@@ -142,13 +144,17 @@ static int display_fh(pr_fh_t *fh, const char *fs, const char *resp_code,
   config_rec *c = NULL;
   const char *mg_time, *outs = NULL, *rfc1413_ident = NULL, *user;
   const char *serverfqdn = main_server->ServerFQDN;
-  char mg_size[32] = {'\0'}, mg_size_units[32] = {'\0'},
-    mg_max[32] = "unlimited";
-  char total_files_in[32] = {'\0'}, total_files_out[32] = {'\0'},
-    total_files_xfer[32] = {'\0'};
-  char mg_class_limit[32] = {'\0'}, mg_cur[32] = {'\0'},
-    mg_xfer_bytes[32] = {'\0'}, mg_cur_class[32] = {'\0'};
-  char mg_xfer_units[32] = {'\0'};
+  char mg_size[DISPLAY_BUFFER_SIZE] = {'\0'};
+  char mg_size_units[DISPLAY_BUFFER_SIZE] = {'\0'};
+  char mg_max[DISPLAY_BUFFER_SIZE] = "unlimited";
+  char total_files_in[DISPLAY_BUFFER_SIZE] = {'\0'};
+  char total_files_out[DISPLAY_BUFFER_SIZE] = {'\0'};
+  char total_files_xfer[DISPLAY_BUFFER_SIZE] = {'\0'};
+  char mg_class_limit[DISPLAY_BUFFER_SIZE] = {'\0'};
+  char mg_cur[DISPLAY_BUFFER_SIZE] = {'\0'};
+  char mg_xfer_bytes[DISPLAY_BUFFER_SIZE] = {'\0'};
+  char mg_cur_class[DISPLAY_BUFFER_SIZE] = {'\0'};
+  char mg_xfer_units[DISPLAY_BUFFER_SIZE] = {'\0'};
 
   /* Stat the opened file to determine the optimal buffer size for IO. */
   memset(&st, 0, sizeof(st));
