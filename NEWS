@@ -27,6 +27,8 @@
 - Issue 1798 - Implement limits@openssh.com SFTP extension.
 - Issue 1806 - Implement SFTPAuthPublicKeys directive for configuring the list
   of public key algorithms allowed for authentication.
+- Issue 1819 - Stack trace changing to directory with DisplayChdir file using
+  %F variable on a large filesystem.
 
 1.3.9rc2 - Released 19-Dec-2023
 --------------------------------
