@@ -1,6 +1,6 @@
 /*
  * ProFTPD - FTP server daemon
- * Copyright (c) 2004-2022 The ProFTPD Project team
+ * Copyright (c) 2004-2024 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -142,13 +142,13 @@ static int display_fh(pr_fh_t *fh, const char *fs, const char *resp_code,
   config_rec *c = NULL;
   const char *mg_time, *outs = NULL, *rfc1413_ident = NULL, *user;
   const char *serverfqdn = main_server->ServerFQDN;
-  char mg_size[12] = {'\0'}, mg_size_units[12] = {'\0'},
-    mg_max[12] = "unlimited";
-  char total_files_in[12] = {'\0'}, total_files_out[12] = {'\0'},
-    total_files_xfer[12] = {'\0'};
-  char mg_class_limit[12] = {'\0'}, mg_cur[12] = {'\0'},
-    mg_xfer_bytes[12] = {'\0'}, mg_cur_class[12] = {'\0'};
-  char mg_xfer_units[12] = {'\0'};
+  char mg_size[32] = {'\0'}, mg_size_units[32] = {'\0'},
+    mg_max[32] = "unlimited";
+  char total_files_in[32] = {'\0'}, total_files_out[32] = {'\0'},
+    total_files_xfer[32] = {'\0'};
+  char mg_class_limit[32] = {'\0'}, mg_cur[32] = {'\0'},
+    mg_xfer_bytes[32] = {'\0'}, mg_cur_class[32] = {'\0'};
+  char mg_xfer_units[32] = {'\0'};
 
   /* Stat the opened file to determine the optimal buffer size for IO. */
   memset(&st, 0, sizeof(st));
