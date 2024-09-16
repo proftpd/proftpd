@@ -1050,6 +1050,60 @@ int pr_auth_authorize(pool *p, const char *name) {
 
   cmd = make_cmd(p, 1, name);
 
+  /* First, check for any of the modules in the "authenticating only" list
+   * of modules.  This is usually only mod_auth_pam, but other modules
+   * might also add themselves (e.g. mod_radius under certain conditions).
+   */
+  if (auth_module_list) {
+    struct auth_module_elt *elt;
+
+    for (elt = (struct auth_module_elt *) auth_module_list->xas_list; elt;
+        elt = elt->next) {
+      pr_signals_handle();
+
+      pr_trace_msg(trace_channel, 7, "checking with auth-only module '%s'",
+        elt->name);
+
+      m = pr_module_get(elt->name);
+      if (m) {
+        mr = dispatch_auth(cmd, "authorize", &m);
+
+        if (MODRET_ISHANDLED(mr)) {
+          pr_trace_msg(trace_channel, 4,
+            "module '%s' used for authenticating user '%s'", elt->name, name);
+
+          res = MODRET_HASDATA(mr) ? PR_AUTH_RFC2228_OK : PR_AUTH_OK;
+
+          if (cmd->tmp_pool) {
+            destroy_pool(cmd->tmp_pool);
+            cmd->tmp_pool = NULL;
+          }
+
+          pr_trace_msg(trace_channel, 9,
+            "module '%s' returned HANDLED (%s) for authenticating user '%s'",
+            elt->name, get_authcode_str(res), name);
+          return res;
+        }
+
+        if (MODRET_ISERROR(mr)) {
+          res = MODRET_ERROR(mr);
+
+          if (cmd->tmp_pool) {
+            destroy_pool(cmd->tmp_pool);
+            cmd->tmp_pool = NULL;
+          }
+
+          pr_trace_msg(trace_channel, 9,
+            "module '%s' returned ERROR (%s) for authenticating user '%s'",
+            elt->name, get_authcode_str(res), name);
+          return res;
+        }
+
+        m = NULL;
+      }
+    }
+  }
+
   if (auth_tab != NULL) {
     const void *v;
 
