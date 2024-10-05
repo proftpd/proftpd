@@ -35,6 +35,8 @@
   configuring appropriate key.
 - Issue 1840 - RADIUS Message-Authenticator verification failed with ProFTPD
   mod_radius.
+- Issue 1830 - Supplemental group inheritance grants unintended access to
+  GID 0 due to lack of supplemental groups from mod_sql.
 
 1.3.9rc2 - Released 19-Dec-2023
 --------------------------------

@@ -2,7 +2,7 @@
  * ProFTPD - FTP server daemon
  * Copyright (c) 1997, 1998 Public Flood Software
  * Copyright (c) 1999, 2000 MacGyver aka Habeeb J. Dihu <macgyver@tos.net>
- * Copyright (c) 2001-2023 The ProFTPD Project team
+ * Copyright (c) 2001-2024 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -1140,8 +1140,8 @@ static int setup_env(pool *p, cmd_rec *cmd, const char *user, char *pass) {
     session.groups = NULL;
   }
 
-  if (!session.gids &&
-      !session.groups) {
+  if (session.gids == NULL &&
+      session.groups == NULL) {
     /* Get the supplemental groups.  Note that we only look up the
      * supplemental group credentials if we have not cached the group
      * credentials before, in session.gids and session.groups.
@@ -1151,8 +1151,19 @@ static int setup_env(pool *p, cmd_rec *cmd, const char *user, char *pass) {
      */
      res = pr_auth_getgroups(p, pw->pw_name, &session.gids, &session.groups);
      if (res < 1) {
-       pr_log_debug(DEBUG5, "no supplemental groups found for user '%s'",
-         pw->pw_name);
+       /* If no supplemental groups are provided, default to using the process
+        * primary GID as the supplemental group.  This prevents access
+        * regressions as seen in Issue #1830.
+        */
+       pr_log_debug(DEBUG5, "no supplemental groups found for user '%s', "
+         "using primary group %s (GID %lu)", pw->pw_name, session.group,
+         (unsigned long) session.login_gid);
+
+       session.gids = make_array(p, 2, sizeof(gid_t));
+       session.groups = make_array(p, 2, sizeof(char *));
+
+       *((gid_t *) push_array(session.gids)) = session.login_gid;
+       *((char **) push_array(session.groups)) = pstrdup(p, session.group);
      }
   }
 
