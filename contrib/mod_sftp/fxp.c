@@ -1454,7 +1454,7 @@ static int fxp_attrs_set(pr_fh_t *fh, const char *path, struct stat *attrs,
 
   if (attr_flags & SSH2_FX_ATTR_PERMISSIONS) {
     if (attrs->st_mode &&
-        st.st_mode != attrs->st_mode) {
+        (st.st_mode & ~S_IFMT) != (attrs->st_mode & ~S_IFMT)) {
       cmd_rec *cmd;
 
       cmd = fxp_cmd_alloc(fxp->pool, "SITE_CHMOD", pstrdup(fxp->pool, path));
@@ -1482,7 +1482,7 @@ static int fxp_attrs_set(pr_fh_t *fh, const char *path, struct stat *attrs,
 
         (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
           "error changing permissions of '%s' to 0%o: %s", path,
-          (unsigned int) attrs->st_mode, strerror(xerrno));
+          (unsigned int) (attrs->st_mode & ~S_IFMT), strerror(xerrno));
 
         status_code = fxp_errno2status(xerrno, &reason);
 
