@@ -9,6 +9,9 @@ ChangeLog files.
 1.3.9rc3
 ---------
 
+  + Clear supplemental groups of daemon process off all except primary
+    GID (Issue #1836)
+
   + New Directives
 
       SFTPAuthPublicKeys (Issue #1806)

@@ -2,7 +2,7 @@
  * ProFTPD - FTP server daemon
  * Copyright (c) 1997, 1998 Public Flood Software
  * Copyright (c) 1999, 2000 MacGyver aka Habeeb J. Dihu <macgyver@tos.net>
- * Copyright (c) 2001-2023 The ProFTPD Project team
+ * Copyright (c) 2001-2024 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -2763,11 +2763,16 @@ int main(int argc, char *argv[], char **envp) {
 
     daemon_uid = (uid != NULL ? *uid : PR_ROOT_UID);
     daemon_gid = (gid != NULL ? *gid : PR_ROOT_GID);
-  }
 
-  if (daemon_uid != PR_ROOT_UID) {
-    pr_log_debug(DEBUG9, "ignoring supplemental groups for non-root UID %lu",
-      (unsigned long) daemon_uid);
+    daemon_gids = make_array(permanent_pool, 2, sizeof(gid_t));
+    *((gid_t *) push_array(daemon_gids)) = daemon_gid;
+
+    if (set_groups(permanent_pool, daemon_gid, daemon_gids) < 0) {
+      if (errno != ENOSYS) {
+        pr_log_pri(PR_LOG_WARNING, "unable to set daemon groups: %s",
+          strerror(errno));
+      }
+    }
   }
 
   /* After configuration is complete, make sure that passwd, group
