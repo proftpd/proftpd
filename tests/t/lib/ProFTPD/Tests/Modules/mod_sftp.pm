@@ -5647,11 +5647,7 @@ EOC
   defined(my $pid = fork()) or die("Can't fork: $!");
   if ($pid) {
     eval {
-
-      # libssh2, and thus Net::SSH2, don't support ECC/ECDH yet.  So we
-      # use the external sftp(1) client (e.g. OpenSSH-5.9p1) to test.
-
-      my $sftp = '/Users/tj/local/openssh-7.9p1/bin/sftp';
+      my $sftp = 'sftp';
 
       my @cmd = (
         $sftp,
@@ -5725,9 +5721,7 @@ EOC
       my $expected_sz = $src_sz;
       $self->assert($expected_sz == $sz,
         test_msg("Expected file size $expected_sz, got $sz"));
-
     };
-
     if ($@) {
       $ex = $@;
     }
@@ -5898,11 +5892,7 @@ EOC
   defined(my $pid = fork()) or die("Can't fork: $!");
   if ($pid) {
     eval {
-
-      # libssh2, and thus Net::SSH2, don't support ECC/ECDH yet.  So we
-      # use the external sftp(1) client (e.g. OpenSSH-5.9p1) to test.
-
-      my $sftp = '/Users/tj/local/openssh-7.9p1/bin/sftp';
+      my $sftp = 'sftp';
 
       my @cmd = (
         $sftp,
@@ -6149,11 +6139,7 @@ EOC
   defined(my $pid = fork()) or die("Can't fork: $!");
   if ($pid) {
     eval {
-
-      # libssh2, and thus Net::SSH2, don't support ECC/ECDH yet.  So we
-      # use the external sftp(1) client (e.g. OpenSSH-5.9p1) to test.
-
-      my $sftp = '/Users/tj/local/openssh-7.9p1/bin/sftp';
+      my $sftp = 'sftp';
 
       my @cmd = (
         $sftp,
