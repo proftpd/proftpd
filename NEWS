@@ -22,6 +22,8 @@
   memory error.
 - Issue 1529 - mod_sftp_sql logs "header value too long" due to unexpected key
   header text.
+- Issue 1839 - SSH ECDSA host key algorithms not be used as expected despite
+  configuring appropriate key.
 
 1.3.8b - Released 19-Dec-2023
 --------------------------------
