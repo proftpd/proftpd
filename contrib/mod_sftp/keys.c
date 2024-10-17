@@ -1,6 +1,6 @@
 /*
  * ProFTPD - mod_sftp key mgmt (keys)
- * Copyright (c) 2008-2023 TJ Saunders
+ * Copyright (c) 2008-2024 TJ Saunders
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -4423,8 +4423,9 @@ int sftp_keys_have_ecdsa_hostkey(pool *p, int **nids) {
     }
     count++;
     EC_KEY_free(ec);
+  }
 
-  } else if (sftp_ecdsa384_hostkey != NULL) {
+  if (sftp_ecdsa384_hostkey != NULL) {
     EC_KEY *ec;
 
     ec = EVP_PKEY_get1_EC_KEY(sftp_ecdsa384_hostkey->pkey);
@@ -4433,8 +4434,9 @@ int sftp_keys_have_ecdsa_hostkey(pool *p, int **nids) {
     }
     count++;
     EC_KEY_free(ec);
+  }
 
-  } else if (sftp_ecdsa521_hostkey != NULL) {
+  if (sftp_ecdsa521_hostkey != NULL) {
     EC_KEY *ec;
 
     ec = EVP_PKEY_get1_EC_KEY(sftp_ecdsa521_hostkey->pkey);
