@@ -1,6 +1,6 @@
 /*
  * ProFTPD: mod_radius -- a module for RADIUS authentication and accounting
- * Copyright (c) 2001-2022 TJ Saunders
+ * Copyright (c) 2001-2024 TJ Saunders
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -2266,8 +2266,11 @@ static int radius_verify_auth_mac(radius_packet_t *pkt, const char *pkt_type,
       memset(replied, '\0', sizeof(replied));
       memcpy(replied, attrib->data, attrib_len);
 
-      /* Next, zero out the value so that we can calculate it ourselves. */
-      memset(attrib->data, '\0', attrib_len);
+      /* Next, zero out the value so that we can calculate it ourselves.
+       *
+       * Note that we only want to zero out the first 16 bytes, per RFC 2869.
+       */
+      memset(attrib->data, '\0', expected_len);
 
       memset(digest, '\0', sizeof(digest));
       md = EVP_md5();
