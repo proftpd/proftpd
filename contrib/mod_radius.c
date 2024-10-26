@@ -2461,7 +2461,8 @@ static radius_attrib_t *radius_get_next_attrib(radius_packet_t *packet,
   radius_attrib_t *attrib = NULL;
   unsigned int len;
 
-  if (packet_len == NULL) {
+  if (packet_len == NULL ||
+      *packet_len == 0) {
     len = ntohs(packet->length) - RADIUS_HEADER_LEN;
 
   } else {
@@ -2489,6 +2490,11 @@ static radius_attrib_t *radius_get_next_attrib(radius_packet_t *packet,
 
     /* Examine the next attribute in the packet. */
     attrib = (radius_attrib_t *) ((char *) attrib + attrib->length);
+  }
+
+  if (attrib == prev_attrib) {
+    /* No next attribute of this type found. */
+    return NULL;
   }
 
   if (packet_len != NULL) {
@@ -3319,11 +3325,11 @@ MODRET radius_auth(cmd_rec *cmd) {
   /* This authentication check has already been performed; I just need
    * to report the results of that check now.
    */
-  if (radius_auth_ok) {
+  if (radius_auth_ok == TRUE) {
     session.auth_mech = "mod_radius.c";
     return PR_HANDLED(cmd);
 
-  } else if (radius_auth_reject) {
+  } else if (radius_auth_reject == TRUE) {
     return PR_ERROR_INT(cmd, PR_AUTH_BADPWD);
   }
 
