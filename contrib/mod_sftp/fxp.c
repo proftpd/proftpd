@@ -1462,7 +1462,7 @@ static int fxp_attrs_set(pr_fh_t *fh, const char *path, struct stat *attrs,
         (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
           "chmod of '%s' blocked by <Limit> configuration", path);
 
-        errno = EACCES;
+        xerrno = EACCES;
         res = -1;
 
       } else {
@@ -1527,7 +1527,7 @@ static int fxp_attrs_set(pr_fh_t *fh, const char *path, struct stat *attrs,
         (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
           "chown of '%s' blocked by <Limit> configuration", path);
 
-        errno = EACCES;
+        xerrno = EACCES;
         res = -1;
 
       } else {
