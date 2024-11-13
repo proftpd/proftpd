@@ -1460,7 +1460,9 @@ static int fxp_attrs_set(pr_fh_t *fh, const char *path, struct stat *attrs,
       cmd = fxp_cmd_alloc(fxp->pool, "SITE_CHMOD", pstrdup(fxp->pool, path));
       if (!dir_check(fxp->pool, cmd, G_WRITE, (char *) path, NULL)) {
         (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
-          "chmod of '%s' blocked by <Limit> configuration", path);
+          "chmod of '%s' blocked by <Limit> configuration "
+          "(see the IgnoreSFTPSetPerms/IgnoreSFTPUploadPerms SFTPOptions)",
+          path);
 
         xerrno = EACCES;
         res = -1;
