@@ -15,7 +15,7 @@
   where `N' is the issue number.
 -----------------------------------------------------------------------------
 
-1.3.9rc3
+1.3.9rc3 - Released 03-Dec-2024
 --------------------------------
 - Issue 1785 - Bad handling of lack of extended attributes leads to SFTP out of
   memory error.

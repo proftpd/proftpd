@@ -1,6 +1,6 @@
 /*
  * ProFTPD - FTP server daemon
- * Copyright (c) 2020-2023 The ProFTPD Project team
+ * Copyright (c) 2020-2024 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -39,6 +39,6 @@ unsigned long pr_version_get_number(void);
 const char *pr_version_get_str(void);
 
 /* PR_STATUS is reported by --version-status -- don't ask why */
-#define PR_STATUS          		"(git)"
+#define PR_STATUS          		"(devel)"
 
 #endif /* PR_VERSION_H */
