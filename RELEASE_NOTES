@@ -12,6 +12,9 @@ ChangeLog files.
   + Fixed segfault when TLSOptions StdEnvVars is used in conjunction with
     an FTPS session.
 
+  + Properly use all configured ECDSA SSH hostkeys, not just the first
+    configured ECSA SSH hostkey.
+
   + Fixed issue with RADIUS authentication when using mod_radius and newer
     FreeRADIUS, due to BlastRadius mitigation.
 
