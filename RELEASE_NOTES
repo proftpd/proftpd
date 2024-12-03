@@ -12,6 +12,9 @@ ChangeLog files.
   + When started with root privileges, ProFTPD now drops all supplemental
     group memberships, retaining only the UID/GID of the configured User/Group.
 
+  + Fixed issue with RADIUS authentication when using mod_radius and newer
+    FreeRADIUS, due to BlastRadius mitigation.
+
 
   + New Directives
 
