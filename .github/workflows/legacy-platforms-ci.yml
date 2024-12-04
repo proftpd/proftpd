@@ -1,0 +1,279 @@
+name: Legacy Platforms CI
+
+on:
+  push:
+    branches:
+      - master
+      - 1.3.8
+    paths-ignore:
+      - NEWS
+      - RELEASE_NOTES
+      - 'doc/**'
+      - '**/*.html'
+      - '**/*.md'
+  pull_request:
+    branches:
+      - master
+      - 1.3.8
+    paths-ignore:
+      - NEWS
+      - RELEASE_NOTES
+      - 'doc/**'
+      - '**/*.html'
+      - '**/*.md'
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    services:
+      redis:
+        # Docker Hub image
+        image: redis:6-alpine
+        # Set health checks to wait until redis has started
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    environment: CI
+
+    env:
+      # GitHub runners still causing problems with NodeJS v20; see:
+      #  https://github.com/actions/checkout/issues/1809.
+      ACTIONS_ALLOW_USE_UNSECURE_NODE_VERSION: true
+
+      PACKAGE_VERSION: 1.3.9rc3
+      REDIS_HOST: redis
+
+    strategy:
+      matrix:
+        compiler:
+          - clang
+          - gcc
+        # We start with the containers whose glibc versions are too old for
+        # the NodeJS version mandated by the GitHub `checkout` action.
+        container:
+          - ubuntu:18.04
+
+    container: ${{ matrix.container }}
+
+    steps:
+      - name: Checkout source code
+        env:
+          DEBIAN_FRONTEND: noninteractive
+          TZ: UTC
+        run: |
+          apt-get update -qq
+          apt-get install -y git
+          git clone --depth 5 https://github.com/proftpd/proftpd.git
+          cd proftpd && pwd
+
+      - name: Whitespace check
+        if: ${{ matrix.container == 'ubuntu:18.04' }}
+        env:
+          DEBIAN_FRONTEND: noninteractive
+          TZ: UTC
+        run: |
+          apt-get update -qq
+          apt-get install -y git
+          cd proftpd && pwd
+          if ! git diff --no-color --check HEAD^ > /dev/null; then
+            echo "You must remove whitespace before submitting a pull request"
+            echo ""
+            git diff --check HEAD^
+            exit 1
+          fi
+
+      - name: Install Ubuntu 18.04 packages
+        if: ${{ matrix.container == 'ubuntu:18.04' }}
+        env:
+          DEBIAN_FRONTEND: noninteractive
+          TZ: UTC
+        run: |
+          # Need to add other repos for e.g. libsodium
+          apt-get update -qq
+          # for builds
+          apt-get install -y clang gcc git make
+          # for unit tests
+          apt-get install -y check libsubunit-dev
+          # for mod_lang
+          apt-get install -y gettext locales-all
+          # for xattr support
+          apt-get install -y libattr1-dev
+          # for mod_cap
+          apt-get install -y libcap-dev
+          # for mod_facl
+          apt-get install -y libacl1-dev
+          # for mod_geoip
+          apt-get install -y libgeoip-dev
+          # for mod_ldap
+          apt-get install -y libldap2-dev libsasl2-dev
+          # for mod_ldap runtime support for SCRAM
+          apt-get install -y libsasl2-modules-gssapi-mit
+          # for mod_rewrite
+          apt-get install -y libidn2-dev
+          # for memcache support
+          apt-get install -y libmemcached-dev
+          # for redis support
+          apt-get install -y libhiredis-dev
+          # for mod_sql_mysql
+          apt-get install -y libmysqlclient-dev
+          # for PAM support
+          apt-get install -y libpam-dev
+          # for mod_sql_postgres
+          apt-get install -y libpq-dev
+          # for mod_sql_odbc
+          apt-get install -y unixodbc-dev
+          # for OpenSSL support
+          apt-get install -y libssl-dev
+          # for Sodium support
+          apt-get install -y --force-yes libsodium-dev
+          # for mod_sql_sqlite
+          apt-get install -y libsqlite3-dev sqlite3
+          # for mod_wrap
+          apt-get install -y libwrap0-dev
+          # for PCRE2 support
+          apt-get install -y libpcre2-dev libpcre2-posix0
+          # for ftptop
+          apt-get install -y ncurses-dev
+          # for zlib support
+          apt-get install -y zlib1g-dev
+
+          # for logging
+          apt-get install -y rsyslog
+          service rsyslog start
+
+          # for static code analysis
+          # - sudo apt-get install -y cppcheck
+          # - sudo apt-get install rats
+          # for integration/regression test
+          # for test code coverage
+          apt-get install -y lcov ruby
+          gem install coveralls-lcov
+
+          # for HTML validation
+          apt-get install -y tidy
+
+          # The modules to build are distro-specific
+          echo "PROFTPD_MODULES=mod_sql:mod_sql_mysql:mod_sql_odbc:mod_sql_postgres:mod_sql_sqlite:mod_sql_passwd:mod_sftp:mod_sftp_sql:mod_sftp_pam:mod_tls:mod_tls_fscache:mod_tls_shmcache:mod_tls_memcache:mod_tls_redis:mod_ban:mod_copy:mod_ctrls_admin:mod_deflate:mod_dnsbl:mod_dynmasq:mod_exec:mod_facl:mod_geoip:mod_ifversion:mod_ldap:mod_load:mod_log_forensic:mod_qos:mod_quotatab:mod_quotatab_file:mod_quotatab_ldap:mod_quotatab_radius:mod_quotatab_sql:mod_radius:mod_readme:mod_rewrite:mod_shaper:mod_site_misc:mod_snmp:mod_wrap:mod_wrap2:mod_wrap2_file:mod_wrap2_redis:mod_wrap2_sql:mod_digest:mod_auth_otp:mod_statcache:mod_unique_id:mod_ifsession" >> $GITHUB_ENV
+
+          # for debugging
+          clang --version
+          gcc --version
+          lcov --version
+          openssl version -a
+
+      - name: Prepare code coverage
+        if: ${{ matrix.container == 'ubuntu:18.04' }}
+        run: |
+          cd proftpd && pwd
+          lcov --directory . --zerocounters
+
+      - name: Build with static modules
+        env:
+          CC: ${{ matrix.compiler }}
+        if: ${{ matrix.container == 'ubuntu:18.04' }}
+        run: |
+          cd proftpd && pwd
+          ./configure LIBS="-lodbc -lm -lsubunit -lrt -pthread" --enable-devel=coverage:fortify --enable-ctrls --enable-facl --enable-memcache --enable-nls --enable-pcre2 --enable-redis --enable-tests --with-modules="${{ env.PROFTPD_MODULES }}"
+          make
+
+      - name: Run unit tests
+        env:
+          CC: ${{ matrix.compiler }}
+        # Note: Skip the unit tests when using clang.
+        if: ${{ matrix.compiler == 'gcc' && matrix.container == 'ubuntu:18.04' }}
+        run: |
+          cd proftpd && pwd
+          make TEST_VERBOSE=1 check-api
+
+      - name: Upload code coverage
+        env:
+          COVERALLS_REPO_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        if: ${{ matrix.compiler == 'gcc' && matrix.container == 'ubuntu:18.04' }}
+        run: |
+          cd proftpd && pwd
+          lcov --ignore-errors gcov,source --directory . --capture --output-file all.info
+          # filter out system and test code
+          lcov --output-file coverage.info --remove all.info '*/lib/glibc-glob.c' '*/lib/ccan-json.c' '*/lib/hanson-tpl.*' '*/lib/openbsd-*' '*/lib/pr_fnmatch*'
+          # debug before upload
+          lcov --list coverage.info
+          # upload coverage info to coveralls
+          coveralls-lcov --repo-token="$COVERALLS_REPO_TOKEN" --service-name=github --service-job-id="$GITHUB_RUN_ID" --branch="$GITHUB_REF" coverage.info
+
+      - name: Install with static modules
+        env:
+          CC: ${{ matrix.compiler }}
+        if: ${{ matrix.container == 'ubuntu:18.04' }}
+        run: |
+          cd proftpd && pwd
+          make clean
+          ./configure LIBS="-lodbc" --enable-ctrls --enable-facl --enable-memcache --enable-nls --enable-pcre2 --enable-redis --with-modules="${{ env.PROFTPD_MODULES }}"
+          make
+          make install
+
+      - name: Run restart tests
+        env:
+          CC: ${{ matrix.compiler }}
+          PROFTPD_TEST_BIN: /usr/local/sbin/proftpd
+          PROFTPD_TEST_PIDFILE: /usr/local/var/proftpd.pid
+        # Note that the default config assumes user 'nobody', group 'nogroup',
+        # which do not exist in the default images of all distributions.
+        if: ${{ matrix.container == 'ubuntu:18.04' }}
+        run: |
+          test -e $PROFTPD_TEST_BIN
+          $PROFTPD_TEST_BIN
+          kill -0 $(cat $PROFTPD_TEST_PIDFILE)
+          kill -HUP $(cat $PROFTPD_TEST_PIDFILE)
+
+          kill -0 $(cat $PROFTPD_TEST_PIDFILE)
+          kill -HUP $(cat $PROFTPD_TEST_PIDFILE)
+
+          kill -0 $(cat $PROFTPD_TEST_PIDFILE)
+          kill -HUP $(cat $PROFTPD_TEST_PIDFILE)
+
+          kill -0 $(cat $PROFTPD_TEST_PIDFILE)
+          kill -TERM $(cat $PROFTPD_TEST_PIDFILE)
+
+          # Given the daemon a chance to clean up
+          sleep 1
+          ! test -f $PROFTPD_TEST_PIDFILE
+
+      - name: Build with shared modules
+        env:
+          CC: ${{ matrix.compiler }}
+        if: ${{ matrix.container == 'ubuntu:18.04' }}
+        run: |
+          cd proftpd && pwd
+          make clean
+          ./configure LIBS="-lodbc -lm -lsubunit -lrt -pthread" --enable-devel=fortify --enable-ctrls --enable-dso --enable-facl --enable-memcache --enable-nls --enable-pcre2 --enable-tests --with-shared="${{ env.PROFTPD_MODULES }}"
+          make
+
+      - name: Install with shared modules
+        run: |
+          cd proftpd && pwd
+          make install
+
+      # https://github.com/google/sanitizers/wiki/AddressSanitizer
+      # https://github.com/google/sanitizers/wiki/AddressSanitizerLeakSanitizer
+      # https://clang.llvm.org/docs/UndefinedBehaviorSanitizer.html
+      #
+      # NOTE: Using MemorySanitizer is desirable, but currently unusable since
+      # libcheck is not instrumented, resulting in unsuppressible false
+      # positives.
+      - name: Run unit tests under asan+lsan+ubsan
+        env:
+          ASAN_OPTIONS: abort_on_error=1,check_initialization_order=true,debug=true,detect_invalid_pointer_pairs=2,detect_leaks=1,detect_stack_use_after_return=true,strict_string_checks=true,verbosity=0
+          CC: ${{ matrix.compiler }}
+          CFLAGS: -fsanitize=address,undefined -DPR_DEVEL_NO_POOL_FREELIST
+          LDFLAGS: -fsanitize=address,undefined
+        if: ${{ matrix.compiler == 'clang' && matrix.container == 'ubuntu:18.04' }}
+        run: |
+          cd proftpd && pwd
+          make clean
+          ./configure LIBS="-lm -lsubunit -lrt -pthread" --enable-devel --enable-ctrls --enable-facl --enable-memcache --enable-nls --enable-pcre2 --enable-redis --enable-tests
+          make
+          export ASAN_SYMBOLIZER_PATH=$(readlink -f $(which llvm-symbolizer-10))
+          make check-api
