@@ -135,7 +135,7 @@ MODRET sample_xfoo(cmd_rec *cmd) {
  */
 
 MODRET set_foobardirective(cmd_rec *cmd) {
-  int bool = 1;
+  int l_bool = 1;
   config_rec *c = NULL;
 
   /* The CHECK_ARGS macro checks the number of arguments passed to the
@@ -154,8 +154,8 @@ MODRET set_foobardirective(cmd_rec *cmd) {
   CHECK_CONF(cmd, CONF_ANON|CONF_LIMIT);
 
   /* Get the Boolean value of the first directive parameter. */
-  bool = get_boolean(cmd, 1);
-  if (bool == -1) {
+  l_bool = get_boolean(cmd, 1);
+  if (l_bool == -1) {
 
     /* The get_boolean() function returns -1 if the parameter was not a
      * recognized Boolean parameter.
@@ -175,7 +175,7 @@ MODRET set_foobardirective(cmd_rec *cmd) {
    * that space.
    */
   c->argv[0] = pcalloc(c->pool, sizeof(unsigned char));
-  *((unsigned char *) c->argv[0]) = bool;
+  *((unsigned char *) c->argv[0]) = l_bool;
 
   /* By adding the CF_MERGEDOWN flag to the parameter we just created
    * we are telling proftpd that this parameter should be copied and
