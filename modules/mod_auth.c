@@ -3089,19 +3089,19 @@ MODRET set_anonallowrobots(cmd_rec *cmd) {
 }
 
 MODRET set_anonrequirepassword(cmd_rec *cmd) {
-  int bool = -1;
+  int l_bool = -1;
   config_rec *c = NULL;
 
   CHECK_ARGS(cmd, 1);
   CHECK_CONF(cmd, CONF_ANON);
 
-  bool = get_boolean(cmd, 1);
-  if (bool == -1)
+  l_bool = get_boolean(cmd, 1);
+  if (l_bool == -1)
     CONF_ERROR(cmd, "expected Boolean parameter");
 
   c = add_config_param(cmd->argv[0], 1, NULL);
   c->argv[0] = pcalloc(c->pool, sizeof(unsigned char));
-  *((unsigned char *) c->argv[0]) = bool;
+  *((unsigned char *) c->argv[0]) = l_bool;
 
   return PR_HANDLED(cmd);
 }
@@ -3175,44 +3175,44 @@ MODRET set_anonrejectpasswords(cmd_rec *cmd) {
 }
 
 MODRET set_authaliasonly(cmd_rec *cmd) {
-  int bool = -1;
+  int l_bool = -1;
   config_rec *c = NULL;
 
   CHECK_ARGS(cmd, 1);
   CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL|CONF_ANON);
 
-  bool = get_boolean(cmd, 1);
-  if (bool == -1)
+  l_bool = get_boolean(cmd, 1);
+  if (l_bool == -1)
     CONF_ERROR(cmd, "expected Boolean parameter");
 
   c = add_config_param(cmd->argv[0], 1, NULL);
   c->argv[0] = pcalloc(c->pool, sizeof(unsigned char));
-  *((unsigned char *) c->argv[0]) = bool;
+  *((unsigned char *) c->argv[0]) = l_bool;
 
   c->flags |= CF_MERGEDOWN;
   return PR_HANDLED(cmd);
 }
 
 MODRET set_authusingalias(cmd_rec *cmd) {
-  int bool = -1;
+  int l_bool = -1;
   config_rec *c = NULL;
 
   CHECK_ARGS(cmd, 1);
   CHECK_CONF(cmd, CONF_ANON);
 
-  bool = get_boolean(cmd, 1);
-  if (bool == -1)
+  l_bool = get_boolean(cmd, 1);
+  if (l_bool == -1)
     CONF_ERROR(cmd, "expected Boolean parameter");
 
   c = add_config_param(cmd->argv[0], 1, NULL);
   c->argv[0] = pcalloc(c->pool, sizeof(unsigned char));
-  *((unsigned char *) c->argv[0]) = bool;
+  *((unsigned char *) c->argv[0]) = l_bool;
 
   return PR_HANDLED(cmd);
 }
 
 MODRET set_createhome(cmd_rec *cmd) {
-  int bool = -1, start = 2;
+  int l_bool = -1, start = 2;
   mode_t mode = (mode_t) 0700, dirmode = (mode_t) 0711;
   char *skel_path = NULL;
   config_rec *c = NULL;
@@ -3226,16 +3226,16 @@ MODRET set_createhome(cmd_rec *cmd) {
 
   CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL);
 
-  bool = get_boolean(cmd, 1);
-  if (bool == -1) {
+  l_bool = get_boolean(cmd, 1);
+  if (l_bool == -1) {
     CONF_ERROR(cmd, "expected Boolean parameter");
   }
 
-  /* No need to process the rest if bool is FALSE. */
-  if (bool == FALSE) {
+  /* No need to process the rest if l_bool is FALSE. */
+  if (l_bool == FALSE) {
     c = add_config_param(cmd->argv[0], 1, NULL);
     c->argv[0] = pcalloc(c->pool, sizeof(unsigned char));
-    *((unsigned char *) c->argv[0]) = bool;
+    *((unsigned char *) c->argv[0]) = l_bool;
 
     return PR_HANDLED(cmd);
   }
@@ -3380,7 +3380,7 @@ MODRET set_createhome(cmd_rec *cmd) {
     NULL, NULL, NULL, NULL);
 
   c->argv[0] = pcalloc(c->pool, sizeof(unsigned char));
-  *((unsigned char *) c->argv[0]) = bool;
+  *((unsigned char *) c->argv[0]) = l_bool;
   c->argv[1] = pcalloc(c->pool, sizeof(mode_t));
   *((mode_t *) c->argv[1]) = mode;
   c->argv[2] = pcalloc(c->pool, sizeof(mode_t));
@@ -3831,20 +3831,20 @@ MODRET set_maxpasswordsize(cmd_rec *cmd) {
 }
 
 MODRET set_requirevalidshell(cmd_rec *cmd) {
-  int bool = -1;
+  int l_bool = -1;
   config_rec *c = NULL;
 
   CHECK_ARGS(cmd, 1);
   CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL|CONF_ANON);
 
-  bool = get_boolean(cmd, 1);
-  if (bool == -1) {
+  l_bool = get_boolean(cmd, 1);
+  if (l_bool == -1) {
     CONF_ERROR(cmd, "expected Boolean parameter");
   }
 
   c = add_config_param(cmd->argv[0], 1, NULL);
   c->argv[0] = pcalloc(c->pool, sizeof(unsigned char));
-  *((unsigned char *) c->argv[0]) = bool;
+  *((unsigned char *) c->argv[0]) = l_bool;
   c->flags |= CF_MERGEDOWN;
 
   return PR_HANDLED(cmd);
@@ -3852,39 +3852,39 @@ MODRET set_requirevalidshell(cmd_rec *cmd) {
 
 /* usage: RewriteHome on|off */
 MODRET set_rewritehome(cmd_rec *cmd) {
-  int bool = -1;
+  int l_bool = -1;
   config_rec *c = NULL;
 
   CHECK_ARGS(cmd, 1);
   CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL);
 
-  bool = get_boolean(cmd, 1);
-  if (bool == -1) {
+  l_bool = get_boolean(cmd, 1);
+  if (l_bool == -1) {
     CONF_ERROR(cmd, "expected Boolean parameter");
   }
 
   c = add_config_param(cmd->argv[0], 1, NULL);
   c->argv[0] = pcalloc(c->pool, sizeof(int));
-  *((int *) c->argv[0]) = bool;
+  *((int *) c->argv[0]) = l_bool;
 
   return PR_HANDLED(cmd);
 }
 
 MODRET set_rootlogin(cmd_rec *cmd) {
-  int bool = -1;
+  int l_bool = -1;
   config_rec *c = NULL;
 
   CHECK_ARGS(cmd,1);
   CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL|CONF_ANON);
 
-  bool = get_boolean(cmd, 1);
-  if (bool == -1) {
+  l_bool = get_boolean(cmd, 1);
+  if (l_bool == -1) {
     CONF_ERROR(cmd, "expected Boolean parameter");
   }
 
   c = add_config_param(cmd->argv[0], 1, NULL);
   c->argv[0] = pcalloc(c->pool, sizeof(unsigned char));
-  *((unsigned char *) c->argv[0]) = (unsigned char) bool;
+  *((unsigned char *) c->argv[0]) = (unsigned char) l_bool;
   c->flags |= CF_MERGEDOWN;
 
   return PR_HANDLED(cmd);
@@ -4051,20 +4051,20 @@ MODRET set_timeoutsession(cmd_rec *cmd) {
 }
 
 MODRET set_useftpusers(cmd_rec *cmd) {
-  int bool = -1;
+  int l_bool = -1;
   config_rec *c = NULL;
 
   CHECK_ARGS(cmd, 1);
   CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL|CONF_ANON);
 
-  bool = get_boolean(cmd, 1);
-  if (bool == -1) {
+  l_bool = get_boolean(cmd, 1);
+  if (l_bool == -1) {
     CONF_ERROR(cmd, "expected Boolean parameter");
   }
 
   c = add_config_param(cmd->argv[0], 1, NULL);
   c->argv[0] = pcalloc(c->pool, sizeof(unsigned char));
-  *((unsigned char *) c->argv[0]) = bool;
+  *((unsigned char *) c->argv[0]) = l_bool;
   c->flags |= CF_MERGEDOWN;
 
   return PR_HANDLED(cmd);
@@ -4073,20 +4073,20 @@ MODRET set_useftpusers(cmd_rec *cmd) {
 /* usage: UseLastlog on|off */
 MODRET set_uselastlog(cmd_rec *cmd) {
 #if defined(PR_USE_LASTLOG)
-  int bool;
+  int l_bool;
   config_rec *c;
 
   CHECK_ARGS(cmd, 1);
   CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL);
 
-  bool = get_boolean(cmd, 1);
-  if (bool == -1) {
+  l_bool = get_boolean(cmd, 1);
+  if (l_bool == -1) {
     CONF_ERROR(cmd, "expected Boolean parameter");
   }
 
   c = add_config_param(cmd->argv[0], 1, NULL);
   c->argv[0] = pcalloc(c->pool, sizeof(unsigned char));
-  *((unsigned char *) c->argv[0]) = bool;
+  *((unsigned char *) c->argv[0]) = l_bool;
 
   return PR_HANDLED(cmd);
 #else
@@ -4123,20 +4123,20 @@ MODRET set_useralias(cmd_rec *cmd) {
 }
 
 MODRET set_userdirroot(cmd_rec *cmd) {
-  int bool = -1;
+  int l_bool = -1;
   config_rec *c = NULL;
 
   CHECK_ARGS(cmd, 1);
   CHECK_CONF(cmd, CONF_ANON);
 
-  bool = get_boolean(cmd, 1);
-  if (bool == -1) {
+  l_bool = get_boolean(cmd, 1);
+  if (l_bool == -1) {
     CONF_ERROR(cmd, "expected Boolean parameter");
   }
 
   c = add_config_param(cmd->argv[0], 1, NULL);
   c->argv[0] = pcalloc(c->pool, sizeof(unsigned char));
-  *((unsigned char *) c->argv[0]) = bool;
+  *((unsigned char *) c->argv[0]) = l_bool;
 
   return PR_HANDLED(cmd);
 }
