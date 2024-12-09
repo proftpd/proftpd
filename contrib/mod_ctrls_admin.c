@@ -461,7 +461,7 @@ static int ctrls_handle_debug(pr_ctrls_t *ctrl, int reqargc,
 
 static int ctrls_handle_dns(pr_ctrls_t *ctrl, int reqargc,
     char **reqargv) {
-  int bool;
+  int l_bool;
 
   /* Check the dns ACL */
   if (pr_ctrls_check_acl(ctrl, ctrls_admin_acttab, "dns") != TRUE) {
@@ -497,20 +497,20 @@ static int ctrls_handle_dns(pr_ctrls_t *ctrl, int reqargc,
     pr_ctrls_add_response(ctrl, "dns: netaddr cache cleared");
 
   } else {
-    bool = pr_str_is_boolean(reqargv[0]);
+    l_bool = pr_str_is_boolean(reqargv[0]);
 
-    if (bool == -1) {
+    if (l_bool == -1) {
       pr_ctrls_add_response(ctrl,
         "dns: error: expected Boolean parameter: '%s'", reqargv[0]);
       return PR_CTRLS_STATUS_WRONG_PARAMETERS;
     }
 
-    ServerUseReverseDNS = bool;
+    ServerUseReverseDNS = l_bool;
 
     pr_ctrls_log(MOD_CTRLS_ADMIN_VERSION, "dns: UseReverseDNS set to '%s'",
-      bool ? "on" : "off");
+      l_bool ? "on" : "off");
     pr_ctrls_add_response(ctrl, "dns: UseReverseDNS set to '%s'",
-      bool ? "on" : "off");
+      l_bool ? "on" : "off");
   }
 
   return PR_CTRLS_STATUS_OK;
@@ -1534,16 +1534,16 @@ MODRET set_adminctrlsacls(cmd_rec *cmd) {
 
 /* usage: AdminControlsEngine on|off|actions */
 MODRET set_adminctrlsengine(cmd_rec *cmd) {
-  int bool = -1;
+  int l_bool = -1;
 
   CHECK_ARGS(cmd, 1);
   CHECK_CONF(cmd, CONF_ROOT);
 
-  if ((bool = get_boolean(cmd, 1)) != -1) {
-    /* If bool is TRUE, there's no need to do anything.  If FALSE,
+  if ((l_bool = get_boolean(cmd, 1)) != -1) {
+    /* If l_bool is TRUE, there's no need to do anything.  If FALSE,
      * then unregister all the controls of this module.
      */
-    if (!bool) {
+    if (!l_bool) {
       register unsigned int i = 0;
 
       for (i = 0; ctrls_admin_acttab[i].act_action; i++) {

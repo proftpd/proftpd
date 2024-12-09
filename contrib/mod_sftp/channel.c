@@ -1027,12 +1027,12 @@ static int handle_env_channel(struct ssh2_channel *chan,
 static int handle_signal_channel(struct ssh2_channel *chan,
     struct ssh2_packet *pkt, unsigned char **buf, uint32_t *buflen) {
   int res;
-  char bool, *sig_name;
+  char l_bool, *sig_name;
 
-  bool = sftp_msg_read_bool(pkt->pool, buf, buflen);
-  if (bool != FALSE) {
+  l_bool = sftp_msg_read_bool(pkt->pool, buf, buflen);
+  if (l_bool != FALSE) {
     (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
-      "malformed 'signal' request (bool must be FALSE)");
+      "malformed 'signal' request (l_bool must be FALSE)");
   }
 
   sig_name = sftp_msg_read_string(pkt->pool, buf, buflen);

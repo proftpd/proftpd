@@ -1933,19 +1933,19 @@ MODRET set_shaperctrlsacls(cmd_rec *cmd) {
 
 /* usage: ShaperEngine on|off */
 MODRET set_shaperengine(cmd_rec *cmd) {
-  int bool;
+  int l_bool;
   config_rec *c;
 
   CHECK_ARGS(cmd, 1);
   CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL|CONF_ANON);
 
-  bool = get_boolean(cmd, 1);
-  if (bool == -1)
+  l_bool = get_boolean(cmd, 1);
+  if (l_bool == -1)
     CONF_ERROR(cmd, "expected Boolean parameter");
 
   c = add_config_param(cmd->argv[0], 1, NULL);
   c->argv[0] = pcalloc(c->pool, sizeof(unsigned int));
-  *((unsigned int *) c->argv[0]) = bool;
+  *((unsigned int *) c->argv[0]) = l_bool;
   c->flags |= CF_MERGEDOWN;
 
   return PR_HANDLED(cmd);
