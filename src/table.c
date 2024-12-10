@@ -1313,10 +1313,10 @@ void pr_table_dump(void (*dumpf)(const char *fmt, ...), pr_table_t *tab) {
   }
 }
 
-int table_handling_signal(int bool) {
-  if (bool == TRUE ||
-      bool == FALSE) {
-    handling_signal = bool;
+int table_handling_signal(int l_bool) {
+  if (l_bool == TRUE ||
+      l_bool == FALSE) {
+    handling_signal = l_bool;
     return 0;
   }
 

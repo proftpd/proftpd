@@ -1028,17 +1028,17 @@ MODRET set_ctrlsauthfreshness(cmd_rec *cmd) {
 }
 
 MODRET set_ctrlsengine(cmd_rec *cmd) {
-  int bool = -1;
+  int l_bool = -1;
 
   CHECK_ARGS(cmd, 1);
   CHECK_CONF(cmd, CONF_ROOT);
 
-  bool = get_boolean(cmd, 1);
-  if (bool == -1) {
+  l_bool = get_boolean(cmd, 1);
+  if (l_bool == -1) {
     CONF_ERROR(cmd, "expected Boolean parameter");
   }
 
-  ctrls_engine = bool;
+  ctrls_engine = l_bool;
   return PR_HANDLED(cmd);
 }
 

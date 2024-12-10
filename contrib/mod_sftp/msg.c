@@ -84,7 +84,7 @@ unsigned char sftp_msg_read_byte(pool *p, unsigned char **buf,
 }
 
 uint32_t sftp_msg_read_bool2(pool *p, unsigned char **buf, uint32_t *buflen,
-    int *bool) {
+    int *l_bool) {
   unsigned char byte = 0;
   uint32_t len;
 
@@ -95,21 +95,21 @@ uint32_t sftp_msg_read_bool2(pool *p, unsigned char **buf, uint32_t *buflen,
     return 0;
   }
 
-  *bool = byte;
+  *l_bool = byte;
   return len;
 }
 
 int sftp_msg_read_bool(pool *p, unsigned char **buf, uint32_t *buflen) {
-  int bool = 0;
+  int l_bool = 0;
   uint32_t len;
 
-  len = sftp_msg_read_bool2(p, buf, buflen, &bool);
+  len = sftp_msg_read_bool2(p, buf, buflen, &l_bool);
   if (len == 0) {
     pr_log_stacktrace(sftp_logfd, MOD_SFTP_VERSION);
     SFTP_DISCONNECT_CONN(SFTP_SSH2_DISCONNECT_BY_APPLICATION, NULL);
   }
 
-  if (bool == 0) {
+  if (l_bool == 0) {
     return FALSE;
   }
 
@@ -509,8 +509,8 @@ uint32_t sftp_msg_write_byte(unsigned char **buf, uint32_t *buflen,
 }
 
 uint32_t sftp_msg_write_bool(unsigned char **buf, uint32_t *buflen,
-    unsigned char bool) {
-  return sftp_msg_write_byte(buf, buflen, bool == 0 ? 0 : 1);
+    unsigned char l_bool) {
+  return sftp_msg_write_byte(buf, buflen, l_bool == 0 ? 0 : 1);
 }
 
 uint32_t sftp_msg_write_data(unsigned char **buf, uint32_t *buflen,

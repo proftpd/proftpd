@@ -788,8 +788,8 @@ void pr_log_auth(int priority, const char *fmt, ...) {
  * or disassociation from controlling tty.  After disabling stderr
  * logging, all messages go to syslog.
  */
-void log_stderr(int bool) {
-  logstderr = bool;
+void log_stderr(int l_bool) {
+  logstderr = l_bool;
 }
 
 /* Set the debug logging level; see log.h for constants.  Higher

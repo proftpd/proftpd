@@ -883,20 +883,20 @@ add_ratiodata (cmd_rec * cmd)
 }
 
 MODRET set_ratios(cmd_rec *cmd) {
-  int bool;
+  int l_bool;
   config_rec *c;
 
   CHECK_ARGS(cmd, 1);
   CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL|CONF_ANON|CONF_DIR);
 
-  bool = get_boolean(cmd, 1);
-  if (bool == -1) {
+  l_bool = get_boolean(cmd, 1);
+  if (l_bool == -1) {
     CONF_ERROR(cmd, "expected Boolean parameter");
   }
 
   c = add_config_param(cmd->argv[0], 1, NULL);
   c->argv[0] = pcalloc(c->pool, sizeof(int));
-  *((int *) c->argv[0]) = bool;
+  *((int *) c->argv[0]) = l_bool;
   c->flags |= CF_MERGEDOWN;
 
   return PR_HANDLED(cmd);
