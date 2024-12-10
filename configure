@@ -24144,10 +24144,11 @@ fi
 { $as_echo "$as_me:${as_lineno-$LINENO}: checking whether listen supports negative backlog" >&5
 $as_echo_n "checking whether listen supports negative backlog... " >&6; };
 if test "$cross_compiling" = yes; then :
-  { { $as_echo "$as_me:${as_lineno-$LINENO}: error: in \`$ac_pwd':" >&5
-$as_echo "$as_me: error: in \`$ac_pwd':" >&2;}
-as_fn_error $? "cannot run test program while cross compiling
-See \`config.log' for more details" "$LINENO" 5; }
+
+    { $as_echo "$as_me:${as_lineno-$LINENO}: result: cross-compiling" >&5
+$as_echo "cross-compiling" >&6; }
+
+
 else
   cat confdefs.h - <<_ACEOF >conftest.$ac_ext
 /* end confdefs.h.  */
@@ -24207,7 +24208,6 @@ else
 
     { $as_echo "$as_me:${as_lineno-$LINENO}: result: no" >&5
 $as_echo "no" >&6; }
-
 
 fi
 rm -f core *.core core.conftest.* gmon.out bb.out conftest$ac_exeext \
@@ -24704,8 +24704,8 @@ $as_echo_n "checking whether OpenSSL 1.x is compiled with FIPS support... " >&6;
   LIBS="$LIBS -lcrypto"
 
   if test "$cross_compiling" = yes; then :
-  { $as_echo "$as_me:${as_lineno-$LINENO}: result: unknown" >&5
-$as_echo "unknown" >&6; }
+  { $as_echo "$as_me:${as_lineno-$LINENO}: result: cross-compiling" >&5
+$as_echo "cross-compiling" >&6; }
 
 else
   cat confdefs.h - <<_ACEOF >conftest.$ac_ext
@@ -25202,10 +25202,11 @@ $as_echo_n "checking whether OpenSSL 3.x has FIPS support... " >&6; }
   LIBS="-lcrypto $LIBS"
 
   if test "$cross_compiling" = yes; then :
-  { { $as_echo "$as_me:${as_lineno-$LINENO}: error: in \`$ac_pwd':" >&5
-$as_echo "$as_me: error: in \`$ac_pwd':" >&2;}
-as_fn_error $? "cannot run test program while cross compiling
-See \`config.log' for more details" "$LINENO" 5; }
+
+      { $as_echo "$as_me:${as_lineno-$LINENO}: result: cross-compiling" >&5
+$as_echo "cross-compiling" >&6; }
+
+
 else
   cat confdefs.h - <<_ACEOF >conftest.$ac_ext
 /* end confdefs.h.  */
@@ -25243,7 +25244,6 @@ else
 
       { $as_echo "$as_me:${as_lineno-$LINENO}: result: no" >&5
 $as_echo "no" >&6; }
-
 
 fi
 rm -f core *.core core.conftest.* gmon.out bb.out conftest$ac_exeext \

@@ -3237,6 +3237,9 @@ AC_TRY_RUN(
   ],
   [
     AC_MSG_RESULT(no)
+  ],
+  [
+    AC_MSG_RESULT(cross-compiling)
   ]
 )
 
@@ -3623,7 +3626,7 @@ if test x"$pr_use_openssl" = xyes; then
     ],
     AC_MSG_RESULT(yes); AC_DEFINE(PR_USE_OPENSSL_FIPS, 1, [Define if your OpenSSL supports FIPS]),
     AC_MSG_RESULT(no),
-    AC_MSG_RESULT(unknown)
+    AC_MSG_RESULT(cross-compiling)
   )
   LIBS="$saved_libs"
 
@@ -3926,6 +3929,9 @@ if test x"$pr_use_openssl" = xyes; then
     ],
     [
       AC_MSG_RESULT(no)
+    ],
+    [
+      AC_MSG_RESULT(cross-compiling)
     ]
   )
   LIBS="$saved_libs"
