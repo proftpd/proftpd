@@ -2,7 +2,7 @@
  * ProFTPD: mod_sql -- SQL frontend
  * Copyright (c) 1998-1999 Johnie Ingram.
  * Copyright (c) 2001 Andrew Houghton.
- * Copyright (c) 2004-2023 TJ Saunders
+ * Copyright (c) 2004-2024 TJ Saunders
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -4581,48 +4581,56 @@ MODRET sql_getratio(cmd_rec *cmd) {
  *
  *****************************************************************/
 
-MODRET set_sqlratiostats(cmd_rec * cmd)
-{
+MODRET set_sqlratiostats(cmd_rec *cmd) {
   int b;
 
   CHECK_CONF(cmd, CONF_ROOT | CONF_GLOBAL);
 
   switch (cmd->argc - 1) {
-  default:
-    CONF_ERROR(cmd, "requires a boolean or 4 field names: "
-               "fstor fretr bstor bretr");
-  case 1:
-    if ((b = get_boolean(cmd, 1)) == -1)
-      CONF_ERROR(cmd, "requires a boolean or 4 field names: "
-                 "fstor fretr bstor bretr");
-    if (b)
-      add_config_param_str("SQLRatioStats", 4,
-                           "fstor", "fretr", "bstor", "bretr");
-    break;
+    default:
+      CONF_ERROR(cmd, "requires a Boolean or 4 field names: "
+        "fstor fretr bstor bretr");
+      break;
 
-  case 4:
-    add_config_param_str("SQLRatioStats", 4,
-                         (void *) cmd->argv[1], (void *) cmd->argv[2],
-                         (void *) cmd->argv[3], (void *) cmd->argv[4]);
+    case 1: {
+      b = get_boolean(cmd, 1);
+      if (b == -1) {
+        CONF_ERROR(cmd, "requires a Boolean or 4 field names: "
+          "fstor fretr bstor bretr");
+      }
+
+      if (b == TRUE) {
+        add_config_param_str("SQLRatioStats", 4, "fstor", "fretr", "bstor",
+          "bretr");
+      }
+      break;
+    }
+
+    case 4:
+      add_config_param_str("SQLRatioStats", 4,
+        (void *) cmd->argv[1], (void *) cmd->argv[2],
+        (void *) cmd->argv[3], (void *) cmd->argv[4]);
+      break;
   }
 
   return PR_HANDLED(cmd);
 }
 
 MODRET set_sqlnegativecache(cmd_rec *cmd) {
-  int bool = -1;
+  int negative_cache = -1;
   config_rec *c = NULL;
 
   CHECK_ARGS(cmd, 1);
   CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL);
 
-  bool = get_boolean(cmd, 1);
-  if (bool == -1)
+  negative_cache = get_boolean(cmd, 1);
+  if (negative_cache == -1) {
     CONF_ERROR(cmd, "expected a Boolean parameter");
+  }
 
   c = add_config_param(cmd->argv[0], 1, NULL);
   c->argv[0] = pcalloc(c->pool, sizeof(unsigned char));
-  *((unsigned char *) c->argv[0]) = bool;
+  *((unsigned char *) c->argv[0]) = negative_cache;
 
   return PR_HANDLED(cmd);
 }
@@ -4665,29 +4673,36 @@ MODRET set_sqloptions(cmd_rec *cmd) {
   return PR_HANDLED(cmd);
 }
 
-MODRET set_sqlratios(cmd_rec * cmd)
-{
+MODRET set_sqlratios(cmd_rec *cmd) {
   int b;
 
   CHECK_CONF(cmd, CONF_ROOT | CONF_GLOBAL);
 
   switch (cmd->argc - 1) {
-  default:
-    CONF_ERROR(cmd, "requires a boolean or 4 field names: "
-               "frate fcred brate bcred");
-  case 1:
-    if ((b = get_boolean(cmd, 1)) == -1)
-      CONF_ERROR(cmd, "requires a boolean or 4 field names: "
-                 "frate fcred brate bcred");
-    if (b)
-      add_config_param_str("SQLRatios", 4,
-                           "frate", "fcred", "brate", "bcred");
-    break;
+    default:
+      CONF_ERROR(cmd, "requires a Boolean or 4 field names: "
+        "frate fcred brate bcred");
+      break;
 
-  case 4:
-    add_config_param_str("SQLRatios", 4,
-                         (void *) cmd->argv[1], (void *) cmd->argv[2],
-                         (void *) cmd->argv[3], (void *) cmd->argv[4]);
+    case 1: {
+      b = get_boolean(cmd, 1);
+      if (b == -1) {
+        CONF_ERROR(cmd, "requires a Boolean or 4 field names: "
+          "frate fcred brate bcred");
+      }
+
+      if (b == TRUE) {
+        add_config_param_str("SQLRatios", 4, "frate", "fcred", "brate",
+          "bcred");
+      }
+      break;
+    }
+
+    case 4:
+      add_config_param_str("SQLRatios", 4,
+        (void *) cmd->argv[1], (void *) cmd->argv[2],
+        (void *) cmd->argv[3], (void *) cmd->argv[4]);
+      break;
   }
 
   return PR_HANDLED(cmd);

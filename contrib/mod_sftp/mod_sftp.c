@@ -1201,7 +1201,7 @@ MODRET set_sftpclientmatch(cmd_rec *cmd) {
 /* usage: SFTPCompression on|off|delayed */
 MODRET set_sftpcompression(cmd_rec *cmd) {
   config_rec *c;
-  int bool;
+  int use_compression = FALSE;
 
   if (cmd->argc != 2) {
     CONF_ERROR(cmd, "Wrong number of parameters");
@@ -1209,24 +1209,24 @@ MODRET set_sftpcompression(cmd_rec *cmd) {
 
   CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL);
 
-#ifdef HAVE_ZLIB_H
-  bool = get_boolean(cmd, 1);
-  if (bool == -1) {
-    if (strncasecmp(cmd->argv[1], "delayed", 8) != 0) {
+#if defined(HAVE_ZLIB_H)
+  use_compression = get_boolean(cmd, 1);
+  if (use_compression == -1) {
+    if (strcasecmp(cmd->argv[1], "delayed") != 0) {
       CONF_ERROR(cmd, pstrcat(cmd->tmp_pool,
         "unknown compression setting: ", cmd->argv[1], NULL));
     }
 
-    bool = 2;
+    use_compression = 2;
   }
 #else
   pr_log_debug(DEBUG0, MOD_SFTP_VERSION ": platform lacks zlib support, ignoring SFTPCompression");
-  bool = 0;
+  use_compression = 0;
 #endif /* !HAVE_ZLIB_H */
 
   c = add_config_param(cmd->argv[0], 1, NULL);
   c->argv[0] = pcalloc(c->pool, sizeof(int));
-  *((int *) c->argv[0]) = bool;
+  *((int *) c->argv[0]) = use_compression;
 
   return PR_HANDLED(cmd);
 }
@@ -1296,19 +1296,20 @@ MODRET set_sftpdisplaybanner(cmd_rec *cmd) {
 
 /* usage: SFTPEngine on|off */
 MODRET set_sftpengine(cmd_rec *cmd) {
-  int bool = 1;
+  int engine = 1;
   config_rec *c;
 
   CHECK_ARGS(cmd, 1);
   CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL);
 
-  bool = get_boolean(cmd, 1);
-  if (bool == -1)
+  engine = get_boolean(cmd, 1);
+  if (engine == -1) {
     CONF_ERROR(cmd, "expected Boolean parameter");
+  }
 
   c = add_config_param(cmd->argv[0], 1, NULL);
   c->argv[0] = pcalloc(c->pool, sizeof(int));
-  *((int *) c->argv[0]) = bool;
+  *((int *) c->argv[0]) = engine;
 
   return PR_HANDLED(cmd);
 }

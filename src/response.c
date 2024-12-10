@@ -1,6 +1,6 @@
 /*
  * ProFTPD - FTP server daemon
- * Copyright (c) 2001-2022 The ProFTPD Project team
+ * Copyright (c) 2001-2024 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -117,10 +117,10 @@ void pr_response_register_handler(char *(*handler_cb)(pool *, const char *,
   resp_handler_cb = handler_cb;
 }
 
-int pr_response_block(int bool) {
-  if (bool == TRUE ||
-      bool == FALSE) {
-    resp_blocked = bool;
+int pr_response_block(int do_block) {
+  if (do_block == TRUE ||
+      do_block == FALSE) {
+    resp_blocked = do_block;
     return 0;
   }
 

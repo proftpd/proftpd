@@ -1561,20 +1561,20 @@ MODRET set_quotadefault(cmd_rec *cmd) {
 
 /* usage: QuotaDirectoryTally <on|off> */
 MODRET set_quotadirtally(cmd_rec *cmd) {
-  int b = -1;
+  int dir_tally = -1;
   config_rec *c = NULL;
 
   CHECK_ARGS(cmd, 1);
   CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL);
 
-  b = get_boolean(cmd, 1);
-  if (b == -1) {
-    CONF_ERROR(cmd, "expected boolean argument");
+  dir_tally = get_boolean(cmd, 1);
+  if (dir_tally == -1) {
+    CONF_ERROR(cmd, "expected Boolean parameter");
   }
 
   c = add_config_param(cmd->argv[0], 1, NULL);
   c->argv[0] = pcalloc(c->pool, sizeof(unsigned char));
-  *((unsigned char *) c->argv[0]) = (unsigned char) b;
+  *((unsigned char *) c->argv[0]) = (unsigned char) dir_tally;
 
   return PR_HANDLED(cmd);
 }
@@ -1616,19 +1616,20 @@ MODRET set_quotadisplayunits(cmd_rec *cmd) {
 
 /* usage: QuotaEngine <on|off> */
 MODRET set_quotaengine(cmd_rec *cmd) {
-  int bool = -1;
+  int engine = -1;
   config_rec *c = NULL;
 
   CHECK_ARGS(cmd, 1);
   CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL);
 
-  bool = get_boolean(cmd, 1);
-  if (bool == -1)
-    CONF_ERROR(cmd, "expected boolean argument");
+  engine = get_boolean(cmd, 1);
+  if (engine == -1) {
+    CONF_ERROR(cmd, "expected Boolean parameter");
+  }
 
   c = add_config_param(cmd->argv[0], 1, NULL);
   c->argv[0] = pcalloc(c->pool, sizeof(unsigned char));
-  *((unsigned char *) c->argv[0]) = (unsigned char) bool;
+  *((unsigned char *) c->argv[0]) = (unsigned char) engine;
 
   return PR_HANDLED(cmd);
 }
@@ -1731,19 +1732,20 @@ MODRET set_quotaoptions(cmd_rec *cmd) {
 
 /* usage: QuotaShowQuotas <on|off> */
 MODRET set_quotashowquotas(cmd_rec *cmd) {
-  int bool = -1;
+  int show_quotas = -1;
   config_rec *c = NULL;
 
   CHECK_ARGS(cmd, 1);
   CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL);
 
-  bool = get_boolean(cmd, 1);
-  if (bool == -1)
-    CONF_ERROR(cmd, "expected boolean argument");
+  show_quotas = get_boolean(cmd, 1);
+  if (show_quotas == -1) {
+    CONF_ERROR(cmd, "expected Boolean parameter");
+  }
 
   c = add_config_param(cmd->argv[0], 1, NULL);
   c->argv[0] = pcalloc(c->pool, sizeof(unsigned char));
-  *((unsigned char *) c->argv[0]) = (unsigned char) bool;
+  *((unsigned char *) c->argv[0]) = (unsigned char) show_quotas;
 
   return PR_HANDLED(cmd);
 }

@@ -3435,16 +3435,16 @@ void pr_fs_clean_path(const char *path, char *buf, size_t buflen) {
   pr_fs_clean_path2(path, buf, buflen, PR_FSIO_CLEAN_PATH_FL_MAKE_ABS_PATH);
 }
 
-int pr_fs_use_encoding(int bool) {
+int pr_fs_use_encoding(int do_encode) {
   int curr_setting = use_encoding;
 
-  if (bool != TRUE &&
-      bool != FALSE) {
+  if (do_encode != TRUE &&
+      do_encode != FALSE) {
     errno = EINVAL;
     return -1;
   }
 
-  use_encoding = bool;
+  use_encoding = do_encode;
   return curr_setting;
 }
 

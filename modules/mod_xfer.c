@@ -3580,40 +3580,42 @@ MODRET xfer_post_pass(cmd_rec *cmd) {
  */
 
 MODRET set_allowoverwrite(cmd_rec *cmd) {
-  int bool = -1;
+  int allow_overwrite = -1;
   config_rec *c = NULL;
 
   CHECK_ARGS(cmd, 1);
   CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL|CONF_ANON|
     CONF_DIR|CONF_DYNDIR);
 
-  bool = get_boolean(cmd, 1);
-  if (bool == -1)
-    CONF_ERROR(cmd, "expected boolean parameter");
+  allow_overwrite = get_boolean(cmd, 1);
+  if (allow_overwrite == -1) {
+    CONF_ERROR(cmd, "expected Boolean parameter");
+  }
 
   c = add_config_param(cmd->argv[0], 1, NULL);
   c->argv[0] = pcalloc(c->pool, sizeof(unsigned char));
-  *((unsigned char *) c->argv[0]) = (unsigned char) bool;
+  *((unsigned char *) c->argv[0]) = (unsigned char) allow_overwrite;
   c->flags |= CF_MERGEDOWN;
 
   return PR_HANDLED(cmd);
 }
 
 MODRET set_allowrestart(cmd_rec *cmd) {
-  int bool = -1;
+  int allow_restart = -1;
   config_rec *c = NULL;
 
   CHECK_ARGS(cmd, 1);
   CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL|CONF_ANON|
     CONF_DIR|CONF_DYNDIR);
 
-  bool = get_boolean(cmd, 1);
-  if (bool == -1)
-    CONF_ERROR(cmd, "expected boolean parameter");
+  allow_restart = get_boolean(cmd, 1);
+  if (allow_restart == -1) {
+    CONF_ERROR(cmd, "expected Boolean parameter");
+  }
 
   c = add_config_param(cmd->argv[0], 1, NULL);
   c->argv[0] = pcalloc(c->pool, sizeof(unsigned char));
-  *((unsigned char *) c->argv[0]) = bool;
+  *((unsigned char *) c->argv[0]) = allow_restart;
   c->flags |= CF_MERGEDOWN;
 
   return PR_HANDLED(cmd);
@@ -3637,20 +3639,21 @@ MODRET set_defaulttransfermode(cmd_rec *cmd) {
 }
 
 MODRET set_deleteabortedstores(cmd_rec *cmd) {
-  int bool = -1;
+  int delete_aborted_stores = -1;
   config_rec *c = NULL;
 
   CHECK_ARGS(cmd, 1);
   CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL|CONF_ANON|
     CONF_DIR|CONF_DYNDIR);
 
-  bool = get_boolean(cmd, 1);
-  if (bool == -1)
+  delete_aborted_stores = get_boolean(cmd, 1);
+  if (delete_aborted_stores == -1) {
     CONF_ERROR(cmd, "expected Boolean parameter");
+  }
 
   c = add_config_param(cmd->argv[0], 1, NULL);
   c->argv[0] = pcalloc(c->pool, sizeof(unsigned char));
-  *((unsigned char *) c->argv[0]) = bool;
+  *((unsigned char *) c->argv[0]) = delete_aborted_stores;
   c->flags |= CF_MERGEDOWN;
 
   return PR_HANDLED(cmd);
@@ -4191,7 +4194,7 @@ MODRET set_transferrate(cmd_rec *cmd) {
 
 /* usage: UseSendfile on|off|"len units"|percentage"%" */
 MODRET set_usesendfile(cmd_rec *cmd) {
-  int bool = -1;
+  int do_sendfile = -1;
   off_t sendfile_len = 0;
   float sendfile_pct = -1.0;
   config_rec *c;
@@ -4202,8 +4205,8 @@ MODRET set_usesendfile(cmd_rec *cmd) {
     /* Is the given parameter a boolean, or a percentage?  Try parsing it a
      * boolean first.
      */
-    bool = get_boolean(cmd, 1);
-    if (bool == -1) {
+    do_sendfile = get_boolean(cmd, 1);
+    if (do_sendfile == -1) {
       char *arg;
       size_t arglen;
 
@@ -4216,9 +4219,9 @@ MODRET set_usesendfile(cmd_rec *cmd) {
 
         arg[arglen-1] = '\0';
 
-#ifdef HAVE_STRTOF
+#if defined(HAVE_STRTOF)
         sendfile_pct = strtof(arg, &ptr);
-#elif HAVE_STRTOD
+#elif defined(HAVE_STRTOD)
         sendfile_pct = strtod(arg, &ptr);
 #else
         sendfile_pct = atof(arg);
@@ -4230,7 +4233,7 @@ MODRET set_usesendfile(cmd_rec *cmd) {
         }
 
         sendfile_pct /= 100.0;
-        bool = TRUE;
+        do_sendfile = TRUE;
 
       } else {
         CONF_ERROR(cmd, "expected Boolean parameter");
@@ -4246,7 +4249,7 @@ MODRET set_usesendfile(cmd_rec *cmd) {
     }
 
     sendfile_len = nbytes;
-    bool = TRUE;
+    do_sendfile = TRUE;
 
   } else {
     CONF_ERROR(cmd, "wrong number of parameters");
@@ -4254,7 +4257,7 @@ MODRET set_usesendfile(cmd_rec *cmd) {
 
   c = add_config_param(cmd->argv[0], 3, NULL, NULL, NULL);
   c->argv[0] = pcalloc(c->pool, sizeof(unsigned char));
-  *((unsigned char *) c->argv[0]) = bool;
+  *((unsigned char *) c->argv[0]) = do_sendfile;
   c->argv[1] = pcalloc(c->pool, sizeof(off_t));
   *((off_t *) c->argv[1]) = sendfile_len;
   c->argv[2] = pcalloc(c->pool, sizeof(float));

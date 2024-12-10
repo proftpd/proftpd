@@ -2,7 +2,7 @@
  * ProFTPD: mod_ratio -- Support upload/download ratios.
  * Portions Copyright (c) 1998-1999 Johnie Ingram.
  * Copyright (c) 2002 James Dogopoulos.
- * Copyright (c) 2008-2017 The ProFTPD Project team
+ * Copyright (c) 2008-2024 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -398,7 +398,7 @@ log_ratios (cmd_rec * cmd)
   memset(buf, '\0', sizeof(buf));
   pr_snprintf (buf, sizeof(buf)-1, SHORT_RATIO_STUFFS);
   pr_log_debug(DEBUG0, MOD_RATIO_VERSION ": %s in %s: %s %s%s%s", g.user,
-    session.cwd, cmd->argv[0], cmd->arg, RATIO_ENFORCE ? " :" : "",
+    session.cwd, (char *) cmd->argv[0], cmd->arg, RATIO_ENFORCE ? " :" : "",
     RATIO_ENFORCE ? buf : "");
 }
 
@@ -883,40 +883,40 @@ add_ratiodata (cmd_rec * cmd)
 }
 
 MODRET set_ratios(cmd_rec *cmd) {
-  int bool;
+  int engine;
   config_rec *c;
 
   CHECK_ARGS(cmd, 1);
   CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL|CONF_ANON|CONF_DIR);
 
-  bool = get_boolean(cmd, 1);
-  if (bool == -1) {
+  engine = get_boolean(cmd, 1);
+  if (engine == -1) {
     CONF_ERROR(cmd, "expected Boolean parameter");
   }
 
   c = add_config_param(cmd->argv[0], 1, NULL);
   c->argv[0] = pcalloc(c->pool, sizeof(int));
-  *((int *) c->argv[0]) = bool;
+  *((int *) c->argv[0]) = engine;
   c->flags |= CF_MERGEDOWN;
 
   return PR_HANDLED(cmd);
 }
 
-MODRET
-add_saveratios (cmd_rec * cmd)
-{
-  int b;
+MODRET add_saveratios(cmd_rec *cmd) {
+  int save_ratios;
   config_rec *c;
 
-  CHECK_ARGS (cmd, 1);
-  CHECK_CONF (cmd, CONF_ROOT | CONF_VIRTUAL
-              | CONF_ANON | CONF_DIR | CONF_GLOBAL);
-  b = get_boolean (cmd, 1);
-  if (b == -1)
-    CONF_ERROR (cmd, "requires a boolean value");
-  c = add_config_param (cmd->argv[0], 1, NULL);
+  CHECK_ARGS(cmd, 1);
+  CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_ANON|CONF_DIR|CONF_GLOBAL);
+
+  save_ratios = get_boolean(cmd, 1);
+  if (save_ratios == -1) {
+    CONF_ERROR(cmd, "requires a Boolean parameter");
+  }
+
+  c = add_config_param(cmd->argv[0], 1, NULL);
   c->argv[0] = pcalloc(c->pool, sizeof(int));
-  *((int *) c->argv[0]) = b;
+  *((int *) c->argv[0]) = save_ratios;
   c->flags |= CF_MERGEDOWN;
   return PR_HANDLED (cmd);
 }

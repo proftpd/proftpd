@@ -2,7 +2,7 @@
  * ProFTPD: mod_ctrls -- a module implementing the ftpdctl local socket
  *          server, as well as several utility functions for other Controls
  *          modules
- * Copyright (c) 2000-2023 TJ Saunders
+ * Copyright (c) 2000-2024 TJ Saunders
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -1028,17 +1028,17 @@ MODRET set_ctrlsauthfreshness(cmd_rec *cmd) {
 }
 
 MODRET set_ctrlsengine(cmd_rec *cmd) {
-  int bool = -1;
+  int engine = -1;
 
   CHECK_ARGS(cmd, 1);
   CHECK_CONF(cmd, CONF_ROOT);
 
-  bool = get_boolean(cmd, 1);
-  if (bool == -1) {
+  engine = get_boolean(cmd, 1);
+  if (engine == -1) {
     CONF_ERROR(cmd, "expected Boolean parameter");
   }
 
-  ctrls_engine = bool;
+  ctrls_engine = engine;
   return PR_HANDLED(cmd);
 }
 
