@@ -41,11 +41,9 @@ jobs:
       # We need to avoid using NodeJS v20, because it doesn't work with
       # older glibc versions.  See:
       #  https://github.com/actions/checkout/issues/1809.
-      ACTIONS_RUNNER_FORCED_INTERNAL_NODE_VERSION: node16
-      ACTIONS_RUNNER_FORCE_ACTIONS_NODE_VERSION: node16
       ACTIONS_ALLOW_USE_UNSECURE_NODE_VERSION: true
 
-      PACKAGE_VERSION: 1.3.8rc5
+      PACKAGE_VERSION: 1.3.8c
       REDIS_HOST: redis
 
     strategy:
@@ -55,8 +53,8 @@ jobs:
           - gcc
         container:
           - almalinux:8
-          - alpine:3.14
-          - ubuntu:18.04
+          - alpine:3.18
+          - ubuntu:22.04
 
     container: ${{ matrix.container }}
 
@@ -65,7 +63,7 @@ jobs:
         uses: actions/checkout@v2
 
       - name: Whitespace check
-        if: ${{ matrix.container == 'ubuntu:18.04' }}
+        if: ${{ matrix.container == 'ubuntu:22.04' }}
         run: |
           apt-get update -qq
           apt-get install -y git
@@ -77,11 +75,11 @@ jobs:
           fi
 
       - name: Install Alpine packages
-        if: ${{ matrix.container == 'alpine:3.14' }}
+        if: ${{ matrix.container == 'alpine:3.18' }}
         run: |
           apk update
           # for builds
-          apk add bash build-base clang compiler-rt-static gcc make zlib-dev
+          apk add bash build-base clang compiler-rt gcc make zlib-dev
           # for unit tests
           apk add check check-dev subunit subunit-dev
 
@@ -194,7 +192,7 @@ jobs:
           openssl version -a
 
       - name: Install Ubuntu packages
-        if: ${{ matrix.container == 'ubuntu:18.04' }}
+        if: ${{ matrix.container == 'ubuntu:22.04' }}
         run: |
           # Need to add other repos for e.g. libsodium
           apt-get update -qq
@@ -268,7 +266,7 @@ jobs:
           openssl version -a
 
       - name: Prepare code coverage
-        if: ${{ matrix.container == 'ubuntu:18.04' }}
+        if: ${{ matrix.container == 'ubuntu:22.04' }}
         run: |
           lcov --directory . --zerocounters
 
@@ -287,14 +285,14 @@ jobs:
         # On recent (as of 2022-11-13) AlmaLinux with clang and the
         # `--enable-devel=fortify` configure settings, some of the unit tests
         # inexplicably fail.  So skip clang unit tests, for now.
-        if: ${{ matrix.compiler == 'gcc' && matrix.container != 'alpine:3.14' }}
+        if: ${{ matrix.compiler == 'gcc' && matrix.container != 'alpine:3.18' }}
         run: |
           make TEST_VERBOSE=1 check-api
 
       - name: Upload code coverage
         env:
           COVERALLS_REPO_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        if: ${{ matrix.compiler == 'gcc' && matrix.container == 'ubuntu:18.04' }}
+        if: ${{ matrix.compiler == 'gcc' && matrix.container == 'ubuntu:22.04' }}
         run: |
           lcov --ignore-errors gcov,source --directory . --capture --output-file all.info
           # filter out system and test code
@@ -320,7 +318,7 @@ jobs:
           PROFTPD_TEST_PIDFILE: /usr/local/var/proftpd.pid
         # Note that the default config assumes user 'nobody', group 'nogroup',
         # which do not exist in the default images of all distributions.
-        if: ${{ matrix.container == 'ubuntu:18.04' }}
+        if: ${{ matrix.container == 'ubuntu:22.04' }}
         run: |
           test -e $PROFTPD_TEST_BIN
           $PROFTPD_TEST_BIN
@@ -365,7 +363,7 @@ jobs:
           CC: ${{ matrix.compiler }}
           CFLAGS: -fsanitize=address,undefined -DPR_DEVEL_NO_POOL_FREELIST
           LDFLAGS: -fsanitize=address,undefined
-        if: ${{ matrix.compiler == 'clang' && matrix.container == 'ubuntu:18.04' }}
+        if: ${{ matrix.compiler == 'clang' && matrix.container == 'ubuntu:22.04' }}
         run: |
           make clean
           ./configure LIBS="-lm -lsubunit -lrt -pthread" --enable-devel --enable-ctrls --enable-facl --enable-memcache --enable-nls --enable-pcre2 --enable-redis --enable-tests
@@ -374,12 +372,12 @@ jobs:
           make check-api
 
       - name: Check Perl scripts
-        if: ${{ matrix.container == 'ubuntu:18.04' }}
+        if: ${{ matrix.container == 'ubuntu:22.04' }}
         run: |
           perl -cw contrib/ftpasswd
           perl -cw contrib/ftpquota
 
       - name: Check HTML docs
-        if: ${{ matrix.container == 'ubuntu:18.04' }}
+        if: ${{ matrix.container == 'ubuntu:22.04' }}
         run: |
           for f in $(/bin/ls doc/contrib/*.html doc/directives/*.html doc/howto/*.html doc/modules/*.html doc/utils/*.html); do echo "Processing $f"; tidy -errors -omit -q $f; done || exit 0
