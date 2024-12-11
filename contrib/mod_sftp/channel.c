@@ -1,6 +1,6 @@
 /*
  * ProFTPD - mod_sftp channels
- * Copyright (c) 2008-2023 TJ Saunders
+ * Copyright (c) 2008-2024 TJ Saunders
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -1027,10 +1027,10 @@ static int handle_env_channel(struct ssh2_channel *chan,
 static int handle_signal_channel(struct ssh2_channel *chan,
     struct ssh2_packet *pkt, unsigned char **buf, uint32_t *buflen) {
   int res;
-  char bool, *sig_name;
+  char b, *sig_name;
 
-  bool = sftp_msg_read_bool(pkt->pool, buf, buflen);
-  if (bool != FALSE) {
+  b = sftp_msg_read_bool(pkt->pool, buf, buflen);
+  if (b != FALSE) {
     (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
       "malformed 'signal' request (bool must be FALSE)");
   }
@@ -1040,49 +1040,49 @@ static int handle_signal_channel(struct ssh2_channel *chan,
   (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
     "'signal' channel request: SIG%s", sig_name);
 
-  if (strncmp(sig_name, "ABRT", 5) == 0) {
+  if (strcmp(sig_name, "ABRT") == 0) {
     res = raise(SIGABRT);
 
-  } else if (strncmp(sig_name, "ALRM", 5) == 0) {
+  } else if (strcmp(sig_name, "ALRM") == 0) {
     res = raise(SIGALRM);
 
-#ifdef SIGFPE
-  } else if (strncmp(sig_name, "FPE", 4) == 0) {
+#if defined(SIGFPE)
+  } else if (strcmp(sig_name, "FPE") == 0) {
     res = raise(SIGFPE);
+#endif /* SIGFPE */
 
-#endif
-  } else if (strncmp(sig_name, "HUP", 4) == 0) {
+  } else if (strcmp(sig_name, "HUP") == 0) {
     /* Sending SIGHUP to this process is not a good idea, but we'll act
      * like it succeeded anyway.
      */
     res = 0;
 
-#ifdef SIGILL
-  } else if (strncmp(sig_name, "ILL", 4) == 0) {
+#if defined(SIGILL)
+  } else if (strcmp(sig_name, "ILL") == 0) {
     res = raise(SIGILL);
+#endif /* SIGILL */
 
-#endif
-  } else if (strncmp(sig_name, "INT", 4) == 0) {
+  } else if (strcmp(sig_name, "INT") == 0) {
     res = raise(SIGINT);
 
-  } else if (strncmp(sig_name, "KILL", 5) == 0) {
+  } else if (strcmp(sig_name, "KILL") == 0) {
     res = raise(SIGKILL);
 
-  } else if (strncmp(sig_name, "PIPE", 5) == 0) {
+  } else if (strcmp(sig_name, "PIPE") == 0) {
     /* Ignore SIGPIPE, since we told the kernel we would ignore it. */
     res = 0;
 
-  } else if (strncmp(sig_name, "QUIT", 5) == 0) {
+  } else if (strcmp(sig_name, "QUIT") == 0) {
     res = raise(SIGQUIT);
 
-  } else if (strncmp(sig_name, "SEGV", 5) == 0) {
+  } else if (strcmp(sig_name, "SEGV") == 0) {
     res = raise(SIGSEGV);
 
-  } else if (strncmp(sig_name, "TERM", 5) == 0) {
+  } else if (strcmp(sig_name, "TERM") == 0) {
     res = raise(SIGTERM);
 
-  } else if (strncmp(sig_name, "USR1", 5) == 0 ||
-             strncmp(sig_name, "USR2", 5) == 0) {
+  } else if (strcmp(sig_name, "USR1") == 0 ||
+             strcmp(sig_name, "USR2") == 0) {
     /* We already use these for very specific uses. */
     res = 0;
 

@@ -1,6 +1,6 @@
 /*
  * ProFTPD: mod_site_misc -- a module implementing miscellaneous SITE commands
- * Copyright (c) 2004-2020 The ProFTPD Project
+ * Copyright (c) 2004-2024 The ProFTPD Project
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -543,18 +543,19 @@ static time_t site_misc_mktime(unsigned int year, unsigned int month,
 /* usage: SiteMiscEngine on|off */
 MODRET set_sitemiscengine(cmd_rec *cmd) {
   config_rec *c;
-  int bool;
+  int engine;
 
   CHECK_ARGS(cmd, 1);
   CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL);
 
-  bool = get_boolean(cmd, 1);
-  if (bool == -1)
+  engine = get_boolean(cmd, 1);
+  if (engine == -1) {
     CONF_ERROR(cmd, "expected Boolean parameter");
+  }
 
   c = add_config_param(cmd->argv[0], 1, NULL);
   c->argv[0] = pcalloc(c->pool, sizeof(unsigned int));
-  *((unsigned int *) c->argv[0]) = bool;
+  *((unsigned int *) c->argv[0]) = engine;
 
   return PR_HANDLED(cmd);
 }
