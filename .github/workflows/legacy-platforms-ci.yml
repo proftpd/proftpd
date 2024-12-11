@@ -44,7 +44,7 @@ jobs:
       #  https://github.com/actions/checkout/issues/1809.
       ACTIONS_ALLOW_USE_UNSECURE_NODE_VERSION: true
 
-      PACKAGE_VERSION: 1.3.9rc3
+      PACKAGE_VERSION: 1.3.9rc4
       REDIS_HOST: redis
 
     strategy:

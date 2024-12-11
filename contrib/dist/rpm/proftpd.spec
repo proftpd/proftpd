@@ -53,11 +53,11 @@
 # RHEL5 and clones don't have suitably recent versions of pcre/libmemcached
 # so use --with rhel5 to inhibit those features when using --with everything
 
-%global proftpd_version			1.3.9rc3
+%global proftpd_version			1.3.9rc4
 
 # rc_version should be incremented for each RC release, and reset back to 1
 # AFTER each stable release.
-%global rc_version			3
+%global rc_version			4
 
 # release_version should be incremented for each maint release, and reset back
 # to 1 BEFORE starting new release cycle.
