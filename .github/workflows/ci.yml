@@ -235,7 +235,7 @@ jobs:
           # for mod_wrap
           apt-get install -y libwrap0-dev
           # for PCRE2 support
-          apt-get install -y libpcre2-dev libpcre2-posix0
+          apt-get install -y libpcre2-dev libpcre2-posix3
           # for ftptop
           apt-get install -y ncurses-dev
           # for zlib support
@@ -243,7 +243,6 @@ jobs:
 
           # for logging
           apt-get install -y rsyslog
-          service rsyslog start
 
           # for static code analysis
           # - sudo apt-get install -y cppcheck
