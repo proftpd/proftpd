@@ -370,7 +370,6 @@ static int setup_env(pool *p, const char *user) {
   }
 
   session.user = pstrdup(p, pw->pw_name);
-  session.user_homedir = pstrdup(p, pw->pw_dir);
   session.group = pstrdup(p, pr_auth_gid2name(p, pw->pw_gid));
 
   session.login_uid = pw->pw_uid;
@@ -686,10 +685,6 @@ static int setup_env(pool *p, const char *user) {
   auth_default_dir = pstrdup(session.pool, pr_fs_getvwd());
 
   session.user = pstrdup(session.pool, session.user);
-
-  if (session.user_homedir != NULL) {
-    session.user_homedir = pstrdup(session.pool, session.user_homedir);
-  }
 
   if (session.group != NULL) {
     session.group = pstrdup(session.pool, session.group);
