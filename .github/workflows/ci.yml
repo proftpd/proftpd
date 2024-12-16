@@ -72,19 +72,18 @@ jobs:
         with:
           fetch-depth: 5
 
-      # NOTE: 2024-12-03: Disabled this section as it is incredibly annoying
-      # to get right via Bourne shell, and it is currently blocking my attempt
-      # to get a release out.  I'll have to revisit this at a later date, when
-      # my patience has been restored.
-      #- name: Whitespace check
-      #  if: ${{ matrix.container == 'ubuntu:22.04' }}
-      #  run: |
-      #    if ! git diff --no-color --check HEAD^ > /dev/null; then
-      #      echo "You must remove whitespace before submitting a pull request"
-      #      echo ""
-      #      git diff --check HEAD^
-      #      exit 1
-      #    fi
+      - name: Whitespace check
+        if: ${{ matrix.container == 'ubuntu:22.04' }}
+        run: |
+          pwd
+          cd $GITHUB_WORKSPACE
+          pwd
+          if git diff --check HEAD^ > /dev/null; then
+            echo "You must remove whitespace before submitting a pull request"
+            echo ""
+            git diff --check HEAD^
+            exit 1
+          fi
 
       - name: Install Alpine 3.15 packages
         if: ${{ matrix.container == 'alpine:3.15' }}
