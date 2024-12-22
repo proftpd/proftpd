@@ -30,7 +30,7 @@
 static long double xfer_rate_kbps = 0.0, xfer_rate_bps = 0.0;
 static off_t xfer_rate_freebytes = 0.0;
 static int have_xfer_rate = FALSE;
-static unsigned int xfer_rate_scoreboard_updates = 0;
+static long xfer_rate_next_scoreboard_update = 0;
 
 /* Very similar to the {block,unblock}_signals() function, this masks most
  * of the same signals -- except for TERM.  This allows a throttling process
@@ -100,7 +100,7 @@ void pr_throttle_init(cmd_rec *cmd) {
   /* Make sure the variables are (re)initialized */
   xfer_rate_kbps = xfer_rate_bps = 0.0;
   xfer_rate_freebytes = 0;
-  xfer_rate_scoreboard_updates = 0;
+  xfer_rate_next_scoreboard_update = 0;
   have_xfer_rate = FALSE;
 
   c = find_config(CURRENT_CONF, CONF_PARAM, "TransferRate", FALSE);
@@ -222,10 +222,9 @@ void pr_throttle_pause(off_t xferlen, int update_scoreboard, off_t xfer_done) {
 
   /* Perform no throttling if no throttling has been configured. */
   if (!have_xfer_rate) {
-    xfer_rate_scoreboard_updates++;
 
     if (update_scoreboard == TRUE ||
-        xfer_rate_scoreboard_updates % PR_TUNABLE_XFER_SCOREBOARD_UPDATES == 0) {
+        elapsed > xfer_rate_next_scoreboard_update) {
       /* Update the scoreboard. */
       pr_scoreboard_entry_update(session.pid,
         PR_SCORE_XFER_LEN, orig_xferlen,
@@ -233,7 +232,7 @@ void pr_throttle_pause(off_t xferlen, int update_scoreboard, off_t xfer_done) {
         PR_SCORE_XFER_ELAPSED, (unsigned long) elapsed,
         NULL);
 
-      xfer_rate_scoreboard_updates = 0;
+      xfer_rate_next_scoreboard_update = elapsed + PR_TUNABLE_XFER_SCOREBOARD_UPDATES * 100;
     }
 
     return;
@@ -250,21 +249,19 @@ void pr_throttle_pause(off_t xferlen, int update_scoreboard, off_t xfer_done) {
       xferlen -= xfer_rate_freebytes;
 
     } else {
-      xfer_rate_scoreboard_updates++;
-
       /* The number of bytes transferred is less than the freebytes.  Just
        * update the scoreboard -- no throttling needed.
        */
 
       if (update_scoreboard == TRUE ||
-          xfer_rate_scoreboard_updates % PR_TUNABLE_XFER_SCOREBOARD_UPDATES == 0) {
+          elapsed > xfer_rate_next_scoreboard_update) {
         pr_scoreboard_entry_update(session.pid,
           PR_SCORE_XFER_LEN, orig_xferlen,
           PR_SCORE_XFER_DONE, xfer_done,
           PR_SCORE_XFER_ELAPSED, (unsigned long) elapsed,
           NULL);
 
-        xfer_rate_scoreboard_updates = 0;
+        xfer_rate_next_scoreboard_update = elapsed + PR_TUNABLE_XFER_SCOREBOARD_UPDATES * 100;
       }
 
       return;
