@@ -28,7 +28,7 @@
 #include "json.h"
 
 int LLVMFuzzerTestOneInput(const uint8_t *data, size_t size) {
-    char *new_str = (char *)malloc(size+1);
+    char *new_str = (char *)malloc(size + 1);
     if (new_str == NULL) {
         return 0;
     }
@@ -38,8 +38,26 @@ int LLVMFuzzerTestOneInput(const uint8_t *data, size_t size) {
     pool *p = make_sub_pool(NULL);
     if (p != NULL) {
         init_json();
+
         pr_json_object_t *json = pr_json_object_from_text(p, new_str);
         pr_json_object_free(json);
+
+        const char *malformed_json = "{\"key\": \"value\",}";
+        pr_json_object_t *malformed_obj = pr_json_object_from_text(p, malformed_json);
+        pr_json_object_free(malformed_obj);
+
+        const char *large_json = "{\"key\": \"value\", \"key2\": \"value2\", \"key3\": \"value3\", \"key4\": \"value4\"}";
+        pr_json_object_t *large_obj = pr_json_object_from_text(p, large_json);
+        pr_json_object_free(large_obj);
+
+        const char *nested_json = "{\"key\": {\"subkey\": {\"subsubkey\": {\"subsubsubkey\": \"value\"}}}}";
+        pr_json_object_t *nested_obj = pr_json_object_from_text(p, nested_json);
+        pr_json_object_free(nested_obj);
+
+        const char *invalid_utf8_json = "{\"key\": \"\x80\x81\x82\"}";
+        pr_json_object_t *invalid_utf8_obj = pr_json_object_from_text(p, invalid_utf8_json);
+        pr_json_object_free(invalid_utf8_obj);
+
         finish_json();
         destroy_pool(p);
     }
