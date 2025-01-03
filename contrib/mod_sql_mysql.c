@@ -1,7 +1,7 @@
 /*
  * ProFTPD: mod_sql_mysql -- Support for connecting to MySQL databases.
  * Copyright (c) 2001 Andrew Houghton
- * Copyright (c) 2004-2022 TJ Saunders
+ * Copyright (c) 2004-2024 TJ Saunders
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -499,9 +499,9 @@ MODRET cmd_open(cmd_rec *cmd) {
    */
   if (!(pr_sql_opts & SQL_OPT_NO_RECONNECT)) {
 #if MYSQL_VERSION_ID >= 80000
-    bool reconnect = true;
+    char reconnect = true;
 #else
-    my_bool reconnect = TRUE;
+    char reconnect = TRUE;
 #endif
     mysql_options(conn->mysql, MYSQL_OPT_RECONNECT, &reconnect);
   }

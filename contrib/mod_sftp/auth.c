@@ -400,6 +400,7 @@ static int setup_env(pool *p, const char *user) {
   }
 
   session.user = pstrdup(p, pw->pw_name);
+  session.user_homedir = pstrdup(p, pw->pw_dir);
   session.group = pstrdup(p, pr_auth_gid2name(p, pw->pw_gid));
 
   session.login_uid = pw->pw_uid;
@@ -418,8 +419,20 @@ static int setup_env(pool *p, const char *user) {
       session.groups == NULL) {
     res = pr_auth_getgroups(p, pw->pw_name, &session.gids, &session.groups);
     if (res < 1) {
+      /* If no supplemental groups are provided, default to using the process
+       * primary GID as the supplemental group.  This prevents access
+       * regressions as seen in Issue #1830.
+       */
       (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
-        "no supplemental groups found for user '%s'", pw->pw_name);
+        "no supplemental groups found for user '%s', "
+        "using primary group %s (GID %lu)", pw->pw_name, session.group,
+        (unsigned long) session.login_gid);
+
+      session.gids = make_array(p, 2, sizeof(gid_t));
+      session.groups = make_array(p, 2, sizeof(char *));
+
+      *((gid_t *) push_array(session.gids)) = session.login_gid;
+      *((char **) push_array(session.groups)) = pstrdup(p, session.group);
     }
   }
 
@@ -704,8 +717,16 @@ static int setup_env(pool *p, const char *user) {
 
   session.user = pstrdup(session.pool, session.user);
 
+  if (session.user_homedir != NULL) {
+    session.user_homedir = pstrdup(session.pool, session.user_homedir);
+  }
+
   if (session.group != NULL) {
     session.group = pstrdup(session.pool, session.group);
+  }
+
+  if (session.gids != NULL) {
+    session.gids = copy_array(session.pool, session.gids);
   }
 
   session.groups = copy_array_str(session.pool, session.groups);

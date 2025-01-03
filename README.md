@@ -7,7 +7,7 @@
 [![Coverage Status](https://coveralls.io/repos/github/proftpd/proftpd/badge.svg?branch=master)](https://coveralls.io/github/proftpd/proftpd?branch=master)
 [![CodeQL Analysis](https://github.com/proftpd/proftpd/actions/workflows/codeql.yml/badge.svg)](https://github.com/proftpd/proftpd/actions/workflows/codeql.yml)
 [![Coverity Scan Status](https://scan.coverity.com/projects/198/badge.svg)](https://scan.coverity.com/projects/198)
-[![Release](https://img.shields.io/badge/release-1.3.9rc2-brightgreen)](https://github.com/proftpd/proftpd/releases/latest)
+[![Release](https://img.shields.io/badge/release-1.3.9rc3-brightgreen)](https://github.com/proftpd/proftpd/releases/latest)
 [![License](https://img.shields.io/badge/license-GPL-brightgreen.svg)](https://img.shields.io/badge/license-GPL-brightgreen.svg)
 
 ## Introduction

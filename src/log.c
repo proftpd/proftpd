@@ -2,7 +2,7 @@
  * ProFTPD - FTP server daemon
  * Copyright (c) 1997, 1998 Public Flood Software
  * Copyright (c) 1999, 2000 MacGyver aka Habeeb J. Dihu <macgyver@tos.net>
- * Copyright (c) 2001-2023 The ProFTPD Project team
+ * Copyright (c) 2001-2024 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -788,8 +788,8 @@ void pr_log_auth(int priority, const char *fmt, ...) {
  * or disassociation from controlling tty.  After disabling stderr
  * logging, all messages go to syslog.
  */
-void log_stderr(int bool) {
-  logstderr = bool;
+void log_stderr(int do_log) {
+  logstderr = do_log;
 }
 
 /* Set the debug logging level; see log.h for constants.  Higher

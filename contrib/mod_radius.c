@@ -1,6 +1,6 @@
 /*
  * ProFTPD: mod_radius -- a module for RADIUS authentication and accounting
- * Copyright (c) 2001-2022 TJ Saunders
+ * Copyright (c) 2001-2024 TJ Saunders
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -2266,8 +2266,11 @@ static int radius_verify_auth_mac(radius_packet_t *pkt, const char *pkt_type,
       memset(replied, '\0', sizeof(replied));
       memcpy(replied, attrib->data, attrib_len);
 
-      /* Next, zero out the value so that we can calculate it ourselves. */
-      memset(attrib->data, '\0', attrib_len);
+      /* Next, zero out the value so that we can calculate it ourselves.
+       *
+       * Note that we only want to zero out the first 16 bytes, per RFC 2869.
+       */
+      memset(attrib->data, '\0', expected_len);
 
       memset(digest, '\0', sizeof(digest));
       md = EVP_md5();
@@ -2458,7 +2461,8 @@ static radius_attrib_t *radius_get_next_attrib(radius_packet_t *packet,
   radius_attrib_t *attrib = NULL;
   unsigned int len;
 
-  if (packet_len == NULL) {
+  if (packet_len == NULL ||
+      *packet_len == 0) {
     len = ntohs(packet->length) - RADIUS_HEADER_LEN;
 
   } else {
@@ -2486,6 +2490,11 @@ static radius_attrib_t *radius_get_next_attrib(radius_packet_t *packet,
 
     /* Examine the next attribute in the packet. */
     attrib = (radius_attrib_t *) ((char *) attrib + attrib->length);
+  }
+
+  if (attrib == prev_attrib) {
+    /* No next attribute of this type found. */
+    return NULL;
   }
 
   if (packet_len != NULL) {
@@ -3316,11 +3325,11 @@ MODRET radius_auth(cmd_rec *cmd) {
   /* This authentication check has already been performed; I just need
    * to report the results of that check now.
    */
-  if (radius_auth_ok) {
+  if (radius_auth_ok == TRUE) {
     session.auth_mech = "mod_radius.c";
     return PR_HANDLED(cmd);
 
-  } else if (radius_auth_reject) {
+  } else if (radius_auth_reject == TRUE) {
     return PR_ERROR_INT(cmd, PR_AUTH_BADPWD);
   }
 

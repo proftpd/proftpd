@@ -9,13 +9,32 @@ ChangeLog files.
 1.3.9rc3
 ---------
 
+  + When started with root privileges, ProFTPD now drops all supplemental
+    group memberships, retaining only the UID/GID of the configured User/Group.
+
+  + Properly use all configured ECDSA SSH hostkeys, not just the first
+    configured ECSA SSH hostkey.
+
+  + Fixed issue with RADIUS authentication when using mod_radius and newer
+    FreeRADIUS, due to BlastRadius mitigation.
+
+
   + New Directives
 
-      SFTPAuthPublicKeys (Issue #1806)
+      SFTPAuthPublicKeys
+
+        This directive can be used to enable support for only the specified
+        list of public key algorithms, as for key-based user authentication.
+        See doc/contrib/mod_sftp.html#SFTPAuthPublicKeys for more.
+
 
   + Changed Directives
 
-      SFTPExtensions limits (Issue #1798)
+      SFTPExtensions +limits
+        The mod_sftp module now implements the "limits@openssh.com" custom
+        SFTP extension, used by newer OpenSSH limitations for discovering
+        server-side limits, such as larger SFTP READ/WRITE buffer lengths.
+        See doc/contrib/mod_sftp.html#SFTPExtensions.
 
 
 1.3.9rc2

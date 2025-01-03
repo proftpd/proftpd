@@ -2,7 +2,7 @@
  * ProFTPD - FTP server daemon
  * Copyright (c) 1997, 1998 Public Flood Software
  * Copyright (c) 1999, 2000 MacGyver aka Habeeb J. Dihu <macgyver@tos.net>
- * Copyright (c) 2001-2022 The ProFTPD Project
+ * Copyright (c) 2001-2024 The ProFTPD Project
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -2041,7 +2041,7 @@ static int dolist(cmd_rec *cmd, const char *opt, const char *resp_code,
     } else {
       skiparg = FALSE;
 
-      if (use_globbing &&
+      if (use_globbing == TRUE &&
           pr_str_is_fnmatch(target)) {
         a = pr_fs_glob(target, glob_flags, NULL, &g);
         if (a == 0) {
@@ -2115,7 +2115,8 @@ static int dolist(cmd_rec *cmd, const char *opt, const char *resp_code,
 
             if (listfile(cmd, cmd->tmp_pool, resp_code, *path) < 0) {
               ls_terminate();
-              if (use_globbing && globbed) {
+              if (use_globbing == TRUE &&
+                  globbed == TRUE) {
                 pr_fs_globfree(&g);
               }
               return -1;
@@ -2133,7 +2134,8 @@ static int dolist(cmd_rec *cmd, const char *opt, const char *resp_code,
 
       if (outputfiles(cmd) < 0) {
         ls_terminate();
-        if (use_globbing && globbed) {
+        if (use_globbing == TRUE &&
+            globbed == TRUE) {
           pr_fs_globfree(&g);
         }
         return -1;
@@ -2185,7 +2187,8 @@ static int dolist(cmd_rec *cmd, const char *opt, const char *resp_code,
 
             if (res < 0) {
               ls_terminate();
-              if (use_globbing && globbed) {
+              if (use_globbing == TRUE &&
+                  globbed == TRUE) {
                 pr_fs_globfree(&g);
               }
               return -1;
@@ -2198,7 +2201,8 @@ static int dolist(cmd_rec *cmd, const char *opt, const char *resp_code,
 
         if (XFER_ABORTED) {
           discard_output();
-          if (use_globbing && globbed) {
+          if (use_globbing == TRUE &&
+              globbed == TRUE) {
             pr_fs_globfree(&g);
           }
           return -1;
@@ -2209,7 +2213,8 @@ static int dolist(cmd_rec *cmd, const char *opt, const char *resp_code,
 
       if (outputfiles(cmd) < 0) {
         ls_terminate();
-        if (use_globbing && globbed) {
+        if (use_globbing == TRUE &&
+            globbed == TRUE) {
           pr_fs_globfree(&g);
         }
         return -1;
@@ -2230,7 +2235,9 @@ static int dolist(cmd_rec *cmd, const char *opt, const char *resp_code,
       }
     }
 
-    if (!skiparg && use_globbing && globbed) {
+    if (!skiparg &&
+        use_globbing == TRUE &&
+        globbed == TRUE) {
       pr_fs_globfree(&g);
     }
 
@@ -3115,7 +3122,7 @@ MODRET ls_nlst(cmd_rec *cmd) {
   }
 
   /* If the target is a glob, get the listing of files/dirs to send. */
-  if (use_globbing &&
+  if (use_globbing == TRUE &&
       pr_str_is_fnmatch(target)) {
     glob_t g;
     char **path, *p;
@@ -3454,7 +3461,7 @@ MODRET ls_post_pass(cmd_rec *cmd) {
  */
 
 MODRET set_dirfakeusergroup(cmd_rec *cmd) {
-  int bool = -1;
+  int dir_fake_usergroup = -1;
   char *as = "ftp";
   config_rec *c = NULL;
 
@@ -3467,12 +3474,12 @@ MODRET set_dirfakeusergroup(cmd_rec *cmd) {
       " on|off [<id to display>]", NULL));
   }
 
-  bool = get_boolean(cmd, 1);
-  if (bool == -1) {
-     CONF_ERROR(cmd, "expected boolean argument");
+  dir_fake_usergroup = get_boolean(cmd, 1);
+  if (dir_fake_usergroup == -1) {
+    CONF_ERROR(cmd, "expected Boolean argument");
   }
 
-  if (bool == TRUE) {
+  if (dir_fake_usergroup == TRUE) {
     /* Use the configured ID to display rather than the default "ftp". */
     if (cmd->argc > 2) {
       as = cmd->argv[2];
@@ -3647,38 +3654,40 @@ MODRET set_liststyle(cmd_rec *cmd) {
 }
 
 MODRET set_showsymlinks(cmd_rec *cmd) {
-  int bool = -1;
+  int show_symlinks = -1;
   config_rec *c = NULL;
 
   CHECK_ARGS(cmd, 1);
   CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL|CONF_ANON);
 
-  if ((bool = get_boolean(cmd, 1)) == -1)
+  show_symlinks = get_boolean(cmd, 1);
+  if (show_symlinks == -1) {
     CONF_ERROR(cmd, "expected Boolean parameter");
+  }
 
   c = add_config_param(cmd->argv[0], 1, NULL);
   c->argv[0] = pcalloc(c->pool, sizeof(unsigned char));
-  *((unsigned char *) c->argv[0]) = bool;
+  *((unsigned char *) c->argv[0]) = show_symlinks;
   c->flags |= CF_MERGEDOWN;
 
   return PR_HANDLED(cmd);
 }
 
 MODRET set_useglobbing(cmd_rec *cmd) {
-  int bool = -1;
+  int globbing = -1;
   config_rec *c = NULL;
 
   CHECK_ARGS(cmd, 1);
   CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL|CONF_ANON);
 
-  bool = get_boolean(cmd, 1);
-  if (bool == -1) {
+  globbing = get_boolean(cmd, 1);
+  if (globbing == -1) {
     CONF_ERROR(cmd, "expected Boolean parameter");
   }
 
   c = add_config_param(cmd->argv[0], 1, NULL);
   c->argv[0] = pcalloc(c->pool, sizeof(unsigned char));
-  *((unsigned char *) c->argv[0]) = bool;
+  *((unsigned char *) c->argv[0]) = globbing;
   c->flags |= CF_MERGEDOWN;
 
   return PR_HANDLED(cmd);

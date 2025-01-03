@@ -673,17 +673,18 @@ MODRET set_serveradmin(cmd_rec *cmd) {
 
 /* usage: UseIPv6 on|off */
 MODRET set_useipv6(cmd_rec *cmd) {
-#ifdef PR_USE_IPV6
-  int bool = -1;
+#if defined(PR_USE_IPV6)
+  int use_ipv6 = -1;
 
   CHECK_ARGS(cmd, 1);
   CHECK_CONF(cmd, CONF_ROOT);
 
-  bool = get_boolean(cmd, 1);
-  if (bool == -1)
+  use_ipv6 = get_boolean(cmd, 1);
+  if (use_ipv6 == -1) {
     CONF_ERROR(cmd, "expected Boolean parameter");
+  }
 
-  if (bool == 0) {
+  if (use_ipv6 == FALSE) {
     pr_log_debug(DEBUG2, "disabling runtime support for IPv6 connections");
     pr_netaddr_disable_ipv6();
 
@@ -699,17 +700,18 @@ MODRET set_useipv6(cmd_rec *cmd) {
 }
 
 MODRET set_usereversedns(cmd_rec *cmd) {
-  int bool = -1;
+  int use_reverse_dns = -1;
 
   CHECK_ARGS(cmd, 1);
   CHECK_CONF(cmd, CONF_ROOT);
 
-  bool = get_boolean(cmd, 1);
-  if (bool == -1)
+  use_reverse_dns = get_boolean(cmd, 1);
+  if (use_reverse_dns == -1) {
     CONF_ERROR(cmd, "expected Boolean parameter");
+  }
 
-  ServerUseReverseDNS = bool;
-  pr_netaddr_set_reverse_dns(bool);
+  ServerUseReverseDNS = use_reverse_dns;
+  pr_netaddr_set_reverse_dns(use_reverse_dns);
 
   return PR_HANDLED(cmd);
 }
@@ -797,14 +799,14 @@ MODRET set_scoreboardoptions(cmd_rec *cmd) {
 
 /* usage: ScoreboardScrub "on"|"off"|secs */
 MODRET set_scoreboardscrub(cmd_rec *cmd) {
-  int bool = -1, nsecs = 0;
+  int do_scrub = -1, nsecs = 0;
   config_rec *c;
 
   CHECK_ARGS(cmd, 1);
   CHECK_CONF(cmd, CONF_ROOT);
 
-  bool = get_boolean(cmd, 1);
-  if (bool == -1) {
+  do_scrub = get_boolean(cmd, 1);
+  if (do_scrub == -1) {
     /* If this is the case, try handling the parameter as the number of
      * seconds, as the scrub frequency.
      */
@@ -824,7 +826,7 @@ MODRET set_scoreboardscrub(cmd_rec *cmd) {
   } else {
     c = add_config_param(cmd->argv[0], 1, NULL);
     c->argv[0] = pcalloc(c->pool, sizeof(int));
-    *((int *) c->argv[0]) = bool;
+    *((int *) c->argv[0]) = do_scrub;
   }
 
   return PR_HANDLED(cmd);
@@ -944,19 +946,19 @@ MODRET set_serverident(cmd_rec *cmd) {
 }
 
 MODRET set_defaultserver(cmd_rec *cmd) {
-  int bool = -1;
+  int default_server = -1;
   server_rec *s = NULL;
   config_rec *c = NULL;
 
   CHECK_ARGS(cmd, 1);
   CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL);
 
-  bool = get_boolean(cmd, 1);
-  if (bool == -1) {
+  default_server = get_boolean(cmd, 1);
+  if (default_server == -1) {
     CONF_ERROR(cmd, "expected Boolean parameter");
   }
 
-  if (!bool) {
+  if (default_server == FALSE) {
     return PR_HANDLED(cmd);
   }
 
@@ -969,7 +971,7 @@ MODRET set_defaultserver(cmd_rec *cmd) {
 
   c = add_config_param(cmd->argv[0], 1, NULL);
   c->argv[0] = pcalloc(c->pool, sizeof(unsigned char));
-  *((unsigned char *) c->argv[0]) = bool;
+  *((unsigned char *) c->argv[0]) = default_server;
 
   return PR_HANDLED(cmd);
 }
@@ -1155,16 +1157,16 @@ MODRET set_timeoutlinger(cmd_rec *cmd) {
 }
 
 MODRET set_socketbindtight(cmd_rec *cmd) {
-  int bool = -1;
+  int bind_tight = -1;
   CHECK_ARGS(cmd, 1);
   CHECK_CONF(cmd, CONF_ROOT);
 
-  bool = get_boolean(cmd, 1);
-  if (bool == -1) {
+  bind_tight = get_boolean(cmd, 1);
+  if (bind_tight == -1) {
     CONF_ERROR(cmd, "expected Boolean parameter");
   }
 
-  SocketBindTight = bool;
+  SocketBindTight = bind_tight;
   return PR_HANDLED(cmd);
 }
 
@@ -1353,20 +1355,20 @@ MODRET set_tcpbacklog(cmd_rec *cmd) {
 }
 
 MODRET set_tcpnodelay(cmd_rec *cmd) {
-  int bool = -1;
+  int no_delay = -1;
   config_rec *c = NULL;
 
   CHECK_ARGS(cmd, 1);
   CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL);
 
-  bool = get_boolean(cmd, 1);
-  if (bool == -1) {
+  no_delay = get_boolean(cmd, 1);
+  if (no_delay == -1) {
     CONF_ERROR(cmd, "expected Boolean parameter");
   }
 
   c = add_config_param(cmd->argv[0], 1, NULL);
   c->argv[0] = pcalloc(c->pool, sizeof(unsigned char));
-  *((unsigned char *) c->argv[0]) = bool;
+  *((unsigned char *) c->argv[0]) = no_delay;
 
   return PR_HANDLED(cmd);
 }
@@ -2084,20 +2086,20 @@ MODRET set_syslogfacility(cmd_rec *cmd) {
 }
 
 MODRET set_timesgmt(cmd_rec *cmd) {
-  int bool = -1;
+  int times_gmt = -1;
   config_rec *c = NULL;
 
   CHECK_ARGS(cmd, 1);
   CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL|CONF_ANON);
 
-  bool = get_boolean(cmd, 1);
-  if (bool == -1) {
+  times_gmt = get_boolean(cmd, 1);
+  if (times_gmt == -1) {
     CONF_ERROR(cmd, "expected Boolean parameter");
   }
 
   c = add_config_param(cmd->argv[0], 1, NULL);
   c->argv[0] = pcalloc(c->pool, sizeof(unsigned char));
-  *((unsigned char *) c->argv[0]) = bool;
+  *((unsigned char *) c->argv[0]) = times_gmt;
 
   c->flags |= CF_MERGEDOWN;
   return PR_HANDLED(cmd);
@@ -2276,22 +2278,22 @@ MODRET set_pathdenyfilter(cmd_rec *cmd) {
 
 /* usage: AllowForeignAddress on|off|class */
 MODRET set_allowforeignaddress(cmd_rec *cmd) {
-  int bool = -1;
+  int allow_foreign_addr = -1;
   config_rec *c = NULL;
   char *class_name = NULL;
 
   CHECK_ARGS(cmd, 1);
   CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL|CONF_ANON);
 
-  bool = get_boolean(cmd, 1);
-  if (bool == -1) {
+  allow_foreign_addr = get_boolean(cmd, 1);
+  if (allow_foreign_addr == -1) {
     /* Not a boolean?  Assume it's a <Class> name, then. */
     class_name = cmd->argv[1];
   }
 
   c = add_config_param(cmd->argv[0], 2, NULL, NULL);
   c->argv[0] = pcalloc(c->pool, sizeof(int));
-  *((int *) c->argv[0]) = bool;
+  *((int *) c->argv[0]) = allow_foreign_addr;
   c->argv[1] = pstrdup(c->pool, class_name);
 
   c->flags |= CF_MERGEDOWN;
@@ -2591,20 +2593,20 @@ MODRET set_hidefiles(cmd_rec *cmd) {
 }
 
 MODRET set_hidenoaccess(cmd_rec *cmd) {
-  int bool = -1;
+  int hide_no_access = -1;
   config_rec *c = NULL;
 
   CHECK_ARGS(cmd, 1);
   CHECK_CONF(cmd, CONF_ANON|CONF_DIR);
 
-  bool = get_boolean(cmd, 1);
-  if (bool == -1) {
+  hide_no_access = get_boolean(cmd, 1);
+  if (hide_no_access == -1) {
     CONF_ERROR(cmd, "expected Boolean parameter");
   }
 
   c = add_config_param(cmd->argv[0], 1, NULL);
   c->argv[0] = pcalloc(c->pool, sizeof(unsigned char));
-  *((unsigned char *) c->argv[0]) = bool;
+  *((unsigned char *) c->argv[0]) = hide_no_access;
   c->flags |= CF_MERGEDOWN;
 
   return PR_HANDLED(cmd);
@@ -2681,7 +2683,7 @@ MODRET add_userowner(cmd_rec *cmd) {
 }
 
 MODRET set_allowoverride(cmd_rec *cmd) {
-  int bool = -1;
+  int allow_override = -1;
   config_rec *c = NULL;
   unsigned int precedence = 0;
 
@@ -2700,8 +2702,8 @@ MODRET set_allowoverride(cmd_rec *cmd) {
   CHECK_ARGS(cmd, 1);
   CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL|CONF_ANON|CONF_DIR);
 
-  bool = get_boolean(cmd, 1);
-  if (bool == -1) {
+  allow_override = get_boolean(cmd, 1);
+  if (allow_override == -1) {
     CONF_ERROR(cmd, "expected Boolean parameter");
   }
 
@@ -2724,7 +2726,7 @@ MODRET set_allowoverride(cmd_rec *cmd) {
 
   c = add_config_param(cmd->argv[0], 2, NULL, NULL);
   c->argv[0] = pcalloc(c->pool, sizeof(int));
-  *((int *) c->argv[0]) = bool;
+  *((int *) c->argv[0]) = allow_override;
   c->argv[1] = pcalloc(c->pool, sizeof(unsigned int));
   *((unsigned int *) c->argv[1]) = precedence;
   c->flags |= CF_MERGEDOWN_MULTI;
@@ -3306,20 +3308,20 @@ MODRET end_limit(cmd_rec *cmd) {
 }
 
 MODRET set_ignorehidden(cmd_rec *cmd) {
-  int bool = -1;
+  int ignore_hidden = -1;
   config_rec *c = NULL;
 
   CHECK_ARGS(cmd, 1);
   CHECK_CONF(cmd, CONF_LIMIT);
 
-  bool = get_boolean(cmd, 1);
-  if (bool == -1) {
+  ignore_hidden = get_boolean(cmd, 1);
+  if (ignore_hidden == -1) {
     CONF_ERROR(cmd, "expected Boolean parameter");
   }
 
   c = add_config_param(cmd->argv[0], 1, NULL);
   c->argv[0] = pcalloc(c->pool, sizeof(unsigned char));
-  *((unsigned char *) c->argv[0]) = bool;
+  *((unsigned char *) c->argv[0]) = ignore_hidden;
 
   return PR_HANDLED(cmd);
 }
@@ -6778,20 +6780,20 @@ MODRET core_post_pass(cmd_rec *cmd) {
  */
 
 MODRET set_deferwelcome(cmd_rec *cmd) {
-  int bool = -1;
+  int defer_welcome = -1;
   config_rec *c = NULL;
 
   CHECK_ARGS(cmd, 1);
   CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL);
 
-  bool = get_boolean(cmd, 1);
-  if (bool == -1) {
+  defer_welcome = get_boolean(cmd, 1);
+  if (defer_welcome == -1) {
     CONF_ERROR(cmd, "expected Boolean parameter");
   }
 
   c = add_config_param(cmd->argv[0], 1, NULL);
   c->argv[0] = pcalloc(c->pool, sizeof(unsigned char));
-  *((unsigned char *) c->argv[0]) = bool;
+  *((unsigned char *) c->argv[0]) = defer_welcome;
 
   return PR_HANDLED(cmd);
 }
