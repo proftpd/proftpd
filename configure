@@ -947,6 +947,7 @@ with_mysql_config
 with_openssl_cmdline
 with_postgres_config
 with_pkgconfig
+with-sftp-readwrite-cmdsuffix
 enable_auth_file
 enable_autoshadow
 enable_auth_pam
@@ -1788,6 +1789,11 @@ Optional Packages:
   --with-included-ltdl    use the GNU ltdl sources included here
   --with-ltdl-include=DIR use the ltdl headers installed in DIR
   --with-ltdl-lib=DIR     use the libltdl.la installed in DIR
+  --with-sftp-readwrite-cmdsuffix=SUFFIX
+                          change the SFTP READ and WRITE command names to add
+                          the configured suffix to allow them to differentiate
+                          from the READ and WRITE classes. If no suffix is
+                          given, the default suffix of 'FILE' is used
 
 Some influential environment variables:
   CC          C compiler command
@@ -15099,6 +15105,35 @@ LIB_DEPS="\"\""
 
 
 LIB_OBJS="pr_fnmatch.o sstrncpy.o strsep.o vsnprintf.o glibc-glob.o glibc-hstrerror.o glibc-mkstemp.o pr-syslog.o pwgrent.o hanson-tpl.o ccan-json.o openbsd-blowfish.o openbsd-bcrypt.o"
+
+
+# Check whether --with-sftp-readwrite-cmdsuffix was given.
+if test "${with_sftp_readwrite_cmdsuffix+set}" = set; then :
+  withval=$with_sftp_readwrite_cmdsuffix;
+    if test "x$withval" = "xno" ; then
+      # nothing to do
+      suffix=''
+
+    elif test "x$withval" = "xyes" ; then
+      # use the default suffix of 'FILE'
+      suffix='FILE'
+
+    else
+      suffix="${withval}"
+    fi
+
+cat >>confdefs.h <<_ACEOF
+#define PR_SFTP_READCMD "READ${suffix}"
+_ACEOF
+
+
+cat >>confdefs.h <<_ACEOF
+#define PR_SFTP_WRITECMD "WRITE${suffix}"
+_ACEOF
+
+
+fi
+
 
 
 # Check whether --with-getopt was given.

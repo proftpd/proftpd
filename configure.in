@@ -192,6 +192,32 @@ dnl support/handle --without-getopt, to disable use of ProFTPD's getopt.
 dnl I don't know if MySQL supports any similar option.
 LIB_OBJS="pr_fnmatch.o sstrncpy.o strsep.o vsnprintf.o glibc-glob.o glibc-hstrerror.o glibc-mkstemp.o pr-syslog.o pwgrent.o hanson-tpl.o ccan-json.o openbsd-blowfish.o openbsd-bcrypt.o"
 
+dnl Added config option to allow compile-time changes to the names of the SFTP
+dnl READ and WRITE commands to avoid the collision with the same names of
+dnl command classes.
+AC_ARG_WITH(sftp-readwrite-cmdsuffix,
+  [AC_HELP_STRING(
+      [--with-sftp-readwrite-cmdsuffix=SUFFIX],
+      [change the SFTP READ and WRITE command names to add the configured suffix to allow them to differentiate from the READ and WRITE classes.  If no suffix is given, the default suffix of 'FILE' is used])
+  ],
+  [
+    if test "x$withval" = "xno" ; then
+      # nothing to do
+      suffix=''
+
+    elif test "x$withval" = "xyes" ; then
+      # use the default suffix of 'FILE'
+      suffix='FILE'
+
+    else
+      suffix="${withval}"
+    fi
+    AC_DEFINE_UNQUOTED(PR_SFTP_READCMD, "READ${suffix}",
+      [Command name to use for SFTP reads.])
+    AC_DEFINE_UNQUOTED(PR_SFTP_WRITECMD, "WRITE${suffix}",
+      [Command name to use for SFTP writes.])
+  ])
+
 AC_ARG_WITH(getopt,
   [AC_HELP_STRING(
       [--without-getopt],
