@@ -13444,7 +13444,7 @@ static int fxp_handle_write(struct fxp_packet *fxp) {
   cmd->cmd_id = SFTP_CMD_ID;
 
   pr_scoreboard_entry_update(session.pid,
-    PR_SCORE_CMD, "%s", "WRITE", NULL, NULL);
+    PR_SCORE_CMD, "%s", PR_SFTP_WRITECMD, NULL, NULL);
   pr_scoreboard_entry_update(session.pid,
     PR_SCORE_CMD_ARG, "%s", name, NULL, NULL);
 
