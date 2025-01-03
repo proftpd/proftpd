@@ -1110,6 +1110,12 @@
 /* Define if largefile support is desired.  */
 #undef PR_USE_LARGEFILES
 
+/* Command name to use for SFTP reads. */
+#undef PR_SFTP_READCMD
+
+/* Command name to use for SFTP writes. */
+#undef PR_SFTP_WRITECMD
+
 /* Define if Memcache support is desired.. */
 #undef PR_USE_MEMCACHE
 
