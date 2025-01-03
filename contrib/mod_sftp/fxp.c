@@ -190,6 +190,15 @@
 #define SSH2_FXE_XATTR_CREATE			0x1
 #define SSH2_FXE_XATTR_REPLACE			0x2
 
+/* Default SFTP read and write command names */
+#ifndef PR_SFTP_READCMD
+#define PR_SFTP_READCMD "READ"
+#endif
+
+#ifndef PR_SFTP_WRITECMD
+#define PR_SFTP_WRITECMD "WRITE"
+#endif
+
 extern pr_response_t *resp_list, *resp_err_list;
 
 struct fxp_dirent {
@@ -1097,10 +1106,10 @@ static const char *fxp_get_request_type_desc(unsigned char request_type) {
       return "CLOSE";
 
     case SFTP_SSH2_FXP_READ:
-      return "READFILE";
+      return PR_SFTP_READCMD;
 
     case SFTP_SSH2_FXP_WRITE:
-      return "WRITEFILE";
+      return PR_SFTP_WRITECMD;
 
     case SFTP_SSH2_FXP_LSTAT:
       return "LSTAT";
@@ -4321,7 +4330,7 @@ static int fxp_handle_ext_check_file(struct fxp_packet *fxp, char *digest_list,
   }
 
   cmd = fxp_cmd_alloc(fxp->pool, "SITE_DIGEST", pstrdup(fxp->pool, path));
-  if (!dir_check(fxp->pool, cmd, "READFILE", path, NULL)) {
+  if (!dir_check(fxp->pool, cmd, PR_SFTP_READCMD, path, NULL)) {
     xerrno = EACCES;
 
     (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
@@ -4728,7 +4737,7 @@ static int fxp_handle_ext_copy_file(struct fxp_packet *fxp, char *src,
 
     cmd2 = pr_cmd_alloc(fxp->pool, 3, "SITE_COPY", src, dst);
     cmd2->arg = pstrdup(fxp->pool, args);
-    limit_allow = dir_check(fxp->pool, cmd2, "WRITEFILE", dst, NULL);
+    limit_allow = dir_check(fxp->pool, cmd2, PR_SFTP_WRITECMD, dst, NULL);
 
     if (!overwrite ||
         (allow_overwrite == NULL ||
@@ -4790,7 +4799,7 @@ static int fxp_handle_ext_copy_file(struct fxp_packet *fxp, char *src,
 
   cmd2 = pr_cmd_alloc(fxp->pool, 3, "SITE_COPY", src, dst);
   cmd2->arg = pstrdup(fxp->pool, args);
-  if (!dir_check(fxp->pool, cmd2, "READFILE", src, NULL)) {
+  if (!dir_check(fxp->pool, cmd2, PR_SFTP_READCMD, src, NULL)) {
     xerrno = EACCES;
 
     (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
@@ -10377,7 +10386,7 @@ static int fxp_handle_read(struct fxp_packet *fxp) {
   cmd->cmd_id = SFTP_CMD_ID;
 
   pr_scoreboard_entry_update(session.pid,
-    PR_SCORE_CMD, "%s", "READ", NULL, NULL);
+    PR_SCORE_CMD, "%s", PR_SFTP_READCMD, NULL, NULL);
   pr_scoreboard_entry_update(session.pid,
     PR_SCORE_CMD_ARG, "%s", name, NULL, NULL);
 
@@ -10514,7 +10523,7 @@ static int fxp_handle_read(struct fxp_packet *fxp) {
 
   /* XXX Check MaxRetrieveFileSize */
 
-  if (fxp_path_pass_regex_filters(fxp->pool, "READFILE", fxh->fh->fh_path) < 0) {
+  if (fxp_path_pass_regex_filters(fxp->pool, PR_SFTP_READCMD, fxh->fh->fh_path) < 0) {
     uint32_t status_code;
     const char *reason;
 
@@ -13430,7 +13439,7 @@ static int fxp_handle_write(struct fxp_packet *fxp) {
   memset(cmd_arg, '\0', sizeof(cmd_arg));
   pr_snprintf(cmd_arg, sizeof(cmd_arg)-1, "%s %" PR_LU " %lu", name,
     (pr_off_t) offset, (unsigned long) datalen);
-  cmd = fxp_cmd_alloc(fxp->pool, "WRITEFILE", cmd_arg);
+  cmd = fxp_cmd_alloc(fxp->pool, PR_SFTP_WRITECMD, cmd_arg);
   cmd->cmd_class = CL_WRITE|CL_SFTP;
   cmd->cmd_id = SFTP_CMD_ID;
 
@@ -13570,7 +13579,7 @@ static int fxp_handle_write(struct fxp_packet *fxp) {
     return fxp_packet_write(resp);
   }
 
-  if (fxp_path_pass_regex_filters(fxp->pool, "WRITEFILE", fxh->fh->fh_path) < 0) {
+  if (fxp_path_pass_regex_filters(fxp->pool, PR_SFTP_WRITECMD, fxh->fh->fh_path) < 0) {
     status_code = fxp_errno2status(errno, NULL);
 
     pr_trace_msg(trace_channel, 8, "sending response: STATUS %lu '%s'",
