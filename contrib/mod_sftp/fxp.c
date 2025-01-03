@@ -10381,7 +10381,7 @@ static int fxp_handle_read(struct fxp_packet *fxp) {
   }
 #endif
 
-  cmd = fxp_cmd_alloc(fxp->pool, "READFILE", name);
+  cmd = fxp_cmd_alloc(fxp->pool, PR_SFTP_READCMD, name);
   cmd->cmd_class = CL_READ|CL_SFTP;
   cmd->cmd_id = SFTP_CMD_ID;
 
