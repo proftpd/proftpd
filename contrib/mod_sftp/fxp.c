@@ -10373,7 +10373,7 @@ static int fxp_handle_read(struct fxp_packet *fxp) {
 #endif
 
   cmd = fxp_cmd_alloc(fxp->pool, "READ", name);
-  cmd->cmd_class = CL_READ|CL_SFTP;
+  cmd->cmd_class = CL_READ|CL_SFTP|CL_SFTPRW;
   cmd->cmd_id = SFTP_CMD_ID;
 
   pr_scoreboard_entry_update(session.pid,
@@ -13431,7 +13431,7 @@ static int fxp_handle_write(struct fxp_packet *fxp) {
   pr_snprintf(cmd_arg, sizeof(cmd_arg)-1, "%s %" PR_LU " %lu", name,
     (pr_off_t) offset, (unsigned long) datalen);
   cmd = fxp_cmd_alloc(fxp->pool, "WRITE", cmd_arg);
-  cmd->cmd_class = CL_WRITE|CL_SFTP;
+  cmd->cmd_class = CL_WRITE|CL_SFTP|CL_SFTPRW;
   cmd->cmd_id = SFTP_CMD_ID;
 
   pr_scoreboard_entry_update(session.pid,
