@@ -87,6 +87,7 @@ typedef struct conftab_rec {
 #define CL_DISCONNECT	0x0100  /* Session end */
 #define CL_SSH		0x0200  /* SSH requests */
 #define CL_SFTP		0x0400  /* SFTP requests */
+#define CL_SFTPRW	0x0800  /* SFTP READ/WRITE requests */
 
 /* Note that CL_ALL explicitly does NOT include CL_DISCONNECT; this is to
  * preserve backward compatible behavior.
