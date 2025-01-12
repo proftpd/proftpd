@@ -181,7 +181,7 @@ static int af_check_file(pool *p, const char *name, const char *path,
       /* The path contained in the symlink might itself be relative, thus
        * we need to make sure that we get an absolute path (Bug#4145).
        */
-      path = dir_abs_path(p, buf, FALSE);
+      path = dir_realpath(p, buf);
       if (path != NULL) {
         orig_path = path;
       }
