@@ -2,7 +2,7 @@
  * ProFTPD - FTP server daemon
  * Copyright (c) 1997, 1998 Public Flood Software
  * Copyright (c) 1999, 2000 MacGyver aka Habeeb J. Dihu <macgyver@tos.net>
- * Copyright (c) 2001-2022 The ProFTPD Project
+ * Copyright (c) 2001-2024 The ProFTPD Project
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -360,7 +360,8 @@ static int sendline(int flags, char *fmt, ...) {
           errno != 0) {
         int xerrno = errno;
 
-        if (session.d != NULL) {
+        if (session.d != NULL &&
+            session.d->outstrm != NULL) {
           xerrno = PR_NETIO_ERRNO(session.d->outstrm);
         }
 
@@ -1101,7 +1102,9 @@ static int outputfiles(cmd_rec *cmd) {
     return res;
   }
 
-  tail->down = NULL;
+  if (tail != NULL) {
+    tail->down = NULL;
+  }
   tail = NULL;
   colwidth = (colwidth | 7) + 1;
   if (opt_l || !opt_C) {
