@@ -3195,6 +3195,15 @@ static int filter_get_classes(pool *p, array_header *names,
         incl |= CL_SFTP;
       }
 
+    } else if (strcasecmp(name, "SFTPRW") == 0) {
+      if (exclude) {
+        incl &= ~CL_SFTPRW;
+        excl |= CL_SFTPRW;
+
+      } else {
+        incl |= CL_SFTPRW;
+      }
+
     } else {
       pr_trace_msg(trace_channel, 2, "ignoring unknown/unsupported class '%s'",
         name);
@@ -3271,6 +3280,10 @@ static array_header *filter_get_cmd_ids(pool *p, array_header *names,
 
         } else if (strcmp(name, "SFTP") == 0) {
           *included_classes |= CL_SFTP;
+          valid = TRUE;
+
+        } else if (strcmp(name, "SFTPRW") == 0) {
+          *included_classes |= CL_SFTPRW;
           valid = TRUE;
 
         } else if (strcmp(name, "SSH") == 0) {
