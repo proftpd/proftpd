@@ -2,7 +2,7 @@
  * mod_tls - An RFC2228 SSL/TLS module for ProFTPD
  *
  * Copyright (c) 2000-2002 Peter 'Luna' Runestig <peter@runestig.com>
- * Copyright (c) 2002-2023 TJ Saunders <tj@castaglia.org>
+ * Copyright (c) 2002-2025 TJ Saunders <tj@castaglia.org>
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without modifi-
@@ -7173,7 +7173,7 @@ static int tls_alpn_select_cb(SSL *ssl,
     "ALPN protocols advertised by client:");
   for (i = 0; i < advertised_protolen; i++) {
     pr_trace_msg(trace_channel, 9,
-      " %*s", advertised_proto[i], &(advertised_proto[i+1]));
+      " %.*s", advertised_proto[i], &(advertised_proto[i+1]));
     i += advertised_proto[i] + 1;
   }
 
@@ -8036,7 +8036,7 @@ static int tls_accept(conn_t *conn, unsigned char on_data) {
     if (alpn != NULL &&
         alpn_len > 0) {
       pr_trace_msg(trace_channel, 9,
-        "selected ALPN '%*s'", alpn_len, alpn);
+        "selected ALPN '%.*s'", alpn_len, alpn);
     } else {
       pr_trace_msg(trace_channel, 9, "%s", "no ALPN selected");
     }
