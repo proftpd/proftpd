@@ -8018,7 +8018,7 @@ static int tls_accept(conn_t *conn, unsigned char on_data) {
     if (npn != NULL &&
         npn_len > 0) {
       pr_trace_msg(trace_channel, 9,
-        "negotiated NPN '%*s'", npn_len, npn);
+        "negotiated NPN '%.*s'", npn_len, npn);
 
     } else {
       pr_trace_msg(trace_channel, 9, "%s", "no NPN negotiated");
