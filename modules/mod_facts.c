@@ -1,6 +1,6 @@
 /*
  * ProFTPD: mod_facts -- a module for handling "facts" [RFC3659]
- * Copyright (c) 2007-2024 The ProFTPD Project
+ * Copyright (c) 2007-2025 The ProFTPD Project
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -2079,6 +2079,13 @@ MODRET set_factsoptions(cmd_rec *cmd) {
 
   c->argv[0] = palloc(c->pool, sizeof(unsigned long));
   *((unsigned long *) c->argv[0]) = opts;
+
+  if (pr_module_exists("mod_ifsession.c")) {
+    /* These are needed in case this directive is used with mod_ifsession
+     * configuration.
+     */
+    c->flags |= CF_MULTI;
+  }
 
   return PR_HANDLED(cmd);
 }

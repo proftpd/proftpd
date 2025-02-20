@@ -1,6 +1,6 @@
 /*
  * ProFTPD: mod_geoip -- a module for looking up country/city/etc for clients
- * Copyright (c) 2010-2024 TJ Saunders
+ * Copyright (c) 2010-2025 TJ Saunders
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -1260,6 +1260,14 @@ MODRET set_geoipfilter(cmd_rec *cmd) {
 
   c->argv[0] = filters;
   c->argv[1] = deferred_patterns;
+
+  if (pr_module_exists("mod_ifsession.c")) {
+    /* These are needed in case this directive is used with mod_ifsession
+     * configuration.
+     */
+    c->flags |= CF_MULTI;
+  }
+
   return PR_HANDLED(cmd);
 
 #else /* no regular expression support at the moment */

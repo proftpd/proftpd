@@ -1,6 +1,6 @@
 /*
  * ProFTPD - mod_sftp
- * Copyright (c) 2008-2024 TJ Saunders
+ * Copyright (c) 2008-2025 TJ Saunders
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -376,6 +376,13 @@ MODRET set_sftpacceptenv(cmd_rec *cmd) {
     *((char **) push_array(accepted_envs)) = pstrdup(c->pool, cmd->argv[i]);
   }
   c->argv[0] = (void *) accepted_envs;
+
+  if (pr_module_exists("mod_ifsession.c")) {
+    /* These are needed in case this directive is used with mod_ifsession
+     * configuration.
+     */
+    c->flags |= CF_MULTI;
+  }
 
   return PR_HANDLED(cmd);
 }
@@ -1150,7 +1157,7 @@ MODRET set_sftpclientmatch(cmd_rec *cmd) {
       i++;
 
     } else if (strcmp(cmd->argv[i], "sftpUTF8ProtocolVersion") == 0) {
-#ifdef PR_USE_NLS
+#if defined(PR_USE_NLS)
       char *ptr = NULL;
       void *value;
       long protocol_version;
@@ -1187,6 +1194,13 @@ MODRET set_sftpclientmatch(cmd_rec *cmd) {
       CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "unknown SFTPClientMatch key: '",
         cmd->argv[i], "'", NULL));
     }
+  }
+
+  if (pr_module_exists("mod_ifsession.c")) {
+    /* These are needed in case this directive is used with mod_ifsession
+     * configuration.
+     */
+    c->flags |= CF_MULTI;
   }
 
   return PR_HANDLED(cmd);
@@ -1854,6 +1868,13 @@ MODRET set_sftpoptions(cmd_rec *cmd) {
 
   c->argv[0] = pcalloc(c->pool, sizeof(unsigned long));
   *((unsigned long *) c->argv[0]) = opts;
+
+  if (pr_module_exists("mod_ifsession.c")) {
+    /* These are needed in case this directive is used with mod_ifsession
+     * configuration.
+     */
+    c->flags |= CF_MULTI;
+  }
 
   return PR_HANDLED(cmd);
 }
