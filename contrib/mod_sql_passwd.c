@@ -1,6 +1,6 @@
 /*
  * ProFTPD: mod_sql_passwd -- Various SQL password handlers
- * Copyright (c) 2009-2024 TJ Saunders
+ * Copyright (c) 2009-2025 TJ Saunders
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -1459,6 +1459,13 @@ MODRET set_sqlpasswdoptions(cmd_rec *cmd) {
   c = add_config_param(cmd->argv[0], 1, NULL);
   c->argv[0] = palloc(c->pool, sizeof(unsigned long));
   *((unsigned long *) c->argv[0]) = opts;
+
+  if (pr_module_exists("mod_ifsession.c")) {
+    /* These are needed in case this directive is used with mod_ifsession
+     * configuration.
+     */
+    c->flags |= CF_MULTI;
+  }
 
   return PR_HANDLED(cmd);
 }

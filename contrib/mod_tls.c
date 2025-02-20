@@ -14057,6 +14057,13 @@ MODRET set_tlsciphersuite(cmd_rec *cmd) {
   c->argv[1] = palloc(c->pool, sizeof(int));
   *((int *) c->argv[1]) = protocol;
 
+  if (pr_module_exists("mod_ifsession.c")) {
+    /* These are needed in case this directive is used with mod_ifsession
+     * configuration.
+     */
+    c->flags |= CF_MULTI;
+  }
+
   return PR_HANDLED(cmd);
 }
 
@@ -14588,6 +14595,13 @@ MODRET set_tlsoptions(cmd_rec *cmd) {
 
   c->argv[0] = pcalloc(c->pool, sizeof(unsigned long));
   *((unsigned long *) c->argv[0]) = opts;
+
+  if (pr_module_exists("mod_ifsession.c")) {
+    /* These are needed in case this directive is used with mod_ifsession
+     * configuration.
+     */
+    c->flags |= CF_MULTI;
+  }
 
   return PR_HANDLED(cmd);
 }

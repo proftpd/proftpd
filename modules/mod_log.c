@@ -2,7 +2,7 @@
  * ProFTPD - FTP server daemon
  * Copyright (c) 1997, 1998 Public Flood Software
  * Copyright (c) 1999, 2000 MacGyver aka Habeeb J. Dihu <macgyver@tos.net>
- * Copyright (c) 2001-2024 The ProFTPD Project team
+ * Copyright (c) 2001-2025 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -368,6 +368,13 @@ MODRET set_extendedlog(cmd_rec *cmd) {
 
   if (argc > 3) {
     c->argv[2] = pstrdup(log_pool, cmd->argv[3]);
+  }
+
+  if (pr_module_exists("mod_ifsession.c")) {
+    /* These are needed in case this directive is used with mod_ifsession
+     * configuration.
+     */
+    c->flags |= CF_MULTI;
   }
 
   return PR_HANDLED(cmd);

@@ -1,6 +1,6 @@
 /*
  * ProFTPD: mod_auth_otp
- * Copyright (c) 2015-2023 TJ Saunders
+ * Copyright (c) 2015-2025 TJ Saunders
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -763,6 +763,13 @@ MODRET set_authotpoptions(cmd_rec *cmd) {
 
   c->argv[0] = pcalloc(c->pool, sizeof(unsigned long));
   *((unsigned long *) c->argv[0]) = opts;
+
+  if (pr_module_exists("mod_ifsession.c")) {
+    /* These are needed in case this directive is used with mod_ifsession
+     * configuration.
+     */
+    c->flags |= CF_MULTI;
+  }
 
   return PR_HANDLED(cmd);
 }
