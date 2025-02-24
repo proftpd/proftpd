@@ -19,6 +19,7 @@
 --------------------------------
 - Issue 1855 - Use of HideNoAccess for SFTP sessions can lead to segfault
   and/or unexpected behavior.
+- Bug 4511 - Added Polish translation.
 
 1.3.9rc3 - Released 11-Dec-2024
 --------------------------------
