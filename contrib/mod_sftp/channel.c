@@ -1,6 +1,6 @@
 /*
  * ProFTPD - mod_sftp channels
- * Copyright (c) 2008-2024 TJ Saunders
+ * Copyright (c) 2008-2025 TJ Saunders
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -83,7 +83,9 @@ static unsigned int channel_count = 0;
 static pool *channel_databuf_pool = NULL;
 
 /* XXX Use a table, rather than a list, for tracking channels? */
+static pool *channel_list_pool = NULL;
 static array_header *channel_list = NULL;
+static unsigned int channel_close_count = 0;
 
 static uint32_t chan_window_size = SFTP_SSH2_CHANNEL_WINDOW_SIZE;
 static uint32_t chan_packet_size = SFTP_SSH2_CHANNEL_MAX_PACKET_SIZE;
@@ -118,13 +120,46 @@ static struct ssh2_channel *alloc_channel(const char *type,
   chan->remote_max_packetsz = remote_max_packetsz;
 
   if (channel_list == NULL) {
-    channel_list = make_array(channel_pool, 1, sizeof(struct ssh2_channel *));
+    if (channel_list_pool == NULL) {
+      channel_list_pool = make_sub_pool(channel_pool);
+      pr_pool_tag(channel_list_pool, "SSH2 Channel list pool");
+    }
+
+    channel_list = make_array(channel_list_pool, 1,
+      sizeof(struct ssh2_channel *));
   }
 
   *((struct ssh2_channel **) push_array(channel_list)) = chan;
 
   channel_count++;
   return chan;
+}
+
+static void rebuild_channel_list(void) {
+  register unsigned int i;
+  struct ssh2_channel **chans;
+  array_header *new_channel_list = NULL;
+  pool *new_channel_list_pool = NULL;
+
+  new_channel_list_pool = make_sub_pool(channel_pool);
+  pr_pool_tag(new_channel_list_pool, "SSH2 Channel list pool");
+
+  new_channel_list = make_array(new_channel_list_pool, 1,
+    sizeof(struct ssh2_channel *));
+
+  chans = channel_list->elts;
+  for (i = 0; i < channel_list->nelts; i++) {
+    /* Any null slot in this list belonged to a now-destroyed channel, so
+     * should be skipped.
+     */
+    if (chans[i] != NULL) {
+      *((struct ssh2_channel **) push_array(new_channel_list)) = chans[i];
+    }
+  }
+
+  destroy_pool(channel_list_pool);
+  channel_list_pool = new_channel_list_pool;
+  channel_list = new_channel_list;
 }
 
 static void destroy_channel(uint32_t channel_id) {
@@ -152,8 +187,21 @@ static void destroy_channel(uint32_t channel_id) {
           (chans[i]->finish)(channel_id);
         }
 
+        destroy_pool(chans[i]->pool);
         chans[i] = NULL;
+
         channel_count--;
+        channel_close_count++;
+
+        if (channel_close_count >= SFTP_SSH2_CHANNEL_CLOSE_COUNT) {
+          pr_trace_msg(trace_channel, 22,
+            "channel close count (%lu) reached/exceeded max (%lu), "
+            "rebuilding channel list", (unsigned long) channel_close_count,
+            (unsigned long) SFTP_SSH2_CHANNEL_CLOSE_COUNT);
+          rebuild_channel_list();
+          channel_close_count = 0;
+        }
+
         break;
       }
     }
@@ -1568,7 +1616,9 @@ int sftp_channel_free(void) {
         (chans[i]->finish)(chans[i]->local_channel_id);
       }
 
+      destroy_pool(chans[i]->pool);
       chans[i] = NULL;
+
       channel_count--;
     }
   }
