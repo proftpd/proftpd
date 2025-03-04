@@ -1,6 +1,6 @@
 /*
  * ProFTPD - mod_sftp user authentication
- * Copyright (c) 2008-2024 TJ Saunders
+ * Copyright (c) 2008-2025 TJ Saunders
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -1616,7 +1616,7 @@ static int handle_userauth_req(struct ssh2_packet *pkt, char **service) {
           services |= SFTP_SERVICE_FL_SCP;
 
         } else if (strncasecmp(protocol, "date", 5) == 0) {
-          services |= SFTP_SERVICE_FL_SCP;
+          services |= SFTP_SERVICE_FL_DATE;
         }
       }
     }
