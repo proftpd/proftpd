@@ -1,6 +1,6 @@
 /*
  * ProFTPD - mod_sftp channels
- * Copyright (c) 2008-2023 TJ Saunders
+ * Copyright (c) 2008-2025 TJ Saunders
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -35,6 +35,12 @@
 
 #define SFTP_SSH2_CHANNEL_MAX_COUNT		10
 #define SFTP_SSH2_CHANNEL_MAX_PACKET_SIZE	32768UL
+
+/* After this many channels have been closed in a single connection,
+ * rebuild the internal channel list in order to place a bound on memory
+ * allocation for tracking all channels.
+ */
+#define SFTP_SSH2_CHANNEL_CLOSE_COUNT		100
 
 /* Max channel window size, per RFC4254 Section 5.2 is 2^32-1 bytes. */
 #define SFTP_SSH2_CHANNEL_WINDOW_SIZE		4294967295UL
