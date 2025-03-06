@@ -1,6 +1,6 @@
 /*
  * ProFTPD - mod_sftp channels
- * Copyright (c) 2008-2024 TJ Saunders
+ * Copyright (c) 2008-2025 TJ Saunders
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -98,8 +98,10 @@ static int send_channel_done(pool *, uint32_t);
 static struct ssh2_channel *alloc_channel(const char *type,
     uint32_t remote_channel_id, uint32_t remote_windowsz,
     uint32_t remote_max_packetsz) {
-  struct ssh2_channel *chan = NULL;
+  register unsigned int i;
+  struct ssh2_channel *chan = NULL, **chans = NULL;
   pool *sub_pool = NULL;
+  int found_existing_slot = FALSE;
 
   sub_pool = make_sub_pool(channel_pool);
   pr_pool_tag(sub_pool, "SSH2 channel pool");
@@ -121,7 +123,26 @@ static struct ssh2_channel *alloc_channel(const char *type,
     channel_list = make_array(channel_pool, 1, sizeof(struct ssh2_channel *));
   }
 
-  *((struct ssh2_channel **) push_array(channel_list)) = chan;
+  /* Look for an empty slot in the list, from an already-destroyed channel,
+   * first.
+   */
+  chans = channel_list->elts;
+  for (i = 0; i < channel_list->nelts; i++) {
+    if (chans[i] == NULL) {
+      chans[i] = chan;
+      found_existing_slot = TRUE;
+
+      pr_trace_msg(trace_channel, 22,
+        "reusing existing empty slot in channel list (%d item count) for new "
+        "channel ID %lu", channel_list->nelts,
+        (unsigned long) chan->local_channel_id);
+      break;
+    }
+  }
+
+  if (found_existing_slot == FALSE) {
+    *((struct ssh2_channel **) push_array(channel_list)) = chan;
+  }
 
   channel_count++;
   return chan;
@@ -152,7 +173,9 @@ static void destroy_channel(uint32_t channel_id) {
           (chans[i]->finish)(channel_id);
         }
 
+        destroy_pool(chans[i]->pool);
         chans[i] = NULL;
+
         channel_count--;
         break;
       }
@@ -1568,7 +1591,9 @@ int sftp_channel_free(void) {
         (chans[i]->finish)(chans[i]->local_channel_id);
       }
 
+      destroy_pool(chans[i]->pool);
       chans[i] = NULL;
+
       channel_count--;
     }
   }
