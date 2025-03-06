@@ -19,6 +19,8 @@
 --------------------------------
 - Issue 1855 - Use of HideNoAccess for SFTP sessions can lead to segfault
   and/or unexpected behavior.
+- Issue 1876 - SFTP channel allocations can lead to high memory utilization
+  over time.
 
 1.3.8c - Released 11-Dec-2024
 --------------------------------
