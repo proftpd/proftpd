@@ -1,6 +1,6 @@
 /*
  * ProFTPD - FTP server daemon
- * Copyright (c) 2014-2023 The ProFTPD Project team
+ * Copyright (c) 2014-2025 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -45,7 +45,7 @@ volatile unsigned int recvd_signal_flags = 0;
 
 static const char *trace_channel = "signal";
 
-static RETSIGTYPE sig_terminate(int);
+static void sig_terminate(int);
 static void install_stacktrace_handler(void);
 
 /* Used to capture an "unknown" signal value that causes termination. */
@@ -234,7 +234,7 @@ static void handle_xfsz(void) {
 }
 #endif /* SIGXFSZ */
 
-static RETSIGTYPE sig_child(int signo) {
+static void sig_child(int signo) {
   recvd_signal_flags |= RECEIVED_SIG_CHLD;
 
   /* We make an exception here to the synchronous processing that is done
@@ -292,7 +292,7 @@ static char *prepare_core(void) {
 }
 #endif /* PR_DEVEL_COREDUMP */
 
-static RETSIGTYPE sig_abort(int signo) {
+static void sig_abort(int signo) {
   recvd_signal_flags |= RECEIVED_SIG_ABORT;
 
   if (signal(SIGABRT, SIG_DFL) == SIG_ERR) {
@@ -309,7 +309,7 @@ static RETSIGTYPE sig_abort(int signo) {
 #endif /* PR_DEVEL_COREDUMP */
 }
 
-static RETSIGTYPE sig_terminate(int signo) {
+static void sig_terminate(int signo) {
   const char *signame = "(unsupported)";
   int log_signal = TRUE, log_stacktrace = TRUE;
 
@@ -541,7 +541,7 @@ void pr_signals_handle_without_delay(void) {
  * in order to re-read configuration files, and is sent to all
  * children by the master.
  */
-static RETSIGTYPE sig_restart(int signo) {
+static void sig_restart(int signo) {
   recvd_signal_flags |= RECEIVED_SIG_RESTART;
 
   if (signal(SIGHUP, sig_restart) == SIG_ERR) {
@@ -556,7 +556,7 @@ static RETSIGTYPE sig_restart(int signo) {
  * destroyed.  If a file transfer is underway, the process simply dies,
  * otherwise a function is scheduled to attempt to display the shutdown reason.
  */
-RETSIGTYPE pr_signals_handle_disconnect(int signo) {
+void pr_signals_handle_disconnect(int signo) {
 
   /* If this is an anonymous session, or a transfer is in progress,
    * perform the exit a little later...
@@ -577,7 +577,7 @@ RETSIGTYPE pr_signals_handle_disconnect(int signo) {
 }
 
 /* "Events", in this case, are SIGUSR2 signals. */
-RETSIGTYPE pr_signals_handle_event(int signo) {
+void pr_signals_handle_event(int signo) {
   recvd_signal_flags |= RECEIVED_SIG_EVENT;
 
   if (signal(SIGUSR2, pr_signals_handle_event) == SIG_ERR) {

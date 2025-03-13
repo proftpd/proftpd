@@ -1,6 +1,6 @@
 /*
  * ProFTPD - FTP server daemon
- * Copyright (c) 2001-2023 The ProFTPD Project team
+ * Copyright (c) 2001-2025 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -203,7 +203,7 @@ int sstrncpy(char *dst, const char *src, size_t n) {
 #ifdef PR_USE_CTRLS
 
 /* need a SIGPIPE handler */
-static RETSIGTYPE sig_pipe(int sig) {
+static void sig_pipe(int sig) {
   signal(SIGPIPE, sig_pipe);
 }
 

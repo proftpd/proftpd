@@ -2,7 +2,7 @@
  * ProFTPD - FTP server daemon
  * Copyright (c) 1997, 1998 Public Flood Software
  * Copyright (c) 1999, 2000 MacGyver aka Habeeb J. Dihu <macgyver@tos.net>
- * Copyright (c) 2001-2023 The ProFTPD Project team
+ * Copyright (c) 2001-2025 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -77,13 +77,13 @@ static int stalled_timeout_cb(CALLBACK_FRAME) {
 /* This signal is raised if we get OOB data on the control connection, and
  * a data transfer is in progress.
  */
-static RETSIGTYPE data_urgent(int signo) {
+static void data_urgent(int signo) {
   if (session.sf_flags & SF_XFER) {
     pr_trace_msg(trace_channel, 5, "received SIGURG signal (signal %d), "
       "setting 'aborted' session flag", signo);
     session.sf_flags |= SF_ABORT;
 
-    if (nstrm) {
+    if (nstrm != NULL) {
       pr_netio_abort(nstrm);
     }
   }
