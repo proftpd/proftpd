@@ -9,7 +9,11 @@ ChangeLog files.
 1.3.9rc4
 ---------
 
+  + Fixed memory usage issue with SFTP channels.
+
   + Added Polish translation.
+
+  + Updated bundled libtool.m4 for better MacOSX support.
 
 
 1.3.9rc3
