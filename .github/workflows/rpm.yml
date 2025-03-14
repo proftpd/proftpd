@@ -4,7 +4,7 @@ on:
   push:
     branches:
       - master
-      - 1.3.8
+      - 1.3.9
     paths-ignore:
       - NEWS
       - RELEASE_NOTES
@@ -14,7 +14,7 @@ on:
   pull_request:
     branches:
       - master
-      - 1.3.8
+      - 1.3.9
     paths-ignore:
       - NEWS
       - RELEASE_NOTES
