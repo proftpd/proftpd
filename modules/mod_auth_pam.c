@@ -63,7 +63,7 @@
 #endif /* HAVE_PAM_PAM_APPL_H */
 
 module auth_pam_module;
-static authtable auth_pam_authtab[2];
+static authtable auth_pam_authtab[3];
 
 static pam_handle_t *	pamh			= NULL;
 static char *		pamconfig		= "ftp";
@@ -595,6 +595,294 @@ MODRET pam_auth(cmd_rec *cmd) {
   return PR_HANDLED(cmd);
 }
 
+MODRET pam_authz(cmd_rec *cmd) {
+  int res = 0, retval = PR_AUTH_ERROR, success = 0;
+  config_rec *c = NULL;
+  unsigned char *auth_pam = NULL, pam_authoritative = FALSE;
+  char ttyentry[32];
+
+  /* If we have been explicitly disabled, return now.  Otherwise,
+   * the module is considered enabled.
+   */
+  auth_pam = get_param_ptr(main_server->conf, "AuthPAM", FALSE);
+  if (auth_pam != NULL &&
+      *auth_pam == FALSE) {
+    return PR_DECLINED(cmd);
+  }
+
+  /* Figure out our default return style: whether or not PAM should allow
+   * other auth modules a shot at this user or not is controlled by adding
+   * '*' to a module name in the AuthOrder directive.  By default, auth
+   * modules are not authoritative, and allow other auth modules a chance at
+   * authenticating the user.  This is not the most secure configuration, but
+   * it allows things like AuthUserFile to work "out of the box".
+   */
+  if (auth_pam_authtab[0].auth_flags & PR_AUTH_FL_REQUIRED) {
+    pam_authoritative = TRUE;
+  }
+
+  /* Just in case... */
+  if (cmd->argc != 1) {
+    return pam_authoritative ? PR_ERROR(cmd) : PR_DECLINED(cmd);
+  }
+
+  /* Allocate our entries; we free these up at the end of the authentication. */
+  pam_user_len = strlen(cmd->argv[0]) + 1;
+  if (pam_user_len > (PAM_MAX_MSG_SIZE + 1)) {
+    pam_user_len = PAM_MAX_MSG_SIZE + 1;
+  }
+
+#ifdef MAXLOGNAME
+  /* Some platforms' PAM libraries do not handle login strings that
+   * exceed this length.
+   */
+  if (pam_user_len > MAXLOGNAME) {
+    pr_log_pri(PR_LOG_NOTICE,
+      "PAM(%s): Name exceeds maximum login length (%u)", (char *) cmd->argv[0],
+      MAXLOGNAME);
+    pr_trace_msg(trace_channel, 1,
+      "user name '%s' exceeds maximum login length %u, declining",
+      (char *) cmd->argv[0], MAXLOGNAME);
+    return PR_DECLINED(cmd);
+  }
+#endif
+  pam_user = malloc(pam_user_len);
+  if (pam_user == NULL) {
+    return pam_authoritative ? PR_ERROR(cmd) : PR_DECLINED(cmd);
+  }
+
+  sstrncpy(pam_user, cmd->argv[0], pam_user_len);
+
+  /* Check for which PAM config file to use.  Since we have many different
+   * potential servers, they may each require a separate type of PAM
+   * authentication.
+   */
+  c = find_config(main_server->conf, CONF_PARAM, "AuthPAMConfig", FALSE);
+  if (c != NULL) {
+    pamconfig = c->argv[0];
+    pr_trace_msg(trace_channel, 8, "using PAM service name '%s'", pamconfig);
+  }
+
+  /* Check for minor PAM configuration options such as use of PAM_TTY. */
+  c = find_config(main_server->conf, CONF_PARAM, "AuthPAMOptions", FALSE);
+  if (c != NULL) {
+    auth_pam_opts = *((unsigned long *) c->argv[0]);
+  }
+
+#ifdef SOLARIS2
+  /* For Solaris environments, the TTY environment will always be set,
+   * in order to workaround a bug (Solaris Bug ID 4250887) where
+   * pam_open_session() will crash unless both PAM_RHOST and PAM_TTY are
+   * set, and the PAM_TTY setting is at least greater than the length of
+   * the string "/dev/".
+   */
+  auth_pam_opts &= ~AUTH_PAM_OPT_NO_TTY;
+#endif /* SOLARIS2 */
+
+  /* Due to the different types of authentication used, such as shadow
+   * passwords, etc. we need root privs for this operation.
+   */
+  pr_signals_block();
+  PRIVS_ROOT
+
+  /* The order of calls into PAM should be as follows, according to Sun's
+   * documentation at http://www.sun.com/software/solaris/pam/:
+   *
+   * pam_start()
+   * pam_authenticate()
+   * pam_acct_mgmt()
+   * pam_open_session()
+   * pam_setcred()
+   */
+  pr_trace_msg(trace_channel, 17, "initializing PAM handle");
+  res = pam_start(pamconfig, pam_user, &pam_conv, &pamh);
+  if (res != PAM_SUCCESS) {
+    goto done;
+  }
+
+  pr_trace_msg(trace_channel, 9, "setting PAM_RUSER to '%s'", pam_user);
+  res = pam_set_item(pamh, PAM_RUSER, pam_user);
+  if (res != PAM_SUCCESS) {
+    pr_trace_msg(trace_channel, 1, "pam_set_item() error for PAM_RUSER: %s",
+      pam_strerror(pamh, res));
+  }
+
+  /* Set our host environment for PAM modules that check host information. */
+  if (session.c != NULL) {
+    pr_trace_msg(trace_channel, 9,
+      "setting PAM_RHOST to '%s'", session.c->remote_name);
+    res = pam_set_item(pamh, PAM_RHOST, session.c->remote_name);
+
+  } else {
+    res = pam_set_item(pamh, PAM_RHOST, "IHaveNoIdeaHowIGotHere");
+  }
+
+  if (res != PAM_SUCCESS) {
+    pr_trace_msg(trace_channel, 1, "pam_set_item() error for PAM_RHOST: %s",
+      pam_strerror(pamh, res));
+  }
+
+  if (!(auth_pam_opts & AUTH_PAM_OPT_NO_TTY)) {
+    memset(ttyentry, '\0', sizeof(ttyentry));
+    pr_snprintf(ttyentry, sizeof(ttyentry), "/dev/ftpd%02lu",
+      (unsigned long) getpid());
+    ttyentry[sizeof(ttyentry)-1] = '\0';
+
+    pr_trace_msg(trace_channel, 9, "setting PAM_TTY to '%s'", ttyentry);
+    res = pam_set_item(pamh, PAM_TTY, ttyentry);
+    if (res != PAM_SUCCESS) {
+      pr_trace_msg(trace_channel, 1, "pam_set_item() error for PAM_TTY: %s",
+        pam_strerror(pamh, res));
+    }
+  }
+
+  /* Authorize, and get any credentials as needed. */
+  res = pam_acct_mgmt(pamh, PAM_SILENT);
+  if (res != PAM_SUCCESS) {
+    switch (res) {
+#ifdef PAM_AUTHTOKEN_REQD
+      case PAM_AUTHTOKEN_REQD:
+        pr_trace_msg(trace_channel, 8,
+          "account mgmt error: PAM_AUTHTOKEN_REQD");
+        retval = PR_AUTH_AGEPWD;
+        break;
+#endif /* PAM_AUTHTOKEN_REQD */
+
+#ifdef PAM_NEW_AUTHTOKEN_REQD
+      case PAM_NEW_AUTHTOKEN_REQD:
+        pr_trace_msg(trace_channel, 8,
+          "account mgmt error: PAM_NEW_AUTHTOKEN_REQD");
+        retval = PR_AUTH_NEW_TOKEN_REQUIRED;
+        break;
+#endif /* PAM_NEW_AUTHTOKEN_REQD */
+
+      case PAM_ACCT_EXPIRED:
+        pr_trace_msg(trace_channel, 8, "account mgmt error: PAM_ACCT_EXPIRED");
+        retval = PR_AUTH_DISABLEDPWD;
+        break;
+
+#ifdef PAM_ACCT_DISABLED
+      case PAM_ACCT_DISABLED:
+        pr_trace_msg(trace_channel, 8, "account mgmt error: PAM_ACCT_DISABLED");
+        retval = PR_AUTH_DISABLEDPWD;
+        break;
+#endif /* PAM_ACCT_DISABLED */
+
+      case PAM_USER_UNKNOWN:
+        pr_trace_msg(trace_channel, 8, "account mgmt error: PAM_USER_UNKNOWN");
+        retval = PR_AUTH_NOPWD;
+        break;
+
+      default:
+        pr_trace_msg(trace_channel, 8, "account mgmt error: (unknown) [%d]",
+          res);
+        retval = PR_AUTH_BADPWD;
+        break;
+    }
+
+    pr_log_pri(PR_LOG_NOTICE, MOD_AUTH_PAM_VERSION
+      ": PAM(%s): %s", (char *) cmd->argv[0], pam_strerror(pamh, res));
+    goto done;
+  }
+
+  /* Open the session. */
+  pr_trace_msg(trace_channel, 17, "opening PAM session");
+  res = pam_open_session(pamh, PAM_SILENT);
+  if (res != PAM_SUCCESS) {
+    pr_trace_msg(trace_channel, 1,
+      "pam_open_session() failed: %s", pam_strerror(pamh, res));
+
+    switch (res) {
+      case PAM_SESSION_ERR:
+        retval = PR_AUTH_INIT_ERROR;
+        break;
+
+      default:
+        retval = PR_AUTH_DISABLEDPWD;
+        break;
+    }
+
+    pr_log_pri(PR_LOG_NOTICE, MOD_AUTH_PAM_VERSION
+      ": PAM(%s): %s", (char *) cmd->argv[0], pam_strerror(pamh, res));
+    goto done;
+  }
+
+  /* Finally, establish credentials. */
+#ifdef PAM_CRED_ESTABLISH
+  res = pam_setcred(pamh, PAM_CRED_ESTABLISH);
+#else
+  res = pam_setcred(pamh, PAM_ESTABLISH_CRED);
+#endif /* !PAM_CRED_ESTABLISH */
+
+  if (res != PAM_SUCCESS) {
+    switch (res) {
+#ifdef PAM_CRED_UNAVAIL
+      case PAM_CRED_UNAVAIL:
+        pr_trace_msg(trace_channel, 8, "credentials error: PAM_CRED_UNAVAIL");
+        retval = PR_AUTH_CRED_UNAVAIL;
+        break;
+#endif /* PAM_CRED_UNAVAIL */
+
+#ifdef PAM_CRED_ERR
+      case PAM_CRED_ERR:
+        pr_trace_msg(trace_channel, 8, "credentials error: PAM_CRED_ERR");
+        retval = PR_AUTH_CRED_ERROR;
+        break;
+#endif /* PAM_CRED_ERR */
+
+      case PAM_CRED_EXPIRED:
+        pr_trace_msg(trace_channel, 8, "credentials error: PAM_CRED_EXPIRED");
+        retval = PR_AUTH_AGEPWD;
+        break;
+
+      case PAM_USER_UNKNOWN:
+        pr_trace_msg(trace_channel, 8, "credentials error: PAM_USER_UNKNOWN");
+        retval = PR_AUTH_NOPWD;
+        break;
+
+      default:
+        pr_trace_msg(trace_channel, 8, "credentials error: (unknown) [%d]",
+          res);
+        retval = PR_AUTH_BADPWD;
+        break;
+    }
+
+    pr_log_pri(PR_LOG_NOTICE, MOD_AUTH_PAM_VERSION
+      ": PAM(%s): %s", (char *) cmd->argv[0], pam_strerror(pamh, res));
+    goto done;
+  }
+
+  success++;
+
+ done:
+  /* And we're done.  Clean up and relinquish our root privs.  */
+
+  if (pam_pass != NULL) {
+    pr_memscrub(pam_pass, pam_pass_len);
+    free(pam_pass);
+    pam_pass = NULL;
+    pam_pass_len = 0;
+  }
+
+  PRIVS_RELINQUISH
+  pr_signals_unblock();
+
+  if (!success) {
+    if (pam_user != NULL) {
+      memset(pam_user, '\0', pam_user_len);
+      free(pam_user);
+      pam_user = NULL;
+      pam_user_len = 0;
+    }
+
+    return pam_authoritative ? PR_ERROR_INT(cmd, retval) : PR_DECLINED(cmd);
+  }
+
+  session.auth_mech = "mod_auth_pam.c";
+  pr_event_register(&auth_pam_module, "core.exit", auth_pam_exit_ev, NULL);
+  return PR_HANDLED(cmd);
+}
+
 /* Configuration handlers
  */
 
@@ -674,6 +962,7 @@ static int auth_pam_sess_init(void) {
 
 static authtable auth_pam_authtab[] = {
   { 0, "auth", pam_auth },
+  { 0, "authorize", pam_authz },
   { 0, NULL, NULL }
 };
 
