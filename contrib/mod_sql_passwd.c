@@ -53,6 +53,7 @@
 # include <openssl/evp.h>
 # include <openssl/err.h>
 # include <openssl/objects.h>
+# include <openssl/sha.h>
 #endif
 
 /* Define if you have the LibreSSL library.  */
@@ -544,7 +545,8 @@ static modret_t *sql_passwd_auth(cmd_rec *cmd, const char *plaintext,
       prefix_len = sql_passwd_file_salt_len;
 
       pr_trace_msg(trace_channel, 9,
-        "prepending %lu bytes of file salt data", (unsigned long) prefix_len);
+        "prepending %lu %s of file salt data", (unsigned long) prefix_len,
+        prefix_len != 1 ? "bytes" : "byte");
 
     } else {
       unsigned int salt_hashlen = 0;
@@ -561,8 +563,9 @@ static modret_t *sql_passwd_auth(cmd_rec *cmd, const char *plaintext,
       }
 
       pr_trace_msg(trace_channel, 9,
-        "prepending %lu bytes of %s-hashed file salt data (%s)",
-        (unsigned long) prefix_len, digest, prefix);
+        "prepending %lu %s of %s-hashed file salt data (%s)",
+        (unsigned long) prefix_len, prefix_len != 1 ? "bytes" : "byte",
+        digest, prefix);
     }
   }
 
@@ -576,7 +579,8 @@ static modret_t *sql_passwd_auth(cmd_rec *cmd, const char *plaintext,
       prefix_len = sql_passwd_user_salt_len;
 
       pr_trace_msg(trace_channel, 9,
-        "prepending %lu bytes of user salt data", (unsigned long) prefix_len);
+        "prepending %lu %s of user salt data", (unsigned long) prefix_len,
+        prefix_len != 1 ? "bytes" : "byte");
 
     } else {
       unsigned int salt_hashlen = 0;
@@ -593,8 +597,9 @@ static modret_t *sql_passwd_auth(cmd_rec *cmd, const char *plaintext,
       }
 
       pr_trace_msg(trace_channel, 9,
-        "prepending %lu bytes of %s-hashed user salt data (%s)",
-        (unsigned long) prefix_len, digest, prefix);
+        "prepending %lu %s of %s-hashed user salt data (%s)",
+        (unsigned long) prefix_len, prefix_len != 1 ? "bytes" : "byte",
+        digest, prefix);
     }
   }
 
@@ -641,7 +646,8 @@ static modret_t *sql_passwd_auth(cmd_rec *cmd, const char *plaintext,
       suffix_len = sql_passwd_file_salt_len;
 
       pr_trace_msg(trace_channel, 9,
-        "appending %lu bytes of file salt data", (unsigned long) suffix_len);
+        "appending %lu %s of file salt data", (unsigned long) suffix_len,
+        suffix_len != 1 ? "bytes" : "byte");
 
     } else {
       unsigned int salt_hashlen = 0;
@@ -658,8 +664,8 @@ static modret_t *sql_passwd_auth(cmd_rec *cmd, const char *plaintext,
       }
 
       pr_trace_msg(trace_channel, 9,
-        "appending %lu bytes of %s-hashed file salt data",
-        (unsigned long) suffix_len, digest);
+        "appending %lu %s of %s-hashed file salt data",
+        (unsigned long) suffix_len, suffix_len != 1 ? "bytes" : "byte", digest);
     }
   }
 
@@ -672,7 +678,8 @@ static modret_t *sql_passwd_auth(cmd_rec *cmd, const char *plaintext,
       suffix_len = sql_passwd_user_salt_len;
 
       pr_trace_msg(trace_channel, 9,
-        "appending %lu bytes of user salt data", (unsigned long) suffix_len);
+        "appending %lu %s of user salt data", (unsigned long) suffix_len,
+        suffix_len != 1 ? "bytes" : "byte");
 
     } else {
       unsigned int salt_hashlen = 0;
@@ -689,8 +696,8 @@ static modret_t *sql_passwd_auth(cmd_rec *cmd, const char *plaintext,
       }
 
       pr_trace_msg(trace_channel, 9,
-        "appending %lu bytes of %s-hashed user salt data",
-        (unsigned long) suffix_len, digest);
+        "appending %lu %s of %s-hashed user salt data",
+        (unsigned long) suffix_len, suffix_len != 1 ? "bytes" : "byte", digest);
     }
   }
 
@@ -799,6 +806,107 @@ static modret_t *sql_passwd_sha256(cmd_rec *cmd, const char *plaintext,
 static modret_t *sql_passwd_sha512(cmd_rec *cmd, const char *plaintext,
     const char *ciphertext) {
   return sql_passwd_auth(cmd, plaintext, ciphertext, "sha512");
+}
+
+/* The SSHA implementation is sufficiently different from the rest of the
+ * functionality in this module, in terms of salts, rounds, etc that we
+ * deliberately do NOT reuse the sql_passwd_auth function.
+ */
+static modret_t *sql_passwd_ssha(cmd_rec *cmd, const char *plaintext,
+    const char *ciphertext) {
+  const EVP_MD *md;
+  unsigned char *hash = NULL, *data = NULL, *decoded_data = NULL, *salt = NULL;
+  size_t data_len = 0, decoded_datalen = 0, salt_len = 0;
+  unsigned int hash_len = 0;
+
+  /* Temporary copy of the ciphertext string */
+  char *copytext;
+  const char *encodedtext;
+
+  if (sql_passwd_engine == FALSE) {
+    pr_log_pri(PR_LOG_INFO, MOD_SQL_PASSWD_VERSION
+      ": SQLPasswordEngine disabled; unable to handle SSHA SQLAuthType");
+    sql_log(DEBUG_WARN, MOD_SQL_PASSWD_VERSION
+      ": SQLPasswordEngine disabled; unable to handle SSHA SQLAuthType");
+    return PR_ERROR_INT(cmd, PR_AUTH_ERROR);
+  }
+
+  /* Verify that the provided ciphertext has the required "{SSHA}" prefix. */
+  if (strncmp(ciphertext, "{SSHA}", 6) != 0) {
+    sql_log(DEBUG_WARN, MOD_SQL_PASSWD_VERSION
+      ": local text missing required '{SSHA}' prefix, ignoring");
+    return PR_ERROR_INT(cmd, PR_AUTH_ERROR);
+  }
+
+  md = EVP_get_digestbyname("sha1");
+  if (md == NULL) {
+    sql_log(DEBUG_WARN, MOD_SQL_PASSWD_VERSION
+      ": no such digest 'sha1' supported");
+    return PR_ERROR_INT(cmd, PR_AUTH_BADPWD);
+  }
+
+  data = (unsigned char *) plaintext;
+  data_len = strlen(plaintext);
+
+  /* We need a copy of the ciphertext; skip past the '{SSHA}' prefix. */
+  copytext = pstrdup(cmd->tmp_pool, ciphertext + 6);
+
+  /* In the SSHA implementation, the cipher text is:
+   *
+   *  "{SSHA}" + base64(SHA1(password) + salt)
+   *
+   * Thus to obtain the salt, we base64-decode the cipher text, advance past
+   * 20 bytes of SHA1, then the remaining text are the salt bytes.
+   */
+
+  decoded_data = sql_passwd_decode(cmd->tmp_pool, SQL_PASSWD_ENC_USE_BASE64,
+    copytext, strlen(copytext), &decoded_datalen);
+  if (decoded_data == NULL) {
+    sql_log(DEBUG_WARN, MOD_SQL_PASSWD_VERSION
+      ": unable to decode password hash: %s", strerror(errno));
+    return PR_ERROR_INT(cmd, PR_AUTH_BADPWD);
+  }
+
+  if (decoded_datalen < SHA_DIGEST_LENGTH) {
+    sql_log(DEBUG_WARN, MOD_SQL_PASSWD_VERSION
+      ": improperly formatted password hash (expected %lu or more bytes, "
+      "got %lu)", (unsigned long) SHA_DIGEST_LENGTH,
+      (unsigned long) decoded_datalen);
+    return PR_ERROR_INT(cmd, PR_AUTH_BADPWD);
+  }
+
+  salt = decoded_data + SHA_DIGEST_LENGTH;
+  salt_len = decoded_datalen - SHA_DIGEST_LENGTH;
+  pr_trace_msg(trace_channel, 9,
+    "appending %lu %s of salt data", (unsigned long) salt_len,
+    salt_len != 1 ? "bytes" : "byte");
+
+  hash = sql_passwd_hash(cmd->tmp_pool, md, data, data_len, NULL, 0, salt,
+    salt_len, &hash_len);
+  if (hash == NULL) {
+    sql_log(DEBUG_WARN, MOD_SQL_PASSWD_VERSION
+      ": unable to obtain password hash: %s", strerror(errno));
+    return PR_ERROR_INT(cmd, PR_AUTH_BADPWD);
+  }
+
+  /* Append the salt */
+  hash = (unsigned char *) pstrcat(cmd->tmp_pool, (char *) hash, (char *) salt,
+    NULL);
+  hash_len = hash_len + salt_len;
+
+  encodedtext = sql_passwd_encode(cmd->tmp_pool, SQL_PASSWD_ENC_USE_BASE64,
+    hash, hash_len);
+
+  if (timingsafe_bcmp(encodedtext, copytext, strlen(copytext)) == 0) {
+    return PR_HANDLED(cmd);
+  }
+
+  pr_trace_msg(trace_channel, 9, "expected '{SSHA}%s', got '{SSHA}%s'",
+    copytext, encodedtext);
+  pr_log_debug(DEBUG9, MOD_SQL_PASSWD_VERSION ": expected '%s', got '%s'",
+    copytext, encodedtext);
+
+  return PR_ERROR_INT(cmd, PR_AUTH_BADPWD);
 }
 
 static modret_t *sql_passwd_pbkdf2(cmd_rec *cmd, const char *plaintext,
@@ -1122,6 +1230,7 @@ static void sql_passwd_mod_unload_ev(const void *event_data, void *user_data) {
     sql_unregister_authtype("sha1");
     sql_unregister_authtype("sha256");
     sql_unregister_authtype("sha512");
+    sql_unregister_authtype("ssha");
     sql_unregister_authtype("pbkdf2");
 # if defined(PR_USE_SODIUM)
     sql_unregister_authtype("argon2");
@@ -1802,6 +1911,15 @@ static int sql_passwd_init(void) {
       ": registered 'sha512' SQLAuthType handler");
   }
 
+  if (sql_register_authtype("ssha", sql_passwd_ssha) < 0) {
+    pr_log_pri(PR_LOG_WARNING, MOD_SQL_PASSWD_VERSION
+      ": unable to register 'ssha' SQLAuthType handler: %s", strerror(errno));
+
+  } else {
+    pr_log_debug(DEBUG6, MOD_SQL_PASSWD_VERSION
+      ": registered 'ssha' SQLAuthType handler");
+  }
+
   if (sql_register_authtype("pbkdf2", sql_passwd_pbkdf2) < 0) {
     pr_log_pri(PR_LOG_WARNING, MOD_SQL_PASSWD_VERSION
       ": unable to register 'pbkdf2' SQLAuthType handler: %s", strerror(errno));
@@ -1995,13 +2113,13 @@ static int sql_passwd_sess_init(void) {
     }
   }
 
-#ifdef PR_USE_SODIUM
+#if defined(PR_USE_SODIUM)
   c = find_config(main_server->conf, CONF_PARAM, "SQLPasswordScrypt", FALSE);
   if (c != NULL) {
     sql_passwd_scrypt_hash_len = *((unsigned int *) c->argv[0]);
   }
 
-# ifdef USE_SODIUM_ARGON2
+# if defined(USE_SODIUM_ARGON2)
   c = find_config(main_server->conf, CONF_PARAM, "SQLPasswordArgon2", FALSE);
   if (c != NULL) {
     sql_passwd_argon2_hash_len = *((unsigned int *) c->argv[0]);
