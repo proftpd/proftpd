@@ -15,6 +15,11 @@
   where `N' is the issue number.
 -----------------------------------------------------------------------------
 
+1.3.10rc1
+--------------------------------
+- Issue 558 - Support for libsodium-hashed passwords from SQL databases,
+  including Argon2.
+
 1.3.9 - Released 14-Mar-2025
 --------------------------------
 - Issue 1855 - Use of HideNoAccess for SFTP sessions can lead to segfault
