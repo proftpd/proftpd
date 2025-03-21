@@ -189,9 +189,6 @@
 /* Define if the listen(2) system call accepts backlog value of -1. */
 #undef LISTEN_NEGATIVE_BACKLOG
 
-/* Define as the return type of signal handlers (int or void).  */
-#undef RETSIGTYPE
-
 /* Define if the `setpgrp' function takes no argument.  This is the default
  * POSIX signature, so assume that the host system uses the POSIX
  * signature.  This avoids cross-compilation errors; the Autoconf macro
