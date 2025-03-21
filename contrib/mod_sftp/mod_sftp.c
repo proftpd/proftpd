@@ -2888,7 +2888,37 @@ static int sftp_sess_init(void) {
        * string.
        */
       if (c->argc > 1) {
-        sftp_server_version = pstrcat(sftp_pool, SFTP_ID_PREFIX, c->argv[1],
+        const char *server_ident;
+
+        server_ident = c->argv[1];
+
+        /* Make sure we honor any variables in the configured custom text,
+         * per Issue #1890.
+         */
+        if (strstr(server_ident, "%L") != NULL) {
+          const char *server_address;
+
+          server_address = pr_netaddr_get_ipstr(session.c->local_addr);
+          server_ident = sreplace(sftp_pool, server_ident, "%L",
+            server_address, NULL);
+        }
+
+        if (strstr(server_ident, "%V") != NULL) {
+          server_ident = sreplace(sftp_pool, server_ident, "%V",
+            main_server->ServerFQDN, NULL);
+        }
+
+        if (strstr(server_ident, "%v") != NULL) {
+          server_ident = sreplace(sftp_pool, server_ident, "%v",
+            main_server->ServerName, NULL);
+        }
+
+        if (strstr(server_ident, "%{version}") != NULL) {
+          server_ident = sreplace(sftp_pool, server_ident, "%{version}",
+            PROFTPD_VERSION_TEXT, NULL);
+        }
+
+        sftp_server_version = pstrcat(sftp_pool, SFTP_ID_PREFIX, server_ident,
           NULL);
         sftp_ssh2_packet_set_version(sftp_server_version);
       }
