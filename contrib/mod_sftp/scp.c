@@ -1,6 +1,6 @@
 /*
  * ProFTPD - mod_sftp SCP
- * Copyright (c) 2008-2023 TJ Saunders
+ * Copyright (c) 2008-2025 TJ Saunders
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -2458,13 +2458,36 @@ int sftp_scp_handle_packet(pool *p, void *ssh2, uint32_t channel_id,
   return 0;
 }
 
+static char *scp_canonicalize_target(pool *p, char *target) {
+  size_t target_len;
+
+  target_len = strlen(target);
+
+  /* Remove any enclosing shell quotations, e.g. single and double quotation
+   * marks.  Some SCP clients (i.e. newer libssh2) will quote the paths,
+   * assuming that the handling server (us) uses a shell to handle the
+   * command.  Sigh.
+   */
+
+  if ((target[0] == '\'' &&
+       target[target_len-1] == '\'') ||
+      (target[0] == '"' &&
+       target[target_len-1] == '"')) {
+    target[target_len-1] = '\0';
+    return pstrdup(p, target + 1);
+  }
+
+  return target;
+}
+
 int sftp_scp_set_params(pool *p, uint32_t channel_id, array_header *req) {
   register unsigned int i;
   int optc, use_glob = TRUE;
-  char **reqargv;
+  char **reqargv, *target_path = NULL;
   const char *opts = "dfprtv";
   config_rec *c;
   struct scp_paths *paths;
+  struct scp_path *sp;
 
   if (!(sftp_services & SFTP_SERVICE_FL_SCP)) {
     (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
@@ -2487,13 +2510,13 @@ int sftp_scp_set_params(pool *p, uint32_t channel_id, array_header *req) {
 
   reqargv = (char **) req->elts;
   for (i = 0; i < req->nelts; i++) {
-    if (reqargv[i]) {
+    if (reqargv[i] != NULL) {
       pr_trace_msg(trace_channel, 5, "reqargv[%u] = '%s'", i, reqargv[i]);
     }
   }
 
   c = find_config(main_server->conf, CONF_PARAM, "UseGlobbing", FALSE);
-  if (c) {
+  if (c != NULL) {
     use_glob = *((unsigned char *) c->argv[0]);
   }
 
@@ -2546,128 +2569,130 @@ int sftp_scp_set_params(pool *p, uint32_t channel_id, array_header *req) {
     return -1;
   }
 
-  /* Make a copy of the remaining paths, for later handling. */
+  /* Make a copy of the remaining paths, for later handling.
+   *
+   * Normally there's only one path, but we might be handling a glob which
+   * matches multiple paths.
+   */
   paths->paths = make_array(paths->pool, 1, sizeof(struct scp_path *));
   paths->path_idx = 0;
 
+  /* First concatenate any remaining command-line arguments, using spaces,
+   * in order to handle paths that contain spaces; see Issue #1886.
+   */
   for (i = optind; i < req->nelts; i++) {
     pr_signals_handle();
 
-    if (reqargv[i]) {
-      struct scp_path *sp;
-      size_t pathlen;
-      char *glob_path;
+    if (reqargv[i] != NULL) {
+      size_t reqarg_len;
 
-      if (use_glob &&
-          (scp_opts & SFTP_SCP_OPT_ISSRC) &&
-          strpbrk(reqargv[i], "{[*?") != NULL) {
-        int res, xerrno;
-        glob_t gl;
+      /* Note that we might be dealing with an empty-length argument, which
+       * we get from pr_str_get_word() parsing the client-provided string,
+       * which might have spaces.  Watch for them.
+       */
 
-        /* Whee, glob characters.  Need to expand the pattern to the
-         * list of matching files, just as the shell would do.
-         */
+      reqarg_len = strlen(reqargv[i]);
+      if (reqarg_len == 0) {
+        continue;
+      }
 
-        memset(&gl, 0, sizeof(gl));
-
-        glob_path = pstrdup(paths->pool, reqargv[i]);
-        pathlen = strlen(glob_path);
-
-        /* Remove any enclosing shell quotations, e.g. single and double
-         * quotation marks.  Some SCP clients (i.e. newer libssh2) will
-         * quote the paths, assuming that the handling server (us) uses
-         * a shell to handle the command.  Sigh.
-         */
-        if ((glob_path[0] == '\'' &&
-             glob_path[pathlen-1] == '\'') ||
-            (glob_path[0] == '"' &&
-             glob_path[pathlen-1] == '"')) {
-          glob_path[pathlen-1] = '\0';
-          glob_path = (glob_path + 1);
-        }
-
-        res = pr_fs_glob(glob_path, GLOB_NOSORT|GLOB_BRACE, NULL, &gl);
-        switch (res) {
-          case 0: {
-            register unsigned int j;
-
-            for (j = 0; j < gl.gl_pathc; j++) {
-              pr_signals_handle();
-
-              sp = pcalloc(paths->pool, sizeof(struct scp_path));
-              sp->path = pstrdup(paths->pool, gl.gl_pathv[j]);
-              pathlen = strlen(sp->path);
-
-              /* Trim any trailing path separators.  It's important. */
-              while (pathlen > 1 &&
-                     sp->path[pathlen-1] == '/') {
-                pr_signals_handle();
-                sp->path[--pathlen] = '\0';
-              }
-
-              sp->orig_path = pstrdup(paths->pool, sp->path);
-
-              if (pathlen > 0) {
-                *((struct scp_path **) push_array(paths->paths)) = sp;
-              }
-            }
-
-            break;
-          }
-
-          case GLOB_NOSPACE:
-            xerrno = errno;
-            pr_trace_msg(trace_channel, 1, "error globbing '%s': Not "
-              "enough memory (%s)", reqargv[i], strerror(xerrno));
-            write_confirm(p, channel_id, 1, pstrcat(p, reqargv[i], ": ",
-              strerror(xerrno), NULL));
-            errno = xerrno;
-            return 0;
-
-          case GLOB_NOMATCH:
-            xerrno = ENOENT;
-            pr_trace_msg(trace_channel, 1, "error globbing '%s': No "
-              "matches found (%s)", reqargv[i], strerror(xerrno));
-            write_confirm(p, channel_id, 1, pstrcat(p, reqargv[i], ": ",
-              strerror(xerrno), NULL));
-            errno = xerrno;
-            return 0;
-        }
-
-        pr_fs_globfree(&gl);
+      if (target_path != NULL) {
+        target_path = pstrcat(p, target_path, " ", reqargv[i], NULL);
 
       } else {
-        sp = pcalloc(paths->pool, sizeof(struct scp_path));
-        sp->path = pstrdup(paths->pool, reqargv[i]);
-        pathlen = strlen(sp->path);
-
-        /* Remove any enclosing shell quotations, e.g. single and double
-         * quotation marks.  Some SCP clients (i.e. newer libssh2) will
-         * quote the paths, assuming that the handling server (us) uses
-         * a shell to handle the command.  Sigh.
-         */
-        if ((sp->path[0] == '\'' &&
-             sp->path[pathlen-1] == '\'') ||
-            (sp->path[0] == '"' &&
-             sp->path[pathlen-1] == '"')) {
-          sp->path[pathlen-1] = '\0';
-          sp->path = (sp->path + 1);
-          pathlen -= 2;
-        }
-
-        /* Trim any trailing path separators.  It's important. */
-        while (pathlen > 1 &&
-               sp->path[pathlen-1] == '/') {
-          pr_signals_handle();
-          sp->path[--pathlen] = '\0';
-        }
-
-        sp->orig_path = pstrdup(paths->pool, sp->path);
-
-        if (pathlen > 0) {
-          *((struct scp_path **) push_array(paths->paths)) = sp;
-        }
+        target_path = pstrdup(p, reqargv[i]);
       }
+    }
+  }
+
+  target_path = scp_canonicalize_target(p, target_path);
+
+  if (use_glob == TRUE &&
+      (scp_opts & SFTP_SCP_OPT_ISSRC) &&
+      strpbrk(target_path, "{[*?") != NULL) {
+    int res, xerrno;
+    char *glob_path;
+    size_t path_len;
+    glob_t gl;
+
+    /* Whee, glob characters.  Need to expand the pattern to the
+     * list of matching files, just as the shell would do.
+     */
+
+    memset(&gl, 0, sizeof(gl));
+
+    glob_path = pstrdup(paths->pool, target_path);
+    path_len = strlen(glob_path);
+
+    res = pr_fs_glob(glob_path, GLOB_NOSORT|GLOB_BRACE, NULL, &gl);
+    switch (res) {
+      case 0: {
+        register unsigned int j;
+
+        for (j = 0; j < gl.gl_pathc; j++) {
+          pr_signals_handle();
+
+          sp = pcalloc(paths->pool, sizeof(struct scp_path));
+          sp->path = pstrdup(paths->pool, gl.gl_pathv[j]);
+          path_len = strlen(sp->path);
+
+          /* Trim any trailing path separators.  It's important. */
+          while (path_len > 1 &&
+                 sp->path[path_len-1] == '/') {
+            pr_signals_handle();
+            sp->path[--path_len] = '\0';
+          }
+
+          sp->orig_path = pstrdup(paths->pool, sp->path);
+
+          if (path_len > 0) {
+            *((struct scp_path **) push_array(paths->paths)) = sp;
+          }
+        }
+
+        break;
+      }
+
+      case GLOB_NOSPACE:
+        xerrno = errno;
+        pr_trace_msg(trace_channel, 1, "error globbing '%s': Not "
+          "enough memory (%s)", reqargv[i], strerror(xerrno));
+        write_confirm(p, channel_id, 1, pstrcat(p, target_path, ": ",
+          strerror(xerrno), NULL));
+        errno = xerrno;
+        return 0;
+
+      case GLOB_NOMATCH:
+        xerrno = ENOENT;
+        pr_trace_msg(trace_channel, 1, "error globbing '%s': No "
+          "matches found (%s)", reqargv[i], strerror(xerrno));
+        write_confirm(p, channel_id, 1, pstrcat(p, target_path, ": ",
+          strerror(xerrno), NULL));
+        errno = xerrno;
+        return 0;
+    }
+
+    pr_fs_globfree(&gl);
+
+  } else {
+    size_t path_len;
+
+    sp = pcalloc(paths->pool, sizeof(struct scp_path));
+    sp->path = pstrdup(paths->pool, target_path);
+
+    path_len = strlen(sp->path);
+
+    /* Trim any trailing path separators.  It's important. */
+    while (path_len > 1 &&
+           sp->path[path_len-1] == '/') {
+      pr_signals_handle();
+      sp->path[--path_len] = '\0';
+    }
+
+    sp->orig_path = pstrdup(paths->pool, sp->path);
+
+    if (path_len > 0) {
+      *((struct scp_path **) push_array(paths->paths)) = sp;
     }
   }
 
@@ -2687,8 +2712,8 @@ int sftp_scp_set_params(pool *p, uint32_t channel_id, array_header *req) {
     struct scp_path *sp;
 
     sp = ((struct scp_path **) paths->paths->elts)[i];
-    if (sp) {
-      pr_trace_msg(trace_channel, 5, "scp_path[%u] = '%s'", i, sp->path);
+    if (sp != NULL) {
+      pr_trace_msg(trace_channel, 5, "scp path[%u] = '%s'", i, sp->path);
     }
   }
 
