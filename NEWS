@@ -22,6 +22,7 @@
 - Issue 1884 - Support for SSHA ("salted SHA-1") passwords from SQL databases.
 - Issue 1890 - Variables in custom ServerIdent text not rendering in SSH banner.
 - Issue 1886 - SCP transfers fail for files with spaces in their names.
+- Issue 1898 - LDAPDefaultGID ignored since 1.3.9.
 
 1.3.9 - Released 14-Mar-2025
 --------------------------------
