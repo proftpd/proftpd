@@ -23,7 +23,7 @@
 
 #include "mod_wrap2.h"
 
-#ifdef WRAP2_USE_NIS
+#if defined(WRAP2_USE_NIS)
 #include <rpc/rpc.h>
 #include <rpcsvc/ypclnt.h>
 #endif /* WRAP2_USE_NIS */
@@ -522,7 +522,7 @@ static unsigned char wrap2_match_host(char *tok, wrap2_host_t *host) {
    */
 
   if (tok[0] == '@') {
-#ifdef WRAP2_USE_NIS
+#if defined(WRAP2_USE_NIS)
     /* netgroup: look it up. */
     static char *mydomain = NULL;
 
@@ -533,7 +533,7 @@ static unsigned char wrap2_match_host(char *tok, wrap2_host_t *host) {
 #else
     wrap2_log("warning: '%s': NIS support is not enabled", tok);
     return FALSE;
-#endif
+#endif /* WRAP2_USE_NIS */
 
   } else if (strcasecmp(tok, "ALL") == 0) {
     /* Matches everything */
@@ -907,7 +907,7 @@ static unsigned char wrap2_match_list(array_header *list, wrap2_conn_t *conn,
   return FALSE;
 }
 
-#ifdef WRAP2_USE_OPTIONS
+#if defined(WRAP2_USE_OPTIONS)
 
 #define WRAP2_WHITESPACE		" \t\r\n"
 
@@ -1013,7 +1013,8 @@ static int wrap2_opt_nice(char *val) {
   if (val != 0) {
     niceness = (int) strtol(val, &tmp, 10);
 
-    if (niceness < 0 || (tmp && *tmp)) {
+    if (niceness < 0 ||
+        (tmp && *tmp)) {
       wrap2_log("bad nice value: '%s'", val);
       return 0;
     }
@@ -1075,7 +1076,7 @@ static int wrap2_handle_opts(array_header *options, wrap2_conn_t *conn) {
     /* Separate the option into name and value parts. For backwards
      * compatibility we ignore exactly one '=' between name and value.
      */
-    curropt = wrap2_opt_trim_string(curr_opt);
+    curr_opt = wrap2_opt_trim_string(curr_opt);
 
     if (*(value = curr_opt + strcspn(curr_opt, "=" WRAP2_WHITESPACE))) {
       if (*value != '=') {
@@ -1089,8 +1090,9 @@ static int wrap2_handle_opts(array_header *options, wrap2_conn_t *conn) {
       }
     }
 
-    if (*value == '\0')
+    if (*value == '\0') {
       value = NULL;
+    }
 
     key = curr_opt;
 
@@ -1113,17 +1115,20 @@ static int wrap2_handle_opts(array_header *options, wrap2_conn_t *conn) {
       continue;
     }
 
-    if (!value && WRAP2_OPT_NEEDS_VAL(opt)) {
+    if (value == NULL &&
+        WRAP2_OPT_NEEDS_VAL(opt)) {
       wrap2_log("option '%s' requires value", key);
       continue;
     }
 
-    if (value && !WRAP2_OPT_ALLOWS_VAL(opt)) {
+    if (value != NULL &&
+        !WRAP2_OPT_ALLOWS_VAL(opt)) {
       wrap2_log("option '%s' requires no value", key);
       continue;
     }
 
-    if (next_opt && WRAP2_OPT_NEEDS_LAST(opt)) {
+    if (next_opt != NULL &&
+        WRAP2_OPT_NEEDS_LAST(opt)) {
       wrap2_log("option '%s' must be the last option in the list", key);
       continue;
     }
@@ -1198,7 +1203,7 @@ static int wrap2_match_table(wrap2_table_t *tab, wrap2_conn_t *conn) {
     return 0;
   }
 
-#ifdef WRAP2_USE_OPTIONS
+#if defined(WRAP2_USE_OPTIONS)
   res = wrap2_handle_opts(options_list, conn);
   if (res == WRAP2_OPT_ALLOW) {
     return WRAP2_TAB_ALLOW;
@@ -1207,7 +1212,7 @@ static int wrap2_match_table(wrap2_table_t *tab, wrap2_conn_t *conn) {
   if (res == WRAP2_OPT_DENY) {
     return WRAP2_TAB_DENY;
   }
-#endif
+#endif /* WRAP2_USE_OPTIONS */
 
   return WRAP2_TAB_MATCH;
 }
