@@ -1,6 +1,6 @@
 /*
  * ProFTPD: mod_deflate -- a module for supporting on-the-fly compression
- * Copyright (c) 2004-2024 TJ Saunders
+ * Copyright (c) 2004-2025 TJ Saunders
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -350,7 +350,6 @@ static int deflate_netio_read_cb(pr_netio_stream_t *nstrm, char *buf,
 
   if (nstrm->strm_type == PR_NETIO_STRM_DATA) {
     int datalen = 0, nread = 0, res, xerrno;
-    size_t copylen = 0;
     z_stream *zstrm;
 
     zstrm = (z_stream *) pr_table_get(nstrm->notes, DEFLATE_NETIO_NOTE, NULL);
@@ -430,35 +429,38 @@ static int deflate_netio_read_cb(pr_netio_stream_t *nstrm, char *buf,
     /* If we reach this point, then the deflate_zbuf buffer is empty of
      * uncompressed data.  We might have some compressed data left over from
      * the previous inflate() call that we need to process
-     * (i.e. zstrm->avail_in > 0), though.
+     * (i.e. zstrm->avail_in > 0), though; if so, process that until
+     * zstrm->avail_in = 0 BEFORE reading any more data from the network.
      *
-     * Try to read more deta in from the network.  If we get no data, AND
-     * zstrm->avail_in is zero, then we've reached EOF.  Otherwise, add the
-     * new data to the inflator, and see if we can make some progress.
+     * After that, try to read more deta in from the network.  If we get no
+     * data, AND zstrm->avail_in is zero, then we've reached EOF.  Otherwise,
+     * add the new data to the inflator, and see if we can make some progress.
      */
 
-    datalen = deflate_rbufsz - deflate_rbuflen;
+    if (zstrm->avail_in == 0) {
+      /* We're ready for more data from the network. */
+      datalen = deflate_rbufsz - deflate_rbuflen;
 
-    if (deflate_next_netio_read != NULL) {
-      nread = (deflate_next_netio_read)(nstrm, (char *) deflate_rbuf, datalen);
+      if (deflate_next_netio_read != NULL) {
+        nread = (deflate_next_netio_read)(nstrm, (char *) deflate_rbuf,
+          datalen);
 
-    } else {
-      /* Read in some data from the stream's fd. */
-      nread = read(nstrm->strm_fd, deflate_rbuf, datalen);
-    }
+      } else {
+        /* Read in some data from the stream's fd. */
+        nread = read(nstrm->strm_fd, deflate_rbuf, datalen);
+      }
 
-    if (nread < 0) {
-      xerrno = errno;
+      if (nread < 0) {
+        xerrno = errno;
 
-      (void) pr_log_writefile(deflate_logfd, MOD_DEFLATE_VERSION,
-        "error reading from socket %d: %s", nstrm->strm_fd, strerror(xerrno));
+        (void) pr_log_writefile(deflate_logfd, MOD_DEFLATE_VERSION,
+          "error reading from socket %d: %s", nstrm->strm_fd, strerror(xerrno));
 
-      errno = xerrno;
-      return -1;
-    }
+        errno = xerrno;
+        return -1;
+      }
 
-    if (nread == 0) {
-      if (zstrm->avail_in == 0) {
+      if (nread == 0) {
         /* EOF.  We know we can return zero here because the deflate_zbuf
          * is empty (see above comment), and we haven't read any more data
          * in from the network.
@@ -467,31 +469,24 @@ static int deflate_netio_read_cb(pr_netio_stream_t *nstrm, char *buf,
           "read: read EOF from client, returning 0");
         return 0;
       }
-    }
 
-    pr_trace_msg(trace_channel, 9,
-      "read: read %d bytes of compressed data from client", nread);
-
-    /* Manually adjust the "raw" bytes in counter, so that it will
-     * be accurate for %I logging.
-     */
-    session.total_raw_in += nread;
-
-    if (zstrm->avail_in > 0) {
       pr_trace_msg(trace_channel, 9,
-        "read: processing %d bytes of leftover compressed data from client, "
-        "plus %d additional new bytes from client", zstrm->avail_in, nread);
+        "read: read %d bytes of compressed data from client", nread);
+
+      /* Manually adjust the "raw" bytes in counter, so that it will
+       * be accurate for %I logging.
+       */
+      session.total_raw_in += nread;
+
+      datalen = nread;
+      zstrm->next_in = deflate_rbuf;
+      zstrm->avail_in = datalen;
 
     } else {
-      pr_trace_msg(trace_channel, 9, "read: processing %d bytes from client",
-        nread);
+      pr_trace_msg(trace_channel, 9,
+        "read: processing %d bytes of leftover compressed data from client",
+        zstrm->avail_in);
     }
-
-    datalen = nread;
-    zstrm->next_in = deflate_rbuf;
-    zstrm->avail_in += datalen;
-
-    copylen = 0;
 
     zstrm->next_out = deflate_zbuf;
     zstrm->avail_out = deflate_zbufsz;
@@ -513,30 +508,6 @@ static int deflate_netio_read_cb(pr_netio_stream_t *nstrm, char *buf,
     switch (deflate_zerrno) {
       case Z_OK:
       case Z_STREAM_END:
-        copylen = deflate_zbufsz - zstrm->avail_out;
-
-        /* Allocate more space for the data if necessary. */
-        if ((deflate_zbuflen + copylen) > deflate_zbufsz) {
-          size_t new_bufsz;
-          Byte *tmp;
-
-          new_bufsz = deflate_zbufsz;
-          while ((deflate_zbuflen + copylen) > new_bufsz) {
-            pr_signals_handle();
-            new_bufsz *= 2;
-          }
-
-          pr_trace_msg(trace_channel, 9,
-            "read: allocated new deflate buffer (size %lu)",
-            (unsigned long) new_bufsz);
-
-          tmp = palloc(session.pool, new_bufsz);
-          memcpy(tmp, deflate_zbuf, deflate_zbuflen);
-
-          deflate_zbuf_ptr = deflate_zbuf = tmp;
-          deflate_zbufsz = new_bufsz;
-        }
-
         break;
 
       default:
