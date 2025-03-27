@@ -348,7 +348,7 @@ jobs:
         env:
           CC: ${{ matrix.compiler }}
         run: |
-          ./configure LIBS="-lodbc -lm -lsubunit -lrt -pthread" --enable-devel=coverage:fortify --enable-ctrls --enable-facl --enable-memcache --enable-nls --enable-pcre2 --enable-redis --enable-tests --with-modules="${{ env.PROFTPD_MODULES }}"
+          ./configure LIBS="-lodbc -lm -lsubunit -lrt -pthread" --enable-devel=coverage:fortify --enable-ctrls --enable-facl --enable-memcache --enable-nls --enable-pcre2 --enable-redis --enable-tests --enable-wrapper-options --with-modules="${{ env.PROFTPD_MODULES }}"
           make
 
       - name: Run unit tests
@@ -381,7 +381,7 @@ jobs:
           CC: ${{ matrix.compiler }}
         run: |
           make clean
-          ./configure LIBS="-lodbc" --enable-ctrls --enable-facl --enable-memcache --enable-nls --enable-pcre2 --enable-redis --with-modules="${{ env.PROFTPD_MODULES }}"
+          ./configure LIBS="-lodbc" --enable-ctrls --enable-facl --enable-memcache --enable-nls --enable-pcre2 --enable-redis --enable-wrapper-options --with-modules="${{ env.PROFTPD_MODULES }}"
           make
           make install
 
@@ -417,7 +417,7 @@ jobs:
           CC: ${{ matrix.compiler }}
         run: |
           make clean
-          ./configure LIBS="-lodbc -lm -lsubunit -lrt -pthread" --enable-devel=fortify --enable-ctrls --enable-dso --enable-facl --enable-memcache --enable-nls --enable-pcre2 --enable-tests --with-shared="${{ env.PROFTPD_MODULES }}"
+          ./configure LIBS="-lodbc -lm -lsubunit -lrt -pthread" --enable-devel=fortify --enable-ctrls --enable-dso --enable-facl --enable-memcache --enable-nls --enable-pcre2 --enable-tests --enable-wrapper-options --with-shared="${{ env.PROFTPD_MODULES }}"
           make
 
       - name: Install with shared modules
@@ -440,7 +440,7 @@ jobs:
         if: ${{ matrix.compiler == 'clang' && matrix.container == 'ubuntu:22.04' }}
         run: |
           make clean
-          ./configure LIBS="-lm -lsubunit -lrt -pthread" --enable-devel --enable-ctrls --enable-facl --enable-memcache --enable-nls --enable-pcre2 --enable-redis --enable-tests
+          ./configure LIBS="-lm -lsubunit -lrt -pthread" --enable-devel --enable-ctrls --enable-facl --enable-memcache --enable-nls --enable-pcre2 --enable-redis --enable-tests --enable-wrapper-options
           make
           export ASAN_SYMBOLIZER_PATH=$(readlink -f $(which llvm-symbolizer-10))
           make check-api
