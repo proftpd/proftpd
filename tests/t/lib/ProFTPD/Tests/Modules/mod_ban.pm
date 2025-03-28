@@ -98,10 +98,7 @@ sub new {
 }
 
 sub list_tests {
-#  return testsuite_get_runnable_tests($TESTS);
-  return qw(
-    ban_on_event_max_login_attempts_from_user
-  );
+  return testsuite_get_runnable_tests($TESTS);
 }
 
 sub get_server_pid {
