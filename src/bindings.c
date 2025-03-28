@@ -1,6 +1,6 @@
 /*
  * ProFTPD - FTP server daemon
- * Copyright (c) 2001-2023 The ProFTPD Project team
+ * Copyright (c) 2001-2025 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -1501,7 +1501,6 @@ static void trace_ipbind_table(void) {
 
   pr_trace_msg(trace_channel, 25, "displaying ipbind table:");
   for (i = 0; i < PR_BINDINGS_TABLE_SIZE; i++) {
-    register unsigned int j;
     pr_ipbind_t *ipbind;
 
     pr_signals_handle();
@@ -1511,7 +1510,7 @@ static void trace_ipbind_table(void) {
     }
 
     pr_trace_msg(trace_channel, 25, "  index %u:", i);
-    for (j = 0, ipbind = ipbind_table[i]; ipbind; j++, ipbind = ipbind->ib_next) {
+    for (ipbind = ipbind_table[i]; ipbind; ipbind = ipbind->ib_next) {
       array_header *namebinds;
 
       pr_signals_handle();
