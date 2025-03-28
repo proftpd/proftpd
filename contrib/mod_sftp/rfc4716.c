@@ -82,7 +82,14 @@ static char *filestore_getline(sftp_keystore_t *store, pool *p) {
 
     linelen = strlen(linebuf);
     if (linelen >= 1) {
-      if (linebuf[linelen - 1] == '\r' ||
+
+      /* Check for the CRLF case first.  If those are not present, then we
+       * check for either CR or LF.  Doing the "CR or LF" check first prevents
+       * us from properly handling CRLFs, and thus lead to Issue #1904.
+       */
+
+      if (linelen >= 2 &&
+          linebuf[linelen - 2] == '\r' &&
           linebuf[linelen - 1] == '\n') {
         char *tmp;
         unsigned int header_taglen, header_valuelen;
@@ -90,6 +97,7 @@ static char *filestore_getline(sftp_keystore_t *store, pool *p) {
 
         store_data->lineno++;
 
+        linebuf[linelen - 2] = '\0';
         linebuf[linelen - 1] = '\0';
         line = pstrcat(p, line, linebuf, NULL);
 
@@ -134,16 +142,14 @@ static char *filestore_getline(sftp_keystore_t *store, pool *p) {
 
         continue;
 
-      } else if (linelen >= 2 &&
-          linebuf[linelen - 2] == '\r' &&
-          linebuf[linelen - 1] == '\n') {
+      } else if (linebuf[linelen - 1] == '\r' ||
+                 linebuf[linelen - 1] == '\n') {
         char *tmp;
         unsigned int header_taglen, header_valuelen;
         int have_line_continuation = FALSE;
 
         store_data->lineno++;
 
-        linebuf[linelen - 2] = '\0';
         linebuf[linelen - 1] = '\0';
         line = pstrcat(p, line, linebuf, NULL);
 
