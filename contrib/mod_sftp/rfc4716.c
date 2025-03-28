@@ -1,6 +1,6 @@
 /*
  * ProFTPD - mod_sftp RFC4716 keystore
- * Copyright (c) 2008-2023 TJ Saunders
+ * Copyright (c) 2008-2025 TJ Saunders
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -352,6 +352,13 @@ static struct filestore_key *filestore_get_key(sftp_keystore_t *store,
               "error buffering base64 data");
           }
         }
+
+      } else {
+        /* We have a line of unexpected format.  Log it, at least, for
+         * debugging/diagnosis.
+         */
+        pr_trace_msg(trace_channel, 20, "unexpected text at line %u: '%s'",
+          store_data->lineno, line);
       }
     }
 
