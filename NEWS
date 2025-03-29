@@ -21,6 +21,8 @@
 - Issue 1898 - LDAPDefaultGID ignored since 1.3.9.
 - Bug 4512 - Compilation of mod_wrap2 fails when the --enable-wrapper-options
   configure option is used.
+- Issue 1904 - mod_sftp fails to parse authorized user/host public keys with
+  CRLF line endings.
 
 1.3.9 - Released 14-Mar-2025
 --------------------------------
