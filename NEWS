@@ -23,6 +23,8 @@
   configure option is used.
 - Issue 1904 - mod_sftp fails to parse authorized user/host public keys with
   CRLF line endings.
+- Issue 1896 - Uploads using MODE Z sometimes result in corrupted files or
+  broken transfers.
 
 1.3.9 - Released 14-Mar-2025
 --------------------------------
