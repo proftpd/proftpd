@@ -1,6 +1,6 @@
 /*
  * ProFTPD: mod_sql_sqlite -- Support for connecting to SQLite databases
- * Copyright (c) 2004-2022 TJ Saunders
+ * Copyright (c) 2004-2025 TJ Saunders
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -35,6 +35,11 @@
 #if PROFTPD_VERSION_NUMBER < 0x0001030602
 # error "ProFTPD 1.3.6rc2 or later required"
 #endif
+
+/* sqlite3_trace_v2 first appeared in SQLite 3.14.0. */
+#if SQLITE_VERSION_NUMBER >= 3014000
+# define HAVE_SQLITE3_TRACE_V2	1
+#endif /* SQLite 3.14 or later */
 
 module sql_sqlite_module;
 
@@ -77,9 +82,74 @@ static void db_err(void *user_data, int err_code, const char *err_msg) {
   pr_trace_msg(trace_channel, 1, "(sqlite3): [error %d] %s", err_code, err_msg);
 }
 
+#if defined(HAVE_SQLITE3_TRACE_V2)
+static int db_trace2(unsigned int trace_type, void *user_data, void *ptr,
+    void *ptr_data) {
+
+  switch (trace_type) {
+    case SQLITE_TRACE_STMT: {
+      const char *stmt;
+
+      stmt = ptr_data;
+
+      pr_trace_msg(trace_channel, SQLITE_TRACE_LEVEL,
+        "(sqlite3): executing stmt '%s'", stmt);
+      break;
+    }
+
+    case SQLITE_TRACE_PROFILE: {
+      sqlite3_stmt *pstmt;
+      int64_t ns = 0;
+      char *expanded_sql = NULL;
+
+      pstmt = ptr;
+      ns = *((int64_t *) ptr_data);
+      expanded_sql = sqlite3_expanded_sql(pstmt);
+
+      pr_trace_msg(trace_channel, SQLITE_TRACE_LEVEL,
+        "(sqlite3): stmt '%s' ran for %lu nanosecs", expanded_sql,
+        (unsigned long) ns);
+
+      sqlite3_free(expanded_sql);
+      break;
+    }
+
+    case SQLITE_TRACE_ROW: {
+      sqlite3_stmt *pstmt;
+      char *expanded_sql = NULL;
+
+      pstmt = ptr;
+      expanded_sql = sqlite3_expanded_sql(pstmt);
+
+      pr_trace_msg(trace_channel, SQLITE_TRACE_LEVEL,
+        "(sqlite3): returning result row for stmt '%s'", expanded_sql);
+
+      sqlite3_free(expanded_sql);
+      break;
+    }
+
+    case SQLITE_TRACE_CLOSE: {
+      sqlite3 *db;
+
+      db = ptr;
+
+      pr_trace_msg(trace_channel, SQLITE_TRACE_LEVEL,
+        "(sqlite3): closing database connection to %s",
+        sqlite3_db_filename(db, "main"));
+      break;
+    }
+
+    default:
+      break;
+  }
+
+  return 0;
+}
+#else
 static void db_trace(void *user_data, const char *trace_msg) {
   pr_trace_msg(trace_channel, SQLITE_TRACE_LEVEL, "(sqlite3): %s", trace_msg);
 }
+# endif /* HAVE_SQLITE3_TRACE_V2 */
 
 static conn_entry_t *sql_sqlite_get_conn(char *name) {
   register unsigned int i = 0;
@@ -363,7 +433,12 @@ MODRET sql_sqlite_open(cmd_rec *cmd) {
   }
 
   if (pr_trace_get_level(trace_channel) >= SQLITE_TRACE_LEVEL) {
+#if defined(HAVE_SQLITE3_TRACE_V2)
+    sqlite3_trace_v2(conn->dbh, SQLITE_TRACE_STMT|SQLITE_TRACE_PROFILE|SQLITE_TRACE_ROW|SQLITE_TRACE_CLOSE,
+      db_trace2, NULL);
+#else
     sqlite3_trace(conn->dbh, db_trace, NULL);
+#endif /* HAVE_SQLITE3_TRACE_V2 */
   }
 
   /* Tell SQLite to only use in-memory journals.  This is necessary for
