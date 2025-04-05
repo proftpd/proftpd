@@ -9,6 +9,11 @@ ChangeLog files.
 1.3.10rc1
 ----------
 
+  + New Modules
+
+      mod_systemd
+
+
   + Changed Directives
 
       SQLAuthTypes SSHA, Sodium
