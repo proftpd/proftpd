@@ -25,6 +25,7 @@
 #   mod_snmp
 #   mod_sql
 #   mod_sql_passwd
+#   mod_systemd
 #   mod_wrap2
 #   mod_wrap2_file
 #   mod_wrap2_redis
@@ -372,6 +373,7 @@ STANDARD_MODULE_LIST="  mod_auth_pam            \
                         mod_site_misc           \
                         mod_snmp                \
                         mod_sql                 \
+                        mod_systemd             \
                         mod_wrap2               \
                         mod_wrap2_file          \
                         mod_wrap2_redis         \
@@ -563,6 +565,7 @@ rm -rf %{_builddir}/%{name}-%{version}
 %{_libexecdir}/proftpd/mod_snmp.so
 %{_libexecdir}/proftpd/mod_sql.so
 %{?_with_ssl:%{_libexecdir}/proftpd/mod_sql_passwd.so}
+%{_libexecdir}/proftpd/mod_systemd.so
 %{?_with_ssl:%{_libexecdir}/proftpd/mod_tls.so}
 %{?_with_ssl:%{_libexecdir}/proftpd/mod_tls_fscache.so}
 %{?_with_ssl:%{?_with_memcache:%{_libexecdir}/proftpd/mod_tls_memcache.so}}
