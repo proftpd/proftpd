@@ -2,7 +2,7 @@
  * ProFTPD - FTP server daemon
  * Copyright (c) 1997, 1998 Public Flood Software
  * Copyright (c) 1999, 2000 MacGyver aka Habeeb J. Dihu <macgyver@tos.net>
- * Copyright (c) 2001-2024 The ProFTPD Project team
+ * Copyright (c) 2001-2025 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -1043,7 +1043,7 @@ void restart_daemon(void *d1, void *d2, void *d3, void *d4) {
   init_config();
   init_dirtree();
 
-#ifdef PR_USE_NLS
+#if defined(PR_USE_NLS)
   encode_free();
 #endif /* PR_USE_NLS */
 
@@ -1076,7 +1076,7 @@ void restart_daemon(void *d1, void *d2, void *d3, void *d4) {
     pr_session_end(0);
   }
 
-#ifdef PR_USE_NLS
+#if defined(PR_USE_NLS)
   encode_init();
 #endif /* PR_USE_NLS */
 
@@ -1093,6 +1093,7 @@ void restart_daemon(void *d1, void *d2, void *d3, void *d4) {
   }
 
   pr_event_generate("core.postparse", NULL);
+  pr_event_generate("core.restarted", NULL);
 
   /* Recreate the listen connection.  Can an inetd-spawned server accept
    * and process HUP?
