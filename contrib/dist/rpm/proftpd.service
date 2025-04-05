@@ -4,7 +4,7 @@ Wants=network-online.target
 After=network-online.target nss-lookup.target local-fs.target remote-fs.target
 
 [Service]
-Type = forking
+Type = notify-reload
 Environment = PROFTPD_OPTIONS=
 EnvironmentFile = -/etc/sysconfig/proftpd
 ExecStartPre = /usr/sbin/proftpd --configtest

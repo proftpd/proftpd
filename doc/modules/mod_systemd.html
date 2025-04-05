@@ -1,0 +1,81 @@
+<html>
+<head>
+<title>ProFTPD module mod_systemd</title>
+</head>
+
+<body bgcolor=white>
+
+<hr>
+<center>
+<h2><b>ProFTPD module <code>mod_systemd</code></b></h2>
+</center>
+<hr><br>
+
+The <code>mod_systemd</code> module is intended to help ProFTPD interact
+with <code>systemd</code> via socket activations.
+
+<p>
+This module is contained in the <code>mod_systemd.c</code> file for
+ProFTPD 1.3.<i>x</i>, and is not compiled by default.  Installation instructions
+are discussed <a href="#Installation">here</a>.
+
+<p>
+The most current version of <code>mod_systemd</code> is distributed with the
+ProFTPD source code.
+
+<h2>Author</h2>
+<p>
+Please contact TJ Saunders &lt;tj <i>at</i> castaglia.org&gt; with any
+questions, concerns, or suggestions regarding this module.
+
+<h2>Directives</h2>
+<ul>
+  <li><a href="#SystemdEngine">SystemdEngine</a>
+</ul>
+
+<hr>
+<h2><a name="SystemdEngine">SystemdEngine</a></h2>
+<strong>Syntax:</strong> SystemdEngine <em>on|off</em><br>
+<strong>Default:</strong> on<br>
+<strong>Context:</strong> server config<br>
+<strong>Module:</strong> mod_systemd<br>
+<strong>Compatibility:</strong> 1.3.10rc1 and later
+
+<p>
+The <code>SystemdEngine</code> directive enables or disables the module's
+runtime notifications to <code>systemd</code>.  If it is set to <em>off</em>
+this module sends no notifications.  Use this directive to disable the module
+instead of commenting out all <code>mod_systemd</code> directives.
+
+<p>
+<hr>
+<h2><a name="Installation">Installation</a></h2>
+The <code>mod_systemd</code> module is distributed with ProFTPD.  To enable
+use of systemd notifications, build this module:
+option:
+<pre>
+  $ ./configure --with-modules=mod_systemd
+  $ make
+  $ make install
+</pre>
+
+<p>
+Alternatively, if your <code>proftpd</code> was compiled with DSO support, you
+can use the <code>prxs</code> tool to build <code>mod_systemd</code> as a
+shared module:
+<pre>
+  $ prxs -c -i -d mod_systemd.c
+</pre>
+
+<p>
+<hr><br>
+
+<font size=2><b><i>
+&copy; Copyright 2025 TJ Saunders<br>
+ All Rights Reserved<br>
+</i></b></font>
+
+<hr><br>
+
+</body>
+</html>
