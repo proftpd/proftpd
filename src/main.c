@@ -1093,7 +1093,6 @@ void restart_daemon(void *d1, void *d2, void *d3, void *d4) {
   }
 
   pr_event_generate("core.postparse", NULL);
-  pr_event_generate("core.restarted", NULL);
 
   /* Recreate the listen connection.  Can an inetd-spawned server accept
    * and process HUP?

@@ -210,18 +210,6 @@ static void systemd_restart_ev(const void *event_data, void *user_data) {
   notify_systemd("RELOADING=1");
 }
 
-static void systemd_restarted_ev(const void *event_data, void *user_data) {
-  if (systemd_engine == FALSE) {
-    return;
-  }
-
-  if (ServerType != SERVER_STANDALONE) {
-    return;
-  }
-
-  notify_systemd("READY=1");
-}
-
 static void systemd_shutdown_ev(const void *event_data, void *user_data) {
   if (systemd_engine == FALSE) {
     return;
@@ -267,8 +255,6 @@ static int systemd_init(void) {
   pr_event_register(&systemd_module, "core.postparse", systemd_postparse_ev,
     NULL);
   pr_event_register(&systemd_module, "core.restart", systemd_restart_ev,
-    NULL);
-  pr_event_register(&systemd_module, "core.restarted", systemd_restarted_ev,
     NULL);
   pr_event_register(&systemd_module, "core.shutdown", systemd_shutdown_ev,
     NULL);
