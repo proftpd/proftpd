@@ -1,7 +1,7 @@
 /*
  * ProFTPD: mod_sql_mysql -- Support for connecting to MySQL databases.
  * Copyright (c) 2001 Andrew Houghton
- * Copyright (c) 2004-2024 TJ Saunders
+ * Copyright (c) 2004-2025 TJ Saunders
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -492,10 +492,13 @@ MODRET cmd_open(cmd_rec *cmd) {
     mysql_options(conn->mysql, MYSQL_READ_DEFAULT_GROUP, "client");
   }
 
-#if MYSQL_VERSION_ID >= 50013
+#if MYSQL_VERSION_ID >= 50013 && \
+    MYSQL_VERSION_ID < 80034
   /* The MYSQL_OPT_RECONNECT option appeared in MySQL 5.0.13, according to
    *
    *  http://dev.mysql.com/doc/refman/5.0/en/auto-reconnect.html
+   *
+   * And in MySQL 8.0.34, it was deprecated.
    */
   if (!(pr_sql_opts & SQL_OPT_NO_RECONNECT)) {
 #if MYSQL_VERSION_ID >= 80000
