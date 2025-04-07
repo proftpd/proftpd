@@ -517,7 +517,31 @@ MODRET cmd_open(cmd_rec *cmd) {
   client_flags |= CLIENT_MULTI_RESULTS;
 #endif
 
-#if defined(HAVE_MYSQL_MYSQL_SSL_SET)
+#if MYSQL_VERSION_ID >= 80035
+  /* Per the MySQL docs, the `mysql_ssl_set` function was deprecated in
+   * MySQL 8.0.35, to be replaced by equivalent options for `mysql_options`.
+   */
+  if (conn->ssl_ca_file != NULL) {
+    mysql_options(conn->mysql, MYSQL_OPT_SSL_CA, conn->ssl_ca_file);
+  }
+
+  if (conn->ssl_ca_dir != NULL) {
+    mysql_options(conn->mysql, MYSQL_OPT_SSL_CAPATH, conn->ssl_ca_dir);
+  }
+
+  if (conn->ssl_cert_file != NULL) {
+    mysql_options(conn->mysql, MYSQL_OPT_SSL_CERT, conn->ssl_cert_file);
+  }
+
+  if (conn->ssl_ciphers != NULL) {
+    mysql_options(conn->mysql, MYSQL_OPT_SSL_CIPHER, conn->ssl_ciphers);
+  }
+
+  if (conn->ssl_key_file != NULL) {
+    mysql_options(conn->mysql, MYSQL_OPT_SSL_KEY, conn->ssl_key_file);
+  }
+
+#elif defined(HAVE_MYSQL_MYSQL_SSL_SET)
   /* Per the MySQL docs, this function always returns success.  Errors are
    * reported when we actually attempt to connect.
    *
