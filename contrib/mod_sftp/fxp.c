@@ -1,6 +1,6 @@
 /*
  * ProFTPD - mod_sftp sftp
- * Copyright (c) 2008-2024 TJ Saunders
+ * Copyright (c) 2008-2025 TJ Saunders
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -10623,13 +10623,24 @@ static int fxp_handle_read(struct fxp_packet *fxp) {
   pbuf->remaining = 0;
   pr_event_generate("mod_sftp.sftp.data-write", pbuf);
 
+  /* Unlike our other request handlers, we will avoid using fxp_write_data()
+   * here, and call sftp_channel_write_data() directly.
+   *
+   * Why?  The fxp_write_data() function uses a memcpy(2) to create a proper
+   * SSH formatted buffer for the Channel API.  That's an extra memcpy(2)
+   * for a large amount of data, just read from the filesystem, that we
+   * would like to avoid if possible.
+   */
+
+  /* Here we are writing the length of the CHANNEL_DATA payload, thus 1 byte
+   * for the data type (FXP_DATA), 4 bytes for the request ID, 4 bytes for the
+   * length of file data, and then the actual bytes of file data.
+   */
+
+  sftp_msg_write_int(&buf, &buflen, res + 9);
   sftp_msg_write_byte(&buf, &buflen, SFTP_SSH2_FXP_DATA);
   sftp_msg_write_int(&buf, &buflen, fxp->request_id);
   sftp_msg_write_data(&buf, &buflen, data, res, TRUE);
-
-  resp = fxp_packet_create(fxp->pool, fxp->channel_id);
-  resp->payload = ptr;
-  resp->payload_sz = (bufsz - buflen);
 
   fxh->xfer.total_bytes += res;
   session.total_bytes += res;
@@ -10637,7 +10648,8 @@ static int fxp_handle_read(struct fxp_packet *fxp) {
   fxp_set_filehandle_sess_xfer(fxh);
   fxp_cmd_dispatch(cmd);
 
-  res = fxp_packet_write(resp);
+  res = sftp_channel_write_data(fxp->pool, fxp->channel_id, ptr,
+    (bufsz - buflen));
   return res;
 }
 
