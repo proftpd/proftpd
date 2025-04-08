@@ -1760,7 +1760,7 @@ static int channel_write_data(pool *p, uint32_t channel_id,
 
       /* In addition to the data itself, we need to allocate room in the
        * outgoing packet for the type (1 byte), the channel ID (4 bytes),
-       * a possible data type ID (4 bytes),  and for the data length (4 bytes).
+       * a possible data type ID (4 bytes), and for the data length (4 bytes).
        */
       bufsz2 = buflen2 = payload_len + 13;
 
