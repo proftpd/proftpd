@@ -2709,11 +2709,11 @@ int sftp_scp_set_params(pool *p, uint32_t channel_id, array_header *req) {
   }
 
   for (i = 0; i < paths->paths->nelts; i++) {
-    struct scp_path *sp;
+    struct scp_path *spi;
 
-    sp = ((struct scp_path **) paths->paths->elts)[i];
-    if (sp != NULL) {
-      pr_trace_msg(trace_channel, 5, "scp path[%u] = '%s'", i, sp->path);
+    spi = ((struct scp_path **) paths->paths->elts)[i];
+    if (spi != NULL) {
+      pr_trace_msg(trace_channel, 5, "scp path[%u] = '%s'", i, spi->path);
     }
   }
 
