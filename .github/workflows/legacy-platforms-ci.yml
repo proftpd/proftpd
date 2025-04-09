@@ -1,17 +1,9 @@
 name: Legacy Platforms CI
 
+# We only really need to run the CI checks for legacy builds on pushes to
+# master.
 on:
   push:
-    branches:
-      - master
-      - 1.3.9
-    paths-ignore:
-      - NEWS
-      - RELEASE_NOTES
-      - 'doc/**'
-      - '**/*.html'
-      - '**/*.md'
-  pull_request:
     branches:
       - master
       - 1.3.9
