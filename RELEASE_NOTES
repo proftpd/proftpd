@@ -14,6 +14,11 @@ ChangeLog files.
       mod_systemd
 
 
+  + New Directives
+
+      SFTPKeyFingerprints
+
+
   + Changed Directives
 
       SQLAuthTypes SSHA, Sodium

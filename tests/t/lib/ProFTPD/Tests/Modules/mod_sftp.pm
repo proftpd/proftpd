@@ -1491,6 +1491,56 @@ my $TESTS = {
     test_class => [qw(bug forking sftp ssh2)],
   },
 
+  sftp_config_fingerprint_default_issue1916 => {
+    order => ++$order,
+    test_class => [qw(bug forking sftp ssh2)],
+  },
+
+  sftp_config_fingerprint_sha256_base64_issue1916 => {
+    order => ++$order,
+    test_class => [qw(bug forking sftp ssh2)],
+  },
+
+  sftp_config_fingerprint_sha256_hex_issue1916 => {
+    order => ++$order,
+    test_class => [qw(bug forking sftp ssh2)],
+  },
+
+  sftp_config_fingerprint_sha256_hex_colons_issue1916 => {
+    order => ++$order,
+    test_class => [qw(bug forking sftp ssh2)],
+  },
+
+  sftp_config_fingerprint_sha1_base64_issue1916 => {
+    order => ++$order,
+    test_class => [qw(bug forking sftp ssh2)],
+  },
+
+  sftp_config_fingerprint_sha1_hex_issue1916 => {
+    order => ++$order,
+    test_class => [qw(bug forking sftp ssh2)],
+  },
+
+  sftp_config_fingerprint_sha1_hex_colons_issue1916 => {
+    order => ++$order,
+    test_class => [qw(bug forking sftp ssh2)],
+  },
+
+  sftp_config_fingerprint_md5_base64_issue1916 => {
+    order => ++$order,
+    test_class => [qw(bug forking sftp ssh2)],
+  },
+
+  sftp_config_fingerprint_md5_hex_issue1916 => {
+    order => ++$order,
+    test_class => [qw(bug forking sftp ssh2)],
+  },
+
+  sftp_config_fingerprint_md5_hex_colons_issue1916 => {
+    order => ++$order,
+    test_class => [qw(bug forking sftp ssh2)],
+  },
+
   sftp_multi_channels => {
     order => ++$order,
     test_class => [qw(forking sftp ssh2)],
@@ -49139,6 +49189,265 @@ EOC
   $self->assert_child_ok($pid);
 
   test_cleanup($setup->{log_file}, $ex);
+}
+
+sub sftp_config_key_fingerprints {
+  my $self = shift;
+  my $tmpdir = $self->{tmpdir};
+  my $setup = test_setup($tmpdir, 'sftp');
+
+  my $key_fingerprints = shift;
+  my $expected_algo = shift;
+  my $expected_fingerprint = shift;
+
+  my $rsa_host_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/ssh_host_rsa_key');
+  my $dsa_host_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/ssh_host_dsa_key');
+
+  my $rsa_priv_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/test_rsa_key');
+  my $rsa_pub_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/test_rsa_key.pub');
+  my $rsa_rfc4716_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/authorized_rsa_keys2');
+
+  my $authorized_keys = File::Spec->rel2abs("$tmpdir/.authorized_keys");
+  unless (copy($rsa_rfc4716_key, $authorized_keys)) {
+    die("Can't copy $rsa_rfc4716_key to $authorized_keys: $!");
+  }
+
+  my $sftp_config = [
+    "SFTPEngine on",
+    "SFTPLog $setup->{log_file}",
+    "SFTPHostKey $rsa_host_key",
+    "SFTPHostKey $dsa_host_key",
+    "SFTPAuthorizedUserKeys file:~/.authorized_keys",
+  ];
+
+  if (defined($key_fingerprints)) {
+    push(@$sftp_config, "SFTPKeyFingerprints $key_fingerprints");
+  }
+
+  my $config = {
+    PidFile => $setup->{pid_file},
+    ScoreboardFile => $setup->{scoreboard_file},
+    SystemLog => $setup->{log_file},
+    TraceLog => $setup->{log_file},
+    Trace => 'ssh2:20 sftp:20',
+
+    AuthUserFile => $setup->{auth_user_file},
+    AuthGroupFile => $setup->{auth_group_file},
+    AuthOrder => 'mod_auth_file.c',
+
+    IfModules => {
+      'mod_delay.c' => {
+        DelayEngine => 'off',
+      },
+
+      'mod_sftp.c' => $sftp_config,
+    },
+  };
+
+  my ($port, $config_user, $config_group) = config_write($setup->{config_file},
+    $config);
+
+  # Open pipes, for use between the parent and child processes.  Specifically,
+  # the child will indicate when it's done with its test by writing a message
+  # to the parent.
+  my ($rfh, $wfh);
+  unless (pipe($rfh, $wfh)) {
+    die("Can't open pipe: $!");
+  }
+
+  require Net::SSH2;
+
+  my $ex;
+
+  # Ignore SIGPIPE
+  local $SIG{PIPE} = sub { };
+
+  # Fork child
+  $self->handle_sigchld();
+  defined(my $pid = fork()) or die("Can't fork: $!");
+  if ($pid) {
+    eval {
+      # Allow for server startup
+      sleep(2);
+
+      my $ssh2 = Net::SSH2->new();
+
+      unless ($ssh2->connect('127.0.0.1', $port)) {
+        my ($err_code, $err_name, $err_str) = $ssh2->error();
+        die("Can't connect to SSH2 server: [$err_name] ($err_code) $err_str");
+      }
+
+      unless ($ssh2->auth_publickey($setup->{user}, $rsa_pub_key,
+          $rsa_priv_key)) {
+        my ($err_code, $err_name, $err_str) = $ssh2->error();
+        die("Can't login to SSH2 server: [$err_name] ($err_code) $err_str");
+      }
+
+      my $sftp = $ssh2->sftp();
+      unless ($sftp) {
+        my ($err_code, $err_name, $err_str) = $ssh2->error();
+        die("Can't use SFTP on SSH2 server: [$err_name] ($err_code) $err_str");
+      }
+
+      $sftp = undef;
+      $ssh2->disconnect();
+    };
+    if ($@) {
+      $ex = $@;
+    }
+
+    $wfh->print("done\n");
+    $wfh->flush();
+
+  } else {
+    eval { server_wait($setup->{config_file}, $rfh) };
+    if ($@) {
+      warn($@);
+      exit 1;
+    }
+
+    exit 0;
+  }
+
+  # Stop server
+  server_stop($setup->{pid_file});
+  $self->assert_child_ok($pid);
+
+  eval {
+    if (open(my $fh, "< $setup->{log_file}")) {
+      my $ok = 0;
+
+      while (my $line = <$fh>) {
+        chomp($line);
+
+        if ($ENV{TEST_VERBOSE}) {
+          print STDERR "# $line\n";
+        }
+
+        if ($line =~ /public key (.*?) fingerprint: (.*?)$/) {
+          my $algo = $1;
+          my $fp = $2;
+
+          if ($algo eq $expected_algo &&
+              $fp eq $expected_fingerprint) {
+            $ok = 1;
+          }
+          last;
+        }
+      }
+
+      close($fh);
+      $self->assert($ok, test_msg("Did not see expected publickey fingerprint in SFTPLog"));
+
+    } else {
+      die("Can't read $setup->{log_file}: $!");
+    }
+  };
+  if ($@) {
+    $ex = $@ unless $ex;
+  }
+
+  test_cleanup($setup->{log_file}, $ex);
+}
+
+sub sftp_config_key_fingerprint_default_issue1916 {
+  my $self = shift;
+  my $key_fingerprints;
+  my $expected_algo = 'SHA256';
+  my $expected_fingerprint = 'rRPP8wf0HyCVROVx2ek8nPpLKtENkPsfpQ536sGR+Tc';
+
+  sftp_config_key_fingerprints($self, $key_fingerprints, $expected_algo,
+    $expected_fingerprint);
+}
+
+sub sftp_config_key_fingerprint_sha256_base64_issue1916 {
+  my $self = shift;
+  my $key_fingerprints = 'sha256+base64';
+  my $expected_algo = 'SHA256';
+  my $expected_fingerprint = 'rRPP8wf0HyCVROVx2ek8nPpLKtENkPsfpQ536sGR+Tc';
+
+  sftp_config_key_fingerprints($self, $key_fingerprints, $expected_algo,
+    $expected_fingerprint);
+}
+
+sub sftp_config_key_fingerprint_sha256_hex_issue1916 {
+  my $self = shift;
+  my $key_fingerprints = 'sha256+hex';
+  my $expected_algo = 'SHA256';
+  my $expected_fingerprint = 'ad13cff307f41f209544e571d9e93c9cfa4b2ad10d90fb1fa50e77eac191f937';
+
+  sftp_config_key_fingerprints($self, $key_fingerprints, $expected_algo,
+    $expected_fingerprint);
+}
+
+sub sftp_config_key_fingerprint_sha256_hex_colons_issue1916 {
+  my $self = shift;
+  my $key_fingerprints = 'sha256+hex+colons';
+  my $expected_algo = 'SHA256';
+  my $expected_fingerprint = 'ad:13:cf:f3:07:f4:1f:20:95:44:e5:71:d9:e9:3c:9c:fa:4b:2a:d1:0d:90:fb:1f:a5:0e:77:ea:c1:91:f9:37';
+
+  sftp_config_key_fingerprints($self, $key_fingerprints, $expected_algo,
+    $expected_fingerprint);
+}
+
+sub sftp_config_key_fingerprint_sha1_base64_issue1916 {
+  my $self = shift;
+  my $key_fingerprints = 'sha1+base64';
+  my $expected_algo = 'SHA1';
+  my $expected_fingerprint = 'gRaElBAwFMx5Q444peE4k3+lxEw';
+
+  sftp_config_key_fingerprints($self, $key_fingerprints, $expected_algo,
+    $expected_fingerprint);
+}
+
+sub sftp_config_key_fingerprint_sha1_hex_issue1916 {
+  my $self = shift;
+  my $key_fingerprints = 'sha1+hex';
+  my $expected_algo = 'SHA1';
+  my $expected_fingerprint = '81168494103014cc79438e38a5e138937fa5c44c';
+
+  sftp_config_key_fingerprints($self, $key_fingerprints, $expected_algo,
+    $expected_fingerprint);
+}
+
+sub sftp_config_key_fingerprint_sha1_hex_colons_issue1916 {
+  my $self = shift;
+  my $key_fingerprints = 'sha1+hex+colons';
+  my $expected_algo = 'SHA1';
+  my $expected_fingerprint = '81:16:84:94:10:30:14:cc:79:43:8e:38:a5:e1:38:93:7f:a5:c4:4c';
+
+  sftp_config_key_fingerprints($self, $key_fingerprints, $expected_algo,
+    $expected_fingerprint);
+}
+
+sub sftp_config_key_fingerprint_md5_base64_issue1916 {
+  my $self = shift;
+  my $key_fingerprints = 'md5+base64';
+  my $expected_algo = 'MD5';
+  my $expected_fingerprint = 'uM7C6Oic95MRpHnCSGQZRQ';
+
+  sftp_config_key_fingerprints($self, $key_fingerprints, $expected_algo,
+    $expected_fingerprint);
+}
+
+sub sftp_config_key_fingerprint_md5_hex_issue1916 {
+  my $self = shift;
+  my $key_fingerprints = 'md5+hex';
+  my $expected_algo = 'MD5';
+  my $expected_fingerprint = 'b8cec2e8e89cf79311a479c248641945';
+
+  sftp_config_key_fingerprints($self, $key_fingerprints, $expected_algo,
+    $expected_fingerprint);
+}
+
+sub sftp_config_key_fingerprint_md5_hex_colons_issue1916 {
+  my $self = shift;
+  my $key_fingerprints = 'md5+hex+colons';
+  my $expected_algo = 'MD5';
+  my $expected_fingerprint = 'b8:ce:c2:e8:e8:9c:f7:93:11:a4:79:c2:48:64:19:45';
+
+  sftp_config_key_fingerprints($self, $key_fingerprints, $expected_algo,
+    $expected_fingerprint);
 }
 
 sub sftp_multi_channel_downloads {

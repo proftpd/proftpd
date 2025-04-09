@@ -1683,6 +1683,76 @@ MODRET set_sftpkeyexchanges(cmd_rec *cmd) {
   return PR_HANDLED(cmd);
 }
 
+/* usage: SFTPKeyFingerprints digest[+encoding] */
+MODRET set_sftpkeyfingerprints(cmd_rec *cmd) {
+  char *algo, *encoding = NULL, *ptr = NULL, *text;
+  config_rec *c;
+  int algo_id, fmt_id;
+
+  if (cmd->argc != 2) {
+    CONF_ERROR(cmd, "Wrong number of parameters");
+  }
+
+  CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL);
+
+  c = add_config_param(cmd->argv[0], 3, NULL, NULL, NULL);
+
+  algo_id = SFTP_KEYS_FP_DIGEST_SHA256;
+  algo = "SHA256";
+  fmt_id = SFTP_KEYS_FP_FMT_BASE64;
+
+  text = cmd->argv[1];
+  ptr = strchr(text, '+');
+
+  if (ptr != NULL) {
+    encoding = ptr + 1;
+    *ptr = '\0';
+  }
+
+  if (strcasecmp(text, "SHA256") == 0) {
+    algo_id = SFTP_KEYS_FP_DIGEST_SHA256;
+    algo = "SHA256";
+
+  } else if (strcasecmp(text, "SHA1") == 0) {
+    algo_id = SFTP_KEYS_FP_DIGEST_SHA1;
+    algo = "SHA1";
+
+  } else if (strcasecmp(text, "MD5") == 0) {
+    algo_id = SFTP_KEYS_FP_DIGEST_MD5;
+    algo = "MD5";
+
+  } else {
+    CONF_ERROR(cmd, pstrcat(cmd->tmp_pool,
+      ": unsupported SFTPKeyFingerprint algorithm '", text, "'", NULL));
+  }
+
+  if (encoding != NULL) {
+    if (strcasecmp(encoding, "base64") == 0) {
+      fmt_id = SFTP_KEYS_FP_FMT_BASE64;
+
+    } else if (strcasecmp(encoding, "hex") == 0) {
+      fmt_id = SFTP_KEYS_FP_FMT_HEX;
+
+    } else if (strcasecmp(encoding, "hex+colon") == 0 ||
+               strcasecmp(encoding, "hex+colons") == 0) {
+      fmt_id = SFTP_KEYS_FP_FMT_HEX_COLONS;
+
+    } else {
+      CONF_ERROR(cmd, pstrcat(cmd->tmp_pool,
+        ": unsupported SFTPKeyFingerprint format '", encoding, "'",
+        NULL));
+    }
+  }
+
+  c->argv[0] = pcalloc(c->pool, sizeof(int));
+  *((int *) c->argv[0]) = algo_id;
+  c->argv[1] = pstrdup(c->pool, algo);
+  c->argv[2] = pcalloc(c->pool, sizeof(int));
+  *((int *) c->argv[2]) = fmt_id;
+
+  return PR_HANDLED(cmd);
+}
+
 /* usage: SFTPKeyLimits limit1 ... limitN */
 MODRET set_sftpkeylimits(cmd_rec *cmd) {
   register unsigned int i;
@@ -3026,6 +3096,7 @@ static conftable sftp_conftab[] = {
   { "SFTPHostKeys",		set_sftphostkeys,		NULL },
   { "SFTPKeyBlacklist",		set_sftpkeyblacklist,		NULL },
   { "SFTPKeyExchanges",		set_sftpkeyexchanges,		NULL },
+  { "SFTPKeyFingerprints",	set_sftpkeyfingerprints,	NULL },
   { "SFTPKeyLimits",		set_sftpkeylimits,		NULL },
   { "SFTPLog",			set_sftplog,			NULL },
   { "SFTPMaxChannels",		set_sftpmaxchannels,		NULL },

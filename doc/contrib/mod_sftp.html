@@ -143,6 +143,7 @@ questions, concerns, or suggestions regarding this module.
   <li><a href="#SFTPHostKeys">SFTPHostKeys</a>
   <li><a href="#SFTPKeyBlacklist">SFTPKeyBlacklist</a>
   <li><a href="#SFTPKeyExchanges">SFTPKeyExchanges</a>
+  <li><a href="#SFTPKeyFingerprints">SFTPKeyFingerprints</a>
   <li><a href="#SFTPKeyLimits">SFTPKeyLimits</a>
   <li><a href="#SFTPLog">SFTPLog</a>
   <li><a href="#SFTPMaxChannels">SFTPMaxChannels</a>
@@ -1048,6 +1049,65 @@ requires an Ed448 SSH host key.  To generate such a key, use:
 <p>
 In general, there is no need to use this directive unless only one specific
 key exchange algorithm must be used.
+
+<p>
+<hr>
+<h3><a name="SFTPKeyFingerprints">SFTPKeyFingerprints</a></h3>
+<strong>Syntax:</strong> SFTPKeyFingerprints <em>algo[+encoding]</em><br>
+<strong>Default:</strong> <em>sha256+base64</em><br>
+<strong>Context:</strong> server config, <code>&lt;VirtualHost&gt;</code>, <code>&lt;Global&gt;</code><br>
+<strong>Module:</strong> mod_sftp<br>
+<strong>Compatibility:</strong> 1.3.10rc1 and later
+
+<p>
+The <code>SFTPKeyFingerprints</code> directive is used to configure how
+<code>mod_sftp</code> will log the fingerprint of public keys used during
+authentication.  This includes the hashing <em>algorithm</em> combined with
+the <em>encoding</em> of the hash.  The default is to use the SHA256 algorithm,
+and to use base64 encoding.
+
+<p>
+The list of supported <em>algorithms</em> is:
+<ul>
+  <li>sha256
+  <li>sha1
+  <li>md5
+</ul>
+and the list of optional <em>encodings</em> is:
+<ul>
+  <li>base64
+  <li>hex
+  <li>hex+colons
+</ul>
+
+<p>
+Use of SHA256 and base64 encoding means that the key fingerprints logged will
+match those displayed by:
+<pre>
+  # Display the key fingerprint using the ssh-keygen defaults
+  $ ssh-keygen -l -f ...
+
+  # Display the SHA256 key fingerprint using ssh-keygen
+  $ ssh-keygen -l -E sha256 -f ...
+</pre>
+
+<p>
+<b>Note</b>: Previous versions of <code>mod_sftp</code> would use the SHA256
+algorithm (or MD5, if the version of OpenSSL was too old), and use
+<em>hex+colons</em> for the encoding.  To restore that behavior for
+compatibility, use:
+<pre>
+  SFTPKeyFingerprints sha256+hex+colons
+<pre>
+Similarly, to match the fingerprint displayed by using:
+<pre>
+  # Display the MD5 key fingerprint using ssh-keygen
+  $ ssh-keygen -l -E md5 -f ...
+</pre>
+use this configuration:
+<pre>
+  SFTPKeyFingerprints md5+hex+colons
+</pre>
 
 <p>
 <hr>
@@ -3075,7 +3135,7 @@ deal with this issue, then, you can hopefully upgrade to ProFTPD 1.3.6 or later,
 <p>
 <hr>
 <font size=2><b><i>
-&copy; Copyright 2008-2024 TJ Saunders<br>
+&copy; Copyright 2008-2025 TJ Saunders<br>
  All Rights Reserved<br>
 </i></b></font>
 <hr>
