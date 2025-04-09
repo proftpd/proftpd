@@ -1,6 +1,6 @@
 /*
  * ProFTPD - mod_sftp 'publickey' user authentication
- * Copyright (c) 2008-2024 TJ Saunders
+ * Copyright (c) 2008-2025 TJ Saunders
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -82,7 +82,7 @@ static int send_pubkey_ok(const char *algo, const unsigned char *pubkey_data,
 int sftp_auth_publickey(struct ssh2_packet *pkt, cmd_rec *pass_cmd,
     const char *orig_user, const char *user, const char *service,
     unsigned char **buf, uint32_t *buflen, int *send_userauth_fail) {
-  int fp_algo_id = 0, have_signature, res;
+  int fp_algo_id = 0, fp_fmt_id = 0, have_signature, res;
   enum sftp_key_type_e pubkey_type;
   struct sftp_verify_details *details = NULL;
   pr_table_t *verify_notes = NULL;
@@ -194,54 +194,22 @@ int sftp_auth_publickey(struct ssh2_packet *pkt, cmd_rec *pass_cmd,
     return 0;
   }
 
-#ifdef OPENSSL_FIPS
-  if (FIPS_mode()) {
-# if defined(HAVE_SHA256_OPENSSL)
-    fp_algo_id = SFTP_KEYS_FP_DIGEST_SHA256;
-    fp_algo = "SHA256";
-# else
-    fp_algo_id = SFTP_KEYS_FP_DIGEST_SHA1;
-    fp_algo = "SHA1";
-# endif /* HAVE_SHA256_OPENSSL */
+  /* Get the fingerprint for the provided SSH key. */
+  (void) sftp_keys_get_fingerprint_algo(pkt->pool, &fp_algo_id, &fp_algo,
+    &fp_fmt_id);
 
-    fp = sftp_keys_get_fingerprint(pkt->pool, pubkey_data, pubkey_len,
-      fp_algo_id);
-    if (fp != NULL) {
-      (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
-        "public key %s fingerprint: %s", fp_algo, fp);
-
-    } else {
-      (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
-        "error obtaining public key %s fingerprint: %s", fp_algo,
-        strerror(errno));
-      fp_algo = NULL;
-    }
+  fp = sftp_keys_get_fingerprint2(pkt->pool, pubkey_data, pubkey_len,
+    fp_algo_id, fp_fmt_id);
+  if (fp != NULL) {
+    (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
+      "public key %s fingerprint: %s", fp_algo, fp);
 
   } else {
-#endif /* OPENSSL_FIPS */
-#if defined(HAVE_SHA256_OPENSSL)
-    fp_algo_id = SFTP_KEYS_FP_DIGEST_SHA256;
-    fp_algo = "SHA256";
-#else
-    fp_algo_id = SFTP_KEYS_FP_DIGEST_MD5;
-    fp_algo = "MD5";
-#endif /* HAVE_SHA256_OPENSSL */
-
-    fp = sftp_keys_get_fingerprint(pkt->pool, pubkey_data, pubkey_len,
-      fp_algo_id);
-    if (fp != NULL) {
-      (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
-        "public key %s fingerprint: %s", fp_algo, fp);
-
-    } else {
-      (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
-        "error obtaining public key %s fingerprint: %s", fp_algo,
-        strerror(errno));
-      fp_algo = NULL;
-    }
-#ifdef OPENSSL_FIPS
+    (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
+      "error obtaining public key %s fingerprint: %s", fp_algo,
+      strerror(errno));
+    fp_algo = NULL;
   }
-#endif /* OPENSSL_FIPS */
 
   if (fp != NULL) {
     const char *k, *v;

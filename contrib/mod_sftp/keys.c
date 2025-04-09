@@ -1,6 +1,6 @@
 /*
  * ProFTPD - mod_sftp key mgmt (keys)
- * Copyright (c) 2008-2024 TJ Saunders
+ * Copyright (c) 2008-2025 TJ Saunders
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -2503,15 +2503,15 @@ int sftp_keys_compare_keys(pool *p,
   return res;
 }
 
-const char *sftp_keys_get_fingerprint(pool *p, unsigned char *key_data,
-    uint32_t key_datalen, int digest_algo) {
+const char *sftp_keys_get_fingerprint2(pool *p, unsigned char *key_data,
+    uint32_t key_datalen, int digest_algo, int encoding_fmt) {
 #if OPENSSL_VERSION_NUMBER < 0x10100000L || \
     (defined(HAVE_LIBRESSL) && LIBRESSL_VERSION_NUMBER < 0x3050000L)
   EVP_MD_CTX ctx;
 #endif /* prior to OpenSSL-1.1.0/LibreSSL-3.5.0 */
   EVP_MD_CTX *pctx;
   const EVP_MD *digest;
-  char *digest_name = "none", *fp;
+  char *digest_name = "none", *fp = NULL;
   unsigned char *fp_data;
   unsigned int fp_datalen = 0;
   register unsigned int i;
@@ -2606,19 +2606,105 @@ const char *sftp_keys_get_fingerprint(pool *p, unsigned char *key_data,
   EVP_MD_CTX_free(pctx);
 #endif /* OpenSSL-1.1.0/LibreSSL-3.5.0 and later */
 
-  /* Now encode that digest in fp_data as hex characters. */
-  fp = "";
+  switch (encoding_fmt) {
+    case SFTP_KEYS_FP_FMT_BASE64: {
+      char *ptr;
 
-  for (i = 0; i < fp_datalen; i++) {
-    char c[4];
+      /* According to RATS, the output buffer for EVP_EncodeBlock() needs to be
+       * 4/3 the size of the input buffer (which is usually EVP_MAX_MD_SIZE).
+       */
+      fp = pcalloc(p, (2 * fp_datalen) + 1);
+      EVP_EncodeBlock((unsigned char *) fp, fp_data, (int) fp_datalen);
 
-    memset(c, '\0', sizeof(c));
-    pr_snprintf(c, sizeof(c), "%02x:", fp_data[i]);
-    fp = pstrcat(p, fp, &c, NULL);
+      /* Deliberately trim off any trailing '=' charaacters, assuming they
+       * are padding bytes.
+       */
+      ptr = strchr(fp, '=');
+      if (ptr != NULL) {
+        *ptr = '\0';
+      }
+
+      break;
+    }
+
+    case SFTP_KEYS_FP_FMT_HEX:
+      fp = pr_str_bin2hex(p, fp_data, fp_datalen, PR_STR_FL_HEX_USE_LC);
+      break;
+
+    case SFTP_KEYS_FP_FMT_HEX_COLONS: {
+      /* Now encode that digest in fp_data as hex characters. */
+      fp = "";
+
+      for (i = 0; i < fp_datalen; i++) {
+        char c[4];
+
+        memset(c, '\0', sizeof(c));
+        pr_snprintf(c, sizeof(c), "%02x:", fp_data[i]);
+        fp = pstrcat(p, fp, &c, NULL);
+      }
+      fp[strlen(fp)-1] = '\0';
+      break;
+    }
+
+    default:
+      (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
+        "unsupported key fingerprint encoding format (%d)", encoding_fmt);
+      errno = EACCES;
+      return NULL;
   }
-  fp[strlen(fp)-1] = '\0';
 
   return fp;
+}
+
+const char *sftp_keys_get_fingerprint(pool *p, unsigned char *key_data,
+    uint32_t key_datalen, int digest_algo) {
+  return sftp_keys_get_fingerprint2(p, key_data, key_datalen, digest_algo,
+    SFTP_KEYS_FP_FMT_HEX_COLONS);
+}
+
+int sftp_keys_get_fingerprint_algo(pool *p, int *algo_id, const char **algo,
+    int *fmt_id) {
+  config_rec *c;
+
+  if (algo_id == NULL ||
+      algo == NULL ||
+      fmt_id == NULL) {
+    errno = EINVAL;
+    return -1;
+  }
+
+  c = find_config(main_server->conf, CONF_PARAM, "SFTPKeyFingerprints", FALSE);
+  if (c != NULL) {
+    *algo_id = *((int *) c->argv[0]);
+    *algo = c->argv[1];
+    *fmt_id = *((int *) c->argv[2]);
+
+  } else {
+    /* Use default key fingerprint algorithms/encodings. */
+    *fmt_id = SFTP_KEYS_FP_FMT_BASE64;
+
+#if defined(HAVE_SHA256_OPENSSL)
+    *algo_id = SFTP_KEYS_FP_DIGEST_SHA256;
+    *algo = "SHA256";
+#else
+    *algo_id = SFTP_KEYS_FP_DIGEST_MD5;
+    *algo = "MD5";
+#endif /* HAVE_SHA256_OPENSSL */
+
+#if defined(OPENSSL_FIPS)
+    if (FIPS_mode()) {
+# if defined(HAVE_SHA256_OPENSSL)
+      *algo_id = SFTP_KEYS_FP_DIGEST_SHA256;
+      *algo = "SHA256";
+# else
+      *algo_id = SFTP_KEYS_FP_DIGEST_SHA1;
+      *algo = "SHA1";
+# endif /* HAVE_SHA256_OPENSSL */
+    }
+#endif /* OPENSSL_FIPS */
+  }
+
+  return 0;
 }
 
 #if defined(PR_USE_OPENSSL_ECC)
