@@ -1,6 +1,6 @@
 /*
  * ProFTPD - FTP server testsuite
- * Copyright (c) 2020-2023 The ProFTPD Project team
+ * Copyright (c) 2020-2025 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -265,6 +265,40 @@ START_TEST (jot_filters_include_classes_test) {
 
   res = pr_jot_filters_include_classes(filters, CL_NONE);
   ck_assert_msg(res == TRUE, "Expected TRUE, got %d", res);
+
+  res = pr_jot_filters_destroy(filters);
+  ck_assert_msg(res == 0, "Failed to destroy filters: %s", strerror(errno));
+}
+END_TEST
+
+START_TEST (jot_filters_parse_sifts_test) {
+  int res;
+  pr_jot_filters_t *filters;
+
+  mark_point();
+  res = pr_jot_filters_parse_sifts(NULL, NULL, NULL, 0);
+  ck_assert_msg(res < 0, "Failed to handle null pool");
+  ck_assert_msg(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+    strerror(errno), errno);
+
+  mark_point();
+  res = pr_jot_filters_parse_sifts(p, NULL, NULL, 0);
+  ck_assert_msg(res < 0, "Failed to handle null filter");
+  ck_assert_msg(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+    strerror(errno), errno);
+
+  mark_point();
+  filters = pr_jot_filters_create(p, "NONE", PR_JOT_FILTER_TYPE_CLASSES, 0);
+
+  mark_point();
+  res = pr_jot_filters_parse_sifts(p, filters, NULL, 0);
+  ck_assert_msg(res < 0, "Failed to handle null sifts");
+  ck_assert_msg(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+    strerror(errno), errno);
+
+  mark_point();
+  res = pr_jot_filters_parse_sifts(p, filters, "A,!B,!C", 0);
+  ck_assert_msg(res == 0, "Failed to handle sifts: %s", strerror(errno));
 
   res = pr_jot_filters_destroy(filters);
   ck_assert_msg(res == 0, "Failed to destroy filters: %s", strerror(errno));
@@ -816,6 +850,7 @@ START_TEST (jot_resolve_logfmt_id_on_default_test) {
   cmd_rec *cmd;
   unsigned char logfmt_id;
 
+  mark_point();
   cmd = pr_cmd_alloc(p, 1, pstrdup(p, "FOO"));
   logfmt_id = LOGFMT_META_BASENAME;
   resolve_on_meta_count = resolve_on_default_count = 0;
@@ -5178,6 +5213,7 @@ Suite *tests_get_jot_suite(void) {
   tcase_add_test(testcase, jot_filters_create_test);
   tcase_add_test(testcase, jot_filters_destroy_test);
   tcase_add_test(testcase, jot_filters_include_classes_test);
+  tcase_add_test(testcase, jot_filters_parse_sifts_test);
 
   tcase_add_test(testcase, jot_parse_on_meta_test);
   tcase_add_test(testcase, jot_parse_on_unknown_test);

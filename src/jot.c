@@ -1,6 +1,6 @@
 /*
  * ProFTPD - FTP server daemon
- * Copyright (c) 2017-2024 The ProFTPD Project team
+ * Copyright (c) 2017-2025 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -33,6 +33,9 @@ struct jot_filters_rec {
   int included_classes;
   int excluded_classes;
   array_header *cmd_ids;
+
+  /* Additional, refining sifting rules. */
+  array_header *cmd_sifts;
 };
 
 /* For tracking the size of deleted files. */
@@ -2191,13 +2194,47 @@ static int is_jottable_class(cmd_rec *cmd, int included_classes,
   return jottable;
 }
 
-static int is_jottable_cmd(cmd_rec *cmd, int *cmd_ids, size_t ncmd_ids) {
+static int is_jottable_cmd_id(cmd_rec *cmd, int *cmd_ids, size_t ncmd_ids) {
   register unsigned int i;
   int jottable = FALSE;
 
   for (i = 0; i < ncmd_ids; i++) {
     if (pr_cmd_cmp(cmd, cmd_ids[i]) == 0) {
       jottable = TRUE;
+      break;
+    }
+  }
+
+  return jottable;
+}
+
+/* Here, we will return -1 if we don't explicitly know whether the given
+ * command is jottable.
+ */
+static int is_jottable_cmd_name(cmd_rec *cmd, const char **cmd_names,
+    size_t ncmd_names) {
+  register unsigned int i;
+  int jottable = -1;
+
+  for (i = 0; i < ncmd_names; i++) {
+    const char *cmd_name;
+    int negated = FALSE;
+
+    cmd_name = cmd_names[i];
+
+    if (cmd_name[0] == '!') {
+      negated = TRUE;
+      cmd_name++;
+    }
+
+    if (strcmp(cmd_name, (const char *) cmd->argv[0]) == 0) {
+      jottable = TRUE;
+
+      if (negated == TRUE) {
+        /* This particular command is being sifted out via '!' prefix. */
+        jottable = FALSE;
+      }
+
       break;
     }
   }
@@ -2212,15 +2249,45 @@ static int is_jottable(pool *p, cmd_rec *cmd, pr_jot_filters_t *filters) {
     jottable = TRUE;
   }
 
-  if (jottable == FALSE) {
-    jottable = is_jottable_class(cmd, filters->included_classes,
-      filters->excluded_classes);
-  }
+  if (filters == NULL ||
+      filters->cmd_sifts == NULL) {
+    if (jottable == FALSE) {
+      jottable = is_jottable_class(cmd, filters->included_classes,
+        filters->excluded_classes);
+    }
 
-  if (jottable == FALSE) {
-    if (filters->cmd_ids != NULL) {
-      jottable = is_jottable_cmd(cmd, filters->cmd_ids->elts,
-        filters->cmd_ids->nelts);
+    if (jottable == FALSE) {
+      if (filters->cmd_ids != NULL) {
+        jottable = is_jottable_cmd_id(cmd, filters->cmd_ids->elts,
+          filters->cmd_ids->nelts);
+      }
+    }
+
+  } else {
+    int class_jottable = FALSE, cmd_jottable = FALSE;
+
+    /* When sifting adds refinement, determination of jottability is more
+     * nuanced.
+     */
+
+    class_jottable = is_jottable_class(cmd, filters->included_classes,
+      filters->excluded_classes);
+    cmd_jottable = is_jottable_cmd_name(cmd, filters->cmd_sifts->elts,
+      filters->cmd_sifts->nelts);
+
+    if (class_jottable == TRUE) {
+      jottable = TRUE;
+
+      if (cmd_jottable == FALSE) {
+        jottable = FALSE;
+      }
+
+    } else {
+      jottable = FALSE;
+
+      if (cmd_jottable == TRUE) {
+        jottable = TRUE;
+      }
     }
   }
 
@@ -3356,8 +3423,36 @@ pr_jot_filters_t *pr_jot_filters_create(pool *p, const char *rules,
   filters->included_classes = included_classes;
   filters->excluded_classes = excluded_classes;
   filters->cmd_ids = cmd_ids;
+  filters->cmd_sifts = NULL;
 
   return filters;
+}
+
+int pr_jot_filters_parse_sifts(pool *p, pr_jot_filters_t *filters,
+    const char *sifts, int flags) {
+  int xerrno;
+  array_header *names;
+  pool *tmp_pool;
+
+  if (p == NULL ||
+      filters == NULL ||
+      sifts == NULL) {
+    errno = EINVAL;
+    return -1;
+  }
+
+  tmp_pool = make_sub_pool(p);
+  names = filter_text_to_array(filters->pool, pstrdup(tmp_pool, sifts));
+  xerrno = errno;
+  destroy_pool(tmp_pool);
+
+  if (names == NULL) {
+    errno = xerrno;
+    return -1;
+  }
+
+  filters->cmd_sifts = names;
+  return 0;
 }
 
 int pr_jot_filters_destroy(pr_jot_filters_t *filters) {
