@@ -167,6 +167,11 @@ my $TESTS = {
     test_class => [qw(bug forking)],
   },
 
+  nlst_glob_with_rel_path_dotdir_issue1475 => {
+    order => ++$order,
+    test_class => [qw(bug forking)],
+  },
+
 };
 
 sub new {
@@ -4441,6 +4446,203 @@ sub nlst_glob_with_rel_path_dotdir_issue1325 {
 
       $ok = 1;
       $mismatch = '';
+      foreach my $name (keys(%$res)) {
+        unless (defined($expected->{$name})) {
+          $mismatch = $name;
+          $ok = 0;
+          last;
+        }
+      }
+
+      unless ($ok) {
+        die("Unexpected name '$mismatch' appeared in NLST data")
+      }
+
+      $client->quit();
+    };
+    if ($@) {
+      $ex = $@;
+    }
+
+    $wfh->print("done\n");
+    $wfh->flush();
+
+  } else {
+    eval { server_wait($setup->{config_file}, $rfh) };
+    if ($@) {
+      warn($@);
+      exit 1;
+    }
+
+    exit 0;
+  }
+
+  # Stop server
+  server_stop($setup->{pid_file});
+  $self->assert_child_ok($pid);
+
+  test_cleanup($setup->{log_file}, $ex);
+}
+
+sub nlst_glob_with_rel_path_dotdir_issue1475 {
+  my $self = shift;
+  my $tmpdir = $self->{tmpdir};
+  my $setup = test_setup($tmpdir, 'cmds');
+
+  my $test_path = File::Spec->rel2abs("$tmpdir/.test.d");
+  mkpath($test_path);
+
+  for (my $i = 0; $i < 10; $i++) {
+    my $test_file = File::Spec->rel2abs("$test_path/TEST000$i.dat");
+    if (open(my $fh, "> $test_file")) {
+      print $fh "Hello, World!\n";
+      unless (close($fh)) {
+        die("Can't write $test_file: $!");
+      }
+
+    } else {
+      die("Can't open $test_file: $!");
+    }
+  }
+
+  my $config = {
+    PidFile => $setup->{pid_file},
+    ScoreboardFile => $setup->{scoreboard_file},
+    SystemLog => $setup->{log_file},
+    TraceLog => $setup->{log_file},
+
+    AuthUserFile => $setup->{auth_user_file},
+    AuthGroupFile => $setup->{auth_group_file},
+    AuthOrder => 'mod_auth_file.c',
+
+    IfModules => {
+      'mod_delay.c' => {
+        DelayEngine => 'off',
+      },
+
+      'mod_vroot.c' => {
+        VRootEngine => 'on',
+        DefaultRoot => '~',
+      },
+    },
+  };
+
+  my ($port, $config_user, $config_group) = config_write($setup->{config_file},
+    $config);
+
+  # Open pipes, for use between the parent and child processes.  Specifically,
+  # the child will indicate when it's done with its test by writing a message
+  # to the parent.
+  my ($rfh, $wfh);
+  unless (pipe($rfh, $wfh)) {
+    die("Can't open pipe: $!");
+  }
+
+  my $ex;
+
+  # Fork child
+  $self->handle_sigchld();
+  defined(my $pid = fork()) or die("Can't fork: $!");
+  if ($pid) {
+    eval {
+      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
+      $client->login($setup->{user}, $setup->{passwd});
+      $client->cwd('.test.d');
+
+      my $conn = $client->nlst_raw('./*');
+      unless ($conn) {
+        die("Failed to NLST: " . $client->response_code() . " " .
+          $client->response_msg());
+      }
+
+      my $buf;
+      $conn->read($buf, 8192, 25);
+      eval { $conn->close() };
+
+      if ($ENV{TEST_VERBOSE}) {
+        print STDERR "# response:\n$buf\n";
+      }
+
+      # We have to be careful of the fact that readdir returns directory
+      # entries in an unordered fashion.
+      my $res = {};
+      my $names = [split(/\n/, $buf)];
+      foreach my $name (@$names) {
+        $res->{$name} = 1;
+      }
+
+      $self->assert(scalar(@$names) > 0,
+        test_msg("Expected multiple names, got 0"));
+
+      my $expected = {
+        './TEST0000.dat' => 1,
+        './TEST0001.dat' => 1,
+        './TEST0002.dat' => 1,
+        './TEST0003.dat' => 1,
+        './TEST0004.dat' => 1,
+        './TEST0005.dat' => 1,
+        './TEST0006.dat' => 1,
+        './TEST0007.dat' => 1,
+        './TEST0008.dat' => 1,
+        './TEST0009.dat' => 1,
+      };
+
+      my $ok = 1;
+      my $mismatch;
+      foreach my $name (keys(%$res)) {
+        unless (defined($expected->{$name})) {
+          $mismatch = $name;
+          $ok = 0;
+          last;
+        }
+      }
+
+      unless ($ok) {
+        die("Unexpected name '$mismatch' appeared in NLST data")
+      }
+
+      # Now just use a straight asterisk, no relative path.
+
+      $conn = $client->nlst_raw('*');
+      unless ($conn) {
+        die("Failed to NLST: " . $client->response_code() . " " .
+          $client->response_msg());
+      }
+
+      $buf = '';
+      $conn->read($buf, 8192, 25);
+      eval { $conn->close() };
+
+      if ($ENV{TEST_VERBOSE}) {
+        print STDERR "# response:\n$buf\n";
+      }
+
+      # We have to be careful of the fact that readdir returns directory
+      # entries in an unordered fashion.
+      $res = {};
+      $names = [split(/\n/, $buf)];
+      foreach my $name (@$names) {
+        $res->{$name} = 1;
+      }
+
+      $self->assert(scalar(@$names) > 0,
+        test_msg("Expected multiple names, got 0"));
+
+      $expected = {
+        'TEST0000.dat' => 1,
+        'TEST0001.dat' => 1,
+        'TEST0002.dat' => 1,
+        'TEST0003.dat' => 1,
+        'TEST0004.dat' => 1,
+        'TEST0005.dat' => 1,
+        'TEST0006.dat' => 1,
+        'TEST0007.dat' => 1,
+        'TEST0008.dat' => 1,
+        'TEST0009.dat' => 1,
+      };
+
+      $ok = 1;
+      $mismatch = undef;
       foreach my $name (keys(%$res)) {
         unless (defined($expected->{$name})) {
           $mismatch = $name;
