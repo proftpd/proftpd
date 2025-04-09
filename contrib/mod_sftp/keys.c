@@ -6721,7 +6721,10 @@ static const unsigned char *prove_hostkey(pool *p,
         break;
 
       default:
-        /* Ignore */
+#if defined(HAVE_SHA256_OPENSSL)
+        /* Use SHA256 signatures for RSA host keys. */
+        hostkey_type = SFTP_KEY_RSA_SHA256;
+#endif /* HAVE_SHA256_OPENSSL */
         break;
     }
   }
