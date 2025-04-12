@@ -353,14 +353,32 @@ MODRET set_extendedlog(cmd_rec *cmd) {
 
   if (argc > 2) {
     pr_jot_filters_t *jot_filters;
-    const char *rules;
+    char *ptr, *rules, *cmd_sifts = NULL;
 
     rules = cmd->argv[2];
+
+    /* Check for command sifting rules in the provided classes. */
+    ptr = strchr(rules, '+');
+    if (ptr != NULL) {
+      cmd_sifts = ptr + 1;
+      *ptr = '\0';
+    }
+
     jot_filters = pr_jot_filters_create(c->pool, rules,
       PR_JOT_FILTER_TYPE_CLASSES, 0);
     if (jot_filters == NULL) {
       CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "invalid log class in '", rules,
         "': ", strerror(errno), NULL));
+    }
+
+    if (cmd_sifts != NULL) {
+      int res;
+
+      res = pr_jot_filters_parse_sifts(c->pool, jot_filters, cmd_sifts, 0);
+      if (res < 0) {
+        CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "error parsing commands in '",
+          cmd_sifts, "': ", strerror(errno), NULL));
+      }
     }
 
     c->argv[1] = jot_filters;
