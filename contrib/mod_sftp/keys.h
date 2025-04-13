@@ -1,6 +1,6 @@
 /*
  * ProFTPD - mod_sftp key mgmt (keys)
- * Copyright (c) 2008-2023 TJ Saunders
+ * Copyright (c) 2008-2025 TJ Saunders
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -61,10 +61,21 @@ struct sftp_verify_details {
  * As per draft-ietf-secsh-fingerprint-00, only MD5 fingerprints are currently
  * supported.
  */
-const char *sftp_keys_get_fingerprint(pool *, unsigned char *, uint32_t, int);
+const char *sftp_keys_get_fingerprint(pool *p, unsigned char *key_data,
+  uint32_t key_datalen, int digest_algo_id);
 #define SFTP_KEYS_FP_DIGEST_MD5		1
 #define SFTP_KEYS_FP_DIGEST_SHA1	2
 #define SFTP_KEYS_FP_DIGEST_SHA256	3
+
+const char *sftp_keys_get_fingerprint2(pool *p, unsigned char *key_data,
+  uint32_t key_datalen, int digest_algo_id, int fmt_id);
+#define SFTP_KEYS_FP_FMT_BASE64		1
+#define SFTP_KEYS_FP_FMT_HEX		2
+#define SFTP_KEYS_FP_FMT_HEX_COLONS	3
+
+/* Retrieve the algorithm/encoding currently in effect for fingerprints. */
+int sftp_keys_get_fingerprint_algo(pool *p, int *algo_id, const char **algo,
+  int *fmt_id);
 
 /* Security Key flags */
 #define SFTP_KEYS_SK_USER_PRESENCE_REQUIRED	0x001

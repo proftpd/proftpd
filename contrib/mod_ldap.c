@@ -1,7 +1,7 @@
 /*
  * mod_ldap - LDAP password lookup module for ProFTPD
  * Copyright (c) 1999-2013, John Morrissey <jwm@horde.net>
- * Copyright (c) 2013-2023 The ProFTPD Project
+ * Copyright (c) 2013-2025 The ProFTPD Project
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -920,6 +920,9 @@ static struct passwd *pr_ldap_user_lookup(pool *p, char *filter_template,
               "LDAPDefaultGID Auto in effect but user name is missing");
             return NULL;
           }
+
+        } else {
+          pw->pw_gid = ldap_defaultgid;
         }
         ++i;
 
@@ -2681,6 +2684,13 @@ MODRET set_ldapserver(cmd_rec *cmd) {
     *((struct server_info **) push_array(infos)) = info;
   }
 
+  if (pr_module_exists("mod_ifsession.c")) {
+    /* These are needed in case this directive is used with mod_ifsession
+     * configuration.
+     */
+    c->flags |= CF_MULTI;
+  }
+
   return PR_HANDLED(cmd);
 }
 
@@ -2896,6 +2906,8 @@ MODRET set_ldapdefaultauthscheme(cmd_rec *cmd) {
 }
 
 MODRET set_ldapattr(cmd_rec *cmd) {
+  config_rec *c;
+
   CHECK_ARGS(cmd, 2);
   CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL);
 
@@ -2913,7 +2925,15 @@ MODRET set_ldapattr(cmd_rec *cmd) {
       ": unknown attribute name: ", cmd->argv[1], NULL));
   }
 
-  add_config_param_str(cmd->argv[0], 2, cmd->argv[1], cmd->argv[2]);
+  c = add_config_param_str(cmd->argv[0], 2, cmd->argv[1], cmd->argv[2]);
+
+  if (pr_module_exists("mod_ifsession.c")) {
+    /* These are needed in case this directive is used with mod_ifsession
+     * configuration.
+     */
+    c->flags |= CF_MULTI;
+  }
+
   return PR_HANDLED(cmd);
 }
 

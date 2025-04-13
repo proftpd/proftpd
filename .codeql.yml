@@ -6,6 +6,9 @@ query-filters:
       # See: https://codeql.github.com/codeql-query-help/cpp/cpp-commented-out-code/
       id: cpp/commented-out-code
   - exclude:
+      # See: https://codeql.github.com/codeql-query-help/cpp/cpp-guarded-free/
+      id: cpp/guarded-free
+  - exclude:
       # See: https://codeql.github.com/codeql-query-help/cpp/cpp-long-switch/
       id: cpp/long-switch
   - exclude:

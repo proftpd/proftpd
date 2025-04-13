@@ -1,6 +1,6 @@
 /*
  * ProFTPD: mod_rewrite -- a module for rewriting FTP commands
- * Copyright (c) 2001-2023 TJ Saunders
+ * Copyright (c) 2001-2024 TJ Saunders
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -2353,24 +2353,26 @@ MODRET set_rewritecondition(cmd_rec *cmd) {
 
 /* usage: RewriteEngine on|off */
 MODRET set_rewriteengine(cmd_rec *cmd) {
-  int bool = 0;
+  int engine = FALSE;
   config_rec *c = NULL;
 
   CHECK_ARGS(cmd, 1);
   CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL);
 
-  bool = get_boolean(cmd, 1);
-  if (bool == -1)
-    CONF_ERROR(cmd, "expecting boolean argument");
+  engine = get_boolean(cmd, 1);
+  if (engine == -1) {
+    CONF_ERROR(cmd, "expecting Boolean parameter");
+  }
 
   /* Check for duplicates */
-  if (get_param_ptr(cmd->server->conf, cmd->argv[0], FALSE) != NULL)
+  if (get_param_ptr(cmd->server->conf, cmd->argv[0], FALSE) != NULL) {
     CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, cmd->argv[0], ": multiple "
      "instances not allowed for same server", NULL));
+  }
 
   c = add_config_param(cmd->argv[0], 1, NULL);
   c->argv[0] = pcalloc(c->pool, sizeof(unsigned char));
-  *((unsigned char *) c->argv[0]) = bool;
+  *((unsigned char *) c->argv[0]) = engine;
 
   return PR_HANDLED(cmd);
 }

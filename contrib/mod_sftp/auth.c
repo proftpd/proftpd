@@ -1,6 +1,6 @@
 /*
  * ProFTPD - mod_sftp user authentication
- * Copyright (c) 2008-2023 TJ Saunders
+ * Copyright (c) 2008-2025 TJ Saunders
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -64,6 +64,36 @@ static int auth_sent_userauth_success = FALSE;
 
 static const char *auth_user = NULL;
 static const char *auth_service = NULL;
+
+struct sftp_auth_publickey {
+  const char *algo;
+  enum sftp_key_type_e key_type;
+};
+
+static struct sftp_auth_publickey publickeys[] = {
+  { "ssh-dss", SFTP_KEY_DSA },
+  { "ssh-rsa", SFTP_KEY_RSA },
+#if defined(HAVE_SHA256_OPENSSL)
+  { "rsa-sha2-256", SFTP_KEY_RSA_SHA256 },
+#endif /* HAVE_SHA256_OPENSSL */
+#if defined(HAVE_SHA512_OPENSSL)
+  { "rsa-sha2-512", SFTP_KEY_RSA_SHA512 },
+#endif /* HAVE_SHA512_OPENSSL */
+#if defined(PR_USE_OPENSSL_ECC)
+  { "ecdsa-sha2-nistp256", SFTP_KEY_ECDSA_256 },
+  { "ecdsa-sha2-nistp384", SFTP_KEY_ECDSA_384 },
+  { "ecdsa-sha2-nistp521", SFTP_KEY_ECDSA_521 },
+  { "sk-ecdsa-sha2-nistp256@openssh.com", SFTP_KEY_ECDSA_256_SK },
+#endif /* PR_USE_OPENSSL_ECC */
+#if defined(PR_USE_SODIUM)
+  { "ssh-ed25519", SFTP_KEY_ED25519 },
+  { "sk-ssh-ed25519@openssh.com", SFTP_KEY_ED25519_SK },
+#endif /* PR_USE_SODIUM */
+#if defined(HAVE_X448_OPENSSL)
+  { "ssh-ed448", SFTP_KEY_ED448 },
+#endif /* HAVE_X448_OPENSSL */
+  { NULL, 0 }
+};
 
 /* Customizable callback for handling successful SSH authentication. */
 static int (*success_handler)(pool *, const char *) = NULL;
@@ -370,6 +400,7 @@ static int setup_env(pool *p, const char *user) {
   }
 
   session.user = pstrdup(p, pw->pw_name);
+  session.user_homedir = pstrdup(p, pw->pw_dir);
   session.group = pstrdup(p, pr_auth_gid2name(p, pw->pw_gid));
 
   session.login_uid = pw->pw_uid;
@@ -388,8 +419,20 @@ static int setup_env(pool *p, const char *user) {
       session.groups == NULL) {
     res = pr_auth_getgroups(p, pw->pw_name, &session.gids, &session.groups);
     if (res < 1) {
+      /* If no supplemental groups are provided, default to using the process
+       * primary GID as the supplemental group.  This prevents access
+       * regressions as seen in Issue #1830.
+       */
       (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
-        "no supplemental groups found for user '%s'", pw->pw_name);
+        "no supplemental groups found for user '%s', "
+        "using primary group %s (GID %lu)", pw->pw_name, session.group,
+        (unsigned long) session.login_gid);
+
+      session.gids = make_array(p, 2, sizeof(gid_t));
+      session.groups = make_array(p, 2, sizeof(char *));
+
+      *((gid_t *) push_array(session.gids)) = session.login_gid;
+      *((char **) push_array(session.groups)) = pstrdup(p, session.group);
     }
   }
 
@@ -674,8 +717,16 @@ static int setup_env(pool *p, const char *user) {
 
   session.user = pstrdup(session.pool, session.user);
 
+  if (session.user_homedir != NULL) {
+    session.user_homedir = pstrdup(session.pool, session.user_homedir);
+  }
+
   if (session.group != NULL) {
     session.group = pstrdup(session.pool, session.group);
+  }
+
+  if (session.gids != NULL) {
+    session.gids = copy_array(session.pool, session.gids);
   }
 
   session.groups = copy_array_str(session.pool, session.groups);
@@ -1565,7 +1616,7 @@ static int handle_userauth_req(struct ssh2_packet *pkt, char **service) {
           services |= SFTP_SERVICE_FL_SCP;
 
         } else if (strncasecmp(protocol, "date", 5) == 0) {
-          services |= SFTP_SERVICE_FL_SCP;
+          services |= SFTP_SERVICE_FL_DATE;
         }
       }
     }
@@ -1802,6 +1853,28 @@ array_header *sftp_auth_chain_parse_method_chain(pool *p,
 
 char *sftp_auth_get_default_dir(void) {
   return auth_default_dir;
+}
+
+int sftp_auth_publickey_isvalid(const char *algo,
+    enum sftp_key_type_e *pubkey_type) {
+  register unsigned int i;
+
+  if (algo == NULL) {
+    errno = EINVAL;
+    return -1;
+  }
+
+  for (i = 0; publickeys[i].algo != NULL; i++) {
+    if (strcmp(publickeys[i].algo, algo) == 0) {
+      if (pubkey_type != NULL) {
+        *pubkey_type = publickeys[i].key_type;
+      }
+
+      return TRUE;
+    }
+  }
+
+  return FALSE;
 }
 
 int sftp_auth_send_banner(const char *banner) {

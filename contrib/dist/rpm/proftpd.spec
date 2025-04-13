@@ -25,6 +25,7 @@
 #   mod_snmp
 #   mod_sql
 #   mod_sql_passwd
+#   mod_systemd
 #   mod_wrap2
 #   mod_wrap2_file
 #   mod_wrap2_redis
@@ -53,11 +54,11 @@
 # RHEL5 and clones don't have suitably recent versions of pcre/libmemcached
 # so use --with rhel5 to inhibit those features when using --with everything
 
-%global proftpd_version			1.3.9rc3
+%global proftpd_version			1.3.10rc1
 
 # rc_version should be incremented for each RC release, and reset back to 1
 # AFTER each stable release.
-%global rc_version			3
+%global rc_version			1
 
 # release_version should be incremented for each maint release, and reset back
 # to 1 BEFORE starting new release cycle.
@@ -73,8 +74,8 @@
 
 %global usecvsversion             	0%{?_with_cvs:1}
 
-%global proftpd_cvs_version_main	1.3.8
-%global proftpd_cvs_version_date  	20150527
+%global proftpd_cvs_version_main	1.3.10
+%global proftpd_cvs_version_date  	20250314
 
 # Spec default assumes that a gzipped tarball is used, since nightly CVS builds,
 # release candidates and stable/maint releases are all available in that form;
@@ -84,7 +85,7 @@
 
 # Handle optional functionality
 #
-# --with everything (for all optional functionality)
+# --with everything (for all optional functionality EXCEPT mod_wrap)
 # --with rhel5 inhibits features not available on RHEL5 and clones
 # --with rhel6 inhibits features not available on RHEL6 and clones
 %if 0%{?_with_everything:1}
@@ -102,7 +103,11 @@
 %global _with_postgresql 1
 %global _with_ssl 1
 %global _with_sodium 1
+#
+# --with wrap (for mod_wrap)
+%if 0%{?_with_wrap:1}
 %global _with_wrap 1
+%endif
 %endif
 #
 # --with geoip (for mod_geoip)
@@ -368,6 +373,7 @@ STANDARD_MODULE_LIST="  mod_auth_pam            \
                         mod_site_misc           \
                         mod_snmp                \
                         mod_sql                 \
+                        mod_systemd             \
                         mod_wrap2               \
                         mod_wrap2_file          \
                         mod_wrap2_redis         \
@@ -559,6 +565,7 @@ rm -rf %{_builddir}/%{name}-%{version}
 %{_libexecdir}/proftpd/mod_snmp.so
 %{_libexecdir}/proftpd/mod_sql.so
 %{?_with_ssl:%{_libexecdir}/proftpd/mod_sql_passwd.so}
+%{_libexecdir}/proftpd/mod_systemd.so
 %{?_with_ssl:%{_libexecdir}/proftpd/mod_tls.so}
 %{?_with_ssl:%{_libexecdir}/proftpd/mod_tls_fscache.so}
 %{?_with_ssl:%{?_with_memcache:%{_libexecdir}/proftpd/mod_tls_memcache.so}}

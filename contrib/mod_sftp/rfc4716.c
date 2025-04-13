@@ -1,6 +1,6 @@
 /*
  * ProFTPD - mod_sftp RFC4716 keystore
- * Copyright (c) 2008-2023 TJ Saunders
+ * Copyright (c) 2008-2025 TJ Saunders
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -82,7 +82,14 @@ static char *filestore_getline(sftp_keystore_t *store, pool *p) {
 
     linelen = strlen(linebuf);
     if (linelen >= 1) {
-      if (linebuf[linelen - 1] == '\r' ||
+
+      /* Check for the CRLF case first.  If those are not present, then we
+       * check for either CR or LF.  Doing the "CR or LF" check first prevents
+       * us from properly handling CRLFs, and thus lead to Issue #1904.
+       */
+
+      if (linelen >= 2 &&
+          linebuf[linelen - 2] == '\r' &&
           linebuf[linelen - 1] == '\n') {
         char *tmp;
         unsigned int header_taglen, header_valuelen;
@@ -90,6 +97,7 @@ static char *filestore_getline(sftp_keystore_t *store, pool *p) {
 
         store_data->lineno++;
 
+        linebuf[linelen - 2] = '\0';
         linebuf[linelen - 1] = '\0';
         line = pstrcat(p, line, linebuf, NULL);
 
@@ -134,16 +142,14 @@ static char *filestore_getline(sftp_keystore_t *store, pool *p) {
 
         continue;
 
-      } else if (linelen >= 2 &&
-          linebuf[linelen - 2] == '\r' &&
-          linebuf[linelen - 1] == '\n') {
+      } else if (linebuf[linelen - 1] == '\r' ||
+                 linebuf[linelen - 1] == '\n') {
         char *tmp;
         unsigned int header_taglen, header_valuelen;
         int have_line_continuation = FALSE;
 
         store_data->lineno++;
 
-        linebuf[linelen - 2] = '\0';
         linebuf[linelen - 1] = '\0';
         line = pstrcat(p, line, linebuf, NULL);
 
@@ -352,6 +358,13 @@ static struct filestore_key *filestore_get_key(sftp_keystore_t *store,
               "error buffering base64 data");
           }
         }
+
+      } else {
+        /* We have a line of unexpected format.  Log it, at least, for
+         * debugging/diagnosis.
+         */
+        pr_trace_msg(trace_channel, 20, "unexpected text at line %u: '%s'",
+          store_data->lineno, line);
       }
     }
 

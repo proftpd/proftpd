@@ -4,7 +4,7 @@ on:
   push:
     branches:
       - master
-      - 1.3.8
+      - 1.3.9
     paths-ignore:
       - NEWS
       - RELEASE_NOTES
@@ -14,7 +14,7 @@ on:
   pull_request:
     branches:
       - master
-      - 1.3.8
+      - 1.3.9
     paths-ignore:
       - NEWS
       - RELEASE_NOTES
@@ -25,6 +25,11 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
+
+    env:
+      # GitHub runners still causing problems with NodeJS v20; see:
+      #  https://github.com/actions/checkout/issues/1809.
+      ACTIONS_ALLOW_USE_UNSECURE_NODE_VERSION: true
 
     strategy:
       matrix:
@@ -44,8 +49,6 @@ jobs:
           yum install -y dnf-plugins-core epel-release yum-utils
           dnf config-manager --enable epel
           dnf config-manager --set-enabled powertools
-          # for mod_wrap
-          yum install -y libnsl2-devel https://rpmfind.net/linux/centos/7.9.2009/os/x86_64/Packages/tcp_wrappers-libs-7.6-77.el7.x86_64.rpm https://rpmfind.net/linux/centos/7.9.2009/os/x86_64/Packages/tcp_wrappers-devel-7.6-77.el7.x86_64.rpm
 
       - name: Install packages
         run: |

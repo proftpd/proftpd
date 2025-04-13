@@ -2,7 +2,7 @@
  * ProFTPD - FTP server daemon
  * Copyright (c) 1997, 1998 Public Flood Software
  * Copyright (c) 1999, 2000 MacGyver aka Habeeb J. Dihu <macgyver@tos.net>
- * Copyright (c) 2001-2023 The ProFTPD Project team
+ * Copyright (c) 2001-2024 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -1140,8 +1140,8 @@ static int setup_env(pool *p, cmd_rec *cmd, const char *user, char *pass) {
     session.groups = NULL;
   }
 
-  if (!session.gids &&
-      !session.groups) {
+  if (session.gids == NULL &&
+      session.groups == NULL) {
     /* Get the supplemental groups.  Note that we only look up the
      * supplemental group credentials if we have not cached the group
      * credentials before, in session.gids and session.groups.
@@ -1151,8 +1151,19 @@ static int setup_env(pool *p, cmd_rec *cmd, const char *user, char *pass) {
      */
      res = pr_auth_getgroups(p, pw->pw_name, &session.gids, &session.groups);
      if (res < 1) {
-       pr_log_debug(DEBUG5, "no supplemental groups found for user '%s'",
-         pw->pw_name);
+       /* If no supplemental groups are provided, default to using the process
+        * primary GID as the supplemental group.  This prevents access
+        * regressions as seen in Issue #1830.
+        */
+       pr_log_debug(DEBUG5, "no supplemental groups found for user '%s', "
+         "using primary group %s (GID %lu)", pw->pw_name, session.group,
+         (unsigned long) session.login_gid);
+
+       session.gids = make_array(p, 2, sizeof(gid_t));
+       session.groups = make_array(p, 2, sizeof(char *));
+
+       *((gid_t *) push_array(session.gids)) = session.login_gid;
+       *((char **) push_array(session.groups)) = pstrdup(p, session.group);
      }
   }
 
@@ -3078,19 +3089,20 @@ MODRET set_anonallowrobots(cmd_rec *cmd) {
 }
 
 MODRET set_anonrequirepassword(cmd_rec *cmd) {
-  int bool = -1;
+  int anon_require_passwd = -1;
   config_rec *c = NULL;
 
   CHECK_ARGS(cmd, 1);
   CHECK_CONF(cmd, CONF_ANON);
 
-  bool = get_boolean(cmd, 1);
-  if (bool == -1)
+  anon_require_passwd = get_boolean(cmd, 1);
+  if (anon_require_passwd == -1) {
     CONF_ERROR(cmd, "expected Boolean parameter");
+  }
 
   c = add_config_param(cmd->argv[0], 1, NULL);
   c->argv[0] = pcalloc(c->pool, sizeof(unsigned char));
-  *((unsigned char *) c->argv[0]) = bool;
+  *((unsigned char *) c->argv[0]) = anon_require_passwd;
 
   return PR_HANDLED(cmd);
 }
@@ -3164,44 +3176,46 @@ MODRET set_anonrejectpasswords(cmd_rec *cmd) {
 }
 
 MODRET set_authaliasonly(cmd_rec *cmd) {
-  int bool = -1;
+  int auth_alias_only = -1;
   config_rec *c = NULL;
 
   CHECK_ARGS(cmd, 1);
   CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL|CONF_ANON);
 
-  bool = get_boolean(cmd, 1);
-  if (bool == -1)
+  auth_alias_only = get_boolean(cmd, 1);
+  if (auth_alias_only == -1) {
     CONF_ERROR(cmd, "expected Boolean parameter");
+  }
 
   c = add_config_param(cmd->argv[0], 1, NULL);
   c->argv[0] = pcalloc(c->pool, sizeof(unsigned char));
-  *((unsigned char *) c->argv[0]) = bool;
+  *((unsigned char *) c->argv[0]) = auth_alias_only;
 
   c->flags |= CF_MERGEDOWN;
   return PR_HANDLED(cmd);
 }
 
 MODRET set_authusingalias(cmd_rec *cmd) {
-  int bool = -1;
+  int auth_using_alias = -1;
   config_rec *c = NULL;
 
   CHECK_ARGS(cmd, 1);
   CHECK_CONF(cmd, CONF_ANON);
 
-  bool = get_boolean(cmd, 1);
-  if (bool == -1)
+  auth_using_alias = get_boolean(cmd, 1);
+  if (auth_using_alias == -1) {
     CONF_ERROR(cmd, "expected Boolean parameter");
+  }
 
   c = add_config_param(cmd->argv[0], 1, NULL);
   c->argv[0] = pcalloc(c->pool, sizeof(unsigned char));
-  *((unsigned char *) c->argv[0]) = bool;
+  *((unsigned char *) c->argv[0]) = auth_using_alias;
 
   return PR_HANDLED(cmd);
 }
 
 MODRET set_createhome(cmd_rec *cmd) {
-  int bool = -1, start = 2;
+  int create_home = -1, start = 2;
   mode_t mode = (mode_t) 0700, dirmode = (mode_t) 0711;
   char *skel_path = NULL;
   config_rec *c = NULL;
@@ -3215,16 +3229,16 @@ MODRET set_createhome(cmd_rec *cmd) {
 
   CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL);
 
-  bool = get_boolean(cmd, 1);
-  if (bool == -1) {
+  create_home = get_boolean(cmd, 1);
+  if (create_home == -1) {
     CONF_ERROR(cmd, "expected Boolean parameter");
   }
 
   /* No need to process the rest if bool is FALSE. */
-  if (bool == FALSE) {
+  if (create_home == FALSE) {
     c = add_config_param(cmd->argv[0], 1, NULL);
     c->argv[0] = pcalloc(c->pool, sizeof(unsigned char));
-    *((unsigned char *) c->argv[0]) = bool;
+    *((unsigned char *) c->argv[0]) = create_home;
 
     return PR_HANDLED(cmd);
   }
@@ -3369,13 +3383,13 @@ MODRET set_createhome(cmd_rec *cmd) {
     NULL, NULL, NULL, NULL);
 
   c->argv[0] = pcalloc(c->pool, sizeof(unsigned char));
-  *((unsigned char *) c->argv[0]) = bool;
+  *((unsigned char *) c->argv[0]) = create_home;
   c->argv[1] = pcalloc(c->pool, sizeof(mode_t));
   *((mode_t *) c->argv[1]) = mode;
   c->argv[2] = pcalloc(c->pool, sizeof(mode_t));
   *((mode_t *) c->argv[2]) = dirmode;
 
-  if (skel_path) {
+  if (skel_path != NULL) {
     c->argv[3] = pstrdup(c->pool, skel_path);
   }
 
@@ -3820,20 +3834,20 @@ MODRET set_maxpasswordsize(cmd_rec *cmd) {
 }
 
 MODRET set_requirevalidshell(cmd_rec *cmd) {
-  int bool = -1;
+  int require_valid_shell = -1;
   config_rec *c = NULL;
 
   CHECK_ARGS(cmd, 1);
   CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL|CONF_ANON);
 
-  bool = get_boolean(cmd, 1);
-  if (bool == -1) {
+  require_valid_shell = get_boolean(cmd, 1);
+  if (require_valid_shell == -1) {
     CONF_ERROR(cmd, "expected Boolean parameter");
   }
 
   c = add_config_param(cmd->argv[0], 1, NULL);
   c->argv[0] = pcalloc(c->pool, sizeof(unsigned char));
-  *((unsigned char *) c->argv[0]) = bool;
+  *((unsigned char *) c->argv[0]) = require_valid_shell;
   c->flags |= CF_MERGEDOWN;
 
   return PR_HANDLED(cmd);
@@ -3841,39 +3855,39 @@ MODRET set_requirevalidshell(cmd_rec *cmd) {
 
 /* usage: RewriteHome on|off */
 MODRET set_rewritehome(cmd_rec *cmd) {
-  int bool = -1;
+  int rewrite_home = -1;
   config_rec *c = NULL;
 
   CHECK_ARGS(cmd, 1);
   CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL);
 
-  bool = get_boolean(cmd, 1);
-  if (bool == -1) {
+  rewrite_home = get_boolean(cmd, 1);
+  if (rewrite_home == -1) {
     CONF_ERROR(cmd, "expected Boolean parameter");
   }
 
   c = add_config_param(cmd->argv[0], 1, NULL);
   c->argv[0] = pcalloc(c->pool, sizeof(int));
-  *((int *) c->argv[0]) = bool;
+  *((int *) c->argv[0]) = rewrite_home;
 
   return PR_HANDLED(cmd);
 }
 
 MODRET set_rootlogin(cmd_rec *cmd) {
-  int bool = -1;
+  int allow_root_login = -1;
   config_rec *c = NULL;
 
   CHECK_ARGS(cmd,1);
   CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL|CONF_ANON);
 
-  bool = get_boolean(cmd, 1);
-  if (bool == -1) {
+  allow_root_login = get_boolean(cmd, 1);
+  if (allow_root_login == -1) {
     CONF_ERROR(cmd, "expected Boolean parameter");
   }
 
   c = add_config_param(cmd->argv[0], 1, NULL);
   c->argv[0] = pcalloc(c->pool, sizeof(unsigned char));
-  *((unsigned char *) c->argv[0]) = (unsigned char) bool;
+  *((unsigned char *) c->argv[0]) = (unsigned char) allow_root_login;
   c->flags |= CF_MERGEDOWN;
 
   return PR_HANDLED(cmd);
@@ -4040,20 +4054,20 @@ MODRET set_timeoutsession(cmd_rec *cmd) {
 }
 
 MODRET set_useftpusers(cmd_rec *cmd) {
-  int bool = -1;
+  int use_ftpusers = -1;
   config_rec *c = NULL;
 
   CHECK_ARGS(cmd, 1);
   CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL|CONF_ANON);
 
-  bool = get_boolean(cmd, 1);
-  if (bool == -1) {
+  use_ftpusers = get_boolean(cmd, 1);
+  if (use_ftpusers == -1) {
     CONF_ERROR(cmd, "expected Boolean parameter");
   }
 
   c = add_config_param(cmd->argv[0], 1, NULL);
   c->argv[0] = pcalloc(c->pool, sizeof(unsigned char));
-  *((unsigned char *) c->argv[0]) = bool;
+  *((unsigned char *) c->argv[0]) = use_ftpusers;
   c->flags |= CF_MERGEDOWN;
 
   return PR_HANDLED(cmd);
@@ -4062,20 +4076,20 @@ MODRET set_useftpusers(cmd_rec *cmd) {
 /* usage: UseLastlog on|off */
 MODRET set_uselastlog(cmd_rec *cmd) {
 #if defined(PR_USE_LASTLOG)
-  int bool;
+  int use_lastlog = -1;
   config_rec *c;
 
   CHECK_ARGS(cmd, 1);
   CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL);
 
-  bool = get_boolean(cmd, 1);
-  if (bool == -1) {
+  use_lastlog = get_boolean(cmd, 1);
+  if (use_lastlog == -1) {
     CONF_ERROR(cmd, "expected Boolean parameter");
   }
 
   c = add_config_param(cmd->argv[0], 1, NULL);
   c->argv[0] = pcalloc(c->pool, sizeof(unsigned char));
-  *((unsigned char *) c->argv[0]) = bool;
+  *((unsigned char *) c->argv[0]) = use_lastlog;
 
   return PR_HANDLED(cmd);
 #else
@@ -4112,20 +4126,20 @@ MODRET set_useralias(cmd_rec *cmd) {
 }
 
 MODRET set_userdirroot(cmd_rec *cmd) {
-  int bool = -1;
+  int user_dir_root = -1;
   config_rec *c = NULL;
 
   CHECK_ARGS(cmd, 1);
   CHECK_CONF(cmd, CONF_ANON);
 
-  bool = get_boolean(cmd, 1);
-  if (bool == -1) {
+  user_dir_root = get_boolean(cmd, 1);
+  if (user_dir_root == -1) {
     CONF_ERROR(cmd, "expected Boolean parameter");
   }
 
   c = add_config_param(cmd->argv[0], 1, NULL);
   c->argv[0] = pcalloc(c->pool, sizeof(unsigned char));
-  *((unsigned char *) c->argv[0]) = bool;
+  *((unsigned char *) c->argv[0]) = user_dir_root;
 
   return PR_HANDLED(cmd);
 }

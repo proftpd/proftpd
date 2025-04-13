@@ -1,6 +1,6 @@
 /*
  * ProFTPD - mod_sftp sftp
- * Copyright (c) 2008-2024 TJ Saunders
+ * Copyright (c) 2008-2025 TJ Saunders
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -1454,15 +1454,17 @@ static int fxp_attrs_set(pr_fh_t *fh, const char *path, struct stat *attrs,
 
   if (attr_flags & SSH2_FX_ATTR_PERMISSIONS) {
     if (attrs->st_mode &&
-        st.st_mode != attrs->st_mode) {
+        (st.st_mode & ~S_IFMT) != (attrs->st_mode & ~S_IFMT)) {
       cmd_rec *cmd;
 
       cmd = fxp_cmd_alloc(fxp->pool, "SITE_CHMOD", pstrdup(fxp->pool, path));
       if (!dir_check(fxp->pool, cmd, G_WRITE, (char *) path, NULL)) {
         (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
-          "chmod of '%s' blocked by <Limit> configuration", path);
+          "chmod of '%s' blocked by <Limit> configuration "
+          "(see the IgnoreSFTPSetPerms/IgnoreSFTPUploadPerms SFTPOptions)",
+          path);
 
-        errno = EACCES;
+        xerrno = EACCES;
         res = -1;
 
       } else {
@@ -1482,7 +1484,7 @@ static int fxp_attrs_set(pr_fh_t *fh, const char *path, struct stat *attrs,
 
         (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
           "error changing permissions of '%s' to 0%o: %s", path,
-          (unsigned int) attrs->st_mode, strerror(xerrno));
+          (unsigned int) (attrs->st_mode & ~S_IFMT), strerror(xerrno));
 
         status_code = fxp_errno2status(xerrno, &reason);
 
@@ -1527,7 +1529,7 @@ static int fxp_attrs_set(pr_fh_t *fh, const char *path, struct stat *attrs,
         (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
           "chown of '%s' blocked by <Limit> configuration", path);
 
-        errno = EACCES;
+        xerrno = EACCES;
         res = -1;
 
       } else {
@@ -3231,16 +3233,20 @@ static void fxp_packet_set_packet(struct fxp_packet *pkt) {
   curr_pkt = pkt;
 }
 
-static void fxp_packet_clear_cache(void) {
+static void fxp_packet_clear_cache_data(void) {
   curr_buflen = 0;
 }
 
-static uint32_t fxp_packet_get_cache(unsigned char **data) {
+static uint32_t fxp_packet_get_cache_data(unsigned char **data) {
   *data = curr_buf;
   return curr_buflen;
 }
 
-static void fxp_packet_add_cache(unsigned char *data, uint32_t datalen) {
+static uint32_t fxp_packet_have_cache_data(void) {
+  return curr_buflen;
+}
+
+static void fxp_packet_add_cache_data(unsigned char *data, uint32_t datalen) {
   if (curr_buf_pool == NULL) {
     curr_buf_pool = make_sub_pool(fxp_pool);
     pr_pool_tag(curr_buf_pool, "SFTP packet buffer pool");
@@ -3352,24 +3358,35 @@ static void fxp_packet_add_cache(unsigned char *data, uint32_t datalen) {
     memmove(curr_buf + curr_buflen, data, datalen);
     curr_buflen += datalen;
   }
-
-  return;
 }
 
 static struct fxp_packet *fxp_packet_read(uint32_t channel_id,
-    unsigned char **data, uint32_t *datalen, int *have_cache) {
+    unsigned char **data, uint32_t *datalen) {
   struct fxp_packet *fxp;
   unsigned char *buf;
   uint32_t buflen;
 
-  if (datalen) {
+  if (datalen != NULL) {
     pr_trace_msg(trace_channel, 9,
       "reading SFTP data from SSH2 packet buffer (%lu bytes)",
       (unsigned long) *datalen);
-    fxp_packet_add_cache(*data, *datalen);
+
+    /* If we have previously cached data, we need to ensure that we append
+     * our current data to that cached data first.
+     */
+    if (fxp_packet_have_cache_data() > 0) {
+      fxp_packet_add_cache_data(*data, *datalen);
+      buflen = fxp_packet_get_cache_data(&buf);
+
+    } else {
+      buflen = *datalen;
+      buf = *data;
+    }
+
+  } else {
+    buflen = fxp_packet_get_cache_data(&buf);
   }
 
-  buflen = fxp_packet_get_cache(&buf);
   pr_trace_msg(trace_channel, 19,
     "using %lu bytes of SSH2 packet buffer data", (unsigned long) buflen);
 
@@ -3379,11 +3396,8 @@ static struct fxp_packet *fxp_packet_read(uint32_t channel_id,
     /* Make sure we have enough data in the buffer to cover the packet len. */
     if (buflen < sizeof(uint32_t)) {
       fxp_packet_set_packet(fxp);
-
-      /* We didn't consume any data, so no need to call
-       * clear_cache()/add_cache().
-       */
-      *have_cache = TRUE;
+      fxp_packet_clear_cache_data();
+      fxp_packet_add_cache_data(buf, buflen);
 
       return NULL;
     }
@@ -3398,8 +3412,7 @@ static struct fxp_packet *fxp_packet_read(uint32_t channel_id,
 
     if (buflen == 0) {
       fxp_packet_set_packet(fxp);
-      fxp_packet_clear_cache();
-      *have_cache = FALSE;
+      fxp_packet_clear_cache_data();
 
       return NULL;
     }
@@ -3414,9 +3427,8 @@ static struct fxp_packet *fxp_packet_read(uint32_t channel_id,
     /* Make sure we have enough data in the buffer to cover the request type. */
     if (buflen < sizeof(char)) {
       fxp_packet_set_packet(fxp);
-      fxp_packet_clear_cache();
-      fxp_packet_add_cache(buf, buflen);
-      *have_cache = TRUE;
+      fxp_packet_clear_cache_data();
+      fxp_packet_add_cache_data(buf, buflen);
 
       return NULL;
     }
@@ -3425,22 +3437,22 @@ static struct fxp_packet *fxp_packet_read(uint32_t channel_id,
     fxp->state |= FXP_PACKET_HAVE_REQUEST_TYPE;
 
     pr_trace_msg(trace_channel, 19,
-      "read SFTP request type %d from SSH2 packet buffer "
-      "(%lu bytes remaining in buffer)", (int) fxp->request_type,
+      "read SFTP request type %s (%d) from SSH2 packet buffer "
+      "(%lu bytes remaining in buffer)",
+      fxp_get_request_type_desc(fxp->request_type), (int) fxp->request_type,
       (unsigned long) buflen);
 
     if (buflen == 0) {
       fxp_packet_set_packet(fxp);
-      fxp_packet_clear_cache();
-      *have_cache = FALSE;
+      fxp_packet_clear_cache_data();
 
       return NULL;
     }
 
   } else {
     pr_trace_msg(trace_channel, 19,
-      "already have SFTP request type %d from previous buffer data",
-      fxp->request_type);
+      "already have SFTP request type %s (%d) from previous buffer data",
+      fxp_get_request_type_desc(fxp->request_type), fxp->request_type);
   }
 
   if (!(fxp->state & FXP_PACKET_HAVE_PAYLOAD_SIZE)) {
@@ -3464,9 +3476,8 @@ static struct fxp_packet *fxp_packet_read(uint32_t channel_id,
       /* Make sure we have enough data in the buffer to cover the request ID. */
       if (buflen < sizeof(uint32_t)) {
         fxp_packet_set_packet(fxp);
-        fxp_packet_clear_cache();
-        fxp_packet_add_cache(buf, buflen);
-        *have_cache = TRUE;
+        fxp_packet_clear_cache_data();
+        fxp_packet_add_cache_data(buf, buflen);
 
         return NULL;
       }
@@ -3485,8 +3496,7 @@ static struct fxp_packet *fxp_packet_read(uint32_t channel_id,
 
     if (buflen == 0) {
       fxp_packet_set_packet(fxp);
-      fxp_packet_clear_cache();
-      *have_cache = FALSE;
+      fxp_packet_clear_cache_data();
 
       return NULL;
     }
@@ -3548,7 +3558,7 @@ static struct fxp_packet *fxp_packet_read(uint32_t channel_id,
      */
     if (buflen == payload_remaining) {
       pr_trace_msg(trace_channel, 19,
-        "filling remaining SFTP request payload (%lu of %lu total bytes) "
+        "filling SFTP request payload (%lu remaining of %lu total bytes) "
         "from SSH2 packet buffer (%lu bytes in buffer)",
         (unsigned long) payload_remaining, (unsigned long) fxp->payload_sz,
         (unsigned long) buflen);
@@ -3558,8 +3568,7 @@ static struct fxp_packet *fxp_packet_read(uint32_t channel_id,
       fxp->state |= FXP_PACKET_HAVE_PAYLOAD;
 
       fxp_packet_set_packet(NULL);
-      fxp_packet_clear_cache();
-      *have_cache = FALSE;
+      fxp_packet_clear_cache_data();
 
       pr_trace_msg(trace_channel, 19, "completely filled payload of %lu bytes "
         "(0 bytes remaining in buffer)", (unsigned long) fxp->payload_sz);
@@ -3571,7 +3580,7 @@ static struct fxp_packet *fxp_packet_read(uint32_t channel_id,
      */
     if (buflen > payload_remaining) {
       pr_trace_msg(trace_channel, 19,
-        "filling remaining SFTP request payload (%lu of %lu total bytes) "
+        "filling SFTP request payload (%lu remaining of %lu total bytes) "
         "from SSH2 packet buffer (%lu bytes in buffer)",
         (unsigned long) payload_remaining, (unsigned long) fxp->payload_sz,
         (unsigned long) buflen);
@@ -3584,9 +3593,8 @@ static struct fxp_packet *fxp_packet_read(uint32_t channel_id,
       buf += payload_remaining;
 
       fxp_packet_set_packet(NULL);
-      fxp_packet_clear_cache();
-      fxp_packet_add_cache(buf, buflen);
-      *have_cache = TRUE;
+      fxp_packet_clear_cache_data();
+      fxp_packet_add_cache_data(buf, buflen);
 
       pr_trace_msg(trace_channel, 19, "completely filled payload of %lu bytes "
         "(%lu bytes remaining in buffer)", (unsigned long) fxp->payload_sz,
@@ -3598,7 +3606,7 @@ static struct fxp_packet *fxp_packet_read(uint32_t channel_id,
      * of the remaining payload data.
      */
     pr_trace_msg(trace_channel, 19,
-      "filling remaining SFTP request payload (%lu of %lu total bytes) "
+      "filling SFTP request payload (%lu remaining of %lu total bytes) "
       "from SSH2 packet buffer (%lu bytes in buffer)",
       (unsigned long) payload_remaining, (unsigned long) fxp->payload_sz,
       (unsigned long) buflen);
@@ -3607,8 +3615,7 @@ static struct fxp_packet *fxp_packet_read(uint32_t channel_id,
     fxp->payload_len += buflen;
 
     fxp_packet_set_packet(fxp);
-    fxp_packet_clear_cache();
-    *have_cache = FALSE;
+    fxp_packet_clear_cache_data();
 
   } else {
     pr_trace_msg(trace_channel, 19,
@@ -5305,7 +5312,7 @@ static int fxp_handle_ext_posix_rename(struct fxp_packet *fxp, char *src,
     char *dst) {
   unsigned char *buf, *ptr;
   char *args;
-  const char *reason;
+  const char *abs_src, *reason;
   uint32_t buflen, bufsz, status_code;
   struct fxp_packet *resp;
   cmd_rec *cmd = NULL, *cmd2 = NULL, *cmd3 = NULL;
@@ -5382,8 +5389,12 @@ static int fxp_handle_ext_posix_rename(struct fxp_packet *fxp, char *src,
     return fxp_packet_write(resp);
   }
 
+  /* Make sure we store the absolute path for LogFormat %w (Issue #1808). */
+  abs_src = dir_abs_path(fxp->pool, src, FALSE);
+  abs_src = pr_fsio_realpath(fxp->pool, abs_src);
+
   if (pr_table_add(session.notes, "mod_core.rnfr-path",
-      pstrdup(session.pool, src), 0) < 0) {
+      pstrdup(session.pool, abs_src), 0) < 0) {
     if (errno != EEXIST) {
       pr_trace_msg(trace_channel, 8,
         "error setting 'mod_core.rnfr-path' note: %s", strerror(errno));
@@ -10612,13 +10623,24 @@ static int fxp_handle_read(struct fxp_packet *fxp) {
   pbuf->remaining = 0;
   pr_event_generate("mod_sftp.sftp.data-write", pbuf);
 
+  /* Unlike our other request handlers, we will avoid using fxp_write_data()
+   * here, and call sftp_channel_write_data() directly.
+   *
+   * Why?  The fxp_write_data() function uses a memcpy(2) to create a proper
+   * SSH formatted buffer for the Channel API.  That's an extra memcpy(2)
+   * for a large amount of data, just read from the filesystem, that we
+   * would like to avoid if possible.
+   */
+
+  /* Here we are writing the length of the CHANNEL_DATA payload, thus 1 byte
+   * for the data type (FXP_DATA), 4 bytes for the request ID, 4 bytes for the
+   * length of file data, and then the actual bytes of file data.
+   */
+
+  sftp_msg_write_int(&buf, &buflen, res + 9);
   sftp_msg_write_byte(&buf, &buflen, SFTP_SSH2_FXP_DATA);
   sftp_msg_write_int(&buf, &buflen, fxp->request_id);
   sftp_msg_write_data(&buf, &buflen, data, res, TRUE);
-
-  resp = fxp_packet_create(fxp->pool, fxp->channel_id);
-  resp->payload = ptr;
-  resp->payload_sz = (bufsz - buflen);
 
   fxh->xfer.total_bytes += res;
   session.total_bytes += res;
@@ -10626,7 +10648,8 @@ static int fxp_handle_read(struct fxp_packet *fxp) {
   fxp_set_filehandle_sess_xfer(fxh);
   fxp_cmd_dispatch(cmd);
 
-  res = fxp_packet_write(resp);
+  res = sftp_channel_write_data(fxp->pool, fxp->channel_id, ptr,
+    (bufsz - buflen));
   return res;
 }
 
@@ -11905,7 +11928,7 @@ static int fxp_handle_remove(struct fxp_packet *fxp) {
 static int fxp_handle_rename(struct fxp_packet *fxp) {
   unsigned char *buf, *ptr;
   char *args, *old_path, *new_path;
-  const char *reason;
+  const char *abs_old_path, *reason;
   uint32_t buflen, bufsz, flags, status_code;
   struct fxp_packet *resp;
   cmd_rec *cmd = NULL, *cmd2 = NULL, *cmd3 = NULL;
@@ -12030,8 +12053,12 @@ static int fxp_handle_rename(struct fxp_packet *fxp) {
     return fxp_packet_write(resp);
   }
 
+  /* Make sure we store the absolute path for LogFormat %w (Issue #1808). */
+  abs_old_path = dir_abs_path(fxp->pool, old_path, FALSE);
+  abs_old_path = pr_fsio_realpath(fxp->pool, abs_old_path);
+
   if (pr_table_add(session.notes, "mod_core.rnfr-path",
-      pstrdup(session.pool, old_path), 0) < 0) {
+      pstrdup(session.pool, abs_old_path), 0) < 0) {
     if (errno != EEXIST) {
       pr_trace_msg(trace_channel, 8,
         "error setting 'mod_core.rnfr-path' note: %s", strerror(errno));
@@ -14002,7 +14029,7 @@ static int fxp_send_display_login_file(uint32_t channel_id) {
 int sftp_fxp_handle_packet(pool *p, void *ssh2, uint32_t channel_id,
     unsigned char *data, uint32_t datalen) {
   struct fxp_packet *fxp;
-  int have_cache, res;
+  int res;
 
   /* Unused parameter; we read the SFTP request out of the provided buffer. */
   (void) ssh2;
@@ -14012,8 +14039,8 @@ int sftp_fxp_handle_packet(pool *p, void *ssh2, uint32_t channel_id,
     pr_pool_tag(fxp_pool, "SFTP Pool");
   }
 
-  fxp = fxp_packet_read(channel_id, &data, &datalen, &have_cache);
-  while (fxp) {
+  fxp = fxp_packet_read(channel_id, &data, &datalen);
+  while (fxp != NULL) {
     pr_signals_handle();
 
     /* This is a bit of a hack, for playing along better with mod_vroot,
@@ -14215,8 +14242,8 @@ int sftp_fxp_handle_packet(pool *p, void *ssh2, uint32_t channel_id,
       return res;
     }
 
-    if (have_cache) {
-      fxp = fxp_packet_read(channel_id, NULL, NULL, &have_cache);
+    if (fxp_packet_have_cache_data() > 0) {
+      fxp = fxp_packet_read(channel_id, NULL, NULL);
       continue;
     }
 

@@ -1,6 +1,6 @@
 /*
  * ProFTPD - FTP server daemon
- * Copyright (c) 2004-2023 The ProFTPD Project team
+ * Copyright (c) 2004-2024 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -1313,10 +1313,10 @@ void pr_table_dump(void (*dumpf)(const char *fmt, ...), pr_table_t *tab) {
   }
 }
 
-int table_handling_signal(int bool) {
-  if (bool == TRUE ||
-      bool == FALSE) {
-    handling_signal = bool;
+int table_handling_signal(int do_handle) {
+  if (do_handle == TRUE ||
+      do_handle == FALSE) {
+    handling_signal = do_handle;
     return 0;
   }
 

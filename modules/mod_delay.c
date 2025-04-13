@@ -1,7 +1,7 @@
 /*
  * ProFTPD: mod_delay -- a module for adding arbitrary delays to the FTP
  *                       session lifecycle
- * Copyright (c) 2004-2023 TJ Saunders
+ * Copyright (c) 2004-2025 TJ Saunders
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -1653,6 +1653,13 @@ MODRET set_delayonevent(cmd_rec *cmd) {
    */
   *((unsigned long *) c->argv[1]) = (min_delay_ms * 1000);
   *((unsigned long *) c->argv[2]) = (max_delay_ms * 1000);
+
+  if (pr_module_exists("mod_ifsession.c")) {
+    /* These are needed in case this directive is used with mod_ifsession
+     * configuration.
+     */
+    c->flags |= CF_MULTI;
+  }
 
   return PR_HANDLED(cmd);
 }

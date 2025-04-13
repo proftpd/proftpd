@@ -1,7 +1,7 @@
 /*
  * ProFTPD: mod_quotatab -- a module for managing FTP byte/file quotas via
  *                          centralized tables
- * Copyright (c) 2001-2024 TJ Saunders
+ * Copyright (c) 2001-2025 TJ Saunders
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -1556,25 +1556,32 @@ MODRET set_quotadefault(cmd_rec *cmd) {
   c->argv[7] = pstrdup(c->pool, cmd->argv[8]);
   c->argv[8] = pstrdup(c->pool, cmd->argv[9]);
 
+  if (pr_module_exists("mod_ifsession.c")) {
+    /* These are needed in case this directive is used with mod_ifsession
+     * configuration.
+     */
+    c->flags |= CF_MULTI;
+  }
+
   return PR_HANDLED(cmd);
 }
 
 /* usage: QuotaDirectoryTally <on|off> */
 MODRET set_quotadirtally(cmd_rec *cmd) {
-  int b = -1;
+  int dir_tally = -1;
   config_rec *c = NULL;
 
   CHECK_ARGS(cmd, 1);
   CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL);
 
-  b = get_boolean(cmd, 1);
-  if (b == -1) {
-    CONF_ERROR(cmd, "expected boolean argument");
+  dir_tally = get_boolean(cmd, 1);
+  if (dir_tally == -1) {
+    CONF_ERROR(cmd, "expected Boolean parameter");
   }
 
   c = add_config_param(cmd->argv[0], 1, NULL);
   c->argv[0] = pcalloc(c->pool, sizeof(unsigned char));
-  *((unsigned char *) c->argv[0]) = (unsigned char) b;
+  *((unsigned char *) c->argv[0]) = (unsigned char) dir_tally;
 
   return PR_HANDLED(cmd);
 }
@@ -1616,19 +1623,20 @@ MODRET set_quotadisplayunits(cmd_rec *cmd) {
 
 /* usage: QuotaEngine <on|off> */
 MODRET set_quotaengine(cmd_rec *cmd) {
-  int bool = -1;
+  int engine = -1;
   config_rec *c = NULL;
 
   CHECK_ARGS(cmd, 1);
   CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL);
 
-  bool = get_boolean(cmd, 1);
-  if (bool == -1)
-    CONF_ERROR(cmd, "expected boolean argument");
+  engine = get_boolean(cmd, 1);
+  if (engine == -1) {
+    CONF_ERROR(cmd, "expected Boolean parameter");
+  }
 
   c = add_config_param(cmd->argv[0], 1, NULL);
   c->argv[0] = pcalloc(c->pool, sizeof(unsigned char));
-  *((unsigned char *) c->argv[0]) = (unsigned char) bool;
+  *((unsigned char *) c->argv[0]) = (unsigned char) engine;
 
   return PR_HANDLED(cmd);
 }
@@ -1706,8 +1714,9 @@ MODRET set_quotaoptions(cmd_rec *cmd) {
   register unsigned int i;
   unsigned long opts = 0UL;
 
-  if (cmd->argc-1 == 0)
+  if (cmd->argc-1 == 0) {
     CONF_ERROR(cmd, "wrong number of parameters");
+  }
 
   CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL);
 
@@ -1726,24 +1735,32 @@ MODRET set_quotaoptions(cmd_rec *cmd) {
   c->argv[0] = pcalloc(c->pool, sizeof(unsigned long));
   *((unsigned long *) c->argv[0]) = opts;
 
+  if (pr_module_exists("mod_ifsession.c")) {
+    /* These are needed in case this directive is used with mod_ifsession
+     * configuration.
+     */
+    c->flags |= CF_MULTI;
+  }
+
   return PR_HANDLED(cmd);
 }
 
 /* usage: QuotaShowQuotas <on|off> */
 MODRET set_quotashowquotas(cmd_rec *cmd) {
-  int bool = -1;
+  int show_quotas = -1;
   config_rec *c = NULL;
 
   CHECK_ARGS(cmd, 1);
   CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL);
 
-  bool = get_boolean(cmd, 1);
-  if (bool == -1)
-    CONF_ERROR(cmd, "expected boolean argument");
+  show_quotas = get_boolean(cmd, 1);
+  if (show_quotas == -1) {
+    CONF_ERROR(cmd, "expected Boolean parameter");
+  }
 
   c = add_config_param(cmd->argv[0], 1, NULL);
   c->argv[0] = pcalloc(c->pool, sizeof(unsigned char));
-  *((unsigned char *) c->argv[0]) = (unsigned char) bool;
+  *((unsigned char *) c->argv[0]) = (unsigned char) show_quotas;
 
   return PR_HANDLED(cmd);
 }

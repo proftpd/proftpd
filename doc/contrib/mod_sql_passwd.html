@@ -34,6 +34,8 @@ you can configure <code>SQLAuthTypes</code> of:
   <li>SHA1
   <li>SHA256
   <li>SHA512
+  <li>SSHA (see <a href="https://datatracker.ietf.org/doc/html/draft-howard-rfc2307bis-01">RFC 2307bis</a>)
+  <li>Sodium (uses libsodium's <code>crypto_pwhash_str_verify</code> function)
 </ul>
 as well as the existing types supported by <code>mod_sql</code>.
 
@@ -721,7 +723,7 @@ values can be supported by the <code>mod_sql_passwd</code> module.
 <p>
 <hr>
 <font size=2><b><i>
-&copy; Copyright 2009-2019 TJ Saunders<br>
+&copy; Copyright 2009-2025 TJ Saunders<br>
  All Rights Reserved<br>
 </i></b></font>
 <hr>

@@ -1,7 +1,7 @@
 /*
  * ProFTPD: mod_sql_mysql -- Support for connecting to MySQL databases.
  * Copyright (c) 2001 Andrew Houghton
- * Copyright (c) 2004-2022 TJ Saunders
+ * Copyright (c) 2004-2025 TJ Saunders
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -492,16 +492,19 @@ MODRET cmd_open(cmd_rec *cmd) {
     mysql_options(conn->mysql, MYSQL_READ_DEFAULT_GROUP, "client");
   }
 
-#if MYSQL_VERSION_ID >= 50013
+#if MYSQL_VERSION_ID >= 50013 && \
+    MYSQL_VERSION_ID < 80034
   /* The MYSQL_OPT_RECONNECT option appeared in MySQL 5.0.13, according to
    *
    *  http://dev.mysql.com/doc/refman/5.0/en/auto-reconnect.html
+   *
+   * And in MySQL 8.0.34, it was deprecated.
    */
   if (!(pr_sql_opts & SQL_OPT_NO_RECONNECT)) {
 #if MYSQL_VERSION_ID >= 80000
-    bool reconnect = true;
+    char reconnect = true;
 #else
-    my_bool reconnect = TRUE;
+    char reconnect = TRUE;
 #endif
     mysql_options(conn->mysql, MYSQL_OPT_RECONNECT, &reconnect);
   }
@@ -514,7 +517,31 @@ MODRET cmd_open(cmd_rec *cmd) {
   client_flags |= CLIENT_MULTI_RESULTS;
 #endif
 
-#if defined(HAVE_MYSQL_MYSQL_SSL_SET)
+#if MYSQL_VERSION_ID >= 80035
+  /* Per the MySQL docs, the `mysql_ssl_set` function was deprecated in
+   * MySQL 8.0.35, to be replaced by equivalent options for `mysql_options`.
+   */
+  if (conn->ssl_ca_file != NULL) {
+    mysql_options(conn->mysql, MYSQL_OPT_SSL_CA, conn->ssl_ca_file);
+  }
+
+  if (conn->ssl_ca_dir != NULL) {
+    mysql_options(conn->mysql, MYSQL_OPT_SSL_CAPATH, conn->ssl_ca_dir);
+  }
+
+  if (conn->ssl_cert_file != NULL) {
+    mysql_options(conn->mysql, MYSQL_OPT_SSL_CERT, conn->ssl_cert_file);
+  }
+
+  if (conn->ssl_ciphers != NULL) {
+    mysql_options(conn->mysql, MYSQL_OPT_SSL_CIPHER, conn->ssl_ciphers);
+  }
+
+  if (conn->ssl_key_file != NULL) {
+    mysql_options(conn->mysql, MYSQL_OPT_SSL_KEY, conn->ssl_key_file);
+  }
+
+#elif defined(HAVE_MYSQL_MYSQL_SSL_SET)
   /* Per the MySQL docs, this function always returns success.  Errors are
    * reported when we actually attempt to connect.
    *

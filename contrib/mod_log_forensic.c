@@ -1,7 +1,7 @@
 /*
  * mod_log_forensic - a buffering log module for aiding in server behavior
  *                    forensic analysis
- * Copyright (c) 2011-2017 TJ Saunders
+ * Copyright (c) 2011-2024 TJ Saunders
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -768,19 +768,19 @@ MODRET set_forensiclogcriteria(cmd_rec *cmd) {
 /* usage: ForensicLogEngine on|off */
 MODRET set_forensiclogengine(cmd_rec *cmd) {
   config_rec *c;
-  int bool;
+  int engine;
 
   CHECK_ARGS(cmd, 1);
   CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL);
 
-  bool = get_boolean(cmd, 1);
-  if (bool == -1) {
+  engine = get_boolean(cmd, 1);
+  if (engine == -1) {
     CONF_ERROR(cmd, "expected Boolean parameter");
   }
 
   c = add_config_param(cmd->argv[0], 1, NULL);
   c->argv[0] = palloc(c->pool, sizeof(int));
-  *((int *) c->argv[0]) = bool;
+  *((int *) c->argv[0]) = engine;
 
   return PR_HANDLED(cmd);
 }

@@ -1,6 +1,6 @@
 /*
  * ProFTPD - FTP server testsuite
- * Copyright (c) 2015-2022 The ProFTPD Project team
+ * Copyright (c) 2015-2025 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -425,7 +425,7 @@ START_TEST (dir_readlink_test) {
   res = dir_readlink(p, path, buf, 2, flags);
   ck_assert_msg(res >= 0, "Failed to read '%s' symlink: %s", path, strerror(errno));
   ck_assert_msg(res == 2, "Expected length 2, got %d", res);
-  ck_assert_msg(strncmp(buf, dst_path, 2) == 0, "Expected '%*s', got '%*s'",
+  ck_assert_msg(strncmp(buf, dst_path, 2) == 0, "Expected '%.*s', got '%.*s'",
     2, dst_path, 2, buf);
 
   /* Chrooted to "/" */

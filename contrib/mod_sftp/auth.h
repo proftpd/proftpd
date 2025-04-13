@@ -1,6 +1,6 @@
 /*
  * ProFTPD - mod_sftp user authentication (auth)
- * Copyright (c) 2008-2022 TJ Saunders
+ * Copyright (c) 2008-2024 TJ Saunders
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -27,6 +27,7 @@
 
 #include "mod_sftp.h"
 #include "packet.h"
+#include "keys.h"
 
 #define SFTP_AUTH_FL_METH_PUBLICKEY	0x001
 #define SFTP_AUTH_FL_METH_KBDINT	0x002
@@ -74,6 +75,13 @@ array_header *sftp_auth_chain_parse_method_chain(pool *p, const char *);
  * double/repeated methods, etc.
  */
 int sftp_auth_chain_isvalid(struct sftp_auth_chain *);
+
+/* Returns true if the given algorithm name is a valid/supported algorithm
+ * for publickey authentication.  If the algorithm is valid/supported, the
+ * corresponding key type will be returned in the optional key_type argument.
+ */
+int sftp_auth_publickey_isvalid(const char *algo,
+  enum sftp_key_type_e *key_type);
 
 char *sftp_auth_get_default_dir(void);
 int sftp_auth_handle(struct ssh2_packet *);

@@ -1,6 +1,6 @@
 /*
  * ProFTPD - mod_sftp
- * Copyright (c) 2008-2024 TJ Saunders
+ * Copyright (c) 2008-2025 TJ Saunders
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -377,6 +377,13 @@ MODRET set_sftpacceptenv(cmd_rec *cmd) {
   }
   c->argv[0] = (void *) accepted_envs;
 
+  if (pr_module_exists("mod_ifsession.c")) {
+    /* These are needed in case this directive is used with mod_ifsession
+     * configuration.
+     */
+    c->flags |= CF_MULTI;
+  }
+
   return PR_HANDLED(cmd);
 }
 
@@ -446,6 +453,33 @@ MODRET set_sftpauthmeths(cmd_rec *cmd) {
   }
 
   c->argv[0] = auth_chains;
+  return PR_HANDLED(cmd);
+}
+
+/* usage: SFTPAuthPublicKeys list */
+MODRET set_sftpauthpublickeys(cmd_rec *cmd) {
+  register unsigned int i;
+  config_rec *c;
+
+  if (cmd->argc < 2) {
+    CONF_ERROR(cmd, "Wrong number of parameters");
+  }
+
+  CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL);
+
+  for (i = 1; i < cmd->argc; i++) {
+    if (sftp_auth_publickey_isvalid(cmd->argv[i], NULL) < 0) {
+      CONF_ERROR(cmd, pstrcat(cmd->tmp_pool,
+        "unsupported auth public key algorithm: ", (char *) cmd->argv[i],
+        NULL));
+    }
+  }
+
+  c = add_config_param(cmd->argv[0], cmd->argc-1, NULL);
+  for (i = 1; i < cmd->argc; i++) {
+    c->argv[i-1] = pstrdup(c->pool, cmd->argv[i]);
+  }
+
   return PR_HANDLED(cmd);
 }
 
@@ -1123,7 +1157,7 @@ MODRET set_sftpclientmatch(cmd_rec *cmd) {
       i++;
 
     } else if (strcmp(cmd->argv[i], "sftpUTF8ProtocolVersion") == 0) {
-#ifdef PR_USE_NLS
+#if defined(PR_USE_NLS)
       char *ptr = NULL;
       void *value;
       long protocol_version;
@@ -1162,6 +1196,13 @@ MODRET set_sftpclientmatch(cmd_rec *cmd) {
     }
   }
 
+  if (pr_module_exists("mod_ifsession.c")) {
+    /* These are needed in case this directive is used with mod_ifsession
+     * configuration.
+     */
+    c->flags |= CF_MULTI;
+  }
+
   return PR_HANDLED(cmd);
 
 #else /* no regular expression support at the moment */
@@ -1174,7 +1215,7 @@ MODRET set_sftpclientmatch(cmd_rec *cmd) {
 /* usage: SFTPCompression on|off|delayed */
 MODRET set_sftpcompression(cmd_rec *cmd) {
   config_rec *c;
-  int bool;
+  int use_compression = FALSE;
 
   if (cmd->argc != 2) {
     CONF_ERROR(cmd, "Wrong number of parameters");
@@ -1182,24 +1223,24 @@ MODRET set_sftpcompression(cmd_rec *cmd) {
 
   CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL);
 
-#ifdef HAVE_ZLIB_H
-  bool = get_boolean(cmd, 1);
-  if (bool == -1) {
-    if (strncasecmp(cmd->argv[1], "delayed", 8) != 0) {
+#if defined(HAVE_ZLIB_H)
+  use_compression = get_boolean(cmd, 1);
+  if (use_compression == -1) {
+    if (strcasecmp(cmd->argv[1], "delayed") != 0) {
       CONF_ERROR(cmd, pstrcat(cmd->tmp_pool,
         "unknown compression setting: ", cmd->argv[1], NULL));
     }
 
-    bool = 2;
+    use_compression = 2;
   }
 #else
   pr_log_debug(DEBUG0, MOD_SFTP_VERSION ": platform lacks zlib support, ignoring SFTPCompression");
-  bool = 0;
+  use_compression = 0;
 #endif /* !HAVE_ZLIB_H */
 
   c = add_config_param(cmd->argv[0], 1, NULL);
   c->argv[0] = pcalloc(c->pool, sizeof(int));
-  *((int *) c->argv[0]) = bool;
+  *((int *) c->argv[0]) = use_compression;
 
   return PR_HANDLED(cmd);
 }
@@ -1269,19 +1310,20 @@ MODRET set_sftpdisplaybanner(cmd_rec *cmd) {
 
 /* usage: SFTPEngine on|off */
 MODRET set_sftpengine(cmd_rec *cmd) {
-  int bool = 1;
+  int engine = 1;
   config_rec *c;
 
   CHECK_ARGS(cmd, 1);
   CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL);
 
-  bool = get_boolean(cmd, 1);
-  if (bool == -1)
+  engine = get_boolean(cmd, 1);
+  if (engine == -1) {
     CONF_ERROR(cmd, "expected Boolean parameter");
+  }
 
   c = add_config_param(cmd->argv[0], 1, NULL);
   c->argv[0] = pcalloc(c->pool, sizeof(int));
-  *((int *) c->argv[0]) = bool;
+  *((int *) c->argv[0]) = engine;
 
   return PR_HANDLED(cmd);
 }
@@ -1641,6 +1683,76 @@ MODRET set_sftpkeyexchanges(cmd_rec *cmd) {
   return PR_HANDLED(cmd);
 }
 
+/* usage: SFTPKeyFingerprints digest[+encoding] */
+MODRET set_sftpkeyfingerprints(cmd_rec *cmd) {
+  char *algo, *encoding = NULL, *ptr = NULL, *text;
+  config_rec *c;
+  int algo_id, fmt_id;
+
+  if (cmd->argc != 2) {
+    CONF_ERROR(cmd, "Wrong number of parameters");
+  }
+
+  CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL);
+
+  c = add_config_param(cmd->argv[0], 3, NULL, NULL, NULL);
+
+  algo_id = SFTP_KEYS_FP_DIGEST_SHA256;
+  algo = "SHA256";
+  fmt_id = SFTP_KEYS_FP_FMT_BASE64;
+
+  text = cmd->argv[1];
+  ptr = strchr(text, '+');
+
+  if (ptr != NULL) {
+    encoding = ptr + 1;
+    *ptr = '\0';
+  }
+
+  if (strcasecmp(text, "SHA256") == 0) {
+    algo_id = SFTP_KEYS_FP_DIGEST_SHA256;
+    algo = "SHA256";
+
+  } else if (strcasecmp(text, "SHA1") == 0) {
+    algo_id = SFTP_KEYS_FP_DIGEST_SHA1;
+    algo = "SHA1";
+
+  } else if (strcasecmp(text, "MD5") == 0) {
+    algo_id = SFTP_KEYS_FP_DIGEST_MD5;
+    algo = "MD5";
+
+  } else {
+    CONF_ERROR(cmd, pstrcat(cmd->tmp_pool,
+      ": unsupported SFTPKeyFingerprint algorithm '", text, "'", NULL));
+  }
+
+  if (encoding != NULL) {
+    if (strcasecmp(encoding, "base64") == 0) {
+      fmt_id = SFTP_KEYS_FP_FMT_BASE64;
+
+    } else if (strcasecmp(encoding, "hex") == 0) {
+      fmt_id = SFTP_KEYS_FP_FMT_HEX;
+
+    } else if (strcasecmp(encoding, "hex+colon") == 0 ||
+               strcasecmp(encoding, "hex+colons") == 0) {
+      fmt_id = SFTP_KEYS_FP_FMT_HEX_COLONS;
+
+    } else {
+      CONF_ERROR(cmd, pstrcat(cmd->tmp_pool,
+        ": unsupported SFTPKeyFingerprint format '", encoding, "'",
+        NULL));
+    }
+  }
+
+  c->argv[0] = pcalloc(c->pool, sizeof(int));
+  *((int *) c->argv[0]) = algo_id;
+  c->argv[1] = pstrdup(c->pool, algo);
+  c->argv[2] = pcalloc(c->pool, sizeof(int));
+  *((int *) c->argv[2]) = fmt_id;
+
+  return PR_HANDLED(cmd);
+}
+
 /* usage: SFTPKeyLimits limit1 ... limitN */
 MODRET set_sftpkeylimits(cmd_rec *cmd) {
   register unsigned int i;
@@ -1826,6 +1938,13 @@ MODRET set_sftpoptions(cmd_rec *cmd) {
 
   c->argv[0] = pcalloc(c->pool, sizeof(unsigned long));
   *((unsigned long *) c->argv[0]) = opts;
+
+  if (pr_module_exists("mod_ifsession.c")) {
+    /* These are needed in case this directive is used with mod_ifsession
+     * configuration.
+     */
+    c->flags |= CF_MULTI;
+  }
 
   return PR_HANDLED(cmd);
 }
@@ -2839,7 +2958,37 @@ static int sftp_sess_init(void) {
        * string.
        */
       if (c->argc > 1) {
-        sftp_server_version = pstrcat(sftp_pool, SFTP_ID_PREFIX, c->argv[1],
+        const char *server_ident;
+
+        server_ident = c->argv[1];
+
+        /* Make sure we honor any variables in the configured custom text,
+         * per Issue #1890.
+         */
+        if (strstr(server_ident, "%L") != NULL) {
+          const char *server_address;
+
+          server_address = pr_netaddr_get_ipstr(session.c->local_addr);
+          server_ident = sreplace(sftp_pool, server_ident, "%L",
+            server_address, NULL);
+        }
+
+        if (strstr(server_ident, "%V") != NULL) {
+          server_ident = sreplace(sftp_pool, server_ident, "%V",
+            main_server->ServerFQDN, NULL);
+        }
+
+        if (strstr(server_ident, "%v") != NULL) {
+          server_ident = sreplace(sftp_pool, server_ident, "%v",
+            main_server->ServerName, NULL);
+        }
+
+        if (strstr(server_ident, "%{version}") != NULL) {
+          server_ident = sreplace(sftp_pool, server_ident, "%{version}",
+            PROFTPD_VERSION_TEXT, NULL);
+        }
+
+        sftp_server_version = pstrcat(sftp_pool, SFTP_ID_PREFIX, server_ident,
           NULL);
         sftp_ssh2_packet_set_version(sftp_server_version);
       }
@@ -2930,6 +3079,7 @@ static int sftp_sess_init(void) {
 static conftable sftp_conftab[] = {
   { "SFTPAcceptEnv",		set_sftpacceptenv,		NULL },
   { "SFTPAuthMethods",		set_sftpauthmeths,		NULL },
+  { "SFTPAuthPublicKeys",	set_sftpauthpublickeys,		NULL },
   { "SFTPAuthorizedHostKeys",	set_sftpauthorizedkeys,		NULL },
   { "SFTPAuthorizedUserKeys",	set_sftpauthorizedkeys,		NULL },
   { "SFTPCiphers",		set_sftpciphers,		NULL },
@@ -2946,6 +3096,7 @@ static conftable sftp_conftab[] = {
   { "SFTPHostKeys",		set_sftphostkeys,		NULL },
   { "SFTPKeyBlacklist",		set_sftpkeyblacklist,		NULL },
   { "SFTPKeyExchanges",		set_sftpkeyexchanges,		NULL },
+  { "SFTPKeyFingerprints",	set_sftpkeyfingerprints,	NULL },
   { "SFTPKeyLimits",		set_sftpkeylimits,		NULL },
   { "SFTPLog",			set_sftplog,			NULL },
   { "SFTPMaxChannels",		set_sftpmaxchannels,		NULL },

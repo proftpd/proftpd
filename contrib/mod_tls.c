@@ -2,7 +2,7 @@
  * mod_tls - An RFC2228 SSL/TLS module for ProFTPD
  *
  * Copyright (c) 2000-2002 Peter 'Luna' Runestig <peter@runestig.com>
- * Copyright (c) 2002-2023 TJ Saunders <tj@castaglia.org>
+ * Copyright (c) 2002-2025 TJ Saunders <tj@castaglia.org>
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without modifi-
@@ -69,7 +69,9 @@
 #include <openssl/pkcs12.h>
 #include <openssl/rand.h>
 #if OPENSSL_VERSION_NUMBER > 0x000907000L
-# include <openssl/engine.h>
+# ifdef PR_USE_OPENSSL_ENGINE
+#  include <openssl/engine.h>
+# endif /* PR_USE_OPENSSL_ENGINE */
 # ifdef PR_USE_OPENSSL_OCSP
 #  include <openssl/ocsp.h>
 # endif /* PR_USE_OPENSSL_OCSP */
@@ -1562,6 +1564,10 @@ static struct tls_label tls_ciphersuite_labels[] = {
   { 0xC077, "TLS_ECDHE_RSA_WITH_CAMELLIA_256_CBC_SHA384" },
   { 0xC07A, "TLS_RSA_WITH_CAMELLIA_128_GCM_SHA256" },
   { 0xC07B, "TLS_RSA_WITH_CAMELLIA_256_GCM_SHA384" },
+  { 0xC07C, "TLS_DHE_RSA_WITH_CAMELLIA_128_GCM_SHA256" },
+  { 0xC07D, "TLS_DHE_RSA_WITH_CAMELLIA_256_GCM_SHA384" },
+  { 0xC07E, "TLS_DH_RSA_WITH_CAMELLIA_128_GCM_SHA256" },
+  { 0xC07F, "TLS_DH_RSA_WITH_CAMELLIA_256_GCM_SHA384" },
   { 0xC086, "TLS_ECDHE_ECDSA_WITH_CAMELLIA_128_GCM_SHA256" },
   { 0xC087, "TLS_ECDHE_ECDSA_WITH_CAMELLIA_256_GCM_SHA384" },
   { 0xC08A, "TLS_ECDHE_RSA_WITH_CAMELLIA_128_GCM_SHA256" },
@@ -4679,7 +4685,7 @@ static void tls_tlsext_cb(SSL *ssl, int server, int type,
         "[tls.tlsext] TLS %s extension \"%s\" (ID %d, %d %s)%.*s",
         server ? "server" : "client", extension_name, type,
         tlsext_datalen, tlsext_datalen != 1 ? "bytes" : "byte",
-        (int) ext_infolen, ext_info);
+        (int) ext_infolen, ext_info != NULL ? ext_info : "");
 
       if (bio != NULL) {
         BIO_free(bio);
@@ -4805,7 +4811,7 @@ static void tls_tlsext_cb(SSL *ssl, int server, int type,
         "[tls.tlsext] TLS %s extension \"%s\" (ID %d, %d %s)%.*s",
         server ? "server" : "client", extension_name, type,
         tlsext_datalen, tlsext_datalen != 1 ? "bytes" : "byte",
-        (int) ext_infolen, ext_info);
+        (int) ext_infolen, ext_info != NULL ? ext_info : "");
 
       if (bio != NULL) {
         BIO_free(bio);
@@ -4918,7 +4924,7 @@ static void tls_tlsext_cb(SSL *ssl, int server, int type,
         "[tls.tlsext] TLS %s extension \"%s\" (ID %d, %d %s)%.*s",
         server ? "server" : "client", extension_name, type,
         tlsext_datalen, tlsext_datalen != 1 ? "bytes" : "byte",
-        (int) ext_infolen, ext_info);
+        (int) ext_infolen, ext_info != NULL ? ext_info : "");
 
       if (bio != NULL) {
         BIO_free(bio);
@@ -4973,7 +4979,7 @@ static void tls_tlsext_cb(SSL *ssl, int server, int type,
         "[tls.tlsext] TLS %s extension \"%s\" (ID %d, %d %s)%.*s",
         server ? "server" : "client", extension_name, type,
         tlsext_datalen, tlsext_datalen != 1 ? "bytes" : "byte",
-        (int) ext_infolen, ext_info);
+        (int) ext_infolen, ext_info != NULL ? ext_info : "");
 
       if (bio != NULL) {
         BIO_free(bio);
@@ -7171,7 +7177,7 @@ static int tls_alpn_select_cb(SSL *ssl,
     "ALPN protocols advertised by client:");
   for (i = 0; i < advertised_protolen; i++) {
     pr_trace_msg(trace_channel, 9,
-      " %*s", advertised_proto[i], &(advertised_proto[i+1]));
+      " %.*s", advertised_proto[i], &(advertised_proto[i+1]));
     i += advertised_proto[i] + 1;
   }
 
@@ -8016,7 +8022,7 @@ static int tls_accept(conn_t *conn, unsigned char on_data) {
     if (npn != NULL &&
         npn_len > 0) {
       pr_trace_msg(trace_channel, 9,
-        "negotiated NPN '%*s'", npn_len, npn);
+        "negotiated NPN '%.*s'", npn_len, npn);
 
     } else {
       pr_trace_msg(trace_channel, 9, "%s", "no NPN negotiated");
@@ -8034,7 +8040,7 @@ static int tls_accept(conn_t *conn, unsigned char on_data) {
     if (alpn != NULL &&
         alpn_len > 0) {
       pr_trace_msg(trace_channel, 9,
-        "selected ALPN '%*s'", alpn_len, alpn);
+        "selected ALPN '%.*s'", alpn_len, alpn);
     } else {
       pr_trace_msg(trace_channel, 9, "%s", "no ALPN selected");
     }
@@ -14055,6 +14061,13 @@ MODRET set_tlsciphersuite(cmd_rec *cmd) {
   c->argv[1] = palloc(c->pool, sizeof(int));
   *((int *) c->argv[1]) = protocol;
 
+  if (pr_module_exists("mod_ifsession.c")) {
+    /* These are needed in case this directive is used with mod_ifsession
+     * configuration.
+     */
+    c->flags |= CF_MULTI;
+  }
+
   return PR_HANDLED(cmd);
 }
 
@@ -14586,6 +14599,13 @@ MODRET set_tlsoptions(cmd_rec *cmd) {
 
   c->argv[0] = pcalloc(c->pool, sizeof(unsigned long));
   *((unsigned long *) c->argv[0]) = opts;
+
+  if (pr_module_exists("mod_ifsession.c")) {
+    /* These are needed in case this directive is used with mod_ifsession
+     * configuration.
+     */
+    c->flags |= CF_MULTI;
+  }
 
   return PR_HANDLED(cmd);
 }

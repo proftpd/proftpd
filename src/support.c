@@ -2,7 +2,7 @@
  * ProFTPD - FTP server daemon
  * Copyright (c) 1997, 1998 Public Flood Software
  * Copyright (c) 1999, 2000 MacGyver aka Habeeb J. Dihu <macgyver@tos.net>
- * Copyright (c) 2001-2023 The ProFTPD Project team
+ * Copyright (c) 2001-2025 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -1022,11 +1022,13 @@ void pr_getopt_reset(void) {
 #if defined(FREEBSD4) || defined(FREEBSD5) || defined(FREEBSD6) || \
     defined(FREEBSD7) || defined(FREEBSD8) || defined(FREEBSD9) || \
     defined(FREEBSD10) || defined(FREEBSD11) || defined(FREEBSD12) || \
-    defined(FREEBSD13) || \
+    defined(FREEBSD13) || defined(FREEBSD14) || \
     defined(DARWIN7) || defined(DARWIN8) || defined(DARWIN9) || \
     defined(DARWIN10) || defined(DARWIN11) || defined(DARWIN12) || \
     defined(DARWIN13) || defined(DARWIN14) || defined(DARWIN15) || \
-    defined(DARWIN16) || defined(DARWIN17) || defined(DARWIN18)
+    defined(DARWIN16) || defined(DARWIN17) || defined(DARWIN18) || \
+    defined(DARWIN19) || defined(DARWIN20) || defined(DARWIN21) || \
+    defined(DARWIN22) || defined(DARWIN23)
   optreset = 1;
   opterr = 1;
   optind = 1;
