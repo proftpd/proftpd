@@ -192,7 +192,7 @@ conn_t *pr_inet_copy_conn(pool *p, conn_t *c) {
  * new connection.
  */
 static conn_t *init_conn(pool *p, int fd, const pr_netaddr_t *bind_addr,
-    int port, int retry_bind, int reporting) {
+    int port, int flags) {
   pool *sub_pool = NULL;
   conn_t *c;
   pr_netaddr_t na;
@@ -228,11 +228,10 @@ static conn_t *init_conn(pool *p, int fd, const pr_netaddr_t *bind_addr,
     addr_family = inet_family;
 
   } else {
-
     /* If no default family has been set, then default to IPv6 (if IPv6
      * support is enabled), otherwise use IPv4.
      */
-#ifdef PR_USE_IPV6
+#if defined(PR_USE_IPV6)
     if (pr_netaddr_use_ipv6()) {
       addr_family = AF_INET6;
 
@@ -315,7 +314,7 @@ static conn_t *init_conn(pool *p, int fd, const pr_netaddr_t *bind_addr,
 
     if (fd == -1) {
       /* On failure, destroy the connection and return NULL. */
-      if (reporting) {
+      if (flags & PR_INET_CREATE_CONN_FL_LOG_ERRORS) {
         pr_log_pri(PR_LOG_WARNING,
           "socket() failed in connection initialization: %s",
           strerror(inet_errno));
@@ -460,7 +459,10 @@ static conn_t *init_conn(pool *p, int fd, const pr_netaddr_t *bind_addr,
      * error.  As a result, this nasty kludge retries ten times (once per
      * second) if the port being bound to is INPORT_ANY.
      */
-    for (i = 10; i; i--) {
+    for (i = 10; i > 0; i--) {
+      pr_trace_msg(trace_channel, 19,
+        "attempting to bind to %s#%d (%u %s remaining)",
+        pr_netaddr_get_ipstr(&na), port, i, i != 1 ? "attempts" : "attempt");
       res = bind(fd, pr_netaddr_get_sockaddr(&na),
         pr_netaddr_get_sockaddr_len(&na));
       hold_errno = errno;
@@ -483,7 +485,8 @@ static conn_t *init_conn(pool *p, int fd, const pr_netaddr_t *bind_addr,
 #else
           hold_errno != EADDRINUSE ||
 #endif /* SOLARIS2 */
-          (port != INPORT_ANY && !retry_bind)) {
+          (port != INPORT_ANY &&
+           !(flags & PR_INET_CREATE_CONN_FL_RETRY_BIND))) {
         break;
       }
 
@@ -509,9 +512,10 @@ static conn_t *init_conn(pool *p, int fd, const pr_netaddr_t *bind_addr,
         pr_signals_unblock();
       }
 
-      if (reporting) {
-        pr_log_pri(PR_LOG_ERR, "Failed binding to %s, port %d: %s",
-          pr_netaddr_get_ipstr(&na), port, strerror(hold_errno));
+      pr_log_pri(PR_LOG_ERR, "Failed binding to %s, port %d: %s",
+        pr_netaddr_get_ipstr(&na), port, strerror(hold_errno));
+
+      if (flags & PR_INET_CREATE_CONN_FL_LOG_ERRORS) {
         pr_log_pri(PR_LOG_ERR, "Check the ServerType directive to ensure "
           "you are configured correctly");
         pr_log_pri(PR_LOG_ERR, "Check to see if inetd/xinetd, or another "
@@ -577,16 +581,28 @@ static conn_t *init_conn(pool *p, int fd, const pr_netaddr_t *bind_addr,
   return c;
 }
 
-conn_t *pr_inet_create_conn(pool *p, int fd, const pr_netaddr_t *bind_addr,
-    int port, int retry_bind) {
+conn_t *pr_inet_create_conn2(pool *p, int fd, const pr_netaddr_t *bind_addr,
+    int port, int flags) {
   conn_t *c = NULL;
 
-  c = init_conn(p, fd, bind_addr, port, retry_bind, TRUE);
+  c = init_conn(p, fd, bind_addr, port, flags);
   if (c == NULL) {
     errno = inet_errno;
   }
 
   return c;
+}
+
+conn_t *pr_inet_create_conn(pool *p, int fd, const pr_netaddr_t *bind_addr,
+    int port, int retry_bind) {
+  int flags = 0;
+
+  flags = PR_INET_CREATE_CONN_FL_LOG_ERRORS;
+  if (retry_bind == TRUE) {
+    flags |= PR_INET_CREATE_CONN_FL_RETRY_BIND;
+  }
+
+  return pr_inet_create_conn2(p, fd, bind_addr, port, flags);
 }
 
 /* Attempt to create a connection bound to a given port range, returns NULL
@@ -596,7 +612,7 @@ conn_t *pr_inet_create_conn_portrange(pool *p, const pr_netaddr_t *bind_addr,
     int low_port, int high_port) {
   int range_len, i;
   int *range, *ports;
-  int attempt, random_index;
+  int attempt, random_index, xerrno = 0;
   conn_t *c = NULL;
 
   if (low_port < 0 ||
@@ -625,8 +641,8 @@ conn_t *pr_inet_create_conn_portrange(pool *p, const pr_netaddr_t *bind_addr,
     range[i] = low_port + i;
   }
 
-  for (attempt = 3; attempt > 0 && !c; attempt--) {
-    for (i = range_len - 1; i >= 0 && !c; i--) {
+  for (attempt = 3; attempt > 0 && c == NULL; attempt--) {
+    for (i = range_len - 1; i >= 0 && c == NULL; i--) {
       pr_signals_handle();
 
       /* If this is the first attempt through the range, randomize
@@ -649,25 +665,18 @@ conn_t *pr_inet_create_conn_portrange(pool *p, const pr_netaddr_t *bind_addr,
         }
       }
 
-      c = init_conn(p, -1, bind_addr, ports[i], FALSE, FALSE);
-      if (c == NULL &&
-        /* Note that on Solaris, bind(2) might fail with EACCES if the
-         * randomly selected port for e.g. passive transfers is used by
-         * NFS.  Thus, for Solaris only, we treat EACCES as the same as
-         * EADDRINUSE.  Silly Solaris.
-         */
-#ifdef SOLARIS2
-          (inet_errno != EADDRINUSE && inet_errno != EACCES)) {
-#else
-          inet_errno != EADDRINUSE) {
-#endif /* SOLARIS2 */
-        pr_log_pri(PR_LOG_WARNING, "error initializing connection: %s",
-          strerror(inet_errno));
-        pr_session_disconnect(NULL, PR_SESS_DISCONNECT_BY_APPLICATION, NULL);
+      c = init_conn(p, -1, bind_addr, ports[i], 0);
+      xerrno = errno;
+
+      if (c == NULL) {
+        pr_trace_msg(trace_channel, 19, "unable to bind to %s:%d: %s",
+          bind_addr != NULL ? pr_netaddr_get_ipstr(bind_addr) : "0.0.0.0",
+          ports[i], strerror(xerrno));
       }
     }
   }
 
+  errno = xerrno;
   return c;
 }
 

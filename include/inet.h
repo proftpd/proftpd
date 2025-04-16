@@ -2,7 +2,7 @@
  * ProFTPD - FTP server daemon
  * Copyright (c) 1997, 1998 Public Flood Software
  * Copyright (c) 1999, 2000 MacGyver aka Habeeb J. Dihu <macgyver@tos.net>
- * Copyright (c) 2001-2022 The ProFTPD Project team
+ * Copyright (c) 2001-2025 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -139,8 +139,17 @@ int pr_inet_reverse_dns(pool *, int);
 int pr_inet_getservport(pool *, const char *, const char *);
 pr_netaddr_t *pr_inet_getaddr(pool *, const char *, array_header **);
 conn_t *pr_inet_copy_conn(pool *, conn_t *);
-conn_t *pr_inet_create_conn(pool *, int, const pr_netaddr_t *, int, int);
-conn_t *pr_inet_create_conn_portrange(pool *, const pr_netaddr_t *, int, int);
+
+conn_t *pr_inet_create_conn(pool *p, int fd, const pr_netaddr_t *bind_addr,
+  int port, int retry_bind);
+conn_t *pr_inet_create_conn2(pool *p, int fd, const pr_netaddr_t *bind_addr,
+  int port, int flags);
+#define PR_INET_CREATE_CONN_FL_RETRY_BIND	0x001
+#define PR_INET_CREATE_CONN_FL_LOG_ERRORS	0x002
+
+conn_t *pr_inet_create_conn_portrange(pool *p, const pr_netaddr_t *bind_addr,
+  int min_port, int max_port);
+
 void pr_inet_close(pool *, conn_t *);
 void pr_inet_lingering_abort(pool *, conn_t *, long);
 void pr_inet_lingering_close(pool *, conn_t *, long);

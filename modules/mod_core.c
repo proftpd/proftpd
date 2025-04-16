@@ -2,7 +2,7 @@
  * ProFTPD - FTP server daemon
  * Copyright (c) 1997, 1998 Public Flood Software
  * Copyright (c) 1999, 2000 MacGyver aka Habeeb J. Dihu <macgyver@tos.net>
- * Copyright (c) 2001-2024 The ProFTPD Project team
+ * Copyright (c) 2001-2025 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -3780,7 +3780,7 @@ MODRET core_pasv(cmd_rec *cmd) {
   unsigned int port = 0;
   char *addrstr = NULL, *tmp = NULL;
   config_rec *c = NULL;
-  const pr_netaddr_t *bind_addr;
+  const pr_netaddr_t *bind_addr = NULL;
   const char *proto;
 
   if (session.sf_flags & SF_EPSV_ALL) {
@@ -3809,14 +3809,14 @@ MODRET core_pasv(cmd_rec *cmd) {
   }
 
   /* If we already have a passive listen data connection open, kill it. */
-  if (session.d) {
+  if (session.d != NULL) {
     pr_inet_close(session.d->pool, session.d);
     session.d = NULL;
   }
 
   if (pr_netaddr_get_family(session.c->local_addr) == pr_netaddr_get_family(session.c->remote_addr)) {
 
-#ifdef PR_USE_IPV6
+#if defined(PR_USE_IPV6)
     if (pr_netaddr_use_ipv6()) {
       /* Make sure that the family is NOT IPv6, even though the family of the
        * local and remote ends match.  The PASV command cannot be used for
@@ -3868,16 +3868,18 @@ MODRET core_pasv(cmd_rec *cmd) {
 
   /* Open up the connection and pass it back. */
   if (session.d == NULL) {
-    session.d = pr_inet_create_conn(session.pool, -1, bind_addr, INPORT_ANY,
-      FALSE);
+    session.d = pr_inet_create_conn2(session.pool, -1, bind_addr, INPORT_ANY,
+      0);
   }
 
   if (session.d == NULL) {
+    int xerrno = errno;
+
     pr_response_add_err(R_425,
       _("Unable to build data connection: Internal error"));
 
-    pr_cmd_set_errno(cmd, EINVAL);
-    errno = EINVAL;
+    pr_cmd_set_errno(cmd, xerrno);
+    errno = xerrno;
     return PR_ERROR(cmd);
   }
 
@@ -4638,7 +4640,7 @@ MODRET core_epsv(cmd_rec *cmd) {
         family = 1;
         break;
 
-#ifdef PR_USE_IPV6
+#if defined(PR_USE_IPV6)
       case AF_INET6:
         if (pr_netaddr_use_ipv6()) {
           family = 2;
@@ -4656,7 +4658,7 @@ MODRET core_epsv(cmd_rec *cmd) {
     case 1:
       break;
 
-#ifdef PR_USE_IPV6
+#if defined(PR_USE_IPV6)
     case 2:
       if (pr_netaddr_use_ipv6()) {
         break;
@@ -4664,7 +4666,7 @@ MODRET core_epsv(cmd_rec *cmd) {
 #endif /* PR_USE_IPV6 */
 
     default:
-#ifdef PR_USE_IPV6
+#if defined(PR_USE_IPV6)
       if (pr_netaddr_use_ipv6()) {
         pr_response_add_err(R_522,
           _("Network protocol not supported, use (1,2)"));
@@ -4725,16 +4727,18 @@ MODRET core_epsv(cmd_rec *cmd) {
       "range %d-%d: defaulting to INPORT_ANY (consider defining a larger "
       "PassivePorts range)", epsv_min_port, epsv_max_port);
 
-    session.d = pr_inet_create_conn(session.pool, -1, bind_addr, INPORT_ANY,
-      FALSE);
+    session.d = pr_inet_create_conn2(session.pool, -1, bind_addr, INPORT_ANY,
+      0);
   }
 
   if (session.d == NULL) {
+    int xerrno = errno;
+
     pr_response_add_err(R_425,
       _("Unable to build data connection: Internal error"));
 
-    pr_cmd_set_errno(cmd, EINVAL);
-    errno = EINVAL;
+    pr_cmd_set_errno(cmd, xerrno);
+    errno = xerrno;
     return PR_ERROR(cmd);
   }
 
