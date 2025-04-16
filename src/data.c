@@ -2,7 +2,7 @@
  * ProFTPD - FTP server daemon
  * Copyright (c) 1997, 1998 Public Flood Software
  * Copyright (c) 1999, 2000 MacGyver aka Habeeb J. Dihu <macgyver@tos.net>
- * Copyright (c) 2001-2023 The ProFTPD Project team
+ * Copyright (c) 2001-2025 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -274,7 +274,8 @@ static int data_active_open(const char *reason, off_t size) {
     }
   }
 
-  session.d = pr_inet_create_conn(session.pool, -1, bind_addr, bind_port, TRUE);
+  session.d = pr_inet_create_conn2(session.pool, -1, bind_addr, bind_port,
+    PR_INET_CREATE_CONN_FL_RETRY_BIND);
   if (session.d == NULL) {
     xerrno = errno;
 
