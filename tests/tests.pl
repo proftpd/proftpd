@@ -205,7 +205,9 @@ if (scalar(@ARGV) > 0) {
     t/config/ftpaccess/empty.t
     t/config/ftpaccess/merging.t
     t/config/ftpaccess/retr.t
+    t/config/ftpaccess/stor.t
     t/config/limit/anonymous.t
+    t/config/limit/list.t
     t/config/limit/login.t
     t/config/limit/mfmt.t
     t/config/limit/opts.t
