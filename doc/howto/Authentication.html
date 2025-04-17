@@ -286,6 +286,20 @@ Note that the <code>mod_auth.c</code> module should <b>never</b> be used in an
 <p><a name="FAQ"></a>
 <b>Frequently Asked Questions</b><br>
 
+<p><a name="SlowLoginsWithManyGroups">
+<font color=red>Question</font>: Why are logins slow for users that belong to
+many groups?<br>
+<font color=blue>Answer</font>: Upon successful authentication, ProFTPD will discover all of the groups (names <em>and</em> IDs) for that user, since group
+names are used in configuration directives such as <code>&lt;Limit&gt;<code>
+sections, <code>Allow/Deny</code> ddirectives, <i>etc</i>.  Unfortunately this
+group discovery process, when using normal Unix authentication (<i>e.g.</i>
+<code>/etc/passwd</code> and <code>/etc/group</code> files) or the
+<code>AuthGroupFile</code>, is slow.
+
+If such slow logins are an issue for your site, you might consider using
+a different authentication backend, such as SQLite databases, that handle
+group discovery more efficiently.
+
 <p><a name="LogPassword">
 <font color=red>Question</font>: How can I configure <code>proftpd</code> to
 log/show the password typed by the user?<br>
@@ -295,7 +309,7 @@ code goes out of its way to ensure that the password is never logged.
 <p>
 <hr>
 <font size=2><b><i>
-&copy; Copyright 2017 The ProFTPD Project<br>
+&copy; Copyright 2017-2025 The ProFTPD Project<br>
  All Rights Reserved<br>
 </i></b></font>
 <hr>
