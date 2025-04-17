@@ -136,8 +136,9 @@ supported values for the <em>event</em> parameter are:
   <li>Connect
 </ul>
 The <em>delay-ms</em> parameter can be a number (in which case the units are
-assumed to be milliseconds), or using a suffix.  In addition, the <em>delay-ms</em> parameter can provide a <i>range</i>, from minium to maximum (but only
-for <code>Connect</code> events currently).
+assumed to be milliseconds), or using a suffix.  In addition, the
+<em>delay-ms</em> parameter can provide a <i>range</i>, from minimum to
+maximum (but only for <code>Connect</code> events currently).
 
 <p>
 To help illustrate the usage of <code>DelayOnEvent</code>, here are some
@@ -151,7 +152,12 @@ on failed logins</i>, you might use:
 <pre>
   DelayOnEvent FailedLogin 5s
 </pre>
-which adds a delay of 5 seconds after the login has failed.
+which adds a delay of 5 seconds after the login has failed.  <b>Note</b>
+that using <code>DelayOnEvent FailedLogin</code> for SFTP connections may
+not work as you expect, as every password or key <i>attempted</i> by an SFTP
+client that fails will trigger the delay -- and many SFTP clients will try
+multiple different keys before using the correct/expected key, making for
+unexpectedly slow SFTP logins.
 
 <p>
 And to inject delays at connect time, to "spread out" the processing of
@@ -334,7 +340,7 @@ The <code>mod_delay</code> module is compiled by default.
 <br><hr>
 
 <font size=2><b><i>
-&copy; Copyright 2004-2023 The ProFTPD Project<br>
+&copy; Copyright 2004-2025 The ProFTPD Project<br>
  All Rights Reserved<br>
 </i></b></font>
 
