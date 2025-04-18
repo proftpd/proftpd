@@ -7085,8 +7085,8 @@ static SSL_TICKET_RETURN tls_decrypt_session_ticket_data_xfer_cb(SSL *ssl,
 
 /* Note that we want to _use_ any provided TLSv1.3 session tickets, so that
  * data transfers can reuse the TLS session from the control connection.  BUT
- * we do not want to _renew_ (or issue) new tickets, as that will may tickle
- * the ECONNRESET bug (see Issue #959) for some data transfers.
+ * we do not want to _renew_ (or issue) new tickets, as that may tickle the
+ * ECONNRESET bug (see Issue #959) for some data transfers.
  */
 static SSL_TICKET_RETURN tls_decrypt_session_ticket_data_upload_cb(SSL *ssl,
     SSL_SESSION *ssl_session, const unsigned char *key_name, size_t key_namelen,
@@ -7105,8 +7105,6 @@ static SSL_TICKET_RETURN tls_decrypt_session_ticket_data_upload_cb(SSL *ssl,
     ssl_version = SSL_SESSION_get_protocol_version(ssl_session);
 # if defined(TLS1_3_VERSION)
     if (ssl_version == TLS1_3_VERSION) {
-      pr_trace_msg(trace_channel, 29,
-        "suppressing renewal of TLSv1.3 tickets for data transfers");
       renew_tickets = FALSE;
     }
   }
@@ -7131,6 +7129,8 @@ static SSL_TICKET_RETURN tls_decrypt_session_ticket_data_upload_cb(SSL *ssl,
       get_session_ticket_appdata(ssl, ssl_session);
       res = SSL_TICKET_RETURN_USE_RENEW;
       if (renew_tickets == FALSE) {
+        pr_trace_msg(trace_channel, 29,
+          "suppressing renewal of expired TLSv1.3 session ticket for upload");
         res = SSL_TICKET_RETURN_USE;
       }
       break;
@@ -12873,8 +12873,9 @@ MODRET tls_auth_check(cmd_rec *cmd) {
  */
 
 MODRET tls_any(cmd_rec *cmd) {
-  if (!tls_engine)
+  if (tls_engine == FALSE) {
     return PR_DECLINED(cmd);
+  }
 
   /* Some commands need not be hindered. */
   if (pr_cmd_cmp(cmd, PR_CMD_SYST_ID) == 0 ||
@@ -12916,20 +12917,18 @@ MODRET tls_any(cmd_rec *cmd) {
       pr_cmd_set_errno(cmd, EPERM);
       errno = EPERM;
       return PR_ERROR(cmd);
+    }
 
-    } else {
+    if (tls_authenticated != NULL &&
+        *tls_authenticated == TRUE) {
+      tls_log("SSL/TLS required but absent on control channel, "
+        "denying %s command", (char *) cmd->argv[0]);
+      pr_response_add_err(R_550,
+        _("SSL/TLS required on the control channel"));
 
-      if (tls_authenticated &&
-          *tls_authenticated == TRUE) {
-        tls_log("SSL/TLS required but absent on control channel, "
-          "denying %s command", (char *) cmd->argv[0]);
-        pr_response_add_err(R_550,
-          _("SSL/TLS required on the control channel"));
-
-        pr_cmd_set_errno(cmd, EPERM);
-        errno = EPERM;
-        return PR_ERROR(cmd);
-      }
+      pr_cmd_set_errno(cmd, EPERM);
+      errno = EPERM;
+      return PR_ERROR(cmd);
     }
   }
 
@@ -12980,7 +12979,7 @@ MODRET tls_any(cmd_rec *cmd) {
       config_rec *c;
 
       c = find_config(CURRENT_CONF, CONF_PARAM, "TLSRequired", FALSE);
-      if (c) {
+      if (c != NULL) {
         int tls_required;
 
         tls_required = *((int *) c->argv[1]);
@@ -13001,6 +13000,53 @@ MODRET tls_any(cmd_rec *cmd) {
       }
     }
   }
+
+  return PR_DECLINED(cmd);
+}
+
+MODRET tls_pre_stor(cmd_rec *cmd) {
+#if defined(TLS1_3_VERSION)
+  SSL_SESSION *ssl_session;
+  int ssl_version;
+#endif /* TLS1_3_VERSION */
+
+  if (tls_engine == FALSE) {
+    return PR_DECLINED(cmd);
+  }
+
+  if (!(tls_flags & TLS_SESS_ON_CTRL)) {
+    return PR_DECLINED(cmd);
+  }
+
+  if (ctrl_ssl == NULL) {
+    return PR_DECLINED(cmd);
+  }
+
+#if defined(TLS1_3_VERSION)
+  ssl_session = SSL_get_session(ctrl_ssl);
+
+  /* Ideally I would use SSL_SESSION_has_ticket, available since OpenSSL 1.1.x,
+   * rather than simply gating on the session protocol version, but that does
+   * not work as expected in local regression testing, whereas using the
+   * protocol version does work.
+   */
+  ssl_version = SSL_SESSION_get_protocol_version(ssl_session);
+  if (ssl_version != TLS1_3_VERSION) {
+    return PR_DECLINED(cmd);
+  }
+
+# if defined(OPENSSL_VERSION_MAJOR) && \
+     OPENSSL_VERSION_MAJOR >= 3
+  if (SSL_new_session_ticket(ctrl_ssl) == 1) {
+    pr_trace_msg(trace_channel, 19,
+      "requesting new TLSv1.3 session ticket before upload");
+
+  } else {
+    pr_trace_msg(trace_channel, 1,
+      "error requesting new TLSv1.3 session ticket: %s", tls_get_errors());
+  }
+# endif /* OpenSSL 3.x and later */
+#endif /* TLS1_3_VERSION */
 
   return PR_DECLINED(cmd);
 }
@@ -19262,6 +19308,9 @@ static conftable tls_conftab[] = {
 
 static cmdtable tls_cmdtab[] = {
   { PRE_CMD,	C_ANY,	G_NONE,	tls_any,	FALSE,	FALSE },
+  { PRE_CMD,	C_APPE,	G_NONE,	tls_pre_stor,	FALSE,	FALSE },
+  { PRE_CMD,	C_STOR,	G_NONE,	tls_pre_stor,	FALSE,	FALSE },
+  { PRE_CMD,	C_STOU,	G_NONE,	tls_pre_stor,	FALSE,	FALSE },
   { CMD,	C_AUTH,	G_NONE,	tls_auth,	FALSE,	FALSE,	CL_SEC },
   { CMD,	C_CCC,	G_NONE,	tls_ccc,	TRUE,	FALSE,	CL_SEC },
   { CMD,	C_PBSZ,	G_NONE,	tls_pbsz,	FALSE,	FALSE,	CL_SEC },
