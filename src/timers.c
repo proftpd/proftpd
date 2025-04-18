@@ -1,7 +1,7 @@
 /*
  * ProFTPD - FTP server daemon
  * Copyright (c) 1997, 1998 Public Flood Software
- * Copyright (c) 2001-2022 The ProFTPD Project team
+ * Copyright (c) 2001-2025 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -195,7 +195,7 @@ static int process_timers(int elapsed) {
   return res;
 }
 
-static RETSIGTYPE sig_alarm(int signo) {
+static void sig_alarm(int signo) {
   struct sigaction act;
 
   act.sa_handler = sig_alarm;
