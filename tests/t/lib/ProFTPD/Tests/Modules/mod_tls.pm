@@ -25,9 +25,10 @@ my $TESTS = {
     test_class => [qw(forking)],
   },
 
+  # NOTE: Looks like OpenSSL 3.x no longer supports ciphers for DSA certs.
   tls_login_dsa => {
     order => ++$order,
-    test_class => [qw(forking)],
+    test_class => [qw(forking inprogress)],
   },
 
   tls_double_auth => {
@@ -35,6 +36,8 @@ my $TESTS = {
     test_class => [qw(bug forking)],
   },
 
+  # Need to update/regenerate this PKCS12 file using newer OpenSSL; OpenSSL 3.x
+  # doesn't read it anymore.  Of course.
   tls_login_pkcs12 => {
     order => ++$order,
     test_class => [qw(forking)],
@@ -171,9 +174,12 @@ my $TESTS = {
     test_class => [qw(bug forking rootprivs)],
   },
 
+  # Note that the client cert used in this test has expired, and thus fails
+  # verification before we reach the point of examining the cert fields
+  # for embedded NULs.
   tls_client_cert_verify_failed_embedded_nul_bug3275 => {
     order => ++$order,
-    test_class => [qw(bug forking)],
+    test_class => [qw(bug forking inprogress)],
   },
 
   tls_opts_std_env_vars => {
@@ -525,9 +531,11 @@ my $TESTS = {
     test_class => [qw(bug forking)],
   },
 
+  # Note: Mark this test as "in progress", as it deals with SSL protocol
+  # versions that are no longer easily supported.
   tls_old_protocols_issue1273 => {
     order => ++$order,
-    test_class => [qw(bug forking)],
+    test_class => [qw(bug forking inprogress)],
   },
 
   tls_curl_download_largefile_renegotiate_bug4443 => {
@@ -734,6 +742,7 @@ sub tls_login_dsa {
 
     AuthUserFile => $setup->{auth_user_file},
     AuthGroupFile => $setup->{auth_group_file},
+    AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
       'mod_delay.c' => {
@@ -749,6 +758,7 @@ sub tls_login_dsa {
         TLSOptions => 'AllowWeakSecurity EnableDiags',
 
         # Needed for DSA certs
+        TLSProtocol => 'TLSv1.2',
         TLSCipherSuite => 'ALL',
       },
     },
@@ -953,49 +963,19 @@ sub tls_double_auth {
 sub tls_login_pkcs12 {
   my $self = shift;
   my $tmpdir = $self->{tmpdir};
-
-  my $config_file = "$tmpdir/tls.conf";
-  my $pid_file = File::Spec->rel2abs("$tmpdir/tls.pid");
-  my $scoreboard_file = File::Spec->rel2abs("$tmpdir/tls.scoreboard");
-
-  my $log_file = test_get_logfile();
-
-  my $auth_user_file = File::Spec->rel2abs("$tmpdir/tls.passwd");
-  my $auth_group_file = File::Spec->rel2abs("$tmpdir/tls.group");
-
-  my $user = 'proftpd';
-  my $passwd = 'test';
-  my $group = 'ftpd';
-  my $home_dir = File::Spec->rel2abs($tmpdir);
-  my $uid = 500;
-  my $gid = 500;
-
-  # Make sure that, if we're running as root, that the home directory has
-  # permissions/privs set for the account we create
-  if ($< == 0) {
-    unless (chmod(0755, $home_dir)) {
-      die("Can't set perms on $home_dir to 0755: $!");
-    }
-
-    unless (chown($uid, $gid, $home_dir)) {
-      die("Can't set owner of $home_dir to $uid/$gid: $!");
-    }
-  }
-
-  auth_user_write($auth_user_file, $user, $passwd, $uid, $gid, $home_dir,
-    '/bin/bash');
-  auth_group_write($auth_group_file, $group, $gid, $user);
+  my $setup = test_setup($tmpdir, 'tls');
 
   my $pkcs12_file = File::Spec->rel2abs('t/etc/modules/mod_tls/server-cert.p12');
   my $ca_file = File::Spec->rel2abs('t/etc/modules/mod_tls/ca-cert.pem');
 
   my $config = {
-    PidFile => $pid_file,
-    ScoreboardFile => $scoreboard_file,
-    SystemLog => $log_file,
+    PidFile => $setup->{pid_file},
+    ScoreboardFile => $setup->{scoreboard_file},
+    SystemLog => $setup->{log_file},
 
-    AuthUserFile => $auth_user_file,
-    AuthGroupFile => $auth_group_file,
+    AuthUserFile => $setup->{auth_user_file},
+    AuthGroupFile => $setup->{auth_group_file},
+    AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
       'mod_delay.c' => {
@@ -1004,7 +984,7 @@ sub tls_login_pkcs12 {
 
       'mod_tls.c' => {
         TLSEngine => 'on',
-        TLSLog => $log_file,
+        TLSLog => $setup->{log_file},
         TLSRequired => 'on',
         TLSPKCS12File => $pkcs12_file,
         TLSCACertificateFile => $ca_file,
@@ -1012,7 +992,8 @@ sub tls_login_pkcs12 {
     },
   };
 
-  my ($port, $config_user, $config_group) = config_write($config_file, $config);
+  my ($port, $config_user, $config_group) = config_write($setup->{config_file},
+    $config);
 
   # Open pipes, for use between the parent and child processes.  Specifically,
   # the child will indicate when it's done with its test by writing a message
@@ -1043,11 +1024,10 @@ sub tls_login_pkcs12 {
         die("Can't connect to FTPS server: " . IO::Socket::SSL::errstr());
       }
 
-      unless ($client->login($user, $passwd)) {
+      unless ($client->login($setup->{user}, $setup->{passwd})) {
         die("Can't login: " . $client->last_message());
       }
     };
-
     if ($@) {
       $ex = $@;
     }
@@ -1056,7 +1036,7 @@ sub tls_login_pkcs12 {
     $wfh->flush();
 
   } else {
-    eval { server_wait($config_file, $rfh) };
+    eval { server_wait($setup->{config_file}, $rfh) };
     if ($@) {
       warn($@);
       exit 1;
@@ -1066,18 +1046,10 @@ sub tls_login_pkcs12 {
   }
 
   # Stop server
-  server_stop($pid_file);
-
+  server_stop($setup->{pid_file});
   $self->assert_child_ok($pid);
 
-  if ($ex) {
-    test_append_logfile($log_file, $ex);
-    unlink($log_file);
-
-    die($ex);
-  }
-
-  unlink($log_file);
+  test_cleanup($setup->{log_file}, $ex);
 }
 
 sub tls_dh_ciphersuite {
@@ -1973,6 +1945,7 @@ sub tls_login_with_sni_unknown_host_no_serveraliases_issue850 {
 
     AuthUserFile => $setup->{auth_user_file},
     AuthGroupFile => $setup->{auth_group_file},
+    AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
       'mod_delay.c' => {
@@ -2021,6 +1994,9 @@ sub tls_login_with_sni_unknown_host_no_serveraliases_issue850 {
         SSL_ca_file => $ca_file,
         SSL_hostname => $host,
         SSL_verify_mode => IO::Socket::SSL::SSL_VERIFY_PEER(),
+
+        # Disable verification of the CN in the server cert
+        SSL_verifycn_scheme => 'none',
       };
 
       if ($ENV{TEST_VERBOSE}) {
@@ -2088,6 +2064,7 @@ sub tls_login_with_sni_different_certs_issue850 {
 
     AuthUserFile => $setup->{auth_user_file},
     AuthGroupFile => $setup->{auth_group_file},
+    AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
       'mod_delay.c' => {
@@ -2126,7 +2103,6 @@ sub tls_login_with_sni_different_certs_issue850 {
     TLSRSACertificateFile $rsa_cert_file
     TLSCACertificateFile $rsa_ca_file
     TLSOptions EnableDiags
-    TLSProtocol TLSv1.0
   </IfModule>
 
   <Limit LOGIN>
@@ -2194,6 +2170,9 @@ EOC
         SSL_ca_file => $rsa_ca_file,
         SSL_hostname => $host,
         SSL_verify_mode => IO::Socket::SSL::SSL_VERIFY_PEER(),
+
+        # Disable verification of the CN in the server cert
+        SSL_verifycn_scheme => 'none',
       };
 
       if ($ENV{TEST_VERBOSE}) {
@@ -2507,6 +2486,9 @@ EOC
         SSL_ca_file => $rsa_ca_file,
         SSL_hostname => $host,
         SSL_verify_mode => IO::Socket::SSL::SSL_VERIFY_PEER(),
+
+        # Disable verification of the CN in the server cert
+        SSL_verifycn_scheme => 'none',
       };
 
       if ($ENV{TEST_VERBOSE}) {
@@ -2680,6 +2662,9 @@ EOC
         SSL_ca_file => $rsa_ca_file,
         SSL_hostname => $host,
         SSL_verify_mode => IO::Socket::SSL::SSL_VERIFY_PEER(),
+
+        # Disable verification of the CN in the server cert
+        SSL_verifycn_scheme => 'none',
       };
 
       if ($ENV{TEST_VERBOSE}) {
@@ -2853,6 +2838,9 @@ EOC
         SSL_ca_file => $rsa_ca_file,
         SSL_hostname => uc($host),
         SSL_verify_mode => IO::Socket::SSL::SSL_VERIFY_PEER(),
+
+        # Disable verification of the CN in the server cert
+        SSL_verifycn_scheme => 'none',
       };
 
       if ($ENV{TEST_VERBOSE}) {
@@ -3025,6 +3013,10 @@ EOC
         SSL_ca_file => $rsa_ca_file,
         SSL_hostname => $host,
         SSL_verify_mode => IO::Socket::SSL::SSL_VERIFY_PEER(),
+
+        # Disable verification of the CN in the server cert
+        SSL_verifycn_scheme => 'none',
+
         SSL_version => 'TLSv1',
       };
 
@@ -3126,7 +3118,6 @@ sub tls_login_with_sni_port_zero_issue932 {
     TLSRequired on
     TLSRSACertificateFile $rsa_cert_file
     TLSCACertificateFile $rsa_ca_file
-    TLSProtocol TLSv1.0
     TLSOptions EnableDiags
   </IfModule>
 </Global>
@@ -3177,6 +3168,9 @@ EOC
         SSL_ca_file => $rsa_ca_file,
         SSL_hostname => $host,
         SSL_verify_mode => IO::Socket::SSL::SSL_VERIFY_PEER(),
+
+        # Disable verification of the CN in the server cert
+        SSL_verifycn_scheme => 'none',
       };
 
       if ($ENV{TEST_VERBOSE}) {
@@ -3264,7 +3258,6 @@ sub tls_login_with_sni_port_nonzero_issue932 {
     TLSRequired on
     TLSRSACertificateFile $rsa_cert_file
     TLSCACertificateFile $rsa_ca_file
-    TLSProtocol TLSv1.0
     TLSOptions EnableDiags
   </IfModule>
 </Global>
@@ -3315,6 +3308,9 @@ EOC
         SSL_ca_file => $rsa_ca_file,
         SSL_hostname => $host,
         SSL_verify_mode => IO::Socket::SSL::SSL_VERIFY_PEER(),
+
+        # Disable verification of the CN in the server cert
+        SSL_verifycn_scheme => 'none',
       };
 
       if ($ENV{TEST_VERBOSE}) {
@@ -3411,7 +3407,6 @@ sub tls_login_with_sni_port_zero_socketbindtight_on_issue932 {
     TLSRequired on
     TLSRSACertificateFile $rsa_cert_file
     TLSCACertificateFile $rsa_ca_file
-    TLSProtocol TLSv1.0
     TLSOptions EnableDiags
   </IfModule>
 </Global>
@@ -3462,6 +3457,9 @@ EOC
         SSL_ca_file => $rsa_ca_file,
         SSL_hostname => $host,
         SSL_verify_mode => IO::Socket::SSL::SSL_VERIFY_PEER(),
+
+        # Disable verification of the CN in the server cert
+        SSL_verifycn_scheme => 'none',
       };
 
       if ($ENV{TEST_VERBOSE}) {
@@ -3568,7 +3566,6 @@ sub tls_login_with_sni_port_zero_multi_ports_issue932 {
     TLSRequired on
     TLSRSACertificateFile $rsa_cert_file
     TLSCACertificateFile $rsa_ca_file
-    TLSProtocol TLSv1.0
     TLSOptions EnableDiags
   </IfModule>
 </Global>
@@ -3643,6 +3640,9 @@ EOC
         SSL_ca_file => $rsa_ca_file,
         SSL_hostname => $host,
         SSL_verify_mode => IO::Socket::SSL::SSL_VERIFY_PEER(),
+
+        # Disable verification of the CN in the server cert
+        SSL_verifycn_scheme => 'none',
       };
 
       if ($ENV{TEST_VERBOSE}) {
@@ -4930,6 +4930,7 @@ sub tls_client_cert_verify_failed_embedded_nul_bug3275 {
 
     AuthUserFile => $setup->{auth_user_file},
     AuthGroupFile => $setup->{auth_group_file},
+    AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
       'mod_delay.c' => {
@@ -4946,8 +4947,12 @@ sub tls_client_cert_verify_failed_embedded_nul_bug3275 {
         TLSVerifyClient => 'on',
 
         # To trigger Bug#3275, we need to verify the subjAltName field in
-        # the present cert, which means enabling DNS resolution
-        TLSOptions => 'EnableDiags dNSNameRequired',
+        # the present cert, which means enabling DNS resolution.
+        #
+        # Newer OpenSSL versions will fail client cert verification with
+        # "CA signature digest algorithm too weak", hence the AllowWeakSecurity
+        # TLSOption.
+        TLSOptions => 'AllowWeakSecurity EnableDiags dNSNameRequired',
 
         # We need to enable reverse DNS resolution as well, for this to work
         UseReverseDNS => 'on',
@@ -8250,6 +8255,7 @@ sub tls_ccc_before_login {
 
     AuthUserFile => $setup->{auth_user_file},
     AuthGroupFile => $setup->{auth_group_file},
+    AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
       'mod_delay.c' => {
@@ -8259,7 +8265,6 @@ sub tls_ccc_before_login {
       'mod_tls.c' => {
         TLSEngine => 'on',
         TLSLog => $setup->{log_file},
-        TLSProtocol => 'TLSv1',
         TLSRequired => 'off',
         TLSOptions => 'NoSessionReuseRequired',
         TLSRSACertificateFile => $cert_file,
@@ -12860,6 +12865,7 @@ sub tls_config_tlsrenegotiate_ctrl {
 
     AuthUserFile => $setup->{auth_user_file},
     AuthGroupFile => $setup->{auth_group_file},
+    AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
       'mod_delay.c' => {
@@ -12904,7 +12910,7 @@ sub tls_config_tlsrenegotiate_ctrl {
 
       # Make sure we do not use TLSv1.3 here.
       my $ssl_opts = {
-        SSL_version => 'TLSv1',
+        SSL_version => 'TLSv1_2',
       };
 
       my $client = Net::FTPSSL->new('127.0.0.1',
@@ -13026,6 +13032,7 @@ sub tls_config_tlsrenegotiate_download {
 
     AuthUserFile => $setup->{auth_user_file},
     AuthGroupFile => $setup->{auth_group_file},
+    AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
       'mod_delay.c' => {
@@ -13070,7 +13077,7 @@ sub tls_config_tlsrenegotiate_download {
 
       # Make sure we do not use TLSv1.3 here.
       my $ssl_opts = {
-        SSL_version => 'TLSv1',
+        SSL_version => 'TLSv1_2',
       };
 
       my $client = Net::FTPSSL->new('127.0.0.1',
@@ -13200,6 +13207,7 @@ sub tls_config_tlsrenegotiate_upload {
 
     AuthUserFile => $setup->{auth_user_file},
     AuthGroupFile => $setup->{auth_group_file},
+    AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
       'mod_delay.c' => {
@@ -13244,7 +13252,7 @@ sub tls_config_tlsrenegotiate_upload {
 
       # Make sure we do not use TLSv1.3 here.
       my $ssl_opts = {
-        SSL_version => 'TLSv1',
+        SSL_version => 'TLSv1_2',
       };
 
       my $client = Net::FTPSSL->new('127.0.0.1',
@@ -14500,6 +14508,7 @@ sub tls_restart_protected_certs_bug4260 {
 
     AuthUserFile => $setup->{auth_user_file},
     AuthGroupFile => $setup->{auth_group_file},
+    AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
       'mod_delay.c' => {
@@ -14831,6 +14840,7 @@ sub tls_old_protocols_issue1273 {
 
     AuthUserFile => $setup->{auth_user_file},
     AuthGroupFile => $setup->{auth_group_file},
+    AuthOrder => 'mod_auth_file.c',
 
     AllowForeignAddress => 'on',
     AllowOverwrite => 'on',
@@ -14844,7 +14854,7 @@ sub tls_old_protocols_issue1273 {
       'mod_tls.c' => {
         TLSEngine => 'on',
         TLSLog => $setup->{log_file},
-        TLSProtocol => 'SSLv23',
+        TLSProtocol => 'TLSv1.2',
         TLSRequired => 'on',
         TLSRSACertificateFile => $cert_file,
         TLSCACertificateFile => $ca_file,
@@ -14873,20 +14883,14 @@ sub tls_old_protocols_issue1273 {
     eval {
       sleep(2);
 
-      # We use an older OpenSSL version for the older protocols.
-      # Allow server to start up
-      my $openssl = '/Users/tj/local/openssl-0.9.8d/bin/openssl';
-
-      # Explicitly use SSLv3, which has been disabled by default in
-      # OpenSSL-1.1.x; see:
-      #   https://github.com/openssl/openssl/issues/4989
+      my $openssl = 'openssl';
 
       my @cmd = (
         $openssl,
         's_client',
         '-connect',
         "127.0.0.1:$port",
-        '-ssl3',
+        '-tls1',
       );
 
       my $tls_rh = IO::Handle->new();
@@ -15363,6 +15367,7 @@ sub tls_explicit_plaintext_fallback_issue192 {
 
       my $ssl_opts = {
         SSL_verify_mode => IO::Socket::SSL::SSL_VERIFY_NONE(),
+        SSL_version => 'TLSv1',
       };
 
       my $res = IO::Socket::SSL->start_SSL($client, $ssl_opts);
@@ -15508,6 +15513,7 @@ sub tls_implicit_plaintext_fallback_issue192 {
 
       my $ssl_opts = {
         SSL_verify_mode => IO::Socket::SSL::SSL_VERIFY_NONE(),
+        SSL_version => 'TLSv1',
       };
 
       my $res = IO::Socket::SSL->start_SSL($client, $ssl_opts);
