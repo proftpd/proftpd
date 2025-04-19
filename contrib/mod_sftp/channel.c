@@ -674,11 +674,30 @@ static int handle_channel_data(struct ssh2_packet *pkt, uint32_t *channel_id) {
 
   chan = get_channel(*channel_id);
   if (chan == NULL) {
+    int xerrno = errno;
+    const char *error_text = NULL;
+
+    switch (xerrno) {
+      case EACCES:
+        error_text = "No open channels (perhaps missing prior CHANNEL_OPEN message?)";
+        break;
+
+      case ENOENT:
+        error_text = "Unknown channel ID (perhaps missing prior CHANNEL_OPEN message?)";
+        break;
+
+      default:
+        error_text = strerror(xerrno);
+        break;
+    }
+
     pr_trace_msg(trace_channel, 8, "unable to handle data for "
-      "channel ID %lu: %s", (unsigned long) *channel_id, strerror(errno));
+      "channel ID %lu: %s", (unsigned long) *channel_id, error_text);
 
     (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
-      "no open channel for remote channel ID %lu", (unsigned long) *channel_id);
+      "no open channel for remote channel ID %lu: %s",
+      (unsigned long) *channel_id, error_text);
+    errno = xerrno;
     return -1;
   }
 
