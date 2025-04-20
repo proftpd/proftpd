@@ -2,7 +2,7 @@
  * ProFTPD - FTP server daemon
  * Copyright (c) 1997, 1998 Public Flood Software
  * Copyright (c) 1999, 2000 MacGyver aka Habeeb J. Dihu <macgyver@tos.net>
- * Copyright (c) 2001-2024 The ProFTPD Project
+ * Copyright (c) 2001-2025 The ProFTPD Project
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -4324,7 +4324,7 @@ static int schmod_dir(pool *p, const char *path, mode_t perms, int use_root) {
 
   /* Note that some filesystems (e.g. CIFS) may not actually create a
    * directory with the expected 0700 mode.  If that is the case, then a
-   * subsequence chmod(2) on that directory will likely fail.  Thus we also
+   * subsequent chmod(2) on that directory will likely fail.  Thus we also
    * double-check the mode of the directory created via mkdtemp(3), and
    * attempt to mitigate Bug#4063.
    */
