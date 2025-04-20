@@ -92,11 +92,6 @@ typedef struct conn_info {
   char daemon[WRAP2_BUFFER_SIZE];      /* access via eval_daemon(request) */
   struct host_info client[1];         /* client endpoint info */
   struct host_info server[1];         /* server endpoint info */
-  void  (*sink) (int);                /* datagram sink function or 0 */
-  void  (*hostname) (struct host_info *); /* address to printable hostname */
-  void  (*hostaddr) (struct host_info *); /* address to printable address */
-  void  (*cleanup) (struct conn_info *);   /* cleanup function or 0 */
-  struct netconfig *config;           /* netdir handle */
 
 } wrap2_conn_t;
 
@@ -129,8 +124,9 @@ int wrap2_log(const char *fmt, ...) {
   va_list msg;
   int res;
 
-  if (!wrap2_logname)
+  if (wrap2_logname == NULL) {
     return 0;
+  }
 
   va_start(msg, fmt);
   res = pr_log_vwritefile(wrap2_logfd, MOD_WRAP2_VERSION, fmt, msg);
@@ -144,8 +140,9 @@ static int wrap2_openlog(void) {
 
   /* Sanity check */
   wrap2_logname = get_param_ptr(main_server->conf, "WrapLog", FALSE);
-  if (wrap2_logname == NULL)
+  if (wrap2_logname == NULL) {
     return 0;
+  }
 
   /* Check for "none" */
   if (strcasecmp(wrap2_logname, "none") == 0) {
@@ -225,41 +222,9 @@ static wrap2_conn_t *wrap2_conn_update(wrap2_conn_t *conn, va_list ap) {
         conn->sock_fd = va_arg(ap, int);
         continue;
 
-#if 0
-      case WRAP2_CONN_CLIENT_SIN:
-        conn->client->sin = va_arg(ap, struct sockaddr_in *);
-        continue;
-
-      case WRAP2_CONN_SERVER_SIN:
-        conn->server->sin = va_arg(ap, struct sockaddr_in *);
-        continue;
-#endif
-
       case WRAP2_CONN_DAEMON:
         val = conn->daemon;
         break;
-
-#if 0
-      case WRAP2_CONN_USER:
-        val = conn->user;
-        break;
-
-      case WRAP2_CONN_CLIENT_NAME:
-        val = conn->client->name;
-        break;
-
-      case WRAP2_CONN_CLIENT_ADDR:
-        val = conn->client->addr;
-        break;
-
-      case WRAP2_CONN_SERVER_NAME:
-        val = conn->server->name;
-        break;
-
-      case WRAP2_CONN_SERVER_ADDR:
-        val = conn->server->addr;
-        break;
-#endif
     }
 
     /* Copy in the string */
@@ -382,9 +347,9 @@ static char *wrap2_get_hostinfo(wrap2_host_t *host) {
   char *hostname;
 
   hostname = wrap2_get_hostname(host);
-
-  if (WRAP2_IS_KNOWN_HOSTNAME(hostname))
+  if (WRAP2_IS_KNOWN_HOSTNAME(hostname)) {
     return hostname;
+  }
 
   return wrap2_get_hostaddr(host);
 }
@@ -410,8 +375,9 @@ char *wrap2_strsplit(char *str, int delim) {
   char *tmp = NULL;
 
   tmp = strchr(str, delim);
-  if (tmp != NULL)
+  if (tmp != NULL) {
     *tmp++ = '\0';
+  }
 
   return tmp;
 }
@@ -526,8 +492,9 @@ static unsigned char wrap2_match_host(char *tok, wrap2_host_t *host) {
     /* netgroup: look it up. */
     static char *mydomain = NULL;
 
-    if (mydomain == NULL)
+    if (mydomain == NULL) {
       yp_get_default_domain(&mydomain);
+    }
 
     return (innetgr(tok + 1, wrap2_get_hostname(host), NULL, mydomain));
 #else
