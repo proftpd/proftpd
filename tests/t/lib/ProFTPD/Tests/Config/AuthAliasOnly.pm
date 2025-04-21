@@ -45,6 +45,11 @@ my $TESTS = {
     test_class => [qw(bug forking rootprivs)],
   },
 
+  authaliasonly_on_anonrequirepassword_bug4417 => {
+    order => ++$order,
+    test_class => [qw(bug forking rootprivs)],
+  },
+
 };
 
 sub new {
@@ -165,7 +170,7 @@ sub authaliasonly_off_anon_bug2070 {
     }
   }
 
-  my $alias = 'ftptest';
+  my $alias = 'alias';
 
   auth_user_write($auth_user_file, $user, $passwd, $uid, $gid, $home_dir,
     '/bin/bash');
@@ -245,7 +250,6 @@ EOC
 
       $client->quit();
     };
-
     if ($@) {
       $ex = $@;
     }
@@ -265,10 +269,10 @@ EOC
 
   # Stop server
   server_stop($pid_file);
-
   $self->assert_child_ok($pid);
 
   if ($ex) {
+    test_append_logfile($log_file, $ex);
     die($ex);
   }
 
@@ -385,7 +389,6 @@ sub authaliasonly_on_anon_bug3501 {
         test_msg("Expected response message '$expected', got '$resp_msg'"));
       $client->quit();
     };
-
     if ($@) {
       $ex = $@;
     }
@@ -405,9 +408,10 @@ sub authaliasonly_on_anon_bug3501 {
 
   # Stop server
   server_stop($pid_file);
-
   $self->assert_child_ok($pid);
+
   if ($ex) {
+    test_append_logfile($log_file, $ex);
     die($ex);
   }
 
@@ -520,7 +524,6 @@ sub authaliasonly_on_system_bug3501 {
 
       $client->quit();
     };
-
     if ($@) {
       $ex = $@;
     }
@@ -540,9 +543,10 @@ sub authaliasonly_on_system_bug3501 {
 
   # Stop server
   server_stop($pid_file);
-
   $self->assert_child_ok($pid);
+
   if ($ex) {
+    test_append_logfile($log_file, $ex);
     die($ex);
   }
 
@@ -555,6 +559,13 @@ sub authaliasonly_on_anon_bug4255 {
   my $setup = test_setup($tmpdir, 'config');
 
   my ($config_user, $config_group) = config_get_identity();
+
+  # Make sure our AuthUserFile has an entry for the actual user, since our
+  # AuthOrder setting says to only use the AuthUserFile for user lookups.
+  auth_user_write($setup->{auth_user_file}, $config_user, $setup->{passwd},
+    $setup->{uid}, $setup->{gid}, $setup->{home_dir}, '/bin/bash');
+  auth_group_write($setup->{auth_group_file}, $config_group, $setup->{gid},
+    $config_user);
 
   my $config = {
     PidFile => $setup->{pid_file},
@@ -633,7 +644,6 @@ sub authaliasonly_on_anon_bug4255 {
 
       $client->quit();
     };
-
     if ($@) {
       $ex = $@;
     }
@@ -739,6 +749,137 @@ sub authaliasonly_on_anon_bug4314 {
       $expected = 'Anonymous access granted, restrictions apply';
       $self->assert($expected eq $resp_msg,
         "Expected response message '$expected', got '$resp_msg'");
+
+      $client->quit();
+    };
+    if ($@) {
+      $ex = $@;
+    }
+
+    $wfh->print("done\n");
+    $wfh->flush();
+
+  } else {
+    eval { server_wait($setup->{config_file}, $rfh) };
+    if ($@) {
+      warn($@);
+      exit 1;
+    }
+
+    exit 0;
+  }
+
+  # Stop server
+  server_stop($setup->{pid_file});
+  $self->assert_child_ok($pid);
+
+  test_cleanup($setup->{log_file}, $ex);
+}
+
+sub authaliasonly_on_anonrequirepassword_bug4417 {
+  my $self = shift;
+  my $tmpdir = $self->{tmpdir};
+  my $setup = test_setup($tmpdir, 'config');
+
+  my ($config_user, $config_group) = config_get_identity();
+
+  # Make sure our AuthUserFile has an entry for the actual user, since our
+  # AuthOrder setting says to only use the AuthUserFile for user lookups.
+  auth_user_write($setup->{auth_user_file}, $config_user, $setup->{passwd},
+    $setup->{uid}, $setup->{gid}, $setup->{home_dir}, '/bin/bash');
+  auth_group_write($setup->{auth_group_file}, $config_group, $setup->{gid},
+    $config_user);
+
+  my $alias = 'anonymous';
+
+  my $config = {
+    PidFile => $setup->{pid_file},
+    ScoreboardFile => $setup->{scoreboard_file},
+    SystemLog => $setup->{log_file},
+    TraceLog => $setup->{log_file},
+    Trace => 'auth:20',
+
+    User => $config_user,
+    Group => $config_group,
+
+    AuthUserFile => $setup->{auth_user_file},
+    AuthGroupFile => $setup->{auth_group_file},
+    AuthOrder => 'mod_auth_file.c',
+
+    IfModules => {
+      'mod_delay.c' => {
+        DelayEngine => 'off',
+      },
+    },
+  };
+
+  my $port;
+  ($port, $config_user, $config_group) = config_write($setup->{config_file},
+    $config);
+
+  if (open(my $fh, ">> $setup->{config_file}")) {
+    print $fh <<EOC;
+<Anonymous $setup->{home_dir}>
+  RequireValidShell off
+
+  AnonRequirePassword on
+
+  # Enabling this requires that our alias have an entry in the AuthUserFile,
+  # we do not have.  The lack of that entry means a 530 response and a
+  # "USER $alias (Login failed): No such user found" log message.
+  # AuthAliasOnly on
+
+  User $config_user
+  Group $config_group
+  UserAlias $alias $config_user
+</Anonymous>
+EOC
+    unless (close($fh)) {
+      die("Can't write $setup->{config_file}: $!");
+    }
+
+  } else {
+    die("Can't open $setup->{config_file}: $!");
+  }
+
+  # Open pipes, for use between the parent and child processes.  Specifically,
+  # the child will indicate when it's done with its test by writing a message
+  # to the parent.
+  my ($rfh, $wfh);
+  unless (pipe($rfh, $wfh)) {
+    die("Can't open pipe: $!");
+  }
+
+  my $ex;
+
+  # Fork child
+  $self->handle_sigchld();
+  defined(my $pid = fork()) or die("Can't fork: $!");
+  if ($pid) {
+    eval {
+      sleep(1);
+
+      # First, try logging in as user 'anonymous', i.e. the alias.
+      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port, 0, 1);
+      my ($resp_code, $resp_msg) = $client->user("anonymous");
+
+      my $expected = 331;
+      $self->assert($expected == $resp_code,
+        test_msg("Expected response code $expected, got $resp_code"));
+
+      $expected = 'Password required for anonymous';
+      $self->assert($expected eq $resp_msg,
+        test_msg("Expected response message '$expected', got '$resp_msg'"));
+
+      ($resp_code, $resp_msg) = $client->pass($setup->{passwd});
+
+      $expected = 230;
+      $self->assert($expected == $resp_code,
+        test_msg("Expected response code $expected, got $resp_code"));
+
+      $expected = 'Anonymous access granted, restrictions apply';
+      $self->assert($expected eq $resp_msg,
+        test_msg("Expected response message '$expected', got '$resp_msg'"));
 
       $client->quit();
     };
