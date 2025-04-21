@@ -2,7 +2,7 @@
  * ProFTPD - FTP server daemon
  * Copyright (c) 1997, 1998 Public Flood Software
  * Copyright (c) 1999, 2000 MacGyver aka Habeeb J. Dihu <macgyver@tos.net>
- * Copyright (c) 2001-2024 The ProFTPD Project team
+ * Copyright (c) 2001-2025 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -4099,7 +4099,6 @@ MODRET set_uselastlog(cmd_rec *cmd) {
 
 /* usage: UserAlias alias real-user */
 MODRET set_useralias(cmd_rec *cmd) {
-  config_rec *c = NULL;
   char *alias, *real_user;
 
   CHECK_ARGS(cmd, 2);
@@ -4113,15 +4112,7 @@ MODRET set_useralias(cmd_rec *cmd) {
     CONF_ERROR(cmd, "alias and real user names must differ");
   }
 
-  c = add_config_param_str(cmd->argv[0], 2, alias, real_user);
-
-  /* Note: only merge this directive down if it is not appearing in an
-   * <Anonymous> context.
-   */
-  if (!check_context(cmd, CONF_ANON)) {
-    c->flags |= CF_MERGEDOWN_MULTI;
-  }
-
+  add_config_param_str(cmd->argv[0], 2, alias, real_user);
   return PR_HANDLED(cmd);
 }
 
