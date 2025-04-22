@@ -137,14 +137,6 @@ jobs:
           apt-get install -y rsyslog
           service rsyslog start
 
-          # for static code analysis
-          # - sudo apt-get install -y cppcheck
-          # - sudo apt-get install rats
-          # for integration/regression test
-          # for test code coverage
-          apt-get install -y lcov ruby
-          gem install coveralls-lcov
-
           # for HTML validation
           apt-get install -y tidy
 
@@ -154,14 +146,7 @@ jobs:
           # for debugging
           clang --version
           gcc --version
-          lcov --version
           openssl version -a
-
-      - name: Prepare code coverage
-        if: ${{ matrix.container == 'ubuntu:18.04' }}
-        run: |
-          cd proftpd && pwd
-          lcov --directory . --zerocounters
 
       - name: Build with static modules
         env:
@@ -180,20 +165,6 @@ jobs:
         run: |
           cd proftpd && pwd
           make TEST_VERBOSE=1 check-api
-
-      - name: Upload code coverage
-        env:
-          COVERALLS_REPO_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        if: ${{ matrix.compiler == 'gcc' && matrix.container == 'ubuntu:18.04' }}
-        run: |
-          cd proftpd && pwd
-          lcov --ignore-errors gcov,source --directory . --capture --output-file all.info
-          # filter out system and test code
-          lcov --output-file coverage.info --remove all.info '*/lib/glibc-glob.c' '*/lib/ccan-json.c' '*/lib/hanson-tpl.*' '*/lib/openbsd-*' '*/lib/pr_fnmatch*'
-          # debug before upload
-          lcov --list coverage.info
-          # upload coverage info to coveralls
-          coveralls-lcov --repo-token="$COVERALLS_REPO_TOKEN" --service-name=github --service-job-id="$GITHUB_RUN_ID" --branch="$GITHUB_REF" coverage.info
 
       - name: Install with static modules
         env:
