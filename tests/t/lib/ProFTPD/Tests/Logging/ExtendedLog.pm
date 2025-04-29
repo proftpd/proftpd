@@ -482,6 +482,11 @@ my $TESTS = {
     test_class => [qw(forking mod_sftp)],
   },
 
+  extlog_sftp_sift_writes_issue1813 => {
+    order => ++$order,
+    test_class => [qw(forking mod_sftp)],
+  },
+
   extlog_xfer_speed_nonxfer_issue535 => {
     order => ++$order,
     test_class => [qw(forking)],
@@ -15586,6 +15591,166 @@ sub extlog_sftp_xfer_port_issue912 {
 
       $self->assert($expected_xfer_port,
         test_msg("Did not see expected transfer port in ExtendedLog"));
+
+    } else {
+      die("Can't read $ext_log: $!");
+    }
+  };
+  if ($@) {
+    $ex = $@;
+  }
+
+  test_cleanup($setup->{log_file}, $ex);
+}
+
+sub extlog_sftp_sift_writes_issue1813 {
+  my $self = shift;
+  my $tmpdir = $self->{tmpdir};
+  my $setup = test_setup($tmpdir, 'extlog');
+
+  my $rsa_host_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/ssh_host_rsa_key');
+  my $dsa_host_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/ssh_host_dsa_key');
+
+  my $ext_log = File::Spec->rel2abs("$tmpdir/custom.log");
+  my $test_file = File::Spec->rel2abs("$tmpdir/test.txt");
+
+  my $config = {
+    PidFile => $setup->{pid_file},
+    ScoreboardFile => $setup->{scoreboard_file},
+    SystemLog => $setup->{log_file},
+    TraceLog => $setup->{log_file},
+    Trace => 'jot:30 ssh2:20 sftp:20',
+
+    AuthUserFile => $setup->{auth_user_file},
+    AuthGroupFile => $setup->{auth_group_file},
+    AuthOrder => 'mod_auth_file.c',
+
+    LogFormat => 'custom "%m %f"',
+    ExtendedLog => "$ext_log ALL,!SSH+!WRITE custom",
+
+    IfModules => {
+      'mod_delay.c' => {
+        DelayEngine => 'off',
+      },
+
+      'mod_sftp.c' => [
+        "SFTPEngine on",
+        "SFTPLog $setup->{log_file}",
+        "SFTPHostKey $rsa_host_key",
+        "SFTPHostKey $dsa_host_key",
+      ],
+    },
+  };
+
+  my ($port, $config_user, $config_group) = config_write($setup->{config_file},
+    $config);
+
+  # Open pipes, for use between the parent and child processes.  Specifically,
+  # the child will indicate when it's done with its test by writing a message
+  # to the parent.
+  my ($rfh, $wfh);
+  unless (pipe($rfh, $wfh)) {
+    die("Can't open pipe: $!");
+  }
+
+  require Net::SSH2;
+
+  my $ex;
+
+  # Ignore SIGPIPE
+  local $SIG{PIPE} = sub { };
+
+  # Fork child
+  $self->handle_sigchld();
+  defined(my $pid = fork()) or die("Can't fork: $!");
+  if ($pid) {
+    eval {
+      my $ssh2 = Net::SSH2->new();
+
+      sleep(2);
+
+      unless ($ssh2->connect('127.0.0.1', $port)) {
+        my ($err_code, $err_name, $err_str) = $ssh2->error();
+        die("Can't connect to SSH2 server: [$err_name] ($err_code) $err_str");
+      }
+
+      unless ($ssh2->auth_password($setup->{user}, $setup->{passwd})) {
+        my ($err_code, $err_name, $err_str) = $ssh2->error();
+        die("Can't login to SSH2 server: [$err_name] ($err_code) $err_str");
+      }
+
+      my $sftp = $ssh2->sftp();
+      unless ($sftp) {
+        my ($err_code, $err_name, $err_str) = $ssh2->error();
+        die("Can't use SFTP on SSH2 server: [$err_name] ($err_code) $err_str");
+      }
+
+      my $fh = $sftp->open('test.txt', O_WRONLY|O_CREAT|O_TRUNC, 0644);
+      unless ($fh) {
+        my ($err_code, $err_name) = $sftp->error();
+        die("Can't open test.txt: [$err_name] ($err_code)");
+      }
+
+      print $fh "ABCD\n" x 8;
+
+      # To issue the FXP_CLOSE, we have to explicitly destroy the filehandle
+      $fh = undef;
+
+      # To issue the CHANNEL_CLOSE, we have to explicitly destroy the sftp
+      # object.  Sigh.
+      $sftp = undef;
+
+      $ssh2->disconnect();
+    };
+    if ($@) {
+      $ex = $@;
+    }
+
+    $wfh->print("done\n");
+    $wfh->flush();
+
+  } else {
+    eval { server_wait($setup->{config_file}, $rfh) };
+    if ($@) {
+      warn($@);
+      exit 1;
+    }
+
+    exit 0;
+  }
+
+  # Stop server
+  server_stop($setup->{pid_file});
+  $self->assert_child_ok($pid);
+
+  # Now, read in the ExtendedLog, and see whether the SFTP WRITE requests
+  # were properly excluded, sifted out.
+  eval {
+    if (open(my $fh, "< $ext_log")) {
+      my $ok = 1;
+
+      while (my $line = <$fh>) {
+        chomp($line);
+
+        if ($ENV{TEST_VERBOSE}) {
+          print STDERR "# $line\n";
+        }
+
+        if ($line =~ /^(\S+) (.*)?$/) {
+          my $cmd = $1;
+          my $path = $2;
+
+          if ($cmd eq 'WRITE') {
+            $ok = 0;
+            last;
+          }
+        }
+      }
+
+      close($fh);
+
+      $self->assert($ok,
+        test_msg("Unexpectedly saw SFTP WRITE requests in ExtendedLog"));
 
     } else {
       die("Can't read $ext_log: $!");

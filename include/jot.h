@@ -1,6 +1,6 @@
 /*
  * ProFTPD - FTP server daemon
- * Copyright (c) 2020-2023 The ProFTPD Project team
+ * Copyright (c) 2020-2025 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -120,6 +120,10 @@ pr_jot_filters_t *pr_jot_filters_create(pool *p, const char *rules,
  * backward compatibility requirements.
  */
 #define PR_JOT_FILTER_FL_ALL_INCL_ALL		0x001
+
+/* Parse additional sifting rules, and add them to existing Jot filters. */
+int pr_jot_filters_parse_sifts(pool *p, pr_jot_filters_t *filters,
+  const char *sifts, int flags);
 
 int pr_jot_filters_destroy(pr_jot_filters_t *filters);
 
