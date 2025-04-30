@@ -70,10 +70,9 @@ directory, or be a symbolic link (unless
 <em>on</em>). Multiple logfiles, potentially with different command classes and
 formats) can be created. Optionally, the <em>cmd-classes</em> parameter can be
 used to control which types of commands are logged.  If no command classes are
-specified, <code>proftpd</code> logs all commands by default.
-<b>Note</b> that passwords are hidden.  If used, the <em>cmd-classes</em>
-parameter is a comma-delimited (with <b>no whitespace</b>) list of which
-commands to log.
+specified, ProFTPD logs all commands by default.  <b>Note</b> that passwords
+are hidden.  If used, the <em>cmd-classes</em> parameter is a comma-delimited
+(with <b>no whitespace</b>) list of which command classes to log.
 
 <p>
 In <code>proftpd-1.2.8rc1</code> and later, the <em>path</em> argument can
@@ -84,6 +83,19 @@ level at which to log the data.  For example:
 <pre>
   ExtendedLog syslog:info ALL default
 </pre>
+
+<p>
+In <code>proftpd-1.3.10rc1</code> and later, the <em>cmd-classes</em> parameter
+also handles additional rules for refining the specific commands/requests to be
+logged.  The <em>cmd-classes</em> parameter of comma-separated command
+<i>classes</i> can be followed by a <code>+<code>, then a comma-separated list
+of specific commands/request be explicitly logged (or omitted).  For example:
+<pre>
+  ExtendedLog syslog:info SFTP+!READ,!WRITE default
+</pre>
+This says to log all of the requests in the <code>SFTP</code> command class,
+<i>and</i> to omit (via <i>!</i> negation prefix) the <code>READ</code> and
+<code>WRITE</code> requests.
 
 <p>
 This table shows the supported command classes:
@@ -736,7 +748,7 @@ your log would have a line like:
 <p>
 <hr>
 <font size=2><b><i>
-&copy; Copyright 2002-2024 The ProFTPD Project<br>
+&copy; Copyright 2002-2025 The ProFTPD Project<br>
  All Rights Reserved<br>
 </i></b></font>
 

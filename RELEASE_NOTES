@@ -21,4 +21,6 @@ ChangeLog files.
 
   + Changed Directives
 
+      ExtendedLog classes+cmds (Issue #1813)
+
       SQLAuthTypes SSHA, Sodium
