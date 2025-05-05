@@ -6802,7 +6802,7 @@ static int tls_ticket_key_cb(SSL *ssl, unsigned char *key_name,
    * to their ciphers, digests?
    */
   const EVP_CIPHER *cipher = EVP_aes_256_cbc();
-# ifdef OPENSSL_NO_SHA256
+# if defined(OPENSSL_NO_SHA256)
   const EVP_MD *md = EVP_sha1();
 # else
   const EVP_MD *md = EVP_sha256();
@@ -6922,14 +6922,14 @@ static int tls_ticket_key_cb(SSL *ssl, unsigned char *key_name,
         "ticket renewal", key_name_str, (unsigned long) key_age,
         key_age != 1 ? "secs" : "sec", (unsigned long) newest_age,
         newest_age != 1 ? "secs" : "sec");
-      return 2;
     }
 
 # if defined(TLS1_3_VERSION)
     /* If we're a TLSv1.3 session, aim for single-use tickets, and indicate
-     * that the client should get a new ticket.  Will the FTPS client
-     * Do The Right Thing(tm), and use this new ticket for future data
-     * transfers?
+     * that the client should get a new ticket -- but only for control
+     * connection sessions, not data transfer (see Issue #1931).  Will the
+     * FTPS client Do The Right Thing(tm), and use this new ticket for future
+     * data transfers?
      */
     if (SSL_version(ssl) == TLS1_3_VERSION) {
       return 2;
@@ -7054,25 +7054,34 @@ static void get_session_ticket_appdata(SSL *ssl, SSL_SESSION *ssl_session) {
   }
 }
 
-static SSL_TICKET_RETURN tls_decrypt_session_ticket_data_xfer_cb(SSL *ssl,
+static SSL_TICKET_RETURN tls_decrypt_ctrl_session_ticket_cb(SSL *ssl,
     SSL_SESSION *ssl_session, const unsigned char *key_name, size_t key_namelen,
     SSL_TICKET_STATUS status, void *user_data) {
   SSL_TICKET_RETURN res;
+  const char *ssl_proto;
+
+  ssl_proto = SSL_get_version(ssl);
 
   switch (status) {
     case SSL_TICKET_EMPTY:
     case SSL_TICKET_NO_DECRYPT:
       tls_data_ticket_appdata_len = 0;
+      pr_trace_msg(trace_channel, 21,
+        "requesting new %s session ticket for control session", ssl_proto);
       res = SSL_TICKET_RETURN_IGNORE_RENEW;
       break;
 
     case SSL_TICKET_SUCCESS:
       get_session_ticket_appdata(ssl, ssl_session);
+      pr_trace_msg(trace_channel, 21,
+        "using existing %s session ticket for control session", ssl_proto);
       res = SSL_TICKET_RETURN_USE;
       break;
 
     case SSL_TICKET_SUCCESS_RENEW:
       get_session_ticket_appdata(ssl, ssl_session);
+      pr_trace_msg(trace_channel, 21, "using existing %s session ticket "
+        "but requesting renewal for control session", ssl_proto);
       res = SSL_TICKET_RETURN_USE_RENEW;
       break;
 
@@ -7085,58 +7094,32 @@ static SSL_TICKET_RETURN tls_decrypt_session_ticket_data_xfer_cb(SSL *ssl,
 
 /* Note that we want to _use_ any provided TLSv1.3 session tickets, so that
  * data transfers can reuse the TLS session from the control connection.  BUT
- * we do not want to _renew_ (or issue) new tickets, as that will may tickle
- * the ECONNRESET bug (see Issue #959) for some data transfers.
+ * we do not want to _renew_ (or issue) new tickets, as that may tickle the
+ * ECONNRESET bug (see Issue #959) for some data transfers.
  */
-static SSL_TICKET_RETURN tls_decrypt_session_ticket_data_upload_cb(SSL *ssl,
+static SSL_TICKET_RETURN tls_decrypt_data_session_ticket_cb(SSL *ssl,
     SSL_SESSION *ssl_session, const unsigned char *key_name, size_t key_namelen,
     SSL_TICKET_STATUS status, void *user_data) {
   SSL_TICKET_RETURN res;
-  int renew_tickets = TRUE;
+  const char *ssl_proto;
 
-  /* Avoid using the given SSL_SESSION pointer unless the status indicates that
-   * that pointer is valid (Issue #1063).
-   */
-
-  if (status != SSL_TICKET_EMPTY &&
-      status != SSL_TICKET_NO_DECRYPT) {
-    int ssl_version;
-
-    ssl_version = SSL_SESSION_get_protocol_version(ssl_session);
-# if defined(TLS1_3_VERSION)
-    if (ssl_version == TLS1_3_VERSION) {
-      pr_trace_msg(trace_channel, 29,
-        "suppressing renewal of TLSv1.3 tickets for data transfers");
-      renew_tickets = FALSE;
-    }
-  }
-# endif /* TLS1_3_VERSION */
+  ssl_proto = SSL_get_version(ssl);
 
   switch (status) {
-    case SSL_TICKET_EMPTY:
-    case SSL_TICKET_NO_DECRYPT:
-      tls_data_ticket_appdata_len = 0;
-      res = SSL_TICKET_RETURN_IGNORE_RENEW;
-      if (renew_tickets == FALSE) {
-        res = SSL_TICKET_RETURN_IGNORE;
-      }
-      break;
-
     case SSL_TICKET_SUCCESS:
+    case SSL_TICKET_SUCCESS_RENEW:
       get_session_ticket_appdata(ssl, ssl_session);
+      pr_trace_msg(trace_channel, 21,
+        "using existing %s session ticket for data transfer", ssl_proto);
       res = SSL_TICKET_RETURN_USE;
       break;
 
-    case SSL_TICKET_SUCCESS_RENEW:
-      get_session_ticket_appdata(ssl, ssl_session);
-      res = SSL_TICKET_RETURN_USE_RENEW;
-      if (renew_tickets == FALSE) {
-        res = SSL_TICKET_RETURN_USE;
-      }
-      break;
-
+    case SSL_TICKET_EMPTY:
+    case SSL_TICKET_NO_DECRYPT:
     default:
+      tls_data_ticket_appdata_len = 0;
       res = SSL_TICKET_RETURN_IGNORE;
+      break;
   }
 
   return res;
@@ -7424,7 +7407,7 @@ static SSL_CTX *tls_init_ctx(server_rec *s) {
 
 #if defined(PR_USE_OPENSSL_SSL_SESSION_TICKET_CALLBACK)
   if (SSL_CTX_set_session_ticket_cb(ctx, tls_generate_session_ticket_cb,
-      tls_decrypt_session_ticket_data_xfer_cb, NULL) != 1) {
+      tls_decrypt_ctrl_session_ticket_cb, NULL) != 1) {
     pr_trace_msg(trace_channel, 3,
       "error setting TLSv1.3 session ticket callback: %s", tls_get_errors());
   }
@@ -7432,7 +7415,7 @@ static SSL_CTX *tls_init_ctx(server_rec *s) {
 
   SSL_CTX_set_tmp_dh_callback(ctx, tls_dh_cb);
 
-#ifdef PR_USE_OPENSSL_ECC
+#if defined(PR_USE_OPENSSL_ECC)
   /* If using OpenSSL 1.0.2 or later, let it automatically choose the
    * correct/best curve, rather than having to hardcode a fallback.
    */
@@ -7593,6 +7576,22 @@ static int tls_compare_session_ids(SSL_SESSION *ctrl_sess,
   return res;
 }
 
+static unsigned long tls_sess_remaining(SSL_SESSION *ssl_sess) {
+  long sess_created, sess_expires;
+  time_t now;
+  unsigned long sess_remaining = 0;
+
+  sess_created = SSL_SESSION_get_time(ssl_sess);
+  sess_expires = SSL_SESSION_get_timeout(ssl_sess);
+  now = time(NULL);
+
+  if ((sess_created + sess_expires) >= now) {
+    sess_remaining = (unsigned long) ((sess_created + sess_expires) - now);
+  }
+
+  return sess_remaining;
+}
+
 static int tls_accept(conn_t *conn, unsigned char on_data) {
   static unsigned char logged_data = FALSE;
   int blocking, res = 0, xerrno = 0;
@@ -7674,6 +7673,10 @@ static int tls_accept(conn_t *conn, unsigned char on_data) {
     tls_data_ticket_appdata_len = 0;
 
     if (session.curr_cmd_id == PR_CMD_APPE_ID ||
+        session.curr_cmd_id == PR_CMD_LIST_ID ||
+        session.curr_cmd_id == PR_CMD_MLSD_ID ||
+        session.curr_cmd_id == PR_CMD_NLST_ID ||
+        session.curr_cmd_id == PR_CMD_RETR_ID ||
         session.curr_cmd_id == PR_CMD_STOR_ID ||
         session.curr_cmd_id == PR_CMD_STOU_ID) {
 
@@ -7699,17 +7702,18 @@ static int tls_accept(conn_t *conn, unsigned char on_data) {
        * expected to _send_ any TCP data, including session tickets.
        */
       if (SSL_CTX_set_session_ticket_cb(ssl_ctx, tls_generate_session_ticket_cb,
-          tls_decrypt_session_ticket_data_upload_cb, NULL) != 1) {
+          tls_decrypt_data_session_ticket_cb, NULL) != 1) {
         pr_trace_msg(trace_channel, 3, "error setting TLSv1.3 session ticket "
           "callback for '%s' data transfer: %s", session.curr_cmd,
           tls_get_errors());
       }
+
     } else {
       /* Restore default session ticket callbacks for any other transfer. */
       if (SSL_CTX_set_session_ticket_cb(ssl_ctx, tls_generate_session_ticket_cb,
-          tls_decrypt_session_ticket_data_xfer_cb, NULL) != 1) {
+          tls_decrypt_ctrl_session_ticket_cb, NULL) != 1) {
         pr_trace_msg(trace_channel, 3, "error setting TLSv1.3 session ticket "
-          "callback for '%s' data transfer: %s", session.curr_cmd,
+          "callback for '%s': %s", session.curr_cmd,
           tls_get_errors());
       }
     }
@@ -8089,7 +8093,7 @@ static int tls_accept(conn_t *conn, unsigned char on_data) {
        * (where malicious SSL/TLS clients can abuse the fact that session
        * renegotiations are more computationally intensive for servers than
        * for clients and repeatedly request renegotiations to create a
-       * denial of service attach), we won't enable AllowClientRenegotiations
+       * denial of service attack), we won't enable AllowClientRenegotiations
        * programmatically.  The admin will still need to explicitly configure
        * that.
        */
@@ -8230,8 +8234,7 @@ static int tls_accept(conn_t *conn, unsigned char on_data) {
         data_sess = SSL_get_session(ssl);
         if (data_sess != NULL) {
           int matching_sess = -1;
-          long sess_created, sess_expires;
-          time_t now;
+          unsigned long sess_remaining;
 
           matching_sess = tls_compare_session_ids(ctrl_sess, data_sess);
 
@@ -8314,7 +8317,7 @@ static int tls_accept(conn_t *conn, unsigned char on_data) {
 #endif /* TLS1_3_VERSION */
 
           if (matching_sess != 0) {
-            tls_log("Client did not reuse TLS session from control channel, "
+            tls_log("client did not reuse TLS session from control channel, "
               "rejecting data connection (see the NoSessionReuseRequired "
               "TLSOptions parameter)");
             tls_end_sess(ssl, session.d, 0);
@@ -8338,22 +8341,17 @@ static int tls_accept(conn_t *conn, unsigned char on_data) {
            * Try to warn if this is about to happen.
            */
 
-          sess_created = SSL_SESSION_get_time(ctrl_sess);
-          sess_expires = SSL_SESSION_get_timeout(ctrl_sess);
-          now = time(NULL);
+          sess_remaining = tls_sess_remaining(ctrl_sess);
+          if (sess_remaining <= 60) {
+            long sess_expires;
 
-          if ((sess_created + sess_expires) >= now) {
-            unsigned long remaining;
+            sess_expires = SSL_SESSION_get_timeout(ctrl_sess);
 
-            remaining = (unsigned long) ((sess_created + sess_expires) - now);
-
-            if (remaining <= 60) {
-              tls_log("control channel TLS session expires in %lu secs "
-                "(%lu session cache expiration)", remaining, sess_expires);
-              tls_log("%s", "Consider using 'TLSSessionCache internal:' to "
-                "increase the session cache expiration if necessary, or "
-                "renegotiate the control channel TLS session");
-            }
+            tls_log("control channel TLS session expires in %lu secs "
+              "(%lu session cache expiration)", sess_remaining, sess_expires);
+            tls_log("%s", "Consider using 'TLSSessionCache internal:' to "
+              "increase the session cache expiration if necessary, or "
+              "renegotiate the control channel TLS session");
           }
 
         } else {
@@ -12873,8 +12871,9 @@ MODRET tls_auth_check(cmd_rec *cmd) {
  */
 
 MODRET tls_any(cmd_rec *cmd) {
-  if (!tls_engine)
+  if (tls_engine == FALSE) {
     return PR_DECLINED(cmd);
+  }
 
   /* Some commands need not be hindered. */
   if (pr_cmd_cmp(cmd, PR_CMD_SYST_ID) == 0 ||
@@ -12916,20 +12915,18 @@ MODRET tls_any(cmd_rec *cmd) {
       pr_cmd_set_errno(cmd, EPERM);
       errno = EPERM;
       return PR_ERROR(cmd);
+    }
 
-    } else {
+    if (tls_authenticated != NULL &&
+        *tls_authenticated == TRUE) {
+      tls_log("SSL/TLS required but absent on control channel, "
+        "denying %s command", (char *) cmd->argv[0]);
+      pr_response_add_err(R_550,
+        _("SSL/TLS required on the control channel"));
 
-      if (tls_authenticated &&
-          *tls_authenticated == TRUE) {
-        tls_log("SSL/TLS required but absent on control channel, "
-          "denying %s command", (char *) cmd->argv[0]);
-        pr_response_add_err(R_550,
-          _("SSL/TLS required on the control channel"));
-
-        pr_cmd_set_errno(cmd, EPERM);
-        errno = EPERM;
-        return PR_ERROR(cmd);
-      }
+      pr_cmd_set_errno(cmd, EPERM);
+      errno = EPERM;
+      return PR_ERROR(cmd);
     }
   }
 
@@ -12980,7 +12977,7 @@ MODRET tls_any(cmd_rec *cmd) {
       config_rec *c;
 
       c = find_config(CURRENT_CONF, CONF_PARAM, "TLSRequired", FALSE);
-      if (c) {
+      if (c != NULL) {
         int tls_required;
 
         tls_required = *((int *) c->argv[1]);
@@ -13001,6 +12998,81 @@ MODRET tls_any(cmd_rec *cmd) {
       }
     }
   }
+
+  return PR_DECLINED(cmd);
+}
+
+/* Issue #1931: For TLSv1.3 sessions, we should use SSL_new_session_ticket
+ * to request a new ticket (and thus session) before any data transfers.
+ *
+ * For TLSv1.2 sessions with (and without) tickets, we might try
+ * SSL_renegotiate in the future.
+ *
+ * TODO: Work on solutions for TLSv1.2 and other protocol versions.
+ */
+MODRET tls_pre_xfer(cmd_rec *cmd) {
+#if defined(TLS1_3_VERSION)
+  SSL_SESSION *ssl_session;
+  unsigned long sess_remaining;
+  int request_new_ticket = FALSE, ssl_version;
+
+  if (tls_engine == FALSE) {
+    return PR_DECLINED(cmd);
+  }
+
+  if (!(tls_flags & TLS_SESS_ON_CTRL)) {
+    return PR_DECLINED(cmd);
+  }
+
+  if (ctrl_ssl == NULL) {
+    return PR_DECLINED(cmd);
+  }
+
+  ssl_session = SSL_get_session(ctrl_ssl);
+  ssl_version = SSL_SESSION_get_protocol_version(ssl_session);
+
+  if (ssl_version != TLS1_3_VERSION) {
+    return PR_DECLINED(cmd);
+  }
+
+  sess_remaining = tls_sess_remaining(ssl_session);
+  pr_trace_msg(trace_channel, 21,
+    "%s: control channel %s session lifetime: %lu %s%s",
+    (const char *) cmd->argv[0], SSL_get_version(ctrl_ssl), sess_remaining,
+    sess_remaining != 1 ? "seconds" : "second",
+    sess_remaining != 0 ? "" : " (EXPIRED)");
+
+  /* If the control session expires in 10 seconds or less, request a new one
+   * before proceeding with the data transfer (Issue #1931).
+   */
+  if (sess_remaining <= 10) {
+    request_new_ticket = TRUE;
+  }
+
+  if (request_new_ticket == TRUE) {
+    int res;
+
+# if defined(OPENSSL_VERSION_MAJOR) && \
+     OPENSSL_VERSION_MAJOR >= 3
+    res = SSL_new_session_ticket(ctrl_ssl);
+# else
+    res = 0;
+    errno = ENOSYS;
+# endif /* OpenSSL 3.x and later */
+
+    if (res == 1) {
+      pr_trace_msg(trace_channel, 19,
+        "%s: requesting new %s session before data transfer",
+        (const char *) cmd->argv[0], SSL_get_version(ctrl_ssl));
+
+    } else {
+      pr_trace_msg(trace_channel, 1,
+        "%s: error requesting new %s session: %s", (const char *) cmd->argv[0],
+        SSL_get_version(ctrl_ssl),
+        errno == ENOSYS ? strerror(ENOSYS) : tls_get_errors());
+    }
+  }
+#endif /* TLS1_3_VERSION */
 
   return PR_DECLINED(cmd);
 }
@@ -17128,7 +17200,7 @@ static int tls_ssl_set_session_tickets(SSL *ssl) {
     SSL_clear_options(ssl, SSL_OP_NO_TICKET);
 
   } else {
-# ifdef TLS1_3_VERSION
+# if defined(TLS1_3_VERSION)
     /* Disable session tickets unless it's a TLSv1.3 session. */
     if (SSL_version(ssl) != TLS1_3_VERSION) {
       SSL_set_options(ssl, SSL_OP_NO_TICKET);
@@ -18636,7 +18708,7 @@ static int tls_ctx_set_session_tickets(SSL_CTX *ctx) {
     SSL_CTX_clear_options(ctx, SSL_OP_NO_TICKET);
 
   } else {
-# ifdef TLS1_3_VERSION
+# if defined(TLS1_3_VERSION)
     /* If we might handle TLSv1.3 sessions, we need the callback for session
      * resumption; TLSv1.3 prefers stateless session tickets vs stateful
      * server-side session IDs.
@@ -19262,6 +19334,13 @@ static conftable tls_conftab[] = {
 
 static cmdtable tls_cmdtab[] = {
   { PRE_CMD,	C_ANY,	G_NONE,	tls_any,	FALSE,	FALSE },
+  { PRE_CMD,	C_APPE,	G_NONE,	tls_pre_xfer,	FALSE,	FALSE },
+  { PRE_CMD,	C_LIST,	G_NONE,	tls_pre_xfer,	FALSE,	FALSE },
+  { PRE_CMD,	C_MLSD,	G_NONE,	tls_pre_xfer,	FALSE,	FALSE },
+  { PRE_CMD,	C_NLST,	G_NONE,	tls_pre_xfer,	FALSE,	FALSE },
+  { PRE_CMD,	C_RETR,	G_NONE,	tls_pre_xfer,	FALSE,	FALSE },
+  { PRE_CMD,	C_STOR,	G_NONE,	tls_pre_xfer,	FALSE,	FALSE },
+  { PRE_CMD,	C_STOU,	G_NONE,	tls_pre_xfer,	FALSE,	FALSE },
   { CMD,	C_AUTH,	G_NONE,	tls_auth,	FALSE,	FALSE,	CL_SEC },
   { CMD,	C_CCC,	G_NONE,	tls_ccc,	TRUE,	FALSE,	CL_SEC },
   { CMD,	C_PBSZ,	G_NONE,	tls_pbsz,	FALSE,	FALSE,	CL_SEC },
