@@ -1,6 +1,6 @@
 /*
  * ProFTPD - FTP server daemon
- * Copyright (c) 2014-2023 The ProFTPD Project team
+ * Copyright (c) 2014-2025 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -42,8 +42,8 @@ void pr_signals_handle(void);
 void pr_signals_handle_without_delay(void);
 
 /* Signal handling functions. */
-RETSIGTYPE pr_signals_handle_disconnect(int);
-RETSIGTYPE pr_signals_handle_event(int);
+void pr_signals_handle_disconnect(int);
+void pr_signals_handle_event(int);
 
 /* Internal use only. */
 int init_signals(void);
