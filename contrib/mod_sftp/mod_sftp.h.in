@@ -1,6 +1,6 @@
 /*
  * ProFTPD - mod_sftp
- * Copyright (c) 2008-2023 TJ Saunders
+ * Copyright (c) 2008-2025 TJ Saunders
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -46,6 +46,16 @@
 /* Define if you have the <zlib.h> header.  */
 #undef HAVE_ZLIB_H
 
+/* Define if you have the LibreSSL library.
+ *
+ * Note that in LibreSSL-3.5.0, the structs became opaque, as they are in
+ * OpenSSL-1.1.0, and thus these version-dependent macros became more
+ * complex.
+ */
+#if defined(LIBRESSL_VERSION_NUMBER)
+# define HAVE_LIBRESSL  1
+#endif
+
 /* Define if you have OpenSSL with crippled AES support. */
 #undef HAVE_AES_CRIPPLED_OPENSSL
 
@@ -69,7 +79,7 @@
 
 #if defined(HAVE_LIBRESSL) && \
   LIBRESSL_VERSION_NUMBER < 0x3010000fL
-# undef HAVE_BROKEN_CHACHA20
+# define HAVE_BROKEN_CHACHA20	1
 #endif
 
 /* Define if you have OpenSSL with OSSL_PROVIDER_load support. */
@@ -124,16 +134,6 @@
 #if defined(HAVE_OSSL_PROVIDER_LOAD_OPENSSL)
 # include <openssl/provider.h>
 #endif /* HAVE_OSSL_PROVIDER_LOAD_OPENSSL */
-
-/* Define if you have the LibreSSL library.
- *
- * Note that in LibreSSL-3.5.0, the structs became opaque, as they are in
- * OpenSSL-1.1.0, and thus these version-dependent macros became more
- * complex.
- */
-#if defined(LIBRESSL_VERSION_NUMBER)
-# define HAVE_LIBRESSL	1
-#endif
 
 #define SFTP_ID_PREFIX		"SSH-2.0-"
 
