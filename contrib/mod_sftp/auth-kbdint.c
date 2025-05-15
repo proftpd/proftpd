@@ -1,6 +1,6 @@
 /*
  * ProFTPD - mod_sftp 'keyboard-interactive' user authentication
- * Copyright (c) 2008-2021 TJ Saunders
+ * Copyright (c) 2008-2025 TJ Saunders
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -101,7 +101,7 @@ int sftp_auth_kbdint(struct ssh2_packet *pkt, cmd_rec *pass_cmd,
   mac_algo = sftp_mac_get_read_algo();
 
   /* XXX Is this too strict?  For PAM authentication, no -- but for S/Key or
-   * one-time password authencation, maybe yes.
+   * one-time password authentication, maybe yes.
    */
   if (strcmp(cipher_algo, "none") == 0 ||
       strcmp(mac_algo, "none") == 0) {

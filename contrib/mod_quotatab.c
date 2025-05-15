@@ -4495,7 +4495,7 @@ static int quotatab_sess_init(void) {
   quotatab_openlog();
 
   /* Open the quota limit and tally tables.  This is being done while the
-   * proces still has root privs, so the tables _can_ be opened.  In the case
+   * process still has root privs, so the tables _can_ be opened.  In the case
    * of file quotastreams, the file descriptor is cached, so that this process,
    * once root privs are dropped, is still able to read from and write to the
    * streams.  Other confstream mechanisms may need to cache something

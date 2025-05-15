@@ -115,7 +115,7 @@
   FIPS support.
 - Issue 1617 - ExtendedLog SSH, SFTP classes not working as expected.
 - Issue 1623 - Reduce latency due to signal handling in the daemon process.
-- Issue 1626 - SSH key exchange requests should be classifed into the "SEC"
+- Issue 1626 - SSH key exchange requests should be classified into the "SEC"
   ExtendedLog class.
 - Issue 1630 - Update mod_exec to use the Jot API for resolving variables.
 - Issue 1636 - Use system TCP backlog value by default.
@@ -2273,7 +2273,7 @@
   for details.
 - Bug 2229 - NLST and LIST behave differently e.g. when listing an empty
   directory.
-- Bug 2534 - Add suport for -S ListOption, for sorting files by file size.
+- Bug 2534 - Add support for -S ListOption, for sorting files by file size.
 - Bug 2536 - mod_ifsession does not properly merge in all directives.
 - Bug 2540 - Fails to disable mod_delay if no DelayTable file exists.
 - Bug 2541 - <Directory ~user> path resolved at startup time, rather than at
@@ -2922,7 +2922,7 @@
   some third-party auth modules may need to be updated.
 - Bug 1806 - Add RFC2389 support.
 - Bug 1833 - Add ability to have add'l module initialization callback.
-- Bug 1743 - No magic cookie for number of files transfered.  New cookies
+- Bug 1743 - No magic cookie for number of files transferred.  New cookies
   added for Display* files: "%i" for total number of files uploaded (read "in")
   during a session, "%o" for total number of files download (written "out")
   during a session, and "%t" for total number of files transferred (both

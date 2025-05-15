@@ -1,7 +1,7 @@
 /*
  * ProFTPD - ftptop: a utility for monitoring proftpd sessions
  * Copyright (c) 2000-2002 TJ Saunders <tj@castaglia.org>
- * Copyright (c) 2003-2020 The ProFTPD Project team
+ * Copyright (c) 2003-2025 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -69,7 +69,7 @@ static const char *program = "ftptop";
 #define FTPTOP_REG_HEADER_FMT	"%-5s %s %-8s %-20s %-15s %-4s %-*s\n"
 #define FTPTOP_REG_DISPLAY_FMT	"%-5u %s %-*.*s %-*.*s %-15s %-6.6s %4s %-*.*s\n"
 
-/* These are for displaying tranfer data: "PID S USER CLIENT KB/s %DONE" */
+/* These are for displaying transfer data: "PID S USER CLIENT KB/s %DONE" */
 #define FTPTOP_XFER_HEADER_FMT	"%-5s %s %-8s %-44s %-10s %-*s\n"
 #define FTPTOP_XFER_DISPLAY_FMT	"%-5u %s %-*.*s %-*.*s %-10.2f %-*.*s\n"
 

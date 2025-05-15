@@ -3354,7 +3354,7 @@ static int deserialize_openssh_private_key(pool *p, const char *path,
   secret_keylen = sftp_msg_read_int(p, data, data_len);
 
   /* NOTE: PuTTY's puttygen adds the public key _again_, in the second half
-   * of the secret key data, per commments in its
+   * of the secret key data, per comments in its
    * `sshecc.c#eddsa_new_priv_openssh` function.  Thus if this secret key
    * length is larger than expected for Ed448 keys, only use the first half of
    * it.  Ugh.  This "divide in half" hack only works for these keys where the
@@ -5839,7 +5839,7 @@ static int ecdsa_verify_signed_data(pool *p, EVP_PKEY *pkey,
     unsigned int sk_digestlen = 0;
     uint32_t buflen, bufsz;
 
-    /* Needs to be large enough for the entired SK signed message, including
+    /* Needs to be large enough for the entire SK signed message, including
      * app name, flags, counter, extensions, and message.
      */
     bufsz = buflen = 256;
@@ -6023,7 +6023,7 @@ static int ed25519_verify_signed_data(pool *p,
     details->sk_flags = sk_flags;
     details->sk_counter = sk_counter;
 
-    /* Needs to be large enough for the entired SK signed message, including
+    /* Needs to be large enough for the entire SK signed message, including
      * app name, flags, counter, extensions, and message.
      */
     bufsz = buflen = 256;
