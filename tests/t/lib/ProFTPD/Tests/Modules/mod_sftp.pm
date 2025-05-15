@@ -14137,7 +14137,7 @@ sub ssh2_auth_publickey_rsa_with_match_bug3493 {
       }
 
       if ($ssh2->auth_publickey($user, $rsa_pub_key, $rsa_priv_key)) {
-        die("RSA publickey authentication succeeded unexpectly");
+        die("RSA publickey authentication succeeded unexpectedly");
       }
 
       my ($err_code, $err_name, $err_str) = $ssh2->error();
@@ -45601,7 +45601,7 @@ sub sftp_config_limit_chmod {
         mode => 0777,
       );
       if ($res) {
-        die("setstat sftp.conf succeeded unexpectly");
+        die("setstat sftp.conf succeeded unexpectedly");
       }
 
       my $attrs = $sftp->stat('sftp.conf');
@@ -45769,7 +45769,7 @@ sub sftp_config_limit_chgrp_bug3757 {
         gid => $gid,
       );
       if ($res) {
-        die("setstat sftp.conf succeeded unexpectly");
+        die("setstat sftp.conf succeeded unexpectedly");
       }
 
       my $attrs = $sftp->stat('sftp.conf');

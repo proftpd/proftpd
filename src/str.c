@@ -1,6 +1,6 @@
 /*
  * ProFTPD - FTP server daemon
- * Copyright (c) 2008-2023 The ProFTPD Project team
+ * Copyright (c) 2008-2025 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -239,7 +239,7 @@ char *sstrcat(char *dst, const char *src, size_t n) {
     return NULL;
   }
 
-  /* Edge case short ciruit; strlcat(3) doesn't do what I think it should
+  /* Edge case short circuit; strlcat(3) doesn't do what I think it should
    * do for this particular case.
    */
   if (n > 1) {

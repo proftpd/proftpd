@@ -592,7 +592,7 @@ EOC
       my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port, 0, 3);
       $client->login($setup->{user}, $setup->{passwd});
 
-      # Attemping a data transfer should fail, due to the AllowForeignAddress
+      # Attempting a data transfer should fail, due to the AllowForeignAddress
       # class restriction.
 
       my $conn = $client->list_raw();
@@ -1141,8 +1141,8 @@ EOC
       my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port, 0, 3);
       $client->login($setup->{user}, $setup->{passwd});
 
-      # Attemping a data transfer should succeed, due to the AllowForeignAddress
-      # class restriction.
+      # Attempting a data transfer should succeed, due to the
+      # AllowForeignAddress class restriction.
       my $conn = $client->list_raw();
       unless ($conn) {
         die("Failed to LIST: " . $client->response_code() . " " .

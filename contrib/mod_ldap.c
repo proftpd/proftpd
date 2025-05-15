@@ -1507,14 +1507,14 @@ static struct passwd *pr_ldap_getpwnam(pool *p, const char *username) {
    * doing auth binds, we don't request the userPassword attr.
    *
    * NOTE: if the UserPassword directive is configured, mod_auth will pass
-   * a crypted password to ldap_auth_check(), which will NOT do auth binds
+   * an encrypted password to ldap_auth_check(), which will NOT do auth binds
    * in order to support UserPassword. (Otherwise, it would try binding to
    * the directory and would ignore UserPassword.)
    *
    * We're reasonably safe in making that assumption as long as we never
    * fetch userPassword from the directory if auth binds are enabled. If we
    * fetched userPassword, auth binds would never be done because
-   * ldap_auth_check() would always get a crypted password.
+   * ldap_auth_check() would always get an encrypted password.
    */
   return pr_ldap_user_lookup(p, ldap_user_name_filter, username, filter,
     ldap_authbinds ? name_attrs + 1 : name_attrs,
@@ -1861,7 +1861,7 @@ MODRET ldap_auth_check(cmd_rec *cmd) {
   pass = cmd->argv[2];
 
   /* At this point, any encrypted password must have come from the UserPassword
-   * directive. Don't perform auth binds in this case, since the crypted
+   * directive. Don't perform auth binds in this case, since the encrypted
    * password specified should override auth binds.
    */
   if (ldap_authbinds == TRUE &&

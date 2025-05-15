@@ -54,7 +54,7 @@ case "$1" in
 				ftpshut $*
 			else
 				echo -n "Suspending NOW "
-				ftpshut now "Maintanance in progress"
+				ftpshut now "Maintenance in progress"
 			fi
 		else
 			echo -n "No way to suspend "

@@ -642,7 +642,7 @@ EOS
       # This should fail, since %u will resolve to '-' (the user has not
       # been authenticated yet).
       if ($ssh2->auth_publickey($user, $rsa_pub_key, $rsa_priv_key)) {
-        die("RSA publickey authentication succeeded unexpectly");
+        die("RSA publickey authentication succeeded unexpectedly");
       }
 
       my ($err_code, $err_name, $err_str) = $ssh2->error();

@@ -1,7 +1,7 @@
 /*
  * ProFTPD: mod_wrap -- use Wietse Venema's TCP wrappers library for
  *                      access control
- * Copyright (c) 2000-2020 TJ Saunders
+ * Copyright (c) 2000-2025 TJ Saunders
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -330,7 +330,7 @@ MODRET set_tcpaccessfiles(cmd_rec *cmd) {
   /* if the filenames begin with a '~', AND this is not immediately followed
    * by a '/' (ie '~/'), expand it out for checking and storing for later
    * lookups.  If the filenames DO begin with '~/', do the expansion later,
-   * after authenication.  In other words, do checking of static filenames
+   * after authentication.  In other words, do checking of static filenames
    * now, and checking of dynamic (user-authentication-based) filenames
    * later.
    */
@@ -425,7 +425,7 @@ MODRET set_tcpgroupaccessfiles(cmd_rec *cmd) {
   /* if the filenames begin with a '~', AND this is not immediately followed
    * by a '/' (ie '~/'), expand it out for checking and storing for later
    * lookups.  If the filenames DO begin with '~/', do the expansion later,
-   * after authenication.  In other words, do checking of static filenames
+   * after authentication.  In other words, do checking of static filenames
    * now, and checking of dynamic (user-authentication-based) filenames
    * later.
    */
@@ -542,7 +542,7 @@ MODRET set_tcpuseraccessfiles(cmd_rec *cmd) {
   /* if the filenames begin with a '~', AND this is not immediately followed
    * by a '/' (ie '~/'), expand it out for checking and storing for later
    * lookups.  If the filenames DO begin with '~/', do the expansion later,
-   * after authenication.  In other words, do checking of static filenames
+   * after authentication.  In other words, do checking of static filenames
    * now, and checking of dynamic (user-authentication-based) filenames
    * later.
    */

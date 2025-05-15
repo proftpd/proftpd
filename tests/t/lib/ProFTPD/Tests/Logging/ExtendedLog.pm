@@ -688,7 +688,7 @@ sub extlog_retr_default {
 
           $expected = 14;
           $self->assert($expected == $xfer_len,
-            "Expected tranferred bytes $expected, got $xfer_len");
+            "Expected transferred bytes $expected, got $xfer_len");
 
         } elsif ($line =~ /\"QUIT\" (\d+) /) {
           my $resp_code = $1;

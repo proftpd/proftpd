@@ -1,6 +1,6 @@
 /*
  * ProFTPD - FTP server testsuite
- * Copyright (c) 2017-2023 The ProFTPD Project team
+ * Copyright (c) 2017-2025 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -749,7 +749,7 @@ START_TEST (redis_sentinel_conn_new_test) {
 
     mark_point();
     redis = pr_redis_conn_new(p, NULL, 0);
-    ck_assert_msg(redis == NULL, "Failed to handle invald sentinels");
+    ck_assert_msg(redis == NULL, "Failed to handle invalid sentinels");
     ck_assert_msg(errno == EPERM, "Expected EPERM (%d), got %s (%d)", EPERM,
       strerror(errno), errno);
 

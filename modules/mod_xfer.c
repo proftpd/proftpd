@@ -2,7 +2,7 @@
  * ProFTPD - FTP server daemon
  * Copyright (c) 1997, 1998 Public Flood Software
  * Copyright (c) 1999, 2000 MacGyver aka Habeeb J. Dihu <macgyver@tos.net>
- * Copyright (c) 2001-2024 The ProFTPD Project team
+ * Copyright (c) 2001-2025 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -2144,7 +2144,7 @@ MODRET xfer_stor(cmd_rec *cmd) {
 
   /* Note that we have to re-populate the session.xfer variables here,
    * AFTER the pr_data_init() call.  pr_data_init() ensures that there is
-   * no leftover information in session.xfer, as from aborted tranfers.
+   * no leftover information in session.xfer, as from aborted transfers.
    */
   session.xfer.path = pr_table_get(cmd->notes, "mod_xfer.store-path", NULL);
   session.xfer.path_hidden = pr_table_get(cmd->notes,
