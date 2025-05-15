@@ -529,7 +529,7 @@ typedef struct tls_pkey_obj {
   int dsa_passlen;
   void *dsa_pkey_ptr;
 
-#ifdef PR_USE_OPENSSL_ECC
+#if defined(PR_USE_OPENSSL_ECC)
   char *ec_pkey;
   int ec_passlen;
   void *ec_pkey_ptr;
@@ -758,76 +758,77 @@ static X509_STORE *tls_crl_store = NULL;
 static array_header *tls_tmp_dhs = NULL;
 static RSA *tls_tmp_rsa = NULL;
 
-static void tls_exit_ev(const void *, void *);
-static int tls_sess_init(void);
+static void tls_exit_ev(const void *event_data, void *user_data);
 
 /* SSL/TLS support functions */
 static void tls_closelog(void);
-static void tls_end_sess(SSL *, conn_t *, int);
+static void tls_end_sess(SSL *ssl, conn_t *conn, int flags);
 #define TLS_SHUTDOWN_FL_BIDIRECTIONAL		0x0001
 
 static void tls_fatal_error(long, int);
 static const char *tls_get_errors(void);
 static const char *tls_get_errors2(pool *p);
-static char *tls_get_page(size_t, void **);
+static char *tls_get_page(size_t sz, void **ptr);
 static size_t tls_get_pagesz(void);
-static int tls_get_passphrase(server_rec *, const char *, const char *,
-  char *, size_t, int);
+static int tls_get_passphrase(server_rec *s, const char *path,
+  const char *prompt, char *buf, size_t bufsz, int flags);
 
-static char *tls_get_subj_name(SSL *);
+static char *tls_get_subj_name(SSL *ssl);
 
 /* Table-based session cache "provider" for SNI sessions only (Issue #924). */
 static pr_table_t *tls_sni_sess_tab = NULL;
 
-static void tls_lookup_all(server_rec *);
-static int tls_ctx_set_all(server_rec *, SSL_CTX *);
-static int tls_ctx_set_ca_certs(SSL_CTX *);
-static int tls_ctx_set_certs(SSL_CTX *, X509 **, X509 **, X509 **);
-static int tls_ctx_set_crls(SSL_CTX *);
-static int tls_ctx_set_renegotiations(SSL_CTX *);
-static int tls_ctx_set_session_cache(server_rec *, SSL_CTX *);
-static int tls_ctx_set_session_id_context(server_rec *, SSL_CTX *);
-static int tls_ctx_set_session_tickets(SSL_CTX *);
-static int tls_ctx_set_stapling(SSL_CTX *);
-static int tls_ctx_set_stapling_cache(server_rec *, SSL_CTX *);
-static int tls_ssl_set_all(server_rec *, SSL *);
+static void tls_lookup_all(server_rec *s);
+static int tls_ctx_set_all(server_rec *s, SSL_CTX *ctx);
+static int tls_ctx_set_ca_certs(SSL_CTX *ctx);
+static int tls_ctx_set_certs(SSL_CTX *ctx, X509 **dsa_certs, X509 **ec_certs,
+  X509 **rsa_certs);
+static int tls_ctx_set_crls(SSL_CTX *ctx);
+static int tls_ctx_set_renegotiations(SSL_CTX *ctx);
+static int tls_ctx_set_session_cache(server_rec *s, SSL_CTX *ctx);
+static int tls_ctx_set_session_id_context(server_rec *s, SSL_CTX *ctx);
+static int tls_ctx_set_session_tickets(SSL_CTX *ctx);
+static int tls_ctx_set_stapling(SSL_CTX *ctx);
+static int tls_ctx_set_stapling_cache(server_rec *s, SSL_CTX *ctx);
+static int tls_ssl_set_all(server_rec *s, SSL *ssl);
 
 static int tls_openlog(void);
 static int tls_seed_prng(void);
 static int tls_sess_init(void);
-static void tls_setup_environ(pool *, SSL *);
-static void tls_setup_notes(pool *, SSL *);
-static int tls_verify_cb(int, X509_STORE_CTX *);
-static int tls_verify_crl(int, X509_STORE_CTX *);
-static int tls_verify_ocsp(int, X509_STORE_CTX *);
-static char *tls_x509_name_oneline(X509_NAME *);
+static void tls_setup_environ(pool *p, SSL *ssl);
+static void tls_setup_notes(pool *p, SSL *ssl);
+static int tls_verify_cb(int ok, X509_STORE_CTX *ctx);
+static int tls_verify_crl(int ok, X509_STORE_CTX *ctx);
+static int tls_verify_ocsp(int ok, X509_STORE_CTX *ctx);
+static char *tls_x509_name_oneline(X509_NAME *x509_name);
 
-static int tls_readmore(int);
-static int tls_writemore(int);
+static int tls_readmore(int fd);
+static int tls_writemore(int fd);
 
 /* Session cache API */
-static tls_sess_cache_t *tls_sess_cache_get_cache(const char *);
+static tls_sess_cache_t *tls_sess_cache_get_cache(const char *name);
 static long tls_sess_cache_get_cache_mode(void);
-static int tls_sess_cache_open(char *, long);
+static int tls_sess_cache_open(char *info, long timeout);
 static int tls_sess_cache_close(void);
 #if defined(PR_USE_CTRLS)
 static int tls_sess_cache_clear(void);
 static int tls_sess_cache_remove(void);
-static int tls_sess_cache_status(pr_ctrls_t *, int);
+static int tls_sess_cache_status(pr_ctrls_t *ctrl, int flags);
 #endif /* PR_USE_CTRLS */
-static int tls_sess_cache_add_sess_cb(SSL *, SSL_SESSION *);
+static int tls_sess_cache_add_sess_cb(SSL *ssl, SSL_SESSION *ssl_session);
 static SSL_SESSION *tls_sess_cache_get_sess_cb(SSL *, const unsigned char *,
   int, int *);
-static void tls_sess_cache_delete_sess_cb(SSL_CTX *, SSL_SESSION *);
+static void tls_sess_cache_delete_sess_cb(SSL_CTX *ssl,
+  SSL_SESSION *ssl_session);
 
 /* OCSP response cache API */
-static tls_ocsp_cache_t *tls_ocsp_cache_get_cache(const char *);
-static int tls_ocsp_cache_open(char *);
+static tls_ocsp_cache_t *tls_ocsp_cache_get_cache(const char *name);
+static int tls_ocsp_cache_open(char *info);
 static int tls_ocsp_cache_close(void);
 #if defined(PR_USE_CTRLS)
 static int tls_ocsp_cache_clear(void);
 static int tls_ocsp_cache_remove(void);
-static int tls_ocsp_cache_status(pr_ctrls_t *, int);
+static int tls_ocsp_cache_status(pr_ctrls_t *ctrl, int flags);
 #endif /* PR_USE_CTRLS */
 
 #if defined(TLS_USE_SESSION_TICKETS)
@@ -862,9 +863,9 @@ struct tls_ticket_key {
  * encrypted with older keys will be renewed using the newest key.
  */
 static xaset_t *tls_ticket_keys = NULL;
-#endif
+#endif /* TLS_USE_SESSION_TICKETS */
 
-#ifdef PR_USE_CTRLS
+#if defined(PR_USE_CTRLS)
 static pool *tls_act_pool = NULL;
 static ctrls_acttab_t tls_acttab[];
 #endif /* PR_USE_CTRLS */
@@ -9170,9 +9171,10 @@ static size_t tls_get_pagesz(void) {
 }
 
 static char *tls_get_subj_name(SSL *ssl) {
-  X509 *cert = SSL_get_peer_certificate(ssl);
+  X509 *cert;
 
-  if (cert) {
+  cert = SSL_get_peer_certificate(ssl);
+  if (cert != NULL) {
     char *name = tls_x509_name_oneline(X509_get_subject_name(cert));
     X509_free(cert);
     return name;
