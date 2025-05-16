@@ -1,6 +1,6 @@
 /*
  * ProFTPD - FTP server daemon
- * Copyright (c) 2016-2020 The ProFTPD Project team
+ * Copyright (c) 2016-2025 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -870,6 +870,9 @@ const char *pr_error_strerror(pr_error_t *err, int use_format) {
       err_text = get_minimal_text(err->err_pool, what, failure);
       break;
     }
+
+    default:
+      break;
   }
 
   if (err_text == NULL) {

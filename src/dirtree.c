@@ -2,7 +2,7 @@
  * ProFTPD - FTP server daemon
  * Copyright (c) 1997, 1998 Public Flood Software
  * Copyright (c) 1999, 2000 MacGyver aka Habeeb J. Dihu <macgyver@tos.net>
- * Copyright (c) 2001-2023 The ProFTPD Project team
+ * Copyright (c) 2001-2025 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -45,7 +45,7 @@ static int tcp_rcvbufsz = 0;
 static int tcp_sndbufsz = 0;
 static int xfer_bufsz = 0;
 
-static unsigned char _kludge_disable_umask = 0;
+static unsigned char kludge_umask_enabled = TRUE;
 
 /* We have two different lists for Defines.  The 'perm' pool/list are
  * for "permanent" defines, i.e. those set on the command-line via the
@@ -417,16 +417,16 @@ unsigned char pr_define_exists(const char *definition) {
 }
 
 void kludge_disable_umask(void) {
-  _kludge_disable_umask = TRUE;
+  kludge_umask_enabled = FALSE;
 }
 
 void kludge_enable_umask(void) {
-  _kludge_disable_umask = FALSE;
+  kludge_umask_enabled = TRUE;
 }
 
 /* Per-directory configuration */
 
-static size_t _strmatch(register char *s1, register char *s2) {
+static size_t strmatch(register char *s1, register char *s2) {
   register size_t len = 0;
 
   if (s1 == NULL ||
@@ -853,7 +853,7 @@ static int check_user_access(xaset_t *set, const char *name) {
   while (c != NULL) {
     pr_signals_handle();
 
-#ifdef PR_USE_REGEX
+#if defined(PR_USE_REGEX)
     if (*((unsigned char *) c->argv[0]) == PR_EXPR_EVAL_REGEX) {
       pr_regex_t *pre = (pr_regex_t *) c->argv[1];
 
@@ -861,8 +861,7 @@ static int check_user_access(xaset_t *set, const char *name) {
         res = TRUE;
         break;
       }
-
-    } else
+    }
 #endif /* regex support */
 
     if (*((unsigned char *) c->argv[0]) == PR_EXPR_EVAL_OR) {
@@ -950,10 +949,10 @@ static int check_class_access(xaset_t *set, const char *name) {
   }
 
   c = find_config(set, CONF_PARAM, name, FALSE);
-  while (c) {
+  while (c != NULL) {
     pr_signals_handle();
 
-#ifdef PR_USE_REGEX
+#if defined(PR_USE_REGEX)
     if (*((unsigned char *) c->argv[0]) == PR_EXPR_EVAL_REGEX) {
       pr_regex_t *pre = (pr_regex_t *) c->argv[1];
 
@@ -962,8 +961,7 @@ static int check_class_access(xaset_t *set, const char *name) {
         res = TRUE;
         break;
       }
-
-    } else
+    }
 #endif /* regex support */
 
     if (*((unsigned char *) c->argv[0]) == PR_EXPR_EVAL_OR) {
@@ -1833,7 +1831,7 @@ int dir_check_full(pool *pp, cmd_rec *cmd, const char *group, const char *path,
     cmd->cmd_id = pr_cmd_get_id(cmd->argv[0]);
   }
 
-  if (!_kludge_disable_umask) {
+  if (kludge_umask_enabled == TRUE) {
     /* Check for a directory Umask. */
     if (S_ISDIR(st.st_mode) ||
         pr_cmd_cmp(cmd, PR_CMD_MKD_ID) == 0 ||
@@ -2010,7 +2008,7 @@ int dir_check(pool *pp, cmd_rec *cmd, const char *group, const char *path,
     cmd->cmd_id = pr_cmd_get_id(cmd->argv[0]);
   }
 
-  if (!_kludge_disable_umask) {
+  if (kludge_umask_enabled == TRUE) {
     /* Check for a directory Umask. */
     if (S_ISDIR(st.st_mode) ||
         pr_cmd_cmp(cmd, PR_CMD_MKD_ID) == 0 ||
@@ -2213,7 +2211,7 @@ static config_rec *find_best_dir(xaset_t *set, char *path, size_t *matchlen) {
       if (len < pathlen &&
           strncmp(c->name, path, len) == 0) {
         rres = find_best_dir(c->subset ,path, &imatchlen);
-        tmatchlen = _strmatch(path, c->name);
+        tmatchlen = strmatch(path, c->name);
         if (!rres &&
             tmatchlen > *matchlen) {
           res = c;
@@ -3025,6 +3023,9 @@ int pr_config_get_server_xfer_bufsz(int direction) {
 
       case PR_NETIO_IO_WR:
         return main_server->tcp_sndbuf_len;
+
+      default:
+        break;
     }
   }
 

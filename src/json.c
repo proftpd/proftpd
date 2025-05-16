@@ -1,6 +1,6 @@
 /*
  * ProFTPD - FTP server daemon
- * Copyright (c) 2017-2022 The ProFTPD Project team
+ * Copyright (c) 2017-2025 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -380,6 +380,9 @@ static int get_val_from_node(pool *p, JsonNode *node, JsonTag tag, void *val) {
       *((pr_json_object_t **) val) = object;
       break;
     }
+
+    default:
+      break;
   }
 
   return 0;
@@ -438,6 +441,9 @@ static JsonNode *get_node_from_val(JsonTag tag, const void *val) {
       node = object->object;
       break;
     }
+
+    default:
+      break;
   }
 
   return node;
@@ -528,6 +534,10 @@ int pr_json_object_foreach(pool *p, const pr_json_object_t *json,
         valsz = 0;
         break;
       }
+
+      default:
+        /* Unknown types are already detected/rejected above. */
+        break;
     }
 
     res = (cb)(iter->key, val_type, val, valsz, user_data);
@@ -780,6 +790,10 @@ int pr_json_array_foreach(pool *p, const pr_json_array_t *json,
         valsz = 0;
         break;
       }
+
+      default:
+        /* Unknown types are already detected/rejected above. */
+        break;
     }
 
     res = (cb)(val_type, val, valsz, user_data);

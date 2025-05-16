@@ -686,7 +686,7 @@ char *dir_abs_path(pool *p, const char *path, int interpolate) {
  * PATH, or 0 if it doesn't exist. Catch symlink loops using LAST_INODE and
  * RCOUNT.
  */
-static mode_t _symlink(pool *p, const char *path, ino_t last_inode,
+static mode_t get_symlink_mode(pool *p, const char *path, ino_t last_inode,
     int rcount) {
   char buf[PR_TUNABLE_PATH_MAX + 1];
   struct stat st;
@@ -702,6 +702,7 @@ static mode_t _symlink(pool *p, const char *path, ino_t last_inode,
   if (p != NULL) {
     i = dir_readlink(p, path, buf, sizeof(buf)-1,
       PR_DIR_READLINK_FL_HANDLE_REL_PATH);
+
   } else {
     i = pr_fsio_readlink(path, buf, sizeof(buf)-1);
   }
@@ -720,7 +721,7 @@ static mode_t _symlink(pool *p, const char *path, ino_t last_inode,
     }
 
     if (S_ISLNK(st.st_mode)) {
-      return _symlink(p, buf, (ino_t) st.st_ino, rcount);
+      return get_symlink_mode(p, buf, (ino_t) st.st_ino, rcount);
     }
 
     return st.st_mode;
@@ -735,7 +736,7 @@ mode_t symlink_mode2(pool *p, const char *path) {
     return 0;
   }
 
-  return _symlink(p, path, (ino_t) 0, 0);
+  return get_symlink_mode(p, path, (ino_t) 0, 0);
 }
 
 mode_t symlink_mode(const char *path) {
@@ -754,7 +755,7 @@ mode_t file_mode2(pool *p, const char *path) {
   pr_fs_clear_cache2(path);
   if (pr_fsio_lstat(path, &st) >= 0) {
     if (S_ISLNK(st.st_mode)) {
-      mode = _symlink(p, path, (ino_t) 0, 0);
+      mode = get_symlink_mode(p, path, (ino_t) 0, 0);
       if (mode == 0) {
 	/* a dangling symlink, but it exists to rename or delete. */
 	mode = st.st_mode;
@@ -777,7 +778,7 @@ mode_t file_mode(const char *path) {
  * If flags == -1, fail unless PATH exists; the caller doesn't care whether
  * PATH is a file or a directory.
  */
-static int _exists(pool *p, const char *path, int flags) {
+static int path_exists(pool *p, const char *path, int flags) {
   mode_t mode;
 
   mode = file_mode2(p, path);
@@ -806,7 +807,7 @@ static int _exists(pool *p, const char *path, int flags) {
 }
 
 int file_exists2(pool *p, const char *path) {
-  return _exists(p, path, 0);
+  return path_exists(p, path, 0);
 }
 
 int file_exists(const char *path) {
@@ -814,7 +815,7 @@ int file_exists(const char *path) {
 }
 
 int dir_exists2(pool *p, const char *path) {
-  return _exists(p, path, 1);
+  return path_exists(p, path, 1);
 }
 
 int dir_exists(const char *path) {
@@ -822,7 +823,7 @@ int dir_exists(const char *path) {
 }
 
 int exists2(pool *p, const char *path) {
-  return _exists(p, path, -1);
+  return path_exists(p, path, -1);
 }
 
 int exists(const char *path) {

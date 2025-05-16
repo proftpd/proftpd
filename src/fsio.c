@@ -3035,7 +3035,9 @@ int pr_fs_resolve_partial(const char *path, char *buf, size_t buflen, int op) {
       sstrncpy(namebuf, workpath, sizeof(namebuf));
 
       if (*namebuf) {
-        for (last = namebuf; *last; last++);
+        for (last = namebuf; *last; last++) {
+        }
+
         if (*--last != '/') {
           sstrcat(namebuf, "/", sizeof(namebuf)-1);
         }
@@ -7469,7 +7471,7 @@ void pr_resolve_fs_map(void) {
      * to re-add that slash to the adjusted path -- these trailing slashes
      * are important!
      */
-    if ((strncmp(fsi->fs_path, "/", 2) != 0 &&
+    if ((strcmp(fsi->fs_path, "/") != 0 &&
         (fsi->fs_path)[strlen(fsi->fs_path) - 1] == '/')) {
       add_slash = TRUE;
     }
@@ -7477,7 +7479,7 @@ void pr_resolve_fs_map(void) {
     newpath = dir_realpath(fsi->fs_pool, fsi->fs_path);
     if (newpath != NULL) {
 
-      if (add_slash) {
+      if (add_slash == TRUE) {
         newpath = pstrcat(fsi->fs_pool, newpath, "/", NULL);
       }
 

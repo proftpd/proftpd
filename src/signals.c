@@ -1,6 +1,6 @@
 /*
  * ProFTPD - FTP server daemon
- * Copyright (c) 2014-2023 The ProFTPD Project team
+ * Copyright (c) 2014-2025 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -27,11 +27,11 @@
 #include "conf.h"
 #include "privs.h"
 
-#ifdef HAVE_EXECINFO_H
+#if defined(HAVE_EXECINFO_H)
 # include <execinfo.h>
 #endif
 
-#ifdef HAVE_UCONTEXT_H
+#if defined(HAVE_UCONTEXT_H)
 # include <ucontext.h>
 #endif
 
@@ -45,7 +45,7 @@ volatile unsigned int recvd_signal_flags = 0;
 
 static const char *trace_channel = "signal";
 
-static RETSIGTYPE sig_terminate(int);
+static RETSIGTYPE sig_terminate(int signo);
 static void install_stacktrace_handler(void);
 
 /* Used to capture an "unknown" signal value that causes termination. */

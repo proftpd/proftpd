@@ -229,7 +229,7 @@ static int get_command_class(const char *name) {
   return (c ? c->cmd_class : CL_ALL);
 }
 
-static int _dispatch(cmd_rec *cmd, int cmd_type, int validate, char *match) {
+static int dispatch_cmd(cmd_rec *cmd, int cmd_type, int validate, char *match) {
   const char *cmdargstr = NULL;
   cmdtable *c;
   modret_t *mr;
@@ -672,20 +672,20 @@ int pr_cmd_dispatch_phase(cmd_rec *cmd, int phase, int flags) {
 
   if (phase == 0) {
     /* First, dispatch to wildcard PRE_CMD handlers. */
-    success = _dispatch(cmd, PRE_CMD, FALSE, C_ANY);
+    success = dispatch_cmd(cmd, PRE_CMD, FALSE, C_ANY);
     if (success == 0) {
       /* No success yet?  Run other PRE_CMD phase handlers. */
-      success = _dispatch(cmd, PRE_CMD, FALSE, NULL);
+      success = dispatch_cmd(cmd, PRE_CMD, FALSE, NULL);
     }
 
     if (success < 0) {
       /* Dispatch to POST_CMD_ERR handlers as well. */
 
-      _dispatch(cmd, POST_CMD_ERR, FALSE, C_ANY);
-      _dispatch(cmd, POST_CMD_ERR, FALSE, NULL);
+      dispatch_cmd(cmd, POST_CMD_ERR, FALSE, C_ANY);
+      dispatch_cmd(cmd, POST_CMD_ERR, FALSE, NULL);
 
-      _dispatch(cmd, LOG_CMD_ERR, FALSE, C_ANY);
-      _dispatch(cmd, LOG_CMD_ERR, FALSE, NULL);
+      dispatch_cmd(cmd, LOG_CMD_ERR, FALSE, C_ANY);
+      dispatch_cmd(cmd, LOG_CMD_ERR, FALSE, NULL);
 
       xerrno = errno;
       pr_trace_msg("response", 9, "flushing error response list for '%s'",
@@ -699,19 +699,19 @@ int pr_cmd_dispatch_phase(cmd_rec *cmd, int phase, int flags) {
       return success;
     }
 
-    success = _dispatch(cmd, CMD, FALSE, C_ANY);
+    success = dispatch_cmd(cmd, CMD, FALSE, C_ANY);
     if (success == 0) {
-      success = _dispatch(cmd, CMD, TRUE, NULL);
+      success = dispatch_cmd(cmd, CMD, TRUE, NULL);
     }
 
     if (success == 1) {
-      success = _dispatch(cmd, POST_CMD, FALSE, C_ANY);
+      success = dispatch_cmd(cmd, POST_CMD, FALSE, C_ANY);
       if (success == 0) {
-        success = _dispatch(cmd, POST_CMD, FALSE, NULL);
+        success = dispatch_cmd(cmd, POST_CMD, FALSE, NULL);
       }
 
-      _dispatch(cmd, LOG_CMD, FALSE, C_ANY);
-      _dispatch(cmd, LOG_CMD, FALSE, NULL);
+      dispatch_cmd(cmd, LOG_CMD, FALSE, C_ANY);
+      dispatch_cmd(cmd, LOG_CMD, FALSE, NULL);
 
       xerrno = errno;
       pr_trace_msg("response", 9, "flushing response list for '%s'",
@@ -723,13 +723,13 @@ int pr_cmd_dispatch_phase(cmd_rec *cmd, int phase, int flags) {
     } else if (success < 0) {
       /* Allow for non-logging command handlers to be run if CMD fails. */
 
-      success = _dispatch(cmd, POST_CMD_ERR, FALSE, C_ANY);
+      success = dispatch_cmd(cmd, POST_CMD_ERR, FALSE, C_ANY);
       if (success == 0) {
-        success = _dispatch(cmd, POST_CMD_ERR, FALSE, NULL);
+        success = dispatch_cmd(cmd, POST_CMD_ERR, FALSE, NULL);
       }
 
-      _dispatch(cmd, LOG_CMD_ERR, FALSE, C_ANY);
-      _dispatch(cmd, LOG_CMD_ERR, FALSE, NULL);
+      dispatch_cmd(cmd, LOG_CMD_ERR, FALSE, C_ANY);
+      dispatch_cmd(cmd, LOG_CMD_ERR, FALSE, NULL);
 
       xerrno = errno;
       pr_trace_msg("response", 9, "flushing error response list for '%s'",
@@ -744,24 +744,24 @@ int pr_cmd_dispatch_phase(cmd_rec *cmd, int phase, int flags) {
       case PRE_CMD:
       case POST_CMD:
       case POST_CMD_ERR:
-        success = _dispatch(cmd, phase, FALSE, C_ANY);
+        success = dispatch_cmd(cmd, phase, FALSE, C_ANY);
         if (success == 0) {
-          success = _dispatch(cmd, phase, FALSE, NULL);
+          success = dispatch_cmd(cmd, phase, FALSE, NULL);
           xerrno = errno;
         }
         break;
 
       case CMD:
-        success = _dispatch(cmd, phase, FALSE, C_ANY);
+        success = dispatch_cmd(cmd, phase, FALSE, C_ANY);
         if (success == 0) {
-          success = _dispatch(cmd, phase, TRUE, NULL);
+          success = dispatch_cmd(cmd, phase, TRUE, NULL);
         }
         break;
 
       case LOG_CMD:
       case LOG_CMD_ERR:
-        (void) _dispatch(cmd, phase, FALSE, C_ANY);
-        (void) _dispatch(cmd, phase, FALSE, NULL);
+        (void) dispatch_cmd(cmd, phase, FALSE, C_ANY);
+        (void) dispatch_cmd(cmd, phase, FALSE, NULL);
         break;
 
       default:
@@ -2521,7 +2521,7 @@ int main(int argc, char *argv[], char **envp) {
 
     case 'n':
       nodaemon++;
-#ifdef PR_USE_DEVEL
+#if defined(PR_USE_DEVEL)
       pr_pool_debug_set_flags(PR_POOL_DEBUG_FL_OOM_DUMP_POOLS);
 #endif
       break;
@@ -2621,6 +2621,7 @@ int main(int argc, char *argv[], char **envp) {
       break;
 
     case '?':
+    default:
       pr_log_pri(PR_LOG_WARNING, "unknown option: %c", (char) optopt);
       show_usage(1);
       break;
@@ -2828,9 +2829,12 @@ int main(int argc, char *argv[], char **envp) {
       mpid = 0;
       inetd_main();
       break;
+
+    default:
+      break;
   }
 
-#ifdef PR_DEVEL_NO_DAEMON
+#if defined(PR_DEVEL_NO_DAEMON)
   PRIVS_ROOT
   chdir(PR_RUN_DIR);
 #endif /* PR_DEVEL_NO_DAEMON */

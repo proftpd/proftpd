@@ -1,6 +1,6 @@
 /*
  * ProFTPD - FTP server daemon
- * Copyright (c) 2010-2022 The ProFTPD Project team
+ * Copyright (c) 2010-2025 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -548,7 +548,7 @@ void *pr_stash_get_symbol2(pr_stash_type_t sym_type, const char *name,
     return NULL;
   }
 
-  if (prev) {
+  if (prev != NULL) {
     sym = stash_lookup_next(sym_type, name, namelen, idx, hash, prev);
 
   } else {
@@ -558,7 +558,7 @@ void *pr_stash_get_symbol2(pr_stash_type_t sym_type, const char *name,
   switch (sym_type) {
     case PR_SYM_CONF:
       conf_curr_sym = sym;
-      if (sym) {
+      if (sym != NULL) {
         return sym->ptr.sym_conf;
       }
 
@@ -567,7 +567,7 @@ void *pr_stash_get_symbol2(pr_stash_type_t sym_type, const char *name,
 
     case PR_SYM_CMD:
       cmd_curr_sym = sym;
-      if (sym) {
+      if (sym != NULL) {
         return sym->ptr.sym_cmd;
       }
 
@@ -576,7 +576,7 @@ void *pr_stash_get_symbol2(pr_stash_type_t sym_type, const char *name,
 
     case PR_SYM_AUTH:
       auth_curr_sym = sym;
-      if (sym) {
+      if (sym != NULL) {
         return sym->ptr.sym_auth;
       }
 
@@ -585,12 +585,16 @@ void *pr_stash_get_symbol2(pr_stash_type_t sym_type, const char *name,
 
     case PR_SYM_HOOK:
       hook_curr_sym = sym;
-      if (sym) {
+      if (sym != NULL) {
         return sym->ptr.sym_hook;
       }
 
       errno = ENOENT;
       return NULL;
+
+    default:
+      /* The expected types are checked at the start of this function. */
+      break;
   }
 
   errno = EINVAL;

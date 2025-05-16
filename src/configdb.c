@@ -1,6 +1,6 @@
 /*
  * ProFTPD - FTP server daemon
- * Copyright (c) 2014-2022 The ProFTPD Project team
+ * Copyright (c) 2014-2025 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -37,7 +37,7 @@ extern pool *global_config_pool;
 /* Used by find_config_* */
 static xaset_t *find_config_top = NULL;
 
-static void config_dumpf(const char *, ...);
+static void config_dumpf(const char *fmt, ...);
 
 static config_rec *last_param_ptr = NULL;
 
@@ -288,6 +288,9 @@ static const char *config_type_str(int config_type) {
 
     case CONF_PARAM:
       type = "CONF_PARAM";
+      break;
+
+    default:
       break;
   };
 

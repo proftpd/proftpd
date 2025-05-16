@@ -1,6 +1,6 @@
 /*
  * ProFTPD - FTP server daemon
- * Copyright (c) 2001-2023 The ProFTPD Project team
+ * Copyright (c) 2001-2025 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -1046,6 +1046,9 @@ const char *pr_scoreboard_entry_get(int field) {
 
     case PR_SCORE_PROTOCOL:
       return entry.sce_protocol;
+
+    default:
+      break;
   }
 
   errno = ENOENT;
