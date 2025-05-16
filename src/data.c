@@ -421,6 +421,9 @@ int pr_data_get_timeout(int id) {
 
     case PR_DATA_TIMEOUT_STALLED:
       return timeout_stalled;
+
+    default:
+      break;
   }
 
   errno = EINVAL;
@@ -439,6 +442,9 @@ void pr_data_set_timeout(int id, int timeout) {
 
     case PR_DATA_TIMEOUT_STALLED:
       timeout_stalled = timeout;
+      break;
+
+    default:
       break;
   }
 }
@@ -890,6 +896,11 @@ void pr_data_abort(int err, int quiet) {
       msg = _("Link to file server lost");
       break;
 #endif
+
+    default:
+      respcode = R_426;
+      msg = _("Data connection closed");
+      break;
     }
 
     if (msg == NULL &&

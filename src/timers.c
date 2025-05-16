@@ -1,7 +1,7 @@
 /*
  * ProFTPD - FTP server daemon
  * Copyright (c) 1997, 1998 Public Flood Software
- * Copyright (c) 2001-2022 The ProFTPD Project team
+ * Copyright (c) 2001-2025 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -46,9 +46,9 @@ struct timer {
 
 #define PR_TIMER_DYNAMIC_TIMERNO	1024
 
-static int _current_timeout = 0;
-static int _total_time = 0;
-static int _sleep_sem = 0;
+static int current_timeout = 0;
+static int total_time = 0;
+static int sleep_sem = 0;
 static int alarms_blocked = 0, alarm_pending = 0;
 static xaset_t *timers = NULL;
 static xaset_t *recycled = NULL;
@@ -56,7 +56,7 @@ static xaset_t *free_timers = NULL;
 static int _indispatch = 0;
 static int dynamic_timerno = PR_TIMER_DYNAMIC_TIMERNO;
 static unsigned int nalarms = 0;
-static time_t _alarmed_time = 0;
+static time_t alarmed_time = 0;
 
 static pool *timer_pool = NULL;
 
@@ -224,10 +224,10 @@ static RETSIGTYPE sig_alarm(int signo) {
   nalarms++;
 
   /* Reset the alarm */
-  _total_time += _current_timeout;
-  if (_current_timeout) {
-    _alarmed_time = time(NULL);
-    alarm(_current_timeout);
+  total_time += current_timeout;
+  if (current_timeout) {
+    alarmed_time = time(NULL);
+    alarm(current_timeout);
   }
 }
 
@@ -280,14 +280,14 @@ void handle_alarm(void) {
 
       /* Determine how much time has elapsed since we last processed timers. */
       time(&now);
-      alarm_elapsed = _alarmed_time > 0 ? (int) (now - _alarmed_time) : 0;
+      alarm_elapsed = alarmed_time > 0 ? (int) (now - alarmed_time) : 0;
 
-      new_timeout = _total_time + alarm_elapsed;
-      _total_time = 0;
+      new_timeout = total_time + alarm_elapsed;
+      total_time = 0;
       new_timeout = process_timers(new_timeout);
 
-      _alarmed_time = now;
-      alarm(_current_timeout = new_timeout);
+      alarmed_time = now;
+      alarm(current_timeout = new_timeout);
 
     } else {
       alarm_pending++;
@@ -520,7 +520,7 @@ void pr_alarms_unblock(void) {
 }
 
 static int sleep_cb(CALLBACK_FRAME) {
-  _sleep_sem++;
+  sleep_sem++;
   return 0;
 }
 
@@ -528,7 +528,7 @@ int pr_timer_sleep(int seconds) {
   int timerno = 0;
   sigset_t oset;
 
-  _sleep_sem = 0;
+  sleep_sem = 0;
 
   if (alarms_blocked ||
       _indispatch) {
@@ -542,7 +542,7 @@ int pr_timer_sleep(int seconds) {
   }
 
   sigemptyset(&oset);
-  while (!_sleep_sem) {
+  while (!sleep_sem) {
     sigsuspend(&oset);
     handle_alarm();
   }
@@ -571,10 +571,10 @@ int pr_timer_usleep(unsigned long usecs) {
 void timers_init(void) {
 
   /* Reset some of the key static variables. */
-  _current_timeout = 0;
-  _total_time = 0;
+  current_timeout = 0;
+  total_time = 0;
   nalarms = 0;
-  _alarmed_time = 0;
+  alarmed_time = 0;
   dynamic_timerno = PR_TIMER_DYNAMIC_TIMERNO;
 
   /* Don't inherit the parent's timer lists. */
@@ -583,7 +583,7 @@ void timers_init(void) {
   free_timers = NULL;
 
   /* Reset the timer pool. */
-  if (timer_pool) {
+  if (timer_pool != NULL) {
     destroy_pool(timer_pool);
   }
 
