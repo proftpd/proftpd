@@ -1,6 +1,6 @@
 /*
  * ProFTPD - mod_sftp ciphers
- * Copyright (c) 2008-2024 TJ Saunders
+ * Copyright (c) 2008-2025 TJ Saunders
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -95,7 +95,7 @@ static unsigned int write_cipher_idx = 0;
 
 static const char *trace_channel = "ssh2";
 
-static void clear_cipher(struct sftp_cipher *);
+static void clear_cipher(struct sftp_cipher *cipher);
 
 static unsigned int get_next_read_index(void) {
   if (read_cipher_idx == 1) {

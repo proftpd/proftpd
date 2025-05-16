@@ -636,6 +636,9 @@ static sftp_keystore_t *filestore_open(pool *parent_pool,
     case SFTP_SSH2_USER_KEY_STORE:
       store->verify_user_key = filestore_verify_user_key;
       break;
+
+    default:
+      break;
   }
 
   store->store_close = filestore_close;

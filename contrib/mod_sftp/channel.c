@@ -92,8 +92,8 @@ static array_header *accepted_envs = NULL;
 
 static const char *trace_channel = "ssh2";
 
-static int send_channel_window_adjust(struct ssh2_channel *);
-static int send_channel_done(pool *, uint32_t);
+static int send_channel_window_adjust(struct ssh2_channel *chan);
+static int send_channel_done(pool *p, uint32_t channel_id);
 
 static struct ssh2_channel *alloc_channel(const char *type,
     uint32_t remote_channel_id, uint32_t remote_windowsz,
@@ -553,7 +553,7 @@ static int read_channel_open(struct ssh2_packet *pkt, uint32_t *channel_id) {
   cmd->cmd_class = CL_MISC|CL_SSH;
   cmd->cmd_id = SFTP_CMD_ID;
 
-  if (strncmp(channel_type, "session", 8) != 0) {
+  if (strcmp(channel_type, "session") != 0) {
     (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
       "unsupported channel type '%s' requested, denying", channel_type);
     pr_cmd_dispatch_phase(cmd, LOG_CMD_ERR, 0);
@@ -1146,7 +1146,7 @@ static int handle_subsystem_channel(struct ssh2_channel *chan,
   (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
     "'subsystem' channel request for '%s' subsystem", subsystem);
 
-  if (strncmp(subsystem, "sftp", 5) == 0) {
+  if (strcmp(subsystem, "sftp") == 0) {
 
     if (sftp_services & SFTP_SERVICE_FL_SFTP) {
       chan->prepare = sftp_fxp_open_session;
@@ -1206,19 +1206,19 @@ static int handle_channel_req(struct ssh2_packet *pkt) {
     return -1;
   }
 
-  if (strncmp(channel_request, "subsystem", 10) == 0) {
+  if (strcmp(channel_request, "subsystem") == 0) {
     res = handle_subsystem_channel(chan, pkt, &buf, &buflen);
 
-  } else if (strncmp(channel_request, "exec", 5) == 0) {
+  } else if (strcmp(channel_request, "exec") == 0) {
     res = handle_exec_channel(chan, pkt, &buf, &buflen);
 
-  } else if (strncmp(channel_request, "env", 4) == 0) {
+  } else if (strcmp(channel_request, "env") == 0) {
     res = handle_env_channel(chan, pkt, &buf, &buflen);
 
-  } else if (strncmp(channel_request, "signal", 7) == 0) {
+  } else if (strcmp(channel_request, "signal") == 0) {
     res = handle_signal_channel(chan, pkt, &buf, &buflen);
 
-  } else if (strncmp(channel_request, "break", 6) == 0) {
+  } else if (strcmp(channel_request, "break") == 0) {
     uint32_t breaklen;
 
     /* Handle RFC4335 messages.  We will still return CHANNEL_FAILURE for

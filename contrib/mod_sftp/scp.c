@@ -151,7 +151,7 @@ static int need_confirm = FALSE;
 
 static const char *trace_channel = "scp";
 
-static int send_path(pool *, uint32_t, struct scp_path *);
+static int send_path(pool *p, uint32_t channel_id, struct scp_path *sp);
 
 static int scp_timeout_stalled_cb(CALLBACK_FRAME) {
   pr_event_generate("core.timeout-stalled", NULL);
@@ -179,10 +179,11 @@ static int scp_destroy_paths(struct scp_paths *paths) {
     return 0;
   }
 
-  if (paths->next)
+  if (paths->next != NULL) {
     paths->next->prev = paths->prev;
+  }
 
-  if (paths->prev) {
+  if (paths->prev != NULL) {
     paths->prev->next = paths->next;
 
   } else {
@@ -339,6 +340,9 @@ static int read_confirm(struct ssh2_packet *pkt, unsigned char **buf,
     case 2:
       /* Fatal error, no message. */
       return -1;
+
+    default:
+      break;
   }
 
   need_confirm = FALSE;
@@ -519,8 +523,9 @@ static int recv_timeinfo(pool *p, uint32_t channel_id, struct scp_path *sp,
 
   msg = data + 1;
 
-  if (ptr)
+  if (ptr != NULL) {
     *ptr = '\0';
+  }
 
   pr_trace_msg(trace_channel, 5, "'%s' control message: T%s", sp->path, msg);
 
@@ -601,7 +606,7 @@ static int recv_perms(pool *p, uint32_t channel_id, char *mode_str,
   return 0;
 }
 
-static int recv_filesz(pool *p, uint32_t channel_id, char *size_str,
+static int recv_filesz(pool *p, uint32_t channel_id, const char *size_str,
     off_t *filesz) {
   register unsigned int i;
 
@@ -627,7 +632,7 @@ static int recv_filename(pool *p, uint32_t channel_id, char *name_str,
     struct scp_path *sp) {
 
   if (strchr(name_str, '/') != NULL ||
-      strncmp(name_str, "..", 3) == 0) {
+      strcmp(name_str, "..") == 0) {
     pr_trace_msg(trace_channel, 2, "bad filename: '%s'", name_str);
     write_confirm(p, channel_id, 1,
       pstrcat(p, "unexpected filename: ", name_str, NULL));
@@ -1710,8 +1715,9 @@ static int send_timeinfo(pool *p, uint32_t channel_id, struct scp_path *sp,
   need_confirm = TRUE;
 
   res = sftp_channel_write_data(p, channel_id, ctrl_msg, ctrl_msglen);
-  if (res < 0)
+  if (res < 0) {
     return -1;
+  }
 
   sp->sent_timeinfo = TRUE;
   return 0;
@@ -1788,8 +1794,9 @@ static int send_finfo(pool *p, uint32_t channel_id, struct scp_path *sp,
   need_confirm = TRUE;
 
   res = sftp_channel_write_data(p, channel_id, ctrl_msg, ctrl_msglen);
-  if (res < 0)
+  if (res < 0) {
     return -1;
+  }
 
   sp->sent_finfo = TRUE;
   return 0;
@@ -1939,8 +1946,8 @@ static int send_dir(pool *p, uint32_t channel_id, struct scp_path *sp,
     pr_signals_handle();
 
     /* Skip "." and "..". */
-    if (strncmp(dent->d_name, ".", 2) == 0 ||
-        strncmp(dent->d_name, "..", 3) == 0) {
+    if (strcmp(dent->d_name, ".") == 0 ||
+        strcmp(dent->d_name, "..") == 0) {
       continue;
     }
 
@@ -2551,6 +2558,11 @@ int sftp_scp_set_params(pool *p, uint32_t channel_id, array_header *req) {
       case 'v':
         scp_opts |= SFTP_SCP_OPT_VERBOSE;
         break;
+
+      default:
+        (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
+          "'scp' request included unknown option ('%c'), ignoring", optc);
+        break;
     }
   }
 
@@ -2670,6 +2682,9 @@ int sftp_scp_set_params(pool *p, uint32_t channel_id, array_header *req) {
           strerror(xerrno), NULL));
         errno = xerrno;
         return 0;
+
+      default:
+        break;
     }
 
     pr_fs_globfree(&gl);

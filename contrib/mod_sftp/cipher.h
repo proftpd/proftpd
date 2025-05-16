@@ -1,6 +1,6 @@
 /*
  * ProFTPD - mod_sftp cipher mgmt
- * Copyright (c) 2008-2023 TJ Saunders
+ * Copyright (c) 2008-2025 TJ Saunders
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -26,6 +26,7 @@
 #define MOD_SFTP_CIPHER_H
 
 #include "mod_sftp.h"
+#include "packet.h"
 
 int sftp_cipher_init(void);
 int sftp_cipher_free(void);

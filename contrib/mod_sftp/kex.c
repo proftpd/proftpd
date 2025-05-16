@@ -1,6 +1,6 @@
 /*
  * ProFTPD - mod_sftp key exchange (kex)
- * Copyright (c) 2008-2024 TJ Saunders
+ * Copyright (c) 2008-2025 TJ Saunders
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -289,8 +289,8 @@ static enum sftp_key_type_e kex_used_hostkey_type = SFTP_KEY_UNKNOWN;
 static FILE *kex_dhparams_fp = NULL;
 
 /* Necessary prototypes. */
-static struct ssh2_packet *read_kex_packet(pool *, struct sftp_kex *, int,
-  char *, unsigned int, ...);
+static struct ssh2_packet *read_kex_packet(pool *p, struct sftp_kex *kex,
+  int disconnect_code, char *found_msg_type, unsigned int ntypes, ...);
 
 static const char *trace_channel = "ssh2";
 
@@ -1515,7 +1515,8 @@ static const char *get_preferred_name(pool *p, const char *names) {
   register unsigned int i;
 
   /* Advance to the first comma, or NUL. */
-  for (i = 0; names[i] && names[i] != ','; i++);
+  for (i = 0; names[i] && names[i] != ','; i++) {
+  }
 
   if (names[i] == ',' ||
       names[i] == '\0') {
