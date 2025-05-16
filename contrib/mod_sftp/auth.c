@@ -183,10 +183,10 @@ static const char *get_default_root(pool *p) {
     c = find_config_next(c, c->next, CONF_PARAM, "DefaultRoot", FALSE);
   }
 
-  if (path) {
+  if (path != NULL) {
     path = path_subst_uservar(p, &path);
 
-    if (strncmp(path, "/", 2) == 0) {
+    if (strcmp(path, "/") == 0) {
       path = NULL;
 
     } else {
@@ -1250,8 +1250,8 @@ static int handle_userauth_req(struct ssh2_packet *pkt, char **service) {
      * we should disconnect, as recommended by RFC4252.
      */
 
-    if (strncmp(*service, "ssh-userauth", 13) == 0 ||
-        strncmp(*service, "ssh-connection", 15) == 0) {
+    if (strcmp(*service, "ssh-userauth") == 0 ||
+        strcmp(*service, "ssh-connection") == 0) {
       auth_service = pstrdup(auth_pool, *service);
 
     } else {
@@ -1334,7 +1334,7 @@ static int handle_userauth_req(struct ssh2_packet *pkt, char **service) {
    * dispatching will happen here.
    */
 
-  if (strncmp(method, "none", 5) == 0) {
+  if (strcmp(method, "none") == 0) {
     /* If the client requested the "none" auth method at this point, then
      * the list of authentication methods supported by the server is being
      * queried.
@@ -1351,7 +1351,7 @@ static int handle_userauth_req(struct ssh2_packet *pkt, char **service) {
 
     return 0;
 
-  } else if (strncmp(method, "publickey", 10) == 0) {
+  } else if (strcmp(method, "publickey") == 0) {
     if (auth_meths_enabled_flags & SFTP_AUTH_FL_METH_PUBLICKEY) {
       int xerrno;
 
@@ -1384,7 +1384,7 @@ static int handle_userauth_req(struct ssh2_packet *pkt, char **service) {
       return 0;
     }
 
-  } else if (strncmp(method, "keyboard-interactive", 21) == 0) {
+  } else if (strcmp(method, "keyboard-interactive") == 0) {
     if (auth_meths_enabled_flags & SFTP_AUTH_FL_METH_KBDINT) {
       int xerrno = errno;
 
@@ -1417,7 +1417,7 @@ static int handle_userauth_req(struct ssh2_packet *pkt, char **service) {
       return 0;
     }
 
-  } else if (strncmp(method, "password", 9) == 0) {
+  } else if (strcmp(method, "password") == 0) {
     if (auth_meths_enabled_flags & SFTP_AUTH_FL_METH_PASSWORD) {
       int xerrno;
 
@@ -1450,7 +1450,7 @@ static int handle_userauth_req(struct ssh2_packet *pkt, char **service) {
       return 0;
     }
 
-  } else if (strncmp(method, "hostbased", 10) == 0) {
+  } else if (strcmp(method, "hostbased") == 0) {
     if (auth_meths_enabled_flags & SFTP_AUTH_FL_METH_HOSTBASED) {
       int xerrno;
 

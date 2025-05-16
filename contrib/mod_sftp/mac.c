@@ -1,6 +1,6 @@
 /*
  * ProFTPD - mod_sftp MACs
- * Copyright (c) 2008-2024 TJ Saunders
+ * Copyright (c) 2008-2025 TJ Saunders
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -86,7 +86,7 @@ static size_t mac_blockszs[2] = { 0, 0 };
 static unsigned int read_mac_idx = 0;
 static unsigned int write_mac_idx = 0;
 
-static void clear_mac(struct sftp_mac *);
+static void clear_mac(struct sftp_mac *mac);
 
 static unsigned int get_next_read_index(void) {
   if (read_mac_idx == 1) {

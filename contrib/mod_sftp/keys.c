@@ -178,7 +178,7 @@ static struct openssh_cipher ciphers[] = {
   { NULL,          0,  0, 0, 0, NULL, NULL }
 };
 
-static void free_hostkey_bio(BIO *);
+static void free_hostkey_bio(BIO *bio);
 static BIO *load_file_hostkey_bio(pool *p, int fd);
 #if defined(HAVE_X448_OPENSSL)
 static int handle_ed448_hostkey(pool *p, const unsigned char *key_data,
@@ -271,8 +271,6 @@ static void prepare_provider_fds(int stdout_fd, int stderr_fd) {
     pr_signals_handle();
     (void) close(i);
   }
-
-  return;
 }
 
 static void prepare_provider_pipes(int *stdout_pipe, int *stderr_pipe) {
@@ -1082,12 +1080,13 @@ static void scrub_pkeys(void) {
 static int pkey_cb(char *buf, int buflen, int rwflag, void *d) {
   struct sftp_pkey *k;
 
-  if (d == NULL)
+  if (d == NULL) {
     return 0;
+  }
 
   k = (struct sftp_pkey *) d;
 
-  if (k->host_pkey) {
+  if (k->host_pkey != NULL) {
     sstrncpy(buf, k->host_pkey, buflen);
     buf[buflen - 1] = '\0';
     return strlen(buf);
@@ -1411,21 +1410,21 @@ static uint32_t read_pkey_from_data(pool *p, unsigned char *pkey_data,
       return 0;
     }
 
-    if (strncmp(curve_name, "nistp256", 9) == 0) {
+    if (strcmp(curve_name, "nistp256") == 0) {
       ec_nid = NID_X9_62_prime256v1;
 
       if (key_type != NULL) {
         *key_type = SFTP_KEY_ECDSA_256;
       }
 
-    } else if (strncmp(curve_name, "nistp384", 9) == 0) {
+    } else if (strcmp(curve_name, "nistp384") == 0) {
       ec_nid = NID_secp384r1;
 
       if (key_type != NULL) {
         *key_type = SFTP_KEY_ECDSA_384;
       }
 
-    } else if (strncmp(curve_name, "nistp521", 9) == 0) {
+    } else if (strcmp(curve_name, "nistp521") == 0) {
       ec_nid = NID_secp521r1;
 
       if (key_type != NULL) {
@@ -3020,6 +3019,9 @@ static int handle_hostkey(pool *p, EVP_PKEY *pkey,
               EVP_PKEY_bits(pkey), agent_path);
           }
 
+          break;
+
+        default:
           break;
       }
 
@@ -5026,6 +5028,9 @@ static const unsigned char *ecdsa_sign_data(pool *p, const unsigned char *data,
     case NID_secp521r1:
       sftp_msg_write_string(&buf, &buflen, "ecdsa-sha2-nistp521");
       break;
+
+    default:
+      break;
   }
 
   sftp_msg_write_data(&buf, &buflen, sig_ptr, (sig_bufsz - sig_buflen), TRUE);
@@ -5289,6 +5294,9 @@ int sftp_keys_verify_pubkey_type(pool *p, unsigned char *pubkey_data,
 
           case NID_secp521r1:
             res = (pubkey_type == SFTP_KEY_ECDSA_521);
+            break;
+
+          default:
             break;
         }
       }
@@ -5766,13 +5774,13 @@ static int ecdsa_verify_signed_data(pool *p, EVP_PKEY *pkey,
      * last 9 characters.
      */
 
-    if (strncmp(sig_type + 11, "nistp256", 9) == 0) {
+    if (strcmp(sig_type + 11, "nistp256") == 0) {
       md = EVP_sha256();
 
-    } else if (strncmp(sig_type + 11, "nistp384", 9) == 0) {
+    } else if (strcmp(sig_type + 11, "nistp384") == 0) {
       md = EVP_sha384();
 
-    } else if (strncmp(sig_type + 11, "nistp521", 9) == 0) {
+    } else if (strcmp(sig_type + 11, "nistp521") == 0) {
       md = EVP_sha512();
     }
 

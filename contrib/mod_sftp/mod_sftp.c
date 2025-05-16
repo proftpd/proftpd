@@ -333,8 +333,6 @@ static void sftp_cmd_loop(server_rec *s, conn_t *conn) {
       break;
     }
   }
-
-  return;
 }
 
 /* Configuration handlers
@@ -1363,6 +1361,9 @@ MODRET set_sftpextensions(cmd_rec *cmd) {
         case '+':
           ext_flags |= SFTP_FXP_EXT_CHECK_FILE;
           break;
+
+        default:
+          break;
       }
 
     } else if (strcasecmp(ext, "copyFile") == 0) {
@@ -1373,6 +1374,9 @@ MODRET set_sftpextensions(cmd_rec *cmd) {
 
         case '+':
           ext_flags |= SFTP_FXP_EXT_COPY_FILE;
+          break;
+
+        default:
           break;
       }
 
@@ -1385,6 +1389,9 @@ MODRET set_sftpextensions(cmd_rec *cmd) {
         case '+':
           ext_flags |= SFTP_FXP_EXT_FSYNC;
           break;
+
+        default:
+          break;
       }
 
     } else if (strcasecmp(ext, "vendorID") == 0) {
@@ -1395,6 +1402,9 @@ MODRET set_sftpextensions(cmd_rec *cmd) {
 
         case '+':
           ext_flags |= SFTP_FXP_EXT_VENDOR_ID;
+          break;
+
+        default:
           break;
       }
 
@@ -1407,6 +1417,9 @@ MODRET set_sftpextensions(cmd_rec *cmd) {
         case '+':
           ext_flags |= SFTP_FXP_EXT_VERSION_SELECT;
           break;
+
+        default:
+          break;
       }
 
     } else if (strcasecmp(ext, "posixRename") == 0) {
@@ -1417,6 +1430,9 @@ MODRET set_sftpextensions(cmd_rec *cmd) {
 
         case '+':
           ext_flags |= SFTP_FXP_EXT_POSIX_RENAME;
+          break;
+
+        default:
           break;
       }
 
@@ -1429,6 +1445,9 @@ MODRET set_sftpextensions(cmd_rec *cmd) {
 
         case '+':
           ext_flags |= SFTP_FXP_EXT_SPACE_AVAIL;
+          break;
+
+        default:
           break;
       }
 #else
@@ -1446,6 +1465,9 @@ MODRET set_sftpextensions(cmd_rec *cmd) {
         case '+':
           ext_flags |= SFTP_FXP_EXT_STATVFS;
           break;
+
+        default:
+          break;
       }
 #else
       pr_log_debug(DEBUG0, "%s: statvfs@openssh.com extension not supported "
@@ -1461,6 +1483,9 @@ MODRET set_sftpextensions(cmd_rec *cmd) {
         case '+':
           ext_flags |= SFTP_FXP_EXT_HARDLINK;
           break;
+
+        default:
+          break;
       }
 
     } else if (strcasecmp(ext, "homeDirectory") == 0) {
@@ -1471,6 +1496,9 @@ MODRET set_sftpextensions(cmd_rec *cmd) {
 
         case '+':
           ext_flags |= SFTP_FXP_EXT_HOMEDIR;
+          break;
+
+        default:
           break;
       }
 
@@ -1483,6 +1511,9 @@ MODRET set_sftpextensions(cmd_rec *cmd) {
         case '+':
           ext_flags |= SFTP_FXP_EXT_LIMITS;
           break;
+
+        default:
+          break;
       }
 
     } else if (strcasecmp(ext, "userGroupNames") == 0) {
@@ -1494,10 +1525,13 @@ MODRET set_sftpextensions(cmd_rec *cmd) {
         case '+':
           ext_flags |= SFTP_FXP_EXT_USERGROUPNAMES;
           break;
+
+        default:
+          break;
       }
 
     } else if (strcasecmp(ext, "xattr") == 0) {
-#ifdef HAVE_SYS_XATTR_H
+#if defined(HAVE_SYS_XATTR_H)
       switch (action) {
         case '-':
           ext_flags &= ~SFTP_FXP_EXT_XATTR;
@@ -1505,6 +1539,9 @@ MODRET set_sftpextensions(cmd_rec *cmd) {
 
         case '+':
           ext_flags |= SFTP_FXP_EXT_XATTR;
+          break;
+
+        default:
           break;
       }
 #else
@@ -2220,7 +2257,7 @@ static void sftp_ban_class_ev(const void *event_data, void *user_data) {
   proto = pr_session_get_protocol(PR_SESS_PROTO_FL_LOGOUT);
 
   /* Only send an SSH2 DISCONNECT if we're dealing with an SSH2 client. */
-  if (strncmp(proto, "SSH2", 5) == 0) {
+  if (strcmp(proto, "SSH2") == 0) {
     sftp_disconnect_send(SFTP_SSH2_DISCONNECT_BY_APPLICATION, "Banned",
       __FILE__, __LINE__, "");
   }
@@ -2232,7 +2269,7 @@ static void sftp_ban_host_ev(const void *event_data, void *user_data) {
   proto = pr_session_get_protocol(PR_SESS_PROTO_FL_LOGOUT);
 
   /* Only send an SSH2 DISCONNECT if we're dealing with an SSH2 client. */
-  if (strncmp(proto, "SSH2", 5) == 0) {
+  if (strcmp(proto, "SSH2") == 0) {
     char *ban_msg = "Banned", *name;
 
     name = user_data;
@@ -2251,7 +2288,7 @@ static void sftp_ban_user_ev(const void *event_data, void *user_data) {
   proto = pr_session_get_protocol(PR_SESS_PROTO_FL_LOGOUT);
 
   /* Only send an SSH2 DISCONNECT if we're dealing with an SSH2 client. */
-  if (strncmp(proto, "SSH2", 5) == 0) {
+  if (strcmp(proto, "SSH2") == 0) {
     char *ban_msg = "Banned", *name;
 
     name = user_data;
@@ -2270,7 +2307,7 @@ static void sftp_max_conns_ev(const void *event_data, void *user_data) {
   proto = pr_session_get_protocol(PR_SESS_PROTO_FL_LOGOUT);
 
   /* Only send an SSH2 DISCONNECT if we're dealing with an SSH2 client. */
-  if (strncmp(proto, "SSH2", 5) == 0) {
+  if (strcmp(proto, "SSH2") == 0) {
     sftp_disconnect_send(SFTP_SSH2_DISCONNECT_TOO_MANY_CONNECTIONS,
       "Maximum connections for host/user reached", __FILE__, __LINE__, "");
   }
@@ -2525,7 +2562,7 @@ static void sftp_wrap_conn_denied_ev(const void *event_data, void *user_data) {
   proto = pr_session_get_protocol(PR_SESS_PROTO_FL_LOGOUT);
 
   /* Only send an SSH2 DISCONNECT if we're dealing with an SSH2 client. */
-  if (strncmp(proto, "SSH2", 5) == 0) {
+  if (strcmp(proto, "SSH2") == 0) {
     const char *msg;
 
     msg = get_param_ptr(main_server->conf, "WrapDenyMsg", FALSE);

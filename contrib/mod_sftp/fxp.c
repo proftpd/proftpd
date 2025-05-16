@@ -341,9 +341,9 @@ static struct fxp_session *fxp_session = NULL, *fxp_sessions = NULL;
 static const char *trace_channel = "sftp";
 
 /* Necessary prototypes */
-static struct fxp_handle *fxp_handle_get(const char *);
-static struct fxp_packet *fxp_packet_create(pool *, uint32_t);
-static int fxp_packet_write(struct fxp_packet *);
+static struct fxp_handle *fxp_handle_get(const char *handle);
+static struct fxp_packet *fxp_packet_create(pool *p, uint32_t channel_id);
+static int fxp_packet_write(struct fxp_packet *fxp);
 
 static struct fxp_session *fxp_get_session(uint32_t channel_id) {
   struct fxp_session *sess;
@@ -385,72 +385,75 @@ static cmd_rec *fxp_cmd_alloc(pool *p, const char *name, char *arg) {
 }
 
 static const char *fxp_strerror(uint32_t status) {
-    switch (status) {
-      case SSH2_FX_OK:
-        return "OK";
+  switch (status) {
+    case SSH2_FX_OK:
+      return "OK";
 
-      case SSH2_FX_EOF:
-        return "End of file";
+    case SSH2_FX_EOF:
+      return "End of file";
 
-      case SSH2_FX_NO_SUCH_FILE:
-        return "No such file";
+    case SSH2_FX_NO_SUCH_FILE:
+      return "No such file";
 
-      case SSH2_FX_PERMISSION_DENIED:
-        return "Permission denied";
+    case SSH2_FX_PERMISSION_DENIED:
+      return "Permission denied";
 
-      case SSH2_FX_BAD_MESSAGE:
-        return "Bad message";
+    case SSH2_FX_BAD_MESSAGE:
+      return "Bad message";
 
-      case SSH2_FX_OP_UNSUPPORTED:
-        return "Unsupported operation";
+    case SSH2_FX_OP_UNSUPPORTED:
+      return "Unsupported operation";
 
-      case SSH2_FX_INVALID_HANDLE:
-        return "Invalid handle";
+    case SSH2_FX_INVALID_HANDLE:
+      return "Invalid handle";
 
-      case SSH2_FX_NO_SUCH_PATH:
-        return "No such path";
+    case SSH2_FX_NO_SUCH_PATH:
+      return "No such path";
 
-      case SSH2_FX_FILE_ALREADY_EXISTS:
-        return "File already exists";
+    case SSH2_FX_FILE_ALREADY_EXISTS:
+      return "File already exists";
 
-      case SSH2_FX_NO_SPACE_ON_FILESYSTEM:
-        return "Out of disk space";
+    case SSH2_FX_NO_SPACE_ON_FILESYSTEM:
+      return "Out of disk space";
 
-      case SSH2_FX_QUOTA_EXCEEDED:
-        return "Quota exceeded";
+    case SSH2_FX_QUOTA_EXCEEDED:
+      return "Quota exceeded";
 
-      case SSH2_FX_UNKNOWN_PRINCIPAL:
-        return "Unknown principal";
+    case SSH2_FX_UNKNOWN_PRINCIPAL:
+      return "Unknown principal";
 
-      case SSH2_FX_LOCK_CONFLICT:
-        return "Lock conflict";
+    case SSH2_FX_LOCK_CONFLICT:
+      return "Lock conflict";
 
-      case SSH2_FX_DIR_NOT_EMPTY:
-        return "Directory is not empty";
+    case SSH2_FX_DIR_NOT_EMPTY:
+      return "Directory is not empty";
 
-      case SSH2_FX_NOT_A_DIRECTORY:
-        return "Not a directory";
+    case SSH2_FX_NOT_A_DIRECTORY:
+      return "Not a directory";
 
-      case SSH2_FX_INVALID_FILENAME:
-        return "Invalid filename";
+    case SSH2_FX_INVALID_FILENAME:
+      return "Invalid filename";
 
-      case SSH2_FX_LINK_LOOP:
-        return "Link loop";
+    case SSH2_FX_LINK_LOOP:
+      return "Link loop";
 
-      case SSH2_FX_INVALID_PARAMETER:
-        return "Invalid parameter";
+    case SSH2_FX_INVALID_PARAMETER:
+      return "Invalid parameter";
 
-      case SSH2_FX_FILE_IS_A_DIRECTORY:
-        return "File is a directory";
+    case SSH2_FX_FILE_IS_A_DIRECTORY:
+      return "File is a directory";
 
-      case SSH2_FX_OWNER_INVALID:
-        return "Invalid owner";
+    case SSH2_FX_OWNER_INVALID:
+      return "Invalid owner";
 
-      case SSH2_FX_GROUP_INVALID:
-        return "Invalid group";
-    }
+    case SSH2_FX_GROUP_INVALID:
+      return "Invalid group";
 
-    return "Failure";
+    default:
+      break;
+  }
+
+  return "Failure";
 }
 
 static uint32_t fxp_errno2status(int xerrno, const char **reason) {
@@ -641,6 +644,9 @@ static uint32_t fxp_errno2status(int xerrno, const char **reason) {
       }
       break;
 #endif
+
+    default:
+      break;
   }
 
   return status_code;
@@ -1173,6 +1179,9 @@ static const char *fxp_get_request_type_desc(unsigned char request_type) {
 
     case SFTP_SSH2_FXP_EXTENDED_REPLY:
       return "EXTENDED_REPLY";
+
+    default:
+      break;
   }
 
   return "(unknown)";
@@ -1201,6 +1210,9 @@ static int fxp_path_pass_regex_filters(pool *p, const char *request,
         "path '%s' for %s denied by PathDenyFilter", path, request);
       errno = EACCES;
       return -1;
+
+    default:
+      break;
   }
 
   return 0;
@@ -3730,6 +3742,9 @@ static void fxp_version_add_version_ext(pool *p, unsigned char **buf,
           "6", NULL);
         break;
 #endif /* PR_USE_NLS */
+
+      default:
+        break;
     }
   }
 
@@ -8923,14 +8938,14 @@ static int fxp_handle_lstat(struct fxp_packet *fxp) {
   fake_user = get_param_ptr(get_dir_ctxt(fxp->pool, path), "DirFakeUser",
     FALSE);
   if (fake_user != NULL &&
-      strncmp(fake_user, "~", 2) == 0) {
+      strcmp(fake_user, "~") == 0) {
     fake_user = session.user;
   }
 
   fake_group = get_param_ptr(get_dir_ctxt(fxp->pool, path), "DirFakeGroup",
     FALSE);
   if (fake_group != NULL &&
-      strncmp(fake_group, "~", 2) == 0) {
+      strcmp(fake_group, "~") == 0) {
     fake_group = session.group;
   }
 
@@ -10836,14 +10851,14 @@ static int fxp_handle_readdir(struct fxp_packet *fxp) {
   fake_user = get_param_ptr(get_dir_ctxt(fxp->pool, (char *) fxh->dir),
     "DirFakeUser", FALSE);
   if (fake_user != NULL &&
-      strncmp(fake_user, "~", 2) == 0) {
+      strcmp(fake_user, "~") == 0) {
     fake_user = session.user;
   }
 
   fake_group = get_param_ptr(get_dir_ctxt(fxp->pool, (char *) fxh->dir),
     "DirFakeGroup", FALSE);
   if (fake_group != NULL &&
-      strncmp(fake_group, "~", 2) == 0) {
+      strcmp(fake_group, "~") == 0) {
     fake_group = session.group;
   }
 
@@ -11211,14 +11226,14 @@ static int fxp_handle_readlink(struct fxp_packet *fxp) {
     fake_user = get_param_ptr(get_dir_ctxt(fxp->pool, path), "DirFakeUser",
       FALSE);
     if (fake_user != NULL &&
-        strncmp(fake_user, "~", 2) == 0) {
+        strcmp(fake_user, "~") == 0) {
       fake_user = session.user;
     }
 
     fake_group = get_param_ptr(get_dir_ctxt(fxp->pool, path), "DirFakeGroup",
       FALSE);
     if (fake_group != NULL &&
-        strncmp(fake_group, "~", 2) == 0) {
+        strcmp(fake_group, "~") == 0) {
       fake_group = session.group;
     }
 
@@ -11260,6 +11275,9 @@ static void fxp_trace_v6_realpath_flags(pool *p, unsigned char flags,
 
     case SSH2_FXRP_STAT_ALWAYS:
       flags_str = "FX_REALPATH_STAT_ALWAYS";
+      break;
+
+    default:
       break;
   }
 
@@ -11396,7 +11414,7 @@ static int fxp_handle_realpath(struct fxp_packet *fxp) {
   /* The path may have been changed by any PRE_CMD handlers. */
   path = cmd->arg;
 
-  if (strncmp(path, ".", 2) == 0) {
+  if (strcmp(path, ".") == 0) {
     /* The client is asking about the current working directory.  Easy. */
     path = (char *) pr_fs_getvwd();
 
@@ -11607,14 +11625,14 @@ static int fxp_handle_realpath(struct fxp_packet *fxp) {
       fake_user = get_param_ptr(get_dir_ctxt(fxp->pool, path), "DirFakeUser",
         FALSE);
       if (fake_user != NULL &&
-          strncmp(fake_user, "~", 2) == 0) {
+          strcmp(fake_user, "~") == 0) {
         fake_user = session.user;
       }
 
       fake_group = get_param_ptr(get_dir_ctxt(fxp->pool, path), "DirFakeGroup",
         FALSE);
       if (fake_group != NULL &&
-          strncmp(fake_group, "~", 2) == 0) {
+          strcmp(fake_group, "~") == 0) {
         fake_group = session.group;
       }
 
@@ -13041,14 +13059,14 @@ static int fxp_handle_stat(struct fxp_packet *fxp) {
   fake_user = get_param_ptr(get_dir_ctxt(fxp->pool, path), "DirFakeUser",
     FALSE);
   if (fake_user != NULL &&
-      strncmp(fake_user, "~", 2) == 0) {
+      strcmp(fake_user, "~") == 0) {
     fake_user = session.user;
   }
 
   fake_group = get_param_ptr(get_dir_ctxt(fxp->pool, path), "DirFakeGroup",
     FALSE);
   if (fake_group != NULL &&
-      strncmp(fake_group, "~", 2) == 0) {
+      strcmp(fake_group, "~") == 0) {
     fake_group = session.group;
   }
 
@@ -14266,13 +14284,14 @@ int sftp_fxp_set_displaylogin(const char *path) {
   /* Support "DisplayLogin none", in case we need to disable support for
    * DisplayLogin files inherited from <Global> configurations.
    */
-  if (strncasecmp(path, "none", 5) == 0) {
+  if (strcasecmp(path, "none") == 0) {
     return 0;
   }
 
   fh = pr_fsio_open(path, O_RDONLY);
-  if (fh == NULL)
+  if (fh == NULL) {
     return -1;
+  }
 
   fxp_displaylogin_fh = fh;
   return 0;
@@ -14374,14 +14393,15 @@ int sftp_fxp_close_session(uint32_t channel_id) {
   /* Check to see if we have an SFTP session opened for the given channel ID.
    */
   sess = fxp_sessions;
-  while (sess) {
+  while (sess != NULL) {
     pr_signals_handle();
 
     if (sess->channel_id == channel_id) {
-      if (sess->next)
+      if (sess->next != NULL) {
         sess->next->prev = sess->prev;
+      }
 
-      if (sess->prev) {
+      if (sess->prev != NULL) {
         sess->prev->next = sess->next;
 
       } else {
@@ -14400,7 +14420,7 @@ int sftp_fxp_close_session(uint32_t channel_id) {
 
           c = find_config(main_server->conf, CONF_PARAM, "DeleteAbortedStores",
             FALSE);
-          if (c) {
+          if (c != NULL) {
             callback_data = c->argv[0];
           }
 

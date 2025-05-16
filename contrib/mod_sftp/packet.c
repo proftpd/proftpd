@@ -1,6 +1,6 @@
 /*
  * ProFTPD - mod_sftp packet IO
- * Copyright (c) 2008-2024 TJ Saunders
+ * Copyright (c) 2008-2025 TJ Saunders
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -525,8 +525,6 @@ static void read_packet_discard(int sockfd) {
     flags = SFTP_PACKET_READ_FL_PESSIMISTIC;
     sftp_ssh2_packet_sock_read(sockfd, buf, buflen, flags);
   }
-
-  return;
 }
 
 static int read_packet_len(int sockfd, struct ssh2_packet *pkt,
@@ -935,6 +933,9 @@ const char *sftp_ssh2_packet_get_msg_type_desc(unsigned char msg_type) {
 
     case SFTP_SSH2_MSG_CHANNEL_FAILURE:
       return "SSH_MSG_CHANNEL_FAILURE";
+
+    default:
+      break;
   }
 
   return "(unknown)";

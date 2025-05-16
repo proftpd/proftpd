@@ -1,6 +1,6 @@
 /*
  * ProFTPD - mod_sftp agent
- * Copyright (c) 2012-2021 TJ Saunders
+ * Copyright (c) 2012-2025 TJ Saunders
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -67,15 +67,12 @@ static int agent_failure(char resp_status) {
 
   switch (resp_status) {
     case SFTP_SSH_AGENT_FAILURE:
-      failed = TRUE;
-      break;
-
     case SFTP_SSH_AGENT_EXTENDED_FAILURE:
-      failed = TRUE;
-      break;
-
     case SFTP_SSHCOM_AGENT_FAILURE:
       failed = TRUE;
+      break;
+
+    default:
       break;
   }
 

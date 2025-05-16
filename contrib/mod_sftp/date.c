@@ -1,6 +1,6 @@
 /*
  * ProFTPD - mod_sftp date(1) simulation
- * Copyright (c) 2012-2020 TJ Saunders
+ * Copyright (c) 2012-2025 TJ Saunders
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -125,6 +125,9 @@ int sftp_date_set_params(pool *p, uint32_t channel_id, array_header *req) {
         /* Ignore unsupported options */
         (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
           "ignoring supported date(1) option '%c'", (char) optopt);
+        break;
+
+      default:
         break;
     }
   }

@@ -1,6 +1,6 @@
 /*
  * ProFTPD - mod_sftp keyboard-interactive driver mgmt
- * Copyright (c) 2008-2021 TJ Saunders
+ * Copyright (c) 2008-2025 TJ Saunders
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -160,7 +160,7 @@ int sftp_kbdint_unregister_driver(const char *name) {
   for (kd = drivers; kd; kd = kd->next) {
     if (strcmp(kd->name, name) == 0) {
 
-      if (kd->prev) {
+      if (kd->prev != NULL) {
         kd->prev->next = kd->next;
 
       } else {
@@ -168,8 +168,9 @@ int sftp_kbdint_unregister_driver(const char *name) {
         drivers = kd->next;
       }
 
-      if (kd->next)
+      if (kd->next != NULL) {
         kd->next->prev = kd->prev;
+      }
 
       kd->next = kd->prev = NULL;
       ndrivers--;

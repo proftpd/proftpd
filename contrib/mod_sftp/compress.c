@@ -1,6 +1,6 @@
 /*
  * ProFTPD - mod_sftp compression
- * Copyright (c) 2008-2016 TJ Saunders
+ * Copyright (c) 2008-2025 TJ Saunders
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -534,7 +534,7 @@ const char *sftp_compress_get_read_algo(void) {
 }
 
 int sftp_compress_set_read_algo(const char *algo) {
-  if (strncmp(algo, "none", 5) == 0) {
+  if (strcmp(algo, "none") == 0) {
     return 0;
   }
 
@@ -555,7 +555,7 @@ const char *sftp_compress_get_write_algo(void) {
 }
 
 int sftp_compress_set_write_algo(const char *algo) {
-  if (strncmp(algo, "none", 5) == 0) {
+  if (strcmp(algo, "none") == 0) {
     return 0;
   }
 

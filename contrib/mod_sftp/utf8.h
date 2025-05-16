@@ -1,6 +1,6 @@
 /*
  * ProFTPD - mod_sftp UTF8 encoding
- * Copyright (c) 2008-2016 TJ Saunders
+ * Copyright (c) 2008-2015 TJ Saunders
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -24,6 +24,8 @@
 
 #ifndef MOD_SFTP_UTF8_H
 #define MOD_SFTP_UTF8_H
+
+#include "mod_sftp.h"
 
 char *sftp_utf8_decode_str(pool *p, const char *str);
 char *sftp_utf8_encode_str(pool *p, const char *str);
