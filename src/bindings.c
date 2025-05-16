@@ -909,7 +909,7 @@ int pr_ipbind_open(const pr_netaddr_t *addr, unsigned int port,
     namebinds = (pr_namebind_t **) ipbind->ib_namebinds->elts;
     for (i = 0; i < ipbind->ib_namebinds->nelts; i++) {
       int res;
-      pr_namebind_t *nb = namebinds[i];
+      pr_namebind_t *nb;
 
       pr_signals_handle();
 
