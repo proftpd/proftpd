@@ -67,7 +67,7 @@ static config_rec *wrap2_ctxt = NULL;
 #define WRAP2_PARANOID	"paranoid"
 
 #define WRAP2_IS_KNOWN_HOSTNAME(s) \
-  (strcasecmp((s), WRAP2_UNKNOWN) != 0 && strcasecmp((s), WRAP2_PARANOID))
+  (strcasecmp((s), WRAP2_UNKNOWN) != 0 && strcasecmp((s), WRAP2_PARANOID) != 0)
 
 #define WRAP2_IS_NOT_INADDR(s) \
   (s[strspn(s,"01234567890./")] != 0)
@@ -1075,7 +1075,8 @@ static int wrap2_handle_opts(array_header *options, wrap2_conn_t *conn) {
 
     /* Advance to the matching option table entry. */
     for (opt = options_tab; opt->name && strcasecmp(opt->name, key) != 0;
-      opt++);
+      opt++) {
+    }
 
     if (opt->name == 0) {
       wrap2_log("unknown option name: '%s'", key);
@@ -1958,27 +1959,27 @@ MODRET wrap2_post_pass_err(cmd_rec *cmd) {
 
 static void wrap2_exit_ev(const void *event_data, void *user_data) {
   wrap2_closelog();
-  return;
 }
 
 #if defined(PR_SHARED_MODULE)
 static void wrap2_mod_unload_ev(const void *event_data, void *user_data) {
-  if (strcmp("mod_wrap2.c", (const char *) event_data) == 0) {
-    /* Unregister ourselves from all events. */
-    pr_event_unregister(&wrap2_module, NULL, NULL);
-
-    wrap2_unregister("builtin");
-
-    if (wrap2_pool) {
-      destroy_pool(wrap2_pool);
-      wrap2_pool = NULL;
-    }
-
-    close(wrap2_logfd);
-    wrap2_logfd = -1;
+  if (strcmp("mod_wrap2.c", (const char *) event_data) != 0) {
+    return;
   }
-}
 
+  /* Unregister ourselves from all events. */
+  pr_event_unregister(&wrap2_module, NULL, NULL);
+
+  wrap2_unregister("builtin");
+
+  if (wrap2_pool != NULL) {
+    destroy_pool(wrap2_pool);
+    wrap2_pool = NULL;
+  }
+
+  close(wrap2_logfd);
+  wrap2_logfd = -1;
+}
 #endif /* PR_SHARED_MODULE */
 
 static void wrap2_restart_ev(const void *event_data, void *user_data) {
@@ -2063,8 +2064,9 @@ static int wrap2_sess_init(void) {
   /* Look up any configured WrapServiceName */
   wrap2_service_name = get_param_ptr(main_server->conf, "WrapServiceName",
     FALSE);
-  if (wrap2_service_name == NULL)
+  if (wrap2_service_name == NULL) {
     wrap2_service_name = WRAP2_DEFAULT_SERVICE_NAME;
+  }
 
   /* Make sure that tables will be closed when the child exits. */
   pr_event_register(&wrap2_module, "core.exit", wrap2_exit_ev, NULL);
@@ -2083,7 +2085,7 @@ static int wrap2_sess_init(void) {
 
   if (wrap2_opts & WRAP_OPT_CHECK_ON_CONNECT) {
     c = find_config(main_server->conf, CONF_PARAM, "WrapTables", FALSE);
-    if (c) {
+    if (c != NULL) {
       wrap2_conn_t conn;
 
       wrap2_allow_table = c->argv[0];
