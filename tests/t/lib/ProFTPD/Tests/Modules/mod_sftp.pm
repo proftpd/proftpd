@@ -1188,7 +1188,7 @@ my $TESTS = {
 
   sftp_config_client_match_no_matching_protocol_version_issue1200 => {
     order => ++$order,
-    test_class => [qw(bug feat_nls forking ssh2)],
+    test_class => [qw(bug feature_nls forking ssh2)],
   },
 
   sftp_config_client_match_ciphers_issue1444 => {
@@ -1491,52 +1491,52 @@ my $TESTS = {
     test_class => [qw(bug forking sftp ssh2)],
   },
 
-  sftp_config_fingerprint_default_issue1916 => {
+  sftp_config_key_fingerprint_default_issue1916 => {
     order => ++$order,
     test_class => [qw(bug forking sftp ssh2)],
   },
 
-  sftp_config_fingerprint_sha256_base64_issue1916 => {
+  sftp_config_key_fingerprint_sha256_base64_issue1916 => {
     order => ++$order,
     test_class => [qw(bug forking sftp ssh2)],
   },
 
-  sftp_config_fingerprint_sha256_hex_issue1916 => {
+  sftp_config_key_fingerprint_sha256_hex_issue1916 => {
     order => ++$order,
     test_class => [qw(bug forking sftp ssh2)],
   },
 
-  sftp_config_fingerprint_sha256_hex_colons_issue1916 => {
+  sftp_config_key_fingerprint_sha256_hex_colons_issue1916 => {
     order => ++$order,
     test_class => [qw(bug forking sftp ssh2)],
   },
 
-  sftp_config_fingerprint_sha1_base64_issue1916 => {
+  sftp_config_key_fingerprint_sha1_base64_issue1916 => {
     order => ++$order,
     test_class => [qw(bug forking sftp ssh2)],
   },
 
-  sftp_config_fingerprint_sha1_hex_issue1916 => {
+  sftp_config_key_fingerprint_sha1_hex_issue1916 => {
     order => ++$order,
     test_class => [qw(bug forking sftp ssh2)],
   },
 
-  sftp_config_fingerprint_sha1_hex_colons_issue1916 => {
+  sftp_config_key_fingerprint_sha1_hex_colons_issue1916 => {
     order => ++$order,
     test_class => [qw(bug forking sftp ssh2)],
   },
 
-  sftp_config_fingerprint_md5_base64_issue1916 => {
+  sftp_config_key_fingerprint_md5_base64_issue1916 => {
     order => ++$order,
     test_class => [qw(bug forking sftp ssh2)],
   },
 
-  sftp_config_fingerprint_md5_hex_issue1916 => {
+  sftp_config_key_fingerprint_md5_hex_issue1916 => {
     order => ++$order,
     test_class => [qw(bug forking sftp ssh2)],
   },
 
-  sftp_config_fingerprint_md5_hex_colons_issue1916 => {
+  sftp_config_key_fingerprint_md5_hex_colons_issue1916 => {
     order => ++$order,
     test_class => [qw(bug forking sftp ssh2)],
   },
@@ -1773,7 +1773,7 @@ my $TESTS = {
 
   scp_upload_fifo_bug3312 => {
     order => ++$order,
-    test_class => [qw(forking scp ssh2)],
+    test_class => [qw(bug flaky forking scp ssh2)],
   },
 
   scp_upload_fifo_bug3313 => {
@@ -2091,7 +2091,11 @@ sub list_tests {
   # written to use the external sftp(1) command?
   my $skipped_tests = {
     ssh2_cipher_c2s_arcfour => 1,
+    ssh2_cipher_c2s_blowfish_cbc => 1,
+    ssh2_cipher_c2s_cast128_cbc => 1,
     ssh2_cipher_s2c_arcfour => 1,
+    ssh2_cipher_s2c_blowfish_cbc => 1,
+    ssh2_cipher_s2c_cast128_cbc => 1,
     ssh2_compress_c2s_zlib => 1,
     ssh2_compress_s2c_zlib => 1,
     ssh2_hostkey_rsa_only => 1,
@@ -3529,7 +3533,7 @@ EOC
       # libssh2, and thus Net::SSH2, don't support ECC/ECDH yet.  So we
       # use the external sftp(1) client (e.g. OpenSSH-5.9p1) to test.
 
-      my $sftp = '/Users/tj/local/openssh-7.9p1/bin/sftp';
+      my $sftp = '/Users/tj/local/openssh-9.7p1/bin/sftp';
 
       my @cmd = (
         $sftp,
@@ -3781,7 +3785,7 @@ EOC
       # libssh2, and thus Net::SSH2, don't support ECC/ECDH yet.  So we
       # use the external sftp(1) client (e.g. OpenSSH-5.9p1) to test.
 
-      my $sftp = '/Users/tj/local/openssh-7.9p1/bin/sftp';
+      my $sftp = '/Users/tj/local/openssh-9.7p1/bin/sftp';
 
       my @cmd = (
         $sftp,
@@ -4033,7 +4037,7 @@ EOC
       # libssh2, and thus Net::SSH2, don't support ECC/ECDH yet.  So we
       # use the external sftp(1) client (e.g. OpenSSH-5.9p1) to test.
 
-      my $sftp = '/Users/tj/local/openssh-7.9p1/bin/sftp';
+      my $sftp = '/Users/tj/local/openssh-9.7p1/bin/sftp';
 
       my @cmd = (
         $sftp,
@@ -4234,8 +4238,8 @@ EOC
   defined(my $pid = fork()) or die("Can't fork: $!");
   if ($pid) {
     eval {
-      # We use OpenSSH-9.6p1 to test our "strict KEX" Terrapin mitigations.
-      my $sftp = '/Users/tj/local/openssh-9.6p1/bin/sftp';
+      # We use OpenSSH-9.7p1 to test our "strict KEX" Terrapin mitigations.
+      my $sftp = '/Users/tj/local/openssh-9.7p1/bin/sftp';
 
       my @cmd = (
         $sftp,
@@ -4727,7 +4731,7 @@ EOC
     eval {
       # libssh2, and thus Net::SSH2, don't support rsa-sha256 yet.  So we
       # use the external sftp(1) client (e.g. OpenSSH-7.9p1) to test.
-      my $sftp = '/Users/tj/local/openssh-7.9p1/bin/sftp';
+      my $sftp = '/Users/tj/local/openssh-9.7p1/bin/sftp';
 
       # Since we are using a non-standard sftp(1), make sure the system
       # ssh-agent, which may not support SHA-2 signatures, is not involved.
@@ -4912,7 +4916,7 @@ EOC
     eval {
       # libssh2, and thus Net::SSH2, don't support rsa-sha512 yet.  So we
       # use the external sftp(1) client (e.g. OpenSSH-7.9p1) to test.
-      my $sftp = '/Users/tj/local/openssh-7.9p1/bin/sftp';
+      my $sftp = '/Users/tj/local/openssh-9.7p1/bin/sftp';
 
       my @cmd = (
         $sftp,
@@ -6466,7 +6470,7 @@ sub ssh2_ext_hostkey_openssh_rsa_issue793 {
       # libssh2, and thus Net::SSH2, don't support OpenSSH formatted keys.
       # So we use the external sftp(1) client (e.g. OpenSSH-7.9p1) to test.
 
-      my $sftp = '/Users/tj/local/openssh-7.9p1/bin/sftp';
+      my $sftp = '/Users/tj/local/openssh-9.7p1/bin/sftp';
 
       my @cmd = (
         $sftp,
@@ -6657,7 +6661,7 @@ sub ssh2_ext_hostkey_openssh_rsa_passphraseprovider_issue793 {
       # libssh2, and thus Net::SSH2, don't support OpenSSH formatted keys.
       # So we use the external sftp(1) client (e.g. OpenSSH-7.9p1) to test.
 
-      my $sftp = '/Users/tj/local/openssh-7.9p1/bin/sftp';
+      my $sftp = '/Users/tj/local/openssh-9.7p1/bin/sftp';
 
       my @cmd = (
         $sftp,
@@ -7063,7 +7067,7 @@ EOC
       # libssh2, and thus Net::SSH2, don't support OpenSSH formatted keys.
       # So we use the external sftp(1) client (e.g. OpenSSH-7.9p1) to test.
 
-      my $sftp = '/Users/tj/local/openssh-7.9p1/bin/sftp';
+      my $sftp = '/Users/tj/local/openssh-9.7p1/bin/sftp';
 
       my @cmd = (
         $sftp,
@@ -7266,7 +7270,7 @@ EOC
       # libssh2, and thus Net::SSH2, don't support OpenSSH formatted keys.
       # So we use the external sftp(1) client (e.g. OpenSSH-7.9p1) to test.
 
-      my $sftp = '/Users/tj/local/openssh-7.9p1/bin/sftp';
+      my $sftp = '/Users/tj/local/openssh-9.7p1/bin/sftp';
 
       my @cmd = (
         $sftp,
@@ -7472,7 +7476,7 @@ EOC
       # libssh2, and thus Net::SSH2, don't support OpenSSH formatted keys.
       # So we use the external sftp(1) client (e.g. OpenSSH-7.9p1) to test.
 
-      my $sftp = '/Users/tj/local/openssh-7.9p1/bin/sftp';
+      my $sftp = '/Users/tj/local/openssh-9.7p1/bin/sftp';
 
       my @cmd = (
         $sftp,
@@ -7678,7 +7682,7 @@ EOC
       # libssh2, and thus Net::SSH2, don't support OpenSSH formatted keys.
       # So we use the external sftp(1) client (e.g. OpenSSH-7.9p1) to test.
 
-      my $sftp = '/Users/tj/local/openssh-7.9p1/bin/sftp';
+      my $sftp = '/Users/tj/local/openssh-9.7p1/bin/sftp';
 
       my @cmd = (
         $sftp,
@@ -7780,51 +7784,20 @@ EOC
 sub ssh2_cipher_c2s_aes256_cbc {
   my $self = shift;
   my $tmpdir = $self->{tmpdir};
-
-  my $config_file = "$tmpdir/sftp.conf";
-  my $pid_file = File::Spec->rel2abs("$tmpdir/sftp.pid");
-  my $scoreboard_file = File::Spec->rel2abs("$tmpdir/sftp.scoreboard");
-
-  my $log_file = test_get_logfile();
-
-  my $auth_user_file = File::Spec->rel2abs("$tmpdir/sftp.passwd");
-  my $auth_group_file = File::Spec->rel2abs("$tmpdir/sftp.group");
-
-  my $user = 'proftpd';
-  my $passwd = 'test';
-  my $group = 'ftpd';
-  my $home_dir = File::Spec->rel2abs($tmpdir);
-  my $uid = 500;
-  my $gid = 500;
-
-  # Make sure that, if we're running as root, that the home directory has
-  # permissions/privs set for the account we create
-  if ($< == 0) {
-    unless (chmod(0755, $home_dir)) {
-      die("Can't set perms on $home_dir to 0755: $!");
-    }
-
-    unless (chown($uid, $gid, $home_dir)) {
-      die("Can't set owner of $home_dir to $uid/$gid: $!");
-    }
-  }
-
-  auth_user_write($auth_user_file, $user, $passwd, $uid, $gid, $home_dir,
-    '/bin/bash');
-  auth_group_write($auth_group_file, $group, $gid, $user);
+  my $setup = test_setup($tmpdir, 'sftp');
 
   my $rsa_host_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/ssh_host_rsa_key');
   my $dsa_host_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/ssh_host_dsa_key');
 
   my $config = {
-    PidFile => $pid_file,
-    ScoreboardFile => $scoreboard_file,
-    SystemLog => $log_file,
-    TraceLog => $log_file,
-    Trace => 'DEFAULT:10 ssh2:20 sftp:20 scp:20',
+    PidFile => $setup->{pid_file},
+    ScoreboardFile => $setup->{scoreboard_file},
+    SystemLog => $setup->{log_file},
+    TraceLog => $setup->{log_file},
+    Trace => 'ssh2:20 sftp:20 scp:20',
 
-    AuthUserFile => $auth_user_file,
-    AuthGroupFile => $auth_group_file,
+    AuthUserFile => $setup->{auth_user_file},
+    AuthGroupFile => $setup->{auth_group_file},
     AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
@@ -7834,14 +7807,16 @@ sub ssh2_cipher_c2s_aes256_cbc {
 
       'mod_sftp.c' => [
         "SFTPEngine on",
-        "SFTPLog $log_file",
+        "SFTPLog $setup->{log_file}",
         "SFTPHostKey $rsa_host_key",
         "SFTPHostKey $dsa_host_key",
+        "SFTPCiphers aes256-cbc",
       ],
     },
   };
 
-  my ($port, $config_user, $config_group) = config_write($config_file, $config);
+  my ($port, $config_user, $config_group) = config_write($setup->{config_file},
+    $config);
 
   # Open pipes, for use between the parent and child processes.  Specifically,
   # the child will indicate when it's done with its test by writing a message
@@ -7878,7 +7853,6 @@ sub ssh2_cipher_c2s_aes256_cbc {
 
       $ssh2->disconnect();
     };
-
     if ($@) {
       $ex = $@;
     }
@@ -7887,7 +7861,7 @@ sub ssh2_cipher_c2s_aes256_cbc {
     $wfh->flush();
 
   } else {
-    eval { server_wait($config_file, $rfh) };
+    eval { server_wait($setup->{config_file}, $rfh) };
     if ($@) {
       warn($@);
       exit 1;
@@ -7897,68 +7871,29 @@ sub ssh2_cipher_c2s_aes256_cbc {
   }
 
   # Stop server
-  server_stop($pid_file);
-
+  server_stop($setup->{pid_file});
   $self->assert_child_ok($pid);
 
-  if ($ex) {
-    test_append_logfile($log_file, $ex);
-    unlink($log_file);
-
-    die($ex);
-  }
-
-  unlink($log_file);
+  test_cleanup($setup->{log_file}, $ex);
 }
 
 sub ssh2_cipher_c2s_aes192_cbc {
   my $self = shift;
   my $tmpdir = $self->{tmpdir};
-
-  my $config_file = "$tmpdir/sftp.conf";
-  my $pid_file = File::Spec->rel2abs("$tmpdir/sftp.pid");
-  my $scoreboard_file = File::Spec->rel2abs("$tmpdir/sftp.scoreboard");
-
-  my $log_file = test_get_logfile();
-
-  my $auth_user_file = File::Spec->rel2abs("$tmpdir/sftp.passwd");
-  my $auth_group_file = File::Spec->rel2abs("$tmpdir/sftp.group");
-
-  my $user = 'proftpd';
-  my $passwd = 'test';
-  my $group = 'ftpd';
-  my $home_dir = File::Spec->rel2abs($tmpdir);
-  my $uid = 500;
-  my $gid = 500;
-
-  # Make sure that, if we're running as root, that the home directory has
-  # permissions/privs set for the account we create
-  if ($< == 0) {
-    unless (chmod(0755, $home_dir)) {
-      die("Can't set perms on $home_dir to 0755: $!");
-    }
-
-    unless (chown($uid, $gid, $home_dir)) {
-      die("Can't set owner of $home_dir to $uid/$gid: $!");
-    }
-  }
-
-  auth_user_write($auth_user_file, $user, $passwd, $uid, $gid, $home_dir,
-    '/bin/bash');
-  auth_group_write($auth_group_file, $group, $gid, $user);
+  my $setup = test_setup($tmpdir, 'sftp');
 
   my $rsa_host_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/ssh_host_rsa_key');
   my $dsa_host_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/ssh_host_dsa_key');
 
   my $config = {
-    PidFile => $pid_file,
-    ScoreboardFile => $scoreboard_file,
-    SystemLog => $log_file,
-    TraceLog => $log_file,
-    Trace => 'DEFAULT:10 ssh2:20 sftp:20 scp:20',
+    PidFile => $setup->{pid_file},
+    ScoreboardFile => $setup->{scoreboard_file},
+    SystemLog => $setup->{log_file},
+    TraceLog => $setup->{log_file},
+    Trace => 'ssh2:20 sftp:20 scp:20',
 
-    AuthUserFile => $auth_user_file,
-    AuthGroupFile => $auth_group_file,
+    AuthUserFile => $setup->{auth_user_file},
+    AuthGroupFile => $setup->{auth_group_file},
     AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
@@ -7968,14 +7903,16 @@ sub ssh2_cipher_c2s_aes192_cbc {
 
       'mod_sftp.c' => [
         "SFTPEngine on",
-        "SFTPLog $log_file",
+        "SFTPLog $setup->{log_file}",
         "SFTPHostKey $rsa_host_key",
         "SFTPHostKey $dsa_host_key",
+        "SFTPCiphers aes192-cbc",
       ],
     },
   };
 
-  my ($port, $config_user, $config_group) = config_write($config_file, $config);
+  my ($port, $config_user, $config_group) = config_write($setup->{config_file},
+    $config);
 
   # Open pipes, for use between the parent and child processes.  Specifically,
   # the child will indicate when it's done with its test by writing a message
@@ -8012,7 +7949,6 @@ sub ssh2_cipher_c2s_aes192_cbc {
 
       $ssh2->disconnect();
     };
-
     if ($@) {
       $ex = $@;
     }
@@ -8021,7 +7957,7 @@ sub ssh2_cipher_c2s_aes192_cbc {
     $wfh->flush();
 
   } else {
-    eval { server_wait($config_file, $rfh) };
+    eval { server_wait($setup->{config_file}, $rfh) };
     if ($@) {
       warn($@);
       exit 1;
@@ -8031,68 +7967,29 @@ sub ssh2_cipher_c2s_aes192_cbc {
   }
 
   # Stop server
-  server_stop($pid_file);
-
+  server_stop($setup->{pid_file});
   $self->assert_child_ok($pid);
 
-  if ($ex) {
-    test_append_logfile($log_file, $ex);
-    unlink($log_file);
-
-    die($ex);
-  }
-
-  unlink($log_file);
+  test_cleanup($setup->{log_file}, $ex);
 }
 
 sub ssh2_cipher_c2s_aes128_cbc {
   my $self = shift;
   my $tmpdir = $self->{tmpdir};
-
-  my $config_file = "$tmpdir/sftp.conf";
-  my $pid_file = File::Spec->rel2abs("$tmpdir/sftp.pid");
-  my $scoreboard_file = File::Spec->rel2abs("$tmpdir/sftp.scoreboard");
-
-  my $log_file = test_get_logfile();
-
-  my $auth_user_file = File::Spec->rel2abs("$tmpdir/sftp.passwd");
-  my $auth_group_file = File::Spec->rel2abs("$tmpdir/sftp.group");
-
-  my $user = 'proftpd';
-  my $passwd = 'test';
-  my $group = 'ftpd';
-  my $home_dir = File::Spec->rel2abs($tmpdir);
-  my $uid = 500;
-  my $gid = 500;
-
-  # Make sure that, if we're running as root, that the home directory has
-  # permissions/privs set for the account we create
-  if ($< == 0) {
-    unless (chmod(0755, $home_dir)) {
-      die("Can't set perms on $home_dir to 0755: $!");
-    }
-
-    unless (chown($uid, $gid, $home_dir)) {
-      die("Can't set owner of $home_dir to $uid/$gid: $!");
-    }
-  }
-
-  auth_user_write($auth_user_file, $user, $passwd, $uid, $gid, $home_dir,
-    '/bin/bash');
-  auth_group_write($auth_group_file, $group, $gid, $user);
+  my $setup = test_setup($tmpdir, 'sftp');
 
   my $rsa_host_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/ssh_host_rsa_key');
   my $dsa_host_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/ssh_host_dsa_key');
 
   my $config = {
-    PidFile => $pid_file,
-    ScoreboardFile => $scoreboard_file,
-    SystemLog => $log_file,
-    TraceLog => $log_file,
-    Trace => 'DEFAULT:10 ssh2:20 sftp:20 scp:20',
+    PidFile => $setup->{pid_file},
+    ScoreboardFile => $setup->{scoreboard_file},
+    SystemLog => $setup->{log_file},
+    TraceLog => $setup->{log_file},
+    Trace => 'ssh2:20 sftp:20 scp:20',
 
-    AuthUserFile => $auth_user_file,
-    AuthGroupFile => $auth_group_file,
+    AuthUserFile => $setup->{auth_user_file},
+    AuthGroupFile => $setup->{auth_group_file},
     AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
@@ -8102,14 +7999,16 @@ sub ssh2_cipher_c2s_aes128_cbc {
 
       'mod_sftp.c' => [
         "SFTPEngine on",
-        "SFTPLog $log_file",
+        "SFTPLog $setup->{log_file}",
         "SFTPHostKey $rsa_host_key",
         "SFTPHostKey $dsa_host_key",
+        "SFTPCiphers aes128-cbc",
       ],
     },
   };
 
-  my ($port, $config_user, $config_group) = config_write($config_file, $config);
+  my ($port, $config_user, $config_group) = config_write($setup->{config_file},
+    $config);
 
   # Open pipes, for use between the parent and child processes.  Specifically,
   # the child will indicate when it's done with its test by writing a message
@@ -8146,7 +8045,6 @@ sub ssh2_cipher_c2s_aes128_cbc {
 
       $ssh2->disconnect();
     };
-
     if ($@) {
       $ex = $@;
     }
@@ -8155,7 +8053,7 @@ sub ssh2_cipher_c2s_aes128_cbc {
     $wfh->flush();
 
   } else {
-    eval { server_wait($config_file, $rfh) };
+    eval { server_wait($setup->{config_file}, $rfh) };
     if ($@) {
       warn($@);
       exit 1;
@@ -8165,68 +8063,29 @@ sub ssh2_cipher_c2s_aes128_cbc {
   }
 
   # Stop server
-  server_stop($pid_file);
-
+  server_stop($setup->{pid_file});
   $self->assert_child_ok($pid);
 
-  if ($ex) {
-    test_append_logfile($log_file, $ex);
-    unlink($log_file);
-
-    die($ex);
-  }
-
-  unlink($log_file);
+  test_cleanup($setup->{log_file}, $ex);
 }
 
 sub ssh2_cipher_c2s_blowfish_cbc {
   my $self = shift;
   my $tmpdir = $self->{tmpdir};
-
-  my $config_file = "$tmpdir/sftp.conf";
-  my $pid_file = File::Spec->rel2abs("$tmpdir/sftp.pid");
-  my $scoreboard_file = File::Spec->rel2abs("$tmpdir/sftp.scoreboard");
-
-  my $log_file = test_get_logfile();
-
-  my $auth_user_file = File::Spec->rel2abs("$tmpdir/sftp.passwd");
-  my $auth_group_file = File::Spec->rel2abs("$tmpdir/sftp.group");
-
-  my $user = 'proftpd';
-  my $passwd = 'test';
-  my $group = 'ftpd';
-  my $home_dir = File::Spec->rel2abs($tmpdir);
-  my $uid = 500;
-  my $gid = 500;
-
-  # Make sure that, if we're running as root, that the home directory has
-  # permissions/privs set for the account we create
-  if ($< == 0) {
-    unless (chmod(0755, $home_dir)) {
-      die("Can't set perms on $home_dir to 0755: $!");
-    }
-
-    unless (chown($uid, $gid, $home_dir)) {
-      die("Can't set owner of $home_dir to $uid/$gid: $!");
-    }
-  }
-
-  auth_user_write($auth_user_file, $user, $passwd, $uid, $gid, $home_dir,
-    '/bin/bash');
-  auth_group_write($auth_group_file, $group, $gid, $user);
+  my $setup = test_setup($tmpdir, 'sftp');
 
   my $rsa_host_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/ssh_host_rsa_key');
   my $dsa_host_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/ssh_host_dsa_key');
 
   my $config = {
-    PidFile => $pid_file,
-    ScoreboardFile => $scoreboard_file,
-    SystemLog => $log_file,
-    TraceLog => $log_file,
-    Trace => 'DEFAULT:10 ssh2:20 sftp:20 scp:20',
+    PidFile => $setup->{pid_file},
+    ScoreboardFile => $setup->{scoreboard_file},
+    SystemLog => $setup->{log_file},
+    TraceLog => $setup->{log_file},
+    Trace => 'ssh2:20 sftp:20 scp:20',
 
-    AuthUserFile => $auth_user_file,
-    AuthGroupFile => $auth_group_file,
+    AuthUserFile => $setup->{auth_user_file},
+    AuthGroupFile => $setup->{auth_group_file},
     AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
@@ -8236,7 +8095,7 @@ sub ssh2_cipher_c2s_blowfish_cbc {
 
       'mod_sftp.c' => [
         "SFTPEngine on",
-        "SFTPLog $log_file",
+        "SFTPLog $setup->{log_file}",
         "SFTPHostKey $rsa_host_key",
         "SFTPHostKey $dsa_host_key",
         "SFTPCiphers blowfish-cbc",
@@ -8244,7 +8103,8 @@ sub ssh2_cipher_c2s_blowfish_cbc {
     },
   };
 
-  my ($port, $config_user, $config_group) = config_write($config_file, $config);
+  my ($port, $config_user, $config_group) = config_write($setup->{config_file},
+    $config);
 
   # Open pipes, for use between the parent and child processes.  Specifically,
   # the child will indicate when it's done with its test by writing a message
@@ -8281,7 +8141,6 @@ sub ssh2_cipher_c2s_blowfish_cbc {
 
       $ssh2->disconnect();
     };
-
     if ($@) {
       $ex = $@;
     }
@@ -8290,7 +8149,7 @@ sub ssh2_cipher_c2s_blowfish_cbc {
     $wfh->flush();
 
   } else {
-    eval { server_wait($config_file, $rfh) };
+    eval { server_wait($setup->{config_file}, $rfh) };
     if ($@) {
       warn($@);
       exit 1;
@@ -8300,18 +8159,10 @@ sub ssh2_cipher_c2s_blowfish_cbc {
   }
 
   # Stop server
-  server_stop($pid_file);
-
+  server_stop($setup->{pid_file});
   $self->assert_child_ok($pid);
 
-  if ($ex) {
-    test_append_logfile($log_file, $ex);
-    unlink($log_file);
-
-    die($ex);
-  }
-
-  unlink($log_file);
+  test_cleanup($setup->{log_file}, $ex);
 }
 
 sub ssh2_cipher_c2s_arcfour {
@@ -8483,6 +8334,7 @@ sub ssh2_cipher_c2s_cast128_cbc {
         "SFTPLog $setup->{log_file}",
         "SFTPHostKey $rsa_host_key",
         "SFTPHostKey $dsa_host_key",
+        "SFTPCiphers cast128-cbc",
       ],
     },
   };
@@ -8554,51 +8406,20 @@ sub ssh2_cipher_c2s_cast128_cbc {
 sub ssh2_cipher_c2s_3des_cbc {
   my $self = shift;
   my $tmpdir = $self->{tmpdir};
-
-  my $config_file = "$tmpdir/sftp.conf";
-  my $pid_file = File::Spec->rel2abs("$tmpdir/sftp.pid");
-  my $scoreboard_file = File::Spec->rel2abs("$tmpdir/sftp.scoreboard");
-
-  my $log_file = test_get_logfile();
-
-  my $auth_user_file = File::Spec->rel2abs("$tmpdir/sftp.passwd");
-  my $auth_group_file = File::Spec->rel2abs("$tmpdir/sftp.group");
-
-  my $user = 'proftpd';
-  my $passwd = 'test';
-  my $group = 'ftpd';
-  my $home_dir = File::Spec->rel2abs($tmpdir);
-  my $uid = 500;
-  my $gid = 500;
-
-  # Make sure that, if we're running as root, that the home directory has
-  # permissions/privs set for the account we create
-  if ($< == 0) {
-    unless (chmod(0755, $home_dir)) {
-      die("Can't set perms on $home_dir to 0755: $!");
-    }
-
-    unless (chown($uid, $gid, $home_dir)) {
-      die("Can't set owner of $home_dir to $uid/$gid: $!");
-    }
-  }
-
-  auth_user_write($auth_user_file, $user, $passwd, $uid, $gid, $home_dir,
-    '/bin/bash');
-  auth_group_write($auth_group_file, $group, $gid, $user);
+  my $setup = test_setup($tmpdir, 'sftp');
 
   my $rsa_host_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/ssh_host_rsa_key');
   my $dsa_host_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/ssh_host_dsa_key');
 
   my $config = {
-    PidFile => $pid_file,
-    ScoreboardFile => $scoreboard_file,
-    SystemLog => $log_file,
-    TraceLog => $log_file,
-    Trace => 'DEFAULT:10 ssh2:20 sftp:20 scp:20',
+    PidFile => $setup->{pid_file},
+    ScoreboardFile => $setup->{scoreboard_file},
+    SystemLog => $setup->{log_file},
+    TraceLog => $setup->{log_file},
+    Trace => 'ssh2:20 sftp:20 scp:20',
 
-    AuthUserFile => $auth_user_file,
-    AuthGroupFile => $auth_group_file,
+    AuthUserFile => $setup->{auth_user_file},
+    AuthGroupFile => $setup->{auth_group_file},
     AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
@@ -8608,14 +8429,16 @@ sub ssh2_cipher_c2s_3des_cbc {
 
       'mod_sftp.c' => [
         "SFTPEngine on",
-        "SFTPLog $log_file",
+        "SFTPLog $setup->{log_file}",
         "SFTPHostKey $rsa_host_key",
         "SFTPHostKey $dsa_host_key",
+        "SFTPCiphers 3des-cbc",
       ],
     },
   };
 
-  my ($port, $config_user, $config_group) = config_write($config_file, $config);
+  my ($port, $config_user, $config_group) = config_write($setup->{config_file},
+    $config);
 
   # Open pipes, for use between the parent and child processes.  Specifically,
   # the child will indicate when it's done with its test by writing a message
@@ -8652,7 +8475,6 @@ sub ssh2_cipher_c2s_3des_cbc {
 
       $ssh2->disconnect();
     };
-
     if ($@) {
       $ex = $@;
     }
@@ -8661,7 +8483,7 @@ sub ssh2_cipher_c2s_3des_cbc {
     $wfh->flush();
 
   } else {
-    eval { server_wait($config_file, $rfh) };
+    eval { server_wait($setup->{config_file}, $rfh) };
     if ($@) {
       warn($@);
       exit 1;
@@ -8671,18 +8493,10 @@ sub ssh2_cipher_c2s_3des_cbc {
   }
 
   # Stop server
-  server_stop($pid_file);
-
+  server_stop($setup->{pid_file});
   $self->assert_child_ok($pid);
 
-  if ($ex) {
-    test_append_logfile($log_file, $ex);
-    unlink($log_file);
-
-    die($ex);
-  }
-
-  unlink($log_file);
+  test_cleanup($setup->{log_file}, $ex);
 }
 
 sub ssh2_cipher_c2s_none {
@@ -8849,6 +8663,7 @@ sub ssh2_cipher_s2c_aes256_cbc {
         "SFTPLog $setup->{log_file}",
         "SFTPHostKey $rsa_host_key",
         "SFTPHostKey $dsa_host_key",
+        "SFTPCiphers aes256-cbc",
       ],
     },
   };
@@ -8977,6 +8792,7 @@ sub ssh2_cipher_s2c_aes192_cbc {
         "SFTPLog $log_file",
         "SFTPHostKey $rsa_host_key",
         "SFTPHostKey $dsa_host_key",
+        "SFTPCiphers aes192-cbc",
       ],
     },
   };
@@ -9111,6 +8927,7 @@ sub ssh2_cipher_s2c_aes128_cbc {
         "SFTPLog $log_file",
         "SFTPHostKey $rsa_host_key",
         "SFTPHostKey $dsa_host_key",
+        "SFTPCiphers aes128-cbc",
       ],
     },
   };
@@ -9489,6 +9306,7 @@ sub ssh2_cipher_s2c_cast128_cbc {
         "SFTPLog $setup->{log_file}",
         "SFTPHostKey $rsa_host_key",
         "SFTPHostKey $dsa_host_key",
+        "SFTPCiphers cast128-cbc",
       ],
     },
   };
@@ -9617,6 +9435,7 @@ sub ssh2_cipher_s2c_3des_cbc {
         "SFTPLog $log_file",
         "SFTPHostKey $rsa_host_key",
         "SFTPHostKey $dsa_host_key",
+        "SFTPCiphers 3des-cbc",
       ],
     },
   };
@@ -9904,7 +9723,7 @@ sub ssh2_ext_cipher_aes128_gcm_bug3759 {
       sleep(1);
 
       # The OpenSSH GCM implementations require a newer OpenSSH `sftp`.
-      my $sftp = '/Users/tj/local/openssh-7.9p1/bin/sftp';
+      my $sftp = '/Users/tj/local/openssh-9.7p1/bin/sftp';
 
       my @cmd = (
         $sftp,
@@ -10074,7 +9893,7 @@ sub ssh2_ext_cipher_aes256_gcm_bug3759 {
       sleep(1);
 
       # The OpenSSH GCM implementations require a newer OpenSSH `sftp`.
-      my $sftp = '/Users/tj/local/openssh-7.9p1/bin/sftp';
+      my $sftp = '/Users/tj/local/openssh-9.7p1/bin/sftp';
 
       my @cmd = (
         $sftp,
@@ -10244,7 +10063,7 @@ sub ssh2_ext_cipher_chacha20_poly1305_issue456 {
       sleep(1);
 
       # The OpenSSH ChaCha20 implementations require a newer OpenSSH `sftp`.
-      my $sftp = '/Users/tj/local/openssh-9.0p1/bin/sftp';
+      my $sftp = '/Users/tj/local/openssh-9.7p1/bin/sftp';
 
       my @cmd = (
         $sftp,
@@ -10396,6 +10215,7 @@ sub ssh2_mac_c2s_hmac_sha1 {
         "SFTPLog $log_file",
         "SFTPHostKey $rsa_host_key",
         "SFTPHostKey $dsa_host_key",
+        "SFTPCiphers aes256-ctr",
       ],
     },
   };
@@ -10530,6 +10350,7 @@ sub ssh2_mac_c2s_hmac_sha1_96 {
         "SFTPLog $log_file",
         "SFTPHostKey $rsa_host_key",
         "SFTPHostKey $dsa_host_key",
+        "SFTPCiphers aes256-ctr",
       ],
     },
   };
@@ -10664,6 +10485,7 @@ sub ssh2_mac_c2s_hmac_md5 {
         "SFTPLog $log_file",
         "SFTPHostKey $rsa_host_key",
         "SFTPHostKey $dsa_host_key",
+        "SFTPCiphers aes256-ctr",
         "SFTPDigests hmac-md5",
       ],
     },
@@ -10799,6 +10621,7 @@ sub ssh2_mac_c2s_hmac_md5_96 {
         "SFTPLog $log_file",
         "SFTPHostKey $rsa_host_key",
         "SFTPHostKey $dsa_host_key",
+        "SFTPCiphers aes256-ctr",
         "SFTPDigests hmac-md5-96",
       ],
     },
@@ -10934,6 +10757,7 @@ sub ssh2_mac_c2s_hmac_ripemd160 {
         "SFTPLog $log_file",
         "SFTPHostKey $rsa_host_key",
         "SFTPHostKey $dsa_host_key",
+        "SFTPCiphers aes256-ctr",
         "SFTPDigests hmac-ripemd160",
       ],
     },
@@ -11069,6 +10893,7 @@ sub ssh2_mac_c2s_none {
         "SFTPLog $log_file",
         "SFTPHostKey $rsa_host_key",
         "SFTPHostKey $dsa_host_key",
+        "SFTPCiphers aes256-ctr",
         "SFTPDigests none",
       ],
     },
@@ -11204,6 +11029,7 @@ sub ssh2_mac_s2c_hmac_sha1 {
         "SFTPLog $log_file",
         "SFTPHostKey $rsa_host_key",
         "SFTPHostKey $dsa_host_key",
+        "SFTPCiphers aes256-ctr",
       ],
     },
   };
@@ -11338,6 +11164,7 @@ sub ssh2_mac_s2c_hmac_sha1_96 {
         "SFTPLog $log_file",
         "SFTPHostKey $rsa_host_key",
         "SFTPHostKey $dsa_host_key",
+        "SFTPCiphers aes256-ctr",
       ],
     },
   };
@@ -11472,6 +11299,7 @@ sub ssh2_mac_s2c_hmac_md5 {
         "SFTPLog $log_file",
         "SFTPHostKey $rsa_host_key",
         "SFTPHostKey $dsa_host_key",
+        "SFTPCiphers aes256-ctr",
         "SFTPDigests hmac-md5",
       ],
     },
@@ -11607,6 +11435,7 @@ sub ssh2_mac_s2c_hmac_md5_96 {
         "SFTPLog $log_file",
         "SFTPHostKey $rsa_host_key",
         "SFTPHostKey $dsa_host_key",
+        "SFTPCiphers aes256-ctr",
         "SFTPDigests hmac-md5-96",
       ],
     },
@@ -11742,6 +11571,7 @@ sub ssh2_mac_s2c_hmac_ripemd160 {
         "SFTPLog $log_file",
         "SFTPHostKey $rsa_host_key",
         "SFTPHostKey $dsa_host_key",
+        "SFTPCiphers aes256-ctr",
         "SFTPDigests hmac-ripemd160",
       ],
     },
@@ -11877,6 +11707,7 @@ sub ssh2_mac_s2c_none {
         "SFTPLog $log_file",
         "SFTPHostKey $rsa_host_key",
         "SFTPHostKey $dsa_host_key",
+        "SFTPCiphers aes256-ctr",
         "SFTPDigests none",
       ],
     },
@@ -12277,7 +12108,7 @@ sub ssh2_ext_mac_hmac_md5_etm_openssh {
       # Allow server startup
       sleep(1);
 
-      my $sftp = '/Users/tj/local/openssh-7.9p1/bin/sftp';
+      my $sftp = '/Users/tj/local/openssh-9.7p1/bin/sftp';
 
       my @cmd = (
         $sftp,
@@ -12446,7 +12277,7 @@ sub ssh2_ext_mac_hmac_sha1_etm_openssh {
       # Allow server startup
       sleep(1);
 
-      my $sftp = '/Users/tj/local/openssh-7.9p1/bin/sftp';
+      my $sftp = '/Users/tj/local/openssh-9.7p1/bin/sftp';
 
       my @cmd = (
         $sftp,
@@ -12614,7 +12445,7 @@ sub ssh2_ext_mac_hmac_sha256_etm_openssh {
       # Allow server startup
       sleep(1);
 
-      my $sftp = '/Users/tj/local/openssh-7.9p1/bin/sftp';
+      my $sftp = '/Users/tj/local/openssh-9.7p1/bin/sftp';
 
       my @cmd = (
         $sftp,
@@ -12782,7 +12613,7 @@ sub ssh2_ext_mac_hmac_sha512_etm_openssh {
       # Allow server startup
       sleep(1);
 
-      my $sftp = '/Users/tj/local/openssh-7.9p1/bin/sftp';
+      my $sftp = '/Users/tj/local/openssh-9.7p1/bin/sftp';
 
       my @cmd = (
         $sftp,
@@ -12950,7 +12781,7 @@ sub ssh2_ext_mac_umac_64_etm_openssh {
       # Allow server startup
       sleep(1);
 
-      my $sftp = '/Users/tj/local/openssh-7.9p1/bin/sftp';
+      my $sftp = '/Users/tj/local/openssh-9.7p1/bin/sftp';
 
       my @cmd = (
         $sftp,
@@ -13118,7 +12949,7 @@ sub ssh2_ext_mac_umac_128_etm_openssh {
       # Allow server startup
       sleep(1);
 
-      my $sftp = '/Users/tj/local/openssh-7.9p1/bin/sftp';
+      my $sftp = '/Users/tj/local/openssh-9.7p1/bin/sftp';
 
       my @cmd = (
         $sftp,
@@ -15331,7 +15162,7 @@ EOC
     eval {
       # libssh2, and thus Net::SSH2, don't support rsa-sha256 yet.  So we
       # use the external sftp(1) client (e.g. OpenSSH-7.9p1) to test.
-      my $sftp = '/Users/tj/local/openssh-7.9p1/bin/sftp';
+      my $sftp = '/Users/tj/local/openssh-9.7p1/bin/sftp';
 
       my @cmd = (
         $sftp,
@@ -15537,7 +15368,7 @@ EOC
     eval {
       # libssh2, and thus Net::SSH2, don't support rsa-sha256 yet.  So we
       # use the external sftp(1) client (e.g. OpenSSH-7.9p1) to test.
-      my $sftp = '/Users/tj/local/openssh-7.9p1/bin/sftp';
+      my $sftp = '/Users/tj/local/openssh-9.7p1/bin/sftp';
 
       my @cmd = (
         $sftp,
@@ -16475,7 +16306,7 @@ sub ssh2_ext_auth_publickey_ecdsa256 {
       # libssh2, and thus Net::SSH2, don't support ECC/ECDH yet.  So we
       # use the external sftp(1) client (e.g. OpenSSH-5.9p1) to test.
 
-      my $sftp = '/Users/tj/local/openssh-7.9p1/bin/sftp';
+      my $sftp = '/Users/tj/local/openssh-9.7p1/bin/sftp';
 
       my @cmd = (
         $sftp,
@@ -16707,7 +16538,7 @@ sub ssh2_ext_auth_publickey_ecdsa384 {
       # libssh2, and thus Net::SSH2, don't support ECC/ECDH yet.  So we
       # use the external sftp(1) client (e.g. OpenSSH-5.9p1) to test.
 
-      my $sftp = '/Users/tj/local/openssh-7.9p1/bin/sftp';
+      my $sftp = '/Users/tj/local/openssh-9.7p1/bin/sftp';
 
       my @cmd = (
         $sftp,
@@ -16939,7 +16770,7 @@ sub ssh2_ext_auth_publickey_ecdsa521 {
       # libssh2, and thus Net::SSH2, don't support ECC/ECDH yet.  So we
       # use the external sftp(1) client (e.g. OpenSSH-5.9p1) to test.
 
-      my $sftp = '/Users/tj/local/openssh-7.9p1/bin/sftp';
+      my $sftp = '/Users/tj/local/openssh-9.7p1/bin/sftp';
 
       my @cmd = (
         $sftp,
@@ -17144,7 +16975,7 @@ sub ssh2_ext_auth_publickey_openssh_rsa_bug4221 {
       # libssh2, and thus Net::SSH2, don't support ECC/ECDH yet.  So we
       # use the external sftp(1) client (e.g. OpenSSH-5.9p1) to test.
 
-      my $sftp = '/Users/tj/local/openssh-7.9p1/bin/sftp';
+      my $sftp = '/Users/tj/local/openssh-9.7p1/bin/sftp';
 
       my @cmd = (
         $sftp,
@@ -17352,7 +17183,7 @@ EOC
       # libssh2, and thus Net::SSH2, don't support ECC/ECDH yet.  So we
       # use the external sftp(1) client (e.g. OpenSSH-5.9p1) to test.
 
-      my $sftp = '/Users/tj/local/openssh-7.9p1/bin/sftp';
+      my $sftp = '/Users/tj/local/openssh-9.7p1/bin/sftp';
 
       my @cmd = (
         $sftp,
@@ -33121,14 +32952,14 @@ sub sftp_mkdir_abs_symlink_eexist {
       }
 
       my $path = 'test.lnk';
-      my $res = $sftp->mkdir($path);
-      if ($res) {
-        die("MKDIR $path succeeded unexpectedly");
-      }
 
-      my ($err_code, $err_name) = $sftp->error();
-      $self->assert($err_name eq 'SSH_FX_FAILURE',
-        test_msg("Expected error name 'SSH_FX_FAILURE', got '$err_name'"));
+      # With the behavior of Issue #1639 in effect, we expect this MKDIR
+      # request to have a successful response.
+      my $res = $sftp->mkdir($path);
+      unless ($res) {
+        my ($err_code, $err_name) = $sftp->error();
+        die("Can't mkdir $path: [$err_name] ($err_code)");
+      }
 
       $sftp = undef;
       $ssh2->disconnect();
@@ -33380,14 +33211,14 @@ sub sftp_mkdir_rel_symlink_eexist {
       }
 
       my $path = 'test.lnk';
-      my $res = $sftp->mkdir($path);
-      if ($res) {
-        die("MKDIR $path succeeded unexpectedly");
-      }
 
-      my ($err_code, $err_name) = $sftp->error();
-      $self->assert($err_name eq 'SSH_FX_FAILURE',
-        test_msg("Expected error name 'SSH_FX_FAILURE', got '$err_name'"));
+      # With the behavior of Issue #1639 in effect, we expect this MKDIR
+      # request to have a successful response.
+      my $res = $sftp->mkdir($path);
+      unless ($res) {
+        my ($err_code, $err_name) = $sftp->error();
+        die("Can't mkdir $path: [$err_name] ($err_code)");
+      }
 
       $sftp = undef;
       $ssh2->disconnect();
@@ -36975,7 +36806,7 @@ sub sftp_config_client_match_ciphers_issue1444 {
         "SFTPHostKey $dsa_host_key",
 
         "SFTPCiphers aes128-cbc",
-        "SFTPClientMatch \"^$banner_pattern\$\" sftpCiphers blowfish-ctr,aes256-ctr sftpProtocolVersion 1-2",
+        "SFTPClientMatch \"^$banner_pattern\$\" sftpCiphers aes128-ctr,aes256-ctr sftpProtocolVersion 1-2",
       ],
     },
   };
@@ -37126,6 +36957,7 @@ sub sftp_config_client_match_digests_issue1444 {
         "SFTPHostKey $rsa_host_key",
         "SFTPHostKey $dsa_host_key",
 
+        "SFTPCiphers aes256-ctr",
         "SFTPDigests hmac-md5",
         "SFTPClientMatch \"^$banner_pattern\$\" sftpDigests hmac-sha2-256,hmac-sha1 sftpProtocolVersion 1-2",
       ],
@@ -38206,7 +38038,7 @@ sub sftp_config_dirfakemode {
       }
 
       my $expected = {
-        '.' => '0310',
+        '.' => '0311',
         '..' => '0310',
         'sftp.conf' => '0310',
         'sftp.group' => '0310',
@@ -42566,8 +42398,8 @@ sub sftp_config_timeoutidle {
 
       ($err_code, $err_name, $err_str) = $ssh2->error();
 
-      $expected = 'LIBSSH2_ERROR_SOCKET_TIMEOUT';
-      $self->assert($expected eq $err_name,
+      $expected = '^LIBSSH2_ERROR_SOCKET_(SEND|TIMEOUT)';
+      $self->assert(qr/$expected/, $err_name,
         test_msg("Expected '$expected', got '$err_name'"));
     };
 
@@ -42874,8 +42706,8 @@ sub sftp_config_timeoutnotransfer_download {
 
       my ($err_code, $err_name, $err_str) = $ssh2->error();
 
-      my $expected = 'LIBSSH2_ERROR_SOCKET_NONE';
-      $self->assert($expected eq $err_name,
+      my $expected = '^LIBSSH2_ERROR_SOCKET_(NONE|RECV)';
+      $self->assert(qr/$expected/, $err_name,
         test_msg("Expected '$expected', got '$err_name'"));
 
       $sftp = undef;
@@ -43040,8 +42872,8 @@ sub sftp_config_timeoutnotransfer_readdir {
 
       my ($err_code, $err_name, $err_str) = $ssh2->error();
 
-      my $expected = 'LIBSSH2_ERROR_SOCKET_NONE';
-      $self->assert($expected eq $err_name,
+      my $expected = '^LIBSSH2_ERROR_SOCKET_(NONE|RECV)';
+      $self->assert(qr/$expected/, $err_name,
         test_msg("Expected '$expected', got '$err_name'"));
 
       $sftp = undef;
@@ -43206,8 +43038,8 @@ sub sftp_config_timeoutnotransfer_upload {
 
       my ($err_code, $err_name, $err_str) = $ssh2->error();
 
-      my $expected = 'LIBSSH2_ERROR_SOCKET_NONE';
-      $self->assert($expected eq $err_name,
+      my $expected = '^LIBSSH2_ERROR_SOCKET_(NONE|RECV)';
+      $self->assert(qr/$expected/, $err_name,
         test_msg("Expected '$expected', got '$err_name'"));
 
       $sftp = undef;
@@ -43389,8 +43221,8 @@ sub sftp_config_timeoutstalled {
 
       my ($err_code, $err_name, $err_str) = $ssh2->error();
 
-      my $expected = 'LIBSSH2_ERROR_SOCKET_NONE';
-      $self->assert($expected eq $err_name,
+      my $expected = '^LIBSSH2_ERROR_SOCKET_(DISCONNECT|NONE)';
+      $self->assert(qr/$expected/, $err_name,
         test_msg("Expected '$expected', got '$err_name'"));
 
       $sftp = undef;
@@ -47267,51 +47099,20 @@ EOC
 sub sftp_config_limit_opendir_bug3753 {
   my $self = shift;
   my $tmpdir = $self->{tmpdir};
-
-  my $config_file = "$tmpdir/sftp.conf";
-  my $pid_file = File::Spec->rel2abs("$tmpdir/sftp.pid");
-  my $scoreboard_file = File::Spec->rel2abs("$tmpdir/sftp.scoreboard");
-
-  my $log_file = test_get_logfile();
-
-  my $auth_user_file = File::Spec->rel2abs("$tmpdir/sftp.passwd");
-  my $auth_group_file = File::Spec->rel2abs("$tmpdir/sftp.group");
-
-  my $user = 'proftpd';
-  my $passwd = 'test';
-  my $group = 'ftpd';
-  my $home_dir = File::Spec->rel2abs($tmpdir);
-  my $uid = 500;
-  my $gid = 500;
-
-  # Make sure that, if we're running as root, that the home directory has
-  # permissions/privs set for the account we create
-  if ($< == 0) {
-    unless (chmod(0755, $home_dir)) {
-      die("Can't set perms on $home_dir to 0755: $!");
-    }
-
-    unless (chown($uid, $gid, $home_dir)) {
-      die("Can't set owner of $home_dir to $uid/$gid: $!");
-    }
-  }
-
-  auth_user_write($auth_user_file, $user, $passwd, $uid, $gid, $home_dir,
-    '/bin/bash');
-  auth_group_write($auth_group_file, $group, $gid, $user);
+  my $setup = test_setup($tmpdir, 'sftp');
 
   my $rsa_host_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/ssh_host_rsa_key');
   my $dsa_host_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/ssh_host_dsa_key');
 
   my $config = {
-    PidFile => $pid_file,
-    ScoreboardFile => $scoreboard_file,
-    SystemLog => $log_file,
-    TraceLog => $log_file,
+    PidFile => $setup->{pid_file},
+    ScoreboardFile => $setup->{scoreboard_file},
+    SystemLog => $setup->{log_file},
+    TraceLog => $setup->{log_file},
     Trace => 'auth:10 ssh2:20 sftp:20',
 
-    AuthUserFile => $auth_user_file,
-    AuthGroupFile => $auth_group_file,
+    AuthUserFile => $setup->{auth_user_file},
+    AuthGroupFile => $setup->{auth_group_file},
     AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
@@ -47321,15 +47122,16 @@ sub sftp_config_limit_opendir_bug3753 {
 
       'mod_sftp.c' => [
         "SFTPEngine on",
-        "SFTPLog $log_file",
+        "SFTPLog $setup->{log_file}",
         "SFTPHostKey $rsa_host_key",
         "SFTPHostKey $dsa_host_key",
       ],
     },
   };
 
-  my ($port, $config_user, $config_group) = config_write($config_file, $config);
-  if (open(my $fh, ">> $config_file")) {
+  my ($port, $config_user, $config_group) = config_write($setup->{config_file},
+    $config);
+  if (open(my $fh, ">> $setup->{config_file}")) {
     print $fh <<EOC;
 <Limit ALL>
   DenyAll
@@ -47340,11 +47142,11 @@ sub sftp_config_limit_opendir_bug3753 {
 </Limit>
 EOC
     unless (close($fh)) {
-      die("Can't write $config_file: $!");
+      die("Can't write $setup->{config_file}: $!");
     }
 
   } else {
-    die("Can't open $config_file: $!");
+    die("Can't open $setup->{config_file}: $!");
   }
 
   # Open pipes, for use between the parent and child processes.  Specifically,
@@ -47373,7 +47175,7 @@ EOC
         die("Can't connect to SSH2 server: [$err_name] ($err_code) $err_str");
       }
 
-      unless ($ssh2->auth_password($user, $passwd)) {
+      unless ($ssh2->auth_password($setup->{user}, $setup->{passwd})) {
         my ($err_code, $err_name, $err_str) = $ssh2->error();
         die("Can't login to SSH2 server: [$err_name] ($err_code) $err_str");
       }
@@ -47385,10 +47187,11 @@ EOC
       }
 
       my $dir = $sftp->opendir('.');
-      unless ($dir) {
-        my ($err_code, $err_name) = $sftp->error();
-        die("Can't open directory '.': [$err_name] ($err_code)");
+      if ($dir) {
+        die("Directory successfully opened for reading unexpectedly");
       }
+
+      my ($err_code, $err_name) = $sftp->error();
 
       # To issue the FXP_CLOSE, we have to explicitly destroy the dirhandle
       $dir = undef;
@@ -47397,8 +47200,11 @@ EOC
       $sftp = undef;
 
       $ssh2->disconnect();
-    };
 
+      my $expected = 'PERMISSION_DENIED';
+      $self->assert(qr/$expected/, $err_name,
+        test_msg("Expected error '$expected', got '$err_name'"));
+    };
     if ($@) {
       $ex = $@;
     }
@@ -47407,7 +47213,7 @@ EOC
     $wfh->flush();
 
   } else {
-    eval { server_wait($config_file, $rfh) };
+    eval { server_wait($setup->{config_file}, $rfh) };
     if ($@) {
       warn($@);
       exit 1;
@@ -47417,18 +47223,10 @@ EOC
   }
 
   # Stop server
-  server_stop($pid_file);
-
+  server_stop($setup->{pid_file});
   $self->assert_child_ok($pid);
 
-  if ($ex) {
-    test_append_logfile($log_file, $ex);
-    unlink($log_file);
-
-    die($ex);
-  }
-
-  unlink($log_file);
+  test_cleanup($setup->{log_file}, $ex);
 }
 
 sub sftp_config_limit_readdir_bug3753 {
@@ -49453,51 +49251,20 @@ sub sftp_config_key_fingerprint_md5_hex_colons_issue1916 {
 sub sftp_multi_channel_downloads {
   my $self = shift;
   my $tmpdir = $self->{tmpdir};
-
-  my $config_file = "$tmpdir/sftp.conf";
-  my $pid_file = File::Spec->rel2abs("$tmpdir/sftp.pid");
-  my $scoreboard_file = File::Spec->rel2abs("$tmpdir/sftp.scoreboard");
-
-  my $log_file = test_get_logfile();
-
-  my $auth_user_file = File::Spec->rel2abs("$tmpdir/sftp.passwd");
-  my $auth_group_file = File::Spec->rel2abs("$tmpdir/sftp.group");
-
-  my $user = 'proftpd';
-  my $passwd = 'test';
-  my $group = 'ftpd';
-  my $home_dir = File::Spec->rel2abs($tmpdir);
-  my $uid = 500;
-  my $gid = 500;
-
-  # Make sure that, if we're running as root, that the home directory has
-  # permissions/privs set for the account we create
-  if ($< == 0) {
-    unless (chmod(0755, $home_dir)) {
-      die("Can't set perms on $home_dir to 0755: $!");
-    }
-
-    unless (chown($uid, $gid, $home_dir)) {
-      die("Can't set owner of $home_dir to $uid/$gid: $!");
-    }
-  }
-
-  auth_user_write($auth_user_file, $user, $passwd, $uid, $gid, $home_dir,
-    '/bin/bash');
-  auth_group_write($auth_group_file, $group, $gid, $user);
+  my $setup = test_setup($tmpdir, 'sftp');
 
   my $rsa_host_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/ssh_host_rsa_key');
   my $dsa_host_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/ssh_host_dsa_key');
 
   my $config = {
-    PidFile => $pid_file,
-    ScoreboardFile => $scoreboard_file,
-    SystemLog => $log_file,
-    TraceLog => $log_file,
-    Trace => 'DEFAULT:10 ssh2:20 sftp:20 scp:20',
+    PidFile => $setup->{pid_file},
+    ScoreboardFile => $setup->{scoreboard_file},
+    SystemLog => $setup->{log_file},
+    TraceLog => $setup->{log_file},
+    Trace => 'ssh2:20 sftp:20 scp:20',
 
-    AuthUserFile => $auth_user_file,
-    AuthGroupFile => $auth_group_file,
+    AuthUserFile => $setup->{auth_user_file},
+    AuthGroupFile => $setup->{auth_group_file},
     AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
@@ -49507,7 +49274,7 @@ sub sftp_multi_channel_downloads {
 
       'mod_sftp.c' => [
         "SFTPEngine on",
-        "SFTPLog $log_file",
+        "SFTPLog $setup->{log_file}",
         "SFTPHostKey $rsa_host_key",
         "SFTPHostKey $dsa_host_key",
       ],
@@ -49547,7 +49314,8 @@ sub sftp_multi_channel_downloads {
     die("Can't open $test_file3: $!");
   }
 
-  my ($port, $config_user, $config_group) = config_write($config_file, $config);
+  my ($port, $config_user, $config_group) = config_write($setup->{config_file},
+    $config);
 
   # Open pipes, for use between the parent and child processes.  Specifically,
   # the child will indicate when it's done with its test by writing a message
@@ -49575,7 +49343,7 @@ sub sftp_multi_channel_downloads {
         die("Can't connect to SSH2 server: [$err_name] ($err_code) $err_str");
       }
 
-      unless ($ssh2->auth_password($user, $passwd)) {
+      unless ($ssh2->auth_password($setup->{user}, $setup->{passwd})) {
         my ($err_code, $err_name, $err_str) = $ssh2->error();
         die("Can't login to SSH2 server: [$err_name] ($err_code) $err_str");
       }
@@ -49600,6 +49368,10 @@ sub sftp_multi_channel_downloads {
       for (my $i = 0; $i < scalar(@$sftps); $i++) {
         my $path = "test" . ($i + 1) . ".txt";
 
+        if ($ENV{TEST_VERBOSE}) {
+          print STDERR "# OPEN $path\n";
+        }
+
         my $test_fh = $sftps->[$i]->open($path, O_RDONLY);
         unless ($test_fh) {
           my ($err_code, $err_name) = $sftps->[$i]->error();
@@ -49611,6 +49383,10 @@ sub sftp_multi_channel_downloads {
         # my $read_len = 65535;
         my $read_len = 32768;
         my $buf;
+
+        if ($ENV{TEST_VERBOSE}) {
+          print STDERR "# READ $path $read_len\n";
+        }
 
         my $res = $test_fh->read($buf, $read_len);
         unless ($res) {
@@ -49624,21 +49400,25 @@ sub sftp_multi_channel_downloads {
           }
         }
 
-        while ($res) {
+        while (defined($res) && $res > 0) {
           $ctx->add($buf);
-          unless ($test_fh->seek($res)) {
-            die("Can't seek to offset $res on $path handle: $!");
-          }
 
           $res = $test_fh->read($buf, $read_len);
+          if ($ENV{TEST_VERBOSE}) {
+            print STDERR "# READ $path $read_len: $res\n";
+          }
+
         }
 
         push(@$md5s, $ctx->hexdigest());
-
         push(@$fhs, $test_fh);
       }
 
       for (my $i = 0; $i < scalar(@$fhs); $i++) {
+        if ($ENV{TEST_VERBOSE}) {
+          print STDERR "# CLOSE $i\n";
+        }
+
         $fhs->[$i] = undef;
       }
 
@@ -49662,7 +49442,6 @@ sub sftp_multi_channel_downloads {
       $self->assert($expected eq $md5s->[2],
         test_msg("Expected '$expected', got '$md5s->[2]'"));
     };
-
     if ($@) {
       $ex = $@;
     }
@@ -49671,7 +49450,7 @@ sub sftp_multi_channel_downloads {
     $wfh->flush();
 
   } else {
-    eval { server_wait($config_file, $rfh, 30) };
+    eval { server_wait($setup->{config_file}, $rfh, 30) };
     if ($@) {
       warn($@);
       exit 1;
@@ -49681,18 +49460,10 @@ sub sftp_multi_channel_downloads {
   }
 
   # Stop server
-  server_stop($pid_file);
-
+  server_stop($setup->{pid_file});
   $self->assert_child_ok($pid);
 
-  if ($ex) {
-    test_append_logfile($log_file, $ex);
-    unlink($log_file);
-
-    die($ex);
-  }
-
-  unlink($log_file);
+  test_cleanup($setup->{log_file}, $ex);
 }
 
 sub sftp_multi_channels_issue1876 {
@@ -50267,11 +50038,18 @@ sub sftp_log_xferlog_download_incomplete {
         $self->assert($expected eq $client_addr,
           test_msg("Expected '$expected', got '$client_addr'"));
 
+        # Interestingly, it seems some newer libssh2 versions will read four
+        # times as much data in as requested.  Huh.
         $expected = $read_sz;
-        $self->assert($expected == $nbytes,
+        $self->assert($nbytes == $expected || $nbytes == (4 * $expected),
           test_msg("Expected $expected, got $nbytes"));
 
         $expected = $test_file;
+        if ($^O eq 'darwin') {
+          # MacOSX-specific hack to deal with how it handles tmp files
+          $expected = ('/private' . $expected);
+        }
+
         $self->assert($expected eq $path,
           test_msg("Expected '$expected', got '$path'"));
 
@@ -52797,6 +52575,10 @@ sub sftp_log_extlog_var_s_reads {
     while (my $line = <$fh>) {
       chomp($line);
 
+      if ($ENV{TEST_VERBOSE}) {
+        print STDERR "# $line\n";
+      }
+
       if ($line =~ /(\S+)\s+\S+\s+(\S+)$/) {
         my $cmd = $1;
         my $code = $2;
@@ -52813,7 +52595,7 @@ sub sftp_log_extlog_var_s_reads {
           $expected = '(-|1)';
 
         } elsif ($cmd eq 'RETR') {
-          $expected = '-';
+          $expected = '(-|226)';
 
         } else {
           die("Unexpected command '$cmd' in $extlog_file");
@@ -53034,6 +52816,10 @@ EOC
     while (my $line = <$fh>) {
       chomp($line);
 
+      if ($ENV{TEST_VERBOSE}) {
+        print STDERR "# $line\n";
+      }
+
       if ($line =~ /(\S+)\s+\S+\s+(\S+)/) {
         my $cmd = $1;
         my $code = $2;
@@ -53053,7 +52839,7 @@ EOC
           $expected = '3';
 
         } elsif ($cmd eq 'STOR') {
-          $expected = '-';
+          $expected = '(-|451)';
 
         } else {
           die("Unexpected command '$cmd' in $extlog_file");
@@ -55340,8 +55126,13 @@ sub sftp_log_extlog_var_s_remove_bug3873 {
   my ($port, $config_user, $config_group) = config_write($config_file, $config);
 
   if (open(my $fh, ">> $config_file")) {
+    my $limit_dir = $sub_dir;
+    if ($^O eq 'darwin') {
+      $limit_dir = '/private' . $sub_dir;
+    }
+
     print $fh <<EOC;
-<Directory $sub_dir>
+<Directory $limit_dir>
   <Limit DELE>
     DenyAll
   </Limit>
@@ -55460,6 +55251,10 @@ EOC
     while (my $line = <$fh>) {
       chomp($line);
 
+      if ($ENV{TEST_VERBOSE}) {
+        print STDERR "# $line\n";
+      }
+
       if ($line =~ /^(\S+) (.*) (\d+)$/) {
         my $cmd = $1;
         my $path = $2;
@@ -55467,12 +55262,12 @@ EOC
 
         next unless $cmd eq 'DELE';
 
-        if ($path eq $test_file1) {
+        if ($path eq $test_file1 || $path eq ('/private' . $test_file1)) {
           if ($resp_code == 250) {
             $have_success_dele = 1;
           }
 
-        } elsif ($path eq $test_file2) {
+        } elsif ($path eq $test_file2 || $path eq ('/private' . $test_file2)) {
           if ($resp_code == 550) {
             $have_failed_dele = 1;
           }
@@ -68300,7 +68095,7 @@ sub sftp_ext_hostkey_rotation_issue1323 {
   defined(my $pid = fork()) or die("Can't fork: $!");
   if ($pid) {
     eval {
-      my $sftp = '/Users/tj/local/openssh-7.9p1/bin/sftp';
+      my $sftp = '/Users/tj/local/openssh-9.7p1/bin/sftp';
 
       my @cmd = (
         $sftp,
@@ -68428,6 +68223,8 @@ sub sftp_config_global_algos_issue1712 {
   my $rsa_host_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/ssh_host_rsa_key');
   my $dsa_host_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/ssh_host_dsa_key');
 
+  my $cipher = 'aes256-ctr';
+
   my $config = {
     PidFile => $setup->{pid_file},
     ScoreboardFile => $setup->{scoreboard_file},
@@ -68453,7 +68250,7 @@ sub sftp_config_global_algos_issue1712 {
     },
 
     Global => {
-      SFTPCiphers => 'arcfour128',
+      SFTPCiphers => $cipher,
     },
   };
 
@@ -68487,8 +68284,8 @@ sub sftp_config_global_algos_issue1712 {
 
       sleep(1);
 
-      my $cipher = 'arcfour128';
-      $ssh2->method('crypt_cs', $cipher);
+      my $sess_cipher = $cipher;
+      $ssh2->method('crypt_cs', $sess_cipher);
 
       unless ($ssh2->connect('127.0.0.1', $port)) {
         my ($err_code, $err_name, $err_str) = $ssh2->error();
@@ -68496,8 +68293,8 @@ sub sftp_config_global_algos_issue1712 {
       }
 
       my $cipher_used = $ssh2->method('crypt_cs');
-      $self->assert($cipher eq $cipher_used,
-        test_msg("Expected cipher '$cipher', got '$cipher_used'"));
+      $self->assert($sess_cipher eq $cipher_used,
+        test_msg("Expected cipher '$sess_cipher', got '$cipher_used'"));
 
       $ssh2->disconnect();
     };
@@ -68601,7 +68398,7 @@ sub sftp_ext_limits_issue1798 {
   defined(my $pid = fork()) or die("Can't fork: $!");
   if ($pid) {
     eval {
-      my $sftp = '/Users/tj/local/openssh-9.4p1/bin/sftp';
+      my $sftp = '/Users/tj/local/openssh-9.7p1/bin/sftp';
 
       my @cmd = (
         $sftp,
