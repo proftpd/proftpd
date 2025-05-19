@@ -115,7 +115,7 @@ my $TESTS = {
 
   rewrite_map_fifo_bug3611 => {
     order => ++$order,
-    test_class => [qw(bug forking)],
+    test_class => [qw(bug flaky forking)],
   },
 
   rewrite_rule_replaceall_backslash_with_slash => {
@@ -1399,38 +1399,7 @@ sub rewrite_bug3034 {
 sub rewrite_bug3169 {
   my $self = shift;
   my $tmpdir = $self->{tmpdir};
-
-  my $config_file = "$tmpdir/rewrite.conf";
-  my $pid_file = File::Spec->rel2abs("$tmpdir/rewrite.pid");
-  my $scoreboard_file = File::Spec->rel2abs("$tmpdir/rewrite.scoreboard");
-
-  my $log_file = test_get_logfile();
-
-  my $auth_user_file = File::Spec->rel2abs("$tmpdir/rewrite.passwd");
-  my $auth_group_file = File::Spec->rel2abs("$tmpdir/rewrite.group");
-
-  my $user = 'proftpd';
-  my $passwd = 'test';
-  my $group = 'ftpd';
-  my $home_dir = File::Spec->rel2abs($tmpdir);
-  my $uid = 500;
-  my $gid = 500;
-
-  # Make sure that, if we're running as root, that the home directory has
-  # permissions/privs set for the account we create
-  if ($< == 0) {
-    unless (chmod(0755, $home_dir)) {
-      die("Can't set perms on $home_dir to 0755: $!");
-    }
-
-    unless (chown($uid, $gid, $home_dir)) {
-      die("Can't set owner of $home_dir to $uid/$gid: $!");
-    }
-  }
-
-  auth_user_write($auth_user_file, $user, $passwd, $uid, $gid, $home_dir,
-    '/bin/bash');
-  auth_group_write($auth_group_file, $group, $gid, $user);
+  my $setup = test_setup($tmpdir, 'rewrite');
 
   my $test_file = File::Spec->rel2abs("$tmpdir/taestoe.txt");
 
@@ -1440,12 +1409,14 @@ sub rewrite_bug3169 {
   my $rewrite_rule2 = 'RewriteRule (.*) ${replace:/$1/' . chr(0xf6) . '/oe}';
 
   my $config = {
-    PidFile => $pid_file,
-    ScoreboardFile => $scoreboard_file,
-    SystemLog => $log_file,
+    PidFile => $setup->{pid_file},
+    ScoreboardFile => $setup->{scoreboard_file},
+    SystemLog => $setup->{log_file},
+    TraceLog => $setup->{log_file},
+    Trace => 'rewrite:20',
 
-    AuthUserFile => $auth_user_file,
-    AuthGroupFile => $auth_group_file,
+    AuthUserFile => $setup->{auth_user_file},
+    AuthGroupFile => $setup->{auth_group_file},
     AuthOrder => 'mod_auth_file.c',
 
     AllowForeignAddress => 'on',
@@ -1457,7 +1428,7 @@ sub rewrite_bug3169 {
 
       'mod_rewrite.c' => [
         'RewriteEngine on',
-        "RewriteLog $log_file",
+        "RewriteLog $setup->{log_file}",
         'RewriteMap replace int:replaceall',
 
         # The goal is to substitute away non-ASCII characters, replacing
@@ -1470,12 +1441,15 @@ sub rewrite_bug3169 {
 
         'RewriteCondition %m ^STOR$',
         $rewrite_rule1,
+
+        'RewriteCondition %m ^STOR$',
         $rewrite_rule2,
       ],
     },
   };
 
-  my ($port, $config_user, $config_group) = config_write($config_file, $config);
+  my ($port, $config_user, $config_group) = config_write($setup->{config_file},
+    $config);
 
   # Open pipes, for use between the parent and child processes.  Specifically,
   # the child will indicate when it's done with its test by writing a message
@@ -1493,10 +1467,7 @@ sub rewrite_bug3169 {
   if ($pid) {
     eval {
       my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
-
-      my ($resp_code, $resp_msg);
-
-      $client->login($user, $passwd);
+      $client->login($setup->{user}, $setup->{passwd});
 
       my $filename = 't' . chr(0xe4) . 'st' . chr(0xf6) . '.txt';
 
@@ -1510,14 +1481,15 @@ sub rewrite_bug3169 {
       $conn->write($buf, length($buf));
       eval { $conn->close() };
 
-      $resp_code = $client->response_code();
-      $resp_msg = $client->response_msg();
+      my $resp_code = $client->response_code();
+      my $resp_msg = $client->response_msg();
       $self->assert_transfer_ok($resp_code, $resp_msg);
 
       $self->assert(-f $test_file,
         test_msg("$test_file file does not exist as expected"));
-    };
 
+      $client->quit();
+    };
     if ($@) {
       $ex = $@;
     }
@@ -1526,7 +1498,7 @@ sub rewrite_bug3169 {
     $wfh->flush();
 
   } else {
-    eval { server_wait($config_file, $rfh) };
+    eval { server_wait($setup->{config_file}, $rfh) };
     if ($@) {
       warn($@);
       exit 1;
@@ -1536,18 +1508,10 @@ sub rewrite_bug3169 {
   }
 
   # Stop server
-  server_stop($pid_file);
-
+  server_stop($setup->{pid_file});
   $self->assert_child_ok($pid);
 
-  if ($ex) {
-    test_append_logfile($log_file, $ex);
-    unlink($log_file);
-
-    die($ex);
-  }
-
-  unlink($log_file);
+  test_cleanup($setup->{log_file}, $ex);
 }
 
 sub rewrite_map_unescape_bug3170 {
@@ -3046,7 +3010,7 @@ sub rewrite_map_fifo_bug3611 {
     ScoreboardFile => $setup->{scoreboard_file},
     SystemLog => $setup->{log_file},
     TraceLog => $setup->{log_file},
-    Trace => 'DEFAULT:10',
+    Trace => 'auth:10 command:20 response:20',
 
     AuthUserFile => $setup->{auth_user_file},
     AuthGroupFile => $setup->{auth_group_file},
