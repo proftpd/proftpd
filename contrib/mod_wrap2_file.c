@@ -1,7 +1,7 @@
 /*
  * ProFTPD: mod_wrap2_file -- a mod_wrap2 sub-module for supplying IP-based
  *                            access control data via file-based tables
- * Copyright (c) 2002-2016 TJ Saunders
+ * Copyright (c) 2002-2025 TJ Saunders
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -185,8 +185,6 @@ static void filetab_parse_table(wrap2_table_t *filetab) {
         filetab->tab_name, service, lineno);
     }
   }
-
-  return;
 }
 
 static int filetab_close_cb(wrap2_table_t *filetab) {

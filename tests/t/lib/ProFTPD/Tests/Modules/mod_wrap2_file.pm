@@ -62,9 +62,11 @@ my $TESTS = {
     test_class => [qw(forking)],
   },
 
+  # NOTE: This test requires special tweaks to /etc/hosts, so do not expect it
+  # to pass all of the time.
   wrap2_file_allow_table_user_dns_name_suffix => {
     order => ++$order,
-    test_class => [qw(forking)],
+    test_class => [qw(forking inprogress)],
   },
 
   wrap2_file_allow_table_tilde => {
@@ -1416,27 +1418,12 @@ sub wrap2_file_allow_table_user_ip_addr_netmask {
 sub wrap2_file_allow_table_user_dns_name_suffix {
   my $self = shift;
   my $tmpdir = $self->{tmpdir};
-
-  my $config_file = "$tmpdir/wrap2.conf";
-  my $pid_file = File::Spec->rel2abs("$tmpdir/wrap2.pid");
-  my $scoreboard_file = File::Spec->rel2abs("$tmpdir/wrap2.scoreboard");
-
-  my $log_file = test_get_logfile();
-
-  my $auth_user_file = File::Spec->rel2abs("$tmpdir/wrap2.passwd");
-  my $auth_group_file = File::Spec->rel2abs("$tmpdir/wrap2.group");
-
-  my $user = 'proftpd';
-  my $passwd = 'test';
-  my $group = 'ftpd';
-  my $home_dir = File::Spec->rel2abs($tmpdir);
-  my $uid = 500;
-  my $gid = 500;
+  my $setup = test_setup($tmpdir, 'wrap2');
 
   my $fh;
   my $allow_file = File::Spec->rel2abs("$tmpdir/wrap2.allow");
   if (open($fh, "> $allow_file")) {
-    print $fh "proftpd: $user\@.castaglia.org\n";
+    print $fh "proftpd: $setup->{user}\@.castaglia.org\n";
     unless (close($fh)) {
       die("Can't write $allow_file: $!");
     }
@@ -1457,31 +1444,17 @@ sub wrap2_file_allow_table_user_dns_name_suffix {
     die("Can't open $deny_file: $!");
   }
 
-  # Make sure that, if we're running as root, that the home directory has
-  # permissions/privs set for the account we create
-  if ($< == 0) {
-    unless (chmod(0755, $home_dir)) {
-      die("Can't set perms on $home_dir to 0755: $!");
-    }
-
-    unless (chown($uid, $gid, $home_dir)) {
-      die("Can't set owner of $home_dir to $uid/$gid: $!");
-    }
-  }
-
-  auth_user_write($auth_user_file, $user, $passwd, $uid, $gid, $home_dir,
-    '/bin/bash');
-  auth_group_write($auth_group_file, $group, $gid, $user);
-
   my $config = {
-    PidFile => $pid_file,
-    ScoreboardFile => $scoreboard_file,
-    SystemLog => $log_file,
-    TraceLog => $log_file,
+    PidFile => $setup->{pid_file},
+    ScoreboardFile => $setup->{scoreboard_file},
+    SystemLog => $setup->{log_file},
+    TraceLog => $setup->{log_file},
     Trace => 'dns:20 wrap2:20',
 
-    AuthUserFile => $auth_user_file,
-    AuthGroupFile => $auth_group_file,
+    AuthUserFile => $setup->{auth_user_file},
+    AuthGroupFile => $setup->{auth_group_file},
+    AuthOrder => 'mod_auth_file.c',
+
     UseReverseDNS => 'on',
 
     IfModules => {
@@ -1491,13 +1464,14 @@ sub wrap2_file_allow_table_user_dns_name_suffix {
 
       'mod_wrap2.c' => {
         WrapEngine => 'on',
-        WrapLog => $log_file,
+        WrapLog => $setup->{log_file},
         WrapUserTables => "* file:$allow_file file:$deny_file",
       },
     },
   };
 
-  my ($port, $config_user, $config_group) = config_write($config_file, $config);
+  my ($port, $config_user, $config_group) = config_write($setup->{config_file},
+    $config);
 
   # Open pipes, for use between the parent and child processes.  Specifically,
   # the child will indicate when it's done with its test by writing a message
@@ -1528,21 +1502,19 @@ sub wrap2_file_allow_table_user_dns_name_suffix {
 
       my $client = ProFTPD::TestSuite::FTP->new('127.0.0.2', $port);
 
-      my ($resp_code, $resp_msg);
+      my ($resp_code, $resp_msg) = $client->login($setup->{user},
+        $setup->{passwd});
 
-      ($resp_code, $resp_msg) = $client->login($user, $passwd);
-
-      my $expected;
-
-      $expected = 230;
+      my $expected = 230;
       $self->assert($expected == $resp_code,
-        test_msg("Expected $expected, got $resp_code"));
+        test_msg("Expected response code $expected, got $resp_code"));
 
-      $expected = "User $user logged in";
+      $expected = "User $setup->{user} logged in";
       $self->assert($expected eq $resp_msg,
-        test_msg("Expected '$expected', got '$resp_msg'"));
-    };
+        test_msg("Expected response message '$expected', got '$resp_msg'"));
 
+      $client->quit();
+    };
     if ($@) {
       $ex = $@;
     }
@@ -1551,7 +1523,7 @@ sub wrap2_file_allow_table_user_dns_name_suffix {
     $wfh->flush();
 
   } else {
-    eval { server_wait($config_file, $rfh) };
+    eval { server_wait($setup->{config_file}, $rfh) };
     if ($@) {
       warn($@);
       exit 1;
@@ -1561,18 +1533,10 @@ sub wrap2_file_allow_table_user_dns_name_suffix {
   }
 
   # Stop server
-  server_stop($pid_file);
-
+  server_stop($setup->{pid_file});
   $self->assert_child_ok($pid);
 
-  if ($ex) {
-    test_append_logfile($log_file, $ex);
-    unlink($log_file);
-
-    die($ex);
-  }
-
-  unlink($log_file);
+  test_cleanup($setup->{log_file}, $ex);
 }
 
 sub wrap2_file_allow_table_tilde {
