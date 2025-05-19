@@ -1,6 +1,6 @@
 /*
  * ProFTPD: mod_rewrite -- a module for rewriting FTP commands
- * Copyright (c) 2001-2024 TJ Saunders
+ * Copyright (c) 2001-2025 TJ Saunders
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -139,37 +139,38 @@ static char rewrite_vars[REWRITE_MAX_VARS][13] = {
 };
 
 /* Necessary prototypes */
-static char *rewrite_argsep(char **);
+static char *rewrite_argsep(char **arg);
 static void rewrite_closelog(void);
-static const char *rewrite_expand_var(cmd_rec *, const char *, const char *);
-static const char *rewrite_get_cmd_name(cmd_rec *);
-static void rewrite_log(char *format, ...);
-static unsigned char rewrite_match_cond(cmd_rec *, config_rec *);
+static const char *rewrite_expand_var(cmd_rec *cmd, const char *pattern,
+  const char *var);
+static const char *rewrite_get_cmd_name(cmd_rec *cmd);
+static void rewrite_log(char *fmt, ...);
+static unsigned char rewrite_match_cond(cmd_rec *cmd, config_rec *c);
 static void rewrite_openlog(void);
-static int rewrite_open_fifo(config_rec *);
-static unsigned int rewrite_parse_cond_flags(pool *, const char *);
-static unsigned char rewrite_parse_map_str(char *, rewrite_map_t *);
-static unsigned char rewrite_parse_map_txt(rewrite_map_txt_t *);
-static unsigned int rewrite_parse_rule_flags(pool *, const char *);
-static int rewrite_read_fifo(int, char *, size_t);
-static unsigned char rewrite_regexec(const char *, pr_regex_t *, unsigned char,
-    rewrite_match_t *);
-static void rewrite_replace_cmd_arg(cmd_rec *, char *);
+static int rewrite_open_fifo(config_rec *c);
+static unsigned int rewrite_parse_cond_flags(pool *p, const char *flags_text);
+static unsigned char rewrite_parse_map_str(char *text, rewrite_map_t *map);
+static unsigned char rewrite_parse_map_txt(rewrite_map_txt_t *map);
+static unsigned int rewrite_parse_rule_flags(pool *p, const char *flags_text);
+static int rewrite_read_fifo(int fd, char *buf, size_t buflen);
+static unsigned char rewrite_regexec(const char *text, pr_regex_t *pre,
+  unsigned char negated, rewrite_match_t *matches);
+static void rewrite_replace_cmd_arg(cmd_rec *cmd, char *arg);
 static int rewrite_sess_init(void);
-static const char *rewrite_subst(cmd_rec *c, const char *);
-static const char *rewrite_subst_backrefs(cmd_rec *, const char *,
-  rewrite_match_t *);
-static const char *rewrite_subst_env(cmd_rec *, const char *);
-static const char *rewrite_subst_maps(cmd_rec *, const char *);
-static const char *rewrite_subst_maps_fifo(cmd_rec *, config_rec *,
-  rewrite_map_t *);
-static const char *rewrite_subst_maps_int(cmd_rec *, config_rec *,
-  rewrite_map_t *);
-static const char *rewrite_subst_maps_txt(cmd_rec *, config_rec *,
-  rewrite_map_t *);
-static const char *rewrite_subst_vars(cmd_rec *, const char *);
-static void rewrite_wait_fifo(int);
-static int rewrite_write_fifo(int, char *, size_t);
+static const char *rewrite_subst(cmd_rec *cmd, const char *pattern);
+static const char *rewrite_subst_backrefs(cmd_rec *cmd, const char *pattern,
+  rewrite_match_t *matches);
+static const char *rewrite_subst_env(cmd_rec *cmd, const char *pattern);
+static const char *rewrite_subst_maps(cmd_rec *cmd, const char *pattern);
+static const char *rewrite_subst_maps_fifo(cmd_rec *cmd, config_rec *c,
+  rewrite_map_t *map);
+static const char *rewrite_subst_maps_int(cmd_rec *cmd, config_rec *c,
+  rewrite_map_t *map);
+static const char *rewrite_subst_maps_txt(cmd_rec *cmd, config_rec *c,
+  rewrite_map_t *map);
+static const char *rewrite_subst_vars(cmd_rec *cmd, const char *pattern);
+static void rewrite_wait_fifo(int fd);
+static int rewrite_write_fifo(int fd, char *buf, size_t buflen);
 
 /* Support functions
  */
@@ -183,11 +184,12 @@ static const char *rewrite_expand_var(cmd_rec *cmd, const char *subst_pattern,
 
   varlen = strlen(var);
 
-  if (strncmp(var, "%c", 3) == 0) {
+  if (strcmp(var, "%c") == 0) {
     REWRITE_CHECK_VAR(session.conn_class, "%c");
     return (session.conn_class ? session.conn_class->cls_name : NULL);
+  }
 
-  } else if (strncmp(var, "%F", 3) == 0) {
+  if (strcmp(var, "%F") == 0) {
     const char *cmd_name;
 
     cmd_name = rewrite_get_cmd_name(cmd);
@@ -208,10 +210,11 @@ static const char *rewrite_expand_var(cmd_rec *cmd, const char *subst_pattern,
         pr_cmd_cmp(cmd, PR_CMD_XMKD_ID) == 0 ||
         pr_cmd_cmp(cmd, PR_CMD_XRMD_ID) == 0) {
       return dir_abs_path(cmd->tmp_pool, cmd->arg, FALSE);
+    }
 
-    } else if (cmd->argc >= 3 &&
-               (strcasecmp(cmd_name, "SITE CHGRP") == 0 ||
-                strcasecmp(cmd_name, "SITE CHMOD") == 0)) {
+    if (cmd->argc >= 3 &&
+        (strcasecmp(cmd_name, "SITE CHGRP") == 0 ||
+         strcasecmp(cmd_name, "SITE CHMOD") == 0)) {
       register unsigned int i;
       char *tmp = "";
 
@@ -220,54 +223,65 @@ static const char *rewrite_expand_var(cmd_rec *cmd, const char *subst_pattern,
       }
 
       return dir_abs_path(cmd->tmp_pool, tmp, FALSE);
-
-    } else {
-      rewrite_log("rewrite_expand_var(): %%F not valid for this command ('%s')",
-        cmd_name);
-      return NULL;
     }
 
-  } else if (strncmp(var, "%f", 3) == 0) {
+    rewrite_log("rewrite_expand_var(): %%F not valid for this command ('%s')",
+      cmd_name);
+    return NULL;
+  }
+
+  if (strcmp(var, "%f") == 0) {
     REWRITE_CHECK_VAR(cmd->arg, "%f");
     return cmd->arg;
+  }
 
-  } else if (strncmp(var, "%m", 3) == 0) {
+  if (strcmp(var, "%m") == 0) {
     return rewrite_get_cmd_name(cmd);
+  }
 
-  } else if (strncmp(var, "%p", 3) == 0) {
+  if (strcmp(var, "%p") == 0) {
     char *port = pcalloc(cmd->tmp_pool, 8 * sizeof(char));
     pr_snprintf(port, 8, "%d", main_server->ServerPort);
     port[7] = '\0';
     return port;
+  }
 
-  } else if (strncmp(var, "%U", 3) == 0) {
+  if (strcmp(var, "%U") == 0) {
     return pr_table_get(session.notes, "mod_auth.orig-user", NULL);
+  }
 
-  } else if (strncmp(var, "%P", 3) == 0) {
-    char *pid = pcalloc(cmd->tmp_pool, 8 * sizeof(char));
+  if (strcmp(var, "%P") == 0) {
+    char *pid;
+
+    pid = pcalloc(cmd->tmp_pool, 8 * sizeof(char));
     pr_snprintf(pid, 8, "%lu", (unsigned long) getpid());
     pid[7] = '\0';
     return pid;
+  }
 
-  } else if (strncmp(var, "%g", 3) == 0) {
+  if (strcmp(var, "%g") == 0) {
     REWRITE_CHECK_VAR(session.group, "%g");
     return session.group;
+  }
 
-  } else if (strncmp(var, "%u", 3) == 0) {
+  if (strcmp(var, "%u") == 0) {
     REWRITE_CHECK_VAR(session.user, "%u");
     return session.user;
+  }
 
-  } else if (strncmp(var, "%a", 3) == 0) {
+  if (strcmp(var, "%a") == 0) {
     return pr_netaddr_get_ipstr(session.c->remote_addr);
+  }
 
-  } else if (strncmp(var, "%h", 3) == 0) {
+  if (strcmp(var, "%h") == 0) {
     return session.c->remote_name;
+  }
 
-  } else if (strncmp(var, "%v", 3) == 0) {
+  if (strcmp(var, "%v") == 0) {
     return main_server->ServerName;
+  }
 
-  } else if (strncmp(var, "%G", 3) == 0) {
-
+  if (strcmp(var, "%G") == 0) {
     if (session.groups != NULL) {
       register unsigned int i = 0;
       const char *suppl_groups;
@@ -282,35 +296,37 @@ static const char *rewrite_expand_var(cmd_rec *cmd, const char *subst_pattern,
       }
 
       return suppl_groups;
-
-    } else {
-      REWRITE_CHECK_VAR(session.groups, "%G");
-      return NULL;
     }
 
-  } else if (strncmp(var, "%w", 3) == 0) {
+    REWRITE_CHECK_VAR(session.groups, "%G");
+    return NULL;
+  }
+
+  if (strcmp(var, "%w") == 0) {
+    const char *cmd_name;
 
     if (pr_cmd_cmp(cmd, PR_CMD_RNTO_ID) == 0) {
       return pr_table_get(session.notes, "mod_core.rnfr-path", NULL);
-
-    } else {
-      const char *cmd_name;
-
-      cmd_name = rewrite_get_cmd_name(cmd);
-      rewrite_log("rewrite_expand_var(): %%w not valid for this command ('%s')",
-        cmd_name);
-      return NULL;
     }
 
-  } else if (strncmp(var, "%t", 3) == 0) {
-    char *timestr = pcalloc(cmd->tmp_pool, 80 * sizeof(char));
+    cmd_name = rewrite_get_cmd_name(cmd);
+    rewrite_log("rewrite_expand_var(): %%w not valid for this command ('%s')",
+      cmd_name);
+    return NULL;
+  }
+
+  if (strcmp(var, "%t") == 0) {
+    char *timestr;
+
+    timestr = pcalloc(cmd->tmp_pool, 80 * sizeof(char));
     pr_snprintf(timestr, 80, "%lu", (unsigned long) time(NULL));
     timestr[79] = '\0';
     return timestr;
+  }
 
-  } else if (varlen > 7 &&
-             strncmp(var, "%{ENV:", 6) == 0 &&
-             var[varlen-1] == '}') {
+  if (varlen > 7 &&
+      strncmp(var, "%{ENV:", 6) == 0 &&
+      var[varlen-1] == '}') {
     char *env, *str;
 
     str = pstrdup(cmd->tmp_pool, var);
@@ -318,10 +334,11 @@ static const char *rewrite_expand_var(cmd_rec *cmd, const char *subst_pattern,
 
     env = pr_env_get(cmd->tmp_pool, str + 6);
     return env ? pstrdup(cmd->tmp_pool, env) : "";
+  }
 
-  } else if (varlen >= 7 &&
-             strncmp(var, "%{TIME", 6) == 0 &&
-             var[varlen-1] == '}') {
+  if (varlen >= 7 &&
+      strncmp(var, "%{TIME", 6) == 0 &&
+      var[varlen-1] == '}') {
     char time_str[32];
     time_t now;
     struct tm *tm;
@@ -382,13 +399,13 @@ static const char *rewrite_expand_var(cmd_rec *cmd, const char *subst_pattern,
             return NULL;
         }
       }
+
+      return pstrdup(cmd->tmp_pool, time_str);
     }
 
-    return pstrdup(cmd->tmp_pool, time_str);
-
-  } else {
     pr_trace_msg(trace_channel, 1, "error obtaining local timestamp: %s",
       strerror(errno));
+    return NULL;
   }
 
   rewrite_log("unknown variable: '%s'", var);
@@ -399,15 +416,19 @@ static char *rewrite_argsep(char **arg) {
   char *res = NULL, *dst = NULL;
   char quote_mode = 0;
 
-  if (!arg || !*arg || !**arg)
+  if (arg == NULL ||
+      *arg == NULL ||
+      !**arg) {
     return NULL;
+  }
 
   while (**arg && PR_ISSPACE(**arg)) {
     (*arg)++;
   }
 
-  if (!**arg)
+  if (!**arg) {
     return NULL;
+  }
 
   res = dst = *arg;
 
@@ -422,16 +443,18 @@ static char *rewrite_argsep(char **arg) {
     if (**arg == '\\' && quote_mode) {
 
       /* escaped char */
-      if (*((*arg) + 1))
+      if (*((*arg) + 1)) {
         *dst = *(++(*arg));
+      }
     }
 
     *dst++ = **arg;
     ++(*arg);
   }
 
-  if (**arg)
+  if (**arg) {
     (*arg)++;
+  }
 
   *dst = '\0';
   return res;
@@ -467,8 +490,9 @@ static unsigned int rewrite_parse_cond_flags(pool *p, const char *flags_str) {
   str++;
   str[strlen(str)-1] = '\0';
 
-  while ((opt = rewrite_argsep(&str)) != NULL)
+  while ((opt = rewrite_argsep(&str)) != NULL) {
     *((char **) push_array(opt_list)) = pstrdup(p, opt);
+  }
 
   opts = opt_list->elts;
   for (i = 0; i < opt_list->nelts; i++) {
@@ -502,8 +526,9 @@ static unsigned int rewrite_parse_rule_flags(pool *p, const char *flags_str) {
   str++;
   str[strlen(str)-1] = '\0';
 
-  while ((opt = rewrite_argsep(&str)) != NULL)
+  while ((opt = rewrite_argsep(&str)) != NULL) {
     *((char **) push_array(opt_list)) = pstrdup(p, opt);
+  }
 
   opts = opt_list->elts;
   for (i = 0; i < opt_list->nelts; i++) {
@@ -539,12 +564,11 @@ static unsigned char rewrite_match_cond(cmd_rec *cmd, config_rec *cond) {
       rewrite_log("rewrite_match_cond(): checked lexical LT cond: %s > %s: %d",
         cond_str, (char *) cond->argv[1], res);
 
-      if (!negated) {
-        return (res < 0 ? TRUE : FALSE);
-
-      } else {
+      if (negated == TRUE) {
         return (res < 0 ? FALSE : TRUE);
       }
+
+      return (res < 0 ? TRUE : FALSE);
     }
 
     case REWRITE_COND_OP_LEX_GT: {
@@ -554,12 +578,11 @@ static unsigned char rewrite_match_cond(cmd_rec *cmd, config_rec *cond) {
       rewrite_log("rewrite_match_cond(): checked lexical GT cond: %s < %s: %d",
         cond_str, (char *) cond->argv[1], res);
 
-      if (!negated) {
-        return (res > 0 ? TRUE : FALSE);
-
-      } else {
+      if (negated == TRUE) {
         return (res > 0 ? FALSE : TRUE);
       }
+
+      return (res > 0 ? TRUE : FALSE);
     }
 
     case REWRITE_COND_OP_LEX_EQ: {
@@ -569,12 +592,11 @@ static unsigned char rewrite_match_cond(cmd_rec *cmd, config_rec *cond) {
       rewrite_log("rewrite_match_cond(): checked lexical EQ cond: %s == %s: %d",
         cond_str, (char *) cond->argv[1], res);
 
-      if (!negated) {
-        return (res == 0 ? TRUE : FALSE);
-
-      } else {
+      if (negated == TRUE) {
         return (res == 0 ? FALSE : TRUE);
       }
+
+      return (res == 0 ? TRUE : FALSE);
     }
 
     case REWRITE_COND_OP_REGEX: {
@@ -599,10 +621,11 @@ static unsigned char rewrite_match_cond(cmd_rec *cmd, config_rec *cond) {
         res = TRUE;
       }
 
-      if (!negated)
-        return res;
-      else
+      if (negated == TRUE) {
         return (res == TRUE ? FALSE : TRUE);
+      }
+
+      return res;
     }
 
     case REWRITE_COND_OP_TEST_FILE: {
@@ -617,10 +640,11 @@ static unsigned char rewrite_match_cond(cmd_rec *cmd, config_rec *cond) {
         res = TRUE;
       }
 
-      if (!negated)
-        return res;
-      else
+      if (negated == TRUE) {
         return (res == TRUE ? FALSE : TRUE);
+      }
+
+      return res;
     }
 
     case REWRITE_COND_OP_TEST_SYMLINK: {
@@ -635,10 +659,11 @@ static unsigned char rewrite_match_cond(cmd_rec *cmd, config_rec *cond) {
         res = TRUE;
       }
 
-      if (!negated)
-        return res;
-      else
+      if (negated == TRUE) {
         return (res == TRUE ? FALSE : TRUE);
+      }
+
+      return res;
     }
 
     case REWRITE_COND_OP_TEST_SIZE: {
@@ -654,10 +679,11 @@ static unsigned char rewrite_match_cond(cmd_rec *cmd, config_rec *cond) {
         res = TRUE;
       }
 
-      if (!negated)
-        return res;
-      else
+      if (negated == TRUE) {
         return (res == TRUE ? FALSE : TRUE);
+      }
+
+      return res;
     }
 
     default:
@@ -794,7 +820,8 @@ static unsigned char rewrite_parse_map_txt(rewrite_map_txt_t *txtmap) {
     pr_signals_handle();
 
     /* Skip leading whitespace. */
-    for (pos = 0; pos < linelen && PR_ISSPACE(linebuf[pos]); pos++);
+    for (pos = 0; pos < linelen && PR_ISSPACE(linebuf[pos]); pos++) {
+    }
 
     /* Ignore comments and blank lines. */
     if (linebuf[pos] == '#') {
@@ -864,7 +891,6 @@ static unsigned char rewrite_parse_map_txt(rewrite_map_txt_t *txtmap) {
 
 static unsigned char rewrite_regexec(const char *string, pr_regex_t *pre,
     unsigned char negated, rewrite_match_t *matches) {
-  int res = -1;
   char *tmpstr = (char *) string;
   unsigned char have_match = FALSE;
 
@@ -878,15 +904,16 @@ static unsigned char rewrite_regexec(const char *string, pr_regex_t *pre,
   memset(matches->match_groups, '\0', sizeof(regmatch_t) * REWRITE_MAX_MATCHES);
 
   /* Execute the given regex. */
-  while ((res = pr_regexp_exec(pre, tmpstr, REWRITE_MAX_MATCHES,
-      matches->match_groups, 0, 0, 0)) == 0) {
+  while (pr_regexp_exec(pre, tmpstr, REWRITE_MAX_MATCHES,
+      matches->match_groups, 0, 0, 0) == 0) {
     have_match = TRUE;
     break;
   }
 
   /* Invert the return value if necessary. */
-  if (negated)
+  if (negated == TRUE) {
     have_match = !have_match;
+  }
 
   return have_match;
 }
@@ -1333,9 +1360,10 @@ static const char *rewrite_subst_maps(cmd_rec *cmd, const char *pattern) {
       c = find_config_next(c, c->next, CONF_PARAM, "RewriteMap", FALSE);
     }
 
-    if (!have_map)
+    if (have_map == FALSE) {
       rewrite_log("rewrite_subst_maps(): warning: no such RewriteMap '%s'",
         map.map_name);
+    }
   }
 
   /* Don't forget to reset the parsing function when done. */
@@ -1655,8 +1683,9 @@ static int rewrite_utf8_to_ucs4(unsigned long *ucs4_buf,
     } else if ((*utf8_buf & 0xE0)== 0xC0) {
 
       /* Make sure the next byte is a valid UTF8 byte. */
-      if (!REWRITE_VALID_UTF8_BYTE(*(utf8_buf + 1)))
+      if (!REWRITE_VALID_UTF8_BYTE(*(utf8_buf + 1))) {
         return -1;
+      }
 
       *ucs4_buf++ = (unsigned long) (((*utf8_buf - 0xC0) * 0x40)
                     + (*(utf8_buf+1) - 0x80));
@@ -1668,9 +1697,11 @@ static int rewrite_utf8_to_ucs4(unsigned long *ucs4_buf,
       register unsigned int i;
 
       /* Make sure the next 2 bytes are valid UTF8 bytes. */
-      for (i = 1; i <= 2; i++)
-        if (!REWRITE_VALID_UTF8_BYTE(*(utf8_buf + i)))
+      for (i = 1; i <= 2; i++) {
+        if (!REWRITE_VALID_UTF8_BYTE(*(utf8_buf + i))) {
           return -1;
+        }
+      }
 
       *ucs4_buf++ = (unsigned long) (((*utf8_buf - 0xE0) * 0x1000)
                   + ((*(utf8_buf+1) - 0x80) * 0x40)
@@ -1683,9 +1714,11 @@ static int rewrite_utf8_to_ucs4(unsigned long *ucs4_buf,
       register unsigned int i;
 
       /* Make sure the next 3 bytes are valid UTF8 bytes. */
-      for (i = 1; i <= 3; i++)
-        if (!REWRITE_VALID_UTF8_BYTE(*(utf8_buf + i)))
+      for (i = 1; i <= 3; i++) {
+        if (!REWRITE_VALID_UTF8_BYTE(*(utf8_buf + i))) {
           return -1;
+        }
+      }
 
       *ucs4_buf++ = (unsigned long)
                    (((*utf8_buf - 0xF0) * 0x040000)
@@ -1700,9 +1733,11 @@ static int rewrite_utf8_to_ucs4(unsigned long *ucs4_buf,
       register unsigned int i;
 
       /* Make sure the next 4 bytes are valid UTF8 bytes. */
-      for (i = 1; i <= 4; i++)
-        if (!REWRITE_VALID_UTF8_BYTE(*(utf8_buf + i)))
+      for (i = 1; i <= 4; i++) {
+        if (!REWRITE_VALID_UTF8_BYTE(*(utf8_buf + i))) {
           return -1;
+        }
+      }
 
       *ucs4_buf++ = (unsigned long)
                     (((*utf8_buf - 0xF8) * 0x01000000)
@@ -1718,9 +1753,11 @@ static int rewrite_utf8_to_ucs4(unsigned long *ucs4_buf,
       register unsigned int i;
 
       /* make sure the next 5 bytes are valid UTF8 bytes */
-      for (i = 1; i <= 5; i++)
-        if (!REWRITE_VALID_UTF8_BYTE(*(utf8_buf + i)))
+      for (i = 1; i <= 5; i++) {
+        if (!REWRITE_VALID_UTF8_BYTE(*(utf8_buf + i))) {
           return -1;
+        }
+      }
 
       *ucs4_buf++ = (unsigned long)
                     (((*utf8_buf - 0xFC) * 0x40000000)
@@ -1860,14 +1897,13 @@ static const char *rewrite_map_int_unescape(pool *map_pool, char *key) {
         rewrite_log("rewrite_map_int_unescape(): bad escape sequence '%c%c%c'",
           key[j], key[j+1], key[j+2]);
         return NULL;
+      }
 
-      } else {
-        value[i] = rewrite_hex_to_char(&key[j+1]);
-        j += 2;
-        if (key[i] == '/' || key[i] == '\0') {
-          rewrite_log("rewrite_map_int_unescape(): bad path");
-          return NULL;
-        }
+      value[i] = rewrite_hex_to_char(&key[j+1]);
+      j += 2;
+      if (key[i] == '/' || key[i] == '\0') {
+        rewrite_log("rewrite_map_int_unescape(): bad path");
+        return NULL;
       }
     }
   }
@@ -1892,6 +1928,10 @@ static int rewrite_open_fifo(config_rec *c) {
       strerror(xerrno));
 
     errno = xerrno;
+    return -1;
+  }
+
+  if (pr_fs_get_usable_fd2(&fd) < 0) {
     return -1;
   }
 
@@ -2025,13 +2065,13 @@ static char *rewrite_map_int_utf8trans(pool *map_pool, char *key) {
   ucs4strlen = rewrite_utf8_to_ucs4(ucs4_longs, strlen(key),
     (unsigned char *) key);
   if (ucs4strlen < 0) {
-
     /* The key is not a properly formatted UTF-8 string. */
     rewrite_log("rewrite_map_int_utf8trans(): not a proper UTF-8 string: '%s'",
       key);
     return NULL;
+  }
 
-  } else if (ucs4strlen > 1) {
+  if (ucs4strlen > 1) {
     register int i = 0;
 
     /* Cast the UTF-8 longs to unsigned chars.  NOTE: this is an assumption
@@ -2093,7 +2133,6 @@ static char *rewrite_map_int_idnatrans(pool *map_pool, char *key) {
 static void rewrite_openlog(void) {
   int res = 0, xerrno = 0;
 
-  /* Sanity checks */
   if (rewrite_logfd >= 0) {
     return;
   }
@@ -2119,12 +2158,6 @@ static void rewrite_openlog(void) {
 
   if (res < 0) {
     switch (res) {
-      case -1:
-        pr_log_pri(PR_LOG_NOTICE, MOD_REWRITE_VERSION
-          ": error: unable to open RewriteLog '%s': %s", rewrite_logfile,
-          strerror(xerrno));
-        break;
-
       case PR_LOG_WRITABLE_DIR:
         pr_log_pri(PR_LOG_WARNING, MOD_REWRITE_VERSION
           ": error: unable to open RewriteLog '%s': %s", rewrite_logfile,
@@ -2136,16 +2169,21 @@ static void rewrite_openlog(void) {
           ": error: unable to open RewriteLog '%s': %s", rewrite_logfile,
           "cannot log to a symbolic link");
         break;
+
+      case -1:
+      default:
+        pr_log_pri(PR_LOG_NOTICE, MOD_REWRITE_VERSION
+          ": error: unable to open RewriteLog '%s': %s", rewrite_logfile,
+          strerror(xerrno));
+        break;
     }
   }
-
-  return;
 }
 
 static void rewrite_closelog(void) {
-  /* Sanity check */
-  if (rewrite_logfd < 0)
+  if (rewrite_logfd < 0) {
     return;
+  }
 
   if (close(rewrite_logfd) < 0) {
     pr_log_pri(PR_LOG_ALERT, MOD_REWRITE_VERSION
@@ -2155,8 +2193,6 @@ static void rewrite_closelog(void) {
 
   rewrite_logfile = NULL;
   rewrite_logfd = -1;
-
-  return;
 }
 
 static void rewrite_log(char *fmt, ...) {
@@ -2165,8 +2201,6 @@ static void rewrite_log(char *fmt, ...) {
   va_start(msg, fmt);
   (void) pr_log_vwritefile(rewrite_logfd, MOD_REWRITE_VERSION, fmt, msg);
   va_end(msg);
-
-  return;
 }
 
 /* Configuration directive handlers
@@ -2259,16 +2293,16 @@ MODRET set_rewritecondition(cmd_rec *cmd) {
     cond_op = REWRITE_COND_OP_LEX_EQ;
     cond_data = pstrdup(rewrite_pool, ++pattern);
 
-  } else if (strncmp(pattern, "-d", 3) == 0) {
+  } else if (strcmp(pattern, "-d") == 0) {
     cond_op = REWRITE_COND_OP_TEST_DIR;
 
-  } else if (strncmp(pattern, "-f", 3) == 0) {
+  } else if (strcmp(pattern, "-f") == 0) {
     cond_op = REWRITE_COND_OP_TEST_FILE;
 
-  } else if (strncmp(pattern, "-l", 3) == 0) {
+  } else if (strcmp(pattern, "-l") == 0) {
     cond_op = REWRITE_COND_OP_TEST_SYMLINK;
 
-  } else if (strncmp(pattern, "-s", 3) == 0) {
+  } else if (strcmp(pattern, "-s") == 0) {
     cond_op = REWRITE_COND_OP_TEST_SIZE;
 
   } else {
@@ -2537,9 +2571,10 @@ MODRET set_rewritemap(cmd_rec *cmd) {
 
     map = (void *) txtmap;
 
-  } else
+  } else {
     CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "invalid RewriteMap map type: '",
       cmd->argv[2], "'", NULL));
+  }
 
   /* A defined map name is available within the scope of the server in
    * which it was defined.
@@ -2676,8 +2711,9 @@ MODRET rewrite_fixup(cmd_rec *cmd) {
   char *cmd_name, *cmd_arg;
 
   /* Is RewriteEngine on? */
-  if (!rewrite_engine)
+  if (rewrite_engine == FALSE) {
     return PR_DECLINED(cmd);
+  }
 
   /* If this command has no argument(s), the module has nothing on which to
    * operate.
@@ -2766,64 +2802,62 @@ MODRET rewrite_fixup(cmd_rec *cmd) {
         "regex", cmd_name, cmd_arg);
       c = find_config_next(c, c->next, CONF_PARAM, "RewriteRule", FALSE);
       continue;
-
-    } else {
-
-      /* The command matches the RewriteRule's regex.  If there are conditions
-       * attached to the RewriteRule, make sure those are met as well.
-       */
-      if (c->argv[3]) {
-        register unsigned int i = 0;
-        config_rec **conds = (config_rec **) c->argv[3];
-
-        rewrite_log("rewrite_fixup(): examining RewriteRule conditions");
-        exec_rule = TRUE;
-
-        for (i = 0; conds[i] != NULL; i++) {
-          unsigned int cond_flags = *((unsigned int *) conds[i]->argv[4]);
-
-          if (!rewrite_match_cond(cmd, conds[i])) {
-
-            /* If this is the last condition, fail the Rule. */
-            if (conds[i+1] == NULL) {
-              exec_rule = FALSE;
-              rewrite_log("rewrite_fixup(): last condition not met, skipping "
-                "this RewriteRule");
-              break;
-            }
-
-            /* If this condition is OR'd with the next condition, just
-             * continue on to the next condition.
-             */
-            if (cond_flags & REWRITE_COND_FLAG_ORNEXT) {
-              rewrite_log("rewrite_fixup(): condition not met but 'ornext' "
-                "flag in effect, continue to next condition");
-              continue;
-            }
-
-            /* Otherwise, fail the Rule. */
-            exec_rule = FALSE;
-            rewrite_log("rewrite_fixup(): condition not met, skipping this "
-              "RewriteRule");
-            break;
-
-          } else {
-            rewrite_log("rewrite_fixup(): condition met");
-            exec_rule = TRUE;
-
-            if (cond_flags & REWRITE_COND_FLAG_ORNEXT) {
-              break;
-            }
-          }
-        }
-
-      } else {
-        /* There are no conditions. */
-        exec_rule = TRUE;
-      }
     }
 
-    if (exec_rule) {
+    /* The command matches the RewriteRule's regex.  If there are conditions
+     * attached to the RewriteRule, make sure those are met as well.
+     */
+    if (c->argv[3] != NULL) {
+      register unsigned int i = 0;
+      config_rec **conds = (config_rec **) c->argv[3];
+
+      rewrite_log("rewrite_fixup(): examining RewriteRule conditions");
+      exec_rule = TRUE;
+
+      for (i = 0; conds[i] != NULL; i++) {
+        unsigned int cond_flags = *((unsigned int *) conds[i]->argv[4]);
+
+        if (!rewrite_match_cond(cmd, conds[i])) {
+
+          /* If this is the last condition, fail the Rule. */
+          if (conds[i+1] == NULL) {
+            exec_rule = FALSE;
+            rewrite_log("rewrite_fixup(): last condition not met, skipping "
+              "this RewriteRule");
+            break;
+          }
+
+          /* If this condition is OR'd with the next condition, just
+           * continue on to the next condition.
+           */
+          if (cond_flags & REWRITE_COND_FLAG_ORNEXT) {
+            rewrite_log("rewrite_fixup(): condition not met but 'ornext' "
+              "flag in effect, continue to next condition");
+            continue;
+          }
+
+          /* Otherwise, fail the Rule. */
+          exec_rule = FALSE;
+          rewrite_log("rewrite_fixup(): condition not met, skipping this "
+            "RewriteRule");
+          break;
+
+        } else {
+          rewrite_log("rewrite_fixup(): condition met");
+          exec_rule = TRUE;
+
+          if (cond_flags & REWRITE_COND_FLAG_ORNEXT) {
+            break;
+          }
+        }
+      }
+
+    } else {
+      /* There are no conditions. */
+      exec_rule = TRUE;
+    }
+
+    if (exec_rule == TRUE) {
       const char *new_arg = NULL;
       unsigned int rule_flags = *((unsigned int *) c->argv[4]);
 
@@ -2904,18 +2938,19 @@ MODRET rewrite_fixup(cmd_rec *cmd) {
 
 static void rewrite_exit_ev(const void *event_data, void *user_data) {
   rewrite_closelog();
-  return;
 }
 
 #if defined(PR_SHARED_MODULE)
 static void rewrite_mod_unload_ev(const void *event_data, void *user_data) {
-  if (strcmp("mod_rewrite.c", (const char *) event_data) == 0) {
-    pr_event_unregister(&rewrite_module, NULL, NULL);
-    pr_regexp_free(&rewrite_module, NULL);
-    if (rewrite_pool) {
-      destroy_pool(rewrite_pool);
-      rewrite_pool = NULL;
-    }
+  if (strcmp("mod_rewrite.c", (const char *) event_data) != 0) {
+    return;
+  }
+
+  pr_event_unregister(&rewrite_module, NULL, NULL);
+  pr_regexp_free(&rewrite_module, NULL);
+  if (rewrite_pool != NULL) {
+    destroy_pool(rewrite_pool);
+    rewrite_pool = NULL;
   }
 }
 #endif /* PR_SHARED_MODULE */
