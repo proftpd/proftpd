@@ -28,7 +28,11 @@
 #include "conf.h"
 #include "privs.h"
 
+#include <sys/shm.h>
+#include <sys/sem.h>
+
 #define MOD_LDAP_VERSION	"mod_ldap/2.9.5"
+#define USER_CACHE_PROJECT_ID		'a'
 
 #if PROFTPD_VERSION_NUMBER < 0x0001030103
 # error MOD_LDAP_VERSION " requires ProFTPD 1.3.4rc1 or later"
@@ -181,6 +185,32 @@ struct sasl_info {
   /* SASL_REALM from ldap.conf */
   const char *realm;
 };
+
+struct cache_entry {
+  char basedn[512];
+  char filter[512];
+  char pw_name[512];
+  char pw_passwd[512];
+  unsigned int pw_uid;
+  unsigned int pw_gid;
+  char pw_gecos[512];
+  char pw_dir[512];
+  char pw_shell[512];
+  time_t cached_time;
+};
+
+struct ldap_user_cache {
+  int head, tail, n_entries;
+  size_t cache_size;
+  struct cache_entry *cache_entries;
+};
+
+static struct ldap_user_cache *cache_data;
+static key_t cache_key;
+static int cache_shmid = -1;
+static int cache_ttl = 60;
+static char *cache_file_path = "/tmp";
+static int mutex_sem;
 
 static array_header *ldap_servers = NULL;
 static struct server_info *curr_server_info = NULL;
@@ -795,8 +825,314 @@ static LDAPMessage *pr_ldap_search(const char *basedn, const char *filter,
   return result;
 }
 
+static int init_cache_lock_sem(){
+  int xerrno;
+  union semun {
+       int              val;
+       struct semid_ds *buf;
+       unsigned short  array[1];
+  } sem_attr;
+
+  if ((mutex_sem = semget(cache_key, 1, 0600 | IPC_CREAT)) == -1) {
+      xerrno = errno;
+    pr_trace_msg(trace_channel, 3,
+      "error creating semaphore with key: 0x%x error: %s",
+      cache_key, strerror(errno));
+    errno = xerrno;
+    return -1;
+  }
+  sem_attr.val = 1;
+  if (semctl(mutex_sem, 0, SETVAL, sem_attr)) {
+    xerrno = errno;
+    pr_trace_msg(trace_channel, 3,
+    "error initializing semaphore with key: 0x%x error: %s",
+    cache_key, strerror(errno));
+    errno = xerrno;
+    return -1;
+  }
+  pr_trace_msg(trace_channel, 3,
+      "created semaphore for cache with key: 0x%x sem ID: %d",
+    cache_key, mutex_sem);
+  return 0;
+}
+
+static void *get_shared_memory(key_t *key, size_t *shm_size, int *shm_id) {
+  int xerrno = 0;
+  void *data = NULL;
+
+  *key = ftok(cache_file_path, USER_CACHE_PROJECT_ID);
+
+  if (*key == (key_t) -1) {
+    xerrno = errno;
+    pr_trace_msg(trace_channel, 3,
+      "unable to get key for path '%s': %s", cache_file_path, strerror(xerrno));
+
+    errno = xerrno;
+    return NULL;
+  }
+
+  if (init_cache_lock_sem() < 0){
+   return NULL;
+  }
+
+  PRIVS_ROOT
+  *shm_id = shmget(*key, *shm_size, IPC_CREAT|IPC_EXCL|0600);
+  xerrno = errno;
+  PRIVS_RELINQUISH
+
+  if (*shm_id < 0) {
+    if (xerrno == EEXIST) {
+      pr_trace_msg(trace_channel, 3,
+          "cannot create shm as already exists with key 0x%x, try specifying a different file", *key);
+    } else if (xerrno == ENOMEM) {
+      pr_trace_msg(trace_channel, 3,
+        "not enough memory for %lu shm bytes; try specifying a smaller size",
+        (unsigned long) *shm_size);
+    } else if (xerrno == ENOSPC) {
+      pr_trace_msg(trace_channel, 3,
+        "unable to allocate a new shm ID; system limit of shm IDs reached");
+    } else {
+      pr_trace_msg(trace_channel, 3,
+      "unable to get shm for key 0x%x and size %lu bytes. Error: %s", *key, *shm_size, strerror(xerrno));
+    }
+    errno = xerrno;
+    return NULL;
+  }
+
+  pr_trace_msg(trace_channel, 7, "attempting to attach to shm ID %d", *shm_id);
+
+  PRIVS_ROOT
+  data = shmat(*shm_id, NULL, 0);
+  xerrno = errno;
+  PRIVS_RELINQUISH
+
+  if (data == NULL) {
+    pr_trace_msg(trace_channel, 1,
+      "unable to attach to shm ID %d: %s", *shm_id, strerror(xerrno));
+    errno = xerrno;
+    return NULL;
+  }
+  memset(data, 0, *shm_size);
+  return data;
+}
+
+static size_t calculate_cache_size(size_t requested_size){
+  unsigned int cache_max_entries = 0;
+  size_t cache_size;
+  int rem;
+
+  if (requested_size < sizeof(struct ldap_user_cache) + (sizeof(struct cache_entry))) {
+    pr_trace_msg(trace_channel, 8,
+              "requested cache size %lu bytes too small to cache any entries, increasing to fit a single entry", requested_size);
+    requested_size = sizeof(struct ldap_user_cache) + (sizeof(struct cache_entry));
+  }
+
+  cache_max_entries = (requested_size - sizeof(struct ldap_user_cache)) /
+    (sizeof(struct cache_entry));
+  cache_size = sizeof(struct ldap_user_cache) +
+    (cache_max_entries * sizeof(struct cache_entry));
+
+  rem = cache_size % SHMLBA;
+  if (rem != 0) {
+    cache_size = (cache_size - rem + SHMLBA);
+  }
+  pr_trace_msg(trace_channel, 8,
+      "cache size will be %lu bytes with capacity for %u entries", cache_size, cache_max_entries);
+  return cache_size;
+}
+
+static void copy_if_not_null(char *dest, const char *src){
+	if (src != NULL){
+		strcpy(dest, src);
+	}
+}
+
+static struct ldap_user_cache* init_cache(size_t cache_size){
+  int xerrno = 0;
+  struct ldap_user_cache *cache_data = NULL;
+
+  cache_data = get_shared_memory(&cache_key, &cache_size, &cache_shmid);
+
+  if (cache_data == NULL) {
+    xerrno = errno;
+    pr_log_debug(DEBUG4, "error while creating cache: %s. No caching will be performed.", strerror(xerrno));
+
+    errno = xerrno;
+    return NULL;
+  }
+
+  pr_trace_msg(trace_channel, 8,
+    "created shm for cache with key: 0x%x shm ID: %d", cache_key, cache_shmid);
+
+  cache_data->cache_size = cache_size;
+  cache_data->cache_entries = (struct cache_entry *) (cache_data + 1);
+  if (cache_data->n_entries == 0){
+    cache_data->head = -1;
+    cache_data->tail = -1;
+  }
+
+  return cache_data;
+}
+
+static int set_cache_lock(int lock){
+  struct sembuf asem[1];
+
+  asem[0].sem_num = 0;
+  asem[0].sem_flg = 0;
+  asem [0].sem_op = lock == FALSE ? 1 : -1;
+
+  PRIVS_ROOT
+  if (semop (mutex_sem, asem, 1) == -1) {
+    char* transition = lock == FALSE ? "unlocking" : "locking";
+    pr_trace_msg(trace_channel, 3,
+        "error %s cache: %s", transition, strerror(errno));
+    return -1;
+  }
+  PRIVS_RELINQUISH
+  return 0;
+}
+
+static void add_user_to_cache(const char* basedn, const char* filter, struct passwd* pw){
+  if (set_cache_lock(TRUE) < 0) {
+	  pr_log_writefile(ldap_logfd, MOD_LDAP_VERSION, "user %s will not be added to cache due to error in getting lock", basedn);
+	  return;
+  }
+
+  int i = ++cache_data->tail % 10;
+
+  pr_log_writefile(ldap_logfd, MOD_LDAP_VERSION, "adding user %s to cache", basedn);
+  struct cache_entry *entry;
+  entry = &(cache_data->cache_entries[i]);
+  copy_if_not_null(entry->basedn, basedn);
+  copy_if_not_null(entry->filter, filter);
+  copy_if_not_null(entry->pw_name, pw->pw_name);
+  copy_if_not_null(entry->pw_passwd, pw->pw_passwd);
+  entry->pw_uid = pw->pw_uid;
+  entry->pw_gid = pw->pw_gid;
+  copy_if_not_null(entry->pw_gecos, pw->pw_gecos);
+  copy_if_not_null(entry->pw_dir, pw->pw_dir);
+  copy_if_not_null(entry->pw_shell, pw->pw_shell);
+  entry->cached_time = time(NULL);
+
+  int *t = &(cache_data->tail);
+  *t = i;
+
+  cache_data->tail = i;
+  if (cache_data->head == -1){
+	  cache_data->head++;
+  }
+  ++cache_data->n_entries;
+
+  set_cache_lock(FALSE);
+
+  return;
+}
+
+static struct passwd* find_user_in_cache(const char* basedn, const char* filter, struct passwd* pw){
+  if (cache_data->head == -1){
+    return NULL;
+  }
+
+  for (int i=cache_data->head, j=0; j<cache_data->n_entries; i = (i+1) %10, j++){
+    struct cache_entry *entry;
+    entry = &(cache_data->cache_entries[i]);
+
+    if (!strcmp(entry->basedn, basedn) && !strcmp(entry->filter, filter)){
+      if (entry->cached_time + cache_ttl < time(NULL)) {
+        if (set_cache_lock(TRUE) == 0){
+          (void) pr_log_writefile(ldap_logfd, MOD_LDAP_VERSION,
+              "cached entry for %s has exceeded cache TTL of %ds and will be evicted along with all older cache entries", basedn, cache_ttl);
+          cache_data->n_entries = cache_data->n_entries - (j+1);
+          if (cache_data->n_entries == 0){
+            cache_data->head = -1;
+            cache_data->tail = -1;
+          } else {
+            cache_data->head = (i+1) % 10;
+          }
+          set_cache_lock(FALSE);
+        }
+        return NULL;
+      }
+      (void) pr_log_writefile(ldap_logfd, MOD_LDAP_VERSION, "using entry in cache for %s", basedn);
+      struct passwd *tmp_pw = malloc(sizeof(struct passwd));
+      tmp_pw->pw_name = entry->pw_name;
+      tmp_pw->pw_passwd = entry->pw_passwd;
+      tmp_pw->pw_uid= entry->pw_uid;
+      tmp_pw->pw_gid = entry->pw_gid;
+      tmp_pw->pw_gecos= entry->pw_gecos;
+      tmp_pw->pw_dir = entry->pw_dir;
+      tmp_pw->pw_shell= entry->pw_shell;
+      return tmp_pw;
+    }
+  }
+  return NULL;
+}
+
+static int close_cache() {
+  pr_memscrub(cache_data, cache_data->cache_size);
+
+  if (cache_shmid >= 0) {
+    int res, xerrno = 0;
+
+    pr_trace_msg(trace_channel, 7,
+          "detaching from shm");
+    PRIVS_ROOT
+    res = shmdt(cache_data);
+    xerrno = errno;
+    PRIVS_RELINQUISH
+
+    if (res < 0) {
+      pr_log_debug(DEBUG3, MOD_LDAP_VERSION
+        ": error detaching session shm ID %d: %s", cache_shmid,
+        strerror(xerrno));
+    }
+
+    cache_data = NULL;
+  }
+
+  return 0;
+}
+
+static int remove_cache() {
+  int res;
+  struct shmid_ds ds;
+
+  close_cache();
+
+  if (cache_shmid == -1) {
+    return 0;
+  }
+
+  pr_trace_msg(trace_channel, 7,
+    "removing cache with shm ID %d", cache_shmid);
+  PRIVS_ROOT
+  res = shmctl(cache_shmid, IPC_RMID, &ds);
+  PRIVS_RELINQUISH
+
+  if (res < 0) {
+    pr_log_debug(DEBUG3, MOD_LDAP_VERSION
+      ": error removing cache shm ID %d: %s", cache_shmid,
+      strerror(errno));
+
+  } else {
+    cache_shmid = -1;
+  }
+
+  pr_trace_msg(trace_channel, 7,
+    "removing semaphore with sem ID %d", mutex_sem);
+  PRIVS_ROOT
+  if (semctl (mutex_sem, 0, IPC_RMID) == -1) {
+    pr_log_debug(DEBUG1, MOD_LDAP_VERSION
+      ": error removing semaphore sem ID %d: %s", mutex_sem,
+      strerror(errno));
+  }
+  PRIVS_RELINQUISH
+
+  return res;
+}
+
 static struct passwd *pr_ldap_user_lookup(pool *p, char *filter_template,
-    const char *replace, const char *basedn, char *attrs[], char **user_dn) {
+    const char *replace, const char *basedn, char *attrs[], char **user_dn, int use_cache) {
   const char *filter;
   char *dn;
   int i = 0;
@@ -807,6 +1143,13 @@ static struct passwd *pr_ldap_user_lookup(pool *p, char *filter_template,
   filter = pr_ldap_interpolate_filter(p, filter_template, replace);
   if (filter == NULL) {
     return NULL;
+  }
+
+  if (use_cache){
+    struct passwd* cached_pw = find_user_in_cache(basedn, filter, pw);
+    if (cached_pw != NULL){
+      return cached_pw;
+    }
   }
 
   result = pr_ldap_search(basedn, filter, attrs, 2, TRUE);
@@ -1154,6 +1497,9 @@ static struct passwd *pr_ldap_user_lookup(pool *p, char *filter_template,
     "found user %s, UID %s, GID %s, homedir %s, shell %s",
     pw->pw_name, pr_uid2str(p, pw->pw_uid), pr_gid2str(p, pw->pw_gid),
     pw->pw_dir, pw->pw_shell);
+
+  add_user_to_cache(basedn, filter, pw);
+
   return pw;
 }
 
@@ -1518,7 +1864,7 @@ static struct passwd *pr_ldap_getpwnam(pool *p, const char *username) {
    */
   return pr_ldap_user_lookup(p, ldap_user_name_filter, username, filter,
     ldap_authbinds ? name_attrs + 1 : name_attrs,
-    ldap_authbinds ? &ldap_authbind_dn : NULL);
+    ldap_authbinds ? &ldap_authbind_dn : NULL, TRUE);
 }
 
 static struct passwd *pr_ldap_getpwuid(pool *p, uid_t uid) {
@@ -1530,7 +1876,7 @@ static struct passwd *pr_ldap_getpwuid(pool *p, uid_t uid) {
 
   uidstr = pr_uid2str(p, uid);
   return pr_ldap_user_lookup(p, ldap_user_uid_filter, uidstr,
-    ldap_user_basedn, uid_attrs, ldap_authbinds ? &ldap_authbind_dn : NULL);
+    ldap_user_basedn, uid_attrs, ldap_authbinds ? &ldap_authbind_dn : NULL, FALSE);
 }
 
 MODRET handle_ldap_quota_lookup(cmd_rec *cmd) {
@@ -1773,6 +2119,35 @@ return_groups:
   return PR_DECLINED(cmd);
 }
 
+static int check_password(pool *p, struct passwd *pw, const char *username, const char *cleartext_passwd){
+  if (pw == NULL) {
+    return FALSE;
+  }
+
+  if (ldap_authbinds == FALSE &&
+      pw->pw_passwd == NULL) {
+    (void) pr_log_writefile(ldap_logfd, MOD_LDAP_VERSION,
+      "LDAPAuthBinds not enabled, and unable to retrieve password for user %s",
+      pw->pw_name);
+    return FALSE;
+  }
+
+  int res = pr_auth_check(p, ldap_authbinds ? NULL : pw->pw_passwd,
+    username, cleartext_passwd);
+  if (res != 0) {
+    if (res == -1) {
+      (void) pr_log_writefile(ldap_logfd, MOD_LDAP_VERSION,
+        "bad password for user %s: %s", pw->pw_name, strerror(errno));
+
+    } else {
+      (void) pr_log_writefile(ldap_logfd, MOD_LDAP_VERSION,
+        "bad password for user %s", pw->pw_name);
+    }
+    return FALSE;
+  }
+  return TRUE;
+}
+
 /* cmd->argv[0] : user name
  * cmd->argv[1] : cleartext password
  */
@@ -1784,7 +2159,6 @@ MODRET ldap_auth_auth(cmd_rec *cmd) {
          ldap_attr_loginshell, NULL,
        };
   struct passwd *pw = NULL;
-  int res;
 
   if (ldap_do_users == FALSE) {
     return PR_DECLINED(cmd);
@@ -1808,33 +2182,24 @@ MODRET ldap_auth_auth(cmd_rec *cmd) {
   pw = pr_ldap_user_lookup(cmd->tmp_pool,
     ldap_user_name_filter, username, filter,
     ldap_authbinds ? pass_attrs + 1 : pass_attrs,
-    ldap_authbinds ? &ldap_authbind_dn : NULL);
+    ldap_authbinds ? &ldap_authbind_dn : NULL, TRUE);
+
+  if (!check_password(cmd->tmp_pool, pw, username, cmd->argv[1])){
+    (void) pr_log_writefile(ldap_logfd, MOD_LDAP_VERSION,
+      "retrying user auth by-passing cache %s", pw->pw_name);
+    pw = pr_ldap_user_lookup(cmd->tmp_pool,
+      ldap_user_name_filter, username, filter,
+      ldap_authbinds ? pass_attrs + 1 : pass_attrs,
+      ldap_authbinds ? &ldap_authbind_dn : NULL, FALSE);
+
+    if (!check_password(cmd->tmp_pool, pw, username, cmd->argv[1])){
+      return PR_ERROR_INT(cmd, PR_AUTH_BADPWD);
+    }
+  }
+  
   if (pw == NULL) {
     /* Can't find the user in the LDAP directory. */
     return PR_DECLINED(cmd);
-  }
-
-  if (ldap_authbinds == FALSE &&
-      pw->pw_passwd == NULL) {
-    (void) pr_log_writefile(ldap_logfd, MOD_LDAP_VERSION,
-      "LDAPAuthBinds not enabled, and unable to retrieve password for user %s",
-      pw->pw_name);
-    return PR_ERROR_INT(cmd, PR_AUTH_NOPWD);
-  }
-
-  res = pr_auth_check(cmd->tmp_pool, ldap_authbinds ? NULL : pw->pw_passwd,
-    username, cmd->argv[1]);
-  if (res != 0) {
-    if (res == -1) {
-      (void) pr_log_writefile(ldap_logfd, MOD_LDAP_VERSION,
-        "bad password for user %s: %s", pw->pw_name, strerror(errno));
-
-    } else {
-      (void) pr_log_writefile(ldap_logfd, MOD_LDAP_VERSION,
-        "bad password for user %s", pw->pw_name);
-    }
-
-    return PR_ERROR_INT(cmd, PR_AUTH_BADPWD);
   }
 
   session.auth_mech = "mod_ldap.c";
@@ -3185,6 +3550,65 @@ MODRET set_ldapdefaultquota(cmd_rec *cmd) {
   return PR_HANDLED(cmd);
 }
 
+MODRET set_ldapcachefile(cmd_rec *cmd) {
+  char *file_path;
+
+  CHECK_ARGS(cmd, 1);
+  CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL);
+
+  file_path = cmd->argv[1];
+  if (strlen(file_path) == 0) {
+    CONF_ERROR(cmd, "must not be an empty string");
+  }
+
+  add_config_param_str(cmd->argv[0], 1, file_path);
+  return PR_HANDLED(cmd);
+}
+
+MODRET set_ldapcachesize(cmd_rec *cmd) {
+  config_rec *c;
+  int size;
+
+  CHECK_ARGS(cmd, 1);
+  CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL);
+
+  char *ptr = NULL;
+  size = strtol(cmd->argv[1], &ptr, 10);
+
+  if (ptr && *ptr) {
+    CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "'", cmd->argv[0],
+      "' is not a valid cache size value", NULL));
+  }
+
+  c = add_config_param(cmd->argv[0], 1, NULL);
+  c->argv[0] = pcalloc(c->pool, sizeof(int));
+  *((int *) c->argv[0]) = size;
+
+  return PR_HANDLED(cmd);
+}
+
+MODRET set_ldapcachettl(cmd_rec *cmd) {
+  config_rec *c;
+  int ttl;
+
+  CHECK_ARGS(cmd, 1);
+  CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL);
+
+  char *ptr = NULL;
+  ttl = strtol(cmd->argv[1], &ptr, 10);
+
+  if (ptr && *ptr) {
+    CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "'", cmd->argv[0],
+      "' is not a valid cache time to live value", NULL));
+  }
+
+  c = add_config_param(cmd->argv[0], 1, NULL);
+  c->argv[0] = pcalloc(c->pool, sizeof(int));
+  *((int *) c->argv[0]) = ttl;
+
+  return PR_HANDLED(cmd);
+}
+
 /* Event listeners
  */
 
@@ -3201,6 +3625,8 @@ static void ldap_mod_unload_ev(const void *event_data, void *user_data) {
 
 static void ldap_postparse_ev(const void *event_data, void *user_data) {
   server_rec *s = NULL;
+  void *ptr;
+
 
   /* Check the configured LDAPServer directives.  Specifically, if the URL
    * syntax has been used, we look for any LDAPSearchScope directive and
@@ -3323,6 +3749,20 @@ static void ldap_postparse_ev(const void *event_data, void *user_data) {
       server_info_get_ssl_defaults(info);
     }
   }
+
+  ptr = get_param_ptr(main_server->conf, "LDAPCacheSize", FALSE);
+  if (ptr != NULL) {
+	  size_t size = calculate_cache_size(*((int *) ptr));
+	  cache_data = init_cache(size);
+
+	  cache_file_path = get_param_ptr(main_server->conf, "LDAPCacheFile", FALSE);
+
+	  ptr = get_param_ptr(main_server->conf, "LDAPCacheTtl", FALSE);
+	  if (ptr != NULL) {
+		cache_ttl = *((int *) ptr);
+	  }
+	  pr_log_writefile(ldap_logfd, MOD_LDAP_VERSION, "created cache with size: %ld, TTL: %ds, based on file \"%s\"", size, cache_ttl, cache_file_path);
+  }
 }
 
 static void ldap_sess_reinit_ev(const void *event_data, void *user_data) {
@@ -3390,6 +3830,7 @@ static void ldap_sess_reinit_ev(const void *event_data, void *user_data) {
 
 static void ldap_shutdown_ev(const void *event_data, void *user_data) {
   server_infos_free();
+  remove_cache();
 }
 
 /* Initialization routines
@@ -3466,6 +3907,8 @@ static int ldap_mod_init(void) {
 
   return 0;
 }
+
+
 
 static int ldap_sess_init(void) {
   config_rec *c;
@@ -3826,6 +4269,9 @@ static conftable ldap_conftab[] = {
   { "LDAPUsers",		set_ldapusers,			NULL },
   { "LDAPUseSASL",		set_ldapusesasl,		NULL },
   { "LDAPUseTLS",		set_ldapusetls,			NULL },
+  { "LDAPCacheFile",    set_ldapcachefile,      NULL },
+  { "LDAPCacheSize",    set_ldapcachesize,      NULL },
+  { "LDAPCacheTtl",     set_ldapcachettl,       NULL },
 
   { NULL, NULL, NULL },
 };
