@@ -91,10 +91,10 @@ struct exec_event_data {
 };
 
 /* Prototypes */
-static void exec_any_ev(const void *, void *);
+static void exec_any_ev(const void *event_data, void *user_data);
 static const char *exec_subst_var(pool *p, cmd_rec *cmd,
   const char *text, unsigned char *logfmt);
-static int exec_log(const char *, ...)
+static int exec_log(const char *fmt, ...)
 #if defined(__GNUC__)
       __attribute__ ((format (printf, 1, 2)));
 #else
@@ -353,9 +353,10 @@ static void exec_prepare_fds(int stdin_fd, int stdout_fd, int stderr_fd) {
         strerror(errno));
 
     } else {
-      if (dup2(stdin_fd, STDIN_FILENO) < 0)
+      if (dup2(stdin_fd, STDIN_FILENO) < 0) {
         exec_log("error: unable to dup fd %d to stdin: %s", stdin_fd,
           strerror(errno));
+      }
 
       (void) close(stdin_fd);
     }
@@ -757,11 +758,10 @@ static int exec_ssystem(cmd_rec *cmd, config_rec *c, int flags) {
               strerror(errno));
             status = -1;
             break;
-
-          } else {
-            pr_signals_handle();
-            continue;
           }
+
+          pr_signals_handle();
+          continue;
         }
 
         if (exec_timeout > 0) {
@@ -926,11 +926,10 @@ static int exec_ssystem(cmd_rec *cmd, config_rec *c, int flags) {
               strerror(errno));
             status = -1;
             break;
-
-          } else {
-            pr_signals_handle();
-            continue;
           }
+
+          pr_signals_handle();
+          continue;
         }
 
         res = waitpid(pid, &status, 0);
