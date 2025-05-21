@@ -1,6 +1,6 @@
 /*
  * ProFTPD - mod_snmp database storage
- * Copyright (c) 2008-2017 TJ Saunders
+ * Copyright (c) 2008-2025 TJ Saunders
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -1005,8 +1005,9 @@ int snmp_db_get_value(pool *p, unsigned int field, int32_t *int_value,
 
       /* TimeTicks are in hundredths of seconds since start time. */
       res = snmp_uptime_get(p, &start_tv);
-      if (res < 0)
+      if (res < 0) {
         return -1;
+      }
 
       gettimeofday(&now_tv, NULL);
 

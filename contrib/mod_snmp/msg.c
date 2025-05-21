@@ -1,6 +1,6 @@
 /*
  * ProFTPD - mod_snmp message routines
- * Copyright (c) 2008-2016 TJ Saunders
+ * Copyright (c) 2008-2025 TJ Saunders
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -46,6 +46,9 @@ const char *snmp_msg_get_versionstr(long snmp_version) {
 
     case SNMP_PROTOCOL_VERSION_3:
       versionstr = "SNMPv3";
+      break;
+
+    default:
       break;
   }
 
