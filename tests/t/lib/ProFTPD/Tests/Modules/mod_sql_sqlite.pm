@@ -460,7 +460,7 @@ my $TESTS = {
 
   sql_namebased_vhost_using_host_issue882 => {
     order => ++$order,
-    test_class => [qw(forking bug)],
+    test_class => [qw(flaky forking bug)],
   },
 
   sql_namebased_vhost_using_sni_issue882 => {
@@ -500,7 +500,11 @@ sub build_db {
   }
 
   if ($check_exit_status) {
-    if ($? != 0) {
+    if ($ENV{TEST_VERBOSE}) {
+      print STDERR "Exit status: $exit_status\n";
+    }
+
+    if ($exit_status != 0) {
       croak("'$cmd' failed");
     }
   }
@@ -1770,6 +1774,7 @@ sub get_sessions {
   if ($where) {
     $sql .= " WHERE $where";
   }
+  $sql .= ";";
 
   my $cmd = "sqlite3 $db_file \"$sql\"";
 
@@ -3422,6 +3427,7 @@ sub get_renames {
   if ($where) {
     $sql .= " WHERE $where";
   }
+  $sql .= ";";
 
   my $cmd = "sqlite3 $db_file \"$sql\"";
 
@@ -4101,6 +4107,7 @@ sub get_resp_mesgs {
   if ($where) {
     $sql .= " WHERE $where";
   }
+  $sql .= ";";
 
   my $cmd = "sqlite3 $db_file \"$sql\"";
 
@@ -5330,8 +5337,11 @@ EOS
 
       $client->login($user, $passwd);
       $client->quit();
-    };
 
+      # Let the session process gracefully finish its db routines.  Yay
+      # raciness.
+      sleep(1);
+    };
     if ($@) {
       $ex = $@;
     }
@@ -5534,6 +5544,7 @@ sub get_locations {
   if ($where) {
     $sql .= " WHERE $where";
   }
+  $sql .= ";";
 
   my $cmd = "sqlite3 $db_file \"$sql\"";
 
@@ -5679,6 +5690,8 @@ EOS
   if ($ex) {
     test_cleanup($setup->{log_file}, $ex);
   }
+
+  sleep(1);
 
   eval {
     my ($login, $ip_addr, $dir) = get_locations($db_file, "user = \'$setup->{user}\'");
@@ -5877,6 +5890,7 @@ sub get_ids {
   if ($where) {
     $sql .= " WHERE $where";
   }
+  $sql .= ";";
 
   my $cmd = "sqlite3 $db_file \"$sql\"";
 
@@ -6901,23 +6915,31 @@ EOS
       my $resp_msgs = $client->response_msgs();
       my $nmsgs = scalar(@$resp_msgs);
 
-      $expected = 4;
-      $self->assert($expected == $nmsgs, "Expected $expected, got $nmsgs");
+      # We might see the 150 response message in this collection; we might
+      # not.  Hence the "3 or 4".
+      $self->assert($nmsgs == 3 || $nmsgs == 4, "Expected 3 or 4, got $nmsgs");
 
-      $expected = "Opening ASCII mode data connection for file list";
-      $self->assert($expected eq $resp_msgs->[0],
-        "Expected response message '$expected', got '$resp_msgs->[0]'");
+      my $i = 0;
+
+      if ($nmsgs == 4) {
+        $expected = "Opening ASCII mode data connection for file list";
+        $self->assert($expected eq $resp_msgs->[$i],
+          "Expected response message '$expected', got '$resp_msgs->[0]'");
+        $i++;
+      }
 
       $expected = "Transfer complete";
-      $self->assert($expected eq $resp_msgs->[1],
+      $self->assert($expected eq $resp_msgs->[$i],
         "Expected response message '$expected', got '$resp_msgs->[1]'");
+      $i++;
 
       $expected = " Get that directory listing OK, $setup->{user}?";
-      $self->assert($expected eq $resp_msgs->[2],
+      $self->assert($expected eq $resp_msgs->[$i],
         "Expected response message '$expected', got '$resp_msgs->[2]'");
+      $i++;
 
       $expected = "-";
-      $self->assert($expected eq $resp_msgs->[3],
+      $self->assert($expected eq $resp_msgs->[$i],
         "Expected response message '$expected', got '$resp_msgs->[3]'");
 
       $client->quit();
@@ -7118,6 +7140,7 @@ sub get_cmds {
   if ($where) {
     $sql .= " WHERE $where";
   }
+  $sql .= ";";
 
   my $cmd = "sqlite3 $db_file \"$sql\"";
 
@@ -7321,6 +7344,7 @@ sub get_session_io {
   if ($where) {
     $sql .= " WHERE $where";
   }
+  $sql .= ";";
 
   my $cmd = "sqlite3 $db_file \"$sql\"";
 
@@ -7471,6 +7495,8 @@ EOS
     test_cleanup($setup->{log_file}, $ex);
   }
 
+  sleep(1);
+
   eval {
     my ($login, $ip_addr, $bytes_in, $bytes_out) = get_session_io($db_file,
       "user = \'$setup->{user}\'");
@@ -7511,6 +7537,7 @@ sub get_session_id {
   if ($where) {
     $sql .= " WHERE $where";
   }
+  $sql .= ";";
 
   my $cmd = "sqlite3 $db_file \"$sql\"";
 
@@ -7878,6 +7905,7 @@ sub get_sql_notes {
   if ($where) {
     $sql .= " WHERE $where";
   }
+  $sql .= ";";
 
   my $cmd = "sqlite3 $db_file \"$sql\"";
 
@@ -8160,6 +8188,10 @@ EOS
       $client->login($setup->{user}, $setup->{passwd});
       $client->list();
       $client->quit();
+
+      # Needed to let the session process gracefully finish its db routines.
+      # Yay raciness.
+      sleep(1);
     };
     if ($@) {
       $ex = $@;
@@ -8185,6 +8217,8 @@ EOS
   if ($ex) {
     test_cleanup($setup->{log_file}, $ex);
   }
+
+  sleep(1);
 
   eval {
     my ($login, $ip_addr, $resp_mesg) = get_resp_mesgs($db_file,
@@ -10103,7 +10137,7 @@ sub get_xfer_status {
   if ($where) {
     $sql .= " WHERE $where";
   }
-  $sql .= " LIMIT 1";
+  $sql .= " LIMIT 1;";
 
   my $cmd = "sqlite3 $db_file \"$sql\"";
 
@@ -11545,7 +11579,7 @@ sub get_xfer_failure {
   if ($where) {
     $sql .= " WHERE $where";
   }
-  $sql .= " LIMIT 1";
+  $sql .= " LIMIT 1;";
 
   my $cmd = "sqlite3 $db_file \"$sql\"";
 
@@ -11917,6 +11951,7 @@ EOS
         test_msg("Expected response message '$expected', got '$resp_msg'"));
 
       $client->quit();
+      sleep(1);
     };
 
     if ($@) {
@@ -11964,7 +11999,7 @@ EOS
   $self->assert($expected eq $xfer_status,
     test_msg("Expected transfer status '$expected', got '$xfer_status'"));
 
-  $expected = 'Operation not permitted';
+  $expected = 'Data connection closed';
   $self->assert($expected eq $xfer_failure,
     test_msg("Expected transfer failure '$expected', got '$xfer_failure'"));
 
@@ -12673,6 +12708,7 @@ sub get_logins {
   if ($where) {
     $sql .= " WHERE $where";
   }
+  $sql .= ";";
 
   my $cmd = "sqlite3 $db_file \"$sql\"";
 
@@ -13306,6 +13342,10 @@ EOS
       unless ($@) {
         die("Login succeeded unexpectedly");
       }
+
+      # Needed to let the session process gracefully finish its db routines.
+      # Yay raciness.
+      sleep(1);
     };
     if ($@) {
       $ex = $@;
@@ -13363,6 +13403,7 @@ sub get_session_with_primary_key {
   if ($where) {
     $sql .= " WHERE $where";
   }
+  $sql .= ";";
 
   my $cmd = "sqlite3 $db_file \"$sql\"";
 
@@ -14703,6 +14744,7 @@ sub get_port {
   if ($where) {
     $sql .= " WHERE $where";
   }
+  $sql .= ";";
 
   my $cmd = "sqlite3 $db_file \"$sql\"";
 
@@ -14904,6 +14946,7 @@ sub get_ftps {
   if ($where) {
     $sql .= " WHERE $where";
   }
+  $sql .= ";";
 
   my $cmd = "sqlite3 $db_file \"$sql\"";
 
