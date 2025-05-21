@@ -1,6 +1,6 @@
 /*
  * ProFTPD - mod_snmp MIB support
- * Copyright (c) 2008-2016 TJ Saunders
+ * Copyright (c) 2008-2025 TJ Saunders
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -1192,10 +1192,15 @@ int snmp_mib_init(void) {
 
     /* Handle mod_tls-related MIBs. */
     for (i = 1; snmp_mibs[i].mib_oidlen != 0; i++) {
-      int db_id = snmp_db_get_field_db_id(snmp_mibs[i].db_field);
+      int db_id;
+
+      db_id = snmp_db_get_field_db_id(snmp_mibs[i].db_field);
       switch (db_id) {
         case SNMP_DB_ID_TLS:
           snmp_mibs[i].mib_enabled = TRUE;
+          break;
+
+        default:
           break;
       }
     }
@@ -1206,12 +1211,17 @@ int snmp_mib_init(void) {
 
     /* Handle mod_sftp-related MIBs. */
     for (i = 1; snmp_mibs[i].mib_oidlen != 0; i++) {
-      int db_id = snmp_db_get_field_db_id(snmp_mibs[i].db_field);
+      int db_id;
+
+      db_id = snmp_db_get_field_db_id(snmp_mibs[i].db_field);
       switch (db_id) {
         case SNMP_DB_ID_SSH:
         case SNMP_DB_ID_SFTP:
         case SNMP_DB_ID_SCP:
           snmp_mibs[i].mib_enabled = TRUE;
+          break;
+
+        default:
           break;
       }
     }
@@ -1222,10 +1232,15 @@ int snmp_mib_init(void) {
 
     /* Handle mod_ban-related MIBs. */
     for (i = 1; snmp_mibs[i].mib_oidlen != 0; i++) {
-      int db_id = snmp_db_get_field_db_id(snmp_mibs[i].db_field);
+      int db_id;
+
+      db_id = snmp_db_get_field_db_id(snmp_mibs[i].db_field);
       switch (db_id) {
         case SNMP_DB_ID_BAN:
           snmp_mibs[i].mib_enabled = TRUE;
+          break;
+
+        default:
           break;
       }
     }

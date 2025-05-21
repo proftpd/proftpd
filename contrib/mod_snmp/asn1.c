@@ -1,6 +1,6 @@
 /*
  * ProFTPD - mod_snmp ASN.1 support
- * Copyright (c) 2008-2020 TJ Saunders
+ * Copyright (c) 2008-2025 TJ Saunders
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -72,6 +72,9 @@ static const char *asn1_typestr(unsigned char byte) {
 
     case SNMP_ASN1_TYPE_SET:
       typestr = "SET";
+      break;
+
+    default:
       break;
   }
 

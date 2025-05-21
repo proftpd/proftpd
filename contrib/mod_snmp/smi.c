@@ -1,6 +1,6 @@
 /*
  * ProFTPD - mod_snmp SMI routines
- * Copyright (c) 2008-2016 TJ Saunders
+ * Copyright (c) 2008-2025 TJ Saunders
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -84,6 +84,9 @@ const char *snmp_smi_get_varstr(pool *p, unsigned char var_type) {
 
     case SNMP_SMI_END_OF_MIB_VIEW:
       varstr = "END_OF_MIB_VIEW";
+      break;
+
+    default:
       break;
   }
 

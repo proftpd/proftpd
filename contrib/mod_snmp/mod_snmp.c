@@ -109,10 +109,10 @@ static int snmp_check_class_access(xaset_t *set, const char *name,
 #endif /* ProFTPD-1.3.5rc1 and later */
 
   c = find_config(set, CONF_PARAM, name, FALSE);
-  while (c) {
+  while (c != NULL) {
     pr_signals_handle();
 
-#ifdef PR_USE_REGEX
+#if defined(PR_USE_REGEX)
     if (*((unsigned char *) c->argv[0]) == PR_EXPR_EVAL_REGEX) {
       pr_regex_t *pre = (pr_regex_t *) c->argv[1];
 
@@ -122,19 +122,20 @@ static int snmp_check_class_access(xaset_t *set, const char *name,
         ok = TRUE;
         break;
       }
-
-    } else
+    }
 #endif /* regex support */
 
     if (*((unsigned char *) c->argv[0]) == PR_EXPR_EVAL_OR) {
       ok = pr_expr_eval_class_or((char **) &c->argv[1]);
-      if (ok == TRUE)
+      if (ok == TRUE) {
         break;
+      }
 
     } else if (*((unsigned char *) c->argv[0]) == PR_EXPR_EVAL_AND) {
       ok = pr_expr_eval_class_and((char **) &c->argv[1]);
-      if (ok == TRUE)
+      if (ok == TRUE) {
         break;
+      }
     }
 
     c = find_config_next(c, c->next, CONF_PARAM, name, FALSE);
@@ -1835,7 +1836,6 @@ static void snmp_agent_stop(pid_t agent_pid) {
   }
 
   snmp_agent_pid = 0;
-  return;
 }
 
 /* Configuration handlers
@@ -3301,10 +3301,9 @@ static void snmp_auth_code_ev(const void *event_data, void *user_data) {
 
     /* We only send notifications for failed authentications. */
     return;
-
-  } else {
-    ev_incr_value(field_id, "login failure total", 1);
   }
+
+  ev_incr_value(field_id, "login failure total", 1);
 
   if (notify_id > 0 &&
       snmp_notifys != NULL) {
@@ -3602,8 +3601,6 @@ static void snmp_postparse_ev(const void *event_data, void *user_data) {
       (void) snmp_db_close(snmp_pool, snmp_table_ids[i]);
     }
   }
-
-  return;
 }
 
 static void snmp_restart_ev(const void *event_data, void *user_data) {
@@ -3663,7 +3660,6 @@ static void snmp_startup_ev(const void *event_data, void *user_data) {
   }
 
   gettimeofday(&snmp_start_tv, NULL);
-  return;
 }
 
 static void snmp_timeout_idle_ev(const void *event_data, void *user_data) {
