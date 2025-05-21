@@ -76,7 +76,7 @@ static array_header *conn_cache = NULL;
 #define SQLITE_TRACE_LEVEL	12
 static const char *trace_channel = "sql.sqlite";
 
-MODRET sql_sqlite_close(cmd_rec *);
+MODRET sql_sqlite_close(cmd_rec *cmd);
 
 static void db_err(void *user_data, int err_code, const char *err_msg) {
   pr_trace_msg(trace_channel, 1, "(sqlite3): [error %d] %s", err_code, err_msg);
@@ -299,8 +299,9 @@ static int exec_stmt(cmd_rec *cmd, db_conn_t *conn, char *stmt, char **errstr) {
     return -1;
   }
 
-  if (ptr)
+  if (ptr) {
     sqlite3_free(ptr);
+  }
 
   return 0;
 }
@@ -720,11 +721,15 @@ MODRET sql_sqlite_select(cmd_rec *cmd) {
   } else {
     query = pstrcat(cmd->tmp_pool, cmd->argv[2], " FROM ", cmd->argv[1], NULL);
 
-    if (cmd->argc > 3 && cmd->argv[3])
+    if (cmd->argc > 3 &&
+        cmd->argv[3] != NULL) {
       query = pstrcat(cmd->tmp_pool, query, " WHERE ", cmd->argv[3], NULL);
+    }
 
-    if (cmd->argc > 4 && cmd->argv[4])
+    if (cmd->argc > 4 &&
+        cmd->argv[4] != NULL) {
       query = pstrcat(cmd->tmp_pool, query, " LIMIT ", cmd->argv[4], NULL);
+    }
 
     if (cmd->argc > 5) {
       register unsigned int i = 0;
