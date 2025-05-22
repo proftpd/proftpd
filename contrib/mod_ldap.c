@@ -993,12 +993,15 @@ static int set_cache_lock(int lock){
 }
 
 static void add_user_to_cache(const char* basedn, const char* filter, struct passwd* pw){
+  int i, max_entries;
+
   if (set_cache_lock(TRUE) < 0) {
 	  pr_log_writefile(ldap_logfd, MOD_LDAP_VERSION, "user %s will not be added to cache due to error in getting lock", basedn);
 	  return;
   }
 
-  int i = ++cache_data->tail % 10;
+  max_entries = (cache_data->cache_size - sizeof(struct ldap_user_cache))/sizeof(struct cache_entry);
+  i = ++cache_data->tail % max_entries;
 
   pr_log_writefile(ldap_logfd, MOD_LDAP_VERSION, "adding user %s to cache", basedn);
   struct cache_entry *entry;
@@ -1013,9 +1016,6 @@ static void add_user_to_cache(const char* basedn, const char* filter, struct pas
   copy_if_not_null(entry->pw_dir, pw->pw_dir);
   copy_if_not_null(entry->pw_shell, pw->pw_shell);
   entry->cached_time = time(NULL);
-
-  int *t = &(cache_data->tail);
-  *t = i;
 
   cache_data->tail = i;
   if (cache_data->head == -1){
