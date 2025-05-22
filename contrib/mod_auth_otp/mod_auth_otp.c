@@ -465,6 +465,9 @@ static int handle_user_otp(pool *p, const char *user, const char *user_otp,
     case AUTH_OTP_ALGO_HOTP:
       next_counter = counter - 1;
       break;
+
+    default:
+      break;
   }
 
   res = check_otp_code(p, user, user_otp, secret, secret_len, next_counter);
@@ -502,6 +505,9 @@ static int handle_user_otp(pool *p, const char *user, const char *user_otp,
 
     case AUTH_OTP_ALGO_HOTP:
       next_counter = counter + 1;
+      break;
+
+    default:
       break;
   }
 
@@ -606,8 +612,9 @@ MODRET auth_otp_auth(cmd_rec *cmd) {
   if (res == 1) {
     session.auth_mech = "mod_auth_otp.c";
     return PR_HANDLED(cmd);
+  }
 
-  } else if (res < 0) {
+  if (res < 0) {
     return PR_ERROR_INT(cmd, auth_otp_auth_code);
   }
 
@@ -651,6 +658,9 @@ MODRET auth_otp_chkpass(cmd_rec *cmd) {
     case AUTH_OTP_ALGO_HOTP:
       pr_trace_msg(trace_channel, 9,
         "expected HOTP '%s', got '%s' for user '%s'", real_otp, user_otp, user);
+      break;
+
+    default:
       break;
   }
 
