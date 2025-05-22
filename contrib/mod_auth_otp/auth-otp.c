@@ -1,6 +1,6 @@
 /*
  * auth-otp: HOTP/TOTP tool for ProFTPD mod_auth_otp module
- * Copyright 2016-2021 The ProFTPD Project team
+ * Copyright 2016-2025 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -232,7 +232,7 @@ int main(int argc, char **argv) {
 
   opterr = 0;
   while ((c =
-#ifdef HAVE_GETOPT_LONG
+#if defined(HAVE_GETOPT_LONG)
 	 getopt_long(argc, argv, cmdopts, opts, NULL)
 #else /* HAVE_GETOPT_LONG */
 	 getopt(argc, argv, cmdopts)
@@ -254,6 +254,7 @@ int main(int argc, char **argv) {
         break;
 
       case '?':
+      default:
         fprintf(stderr, "unknown option: %c\n", (char) optopt);
         show_usage(progname, 1);
         break;
