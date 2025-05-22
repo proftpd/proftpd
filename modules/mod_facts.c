@@ -1709,11 +1709,7 @@ MODRET facts_mlsd_cleanup(cmd_rec *cmd) {
     return PR_DECLINED(cmd);
   }
 
-  if (session.xfer.p != NULL) {
-    destroy_pool(session.xfer.p);
-  }
-
-  memset(&session.xfer, '\0', sizeof(session.xfer));
+  pr_data_clear_xfer_pool();
   return PR_DECLINED(cmd);
 }
 
