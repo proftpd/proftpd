@@ -6217,10 +6217,7 @@ MODRET core_rnto(cmd_rec *cmd) {
   CHECK_CMD_MIN_ARGS(cmd, 2);
 
   if (session.xfer.path == NULL) {
-    if (session.xfer.p != NULL) {
-      destroy_pool(session.xfer.p);
-      memset(&session.xfer, '\0', sizeof(session.xfer));
-    }
+    pr_data_clear_xfer_pool();
 
     pr_response_add_err(R_503, _("Bad sequence of commands"));
 
@@ -6414,11 +6411,7 @@ MODRET core_rnto(cmd_rec *cmd) {
 }
 
 MODRET core_rnto_cleanup(cmd_rec *cmd) {
-  if (session.xfer.p != NULL) {
-    destroy_pool(session.xfer.p);
-  }
-
-  memset(&session.xfer, '\0', sizeof(session.xfer));
+  pr_data_clear_xfer_pool();
 
   pr_table_remove(session.notes, "mod_core.rnfr-path", NULL);
   return PR_DECLINED(cmd);
@@ -6493,11 +6486,8 @@ MODRET core_rnfr(cmd_rec *cmd) {
   }
 
   /* We store the path in session.xfer.path */
-  if (session.xfer.p != NULL) {
-    destroy_pool(session.xfer.p);
-    memset(&session.xfer, '\0', sizeof(session.xfer));
-  }
 
+  pr_data_clear_xfer_pool();
   session.xfer.p = make_sub_pool(session.pool);
   pr_pool_tag(session.xfer.p, "session xfer pool");
 
