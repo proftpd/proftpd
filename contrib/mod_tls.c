@@ -1160,8 +1160,11 @@ static void tls_info_cb(const SSL *ssl, int where, int ret) {
     !defined(HAVE_LIBRESSL)
     if (ssl_state == TLS_ST_SR_CLNT_HELLO) {
 #else
-    if (ssl_state == SSL3_ST_SR_CLNT_HELLO_A ||
-        ssl_state == SSL23_ST_SR_CLNT_HELLO_A) {
+    if (ssl_state == SSL3_ST_SR_CLNT_HELLO_A
+#if LIBRESSL_VERSION_NUMBER < 0x4000000fL
+        || ssl_state == SSL23_ST_SR_CLNT_HELLO_A
+#endif
+        ) {
 #endif /* OpenSSL-1.1.x and later */
 
       if (tls_opts & TLS_OPT_ENABLE_DIAGS) {
