@@ -134,7 +134,7 @@ $(DESTDIR)$(localedir) $(DESTDIR)$(includedir) $(DESTDIR)$(includedir)/proftpd $
 	fi
 
 install-proftpd: $(DESTDIR)$(includedir) $(DESTDIR)$(localstatedir) $(DESTDIR)$(sysconfdir) $(DESTDIR)$(sbindir)
-	$(INSTALL_SBIN) $(top_builddir)/proftpd $(DESTDIR)$(sbindir)/proftpd
+	$(LIBTOOL) --mode=install --tag=CC $(INSTALL_SBIN) $(top_builddir)/proftpd $(DESTDIR)$(sbindir)/proftpd
 	if [ -f $(DESTDIR)$(sbindir)/in.proftpd ] ; then \
 		rm -f $(DESTDIR)$(sbindir)/in.proftpd ; \
 	fi
