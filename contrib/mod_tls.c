@@ -1161,9 +1161,10 @@ static void tls_info_cb(const SSL *ssl, int where, int ret) {
     if (ssl_state == TLS_ST_SR_CLNT_HELLO) {
 #else
     if (ssl_state == SSL3_ST_SR_CLNT_HELLO_A
-#if LIBRESSL_VERSION_NUMBER < 0x4000000fL
+# if LIBRESSL_VERSION_NUMBER < 0x4000000fL
+     /* LibreSSL's ssl23.h was removed in 4.0.0 */
         || ssl_state == SSL23_ST_SR_CLNT_HELLO_A
-#endif
+# endif
         ) {
 #endif /* OpenSSL-1.1.x and later */
 
