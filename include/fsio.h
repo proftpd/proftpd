@@ -2,7 +2,7 @@
  * ProFTPD - FTP server daemon
  * Copyright (c) 1997, 1998 Public Flood Software
  * Copyright (c) 1999, 2000 MacGyver aka Habeeb J. Dihu <macgyver@tos.net>
- * Copyright (c) 2001-2024 The ProFTPD Project
+ * Copyright (c) 2001-2025 The ProFTPD Project
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -32,13 +32,13 @@
 #include "conf.h"
 #include "error.h"
 
-#ifdef PR_USE_XATTR
+#if defined(PR_USE_XATTR)
 # if defined(HAVE_SYS_EXTATTR_H)
 #  include <sys/extattr.h>
 # elif defined(HAVE_SYS_XATTR_H)
 #  include <sys/xattr.h>
 # elif defined(HAVE_ATTR_XATTR_H)
-#   include <attr/xattr.h>
+#  include <attr/xattr.h>
 # endif
 #endif /* PR_USE_XATTR */
 
