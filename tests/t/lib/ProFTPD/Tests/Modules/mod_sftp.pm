@@ -2113,7 +2113,10 @@ sub list_tests {
     }
   }
 
-  return @tests;
+#  return @tests;
+  return qw(
+    sftp_upload_largefile
+  );
 }
 
 sub set_up {

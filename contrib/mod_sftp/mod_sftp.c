@@ -262,6 +262,12 @@ static void sftp_cmd_loop(server_rec *s, conn_t *conn) {
   sftp_conn = conn;
   pr_session_set_protocol("ssh2");
 
+  /* Disable the Nagle algorithm for SSH connections. */
+  if (pr_inet_set_proto_nodelay(sftp_pool, conn, 1) < 0) {
+    pr_trace_msg(trace_channel, 1,
+      "error enabling TCP_NODELAY for SSH session: %s", strerror(errno));
+  }
+
   if (sftp_opts & SFTP_OPT_PESSIMISTIC_KEXINIT) {
     /* If we are being pessimistic, we will send our version string to the
      * client now, and send our KEXINIT message later.
