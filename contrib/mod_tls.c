@@ -7641,7 +7641,7 @@ static int tls_accept(conn_t *conn, unsigned char on_data) {
       &tls_module, tls_handshake_timeout_cb, "SSL/TLS handshake");
   }
 
-  if (on_data) {
+  if (on_data == TRUE) {
     /* Make sure that TCP_NODELAY is enabled for the handshake. */
     if (pr_inet_set_proto_nodelay(conn->pool, conn, 1) < 0) {
       pr_trace_msg(trace_channel, 9,
@@ -7984,7 +7984,7 @@ static int tls_accept(conn_t *conn, unsigned char on_data) {
       }
     }
 
-    if (on_data) {
+    if (on_data == TRUE) {
       pr_event_generate("mod_tls.data-handshake-failed", &errcode);
 
     } else {
@@ -7999,11 +7999,13 @@ static int tls_accept(conn_t *conn, unsigned char on_data) {
     "TLS handshake on %s conn fd %d COMPLETED", on_data ? "data" : "ctrl",
     conn->rfd);
 
-  if (on_data) {
-    /* Disable TCP_NODELAY, now that the handshake is done. */
-    if (pr_inet_set_proto_nodelay(conn->pool, conn, 0) < 0) {
-      pr_trace_msg(trace_channel, 9,
-        "error disabling TCP_NODELAY on data conn: %s", strerror(errno));
+  if (on_data == TRUE) {
+    if (conn->use_nodelay == FALSE) {
+      /* Disable TCP_NODELAY, now that the handshake is done. */
+      if (pr_inet_set_proto_nodelay(conn->pool, conn, 0) < 0) {
+        pr_trace_msg(trace_channel, 9,
+          "error disabling TCP_NODELAY on data conn: %s", strerror(errno));
+      }
     }
 
     /* Re-enable TCP_CORK (aka TCP_NOPUSH), now that the handshake is done. */
@@ -8545,8 +8547,10 @@ static int tls_connect(conn_t *conn) {
     return -3;
   }
 
-  /* Disable TCP_NODELAY, now that the handshake is done. */
-  (void) pr_inet_set_proto_nodelay(conn->pool, conn, 0);
+  if (conn->use_nodelay == FALSE) {
+    /* Disable TCP_NODELAY, now that the handshake is done. */
+    (void) pr_inet_set_proto_nodelay(conn->pool, conn, 0);
+  }
 
   /* Disable the handshake timer. */
   pr_timer_remove(tls_handshake_timer_id, &tls_module);

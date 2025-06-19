@@ -1144,7 +1144,8 @@ static void set_server_privs(void) {
 
 static void fork_server(int fd, conn_t *l, unsigned char no_fork) {
   conn_t *conn = NULL;
-  int i, rev;
+  config_rec *c = NULL;
+  int i, rev, tcp_nodelay = 1;
   int semfds[2] = { -1, -1 };
   int xerrno = 0;
 
@@ -1388,7 +1389,19 @@ static void fork_server(int fd, conn_t *l, unsigned char no_fork) {
     exit(0);
   }
 
-  pr_inet_set_proto_opts(permanent_pool, conn, 0, 1, IPTOS_LOWDELAY, 0);
+  c = find_config(main_server->conf, CONF_PARAM, "TCPNoDelay", FALSE);
+  if (c != NULL) {
+    int ctrl_use_nodelay;
+
+    ctrl_use_nodelay = *((int *) c->argv[0]);
+    if (ctrl_use_nodelay == FALSE) {
+      tcp_nodelay = 0;
+    }
+  }
+
+  conn->use_nodelay = tcp_nodelay;
+  pr_inet_set_proto_opts(permanent_pool, conn, 0, tcp_nodelay,
+    IPTOS_LOWDELAY, 0);
 
   /* Close the write side of the semaphore pipe to tell the parent
    * we are all grown up and have finished housekeeping (closing
@@ -1416,7 +1429,6 @@ static void fork_server(int fd, conn_t *l, unsigned char no_fork) {
     time(&now);
     if (!deny || deny <= now) {
       pool *tmp_pool;
-      config_rec *c = NULL;
       const char *reason = NULL, *serveraddress;
 
       serveraddress = (session.c && session.c->local_addr) ?
@@ -1544,7 +1556,7 @@ static void fork_server(int fd, conn_t *l, unsigned char no_fork) {
 
   cmd_handler(main_server, conn);
 
-#ifdef PR_DEVEL_NO_DAEMON
+#if defined(PR_DEVEL_NO_DAEMON)
   /* Cleanup */
   pr_session_end(PR_SESS_END_FL_NOEXIT);
   main_server = NULL;

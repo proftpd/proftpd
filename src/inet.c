@@ -180,9 +180,11 @@ conn_t *pr_inet_copy_conn(pool *p, conn_t *c) {
     res->remote_addr = remote_addr;
   }
 
-  if (c->remote_name) {
+  if (c->remote_name != NULL) {
     res->remote_name = pstrdup(res->pool, c->remote_name);
   }
+
+  res->use_nodelay = c->use_nodelay;
 
   register_cleanup2(res->pool, (void *) res, conn_cleanup_cb);
   return res;
@@ -220,6 +222,9 @@ static conn_t *init_conn(pool *p, int fd, const pr_netaddr_t *bind_addr,
 
   c->local_port = port;
   c->rfd = c->wfd = -1;
+
+  /* Disable use of Nagle (i.e. enable TCP_NODELAY) by default. */
+  c->use_nodelay = TRUE;
 
   if (bind_addr != NULL) {
     addr_family = pr_netaddr_get_family(bind_addr);
@@ -841,7 +846,6 @@ int pr_inet_set_proto_opts(pool *p, conn_t *c, int mss, int nodelay,
 #else
   int tcp_level = tcp_proto;
 #endif /* SOL_TCP */
-  unsigned char *no_delay = NULL;
 
   /* Some of these setsockopt() calls may fail when they operate on IPv6
    * sockets, rather than on IPv4 sockets.
@@ -852,49 +856,42 @@ int pr_inet_set_proto_opts(pool *p, conn_t *c, int mss, int nodelay,
     return -1;
   }
 
-#ifdef TCP_NODELAY
-
-  /* Note: main_server might be null when those code runs in the testsuite. */
-  if (main_server != NULL) {
-    no_delay = get_param_ptr(main_server->conf, "TCPNoDelay", FALSE);
+#if defined(TCP_NODELAY)
+  if (c->rfd != -1) {
+    if (setsockopt(c->rfd, tcp_level, TCP_NODELAY, (void *) &nodelay,
+        sizeof(nodelay)) < 0) {
+      if (errno != EBADF) {
+        pr_log_pri(PR_LOG_NOTICE,
+          "error setting read fd %d TCP_NODELAY=%d: %s", c->rfd, nodelay,
+          strerror(errno));
+      }
+    }
   }
 
-  if (no_delay == NULL ||
-      *no_delay == TRUE) {
-    if (c->rfd != -1) {
-      if (setsockopt(c->rfd, tcp_level, TCP_NODELAY, (void *) &nodelay,
-          sizeof(nodelay)) < 0) {
-        if (errno != EBADF) {
-          pr_log_pri(PR_LOG_NOTICE, "error setting read fd %d TCP_NODELAY: %s",
-            c->rfd, strerror(errno));
-        }
+  if (c->wfd != -1) {
+    if (setsockopt(c->wfd, tcp_level, TCP_NODELAY, (void *) &nodelay,
+        sizeof(nodelay)) < 0) {
+      if (errno != EBADF) {
+        pr_log_pri(PR_LOG_NOTICE,
+          "error setting write fd %d TCP_NODELAY=%d: %s", c->wfd, nodelay,
+          strerror(errno));
       }
     }
+  }
 
-    if (c->wfd != -1) {
-      if (setsockopt(c->wfd, tcp_level, TCP_NODELAY, (void *) &nodelay,
-          sizeof(nodelay)) < 0) {
-        if (errno != EBADF) {
-          pr_log_pri(PR_LOG_NOTICE, "error setting write fd %d TCP_NODELAY: %s",
-            c->wfd, strerror(errno));
-        }
-      }
-    }
-
-    if (c->listen_fd != -1) {
-      if (setsockopt(c->listen_fd, tcp_level, TCP_NODELAY, (void *) &nodelay,
-          sizeof(nodelay)) < 0) {
-        if (errno != EBADF) {
-          pr_log_pri(PR_LOG_NOTICE,
-            "error setting listen fd %d TCP_NODELAY: %s",
-            c->listen_fd, strerror(errno));
-        }
+  if (c->listen_fd != -1) {
+    if (setsockopt(c->listen_fd, tcp_level, TCP_NODELAY, (void *) &nodelay,
+        sizeof(nodelay)) < 0) {
+      if (errno != EBADF) {
+        pr_log_pri(PR_LOG_NOTICE,
+          "error setting listen fd %d TCP_NODELAY=%d: %s",
+          c->listen_fd, nodelay, strerror(errno));
       }
     }
   }
 #endif /* TCP_NODELAY */
 
-#ifdef TCP_MAXSEG
+#if defined(TCP_MAXSEG)
   if (c->listen_fd != -1 &&
       mss > 0) {
     if (setsockopt(c->listen_fd, tcp_level, TCP_MAXSEG, &mss,
@@ -905,7 +902,7 @@ int pr_inet_set_proto_opts(pool *p, conn_t *c, int mss, int nodelay,
   }
 #endif /* TCP_MAXSEG */
 
-#ifdef IP_TOS
+#if defined(IP_TOS)
   /* Only set TOS flags on IPv4 sockets; IPv6 sockets use TCLASS. */
   if (pr_netaddr_get_family(c->local_addr) == AF_INET) {
     if (c->listen_fd != -1) {

@@ -2847,15 +2847,37 @@ additional tuning considerations on Solaris.
 <p>
 <hr>
 <h3><a name="TCPNoDelay">TCPNoDelay</a></h3>
-<strong>Syntax:</strong> TCPNoDelay <em>on|off</em><br>
-<strong>Default:</strong> TCPNoDelay on<br>
+<strong>Syntax:</strong> TCPNoDelay <em>on|off|[ctrl on|off] [data on|off]<em></em><br>
+<strong>Default:</strong> TCPNoDelay ctrl on data on<br>
 <strong>Context:</strong> server config, <code>&lt;VirtualHost&gt;</code>, <code>&lt;Global&gt;</code><br>
 <strong>Module:</strong> mod_core<br>
 <strong>Compatibility:</strong> 1.2.0 and later
 
 <p>
-The <code>TCPNoDelay</code> directive affects the use of the <a href="https://en.wikipedia.org/wiki/Nagle's_algorithm">Nagle algorithm</a>.  <b>Note</b> that
-most sites will <em>never need this</em>.
+The <code>TCPNoDelay</code> directive affects the use of the <a href="https://en.wikipedia.org/wiki/Nagle's_algorithm">Nagle algorithm</a>, which adds
+small delays for buffering small TCP messages, to achieve better throughput
+at the cost of higher latency.  <b>Note</b> that most sites will
+<em>never need</em> to change these settings.
+
+<p>
+The default behavior is to enable the <em>no-delay</em> behavior (thus disabling
+use of the Nagle algorithm) for both control connections <i>and</i> for data
+transfers.  <b>Note</b> that this default behavior changed in ProFTPD 1.3.10rc1;
+prior to that version, the default behavior was to enable the <em>no-delay</em>
+behavior for control connections, but not for data transfers.
+
+<p>
+You should <em>rarely</em> need to change the use of the Nagle algorithm for
+control connections; they perform best when the <em>no-delay</em> behavior is
+<i>enabled</i> for them, due the smaller sizes of commands/requests and
+responses.
+
+<p>
+If you have a slow/congested network, and find your FTP downloads and directory listings are slower than expected, you might experiment by disabling the
+<em>no-delay</em> behavior for those data transfers, using:
+<pre>
+  TCPNoDelay data off
+</pre>
 
 <p>
 <hr>
@@ -3385,7 +3407,7 @@ The solution is to use remove use of the deprecated
 <p>
 <hr>
 <font size=2><b><i>
-&copy; Copyright 2000-2023 The ProFTPD Project<br>
+&copy; Copyright 2000-2025 The ProFTPD Project<br>
  All Rights Reserved<br>
 </i></b></font>
 <hr>
