@@ -211,8 +211,9 @@ static int data_passive_open(const char *reason, off_t size) {
 }
 
 static int data_active_open(const char *reason, off_t size) {
-  conn_t *c;
-  int bind_port, rev, *root_revoke = NULL, xerrno;
+  conn_t *conn;
+  config_rec *c;
+  int bind_port, rev, *root_revoke = NULL, tcp_nodelay = 1, xerrno;
   const pr_netaddr_t *bind_addr = NULL;
 
   if (session.c->remote_addr == NULL) {
@@ -302,7 +303,7 @@ static int data_active_open(const char *reason, off_t size) {
   /* Set the "stalled" timer, if any, to prevent the connection
    * open from taking too long
    */
-  if (timeout_stalled) {
+  if (timeout_stalled > 0) {
     pr_timer_add(timeout_stalled, PR_TIMER_STALLED, NULL, stalled_timeout_cb,
       "TimeoutStalled");
   }
@@ -322,11 +323,19 @@ static int data_active_open(const char *reason, off_t size) {
       main_server->tcp_keepalive, 1);
   }
 
-  /* Make sure that the necessary socket options are set on the socket prior
-   * to the call to connect(2).
-   */
-  pr_inet_set_proto_opts(session.pool, session.d, main_server->tcp_mss_len, 0,
-    IPTOS_THROUGHPUT, 1);
+  c = find_config(main_server->conf, CONF_PARAM, "TCPNoDelay", FALSE);
+  if (c != NULL) {
+    int data_use_nodelay;
+
+    data_use_nodelay = *((int *) c->argv[1]);
+    if (data_use_nodelay == FALSE) {
+      tcp_nodelay = 0;
+    }
+  }
+
+  session.d->use_nodelay = tcp_nodelay;
+  pr_inet_set_proto_opts(session.pool, session.d, main_server->tcp_mss_len,
+    tcp_nodelay, IPTOS_THROUGHPUT, 1);
   pr_inet_generate_socket_event("core.data-connect", main_server,
     session.d->local_addr, session.d->listen_fd);
 
@@ -346,12 +355,12 @@ static int data_active_open(const char *reason, off_t size) {
     return -1;
   }
 
-  c = pr_inet_openrw(session.pool, session.d, NULL, PR_NETIO_STRM_DATA,
+  conn = pr_inet_openrw(session.pool, session.d, NULL, PR_NETIO_STRM_DATA,
     session.d->listen_fd, -1, -1, TRUE);
 
   pr_netaddr_set_reverse_dns(rev);
 
-  if (c) {
+  if (conn != NULL) {
     pr_log_debug(DEBUG4, "active data connection opened - local  : %s:%d",
       pr_netaddr_get_ipstr(session.d->local_addr), session.d->local_port);
     pr_log_debug(DEBUG4, "active data connection opened - remote : %s:%d",
@@ -394,7 +403,7 @@ static int data_active_open(const char *reason, off_t size) {
 
     pr_inet_close(session.pool, session.d);
     (void) pr_inet_set_nonblock(session.pool, session.d);
-    session.d = c;
+    session.d = conn;
     return 0;
   }
 

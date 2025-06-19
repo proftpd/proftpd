@@ -1355,20 +1355,91 @@ MODRET set_tcpbacklog(cmd_rec *cmd) {
 }
 
 MODRET set_tcpnodelay(cmd_rec *cmd) {
-  int no_delay = -1;
+  int ctrl_use_nodelay = -1, data_use_nodelay = -1;
   config_rec *c = NULL;
 
-  CHECK_ARGS(cmd, 1);
   CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL);
 
-  no_delay = get_boolean(cmd, 1);
-  if (no_delay == -1) {
-    CONF_ERROR(cmd, "expected Boolean parameter");
+  if (cmd->argc == 2) {
+    ctrl_use_nodelay = get_boolean(cmd, 1);
+    if (ctrl_use_nodelay == -1) {
+      CONF_ERROR(cmd, "expected Boolean parameter");
+    }
+
+    /* The legacy behavior, for the single parameter configuration, means
+     * using Nagle for data transfers.
+     */
+    data_use_nodelay = FALSE;
+
+  } else if (cmd->argc == 3) {
+    if (strcasecmp(cmd->argv[1], "ctrl") == 0 ||
+        strcasecmp(cmd->argv[1], "control") == 0) {
+      ctrl_use_nodelay = get_boolean(cmd, 2);
+      if (ctrl_use_nodelay == -1) {
+        CONF_ERROR(cmd, "expected Boolean parameter");
+      }
+
+      data_use_nodelay = TRUE;
+
+    } else if (strcasecmp(cmd->argv[1], "data") == 0) {
+      data_use_nodelay = get_boolean(cmd, 2);
+      if (ctrl_use_nodelay == -1) {
+        CONF_ERROR(cmd, "expected Boolean parameter");
+      }
+
+      ctrl_use_nodelay = TRUE;
+
+    } else {
+      CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "unsupported parameter: ",
+        cmd->argv[1], NULL));
+    }
+
+  } else if (cmd->argc == 5) {
+    if (strcasecmp(cmd->argv[1], "ctrl") == 0 ||
+        strcasecmp(cmd->argv[1], "control") == 0) {
+      ctrl_use_nodelay = get_boolean(cmd, 2);
+      if (ctrl_use_nodelay == -1) {
+        CONF_ERROR(cmd, "expected Boolean parameter");
+      }
+
+    } else if (strcasecmp(cmd->argv[1], "data") == 0) {
+      data_use_nodelay = get_boolean(cmd, 2);
+      if (ctrl_use_nodelay == -1) {
+        CONF_ERROR(cmd, "expected Boolean parameter");
+      }
+
+    } else {
+      CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "unsupported parameter: ",
+        cmd->argv[1], NULL));
+    }
+
+    if (strcasecmp(cmd->argv[3], "ctrl") == 0 ||
+        strcasecmp(cmd->argv[3], "control") == 0) {
+      ctrl_use_nodelay = get_boolean(cmd, 4);
+      if (ctrl_use_nodelay == -1) {
+        CONF_ERROR(cmd, "expected Boolean parameter");
+      }
+
+    } else if (strcasecmp(cmd->argv[3], "data") == 0) {
+      data_use_nodelay = get_boolean(cmd, 4);
+      if (ctrl_use_nodelay == -1) {
+        CONF_ERROR(cmd, "expected Boolean parameter");
+      }
+
+    } else {
+      CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "unsupported parameter: ",
+        cmd->argv[3], NULL));
+    }
+
+  } else {
+    CONF_ERROR(cmd, "wrong number of parameters");
   }
 
-  c = add_config_param(cmd->argv[0], 1, NULL);
-  c->argv[0] = pcalloc(c->pool, sizeof(unsigned char));
-  *((unsigned char *) c->argv[0]) = no_delay;
+  c = add_config_param(cmd->argv[0], 2, NULL, NULL);
+  c->argv[0] = pcalloc(c->pool, sizeof(int));
+  *((int *) c->argv[0]) = ctrl_use_nodelay;
+  c->argv[1] = pcalloc(c->pool, sizeof(int));
+  *((int *) c->argv[1]) = data_use_nodelay;
 
   return PR_HANDLED(cmd);
 }
@@ -3782,6 +3853,7 @@ MODRET core_pasv(cmd_rec *cmd) {
   config_rec *c = NULL;
   const pr_netaddr_t *bind_addr = NULL;
   const char *proto;
+  int tcp_nodelay = 1;
 
   if (session.sf_flags & SF_EPSV_ALL) {
     pr_response_add_err(R_500, _("Illegal PASV command, EPSV ALL in effect"));
@@ -3886,8 +3958,19 @@ MODRET core_pasv(cmd_rec *cmd) {
   /* Make sure that necessary socket options are set on the socket prior
    * to the call to listen(2).
    */
-  pr_inet_set_proto_opts(session.pool, session.d, main_server->tcp_mss_len, 0,
-    IPTOS_THROUGHPUT, 1);
+  c = find_config(main_server->conf, CONF_PARAM, "TCPNoDelay", FALSE);
+  if (c != NULL) {
+    int data_use_nodelay;
+
+    data_use_nodelay = *((int *) c->argv[1]);
+    if (data_use_nodelay == FALSE) {
+      tcp_nodelay = 0;
+    }
+  }
+
+  session.d->use_nodelay = tcp_nodelay;
+  pr_inet_set_proto_opts(session.pool, session.d, main_server->tcp_mss_len,
+    tcp_nodelay, IPTOS_THROUGHPUT, 1);
   pr_inet_generate_socket_event("core.data-listen", main_server,
     session.d->local_addr, session.d->listen_fd);
 
@@ -4584,7 +4667,7 @@ MODRET core_epsv(cmd_rec *cmd) {
   char *addrstr = "";
   char *endp = NULL, *arg = NULL;
   int family = 0;
-  int epsv_min_port = 1024, epsv_max_port = 65535;
+  int epsv_min_port = 1024, epsv_max_port = 65535, tcp_nodelay = 1;
   config_rec *c = NULL;
   const pr_netaddr_t *bind_addr;
 
@@ -4745,8 +4828,20 @@ MODRET core_epsv(cmd_rec *cmd) {
   /* Make sure that necessary socket options are set on the socket prior
    * to the call to listen(2).
    */
-  pr_inet_set_proto_opts(session.pool, session.d, main_server->tcp_mss_len, 0,
-    IPTOS_THROUGHPUT, 1);
+
+  c = find_config(main_server->conf, CONF_PARAM, "TCPNoDelay", FALSE);
+  if (c != NULL) {
+    int data_use_nodelay;
+
+    data_use_nodelay = *((int *) c->argv[1]);
+    if (data_use_nodelay == FALSE) {
+      tcp_nodelay = 0;
+    }
+  }
+
+  session.d->use_nodelay = tcp_nodelay;
+  pr_inet_set_proto_opts(session.pool, session.d, main_server->tcp_mss_len,
+    tcp_nodelay, IPTOS_THROUGHPUT, 1);
   pr_inet_generate_socket_event("core.data-listen", main_server,
     session.d->local_addr, session.d->listen_fd);
 

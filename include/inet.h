@@ -106,7 +106,7 @@ typedef struct conn_struc {
 
   int xerrno;				/* Set to error if mode == CM_ERROR */
 
-  int rfd,wfd;				/* Read and write fds */
+  int rfd, wfd;				/* Read and write fds */
   pr_netio_stream_t *instrm, *outstrm;	/* Input/Output streams */
 
   /* Remote address of the connection. */
@@ -123,6 +123,9 @@ typedef struct conn_struc {
 
   /* Local port of the connection. */
   int local_port;
+
+  /* Should we use Nagle for this connection? */
+  int use_nodelay;
 
 } conn_t;
 
