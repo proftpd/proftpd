@@ -9,6 +9,9 @@ ChangeLog files.
 1.3.10rc1
 ----------
 
+  + Disable Nagle algorithm for FTP data transfers
+
+
   + New Modules
 
       mod_systemd
@@ -24,3 +27,5 @@ ChangeLog files.
       ExtendedLog classes+cmds (Issue #1813)
 
       SQLAuthTypes SSHA, Sodium
+
+      TCPNoDelay (Issue #1957)
