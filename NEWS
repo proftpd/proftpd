@@ -28,6 +28,7 @@
 - Issue 1911 - Remove usage of the deprecated MySQL_OPT_RECONNECT option for
   newer MySQL versions.
 - Issue 340 - Update usage of MySQL API for SSL/TLS connections to server.
+- Issue 1959 - mod_sftp leaks file descriptor when reading SFTPHostKey file.
 
 1.3.9 - Released 14-Mar-2025
 --------------------------------
