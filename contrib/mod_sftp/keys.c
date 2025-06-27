@@ -970,6 +970,9 @@ static int get_passphrase(struct sftp_pkey *k, const char *path) {
     free_hostkey_bio(bio);
   }
 
+  /* Done with our fd. */
+  (void) close(fd);
+
   /* Restore the normal stderr logging. */
   (void) dup2(prompt_fd, STDERR_FILENO);
   (void) close(prompt_fd);
