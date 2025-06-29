@@ -43,7 +43,7 @@
 #include "privs.h"
 
 #ifdef PR_USE_OPENSSL
-# include <openssl/opensslv.h>
+# include <openssl/crypto.h>
 #endif /* PR_USE_OPENSSL */
 
 int (*cmd_auth_chk)(cmd_rec *);
