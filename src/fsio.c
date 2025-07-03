@@ -5091,6 +5091,10 @@ pr_fh_t *pr_fsio_open_canon(const char *name, int flags) {
   pr_pool_tag(tmp_pool, "pr_fsio_open_canon() subpool");
 
   fh = pcalloc(tmp_pool, sizeof(pr_fh_t));
+  if (fh == NULL) {
+	  destroy_pool(tmp_pool);
+	  return NULL;
+	}
   fh->fh_pool = tmp_pool;
   fh->fh_path = pstrdup(fh->fh_pool, name);
   fh->fh_fd = -1;
