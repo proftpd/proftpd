@@ -1383,7 +1383,7 @@ MODRET set_tcpnodelay(cmd_rec *cmd) {
 
     } else if (strcasecmp(cmd->argv[1], "data") == 0) {
       data_use_nodelay = get_boolean(cmd, 2);
-      if (ctrl_use_nodelay == -1) {
+      if (data_use_nodelay == -1) {
         CONF_ERROR(cmd, "expected Boolean parameter");
       }
 
@@ -1404,7 +1404,7 @@ MODRET set_tcpnodelay(cmd_rec *cmd) {
 
     } else if (strcasecmp(cmd->argv[1], "data") == 0) {
       data_use_nodelay = get_boolean(cmd, 2);
-      if (ctrl_use_nodelay == -1) {
+      if (data_use_nodelay == -1) {
         CONF_ERROR(cmd, "expected Boolean parameter");
       }
 
@@ -1422,7 +1422,7 @@ MODRET set_tcpnodelay(cmd_rec *cmd) {
 
     } else if (strcasecmp(cmd->argv[3], "data") == 0) {
       data_use_nodelay = get_boolean(cmd, 4);
-      if (ctrl_use_nodelay == -1) {
+      if (data_use_nodelay == -1) {
         CONF_ERROR(cmd, "expected Boolean parameter");
       }
 
