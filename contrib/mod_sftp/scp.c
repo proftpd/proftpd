@@ -1867,6 +1867,19 @@ static int send_data(pool *p, uint32_t channel_id, struct scp_path *sp,
       return 1;
     }
 
+    /* We just sent some data from a possibly large file; reset the
+     * relevant timers on the assumption that the write succeeds
+     * (Issue #1964).
+     */
+
+    if (pr_data_get_timeout(PR_DATA_TIMEOUT_NO_TRANSFER) > 0) {
+      pr_timer_reset(PR_TIMER_NOXFER, ANY_MODULE);
+    }
+
+    if (pr_data_get_timeout(PR_DATA_TIMEOUT_STALLED) > 0) {
+      pr_timer_reset(PR_TIMER_STALLED, ANY_MODULE);
+    }
+
     /* If our channel window has closed, try handling some packets; hopefully
      * some of them are WINDOW_ADJUST messages.
      *
