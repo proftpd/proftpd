@@ -1876,6 +1876,11 @@ my $TESTS = {
     test_class => [qw(bug forking scp ssh2)],
   },
 
+  scp_download_timeoutstalled_issue1964 => {
+    order => ++$order,
+    test_class => [qw(bug forking scp ssh2)],
+  },
+
   scp_ext_download_bug3544 => {
     order => ++$order,
     test_class => [qw(bug forking scp ssh2)],
@@ -61032,38 +61037,7 @@ sub scp_download_zero_len_file {
 sub scp_download_largefile {
   my $self = shift;
   my $tmpdir = $self->{tmpdir};
-
-  my $config_file = "$tmpdir/sftp.conf";
-  my $pid_file = File::Spec->rel2abs("$tmpdir/sftp.pid");
-  my $scoreboard_file = File::Spec->rel2abs("$tmpdir/sftp.scoreboard");
-
-  my $log_file = test_get_logfile();
-
-  my $auth_user_file = File::Spec->rel2abs("$tmpdir/sftp.passwd");
-  my $auth_group_file = File::Spec->rel2abs("$tmpdir/sftp.group");
-
-  my $user = 'proftpd';
-  my $passwd = 'test';
-  my $group = 'ftpd';
-  my $home_dir = File::Spec->rel2abs($tmpdir);
-  my $uid = 500;
-  my $gid = 500;
-
-  # Make sure that, if we're running as root, that the home directory has
-  # permissions/privs set for the account we create
-  if ($< == 0) {
-    unless (chmod(0755, $home_dir)) {
-      die("Can't set perms on $home_dir to 0755: $!");
-    }
-
-    unless (chown($uid, $gid, $home_dir)) {
-      die("Can't set owner of $home_dir to $uid/$gid: $!");
-    }
-  }
-
-  auth_user_write($auth_user_file, $user, $passwd, $uid, $gid, $home_dir,
-    '/bin/bash');
-  auth_group_write($auth_group_file, $group, $gid, $user);
+  my $setup = test_setup($tmpdir, 'scp');
 
   my $rsa_host_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/ssh_host_rsa_key');
   my $dsa_host_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/ssh_host_dsa_key');
@@ -61102,14 +61076,14 @@ sub scp_download_largefile {
   my $test_file2 = File::Spec->rel2abs("$tmpdir/test2.txt");
 
   my $config = {
-    PidFile => $pid_file,
-    ScoreboardFile => $scoreboard_file,
-    SystemLog => $log_file,
-    TraceLog => $log_file,
-    Trace => 'DEFAULT:10 ssh2:20 sftp:20 scp:20',
+    PidFile => $setup->{pid_file},
+    ScoreboardFile => $setup->{scoreboard_file},
+    SystemLog => $setup->{log_file},
+    TraceLog => $setup->{log_file},
+    Trace => 'ssh2:20 sftp:20 scp:20',
 
-    AuthUserFile => $auth_user_file,
-    AuthGroupFile => $auth_group_file,
+    AuthUserFile => $setup->{auth_user_file},
+    AuthGroupFile => $setup->{auth_group_file},
     AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
@@ -61119,14 +61093,15 @@ sub scp_download_largefile {
 
       'mod_sftp.c' => [
         "SFTPEngine on",
-        "SFTPLog $log_file",
+        "SFTPLog $setup->{log_file}",
         "SFTPHostKey $rsa_host_key",
         "SFTPHostKey $dsa_host_key",
       ],
     },
   };
 
-  my ($port, $config_user, $config_group) = config_write($config_file, $config);
+  my ($port, $config_user, $config_group) = config_write($setup->{config_file},
+    $config);
 
   # Open pipes, for use between the parent and child processes.  Specifically,
   # the child will indicate when it's done with its test by writing a message
@@ -61157,7 +61132,7 @@ sub scp_download_largefile {
         die("Can't connect to SSH2 server: [$err_name] ($err_code) $err_str");
       }
 
-      unless ($ssh2->auth_password($user, $passwd)) {
+      unless ($ssh2->auth_password($setup->{user}, $setup->{passwd})) {
         my ($err_code, $err_name, $err_str) = $ssh2->error();
         die("Can't login to SSH2 server: [$err_name] ($err_code) $err_str");
       }
@@ -61174,7 +61149,6 @@ sub scp_download_largefile {
         die("$test_file2 file does not exist as expected");
       }
     };
-
     if ($@) {
       $ex = $@;
     }
@@ -61183,7 +61157,7 @@ sub scp_download_largefile {
     $wfh->flush();
 
   } else {
-    eval { server_wait($config_file, $rfh) };
+    eval { server_wait($setup->{config_file}, $rfh) };
     if ($@) {
       warn($@);
       exit 1;
@@ -61193,14 +61167,11 @@ sub scp_download_largefile {
   }
 
   # Stop server
-  server_stop($pid_file);
-
+  server_stop($setup->{pid_file});
   $self->assert_child_ok($pid);
 
   if ($ex) {
-    test_append_logfile($log_file, $ex);
-    unlink($log_file);
-
+    test_cleanup($setup->{log_file}, $ex);
     die($ex);
   }
 
@@ -61222,7 +61193,7 @@ sub scp_download_largefile {
   $self->assert($expected_md5 eq $md5,
     test_msg("Expected '$expected_md5', got '$md5'"));
 
-  unlink($log_file);
+  test_cleanup($setup->{log_file}, $ex);
 }
 
 sub scp_download_fifo_bug3314 {
@@ -62090,6 +62061,170 @@ sub scp_download_filename_with_spaces_issue1886 {
   # Stop server
   server_stop($setup->{pid_file});
   $self->assert_child_ok($pid);
+
+  test_cleanup($setup->{log_file}, $ex);
+}
+
+sub scp_download_timeoutstalled_issue1964 {
+  my $self = shift;
+  my $tmpdir = $self->{tmpdir};
+  my $setup = test_setup($tmpdir, 'scp');
+
+  my $rsa_host_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/ssh_host_rsa_key');
+  my $dsa_host_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/ssh_host_dsa_key');
+
+  my $fh;
+
+  my $test_file = File::Spec->rel2abs("$tmpdir/test.txt");
+  if (open($fh, "> $test_file")) {
+    # Make a file that's larger than the maximum SSH2 packet size, forcing
+    # the scp code to loop properly entire the entire large file is sent.
+
+    print $fh "ABCDefgh" x 32768000;
+    unless (close($fh)) {
+      die("Can't write $test_file: $!");
+    }
+
+  } else {
+    die("Can't open $test_file: $!");
+  }
+
+  # Calculate the MD5 checksum of this file, for comparison with the
+  # downloaded file.
+  my $ctx = Digest::MD5->new();
+  my $expected_md5;
+
+  if (open($fh, "< $test_file")) {
+    binmode($fh);
+    $ctx->addfile($fh);
+    $expected_md5 = $ctx->hexdigest();
+    close($fh);
+
+  } else {
+    die("Can't read $test_file: $!");
+  }
+
+  my $test_file2 = File::Spec->rel2abs("$tmpdir/test2.txt");
+
+  my $config = {
+    PidFile => $setup->{pid_file},
+    ScoreboardFile => $setup->{scoreboard_file},
+    SystemLog => $setup->{log_file},
+    TraceLog => $setup->{log_file},
+    Trace => 'ssh2:20 sftp:20 scp:20',
+
+    AuthUserFile => $setup->{auth_user_file},
+    AuthGroupFile => $setup->{auth_group_file},
+    AuthOrder => 'mod_auth_file.c',
+
+    TimeoutStalled => 3,
+
+    IfModules => {
+      'mod_delay.c' => {
+        DelayEngine => 'off',
+      },
+
+      'mod_sftp.c' => [
+        "SFTPEngine on",
+        "SFTPLog $setup->{log_file}",
+        "SFTPHostKey $rsa_host_key",
+        "SFTPHostKey $dsa_host_key",
+      ],
+    },
+  };
+
+  my ($port, $config_user, $config_group) = config_write($setup->{config_file},
+    $config);
+
+  # Open pipes, for use between the parent and child processes.  Specifically,
+  # the child will indicate when it's done with its test by writing a message
+  # to the parent.
+  my ($rfh, $wfh);
+  unless (pipe($rfh, $wfh)) {
+    die("Can't open pipe: $!");
+  }
+
+  require Net::SSH2;
+
+  my $ex;
+
+  # Ignore SIGPIPE
+  local $SIG{PIPE} = sub { };
+
+  # Fork child
+  $self->handle_sigchld();
+  defined(my $pid = fork()) or die("Can't fork: $!");
+  if ($pid) {
+    eval {
+      my $ssh2 = Net::SSH2->new();
+
+      sleep(1);
+
+      unless ($ssh2->connect('127.0.0.1', $port)) {
+        my ($err_code, $err_name, $err_str) = $ssh2->error();
+        die("Can't connect to SSH2 server: [$err_name] ($err_code) $err_str");
+      }
+
+      unless ($ssh2->auth_password($setup->{user}, $setup->{passwd})) {
+        my ($err_code, $err_name, $err_str) = $ssh2->error();
+        die("Can't login to SSH2 server: [$err_name] ($err_code) $err_str");
+      }
+
+      my $res = $ssh2->scp_get('test.txt', $test_file2);
+      unless ($res) {
+        my ($err_code, $err_name, $err_str) = $ssh2->error();
+        die("Can't download 'test.txt' from server: [$err_name] ($err_code) $err_str");
+      }
+
+      $ssh2->disconnect();
+
+      unless (-f $test_file2) {
+        die("$test_file2 file does not exist as expected");
+      }
+    };
+    if ($@) {
+      $ex = $@;
+    }
+
+    $wfh->print("done\n");
+    $wfh->flush();
+
+  } else {
+    eval { server_wait($setup->{config_file}, $rfh) };
+    if ($@) {
+      warn($@);
+      exit 1;
+    }
+
+    exit 0;
+  }
+
+  # Stop server
+  server_stop($setup->{pid_file});
+  $self->assert_child_ok($pid);
+
+  if ($ex) {
+    test_cleanup($setup->{log_file}, $ex);
+    die($ex);
+  }
+
+  # Calculate the MD5 checksum of the downloaded file, for comparison with the
+  # downloaded file.
+  $ctx->reset();
+  my $md5;
+
+  if (open($fh, "< $test_file2")) {
+    binmode($fh);
+    $ctx->addfile($fh);
+    $md5 = $ctx->hexdigest();
+    close($fh);
+
+  } else {
+    die("Can't read $test_file2: $!");
+  }
+
+  $self->assert($expected_md5 eq $md5,
+    test_msg("Expected '$expected_md5', got '$md5'"));
 
   test_cleanup($setup->{log_file}, $ex);
 }
