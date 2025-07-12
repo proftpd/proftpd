@@ -1301,7 +1301,6 @@ MODRET site_misc_utime(cmd_rec *cmd) {
 MODRET site_misc_zone(cmd_rec *cmd) {
   // SITE ZONE command compatible with Serv-U and CrushFTP
   // (Apache Mina utilizes a different format)
-  char utc_offset[9];
   time_t now = time(NULL);
   struct tm *local_tm, *gm_tm;
   int offset;
