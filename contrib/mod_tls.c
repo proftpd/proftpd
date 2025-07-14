@@ -16881,10 +16881,6 @@ static int tls_ssl_set_ciphers(SSL *ssl) {
   return 0;
 }
 
-static int tls_ssl_set_crls(SSL *ssl) {
-  return 0;
-}
-
 static int tls_ssl_set_ecdh_curve(SSL *ssl) {
 #if defined(PR_USE_OPENSSL_ECC)
 # if defined(SSL_CTX_set_ecdh_auto)
@@ -17423,10 +17419,6 @@ static int tls_ssl_set_all(server_rec *s, SSL *ssl) {
   pr_trace_msg(trace_channel, 19, "resetting SSL for ctrl connection");
 
   if (tls_ssl_set_ciphers(ssl) < 0) {
-    return -1;
-  }
-
-  if (tls_ssl_set_crls(ssl) < 0) {
     return -1;
   }
 

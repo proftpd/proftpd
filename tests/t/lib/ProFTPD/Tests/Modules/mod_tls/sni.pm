@@ -22,7 +22,7 @@ my $order = 0;
 # All of these tests use an external `curl` for testing the ability to
 # login AND download with SNI, across multiple TLS protocol versions.
 
-my $CURL = '/Users/tj/local/curl-7.69.0/bin/curl';
+my $CURL = 'curl';
 
 my $TESTS = {
   tls_sni_tlsv10 => {
@@ -96,6 +96,11 @@ my $TESTS = {
   },
 
   tls_sni_default_vhost_issue1369 => {
+    order => ++$order,
+    test_class => [qw(bug forking)],
+  },
+
+  tls_sni_crls_issue1960 => {
     order => ++$order,
     test_class => [qw(bug forking)],
   },
@@ -627,6 +632,201 @@ EOC
 
       unless ($res == 0) {
         die("Can't download from FTPS server: $errstr");
+      }
+    };
+    if ($@) {
+      $ex = $@;
+    }
+
+    $wfh->print("done\n");
+    $wfh->flush();
+
+  } else {
+    eval { server_wait($setup->{config_file}, $rfh) };
+    if ($@) {
+      warn($@);
+      exit 1;
+    }
+
+    exit 0;
+  }
+
+  # Stop server
+  server_stop($setup->{pid_file});
+  $self->assert_child_ok($pid);
+
+  test_cleanup($setup->{log_file}, $ex);
+}
+
+sub tls_sni_crls_issue1960 {
+  my $self = shift;
+  my $tmpdir = $self->{tmpdir};
+  my $setup = test_setup($tmpdir, 'sni');
+
+  my $server_cert = File::Spec->rel2abs('t/etc/modules/mod_tls/crl-intermediate-server.pem');
+  my $client_cert = File::Spec->rel2abs('t/etc/modules/mod_tls/crl-intermediate-client.pem');
+  my $ca_cert = File::Spec->rel2abs('t/etc/modules/mod_tls/crl-intermediate-cas.pem');
+  my $crl_file = File::Spec->rel2abs('t/etc/modules/mod_tls/crl-intermediate-crls.pem');
+
+  # Use CRLs for our name-based vhost, to test that the SNI vhost switching
+  # is working as expected.
+
+  my $config = {
+    PidFile => $setup->{pid_file},
+    ScoreboardFile => $setup->{scoreboard_file},
+    SystemLog => $setup->{log_file},
+    TraceLog => $setup->{log_file},
+    Trace => 'binding:30',
+    Port => '0',
+  };
+
+  my ($port, $config_user, $config_group) = config_write($setup->{config_file},
+    $config);
+
+  my $host = 'first.castaglia.org';
+
+  # Configure name-based <VirtualHost>s for our testing.
+  if (open(my $fh, ">> $setup->{config_file}")) {
+    print $fh <<EOC;
+<Global>
+  Trace binding:30 tls:30 tls.trace:30
+
+  TransferLog none
+  WtmpLog off
+
+  <IfModule mod_delay.c>
+    DelayEngine off
+  </IfModule>
+
+  <IfModule mod_tls.c>
+    TLSEngine on
+    TLSLog $setup->{log_file}
+    TLSRequired on
+    TLSRSACertificateFile $server_cert
+    TLSCACertificateFile $ca_cert
+    TLSOptions EnableDiags
+  </IfModule>
+</Global>
+
+<VirtualHost 127.0.0.1>
+  Port $port
+
+  # No ServerAlias here; this will be the first vhost found for any connection
+  # that doesn't use `HOST`, TLS SNI, etc.
+
+  ServerName "Lacking ServerAlias"
+</VirtualHost>
+
+<VirtualHost 127.0.0.1>
+  Port $port
+  ServerAlias first.castaglia.org
+
+  AuthUserFile $setup->{auth_user_file}
+  AuthGroupFile $setup->{auth_group_file}
+  AuthOrder mod_auth_file.c
+
+  <IfModule mod_tls.c>
+    TLSRSACertificateFile $server_cert
+    TLSCACertificateFile $ca_cert
+    TLSOptions EnableDiags NoSessionReuseRequired
+
+    # Verifying clients via CRLs only works when verification is
+    # explicitly enabled.
+    TLSCARevocationFile $crl_file
+    TLSVerifyClient on
+  </IfModule>
+</VirtualHost>
+
+<VirtualHost 127.0.0.1>
+  Port $port
+  ServerAlias second.castaglia.org
+</VirtualHost>
+
+<VirtualHost 127.0.0.1>
+  Port $port
+  ServerAlias \*
+  ServerName "wildcard"
+</VirtualHost>
+EOC
+    unless (close($fh)) {
+      die("Can't write $setup->{config_file}: $!");
+    }
+
+  } else {
+    die("Can't open $setup->{config_file}: $!");
+  }
+
+  # Open pipes, for use between the parent and child processes.  Specifically,
+  # the child will indicate when it's done with its test by writing a message
+  # to the parent.
+  my ($rfh, $wfh);
+  unless (pipe($rfh, $wfh)) {
+    die("Can't open pipe: $!");
+  }
+
+  require Net::FTPSSL;
+
+  my $ex;
+
+  # Fork child
+  $self->handle_sigchld();
+  defined(my $pid = fork()) or die("Can't fork: $!");
+  if ($pid) {
+    eval {
+      my $curl_cmd = [
+        $CURL,
+        '-kvs',
+        '-o',
+        '/dev/null',
+        '--cacert',
+        $ca_cert,
+        '--cert',
+        $client_cert,
+        '--user',
+        "$setup->{user}:$setup->{passwd}",
+        '--ssl',
+        '--resolve',
+        "$host:$port:127.0.0.1",
+        "ftp://$host:$port/sni.conf"
+      ];
+
+      my $curl_rh = IO::Handle->new();
+      my $curl_wh = IO::Handle->new();
+      my $curl_eh = IO::Handle->new();
+
+      $curl_wh->autoflush(1);
+
+      local $SIG{CHLD} = 'DEFAULT';
+
+      # Give the server a chance to start up
+      sleep(2);
+
+      if ($ENV{TEST_VERBOSE}) {
+        print STDERR "Executing: ", join(' ', @$curl_cmd), "\n";
+      }
+
+      my $curl_pid = open3($curl_wh, $curl_rh, $curl_eh, @$curl_cmd);
+      waitpid($curl_pid, 0);
+      my $exit_status = $?;
+
+      my ($res, $errstr);
+      if ($exit_status >> 8 == 0) {
+        $errstr = join('', <$curl_eh>);
+        $res = 0;
+
+      } else {
+        $errstr = join('', <$curl_eh>);
+        if ($ENV{TEST_VERBOSE}) {
+          print STDERR "Stderr: $errstr\n";
+        }
+
+        $res = 1;
+      }
+
+      # We expect this to fail, because of the CRL with an revocation entry
+      # for our client cert.
+      if ($res == 0) {
+        die("Successfully downloaded file from FTPS server unexpectedly");
       }
     };
     if ($@) {
