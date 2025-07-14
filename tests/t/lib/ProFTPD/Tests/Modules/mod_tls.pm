@@ -58,6 +58,11 @@ my $TESTS = {
     test_class => [qw(bug forking)],
   },
 
+  tls_crl_file_multiple_cas_crls_issue1960 => {
+    order => ++$order,
+    test_class => [qw(bug forking)],
+  },
+
   tls_login_with_sni_issue850 => {
     order => ++$order,
     test_class => [qw(forking)],
@@ -1413,6 +1418,124 @@ sub tls_crl_file_other_ca_bug4468 {
   # Stop server
   server_stop($setup->{pid_file});
   $self->assert_child_ok($pid);
+
+  test_cleanup($setup->{log_file}, $ex);
+}
+
+sub tls_crl_file_multiple_cas_crls_issue1960 {
+  my $self = shift;
+  my $tmpdir = $self->{tmpdir};
+  my $setup = test_setup($tmpdir, 'tls');
+
+  my $server_cert = File::Spec->rel2abs('t/etc/modules/mod_tls/crl-intermediate-server.pem');
+  my $client_cert = File::Spec->rel2abs('t/etc/modules/mod_tls/crl-intermediate-client.pem');
+  my $ca_cert = File::Spec->rel2abs('t/etc/modules/mod_tls/crl-intermediate-cas.pem');
+  my $crl_file = File::Spec->rel2abs('t/etc/modules/mod_tls/crl-intermediate-crls.pem');
+
+  my $config = {
+    PidFile => $setup->{pid_file},
+    ScoreboardFile => $setup->{scoreboard_file},
+    SystemLog => $setup->{log_file},
+    TraceLog => $setup->{log_file},
+    Trace => 'tls:30',
+
+    AuthUserFile => $setup->{auth_user_file},
+    AuthGroupFile => $setup->{auth_group_file},
+    AuthOrder => 'mod_auth_file.c',
+
+    IfModules => {
+      'mod_delay.c' => {
+        DelayEngine => 'off',
+      },
+
+      'mod_tls.c' => {
+        TLSEngine => 'on',
+        TLSLog => $setup->{log_file},
+        TLSRequired => 'on',
+        TLSRSACertificateFile => $server_cert,
+        TLSCACertificateFile => $ca_cert,
+
+        # Verifying clients via CRLs only works when verification is
+        # explicitly enabled.
+        TLSCARevocationFile => $crl_file,
+        TLSVerifyClient => 'on',
+      },
+    },
+  };
+
+  my ($port, $config_user, $config_group) = config_write($setup->{config_file},
+    $config);
+
+  # Open pipes, for use between the parent and child processes.  Specifically,
+  # the child will indicate when it's done with its test by writing a message
+  # to the parent.
+  my ($rfh, $wfh);
+  unless (pipe($rfh, $wfh)) {
+    die("Can't open pipe: $!");
+  }
+
+  require Net::FTPSSL;
+
+  my $ex;
+
+  # Fork child
+  $self->handle_sigchld();
+  defined(my $pid = fork()) or die("Can't fork: $!");
+  if ($pid) {
+    eval {
+      # Give the server a chance to start up
+      sleep(2);
+
+      my $client;
+
+      # IO::Socket::SSL options
+      my $ssl_opts = {
+        SSL_use_cert => 1,
+        SSL_cert_file => $client_cert,
+        SSL_key_file => $client_cert,
+        SSL_ca_file => $ca_cert,
+        SSL_verify_mode => IO::Socket::SSL::SSL_VERIFY_PEER(),
+
+        # Disable verification of the CN in the server cert
+        SSL_verifycn_scheme => 'none',
+      };
+
+      $client = Net::FTPSSL->new('127.0.0.1',
+        Croak => 1,
+        Encryption => 'E',
+        Port => $port,
+        SSL_Client_Certificate => $ssl_opts,
+      );
+      if ($client) {
+        die("TLS handshake with revoked client cert succeeded unexpectedly");
+      }
+    };
+    if ($@) {
+      $ex = $@;
+    }
+
+    $wfh->print("done\n");
+    $wfh->flush();
+
+  } else {
+    eval { server_wait($setup->{config_file}, $rfh) };
+    if ($@) {
+      warn($@);
+      exit 1;
+    }
+
+    exit 0;
+  }
+
+  # Stop server
+  server_stop($setup->{pid_file});
+  $self->assert_child_ok($pid);
+
+  if ($ex) {
+    $self->assert(qr/certificate revoked/, $ex,
+      test_msg("Did not see expected 'certificate revoked' error"));
+    $ex = undef;
+  }
 
   test_cleanup($setup->{log_file}, $ex);
 }

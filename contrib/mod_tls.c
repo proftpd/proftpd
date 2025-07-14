@@ -754,7 +754,6 @@ static size_t tls_data_ticket_appdatasz = 0, tls_data_ticket_appdata_len = 0;
 /* OpenSSL variables */
 static SSL *ctrl_ssl = NULL;
 static SSL_CTX *ssl_ctx = NULL;
-static X509_STORE *tls_crl_store = NULL;
 static array_header *tls_tmp_dhs = NULL;
 static RSA *tls_tmp_rsa = NULL;
 
@@ -1092,7 +1091,6 @@ static void tls_reset_state(void) {
   tls_data_rd_nstrm = NULL;
   tls_data_wr_nstrm = NULL;
 
-  tls_crl_store = NULL;
   tls_tmp_dhs = NULL;
   tls_tmp_rsa = NULL;
 
@@ -8635,11 +8633,6 @@ static void tls_cleanup(int flags) {
 # endif /* PR_USE_OPENSSL_ENGINE */
 #endif
 
-  if (tls_crl_store != NULL) {
-    X509_STORE_free(tls_crl_store);
-    tls_crl_store = NULL;
-  }
-
   if (ssl_ctx != NULL) {
     SSL_CTX_free(ssl_ctx);
     ssl_ctx = NULL;
@@ -10315,7 +10308,7 @@ static void tls_setup_notes(pool *p, SSL *ssl) {
 
 static int tls_verify_cb(int ok, X509_STORE_CTX *ctx) {
   config_rec *c;
-  int verify_err = 0;
+  int verify_error = 0;
 
   /* We can configure the server to skip the peer's cert verification */
   if (!(tls_flags & TLS_SESS_VERIFY_CLIENT_REQUIRED) &&
@@ -10332,29 +10325,6 @@ static int tls_verify_cb(int ok, X509_STORE_CTX *ctx) {
 
       if (strcasecmp(mech, "crl") == 0) {
         ok = tls_verify_crl(ok, ctx);
-        if (!ok) {
-          int crl_verify_err = 0;
-
-#if OPENSSL_VERSION_NUMBER >= 0x10100000L
-          crl_verify_err = X509_STORE_CTX_get_error(ctx);
-#else
-          crl_verify_err = ctx->error;
-#endif /* OpenSSL-1.1.x and later */
-
-         /* If we use the wrong public key to verify the CRL (as for an empty
-          * CRL, or a CRL signed by a different CA/key than the offered cert),
-          * then this could fail in an expected manner (Bug #4468).
-          */
-          if (crl_verify_err == X509_V_ERR_CRL_SIGNATURE_FAILURE) {
-#if OPENSSL_VERSION_NUMBER >= 0x10100000L
-            X509_STORE_CTX_set_error(ctx, 0);
-#else
-            ctx->error = 0;
-#endif /* OpenSSL-1.1.x and later */
-            ok = 1;
-          }
-        }
-
         if (!ok) {
           break;
         }
@@ -10373,28 +10343,6 @@ static int tls_verify_cb(int ok, X509_STORE_CTX *ctx) {
      * any AIA attributes (i.e. no use of OCSP).
      */
     ok = tls_verify_crl(ok, ctx);
-    if (!ok) {
-      int crl_verify_err = 0;
-
-#if OPENSSL_VERSION_NUMBER >= 0x10100000L
-      crl_verify_err = X509_STORE_CTX_get_error(ctx);
-#else
-      crl_verify_err = ctx->error;
-#endif /* OpenSSL-1.1.x and later */
-
-     /* If we use the wrong public key to verify the CRL (as for an empty
-      * CRL, or a CRL signed by a different CA/key than the offered cert),
-      * then this could fail in an expected manner (Bug #4468).
-      */
-      if (crl_verify_err == X509_V_ERR_CRL_SIGNATURE_FAILURE) {
-#if OPENSSL_VERSION_NUMBER >= 0x10100000L
-        X509_STORE_CTX_set_error(ctx, 0);
-#else
-        ctx->error = 0;
-#endif /* OpenSSL-1.1.x and later */
-        ok = 1;
-      }
-    }
   }
 
   if (!ok) {
@@ -10405,12 +10353,13 @@ static int tls_verify_cb(int ok, X509_STORE_CTX *ctx) {
     depth = X509_STORE_CTX_get_error_depth(ctx);
 
 #if OPENSSL_VERSION_NUMBER >= 0x10100000L
-    verify_err = X509_STORE_CTX_get_error(ctx);
+    verify_error = X509_STORE_CTX_get_error(ctx);
 #else
-    verify_err = ctx->error;
+    verify_error = ctx->error;
 #endif /* OpenSSL-1.1.x and later */
 
-    tls_log("error: unable to verify certificate at depth %d", depth);
+    tls_log("error: unable to verify certificate at depth %d: %s", depth,
+      X509_verify_cert_error_string(verify_error));
     tls_log("error: cert subject: %s", tls_x509_name_oneline(
       X509_get_subject_name(cert)));
     tls_log("error: cert issuer: %s", tls_x509_name_oneline(
@@ -10418,6 +10367,10 @@ static int tls_verify_cb(int ok, X509_STORE_CTX *ctx) {
 
     /* Catch a too long certificate chain here. */
     if (depth > tls_verify_depth) {
+      /* Note that by setting this error, we are effectively overriding
+       * the previous verification error; this could become the value of
+       * the subsequent ctx_error.
+       */
       X509_STORE_CTX_set_error(ctx, X509_V_ERR_CERT_CHAIN_TOO_LONG);
     }
 
@@ -10428,37 +10381,19 @@ static int tls_verify_cb(int ok, X509_STORE_CTX *ctx) {
 #endif /* OpenSSL-1.1.x and later */
 
     switch (ctx_error) {
+      case X509_V_ERR_APPLICATION_VERIFICATION:
       case X509_V_ERR_CERT_CHAIN_TOO_LONG:
       case X509_V_ERR_CERT_HAS_EXPIRED:
       case X509_V_ERR_CERT_REVOKED:
       case X509_V_ERR_DEPTH_ZERO_SELF_SIGNED_CERT:
+      case X509_V_ERR_INVALID_PURPOSE:
       case X509_V_ERR_SELF_SIGNED_CERT_IN_CHAIN:
       case X509_V_ERR_UNABLE_TO_GET_ISSUER_CERT_LOCALLY:
       case X509_V_ERR_UNABLE_TO_VERIFY_LEAF_SIGNATURE:
-      case X509_V_ERR_APPLICATION_VERIFICATION:
         tls_log("client certificate failed verification: %s",
           X509_verify_cert_error_string(ctx_error));
         ok = 0;
         break;
-
-      case X509_V_ERR_INVALID_PURPOSE: {
-        register int i;
-        int count;
-
-        tls_log("client certificate failed verification: %s",
-          X509_verify_cert_error_string(ctx_error));
-
-        count = X509_PURPOSE_get_count();
-        for (i = 0; i < count; i++) {
-          X509_PURPOSE *purp;
-
-          purp = X509_PURPOSE_get0(i);
-          tls_log("  purpose #%d: %s", i+1, X509_PURPOSE_get0_name(purp));
-        }
-
-        ok = 0;
-        break;
-      }
 
       default:
         tls_log("error verifying client certificate: [%d] %s",
@@ -10472,109 +10407,79 @@ static int tls_verify_cb(int ok, X509_STORE_CTX *ctx) {
     pr_event_generate("mod_tls.verify-client", NULL);
 
   } else {
-    pr_event_generate("mod_tls.verify-client-failed", &verify_err);
+    pr_event_generate("mod_tls.verify-client-failed", &verify_error);
   }
 
   return ok;
 }
 
-/* This routine is (very much!) based on the work by Ralf S. Engelschall
- * <rse@engelshall.com>.  Comments by Ralf.
- */
 static int tls_verify_crl(int ok, X509_STORE_CTX *ctx) {
   register int i = 0;
   X509_NAME *subject = NULL, *issuer = NULL;
   X509 *xs = NULL;
   STACK_OF(X509_CRL) *crls = NULL;
-  X509_STORE_CTX *store_ctx = NULL;
-  int n, res;
+  int res, verify_error;
 
-  /* Unless a revocation store for CRLs was created we cannot do any
-   * CRL-based verification, of course.
-   */
-  if (tls_crl_store == NULL) {
-    return ok;
-  }
-
-  tls_log("%s",
-    "CRL store present, checking client certificate against configured CRLs");
-
-  /* Determine certificate ingredients in advance. */
+  verify_error = X509_STORE_CTX_get_error(ctx);
   xs = X509_STORE_CTX_get_current_cert(ctx);
-
   subject = X509_get_subject_name(xs);
-  pr_trace_msg(trace_channel, 15,
-    "verifying cert: subject = '%s'", tls_x509_name_oneline(subject));
-
   issuer = X509_get_issuer_name(xs);
+
   pr_trace_msg(trace_channel, 15,
-    "verifying cert: issuer = '%s'", tls_x509_name_oneline(issuer));
-
-  /* OpenSSL provides the general mechanism to deal with CRLs but does not
-   * use them automatically when verifying certificates, so we do it
-   * explicitly here. We will check the CRL for the currently checked
-   * certificate, if there is such a CRL in the store.
-   *
-   * We come through this procedure for each certificate in the certificate
-   * chain, starting with the root-CA's certificate. At each step we've to
-   * both verify the signature on the CRL (to make sure it's a valid CRL)
-   * and its revocation list (to make sure the current certificate isn't
-   * revoked).  But because to check the signature on the CRL we need the
-   * public key of the issuing CA certificate (which was already processed
-   * one round before), we've a little problem. But we can both solve it and
-   * at the same time optimize the processing by using the following
-   * verification scheme (idea and code snippets borrowed from the GLOBUS
-   * project):
-   *
-   * 1. We'll check the signature of a CRL in each step when we find a CRL
-   *    through the _subject_ name of the current certificate. This CRL
-   *    itself will be needed the first time in the next round, of course.
-   *    But we do the signature processing one round before this where the
-   *    public key of the CA is available.
-   *
-   * 2. We'll check the revocation list of a CRL in each step when
-   *    we find a CRL through the _issuer_ name of the current certificate.
-   *    This CRLs signature was then already verified one round before.
-   *
-   * This verification scheme allows a CA to revoke its own certificate as
-   * well, of course.
-   */
-
-  /* Try to retrieve a CRL corresponding to the _subject_ of
-   * the current certificate in order to verify its integrity.
-   */
-  store_ctx = X509_STORE_CTX_new();
-#if OPENSSL_VERSION_NUMBER > 0x000907000L
-  if (X509_STORE_CTX_init(store_ctx, tls_crl_store, NULL, NULL) <= 0) {
-    tls_log("error initializing CRL store context: %s", tls_get_errors());
-    X509_STORE_CTX_free(store_ctx);
-    return ok;
-  }
-#else
-  X509_STORE_CTX_init(store_ctx, tls_crl_store, NULL, NULL);
-#endif
+    "verifying cert: subject = '%s', issuer = '%s', error = %s (ok = %d)",
+    tls_x509_name_oneline(subject), tls_x509_name_oneline(issuer),
+    X509_verify_cert_error_string(verify_error), ok);
 
 #if OPENSSL_VERSION_NUMBER >= 0x10100000L && \
     !defined(HAVE_LIBRESSL)
-  crls = X509_STORE_CTX_get1_crls(store_ctx, issuer);
+  crls = X509_STORE_CTX_get1_crls(ctx, issuer);
 #elif OPENSSL_VERSION_NUMBER >= 0x10000000L && \
       !defined(HAVE_LIBRESSL)
-  crls = X509_STORE_get1_crls(store_ctx, issuer);
+  crls = X509_STORE_get1_crls(ctx, issuer);
 #else
   /* Your OpenSSL is before 1.0.0.  You really need to upgrade. */
   crls = NULL;
 #endif /* OpenSSL-1.1.x and later */
+
   if (crls != NULL) {
-    for (i = 0; i < sk_X509_CRL_num(crls); i++) {
+    unsigned int crl_count;
+    X509_OBJECT *obj = NULL;
+    EVP_PKEY *pkey;
+
+    obj = X509_STORE_CTX_get_obj_by_subject(ctx, X509_LU_X509, issuer);
+    if (obj == NULL) {
+      pr_trace_msg(trace_channel, 1,
+        "error getting CRL issuer '%s' certificate: %s",
+        tls_x509_name_oneline(issuer), tls_get_errors());
+      X509_STORE_CTX_set_error(ctx, X509_V_ERR_UNABLE_TO_GET_CRL);
+      sk_X509_CRL_free(crls);
+      return FALSE;
+    }
+
+    pkey = X509_get_pubkey(X509_OBJECT_get0_X509(obj));
+    X509_OBJECT_free(obj);
+
+    if (pkey == NULL) {
+      pr_trace_msg(trace_channel, 1,
+        "error getting CRL issuer '%s' public key: %s",
+        tls_x509_name_oneline(issuer), tls_get_errors());
+      X509_STORE_CTX_set_error(ctx, X509_V_ERR_CRL_SIGNATURE_FAILURE);
+      sk_X509_CRL_free(crls);
+      return FALSE;
+    }
+
+    crl_count = sk_X509_CRL_num(crls);
+    for (i = 0; i < crl_count; i++) {
       X509_CRL *crl = NULL;
-      EVP_PKEY *pubkey;
+      X509_NAME *crl_issuer = NULL;
       char buf[512];
       int len;
       BIO *b = BIO_new(BIO_s_mem());
 
       crl = sk_X509_CRL_value(crls, i);
-      BIO_printf(b, "CA CRL: Issuer: ");
-      X509_NAME_print(b, issuer, 0);
+      BIO_printf(b, "Issuer: ");
+      crl_issuer = X509_CRL_get_issuer(crl);
+      X509_NAME_print(b, crl_issuer, 0);
 
       BIO_printf(b, ", lastUpdate: ");
 #if OPENSSL_VERSION_NUMBER >= 0x10100000L
@@ -10597,27 +10502,46 @@ static int tls_verify_crl(int ok, X509_STORE_CTX *ctx) {
       buf[len] = '\0';
 
       BIO_free(b);
-      tls_log("%s", buf);
+      tls_log("CRL: %s", buf);
 
-      pubkey = X509_get_pubkey(xs);
-
-      /* Verify the signature on this CRL */
-      res = X509_CRL_verify(crl, pubkey);
-      if (pubkey != NULL) {
-        EVP_PKEY_free(pubkey);
-      }
-
+      /* Verify the signature on this CRL using the public key from the issuer
+       * of the CRL.
+       */
+      res = X509_CRL_verify(crl, pkey);
       if (res <= 0) {
         tls_log("invalid signature on CRL: %s", tls_get_errors());
 
         X509_STORE_CTX_set_error(ctx, X509_V_ERR_CRL_SIGNATURE_FAILURE);
         sk_X509_CRL_free(crls);
-        X509_STORE_CTX_cleanup(store_ctx);
-        X509_STORE_CTX_free(store_ctx);
         return FALSE;
       }
 
-      /* Check date of CRL to make sure it's not expired */
+      /* Check the last update of the CRL to make sure it's valid. */
+#if OPENSSL_VERSION_NUMBER >= 0x10100000L && \
+    !defined(HAVE_LIBRESSL)
+      res = X509_cmp_current_time(X509_CRL_get0_lastUpdate(crl));
+#else
+      res = X509_cmp_current_time(X509_CRL_get_lastUpdate(crl));
+#endif /* OpenSSL 1.1.x and later */
+      if (res == 0) {
+        tls_log("CRL has invalid lastUpdate field: %s", tls_get_errors());
+
+        X509_STORE_CTX_set_error(ctx,
+          X509_V_ERR_ERROR_IN_CRL_LAST_UPDATE_FIELD);
+        sk_X509_CRL_free(crls);
+        return FALSE;
+      }
+
+      if (res > 0) {
+        tls_log("%s", "CRL is not yet valid, ignoring all certificates until "
+          "an updated CRL is obtained");
+
+        X509_STORE_CTX_set_error(ctx, X509_V_ERR_CRL_NOT_YET_VALID);
+        sk_X509_CRL_free(crls);
+        return TRUE;
+      }
+
+      /* Check next update of CRL to make sure it's not expired. */
 #if OPENSSL_VERSION_NUMBER >= 0x10100000L && \
     !defined(HAVE_LIBRESSL)
       res = X509_cmp_current_time(X509_CRL_get0_nextUpdate(crl));
@@ -10626,13 +10550,20 @@ static int tls_verify_crl(int ok, X509_STORE_CTX *ctx) {
 #endif /* OpenSSL 1.1.x and later */
 
       if (res == 0) {
+        tls_log("CRL has invalid lastUpdate field: %s", tls_get_errors());
+
+        X509_STORE_CTX_set_error(ctx,
+          X509_V_ERR_ERROR_IN_CRL_LAST_UPDATE_FIELD);
+        sk_X509_CRL_free(crls);
+        return FALSE;
+      }
+
+      if (res == 0) {
         tls_log("CRL has invalid nextUpdate field: %s", tls_get_errors());
 
         X509_STORE_CTX_set_error(ctx,
           X509_V_ERR_ERROR_IN_CRL_NEXT_UPDATE_FIELD);
         sk_X509_CRL_free(crls);
-        X509_STORE_CTX_cleanup(store_ctx);
-        X509_STORE_CTX_free(store_ctx);
         return FALSE;
       }
 
@@ -10646,8 +10577,6 @@ static int tls_verify_crl(int ok, X509_STORE_CTX *ctx) {
 
         X509_STORE_CTX_set_error(ctx, X509_V_ERR_CRL_HAS_EXPIRED);
         sk_X509_CRL_free(crls);
-        X509_STORE_CTX_cleanup(store_ctx);
-        X509_STORE_CTX_free(store_ctx);
         return FALSE;
       }
     }
@@ -10656,65 +10585,6 @@ static int tls_verify_crl(int ok, X509_STORE_CTX *ctx) {
     crls = NULL;
   }
 
-  /* Try to retrieve a CRL corresponding to the _issuer_ of
-   * the current certificate in order to check for revocation.
-   */
-
-#if OPENSSL_VERSION_NUMBER >= 0x10100000L && \
-    !defined(HAVE_LIBRESSL)
-  crls = X509_STORE_CTX_get1_crls(store_ctx, subject);
-#elif OPENSSL_VERSION_NUMBER >= 0x10000000L && \
-      !defined(HAVE_LIBRESSL)
-  crls = X509_STORE_get1_crls(store_ctx, subject);
-#else
-  /* Your OpenSSL is before 1.0.0.  You really need to upgrade. */
-  crls = NULL;
-#endif /* OpenSSL-1.1.x and later */
-  if (crls != NULL) {
-    for (i = 0; i < sk_X509_CRL_num(crls); i++) {
-      register int j;
-      X509_CRL *crl;
-
-      crl = sk_X509_CRL_value(crls, i);
-
-      /* Check if the current certificate is revoked by this CRL */
-      n = sk_X509_REVOKED_num(X509_CRL_get_REVOKED(crl));
-      for (j = 0; j < n; j++) {
-        X509_REVOKED *revoked;
-        const ASN1_INTEGER *sn;
-
-        revoked = sk_X509_REVOKED_value(X509_CRL_get_REVOKED(crl), j);
-        if (revoked == NULL) {
-          continue;
-        }
-#if (OPENSSL_VERSION_NUMBER >= 0x10100000L && !defined(HAVE_LIBRESSL)) || \
-    (defined(HAVE_LIBRESSL) && LIBRESSL_VERSION_NUMBER >= 0x3050000L)
-        sn = X509_REVOKED_get0_serialNumber(revoked);
-#else
-        sn = revoked->serialNumber;
-#endif /* OpenSSL-1.1.x/LibreSSL-3.5.x and later */
-
-        if (ASN1_INTEGER_cmp(sn, X509_get_serialNumber(xs)) == 0) {
-          long serial = ASN1_INTEGER_get(sn);
-          char *cp = tls_x509_name_oneline(issuer);
-
-          tls_log("certificate with serial number %ld (0x%lX) revoked per CRL "
-            "from issuer '%s'", serial, serial, cp ? cp : "(ERROR)");
-
-          X509_STORE_CTX_set_error(ctx, X509_V_ERR_CERT_REVOKED);
-          sk_X509_CRL_free(crls);
-          X509_STORE_CTX_cleanup(store_ctx);
-          X509_STORE_CTX_free(store_ctx);
-          return FALSE;
-        }
-      }
-    }
-
-    sk_X509_CRL_free(crls);
-  }
-
-  X509_STORE_CTX_cleanup(store_ctx);
-  X509_STORE_CTX_free(store_ctx);
   return ok;
 }
 
@@ -18340,22 +18210,21 @@ static int tls_ctx_set_ciphers(SSL_CTX *ctx) {
 }
 
 static int tls_ctx_set_crls(SSL_CTX *ctx) {
+  X509_STORE *store;
+
   if (tls_crl_file == NULL &&
       tls_crl_path == NULL) {
     return 0;
   }
 
-  /* Set up the CRL. */
-  tls_crl_store = X509_STORE_new();
-  if (tls_crl_store == NULL) {
-    tls_log("error creating CRL store: %s", tls_get_errors());
+  store = SSL_CTX_get_cert_store(ctx);
+  if (store == NULL) {
+    tls_log("error getting SSL_CTX store: %s", tls_get_errors());
     return -1;
   }
 
   PRIVS_ROOT
-  if (X509_STORE_load_locations(tls_crl_store, tls_crl_file,
-      tls_crl_path) != 1) {
-
+  if (X509_STORE_load_locations(store, tls_crl_file, tls_crl_path) != 1) {
     if (tls_crl_file != NULL &&
         tls_crl_path == NULL) {
       tls_log("error loading TLSCARevocationFile '%s': %s", tls_crl_file,
@@ -18374,6 +18243,19 @@ static int tls_ctx_set_crls(SSL_CTX *ctx) {
   }
 
   PRIVS_RELINQUISH
+
+  if (tls_crl_file != NULL) {
+    pr_trace_msg(trace_channel, 19, "using CRL file '%s'", tls_crl_file);
+  }
+
+  if (tls_crl_path != NULL) {
+    pr_trace_msg(trace_channel, 19, "using CRL directory '%s'", tls_crl_path);
+  }
+
+  /* Make sure we enable CRL checking, now that we've loaded them. */
+  X509_STORE_set_flags(store, X509_V_FLAG_CRL_CHECK|X509_V_FLAG_CRL_CHECK_ALL);
+  X509_STORE_set_purpose(store, X509_PURPOSE_SSL_CLIENT);
+
   return 0;
 }
 
