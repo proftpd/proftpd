@@ -41,6 +41,8 @@
 - Issue 1959 - mod_sftp leaks file descriptor when reading SFTPHostKey file.
 - Issue 1964 - Large/slow SCP downloads could be unnecessarily truncated by
   TimeoutStalled. 
+- Issue 1960 - Handling of CRLs in mod_tls is incorrect, leading to confusing
+  errors.
 
 1.3.9 - Released 14-Mar-2025
 --------------------------------
