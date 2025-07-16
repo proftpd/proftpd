@@ -8881,8 +8881,8 @@ static void tls_end_sess(SSL *ssl, conn_t *conn, int flags) {
 
     /* 'close_notify' not already sent; send it now. */
     pr_trace_msg(trace_channel, 17,
-      "shutting down TLS session, 'close_notify' not already sent; "
-      "sending now");
+      "shutting down %s TLS session, 'close_notify' not already sent; "
+      "sending now", ssl == ctrl_ssl ? "control" : "data");
     lineno = __LINE__ + 1;
     res = SSL_shutdown(ssl);
   }
@@ -8898,8 +8898,8 @@ static void tls_end_sess(SSL *ssl, conn_t *conn, int flags) {
         int is_ssl_data = FALSE, xerrno;
 
         pr_trace_msg(trace_channel, 17,
-          "shutting down TLS session, 'close_notify' not received; "
-          "peeking at next data");
+          "shutting down %s TLS session, 'close_notify' not received; "
+          "peeking at next data", ssl == ctrl_ssl ? "control" : "data");
 
         /* This where we need to peek at the next data, to see whether we
          * dealing with a well-behaved FTPS client, which will be sending
@@ -8936,8 +8936,9 @@ static void tls_end_sess(SSL *ssl, conn_t *conn, int flags) {
         xerrno = errno;
 
         pr_trace_msg(trace_channel, 17,
-          "shutting down TLS session, 'close_notify' not received; "
-          "SSL_shutdown() returned %d", res);
+          "shutting down %s TLS session, 'close_notify' not received; "
+          "SSL_shutdown() returned %d", ssl == ctrl_ssl ? "control" : "data",
+          res);
 
         errno = xerrno;
       }
@@ -9078,10 +9079,39 @@ static void tls_end_sess(SSL *ssl, conn_t *conn, int flags) {
     session.total_raw_out += bwritten;
   }
 
+  if (ssl != ctrl_ssl &&
+      SSL_get_session(ssl) == SSL_get_session(ctrl_ssl)) {
+    /* Uh-oh; our two SSL objects are pointing at the same SSL_SESSION object.
+     * This can happen when the SSL_SESSION is resumed, enabled by session
+     * caching.  Which is normally a Good Thing.
+     *
+     * But Issue#1963 happens when that SSL_SESSION object is freed twice:
+     * once via SSL_free() on this SSL, and again on SSL_free() for the
+     * other SSL.  Yuck.
+     *
+     * So we manually handle the situation by clearing the duplicate
+     * SSL_SESSION pointer from the data SSL.  Why the data SSL, and not the
+     * control SSL?  We could be handling multiple concurrent data transfers,
+     * and/or the client may reuse the session again on a subsequent data
+     * transfer.
+     *
+     * Note that older OpenSSL versions used two different SSL_SESSION objects,
+     * hence why we have not seen this occur frequently in the past.  (Or it
+     * was not reported.)  And for TLSv1.3 resumed sessions, the SSL_SESSION
+     * objects are different, hence no double-free.
+     */
+    pr_trace_msg(trace_channel, 29,
+      "data SSL %p being ended has same SSL_SESSION %p as control SSL, "
+      "clearing the data SSL pointer manually (Issue #1963)", ssl,
+      SSL_get_session(ssl));
+    SSL_set_session(ssl, NULL);
+  }
+
   SSL_free(ssl);
 
   if (res >= 0) {
-    pr_trace_msg(trace_channel, 17, "TLS session cleanly shut down");
+    pr_trace_msg(trace_channel, 17, "%s TLS session cleanly shut down",
+      ssl == ctrl_ssl ? "control" : "data");
   }
 }
 
@@ -15822,13 +15852,13 @@ static void tls_exit_ev(const void *event_data, void *user_data) {
    * and thus we have a read-only copy.
    */
 
-  if (tls_ctrl_netio) {
+  if (tls_ctrl_netio != NULL) {
     pr_unregister_netio(PR_NETIO_STRM_CTRL);
     destroy_pool(tls_ctrl_netio->pool);
     tls_ctrl_netio = NULL;
   }
 
-  if (tls_data_netio) {
+  if (tls_data_netio != NULL) {
     pr_unregister_netio(PR_NETIO_STRM_DATA);
     destroy_pool(tls_data_netio->pool);
     tls_data_netio = NULL;
@@ -15839,7 +15869,6 @@ static void tls_exit_ev(const void *event_data, void *user_data) {
   }
 
   tls_closelog();
-  return;
 }
 
 static void tls_timeout_ev(const void *event_data, void *user_data) {
@@ -17154,12 +17183,18 @@ static int tls_ssl_set_session_id_context(server_rec *s, SSL *ssl) {
 
 static char *get_sess_id_text(BIO *bio, const unsigned char *id,
     unsigned int idsz) {
-  register unsigned int i;
   char *data = NULL;
   long datalen;
 
-  for (i = 0; i < idsz; i++) {
-    BIO_printf(bio, "%02x", id[i]);
+  if (idsz > 0) {
+    register unsigned int i;
+
+    for (i = 0; i < idsz; i++) {
+      BIO_printf(bio, "%02x", id[i]);
+    }
+
+  } else {
+    BIO_printf(bio, "%s", "NONE");
   }
 
   datalen = BIO_get_mem_data(bio, &data);
