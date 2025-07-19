@@ -33,6 +33,8 @@
   TimeoutStalled.
 - Issue 1960 - Handling of CRLs in mod_tls is incorrect, leading to confusing
   errors.
+- Issue 1963 - Resumed SSL_SESSION management in mod_tls leads to memory
+  growth, infinite loop using newer OpenSSL versions.
 
 1.3.9 - Released 14-Mar-2025
 --------------------------------
