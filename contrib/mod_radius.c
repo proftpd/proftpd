@@ -2255,7 +2255,7 @@ static int radius_verify_auth_mac(radius_packet_t *pkt, const char *pkt_type,
 
     attrib_len = RADIUS_ATTRIB_LEN(attrib);
     if (attrib_len != expected_len) {
-#ifdef PR_USE_OPENSSL
+#if defined(PR_USE_OPENSSL)
       const EVP_MD *md;
       unsigned char digest[EVP_MAX_MD_SIZE], replied[EVP_MAX_MD_SIZE];
       unsigned int digest_len = 0;
@@ -2264,6 +2264,20 @@ static int radius_verify_auth_mac(radius_packet_t *pkt, const char *pkt_type,
        * comparison with what we will calculate.
        */
       memset(replied, '\0', sizeof(replied));
+
+      /* Make sure that the given attribute length does not exceed our
+       * allocated buffer size.  Well-formed MAC attribute lengths should
+       * not encounter this case, given the use of MD5; excessively long
+       * MACs would fail verification anyway, truncation or not.
+       */
+      if (attrib_len > sizeof(replied)) {
+        pr_trace_msg(trace_channel, 3,
+          "Message-Authenticator attribute length (%u) exceeded max expected "
+          "length (%u), truncating", (unsigned int) attrib_len,
+          (unsigned int) sizeof(replied));
+        attrib_len = sizeof(replied);
+      }
+
       memcpy(replied, attrib->data, attrib_len);
 
       /* Next, zero out the value so that we can calculate it ourselves.
