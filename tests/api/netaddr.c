@@ -1,6 +1,6 @@
 /*
  * ProFTPD - FTP server testsuite
- * Copyright (c) 2008-2023 The ProFTPD Project team
+ * Copyright (c) 2008-2025 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -285,11 +285,11 @@ START_TEST (netaddr_set_family_test) {
 
   res = pr_netaddr_set_family(addr, -1);
   ck_assert_msg(res == -1, "Failed to handle bad family");
-#ifdef EAFNOSUPPORT
+#if defined(EAFNOSUPPORT)
   ck_assert_msg(errno == EAFNOSUPPORT, "Failed to set errno to EAFNOSUPPORT");
 #else
   ck_assert_msg(errno == EINVAL, "Failed to set errno to EINVAL");
-#endif
+#endif /* EAFNOSUPPORT */
 
   res = pr_netaddr_set_family(addr, AF_INET);
   ck_assert_msg(res == 0, "Failed to set family to AF_INET: %s", strerror(errno));
@@ -297,7 +297,10 @@ START_TEST (netaddr_set_family_test) {
 END_TEST
 
 START_TEST (netaddr_cmp_test) {
-  const pr_netaddr_t *addr, *addr2;
+  const pr_netaddr_t *addr;
+#if defined(PR_USE_IPV6)
+  const pr_netaddr_t *addr2;
+#endif /* PR_USE_IPV6 */
   int res;
   const char *name;
 
@@ -315,6 +318,7 @@ START_TEST (netaddr_cmp_test) {
   res = pr_netaddr_cmp(NULL, addr);
   ck_assert_msg(res == -1, "Expected -1, got %d", res);
 
+#if defined(PR_USE_IPV6)
   name = "::1";
   addr2 = pr_netaddr_get_addr(p, name, NULL);
   ck_assert_msg(addr2 != NULL, "Failed to resolve '%s': %s", name,
@@ -336,11 +340,15 @@ START_TEST (netaddr_cmp_test) {
 
   res = pr_netaddr_cmp(addr2, addr);
   ck_assert_msg(res == 0, "Expected 0, got %d", res);
+#endif /* PR_USE_IPV6 */
 }
 END_TEST
 
 START_TEST (netaddr_ncmp_test) {
-  const pr_netaddr_t *addr, *addr2;
+  const pr_netaddr_t *addr;
+#if defined(PR_USE_IPV6)
+  const pr_netaddr_t *addr2;
+#endif /* PR_USE_IPV6 */
   int res;
   unsigned int nbits = 0;
   const char *name;
@@ -368,6 +376,7 @@ START_TEST (netaddr_ncmp_test) {
   ck_assert_msg(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
     strerror(errno), errno);
 
+#if defined(PR_USE_IPV6)
   name = "::1";
   addr2 = pr_netaddr_get_addr(p, name, NULL);
   ck_assert_msg(addr2 != NULL, "Failed to resolve '%s': %s", name,
@@ -394,6 +403,7 @@ START_TEST (netaddr_ncmp_test) {
   nbits = 24;
   res = pr_netaddr_ncmp(addr2, addr, nbits);
   ck_assert_msg(res == 0, "Expected 0, got %d", res);
+#endif /* PR_USE_IPV6 */
 }
 END_TEST
 
@@ -434,7 +444,7 @@ START_TEST (netaddr_fnmatch_test) {
   res = pr_netaddr_fnmatch(addr, "127.0*", flags);
   ck_assert_msg(res == TRUE, "Expected TRUE, got %d", res);
 
-#ifdef PR_USE_IPV6
+#if defined(PR_USE_IPV6)
   name = "::ffff:127.0.0.1";
   addr = pr_netaddr_get_addr(p, name, NULL);
   ck_assert_msg(addr != NULL, "Failed to resolve '%s': %s", name,
@@ -453,7 +463,7 @@ START_TEST (netaddr_get_sockaddr_test) {
   pr_netaddr_t *addr;
   struct sockaddr *sockaddr;
   const char *name;
-#ifdef PR_USE_IPV6
+#if defined(PR_USE_IPV6)
   int family;
 #endif /* PR_USE_IPV6 */
 
@@ -470,7 +480,7 @@ START_TEST (netaddr_get_sockaddr_test) {
   sockaddr = pr_netaddr_get_sockaddr(addr);
   ck_assert_msg(sockaddr != NULL, "Failed to get sock addr: %s", strerror(errno));
 
-#ifdef PR_USE_IPV6
+#if defined(PR_USE_IPV6)
   name = "::1";
   addr = (pr_netaddr_t *) pr_netaddr_get_addr(p, name, NULL);
   ck_assert_msg(addr != NULL, "Failed to resolve '%s': %s", name,
@@ -501,7 +511,7 @@ START_TEST (netaddr_get_sockaddr_len_test) {
   pr_netaddr_t *addr;
   size_t res;
   const char *name;
-#ifdef PR_USE_IPV6
+#if defined(PR_USE_IPV6)
   int family;
 #endif /* PR_USE_IPV6 */
 
@@ -518,7 +528,7 @@ START_TEST (netaddr_get_sockaddr_len_test) {
   res = pr_netaddr_get_sockaddr_len(addr);
   ck_assert_msg(res > 0, "Failed to get sockaddr len: %s", strerror(errno));
 
-#ifdef PR_USE_IPV6
+#if defined(PR_USE_IPV6)
   name = "::1";
   addr = (pr_netaddr_t *) pr_netaddr_get_addr(p, name, NULL);
   ck_assert_msg(addr != NULL, "Failed to resolve '%s': %s", name,
@@ -552,7 +562,7 @@ START_TEST (netaddr_set_sockaddr_test) {
   int res;
   struct sockaddr sa;
   const char *name;
-#ifdef PR_USE_IPV6
+#if defined(PR_USE_IPV6)
   int family;
 # if defined(HAVE_GETADDRINFO)
   struct addrinfo hints, *info = NULL;
@@ -579,7 +589,7 @@ START_TEST (netaddr_set_sockaddr_test) {
   res = pr_netaddr_set_sockaddr(addr, &sa);
   ck_assert_msg(res == 0, "Failed to set sockaddr: %s", strerror(errno));
 
-#ifdef PR_USE_IPV6
+#if defined(PR_USE_IPV6)
   name = "::1";
   addr = (pr_netaddr_t *) pr_netaddr_get_addr(p, name, NULL);
   ck_assert_msg(addr != NULL, "Failed to resolve '%s': %s", name,
@@ -625,7 +635,7 @@ START_TEST (netaddr_set_sockaddr_any_test) {
   pr_netaddr_t *addr;
   int res;
   const char *name;
-#ifdef PR_USE_IPV6
+#if defined(PR_USE_IPV6)
   int family;
 #endif /* PR_USE_IPV6 */
 
@@ -642,7 +652,7 @@ START_TEST (netaddr_set_sockaddr_any_test) {
   res = pr_netaddr_set_sockaddr_any(addr);
   ck_assert_msg(res == 0, "Failed to set sockaddr any: %s", strerror(errno));
 
-#ifdef PR_USE_IPV6
+#if defined(PR_USE_IPV6)
   name = "::1";
   addr = (pr_netaddr_t *) pr_netaddr_get_addr(p, name, NULL);
   ck_assert_msg(addr != NULL, "Failed to resolve '%s': %s", name,
@@ -673,16 +683,17 @@ END_TEST
 
 START_TEST (netaddr_get_inaddr_test) {
   pr_netaddr_t *addr;
-  int family;
   void *inaddr;
   const char *name;
+#if defined(PR_USE_IPV6)
+  int family;
+#endif /* PR_USE_IPV6 */
 
   inaddr = pr_netaddr_get_inaddr(NULL);
   ck_assert_msg(inaddr == NULL, "Failed to handle null arguments");
   ck_assert_msg(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
     strerror(errno), errno);
 
-  family = AF_INET;
   name = "127.0.0.1";
   addr = (pr_netaddr_t *) pr_netaddr_get_addr(p, name, NULL);
   ck_assert_msg(addr != NULL, "Failed to resolve '%s': %s", name,
@@ -691,7 +702,7 @@ START_TEST (netaddr_get_inaddr_test) {
   inaddr = pr_netaddr_get_inaddr(addr);
   ck_assert_msg(inaddr != NULL, "Failed to get inaddr: %s", strerror(errno));
 
-#ifdef PR_USE_IPV6
+#if defined(PR_USE_IPV6)
   family = AF_INET6;
   name = "::1";
   addr = (pr_netaddr_t *) pr_netaddr_get_addr(p, name, NULL);
@@ -725,7 +736,7 @@ START_TEST (netaddr_get_inaddr_len_test) {
   pr_netaddr_t *addr;
   size_t res;
   const char *name;
-#ifdef PR_USE_IPV6
+#if defined(PR_USE_IPV6)
   int family;
 #endif /* PR_USE_IPV6 */
 
@@ -742,7 +753,7 @@ START_TEST (netaddr_get_inaddr_len_test) {
   res = pr_netaddr_get_inaddr_len(addr);
   ck_assert_msg(res > 0, "Failed to get inaddr len: %s", strerror(errno));
 
-#ifdef PR_USE_IPV6
+#if defined(PR_USE_IPV6)
   name = "::1";
   addr = (pr_netaddr_t *) pr_netaddr_get_addr(p, name, NULL);
   ck_assert_msg(addr != NULL, "Failed to resolve '%s': %s", name,
@@ -939,13 +950,13 @@ START_TEST (netaddr_get_dnsstr_list_test) {
   /* Ideally we would check that res->nelts > 0, BUT this turns out to
    * a fragile test condition, dependent on DNS vagaries.
    */
-#endif
+#endif /* PR_USE_NETWORK_TESTS */
 
   pr_netaddr_set_reverse_dns(reverse_dns);
 }
 END_TEST
 
-#ifdef PR_USE_IPV6
+#if defined(PR_USE_IPV6)
 START_TEST (netaddr_get_dnsstr_ipv6_test) {
   const pr_netaddr_t *addr;
   const char *ip, *res;
@@ -1069,13 +1080,13 @@ START_TEST (netaddr_validate_dns_str_test) {
 
   str = pstrdup(p, "foo:");
   res = pr_netaddr_validate_dns_str(str);
-#ifdef PR_USE_IPV6
+#if defined(PR_USE_IPV6)
   ck_assert_msg(strcmp(res, str) == 0, "Expected '%s', got '%s'",
     str, res);
 #else
   ck_assert_msg(strcmp(res, "foo_") == 0, "Expected '%s', got '%s'",
     "foo_", res);
-#endif
+#endif /* PR_USE_IPV6 */
 }
 END_TEST
 
@@ -1109,7 +1120,7 @@ START_TEST (netaddr_is_loopback_test) {
 
   res = pr_netaddr_is_loopback(addr);
   ck_assert_msg(res == FALSE, "Expected FALSE, got %d", res);
-#endif
+#endif /* PR_USE_NETWORK_TESTS */
 
   name = "127.0.0.1";
   addr = pr_netaddr_get_addr(p, name, NULL);
@@ -1119,7 +1130,7 @@ START_TEST (netaddr_is_loopback_test) {
   res = pr_netaddr_is_loopback(addr);
   ck_assert_msg(res == TRUE, "Expected TRUE, got %d", res);
 
-#ifdef PR_USE_IPV6
+#if defined(PR_USE_IPV6)
   name = "::1";
   addr = pr_netaddr_get_addr(p, name, NULL);
   ck_assert_msg(addr != NULL, "Failed to resolve '%s': %s", name,
@@ -1214,7 +1225,7 @@ START_TEST (netaddr_is_v4mappedv6_test) {
 
   name = "::1";
   addr = pr_netaddr_get_addr(p, name, NULL);
-#ifdef PR_USE_IPV6
+#if defined(PR_USE_IPV6)
   ck_assert_msg(addr != NULL, "Failed to get addr for '%s': %s", name,
     strerror(errno));
   res = pr_netaddr_is_v4mappedv6(addr);
@@ -1229,17 +1240,20 @@ START_TEST (netaddr_is_v4mappedv6_test) {
 
   name = "::ffff:127.0.0.1";
   addr = pr_netaddr_get_addr(p, name, NULL);
+#if defined(PR_USE_IPV6)
   ck_assert_msg(addr != NULL, "Failed to get addr for '%s': %s", name,
     strerror(errno));
   res = pr_netaddr_is_v4mappedv6(addr);
-#ifdef PR_USE_IPV6
   ck_assert_msg(res == TRUE,
     "Expected 'true' for IPv4-mapped IPv6 address '%s', got %d", name, res);
 #else
-  ck_assert_msg(res == -1,
-    "Expected -1 for IPv4-mapped IPv6 address '%s' (--disable-ipv6 used)");
-  ck_assert_msg(errno == EINVAL, "Failed to set errno to EINVAL; got %d [%s]",
-    errno, strerror(errno));
+  if (addr != NULL) {
+    ck_assert_msg(res == -1,
+      "Expected -1 for IPv4-mapped IPv6 address '%s' (--disable-ipv6 used)",
+      name);
+    ck_assert_msg(errno == EINVAL, "Failed to set errno to EINVAL; got %d [%s]",
+      errno, strerror(errno));
+  }
 #endif /* PR_USE_IPV6 */
 }
 END_TEST
@@ -1264,7 +1278,7 @@ START_TEST (netaddr_is_rfc1918_test) {
 
   name = "::1";
   addr = pr_netaddr_get_addr(p, name, NULL);
-#ifdef PR_USE_IPV6
+#if defined(PR_USE_IPV6)
   ck_assert_msg(addr != NULL, "Failed to get addr for '%s': %s", name,
     strerror(errno));
   res = pr_netaddr_is_rfc1918(addr);
@@ -1300,7 +1314,10 @@ END_TEST
 
 START_TEST (netaddr_v6tov4_test) {
   const pr_netaddr_t *addr, *addr2;
-  const char *name, *ipstr;
+  const char *name;
+#if defined(PR_USE_IPV6)
+  const char *ipstr;
+#endif /* PR_USE_IPV6 */
 
   addr = pr_netaddr_v6tov4(NULL, NULL);
   ck_assert_msg(addr == NULL, "Failed to handle null arguments");
@@ -1323,6 +1340,7 @@ START_TEST (netaddr_v6tov4_test) {
   ck_assert_msg(errno == EPERM, "Expected EPERM (%d), got %s (%d)", EPERM,
     strerror(errno), errno);
 
+#if defined(PR_USE_IPV6)
   name = "::ffff:127.0.0.1";
   addr2 = pr_netaddr_get_addr(p, name, NULL);
   ck_assert_msg(addr2 != NULL, "Failed to resolve '%s': %s", name,
@@ -1337,9 +1355,11 @@ START_TEST (netaddr_v6tov4_test) {
   ipstr = pr_netaddr_get_ipstr(addr);
   ck_assert_msg(strcmp(ipstr, "127.0.0.1") == 0,
     "Expected '127.0.0.1', got '%s'", ipstr);
+#endif /* PR_USE_IPV6 */
 }
 END_TEST
 
+#if defined(PR_USE_IPV6)
 START_TEST (netaddr_v4tov6_test) {
   const pr_netaddr_t *addr, *addr2;
   const char *name, *ipstr;
@@ -1371,7 +1391,6 @@ START_TEST (netaddr_v4tov6_test) {
     strerror(errno));
 
   addr = pr_netaddr_v4tov6(p, addr2);
-#ifdef PR_USE_IPV6
   ck_assert_msg(addr != NULL, "Failed to convert '%s' to IPv6 address: %s",
     name, strerror(errno));
   ck_assert_msg(pr_netaddr_get_family(addr) == AF_INET6,
@@ -1380,26 +1399,20 @@ START_TEST (netaddr_v4tov6_test) {
   ipstr = pr_netaddr_get_ipstr(addr);
   ck_assert_msg(strcmp(ipstr, "::ffff:127.0.0.1") == 0,
     "Expected '::ffff:127.0.0.1', got '%s'", ipstr);
-
-#else
-  ck_assert_msg(addr == NULL, "Converted '%s' to IPv6 address unexpectedly",
-    name);
-  ck_assert_msg(errno == EPERM, "Expected EPERM (%d), got %s (%d)", EPERM,
-    strerror(errno), errno);
-#endif /* PR_USE_IPV6 */
 }
 END_TEST
+#endif /* PR_USE_IPV6 */
 
 START_TEST (netaddr_disable_ipv6_test) {
   unsigned char use_ipv6;
 
   use_ipv6 = pr_netaddr_use_ipv6();
 
-#ifdef PR_USE_IPV6
+#if defined(PR_USE_IPV6)
   ck_assert_msg(use_ipv6 == TRUE, "Expected %d, got %d", TRUE, use_ipv6);
 #else
   ck_assert_msg(use_ipv6 == FALSE, "Expected %d, got %d", FALSE, use_ipv6);
-#endif
+#endif /* PR_USE_IPV6 */
 
   pr_netaddr_disable_ipv6();
 
@@ -1414,11 +1427,11 @@ START_TEST (netaddr_enable_ipv6_test) {
   pr_netaddr_enable_ipv6();
 
   use_ipv6 = pr_netaddr_use_ipv6();
-#ifdef PR_USE_IPV6
+#if defined(PR_USE_IPV6)
   ck_assert_msg(use_ipv6 == TRUE, "Expected %d, got %d", TRUE, use_ipv6);
 #else
   ck_assert_msg(use_ipv6 == FALSE, "Expected %d, got %d", FALSE, use_ipv6);
-#endif
+#endif /* PR_USE_IPV6 */
 }
 END_TEST
 
@@ -1452,7 +1465,7 @@ Suite *tests_get_netaddr_suite(void) {
   tcase_add_test(testcase, netaddr_set_reverse_dns_test);
   tcase_add_test(testcase, netaddr_get_dnsstr_test);
   tcase_add_test(testcase, netaddr_get_dnsstr_list_test);
-#ifdef PR_USE_IPV6
+#if defined(PR_USE_IPV6)
   tcase_add_test(testcase, netaddr_get_dnsstr_ipv6_test);
 #endif /* PR_USE_IPV6 */
   tcase_add_test(testcase, netaddr_get_ipstr_test);
@@ -1464,7 +1477,9 @@ Suite *tests_get_netaddr_suite(void) {
   tcase_add_test(testcase, netaddr_is_v4mappedv6_test);
   tcase_add_test(testcase, netaddr_is_rfc1918_test);
   tcase_add_test(testcase, netaddr_v6tov4_test);
+#if defined(PR_USE_IPV6)
   tcase_add_test(testcase, netaddr_v4tov6_test);
+#endif /* PR_USE_IPV6 */
   tcase_add_test(testcase, netaddr_disable_ipv6_test);
   tcase_add_test(testcase, netaddr_enable_ipv6_test);
 
