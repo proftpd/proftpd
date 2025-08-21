@@ -1193,13 +1193,16 @@ START_TEST (strtime2_test) {
 
   mark_point();
   now = 0;
-  expected = "Thu Jan 01 00:00:00 1970";
   res = pr_strtime2(now, TRUE);
 #if defined(HAVE_GMTIME_R)
+  (void) expected;
+
   ck_assert_msg(res == NULL, "Failed to handle null pool");
   ck_assert_msg(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
     strerror(errno), errno);
 #else
+  expected = "Thu Jan 01 00:00:00 1970";
+
   ck_assert_msg(res != NULL, "Failed to convert time %lu: %s",
     (unsigned long) now, strerror(errno));
   ck_assert_msg(strcmp(res, expected) == 0, "Expected '%s', got '%s'", expected,
