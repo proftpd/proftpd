@@ -355,10 +355,7 @@ is_char_class (const wchar_t *wcs)
 
 
 int
-pr_fnmatch (pattern, string, flags)
-     const char *pattern;
-     const char *string;
-     int flags;
+pr_fnmatch (const char *pattern, const char *string, int flags)
 {
 # if HANDLE_MULTIBYTE
   if (__builtin_expect (MB_CUR_MAX, 1) != 1)

@@ -325,7 +325,7 @@ static int mcache_ping_servers(pr_memcache_t *mcache) {
 
   alive_server_list = NULL;
   for (i = 0; i < server_count; i++) {
-    memcached_server_instance_st server;
+    const memcached_instance_st * server;
 
     server = memcached_server_instance_by_position(clone, i);
 
@@ -448,7 +448,7 @@ static int mcache_stat_servers(pr_memcache_t *mcache) {
           case MEMCACHED_SOME_ERRORS:
           case MEMCACHED_SERVER_MARKED_DEAD:
           case MEMCACHED_CONNECTION_FAILURE: {
-            memcached_server_instance_st server;
+            const memcached_instance_st * server;
 
             server = memcached_server_get_last_disconnect(mcache->mc);
             if (server != NULL) {
@@ -988,7 +988,7 @@ int pr_memcache_kadd(pr_memcache_t *mcache, module *m, const char *key,
 
     case MEMCACHED_SERVER_MARKED_DEAD:
     case MEMCACHED_CONNECTION_FAILURE: {
-      memcached_server_instance_st server;
+      const memcached_instance_st * server;
 
       server = memcached_server_get_last_disconnect(mcache->mc);
       if (server != NULL) {
@@ -1058,7 +1058,7 @@ int pr_memcache_kdecr(pr_memcache_t *mcache, module *m, const char *key,
 
     case MEMCACHED_SERVER_MARKED_DEAD:
     case MEMCACHED_CONNECTION_FAILURE: {
-      memcached_server_instance_st server;
+      const memcached_instance_st * server;
 
       server = memcached_server_get_last_disconnect(mcache->mc);
       if (server != NULL) {
@@ -1131,7 +1131,7 @@ void *pr_memcache_kget(pr_memcache_t *mcache, module *m, const char *key,
 
       case MEMCACHED_SERVER_MARKED_DEAD:
       case MEMCACHED_CONNECTION_FAILURE: {
-        memcached_server_instance_st server;
+        const memcached_instance_st * server;
 
         server = memcached_server_get_last_disconnect(mcache->mc);
         if (server != NULL) {
@@ -1213,7 +1213,7 @@ char *pr_memcache_kget_str(pr_memcache_t *mcache, module *m, const char *key,
 
       case MEMCACHED_SERVER_MARKED_DEAD:
       case MEMCACHED_CONNECTION_FAILURE: {
-        memcached_server_instance_st server;
+        const memcached_instance_st * server;
 
         server = memcached_server_get_last_disconnect(mcache->mc);
         if (server != NULL) {
@@ -1303,7 +1303,7 @@ int pr_memcache_kincr(pr_memcache_t *mcache, module *m, const char *key,
 
     case MEMCACHED_SERVER_MARKED_DEAD:
     case MEMCACHED_CONNECTION_FAILURE: {
-      memcached_server_instance_st server;
+      const memcached_instance_st * server;
 
       server = memcached_server_get_last_disconnect(mcache->mc);
       if (server != NULL) {
@@ -1368,7 +1368,7 @@ int pr_memcache_kremove(pr_memcache_t *mcache, module *m, const char *key,
 
     case MEMCACHED_SERVER_MARKED_DEAD:
     case MEMCACHED_CONNECTION_FAILURE: {
-      memcached_server_instance_st server;
+      const memcached_instance_st * server;
 
       server = memcached_server_get_last_disconnect(mcache->mc);
       if (server != NULL) {
@@ -1437,7 +1437,7 @@ int pr_memcache_kset(pr_memcache_t *mcache, module *m, const char *key,
 
     case MEMCACHED_SERVER_MARKED_DEAD:
     case MEMCACHED_CONNECTION_FAILURE: {
-      memcached_server_instance_st server;
+      const memcached_instance_st * server;
 
       server = memcached_server_get_last_disconnect(mcache->mc);
       if (server != NULL) {
