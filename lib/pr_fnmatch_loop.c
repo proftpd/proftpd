@@ -62,13 +62,8 @@ __mempcpy (void *dest, const void *src, size_t n)
 
 static int
 internal_function
-FCT (pattern, string, string_end, no_leading_period, flags, ends)
-     const CHAR *pattern;
-     const CHAR *string;
-     const CHAR *string_end;
-     int no_leading_period;
-     int flags;
-     struct STRUCT *ends;
+FCT (const CHAR *pattern, const CHAR *string, const CHAR *string_end,
+	int no_leading_period, int flags, struct STRUCT *ends)
 {
   register const CHAR *p = pattern, *n = string;
   register UCHAR c;
