@@ -22,7 +22,7 @@
  *
  * Changes are released under the GNU Public License, version 2.
  * Copyright (C) 2000 MacGyver aka Habeeb J. Dihu <macgyver@tos.net>
- * Copyright (C) 2010-2012 The ProFTPD Project
+ * Copyright (C) 2010-2025 The ProFTPD Project
  */
 
 /* AIX requires this to be the first thing in the file.  */
