@@ -75,7 +75,8 @@ static unsigned char ldaptab_lookup(quota_table_t *ldaptab, void *ptr,
 
   ldap_data = (array_header *) ldap_res->data;
   if (ldap_data->nelts != 9) {
-    quotatab_log("LDAP search returned wrong number of elements");
+    quotatab_log("LDAP search returned wrong number of elements (%d), "
+      "wanted %d", ldap_data->nelts, 9);
 
     destroy_pool(tmp_pool);
     return FALSE;
@@ -94,15 +95,19 @@ static unsigned char ldaptab_lookup(quota_table_t *ldaptab, void *ptr,
   memmove(limit->name, values[0], strlen(values[0]) + 1);
   limit->quota_type = USER_QUOTA;
 
-  if (!strcasecmp(values[1], "false"))
+  if (strcasecmp(values[1], "false") == 0) {
     limit->quota_per_session = FALSE;
-  else if (!strcasecmp(values[1], "true"))
-    limit->quota_per_session = TRUE;
 
-  if (!strcasecmp(values[2], "soft"))
+  } else if (strcasecmp(values[1], "true") == 0) {
+    limit->quota_per_session = TRUE;
+  }
+
+  if (strcasecmp(values[2], "soft") == 0) {
     limit->quota_limit_type = SOFT_LIMIT;
-  else if (!strcasecmp(values[2], "hard"))
+
+  } else if (strcasecmp(values[2], "hard") == 0) {
     limit->quota_limit_type = HARD_LIMIT;
+  }
 
   limit->bytes_in_avail   = atof(values[3]);
   limit->bytes_out_avail  = atof(values[4]);
@@ -123,9 +128,11 @@ static unsigned char ldaptab_verify(quota_table_t *ldaptab) {
 
 static quota_table_t *ldaptab_open(pool *parent_pool, quota_tabtype_t tab_type,
     const char *srcinfo) {
-
-  pool *tab_pool = make_sub_pool(parent_pool);
+  pool *tab_pool;
   quota_table_t *tab = NULL;
+
+  tab_pool = make_sub_pool(parent_pool);
+  pr_pool_tag(tab_pool, "mod_quotatab_ldap table pool");
 
   tab = (quota_table_t *) pcalloc(tab_pool, sizeof(quota_table_t));
   tab->tab_pool = tab_pool;

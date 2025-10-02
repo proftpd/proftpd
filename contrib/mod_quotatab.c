@@ -434,8 +434,9 @@ int quotatab_log(const char *fmt, ...) {
   int res;
 
   /* sanity check */
-  if (!quota_logname)
+  if (quota_logname == NULL) {
     return 0;
+  }
 
   va_start(msg, fmt);
   res = pr_log_vwritefile(quota_logfd, MOD_QUOTATAB_VERSION, fmt, msg);
@@ -748,20 +749,25 @@ static int quotatab_open(quota_tabtype_t tab_type) {
     register quota_regtab_t *regtab = NULL;
 
     c = find_config(main_server->conf, CONF_PARAM, "QuotaTallyTable", FALSE);
-    if (!c) {
+    if (c == NULL) {
       quotatab_log("notice: no QuotaTallyTable configured");
+
+      errno = ENOENT;
       return -1;
     }
 
     regtab = quotatab_get_backend(c->argv[0], QUOTATAB_TALLY_SRC);
-    if (regtab) {
+    if (regtab != NULL) {
       tally_tab = regtab->regtab_open(quotatab_pool, TYPE_TALLY, c->argv[1]);
-      if (!tally_tab)
+      if (tally_tab == NULL) {
         return -1;
+      }
 
     } else {
       quotatab_log("error: unsupported tally table type: '%s'",
         (const char *) c->argv[0]);
+
+      errno = EPERM;
       return -1;
     }
 
@@ -770,21 +776,26 @@ static int quotatab_open(quota_tabtype_t tab_type) {
     register quota_regtab_t *regtab = NULL;
 
     c = find_config(main_server->conf, CONF_PARAM, "QuotaLimitTable", FALSE);
-    if (!c) {
+    if (c == NULL) {
       quotatab_log("notice: no QuotaLimitTable configured");
+
+      errno = ENOENT;
       return -1;
     }
 
     /* Look up the table source open routine by name, and invoke it */
     regtab = quotatab_get_backend(c->argv[0], QUOTATAB_LIMIT_SRC);
-    if (regtab) {
+    if (regtab != NULL) {
       limit_tab = regtab->regtab_open(quotatab_pool, TYPE_LIMIT, c->argv[1]);
-      if (!limit_tab)
+      if (limit_tab == NULL) {
         return -1;
+      }
 
     } else {
       quotatab_log("error: unsupported limit table type: '%s'",
         (const char *) c->argv[0]);
+
+      errno = EPERM;
       return -1;
     }
   }
@@ -799,14 +810,19 @@ int quotatab_read(quota_tally_t *tally) {
   int bread = 0;
 
   /* Make sure the tally table can support reads. */
-  if (!tally_tab || !tally_tab->tab_read) {
+  if (tally_tab == NULL ||
+      tally_tab->tab_read == NULL) {
     errno = EPERM;
     return -1;
   }
 
   /* Obtain a reader lock for the entry in question. */
   if (quotatab_rlock(tally_tab) < 0) {
-    quotatab_log("error: unable to obtain read lock: %s", strerror(errno));
+    int xerrno = errno;
+
+    quotatab_log("error: unable to obtain read lock: %s", strerror(xerrno));
+
+    errno = xerrno;
     return -1;
   }
 
@@ -815,13 +831,21 @@ int quotatab_read(quota_tally_t *tally) {
    */
   bread = tally_tab->tab_read(tally_tab, tally);
   if (bread < 0) {
+    int xerrno = errno;
+
     quotatab_runlock(tally_tab);
+
+    errno = xerrno;
     return -1;
   }
 
   /* Release the lock */
   if (quotatab_runlock(tally_tab) < 0) {
-    quotatab_log("error: unable to release read lock: %s", strerror(errno));
+    int xerrno = errno;
+
+    quotatab_log("error: unable to release read lock: %s", strerror(xerrno));
+
+    errno = xerrno;
     return -1;
   }
 
@@ -837,19 +861,20 @@ int quotatab_register_backend(const char *backend,
     unsigned int srcs) {
   quota_regtab_t *regtab;
 
-  if (!backend || !srcopen) {
+  if (backend == NULL ||
+      srcopen == NULL) {
     errno = EINVAL;
     return -1;
   }
 
-  if (!quotatab_backend_pool) {
+  if (quotatab_backend_pool == NULL) {
     quotatab_backend_pool = make_sub_pool(permanent_pool);
     pr_pool_tag(quotatab_backend_pool, MOD_QUOTATAB_VERSION ": Backend Pool");
   }
 
   /* Check to see if this backend has already been registered. */
   regtab = quotatab_get_backend(backend, srcs);
-  if (regtab) {
+  if (regtab != NULL) {
     errno = EEXIST;
     return -1;
   }
@@ -860,7 +885,7 @@ int quotatab_register_backend(const char *backend,
   regtab->regtab_srcs = srcs;
 
   /* Add this object to the list. */
-  if (quotatab_backends) {
+  if (quotatab_backends != NULL) {
     quotatab_backends->prev = regtab;
     regtab->next = quotatab_backends;
   }
@@ -877,14 +902,14 @@ int quotatab_register_backend(const char *backend,
 int quotatab_unregister_backend(const char *backend, unsigned int srcs) {
   quota_regtab_t *regtab;
 
-  if (!backend) {
+  if (backend == NULL) {
     errno = EINVAL;
     return -1;
   }
 
   /* Check to see if this backend has been registered. */
   regtab = quotatab_get_backend(backend, srcs);
-  if (!regtab) {
+  if (regtab == NULL) {
     errno = ENOENT;
     return -1;
   }
@@ -896,19 +921,22 @@ int quotatab_unregister_backend(const char *backend, unsigned int srcs) {
     errno = EPERM;
     return -1;
   }
-#endif
+#endif /* PR_SHARED_MODULE */
 
   /* Remove this backend from the linked list. */
-  if (regtab->prev)
+  if (regtab->prev != NULL) {
     regtab->prev->next = regtab->next;
-  else
+
+  } else {
     /* This backend is the start of the quotatab_backends list (prev is NULL),
      * so we need to update the list head pointer as well.
      */
     quotatab_backends = regtab->next;
+  }
 
-  if (regtab->next)
+  if (regtab->next != NULL) {
     regtab->next->prev = regtab->prev;
+  }
 
   regtab->prev = regtab->next = NULL;
 
@@ -1313,14 +1341,19 @@ int quotatab_write(quota_tally_t *tally,
     int files_in_inc, int files_out_inc, int files_xfer_inc) {
 
   /* Make sure the tally table can support writes. */
-  if (!tally_tab || !tally_tab->tab_write) {
+  if (tally_tab == NULL ||
+      tally_tab->tab_write == NULL) {
     errno = EPERM;
     return -1;
   }
 
   /* Obtain a writer lock for the entry in question */
   if (quotatab_wlock(tally_tab) < 0) {
-    quotatab_log("error: unable to obtain write lock: %s", strerror(errno));
+    int xerrno = errno;
+
+    quotatab_log("error: unable to obtain write lock: %s", strerror(xerrno));
+
+    errno = xerrno;
     return -1;
   }
 
@@ -1335,8 +1368,9 @@ int quotatab_write(quota_tally_t *tally,
     sess_tally.bytes_in_used += bytes_in_inc;
 
     /* Prevent underflows. */
-    if (sess_tally.bytes_in_used < 0.0)
+    if (sess_tally.bytes_in_used < 0.0) {
       sess_tally.bytes_in_used = 0.0;
+    }
 
     quotatab_deltas.bytes_in_delta = bytes_in_inc;
   }
@@ -1346,8 +1380,9 @@ int quotatab_write(quota_tally_t *tally,
     sess_tally.bytes_out_used += bytes_out_inc;
 
     /* Prevent underflows. */
-    if (sess_tally.bytes_out_used < 0.0)
+    if (sess_tally.bytes_out_used < 0.0) {
       sess_tally.bytes_out_used = 0.0;
+    }
 
     quotatab_deltas.bytes_out_delta = bytes_out_inc;
   }
@@ -1357,8 +1392,9 @@ int quotatab_write(quota_tally_t *tally,
     sess_tally.bytes_xfer_used += bytes_xfer_inc;
 
     /* Prevent underflows. */
-    if (sess_tally.bytes_xfer_used < 0.0)
+    if (sess_tally.bytes_xfer_used < 0.0) {
       sess_tally.bytes_xfer_used = 0.0;
+    }
 
     quotatab_deltas.bytes_xfer_delta = bytes_xfer_inc;
   }
@@ -1370,8 +1406,9 @@ int quotatab_write(quota_tally_t *tally,
      * underflow check is not as straightforward as checking for a value
      * less than zero.
      */
-    if (!(sess_tally.files_in_used == 0 && files_in_inc < 0))
+    if (!(sess_tally.files_in_used == 0 && files_in_inc < 0)) {
       sess_tally.files_in_used += files_in_inc;
+    }
 
     quotatab_deltas.files_in_delta = files_in_inc;
   }
@@ -1383,8 +1420,9 @@ int quotatab_write(quota_tally_t *tally,
      * underflow check is not as straightforward as checking for a value
      * less than zero.
      */
-    if (!(sess_tally.files_out_used == 0 && files_out_inc < 0))
+    if (!(sess_tally.files_out_used == 0 && files_out_inc < 0)) {
       sess_tally.files_out_used += files_out_inc;
+    }
 
     quotatab_deltas.files_out_delta = files_out_inc;
   }
@@ -1396,8 +1434,9 @@ int quotatab_write(quota_tally_t *tally,
      * underflow check is not as straightforward as checking for a value
      * less than zero.
      */
-    if (!(sess_tally.files_xfer_used == 0 && files_xfer_inc < 0))
+    if (!(sess_tally.files_xfer_used == 0 && files_xfer_inc < 0)) {
       sess_tally.files_xfer_used += files_xfer_inc;
+    }
 
     quotatab_deltas.files_xfer_delta = files_xfer_inc;
   }
@@ -1410,16 +1449,24 @@ int quotatab_write(quota_tally_t *tally,
   }
 
   if (tally_tab->tab_write(tally_tab, tally) < 0) {
-    quotatab_log("error: unable to update tally entry: %s", strerror(errno));
+    int xerrno = errno;
+
+    quotatab_log("error: unable to update tally entry: %s", strerror(xerrno));
     quotatab_wunlock(tally_tab);
     memset(&quotatab_deltas, '\0', sizeof(quotatab_deltas));
+
+    errno = xerrno;
     return -1;
   }
 
   /* Release the lock */
   if (quotatab_wunlock(tally_tab) < 0) {
-    quotatab_log("error: unable to release write lock: %s", strerror(errno));
+    int xerrno = errno;
+
+    quotatab_log("error: unable to release write lock: %s", strerror(xerrno));
     memset(&quotatab_deltas, '\0', sizeof(quotatab_deltas));
+
+    errno = xerrno;
     return -1;
   }
 
