@@ -45,6 +45,8 @@
   errors.
 - Issue 1963 - Resumed SSL_SESSION management in mod_tls leads to memory
   growth, infinite loop using newer OpenSSL versions.
+- Issue 1984 - mod_quotatab_ldap interactions can lead to segfault due to
+  stale pointer.
 
 1.3.9 - Released 14-Mar-2025
 --------------------------------
