@@ -1257,15 +1257,20 @@ static struct group *pr_ldap_group_lookup(pool *p, char *filter_template,
   return gr;
 }
 
+static void cached_quota_cleanup(void *event_data) {
+  cached_quota = NULL;
+}
+
 static void parse_quota(pool *p, const char *replace, char *str) {
   char **elts, *token;
 
   if (cached_quota == NULL) {
     cached_quota = make_array(p, 9, sizeof(char *));
+    register_cleanup2(p, NULL, cached_quota_cleanup);
   }
 
   elts = (char **) cached_quota->elts;
-  elts[0] = pstrdup(session.pool, replace);
+  elts[0] = pstrdup(p, replace);
   cached_quota->nelts = 1;
 
   (void) pr_log_writefile(ldap_logfd, MOD_LDAP_VERSION,
@@ -1273,7 +1278,7 @@ static void parse_quota(pool *p, const char *replace, char *str) {
 
   while ((token = strsep(&str, ","))) {
     pr_signals_handle();
-    *((char **) push_array(cached_quota)) = pstrdup(session.pool, token);
+    *((char **) push_array(cached_quota)) = pstrdup(p, token);
   }
 }
 
