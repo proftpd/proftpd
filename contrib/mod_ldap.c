@@ -3183,10 +3183,29 @@ MODRET set_ldapgroups(cmd_rec *cmd) {
 }
 
 MODRET set_ldapdefaultquota(cmd_rec *cmd) {
+  const char *default_quota = NULL;
+
   CHECK_ARGS(cmd, 1);
   CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL);
 
-  add_config_param_str(cmd->argv[0], 1, cmd->argv[1]);
+  /* We expect that the default quota is a single comma-delimited parameter,
+   * with 8 elements.  However, we might see space-delimited parameters instead,
+   * as that is the syntax used by the mod_quotatab default quota directive.
+   * So we check for that situation, and try to be accommodating.
+   */
+
+  default_quota = cmd->argv[1];
+
+  if (cmd->argc == 9) {
+    register unsigned int i;
+
+    for (i = 2; i < cmd->argc; i++) {
+      default_quota = pstrcat(cmd->pool, default_quota, ",",
+        (char *) cmd->argv[i], NULL);
+    }
+  }
+
+  add_config_param_str(cmd->argv[0], 1, default_quota);
   return PR_HANDLED(cmd);
 }
 
