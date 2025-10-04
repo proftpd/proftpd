@@ -93,7 +93,7 @@ static const char *timing_channel = "timing";
 
 static int packet_poll(int sockfd, int io) {
   fd_set rfds, wfds;
-  struct timeval tv;
+  struct timeval tv, *tvp = NULL;
   int res, timeout, using_client_alive = FALSE;
   unsigned int ntimeouts = 0;
 
@@ -122,10 +122,25 @@ static int packet_poll(int sockfd, int io) {
   tv.tv_sec = timeout;
   tv.tv_usec = 0;
 
-  pr_trace_msg(trace_channel, 19,
-    "waiting for max of %lu secs while polling socket %d for %s "
-    "using select(2)", (unsigned long) tv.tv_sec, sockfd,
-    io == SFTP_PACKET_IO_RD ? "reading" : "writing");
+  if (timeout > 0) {
+    tvp = &tv;
+
+    pr_trace_msg(trace_channel, 19,
+      "waiting for max of %lu secs while polling socket %d for %s "
+      "using select(2)", (unsigned long) tv.tv_sec, sockfd,
+      io == SFTP_PACKET_IO_RD ? "reading" : "writing");
+
+  } else {
+    /* If TimeoutIdle was explicitly set to zero, then block indefinitely
+     * until more data arrives, per the documentation for a zero TimeoutIdle
+     * value (Issue #1985).
+     */
+    tvp = NULL;
+
+    pr_trace_msg(trace_channel, 19,
+      "waiting indefinitely while polling socket %d for %s using select(2)",
+      sockfd, io == SFTP_PACKET_IO_RD ? "reading" : "writing");
+  }
 
   /* Clear any possibly stale pointers. */
   session.curr_cmd_rec = NULL;
@@ -139,13 +154,13 @@ static int packet_poll(int sockfd, int io) {
     switch (io) {
       case SFTP_PACKET_IO_RD: {
         FD_SET(sockfd, &rfds);
-        res = select(sockfd + 1, &rfds, NULL, NULL, &tv);
+        res = select(sockfd + 1, &rfds, NULL, NULL, tvp);
         break;
       }
 
       case SFTP_PACKET_IO_WR: {
         FD_SET(sockfd, &wfds);
-        res = select(sockfd + 1, NULL, &wfds, NULL, &tv);
+        res = select(sockfd + 1, NULL, &wfds, NULL, tvp);
         break;
       }
 
@@ -185,7 +200,7 @@ static int packet_poll(int sockfd, int io) {
         return -1;
       }
 
-      if (using_client_alive) {
+      if (using_client_alive == TRUE) {
         is_client_alive();
 
       } else {
