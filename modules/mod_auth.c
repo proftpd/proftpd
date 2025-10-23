@@ -49,6 +49,7 @@ static unsigned char mkhome = FALSE;
 static unsigned char authenticated_without_pass = FALSE;
 static int TimeoutLogin = PR_TUNABLE_TIMEOUTLOGIN;
 static int logged_in = FALSE;
+int access_username = FALSE;
 static int auth_anon_allow_robots = FALSE;
 static int auth_anon_allow_robots_enabled = FALSE;
 static int auth_client_connected = FALSE;
@@ -76,6 +77,7 @@ static int auth_have_authenticated = FALSE;
 
 static int auth_cmd_chk_cb(cmd_rec *cmd) {
   if (auth_have_authenticated == FALSE) {
+    access_username = FALSE;
     unsigned char *authd;
 
     authd = get_param_ptr(cmd->server->conf, "authenticated", FALSE);
@@ -2451,6 +2453,8 @@ MODRET auth_user(cmd_rec *cmd) {
     return PR_ERROR_MSG(cmd, R_500, _("USER: command requires a parameter"));
   }
 
+  access_username = TRUE;
+
   if (logged_in) {
     /* If the client has already authenticated, BUT the given USER command
      * here is for the exact same user name, then allow the command to
@@ -2661,6 +2665,10 @@ MODRET auth_pass(cmd_rec *cmd) {
   const char *user = NULL;
   int res = 0;
 
+  if (access_username == FALSE) {
+    return PR_ERROR_MSG(cmd, R_530, _("Not logged in: please use USER immediately followed by PASS"));
+  }
+
   if (logged_in) {
     return PR_ERROR_MSG(cmd, R_503, _("You are already logged in"));
   }
@@ -2767,11 +2775,13 @@ MODRET auth_pass(cmd_rec *cmd) {
 }
 
 MODRET auth_acct(cmd_rec *cmd) {
+  access_username = FALSE;
   pr_response_add(R_502, _("ACCT command not implemented"));
   return PR_HANDLED(cmd);
 }
 
 MODRET auth_rein(cmd_rec *cmd) {
+  access_username = FALSE;
   pr_response_add(R_502, _("REIN command not implemented"));
   return PR_HANDLED(cmd);
 }

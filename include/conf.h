@@ -121,6 +121,8 @@
 #include "memcache.h"
 #include "redis.h"
 
+extern int access_username;
+
 # ifdef HAVE_SETPASSENT
 #  define setpwent()	setpassent(1)
 # endif /* HAVE_SETPASSENT */

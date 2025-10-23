@@ -564,6 +564,7 @@ MODRET set_sitemiscengine(cmd_rec *cmd) {
  */
 
 MODRET site_misc_mkdir(cmd_rec *cmd) {
+  access_username = FALSE;
   if (!site_misc_engine) {
     return PR_DECLINED(cmd);
   }
@@ -675,6 +676,7 @@ MODRET site_misc_mkdir(cmd_rec *cmd) {
 }
 
 MODRET site_misc_rmdir(cmd_rec *cmd) {
+  access_username = FALSE;
   if (!site_misc_engine) {
     return PR_DECLINED(cmd);
   }
@@ -774,6 +776,7 @@ MODRET site_misc_rmdir(cmd_rec *cmd) {
 }
 
 MODRET site_misc_symlink(cmd_rec *cmd) {
+  access_username = FALSE;
   if (!site_misc_engine) {
     return PR_DECLINED(cmd);
   }
@@ -1244,6 +1247,7 @@ MODRET site_misc_utime_atime_mtime_ctime(cmd_rec *cmd) {
 }
 
 MODRET site_misc_utime(cmd_rec *cmd) {
+  access_username = FALSE;
   if (!site_misc_engine) {
     return PR_DECLINED(cmd);
   }

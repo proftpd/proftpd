@@ -1310,6 +1310,7 @@ static int get_hidden_store_path(cmd_rec *cmd, const char *path,
 }
 
 MODRET xfer_opts_rest(cmd_rec *cmd) {
+  access_username = FALSE;
   register unsigned int i;
   char *method, *xfer_cmd;
   unsigned char *authenticated;

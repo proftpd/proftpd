@@ -550,6 +550,7 @@ static cmdtable site_commands[] = {
 
 modret_t *site_dispatch(cmd_rec *cmd) {
   register unsigned int i = 0;
+  access_username = FALSE;
 
   if (!cmd->argc) {
     pr_response_add_err(R_500, _("'SITE' requires parameters"));

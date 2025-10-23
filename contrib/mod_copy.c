@@ -557,6 +557,7 @@ MODRET set_copyoptions(cmd_rec *cmd) {
  */
 
 MODRET copy_copy(cmd_rec *cmd) {
+  access_username = FALSE;
   if (copy_engine == FALSE) {
     return PR_DECLINED(cmd);
   }
@@ -664,6 +665,7 @@ MODRET copy_copy(cmd_rec *cmd) {
 }
 
 MODRET copy_cpfr(cmd_rec *cmd) {
+  access_username = FALSE;
   register unsigned int i;
   int res;
   char *cmd_name, *path = "";
@@ -782,6 +784,7 @@ MODRET copy_cpfr(cmd_rec *cmd) {
 }
 
 MODRET copy_cpto(cmd_rec *cmd) {
+  access_username = FALSE;
   register unsigned int i;
   const char *from, *to = "";
   char *cmd_name;

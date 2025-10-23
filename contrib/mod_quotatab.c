@@ -4196,6 +4196,7 @@ MODRET quotatab_pre_site(cmd_rec *cmd) {
 }
 
 MODRET quotatab_site(cmd_rec *cmd) {
+  access_username = FALSE;
 
   /* Make sure it's a valid SITE QUOTA command */
   if (cmd->argc < 2) {
