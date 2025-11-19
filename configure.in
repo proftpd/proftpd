@@ -1,7 +1,7 @@
 dnl ProFTPD - FTP server daemon
 dnl Copyright (c) 1997, 1998 Public Flood Software
 dnl Copyright (c) 1999, 2000 MacGyver aka Habeeb J. Dihu <macgyver@tos.net>
-dnl Copyright (c) 2001-2024 The ProFTPD Project team
+dnl Copyright (c) 2001-2025 The ProFTPD Project team
 dnl
 dnl This program is free software; you can redistribute it and/or modify
 dnl it under the terms of the GNU General Public License as published by
@@ -2251,7 +2251,7 @@ then
 	AC_CHECK_FUNCS(fconvert fcvt)
 	AC_CHECK_HEADERS(floatingpoint.h)
 fi
-AC_CHECK_FUNCS(setsid setgroupent seteuid setegid setenv setpgid siginterrupt)
+AC_CHECK_FUNCS(setsid setgroupent seteuid setegid setenv setpgid sigaction siginterrupt)
 AC_CHECK_FUNCS(tzset uname unsetenv)
 
 AC_CHECK_FUNC(setpassent,

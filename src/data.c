@@ -534,7 +534,9 @@ void pr_data_init(char *filename, int direction) {
 
 int pr_data_open(char *filename, char *reason, int direction, off_t size) {
   int res = 0;
+#if defined(HAVE_SIGACTION)
   struct sigaction act;
+#endif /* HAVE_SIGACTION */
 
   if (session.c == NULL) {
     errno = EINVAL;
@@ -641,28 +643,30 @@ int pr_data_open(char *filename, char *reason, int direction, off_t size) {
    * any sensible system is interrupted.
    */
 
+#if defined(HAVE_SIGACTION)
   act.sa_handler = data_urgent;
   sigemptyset(&act.sa_mask);
   act.sa_flags = 0;
-#ifdef SA_INTERRUPT
+
+# if defined(SA_INTERRUPT)
   act.sa_flags |= SA_INTERRUPT;
-#endif
+# endif /* SA_INTERRUPT */
+# if defined(SA_RESTART)
+  act.sa_flags &= SA_RESTART;
+# endif /* SA_RESTART */
 
   if (sigaction(SIGURG, &act, NULL) < 0) {
     pr_log_pri(PR_LOG_WARNING,
       "warning: unable to set SIGURG signal handler: %s", strerror(errno));
   }
 
-#ifdef HAVE_SIGINTERRUPT
-  /* This is the BSD way of ensuring interruption.
-   * Linux uses it too (??)
-   */
+#elif defined(HAVE_SIGINTERRUPT)
   if (siginterrupt(SIGURG, 1) < 0) {
     pr_log_pri(PR_LOG_WARNING,
       "warning: unable to make SIGURG interrupt system calls: %s",
       strerror(errno));
   }
-#endif
+#endif /* HAVE_SIGACTION or HAVE_SIGINTERRUPT */
 
   /* Reset all of the timing-related variables for data transfers. */
   pr_gettimeofday_millis(&data_start_ms);

@@ -196,15 +196,19 @@ static int process_timers(int elapsed) {
 }
 
 static RETSIGTYPE sig_alarm(int signo) {
+#if defined(HAVE_SIGACTION)
   struct sigaction act;
 
   act.sa_handler = sig_alarm;
   sigemptyset(&act.sa_mask);
   act.sa_flags = 0;
 
-#ifdef SA_INTERRUPT
+# if defined(SA_INTERRUPT)
   act.sa_flags |= SA_INTERRUPT;
-#endif
+#endif /* SA_INTERRUPT */
+# if defined(SA_RESTART)
+  act.sa_flags &= SA_RESTART;
+#endif /* SA_RESTART */
 
   /* Install this handler for SIGALRM. */
   if (sigaction(SIGALRM, &act, NULL) < 0) {
@@ -213,12 +217,12 @@ static RETSIGTYPE sig_alarm(int signo) {
       strerror(errno));
   }
 
-#ifdef HAVE_SIGINTERRUPT
+#elif defined(HAVE_SIGINTERRUPT)
   if (siginterrupt(SIGALRM, 1) < 0) {
     pr_log_pri(PR_LOG_WARNING,
       "unable to allow SIGALRM to interrupt system calls: %s", strerror(errno));
   }
-#endif
+#endif /* HAVE_SIGACTION or HAVE_SIGINTERRUPT */
 
   recvd_signal_flags |= RECEIVED_SIG_ALRM;
   nalarms++;
@@ -232,14 +236,19 @@ static RETSIGTYPE sig_alarm(int signo) {
 }
 
 static void set_sig_alarm(void) {
+#if defined(HAVE_SIGACTION)
   struct sigaction act;
 
   act.sa_handler = sig_alarm;
   sigemptyset(&act.sa_mask);
   act.sa_flags = 0;
-#ifdef SA_INTERRUPT
+
+# if defined(SA_INTERRUPT)
   act.sa_flags |= SA_INTERRUPT;
-#endif
+# endif /* SA_INTERRUPT */
+# if defined(SA_RESTART)
+  act.sa_flags &= SA_RESTART;
+# endif /* SA_RESTART */
 
   /* Install this handler for SIGALRM. */
   if (sigaction(SIGALRM, &act, NULL) < 0) {
@@ -248,12 +257,12 @@ static void set_sig_alarm(void) {
       strerror(errno));
   }
 
-#ifdef HAVE_SIGINTERRUPT
+#elif defined(HAVE_SIGINTERRUPT)
   if (siginterrupt(SIGALRM, 1) < 0) {
     pr_log_pri(PR_LOG_WARNING,
       "unable to allow SIGALRM to interrupt system calls: %s", strerror(errno));
   }
-#endif
+#endif /* HAVE_SIGACTION or HAVE_SIGINTERRUPT */
 }
 
 void handle_alarm(void) {
