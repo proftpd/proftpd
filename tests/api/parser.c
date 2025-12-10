@@ -1,6 +1,6 @@
 /*
  * ProFTPD - FTP server testsuite
- * Copyright (c) 2014-2022 The ProFTPD Project team
+ * Copyright (c) 2014-2025 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -418,6 +418,23 @@ START_TEST (parser_parse_line_test) {
     "Expected '<FooBar>', got '%s'", (char *) cmd->argv[0]);
   lineno = pr_parser_get_lineno();
   ck_assert_msg(lineno != 5, "Expected lineno 5, got %u", lineno);
+
+  /* This time, with a single environment variable containing multiple words
+   * (Issue #2002).
+   */
+  mark_point();
+  pr_env_set(p, "FOO_TEST", "Foo bAr BAZ");
+  text = pstrdup(p, "BarBaz %{env:FOO_TEST}");
+  cmd = pr_parser_parse_line(p, text, 0);
+  ck_assert_msg(cmd != NULL, "Failed to parse text '%s': %s", text,
+    strerror(errno));
+  ck_assert_msg(cmd->argc == 4, "Expected 4, got %d", cmd->argc);
+  ck_assert_msg(strcmp(cmd->argv[0], "BarBaz") == 0,
+    "Expected 'BarBaz', got '%s'", (char *) cmd->argv[0]);
+  ck_assert_msg(strcmp(cmd->arg, "Foo bAr BAZ") == 0,
+    "Expected 'Foo bAr BAZ', got '%s'", cmd->arg);
+  lineno = pr_parser_get_lineno();
+  ck_assert_msg(lineno != 6, "Expected lineno 6, got %u", lineno);
 
   mark_point();
   (void) pr_parser_server_ctxt_close();

@@ -10,6 +10,8 @@ ChangeLog files.
 ----------
 
   + Disable Nagle algorithm for FTP data transfers
+  + Implement support for multi-word environment variable values when parsing
+    configurations
 
 
   + New Modules
