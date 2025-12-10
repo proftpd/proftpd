@@ -82,7 +82,22 @@ static int auth_cmd_chk_cb(cmd_rec *cmd) {
 
     if (authd == NULL ||
         *authd == FALSE) {
-      pr_response_send(R_530, _("Please login with USER and PASS"));
+      const void *already_checked = NULL;
+
+      /* Note that the core dispatching routines could check the same
+       * unauthenticated cmd_rec multiple times (see Issue #2003).  We thus
+       * only want to add the error response once per cmd_rec, and avoid
+       * desynchronizing the client with multiple duplicate error responses.
+       */
+
+      already_checked = pr_table_get(cmd->notes, "mod_auth.checked-auth", NULL);
+      if (already_checked == NULL) {
+        int checked = TRUE;
+
+        pr_response_add_err(R_530, _("Please login with USER and PASS"));
+        pr_table_add(cmd->notes, "mod_auth.checked-auth", &checked, 0);
+      }
+
       return FALSE;
     }
 
