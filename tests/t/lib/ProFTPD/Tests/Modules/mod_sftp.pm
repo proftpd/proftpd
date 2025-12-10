@@ -2036,6 +2036,11 @@ my $TESTS = {
     test_class => [qw(bug forking sftp ssh2)],
   },
 
+  sftp_config_multi_value_env_issue2002 => {
+    order => ++$order,
+    test_class => [qw(bug forking sftp ssh2)],
+  },
+
   sftp_ext_limits_issue1798 => {
     order => ++$order,
     test_class => [qw(bug forking sftp ssh2)],
@@ -68420,6 +68425,310 @@ sub sftp_config_global_algos_issue1712 {
       sleep(1);
 
       my $sess_cipher = $cipher;
+      $ssh2->method('crypt_cs', $sess_cipher);
+
+      unless ($ssh2->connect('127.0.0.1', $port)) {
+        my ($err_code, $err_name, $err_str) = $ssh2->error();
+        die("Can't connect to SSH2 server: [$err_name] ($err_code) $err_str");
+      }
+
+      my $cipher_used = $ssh2->method('crypt_cs');
+      $self->assert($sess_cipher eq $cipher_used,
+        test_msg("Expected cipher '$sess_cipher', got '$cipher_used'"));
+
+      $ssh2->disconnect();
+    };
+    if ($@) {
+      $ex = $@;
+    }
+
+    $wfh->print("done\n");
+    $wfh->flush();
+
+  } else {
+    eval { server_wait($setup->{config_file}, $rfh) };
+    if ($@) {
+      warn($@);
+      exit 1;
+    }
+
+    exit 0;
+  }
+
+  # Stop server
+  server_stop($setup->{pid_file});
+  $self->assert_child_ok($pid);
+
+  test_cleanup($setup->{log_file}, $ex);
+}
+
+sub sftp_ext_limits_issue1798 {
+  my $self = shift;
+  my $tmpdir = $self->{tmpdir};
+  my $setup = test_setup($tmpdir, 'sftp');
+
+  my $rsa_host_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/ssh_host_rsa_key');
+  my $dsa_host_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/ssh_host_dsa_key');
+
+  my $rsa_priv_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/test_rsa_key');
+  my $rsa_pub_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/test_rsa_key.pub');
+  my $rsa_rfc4716_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/authorized_rsa_keys');
+
+  my $authorized_keys = File::Spec->rel2abs("$tmpdir/.authorized_keys");
+  unless (copy($rsa_rfc4716_key, $authorized_keys)) {
+    die("Can't copy $rsa_rfc4716_key to $authorized_keys: $!");
+  }
+
+  my $batch_file = File::Spec->rel2abs("$tmpdir/sftp-batch.txt");
+  if (open(my $fh, "> $batch_file")) {
+    print $fh "ls -al\n";
+
+    unless (close($fh)) {
+      die("Can't write $batch_file: $!");
+    }
+
+  } else {
+    die("Can't open $batch_file: $!");
+  }
+
+  my $config = {
+    PidFile => $setup->{pid_file},
+    ScoreboardFile => $setup->{scoreboard_file},
+    SystemLog => $setup->{log_file},
+    TraceLog => $setup->{log_file},
+    Trace => 'ssh2:20 sftp:20',
+
+    AuthUserFile => $setup->{auth_user_file},
+    AuthGroupFile => $setup->{auth_group_file},
+    AuthOrder => 'mod_auth_file.c',
+
+    IfModules => {
+      'mod_delay.c' => {
+        DelayEngine => 'off',
+      },
+
+      'mod_sftp.c' => [
+        "SFTPEngine on",
+        "SFTPLog $setup->{log_file}",
+        "SFTPHostKey $rsa_host_key",
+        "SFTPHostKey $dsa_host_key",
+        "SFTPAuthorizedUserKeys file:~/.authorized_keys",
+      ],
+    },
+  };
+
+  my ($port, $config_user, $config_group) = config_write($setup->{config_file},
+    $config);
+
+  # Open pipes, for use between the parent and child processes.  Specifically,
+  # the child will indicate when it's done with its test by writing a message
+  # to the parent.
+  my ($rfh, $wfh);
+  unless (pipe($rfh, $wfh)) {
+    die("Can't open pipe: $!");
+  }
+
+  my $ex;
+
+  # Ignore SIGPIPE
+  local $SIG{PIPE} = sub { };
+
+  # Fork child
+  $self->handle_sigchld();
+  defined(my $pid = fork()) or die("Can't fork: $!");
+  if ($pid) {
+    eval {
+      my $sftp = '/Users/tj/local/openssh-9.7p1/bin/sftp';
+
+      my @cmd = (
+        $sftp,
+        '-oBatchMode=yes',
+        '-oCheckHostIP=no',
+        '-oCompression=yes',
+        "-oPort=$port",
+        "-oIdentityFile=$rsa_priv_key",
+        '-oPubkeyAuthentication=yes',
+        '-oStrictHostKeyChecking=no',
+        '-oUpdateHostkeys=no',
+        '-oUserKnownHostsFile=/dev/null',
+        '-oHostKeyAlgorithms=ssh-rsa,ssh-dss',
+        '-vvv',
+        '-b',
+        "$batch_file",
+        "$setup->{user}\@127.0.0.1",
+      );
+
+      my $sftp_rh = IO::Handle->new();
+      my $sftp_wh = IO::Handle->new();
+      my $sftp_eh = IO::Handle->new();
+
+      $sftp_wh->autoflush(1);
+
+      sleep(1);
+
+      local $SIG{CHLD} = 'DEFAULT';
+
+      # Make sure that the perms on the priv key are what OpenSSH wants
+      unless (chmod(0400, $rsa_priv_key)) {
+        die("Can't set perms on $rsa_priv_key to 0400: $!");
+      }
+
+      if ($ENV{TEST_VERBOSE}) {
+        print STDERR "Executing: ", join(' ', @cmd), "\n";
+      }
+
+      my $sftp_pid = open3($sftp_wh, $sftp_rh, $sftp_eh, @cmd);
+      waitpid($sftp_pid, 0);
+      my $exit_status = $?;
+
+      # Restore the perms on the priv key
+      unless (chmod(0644, $rsa_priv_key)) {
+        die("Can't set perms on $rsa_priv_key to 0644: $!");
+      }
+
+      my ($res, $errstr);
+      if ($exit_status >> 8 == 0) {
+        $errstr = join('', <$sftp_eh>);
+        $res = 0;
+
+      } else {
+        $errstr = join('', <$sftp_eh>);
+        $res = 1;
+      }
+
+      if ($ENV{TEST_VERBOSE}) {
+        print STDERR "Stderr: $errstr\n";
+      }
+
+      unless ($res == 0) {
+        die("Can't list files on server: $errstr");
+      }
+    };
+    if ($@) {
+      $ex = $@;
+    }
+
+    $wfh->print("done\n");
+    $wfh->flush();
+
+  } else {
+    eval { server_wait($setup->{config_file}, $rfh) };
+    if ($@) {
+      warn($@);
+      exit 1;
+    }
+
+    exit 0;
+  }
+
+  # Stop server
+  server_stop($setup->{pid_file});
+  $self->assert_child_ok($pid);
+
+  eval {
+    if (open(my $fh, "< $setup->{log_file}")) {
+      my $ok = 0;
+
+      while (my $line = <$fh>) {
+        chomp($line);
+
+        if ($ENV{TEST_VERBOSE}) {
+          print STDERR "# $line\n";
+        }
+
+        if ($line =~ /EXTENDED_REPLY limits\@openssh.com: .*$/) {
+          $ok = 1;
+          last;
+        }
+      }
+
+      close($fh);
+
+      $self->assert($ok,
+        test_msg("Did not see expected log message"));
+
+    } else {
+      die("Can't read $setup->{log_file}: $!");
+    }
+  };
+  if ($@) {
+    $ex = $@;
+  }
+
+  test_cleanup($setup->{log_file}, $ex);
+}
+
+sub sftp_config_multi_value_env_issue2002 {
+  my $self = shift;
+  my $tmpdir = $self->{tmpdir};
+  my $setup = test_setup($tmpdir, 'sftp');
+
+  my $rsa_host_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/ssh_host_rsa_key');
+  my $dsa_host_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/ssh_host_dsa_key');
+
+  my $cipher_algos = 'aes256-ctr aes256-cbc';
+  $ENV{SFTP_CIPHERS} = $cipher_algos;
+
+  my $expected_cipher = 'aes256-ctr';
+
+  my $config = {
+    PidFile => $setup->{pid_file},
+    ScoreboardFile => $setup->{scoreboard_file},
+    SystemLog => $setup->{log_file},
+    TraceLog => $setup->{log_file},
+    Trace => 'ssh2:20 sftp:20',
+
+    AuthUserFile => $setup->{auth_user_file},
+    AuthGroupFile => $setup->{auth_group_file},
+    AuthOrder => 'mod_auth_file.c',
+
+    IfModules => {
+      'mod_delay.c' => {
+        DelayEngine => 'off',
+      },
+
+      'mod_sftp.c' => [
+        "SFTPEngine on",
+        "SFTPLog $setup->{log_file}",
+        "SFTPHostKey $rsa_host_key",
+        "SFTPHostKey $dsa_host_key",
+
+        'SFTPCiphers %{env:SFTP_CIPHERS}',
+      ],
+    },
+  };
+
+  my ($port, $config_user, $config_group) = config_write($setup->{config_file},
+    $config);
+
+  # Open pipes, for use between the parent and child processes.  Specifically,
+  # the child will indicate when it's done with its test by writing a message
+  # to the parent.
+  my ($rfh, $wfh);
+  unless (pipe($rfh, $wfh)) {
+    die("Can't open pipe: $!");
+  }
+
+  require Net::SSH2;
+
+  my $ex;
+
+  # Fork child
+  $self->handle_sigchld();
+  defined(my $pid = fork()) or die("Can't fork: $!");
+  if ($pid) {
+    eval {
+      my $ssh2_opts = {};
+
+      if ($ENV{TEST_VERBOSE}) {
+        $ssh2_opts->{trace} = -1;
+      }
+
+      my $ssh2 = Net::SSH2->new(%$ssh2_opts);
+
+      sleep(1);
+
+      my $sess_cipher = $expected_cipher;
       $ssh2->method('crypt_cs', $sess_cipher);
 
       unless ($ssh2->connect('127.0.0.1', $port)) {

@@ -1,6 +1,6 @@
 /*
  * ProFTPD - FTP server daemon
- * Copyright (c) 2004-2023 The ProFTPD Project team
+ * Copyright (c) 2004-2025 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -671,8 +671,25 @@ cmd_rec *pr_parser_parse_line(pool *p, const char *text, size_t text_len) {
 
     pr_signals_handle();
     ptr2 = get_config_word(cmd->pool, word);
-    *((char **) push_array(arr)) = ptr2;
-    cmd->argc++;
+
+    /* What if the retrieved word is itself separated by whitespace, as from
+     * an environment variable whose value contains multiple words
+     * (Issue #2002)?
+     */
+    if (strchr(ptr2, ' ') != NULL) {
+      char *word2 = NULL;
+
+      while ((word2 = pr_str_get_word(&ptr2, 0)) != NULL) {
+        pr_signals_handle();
+
+        *((char **) push_array(arr)) = pstrdup(cmd->pool, word2);
+        cmd->argc++;
+      }
+
+    } else {
+      *((char **) push_array(arr)) = ptr2;
+      cmd->argc++;
+    }
   }
 
   /* Terminate the array with a NULL. */
