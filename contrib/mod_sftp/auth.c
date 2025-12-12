@@ -1149,7 +1149,23 @@ static void incr_auth_attempts(const char *user, cmd_rec *pass_cmd) {
     }
 
     dispatch_cmd_err(pass_cmd);
+
+    /* Note that the mod_auth LOG_CMD_ERR handler for PASS commands will remove
+     * the "mod_auth.orig-user" note as cleanup for future PASS commands, which
+     * may use different user names.  Unfortunately, some event listeners
+     * in mod_ban may expect/require the presence of that note; see
+     * Issue #2009.
+     *
+     * Thus we add the note back here, if necessary, and remove it again
+     * afterward.
+     */
+    if (pr_table_get(session.notes, "mod_auth.orig-user", NULL) == NULL) {
+      (void) pr_table_add_dup(session.notes, "mod_auth.orig-user", user, 0);
+    }
+
     pr_event_generate("mod_auth.max-login-attempts", session.c);
+    pr_table_remove(session.notes, "mod_auth.orig-user", NULL);
+
     SFTP_DISCONNECT_CONN(SFTP_SSH2_DISCONNECT_BY_APPLICATION, NULL);
   }
 }
