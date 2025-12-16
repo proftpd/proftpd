@@ -50,6 +50,8 @@
 - Issue 2003 - RNTO before authentication leads to out-of-order response codes.
 - Issue 2002 - Enviroment variable substitution for multi-word values not
   supported as needed.
+- Issue 2009 - MaxLoginAttemptsFromUser event never triggers in mod_ban for
+  SFTP sessions.
 
 1.3.9 - Released 14-Mar-2025
 --------------------------------
