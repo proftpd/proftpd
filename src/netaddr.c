@@ -1,6 +1,6 @@
 /*
  * ProFTPD - FTP server daemon
- * Copyright (c) 2003-2021 The ProFTPD Project team
+ * Copyright (c) 2003-2025 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -638,7 +638,8 @@ static pr_netaddr_t *get_addr_by_name(pool *p, const char *name,
               "unable to resolve '%s' to an IPv6 address: %s", name,
               pr_gai_strerror(res));
 
-            if (res == EAI_NONAME) {
+            if (res == EAI_NODATA ||
+                res == EAI_NONAME) {
               xerrno = ENOENT;
 # if defined(EAFNOSUPPORT)
             } else if (res == EAI_FAMILY) {
@@ -660,7 +661,8 @@ static pr_netaddr_t *get_addr_by_name(pool *p, const char *name,
         pr_trace_msg(trace_channel, 1, "IPv4 getaddrinfo '%s' error: %s",
           name, errstr);
 
-        if (res == EAI_NONAME) {
+        if (res == EAI_NODATA ||
+            res == EAI_NONAME) {
           xerrno = ENOENT;
 # if defined(EAFNOSUPPORT)
         } else if (res == EAI_FAMILY) {
@@ -679,7 +681,8 @@ static pr_netaddr_t *get_addr_by_name(pool *p, const char *name,
 #else
       pr_trace_msg(trace_channel, 1, "IPv4 getaddrinfo '%s' error: %s",
         name, pr_gai_strerror(res));
-      if (res == EAI_NONAME) {
+      if (res == EAI_NODATA ||
+          res == EAI_NONAME) {
         xerrno = ENOENT;
 # if defined(EAFNOSUPPORT)
       } else if (res == EAI_FAMILY) {

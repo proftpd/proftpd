@@ -186,19 +186,10 @@ START_TEST (netaddr_get_addr_test) {
     AF_INET, res->na_family);
   ck_assert_msg(addrs == NULL, "Expected no additional addresses for '%s'", name);
 
-  /* Deliberately test an unresolvable name (related to Bug#4104).  Note that
-   * this test is sensitive to the environment; some CI platforms will
-   * successfully resolve invalid names.  Silly resolvers.
-   */
+  /* Deliberately test an unresolvable name (related to Bug#4104). */
   name = "foo.bar.castaglia.example.com";
 
   res = pr_netaddr_get_addr(p, name, NULL);
-  if (getenv("CI") != NULL &&
-      res != NULL) {
-    res = NULL;
-    errno = ENOENT;
-  }
-
   ck_assert_msg(res == NULL, "Resolved '%s' unexpectedly", name);
   ck_assert_msg(errno == ENOENT || errno == EAGAIN,
     "Expected ENOENT (%d) or EAGAIN (%d), got %s (%d)", ENOENT, EAGAIN,
