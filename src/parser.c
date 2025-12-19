@@ -91,7 +91,7 @@ static struct config_src *add_config_source(pr_fh_t *fh) {
   return cs;
 }
 
-static char *get_config_word(pool *p, char *word) {
+static char *get_config_word(pool *p, char *word, int *resolved_var) {
   size_t wordlen;
 
   /* Should this word be replaced with a value from the environment?
@@ -154,6 +154,10 @@ static char *get_config_word(pool *p, char *word) {
 
       word = (char *) sreplace(p, word, var, env, NULL);
       ptr = strstr(word, "%{env:");
+
+      if (resolved_var != NULL) {
+        *resolved_var = TRUE;
+      }
     }
 
   } else {
@@ -668,15 +672,17 @@ cmd_rec *pr_parser_parse_line(pool *p, const char *text, size_t text_len) {
   arr = make_array(cmd->pool, 4, sizeof(char **));
   while ((word = pr_str_get_word(&ptr, 0)) != NULL) {
     char *ptr2;
+    int resolved_var = FALSE;
 
     pr_signals_handle();
-    ptr2 = get_config_word(cmd->pool, word);
+    ptr2 = get_config_word(cmd->pool, word, &resolved_var);
 
-    /* What if the retrieved word is itself separated by whitespace, as from
-     * an environment variable whose value contains multiple words
-     * (Issue #2002)?
+    /* What if the retrieved word is a resolved variable, which itself
+     * separated by whitespace, as from an environment variable whose value
+     * contains multiple words (Issue #2002)?
      */
-    if (strchr(ptr2, ' ') != NULL) {
+    if (resolved_var == TRUE &&
+        strchr(ptr2, ' ') != NULL) {
       char *word2 = NULL;
 
       while ((word2 = pr_str_get_word(&ptr2, 0)) != NULL) {
