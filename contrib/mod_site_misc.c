@@ -1,6 +1,6 @@
 /*
  * ProFTPD: mod_site_misc -- a module implementing miscellaneous SITE commands
- * Copyright (c) 2004-2024 The ProFTPD Project
+ * Copyright (c) 2004-2025 The ProFTPD Project
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -939,11 +939,22 @@ MODRET site_misc_symlink(cmd_rec *cmd) {
 /* Handle: SITE UTIME mtime path-with-spaces */
 MODRET site_misc_utime_mtime(cmd_rec *cmd) {
   register unsigned int i;
+  unsigned char *authenticated;
   char *cmd_name, *decoded_path, *path = "";
   size_t timestamp_len;
   unsigned int year, month, day, hour, min, sec = 0;
   struct timeval tvs[2];
   struct stat st;
+
+  authenticated = get_param_ptr(cmd->server->conf, "authenticated", FALSE);
+  if (authenticated == NULL ||
+      *authenticated == FALSE) {
+    pr_response_add_err(R_501, _("Please login with USER and PASS"));
+
+    pr_cmd_set_errno(cmd, EPERM);
+    errno = EPERM;
+    return PR_ERROR(cmd);
+  }
 
   /* Accept both 'YYYYMMDDhhmm' and 'YYYYMMDDhhmmss' formats. */
   timestamp_len = strlen(cmd->argv[2]);
