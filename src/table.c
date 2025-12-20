@@ -1,6 +1,6 @@
 /*
  * ProFTPD - FTP server daemon
- * Copyright (c) 2004-2024 The ProFTPD Project team
+ * Copyright (c) 2004-2025 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -419,8 +419,11 @@ int pr_table_kadd(pr_table_t *tab, const void *key_data, size_t key_datasz,
 
   /* Allocate a new entry for the given values. */
   n = tab_entry_alloc(tab);
-  n->value_data = value_data;
   n->value_datasz = value_datasz;
+  if (n->value_datasz > 0) {
+    n->value_data = palloc(tab->pool, n->value_datasz);
+    memcpy((void *) n->value_data, value_data, n->value_datasz);
+  }
   n->idx = idx;
 
   /* Find the current chain entry at this index. */
