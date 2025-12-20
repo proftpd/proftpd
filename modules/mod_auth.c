@@ -2782,13 +2782,13 @@ MODRET auth_pass(cmd_rec *cmd) {
 }
 
 MODRET auth_acct(cmd_rec *cmd) {
-  pr_response_add(R_502, _("ACCT command not implemented"));
-  return PR_HANDLED(cmd);
+  pr_response_add_err(R_502, _("ACCT command not implemented"));
+  return PR_ERROR(cmd);
 }
 
 MODRET auth_rein(cmd_rec *cmd) {
-  pr_response_add(R_502, _("REIN command not implemented"));
-  return PR_HANDLED(cmd);
+  pr_response_add_err(R_502, _("REIN command not implemented"));
+  return PR_ERROR(cmd);
 }
 
 /* FSIO callbacks for providing a fake robots.txt file, for the AnonAllowRobots
