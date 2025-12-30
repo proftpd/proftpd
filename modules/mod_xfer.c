@@ -3395,8 +3395,8 @@ MODRET xfer_allo(cmd_rec *cmd) {
 }
 
 MODRET xfer_smnt(cmd_rec *cmd) {
-  pr_response_add(R_502, _("SMNT command not implemented"));
-  return PR_HANDLED(cmd);
+  pr_response_add_err(R_502, _("SMNT command not implemented"));
+  return PR_ERROR(cmd);
 }
 
 MODRET xfer_err_cleanup(cmd_rec *cmd) {
