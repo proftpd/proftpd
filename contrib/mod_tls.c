@@ -9080,6 +9080,7 @@ static void tls_end_sess(SSL *ssl, conn_t *conn, int flags) {
   }
 
   if (ssl != ctrl_ssl &&
+      ctrl_ssl != NULL &&
       SSL_get_session(ssl) == SSL_get_session(ctrl_ssl)) {
     /* Uh-oh; our two SSL objects are pointing at the same SSL_SESSION object.
      * This can happen when the SSL_SESSION is resumed, enabled by session
