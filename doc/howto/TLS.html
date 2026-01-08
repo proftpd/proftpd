@@ -384,6 +384,14 @@ to your configuration, <i>i.e.</i>:
 </pre>
 Then restart <code>proftpd</code>, and your data transfers should work.
 
+<p>
+If you happen to be using
+<a href="https://docs.python.org/3/library/ftplib.html#ftp-tls-objects">Python's builtin class <code>ftplib.FTP_TLS</code></a>
+for an FTPS client, related
+<a href="https://github.com/python/cpython/issues/63699">unfixed Python issue #63699</a>
+may be of interest.
+</p>
+
 <p><a name="TLSCertificateGeneration">
 <font color=red>Question</font>: How do I generate the certificate files used
 by <code>mod_tls</code>?<br>
