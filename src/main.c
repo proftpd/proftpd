@@ -2,7 +2,7 @@
  * ProFTPD - FTP server daemon
  * Copyright (c) 1997, 1998 Public Flood Software
  * Copyright (c) 1999, 2000 MacGyver aka Habeeb J. Dihu <macgyver@tos.net>
- * Copyright (c) 2001-2025 The ProFTPD Project team
+ * Copyright (c) 2001-2026 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -272,7 +272,7 @@ static int dispatch_cmd(cmd_rec *cmd, int cmd_type, int validate, char *match) {
     session.curr_phase = cmd_type;
 
     if (c->cmd_type == cmd_type) {
-      if (c->group) {
+      if (c->group != NULL) {
         cmd->group = pstrdup(cmd->pool, c->group);
       }
 
@@ -296,7 +296,7 @@ static int dispatch_cmd(cmd_rec *cmd, int cmd_type, int validate, char *match) {
       if (cmd_type == CMD) {
 
         /* The client has successfully authenticated... */
-        if (session.user) {
+        if (session.user != NULL) {
           char *args = NULL;
 
           /* Be defensive, and check whether cmdargstrlen has a value.
@@ -657,7 +657,9 @@ int pr_cmd_dispatch_phase(cmd_rec *cmd, int phase, int flags) {
   pr_response_set_pool(cmd->pool);
 
   for (cp = cmd->argv[0]; *cp; cp++) {
-    *cp = toupper((int) *cp);
+    if (PR_ISALPHA((int) *cp)) {
+      *cp = toupper((int) *cp);
+    }
   }
 
   if (cmd->cmd_class == 0) {
