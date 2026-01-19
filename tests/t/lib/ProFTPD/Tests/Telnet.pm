@@ -65,45 +65,17 @@ sub list_tests {
 sub telnet_iac_bug3521 {
   my $self = shift;
   my $tmpdir = $self->{tmpdir};
-
-  my $config_file = "$tmpdir/telnet.conf";
-  my $pid_file = File::Spec->rel2abs("$tmpdir/telnet.pid");
-  my $scoreboard_file = File::Spec->rel2abs("$tmpdir/telnet.scoreboard");
-
-  my $log_file = File::Spec->rel2abs("tests.log");
-
-  my $auth_user_file = File::Spec->rel2abs("$tmpdir/telnet.passwd");
-  my $auth_group_file = File::Spec->rel2abs("$tmpdir/telnet.group");
-
-  my $user = 'proftpd';
-  my $passwd = 'test';
-  my $home_dir = File::Spec->rel2abs($tmpdir);
-  my $uid = 500;
-  my $gid = 500;
-
-  # Make sure that, if we're running as root, that the home directory has
-  # permissions/privs set for the account we create
-  if ($< == 0) {
-    unless (chmod(0755, $home_dir)) {
-      die("Can't set perms on $home_dir to 0755: $!");
-    }
-
-    unless (chown($uid, $gid, $home_dir)) {
-      die("Can't set owner of $home_dir to $uid/$gid: $!");
-    }
-  }
-
-  auth_user_write($auth_user_file, $user, $passwd, $uid, $gid, $home_dir,
-    '/bin/bash');
-  auth_group_write($auth_group_file, 'ftpd', $gid, $user);
+  my $setup = test_setup($tmpdir, 'telnet');
 
   my $config = {
-    PidFile => $pid_file,
-    ScoreboardFile => $scoreboard_file,
-    SystemLog => $log_file,
+    PidFile => $setup->{pid_file},
+    ScoreboardFile => $setup->{scoreboard_file},
+    SystemLog => $setup->{log_file},
+    TraceLog => $setup->{log_file},
+    Trace => 'command:20 netio:30',
 
-    AuthUserFile => $auth_user_file,
-    AuthGroupFile => $auth_group_file,
+    AuthUserFile => $setup->{auth_user_file},
+    AuthGroupFile => $setup->{auth_group_file},
     AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
@@ -113,7 +85,8 @@ sub telnet_iac_bug3521 {
     },
   };
 
-  my ($port, $config_user, $config_group) = config_write($config_file, $config);
+  my ($port, $config_user, $config_group) = config_write($setup->{config_file},
+    $config);
 
   # Open pipes, for use between the parent and child processes.  Specifically,
   # the child will indicate when it's done with its test by writing a message
@@ -150,15 +123,18 @@ sub telnet_iac_bug3521 {
       #   PR_TUNABLE_BUFFER_SIZE (1024) - 3 - 5 ("USER ")
       #
       # I.e.: $buf .= ("A" x 1016);
+      #
+      # Note that later changes, regarding too-long command handling, impacted
+      # the buffer sizes in this section of code; season test code to taste.
 
-      $buf .= ("A" x 4096);
+      $buf .= ("A" x 1013);
 
       $buf .= chr(Net::Telnet::TELNET_IAC());
       $buf .= "Z" x 64;
 
       my $res = $client->cmd(
         String => $buf,
-        Prompt => "/$user/",
+        Prompt => "/$setup->{user}/",
       );
 
       if ($res) {
@@ -170,7 +146,6 @@ sub telnet_iac_bug3521 {
         die("Unexpected exception thrown: $ex");
       }
     };
-
     if ($@) {
       $ex = $@;
     }
@@ -179,7 +154,7 @@ sub telnet_iac_bug3521 {
     $wfh->flush();
 
   } else {
-    eval { server_wait($config_file, $rfh) };
+    eval { server_wait($setup->{config_file}, $rfh) };
     if ($@) {
       warn($@);
       exit 1;
@@ -189,52 +164,16 @@ sub telnet_iac_bug3521 {
   }
 
   # Stop server
-  server_stop($pid_file);
-
+  server_stop($setup->{pid_file});
   $self->assert_child_ok($pid);
 
-  if ($ex) {
-    die($ex);
-  }
-
-  unlink($log_file);
+  test_cleanup($setup->{log_file}, $ex);
 }
 
 sub telnet_iac_bug3697 {
   my $self = shift;
   my $tmpdir = $self->{tmpdir};
-
-  my $config_file = "$tmpdir/telnet.conf";
-  my $pid_file = File::Spec->rel2abs("$tmpdir/telnet.pid");
-  my $scoreboard_file = File::Spec->rel2abs("$tmpdir/telnet.scoreboard");
-
-  my $log_file = File::Spec->rel2abs("tests.log");
-
-  my $auth_user_file = File::Spec->rel2abs("$tmpdir/telnet.passwd");
-  my $auth_group_file = File::Spec->rel2abs("$tmpdir/telnet.group");
-
-  my $user = 'proftpd';
-  my $passwd = 'test';
-  my $group = 'ftpd';
-  my $home_dir = File::Spec->rel2abs($tmpdir);
-  my $uid = 500;
-  my $gid = 500;
-
-  # Make sure that, if we're running as root, that the home directory has
-  # permissions/privs set for the account we create
-  if ($< == 0) {
-    unless (chmod(0755, $home_dir)) {
-      die("Can't set perms on $home_dir to 0755: $!");
-    }
-
-    unless (chown($uid, $gid, $home_dir)) {
-      die("Can't set owner of $home_dir to $uid/$gid: $!");
-    }
-  }
-
-  auth_user_write($auth_user_file, $user, $passwd, $uid, $gid, $home_dir,
-    '/bin/bash');
-  auth_group_write($auth_group_file, $group, $gid, $user);
+  my $setup = test_setup($tmpdir, 'telnet');
 
   # To reproduce Bug#3697, we expect a filename with a single \377 (decimal 255)
   # character in it.
@@ -246,12 +185,14 @@ sub telnet_iac_bug3697 {
   my $test_file = File::Spec->rel2abs("$tmpdir/$filename");
 
   my $config = {
-    PidFile => $pid_file,
-    ScoreboardFile => $scoreboard_file,
-    SystemLog => $log_file,
+    PidFile => $setup->{pid_file},
+    ScoreboardFile => $setup->{scoreboard_file},
+    SystemLog => $setup->{log_file},
+    TraceLog => $setup->{log_file},
+    Trace => 'encode:20 fileperms:20 fsio:20 netio:20',
 
-    AuthUserFile => $auth_user_file,
-    AuthGroupFile => $auth_group_file,
+    AuthUserFile => $setup->{auth_user_file},
+    AuthGroupFile => $setup->{auth_group_file},
     AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
@@ -261,7 +202,8 @@ sub telnet_iac_bug3697 {
     },
   };
 
-  my ($port, $config_user, $config_group) = config_write($config_file, $config);
+  my ($port, $config_user, $config_group) = config_write($setup->{config_file},
+    $config);
 
   # Open pipes, for use between the parent and child processes.  Specifically,
   # the child will indicate when it's done with its test by writing a message
@@ -283,41 +225,54 @@ sub telnet_iac_bug3697 {
       sleep(1);
 
       my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
-      $client->login($user, $passwd);
+      $client->login($setup->{user}, $setup->{passwd});
 
       my $name = "test";
       $name .= chr(Net::Telnet::TELNET_IAC());
       $name .= chr(Net::Telnet::TELNET_IAC());
       $name .= ".txt";
 
+      # On Mac OSX, the 255 byte value (Telnet IAC) may not be accepted by
+      # the underlying filesystem as a valid filename character, thus we
+      # expect the STOR command to fail.
+
       my $conn = $client->stor_raw($name);
-      unless ($conn) {
-        die("STOR failed: " . $client->response_code() . " " .
-          $client->response_msg());
+      if ($conn) {
+        my $buf = "Foo!\n";
+        $conn->write($buf, length($buf));
+        $conn->close();
       }
 
-      my $buf = "Foo!\n";
-      $conn->write($buf, length($buf));
-      $conn->close();
+      my $resp_code = $client->response_code();
+      my $resp_msg = $client->response_msg();
 
-      my ($resp_code, $resp_msg);
-      $resp_code = $client->response_code();
-      $resp_msg = $client->response_msg();
+      if ($^O ne 'darwin') {
+        my $expected = 226;
+        $self->assert($expected == $resp_code,
+          test_msg("Expected response code $expected, got $resp_code"));
 
-      my $expected;
+        $expected = "Transfer complete";
+        $self->assert($expected eq $resp_msg,
+          test_msg("Expected response message '$expected', got '$resp_msg'"));
 
-      $expected = 226;
-      $self->assert($expected == $resp_code,
-        test_msg("Expected $expected, got $resp_code"));
+        $self->assert(-f $test_file,
+          test_msg("File $test_file does not exist as expected"));
 
-      $expected = "Transfer complete";
-      $self->assert($expected eq $resp_msg,
-        test_msg("Expected '$expected', got '$resp_msg'"));
+      } else {
+        my $expected = 550;
+        $self->assert($expected == $resp_code,
+          test_msg("Expected response code $expected, got $resp_code"));
 
-      $self->assert(-f $test_file,
-        test_msg("File $test_file does not exist as expected"));
+        $expected = 'Illegal byte sequence';
+        $self->assert(qr/$expected/, $resp_msg,
+          test_msg("Expected response message '$expected', got '$resp_msg'"));
+
+        $self->assert(!-f $test_file,
+          test_msg("File $test_file exists unexpectedly"));
+      }
+
+      $client->quit();
     };
-
     if ($@) {
       $ex = $@;
     }
@@ -326,7 +281,7 @@ sub telnet_iac_bug3697 {
     $wfh->flush();
 
   } else {
-    eval { server_wait($config_file, $rfh) };
+    eval { server_wait($setup->{config_file}, $rfh) };
     if ($@) {
       warn($@);
       exit 1;
@@ -336,15 +291,10 @@ sub telnet_iac_bug3697 {
   }
 
   # Stop server
-  server_stop($pid_file);
-
+  server_stop($setup->{pid_file});
   $self->assert_child_ok($pid);
 
-  if ($ex) {
-    die($ex);
-  }
-
-  unlink($log_file);
+  test_cleanup($setup->{log_file}, $ex);
 }
 
 sub telnet_initial_crlf_issue1527 {
