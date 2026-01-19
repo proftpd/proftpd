@@ -1,6 +1,6 @@
 /*
  * ProFTPD - FTP server daemon
- * Copyright (c) 2009-2022 The ProFTPD Project team
+ * Copyright (c) 2009-2026 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -413,7 +413,10 @@ int pr_cmd_get_id(const char *cmd_name) {
     return -1;
   }
 
-  first_letter = toupper((int) cmd_name[0]);
+  first_letter = cmd_name[0];
+  if (PR_ISALPHA((int) first_letter)) {
+    first_letter = toupper((int) first_letter);
+  }
 
   for (i = 1; cmd_ids[i].cmd_name != NULL; i++) {
     if (cmd_ids[i].cmd_namelen != cmd_namelen) {

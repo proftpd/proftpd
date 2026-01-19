@@ -2,7 +2,7 @@
  * ProFTPD - FTP server daemon
  * Copyright (c) 1997, 1998 Public Flood Software
  * Copyright (c) 1999, 2000 MacGyver aka Habeeb J. Dihu <macgyver@tos.net>
- * Copyright (c) 2001-2024 The ProFTPD Project team
+ * Copyright (c) 2001-2026 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -4820,7 +4820,9 @@ MODRET core_help(cmd_rec *cmd) {
     char *cp;
 
     for (cp = cmd->argv[1]; *cp; cp++) {
-      *cp = toupper((int) *cp);
+      if (PR_ISALPHA((int) *cp)) {
+        *cp = toupper((int) *cp);
+      }
     }
 
     if (strcasecmp(cmd->argv[1], C_SITE) == 0) {

@@ -2,7 +2,7 @@
  * mod_tls - An RFC2228 SSL/TLS module for ProFTPD
  *
  * Copyright (c) 2000-2002 Peter 'Luna' Runestig <peter@runestig.com>
- * Copyright (c) 2002-2025 TJ Saunders <tj@castaglia.org>
+ * Copyright (c) 2002-2026 TJ Saunders <tj@castaglia.org>
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without modifi-
@@ -12979,7 +12979,9 @@ MODRET tls_auth(cmd_rec *cmd) {
   /* Convert the parameter to upper case */
   mode = cmd->argv[1];
   for (i = 0; i < strlen(mode); i++) {
-    mode[i] = toupper(mode[i]);
+    if (PR_ISALPHA((int) mode[i])) {
+      mode[i] = toupper(mode[i]);
+    }
   }
 
   if (strncmp(mode, "TLS", 4) == 0 ||

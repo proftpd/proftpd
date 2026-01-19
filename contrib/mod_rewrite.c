@@ -1820,7 +1820,9 @@ static const char *rewrite_map_int_tolower(pool *map_pool, char *key) {
   valuelen = strlen(value);
 
   for (i = 0; i < valuelen; i++) {
-    value[i] = tolower(value[i]);
+    if (PR_ISALPHA((int) value[i])) {
+      value[i] = tolower(value[i]);
+    }
   }
 
   return value;
@@ -1835,7 +1837,9 @@ static const char *rewrite_map_int_toupper(pool *map_pool, char *key) {
   valuelen = strlen(value);
 
   for (i = 0; i < valuelen; i++) {
-    value[i] = toupper(value[i]);
+    if (PR_ISALPHA((int) value[i])) {
+      value[i] = toupper(value[i]);
+    }
   }
 
   return value;

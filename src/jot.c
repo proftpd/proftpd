@@ -1,6 +1,6 @@
 /*
  * ProFTPD - FTP server daemon
- * Copyright (c) 2017-2024 The ProFTPD Project team
+ * Copyright (c) 2017-2026 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -1591,7 +1591,9 @@ static int resolve_logfmt_id(pool *p, unsigned char logfmt_id,
          * logging purposes.
          */
         for (ch = cmd->argv[1]; *ch; ch++) {
-          *ch = toupper((int) *ch);
+          if (PR_ISALPHA((int) *ch)) {
+            *ch = toupper((int) *ch);
+          }
         }
 
         len = pr_snprintf(buf, sizeof(buf)-1, "%s %s", (char *) cmd->argv[0],
