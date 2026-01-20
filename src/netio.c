@@ -1,6 +1,6 @@
 /*
  * ProFTPD - FTP server daemon
- * Copyright (c) 2001-2022 The ProFTPD Project team
+ * Copyright (c) 2001-2026 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -1731,10 +1731,14 @@ int pr_netio_telnet_gets2(char *buf, size_t bufsz,
 
     toread = pbuf->buflen - pbuf->remaining;
 
+    /* If we do not encounter an LF, or, if we DO encounter an LF (and the
+     * character before the LF is not a CR), we copy the encountered character
+     * as is into our output buffer, handling the Telnet IAC codes as necessary.
+     */
     while (buflen > 0 &&
            toread > 0 &&
            (*pbuf->current != '\n' ||
-            (*pbuf->current == '\n' && *(pbuf->current - 1) != '\r')) &&
+            (pbuf->current > pbuf->buf && *(pbuf->current - 1) != '\r')) &&
            toread--) {
       pr_signals_handle();
 
@@ -1836,7 +1840,8 @@ int pr_netio_telnet_gets2(char *buf, size_t bufsz,
        * turning the copied data from Telnet CRLF line termination to
        * Unix LF line termination.
        */
-      if (*(bp-1) == '\r') {
+      if (bp > buf &&
+          *(bp-1) == '\r') {
         /* We already decrement the buffer length for the CR; no need to
          * do it again since we are overwriting that CR.
          */
