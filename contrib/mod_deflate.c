@@ -1,6 +1,6 @@
 /*
  * ProFTPD: mod_deflate -- a module for supporting on-the-fly compression
- * Copyright (c) 2004-2025 TJ Saunders
+ * Copyright (c) 2004-2026 TJ Saunders
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -902,7 +902,10 @@ MODRET deflate_mode(cmd_rec *cmd) {
   }
 
   mode = cmd->argv[1];
-  mode[0] = toupper(mode[0]);
+
+  if (PR_ISALPHA((int) mode[0])) {
+    mode[0] = toupper(mode[0]);
+  }
 
   if (mode[0] == 'Z') {
     if (session.rfc2228_mech != NULL) {

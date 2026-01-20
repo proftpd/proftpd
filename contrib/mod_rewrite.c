@@ -1,6 +1,6 @@
 /*
  * ProFTPD: mod_rewrite -- a module for rewriting FTP commands
- * Copyright (c) 2001-2025 TJ Saunders
+ * Copyright (c) 2001-2026 TJ Saunders
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -1857,7 +1857,9 @@ static const char *rewrite_map_int_tolower(pool *map_pool, char *key) {
   valuelen = strlen(value);
 
   for (i = 0; i < valuelen; i++) {
-    value[i] = tolower(value[i]);
+    if (PR_ISALPHA((int) value[i])) {
+      value[i] = tolower(value[i]);
+    }
   }
 
   return value;
@@ -1872,7 +1874,9 @@ static const char *rewrite_map_int_toupper(pool *map_pool, char *key) {
   valuelen = strlen(value);
 
   for (i = 0; i < valuelen; i++) {
-    value[i] = toupper(value[i]);
+    if (PR_ISALPHA((int) value[i])) {
+      value[i] = toupper(value[i]);
+    }
   }
 
   return value;
