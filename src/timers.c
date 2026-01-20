@@ -33,7 +33,7 @@ extern volatile unsigned int recvd_signal_flags;
 struct timer {
   struct timer *next, *prev;
 
-  long count;                   /* Amount of time remaining */
+  long remaining;               /* Amount of time remaining */
   long interval;                /* Original length of timer */
 
   int timerno;                  /* Caller dependent timer number */
@@ -63,11 +63,11 @@ static pool *timer_pool = NULL;
 static const char *trace_channel = "timer";
 
 static int timer_cmp(struct timer *t1, struct timer *t2) {
-  if (t1->count < t2->count) {
+  if (t1->remaining < t2->remaining) {
     return -1;
   }
 
-  if (t1->count > t2->count) {
+  if (t1->remaining > t2->remaining) {
     return 1;
   }
 
@@ -100,7 +100,7 @@ static int process_timers(int elapsed) {
        * But then we reduce the number; some of the timers' intervals may
        * less than the number of total timers.
        */
-      res = ((struct timer *) timers->xas_list)->count;
+      res = ((struct timer *) timers->xas_list)->remaining;
       if (res > 5) {
         res = 5;
       }
@@ -127,7 +127,7 @@ static int process_timers(int elapsed) {
         xaset_remove(timers, (xasetmember_t *) t);
         xaset_insert(free_timers, (xasetmember_t *) t);
 
-      } else if ((t->count -= elapsed) <= 0) {
+      } else if ((t->remaining -= elapsed) <= 0) {
         /* This timer's interval has elapsed, so trigger its callback. */
 
         pr_trace_msg(trace_channel, 4,
@@ -137,7 +137,7 @@ static int process_timers(int elapsed) {
           t->desc ? t->desc : "<unknown>",
           t->mod ? t->mod->name : "<none>", t->callback);
 
-        if (t->callback(t->interval, t->timerno, t->interval - t->count,
+        if (t->callback(t->interval, t->timerno, t->interval - t->remaining,
             t->mod) == 0) {
 
           /* A return value of zero means this timer is done, and can be
@@ -155,7 +155,7 @@ static int process_timers(int elapsed) {
             t->desc ? t->desc : "<unknown>");
 
           xaset_remove(timers, (xasetmember_t *) t);
-          t->count = t->interval;
+          t->remaining = t->interval;
           xaset_insert(recycled, (xasetmember_t *) t);
         }
       }
@@ -186,7 +186,7 @@ static int process_timers(int elapsed) {
      * But then we reduce the number; some of the timers' intervals may
      * less than the number of total timers.
      */
-    res = ((struct timer *) timers->xas_list)->count;
+    res = ((struct timer *) timers->xas_list)->remaining;
     if (res > 5) {
       res = 5;
     }
@@ -328,7 +328,7 @@ int pr_timer_reset(int timerno, module *mod) {
   for (t = (struct timer *) timers->xas_list; t; t = t->next) {
     if (t->timerno == timerno &&
         (t->mod == mod || mod == ANY_MODULE)) {
-      t->count = t->interval;
+      t->remaining = t->interval;
       xaset_remove(timers, (xasetmember_t *) t);
       xaset_insert(recycled, (xasetmember_t *) t);
       nalarms++;
@@ -472,7 +472,7 @@ int pr_timer_add(int seconds, int timerno, module *mod, callback_t cb,
   }
 
   t->timerno = timerno;
-  t->count = t->interval = seconds;
+  t->remaining = t->interval = seconds;
   t->callback = cb;
   t->mod = mod;
   t->remove = 0;
