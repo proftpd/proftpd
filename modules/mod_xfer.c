@@ -2,7 +2,7 @@
  * ProFTPD - FTP server daemon
  * Copyright (c) 1997, 1998 Public Flood Software
  * Copyright (c) 1999, 2000 MacGyver aka Habeeb J. Dihu <macgyver@tos.net>
- * Copyright (c) 2001-2025 The ProFTPD Project team
+ * Copyright (c) 2001-2026 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -3175,7 +3175,9 @@ MODRET xfer_type(cmd_rec *cmd) {
   }
 
   type = pstrdup(cmd->tmp_pool, cmd->argv[1]);
-  type[0] = toupper((int) type[0]);
+  if (PR_ISALPHA((int) type[0])) {
+    type[0] = toupper((int) type[0]);
+  }
 
   if (strcmp(type, "A") == 0 ||
       (cmd->argc == 3 &&
@@ -3231,7 +3233,9 @@ MODRET xfer_stru(cmd_rec *cmd) {
   }
 
   stru = cmd->argv[1];
-  stru[0] = toupper((int) stru[0]);
+  if (PR_ISALPHA((int) stru[0])) {
+    stru[0] = toupper((int) stru[0]);
+  }
 
   switch ((int) stru[0]) {
     case 'F':
@@ -3285,7 +3289,9 @@ MODRET xfer_mode(cmd_rec *cmd) {
   }
 
   mode = cmd->argv[1];
-  mode[0] = toupper((int) mode[0]);
+  if (PR_ISALPHA((int) mode[0])) {
+    mode[0] = toupper((int) mode[0]);
+  }
 
   switch ((int) mode[0]) {
     case 'S':
