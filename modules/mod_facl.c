@@ -1129,6 +1129,12 @@ static int facl_fsio_faccess(pr_fh_t *fh, int mode, uid_t uid, gid_t gid,
   pool *tmp_pool = NULL;
 
   if (pr_fsio_fstat(fh, &st) < 0) {
+    xerrno = errno;
+
+    pr_trace_msg(trace_channel, 6, "error checking path '%s': %s", fh->fh_path,
+      strerror(xerrno));
+
+    errno = xerrno;
     return -1;
   }
 
