@@ -2010,11 +2010,41 @@ int pr_fs_copy_file2(const char *src, const char *dst, int flags,
   }
 #endif
 
-  while ((res = pr_fsio_read(src_fh, buf, bufsz)) > 0) {
-    size_t datalen;
-    off_t offset;
+  do {
+    size_t datalen = 0;
+    off_t offset = 0;
+    int xerrno;
 
-    pr_signals_handle();
+    res = pr_fsio_read(src_fh, buf, bufsz);
+    xerrno = errno;
+
+    if (res < 0) {
+      if (xerrno == EINTR ||
+          xerrno == EAGAIN) {
+        pr_signals_handle();
+        continue;
+      }
+
+      (void) pr_fsio_close(src_fh);
+      (void) pr_fsio_close(dst_fh);
+
+      /* Don't unlink the destination file if it already existed. */
+      if (!dst_existed) {
+        if (!(flags & PR_FSIO_COPY_FILE_FL_NO_DELETE_ON_FAILURE)) {
+          if (pr_fsio_unlink(dst) < 0) {
+            pr_trace_msg(trace_channel, 12,
+              "error deleting failed copy of '%s': %s", dst, strerror(errno));
+          }
+        }
+      }
+
+      pr_log_pri(PR_LOG_WARNING, "error copying from '%s': %s", src,
+        strerror(xerrno));
+      free(buf);
+
+      errno = xerrno;
+      return -1;
+    }
 
     /* Be sure to handle short writes. */
     datalen = res;
@@ -2066,7 +2096,7 @@ int pr_fs_copy_file2(const char *src, const char *dst, int flags,
       offset += res;
       datalen -= res;
     }
-  }
+  } while (res != 0);
 
   free(buf);
 
