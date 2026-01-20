@@ -1,7 +1,7 @@
 /*
  * ProFTPD: mod_ifsession -- a module supporting conditional
  *                            per-user/group/class configuration contexts.
- * Copyright (c) 2002-2023 TJ Saunders
+ * Copyright (c) 2002-2025 TJ Saunders
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -101,9 +101,11 @@ static void ifsess_remove_param(xaset_t *set, int config_type,
 static void ifsess_dup_param(pool *dst_pool, xaset_t **dst, config_rec *c,
     config_rec *parent) {
   config_rec *dup_c = NULL;
+  int flags = 0;
 
   if (c->config_type == CONF_DIR) {
     pr_trace_msg(trace_channel, 9, "adding <Directory %s> config", c->name);
+    flags = PR_CONFIG_FL_INSERT_HEAD;
 
   } else if (c->config_type == CONF_LIMIT) {
     pr_trace_msg(trace_channel, 9, "adding <Limit> config");
@@ -116,7 +118,7 @@ static void ifsess_dup_param(pool *dst_pool, xaset_t **dst, config_rec *c,
     *dst = xaset_create(dst_pool, NULL);
   }
 
-  dup_c = pr_config_add_set(dst, c->name, PR_CONFIG_FL_INSERT_HEAD);
+  dup_c = pr_config_add_set(dst, c->name, flags);
   dup_c->config_type = c->config_type;
   dup_c->flags = c->flags;
   dup_c->parent = parent;
