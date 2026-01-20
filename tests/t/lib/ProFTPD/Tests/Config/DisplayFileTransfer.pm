@@ -137,7 +137,7 @@ sub displayfilexfer_abs_path {
       my ($resp_code, $resp_msg);
 
       $resp_code = $client->response_code();
-      $resp_msg = $client->response_msg(1);
+      $resp_msg = $client->response_msg(0);
 
       my $expected;
 
@@ -145,7 +145,7 @@ sub displayfilexfer_abs_path {
       $self->assert($expected == $resp_code,
         test_msg("Expected response code $expected, got $resp_code"));
 
-      $expected = "Hello user!";
+      $expected = "Abort successful";
       $self->assert($expected eq $resp_msg,
         test_msg("Expected response message '$expected', got '$resp_msg'"));
     };
@@ -265,7 +265,7 @@ sub displayfilexfer_rel_path {
       my ($resp_code, $resp_msg);
 
       $resp_code = $client->response_code();
-      $resp_msg = $client->response_msg(1);
+      $resp_msg = $client->response_msg(0);
 
       my $expected;
 
@@ -273,7 +273,7 @@ sub displayfilexfer_rel_path {
       $self->assert($expected == $resp_code,
         test_msg("Expected response code $expected, got $resp_code"));
 
-      $expected = "Hello user!";
+      $expected = "Abort successful";
       $self->assert($expected eq $resp_msg,
         test_msg("Expected response message '$expected', got '$resp_msg'"));
     };
@@ -543,7 +543,8 @@ sub displayfilexfer_multiline {
       my ($resp_code, $resp_msg);
 
       $resp_code = $client->response_code();
-      $resp_msg = $client->response_msg(3);
+      $resp_msg = $client->response_msg();
+
 
       my $expected;
 
@@ -551,7 +552,7 @@ sub displayfilexfer_multiline {
       $self->assert($expected == $resp_code,
         test_msg("Expected response code $expected, got $resp_code"));
 
-      $expected = " Hello user!";
+      $expected = "Abort successful";
       $self->assert($expected eq $resp_msg,
         test_msg("Expected response message '$expected', got '$resp_msg'"));
     };
