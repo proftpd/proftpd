@@ -275,7 +275,11 @@ sub maxretrievefilesize_exceeded {
       $self->assert($expected == $resp_code,
         test_msg("Expected $expected, got $resp_code"));
 
-      $expected = "Transfer aborted. Operation not permitted";
+      if ($^O eq 'solaris') {
+        $expected = "Transfer aborted. Insufficient privileges";
+      } else {
+        $expected = "Transfer aborted. Operation not permitted";
+      }
       $self->assert($expected eq $resp_msg,
         test_msg("Expected '$expected', got '$resp_msg'"));
     };

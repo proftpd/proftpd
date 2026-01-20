@@ -161,7 +161,11 @@ sub noop_limit_deny_issue684 {
       $self->assert($expected == $resp_code,
         "Expected response code $expected, got $resp_code");
 
-      $expected = 'Operation not permitted';
+      if ($^O eq 'solaris') {
+        $expected = 'Insufficient privileges';
+      } else {
+        $expected = 'Operation not permitted';
+      }
       $self->assert($expected eq $resp_msg,
         "Expected response message '$expected', got '$resp_msg'");
     };
