@@ -1309,6 +1309,51 @@ MODRET site_misc_utime(cmd_rec *cmd) {
   return PR_DECLINED(cmd);
 }
 
+MODRET site_misc_zone(cmd_rec *cmd) {
+  // SITE ZONE command compatible with Serv-U and CrushFTP
+  // (Apache Mina utilizes a different format)
+
+  if (!site_misc_engine) {
+    return PR_DECLINED(cmd);
+  }
+
+  if (cmd->argc != 2) {
+    pr_log_debug(DEBUG5, MOD_SITE_MISC_VERSION
+      "%s : wrong number of parameters (%d)", (char *) cmd->argv[0], cmd->argc);
+    return PR_DECLINED(cmd);
+  }
+
+  if (strncasecmp(cmd->argv[1], "ZONE", 5) == 0) {
+    time_t now = time(NULL);
+    struct tm *local_tm, *gm_tm;
+    int offset;
+    gm_tm = pr_gmtime(cmd->tmp_pool, &now);
+    local_tm = pr_localtime(cmd->tmp_pool, &now);
+    offset = (local_tm->tm_hour - gm_tm->tm_hour) * 3600 +
+       (local_tm->tm_min - gm_tm->tm_min) * 60;
+
+    if (local_tm->tm_mday != gm_tm->tm_mday) {
+      if (local_tm->tm_mday > gm_tm->tm_mday ||
+         (local_tm->tm_mon > gm_tm->tm_mon) ||
+         (local_tm->tm_year > gm_tm->tm_year)) {
+        offset += 24 * 3600;
+         } else {
+           offset -= 24 * 3600;
+         }
+    }
+
+    pr_response_add(R_210, "UTC%+03d%02d", offset/3600, abs((offset/60)%60));
+    return PR_HANDLED(cmd);
+
+  }
+
+  if (strncasecmp(cmd->argv[1], "HELP", 5) == 0) {
+    pr_response_add(R_214, "ZONE");
+  }
+
+  return PR_DECLINED(cmd);
+}
+
 /* Event listeners
  */
 
@@ -1325,6 +1370,7 @@ static void site_misc_sess_reinit_ev(const void *event_data, void *user_data) {
   pr_feat_remove("SITE RMDIR");
   pr_feat_remove("SITE SYMLINK");
   pr_feat_remove("SITE UTIME");
+  pr_feat_remove("SITE ZONE");
 
   res = site_misc_sess_init();
   if (res < 0) {
@@ -1356,6 +1402,7 @@ static int site_misc_sess_init(void) {
   pr_feat_add("SITE RMDIR");
   pr_feat_add("SITE SYMLINK");
   pr_feat_add("SITE UTIME");
+  pr_feat_add("SITE ZONE");
 
   return 0;
 }
@@ -1373,6 +1420,7 @@ static cmdtable site_misc_cmdtab[] = {
   { CMD, C_SITE, G_WRITE, site_misc_rmdir,	FALSE,	FALSE, CL_MISC },
   { CMD, C_SITE, G_WRITE, site_misc_symlink,	FALSE,	FALSE, CL_MISC },
   { CMD, C_SITE, G_WRITE, site_misc_utime,	FALSE,	FALSE, CL_MISC },
+  { CMD, C_SITE, G_WRITE, site_misc_zone,  FALSE,  FALSE, CL_MISC },
   { 0, NULL }
 };
 

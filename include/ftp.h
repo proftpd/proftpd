@@ -113,6 +113,7 @@
 #define R_150	"150"		/* File status ok; opening data conn */
 #define R_200	"200"		/* 'Generic' command ok */
 #define R_202	"202"		/* Command not implemented, superfluous at this site */
+#define R_210   "210"		/* Non-standard response code commonly used for SITE ZONE */
 #define R_211	"211"		/* System status or system help reply */
 #define R_212	"212"		/* Directory status */
 #define R_213	"213"		/* File status */
