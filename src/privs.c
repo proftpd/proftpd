@@ -167,7 +167,11 @@ int pr_privs_root(const char *file, int lineno) {
 
   pr_signals_block();
 
+#ifdef SOLARIS2
+  if (!session.disable_id_switching && !session.priv_aware) {
+#else
   if (!session.disable_id_switching) {
+#endif
 
 #if defined(HAVE_SETEUID)
     if (seteuid(PR_ROOT_UID) < 0) {
@@ -217,7 +221,12 @@ int pr_privs_user(const char *file, int lineno) {
 
   pr_signals_block();
 
+#ifdef SOLARIS2
+  if (!session.disable_id_switching && !session.priv_aware) {
+#else
   if (!session.disable_id_switching) {
+#endif
+
 #if defined(HAVE_SETEUID)
     if (seteuid(PR_ROOT_UID) < 0) {
       privs_log_error("USER PRIVS: unable to seteuid(PR_ROOT_UID)", errno);
@@ -292,7 +301,12 @@ int pr_privs_relinquish(const char *file, int lineno) {
 
   pr_signals_block();
 
+#ifdef SOLARIS2
+  if (!session.disable_id_switching && !session.priv_aware) {
+#else
   if (!session.disable_id_switching) {
+#endif
+
 #if defined(HAVE_SETEUID)
     if (geteuid() != PR_ROOT_UID) {
       if (seteuid(PR_ROOT_UID) < 0) {
