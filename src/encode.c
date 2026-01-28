@@ -59,17 +59,7 @@ static int str_convert(iconv_t conv, const char *inbuf, size_t *inbuflen,
 
     pr_signals_handle();
 
-    /* Solaris/FreeBSD's iconv(3) takes a const char ** for the input buffer,
-     * whereas Linux/Mac OSX/GNU iconv(3) use char ** for the input buffer.
-     */
-#if defined(LINUX) || defined(DARWIN6) || defined(DARWIN7) || \
-    defined(DARWIN8) || defined(DARWIN9) || defined(DARWIN10) || \
-    defined(DARWIN11) || defined(DARWIN12) || defined(GNU)
-
     nconv = iconv(conv, (char **) &inbuf, inbuflen, &outbuf, outbuflen);
-#else
-    nconv = iconv(conv, &inbuf, inbuflen, &outbuf, outbuflen);
-#endif
 
     if (nconv == (size_t) -1) {
 

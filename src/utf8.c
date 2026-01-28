@@ -50,7 +50,7 @@ static int utf8_convert(iconv_t conv, char *inbuf, size_t *inbuflen,
 
     pr_signals_handle();
 
-    nconv = iconv(conv, &inbuf, inbuflen, &outbuf, outbuflen);
+    nconv = iconv(conv, (char **) &inbuf, inbuflen, &outbuf, outbuflen);
     if (nconv == (size_t) -1) {
       if (errno == EINVAL) {
         memmove(start, inbuf, *inbuflen);
