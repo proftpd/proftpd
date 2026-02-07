@@ -2,7 +2,7 @@
  * ProFTPD - FTP server daemon
  * Copyright (c) 1997, 1998 Public Flood Software
  * Copyright (c) 1999, 2000 MacGyver aka Habeeb J. Dihu <macgyver@tos.net>
- * Copyright (c) 2001-2025 The ProFTPD Project
+ * Copyright (c) 2001-2026 The ProFTPD Project
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -522,7 +522,7 @@ static int listfile(cmd_rec *cmd, pool *p, const char *resp_code,
 
     display_name = pstrdup(p, name);
 
-#ifndef PR_USE_NLS
+#if !defined(PR_USE_NLS)
     if (opt_B) {
       register unsigned int j;
       size_t display_namelen, printable_namelen;
@@ -543,11 +543,22 @@ static int listfile(cmd_rec *cmd, pool *p, const char *resp_code,
         if (!PR_ISPRINT(display_name[i])) {
           register int k;
           int replace_len = 0;
-          char replace[32];
+          char replace[6];
 
           memset(replace, '\0', sizeof(replace));
+
+          /* Note that this assumes unsigned bytes, such that the max value
+           * is 255 (not -127), and thus the rendered text will always be
+           * four characters: a backslash, followed by three numeric characters.
+           * Make sure we allow snprintf(3) another byte for writing a
+           * terminating NUL as well.  This gives a total of 5 bytes for the
+           * rendered text.
+           *
+           * We use an explicit unsignedness cast avoid a byte for the minus
+           * character.
+           */
           replace_len = pr_snprintf(replace, sizeof(replace)-1, "\\%03o",
-            display_name[i]);
+            ((unsigned char) display_name[i]));
 
           for (k = 0; k < replace_len; k++) {
             printable_name[j++] = replace[k];
@@ -558,6 +569,7 @@ static int listfile(cmd_rec *cmd, pool *p, const char *resp_code,
         }
       }
 
+      printable_name[printable_namelen] = '\0';
       display_name = pstrdup(p, printable_name);
     }
 #endif /* PR_USE_NLS */
@@ -2316,7 +2328,7 @@ static int nlstfile(cmd_rec *cmd, const char *file) {
 
   display_name = pstrdup(cmd->tmp_pool, file);
 
-#ifndef PR_USE_NLS
+#if !defined(PR_USE_NLS)
   if (opt_B) {
     register unsigned int i, j;
     size_t display_namelen, printable_namelen;
@@ -2337,11 +2349,22 @@ static int nlstfile(cmd_rec *cmd, const char *file) {
       if (!PR_ISPRINT(display_name[i])) {
         register int k;
         int replace_len = 0;
-        char replace[32];
+        char replace[6];
 
         memset(replace, '\0', sizeof(replace));
+
+        /* Note that this assumes unsigned bytes, such that the max value
+         * is 255 (not -127), and thus the rendered text will always be
+         * four characters: a backslash, followed by three numeric characters.
+         * Make sure we allow snprintf(3) another byte for writing a
+         * terminating NUL as well.  This gives a total of 5 bytes for the
+         * rendered text.
+         *
+         * We use an explicit unsignedness cast avoid a byte for the minus
+         * character.
+         */
         replace_len = pr_snprintf(replace, sizeof(replace)-1, "\\%03o",
-          display_name[i]);
+          ((unsigned char) display_name[i]));
 
         for (k = 0; k < replace_len; k++) {
           printable_name[j++] = replace[k];
@@ -2352,6 +2375,7 @@ static int nlstfile(cmd_rec *cmd, const char *file) {
       }
     }
 
+    printable_name[printable_namelen] = '\0';
     display_name = pstrdup(cmd->tmp_pool, printable_name);
   }
 #endif /* PR_USE_NLS */
