@@ -1143,7 +1143,7 @@ static int tpl_dump_to_mem(tpl_node *r,void *addr,size_t sz) {
     return 0;
 }
 
-static int tpl_cpu_bigendian() {
+static int tpl_cpu_bigendian(void) {
    unsigned i = 1;
    char *c;
    c = (char*)&i;
