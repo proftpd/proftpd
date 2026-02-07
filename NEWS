@@ -56,6 +56,8 @@
   remote DoS.
 - Issue 2020 - Out-of-bounds single byte read when FTP command input buffer
   starts with LF.
+- Issue 2030 - FTP command LIST/NLST -B can cause buffer overflow when listing
+  certain crafted filenames.
 
 1.3.9 - Released 14-Mar-2025
 --------------------------------
