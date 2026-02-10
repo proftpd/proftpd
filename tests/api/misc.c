@@ -328,7 +328,7 @@ START_TEST (dir_readlink_test) {
 
   /* Not chrooted, absolute dst path */
   memset(buf, '\0', bufsz);
-  dst_path = "/home/user/file.dat";
+  dst_path = "/tmp/home/user/file.dat";
   dst_pathlen = strlen(dst_path);
   res = symlink(dst_path, path);
   ck_assert_msg(res == 0, "Failed to symlink '%s' to '%s': %s", path, dst_path,
@@ -439,7 +439,7 @@ START_TEST (dir_readlink_test) {
     dst_path, buf);
 
   /* Chrooted, absolute destination path shorter than chroot path */
-  session.chroot_path = "/home/user";
+  session.chroot_path = "/tmp/home/user";
   memset(buf, '\0', bufsz);
   dst_path = "/foo";
   dst_pathlen = strlen(dst_path);
@@ -458,7 +458,7 @@ START_TEST (dir_readlink_test) {
 
   /* Chrooted, overlapping chroot to non-dir */
   memset(buf, '\0', bufsz);
-  dst_path = "/home/user2";
+  dst_path = "/tmp/home/user2";
   dst_pathlen = strlen(dst_path);
 
   (void) unlink(path);
@@ -475,7 +475,7 @@ START_TEST (dir_readlink_test) {
 
   /* Chrooted, absolute destination within chroot */
   memset(buf, '\0', bufsz);
-  dst_path = "/home/user/file.txt";
+  dst_path = "/tmp/home/user/file.txt";
   dst_pathlen = strlen(dst_path);
   expected_path = "/file.txt";
   expected_pathlen = strlen(expected_path);
@@ -494,9 +494,9 @@ START_TEST (dir_readlink_test) {
 
   /* Chrooted, absolute destination outside of chroot */
   memset(buf, '\0', bufsz);
-  dst_path = "/home/user/../file.txt";
+  dst_path = "/tmp/home/user/../file.txt";
   dst_pathlen = strlen(dst_path);
-  expected_path = "/home/file.txt";
+  expected_path = "/tmp/home/file.txt";
   expected_pathlen = strlen(expected_path);
 
   (void) unlink(path);
@@ -1382,8 +1382,8 @@ START_TEST (path_subst_uservar_test) {
     res);
 
   session.user = "user";
-  original = "/home/%u";
-  expected = "/home/user";
+  original = "/tmp/home/%u";
+  expected = "/tmp/home/user";
   path = pstrdup(p, original);
   mark_point();
   res = path_subst_uservar(p, &path);
@@ -1393,8 +1393,8 @@ START_TEST (path_subst_uservar_test) {
     res);
 
   session.user = "user";
-  original = "/home/%u[";
-  expected = "/home/user[";
+  original = "/tmp/home/%u[";
+  expected = "/tmp/home/user[";
   path = pstrdup(p, original);
   mark_point();
   res = path_subst_uservar(p, &path);
@@ -1404,8 +1404,8 @@ START_TEST (path_subst_uservar_test) {
     res);
 
   session.user = "user";
-  original = "/home/%u[]";
-  expected = "/home/user[]";
+  original = "/tmp/home/%u[]";
+  expected = "/tmp/home/user[]";
   path = pstrdup(p, original);
   mark_point();
   res = path_subst_uservar(p, &path);
@@ -1415,8 +1415,8 @@ START_TEST (path_subst_uservar_test) {
     res);
 
   session.user = "user";
-  original = "/home/users/%u[0]/%u[0]%u[1]/%u";
-  expected = "/home/users/u/us/user";
+  original = "/tmp/home/users/%u[0]/%u[0]%u[1]/%u";
+  expected = "/tmp/home/users/u/us/user";
   path = pstrdup(p, original);
   mark_point();
   res = path_subst_uservar(p, &path);
@@ -1427,7 +1427,7 @@ START_TEST (path_subst_uservar_test) {
 
   /* Attempt to use an invalid index */
   session.user = "user";
-  original = "/home/users/%u[a]/%u[b]%u[c]/%u";
+  original = "/tmp/home/users/%u[a]/%u[b]%u[c]/%u";
   expected = original;
   path = pstrdup(p, original);
   mark_point();
@@ -1439,7 +1439,7 @@ START_TEST (path_subst_uservar_test) {
 
   /* Attempt to use an out-of-bounds index */
   session.user = "user";
-  original = "/home/users/%u[0]/%u[-1]%u[1]/%u";
+  original = "/tmp/home/users/%u[0]/%u[-1]%u[1]/%u";
   expected = original;
   path = pstrdup(p, original);
   mark_point();
@@ -1451,7 +1451,7 @@ START_TEST (path_subst_uservar_test) {
 
   /* Attempt to use an out-of-bounds index */
   session.user = "user";
-  original = "/home/users/%u[0]/%u[0]%u[4]/%u";
+  original = "/tmp/home/users/%u[0]/%u[0]%u[4]/%u";
   expected = original;
   path = pstrdup(p, original);
   mark_point();
