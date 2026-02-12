@@ -2484,6 +2484,10 @@ MODRET auth_user(cmd_rec *cmd) {
 
   user = cmd->arg;
 
+  if (strchr(user, '\r') != NULL || strchr(user, '\n') != NULL) {
+    return PR_ERROR_MSG(cmd, R_501, _("Syntax error, parameters or arguments contain invalid characters"));
+  }
+
   (void) pr_table_remove(session.notes, "mod_auth.orig-user", NULL);
   (void) pr_table_remove(session.notes, "mod_auth.anon-passwd", NULL);
 
@@ -2680,12 +2684,17 @@ MODRET auth_pass(cmd_rec *cmd) {
     return PR_ERROR_MSG(cmd, R_503, _("You are already logged in"));
   }
 
+
   user = pr_table_get(session.notes, "mod_auth.orig-user", NULL);
   if (user == NULL) {
     (void) pr_table_remove(session.notes, "mod_auth.orig-user", NULL);
     (void) pr_table_remove(session.notes, "mod_auth.anon-passwd", NULL);
 
     return PR_ERROR_MSG(cmd, R_503, _("Login with USER first"));
+  }
+
+  if (strchr(cmd->arg, '\r') != NULL || strchr(cmd->arg, '\n') != NULL) {
+    return PR_ERROR_MSG(cmd, R_501, _("Syntax error, parameters or arguments contain invalid characters"));
   }
 
   /* Clear any potentially cached directory config */
