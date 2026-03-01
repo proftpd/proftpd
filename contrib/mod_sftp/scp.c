@@ -1,6 +1,6 @@
 /*
  * ProFTPD - mod_sftp SCP
- * Copyright (c) 2008-2025 TJ Saunders
+ * Copyright (c) 2008-2026 TJ Saunders
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -2900,14 +2900,22 @@ int sftp_scp_close_session(uint32_t channel_id) {
 
               if (elt->fh != NULL) {
                 char *abs_path, *curr_path;
-
-                curr_path = pstrdup(scp_pool, elt->fh->fh_path);
+                int is_upload = FALSE;
 
                 /* Write out an 'incomplete' TransferLog entry for this. */
+
+                if (scp_opts & SFTP_SCP_OPT_ISDST) {
+                  /* We only send (download) or receive (upload), but not both,
+                   * in an SCP session.
+                   */
+                  is_upload = TRUE;
+                }
+
+                curr_path = pstrdup(scp_pool, elt->fh->fh_path);
                 abs_path = sftp_misc_vroot_abs_path(scp_pool, elt->best_path,
                   TRUE);
 
-                if (scp_opts & SFTP_SCP_OPT_ISDST) {
+                if (is_upload == TRUE) {
                   xferlog_write(0, pr_netaddr_get_sess_remote_name(),
                     elt->recvlen, abs_path, 'b', 'i', 'r', session.user, 'i',
                     "_");
@@ -2926,8 +2934,8 @@ int sftp_scp_close_session(uint32_t channel_id) {
 
                 elt->fh = NULL;
 
-                if (delete_aborted_stores == TRUE &&
-                    scp_opts & SFTP_SCP_OPT_ISDST) {
+                if (is_upload == TRUE &&
+                    delete_aborted_stores == TRUE) {
                   (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
                     "removing aborted uploaded file '%s'", curr_path);
 
