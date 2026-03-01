@@ -65609,54 +65609,23 @@ sub scp_log_extlog_var_file_size_download_issue676 {
 sub scp_log_xferlog_download {
   my $self = shift;
   my $tmpdir = $self->{tmpdir};
+  my $setup = test_setup($tmpdir, 'sftp');
 
-  my $config_file = "$tmpdir/sftp.conf";
-  my $pid_file = File::Spec->rel2abs("$tmpdir/sftp.pid");
-  my $scoreboard_file = File::Spec->rel2abs("$tmpdir/sftp.scoreboard");
   my $xferlog_file = File::Spec->rel2abs("$tmpdir/xfer.log");
-
-  my $log_file = test_get_logfile();
-
-  my $auth_user_file = File::Spec->rel2abs("$tmpdir/sftp.passwd");
-  my $auth_group_file = File::Spec->rel2abs("$tmpdir/sftp.group");
-
-  my $user = 'proftpd';
-  my $passwd = 'test';
-  my $group = 'ftpd';
-  my $home_dir = File::Spec->rel2abs($tmpdir);
-  my $uid = 500;
-  my $gid = 500;
-
   my $test_file = File::Spec->rel2abs("$tmpdir/test.txt");
-
-  # Make sure that, if we're running as root, that the home directory has
-  # permissions/privs set for the account we create
-  if ($< == 0) {
-    unless (chmod(0755, $home_dir)) {
-      die("Can't set perms on $home_dir to 0755: $!");
-    }
-
-    unless (chown($uid, $gid, $home_dir)) {
-      die("Can't set owner of $home_dir to $uid/$gid: $!");
-    }
-  }
-
-  auth_user_write($auth_user_file, $user, $passwd, $uid, $gid, $home_dir,
-    '/bin/bash');
-  auth_group_write($auth_group_file, $group, $gid, $user);
 
   my $rsa_host_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/ssh_host_rsa_key');
   my $dsa_host_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/ssh_host_dsa_key');
 
   my $config = {
-    PidFile => $pid_file,
-    ScoreboardFile => $scoreboard_file,
-    SystemLog => $log_file,
-    TraceLog => $log_file,
-    Trace => 'DEFAULT:10 ssh2:20 sftp:20 scp:20',
+    PidFile => $setup->{pid_file},
+    ScoreboardFile => $setup->{scoreboard_file},
+    SystemLog => $setup->{log_file},
+    TraceLog => $setup->{log_file},
+    Trace => 'ssh2:20 scp:20',
 
-    AuthUserFile => $auth_user_file,
-    AuthGroupFile => $auth_group_file,
+    AuthUserFile => $setup->{auth_user_file},
+    AuthGroupFile => $setup->{auth_group_file},
     AuthOrder => 'mod_auth_file.c',
 
     TransferLog => $xferlog_file,
@@ -65668,16 +65637,17 @@ sub scp_log_xferlog_download {
 
       'mod_sftp.c' => [
         "SFTPEngine on",
-        "SFTPLog $log_file",
+        "SFTPLog $setup->{log_file}",
         "SFTPHostKey $rsa_host_key",
         "SFTPHostKey $dsa_host_key",
       ],
     },
   };
 
-  my ($port, $config_user, $config_group) = config_write($config_file, $config);
+  my ($port, $config_user, $config_group) = config_write($setup->{config_file},
+    $config);
 
-  my $read_sz = (stat($config_file))[7];
+  my $read_sz = (stat($setup->{config_file}))[7];
 
   # Open pipes, for use between the parent and child processes.  Specifically,
   # the child will indicate when it's done with its test by writing a message
@@ -65708,7 +65678,7 @@ sub scp_log_xferlog_download {
         die("Can't connect to SSH2 server: [$err_name] ($err_code) $err_str");
       }
 
-      unless ($ssh2->auth_password($user, $passwd)) {
+      unless ($ssh2->auth_password($setup->{user}, $setup->{passwd})) {
         my ($err_code, $err_name, $err_str) = $ssh2->error();
         die("Can't login to SSH2 server: [$err_name] ($err_code) $err_str");
       }
@@ -65724,9 +65694,7 @@ sub scp_log_xferlog_download {
       unless (-f $test_file) {
         die("$test_file file does not exist as expected");
       }
-
     };
-
     if ($@) {
       $ex = $@;
     }
@@ -65735,7 +65703,7 @@ sub scp_log_xferlog_download {
     $wfh->flush();
 
   } else {
-    eval { server_wait($config_file, $rfh) };
+    eval { server_wait($setup->{config_file}, $rfh) };
     if ($@) {
       warn($@);
       exit 1;
@@ -65745,120 +65713,105 @@ sub scp_log_xferlog_download {
   }
 
   # Stop server
-  server_stop($pid_file);
-
+  server_stop($setup->{pid_file});
   $self->assert_child_ok($pid);
 
-  if ($ex) {
-    test_append_logfile($log_file, $ex);
-    unlink($log_file);
+  eval {
+    if (open(my $fh, "< $xferlog_file")) {
+      my $ok = 0;
 
-    die($ex);
-  }
+      while (my $line = <$fh>) {
+        chomp($line);
 
-  if (open(my $fh, "< $xferlog_file")) {
-    my $ok = 0;
-
-    while (my $line = <$fh>) {
-      chomp($line);
-
-     if ($line =~ /^(\S+\s+\S+\s+\d+\s+\d+:\d+:\d+\s+\d+)\s+(\d+)\s+(.*?)\s+(\d+)\s+(.*?)\s+(\S+)\s+(\S+)\s+(\S+)\s+(\S+)\s+(.*?)\s+(.*?)\s+.*?(\S+)$/o) {
-        my $client_addr = $3;
-        my $nbytes = $4;
-        my $path = $5;
-        my $xfer_type = $6;
-        my $action_flag = $7;
-        my $xfer_direction = $8;
-        my $access_mode = $9;
-        my $user_name = $10;
-        my $service_name = $11;
-        my $completion_status = $12;
-
-        my $expected;
-
-        $expected = '127.0.0.1';
-        $self->assert($expected eq $client_addr,
-          test_msg("Expected '$expected', got '$client_addr'"));
-
-        $expected = $read_sz;
-        $self->assert($expected == $nbytes,
-          test_msg("Expected $expected, got $nbytes"));
-
-        $expected = File::Spec->rel2abs($config_file);
-        if ($^O eq 'darwin') {
-          # Mac OSX hack
-          $expected = '/private' . $expected;
+        if ($ENV{TEST_VERBOSE}) {
+          print STDERR "# $line\n";
         }
 
-        $self->assert($expected eq $path,
-          test_msg("Expected '$expected', got '$path'"));
+       if ($line =~ /^(\S+\s+\S+\s+\d+\s+\d+:\d+:\d+\s+\d+)\s+(\d+)\s+(.*?)\s+(\d+)\s+(.*?)\s+(\S+)\s+(\S+)\s+(\S+)\s+(\S+)\s+(.*?)\s+(.*?)\s+.*?(\S+)$/o) {
+          my $client_addr = $3;
+          my $nbytes = $4;
+          my $path = $5;
+          my $xfer_type = $6;
+          my $action_flag = $7;
+          my $xfer_direction = $8;
+          my $access_mode = $9;
+          my $user_name = $10;
+          my $service_name = $11;
+          my $completion_status = $12;
 
-        $expected = 'b';
-        $self->assert($expected eq $xfer_type,
-          test_msg("Expected '$expected', got '$xfer_type'"));
+          my $expected = '127.0.0.1';
+          $self->assert($expected eq $client_addr,
+            test_msg("Expected '$expected', got '$client_addr'"));
 
-        $expected = '_';
-        $self->assert($expected eq $action_flag,
-          test_msg("Expected '$expected', got '$action_flag'"));
+          $expected = $read_sz;
+          $self->assert($expected == $nbytes,
+            test_msg("Expected $expected, got $nbytes"));
 
-        $expected = 'o';
-        $self->assert($expected eq $xfer_direction,
-          test_msg("Expected '$expected', got '$xfer_direction'"));
+          $expected = File::Spec->rel2abs($setup->{config_file});
+          if ($^O eq 'darwin') {
+            # Mac OSX hack
+            $expected = '/private' . $expected;
+          }
 
-        $expected = 'r';
-        $self->assert($expected eq $access_mode,
-          test_msg("Expected '$expected', got '$access_mode'"));
+          $self->assert($expected eq $path,
+            test_msg("Expected '$expected', got '$path'"));
 
-        $expected = $user;
-        $self->assert($expected eq $user_name,
-          test_msg("Expected '$expected', got '$user_name'"));
+          $expected = 'b';
+          $self->assert($expected eq $xfer_type,
+            test_msg("Expected '$expected', got '$xfer_type'"));
 
-        $expected = 'scp';
-        $self->assert($expected eq $service_name,
-          test_msg("Expected '$expected', got '$service_name'"));
+          $expected = '_';
+          $self->assert($expected eq $action_flag,
+            test_msg("Expected '$expected', got '$action_flag'"));
 
-        $expected = 'c';
-        $self->assert($expected eq $completion_status,
-          test_msg("Expected '$expected', got '$completion_status'"));
+          $expected = 'o';
+          $self->assert($expected eq $xfer_direction,
+            test_msg("Expected '$expected', got '$xfer_direction'"));
 
-        $ok = 1;
-        last;
+          $expected = 'r';
+          $self->assert($expected eq $access_mode,
+            test_msg("Expected '$expected', got '$access_mode'"));
+
+          $expected = $setup->{user};
+          $self->assert($expected eq $user_name,
+            test_msg("Expected '$expected', got '$user_name'"));
+
+          $expected = 'scp';
+          $self->assert($expected eq $service_name,
+            test_msg("Expected '$expected', got '$service_name'"));
+
+          $expected = 'c';
+          $self->assert($expected eq $completion_status,
+            test_msg("Expected '$expected', got '$completion_status'"));
+
+          $ok = 1;
+          last;
+        }
       }
+
+      close($fh);
+
+      unless ($ok) {
+        die("No matching lines found in $xferlog_file");
+      }
+
+    } else {
+      die("Can't read $xferlog_file: $!");
     }
-
-    close($fh);
-
-    unless ($ok) {
-      die("No lines found in $xferlog_file");
-    }
-
-  } else {
-    die("Can't read $xferlog_file: $!");
+  };
+  if ($@) {
+    $ex = $@ unless $ex;
   }
 
-  unlink($log_file);
+  test_cleanup($setup->{log_file}, $ex);
 }
 
 sub scp_log_xferlog_upload {
   my $self = shift;
   my $tmpdir = $self->{tmpdir};
+  my $setup = test_setup($tmpdir, 'sftp');
 
-  my $config_file = "$tmpdir/sftp.conf";
-  my $pid_file = File::Spec->rel2abs("$tmpdir/sftp.pid");
-  my $scoreboard_file = File::Spec->rel2abs("$tmpdir/sftp.scoreboard");
   my $xferlog_file = File::Spec->rel2abs("$tmpdir/xfer.log");
-
-  my $log_file = test_get_logfile();
-
-  my $auth_user_file = File::Spec->rel2abs("$tmpdir/sftp.passwd");
-  my $auth_group_file = File::Spec->rel2abs("$tmpdir/sftp.group");
-
-  my $user = 'proftpd';
-  my $passwd = 'test';
-  my $group = 'ftpd';
-  my $home_dir = File::Spec->rel2abs($tmpdir);
-  my $uid = 500;
-  my $gid = 500;
 
   my $test_file = File::Spec->rel2abs("$tmpdir/test.txt");
   if (open(my $fh, "> $test_file")) {
@@ -65873,37 +65826,20 @@ sub scp_log_xferlog_upload {
   }
 
   my $test_sz = (stat($test_file))[7];
-
   my $upload_file = File::Spec->rel2abs("$tmpdir/upload.txt");
-
-  # Make sure that, if we're running as root, that the home directory has
-  # permissions/privs set for the account we create
-  if ($< == 0) {
-    unless (chmod(0755, $home_dir)) {
-      die("Can't set perms on $home_dir to 0755: $!");
-    }
-
-    unless (chown($uid, $gid, $home_dir)) {
-      die("Can't set owner of $home_dir to $uid/$gid: $!");
-    }
-  }
-
-  auth_user_write($auth_user_file, $user, $passwd, $uid, $gid, $home_dir,
-    '/bin/bash');
-  auth_group_write($auth_group_file, $group, $gid, $user);
 
   my $rsa_host_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/ssh_host_rsa_key');
   my $dsa_host_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/ssh_host_dsa_key');
 
   my $config = {
-    PidFile => $pid_file,
-    ScoreboardFile => $scoreboard_file,
-    SystemLog => $log_file,
-    TraceLog => $log_file,
-    Trace => 'DEFAULT:10 ssh2:20 sftp:20 scp:20',
+    PidFile => $setup->{pid_file},
+    ScoreboardFile => $setup->{scoreboard_file},
+    SystemLog => $setup->{log_file},
+    TraceLog => $setup->{log_file},
+    Trace => 'ssh2:20 scp:20',
 
-    AuthUserFile => $auth_user_file,
-    AuthGroupFile => $auth_group_file,
+    AuthUserFile => $setup->{auth_user_file},
+    AuthGroupFile => $setup->{auth_group_file},
     AuthOrder => 'mod_auth_file.c',
 
     TransferLog => $xferlog_file,
@@ -65915,14 +65851,15 @@ sub scp_log_xferlog_upload {
 
       'mod_sftp.c' => [
         "SFTPEngine on",
-        "SFTPLog $log_file",
+        "SFTPLog $setup->{log_file}",
         "SFTPHostKey $rsa_host_key",
         "SFTPHostKey $dsa_host_key",
       ],
     },
   };
 
-  my ($port, $config_user, $config_group) = config_write($config_file, $config);
+  my ($port, $config_user, $config_group) = config_write($setup->{config_file},
+    $config);
 
   # Open pipes, for use between the parent and child processes.  Specifically,
   # the child will indicate when it's done with its test by writing a message
@@ -65953,7 +65890,7 @@ sub scp_log_xferlog_upload {
         die("Can't connect to SSH2 server: [$err_name] ($err_code) $err_str");
       }
 
-      unless ($ssh2->auth_password($user, $passwd)) {
+      unless ($ssh2->auth_password($setup->{user}, $setup->{passwd})) {
         my ($err_code, $err_name, $err_str) = $ssh2->error();
         die("Can't login to SSH2 server: [$err_name] ($err_code) $err_str");
       }
@@ -65970,7 +65907,6 @@ sub scp_log_xferlog_upload {
         die("$upload_file file does not exist as expected");
       }
     };
-
     if ($@) {
       $ex = $@;
     }
@@ -65979,7 +65915,7 @@ sub scp_log_xferlog_upload {
     $wfh->flush();
 
   } else {
-    eval { server_wait($config_file, $rfh) };
+    eval { server_wait($setup->{config_file}, $rfh) };
     if ($@) {
       warn($@);
       exit 1;
@@ -65989,98 +65925,97 @@ sub scp_log_xferlog_upload {
   }
 
   # Stop server
-  server_stop($pid_file);
-
+  server_stop($setup->{pid_file});
   $self->assert_child_ok($pid);
 
-  if ($ex) {
-    test_append_logfile($log_file, $ex);
-    unlink($log_file);
+  eval {
+    if (open(my $fh, "< $xferlog_file")) {
+      my $ok = 0;
 
-    die($ex);
-  }
+      while (my $line = <$fh>) {
+        chomp($line);
 
-  if (open(my $fh, "< $xferlog_file")) {
-    my $ok = 0;
-
-    while (my $line = <$fh>) {
-      chomp($line);
-
-     if ($line =~ /^(\S+\s+\S+\s+\d+\s+\d+:\d+:\d+\s+\d+)\s+(\d+)\s+(.*?)\s+(\d+)\s+(.*?)\s+(\S+)\s+(\S+)\s+(\S+)\s+(\S+)\s+(.*?)\s+(.*?)\s+.*?(\S+)$/o) {
-        my $client_addr = $3;
-        my $nbytes = $4;
-        my $path = $5;
-        my $xfer_type = $6;
-        my $action_flag = $7;
-        my $xfer_direction = $8;
-        my $access_mode = $9;
-        my $user_name = $10;
-        my $service_name = $11;
-        my $completion_status = $12;
-
-        my $expected;
-
-        $expected = '127.0.0.1';
-        $self->assert($expected eq $client_addr,
-          test_msg("Expected '$expected', got '$client_addr'"));
-
-        $expected = $test_sz;
-        $self->assert($expected == $nbytes,
-          test_msg("Expected $expected, got $nbytes"));
-
-        $expected = $upload_file;
-        if ($^O eq 'darwin') {
-          # Mac OSX hack
-          $expected = '/private' . $expected;
+        if ($ENV{TEST_VERBOSE}) {
+          print STDERR "# $line\n";
         }
 
-        $self->assert($expected eq $path,
-          test_msg("Expected '$expected', got '$path'"));
+       if ($line =~ /^(\S+\s+\S+\s+\d+\s+\d+:\d+:\d+\s+\d+)\s+(\d+)\s+(.*?)\s+(\d+)\s+(.*?)\s+(\S+)\s+(\S+)\s+(\S+)\s+(\S+)\s+(.*?)\s+(.*?)\s+.*?(\S+)$/o) {
+          my $client_addr = $3;
+          my $nbytes = $4;
+          my $path = $5;
+          my $xfer_type = $6;
+          my $action_flag = $7;
+          my $xfer_direction = $8;
+          my $access_mode = $9;
+          my $user_name = $10;
+          my $service_name = $11;
+          my $completion_status = $12;
 
-        $expected = 'b';
-        $self->assert($expected eq $xfer_type,
-          test_msg("Expected '$expected', got '$xfer_type'"));
+          my $expected = '127.0.0.1';
+          $self->assert($expected eq $client_addr,
+            test_msg("Expected '$expected', got '$client_addr'"));
 
-        $expected = '_';
-        $self->assert($expected eq $action_flag,
-          test_msg("Expected '$expected', got '$action_flag'"));
+          $expected = $test_sz;
+          $self->assert($expected == $nbytes,
+            test_msg("Expected $expected, got $nbytes"));
 
-        $expected = 'i';
-        $self->assert($expected eq $xfer_direction,
-          test_msg("Expected '$expected', got '$xfer_direction'"));
+          $expected = $upload_file;
+          if ($^O eq 'darwin') {
+            # Mac OSX hack
+            $expected = '/private' . $expected;
+          }
 
-        $expected = 'r';
-        $self->assert($expected eq $access_mode,
-          test_msg("Expected '$expected', got '$access_mode'"));
+          $self->assert($expected eq $path,
+            test_msg("Expected '$expected', got '$path'"));
 
-        $expected = $user;
-        $self->assert($expected eq $user_name,
-          test_msg("Expected '$expected', got '$user_name'"));
+          $expected = 'b';
+          $self->assert($expected eq $xfer_type,
+            test_msg("Expected '$expected', got '$xfer_type'"));
 
-        $expected = 'scp';
-        $self->assert($expected eq $service_name,
-          test_msg("Expected '$expected', got '$service_name'"));
+          $expected = '_';
+          $self->assert($expected eq $action_flag,
+            test_msg("Expected '$expected', got '$action_flag'"));
 
-        $expected = 'c';
-        $self->assert($expected eq $completion_status,
-          test_msg("Expected '$expected', got '$completion_status'"));
+          $expected = 'i';
+          $self->assert($expected eq $xfer_direction,
+            test_msg("Expected '$expected', got '$xfer_direction'"));
 
-        $ok = 1;
-        last;
+          $expected = 'r';
+          $self->assert($expected eq $access_mode,
+            test_msg("Expected '$expected', got '$access_mode'"));
+
+          $expected = $setup->{user};
+          $self->assert($expected eq $user_name,
+            test_msg("Expected '$expected', got '$user_name'"));
+
+          $expected = 'scp';
+          $self->assert($expected eq $service_name,
+            test_msg("Expected '$expected', got '$service_name'"));
+
+          $expected = 'c';
+          $self->assert($expected eq $completion_status,
+            test_msg("Expected '$expected', got '$completion_status'"));
+
+          $ok = 1;
+          last;
+        }
       }
+
+      close($fh);
+
+      unless ($ok) {
+        die("No matching lines found in $xferlog_file");
+      }
+
+    } else {
+      die("Can't read $xferlog_file: $!");
     }
-
-    close($fh);
-
-    unless ($ok) {
-      die("No lines found in $xferlog_file");
-    }
-
-  } else {
-    die("Can't read $xferlog_file: $!");
+  };
+  if ($@) {
+    $ex = $@ unless $ex;
   }
 
-  unlink($log_file);
+  test_cleanup($setup->{log_file}, $ex);
 }
 
 sub sftp_quotatab_upload_bytes_in_exceeded_soft_limit {
