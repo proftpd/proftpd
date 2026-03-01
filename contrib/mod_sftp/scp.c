@@ -2892,7 +2892,7 @@ int sftp_scp_close_session(uint32_t channel_id) {
                 abs_path = sftp_misc_vroot_abs_path(scp_pool, elt->best_path,
                   TRUE);
 
-                if (elt->recvlen > 0) {
+                if (scp_opts & SFTP_SCP_OPT_ISDST) {
                   xferlog_write(0, pr_netaddr_get_sess_remote_name(),
                     elt->recvlen, abs_path, 'b', 'i', 'r', session.user, 'i',
                     "_");
@@ -2912,7 +2912,7 @@ int sftp_scp_close_session(uint32_t channel_id) {
                 elt->fh = NULL;
 
                 if (delete_aborted_stores == TRUE &&
-                    elt->recvlen > 0) {
+                    scp_opts & SFTP_SCP_OPT_ISDST) {
                   (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
                     "removing aborted uploaded file '%s'", curr_path);
 
