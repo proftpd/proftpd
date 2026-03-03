@@ -387,7 +387,11 @@ EOD
       $self->assert($expected == $resp_code,
         test_msg("Expected $expected, got $resp_code"));
 
-      $expected = "test.txt: Operation not permitted";
+      if ($^O eq 'solaris') {
+        $expected = "test.txt: Insufficient privileges";
+      } else {
+        $expected = "test.txt: Operation not permitted";
+      }
       $self->assert($expected eq $resp_msg,
         test_msg("Expected '$expected', got '$resp_msg'"));
     };
@@ -554,7 +558,11 @@ sub limits_with_glob_denied_delete_bug3146 {
       $self->assert($expected == $resp_code,
         test_msg("Expected $expected, got $resp_code"));
 
-      $expected = "test.txt: Operation not permitted";
+      if ($^O eq 'solaris') {
+        $expected = "test.txt: Insufficient privileges";
+      } else {
+        $expected = "test.txt: Operation not permitted";
+      }
       $self->assert($expected eq $resp_msg,
         test_msg("Expected '$expected', got '$resp_msg'"));
     };
@@ -722,7 +730,11 @@ sub limits_without_glob_denied_delete_bug3146 {
       $self->assert($expected == $resp_code,
         test_msg("Expected $expected, got $resp_code"));
 
-      $expected = "test.txt: Operation not permitted";
+      if ($^O eq 'solaris') {
+        $expected = "test.txt: Insufficient privileges";
+      } else {
+        $expected = "test.txt: Operation not permitted";
+      }
       $self->assert($expected eq $resp_msg,
         test_msg("Expected '$expected', got '$resp_msg'"));
     };
@@ -1533,7 +1545,11 @@ sub limits_rename_dir_failed_rnfr_denied {
       $self->assert($expected == $resp_code,
         test_msg("Expected $expected, got $resp_code"));
 
-      $expected = "upload: Operation not permitted";
+      if ($^O eq 'solaris') {
+        $expected = "upload: Insufficient privileges";
+      } else {
+        $expected = "upload: Operation not permitted";
+      }
       $self->assert($expected eq $resp_msg,
         test_msg("Expected '$expected', got '$resp_msg'"));
     };
@@ -2234,7 +2250,11 @@ sub limits_with_multi_globs_denied_delete {
       $self->assert($expected == $resp_code,
         test_msg("Expected $expected, got $resp_code"));
 
-      $expected = "$filename: Operation not permitted";
+      if ($^O eq 'solaris') {
+        $expected = "$filename: Insufficient privileges";
+      } else {
+        $expected = "$filename: Operation not permitted";
+      }
       $self->assert($expected eq $resp_msg,
         test_msg("Expected '$expected', got '$resp_msg'"));
     };
@@ -2390,7 +2410,11 @@ EOC
       $self->assert($expected == $resp_code,
         test_msg("Expected response code $expected, got $resp_code"));
 
-      $expected = "test.txt: Operation not permitted";
+      if ($^O eq 'solaris') {
+        $expected = "test.txt: Insufficient privileges";
+      } else {
+        $expected = "test.txt: Operation not permitted";
+      }
       $self->assert($expected eq $resp_msg,
         test_msg("Expected response message '$expected', got '$resp_msg'"));
     };
@@ -2546,7 +2570,11 @@ EOC
       $self->assert($expected == $resp_code,
         test_msg("Expected response code $expected, got $resp_code"));
 
-      $expected = "test.txt: Operation not permitted";
+      if ($^O eq 'solaris') {
+        $expected = "test.txt: Insufficient privileges";
+      } else {
+        $expected = "test.txt: Operation not permitted";
+      }
       $self->assert($expected eq $resp_msg,
         test_msg("Expected response message '$expected', got '$resp_msg'"));
     };
