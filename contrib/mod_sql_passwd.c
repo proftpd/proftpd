@@ -95,6 +95,12 @@ static unsigned long sql_passwd_opts = 0UL;
 
 static unsigned long sql_passwd_nrounds = 1;
 
+/* USE salt in rounds */
+#define SQL_USE_SALT_ROUND_APPEND	0x0001
+#define SQL_USE_SALT_ROUND_PREPEND	0x0002
+#define SQL_USE_SALT_ROUND_NONE		0x0004
+static unsigned long sql_use_salt_round = SQL_USE_SALT_ROUND_NONE;
+
 /* For PBKDF2 */
 static const EVP_MD *sql_passwd_pbkdf2_digest = NULL;
 static int sql_passwd_pbkdf2_iter = -1;
@@ -732,8 +738,15 @@ static modret_t *sql_passwd_auth(cmd_rec *cmd, const char *plaintext,
     for (i = 0; i < nrounds; i++) {
       pr_signals_handle();
 
-      hash = sql_passwd_hash(cmd->tmp_pool, md, (unsigned char *) encodedtext,
-        strlen(encodedtext), NULL, 0, NULL, 0, &hash_len);
+      hash = sql_passwd_hash(cmd->tmp_pool,
+			md,
+			(unsigned char *) encodedtext,
+			strlen(encodedtext),
+			(sql_use_salt_round == SQL_USE_SALT_ROUND_PREPEND) ? prefix : NULL,
+			(sql_use_salt_round == SQL_USE_SALT_ROUND_PREPEND) ? prefix_len : 0,
+			(sql_use_salt_round == SQL_USE_SALT_ROUND_APPEND) ? suffix : NULL,
+			(sql_use_salt_round == SQL_USE_SALT_ROUND_APPEND) ? suffix_len : 0,
+			&hash_len);
       encodedtext = sql_passwd_encode(cmd->tmp_pool, sql_passwd_encoding,
         hash, hash_len);
 
@@ -1256,6 +1269,8 @@ MODRET sql_passwd_pre_pass(cmd_rec *cmd) {
   c = find_config(main_server->conf, CONF_PARAM, "SQLPasswordRounds", FALSE);
   if (c != NULL) {
     sql_passwd_nrounds = *((unsigned long *) c->argv[0]);
+	if(c->argc == 2)
+		sql_use_salt_round = *((unsigned long *) c->argv[1]);
   }
 
   c = find_config(main_server->conf, CONF_PARAM, "SQLPasswordPBKDF2", FALSE);
@@ -1678,6 +1693,7 @@ MODRET set_sqlpasswdpbkdf2(cmd_rec *cmd) {
 MODRET set_sqlpasswdrounds(cmd_rec *cmd) {
   config_rec *c;
   long nrounds;
+  unsigned long use_salt = SQL_USE_SALT_ROUND_NONE;
 
   CHECK_ARGS(cmd, 1);
   CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL);
@@ -1688,9 +1704,18 @@ MODRET set_sqlpasswdrounds(cmd_rec *cmd) {
       cmd->argv[1], ")", NULL));
   }
 
-  c = add_config_param(cmd->argv[0], 1, NULL);
+  if(cmd->argc == 3) {
+	if(strcasecmp(cmd->argv[2], "PrependSalt") == 0) {
+		use_salt = SQL_USE_SALT_ROUND_PREPEND;
+	}else if(strcasecmp(cmd->argv[2], "AppendSalt") == 0) {
+		use_salt = SQL_USE_SALT_ROUND_APPEND;
+	}
+  }
+  c = add_config_param(cmd->argv[0], 2, NULL);
   c->argv[0] = palloc(c->pool, sizeof(unsigned int));
   *((unsigned long *) c->argv[0]) = nrounds;
+  c->argv[1] = palloc(c->pool, sizeof(unsigned int));
+  *((unsigned long*) c->argv[1]) = use_salt;
 
   return PR_HANDLED(cmd);
 }
@@ -1823,6 +1848,7 @@ static void sql_passwd_sess_reinit_ev(const void *event_data, void *user_data) {
   sql_passwd_user_salt_flags = SQL_PASSWD_SALT_FL_APPEND;
   sql_passwd_opts = 0UL;
   sql_passwd_nrounds = 1;
+  sql_use_salt_round = SQL_USE_SALT_ROUND_NONE;
 
 #if defined(PR_USE_SODIUM)
   sql_passwd_scrypt_hash_len = SQL_PASSWD_SCRYPT_DEFAULT_HASH_SIZE;
