@@ -46,6 +46,8 @@
   starts with LF.
 - Issue 2030 - FTP command LIST/NLST -B can cause buffer overflow when listing
   certain crafted filenames.
+- Issue 2043 - Memory exhaustion with mod_log_forensic when downloading very
+  large files via SFTP.
 
 1.3.9 - Released 14-Mar-2025
 --------------------------------
