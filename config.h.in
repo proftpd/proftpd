@@ -762,6 +762,9 @@
 /* Define if you have the <memory.h> header file.  */
 #undef HAVE_MEMORY_H
 
+/* Define if you have the <mysqld_error.h> header file.  */
+#undef HAVE_MYSQLD_ERROR_H
+
 /* Define if you have the <ncurses.h> header file.  */
 #undef HAVE_NCURSES_H
 
