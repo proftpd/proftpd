@@ -60,6 +60,8 @@
   certain crafted filenames.
 - Issue 2043 - Memory exhaustion with mod_log_forensic when downloading very
   large files via SFTP.
+- Issue 1663 - Deadlock on MySQL database when 4-5 simultaneous logins to
+  ProFTPD with updatecount query causing authentication timeout.
 
 1.3.9 - Released 14-Mar-2025
 --------------------------------
