@@ -231,8 +231,12 @@ static RETSIGTYPE sig_alarm(int signo) {
   /* Reset the alarm */
   total_time += current_timeout;
   if (current_timeout) {
+#if defined(HAVE_CLOCK_GETTIME) && defined(HAVE_DECL_CLOCK_MONOTONIC)
     clock_gettime(CLOCK_MONOTONIC, &ts);
     alarmed_time = ts.tv_sec;
+#else
+    alarmed_time = time(NULL);
+#endif /* HAVE_CLOCK_GETTIME && HAVE_DECL_CLOCK_MONOTONIC*/
     alarm(current_timeout);
   }
 }
@@ -291,8 +295,12 @@ void handle_alarm(void) {
       alarm(0);
 
       /* Determine how much time has elapsed since we last processed timers. */
+#if defined(HAVE_CLOCK_GETTIME) && defined(HAVE_DECL_CLOCK_MONOTONIC)
       clock_gettime(CLOCK_MONOTONIC, &ts);
       now = ts.tv_sec;
+#else
+      time(&now);
+#endif /* HAVE_CLOCK_GETTIME && HAVE_DECL_CLOCK_MONOTONIC*/
       alarm_elapsed = alarmed_time > 0 ? (int) (now - alarmed_time) : 0;
 
       new_timeout = total_time + alarm_elapsed;
