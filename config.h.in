@@ -394,6 +394,12 @@
 #undef HAVE_GETPRPWENT
 
 /* Define if you have the gettimeofday function.  */
+#undef HAVE_CLOCK_GETTIME
+
+/* Define if you have the CLOCK_MONOTONIC macro.  */
+#undef HAVE_DECL_CLOCK_MONOTONIC
+
+/* Define if you have the gettimeofday function.  */
 #undef HAVE_GETTIMEOFDAY
 
 /* Define if you have the gmtime_r function.  */

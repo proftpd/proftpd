@@ -21704,7 +21704,7 @@ _ACEOF
 fi
 done
 
-for ac_func in gettimeofday hstrerror inet_aton inet_ntop inet_pton initgroups
+for ac_func in clock_gettime gettimeofday hstrerror inet_aton inet_ntop inet_pton initgroups
 do :
   as_ac_var=`$as_echo "ac_cv_func_$ac_func" | $as_tr_sh`
 ac_fn_c_check_func "$LINENO" "$ac_func" "$as_ac_var"
@@ -21715,6 +21715,14 @@ _ACEOF
 
 fi
 done
+
+ac_fn_c_check_decl "$LINENO" "CLOCK_MONOTONIC" "ac_cv_have_decl_clock_monotonic" "#include <time.h>
+"
+if test "x$ac_cv_have_decl_clock_monotonic" = xyes; then :
+  cat >>confdefs.h <<_ACEOF
+#define HAVE_DECL_CLOCK_MONOTONIC 1
+_ACEOF
+fi
 
 for ac_func in loginrestrictions
 do :
