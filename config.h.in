@@ -282,6 +282,12 @@
 /* Define if you have the bcopy function.  */
 #undef HAVE_BCOPY
 
+/* Define if you have the clock_gettime function.  */
+#undef HAVE_CLOCK_GETTIME
+
+/* Define if your clock_gettime(3) supports CLOCK_MONOTONIC.  */
+#undef HAVE_CLOCK_MONOTONIC
+
 /* Define if you have the crypt function.  */
 #undef HAVE_CRYPT
 
