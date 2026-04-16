@@ -2238,7 +2238,7 @@ AC_TRY_LINK(
   ]
 )
 
-AC_CHECK_FUNCS(getcwd getenv getgrouplist getgroups getgrset gethostbyname2 gethostname getnameinfo)
+AC_CHECK_FUNCS(clock_gettime getcwd getenv getgrouplist getgroups getgrset gethostbyname2 gethostname getnameinfo)
 AC_CHECK_FUNCS(gettimeofday hstrerror inet_aton inet_ntop inet_pton initgroups)
 AC_CHECK_FUNCS(loginrestrictions)
 AC_CHECK_FUNCS(explicit_bzero memcpy mempcpy memset_s mkdir mkstemp mlock mlockall munlock munlockall)
@@ -2253,6 +2253,21 @@ then
 fi
 AC_CHECK_FUNCS(setsid setgroupent seteuid setegid setenv setpgid sigaction siginterrupt)
 AC_CHECK_FUNCS(tzset uname unsetenv)
+
+dnl Determine whether clock_gettime(3), if present, supports CLOCK_MONOTONIC
+AC_MSG_CHECKING([for CLOCK_MONOTONIC])
+AC_TRY_COMPILE([
+  #include <sys/types.h>
+  #include <time.h>
+], [
+  struct timespec ts;
+  (void) clock_gettime(CLOCK_MONOTONIC, &ts);
+], [
+  AC_MSG_RESULT(yes)
+  AC_DEFINE(HAVE_CLOCK_MONOTONIC, 1, [Define if you have CLOCK_MONOTONIC])
+], [
+  AC_MSG_RESULT(no)
+])
 
 AC_CHECK_FUNC(setpassent,
 [case "$target_os:$enable_force_setpassent" in

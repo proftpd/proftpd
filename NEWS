@@ -69,6 +69,8 @@
 - Issue 2058 - Scoreboard wlock_entry() function uses F_UNLCK instead of
   F_WRLCK.
 - Issue 2057 - SQL Injection in mod_wrap2_sql via reverse DNS hostname.
+- Issue 2047 - FTP sessions could be prematurely closed during updates of
+  system time/date.
 
 1.3.9 - Released 14-Mar-2025
 --------------------------------

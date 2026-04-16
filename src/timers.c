@@ -195,6 +195,31 @@ static int process_timers(int elapsed) {
   return res;
 }
 
+static time_t get_current_time(void) {
+  time_t now;
+  int use_fallback = TRUE;
+
+#if defined(HAVE_CLOCK_GETTIME) && \
+    defined(HAVE_CLOCK_MONOTONIC)
+  struct timespec ts;
+
+  if (clock_gettime(CLOCK_MONOTONIC, &ts) < 0) {
+    pr_trace_msg(trace_channel, 1,
+      "clock_gettime(3) error: %s, falling back to time(3)", strerror(errno));
+
+  } else {
+    now = ts.tv_sec;
+    use_fallback = FALSE;
+  }
+#endif /* HAVE_CLOCK_GETTIME and HAVE_CLOCK_MONOTONIC */
+
+  if (use_fallback == TRUE) {
+    time(&now);
+  }
+
+  return now;
+}
+
 static RETSIGTYPE sig_alarm(int signo) {
 #if defined(HAVE_SIGACTION)
   struct sigaction act;
@@ -230,7 +255,7 @@ static RETSIGTYPE sig_alarm(int signo) {
   /* Reset the alarm */
   total_time += current_timeout;
   if (current_timeout) {
-    alarmed_time = time(NULL);
+    alarmed_time = get_current_time();
     alarm(current_timeout);
   }
 }
@@ -288,7 +313,7 @@ void handle_alarm(void) {
       alarm(0);
 
       /* Determine how much time has elapsed since we last processed timers. */
-      time(&now);
+      now = get_current_time();
       alarm_elapsed = alarmed_time > 0 ? (int) (now - alarmed_time) : 0;
 
       new_timeout = total_time + alarm_elapsed;
