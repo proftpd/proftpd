@@ -21692,7 +21692,7 @@ fi
 rm -f core conftest.err conftest.$ac_objext \
     conftest$ac_exeext conftest.$ac_ext
 
-for ac_func in getcwd getenv getgrouplist getgroups getgrset gethostbyname2 gethostname getnameinfo
+for ac_func in clock_gettime getcwd getenv getgrouplist getgroups getgrset gethostbyname2 gethostname getnameinfo
 do :
   as_ac_var=`$as_echo "ac_cv_func_$ac_func" | $as_tr_sh`
 ac_fn_c_check_func "$LINENO" "$ac_func" "$as_ac_var"
@@ -21827,6 +21827,41 @@ _ACEOF
 fi
 done
 
+
+{ $as_echo "$as_me:${as_lineno-$LINENO}: checking for CLOCK_MONOTONIC" >&5
+$as_echo_n "checking for CLOCK_MONOTONIC... " >&6; }
+cat confdefs.h - <<_ACEOF >conftest.$ac_ext
+/* end confdefs.h.  */
+
+  #include <sys/types.h>
+  #include <time.h>
+
+int
+main ()
+{
+
+  struct timespec ts;
+  (void) clock_gettime(CLOCK_MONOTONIC, &ts);
+
+  ;
+  return 0;
+}
+_ACEOF
+if ac_fn_c_try_compile "$LINENO"; then :
+
+  { $as_echo "$as_me:${as_lineno-$LINENO}: result: yes" >&5
+$as_echo "yes" >&6; }
+
+$as_echo "#define HAVE_CLOCK_MONOTONIC 1" >>confdefs.h
+
+
+else
+
+  { $as_echo "$as_me:${as_lineno-$LINENO}: result: no" >&5
+$as_echo "no" >&6; }
+
+fi
+rm -f core conftest.err conftest.$ac_objext conftest.$ac_ext
 
 ac_fn_c_check_func "$LINENO" "setpassent" "ac_cv_func_setpassent"
 if test "x$ac_cv_func_setpassent" = xyes; then :
