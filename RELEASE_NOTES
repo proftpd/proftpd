@@ -10,7 +10,9 @@ ChangeLog files.
 ----------
 
   + Fix for SQL injection (CVE-2026-42167)
+
   + Disable Nagle algorithm for FTP data transfers
+
   + Implement support for multi-word environment variable values when parsing
     configurations
 
