@@ -9,6 +9,7 @@ ChangeLog files.
 1.3.10rc1
 ----------
 
+  + Fix for SQL injection (CVE-2026-42167)
   + Disable Nagle algorithm for FTP data transfers
   + Implement support for multi-word environment variable values when parsing
     configurations
@@ -18,16 +19,52 @@ ChangeLog files.
 
       mod_systemd
 
+        For distribution that use systemd, support for systemd's
+        `Type=notify-reload` in unit files in ProFTPD is now implemented via
+        a new mod_systemd module.  This module is not currently built by
+        default; it must be explicitly requested via --with-modules or
+        --with-shared.
 
   + New Directives
 
       SFTPKeyFingerprints
 
+        The hash algorithm used to generate the SSH key fingerprints logged
+        by the mod_sftp module is now configurable by this new directive.
+        See doc/contrib/mod_sftp.html#SFTPKeyFingerprints for more
+        information.
+
 
   + Changed Directives
 
-      ExtendedLog classes+cmds (Issue #1813)
+      ExtendedLog classes+cmds
+
+        The ExtendedLogging for some classes, such as "SSH" and "SFTP",
+        can be very verbose, especially for large uploads/downloads which
+        generate volumes of repetitive-looking READ and WRITE requests.
+        This configuration directive now supports expressions for omitting
+        specific named commands (among other combinations) to help fine-tune
+        the include/exemption of the requests that are logged.
+
+        For example, to log all SFTP requests except for READ and WRITE,
+        the following can now be used:
+
+          ExtendedLog /var/log/proftpd/proftpd.log SFTP+!READ,!WRITE custom
+
+        See doc/modules/mod_log.html#ExtendedLog for more details.
 
       SQLAuthTypes SSHA, Sodium
 
-      TCPNoDelay (Issue #1957)
+        This directive can now be used to configure support for
+        "salted SHA1" passwords (SSHA), as well as libsodium-supported
+        passwords ("Sodium").  See doc/contrib/mod_sql_passwd.html for more
+        information.
+
+      TCPNoDelay
+
+        In this release, ProFTPD will disable the TCP Nagle algorithm by
+        default for both FTP control _and_ data transfer connections, rather
+        than just FTP control connections.  This directive can now be used
+        to configure the use of the Nagle algorithm on control and data
+        transfer connections separately; see
+        doc/modules/mod_core.html#TCPNoDelay for details.
