@@ -64,6 +64,8 @@
   ProFTPD with updatecount query causing authentication timeout.
 - Issue 2046 - Setting process groups during authentication crashes when using
   mod_radius and <IfGroup>.
+- Issue 2052 - SQL injection possible via mod_sql because of is_escaped_text()
+  logic error (CVE-2026-42167).
 
 1.3.9 - Released 14-Mar-2025
 --------------------------------
