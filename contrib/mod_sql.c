@@ -2,7 +2,7 @@
  * ProFTPD: mod_sql -- SQL frontend
  * Copyright (c) 1998-1999 Johnie Ingram.
  * Copyright (c) 2001 Andrew Houghton.
- * Copyright (c) 2004-2025 TJ Saunders
+ * Copyright (c) 2004-2026 TJ Saunders
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -761,40 +761,46 @@ static int is_escaped_text(const char *text, size_t text_len) {
 }
 
 static int sql_resolved_append_text(pool *p, struct sql_resolved *resolved,
-    const char *text, size_t text_len) {
-  char *new_text;
-  size_t new_textlen;
+    const char *text, size_t text_len, int already_escaped) {
+  char *new_text = NULL;
+  size_t new_textlen = 0;
 
   if (text == NULL ||
       text_len == 0) {
     return 0;
   }
 
-  /* For backward compatibility (see Issue #1149), we indulge in a little
-   * heuristic here, and only escape the text if it hasn't already been
-   * escaped.  How to properly tell?  If the first and last characters of
-   * the given text are `'`, AND there are no other occurrences of that
-   * character in the text, assume it has already been quoted.
-   */
-  if (is_escaped_text(text, text_len) == FALSE) {
-    modret_t *mr;
+  new_text = (char *) text;
+  new_textlen = text_len;
 
-    mr = sql_dispatch(sql_make_cmd(p, 2, resolved->conn_name, text),
-      "sql_escapestring");
-    if (check_response(mr, resolved->conn_flags) < 0) {
-      errno = EIO;
-      return -1;
+  if (already_escaped == FALSE) {
+    /* For backward compatibility (see Issue #1149), we indulge in a little
+     * heuristic here, and only escape the text if it hasn't already been
+     * escaped.  How to properly tell?  If the first and last characters of
+     * the given text are `'`, AND there are no other occurrences of that
+     * character in the text, assume it has already been quoted.
+     *
+     * Per Issue #2052, we refine this to use this heuristic only if we do
+     * not already know that the text has been escaped.  Some callers may
+     * have already escaped the provided text for us.
+     */
+    if (is_escaped_text(text, text_len) == FALSE) {
+      modret_t *mr;
+
+      mr = sql_dispatch(sql_make_cmd(p, 2, resolved->conn_name, text),
+        "sql_escapestring");
+      if (check_response(mr, resolved->conn_flags) < 0) {
+        errno = EIO;
+        return -1;
+      }
+
+      new_text = (char *) mr->data;
+      new_textlen = strlen(new_text);
+
+    } else {
+      pr_trace_msg(trace_channel, 17,
+        "text '%s' is already escaped, skipping escaping it again", text);
     }
-
-    new_text = (char *) mr->data;
-    new_textlen = strlen(new_text);
-
-  } else {
-    pr_trace_msg(trace_channel, 17,
-      "text '%s' is already escaped, skipping escaping it again", text);
-
-    new_text = (char *) text;
-    new_textlen = text_len;
   }
 
   if (new_textlen > resolved->buflen) {
@@ -812,7 +818,7 @@ static int sql_resolved_append_text(pool *p, struct sql_resolved *resolved,
 
 static int sql_resolve_on_meta(pool *p, pr_jot_ctx_t *jot_ctx,
     unsigned char logfmt_id, const char *jot_hint, const void *val) {
-  int res = 0;
+  int res = 0, already_escaped = FALSE;
   struct sql_resolved *resolved;
 
   resolved = jot_ctx->log;
@@ -971,35 +977,53 @@ static int sql_resolve_on_meta(pool *p, pr_jot_ctx_t *jot_ctx,
         break;
       }
 
+      /* Per Issue #2052, the following variable values can all be supplied
+       * remotely by the client.  As such, they should be escaped preemptively.
+       */
       case LOGFMT_META_ANON_PASS:
       case LOGFMT_META_BASENAME:
-      case LOGFMT_META_CLASS:
       case LOGFMT_META_CMD_PARAMS:
       case LOGFMT_META_COMMAND:
       case LOGFMT_META_DIR_NAME:
       case LOGFMT_META_DIR_PATH:
+      case LOGFMT_META_FILENAME:
+      case LOGFMT_META_IDENT_USER:
+      case LOGFMT_META_METHOD:
+      case LOGFMT_META_ORIGINAL_USER:
+      case LOGFMT_META_RESPONSE_STR:
+      case LOGFMT_META_REMOTE_HOST:
+      case LOGFMT_META_RENAME_FROM:
+      case LOGFMT_META_USER:
+      case LOGFMT_META_XFER_PATH: {
+        modret_t *mr;
+
+        mr = sql_dispatch(sql_make_cmd(p, 2, resolved->conn_name,
+          (const char *) val), "sql_escapestring");
+        if (check_response(mr, resolved->conn_flags) < 0) {
+          errno = EIO;
+          return -1;
+        }
+
+        text = (char *) mr->data;
+        text_len = strlen(text);
+        already_escaped = TRUE;
+        break;
+      }
+
+      case LOGFMT_META_CLASS:
       case LOGFMT_META_ENV_VAR:
       case LOGFMT_META_EOS_REASON:
-      case LOGFMT_META_FILENAME:
       case LOGFMT_META_GROUP:
-      case LOGFMT_META_IDENT_USER:
       case LOGFMT_META_ISO8601:
       case LOGFMT_META_LOCAL_FQDN:
       case LOGFMT_META_LOCAL_IP:
       case LOGFMT_META_LOCAL_NAME:
-      case LOGFMT_META_METHOD:
       case LOGFMT_META_NOTE_VAR:
-      case LOGFMT_META_ORIGINAL_USER:
       case LOGFMT_META_PROTOCOL:
-      case LOGFMT_META_REMOTE_HOST:
       case LOGFMT_META_REMOTE_IP:
-      case LOGFMT_META_RENAME_FROM:
-      case LOGFMT_META_RESPONSE_STR:
-      case LOGFMT_META_USER:
       case LOGFMT_META_VERSION:
       case LOGFMT_META_VHOST_IP:
       case LOGFMT_META_XFER_FAILURE:
-      case LOGFMT_META_XFER_PATH:
       case LOGFMT_META_XFER_SPEED:
       case LOGFMT_META_XFER_STATUS:
       case LOGFMT_META_XFER_TYPE:
@@ -1013,7 +1037,8 @@ static int sql_resolve_on_meta(pool *p, pr_jot_ctx_t *jot_ctx,
       text_len = strlen(text);
     }
 
-    res = sql_resolved_append_text(p, resolved, text, text_len);
+    res = sql_resolved_append_text(p, resolved, text, text_len,
+      already_escaped);
   }
 
   return res;
@@ -1076,7 +1101,7 @@ static int sql_resolve_on_default(pool *p, pr_jot_ctx_t *jot_ctx,
         break;
     }
 
-    res = sql_resolved_append_text(p, resolved, text, text_len);
+    res = sql_resolved_append_text(p, resolved, text, text_len, FALSE);
   }
 
   return res;
@@ -3179,7 +3204,7 @@ static int showinfo_on_meta(pool *p, pr_jot_ctx_t *jot_ctx,
       }
 
       text_len = strlen(text);
-      res = sql_resolved_append_text(p, resolved, text, text_len);
+      res = sql_resolved_append_text(p, resolved, text, text_len, FALSE);
 
     } else {
       res = sql_resolve_on_meta(p, jot_ctx, logfmt_id, jot_hint, val);
