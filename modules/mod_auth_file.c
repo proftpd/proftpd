@@ -1,7 +1,7 @@
 /*
  * ProFTPD: mod_auth_file - file-based authentication module that supports
  *                          restrictions on the file contents
- * Copyright (c) 2002-2022 The ProFTPD Project team
+ * Copyright (c) 2002-2026 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -494,7 +494,7 @@ static struct group *af_parse_grp(const char *buf, unsigned int lineno,
     }
   }
 
-  if (i < (NGRPFIELDS - 1)) {
+  if (i != NGRPFIELDS) {
     pr_log_pri(PR_LOG_ERR, "Malformed entry in AuthGroupFile file (line %u)",
       lineno);
     return NULL;

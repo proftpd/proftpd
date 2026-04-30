@@ -122,7 +122,12 @@ my $TESTS = {
     test_class => [qw(bug forking)],
   },
 
-  auth_group_file_bad_syntax_check_issue490 => {
+  auth_group_file_missing_gid_bad_syntax_check_issue490 => {
+    order => ++$order,
+    test_class => [qw(bug forking)],
+  },
+
+  auth_group_file_missing_members_bad_syntax_check_issue490 => {
     order => ++$order,
     test_class => [qw(bug forking)],
   },
@@ -2148,12 +2153,12 @@ EOC
   test_cleanup($setup->{log_file}, $ex);
 }
 
-sub auth_group_file_bad_syntax_check_issue490 {
+sub auth_group_file_missing_gid_bad_syntax_check_issue490 {
   my $self = shift;
   my $tmpdir = $self->{tmpdir};
 
-  # Test that mod_auth_file correctly detects malformed AuthUserFile entries
-  # on syntax check (per Issue#490).
+  # Test that mod_auth_file correctly detects malformed AutGroupFile entries
+  # on syntax check (per Issue#490).  In this case, we are missing the group ID.
   my $setup = test_setup($tmpdir, 'authfile', undef, undef, 'ftpd::');
 
   my $config = {
@@ -2196,7 +2201,85 @@ EOC
   eval { server_start($setup->{config_file}, $setup->{pid_file}) };
   unless ($@) {
     server_stop($setup->{pid_file});
-    $ex = "Server started up unexpectedly with AuthUserFile with bad entries";
+    $ex = "Server started up unexpectedly with AuthGroupFile with bad entries";
+  }
+
+  test_cleanup($setup->{log_file}, $ex);
+}
+
+sub auth_group_file_missing_members_bad_syntax_check_issue490 {
+  my $self = shift;
+  my $tmpdir = $self->{tmpdir};
+
+  # Test that mod_auth_file correctly detects malformed AutGroupFile entries
+  # on syntax check (per Issue#490).  In this case, we are missing the
+  # group members field; we have to manually append the bad entry to do so.
+  my $setup = test_setup($tmpdir, 'authfile');
+
+  # We have to manually tinker with the deliberately restricted permissions
+  # on the generated AuthGroupFile first, and restore them afterward.
+
+  my $prev_perms = (stat($setup->{auth_group_file}))[2];
+
+  unless (chmod(0666, $setup->{auth_group_file})) {
+    die("Can't set perms on $setup->{auth_group_file}: $!");
+  }
+
+  if (open(my $fh, ">> $setup->{auth_group_file}")) {
+    print $fh "ftpd:x:1000\n";
+    unless (close($fh)) {
+      die("Can't write $setup->{auth_group_file}: $!");
+    }
+
+  } else {
+    die("Can't open $setup->{auth_group_file}: $!");
+  }
+
+  unless (chmod($prev_perms, $setup->{auth_group_file})) {
+    die("Can't set perms on $setup->{auth_group_file}: $!");
+  }
+
+  my $config = {
+    PidFile => $setup->{pid_file},
+    ScoreboardFile => $setup->{scoreboard_file},
+    SystemLog => $setup->{log_file},
+    TraceLog => $setup->{log_file},
+    Trace => 'auth.file:20',
+
+    IfModules => {
+      'mod_delay.c' => {
+        DelayEngine => 'off',
+      },
+    },
+  };
+
+  my ($port, $config_user, $config_group) = config_write($setup->{config_file},
+    $config);
+
+  # These entries are written manually, so that the AuthFileOptions directive
+  # always appears after the AuthUserFile, but before the AuthGroupFile.
+  if (open(my $fh, ">> $setup->{config_file}")) {
+    print $fh <<EOC;
+AuthUserFile $setup->{auth_user_file}
+
+AuthFileOptions SyntaxCheck
+AuthGroupFile $setup->{auth_group_file}
+AuthOrder mod_auth_file.c
+EOC
+    unless (close($fh)) {
+      die("Can't write $setup->{log_file}: $!");
+    }
+
+  } else {
+    die("Can't open $setup->{config_file}: $!");
+  }
+
+  my $ex;
+
+  eval { server_start($setup->{config_file}, $setup->{pid_file}) };
+  unless ($@) {
+    server_stop($setup->{pid_file});
+    $ex = "Server started up unexpectedly with AuthGroupFile with bad entries";
   }
 
   test_cleanup($setup->{log_file}, $ex);
