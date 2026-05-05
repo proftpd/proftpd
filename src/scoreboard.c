@@ -1,6 +1,6 @@
 /*
  * ProFTPD - FTP server daemon
- * Copyright (c) 2001-2025 The ProFTPD Project team
+ * Copyright (c) 2001-2026 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -325,7 +325,7 @@ static int unlock_entry(int fd) {
 static int wlock_entry(int fd) {
   int res;
 
-  res = pr_scoreboard_entry_lock(fd, F_UNLCK);
+  res = pr_scoreboard_entry_lock(fd, F_WRLCK);
   return res;
 }
 
