@@ -233,16 +233,22 @@ static array_header *sqltab_fetch_options_cb(wrap2_table_t *sqltab,
   cmd_rec *sql_cmd = NULL;
   modret_t *sql_res = NULL;
   array_header *sql_data = NULL;
-  char *query = NULL, **vals = NULL;
+  char *escaped_name = NULL, *query = NULL, **vals = NULL;
   array_header *options_list = NULL;
 
   /* Allocate a temporary pool for the duration of this read. */
   tmp_pool = make_sub_pool(sqltab->tab_pool);
 
+  escaped_name = sqltab_get_escaped_text(tmp_pool, sqltab, name);
+  if (escaped_name == NULL) {
+    destroy_pool(tmp_pool);
+    return NULL;
+  }
+
   query = ((char **) sqltab->tab_data)[WRAP2_SQL_OPTION_QUERY_IDX];
 
   /* The options-query is not necessary.  Skip if not present. */
-  if (!query) {
+  if (query == NULL) {
     destroy_pool(tmp_pool);
     return NULL;
   }
@@ -258,7 +264,7 @@ static array_header *sqltab_fetch_options_cb(wrap2_table_t *sqltab,
   }
 
   /* Prepare the SELECT query. */
-  sql_cmd = sql_cmd_create(tmp_pool, 3, "sql_lookup", query, name);
+  sql_cmd = sql_cmd_create(tmp_pool, 3, "sql_lookup", query, escaped_name);
 
   /* Call the handler. */
   sql_res = pr_module_call(sql_cmdtab->m, sql_cmdtab->handler, sql_cmd);
