@@ -1,6 +1,6 @@
 /*
  * ProFTPD: mod_systemd -- provides systemd "socket activation" support
- * Copyright (c) 2025 TJ Saunders
+ * Copyright (c) 2025-2026 TJ Saunders
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -23,7 +23,7 @@
 #include "conf.h"
 #include "privs.h"
 
-#define MOD_SYSTEMD_VERSION	"mod_systemd/0.1"
+#define MOD_SYSTEMD_VERSION	"mod_systemd/0.2"
 
 /* Make sure the version of ProFTPD is as necessary. */
 #if PROFTPD_VERSION_NUMBER < 0x0001030A01
@@ -198,7 +198,24 @@ static void systemd_postparse_ev(const void *event_data, void *user_data) {
   notify_systemd("READY=1");
 }
 
+static void get_current_time(struct timespec *ts) {
+  struct timeval tv;
+#if defined(HAVE_CLOCK_GETTIME) && \
+    defined(HAVE_CLOCK_MONOTONIC)
+  if (clock_gettime(CLOCK_MONOTONIC, ts) == 0) {
+    return;
+  }
+#endif /* HAVE_CLOCK_GETTIME and HAVE_CLOCK_MONOTONIC */
+
+  gettimeofday(&tv, NULL);
+  ts->tv_sec = tv.tv_sec;
+  ts->tv_nsec = (long) tv.tv_usec * 1000;
+}
+
 static void systemd_restart_ev(const void *event_data, void *user_data) {
+  struct timespec now;
+  char text[1024];
+
   if (systemd_engine == FALSE) {
     return;
   }
@@ -207,7 +224,13 @@ static void systemd_restart_ev(const void *event_data, void *user_data) {
     return;
   }
 
-  notify_systemd("RELOADING=1");
+  get_current_time(&now);
+
+  memset(text, '\0', sizeof(text));
+  pr_snprintf(text, sizeof(text)-1, "RELOADING=1\nMONOTONIC_USEC=%llu",
+    ((uint64_t) now.tv_sec * 1000000ULL) +
+    ((uint64_t) now.tv_nsec / 1000ULL));
+  notify_systemd(text);
 }
 
 static void systemd_shutdown_ev(const void *event_data, void *user_data) {
