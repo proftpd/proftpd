@@ -12,8 +12,7 @@
 
    You should have received a copy of the GNU Library General Public
    License along with this library; see the file COPYING.LIB.  If not,
-   write to the Free Software Foundation, Inc., 51 Franklin Street, Suite 500,
-   Boston, MA 02110-1335, USA.  */
+   see <https://www.gnu.org/licenses/>.  */
 
 /* AIX requires this to be the first thing in the file.  */
 

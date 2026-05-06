@@ -2,7 +2,7 @@
  * ProFTPD: mod_ratio -- Support upload/download ratios.
  * Portions Copyright (c) 1998-1999 Johnie Ingram.
  * Copyright (c) 2002 James Dogopoulos.
- * Copyright (c) 2008-2024 The ProFTPD Project team
+ * Copyright (c) 2008-2026 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -20,8 +20,7 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software
- * Foundation, Inc., 51 Franklin Street, Suite 500, Boston, MA 02110-1335, USA.
+ * along with this program; if not, see <https://www.gnu.org/licenses/>.
  */
 
 #define MOD_RATIO_VERSION "mod_ratio/3.3"

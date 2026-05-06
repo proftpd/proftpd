@@ -1,6 +1,6 @@
 /*
  * ProFTPD: mod_dso -- support for loading/unloading modules at run-time
- * Copyright (c) 2004-2024 TJ Saunders <tj@castaglia.org>
+ * Copyright (c) 2004-2026 TJ Saunders <tj@castaglia.org>
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -13,8 +13,7 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software
- * Foundation, Inc., 51 Franklin Street, Suite 500, Boston, MA 02110-1335, USA.
+ * along with this program; if not, see <https://www.gnu.org/licenses/>.
  *
  * As a special exemption, TJ Saunders and other respective copyright holders
  * give permission to link this program with OpenSSL, and distribute the

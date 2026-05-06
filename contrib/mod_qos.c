@@ -1,8 +1,7 @@
 /*
  * ProFTPD: mod_qos -- a module for managing QoS socket options
- *
  * Copyright (c) 2010 Philip Prindeville
- * Copyright (c) 2010-2014 The ProFTPD Project
+ * Copyright (c) 2010-2026 The ProFTPD Project
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -15,8 +14,7 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software
- * Foundation, Inc., 51 Franklin Street, Suite 500, Boston, MA 02110-1335, USA.
+ * along with this program; if not, see <https://www.gnu.org/licenses/>.
  *
  * As a special exemption, Philip Prindeville and other respective copyright
  * holders give permission to link this program with OpenSSL, and distribute the

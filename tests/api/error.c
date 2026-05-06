@@ -1,6 +1,6 @@
 /*
  * ProFTPD - FTP server testsuite
- * Copyright (c) 2016-2017 The ProFTPD Project team
+ * Copyright (c) 2016-2026 The ProFTPD Project team
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -13,8 +13,7 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software
- * Foundation, Inc., 51 Franklin Street, Suite 500, Boston, MA 02110-1335, USA.
+ * along with this program; if not, see <https://www.gnu.org/licenses/>.
  *
  * As a special exemption, The ProFTPD Project team and other respective
  * copyright holders give permission to link this program with OpenSSL, and
@@ -534,7 +533,7 @@ START_TEST (error_strerror_detailed_test) {
   res2 = pr_error_set_where(err, NULL, __FILE__, __LINE__);
   ck_assert_msg(res2 == 0, "Failed to set error where: %s", strerror(errno));
 
-  expected = pstrcat(p, "in API [api/error.c:534], UID ", get_uid(p),
+  expected = pstrcat(p, "in API [api/error.c:533], UID ", get_uid(p),
     ", GID ", get_gid(p), " failed with \"", strerror(xerrno),
     " [ENOENT (", get_errnum(p, xerrno), ")]\"", NULL);
   res = pr_error_strerror(err, format);
@@ -547,7 +546,7 @@ START_TEST (error_strerror_detailed_test) {
   error_details &= ~PR_ERROR_DETAILS_USE_MODULE;
   (void) pr_error_use_details(error_details);
 
-  expected = pstrcat(p, "in api/error.c:534, UID ", get_uid(p), ", GID ",
+  expected = pstrcat(p, "in api/error.c:533, UID ", get_uid(p), ", GID ",
     get_gid(p), " failed with \"", strerror(xerrno),
     " [ENOENT (", get_errnum(p, xerrno), ")]\"", NULL);
   res = pr_error_strerror(err, format);
@@ -607,7 +606,7 @@ START_TEST (error_strerror_detailed_test) {
   error_details &= ~PR_ERROR_DETAILS_USE_NAMES;
   (void) pr_error_use_details(error_details);
 
-  expected = pstrcat(p, "in API [api/error.c:593], UID ", get_uid(p),
+  expected = pstrcat(p, "in API [api/error.c:592], UID ", get_uid(p),
     ", GID ", get_gid(p), " via ftp attempting to ", what,
     " failed with \"", strerror(xerrno), " [ENOENT (",
     get_errnum(p, xerrno), ")]\"", NULL);
@@ -621,7 +620,7 @@ START_TEST (error_strerror_detailed_test) {
   error_details &= ~PR_ERROR_DETAILS_USE_IDS;
   (void) pr_error_use_details(error_details);
 
-  expected = pstrcat(p, "in API [api/error.c:593], user ", session.user,
+  expected = pstrcat(p, "in API [api/error.c:592], user ", session.user,
     " via ftp attempting to ", what, " failed with \"", strerror(xerrno),
     " [ENOENT (", get_errnum(p, xerrno), ")]\"", NULL);
   res = pr_error_strerror(err, format);
@@ -634,7 +633,7 @@ START_TEST (error_strerror_detailed_test) {
   error_details &= ~PR_ERROR_DETAILS_USE_PROTOCOL;
   (void) pr_error_use_details(error_details);
 
-  expected = pstrcat(p, "in API [api/error.c:593], user ", session.user,
+  expected = pstrcat(p, "in API [api/error.c:592], user ", session.user,
     " (UID ", get_uid(p), ", GID ", get_gid(p), ") attempting to ", what,
     " failed with \"", strerror(xerrno), " [ENOENT (",
     get_errnum(p, xerrno), ")]\"", NULL);
@@ -651,7 +650,7 @@ START_TEST (error_strerror_detailed_test) {
   res2 = pr_error_set_why(err, why);
   ck_assert_msg(res2 == 0, "Failed to set why: %s", strerror(errno));
 
-  expected = pstrcat(p, "in API [api/error.c:593], user ", session.user,
+  expected = pstrcat(p, "in API [api/error.c:592], user ", session.user,
     " (UID ", get_uid(p), ", GID ", get_gid(p), ") via ftp wanted to ", why,
     " but ", what, " failed with \"", strerror(xerrno), " [ENOENT (",
     get_errnum(p, xerrno), ")]\"", NULL);
@@ -705,7 +704,7 @@ START_TEST (error_strerror_detailed_explained_test) {
   res2 = pr_error_explain_open(err, "path", O_RDONLY, 0755);
   ck_assert_msg(res2 == 0, "Failed to explain error: %s", strerror(errno));
 
-  expected = pstrcat(p, "in mod_", m.name, " [api/error.c:699], user ",
+  expected = pstrcat(p, "in mod_", m.name, " [api/error.c:698], user ",
     session.user, " (UID ", get_uid(p), ", GID ",
     get_gid(p), ") via ftp wanted to ", why,
     " but open() using path = 'path', flags = O_RDONLY, mode = 0755 "

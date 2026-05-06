@@ -1,5 +1,5 @@
 dnl ProFTPD - mod_auth_otp
-dnl Copyright (c) 2015-2021 TJ Saunders <tj@castaglia.org>
+dnl Copyright (c) 2015-2026 TJ Saunders <tj@castaglia.org>
 dnl
 dnl This program is free software; you can redistribute it and/or modify
 dnl it under the terms of the GNU General Public License as published by
@@ -12,8 +12,7 @@ dnl MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 dnl GNU General Public License for more details.
 dnl
 dnl You should have received a copy of the GNU General Public License
-dnl along with this program; if not, write to the Free Software
-dnl Foundation, Inc., 51 Franklin Street, Suite 500, Boston, MA 02110-1335, USA.
+dnl along with this program; if not, see <https://www.gnu.org/licenses/>.
 dnl
 dnl Process this file with autoconf to produce a configure script.
 
