@@ -206,6 +206,7 @@ static struct passwd radius_passwd;
 static unsigned char radius_have_group_info = FALSE;
 static char *radius_prime_group_name = NULL;
 static unsigned int radius_addl_group_count = 0;
+static unsigned int radius_getgroups_count = 0;
 static char **radius_addl_group_names = NULL;
 static char *radius_addl_group_names_str = NULL;
 static gid_t *radius_addl_group_ids = NULL;
@@ -1776,6 +1777,7 @@ static void radius_reset(void) {
   radius_have_group_info = FALSE;
   radius_prime_group_name = NULL;
   radius_addl_group_count = 0;
+  radius_getgroups_count = 0;
   radius_addl_group_names = NULL;
   radius_addl_group_names_str = NULL;
   radius_addl_group_ids = NULL;
@@ -3429,10 +3431,10 @@ MODRET radius_getgroups(cmd_rec *cmd) {
      * getgroups() caller.
      */
     if (radius_have_user_info) {
-      radius_addl_group_count++;
+      radius_getgroups_count = radius_addl_group_count + 1;
     }
 
-    return mod_create_data(cmd, (void *) &radius_addl_group_count);
+    return mod_create_data(cmd, (void *) &radius_getgroups_count);
   }
 
   return PR_DECLINED(cmd);

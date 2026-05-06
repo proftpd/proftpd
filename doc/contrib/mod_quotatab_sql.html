@@ -167,6 +167,23 @@ in the table at the time of the update, in order that any race condition
 between a SELECT and an UPDATE query on that information be reduced to
 as small a window as possible.
 
+<p>
+<b>NOTE</b>: It is possible that, due to deleted files, the byte values
+could briefly become negative numbers; this is why the example schema
+uses FLOAT at the data type for these byte values in the tally table.  If
+this is an issue for your database, you might consider using a slightly
+different UPDATE query, such as:
+<pre>
+  SQLNamedQuery update-quota-tally UPDATE "bytes_in_used = MAX((bytes_in_used + %{0}), 0), \
+    bytes_out_used = MAX((bytes_out_used + %{1}), 0), bytes_xfer_used = MAX((bytes_xfer_used + %{2}), 0), \
+    files_in_used = files_in_used + %{3}, files_out_used = files_out_used + %{4}, \
+    files_xfer_used = files_xfer_used + %{5} \
+    WHERE name = '%{6}' AND quota_type = '%{7}'" quotatallies
+</pre>
+By using the MAX() SQL function here, if the value becomes negative for such
+file deletion edge cases, then the zero value will be used, otherwise, the
+more normal positive values will be used.
+
 <pre>
   SQLNamedQuery insert-quota-tally INSERT "%{0}, %{1}, %{2}, %{3}, %{4}, %{5}, %{6}, %{7}" quotatallies
 </pre>
@@ -269,16 +286,17 @@ Here are some example table schema for SQL-based quota tables:
 
 <p>
 <code>mod_quotatab_sql</code> treats any number <b>zero or less</b> for a
-<b>bytes limit</b> as &quot;unlimited&quot;.  Similarly, it treats a value of
-<b>zero</b> for any of the <b>files limit</b>s as &quot;unlimited&quot;.
-&quot;Unlimited&quot; values are ignored, in that any limit that is
-&quot;unlimited&quot; is not used in any of <code>mod_quotatab</code>'s
-calculations. NULL values should be avoided whenever possible.
+<b>bytes limit</b> value as &quot;unlimited&quot;.  Similarly, it treats a
+value of <b>zero</b> for any of the <b>files limit</b>s as
+&quot;unlimited&quot;.  &quot;Unlimited&quot; values are ignored, in that any
+limit that is &quot;unlimited&quot; is not used in any of
+<code>mod_quotatab</code>'s calculations. NULL values should be avoided
+whenever possible.
 
 <p>
 <hr>
 <font size=2><b><i>
-&copy; Copyright 2000-2017 TJ Saunders<br>
+&copy; Copyright 2000-2026 TJ Saunders<br>
  All Rights Reserved<br>
 </i></b></font>
 <hr>

@@ -31,7 +31,12 @@ my $TESTS = {
     test_class => [qw(forking)],
   },
 
-  wrap2_sql_allow_table => {
+  wrap2_sql_allow_table_empty => {
+    order => ++$order,
+    test_class => [qw(forking)],
+  },
+
+  wrap2_sql_allow_table_allow_ip => {
     order => ++$order,
     test_class => [qw(forking)],
   },
@@ -46,12 +51,22 @@ my $TESTS = {
     test_class => [qw(bug forking)],
   },
 
-  wrap2_sql_deny_table_ip_addr => {
+  wrap2_sql_deny_table_ip_addr_all => {
     order => ++$order,
     test_class => [qw(forking)],
   },
 
-  wrap2_sql_deny_table_ipv4_netmask => {
+  wrap2_sql_deny_table_ip_addr_source_ip => {
+    order => ++$order,
+    test_class => [qw(forking)],
+  },
+
+  wrap2_sql_deny_table_ipv4_netmask_all => {
+    order => ++$order,
+    test_class => [qw(forking)],
+  },
+
+  wrap2_sql_deny_table_ipv4_netmask_source_ip => {
     order => ++$order,
     test_class => [qw(forking)],
   },
@@ -66,14 +81,27 @@ my $TESTS = {
     test_class => [qw(bug feature_ipv6 forking)],
   },
 
-  wrap2_sql_deny_table_dns_name => {
+  wrap2_sql_deny_table_dns_name_all => {
     order => ++$order,
     test_class => [qw(forking)],
   },
 
-  wrap2_sql_deny_table_dns_domain_bug3558 => {
+  wrap2_sql_deny_table_dns_name_source_name => {
+    order => ++$order,
+    test_class => [qw(forking)],
+  },
+
+  wrap2_sql_deny_table_dns_domain_all_bug3558 => {
     order => ++$order,
     test_class => [qw(bug forking)],
+  },
+
+  # Note: This test assumes that 127.0.0.1 has an entry in /etc/hosts
+  # for a `.castaglia.org` domain, as part of the test.  As such, it does
+  # not run normally.
+  wrap2_sql_deny_table_dns_domain_source_domain_bug3558 => {
+    order => ++$order,
+    test_class => [qw(bug forking inprogress)],
   },
 
   wrap2_sql_user_tables => {
@@ -209,6 +237,8 @@ EOS
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
+    AuthOrder => 'mod_auth_file.c',
+
     TimeoutIdle => $timeout_idle,
 
     IfModules => {
@@ -383,6 +413,8 @@ EOS
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
+    AuthOrder => 'mod_auth_file.c',
+
     TimeoutIdle => $timeout_idle,
 
     IfModules => {
@@ -564,6 +596,8 @@ EOS
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
+    AuthOrder => 'mod_auth_file.c',
+
     TimeoutIdle => $timeout_idle,
 
     IfModules => {
@@ -651,18 +685,10 @@ EOS
   unlink($log_file);
 }
 
-sub wrap2_sql_allow_table {
+sub wrap2_sql_allow_table_empty {
   my $self = shift;
   my $tmpdir = $self->{tmpdir};
-
-  my $config_file = "$tmpdir/wrap2.conf";
-  my $pid_file = File::Spec->rel2abs("$tmpdir/wrap2.pid");
-  my $scoreboard_file = File::Spec->rel2abs("$tmpdir/wrap2.scoreboard");
-
-  my $log_file = test_get_logfile();
-
-  my $auth_user_file = File::Spec->rel2abs("$tmpdir/wrap2.passwd");
-  my $auth_group_file = File::Spec->rel2abs("$tmpdir/wrap2.group");
+  my $setup = test_setup($tmpdir, 'wrap2');
 
   my $db_file = File::Spec->rel2abs("$tmpdir/wrap2.db");
 
@@ -699,41 +725,19 @@ EOS
   }
 
   my @output = `$cmd`;
-
   unlink($db_script);
-
-  my $user = 'proftpd';
-  my $passwd = 'test';
-  my $group = 'ftpd';
-  my $home_dir = File::Spec->rel2abs($tmpdir);
-  my $uid = 500;
-  my $gid = 500;
-
-  # Make sure that, if we're running as root, that the home directory has
-  # permissions/privs set for the account we create
-  if ($< == 0) {
-    unless (chmod(0755, $home_dir)) {
-      die("Can't set perms on $home_dir to 0755: $!");
-    }
-
-    unless (chown($uid, $gid, $home_dir)) {
-      die("Can't set owner of $home_dir to $uid/$gid: $!");
-    }
-  }
-
-  auth_user_write($auth_user_file, $user, $passwd, $uid, $gid, $home_dir,
-    '/bin/bash');
-  auth_group_write($auth_group_file, $group, $gid, $user);
 
   my $timeout_idle = 30;
 
   my $config = {
-    PidFile => $pid_file,
-    ScoreboardFile => $scoreboard_file,
-    SystemLog => $log_file,
+    PidFile => $setup->{pid_file},
+    ScoreboardFile => $setup->{scoreboard_file},
+    SystemLog => $setup->{log_file},
 
-    AuthUserFile => $auth_user_file,
-    AuthGroupFile => $auth_group_file,
+    AuthUserFile => $setup->{auth_user_file},
+    AuthGroupFile => $setup->{auth_group_file},
+    AuthOrder => 'mod_auth_file.c',
+
     TimeoutIdle => $timeout_idle,
 
     IfModules => {
@@ -746,7 +750,7 @@ EOS
         "SQLConnectInfo $db_file",
         'SQLNamedQuery get-allowed-clients SELECT "allowed FROM ftpallow WHERE name = \'%{0}\'"',
         'SQLNamedQuery get-denied-clients SELECT "denied FROM ftpdeny WHERE name = \'%{0}\'"',
-        "SQLLogFile $log_file",
+        "SQLLogFile $setup->{log_file}",
       ],
 
       'mod_wrap2_sql.c' => {
@@ -756,7 +760,8 @@ EOS
     },
   };
 
-  my ($port, $config_user, $config_group) = config_write($config_file, $config);
+  my ($port, $config_user, $config_group) = config_write($setup->{config_file},
+    $config);
 
   # Open pipes, for use between the parent and child processes.  Specifically,
   # the child will indicate when it's done with its test by writing a message
@@ -773,20 +778,22 @@ EOS
   defined(my $pid = fork()) or die("Can't fork: $!");
   if ($pid) {
     eval {
+      # Allow for server startup
+      sleep(1);
+
       my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
-      my ($resp_code, $resp_msg) = $client->login($user, $passwd);
+      my ($resp_code, $resp_msg) = $client->login($setup->{user}, $setup->{passwd});
 
-      my $expected;
-
-      $expected = 230;
+      my $expected = 230;
       $self->assert($expected == $resp_code,
         test_msg("Expected response code $expected, got $resp_code"));
 
-      $expected = "User $user logged in";
+      $expected = "User $setup->{user} logged in";
       $self->assert($expected eq $resp_msg,
         test_msg("Expected response message '$expected', got '$resp_msg'"));
-    };
 
+      $client->quit();
+    };
     if ($@) {
       $ex = $@;
     }
@@ -795,7 +802,7 @@ EOS
     $wfh->flush();
 
   } else {
-    eval { server_wait($config_file, $rfh, $timeout_idle + 2) };
+    eval { server_wait($setup->{config_file}, $rfh, $timeout_idle + 2) };
     if ($@) {
       warn($@);
       exit 1;
@@ -805,18 +812,39 @@ EOS
   }
 
   # Stop server
-  server_stop($pid_file);
-
+  server_stop($setup->{pid_file});
   $self->assert_child_ok($pid);
 
-  if ($ex) {
-    die($ex);
-  }
+  test_cleanup($setup->{log_file}, $ex);
+}
 
+sub wrap2_sql_allow_table_allow_ip {
+  my $self = shift;
+  my $tmpdir = $self->{tmpdir};
+  my $setup = test_setup($tmpdir, 'wrap2');
+
+  my $db_file = File::Spec->rel2abs("$tmpdir/wrap2.db");
+
+  # Build up sqlite3 command to create allow, deny tables and populate them
+  my $db_script = File::Spec->rel2abs("$tmpdir/wrap2.sql");
+
+  my $fh;
   if (open($fh, "> $db_script")) {
     print $fh <<EOS;
+CREATE TABLE ftpallow (
+  name TEXT,
+  allowed TEXT
+);
+
 INSERT INTO ftpallow (name, allowed) VALUES ('', '127.0.0.1');
+
+CREATE TABLE ftpdeny (
+  name TEXT,
+  denied TEXT
+);
+
 EOS
+
     unless (close($fh)) {
       die("Can't write $db_script: $!");
     }
@@ -825,37 +853,82 @@ EOS
     die("Can't open $db_script: $!");
   }
 
-  $cmd = "sqlite3 $db_file < $db_script";
+  my $cmd = "sqlite3 $db_file < $db_script";
 
   if ($ENV{TEST_VERBOSE}) {
     print STDERR "Executing sqlite3: $cmd\n";
   }
 
-  @output = `$cmd`;
-
+  my @output = `$cmd`;
   unlink($db_script);
 
-  ($port, $config_user, $config_group) = config_write($config_file, $config);
+  my $timeout_idle = 30;
+
+  my $config = {
+    PidFile => $setup->{pid_file},
+    ScoreboardFile => $setup->{scoreboard_file},
+    SystemLog => $setup->{log_file},
+
+    AuthUserFile => $setup->{auth_user_file},
+    AuthGroupFile => $setup->{auth_group_file},
+    AuthOrder => 'mod_auth_file.c',
+
+    TimeoutIdle => $timeout_idle,
+
+    IfModules => {
+      'mod_delay.c' => {
+        DelayEngine => 'off',
+      },
+
+      'mod_sql_sqlite.c' => [
+        'SQLAuthenticate off',
+        "SQLConnectInfo $db_file",
+        'SQLNamedQuery get-allowed-clients SELECT "allowed FROM ftpallow WHERE name = \'%{0}\'"',
+        'SQLNamedQuery get-denied-clients SELECT "denied FROM ftpdeny WHERE name = \'%{0}\'"',
+        "SQLLogFile $setup->{log_file}",
+      ],
+
+      'mod_wrap2_sql.c' => {
+        WrapEngine => 'on',
+        WrapTables => "sql:/get-allowed-clients sql:/get-denied-clients",
+      },
+    },
+  };
+
+  my ($port, $config_user, $config_group) = config_write($setup->{config_file},
+    $config);
+
+  # Open pipes, for use between the parent and child processes.  Specifically,
+  # the child will indicate when it's done with its test by writing a message
+  # to the parent.
+  my ($rfh, $wfh);
+  unless (pipe($rfh, $wfh)) {
+    die("Can't open pipe: $!");
+  }
+
+  my $ex;
 
   # Fork child
   $self->handle_sigchld();
-  defined($pid = fork()) or die("Can't fork: $!");
+  defined(my $pid = fork()) or die("Can't fork: $!");
   if ($pid) {
     eval {
+      # Allow for server startup
+      sleep(1);
+
       my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
-      my ($resp_code, $resp_msg) = $client->login($user, $passwd);
+      my ($resp_code, $resp_msg) = $client->login($setup->{user}, $setup->{passwd});
 
-      my $expected;
-
-      $expected = 230;
+      my $expected = 230;
       $self->assert($expected == $resp_code,
         test_msg("Expected response code $expected, got $resp_code"));
 
-      $expected = "User $user logged in";
+      $expected = "User $setup->{user} logged in";
       $self->assert($expected eq $resp_msg,
         test_msg("Expected response message '$expected', got '$resp_msg'"));
-    };
 
+      $client->quit();
+    };
     if ($@) {
       $ex = $@;
     }
@@ -864,7 +937,7 @@ EOS
     $wfh->flush();
 
   } else {
-    eval { server_wait($config_file, $rfh, $timeout_idle + 2) };
+    eval { server_wait($setup->{config_file}, $rfh, $timeout_idle + 2) };
     if ($@) {
       warn($@);
       exit 1;
@@ -874,39 +947,16 @@ EOS
   }
 
   # Stop server
-  server_stop($pid_file);
-
+  server_stop($setup->{pid_file});
   $self->assert_child_ok($pid);
 
-  if ($ex) {
-    test_append_logfile($log_file, $ex);
-    unlink($log_file);
-
-    die($ex);
-  }
-
-  unlink($log_file);
+  test_cleanup($setup->{log_file}, $ex);
 }
 
 sub wrap2_sql_allow_table_multi_rows_multi_entries {
   my $self = shift;
   my $tmpdir = $self->{tmpdir};
-
-  my $config_file = "$tmpdir/wrap2.conf";
-  my $pid_file = File::Spec->rel2abs("$tmpdir/wrap2.pid");
-  my $scoreboard_file = File::Spec->rel2abs("$tmpdir/wrap2.scoreboard");
-
-  my $log_file = test_get_logfile();
-
-  my $auth_user_file = File::Spec->rel2abs("$tmpdir/wrap2.passwd");
-  my $auth_group_file = File::Spec->rel2abs("$tmpdir/wrap2.group");
-
-  my $user = 'proftpd';
-  my $passwd = 'test';
-  my $group = 'ftpd';
-  my $home_dir = File::Spec->rel2abs($tmpdir);
-  my $uid = 500;
-  my $gid = 500;
+  my $setup = test_setup($tmpdir, 'wrap2');
 
   my $db_file = File::Spec->rel2abs("$tmpdir/wrap2.db");
 
@@ -947,34 +997,19 @@ EOS
   }
 
   my @output = `$cmd`;
-
   unlink($db_script);
-
-  # Make sure that, if we're running as root, that the home directory has
-  # permissions/privs set for the account we create
-  if ($< == 0) {
-    unless (chmod(0755, $home_dir)) {
-      die("Can't set perms on $home_dir to 0755: $!");
-    }
-
-    unless (chown($uid, $gid, $home_dir)) {
-      die("Can't set owner of $home_dir to $uid/$gid: $!");
-    }
-  }
-
-  auth_user_write($auth_user_file, $user, $passwd, $uid, $gid, $home_dir,
-    '/bin/bash');
-  auth_group_write($auth_group_file, $group, $gid, $user);
 
   my $timeout_idle = 30;
 
   my $config = {
-    PidFile => $pid_file,
-    ScoreboardFile => $scoreboard_file,
-    SystemLog => $log_file,
+    PidFile => $setup->{pid_file},
+    ScoreboardFile => $setup->{scoreboard_file},
+    SystemLog => $setup->{log_file},
 
-    AuthUserFile => $auth_user_file,
-    AuthGroupFile => $auth_group_file,
+    AuthUserFile => $setup->{auth_user_file},
+    AuthGroupFile => $setup->{auth_group_file},
+    AuthOrder => 'mod_auth_file.c',
+
     TimeoutIdle => $timeout_idle,
 
     IfModules => {
@@ -985,20 +1020,21 @@ EOS
       'mod_sql_sqlite.c' => [
         'SQLAuthenticate off',
         "SQLConnectInfo $db_file",
-        "SQLLogFile $log_file",
+        "SQLLogFile $setup->{log_file}",
         'SQLNamedQuery get-allowed-clients SELECT "allowed FROM ftpallow WHERE name = \'%{0}\'"',
         'SQLNamedQuery get-denied-clients SELECT "denied FROM ftpdeny WHERE name = \'%{0}\'"',
       ],
 
       'mod_wrap2_sql.c' => {
         WrapEngine => 'on',
-        WrapLog => $log_file,
+        WrapLog => $setup->{log_file},
         WrapTables => "sql:/get-allowed-clients sql:/get-denied-clients",
       },
     },
   };
 
-  my ($port, $config_user, $config_group) = config_write($config_file, $config);
+  my ($port, $config_user, $config_group) = config_write($setup->{config_file},
+    $config);
 
   # Open pipes, for use between the parent and child processes.  Specifically,
   # the child will indicate when it's done with its test by writing a message
@@ -1015,20 +1051,22 @@ EOS
   defined(my $pid = fork()) or die("Can't fork: $!");
   if ($pid) {
     eval {
+      # Allow for server startup
+      sleep(1);
+
       my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
-      my ($resp_code, $resp_msg) = $client->login($user, $passwd);
+      my ($resp_code, $resp_msg) = $client->login($setup->{user}, $setup->{passwd});
 
-      my $expected;
-
-      $expected = 230;
+      my $expected = 230;
       $self->assert($expected == $resp_code,
         test_msg("Expected response code $expected, got $resp_code"));
 
-      $expected = "User $user logged in";
+      $expected = "User $setup->{user} logged in";
       $self->assert($expected eq $resp_msg,
         test_msg("Expected response message '$expected', got '$resp_msg'"));
-    };
 
+      $client->quit();
+    };
     if ($@) {
       $ex = $@;
     }
@@ -1037,7 +1075,7 @@ EOS
     $wfh->flush();
 
   } else {
-    eval { server_wait($config_file, $rfh, $timeout_idle + 2) };
+    eval { server_wait($setup->{config_file}, $rfh, $timeout_idle + 2) };
     if ($@) {
       warn($@);
       exit 1;
@@ -1047,18 +1085,10 @@ EOS
   }
 
   # Stop server
-  server_stop($pid_file);
-
+  server_stop($setup->{pid_file});
   $self->assert_child_ok($pid);
 
-  if ($ex) {
-    test_append_logfile($log_file, $ex);
-    unlink($log_file);
-
-    die($ex);
-  }
-
-  unlink($log_file);
+  test_cleanup($setup->{log_file}, $ex);
 }
 
 sub wrap2_sql_allow_table_all {
@@ -1094,7 +1124,7 @@ CREATE TABLE ftpdeny (
   denied TEXT
 );
 
-INSERT INTO ftpdeny (name, allowed) VALUES ('', 'ALL');
+INSERT INTO ftpdeny (name, denied) VALUES ('', 'ALL');
 EOS
 
     unless (close($fh)) {
@@ -1148,6 +1178,8 @@ EOS
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
+    AuthOrder => 'mod_auth_file.c',
+
     TimeoutIdle => $timeout_idle,
 
     IfModules => {
@@ -1233,18 +1265,10 @@ EOS
   unlink($log_file);
 }
 
-sub wrap2_sql_deny_table_ip_addr {
+sub wrap2_sql_deny_table_ip_addr_all {
   my $self = shift;
   my $tmpdir = $self->{tmpdir};
-
-  my $config_file = "$tmpdir/wrap2.conf";
-  my $pid_file = File::Spec->rel2abs("$tmpdir/wrap2.pid");
-  my $scoreboard_file = File::Spec->rel2abs("$tmpdir/wrap2.scoreboard");
-
-  my $log_file = test_get_logfile();
-
-  my $auth_user_file = File::Spec->rel2abs("$tmpdir/wrap2.passwd");
-  my $auth_group_file = File::Spec->rel2abs("$tmpdir/wrap2.group");
+  my $setup = test_setup($tmpdir, 'wrap2');
 
   my $db_file = File::Spec->rel2abs("$tmpdir/wrap2.db");
 
@@ -1282,41 +1306,19 @@ EOS
   }
 
   my @output = `$cmd`;
-
   unlink($db_script);
-
-  my $user = 'proftpd';
-  my $passwd = 'test';
-  my $group = 'ftpd';
-  my $home_dir = File::Spec->rel2abs($tmpdir);
-  my $uid = 500;
-  my $gid = 500;
-
-  # Make sure that, if we're running as root, that the home directory has
-  # permissions/privs set for the account we create
-  if ($< == 0) {
-    unless (chmod(0755, $home_dir)) {
-      die("Can't set perms on $home_dir to 0755: $!");
-    }
-
-    unless (chown($uid, $gid, $home_dir)) {
-      die("Can't set owner of $home_dir to $uid/$gid: $!");
-    }
-  }
-
-  auth_user_write($auth_user_file, $user, $passwd, $uid, $gid, $home_dir,
-    '/bin/bash');
-  auth_group_write($auth_group_file, $group, $gid, $user);
 
   my $timeout_idle = 30;
 
   my $config = {
-    PidFile => $pid_file,
-    ScoreboardFile => $scoreboard_file,
-    SystemLog => $log_file,
+    PidFile => $setup->{pid_file},
+    ScoreboardFile => $setup->{scoreboard_file},
+    SystemLog => $setup->{log_file},
 
-    AuthUserFile => $auth_user_file,
-    AuthGroupFile => $auth_group_file,
+    AuthUserFile => $setup->{auth_user_file},
+    AuthGroupFile => $setup->{auth_group_file},
+    AuthOrder => 'mod_auth_file.c',
+
     TimeoutIdle => $timeout_idle,
 
     IfModules => {
@@ -1329,18 +1331,19 @@ EOS
         "SQLConnectInfo $db_file",
         'SQLNamedQuery get-allowed-clients SELECT "allowed FROM ftpallow WHERE name = \'%{0}\'"',
         'SQLNamedQuery get-denied-clients SELECT "denied FROM ftpdeny WHERE name = \'%{0}\'"',
-        "SQLLogFile $log_file",
+        "SQLLogFile $setup->{log_file}",
       ],
 
       'mod_wrap2_sql.c' => {
         WrapEngine => 'on',
         WrapTables => "sql:/get-allowed-clients sql:/get-denied-clients",
-        WrapLog => $log_file,
+        WrapLog => $setup->{log_file},
       },
     },
   };
 
-  my ($port, $config_user, $config_group) = config_write($config_file, $config);
+  my ($port, $config_user, $config_group) = config_write($setup->{config_file},
+    $config);
 
   # Open pipes, for use between the parent and child processes.  Specifically,
   # the child will indicate when it's done with its test by writing a message
@@ -1357,8 +1360,11 @@ EOS
   defined(my $pid = fork()) or die("Can't fork: $!");
   if ($pid) {
     eval {
+      # Allow for server startup
+      sleep(1);
+
       my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
-      eval { $client->login($user, $passwd) };
+      eval { $client->login($setup->{user}, $setup->{passwd}) };
       unless ($@) {
         die("Login succeeded unexpectedly");
       }
@@ -1366,9 +1372,7 @@ EOS
       my $resp_code = $client->response_code();
       my $resp_msg = $client->response_msg();
 
-      my $expected;
-
-      $expected = 530;
+      my $expected = 530;
       $self->assert($expected == $resp_code,
         test_msg("Expected response code $expected, got $resp_code"));
 
@@ -1376,7 +1380,6 @@ EOS
       $self->assert($expected eq $resp_msg,
         test_msg("Expected response message '$expected', got '$resp_msg'"));
     };
-
     if ($@) {
       $ex = $@;
     }
@@ -1385,7 +1388,7 @@ EOS
     $wfh->flush();
 
   } else {
-    eval { server_wait($config_file, $rfh, $timeout_idle + 2) };
+    eval { server_wait($setup->{config_file}, $rfh, $timeout_idle + 2) };
     if ($@) {
       warn($@);
       exit 1;
@@ -1395,108 +1398,155 @@ EOS
   }
 
   # Stop server
-  server_stop($pid_file);
-
+  server_stop($setup->{pid_file});
   $self->assert_child_ok($pid);
 
-  if ($ex) {
-    die($ex);
-  }
-
-  if (open($fh, "> $db_script")) {
-    print $fh <<EOS;
-DELETE FROM ftpdeny;
-INSERT INTO ftpdeny (name, denied) VALUES ('', '127.0.0.1');
-EOS
-    unless (close($fh)) {
-      die("Can't write $db_script: $!");
-    }
-
-  } else {
-    die("Can't open $db_script: $!");
-  }
-
-  $cmd = "sqlite3 $db_file < $db_script";
-
-  if ($ENV{TEST_VERBOSE}) {
-    print STDERR "Executing sqlite3: $cmd\n";
-  }
-
-  @output = `$cmd`;
-
-  unlink($db_script);
-
-  ($port, $config_user, $config_group) = config_write($config_file, $config);
-
-  # Fork child
-  $self->handle_sigchld();
-  defined($pid = fork()) or die("Can't fork: $!");
-  if ($pid) {
-    eval {
-      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
-      eval { $client->login($user, $passwd) };
-      unless ($@) {
-        die("Login succeeded unexpectedly");
-      }
-
-      my $resp_code = $client->response_code();
-      my $resp_msg = $client->response_msg();
-
-      my $expected;
-
-      $expected = 530;
-      $self->assert($expected == $resp_code,
-        test_msg("Expected response code $expected, got $resp_code"));
-
-      $expected = "Access denied";
-      $self->assert($expected eq $resp_msg,
-        test_msg("Expected response message '$expected', got '$resp_msg'"));
-    };
-
-    if ($@) {
-      $ex = $@;
-    }
-
-    $wfh->print("done\n");
-    $wfh->flush();
-
-  } else {
-    eval { server_wait($config_file, $rfh, $timeout_idle + 2) };
-    if ($@) {
-      warn($@);
-      exit 1;
-    }
-
-    exit 0;
-  }
-
-  # Stop server
-  server_stop($pid_file);
-
-  $self->assert_child_ok($pid);
-
-  if ($ex) {
-    test_append_logfile($log_file, $ex);
-    unlink($log_file);
-
-    die($ex);
-  }
-
-  unlink($log_file);
+  test_cleanup($setup->{log_file}, $ex);
 }
 
-sub wrap2_sql_deny_table_ipv4_netmask {
+sub wrap2_sql_deny_table_ip_addr_source_ip {
   my $self = shift;
   my $tmpdir = $self->{tmpdir};
+  my $setup = test_setup($tmpdir, 'wrap2');
 
-  my $config_file = "$tmpdir/wrap2.conf";
-  my $pid_file = File::Spec->rel2abs("$tmpdir/wrap2.pid");
-  my $scoreboard_file = File::Spec->rel2abs("$tmpdir/wrap2.scoreboard");
+  my $db_file = File::Spec->rel2abs("$tmpdir/wrap2.db");
 
-  my $log_file = test_get_logfile();
+  # Build up sqlite3 command to create allow, deny tables and populate them
+  my $db_script = File::Spec->rel2abs("$tmpdir/wrap2.sql");
 
-  my $auth_user_file = File::Spec->rel2abs("$tmpdir/wrap2.passwd");
-  my $auth_group_file = File::Spec->rel2abs("$tmpdir/wrap2.group");
+  my $fh;
+  if (open($fh, "> $db_script")) {
+    print $fh <<EOS;
+CREATE TABLE ftpallow (
+  name TEXT,
+  allowed TEXT
+);
+
+CREATE TABLE ftpdeny (
+  name TEXT,
+  denied TEXT
+);
+
+INSERT INTO ftpdeny (name, denied) VALUES ('', '127.0.0.1');
+EOS
+
+    unless (close($fh)) {
+      die("Can't write $db_script: $!");
+    }
+
+  } else {
+    die("Can't open $db_script: $!");
+  }
+
+  my $cmd = "sqlite3 $db_file < $db_script";
+
+  if ($ENV{TEST_VERBOSE}) {
+    print STDERR "Executing sqlite3: $cmd\n";
+  }
+
+  my @output = `$cmd`;
+  unlink($db_script);
+
+  my $timeout_idle = 30;
+
+  my $config = {
+    PidFile => $setup->{pid_file},
+    ScoreboardFile => $setup->{scoreboard_file},
+    SystemLog => $setup->{log_file},
+
+    AuthUserFile => $setup->{auth_user_file},
+    AuthGroupFile => $setup->{auth_group_file},
+    AuthOrder => 'mod_auth_file.c',
+
+    TimeoutIdle => $timeout_idle,
+
+    IfModules => {
+      'mod_delay.c' => {
+        DelayEngine => 'off',
+      },
+
+      'mod_sql_sqlite.c' => [
+        "SQLAuthenticate off",
+        "SQLConnectInfo $db_file",
+        'SQLNamedQuery get-allowed-clients SELECT "allowed FROM ftpallow WHERE name = \'%{0}\'"',
+        'SQLNamedQuery get-denied-clients SELECT "denied FROM ftpdeny WHERE name = \'%{0}\'"',
+        "SQLLogFile $setup->{log_file}",
+      ],
+
+      'mod_wrap2_sql.c' => {
+        WrapEngine => 'on',
+        WrapTables => "sql:/get-allowed-clients sql:/get-denied-clients",
+        WrapLog => $setup->{log_file},
+      },
+    },
+  };
+
+  my ($port, $config_user, $config_group) = config_write($setup->{config_file},
+    $config);
+
+  # Open pipes, for use between the parent and child processes.  Specifically,
+  # the child will indicate when it's done with its test by writing a message
+  # to the parent.
+  my ($rfh, $wfh);
+  unless (pipe($rfh, $wfh)) {
+    die("Can't open pipe: $!");
+  }
+
+  my $ex;
+
+  # Fork child
+  $self->handle_sigchld();
+  defined(my $pid = fork()) or die("Can't fork: $!");
+  if ($pid) {
+    eval {
+      # Allow for server startup
+      sleep(1);
+
+      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
+      eval { $client->login($setup->{user}, $setup->{passwd}) };
+      unless ($@) {
+        die("Login succeeded unexpectedly");
+      }
+
+      my $resp_code = $client->response_code();
+      my $resp_msg = $client->response_msg();
+
+      my $expected = 530;
+      $self->assert($expected == $resp_code,
+        test_msg("Expected response code $expected, got $resp_code"));
+
+      $expected = "Access denied";
+      $self->assert($expected eq $resp_msg,
+        test_msg("Expected response message '$expected', got '$resp_msg'"));
+    };
+    if ($@) {
+      $ex = $@;
+    }
+
+    $wfh->print("done\n");
+    $wfh->flush();
+
+  } else {
+    eval { server_wait($setup->{config_file}, $rfh, $timeout_idle + 2) };
+    if ($@) {
+      warn($@);
+      exit 1;
+    }
+
+    exit 0;
+  }
+
+  # Stop server
+  server_stop($setup->{pid_file});
+  $self->assert_child_ok($pid);
+
+  test_cleanup($setup->{log_file}, $ex);
+}
+
+sub wrap2_sql_deny_table_ipv4_netmask_all {
+  my $self = shift;
+  my $tmpdir = $self->{tmpdir};
+  my $setup = test_setup($tmpdir, 'wrap2');
 
   my $db_file = File::Spec->rel2abs("$tmpdir/wrap2.db");
 
@@ -1534,41 +1584,19 @@ EOS
   }
 
   my @output = `$cmd`;
-
   unlink($db_script);
-
-  my $user = 'proftpd';
-  my $passwd = 'test';
-  my $group = 'ftpd';
-  my $home_dir = File::Spec->rel2abs($tmpdir);
-  my $uid = 500;
-  my $gid = 500;
-
-  # Make sure that, if we're running as root, that the home directory has
-  # permissions/privs set for the account we create
-  if ($< == 0) {
-    unless (chmod(0755, $home_dir)) {
-      die("Can't set perms on $home_dir to 0755: $!");
-    }
-
-    unless (chown($uid, $gid, $home_dir)) {
-      die("Can't set owner of $home_dir to $uid/$gid: $!");
-    }
-  }
-
-  auth_user_write($auth_user_file, $user, $passwd, $uid, $gid, $home_dir,
-    '/bin/bash');
-  auth_group_write($auth_group_file, $group, $gid, $user);
 
   my $timeout_idle = 30;
 
   my $config = {
-    PidFile => $pid_file,
-    ScoreboardFile => $scoreboard_file,
-    SystemLog => $log_file,
+    PidFile => $setup->{pid_file},
+    ScoreboardFile => $setup->{scoreboard_file},
+    SystemLog => $setup->{log_file},
 
-    AuthUserFile => $auth_user_file,
-    AuthGroupFile => $auth_group_file,
+    AuthUserFile => $setup->{auth_user_file},
+    AuthGroupFile => $setup->{auth_group_file},
+    AuthOrder => 'mod_auth_file.c',
+
     TimeoutIdle => $timeout_idle,
 
     IfModules => {
@@ -1581,18 +1609,19 @@ EOS
         "SQLConnectInfo $db_file",
         'SQLNamedQuery get-allowed-clients SELECT "allowed FROM ftpallow WHERE name = \'%{0}\'"',
         'SQLNamedQuery get-denied-clients SELECT "denied FROM ftpdeny WHERE name = \'%{0}\'"',
-        "SQLLogFile $log_file",
+        "SQLLogFile $setup->{log_file}",
       ],
 
       'mod_wrap2_sql.c' => {
         WrapEngine => 'on',
         WrapTables => "sql:/get-allowed-clients sql:/get-denied-clients",
-        WrapLog => $log_file,
+        WrapLog => $setup->{log_file},
       },
     },
   };
 
-  my ($port, $config_user, $config_group) = config_write($config_file, $config);
+  my ($port, $config_user, $config_group) = config_write($setup->{config_file},
+    $config);
 
   # Open pipes, for use between the parent and child processes.  Specifically,
   # the child will indicate when it's done with its test by writing a message
@@ -1609,8 +1638,11 @@ EOS
   defined(my $pid = fork()) or die("Can't fork: $!");
   if ($pid) {
     eval {
+      # Allow for server startup
+      sleep(1);
+
       my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
-      eval { $client->login($user, $passwd) };
+      eval { $client->login($setup->{user}, $setup->{passwd}) };
       unless ($@) {
         die("Login succeeded unexpectedly");
       }
@@ -1618,9 +1650,7 @@ EOS
       my $resp_code = $client->response_code();
       my $resp_msg = $client->response_msg();
 
-      my $expected;
-
-      $expected = 530;
+      my $expected = 530;
       $self->assert($expected == $resp_code,
         test_msg("Expected response code $expected, got $resp_code"));
 
@@ -1628,7 +1658,6 @@ EOS
       $self->assert($expected eq $resp_msg,
         test_msg("Expected response message '$expected', got '$resp_msg'"));
     };
-
     if ($@) {
       $ex = $@;
     }
@@ -1637,7 +1666,7 @@ EOS
     $wfh->flush();
 
   } else {
-    eval { server_wait($config_file, $rfh, $timeout_idle + 2) };
+    eval { server_wait($setup->{config_file}, $rfh, $timeout_idle + 2) };
     if ($@) {
       warn($@);
       exit 1;
@@ -1647,19 +1676,38 @@ EOS
   }
 
   # Stop server
-  server_stop($pid_file);
-
+  server_stop($setup->{pid_file});
   $self->assert_child_ok($pid);
 
-  if ($ex) {
-    die($ex);
-  }
+  test_cleanup($setup->{log_file}, $ex);
+}
 
+sub wrap2_sql_deny_table_ipv4_netmask_source_ip {
+  my $self = shift;
+  my $tmpdir = $self->{tmpdir};
+  my $setup = test_setup($tmpdir, 'wrap2');
+
+  my $db_file = File::Spec->rel2abs("$tmpdir/wrap2.db");
+
+  # Build up sqlite3 command to create allow, deny tables and populate them
+  my $db_script = File::Spec->rel2abs("$tmpdir/wrap2.sql");
+
+  my $fh;
   if (open($fh, "> $db_script")) {
     print $fh <<EOS;
-DELETE FROM ftpdeny;
+CREATE TABLE ftpallow (
+  name TEXT,
+  allowed TEXT
+);
+
+CREATE TABLE ftpdeny (
+  name TEXT,
+  denied TEXT
+);
+
 INSERT INTO ftpdeny (name, denied) VALUES ('', '127.0.0.0/255.255.255.0');
 EOS
+
     unless (close($fh)) {
       die("Can't write $db_script: $!");
     }
@@ -1668,25 +1716,72 @@ EOS
     die("Can't open $db_script: $!");
   }
 
-  $cmd = "sqlite3 $db_file < $db_script";
+  my $cmd = "sqlite3 $db_file < $db_script";
 
   if ($ENV{TEST_VERBOSE}) {
     print STDERR "Executing sqlite3: $cmd\n";
   }
 
-  @output = `$cmd`;
-
+  my @output = `$cmd`;
   unlink($db_script);
 
-  ($port, $config_user, $config_group) = config_write($config_file, $config);
+  my $timeout_idle = 30;
+
+  my $config = {
+    PidFile => $setup->{pid_file},
+    ScoreboardFile => $setup->{scoreboard_file},
+    SystemLog => $setup->{log_file},
+
+    AuthUserFile => $setup->{auth_user_file},
+    AuthGroupFile => $setup->{auth_group_file},
+    AuthOrder => 'mod_auth_file.c',
+
+    TimeoutIdle => $timeout_idle,
+
+    IfModules => {
+      'mod_delay.c' => {
+        DelayEngine => 'off',
+      },
+
+      'mod_sql_sqlite.c' => [
+        "SQLAuthenticate off",
+        "SQLConnectInfo $db_file",
+        'SQLNamedQuery get-allowed-clients SELECT "allowed FROM ftpallow WHERE name = \'%{0}\'"',
+        'SQLNamedQuery get-denied-clients SELECT "denied FROM ftpdeny WHERE name = \'%{0}\'"',
+        "SQLLogFile $setup->{log_file}",
+      ],
+
+      'mod_wrap2_sql.c' => {
+        WrapEngine => 'on',
+        WrapTables => "sql:/get-allowed-clients sql:/get-denied-clients",
+        WrapLog => $setup->{log_file},
+      },
+    },
+  };
+
+  my ($port, $config_user, $config_group) = config_write($setup->{config_file},
+    $config);
+
+  # Open pipes, for use between the parent and child processes.  Specifically,
+  # the child will indicate when it's done with its test by writing a message
+  # to the parent.
+  my ($rfh, $wfh);
+  unless (pipe($rfh, $wfh)) {
+    die("Can't open pipe: $!");
+  }
+
+  my $ex;
 
   # Fork child
   $self->handle_sigchld();
-  defined($pid = fork()) or die("Can't fork: $!");
+  defined(my $pid = fork()) or die("Can't fork: $!");
   if ($pid) {
     eval {
+      # Allow for server startup
+      sleep(1);
+
       my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
-      eval { $client->login($user, $passwd) };
+      eval { $client->login($setup->{user}, $setup->{passwd}) };
       unless ($@) {
         die("Login succeeded unexpectedly");
       }
@@ -1694,9 +1789,7 @@ EOS
       my $resp_code = $client->response_code();
       my $resp_msg = $client->response_msg();
 
-      my $expected;
-
-      $expected = 530;
+      my $expected = 530;
       $self->assert($expected == $resp_code,
         test_msg("Expected response code $expected, got $resp_code"));
 
@@ -1704,7 +1797,6 @@ EOS
       $self->assert($expected eq $resp_msg,
         test_msg("Expected response message '$expected', got '$resp_msg'"));
     };
-
     if ($@) {
       $ex = $@;
     }
@@ -1713,7 +1805,7 @@ EOS
     $wfh->flush();
 
   } else {
-    eval { server_wait($config_file, $rfh, $timeout_idle + 2) };
+    eval { server_wait($setup->{config_file}, $rfh, $timeout_idle + 2) };
     if ($@) {
       warn($@);
       exit 1;
@@ -1723,32 +1815,16 @@ EOS
   }
 
   # Stop server
-  server_stop($pid_file);
-
+  server_stop($setup->{pid_file});
   $self->assert_child_ok($pid);
 
-  if ($ex) {
-    test_append_logfile($log_file, $ex);
-    unlink($log_file);
-
-    die($ex);
-  }
-
-  unlink($log_file);
+  test_cleanup($setup->{log_file}, $ex);
 }
 
 sub wrap2_sql_deny_table_ipv4mappedv6_netmask {
   my $self = shift;
   my $tmpdir = $self->{tmpdir};
-
-  my $config_file = "$tmpdir/wrap2.conf";
-  my $pid_file = File::Spec->rel2abs("$tmpdir/wrap2.pid");
-  my $scoreboard_file = File::Spec->rel2abs("$tmpdir/wrap2.scoreboard");
-
-  my $log_file = test_get_logfile();
-
-  my $auth_user_file = File::Spec->rel2abs("$tmpdir/wrap2.passwd");
-  my $auth_group_file = File::Spec->rel2abs("$tmpdir/wrap2.group");
+  my $setup = test_setup($tmpdir, 'wrap2');
 
   my $db_file = File::Spec->rel2abs("$tmpdir/wrap2.db");
 
@@ -1768,7 +1844,7 @@ CREATE TABLE ftpdeny (
   denied TEXT
 );
 
-INSERT INTO ftpdeny (name, denied) VALUES ('', 'ALL');
+INSERT INTO ftpdeny (name, denied) VALUES ('', '127.0.0.0/255.255.255.0');
 EOS
 
     unless (close($fh)) {
@@ -1786,43 +1862,20 @@ EOS
   }
 
   my @output = `$cmd`;
-
   unlink($db_script);
-
-  my $user = 'proftpd';
-  my $passwd = 'test';
-  my $group = 'ftpd';
-  my $home_dir = File::Spec->rel2abs($tmpdir);
-  my $uid = 500;
-  my $gid = 500;
-
-  # Make sure that, if we're running as root, that the home directory has
-  # permissions/privs set for the account we create
-  if ($< == 0) {
-    unless (chmod(0755, $home_dir)) {
-      die("Can't set perms on $home_dir to 0755: $!");
-    }
-
-    unless (chown($uid, $gid, $home_dir)) {
-      die("Can't set owner of $home_dir to $uid/$gid: $!");
-    }
-  }
-
-  auth_user_write($auth_user_file, $user, $passwd, $uid, $gid, $home_dir,
-    '/bin/bash');
-  auth_group_write($auth_group_file, $group, $gid, $user);
 
   my $timeout_idle = 30;
 
   my $config = {
-    PidFile => $pid_file,
-    ScoreboardFile => $scoreboard_file,
-    SystemLog => $log_file,
+    PidFile => $setup->{pid_file},
+    ScoreboardFile => $setup->{scoreboard_file},
+    SystemLog => $setup->{log_file},
 
-    AuthUserFile => $auth_user_file,
-    AuthGroupFile => $auth_group_file,
+    AuthUserFile => $setup->{auth_user_file},
+    AuthGroupFile => $setup->{auth_group_file},
+    AuthOrder => 'mod_auth_file.c',
+
     TimeoutIdle => $timeout_idle,
-
     UseIPv6 => 'on',
 
     IfModules => {
@@ -1835,18 +1888,19 @@ EOS
         "SQLConnectInfo $db_file",
         'SQLNamedQuery get-allowed-clients SELECT "allowed FROM ftpallow WHERE name = \'%{0}\'"',
         'SQLNamedQuery get-denied-clients SELECT "denied FROM ftpdeny WHERE name = \'%{0}\'"',
-        "SQLLogFile $log_file",
+        "SQLLogFile $setup->{log_file}",
       ],
 
       'mod_wrap2_sql.c' => {
         WrapEngine => 'on',
         WrapTables => "sql:/get-allowed-clients sql:/get-denied-clients",
-        WrapLog => $log_file,
+        WrapLog => $setup->{log_file},
       },
     },
   };
 
-  my ($port, $config_user, $config_group) = config_write($config_file, $config);
+  my ($port, $config_user, $config_group) = config_write($setup->{config_file},
+    $config);
 
   # Open pipes, for use between the parent and child processes.  Specifically,
   # the child will indicate when it's done with its test by writing a message
@@ -1864,7 +1918,7 @@ EOS
   if ($pid) {
     eval {
       my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
-      eval { $client->login($user, $passwd) };
+      eval { $client->login($setup->{user}, $setup->{passwd}) };
       unless ($@) {
         die("Login succeeded unexpectedly");
       }
@@ -1872,9 +1926,7 @@ EOS
       my $resp_code = $client->response_code();
       my $resp_msg = $client->response_msg();
 
-      my $expected;
-
-      $expected = 530;
+      my $expected = 530;
       $self->assert($expected == $resp_code,
         test_msg("Expected response code $expected, got $resp_code"));
 
@@ -1882,7 +1934,6 @@ EOS
       $self->assert($expected eq $resp_msg,
         test_msg("Expected response message '$expected', got '$resp_msg'"));
     };
-
     if ($@) {
       $ex = $@;
     }
@@ -1891,7 +1942,7 @@ EOS
     $wfh->flush();
 
   } else {
-    eval { server_wait($config_file, $rfh, $timeout_idle + 2) };
+    eval { server_wait($setup->{config_file}, $rfh, $timeout_idle + 2) };
     if ($@) {
       warn($@);
       exit 1;
@@ -1901,109 +1952,16 @@ EOS
   }
 
   # Stop server
-  server_stop($pid_file);
-
+  server_stop($setup->{pid_file});
   $self->assert_child_ok($pid);
 
-  if ($ex) {
-    die($ex);
-  }
-
-  if (open($fh, "> $db_script")) {
-    print $fh <<EOS;
-DELETE FROM ftpdeny;
-INSERT INTO ftpdeny (name, denied) VALUES ('', '127.0.0.0/255.255.255.0');
-EOS
-    unless (close($fh)) {
-      die("Can't write $db_script: $!");
-    }
-
-  } else {
-    die("Can't open $db_script: $!");
-  }
-
-  $cmd = "sqlite3 $db_file < $db_script";
-
-  if ($ENV{TEST_VERBOSE}) {
-    print STDERR "Executing sqlite3: $cmd\n";
-  }
-
-  @output = `$cmd`;
-
-  unlink($db_script);
-
-  ($port, $config_user, $config_group) = config_write($config_file, $config);
-
-  # Fork child
-  $self->handle_sigchld();
-  defined($pid = fork()) or die("Can't fork: $!");
-  if ($pid) {
-    eval {
-      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
-
-      eval { $client->login($user, $passwd) };
-      unless ($@) {
-        die("Login succeeded unexpectedly");
-      }
-
-      my $resp_code = $client->response_code();
-      my $resp_msg = $client->response_msg();
-
-      my $expected;
-
-      $expected = 530;
-      $self->assert($expected == $resp_code,
-        test_msg("Expected response code $expected, got $resp_code"));
-
-      $expected = "Access denied";
-      $self->assert($expected eq $resp_msg,
-        test_msg("Expected response message '$expected', got '$resp_msg'"));
-    };
-
-    if ($@) {
-      $ex = $@;
-    }
-
-    $wfh->print("done\n");
-    $wfh->flush();
-
-  } else {
-    eval { server_wait($config_file, $rfh, $timeout_idle + 2) };
-    if ($@) {
-      warn($@);
-      exit 1;
-    }
-
-    exit 0;
-  }
-
-  # Stop server
-  server_stop($pid_file);
-
-  $self->assert_child_ok($pid);
-
-  if ($ex) {
-    test_append_logfile($log_file, $ex);
-    unlink($log_file);
-
-    die($ex);
-  }
-
-  unlink($log_file);
+  test_cleanup($setup->{log_file}, $ex);
 }
 
 sub wrap2_sql_deny_table_ipv6_netmask_bug3606 {
   my $self = shift;
   my $tmpdir = $self->{tmpdir};
-
-  my $config_file = "$tmpdir/wrap2.conf";
-  my $pid_file = File::Spec->rel2abs("$tmpdir/wrap2.pid");
-  my $scoreboard_file = File::Spec->rel2abs("$tmpdir/wrap2.scoreboard");
-
-  my $log_file = test_get_logfile();
-
-  my $auth_user_file = File::Spec->rel2abs("$tmpdir/wrap2.passwd");
-  my $auth_group_file = File::Spec->rel2abs("$tmpdir/wrap2.group");
+  my $setup = test_setup($tmpdir, 'wrap2');
 
   my $db_file = File::Spec->rel2abs("$tmpdir/wrap2.db");
 
@@ -2023,7 +1981,7 @@ CREATE TABLE ftpdeny (
   denied TEXT
 );
 
-INSERT INTO ftpdeny (name, denied) VALUES ('', 'ALL');
+INSERT INTO ftpdeny (name, denied) VALUES ('', '[::1]/32');
 EOS
 
     unless (close($fh)) {
@@ -2041,43 +1999,20 @@ EOS
   }
 
   my @output = `$cmd`;
-
   unlink($db_script);
-
-  my $user = 'proftpd';
-  my $passwd = 'test';
-  my $group = 'ftpd';
-  my $home_dir = File::Spec->rel2abs($tmpdir);
-  my $uid = 500;
-  my $gid = 500;
-
-  # Make sure that, if we're running as root, that the home directory has
-  # permissions/privs set for the account we create
-  if ($< == 0) {
-    unless (chmod(0755, $home_dir)) {
-      die("Can't set perms on $home_dir to 0755: $!");
-    }
-
-    unless (chown($uid, $gid, $home_dir)) {
-      die("Can't set owner of $home_dir to $uid/$gid: $!");
-    }
-  }
-
-  auth_user_write($auth_user_file, $user, $passwd, $uid, $gid, $home_dir,
-    '/bin/bash');
-  auth_group_write($auth_group_file, $group, $gid, $user);
 
   my $timeout_idle = 30;
 
   my $config = {
-    PidFile => $pid_file,
-    ScoreboardFile => $scoreboard_file,
-    SystemLog => $log_file,
+    PidFile => $setup->{pid_file},
+    ScoreboardFile => $setup->{scoreboard_file},
+    SystemLog => $setup->{log_file},
 
-    AuthUserFile => $auth_user_file,
-    AuthGroupFile => $auth_group_file,
+    AuthUserFile => $setup->{auth_user_file},
+    AuthGroupFile => $setup->{auth_group_file},
+    AuthOrder => 'mod_auth_file.c',
+
     TimeoutIdle => $timeout_idle,
-
     DefaultAddress => '::1',
     UseIPv6 => 'on',
 
@@ -2091,18 +2026,19 @@ EOS
         "SQLConnectInfo $db_file",
         'SQLNamedQuery get-allowed-clients SELECT "allowed FROM ftpallow WHERE name = \'%{0}\'"',
         'SQLNamedQuery get-denied-clients SELECT "denied FROM ftpdeny WHERE name = \'%{0}\'"',
-        "SQLLogFile $log_file",
+        "SQLLogFile $setup->{log_file}",
       ],
 
       'mod_wrap2_sql.c' => {
         WrapEngine => 'on',
         WrapTables => "sql:/get-allowed-clients sql:/get-denied-clients",
-        WrapLog => $log_file,
+        WrapLog => $setup->{log_file},
       },
     },
   };
 
-  my ($port, $config_user, $config_group) = config_write($config_file, $config);
+  my ($port, $config_user, $config_group) = config_write($setup->{config_file},
+    $config);
 
   # Open pipes, for use between the parent and child processes.  Specifically,
   # the child will indicate when it's done with its test by writing a message
@@ -2135,19 +2071,19 @@ EOS
       my $banner = <$client>;
 
       # Send the USER command
-      my $cmd = "USER $user\r\n";
+      my $cmd = "USER $setup->{user}\r\n";
       $client->print($cmd);
       $client->flush();
 
       # Read USER response
       my $resp = <$client>;
 
-      my $expected = "331 Password required for $user\r\n";
+      my $expected = "331 Password required for $setup->{user}\r\n";
       $self->assert($expected eq $resp,
-        test_msg("Expected '$expected', got '$resp'"));
+        test_msg("Expected response '$expected', got '$resp'"));
 
       # Send the PASS command
-      $cmd = "PASS $passwd\r\n";
+      $cmd = "PASS $setup->{passwd}\r\n";
       $client->print($cmd);
       $client->flush();
 
@@ -2156,11 +2092,10 @@ EOS
 
       $expected = "530 Access denied\r\n";
       $self->assert($expected eq $resp,
-        test_msg("Expected '$expected', got '$resp'"));
+        test_msg("Expected response '$expected', got '$resp'"));
 
       $client->close();
     };
-
     if ($@) {
       $ex = $@;
     }
@@ -2169,7 +2104,7 @@ EOS
     $wfh->flush();
 
   } else {
-    eval { server_wait($config_file, $rfh, $timeout_idle + 2) };
+    eval { server_wait($setup->{config_file}, $rfh, $timeout_idle + 2) };
     if ($@) {
       warn($@);
       exit 1;
@@ -2179,130 +2114,16 @@ EOS
   }
 
   # Stop server
-  server_stop($pid_file);
-
+  server_stop($setup->{pid_file});
   $self->assert_child_ok($pid);
 
-  if ($ex) {
-    die($ex);
-  }
-
-  if (open($fh, "> $db_script")) {
-    print $fh <<EOS;
-DELETE FROM ftpdeny;
-INSERT INTO ftpdeny (name, denied) VALUES ('', '[::1]/32');
-EOS
-    unless (close($fh)) {
-      die("Can't write $db_script: $!");
-    }
-
-  } else {
-    die("Can't open $db_script: $!");
-  }
-
-  $cmd = "sqlite3 $db_file < $db_script";
-
-  if ($ENV{TEST_VERBOSE}) {
-    print STDERR "Executing sqlite3: $cmd\n";
-  }
-
-  @output = `$cmd`;
-
-  unlink($db_script);
-
-  ($port, $config_user, $config_group) = config_write($config_file, $config);
-
-  # Fork child
-  $self->handle_sigchld();
-  defined($pid = fork()) or die("Can't fork: $!");
-  if ($pid) {
-    eval {
-      sleep(2);
-
-      my $client = IO::Socket::INET6->new(
-        PeerAddr => '::1',
-        PeerPort => $port,
-        Proto => 'tcp',
-        Timeout => 5,
-      );
-      unless ($client) {
-        die("Can't connect to ::1: $!");
-      }
-
-      # Read the banner
-      my $banner = <$client>;
-
-      # Send the USER command
-      my $cmd = "USER $user\r\n";
-      $client->print($cmd);
-      $client->flush();
-
-      # Read USER response
-      my $resp = <$client>;
-
-      my $expected = "331 Password required for $user\r\n";
-      $self->assert($expected eq $resp,
-        test_msg("Expected '$expected', got '$resp'"));
-
-      # Send the PASS command
-      $cmd = "PASS $passwd\r\n";
-      $client->print($cmd);
-      $client->flush();
-
-      # Read PASS response
-      $resp = <$client>;
-
-      $expected = "530 Access denied\r\n";
-      $self->assert($expected eq $resp,
-        test_msg("Expected '$expected', got '$resp'"));
-
-      $client->close();
-    };
-
-    if ($@) {
-      $ex = $@;
-    }
-
-    $wfh->print("done\n");
-    $wfh->flush();
-
-  } else {
-    eval { server_wait($config_file, $rfh, $timeout_idle + 2) };
-    if ($@) {
-      warn($@);
-      exit 1;
-    }
-
-    exit 0;
-  }
-
-  # Stop server
-  server_stop($pid_file);
-
-  $self->assert_child_ok($pid);
-
-  if ($ex) {
-    test_append_logfile($log_file, $ex);
-    unlink($log_file);
-
-    die($ex);
-  }
-
-  unlink($log_file);
+  test_cleanup($setup->{log_file}, $ex);
 }
 
-sub wrap2_sql_deny_table_dns_name {
+sub wrap2_sql_deny_table_dns_name_all {
   my $self = shift;
   my $tmpdir = $self->{tmpdir};
-
-  my $config_file = "$tmpdir/wrap2.conf";
-  my $pid_file = File::Spec->rel2abs("$tmpdir/wrap2.pid");
-  my $scoreboard_file = File::Spec->rel2abs("$tmpdir/wrap2.scoreboard");
-
-  my $log_file = test_get_logfile();
-
-  my $auth_user_file = File::Spec->rel2abs("$tmpdir/wrap2.passwd");
-  my $auth_group_file = File::Spec->rel2abs("$tmpdir/wrap2.group");
+  my $setup = test_setup($tmpdir, 'wrap2');
 
   my $db_file = File::Spec->rel2abs("$tmpdir/wrap2.db");
 
@@ -2340,41 +2161,19 @@ EOS
   }
 
   my @output = `$cmd`;
-
   unlink($db_script);
-
-  my $user = 'proftpd';
-  my $passwd = 'test';
-  my $group = 'ftpd';
-  my $home_dir = File::Spec->rel2abs($tmpdir);
-  my $uid = 500;
-  my $gid = 500;
-
-  # Make sure that, if we're running as root, that the home directory has
-  # permissions/privs set for the account we create
-  if ($< == 0) {
-    unless (chmod(0755, $home_dir)) {
-      die("Can't set perms on $home_dir to 0755: $!");
-    }
-
-    unless (chown($uid, $gid, $home_dir)) {
-      die("Can't set owner of $home_dir to $uid/$gid: $!");
-    }
-  }
-
-  auth_user_write($auth_user_file, $user, $passwd, $uid, $gid, $home_dir,
-    '/bin/bash');
-  auth_group_write($auth_group_file, $group, $gid, $user);
 
   my $timeout_idle = 30;
 
   my $config = {
-    PidFile => $pid_file,
-    ScoreboardFile => $scoreboard_file,
-    SystemLog => $log_file,
+    PidFile => $setup->{pid_file},
+    ScoreboardFile => $setup->{scoreboard_file},
+    SystemLog => $setup->{log_file},
 
-    AuthUserFile => $auth_user_file,
-    AuthGroupFile => $auth_group_file,
+    AuthUserFile => $setup->{auth_user_file},
+    AuthGroupFile => $setup->{auth_group_file},
+    AuthOrder => 'mod_auth_file.c',
+
     TimeoutIdle => $timeout_idle,
     UseReverseDNS => 'on',
 
@@ -2388,18 +2187,19 @@ EOS
         "SQLConnectInfo $db_file",
         'SQLNamedQuery get-allowed-clients SELECT "allowed FROM ftpallow WHERE name = \'%{0}\'"',
         'SQLNamedQuery get-denied-clients SELECT "denied FROM ftpdeny WHERE name = \'%{0}\'"',
-        "SQLLogFile $log_file",
+        "SQLLogFile $setup->{log_file}",
       ],
 
       'mod_wrap2_sql.c' => {
         WrapEngine => 'on',
         WrapTables => "sql:/get-allowed-clients sql:/get-denied-clients",
-        WrapLog => $log_file,
+        WrapLog => $setup->{log_file},
       },
     },
   };
 
-  my ($port, $config_user, $config_group) = config_write($config_file, $config);
+  my ($port, $config_user, $config_group) = config_write($setup->{config_file},
+    $config);
 
   # Open pipes, for use between the parent and child processes.  Specifically,
   # the child will indicate when it's done with its test by writing a message
@@ -2416,8 +2216,11 @@ EOS
   defined(my $pid = fork()) or die("Can't fork: $!");
   if ($pid) {
     eval {
+      # Allow for server startup
+      sleep(1);
+
       my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
-      eval { $client->login($user, $passwd) };
+      eval { $client->login($setup->{user}, $setup->{passwd}) };
       unless ($@) {
         die("Login succeeded unexpectedly");
       }
@@ -2425,9 +2228,7 @@ EOS
       my $resp_code = $client->response_code();
       my $resp_msg = $client->response_msg();
 
-      my $expected;
-
-      $expected = 530;
+      my $expected = 530;
       $self->assert($expected == $resp_code,
         test_msg("Expected response code $expected, got $resp_code"));
 
@@ -2435,7 +2236,6 @@ EOS
       $self->assert($expected eq $resp_msg,
         test_msg("Expected response message '$expected', got '$resp_msg'"));
     };
-
     if ($@) {
       $ex = $@;
     }
@@ -2444,7 +2244,7 @@ EOS
     $wfh->flush();
 
   } else {
-    eval { server_wait($config_file, $rfh, $timeout_idle + 2) };
+    eval { server_wait($setup->{config_file}, $rfh, $timeout_idle + 2) };
     if ($@) {
       warn($@);
       exit 1;
@@ -2454,19 +2254,38 @@ EOS
   }
 
   # Stop server
-  server_stop($pid_file);
-
+  server_stop($setup->{pid_file});
   $self->assert_child_ok($pid);
 
-  if ($ex) {
-    die($ex);
-  }
+  test_cleanup($setup->{log_file}, $ex);
+}
 
+sub wrap2_sql_deny_table_dns_name_source_name {
+  my $self = shift;
+  my $tmpdir = $self->{tmpdir};
+  my $setup = test_setup($tmpdir, 'wrap2');
+
+  my $db_file = File::Spec->rel2abs("$tmpdir/wrap2.db");
+
+  # Build up sqlite3 command to create allow, deny tables and populate them
+  my $db_script = File::Spec->rel2abs("$tmpdir/wrap2.sql");
+
+  my $fh;
   if (open($fh, "> $db_script")) {
     print $fh <<EOS;
-DELETE FROM ftpdeny;
+CREATE TABLE ftpallow (
+  name TEXT,
+  allowed TEXT
+);
+
+CREATE TABLE ftpdeny (
+  name TEXT,
+  denied TEXT
+);
+
 INSERT INTO ftpdeny (name, denied) VALUES ('', 'localhost');
 EOS
+
     unless (close($fh)) {
       die("Can't write $db_script: $!");
     }
@@ -2475,25 +2294,73 @@ EOS
     die("Can't open $db_script: $!");
   }
 
-  $cmd = "sqlite3 $db_file < $db_script";
+  my $cmd = "sqlite3 $db_file < $db_script";
 
   if ($ENV{TEST_VERBOSE}) {
     print STDERR "Executing sqlite3: $cmd\n";
   }
 
-  @output = `$cmd`;
-
+  my @output = `$cmd`;
   unlink($db_script);
 
-  ($port, $config_user, $config_group) = config_write($config_file, $config);
+  my $timeout_idle = 30;
+
+  my $config = {
+    PidFile => $setup->{pid_file},
+    ScoreboardFile => $setup->{scoreboard_file},
+    SystemLog => $setup->{log_file},
+
+    AuthUserFile => $setup->{auth_user_file},
+    AuthGroupFile => $setup->{auth_group_file},
+    AuthOrder => 'mod_auth_file.c',
+
+    TimeoutIdle => $timeout_idle,
+    UseReverseDNS => 'on',
+
+    IfModules => {
+      'mod_delay.c' => {
+        DelayEngine => 'off',
+      },
+
+      'mod_sql_sqlite.c' => [
+        'SQLAuthenticate off',
+        "SQLConnectInfo $db_file",
+        'SQLNamedQuery get-allowed-clients SELECT "allowed FROM ftpallow WHERE name = \'%{0}\'"',
+        'SQLNamedQuery get-denied-clients SELECT "denied FROM ftpdeny WHERE name = \'%{0}\'"',
+        "SQLLogFile $setup->{log_file}",
+      ],
+
+      'mod_wrap2_sql.c' => {
+        WrapEngine => 'on',
+        WrapTables => "sql:/get-allowed-clients sql:/get-denied-clients",
+        WrapLog => $setup->{log_file},
+      },
+    },
+  };
+
+  my ($port, $config_user, $config_group) = config_write($setup->{config_file},
+    $config);
+
+  # Open pipes, for use between the parent and child processes.  Specifically,
+  # the child will indicate when it's done with its test by writing a message
+  # to the parent.
+  my ($rfh, $wfh);
+  unless (pipe($rfh, $wfh)) {
+    die("Can't open pipe: $!");
+  }
+
+  my $ex;
 
   # Fork child
   $self->handle_sigchld();
-  defined($pid = fork()) or die("Can't fork: $!");
+  defined(my $pid = fork()) or die("Can't fork: $!");
   if ($pid) {
     eval {
+      # Allow for server startup
+      sleep(1);
+
       my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
-      eval { $client->login($user, $passwd) };
+      eval { $client->login($setup->{user}, $setup->{passwd}) };
       unless ($@) {
         die("Login succeeded unexpectedly");
       }
@@ -2501,9 +2368,7 @@ EOS
       my $resp_code = $client->response_code();
       my $resp_msg = $client->response_msg();
 
-      my $expected;
-
-      $expected = 530;
+      my $expected = 530;
       $self->assert($expected == $resp_code,
         test_msg("Expected response code $expected, got $resp_code"));
 
@@ -2511,7 +2376,6 @@ EOS
       $self->assert($expected eq $resp_msg,
         test_msg("Expected response message '$expected', got '$resp_msg'"));
     };
-
     if ($@) {
       $ex = $@;
     }
@@ -2520,7 +2384,7 @@ EOS
     $wfh->flush();
 
   } else {
-    eval { server_wait($config_file, $rfh, $timeout_idle + 2) };
+    eval { server_wait($setup->{config_file}, $rfh, $timeout_idle + 2) };
     if ($@) {
       warn($@);
       exit 1;
@@ -2530,32 +2394,16 @@ EOS
   }
 
   # Stop server
-  server_stop($pid_file);
-
+  server_stop($setup->{pid_file});
   $self->assert_child_ok($pid);
 
-  if ($ex) {
-    test_append_logfile($log_file, $ex);
-    unlink($log_file);
-
-    die($ex);
-  }
-
-  unlink($log_file);
+  test_cleanup($setup->{log_file}, $ex);
 }
 
-sub wrap2_sql_deny_table_dns_domain_bug3558 {
+sub wrap2_sql_deny_table_dns_domain_all_bug3558 {
   my $self = shift;
   my $tmpdir = $self->{tmpdir};
-
-  my $config_file = "$tmpdir/wrap2.conf";
-  my $pid_file = File::Spec->rel2abs("$tmpdir/wrap2.pid");
-  my $scoreboard_file = File::Spec->rel2abs("$tmpdir/wrap2.scoreboard");
-
-  my $log_file = test_get_logfile();
-
-  my $auth_user_file = File::Spec->rel2abs("$tmpdir/wrap2.passwd");
-  my $auth_group_file = File::Spec->rel2abs("$tmpdir/wrap2.group");
+  my $setup = test_setup($tmpdir, 'wrap2');
 
   my $db_file = File::Spec->rel2abs("$tmpdir/wrap2.db");
 
@@ -2593,45 +2441,22 @@ EOS
   }
 
   my @output = `$cmd`;
-
   unlink($db_script);
-
-  my $user = 'proftpd';
-  my $passwd = 'test';
-  my $group = 'ftpd';
-  my $home_dir = File::Spec->rel2abs($tmpdir);
-  my $uid = 500;
-  my $gid = 500;
-
-  # Make sure that, if we're running as root, that the home directory has
-  # permissions/privs set for the account we create
-  if ($< == 0) {
-    unless (chmod(0755, $home_dir)) {
-      die("Can't set perms on $home_dir to 0755: $!");
-    }
-
-    unless (chown($uid, $gid, $home_dir)) {
-      die("Can't set owner of $home_dir to $uid/$gid: $!");
-    }
-  }
-
-  auth_user_write($auth_user_file, $user, $passwd, $uid, $gid, $home_dir,
-    '/bin/bash');
-  auth_group_write($auth_group_file, $group, $gid, $user);
 
   my $timeout_idle = 30;
 
   my $config = {
-    PidFile => $pid_file,
-    ScoreboardFile => $scoreboard_file,
-    SystemLog => $log_file,
-    TraceLog => $log_file,
+    PidFile => $setup->{pid_file},
+    ScoreboardFile => $setup->{scoreboard_file},
+    SystemLog => $setup->{log_file},
+    TraceLog => $setup->{log_file},
     Trace => 'dns:20',
 
-    AuthUserFile => $auth_user_file,
-    AuthGroupFile => $auth_group_file,
-    TimeoutIdle => $timeout_idle,
+    AuthUserFile => $setup->{auth_user_file},
+    AuthGroupFile => $setup->{auth_group_file},
+    AuthOrder => 'mod_auth_file.c',
 
+    TimeoutIdle => $timeout_idle,
     UseReverseDNS => 'on',
 
     IfModules => {
@@ -2644,19 +2469,20 @@ EOS
         "SQLConnectInfo $db_file",
         'SQLNamedQuery get-allowed-clients SELECT "allowed FROM ftpallow WHERE name = \'%{0}\'"',
         'SQLNamedQuery get-denied-clients SELECT "denied FROM ftpdeny WHERE name = \'%{0}\'"',
-        "SQLLogFile $log_file",
+        "SQLLogFile $setup->{log_file}",
       ],
 
       'mod_wrap2_sql.c' => {
         WrapEngine => 'on',
         WrapTables => "sql:/get-allowed-clients sql:/get-denied-clients",
-        WrapLog => $log_file,
+        WrapLog => $setup->{log_file},
         WrapOptions => 'CheckAllNames',
       },
     },
   };
 
-  my ($port, $config_user, $config_group) = config_write($config_file, $config);
+  my ($port, $config_user, $config_group) = config_write($setup->{config_file},
+    $config);
 
   # Open pipes, for use between the parent and child processes.  Specifically,
   # the child will indicate when it's done with its test by writing a message
@@ -2673,8 +2499,11 @@ EOS
   defined(my $pid = fork()) or die("Can't fork: $!");
   if ($pid) {
     eval {
+      # Allow for server startup
+      sleep(1);
+
       my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
-      eval { $client->login($user, $passwd) };
+      eval { $client->login($setup->{user}, $setup->{passwd}) };
       unless ($@) {
         die("Login succeeded unexpectedly");
       }
@@ -2682,9 +2511,7 @@ EOS
       my $resp_code = $client->response_code();
       my $resp_msg = $client->response_msg();
 
-      my $expected;
-
-      $expected = 530;
+      my $expected = 530;
       $self->assert($expected == $resp_code,
         test_msg("Expected response code $expected, got $resp_code"));
 
@@ -2692,7 +2519,6 @@ EOS
       $self->assert($expected eq $resp_msg,
         test_msg("Expected response message '$expected', got '$resp_msg'"));
     };
-
     if ($@) {
       $ex = $@;
     }
@@ -2701,7 +2527,7 @@ EOS
     $wfh->flush();
 
   } else {
-    eval { server_wait($config_file, $rfh, $timeout_idle + 2) };
+    eval { server_wait($setup->{config_file}, $rfh, $timeout_idle + 2) };
     if ($@) {
       warn($@);
       exit 1;
@@ -2711,19 +2537,38 @@ EOS
   }
 
   # Stop server
-  server_stop($pid_file);
-
+  server_stop($setup->{pid_file});
   $self->assert_child_ok($pid);
 
-  if ($ex) {
-    die($ex);
-  }
+  test_cleanup($setup->{log_file}, $ex);
+}
 
+sub wrap2_sql_deny_table_dns_domain_source_domain_bug3558 {
+  my $self = shift;
+  my $tmpdir = $self->{tmpdir};
+  my $setup = test_setup($tmpdir, 'wrap2');
+
+  my $db_file = File::Spec->rel2abs("$tmpdir/wrap2.db");
+
+  # Build up sqlite3 command to create allow, deny tables and populate them
+  my $db_script = File::Spec->rel2abs("$tmpdir/wrap2.sql");
+
+  my $fh;
   if (open($fh, "> $db_script")) {
     print $fh <<EOS;
-DELETE FROM ftpdeny;
+CREATE TABLE ftpallow (
+  name TEXT,
+  allowed TEXT
+);
+
+CREATE TABLE ftpdeny (
+  name TEXT,
+  denied TEXT
+);
+
 INSERT INTO ftpdeny (name, denied) VALUES ('', '.castaglia.org');
 EOS
+
     unless (close($fh)) {
       die("Can't write $db_script: $!");
     }
@@ -2732,25 +2577,76 @@ EOS
     die("Can't open $db_script: $!");
   }
 
-  $cmd = "sqlite3 $db_file < $db_script";
+  my $cmd = "sqlite3 $db_file < $db_script";
 
   if ($ENV{TEST_VERBOSE}) {
     print STDERR "Executing sqlite3: $cmd\n";
   }
 
-  @output = `$cmd`;
-
+  my @output = `$cmd`;
   unlink($db_script);
 
-  ($port, $config_user, $config_group) = config_write($config_file, $config);
+  my $timeout_idle = 30;
+
+  my $config = {
+    PidFile => $setup->{pid_file},
+    ScoreboardFile => $setup->{scoreboard_file},
+    SystemLog => $setup->{log_file},
+    TraceLog => $setup->{log_file},
+    Trace => 'dns:20',
+
+    AuthUserFile => $setup->{auth_user_file},
+    AuthGroupFile => $setup->{auth_group_file},
+    AuthOrder => 'mod_auth_file.c',
+
+    TimeoutIdle => $timeout_idle,
+    UseReverseDNS => 'on',
+
+    IfModules => {
+      'mod_delay.c' => {
+        DelayEngine => 'off',
+      },
+
+      'mod_sql_sqlite.c' => [
+        'SQLAuthenticate off',
+        "SQLConnectInfo $db_file",
+        'SQLNamedQuery get-allowed-clients SELECT "allowed FROM ftpallow WHERE name = \'%{0}\'"',
+        'SQLNamedQuery get-denied-clients SELECT "denied FROM ftpdeny WHERE name = \'%{0}\'"',
+        "SQLLogFile $setup->{log_file}",
+      ],
+
+      'mod_wrap2_sql.c' => {
+        WrapEngine => 'on',
+        WrapTables => "sql:/get-allowed-clients sql:/get-denied-clients",
+        WrapLog => $setup->{log_file},
+        WrapOptions => 'CheckAllNames',
+      },
+    },
+  };
+
+  my ($port, $config_user, $config_group) = config_write($setup->{config_file},
+    $config);
+
+  # Open pipes, for use between the parent and child processes.  Specifically,
+  # the child will indicate when it's done with its test by writing a message
+  # to the parent.
+  my ($rfh, $wfh);
+  unless (pipe($rfh, $wfh)) {
+    die("Can't open pipe: $!");
+  }
+
+  my $ex;
 
   # Fork child
   $self->handle_sigchld();
-  defined($pid = fork()) or die("Can't fork: $!");
+  defined(my $pid = fork()) or die("Can't fork: $!");
   if ($pid) {
     eval {
+      # Allow for server startup
+      sleep(1);
+
       my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
-      eval { $client->login($user, $passwd) };
+      eval { $client->login($setup->{user}, $setup->{passwd}) };
       unless ($@) {
         die("Login succeeded unexpectedly");
       }
@@ -2758,9 +2654,7 @@ EOS
       my $resp_code = $client->response_code();
       my $resp_msg = $client->response_msg();
 
-      my $expected;
-
-      $expected = 530;
+      my $expected = 530;
       $self->assert($expected == $resp_code,
         test_msg("Expected response code $expected, got $resp_code"));
 
@@ -2768,7 +2662,6 @@ EOS
       $self->assert($expected eq $resp_msg,
         test_msg("Expected response message '$expected', got '$resp_msg'"));
     };
-
     if ($@) {
       $ex = $@;
     }
@@ -2777,7 +2670,7 @@ EOS
     $wfh->flush();
 
   } else {
-    eval { server_wait($config_file, $rfh, $timeout_idle + 2) };
+    eval { server_wait($setup->{config_file}, $rfh, $timeout_idle + 2) };
     if ($@) {
       warn($@);
       exit 1;
@@ -2787,39 +2680,16 @@ EOS
   }
 
   # Stop server
-  server_stop($pid_file);
-
+  server_stop($setup->{pid_file});
   $self->assert_child_ok($pid);
 
-  if ($ex) {
-    test_append_logfile($log_file, $ex);
-    unlink($log_file);
-
-    die($ex);
-  }
-
-  unlink($log_file);
+  test_cleanup($setup->{log_file}, $ex);
 }
 
 sub wrap2_sql_user_tables {
   my $self = shift;
   my $tmpdir = $self->{tmpdir};
-
-  my $config_file = "$tmpdir/wrap2.conf";
-  my $pid_file = File::Spec->rel2abs("$tmpdir/wrap2.pid");
-  my $scoreboard_file = File::Spec->rel2abs("$tmpdir/wrap2.scoreboard");
-
-  my $log_file = test_get_logfile();
-
-  my $auth_user_file = File::Spec->rel2abs("$tmpdir/wrap2.passwd");
-  my $auth_group_file = File::Spec->rel2abs("$tmpdir/wrap2.group");
-
-  my $user = 'proftpd';
-  my $passwd = 'test';
-  my $group = 'ftpd';
-  my $home_dir = File::Spec->rel2abs($tmpdir);
-  my $uid = 500;
-  my $gid = 500;
+  my $setup = test_setup($tmpdir, 'wrap2');
 
   my $db_file = File::Spec->rel2abs("$tmpdir/wrap2.db");
 
@@ -2839,7 +2709,7 @@ CREATE TABLE ftpdeny (
   denied TEXT
 );
 
-INSERT INTO ftpdeny (name, denied) VALUES ('$user', 'ALL');
+INSERT INTO ftpdeny (name, denied) VALUES ('$setup->{user}', 'ALL');
 EOS
 
     unless (close($fh)) {
@@ -2857,34 +2727,19 @@ EOS
   }
 
   my @output = `$cmd`;
-
   unlink($db_script);
-
-  # Make sure that, if we're running as root, that the home directory has
-  # permissions/privs set for the account we create
-  if ($< == 0) {
-    unless (chmod(0755, $home_dir)) {
-      die("Can't set perms on $home_dir to 0755: $!");
-    }
-
-    unless (chown($uid, $gid, $home_dir)) {
-      die("Can't set owner of $home_dir to $uid/$gid: $!");
-    }
-  }
-
-  auth_user_write($auth_user_file, $user, $passwd, $uid, $gid, $home_dir,
-    '/bin/bash');
-  auth_group_write($auth_group_file, $group, $gid, $user);
 
   my $timeout_idle = 30;
 
   my $config = {
-    PidFile => $pid_file,
-    ScoreboardFile => $scoreboard_file,
-    SystemLog => $log_file,
+    PidFile => $setup->{pid_file},
+    ScoreboardFile => $setup->{scoreboard_file},
+    SystemLog => $setup->{log_file},
 
-    AuthUserFile => $auth_user_file,
-    AuthGroupFile => $auth_group_file,
+    AuthUserFile => $setup->{auth_user_file},
+    AuthGroupFile => $setup->{auth_group_file},
+    AuthOrder => 'mod_auth_file.c',
+
     TimeoutIdle => $timeout_idle,
 
     IfModules => {
@@ -2897,18 +2752,19 @@ EOS
         "SQLConnectInfo $db_file",
         'SQLNamedQuery get-allowed-clients SELECT "allowed FROM ftpallow WHERE name = \'%{0}\'"',
         'SQLNamedQuery get-denied-clients SELECT "denied FROM ftpdeny WHERE name = \'%{0}\'"',
-        "SQLLogFile $log_file",
+        "SQLLogFile $setup->{log_file}",
       ],
 
       'mod_wrap2_sql.c' => {
         WrapEngine => 'on',
-        WrapUserTables => "!$user sql:/get-allowed-clients sql:/get-denied-clients",
-        WrapLog => $log_file,
+        WrapUserTables => "!$setup->{user} sql:/get-allowed-clients sql:/get-denied-clients",
+        WrapLog => $setup->{log_file},
       },
     },
   };
 
-  my ($port, $config_user, $config_group) = config_write($config_file, $config);
+  my ($port, $config_user, $config_group) = config_write($setup->{config_file},
+    $config);
 
   # Open pipes, for use between the parent and child processes.  Specifically,
   # the child will indicate when it's done with its test by writing a message
@@ -2925,20 +2781,22 @@ EOS
   defined(my $pid = fork()) or die("Can't fork: $!");
   if ($pid) {
     eval {
+      # Allow for server startup
+      sleep(1);
+
       my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
-      my ($resp_code, $resp_msg) = $client->login($user, $passwd);
+      my ($resp_code, $resp_msg) = $client->login($setup->{user}, $setup->{passwd});
 
-      my $expected;
-
-      $expected = 230;
+      my $expected = 230;
       $self->assert($expected == $resp_code,
         test_msg("Expected response code $expected, got $resp_code"));
 
-      $expected = "User $user logged in";
+      $expected = "User $setup->{user} logged in";
       $self->assert($expected eq $resp_msg,
         test_msg("Expected response message '$expected', got '$resp_msg'"));
-    };
 
+      $client->quit();
+    };
     if ($@) {
       $ex = $@;
     }
@@ -2947,7 +2805,7 @@ EOS
     $wfh->flush();
 
   } else {
-    eval { server_wait($config_file, $rfh, $timeout_idle + 2) };
+    eval { server_wait($setup->{config_file}, $rfh, $timeout_idle + 2) };
     if ($@) {
       warn($@);
       exit 1;
@@ -2957,95 +2815,16 @@ EOS
   }
 
   # Stop server
-  server_stop($pid_file);
-
+  server_stop($setup->{pid_file});
   $self->assert_child_ok($pid);
 
-  if ($ex) {
-    die($ex);
-  }
-
-  # Modify the config a little
-  $config->{IfModules}->{'mod_wrap2_sql.c'}->{WrapUserTables} = "$user sql:/get-allowed-clients sql:/get-denied-clients";
-
-  ($port, $config_user, $config_group) = config_write($config_file, $config);
-
-  # Fork child
-  $self->handle_sigchld();
-  defined($pid = fork()) or die("Can't fork: $!");
-  if ($pid) {
-    eval {
-      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
-      eval { $client->login($user, $passwd) };
-      unless ($@) {
-        die("Login succeeded unexpectedly");
-      }
-
-      my $resp_code = $client->response_code();
-      my $resp_msg = $client->response_msg();
-
-      my $expected;
-
-      $expected = 530;
-      $self->assert($expected == $resp_code,
-        test_msg("Expected response code $expected, got $resp_code"));
-
-      $expected = "Access denied";
-      $self->assert($expected eq $resp_msg,
-        test_msg("Expected response message '$expected', got '$resp_msg'"));
-    };
-
-    if ($@) {
-      $ex = $@;
-    }
-
-    $wfh->print("done\n");
-    $wfh->flush();
-
-  } else {
-    eval { server_wait($config_file, $rfh, $timeout_idle + 2) };
-    if ($@) {
-      warn($@);
-      exit 1;
-    }
-
-    exit 0;
-  }
-
-  # Stop server
-  server_stop($pid_file);
-
-  $self->assert_child_ok($pid);
-
-  if ($ex) {
-    test_append_logfile($log_file, $ex);
-    unlink($log_file);
-
-    die($ex);
-  }
-
-  unlink($log_file);
+  test_cleanup($setup->{log_file}, $ex);
 }
 
 sub wrap2_sql_group_tables {
   my $self = shift;
   my $tmpdir = $self->{tmpdir};
-
-  my $config_file = "$tmpdir/wrap2.conf";
-  my $pid_file = File::Spec->rel2abs("$tmpdir/wrap2.pid");
-  my $scoreboard_file = File::Spec->rel2abs("$tmpdir/wrap2.scoreboard");
-
-  my $log_file = test_get_logfile();
-
-  my $auth_user_file = File::Spec->rel2abs("$tmpdir/wrap2.passwd");
-  my $auth_group_file = File::Spec->rel2abs("$tmpdir/wrap2.group");
-
-  my $user = 'proftpd';
-  my $passwd = 'test';
-  my $group = 'ftpd';
-  my $home_dir = File::Spec->rel2abs($tmpdir);
-  my $uid = 500;
-  my $gid = 500;
+  my $setup = test_setup($tmpdir, 'wrap2');
 
   my $db_file = File::Spec->rel2abs("$tmpdir/wrap2.db");
 
@@ -3065,7 +2844,7 @@ CREATE TABLE ftpdeny (
   denied TEXT
 );
 
-INSERT INTO ftpdeny (name, denied) VALUES ('$group', 'ALL');
+INSERT INTO ftpdeny (name, denied) VALUES ('$setup->{group}', 'ALL');
 EOS
 
     unless (close($fh)) {
@@ -3083,34 +2862,19 @@ EOS
   }
 
   my @output = `$cmd`;
-
   unlink($db_script);
-
-  # Make sure that, if we're running as root, that the home directory has
-  # permissions/privs set for the account we create
-  if ($< == 0) {
-    unless (chmod(0755, $home_dir)) {
-      die("Can't set perms on $home_dir to 0755: $!");
-    }
-
-    unless (chown($uid, $gid, $home_dir)) {
-      die("Can't set owner of $home_dir to $uid/$gid: $!");
-    }
-  }
-
-  auth_user_write($auth_user_file, $user, $passwd, $uid, $gid, $home_dir,
-    '/bin/bash');
-  auth_group_write($auth_group_file, $group, $gid, $user);
 
   my $timeout_idle = 30;
 
   my $config = {
-    PidFile => $pid_file,
-    ScoreboardFile => $scoreboard_file,
-    SystemLog => $log_file,
+    PidFile => $setup->{pid_file},
+    ScoreboardFile => $setup->{scoreboard_file},
+    SystemLog => $setup->{log_file},
 
-    AuthUserFile => $auth_user_file,
-    AuthGroupFile => $auth_group_file,
+    AuthUserFile => $setup->{auth_user_file},
+    AuthGroupFile => $setup->{auth_group_file},
+    AuthOrder => 'mod_auth_file.c',
+
     TimeoutIdle => $timeout_idle,
 
     IfModules => {
@@ -3123,18 +2887,19 @@ EOS
         "SQLConnectInfo $db_file",
         'SQLNamedQuery get-allowed-clients SELECT "allowed FROM ftpallow WHERE name = \'%{0}\'"',
         'SQLNamedQuery get-denied-clients SELECT "denied FROM ftpdeny WHERE name = \'%{0}\'"',
-        "SQLLogFile $log_file",
+        "SQLLogFile $setup->{log_file}",
       ],
 
       'mod_wrap2_sql.c' => {
         WrapEngine => 'on',
         WrapGroupTables => "foo sql:/get-allowed-clients sql:/get-denied-clients",
-        WrapLog => $log_file,
+        WrapLog => $setup->{log_file},
       },
     },
   };
 
-  my ($port, $config_user, $config_group) = config_write($config_file, $config);
+  my ($port, $config_user, $config_group) = config_write($setup->{config_file},
+    $config);
 
   # Open pipes, for use between the parent and child processes.  Specifically,
   # the child will indicate when it's done with its test by writing a message
@@ -3152,19 +2917,21 @@ EOS
   if ($pid) {
     eval {
       my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
-      my ($resp_code, $resp_msg) = $client->login($user, $passwd);
+      my ($resp_code, $resp_msg) = $client->login($setup->{user}, $setup->{passwd});
 
-      my $expected;
+      # We expect this to succeed, since our group does not match the group
+      # name in the WrapGroupTables directive.
 
-      $expected = 230;
+      my $expected = 230;
       $self->assert($expected == $resp_code,
         test_msg("Expected response code $expected, got $resp_code"));
 
-      $expected = "User $user logged in";
+      $expected = "User $setup->{user} logged in";
       $self->assert($expected eq $resp_msg,
         test_msg("Expected response message '$expected', got '$resp_msg'"));
-    };
 
+      $client->quit();
+    };
     if ($@) {
       $ex = $@;
     }
@@ -3173,7 +2940,7 @@ EOS
     $wfh->flush();
 
   } else {
-    eval { server_wait($config_file, $rfh, $timeout_idle + 2) };
+    eval { server_wait($setup->{config_file}, $rfh, $timeout_idle + 2) };
     if ($@) {
       warn($@);
       exit 1;
@@ -3183,74 +2950,10 @@ EOS
   }
 
   # Stop server
-  server_stop($pid_file);
-
+  server_stop($setup->{pid_file});
   $self->assert_child_ok($pid);
 
-  if ($ex) {
-    die($ex);
-  }
-
-  # Modify the config a little
-  $config->{IfModules}->{'mod_wrap2_sql.c'}->{WrapGroupTables} = "ftpd sql:/get-allowed-clients sql:/get-denied-clients";
-
-  ($port, $config_user, $config_group) = config_write($config_file, $config);
-
-  # Fork child
-  $self->handle_sigchld();
-  defined($pid = fork()) or die("Can't fork: $!");
-  if ($pid) {
-    eval {
-      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
-      eval { $client->login($user, $passwd) };
-      unless ($@) {
-        die("Login succeeded unexpectedly");
-      }
-
-      my $resp_code = $client->response_code();
-      my $resp_msg = $client->response_msg();
-
-      my $expected;
-
-      $expected = 530;
-      $self->assert($expected == $resp_code,
-        test_msg("Expected response code $expected, got $resp_code"));
-
-      $expected = "Access denied";
-      $self->assert($expected eq $resp_msg,
-        test_msg("Expected response message '$expected', got '$resp_msg'"));
-    };
-
-    if ($@) {
-      $ex = $@;
-    }
-
-    $wfh->print("done\n");
-    $wfh->flush();
-
-  } else {
-    eval { server_wait($config_file, $rfh, $timeout_idle + 2) };
-    if ($@) {
-      warn($@);
-      exit 1;
-    }
-
-    exit 0;
-  }
-
-  # Stop server
-  server_stop($pid_file);
-
-  $self->assert_child_ok($pid);
-
-  if ($ex) {
-    test_append_logfile($log_file, $ex);
-    unlink($log_file);
-
-    die($ex);
-  }
-
-  unlink($log_file);
+  test_cleanup($setup->{log_file}, $ex);
 }
 
 sub wrap2_sql_bug3215 {
@@ -3337,6 +3040,8 @@ EOS
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
+    AuthOrder => 'mod_auth_file.c',
+
     TimeoutIdle => $timeout_idle,
 
     IfModules => {
@@ -3507,6 +3212,8 @@ EOS
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
+    AuthOrder => 'mod_auth_file.c',
+
     TimeoutIdle => $timeout_idle,
 
     IfModules => {
@@ -3750,6 +3457,8 @@ EOS
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
+    AuthOrder => 'mod_auth_file.c',
+
     TimeoutIdle => $timeout_idle,
 
     IfModules => {
@@ -3993,9 +3702,11 @@ EOS
     ScoreboardFile => $scoreboard_file,
     SystemLog => $log_file,
 
-    AccessGrantMsg => '"User %u logged in."',
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
+    AuthOrder => 'mod_auth_file.c',
+
+    AccessGrantMsg => '"User %u logged in."',
     TimeoutIdle => $timeout_idle,
 
     IfModules => {
@@ -4172,9 +3883,11 @@ EOS
     ScoreboardFile => $scoreboard_file,
     SystemLog => $log_file,
 
-    AccessGrantMsg => '"User %u logged in."',
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
+    AuthOrder => 'mod_auth_file.c',
+
+    AccessGrantMsg => '"User %u logged in."',
     TimeoutIdle => $timeout_idle,
 
     Anonymous => {
@@ -4387,6 +4100,8 @@ EOS
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
+    AuthOrder => 'mod_auth_file.c',
+
     TimeoutIdle => $timeout_idle,
 
     IfModules => {
