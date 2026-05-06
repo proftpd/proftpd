@@ -989,6 +989,7 @@ static int sql_resolve_on_meta(pool *p, pr_jot_ctx_t *jot_ctx,
       case LOGFMT_META_FILENAME:
       case LOGFMT_META_IDENT_USER:
       case LOGFMT_META_METHOD:
+      case LOGFMT_META_NOTE_VAR:
       case LOGFMT_META_ORIGINAL_USER:
       case LOGFMT_META_RESPONSE_STR:
       case LOGFMT_META_REMOTE_HOST:
@@ -1018,7 +1019,6 @@ static int sql_resolve_on_meta(pool *p, pr_jot_ctx_t *jot_ctx,
       case LOGFMT_META_LOCAL_FQDN:
       case LOGFMT_META_LOCAL_IP:
       case LOGFMT_META_LOCAL_NAME:
-      case LOGFMT_META_NOTE_VAR:
       case LOGFMT_META_PROTOCOL:
       case LOGFMT_META_REMOTE_IP:
       case LOGFMT_META_VERSION:
