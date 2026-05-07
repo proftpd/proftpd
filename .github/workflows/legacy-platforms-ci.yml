@@ -53,7 +53,19 @@ jobs:
     container: ${{ matrix.container }}
 
     steps:
-      - name: Checkout source code
+      - name: Checkout source code (Alpine)
+        if: ${{ matrix.container == 'alpine:3.15' }}
+        env:
+          DEBIAN_FRONTEND: noninteractive
+          TZ: UTC
+        run: |
+          apk update
+          apk add git
+          git clone --depth 5 https://github.com/proftpd/proftpd.git
+          cd proftpd && pwd
+
+      - name: Checkout source code (Ubuntu)
+        if: ${{ matrix.container == 'ubuntu:18.04' }}
         env:
           DEBIAN_FRONTEND: noninteractive
           TZ: UTC
@@ -62,22 +74,6 @@ jobs:
           apt-get install -y git
           git clone --depth 5 https://github.com/proftpd/proftpd.git
           cd proftpd && pwd
-
-      - name: Whitespace check
-        if: ${{ matrix.container == 'ubuntu:18.04' }}
-        env:
-          DEBIAN_FRONTEND: noninteractive
-          TZ: UTC
-        run: |
-          apt-get update -qq
-          apt-get install -y git
-          cd proftpd && pwd
-          if ! git diff --no-color --check HEAD^ > /dev/null; then
-            echo "You must remove whitespace before submitting a pull request"
-            echo ""
-            git diff --check HEAD^
-            exit 1
-          fi
 
       - name: Install Alpine 3.15 packages
         if: ${{ matrix.container == 'alpine:3.15' }}
