@@ -42,6 +42,9 @@
 
 #include "mod_ctrls.h"
 
+#define CTRLS_MAX_REQ_SIZE	1024
+#define CTRLS_MAX_RESP_SIZE	(1024 * 1024)
+
 #define CTRLS_REQ_ACTION_KEY	"action"
 #define CTRLS_REQ_ARGS_KEY	"args"
 #define CTRLS_RESP_STATUS_KEY	"status"
@@ -473,6 +476,10 @@ static int ctrls_send_msg(pool *p, int fd, pr_json_object_t *json) {
   /* No interruptions. */
   pr_signals_block();
 
+  pr_trace_msg(trace_channel, 27,
+    "sending Controls message (%lu bytes) to fd %d", (unsigned long) msglen,
+    fd);
+
   res = write(fd, &msglen, sizeof(uint32_t));
   xerrno = errno;
 
@@ -632,6 +639,21 @@ int pr_ctrls_recv_request(pr_ctrls_cl_t *cl) {
 
   tmp_pool = make_sub_pool(cl->cl_pool);
   pr_pool_tag(tmp_pool, "Controls API recv_request pool");
+
+  pr_trace_msg(trace_channel, 27,
+    "receiving Controls request message (%lu bytes) from fd %d",
+    (unsigned long) msglen, cl->cl_fd);
+
+  /* Impose max request size limit here, for Issue #2036. */
+  if (msglen > CTRLS_MAX_REQ_SIZE) {
+    pr_signals_unblock();
+
+    (void) pr_trace_msg(trace_channel, 3,
+      "message size (%lu bytes) exceeds max (%lu bytes), unable to receive"
+      "request", (unsigned long) msglen, (unsigned long) CTRLS_MAX_REQ_SIZE);
+    errno = E2BIG;
+    return -1;
+  }
 
   /* Allocate one byte for the terminating NUL. */
   msg = pcalloc(tmp_pool, msglen + 1);
@@ -903,6 +925,18 @@ int pr_ctrls_recv_response(pool *p, int fd, int *status, char ***respargv) {
   nread = read(fd, &msglen, sizeof(uint32_t));
   xerrno = errno;
 
+  if (nread < 0) {
+    pr_signals_unblock();
+
+    pr_trace_msg(trace_channel, 3,
+      "error reading %lu bytes of response message size: %s",
+      sizeof(msglen), strerror(xerrno));
+
+    errno = xerrno;
+    return -1;
+  }
+
+  /* Watch for short reads. */
   if (nread != sizeof(uint32_t)) {
     pr_signals_unblock();
 
@@ -923,6 +957,21 @@ int pr_ctrls_recv_response(pool *p, int fd, int *status, char ***respargv) {
 
   tmp_pool = make_sub_pool(p);
   pr_pool_tag(tmp_pool, "Controls API recv_response pool");
+
+  pr_trace_msg(trace_channel, 27,
+    "receiving Controls response message (%lu bytes) from fd %d",
+    (unsigned long) msglen, fd);
+
+  /* Impose max response size limit here, for Issue #2036. */
+  if (msglen > CTRLS_MAX_RESP_SIZE) {
+    pr_signals_unblock();
+
+    (void) pr_trace_msg(trace_channel, 3,
+      "message size (%lu bytes) exceeds max (%lu bytes), unable to receive"
+      "response", (unsigned long) msglen, (unsigned long) CTRLS_MAX_RESP_SIZE);
+    errno = E2BIG;
+    return -1;
+  }
 
   /* Allocate one byte for the terminating NUL. */
   msg = pcalloc(tmp_pool, msglen + 1);
