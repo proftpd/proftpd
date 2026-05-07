@@ -14,6 +14,8 @@ ChangeLog files.
 
   + Use `CLOCK_MONOTONIC` for more accurate timer support (Issue #2047).
 
+  + Imposed max request/response message size limits for Controls (Issue #2036).
+
 
 1.3.10rc1
 ----------
