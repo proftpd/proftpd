@@ -727,6 +727,35 @@ START_TEST (ctrls_recv_request_invalid_test) {
 }
 END_TEST
 
+START_TEST (ctrls_recv_request_too_large_test) {
+  int fd, res;
+  uint32_t msglen;
+  pr_ctrls_cl_t *cl;
+
+  cl = pcalloc(p, sizeof(pr_ctrls_cl_t));
+  cl->cl_ctrls = make_array(p, 0, sizeof(pr_ctrls_t *));
+
+  mark_point();
+  fd = tmpfile_fd();
+  if (fd < 0) {
+    return;
+  }
+
+  cl->cl_fd = fd;
+
+  mark_point();
+  msglen = (uint32_t) -1;
+  (void) write(fd, (const void *) &msglen, sizeof(msglen));
+  rewind_fd(fd);
+  res = pr_ctrls_recv_request(cl);
+  ck_assert_msg(res < 0, "Failed to handle invalid msglen (too long)");
+  ck_assert_msg(errno == E2BIG, "Expected E2BIG (%d), got %s (%d)", E2BIG,
+    strerror(errno), errno);
+
+  (void) close(fd);
+}
+END_TEST
+
 START_TEST (ctrls_recv_request_valid_test) {
   int fd, res;
   uint32_t msglen = 0;
@@ -996,6 +1025,29 @@ START_TEST (ctrls_recv_response_test) {
   res = pr_ctrls_recv_response(p, fd, &status, NULL);
   ck_assert_msg(res == 1, "Failed to handle valid response: %s",
     strerror(errno));
+
+  (void) close(fd);
+}
+END_TEST
+
+START_TEST (ctrls_recv_response_too_large_test) {
+  int fd, res, status;
+  uint32_t msglen;
+
+  mark_point();
+  fd = tmpfile_fd();
+  if (fd < 0) {
+    return;
+  }
+
+  mark_point();
+  msglen = (uint32_t) -1;
+  (void) write(fd, (const void *) &msglen, sizeof(msglen));
+  rewind_fd(fd);
+  res = pr_ctrls_recv_response(p, fd, &status, NULL);
+  ck_assert_msg(res < 0, "Failed to handle invalid msglen (too long)");
+  ck_assert_msg(errno == E2BIG, "Expected E2BIG (%d), got %s (%d)", E2BIG,
+    strerror(errno), errno);
 
   (void) close(fd);
 }
@@ -2094,8 +2146,10 @@ Suite *tests_get_ctrls_suite(void) {
   tcase_add_test(testcase, ctrls_send_response_test);
   tcase_add_test(testcase, ctrls_flush_response_test);
   tcase_add_test(testcase, ctrls_recv_request_invalid_test);
+  tcase_add_test(testcase, ctrls_recv_request_too_large_test);
   tcase_add_test(testcase, ctrls_recv_request_valid_test);
   tcase_add_test(testcase, ctrls_recv_response_test);
+  tcase_add_test(testcase, ctrls_recv_response_too_large_test);
 
   tcase_add_test(testcase, ctrls_issock_unix_test);
   tcase_add_test(testcase, ctrls_get_registered_actions_test);
