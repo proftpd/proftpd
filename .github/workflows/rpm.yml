@@ -27,9 +27,10 @@ jobs:
     runs-on: ubuntu-latest
 
     env:
+      # Let's try opting into use of Nodejs v24; see:
+      #  https://github.blog/changelog/2025-09-19-deprecation-of-node-20-on-github-actions-runners/
       # GitHub runners still causing problems with NodeJS v20; see:
-      #  https://github.com/actions/checkout/issues/1809.
-      ACTIONS_ALLOW_USE_UNSECURE_NODE_VERSION: true
+      FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
 
     strategy:
       matrix:
@@ -40,7 +41,7 @@ jobs:
 
     steps:
       - name: Checkout source code
-        uses: actions/checkout@v3
+        uses: actions/checkout@v6
 
       - name: Configure RPM repos
         if: ${{ matrix.container == 'almalinux:8' }}
