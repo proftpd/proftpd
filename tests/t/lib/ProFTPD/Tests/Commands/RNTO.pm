@@ -22,12 +22,22 @@ my $TESTS = {
     test_class => [qw(forking)],
   },
 
-  rnto_abs_symlink => {
+  rnto_abs_dst_symlink => {
     order => ++$order,
     test_class => [qw(forking)],
   },
 
-  rnto_rel_symlink => {
+  rnto_rel_dst_symlink => {
+    order => ++$order,
+    test_class => [qw(forking)],
+  },
+
+  rnto_abs_src_symlink => {
+    order => ++$order,
+    test_class => [qw(forking)],
+  },
+
+  rnto_rel_src_symlink => {
     order => ++$order,
     test_class => [qw(forking)],
   },
@@ -202,7 +212,7 @@ sub rnto_ok {
   test_cleanup($setup->{log_file}, $ex);
 }
 
-sub rnto_abs_symlink {
+sub rnto_abs_dst_symlink {
   my $self = shift;
   my $tmpdir = $self->{tmpdir};
   my $setup = test_setup($tmpdir, 'cmds');
@@ -281,8 +291,7 @@ sub rnto_abs_symlink {
       my $src_path = 'test.d/foo.txt';
       $client->rnfr($src_path);
 
-      $dst_path = 'test.d/bar.lnk';
-      my ($resp_code, $resp_msg) = $client->rnto($dst_path);
+      my ($resp_code, $resp_msg) = $client->rnto($dst_symlink);
       $client->quit();
 
       my $expected = 250;
@@ -332,7 +341,7 @@ sub rnto_abs_symlink {
   test_cleanup($setup->{log_file}, $ex);
 }
 
-sub rnto_rel_symlink {
+sub rnto_rel_dst_symlink {
   my $self = shift;
   my $tmpdir = $self->{tmpdir};
   my $setup = test_setup($tmpdir, 'cmds');
@@ -443,6 +452,289 @@ sub rnto_rel_symlink {
 
       $self->assert(-f $dst_symlink,
         test_msg("File $dst_symlink does not exist as expected"));
+    };
+    if ($@) {
+      $ex = $@;
+    }
+
+    $wfh->print("done\n");
+    $wfh->flush();
+
+  } else {
+    eval { server_wait($setup->{config_file}, $rfh) };
+    if ($@) {
+      warn($@);
+      exit 1;
+    }
+
+    exit 0;
+  }
+
+  # Stop server
+  server_stop($setup->{pid_file});
+  $self->assert_child_ok($pid);
+
+  test_cleanup($setup->{log_file}, $ex);
+}
+
+sub rnto_abs_src_symlink {
+  my $self = shift;
+  my $tmpdir = $self->{tmpdir};
+  my $setup = test_setup($tmpdir, 'cmds');
+
+  my $test_dir = File::Spec->rel2abs("$tmpdir/test.d");
+  mkpath($test_dir);
+
+  my $src_file = File::Spec->rel2abs("$test_dir/src.txt");
+  if (open(my $fh, "> $src_file")) {
+    close($fh);
+
+  } else {
+    die("Can't open $src_file: $!");
+  }
+
+  my $src_symlink = File::Spec->rel2abs("$test_dir/src.lnk");
+
+  my $src_path = $src_symlink;
+  if ($^O eq 'darwin') {
+    # MacOSX-specific hack
+    $src_path = '/private' . $src_path;
+  }
+
+  unless (symlink($src_file, $src_symlink)) {
+    die("Can't symlink $src_symlink to $src_file: $!");
+  }
+
+  my $dst_file = File::Spec->rel2abs("$test_dir/dst.txt");
+
+  if ($< == 0) {
+    unless (chmod(0755, $test_dir)) {
+      die("Can't set perms on $test_dir to 0755: $!");
+    }
+
+    unless (chown($setup->{uid}, $setup->{gid}, $test_dir)) {
+      die("Can't set owner of $test_dir to $setup->{uid}/$setup->{gid}: $!");
+    }
+  }
+
+  my $config = {
+    PidFile => $setup->{pid_file},
+    ScoreboardFile => $setup->{scoreboard_file},
+    SystemLog => $setup->{log_file},
+
+    AuthUserFile => $setup->{auth_user_file},
+    AuthGroupFile => $setup->{auth_group_file},
+    AuthOrder => 'mod_auth_file.c',
+
+    IfModules => {
+      'mod_delay.c' => {
+        DelayEngine => 'off',
+      },
+    },
+  };
+
+  my ($port, $config_user, $config_group) = config_write($setup->{config_file},
+    $config);
+
+  # Open pipes, for use between the parent and child processes.  Specifically,
+  # the child will indicate when it's done with its test by writing a message
+  # to the parent.
+  my ($rfh, $wfh);
+  unless (pipe($rfh, $wfh)) {
+    die("Can't open pipe: $!");
+  }
+
+  my $ex;
+
+  # Fork child
+  $self->handle_sigchld();
+  defined(my $pid = fork()) or die("Can't fork: $!");
+  if ($pid) {
+    eval {
+      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port, 0, 1);
+      $client->login($setup->{user}, $setup->{passwd});
+
+      $client->rnfr($src_path);
+
+      my ($resp_code, $resp_msg) = $client->rnto($dst_file);
+      $client->quit();
+
+      my $expected = 250;
+      $self->assert($expected == $resp_code,
+        test_msg("Expected response code $expected, got $resp_code"));
+
+      $expected = "Rename successful";
+      $self->assert($expected eq $resp_msg,
+        test_msg("Expected response message '$expected', got '$resp_msg'"));
+
+      # rename(2) works by DELETING the source file, if it exists.
+      # This means that it does NOT follow a symlink link.
+
+      $self->assert(-f $src_file,
+        test_msg("File $src_file does not exist as expected"));
+
+      $self->assert(!-l $src_symlink,
+        test_msg("Symlink $src_symlink exists unexpectedly"));
+
+      $self->assert(-l $dst_file,
+        test_msg("Symlink $dst_file does not exist as expected"));
+
+      if ($ENV{TEST_VERBOSE}) {
+        if ($^O eq 'darwin') {
+          # MacOSX-specific hack
+          $dst_file = '/private' . $dst_file;
+        }
+
+        my $target_path = readlink($dst_file);
+        if ($target_path) {
+          printf STDERR "# $dst_file -> $target_path\n";
+
+        } else {
+          printf STDERR "# Can't read symlink $dst_file: $!\n";
+        }
+      }
+    };
+    if ($@) {
+      $ex = $@;
+    }
+
+    $wfh->print("done\n");
+    $wfh->flush();
+
+  } else {
+    eval { server_wait($setup->{config_file}, $rfh) };
+    if ($@) {
+      warn($@);
+      exit 1;
+    }
+
+    exit 0;
+  }
+
+  # Stop server
+  server_stop($setup->{pid_file});
+  $self->assert_child_ok($pid);
+
+  test_cleanup($setup->{log_file}, $ex);
+}
+
+sub rnto_rel_src_symlink {
+  my $self = shift;
+  my $tmpdir = $self->{tmpdir};
+  my $setup = test_setup($tmpdir, 'cmds');
+
+  my $test_dir = File::Spec->rel2abs("$tmpdir/test.d");
+  mkpath($test_dir);
+
+  my $src_file = File::Spec->rel2abs("$test_dir/src.txt");
+  if (open(my $fh, "> $src_file")) {
+    close($fh);
+
+  } else {
+    die("Can't open $src_file: $!");
+  }
+
+  my $src_symlink = File::Spec->rel2abs("$test_dir/src.lnk");
+
+  my $src_path = $src_symlink;
+  if ($^O eq 'darwin') {
+    # MacOSX-specific hack
+    $src_path = '/private' . $src_path;
+  }
+
+  unless (symlink($src_file, $src_symlink)) {
+    die("Can't symlink $src_symlink to $src_file: $!");
+  }
+
+  my $dst_file = File::Spec->rel2abs("$test_dir/dst.txt");
+
+  if ($< == 0) {
+    unless (chmod(0755, $test_dir)) {
+      die("Can't set perms on $test_dir to 0755: $!");
+    }
+
+    unless (chown($setup->{uid}, $setup->{gid}, $test_dir)) {
+      die("Can't set owner of $test_dir to $setup->{uid}/$setup->{gid}: $!");
+    }
+  }
+
+  my $config = {
+    PidFile => $setup->{pid_file},
+    ScoreboardFile => $setup->{scoreboard_file},
+    SystemLog => $setup->{log_file},
+
+    AuthUserFile => $setup->{auth_user_file},
+    AuthGroupFile => $setup->{auth_group_file},
+    AuthOrder => 'mod_auth_file.c',
+
+    IfModules => {
+      'mod_delay.c' => {
+        DelayEngine => 'off',
+      },
+    },
+  };
+
+  my ($port, $config_user, $config_group) = config_write($setup->{config_file},
+    $config);
+
+  # Open pipes, for use between the parent and child processes.  Specifically,
+  # the child will indicate when it's done with its test by writing a message
+  # to the parent.
+  my ($rfh, $wfh);
+  unless (pipe($rfh, $wfh)) {
+    die("Can't open pipe: $!");
+  }
+
+  my $ex;
+
+  # Fork child
+  $self->handle_sigchld();
+  defined(my $pid = fork()) or die("Can't fork: $!");
+  if ($pid) {
+    eval {
+      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port, 0, 1);
+      $client->login($setup->{user}, $setup->{passwd});
+
+      $src_path = 'test.d/src.lnk';
+      $client->rnfr($src_path);
+
+      my ($resp_code, $resp_msg) = $client->rnto($dst_file);
+      $client->quit();
+
+      my $expected = 250;
+      $self->assert($expected == $resp_code,
+        test_msg("Expected response code $expected, got $resp_code"));
+
+      $expected = "Rename successful";
+      $self->assert($expected eq $resp_msg,
+        test_msg("Expected response message '$expected', got '$resp_msg'"));
+
+      # rename(2) works by DELETING the source file, if it exists.
+      # This means that it does NOT follow a symlink link.
+
+      $self->assert(-f $src_file,
+        test_msg("File $src_file does not exist as expected"));
+
+      $self->assert(!-l $src_symlink,
+        test_msg("Symlink $src_symlink exists unexpectedly"));
+
+      $self->assert(-l $dst_file,
+        test_msg("Symlink $dst_file does not exist as expected"));
+
+      if ($ENV{TEST_VERBOSE}) {
+        if ($^O eq 'darwin') {
+          # MacOSX-specific hack
+          $dst_file = '/private' . $dst_file;
+        }
+
+        my $target_path = readlink($dst_file);
+        if ($target_path) {
+          printf STDERR "# $dst_file -> $target_path\n";
+
+        } else {
+          printf STDERR "# Can't read symlink $dst_file: $!\n";
+        }
+      }
     };
     if ($@) {
       $ex = $@;
