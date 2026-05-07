@@ -985,6 +985,7 @@ static int sql_resolve_on_meta(pool *p, pr_jot_ctx_t *jot_ctx,
       case LOGFMT_META_COMMAND:
       case LOGFMT_META_DIR_NAME:
       case LOGFMT_META_DIR_PATH:
+      case LOGFMT_META_ENV_VAR:
       case LOGFMT_META_FILENAME:
       case LOGFMT_META_IDENT_USER:
       case LOGFMT_META_METHOD:
@@ -1011,7 +1012,6 @@ static int sql_resolve_on_meta(pool *p, pr_jot_ctx_t *jot_ctx,
       }
 
       case LOGFMT_META_CLASS:
-      case LOGFMT_META_ENV_VAR:
       case LOGFMT_META_EOS_REASON:
       case LOGFMT_META_GROUP:
       case LOGFMT_META_ISO8601:
