@@ -618,21 +618,22 @@ int pr_ctrls_recv_request(pr_ctrls_cl_t *cl) {
   xerrno = errno;
 
   if (nread < 0) {
+    pr_signals_unblock();
+
     pr_trace_msg(trace_channel, 3,
       "error reading %lu bytes of request message size: %s",
       sizeof(msglen), strerror(xerrno));
-    pr_signals_unblock();
-
     errno = xerrno;
     return -1;
   }
 
   /* Watch for short reads. */
   if (nread != sizeof(uint32_t)) {
+    pr_signals_unblock();
+
     (void) pr_trace_msg(trace_channel, 3,
       "short read (%d of %u bytes) of message size, unable to receive request",
       nread, (unsigned int) sizeof(uint32_t));
-    pr_signals_unblock();
     errno = EPERM;
     return -1;
   }
@@ -646,10 +647,11 @@ int pr_ctrls_recv_request(pr_ctrls_cl_t *cl) {
 
   /* Impose max request size limit here, for Issue #2036. */
   if (msglen > CTRLS_MAX_REQ_SIZE) {
+    destroy_pool(tmp_pool);
     pr_signals_unblock();
 
     (void) pr_trace_msg(trace_channel, 3,
-      "message size (%lu bytes) exceeds max (%lu bytes), unable to receive"
+      "message size (%lu bytes) exceeds max (%lu bytes), unable to receive "
       "request", (unsigned long) msglen, (unsigned long) CTRLS_MAX_REQ_SIZE);
     errno = E2BIG;
     return -1;
@@ -662,23 +664,24 @@ int pr_ctrls_recv_request(pr_ctrls_cl_t *cl) {
   xerrno = errno;
 
   if (nread < 0) {
-    pr_trace_msg(trace_channel, 3,
-      "error reading %lu bytes of request message: %s",
-      (unsigned long) msglen, strerror(xerrno));
     destroy_pool(tmp_pool);
     pr_signals_unblock();
 
+    pr_trace_msg(trace_channel, 3,
+      "error reading %lu bytes of request message: %s",
+      (unsigned long) msglen, strerror(xerrno));
     errno = xerrno;
     return -1;
   }
 
   /* Watch for short reads. */
   if ((unsigned int) nread != msglen) {
+    destroy_pool(tmp_pool);
+    pr_signals_unblock();
+
     (void) pr_trace_msg(trace_channel, 3,
       "short read (%d of %u bytes) of message text, unable to receive request",
       nread, (unsigned int) msglen);
-    destroy_pool(tmp_pool);
-    pr_signals_unblock();
     errno = EPERM;
     return -1;
   }
@@ -687,13 +690,13 @@ int pr_ctrls_recv_request(pr_ctrls_cl_t *cl) {
   xerrno = errno;
 
   if (json == NULL) {
+    destroy_pool(tmp_pool);
+    pr_signals_unblock();
+
     (void) pr_trace_msg(trace_channel, 3,
       "read invalid JSON message text ('%.*s' [%lu bytes]), unable to "
       "receive request: %s", (int) msglen, msg, (unsigned long) msglen,
       strerror(xerrno));
-    destroy_pool(tmp_pool);
-    pr_signals_unblock();
-
     errno = EINVAL;
     return -1;
   }
@@ -703,13 +706,13 @@ int pr_ctrls_recv_request(pr_ctrls_cl_t *cl) {
   xerrno = errno;
 
   if (res < 0) {
-    (void) pr_trace_msg(trace_channel, 3,
-      "unable to read message action (%s), unable to receive request",
-      strerror(xerrno));
     pr_json_object_free(json);
     destroy_pool(tmp_pool);
     pr_signals_unblock();
 
+    (void) pr_trace_msg(trace_channel, 3,
+      "unable to read message action (%s), unable to receive request",
+      strerror(xerrno));
     errno = EINVAL;
     return -1;
   }
@@ -718,13 +721,13 @@ int pr_ctrls_recv_request(pr_ctrls_cl_t *cl) {
   xerrno = errno;
 
   if (res < 0) {
-    (void) pr_trace_msg(trace_channel, 3,
-      "unable to read message arguments (%s), unable to receive request",
-      strerror(xerrno));
     pr_json_object_free(json);
     destroy_pool(tmp_pool);
     pr_signals_unblock();
 
+    (void) pr_trace_msg(trace_channel, 3,
+      "unable to read message arguments (%s), unable to receive request",
+      strerror(xerrno));
     errno = EINVAL;
     return -1;
   }
@@ -964,10 +967,11 @@ int pr_ctrls_recv_response(pool *p, int fd, int *status, char ***respargv) {
 
   /* Impose max response size limit here, for Issue #2036. */
   if (msglen > CTRLS_MAX_RESP_SIZE) {
+    destroy_pool(tmp_pool);
     pr_signals_unblock();
 
     (void) pr_trace_msg(trace_channel, 3,
-      "message size (%lu bytes) exceeds max (%lu bytes), unable to receive"
+      "message size (%lu bytes) exceeds max (%lu bytes), unable to receive "
       "response", (unsigned long) msglen, (unsigned long) CTRLS_MAX_RESP_SIZE);
     errno = E2BIG;
     return -1;
@@ -979,24 +983,24 @@ int pr_ctrls_recv_response(pool *p, int fd, int *status, char ***respargv) {
   xerrno = errno;
 
   if (nread < 0) {
-    pr_trace_msg(trace_channel, 3,
-      "error reading %lu bytes of response message: %s",
-      (unsigned long) msglen, strerror(xerrno));
     destroy_pool(tmp_pool);
     pr_signals_unblock();
 
+    pr_trace_msg(trace_channel, 3,
+      "error reading %lu bytes of response message: %s",
+      (unsigned long) msglen, strerror(xerrno));
     errno = xerrno;
     return -1;
   }
 
   /* Watch for short reads. */
   if ((unsigned int) nread != msglen) {
-    (void) pr_trace_msg(trace_channel, 3,
-      "short read (%d of %u bytes) of message text, unable to receive response",
-      nread, (unsigned int) msglen);
     destroy_pool(tmp_pool);
     pr_signals_unblock();
 
+    (void) pr_trace_msg(trace_channel, 3,
+      "short read (%d of %u bytes) of message text, unable to receive response",
+      nread, (unsigned int) msglen);
     errno = EPERM;
     return -1;
   }
@@ -1005,13 +1009,13 @@ int pr_ctrls_recv_response(pool *p, int fd, int *status, char ***respargv) {
   xerrno = errno;
 
   if (json == NULL) {
+    destroy_pool(tmp_pool);
+    pr_signals_unblock();
+
     (void) pr_trace_msg(trace_channel, 3,
       "read invalid JSON message text ('%.*s' [%lu bytes]), unable to "
       "receive response: %s", (int) msglen, msg, (unsigned long) msglen,
       strerror(xerrno));
-    destroy_pool(tmp_pool);
-    pr_signals_unblock();
-
     errno = EINVAL;
     return -1;
   }
@@ -1020,13 +1024,13 @@ int pr_ctrls_recv_response(pool *p, int fd, int *status, char ***respargv) {
   xerrno = errno;
 
   if (res < 0) {
-    (void) pr_trace_msg(trace_channel, 3,
-      "unable to read response status (%s), unable to receive response",
-      strerror(xerrno));
     pr_json_object_free(json);
     destroy_pool(tmp_pool);
     pr_signals_unblock();
 
+    (void) pr_trace_msg(trace_channel, 3,
+      "unable to read response status (%s), unable to receive response",
+      strerror(xerrno));
     errno = EINVAL;
     return -1;
   }
