@@ -6574,7 +6574,7 @@ MODRET core_rnfr(cmd_rec *cmd) {
       !exists2(cmd->tmp_pool, path)) {
     int xerrno = errno;
 
-    pr_response_add_err(R_550, "%s: %s", cmd->arg, strerror(xerrno));
+    pr_response_add_err(R_550, _("%s: %s"), cmd->arg, strerror(xerrno));
 
     pr_cmd_set_errno(cmd, xerrno);
     errno = xerrno;
@@ -6592,6 +6592,7 @@ MODRET core_rnfr(cmd_rec *cmd) {
   /* Make sure we store the absolute path for LogFormat %w (Issue #1808). */
   abs_path = pr_fsio_realpath(session.xfer.p, abs_path);
 
+  pr_table_remove(session.notes, "mod_core.rnfr-path", NULL);
   pr_table_add(session.notes, "mod_core.rnfr-path",
     pstrdup(session.xfer.p, abs_path), 0);
 
