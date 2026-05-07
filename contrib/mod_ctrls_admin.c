@@ -1354,7 +1354,7 @@ static int ctrls_handle_trace(pr_ctrls_t *ctrl, int reqargc,
 
     trace_tab = pr_trace_get_table();
     if (trace_tab != NULL) {
-      const void *key = NULL, *value = NULL;
+      const void *key = NULL;
 
       pr_ctrls_add_response(ctrl, "%-10s %-6s", "Channel", "Level");
       pr_ctrls_add_response(ctrl, "---------- ------");
@@ -1362,12 +1362,14 @@ static int ctrls_handle_trace(pr_ctrls_t *ctrl, int reqargc,
       pr_table_rewind(trace_tab);
       key = pr_table_next(trace_tab);
       while (key != NULL) {
+        int trace_level;
+
         pr_signals_handle();
 
-        value = pr_table_get(trace_tab, (const char *) key, NULL);
-        if (value != NULL) {
+        trace_level = pr_trace_get_level((const char *) key);
+        if (trace_level >= 0) {
           pr_ctrls_add_response(ctrl, "%10s %-6d", (const char *) key,
-            *((int *) value));
+            trace_level);
         }
 
         key = pr_table_next(trace_tab);
