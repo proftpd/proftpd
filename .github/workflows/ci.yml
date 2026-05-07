@@ -40,9 +40,10 @@ jobs:
     environment: CI
 
     env:
+      # Let's try opting into use of Nodejs v24; see:
+      #  https://github.blog/changelog/2025-09-19-deprecation-of-node-20-on-github-actions-runners/
       # GitHub runners still causing problems with NodeJS v20; see:
-      #  https://github.com/actions/checkout/issues/1809.
-      ACTIONS_ALLOW_USE_UNSECURE_NODE_VERSION: true
+      FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
 
       PACKAGE_VERSION: 1.3.10rc2
       REDIS_HOST: redis
@@ -54,7 +55,6 @@ jobs:
           - gcc
         container:
           - almalinux:8
-          - alpine:3.15
           - alpine:3.18
           - ubuntu:22.04
 
@@ -68,7 +68,7 @@ jobs:
           apt-get install -y git
 
       - name: Checkout source code
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
         with:
           fetch-depth: 5
 
@@ -86,64 +86,6 @@ jobs:
       #      exit 1
       #    fi
 
-      - name: Install Alpine 3.15 packages
-        if: ${{ matrix.container == 'alpine:3.15' }}
-        run: |
-          apk update
-          # for builds
-          apk add bash build-base clang compiler-rt-static gcc make
-          # for unit tests
-          apk add check check-dev subunit subunit-dev
-
-          # for mod_lang
-          apk add gettext-dev
-          # for xattr support
-          apk add attr-dev libattr
-          # for mod_cap
-          apk add libcap-dev
-          # for mod_geoip
-          apk add geoip-dev
-          # for mod_ldap
-          apk add cyrus-sasl-dev libldap openldap-dev
-          # for mod_rewrite
-          apk add libidn2-dev
-          # for memcache support
-          apk add libmemcached-dev
-          # for redis support
-          apk add hiredis-dev hiredis-ssl
-          # for mod_sql_mysql
-          apk add mariadb-connector-c-dev
-          # for PAM support
-          apk add linux-pam-dev
-          # for mod_sql_postgres
-          apk add libpq postgresql-dev
-          # for mod_sql_odbc
-          apk add unixodbc-dev
-          # for OpenSSL support
-          apk add openssl openssl-dev
-          # for Sodium support
-          apk add libsodium-dev
-          # for mod_sql_sqlite
-          apk add sqlite sqlite-dev
-          # NOTE: Alpine does not support mod_wrap, due to lack of tcpwrappers
-          # for PCRE2 support
-          apk add pcre2-dev
-          # for ftptop
-          apk add ncurses-dev
-          # for zlib support
-          apk add zlib-dev
-
-          # for debugging
-          clang --version
-          gcc --version
-          openssl version -a
-
-          # The modules to build are distro-specific
-          echo "PROFTPD_MODULES=mod_sql:mod_sql_mysql:mod_sql_odbc:mod_sql_postgres:mod_sql_sqlite:mod_sql_passwd:mod_sftp:mod_sftp_sql:mod_sftp_pam:mod_tls:mod_tls_fscache:mod_tls_shmcache:mod_tls_memcache:mod_tls_redis:mod_ban:mod_copy:mod_ctrls_admin:mod_deflate:mod_dnsbl:mod_dynmasq:mod_exec:mod_facl:mod_geoip:mod_ident:mod_ifversion:mod_ldap:mod_load:mod_log_forensic:mod_qos:mod_quotatab:mod_quotatab_file:mod_quotatab_ldap:mod_quotatab_radius:mod_quotatab_sql:mod_radius:mod_readme:mod_rewrite:mod_shaper:mod_site_misc:mod_snmp:mod_wrap2:mod_wrap2_file:mod_wrap2_redis:mod_wrap2_sql:mod_digest:mod_auth_otp:mod_statcache:mod_systemd:mod_unique_id:mod_ifsession" >> $GITHUB_ENV
-
-      # Sadly, there are enough package requirement differences between Alpine
-      # 3.15 and 3.18, that is more expedient to supply different package
-      # installation instructions.
       - name: Install Alpine 3.18 packages
         if: ${{ matrix.container == 'alpine:3.18' }}
         run: |
@@ -359,7 +301,7 @@ jobs:
         # On recent (as of 2022-11-13) AlmaLinux with clang and the
         # `--enable-devel=fortify` configure settings, some of the unit tests
         # inexplicably fail.  So skip clang unit tests, for now.
-        if: ${{ matrix.compiler == 'gcc' && matrix.container != 'alpine:3.15' && matrix.container != 'alpine:3.18' }}
+        if: ${{ matrix.compiler == 'gcc' && matrix.container != 'alpine:3.18' }}
         run: |
           make TEST_VERBOSE=1 check-api
 
