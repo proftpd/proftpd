@@ -37,9 +37,15 @@ jobs:
         language:
           - cpp
 
+    env:
+      # Let's try opting into use of Nodejs v24; see:
+      #  https://github.blog/changelog/2025-09-19-deprecation-of-node-20-on-github-actions-runners/
+      # GitHub runners still causing problems with NodeJS v20; see:
+      FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
     steps:
       - name: Checkout source code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       - name: Install Packages
         run: |
