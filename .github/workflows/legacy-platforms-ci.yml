@@ -113,6 +113,7 @@ jobs:
           # for Sodium support
           apk add libsodium-dev
           # for mod_sql_sqlite
+          apk add sqlite sqlite-dev
           # NOTE: Alpine does not support mod_wrap, due to lack of tcpwrappers
           # for PCRE2 support
           apk add pcre2-dev
