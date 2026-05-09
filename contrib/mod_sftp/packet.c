@@ -89,6 +89,21 @@ static unsigned int client_alive_interval = 0;
 static const char *trace_channel = "ssh2";
 static const char *timing_channel = "timing";
 
+/* This is admittedly an arbitrary upper limit on the number of EXT_INFO
+ * extensions we will handle.
+ *
+ * draft-ssh-ext-info-05 currently defines five:
+ *
+ *  server-sig-algs
+ *  no-flow-control
+ *  accept-channels
+ *  elevation
+ *  delay-compression
+ *
+ * And some implementations, like OpenSSH, will have their own namespaced
+ * extensions.
+ */
+#define MAX_EXT_INFO_COUNT	32
 #define MAX_POLL_TIMEOUTS	3
 
 static int packet_poll(int sockfd, int io) {
@@ -1793,6 +1808,14 @@ void sftp_ssh2_packet_handle_ext_info(struct ssh2_packet *pkt) {
   ext_count = sftp_msg_read_int(pkt->pool, &pkt->payload, &pkt->payload_len);
   pr_trace_msg(trace_channel, 9, "client sent EXT_INFO with %lu %s",
     (unsigned long) ext_count, ext_count != 1 ? "extensions" : "extension");
+
+  if (ext_count > MAX_EXT_INFO_COUNT) {
+    (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
+      "client sent too many EXT_INFO extensions (%lu, max %lu), ignoring",
+      (unsigned long) ext_count, (unsigned long) MAX_EXT_INFO_COUNT);
+    destroy_pool(pkt->pool);
+    return;
+  }
 
   for (i = 0; i < ext_count; i++) {
     char *ext_name = NULL;
