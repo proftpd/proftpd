@@ -87,6 +87,19 @@ static unsigned int write_mac_idx = 0;
 
 static void clear_mac(struct sftp_mac *mac);
 
+#if !defined(HAVE_TIMINGSAFE_BCMP)
+static int timingsafe_bcmp(const void *b1, const void *b2, size_t n) {
+  const unsigned char *p1 = b1, *p2 = b2;
+  int ret = 0;
+
+  for (; n > 0; n--) {
+    ret |= *p1++ ^ *p2++;
+  }
+
+  return (ret != 0);
+}
+#endif /* HAVE_TIMINGSAFE_BCMP */
+
 static unsigned int get_next_read_index(void) {
   if (read_mac_idx == 1) {
     return 0;
@@ -380,7 +393,7 @@ static int get_mac(struct ssh2_packet *pkt, struct sftp_mac *mac,
   }
 
   if (flags & SFTP_MAC_FL_READ_MAC) {
-    if (memcmp(mac_data, pkt->mac, mac_len) != 0) {
+    if (timingsafe_bcmp(mac_data, pkt->mac, mac_len) != 0) {
       unsigned int i = 0;
 
       (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
