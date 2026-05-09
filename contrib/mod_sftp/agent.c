@@ -154,15 +154,10 @@ static unsigned char *agent_request(pool *p, int fd, const char *path,
     return NULL;
   }
 
-  /* Sanity check the returned length; we could be dealing with a buggy
-   * client (or something else is injecting data into the Unix domain socket).
-   * Best be conservative: if we get a response length of more than 256KB,
-   * it's too big.  (What about very long lists of keys, and/or large keys?)
-   */
-  if (res > AGENT_REPLY_MAXSZ) {
+  if (res < sizeof(uint32_t)) {
     pr_trace_msg(trace_channel, 1,
-      "response length (%d) from SSH agent at '%s' exceeds maximum (%lu), "
-      "ignoring", res, path, (unsigned long) AGENT_REPLY_MAXSZ);
+      "response data (%d bytes) from SSH agent at '%s' is too short, ignoring",
+      res, path);
     errno = EIO;
     return NULL;
   }
@@ -171,6 +166,20 @@ static unsigned char *agent_request(pool *p, int fd, const char *path,
   buflen = res;
 
   *resplen = sftp_msg_read_int(p, &buf, &buflen);
+
+  /* Sanity check the indicated length; we could be dealing with a buggy
+   * client (or something else is injecting data into the Unix domain socket).
+   * Best be conservative: if we get a response length of more than 256KB,
+   * it's too big.  (What about very long lists of keys, and/or large keys?)
+   */
+  if (*resplen > AGENT_REPLY_MAXSZ) {
+    pr_trace_msg(trace_channel, 1,
+      "response length (%lu) from SSH agent at '%s' exceeds maximum (%lu), "
+      "ignoring", (unsigned long) *resplen, path,
+      (unsigned long) AGENT_REPLY_MAXSZ);
+    errno = EIO;
+    return NULL;
+  }
 
   bufsz = buflen = *resplen;
   buf = ptr = palloc(p, bufsz);
