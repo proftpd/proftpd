@@ -9095,9 +9095,23 @@ static void tls_end_sess(SSL *ssl, conn_t *conn, int flags) {
      */
     pr_trace_msg(trace_channel, 29,
       "data SSL %p being ended has same SSL_SESSION %p as control SSL, "
-      "clearing the data SSL pointer manually (Issue #1963)", ssl,
+      "clearing the data SSL pointer manually (see Issue #1963)", ssl,
       SSL_get_session(ssl));
-    SSL_set_session(ssl, NULL);
+    if (SSL_set_session(ssl, NULL) != 1) {
+      pr_trace_msg(trace_channel, 29,
+        "error setting NULL session on SSL %p: %s", ssl, tls_get_errors());
+    }
+
+    /* Note that, per findings in Issue #2056, we also need to manually
+     * increment the refcount of the ctrl_ssl session, lest we still
+     * inadvertently corrupt the OpenSSL internal session cache state.
+     * Sigh.
+     */
+    if (SSL_SESSION_up_ref(SSL_get_session(ctrl_ssl)) != 1) {
+      pr_trace_msg(trace_channel, 29,
+        "error incrementing session refcount on SSL %p: %s", ctrl_ssl,
+        tls_get_errors());
+    }
   }
 
   SSL_free(ssl);
