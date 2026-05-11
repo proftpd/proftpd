@@ -70,6 +70,8 @@ static unsigned int quotatab_nbackends = 0;
 static int quota_logfd = -1;
 static char *quota_logname = NULL;
 
+static const char *trace_channel = "quotatab";
+
 static unsigned char allow_site_quota = TRUE;
 static unsigned char use_dirs = FALSE;
 static unsigned char use_quotas = FALSE;
@@ -2878,9 +2880,17 @@ MODRET quotatab_post_pass(cmd_rec *cmd) {
             "in %lu secs", byte_count, file_count,
             file_count != 1 ? "files" : "file", session.user,
             (unsigned long) time(NULL) - then);
+          pr_trace_msg(trace_channel, 9,
+            "ScanOnLogin found %0.2lf bytes in %u %s for user '%s' in %lu secs",
+            byte_count, file_count, file_count != 1 ? "files" : "file",
+            session.user, (unsigned long) time(NULL) - then);
 
           quotatab_log("updating tally (%0.2lf bytes, %d %s difference)",
             bytes_diff, files_diff, files_diff != 1 ? "files" : "file");
+          pr_trace_msg(trace_channel, 9,
+            "ScanOnLogin updating tally (%0.2lf bytes, %d %s difference) for "
+            "user '%s'", bytes_diff, files_diff,
+            files_diff != 1 ? "files" : "file", session.user);
 
           /* Write out an updated quota entry */
           QUOTATAB_TALLY_WRITE(bytes_diff, 0, 0, files_diff, 0, 0);
@@ -2959,9 +2969,18 @@ MODRET quotatab_post_pass(cmd_rec *cmd) {
               "in %lu secs", byte_count, file_count,
               file_count != 1 ? "files" : "file", group_name,
               (unsigned long) time(NULL) - then);
+            pr_trace_msg(trace_channel, 9,
+              "ScanOnLogin found %0.2lf bytes in %u %s for group '%s' "
+              "in %lu secs", byte_count, file_count,
+              file_count != 1 ? "files" : "file", group_name,
+              (unsigned long) time(NULL) - then);
 
             quotatab_log("updating tally (%0.2lf bytes, %d %s difference)",
               bytes_diff, files_diff, files_diff != 1 ? "files" : "file");
+            pr_trace_msg(trace_channel, 9,
+              "ScanOnLogin updating tally (%0.2lf bytes, %d %s difference) "
+              "for group '%s'", bytes_diff, files_diff,
+              files_diff != 1 ? "files" : "file", group_name);
 
             /* Write out an updated quota entry */
             QUOTATAB_TALLY_WRITE(bytes_diff, 0, 0, files_diff, 0, 0);
@@ -3016,9 +3035,18 @@ MODRET quotatab_post_pass(cmd_rec *cmd) {
               "in %lu secs", byte_count, file_count,
               file_count != 1 ? "files" : "file", session.user,
               (unsigned long) time(NULL) - then);
+            pr_trace_msg(trace_channel, 9,
+              "ScanOnLogin found %0.2lf bytes in %u %s for user '%s' "
+              "in %lu secs", byte_count, file_count,
+              file_count != 1 ? "files" : "file", session.user,
+              (unsigned long) time(NULL) - then);
 
             quotatab_log("updating tally (%0.2lf bytes, %d %s difference)",
               bytes_diff, files_diff, files_diff != 1 ? "files" : "file");
+            pr_trace_msg(trace_channel, 9,
+              "ScanOnLogin updating tally (%0.2lf bytes, %d %s difference) "
+              "for user '%s'", bytes_diff, files_diff,
+              files_diff != 1 ? "files" : "file", session.user);
 
             /* Write out an updated quota entry */
             QUOTATAB_TALLY_WRITE(bytes_diff, 0, 0, files_diff, 0, 0);
@@ -3098,9 +3126,18 @@ MODRET quotatab_post_pass(cmd_rec *cmd) {
               "in %lu secs", byte_count, file_count,
               file_count != 1 ? "files" : "file", group_name,
               (unsigned long) time(NULL) - then);
+            pr_trace_msg(trace_channel, 9,
+              "ScanOnLogin found %0.2lf bytes in %u %s for group '%s' "
+              "in %lu secs", byte_count, file_count,
+              file_count != 1 ? "files" : "file", group_name,
+              (unsigned long) time(NULL) - then);
 
             quotatab_log("updating tally (%0.2lf bytes, %d %s difference)",
               bytes_diff, files_diff, files_diff != 1 ? "files" : "file");
+            pr_trace_msg(trace_channel, 9,
+              "ScanOnLogin updating tally (%0.2lf bytes, %d %s difference) "
+              "for group '%s'", bytes_diff, files_diff,
+              files_diff != 1 ? "files" : "file", group_name);
 
             /* Write out an updated quota entry */
             QUOTATAB_TALLY_WRITE(bytes_diff, 0, 0, files_diff, 0, 0);
@@ -3162,9 +3199,18 @@ MODRET quotatab_post_pass(cmd_rec *cmd) {
               "in %lu secs", byte_count, file_count,
               file_count != 1 ? "files" : "file", session.conn_class->cls_name,
               (unsigned long) time(NULL) - then);
+            pr_trace_msg(trace_channel, 9,
+              "ScanOnLogin found %0.2lf bytes in %u %s for class '%s' "
+              "in %lu secs", byte_count, file_count,
+              file_count != 1 ? "files" : "file", session.conn_class->cls_name,
+              (unsigned long) time(NULL) - then);
 
             quotatab_log("updating tally (%0.2lf bytes, %d %s difference)",
               bytes_diff, files_diff, files_diff != 1 ? "files" : "file");
+            pr_trace_msg(trace_channel, 9,
+              "ScanOnLogin updating tally (%0.2lf bytes, %d %s difference) "
+              "for class '%s'", bytes_diff, files_diff,
+              files_diff != 1 ? "files" : "file", session.conn_class->cls_name);
 
             /* Write out an updated quota entry */
             QUOTATAB_TALLY_WRITE(bytes_diff, 0, 0, files_diff, 0, 0);
@@ -3219,9 +3265,17 @@ MODRET quotatab_post_pass(cmd_rec *cmd) {
               "in %lu secs", byte_count, file_count,
               file_count != 1 ? "files" : "file",
               (unsigned long) time(NULL) - then);
+            pr_trace_msg(trace_channel, 9,
+              "ScanOnLogin found %0.2lf bytes in %u %s for all in %lu secs",
+              byte_count, file_count, file_count != 1 ? "files" : "file",
+              (unsigned long) time(NULL) - then);
 
             quotatab_log("updating tally (%0.2lf bytes, %d %s difference)",
               bytes_diff, files_diff, files_diff != 1 ? "files" : "file");
+            pr_trace_msg(trace_channel, 9,
+             "ScanOnLogin updating tally (%0.2lf bytes, %d %s difference) "
+             "for all", bytes_diff, files_diff,
+             files_diff != 1 ? "files" : "file");
 
             /* Write out an updated quota entry */
             QUOTATAB_TALLY_WRITE(bytes_diff, 0, 0, files_diff, 0, 0);

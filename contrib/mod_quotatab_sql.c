@@ -28,6 +28,8 @@
 
 module quotatab_sql_module;
 
+static const char *trace_channel = "quotatab.sql";
+
 static cmd_rec *sqltab_cmd_create(pool *parent_pool, unsigned int argc, ...) {
   register unsigned int i = 0;
   pool *cmd_pool = NULL;
@@ -536,6 +538,20 @@ static int sqltab_write(quota_table_t *sqltab, void *ptr) {
   }
 
   tally_quota_type[QUOTATAB_SQL_VALUE_BUFSZ-1] = '\0';
+
+  pr_trace_msg(trace_channel, 19, "writing %s %s tally: "
+    "bytes_in_used = %.2f (delta %.2f), "
+    "bytes_out_used = %.2f (delta %.2f), "
+    "bytes_xfer_used = %.2f (delta %.2f), "
+    "files_in_used = %d (delta %d), "
+    "files_out_used = %d (delta %d), "
+    "files_xfer_used = %d (delta %d)", tally->name, tally_quota_type,
+    tally->bytes_in_used, quotatab_deltas.bytes_in_delta,
+    tally->bytes_out_used, quotatab_deltas.bytes_out_delta,
+    tally->bytes_xfer_used, quotatab_deltas.bytes_xfer_delta,
+    tally->files_in_used, quotatab_deltas.files_in_delta,
+    tally->files_out_used, quotatab_deltas.files_out_delta,
+    tally->files_xfer_used, quotatab_deltas.files_xfer_delta);
 
   /* Note: use the deltas data, not the tally members, so that the
    * UPDATE can do an "atomic" read+update all in one shot.
