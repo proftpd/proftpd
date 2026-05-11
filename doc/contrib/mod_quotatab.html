@@ -641,9 +641,27 @@ Consult the <code>mod_sql</code> documentation for installation instructions
 for that module.
 
 <p>
+<b>Logging</b><br>
+The <code>mod_quotatab</code> module supports different forms of logging.  The
+main module logging is done via the <code>QuotaLog</code> directive.  For
+debugging purposes, the module also uses <a href="../howto/Tracing.html">trace logging</a>, via the module-specific log channels:
+<ul>
+  <li>quotatab
+  <li>quotatab.lock
+</ul>
+Thus for trace logging, to aid in debugging, you would use the following in
+your <code>proftpd.conf</code>:
+<pre>
+  TraceLog /path/to/quotatab-trace.log
+  Trace quotatab:20 quotatab.lock:10
+</pre>
+This trace logging can generate large files; it is intended for debugging
+use only, and should be removed from any production configuration.
+
+<p>
 <hr>
 <font size=2><b><i>
-&copy; Copyright 2000-2021 The ProFTPD Project<br>
+&copy; Copyright 2000-2026 The ProFTPD Project<br>
  All Rights Reserved<br>
 </i></b></font>
 <hr>
