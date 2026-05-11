@@ -2804,6 +2804,7 @@ MODRET quotatab_post_mkd_err(cmd_rec *cmd) {
 }
 
 MODRET quotatab_post_pass(cmd_rec *cmd) {
+  config_rec *c = NULL;
   unsigned char have_limit_entry = FALSE;
   have_quota_entry = FALSE;
 
@@ -2814,6 +2815,21 @@ MODRET quotatab_post_pass(cmd_rec *cmd) {
     use_quotas = FALSE;
     quotatab_log("turning QuotaEngine off");
     return PR_DECLINED(cmd);
+  }
+
+  /* Check for QuotaOptions here as well, in case mod_ifsession changed
+   * them on a per-user/group basis.
+   */
+  c = find_config(main_server->conf, CONF_PARAM, "QuotaOptions", FALSE);
+  while (c != NULL) {
+    unsigned long opts;
+
+    pr_signals_handle();
+
+    opts = *((unsigned long *) c->argv[0]);
+    quotatab_opts |= opts;
+
+    c = find_config_next(c, c->next, CONF_PARAM, "QuotaOptions", FALSE);
   }
 
   quotatab_mutex_lock(F_WRLCK);
