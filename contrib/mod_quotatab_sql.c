@@ -24,7 +24,7 @@
 #include "mod_quotatab.h"
 #include "mod_sql.h"
 
-#define QUOTATAB_SQL_VALUE_BUFSZ	20
+#define QUOTATAB_SQL_VALUE_BUFSZ	64
 
 module quotatab_sql_module;
 
