@@ -19,6 +19,9 @@
 --------------------------------
 - Issue 2057 - SQL Injection in mod_wrap2_sql via reverse DNS
   hostname (CVE-2026-44331).
+- Issue 2056 - Incomplete fix for session management with OpenSSL 3.2.x or
+  later, when using TLSv1.2 or earlier.  This complements the fix for
+  Issue #1963.
 
 1.3.9a - Released 27-Apr-2026
 --------------------------------
