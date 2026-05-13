@@ -1344,6 +1344,11 @@ int quotatab_write(quota_tally_t *tally,
     double bytes_in_inc, double bytes_out_inc, double bytes_xfer_inc,
     int files_in_inc, int files_out_inc, int files_xfer_inc) {
 
+  /* No need to write out to the stream if per-session quotas are in effect. */
+  if (sess_limit.quota_per_session == TRUE) {
+    return 0;
+  }
+
   /* Make sure the tally table can support writes. */
   if (tally_tab == NULL ||
       tally_tab->tab_write == NULL) {
@@ -1443,13 +1448,6 @@ int quotatab_write(quota_tally_t *tally,
     }
 
     quotatab_deltas.files_xfer_delta = files_xfer_inc;
-  }
-
-  /* No need to write out to the stream if per-session quotas are in effect. */
-  if (sess_limit.quota_per_session) {
-    memset(&quotatab_deltas, '\0', sizeof(quotatab_deltas));
-    quotatab_wunlock(tally_tab);
-    return 0;
   }
 
   if (tally_tab->tab_write(tally_tab, tally) < 0) {
@@ -2635,7 +2633,7 @@ MODRET quotatab_post_dele(cmd_rec *cmd) {
     return PR_DECLINED(cmd);
   }
 
-  if (quotatab_have_dele_st) {
+  if (quotatab_have_dele_st == TRUE) {
 
     /* Check the ownership of the deleted file against the currently
      * logged-in user/group.  If the file belongs to us, we can update
@@ -2754,6 +2752,7 @@ MODRET quotatab_post_dele(cmd_rec *cmd) {
 
   /* Clear the cached bytes. */
   quotatab_disk_nbytes = 0;
+  quotatab_have_dele_st = FALSE;
 
   return PR_DECLINED(cmd);
 }
@@ -2766,6 +2765,7 @@ MODRET quotatab_post_dele_err(cmd_rec *cmd) {
 
   /* Clear the cached bytes. */
   quotatab_disk_nbytes = 0;
+  quotatab_have_dele_st = FALSE;
 
   /* Clear the update flag as well. */
   have_quota_update = 0;
