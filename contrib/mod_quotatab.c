@@ -1344,10 +1344,11 @@ int quotatab_write(quota_tally_t *tally,
     double bytes_in_inc, double bytes_out_inc, double bytes_xfer_inc,
     int files_in_inc, int files_out_inc, int files_xfer_inc) {
 
-  /* No need to write out to the stream if per-session quotas are in effect. */
-  if (sess_limit.quota_per_session == TRUE) {
-    return 0;
-  }
+  /* NOTE: Even if session.quota_per_session is TRUE, we DO want to obtain
+   * a write-lock, and update the sess_tally struct.  Why?  Because that
+   * struct is consulted later, during the session process, and so updates
+   * to it are necessary for imposing the limits within the session.
+   */
 
   /* Make sure the tally table can support writes. */
   if (tally_tab == NULL ||
@@ -1448,6 +1449,14 @@ int quotatab_write(quota_tally_t *tally,
     }
 
     quotatab_deltas.files_xfer_delta = files_xfer_inc;
+  }
+
+  /* No need to write out to the stream if per-session quotas are in effect. */
+  if (sess_limit.quota_per_session == TRUE) {
+    memset(&quotatab_deltas, '\0', sizeof(quotatab_deltas));
+    quotatab_wunlock(tally_tab);
+
+    return 0;
   }
 
   if (tally_tab->tab_write(tally_tab, tally) < 0) {
