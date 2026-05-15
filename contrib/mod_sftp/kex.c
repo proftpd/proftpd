@@ -42,6 +42,11 @@
 # define CURVE25519_SIZE	32
 #endif /* PR_USE_SODIUM */
 
+#if defined(HAVE_MLKEM768_OPENSSL) && defined(HAVE_SHA256_OPENSSL)
+# include <openssl/ml_kem.h>
+# define X25519_KEYLEN		32
+#endif /* HAVE_MLKEM768_OPENSSL and HAVE_SHA256_OPENSSL */
+
 #if defined(HAVE_X448_OPENSSL) && defined(HAVE_SHA512_OPENSSL)
 # define CURVE448_SIZE		56
 #endif /* HAVE_X448_OPENSSL and HAVE_SHA512_OPENSSL */
@@ -133,6 +138,9 @@ struct sftp_kex {
   /* Using Curve448? */
   int use_curve448;
 
+  /* Using MLKEM768 */
+  int use_mlkem768;
+
   /* Using extension negotiations? */
   int use_ext_info;
 
@@ -142,6 +150,11 @@ struct sftp_kex {
   const EVP_MD *hash;
 
   const BIGNUM *k;
+
+  /* Some key exchanges encode K as something other than an mpint. */
+  unsigned char *kdata;
+  uint32_t kdatalen;
+
   const char *h;
   uint32_t hlen;
 
@@ -159,6 +172,10 @@ struct sftp_kex {
 #if defined(HAVE_X448_OPENSSL) && defined(HAVE_SHA512_OPENSSL)
   unsigned char *client_curve448;
 #endif /* HAVE_X448_OPENSSL and HAVE_SHA512_OPENSSL */
+#if defined(HAVE_MLKEM768_OPENSSL) && defined(HAVE_SHA256_OPENSSL)
+  unsigned char *client_x25519;
+  EVP_PKEY *client_mlkem768;
+#endif /* HAVE_MLKEM768_OPENSSL and HAVE_SHA256_OPENSSL */
 };
 
 static struct sftp_kex *kex_first_kex = NULL;
@@ -1543,6 +1560,9 @@ static const char *get_preferred_name(pool *p, const char *names) {
  * SFTPOption is used.
  */
 static const char *kex_exchanges[] = {
+#if defined(HAVE_MLKEM768_OPENSSL) && defined(HAVE_SHA256_OPENSSL)
+  "mlkem768x25519-sha256",
+#endif /* HAVE_MLKEM768_OPENSSL and HAVE_SHA256_OPENSSL */
 #if defined(HAVE_X448_OPENSSL) && defined(HAVE_SHA512_OPENSSL)
   "curve448-sha512",
 #endif /* HAVE_X448_OPENSSL and HAVE_SHA512_OPENSSL */
@@ -1812,6 +1832,8 @@ static struct sftp_kex *create_kex(pool *p) {
   kex->e = NULL;
   kex->hash = NULL;
   kex->k = NULL;
+  kex->kdata = NULL;
+  kex->kdatalen = 0;
   kex->h = NULL;
   kex->hlen = 0;
   kex->rsa = NULL;
@@ -1918,6 +1940,11 @@ static void destroy_kex(struct sftp_kex *kex) {
       kex->k = NULL;
     }
 
+    if (kex->kdatalen > 0) {
+      pr_memscrub((char *) kex->kdata, kex->kdatalen);
+      kex->kdatalen = 0;
+    }
+
     if (kex->hlen > 0) {
       pr_memscrub((char *) kex->h, kex->hlen);
       kex->hlen = 0;
@@ -1948,6 +1975,18 @@ static void destroy_kex(struct sftp_kex *kex) {
       kex->client_curve448 = NULL;
     }
 #endif /* HAVE_X448_OPENSSL and HAVE_SHA512_OPENSSL */
+
+#if defined(HAVE_MLKEM768_OPENSSL) && defined(HAVE_SHA256_OPENSSL)
+    if (kex->client_x25519 != NULL) {
+      pr_memscrub(kex->client_x25519, X25519_KEYLEN);
+      kex->client_x25519 = NULL;
+    }
+
+    if (kex->client_mlkem768 != NULL) {
+      EVP_PKEY_free(kex->client_mlkem768);
+      kex->client_mlkem768 = NULL;
+    }
+#endif /* HAVE_MLKEM768_OPENSSL and HAVE_SHA256_OPENSSL */
 
     if (kex->pool != NULL) {
       destroy_pool(kex->pool);
@@ -2133,6 +2172,15 @@ static int setup_kex_algo(struct sftp_kex *kex, const char *algo) {
     return 0;
   }
 #endif /* HAVE_X448_OPENSSL and HAVE_SHA512_OPENSSL */
+
+#if defined(HAVE_MLKEM768_OPENSSL) && defined(HAVE_SHA256_OPENSSL)
+  if (strcmp(algo, "mlkem768x25519-sha256") == 0) {
+    kex->hash = EVP_sha256();
+    kex->session_names->kex_algo = algo;
+    kex->use_mlkem768 = TRUE;
+    return 0;
+  }
+#endif /* HAVE_MLKEM768_OPENSSL and HAVE_SHA256_OPENSSL */
 
   if (strcmp(algo, "ext-info-c") == 0 ||
       strcmp(algo, "ext-info-s") == 0) {
@@ -2857,7 +2905,12 @@ static int set_session_keys(struct sftp_kex *kex) {
   ptr = buf = sftp_msg_getbuf(kex_pool, bufsz);
 
   /* Need to use SSH2-style format of K for the key. */
-  klen = sftp_msg_write_mpint(&buf, &buflen, kex->k);
+  if (kex->k != NULL) {
+    klen = sftp_msg_write_mpint(&buf, &buflen, kex->k);
+
+  } else {
+    klen = sftp_msg_write_data(&buf, &buflen, kex->kdata, kex->kdatalen, TRUE);
+  }
 
   if (sftp_cipher_set_read_key(kex_pool, kex->hash, ptr, klen, kex->h,
       kex->hlen, SFTP_ROLE_SERVER) < 0) {
@@ -4119,6 +4172,21 @@ static int generate_curve25519_keys(unsigned char *priv_key,
   return 0;
 }
 
+static int get_curve25519_shared_key(unsigned char *shared_key,
+    unsigned char *client_curve25519, unsigned char *server_key) {
+  int res;
+
+  res = crypto_scalarmult_curve25519(shared_key, server_key, client_curve25519);
+  if (res < 0) {
+    pr_trace_msg(trace_channel, 3,
+      "error performing Curve25519 scalar multiplication");
+    errno = EINVAL;
+    return -1;
+  }
+
+  return CURVE25519_SIZE;
+}
+
 static int read_curve25519_init(struct ssh2_packet *pkt, struct sftp_kex *kex) {
   unsigned char zero_curve25519[CURVE25519_SIZE];
   unsigned char *client_curve25519;
@@ -4161,21 +4229,6 @@ static int read_curve25519_init(struct ssh2_packet *pkt, struct sftp_kex *kex) {
   kex->client_curve25519 = palloc(kex_pool, CURVE25519_SIZE);
   memcpy(kex->client_curve25519, client_curve25519, CURVE25519_SIZE);
   return 0;
-}
-
-static int get_curve25519_shared_key(unsigned char *shared_key,
-    unsigned char *client_curve25519, unsigned char *server_key) {
-  int res;
-
-  res = crypto_scalarmult_curve25519(shared_key, server_key, client_curve25519);
-  if (res < 0) {
-    pr_trace_msg(trace_channel, 3,
-      "error performing Curve25519 scalar multiplication");
-    errno = EINVAL;
-    return -1;
-  }
-
-  return CURVE25519_SIZE;
 }
 
 static const unsigned char *calculate_curve25519_h(struct sftp_kex *kex,
@@ -4526,6 +4579,8 @@ static int read_curve448_init(struct ssh2_packet *pkt, struct sftp_kex *kex) {
 
   /* Watch for all-zero public keys, and reject them. */
   memset(zero_curve448, '\0', sizeof(zero_curve448));
+
+  /* XXX Use timingsafe_bcmp here */
   if (memcmp(client_curve448, zero_curve448, CURVE448_SIZE) == 0) {
     (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
       "rejecting invalid (all-zero) client Curve448 key");
@@ -4875,6 +4930,603 @@ static int handle_kex_curve448(struct ssh2_packet *pkt, struct sftp_kex *kex) {
   return 0;
 }
 #endif /* HAVE_X448_OPENSSL and HAVE_SHA512_OPENSSL */
+
+#if defined(HAVE_MLKEM768_OPENSSL) && defined(HAVE_SHA256_OPENSSL)
+/* Note: This is an OpenSSL-based implementation of the similarly named
+ * 'generate_curve25519_keys' function, which is Sodium-based.
+ */
+static int generate_x25519_keys(pool *p, unsigned char **priv_key,
+    unsigned char *pub_key) {
+  EVP_PKEY_CTX *pctx = NULL;
+  EVP_PKEY *pkey = NULL;
+  size_t key_len = 0;
+
+  pctx = EVP_PKEY_CTX_new_id(NID_X25519, NULL);
+  if (pctx == NULL) {
+    (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
+      "error initializing context for X25519 key: %s",
+      sftp_crypto_get_errors());
+    return -1;
+  }
+
+  if (EVP_PKEY_keygen_init(pctx) != 1) {
+    (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
+      "error preparing to generate X25519 key: %s", sftp_crypto_get_errors());
+    EVP_PKEY_CTX_free(pctx);
+    return -1;
+  }
+
+  if (EVP_PKEY_keygen(pctx, &pkey) != 1) {
+    (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
+      "error generating X25519 shared key: %s", sftp_crypto_get_errors());
+    EVP_PKEY_CTX_free(pctx);
+    return -1;
+  }
+
+  key_len = X25519_KEYLEN;
+  *priv_key = pcalloc(p, key_len);
+  if (EVP_PKEY_get_raw_private_key(pkey, *priv_key, &key_len) != 1) {
+    (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
+      "error obtaining X25519 private key: %s", sftp_crypto_get_errors());
+    EVP_PKEY_CTX_free(pctx);
+    EVP_PKEY_free(pkey);
+    return -1;
+  }
+
+  key_len = X25519_KEYLEN;
+  if (EVP_PKEY_get_raw_public_key(pkey, pub_key, &key_len) != 1) {
+    (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
+      "error obtaining X25519 public key: %s", sftp_crypto_get_errors());
+    EVP_PKEY_CTX_free(pctx);
+    EVP_PKEY_free(pkey);
+    return -1;
+  }
+
+  EVP_PKEY_CTX_free(pctx);
+  EVP_PKEY_free(pkey);
+  return 0;
+}
+
+/* Note: This is an OpenSSL-based implementation of the similarly named
+ * 'get_curve25519_shared_key' function, which is Sodium-based.
+ */
+static int get_x25519_shared_key(unsigned char *shared_key,
+    unsigned char *client_x25519, unsigned char *server_key) {
+  EVP_PKEY_CTX *pctx = NULL;
+  EVP_PKEY *client_pkey = NULL, *server_pkey = NULL;
+  size_t shared_keylen = 0;
+
+  server_pkey = EVP_PKEY_new_raw_private_key(EVP_PKEY_X25519, NULL, server_key,
+    X25519_KEYLEN);
+  if (server_pkey == NULL) {
+    (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
+      "error initializing X25519 server key: %s", sftp_crypto_get_errors());
+    return -1;
+  }
+
+  client_pkey = EVP_PKEY_new_raw_public_key(EVP_PKEY_X25519, NULL,
+    client_x25519, X25519_KEYLEN);
+  if (client_pkey == NULL) {
+    (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
+      "error initializing X25519 client key: %s", sftp_crypto_get_errors());
+    EVP_PKEY_free(server_pkey);
+    return -1;
+  }
+
+  pctx = EVP_PKEY_CTX_new(server_pkey, NULL);
+  if (pctx == NULL) {
+    (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
+      "error initializing context for X25519 shared key: %s",
+      sftp_crypto_get_errors());
+    EVP_PKEY_free(server_pkey);
+    EVP_PKEY_free(client_pkey);
+    return -1;
+  }
+
+  if (EVP_PKEY_derive_init(pctx) != 1) {
+    (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
+      "error preparing for X25519 shared key: %s", sftp_crypto_get_errors());
+    EVP_PKEY_CTX_free(pctx);
+    EVP_PKEY_free(server_pkey);
+    EVP_PKEY_free(client_pkey);
+    return -1;
+  }
+
+  if (EVP_PKEY_derive_set_peer(pctx, client_pkey) != 1) {
+    (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
+      "error setting peer for X25519 shared key: %s",
+      sftp_crypto_get_errors());
+    EVP_PKEY_CTX_free(pctx);
+    EVP_PKEY_free(server_pkey);
+    EVP_PKEY_free(client_pkey);
+    return -1;
+  }
+
+  shared_keylen = X25519_KEYLEN;
+  if (EVP_PKEY_derive(pctx, shared_key, &shared_keylen) != 1) {
+    (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
+      "error generating X25519 shared key: %s", sftp_crypto_get_errors());
+    EVP_PKEY_CTX_free(pctx);
+    EVP_PKEY_free(server_pkey);
+    EVP_PKEY_free(client_pkey);
+    return -1;
+  }
+
+  if (shared_keylen != X25519_KEYLEN) {
+    pr_trace_msg(trace_channel, 1,
+      "generated X25519 shared key length (%lu bytes) is not as expected "
+      "(%lu bytes)", (unsigned long) shared_keylen,
+      (unsigned long) X25519_KEYLEN);
+  }
+
+  EVP_PKEY_CTX_free(pctx);
+  EVP_PKEY_free(server_pkey);
+  EVP_PKEY_free(client_pkey);
+
+  return X25519_KEYLEN;
+}
+
+static int read_mlkem768_init(struct ssh2_packet *pkt, struct sftp_kex *kex) {
+  unsigned char zero_x25519[X25519_KEYLEN];
+  unsigned char *client_x25519;
+  unsigned char *buf;
+  uint32_t buflen, data_len, expected_len;
+  char *data;
+  EVP_PKEY_CTX *pctx;
+  EVP_PKEY *mlkem768_pkey;
+
+  buf = pkt->payload;
+  buflen = data_len = pkt->payload_len;
+
+  data = sftp_msg_read_string(pkt->pool, &buf, &buflen);
+
+  /* The "string" we read MIGHT contain NULs, thus using strlen(3) to determine
+   * the length of data is a Bad Idea (Issue #556).  Thus instead, we track
+   * the packet payload length remaining after the read; the data length is
+   * the difference, including the length value prefix of 4 bytes.
+   */
+  data_len -= (buflen + sizeof(uint32_t));
+
+  /* We expect to have a concatention of MLKEM768 and X25519 public keys. */
+  expected_len = OSSL_ML_KEM_768_PUBLIC_KEY_BYTES + X25519_KEYLEN;
+
+  if (data_len != expected_len) {
+    (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
+      "rejecting invalid length (%lu %s, wanted %lu) client "
+      "MLKEM768+X25519 keys", (unsigned long) data_len,
+      data_len != 1 ? "bytes" : "byte", (unsigned long) expected_len);
+    errno = EINVAL;
+    return -1;
+  }
+
+  mlkem768_pkey = EVP_PKEY_new_raw_public_key(NID_ML_KEM_768, NULL,
+    (const unsigned char *) data, OSSL_ML_KEM_768_PUBLIC_KEY_BYTES);
+  if (mlkem768_pkey == NULL) {
+    (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
+      "error reading client MLKEM768 public key: %s", sftp_crypto_get_errors());
+    return -1;
+  }
+
+  pctx = EVP_PKEY_CTX_new_from_pkey(NULL, mlkem768_pkey, NULL);
+  if (pctx == NULL) {
+    (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
+      "error creating context from client LKEM768 public key: %s",
+      sftp_crypto_get_errors());
+    EVP_PKEY_free(mlkem768_pkey);
+
+    return -1;
+  }
+
+  if (EVP_PKEY_public_check(pctx) != 1) {
+    (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
+      "error verifying client MLKEM768 public key: %s",
+      sftp_crypto_get_errors());
+    EVP_PKEY_CTX_free(pctx);
+    EVP_PKEY_free(mlkem768_pkey);
+
+    return -1;
+  }
+
+  EVP_PKEY_CTX_free(pctx);
+
+  client_x25519 = ((unsigned char *) data) + OSSL_ML_KEM_768_PUBLIC_KEY_BYTES;
+
+  /* Watch for all-zero public keys, and reject them. */
+  memset(zero_x25519, '\0', sizeof(zero_x25519));
+
+/* XXX Use timingsafe_bcmp here */
+  if (memcmp(client_x25519, zero_x25519, X25519_KEYLEN) == 0) {
+    (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
+      "rejecting invalid (all-zero) client X25519 key");
+    EVP_PKEY_free(mlkem768_pkey);
+
+    errno = EINVAL;
+    return -1;
+  }
+
+  kex->client_x25519 = palloc(kex_pool, X25519_KEYLEN);
+  memcpy(kex->client_x25519, client_x25519, X25519_KEYLEN);
+
+  kex->client_mlkem768 = mlkem768_pkey;
+  return 0;
+}
+
+static int get_mlkem768_shared_key(pool *p, EVP_PKEY *client_mlkem768,
+    unsigned char **mlkem_key, size_t *mlkem_keylen,
+    unsigned char **ciphertext, size_t *ciphertext_len) {
+  unsigned char rand[OSSL_ML_KEM_SHARED_SECRET_BYTES];
+  EVP_PKEY_CTX *pctx = NULL;
+  OSSL_PARAM params[2];
+
+  pctx = EVP_PKEY_CTX_new_from_pkey(NULL, client_mlkem768, NULL);
+  if (pctx == NULL) {
+    (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
+      "error initializing context from client MLKEM768 public key: %s",
+      sftp_crypto_get_errors());
+    return -1;
+  }
+
+  if (RAND_bytes(rand, sizeof(rand)) != 1) {
+    (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
+      "unable to obtain %lu random bytes: %s", (unsigned long) sizeof(rand),
+      sftp_crypto_get_errors());
+  }
+
+  params[0] = OSSL_PARAM_construct_octet_ptr("data", (void *) rand,
+    sizeof(rand));
+  params[1] = OSSL_PARAM_construct_end();
+
+  if (EVP_PKEY_encapsulate_init(pctx, params) != 1) {
+    (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
+      "error preparing context for MLKEM768 encapsulation: %s",
+      sftp_crypto_get_errors());
+    EVP_PKEY_CTX_free(pctx);
+
+    return -1;
+  }
+
+  if (EVP_PKEY_encapsulate(pctx, NULL, ciphertext_len, NULL,
+      mlkem_keylen) != 1) {
+    (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
+      "unable to discover MLKEM768 encapsulation sizes: %s",
+      sftp_crypto_get_errors());
+    EVP_PKEY_CTX_free(pctx);
+
+    return -1;
+  }
+
+  *ciphertext = palloc(p, *ciphertext_len);
+  *mlkem_key = palloc(p, *mlkem_keylen);
+
+  if (EVP_PKEY_encapsulate(pctx, *ciphertext, ciphertext_len, *mlkem_key,
+      mlkem_keylen) != 1) {
+    (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
+      "error performing MLKEM768 encapsulation: %s", sftp_crypto_get_errors());
+    EVP_PKEY_CTX_free(pctx);
+
+    return -1;
+  }
+
+  EVP_PKEY_CTX_free(pctx);
+  return *mlkem_keylen;
+}
+
+static const unsigned char *calculate_mlkem768_h(struct sftp_kex *kex,
+    pool *p, const unsigned char *hostkey_data, uint32_t hostkey_datalen,
+    const unsigned char *kdata, uint32_t kdatalen,
+    EVP_PKEY *client_mlkem768, unsigned char *client_x25519,
+    unsigned char *ciphertext, uint32_t ciphertext_len,
+    unsigned char *server_x25519, uint32_t *hlen) {
+  EVP_MD_CTX *pctx;
+  unsigned char *buf, *ptr, *mlkem768;
+  uint32_t buflen, bufsz;
+  size_t mlkem768_len;
+
+  bufsz = buflen = SFTP_KEX_H_BUFLEN;
+
+  /* XXX Is this buffer large enough? Too large? */
+  ptr = buf = sftp_msg_getbuf(kex_pool, bufsz);
+
+  /* Write all of the data into the buffer in the SSH2 format, and hash it.
+   * The ordering of these fields is described in RFC5656.
+   */
+
+  /* First, the version strings */
+  sftp_msg_write_string(&buf, &buflen, kex->client_version);
+  sftp_msg_write_string(&buf, &buflen, kex->server_version);
+
+  /* Client's KEXINIT */
+  sftp_msg_write_int(&buf, &buflen, kex->client_kexinit_payload_len + 1);
+  sftp_msg_write_byte(&buf, &buflen, SFTP_SSH2_MSG_KEXINIT);
+  sftp_msg_write_data(&buf, &buflen, kex->client_kexinit_payload,
+    kex->client_kexinit_payload_len, FALSE);
+
+  /* Server's KEXINIT */
+  sftp_msg_write_int(&buf, &buflen, kex->server_kexinit_payload_len + 1);
+  sftp_msg_write_byte(&buf, &buflen, SFTP_SSH2_MSG_KEXINIT);
+  sftp_msg_write_data(&buf, &buflen, kex->server_kexinit_payload,
+    kex->server_kexinit_payload_len, FALSE);
+
+  /* Hostkey data */
+  sftp_msg_write_data(&buf, &buflen, hostkey_data, hostkey_datalen, TRUE);
+
+  mlkem768_len = OSSL_ML_KEM_768_PUBLIC_KEY_BYTES;
+  mlkem768 = palloc(p, mlkem768_len);
+  if (EVP_PKEY_get_raw_public_key(client_mlkem768, mlkem768,
+      &mlkem768_len) != 1) {
+    (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
+      "error obtaining client MLKEM768 public key: %s",
+      sftp_crypto_get_errors());
+
+    return NULL;
+  }
+
+  sftp_msg_write_int(&buf, &buflen, mlkem768_len + X25519_KEYLEN);
+  sftp_msg_write_data(&buf, &buflen, mlkem768, mlkem768_len, FALSE);
+  sftp_msg_write_data(&buf, &buflen, client_x25519, X25519_KEYLEN, FALSE);
+
+  sftp_msg_write_int(&buf, &buflen, ciphertext_len + X25519_KEYLEN);
+  sftp_msg_write_data(&buf, &buflen, ciphertext, ciphertext_len, FALSE);
+  sftp_msg_write_data(&buf, &buflen, server_x25519, X25519_KEYLEN, FALSE);
+
+  /* Shared secret */
+  sftp_msg_write_data(&buf, &buflen, kdata, kdatalen, TRUE);
+
+  pctx = EVP_MD_CTX_new();
+
+  if (EVP_DigestInit(pctx, kex->hash) != 1) {
+    (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
+      "error initializing message digest: %s", sftp_crypto_get_errors());
+    pr_memscrub(ptr, bufsz);
+    EVP_MD_CTX_free(pctx);
+    return NULL;
+  }
+
+  if (EVP_DigestUpdate(pctx, ptr, (bufsz - buflen)) != 1) {
+    (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
+      "error updating message digest: %s", sftp_crypto_get_errors());
+    pr_memscrub(ptr, bufsz);
+    EVP_MD_CTX_free(pctx);
+    return NULL;
+  }
+
+  if (EVP_DigestFinal(pctx, kex_digest_buf, hlen) != 1) {
+    (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
+      "error finalizing message digest: %s", sftp_crypto_get_errors());
+    pr_memscrub(ptr, bufsz);
+    EVP_MD_CTX_free(pctx);
+    return NULL;
+  }
+
+  EVP_MD_CTX_free(pctx);
+  pr_memscrub(ptr, bufsz);
+
+  return kex_digest_buf;
+}
+
+static int write_mlkem768_reply(struct ssh2_packet *pkt, struct sftp_kex *kex) {
+  EVP_MD_CTX *pctx;
+  const unsigned char *h, *hostkey_data, *hsig;
+  unsigned char *buf, *ptr, *x25519_key, *mlkem_key = NULL, *ciphertext = NULL;
+  unsigned char *kdata;
+  unsigned char server_x25519[X25519_KEYLEN];
+  unsigned char *server_key = NULL;
+  uint32_t bufsz, buflen, hlen = 0, hostkey_datalen = 0, kdatalen = 0;
+  size_t hsiglen, mlkem_keylen = 0, ciphertext_len = 0;
+  int res;
+
+  /* We need to compute the shared secret, K, here.  For this exchange,
+   * we generate our "classical" shared X25519 key (K_CL in the draft),
+   * and our post-quantum shared MLKEM768 secrets (K_PQ in the draft).
+   *
+   * Then we concatenate those values, and hash the concatenation to obtain
+   * our actual K value.
+   */
+
+  if (generate_x25519_keys(pkt->pool, &server_key, server_x25519) < 0) {
+    return -1;
+  }
+
+  /* Note that this X25519 shared key is not needed for long, hence why
+   * we can use this packet-specific pool.
+   */
+  x25519_key = palloc(pkt->pool, X25519_KEYLEN);
+
+  pr_trace_msg(trace_channel, 12, "computing X25519 shared secret");
+  res = get_x25519_shared_key((unsigned char *) x25519_key, kex->client_x25519,
+    server_key);
+  if (res < 0) {
+    (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
+      "error computing X25519 shared secret: %s", strerror(errno));
+    return -1;
+  }
+
+  pr_trace_msg(trace_channel, 12, "computing MLKEM768 shared secret");
+  res = get_mlkem768_shared_key(pkt->pool, kex->client_mlkem768, &mlkem_key,
+    &mlkem_keylen, &ciphertext, &ciphertext_len);
+  if (res < 0) {
+    return -1;
+  }
+
+  buflen = bufsz = mlkem_keylen + X25519_KEYLEN;
+  ptr = buf = palloc(pkt->pool, buflen);
+
+  /* Per the PQ key exchange draft, here we do:
+   *
+   *  K = HASH(K_PQ || K_CL)
+   *
+   * where K_PQ is the MLKEM768 shared key, and K_CL is our shared X25519 key.
+   *
+   * Note that for this concatenation, we only want the bytes, and not the
+   * length prefixes, hence the last parameter being FALSE.
+   */
+  sftp_msg_write_data(&buf, &buflen, mlkem_key, mlkem_keylen, FALSE);
+  sftp_msg_write_data(&buf, &buflen, x25519_key, X25519_KEYLEN, FALSE);
+
+  pctx = EVP_MD_CTX_new();
+
+  if (EVP_DigestInit(pctx, kex->hash) != 1) {
+    (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
+      "error initializing message digest: %s", sftp_crypto_get_errors());
+    pr_memscrub(ptr, bufsz);
+    EVP_MD_CTX_free(pctx);
+
+    return -1;
+  }
+
+  if (EVP_DigestUpdate(pctx, ptr, (bufsz - buflen)) != 1) {
+    (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
+      "error updating message digest: %s", sftp_crypto_get_errors());
+    pr_memscrub(ptr, bufsz);
+    EVP_MD_CTX_free(pctx);
+
+    return -1;
+  }
+
+  kdatalen = EVP_MAX_MD_SIZE;
+  kdata = palloc(pkt->pool, kdatalen);
+
+  if (EVP_DigestFinal(pctx, kdata, &kdatalen) != 1) {
+    (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
+      "error finalizing message digest: %s", sftp_crypto_get_errors());
+    pr_memscrub(ptr, bufsz);
+    EVP_MD_CTX_free(pctx);
+
+    return -1;
+  }
+
+  EVP_MD_CTX_free(pctx);
+  pr_memscrub(ptr, bufsz);
+
+  kex->kdata = palloc(kex->pool, kdatalen);
+  kex->kdatalen = kdatalen;
+  memcpy((char *) kex->kdata, kdata, kex->kdatalen);
+  pr_memscrub(kdata, kdatalen);
+
+  /* Get the hostkey data; it will be part of the data we hash in order
+   * to create the session key.
+   */
+  hostkey_data = sftp_keys_get_hostkey_data(pkt->pool, kex->use_hostkey_type,
+    &hostkey_datalen);
+  if (hostkey_data == NULL) {
+    (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
+      "error converting hostkey for signing: %s", strerror(errno));
+    pr_memscrub((char *) kex->kdata, kex->kdatalen);
+    kex->kdata = NULL;
+    kex->kdatalen = 0;
+
+    return -1;
+  }
+
+  /* Calculate H */
+  h = calculate_mlkem768_h(kex, pkt->pool, hostkey_data, hostkey_datalen,
+    kex->kdata, kex->kdatalen, kex->client_mlkem768, kex->client_x25519,
+    ciphertext, ciphertext_len, server_x25519, &hlen);
+  if (h == NULL) {
+    pr_memscrub((char *) hostkey_data, hostkey_datalen);
+    pr_memscrub((char *) kex->kdata, kex->kdatalen);
+    kex->kdata = NULL;
+    kex->kdatalen = 0;
+
+    return -1;
+  }
+
+  kex->h = palloc(kex->pool, hlen);
+  kex->hlen = hlen;
+  memcpy((char *) kex->h, h, kex->hlen);
+
+  /* Save H as the session ID */
+  sftp_session_set_id(h, hlen);
+
+  /* Sign H with our hostkey */
+  hsig = sftp_keys_sign_data(pkt->pool, kex->use_hostkey_type, h, hlen,
+    &hsiglen);
+  if (hsig == NULL) {
+    (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION, "error signing H");
+    pr_memscrub((char *) hostkey_data, hostkey_datalen);
+    pr_memscrub((char *) kex->kdata, kex->kdatalen);
+    kex->kdata = NULL;
+    kex->kdatalen = 0;
+
+    return -1;
+  }
+
+  /* XXX Is this large enough?  Too large? */
+  buflen = bufsz = 4096;
+  ptr = buf = palloc(pkt->pool, bufsz);
+
+  sftp_msg_write_byte(&buf, &buflen, SFTP_SSH2_MSG_KEX_ECDH_REPLY);
+  sftp_msg_write_data(&buf, &buflen, hostkey_data, hostkey_datalen, TRUE);
+
+  /* Per PQ key exchange draft, here we write:
+   *
+   *  S_REPLY = (S_CT2 || S_PK1)
+   *
+   * where S_CT2 is our MLKEM768 cipher text, and S_PK1 is our server-side
+   * public X25519 key.
+   */
+  sftp_msg_write_int(&buf, &buflen, ciphertext_len + X25519_KEYLEN);
+  sftp_msg_write_data(&buf, &buflen, ciphertext, ciphertext_len, FALSE);
+  sftp_msg_write_data(&buf, &buflen, server_x25519, X25519_KEYLEN, FALSE);
+
+  sftp_msg_write_data(&buf, &buflen, hsig, hsiglen, TRUE);
+
+  /* Scrub any sensitive data when done */
+  pr_memscrub((char *) server_key, X25519_KEYLEN);
+  pr_memscrub((char *) mlkem_key, mlkem_keylen);
+  pr_memscrub((char *) hostkey_data, hostkey_datalen);
+  pr_memscrub((char *) hsig, hsiglen);
+
+  pkt->payload = ptr;
+  pkt->payload_len = (bufsz - buflen);
+
+  return 0;
+}
+
+static int handle_kex_mlkem768(struct ssh2_packet *pkt, struct sftp_kex *kex) {
+  int res;
+  cmd_rec *cmd;
+  const char *req;
+
+  req = "ECDH_INIT";
+  cmd = pr_cmd_alloc(pkt->pool, 1, pstrdup(pkt->pool, req));
+  cmd->arg = "(data)";
+  cmd->cmd_class = CL_SEC|CL_SSH;
+  cmd->cmd_id = SFTP_CMD_ID;
+
+  pr_trace_msg(trace_channel, 9, "reading %s message from client", req);
+
+  res = read_mlkem768_init(pkt, kex);
+  if (res < 0) {
+    pr_cmd_dispatch_phase(cmd, LOG_CMD_ERR, 0);
+
+    destroy_pool(pkt->pool);
+    SFTP_DISCONNECT_CONN(SFTP_SSH2_DISCONNECT_KEY_EXCHANGE_FAILED, NULL);
+  }
+
+  pr_cmd_dispatch_phase(cmd, LOG_CMD, 0);
+  destroy_pool(pkt->pool);
+
+  /* Send our key exchange reply. */
+  pkt = sftp_ssh2_packet_create(kex_pool);
+  res = write_mlkem768_reply(pkt, kex);
+  if (res < 0) {
+    destroy_pool(pkt->pool);
+    SFTP_DISCONNECT_CONN(SFTP_SSH2_DISCONNECT_KEY_EXCHANGE_FAILED, NULL);
+  }
+
+  pr_trace_msg(trace_channel, 9, "writing %s message to client", req);
+
+  res = sftp_ssh2_packet_write(sftp_conn->wfd, pkt);
+  if (res < 0) {
+    destroy_pool(pkt->pool);
+    SFTP_DISCONNECT_CONN(SFTP_SSH2_DISCONNECT_KEY_EXCHANGE_FAILED, NULL);
+  }
+
+  destroy_pool(pkt->pool);
+  return 0;
+}
+#endif /* HAVE_MLKEM768_OPENSSL and HAVE_SHA256_OPENSSL */
 
 #if defined(PR_USE_OPENSSL_ECC)
 static int read_ecdh_init(struct ssh2_packet *pkt, struct sftp_kex *kex) {
@@ -5411,6 +6063,12 @@ int sftp_kex_handle(struct ssh2_packet *pkt) {
 
         } else
 #endif /* HAVE_X448_OPENSSL and HAVE_SHA512_OPENSSL */
+#if defined(HAVE_MLKEM768_OPENSSL) && defined(HAVE_SHA256_OPENSSL)
+        if (kex->use_mlkem768) {
+          res = handle_kex_mlkem768(pkt, kex);
+
+        } else
+#endif /* HAVE_MLKEM768_OPENSSL and HAVE_SHA256_OPENSSL */
 #if defined(PR_USE_OPENSSL_ECC)
         if (kex->use_ecdh) {
           res = handle_kex_ecdh(pkt, kex);
