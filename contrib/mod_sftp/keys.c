@@ -2095,7 +2095,7 @@ int sftp_keys_validate_ecdsa_params(const EC_GROUP *group,
 }
 #endif /* PR_USE_OPENSSL_ECC */
 
-#ifdef SFTP_DEBUG_KEYS
+#if defined(SFTP_DEBUG_KEYS)
 static void debug_rsa_key(pool *p, const char *label, RSA *rsa) {
   BIO *bio = NULL;
   char *data;
@@ -2107,14 +2107,14 @@ static void debug_rsa_key(pool *p, const char *label, RSA *rsa) {
   datalen = BIO_get_mem_data(bio, &data);
   if (data != NULL &&
       datalen > 0) {
-    (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION, "%s",label);
+    (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION, "%s", label);
     (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION, "%.*s",
       (int) datalen, data);
   }
 
   BIO_free(bio);
 }
-#endif
+#endif /* SFTP_DEBUG_KEYS */
 
 static int get_pkey_type(EVP_PKEY *pkey) {
   int pkey_type;
@@ -2157,10 +2157,10 @@ static int rsa_compare_keys(pool *p, EVP_PKEY *remote_pkey,
 
   remote_rsa = EVP_PKEY_get1_RSA(remote_pkey);
 
-#ifdef SFTP_DEBUG_KEYS
+#if defined(SFTP_DEBUG_KEYS)
   debug_rsa_key(p, "remote RSA key:", remote_rsa);
   debug_rsa_key(p, "local RSA key:", local_rsa);
-#endif
+#endif /* SFTP_DEBUG_KEYS */
 
 #if (OPENSSL_VERSION_NUMBER >= 0x10100000L && !defined(HAVE_LIBRESSL)) || \
     (defined(HAVE_LIBRESSL) && LIBRESSL_VERSION_NUMBER >= 0x3050000L)

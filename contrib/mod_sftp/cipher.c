@@ -1486,7 +1486,7 @@ int sftp_cipher_write_data(struct ssh2_packet *pkt, unsigned char *buf,
 
   *buflen = (datasz - datalen);
 
-#ifdef SFTP_DEBUG_PACKET
+#if defined(SFTP_DEBUG_PACKET)
 {
   unsigned int i;
 
@@ -1502,7 +1502,7 @@ int sftp_cipher_write_data(struct ssh2_packet *pkt, unsigned char *buf,
     i += 8;
   }
 }
-#endif
+#endif /* SFTP_DEBUG_PACKET */
 
   if (auth_len > 0) {
     unsigned char *tag_data = NULL;

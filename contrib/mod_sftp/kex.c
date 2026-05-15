@@ -1861,9 +1861,9 @@ static struct sftp_kex *create_kex(pool *p) {
     kex->server_names->s2c_comp_algo = "none";
   }
 
-#ifdef PR_USE_NLS
+#if defined(PR_USE_NLS)
   c = find_config(main_server->conf, CONF_PARAM, "SFTPLanguages", FALSE);
-  if (c) {
+  if (c != NULL) {
     /* XXX Need to implement functionality here. */
 
   } else {
@@ -4228,9 +4228,9 @@ static const unsigned char *calculate_curve25519_h(struct sftp_kex *kex,
   sftp_msg_write_mpint(&buf, &buflen, k);
 
 #if OPENSSL_VERSION_NUMBER >= 0x10100000LL
-    pctx = EVP_MD_CTX_new();
+  pctx = EVP_MD_CTX_new();
 #else
-    pctx = &ctx;
+  pctx = &ctx;
 #endif /* OpenSSL-1.1.0 and later */
 
   /* In OpenSSL 0.9.6, many of the EVP_Digest* functions returned void, not
@@ -4242,8 +4242,6 @@ static const unsigned char *calculate_curve25519_h(struct sftp_kex *kex,
   if (EVP_DigestInit(pctx, kex->hash) != 1) {
     (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
       "error initializing message digest: %s", sftp_crypto_get_errors());
-    BN_clear_free((BIGNUM *) kex->e);
-    kex->e = NULL;
     pr_memscrub(ptr, bufsz);
 # if OPENSSL_VERSION_NUMBER >= 0x10100000LL
     EVP_MD_CTX_free(pctx);
@@ -4258,8 +4256,6 @@ static const unsigned char *calculate_curve25519_h(struct sftp_kex *kex,
   if (EVP_DigestUpdate(pctx, ptr, (bufsz - buflen)) != 1) {
     (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
       "error updating message digest: %s", sftp_crypto_get_errors());
-    BN_clear_free((BIGNUM *) kex->e);
-    kex->e = NULL;
     pr_memscrub(ptr, bufsz);
 # if OPENSSL_VERSION_NUMBER >= 0x10100000LL
     EVP_MD_CTX_free(pctx);
@@ -4274,8 +4270,6 @@ static const unsigned char *calculate_curve25519_h(struct sftp_kex *kex,
   if (EVP_DigestFinal(pctx, kex_digest_buf, hlen) != 1) {
     (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
       "error finalizing message digest: %s", sftp_crypto_get_errors());
-    BN_clear_free((BIGNUM *) kex->e);
-    kex->e = NULL;
     pr_memscrub(ptr, bufsz);
 # if OPENSSL_VERSION_NUMBER >= 0x10100000LL
     EVP_MD_CTX_free(pctx);
@@ -4289,8 +4283,6 @@ static const unsigned char *calculate_curve25519_h(struct sftp_kex *kex,
 #if OPENSSL_VERSION_NUMBER >= 0x10100000LL
   EVP_MD_CTX_free(pctx);
 #endif /* OpenSSL-1.1.0 and later */
-  BN_clear_free((BIGNUM *) kex->e);
-  kex->e = NULL;
   pr_memscrub(ptr, bufsz);
 
   return kex_digest_buf;
@@ -4672,9 +4664,9 @@ static const unsigned char *calculate_curve448_h(struct sftp_kex *kex,
   sftp_msg_write_mpint(&buf, &buflen, k);
 
 #if OPENSSL_VERSION_NUMBER >= 0x10100000LL
-    pctx = EVP_MD_CTX_new();
+  pctx = EVP_MD_CTX_new();
 #else
-    pctx = &ctx;
+  pctx = &ctx;
 #endif /* OpenSSL-1.1.0 and later */
 
   /* In OpenSSL 0.9.6, many of the EVP_Digest* functions returned void, not
@@ -4686,8 +4678,6 @@ static const unsigned char *calculate_curve448_h(struct sftp_kex *kex,
   if (EVP_DigestInit(pctx, kex->hash) != 1) {
     (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
       "error initializing message digest: %s", sftp_crypto_get_errors());
-    BN_clear_free((BIGNUM *) kex->e);
-    kex->e = NULL;
     pr_memscrub(ptr, bufsz);
 # if OPENSSL_VERSION_NUMBER >= 0x10100000LL
     EVP_MD_CTX_free(pctx);
@@ -4702,8 +4692,6 @@ static const unsigned char *calculate_curve448_h(struct sftp_kex *kex,
   if (EVP_DigestUpdate(pctx, ptr, (bufsz - buflen)) != 1) {
     (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
       "error updating message digest: %s", sftp_crypto_get_errors());
-    BN_clear_free((BIGNUM *) kex->e);
-    kex->e = NULL;
     pr_memscrub(ptr, bufsz);
 # if OPENSSL_VERSION_NUMBER >= 0x10100000LL
     EVP_MD_CTX_free(pctx);
@@ -4718,8 +4706,6 @@ static const unsigned char *calculate_curve448_h(struct sftp_kex *kex,
   if (EVP_DigestFinal(pctx, kex_digest_buf, hlen) != 1) {
     (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
       "error finalizing message digest: %s", sftp_crypto_get_errors());
-    BN_clear_free((BIGNUM *) kex->e);
-    kex->e = NULL;
     pr_memscrub(ptr, bufsz);
 # if OPENSSL_VERSION_NUMBER >= 0x10100000LL
     EVP_MD_CTX_free(pctx);
@@ -4733,8 +4719,6 @@ static const unsigned char *calculate_curve448_h(struct sftp_kex *kex,
 #if OPENSSL_VERSION_NUMBER >= 0x10100000LL
   EVP_MD_CTX_free(pctx);
 #endif /* OpenSSL-1.1.0 and later */
-  BN_clear_free((BIGNUM *) kex->e);
-  kex->e = NULL;
   pr_memscrub(ptr, bufsz);
 
   return kex_digest_buf;
