@@ -299,6 +299,42 @@ AC_TRY_LINK(
   ]
 )
 
+AC_MSG_CHECKING([whether OpenSSL supports MLKEM768 algorithm])
+LIBS="-lcrypto $LIBS"
+
+AC_TRY_RUN(
+  [
+    #include <errno.h>
+    #include <stdio.h>
+    #include <openssl/evp.h>
+    #ifdef HAVE_STDLIB_H
+    # include <stdlib.h>
+    #endif
+    #ifdef HAVE_STRING_H
+    # include <string.h>
+    #endif
+
+    int main(int argc, char *argv[]) {
+      EVP_PKEY_CTX *pctx;
+      pctx = EVP_PKEY_CTX_new_from_name(NULL, "ML-KEM-768", NULL);
+      if (pctx == NULL) {
+        return 1;
+      }
+      EVP_PKEY_CTX_free(pctx);
+      return 0;
+    }
+  ],
+  [
+    AC_MSG_RESULT(yes)
+    AC_DEFINE(HAVE_MLKEM768_OPENSSL, 1, [OpenSSL supports MLKEM768])
+    LIBS="$saved_libs"
+  ],
+  [
+    AC_MSG_RESULT(no)
+    LIBS="$saved_libs"
+  ]
+)
+
 AC_MSG_CHECKING([whether OpenSSL supports OSSL_PROVIDER_load])
 LIBS="-lcrypto $LIBS"
 

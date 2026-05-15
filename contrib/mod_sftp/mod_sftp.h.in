@@ -81,6 +81,9 @@
 # define HAVE_BROKEN_CHACHA20	1
 #endif
 
+/* Define if you have OpenSSL with MLKEM768 support. */
+#undef HAVE_MLKEM768_OPENSSL
+
 /* Define if you have OpenSSL with OSSL_PROVIDER_load support. */
 #undef HAVE_OSSL_PROVIDER_LOAD_OPENSSL
 
@@ -93,7 +96,7 @@
 /* Define if you have OpenSSL with X448 support. */
 #undef HAVE_X448_OPENSSL
 
-#define MOD_SFTP_VERSION	"mod_sftp/1.2.0"
+#define MOD_SFTP_VERSION	"mod_sftp/1.2.1"
 
 /* Make sure the version of proftpd is as necessary. */
 #if PROFTPD_VERSION_NUMBER < 0x0001030402
