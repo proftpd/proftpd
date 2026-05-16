@@ -29,6 +29,8 @@
 - Issue 2033 - Add support for post-quantum key change algorithms to mod_sftp.
   The "mlkem768x25519-sha256" and "sntrup761x25519-sha512" algorithms have
   been implemented.
+- Issue 2041 - Implement support for PKCS#11 URIs for TLS private keys in
+  mod_tls.
 
 1.3.10rc1 - Released 27-Apr-2026
 --------------------------------
