@@ -1970,13 +1970,13 @@ static int handle_ssh2_packet(void *data) {
           !(sftp_sess_state & SFTP_SESS_STATE_HAVE_EXT_INFO)) {
         sftp_ssh2_packet_handle_ext_info(pkt);
         sftp_sess_state |= SFTP_SESS_STATE_HAVE_EXT_INFO;
-        break;
 
       } else {
         (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
           "unable to handle %s (%d) message: wrong message order",
           sftp_ssh2_packet_get_msg_type_desc(msg_type), msg_type);
       }
+      break;
 
     case SFTP_SSH2_MSG_SERVICE_REQUEST:
       if (sftp_sess_state & SFTP_SESS_STATE_HAVE_KEX) {
@@ -1985,13 +1985,13 @@ static int handle_ssh2_packet(void *data) {
         }
 
         sftp_sess_state |= SFTP_SESS_STATE_HAVE_SERVICE;
-        break;
 
       } else {
         (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
           "unable to handle %s (%d) message: Key exchange required",
           sftp_ssh2_packet_get_msg_type_desc(msg_type), msg_type);
       }
+      break;
 
     case SFTP_SSH2_MSG_USER_AUTH_REQUEST:
       if (sftp_sess_state & SFTP_SESS_STATE_HAVE_SERVICE) {
@@ -2017,13 +2017,12 @@ static int handle_ssh2_packet(void *data) {
           }
         }
 
-        break;
-
       } else {
         (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
           "unable to handle %s (%d) message: Service request required",
           sftp_ssh2_packet_get_msg_type_desc(msg_type), msg_type);
       }
+      break;
 
     case SFTP_SSH2_MSG_CHANNEL_OPEN:
     case SFTP_SSH2_MSG_CHANNEL_REQUEST:
@@ -2036,13 +2035,12 @@ static int handle_ssh2_packet(void *data) {
           SFTP_DISCONNECT_CONN(SFTP_SSH2_DISCONNECT_BY_APPLICATION, NULL);
         }
 
-        break;
-
       } else {
         (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
           "unable to handle %s (%d) message: User authentication required",
           sftp_ssh2_packet_get_msg_type_desc(msg_type), msg_type);
       }
+      break;
 
     default:
       handle_unknown_msg(pkt, msg_type);
