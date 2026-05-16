@@ -26,6 +26,9 @@
 - Issue 2056 - Incomplete fix for session management with OpenSSL 3.2.x or
   later, when using TLSv1.2 or earlier.  This complements the fix for
   Issue #1963.
+- Issue 2033 - Add support for post-quantum key change algorithms to mod_sftp.
+  The "mlkem768x25519-sha256" and "sntrup761x25519-sha512" algorithms have
+  been implemented.
 
 1.3.10rc1 - Released 27-Apr-2026
 --------------------------------

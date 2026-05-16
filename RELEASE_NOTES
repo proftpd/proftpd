@@ -12,6 +12,9 @@ ChangeLog files.
   + Additional fixes for SQL injection (CVE-2026-42167), notably for handling
     `%{env:...}` and `%{note:...}` variables.
 
+  + Implemented the "mlkem768x25519-sha256" and "sntrup761x25519-sha512"
+    post-quantum key exchange algorithms in mod_sftp (Issue #2033).
+
   + Use `CLOCK_MONOTONIC` for more accurate timer support (Issue #2047).
 
   + Imposed max request/response message size limits for Controls (Issue #2036).
