@@ -26,6 +26,10 @@
 
 #include "mod_sftp.h"
 
+#if defined(EVP_PKEY_X25519)
+# define HAVE_X25519_OPENSSL	1
+#endif /* EVP_PKEY_X25519 */
+
 void sftp_crypto_free(int);
 const EVP_CIPHER *sftp_crypto_get_cipher(const char *name, size_t *key_len,
   size_t *auth_len, size_t *discard_len);

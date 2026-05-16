@@ -259,6 +259,9 @@ static const char *key_exchanges[] = {
 #if defined(HAVE_MLKEM768_OPENSSL) && defined(HAVE_SHA256_OPENSSL)
   "mlkem768x25519-sha256",
 #endif /* HAVE_MLKEM768_OPENSSL and HAVE_SHA256_OPENSSL */
+#if defined(HAVE_X25519_OPENSSL) && defined(HAVE_SHA512_OPENSSL)
+  "sntrup761x25519-sha512",
+#endif /* HAVE_X25519_OPENSSL and HAVE_SHA512_OPENSSL */
   "rsa1024-sha1",
   NULL
 };
