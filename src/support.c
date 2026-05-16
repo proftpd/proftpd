@@ -1159,6 +1159,23 @@ struct tm *pr_localtime(pool *p, const time_t *now) {
   return dup_tm;
 }
 
+int pr_timingsafe_bcmp(const void *a, const void *b, size_t sz) {
+#if defined(HAVE_TIMINGSAFE_BCMP)
+  return timingsafe_bcmp(a, b, sz);
+#else
+  const unsigned char *p1, *p2;
+  int res = 0;
+
+  p1 = a;
+  p2 = b;
+
+  for (; sz > 0; sz--) {
+    res |= *p1++ ^ *p2++;
+  }
+  return (res != 0);
+#endif /* HAVE_TIMINGSAFE_BCMP */
+}
+
 const char *pr_strtime(time_t t) {
   return pr_strtime2(t, FALSE);
 }

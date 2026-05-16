@@ -479,21 +479,6 @@ static int compute_chachapoly_key(struct ssh2_packet *pkt,
 }
 #endif /* HAVE_EVP_CHACHA20_OPENSSL and !HAVE_BROKEN_CHACHA20 */
 
-#if !defined(HAVE_TIMINGSAFE_BCMP) && \
-    defined(HAVE_EVP_CHACHA20_OPENSSL) && \
-    !defined(HAVE_BROKEN_CHACHA20)
-static int timingsafe_bcmp(const void *b1, const void *b2, size_t n) {
-  const unsigned char *p1 = b1, *p2 = b2;
-  int ret = 0;
-
-  for (; n > 0; n--) {
-    ret |= *p1++ ^ *p2++;
-  }
-
-  return (ret != 0);
-}
-#endif /* HAVE_TIMINGSAFE_BCMP and HAVE_EVP_CHACHA20_OPENSSL and !HAVE_BROKEN_CHACHA20 */
-
 /* These accessors to get the authenticated data length for the read, write
  * ciphers are used during packet IO, and thus do not return the AAD lengths
  * until those ciphers are keyed.
@@ -946,7 +931,7 @@ int sftp_cipher_read_data(struct ssh2_packet *pkt, unsigned char *data,
       /* Our ChaChaPoly tag is stored as the MAC, NOT in the given network
        * data (which is just the payload).
        */
-      if (timingsafe_bcmp(chachapoly_tag, pkt->mac,
+      if (pr_timingsafe_bcmp(chachapoly_tag, pkt->mac,
           sizeof(chachapoly_tag)) != 0) {
         (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
           "error verifying %s authentication tag from client: "
