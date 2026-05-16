@@ -1283,7 +1283,7 @@ static array_header *pr_ldap_quota_lookup(pool *p, char *filter_template,
     ldap_attr_ftpquota_profiledn,
     NULL,
   };
-  int orig_scope, res;
+  int orig_scope;
   LDAPMessage *result, *e;
   LDAP_VALUE_T **values;
   array_header *quota;

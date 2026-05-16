@@ -10701,7 +10701,7 @@ static int tls_verify_cb(int ok, X509_STORE_CTX *ctx) {
 }
 
 static int tls_verify_crl(int ok, X509_STORE_CTX *ctx) {
-  register int i = 0;
+  register unsigned int i = 0;
   X509_NAME *subject = NULL, *issuer = NULL;
   X509 *xs = NULL;
   STACK_OF(X509_CRL) *crls = NULL;
