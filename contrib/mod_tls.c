@@ -75,7 +75,11 @@
 # ifdef PR_USE_OPENSSL_OCSP
 #  include <openssl/ocsp.h>
 # endif /* PR_USE_OPENSSL_OCSP */
-#endif
+# if defined(PR_USE_OPENSSL_OSSL_PROVIDER_LOAD)
+#  include <openssl/provider.h>
+#  include <openssl/store.h>
+# endif /* PR_USE_OPENSSL_OSSL_PROVIDER_LOAD */
+#endif /* OpenSSL-0.9.7 and later */
 #ifdef PR_USE_OPENSSL_ECC
 # include <openssl/ec.h>
 # include <openssl/ecdh.h>
@@ -85,7 +89,7 @@
 # include <sys/mman.h>
 #endif
 
-#define MOD_TLS_VERSION		"mod_tls/2.9.2"
+#define MOD_TLS_VERSION		"mod_tls/2.9.3"
 
 /* Make sure the version of proftpd is as necessary. */
 #if PROFTPD_VERSION_NUMBER < 0x0001030602
@@ -757,6 +761,8 @@ static SSL_CTX *ssl_ctx = NULL;
 static array_header *tls_tmp_dhs = NULL;
 static RSA *tls_tmp_rsa = NULL;
 
+static int have_pkcs11_support = -1;
+
 static void tls_exit_ev(const void *event_data, void *user_data);
 
 /* SSL/TLS support functions */
@@ -874,9 +880,228 @@ static int tls_data_need_init_handshake = TRUE;
 
 static const char *timing_channel = "timing";
 
+static int tls_use_pkcs11(pool *p, char **errors) {
+  int use_pkcs11 = FALSE;
+#if defined(PR_USE_OPENSSL_OSSL_PROVIDER_LOAD)
+  OSSL_PROVIDER *pkcs11;
+#endif /* PR_USE_OPENSSL_OSSL_PROVIDER_LOAD */
+
+  if (have_pkcs11_support != -1) {
+    return have_pkcs11_support;
+  }
+
+#if defined(PR_USE_OPENSSL_OSSL_PROVIDER_LOAD)
+  pkcs11 = OSSL_PROVIDER_load(NULL, "pkcs11");
+  if (pkcs11 == NULL) {
+    if (p != NULL) {
+      *errors = pstrcat(p, "unable to load PKCS11 provider:",
+        tls_get_errors2(p), NULL);
+    }
+
+  } else {
+    use_pkcs11 = TRUE;
+  }
+#endif /* PR_USE_OPENSSL_OSSL_PROVIDER_LOAD */
+
+  have_pkcs11_support = use_pkcs11;
+  pr_trace_msg(trace_channel, 12, "PKCS11 provider present: %s",
+    use_pkcs11 ? "true" : "false");
+
+  return use_pkcs11;
+}
+
+static int is_pkcs11_uri(pool *p, const char *text) {
+  char *errors = NULL;
+
+  if (tls_use_pkcs11(p, &errors) == FALSE) {
+    if (errors != NULL) {
+      pr_trace_msg(trace_channel, 19, "%s", errors);
+    }
+  }
+
+  if (have_pkcs11_support == FALSE) {
+    return FALSE;
+  }
+
+  /* The scheme port of URIs is considered case-insensitive. */
+  if (strncasecmp(text, "pkcs11:", 7) == 0) {
+    return TRUE;
+  }
+
+  return FALSE;
+}
+
+static EVP_PKEY *get_pkcs11_key(pool *p, const char *text, char **errors) {
+#if defined(PR_USE_OPENSSL_OSSL_PROVIDER_LOAD)
+  OSSL_STORE_CTX *store_ctx;
+  EVP_PKEY *pkey = NULL;
+
+  store_ctx = OSSL_STORE_open(text, NULL, NULL, NULL, NULL);
+  if (store_ctx == NULL) {
+    *errors = pstrcat(p, "unable to use PKCS11 '", text, "': ",
+      tls_get_errors2(p), NULL);
+    return NULL;
+  }
+
+  /* Properly handle multiple potential things to load from this store;
+   * we are only interested in private keys.
+   */
+  while (OSSL_STORE_eof(store_ctx) == 0) {
+    OSSL_STORE_INFO *store_info;
+    int item_type;
+    const char *item_desc;
+
+    pr_signals_handle();
+
+    store_info = OSSL_STORE_load(store_ctx);
+    if (store_info == NULL) {
+      *errors = pstrcat(p, "unable to load info for PKCS11 '", text, "': ",
+        tls_get_errors2(p), NULL);
+      OSSL_STORE_close(store_ctx);
+      return NULL;
+    }
+
+    item_type = OSSL_STORE_INFO_get_type(store_info);
+
+    item_desc = OSSL_STORE_INFO_get0_NAME_description(store_info);
+    if (item_desc == NULL) {
+      item_desc = OSSL_STORE_INFO_get0_NAME(store_info);
+    }
+
+    if (item_desc == NULL) {
+      item_desc = OSSL_STORE_INFO_type_string(item_type);
+    }
+
+    pr_trace_msg(trace_channel, 19,
+      "checking '%s' item in PKCS11 '%s'", item_desc, text);
+
+    switch (item_type) {
+      /* Is it possible that this token contains multiple different private
+       * keys?
+       */
+      case OSSL_STORE_INFO_PKEY:
+        pkey = OSSL_STORE_INFO_get1_PKEY(store_info);
+        if (pkey == NULL) {
+          *errors = pstrcat(p, "unable to obtain private key from PKCS11 '",
+            text, "': ", tls_get_errors2(p), NULL);
+          OSSL_STORE_INFO_free(store_info);
+          OSSL_STORE_close(store_ctx);
+          return NULL;
+        }
+        break;
+
+      default:
+        pr_trace_msg(trace_channel, 9,
+          "ignoring '%s' from PKCS11 URI '%s'",
+          OSSL_STORE_INFO_type_string(item_type), text);
+        break;
+    }
+
+    OSSL_STORE_INFO_free(store_info);
+
+    if (pkey != NULL) {
+      break;
+    }
+  }
+
+  OSSL_STORE_close(store_ctx);
+  return pkey;
+#endif /* PR_USE_OPENSSL_OSSL_PROVIDER_LOAD */
+
+  errno = ENOSYS;
+  return NULL;
+}
+
 static int tls_keyfile_check_cb(char *buf, int size, int rwflag,
     void *user_data) {
   buf[0] = '\0';
+  return 0;
+}
+
+static int tls_pkcs11_check(pool *p, const char *text, char **errors,
+    SSL_CTX *ctx) {
+  int res = -1;
+#if defined(PR_USE_OPENSSL_OSSL_PROVIDER_LOAD)
+  EVP_PKEY *pkey;
+
+  pkey = get_pkcs11_key(p, text, errors);
+  if (pkey == NULL) {
+    return -1;
+  }
+
+  if (SSL_CTX_use_PrivateKey(ctx, pkey) != 1) {
+    *errors = pstrcat(p, "unable to use PKCS11 '", text, ": ",
+      tls_get_errors2(p), NULL);
+    return -1;
+  }
+
+  res = 0;
+#endif /* PR_USE_OPENSSL_OSSL_PROVIDER_LOAD */
+
+  errno = ENOSYS;
+  return res;
+}
+
+static int tls_keyfile_check(pool *p, const char *path, char **errors) {
+  int res, ok = FALSE;
+  SSL_CTX *ctx;
+
+  ctx = SSL_CTX_new(SSLv23_server_method());
+  if (ctx != NULL) {
+    /* Note that the configured key file might be passphrase-protected.  We
+     * do not necessarily want to prompt for the passphrase here, so if that
+     * is the error returned, it is an expected condition, and indicates that
+     * the encoding of the key is acceptable.
+     */
+    SSL_CTX_set_default_passwd_cb(ctx, tls_keyfile_check_cb);
+
+    if (is_pkcs11_uri(p, path) == TRUE) {
+      res = tls_pkcs11_check(p, path, errors, ctx);
+      SSL_CTX_free(ctx);
+
+      return res;
+    }
+
+    res = SSL_CTX_use_PrivateKey_file(ctx, path, X509_FILETYPE_PEM);
+    if (res != 1) {
+      unsigned long err_code;
+
+      err_code = ERR_peek_error();
+      switch (ERR_GET_REASON(err_code)) {
+        /* These are "expected" error codes from working with
+         * passphrase-protected keys.
+         */
+        case EVP_R_BAD_DECRYPT:
+        case PEM_R_BAD_PASSWORD_READ:
+          ok = TRUE;
+          break;
+
+        default:
+          *errors = pstrcat(p, "unable to use '", path, "': ",
+            tls_get_errors2(p), NULL);
+          ok = FALSE;
+          break;
+      }
+    }
+
+    SSL_CTX_free(ctx);
+
+  } else {
+    if (file_exists2(p, path) == FALSE) {
+      *errors = pstrcat(p, "'", path, "' does not exist", NULL);
+      ok = FALSE;
+    }
+  }
+
+  if (*path != '/') {
+    *errors = pstrdup(p, "parameter must be an absolute path");
+    ok = FALSE;
+  }
+
+  if (ok == FALSE) {
+    return -1;
+  }
+
   return 0;
 }
 
@@ -3640,12 +3865,18 @@ static int tls_get_pkcs12_passwd(server_rec *s, FILE *fp, const char *prompt,
 
 static int tls_get_passphrase(server_rec *s, const char *path,
     const char *prompt, char *buf, size_t bufsz, int flags) {
+  int have_pkcs11_uri = FALSE;
   FILE *keyf = NULL;
   EVP_PKEY *pkey = NULL;
   struct tls_pkey_data pdata;
   register unsigned int attempt;
 
-  if (path) {
+  if (path != NULL) {
+    have_pkcs11_uri = is_pkcs11_uri(NULL, path);
+  }
+
+  if (path != NULL &&
+      have_pkcs11_uri == FALSE) {
     int fd, res, xerrno;
 
     /* Open an fp on the cert file. */
@@ -3717,7 +3948,18 @@ static int tls_get_passphrase(server_rec *s, const char *path,
     /* Clear the error queue at the start of the loop. */
     ERR_clear_error();
 
-    pkey = PEM_read_PrivateKey(keyf, NULL, tls_passphrase_cb, &pdata);
+    if (have_pkcs11_uri == TRUE) {
+      pool *tmp_pool;
+      char *errors = NULL;
+
+      tmp_pool = make_sub_pool(s->pool);
+      pkey = get_pkcs11_key(tmp_pool, path, &errors);
+      destroy_pool(tmp_pool);
+
+    } else {
+      pkey = PEM_read_PrivateKey(keyf, NULL, tls_passphrase_cb, &pdata);
+    }
+
     if (pkey != NULL) {
       break;
     }
@@ -14184,8 +14426,7 @@ MODRET set_tlsdsacertfile(cmd_rec *cmd) {
 /* usage: TLSDSACertificateKeyFile file */
 MODRET set_tlsdsakeyfile(cmd_rec *cmd) {
   int res;
-  char *path;
-  SSL_CTX *ctx;
+  char *path, *errors = NULL;
 
   CHECK_ARGS(cmd, 1);
   CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL);
@@ -14193,53 +14434,11 @@ MODRET set_tlsdsakeyfile(cmd_rec *cmd) {
   path = cmd->argv[1];
 
   PRIVS_ROOT
-
-  ctx = SSL_CTX_new(SSLv23_server_method());
-  if (ctx != NULL) {
-    /* Note that the configured key file might be passphrase-protected.  We
-     * do not necessarily want to prompt for the passphrase here, so if that
-     * is the error returned, it is an expected condition, and indicates that
-     * the encoding of the key is acceptable.
-     */
-    SSL_CTX_set_default_passwd_cb(ctx, tls_keyfile_check_cb);
-
-    res = SSL_CTX_use_PrivateKey_file(ctx, path, X509_FILETYPE_PEM);
-    if (res != 1) {
-      unsigned long err_code;
-
-      err_code = ERR_peek_error();
-      switch (ERR_GET_REASON(err_code)) {
-        /* These are "expected" error codes from working with
-         * passphrase-protected keys.
-         */
-        case EVP_R_BAD_DECRYPT:
-        case PEM_R_BAD_PASSWORD_READ:
-          break;
-
-        default: {
-          PRIVS_RELINQUISH
-
-          CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "unable to use '", path, "': ",
-            tls_get_errors2(cmd->tmp_pool), NULL));
-        }
-      }
-    }
-
-    SSL_CTX_free(ctx);
-
-  } else {
-    res = file_exists2(cmd->tmp_pool, path);
-    if (res == FALSE) {
-      PRIVS_RELINQUISH
-      CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "'", path, "' does not exist",
-        NULL));
-    }
-  }
-
+  res = tls_keyfile_check(cmd->tmp_pool, path, &errors);
   PRIVS_RELINQUISH
 
-  if (*path != '/') {
-    CONF_ERROR(cmd, "parameter must be an absolute path");
+  if (res < 0) {
+    CONF_ERROR(cmd, errors);
   }
 
   add_config_param_str(cmd->argv[0], 1, path);
@@ -14281,10 +14480,9 @@ MODRET set_tlseccertfile(cmd_rec *cmd) {
 
 /* usage: TLSECCertificateKeyFile file */
 MODRET set_tlseckeyfile(cmd_rec *cmd) {
-#ifdef PR_USE_OPENSSL_ECC
+#if defined(PR_USE_OPENSSL_ECC)
   int res;
-  char *path;
-  SSL_CTX *ctx;
+  char *path, *errors = NULL;
 
   CHECK_ARGS(cmd, 1);
   CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL);
@@ -14292,53 +14490,11 @@ MODRET set_tlseckeyfile(cmd_rec *cmd) {
   path = cmd->argv[1];
 
   PRIVS_ROOT
-
-  ctx = SSL_CTX_new(SSLv23_server_method());
-  if (ctx != NULL) {
-    /* Note that the configured key file might be passphrase-protected.  We
-     * do not necessarily want to prompt for the passphrase here, so if that
-     * is the error returned, it is an expected condition, and indicates that
-     * the encoding of the key is acceptable.
-     */
-    SSL_CTX_set_default_passwd_cb(ctx, tls_keyfile_check_cb);
-
-    res = SSL_CTX_use_PrivateKey_file(ctx, path, X509_FILETYPE_PEM);
-    if (res != 1) {
-      unsigned long err_code;
-
-      err_code = ERR_peek_error();
-      switch (ERR_GET_REASON(err_code)) {
-        /* These are "expected" error codes from working with
-         * passphrase-protected keys.
-         */
-        case EVP_R_BAD_DECRYPT:
-        case PEM_R_BAD_PASSWORD_READ:
-          break;
-
-        default: {
-          PRIVS_RELINQUISH
-
-          CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "unable to use '", path, "': ",
-            tls_get_errors2(cmd->tmp_pool), NULL));
-        }
-      }
-    }
-
-    SSL_CTX_free(ctx);
-
-  } else {
-    res = file_exists2(cmd->tmp_pool, path);
-    if (res == FALSE) {
-      PRIVS_RELINQUISH
-      CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "'", path, "' does not exist",
-        NULL));
-    }
-  }
-
+  res = tls_keyfile_check(cmd->tmp_pool, path, &errors);
   PRIVS_RELINQUISH
 
-  if (*path != '/') {
-    CONF_ERROR(cmd, "parameter must be an absolute path");
+  if (res < 0) {
+    CONF_ERROR(cmd, errors);
   }
 
   add_config_param_str(cmd->argv[0], 1, path);
@@ -15057,8 +15213,7 @@ MODRET set_tlsrsacertfile(cmd_rec *cmd) {
 /* usage: TLSRSACertificateKeyFile file */
 MODRET set_tlsrsakeyfile(cmd_rec *cmd) {
   int res;
-  char *path;
-  SSL_CTX *ctx;
+  char *path, *errors = NULL;
 
   CHECK_ARGS(cmd, 1);
   CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL);
@@ -15066,53 +15221,11 @@ MODRET set_tlsrsakeyfile(cmd_rec *cmd) {
   path = cmd->argv[1];
 
   PRIVS_ROOT
-
-  ctx = SSL_CTX_new(SSLv23_server_method());
-  if (ctx != NULL) {
-    /* Note that the configured key file might be passphrase-protected.  We
-     * do not necessarily want to prompt for the passphrase here, so if that
-     * is the error returned, it is an expected condition, and indicates that
-     * the encoding of the key is acceptable.
-     */
-    SSL_CTX_set_default_passwd_cb(ctx, tls_keyfile_check_cb);
-
-    res = SSL_CTX_use_PrivateKey_file(ctx, path, X509_FILETYPE_PEM);
-    if (res != 1) {
-      unsigned long err_code;
-
-      err_code = ERR_peek_error();
-      switch (ERR_GET_REASON(err_code)) {
-        /* These are "expected" error codes from working with
-         * passphrase-protected keys.
-         */
-        case EVP_R_BAD_DECRYPT:
-        case PEM_R_BAD_PASSWORD_READ:
-          break;
-
-        default: {
-          PRIVS_RELINQUISH
-
-          CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "unable to use '", path, "': ",
-            tls_get_errors2(cmd->tmp_pool), NULL));
-        }
-      }
-    }
-
-    SSL_CTX_free(ctx);
-
-  } else {
-    res = file_exists2(cmd->tmp_pool, path);
-    if (res == FALSE) {
-      PRIVS_RELINQUISH
-      CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "'", path, "' does not exist",
-        NULL));
-    }
-  }
-
+  res = tls_keyfile_check(cmd->tmp_pool, path, &errors);
   PRIVS_RELINQUISH
 
-  if (*path != '/') {
-    CONF_ERROR(cmd, "parameter must be an absolute path");
+  if (res < 0) {
+    CONF_ERROR(cmd, errors);
   }
 
   add_config_param_str(cmd->argv[0], 1, path);
@@ -15955,6 +16068,7 @@ static tls_pkey_t *tls_get_key_passphrase(server_rec *s, const char *path,
   const char *key_type = "unsupported";
   char buf[256], **key_data = NULL;
   void **key_ptr = NULL;
+  pool *tmp_pool = NULL;
 
   switch (flags) {
     case TLS_PASSPHRASE_FL_RSA_KEY:
@@ -15978,8 +16092,11 @@ static tls_pkey_t *tls_get_key_passphrase(server_rec *s, const char *path,
       return NULL;
   }
 
+  tmp_pool = make_sub_pool(s->pool);
   pr_trace_msg(trace_channel, 14,
-    "obtaining passphrase/password for %s cert for path %s", key_type, path);
+    "obtaining passphrase/password for %s cert for %s %s", key_type,
+    is_pkcs11_uri(tmp_pool, path) == TRUE ? "URI" : "path", path);
+  destroy_pool(tmp_pool);
 
   /* First see if we have an existing (and usable!) passphrase already
    * stored for this server/key type/path.
@@ -17635,7 +17752,7 @@ static int tls_ctx_set_ca_certs(SSL_CTX *ctx) {
   return 0;
 }
 
-static int tls_ctx_set_dsa_cert(SSL_CTX *ctx, X509 **dsa_cert) {
+static int tls_ctx_set_dsa_cert(pool *p, SSL_CTX *ctx, X509 **dsa_cert) {
   X509 *cert;
   FILE *fh = NULL;
   int res, xerrno;
@@ -17706,7 +17823,23 @@ static int tls_ctx_set_dsa_cert(SSL_CTX *ctx, X509 **dsa_cert) {
     tls_pkey->flags &= ~(TLS_PKEY_USE_RSA|TLS_PKEY_USE_EC);
   }
 
-  res = SSL_CTX_use_PrivateKey_file(ctx, key_file, X509_FILETYPE_PEM);
+  if (is_pkcs11_uri(p, key_file) == TRUE) {
+    EVP_PKEY *pkey;
+    char *errors = NULL;
+
+    pkey = get_pkcs11_key(p, key_file, &errors);
+    if (pkey != NULL) {
+      res = SSL_CTX_use_PrivateKey(ctx, pkey);
+
+    } else {
+      pr_trace_msg(trace_channel, 9, "%s", errors);
+      res = -1;
+    }
+
+  } else {
+    res = SSL_CTX_use_PrivateKey_file(ctx, key_file, X509_FILETYPE_PEM);
+  }
+
   if (res <= 0) {
     PRIVS_RELINQUISH
 
@@ -17728,7 +17861,7 @@ static int tls_ctx_set_dsa_cert(SSL_CTX *ctx, X509 **dsa_cert) {
   return 0;
 }
 
-static int tls_ctx_set_ec_cert(SSL_CTX *ctx, X509 **ec_cert) {
+static int tls_ctx_set_ec_cert(pool *p, SSL_CTX *ctx, X509 **ec_cert) {
 #if defined(PR_USE_OPENSSL_ECC)
   X509 *cert;
   FILE *fh = NULL;
@@ -17800,7 +17933,23 @@ static int tls_ctx_set_ec_cert(SSL_CTX *ctx, X509 **ec_cert) {
     tls_pkey->flags &= ~(TLS_PKEY_USE_RSA|TLS_PKEY_USE_DSA);
   }
 
-  res = SSL_CTX_use_PrivateKey_file(ctx, key_file, X509_FILETYPE_PEM);
+  if (is_pkcs11_uri(p, key_file) == TRUE) {
+    EVP_PKEY *pkey;
+    char *errors = NULL;
+
+    pkey = get_pkcs11_key(p, key_file, &errors);
+    if (pkey != NULL) {
+      res = SSL_CTX_use_PrivateKey(ctx, pkey);
+
+    } else {
+      pr_trace_msg(trace_channel, 9, "%s", errors);
+      res = -1;
+    }
+
+  } else {
+    res = SSL_CTX_use_PrivateKey_file(ctx, key_file, X509_FILETYPE_PEM);
+  }
+
   if (res <= 0) {
     PRIVS_RELINQUISH
 
@@ -18018,7 +18167,7 @@ static int tls_ctx_set_pkcs12_cert(SSL_CTX *ctx, X509 **dsa_cert,
   return 0;
 }
 
-static int tls_ctx_set_rsa_cert(SSL_CTX *ctx, X509 **rsa_cert) {
+static int tls_ctx_set_rsa_cert(pool *p, SSL_CTX *ctx, X509 **rsa_cert) {
   X509 *cert;
   FILE *fh = NULL;
   int res, xerrno;
@@ -18092,7 +18241,23 @@ static int tls_ctx_set_rsa_cert(SSL_CTX *ctx, X509 **rsa_cert) {
     tls_pkey->flags &= ~(TLS_PKEY_USE_DSA|TLS_PKEY_USE_EC);
   }
 
-  res = SSL_CTX_use_PrivateKey_file(ctx, key_file, X509_FILETYPE_PEM);
+  if (is_pkcs11_uri(p, key_file) == TRUE) {
+    EVP_PKEY *pkey;
+    char *errors = NULL;
+
+    pkey = get_pkcs11_key(p, key_file, &errors);
+    if (pkey != NULL) {
+      res = SSL_CTX_use_PrivateKey(ctx, pkey);
+
+    } else {
+      pr_trace_msg(trace_channel, 9, "%s", errors);
+      res = -1;
+    }
+
+  } else {
+    res = SSL_CTX_use_PrivateKey_file(ctx, key_file, X509_FILETYPE_PEM);
+  }
+
   if (res <= 0) {
     const char *errors;
 
@@ -18207,12 +18372,20 @@ static int tls_ctx_set_cert_chain(SSL_CTX *ctx, X509 *dsa_cert, X509 *ec_cert,
 
 static int tls_ctx_set_certs(SSL_CTX *ctx, X509 **dsa_cert, X509 **ec_cert,
     X509 **rsa_cert) {
-  if (tls_ctx_set_dsa_cert(ctx, dsa_cert) < 0 ||
-      tls_ctx_set_ec_cert(ctx, ec_cert) < 0 ||
+  pool *tmp_pool;
+
+  tmp_pool = make_sub_pool(session.pool);
+  pr_pool_tag(tmp_pool, "TLS ctx certs pool");
+
+  if (tls_ctx_set_dsa_cert(tmp_pool, ctx, dsa_cert) < 0 ||
+      tls_ctx_set_ec_cert(tmp_pool, ctx, ec_cert) < 0 ||
       tls_ctx_set_pkcs12_cert(ctx, dsa_cert, ec_cert, rsa_cert) < 0 ||
-      tls_ctx_set_rsa_cert(ctx, rsa_cert) < 0) {
+      tls_ctx_set_rsa_cert(tmp_pool, ctx, rsa_cert) < 0) {
+    destroy_pool(tmp_pool);
     return -1;
   }
+
+  destroy_pool(tmp_pool);
 
   /* Log a warning if the server was badly misconfigured, and has no server
    * certs at all.  The client will probably see this situation as something
