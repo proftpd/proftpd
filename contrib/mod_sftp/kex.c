@@ -4580,8 +4580,7 @@ static int read_curve448_init(struct ssh2_packet *pkt, struct sftp_kex *kex) {
   /* Watch for all-zero public keys, and reject them. */
   memset(zero_curve448, '\0', sizeof(zero_curve448));
 
-  /* XXX Use timingsafe_bcmp here */
-  if (memcmp(client_curve448, zero_curve448, CURVE448_SIZE) == 0) {
+  if (pr_timingsafe_bcmp(client_curve448, zero_curve448, CURVE448_SIZE) == 0) {
     (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
       "rejecting invalid (all-zero) client Curve448 key");
     errno = EINVAL;
@@ -5134,8 +5133,7 @@ static int read_mlkem768_init(struct ssh2_packet *pkt, struct sftp_kex *kex) {
   /* Watch for all-zero public keys, and reject them. */
   memset(zero_x25519, '\0', sizeof(zero_x25519));
 
-/* XXX Use timingsafe_bcmp here */
-  if (memcmp(client_x25519, zero_x25519, X25519_KEYLEN) == 0) {
+  if (pr_timingsafe_bcmp(client_x25519, zero_x25519, X25519_KEYLEN) == 0) {
     (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
       "rejecting invalid (all-zero) client X25519 key");
     EVP_PKEY_free(mlkem768_pkey);

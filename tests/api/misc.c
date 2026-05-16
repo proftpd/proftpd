@@ -1167,6 +1167,19 @@ START_TEST (localtime_test) {
 }
 END_TEST
 
+START_TEST (timingsafe_bcmp_test) {
+  int res;
+
+  mark_point();
+  res = pr_timingsafe_bcmp("foo", "bar", 4);
+  ck_assert_msg(res != 0, "Failed to handle mismatched text");
+
+  mark_point();
+  res = pr_timingsafe_bcmp("foo", "foo", 4);
+  ck_assert_msg(res == 0, "Failed to handle matching text");
+}
+END_TEST
+
 START_TEST (strtime_test) {
   const char *res;
   time_t now;
@@ -1496,6 +1509,7 @@ Suite *tests_get_misc_suite(void) {
   tcase_add_test(testcase, getopt_reset_test);
   tcase_add_test(testcase, gmtime_test);
   tcase_add_test(testcase, localtime_test);
+  tcase_add_test(testcase, timingsafe_bcmp_test);
   tcase_add_test(testcase, strtime_test);
   tcase_add_test(testcase, strtime2_test);
   tcase_add_test(testcase, strtime3_test);

@@ -487,19 +487,6 @@ static unsigned char *sql_passwd_hash(pool *p, const EVP_MD *md,
   return hash;
 }
 
-#if !defined(HAVE_TIMINGSAFE_BCMP)
-static int timingsafe_bcmp(const void *b1, const void *b2, size_t n) {
-  const unsigned char *p1 = b1, *p2 = b2;
-  int ret = 0;
-
-  for (; n > 0; n--) {
-    ret |= *p1++ ^ *p2++;
-  }
-
-  return (ret != 0);
-}
-#endif /* HAVE_TIMINGSAFE_BCMP */
-
 static modret_t *sql_passwd_auth(cmd_rec *cmd, const char *plaintext,
     const char *ciphertext, const char *digest) {
   const EVP_MD *md;
@@ -741,7 +728,7 @@ static modret_t *sql_passwd_auth(cmd_rec *cmd, const char *plaintext,
     }
   }
 
-  if (timingsafe_bcmp(encodedtext, copytext, strlen(copytext)) == 0) {
+  if (pr_timingsafe_bcmp(encodedtext, copytext, strlen(copytext)) == 0) {
     return PR_HANDLED(cmd);
   }
 
@@ -776,7 +763,7 @@ static modret_t *sql_passwd_bcrypt(cmd_rec *cmd, const char *plaintext,
     return PR_ERROR_INT(cmd, PR_AUTH_BADPWD);
   }
 
-  if (timingsafe_bcmp(hashed, ciphertext, strlen(ciphertext)) == 0) {
+  if (pr_timingsafe_bcmp(hashed, ciphertext, strlen(ciphertext)) == 0) {
     return PR_HANDLED(cmd);
   }
 
@@ -896,7 +883,7 @@ static modret_t *sql_passwd_ssha(cmd_rec *cmd, const char *plaintext,
   encodedtext = sql_passwd_encode(cmd->tmp_pool, SQL_PASSWD_ENC_USE_BASE64,
     hash, hash_len);
 
-  if (timingsafe_bcmp(encodedtext, copytext, strlen(copytext)) == 0) {
+  if (pr_timingsafe_bcmp(encodedtext, copytext, strlen(copytext)) == 0) {
     return PR_HANDLED(cmd);
   }
 
@@ -979,7 +966,7 @@ static modret_t *sql_passwd_pbkdf2(cmd_rec *cmd, const char *plaintext,
     return PR_ERROR_INT(cmd, PR_AUTH_ERROR);
   }
 
-  if (timingsafe_bcmp(encodedtext, ciphertext, strlen(ciphertext)) == 0) {
+  if (pr_timingsafe_bcmp(encodedtext, ciphertext, strlen(ciphertext)) == 0) {
     return PR_HANDLED(cmd);
   }
 
@@ -1072,7 +1059,7 @@ static modret_t *sql_passwd_scrypt(cmd_rec *cmd, const char *plaintext,
     return PR_ERROR_INT(cmd, PR_AUTH_ERROR);
   }
 
-  if (timingsafe_bcmp(encodedtext, ciphertext, strlen(ciphertext)) == 0) {
+  if (pr_timingsafe_bcmp(encodedtext, ciphertext, strlen(ciphertext)) == 0) {
     return PR_HANDLED(cmd);
   }
 
@@ -1167,7 +1154,7 @@ static modret_t *sql_passwd_argon2(cmd_rec *cmd, const char *plaintext,
     return PR_ERROR_INT(cmd, PR_AUTH_ERROR);
   }
 
-  if (timingsafe_bcmp(encodedtext, ciphertext, strlen(ciphertext)) == 0) {
+  if (pr_timingsafe_bcmp(encodedtext, ciphertext, strlen(ciphertext)) == 0) {
     return PR_HANDLED(cmd);
   }
 

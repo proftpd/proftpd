@@ -103,6 +103,8 @@ void pr_memscrub(void *, size_t);
 void pr_getopt_reset(void);
 struct tm *pr_gmtime(pool *, const time_t *);
 struct tm *pr_localtime(pool *, const time_t *);
+/* Constant-time memcmp(3) implementation, where needed. */
+int pr_timingsafe_bcmp(const void *, const void *, size_t);
 const char *pr_strtime(time_t);
 const char *pr_strtime2(time_t, int);
 
