@@ -154,7 +154,7 @@ static unsigned char *agent_request(pool *p, int fd, const char *path,
     return NULL;
   }
 
-  if (res < sizeof(uint32_t)) {
+  if ((size_t) res < sizeof(uint32_t)) {
     pr_trace_msg(trace_channel, 1,
       "response data (%d bytes) from SSH agent at '%s' is too short, ignoring",
       res, path);
