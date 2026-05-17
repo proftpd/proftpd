@@ -944,15 +944,15 @@ int sftp_cipher_read_data(struct ssh2_packet *pkt, unsigned char *data,
   }
 
   if (cipher->algo_type == SFTP_CIPHER_ALGO_CHACHA) {
-    unsigned char seqnobuf[16], *ptr;
+    unsigned char seqnobuf[16], *seqnobuf_ptr;
     uint32_t len;
 
     memset(seqnobuf, 0, sizeof(seqnobuf));
     seqnobuf[0] = 1;
 
-    ptr = seqnobuf + 8;
+    seqnobuf_ptr = seqnobuf + 8;
     len = 8;
-    sftp_msg_write_long(&ptr, &len, pkt->seqno);
+    sftp_msg_write_long(&seqnobuf_ptr, &len, pkt->seqno);
 
     if (EVP_CipherInit(pctx, NULL, NULL, seqnobuf, 1) != 1) {
       (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
@@ -1395,16 +1395,16 @@ int sftp_cipher_write_data(struct ssh2_packet *pkt, unsigned char *buf,
       if (cipher->algo_type == SFTP_CIPHER_ALGO_CHACHA) {
 #if defined(HAVE_EVP_CHACHA20_OPENSSL) && \
    !defined(HAVE_BROKEN_CHACHA20)
-        unsigned char seqnobuf[16], *ptr;
+        unsigned char seqnobuf[16], *seqnobuf_ptr;
         uint32_t len;
         EVP_CIPHER_CTX *hpctx;
 
         hpctx = write_header_ctxs[write_cipher_idx];
 
         memset(seqnobuf, 0, sizeof(seqnobuf));
-        ptr = seqnobuf + 8;
+        seqnobuf_ptr = seqnobuf + 8;
         len = 8;
-        sftp_msg_write_long(&ptr, &len, pkt->seqno);
+        sftp_msg_write_long(&seqnobuf_ptr, &len, pkt->seqno);
 
         if (EVP_CipherInit(hpctx, NULL, NULL, seqnobuf, 1) != 1) {
           (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
@@ -1442,15 +1442,15 @@ int sftp_cipher_write_data(struct ssh2_packet *pkt, unsigned char *buf,
   sftp_msg_write_data(&data, &datalen, pkt->padding, pkt->padding_len, FALSE);
 
   if (cipher->algo_type == SFTP_CIPHER_ALGO_CHACHA) {
-    unsigned char seqnobuf[16], *ptr;
+    unsigned char seqnobuf[16], *seqnobuf_ptr;
     uint32_t len;
 
     memset(seqnobuf, 0, sizeof(seqnobuf));
     seqnobuf[0] = 1;
 
-    ptr = seqnobuf + 8;
+    seqnobuf_ptr = seqnobuf + 8;
     len = 8;
-    sftp_msg_write_long(&ptr, &len, pkt->seqno);
+    sftp_msg_write_long(&seqnobuf_ptr, &len, pkt->seqno);
 
     if (EVP_CipherInit(pctx, NULL, NULL, seqnobuf, 1) != 1) {
       (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
