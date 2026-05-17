@@ -107,6 +107,9 @@ int sftp_keys_send_hostkeys(pool *p);
 int sftp_keys_prove_hostkeys(pool *p, int want_reply, unsigned char *buf,
   uint32_t buflen);
 
+/* Returns count of configured hostkeys. */
+unsigned int sftp_keys_have_hostkeys(void);
+
 int sftp_keys_clear_dsa_hostkey(void);
 int sftp_keys_clear_ecdsa_hostkey(void);
 int sftp_keys_clear_ed25519_hostkey(void);

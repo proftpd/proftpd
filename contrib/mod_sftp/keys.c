@@ -4573,6 +4573,42 @@ int sftp_keys_have_rsa_hostkey(void) {
   return 0;
 }
 
+unsigned int sftp_keys_have_hostkeys(void) {
+  unsigned int count = 0;
+
+  if (sftp_rsa_hostkey != NULL) {
+    count++;
+  }
+
+  if (sftp_dsa_hostkey != NULL) {
+    count++;
+  }
+
+  if (sftp_ed25519_hostkey != NULL) {
+    count++;
+  }
+
+  if (sftp_ed448_hostkey != NULL) {
+    count++;
+  }
+
+#if defined(PR_USE_OPENSSL_ECC)
+  if (sftp_ecdsa256_hostkey != NULL) {
+    count++;
+  }
+
+  if (sftp_ecdsa384_hostkey != NULL) {
+    count++;
+  }
+
+  if (sftp_ecdsa521_hostkey != NULL) {
+    count++;
+  }
+#endif /* PR_USE_OPENSSL_ECC */
+
+  return count;
+}
+
 static const unsigned char *agent_sign_data(pool *p, const char *agent_path,
     const unsigned char *key_data, uint32_t key_datalen,
     const unsigned char *data, size_t datalen, size_t *siglen, int flags) {
@@ -6772,6 +6808,7 @@ int sftp_keys_prove_hostkeys(pool *p, int want_reply, unsigned char *buf,
   int res;
   unsigned char *buf2, *ptr2;
   uint32_t buflen2, bufsz2;
+  unsigned int hostkey_count, proof_count = 0;
   struct ssh2_packet *pkt2;
 
   /* No point in doing the work, if the client does not care about a reply. */
@@ -6793,6 +6830,12 @@ int sftp_keys_prove_hostkeys(pool *p, int want_reply, unsigned char *buf,
 
   sftp_msg_write_byte(&buf2, &buflen2, SFTP_SSH2_MSG_REQUEST_SUCCESS);
 
+  /* How many hostkeys do we have configured?  That's how many proofs we
+   * should provide, assuming the client is properly requesting proofs of
+   * UNIQUE hostkeys.
+   */
+  hostkey_count = sftp_keys_have_hostkeys();
+
   while (buflen != 0) {
     const unsigned char *hsig = NULL;
     unsigned char *hostkey_data = NULL;
@@ -6810,6 +6853,14 @@ int sftp_keys_prove_hostkeys(pool *p, int want_reply, unsigned char *buf,
     }
 
     sftp_msg_write_data(&buf2, &buflen2, hsig, hsiglen, TRUE);
+    proof_count++;
+
+    if (proof_count > hostkey_count) {
+      (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
+        "client requested proofs for more hostkeys than currently "
+        "configured (%u), declining", hostkey_count);
+      return prove_hostkeys_failed(p);
+    }
   }
 
   pkt2->payload = ptr2;
