@@ -1082,6 +1082,9 @@ static int tls_keyfile_check(pool *p, const char *path, char **errors) {
           ok = FALSE;
           break;
       }
+
+    } else {
+      ok = TRUE;
     }
 
     SSL_CTX_free(ctx);
@@ -1090,6 +1093,9 @@ static int tls_keyfile_check(pool *p, const char *path, char **errors) {
     if (file_exists2(p, path) == FALSE) {
       *errors = pstrcat(p, "'", path, "' does not exist", NULL);
       ok = FALSE;
+
+    } else {
+      ok = TRUE;
     }
   }
 
