@@ -1999,8 +1999,11 @@ static struct passwd *sql_getpasswd(cmd_rec *cmd, struct passwd *p) {
       }
 
     } else {
+      /* The username has been escaped according to the backend database' rules
+       * at this point.
+       */
       mr = sql_lookup(sql_make_cmd(cmd->tmp_pool, 3, MOD_SQL_DEF_CONN_NAME,
-        cmap.usercustom, realname ? realname : "NULL"));
+        cmap.usercustom, username ? username : "NULL"));
 
       if (check_response(mr, 0) < 0) {
         return NULL;
