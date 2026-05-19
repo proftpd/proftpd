@@ -3706,7 +3706,10 @@ sub copy_cpto_timeout_bug4263 {
   defined(my $pid = fork()) or die("Can't fork: $!");
   if ($pid) {
     eval {
-      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port, 0, 1);
+      # Allow for server startup
+      sleep(2);
+
+      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port, 0, 5);
       $client->login($setup->{user}, $setup->{passwd});
 
       my ($resp_code, $resp_msg) = $client->site('CPFR', 'foo.dat');
@@ -3729,11 +3732,12 @@ sub copy_cpto_timeout_bug4263 {
       $self->assert($expected eq $resp_msg,
         test_msg("Expected response message '$expected', got '$resp_msg'"));
 
+      $client->quit();
+
       unless (-f $dst_file) {
         die("File $dst_file does not exist as expected");
       }
     };
-
     if ($@) {
       $ex = $@;
     }
