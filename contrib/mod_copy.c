@@ -339,7 +339,7 @@ static int copy_dir(pool *p, const char *src_dir, const char *dst_dir,
 }
 
 static int copy_paths(pool *p, const char *from, const char *to) {
-  struct stat st;
+  struct stat from_st, to_st;
   int res, flags = 0;
   xaset_t *set;
 
@@ -365,7 +365,7 @@ static int copy_paths(pool *p, const char *from, const char *to) {
   /* Check whether from is a file, a directory, a symlink, or something
    * unsupported.
    */
-  res = pr_fsio_lstat(from, &st);
+  res = pr_fsio_lstat(from, &from_st);
   if (res < 0) {
     int xerrno = errno;
 
@@ -380,11 +380,11 @@ static int copy_paths(pool *p, const char *from, const char *to) {
     flags |= PR_FSIO_COPY_FILE_FL_NO_DELETE_ON_FAILURE;
   }
 
-  if (S_ISREG(st.st_mode)) {
+  if (S_ISREG(from_st.st_mode)) {
     char *abs_path;
 
     pr_fs_clear_cache2(to);
-    res = pr_fsio_stat(to, &st);
+    res = pr_fsio_lstat(to, &to_st);
     if (res == 0) {
       unsigned char *allow_overwrite;
 
@@ -396,6 +396,10 @@ static int copy_paths(pool *p, const char *from, const char *to) {
         errno = EACCES;
         return -1;
       }
+
+    } else {
+      pr_trace_msg(trace_channel, 19,
+        "lstat(2) error for destination path '%s': %s", to, strerror(errno));
     }
 
     res = pr_fs_copy_file2(from, to, flags, NULL);
@@ -410,26 +414,26 @@ static int copy_paths(pool *p, const char *from, const char *to) {
     }
 
     pr_fs_clear_cache2(to);
-    if (pr_fsio_stat(to, &st) < 0) {
+    if (pr_fsio_stat(to, &to_st) < 0) {
       pr_trace_msg(trace_channel, 3,
-        "error stat'ing '%s': %s", to, strerror(errno));
+        "stat(2) error on destination path '%s': %s", to, strerror(errno));
     }
 
     /* Write a TransferLog entry as well. */
     abs_path = dir_abs_path(p, to, TRUE);
 
     if (session.sf_flags & SF_ANON) {
-      xferlog_write(0, session.c->remote_name, st.st_size, abs_path,
+      xferlog_write(0, session.c->remote_name, to_st.st_size, abs_path,
         (session.sf_flags & SF_ASCII ? 'a' : 'b'), 'd', 'a',
         session.anon_user, 'c', "_");
 
     } else {
-      xferlog_write(0, session.c->remote_name, st.st_size, abs_path,
+      xferlog_write(0, session.c->remote_name, to_st.st_size, abs_path,
         (session.sf_flags & SF_ASCII ? 'a' : 'b'), 'd', 'r',
         session.user, 'c', "_");
     }
 
-  } else if (S_ISDIR(st.st_mode)) {
+  } else if (S_ISDIR(from_st.st_mode)) {
     res = create_path(p, to);
     if (res < 0) {
       int xerrno = errno;
@@ -453,9 +457,9 @@ static int copy_paths(pool *p, const char *from, const char *to) {
       return -1;
     }
 
-  } else if (S_ISLNK(st.st_mode)) {
+  } else if (S_ISLNK(from_st.st_mode)) {
     pr_fs_clear_cache2(to);
-    res = pr_fsio_stat(to, &st);
+    res = pr_fsio_lstat(to, &to_st);
     if (res == 0) {
       unsigned char *allow_overwrite;
 
@@ -468,6 +472,9 @@ static int copy_paths(pool *p, const char *from, const char *to) {
         errno = EACCES;
         return -1;
       }
+    } else {
+      pr_trace_msg(trace_channel, 19,
+        "lstat(2) error for destination path '%s': %s", to, strerror(errno));
     }
 
     res = copy_symlink(p, from, to, flags);
