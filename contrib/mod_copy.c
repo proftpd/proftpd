@@ -571,7 +571,7 @@ MODRET copy_copy(cmd_rec *cmd) {
     return PR_DECLINED(cmd);
   }
 
-  if (strncasecmp(cmd->argv[1], "COPY", 5) == 0) {
+  if (strcasecmp(cmd->argv[1], "COPY") == 0) {
     char *cmd_name, *decoded_path, *from, *to;
     unsigned char *authenticated;
 
@@ -627,12 +627,29 @@ MODRET copy_copy(cmd_rec *cmd) {
 
     cmd_name = cmd->argv[0];
     pr_cmd_set_name(cmd, "SITE_COPY");
+    if (!dir_check(cmd->tmp_pool, cmd, G_READ, from, NULL)) {
+      int xerrno = EPERM;
+
+      pr_cmd_set_name(cmd, cmd_name);
+      pr_log_debug(DEBUG8, "%s %s denied by <Limit> configuration",
+        (char *) cmd->argv[0], from);
+      pr_response_add_err(R_550, "%s: %s", (char *) cmd->argv[2],
+        strerror(xerrno));
+
+      pr_cmd_set_errno(cmd, xerrno);
+      errno = xerrno;
+      return PR_ERROR(cmd);
+    }
+    pr_cmd_set_name(cmd, cmd_name);
+
+    cmd_name = cmd->argv[0];
+    pr_cmd_set_name(cmd, "SITE_COPY");
     if (!dir_check(cmd->tmp_pool, cmd, G_WRITE, to, NULL)) {
       int xerrno = EPERM;
 
       pr_cmd_set_name(cmd, cmd_name);
-      pr_log_debug(DEBUG8, "%s denied by <Limit> configuration",
-        (char *) cmd->argv[0]);
+      pr_log_debug(DEBUG8, "%s %s denied by <Limit> configuration",
+        (char *) cmd->argv[0], to);
       pr_response_add_err(R_550, "%s: %s", (char *) cmd->argv[3],
         strerror(xerrno));
 
