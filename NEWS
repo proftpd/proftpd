@@ -31,6 +31,8 @@
   been implemented.
 - Issue 2041 - Implement support for PKCS#11 URIs for TLS private keys in
   mod_tls.
+- Issue 2095 - <Limit READ> configurations are not honored by SITE COPY as they
+  should be.
 
 1.3.10rc1 - Released 27-Apr-2026
 --------------------------------

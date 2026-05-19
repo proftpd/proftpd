@@ -56,9 +56,14 @@ my $TESTS = {
     test_class => [qw(bug forking)],
   },
 
-  copy_config_limit => {
+  copy_config_limit_site_copy => {
     order => ++$order,
     test_class => [qw(forking)],
+  },
+
+  copy_config_limit_read_issue2095 => {
+    order => ++$order,
+    test_class => [qw(bug forking)],
   },
 
   copy_config_pathdenyfilter => {
@@ -111,7 +116,7 @@ my $TESTS = {
     test_class => [qw(forking)],
   },
 
-  copy_config_limit_bug3399 => {
+  copy_config_limit_write_bug3399 => {
     order => ++$order,
     test_class => [qw(forking rootprivs)],
   },
@@ -963,7 +968,7 @@ sub copy_help {
   unlink($log_file);
 }
 
-sub copy_config_limit {
+sub copy_config_limit_site_copy {
   my $self = shift;
   my $tmpdir = $self->{tmpdir};
 
@@ -1102,6 +1107,123 @@ EOC
   }
 
   unlink($log_file);
+}
+
+sub copy_config_limit_read_issue2095 {
+  my $self = shift;
+  my $tmpdir = $self->{tmpdir};
+  my $setup = test_setup($tmpdir, 'copy');
+
+  my $src_file = File::Spec->rel2abs("$setup->{home_dir}/foo.txt");
+
+  if (open(my $fh, "> $src_file")) {
+    unless (close($fh)) {
+      die("Can't write $src_file: $!");
+    }
+
+  } else {
+    die("Can't open $src_file: $!");
+  }
+
+  my $dst_file = File::Spec->rel2abs("$setup->{home_dir}/bar.txt");
+
+  my $config = {
+    PidFile => $setup->{pid_file},
+    ScoreboardFile => $setup->{scoreboard_file},
+    SystemLog => $setup->{log_file},
+
+    AuthUserFile => $setup->{auth_user_file},
+    AuthGroupFile => $setup->{auth_group_file},
+    AuthOrder => 'mod_auth_file.c',
+
+    IfModules => {
+      'mod_delay.c' => {
+        DelayEngine => 'off',
+      },
+    },
+  };
+
+  my ($port, $config_user, $config_group) = config_write($setup->{config_file},
+    $config);
+
+  if (open(my $fh, ">> $setup->{config_file}")) {
+    print $fh <<EOC;
+<Limit READ>
+  DenyAll
+</Limit>
+EOC
+
+    unless (close($fh)) {
+      die("Can't write $setup->{config_file}: $!");
+    }
+
+  } else {
+    die("Can't open $setup->{config_file}: $!");
+  }
+
+  # Open pipes, for use between the parent and child processes.  Specifically,
+  # the child will indicate when it's done with its test by writing a message
+  # to the parent.
+  my ($rfh, $wfh);
+  unless (pipe($rfh, $wfh)) {
+    die("Can't open pipe: $!");
+  }
+
+  my $ex;
+
+  # Fork child
+  $self->handle_sigchld();
+  defined(my $pid = fork()) or die("Can't fork: $!");
+  if ($pid) {
+    eval {
+      # Allow for server startup
+      sleep(1);
+
+      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
+      $client->login($setup->{user}, $setup->{passwd});
+
+      eval { $client->site('COPY', 'foo.txt', 'bar.txt') };
+      unless ($@) {
+        die("SITE COPY succeeded unexpectedly");
+      }
+
+      my $resp_code = $client->response_code();
+      my $resp_msg = $client->response_msg();
+
+      my $expected = 550;
+      $self->assert($expected == $resp_code,
+        test_msg("Expected response code $expected, got $resp_code"));
+
+      $expected = "foo.txt: Operation not permitted";
+      $self->assert($expected eq $resp_msg,
+        test_msg("Expected response message '$expected', got '$resp_msg'"));
+
+      if (-f $dst_file) {
+        die("File $dst_file exists unexpectedly");
+      }
+    };
+    if ($@) {
+      $ex = $@;
+    }
+
+    $wfh->print("done\n");
+    $wfh->flush();
+
+  } else {
+    eval { server_wait($setup->{config_file}, $rfh) };
+    if ($@) {
+      warn($@);
+      exit 1;
+    }
+
+    exit 0;
+  }
+
+  # Stop server
+  server_stop($setup->{pid_file});
+  $self->assert_child_ok($pid);
+
+  test_cleanup($setup->{log_file}, $ex);
 }
 
 sub copy_config_allowoverwrite_file {
@@ -3274,7 +3396,7 @@ sub copy_cpfr_cpto_paths_with_spaces {
   unlink($log_file);
 }
 
-sub copy_config_limit_bug3399 {
+sub copy_config_limit_write_bug3399 {
   my $self = shift;
   my $tmpdir = $self->{tmpdir};
 
