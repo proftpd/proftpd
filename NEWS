@@ -33,6 +33,8 @@
   mod_tls.
 - Issue 2095 - <Limit READ> configurations are not honored by SITE COPY as they
   should be.
+- Issue 2098 - Hard quota limits on uploads do not cause SFTP WRITE requests
+  to fail as expected.
 
 1.3.10rc1 - Released 27-Apr-2026
 --------------------------------
