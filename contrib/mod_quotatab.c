@@ -1432,6 +1432,73 @@ int quotatab_write(quota_tally_t *tally,
 
 static off_t copied_bytes = 0;
 
+static ssize_t quotatab_fsio_pwrite(pr_fh_t *fh, int fd, const void *buf,
+    size_t bufsz, off_t offset) {
+  ssize_t res;
+  off_t total_bytes;
+
+  res = pwrite(fd, buf, bufsz, offset);
+  if (res < 0) {
+    return res;
+  }
+
+  if (have_quota_update == 0) {
+    return res;
+  }
+
+  /* Check to see if we've exceeded our upload limit.  mod_xfer will
+   * have called pr_data_xfer(), which will have updated
+   * session.xfer.total_bytes, before calling pr_fsio_write(), so
+   * we do not have to worry about updated/changing session.xfer.total_bytes
+   * ourselves.
+   *
+   * Note that there is a race condition here: it is possible for the same
+   * user to be writing to the same file in chunks from multiple
+   * simultaneous connections.
+   */
+
+  /* If the client is copying a file (versus uploading a file), then we need
+   * to track the "total bytes" differently.
+   */
+  if (session.curr_cmd_id == PR_CMD_SITE_ID &&
+      (session.curr_cmd_rec->argc >= 2 &&
+       (strcasecmp(session.curr_cmd_rec->argv[1], "CPTO") == 0 ||
+        strcasecmp(session.curr_cmd_rec->argv[1], "COPY") == 0))) {
+    copied_bytes += res;
+    total_bytes = copied_bytes;
+
+  } else {
+    total_bytes = session.xfer.total_bytes;
+  }
+
+  if (sess_limit.bytes_in_avail > 0.0 &&
+      sess_tally.bytes_in_used + total_bytes > sess_limit.bytes_in_avail) {
+    int xerrno;
+    char *errstr = NULL;
+
+    xerrno = get_quota_exceeded_errno(EIO, &errstr);
+    quotatab_log("quotatab write(): limit exceeded, returning %s", errstr);
+
+    errno = xerrno;
+    return -1;
+  }
+
+  if (sess_limit.bytes_xfer_avail > 0.0 &&
+      sess_tally.bytes_xfer_used + total_bytes > sess_limit.bytes_xfer_avail) {
+    int xerrno;
+    char *errstr = NULL;
+
+    xerrno = get_quota_exceeded_errno(EIO, &errstr);
+    quotatab_log("quotatab write(): transfer limit exceeded, returning %s",
+      errstr);
+
+    errno = xerrno;
+    return -1;
+  }
+
+  return res;
+}
+
 static int quotatab_fsio_write(pr_fh_t *fh, int fd, const char *buf,
     size_t bufsz) {
   int res;
@@ -3214,6 +3281,7 @@ MODRET quotatab_post_pass(cmd_rec *cmd) {
          * For Issue #1764, this is not a problem due to the fact that
          * mod_vroot does not override the system FS write callbacks.
          */
+        fs->pwrite = quotatab_fsio_pwrite;
         fs->write = quotatab_fsio_write;
 
       } else {
