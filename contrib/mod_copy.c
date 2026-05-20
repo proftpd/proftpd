@@ -631,8 +631,8 @@ MODRET copy_copy(cmd_rec *cmd) {
       int xerrno = EPERM;
 
       pr_cmd_set_name(cmd, cmd_name);
-      pr_log_debug(DEBUG8, "%s %s denied by <Limit> configuration",
-        (char *) cmd->argv[0], from);
+      pr_log_debug(DEBUG8, "%s %s %s denied by <Limit> configuration",
+        (char *) cmd->argv[0], (char *) cmd->argv[1], from);
       pr_response_add_err(R_550, "%s: %s", (char *) cmd->argv[2],
         strerror(xerrno));
 
@@ -648,8 +648,8 @@ MODRET copy_copy(cmd_rec *cmd) {
       int xerrno = EPERM;
 
       pr_cmd_set_name(cmd, cmd_name);
-      pr_log_debug(DEBUG8, "%s %s denied by <Limit> configuration",
-        (char *) cmd->argv[0], to);
+      pr_log_debug(DEBUG8, "%s %s %s denied by <Limit> configuration",
+        (char *) cmd->argv[0], (char *) cmd->argv[1], to);
       pr_response_add_err(R_550, "%s: %s", (char *) cmd->argv[3],
         strerror(xerrno));
 
@@ -697,7 +697,7 @@ MODRET copy_cpfr(cmd_rec *cmd) {
   }
 
   if (cmd->argc < 3 ||
-      strncasecmp(cmd->argv[1], "CPFR", 5) != 0) {
+      strcasecmp(cmd->argv[1], "CPFR") != 0) {
     return PR_DECLINED(cmd);
   }
 
@@ -743,10 +743,9 @@ MODRET copy_cpfr(cmd_rec *cmd) {
     int xerrno = EPERM;
 
     pr_cmd_set_name(cmd, cmd_name);
-    pr_log_debug(DEBUG8, "%s denied by <Limit> configuration",
-      (char *) cmd->argv[0]);
-    pr_response_add_err(R_550, "%s: %s", (char *) cmd->argv[3],
-      strerror(xerrno));
+    pr_log_debug(DEBUG8, "%s %s %s denied by <Limit> configuration",
+      (char *) cmd->argv[0], (char *) cmd->argv[1], path);
+    pr_response_add_err(R_550, "%s: %s", path, strerror(xerrno));
 
     pr_cmd_set_errno(cmd, xerrno);
     errno = xerrno;
@@ -806,7 +805,7 @@ MODRET copy_cpfr(cmd_rec *cmd) {
 
 MODRET copy_cpto(cmd_rec *cmd) {
   register unsigned int i;
-  const char *from, *to = "";
+  const char *from, *to = "", *resolved_to;
   char *cmd_name;
   unsigned char *authenticated = NULL;
 
@@ -815,7 +814,7 @@ MODRET copy_cpto(cmd_rec *cmd) {
   }
 
   if (cmd->argc < 3 ||
-      strncasecmp(cmd->argv[1], "CPTO", 5) != 0) {
+      strcasecmp(cmd->argv[1], "CPTO") != 0) {
     return PR_DECLINED(cmd);
   }
 
@@ -864,16 +863,16 @@ MODRET copy_cpto(cmd_rec *cmd) {
     to = pstrcat(cmd->tmp_pool, to, *to ? " " : "", decoded_path, NULL);
   }
 
-  to = dir_canonical_vpath(cmd->tmp_pool, to);
+  resolved_to = dir_canonical_vpath(cmd->tmp_pool, to);
 
   cmd_name = cmd->argv[0];
   pr_cmd_set_name(cmd, "SITE_CPTO");
-  if (!dir_check(cmd->tmp_pool, cmd, G_WRITE, to, NULL)) {
+  if (!dir_check(cmd->tmp_pool, cmd, G_WRITE, resolved_to, NULL)) {
     int xerrno = EPERM;
 
     pr_cmd_set_name(cmd, cmd_name);
-    pr_log_debug(DEBUG8, "%s denied by <Limit> configuration",
-      (char *) cmd->argv[0]);
+    pr_log_debug(DEBUG8, "%s %s %s denied by <Limit> configuration",
+      (char *) cmd->argv[0], (char *) cmd->argv[1], to);
     pr_response_add_err(R_550, "%s: %s", to, strerror(xerrno));
 
     pr_cmd_set_errno(cmd, xerrno);
@@ -882,12 +881,12 @@ MODRET copy_cpto(cmd_rec *cmd) {
   }
   pr_cmd_set_name(cmd, cmd_name);
 
-  if (copy_paths(cmd->tmp_pool, from, to) < 0) {
+  if (copy_paths(cmd->tmp_pool, from, resolved_to) < 0) {
     int xerrno = errno;
     const char *err_code = R_550;
 
     pr_log_debug(DEBUG7, MOD_COPY_VERSION
-      ": error copying '%s' to '%s': %s", from, to, strerror(xerrno));
+      ": error copying '%s' to '%s': %s", from, resolved_to, strerror(xerrno));
 
     /* Check errno for EDQOUT (or the most appropriate alternative).
      * (I hate the fact that FTP has a special response code just for
@@ -912,8 +911,8 @@ MODRET copy_cpto(cmd_rec *cmd) {
         break;
     }
 
-    pr_response_add_err(err_code, "%s: %s", (char *) cmd->argv[1],
-      strerror(xerrno));
+    pr_response_add_err(err_code, "%s %s: %s", (char *) cmd->argv[0],
+      (char *) cmd->argv[1], strerror(xerrno));
 
     pr_cmd_set_errno(cmd, xerrno);
     errno = xerrno;
