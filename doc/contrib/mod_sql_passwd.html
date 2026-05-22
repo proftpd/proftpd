@@ -261,17 +261,25 @@ iteration count, and output length <i>on a per-user basis</i>.  For example:
 
 <hr>
 <h3><a name="SQLPasswordRounds">SQLPasswordRounds</a></h3>
-<strong>Syntax:</strong> SQLPasswordRounds <em>count</em><br>
-<strong>Default:</strong> <em>1</em><br>
+<strong>Syntax:</strong> SQLPasswordRounds <em>count</em> <em>saltround</em><br>
+<strong>Default count:</strong> <em>1</em><br>
+<strong>Default saltround:</strong> <em>None</em><br>
 <strong>Context:</strong> server config, <code>&lt;VirtualHost&gt;</code>, <code>&lt;Global&gt;</code><br>
 <strong>Module:</strong> mod_sql_passwd<br>
 <strong>Compatibility:</strong> 1.3.4rc2 and later
 
 <p>
-The <code>SQLPasswordRounds</code> directive configures the number of
-rounds through which the password (and possibly salt) data will be hashed
-and encoded.  The <em>count</em> parameter must be greater than 1.
-
+The <code>SQLPasswordRounds</code> directive configures the number of rounds through which the password (and possibly salt) data will be hashed and encoded.<br>
+The <em>count</em> parameter must be greater than 1.<br>
+The <em>saltround</em> parametr following values are currently supported:<br>
+<ul>
+	<li>PrependSalt</li>
+	<li>AppendSalt</li>
+</ul>
+<p>
+The value of second parametr PrependSalt is concatenated at each iteration of Salt with the hash result <code>(salt + hash(data))</code>.<br>
+AppendSalt adds salt to the end <code>(hash(data) + salt)</code>.<br>
+If the second parameter is not specified or has any other value, then salt is not used in this context
 <p>
 See the <a href="#Transformations">transformations</a> section for a fuller
 description of how <code>mod_sql_passwd</code> operates on the password and
@@ -721,6 +729,22 @@ The combination of <code>SQLPasswordOptions</code> and
 values can be supported by the <code>mod_sql_passwd</code> module.
 
 <p>
+If passwords are stored in your database something like this:<br>
+<p>
+<code>sha1(salt + sha1(salt + sha1(password)))<br></code>
+<p>
+This method is often used, for example, in the OpenCart Content Management System.<br>
+Using the above example case, you would configure <code>mod_sql_passwd</code>
+to perform multiple rounds of transformation using the
+<a href="#SQLPasswordRounds"><code>SQLPasswordRounds</code></a> directive,
+like so:
+<pre>
+  SQLAuthTypes sha1
+  SQLPasswordEncoding hex
+  SQLPasswordSaltEncoding none
+  SQLPasswordOptions  HashEncodePassword
+  SQLPasswordRounds   2  PrependSalt
+</pre>
 <hr>
 <font size=2><b><i>
 &copy; Copyright 2009-2025 TJ Saunders<br>
