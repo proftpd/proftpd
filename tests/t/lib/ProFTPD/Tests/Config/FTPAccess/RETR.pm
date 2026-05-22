@@ -165,7 +165,11 @@ EOF
       $self->assert($expected == $resp_code,
         test_msg("Expected $expected, got $resp_code"));
 
-      $expected = "test.txt: Operation not permitted";
+      if ($^O eq 'solaris') {
+        $expected = "test.txt: Insufficient privileges";
+      } else {
+        $expected = "test.txt: Operation not permitted";
+      }
       $self->assert($expected eq $resp_msg,
         test_msg("Expected '$expected', got '$resp_msg'"));
 
@@ -182,7 +186,11 @@ EOF
       $self->assert($expected == $resp_code,
         test_msg("Expected $expected, got $resp_code"));
 
-      $expected = "$test_file: Operation not permitted";
+      if ($^O eq 'solaris') {
+        $expected = "$test_file: Insufficient privileges";
+      } else {
+        $expected = "$test_file: Operation not permitted";
+      }
       $self->assert($expected eq $resp_msg,
         test_msg("Expected '$expected', got '$resp_msg'"));
 
@@ -383,7 +391,11 @@ EOF
       $self->assert($expected == $resp_code,
         test_msg("Expected $expected, got $resp_code"));
 
-      $expected = "test.txt: Operation not permitted";
+      if ($^O eq 'solaris') {
+        $expected = "test.txt: Insufficient privileges";
+      } else {
+        $expected = "test.txt: Operation not permitted";
+      }
       $self->assert($expected eq $resp_msg,
         test_msg("Expected '$expected', got '$resp_msg'"));
 
@@ -400,7 +412,11 @@ EOF
       $self->assert($expected == $resp_code,
         test_msg("Expected $expected, got $resp_code"));
 
-      $expected = "$anon_test_file: Operation not permitted";
+      if ($^O eq 'solaris') {
+        $expected = "$anon_test_file: Insufficient privileges";
+      } else {
+        $expected = "$anon_test_file: Operation not permitted";
+      }
       $self->assert($expected eq $resp_msg,
         test_msg("Expected '$expected', got '$resp_msg'"));
 
@@ -598,7 +614,11 @@ EOF
       $self->assert($expected == $resp_code,
         test_msg("Expected $expected, got $resp_code"));
 
-      $expected = "test.txt: Operation not permitted";
+      if ($^O eq 'solaris') {
+        $expected = "test.txt: Insufficient privileges";
+      } else {
+        $expected = "test.txt: Operation not permitted";
+      }
       $self->assert($expected eq $resp_msg,
         test_msg("Expected '$expected', got '$resp_msg'"));
 
@@ -618,7 +638,11 @@ EOF
       $self->assert($expected == $resp_code,
         test_msg("Expected $expected, got $resp_code"));
 
-      $expected = "test.txt: Operation not permitted";
+      if ($^O eq 'solaris') {
+        $expected = "test.txt: Insufficient privileges";
+      } else {
+        $expected = "test.txt: Operation not permitted";
+      }
       $self->assert($expected eq $resp_msg,
         test_msg("Expected '$expected', got '$resp_msg'"));
 
