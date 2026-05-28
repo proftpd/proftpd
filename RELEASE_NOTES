@@ -18,6 +18,9 @@ ChangeLog files.
   + Implemented support for obtaining private keys from PKCS11 tokens in
     mod_tls (Issue #2041).
 
+  + Added new `--with-system-libtool` configure option for building DSO
+    support using the host-provided libtool.
+
   + Use `CLOCK_MONOTONIC` for more accurate timer support (Issue #2047).
 
   + Imposed max request/response message size limits for Controls (Issue #2036).

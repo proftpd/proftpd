@@ -26,7 +26,16 @@
 
 #include "conf.h"
 #include "mod_ctrls.h"
-#include "ltdl.h"
+
+#if defined(PR_USE_DSO_SYSTEM_LIBOOL)
+# if defined(HAVE_LTDL_H)
+#  include "ltdl.h"
+# else
+#  error "Missing required ltdl.h header"
+# endif /* HAVE_LTDL_H */
+#else
+# include "ltdl.h"
+#endif /* PR_USE_DSO_SYSTEM_LIBOOL */
 
 #if defined(HAVE_DLFCN_H)
 # include <dlfcn.h>
