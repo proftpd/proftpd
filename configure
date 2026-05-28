@@ -960,6 +960,7 @@ enable_dso
 with_included_ltdl
 with_ltdl_include
 with_ltdl_lib
+with_system_libtool
 enable_ident
 enable_memcache
 enable_nls
@@ -1788,6 +1789,8 @@ Optional Packages:
   --with-included-ltdl    use the GNU ltdl sources included here
   --with-ltdl-include=DIR use the ltdl headers installed in DIR
   --with-ltdl-lib=DIR     use the libltdl.la installed in DIR
+  --with-system-libtool   use system libtool vs bundled libtool
+
 
 Some influential environment variables:
   CC          C compiler command
@@ -4620,13 +4623,13 @@ if ${lt_cv_nm_interface+:} false; then :
 else
   lt_cv_nm_interface="BSD nm"
   echo "int some_variable = 0;" > conftest.$ac_ext
-  (eval echo "\"\$as_me:4623: $ac_compile\"" >&5)
+  (eval echo "\"\$as_me:4626: $ac_compile\"" >&5)
   (eval "$ac_compile" 2>conftest.err)
   cat conftest.err >&5
-  (eval echo "\"\$as_me:4626: $NM \\\"conftest.$ac_objext\\\"\"" >&5)
+  (eval echo "\"\$as_me:4629: $NM \\\"conftest.$ac_objext\\\"\"" >&5)
   (eval "$NM \"conftest.$ac_objext\"" 2>conftest.err > conftest.out)
   cat conftest.err >&5
-  (eval echo "\"\$as_me:4629: output\"" >&5)
+  (eval echo "\"\$as_me:4632: output\"" >&5)
   cat conftest.out >&5
   if $GREP 'External.*some_variable' conftest.out > /dev/null; then
     lt_cv_nm_interface="MS dumpbin"
@@ -5832,7 +5835,7 @@ ia64-*-hpux*)
   ;;
 *-*-irix6*)
   # Find out which ABI we are using.
-  echo '#line 5835 "configure"' > conftest.$ac_ext
+  echo '#line 5838 "configure"' > conftest.$ac_ext
   if { { eval echo "\"\$as_me\":${as_lineno-$LINENO}: \"$ac_compile\""; } >&5
   (eval $ac_compile) 2>&5
   ac_status=$?
@@ -7355,11 +7358,11 @@ else
    -e 's:.*FLAGS}\{0,1\} :&$lt_compiler_flag :; t' \
    -e 's: [^ ]*conftest\.: $lt_compiler_flag&:; t' \
    -e 's:$: $lt_compiler_flag:'`
-   (eval echo "\"\$as_me:7358: $lt_compile\"" >&5)
+   (eval echo "\"\$as_me:7361: $lt_compile\"" >&5)
    (eval "$lt_compile" 2>conftest.err)
    ac_status=$?
    cat conftest.err >&5
-   echo "$as_me:7362: \$? = $ac_status" >&5
+   echo "$as_me:7365: \$? = $ac_status" >&5
    if (exit $ac_status) && test -s "$ac_outfile"; then
      # The compiler can only warn and ignore the option if not recognized
      # So say no if there are warnings other than the usual output.
@@ -7694,11 +7697,11 @@ else
    -e 's:.*FLAGS}\{0,1\} :&$lt_compiler_flag :; t' \
    -e 's: [^ ]*conftest\.: $lt_compiler_flag&:; t' \
    -e 's:$: $lt_compiler_flag:'`
-   (eval echo "\"\$as_me:7697: $lt_compile\"" >&5)
+   (eval echo "\"\$as_me:7700: $lt_compile\"" >&5)
    (eval "$lt_compile" 2>conftest.err)
    ac_status=$?
    cat conftest.err >&5
-   echo "$as_me:7701: \$? = $ac_status" >&5
+   echo "$as_me:7704: \$? = $ac_status" >&5
    if (exit $ac_status) && test -s "$ac_outfile"; then
      # The compiler can only warn and ignore the option if not recognized
      # So say no if there are warnings other than the usual output.
@@ -7799,11 +7802,11 @@ else
    -e 's:.*FLAGS}\{0,1\} :&$lt_compiler_flag :; t' \
    -e 's: [^ ]*conftest\.: $lt_compiler_flag&:; t' \
    -e 's:$: $lt_compiler_flag:'`
-   (eval echo "\"\$as_me:7802: $lt_compile\"" >&5)
+   (eval echo "\"\$as_me:7805: $lt_compile\"" >&5)
    (eval "$lt_compile" 2>out/conftest.err)
    ac_status=$?
    cat out/conftest.err >&5
-   echo "$as_me:7806: \$? = $ac_status" >&5
+   echo "$as_me:7809: \$? = $ac_status" >&5
    if (exit $ac_status) && test -s out/conftest2.$ac_objext
    then
      # The compiler can only warn and ignore the option if not recognized
@@ -7854,11 +7857,11 @@ else
    -e 's:.*FLAGS}\{0,1\} :&$lt_compiler_flag :; t' \
    -e 's: [^ ]*conftest\.: $lt_compiler_flag&:; t' \
    -e 's:$: $lt_compiler_flag:'`
-   (eval echo "\"\$as_me:7857: $lt_compile\"" >&5)
+   (eval echo "\"\$as_me:7860: $lt_compile\"" >&5)
    (eval "$lt_compile" 2>out/conftest.err)
    ac_status=$?
    cat out/conftest.err >&5
-   echo "$as_me:7861: \$? = $ac_status" >&5
+   echo "$as_me:7864: \$? = $ac_status" >&5
    if (exit $ac_status) && test -s out/conftest2.$ac_objext
    then
      # The compiler can only warn and ignore the option if not recognized
@@ -10234,7 +10237,7 @@ else
   lt_dlunknown=0; lt_dlno_uscore=1; lt_dlneed_uscore=2
   lt_status=$lt_dlunknown
   cat > conftest.$ac_ext <<_LT_EOF
-#line 10237 "configure"
+#line 10240 "configure"
 #include "confdefs.h"
 
 #if HAVE_DLFCN_H
@@ -10330,7 +10333,7 @@ else
   lt_dlunknown=0; lt_dlno_uscore=1; lt_dlneed_uscore=2
   lt_status=$lt_dlunknown
   cat > conftest.$ac_ext <<_LT_EOF
-#line 10333 "configure"
+#line 10336 "configure"
 #include "confdefs.h"
 
 #if HAVE_DLFCN_H
@@ -13506,11 +13509,11 @@ else
    -e 's:.*FLAGS}\{0,1\} :&$lt_compiler_flag :; t' \
    -e 's: [^ ]*conftest\.: $lt_compiler_flag&:; t' \
    -e 's:$: $lt_compiler_flag:'`
-   (eval echo "\"\$as_me:13509: $lt_compile\"" >&5)
+   (eval echo "\"\$as_me:13512: $lt_compile\"" >&5)
    (eval "$lt_compile" 2>conftest.err)
    ac_status=$?
    cat conftest.err >&5
-   echo "$as_me:13513: \$? = $ac_status" >&5
+   echo "$as_me:13516: \$? = $ac_status" >&5
    if (exit $ac_status) && test -s "$ac_outfile"; then
      # The compiler can only warn and ignore the option if not recognized
      # So say no if there are warnings other than the usual output.
@@ -13605,11 +13608,11 @@ else
    -e 's:.*FLAGS}\{0,1\} :&$lt_compiler_flag :; t' \
    -e 's: [^ ]*conftest\.: $lt_compiler_flag&:; t' \
    -e 's:$: $lt_compiler_flag:'`
-   (eval echo "\"\$as_me:13608: $lt_compile\"" >&5)
+   (eval echo "\"\$as_me:13611: $lt_compile\"" >&5)
    (eval "$lt_compile" 2>out/conftest.err)
    ac_status=$?
    cat out/conftest.err >&5
-   echo "$as_me:13612: \$? = $ac_status" >&5
+   echo "$as_me:13615: \$? = $ac_status" >&5
    if (exit $ac_status) && test -s out/conftest2.$ac_objext
    then
      # The compiler can only warn and ignore the option if not recognized
@@ -13657,11 +13660,11 @@ else
    -e 's:.*FLAGS}\{0,1\} :&$lt_compiler_flag :; t' \
    -e 's: [^ ]*conftest\.: $lt_compiler_flag&:; t' \
    -e 's:$: $lt_compiler_flag:'`
-   (eval echo "\"\$as_me:13660: $lt_compile\"" >&5)
+   (eval echo "\"\$as_me:13663: $lt_compile\"" >&5)
    (eval "$lt_compile" 2>out/conftest.err)
    ac_status=$?
    cat out/conftest.err >&5
-   echo "$as_me:13664: \$? = $ac_status" >&5
+   echo "$as_me:13667: \$? = $ac_status" >&5
    if (exit $ac_status) && test -s out/conftest2.$ac_objext
    then
      # The compiler can only warn and ignore the option if not recognized
@@ -16314,7 +16317,7 @@ else
   lt_dlunknown=0; lt_dlno_uscore=1; lt_dlneed_uscore=2
   lt_status=$lt_dlunknown
   cat > conftest.$ac_ext <<_LT_EOF
-#line 16317 "configure"
+#line 16320 "configure"
 #include "confdefs.h"
 
 #if HAVE_DLFCN_H
@@ -16643,18 +16646,18 @@ if test "${enable_dso+set}" = set; then :
       ac_core_modules="$ac_core_modules mod_dso.o"
       ac_build_core_modules="$ac_build_core_modules modules/mod_dso.o"
 
-      MAIN_LDFLAGS="-L\$(top_srcdir)/lib/libltdl -dlopen self -export-dynamic"
-      MAIN_LIBS="$MAIN_LIBS \$(LIBLTDL)"
-
       MODULE_LDFLAGS="-avoid-version -export-dynamic -module"
-
-      INSTALL_DEPS="install-libltdl"
-      LIB_DEPS="libltdl"
-      MODULE_DEPS="libltdl"
 
 $as_echo "#define PR_USE_DSO 1" >>confdefs.h
 
 
+      if test x"$with_system_libtool" != xyes ; then
+        MAIN_LDFLAGS="-L\$(top_srcdir)/lib/libltdl -dlopen self -export-dynamic"
+        MAIN_LIBS="$MAIN_LIBS \$(LIBLTDL)"
+
+        INSTALL_DEPS="install-libltdl"
+        LIB_DEPS="libltdl"
+        MODULE_DEPS="libltdl"
 
 
 
@@ -16663,7 +16666,8 @@ $as_echo "#define PR_USE_DSO 1" >>confdefs.h
 
 
 
-      # Set options
+
+        # Set options
 
 
 
@@ -16940,8 +16944,82 @@ INCLTDL="$LTDLINCL"
 
 
 
+
+      else
+        for ac_header in ltdl.h
+do :
+  ac_fn_c_check_header_mongrel "$LINENO" "ltdl.h" "ac_cv_header_ltdl_h" "$ac_includes_default"
+if test "x$ac_cv_header_ltdl_h" = xyes; then :
+  cat >>confdefs.h <<_ACEOF
+#define HAVE_LTDL_H 1
+_ACEOF
+
+fi
+
+done
+
+        { $as_echo "$as_me:${as_lineno-$LINENO}: checking for lt_dlinit in -lltdl" >&5
+$as_echo_n "checking for lt_dlinit in -lltdl... " >&6; }
+if ${ac_cv_lib_ltdl_lt_dlinit+:} false; then :
+  $as_echo_n "(cached) " >&6
+else
+  ac_check_lib_save_LIBS=$LIBS
+LIBS="-lltdl  $LIBS"
+cat confdefs.h - <<_ACEOF >conftest.$ac_ext
+/* end confdefs.h.  */
+
+/* Override any GCC internal prototype to avoid an error.
+   Use char because int might match the return type of a GCC
+   builtin and then its argument prototype would still apply.  */
+#ifdef __cplusplus
+extern "C"
+#endif
+char lt_dlinit ();
+int
+main ()
+{
+return lt_dlinit ();
+  ;
+  return 0;
+}
+_ACEOF
+if ac_fn_c_try_link "$LINENO"; then :
+  ac_cv_lib_ltdl_lt_dlinit=yes
+else
+  ac_cv_lib_ltdl_lt_dlinit=no
+fi
+rm -f core conftest.err conftest.$ac_objext \
+    conftest$ac_exeext conftest.$ac_ext
+LIBS=$ac_check_lib_save_LIBS
+fi
+{ $as_echo "$as_me:${as_lineno-$LINENO}: result: $ac_cv_lib_ltdl_lt_dlinit" >&5
+$as_echo "$ac_cv_lib_ltdl_lt_dlinit" >&6; }
+if test "x$ac_cv_lib_ltdl_lt_dlinit" = xyes; then :
+  ac_build_addl_libs="-lltdl $ac_build_addl_libs"
+
+$as_echo "#define HAVE_LIBLTDL 1" >>confdefs.h
+
+
+$as_echo "#define PR_USE_DSO_SYSTEM_LIBTOOL 1" >>confdefs.h
+
+           LIBTOOL="libtool"
+           MAIN_LDFLAGS="-dlopen self -export-dynamic"
+
+else
+  as_fn_error $? "libltdl support, required for DSO, not present -- aborting" "$LINENO" 5
+
+fi
+
+      fi
     fi
 
+fi
+
+
+
+# Check whether --with-system-libtool was given.
+if test "${with_system_libtool+set}" = set; then :
+  withval=$with_system_libtool;
 fi
 
 

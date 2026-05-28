@@ -765,6 +765,9 @@
 /* Define if you have the <login.h> header file.  */
 #undef HAVE_LOGIN_H
 
+/* Define if you have the <ltdl.h> header file.  */
+#undef HAVE_LTDL_H
+
 /* Define if you have the <memory.h> header file.  */
 #undef HAVE_MEMORY_H
 
@@ -990,6 +993,9 @@
 /* Define if you have the intl library (-lintl).  */
 #undef HAVE_LIBINTL
 
+/* Define if you have the ltdl library (-lltdl).  */
+#undef HAVE_LIBLTDL
+
 /* Define if you have the ncurses library (-lncurses).  */
 #undef HAVE_LIBNCURSES
 
@@ -1106,6 +1112,9 @@
 
 /* Define if DSO support is desired.  */
 #undef PR_USE_DSO
+
+/* Define if DSO support via system libtool is desired.  */
+#undef PR_USE_DSO_SYSTEM_LIBTOOL
 
 /* Define if use of POSIX ACL support is desired.  */
 #undef PR_USE_FACL

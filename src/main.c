@@ -2169,7 +2169,7 @@ static void show_settings(void) {
   printf("%s", "      " PR_PID_FILE_PATH "\n");
   printf("%s", "    Scoreboard File:\n");
   printf("%s", "      " PR_RUN_DIR "/proftpd.scoreboard\n");
-#ifdef PR_USE_DSO
+#if defined(PR_USE_DSO)
   printf("%s", "    Header Directory:\n");
   printf("%s", "      " PR_INCLUDE_DIR "/proftpd\n");
   printf("%s", "    Shared Module Directory:\n");
@@ -2196,13 +2196,13 @@ static void show_settings(void) {
 
   /* Feature settings */
   printf("%s", "\n  Features:\n");
-#ifdef PR_USE_AUTO_SHADOW
+#if defined(PR_USE_AUTO_SHADOW)
   printf("%s", "    + Autoshadow support\n");
 #else
   printf("%s", "    - Autoshadow support\n");
 #endif /* PR_USE_AUTO_SHADOW */
 
-#ifdef PR_USE_CTRLS
+#if defined(PR_USE_CTRLS)
   printf("%s", "    + Controls support\n");
 #else
   printf("%s", "    - Controls support\n");
@@ -2212,39 +2212,43 @@ static void show_settings(void) {
   printf("%s", "    + curses support\n");
 #else
   printf("%s", "    - curses support\n");
-#endif /* PR_USE_CURSES && HAVE_LIBCURSES */
+#endif /* PR_USE_CURSES and HAVE_LIBCURSES */
 
-#ifdef PR_USE_DEVEL
+#if defined(PR_USE_DEVEL)
   printf("%s", "    + Developer support\n");
 #else
   printf("%s", "    - Developer support\n");
 #endif /* PR_USE_DEVEL */
 
-#ifdef PR_USE_DSO
-  printf("%s", "    + DSO support\n");
+#if defined(PR_USE_DSO)
+# if defined(PR_USE_DSO_SYSTEM_LIBTOOL)
+  printf("%s", "    + DSO support (system libtool)\n");
+# else
+  printf("%s", "    + DSO support (bundled libtool)\n");
+# endif /* PR_USE_DSO_SYSTEM_LIBTOOL */
 #else
   printf("%s", "    - DSO support\n");
 #endif /* PR_USE_DSO */
 
-#ifdef PR_USE_IPV6
+#if defined(PR_USE_IPV6)
   printf("%s", "    + IPv6 support\n");
 #else
   printf("%s", "    - IPv6 support\n");
 #endif /* PR_USE_IPV6 */
 
-#ifdef PR_USE_LARGEFILES
+#if defined(PR_USE_LARGEFILES)
   printf("%s", "    + Largefile support\n");
 #else
   printf("%s", "    - Largefile support\n");
 #endif /* PR_USE_LARGEFILES */
 
-#ifdef PR_USE_LASTLOG
+#if defined(PR_USE_LASTLOG)
   printf("%s", "    + Lastlog support\n");
 #else
   printf("%s", "    - Lastlog support\n");
 #endif /* PR_USE_LASTLOG */
 
-#ifdef PR_USE_MEMCACHE
+#if defined(PR_USE_MEMCACHE)
   printf("%s", "    + Memcache support\n");
 #else
   printf("%s", "    - Memcache support\n");
@@ -2258,17 +2262,17 @@ static void show_settings(void) {
   printf("%s", "    - ncurses support\n");
 #endif
 
-#ifdef PR_USE_NLS
+#if defined(PR_USE_NLS)
   printf("%s", "    + NLS support\n");
 #else
   printf("%s", "    - NLS support\n");
 #endif /* PR_USE_NLS */
 
-#ifdef PR_USE_OPENSSL
-# ifdef PR_USE_OPENSSL_FIPS
+#if defined(PR_USE_OPENSSL)
+# if defined(PR_USE_OPENSSL_FIPS)
     printf("    + OpenSSL support (%s, FIPS enabled)\n", OPENSSL_VERSION_TEXT);
 # else
-#  ifdef LIBRESSL_VERSION_NUMBER
+#  if defined(LIBRESSL_VERSION_NUMBER)
     printf("    + OpenSSL support (%s, LibreSSL)\n", OPENSSL_VERSION_TEXT);
 #  else
     printf("    + OpenSSL support (%s)\n", OPENSSL_VERSION_TEXT);
@@ -2278,55 +2282,55 @@ static void show_settings(void) {
   printf("%s", "    - OpenSSL support\n");
 #endif /* PR_USE_OPENSSL */
 
-#ifdef PR_USE_PCRE
+#if defined(PR_USE_PCRE)
   printf("%s", "    + PCRE support\n");
 #else
   printf("%s", "    - PCRE support\n");
 #endif /* PR_USE_PCRE */
 
-#ifdef PR_USE_PCRE2
+#if defined(PR_USE_PCRE2)
   printf("%s", "    + PCRE2 support\n");
 #else
   printf("%s", "    - PCRE2 support\n");
 #endif /* PR_USE_PCRE2 */
 
-#ifdef PR_USE_FACL
+#if defined(PR_USE_FACL)
   printf("%s", "    + POSIX ACL support\n");
 #else
   printf("%s", "    - POSIX ACL support\n");
 #endif /* PR_USE_FACL */
 
-#ifdef PR_USE_REDIS
+#if defined(PR_USE_REDIS)
   printf("%s", "    + Redis support\n");
 #else
   printf("%s", "    - Redis support\n");
 #endif /* PR_USE_REDIS */
 
-#ifdef PR_USE_SENDFILE
+#if defined(PR_USE_SENDFILE)
   printf("%s", "    + Sendfile support\n");
 #else
   printf("%s", "    - Sendfile support\n");
 #endif /* PR_USE_SENDFILE */
 
-#ifdef PR_USE_SHADOW
+#if defined(PR_USE_SHADOW)
   printf("%s", "    + Shadow file support\n");
 #else
   printf("%s", "    - Shadow file support\n");
 #endif /* PR_USE_SHADOW */
 
-#ifdef PR_USE_SODIUM
+#if defined(PR_USE_SODIUM)
   printf("%s", "    + Sodium support\n");
 #else
   printf("%s", "    - Sodium support\n");
 #endif /* PR_USE_SODIUM */
 
-#ifdef PR_USE_TRACE
+#if defined(PR_USE_TRACE)
   printf("%s", "    + Trace support\n");
 #else
   printf("%s", "    - Trace support\n");
 #endif /* PR_USE_TRACE */
 
-#ifdef PR_USE_XATTR
+#if defined(PR_USE_XATTR)
   printf("%s", "    + xattr support\n");
 #else
   printf("%s", "    - xattr support\n");
