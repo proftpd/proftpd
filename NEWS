@@ -35,7 +35,8 @@
   should be.
 - Issue 2098 - Hard quota limits on uploads do not cause SFTP WRITE requests
   to fail as expected.
-- Issue 2032 - Support --with-system-libtool configure option for LTO builds.
+- Issue 2032 - Support --with-system-libtool configure option for using the
+  host-provided libtool.
 
 1.3.10rc1 - Released 27-Apr-2026
 --------------------------------
