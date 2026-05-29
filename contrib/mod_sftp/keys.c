@@ -5471,6 +5471,8 @@ static int dsa_verify_signed_data(pool *p, EVP_PKEY *pkey,
   if (sig_len != 40) {
     (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
       "bad DSA signature len (%lu)", (unsigned long) sig_len);
+    errno = EINVAL;
+    return -1;
   }
 
   len = sftp_msg_read_data2(p, &signature, &signature_len, sig_len, &sig);
