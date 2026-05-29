@@ -5337,6 +5337,12 @@ static int verify_rsa_signed_data(pool *p, EVP_PKEY *pkey,
   }
 
   rsa = EVP_PKEY_get1_RSA(pkey);
+  if (rsa == NULL) {
+    (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
+      "error obtaining RSA key: %s",  sftp_crypto_get_errors());
+    errno = EINVAL;
+    return -1;
+  }
 
   if (keys_rsa_min_nbits > 0) {
     int rsa_nbits;
@@ -5489,6 +5495,12 @@ static int dsa_verify_signed_data(pool *p, EVP_PKEY *pkey,
   }
 
   dsa = EVP_PKEY_get1_DSA(pkey);
+  if (dsa == NULL) {
+    (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
+      "error obtaining DSA key: %s",  sftp_crypto_get_errors());
+    errno = EINVAL;
+    return -1;
+  }
 
   if (keys_dsa_min_nbits > 0) {
     int dsa_nbits;
@@ -6177,6 +6189,14 @@ int sftp_keys_verify_signed_data(pool *p, const char *pubkey_algo,
   }
 
   if (strcmp(sig_type, "ssh-rsa") == 0) {
+    if (strcmp(pubkey_algo, sig_type) != 0) {
+      (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
+        "unable to verify signed data: signature type '%s' does not match "
+        "publickey algorithm '%s'", sig_type, pubkey_algo);
+      errno = EINVAL;
+      return -1;
+    }
+
     res = rsa_verify_signed_data(p, pkey, signature, signature_len, sig_data,
       sig_datalen);
 
@@ -6212,6 +6232,14 @@ int sftp_keys_verify_signed_data(pool *p, const char *pubkey_algo,
 
 #if !defined(OPENSSL_NO_DSA)
   } else if (strcmp(sig_type, "ssh-dss") == 0) {
+    if (strcmp(pubkey_algo, sig_type) != 0) {
+      (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
+        "unable to verify signed data: signature type '%s' does not match "
+        "publickey algorithm '%s'", sig_type, pubkey_algo);
+      errno = EINVAL;
+      return -1;
+    }
+
     res = dsa_verify_signed_data(p, pkey, signature, signature_len, sig_data,
       sig_datalen);
 #endif /* !OPENSSL_NO_DSA */
