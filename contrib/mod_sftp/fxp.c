@@ -9516,6 +9516,19 @@ static int fxp_handle_open(struct fxp_packet *fxp) {
       attr_flags &= ~SSH2_FX_ATTR_PERMISSIONS;
     }
 
+    /* We also ignore any timestamps sent by clients for read-only requests.
+     *
+     * Note that the SSH2_FX_ATTR_CREATETIME flag is unsupported, and will
+     * already be cleared later.
+     */
+    if ((attr_flags & SSH2_FX_ATTR_ACMODTIME) ||
+        (attr_flags & SSH2_FX_ATTR_MODIFYTIME)) {
+      pr_trace_msg(trace_channel, 15,
+        "read-only OPEN request, ignoring timestamps sent by client");
+      attr_flags &= ~SSH2_FX_ATTR_ACMODTIME;
+      attr_flags &= ~SSH2_FX_ATTR_MODIFYTIME;
+    }
+
     if (pr_table_add(cmd2->notes, "mod_xfer.retr-path",
         pstrdup(fxp->pool, path), 0) < 0) {
       if (errno != EEXIST) {
