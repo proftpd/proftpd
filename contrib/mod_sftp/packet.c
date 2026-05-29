@@ -1151,6 +1151,15 @@ int sftp_ssh2_packet_read(int sockfd, struct ssh2_packet *pkt) {
       pr_trace_msg(trace_channel, 20, "SSH2 packet padding len = %u bytes",
         (unsigned int) pkt->padding_len);
 
+      if (pkt->packet_len < (pkt->padding_len + 1)) {
+        (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
+          "illegal padding length (%u bytes) exceeds packet length "
+          "(%lu bytes)", (unsigned int) pkt->padding_len,
+          (unsigned long) pkt->packet_len);
+        read_packet_discard(sockfd);
+        return -1;
+      }
+
       pkt->payload_len = (pkt->packet_len - pkt->padding_len - 1);
       pr_trace_msg(trace_channel, 20, "SSH2 packet payload len = %lu bytes",
         (unsigned long) pkt->payload_len);
