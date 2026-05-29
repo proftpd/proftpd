@@ -2072,6 +2072,13 @@ int sftp_ssh2_packet_process(pool *p) {
   pr_response_clear(&resp_err_list);
   pr_response_set_pool(pkt->pool);
 
+  if (pkt->payload_len == 0 ||
+      pkt->payload == NULL) {
+    (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
+      "received illegal packet with no payload, disconnecting");
+    SFTP_DISCONNECT_CONN(SFTP_SSH2_DISCONNECT_BY_APPLICATION, NULL);
+  }
+
   /* If a custom handler rejects this packet with ENOSYS, it means we need
    * to fall back to handling it ourselves.  Our own handler never returns
    * ENOSYS.
