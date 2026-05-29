@@ -28,6 +28,8 @@
   algorithms in mod_sftp.
 - Issue 2104 - SSH packet with empty payload triggers null pointer dereference
   in mod_sftp.
+- Issue 2106 - Bad DSA signatures can lead to out-of-bounds read of heap memory
+  in mod_sftp.
 
 1.3.9a - Released 27-Apr-2026
 --------------------------------
