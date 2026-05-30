@@ -3417,6 +3417,16 @@ static struct fxp_packet *fxp_packet_read(uint32_t channel_id,
       return NULL;
     }
 
+    /* We require 5 bytes of SFTP request data at a minimum: 1 byte for the
+     * request type, and 4 bytes for the payload length (Issue #2115).
+     */
+    if (fxp->packet_len < 5) {
+      (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
+        "illegal SFTP request length (%lu bytes, require at least 5 bytes), "
+        "rejecting", (unsigned long) fxp->packet_len);
+      SFTP_DISCONNECT_CONN(SFTP_SSH2_DISCONNECT_BY_APPLICATION, NULL);
+    }
+
   } else {
     pr_trace_msg(trace_channel, 19,
       "already have SFTP request packet len %lu from previous buffer data",
