@@ -3421,13 +3421,6 @@ static struct fxp_packet *fxp_packet_read(uint32_t channel_id,
       "(%lu bytes remaining in buffer)", (unsigned long) fxp->packet_len,
       (unsigned long) buflen);
 
-    if (buflen == 0) {
-      fxp_packet_set_packet(fxp);
-      fxp_packet_clear_cache_data();
-
-      return NULL;
-    }
-
     /* We require 5 bytes of SFTP request data at a minimum: 1 byte for the
      * request type, and 4 bytes for the payload length (Issue #2115).
      */
@@ -3436,6 +3429,13 @@ static struct fxp_packet *fxp_packet_read(uint32_t channel_id,
         "illegal SFTP request length (%lu bytes, require at least 5 bytes), "
         "rejecting", (unsigned long) fxp->packet_len);
       SFTP_DISCONNECT_CONN(SFTP_SSH2_DISCONNECT_BY_APPLICATION, NULL);
+    }
+
+    if (buflen == 0) {
+      fxp_packet_set_packet(fxp);
+      fxp_packet_clear_cache_data();
+
+      return NULL;
     }
 
   } else {
