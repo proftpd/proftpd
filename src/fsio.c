@@ -6682,33 +6682,35 @@ char *pr_fsio_getpipebuf(pool *p, int fd, long *bufsz) {
   return buf;
 }
 
-char *pr_fsio_gets(char *buf, size_t size, pr_fh_t *fh) {
+char *pr_fsio_gets(char *buf, size_t bufsz, pr_fh_t *fh) {
   char *bp = NULL;
   int toread = 0;
   pr_buffer_t *pbuf = NULL;
+  size_t size;
 
   if (buf == NULL ||
-      fh == NULL ||
-      size == 0) {
+      bufsz == 0 ||
+      fh == NULL) {
     errno = EINVAL;
     return NULL;
   }
 
   if (fh->fh_buf == NULL) {
-    size_t bufsz;
+    size_t iosz;
 
     /* Conscientious callers who want the optimal IO on the file should
      * set the fh->fh_iosz hint.
      */
-    bufsz = fh->fh_iosz ? fh->fh_iosz : PR_TUNABLE_BUFFER_SIZE;
+    iosz = fh->fh_iosz ? fh->fh_iosz : PR_TUNABLE_BUFFER_SIZE;
 
     fh->fh_buf = pcalloc(fh->fh_pool, sizeof(pr_buffer_t));
-    fh->fh_buf->buf = fh->fh_buf->current = pcalloc(fh->fh_pool, bufsz);
-    fh->fh_buf->remaining = fh->fh_buf->buflen = bufsz;
+    fh->fh_buf->buf = fh->fh_buf->current = pcalloc(fh->fh_pool, iosz);
+    fh->fh_buf->remaining = fh->fh_buf->buflen = iosz;
   }
 
   pbuf = fh->fh_buf;
   bp = buf;
+  size = bufsz;
 
   while (size) {
     pr_signals_handle();
@@ -6762,7 +6764,17 @@ char *pr_fsio_gets(char *buf, size_t size, pr_fh_t *fh) {
     }
   }
 
-  *bp = '\0';
+  if (size > 0) {
+    *bp = '\0';
+
+  } else {
+    /* We always NUL-terminate the returned text.  In this particular case,
+     * we have no remaining unused room in the provided buffer, so we have
+     * to truncate the text.
+     */
+    buf[bufsz-1] = '\0';
+  }
+
   return buf;
 }
 
