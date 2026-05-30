@@ -281,12 +281,14 @@ static size_t fxp_packet_data_allocsz = 0;
 #define FXP_PACKET_DATA_DEFAULT_SZ		(1024 * 16)
 #define FXP_RESPONSE_DATA_DEFAULT_SZ		512
 
-#ifdef PR_USE_XATTR
+#if defined(PR_USE_XATTR)
+/* Impose limits on the xattr value length we are willing to process. */
+# define FXP_XATTR_VALUE_MAX_LEN		(1024 * 64)
 /* Allocate larger buffers for extended attributes */
 # define FXP_RESPONSE_NAME_DEFAULT_SZ		(1024 * 4)
 #endif /* PR_USE_XATTR */
 
-#ifndef FXP_RESPONSE_NAME_DEFAULT_SZ
+#if !defined(FXP_RESPONSE_NAME_DEFAULT_SZ)
 # define FXP_RESPONSE_NAME_DEFAULT_SZ		FXP_RESPONSE_DATA_DEFAULT_SZ
 #endif
 
@@ -1893,7 +1895,7 @@ static char *fxp_strattrs(pool *p, struct stat *st, uint32_t *attr_flags) {
 
       if (fxp_session->client_version >= 6) {
         flags |= SSH2_FX_ATTR_LINK_COUNT;
-#ifdef PR_USE_XATTR
+#if defined(PR_USE_XATTR)
         flags |= SSH2_FX_ATTR_EXTENDED;
 #endif /* PR_USE_XATTR */
       }
@@ -2572,7 +2574,7 @@ static uint32_t fxp_xattrs_write(pool *p, struct fxp_buffer *fxb,
     const char *path) {
   uint32_t len = 0;
 
-#ifdef PR_USE_XATTR
+#if defined(PR_USE_XATTR)
   int res;
   array_header *names = NULL;
 
@@ -5964,7 +5966,7 @@ static int fxp_handle_ext_statvfs(struct fxp_packet *fxp, const char *path) {
 }
 #endif /* !HAVE_SYS_STATVFS_H */
 
-#ifdef PR_USE_XATTR
+#if defined(PR_USE_XATTR)
 static int fxp_handle_ext_getxattr(struct fxp_packet *fxp, const char *path,
     const char *name, uint32_t valsz) {
   ssize_t res;
@@ -5974,6 +5976,36 @@ static int fxp_handle_ext_getxattr(struct fxp_packet *fxp, const char *path,
   const char *reason;
   struct fxp_packet *resp;
 
+  buflen = bufsz = FXP_RESPONSE_DATA_DEFAULT_SZ;
+  buf = ptr = palloc(fxp->pool, bufsz);
+
+  if (valsz > FXP_XATTR_VALUE_MAX_LEN) {
+    int xerrno = EINVAL;
+
+    (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
+      "getxattr(2) on '%s' for attribute '%s' (%lu bytes) exceeds maximum "
+      "value size (%lu bytes), denying", path, name, (unsigned long) valsz,
+      (unsigned long) FXP_XATTR_VALUE_MAX_LEN);
+
+    status_code = fxp_errno2status(xerrno, &reason);
+
+    pr_trace_msg(trace_channel, 8, "sending response: STATUS %lu '%s' "
+      "('%s' [%d])", (unsigned long) status_code, reason, strerror(xerrno),
+      xerrno);
+
+    fxp_status_write(fxp->pool, &buf, &buflen, fxp->request_id, status_code,
+      reason, NULL);
+
+    resp = fxp_packet_create(fxp->pool, fxp->channel_id);
+    resp->payload = ptr;
+    resp->payload_sz = (bufsz - buflen);
+
+    return fxp_packet_write(resp);
+  }
+
+  /* Now that the value size has been checked, we allocate a new, larger
+   * buffer for that size.
+   */
   val = pcalloc(fxp->pool, (size_t) valsz+1);
 
   buflen = bufsz = FXP_RESPONSE_DATA_DEFAULT_SZ + valsz;
@@ -6027,7 +6059,7 @@ static int fxp_handle_ext_fgetxattr(struct fxp_packet *fxp, const char *handle,
   struct fxp_handle *fxh;
   struct fxp_packet *resp;
 
-  buflen = bufsz = FXP_RESPONSE_DATA_DEFAULT_SZ + valsz;
+  buflen = bufsz = FXP_RESPONSE_DATA_DEFAULT_SZ;
   buf = ptr = palloc(fxp->pool, bufsz);
 
   fxh = fxp_handle_get(handle);
@@ -6076,6 +6108,37 @@ static int fxp_handle_ext_fgetxattr(struct fxp_packet *fxp, const char *handle,
   }
 
   path = fxh->fh->fh_path;
+
+  if (valsz > FXP_XATTR_VALUE_MAX_LEN) {
+    int xerrno = EINVAL;
+
+    (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
+      "fgetxattr(2) on '%s' for attribute '%s' (%lu bytes) exceeds maximum "
+      "value size (%lu bytes), denying", path, name, (unsigned long) valsz,
+      (unsigned long) FXP_XATTR_VALUE_MAX_LEN);
+
+    status_code = fxp_errno2status(xerrno, &reason);
+
+    pr_trace_msg(trace_channel, 8, "sending response: STATUS %lu '%s' "
+      "('%s' [%d])", (unsigned long) status_code, reason, strerror(xerrno),
+      xerrno);
+
+    fxp_status_write(fxp->pool, &buf, &buflen, fxp->request_id, status_code,
+      reason, NULL);
+
+    resp = fxp_packet_create(fxp->pool, fxp->channel_id);
+    resp->payload = ptr;
+    resp->payload_sz = (bufsz - buflen);
+
+    return fxp_packet_write(resp);
+  }
+
+  /* Now that the value size has been checked, we allocate a new, larger
+   * buffer for that size.
+   */
+  buflen = bufsz = FXP_RESPONSE_DATA_DEFAULT_SZ + valsz;
+  buf = ptr = palloc(fxp->pool, bufsz);
+
   val = pcalloc(fxp->pool, (size_t) valsz+1);
 
   res = pr_fsio_fgetxattr(fxp->pool, fxh->fh, name, val, (size_t) valsz);
@@ -8064,7 +8127,7 @@ static int fxp_handle_fstat(struct fxp_packet *fxp) {
     pr_trace_msg(trace_channel, 7, "received request: FSTAT %s", name);
     attr_flags = SSH2_FX_ATTR_SIZE|SSH2_FX_ATTR_UIDGID|SSH2_FX_ATTR_PERMISSIONS|
       SSH2_FX_ATTR_ACMODTIME;
-#ifdef PR_USE_XATTR
+#if defined(PR_USE_XATTR)
     if (!(fxp_fsio_opts & PR_FSIO_OPT_IGNORE_XATTR)) {
       attr_flags |= SSH2_FX_ATTR_EXTENDED;
     }
@@ -8797,7 +8860,7 @@ static int fxp_handle_lstat(struct fxp_packet *fxp) {
     pr_trace_msg(trace_channel, 7, "received request: LSTAT %s", path);
     attr_flags = SSH2_FX_ATTR_SIZE|SSH2_FX_ATTR_UIDGID|SSH2_FX_ATTR_PERMISSIONS|
       SSH2_FX_ATTR_ACMODTIME;
-#ifdef PR_USE_XATTR
+#if defined(PR_USE_XATTR)
     if (!(fxp_fsio_opts & PR_FSIO_OPT_IGNORE_XATTR)) {
       attr_flags |= SSH2_FX_ATTR_EXTENDED;
     }
@@ -10854,7 +10917,7 @@ static int fxp_handle_readdir(struct fxp_packet *fxp) {
     pr_signals_handle();
 
     /* How much non-path data do we expect to be associated with this entry? */
-#ifdef PR_USE_XATTR
+#if defined(PR_USE_XATTR)
     /* Note that the "extra space" to allocate for extended attributes is
      * currently a bit of a guess.  Initially, this was 4K; that was causing
      * slower directory listings due to the need for more READDIR requests,
@@ -11006,7 +11069,7 @@ static int fxp_handle_readdir(struct fxp_packet *fxp) {
      * Thus we CHOOSE to only provide these extended attributes, if supported,
      * to protocol version 6 clients.
      */
-#ifdef PR_USE_XATTR
+#if defined(PR_USE_XATTR)
     if (!(fxp_fsio_opts & PR_FSIO_OPT_IGNORE_XATTR)) {
       attr_flags |= SSH2_FX_ATTR_EXTENDED;
     }
@@ -12883,7 +12946,7 @@ static int fxp_handle_stat(struct fxp_packet *fxp) {
     pr_trace_msg(trace_channel, 7, "received request: STAT %s", path);
     attr_flags = SSH2_FX_ATTR_SIZE|SSH2_FX_ATTR_UIDGID|SSH2_FX_ATTR_PERMISSIONS|
       SSH2_FX_ATTR_ACMODTIME;
-#ifdef PR_USE_XATTR
+#if defined(PR_USE_XATTR)
     if (!(fxp_fsio_opts & PR_FSIO_OPT_IGNORE_XATTR)) {
       attr_flags |= SSH2_FX_ATTR_EXTENDED;
     }
