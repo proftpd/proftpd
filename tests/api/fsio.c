@@ -5044,10 +5044,11 @@ START_TEST (fsio_getpipebuf_test) {
 END_TEST
 
 START_TEST (fsio_gets_test) {
-  char buf[PR_TUNABLE_PATH_MAX], *res, *text;
+  char buf[PR_TUNABLE_PATH_MAX], short_buf[14], *res, *text, *short_text;
   pr_fh_t *fh;
   int res2;
 
+  mark_point();
   res = pr_fsio_gets(NULL, 0, NULL);
   ck_assert_msg(res == NULL, "Failed to handle null arguments");
   ck_assert_msg(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
@@ -5062,15 +5063,19 @@ START_TEST (fsio_gets_test) {
   ck_assert_msg(fh != NULL, "Failed to open '%s': %s", fsio_test_path,
     strerror(errno));
 
+  mark_point();
   res = pr_fsio_gets(buf, 0, fh);
   ck_assert_msg(res == NULL, "Failed to handle zero buffer length");
   ck_assert_msg(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
     strerror(errno), errno);
 
+  mark_point();
   text = "Hello, World!\n";
   res2 = pr_fsio_puts(text, fh);
   ck_assert_msg(res2 >= 0, "Error writing to '%s': %s", fsio_test_path,
     strerror(errno));
+
+  mark_point();
   pr_fsio_fsync(fh);
   pr_fsio_lseek(fh, 0, SEEK_SET);
 
@@ -5079,6 +5084,29 @@ START_TEST (fsio_gets_test) {
   ck_assert_msg(res != NULL, "Failed reading from '%s': %s", fsio_test_path,
     strerror(errno));
   ck_assert_msg(strcmp(res, text) == 0, "Expected '%s', got '%s'", text, res);
+
+  /* For this test, we want to read the number of bytes of text into an
+   * exactly sized buffer, in order to see what happens for the "always NUL
+   * terminate" behavior.
+   */
+  mark_point();
+  pr_fsio_fsync(fh);
+  pr_fsio_lseek(fh, 0, SEEK_SET);
+
+  /* Deliberately null out the already-allocated buffer object associated
+   * with this filehandle, so that we can dictate the buffer size to be
+   * allocated for this short text test.
+   */
+  fh->fh_buf = NULL;
+  fh->fh_iosz = sizeof(short_buf);
+
+  short_text = "Hello, World!";
+  memset(short_buf, '\0', sizeof(short_buf));
+  res = pr_fsio_gets(short_buf, sizeof(short_buf), fh);
+  ck_assert_msg(res != NULL, "Failed reading from '%s': %s", fsio_test_path,
+    strerror(errno));
+  ck_assert_msg(strcmp(res, short_text) == 0,"Expected '%s', got '%s'",
+    short_text, res);
 
   (void) pr_fsio_close(fh);
   (void) pr_fsio_unlink(fsio_test_path);
