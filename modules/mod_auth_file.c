@@ -448,39 +448,46 @@ static char **af_getgrmems(char *s) {
 
 static struct group *af_parse_grp(const char *buf, unsigned int lineno,
     int flags) {
-  unsigned int i;
+  register unsigned int i;
+  unsigned int sz;
   char *cp;
 
-  i = strlen(buf) + 1;
+  sz = strlen(buf) + 1;
 
   if (grpbuf == NULL) {
-    grpbufsz = i;
+    grpbufsz = sz;
     grpbuf = malloc(grpbufsz);
 
-  } else if (grpbufsz < (size_t) i) {
+  } else if (grpbufsz < (size_t) sz) {
     char *new_buf;
 
     pr_trace_msg(trace_channel, 19,
       "parsing group line '%s' (%lu bytes), allocating %lu bytes via "
-      "realloc(3)", buf, (unsigned long) i, (unsigned long) i);
+      "realloc(3)", buf, (unsigned long) sz, (unsigned long) sz);
 
-    new_buf = realloc(grpbuf, i);
+    new_buf = realloc(grpbuf, sz);
     if (new_buf == NULL) {
       return NULL;
     }
 
     grpbuf = new_buf;
-    grpbufsz = i;
+    grpbufsz = sz;
   }
 
   if (grpbuf == NULL) {
     return NULL;
   }
 
-  sstrncpy(grpbuf, buf, i);
+  /* Clear any potentially left-over data. */
+  memset(&grent, 0, sizeof(grent));
+  for (i = 0; i < NGRPFIELDS; i++) {
+    grpfields[i] = NULL;
+  }
+
+  sstrncpy(grpbuf, buf, sz);
 
   cp = strrchr(grpbuf, '\n');
-  if (cp) {
+  if (cp != NULL) {
     *cp = '\0';
   }
 
@@ -587,11 +594,25 @@ static int af_allow_grent(pool *p, struct group *grp) {
 }
 
 static void af_endgrent(void) {
+  register unsigned int i;
+
   if (af_group_file != NULL &&
       af_group_file->af_file_fh != NULL) {
     pr_fsio_close(af_group_file->af_file_fh);
     af_group_file->af_file_fh = NULL;
     af_group_file->af_lineno = 0;
+  }
+
+  if (grpbuf != NULL) {
+    free(grpbuf);
+    grpbuf = NULL;
+  }
+
+  grpbufsz = 0;
+  memset(&grent, 0, sizeof(grent));
+
+  for (i = 0; i < NGRPFIELDS; i++) {
+    grpfields[i] = NULL;
   }
 }
 
@@ -1088,9 +1109,7 @@ static int af_check_group_syntax(pool *p, const char *path) {
     grp = af_getgrent(p, flags, &bad_entry_count);
   }
 
-  pr_fsio_close(af_group_file->af_file_fh);
-  af_group_file->af_file_fh = NULL;
-  af_group_file->af_lineno = 0;
+  af_endgrent();
   af_group_file = NULL;
 
   if (bad_entry_count > 0) {
@@ -1133,9 +1152,7 @@ static int af_check_user_syntax(pool *p, const char *path) {
     pwd = af_getpwent(p, flags, &bad_entry_count);
   }
 
-  pr_fsio_close(af_user_file->af_file_fh);
-  af_user_file->af_file_fh = NULL;
-  af_user_file->af_lineno = 0;
+  af_endpwent();
   af_user_file = NULL;
 
   if (bad_entry_count > 0) {
