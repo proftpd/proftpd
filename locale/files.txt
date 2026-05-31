@@ -48,6 +48,8 @@
 ../contrib/mod_sftp/auth-publickey.c
 ../contrib/mod_sftp/auth.c
 ../contrib/mod_sftp/auth.h
+../contrib/mod_sftp/bcrypt.c
+../contrib/mod_sftp/bcrypt.h
 ../contrib/mod_sftp/blacklist.c
 ../contrib/mod_sftp/blacklist.h
 ../contrib/mod_sftp/channel.c
@@ -85,6 +87,8 @@
 ../contrib/mod_sftp/msg.h
 ../contrib/mod_sftp/packet.c
 ../contrib/mod_sftp/packet.h
+../contrib/mod_sftp/poly1305.c
+../contrib/mod_sftp/poly1305.h
 ../contrib/mod_sftp/rfc4716.c
 ../contrib/mod_sftp/rfc4716.h
 ../contrib/mod_sftp/scp.c
@@ -93,6 +97,8 @@
 ../contrib/mod_sftp/service.h
 ../contrib/mod_sftp/session.c
 ../contrib/mod_sftp/session.h
+../contrib/mod_sftp/sntrup761.c
+../contrib/mod_sftp/sntrup761.h
 ../contrib/mod_sftp/ssh2.h
 ../contrib/mod_sftp/tap.c
 ../contrib/mod_sftp/tap.h
@@ -173,7 +179,6 @@
 ../include/glibc-glob.h
 ../include/hanson-tpl.h
 ../include/help.h
-../include/ident.h
 ../include/inet.h
 ../include/jot.h
 ../include/json.h
@@ -187,6 +192,7 @@
 ../include/netacl.h
 ../include/netaddr.h
 ../include/netio.h
+../include/openbsd-blowfish.h
 ../include/options.h
 ../include/os.h
 ../include/parser.h
@@ -216,7 +222,6 @@
 ../include/var.h
 ../include/version.h
 ../include/xferlog.h
-../lib/libcap/include/sys/capability.h
 ../modules/mod_auth.c
 ../modules/mod_auth_file.c
 ../modules/mod_auth_pam.c
@@ -236,6 +241,7 @@
 ../modules/mod_redis.c
 ../modules/mod_rlimit.c
 ../modules/mod_site.c
+../modules/mod_systemd.c
 ../modules/mod_xfer.c
 ../modules/module_glue.c
 ../src/ascii.c
@@ -259,7 +265,6 @@
 ../src/fsio.c
 ../src/ftpdctl.c
 ../src/help.c
-../src/ident.c
 ../src/inet.c
 ../src/jot.c
 ../src/json.c
