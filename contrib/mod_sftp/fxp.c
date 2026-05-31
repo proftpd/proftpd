@@ -3422,6 +3422,13 @@ static struct fxp_packet *fxp_packet_read(uint32_t channel_id,
       SFTP_DISCONNECT_CONN(SFTP_SSH2_DISCONNECT_BY_APPLICATION, NULL);
     }
 
+    if (fxp->packet_len > FXP_MAX_PACKET_LEN) {
+      (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
+        "received excessive SFTP packet (len %lu > max %lu bytes), rejecting",
+        (unsigned long) fxp->packet_len, (unsigned long) FXP_MAX_PACKET_LEN);
+      SFTP_DISCONNECT_CONN(SFTP_SSH2_DISCONNECT_BY_APPLICATION, NULL);
+    }
+
     if (buflen == 0) {
       fxp_packet_set_packet(fxp);
       fxp_packet_clear_cache_data();
@@ -14123,15 +14130,6 @@ int sftp_fxp_handle_packet(pool *p, void *ssh2, uint32_t channel_id,
         "received %s (%d) SFTP request (channel ID %lu)",
         fxp_get_request_type_desc(fxp->request_type), fxp->request_type,
         (unsigned long) channel_id);
-    }
-
-    if (fxp->packet_len > FXP_MAX_PACKET_LEN) {
-      (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
-        "received excessive SFTP packet (len %lu > max %lu bytes), rejecting",
-        (unsigned long) fxp->packet_len, (unsigned long) FXP_MAX_PACKET_LEN);
-      destroy_pool(fxp->pool);
-      errno = EPERM;
-      return -1;
     }
 
     fxp_session = fxp_get_session(channel_id);
