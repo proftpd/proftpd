@@ -10429,7 +10429,7 @@ static int fxp_handle_read(struct fxp_packet *fxp) {
   unsigned char *buf, *data = NULL, *ptr;
   char *file, *name, *ptr2;
   ssize_t res;
-  uint32_t buflen, bufsz, datalen;
+  uint32_t buflen, bufsz, datalen, max_readsz;
   uint64_t offset;
   struct fxp_handle *fxh;
   struct fxp_packet *resp;
@@ -10440,17 +10440,17 @@ static int fxp_handle_read(struct fxp_packet *fxp) {
   offset = sftp_msg_read_long(fxp->pool, &fxp->payload, &fxp->payload_sz);
   datalen = sftp_msg_read_int(fxp->pool, &fxp->payload, &fxp->payload_sz);
 
-#if 0
-  /* XXX This doesn't appear to be needed now.  But I'll keep it around,
-   * just in case some buggy client needs this treatment.
+  /* We tell clients that request the "limits@openssh.com" extension what
+   * the maximum allowed READ length is; we should enforce that here.
    */
+  max_readsz = FXP_MAX_PACKET_LEN - 1024;
+
   if (datalen > max_readsz) {
     pr_trace_msg(trace_channel, 8,
       "READ requested len %lu exceeds max (%lu), truncating",
       (unsigned long) datalen, (unsigned long) max_readsz);
     datalen = max_readsz;
   }
-#endif
 
   cmd = fxp_cmd_alloc(fxp->pool, "READ", name);
   cmd->cmd_class = CL_READ|CL_SFTP;
