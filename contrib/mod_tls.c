@@ -10133,7 +10133,8 @@ static void tls_setup_cert_ext_environ(const char *env_prefix, X509 *cert) {
  *   email                   Email         NID_pkcs9_emailAddress
  */
 
-static void tls_setup_cert_dn_environ(const char *env_prefix, const X509_NAME *name) {
+static void tls_setup_cert_dn_environ(const char *env_prefix,
+    const X509_NAME *name) {
   register int i;
   int nentries;
   char *k, *v;
