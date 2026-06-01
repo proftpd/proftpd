@@ -19,67 +19,67 @@ my $order = 0;
 my $TESTS = {
   usesendfile_on_ascii => {
     order => ++$order,
-    test_class => [qw(feat_sendfile forking)],
+    test_class => [qw(feature_sendfile forking)],
   },
 
   usesendfile_off_ascii => {
     order => ++$order,
-    test_class => [qw(feat_sendfile forking)],
+    test_class => [qw(feature_sendfile forking)],
   },
 
   usesendfile_on_binary => {
     order => ++$order,
-    test_class => [qw(feat_sendfile forking)],
+    test_class => [qw(feature_sendfile forking)],
   },
 
   usesendfile_off_binary => {
     order => ++$order,
-    test_class => [qw(feat_sendfile forking)],
+    test_class => [qw(feature_sendfile forking)],
   },
 
   usesendfile_on_binary_dir_bug3310 => {
     order => ++$order,
-    test_class => [qw(bug feat_sendfile forking)],
+    test_class => [qw(bug feature_sendfile forking)],
   },
 
   usesendfile_off_binary_dir_bug3310 => {
     order => ++$order,
-    test_class => [qw(bug feat_sendfile forking)],
+    test_class => [qw(bug feature_sendfile forking)],
   },
 
   usesendfile_on_binary_ftpaccess_bug3310 => {
     order => ++$order,
-    test_class => [qw(bug feat_sendfile forking)],
+    test_class => [qw(bug feature_sendfile forking)],
   },
 
   usesendfile_off_binary_ftpaccess_bug3310 => {
     order => ++$order,
-    test_class => [qw(bug feat_sendfile forking)],
+    test_class => [qw(bug feature_sendfile forking)],
   },
 
   usesendfile_len_binary_dir_bug3310 => {
     order => ++$order,
-    test_class => [qw(bug feat_sendfile forking)],
+    test_class => [qw(bug feature_sendfile forking)],
   },
 
   usesendfile_len_binary_ftpaccess_bug3310 => {
     order => ++$order,
-    test_class => [qw(bug feat_sendfile forking)],
+    test_class => [qw(bug feature_sendfile forking)],
   },
 
   usesendfile_len_ascii_ftpaccess_bug3310 => {
     order => ++$order,
-    test_class => [qw(bug feat_sendfile forking)],
+    test_class => [qw(bug feature_sendfile forking)],
   },
 
   usesendfile_pct_binary_dir_bug3310 => {
     order => ++$order,
-    test_class => [qw(bug feat_sendfile forking)],
+    test_class => [qw(bug feature_sendfile forking)],
   },
 
   usesendfile_pct_binary_ftpaccess_bug3310 => {
     order => ++$order,
-    test_class => [qw(bug feat_sendfile forking)],
+    test_class => [qw(bug feature_sendfile forking)],
   },
 
 };

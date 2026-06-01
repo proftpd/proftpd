@@ -47,7 +47,7 @@ my $TESTS = {
 
   timeoutstalled_exceeded_retr_usesendfile_on => {
     order => ++$order,
-    test_class => [qw(feat_sendfile forking)],
+    test_class => [qw(feature_sendfile forking)],
   },
 
 };
