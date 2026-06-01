@@ -2314,29 +2314,38 @@ static void sftp_max_conns_ev(const void *event_data, void *user_data) {
 
 #if defined(PR_SHARED_MODULE)
 static void sftp_mod_unload_ev(const void *event_data, void *user_data) {
-  if (strncmp((const char *) event_data, "mod_sftp.c", 11) == 0) {
-    /* Unregister ourselves from all events. */
-    pr_event_unregister(&sftp_module, NULL, NULL);
-
-    sftp_interop_free();
-    sftp_keystore_free();
-    sftp_keys_free();
-    sftp_cipher_free();
-    sftp_mac_free();
-    pr_response_block(FALSE);
-    sftp_utf8_free();
-
-    /* Clean up the OpenSSL stuff. */
-    sftp_crypto_free(0);
-
-    destroy_pool(sftp_pool);
-    sftp_pool = NULL;
-
-    close(sftp_logfd);
-    sftp_logfd = -1;
+  if (strcmp((const char *) event_data, "mod_sftp.c") != 0) {
+    return;
   }
+
+  /* Unregister ourselves from all events. */
+  pr_event_unregister(&sftp_module, NULL, NULL);
+
+  sftp_interop_free();
+  sftp_keystore_free();
+  sftp_keys_free();
+  sftp_cipher_free();
+  sftp_mac_free();
+  pr_response_block(FALSE);
+  sftp_utf8_free();
+
+  /* Clean up the OpenSSL stuff. */
+  sftp_crypto_free(0);
+
+#if defined(HAVE_OSSL_PROVIDER_LOAD_OPENSSL)
+  if (legacy_provider != NULL) {
+    OSSL_PROVIDER_unload(legacy_provider);
+    legacy_provider = NULL;
+  }
+#endif /* HAVE_OSSL_PROVIDER_LOAD_OPENSSL */
+
+  destroy_pool(sftp_pool);
+  sftp_pool = NULL;
+
+  close(sftp_logfd);
+  sftp_logfd = -1;
 }
-#endif
+#endif /* PR_SHARED_MODULE */
 
 static void sftp_postparse_ev(const void *event_data, void *user_data) {
   config_rec *c;
