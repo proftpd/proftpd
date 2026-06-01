@@ -66,7 +66,7 @@ static const char *trace_channel = "pool";
 /* Debug flags */
 static int debug_flags = 0;
 
-#ifdef PR_USE_DEVEL
+#if defined(PR_USE_DEVEL)
 static void oom_printf(const char *fmt, ...) {
   char buf[PR_TUNABLE_BUFFER_SIZE];
   va_list msg;
@@ -87,11 +87,11 @@ static void oom_printf(const char *fmt, ...) {
 
 static void null_alloc(void) {
   pr_log_pri(PR_LOG_ALERT, "Out of memory!");
-#ifdef PR_USE_DEVEL
+#if defined(PR_USE_DEVEL)
   if (debug_flags & PR_POOL_DEBUG_FL_OOM_DUMP_POOLS) {
     pr_pool_debug_memory(oom_printf);
   }
-#endif
+#endif /* PR_USE_DEVEL */
 
   exit(1);
 }
@@ -135,7 +135,7 @@ static union block_hdr *malloc_block(size_t size) {
 static void chk_on_blk_list(union block_hdr *blok, union block_hdr *free_blk,
     const char *pool_tag) {
 
-#ifdef PR_USE_DEVEL
+#if defined(PR_USE_DEVEL)
   /* Debug code */
 
   while (free_blk) {
@@ -189,11 +189,15 @@ static void free_blocks(union block_hdr *blok, const char *pool_tag) {
  * Important: BLOCK ALARMS BEFORE CALLING
  */
 
-static union block_hdr *new_block(int minsz, int exact) {
+static union block_hdr *new_block(size_t minsz, int exact) {
   union block_hdr **lastptr = &block_freelist;
   union block_hdr *blok = block_freelist;
 
-  if (!exact) {
+  if (exact == FALSE) {
+    if (minsz == 0) {
+      minsz = 1;
+    }
+
     minsz = 1 + ((minsz - 1) / BLOCK_MINFREE);
     minsz *= BLOCK_MINFREE;
   }
@@ -201,7 +205,10 @@ static union block_hdr *new_block(int minsz, int exact) {
   /* Check if we have anything of the requested size on our free list first...
    */
   while (blok) {
-    if (minsz <= ((char *) blok->h.endp - (char *) blok->h.first_avail)) {
+    size_t availsz;
+
+    availsz = ((char *) blok->h.endp - (char *) blok->h.first_avail);
+    if (minsz <= availsz) {
       *lastptr = blok->h.next;
       blok->h.next = NULL;
 
