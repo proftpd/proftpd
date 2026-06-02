@@ -892,7 +892,7 @@ static int have_good_dh(DH *dh, const BIGNUM *pub_key) {
 }
 
 static int get_dh_nbits(struct sftp_kex *kex) {
-  int dh_nbits = 0, dh_size = 0;
+  int dh_nbits = 0, dh_size = 0, free_digest = FALSE;
   const char *algo;
   const EVP_CIPHER *cipher;
   const EVP_MD *digest;
@@ -952,7 +952,7 @@ static int get_dh_nbits(struct sftp_kex *kex) {
   }
 
   algo = kex->session_names->c2s_mac_algo;
-  digest = sftp_crypto_get_digest(algo, NULL);
+  digest = sftp_crypto_get_digest(algo, NULL, &free_digest);
   if (digest != NULL) {
     int mac_len;
 
@@ -963,10 +963,14 @@ static int get_dh_nbits(struct sftp_kex *kex) {
         "set DH size to %d bytes, matching client-to-server '%s' digest size",
         dh_size, algo);
     }
+
+    if (free_digest == TRUE) {
+      sftp_crypto_free_digest(digest);
+    }
   }
 
   algo = kex->session_names->s2c_mac_algo;
-  digest = sftp_crypto_get_digest(algo, NULL);
+  digest = sftp_crypto_get_digest(algo, NULL, &free_digest);
   if (digest != NULL) {
     int mac_len;
 
@@ -976,6 +980,10 @@ static int get_dh_nbits(struct sftp_kex *kex) {
       pr_trace_msg(trace_channel, 19,
         "set DH size to %d bytes, matching server-to-client '%s' digest size",
         dh_size, algo);
+    }
+
+    if (free_digest == TRUE) {
+      sftp_crypto_free_digest(digest);
     }
   }
 

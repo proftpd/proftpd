@@ -895,12 +895,19 @@ MODRET set_sftpclientmatch(cmd_rec *cmd) {
 
       digests = create_config(c->pool, "SFTPDigests", algos->nelts);
       for (j = 0; j < algos->nelts; j++) {
+        const EVP_MD *md;
         const char *algo;
+        int free_md = FALSE;
 
         algo = ((char **) algos->elts)[j];
-        if (sftp_crypto_get_digest(algo, NULL) == NULL) {
+        md = sftp_crypto_get_digest(algo, NULL, &free_md);
+        if (md == NULL) {
           CONF_ERROR(cmd, pstrcat(cmd->tmp_pool,
             "unsupported digest algorithm: ", algo, NULL));
+        }
+
+        if (free_md == TRUE) {
+          sftp_crypto_free_digest(md);
         }
 
         digests->argv[j] = pstrdup(digests->pool, algo);
@@ -1285,9 +1292,17 @@ MODRET set_sftpdigests(cmd_rec *cmd) {
   CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL);
 
   for (i = 1; i < cmd->argc; i++) {
-    if (sftp_crypto_get_digest(cmd->argv[i], NULL) == NULL) {
+    const EVP_MD *md;
+    int free_md = FALSE;
+
+    md = sftp_crypto_get_digest(cmd->argv[i], NULL, &free_md);
+    if (md == NULL) {
       CONF_ERROR(cmd, pstrcat(cmd->tmp_pool,
         "unsupported digest algorithm: ", cmd->argv[i], NULL));
+    }
+
+    if (free_md == TRUE) {
+      sftp_crypto_free_digest(md);
     }
   }
 
@@ -2580,6 +2595,7 @@ static int sftp_init(void) {
 #endif /* HAVE_OSSL_PROVIDER_LOAD_OPENSSL */
 
   sftp_keystore_init();
+  sftp_crypto_init();
   sftp_cipher_init();
   sftp_mac_init();
 

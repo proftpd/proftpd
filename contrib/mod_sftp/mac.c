@@ -39,6 +39,7 @@ struct sftp_mac {
   const char *algo;
   unsigned int algo_type;
   int is_etm;
+  int free_digest;
 
   const EVP_MD *digest;
 
@@ -68,15 +69,15 @@ struct sftp_mac {
  */
 
 static struct sftp_mac read_macs[] = {
-  { NULL, NULL, 0, FALSE, NULL, NULL, 0, 0, 0 },
-  { NULL, NULL, 0, FALSE, NULL, NULL, 0, 0, 0 }
+  { NULL, NULL, 0, FALSE, FALSE, NULL, NULL, 0, 0, 0 },
+  { NULL, NULL, 0, FALSE, FALSE, NULL, NULL, 0, 0, 0 }
 };
 static HMAC_CTX *hmac_read_ctxs[2];
 static struct umac_ctx *umac_read_ctxs[2];
 
 static struct sftp_mac write_macs[] = {
-  { NULL, NULL, 0, FALSE, NULL, NULL, 0, 0, 0 },
-  { NULL, NULL, 0, FALSE, NULL, NULL, 0, 0, 0 }
+  { NULL, NULL, 0, FALSE, FALSE, NULL, NULL, 0, 0, 0 },
+  { NULL, NULL, 0, FALSE, FALSE, NULL, NULL, 0, 0, 0 }
 };
 static HMAC_CTX *hmac_write_ctxs[2];
 static struct umac_ctx *umac_write_ctxs[2];
@@ -754,16 +755,25 @@ int sftp_mac_set_read_algo(const char *algo) {
       case SFTP_MAC_ALGO_TYPE_UMAC64:
         umac_delete(umac_read_ctxs[idx]);
         umac_read_ctxs[idx] = NULL;
+        if (read_macs[idx].free_digest == TRUE) {
+          sftp_crypto_free_digest(read_macs[idx].digest);
+          read_macs[idx].digest = NULL;
+        }
         break;
 
       case SFTP_MAC_ALGO_TYPE_UMAC128:
         umac128_delete(umac_read_ctxs[idx]);
         umac_read_ctxs[idx] = NULL;
+        if (read_macs[idx].free_digest == TRUE) {
+          sftp_crypto_free_digest(read_macs[idx].digest);
+          read_macs[idx].digest = NULL;
+        }
         break;
     }
   }
 
-  read_macs[idx].digest = sftp_crypto_get_digest(algo, &mac_len);
+  read_macs[idx].digest = sftp_crypto_get_digest(algo, &mac_len,
+    &(read_macs[idx].free_digest));
   if (read_macs[idx].digest == NULL) {
     return -1;
   }
@@ -928,16 +938,25 @@ int sftp_mac_set_write_algo(const char *algo) {
       case SFTP_MAC_ALGO_TYPE_UMAC64:
         umac_delete(umac_write_ctxs[idx]);
         umac_write_ctxs[idx] = NULL;
+        if (write_macs[idx].free_digest == TRUE) {
+          sftp_crypto_free_digest(write_macs[idx].digest);
+          write_macs[idx].digest = NULL;
+        }
         break;
 
       case SFTP_MAC_ALGO_TYPE_UMAC128:
         umac128_delete(umac_write_ctxs[idx]);
         umac_write_ctxs[idx] = NULL;
+        if (write_macs[idx].free_digest == TRUE) {
+          sftp_crypto_free_digest(write_macs[idx].digest);
+          write_macs[idx].digest = NULL;
+        }
         break;
     }
   }
 
-  write_macs[idx].digest = sftp_crypto_get_digest(algo, &mac_len);
+  write_macs[idx].digest = sftp_crypto_get_digest(algo, &mac_len,
+    &(write_macs[idx].free_digest));
   if (write_macs[idx].digest == NULL) {
     return -1;
   }
