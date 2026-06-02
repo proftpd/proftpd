@@ -15,7 +15,7 @@
   where `N' is the issue number.
 -----------------------------------------------------------------------------
 
-1.3.10rc2
+1.3.10rc2 - Released 02-Jun-2026
 --------------------------------
 - Issue 2058 - Scoreboard wlock_entry() function uses F_UNLCK instead of
   F_WRLCK.
