@@ -6487,7 +6487,7 @@ static int tls_cert_must_staple(X509 *cert, int *v2) {
     ext = sk_X509_EXTENSION_value(exts, i);
 #endif /* OpenSSL-1.1.x/LibreSSL-3.5.x or later */
 
-    obj = (const ASN1_OBJECT *) X509_EXTENSION_get_object(ext);
+    obj = X509_EXTENSION_get_object((X509_EXTENSION *) ext);
     memset(buf, '\0', sizeof(buf));
     OBJ_obj2txt(buf, sizeof(buf)-1, obj, 1);
 
@@ -6498,7 +6498,7 @@ static int tls_cert_must_staple(X509 *cert, int *v2) {
 
 #if (OPENSSL_VERSION_NUMBER >= 0x10100000L && !defined(HAVE_LIBRESSL)) || \
     (defined(HAVE_LIBRESSL) && LIBRESSL_VERSION_NUMBER >= 0x3050000L)
-      value = (const ASN1_OCTET_STRING *) X509_EXTENSION_get_data(ext);
+      value = X509_EXTENSION_get_data((X509_EXTENSION *) ext);
 #else
       value = ext->value;
 #endif /* OpenSSL-1.1.x/LibreSSL-3.5.x or later */
@@ -9830,7 +9830,7 @@ static int tls_cert_to_user(const char *user_name, const char *field_name) {
         pr_signals_handle();
 
         ext = X509_get_ext(client_cert, i);
-        asn_object = (const ASN1_OBJECT *) X509_EXTENSION_get_object(ext);
+        asn_object = X509_EXTENSION_get_object((X509_EXTENSION *) ext);
 
         /* Get the OID of this extension, as a string. */
         memset(oid, '\0', sizeof(oid));
@@ -9840,7 +9840,7 @@ static int tls_cert_to_user(const char *user_name, const char *field_name) {
             const unsigned char *asn_datastr = NULL;
             int asn_datalen;
 
-            asn_data = (const ASN1_OCTET_STRING *) X509_EXTENSION_get_data(ext);
+            asn_data = X509_EXTENSION_get_data((X509_EXTENSION *) ext);
             asn_datalen = ASN1_STRING_length(asn_data);
 #if OPENSSL_VERSION_NUMBER >= 0x10100000L && \
     !defined(HAVE_LIBRESSL)
