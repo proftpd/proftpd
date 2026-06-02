@@ -294,7 +294,7 @@ int sftp_provider_init(void) {
   if (umac_provider == NULL) {
     pr_log_pri(PR_LOG_NOTICE, MOD_SFTP_VERSION
       ": error loading 'umac' OpenSSL provider: %s", sftp_crypto_get_errors());
- 
+
   } else {
     pr_trace_msg(trace_channel, 9, "%s", "loaded 'umac' OpenSSL provider");
   }
@@ -305,7 +305,7 @@ int sftp_provider_init(void) {
 
 void sftp_provider_free(void) {
 #if OPENSSL_VERSION_NUMBER >= 0x40000000L && !defined(HAVE_LIBRESSL)
-  if (umac_provider != NULL) { 
+  if (umac_provider != NULL) {
     OSSL_PROVIDER_unload(umac_provider);
     umac_provider = NULL;
   }
