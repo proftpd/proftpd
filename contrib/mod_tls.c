@@ -10765,7 +10765,7 @@ static int tls_verify_crl(int ok, X509_STORE_CTX *ctx) {
     crl_count = sk_X509_CRL_num(crls);
     for (i = 0; i < crl_count; i++) {
       X509_CRL *crl = NULL;
-      X509_NAME *crl_issuer = NULL;
+      const X509_NAME *crl_issuer = NULL;
       char buf[512];
       int len;
       BIO *b = BIO_new(BIO_s_mem());
