@@ -12,6 +12,8 @@ ChangeLog files.
   + Additional fixes for SQL injection (CVE-2026-42167), notably for handling
     `%{env:...}` and `%{note:...}` variables.
 
+  + Updated modules to build against OpenSSL 4.x.
+
 
 1.3.9a
 ---------
