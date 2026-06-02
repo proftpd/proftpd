@@ -21,6 +21,8 @@ ChangeLog files.
   + Added new `--with-system-libtool` configure option for building DSO
     support using the host-provided libtool.
 
+  + Updated modules to build against OpenSSL 4.x.
+
   + Use `CLOCK_MONOTONIC` for more accurate timer support (Issue #2047).
 
   + Imposed max request/response message size limits for Controls (Issue #2036).
