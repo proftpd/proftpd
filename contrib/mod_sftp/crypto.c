@@ -23,6 +23,7 @@
 
 #include "mod_sftp.h"
 #include "crypto.h"
+#include "provider.h"
 #include "umac.h"
 
 /* In OpenSSL 0.9.7, all des_ functions were renamed to DES_ to avoid
@@ -887,6 +888,9 @@ static const EVP_CIPHER *get_aes_ctr_cipher(int key_len) {
 }
 #endif /* OpenSSL implements AES CTR modes */
 
+#if OPENSSL_VERSION_NUMBER >= 0x40000000L && !defined(HAVE_LIBRESSL)
+/* We'll use the Provider interface for UMAC digests in this case. */
+#else
 static int update_umac64(EVP_MD_CTX *ctx, const void *data, size_t len) {
   int res;
   void *md_data;
@@ -1015,12 +1019,26 @@ static int delete_umac128(EVP_MD_CTX *ctx) {
 
   return 1;
 }
+#endif /* OpenSSL before 4.x */
 
-static const EVP_MD *get_umac64_digest(void) {
-  EVP_MD *md;
+static const EVP_MD *get_umac64_digest(int *free_md) {
+  EVP_MD *md = NULL;
 
-#if (OPENSSL_VERSION_NUMBER >= 0x10100000L && !defined(HAVE_LIBRESSL)) || \
-    (defined(HAVE_LIBRESSL) && LIBRESSL_VERSION_NUMBER >= 0x3050000L)
+  *free_md = FALSE;
+
+#if OPENSSL_VERSION_NUMBER >= 0x40000000L && !defined(HAVE_LIBRESSL)
+  md = EVP_MD_fetch(NULL, "umac64", NULL);
+  if (md == NULL) {
+    pr_trace_msg(trace_channel, 4, "error fetching 'umac64' EVP_MD: %s",
+      sftp_crypto_get_errors());
+
+  } else {
+    *free_md = TRUE;
+  }
+
+#else
+# if (OPENSSL_VERSION_NUMBER >= 0x10100000L && !defined(HAVE_LIBRESSL)) || \
+     (defined(HAVE_LIBRESSL) && LIBRESSL_VERSION_NUMBER >= 0x3050000L)
   /* XXX TODO: At some point, we also need to call EVP_MD_meth_free() on
    * this, to avoid a resource leak.
    */
@@ -1031,7 +1049,7 @@ static const EVP_MD *get_umac64_digest(void) {
   EVP_MD_meth_set_update(md, update_umac64);
   EVP_MD_meth_set_final(md, final_umac64);
   EVP_MD_meth_set_cleanup(md, delete_umac64);
-#else
+# else
   static EVP_MD umac64_digest;
 
   memset(&umac64_digest, 0, sizeof(EVP_MD));
@@ -1046,16 +1064,30 @@ static const EVP_MD *get_umac64_digest(void) {
   umac64_digest.block_size = 32;
 
   md = &umac64_digest;
-#endif /* prior to OpenSSL-1.1.0/LibreSSL-3.5.0 */
+# endif /* prior to OpenSSL-1.1.0/LibreSSL-3.5.0 */
+#endif /* OpenSSL before 4.x */
 
   return md;
 }
 
-static const EVP_MD *get_umac128_digest(void) {
-  EVP_MD *md;
+static const EVP_MD *get_umac128_digest(int *free_md) {
+  EVP_MD *md = NULL;
 
-#if (OPENSSL_VERSION_NUMBER >= 0x10100000L && !defined(HAVE_LIBRESSL)) || \
-    (defined(HAVE_LIBRESSL) && LIBRESSL_VERSION_NUMBER >= 0x3050000L)
+  *free_md = FALSE;
+
+#if OPENSSL_VERSION_NUMBER >= 0x40000000L && !defined(HAVE_LIBRESSL)
+  md = EVP_MD_fetch(NULL, "umac128", NULL);
+  if (md == NULL) {
+    pr_trace_msg(trace_channel, 4, "error fetching 'umac128' EVP_MD: %s",
+      sftp_crypto_get_errors());
+
+  } else {
+    *free_md = TRUE;
+  }
+
+#else
+# if (OPENSSL_VERSION_NUMBER >= 0x10100000L && !defined(HAVE_LIBRESSL)) || \
+     (defined(HAVE_LIBRESSL) && LIBRESSL_VERSION_NUMBER >= 0x3050000L)
   /* XXX TODO: At some point, we also need to call EVP_MD_meth_free() on
    * this, to avoid a resource leak.
    */
@@ -1066,7 +1098,7 @@ static const EVP_MD *get_umac128_digest(void) {
   EVP_MD_meth_set_update(md, update_umac128);
   EVP_MD_meth_set_final(md, final_umac128);
   EVP_MD_meth_set_cleanup(md, delete_umac128);
-#else
+# else
   static EVP_MD umac128_digest;
 
   memset(&umac128_digest, 0, sizeof(EVP_MD));
@@ -1081,7 +1113,8 @@ static const EVP_MD *get_umac128_digest(void) {
   umac128_digest.block_size = 64;
 
   md = &umac128_digest;
-#endif /* prior to OpenSSL-1.1.0/LibreSSL-3.5.0 */
+# endif /* prior to OpenSSL-1.1.0/LibreSSL-3.5.0 */
+#endif /* OpenSSL before 4.x */
 
   return md;
 }
@@ -1188,13 +1221,26 @@ const EVP_CIPHER *sftp_crypto_get_cipher(const char *name, size_t *key_len,
   return NULL;
 }
 
-const EVP_MD *sftp_crypto_get_digest(const char *name, uint32_t *mac_len) {
+void sftp_crypto_free_digest(const EVP_MD *md) {
+#if (OPENSSL_VERSION_NUMBER >= 0x30000000L && !defined(HAVE_LIBRESSL)) || \
+     (defined(HAVE_LIBRESSL) && LIBRESSL_VERSION_NUMBER >= 0x3080000L)
+  EVP_MD_free((EVP_MD *) md);
+#else
+  /* Avoid compiler warnings. */
+  (void) md;
+#endif /* OpenSSL-3.x/LibreSSL-3.8.x and later */
+}
+
+const EVP_MD *sftp_crypto_get_digest(const char *name, uint32_t *mac_len,
+    int *free_md) {
   register unsigned int i;
 
   if (name == NULL) {
     errno = EINVAL;
     return NULL;
   }
+
+  *free_md = FALSE;
 
   for (i = 0; digests[i].name; i++) {
     if (strcmp(digests[i].name, name) == 0) {
@@ -1203,11 +1249,11 @@ const EVP_MD *sftp_crypto_get_digest(const char *name, uint32_t *mac_len) {
 #if OPENSSL_VERSION_NUMBER > 0x000907000L
       if (strcmp(name, "umac-64@openssh.com") == 0 ||
           strcmp(name, "umac-64-etm@openssh.com") == 0) {
-        digest = get_umac64_digest();
+        digest = get_umac64_digest(free_md);
 
       } else if (strcmp(name, "umac-128@openssh.com") == 0 ||
                  strcmp(name, "umac-128-etm@openssh.com") == 0) {
-        digest = get_umac128_digest();
+        digest = get_umac128_digest(free_md);
 #else
       if (FALSE) {
 #endif /* OpenSSL older than 0.9.7 */
@@ -1577,7 +1623,16 @@ size_t sftp_crypto_get_size(size_t first, size_t second) {
 #endif /* !roundup */
 }
 
+int sftp_crypto_init(void) {
+  if (sftp_provider_init() < 0) {
+    return -1;
+  }
+
+  return 0;
+}
+
 void sftp_crypto_free(int flags) {
+  sftp_provider_free();
 
   /* Only call EVP_cleanup() et al if other OpenSSL-using modules are not
    * present.  If we called EVP_cleanup() here during a restart,

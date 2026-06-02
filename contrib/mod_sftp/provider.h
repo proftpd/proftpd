@@ -1,6 +1,6 @@
 /*
- * ProFTPD - mod_sftp misc crypto routines
- * Copyright (c) 2008-2026 TJ Saunders
+ * ProFTPD - mod_sftp OpenSSL provider
+ * Copyright (c) 2026 TJ Saunders
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -21,27 +21,12 @@
  * source distribution.
  */
 
-#ifndef MOD_SFTP_CRYPTO_H
-#define MOD_SFTP_CRYPTO_H
+#ifndef MOD_SFTP_PROVIDER_H
+#define MOD_SFTP_PROVIDER_H
 
 #include "mod_sftp.h"
 
-#if defined(EVP_PKEY_X25519)
-# define HAVE_X25519_OPENSSL	1
-#endif /* EVP_PKEY_X25519 */
+int sftp_provider_init(void);
+void sftp_provider_free(void);
 
-int sftp_crypto_init(void);
-void sftp_crypto_free(int);
-const EVP_CIPHER *sftp_crypto_get_cipher(const char *name, size_t *key_len,
-  size_t *auth_len, size_t *discard_len);
-const EVP_MD *sftp_crypto_get_digest(const char *, uint32_t *, int *);
-void sftp_crypto_free_digest(const EVP_MD *md);
-int sftp_crypto_is_hostkey(const char *name);
-int sftp_crypto_is_key_exchange(const char *name);
-int sftp_crypto_set_driver(const char *);
-const char *sftp_crypto_get_kexinit_cipher_list(pool *);
-const char *sftp_crypto_get_kexinit_digest_list(pool *);
-
-size_t sftp_crypto_get_size(size_t, size_t);
-
-#endif /* MOD_SFTP_CRYPTO_H */
+#endif /* MOD_SFTP_PROVIDER_H */
