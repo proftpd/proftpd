@@ -1600,11 +1600,12 @@ MODRET set_sftphostkey(cmd_rec *cmd) {
     flags |= SFTP_HOSTKEY_FL_CLEAR_ED25519_KEY;
   }
 
-  if (strncmp(cmd->argv[1], "agent:", 6) != 0 &&
+  path = cmd->argv[1];
+
+  if (strncmp(path, "agent:", 6) != 0 &&
       flags == 0) {
     int res, xerrno;
 
-    path = cmd->argv[1];
     if (*path != '/') {
       CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "must be an absolute path: ",
         path, NULL));
@@ -2949,7 +2950,8 @@ static int sftp_sess_init(void) {
   if (sftp_keys_have_dsa_hostkey() < 0 &&
       sftp_keys_have_rsa_hostkey() < 0 &&
       sftp_keys_have_ecdsa_hostkey(sftp_pool, NULL) < 0 &&
-      sftp_keys_have_ed25519_hostkey()) {
+      sftp_keys_have_ed25519_hostkey() < 0 &&
+      sftp_keys_have_ed448_hostkey() < 0) {
     (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
       "no available host keys, unable to handle session");
     errno = EACCES;
