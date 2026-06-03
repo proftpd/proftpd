@@ -672,7 +672,6 @@ MODRET set_serveradmin(cmd_rec *cmd) {
 
 /* usage: UseIPv6 on|off */
 MODRET set_useipv6(cmd_rec *cmd) {
-#if defined(PR_USE_IPV6)
   int use_ipv6 = -1;
 
   CHECK_ARGS(cmd, 1);
@@ -688,14 +687,15 @@ MODRET set_useipv6(cmd_rec *cmd) {
     pr_netaddr_disable_ipv6();
 
   } else {
+#if defined(PR_USE_IPV6)
     pr_netaddr_enable_ipv6();
+# else
+  CONF_ERROR(cmd,
+    "Use of 'UseIPv6 on' configurations requires IPv6 support (--enable-ipv6)");
+#endif /* PR_USE_IPV6 */
   }
 
   return PR_HANDLED(cmd);
-#else
-  CONF_ERROR(cmd,
-    "Use of the UseIPv6 directive requires IPv6 support (--enable-ipv6)");
-#endif /* PR_USE_IPV6 */
 }
 
 MODRET set_usereversedns(cmd_rec *cmd) {
