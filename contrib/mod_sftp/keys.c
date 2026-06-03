@@ -5188,7 +5188,7 @@ static const unsigned char *ed25519_sign_data(pool *p,
   int res;
 
   if (sftp_ed25519_hostkey->agent_path != NULL) {
-    /* The SSH agent expectes an SSH encoded Ed25519 public key, not just the
+    /* The SSH agent expects an SSH encoded Ed25519 public key, not just the
      * raw public key bytes.
      */
     buflen = bufsz = 4 + 11 + 4 + sftp_ed25519_hostkey->ed25519_public_keylen;
