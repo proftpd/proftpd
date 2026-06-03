@@ -113,7 +113,10 @@ START_TEST (sstrcat_test) {
   register unsigned int i;
   char c = 'A', src[1024], dst[1024], *res;
 
-  res = sstrcat(dst, src, 0);
+  memset(src, 0, sizeof(src));
+  memset(dst, 0, sizeof(src));
+
+  res = sstrcat(dst, (const char *) src, 0);
   ck_assert_msg(res == NULL, "Non-null result for zero-length strcat");
 
   src[0] = 'f';
