@@ -353,7 +353,6 @@ const unsigned char *sftp_agent_sign_data(pool *p, const char *agent_path,
     return NULL;
   }
 
-  /* XXX When to set flags to OLD_SIGNATURE? */
   sig_flags = 0;
 
   if (flags & SFTP_AGENT_SIGN_FL_USE_RSA_SHA256) {
