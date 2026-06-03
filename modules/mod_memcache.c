@@ -56,7 +56,7 @@ MODRET set_memcacheconnectfailures(cmd_rec *cmd) {
   CHECK_ARGS(cmd, 1);
   CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL);
 
-#ifdef HAVE_STRTOULL
+#if defined(HAVE_STRTOULL)
   count = strtoull(cmd->argv[1], &ptr, 10);
 #else
   count = strtoul(cmd->argv[1], &ptr, 10);
@@ -151,7 +151,7 @@ MODRET set_memcachereplicas(cmd_rec *cmd) {
   CHECK_ARGS(cmd, 1);
   CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL);
 
-#ifdef HAVE_STRTOULL
+#if defined(HAVE_STRTOULL)
   count = strtoull(cmd->argv[1], &ptr, 10);
 #else
   count = strtoul(cmd->argv[1], &ptr, 10);
@@ -361,7 +361,7 @@ static int mcache_init(void) {
 
   version = memcached_lib_version();
   if (strcmp(version, LIBMEMCACHED_VERSION_STRING) != 0) {
-    pr_log_pri(PR_LOG_INFO, MOD_MEMCACHE_VERSION
+    pr_log_debug(DEBUG1, MOD_MEMCACHE_VERSION
       ": compiled using libmemcached-%s headers, but linked to "
       "libmemcached-%s library", LIBMEMCACHED_VERSION_STRING, version);
 

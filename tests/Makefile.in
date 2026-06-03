@@ -53,6 +53,7 @@ TEST_API_DEPS=\
   $(top_builddir)/src/display.o \
   $(top_builddir)/src/json.o \
   $(top_builddir)/src/jot.o \
+  $(top_builddir)/src/memcache.o \
   $(top_builddir)/src/redis.o \
   $(top_builddir)/src/error.o
 
@@ -102,6 +103,7 @@ TEST_API_OBJS=\
   api/json.o \
   api/jot.o \
   api/redis.o \
+  api/memcache.o \
   api/error.o \
   api/stubs.o \
   api/tests.o

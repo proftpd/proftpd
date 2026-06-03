@@ -35,10 +35,12 @@ typedef struct mcache_rec pr_memcache_t;
 /* This function returns the pr_memcache_t for the current session; if one
  * does not exist, it will be allocated.
  */
-pr_memcache_t *pr_memcache_conn_get(void);
+pr_memcache_t *pr_memcache_conn_get(pool *p);
 pr_memcache_t *pr_memcache_conn_new(pool *p, module *owner,
   unsigned long flags, uint64_t nreplicas);
+
 int pr_memcache_conn_close(pr_memcache_t *mcache);
+int pr_memcache_conn_destroy(pr_memcache_t *mcache);
 
 /* Given an existing handle, quit that handle, and clone the internal
  * structures.  This is to be used by modules which need to get their own
