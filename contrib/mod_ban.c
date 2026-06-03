@@ -4012,7 +4012,7 @@ static int ban_sess_init(void) {
 
 #if defined(PR_USE_MEMCACHE)
     if (strcasecmp(driver, "memcache") == 0) {
-      mcache = pr_memcache_conn_get();
+      mcache = pr_memcache_conn_get(session.pool);
       if (mcache == NULL) {
         (void) pr_log_writefile(ban_logfd, MOD_BAN_VERSION,
           "error connecting to memcached: %s", strerror(errno));

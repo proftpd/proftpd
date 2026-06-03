@@ -25,7 +25,7 @@
 
 #include "conf.h"
 
-#ifdef PR_USE_MEMCACHE
+#if defined(PR_USE_MEMCACHE)
 
 #include "hanson-tpl.h"
 #include <libmemcached/memcached.h>
@@ -81,6 +81,16 @@ static int mcache_set_options(pr_memcache_t *mcache, unsigned long flags,
     uint64_t nreplicas) {
   memcached_return res;
   uint64_t val;
+
+  val = memcached_behavior_get(mcache->mc, MEMCACHED_BEHAVIOR_USE_UDP);
+  if (val != 0) {
+    res = memcached_behavior_set(mcache->mc, MEMCACHED_BEHAVIOR_USE_UDP, 0);
+    if (res != MEMCACHED_SUCCESS) {
+      pr_trace_msg(trace_channel, 4,
+        "error setting USE_UDP=false behavior on connection: %s",
+        memcached_strerror(mcache->mc, res));
+    }
+  }
 
   val = memcached_behavior_get(mcache->mc, MEMCACHED_BEHAVIOR_TCP_NODELAY);
   if (val != 1) {
@@ -167,6 +177,19 @@ static int mcache_set_options(pr_memcache_t *mcache, unsigned long flags,
             memcache_ejected_sec, memcached_strerror(mcache->mc, res));
         }
 
+#if LIBMEMCACHED_VERSION_HEX >= 0x001001000
+        /* AUTO_REJECT_HOSTS is deprecated in 0.48 and later; use
+         * REMOVE_FAILED_SERVERS instead -- as of 1.1.0, where the latter
+         * behavior was fixed.
+         */
+        res = memcached_behavior_set(mcache->mc,
+          MEMCACHED_BEHAVIOR_REMOVE_FAILED_SERVERS, 1);
+        if (res != MEMCACHED_SUCCESS) {
+          pr_trace_msg(trace_channel, 4,
+            "error setting REMOVE_FAILED_SERVERS behavior on connection: %s",
+            memcached_strerror(mcache->mc, res));
+        }
+#else
         res = memcached_behavior_set(mcache->mc,
           MEMCACHED_BEHAVIOR_AUTO_EJECT_HOSTS, 1);
         if (res != MEMCACHED_SUCCESS) {
@@ -174,6 +197,15 @@ static int mcache_set_options(pr_memcache_t *mcache, unsigned long flags,
             "error setting AUTO_EJECT_HOSTS behavior on connection: %s",
             memcached_strerror(mcache->mc, res));
         }
+
+        res = memcached_behavior_set(mcache->mc,
+          MEMCACHED_BEHAVIOR_SERVER_FAILURE_LIMIT, 3);
+        if (res != MEMCACHED_SUCCESS) {
+          pr_trace_msg(trace_channel, 4,
+            "error setting SERVER_FAILURE_LIMIT behavior on connection: %s",
+            memcached_strerror(mcache->mc, res));
+        }
+#endif /* libmemcached-0.48 and later */
       }
     }
   }
@@ -292,11 +324,12 @@ static int mcache_set_options(pr_memcache_t *mcache, unsigned long flags,
 }
 
 static int mcache_ping_servers(pr_memcache_t *mcache) {
+  register unsigned int i;
   memcached_server_st *alive_server_list;
   memcached_return res;
   memcached_st *clone;
   uint32_t server_count;
-  register unsigned int i;
+  unsigned int alive_count = 0;
 
   /* We always start with the configured list of servers. */
   clone = memcached_clone(NULL, mcache->mc);
@@ -305,8 +338,6 @@ static int mcache_ping_servers(pr_memcache_t *mcache) {
     return -1;
   }
 
-  memcached_servers_reset(clone);
-
   /* Bug#4242: Don't use memcached_server_push() if we're using
    * libmemcached-1.0.18 or earlier.  Doing so leads to a segfault, due to
    * this libmemcached bug:
@@ -314,8 +345,9 @@ static int mcache_ping_servers(pr_memcache_t *mcache) {
    *  https://bugs.launchpad.net/libmemcached/+bug/1154159
    */
 #if LIBMEMCACHED_VERSION_HEX > 0x01000018
+  memcached_servers_reset(clone);
   memcached_server_push(clone, configured_server_list);
-#endif
+#endif /* Newer than libmemcached-1.0.18 */
 
   server_count = memcached_server_count(clone);
   pr_trace_msg(trace_channel, 16,
@@ -356,33 +388,38 @@ static int mcache_ping_servers(pr_memcache_t *mcache) {
     }
   }
 
-  if (alive_server_list != NULL) {
-    memcached_servers_reset(mcache->mc);
-    res = memcached_server_push(mcache->mc, alive_server_list);
-    if (res != MEMCACHED_SUCCESS) {
-      unsigned int count;
-
-      count = memcached_server_list_count(alive_server_list);
-      pr_trace_msg(trace_channel, 2,
-        "error adding %u alive memcached %s to connection: %s",
-        count, count != 1 ? "servers" : "server",
-        memcached_strerror(mcache->mc, res));
-      memcached_free(clone);
-
-      errno = EPERM;
-      return -1;
-
-    } else {
-      unsigned int count;
-
-      count = memcached_server_list_count(alive_server_list);
-      pr_trace_msg(trace_channel, 9,
-        "now using %d alive memcached %s", count,
-        count != 1 ? "servers" : "server");
-
-      memcached_server_list_free(alive_server_list);
-    }
+  if (alive_server_list == NULL) {
+    memcached_free(clone);
+    errno = EIO;
+    return -1;
   }
+
+  /* Bug#4242: Don't use memcached_server_push() if we're using
+   * libmemcached-1.0.18 or earlier.  Doing so leads to a segfault, due to
+   * this libmemcached bug:
+   *
+   *  https://bugs.launchpad.net/libmemcached/+bug/1154159
+   */
+#if LIBMEMCACHED_VERSION_HEX > 0x01000018
+  memcached_servers_reset(mcache->mc);
+  res = memcached_server_push(mcache->mc, alive_server_list);
+  if (res != MEMCACHED_SUCCESS) {
+    alive_count = memcached_server_list_count(alive_server_list);
+    pr_trace_msg(trace_channel, 2,
+      "error adding %u alive memcached %s to connection: %s", alive_count,
+      alive_count != 1 ? "servers" : "server",
+      memcached_strerror(mcache->mc, res));
+    memcached_free(clone);
+
+    errno = EPERM;
+    return -1;
+  }
+#endif /* Newer than libmemcached-1.0.18 */
+
+  alive_count = memcached_server_list_count(alive_server_list);
+  pr_trace_msg(trace_channel, 9, "now using %d alive memcached %s",
+    alive_count, alive_count != 1 ? "servers" : "server");
+  memcached_server_list_free(alive_server_list);
 
   memcached_free(clone);
   return 0;
@@ -410,11 +447,27 @@ static int mcache_stat_servers(pr_memcache_t *mcache) {
        * connected.
        */
 
+      if (pr_trace_get_level(trace_channel) >= 19) {
+        char **provided_keys = NULL;
+
+        provided_keys = memcached_stat_get_keys(mcache->mc, mst, &res);
+        if (res == MEMCACHED_SUCCESS &&
+            provided_keys != NULL) {
+          for (i = 0; provided_keys[i] != NULL; i++) {
+            pr_trace_msg(trace_channel, 19, "available stat key: '%s'",
+              provided_keys[i]);
+          }
+
+          free(provided_keys);
+        }
+      }
+
       for (i = 0; stat_keys[i] != NULL; i++) {
-        char *info;
+        char *info = NULL;
 
         info = memcached_stat_get_value(mcache->mc, mst, stat_keys[i], &res);
-        if (info != NULL) {
+        if (res == MEMCACHED_SUCCESS &&
+            info != NULL) {
           pr_trace_msg(trace_channel, 9,
             "memcached server stats: %s = %s", stat_keys[i], info);
           free(info);
@@ -473,13 +526,18 @@ static int mcache_stat_servers(pr_memcache_t *mcache) {
   return 0;
 }
 
-pr_memcache_t *pr_memcache_conn_get(void) {
+pr_memcache_t *pr_memcache_conn_get(pool *p) {
+  if (p == NULL) {
+    errno = EINVAL;
+    return NULL;
+  }
+
   if (sess_mcache != NULL) {
     sess_mcache->refcount++;
     return sess_mcache;
   }
 
-  return pr_memcache_conn_new(session.pool, NULL, memcache_sess_flags,
+  return pr_memcache_conn_new(p, NULL, memcache_sess_flags,
     memcache_sess_nreplicas);
 }
 
@@ -579,24 +637,59 @@ pr_memcache_t *pr_memcache_conn_new(pool *p, module *m, unsigned long flags,
 }
 
 int pr_memcache_conn_close(pr_memcache_t *mcache) {
+  int closed = FALSE;
+
   if (mcache == NULL) {
     errno = EINVAL;
     return -1;
   }
 
-  mcache->refcount--;
+  if (mcache->refcount > 0) {
+    mcache->refcount--;
+  }
 
   if (mcache->refcount == 0) {
     memcached_free(mcache->mc);
+    mcache->mc = NULL;
 
     if (mcache->namespace_tab != NULL) {
       (void) pr_table_empty(mcache->namespace_tab);
       (void) pr_table_free(mcache->namespace_tab);
       mcache->namespace_tab = NULL;
     }
+
+    closed = TRUE;
   }
 
-  return 0;
+  return closed;
+}
+
+/* Return TRUE if we actually closed the connection, FALSE if we simply
+ * decremented the refcount.
+ */
+int pr_memcache_conn_destroy(pr_memcache_t *mcache) {
+  int closed, destroyed = FALSE;
+
+  if (mcache == NULL) {
+    errno = EINVAL;
+    return -1;
+  }
+
+  closed = pr_memcache_conn_close(mcache);
+  if (closed < 0) {
+    return -1;
+  }
+
+  if (closed == TRUE) {
+    if (mcache == sess_mcache) {
+      sess_mcache = NULL;
+    }
+
+    destroy_pool(mcache->pool);
+    destroyed = TRUE;
+  }
+
+  return destroyed;
 }
 
 int pr_memcache_conn_clone(pool *p, pr_memcache_t *mcache) {
@@ -784,7 +877,7 @@ void *pr_memcache_get(pr_memcache_t *mcache, module *m, const char *key,
     pr_trace_msg(trace_channel, 2,
       "error getting data for key '%s': %s", key, strerror(xerrno));
 
-    xerrno = errno;
+    errno = xerrno;
     return NULL;
   }
 
@@ -1024,7 +1117,7 @@ int pr_memcache_kdecr(pr_memcache_t *mcache, module *m, const char *key,
   }
 
   /* Note: libmemcached automatically handles the case where value might be
-   * NULL.
+   * NULL -- but only for increments, not decrements.
    */
 
   mcache_set_module_namespace(mcache, m);
@@ -1068,6 +1161,14 @@ int pr_memcache_kdecr(pr_memcache_t *mcache, module *m, const char *key,
 
       break;
     }
+
+    case MEMCACHED_NOTFOUND:
+      pr_trace_msg(trace_channel, 2,
+        "error decrementing key (%lu bytes) by %lu: %s",
+        (unsigned long) keysz, (unsigned long) decr,
+        memcached_strerror(mcache->mc, res));
+      errno = ENOENT;
+      break;
 
     default:
       pr_trace_msg(trace_channel, 2,
@@ -1259,7 +1360,7 @@ int pr_memcache_kincr(pr_memcache_t *mcache, module *m, const char *key,
   }
 
   /* Note: libmemcached automatically handles the case where value might be
-   * NULL.
+   * NULL -- but only for increments, not decrements.
    */
 
   mcache_set_module_namespace(mcache, m);
@@ -1313,6 +1414,14 @@ int pr_memcache_kincr(pr_memcache_t *mcache, module *m, const char *key,
 
       break;
     }
+
+    case MEMCACHED_NOTFOUND:
+      pr_trace_msg(trace_channel, 2,
+        "error incrementing key (%lu bytes) by %lu: %s",
+        (unsigned long) keysz, (unsigned long) incr,
+        memcached_strerror(mcache->mc, res));
+      errno = ENOENT;
+      break;
 
     default:
       pr_trace_msg(trace_channel, 2,
@@ -1378,6 +1487,13 @@ int pr_memcache_kremove(pr_memcache_t *mcache, module *m, const char *key,
 
       break;
     }
+
+    case MEMCACHED_NOTFOUND:
+      pr_trace_msg(trace_channel, 2,
+        "error removing key (%lu bytes): %s", (unsigned long) keysz,
+        memcached_strerror(mcache->mc, res));
+      errno = ENOENT;
+      break;
 
     default:
       pr_trace_msg(trace_channel, 2,
@@ -1531,6 +1647,7 @@ int memcache_clear(void) {
     sess_mcache = NULL;
   }
 
+  configured_server_list = NULL;
   return 0;
 }
 
@@ -1545,7 +1662,7 @@ int memcache_init(void) {
 
 #else
 
-pr_memcache_t *pr_memcache_conn_get(void) {
+pr_memcache_t *pr_memcache_conn_get(pool *p) {
   errno = ENOSYS;
   return NULL;
 }
@@ -1562,6 +1679,11 @@ int pr_memcache_conn_close(pr_memcache_t *mcache) {
 }
 
 int pr_memcache_conn_clone(pool *p, pr_memcache_t *mcache) {
+  errno = ENOSYS;
+  return -1;
+}
+
+int pr_memcache_conn_destroy(pr_memcache_t *mcache) {
   errno = ENOSYS;
   return -1;
 }

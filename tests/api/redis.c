@@ -25,7 +25,7 @@
 
 #include "tests.h"
 
-#ifdef PR_USE_REDIS
+#if defined(PR_USE_REDIS)
 
 static pool *p = NULL;
 static const char *redis_server = "127.0.0.1";
@@ -558,7 +558,6 @@ START_TEST (redis_conn_reconnect_test) {
   res = pr_redis_command(redis, args, PR_REDIS_REPLY_TYPE_STRING);
   ck_assert_msg(res == 0, "Failed to handle valid command with array: %s",
     strerror(errno));
-
 
   mark_point();
   res = pr_redis_conn_destroy(redis);
@@ -1157,7 +1156,7 @@ START_TEST (redis_get_with_namespace_test) {
   ck_assert_msg(valsz == strlen(val), "Expected %lu, got %lu",
     (unsigned long) strlen(val), (unsigned long) valsz);
   ck_assert_msg(memcmp(data, val, valsz) == 0, "Expected '%s', got '%.*s'",
-    val, (int) valsz, data);
+    val, (int) valsz, (char *) data);
 
   mark_point();
   res = pr_redis_conn_destroy(redis);
@@ -1304,7 +1303,7 @@ START_TEST (redis_incr_test) {
 
   mark_point();
   res = pr_redis_set(redis, &m, key, value, valsz, expires);
-  ck_assert_msg(res == 0, "Failed to set key '%s', val '%s': %s", key, val,
+  ck_assert_msg(res == 0, "Failed to set key '%s', val '%s': %s", key, value,
     strerror(errno));
 
   mark_point();
@@ -1318,7 +1317,8 @@ START_TEST (redis_incr_test) {
   res = pr_redis_incr(redis, &m, key, incr, &val);
   ck_assert_msg(res == 0, "Failed to increment key '%s' by %lu: %s", key,
     (unsigned long) incr, strerror(errno));
-  ck_assert_msg(val == 35, "Expected %lu, got %lu", 35, (unsigned long) val);
+  ck_assert_msg(val == 35, "Expected %lu, got %lu", (unsigned long) 35,
+    (unsigned long) val);
 
   mark_point();
   res = pr_redis_remove(redis, &m, key);
@@ -1331,7 +1331,7 @@ START_TEST (redis_incr_test) {
 
   mark_point();
   res = pr_redis_set(redis, &m, key, value, valsz, expires);
-  ck_assert_msg(res == 0, "Failed to set key '%s', val '%s': %s", key, val,
+  ck_assert_msg(res == 0, "Failed to set key '%s', val '%s': %s", key, value,
     strerror(errno));
 
   mark_point();
@@ -1408,7 +1408,7 @@ START_TEST (redis_decr_test) {
 
   mark_point();
   res = pr_redis_set(redis, &m, key, value, valsz, expires);
-  ck_assert_msg(res == 0, "Failed to set key '%s', val '%s': %s", key, val,
+  ck_assert_msg(res == 0, "Failed to set key '%s', val '%s': %s", key, value,
     strerror(errno));
 
   mark_point();
@@ -1422,7 +1422,8 @@ START_TEST (redis_decr_test) {
   res = pr_redis_decr(redis, &m, key, decr, &val);
   ck_assert_msg(res == 0, "Failed to decrement key '%s' by %lu: %s", key,
     (unsigned long) decr, strerror(errno));
-  ck_assert_msg(val == 21, "Expected %lu, got %lu", 21, (unsigned long) val);
+  ck_assert_msg(val == 21, "Expected %lu, got %lu", (unsigned long) 21,
+    (unsigned long) val);
 
   mark_point();
   res = pr_redis_remove(redis, &m, key);
@@ -1435,7 +1436,7 @@ START_TEST (redis_decr_test) {
 
   mark_point();
   res = pr_redis_set(redis, &m, key, value, valsz, expires);
-  ck_assert_msg(res == 0, "Failed to set key '%s', val '%s': %s", key, val,
+  ck_assert_msg(res == 0, "Failed to set key '%s', val '%s': %s", key, value,
     strerror(errno));
 
   mark_point();
@@ -4887,7 +4888,6 @@ START_TEST (redis_sorted_set_setall_test) {
   ck_assert_msg(res == TRUE, "Failed to close redis: %s", strerror(errno));
 }
 END_TEST
-
 #endif /* PR_USE_REDIS */
 
 Suite *tests_get_redis_suite(void) {
@@ -4897,7 +4897,7 @@ Suite *tests_get_redis_suite(void) {
   suite = suite_create("redis");
   testcase = tcase_create("base");
 
-#ifdef PR_USE_REDIS
+#if defined(PR_USE_REDIS)
   tcase_add_checked_fixture(testcase, set_up, tear_down);
 
   tcase_add_test(testcase, redis_conn_destroy_test);

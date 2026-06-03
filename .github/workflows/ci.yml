@@ -27,6 +27,16 @@ jobs:
     runs-on: ubuntu-latest
 
     services:
+      memcached:
+        # Docker Hub image
+        image: memcached:1.6-alpine
+        # Set health checks to wait until memcached has started
+        options: >-
+          --health-cmd "echo 'version' | nc -vn -w 1 127.0.0.1 11211"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
       redis:
         # Docker Hub image
         image: redis:6-alpine
@@ -46,6 +56,7 @@ jobs:
       FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
 
       PACKAGE_VERSION: 1.3.10rc3
+      MEMCACHED_HOST: memcached
       REDIS_HOST: redis
 
     strategy:
@@ -571,6 +582,10 @@ jobs:
       # NOTE: Using MemorySanitizer is desirable, but currently unusable since
       # libcheck is not instrumented, resulting in unsuppressible false
       # positives.
+      #
+      # NOTE: Currently, libmemcached is shown to leak memory via realloc(3)
+      # by ASAN, so we deliberately do NOT enable memcache support for this.
+      # Sadly.
       - name: Run unit tests under asan+lsan+ubsan
         env:
           ASAN_OPTIONS: abort_on_error=1,check_initialization_order=true,debug=true,detect_invalid_pointer_pairs=2,detect_leaks=1,detect_stack_use_after_return=true,strict_string_checks=true,verbosity=0
@@ -580,9 +595,9 @@ jobs:
         if: ${{ matrix.compiler == 'clang' && matrix.container == 'ubuntu:22.04' }}
         run: |
           make clean
-          ./configure LIBS="-lm -lsubunit -lrt -pthread" --enable-devel --enable-ctrls --enable-facl --enable-memcache --enable-nls --enable-pcre2 --enable-redis --enable-tests --enable-wrapper-options
+          ./configure LIBS="-lm -lsubunit -lrt -pthread" --enable-devel --enable-ctrls --enable-facl --enable-nls --enable-pcre2 --enable-redis --enable-tests --enable-wrapper-options
           make
-          export ASAN_SYMBOLIZER_PATH=$(readlink -f $(which llvm-symbolizer-10))
+          export ASAN_SYMBOLIZER_PATH=$(readlink -f $(which llvm-symbolizer-14))
           make check-api
 
       - name: Check Perl scripts
