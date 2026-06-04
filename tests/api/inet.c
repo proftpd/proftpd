@@ -829,11 +829,6 @@ START_TEST (inet_connect_ipv4_test) {
   ck_assert_msg(addr != NULL, "Failed to resolve '127.0.0.1': %s",
     strerror(errno));
 
-  /* On CirrusCI VMs, attempting to connect causes test timeouts. */
-  if (getenv("CIRRUS_CLONE_DEPTH") != NULL) {
-    return;
-  }
-
   mark_point();
   res = pr_inet_connect(p, conn, addr, 180);
   ck_assert_msg(res < 0, "Connected to 127.0.0.1#180 unexpectedly");
@@ -892,11 +887,6 @@ START_TEST (inet_connect_ipv6_test) {
   addr = pr_netaddr_get_addr(p, "::1", NULL);
   ck_assert_msg(addr != NULL, "Failed to resolve '::1': %s",
     strerror(errno));
-
-  /* On CirrusCI VMs, attempting to connect causes test timeouts. */
-  if (getenv("CIRRUS_CLONE_DEPTH") != NULL) {
-    return;
-  }
 
   mark_point();
   res = pr_inet_connect(p, conn, addr, 180);
@@ -974,13 +964,8 @@ START_TEST (inet_connect_nowait_test) {
   ck_assert_msg(addr != NULL, "Failed to resolve '127.0.0.1': %s",
     strerror(errno));
 
-  if (getenv("CIRRUS_CLONE_DEPTH") == NULL) {
-    /* On CirrusCI VMs, this succeeds unexpectedly, so run it only when we
-     * are NOT running in the Cirrus CI.
-     */
-    res = pr_inet_connect_nowait(p, conn, addr, 180);
-    ck_assert_msg(res != -1, "Connected to 127.0.0.1#180 unexpectedly");
-  }
+  res = pr_inet_connect_nowait(p, conn, addr, 180);
+  ck_assert_msg(res != -1, "Connected to 127.0.0.1#180 unexpectedly");
 
 #if defined(PR_USE_NETWORK_TESTS)
   /* Try connecting to Google's DNS server. */

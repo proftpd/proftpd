@@ -836,8 +836,7 @@ START_TEST (fsio_sys_access_dir_test) {
   ck_assert_msg(res == 0, "Failed to check for write access on directory: %s",
     strerror(errno));
 
-  if (getenv("CI") == NULL &&
-      getenv("CIRRUS_CLONE_DEPTH") == NULL) {
+  if (getenv("CI") == NULL) {
     uid_t other_uid;
     gid_t other_gid;
 
