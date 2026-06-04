@@ -799,26 +799,20 @@ int pr_memcache_conn_set_namespace(pr_memcache_t *mcache, module *m,
 int pr_memcache_add(pr_memcache_t *mcache, module *m, const char *key,
     void *value, size_t valuesz, time_t expires, uint32_t flags) {
   int res;
+  size_t key_len = 0;
 
-  /* XXX Should we allow null values to be added, thus allowing use of keys
-   * as sentinels?
-   */
-  if (mcache == NULL ||
-      m == NULL ||
-      key == NULL ||
-      value == NULL) {
-    errno = EINVAL;
-    return -1;
+  if (key != NULL) {
+    key_len = strlen(key);
   }
 
-  res = pr_memcache_kadd(mcache, m, key, strlen(key), value, valuesz, expires,
+  res = pr_memcache_kadd(mcache, m, key, key_len, value, valuesz, expires,
     flags);
   if (res < 0) {
     int xerrno = errno;
 
     pr_trace_msg(trace_channel, 2,
-      "error adding key '%s', value (%lu bytes): %s", key,
-      (unsigned long) valuesz, strerror(xerrno));
+      "error adding key '%s', value (%lu bytes): %s",
+      key != NULL ? key : "(NULL)", (unsigned long) valuesz, strerror(xerrno));
 
     errno = xerrno;
     return -1;
@@ -830,24 +824,18 @@ int pr_memcache_add(pr_memcache_t *mcache, module *m, const char *key,
 int pr_memcache_decr(pr_memcache_t *mcache, module *m, const char *key,
     uint32_t decr, uint64_t *value) {
   int res;
+  size_t key_len = 0;
 
-  /* XXX Should we allow null values to be added, thus allowing use of keys
-   * as sentinels?
-   */
-  if (mcache == NULL ||
-      m == NULL ||
-      key == NULL ||
-      decr == 0) {
-    errno = EINVAL;
-    return -1;
+  if (key != NULL) {
+    key_len = strlen(key);
   }
 
-  res = pr_memcache_kdecr(mcache, m, key, strlen(key), decr, value);
+  res = pr_memcache_kdecr(mcache, m, key, key_len, decr, value);
   if (res < 0) {
     int xerrno = errno;
 
     pr_trace_msg(trace_channel, 2,
-      "error decrementing key '%s' by %lu: %s", key,
+      "error decrementing key '%s' by %lu: %s", key != NULL ? key : "(NULL)",
       (unsigned long) decr, strerror(xerrno));
 
     errno = xerrno;
@@ -860,22 +848,19 @@ int pr_memcache_decr(pr_memcache_t *mcache, module *m, const char *key,
 void *pr_memcache_get(pr_memcache_t *mcache, module *m, const char *key,
     size_t *valuesz, uint32_t *flags) {
   void *ptr = NULL;
+  size_t key_len = 0;
 
-  if (mcache == NULL ||
-      m == NULL ||
-      key == NULL ||
-      valuesz == NULL ||
-      flags == NULL) {
-    errno = EINVAL;
-    return NULL;
+  if (key != NULL) {
+    key_len = strlen(key);
   }
 
-  ptr = pr_memcache_kget(mcache, m, key, strlen(key), valuesz, flags);
+  ptr = pr_memcache_kget(mcache, m, key, key_len, valuesz, flags);
   if (ptr == NULL) {
     int xerrno = errno;
 
     pr_trace_msg(trace_channel, 2,
-      "error getting data for key '%s': %s", key, strerror(xerrno));
+      "error getting data for key '%s': %s", key != NULL ? key : "(NULL)",
+      strerror(xerrno));
 
     errno = xerrno;
     return NULL;
@@ -887,21 +872,19 @@ void *pr_memcache_get(pr_memcache_t *mcache, module *m, const char *key,
 char *pr_memcache_get_str(pr_memcache_t *mcache, module *m, const char *key,
     uint32_t *flags) {
   char *ptr = NULL;
+  size_t key_len = 0;
 
-  if (mcache == NULL ||
-      m == NULL ||
-      key == NULL ||
-      flags == NULL) {
-    errno = EINVAL;
-    return NULL;
+  if (key != NULL) {
+    key_len = strlen(key);
   }
 
-  ptr = pr_memcache_kget_str(mcache, m, key, strlen(key), flags);
+  ptr = pr_memcache_kget_str(mcache, m, key, key_len, flags);
   if (ptr == NULL) {
     int xerrno = errno;
 
     pr_trace_msg(trace_channel, 2,
-      "error getting data for key '%s': %s", key, strerror(xerrno));
+      "error getting data for key '%s': %s", key != NULL ? key : "(NULL)",
+      strerror(xerrno));
 
     errno = xerrno;
     return NULL;
@@ -913,24 +896,18 @@ char *pr_memcache_get_str(pr_memcache_t *mcache, module *m, const char *key,
 int pr_memcache_incr(pr_memcache_t *mcache, module *m, const char *key,
     uint32_t incr, uint64_t *value) {
   int res;
+  size_t key_len;
 
-  /* XXX Should we allow null values to be added, thus allowing use of keys
-   * as sentinels?
-   */
-  if (mcache == NULL ||
-      m == NULL ||
-      key == NULL ||
-      incr == 0) {
-    errno = EINVAL;
-    return -1;
+  if (key != NULL) {
+    key_len = strlen(key);
   }
 
-  res = pr_memcache_kincr(mcache, m, key, strlen(key), incr, value);
+  res = pr_memcache_kincr(mcache, m, key, key_len, incr, value);
   if (res < 0) {
     int xerrno = errno;
 
     pr_trace_msg(trace_channel, 2,
-      "error incrementing key '%s' by %lu: %s", key,
+      "error incrementing key '%s' by %lu: %s", key != NULL ? key : "(NULL)",
       (unsigned long) incr, strerror(xerrno));
 
     errno = xerrno;
@@ -943,20 +920,19 @@ int pr_memcache_incr(pr_memcache_t *mcache, module *m, const char *key,
 int pr_memcache_remove(pr_memcache_t *mcache, module *m, const char *key,
     time_t expires) {
   int res;
+  size_t key_len = 0;
 
-  if (mcache == NULL ||
-      m == NULL ||
-      key == NULL) {
-    errno = EINVAL;
-    return -1;
+  if (key != NULL) {
+    key_len = strlen(key);
   }
 
-  res = pr_memcache_kremove(mcache, m, key, strlen(key), expires);
+  res = pr_memcache_kremove(mcache, m, key, key_len, expires);
   if (res < 0) {
     int xerrno = errno;
 
     pr_trace_msg(trace_channel, 2,
-      "error removing key '%s': %s", key, strerror(xerrno));
+      "error removing key '%s': %s", key != NULL ? key : "(NULL)",
+      strerror(xerrno));
 
     errno = xerrno;
     return -1;
@@ -968,26 +944,20 @@ int pr_memcache_remove(pr_memcache_t *mcache, module *m, const char *key,
 int pr_memcache_set(pr_memcache_t *mcache, module *m, const char *key,
     void *value, size_t valuesz, time_t expires, uint32_t flags) {
   int res;
+  size_t key_len = 0;
 
-  /* XXX Should we allow null values to be added, thus allowing use of keys
-   * as sentinels?
-   */
-  if (mcache == NULL ||
-      m == NULL ||
-      key == NULL ||
-      value == NULL) {
-    errno = EINVAL;
-    return -1;
+  if (key != NULL) {
+    key_len = strlen(key);
   }
 
-  res = pr_memcache_kset(mcache, m, key, strlen(key), value, valuesz, expires,
+  res = pr_memcache_kset(mcache, m, key, key_len, value, valuesz, expires,
     flags);
   if (res < 0) {
     int xerrno = errno;
 
     pr_trace_msg(trace_channel, 2,
-      "error setting key '%s', value (%lu bytes): %s", key,
-      (unsigned long) valuesz, strerror(xerrno));
+      "error setting key '%s', value (%lu bytes): %s",
+      key != NULL ? key : "(NULL)", (unsigned long) valuesz, strerror(xerrno));
 
     errno = xerrno;
     return -1;
@@ -1488,6 +1458,7 @@ int pr_memcache_kremove(pr_memcache_t *mcache, module *m, const char *key,
       break;
     }
 
+    case MEMCACHED_BAD_KEY_PROVIDED:
     case MEMCACHED_NOTFOUND:
       pr_trace_msg(trace_channel, 2,
         "error removing key (%lu bytes): %s", (unsigned long) keysz,
