@@ -3,7 +3,6 @@
 ## Status
 
 [![GitHub Actions CI Status](https://github.com/proftpd/proftpd/actions/workflows/ci.yml/badge.svg?branch=master)](https://github.com/proftpd/proftpd/actions/workflows/ci.yml)
-[![CirrusCI Build Status](https://api.cirrus-ci.com/github/proftpd/proftpd.svg?branch=master)](https://cirrus-ci.com/github/proftpd/proftpd)
 [![Coverage Status](https://coveralls.io/repos/github/proftpd/proftpd/badge.svg?branch=master)](https://coveralls.io/github/proftpd/proftpd?branch=master)
 [![CodeQL Analysis](https://github.com/proftpd/proftpd/actions/workflows/codeql.yml/badge.svg)](https://github.com/proftpd/proftpd/actions/workflows/codeql.yml)
 [![Coverity Scan Status](https://scan.coverity.com/projects/198/badge.svg)](https://scan.coverity.com/projects/198)
