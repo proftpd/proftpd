@@ -944,6 +944,572 @@ START_TEST (memcache_set_test) {
   ck_assert_msg(res == TRUE, "Failed to close mcache: %s", strerror(errno));
 }
 END_TEST
+
+START_TEST (memcache_kremove_test) {
+  int res;
+  pr_memcache_t *mcache;
+  module m;
+  const char *key;
+
+  mark_point();
+  res = pr_memcache_kremove(NULL, NULL, NULL, 0, 0);
+  ck_assert_msg(res < 0, "Failed to handle null mcache");
+  ck_assert_msg(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+    strerror(errno), errno);
+
+  mark_point();
+  mcache = pr_memcache_conn_new(p, NULL, 0, 0);
+  ck_assert_msg(mcache != NULL, "Failed to open connection to Memcached: %s",
+    strerror(errno));
+
+  mark_point();
+  res = pr_memcache_kremove(mcache, NULL, NULL, 0, 0);
+  ck_assert_msg(res < 0, "Failed to handle null module");
+  ck_assert_msg(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+    strerror(errno), errno);
+
+  mark_point();
+  res = pr_memcache_kremove(mcache, &m, NULL, 0, 0);
+  ck_assert_msg(res < 0, "Failed to handle null key");
+  ck_assert_msg(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+    strerror(errno), errno);
+
+  key = "testkey";
+
+  mark_point();
+  res = pr_memcache_kremove(mcache, &m, key, 0, 0);
+  ck_assert_msg(res < 0, "Unexpectedly removed key '%s'", key);
+  ck_assert_msg(errno == ENOENT, "Expected ENOENT (%d), got %s (%d)", ENOENT,
+    strerror(errno), errno);
+
+  mark_point();
+  res = pr_memcache_conn_destroy(mcache);
+  ck_assert_msg(res == TRUE, "Failed to close mcache: %s", strerror(errno));
+}
+END_TEST
+
+START_TEST (memcache_kadd_test) {
+  int res;
+  pr_memcache_t *mcache;
+  module m;
+  const char *key;
+  char *val;
+  size_t valsz;
+  time_t expires;
+
+  mark_point();
+  res = pr_memcache_kadd(NULL, NULL, NULL, 0, NULL, 0, 0, 0);
+  ck_assert_msg(res < 0, "Failed to handle null mcache");
+  ck_assert_msg(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+    strerror(errno), errno);
+
+  mark_point();
+  mcache = pr_memcache_conn_new(p, NULL, 0, 0);
+  ck_assert_msg(mcache != NULL, "Failed to open connection to Memcached: %s",
+    strerror(errno));
+
+  mark_point();
+  res = pr_memcache_kadd(mcache, NULL, NULL, 0, NULL, 0, 0, 0);
+  ck_assert_msg(res < 0, "Failed to handle null module");
+  ck_assert_msg(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+    strerror(errno), errno);
+
+  mark_point();
+  res = pr_memcache_kadd(mcache, &m, NULL, 0, NULL, 0, 0, 0);
+  ck_assert_msg(res < 0, "Failed to handle null key");
+  ck_assert_msg(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+    strerror(errno), errno);
+
+  key = "testkey";
+
+  mark_point();
+  res = pr_memcache_kadd(mcache, &m, key, strlen(key), NULL, 0, 0, 0);
+  ck_assert_msg(res < 0, "Failed to handle null value");
+  ck_assert_msg(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+    strerror(errno), errno);
+
+  val = "testval";
+  valsz = strlen(val);
+  expires = 0;
+
+  mark_point();
+  res = pr_memcache_kadd(mcache, &m, key, strlen(key), val, valsz, expires, 0);
+  ck_assert_msg(res == 0, "Failed to add key '%s', val '%s': %s", key, val,
+    strerror(errno));
+
+  mark_point();
+  res = pr_memcache_remove(mcache, &m, key, 0);
+  ck_assert_msg(res == 0, "Failed to remove key '%s': %s", key,
+    strerror(errno));
+
+  expires = 3;
+
+  mark_point();
+  res = pr_memcache_kadd(mcache, &m, key, strlen(key), val, valsz, expires, 0);
+  ck_assert_msg(res == 0, "Failed to add key '%s', val '%s': %s", key, val,
+    strerror(errno));
+
+  mark_point();
+  res = pr_memcache_remove(mcache, &m, key, 0);
+  ck_assert_msg(res == 0, "Failed to remove key '%s': %s", key,
+    strerror(errno));
+
+  mark_point();
+  res = pr_memcache_conn_destroy(mcache);
+  ck_assert_msg(res == TRUE, "Failed to close mcache: %s", strerror(errno));
+}
+END_TEST
+
+START_TEST (memcache_kget_test) {
+  int res;
+  pr_memcache_t *mcache;
+  module m;
+  const char *key;
+  char *val;
+  size_t valsz;
+  time_t expires;
+  uint32_t flags;
+  void *data;
+
+  mark_point();
+  data = pr_memcache_kget(NULL, NULL, NULL, 0, NULL, NULL);
+  ck_assert_msg(data == NULL, "Failed to handle null mcache");
+  ck_assert_msg(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+    strerror(errno), errno);
+
+  mark_point();
+  mcache = pr_memcache_conn_new(p, NULL, 0, 0);
+  ck_assert_msg(mcache != NULL, "Failed to open connection to Memcached: %s",
+    strerror(errno));
+
+  mark_point();
+  data = pr_memcache_kget(mcache, NULL, NULL, 0, NULL, NULL);
+  ck_assert_msg(data == NULL, "Failed to handle null module");
+  ck_assert_msg(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+    strerror(errno), errno);
+
+  mark_point();
+  data = pr_memcache_kget(mcache, &m, NULL, 0, NULL, NULL);
+  ck_assert_msg(data == NULL, "Failed to handle null key");
+  ck_assert_msg(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+    strerror(errno), errno);
+
+  key = "testkey";
+  (void) pr_memcache_remove(mcache, &m, key, 0);
+
+  mark_point();
+  data = pr_memcache_kget(mcache, &m, key, strlen(key), NULL, NULL);
+  ck_assert_msg(data == NULL, "Failed to handle null valuesz");
+  ck_assert_msg(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+    strerror(errno), errno);
+
+  mark_point();
+  data = pr_memcache_kget(mcache, &m, key, strlen(key), &valsz, NULL);
+  ck_assert_msg(data == NULL, "Failed to handle null flags");
+  ck_assert_msg(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+    strerror(errno), errno);
+
+  mark_point();
+  data = pr_memcache_kget(mcache, &m, key, strlen(key), &valsz, &flags);
+  ck_assert_msg(data == NULL, "Failed to handle nonexistent key");
+  ck_assert_msg(errno == ENOENT, "Expected ENOENT (%d), got %s (%d)", ENOENT,
+    strerror(errno), errno);
+
+  val = "Hello, World!";
+  valsz = strlen(val);
+  expires = 0;
+
+  mark_point();
+  res = pr_memcache_set(mcache, &m, key, val, valsz, expires, 0);
+  ck_assert_msg(res == 0, "Failed to set key '%s', val '%s': %s", key, val,
+    strerror(errno));
+
+  valsz = 0;
+
+  mark_point();
+  data = pr_memcache_kget(mcache, &m, key, strlen(key), &valsz, &flags);
+  ck_assert_msg(data != NULL, "Failed to get data for key '%s': %s", key,
+    strerror(errno));
+  ck_assert_msg(valsz == strlen(val), "Expected %lu, got %lu",
+    (unsigned long) strlen(val), (unsigned long) valsz);
+
+  mark_point();
+  res = pr_memcache_remove(mcache, &m, key, 0);
+  ck_assert_msg(res == 0, "Failed to remove key '%s': %s", key,
+    strerror(errno));
+
+  mark_point();
+  data = pr_memcache_kget(mcache, &m, key, strlen(key), &valsz, &flags);
+  ck_assert_msg(data == NULL, "Failed to handle nonexistent key");
+  ck_assert_msg(errno == ENOENT, "Expected ENOENT (%d), got %s (%d)", ENOENT,
+    strerror(errno), errno);
+
+  mark_point();
+  res = pr_memcache_conn_destroy(mcache);
+  ck_assert_msg(res == TRUE, "Failed to close mcache: %s", strerror(errno));
+}
+END_TEST
+
+START_TEST (memcache_kget_str_test) {
+  int res;
+  pr_memcache_t *mcache;
+  module m;
+  const char *key;
+  size_t valsz;
+  time_t expires;
+  uint32_t flags;
+  char *val, *str;
+
+  mark_point();
+  str = pr_memcache_kget_str(NULL, NULL, NULL, 0, NULL);
+  ck_assert_msg(str == NULL, "Failed to handle null mcache");
+  ck_assert_msg(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+    strerror(errno), errno);
+
+  mark_point();
+  mcache = pr_memcache_conn_new(p, NULL, 0, 0);
+  ck_assert_msg(mcache != NULL, "Failed to open connection to Memcached: %s",
+    strerror(errno));
+
+  mark_point();
+  str = pr_memcache_kget_str(mcache, NULL, NULL, 0, NULL);
+  ck_assert_msg(str == NULL, "Failed to handle null module");
+  ck_assert_msg(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+    strerror(errno), errno);
+
+  mark_point();
+  str = pr_memcache_kget_str(mcache, &m, NULL, 0, NULL);
+  ck_assert_msg(str == NULL, "Failed to handle null key");
+  ck_assert_msg(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+    strerror(errno), errno);
+
+  key = "test_string";
+  (void) pr_memcache_remove(mcache, &m, key, 0);
+
+  mark_point();
+  str = pr_memcache_kget_str(mcache, &m, key, strlen(key), NULL);
+  ck_assert_msg(str == NULL, "Failed to handle null flags");
+  ck_assert_msg(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+    strerror(errno), errno);
+
+  mark_point();
+  str = pr_memcache_kget_str(mcache, &m, key, strlen(key), &flags);
+  ck_assert_msg(str == NULL, "Failed to handle nonexistent key");
+  ck_assert_msg(errno == ENOENT, "Expected ENOENT (%d), got %s (%d)", ENOENT,
+    strerror(errno), errno);
+
+  val = "Hello, World!";
+  valsz = strlen(val);
+  expires = 0;
+
+  mark_point();
+  res = pr_memcache_set(mcache, &m, key, val, valsz, expires, 0);
+  ck_assert_msg(res == 0, "Failed to set key '%s', val '%s': %s", key, val,
+    strerror(errno));
+
+  mark_point();
+  str = pr_memcache_kget_str(mcache, &m, key, strlen(key), &flags);
+  ck_assert_msg(str != NULL, "Failed to get string for key '%s': %s", key,
+    strerror(errno));
+  ck_assert_msg(strlen(str) == strlen(val), "Expected %lu, got %lu",
+    (unsigned long) strlen(val), (unsigned long) strlen(str));
+
+  mark_point();
+  res = pr_memcache_remove(mcache, &m, key, 0);
+  ck_assert_msg(res == 0, "Failed to remove key '%s': %s", key,
+    strerror(errno));
+
+  mark_point();
+  str = pr_memcache_kget_str(mcache, &m, key, strlen(key), &flags);
+  ck_assert_msg(str == NULL, "Failed to handle nonexistent key");
+  ck_assert_msg(errno == ENOENT, "Expected ENOENT (%d), got %s (%d)", ENOENT,
+    strerror(errno), errno);
+
+  mark_point();
+  res = pr_memcache_conn_destroy(mcache);
+  ck_assert_msg(res == TRUE, "Failed to close mcache: %s", strerror(errno));
+}
+END_TEST
+
+START_TEST (memcache_kincr_test) {
+  int res;
+  pr_memcache_t *mcache;
+  module m;
+  const char *key;
+  char *value;
+  uint32_t incr;
+  uint64_t val = 0;
+  size_t valsz;
+  time_t expires;
+
+  mark_point();
+  res = pr_memcache_kincr(NULL, NULL, NULL, 0, 0, NULL);
+  ck_assert_msg(res < 0, "Failed to handle null mcache");
+  ck_assert_msg(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+    strerror(errno), errno);
+
+  mark_point();
+  mcache = pr_memcache_conn_new(p, NULL, 0, 0);
+  ck_assert_msg(mcache != NULL, "Failed to open connection to Memcached: %s",
+    strerror(errno));
+
+  mark_point();
+  res = pr_memcache_kincr(mcache, NULL, NULL, 0, 0, NULL);
+  ck_assert_msg(res < 0, "Failed to handle null module");
+  ck_assert_msg(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+    strerror(errno), errno);
+
+  mark_point();
+  res = pr_memcache_kincr(mcache, &m, NULL, 0, 0, NULL);
+  ck_assert_msg(res < 0, "Failed to handle null key");
+  ck_assert_msg(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+    strerror(errno), errno);
+
+  key = "testval";
+  (void) pr_memcache_remove(mcache, &m, key, 0);
+
+  mark_point();
+  res = pr_memcache_kincr(mcache, &m, key, strlen(key), 0, NULL);
+  ck_assert_msg(res < 0, "Failed to handle zero kincr");
+  ck_assert_msg(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+    strerror(errno), errno);
+
+  incr = 2;
+
+  mark_point();
+  res = pr_memcache_kincr(mcache, &m, key, strlen(key), incr, NULL);
+  ck_assert_msg(res == 0, "Failed to handle nonexistent val: %s",
+    strerror(errno));
+
+  value = "31";
+  valsz = strlen(value);
+
+  mark_point();
+  res = pr_memcache_set(mcache, &m, key, value, valsz, 0, 0);
+  ck_assert_msg(res == 0, "Failed to set key '%s', val '%s': %s", key,
+    value, strerror(errno));
+
+  mark_point();
+  res = pr_memcache_kincr(mcache, &m, key, strlen(key), incr, NULL);
+  ck_assert_msg(res == 0, "Failed to increment key '%s' by %lu: %s", key,
+    (unsigned long) incr, strerror(errno));
+
+  val = 0;
+
+  mark_point();
+  res = pr_memcache_kincr(mcache, &m, key, strlen(key), incr, &val);
+  ck_assert_msg(res == 0, "Failed to increment key '%s' by %lu: %s", key,
+    (unsigned long) incr, strerror(errno));
+  ck_assert_msg(val == 35, "Expected %lu, got %lu", (unsigned long) 35,
+    (unsigned long) val);
+
+  mark_point();
+  res = pr_memcache_remove(mcache, &m, key, 0);
+  ck_assert_msg(res == 0, "Failed to remove key '%s': %s", key,
+    strerror(errno));
+
+  /* Now, let's try incrementing a non-numeric value. */
+  value = "Hello, World!";
+  valsz = strlen(value);
+  expires = 0;
+
+  mark_point();
+  res = pr_memcache_set(mcache, &m, key, value, valsz, expires, 0);
+  ck_assert_msg(res == 0, "Failed to set key '%s', val '%s': %s", key, value,
+    strerror(errno));
+
+  mark_point();
+  res = pr_memcache_kincr(mcache, &m, key, strlen(key), incr, &val);
+  ck_assert_msg(res < 0, "Failed to handle non-numeric key value");
+  ck_assert_msg(errno == EPERM, "Expected EPERM (%d), got %s (%d)", EINVAL,
+    strerror(errno), errno);
+
+  (void) pr_memcache_remove(mcache, &m, key, 0);
+
+  mark_point();
+  res = pr_memcache_conn_destroy(mcache);
+  ck_assert_msg(res == TRUE, "Failed to close mcache: %s", strerror(errno));
+}
+END_TEST
+
+START_TEST (memcache_kdecr_test) {
+  int res;
+  pr_memcache_t *mcache;
+  module m;
+  const char *key;
+  char *value;
+  uint32_t decr;
+  uint64_t val = 0;
+  size_t valsz;
+  time_t expires;
+
+  mark_point();
+  res = pr_memcache_kdecr(NULL, NULL, NULL, 0, 0, NULL);
+  ck_assert_msg(res < 0, "Failed to handle null mcache");
+  ck_assert_msg(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+    strerror(errno), errno);
+
+  mark_point();
+  mcache = pr_memcache_conn_new(p, NULL, 0, 0);
+  ck_assert_msg(mcache != NULL, "Failed to open connection to Memcached: %s",
+    strerror(errno));
+
+  mark_point();
+  res = pr_memcache_kdecr(mcache, NULL, NULL, 0, 0, NULL);
+  ck_assert_msg(res < 0, "Failed to handle null module");
+  ck_assert_msg(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+    strerror(errno), errno);
+
+  mark_point();
+  res = pr_memcache_kdecr(mcache, &m, NULL, 0, 0, NULL);
+  ck_assert_msg(res < 0, "Failed to handle null key");
+  ck_assert_msg(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+    strerror(errno), errno);
+
+  key = "testval";
+  (void) pr_memcache_remove(mcache, &m, key, 0);
+
+  mark_point();
+  res = pr_memcache_kdecr(mcache, &m, key, strlen(key), 0, NULL);
+  ck_assert_msg(res < 0, "Failed to handle zero kdecr");
+  ck_assert_msg(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+    strerror(errno), errno);
+
+  decr = 5;
+
+  mark_point();
+  res = pr_memcache_kdecr(mcache, &m, key, strlen(key), decr, NULL);
+  ck_assert_msg(res < 0, "Failed to handle nonexistent key");
+  ck_assert_msg(errno == ENOENT, "Expected ENOENT (%d), got %s (%d)", ENOENT,
+    strerror(errno), errno);
+
+  /* While libmemcached automatically creates a value for incrementing,
+   * it does NOT do so for decrementing.  Yay asymmetry.
+   */
+
+  value = "31";
+  valsz = strlen(value);
+  expires = 0;
+
+  mark_point();
+  res = pr_memcache_set(mcache, &m, key, value, valsz, expires, 0);
+  ck_assert_msg(res == 0, "Failed to set key '%s', val '%s': %s", key, value,
+    strerror(errno));
+
+  mark_point();
+  res = pr_memcache_kdecr(mcache, &m, key, strlen(key), decr, NULL);
+  ck_assert_msg(res == 0, "Failed to decrement key '%s' by %lu: %s", key,
+    (unsigned long) decr, strerror(errno));
+
+  val = 0;
+
+  mark_point();
+  res = pr_memcache_kdecr(mcache, &m, key, strlen(key), decr, &val);
+  ck_assert_msg(res == 0, "Failed to decrement key '%s' by %lu: %s", key,
+    (unsigned long) decr, strerror(errno));
+  ck_assert_msg(val == 21, "Expected %lu, got %lu", (unsigned long) 21,
+    (unsigned long) val);
+
+  mark_point();
+  res = pr_memcache_remove(mcache, &m, key, 0);
+  ck_assert_msg(res == 0, "Failed to remove key '%s': %s", key,
+    strerror(errno));
+
+  /* Now, let's try decrementing a non-numeric value. */
+  value = "Hello, World!";
+  valsz = strlen(value);
+  expires = 0;
+
+  mark_point();
+  res = pr_memcache_set(mcache, &m, key, value, valsz, expires, 0);
+  ck_assert_msg(res == 0, "Failed to set key '%s', val '%s': %s", key, value,
+    strerror(errno));
+
+  mark_point();
+  res = pr_memcache_kdecr(mcache, &m, key, strlen(key), decr, &val);
+  ck_assert_msg(res < 0, "Failed to handle non-numeric key value");
+  ck_assert_msg(errno == EPERM, "Expected EPERM (%d), got %s (%d)", EINVAL,
+    strerror(errno), errno);
+
+  (void) pr_memcache_remove(mcache, &m, key, 0);
+
+  mark_point();
+  res = pr_memcache_conn_destroy(mcache);
+  ck_assert_msg(res == TRUE, "Failed to close mcache: %s", strerror(errno));
+}
+END_TEST
+
+START_TEST (memcache_kset_test) {
+  int res;
+  pr_memcache_t *mcache;
+  module m;
+  const char *key;
+  char *val;
+  size_t valsz;
+  time_t expires;
+
+  mark_point();
+  res = pr_memcache_kset(NULL, NULL, NULL, 0, NULL, 0, 0, 0);
+  ck_assert_msg(res < 0, "Failed to handle null mcache");
+  ck_assert_msg(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+    strerror(errno), errno);
+
+  mark_point();
+  mcache = pr_memcache_conn_new(p, NULL, 0, 0);
+  ck_assert_msg(mcache != NULL, "Failed to open connection to Memcached: %s",
+    strerror(errno));
+
+  mark_point();
+  res = pr_memcache_kset(mcache, NULL, NULL, 0, NULL, 0, 0, 0);
+  ck_assert_msg(res < 0, "Failed to handle null module");
+  ck_assert_msg(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+    strerror(errno), errno);
+
+  mark_point();
+  res = pr_memcache_kset(mcache, &m, NULL, 0, NULL, 0, 0, 0);
+  ck_assert_msg(res < 0, "Failed to handle null key");
+  ck_assert_msg(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+    strerror(errno), errno);
+
+  key = "testkey";
+
+  mark_point();
+  res = pr_memcache_kset(mcache, &m, key, strlen(key), NULL, 0, 0, 0);
+  ck_assert_msg(res < 0, "Failed to handle null value");
+  ck_assert_msg(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+    strerror(errno), errno);
+
+  val = "testval";
+  valsz = strlen(val);
+  expires = 0;
+
+  mark_point();
+  res = pr_memcache_kset(mcache, &m, key, strlen(key), val, valsz, expires, 0);
+  ck_assert_msg(res == 0, "Failed to set key '%s', val '%s': %s", key, val,
+    strerror(errno));
+
+  mark_point();
+  res = pr_memcache_remove(mcache, &m, key, 0);
+  ck_assert_msg(res == 0, "Failed to remove key '%s': %s", key,
+    strerror(errno));
+
+  expires = 3;
+
+  mark_point();
+  res = pr_memcache_kset(mcache, &m, key, strlen(key), val, valsz, expires, 0);
+  ck_assert_msg(res == 0, "Failed to set key '%s', val '%s': %s", key, val,
+    strerror(errno));
+
+  mark_point();
+  res = pr_memcache_remove(mcache, &m, key, 0);
+  ck_assert_msg(res == 0, "Failed to remove key '%s': %s", key,
+    strerror(errno));
+
+  mark_point();
+  res = pr_memcache_conn_destroy(mcache);
+  ck_assert_msg(res == TRUE, "Failed to close mcache: %s", strerror(errno));
+}
+END_TEST
 #endif /* PR_USE_MEMCACHE */
 
 Suite *tests_get_memcache_suite(void) {
@@ -972,6 +1538,14 @@ Suite *tests_get_memcache_suite(void) {
   tcase_add_test(testcase, memcache_incr_test);
   tcase_add_test(testcase, memcache_decr_test);
   tcase_add_test(testcase, memcache_set_test);
+
+  tcase_add_test(testcase, memcache_kremove_test);
+  tcase_add_test(testcase, memcache_kadd_test);
+  tcase_add_test(testcase, memcache_kget_test);
+  tcase_add_test(testcase, memcache_kget_str_test);
+  tcase_add_test(testcase, memcache_kincr_test);
+  tcase_add_test(testcase, memcache_kdecr_test);
+  tcase_add_test(testcase, memcache_kset_test);
 
   /* Some of the Memcache tests may take a little longer. */
   tcase_set_timeout(testcase, 30);
