@@ -135,8 +135,7 @@ START_TEST (memcache_conn_new_test) {
   res = pr_memcache_conn_destroy(mcache);
   ck_assert_msg(res == TRUE, "Failed to close mcache: %s", strerror(errno));
 
-  if (getenv("CI") == NULL &&
-      getenv("CIRRUS_CLONE_DEPTH") == NULL) {
+  if (getenv("CI") == NULL) {
     /* Now deliberately set the wrong server and port. */
     memcache_set_server("127.1.2.3", memcached_port);
 
