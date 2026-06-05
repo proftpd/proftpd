@@ -31,19 +31,19 @@
 #include <string.h>
 #include <time.h>
 
-#ifdef HAVE_GETOPT_H
-#  include <getopt.h>
+#if defined(HAVE_GETOPT_H)
+# include <getopt.h>
 #else
-#  include "../lib/getopt.h"
+# include "../lib/getopt.h"
 #endif /* !HAVE_GETOPT_H */
 
-#ifdef HAVE_UNISTD_H
+#if defined(HAVE_UNISTD_H)
 # include <unistd.h>
-#endif
+#endif /* HAVE_UNISTD_H */
 
-#ifdef HAVE_NETINET_IN_H
+#if defined(HAVE_NETINET_IN_H)
 # include <netinet/in.h>
-#endif
+#endif /* HAVE_NETINET_IN_H */
 
 #include "mod_auth_otp.h"
 #include "pool.h"
@@ -57,6 +57,7 @@ static int quiet = FALSE, verbose = FALSE;
 
 int auth_otp_logfd = -1;
 pool *auth_otp_pool = NULL;
+session_t session;
 
 void pr_alarms_block(void) {
 }

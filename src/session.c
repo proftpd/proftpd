@@ -150,17 +150,19 @@ void pr_session_end(int flags) {
     exitcode = 1;
   }
 
-#ifdef PR_USE_DEVEL
+#if defined(PR_USE_DEVEL)
   destroy_pool(session.pool);
 
   if (is_master) {
     main_server = NULL;
+    pr_signals_block();
     free_pools();
+    pr_signals_unblock();
     pr_proctitle_free();
   }
 #endif /* PR_USE_DEVEL */
 
-#ifdef PR_DEVEL_PROFILE
+#if defined(PR_DEVEL_PROFILE)
   /* Populating the gmon.out gprof file requires that the process exit
    * via exit(3) or by returning from main().  Using _exit(2) doesn't allow
    * the process the time to write its profile data out.

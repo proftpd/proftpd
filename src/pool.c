@@ -560,6 +560,8 @@ void init_pools(void) {
 void free_pools(void) {
   destroy_pool(permanent_pool);
   permanent_pool = NULL;
+  session.pool = NULL;
+  session.notes = NULL;
   pool_release_free_block_list();
 }
 

@@ -1561,7 +1561,9 @@ static void fork_server(int fd, conn_t *l, unsigned char no_fork) {
   /* Cleanup */
   pr_session_end(PR_SESS_END_FL_NOEXIT);
   main_server = NULL;
+  pr_signals_block();
   free_pools();
+  pr_signals_unblock();
   pr_proctitle_free();
 #endif /* PR_DEVEL_NO_DAEMON */
 }
