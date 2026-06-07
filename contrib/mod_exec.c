@@ -1580,7 +1580,8 @@ MODRET set_execenviron(cmd_rec *cmd) {
     logfmt[logfmt_len] = '\0';
   }
 
-  c->argv[1] = pstrndup(c->pool, (char *) logfmt, logfmt_len);
+  c->argv[1] = pstrdup(c->pool, text);
+  c->argv[2] = pstrndup(c->pool, (char *) logfmt, logfmt_len);
 
   if (pr_module_exists("mod_ifsession.c")) {
     /* These are needed in case this directive is used with mod_ifsession
