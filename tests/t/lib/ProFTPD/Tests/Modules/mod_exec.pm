@@ -112,6 +112,11 @@ my $TESTS = {
     test_class => [qw(forking)],
   },
 
+  exec_on_cmd_environ_issue2135 => {
+    order => ++$order,
+    test_class => [qw(bug forking)],
+  },
+
 };
 
 sub new {
@@ -2586,6 +2591,140 @@ EOC
       chomp($line);
 
       my $expected = 'castaglia';
+
+      $self->assert($expected eq $line,
+        test_msg("Expected '$expected', got '$line'"));
+
+    } else {
+      die("Can't read $cmd_file: $!");
+    }
+  };
+  if ($@) {
+    $ex = $@ unless $ex;
+  }
+
+  test_cleanup($setup->{log_file}, $ex);
+}
+
+sub exec_on_cmd_environ_issue2135 {
+  my $self = shift;
+  my $tmpdir = $self->{tmpdir};
+  my $setup = test_setup($tmpdir, 'exec');
+
+  my $cmd_file = File::Spec->rel2abs("$tmpdir/cmd.txt");
+  my $host = 'castaglia';
+
+  my $config = {
+    PidFile => $setup->{pid_file},
+    ScoreboardFile => $setup->{scoreboard_file},
+    SystemLog => $setup->{log_file},
+    TraceLog => $setup->{log_file},
+    Trace => 'exec:20 jot:20',
+
+    AuthUserFile => $setup->{auth_user_file},
+    AuthGroupFile => $setup->{auth_group_file},
+    AuthOrder => 'mod_auth_file.c',
+
+    DefaultServer => 'on',
+
+    IfModules => {
+      'mod_delay.c' => {
+        DelayEngine => 'off',
+      },
+    },
+  };
+
+  my ($port, $config_user, $config_group) = config_write($setup->{config_file},
+    $config);
+
+  if (open(my $fh, ">> $setup->{config_file}")) {
+    print $fh <<EOC;
+<VirtualHost 127.0.0.1>
+  ServerAlias $host
+  Port $port
+
+  AuthUserFile $setup->{auth_user_file}
+  AuthGroupFile $setup->{auth_group_file}
+  AuthOrder mod_auth_file.c
+
+  TransferLog none
+  WtmpLog off
+
+  <IfModule mod_delay.c>
+    DelayEngine off
+  </IfModule>
+
+  <IfModule mod_exec.c>
+    ExecEngine on
+    ExecLog $setup->{log_file}
+    ExecTimeout 1
+
+    ExecOptions logStderr
+    ExecEnviron EXEC_ENV_USER %u
+    ExecOnCommand PASS /bin/bash -c "echo \$EXEC_ENV_USER > $cmd_file"
+  </IfModule>
+</VirtualHost>
+EOC
+    unless (close($fh)) {
+      die("Can't write $setup->{config_file}: $!");
+    }
+
+  } else {
+    die("Can't open $setup->{config_file}: $!");
+  }
+
+  # Open pipes, for use between the parent and child processes.  Specifically,
+  # the child will indicate when it's done with its test by writing a message
+  # to the parent.
+  my ($rfh, $wfh);
+  unless (pipe($rfh, $wfh)) {
+    die("Can't open pipe: $!");
+  }
+
+  my $ex;
+
+  # Fork child
+  $self->handle_sigchld();
+  defined(my $pid = fork()) or die("Can't fork: $!");
+  if ($pid) {
+    eval {
+      # Allow for server startup
+      sleep(2);
+
+      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port, 0, 5);
+      $client->host($host);
+      $client->login($setup->{user}, $setup->{passwd});
+      $client->quit();
+    };
+    if ($@) {
+      $ex = $@;
+    }
+
+    $wfh->print("done\n");
+    $wfh->flush();
+
+  } else {
+    eval { server_wait($setup->{config_file}, $rfh) };
+    if ($@) {
+      warn($@);
+      exit 1;
+    }
+
+    exit 0;
+  }
+
+  # Stop server
+  server_stop($setup->{pid_file});
+  $self->assert_child_ok($pid);
+
+  eval {
+    if (open(my $fh, "< $cmd_file")) {
+      my $line = <$fh>;
+      close($fh);
+
+      chomp($line);
+
+      my $expected = $setup->{user};
 
       $self->assert($expected eq $line,
         test_msg("Expected '$expected', got '$line'"));
