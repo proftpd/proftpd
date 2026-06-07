@@ -896,7 +896,7 @@ char *pr_memcache_get_str(pr_memcache_t *mcache, module *m, const char *key,
 int pr_memcache_incr(pr_memcache_t *mcache, module *m, const char *key,
     uint32_t incr, uint64_t *value) {
   int res;
-  size_t key_len;
+  size_t key_len = 0;
 
   if (key != NULL) {
     key_len = strlen(key);
