@@ -6486,12 +6486,12 @@ int sftp_kex_handle(struct ssh2_packet *pkt) {
 
         } else
 #endif /* HAVE_MLKEM768_OPENSSL and HAVE_SHA256_OPENSSL */
-#if defined(HAVE_SHA512_OPENSSL)
+#if defined(HAVE_X25519_OPENSSL) && defined(HAVE_SHA512_OPENSSL)
         if (kex->use_sntrup761) {
           res = handle_kex_sntrup761(pkt, kex);
 
         } else
-#endif /* HAVE_SHA512_OPENSSL */
+#endif /* HAVE_X25519_OPENSSL and HAVE_SHA512_OPENSSL */
 #if defined(PR_USE_OPENSSL_ECC)
         if (kex->use_ecdh) {
           res = handle_kex_ecdh(pkt, kex);
