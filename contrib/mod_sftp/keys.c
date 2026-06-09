@@ -3140,6 +3140,17 @@ static int load_agent_hostkeys(pool *p, const char *path) {
         break;
 #endif /* PR_USE_SODIUM */
 
+#if defined(HAVE_X448_OPENSSL)
+      case SFTP_KEY_ED448:
+        if (handle_ed448_hostkey(p, agent_key->key_data,
+            agent_key->key_datalen, NULL, path) ==  0) {
+          pr_trace_msg(trace_channel, 4,
+            "using Ed448 hostkey from SSH agent at '%s'", path);
+          accepted_nkeys++;
+        }
+        break;
+#endif /* HAVE_X448_OPENSSL */
+
       default:
         if (handle_hostkey(p, pkey, agent_key->key_data,
             agent_key->key_datalen, NULL, path) == 0) {
@@ -3894,10 +3905,6 @@ static int handle_ed25519_hostkey(pool *p, const unsigned char *key_data,
 #if defined(HAVE_X448_OPENSSL)
 static int handle_ed448_hostkey(pool *p, const unsigned char *key_data,
     uint32_t key_datalen, const char *file_path, const char *agent_path) {
-  unsigned char *public_key;
-  EVP_PKEY *pkey = NULL;
-  size_t public_keylen = 0;
-
   if (sftp_ed448_hostkey != NULL) {
     /* If we have an existing ED448 hostkey, free it up. */
     pr_memscrub(sftp_ed448_hostkey->ed448_secret_key,
@@ -3918,32 +3925,82 @@ static int handle_ed448_hostkey(pool *p, const unsigned char *key_data,
   }
 
   sftp_ed448_hostkey->key_type = SFTP_KEY_ED448;
-  sftp_ed448_hostkey->ed448_secret_key = (unsigned char *) key_data;
-  sftp_ed448_hostkey->ed448_secret_keylen = key_datalen;
 
-  pkey = EVP_PKEY_new_raw_private_key(EVP_PKEY_ED448, NULL,
-    sftp_ed448_hostkey->ed448_secret_key,
-    sftp_ed448_hostkey->ed448_secret_keylen);
-  if (pkey == NULL) {
-    (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
-      "error initializing Ed448 private key: %s", sftp_crypto_get_errors());
-    return -1;
-  }
+  /* If the key data came from an SSH agent, then it is only the public key
+   * data; the private key will obviously stay in the agent.
+   */
 
-  /* Use the secret key to get the public key. */
-  public_keylen = (CURVE448_SIZE * 2);
-  public_key = palloc(p, public_keylen);
-  if (EVP_PKEY_get_raw_public_key(pkey, public_key, &public_keylen) != 1) {
-    (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
-      "error obtaining Ed448 public key: %s", sftp_crypto_get_errors());
+  if (agent_path == NULL) {
+    unsigned char *public_key;
+    EVP_PKEY *pkey = NULL;
+    size_t public_keylen = 0;
+
+    sftp_ed448_hostkey->ed448_secret_key = (unsigned char *) key_data;
+    sftp_ed448_hostkey->ed448_secret_keylen = key_datalen;
+
+    pkey = EVP_PKEY_new_raw_private_key(EVP_PKEY_ED448, NULL,
+      sftp_ed448_hostkey->ed448_secret_key,
+      sftp_ed448_hostkey->ed448_secret_keylen);
+    if (pkey == NULL) {
+      (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
+        "error initializing Ed448 private key: %s", sftp_crypto_get_errors());
+      return -1;
+    }
+
+    /* Use the secret key to get the public key. */
+    public_keylen = (CURVE448_SIZE * 2);
+    public_key = palloc(p, public_keylen);
+    if (EVP_PKEY_get_raw_public_key(pkey, public_key, &public_keylen) != 1) {
+      (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
+        "error obtaining Ed448 public key: %s", sftp_crypto_get_errors());
+      EVP_PKEY_free(pkey);
+      return -1;
+    }
+
     EVP_PKEY_free(pkey);
-    return -1;
+
+    sftp_ed448_hostkey->ed448_public_key = public_key;
+    sftp_ed448_hostkey->ed448_public_keylen = public_keylen;
+
+  } else {
+    char *pkey_type;
+    unsigned char *pkey_data, *public_key;
+    uint32_t pkey_datalen, public_keylen, res;
+
+    pkey_data = (unsigned char *) key_data;
+    pkey_datalen = key_datalen;
+
+    res = sftp_msg_read_string2(p, &pkey_data, &pkey_datalen, &pkey_type);
+    if (res == 0) {
+      return -1;
+    }
+
+    if (strcmp(pkey_type, "ssh-ed448") != 0) {
+      (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
+        "expected Ed448 key type from SSH agent key data, got '%s'", pkey_type);
+      errno = EINVAL;
+      return -1;
+    }
+
+    res = sftp_msg_read_int2(p, &pkey_data, &pkey_datalen, &public_keylen);
+    if (res == 0) {
+      return -1;
+    }
+
+    /* Ideally we would assert here that the public key length is the expected
+     * 57 bytes, per RFC 8709, Section 4.
+     */
+
+    public_key = palloc(p, public_keylen);
+    res = sftp_msg_read_data2(p, &pkey_data, &pkey_datalen, public_keylen,
+      &public_key);
+    if (res == 0) {
+      return -1;
+    }
+
+    sftp_ed448_hostkey->ed448_public_key = public_key;
+    sftp_ed448_hostkey->ed448_public_keylen = public_keylen;
   }
-
-  EVP_PKEY_free(pkey);
-
-  sftp_ed448_hostkey->ed448_public_key = public_key;
-  sftp_ed448_hostkey->ed448_public_keylen = public_keylen;
 
   sftp_ed448_hostkey->file_path = file_path;
   sftp_ed448_hostkey->agent_path = agent_path;
@@ -5250,15 +5307,20 @@ static const unsigned char *ed448_sign_data(pool *p,
   EVP_MD_CTX *md_ctx;
   EVP_PKEY *pkey;
 
-  /* XXX TODO ED448: Test this! */
-  /* At the moment, OpenSSH does not support Ed448 hostkeys, and thus neither
-   * does its ssh-agent.
-   */
   if (sftp_ed448_hostkey->agent_path != NULL) {
-    return agent_sign_data(p, sftp_ed448_hostkey->agent_path,
+    /* The SSH agent expects an SSH encoded Ed448 public key, not just the
+     * raw public key bytes.
+     */
+    buflen = bufsz = 4 + 9 + 4 + sftp_ed448_hostkey->ed448_public_keylen;
+    ptr = buf = palloc(p, bufsz);
+
+    sftp_msg_write_string(&buf, &buflen, "ssh-ed448");
+    sftp_msg_write_data(&buf, &buflen,
       sftp_ed448_hostkey->ed448_public_key,
-      sftp_ed448_hostkey->ed448_public_keylen,
-      data, datalen, siglen, 0);
+      sftp_ed448_hostkey->ed448_public_keylen, TRUE);
+
+    return agent_sign_data(p, sftp_ed448_hostkey->agent_path, ptr,
+      (bufsz - buflen), data, datalen, siglen, 0);
   }
 
   sig_buflen = sig_bufsz = datalen + 256;
