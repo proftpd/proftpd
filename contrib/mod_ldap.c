@@ -215,8 +215,10 @@ static int ldap_group_type_static = TRUE;
  */
 static int ldap_session_tracking = FALSE;
 
-/* Session tracking control OID (RFC 5646) */
-#define LDAP_CONTROL_SESSION	"1.3.6.1.4.1.4203.666.5.8"
+/* Session tracking control OID (RFC 5646 / OpenLDAP)
+ * OID: 1.3.6.1.4.1.21008.108.63.1
+ */
+#define LDAP_CONTROL_SESSION	"1.3.6.1.4.1.21008.108.63.1"
 
 static char *ldap_dn, *ldap_dnpass, *ldap_sasl_mechs = NULL,
             *ldap_user_basedn = NULL, *ldap_user_name_filter = NULL,
