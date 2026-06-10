@@ -3178,21 +3178,59 @@ MODRET xfer_type(cmd_rec *cmd) {
     type[0] = toupper((int) type[0]);
   }
 
-  if (strcmp(type, "A") == 0 ||
-      (cmd->argc == 3 &&
-       strcmp(type, "L") == 0 &&
-       strcmp(cmd->argv[2], "7") == 0)) {
+  if (strcmp(type, "A") == 0) {
+    if (cmd->argc == 3 &&
+        strcmp((char *) cmd->argv[2], "N") != 0) {
+      pr_response_add_err(R_504, _("%s not implemented for '%s' parameter"),
+      (char *) cmd->argv[0], (char *) cmd->argv[2]);
 
-    /* TYPE A(SCII) or TYPE L 7. */
+      pr_cmd_set_errno(cmd, ENOSYS);
+      errno = ENOSYS;
+      return PR_ERROR(cmd);
+    }
+
+    /* TYPE A(SCII). */
     session.sf_flags |= SF_ASCII;
 
-  } else if (strcmp(type, "I") == 0 ||
-      (cmd->argc == 3 &&
-       strcmp(type, "L") == 0 &&
-       strcmp(cmd->argv[2], "8") == 0)) {
+  } else if (strcmp(type, "I") == 0) {
+    if (cmd->argc == 3) {
+      pr_response_add_err(R_504, _("%s not implemented for '%s' parameter"),
+      (char *) cmd->argv[0], (char *) cmd->argv[2]);
 
-    /* TYPE I(MAGE) or TYPE L 8. */
+      pr_cmd_set_errno(cmd, ENOSYS);
+      errno = ENOSYS;
+      return PR_ERROR(cmd);
+    }
+
+    /* TYPE I(MAGE). */
     session.sf_flags &= (SF_ALL^(SF_ASCII|SF_ASCII_OVERRIDE));
+
+  } else if (strcmp(type, "L") == 0) {
+    if (cmd->argc == 2) {
+      pr_response_add_err(R_504, _("%s not implemented for '%s' parameter"),
+      (char *) cmd->argv[0], (char *) cmd->argv[1]);
+
+      pr_cmd_set_errno(cmd, ENOSYS);
+      errno = ENOSYS;
+      return PR_ERROR(cmd);
+    }
+
+    if (strcmp((char *) cmd->argv[2], "7") == 0) {
+      /* TYPE L 7. */
+      session.sf_flags |= SF_ASCII;
+
+    } else if (strcmp((char *) cmd->argv[2], "8") == 0) {
+      /* TYPE L 8. */
+      session.sf_flags &= (SF_ALL^(SF_ASCII|SF_ASCII_OVERRIDE));
+
+    } else {
+      pr_response_add_err(R_504, _("%s not implemented for '%s' parameter"),
+      (char *) cmd->argv[0], (char *) cmd->argv[2]);
+
+      pr_cmd_set_errno(cmd, ENOSYS);
+      errno = ENOSYS;
+      return PR_ERROR(cmd);
+    }
 
   } else {
     pr_response_add_err(R_504, _("%s not implemented for '%s' parameter"),
