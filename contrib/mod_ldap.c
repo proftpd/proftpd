@@ -291,25 +291,21 @@ static void pr_ldap_unbind(void) {
   ld = NULL;
 }
 
-/* Generate a unique session identifier for LDAP session tracking.
- * This ID is sent with each LDAP request via the Session Tracking Control,
- * allowing the LDAP server to log/correlation client sessions.
- *
- * Format: ProFTPD-session-<pid>-<timestamp>-<random>
+/* Get session identifier from mod_unique_id if available.
+ * The UNIQUE_ID environment variable is set by mod_unique_id.
+ * This provides a consistent, unique session ID across modules.
  */
-static void generate_session_id(pool *p) {
-  char pid_str[32], ts_str[32], rnd_str[32];
-  unsigned int rnd;
+static void get_session_id(pool *p) {
+  const char *unique_id;
 
-  snprintf(pid_str, sizeof(pid_str), "%lu", (unsigned long) getpid());
-  snprintf(ts_str, sizeof(ts_str), "%lu", (unsigned long) time(NULL));
+  unique_id = pr_env_get(p, "UNIQUE_ID");
+  if (unique_id == NULL) {
+    pr_trace_msg(trace_channel, 5,
+      "UNIQUE_ID environment variable not found (mod_unique_id not loaded?)");
+    return;
+  }
 
-  /* Generate random component */
-  srand((unsigned int) time(NULL) ^ (unsigned int) getpid());
-  rnd = (unsigned int) (rand() * 1000000.0 / (RAND_MAX + 1.0));
-  snprintf(rnd_str, sizeof(rnd_str), "%u", rnd);
-
-  ldap_session_id = pstrcat(p, "ProFTPD-session-", pid_str, "-", ts_str, "-", rnd_str, NULL);
+  ldap_session_id = pstrdup(p, unique_id);
 
   (void) pr_log_writefile(ldap_logfd, MOD_LDAP_VERSION,
     "LDAP session tracking enabled with session ID: %s", ldap_session_id);
@@ -4592,7 +4588,7 @@ static int ldap_sess_init(void) {
   if (ptr != NULL) {
     ldap_session_tracking = *((int *) ptr);
     if (ldap_session_tracking) {
-      generate_session_id(session.pool);
+      get_session_id(session.pool);
     }
   }
 
