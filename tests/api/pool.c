@@ -214,8 +214,15 @@ START_TEST (pool_pallocsz_test) {
   ck_assert_msg(p != NULL, "Failed to allocate parent pool");
 
   sz = 0;
+  v = pallocsz(NULL, sz);
+  ck_assert_msg(v == NULL, "Failed to handle null pool");
+  ck_assert_msg(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+    strerror(errno), errno);
+
   v = pallocsz(p, sz);
-  ck_assert_msg(v == NULL, "Allocated %lu-len memory", (unsigned long)sz);
+  ck_assert_msg(v == NULL, "Failed to handle zero size");
+  ck_assert_msg(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+    strerror(errno), errno);
 
   sz = 1;
   v = pallocsz(p, sz);
@@ -239,8 +246,15 @@ START_TEST (pool_pcalloc_test) {
   ck_assert_msg(p != NULL, "Failed to allocate parent pool");
 
   sz = 0;
+  v = pcalloc(NULL, sz);
+  ck_assert_msg(v == NULL, "Failed to handle null pool");
+  ck_assert_msg(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+    strerror(errno), errno);
+
   v = pcalloc(p, sz);
-  ck_assert_msg(v == NULL, "Allocated %lu-len memory", (unsigned long)sz);
+  ck_assert_msg(v == NULL, "Failed to handle zero size");
+  ck_assert_msg(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+    strerror(errno), errno);
 
   sz = 1;
   v = pcalloc(p, sz);
@@ -269,8 +283,15 @@ START_TEST (pool_pcallocsz_test) {
   ck_assert_msg(p != NULL, "Failed to allocate parent pool");
 
   sz = 0;
+  v = pcallocsz(NULL, sz);
+  ck_assert_msg(v == NULL, "Failed to handle null pool");
+  ck_assert_msg(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+    strerror(errno), errno);
+
   v = pcallocsz(p, sz);
-  ck_assert_msg(v == NULL, "Allocated %lu-len memory", (unsigned long)sz);
+  ck_assert_msg(v == NULL, "Failed to handle zero size");
+  ck_assert_msg(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+    strerror(errno), errno);
 
   sz = 1;
   v = pcallocsz(p, sz);

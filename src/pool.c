@@ -699,7 +699,8 @@ void *pallocsz(struct pool_rec *p, size_t sz) {
 void *pcalloc(struct pool_rec *p, size_t sz) {
   void *res;
 
-  if (p == NULL) {
+  if (p == NULL ||
+      sz == 0) {
     errno = EINVAL;
     return NULL;
   }
@@ -713,7 +714,8 @@ void *pcalloc(struct pool_rec *p, size_t sz) {
 void *pcallocsz(struct pool_rec *p, size_t sz) {
   void *res;
 
-  if (p == NULL) {
+  if (p == NULL ||
+      sz == 0) {
     errno = EINVAL;
     return NULL;
   }
