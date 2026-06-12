@@ -79,6 +79,12 @@ struct mlinfo {
   const char *real_path;
 };
 
+/* Allocate buffers large enough for long path names to appear twice, once
+ * as the symlink target for _e.g._ the UseSlink FactsOption, as well as
+ * additional facts.
+ */
+#define FACTS_MLINFO_BUFSZ	((PR_TUNABLE_PATH_MAX * 2) + 256)
+
 /* Necessary prototypes */
 static int facts_mlinfobuf_flush(void);
 static int facts_sess_init(void);
@@ -314,12 +320,24 @@ static size_t facts_mlinfo_fmt(struct mlinfo *info, char *buf, size_t bufsz,
       len = 0;
     }
 
+    if (len < 0) {
+      /* Buffer is full; ensure NUL termination. */
+      buf[bufsz-1] = '\0';
+      return bufsz-1;
+    }
+
     buflen += len;
     ptr = buf + buflen;
   }
 
   if (facts_opts & FACTS_OPT_SHOW_PERM) {
     len = pr_snprintf(ptr, bufsz - buflen, "perm=%s;", info->perm);
+    if (len < 0) {
+      /* Buffer is full; ensure NUL termination. */
+      buf[bufsz-1] = '\0';
+      return bufsz-1;
+    }
+
     buflen += len;
     ptr = buf + buflen;
   }
@@ -328,12 +346,24 @@ static size_t facts_mlinfo_fmt(struct mlinfo *info, char *buf, size_t bufsz,
       (facts_opts & FACTS_OPT_SHOW_SIZE)) {
     len = pr_snprintf(ptr, bufsz - buflen, "size=%" PR_LU ";",
       (pr_off_t) info->st.st_size);
+    if (len < 0) {
+      /* Buffer is full; ensure NUL termination. */
+      buf[bufsz-1] = '\0';
+      return bufsz-1;
+    }
+
     buflen += len;
     ptr = buf + buflen;
   }
 
   if (facts_opts & FACTS_OPT_SHOW_TYPE) {
     len = pr_snprintf(ptr, bufsz - buflen, "type=%s;", info->type);
+    if (len < 0) {
+      /* Buffer is full; ensure NUL termination. */
+      buf[bufsz-1] = '\0';
+      return bufsz-1;
+    }
+
     buflen += len;
     ptr = buf + buflen;
   }
@@ -341,6 +371,12 @@ static size_t facts_mlinfo_fmt(struct mlinfo *info, char *buf, size_t bufsz,
   if (facts_opts & FACTS_OPT_SHOW_UNIQUE) {
     len = pr_snprintf(ptr, bufsz - buflen, "unique=%lXU%lX;",
       (unsigned long) info->st.st_dev, (unsigned long) info->st.st_ino);
+    if (len < 0) {
+      /* Buffer is full; ensure NUL termination. */
+      buf[bufsz-1] = '\0';
+      return bufsz-1;
+    }
+
     buflen += len;
     ptr = buf + buflen;
   }
@@ -348,6 +384,12 @@ static size_t facts_mlinfo_fmt(struct mlinfo *info, char *buf, size_t bufsz,
   if (facts_opts & FACTS_OPT_SHOW_UNIX_GROUP) {
     len = pr_snprintf(ptr, bufsz - buflen, "UNIX.group=%s;",
       pr_gid2str(NULL, info->st.st_gid));
+    if (len < 0) {
+      /* Buffer is full; ensure NUL termination. */
+      buf[bufsz-1] = '\0';
+      return bufsz-1;
+    }
+
     buflen += len;
     ptr = buf + buflen;
   }
@@ -362,6 +404,12 @@ static size_t facts_mlinfo_fmt(struct mlinfo *info, char *buf, size_t bufsz,
       group = sreplace(info->pool, info->group, " ", "_", NULL);
 
       len = pr_snprintf(ptr, bufsz - buflen, "UNIX.groupname=%s;", group);
+      if (len < 0) {
+        /* Buffer is full; ensure NUL termination. */
+        buf[bufsz-1] = '\0';
+        return bufsz-1;
+      }
+
       buflen += len;
       ptr = buf + buflen;
     }
@@ -370,6 +418,12 @@ static size_t facts_mlinfo_fmt(struct mlinfo *info, char *buf, size_t bufsz,
   if (facts_opts & FACTS_OPT_SHOW_UNIX_MODE) {
     len = pr_snprintf(ptr, bufsz - buflen, "UNIX.mode=0%o;",
       (unsigned int) info->st.st_mode & 07777);
+    if (len < 0) {
+      /* Buffer is full; ensure NUL termination. */
+      buf[bufsz-1] = '\0';
+      return bufsz-1;
+    }
+
     buflen += len;
     ptr = buf + buflen;
   }
@@ -377,6 +431,12 @@ static size_t facts_mlinfo_fmt(struct mlinfo *info, char *buf, size_t bufsz,
   if (facts_opts & FACTS_OPT_SHOW_UNIX_OWNER) {
     len = pr_snprintf(ptr, bufsz - buflen, "UNIX.owner=%s;",
       pr_uid2str(NULL, info->st.st_uid));
+    if (len < 0) {
+      /* Buffer is full; ensure NUL termination. */
+      buf[bufsz-1] = '\0';
+      return bufsz-1;
+    }
+
     buflen += len;
     ptr = buf + buflen;
   }
@@ -391,6 +451,12 @@ static size_t facts_mlinfo_fmt(struct mlinfo *info, char *buf, size_t bufsz,
       user = sreplace(info->pool, info->user, " ", "_", NULL);
 
       len = pr_snprintf(ptr, bufsz - buflen, "UNIX.ownername=%s;", user);
+      if (len < 0) {
+        /* Buffer is full; ensure NUL termination. */
+        buf[bufsz-1] = '\0';
+        return bufsz-1;
+      }
+
       buflen += len;
       ptr = buf + buflen;
     }
@@ -403,6 +469,12 @@ static size_t facts_mlinfo_fmt(struct mlinfo *info, char *buf, size_t bufsz,
     if (mime_type != NULL) {
       len = pr_snprintf(ptr, bufsz - buflen, "media-type=%s;",
         mime_type);
+      if (len < 0) {
+        /* Buffer is full; ensure NUL termination. */
+        buf[bufsz-1] = '\0';
+        return bufsz-1;
+      }
+
       buflen += len;
       ptr = buf + buflen;
     }
@@ -416,7 +488,9 @@ static size_t facts_mlinfo_fmt(struct mlinfo *info, char *buf, size_t bufsz,
   }
 
   buf[bufsz-1] = '\0';
-  buflen += len;
+  if (len > 0) {
+    buflen += len;
+  }
 
   return buflen;
 }
@@ -457,7 +531,7 @@ static void facts_mlinfobuf_init(void) {
 }
 
 static int facts_mlinfobuf_add(struct mlinfo *info, int flags) {
-  char buf[PR_TUNABLE_BUFFER_SIZE];
+  char buf[FACTS_MLINFO_BUFSZ];
   size_t buflen;
 
   buflen = facts_mlinfo_fmt(info, buf, sizeof(buf), flags);
@@ -551,7 +625,7 @@ static int facts_mlinfo_get(struct mlinfo *info, const char *path,
   info->tm = pr_gmtime(info->pool, &(info->st.st_mtime));
 
   if (!S_ISDIR(info->st.st_mode)) {
-#ifdef S_ISLNK
+#if defined(S_ISLNK)
     if (S_ISLNK(info->st.st_mode)) {
       struct stat target_st;
       const char *dst_path;
@@ -684,7 +758,7 @@ static int facts_mlinfo_get(struct mlinfo *info, const char *path,
     }
 #else
     info->type = "file";
-#endif
+#endif /* S_ISLNK */
 
     if (pr_fsio_access(path, R_OK, session.uid, session.gid,
         session.gids) == 0) {
@@ -755,7 +829,7 @@ static int facts_mlinfo_get(struct mlinfo *info, const char *path,
 }
 
 static void facts_mlinfo_add(struct mlinfo *info, int flags) {
-  char buf[PR_TUNABLE_BUFFER_SIZE];
+  char buf[FACTS_MLINFO_BUFSZ];
 
   (void) facts_mlinfo_fmt(info, buf, sizeof(buf), flags);
 
