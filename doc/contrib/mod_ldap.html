@@ -42,15 +42,20 @@ questions, concerns, or suggestions regarding this module.
   <li><a href="#LDAPGenerateHomedir">LDAPGenerateHomedir</a>
   <li><a href="#LDAPGenerateHomedirPrefix">LDAPGenerateHomedirPrefix</a>
   <li><a href="#LDAPGenerateHomedirPrefixNoUsername">LDAPGenerateHomedirPrefixNoUsername</a>
+  <li><a href="#LDAPGroupMemberAttr">LDAPGroupMemberAttr</a>
   <li><a href="#LDAPGroups">LDAPGroups</a>
+  <li><a href="#LDAPGroupObjectClass">LDAPGroupObjectClass</a>
+  <li><a href="#LDAPGroupType">LDAPGroupType</a>
   <li><a href="#LDAPLog">LDAPLog</a>
   <li><a href="#LDAPProtocolVersion">LDAPProtocolVersion</a>
   <li><a href="#LDAPQueryTimeout">LDAPQueryTimeout</a>
   <li><a href="#LDAPSearchScope">LDAPSearchScope</a>
   <li><a href="#LDAPServer">LDAPServer</a>
+  <li><a href="#LDAPSessionTracking">LDAPSessionTracking</a>
   <li><a href="#LDAPUsers">LDAPUsers</a>
   <li><a href="#LDAPUseSASL">LDAPUseSASL</a>
   <li><a href="#LDAPUseTLS">LDAPUseTLS</a>
+  <li><a href="#LDAPUserObjectClass">LDAPUserObjectClass</a>
 </ul>
 
 <hr>
@@ -527,6 +532,123 @@ The attribute names used in the default search filters are taken from the
 <a href="#LDAPAttr"><code>LDAPAttr</code></a> directive.
 
 <p>
+See also: <a href="#LDAPGroupObjectClass"><code>LDAPGroupObjectClass</code></a>,
+<a href="#LDAPGroupMemberAttr"><code>LDAPGroupMemberAttr</code></a>,
+<a href="#LDAPGroupType"><code>LDAPGroupType</code></a>
+
+<p>
+<hr>
+<h3><a name="LDAPGroupMemberAttr">LDAPGroupMemberAttr</a></h3>
+<strong>Syntax:</strong> LDAPGroupMemberAttr <em>attr-name</em><br>
+<strong>Default:</strong> LDAPGroupMemberAttr memberUid<br>
+<strong>Context:</strong> server config, <code>&lt;VirtualHost&gt;</code>, <code>&lt;Global&gt;</code><br>
+<strong>Module:</strong> mod_ldap<br>
+<strong>Compatibility:</strong> 1.3.6 and later
+
+<p>
+The <code>LDAPGroupMemberAttr</code> directive specifies the LDAP attribute
+used for storing group membership. By default, <code>mod_ldap</code> uses
+<code>memberUid</code> which stores usernames (for POSIX groups).
+
+<p>
+For non-POSIX groups (e.g., <code>groupOfNames</code>, <code>groupOfMembers</code>),
+use <code>member</code> or <code>uniqueMember</code> which store full DNs instead
+of usernames.
+
+<p>
+Example for groupOfNames:
+<pre>
+  &lt;IfModule mod_ldap.c&gt;
+    LDAPGroupObjectClass groupOfNames
+    LDAPGroupMemberAttr member
+    LDAPGroups ou=groups,dc=example,dc=com
+  &lt;/IfModule&gt;
+</pre>
+
+<p>
+See also: <a href="#LDAPGroupObjectClass"><code>LDAPGroupObjectClass</code></a>,
+<a href="#LDAPGroupType"><code>LDAPGroupType</code></a>
+
+<p>
+<hr>
+<h3><a name="LDAPGroupObjectClass">LDAPGroupObjectClass</a></h3>
+<strong>Syntax:</strong> LDAPGroupObjectClass <em>objectclass-name</em><br>
+<strong>Default:</strong> LDAPGroupObjectClass posixGroup<br>
+<strong>Context:</strong> server config, <code>&lt;VirtualHost&gt;</code>, <code>&lt;Global&gt;</code><br>
+<strong>Module:</strong> mod_ldap<br>
+<strong>Compatibility:</strong> 1.3.6 and later
+
+<p>
+The <code>LDAPGroupObjectClass</code> directive specifies the LDAP objectClass
+used for group lookups. By default, <code>mod_ldap</code> uses <code>posixGroup</code>.
+
+<p>
+This directive allows integration with non-POSIX LDAP schemas:
+<ul>
+  <li><code>groupOfNames</code> - for simple groups storing member DNs
+  <li><code>groupOfMembers</code> - similar to groupOfNames
+  <li><code>groupOfURLs</code> - for dynamic groups using memberURL
+  <li><code>posixGroup</code> - default POSIX groups
+</ul>
+
+<p>
+Example for inetOrgPerson-based groups:
+<pre>
+  &lt;IfModule mod_ldap.c&gt;
+    LDAPGroupObjectClass groupOfNames
+    LDAPGroups ou=groups,dc=example,dc=com
+  &lt;/IfModule&gt;
+</pre>
+
+<p>
+See also: <a href="#LDAPGroupMemberAttr"><code>LDAPGroupMemberAttr</code></a>,
+<a href="#LDAPGroupType"><code>LDAPGroupType</code></a>
+
+<p>
+<hr>
+<h3><a name="LDAPGroupType">LDAPGroupType</a></h3>
+<strong>Syntax:</strong> LDAPGroupType <em>static|dynamic</em><br>
+<strong>Default:</strong> LDAPGroupType static<br>
+<strong>Context:</strong> server config, <code>&lt;VirtualHost&gt;</code>, <code>&lt;Global&gt;</code><br>
+<strong>Module:</strong> mod_ldap<br>
+<strong>Compatibility:</strong> 1.3.6 and later
+
+<p>
+The <code>LDAPGroupType</code> directive specifies whether groups are static
+or dynamic:
+
+<ul>
+  <li><strong>static</strong> (default) - Members are stored directly in a
+    member attribute (e.g., <code>memberUid</code>, <code>member</code>, <code>uniqueMember</code>)
+
+  <li><strong>dynamic</strong> - Members are determined by executing LDAP URLs
+    stored in the <code>memberURL</code> attribute (for <code>groupOfURLs</code>)
+</ul>
+
+<p>
+For dynamic groups (<code>groupOfURLs</code>), the module:
+<ol>
+  <li>Reads the <code>memberURL</code> attribute from the group entry
+  <li>Parses the LDAP URL to extract base DN, filter, and scope
+  <li>Executes the URL as a sub-search to resolve group members
+  <li>Recursively resolves nested groupOfURLs if needed
+</ol>
+
+<p>
+Example for dynamic groups:
+<pre>
+  &lt;IfModule mod_ldap.c&gt;
+    LDAPGroupObjectClass groupOfURLs
+    LDAPGroupType dynamic
+    LDAPGroups ou=groups,dc=example,dc=com
+  &lt;/IfModule&gt;
+</pre>
+
+<p>
+See also: <a href="#LDAPGroupObjectClass"><code>LDAPGroupObjectClass</code></a>,
+<a href="#LDAPGroupMemberAttr"><code>LDAPGroupMemberAttr</code></a>
+
+<p>
 <hr>
 <h3><a name="LDAPLog">LDAPLog</a></h3>
 <strong>Syntax:</strong> LDAPLog <em>file|"none"</em><br>
@@ -753,6 +875,46 @@ Note that filter templates are only supported in <code>mod_ldap</code>
 version 2.7 and later.
 
 <p>
+See also: <a href="#LDAPUserObjectClass"><code>LDAPUserObjectClass</code></a>
+
+<p>
+<hr>
+<h3><a name="LDAPSessionTracking">LDAPSessionTracking</a></h3>
+<strong>Syntax:</strong> LDAPSessionTracking <em>on|off</em><br>
+<strong>Default:</strong> LDAPSessionTracking off<br>
+<strong>Context:</strong> server config, <code>&lt;VirtualHost&gt;</code>, <code>&lt;Global&gt;</code><br>
+<strong>Module:</strong> mod_ldap<br>
+<strong>Compatibility:</strong> 1.3.6 and later
+
+<p>
+The <code>LDAPSessionTracking</code> directive enables LDAP Session Tracking
+Control (RFC 5646) for LDAP requests. When enabled, a session identifier is
+sent with each LDAP search request, allowing the LDAP server to log and
+correlate client sessions for debugging and troubleshooting.
+
+<p>
+This is particularly useful when clients are behind NAT (Network Address
+Translation) or load-balancers, as it allows you to identify specific clients
+in your LDAP server logs.
+
+<p>
+The session ID format is: <code>ProFTPD-session-&lt;pid&gt;-&lt;timestamp&gt;-&lt;random&gt;</code>
+
+<p>
+Example:
+<pre>
+  &lt;IfModule mod_ldap.c&gt;
+    LDAPServer ldap.example.com
+    LDAPUsers ou=users,dc=example,dc=com
+    LDAPSessionTracking on
+  &lt;/IfModule&gt;
+</pre>
+
+<p>
+<b>Note:</b> Your LDAP server must support the Session Tracking Control
+extension (OID: 1.3.6.1.4.1.4203.666.5.8) for this feature to be effective.
+
+<p>
 <hr>
 <h3><a name="LDAPUseSASL">LDAPUseSASL</a></h3>
 <strong>Syntax:</strong> LDAPUseSASL <em>mech1 ...</em><br>
@@ -820,6 +982,50 @@ to use an encrypted (TLS/SSL) connection to the LDAP server. If a secure
 connection to the LDAP server fails, <code>mod_ldap</code> will not
 authenticate users; <code>mod_ldap</code> will <b>not</b> fall back to an
 unsecure connection.
+
+<p>
+<hr>
+<h3><a name="LDAPUserObjectClass">LDAPUserObjectClass</a></h3>
+<strong>Syntax:</strong> LDAPUserObjectClass <em>objectclass-name</em><br>
+<strong>Default:</strong> LDAPUserObjectClass posixAccount<br>
+<strong>Context:</strong> server config, <code>&lt;VirtualHost&gt;</code>, <code>&lt;Global&gt;</code><br>
+<strong>Module:</strong> mod_ldap<br>
+<strong>Compatibility:</strong> 1.3.6 and later
+
+<p>
+The <code>LDAPUserObjectClass</code> directive specifies the LDAP objectClass
+used for user lookups. By default, <code>mod_ldap</code> uses <code>posixAccount</code>.
+
+<p>
+This directive allows integration with non-POSIX LDAP schemas:
+<ul>
+  <li><code>person</code> - Simple person object
+  <li><code>inetOrgPerson</code> - Internet organizational person (recommended)
+  <li><code>posixAccount</code> - Default POSIX account
+  <li><code>organizationalPerson</code> - Organizational person
+  <li><code>user</code> - Active Directory user object
+</ul>
+
+<p>
+Example for Active Directory:
+<pre>
+  &lt;IfModule mod_ldap.c&gt;
+    LDAPUserObjectClass person
+    LDAPUsers ou=users,dc=example,dc=com
+  &lt;/IfModule&gt;
+</pre>
+
+<p>
+Example for inetOrgPerson:
+<pre>
+  &lt;IfModule mod_ldap.c&gt;
+    LDAPUserObjectClass inetOrgPerson
+    LDAPUsers ou=people,dc=example,dc=com
+  &lt;/IfModule&gt;
+</pre>
+
+<p>
+See also: <a href="#LDAPUsers"><code>LDAPUsers</code></a>
 
 <p>
 <hr>
