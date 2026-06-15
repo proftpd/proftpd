@@ -548,6 +548,7 @@ END_TEST
 
 START_TEST (scoreboard_scrub_test) {
   uid_t euid;
+  pid_t pid;
   int res;
 
   res = mkdir(test_dir, 0775);
@@ -583,6 +584,31 @@ START_TEST (scoreboard_scrub_test) {
   res = pr_open_scoreboard(O_RDWR);
   ck_assert_msg(res == 0, "Failed to open scoreboard: %s", strerror(errno));
 
+  mark_point();
+  res = pr_scoreboard_scrub();
+  ck_assert_msg(res == 0, "Failed to scrub scoreboard: %s", strerror(errno));
+
+  mark_point();
+  res = pr_scoreboard_entry_add();
+  ck_assert_msg(res == 0, "Failed to add entry to scoreboard: %s",
+    strerror(errno));
+
+  mark_point();
+  pid = getpid();
+  res = pr_scoreboard_entry_update(pid, PR_SCORE_CLIENT_NAME, NULL, NULL);
+  ck_assert_msg(res == 0, "Failed to update PR_SCORE_CLIENT_NAME: %s",
+    strerror(errno));
+
+  mark_point();
+  res = pr_scoreboard_scrub();
+  ck_assert_msg(res == 0, "Failed to scrub scoreboard: %s", strerror(errno));
+
+  mark_point();
+  res = pr_scoreboard_entry_del(FALSE);
+  ck_assert_msg(res == 0, "Failed to delete entry from scoreboard: %s",
+    strerror(errno));
+
+  mark_point();
   res = pr_scoreboard_scrub();
   ck_assert_msg(res == 0, "Failed to scrub scoreboard: %s", strerror(errno));
 
