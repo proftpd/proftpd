@@ -754,14 +754,19 @@ static int ctrls_timer_cb(CALLBACK_FRAME) {
   }
 
   if (first_time == TRUE) {
-    /* Change the ownership on the socket to that configured by the admin */
+    int res, xerrno;
+
+    /* Change the ownership on the socket to that configured by the admin. */
     PRIVS_ROOT
-    if (chown(ctrls_sock_file, ctrls_sock_uid, ctrls_sock_gid) < 0) {
+    res = chown(ctrls_sock_file, ctrls_sock_uid, ctrls_sock_gid);
+    xerrno = errno;
+    PRIVS_RELINQUISH
+
+    if (res < 0) {
       pr_log_pri(PR_LOG_NOTICE, MOD_CTRLS_VERSION
         ": unable to chown local socket %s: %s", ctrls_sock_file,
-        strerror(errno));
+        strerror(xerrno));
     }
-    PRIVS_RELINQUISH
 
     first_time = FALSE;
   }
