@@ -136,6 +136,14 @@ START_TEST (redis_conn_new_test) {
   ck_assert_msg(errno == EIO, "Expected EIO (%d), got %s (%d)", EIO,
     strerror(errno), errno);
 
+  /* Deliberately use a nonexistent path for the Unix socket use case. */
+  redis_set_server("/path/to/redis", redis_port, 0UL, NULL, NULL);
+  mark_point();
+  redis = pr_redis_conn_new(p, NULL, 0);
+  ck_assert_msg(redis == NULL, "Failed to handle invalid Unix socket path");
+  ck_assert_msg(errno == EIO, "Expected EIO (%d), got %s (%d)", EIO,
+    strerror(errno), errno);
+
   /* Restore our testing server/port. */
   redis_set_server(redis_server, redis_port, 0UL, NULL, NULL);
 }

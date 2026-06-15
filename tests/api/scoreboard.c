@@ -787,6 +787,18 @@ START_TEST (scoreboard_entry_del_test) {
   ck_assert_msg(errno == ENOENT, "Expected ENOENT (%d), got %s (%d)", ENOENT,
     strerror(errno), errno);
 
+  /* Add another entry; we should reuse the previously written (and zeroed out)
+   * record/entry.
+   */
+  mark_point();
+  res = pr_scoreboard_entry_add();
+  ck_assert_msg(res == 0, "Failed to add entry to scoreboard: %s",
+    strerror(errno));
+
+  res = pr_scoreboard_entry_del(FALSE);
+  ck_assert_msg(res == 0, "Failed to delete entry from scoreboard: %s",
+    strerror(errno));
+
   (void) unlink(test_mutex);
   (void) unlink(test_file);
   (void) rmdir(test_dir);
