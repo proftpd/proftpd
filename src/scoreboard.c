@@ -331,11 +331,6 @@ static int wlock_entry(int fd) {
 static int write_entry(int fd) {
   int res;
 
-  if (fd < 0) {
-    errno = EINVAL;
-    return -1;
-  }
-
 #if !defined(HAVE_PWRITE)
   if (lseek(fd, entry_lock.l_start, SEEK_SET) < 0) {
     return -1;
