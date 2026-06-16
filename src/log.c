@@ -526,11 +526,11 @@ static void log_write(int priority, int f, char *s, int discard) {
     remote_name = pr_netaddr_get_sess_remote_name();
 
     if (log_opts & PR_LOG_OPT_USE_VHOST) {
-      size_t len;
+      int len;
 
       len = pr_snprintf(serverinfo, sizeof(serverinfo)-1, "%s",
         main_server->ServerFQDN);
-      buflen += len;
+      buflen += (size_t) len;
     }
 
     serverinfo[sizeof(serverinfo)-1] = '\0';
@@ -547,12 +547,13 @@ static void log_write(int priority, int f, char *s, int discard) {
   if (!discard &&
       (logstderr || !main_server)) {
     char buf[LOGBUFFER_SIZE] = {'\0'};
-    size_t buflen = 0, len = 0;
+    size_t buflen = 0;
     pid_t log_pid;
     const char *process_label = "proftpd";
 
     if (log_opts & PR_LOG_OPT_USE_TIMESTAMP) {
       pool *tmp_pool;
+      size_t len;
 
       tmp_pool = make_sub_pool(permanent_pool);
       pr_pool_tag(tmp_pool, "Log message pool");
@@ -566,15 +567,17 @@ static void log_write(int priority, int f, char *s, int discard) {
     buf[sizeof(buf)-1] = '\0';
 
     if (log_opts & PR_LOG_OPT_USE_HOSTNAME) {
+      int len;
+
       len = pr_snprintf(buf + buflen, sizeof(buf) - buflen, "%s ",
         systemlog_host);
-      buflen += len;
+      buflen += (size_t) len;
     }
 
     log_pid = session.pid ? session.pid : getpid();
 
     if (log_opts & PR_LOG_OPT_USE_ROLE_BASED_PROCESS_LABELS) {
-      if (is_master) {
+      if (is_master == TRUE) {
         process_label = "daemon";
 
       } else {
@@ -583,16 +586,31 @@ static void log_write(int priority, int f, char *s, int discard) {
     }
 
     if (*serverinfo) {
+      int len;
+
       len = pr_snprintf(buf + buflen, sizeof(buf) - buflen,
         "%s[%u] %s: %s\n", process_label, (unsigned int) log_pid, serverinfo,
         s);
+      if (len < 0) {
+        buflen = sizeof(buf)-1;
+
+      } else {
+        buflen += (size_t) len;
+      }
 
     } else {
+      int len;
+
       len = pr_snprintf(buf + buflen, sizeof(buf) - buflen,
         "%s[%u]: %s\n", process_label, (unsigned int) log_pid, s);
+      if (len < 0) {
+        buflen = sizeof(buf)-1;
+
+      } else {
+        buflen += (size_t) len;
+      }
     }
 
-    buflen += len;
     buf[sizeof(buf)-1] = '\0';
 
     pr_log_event_generate(PR_LOG_TYPE_SYSTEMLOG, STDERR_FILENO, priority,
@@ -603,7 +621,7 @@ static void log_write(int priority, int f, char *s, int discard) {
     return;
   }
 
-  if (syslog_discard) {
+  if (syslog_discard == TRUE) {
     /* Only return now if we don't have any log listeners. */
     if (pr_log_event_listening(PR_LOG_TYPE_SYSLOG) <= 0 &&
         pr_log_event_listening(PR_LOG_TYPE_SYSTEMLOG) <= 0) {
@@ -640,12 +658,13 @@ static void log_write(int priority, int f, char *s, int discard) {
 
   if (systemlog_fd != -1) {
     char buf[LOGBUFFER_SIZE] = {'\0'};
-    size_t buflen = 0, len = 0;
+    size_t buflen = 0;
     pid_t log_pid;
     const char *process_label = "proftpd";
 
     if (log_opts & PR_LOG_OPT_USE_TIMESTAMP) {
       pool *tmp_pool;
+      size_t len;
 
       tmp_pool = make_sub_pool(permanent_pool);
       pr_pool_tag(tmp_pool, "Log message pool");
@@ -659,15 +678,17 @@ static void log_write(int priority, int f, char *s, int discard) {
     buf[sizeof(buf) - 1] = '\0';
 
     if (log_opts & PR_LOG_OPT_USE_HOSTNAME) {
+      int len;
+
       len = pr_snprintf(buf + buflen, sizeof(buf) - buflen, "%s ",
         systemlog_host);
-      buflen += len;
+      buflen += (size_t) len;
     }
 
     log_pid = session.pid ? session.pid : getpid();
 
     if (log_opts & PR_LOG_OPT_USE_ROLE_BASED_PROCESS_LABELS) {
-      if (is_master) {
+      if (is_master == TRUE) {
         process_label = "daemon";
 
       } else {
@@ -676,16 +697,31 @@ static void log_write(int priority, int f, char *s, int discard) {
     }
 
     if (*serverinfo) {
+      int len;
+
       len = pr_snprintf(buf + buflen, sizeof(buf) - buflen,
         "%s[%u] %s: %s\n", process_label, (unsigned int) log_pid, serverinfo,
         s);
+      if (len < 0) {
+        buflen = sizeof(buf)-1;
+
+      } else {
+        buflen += (size_t) len;
+      }
 
     } else {
+      int len;
+
       len = pr_snprintf(buf + buflen, sizeof(buf) - buflen,
         "%s[%u]: %s\n", process_label, (unsigned int) log_pid, s);
+      if (len < 0) {
+        buflen = sizeof(buf)-1;
+
+      } else {
+        buflen += (size_t) len;
+      }
     }
 
-    buflen += len;
     buf[sizeof(buf)-1] = '\0';
 
     pr_log_event_generate(PR_LOG_TYPE_SYSTEMLOG, systemlog_fd, priority,
@@ -694,11 +730,11 @@ static void log_write(int priority, int f, char *s, int discard) {
     /* Now we need to enforce the discard, syslog_discard and SyslogLevel
      * filtering.
      */
-    if (discard) {
+    if (discard == TRUE) {
       return;
     }
 
-    if (syslog_discard) {
+    if (syslog_discard == TRUE) {
       return;
     }
 
