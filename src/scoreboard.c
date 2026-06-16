@@ -790,8 +790,8 @@ int pr_set_scoreboard(const char *path) {
   /* For best operability, automatically set the ScoreboardMutex file to
    * be the same as the ScoreboardFile with a ".lck" suffix.
    */
-  sstrncpy(scoreboard_mutex, path, sizeof(scoreboard_file));
-  strncat(scoreboard_mutex, ".lck", sizeof(scoreboard_mutex)-strlen(path)-1);
+  sstrncpy(scoreboard_mutex, path, sizeof(scoreboard_mutex));
+  sstrcat(scoreboard_mutex, ".lck", sizeof(scoreboard_mutex));
 
   return 0;
 }
