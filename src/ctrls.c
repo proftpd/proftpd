@@ -1917,7 +1917,7 @@ int pr_run_ctrls(module *mod, const char *action) {
 }
 
 int pr_ctrls_reset(void) {
-  pr_ctrls_t *ctrl = NULL;
+  pr_ctrls_t *ctrl = NULL, *next_ctrl = NULL;
 
   /* NOTE: need a clean_ctrls() or somesuch that will, after sending any
    * responses, iterate through the list and "free" any ctrls whose
@@ -1937,7 +1937,9 @@ int pr_ctrls_reset(void) {
    *                             -1  processed, error (reset)
    */
 
-  for (ctrl = ctrls_active_list; ctrl; ctrl = ctrl->ctrls_next) {
+  for (ctrl = ctrls_active_list; ctrl; ctrl = next_ctrl) {
+    next_ctrl = ctrl->ctrls_next;
+
     if (ctrl->ctrls_cb_retval < PR_CTRLS_STATUS_PENDING) {
       pr_ctrls_free(ctrl);
     }
