@@ -25,11 +25,11 @@
 
 #include "conf.h"
 
-#ifdef PR_USE_REDIS
+#if defined(PR_USE_REDIS)
 
 #include <hiredis/hiredis.h>
 
-#ifdef HAVE_HIREDIS_HIREDIS_SSL_H
+#if defined(HAVE_HIREDIS_HIREDIS_SSL_H)
 # include <hiredis/hiredis_ssl.h>
 #endif /* HAVE_HIREDIS_HIREDIS_SSL_H */
 
@@ -37,7 +37,7 @@
 # define PR_USE_REDIS_SSL
 #endif /* HAVE_HIREDIS_REDISINITIATESSL */
 
-#ifndef REDIS_CONNECT_RETRIES
+#if !defined(REDIS_CONNECT_RETRIES)
 # define REDIS_CONNECT_RETRIES	10
 #endif /* REDIS_CONNECT_RETRIES */
 
@@ -98,42 +98,42 @@ static void millis2timeval(struct timeval *tv, unsigned long millis) {
   tv->tv_usec = (millis - (tv->tv_sec * 1000)) * 1000;
 }
 
-static const char *redis_strerror(pool *p, pr_redis_t *redis, int rerrno) {
-  const char *err;
+static const char *redis_strerror(pool *p, redisContext *ctx, int rerrno) {
+  const char *err_text;
 
-  switch (redis->ctx->err) {
+  switch (ctx->err) {
     case REDIS_ERR_IO:
-      err = pstrcat(p, "[io] ", strerror(rerrno), NULL);
+      err_text = pstrcat(p, "[io] ", strerror(rerrno), NULL);
       break;
 
     case REDIS_ERR_EOF:
-      err = pstrcat(p, "[eof] ", redis->ctx->errstr, NULL);
+      err_text = pstrcat(p, "[eof] ", ctx->errstr, NULL);
       break;
 
     case REDIS_ERR_PROTOCOL:
-      err = pstrcat(p, "[protocol] ", redis->ctx->errstr, NULL);
+      err_text = pstrcat(p, "[protocol] ", ctx->errstr, NULL);
       break;
 
     case REDIS_ERR_OOM:
-      err = pstrcat(p, "[oom] ", redis->ctx->errstr, NULL);
+      err_text = pstrcat(p, "[oom] ", ctx->errstr, NULL);
       break;
 
     case REDIS_ERR_OTHER:
-      err = pstrcat(p, "[other] ", redis->ctx->errstr, NULL);
+      err_text = pstrcat(p, "[other] ", ctx->errstr, NULL);
       break;
 
     case REDIS_OK:
     default:
-      err = "OK";
+      err_text = "OK";
       break;
   }
 
-  return err;
+  return err_text;
 }
 
 static int conn_reconnect(pool *p, pr_redis_t *redis) {
   int xerrno = 0;
-#ifdef HAVE_HIREDIS_REDISRECONNECT
+#if defined(HAVE_HIREDIS_REDISRECONNECT)
   register unsigned int i;
 
   if (redis->flags & PR_REDIS_CONN_FL_NO_RECONNECT) {
@@ -160,7 +160,7 @@ static int conn_reconnect(pool *p, pr_redis_t *redis) {
     }
 
     pr_trace_msg(trace_channel, 9, "attempt #%u to reconnect failed: %s",
-      i+ 1, redis_strerror(p, redis, xerrno));
+      i+ 1, redis_strerror(p, redis->ctx, xerrno));
   }
 #else
   xerrno = ENOSYS;
@@ -182,7 +182,7 @@ static redisReply *handle_reply(pr_redis_t *redis, const char *cmd,
   xerrno = errno;
   tmp_pool = make_sub_pool(redis->pool);
   pr_trace_msg(trace_channel, 2, "error executing %s command: %s", cmd,
-    redis_strerror(tmp_pool, redis, xerrno));
+    redis_strerror(tmp_pool, redis->ctx, xerrno));
 
   if (redis->ctx->err == REDIS_ERR_IO ||
       redis->ctx->err == REDIS_ERR_EOF) {
@@ -324,7 +324,7 @@ static int set_conn_options(pr_redis_t *redis) {
   if (res == REDIS_ERR) {
     pr_trace_msg(trace_channel, 4,
       "error setting %lu ms timeout: %s", redis_io_millis,
-      redis_strerror(tmp_pool, redis, xerrno));
+      redis_strerror(tmp_pool, redis->ctx, xerrno));
   }
 
 #if HIREDIS_MAJOR >= 0 && \
@@ -334,7 +334,8 @@ static int set_conn_options(pr_redis_t *redis) {
 
   if (res == REDIS_ERR) {
     pr_trace_msg(trace_channel, 4,
-      "error setting keepalive: %s", redis_strerror(tmp_pool, redis, xerrno));
+      "error setting keepalive: %s",
+      redis_strerror(tmp_pool, redis->ctx, xerrno));
   }
 #endif /* HiRedis 0.12.0 and later */
 
@@ -375,49 +376,22 @@ static pr_redis_t *make_redis_conn(pool *p, const char *host, int port,
   }
 
   if (ctx->err != 0) {
-    const char *err_type, *err_msg;
+    pool *tmp_pool;
 
-    switch (ctx->err) {
-      case REDIS_ERR_IO:
-        err_type = "io";
-        err_msg = strerror(xerrno);
-        break;
-
-      case REDIS_ERR_EOF:
-        err_type = "eof";
-        err_msg = ctx->errstr;
-        break;
-
-      case REDIS_ERR_PROTOCOL:
-        err_type = "protocol";
-        err_msg = ctx->errstr;
-        break;
-
-      case REDIS_ERR_OOM:
-        err_type = "oom";
-        err_msg = ctx->errstr;
-        break;
-
-      case REDIS_ERR_OTHER:
-        err_type = "other";
-        err_msg = ctx->errstr;
-        break;
-
-      default:
-        err_type = "unknown";
-        err_msg = ctx->errstr;
-        break;
-    }
+    tmp_pool = make_sub_pool(p);
 
     if (uses_ip == TRUE) {
       pr_trace_msg(trace_channel, 3,
-        "error connecting to %s#%d: [%s] %s", host, port, err_type, err_msg);
+        "error connecting to %s#%d: %s", host, port,
+        redis_strerror(tmp_pool, ctx, xerrno));
 
     } else {
       pr_trace_msg(trace_channel, 3,
-        "error connecting to '%s': [%s] %s", host, err_type, err_msg);
+        "error connecting to '%s': %s", host,
+        redis_strerror(tmp_pool, ctx, xerrno));
     }
 
+    destroy_pool(tmp_pool);
     redisFree(ctx);
     errno = EIO;
     return NULL;
