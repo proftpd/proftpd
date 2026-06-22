@@ -140,7 +140,13 @@ void pr_session_disconnect(module *m, int reason_code,
 void pr_session_end(int flags) {
   int exitcode = 0;
 
+  /* We already know that the session process is ending; we don't need to
+   * worry about handling signals which might lead to process termination
+   * anymore at this point.
+   */
+  pr_signals_block();
   sess_cleanup(flags);
+  pr_signals_unblock();
 
   if (flags & PR_SESS_END_FL_NOEXIT) {
     return;
@@ -151,9 +157,13 @@ void pr_session_end(int flags) {
   }
 
 #if defined(PR_USE_DEVEL)
+  pr_signals_block();
   destroy_pool(session.pool);
+  session.pool = NULL;
+  session.notes = NULL;
+  pr_signals_unblock();
 
-  if (is_master) {
+  if (is_master == TRUE) {
     main_server = NULL;
     pr_signals_block();
     free_pools();
