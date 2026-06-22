@@ -264,13 +264,20 @@ static char *get_cmd_from_list(char **list) {
 
 static int xfer_check_limit(cmd_rec *cmd) {
   config_rec *c = NULL;
-  const char *client_addr = pr_netaddr_get_ipstr(session.c->remote_addr);
-  char server_addr[128];
+  const char *client_addr, *server_addr;
+  char server_addr_buf[128];
 
-  memset(server_addr, '\0', sizeof(server_addr));
-  pr_snprintf(server_addr, sizeof(server_addr)-1, "%s:%d",
-    pr_netaddr_get_ipstr(main_server->addr), main_server->ServerPort);
-  server_addr[sizeof(server_addr)-1] = '\0';
+  server_addr = pr_netaddr_get_ipstr(main_server->addr);
+  if (strcmp(server_addr, "0.0.0.0") == 0) {
+    server_addr = pr_netaddr_get_ipstr(session.c->local_addr);
+  }
+
+  memset(server_addr_buf, '\0', sizeof(server_addr_buf));
+  pr_snprintf(server_addr_buf, sizeof(server_addr_buf)-1, "%s:%d", server_addr,
+    main_server->ServerPort);
+  server_addr_buf[sizeof(server_addr_buf)-1] = '\0';
+
+  client_addr = pr_netaddr_get_ipstr(session.c->remote_addr);
 
   c = find_config(CURRENT_CONF, CONF_PARAM, "MaxTransfersPerHost", FALSE);
   while (c != NULL) {
@@ -311,10 +318,10 @@ static int xfer_check_limit(cmd_rec *cmd) {
       /* Scoreboard entry must match local server address and remote client
        * address to be counted.
        */
-      if (strcmp(score->sce_server_addr, server_addr) != 0) {
+      if (strcmp(score->sce_server_addr, server_addr_buf) != 0) {
         pr_trace_msg(trace_channel, 25,
           "MaxTransfersPerHost: server address '%s' does not match '%s', "
-          "skipping", server_addr, score->sce_server_addr);
+          "skipping", server_addr_buf, score->sce_server_addr);
         continue;
       }
 
@@ -402,10 +409,10 @@ static int xfer_check_limit(cmd_rec *cmd) {
     while ((score = pr_scoreboard_entry_read()) != NULL) {
       pr_signals_handle();
 
-      if (strcmp(score->sce_server_addr, server_addr) != 0) {
+      if (strcmp(score->sce_server_addr, server_addr_buf) != 0) {
         pr_trace_msg(trace_channel, 25,
           "MaxTransfersPerUser: server address '%s' does not match '%s', "
-          "skipping", server_addr, score->sce_server_addr);
+          "skipping", server_addr_buf, score->sce_server_addr);
         continue;
       }
 
@@ -416,7 +423,7 @@ static int xfer_check_limit(cmd_rec *cmd) {
         continue;
       }
 
-      if (strcmp(score->sce_cmd, xfer_cmd) == 0) {
+      if (strcmp(score->sce_cmd, xfer_cmd) != 0) {
         pr_trace_msg(trace_channel, 25,
           "MaxTransfersPerUser: command '%s' does not match '%s', skipping",
           xfer_cmd, score->sce_cmd);
