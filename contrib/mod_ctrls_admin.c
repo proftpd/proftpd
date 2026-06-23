@@ -368,6 +368,14 @@ static int ctrls_handle_config_remove(pr_ctrls_t *ctrl, int reqargc,
 static int ctrls_handle_config(pr_ctrls_t *ctrl, int reqargc,
     char **reqargv) {
 
+  /* Check the config ACL */
+  if (pr_ctrls_check_acl(ctrl, ctrls_admin_acttab, "config") != TRUE) {
+
+    /* Access denied */
+    pr_ctrls_add_response(ctrl, "access denied");
+    return PR_CTRLS_STATUS_ACCESS_DENIED;
+  }
+
   /* Sanity check */
   if (reqargc == 0 ||
       reqargv == NULL) {
@@ -377,8 +385,9 @@ static int ctrls_handle_config(pr_ctrls_t *ctrl, int reqargc,
 
   if (strcmp(reqargv[0], "set") == 0) {
     return ctrls_handle_config_set(ctrl, --reqargc, ++reqargv);
+  }
 
-  } else if (strcmp(reqargv[0], "remove") == 0) {
+  if (strcmp(reqargv[0], "remove") == 0) {
     return ctrls_handle_config_remove(ctrl, --reqargc, ++reqargv);
   }
 
@@ -392,6 +401,7 @@ static int ctrls_handle_debug(pr_ctrls_t *ctrl, int reqargc,
 
   /* Check the debug ACL */
   if (pr_ctrls_check_acl(ctrl, ctrls_admin_acttab, "debug") != TRUE) {
+
     /* Access denied */
     pr_ctrls_add_response(ctrl, "access denied");
     return PR_CTRLS_STATUS_ACCESS_DENIED;
@@ -553,6 +563,7 @@ static int ctrls_handle_down(pr_ctrls_t *ctrl, int reqargc,
 
   /* Check the 'down' ACL */
   if (pr_ctrls_check_acl(ctrl, ctrls_admin_acttab, "down") != TRUE) {
+
     /* Access denied */
     pr_ctrls_add_response(ctrl, "access denied");
     return PR_CTRLS_STATUS_ACCESS_DENIED;
@@ -608,6 +619,14 @@ static int ctrls_handle_down(pr_ctrls_t *ctrl, int reqargc,
 
 static int ctrls_handle_get(pr_ctrls_t *ctrl, int reqargc,
     char **reqargv) {
+
+  /* Check the get ACL */
+  if (pr_ctrls_check_acl(ctrl, ctrls_admin_acttab, "get") != TRUE) {
+
+    /* Access denied */
+    pr_ctrls_add_response(ctrl, "access denied");
+    return PR_CTRLS_STATUS_ACCESS_DENIED;
+  }
 
   /* Sanity check */
   if (reqargc == 0 ||
