@@ -6337,8 +6337,6 @@ static int fxp_handle_ext_flistxattr(struct fxp_packet *fxp,
     sftp_msg_write_string(&buf, &buflen, name);
   }
 
-  sftp_msg_write_data(&buf, &buflen, (const unsigned char *) names, res, TRUE);
-
   resp = fxp_packet_create(fxp->pool, fxp->channel_id);
   resp->payload = ptr;
   resp->payload_sz = (bufsz - buflen);
