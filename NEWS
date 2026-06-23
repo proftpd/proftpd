@@ -24,6 +24,8 @@
 - Issue 2158 - MaxTransfersPerUser no longer enforces configured limits.
 - Issue 2163 - AdminControlsACLs for config, get actions not honored as they
   should be.
+- Issue 2166 - Memcached/Redis-cached JSON TLS session/OCSP entries decoded
+  into fixed buffers without bounds checking.
 
 1.3.10rc2 - Released 02-Jun-2026
 --------------------------------
