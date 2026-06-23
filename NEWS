@@ -22,6 +22,8 @@
   argument instead of returning an error.
 - Issue 2146 - Stack buffer overflow in MLSD/MLST handling for long path names.
 - Issue 2158 - MaxTransfersPerUser no longer enforces configured limits.
+- Issue 2163 - AdminControlsACLs for config, get actions not honored as they
+  should be.
 
 1.3.10rc2 - Released 02-Jun-2026
 --------------------------------
