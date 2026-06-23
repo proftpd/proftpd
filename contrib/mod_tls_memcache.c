@@ -404,10 +404,17 @@ static int sess_cache_entry_decode_json(pool *p, void *value, size_t valuesz,
   }
 
   json = pr_json_object_from_text(p, entry);
+  if (json == NULL) {
+    return -1;
+  }
 
   key = SESS_CACHE_JSON_KEY_EXPIRES;
   res = entry_get_json_number(p, json, key, &number, entry);
   if (res < 0) {
+    int xerrno = errno;
+
+    (void) pr_json_object_free(json);
+    errno = xerrno;
     return -1;
   }
   se->expires = (uint32_t) number;
@@ -415,10 +422,14 @@ static int sess_cache_entry_decode_json(pool *p, void *value, size_t valuesz,
   key = SESS_CACHE_JSON_KEY_DATA;
   res = entry_get_json_string(p, json, key, &text, entry);
   if (res == 0) {
+    pool *tmp_pool = NULL;
     int have_padding = FALSE;
     char *base64_data;
     size_t base64_datalen;
     unsigned char *data;
+
+    tmp_pool = make_sub_pool(p);
+    pr_pool_tag(tmp_pool, "TLS Memcache session cache base64 data pool");
 
     base64_data = text;
     base64_datalen = strlen(base64_data);
@@ -433,7 +444,7 @@ static int sess_cache_entry_decode_json(pool *p, void *value, size_t valuesz,
       have_padding = TRUE;
     }
 
-    data = se->sess_data;
+    data = palloc(tmp_pool, base64_datalen);
     res = EVP_DecodeBlock(data, (unsigned char *) base64_data,
       (int) base64_datalen);
     if (res <= 0) {
@@ -441,11 +452,13 @@ static int sess_cache_entry_decode_json(pool *p, void *value, size_t valuesz,
       pr_trace_msg(trace_channel, 5,
         "error base64-decoding session data in '%s', rejecting", entry);
       (void) pr_json_object_free(json);
+
+      destroy_pool(tmp_pool);
       errno = EINVAL;
       return -1;
     }
 
-    if (have_padding) {
+    if (have_padding == TRUE) {
       /* Assume that only one or two zero bytes of padding were added. */
       if (data[res-1] == '\0') {
         res -= 1;
@@ -455,13 +468,38 @@ static int sess_cache_entry_decode_json(pool *p, void *value, size_t valuesz,
         }
       }
     }
+
+    if (res <= TLS_MAX_SSL_SESSION_SIZE) {
+      /* Base64-decoded data will fit into our buffer as expected. */
+      memcpy(se->sess_data, data, res);
+
+    } else {
+      tls_log(MOD_TLS_MEMCACHE_VERSION
+        ": decoded JSON session cache entry too large, ignoring");
+      (void) pr_json_object_free(json);
+
+      destroy_pool(tmp_pool);
+      errno = EINVAL;
+      return -1;
+    }
+
+    destroy_pool(tmp_pool);
+
   } else {
+    int xerrno = errno;
+
+    (void) pr_json_object_free(json);
+    errno = xerrno;
     return -1;
   }
 
   key = SESS_CACHE_JSON_KEY_DATA_LENGTH;
   res = entry_get_json_number(p, json, key, &number, entry);
   if (res < 0) {
+    int xerrno = errno;
+
+    (void) pr_json_object_free(json);
+    errno = xerrno;
     return -1;
   }
   se->sess_datalen = (unsigned int) number;
@@ -1300,10 +1338,17 @@ static int ocsp_cache_entry_decode_json(pool *p, void *value, size_t valuesz,
   }
 
   json = pr_json_object_from_text(p, entry);
+  if (json == NULL) {
+    return -1;
+  }
 
   key = OCSP_CACHE_JSON_KEY_AGE;
   res = entry_get_json_number(p, json, key, &number, entry);
   if (res < 0) {
+    int xerrno = errno;
+
+    (void) pr_json_object_free(json);
+    errno = xerrno;
     return -1;
   }
   oe->age = (uint32_t) number;
@@ -1311,10 +1356,14 @@ static int ocsp_cache_entry_decode_json(pool *p, void *value, size_t valuesz,
   key = OCSP_CACHE_JSON_KEY_RESPONSE;
   res = entry_get_json_string(p, json, key, &text, entry);
   if (res == 0) {
+    pool *tmp_pool = NULL;
     int have_padding = FALSE;
     char *base64_data;
     size_t base64_datalen;
     unsigned char *data;
+
+    tmp_pool = make_sub_pool(p);
+    pr_pool_tag(tmp_pool, "TLS Memcache OCSP cache base64 data pool");
 
     base64_data = text;
     base64_datalen = strlen(base64_data);
@@ -1329,19 +1378,21 @@ static int ocsp_cache_entry_decode_json(pool *p, void *value, size_t valuesz,
       have_padding = TRUE;
     }
 
-    data = oe->resp_der;
+    data = palloc(tmp_pool, base64_datalen);
     res = EVP_DecodeBlock(data, (unsigned char *) base64_data,
       (int) base64_datalen);
     if (res <= 0) {
       /* Base64-decoding error. */
       pr_trace_msg(trace_channel, 5,
         "error base64-decoding OCSP data in '%s', rejecting", entry);
-      pr_json_object_free(json);
+      (void) pr_json_object_free(json);
+
+      destroy_pool(tmp_pool);
       errno = EINVAL;
       return -1;
     }
 
-    if (have_padding) {
+    if (have_padding == TRUE) {
       /* Assume that only one or two zero bytes of padding were added. */
       if (data[res-1] == '\0') {
         res -= 1;
@@ -1352,13 +1403,37 @@ static int ocsp_cache_entry_decode_json(pool *p, void *value, size_t valuesz,
       }
     }
 
+    if (res <= TLS_MAX_OCSP_RESPONSE_SIZE) {
+      /* Base64-decoded data will fit into our buffer as expected. */
+      memcpy(oe->resp_der, data, res);
+
+    } else {
+      tls_log(MOD_TLS_MEMCACHE_VERSION
+        ": decoded JSON OCSP cache entry too large, ignoring");
+      (void) pr_json_object_free(json);
+
+      destroy_pool(tmp_pool);
+      errno = EINVAL;
+      return -1;
+    }
+
+    destroy_pool(tmp_pool);
+
   } else {
+    int xerrno = errno;
+
+    (void) pr_json_object_free(json);
+    errno = xerrno;
     return -1;
   }
 
   key = OCSP_CACHE_JSON_KEY_RESPONSE_LENGTH;
   res = entry_get_json_number(p, json, key, &number, entry);
   if (res < 0) {
+    int xerrno = errno;
+
+    (void) pr_json_object_free(json);
+    errno = xerrno;
     return -1;
   }
   oe->resp_derlen = (unsigned int) number;

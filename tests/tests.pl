@@ -499,7 +499,12 @@ if (scalar(@ARGV) > 0) {
 
     't/modules/mod_tls_memcache.t' => {
       order => ++$order,
-      test_class => [qw(mod_tls_memcache)],
+      test_class => [qw(mod_memcache mod_tls_memcache)],
+    },
+
+    't/modules/mod_tls_redis.t' => {
+      order => ++$order,
+      test_class => [qw(mod_redis mod_tls_redis)],
     },
 
     't/modules/mod_tls_shmcache.t' => {
