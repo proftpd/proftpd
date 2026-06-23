@@ -1226,7 +1226,11 @@ static struct group *pr_ldap_group_lookup(pool *p, char *filter_template,
 
     } else if (strcasecmp(attrs[i], ldap_attr_memberuid) == 0) {
       value_count = LDAP_COUNT_VALUES(values);
-      gr->gr_mem = (char **) palloc(session.pool, value_count * sizeof(char *));
+
+      /* Make sure we allocate enough memory for each member name, and one
+       * more for the terminating NULL.
+       */
+      gr->gr_mem = (char **) pcalloc(session.pool, (value_count + 1) * sizeof(char *));
 
       for (value_offset = 0; value_offset < value_count; ++value_offset) {
         gr->gr_mem[value_offset] =
