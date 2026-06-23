@@ -5532,13 +5532,35 @@ int sftp_keys_verify_pubkey_type(pool *p, unsigned char *pubkey_data,
       char *pkey_type;
 
       pkey_type = sftp_msg_read_string(p, &pubkey_data, &pubkey_len);
-      if (strcmp(pkey_type, "ssh-ed25519") != 0 &&
-          strcmp(pkey_type, "sk-ssh-ed25519@openssh.com") != 0) {
-        pr_trace_msg(trace_channel, 8,
-         "invalid public key type '%s' for Ed25519 key", pkey_type);
-        res = FALSE;
+      if (strcmp(pkey_type, "ssh-ed25519") == 0) {
+        if (pubkey_type == SFTP_KEY_ED25519) {
+          res = TRUE;
+
+        } else {
+          pr_trace_msg(trace_channel, 8,
+            "invalid public key algorithm '%s' for expected %s key", pkey_type,
+             get_key_type_desc(pubkey_type));
+          res = FALSE;
+        }
+
+      } else if (strcmp(pkey_type, "sk-ssh-ed25519@openssh.com") == 0) {
+        if (pubkey_type == SFTP_KEY_ED25519_SK) {
+          res = TRUE;
+
+        } else {
+          pr_trace_msg(trace_channel, 8,
+            "invalid public key algorithm '%s' for expected %s key", pkey_type,
+             get_key_type_desc(pubkey_type));
+          res = FALSE;
+        }
 
       } else {
+        pr_trace_msg(trace_channel, 8,
+         "invalid public key algorithm '%s' for Ed25519 key", pkey_type);
+        res = FALSE;
+      }
+
+      if (res == TRUE) {
         uint32_t pklen;
 
         pklen = sftp_msg_read_int(p, &pubkey_data, &pubkey_len);
@@ -5546,8 +5568,9 @@ int sftp_keys_verify_pubkey_type(pool *p, unsigned char *pubkey_data,
         res = (pklen == (uint32_t) crypto_sign_ed25519_PUBLICKEYBYTES);
         if (res == FALSE) {
           pr_trace_msg(trace_channel, 8,
-           "Ed25519 public key length (%lu bytes) does not match expected "
-           "length (%lu bytes)", (unsigned long) pklen,
+           "%s public key length (%lu bytes) does not match expected "
+           "length (%lu bytes)", get_key_type_desc(pubkey_type),
+           (unsigned long) pklen,
            (unsigned long) crypto_sign_ed25519_PUBLICKEYBYTES);
         }
       }
