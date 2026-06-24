@@ -26,6 +26,8 @@
   should be.
 - Issue 2166 - Memcached/Redis-cached JSON TLS session/OCSP entries decoded
   into fixed buffers without bounds checking.
+- Issue 2173 - RewriteMap unescape builtin use causes one-byte out-of-bounds
+  write, fails to reject illegal characters.
 
 1.3.10rc2 - Released 02-Jun-2026
 --------------------------------
