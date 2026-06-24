@@ -1317,42 +1317,62 @@ static const char *rewrite_subst_maps(cmd_rec *cmd, const char *pattern) {
         /* Handle FIFO maps */
         if (strcmp(c->argv[1], "fifo") == 0) {
           lookup_value = rewrite_subst_maps_fifo(cmd, c, &map);
-          rewrite_log("rewrite_subst_maps(): fifo map '%s' returned '%s'",
-            map.map_name, lookup_value);
+          if (lookup_value != NULL) {
+            rewrite_log("rewrite_subst_maps(): fifo map '%s' returned '%s'",
+              map.map_name, lookup_value);
+
+          } else {
+            rewrite_log("rewrite_subst_maps(): fifo map '%s' returned NULL: %s",
+              map.map_name, strerror(errno));
+          }
 
         /* Handle maps of internal functions */
         } else if (strcmp(c->argv[1], "int") == 0) {
           lookup_value = rewrite_subst_maps_int(cmd, c, &map);
-          rewrite_log("rewrite_subst_maps(): internal map '%s' returned '%s'",
-            map.map_name, lookup_value);
+          if (lookup_value != NULL) {
+            rewrite_log("rewrite_subst_maps(): internal map '%s' returned '%s'",
+              map.map_name, lookup_value);
+
+          } else {
+            rewrite_log("rewrite_subst_maps(): internal map '%s' "
+              "returned NULL: %s", map.map_name, strerror(errno));
+          }
 
         /* Handle external file maps */
         } else if (strcmp(c->argv[1], "txt") == 0) {
           lookup_value = rewrite_subst_maps_txt(cmd, c, &map);
-          rewrite_log("rewrite_subst_maps(): txt map '%s' returned '%s'",
-            map.map_name, lookup_value);
+          if (lookup_value != NULL) {
+            rewrite_log("rewrite_subst_maps(): txt map '%s' returned '%s'",
+              map.map_name, lookup_value);
+
+          } else {
+            rewrite_log("rewrite_subst_maps(): txt map '%s' returned NULL: %s",
+              map.map_name, strerror(errno));
+          }
         }
 
         /* Substitute the looked-up value into the substitution pattern,
          * if indeed a map (and value) have been found.
          */
-        rewrite_log("rewrite_subst_maps(): substituting '%s' for '%s'",
-          lookup_value, (char *) map.map_string);
+        if (lookup_value != NULL) {
+          rewrite_log("rewrite_subst_maps(): substituting '%s' for '%s'",
+            lookup_value, (char *) map.map_string);
 
-        if (new_pattern == NULL) {
-          new_pattern = pstrdup(cmd->pool, pattern);
-        }
+          if (new_pattern == NULL) {
+            new_pattern = pstrdup(cmd->pool, pattern);
+          }
 
-        res = pr_str_replace(cmd->pool, rewrite_max_replace, new_pattern,
-          map.map_string, lookup_value, NULL);
-        if (res == NULL) {
-          pr_trace_msg(trace_channel, 3,
-            "error replacing '%s' with '%s' in '%s': %s",
-            (char *) map.map_string, lookup_value, new_pattern,
-            strerror(errno));
+          res = pr_str_replace(cmd->pool, rewrite_max_replace, new_pattern,
+            map.map_string, lookup_value, NULL);
+          if (res == NULL) {
+            pr_trace_msg(trace_channel, 3,
+              "error replacing '%s' with '%s' in '%s': %s",
+              (char *) map.map_string, lookup_value, new_pattern,
+              strerror(errno));
 
-        } else {
-          new_pattern = res;
+          } else {
+            new_pattern = res;
+          }
         }
       }
 
@@ -1889,7 +1909,7 @@ static const char *rewrite_map_int_unescape(pool *map_pool, char *key) {
   register int i, j;
   char *value;
 
-  value = pcalloc(map_pool, sizeof(char) * strlen(key));
+  value = pcalloc(map_pool, strlen(key) + 1);
   for (i = 0, j = 0; key[j]; ++i, ++j) {
     if (key[j] != '%') {
       value[i] = key[j];
@@ -1903,11 +1923,15 @@ static const char *rewrite_map_int_unescape(pool *map_pool, char *key) {
       }
 
       value[i] = rewrite_hex_to_char(&key[j+1]);
-      j += 2;
-      if (key[i] == '/' || key[i] == '\0') {
-        rewrite_log("rewrite_map_int_unescape(): bad path");
+      if (value[i] == '/' ||
+          value[i] == '\0') {
+        rewrite_log("rewrite_map_int_unescape(): bad path due to '%c'",
+          value[i]);
+        errno = EPERM;
         return NULL;
       }
+
+      j += 2;
     }
   }
   value[i] = '\0';
