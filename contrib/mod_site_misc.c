@@ -35,23 +35,25 @@ static unsigned int site_misc_engine = TRUE;
 static int site_misc_sess_init(void);
 
 static int site_misc_check_filters(cmd_rec *cmd, const char *path) {
-#ifdef PR_USE_REGEX
-  pr_regex_t *pre = get_param_ptr(CURRENT_CONF, "PathAllowFilter", FALSE);
-  if (pre != NULL &&
-      pr_regexp_exec(pre, path, 0, NULL, 0, 0, 0) != 0) {
-    pr_log_pri(PR_LOG_NOTICE, MOD_SITE_MISC_VERSION
-      ": 'SITE %s' denied by PathAllowFilter", cmd->arg);
-    return -1;
-  }
+  int res;
 
-  pre = get_param_ptr(CURRENT_CONF, "PathDenyFilter", FALSE);
-  if (pre != NULL &&
-      pr_regexp_exec(pre, path, 0, NULL, 0, 0, 0) == 0) {
-    pr_log_pri(PR_LOG_NOTICE, MOD_SITE_MISC_VERSION
-      ": 'SITE %s' denied by PathDenyFilter", cmd->arg);
-    return -1;
+  res = pr_filter_allow_path(CURRENT_CONF, path);
+  switch (res) {
+    case 0:
+      break;
+
+    case PR_FILTER_ERR_FAILS_ALLOW_FILTER:
+      pr_log_pri(PR_LOG_NOTICE, MOD_SITE_MISC_VERSION
+        ": 'SITE %s' denied by PathAllowFilter", cmd->arg);
+      errno = EPERM;
+      return -1;
+
+    case PR_FILTER_ERR_FAILS_DENY_FILTER:
+      pr_log_pri(PR_LOG_NOTICE, MOD_SITE_MISC_VERSION
+        ": 'SITE %s' denied by PathDenyFilter", cmd->arg);
+      errno = EPERM;
+      return -1;
   }
-#endif
 
   return 0;
 }
@@ -469,9 +471,9 @@ static time_t site_misc_mktime(unsigned int year, unsigned int month,
     unsigned int mday, unsigned int hour, unsigned int min, unsigned int sec) {
   struct tm tm;
   time_t res;
-  char *env;
+  char *env = NULL;
 
-#ifdef HAVE_TZNAME
+#if defined(HAVE_TZNAME)
   char *tzname_dup[2];
 
   /* The mktime(3) function has a nasty habit of changing the tzname global
@@ -520,7 +522,7 @@ static time_t site_misc_mktime(unsigned int year, unsigned int month,
   res = mktime(&tm);
 
   /* Restore the old TZ setting, if any. */
-  if (env) {
+  if (env != NULL) {
     if (pr_env_set(session.pool, "TZ", env) < 0) {
       pr_log_debug(DEBUG8, MOD_SITE_MISC_VERSION
         ": error setting TZ environment variable to '%s': %s", env,
@@ -528,7 +530,7 @@ static time_t site_misc_mktime(unsigned int year, unsigned int month,
     }
   }
 
-#ifdef HAVE_TZNAME
+#if defined(HAVE_TZNAME)
   /* Restore the old tzname values prior to returning. */
   memcpy(tzname, tzname_dup, sizeof(tzname_dup));
 #endif /* HAVE_TZNAME */
@@ -563,7 +565,7 @@ MODRET set_sitemiscengine(cmd_rec *cmd) {
  */
 
 MODRET site_misc_mkdir(cmd_rec *cmd) {
-  if (!site_misc_engine) {
+  if (site_misc_engine == FALSE) {
     return PR_DECLINED(cmd);
   }
 
@@ -573,7 +575,7 @@ MODRET site_misc_mkdir(cmd_rec *cmd) {
     return PR_DECLINED(cmd);
   }
 
-  if (strncasecmp(cmd->argv[1], "MKDIR", 6) == 0) {
+  if (strcasecmp(cmd->argv[1], "MKDIR") == 0) {
     register unsigned int i;
     char *cmd_name, *decoded_path, *path = "";
     unsigned char *authenticated;
@@ -614,7 +616,7 @@ MODRET site_misc_mkdir(cmd_rec *cmd) {
     path = decoded_path;
 
     if (site_misc_check_filters(cmd, path) < 0) {
-      int xerrno = EPERM;
+      int xerrno = errno;
 
       pr_response_add_err(R_550, "%s: %s", cmd->arg, strerror(xerrno));
 
@@ -666,7 +668,7 @@ MODRET site_misc_mkdir(cmd_rec *cmd) {
     return PR_HANDLED(cmd);
   }
 
-  if (strncasecmp(cmd->argv[1], "HELP", 5) == 0) {
+  if (strcasecmp(cmd->argv[1], "HELP") == 0) {
     pr_response_add(R_214, "MKDIR <sp> path");
   }
 
@@ -674,7 +676,7 @@ MODRET site_misc_mkdir(cmd_rec *cmd) {
 }
 
 MODRET site_misc_rmdir(cmd_rec *cmd) {
-  if (!site_misc_engine) {
+  if (site_misc_engine == FALSE) {
     return PR_DECLINED(cmd);
   }
 
@@ -684,17 +686,17 @@ MODRET site_misc_rmdir(cmd_rec *cmd) {
     return PR_DECLINED(cmd);
   }
 
-  if (strncasecmp(cmd->argv[1], "RMDIR", 6) == 0) {
+  if (strcasecmp(cmd->argv[1], "RMDIR") == 0) {
     register unsigned int i;
     char *cmd_name, *decoded_path, *path = "";
     unsigned char *authenticated;
 
-    if (cmd->argc < 3)
+    if (cmd->argc < 3) {
       return PR_DECLINED(cmd);
+    }
 
     authenticated = get_param_ptr(cmd->server->conf, "authenticated", FALSE);
-
-    if (!authenticated ||
+    if (authenticated == NULL ||
         *authenticated == FALSE) {
       pr_response_add_err(R_530, _("Please login with USER and PASS"));
 
@@ -722,7 +724,19 @@ MODRET site_misc_rmdir(cmd_rec *cmd) {
       return PR_ERROR(cmd);
     }
 
-    path = dir_canonical_path(cmd->tmp_pool, decoded_path);
+    path = decoded_path;
+
+    if (site_misc_check_filters(cmd, path) < 0) {
+      int xerrno = errno;
+
+      pr_response_add_err(R_550, "%s: %s", cmd->arg, strerror(xerrno));
+
+      pr_cmd_set_errno(cmd, xerrno);
+      errno = xerrno;
+      return PR_ERROR(cmd);
+    }
+
+    path = dir_canonical_path(cmd->tmp_pool, path);
     if (path == NULL) {
       int xerrno = EINVAL;
 
@@ -765,7 +779,7 @@ MODRET site_misc_rmdir(cmd_rec *cmd) {
     return PR_HANDLED(cmd);
   }
 
-  if (strncasecmp(cmd->argv[1], "HELP", 5) == 0) {
+  if (strcasecmp(cmd->argv[1], "HELP") == 0) {
     pr_response_add(R_214, "RMDIR <sp> path");
   }
 
@@ -773,7 +787,7 @@ MODRET site_misc_rmdir(cmd_rec *cmd) {
 }
 
 MODRET site_misc_symlink(cmd_rec *cmd) {
-  if (!site_misc_engine) {
+  if (site_misc_engine == FALSE) {
     return PR_DECLINED(cmd);
   }
 
@@ -783,18 +797,18 @@ MODRET site_misc_symlink(cmd_rec *cmd) {
     return PR_DECLINED(cmd);
   }
 
-  if (strncasecmp(cmd->argv[1], "SYMLINK", 8) == 0) {
+  if (strcasecmp(cmd->argv[1], "SYMLINK") == 0) {
     struct stat st;
     int res;
     char *cmd_name, *decoded_path, *src, *dst;
     unsigned char *authenticated;
 
-    if (cmd->argc < 4)
+    if (cmd->argc < 4) {
       return PR_DECLINED(cmd);
+    }
 
     authenticated = get_param_ptr(cmd->server->conf, "authenticated", FALSE);
-
-    if (!authenticated ||
+    if (authenticated == NULL ||
         *authenticated == FALSE) {
       pr_response_add_err(R_530, _("Please login with USER and PASS"));
 
@@ -885,7 +899,7 @@ MODRET site_misc_symlink(cmd_rec *cmd) {
     cmd->argv[0] = cmd_name;
 
     if (site_misc_check_filters(cmd, dst) < 0) {
-      int xerrno = EPERM;
+      int xerrno = errno;
 
       pr_response_add_err(R_550, "%s: %s", cmd->arg, strerror(xerrno));
 
@@ -928,7 +942,7 @@ MODRET site_misc_symlink(cmd_rec *cmd) {
     return PR_HANDLED(cmd);
   }
 
-  if (strncasecmp(cmd->argv[1], "HELP", 5) == 0) {
+  if (strcasecmp(cmd->argv[1], "HELP") == 0) {
     pr_response_add(R_214, "SYMLINK <sp> source <sp> destination");
   }
 
@@ -1031,7 +1045,7 @@ MODRET site_misc_utime_mtime(cmd_rec *cmd) {
   cmd->argv[0] = cmd_name;
 
   if (site_misc_check_filters(cmd, path) < 0) {
-    int xerrno = EPERM;
+    int xerrno = errno;
 
     pr_response_add_err(R_550, "%s: %s", cmd->arg, strerror(xerrno));
 
@@ -1124,7 +1138,7 @@ MODRET site_misc_utime_atime_mtime_ctime(cmd_rec *cmd) {
   cmd->argv[0] = cmd_name;
 
   if (site_misc_check_filters(cmd, path) < 0) {
-    int xerrno = EPERM;
+    int xerrno = errno;
 
     pr_response_add_err(R_550, "%s: %s", cmd->arg, strerror(xerrno));
 
@@ -1254,7 +1268,7 @@ MODRET site_misc_utime_atime_mtime_ctime(cmd_rec *cmd) {
 }
 
 MODRET site_misc_utime(cmd_rec *cmd) {
-  if (!site_misc_engine) {
+  if (site_misc_engine == FALSE) {
     return PR_DECLINED(cmd);
   }
 
@@ -1264,7 +1278,7 @@ MODRET site_misc_utime(cmd_rec *cmd) {
     return PR_DECLINED(cmd);
   }
 
-  if (strncasecmp(cmd->argv[1], "UTIME", 6) == 0) {
+  if (strcasecmp(cmd->argv[1], "UTIME") == 0) {
     unsigned char *authenticated;
 
     authenticated = get_param_ptr(cmd->server->conf, "authenticated", FALSE);
@@ -1294,14 +1308,14 @@ MODRET site_misc_utime(cmd_rec *cmd) {
      * variant.
      */
     if (cmd->argc >= 7 &&
-        strncasecmp(cmd->argv[cmd->argc-1], "UTC", 4) == 0) {
+        strcasecmp(cmd->argv[cmd->argc-1], "UTC") == 0) {
       return site_misc_utime_atime_mtime_ctime(cmd);
     }
 
     return site_misc_utime_mtime(cmd);
   }
 
-  if (strncasecmp(cmd->argv[1], "HELP", 5) == 0) {
+  if (strcasecmp(cmd->argv[1], "HELP") == 0) {
     pr_response_add(R_214, "UTIME <sp> YYYYMMDDhhmm[ss] <sp> path");
   }
 
