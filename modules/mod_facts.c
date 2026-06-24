@@ -141,24 +141,27 @@ static int facts_get_show_opt(const char *fact) {
 }
 
 static int facts_filters_allow_path(cmd_rec *cmd, const char *path) {
-#ifdef PR_USE_REGEX
-  pr_regex_t *pre = get_param_ptr(CURRENT_CONF, "PathAllowFilter", FALSE);
-  if (pre != NULL &&
-      pr_regexp_exec(pre, path, 0, NULL, 0, 0, 0) != 0) {
-    pr_log_pri(PR_LOG_NOTICE, MOD_FACTS_VERSION
-      ": %s denied by PathAllowFilter on '%s'", (char *) cmd->argv[0],
-      cmd->arg);
-    return -1;
-  }
+  int res;
 
-  pre = get_param_ptr(CURRENT_CONF, "PathDenyFilter", FALSE);
-  if (pre != NULL &&
-      pr_regexp_exec(pre, path, 0, NULL, 0, 0, 0) == 0) {
-    pr_log_pri(PR_LOG_NOTICE, MOD_FACTS_VERSION
-      ": %s denied by PathDenyFilter on '%s'", (char *) cmd->argv[0], cmd->arg);
-    return -1;
+  res = pr_filter_allow_path(CURRENT_CONF, path);
+  switch (res) {
+    case 0:
+      break;
+
+    case PR_FILTER_ERR_FAILS_ALLOW_FILTER:
+      pr_log_pri(PR_LOG_NOTICE, MOD_FACTS_VERSION
+        ": %s denied by PathAllowFilter on '%s'", (char *) cmd->argv[0],
+        cmd->arg);
+      errno = EPERM;
+      return -1;
+
+    case PR_FILTER_ERR_FAILS_DENY_FILTER:
+      pr_log_pri(PR_LOG_NOTICE, MOD_FACTS_VERSION
+        ": %s denied by PathDenyFilter on '%s'", (char *) cmd->argv[0],
+        cmd->arg);
+      errno = EPERM;
+      return -1;
   }
-#endif
 
   return 0;
 }
