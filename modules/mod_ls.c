@@ -3243,7 +3243,9 @@ MODRET ls_nlst(cmd_rec *cmd) {
 
     /* Iterate through each matching entry */
     path = g.gl_pathv;
-    while (path && *path && res >= 0) {
+    while (path != NULL &&
+           *path &&
+           res >= 0) {
       struct stat st;
 
       pr_signals_handle();
@@ -3261,11 +3263,18 @@ MODRET ls_nlst(cmd_rec *cmd) {
 
           } else {
             /*...otherwise, just list the name. */
-            res = nlstfile(cmd, p);
+            if (ls_perms(cmd->tmp_pool, cmd, p, &hidden)) {
+              /* Don't display hidden files. */
+              if (hidden) {
+                continue;
+              }
+
+              res = nlstfile(cmd, p);
+            }
           }
 
         } else if (S_ISREG(st.st_mode) &&
-            ls_perms(cmd->tmp_pool, cmd, p, &hidden)) {
+                   ls_perms(cmd->tmp_pool, cmd, p, &hidden)) {
           /* Don't display hidden files */
           if (hidden) {
             continue;
