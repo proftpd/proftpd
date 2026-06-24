@@ -195,6 +195,7 @@ if (scalar(@ARGV) > 0) {
     t/config/useftpusers.t
     t/config/useglobbing.t
     t/config/useralias.t
+    t/config/userdirroot.t
     t/config/userowner.t
     t/config/userpassword.t
     t/config/usesendfile.t

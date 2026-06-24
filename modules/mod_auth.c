@@ -1446,9 +1446,21 @@ static int setup_env(pool *p, cmd_rec *cmd, const char *user, char *pass) {
 
     PRIVS_SETUP(pw->pw_uid, pw->pw_gid)
 
-    if ((add_userdir && *add_userdir == TRUE) &&
+    if ((add_userdir != NULL &&
+         *add_userdir == TRUE) &&
         strcmp(u, user) != 0) {
-      chroot_dir = pdircat(p, c->name, u, NULL);
+      char sanitized_user[PR_TUNABLE_PATH_MAX + 1];
+
+      /* Sanitize the provided USER name first. */
+      memset(sanitized_user, '\0', sizeof(sanitized_user));
+      pr_fs_clean_path2(u, sanitized_user, sizeof(sanitized_user)-1, 0);
+
+      if (strcmp(u, sanitized_user) != 0) {
+        pr_trace_msg("auth", 9,
+          "UserDirRoot: sanitized USER '%s' to '%s'", u, sanitized_user);
+      }
+
+      chroot_dir = pdircat(p, c->name, sanitized_user, NULL);
 
     } else {
       chroot_dir = c->name;
