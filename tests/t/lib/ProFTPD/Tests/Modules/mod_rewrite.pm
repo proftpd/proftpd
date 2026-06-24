@@ -68,6 +68,11 @@ my $TESTS = {
     test_class => [qw(bug forking)],
   },
 
+  rewrite_map_unescape_bad_paths_issue2173 => {
+    order => ++$order,
+    test_class => [qw(bug forking)],
+  },
+
   rewrite_cond_env_var_failed => {
     order => ++$order,
     test_class => [qw(forking)],
@@ -1553,51 +1558,18 @@ sub rewrite_bug3169 {
 sub rewrite_map_unescape_bug3170 {
   my $self = shift;
   my $tmpdir = $self->{tmpdir};
-
-  my $config_file = "$tmpdir/rewrite.conf";
-  my $pid_file = File::Spec->rel2abs("$tmpdir/rewrite.pid");
-  my $scoreboard_file = File::Spec->rel2abs("$tmpdir/rewrite.scoreboard");
-
-  my $log_file = test_get_logfile();
-
-  my $auth_user_file = File::Spec->rel2abs("$tmpdir/rewrite.passwd");
-  my $auth_group_file = File::Spec->rel2abs("$tmpdir/rewrite.group");
-
-  my $user = 'proftpd';
-  my $passwd = 'test';
-  my $group = 'ftpd';
-  my $home_dir = File::Spec->rel2abs($tmpdir);
-  my $uid = 500;
-  my $gid = 500;
-
-  # Make sure that, if we're running as root, that the home directory has
-  # permissions/privs set for the account we create
-  if ($< == 0) {
-    unless (chmod(0755, $home_dir)) {
-      die("Can't set perms on $home_dir to 0755: $!");
-    }
-
-    unless (chown($uid, $gid, $home_dir)) {
-      die("Can't set owner of $home_dir to $uid/$gid: $!");
-    }
-  }
-
-  auth_user_write($auth_user_file, $user, $passwd, $uid, $gid, $home_dir,
-    '/bin/bash');
-  auth_group_write($auth_group_file, $group, $gid, $user);
+  my $setup = test_setup($tmpdir, 'rewrite');
 
   my $test_file = File::Spec->rel2abs("$tmpdir/test file.txt");
 
   my $config = {
-    PidFile => $pid_file,
-    ScoreboardFile => $scoreboard_file,
-    SystemLog => $log_file,
+    PidFile => $setup->{pid_file},
+    ScoreboardFile => $setup->{scoreboard_file},
+    SystemLog => $setup->{log_file},
 
-    AuthUserFile => $auth_user_file,
-    AuthGroupFile => $auth_group_file,
+    AuthUserFile => $setup->{auth_user_file},
+    AuthGroupFile => $setup->{auth_group_file},
     AuthOrder => 'mod_auth_file.c',
-
-    AllowForeignAddress => 'on',
 
     IfModules => {
       'mod_delay.c' => {
@@ -1606,7 +1578,7 @@ sub rewrite_map_unescape_bug3170 {
 
       'mod_rewrite.c' => [
         'RewriteEngine on',
-        "RewriteLog $log_file",
+        "RewriteLog $setup->{log_file}",
         'RewriteMap unescape int:unescape',
 
         'RewriteCondition %m ^STOR$',
@@ -1615,7 +1587,8 @@ sub rewrite_map_unescape_bug3170 {
     },
   };
 
-  my ($port, $config_user, $config_group) = config_write($config_file, $config);
+  my ($port, $config_user, $config_group) = config_write($setup->{config_file},
+    $config);
 
   # Open pipes, for use between the parent and child processes.  Specifically,
   # the child will indicate when it's done with its test by writing a message
@@ -1632,11 +1605,11 @@ sub rewrite_map_unescape_bug3170 {
   defined(my $pid = fork()) or die("Can't fork: $!");
   if ($pid) {
     eval {
+      # Allow for server startup
+      sleep(1);
+
       my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
-
-      my ($resp_code, $resp_msg);
-
-      $client->login($user, $passwd);
+      $client->login($setup->{user}, $setup->{passwd});
 
       my $filename = "test%20file.txt";
 
@@ -1650,23 +1623,15 @@ sub rewrite_map_unescape_bug3170 {
       $conn->write($buf, length($buf));
       eval { $conn->close() };
 
-      $resp_code = $client->response_code();
-      $resp_msg = $client->response_msg();
+      my $resp_code = $client->response_code();
+      my $resp_msg = $client->response_msg();
+      $self->assert_transfer_ok($resp_code, $resp_msg);
 
-      my $expected;
-
-      $expected = 226;
-      $self->assert($expected == $resp_code,
-        test_msg("Expected $expected, got $resp_code"));
-
-      $expected = "Transfer complete";
-      $self->assert($expected eq $resp_msg,
-        test_msg("Expected '$expected', got '$resp_msg'"));
+      $client->quit();
 
       $self->assert(-f $test_file,
         test_msg("$test_file file does not exist as expected"));
     };
-
     if ($@) {
       $ex = $@;
     }
@@ -1675,7 +1640,7 @@ sub rewrite_map_unescape_bug3170 {
     $wfh->flush();
 
   } else {
-    eval { server_wait($config_file, $rfh) };
+    eval { server_wait($setup->{config_file}, $rfh) };
     if ($@) {
       warn($@);
       exit 1;
@@ -1685,18 +1650,132 @@ sub rewrite_map_unescape_bug3170 {
   }
 
   # Stop server
-  server_stop($pid_file);
-
+  server_stop($setup->{pid_file});
   $self->assert_child_ok($pid);
 
-  if ($ex) {
-    test_append_logfile($log_file, $ex);
-    unlink($log_file);
+  test_cleanup($setup->{log_file}, $ex);
+}
 
-    die($ex);
+sub rewrite_map_unescape_bad_paths_issue2173 {
+  my $self = shift;
+  my $tmpdir = $self->{tmpdir};
+  my $setup = test_setup($tmpdir, 'rewrite');
+
+  my $test_file1 = File::Spec->rel2abs("$tmpdir/test%2Ffile.txt");
+  my $test_file2 = File::Spec->rel2abs("$tmpdir/test%00file.txt");
+
+  my $config = {
+    PidFile => $setup->{pid_file},
+    ScoreboardFile => $setup->{scoreboard_file},
+    SystemLog => $setup->{log_file},
+
+    AuthUserFile => $setup->{auth_user_file},
+    AuthGroupFile => $setup->{auth_group_file},
+    AuthOrder => 'mod_auth_file.c',
+
+    IfModules => {
+      'mod_delay.c' => {
+        DelayEngine => 'off',
+      },
+
+      'mod_rewrite.c' => [
+        'RewriteEngine on',
+        "RewriteLog $setup->{log_file}",
+        'RewriteMap unescape int:unescape',
+
+        'RewriteCondition %m ^STOR$',
+        'RewriteRule (.*) ${unescape:$1}',
+      ],
+    },
+  };
+
+  my ($port, $config_user, $config_group) = config_write($setup->{config_file},
+    $config);
+
+  # Open pipes, for use between the parent and child processes.  Specifically,
+  # the child will indicate when it's done with its test by writing a message
+  # to the parent.
+  my ($rfh, $wfh);
+  unless (pipe($rfh, $wfh)) {
+    die("Can't open pipe: $!");
   }
 
-  unlink($log_file);
+  my $ex;
+
+  # Fork child
+  $self->handle_sigchld();
+  defined(my $pid = fork()) or die("Can't fork: $!");
+  if ($pid) {
+    eval {
+      # Allow for server startup
+      sleep(1);
+
+      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
+      $client->login($setup->{user}, $setup->{passwd});
+
+      # Here we encode the illegal '/' character via %2F
+      my $filename = "test%2Ffile.txt";
+
+      my $conn = $client->stor_raw($filename);
+      unless ($conn) {
+        die("STOR $filename failed: " . $client->response_code() . " " .
+          $client->response_msg());
+      }
+
+      my $buf = "Hello, World\n";
+      $conn->write($buf, length($buf));
+      eval { $conn->close() };
+
+      my $resp_code = $client->response_code();
+      my $resp_msg = $client->response_msg();
+      $self->assert_transfer_ok($resp_code, $resp_msg);
+
+      # This time, we encode the illegal NUL character via %00
+      $filename = "test%00file.txt";
+
+      $conn = $client->stor_raw($filename);
+      unless ($conn) {
+        die("STOR $filename failed: " . $client->response_code() . " " .
+          $client->response_msg());
+      }
+
+      $buf = "Hello, World\n";
+      $conn->write($buf, length($buf));
+      eval { $conn->close() };
+
+      $resp_code = $client->response_code();
+      $resp_msg = $client->response_msg();
+      $self->assert_transfer_ok($resp_code, $resp_msg);
+
+      $client->quit();
+
+      $self->assert(-f $test_file1,
+        test_msg("'$test_file1' file does not exist as expected"));
+      $self->assert(-f $test_file2,
+        test_msg("'$test_file2' file does not exist as expected"));
+    };
+    if ($@) {
+      $ex = $@;
+    }
+
+    $wfh->print("done\n");
+    $wfh->flush();
+
+  } else {
+    eval { server_wait($setup->{config_file}, $rfh) };
+    if ($@) {
+      warn($@);
+      exit 1;
+    }
+
+    exit 0;
+  }
+
+  # Stop server
+  server_stop($setup->{pid_file});
+  $self->assert_child_ok($pid);
+
+  test_cleanup($setup->{log_file}, $ex);
 }
 
 sub rewrite_cond_env_var_failed {
