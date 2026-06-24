@@ -262,6 +262,7 @@ static const char *key_exchanges[] = {
 #endif /* HAVE_MLKEM768_OPENSSL and HAVE_SHA256_OPENSSL */
 #if defined(HAVE_X25519_OPENSSL) && defined(HAVE_SHA512_OPENSSL)
   "sntrup761x25519-sha512",
+  "sntrup761x25519-sha512@openssh.com",
 #endif /* HAVE_X25519_OPENSSL and HAVE_SHA512_OPENSSL */
   "rsa1024-sha1",
   NULL
