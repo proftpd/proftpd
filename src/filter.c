@@ -26,7 +26,7 @@
 static const char *trace_channel = "filter";
 
 int pr_filter_allow_path(xaset_t *set, const char *path) {
-#ifdef PR_USE_REGEX
+#if defined(PR_USE_REGEX)
   pr_regex_t *pre;
   int res;
 
@@ -37,7 +37,6 @@ int pr_filter_allow_path(xaset_t *set, const char *path) {
   }
 
   /* Check any relevant PathAllowFilter first. */
-
   pre = get_param_ptr(set, "PathAllowFilter", FALSE);
   if (pre != NULL) {
     res = pr_regexp_exec(pre, path, 0, NULL, 0, 0, 0);
@@ -50,7 +49,6 @@ int pr_filter_allow_path(xaset_t *set, const char *path) {
   }
 
   /* Next check any applicable PathDenyFilter. */
-
   pre = get_param_ptr(set, "PathDenyFilter", FALSE);
   if (pre != NULL) {
     res = pr_regexp_exec(pre, path, 0, NULL, 0, 0, 0);
@@ -61,11 +59,9 @@ int pr_filter_allow_path(xaset_t *set, const char *path) {
     pr_trace_msg(trace_channel, 8, "'%s' allowed by PathDenyFilter '%s'", path,
       pr_regexp_get_pattern(pre));
   }
+#endif /* PR_USE_REGEX */
 
   return 0;
-#else
-  return 0;
-#endif
 }
 
 int pr_filter_parse_flags(pool *p, const char *flags_str) {
