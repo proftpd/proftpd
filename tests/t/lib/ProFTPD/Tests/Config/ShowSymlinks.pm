@@ -467,7 +467,7 @@ sub showsymlinks_on_list_rel_symlinked_file {
 
       # Different platforms' Perl create symlinks with different perms
       my $expected_perms = 'lrwxr-xr-x';
-      if ($^O eq 'linux') {
+      if ($^O eq 'linux' or $^O eq 'solaris') {
         $expected_perms = 'lrwxrwxrwx';
       }
 
@@ -834,7 +834,7 @@ sub showsymlinks_on_list_rel_symlinked_dir {
 
       # Different platforms' Perl create symlinks with different perms
       my $expected_perms = 'lrwxr-xr-x';
-      if ($^O eq 'linux') {
+      if ($^O eq 'linux' or $^O eq 'solaris') {
         $expected_perms = 'lrwxrwxrwx';
       }
 
@@ -3459,7 +3459,7 @@ sub showsymlinks_on_stat_rel_symlinked_file {
       $expected = 'lrwxr-xr-x';
 
       # Different platforms' Perl create symlinks with different perms
-      if ($^O eq 'linux') {
+      if ($^O eq 'linux' or $^O eq 'solaris') {
         $expected = 'lrwxrwxrwx';
       }
 
