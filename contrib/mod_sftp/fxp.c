@@ -8015,6 +8015,28 @@ static int fxp_handle_fsetstat(struct fxp_packet *fxp) {
   }
   pr_cmd_set_name(cmd, cmd_name);
 
+  if (pr_filter_allow_path(CURRENT_CONF, path) < 0) {
+    status_code = SSH2_FX_PERMISSION_DENIED;
+
+    (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
+      "FSETSTAT of '%s' blocked by PathAllowFilter/PathDenyFilter "
+      "configuration", path);
+
+    pr_trace_msg(trace_channel, 8, "sending response: STATUS %lu '%s'",
+      (unsigned long) status_code, fxp_strerror(status_code));
+
+    fxp_status_write(fxp->pool, &buf, &buflen, fxp->request_id, status_code,
+      fxp_strerror(status_code), NULL);
+
+    fxp_cmd_dispatch_err(cmd);
+
+    resp = fxp_packet_create(fxp->pool, fxp->channel_id);
+    resp->payload = ptr;
+    resp->payload_sz = (bufsz - buflen);
+
+    return fxp_packet_write(resp);
+  }
+
   attr_flags = fxp_attrs_clear_unsupported(attr_flags);
 
   /* If the SFTPOption for ignoring the owners for SFTP setstat requests is set,
@@ -12882,6 +12904,28 @@ static int fxp_handle_setstat(struct fxp_packet *fxp) {
     return fxp_packet_write(resp);
   }
   pr_cmd_set_name(cmd, cmd_name);
+
+  if (pr_filter_allow_path(CURRENT_CONF, path) < 0) {
+    status_code = SSH2_FX_PERMISSION_DENIED;
+
+    (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
+      "SETSTAT of '%s' blocked by PathAllowFilter/PathDenyFilter configuration",
+      path);
+
+    pr_trace_msg(trace_channel, 8, "sending response: STATUS %lu '%s'",
+      (unsigned long) status_code, fxp_strerror(status_code));
+
+    fxp_status_write(fxp->pool, &buf, &buflen, fxp->request_id, status_code,
+      fxp_strerror(status_code), NULL);
+
+    fxp_cmd_dispatch_err(cmd);
+
+    resp = fxp_packet_create(fxp->pool, fxp->channel_id);
+    resp->payload = ptr;
+    resp->payload_sz = (bufsz - buflen);
+
+    return fxp_packet_write(resp);
+  }
 
   attr_flags = fxp_attrs_clear_unsupported(attr_flags);
 
