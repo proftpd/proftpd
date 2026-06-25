@@ -75,6 +75,12 @@ static const char *trace_channels[] = {
   NULL
 };
 
+static void trace_cleanup(void *user_data) {
+  destroy_pool(trace_pool);
+  trace_pool = NULL;
+  trace_tab = NULL;
+}
+
 static void trace_restart_ev(const void *event_data, void *user_data) {
   trace_opts = PR_TRACE_OPT_DEFAULT;
 
@@ -432,6 +438,9 @@ int pr_trace_set_levels(const char *channel, int min_level, int max_level) {
 
     /* Register a handler for churning the log pool during HUP. */
     pr_event_register(NULL, "core.restart", trace_restart_ev, NULL);
+
+    /* Make sure to clean our things up when the permanent_pool is destroyed. */
+    register_cleanup2(permanent_pool, NULL, trace_cleanup);
   }
 
   if (min_level >= 0) {
