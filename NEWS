@@ -30,6 +30,8 @@
   write, fails to reject illegal characters.
 - Issue 2175 - SITE RMDIR command from mod_site_misc does not honor
   PathAllowFilter, PathDenyFilter as expected.
+- Issue 2180 - SFTP SETSTAT, FSETSTAT requests do not honor PathAllowFilter,
+  PathDenyFilter as expected.
 
 1.3.10rc2 - Released 02-Jun-2026
 --------------------------------
