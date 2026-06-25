@@ -6109,7 +6109,7 @@ static int fxp_handle_ext_fgetxattr(struct fxp_packet *fxp, const char *handle,
      * easy to get the file descriptor on a directory, so we'll just do
      * by path instead.
      */
-    return fxp_handle_ext_getxattr(fxp, fxh->fh->fh_path, name, valsz);
+    return fxp_handle_ext_getxattr(fxp, fxh->dir, name, valsz);
   }
 
   if (fxh->fh == NULL) {
@@ -6295,7 +6295,7 @@ static int fxp_handle_ext_flistxattr(struct fxp_packet *fxp,
      * easy to get the file descriptor on a directory, so we'll just do
      * by path instead.
      */
-    return fxp_handle_ext_listxattr(fxp, fxh->fh->fh_path);
+    return fxp_handle_ext_listxattr(fxp, fxh->dir);
   }
 
   if (fxh->fh == NULL) {
@@ -6447,7 +6447,7 @@ static int fxp_handle_ext_fremovexattr(struct fxp_packet *fxp,
      * easy to get the file descriptor on a directory, so we'll just do
      * by path instead.
      */
-    return fxp_handle_ext_removexattr(fxp, fxh->fh->fh_path, name);
+    return fxp_handle_ext_removexattr(fxp, fxh->dir, name);
   }
 
   if (fxh->fh == NULL) {
@@ -6605,8 +6605,7 @@ static int fxp_handle_ext_fsetxattr(struct fxp_packet *fxp, const char *handle,
      * easy to get the file descriptor on a directory, so we'll just do
      * by path instead.
      */
-    return fxp_handle_ext_setxattr(fxp, fxh->fh->fh_path, name, val, valsz,
-      pflags);
+    return fxp_handle_ext_setxattr(fxp, fxh->dir, name, val, valsz, pflags);
   }
 
   if (fxh->fh == NULL) {
