@@ -58,14 +58,35 @@ static char *full_cmd(cmd_rec *cmd) {
   return res;
 }
 
+static int site_filters_check(cmd_rec *cmd, const char *path) {
+  int res;
+
+  res = pr_filter_allow_path(CURRENT_CONF, path);
+  switch (res) {
+    case 0:
+      break;
+
+    case PR_FILTER_ERR_FAILS_ALLOW_FILTER:
+      pr_log_pri(PR_LOG_NOTICE, "'%s %s' denied by PathAllowFilter",
+        (char *) cmd->argv[0], path);
+      errno = EPERM;
+      return -1;
+
+    case PR_FILTER_ERR_FAILS_DENY_FILTER:
+      pr_log_pri(PR_LOG_NOTICE, "'%s %s' denied by PathDenyFilter",
+        (char *) cmd->argv[0], path);
+      errno = EPERM;
+      return -1;
+  }
+
+  return 0;
+}
+
 MODRET site_chgrp(cmd_rec *cmd) {
   int res;
   gid_t gid;
   char *path = NULL, *tmp = NULL, *arg = "";
   register unsigned int i = 0;
-#ifdef PR_USE_REGEX
-  pr_regex_t *pre;
-#endif
 
   if (cmd->argc < 3) {
     pr_response_add_err(R_500, _("'SITE %s' not understood"), full_cmd(cmd));
@@ -97,31 +118,13 @@ MODRET site_chgrp(cmd_rec *cmd) {
     arg = pstrcat(cmd->tmp_pool, arg, *arg ? " " : "", decoded_path, NULL);
   }
 
-#ifdef PR_USE_REGEX
-  pre = get_param_ptr(CURRENT_CONF, "PathAllowFilter", FALSE);
-  if (pre != NULL &&
-      pr_regexp_exec(pre, arg, 0, NULL, 0, 0, 0) != 0) {
-    pr_log_pri(PR_LOG_NOTICE, "'%s %s' denied by PathAllowFilter",
-      (char *) cmd->argv[0], arg);
+  if (site_filters_check(cmd, arg) < 0) {
     pr_response_add_err(R_550, _("%s: Forbidden filename"), cmd->arg);
 
     pr_cmd_set_errno(cmd, EPERM);
     errno = EPERM;
     return PR_ERROR(cmd);
   }
-
-  pre = get_param_ptr(CURRENT_CONF, "PathDenyFilter", FALSE);
-  if (pre != NULL &&
-      pr_regexp_exec(pre, arg, 0, NULL, 0, 0, 0) == 0) {
-    pr_log_pri(PR_LOG_NOTICE, "'%s %s' denied by PathDenyFilter",
-      (char *) cmd->argv[0], arg);
-    pr_response_add_err(R_550, _("%s: Forbidden filename"), cmd->arg);
-
-    pr_cmd_set_errno(cmd, EPERM);
-    errno = EPERM;
-    return PR_ERROR(cmd);
-  }
-#endif
 
   pr_fs_clear_cache2(arg);
   path = dir_realpath(cmd->tmp_pool, arg);
@@ -186,9 +189,6 @@ MODRET site_chmod(cmd_rec *cmd) {
   char *dir, *endp, *mode_str, *tmp, *arg = "";
   struct stat st;
   register unsigned int i = 0;
-#ifdef PR_USE_REGEX
-  pr_regex_t *pre;
-#endif
 
   if (cmd->argc < 3) {
     pr_response_add_err(R_500, _("'SITE %s' not understood"), full_cmd(cmd));
@@ -220,31 +220,13 @@ MODRET site_chmod(cmd_rec *cmd) {
     arg = pstrcat(cmd->tmp_pool, arg, *arg ? " " : "", decoded_path, NULL);
   }
 
-#ifdef PR_USE_REGEX
-  pre = get_param_ptr(CURRENT_CONF, "PathAllowFilter", FALSE);
-  if (pre != NULL &&
-      pr_regexp_exec(pre, arg, 0, NULL, 0, 0, 0) != 0) {
-    pr_log_pri(PR_LOG_NOTICE, "'%s %s %s' denied by PathAllowFilter",
-      (char *) cmd->argv[0], (char *) cmd->argv[1], arg);
+  if (site_filters_check(cmd, arg) < 0) {
     pr_response_add_err(R_550, _("%s: Forbidden filename"), cmd->arg);
 
     pr_cmd_set_errno(cmd, EPERM);
     errno = EPERM;
     return PR_ERROR(cmd);
   }
-
-  pre = get_param_ptr(CURRENT_CONF, "PathDenyFilter", FALSE);
-  if (pre != NULL &&
-      pr_regexp_exec(pre, arg, 0, NULL, 0, 0, 0) == 0) {
-    pr_log_pri(PR_LOG_NOTICE, "'%s %s %s' denied by PathDenyFilter",
-      (char *) cmd->argv[0], (char *) cmd->argv[1], arg);
-    pr_response_add_err(R_550, _("%s: Forbidden filename"), cmd->arg);
-
-    pr_cmd_set_errno(cmd, EPERM);
-    errno = EPERM;
-    return PR_ERROR(cmd);
-  }
-#endif
 
   pr_fs_clear_cache2(arg);
   dir = dir_realpath(cmd->tmp_pool, arg);
