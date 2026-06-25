@@ -10082,7 +10082,13 @@ EOC
           my $xfer_failure = $2;
 
           if ($cmd eq 'RETR') {
-            if ($xfer_failure eq 'Operation not permitted') {
+            my $expected;
+            if ($^O eq 'solaris') {
+              $expected = 'Insufficient privileges';
+            } else {
+              $expected = 'Operation not permitted';
+            }
+            if ($xfer_failure eq $expected) {
               $expected_xfer_reason = 1;
               last;
             }
