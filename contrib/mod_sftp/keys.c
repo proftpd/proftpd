@@ -1030,12 +1030,12 @@ static struct sftp_pkey *lookup_pkey(void) {
     /* If this pkey matches the current server_rec, mark it and move on. */
     if (k->server == main_server) {
 
-#ifdef HAVE_MLOCK
+#if defined(HAVE_MLOCK)
       /* mlock() the passphrase memory areas again; page locks are not
        * inherited across forks.
        */
       PRIVS_ROOT
-      if (k->host_pkey) {
+      if (k->host_pkey != NULL) {
         if (mlock(k->host_pkey, k->pkeysz) < 0) {
           (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
             "error locking passphrase into memory: %s", strerror(errno));
@@ -1049,7 +1049,7 @@ static struct sftp_pkey *lookup_pkey(void) {
     }
 
     /* Otherwise, scrub the passphrase's memory areas. */
-    if (k->host_pkey) {
+    if (k->host_pkey != NULL) {
       pr_memscrub(k->host_pkey, k->pkeysz);
       free(k->host_pkey_ptr);
       k->host_pkey = k->host_pkey_ptr = NULL;

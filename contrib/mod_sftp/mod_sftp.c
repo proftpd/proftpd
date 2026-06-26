@@ -2358,7 +2358,7 @@ static void sftp_mod_unload_ev(const void *event_data, void *user_data) {
   destroy_pool(sftp_pool);
   sftp_pool = NULL;
 
-  close(sftp_logfd);
+  (void) close(sftp_logfd);
   sftp_logfd = -1;
 }
 #endif /* PR_SHARED_MODULE */
@@ -2515,6 +2515,13 @@ static void sftp_restart_ev(const void *event_data, void *user_data) {
 
   /* Clear the client banner regexes. */
   sftp_interop_free();
+
+#if defined(HAVE_OSSL_PROVIDER_LOAD_OPENSSL)
+  if (legacy_provider != NULL) {
+    OSSL_PROVIDER_unload(legacy_provider);
+    legacy_provider = NULL;
+  }
+#endif /* HAVE_OSSL_PROVIDER_LOAD_OPENSSL */
 }
 
 static void sftp_shutdown_ev(const void *event_data, void *user_data) {
@@ -2729,7 +2736,7 @@ static int sftp_init(void) {
 #if defined(PR_SHARED_MODULE)
   pr_event_register(&sftp_module, "core.module-unload", sftp_mod_unload_ev,
     NULL);
-#endif
+#endif /* PR_SHARED_MODULE */
   pr_event_register(&sftp_module, "core.postparse", sftp_postparse_ev, NULL);
   pr_event_register(&sftp_module, "core.restart", sftp_restart_ev, NULL);
   pr_event_register(&sftp_module, "core.shutdown", sftp_shutdown_ev, NULL);
@@ -2749,12 +2756,15 @@ static int sftp_sess_init(void) {
   }
 
   if (sftp_engine == FALSE) {
+    /* Clean up anything allocated prior to the session fork. */
+    sftp_keys_free();
+
     return 0;
   }
 
   pr_event_register(&sftp_module, "core.chroot", sftp_chroot_ev, NULL);
   pr_event_register(&sftp_module, "core.exit", sftp_exit_ev, NULL);
-#ifdef PR_USE_DEVEL
+#if defined(PR_USE_DEVEL)
   pr_event_register(&sftp_module, "core.signal.USR2", sftp_sigusr2_ev, NULL);
 #endif /* PR_USE_DEVEL */
   pr_event_register(&sftp_module, "mod_auth.max-clients",

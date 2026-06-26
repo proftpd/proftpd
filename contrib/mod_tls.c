@@ -4084,7 +4084,7 @@ static tls_pkey_t *tls_lookup_pkey(server_rec *s, int lock_if_found,
     pkey = k;
 
     if (lock_if_found) {
-#ifdef HAVE_MLOCK
+#if defined(HAVE_MLOCK)
       /* mlock() the passphrase memory areas again; page locks are not
        * inherited across forks.
        */
@@ -4103,7 +4103,7 @@ static tls_pkey_t *tls_lookup_pkey(server_rec *s, int lock_if_found,
         }
       }
 
-# ifdef PR_USE_OPENSSL_ECC
+# if defined(PR_USE_OPENSSL_ECC)
       if (k->ec_pkey != NULL &&
           k->ec_passlen > 0) {
         if (mlock(k->ec_pkey, k->pkeysz) < 0) {
@@ -4204,7 +4204,7 @@ static void tls_scrub_pkeys(void) {
       passphrase_count++;
     }
 
-#ifdef PR_USE_OPENSSL_ECC
+#if defined(PR_USE_OPENSSL_ECC)
     if (k->ec_pkey != NULL &&
         k->ec_passlen > 0) {
       passphrase_count++;
@@ -6775,7 +6775,7 @@ static struct tls_ticket_key *create_ticket_key(void) {
   void *page_ptr = NULL;
   size_t pagesz;
   char *ptr;
-# ifdef HAVE_MLOCK
+# if defined(HAVE_MLOCK)
   int res, xerrno = 0;
 # endif /* HAVE_MLOCK */
 
@@ -6815,7 +6815,7 @@ static struct tls_ticket_key *create_ticket_key(void) {
     return NULL;
   }
 
-# ifdef HAVE_MLOCK
+# if defined(HAVE_MLOCK)
   PRIVS_ROOT
   res = mlock(page_ptr, pagesz);
   xerrno = errno;
@@ -6844,7 +6844,7 @@ static struct tls_ticket_key *create_ticket_key(void) {
 static void destroy_ticket_key(struct tls_ticket_key *k) {
   void *page_ptr;
   size_t pagesz;
-# ifdef HAVE_MLOCK
+# if defined(HAVE_MLOCK)
   int res, xerrno = 0;
 # endif /* HAVE_MLOCK */
 
@@ -6857,7 +6857,7 @@ static void destroy_ticket_key(struct tls_ticket_key *k) {
 
   pr_memscrub(k->page_ptr, k->pagesz);
 
-# ifdef HAVE_MLOCK
+# if defined(HAVE_MLOCK)
   PRIVS_ROOT
   res = munlock(page_ptr, pagesz);
   xerrno = errno;
@@ -15895,7 +15895,7 @@ static void tls_shutdown_ev(const void *event_data, void *user_data) {
 }
 
 static void tls_restart_ev(const void *event_data, void *user_data) {
-#ifdef PR_USE_CTRLS
+#if defined(PR_USE_CTRLS)
   register unsigned int i;
 #endif /* PR_USE_CTRLS */
 
@@ -15909,7 +15909,7 @@ static void tls_restart_ev(const void *event_data, void *user_data) {
    * see Bug#4260.
    */
 
-#ifdef PR_USE_CTRLS
+#if defined(PR_USE_CTRLS)
   if (tls_act_pool != NULL) {
     destroy_pool(tls_act_pool);
     tls_act_pool = NULL;
@@ -15924,6 +15924,11 @@ static void tls_restart_ev(const void *event_data, void *user_data) {
     pr_ctrls_init_acl(tls_acttab[i].act_acl);
   }
 #endif /* PR_USE_CTRLS */
+
+  if (ssl_ctx != NULL) {
+    SSL_CTX_free(ssl_ctx);
+    ssl_ctx = NULL;
+  }
 
   tls_closelog();
 }
@@ -16164,7 +16169,7 @@ static tls_pkey_t *tls_get_key_passphrase(server_rec *s, const char *path,
       break;
 
     case TLS_PASSPHRASE_FL_EC_KEY:
-#ifdef PR_USE_OPENSSL_ECC
+#if defined(PR_USE_OPENSSL_ECC)
       key_data = &(k->ec_pkey);
       key_ptr = &(k->ec_pkey_ptr);
       pass_len = &(k->ec_passlen);
@@ -19162,6 +19167,7 @@ static int tls_sess_init(void) {
       /* No need for all the OpenSSL stuff in this process space, either. */
       tls_cleanup(TLS_CLEANUP_FL_SESS_INIT);
       tls_scrub_pkeys();
+      scrub_ticket_keys();
     }
 
     return 0;

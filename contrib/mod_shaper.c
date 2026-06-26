@@ -2071,13 +2071,19 @@ MODRET shaper_pre_pass(cmd_rec *cmd) {
    * in the daemon process.
    */
 
-  PRIVS_ROOT
-  shaper_tabfd = open(shaper_tab_path, O_RDWR);
-  PRIVS_RELINQUISH
+  if (shaper_tab_path != NULL) {
+    int xerrno;
 
-  if (shaper_tabfd < 0)
-    (void) pr_log_writefile(shaper_logfd, MOD_SHAPER_VERSION,
-      "unable to open ShaperTable: %s", strerror(errno));
+    PRIVS_ROOT
+    shaper_tabfd = open(shaper_tab_path, O_RDWR);
+    xerrno = errno;
+    PRIVS_RELINQUISH
+
+    if (shaper_tabfd < 0) {
+      (void) pr_log_writefile(shaper_logfd, MOD_SHAPER_VERSION,
+        "unable to open ShaperTable: %s", strerror(xerrno));
+    }
+  }
 
   return PR_DECLINED(cmd);
 }
