@@ -17,6 +17,7 @@ MODULE_NAME=mod_auth_otp
 MODULE_OBJS=mod_auth_otp.o base32.o otp.o crypto.o db.o
 SHARED_MODULE_OBJS=mod_auth_otp.lo base32.lo otp.lo crypto.lo db.lo
 UTILS_LIBS=@UTILS_LIBS@
+UTILS_LDFLAGS=-L../../lib
 UTILS_OBJS=utils/base32.o utils/otp.o utils/crypto.o auth-otp.o
 UTILS_API_OBJS=../../src/pool.o \
   ../../src/str.o \
@@ -25,7 +26,6 @@ UTILS_API_OBJS=../../src/pool.o \
 # Necessary redefinitions
 INCLUDES=-I. -I../.. -I../../include -I$(top_srcdir)/../../include @INCLUDES@
 CPPFLAGS=$(ADDL_CPPFLAGS) -DHAVE_CONFIG_H $(DEFAULT_PATHS) $(PLATFORM) $(INCLUDES)
-LDFLAGS=-L../../lib @LDFLAGS@
 
 .c.o:
 	$(CC) $(CPPFLAGS) $(CFLAGS) -c $<
@@ -45,7 +45,7 @@ static: $(MODULE_OBJS) auth-otp$(EXEEXT)
 	$(RANLIB) $(MODULE_NAME).a
 
 auth-otp$(EXEEXT): $(UTILS_OBJS)
-	$(CC) $(LDFLAGS) -o $@ $(UTILS_OBJS) $(UTILS_API_OBJS) $(UTILS_LIBS)
+	$(CC) $(LDFLAGS) $(UTILS_LDFLAGS) -o $@ $(UTILS_OBJS) $(UTILS_API_OBJS) $(UTILS_LIBS)
 
 install: install-headers install-man install-utils
 	if [ -f $(MODULE_NAME).la ] ; then \
@@ -70,7 +70,7 @@ install-utils: $(DESTDIR)$(sbindir)
 	$(INSTALL_BIN) auth-otp$(EXEEXT) $(DESTDIR)$(sbindir)/auth-otp$(EXEEXT)
 
 clean:
-	$(LIBTOOL) --mode=clean $(RM) $(MODULE_NAME).a $(MODULE_NAME).la *.o *.lo .libs/*.o
+	$(LIBTOOL) --mode=clean $(RM) $(MODULE_NAME).a $(MODULE_NAME).la *.o *.gcda *.gcno *.lo .libs/*.o
 	-$(RM) auth-otp$(EXEEXT)
 	-$(RM) -r utils/
 
