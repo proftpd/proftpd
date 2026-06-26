@@ -120,7 +120,6 @@ void pr_proctitle_init(int argc, char *argv[], char *envp[]) {
   __progname_full = strdup(argv[0]);
 #endif /* HAVE___PROGNAME */
   memset(proc_title_buf, '\0', sizeof(proc_title_buf));
-pr_log_debug(DEBUG0, "proctitle_init: final environ = %p", environ);
 }
 
 void pr_proctitle_free(void) {
