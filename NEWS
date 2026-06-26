@@ -34,6 +34,7 @@
   PathDenyFilter as expected.
 - Issue 2188 - SQL group name lookup concatenates client-provided group names
   without escaping.
+- Issue 2190 - Authenticated SFTP sessions can overflow the SFTP packet buffer.
 
 1.3.10rc2 - Released 02-Jun-2026
 --------------------------------
