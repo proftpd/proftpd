@@ -677,11 +677,21 @@ static void get_geoip_tables(array_header *geoips, int filter_flags,
     PRIVS_RELINQUISH
 
     if (gi != NULL) {
+      char *db_info = NULL;
+
       *((GeoIP **) push_array(geoips)) = gi;
 
+      db_info = GeoIP_database_info(gi);
+
       pr_trace_msg(trace_channel, 15,
-        "loaded default GeoIP table: %s (type %d)",
-        GeoIP_database_info(gi), GeoIP_database_edition(gi));
+        "loaded default GeoIP table: %s (type %d)", db_info,
+        GeoIP_database_edition(gi));
+
+      /* We happen to know that GeoIP_database_info() returns a malloc'd
+       * pointer.  The GeoIP API does not provide a free/delete function,
+       * so we do it ourselves.  Sigh.
+       */
+      free(db_info);
 
     } else {
       pr_log_pri(PR_LOG_WARNING, MOD_GEOIP_VERSION
