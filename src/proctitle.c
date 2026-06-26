@@ -44,7 +44,7 @@
 # endif /* HAVE_SYS_EXEC_H */
 #endif /* PF_ARGV_PSSTRINGS */
 
-#ifdef HAVE___PROGNAME
+#if defined(HAVE___PROGNAME)
 extern char *__progname, *__progname_full;
 #endif /* HAVE___PROGNAME */
 extern char **environ;
@@ -55,11 +55,17 @@ static char *prog_last_argv = NULL;
 static int prog_argc = -1;
 static char proc_title_buf[BUFSIZ];
 
+/* Other libraries/code may change the global environment, so we keep our
+ * own copy of the pointer to memory that we allocate, for freeing up later.
+ * This mitigates ASAN reports of memory leaks here.
+ */
+static char **proc_environ = NULL;
+
 static unsigned int proc_flags = 0;
 #define PR_PROCTITLE_FL_USE_STATIC		0x001
 
 void pr_proctitle_init(int argc, char *argv[], char *envp[]) {
-  register int i, j;
+  register int i;
   register size_t envpsize;
   char **p;
 
@@ -70,24 +76,25 @@ void pr_proctitle_init(int argc, char *argv[], char *envp[]) {
 
   p = (char **) calloc((i + 1), sizeof(char *));
   if (p != NULL) {
-    environ = p;
+    register unsigned int j;
+    environ = proc_environ = p;
 
     j = 0;
     for (i = 0; envp[i] != NULL; i++) {
-      size_t envp_len = strlen(envp[i]);
+      size_t envp_len;
 
+      envp_len = strlen(envp[i]);
       if (envp_len > PR_TUNABLE_ENV_MAX) {
         /* Skip any environ variables that are too long. */
         continue;
       }
 
-      environ[j] = malloc(envp_len + 1);
-      if (environ[j] != NULL) {
-        sstrncpy(environ[j], envp[i], envp_len + 1);
+      proc_environ[j] = malloc(envp_len + 1);
+      if (proc_environ[j] != NULL) {
+        sstrncpy(proc_environ[j], envp[i], envp_len + 1);
         j++;
       }
     }
-
   }
 
   prog_argv = argv;
@@ -105,7 +112,7 @@ void pr_proctitle_init(int argc, char *argv[], char *envp[]) {
     }
   }
 
-#ifdef HAVE___PROGNAME
+#if defined(HAVE___PROGNAME)
   /* Set the __progname and __progname_full variables so glibc and company
    * don't go nuts.
    */
@@ -113,21 +120,23 @@ void pr_proctitle_init(int argc, char *argv[], char *envp[]) {
   __progname_full = strdup(argv[0]);
 #endif /* HAVE___PROGNAME */
   memset(proc_title_buf, '\0', sizeof(proc_title_buf));
+pr_log_debug(DEBUG0, "proctitle_init: final environ = %p", environ);
 }
 
 void pr_proctitle_free(void) {
-#ifdef PR_USE_DEVEL
-  if (environ) {
+#if defined(PR_USE_DEVEL)
+  if (proc_environ != NULL) {
     register unsigned int i;
 
-    for (i = 0; environ[i] != NULL; i++) {
-      free(environ[i]);
+    for (i = 0; proc_environ[i] != NULL; i++) {
+      free(proc_environ[i]);
     }
-    free(environ);
-    environ = NULL;
+
+    free(proc_environ);
+    proc_environ = NULL;
   }
 
-# ifdef HAVE___PROGNAME
+# if defined(HAVE___PROGNAME)
   free(__progname);
   __progname = NULL;
   free(__progname_full);
@@ -137,7 +146,7 @@ void pr_proctitle_free(void) {
 }
 
 void pr_proctitle_set_str(const char *str) {
-#ifndef HAVE_SETPROCTITLE
+#if !defined(HAVE_SETPROCTITLE)
   char *p;
   int i, procbuflen, maxlen = (prog_last_argv - prog_argv[0]) - 2;
 
@@ -196,7 +205,7 @@ void pr_proctitle_set_str(const char *str) {
 void pr_proctitle_set(const char *fmt, ...) {
   va_list msg;
 
-#ifndef HAVE_SETPROCTITLE
+#if !defined(HAVE_SETPROCTITLE)
 # if PF_ARGV_TYPE == PF_ARGV_PSTAT
   union pstun pst;
 # endif /* PF_ARGV_PSTAT */
@@ -216,7 +225,7 @@ void pr_proctitle_set(const char *fmt, ...) {
 
   memset(proc_title_buf, 0, sizeof(proc_title_buf));
 
-#ifdef HAVE_SETPROCTITLE
+#if defined(HAVE_SETPROCTITLE)
 # if __FreeBSD__ >= 4 && !defined(FREEBSD4_0) && !defined(FREEBSD4_1)
   /* FreeBSD's setproctitle() automatically prepends the process name. */
   vsnprintf(proc_title_buf, sizeof(proc_title_buf)-1, fmt, msg);
@@ -240,7 +249,7 @@ void pr_proctitle_set(const char *fmt, ...) {
 
   va_end(msg);
 
-#ifdef HAVE_SETPROCTITLE
+#if defined(HAVE_SETPROCTITLE)
   return;
 #else
   procbuflen = strlen(proc_title_buf);
