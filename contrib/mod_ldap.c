@@ -3469,6 +3469,7 @@ static int ldap_mod_init(void) {
     if (res == LDAP_OPT_SUCCESS) {
       pr_log_debug(DEBUG10, MOD_LDAP_VERSION
         ": LDAP TLS package = %s", tls_package);
+      ldap_memfree(tls_package);
 
     } else {
       pr_trace_msg(trace_channel, 3,
