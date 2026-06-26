@@ -32,6 +32,8 @@
   PathAllowFilter, PathDenyFilter as expected.
 - Issue 2180 - SFTP SETSTAT, FSETSTAT requests do not honor PathAllowFilter,
   PathDenyFilter as expected.
+- Issue 2188 - SQL group name lookup concatenates client-provided group names
+  without escaping.
 
 1.3.10rc2 - Released 02-Jun-2026
 --------------------------------
