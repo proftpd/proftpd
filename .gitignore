@@ -6,6 +6,9 @@ config.h
 config.cache
 config.status
 cov-int
+*.gcda
+*.gcno
+gmon.*
 proftpd
 proftpd.pc
 module-libs.txt
