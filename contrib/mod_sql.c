@@ -2278,7 +2278,7 @@ static struct group *sql_getgroup(cmd_rec *cmd, struct group *g) {
     sql_log(DEBUG_AUTH, "cache hit for group '%s'", grp->gr_name);
 
     /* Check for negatively cached groups, which will have NULL gr_mem. */
-    if (!grp->gr_mem) {
+    if (grp->gr_mem == NULL) {
       sql_log(DEBUG_AUTH, "negative cache entry for group '%s'", grp->gr_name);
       return NULL;
     }
@@ -2287,7 +2287,17 @@ static struct group *sql_getgroup(cmd_rec *cmd, struct group *g) {
   }
 
   if (g->gr_name != NULL) {
-    groupname = g->gr_name;
+    char *realname;
+
+    realname = g->gr_name;
+
+    mr = sql_dispatch(sql_make_cmd(cmd->tmp_pool, 2, MOD_SQL_DEF_CONN_NAME,
+      realname), "sql_escapestring");
+    if (check_response(mr, 0) < 0) {
+      return NULL;
+    }
+
+    groupname = (char *) mr->data;
     sql_log(DEBUG_WARN, "cache miss for group '%s'", groupname);
 
   } else {
@@ -2354,6 +2364,10 @@ static struct group *sql_getgroup(cmd_rec *cmd, struct group *g) {
 
     groupname = sd->data[0];
   }
+
+  /* The groupname has been escaped according to the backend database' rules
+   * at this point.
+   */
 
   if (!cmap.groupcustombyname) {
     grpwhere = pstrcat(cmd->tmp_pool, cmap.grpfield, " = '", groupname, "'",
