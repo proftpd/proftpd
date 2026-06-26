@@ -271,11 +271,11 @@ struct fxp_buffer {
 #define	FXP_PACKET_HAVE_PAYLOAD_SIZE	0x0008
 #define	FXP_PACKET_HAVE_PAYLOAD		0x0010
 
-/* After 32K of allocation from the scratch SFTP payload pool, destroy the
+/* After 64K of allocation from the scratch SFTP payload pool, destroy the
  * pool and create a new one.  This will prevent unbounded allocation
  * from the pool.
  */
-#define FXP_PACKET_DATA_ALLOC_MAX_SZ		(1024 * 32)
+#define FXP_PACKET_DATA_ALLOC_MAX_SZ		(1024 * 64)
 static size_t fxp_packet_data_allocsz = 0;
 
 #define FXP_PACKET_DATA_DEFAULT_SZ		(1024 * 16)
@@ -3311,37 +3311,45 @@ static void fxp_packet_add_cache_data(unsigned char *data, uint32_t datalen) {
 
     } else {
       /* We need a larger buffer.  Round up to the nearest 1K size. */
+      pool *tmp_pool;
+      char *cached_data;
+      uint32_t cached_datalen;
       size_t sz;
 
-      sz = sftp_crypto_get_size(curr_buflen + datalen + 1, 1024);
+      if (curr_buflen + datalen > FXP_MAX_PACKET_LEN) {
+        (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
+          "received excessive SFTP data (len %lu > max %lu bytes), rejecting",
+          (unsigned long) curr_buflen + datalen,
+          (unsigned long) FXP_MAX_PACKET_LEN);
+        SFTP_DISCONNECT_CONN(SFTP_SSH2_DISCONNECT_BY_APPLICATION, NULL);
+      }
+
+      /* Get the existing cached data before allocating a larger buffer. */
+      tmp_pool = make_sub_pool(fxp_pool);
+
+      cached_datalen = curr_buflen;
+      cached_data = palloc(tmp_pool, cached_datalen);
+      memcpy(cached_data, curr_buf, cached_datalen);
 
       if (fxp_packet_data_allocsz > FXP_PACKET_DATA_ALLOC_MAX_SZ) {
-        pool *tmp_pool;
-        char *tmp_data;
-        uint32_t tmp_datalen;
-
         (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
           "renewing SFTP packet data pool");
-
-        tmp_pool = make_sub_pool(fxp_pool);
-        tmp_datalen = curr_buflen;
-        tmp_data = palloc(tmp_pool, tmp_datalen);
-        memcpy(tmp_data, curr_buf, tmp_datalen);
 
         destroy_pool(curr_buf_pool);
 
         curr_buf_pool = make_sub_pool(fxp_pool);
         pr_pool_tag(curr_buf_pool, "SFTP packet buffer pool");
-
-        curr_bufsz = sz;
-        curr_buf = palloc(curr_buf_pool, curr_bufsz);
-        fxp_packet_data_allocsz += sz;
-
-        memcpy(curr_buf, tmp_data, tmp_datalen);
-        curr_buflen = tmp_datalen;
-
-        destroy_pool(tmp_pool);
       }
+
+      sz = sftp_crypto_get_size(curr_buflen + datalen + 1, 1024);
+      curr_bufsz = sz;
+      curr_buf = palloc(curr_buf_pool, curr_bufsz);
+      fxp_packet_data_allocsz += sz;
+
+      memcpy(curr_buf, cached_data, cached_datalen);
+      curr_buflen = cached_datalen;
+
+      destroy_pool(tmp_pool);
     }
 
     /* Append the SSH2 data to the current unconsumed buffer.
