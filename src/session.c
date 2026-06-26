@@ -172,15 +172,19 @@ void pr_session_end(int flags) {
   }
 #endif /* PR_USE_DEVEL */
 
-#if defined(PR_DEVEL_PROFILE)
+#if defined(PR_DEVEL_ASAN) || \
+    defined(PR_DEVEL_PROFILE)
   /* Populating the gmon.out gprof file requires that the process exit
    * via exit(3) or by returning from main().  Using _exit(2) doesn't allow
    * the process the time to write its profile data out.
+   *
+   * Similarly, tools like ASAN have exit(3) hooks for reporting their
+   * findings.
    */
   exit(exitcode);
 #else
   _exit(exitcode);
-#endif /* PR_DEVEL_PROFILE */
+#endif /* PR_DEVEL_ASAN or PR_DEVEL_PROFILE */
 }
 
 const char *pr_session_get_disconnect_reason(const char **details) {

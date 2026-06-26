@@ -2217,7 +2217,11 @@ static void show_settings(void) {
 #endif /* PR_USE_CURSES and HAVE_LIBCURSES */
 
 #if defined(PR_USE_DEVEL)
+# if defined(PR_DEVEL_ASAN)
+  printf("%s", "    + Developer support (ASAN)\n");
+# else
   printf("%s", "    + Developer support\n");
+# endif /* PR_DEVEL_ASAN */
 #else
   printf("%s", "    - Developer support\n");
 #endif /* PR_USE_DEVEL */
