@@ -400,8 +400,8 @@ static int data_active_open(const char *reason, off_t size) {
       pr_response_send(R_150, "FILE: %s", reason);
     }
 
-    pr_inet_close(session.pool, session.d);
     (void) pr_inet_set_nonblock(session.pool, session.d);
+    pr_inet_close(session.pool, session.d);
     session.d = conn;
     return 0;
   }
