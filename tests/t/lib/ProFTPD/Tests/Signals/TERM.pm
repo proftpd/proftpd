@@ -32,17 +32,12 @@ sub list_tests {
 sub term_daemon_ok {
   my $self = shift;
   my $tmpdir = $self->{tmpdir};
-
-  my $config_file = "$tmpdir/signals.conf";
-  my $pid_file = File::Spec->rel2abs("$tmpdir/signals.pid");
-  my $scoreboard_file = File::Spec->rel2abs("$tmpdir/signals.scoreboard");
-
-  my $log_file = File::Spec->rel2abs('tests.log');
+  my $setup = test_setup($tmpdir, 'signals');
 
   my $config = {
-    PidFile => $pid_file,
-    ScoreboardFile => $scoreboard_file,
-    SystemLog => $log_file,
+    PidFile => $setup->{pid_file},
+    ScoreboardFile => $setup->{scoreboard_file},
+    SystemLog => $setup->{log_file},
 
     IfModules => {
       'mod_delay.c' => {
@@ -51,18 +46,19 @@ sub term_daemon_ok {
     },
   };
 
-  my ($port, $config_user, $config_group) = config_write($config_file, $config);
+  my ($port, $config_user, $config_group) = config_write($setup->{config_file},
+    $config);
 
   my $ex;
 
   # Start server
-  server_start($config_file);
+  server_start($setup->{config_file});
 
   # Allow a short interval between startup and shutdown
   sleep(1);
 
   # Stop server
-  server_stop($pid_file, 1);
+  server_stop($setup->{pid_file}, 1);
 
   # Make sure that the pid file has been removed by the server as part of
   # its shutdown procedures.  We need the delay since proftpd handles
@@ -71,19 +67,20 @@ sub term_daemon_ok {
 
   sleep(1);
 
-  if (-e $pid_file) {
-    die("Unclean shutdown: PidFile $pid_file still present");
+  eval {
+    if (-e $setup->{pid_file}) {
+      die("Unclean shutdown: PidFile $setup->{pid_file} still present");
+    }
+
+    if (-e $setup->{scoreboard_file}) {
+      die("Unclean shutdown: ScoreboardFile $setup->{scoreboard_file} still present");
+    }
+  };
+  if ($@) {
+    $ex = $@;
   }
 
-  if (-e $scoreboard_file) {
-    die("Unclean shutdown: ScoreboardFile $scoreboard_file still present");
-  }
-
-  if ($ex) {
-    die($ex);
-  }
-
-  unlink($log_file);
+  test_cleanup($setup, $ex);
 }
 
 1;

@@ -171,7 +171,7 @@ sub telnet_iac_bug3521 {
   server_stop($setup->{pid_file});
   $self->assert_child_ok($pid);
 
-  test_cleanup($setup->{log_file}, $ex);
+  test_cleanup($setup, $ex);
 }
 
 sub telnet_iac_bug3697 {
@@ -298,7 +298,7 @@ sub telnet_iac_bug3697 {
   server_stop($setup->{pid_file});
   $self->assert_child_ok($pid);
 
-  test_cleanup($setup->{log_file}, $ex);
+  test_cleanup($setup, $ex);
 }
 
 sub telnet_initial_crlf_issue1527 {
@@ -444,7 +444,7 @@ sub telnet_initial_crlf_issue1527 {
   server_stop($setup->{pid_file});
   $self->assert_child_ok($pid);
 
-  test_cleanup($setup->{log_file}, $ex);
+  test_cleanup($setup, $ex);
 }
 
 sub telnet_nonascii_uppercase_issue2019 {
@@ -539,7 +539,7 @@ sub telnet_nonascii_uppercase_issue2019 {
   server_stop($setup->{pid_file});
   $self->assert_child_ok($pid);
 
-  test_cleanup($setup->{log_file}, $ex);
+  test_cleanup($setup, $ex);
 }
 
 1;

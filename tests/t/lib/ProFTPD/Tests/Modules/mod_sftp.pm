@@ -28889,51 +28889,20 @@ sub sftp_upload_largefile {
 sub sftp_upload_device_full {
   my $self = shift;
   my $tmpdir = $self->{tmpdir};
-
-  my $config_file = "$tmpdir/sftp.conf";
-  my $pid_file = File::Spec->rel2abs("$tmpdir/sftp.pid");
-  my $scoreboard_file = File::Spec->rel2abs("$tmpdir/sftp.scoreboard");
-
-  my $log_file = test_get_logfile();
-
-  my $auth_user_file = File::Spec->rel2abs("$tmpdir/sftp.passwd");
-  my $auth_group_file = File::Spec->rel2abs("$tmpdir/sftp.group");
-
-  my $user = 'proftpd';
-  my $passwd = 'test';
-  my $group = 'ftpd';
-  my $home_dir = File::Spec->rel2abs($tmpdir);
-  my $uid = 500;
-  my $gid = 500;
-
-  # Make sure that, if we're running as root, that the home directory has
-  # permissions/privs set for the account we create
-  if ($< == 0) {
-    unless (chmod(0755, $home_dir)) {
-      die("Can't set perms on $home_dir to 0755: $!");
-    }
-
-    unless (chown($uid, $gid, $home_dir)) {
-      die("Can't set owner of $home_dir to $uid/$gid: $!");
-    }
-  }
-
-  auth_user_write($auth_user_file, $user, $passwd, $uid, $gid, $home_dir,
-    '/bin/bash');
-  auth_group_write($auth_group_file, $group, $gid, $user);
+  my $setup = test_setup($tmpdir, 'sftp');
 
   my $rsa_host_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/ssh_host_rsa_key');
   my $dsa_host_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/ssh_host_dsa_key');
 
   my $config = {
-    PidFile => $pid_file,
-    ScoreboardFile => $scoreboard_file,
-    SystemLog => $log_file,
-    TraceLog => $log_file,
-    Trace => 'DEFAULT:10 ssh2:20 sftp:20 scp:20',
+    PidFile => $setup->{pid_file},
+    ScoreboardFile => $setup->{scoreboard_file},
+    SystemLog => $setup->{log_file},
+    TraceLog => $setup->{log_file},
+    Trace => 'DEFAULT:10 ssh2:20 sftp:20',
 
-    AuthUserFile => $auth_user_file,
-    AuthGroupFile => $auth_group_file,
+    AuthUserFile => $setup->{auth_user_file},
+    AuthGroupFile => $setup->{auth_group_file},
     AuthOrder => 'mod_auth_file.c',
 
     AllowOverwrite => 'on',
@@ -28945,7 +28914,7 @@ sub sftp_upload_device_full {
 
       'mod_sftp.c' => [
         "SFTPEngine on",
-        "SFTPLog $log_file",
+        "SFTPLog $setup->{log_file}",
         "SFTPHostKey $rsa_host_key",
         "SFTPHostKey $dsa_host_key",
         "SFTPOptions IgnoreSFTPUploadPerms",
@@ -28953,7 +28922,8 @@ sub sftp_upload_device_full {
     },
   };
 
-  my ($port, $config_user, $config_group) = config_write($config_file, $config);
+  my ($port, $config_user, $config_group) = config_write($setup->{config_file},
+    $config);
 
   # Open pipes, for use between the parent and child processes.  Specifically,
   # the child will indicate when it's done with its test by writing a message
@@ -28975,16 +28945,16 @@ sub sftp_upload_device_full {
   defined(my $pid = fork()) or die("Can't fork: $!");
   if ($pid) {
     eval {
-      my $ssh2 = Net::SSH2->new();
-
+      # Allow for server startup
       sleep(1);
 
+      my $ssh2 = Net::SSH2->new();
       unless ($ssh2->connect('127.0.0.1', $port)) {
         my ($err_code, $err_name, $err_str) = $ssh2->error();
         die("Can't connect to SSH2 server: [$err_name] ($err_code) $err_str");
       }
 
-      unless ($ssh2->auth_password($user, $passwd)) {
+      unless ($ssh2->auth_password($setup->{user}, $setup->{passwd})) {
         my ($err_code, $err_name, $err_str) = $ssh2->error();
         die("Can't login to SSH2 server: [$err_name] ($err_code) $err_str");
       }
@@ -29005,7 +28975,12 @@ sub sftp_upload_device_full {
       my $count = 20;
       for (my $i = 0; $i < $count; $i++) {
         unless (print $fh "ABCD" x 8192) {
-          die("Failed to write to /dev/full: $!");
+          if ($! =~ /Resource temporarily unavailable/) {
+            # It is possible to receive "expected" errors here.  Nice.
+
+          } else {
+            die("Failed to write to /dev/full: $!");
+          }
         }
       }
 
@@ -29025,7 +29000,6 @@ sub sftp_upload_device_full {
 
       $ssh2->disconnect();
     };
-
     if ($@) {
       $ex = $@;
     }
@@ -29034,7 +29008,7 @@ sub sftp_upload_device_full {
     $wfh->flush();
 
   } else {
-    eval { server_wait($config_file, $rfh) };
+    eval { server_wait($setup->{config_file}, $rfh) };
     if ($@) {
       warn($@);
       exit 1;
@@ -29044,18 +29018,10 @@ sub sftp_upload_device_full {
   }
 
   # Stop server
-  server_stop($pid_file);
-
+  server_stop($setup->{pid_file});
   $self->assert_child_ok($pid);
 
-  if ($ex) {
-    test_append_logfile($log_file, $ex);
-    unlink($log_file);
-
-    die($ex);
-  }
-
-  unlink($log_file);
+  test_cleanup($setup, $ex);
 }
 
 sub sftp_upload_fifo_bug3312 {
@@ -29607,22 +29573,7 @@ sub sftp_ext_upload_bug3550 {
 sub sftp_download {
   my $self = shift;
   my $tmpdir = $self->{tmpdir};
-
-  my $config_file = "$tmpdir/sftp.conf";
-  my $pid_file = File::Spec->rel2abs("$tmpdir/sftp.pid");
-  my $scoreboard_file = File::Spec->rel2abs("$tmpdir/sftp.scoreboard");
-
-  my $log_file = test_get_logfile();
-
-  my $auth_user_file = File::Spec->rel2abs("$tmpdir/sftp.passwd");
-  my $auth_group_file = File::Spec->rel2abs("$tmpdir/sftp.group");
-
-  my $user = 'proftpd';
-  my $passwd = 'test';
-  my $group = 'ftpd';
-  my $home_dir = File::Spec->rel2abs($tmpdir);
-  my $uid = 500;
-  my $gid = 500;
+  my $setup = test_setup($tmpdir, 'sftp');
 
   my $test_file = File::Spec->rel2abs("$tmpdir/test.txt");
   if (open(my $fh, "> $test_file")) {
@@ -29644,31 +29595,23 @@ sub sftp_download {
   # Make sure that, if we're running as root, that the home directory has
   # permissions/privs set for the account we create
   if ($< == 0) {
-    unless (chmod(0755, $home_dir)) {
-      die("Can't set perms on $home_dir to 0755: $!");
-    }
-
-    unless (chown($uid, $gid, $home_dir)) {
-      die("Can't set owner of $home_dir to $uid/$gid: $!");
+    unless (chown($setup->{uid}, $setup->{gid}, $test_file)) {
+      die("Can't set owner of $test_file to $setup->{uid}/$setup->{gid}: $!");
     }
   }
-
-  auth_user_write($auth_user_file, $user, $passwd, $uid, $gid, $home_dir,
-    '/bin/bash');
-  auth_group_write($auth_group_file, $group, $gid, $user);
 
   my $rsa_host_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/ssh_host_rsa_key');
   my $dsa_host_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/ssh_host_dsa_key');
 
   my $config = {
-    PidFile => $pid_file,
-    ScoreboardFile => $scoreboard_file,
-    SystemLog => $log_file,
-    TraceLog => $log_file,
-    Trace => 'DEFAULT:10 ssh2:20 sftp:20 scp:20',
+    PidFile => $setup->{pid_file},
+    ScoreboardFile => $setup->{scoreboard_file},
+    SystemLog => $setup->{log_file},
+    TraceLog => $setup->{log_file},
+    Trace => 'DEFAULT:10 ssh2:20 sftp:20',
 
-    AuthUserFile => $auth_user_file,
-    AuthGroupFile => $auth_group_file,
+    AuthUserFile => $setup->{auth_user_file},
+    AuthGroupFile => $setup->{auth_group_file},
     AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
@@ -29678,14 +29621,15 @@ sub sftp_download {
 
       'mod_sftp.c' => [
         "SFTPEngine on",
-        "SFTPLog $log_file",
+        "SFTPLog $setup->{log_file}",
         "SFTPHostKey $rsa_host_key",
         "SFTPHostKey $dsa_host_key",
       ],
     },
   };
 
-  my ($port, $config_user, $config_group) = config_write($config_file, $config);
+  my ($port, $config_user, $config_group) = config_write($setup->{config_file},
+    $config);
 
   # Open pipes, for use between the parent and child processes.  Specifically,
   # the child will indicate when it's done with its test by writing a message
@@ -29707,16 +29651,16 @@ sub sftp_download {
   defined(my $pid = fork()) or die("Can't fork: $!");
   if ($pid) {
     eval {
-      my $ssh2 = Net::SSH2->new();
-
+      # Allow for server startup
       sleep(1);
 
+      my $ssh2 = Net::SSH2->new();
       unless ($ssh2->connect('127.0.0.1', $port)) {
         my ($err_code, $err_name, $err_str) = $ssh2->error();
         die("Can't connect to SSH2 server: [$err_name] ($err_code) $err_str");
       }
 
-      unless ($ssh2->auth_password($user, $passwd)) {
+      unless ($ssh2->auth_password($setup->{user}, $setup->{passwd})) {
         my ($err_code, $err_name, $err_str) = $ssh2->error();
         die("Can't login to SSH2 server: [$err_name] ($err_code) $err_str");
       }
@@ -29750,11 +29694,10 @@ sub sftp_download {
       $sftp = undef;
 
       $self->assert($test_sz == $size,
-        test_msg("Expected $test_sz, got $size"));
+        test_msg("Expected size $test_sz, got $size"));
 
       $ssh2->disconnect();
     };
-
     if ($@) {
       $ex = $@;
     }
@@ -29763,7 +29706,7 @@ sub sftp_download {
     $wfh->flush();
 
   } else {
-    eval { server_wait($config_file, $rfh) };
+    eval { server_wait($setup->{config_file}, $rfh) };
     if ($@) {
       warn($@);
       exit 1;
@@ -29773,18 +29716,10 @@ sub sftp_download {
   }
 
   # Stop server
-  server_stop($pid_file);
-
+  server_stop($setup->{pid_file});
   $self->assert_child_ok($pid);
 
-  if ($ex) {
-    test_append_logfile($log_file, $ex);
-    unlink($log_file);
-
-    die($ex);
-  }
-
-  unlink($log_file);
+  test_cleanup($setup, $ex);
 }
 
 sub sftp_download_with_compression {
@@ -42207,50 +42142,21 @@ sub sftp_config_rootlogin {
   my $self = shift;
   my $tmpdir = $self->{tmpdir};
 
-  my $config_file = "$tmpdir/sftp.conf";
-  my $pid_file = File::Spec->rel2abs("$tmpdir/sftp.pid");
-  my $scoreboard_file = File::Spec->rel2abs("$tmpdir/sftp.scoreboard");
-
-  my $log_file = test_get_logfile();
-
-  my $auth_user_file = File::Spec->rel2abs("$tmpdir/sftp.passwd");
-  my $auth_group_file = File::Spec->rel2abs("$tmpdir/sftp.group");
-
-  my $user = 'proftpd';
-  my $passwd = 'test';
-  my $group = 'ftpd';
-  my $home_dir = File::Spec->rel2abs($tmpdir);
-  my $uid = 0;
-  my $gid = 0;
-
-  # Make sure that, if we're running as root, that the home directory has
-  # permissions/privs set for the account we create
-  if ($< == 0) {
-    unless (chmod(0755, $home_dir)) {
-      die("Can't set perms on $home_dir to 0755: $!");
-    }
-
-    unless (chown($uid, $gid, $home_dir)) {
-      die("Can't set owner of $home_dir to $uid/$gid: $!");
-    }
-  }
-
-  auth_user_write($auth_user_file, $user, $passwd, $uid, $gid, $home_dir,
-    '/bin/bash');
-  auth_group_write($auth_group_file, $group, $gid, $user);
+  # We explicitly need the test user to have UID/GID 0 for this test.
+  my $setup = test_setup($tmpdir, 'sftp', 'proftpd', 'test', 'ftpd', 0, 0);
 
   my $rsa_host_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/ssh_host_rsa_key');
   my $dsa_host_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/ssh_host_dsa_key');
 
   my $config = {
-    PidFile => $pid_file,
-    ScoreboardFile => $scoreboard_file,
-    SystemLog => $log_file,
-    TraceLog => $log_file,
-    Trace => 'DEFAULT:10 ssh2:20 sftp:20 scp:20',
+    PidFile => $setup->{pid_file},
+    ScoreboardFile => $setup->{scoreboard_file},
+    SystemLog => $setup->{log_file},
+    TraceLog => $setup->{log_file},
+    Trace => 'DEFAULT:10 ssh2:20 sftp:20',
 
-    AuthUserFile => $auth_user_file,
-    AuthGroupFile => $auth_group_file,
+    AuthUserFile => $setup->{auth_user_file},
+    AuthGroupFile => $setup->{auth_group_file},
     AuthOrder => 'mod_auth_file.c',
 
     RootLogin => 'off',
@@ -42262,14 +42168,15 @@ sub sftp_config_rootlogin {
 
       'mod_sftp.c' => [
         "SFTPEngine on",
-        "SFTPLog $log_file",
+        "SFTPLog $setup->{log_file}",
         "SFTPHostKey $rsa_host_key",
         "SFTPHostKey $dsa_host_key",
       ],
     },
   };
 
-  my ($port, $config_user, $config_group) = config_write($config_file, $config);
+  my ($port, $config_user, $config_group) = config_write($setup->{config_file},
+    $config);
 
   # Open pipes, for use between the parent and child processes.  Specifically,
   # the child will indicate when it's done with its test by writing a message
@@ -42291,20 +42198,21 @@ sub sftp_config_rootlogin {
   defined(my $pid = fork()) or die("Can't fork: $!");
   if ($pid) {
     eval {
-      my $ssh2 = Net::SSH2->new();
-
+      # Allow for server startup
       sleep(1);
 
+      my $ssh2 = Net::SSH2->new();
       unless ($ssh2->connect('127.0.0.1', $port)) {
         my ($err_code, $err_name, $err_str) = $ssh2->error();
         die("Can't connect to SSH2 server: [$err_name] ($err_code) $err_str");
       }
 
-      if ($ssh2->auth_password($user, $passwd)) {
+      if ($ssh2->auth_password($setup->{user}, $setup->{passwd})) {
         die("Unexpectedly logged in to SSH2 server");
       }
-    };
 
+      $ssh2->disconnect();
+    };
     if ($@) {
       $ex = $@;
     }
@@ -42313,7 +42221,7 @@ sub sftp_config_rootlogin {
     $wfh->flush();
 
   } else {
-    eval { server_wait($config_file, $rfh) };
+    eval { server_wait($setup->{config_file}, $rfh) };
     if ($@) {
       warn($@);
       exit 1;
@@ -42323,18 +42231,10 @@ sub sftp_config_rootlogin {
   }
 
   # Stop server
-  server_stop($pid_file);
-
+  server_stop($setup->{pid_file});
   $self->assert_child_ok($pid);
 
-  if ($ex) {
-    test_append_logfile($log_file, $ex);
-    unlink($log_file);
-
-    die($ex);
-  }
-
-  unlink($log_file);
+  test_cleanup($setup, $ex);
 }
 
 sub sftp_config_protocols {
@@ -59432,38 +59332,7 @@ sub scp_ext_null_ptr_issue1043 {
 sub scp_ext_upload_recursive_dir_bug3447 {
   my $self = shift;
   my $tmpdir = $self->{tmpdir};
-
-  my $config_file = "$tmpdir/sftp.conf";
-  my $pid_file = File::Spec->rel2abs("$tmpdir/sftp.pid");
-  my $scoreboard_file = File::Spec->rel2abs("$tmpdir/sftp.scoreboard");
-
-  my $log_file = test_get_logfile();
-
-  my $auth_user_file = File::Spec->rel2abs("$tmpdir/sftp.passwd");
-  my $auth_group_file = File::Spec->rel2abs("$tmpdir/sftp.group");
-
-  my $user = 'proftpd';
-  my $passwd = 'test';
-  my $group = 'ftpd';
-  my $home_dir = File::Spec->rel2abs($tmpdir);
-  my $uid = 500;
-  my $gid = 500;
-
-  # Make sure that, if we're running as root, that the home directory has
-  # permissions/privs set for the account we create
-  if ($< == 0) {
-    unless (chmod(0755, $home_dir)) {
-      die("Can't set perms on $home_dir to 0755: $!");
-    }
-
-    unless (chown($uid, $gid, $home_dir)) {
-      die("Can't set owner of $home_dir to $uid/$gid: $!");
-    }
-  }
-
-  auth_user_write($auth_user_file, $user, $passwd, $uid, $gid, $home_dir,
-    '/bin/bash');
-  auth_group_write($auth_group_file, $group, $gid, $user);
+  my $setup = test_setup($tmpdir, 'sftp');
 
   my $rsa_host_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/ssh_host_rsa_key');
   my $dsa_host_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/ssh_host_dsa_key');
@@ -59568,15 +59437,27 @@ sub scp_ext_upload_recursive_dir_bug3447 {
   my $dst_dir = File::Spec->rel2abs("$tmpdir/dst.d");
   mkpath($dst_dir);
 
+  # Make sure that, if we're running as root, that the target directory has
+  # permissions/privs set for the account we create
+  if ($< == 0) {
+    unless (chmod(0755, $dst_dir)) {
+      die("Can't set perms on $dst_dir to 0755: $!");
+    }
+
+    unless (chown($setup->{uid}, $setup->{gid}, $dst_dir)) {
+      die("Can't set owner of $dst_dir to $setup->{uid}/$setup->{gid}: $!");
+    }
+  }
+
   my $config = {
-    PidFile => $pid_file,
-    ScoreboardFile => $scoreboard_file,
-    SystemLog => $log_file,
-    TraceLog => $log_file,
+    PidFile => $setup->{pid_file},
+    ScoreboardFile => $setup->{scoreboard_file},
+    SystemLog => $setup->{log_file},
+    TraceLog => $setup->{log_file},
     Trace => 'DEFAULT:10 ssh2:20 sftp:20 scp:20',
 
-    AuthUserFile => $auth_user_file,
-    AuthGroupFile => $auth_group_file,
+    AuthUserFile => $setup->{auth_user_file},
+    AuthGroupFile => $setup->{auth_group_file},
     AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
@@ -59586,7 +59467,7 @@ sub scp_ext_upload_recursive_dir_bug3447 {
 
       'mod_sftp.c' => [
         "SFTPEngine on",
-        "SFTPLog $log_file",
+        "SFTPLog $setup->{log_file}",
         "SFTPHostKey $rsa_host_key",
         "SFTPHostKey $dsa_host_key",
         "SFTPAuthorizedUserKeys file:~/.authorized_keys",
@@ -59594,7 +59475,8 @@ sub scp_ext_upload_recursive_dir_bug3447 {
     },
   };
 
-  my ($port, $config_user, $config_group) = config_write($config_file, $config);
+  my ($port, $config_user, $config_group) = config_write($setup->{config_file},
+    $config);
 
   # Open pipes, for use between the parent and child processes.  Specifically,
   # the child will indicate when it's done with its test by writing a message
@@ -59629,7 +59511,7 @@ sub scp_ext_upload_recursive_dir_bug3447 {
         '-oStrictHostKeyChecking=no',
         '-oUserKnownHostsFile=/dev/null',
         "$src_dir/",
-        "$user\@127.0.0.1:dst.d/",
+        "$setup->{user}\@127.0.0.1:dst.d/",
       );
 
       my $scp_rh = IO::Handle->new();
@@ -59709,9 +59591,7 @@ sub scp_ext_upload_recursive_dir_bug3447 {
       unless (-f "$dst_dir/src.d/wx.d/aa024") {
         die("File '$dst_dir/src.d/wx.d/aa024' does not exist as expected");
       }
-
     };
-
     if ($@) {
       $ex = $@;
     }
@@ -59720,7 +59600,7 @@ sub scp_ext_upload_recursive_dir_bug3447 {
     $wfh->flush();
 
   } else {
-    eval { server_wait($config_file, $rfh) };
+    eval { server_wait($setup->{config_file}, $rfh) };
     if ($@) {
       warn($@);
       exit 1;
@@ -59730,55 +59610,16 @@ sub scp_ext_upload_recursive_dir_bug3447 {
   }
 
   # Stop server
-  server_stop($pid_file);
-
+  server_stop($setup->{pid_file});
   $self->assert_child_ok($pid);
 
-  if ($ex) {
-    test_append_logfile($log_file, $ex);
-    unlink($log_file);
-
-    die($ex);
-  }
-
-  unlink($log_file);
+  test_cleanup($setup, $ex);
 }
 
 sub scp_ext_upload_recursive_dir_bug3792 {
   my $self = shift;
   my $tmpdir = $self->{tmpdir};
-
-  my $config_file = "$tmpdir/sftp.conf";
-  my $pid_file = File::Spec->rel2abs("$tmpdir/sftp.pid");
-  my $scoreboard_file = File::Spec->rel2abs("$tmpdir/sftp.scoreboard");
-
-  my $log_file = test_get_logfile();
-
-  my $auth_user_file = File::Spec->rel2abs("$tmpdir/sftp.passwd");
-  my $auth_group_file = File::Spec->rel2abs("$tmpdir/sftp.group");
-
-  my $user = 'proftpd';
-  my $passwd = 'test';
-  my $group = 'ftpd';
-  my $home_dir = File::Spec->rel2abs($tmpdir);
-  my $uid = 500;
-  my $gid = 500;
-
-  # Make sure that, if we're running as root, that the home directory has
-  # permissions/privs set for the account we create
-  if ($< == 0) {
-    unless (chmod(0755, $home_dir)) {
-      die("Can't set perms on $home_dir to 0755: $!");
-    }
-
-    unless (chown($uid, $gid, $home_dir)) {
-      die("Can't set owner of $home_dir to $uid/$gid: $!");
-    }
-  }
-
-  auth_user_write($auth_user_file, $user, $passwd, $uid, $gid, $home_dir,
-    '/bin/bash');
-  auth_group_write($auth_group_file, $group, $gid, $user);
+  my $setup = test_setup($tmpdir, 'sftp');
 
   my $rsa_host_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/ssh_host_rsa_key');
   my $dsa_host_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/ssh_host_dsa_key');
@@ -59868,15 +59709,27 @@ sub scp_ext_upload_recursive_dir_bug3792 {
   my $dst_dir = File::Spec->rel2abs("$tmpdir/dst.d");
   mkpath($dst_dir);
 
+  # Make sure that, if we're running as root, that the target directory has
+  # permissions/privs set for the account we create
+  if ($< == 0) {
+    unless (chmod(0755, $dst_dir)) {
+      die("Can't set perms on $dst_dir to 0755: $!");
+    }
+
+    unless (chown($setup->{uid}, $setup->{gid}, $dst_dir)) {
+      die("Can't set owner of $dst_dir to $setup->{uid}/$setup->{gid}: $!");
+    }
+  }
+
   my $config = {
-    PidFile => $pid_file,
-    ScoreboardFile => $scoreboard_file,
-    SystemLog => $log_file,
-    TraceLog => $log_file,
+    PidFile => $setup->{pid_file},
+    ScoreboardFile => $setup->{scoreboard_file},
+    SystemLog => $setup->{log_file},
+    TraceLog => $setup->{log_file},
     Trace => 'DEFAULT:10 ssh2:20 sftp:20 scp:20',
 
-    AuthUserFile => $auth_user_file,
-    AuthGroupFile => $auth_group_file,
+    AuthUserFile => $setup->{auth_user_file},
+    AuthGroupFile => $setup->{auth_group_file},
     AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
@@ -59886,7 +59739,7 @@ sub scp_ext_upload_recursive_dir_bug3792 {
 
       'mod_sftp.c' => [
         "SFTPEngine on",
-        "SFTPLog $log_file",
+        "SFTPLog $setup->{log_file}",
         "SFTPHostKey $rsa_host_key",
         "SFTPHostKey $dsa_host_key",
         "SFTPAuthorizedUserKeys file:~/.authorized_keys",
@@ -59895,7 +59748,8 @@ sub scp_ext_upload_recursive_dir_bug3792 {
     },
   };
 
-  my ($port, $config_user, $config_group) = config_write($config_file, $config);
+  my ($port, $config_user, $config_group) = config_write($setup->{config_file},
+    $config);
 
   # Open pipes, for use between the parent and child processes.  Specifically,
   # the child will indicate when it's done with its test by writing a message
@@ -59931,7 +59785,7 @@ sub scp_ext_upload_recursive_dir_bug3792 {
         '-oStrictHostKeyChecking=no',
         '-oUserKnownHostsFile=/dev/null',
         "$src_dir/",
-        "$user\@127.0.0.1:dst.d/",
+        "$setup->{user}\@127.0.0.1:dst.d/",
       );
 
       my $scp_rh = IO::Handle->new();
@@ -60012,9 +59866,7 @@ sub scp_ext_upload_recursive_dir_bug3792 {
       unless (-f "$dst_dir/src.d/wx.d/aa024") {
         die("File '$dst_dir/src.d/wx.d/aa024' does not exist as expected");
       }
-
     };
-
     if ($@) {
       $ex = $@;
     }
@@ -60023,7 +59875,7 @@ sub scp_ext_upload_recursive_dir_bug3792 {
     $wfh->flush();
 
   } else {
-    eval { server_wait($config_file, $rfh, 30) };
+    eval { server_wait($setup->{config_file}, $rfh, 30) };
     if ($@) {
       warn($@);
       exit 1;
@@ -60033,18 +59885,10 @@ sub scp_ext_upload_recursive_dir_bug3792 {
   }
 
   # Stop server
-  server_stop($pid_file);
-
+  server_stop($setup->{pid_file});
   $self->assert_child_ok($pid);
 
-  if ($ex) {
-    test_append_logfile($log_file, $ex);
-    unlink($log_file);
-
-    die($ex);
-  }
-
-  unlink($log_file);
+  test_cleanup($setup, $ex);
 }
 
 sub scp_ext_upload_recursive_dir_bug4004 {
@@ -60445,6 +60289,18 @@ sub scp_ext_upload_recursive_dirs_bug4257 {
   my $dst_dir = File::Spec->rel2abs("$tmpdir/dst.d");
   mkpath($dst_dir);
 
+  # Make sure that, if we're running as root, that the target directory has
+  # permissions/privs set for the account we create
+  if ($< == 0) {
+    unless (chmod(0755, $dst_dir)) {
+      die("Can't set perms on $dst_dir to 0755: $!");
+    }
+
+    unless (chown($setup->{uid}, $setup->{gid}, $dst_dir)) {
+      die("Can't set owner of $dst_dir to $setup->{uid}/$setup->{gid}: $!");
+    }
+  }
+
   my $config = {
     PidFile => $setup->{pid_file},
     ScoreboardFile => $setup->{scoreboard_file},
@@ -60590,7 +60446,6 @@ sub scp_ext_upload_recursive_dirs_bug4257 {
       $self->assert(-d $path,
         test_msg("Directory '$path' does not exist as expected"));
     };
-
     if ($@) {
       $ex = $@;
     }
@@ -60612,7 +60467,7 @@ sub scp_ext_upload_recursive_dirs_bug4257 {
   server_stop($setup->{pid_file});
   $self->assert_child_ok($pid);
 
-  test_cleanup($setup->{log_file}, $ex);
+  test_cleanup($setup, $ex);
 }
 
 sub scp_ext_upload_different_name_bug3425 {
@@ -60824,38 +60679,7 @@ sub scp_ext_upload_different_name_bug3425 {
 sub scp_ext_upload_recursive_empty_dir {
   my $self = shift;
   my $tmpdir = $self->{tmpdir};
-
-  my $config_file = "$tmpdir/sftp.conf";
-  my $pid_file = File::Spec->rel2abs("$tmpdir/sftp.pid");
-  my $scoreboard_file = File::Spec->rel2abs("$tmpdir/sftp.scoreboard");
-
-  my $log_file = test_get_logfile();
-
-  my $auth_user_file = File::Spec->rel2abs("$tmpdir/sftp.passwd");
-  my $auth_group_file = File::Spec->rel2abs("$tmpdir/sftp.group");
-
-  my $user = 'proftpd';
-  my $passwd = 'test';
-  my $group = 'ftpd';
-  my $home_dir = File::Spec->rel2abs($tmpdir);
-  my $uid = 500;
-  my $gid = 500;
-
-  # Make sure that, if we're running as root, that the home directory has
-  # permissions/privs set for the account we create
-  if ($< == 0) {
-    unless (chmod(0755, $home_dir)) {
-      die("Can't set perms on $home_dir to 0755: $!");
-    }
-
-    unless (chown($uid, $gid, $home_dir)) {
-      die("Can't set owner of $home_dir to $uid/$gid: $!");
-    }
-  }
-
-  auth_user_write($auth_user_file, $user, $passwd, $uid, $gid, $home_dir,
-    '/bin/bash');
-  auth_group_write($auth_group_file, $group, $gid, $user);
+  my $setup = test_setup($tmpdir, 'sftp');
 
   my $rsa_host_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/ssh_host_rsa_key');
   my $dsa_host_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/ssh_host_dsa_key');
@@ -60875,15 +60699,27 @@ sub scp_ext_upload_recursive_empty_dir {
   my $dst_dir = File::Spec->rel2abs("$tmpdir/dst.d");
   mkpath($dst_dir);
 
+  # Make sure that, if we're running as root, that the target directory has
+  # permissions/privs set for the account we create
+  if ($< == 0) {
+    unless (chmod(0755, $dst_dir)) {
+      die("Can't set perms on $dst_dir to 0755: $!");
+    }
+
+    unless (chown($setup->{uid}, $setup->{gid}, $dst_dir)) {
+      die("Can't set owner of $dst_dir to $setup->{uid}/$setup->{gid}: $!");
+    }
+  }
+
   my $config = {
-    PidFile => $pid_file,
-    ScoreboardFile => $scoreboard_file,
-    SystemLog => $log_file,
-    TraceLog => $log_file,
+    PidFile => $setup->{pid_file},
+    ScoreboardFile => $setup->{scoreboard_file},
+    SystemLog => $setup->{log_file},
+    TraceLog => $setup->{log_file},
     Trace => 'DEFAULT:10 ssh2:20 sftp:20 scp:20',
 
-    AuthUserFile => $auth_user_file,
-    AuthGroupFile => $auth_group_file,
+    AuthUserFile => $setup->{auth_user_file},
+    AuthGroupFile => $setup->{auth_group_file},
     AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
@@ -60893,7 +60729,7 @@ sub scp_ext_upload_recursive_empty_dir {
 
       'mod_sftp.c' => [
         "SFTPEngine on",
-        "SFTPLog $log_file",
+        "SFTPLog $setup->{log_file}",
         "SFTPHostKey $rsa_host_key",
         "SFTPHostKey $dsa_host_key",
         "SFTPAuthorizedUserKeys file:~/.authorized_keys",
@@ -60901,7 +60737,8 @@ sub scp_ext_upload_recursive_empty_dir {
     },
   };
 
-  my ($port, $config_user, $config_group) = config_write($config_file, $config);
+  my ($port, $config_user, $config_group) = config_write($setup->{config_file},
+    $config);
 
   # Open pipes, for use between the parent and child processes.  Specifically,
   # the child will indicate when it's done with its test by writing a message
@@ -60936,7 +60773,7 @@ sub scp_ext_upload_recursive_empty_dir {
         '-oStrictHostKeyChecking=no',
         '-oUserKnownHostsFile=/dev/null',
         "$src_dir/",
-        "$user\@127.0.0.1:dst.d/",
+        "$setup->{user}\@127.0.0.1:dst.d/",
       );
 
       my $scp_rh = IO::Handle->new();
@@ -60990,7 +60827,6 @@ sub scp_ext_upload_recursive_empty_dir {
         die("Directory '$dst_dir/src.d' does not exist as expected");
       }
     };
-
     if ($@) {
       $ex = $@;
     }
@@ -60999,7 +60835,7 @@ sub scp_ext_upload_recursive_empty_dir {
     $wfh->flush();
 
   } else {
-    eval { server_wait($config_file, $rfh) };
+    eval { server_wait($setup->{config_file}, $rfh) };
     if ($@) {
       warn($@);
       exit 1;
@@ -61009,55 +60845,16 @@ sub scp_ext_upload_recursive_empty_dir {
   }
 
   # Stop server
-  server_stop($pid_file);
-
+  server_stop($setup->{pid_file});
   $self->assert_child_ok($pid);
 
-  if ($ex) {
-    test_append_logfile($log_file, $ex);
-    unlink($log_file);
-
-    die($ex);
-  }
-
-  unlink($log_file);
+  test_cleanup($setup, $ex);
 }
 
 sub scp_ext_upload_shorter_file_bug4013 {
   my $self = shift;
   my $tmpdir = $self->{tmpdir};
-
-  my $config_file = "$tmpdir/sftp.conf";
-  my $pid_file = File::Spec->rel2abs("$tmpdir/sftp.pid");
-  my $scoreboard_file = File::Spec->rel2abs("$tmpdir/sftp.scoreboard");
-
-  my $log_file = test_get_logfile();
-
-  my $auth_user_file = File::Spec->rel2abs("$tmpdir/sftp.passwd");
-  my $auth_group_file = File::Spec->rel2abs("$tmpdir/sftp.group");
-
-  my $user = 'proftpd';
-  my $passwd = 'test';
-  my $group = 'ftpd';
-  my $home_dir = File::Spec->rel2abs($tmpdir);
-  my $uid = 500;
-  my $gid = 500;
-
-  # Make sure that, if we're running as root, that the home directory has
-  # permissions/privs set for the account we create
-  if ($< == 0) {
-    unless (chmod(0755, $home_dir)) {
-      die("Can't set perms on $home_dir to 0755: $!");
-    }
-
-    unless (chown($uid, $gid, $home_dir)) {
-      die("Can't set owner of $home_dir to $uid/$gid: $!");
-    }
-  }
-
-  auth_user_write($auth_user_file, $user, $passwd, $uid, $gid, $home_dir,
-    '/bin/bash');
-  auth_group_write($auth_group_file, $group, $gid, $user);
+  my $setup = test_setup($tmpdir, 'sftp');
 
   my $rsa_host_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/ssh_host_rsa_key');
   my $dsa_host_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/ssh_host_dsa_key');
@@ -61082,6 +60879,14 @@ sub scp_ext_upload_shorter_file_bug4013 {
     die("Can't open $test_file: $!");
   }
 
+  # Make sure that, if we're running as root, that the target file has
+  # permissions/privs set for the account we create
+  if ($< == 0) {
+    unless (chown($setup->{uid}, $setup->{gid}, $test_file)) {
+      die("Can't set owner of $test_file to $setup->{uid}/$setup->{gid}: $!");
+    }
+  }
+
   my $sub_dir = File::Spec->rel2abs("$tmpdir/test.d");
   mkpath($sub_dir);
 
@@ -61099,14 +60904,14 @@ sub scp_ext_upload_shorter_file_bug4013 {
   my $expected_size = -s $test_file2;
 
   my $config = {
-    PidFile => $pid_file,
-    ScoreboardFile => $scoreboard_file,
-    SystemLog => $log_file,
-    TraceLog => $log_file,
+    PidFile => $setup->{pid_file},
+    ScoreboardFile => $setup->{scoreboard_file},
+    SystemLog => $setup->{log_file},
+    TraceLog => $setup->{log_file},
     Trace => 'DEFAULT:10 ssh2:20 sftp:20 scp:20',
 
-    AuthUserFile => $auth_user_file,
-    AuthGroupFile => $auth_group_file,
+    AuthUserFile => $setup->{auth_user_file},
+    AuthGroupFile => $setup->{auth_group_file},
     AuthOrder => 'mod_auth_file.c',
 
     AllowOverwrite => 'on',
@@ -61118,7 +60923,7 @@ sub scp_ext_upload_shorter_file_bug4013 {
 
       'mod_sftp.c' => [
         "SFTPEngine on",
-        "SFTPLog $log_file",
+        "SFTPLog $setup->{log_file}",
         "SFTPHostKey $rsa_host_key",
         "SFTPHostKey $dsa_host_key",
         "SFTPAuthorizedUserKeys file:~/.authorized_keys",
@@ -61126,7 +60931,8 @@ sub scp_ext_upload_shorter_file_bug4013 {
     },
   };
 
-  my ($port, $config_user, $config_group) = config_write($config_file, $config);
+  my ($port, $config_user, $config_group) = config_write($setup->{config_file},
+    $config);
 
   # Open pipes, for use between the parent and child processes.  Specifically,
   # the child will indicate when it's done with its test by writing a message
@@ -61160,7 +60966,7 @@ sub scp_ext_upload_shorter_file_bug4013 {
         '-oStrictHostKeyChecking=no',
         '-oUserKnownHostsFile=/dev/null',
         "$test_file2",
-        "$user\@127.0.0.1:.",
+        "$setup->{user}\@127.0.0.1:.",
       );
 
       my $scp_rh = IO::Handle->new();
@@ -61214,7 +61020,6 @@ sub scp_ext_upload_shorter_file_bug4013 {
       $self->assert($expected_size == $size,
         test_msg("Expected size $expected_size, got $size"));
     };
-
     if ($@) {
       $ex = $@;
     }
@@ -61223,7 +61028,7 @@ sub scp_ext_upload_shorter_file_bug4013 {
     $wfh->flush();
 
   } else {
-    eval { server_wait($config_file, $rfh) };
+    eval { server_wait($setup->{config_file}, $rfh) };
     if ($@) {
       warn($@);
       exit 1;
@@ -61233,18 +61038,10 @@ sub scp_ext_upload_shorter_file_bug4013 {
   }
 
   # Stop server
-  server_stop($pid_file);
-
+  server_stop($setup->{pid_file});
   $self->assert_child_ok($pid);
 
-  if ($ex) {
-    test_append_logfile($log_file, $ex);
-    unlink($log_file);
-
-    die($ex);
-  }
-
-  unlink($log_file);
+  test_cleanup($setup, $ex);
 }
 
 sub scp_ext_upload_file_with_timestamp_bug4026 {
@@ -63889,38 +63686,7 @@ sub scp_ext_download_glob_multiple_matches_bug3904 {
 sub scp_ext_download_recursive_dir_bug3456 {
   my $self = shift;
   my $tmpdir = $self->{tmpdir};
-
-  my $config_file = "$tmpdir/sftp.conf";
-  my $pid_file = File::Spec->rel2abs("$tmpdir/sftp.pid");
-  my $scoreboard_file = File::Spec->rel2abs("$tmpdir/sftp.scoreboard");
-
-  my $log_file = test_get_logfile();
-
-  my $auth_user_file = File::Spec->rel2abs("$tmpdir/sftp.passwd");
-  my $auth_group_file = File::Spec->rel2abs("$tmpdir/sftp.group");
-
-  my $user = 'proftpd';
-  my $passwd = 'test';
-  my $group = 'ftpd';
-  my $home_dir = File::Spec->rel2abs($tmpdir);
-  my $uid = 500;
-  my $gid = 500;
-
-  # Make sure that, if we're running as root, that the home directory has
-  # permissions/privs set for the account we create
-  if ($< == 0) {
-    unless (chmod(0755, $home_dir)) {
-      die("Can't set perms on $home_dir to 0755: $!");
-    }
-
-    unless (chown($uid, $gid, $home_dir)) {
-      die("Can't set owner of $home_dir to $uid/$gid: $!");
-    }
-  }
-
-  auth_user_write($auth_user_file, $user, $passwd, $uid, $gid, $home_dir,
-    '/bin/bash');
-  auth_group_write($auth_group_file, $group, $gid, $user);
+  my $setup = test_setup($tmpdir, 'sftp');
 
   my $rsa_host_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/ssh_host_rsa_key');
   my $dsa_host_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/ssh_host_dsa_key');
@@ -64020,17 +63786,29 @@ sub scp_ext_download_recursive_dir_bug3456 {
   my $dst_dir = File::Spec->rel2abs("$tmpdir/dst.d");
   mkpath($dst_dir);
 
+  # Make sure that, if we're running as root, that the target directory has
+  # permissions/privs set for the account we create
+  if ($< == 0) {
+    unless (chmod(0755, $dst_dir)) {
+      die("Can't set perms on $dst_dir to 0755: $!");
+    }
+
+    unless (chown($setup->{uid}, $setup->{gid}, $dst_dir)) {
+      die("Can't set owner of $dst_dir to $setup->{uid}/$setup->{gid}: $!");
+    }
+  }
+
   my $timeout_idle = 60;
 
   my $config = {
-    PidFile => $pid_file,
-    ScoreboardFile => $scoreboard_file,
-    SystemLog => $log_file,
-    TraceLog => $log_file,
+    PidFile => $setup->{pid_file},
+    ScoreboardFile => $setup->{scoreboard_file},
+    SystemLog => $setup->{log_file},
+    TraceLog => $setup->{log_file},
     Trace => 'DEFAULT:10 ssh2:20 scp:20',
 
-    AuthUserFile => $auth_user_file,
-    AuthGroupFile => $auth_group_file,
+    AuthUserFile => $setup->{auth_user_file},
+    AuthGroupFile => $setup->{auth_group_file},
     AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
@@ -64040,7 +63818,7 @@ sub scp_ext_download_recursive_dir_bug3456 {
 
       'mod_sftp.c' => [
         "SFTPEngine on",
-        "SFTPLog $log_file",
+        "SFTPLog $setup->{log_file}",
         "SFTPHostKey $rsa_host_key",
         "SFTPHostKey $dsa_host_key",
         "SFTPAuthorizedUserKeys file:~/.authorized_keys",
@@ -64048,7 +63826,8 @@ sub scp_ext_download_recursive_dir_bug3456 {
     },
   };
 
-  my ($port, $config_user, $config_group) = config_write($config_file, $config);
+  my ($port, $config_user, $config_group) = config_write($setup->{config_file},
+    $config);
 
   # Open pipes, for use between the parent and child processes.  Specifically,
   # the child will indicate when it's done with its test by writing a message
@@ -64082,7 +63861,7 @@ sub scp_ext_download_recursive_dir_bug3456 {
         '-oPubkeyAuthentication=yes',
         '-oStrictHostKeyChecking=no',
         '-oUserKnownHostsFile=/dev/null',
-        "$user\@127.0.0.1:src.d/",
+        "$setup->{user}\@127.0.0.1:src.d/",
         "$dst_dir",
       );
 
@@ -64159,9 +63938,7 @@ sub scp_ext_download_recursive_dir_bug3456 {
       unless (-f "$dst_dir/src.d/wx.d/aa024") {
         die("File '$dst_dir/src.d/wx.d/aa024' does not exist as expected");
       }
-
     };
-
     if ($@) {
       $ex = $@;
     }
@@ -64170,7 +63947,7 @@ sub scp_ext_download_recursive_dir_bug3456 {
     $wfh->flush();
 
   } else {
-    eval { server_wait($config_file, $rfh, $timeout_idle + 2) };
+    eval { server_wait($setup->{config_file}, $rfh, $timeout_idle + 2) };
     if ($@) {
       warn($@);
       exit 1;
@@ -64180,18 +63957,10 @@ sub scp_ext_download_recursive_dir_bug3456 {
   }
 
   # Stop server
-  server_stop($pid_file);
-
+  server_stop($setup->{pid_file});
   $self->assert_child_ok($pid);
 
-  if ($ex) {
-    test_append_logfile($log_file, $ex);
-    unlink($log_file);
-
-    die($ex);
-  }
-
-  unlink($log_file);
+  test_cleanup($setup, $ex);
 }
 
 sub scp_ext_download_recursive_empty_dir {
@@ -66095,23 +65864,7 @@ sub scp_log_extlog_var_f_upload {
 sub scp_log_extlog_file_modified_bug3457 {
   my $self = shift;
   my $tmpdir = $self->{tmpdir};
-
-  my $config_file = "$tmpdir/sftp.conf";
-  my $pid_file = File::Spec->rel2abs("$tmpdir/sftp.pid");
-  my $scoreboard_file = File::Spec->rel2abs("$tmpdir/sftp.scoreboard");
-  my $extlog_file = File::Spec->rel2abs("$tmpdir/ext.log");
-
-  my $log_file = test_get_logfile();
-
-  my $auth_user_file = File::Spec->rel2abs("$tmpdir/sftp.passwd");
-  my $auth_group_file = File::Spec->rel2abs("$tmpdir/sftp.group");
-
-  my $user = 'proftpd';
-  my $passwd = 'test';
-  my $group = 'ftpd';
-  my $home_dir = File::Spec->rel2abs($tmpdir);
-  my $uid = 500;
-  my $gid = 500;
+  my $setup = test_setup($tmpdir, 'sftp');
 
   my $src_file = File::Spec->rel2abs("$tmpdir/src.txt");
   if (open(my $fh, "> $src_file")) {
@@ -66136,34 +65889,28 @@ sub scp_log_extlog_file_modified_bug3457 {
     die("Can't open $dst_file: $!");
   }
 
-  # Make sure that, if we're running as root, that the home directory has
+  # Make sure that, if we're running as root, that the target file has
   # permissions/privs set for the account we create
   if ($< == 0) {
-    unless (chmod(0755, $home_dir)) {
-      die("Can't set perms on $home_dir to 0755: $!");
-    }
-
-    unless (chown($uid, $gid, $home_dir)) {
-      die("Can't set owner of $home_dir to $uid/$gid: $!");
+    unless (chown($setup->{uid}, $setup->{gid}, $dst_file)) {
+      die("Can't set owner of $dst_file to $setup->{uid}/$setup->{gid}: $!");
     }
   }
-
-  auth_user_write($auth_user_file, $user, $passwd, $uid, $gid, $home_dir,
-    '/bin/bash');
-  auth_group_write($auth_group_file, $group, $gid, $user);
 
   my $rsa_host_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/ssh_host_rsa_key');
   my $dsa_host_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/ssh_host_dsa_key');
 
+  my $extlog_file = File::Spec->rel2abs("$tmpdir/ext.log");
+
   my $config = {
-    PidFile => $pid_file,
-    ScoreboardFile => $scoreboard_file,
-    SystemLog => $log_file,
-    TraceLog => $log_file,
+    PidFile => $setup->{pid_file},
+    ScoreboardFile => $setup->{scoreboard_file},
+    SystemLog => $setup->{log_file},
+    TraceLog => $setup->{log_file},
     Trace => 'DEFAULT:10 ssh2:20 sftp:20 scp:20',
 
-    AuthUserFile => $auth_user_file,
-    AuthGroupFile => $auth_group_file,
+    AuthUserFile => $setup->{auth_user_file},
+    AuthGroupFile => $setup->{auth_group_file},
     AuthOrder => 'mod_auth_file.c',
 
     AllowOverwrite => 'on',
@@ -66177,14 +65924,15 @@ sub scp_log_extlog_file_modified_bug3457 {
 
       'mod_sftp.c' => [
         "SFTPEngine on",
-        "SFTPLog $log_file",
+        "SFTPLog $setup->{log_file}",
         "SFTPHostKey $rsa_host_key",
         "SFTPHostKey $dsa_host_key",
       ],
     },
   };
 
-  my ($port, $config_user, $config_group) = config_write($config_file, $config);
+  my ($port, $config_user, $config_group) = config_write($setup->{config_file},
+    $config);
 
   # Open pipes, for use between the parent and child processes.  Specifically,
   # the child will indicate when it's done with its test by writing a message
@@ -66206,16 +65954,16 @@ sub scp_log_extlog_file_modified_bug3457 {
   defined(my $pid = fork()) or die("Can't fork: $!");
   if ($pid) {
     eval {
-      my $ssh2 = Net::SSH2->new();
-
+      # Allow for server startup
       sleep(1);
 
+      my $ssh2 = Net::SSH2->new();
       unless ($ssh2->connect('127.0.0.1', $port)) {
         my ($err_code, $err_name, $err_str) = $ssh2->error();
         die("Can't connect to SSH2 server: [$err_name] ($err_code) $err_str");
       }
 
-      unless ($ssh2->auth_password($user, $passwd)) {
+      unless ($ssh2->auth_password($setup->{user}, $setup->{passwd})) {
         my ($err_code, $err_name, $err_str) = $ssh2->error();
         die("Can't login to SSH2 server: [$err_name] ($err_code) $err_str");
       }
@@ -66228,7 +65976,6 @@ sub scp_log_extlog_file_modified_bug3457 {
 
       $ssh2->disconnect();
     };
-
     if ($@) {
       $ex = $@;
     }
@@ -66237,7 +65984,7 @@ sub scp_log_extlog_file_modified_bug3457 {
     $wfh->flush();
 
   } else {
-    eval { server_wait($config_file, $rfh) };
+    eval { server_wait($setup->{config_file}, $rfh) };
     if ($@) {
       warn($@);
       exit 1;
@@ -66247,33 +65994,32 @@ sub scp_log_extlog_file_modified_bug3457 {
   }
 
   # Stop server
-  server_stop($pid_file);
-
+  server_stop($setup->{pid_file});
   $self->assert_child_ok($pid);
 
-  if ($ex) {
-    test_append_logfile($log_file, $ex);
-    unlink($log_file);
+  test_cleanup($setup, $ex) if $ex;
 
-    die($ex);
-  }
+  eval {
+    if (open(my $fh, "< $extlog_file")) {
+      while (my $line = <$fh>) {
+        chomp($line);
 
-  if (open(my $fh, "< $extlog_file")) {
-    while (my $line = <$fh>) {
-      chomp($line);
+        my $expected = 'true';
+        $self->assert($expected eq $line,
+          test_msg("Expected '$expected', got '$line'"));
+      }
 
-      my $expected = 'true';
-      $self->assert($expected eq $line,
-        test_msg("Expected '$expected', got '$line'"));
+      close($fh);
+
+    } else {
+      die("Can't read $extlog_file: $!");
     }
-
-    close($fh);
-
-  } else {
-    die("Can't read $extlog_file: $!");
+  };
+  if ($@) {
+    $ex = $@;
   }
 
-  unlink($log_file);
+  test_cleanup($setup, $ex);
 }
 
 sub scp_log_extlog_var_file_size_download_issue676 {

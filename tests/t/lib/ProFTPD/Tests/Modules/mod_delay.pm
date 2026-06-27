@@ -153,7 +153,7 @@ sub delay_cold_table {
   server_stop($setup->{pid_file});
   $self->assert_child_ok($pid);
 
-  test_cleanup($setup->{log_file}, $ex);
+  test_cleanup($setup, $ex);
 }
 
 sub delay_warm_table {
@@ -255,7 +255,7 @@ sub delay_warm_table {
   server_stop($setup->{pid_file});
   $self->assert_child_ok($pid);
 
-  test_cleanup($setup->{log_file}, $ex);
+  test_cleanup($setup, $ex);
 }
 
 sub delay_extra_user_cmd_bug3622 {
@@ -345,7 +345,7 @@ sub delay_extra_user_cmd_bug3622 {
   server_stop($setup->{pid_file});
   $self->assert_child_ok($pid);
 
-  test_cleanup($setup->{log_file}, $ex) if $ex;
+  test_cleanup($setup, $ex) if $ex;
 
   # Examine the TraceLog, looking for "unable to load DelayTable" messages.
   # There shouldn't be any.
@@ -387,7 +387,7 @@ sub delay_extra_user_cmd_bug3622 {
     $ex = $@;
   }
 
-  test_cleanup($setup->{log_file}, $ex);
+  test_cleanup($setup, $ex);
 }
 
 sub delay_extra_pass_cmd_bug3622 {
@@ -478,7 +478,7 @@ sub delay_extra_pass_cmd_bug3622 {
   server_stop($setup->{pid_file});
   $self->assert_child_ok($pid);
 
-  test_cleanup($setup->{log_file}, $ex) if $ex;
+  test_cleanup($setup, $ex) if $ex;
 
   # Examine the TraceLog, looking for "unable to load DelayTable" messages.
   # There shouldn't be any.
@@ -518,7 +518,7 @@ sub delay_extra_pass_cmd_bug3622 {
     $ex = $@;
   }
 
-  test_cleanup($setup->{log_file}, $ex);
+  test_cleanup($setup, $ex);
 }
 
 sub delay_table_none_bug4020 {
@@ -590,7 +590,7 @@ sub delay_table_none_bug4020 {
   server_stop($setup->{pid_file});
   $self->assert_child_ok($pid);
 
-  test_cleanup($setup->{log_file}, $ex) if $ex;
+  test_cleanup($setup, $ex) if $ex;
 
   # Examine the TraceLog, looking for "unable to load DelayTable" messages.
   # There shouldn't be any.
@@ -635,7 +635,7 @@ sub delay_table_none_bug4020 {
     $ex = $@;
   }
 
-  test_cleanup($setup->{log_file}, $ex);
+  test_cleanup($setup, $ex);
 }
 
 sub delay_delayonevent_user_bug4020 {
@@ -720,7 +720,7 @@ sub delay_delayonevent_user_bug4020 {
   server_stop($setup->{pid_file});
   $self->assert_child_ok($pid);
 
-  test_cleanup($setup->{log_file}, $ex);
+  test_cleanup($setup, $ex);
 }
 
 sub delay_delayonevent_pass_bug4020 {
@@ -820,7 +820,7 @@ sub delay_delayonevent_pass_bug4020 {
   server_stop($setup->{pid_file});
   $self->assert_child_ok($pid);
 
-  test_cleanup($setup->{log_file}, $ex);
+  test_cleanup($setup, $ex);
 }
 
 sub delay_delayonevent_failedlogin_bug4020 {
@@ -916,7 +916,7 @@ sub delay_delayonevent_failedlogin_bug4020 {
   server_stop($setup->{pid_file});
   $self->assert_child_ok($pid);
 
-  test_cleanup($setup->{log_file}, $ex);
+  test_cleanup($setup, $ex);
 }
 
 sub delay_delayonevent_user_pass_bug4020 {
@@ -1002,7 +1002,7 @@ sub delay_delayonevent_user_pass_bug4020 {
   server_stop($setup->{pid_file});
   $self->assert_child_ok($pid);
 
-  test_cleanup($setup->{log_file}, $ex);
+  test_cleanup($setup, $ex);
 }
 
 sub delay_table_default_issue1440 {
@@ -1082,8 +1082,6 @@ sub delay_table_default_issue1440 {
   server_stop($setup->{pid_file});
   $self->assert_child_ok($pid);
 
-# mod_delay/0.7: no DelayOnEvent rules configured with "DelayTable none" in effect, disabling module
-
   eval {
     if (open(my $fh, "< $setup->{log_file}")) {
       my $saw_delaytable_none = 0;
@@ -1114,7 +1112,7 @@ sub delay_table_default_issue1440 {
     $ex = $@;
   }
 
-  test_cleanup($setup->{log_file}, $ex);
+  test_cleanup($setup, $ex);
 }
 
 sub delay_delayonevent_connect_issue1701 {
@@ -1199,7 +1197,7 @@ sub delay_delayonevent_connect_issue1701 {
   server_stop($setup->{pid_file});
   $self->assert_child_ok($pid);
 
-  test_cleanup($setup->{log_file}, $ex);
+  test_cleanup($setup, $ex);
 }
 
 1;
