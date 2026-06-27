@@ -269,7 +269,7 @@ sub retr_ok_raw_active_binary {
   server_stop($setup->{pid_file});
   $self->assert_child_ok($pid);
 
-  test_cleanup($setup->{log_file}, $ex);
+  test_cleanup($setup, $ex);
 }
 
 sub retr_ok_raw_active_multiple_downloads {
@@ -327,6 +327,7 @@ sub retr_ok_raw_active_multiple_downloads {
 
         my $buf;
         $conn->read($buf, 8192, 30);
+        sleep(0.25);
         eval { $conn->close() };
 
         my $resp_code = $client->response_code();
@@ -357,7 +358,7 @@ sub retr_ok_raw_active_multiple_downloads {
   server_stop($setup->{pid_file});
   $self->assert_child_ok($pid);
 
-  test_cleanup($setup->{log_file}, $ex);
+  test_cleanup($setup, $ex);
 }
 
 sub retr_ok_raw_passive {
@@ -416,15 +417,15 @@ sub retr_ok_raw_passive {
 
       my $buf;
       $conn->read($buf, 8192, 30);
+      sleep(0.25);
       eval { $conn->close() };
 
-      my ($resp_code, $resp_msg);
-      $resp_code = $client->response_code();
-      $resp_msg = $client->response_msg();
-
+      my $resp_code = $client->response_code();
+      my $resp_msg = $client->response_msg();
       $self->assert_transfer_ok($resp_code, $resp_msg);
-    };
 
+      $client->quit();
+    };
     if ($@) {
       $ex = $@;
     }
@@ -444,10 +445,9 @@ sub retr_ok_raw_passive {
 
   # Stop server
   server_stop($setup->{pid_file});
-
   $self->assert_child_ok($pid);
 
-  test_cleanup($setup->{log_file}, $ex);
+  test_cleanup($setup, $ex);
 }
 
 sub retr_ok_file {
@@ -519,7 +519,6 @@ sub retr_ok_file {
       $self->assert($expected == $size,
         test_msg("Expected $expected, got $size"));
     };
-
     if ($@) {
       $ex = $@;
     }
@@ -541,7 +540,7 @@ sub retr_ok_file {
   server_stop($setup->{pid_file});
   $self->assert_child_ok($pid);
 
-  test_cleanup($setup->{log_file}, $ex);
+  test_cleanup($setup, $ex);
 }
 
 sub retr_ok_largefile_ascii {
@@ -650,7 +649,7 @@ sub retr_ok_largefile_ascii {
   server_stop($setup->{pid_file});
   $self->assert_child_ok($pid);
 
-  test_cleanup($setup->{log_file}, $ex);
+  test_cleanup($setup, $ex);
 }
 
 sub retr_ok_largefile_binary {
@@ -777,7 +776,7 @@ sub retr_ok_largefile_binary {
   server_stop($setup->{pid_file});
   $self->assert_child_ok($pid);
 
-  test_cleanup($setup->{log_file}, $ex);
+  test_cleanup($setup, $ex);
 }
 
 sub retr_ok_ascii_file_bug4237 {
@@ -1014,7 +1013,7 @@ sub retr_ok_ascii_file_bug4237 {
   server_stop($setup->{pid_file});
   $self->assert_child_ok($pid);
 
-  test_cleanup($setup->{log_file}, $ex);
+  test_cleanup($setup, $ex);
 }
 
 sub retr_ok_ascii_file_bug4277 {
@@ -1230,7 +1229,7 @@ sub retr_ok_ascii_file_bug4277 {
   server_stop($setup->{pid_file});
   $self->assert_child_ok($pid);
 
-  test_cleanup($setup->{log_file}, $ex);
+  test_cleanup($setup, $ex);
 }
 
 sub retr_abs_symlink {
@@ -1312,6 +1311,7 @@ sub retr_abs_symlink {
 
       my $buf;
       $conn->read($buf, 8192, 30);
+      sleep(0.25);
       my $size = $conn->bytes_read();
       eval { $conn->close() };
 
@@ -1344,10 +1344,9 @@ sub retr_abs_symlink {
 
   # Stop server
   server_stop($setup->{pid_file});
-
   $self->assert_child_ok($pid);
 
-  test_cleanup($setup->{log_file}, $ex);
+  test_cleanup($setup, $ex);
 }
 
 sub retr_abs_symlink_chrooted_bug4219 {
@@ -1463,10 +1462,9 @@ sub retr_abs_symlink_chrooted_bug4219 {
 
   # Stop server
   server_stop($setup->{pid_file});
-
   $self->assert_child_ok($pid);
 
-  test_cleanup($setup->{log_file}, $ex);
+  test_cleanup($setup, $ex);
 }
 
 sub retr_rel_symlink {
@@ -1552,6 +1550,7 @@ sub retr_rel_symlink {
 
       my $buf;
       $conn->read($buf, 8192, 30);
+      sleep(0.25);
       my $size = $conn->bytes_read();
       eval { $conn->close() };
 
@@ -1584,10 +1583,9 @@ sub retr_rel_symlink {
 
   # Stop server
   server_stop($setup->{pid_file});
-
   $self->assert_child_ok($pid);
 
-  test_cleanup($setup->{log_file}, $ex);
+  test_cleanup($setup, $ex);
 }
 
 sub retr_rel_symlink_chrooted_bug4219 {
@@ -1707,10 +1705,9 @@ sub retr_rel_symlink_chrooted_bug4219 {
 
   # Stop server
   server_stop($setup->{pid_file});
-
   $self->assert_child_ok($pid);
 
-  test_cleanup($setup->{log_file}, $ex);
+  test_cleanup($setup, $ex);
 }
 
 sub retr_fails_not_reg {
@@ -1793,10 +1790,9 @@ sub retr_fails_not_reg {
 
   # Stop server
   server_stop($setup->{pid_file});
-
   $self->assert_child_ok($pid);
 
-  test_cleanup($setup->{log_file}, $ex);
+  test_cleanup($setup, $ex);
 }
 
 sub retr_fails_login_required {
@@ -1875,10 +1871,9 @@ sub retr_fails_login_required {
 
   # Stop server
   server_stop($setup->{pid_file});
-
   $self->assert_child_ok($pid);
 
-  test_cleanup($setup->{log_file}, $ex);
+  test_cleanup($setup, $ex);
 }
 
 sub retr_fails_no_path {
@@ -1961,10 +1956,9 @@ sub retr_fails_no_path {
 
   # Stop server
   server_stop($setup->{pid_file});
-
   $self->assert_child_ok($pid);
 
-  test_cleanup($setup->{log_file}, $ex);
+  test_cleanup($setup, $ex);
 }
 
 sub retr_fails_enoent {
@@ -2052,10 +2046,9 @@ sub retr_fails_enoent {
 
   # Stop server
   server_stop($setup->{pid_file});
-
   $self->assert_child_ok($pid);
 
-  test_cleanup($setup->{log_file}, $ex);
+  test_cleanup($setup, $ex);
 }
 
 sub retr_fails_enoent_glob {
@@ -2142,10 +2135,9 @@ sub retr_fails_enoent_glob {
 
   # Stop server
   server_stop($setup->{pid_file});
-
   $self->assert_child_ok($pid);
 
-  test_cleanup($setup->{log_file}, $ex);
+  test_cleanup($setup, $ex);
 }
 
 sub retr_fails_abs_symlink_enoent {
@@ -2214,11 +2206,10 @@ sub retr_fails_abs_symlink_enoent {
       $self->assert($expected == $resp_code,
         test_msg("Expected response code $expected, got $resp_code"));
 
-      $expected = "$path: No such file or directory";
-      $self->assert($expected eq $resp_msg,
+      $expected = "$path: (No such file or directory|Not a regular file)";
+      $self->assert(qr/$expected/, $resp_msg,
         test_msg("Expected response message '$expected', got '$resp_msg'"));
     };
-
     if ($@) {
       $ex = $@;
     }
@@ -2238,10 +2229,9 @@ sub retr_fails_abs_symlink_enoent {
 
   # Stop server
   server_stop($setup->{pid_file});
-
   $self->assert_child_ok($pid);
 
-  test_cleanup($setup->{log_file}, $ex);
+  test_cleanup($setup, $ex);
 }
 
 sub retr_fails_abs_symlink_enoent_chrooted_bug4219 {
@@ -2342,10 +2332,9 @@ sub retr_fails_abs_symlink_enoent_chrooted_bug4219 {
 
   # Stop server
   server_stop($setup->{pid_file});
-
   $self->assert_child_ok($pid);
 
-  test_cleanup($setup->{log_file}, $ex);
+  test_cleanup($setup, $ex);
 }
 
 sub retr_fails_rel_symlink_enoent {
@@ -2423,11 +2412,10 @@ sub retr_fails_rel_symlink_enoent {
       $self->assert($expected == $resp_code,
         test_msg("Expected response code $expected, got $resp_code"));
 
-      $expected = "$path: No such file or directory";
-      $self->assert($expected eq $resp_msg,
+      $expected = "$path: (No such file or directory|Not a regular file)";
+      $self->assert(qr/$expected/, $resp_msg,
         test_msg("Expected response message '$expected', got '$resp_msg'"));
     };
-
     if ($@) {
       $ex = $@;
     }
@@ -2447,10 +2435,9 @@ sub retr_fails_rel_symlink_enoent {
 
   # Stop server
   server_stop($setup->{pid_file});
-
   $self->assert_child_ok($pid);
 
-  test_cleanup($setup->{log_file}, $ex);
+  test_cleanup($setup, $ex);
 }
 
 sub retr_fails_rel_symlink_enoent_chrooted_bug4219 {
@@ -2554,10 +2541,9 @@ sub retr_fails_rel_symlink_enoent_chrooted_bug4219 {
 
   # Stop server
   server_stop($setup->{pid_file});
-
   $self->assert_child_ok($pid);
 
-  test_cleanup($setup->{log_file}, $ex);
+  test_cleanup($setup, $ex);
 }
 
 sub retr_fails_eperm {
@@ -2655,10 +2641,9 @@ sub retr_fails_eperm {
 
   # Stop server
   server_stop($setup->{pid_file});
-
   $self->assert_child_ok($pid);
 
-  test_cleanup($setup->{log_file}, $ex);
+  test_cleanup($setup, $ex);
 }
 
 sub retr_ok_dir_with_spaces {
@@ -2760,10 +2745,9 @@ sub retr_ok_dir_with_spaces {
 
   # Stop server
   server_stop($setup->{pid_file});
-
   $self->assert_child_ok($pid);
 
-  test_cleanup($setup->{log_file}, $ex);
+  test_cleanup($setup, $ex);
 }
 
 sub retr_leading_whitespace {
@@ -2829,20 +2813,20 @@ sub retr_leading_whitespace {
 
       my $buf;
       $conn->read($buf, 8192, 30);
+      sleep(0.25);
       eval { $conn->close() };
 
-      my ($resp_code, $resp_msg);
-      $resp_code = $client->response_code();
-      $resp_msg = $client->response_msg();
-
+      my $resp_code = $client->response_code();
+      my $resp_msg = $client->response_msg();
       $self->assert_transfer_ok($resp_code, $resp_msg);
+
+      $client->quit();
 
       my $buflen = length($buf);
       my $expected = $test_sz;
       $self->assert($expected == $buflen,
         test_msg("Expected download byte count $expected, got $buflen"));
     };
-
     if ($@) {
       $ex = $@;
     }
@@ -2862,10 +2846,9 @@ sub retr_leading_whitespace {
 
   # Stop server
   server_stop($setup->{pid_file});
-
   $self->assert_child_ok($pid);
 
-  test_cleanup($setup->{log_file}, $ex);
+  test_cleanup($setup, $ex);
 }
 
 sub retr_bug3496 {
@@ -2967,7 +2950,7 @@ sub retr_bug3496 {
   server_stop($setup->{pid_file});
   $self->assert_child_ok($pid);
 
-  test_cleanup($setup->{log_file}, $ex);
+  test_cleanup($setup, $ex);
 }
 
 sub retr_2nd_transfer_terminates_1st_transfer_bug4010 {
@@ -3075,10 +3058,9 @@ sub retr_2nd_transfer_terminates_1st_transfer_bug4010 {
 
   # Stop server
   server_stop($setup->{pid_file});
-
   $self->assert_child_ok($pid);
 
-  test_cleanup($setup->{log_file}, $ex);
+  test_cleanup($setup, $ex);
 }
 
 1;

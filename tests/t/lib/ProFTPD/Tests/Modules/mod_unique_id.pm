@@ -33,49 +33,19 @@ sub list_tests {
 sub uniqueid_ok {
   my $self = shift;
   my $tmpdir = $self->{tmpdir};
+  my $setup = test_setup($tmpdir, 'uniqueid');
 
-  my $config_file = "$tmpdir/uniqueid.conf";
-  my $pid_file = File::Spec->rel2abs("$tmpdir/uniqueid.pid");
-  my $scoreboard_file = File::Spec->rel2abs("$tmpdir/uniqueid.scoreboard");
-
-  my $log_file = File::Spec->rel2abs('tests.log');
-
-  my $auth_user_file = File::Spec->rel2abs("$tmpdir/uniqueid.passwd");
-  my $auth_group_file = File::Spec->rel2abs("$tmpdir/uniqueid.group");
-
-  my $test_file = File::Spec->rel2abs($config_file);
-
-  my $user = 'proftpd';
-  my $passwd = 'test';
-  my $home_dir = File::Spec->rel2abs($tmpdir);
-  my $uid = 500;
-  my $gid = 500;
-
-  # Make sure that, if we're running as root, that the home directory has
-  # permissions/privs set for the account we create
-  if ($< == 0) {
-    unless (chmod(0755, $home_dir)) {
-      die("Can't set perms on $home_dir to 0755: $!");
-    }
-
-    unless (chown($uid, $gid, $home_dir)) {
-      die("Can't set owner of $home_dir to $uid/$gid: $!");
-    }
-  }
-
-  auth_user_write($auth_user_file, $user, $passwd, $uid, $gid, $home_dir,
-    '/bin/bash');
-  auth_group_write($auth_group_file, 'ftpd', $gid, $user);
-
+  my $test_file = File::Spec->rel2abs($setup->{config_file});
   my $ext_log = File::Spec->rel2abs("$tmpdir/custom.log");
 
   my $config = {
-    PidFile => $pid_file,
-    ScoreboardFile => $scoreboard_file,
-    SystemLog => $log_file,
+    PidFile => $setup->{pid_file},
+    ScoreboardFile => $setup->{scoreboard_file},
+    SystemLog => $setup->{log_file},
 
-    AuthUserFile => $auth_user_file,
-    AuthGroupFile => $auth_group_file,
+    AuthUserFile => $setup->{auth_user_file},
+    AuthGroupFile => $setup->{auth_group_file},
+    AuthOrder => 'mod_auth_file.c',
 
     LogFormat => 'custom "%{UNIQUE_ID}e"',
     ExtendedLog => "$ext_log ALL custom",
@@ -87,7 +57,8 @@ sub uniqueid_ok {
     },
   };
 
-  my ($port, $config_user, $config_group) = config_write($config_file, $config);
+  my ($port, $config_user, $config_group) = config_write($setup->{config_file},
+    $config);
 
   # Open pipes, for use between the parent and child processes.  Specifically,
   # the child will indicate when it's done with its test by writing a message
@@ -105,8 +76,7 @@ sub uniqueid_ok {
   if ($pid) {
     eval {
       my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
-
-      $client->login($user, $passwd);
+      $client->login($setup->{user}, $setup->{passwd});
 
       my $conn = $client->retr_raw($test_file);
       unless ($conn) {
@@ -116,9 +86,11 @@ sub uniqueid_ok {
 
       my $buf;
       $conn->read($buf, 8192, 30);
-      $conn->close();
-    };
+      sleep(0.25);
+      eval { $conn->close() };
 
+      $client->quit();
+    };
     if ($@) {
       $ex = $@;
     }
@@ -127,7 +99,7 @@ sub uniqueid_ok {
     $wfh->flush();
 
   } else {
-    eval { server_wait($config_file, $rfh) };
+    eval { server_wait($setup->{config_file}, $rfh) };
     if ($@) {
       warn($@);
       exit 1;
@@ -137,39 +109,39 @@ sub uniqueid_ok {
   }
 
   # Stop server
-  server_stop($pid_file);
-
+  server_stop($setup->{pid_file});
   $self->assert_child_ok($pid);
 
   # Now, read in the ExtendedLog, and see whether the %{UNIQUE_ID}e variable was
   # properly written out.
-  if (open(my $fh, "< $ext_log")) {
-    my $line = <$fh>;
-    chomp($line);
-    close($fh);
+  eval {
+    if (open(my $fh, "< $ext_log")) {
+      my $line = <$fh>;
+      chomp($line);
+      close($fh);
 
-    my $expected;
+      my $expected;
 
-    # The ID is different every time; we just need to make sure that it's
-    # present, has no spaces, is the expected length, etc.
-    my $len = length($line);
-    $expected = 24;
-    $self->assert($expected == $len,
-      test_msg("Expected $expected, got '$len'"));
+      # The ID is different every time; we just need to make sure that it's
+      # present, has no spaces, is the expected length, etc.
+      my $len = length($line);
+      $expected = 24;
+      $self->assert($expected == $len,
+        test_msg("Expected $expected, got '$len'"));
 
-    $expected = '^\S+$';
-    $self->assert(qr/$expected/, $line,
-      test_msg("Expected '$expected', got '$line'"));
+      $expected = '^\S+$';
+      $self->assert(qr/$expected/, $line,
+        test_msg("Expected '$expected', got '$line'"));
 
-  } else {
-    die("Can't read $ext_log: $!");
+    } else {
+      die("Can't read $ext_log: $!");
+    }
+  };
+  if ($@) {
+    $ex = $@;
   }
 
-  if ($ex) {
-    die($ex);
-  }
-
-  unlink($log_file);
+  test_cleanup($setup->{log_file}, $ex, $setup->{asan_log_file});
 }
 
 1;

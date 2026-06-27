@@ -1996,34 +1996,7 @@ sub nlst_fails_eperm {
 sub nlst_bug2821 {
   my $self = shift;
   my $tmpdir = $self->{tmpdir};
-
-  my $config_file = "$tmpdir/cmds.conf";
-  my $pid_file = File::Spec->rel2abs("$tmpdir/cmds.pid");
-  my $scoreboard_file = File::Spec->rel2abs("$tmpdir/cmds.scoreboard");
-
-  my $log_file = test_get_logfile();
-
-  my $auth_user_file = File::Spec->rel2abs("$tmpdir/cmds.passwd");
-  my $auth_group_file = File::Spec->rel2abs("$tmpdir/cmds.group");
-
-  my $user = 'proftpd';
-  my $passwd = 'test';
-  my $group = 'ftpd';
-  my $home_dir = File::Spec->rel2abs($tmpdir);
-  my $uid = 500;
-  my $gid = 500;
-
-  # Make sure that, if we're running as root, that the home directory has
-  # permissions/privs set for the account we create
-  if ($< == 0) {
-    unless (chmod(0755, $home_dir)) {
-      die("Can't set perms on $home_dir to 0755: $!");
-    }
-
-    unless (chown($uid, $gid, $home_dir)) {
-      die("Can't set owner of $home_dir to $uid/$gid: $!");
-    }
-  }
+  my $setup = test_setup($tmpdir, 'cmds');
 
   # For this test, we need to create MANY (i.e. 150K) files in the
   # home directory.
@@ -2033,7 +2006,7 @@ sub nlst_bug2821 {
   print STDOUT "# Creating $count files in $tmpdir\n";
   for (my $i = 1; $i <= $count; $i++) {
     my $test_file = 'test_' . sprintf("%07s", $i);
-    my $test_path = "$home_dir/$test_file";
+    my $test_path = "$setup->{home_dir}/$test_file";
 
     if (open(my $fh, "> $test_path")) {
       close($fh);
@@ -2047,21 +2020,17 @@ sub nlst_bug2821 {
     }
   }
 
-  auth_user_write($auth_user_file, $user, $passwd, $uid, $gid, $home_dir,
-    '/bin/bash');
-  auth_group_write($auth_group_file, $group, $gid, $user);
-
   my $timeout = 600;
 
   my $config = {
-    PidFile => $pid_file,
-    ScoreboardFile => $scoreboard_file,
-    SystemLog => $log_file,
-    TraceLog => $log_file,
+    PidFile => $setup->{pid_file},
+    ScoreboardFile => $setup->{scoreboard_file},
+    SystemLog => $setup->{log_file},
+    TraceLog => $setup->{log_file},
     Trace => 'DEFAULT:10 fsio:0 lock:0',
 
-    AuthUserFile => $auth_user_file,
-    AuthGroupFile => $auth_group_file,
+    AuthUserFile => $setup->{auth_user_file},
+    AuthGroupFile => $setup->{auth_group_file},
     AuthOrder => 'mod_auth_file.c',
 
     TimeoutIdle => $timeout + 15,
@@ -2074,7 +2043,8 @@ sub nlst_bug2821 {
     },
   };
 
-  my ($port, $config_user, $config_group) = config_write($config_file, $config);
+  my ($port, $config_user, $config_group) = config_write($setup->{config_file},
+    $config);
 
   # Open pipes, for use between the parent and child processes.  Specifically,
   # the child will indicate when it's done with its test by writing a message
@@ -2091,9 +2061,11 @@ sub nlst_bug2821 {
   defined(my $pid = fork()) or die("Can't fork: $!");
   if ($pid) {
     eval {
-      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
+      # Allow for server startup
+      sleep(1);
 
-      $client->login($user, $passwd);
+      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port, 0, 2, 30);
+      $client->login($setup->{user}, $setup->{passwd});
 
       # One of the symptoms of Bug#2821 is that a LIST (or NLST) glob
       # which matches more than 99999 files will not receive the full
@@ -2115,6 +2087,7 @@ sub nlst_bug2821 {
       while ($conn->read($tmp, 32768, 25)) {
         $buf .= $tmp;
       }
+      sleep(0.25);
       eval { $conn->close() };
       $client->quit();
 
@@ -2133,9 +2106,7 @@ sub nlst_bug2821 {
       if ($list_count >= $count) {
         die("NLST returned wrong number of entries (expected less than $count, got $list_count); check the PR_TUNABLE_GLOBBING_MAX_MATCHES value");
       }
-
     };
-
     if ($@) {
       $ex = $@;
     }
@@ -2144,7 +2115,7 @@ sub nlst_bug2821 {
     $wfh->flush();
 
   } else {
-    eval { server_wait($config_file, $rfh, $timeout) };
+    eval { server_wait($setup->{config_file}, $rfh, $timeout) };
     if ($@) {
       warn($@);
       exit 1;
@@ -2154,18 +2125,10 @@ sub nlst_bug2821 {
   }
 
   # Stop server
-  server_stop($pid_file);
-
+  server_stop($setup->{pid_file});
   $self->assert_child_ok($pid);
 
-  if ($ex) {
-    test_append_logfile($log_file, $ex);
-    unlink($log_file);
-
-    die($ex);
-  }
-
-  unlink($log_file);
+  test_cleanup($setup, $ex);
 }
 
 sub nlst_nonascii_chars_bug3032 {

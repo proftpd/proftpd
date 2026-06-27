@@ -477,7 +477,7 @@ sub digest_hash_feat {
   server_stop($setup->{pid_file});
   $self->assert_child_ok($pid);
 
-  test_cleanup($setup->{log_file}, $ex);
+  test_cleanup($setup, $ex);
 }
 
 sub digest_hash_opts {
@@ -629,7 +629,7 @@ sub digest_hash_opts {
   server_stop($setup->{pid_file});
   $self->assert_child_ok($pid);
 
-  test_cleanup($setup->{log_file}, $ex);
+  test_cleanup($setup, $ex);
 }
 
 sub digest_hash_crc32 {
@@ -756,7 +756,7 @@ sub digest_hash_crc32 {
   server_stop($setup->{pid_file});
   $self->assert_child_ok($pid);
 
-  test_cleanup($setup->{log_file}, $ex);
+  test_cleanup($setup, $ex);
 }
 
 sub digest_hash_crc32_abs_symlink {
@@ -908,7 +908,7 @@ sub digest_hash_crc32_abs_symlink {
   server_stop($setup->{pid_file});
   $self->assert_child_ok($pid);
 
-  test_cleanup($setup->{log_file}, $ex);
+  test_cleanup($setup, $ex);
 }
 
 sub digest_hash_crc32_abs_symlink_chrooted_bug4219 {
@@ -1062,7 +1062,7 @@ sub digest_hash_crc32_abs_symlink_chrooted_bug4219 {
   server_stop($setup->{pid_file});
   $self->assert_child_ok($pid);
 
-  test_cleanup($setup->{log_file}, $ex);
+  test_cleanup($setup, $ex);
 }
 
 sub digest_hash_crc32_rel_symlink {
@@ -1218,7 +1218,7 @@ sub digest_hash_crc32_rel_symlink {
   server_stop($setup->{pid_file});
   $self->assert_child_ok($pid);
 
-  test_cleanup($setup->{log_file}, $ex);
+  test_cleanup($setup, $ex);
 }
 
 sub digest_hash_crc32_rel_symlink_chrooted_bug4219 {
@@ -1376,7 +1376,7 @@ sub digest_hash_crc32_rel_symlink_chrooted_bug4219 {
   server_stop($setup->{pid_file});
   $self->assert_child_ok($pid);
 
-  test_cleanup($setup->{log_file}, $ex);
+  test_cleanup($setup, $ex);
 }
 
 sub digest_hash_md5 {
@@ -1503,7 +1503,7 @@ sub digest_hash_md5 {
   server_stop($setup->{pid_file});
   $self->assert_child_ok($pid);
 
-  test_cleanup($setup->{log_file}, $ex);
+  test_cleanup($setup, $ex);
 }
 
 sub digest_hash_sha1 {
@@ -1630,7 +1630,7 @@ sub digest_hash_sha1 {
   server_stop($setup->{pid_file});
   $self->assert_child_ok($pid);
 
-  test_cleanup($setup->{log_file}, $ex);
+  test_cleanup($setup, $ex);
 }
 
 sub digest_hash_sha256 {
@@ -1758,7 +1758,7 @@ sub digest_hash_sha256 {
   server_stop($setup->{pid_file});
   $self->assert_child_ok($pid);
 
-  test_cleanup($setup->{log_file}, $ex);
+  test_cleanup($setup, $ex);
 }
 
 sub digest_hash_sha512 {
@@ -1886,7 +1886,7 @@ sub digest_hash_sha512 {
   server_stop($setup->{pid_file});
   $self->assert_child_ok($pid);
 
-  test_cleanup($setup->{log_file}, $ex);
+  test_cleanup($setup, $ex);
 }
 
 sub digest_hash_failed_not_logged_in {
@@ -1994,7 +1994,7 @@ sub digest_hash_failed_not_logged_in {
   server_stop($setup->{pid_file});
   $self->assert_child_ok($pid);
 
-  test_cleanup($setup->{log_file}, $ex);
+  test_cleanup($setup, $ex);
 }
 
 sub digest_hash_failed_enoent {
@@ -2103,7 +2103,7 @@ sub digest_hash_failed_enoent {
   server_stop($setup->{pid_file});
   $self->assert_child_ok($pid);
 
-  test_cleanup($setup->{log_file}, $ex);
+  test_cleanup($setup, $ex);
 }
 
 sub digest_hash_failed_not_file {
@@ -2213,7 +2213,7 @@ sub digest_hash_failed_not_file {
   server_stop($setup->{pid_file});
   $self->assert_child_ok($pid);
 
-  test_cleanup($setup->{log_file}, $ex);
+  test_cleanup($setup, $ex);
 }
 
 sub digest_hash_failed_config_limit {
@@ -2338,7 +2338,7 @@ sub digest_hash_failed_config_limit {
   server_stop($setup->{pid_file});
   $self->assert_child_ok($pid);
 
-  test_cleanup($setup->{log_file}, $ex);
+  test_cleanup($setup, $ex);
 }
 
 sub digest_hash_failed_blacklisted_files {
@@ -2458,7 +2458,7 @@ sub digest_hash_failed_blacklisted_files {
   server_stop($setup->{pid_file});
   $self->assert_child_ok($pid);
 
-  test_cleanup($setup->{log_file}, $ex);
+  test_cleanup($setup, $ex);
 }
 
 sub digest_xcrc {
@@ -2571,7 +2571,7 @@ sub digest_xcrc {
   server_stop($setup->{pid_file});
   $self->assert_child_ok($pid);
 
-  test_cleanup($setup->{log_file}, $ex);
+  test_cleanup($setup, $ex);
 }
 
 sub digest_xcrc_abs_symlink {
@@ -2708,7 +2708,7 @@ sub digest_xcrc_abs_symlink {
   server_stop($setup->{pid_file});
   $self->assert_child_ok($pid);
 
-  test_cleanup($setup->{log_file}, $ex);
+  test_cleanup($setup, $ex);
 }
 
 sub digest_xcrc_abs_symlink_chrooted_bug4219 {
@@ -2847,7 +2847,7 @@ sub digest_xcrc_abs_symlink_chrooted_bug4219 {
   server_stop($setup->{pid_file});
   $self->assert_child_ok($pid);
 
-  test_cleanup($setup->{log_file}, $ex);
+  test_cleanup($setup, $ex);
 }
 
 sub digest_xcrc_rel_symlink {
@@ -2988,7 +2988,7 @@ sub digest_xcrc_rel_symlink {
   server_stop($setup->{pid_file});
   $self->assert_child_ok($pid);
 
-  test_cleanup($setup->{log_file}, $ex);
+  test_cleanup($setup, $ex);
 }
 
 sub digest_xcrc_rel_symlink_chrooted_bug4219 {
@@ -3131,7 +3131,7 @@ sub digest_xcrc_rel_symlink_chrooted_bug4219 {
   server_stop($setup->{pid_file});
   $self->assert_child_ok($pid);
 
-  test_cleanup($setup->{log_file}, $ex);
+  test_cleanup($setup, $ex);
 }
 
 sub digest_xcrc_2gb {
@@ -3233,7 +3233,7 @@ sub digest_xcrc_2gb {
       # Allow server to start up
       sleep(1);
 
-      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port, 0, 1, 30);
+      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port, 0, 2, 30);
       $client->login($setup->{user}, $setup->{passwd});
       $client->quote('XCRC', 'test.dat');
 
@@ -3241,9 +3241,7 @@ sub digest_xcrc_2gb {
       my $resp_msgs = $client->response_msgs();
       $client->quit();
 
-      my $expected;
-
-      $expected = 213;
+      my $expected = 213;
       $self->assert($expected == $resp_code,
         test_msg("Expected response code $expected, got $resp_code"));
 
@@ -3253,7 +3251,6 @@ sub digest_xcrc_2gb {
       $self->assert($expected eq $last_resp_msg,
         test_msg("Expected response message '$expected', got '$last_resp_msg'"));
     };
-
     if ($@) {
       $ex = $@;
     }
@@ -3275,7 +3272,7 @@ sub digest_xcrc_2gb {
   server_stop($setup->{pid_file});
   $self->assert_child_ok($pid);
 
-  test_cleanup($setup->{log_file}, $ex);
+  test_cleanup($setup, $ex);
 }
 
 sub digest_md5 {
@@ -3390,7 +3387,7 @@ sub digest_md5 {
   server_stop($setup->{pid_file});
   $self->assert_child_ok($pid);
 
-  test_cleanup($setup->{log_file}, $ex);
+  test_cleanup($setup, $ex);
 }
 
 sub digest_md5_failed_not_file {
@@ -3490,7 +3487,7 @@ sub digest_md5_failed_not_file {
   server_stop($setup->{pid_file});
   $self->assert_child_ok($pid);
 
-  test_cleanup($setup->{log_file}, $ex);
+  test_cleanup($setup, $ex);
 }
 
 sub digest_xmd5 {
@@ -3603,7 +3600,7 @@ sub digest_xmd5 {
   server_stop($setup->{pid_file});
   $self->assert_child_ok($pid);
 
-  test_cleanup($setup->{log_file}, $ex);
+  test_cleanup($setup, $ex);
 }
 
 sub digest_xsha {
@@ -3716,7 +3713,7 @@ sub digest_xsha {
   server_stop($setup->{pid_file});
   $self->assert_child_ok($pid);
 
-  test_cleanup($setup->{log_file}, $ex);
+  test_cleanup($setup, $ex);
 }
 
 sub digest_xsha1 {
@@ -3829,7 +3826,7 @@ sub digest_xsha1 {
   server_stop($setup->{pid_file});
   $self->assert_child_ok($pid);
 
-  test_cleanup($setup->{log_file}, $ex);
+  test_cleanup($setup, $ex);
 }
 
 sub digest_xsha256 {
@@ -3943,7 +3940,7 @@ sub digest_xsha256 {
   server_stop($setup->{pid_file});
   $self->assert_child_ok($pid);
 
-  test_cleanup($setup->{log_file}, $ex);
+  test_cleanup($setup, $ex);
 }
 
 sub digest_xsha512 {
@@ -4057,7 +4054,7 @@ sub digest_xsha512 {
   server_stop($setup->{pid_file});
   $self->assert_child_ok($pid);
 
-  test_cleanup($setup->{log_file}, $ex);
+  test_cleanup($setup, $ex);
 }
 
 sub digest_host {
@@ -4250,7 +4247,7 @@ EOC
   server_stop($setup->{pid_file});
   $self->assert_child_ok($pid);
 
-  test_cleanup($setup->{log_file}, $ex);
+  test_cleanup($setup, $ex);
 }
 
 sub digest_path_offset_length {
@@ -4369,7 +4366,7 @@ sub digest_path_offset_length {
   server_stop($setup->{pid_file});
   $self->assert_child_ok($pid);
 
-  test_cleanup($setup->{log_file}, $ex);
+  test_cleanup($setup, $ex);
 }
 
 sub digest_path_with_spaces {
@@ -4482,7 +4479,7 @@ sub digest_path_with_spaces {
   server_stop($setup->{pid_file});
   $self->assert_child_ok($pid);
 
-  test_cleanup($setup->{log_file}, $ex);
+  test_cleanup($setup, $ex);
 }
 
 sub digest_path_with_spaces_offset_length {
@@ -4602,7 +4599,7 @@ sub digest_path_with_spaces_offset_length {
   server_stop($setup->{pid_file});
   $self->assert_child_ok($pid);
 
-  test_cleanup($setup->{log_file}, $ex);
+  test_cleanup($setup, $ex);
 }
 
 sub digest_caching {
@@ -4721,7 +4718,7 @@ sub digest_caching {
   server_stop($setup->{pid_file});
   $self->assert_child_ok($pid);
 
-  test_cleanup($setup->{log_file}, $ex);
+  test_cleanup($setup, $ex);
 }
 
 sub digest_caching_max_size {
@@ -4861,18 +4858,16 @@ sub digest_caching_max_size {
 
       $resp_code = $client->response_code();
       $resp_msg = $client->response_msg();
-
       $client->quit();
 
       $expected = 550;
       $self->assert($expected == $resp_code,
         test_msg("Expected response code $expected, got $resp_code"));
 
-      $expected = 'Resource busy';
+      $expected = '(Resource busy|Device or resource busy)';
       $self->assert(qr/$expected/, $resp_msg,
         test_msg("Expected response '$expected', got '$resp_msg'"));
     };
-
     if ($@) {
       $ex = $@;
     }
@@ -4894,7 +4889,7 @@ sub digest_caching_max_size {
   server_stop($setup->{pid_file});
   $self->assert_child_ok($pid);
 
-  test_cleanup($setup->{log_file}, $ex);
+  test_cleanup($setup, $ex);
 }
 
 sub digest_caching_max_age_same_file {
@@ -5042,7 +5037,7 @@ sub digest_caching_max_age_same_file {
   server_stop($setup->{pid_file});
   $self->assert_child_ok($pid);
 
-  test_cleanup($setup->{log_file}, $ex);
+  test_cleanup($setup, $ex);
 }
 
 sub digest_caching_max_age_different_file {
@@ -5168,8 +5163,8 @@ sub digest_caching_max_age_different_file {
       $self->assert($expected == $resp_code,
         test_msg("Expected response code $expected, got $resp_code"));
 
-      $expected = "test2.txt: Resource busy";
-      $self->assert($expected eq $resp_msg,
+      $expected = "test2.txt: (Resource busy|Device or resource busy)";
+      $self->assert(qr/$expected/, $resp_msg,
         test_msg("Expected response message '$expected', got '$resp_msg'"));
 
       # Now wait for longer than 5 secs, for the expiry timer to kick in.
@@ -5204,7 +5199,6 @@ sub digest_caching_max_age_different_file {
       $self->assert($expected eq $resp_msg,
         test_msg("Expected response message '$expected', got '$resp_msg'"));
     };
-
     if ($@) {
       $ex = $@;
     }
@@ -5226,7 +5220,7 @@ sub digest_caching_max_age_different_file {
   server_stop($setup->{pid_file});
   $self->assert_child_ok($pid);
 
-  test_cleanup($setup->{log_file}, $ex);
+  test_cleanup($setup, $ex);
 }
 
 sub digest_caching_retr {
@@ -5374,7 +5368,7 @@ sub digest_caching_retr {
   server_stop($setup->{pid_file});
   $self->assert_child_ok($pid);
 
-  test_cleanup($setup->{log_file}, $ex);
+  test_cleanup($setup, $ex);
 }
 
 sub digest_caching_rest_retr {
@@ -5491,6 +5485,7 @@ sub digest_caching_rest_retr {
 
       my $buf;
       $conn->read($buf, 8192, 10);
+      sleep(0.25);
       eval { $conn->close() };
 
       $resp_code = $client->response_code();
@@ -5498,6 +5493,7 @@ sub digest_caching_rest_retr {
       $self->assert_transfer_ok($resp_code, $resp_msg);
 
       ($resp_code, $resp_msg) = $client->quote('HASH', $file);
+      $client->quit();
 
       $expected = 213;
       $self->assert($expected == $resp_code,
@@ -5507,10 +5503,7 @@ sub digest_caching_rest_retr {
       $expected = "$algo 0-$filesz $expected_digest $file";
       $self->assert($expected eq $resp_msg,
         test_msg("Expected response message '$expected', got '$resp_msg'"));
-
-      $client->quit();
     };
-
     if ($@) {
       $ex = $@;
     }
@@ -5532,7 +5525,7 @@ sub digest_caching_rest_retr {
   server_stop($setup->{pid_file});
   $self->assert_child_ok($pid);
 
-  test_cleanup($setup->{log_file}, $ex);
+  test_cleanup($setup, $ex);
 }
 
 sub digest_caching_stor {
@@ -5661,7 +5654,7 @@ sub digest_caching_stor {
   server_stop($setup->{pid_file});
   $self->assert_child_ok($pid);
 
-  test_cleanup($setup->{log_file}, $ex);
+  test_cleanup($setup, $ex);
 }
 
 sub digest_caching_rest_stor {
@@ -5800,7 +5793,7 @@ sub digest_caching_rest_stor {
   server_stop($setup->{pid_file});
   $self->assert_child_ok($pid);
 
-  test_cleanup($setup->{log_file}, $ex);
+  test_cleanup($setup, $ex);
 }
 
 sub digest_caching_appe {
@@ -5929,7 +5922,7 @@ sub digest_caching_appe {
   server_stop($setup->{pid_file});
   $self->assert_child_ok($pid);
 
-  test_cleanup($setup->{log_file}, $ex);
+  test_cleanup($setup, $ex);
 }
 
 sub digest_failed_not_logged_in {
@@ -6022,7 +6015,7 @@ sub digest_failed_not_logged_in {
   server_stop($setup->{pid_file});
   $self->assert_child_ok($pid);
 
-  test_cleanup($setup->{log_file}, $ex);
+  test_cleanup($setup, $ex);
 }
 
 sub digest_failed_enoent {
@@ -6116,7 +6109,7 @@ sub digest_failed_enoent {
   server_stop($setup->{pid_file});
   $self->assert_child_ok($pid);
 
-  test_cleanup($setup->{log_file}, $ex);
+  test_cleanup($setup, $ex);
 }
 
 sub digest_failed_not_file {
@@ -6213,7 +6206,7 @@ sub digest_failed_not_file {
   server_stop($setup->{pid_file});
   $self->assert_child_ok($pid);
 
-  test_cleanup($setup->{log_file}, $ex);
+  test_cleanup($setup, $ex);
 }
 
 sub digest_failed_blacklisted_files {
@@ -6320,7 +6313,7 @@ sub digest_failed_blacklisted_files {
   server_stop($setup->{pid_file});
   $self->assert_child_ok($pid);
 
-  test_cleanup($setup->{log_file}, $ex);
+  test_cleanup($setup, $ex);
 }
 
 sub digest_failed_start_pos_invalid_number {
@@ -6426,7 +6419,7 @@ sub digest_failed_start_pos_invalid_number {
   server_stop($setup->{pid_file});
   $self->assert_child_ok($pid);
 
-  test_cleanup($setup->{log_file}, $ex);
+  test_cleanup($setup, $ex);
 }
 
 sub digest_failed_end_pos_invalid_number {
@@ -6532,7 +6525,7 @@ sub digest_failed_end_pos_invalid_number {
   server_stop($setup->{pid_file});
   $self->assert_child_ok($pid);
 
-  test_cleanup($setup->{log_file}, $ex);
+  test_cleanup($setup, $ex);
 }
 
 sub digest_failed_end_pos_too_large {
@@ -6638,7 +6631,7 @@ sub digest_failed_end_pos_too_large {
   server_stop($setup->{pid_file});
   $self->assert_child_ok($pid);
 
-  test_cleanup($setup->{log_file}, $ex);
+  test_cleanup($setup, $ex);
 }
 
 sub digest_failed_start_pos_after_end_pos {
@@ -6764,7 +6757,7 @@ sub digest_failed_start_pos_after_end_pos {
   server_stop($setup->{pid_file});
   $self->assert_child_ok($pid);
 
-  test_cleanup($setup->{log_file}, $ex);
+  test_cleanup($setup, $ex);
 }
 
 sub digest_config_algorithms {
@@ -6937,7 +6930,7 @@ sub digest_config_algorithms {
   server_stop($setup->{pid_file});
   $self->assert_child_ok($pid);
 
-  test_cleanup($setup->{log_file}, $ex);
+  test_cleanup($setup, $ex);
 }
 
 sub digest_config_default_algo {
@@ -7046,7 +7039,7 @@ sub digest_config_default_algo {
   server_stop($setup->{pid_file});
   $self->assert_child_ok($pid);
 
-  test_cleanup($setup->{log_file}, $ex);
+  test_cleanup($setup, $ex);
 }
 
 sub digest_config_engine {
@@ -7195,7 +7188,7 @@ sub digest_config_engine {
   server_stop($setup->{pid_file});
   $self->assert_child_ok($pid);
 
-  test_cleanup($setup->{log_file}, $ex);
+  test_cleanup($setup, $ex);
 }
 
 sub digest_config_engine_per_user {
@@ -7352,7 +7345,7 @@ EOC
   server_stop($setup->{pid_file});
   $self->assert_child_ok($pid);
 
-  test_cleanup($setup->{log_file}, $ex);
+  test_cleanup($setup, $ex);
 }
 
 sub digest_config_enable {
@@ -7481,7 +7474,7 @@ sub digest_config_enable {
   server_stop($setup->{pid_file});
   $self->assert_child_ok($pid);
 
-  test_cleanup($setup->{log_file}, $ex);
+  test_cleanup($setup, $ex);
 }
 
 sub digest_config_enable_ftpaccess {
@@ -7619,7 +7612,7 @@ EOC
   server_stop($setup->{pid_file});
   $self->assert_child_ok($pid);
 
-  test_cleanup($setup->{log_file}, $ex);
+  test_cleanup($setup, $ex);
 }
 
 sub digest_config_max_size {
@@ -7756,7 +7749,7 @@ sub digest_config_max_size {
   server_stop($setup->{pid_file});
   $self->assert_child_ok($pid);
 
-  test_cleanup($setup->{log_file}, $ex);
+  test_cleanup($setup, $ex);
 }
 
 sub digest_config_max_size_per_user {
@@ -7907,7 +7900,7 @@ EOC
   server_stop($setup->{pid_file});
   $self->assert_child_ok($pid);
 
-  test_cleanup($setup->{log_file}, $ex);
+  test_cleanup($setup, $ex);
 }
 
 sub build_db {
@@ -8019,7 +8012,7 @@ EOS
     ScoreboardFile => $setup->{scoreboard_file},
     SystemLog => $setup->{log_file},
     TraceLog => $setup->{log_file},
-    Trace => 'digest:20 event:10',
+    Trace => 'digest:20 jot:20 sql:20',
 
     AuthUserFile => $setup->{auth_user_file},
     AuthGroupFile => $setup->{auth_group_file},
@@ -8081,6 +8074,7 @@ EOS
       my $buf;
       while ($conn->read($buf, 16384, 10)) {
       }
+      sleep(0.25);
       eval { $conn->close() };
 
       my $resp_code = $client->response_code();
@@ -8089,7 +8083,6 @@ EOS
 
       $client->quit();
     };
-
     if ($@) {
       $ex = $@;
     }
@@ -8112,7 +8105,7 @@ EOS
   $self->assert_child_ok($pid);
 
   if ($ex) {
-    test_cleanup($setup->{log_file}, $ex);
+    test_cleanup($setup, $ex);
   }
 
   eval {
@@ -8138,7 +8131,6 @@ EOS
     $self->assert($expected eq $algo,
       test_msg("Expected algorithm '$expected', got '$algo'"));
   };
-
   if ($@) {
     $ex = $@;
   }

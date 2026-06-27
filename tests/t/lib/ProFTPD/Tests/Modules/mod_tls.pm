@@ -651,6 +651,7 @@ sub tls_login_rsa {
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
+    AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
       'mod_delay.c' => {
@@ -800,6 +801,9 @@ sub tls_login_dsa {
       my $client = Net::FTPSSL->new('127.0.0.1',
         Encryption => 'E',
         Port => $port,
+
+        # Needed for DSA ciphers
+        SSL_cipher_list => 'ALL',
       );
 
       unless ($client) {
@@ -831,7 +835,7 @@ sub tls_login_dsa {
   server_stop($setup->{pid_file});
   $self->assert_child_ok($pid);
 
-  test_cleanup($setup->{log_file}, $ex);
+  test_cleanup($setup, $ex);
 }
 
 sub tls_double_auth {
@@ -880,6 +884,7 @@ sub tls_double_auth {
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
+    AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
       'mod_delay.c' => {
@@ -1108,6 +1113,7 @@ sub tls_dh_ciphersuite {
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
+    AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
       'mod_delay.c' => {
@@ -1727,7 +1733,7 @@ EOC
   server_stop($setup->{pid_file});
   $self->assert_child_ok($pid);
 
-  test_cleanup($setup->{log_file}, $ex);
+  test_cleanup($setup, $ex);
 }
 
 sub tls_login_with_sni_tlsengine_off_issue850 {
@@ -1747,6 +1753,7 @@ sub tls_login_with_sni_tlsengine_off_issue850 {
 
     AuthUserFile => $setup->{auth_user_file},
     AuthGroupFile => $setup->{auth_group_file},
+    AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
       'mod_delay.c' => {
@@ -1933,6 +1940,7 @@ sub tls_login_with_sni_unknown_host_issue850 {
 
     AuthUserFile => $setup->{auth_user_file},
     AuthGroupFile => $setup->{auth_group_file},
+    AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
       'mod_delay.c' => {
@@ -2359,6 +2367,7 @@ sub tls_login_with_sni_ignored_issue850 {
 
     AuthUserFile => $setup->{auth_user_file},
     AuthGroupFile => $setup->{auth_group_file},
+    AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
       'mod_delay.c' => {
@@ -2685,6 +2694,7 @@ sub tls_login_with_sni_matching_host_issue850 {
 
     AuthUserFile => $setup->{auth_user_file},
     AuthGroupFile => $setup->{auth_group_file},
+    AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
       'mod_delay.c' => {
@@ -2855,6 +2865,7 @@ sub tls_login_with_sni_matching_host_case_insensitive_issue850 {
 
     AuthUserFile => $setup->{auth_user_file},
     AuthGroupFile => $setup->{auth_group_file},
+    AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
       'mod_delay.c' => {
@@ -3034,6 +3045,7 @@ sub tls_login_with_sni_mismatched_protocol_version_issue850 {
 
     AuthUserFile => $setup->{auth_user_file},
     AuthGroupFile => $setup->{auth_group_file},
+    AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
       'mod_delay.c' => {
@@ -3165,7 +3177,7 @@ EOC
         print STDERR "# TLS Handshake failed: $errstr\n";
       }
 
-      my $expected = 'handshake failure|protocol version';
+      my $expected = 'handshake failure|protocol version|internal error';
       $self->assert(qr/$expected/, $errstr,
         test_msg("Expected '$expected', got '$errstr'"));
     };
@@ -3190,7 +3202,7 @@ EOC
   server_stop($setup->{pid_file});
   $self->assert_child_ok($pid);
 
-  test_cleanup($setup->{log_file}, $ex);
+  test_cleanup($setup, $ex);
 }
 
 sub tls_login_with_sni_port_zero_issue932 {
@@ -4191,6 +4203,7 @@ sub tls_list_with_no_session_reuse_required_opt {
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
+    AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
       'mod_delay.c' => {
@@ -4304,6 +4317,7 @@ sub tls_list_fails_tls_required_by_dir_bug2178 {
 
     AuthUserFile => $setup->{auth_user_file},
     AuthGroupFile => $setup->{auth_group_file},
+    AuthOrder => 'mod_auth_file.c',
 
     Directory => {
       $home_dir => {
@@ -4456,6 +4470,7 @@ sub tls_list_ok_tls_required_by_dir_bug2178 {
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
+    AuthOrder => 'mod_auth_file.c',
 
     Directory => {
       $home_dir => {
@@ -4629,9 +4644,11 @@ sub tls_list_fails_tls_required_by_ftpaccess_bug2178 {
     TraceLog => $log_file,
     Trace => 'DEFAULT:10 directory:20 ftpaccess:20',
 
-    AllowOverride => 'on',
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
+    AuthOrder => 'mod_auth_file.c',
+
+    AllowOverride => 'on',
 
     IfModules => {
       'mod_delay.c' => {
@@ -4799,9 +4816,11 @@ sub tls_list_ok_tls_required_by_ftpaccess_bug2178 {
     ScoreboardFile => $scoreboard_file,
     SystemLog => $log_file,
 
-    AllowOverride => 'on',
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
+    AuthOrder => 'mod_auth_file.c',
+
+    AllowOverride => 'on',
 
     IfModules => {
       'mod_delay.c' => {
@@ -5011,6 +5030,7 @@ sub tls_implicit_ssl_bug3266 {
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
+    AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
       'mod_delay.c' => {
@@ -5294,6 +5314,7 @@ sub tls_opts_std_env_vars {
 
     AuthUserFile => $setup->{auth_user_file},
     AuthGroupFile => $setup->{auth_group_file},
+    AuthOrder => 'mod_auth_file.c',
 
     # Yes, this has a deliberately wrong variable for TLS_CLIENT_S_DN;
     # I use it to make sure that mod_log handles that particular formatting
@@ -5485,6 +5506,7 @@ sub tls_opts_std_env_vars_client_vars {
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
+    AuthOrder => 'mod_auth_file.c',
 
     LogFormat => 'custom "TLS_CLIENT_S_DN=\'%{TLS_CLIENT_S_DN}e\' TLS_CLIENT_I_DN=\'%{TLS_CLIENT_I_DN}e\'"',
     ExtendedLog => "$ext_log AUTH custom",
@@ -5664,6 +5686,7 @@ sub tls_opts_ipaddr_required_ipv4 {
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
+    AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
       'mod_delay.c' => {
@@ -5820,6 +5843,7 @@ sub tls_opts_ipaddr_required_ipv6 {
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
+    AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
       'mod_delay.c' => {
@@ -5974,6 +5998,7 @@ sub tls_opts_allow_per_user_tlsrequired_on_anon_login_bug3325 {
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
+    AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
       'mod_delay.c' => {
@@ -6254,6 +6279,7 @@ sub tls_opts_allow_per_user_tlsrequired_auth_user_login_bug3325 {
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
+    AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
       'mod_delay.c' => {
@@ -6665,6 +6691,7 @@ sub tls_opts_allow_per_user_tlsrequired_ctrl_user_login_bug3325 {
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
+    AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
       'mod_delay.c' => {
@@ -6825,6 +6852,7 @@ sub tls_opts_allow_per_user_tlsrequired_data_user_login_bug3325 {
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
+    AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
       'mod_delay.c' => {
@@ -6948,6 +6976,7 @@ sub tls_opts_allow_per_user_tlsrequired_on_ifsess_login_bug3325 {
 
     AuthUserFile => $setup->{auth_user_file},
     AuthGroupFile => $setup->{auth_group_file},
+    AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
       'mod_delay.c' => {
@@ -7061,6 +7090,7 @@ sub tls_opts_allow_per_user_nosessionreuserequired_ifsess_login_issue1175 {
 
     AuthUserFile => $setup->{auth_user_file},
     AuthGroupFile => $setup->{auth_group_file},
+    AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
       'mod_delay.c' => {
@@ -7179,6 +7209,7 @@ sub tls_opts_allow_weak_security_issue1048 {
 
     AuthUserFile => $setup->{auth_user_file},
     AuthGroupFile => $setup->{auth_group_file},
+    AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
       'mod_delay.c' => {
@@ -7342,6 +7373,7 @@ sub tls_rest_2gb_last_byte {
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
+    AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
       'mod_delay.c' => {
@@ -7554,6 +7586,7 @@ sub tls_rest_4gb_last_byte {
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
+    AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
       'mod_delay.c' => {
@@ -7730,6 +7763,7 @@ sub tls_stor_empty_file {
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
+    AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
       'mod_delay.c' => {
@@ -7891,6 +7925,7 @@ sub tls_retr_empty_file {
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
+    AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
       'mod_delay.c' => {
@@ -8052,6 +8087,7 @@ sub tls_required_on_feat_allowed_bug3420 {
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
+    AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
       'mod_delay.c' => {
@@ -8188,6 +8224,7 @@ sub tls_implicit_ssl_bug3437 {
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
+    AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
       'mod_delay.c' => {
@@ -8333,6 +8370,7 @@ sub tls_ccc_list_bug3465 {
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
+    AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
       'mod_delay.c' => {
@@ -8658,6 +8696,8 @@ sub tls_opts_commonname_required_bug3512 {
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
+    AuthOrder => 'mod_auth_file.c',
+
     UseReverseDNS => 'on',
 
     IfModules => {
@@ -8824,6 +8864,8 @@ sub tls_opts_dns_name_required {
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
+    AuthOrder => 'mod_auth_file.c',
+
     UseReverseDNS => 'on',
 
     IfModules => {
@@ -8990,6 +9032,8 @@ sub tls_opts_ip_addr_dns_name_cn_required {
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
+    AuthOrder => 'mod_auth_file.c',
+
     UseReverseDNS => 'on',
 
     IfModules => {
@@ -9161,6 +9205,7 @@ sub tls_site_chmod_ok {
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
+    AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
       'mod_delay.c' => {
@@ -9311,6 +9356,7 @@ sub tls_default_tlsrequired {
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
+    AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
       'mod_delay.c' => {
@@ -9448,6 +9494,7 @@ sub tls_protocols_default {
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
+    AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
       'mod_delay.c' => {
@@ -9584,6 +9631,7 @@ sub tls_protocols_with_ftps {
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
+    AuthOrder => 'mod_auth_file.c',
 
     Protocols => 'ftps',
 
@@ -9722,6 +9770,7 @@ sub tls_protocols_without_ftps {
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
+    AuthOrder => 'mod_auth_file.c',
 
     Protocols => 'ftp',
 
@@ -9860,6 +9909,7 @@ sub tls_ifsess_protocols_with_ftps {
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
+    AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
       'mod_delay.c' => {
@@ -10017,6 +10067,7 @@ sub tls_ifsess_protocols_without_ftps {
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
+    AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
       'mod_delay.c' => {
@@ -10174,6 +10225,7 @@ sub tls_sess_cache_internal_bug3580 {
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
+    AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
       'mod_delay.c' => {
@@ -10278,6 +10330,7 @@ sub tls_passphraseprovider_rsacertfile {
 
     AuthUserFile => $setup->{auth_user_file},
     AuthGroupFile => $setup->{auth_group_file},
+    AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
       'mod_delay.c' => {
@@ -10378,6 +10431,7 @@ sub tls_passphraseprovider_rsakeyfile_issue1179 {
 
     AuthUserFile => $setup->{auth_user_file},
     AuthGroupFile => $setup->{auth_group_file},
+    AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
       'mod_delay.c' => {
@@ -10506,6 +10560,7 @@ sub tls_verify_order_crl_bug3658 {
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
+    AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
       'mod_delay.c' => {
@@ -10671,6 +10726,7 @@ sub tls_verify_order_ocsp {
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
+    AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
       'mod_delay.c' => {
@@ -10841,6 +10897,7 @@ sub tls_verify_order_ocsp_https {
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
+    AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
       'mod_delay.c' => {
@@ -11006,6 +11063,7 @@ sub tls_client_cert_verify_failed_selfsigned_cert_only_bug3742 {
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
+    AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
       'mod_delay.c' => {
@@ -11206,6 +11264,7 @@ sub tls_client_cert_verify_failed_selfsigned_cert_in_chain_bug3742 {
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
+    AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
       'mod_delay.c' => {
@@ -11375,6 +11434,7 @@ sub tls_client_cert_verify_ok_server_selfsigned_cert_in_chain_bug3742 {
 
     AuthUserFile => $setup->{auth_user_file},
     AuthGroupFile => $setup->{auth_group_file},
+    AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
       'mod_delay.c' => {
@@ -11765,6 +11825,7 @@ sub tls_opts_multiple_lines_bug3800 {
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
+    AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
       'mod_delay.c' => {
@@ -11905,6 +11966,7 @@ sub tls_config_tlsmasqueradeaddress_bug3862 {
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
+    AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
       'mod_delay.c' => {
@@ -12012,50 +12074,20 @@ sub tls_config_tlsmasqueradeaddress_bug3862 {
 sub tls_config_tlsdhparamfile_bug3868 {
   my $self = shift;
   my $tmpdir = $self->{tmpdir};
-
-  my $config_file = "$tmpdir/tls.conf";
-  my $pid_file = File::Spec->rel2abs("$tmpdir/tls.pid");
-  my $scoreboard_file = File::Spec->rel2abs("$tmpdir/tls.scoreboard");
-
-  my $log_file = test_get_logfile();
-
-  my $auth_user_file = File::Spec->rel2abs("$tmpdir/tls.passwd");
-  my $auth_group_file = File::Spec->rel2abs("$tmpdir/tls.group");
-
-  my $user = 'proftpd';
-  my $passwd = 'test';
-  my $group = 'ftpd';
-  my $home_dir = File::Spec->rel2abs($tmpdir);
-  my $uid = 500;
-  my $gid = 500;
-
-  # Make sure that, if we're running as root, that the home directory has
-  # permissions/privs set for the account we create
-  if ($< == 0) {
-    unless (chmod(0755, $home_dir)) {
-      die("Can't set perms on $home_dir to 0755: $!");
-    }
-
-    unless (chown($uid, $gid, $home_dir)) {
-      die("Can't set owner of $home_dir to $uid/$gid: $!");
-    }
-  }
-
-  auth_user_write($auth_user_file, $user, $passwd, $uid, $gid, $home_dir,
-    '/bin/bash');
-  auth_group_write($auth_group_file, $group, $gid, $user);
+  my $setup = test_setup($tmpdir, 'tls');
 
   my $cert_file = File::Spec->rel2abs('t/etc/modules/mod_tls/server-cert.pem');
   my $ca_file = File::Spec->rel2abs('t/etc/modules/mod_tls/ca-cert.pem');
   my $dhparam_file = File::Spec->rel2abs('t/etc/modules/mod_tls/dh1024.pem');
 
   my $config = {
-    PidFile => $pid_file,
-    ScoreboardFile => $scoreboard_file,
-    SystemLog => $log_file,
+    PidFile => $setup->{pid_file},
+    ScoreboardFile => $setup->{scoreboard_file},
+    SystemLog => $setup->{log_file},
 
-    AuthUserFile => $auth_user_file,
-    AuthGroupFile => $auth_group_file,
+    AuthUserFile => $setup->{auth_user_file},
+    AuthGroupFile => $setup->{auth_group_file},
+    AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
       'mod_delay.c' => {
@@ -12064,16 +12096,19 @@ sub tls_config_tlsdhparamfile_bug3868 {
 
       'mod_tls.c' => {
         TLSEngine => 'on',
-        TLSLog => $log_file,
+        TLSLog => $setup->{log_file},
         TLSRequired => 'on',
         TLSRSACertificateFile => $cert_file,
         TLSCACertificateFile => $ca_file,
+
         TLSDHParamFile => $dhparam_file,
+        TLSOptions => 'AllowWeakDH AllowWeakSecurity',
       },
     },
   };
 
-  my ($port, $config_user, $config_group) = config_write($config_file, $config);
+  my ($port, $config_user, $config_group) = config_write($setup->{config_file},
+    $config);
 
   # Open pipes, for use between the parent and child processes.  Specifically,
   # the child will indicate when it's done with its test by writing a message
@@ -12097,7 +12132,7 @@ sub tls_config_tlsdhparamfile_bug3868 {
 
       my $ssl_opts = {
         # Results in set_tmp_dh_callback() keylength of 1024 BITS
-        SSL_cipher_list => 'DHE-RSA-AES256-SHA',
+        SSL_cipher_list => 'DHE-RSA-AES256-SHA:@SECLEVEL=0',
         SSL_ca_file => $ca_file,
       };
 
@@ -12106,18 +12141,16 @@ sub tls_config_tlsdhparamfile_bug3868 {
         Port => $port,
         SSL_Client_Certificate => $ssl_opts,
       );
-
       unless ($client) {
         die("Can't connect to FTPS server: " . IO::Socket::SSL::errstr());
       }
 
-      unless ($client->login($user, $passwd)) {
+      unless ($client->login($setup->{user}, $setup->{passwd})) {
         die("Can't login: " . $client->last_message());
       }
 
       $client->quit();
     };
-
     if ($@) {
       $ex = $@;
     }
@@ -12126,7 +12159,7 @@ sub tls_config_tlsdhparamfile_bug3868 {
     $wfh->flush();
 
   } else {
-    eval { server_wait($config_file, $rfh) };
+    eval { server_wait($setup->{config_file}, $rfh) };
     if ($@) {
       warn($@);
       exit 1;
@@ -12136,18 +12169,10 @@ sub tls_config_tlsdhparamfile_bug3868 {
   }
 
   # Stop server
-  server_stop($pid_file);
-
+  server_stop($setup->{pid_file});
   $self->assert_child_ok($pid);
 
-  if ($ex) {
-    test_append_logfile($log_file, $ex);
-    unlink($log_file);
-
-    die($ex);
-  }
-
-  unlink($log_file);
+  test_cleanup($setup, $ex);
 }
 
 sub tls_config_tlsciphersuite_bad_cipher {
@@ -12449,7 +12474,7 @@ sub tls_config_tlsdsacertfile_not_dsa {
     $ex = "Server start with bad config unexpectedly";
   }
 
-  test_cleanup($setup->{log_file}, $ex);
+  test_cleanup($setup, $ex);
 }
 
 sub tls_config_tlsdsacertkeyfile_bad_format {
@@ -12596,6 +12621,7 @@ sub tls_session_cache_off_bug3869 {
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
+    AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
       'mod_delay.c' => {
@@ -12742,6 +12768,7 @@ sub tls_limit_prot_bug3887 {
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
+    AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
       'mod_delay.c' => {
@@ -12937,6 +12964,7 @@ sub tls_config_tlsusername_bug3899 {
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
+    AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
       'mod_delay.c' => {
@@ -13585,6 +13613,7 @@ sub tls_sscn_no_args_bug3955 {
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
+    AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
       'mod_delay.c' => {
@@ -13728,6 +13757,7 @@ sub tls_sscn_too_many_args_bug3955 {
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
+    AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
       'mod_delay.c' => {
@@ -13871,6 +13901,7 @@ sub tls_sscn_bad_arg_bug3955 {
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
+    AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
       'mod_delay.c' => {
@@ -14023,6 +14054,7 @@ sub tls_sscn_toggle_bug3955 {
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
+    AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
       'mod_delay.c' => {
@@ -14216,6 +14248,7 @@ sub tls_config_limit_sscn_bug3955 {
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
+    AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
       'mod_delay.c' => {
@@ -14342,6 +14375,7 @@ sub tls_config_missing_certs {
 
     AuthUserFile => $setup->{auth_user_file},
     AuthGroupFile => $setup->{auth_group_file},
+    AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
       'mod_delay.c' => {
@@ -14501,6 +14535,7 @@ sub tls_stapling_on_bug4175 {
 
     AuthUserFile => $setup->{auth_user_file},
     AuthGroupFile => $setup->{auth_group_file},
+    AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
       'mod_delay.c' => {
@@ -14595,6 +14630,7 @@ sub tls_session_tickets_on_bug4176 {
 
     AuthUserFile => $setup->{auth_user_file},
     AuthGroupFile => $setup->{auth_group_file},
+    AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
       'mod_delay.c' => {
@@ -14787,6 +14823,7 @@ sub tls_fxp_issue618 {
 
     AuthUserFile => $setup->{auth_user_file},
     AuthGroupFile => $setup->{auth_group_file},
+    AuthOrder => 'mod_auth_file.c',
 
     AllowForeignAddress => 'on',
     AllowOverwrite => 'on',
@@ -15087,7 +15124,7 @@ sub tls_old_protocols_issue1273 {
         's_client',
         '-connect',
         "127.0.0.1:$port",
-        '-tls1',
+        '-tls1_1',
       );
 
       my $tls_rh = IO::Handle->new();
@@ -15149,7 +15186,8 @@ sub tls_old_protocols_issue1273 {
   # Stop server
   server_stop($setup->{pid_file});
   $self->assert_child_ok($pid);
-  test_cleanup($setup->{log_file}, $ex) if $ex;
+
+  test_cleanup($setup, $ex) if $ex;
 
   eval {
     if (open(my $fh, "< $setup->{log_file}")) {
@@ -15176,7 +15214,7 @@ sub tls_old_protocols_issue1273 {
     $ex = $@;
   }
 
-  test_cleanup($setup->{log_file}, $ex);
+  test_cleanup($setup, $ex);
 }
 
 sub tls_curl_download_largefile_renegotiate_bug4443 {
@@ -15216,6 +15254,7 @@ sub tls_curl_download_largefile_renegotiate_bug4443 {
 
     AuthUserFile => $setup->{auth_user_file},
     AuthGroupFile => $setup->{auth_group_file},
+    AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
       'mod_delay.c' => {
@@ -15325,7 +15364,7 @@ sub tls_curl_download_largefile_renegotiate_bug4443 {
   server_stop($setup->{pid_file});
   $self->assert_child_ok($pid);
 
-  test_cleanup($setup->{log_file}, $ex);
+  test_cleanup($setup, $ex);
 }
 
 sub tls_useimplicitssl_tcp_connect_only {
@@ -15345,6 +15384,7 @@ sub tls_useimplicitssl_tcp_connect_only {
 
     AuthUserFile => $setup->{auth_user_file},
     AuthGroupFile => $setup->{auth_group_file},
+    AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
       'mod_delay.c' => {
@@ -15587,7 +15627,7 @@ sub tls_explicit_plaintext_fallback_issue192 {
       $client->print($cmd);
       $client->flush();
 
-      # Read the FEAT response
+      # Read the response
       my $resp = <$client>;
       if ($ENV{TEST_VERBOSE}) {
         print STDOUT "# Received response: $resp\n";
@@ -15621,7 +15661,7 @@ sub tls_explicit_plaintext_fallback_issue192 {
   server_stop($setup->{pid_file});
   $self->assert_child_ok($pid);
 
-  test_cleanup($setup->{log_file}, $ex);
+  test_cleanup($setup, $ex);
 }
 
 sub tls_implicit_plaintext_fallback_issue192 {

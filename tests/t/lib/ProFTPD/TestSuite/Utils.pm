@@ -805,6 +805,13 @@ sub feature_have_feature_enabled {
       if ($flag eq '+') {
         push(@$feat_list, $feature);
 
+        # Special-case for ASAN builds
+        if ($feature =~ /Developer/i) {
+          if ($line =~ /\(ASAN\)/) {
+            push(@$feat_list, "ASAN");
+          }
+        }
+
         # Special-case hack for FIPS-enabled OpenSSL
         if ($feature =~ /OpenSSL/i) {
           if ($line =~ /\(FIPS enabled\)/) {
@@ -1153,11 +1160,97 @@ sub test_append_logfile {
   }
 }
 
+sub scan_asan_logs {
+  my $asan_log_file = shift;
+  my $keep_logfiles = shift;
+
+  # There are probably multiple ASAN log files, one per process.  So we
+  # need to list the files in the parent directory; any whose non-PID
+  # prefix matches is probably an ASAN log file.
+
+  my ($volume, $parent_dir, $file) = File::Spec->splitpath($asan_log_file);
+
+  my $asan_log_files = [];
+  if (opendir(my $dirh, $parent_dir)) {
+    while (my $dent = readdir($dirh)) {
+      if ($dent eq '.' ||
+          $dent eq '..') {
+        next;
+      }
+
+      my $path = File::Spec->canonpath("$parent_dir/$dent");
+      next unless -f $path;
+
+      if ($path =~ /(\S+)?\.(\d+?)$/) {
+        my $base = $1;
+
+        if ($base eq $asan_log_file) {
+          push(@$asan_log_files, $path);
+        }
+      }
+    }
+
+    closedir($dirh);
+  }
+
+  # For each of these ASAN log files, see if any have "ERROR" in them,
+  # indicating something of interest.  Otherwise, it'll just be the normal
+  # setup verbosity.
+
+  foreach my $asan_file (@$asan_log_files) {
+    if ($ENV{TEST_VERBOSE}) {
+      print STDERR "# Scanning ASAN log file $asan_file\n";
+    }
+
+    if (open(my $fh, "< $asan_file")) {
+      # If present, any "ERROR" finding from ASAN is usually on the second line.
+      my $line = <$fh>;
+      $line = <$fh>;
+      chomp($line);
+
+      if ($line =~ /ERROR/) {
+        if ($ENV{TEST_VERBOSE}) {
+          print STDERR "# $line\n";
+        }
+
+        while ($line = <$fh>) {
+          chomp($line);
+
+          if ($ENV{TEST_VERBOSE}) {
+            print STDERR "# $line\n";
+          }
+        }
+      }
+
+      close($fh);
+    }
+
+    unlink($asan_file) unless $keep_logfiles;
+  }
+}
+
 sub test_cleanup {
-  my $log_file = shift;
+  my $setup = shift;
   my $ex = shift;
-  my $keep_logfile = shift;
-  $keep_logfile = 0 unless $keep_logfile;
+  my $log_file = undef;
+  my $asan_log_file = undef;
+
+  if (ref($setup) eq 'HASH') {
+    $log_file = $setup->{log_file};
+    $asan_log_file = $setup->{asan_log_file};
+
+  } else {
+    $log_file = $setup;
+  }
+
+  my $keep_logfiles = 0;
+  if ($ENV{KEEP_TMPFILES}) {
+    $keep_logfiles = 1;
+  }
+
+  if (defined($asan_log_file)) {
+    scan_asan_logs($asan_log_file, $keep_logfiles);
+  }
 
   if ($ex) {
     test_append_logfile($log_file, $ex);
@@ -1166,7 +1259,7 @@ sub test_cleanup {
     croak($ex);
   }
 
-  unlink($log_file) unless $keep_logfile;
+  unlink($log_file) unless $keep_logfiles;
 }
 
 sub test_get_logfile {
@@ -1271,6 +1364,16 @@ sub test_setup {
     uid => $uid,
     user => $user,
   };
+
+  if (feature_have_feature_enabled('ASAN')) {
+    my $asan_log_file = "$tmpdir/asan.log";
+
+    unless ($ENV{ASAN_OPTIONS}) {
+      $ENV{ASAN_OPTIONS} = "verbosity=3:detect_leaks=1:abort_on_error=1:debug=true:check_initialization_order=true:detect_stack_use_after_return=true:strict_string_checks=true:detect_invalid_pointer_pairs=2:log_path=$asan_log_file";
+    }
+
+    $setup->{asan_log_file} = $asan_log_file;
+  }
 
   return $setup;
 }

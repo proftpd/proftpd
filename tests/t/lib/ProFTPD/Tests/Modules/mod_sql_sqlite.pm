@@ -581,6 +581,7 @@ EOS
       },
 
       'mod_sql.c' => {
+        AuthOrder => 'mod_sql.c',
         SQLAuthTypes => 'plaintext',
         SQLBackend => 'sqlite3',
         SQLConnectInfo => $db_file,
@@ -643,7 +644,7 @@ EOS
   server_stop($setup->{pid_file});
   $self->assert_child_ok($pid);
 
-  test_cleanup($setup->{log_file}, $ex);
+  test_cleanup($setup, $ex);
 }
 
 sub sql_bug2922 {
@@ -1477,7 +1478,7 @@ EOS
   server_stop($setup->{pid_file});
   $self->assert_child_ok($pid);
 
-  test_cleanup($setup->{log_file}, $ex);
+  test_cleanup($setup, $ex);
 }
 
 sub sql_group_where_clause_ok {
@@ -1768,7 +1769,7 @@ EOS
   server_stop($setup->{pid_file});
   $self->assert_child_ok($pid);
 
-  test_cleanup($setup->{log_file}, $ex);
+  test_cleanup($setup, $ex);
 }
 
 sub get_sessions {
@@ -1902,9 +1903,7 @@ EOS
   server_stop($setup->{pid_file});
   $self->assert_child_ok($pid);
 
-  if ($ex) {
-    test_cleanup($setup->{log_file}, $ex);
-  }
+  test_cleanup($setup, $ex) if $ex;
 
   eval {
     my ($login, $ip_addr, $timestamp) = get_sessions($db_file,
@@ -1925,7 +1924,7 @@ EOS
     $ex = $@;
   }
 
-  test_cleanup($setup->{log_file}, $ex);
+  test_cleanup($setup, $ex);
 }
 
 sub sql_sqlite_sqllog_with_chroot {
@@ -4402,9 +4401,7 @@ EOS
   server_stop($setup->{pid_file});
   $self->assert_child_ok($pid);
 
-  if ($ex) {
-    test_cleanup($setup->{log_file}, $ex);
-  }
+  test_cleanup($setup, $ex) if $ex;
 
   eval {
     my ($login, $ip_addr, $resp_mesg) = get_resp_mesgs($db_file,
@@ -4425,7 +4422,7 @@ EOS
     $ex = $@;
   }
 
-  test_cleanup($setup->{log_file}, $ex);
+  test_cleanup($setup, $ex);
 }
 
 sub sql_negative_cache_bug3282 {
@@ -4704,9 +4701,7 @@ EOS
   server_stop($setup->{pid_file});
   $self->assert_child_ok($pid);
 
-  if ($ex) {
-    test_cleanup($setup->{log_file}, $ex);
-  }
+  test_cleanup($setup, $ex) if $ex;
 
   eval {
     my $query = "SELECT user, ip_addr, rename_from, rename_time FROM ftpsessions WHERE user = \'$setup->{user}\'";
@@ -4745,7 +4740,7 @@ EOS
     $ex = $@;
   }
 
-  test_cleanup($setup->{log_file}, $ex);
+  test_cleanup($setup, $ex);
 }
 
 sub sql_sqllog_var_T_retr {
@@ -4905,7 +4900,7 @@ EOS
     $ex = $@;
   }
 
-  test_cleanup($setup->{log_file}, $ex);
+  test_cleanup($setup, $ex);
 }
 
 sub sql_sqllog_var_transfer_millisecs_retr_bug4218 {
@@ -5065,7 +5060,7 @@ EOS
     $ex = $@;
   }
 
-  test_cleanup($setup->{log_file}, $ex);
+  test_cleanup($setup, $ex);
 }
 
 sub sql_sqllog_var_R_retr_bug4218 {
@@ -5225,44 +5220,13 @@ EOS
     $ex = $@;
   }
 
-  test_cleanup($setup->{log_file}, $ex);
+  test_cleanup($setup, $ex);
 }
 
 sub sql_sqllog_exit {
   my $self = shift;
   my $tmpdir = $self->{tmpdir};
-
-  my $config_file = "$tmpdir/sqlite.conf";
-  my $pid_file = File::Spec->rel2abs("$tmpdir/sqlite.pid");
-  my $scoreboard_file = File::Spec->rel2abs("$tmpdir/sqlite.scoreboard");
-
-  my $log_file = test_get_logfile();
-
-  my $auth_user_file = File::Spec->rel2abs("$tmpdir/sqlite.passwd");
-  my $auth_group_file = File::Spec->rel2abs("$tmpdir/sqlite.group");
-
-  my $user = 'proftpd';
-  my $passwd = 'test';
-  my $group = 'ftpd';
-  my $home_dir = File::Spec->rel2abs($tmpdir);
-  my $uid = 500;
-  my $gid = 500;
-
-  # Make sure that, if we're running as root, that the home directory has
-  # permissions/privs set for the account we create
-  if ($< == 0) {
-    unless (chmod(0755, $home_dir)) {
-      die("Can't set perms on $home_dir to 0755: $!");
-    }
-
-    unless (chown($uid, $gid, $home_dir)) {
-      die("Can't set owner of $home_dir to $uid/$gid: $!");
-    }
-  }
-
-  auth_user_write($auth_user_file, $user, $passwd, $uid, $gid, $home_dir,
-    '/bin/bash');
-  auth_group_write($auth_group_file, $group, $gid, $user);
+  my $setup = test_setup($tmpdir, 'sqlite');
 
   my $db_file = File::Spec->rel2abs("$tmpdir/proftpd.db");
 
@@ -5297,12 +5261,12 @@ EOS
   }
 
   my $config = {
-    PidFile => $pid_file,
-    ScoreboardFile => $scoreboard_file,
-    SystemLog => $log_file,
+    PidFile => $setup->{pid_file},
+    ScoreboardFile => $setup->{scoreboard_file},
+    SystemLog => $setup->{log_file},
 
-    AuthUserFile => $auth_user_file,
-    AuthGroupFile => $auth_group_file,
+    AuthUserFile => $setup->{auth_user_file},
+    AuthGroupFile => $setup->{auth_group_file},
     AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
@@ -5314,7 +5278,7 @@ EOS
         SQLEngine => 'log',
         SQLBackend => 'sqlite3',
         SQLConnectInfo => $db_file,
-        SQLLogFile => $log_file,
+        SQLLogFile => $setup->{log_file},
         SQLNamedQuery => 'logout FREEFORM "INSERT INTO ftpsessions (user, ip_addr) VALUES (\'%u\', \'%L\')"',
         SQLLog => 'EXIT logout',
       },
@@ -5509,9 +5473,7 @@ EOS
   server_stop($setup->{pid_file});
   $self->assert_child_ok($pid);
 
-  if ($ex) {
-    test_cleanup($setup->{log_file}, $ex);
-  }
+  test_cleanup($setup, $ex) if $ex;
 
   eval {
     my $query = "SELECT * FROM ftpsessions where user = '$setup->{user}'";
@@ -5538,7 +5500,7 @@ EOS
     $ex = $@;
   }
 
-  test_cleanup($setup->{log_file}, $ex);
+  test_cleanup($setup, $ex);
 }
 
 sub get_locations {
@@ -5692,9 +5654,7 @@ EOS
   server_stop($setup->{pid_file});
   $self->assert_child_ok($pid);
 
-  if ($ex) {
-    test_cleanup($setup->{log_file}, $ex);
-  }
+  test_cleanup($setup, $ex) if $ex;
 
   sleep(1);
 
@@ -5720,7 +5680,7 @@ EOS
     $ex = $@;
   }
 
-  test_cleanup($setup->{log_file}, $ex);
+  test_cleanup($setup, $ex);
 }
 
 sub sql_sqllog_var_d_chroot_bug3395 {
@@ -6127,7 +6087,7 @@ sub sql_sqlite_auth_type_backend_bug3511 {
     $ex = "Server start with bad config unexpectedly";
   }
 
-  test_cleanup($setup->{log_file}, $ex);
+  test_cleanup($setup, $ex);
 }
 
 sub sql_sqllog_pass_ok_var_s_bug3528 {
@@ -6783,7 +6743,7 @@ EOS
   server_stop($setup->{pid_file});
   $self->assert_child_ok($pid);
 
-  test_cleanup($setup->{log_file}, $ex);
+  test_cleanup($setup, $ex);
 }
 
 sub sql_sqlshowinfo_list_bug3423 {
@@ -6970,7 +6930,7 @@ EOS
   server_stop($setup->{pid_file});
   $self->assert_child_ok($pid);
 
-  test_cleanup($setup->{log_file}, $ex);
+  test_cleanup($setup, $ex);
 }
 
 sub sql_multiple_users_shared_uid_gid {
@@ -7496,9 +7456,7 @@ EOS
   server_stop($setup->{pid_file});
   $self->assert_child_ok($pid);
 
-  if ($ex) {
-    test_cleanup($setup->{log_file}, $ex);
-  }
+  test_cleanup($setup, $ex) if $ex;
 
   sleep(1);
 
@@ -7531,7 +7489,7 @@ EOS
     $ex = $@;
   }
 
-  test_cleanup($setup->{log_file}, $ex);
+  test_cleanup($setup, $ex);
 }
 
 sub get_session_id {
@@ -8219,9 +8177,7 @@ EOS
   server_stop($setup->{pid_file});
   $self->assert_child_ok($pid);
 
-  if ($ex) {
-    test_cleanup($setup->{log_file}, $ex);
-  }
+  test_cleanup($setup, $ex) if $ex;
 
   sleep(1);
 
@@ -8244,7 +8200,7 @@ EOS
     $ex = $@;
   }
 
-  test_cleanup($setup->{log_file}, $ex);
+  test_cleanup($setup, $ex);
 }
 
 sub sql_named_conn_bug3262 {
@@ -8847,9 +8803,7 @@ EOC
   server_stop($setup->{pid_file});
   $self->assert_child_ok($pid);
 
-  if ($ex) {
-    test_cleanup($setup->{log_file}, $ex);
-  }
+  test_cleanup($setup, $ex) if $ex;
 
   eval {
     my ($login, $ip_addr, $sess_vhost_addr) = get_renames($db_file, "user = \'$setup->{user}\'");
@@ -8870,7 +8824,7 @@ EOC
     $ex = $@;
   }
 
-  test_cleanup($setup->{log_file}, $ex);
+  test_cleanup($setup, $ex);
 }
 
 sub sql_sqllog_vars_H_L_default_server_bug3620 {
@@ -9032,9 +8986,7 @@ EOC
   server_stop($setup->{pid_file});
   $self->assert_child_ok($pid);
 
-  if ($ex) {
-    test_cleanup($setup->{log_file}, $ex);
-  }
+  test_cleanup($setup, $ex) if $ex;
 
   eval {
     my ($login, $ip_addr, $sess_addr) = get_renames($db_file, "user = \'$setup->{user}\'");
@@ -9054,7 +9006,7 @@ EOC
     $ex = $@;
   }
 
-  test_cleanup($setup->{log_file}, $ex);
+  test_cleanup($setup, $ex);
 }
 
 sub sql_sqllog_exit_ifuser {
@@ -12178,7 +12130,7 @@ EOS
   server_stop($setup->{pid_file});
   $self->assert_child_ok($pid);
 
-  test_cleanup($setup->{log_file}, $ex);
+  test_cleanup($setup, $ex);
 }
 
 sub sql_sqllog_preauth_var_U_bug3822 {
@@ -12702,7 +12654,7 @@ EOS
   server_stop($setup->{pid_file});
   $self->assert_child_ok($pid);
 
-  test_cleanup($setup->{log_file}, $ex);
+  test_cleanup($setup, $ex);
 }
 
 sub get_logins {
@@ -13373,9 +13325,7 @@ EOS
   server_stop($setup->{pid_file});
   $self->assert_child_ok($pid);
 
-  if ($ex) {
-    test_cleanup($setup->{log_file}, $ex);
-  }
+  test_cleanup($setup, $ex) if $ex;
 
   eval {
     my ($login, $ip_addr, $timestamp) = get_sessions($db_file,
@@ -13397,7 +13347,7 @@ EOS
     $ex = $@;
   }
 
-  test_cleanup($setup->{log_file}, $ex);
+  test_cleanup($setup, $ex);
 }
 
 sub get_session_with_primary_key {
@@ -14083,9 +14033,7 @@ EOS
   server_stop($setup->{pid_file});
   $self->assert_child_ok($pid);
 
-  if ($ex) {
-    test_cleanup($setup->{log_file}, $ex);
-  }
+  test_cleanup($setup, $ex) if $ex;
 
   eval {
     my ($name, $ip_addr, $primary_key) = get_session_with_primary_key($db_file,
@@ -14106,7 +14054,7 @@ EOS
     $ex = $@;
   }
 
-  test_cleanup($setup->{log_file}, $ex);
+  test_cleanup($setup, $ex);
 }
 
 sub sql_sqllog_var_basename_bug3987 {
@@ -15089,7 +15037,7 @@ EOS
   server_stop($setup->{pid_file});
   $self->assert_child_ok($pid);
 
-  test_cleanup($setup->{log_file}, $ex) if $ex;
+  test_cleanup($setup, $ex) if $ex;
 
   eval {
     my ($login, $ip_addr, $ftps);
@@ -15111,7 +15059,7 @@ EOS
     $ex = $@;
   }
 
-  test_cleanup($setup->{log_file}, $ex);
+  test_cleanup($setup, $ex);
 }
 
 sub sql_sqllog_var_note_ftps_with_tls_issue1232 {
@@ -15250,7 +15198,7 @@ EOS
   server_stop($setup->{pid_file});
   $self->assert_child_ok($pid);
 
-  test_cleanup($setup->{log_file}, $ex) if $ex;
+  test_cleanup($setup, $ex) if $ex;
 
   eval {
     my ($login, $ip_addr, $ftps);
@@ -15272,7 +15220,7 @@ EOS
     $ex = $@;
   }
 
-  test_cleanup($setup->{log_file}, $ex);
+  test_cleanup($setup, $ex);
 }
 
 sub sql_userowner_issue346 {
@@ -15428,7 +15376,7 @@ EOS
   server_stop($setup->{pid_file});
   $self->assert_child_ok($pid);
 
-  test_cleanup($setup->{log_file}, $ex);
+  test_cleanup($setup, $ex);
 }
 
 sub sql_sqlite_log_db_enoent_issue654 {
@@ -15511,7 +15459,7 @@ sub sql_sqlite_log_db_enoent_issue654 {
   server_stop($setup->{pid_file});
   $self->assert_child_ok($pid);
 
-  test_cleanup($setup->{log_file}, $ex);
+  test_cleanup($setup, $ex);
 }
 
 sub sql_namebased_vhost_using_host_issue882 {
@@ -15649,7 +15597,7 @@ EOC
   server_stop($setup->{pid_file});
   $self->assert_child_ok($pid);
 
-  test_cleanup($setup->{log_file}, $ex);
+  test_cleanup($setup, $ex);
 }
 
 sub sql_namebased_vhost_using_sni_issue882 {
@@ -15814,7 +15762,7 @@ EOC
   server_stop($setup->{pid_file});
   $self->assert_child_ok($pid);
 
-  test_cleanup($setup->{log_file}, $ex);
+  test_cleanup($setup, $ex);
 }
 
 sub sql_user_info_no_suppl_groups_issue1830 {
@@ -15983,7 +15931,7 @@ EOS
     $ex = $@ unless $ex;
   }
 
-  test_cleanup($setup->{log_file}, $ex);
+  test_cleanup($setup, $ex);
 }
 
 sub sql_site_chgrp_sql_injection_issue2188 {
@@ -16157,7 +16105,7 @@ EOS
     $ex = $@;
   }
 
-  test_cleanup($setup->{log_file}, $ex);
+  test_cleanup($setup, $ex);
 }
 
 1;
