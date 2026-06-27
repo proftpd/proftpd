@@ -1299,6 +1299,7 @@ static int compute_digest(pool *p, const char *path, off_t start, off_t len,
       readsz = len;
     }
 
+    pr_timer_reset(PR_TIMER_IDLE, ANY_MODULE);
     res = pr_fsio_read(fh, (char *) buf, readsz);
     xerrno = errno;
   }
@@ -1694,7 +1695,7 @@ static int add_cached_digest(pool *p, cmd_rec *cmd, unsigned long algo,
   /* Stash the algorithm name, and digest, as notes. */
   algo_name = get_algo_name(algo, 0);
   if (pr_table_add(cmd->notes, "mod_digest.algo",
-      pstrdup(cmd->pool, algo_name), 0) <  0) {
+      pstrdup(cmd->pool, algo_name), 0) < 0) {
     if (errno != EEXIST) {
       pr_trace_msg(trace_channel, 3,
       "error adding 'mod_digest.algo' note: %s", strerror(errno));

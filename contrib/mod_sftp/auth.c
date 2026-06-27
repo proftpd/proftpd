@@ -364,8 +364,8 @@ static int setup_env(pool *p, const char *user) {
     pr_event_generate("mod_auth.root-login", NULL);
 
     c = find_config(main_server->conf, CONF_PARAM, "RootLogin", FALSE);
-    if (c) {
-      if (*((int *) c->argv[0]) == FALSE) {
+    if (c != NULL) {
+      if (*((unsigned char *) c->argv[0]) == FALSE) {
         (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
           "root login attempted, denied by RootLogin configuration");
         pr_log_auth(PR_LOG_NOTICE, "SECURITY VIOLATION: Root login attempted");
