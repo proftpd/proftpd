@@ -2712,12 +2712,20 @@ MODRET xfer_pre_retr(cmd_rec *cmd) {
       && !S_ISFIFO(fmode)
 #endif
      ) {
-    pr_response_add_err(R_550, _("%s: Not a regular file"), cmd->arg);
+    const char *proto;
 
-    /* Deliberately use EISDIR for anything non-file (e.g. directories). */
-    pr_cmd_set_errno(cmd, EISDIR);
-    errno = EISDIR;
-    return PR_ERROR(cmd);
+    /* Check for download requests for non-files -- but not if the client is
+     * using SCP.
+     */
+    proto = pr_session_get_protocol(0);
+    if (strcmp(proto, "scp") != 0) {
+      pr_response_add_err(R_550, _("%s: Not a regular file"), cmd->arg);
+
+      /* Deliberately use EISDIR for anything non-file (e.g. directories). */
+      pr_cmd_set_errno(cmd, EISDIR);
+      errno = EISDIR;
+      return PR_ERROR(cmd);
+    }
   }
 
   /* If restart is on, check to see if AllowRestartRetrieve is off, in
