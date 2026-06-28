@@ -97,52 +97,21 @@ sub list_tests {
 sub deflate_opts_modez_level {
   my $self = shift;
   my $tmpdir = $self->{tmpdir};
-
-  my $config_file = "$tmpdir/deflate.conf";
-  my $pid_file = File::Spec->rel2abs("$tmpdir/deflate.pid");
-  my $scoreboard_file = File::Spec->rel2abs("$tmpdir/deflate.scoreboard");
-
-  my $log_file = test_get_logfile();
-
-  my $auth_user_file = File::Spec->rel2abs("$tmpdir/deflate.passwd");
-  my $auth_group_file = File::Spec->rel2abs("$tmpdir/deflate.group");
-
-  my $user = 'proftpd';
-  my $passwd = 'test';
-  my $group = 'ftpd';
-  my $home_dir = File::Spec->rel2abs($tmpdir);
-  my $uid = 500;
-  my $gid = 500;
-
-  # Make sure that, if we're running as root, that the home directory has
-  # permissions/privs set for the account we create
-  if ($< == 0) {
-    unless (chmod(0755, $home_dir)) {
-      die("Can't set perms on $home_dir to 0755: $!");
-    }
-
-    unless (chown($uid, $gid, $home_dir)) {
-      die("Can't set owner of $home_dir to $uid/$gid: $!");
-    }
-  }
-
-  auth_user_write($auth_user_file, $user, $passwd, $uid, $gid, $home_dir,
-    '/bin/bash');
-  auth_group_write($auth_group_file, $group, $gid, $user);
+  my $setup = test_setup($tmpdir, 'deflate');
 
   my $config = {
-    PidFile => $pid_file,
-    ScoreboardFile => $scoreboard_file,
-    SystemLog => $log_file,
+    PidFile => $setup->{pid_file},
+    ScoreboardFile => $setup->{scoreboard_file},
+    SystemLog => $setup->{log_file},
 
-    AuthUserFile => $auth_user_file,
-    AuthGroupFile => $auth_group_file,
+    AuthUserFile => $setup->{auth_user_file},
+    AuthGroupFile => $setup->{auth_group_file},
     AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
       'mod_deflate.c' => {
         DeflateEngine => 'on',
-        DeflateLog => $log_file,
+        DeflateLog => $setup->{log_file},
       },
 
       'mod_delay.c' => {
@@ -151,7 +120,8 @@ sub deflate_opts_modez_level {
     },
   };
 
-  my ($port, $config_user, $config_group) = config_write($config_file, $config);
+  my ($port, $config_user, $config_group) = config_write($setup->{config_file},
+    $config);
 
   # Open pipes, for use between the parent and child processes.  Specifically,
   # the child will indicate when it's done with its test by writing a message
@@ -169,22 +139,19 @@ sub deflate_opts_modez_level {
   if ($pid) {
     eval {
       my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
-
-      $client->login($user, $passwd);
+      $client->login($setup->{user}, $setup->{passwd});
 
       my ($resp_code, $resp_msg) = $client->opts("MODE Z LEVEL 7");
+      $client->quit();
 
-      my $expected;
-
-      $expected = 200;
+      my $expected = 200;
       $self->assert($expected == $resp_code,
-        test_msg("Expected $expected, got $resp_code"));
+        test_msg("Expected response code $expected, got $resp_code"));
 
       $expected = 'OPTS MODE Z OK';
       $self->assert($expected eq $resp_msg,
-        test_msg("Expected '$expected', got '$resp_msg'"));
+        test_msg("Expected response message '$expected', got '$resp_msg'"));
     };
-
     if ($@) {
       $ex = $@;
     }
@@ -193,7 +160,7 @@ sub deflate_opts_modez_level {
     $wfh->flush();
 
   } else {
-    eval { server_wait($config_file, $rfh) };
+    eval { server_wait($setup->{config_file}, $rfh) };
     if ($@) {
       warn($@);
       exit 1;
@@ -203,69 +170,30 @@ sub deflate_opts_modez_level {
   }
 
   # Stop server
-  server_stop($pid_file);
-
+  server_stop($setup->{pid_file});
   $self->assert_child_ok($pid);
 
-  if ($ex) {
-    test_append_logfile($log_file, $ex);
-    unlink($log_file);
-
-    die($ex);
-  }
-
-  unlink($log_file);
+  test_cleanup($setup, $ex);
 }
 
 sub deflate_feat {
   my $self = shift;
   my $tmpdir = $self->{tmpdir};
-
-  my $config_file = "$tmpdir/deflate.conf";
-  my $pid_file = File::Spec->rel2abs("$tmpdir/deflate.pid");
-  my $scoreboard_file = File::Spec->rel2abs("$tmpdir/deflate.scoreboard");
-
-  my $log_file = test_get_logfile();
-
-  my $auth_user_file = File::Spec->rel2abs("$tmpdir/deflate.passwd");
-  my $auth_group_file = File::Spec->rel2abs("$tmpdir/deflate.group");
-
-  my $user = 'proftpd';
-  my $passwd = 'test';
-  my $group = 'ftpd';
-  my $home_dir = File::Spec->rel2abs($tmpdir);
-  my $uid = 500;
-  my $gid = 500;
-
-  # Make sure that, if we're running as root, that the home directory has
-  # permissions/privs set for the account we create
-  if ($< == 0) {
-    unless (chmod(0755, $home_dir)) {
-      die("Can't set perms on $home_dir to 0755: $!");
-    }
-
-    unless (chown($uid, $gid, $home_dir)) {
-      die("Can't set owner of $home_dir to $uid/$gid: $!");
-    }
-  }
-
-  auth_user_write($auth_user_file, $user, $passwd, $uid, $gid, $home_dir,
-    '/bin/bash');
-  auth_group_write($auth_group_file, $group, $gid, $user);
+  my $setup = test_setup($tmpdir, 'deflate');
 
   my $config = {
-    PidFile => $pid_file,
-    ScoreboardFile => $scoreboard_file,
-    SystemLog => $log_file,
+    PidFile => $setup->{pid_file},
+    ScoreboardFile => $setup->{scoreboard_file},
+    SystemLog => $setup->{log_file},
 
-    AuthUserFile => $auth_user_file,
-    AuthGroupFile => $auth_group_file,
+    AuthUserFile => $setup->{auth_user_file},
+    AuthGroupFile => $setup->{auth_group_file},
     AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
       'mod_deflate.c' => {
         DeflateEngine => 'on',
-        DeflateLog => $log_file,
+        DeflateLog => $setup->{log_file},
       },
 
       'mod_delay.c' => {
@@ -274,7 +202,8 @@ sub deflate_feat {
     },
   };
 
-  my ($port, $config_user, $config_group) = config_write($config_file, $config);
+  my ($port, $config_user, $config_group) = config_write($setup->{config_file},
+    $config);
 
   # Open pipes, for use between the parent and child processes.  Specifically,
   # the child will indicate when it's done with its test by writing a message
@@ -292,17 +221,15 @@ sub deflate_feat {
   if ($pid) {
     eval {
       my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
-
       $client->feat();
 
       my $resp_code = $client->response_code();
       my $resp_msgs = $client->response_msgs();
+      $client->quit();
 
-      my $expected;
-
-      $expected = 211;
+      my $expected = 211;
       $self->assert($expected == $resp_code,
-        test_msg("Expected $expected, got $resp_code"));
+        test_msg("Expected response code $expected, got $resp_code"));
 
       my $nfeat = scalar(@$resp_msgs);
 
@@ -323,7 +250,6 @@ sub deflate_feat {
         die("Unexpected FEAT response");
       }
     };
-
     if ($@) {
       $ex = $@;
     }
@@ -332,7 +258,7 @@ sub deflate_feat {
     $wfh->flush();
 
   } else {
-    eval { server_wait($config_file, $rfh) };
+    eval { server_wait($setup->{config_file}, $rfh) };
     if ($@) {
       warn($@);
       exit 1;
@@ -342,65 +268,26 @@ sub deflate_feat {
   }
 
   # Stop server
-  server_stop($pid_file);
-
+  server_stop($setup->{pid_file});
   $self->assert_child_ok($pid);
 
-  if ($ex) {
-    test_append_logfile($log_file, $ex);
-    unlink($log_file);
-
-    die($ex);
-  }
-
-  unlink($log_file);
+  test_cleanup($setup, $ex);
 }
 
 sub deflate_list {
   my $self = shift;
   my $tmpdir = $self->{tmpdir};
-
-  my $config_file = "$tmpdir/deflate.conf";
-  my $pid_file = File::Spec->rel2abs("$tmpdir/deflate.pid");
-  my $scoreboard_file = File::Spec->rel2abs("$tmpdir/deflate.scoreboard");
-
-  my $log_file = test_get_logfile();
-
-  my $auth_user_file = File::Spec->rel2abs("$tmpdir/deflate.passwd");
-  my $auth_group_file = File::Spec->rel2abs("$tmpdir/deflate.group");
-
-  my $user = 'proftpd';
-  my $passwd = 'test';
-  my $group = 'ftpd';
-  my $home_dir = File::Spec->rel2abs($tmpdir);
-  my $uid = 500;
-  my $gid = 500;
-
-  # Make sure that, if we're running as root, that the home directory has
-  # permissions/privs set for the account we create
-  if ($< == 0) {
-    unless (chmod(0755, $home_dir)) {
-      die("Can't set perms on $home_dir to 0755: $!");
-    }
-
-    unless (chown($uid, $gid, $home_dir)) {
-      die("Can't set owner of $home_dir to $uid/$gid: $!");
-    }
-  }
-
-  auth_user_write($auth_user_file, $user, $passwd, $uid, $gid, $home_dir,
-    '/bin/bash');
-  auth_group_write($auth_group_file, $group, $gid, $user);
+  my $setup = test_setup($tmpdir, 'deflate');
 
   my $config = {
-    PidFile => $pid_file,
-    ScoreboardFile => $scoreboard_file,
-    SystemLog => $log_file,
-    TraceLog => $log_file,
+    PidFile => $setup->{pid_file},
+    ScoreboardFile => $setup->{scoreboard_file},
+    SystemLog => $setup->{log_file},
+    TraceLog => $setup->{log_file},
     Trace => 'DEFAULT:10',
 
-    AuthUserFile => $auth_user_file,
-    AuthGroupFile => $auth_group_file,
+    AuthUserFile => $setup->{auth_user_file},
+    AuthGroupFile => $setup->{auth_group_file},
     AuthOrder => 'mod_auth_file.c',
 
     TimeoutLinger => 1,
@@ -408,7 +295,7 @@ sub deflate_list {
     IfModules => {
       'mod_deflate.c' => {
         DeflateEngine => 'on',
-        DeflateLog => $log_file,
+        DeflateLog => $setup->{log_file},
       },
 
       'mod_delay.c' => {
@@ -417,7 +304,8 @@ sub deflate_list {
     },
   };
 
-  my ($port, $config_user, $config_group) = config_write($config_file, $config);
+  my ($port, $config_user, $config_group) = config_write($setup->{config_file},
+    $config);
 
   # Open pipes, for use between the parent and child processes.  Specifically,
   # the child will indicate when it's done with its test by writing a message
@@ -435,8 +323,7 @@ sub deflate_list {
   if ($pid) {
     eval {
       my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
-
-      $client->login($user, $passwd);
+      $client->login($setup->{user}, $setup->{passwd});
       $client->mode('Z');
 
       my $conn = $client->list_raw();
@@ -450,7 +337,8 @@ sub deflate_list {
       while ($conn->read($data, 32768, 30)) {
         $buf .= $data;
       }
-      $conn->close();
+      sleep(0.25);
+      eval { $conn->close() };
 
       my $inflated = uncompress($buf);
 
@@ -480,6 +368,9 @@ sub deflate_list {
       my $ok = 1;
       my $mismatch;
       foreach my $name (keys(%$res)) {
+        # Ignore ASAN logs
+        next if $name =~ /asan\.log/;
+
         unless (defined($expected->{$name})) {
           $mismatch = $name;
           $ok = 0;
@@ -493,7 +384,6 @@ sub deflate_list {
 
       $client->quit();
     };
-
     if ($@) {
       $ex = $@;
     }
@@ -502,7 +392,7 @@ sub deflate_list {
     $wfh->flush();
 
   } else {
-    eval { server_wait($config_file, $rfh) };
+    eval { server_wait($setup->{config_file}, $rfh) };
     if ($@) {
       warn($@);
       exit 1;
@@ -512,65 +402,26 @@ sub deflate_list {
   }
 
   # Stop server
-  server_stop($pid_file);
-
+  server_stop($setup->{pid_file});
   $self->assert_child_ok($pid);
 
-  if ($ex) {
-    test_append_logfile($log_file, $ex);
-    unlink($log_file);
-
-    die($ex);
-  }
-
-  unlink($log_file);
+  test_cleanup($setup, $ex);
 }
 
 sub deflate_list_alternating_modes {
   my $self = shift;
   my $tmpdir = $self->{tmpdir};
-
-  my $config_file = "$tmpdir/deflate.conf";
-  my $pid_file = File::Spec->rel2abs("$tmpdir/deflate.pid");
-  my $scoreboard_file = File::Spec->rel2abs("$tmpdir/deflate.scoreboard");
-
-  my $log_file = test_get_logfile();
-
-  my $auth_user_file = File::Spec->rel2abs("$tmpdir/deflate.passwd");
-  my $auth_group_file = File::Spec->rel2abs("$tmpdir/deflate.group");
-
-  my $user = 'proftpd';
-  my $passwd = 'test';
-  my $group = 'ftpd';
-  my $home_dir = File::Spec->rel2abs($tmpdir);
-  my $uid = 500;
-  my $gid = 500;
-
-  # Make sure that, if we're running as root, that the home directory has
-  # permissions/privs set for the account we create
-  if ($< == 0) {
-    unless (chmod(0755, $home_dir)) {
-      die("Can't set perms on $home_dir to 0755: $!");
-    }
-
-    unless (chown($uid, $gid, $home_dir)) {
-      die("Can't set owner of $home_dir to $uid/$gid: $!");
-    }
-  }
-
-  auth_user_write($auth_user_file, $user, $passwd, $uid, $gid, $home_dir,
-    '/bin/bash');
-  auth_group_write($auth_group_file, $group, $gid, $user);
+  my $setup = test_setup($tmpdir, 'deflate');
 
   my $config = {
-    PidFile => $pid_file,
-    ScoreboardFile => $scoreboard_file,
-    SystemLog => $log_file,
-    TraceLog => $log_file,
+    PidFile => $setup->{pid_file},
+    ScoreboardFile => $setup->{scoreboard_file},
+    SystemLog => $setup->{log_file},
+    TraceLog => $setup->{log_file},
     Trace => 'DEFAULT:10',
 
-    AuthUserFile => $auth_user_file,
-    AuthGroupFile => $auth_group_file,
+    AuthUserFile => $setup->{auth_user_file},
+    AuthGroupFile => $setup->{auth_group_file},
     AuthOrder => 'mod_auth_file.c',
 
     TimeoutLinger => 1,
@@ -578,7 +429,7 @@ sub deflate_list_alternating_modes {
     IfModules => {
       'mod_deflate.c' => {
         DeflateEngine => 'on',
-        DeflateLog => $log_file,
+        DeflateLog => $setup->{log_file},
       },
 
       'mod_delay.c' => {
@@ -587,7 +438,8 @@ sub deflate_list_alternating_modes {
     },
   };
 
-  my ($port, $config_user, $config_group) = config_write($config_file, $config);
+  my ($port, $config_user, $config_group) = config_write($setup->{config_file},
+    $config);
 
   # Open pipes, for use between the parent and child processes.  Specifically,
   # the child will indicate when it's done with its test by writing a message
@@ -605,8 +457,7 @@ sub deflate_list_alternating_modes {
   if ($pid) {
     eval {
       my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
-
-      $client->login($user, $passwd);
+      $client->login($setup->{user}, $setup->{passwd});
 
       # Get a directory listing in alternating modes; first MODE Z, then
       # MODE S, then MODE Z again.
@@ -666,6 +517,9 @@ sub deflate_list_alternating_modes {
         my $ok = 1;
         my $mismatch;
         foreach my $name (keys(%$res)) {
+          # Ignore ASAN logs
+          next if $name =~ /asan\.log/;
+
           unless (defined($expected->{$name})) {
             $mismatch = $name;
             $ok = 0;
@@ -682,7 +536,6 @@ sub deflate_list_alternating_modes {
 
       $client->quit();
     };
-
     if ($@) {
       $ex = $@;
     }
@@ -691,7 +544,7 @@ sub deflate_list_alternating_modes {
     $wfh->flush();
 
   } else {
-    eval { server_wait($config_file, $rfh) };
+    eval { server_wait($setup->{config_file}, $rfh) };
     if ($@) {
       warn($@);
       exit 1;
@@ -701,65 +554,26 @@ sub deflate_list_alternating_modes {
   }
 
   # Stop server
-  server_stop($pid_file);
-
+  server_stop($setup->{pid_file});
   $self->assert_child_ok($pid);
 
-  if ($ex) {
-    test_append_logfile($log_file, $ex);
-    unlink($log_file);
-
-    die($ex);
-  }
-
-  unlink($log_file);
+  test_cleanup($setup, $ex);
 }
 
 sub deflate_rest {
   my $self = shift;
   my $tmpdir = $self->{tmpdir};
-
-  my $config_file = "$tmpdir/deflate.conf";
-  my $pid_file = File::Spec->rel2abs("$tmpdir/deflate.pid");
-  my $scoreboard_file = File::Spec->rel2abs("$tmpdir/deflate.scoreboard");
-
-  my $log_file = test_get_logfile();
-
-  my $auth_user_file = File::Spec->rel2abs("$tmpdir/deflate.passwd");
-  my $auth_group_file = File::Spec->rel2abs("$tmpdir/deflate.group");
-
-  my $user = 'proftpd';
-  my $passwd = 'test';
-  my $group = 'ftpd';
-  my $home_dir = File::Spec->rel2abs($tmpdir);
-  my $uid = 500;
-  my $gid = 500;
-
-  # Make sure that, if we're running as root, that the home directory has
-  # permissions/privs set for the account we create
-  if ($< == 0) {
-    unless (chmod(0755, $home_dir)) {
-      die("Can't set perms on $home_dir to 0755: $!");
-    }
-
-    unless (chown($uid, $gid, $home_dir)) {
-      die("Can't set owner of $home_dir to $uid/$gid: $!");
-    }
-  }
-
-  auth_user_write($auth_user_file, $user, $passwd, $uid, $gid, $home_dir,
-    '/bin/bash');
-  auth_group_write($auth_group_file, $group, $gid, $user);
+  my $setup = test_setup($tmpdir, 'deflate');
 
   my $config = {
-    PidFile => $pid_file,
-    ScoreboardFile => $scoreboard_file,
-    SystemLog => $log_file,
-    TraceLog => $log_file,
+    PidFile => $setup->{pid_file},
+    ScoreboardFile => $setup->{scoreboard_file},
+    SystemLog => $setup->{log_file},
+    TraceLog => $setup->{log_file},
     Trace => 'DEFAULT:10',
 
-    AuthUserFile => $auth_user_file,
-    AuthGroupFile => $auth_group_file,
+    AuthUserFile => $setup->{auth_user_file},
+    AuthGroupFile => $setup->{auth_group_file},
     AuthOrder => 'mod_auth_file.c',
 
     TimeoutLinger => 1,
@@ -767,7 +581,7 @@ sub deflate_rest {
     IfModules => {
       'mod_deflate.c' => {
         DeflateEngine => 'on',
-        DeflateLog => $log_file,
+        DeflateLog => $setup->{log_file},
       },
 
       'mod_delay.c' => {
@@ -776,7 +590,8 @@ sub deflate_rest {
     },
   };
 
-  my ($port, $config_user, $config_group) = config_write($config_file, $config);
+  my ($port, $config_user, $config_group) = config_write($setup->{config_file},
+    $config);
 
   # Open pipes, for use between the parent and child processes.  Specifically,
   # the child will indicate when it's done with its test by writing a message
@@ -794,25 +609,20 @@ sub deflate_rest {
   if ($pid) {
     eval {
       my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
-
-      $client->login($user, $passwd);
+      $client->login($setup->{user}, $setup->{passwd});
       $client->mode('Z');
 
       my ($resp_code, $resp_msg) = $client->rest(0);
+      $client->quit();
 
-      my $expected;
-
-      $expected = 350;
+      my $expected = 350;
       $self->assert($expected == $resp_code,
-        test_msg("Expected $expected, got $resp_code"));
+        test_msg("Expected response code $expected, got $resp_code"));
 
       $expected = "Restarting at 0. Send STORE or RETRIEVE to initiate transfer";
       $self->assert($expected eq $resp_msg,
-        test_msg("Expected '$expected', got '$resp_msg'"));
-
-      $client->quit();
+        test_msg("Expected response message '$expected', got '$resp_msg'"));
     };
-
     if ($@) {
       $ex = $@;
     }
@@ -821,7 +631,7 @@ sub deflate_rest {
     $wfh->flush();
 
   } else {
-    eval { server_wait($config_file, $rfh) };
+    eval { server_wait($setup->{config_file}, $rfh) };
     if ($@) {
       warn($@);
       exit 1;
@@ -831,55 +641,16 @@ sub deflate_rest {
   }
 
   # Stop server
-  server_stop($pid_file);
-
+  server_stop($setup->{pid_file});
   $self->assert_child_ok($pid);
 
-  if ($ex) {
-    test_append_logfile($log_file, $ex);
-    unlink($log_file);
-
-    die($ex);
-  }
-
-  unlink($log_file);
+  test_cleanup($setup->{log_file}, $ex);
 }
 
 sub deflate_retr {
   my $self = shift;
   my $tmpdir = $self->{tmpdir};
-
-  my $config_file = "$tmpdir/deflate.conf";
-  my $pid_file = File::Spec->rel2abs("$tmpdir/deflate.pid");
-  my $scoreboard_file = File::Spec->rel2abs("$tmpdir/deflate.scoreboard");
-
-  my $log_file = test_get_logfile();
-
-  my $auth_user_file = File::Spec->rel2abs("$tmpdir/deflate.passwd");
-  my $auth_group_file = File::Spec->rel2abs("$tmpdir/deflate.group");
-
-  my $user = 'proftpd';
-  my $passwd = 'test';
-  my $group = 'ftpd';
-  my $home_dir = File::Spec->rel2abs($tmpdir);
-  my $uid = 500;
-  my $gid = 500;
-
-  # Make sure that, if we're running as root, that the home directory has
-  # permissions/privs set for the account we create
-  if ($< == 0) {
-    unless (chmod(0755, $home_dir)) {
-      die("Can't set perms on $home_dir to 0755: $!");
-    }
-
-    unless (chown($uid, $gid, $home_dir)) {
-      die("Can't set owner of $home_dir to $uid/$gid: $!");
-    }
-  }
-
-  auth_user_write($auth_user_file, $user, $passwd, $uid, $gid, $home_dir,
-    '/bin/bash');
-  auth_group_write($auth_group_file, $group, $gid, $user);
+  my $setup = test_setup($tmpdir, 'deflate');
 
   my $test_file = File::Spec->rel2abs("$tmpdir/test.txt");
   if (open(my $fh, "> $test_file")) {
@@ -890,6 +661,12 @@ sub deflate_retr {
 
   } else {
     die("Can't open $test_file: $!");
+  }
+
+  if ($< == 0) {
+    unless (chown($setup->{uid}, $setup->{gid}, $test_file)) {
+      die("Can't set owner of $test_file to $setup->{uid}/$setup->{gid}: $!");
+    }
   }
 
   # Calculate the MD5 checksum of this file, for comparison with the
@@ -908,12 +685,12 @@ sub deflate_retr {
   }
 
   my $config = {
-    PidFile => $pid_file,
-    ScoreboardFile => $scoreboard_file,
-    SystemLog => $log_file,
+    PidFile => $setup->{pid_file},
+    ScoreboardFile => $setup->{scoreboard_file},
+    SystemLog => $setup->{log_file},
 
-    AuthUserFile => $auth_user_file,
-    AuthGroupFile => $auth_group_file,
+    AuthUserFile => $setup->{auth_user_file},
+    AuthGroupFile => $setup->{auth_group_file},
     AuthOrder => 'mod_auth_file.c',
 
     TimeoutLinger => 1,
@@ -921,7 +698,7 @@ sub deflate_retr {
     IfModules => {
       'mod_deflate.c' => {
         DeflateEngine => 'on',
-        DeflateLog => $log_file,
+        DeflateLog => $setup->{log_file},
       },
 
       'mod_delay.c' => {
@@ -930,7 +707,8 @@ sub deflate_retr {
     },
   };
 
-  my ($port, $config_user, $config_group) = config_write($config_file, $config);
+  my ($port, $config_user, $config_group) = config_write($setup->{config_file},
+    $config);
 
   # Open pipes, for use between the parent and child processes.  Specifically,
   # the child will indicate when it's done with its test by writing a message
@@ -948,8 +726,7 @@ sub deflate_retr {
   if ($pid) {
     eval {
       my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
-
-      $client->login($user, $passwd);
+      $client->login($setup->{user}, $setup->{passwd});
       $client->mode('Z');
 
       my $conn = $client->retr_raw('test.txt');
@@ -979,7 +756,6 @@ sub deflate_retr {
       $conn->close();
       $client->quit();
     };
-
     if ($@) {
       $ex = $@;
     }
@@ -988,7 +764,7 @@ sub deflate_retr {
     $wfh->flush();
 
   } else {
-    eval { server_wait($config_file, $rfh) };
+    eval { server_wait($setup->{config_file}, $rfh) };
     if ($@) {
       warn($@);
       exit 1;
@@ -998,55 +774,16 @@ sub deflate_retr {
   }
 
   # Stop server
-  server_stop($pid_file);
-
+  server_stop($setup->{pid_file});
   $self->assert_child_ok($pid);
 
-  if ($ex) {
-    test_append_logfile($log_file, $ex);
-    unlink($log_file);
-
-    die($ex);
-  }
-
-  unlink($log_file);
+  test_cleanup($setup, $ex);
 }
 
 sub deflate_rest_retr {
   my $self = shift;
   my $tmpdir = $self->{tmpdir};
-
-  my $config_file = "$tmpdir/deflate.conf";
-  my $pid_file = File::Spec->rel2abs("$tmpdir/deflate.pid");
-  my $scoreboard_file = File::Spec->rel2abs("$tmpdir/deflate.scoreboard");
-
-  my $log_file = test_get_logfile();
-
-  my $auth_user_file = File::Spec->rel2abs("$tmpdir/deflate.passwd");
-  my $auth_group_file = File::Spec->rel2abs("$tmpdir/deflate.group");
-
-  my $user = 'proftpd';
-  my $passwd = 'test';
-  my $group = 'ftpd';
-  my $home_dir = File::Spec->rel2abs($tmpdir);
-  my $uid = 500;
-  my $gid = 500;
-
-  # Make sure that, if we're running as root, that the home directory has
-  # permissions/privs set for the account we create
-  if ($< == 0) {
-    unless (chmod(0755, $home_dir)) {
-      die("Can't set perms on $home_dir to 0755: $!");
-    }
-
-    unless (chown($uid, $gid, $home_dir)) {
-      die("Can't set owner of $home_dir to $uid/$gid: $!");
-    }
-  }
-
-  auth_user_write($auth_user_file, $user, $passwd, $uid, $gid, $home_dir,
-    '/bin/bash');
-  auth_group_write($auth_group_file, $group, $gid, $user);
+  my $setup = test_setup($tmpdir, 'deflate');
 
   my $src_file = File::Spec->rel2abs("$tmpdir/test.txt");
   if (open(my $fh, "> $src_file")) {
@@ -1074,6 +811,12 @@ sub deflate_rest_retr {
     die("Can't read $src_file: $!");
   }
 
+  if ($< == 0) {
+    unless (chown($setup->{uid}, $setup->{gid}, $src_file)) {
+      die("Can't set owner of $src_file to $setup->{uid}/$setup->{gid}: $!");
+    }
+  }
+
   my $offset = (-s $src_file) / 2;
 
   my $dst_file = File::Spec->rel2abs("$tmpdir/downloaded.txt");
@@ -1088,12 +831,12 @@ sub deflate_rest_retr {
   }
 
   my $config = {
-    PidFile => $pid_file,
-    ScoreboardFile => $scoreboard_file,
-    SystemLog => $log_file,
+    PidFile => $setup->{pid_file},
+    ScoreboardFile => $setup->{scoreboard_file},
+    SystemLog => $setup->{log_file},
 
-    AuthUserFile => $auth_user_file,
-    AuthGroupFile => $auth_group_file,
+    AuthUserFile => $setup->{auth_user_file},
+    AuthGroupFile => $setup->{auth_group_file},
     AuthOrder => 'mod_auth_file.c',
 
     TimeoutLinger => 1,
@@ -1102,7 +845,7 @@ sub deflate_rest_retr {
     IfModules => {
       'mod_deflate.c' => {
         DeflateEngine => 'on',
-        DeflateLog => $log_file,
+        DeflateLog => $setup->{log_file},
       },
 
       'mod_delay.c' => {
@@ -1111,7 +854,8 @@ sub deflate_rest_retr {
     },
   };
 
-  my ($port, $config_user, $config_group) = config_write($config_file, $config);
+  my ($port, $config_user, $config_group) = config_write($setup->{config_file},
+    $config);
 
   # Open pipes, for use between the parent and child processes.  Specifically,
   # the child will indicate when it's done with its test by writing a message
@@ -1129,8 +873,7 @@ sub deflate_rest_retr {
   if ($pid) {
     eval {
       my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
-
-      $client->login($user, $passwd);
+      $client->login($setup->{user}, $setup->{passwd});
       $client->type('binary');
       $client->mode('Z');
       $client->rest($offset);
@@ -1146,7 +889,7 @@ sub deflate_rest_retr {
       while ($conn->read($data, 32768, 30)) {
         $buf .= $data;
       }
-
+      sleep(0.25);
       $conn->close();
 
       $client->quit();
@@ -1181,9 +924,7 @@ sub deflate_rest_retr {
 
       $self->assert($expected_md5 eq $md5,
         test_msg("Expected '$expected_md5', got '$md5'"));
-
     };
-
     if ($@) {
       $ex = $@;
     }
@@ -1192,7 +933,7 @@ sub deflate_rest_retr {
     $wfh->flush();
 
   } else {
-    eval { server_wait($config_file, $rfh) };
+    eval { server_wait($setup->{config_file}, $rfh) };
     if ($@) {
       warn($@);
       exit 1;
@@ -1202,55 +943,16 @@ sub deflate_rest_retr {
   }
 
   # Stop server
-  server_stop($pid_file);
-
+  server_stop($setup->{pid_file});
   $self->assert_child_ok($pid);
 
-  if ($ex) {
-    test_append_logfile($log_file, $ex);
-    unlink($log_file);
-
-    die($ex);
-  }
-
-  unlink($log_file);
+  test_cleanup($setup->{log_file}, $ex);
 }
 
 sub deflate_stor {
   my $self = shift;
   my $tmpdir = $self->{tmpdir};
-
-  my $config_file = "$tmpdir/deflate.conf";
-  my $pid_file = File::Spec->rel2abs("$tmpdir/deflate.pid");
-  my $scoreboard_file = File::Spec->rel2abs("$tmpdir/deflate.scoreboard");
-
-  my $log_file = test_get_logfile();
-
-  my $auth_user_file = File::Spec->rel2abs("$tmpdir/deflate.passwd");
-  my $auth_group_file = File::Spec->rel2abs("$tmpdir/deflate.group");
-
-  my $user = 'proftpd';
-  my $passwd = 'test';
-  my $group = 'ftpd';
-  my $home_dir = File::Spec->rel2abs($tmpdir);
-  my $uid = 500;
-  my $gid = 500;
-
-  # Make sure that, if we're running as root, that the home directory has
-  # permissions/privs set for the account we create
-  if ($< == 0) {
-    unless (chmod(0755, $home_dir)) {
-      die("Can't set perms on $home_dir to 0755: $!");
-    }
-
-    unless (chown($uid, $gid, $home_dir)) {
-      die("Can't set owner of $home_dir to $uid/$gid: $!");
-    }
-  }
-
-  auth_user_write($auth_user_file, $user, $passwd, $uid, $gid, $home_dir,
-    '/bin/bash');
-  auth_group_write($auth_group_file, $group, $gid, $user);
+  my $setup = test_setup($tmpdir, 'deflate');
 
   my $test_file = File::Spec->rel2abs("$tmpdir/test.txt");
 
@@ -1263,12 +965,12 @@ sub deflate_stor {
   $expected_md5 = $ctx->hexdigest();
 
   my $config = {
-    PidFile => $pid_file,
-    ScoreboardFile => $scoreboard_file,
-    SystemLog => $log_file,
+    PidFile => $setup->{pid_file},
+    ScoreboardFile => $setup->{scoreboard_file},
+    SystemLog => $setup->{log_file},
 
-    AuthUserFile => $auth_user_file,
-    AuthGroupFile => $auth_group_file,
+    AuthUserFile => $setup->{auth_user_file},
+    AuthGroupFile => $setup->{auth_group_file},
     AuthOrder => 'mod_auth_file.c',
 
     TimeoutLinger => 1,
@@ -1276,7 +978,7 @@ sub deflate_stor {
     IfModules => {
       'mod_deflate.c' => {
         DeflateEngine => 'on',
-        DeflateLog => $log_file,
+        DeflateLog => $setup->{log_file},
       },
 
       'mod_delay.c' => {
@@ -1285,7 +987,8 @@ sub deflate_stor {
     },
   };
 
-  my ($port, $config_user, $config_group) = config_write($config_file, $config);
+  my ($port, $config_user, $config_group) = config_write($setup->{config_file},
+    $config);
 
   # Open pipes, for use between the parent and child processes.  Specifically,
   # the child will indicate when it's done with its test by writing a message
@@ -1303,8 +1006,7 @@ sub deflate_stor {
   if ($pid) {
     eval {
       my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
-
-      $client->login($user, $passwd);
+      $client->login($setup->{user}, $setup->{passwd});
       $client->mode('Z');
 
       my $conn = $client->stor_raw('test.txt');
@@ -1316,7 +1018,8 @@ sub deflate_stor {
       my $buf = "Ab" x 8192;
       my $deflated = compress($buf);
       $conn->write($deflated, length($deflated));
-      $conn->close();
+      sleep(0.25);
+      eval { $conn->close() };
 
       $client->quit();
 
@@ -1337,7 +1040,6 @@ sub deflate_stor {
       $self->assert($expected_md5 eq $md5,
         test_msg("Expected '$expected_md5', got '$md5'"));
     };
-
     if ($@) {
       $ex = $@;
     }
@@ -1346,7 +1048,7 @@ sub deflate_stor {
     $wfh->flush();
 
   } else {
-    eval { server_wait($config_file, $rfh) };
+    eval { server_wait($setup->{config_file}, $rfh) };
     if ($@) {
       warn($@);
       exit 1;
@@ -1356,55 +1058,16 @@ sub deflate_stor {
   }
 
   # Stop server
-  server_stop($pid_file);
-
+  server_stop($setup->{pid_file});
   $self->assert_child_ok($pid);
 
-  if ($ex) {
-    test_append_logfile($log_file, $ex);
-    unlink($log_file);
-
-    die($ex);
-  }
-
-  unlink($log_file);
+  test_cleanup($setup, $ex);
 }
 
 sub deflate_rest_stor {
   my $self = shift;
   my $tmpdir = $self->{tmpdir};
-
-  my $config_file = "$tmpdir/deflate.conf";
-  my $pid_file = File::Spec->rel2abs("$tmpdir/deflate.pid");
-  my $scoreboard_file = File::Spec->rel2abs("$tmpdir/deflate.scoreboard");
-
-  my $log_file = test_get_logfile();
-
-  my $auth_user_file = File::Spec->rel2abs("$tmpdir/deflate.passwd");
-  my $auth_group_file = File::Spec->rel2abs("$tmpdir/deflate.group");
-
-  my $user = 'proftpd';
-  my $passwd = 'test';
-  my $group = 'ftpd';
-  my $home_dir = File::Spec->rel2abs($tmpdir);
-  my $uid = 500;
-  my $gid = 500;
-
-  # Make sure that, if we're running as root, that the home directory has
-  # permissions/privs set for the account we create
-  if ($< == 0) {
-    unless (chmod(0755, $home_dir)) {
-      die("Can't set perms on $home_dir to 0755: $!");
-    }
-
-    unless (chown($uid, $gid, $home_dir)) {
-      die("Can't set owner of $home_dir to $uid/$gid: $!");
-    }
-  }
-
-  auth_user_write($auth_user_file, $user, $passwd, $uid, $gid, $home_dir,
-    '/bin/bash');
-  auth_group_write($auth_group_file, $group, $gid, $user);
+  my $setup = test_setup($tmpdir, 'deflate');
 
   my $src_file = File::Spec->rel2abs("$tmpdir/test.txt");
   if (open(my $fh, "> $src_file")) {
@@ -1445,13 +1108,19 @@ sub deflate_rest_stor {
     die("Can't open $dst_file: $!");
   }
 
-  my $config = {
-    PidFile => $pid_file,
-    ScoreboardFile => $scoreboard_file,
-    SystemLog => $log_file,
+  if ($< == 0) {
+    unless (chown($setup->{uid}, $setup->{gid}, $dst_file)) {
+      die("Can't set owner of $dst_file to $setup->{uid}/$setup->{gid}: $!");
+    }
+  }
 
-    AuthUserFile => $auth_user_file,
-    AuthGroupFile => $auth_group_file,
+  my $config = {
+    PidFile => $setup->{pid_file},
+    ScoreboardFile => $setup->{scoreboard_file},
+    SystemLog => $setup->{log_file},
+
+    AuthUserFile => $setup->{auth_user_file},
+    AuthGroupFile => $setup->{auth_group_file},
     AuthOrder => 'mod_auth_file.c',
 
     TimeoutLinger => 1,
@@ -1463,7 +1132,7 @@ sub deflate_rest_stor {
     IfModules => {
       'mod_deflate.c' => {
         DeflateEngine => 'on',
-        DeflateLog => $log_file,
+        DeflateLog => $setup->{log_file},
       },
 
       'mod_delay.c' => {
@@ -1472,7 +1141,8 @@ sub deflate_rest_stor {
     },
   };
 
-  my ($port, $config_user, $config_group) = config_write($config_file, $config);
+  my ($port, $config_user, $config_group) = config_write($setup->{config_file},
+    $config);
 
   # Open pipes, for use between the parent and child processes.  Specifically,
   # the child will indicate when it's done with its test by writing a message
@@ -1490,8 +1160,7 @@ sub deflate_rest_stor {
   if ($pid) {
     eval {
       my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
-
-      $client->login($user, $passwd);
+      $client->login($setup->{user}, $setup->{passwd});
       $client->type('binary');
       $client->mode('Z');
       $client->rest($offset);
@@ -1505,7 +1174,8 @@ sub deflate_rest_stor {
       my $buf = "Ab" x 4096;
       my $deflated = compress($buf);
       $conn->write($deflated, length($deflated));
-      $conn->close();
+      sleep(0.25);
+      eval { $conn->close() };
 
       $client->quit();
 
@@ -1525,9 +1195,7 @@ sub deflate_rest_stor {
 
       $self->assert($expected_md5 eq $md5,
         test_msg("Expected '$expected_md5', got '$md5'"));
-
     };
-
     if ($@) {
       $ex = $@;
     }
@@ -1536,7 +1204,7 @@ sub deflate_rest_stor {
     $wfh->flush();
 
   } else {
-    eval { server_wait($config_file, $rfh) };
+    eval { server_wait($setup->{config_file}, $rfh) };
     if ($@) {
       warn($@);
       exit 1;
@@ -1546,55 +1214,16 @@ sub deflate_rest_stor {
   }
 
   # Stop server
-  server_stop($pid_file);
-
+  server_stop($setup->{pid_file});
   $self->assert_child_ok($pid);
 
-  if ($ex) {
-    test_append_logfile($log_file, $ex);
-    unlink($log_file);
-
-    die($ex);
-  }
-
-  unlink($log_file);
+  test_cleanup($setup, $ex);
 }
 
 sub deflate_stor_64kb_binary {
   my $self = shift;
   my $tmpdir = $self->{tmpdir};
-
-  my $config_file = "$tmpdir/deflate.conf";
-  my $pid_file = File::Spec->rel2abs("$tmpdir/deflate.pid");
-  my $scoreboard_file = File::Spec->rel2abs("$tmpdir/deflate.scoreboard");
-
-  my $log_file = test_get_logfile();
-
-  my $auth_user_file = File::Spec->rel2abs("$tmpdir/deflate.passwd");
-  my $auth_group_file = File::Spec->rel2abs("$tmpdir/deflate.group");
-
-  my $user = 'proftpd';
-  my $passwd = 'test';
-  my $group = 'ftpd';
-  my $home_dir = File::Spec->rel2abs($tmpdir);
-  my $uid = 500;
-  my $gid = 500;
-
-  # Make sure that, if we're running as root, that the home directory has
-  # permissions/privs set for the account we create
-  if ($< == 0) {
-    unless (chmod(0755, $home_dir)) {
-      die("Can't set perms on $home_dir to 0755: $!");
-    }
-
-    unless (chown($uid, $gid, $home_dir)) {
-      die("Can't set owner of $home_dir to $uid/$gid: $!");
-    }
-  }
-
-  auth_user_write($auth_user_file, $user, $passwd, $uid, $gid, $home_dir,
-    '/bin/bash');
-  auth_group_write($auth_group_file, $group, $gid, $user);
+  my $setup = test_setup($tmpdir, 'deflate');
 
   my $input_file = File::Spec->rel2abs("t/etc/modules/mod_deflate/zmode.pdf");
   my $test_file = File::Spec->rel2abs("$tmpdir/zmode.pdf");
@@ -1617,20 +1246,20 @@ sub deflate_stor_64kb_binary {
   my $timeout_idle = 30;
 
   my $config = {
-    PidFile => $pid_file,
-    ScoreboardFile => $scoreboard_file,
-    SystemLog => $log_file,
-    TraceLog => $log_file,
+    PidFile => $setup->{pid_file},
+    ScoreboardFile => $setup->{scoreboard_file},
+    SystemLog => $setup->{log_file},
+    TraceLog => $setup->{log_file},
     Trace => 'deflate:20 DEFAULT:20',
 
-    AuthUserFile => $auth_user_file,
-    AuthGroupFile => $auth_group_file,
+    AuthUserFile => $setup->{auth_user_file},
+    AuthGroupFile => $setup->{auth_group_file},
     AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
       'mod_deflate.c' => {
         DeflateEngine => 'on',
-        DeflateLog => $log_file,
+        DeflateLog => $setup->{log_file},
       },
 
       'mod_delay.c' => {
@@ -1639,7 +1268,8 @@ sub deflate_stor_64kb_binary {
     },
   };
 
-  my ($port, $config_user, $config_group) = config_write($config_file, $config);
+  my ($port, $config_user, $config_group) = config_write($setup->{config_file},
+    $config);
 
   # Open pipes, for use between the parent and child processes.  Specifically,
   # the child will indicate when it's done with its test by writing a message
@@ -1657,8 +1287,7 @@ sub deflate_stor_64kb_binary {
   if ($pid) {
     eval {
       my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
-
-      $client->login($user, $passwd);
+      $client->login($setup->{user}, $setup->{passwd});
       $client->type('binary');
       $client->mode('Z');
 
@@ -1666,15 +1295,13 @@ sub deflate_stor_64kb_binary {
 
       my ($resp_code, $resp_msg) = $client->opts("MODE Z LEVEL $zlevel");
 
-      my $expected;
-
-      $expected = 200;
+      my $expected = 200;
       $self->assert($expected == $resp_code,
-        test_msg("Expected $expected, got $resp_code"));
+        test_msg("Expected response code $expected, got $resp_code"));
 
       $expected = 'OPTS MODE Z OK';
       $self->assert($expected eq $resp_msg,
-        test_msg("Expected '$expected', got '$resp_msg'"));
+        test_msg("Expected response message '$expected', got '$resp_msg'"));
 
       my $conn = $client->stor_raw('zmode.pdf');
       unless ($conn) {
@@ -1756,16 +1383,9 @@ sub deflate_stor_64kb_binary {
 
       $resp_code = $client->response_code();
       $resp_msg = $client->response_msg();
-
-      $expected = 226;
-      $self->assert($expected == $resp_code,
-        test_msg("Expected $expected, got $resp_code"));
-
-      $expected = "Transfer complete";
-      $self->assert($expected eq $resp_msg,
-        test_msg("Expected '$expected', got '$resp_msg'"));
-
       $client->quit();
+
+      $self->assert_transfer_ok($resp_code, $resp_msg);
 
       # Calculate the MD5 checksum of the uploaded file
       $ctx->reset();
@@ -1784,7 +1404,6 @@ sub deflate_stor_64kb_binary {
       $self->assert($expected_md5 eq $md5,
         test_msg("Expected '$expected_md5', got '$md5'"));
     };
-
     if ($@) {
       $ex = $@;
     }
@@ -1793,7 +1412,7 @@ sub deflate_stor_64kb_binary {
     $wfh->flush();
 
   } else {
-    eval { server_wait($config_file, $rfh, $timeout_idle + 2) };
+    eval { server_wait($setup->{config_file}, $rfh, $timeout_idle + 2) };
     if ($@) {
       warn($@);
       exit 1;
@@ -1803,55 +1422,16 @@ sub deflate_stor_64kb_binary {
   }
 
   # Stop server
-  server_stop($pid_file);
-
+  server_stop($setup->{pid_file});
   $self->assert_child_ok($pid);
 
-  if ($ex) {
-    test_append_logfile($log_file, $ex);
-    unlink($log_file);
-
-    die($ex);
-  }
-
-  unlink($log_file);
+  test_cleanup($setup, $ex);
 }
 
 sub deflate_stor_64kb_binary_chunks {
   my $self = shift;
   my $tmpdir = $self->{tmpdir};
-
-  my $config_file = "$tmpdir/deflate.conf";
-  my $pid_file = File::Spec->rel2abs("$tmpdir/deflate.pid");
-  my $scoreboard_file = File::Spec->rel2abs("$tmpdir/deflate.scoreboard");
-
-  my $log_file = test_get_logfile();
-
-  my $auth_user_file = File::Spec->rel2abs("$tmpdir/deflate.passwd");
-  my $auth_group_file = File::Spec->rel2abs("$tmpdir/deflate.group");
-
-  my $user = 'proftpd';
-  my $passwd = 'test';
-  my $group = 'ftpd';
-  my $home_dir = File::Spec->rel2abs($tmpdir);
-  my $uid = 500;
-  my $gid = 500;
-
-  # Make sure that, if we're running as root, that the home directory has
-  # permissions/privs set for the account we create
-  if ($< == 0) {
-    unless (chmod(0755, $home_dir)) {
-      die("Can't set perms on $home_dir to 0755: $!");
-    }
-
-    unless (chown($uid, $gid, $home_dir)) {
-      die("Can't set owner of $home_dir to $uid/$gid: $!");
-    }
-  }
-
-  auth_user_write($auth_user_file, $user, $passwd, $uid, $gid, $home_dir,
-    '/bin/bash');
-  auth_group_write($auth_group_file, $group, $gid, $user);
+  my $setup = test_setup($tmpdir, 'deflate');
 
   my $input_file = File::Spec->rel2abs("t/etc/modules/mod_deflate/zmode.pdf");
   my $test_file = File::Spec->rel2abs("$tmpdir/zmode.pdf");
@@ -1874,20 +1454,20 @@ sub deflate_stor_64kb_binary_chunks {
   my $timeout_idle = 30;
 
   my $config = {
-    PidFile => $pid_file,
-    ScoreboardFile => $scoreboard_file,
-    SystemLog => $log_file,
-    TraceLog => $log_file,
+    PidFile => $setup->{pid_file},
+    ScoreboardFile => $setup->{scoreboard_file},
+    SystemLog => $setup->{log_file},
+    TraceLog => $setup->{log_file},
     Trace => 'deflate:20 DEFAULT:20',
 
-    AuthUserFile => $auth_user_file,
-    AuthGroupFile => $auth_group_file,
+    AuthUserFile => $setup->{auth_user_file},
+    AuthGroupFile => $setup->{auth_group_file},
     AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
       'mod_deflate.c' => {
         DeflateEngine => 'on',
-        DeflateLog => $log_file,
+        DeflateLog => $setup->{log_file},
       },
 
       'mod_delay.c' => {
@@ -1896,7 +1476,8 @@ sub deflate_stor_64kb_binary_chunks {
     },
   };
 
-  my ($port, $config_user, $config_group) = config_write($config_file, $config);
+  my ($port, $config_user, $config_group) = config_write($setup->{config_file},
+    $config);
 
   # Open pipes, for use between the parent and child processes.  Specifically,
   # the child will indicate when it's done with its test by writing a message
@@ -1914,8 +1495,7 @@ sub deflate_stor_64kb_binary_chunks {
   if ($pid) {
     eval {
       my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
-
-      $client->login($user, $passwd);
+      $client->login($setup->{user}, $setup->{passwd});
       $client->type('binary');
       $client->mode('Z');
 
@@ -1923,15 +1503,13 @@ sub deflate_stor_64kb_binary_chunks {
 
       my ($resp_code, $resp_msg) = $client->opts("MODE Z LEVEL $zlevel");
 
-      my $expected;
-
-      $expected = 200;
+      my $expected = 200;
       $self->assert($expected == $resp_code,
-        test_msg("Expected $expected, got $resp_code"));
+        test_msg("Expected response code $expected, got $resp_code"));
 
       $expected = 'OPTS MODE Z OK';
       $self->assert($expected eq $resp_msg,
-        test_msg("Expected '$expected', got '$resp_msg'"));
+        test_msg("Expected response message '$expected', got '$resp_msg'"));
 
       my $conn = $client->stor_raw('zmode.pdf');
       unless ($conn) {
@@ -2038,16 +1616,9 @@ sub deflate_stor_64kb_binary_chunks {
 
       $resp_code = $client->response_code();
       $resp_msg = $client->response_msg();
-
-      $expected = 226;
-      $self->assert($expected == $resp_code,
-        test_msg("Expected $expected, got $resp_code"));
-
-      $expected = "Transfer complete";
-      $self->assert($expected eq $resp_msg,
-        test_msg("Expected '$expected', got '$resp_msg'"));
-
       $client->quit();
+
+      $self->assert_transfer_ok($resp_code, $resp_msg);
 
       # Calculate the MD5 checksum of the uploaded file
       $ctx->reset();
@@ -2066,7 +1637,6 @@ sub deflate_stor_64kb_binary_chunks {
       $self->assert($expected_md5 eq $md5,
         test_msg("Expected '$expected_md5', got '$md5'"));
     };
-
     if ($@) {
       $ex = $@;
     }
@@ -2075,7 +1645,7 @@ sub deflate_stor_64kb_binary_chunks {
     $wfh->flush();
 
   } else {
-    eval { server_wait($config_file, $rfh, $timeout_idle + 2) };
+    eval { server_wait($setup->{config_file}, $rfh, $timeout_idle + 2) };
     if ($@) {
       warn($@);
       exit 1;
@@ -2085,72 +1655,33 @@ sub deflate_stor_64kb_binary_chunks {
   }
 
   # Stop server
-  server_stop($pid_file);
-
+  server_stop($setup->{pid_file});
   $self->assert_child_ok($pid);
 
-  if ($ex) {
-    test_append_logfile($log_file, $ex);
-    unlink($log_file);
-
-    die($ex);
-  }
-
-  unlink($log_file);
+  test_cleanup($setup->{log_file}, $ex);
 }
 
 sub deflate_tls_mode_z {
   my $self = shift;
   my $tmpdir = $self->{tmpdir};
-
-  my $config_file = "$tmpdir/deflate.conf";
-  my $pid_file = File::Spec->rel2abs("$tmpdir/deflate.pid");
-  my $scoreboard_file = File::Spec->rel2abs("$tmpdir/deflate.scoreboard");
-
-  my $log_file = test_get_logfile();
-
-  my $auth_user_file = File::Spec->rel2abs("$tmpdir/deflate.passwd");
-  my $auth_group_file = File::Spec->rel2abs("$tmpdir/deflate.group");
-
-  my $user = 'proftpd';
-  my $passwd = 'test';
-  my $group = 'ftpd';
-  my $home_dir = File::Spec->rel2abs($tmpdir);
-  my $uid = 500;
-  my $gid = 500;
-
-  # Make sure that, if we're running as root, that the home directory has
-  # permissions/privs set for the account we create
-  if ($< == 0) {
-    unless (chmod(0755, $home_dir)) {
-      die("Can't set perms on $home_dir to 0755: $!");
-    }
-
-    unless (chown($uid, $gid, $home_dir)) {
-      die("Can't set owner of $home_dir to $uid/$gid: $!");
-    }
-  }
-
-  auth_user_write($auth_user_file, $user, $passwd, $uid, $gid, $home_dir,
-    '/bin/bash');
-  auth_group_write($auth_group_file, $group, $gid, $user);
+  my $setup = test_setup($tmpdir, 'deflate');
 
   my $cert_file = File::Spec->rel2abs('t/etc/modules/mod_tls/server-cert.pem');
   my $ca_file = File::Spec->rel2abs('t/etc/modules/mod_tls/ca-cert.pem');
 
   my $config = {
-    PidFile => $pid_file,
-    ScoreboardFile => $scoreboard_file,
-    SystemLog => $log_file,
+    PidFile => $setup->{pid_file},
+    ScoreboardFile => $setup->{scoreboard_file},
+    SystemLog => $setup->{log_file},
 
-    AuthUserFile => $auth_user_file,
-    AuthGroupFile => $auth_group_file,
+    AuthUserFile => $setup->{auth_user_file},
+    AuthGroupFile => $setup->{auth_group_file},
     AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
       'mod_deflate.c' => {
         DeflateEngine => 'on',
-        DeflateLog => $log_file,
+        DeflateLog => $setup->{log_file},
       },
 
       'mod_delay.c' => {
@@ -2159,7 +1690,7 @@ sub deflate_tls_mode_z {
 
       'mod_tls.c' => {
         TLSEngine => 'on',
-        TLSLog => $log_file,
+        TLSLog => $setup->{log_file},
         TLSRequired => 'on',
         TLSRSACertificateFile => $cert_file,
         TLSCACertificateFile => $ca_file,
@@ -2167,7 +1698,8 @@ sub deflate_tls_mode_z {
     },
   };
 
-  my ($port, $config_user, $config_group) = config_write($config_file, $config);
+  my ($port, $config_user, $config_group) = config_write($setup->{config_file},
+    $config);
 
   # Open pipes, for use between the parent and child processes.  Specifically,
   # the child will indicate when it's done with its test by writing a message
@@ -2198,22 +1730,21 @@ sub deflate_tls_mode_z {
         die("Can't connect to FTPS server: " . IO::Socket::SSL::errstr());
       }
 
-      unless ($client->login($user, $passwd)) {
+      unless ($client->login($setup->{user}, $setup->{passwd})) {
         die("Can't login: " . $client->last_message());
       }
 
       $client->quot('MODE', 'Z');
 
       my $resp_msg = $client->last_message();
-      my $expected;
+      $client->quit();
 
       # Now that we support MODE Z for FTPS connections (Issue #505), we
       # expect success here.
-      $expected = '200 OK';
+      my $expected = '200 OK';
       $self->assert($expected eq $resp_msg,
-        test_msg("Expected '$expected', got '$resp_msg'"));
+        test_msg("Expected response '$expected', got '$resp_msg'"));
     };
-
     if ($@) {
       $ex = $@;
     }
@@ -2222,7 +1753,7 @@ sub deflate_tls_mode_z {
     $wfh->flush();
 
   } else {
-    eval { server_wait($config_file, $rfh) };
+    eval { server_wait($setup->{config_file}, $rfh) };
     if ($@) {
       warn($@);
       exit 1;
@@ -2232,65 +1763,26 @@ sub deflate_tls_mode_z {
   }
 
   # Stop server
-  server_stop($pid_file);
-
+  server_stop($setup->{pid_file});
   $self->assert_child_ok($pid);
 
-  if ($ex) {
-    test_append_logfile($log_file, $ex);
-    unlink($log_file);
-
-    die($ex);
-  }
-
-  unlink($log_file);
+  test_cleanup($setup, $ex);
 }
 
 sub deflate_netio_close_bad_cmd_sequence_bug3828 {
   my $self = shift;
   my $tmpdir = $self->{tmpdir};
-
-  my $config_file = "$tmpdir/deflate.conf";
-  my $pid_file = File::Spec->rel2abs("$tmpdir/deflate.pid");
-  my $scoreboard_file = File::Spec->rel2abs("$tmpdir/deflate.scoreboard");
-
-  my $log_file = test_get_logfile();
-
-  my $auth_user_file = File::Spec->rel2abs("$tmpdir/deflate.passwd");
-  my $auth_group_file = File::Spec->rel2abs("$tmpdir/deflate.group");
-
-  my $user = 'proftpd';
-  my $passwd = 'test';
-  my $group = 'ftpd';
-  my $home_dir = File::Spec->rel2abs($tmpdir);
-  my $uid = 500;
-  my $gid = 500;
-
-  # Make sure that, if we're running as root, that the home directory has
-  # permissions/privs set for the account we create
-  if ($< == 0) {
-    unless (chmod(0755, $home_dir)) {
-      die("Can't set perms on $home_dir to 0755: $!");
-    }
-
-    unless (chown($uid, $gid, $home_dir)) {
-      die("Can't set owner of $home_dir to $uid/$gid: $!");
-    }
-  }
-
-  auth_user_write($auth_user_file, $user, $passwd, $uid, $gid, $home_dir,
-    '/bin/bash');
-  auth_group_write($auth_group_file, $group, $gid, $user);
+  my $setup = test_setup($tmpdir, 'deflate');
 
   my $config = {
-    PidFile => $pid_file,
-    ScoreboardFile => $scoreboard_file,
-    SystemLog => $log_file,
-    TraceLog => $log_file,
+    PidFile => $setup->{pid_file},
+    ScoreboardFile => $setup->{scoreboard_file},
+    SystemLog => $setup->{log_file},
+    TraceLog => $setup->{log_file},
     Trace => 'DEFAULT:10',
 
-    AuthUserFile => $auth_user_file,
-    AuthGroupFile => $auth_group_file,
+    AuthUserFile => $setup->{auth_user_file},
+    AuthGroupFile => $setup->{auth_group_file},
     AuthOrder => 'mod_auth_file.c',
 
     TimeoutLinger => 1,
@@ -2298,7 +1790,7 @@ sub deflate_netio_close_bad_cmd_sequence_bug3828 {
     IfModules => {
       'mod_deflate.c' => {
         DeflateEngine => 'on',
-        DeflateLog => $log_file,
+        DeflateLog => $setup->{log_file},
       },
 
       'mod_delay.c' => {
@@ -2307,7 +1799,8 @@ sub deflate_netio_close_bad_cmd_sequence_bug3828 {
     },
   };
 
-  my ($port, $config_user, $config_group) = config_write($config_file, $config);
+  my ($port, $config_user, $config_group) = config_write($setup->{config_file},
+    $config);
 
   # Open pipes, for use between the parent and child processes.  Specifically,
   # the child will indicate when it's done with its test by writing a message
@@ -2325,7 +1818,7 @@ sub deflate_netio_close_bad_cmd_sequence_bug3828 {
   if ($pid) {
     eval {
       my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port, 0);
-      $client->login($user, $passwd);
+      $client->login($setup->{user}, $setup->{passwd});
 
       eval { $client->mlsd("DoesNotExist") };
       unless ($@) {
@@ -2336,7 +1829,6 @@ sub deflate_netio_close_bad_cmd_sequence_bug3828 {
       $client->port('127,0,0,1,4,5');
       $client->quit();
     };
-
     if ($@) {
       $ex = $@;
     }
@@ -2345,7 +1837,7 @@ sub deflate_netio_close_bad_cmd_sequence_bug3828 {
     $wfh->flush();
 
   } else {
-    eval { server_wait($config_file, $rfh) };
+    eval { server_wait($setup->{config_file}, $rfh) };
     if ($@) {
       warn($@);
       exit 1;
@@ -2355,18 +1847,10 @@ sub deflate_netio_close_bad_cmd_sequence_bug3828 {
   }
 
   # Stop server
-  server_stop($pid_file);
-
+  server_stop($setup->{pid_file});
   $self->assert_child_ok($pid);
 
-  if ($ex) {
-    test_append_logfile($log_file, $ex);
-    unlink($log_file);
-
-    die($ex);
-  }
-
-  unlink($log_file);
+  test_cleanup($setup, $ex);
 }
 
 1;

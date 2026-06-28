@@ -200,7 +200,7 @@ sub ctrls_lsctrl_ok {
   }
 
   server_stop($setup->{pid_file});
-  test_cleanup($setup->{log_file}, $ex);
+  test_cleanup($setup, $ex);
 }
 
 sub ctrls_lsctrl_system_user_ok {
@@ -284,7 +284,7 @@ sub ctrls_lsctrl_system_user_ok {
   }
 
   server_stop($setup->{pid_file});
-  test_cleanup($setup->{log_file}, $ex);
+  test_cleanup($setup, $ex);
 }
 
 sub ctrls_lsctrl_access_denied_issue1114 {
@@ -366,32 +366,27 @@ sub ctrls_lsctrl_access_denied_issue1114 {
   }
 
   server_stop($setup->{pid_file});
-  test_cleanup($setup->{log_file}, $ex);
+  test_cleanup($setup, $ex);
 }
 
 sub ctrls_sighup_bug3756 {
   my $self = shift;
   my $tmpdir = $self->{tmpdir};
-
-  my $config_file = "$tmpdir/ctrls.conf";
-  my $pid_file = File::Spec->rel2abs("$tmpdir/ctrls.pid");
-  my $scoreboard_file = File::Spec->rel2abs("$tmpdir/ctrls.scoreboard");
-
-  my $log_file = test_get_logfile();
+  my $setup = test_setup($tmpdir, 'ctrls');
 
   my $ctrls_sock = File::Spec->rel2abs("$tmpdir/ctrls.sock");
 
   my ($user, $group) = config_get_identity();
 
   my $config = {
-    PidFile => $pid_file,
-    ScoreboardFile => $scoreboard_file,
-    SystemLog => $log_file,
+    PidFile => $setup->{pid_file},
+    ScoreboardFile => $setup->{scoreboard_file},
+    SystemLog => $setup->{log_file},
 
     IfModules => {
       'mod_ctrls.c' => {
         ControlsEngine => 'on',
-        ControlsLog => $log_file,
+        ControlsLog => $setup->{log_file},
         ControlsSocket => $ctrls_sock,
         ControlsACLs => "all allow user root,$user",
         ControlsSocketACL => "allow user root,$user",
@@ -403,28 +398,29 @@ sub ctrls_sighup_bug3756 {
     },
   };
 
-  my ($port, $config_user, $config_group) = config_write($config_file, $config);
+  my ($port, $config_user, $config_group) = config_write($setup->{config_file},
+    $config);
 
   my $ex;
 
   # Start server
-  server_start($config_file);
+  server_start($setup->{config_file});
 
   sleep(1);
 
   eval {
     # Use proc(5) filesystem to count the number of open fds in the daemon
-    my $orig_nfds = server_open_fds($pid_file);
+    my $orig_nfds = server_open_fds($setup->{pid_file});
     if ($ENV{TEST_VERBOSE}) {
       print STDERR "Found $orig_nfds open fds after server startup\n";
     }
 
     # Restart the server
-    server_restart($pid_file);
+    server_restart($setup->{pid_file});
     sleep(1);
 
     # Count the open fds again, make sure we haven't leaked any
-    my $restart_nfds = server_open_fds($pid_file);
+    my $restart_nfds = server_open_fds($setup->{pid_file});
     if ($ENV{TEST_VERBOSE}) {
       print STDERR "Found $restart_nfds open fds after server restart #1\n";
     }
@@ -433,12 +429,12 @@ sub ctrls_sighup_bug3756 {
       test_msg("Expected $orig_nfds open fds, found $restart_nfds"));
 
     # Restart the server
-    server_restart($pid_file);
+    server_restart($setup->{pid_file});
     sleep(1);
 
     # And count the open fds one more time, to make doubly sure we are not
     # leaking fds.
-    $restart_nfds = server_open_fds($pid_file);
+    $restart_nfds = server_open_fds($setup->{pid_file});
     if ($ENV{TEST_VERBOSE}) {
       print STDERR "Found $restart_nfds open fds after server restart #2\n";
     }
@@ -450,16 +446,8 @@ sub ctrls_sighup_bug3756 {
     $ex = $@;
   }
 
-  server_stop($pid_file);
-
-  if ($ex) {
-    test_append_logfile($log_file, $ex);
-    unlink($log_file);
-
-    die($ex);
-  }
-
-  unlink($log_file);
+  server_stop($setup->{pid_file});
+  test_cleanup($setup, $ex);
 }
 
 sub ctrls_intvl_timeoutlogin_bug4298 {
@@ -557,7 +545,7 @@ sub ctrls_intvl_timeoutlogin_bug4298 {
   server_stop($setup->{pid_file});
   $self->assert_child_ok($pid);
 
-  test_cleanup($setup->{log_file}, $ex);
+  test_cleanup($setup, $ex);
 }
 
 1;
