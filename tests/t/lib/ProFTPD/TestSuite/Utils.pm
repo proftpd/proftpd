@@ -1249,6 +1249,9 @@ sub test_cleanup {
   }
 
   if (defined($asan_log_file)) {
+    # Given ASAN time to write out any remaining logs
+    sleep(0.5);
+
     scan_asan_logs($asan_log_file, $keep_logfiles);
   }
 
