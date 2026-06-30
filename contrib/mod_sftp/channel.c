@@ -436,7 +436,7 @@ static void drain_pending_outgoing_channel_data(uint32_t channel_id) {
 }
 
 static struct ssh2_channel_databuf *get_databuf(uint32_t channel_id,
-    uint32_t buflen) {
+    uint32_t buflen, struct ssh2_channel **found_chan) {
   struct ssh2_channel *chan;
   struct ssh2_channel_databuf *db;
   pool *sub_pool;
@@ -446,6 +446,8 @@ static struct ssh2_channel_databuf *get_databuf(uint32_t channel_id,
     errno = EPERM;
     return NULL;
   }
+
+  *found_chan = chan;
 
   if (channel_databuf_pool == NULL) {
     channel_databuf_pool = make_sub_pool(channel_pool);
@@ -469,9 +471,9 @@ static struct ssh2_channel_databuf *get_databuf(uint32_t channel_id,
 static struct ssh2_channel_databuf *get_incoming_databuf(uint32_t channel_id,
     uint32_t buflen) {
   struct ssh2_channel_databuf *db;
-  struct ssh2_channel *chan;
+  struct ssh2_channel *chan = NULL;
 
-  db = get_databuf(channel_id, buflen);
+  db = get_databuf(channel_id, buflen, &chan);
   if (db == NULL) {
     return NULL;
   }
@@ -479,7 +481,6 @@ static struct ssh2_channel_databuf *get_incoming_databuf(uint32_t channel_id,
   /* Make sure the returned outbuf is already in place at the end of
    * the pending incoming list.
    */
-  chan = get_channel(channel_id);
   if (chan->incoming_tail != NULL) {
     chan->incoming_tail->next = db;
     chan->incoming_tail = db;
@@ -494,9 +495,9 @@ static struct ssh2_channel_databuf *get_incoming_databuf(uint32_t channel_id,
 static struct ssh2_channel_databuf *get_outgoing_databuf(uint32_t channel_id,
     uint32_t buflen) {
   struct ssh2_channel_databuf *db;
-  struct ssh2_channel *chan;
+  struct ssh2_channel *chan = NULL;
 
-  db = get_databuf(channel_id, buflen);
+  db = get_databuf(channel_id, buflen, &chan);
   if (db == NULL) {
     return NULL;
   }
@@ -504,7 +505,6 @@ static struct ssh2_channel_databuf *get_outgoing_databuf(uint32_t channel_id,
   /* Make sure the returned outbuf is already in place at the end of
    * the pending outgoing list.
    */
-  chan = get_channel(channel_id);
   if (chan->outgoing_tail != NULL) {
     chan->outgoing_tail->next = db;
     chan->outgoing_tail = db;

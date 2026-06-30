@@ -276,30 +276,30 @@ static int check_scoreboard_file(void) {
 static const char *show_uptime(time_t uptime_since) {
   static char buf[128] = {'\0'};
   time_t uptime_secs = time(NULL) - uptime_since;
-  int upminutes, uphours, updays;
+  unsigned long upminutes, uphours, updays;
   int pos = 0;
 
   memset(buf, '\0', sizeof(buf));
 
-  updays = (int) uptime_secs / (60 * 60 * 24);
+  updays = (unsigned long) uptime_secs / (60 * 60 * 24);
   if (updays > 0) {
-    pos += snprintf(buf + pos, sizeof(buf) - pos, "%d %s, ", updays,
+    pos += snprintf(buf + pos, sizeof(buf) - pos, "%lu %s, ", updays,
       updays != 1 ? "days" : "day");
   }
 
-  upminutes = (int) uptime_secs / 60;
+  upminutes = (unsigned long) uptime_secs / 60;
 
   uphours = upminutes / 60;
   uphours = uphours % 24;
 
   upminutes = upminutes % 60;
 
-  if (uphours) {
-    snprintf(buf + pos, sizeof(buf) - pos, "%2d %s %02d min", uphours,
+  if (uphours > 0) {
+    snprintf(buf + pos, sizeof(buf) - pos, "%2lu %s %02lu min", uphours,
       uphours != 1 ? "hrs" : "hr", upminutes);
 
   } else {
-    snprintf(buf + pos, sizeof(buf) - pos, "%d min", upminutes);
+    snprintf(buf + pos, sizeof(buf) - pos, "%lu min", upminutes);
   }
 
   return buf;

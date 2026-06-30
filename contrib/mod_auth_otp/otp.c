@@ -43,7 +43,7 @@ static int otp(pool *p, const EVP_MD *md,
     value[i] = counter;
   }
 
-  hash_len = EVP_MAX_MD_SIZE;
+  hash_len = sizeof(hash);
   if (auth_otp_hmac(md, key, key_len, value, sizeof(value), hash,
       &hash_len) < 0) {
     return -1;

@@ -11693,7 +11693,7 @@ static void fxp_trace_v6_realpath_flags(pool *p, unsigned char flags,
 }
 
 static int fxp_handle_realpath(struct fxp_packet *fxp) {
-  int res, xerrno;
+  int res = 0, xerrno = 0;
   unsigned char *buf, realpath_flags = SSH2_FXRP_NO_CHECK;
   char *path;
   uint32_t buflen;
@@ -11956,6 +11956,8 @@ static int fxp_handle_realpath(struct fxp_packet *fxp) {
     */
 
     pr_fs_clear_cache2(path);
+    res = 0;
+
     switch (realpath_flags) {
       case SSH2_FXRP_NO_CHECK:
         res = pr_fsio_lstat(path, &st);
@@ -11972,8 +11974,6 @@ static int fxp_handle_realpath(struct fxp_packet *fxp) {
     if (res < 0) {
       uint32_t status_code;
       const char *reason;
-
-      xerrno = errno;
 
       (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
         "error checking '%s' for REALPATH: %s", path, strerror(xerrno));

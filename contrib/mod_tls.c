@@ -5911,7 +5911,7 @@ static OCSP_RESPONSE *ocsp_request_response(pool *p, X509 *cert, SSL *ssl,
 
   BIO_set_conn_port(bio, port);
 
-  if (use_ssl) {
+  if (use_ssl == TRUE) {
     BIO *ssl_bio;
 
     ctx = SSL_CTX_new(SSLv23_client_method());
@@ -5947,6 +5947,10 @@ static OCSP_RESPONSE *ocsp_request_response(pool *p, X509 *cert, SSL *ssl,
     OPENSSL_free(host);
     OPENSSL_free(port);
     OPENSSL_free(uri);
+
+    if (ctx != NULL) {
+      SSL_CTX_free(ctx);
+    }
 
     errno = xerrno;
     return NULL;
@@ -10844,15 +10848,6 @@ static int tls_verify_crl(int ok, X509_STORE_CTX *ctx) {
 #endif /* OpenSSL 1.1.x and later */
 
       if (res == 0) {
-        tls_log("CRL has invalid lastUpdate field: %s", tls_get_errors());
-
-        X509_STORE_CTX_set_error(ctx,
-          X509_V_ERR_ERROR_IN_CRL_LAST_UPDATE_FIELD);
-        sk_X509_CRL_free(crls);
-        return FALSE;
-      }
-
-      if (res == 0) {
         tls_log("CRL has invalid nextUpdate field: %s", tls_get_errors());
 
         X509_STORE_CTX_set_error(ctx,
@@ -14545,6 +14540,7 @@ MODRET set_tlsecdhcurve(cmd_rec *cmd) {
 
     res = SSL_CTX_set1_curves_list(ctx, curve_names);
     if (res != 1) {
+      SSL_CTX_free(ctx);
       CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "unable to use ECDH curves '",
         curve_names, "': ", tls_get_errors2(cmd->tmp_pool), NULL));
     }

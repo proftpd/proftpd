@@ -1177,6 +1177,11 @@ int pr_inet_set_reuse_port(pool *p, conn_t *c, int reuse_port) {
     return -1;
   }
 
+  if (c->listen_fd < 0) {
+    errno = EBADF;
+    return -1;
+  }
+
 #if defined(SO_REUSEPORT)
   res = setsockopt(c->listen_fd, SOL_SOCKET, SO_REUSEPORT, (void *) &reuse_port,
     sizeof(reuse_port));
