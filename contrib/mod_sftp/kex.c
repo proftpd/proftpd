@@ -3375,7 +3375,7 @@ static int get_dh_gex_group(struct sftp_kex *kex, uint32_t min,
       kex_dhparams_fp = fopen(dhparam_path, "r");
     }
 
-    if (kex_dhparams_fp) {
+    if (kex_dhparams_fp != NULL) {
       register unsigned int i;
       pool *tmp_pool;
       array_header *smaller_dhs, *pref_dhs, *larger_dhs;
@@ -3467,7 +3467,7 @@ static int get_dh_gex_group(struct sftp_kex *kex, uint32_t min,
         } else {
           /* By process of elimination, nbits here MUST be > pref. */
 
-          if (nbits < larger_dh_nbits) {
+          if (nbits > larger_dh_nbits) {
             if (larger_dhs->nelts > 0) {
               dhs = larger_dhs->elts;
               for (i = 0; i < larger_dhs->nelts; i++) {

@@ -509,7 +509,7 @@ static int do_ldap_connect(LDAP **conn_ld, int do_bind) {
     (void) pr_log_writefile(ldap_logfd, MOD_LDAP_VERSION,
       "unable to set connect timeout %d due to lack of API support",
       ldap_connecttimeout);
-#endif
+#endif /* LDAP_OPT_NETWORK_TIMEOUT */
   }
 
   if (curr_server_info->use_starttls == TRUE) {
@@ -636,7 +636,7 @@ static int do_ldap_connect(LDAP **conn_ld, int do_bind) {
     }
   }
 
-#ifdef LDAP_OPT_DEREF
+#if defined(LDAP_OPT_DEREF)
   res = ldap_set_option(*conn_ld, LDAP_OPT_DEREF, (void *) &ldap_dereference);
   if (res != LDAP_OPT_SUCCESS) {
     (void) pr_log_writefile(ldap_logfd, MOD_LDAP_VERSION,
@@ -647,7 +647,7 @@ static int do_ldap_connect(LDAP **conn_ld, int do_bind) {
   }
 #else
   deref_ld->ld_deref = ldap_dereference;
-#endif
+#endif /* LDAP_OPT_DEREF */
 
   (void) pr_log_writefile(ldap_logfd, MOD_LDAP_VERSION,
     "set dereferencing to %d", ldap_dereference);
@@ -686,9 +686,11 @@ static int pr_ldap_connect(LDAP **conn_ld, int do_bind) {
 
     res = do_ldap_connect(conn_ld, do_bind);
     if (res < 0) {
-      ++curr_server_index;
-      if (curr_server_index >= ldap_servers->nelts) {
-        curr_server_index = 0;
+      if (ldap_servers != NULL) {
+        ++curr_server_index;
+        if (curr_server_index >= ldap_servers->nelts) {
+          curr_server_index = 0;
+        }
       }
 
       continue;

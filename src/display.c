@@ -242,20 +242,22 @@ static int display_fh(pr_fh_t *fh, const char *fs, const char *resp_code,
 
   pr_snprintf(mg_xfer_bytes, sizeof(mg_xfer_bytes), "%" PR_LU,
     (pr_off_t) session.total_bytes >> 10);
-  pr_snprintf(mg_xfer_units, sizeof(mg_xfer_units), "%" PR_LU "B",
-    (pr_off_t) session.total_bytes);
 
-  if (session.total_bytes >= 10240) {
-    pr_snprintf(mg_xfer_units, sizeof(mg_xfer_units), "%" PR_LU "kB",
-      (pr_off_t) session.total_bytes >> 10);
+  if ((session.total_bytes >> 20) >= 10240) {
+    pr_snprintf(mg_xfer_units, sizeof(mg_xfer_units), "%" PR_LU "GB",
+      (pr_off_t) session.total_bytes >> 30);
 
   } else if ((session.total_bytes >> 10) >= 10240) {
     pr_snprintf(mg_xfer_units, sizeof(mg_xfer_units), "%" PR_LU "MB",
       (pr_off_t) session.total_bytes >> 20);
 
-  } else if ((session.total_bytes >> 20) >= 10240) {
-    pr_snprintf(mg_xfer_units, sizeof(mg_xfer_units), "%" PR_LU "GB",
-      (pr_off_t) session.total_bytes >> 30);
+  } else if (session.total_bytes >= 10240) {
+    pr_snprintf(mg_xfer_units, sizeof(mg_xfer_units), "%" PR_LU "kB",
+      (pr_off_t) session.total_bytes >> 10);
+
+  } else {
+    pr_snprintf(mg_xfer_units, sizeof(mg_xfer_units), "%" PR_LU "B",
+      (pr_off_t) session.total_bytes);
   }
 
   pr_snprintf(mg_max, sizeof(mg_max), "%u", max_clients ? *max_clients : 0);

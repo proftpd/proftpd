@@ -1050,7 +1050,7 @@ static int setup_env(pool *p, cmd_rec *cmd, const char *user, char *pass) {
   struct passwd *pw;
   config_rec *c, *tmpc;
   const char *defchdir = NULL, *defroot = NULL, *origuser, *sess_ttyname;
-  char *ourname = NULL, *anonname = NULL, *anongroup = NULL, *ugroup = NULL;
+  char *ourname = NULL, *anonname = NULL, *anongroup = NULL;
   char *xferlog = NULL;
   int aclp, i, res = 0, allow_chroot_symlinks = TRUE, showsymlinks;
   unsigned char *wtmp_log = NULL, *anon_require_passwd = NULL;
@@ -1196,7 +1196,7 @@ static int setup_env(pool *p, cmd_rec *cmd, const char *user, char *pass) {
       anongroup = get_param_ptr(main_server->conf, "GroupName",FALSE);
     }
 
-#ifdef PR_USE_REGEX
+#if defined(PR_USE_REGEX)
     /* Check for configured AnonRejectPasswords regex here, and fail the login
      * if the given password matches the regex.
      */
@@ -1226,7 +1226,7 @@ static int setup_env(pool *p, cmd_rec *cmd, const char *user, char *pass) {
         }
       }
     }
-#endif
+#endif /* PR_USE_REGEX */
 
     if (!login_check_limits(c->subset, FALSE, TRUE, &i) || (!aclp && !i) ){
       pr_log_auth(PR_LOG_NOTICE, "ANON %s (Login failed): Limit access denies "
@@ -1423,7 +1423,7 @@ static int setup_env(pool *p, cmd_rec *cmd, const char *user, char *pass) {
       }
     }
 
-#ifndef PR_DEVEL_COREDUMP
+#if !defined(PR_DEVEL_COREDUMP)
 # ifdef __hpux
     if (setresuid(0, 0, 0) < 0) {
       pr_log_pri(PR_LOG_ERR, "unable to setresuid(): %s", strerror(errno));
@@ -1559,7 +1559,7 @@ static int setup_env(pool *p, cmd_rec *cmd, const char *user, char *pass) {
       }
     }
 
-#ifndef PR_DEVEL_COREDUMP
+#if !defined(PR_DEVEL_COREDUMP)
 # ifdef __hpux
     if (setresuid(0, 0, 0) < 0) {
       pr_log_pri(PR_LOG_ERR, "unable to setresuid(): %s", strerror(errno));
@@ -1584,7 +1584,7 @@ static int setup_env(pool *p, cmd_rec *cmd, const char *user, char *pass) {
     pr_signals_unblock();
 
     /* Sanity check, make sure we have daemon_uid and daemon_gid back */
-#ifdef HAVE_GETEUID
+#if defined(HAVE_GETEUID)
     if (getegid() != daemon_gid ||
         geteuid() != daemon_uid) {
 
@@ -1625,16 +1625,7 @@ static int setup_env(pool *p, cmd_rec *cmd, const char *user, char *pass) {
     }
 
   } else {
-    struct group *grp;
     char *homedir;
-
-    if (ugroup) {
-      grp = pr_auth_getgrnam(p, ugroup);
-      if (grp) {
-        pw->pw_gid = grp->gr_gid;
-        session.group = pstrdup(p, grp->gr_name);
-      }
-    }
 
     /* Attempt to resolve any possible symlinks. */
     PRIVS_USER
