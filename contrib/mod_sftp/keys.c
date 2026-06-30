@@ -3219,7 +3219,7 @@ static int decrypt_openssh_data(pool *p, const char *path,
   EVP_CIPHER_CTX *cipher_ctx = NULL;
   unsigned char *buf, *key, *iv, *salt_data;
   uint32_t buflen, key_len, rounds, salt_len;
-  size_t passphrase_len;
+  size_t passphrase_len = 0;
 
   if (strcmp(kdf_name, "none") == 0) {
     *decrypted_data = encrypted_data;
@@ -3246,7 +3246,9 @@ static int decrypt_openssh_data(pool *p, const char *path,
   /* Compute the decryption key using the KDF and the passphrase.  Note that
    * we derive the key AND the IV using this approach at the same time.
    */
-  passphrase_len = strlen(passphrase);
+  if (passphrase != NULL) {
+    passphrase_len = strlen(passphrase);
+  }
   key_len = cipher->key_len + cipher->iv_len;
 
   pr_trace_msg(trace_channel, 13,
@@ -4259,6 +4261,7 @@ static int load_file_hostkey(pool *p, const char *path) {
   }
 
   free_hostkey_bio(bio);
+  (void) close(fd);
   destroy_pool(tmp_pool);
 
   if (pkey == NULL) {

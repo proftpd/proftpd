@@ -61,15 +61,16 @@ int pr_ascii_ftp_from_crlf(pool *p, char *in, size_t inlen, char **out,
         adj++;
         *dst++ = *src++;
 
-      } else {
-        if (*(src+1) == '\n') {
-          /* Skip the CR. */
-          src++;
+        break;
+      }
 
-        } else {
-          *dst++ = *src++;
-          (*outlen)++;
-        }
+      if (*(src+1) == '\n') {
+        /* Skip the CR. */
+        src++;
+
+      } else {
+        *dst++ = *src++;
+        (*outlen)++;
       }
     }
   }

@@ -943,14 +943,6 @@ int pr_ctrls_recv_response(pool *p, int fd, int *status, char ***respargv) {
   if (nread != sizeof(uint32_t)) {
     pr_signals_unblock();
 
-    if (nread < 0) {
-      (void) pr_trace_msg(trace_channel, 3,
-        "error reading %u of response message size: %s",
-        (unsigned int) sizeof(uint32_t), strerror(xerrno));
-      errno = xerrno;
-      return -1;
-    }
-
     (void) pr_trace_msg(trace_channel, 3,
       "short read (%d of %u bytes) of response message, unable to receive "
       "response", nread, (unsigned int) sizeof(uint32_t));

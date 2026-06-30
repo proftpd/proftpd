@@ -2629,6 +2629,14 @@ int sftp_scp_set_params(pool *p, uint32_t channel_id, array_header *req) {
     }
   }
 
+  /* If we have no target path at this point, it's an error. */
+  if (target_path == NULL) {
+    (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
+      "'scp' request provided no target path, rejecting");
+    errno = EPERM;
+    return -1;
+  }
+
   target_path = scp_canonicalize_target(p, target_path);
 
   if (use_glob == TRUE &&

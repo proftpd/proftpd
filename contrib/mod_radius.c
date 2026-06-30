@@ -1254,7 +1254,7 @@ static int radius_process_quota_info_attribs(radius_packet_t *pkt) {
 
 static int radius_process_accept_packet(radius_packet_t *pkt,
     const unsigned char *secret, size_t secret_len) {
-  int attrib_count = 0, res;;
+  int attrib_count = 0, res;
 
   res = radius_process_standard_attribs(pkt, secret, secret_len);
   if (res < 0) {
@@ -3084,9 +3084,10 @@ static unsigned int radius_get_terminate_cause(void) {
 }
 
 static int radius_stop_accting(void) {
-  int sockfd = -1, acct_status = 0, acct_authentic = 0, event_ts = 0,
-    now = 0, pid_len = 0, session_duration = 0;
-  unsigned int terminate_cause = 0;
+  int sockfd = -1, acct_status = 0, acct_authentic = 0;
+  size_t pid_len = 0;
+  time_t now = 0, event_ts = 0;
+  unsigned int terminate_cause = 0, session_duration = 0;
   radius_packet_t *request = NULL, *response = NULL;
   radius_server_t *acct_server = NULL;
   unsigned char recvd_response = FALSE, *authenticated = NULL;

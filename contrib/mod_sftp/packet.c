@@ -552,7 +552,7 @@ static void read_packet_discard(int sockfd) {
      * to be read in.
      */
     flags = SFTP_PACKET_READ_FL_PESSIMISTIC;
-    sftp_ssh2_packet_sock_read(sockfd, buf, buflen, flags);
+    (void) sftp_ssh2_packet_sock_read(sockfd, buf, buflen, flags);
   }
 }
 
