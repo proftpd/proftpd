@@ -2885,7 +2885,10 @@ static int radius_send_packet(int sockfd, radius_packet_t *packet,
 }
 
 static int radius_start_accting(void) {
-  int sockfd = -1, acct_status = 0, acct_authentic = 0, now = 0, pid_len = 0;
+  int sockfd = -1, acct_status = 0, acct_authentic = 0;
+  unsigned int event_ts = 0;
+  size_t pid_len = 0;
+  time_t now = 0;
   radius_packet_t *request = NULL, *response = NULL;
   radius_server_t *acct_server = NULL;
   unsigned char recvd_response = FALSE, *authenticated = NULL;
@@ -2919,7 +2922,14 @@ static int radius_start_accting(void) {
   /* Allocate a packet. */
   request = (radius_packet_t *) pcalloc(radius_pool, sizeof(radius_packet_t));
 
-  now = htonl(time(NULL));
+  now = time(NULL);
+
+  /* Watch out for Y2K38 problems; RADIUS Event-Timestamp attributes can only
+   * be 32 bits; see RFC 2869, Section 5.3.
+   */
+  if (now <= UINT_MAX) {
+    event_ts = htonl(now);
+  }
 
   memset(pid_str, '\0', sizeof(pid_str));
   pid_len = pr_snprintf(pid_str, sizeof(pid_str), "%08u",
@@ -2959,8 +2969,10 @@ static int radius_start_accting(void) {
     radius_add_attrib(request, RADIUS_ACCT_AUTHENTIC,
       (unsigned char *) &acct_authentic, sizeof(int));
 
-    radius_add_attrib(request, RADIUS_ACCT_EVENT_TS, (unsigned char *) &now,
-      sizeof(int));
+    if (event_ts > 0) {
+      radius_add_attrib(request, RADIUS_ACCT_EVENT_TS, (unsigned char *) &now,
+        sizeof(unsigned int));
+    }
 
     if (radius_acct_user != NULL) {
       /* See RFC 2865, Section 5.1. */
@@ -3086,8 +3098,8 @@ static unsigned int radius_get_terminate_cause(void) {
 static int radius_stop_accting(void) {
   int sockfd = -1, acct_status = 0, acct_authentic = 0;
   size_t pid_len = 0;
-  time_t now = 0, event_ts = 0;
-  unsigned int terminate_cause = 0, session_duration = 0;
+  time_t now = 0;
+  unsigned int event_ts = 0, terminate_cause = 0, session_duration = 0;
   radius_packet_t *request = NULL, *response = NULL;
   radius_server_t *acct_server = NULL;
   unsigned char recvd_response = FALSE, *authenticated = NULL;
@@ -3124,7 +3136,14 @@ static int radius_stop_accting(void) {
   request = (radius_packet_t *) pcalloc(radius_pool, sizeof(radius_packet_t));
 
   now = time(NULL);
-  event_ts = htonl(now);
+
+  /* Watch out for Y2K38 problems; RADIUS Event-Timestamp attributes can only
+   * be 32 bits; see RFC 2869, Section 5.3.
+   */
+  if (now <= UINT_MAX) {
+    event_ts = htonl(now);
+  }
+
   session_duration = htonl(now - radius_session_start);
   terminate_cause = htonl(radius_get_terminate_cause());
 
@@ -3188,8 +3207,10 @@ static int radius_stop_accting(void) {
     radius_add_attrib(request, RADIUS_ACCT_TERMINATE_CAUSE,
       (unsigned char *) &terminate_cause, sizeof(int));
 
-    radius_add_attrib(request, RADIUS_ACCT_EVENT_TS,
-      (unsigned char *) &event_ts, sizeof(int));
+    if (event_ts > 0) {
+      radius_add_attrib(request, RADIUS_ACCT_EVENT_TS,
+        (unsigned char *) &event_ts, sizeof(unsigned int));
+    }
 
     if (radius_acct_user != NULL) {
       /* See RFC 2865, Section 5.1. */

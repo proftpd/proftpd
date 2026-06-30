@@ -208,7 +208,7 @@ struct ban_cache_entry {
   char *be_name;
   char *be_reason;
   char *be_message;
-  uint32_t be_expires;
+  time_t be_expires;
   int be_sid;
 };
 
@@ -575,7 +575,7 @@ static int ban_cache_entry_decode_json(pool *p, void *value, size_t valuesz,
   if (res < 0) {
     return -1;
   }
-  bce->be_expires = (uint32_t) number;
+  bce->be_expires = (time_t) number;
 
   key = BAN_CACHE_JSON_KEY_SERVER_ID;
   res = entry_get_json_number(p, json, key, &number, entry);
@@ -1376,7 +1376,7 @@ static int ban_list_add(pool *p, unsigned int type, unsigned int sid,
     bce.be_name = (char *) name;
     bce.be_reason = (char *) reason;
     bce.be_message = (char *) (rule_message ? rule_message : "");
-    bce.be_expires = (uint32_t) (lasts ? time(NULL) + lasts : 0);
+    bce.be_expires = (time_t) (lasts ? time(NULL) + lasts : 0);
     bce.be_sid = sid;
 
     if (ban_cache_entry_set(p, &bce) == 0) {
@@ -1443,7 +1443,7 @@ static int ban_list_exists(pool *p, unsigned int type, unsigned int sid,
        */
       time(&now);
       if (bce.be_expires != 0 &&
-          bce.be_expires <= (uint32_t) now) {
+          bce.be_expires <= now) {
         pr_trace_msg(trace_channel, 3,
           "purging expired entry from cache: %lu <= now %lu",
           (unsigned long) bce.be_expires, (unsigned long) now);
@@ -1606,7 +1606,7 @@ static void ban_list_expire(void) {
     pr_signals_handle();
 
     if (ban_lists->bans.bl_entries[i].be_type &&
-        ban_lists->bans.bl_entries[i].be_expires &&
+        ban_lists->bans.bl_entries[i].be_expires > 0 &&
         !(ban_lists->bans.bl_entries[i].be_expires > now)) {
       char *ban_desc, *ban_name;
       int ban_type;
@@ -1943,9 +1943,11 @@ static int ban_handle_info(pr_ctrls_t *ctrl, int reqargc, char **reqargv) {
           pr_ctrls_add_response(ctrl, "    Reason: %s",
             ban_lists->bans.bl_entries[i].be_reason);
 
-          if (ban_lists->bans.bl_entries[i].be_expires) {
-            time_t now = time(NULL);
-            time_t then = ban_lists->bans.bl_entries[i].be_expires;
+          if (ban_lists->bans.bl_entries[i].be_expires > 0) {
+            time_t now, then;
+
+            now = time(NULL);
+            then = ban_lists->bans.bl_entries[i].be_expires;
 
             pr_ctrls_add_response(ctrl, "    Expires: %s (in %lu seconds)",
               pr_strtime3(ctrl->ctrls_tmp_pool, then, FALSE),
@@ -1981,9 +1983,11 @@ static int ban_handle_info(pr_ctrls_t *ctrl, int reqargc, char **reqargv) {
           pr_ctrls_add_response(ctrl, "    Reason: %s",
             ban_lists->bans.bl_entries[i].be_reason);
 
-          if (ban_lists->bans.bl_entries[i].be_expires) {
-            time_t now = time(NULL);
-            time_t then = ban_lists->bans.bl_entries[i].be_expires;
+          if (ban_lists->bans.bl_entries[i].be_expires > 0) {
+            time_t now, then;
+
+            now = time(NULL);
+            then = ban_lists->bans.bl_entries[i].be_expires;
 
             pr_ctrls_add_response(ctrl, "    Expires: %s (in %lu seconds)",
               pr_strtime3(ctrl->ctrls_tmp_pool, then, FALSE),
@@ -2023,9 +2027,11 @@ static int ban_handle_info(pr_ctrls_t *ctrl, int reqargc, char **reqargv) {
           pr_ctrls_add_response(ctrl, "    Reason: %s",
             ban_lists->bans.bl_entries[i].be_reason);
 
-          if (ban_lists->bans.bl_entries[i].be_expires) {
-            time_t now = time(NULL);
-            time_t then = ban_lists->bans.bl_entries[i].be_expires;
+          if (ban_lists->bans.bl_entries[i].be_expires > 0) {
+            time_t now, then;
+
+            now = time(NULL);
+            then = ban_lists->bans.bl_entries[i].be_expires;
 
             pr_ctrls_add_response(ctrl, "    Expires: %s (in %lu seconds)",
               pr_strtime3(ctrl->ctrls_tmp_pool, then, FALSE),
@@ -2065,9 +2071,11 @@ static int ban_handle_info(pr_ctrls_t *ctrl, int reqargc, char **reqargv) {
           pr_ctrls_add_response(ctrl, "    Reason: %s",
             ban_lists->bans.bl_entries[i].be_reason);
 
-          if (ban_lists->bans.bl_entries[i].be_expires) {
-            time_t now = time(NULL);
-            time_t then = ban_lists->bans.bl_entries[i].be_expires;
+          if (ban_lists->bans.bl_entries[i].be_expires > 0) {
+            time_t now, then;
+
+            now = time(NULL);
+            then = ban_lists->bans.bl_entries[i].be_expires;
 
             pr_ctrls_add_response(ctrl, "    Expires: %s (in %lu seconds)",
               pr_strtime3(ctrl->ctrls_tmp_pool, then, FALSE),

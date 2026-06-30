@@ -1347,6 +1347,7 @@ int pr_memcache_kincr(pr_memcache_t *mcache, module *m, const char *key,
       0, 0);
   }
 
+  /* Note that the MEMCACHED_NOTFOUND case is already handled above. */
   switch (res) {
     case MEMCACHED_SUCCESS:
       return 0;
@@ -1384,14 +1385,6 @@ int pr_memcache_kincr(pr_memcache_t *mcache, module *m, const char *key,
 
       break;
     }
-
-    case MEMCACHED_NOTFOUND:
-      pr_trace_msg(trace_channel, 2,
-        "error incrementing key (%lu bytes) by %lu: %s",
-        (unsigned long) keysz, (unsigned long) incr,
-        memcached_strerror(mcache->mc, res));
-      errno = ENOENT;
-      break;
 
     default:
       pr_trace_msg(trace_channel, 2,

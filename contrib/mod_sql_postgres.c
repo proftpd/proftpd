@@ -526,8 +526,7 @@ MODRET cmd_open(cmd_rec *cmd) {
 
     ssl = PQgetssl(conn->postgres);
     sql_log(DEBUG_FUNC, "%s", "Postgres SSL connection: true");
-    sql_log(DEBUG_FUNC, "%s", "Postgres SSL cipher: %s",
-      SSL_get_cipher_name(ssl));
+    sql_log(DEBUG_FUNC, "Postgres SSL cipher: %s", SSL_get_cipher_name(ssl));
 # else
     sql_log(DEBUG_FUNC, "%s", "Postgres SSL connection: true");
 # endif /* PR_USE_OPENSSL */
