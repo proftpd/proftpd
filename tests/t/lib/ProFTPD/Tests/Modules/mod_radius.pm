@@ -49,37 +49,29 @@ sub radius_auth {
   my $self = shift;
   my $tmpdir = $self->{tmpdir};
 
-  my $config_file = "$tmpdir/radius.conf";
-  my $pid_file = File::Spec->rel2abs("$tmpdir/radius.pid");
-  my $scoreboard_file = File::Spec->rel2abs("$tmpdir/radius.scoreboard");
-
-  my $log_file = test_get_logfile();
-
-  my $user = $ENV{RADIUS_USER} ? $ENV{RADIUS_USER} : "proftpd";
-  my $passwd = $ENV{RADIUS_PASSWD} ? $ENV{RADIUS_PASSWD} : "test";
-  my $group = $ENV{RADIUS_GROUP} ? $ENV{RADIUS_GROUP} : 'ftpd';
-  my $home_dir = File::Spec->rel2abs($tmpdir);
-  my $uid = 1000;
-  my $gid = 1000;
-
-  # Make sure that, if we're running as root, that the home directory has
-  # permissions/privs set for the account we create
-  if ($< == 0) {
-    unless (chmod(0755, $home_dir)) {
-      die("Can't set perms on $home_dir to 0755: $!");
-    }
-
-    unless (chown($uid, $gid, $home_dir)) {
-      die("Can't set owner of $home_dir to $uid/$gid: $!");
-    }
+  my $radius_user = 'proftpd';
+  if ($ENV{RADIUS_USER}) {
+    $radius_user = $ENV{RADIUS_USER};
   }
 
+  my $radius_passwd = 'test';
+  if ($ENV{RADIUS_PASSWD}) {
+    $radius_passwd = $ENV{RADIUS_PASSWD};
+  }
+
+  my $radius_server = '127.0.0.1';
+  if ($ENV{RADIUS_HOST}) {
+    $radius_server = $ENV{RADIUS_HOST};
+  }
+
+  my $setup = test_setup($tmpdir, 'radius', $radius_user, $radius_passwd);
+
   my $config = {
-    PidFile => $pid_file,
-    ScoreboardFile => $scoreboard_file,
-    SystemLog => $log_file,
-    TraceLog => $log_file,
-    Trace => 'auth:10',
+    PidFile => $setup->{pid_file},
+    ScoreboardFile => $setup->{scoreboard_file},
+    SystemLog => $setup->{log_file},
+    TraceLog => $setup->{log_file},
+    Trace => 'auth:10 radius:20',
 
     IfModules => {
       'mod_delay.c' => {
@@ -88,15 +80,16 @@ sub radius_auth {
 
       'mod_radius.c' => {
         RadiusEngine => 'on',
-        RadiusLog => $log_file,
-        RadiusAuthServer => "localhost:1812 testing123 5",
-        RadiusUserInfo => "$uid $gid $home_dir /bin/bash",
-        RadiusGroupInfo => "$group $user $gid",
+        RadiusLog => $setup->{log_file},
+        RadiusAuthServer => "$radius_server:1812 testing123 5",
+        RadiusUserInfo => "$setup->{uid} $setup->{gid} $setup->{home_dir} /bin/bash",
+        RadiusGroupInfo => "$setup->{group} $radius_user $setup->{gid}",
       },
     },
   };
 
-  my ($port, $config_user, $config_group) = config_write($config_file, $config);
+  my ($port, $config_user, $config_group) = config_write($setup->{config_file},
+    $config);
 
   # Open pipes, for use between the parent and child processes.  Specifically,
   # the child will indicate when it's done with its test by writing a message
@@ -117,24 +110,24 @@ sub radius_auth {
   defined(my $pid = fork()) or die("Can't fork: $!");
   if ($pid) {
     eval {
+      # Allow for server startup
+      sleep(1);
+
       my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
-      $client->login($user, $passwd);
+      $client->login($setup->{user}, $setup->{passwd});
 
-      my ($resp_code, $resp_msg);
-      $resp_code = $client->response_code();
-      $resp_msg = $client->response_msg();
+      my $resp_code = $client->response_code();
+      my $resp_msg = $client->response_msg();
+      $client->quit();
 
-      my $expected;
-
-      $expected = 230;
+      my $expected = 230;
       $self->assert($expected == $resp_code,
-        test_msg("Expected $expected, got $resp_code"));
+        test_msg("Expected response code $expected, got $resp_code"));
 
-      $expected = "User $user logged in";
+      $expected = "User $setup->{user} logged in";
       $self->assert($expected eq $resp_msg,
-        test_msg("Expected '$expected', got '$resp_msg'"));
+        test_msg("Expected response message '$expected', got '$resp_msg'"));
     };
-
     if ($@) {
       $ex = $@;
     }
@@ -143,7 +136,7 @@ sub radius_auth {
     $wfh->flush();
 
   } else {
-    eval { server_wait($config_file, $rfh) };
+    eval { server_wait($setup->{config_file}, $rfh) };
     if ($@) {
       warn($@);
       exit 1;
@@ -152,55 +145,39 @@ sub radius_auth {
     exit 0;
   }
 
-  server_stop($pid_file);
-
+  server_stop($setup->{pid_file});
   $self->assert_child_ok($pid);
 
-  if ($ex) {
-    test_append_logfile($log_file, $ex);
-    unlink($log_file);
-
-    die($ex);
-  }
-
-  unlink($log_file);
+  test_cleanup($setup, $ex);
 }
 
 sub radius_acct {
   my $self = shift;
   my $tmpdir = $self->{tmpdir};
 
-  my $config_file = "$tmpdir/radius.conf";
-  my $pid_file = File::Spec->rel2abs("$tmpdir/radius.pid");
-  my $scoreboard_file = File::Spec->rel2abs("$tmpdir/radius.scoreboard");
-
-  my $log_file = test_get_logfile();
-
-  my $user = $ENV{RADIUS_USER} ? $ENV{RADIUS_USER} : "proftpd";
-  my $passwd = $ENV{RADIUS_PASSWD} ? $ENV{RADIUS_PASSWD} : "test";
-  my $group = $ENV{RADIUS_GROUP} ? $ENV{RADIUS_GROUP} : 'ftpd';
-  my $home_dir = File::Spec->rel2abs($tmpdir);
-  my $uid = 1000;
-  my $gid = 1000;
-
-  # Make sure that, if we're running as root, that the home directory has
-  # permissions/privs set for the account we create
-  if ($< == 0) {
-    unless (chmod(0755, $home_dir)) {
-      die("Can't set perms on $home_dir to 0755: $!");
-    }
-
-    unless (chown($uid, $gid, $home_dir)) {
-      die("Can't set owner of $home_dir to $uid/$gid: $!");
-    }
+  my $radius_user = 'proftpd';
+  if ($ENV{RADIUS_USER}) {
+    $radius_user = $ENV{RADIUS_USER};
   }
 
+  my $radius_passwd = 'test';
+  if ($ENV{RADIUS_PASSWD}) {
+    $radius_passwd = $ENV{RADIUS_PASSWD};
+  }
+
+  my $radius_server = '127.0.0.1';
+  if ($ENV{RADIUS_HOST}) {
+    $radius_server = $ENV{RADIUS_HOST};
+  }
+
+  my $setup = test_setup($tmpdir, 'radius', $radius_user, $radius_passwd);
+
   my $config = {
-    PidFile => $pid_file,
-    ScoreboardFile => $scoreboard_file,
-    SystemLog => $log_file,
-    TraceLog => $log_file,
-    Trace => 'auth:10',
+    PidFile => $setup->{pid_file},
+    ScoreboardFile => $setup->{scoreboard_file},
+    SystemLog => $setup->{log_file},
+    TraceLog => $setup->{log_file},
+    Trace => 'auth:10 radius:20',
 
     IfModules => {
       'mod_delay.c' => {
@@ -209,16 +186,17 @@ sub radius_acct {
 
       'mod_radius.c' => {
         RadiusEngine => 'on',
-        RadiusLog => $log_file,
-        RadiusAuthServer => "localhost:1812 testing123 5",
-        RadiusAcctServer => "localhost:1813 testing123 5",
-        RadiusUserInfo => "$uid $gid $home_dir /bin/bash",
-        RadiusGroupInfo => "$group $user $gid",
+        RadiusLog => $setup->{log_file},
+        RadiusAuthServer => "$radius_server:1812 testing123 5",
+        RadiusAcctServer => "$radius_server:1813 testing123 5",
+        RadiusUserInfo => "$setup->{uid} $setup->{gid} $setup->{home_dir} /bin/bash",
+        RadiusGroupInfo => "$setup->{group} $setup->{user} $setup->{gid}",
       },
     },
   };
 
-  my ($port, $config_user, $config_group) = config_write($config_file, $config);
+  my ($port, $config_user, $config_group) = config_write($setup->{config_file},
+    $config);
 
   # Open pipes, for use between the parent and child processes.  Specifically,
   # the child will indicate when it's done with its test by writing a message
@@ -239,24 +217,24 @@ sub radius_acct {
   defined(my $pid = fork()) or die("Can't fork: $!");
   if ($pid) {
     eval {
+      # Allow for server startup
+      sleep(1);
+
       my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
-      $client->login($user, $passwd);
+      $client->login($setup->{user}, $setup->{passwd});
 
-      my ($resp_code, $resp_msg);
-      $resp_code = $client->response_code();
-      $resp_msg = $client->response_msg();
+      my $resp_code = $client->response_code();
+      my $resp_msg = $client->response_msg();
+      $client->quit();
 
-      my $expected;
-
-      $expected = 230;
+      my $expected = 230;
       $self->assert($expected == $resp_code,
-        test_msg("Expected $expected, got $resp_code"));
+        test_msg("Expected response code $expected, got $resp_code"));
 
-      $expected = "User $user logged in";
+      $expected = "User $setup->{user} logged in";
       $self->assert($expected eq $resp_msg,
-        test_msg("Expected '$expected', got '$resp_msg'"));
+        test_msg("Expected response message '$expected', got '$resp_msg'"));
     };
-
     if ($@) {
       $ex = $@;
     }
@@ -265,7 +243,7 @@ sub radius_acct {
     $wfh->flush();
 
   } else {
-    eval { server_wait($config_file, $rfh) };
+    eval { server_wait($setup->{config_file}, $rfh) };
     if ($@) {
       warn($@);
       exit 1;
@@ -274,55 +252,39 @@ sub radius_acct {
     exit 0;
   }
 
-  server_stop($pid_file);
-
+  server_stop($setup->{pid_file});
   $self->assert_child_ok($pid);
 
-  if ($ex) {
-    test_append_logfile($log_file, $ex);
-    unlink($log_file);
-
-    die($ex);
-  }
-
-  unlink($log_file);
+  test_cleanup($setup, $ex);
 }
 
 sub radius_acct_aborted_xfer_bug3278 {
   my $self = shift;
   my $tmpdir = $self->{tmpdir};
 
-  my $config_file = "$tmpdir/radius.conf";
-  my $pid_file = File::Spec->rel2abs("$tmpdir/radius.pid");
-  my $scoreboard_file = File::Spec->rel2abs("$tmpdir/radius.scoreboard");
-
-  my $log_file = test_get_logfile();
-
-  my $user = $ENV{RADIUS_USER} ? $ENV{RADIUS_USER} : "proftpd";
-  my $passwd = $ENV{RADIUS_PASSWD} ? $ENV{RADIUS_PASSWD} : "test";
-  my $group = $ENV{RADIUS_GROUP} ? $ENV{RADIUS_GROUP} : 'ftpd';
-  my $home_dir = File::Spec->rel2abs($tmpdir);
-  my $uid = 1000;
-  my $gid = 1000;
-
-  # Make sure that, if we're running as root, that the home directory has
-  # permissions/privs set for the account we create
-  if ($< == 0) {
-    unless (chmod(0755, $home_dir)) {
-      die("Can't set perms on $home_dir to 0755: $!");
-    }
-
-    unless (chown($uid, $gid, $home_dir)) {
-      die("Can't set owner of $home_dir to $uid/$gid: $!");
-    }
+  my $radius_user = 'proftpd';
+  if ($ENV{RADIUS_USER}) {
+    $radius_user = $ENV{RADIUS_USER};
   }
 
+  my $radius_passwd = 'test';
+  if ($ENV{RADIUS_PASSWD}) {
+    $radius_passwd = $ENV{RADIUS_PASSWD};
+  }
+
+  my $radius_server = '127.0.0.1';
+  if ($ENV{RADIUS_HOST}) {
+    $radius_server = $ENV{RADIUS_HOST};
+  }
+
+  my $setup = test_setup($tmpdir, 'radius', $radius_user, $radius_passwd);
+
   my $config = {
-    PidFile => $pid_file,
-    ScoreboardFile => $scoreboard_file,
-    SystemLog => $log_file,
-    TraceLog => $log_file,
-    Trace => 'auth:10',
+    PidFile => $setup->{pid_file},
+    ScoreboardFile => $setup->{scoreboard_file},
+    SystemLog => $setup->{log_file},
+    TraceLog => $setup->{log_file},
+    Trace => 'auth:10 radius:20',
 
     IfModules => {
       'mod_delay.c' => {
@@ -331,16 +293,17 @@ sub radius_acct_aborted_xfer_bug3278 {
 
       'mod_radius.c' => {
         RadiusEngine => 'on',
-        RadiusLog => $log_file,
-        RadiusAuthServer => "localhost:1812 testing123 5",
-        RadiusAcctServer => "localhost:1813 testing123 5",
-        RadiusUserInfo => "$uid $gid $home_dir /bin/bash",
-        RadiusGroupInfo => "$group $user $gid",
+        RadiusLog => $setup->{log_file},
+        RadiusAuthServer => "$radius_server:1812 testing123 5",
+        RadiusAcctServer => "$radius_server:1813 testing123 5",
+        RadiusUserInfo => "$setup->{uid} $setup->{gid} $setup->{home_dir} /bin/bash",
+        RadiusGroupInfo => "$setup->{group} $setup->{user} $setup->{gid}",
       },
     },
   };
 
-  my ($port, $config_user, $config_group) = config_write($config_file, $config);
+  my ($port, $config_user, $config_group) = config_write($setup->{config_file},
+    $config);
 
   # Open pipes, for use between the parent and child processes.  Specifically,
   # the child will indicate when it's done with its test by writing a message
@@ -361,22 +324,22 @@ sub radius_acct_aborted_xfer_bug3278 {
   defined(my $pid = fork()) or die("Can't fork: $!");
   if ($pid) {
     eval {
+      # Allow for server startup
+      sleep(1);
+
       my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
-      $client->login($user, $passwd);
+      $client->login($setup->{user}, $setup->{passwd});
 
-      my ($resp_code, $resp_msg);
-      $resp_code = $client->response_code();
-      $resp_msg = $client->response_msg();
+      my $resp_code = $client->response_code();
+      my $resp_msg = $client->response_msg();
 
-      my $expected;
-
-      $expected = 230;
+      my $expected = 230;
       $self->assert($expected == $resp_code,
-        test_msg("Expected $expected, got $resp_code"));
+        test_msg("Expected response code $expected, got $resp_code"));
 
-      $expected = "User $user logged in";
+      $expected = "User $setup->{user} logged in";
       $self->assert($expected eq $resp_msg,
-        test_msg("Expected '$expected', got '$resp_msg'"));
+        test_msg("Expected response message '$expected', got '$resp_msg'"));
 
       my $conn = $client->stor_raw('test.txt');
       unless ($conn) {
@@ -391,7 +354,6 @@ sub radius_acct_aborted_xfer_bug3278 {
 
       $client->quit();
     };
-
     if ($@) {
       $ex = $@;
     }
@@ -400,7 +362,7 @@ sub radius_acct_aborted_xfer_bug3278 {
     $wfh->flush();
 
   } else {
-    eval { server_wait($config_file, $rfh) };
+    eval { server_wait($setup->{config_file}, $rfh) };
     if ($@) {
       warn($@);
       exit 1;
@@ -409,55 +371,43 @@ sub radius_acct_aborted_xfer_bug3278 {
     exit 0;
   }
 
-  server_stop($pid_file);
-
+  server_stop($setup->{pid_file});
   $self->assert_child_ok($pid);
 
-  if ($ex) {
-    test_append_logfile($log_file, $ex);
-    unlink($log_file);
-
-    die($ex);
-  }
-
-  unlink($log_file);
+  test_cleanup($setup, $ex);
 }
 
 sub radius_userinfo_var_u {
   my $self = shift;
   my $tmpdir = $self->{tmpdir};
 
-  my $config_file = "$tmpdir/radius.conf";
-  my $pid_file = File::Spec->rel2abs("$tmpdir/radius.pid");
-  my $scoreboard_file = File::Spec->rel2abs("$tmpdir/radius.scoreboard");
-
-  my $log_file = test_get_logfile();
-
-  my $user = $ENV{RADIUS_USER} ? $ENV{RADIUS_USER} : "proftpd";
-  my $passwd = $ENV{RADIUS_PASSWD} ? $ENV{RADIUS_PASSWD} : "test";
-  my $group = $ENV{RADIUS_GROUP} ? $ENV{RADIUS_GROUP} : 'ftpd';
-  my $home_dir = File::Spec->rel2abs($tmpdir);
-  my $uid = 1000;
-  my $gid = 1000;
-
-  # Make sure that, if we're running as root, that the home directory has
-  # permissions/privs set for the account we create
-  if ($< == 0) {
-    unless (chmod(0755, $home_dir)) {
-      die("Can't set perms on $home_dir to 0755: $!");
-    }
-
-    unless (chown($uid, $gid, $home_dir)) {
-      die("Can't set owner of $home_dir to $uid/$gid: $!");
-    }
+  my $radius_user = 'proftpd';
+  if ($ENV{RADIUS_USER}) {
+    $radius_user = $ENV{RADIUS_USER};
   }
 
+  my $radius_passwd = 'test';
+  if ($ENV{RADIUS_PASSWD}) {
+    $radius_passwd = $ENV{RADIUS_PASSWD};
+  }
+
+  my $radius_server = '127.0.0.1';
+  if ($ENV{RADIUS_HOST}) {
+    $radius_server = $ENV{RADIUS_HOST};
+  }
+
+  my $setup = test_setup($tmpdir, 'radius', $radius_user, $radius_passwd);
+
+  # Note: This UID/GID needs to match what's on the filesystem.
+  my $uid = 1001;
+  my $gid = 1001;
+
   my $config = {
-    PidFile => $pid_file,
-    ScoreboardFile => $scoreboard_file,
-    SystemLog => $log_file,
-    TraceLog => $log_file,
-    Trace => 'auth:10',
+    PidFile => $setup->{pid_file},
+    ScoreboardFile => $setup->{scoreboard_file},
+    SystemLog => $setup->{log_file},
+    TraceLog => $setup->{log_file},
+    Trace => 'auth:10 radius:20',
 
     IfModules => {
       'mod_delay.c' => {
@@ -466,15 +416,16 @@ sub radius_userinfo_var_u {
 
       'mod_radius.c' => {
         RadiusEngine => 'on',
-        RadiusLog => $log_file,
-        RadiusAuthServer => "localhost:1812 testing123 5",
+        RadiusLog => $setup->{log_file},
+        RadiusAuthServer => "$radius_server:1812 testing123 5",
         RadiusUserInfo => "$uid $gid /home/%u /bin/bash",
-        RadiusGroupInfo => "$group $user $gid",
+        RadiusGroupInfo => "$setup->{group} $setup->{user} $gid",
       },
     },
   };
 
-  my ($port, $config_user, $config_group) = config_write($config_file, $config);
+  my ($port, $config_user, $config_group) = config_write($setup->{config_file},
+    $config);
 
   # Open pipes, for use between the parent and child processes.  Specifically,
   # the child will indicate when it's done with its test by writing a message
@@ -495,24 +446,24 @@ sub radius_userinfo_var_u {
   defined(my $pid = fork()) or die("Can't fork: $!");
   if ($pid) {
     eval {
+      # Allow for server startup
+      sleep(1);
+
       my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
-      $client->login($user, $passwd);
+      $client->login($setup->{user}, $setup->{passwd});
 
-      my ($resp_code, $resp_msg);
-      $resp_code = $client->response_code();
-      $resp_msg = $client->response_msg();
+      my $resp_code = $client->response_code();
+      my $resp_msg = $client->response_msg();
+      $client->quit();
 
-      my $expected;
-
-      $expected = 230;
+      my $expected = 230;
       $self->assert($expected == $resp_code,
-        test_msg("Expected $expected, got $resp_code"));
+        test_msg("Expected response code $expected, got $resp_code"));
 
-      $expected = "User $user logged in";
+      $expected = "User $setup->{user} logged in";
       $self->assert($expected eq $resp_msg,
         test_msg("Expected '$expected', got '$resp_msg'"));
     };
-
     if ($@) {
       $ex = $@;
     }
@@ -521,7 +472,7 @@ sub radius_userinfo_var_u {
     $wfh->flush();
 
   } else {
-    eval { server_wait($config_file, $rfh) };
+    eval { server_wait($setup->{config_file}, $rfh) };
     if ($@) {
       warn($@);
       exit 1;
@@ -530,18 +481,10 @@ sub radius_userinfo_var_u {
     exit 0;
   }
 
-  server_stop($pid_file);
-
+  server_stop($setup->{pid_file});
   $self->assert_child_ok($pid);
 
-  if ($ex) {
-    test_append_logfile($log_file, $ex);
-    unlink($log_file);
-
-    die($ex);
-  }
-
-  unlink($log_file);
+  test_cleanup($setup, $ex);
 }
 
 1;
