@@ -825,6 +825,7 @@ support for the various SFTP extensions supported by <code>mod_sftp</code>.
 The extension names used for the <code>SFTPExtensions</code> directive are:
 <ul>
   <li>checkFile
+  <li>copyData
   <li>copyFile
   <li>fsync
   <li>hardlink
@@ -845,8 +846,8 @@ All extensions <i>except</i> <code>vendorID</code> <b>and</b>
 To enable an extension, preface the extension name with a '+' (plus) character;
 to disable the extension, use a '-' (minus) character prefix.  For example:
 <pre>
-  # Allow the copy-file extension, but not version-select
-  SFTPExtensions +copyFile -versionSelect
+  # Allow the copy-file and copy-data extensions, but not version-select
+  SFTPExtensions +copyData +copyFile -versionSelect
 </pre>
 
 <p>
