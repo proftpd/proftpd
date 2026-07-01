@@ -1380,6 +1380,20 @@ MODRET set_sftpextensions(cmd_rec *cmd) {
           break;
       }
 
+    } else if (strcasecmp(ext, "copyData") == 0) {
+      switch (action) {
+        case '-':
+          ext_flags &= ~SFTP_FXP_EXT_COPY_DATA;
+          break;
+
+        case '+':
+          ext_flags |= SFTP_FXP_EXT_COPY_DATA;
+          break;
+
+        default:
+          break;
+      }
+
     } else if (strcasecmp(ext, "copyFile") == 0) {
       switch (action) {
         case '-':
