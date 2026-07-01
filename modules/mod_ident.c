@@ -90,8 +90,12 @@ static char *ident_lookup(pool *p, conn_t *conn) {
 
   ident_conn = pr_inet_create_conn(p, -1, bind_addr, INPORT_ANY, FALSE);
   if (ident_conn == NULL) {
+    int xerrno = errno;
+
     pr_trace_msg(trace_channel, 3, "error creating connection: %s",
-      strerror(errno));
+      strerror(xerrno));
+
+    errno = xerrno;
     return NULL;
   }
 
@@ -367,7 +371,7 @@ static int ident_sess_init(void) {
   pr_log_debug(DEBUG6, MOD_IDENT_VERSION ": performing ident lookup");
 
   ident = ident_lookup(tmp_pool, session.c);
-  if (ident) {
+  if (ident != NULL) {
     pr_log_debug(DEBUG6, MOD_IDENT_VERSION ": ident lookup returned '%s'",
       ident);
 
