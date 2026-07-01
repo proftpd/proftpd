@@ -607,16 +607,27 @@ static int recv_perms(pool *p, uint32_t channel_id, char *mode_str,
 
 static int recv_filesz(pool *p, uint32_t channel_id, const char *size_str,
     off_t *filesz) {
-  register unsigned int i;
+  char *endp = NULL;
+  unsigned long long sz;
+  *filesz = 0;
 
-  /* The file size field could be of arbitrary length. */
-  for (i = 0, *filesz = 0; PR_ISDIGIT(size_str[i]); i++) {
-    pr_signals_handle();
+#if defined(HAVE_STROULL)
+  sz = strtoull(size_str, &endp, 10);
+#else
+  sz = strtoul(size_str, &endp, 10);
+#endif /* HAVE_STROULL */
 
-    *filesz = (*filesz * 10) + (size_str[i] - '0');
+  *filesz = (off_t) sz;
+
+  /* Watch for cases where the sent file size might overflow our size type. */
+  if (*filesz < 0) {
+    pr_trace_msg(trace_channel, 2, "file size out of range");
+    write_confirm(p, channel_id, 1, "file size out of range");
+    return -1;
   }
 
-  if (size_str[i] != ' ') {
+  if (endp == NULL ||
+      *endp != ' ') {
     pr_trace_msg(trace_channel, 2, "file size not followed by space delimiter");
     write_confirm(p, channel_id, 1, "file size not delimited");
     return -1;
