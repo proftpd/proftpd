@@ -23,12 +23,13 @@
 
 #include "mod_sftp.h"
 
+#include "ssh2.h"
 #include "msg.h"
 #include "packet.h"
 #include "crypto.h"
 #include "compress.h"
 
-#ifdef HAVE_ZLIB_H
+#if defined(HAVE_ZLIB_H)
 #include <zlib.h>
 
 static const char *trace_channel = "ssh2";
@@ -275,6 +276,16 @@ int sftp_compress_read_data(struct ssh2_packet *pkt) {
 
               /* Keep doubling the size until it is large enough. */
               new_sz *= 2;
+            }
+
+            if (new_sz > SFTP_MAX_PACKET_LEN) {
+              (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
+                "decompression error: inflated payload size (%lu bytes) "
+                "exceeds %lu byte maximum", (unsigned long) new_sz,
+                (unsigned long) SFTP_MAX_PACKET_LEN);
+              destroy_pool(sub_pool);
+              errno = EIO;
+              return -1;
             }
 
             pr_trace_msg(trace_channel, 20,
