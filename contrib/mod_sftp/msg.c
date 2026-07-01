@@ -287,10 +287,10 @@ uint32_t sftp_msg_read_mpint2(pool *p, unsigned char **buf, uint32_t *buflen,
     return 0;
   }
 
-  if (len > (1024 * 16)) {
+  if (mpint_len > (1024 * 16)) {
     (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
       "message format error: unable to handle mpint of %lu bytes",
-      (unsigned long) len);
+      (unsigned long) mpint_len);
     return 0;
   }
 
