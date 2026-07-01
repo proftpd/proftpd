@@ -280,40 +280,9 @@ sub copy_file {
 sub copy_file_no_login_bug4169 {
   my $self = shift;
   my $tmpdir = $self->{tmpdir};
+  my $setup = test_setup($tmpdir, 'copy');
 
-  my $config_file = "$tmpdir/copy.conf";
-  my $pid_file = File::Spec->rel2abs("$tmpdir/copy.pid");
-  my $scoreboard_file = File::Spec->rel2abs("$tmpdir/copy.scoreboard");
-
-  my $log_file = File::Spec->rel2abs('tests.log');
-
-  my $auth_user_file = File::Spec->rel2abs("$tmpdir/copy.passwd");
-  my $auth_group_file = File::Spec->rel2abs("$tmpdir/copy.group");
-
-  my $user = 'proftpd';
-  my $passwd = 'test';
-  my $group = 'ftpd';
-  my $home_dir = File::Spec->rel2abs($tmpdir);
-  my $uid = 500;
-  my $gid = 500;
-
-  # Make sure that, if we're running as root, that the home directory has
-  # permissions/privs set for the account we create
-  if ($< == 0) {
-    unless (chmod(0755, $home_dir)) {
-      die("Can't set perms on $home_dir to 0755: $!");
-    }
-
-    unless (chown($uid, $gid, $home_dir)) {
-      die("Can't set owner of $home_dir to $uid/$gid: $!");
-    }
-  }
-
-  auth_user_write($auth_user_file, $user, $passwd, $uid, $gid, $home_dir,
-    '/bin/bash');
-  auth_group_write($auth_group_file, $group, $gid, $user);
-
-  my $src_file = File::Spec->rel2abs("$home_dir/foo.txt");
+  my $src_file = File::Spec->rel2abs("$setup->{home_dir}/foo.txt");
   if (open(my $fh, "> $src_file")) {
     print $fh "Hello, World!\n";
 
@@ -325,15 +294,15 @@ sub copy_file_no_login_bug4169 {
     die("Can't open $src_file: $!");
   }
 
-  my $dst_file = File::Spec->rel2abs("$home_dir/bar.txt");
+  my $dst_file = File::Spec->rel2abs("$setup->{home_dir}/bar.txt");
 
   my $config = {
-    PidFile => $pid_file,
-    ScoreboardFile => $scoreboard_file,
-    SystemLog => $log_file,
+    PidFile => $setup->{pid_file},
+    ScoreboardFile => $setup->{scoreboard_file},
+    SystemLog => $setup->{log_file},
 
-    AuthUserFile => $auth_user_file,
-    AuthGroupFile => $auth_group_file,
+    AuthUserFile => $setup->{auth_user_file},
+    AuthGroupFile => $setup->{auth_group_file},
     AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
@@ -343,7 +312,8 @@ sub copy_file_no_login_bug4169 {
     },
   };
 
-  my ($port, $config_user, $config_group) = config_write($config_file, $config);
+  my ($port, $config_user, $config_group) = config_write($setup->{config_file},
+    $config);
 
   # Open pipes, for use between the parent and child processes.  Specifically,
   # the child will indicate when it's done with its test by writing a message
@@ -369,9 +339,9 @@ sub copy_file_no_login_bug4169 {
 
       my $resp_code = $client->response_code();
       my $resp_msg = $client->response_msg();
+      $client->quit();
 
-      my $expected;
-      $expected = 530;
+      my $expected = 530;
       $self->assert($expected == $resp_code,
         test_msg("Expected response code $expected, got $resp_code"));
 
@@ -379,7 +349,6 @@ sub copy_file_no_login_bug4169 {
       $self->assert($expected eq $resp_msg,
         test_msg("Expected response message '$expected', got '$resp_msg'"));
     };
-
     if ($@) {
       $ex = $@;
     }
@@ -388,7 +357,7 @@ sub copy_file_no_login_bug4169 {
     $wfh->flush();
 
   } else {
-    eval { server_wait($config_file, $rfh) };
+    eval { server_wait($setup->{config_file}, $rfh) };
     if ($@) {
       warn($@);
       exit 1;
@@ -398,53 +367,18 @@ sub copy_file_no_login_bug4169 {
   }
 
   # Stop server
-  server_stop($pid_file);
-
+  server_stop($setup->{pid_file});
   $self->assert_child_ok($pid);
 
-  if ($ex) {
-    die($ex);
-  }
-
-  unlink($log_file);
+  test_cleanup($setup, $ex);
 }
 
 sub copy_dir {
   my $self = shift;
   my $tmpdir = $self->{tmpdir};
+  my $setup = test_setup($tmpdir, 'copy');
 
-  my $config_file = "$tmpdir/copy.conf";
-  my $pid_file = File::Spec->rel2abs("$tmpdir/copy.pid");
-  my $scoreboard_file = File::Spec->rel2abs("$tmpdir/copy.scoreboard");
-
-  my $log_file = File::Spec->rel2abs('tests.log');
-
-  my $auth_user_file = File::Spec->rel2abs("$tmpdir/copy.passwd");
-  my $auth_group_file = File::Spec->rel2abs("$tmpdir/copy.group");
-
-  my $user = 'proftpd';
-  my $passwd = 'test';
-  my $home_dir = File::Spec->rel2abs($tmpdir);
-  my $uid = 500;
-  my $gid = 500;
-
-  # Make sure that, if we're running as root, that the home directory has
-  # permissions/privs set for the account we create
-  if ($< == 0) {
-    unless (chmod(0755, $home_dir)) {
-      die("Can't set perms on $home_dir to 0755: $!");
-    }
-
-    unless (chown($uid, $gid, $home_dir)) {
-      die("Can't set owner of $home_dir to $uid/$gid: $!");
-    }
-  }
-
-  auth_user_write($auth_user_file, $user, $passwd, $uid, $gid, $home_dir,
-    '/bin/bash');
-  auth_group_write($auth_group_file, 'ftpd', $gid, $user);
-
-  my $src_dir = File::Spec->rel2abs("$home_dir/foo");
+  my $src_dir = File::Spec->rel2abs("$setup->{home_dir}/foo");
   mkpath($src_dir);
 
   my $src_file = File::Spec->rel2abs("$src_dir/test.txt");
@@ -459,18 +393,30 @@ sub copy_dir {
     die("Can't open $src_file: $!");
   }
 
-  my $dst_dir = File::Spec->rel2abs("$home_dir/bar/baz");
+  my $dst_dir = File::Spec->rel2abs("$setup->{home_dir}/bar/baz");
   mkpath($dst_dir);
 
   my $dst_file = File::Spec->rel2abs("$dst_dir/test.txt");
 
-  my $config = {
-    PidFile => $pid_file,
-    ScoreboardFile => $scoreboard_file,
-    SystemLog => $log_file,
+  # Make sure that, if we're running as root, that the test directories have
+  # permissions/privs set for the account we create
+  if ($< == 0) {
+    unless (chmod(0755, $src_dir, $dst_dir)) {
+      die("Can't set perms on $src_dir, $dst_dir to 0755: $!");
+    }
 
-    AuthUserFile => $auth_user_file,
-    AuthGroupFile => $auth_group_file,
+    unless (chown($setup->{uid}, $setup->{gid}, $src_dir, $src_file, $dst_dir)) {
+      die("Can't set owner of $src_dir to $setup->{uid}/$setup->{gid}: $!");
+    }
+  }
+
+  my $config = {
+    PidFile => $setup->{pid_file},
+    ScoreboardFile => $setup->{scoreboard_file},
+    SystemLog => $setup->{log_file},
+
+    AuthUserFile => $setup->{auth_user_file},
+    AuthGroupFile => $setup->{auth_group_file},
     AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
@@ -480,7 +426,8 @@ sub copy_dir {
     },
   };
 
-  my ($port, $config_user, $config_group) = config_write($config_file, $config);
+  my ($port, $config_user, $config_group) = config_write($setup->{config_file},
+    $config);
 
   # Open pipes, for use between the parent and child processes.  Specifically,
   # the child will indicate when it's done with its test by writing a message
@@ -498,20 +445,18 @@ sub copy_dir {
   if ($pid) {
     eval {
       my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
-      $client->login($user, $passwd);
+      $client->login($setup->{user}, $setup->{passwd});
 
-      my ($resp_code, $resp_msg);
+      my ($resp_code, $resp_msg) = $client->site('COPY', 'foo', 'bar/baz');
+      $client->quit();
 
-      ($resp_code, $resp_msg) = $client->site('COPY', 'foo', 'bar/baz');
-
-      my $expected;
-      $expected = 200;
+      my $expected = 200;
       $self->assert($expected == $resp_code,
-        test_msg("Expected $expected, got $resp_code"));
+        test_msg("Expected response code $expected, got $resp_code"));
 
       $expected = "SITE COPY command successful";
       $self->assert($expected eq $resp_msg,
-        test_msg("Expected '$expected', got '$resp_msg'"));
+        test_msg("Expected response message '$expected', got '$resp_msg'"));
 
       unless (-d $dst_dir) {
         die("Directory $dst_dir does not exist as expected");
@@ -521,7 +466,6 @@ sub copy_dir {
         die("File $dst_file does not exist as expected");
       }
     };
-
     if ($@) {
       $ex = $@;
     }
@@ -530,7 +474,7 @@ sub copy_dir {
     $wfh->flush();
 
   } else {
-    eval { server_wait($config_file, $rfh) };
+    eval { server_wait($setup->{config_file}, $rfh) };
     if ($@) {
       warn($@);
       exit 1;
@@ -540,62 +484,27 @@ sub copy_dir {
   }
 
   # Stop server
-  server_stop($pid_file);
-
+  server_stop($setup->{pid_file});
   $self->assert_child_ok($pid);
 
-  if ($ex) {
-    die($ex);
-  }
-
-  unlink($log_file);
+  test_cleanup($setup, $ex);
 }
 
 sub copy_enoent {
   my $self = shift;
   my $tmpdir = $self->{tmpdir};
+  my $setup = test_setup($tmpdir, 'copy');
 
-  my $config_file = "$tmpdir/copy.conf";
-  my $pid_file = File::Spec->rel2abs("$tmpdir/copy.pid");
-  my $scoreboard_file = File::Spec->rel2abs("$tmpdir/copy.scoreboard");
-
-  my $log_file = File::Spec->rel2abs('tests.log');
-
-  my $auth_user_file = File::Spec->rel2abs("$tmpdir/copy.passwd");
-  my $auth_group_file = File::Spec->rel2abs("$tmpdir/copy.group");
-
-  my $user = 'proftpd';
-  my $passwd = 'test';
-  my $home_dir = File::Spec->rel2abs($tmpdir);
-  my $uid = 500;
-  my $gid = 500;
-
-  # Make sure that, if we're running as root, that the home directory has
-  # permissions/privs set for the account we create
-  if ($< == 0) {
-    unless (chmod(0755, $home_dir)) {
-      die("Can't set perms on $home_dir to 0755: $!");
-    }
-
-    unless (chown($uid, $gid, $home_dir)) {
-      die("Can't set owner of $home_dir to $uid/$gid: $!");
-    }
-  }
-
-  auth_user_write($auth_user_file, $user, $passwd, $uid, $gid, $home_dir,
-    '/bin/bash');
-  auth_group_write($auth_group_file, 'ftpd', $gid, $user);
-
-  my $src_file = File::Spec->rel2abs("$home_dir/foo.txt");
-  my $dst_file = File::Spec->rel2abs("$home_dir/bar.txt");
+  my $src_file = File::Spec->rel2abs("$setup->{home_dir}/foo.txt");
+  my $dst_file = File::Spec->rel2abs("$setup->{home_dir}/bar.txt");
 
   my $config = {
-    PidFile => $pid_file,
-    ScoreboardFile => $scoreboard_file,
-    SystemLog => $log_file,
+    PidFile => $setup->{pid_file},
+    ScoreboardFile => $setup->{scoreboard_file},
+    SystemLog => $setup->{log_file},
 
-    AuthUserFile => $auth_user_file,
-    AuthGroupFile => $auth_group_file,
+    AuthUserFile => $setup->{auth_user_file},
+    AuthGroupFile => $setup->{auth_group_file},
     AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
@@ -605,7 +514,8 @@ sub copy_enoent {
     },
   };
 
-  my ($port, $config_user, $config_group) = config_write($config_file, $config);
+  my ($port, $config_user, $config_group) = config_write($setup->{config_file},
+    $config);
 
   # Open pipes, for use between the parent and child processes.  Specifically,
   # the child will indicate when it's done with its test by writing a message
@@ -623,31 +533,29 @@ sub copy_enoent {
   if ($pid) {
     eval {
       my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
-      $client->login($user, $passwd);
+      $client->login($setup->{user}, $setup->{passwd});
 
-      my ($resp_code, $resp_msg);
       eval { $client->site('COPY', 'foo.txt', 'bar.txt') };
       unless ($@) {
         die("SITE COPY succeeded unexpectedly");
       }
 
-      $resp_code = $client->response_code();
-      $resp_msg = $client->response_msg();
+      my $resp_code = $client->response_code();
+      my $resp_msg = $client->response_msg();
+      $client->quit();
 
-      my $expected;
-      $expected = 550;
+      my $expected = 550;
       $self->assert($expected == $resp_code,
-        test_msg("Expected $expected, got $resp_code"));
+        test_msg("Expected response code $expected, got $resp_code"));
 
       $expected = "COPY: No such file or directory";
       $self->assert($expected eq $resp_msg,
-        test_msg("Expected '$expected', got '$resp_msg'"));
+        test_msg("Expected response message '$expected', got '$resp_msg'"));
 
       if (-f $dst_file) {
         die("File $dst_file exists unexpectedly");
       }
     };
-
     if ($@) {
       $ex = $@;
     }
@@ -656,7 +564,7 @@ sub copy_enoent {
     $wfh->flush();
 
   } else {
-    eval { server_wait($config_file, $rfh) };
+    eval { server_wait($setup->{config_file}, $rfh) };
     if ($@) {
       warn($@);
       exit 1;
@@ -666,15 +574,10 @@ sub copy_enoent {
   }
 
   # Stop server
-  server_stop($pid_file);
-
+  server_stop($setup->{pid_file});
   $self->assert_child_ok($pid);
 
-  if ($ex) {
-    die($ex);
-  }
-
-  unlink($log_file);
+  test_cleanup($setup, $ex);
 }
 
 sub copy_before_auth {
@@ -2804,39 +2707,9 @@ EOS
 sub copy_cpfr_cpto {
   my $self = shift;
   my $tmpdir = $self->{tmpdir};
+  my $setup = test_setup($tmpdir, 'copy');
 
-  my $config_file = "$tmpdir/copy.conf";
-  my $pid_file = File::Spec->rel2abs("$tmpdir/copy.pid");
-  my $scoreboard_file = File::Spec->rel2abs("$tmpdir/copy.scoreboard");
-
-  my $log_file = File::Spec->rel2abs('tests.log');
-
-  my $auth_user_file = File::Spec->rel2abs("$tmpdir/copy.passwd");
-  my $auth_group_file = File::Spec->rel2abs("$tmpdir/copy.group");
-
-  my $user = 'proftpd';
-  my $passwd = 'test';
-  my $home_dir = File::Spec->rel2abs($tmpdir);
-  my $uid = 500;
-  my $gid = 500;
-
-  # Make sure that, if we're running as root, that the home directory has
-  # permissions/privs set for the account we create
-  if ($< == 0) {
-    unless (chmod(0755, $home_dir)) {
-      die("Can't set perms on $home_dir to 0755: $!");
-    }
-
-    unless (chown($uid, $gid, $home_dir)) {
-      die("Can't set owner of $home_dir to $uid/$gid: $!");
-    }
-  }
-
-  auth_user_write($auth_user_file, $user, $passwd, $uid, $gid, $home_dir,
-    '/bin/bash');
-  auth_group_write($auth_group_file, 'ftpd', $gid, $user);
-
-  my $src_file = File::Spec->rel2abs("$home_dir/foo.txt");
+  my $src_file = File::Spec->rel2abs("$setup->{home_dir}/foo.txt");
   if (open(my $fh, "> $src_file")) {
     print $fh "Hello, World!\n";
 
@@ -2848,15 +2721,21 @@ sub copy_cpfr_cpto {
     die("Can't open $src_file: $!");
   }
 
-  my $dst_file = File::Spec->rel2abs("$home_dir/bar.txt");
+  my $dst_file = File::Spec->rel2abs("$setup->{home_dir}/bar.txt");
+
+  if ($< == 0) {
+    unless (chown($setup->{uid}, $setup->{gid}, $src_file)) {
+      die("Can't set owner of $src_file to $setup->{uid}/$setup->{gid}: $!");
+    }
+  }
 
   my $config = {
-    PidFile => $pid_file,
-    ScoreboardFile => $scoreboard_file,
-    SystemLog => $log_file,
+    PidFile => $setup->{pid_file},
+    ScoreboardFile => $setup->{scoreboard_file},
+    SystemLog => $setup->{log_file},
 
-    AuthUserFile => $auth_user_file,
-    AuthGroupFile => $auth_group_file,
+    AuthUserFile => $setup->{auth_user_file},
+    AuthGroupFile => $setup->{auth_group_file},
     AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
@@ -2866,7 +2745,8 @@ sub copy_cpfr_cpto {
     },
   };
 
-  my ($port, $config_user, $config_group) = config_write($config_file, $config);
+  my ($port, $config_user, $config_group) = config_write($setup->{config_file},
+    $config);
 
   # Open pipes, for use between the parent and child processes.  Specifically,
   # the child will indicate when it's done with its test by writing a message
@@ -2884,36 +2764,33 @@ sub copy_cpfr_cpto {
   if ($pid) {
     eval {
       my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
-      $client->login($user, $passwd);
+      $client->login($setup->{user}, $setup->{passwd});
 
-      my ($resp_code, $resp_msg);
+      my ($resp_code, $resp_msg) = $client->site('CPFR', 'foo.txt');
 
-      ($resp_code, $resp_msg) = $client->site('CPFR', 'foo.txt');
-
-      my $expected;
-      $expected = 350;
+      my $expected = 350;
       $self->assert($expected == $resp_code,
-        test_msg("Expected $expected, got $resp_code"));
+        test_msg("Expected response code $expected, got $resp_code"));
 
       $expected = "File or directory exists, ready for destination name";
       $self->assert($expected eq $resp_msg,
-        test_msg("Expected '$expected', got '$resp_msg'"));
+        test_msg("Expected response message '$expected', got '$resp_msg'"));
 
       ($resp_code, $resp_msg) = $client->site('CPTO', 'bar.txt');
+      $client->quit();
 
       $expected = 250;
       $self->assert($expected == $resp_code,
-        test_msg("Expected $expected, got $resp_code"));
+        test_msg("Expected response code $expected, got $resp_code"));
 
       $expected = "Copy successful";
       $self->assert($expected eq $resp_msg,
-        test_msg("Expected '$expected', got '$resp_msg'"));
+        test_msg("Expected response message '$expected', got '$resp_msg'"));
 
       unless (-f $dst_file) {
         die("File $dst_file does not exist as expected");
       }
     };
-
     if ($@) {
       $ex = $@;
     }
@@ -2922,7 +2799,7 @@ sub copy_cpfr_cpto {
     $wfh->flush();
 
   } else {
-    eval { server_wait($config_file, $rfh) };
+    eval { server_wait($setup->{config_file}, $rfh) };
     if ($@) {
       warn($@);
       exit 1;
@@ -2932,15 +2809,10 @@ sub copy_cpfr_cpto {
   }
 
   # Stop server
-  server_stop($pid_file);
-
+  server_stop($setup->{pid_file});
   $self->assert_child_ok($pid);
 
-  if ($ex) {
-    die($ex);
-  }
-
-  unlink($log_file);
+  test_cleanup($setup, $ex);
 }
 
 sub copy_cpfr_cpto_no_login_bug4169 {
