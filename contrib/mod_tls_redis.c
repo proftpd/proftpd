@@ -52,7 +52,7 @@ static pr_redis_t *sess_redis = NULL;
 #endif
 
 struct sesscache_entry {
-  uint32_t expires;
+  time_t expires;
   unsigned int sess_datalen;
   unsigned char sess_data[TLS_MAX_SSL_SESSION_SIZE];
 };
@@ -339,7 +339,7 @@ static int sess_cache_entry_decode_json(pool *p, void *value, size_t valuesz,
     errno = xerrno;
     return -1;
   }
-  se->expires = (uint32_t) number;
+  se->expires = (time_t) number;
 
   key = SESS_CACHE_JSON_KEY_DATA;
   res = entry_get_json_string(p, json, key, &text, entry);
