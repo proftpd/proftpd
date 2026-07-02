@@ -188,10 +188,8 @@ static pr_redis_t *redis = NULL;
 struct ban_cache_entry {
   int version;
 
-  /* Timestamp indicating when this entry last changed.  Ideally it will
-   * be a uint64_t value, but I don't know how portable that data type is yet.
-   */
-  uint32_t update_ts;
+  /* Timestamp indicating when this entry last changed.  */
+  time_t update_ts;
 
   /* IP address/port of origin/source server/vhost of this cache entry. */
   char *ip_addr;
@@ -498,7 +496,7 @@ static int ban_cache_entry_decode_json(pool *p, void *value, size_t valuesz,
   if (res < 0) {
     return -1;
   }
-  bce->update_ts = (uint32_t) number;
+  bce->update_ts = (time_t) number;
 
   key = BAN_CACHE_JSON_KEY_IP_ADDR;
   res = entry_get_json_string(p, json, key, &text, entry);
@@ -1366,7 +1364,7 @@ static int ban_list_add(pool *p, unsigned int type, unsigned int sid,
     memset(&bce, 0, sizeof(bce));
 
     bce.version = BAN_CACHE_VALUE_VERSION;
-    bce.update_ts = (uint32_t) time(NULL);
+    bce.update_ts = time(NULL);
 
     na = pr_netaddr_get_sess_local_addr();
     bce.ip_addr = (char *) pr_netaddr_get_ipstr(na);
