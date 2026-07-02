@@ -94,7 +94,11 @@ static int auth_cmd_chk_cb(cmd_rec *cmd) {
         int checked = TRUE;
 
         pr_response_add_err(R_530, _("Please login with USER and PASS"));
-        pr_table_add(cmd->notes, "mod_auth.checked-auth", &checked, 0);
+        if (pr_table_add(cmd->notes, "mod_auth.checked-auth",
+            &checked, 0) < 0) {
+          pr_trace_msg("auth", 9,
+            "error stashing 'mod_auth.checked-auth' note: %s", strerror(errno));
+        }
       }
 
       return FALSE;
@@ -743,7 +747,8 @@ MODRET auth_post_pass(cmd_rec *cmd) {
   login_succeeded(cmd->tmp_pool, user);
 
   /* Should we give up root privs completely here? */
-  c = find_config(main_server->conf, CONF_PARAM, "RootRevoke", FALSE);
+  c = find_config(main_server != NULL ? main_server->conf : cmd->server->conf,
+    CONF_PARAM, "RootRevoke", FALSE);
   if (c != NULL) {
     root_revoke = *((int *) c->argv[0]);
 
@@ -755,14 +760,15 @@ MODRET auth_post_pass(cmd_rec *cmd) {
     /* Do a recursive look for any UserOwner directives; honoring that
      * configuration also requires root privs.
      */
-    c = find_config(main_server->conf, CONF_PARAM, "UserOwner", TRUE);
+    c = find_config(main_server != NULL ? main_server->conf : cmd->server->conf,
+      CONF_PARAM, "UserOwner", TRUE);
     if (c != NULL) {
       pr_log_debug(DEBUG9, "retaining root privileges per UserOwner setting");
       root_revoke = FALSE;
     }
   }
 
-  if (root_revoke) {
+  if (root_revoke == TRUE) {
     pr_signals_block();
     PRIVS_ROOT
     PRIVS_REVOKE

@@ -5320,7 +5320,10 @@ static int fxp_handle_ext_copy_file(struct fxp_packet *fxp, char *src,
   xerrno = errno = 0;
 
   pr_fs_clear_cache2(dst);
-  pr_fsio_stat(dst, &st);
+  if (pr_fsio_stat(dst, &st) < 0) {
+    pr_trace_msg(trace_channel, 3, "copy-file: stat(2) error on '%s': %s",
+      dst, strerror(errno));
+  }
 
   fxp_cmd_dispatch(cmd);
 
@@ -5360,10 +5363,31 @@ static int fxp_handle_ext_fsync(struct fxp_packet *fxp,
   cmd = fxp_cmd_alloc(fxp->pool, "FSYNC", args);
   cmd->cmd_class = CL_MISC|CL_SFTP;
   cmd->cmd_id = SFTP_CMD_ID;
-  pr_cmd_dispatch_phase(cmd, PRE_CMD, 0);
 
   buflen = bufsz = FXP_RESPONSE_DATA_DEFAULT_SZ;
   buf = ptr = palloc(fxp->pool, bufsz);
+
+  if (pr_cmd_dispatch_phase(cmd, PRE_CMD, 0) < 0) {
+    status_code = SSH2_FX_PERMISSION_DENIED;
+
+    (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
+      "FSYNC of '%s' blocked by '%s' handler: %s", path,
+      (char *) cmd->argv[0], strerror(errno));
+
+    pr_trace_msg(trace_channel, 8, "sending response: STATUS %lu '%s'",
+      (unsigned long) status_code, fxp_strerror(status_code));
+
+    fxp_status_write(fxp->pool, &buf, &buflen, fxp->request_id, status_code,
+      fxp_strerror(status_code), NULL);
+
+    fxp_cmd_dispatch_err(cmd);
+
+    resp = fxp_packet_create(fxp->pool, fxp->channel_id);
+    resp->payload = ptr;
+    resp->payload_sz = (bufsz - buflen);
+
+    return fxp_packet_write(resp);
+  }
 
   res = fsync(PR_FH_FD(fxh->fh));
   if (res < 0) {
