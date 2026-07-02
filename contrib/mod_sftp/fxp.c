@@ -7835,7 +7835,11 @@ static int fxp_handle_close(struct fxp_packet *fxp) {
           "renaming of HiddenStore path '%s' to '%s' failed: %s",
           curr_path, real_path, strerror(xerrno));
 
-        pr_fsio_unlink(curr_path);
+        if (pr_fsio_unlink(curr_path) < 0) {
+          pr_trace_msg(trace_channel, 3,
+            "failed to unlink HiddenStores path '%s': %s", curr_path,
+            strerror(errno));
+        }
       }
     }
 
