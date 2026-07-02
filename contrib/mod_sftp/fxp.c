@@ -12133,6 +12133,30 @@ static int fxp_handle_realpath(struct fxp_packet *fxp) {
   fxb->bufsz = buflen = FXP_RESPONSE_NAME_DEFAULT_SZ;
   fxb->ptr = buf = palloc(fxp->pool, fxb->bufsz);
 
+  if (realpath_flags != SSH2_FXRP_NO_CHECK &&
+      realpath_flags != SSH2_FXRP_STAT_IF &&
+      realpath_flags != SSH2_FXRP_STAT_ALWAYS) {
+    uint32_t status_code = SSH2_FX_INVALID_PARAMETER;
+
+    (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
+      "REALPATH of '%s' rejected due to invalid flags %d", path,
+      realpath_flags);
+
+    pr_trace_msg(trace_channel, 8, "sending response: STATUS %lu '%s'",
+      (unsigned long) status_code, fxp_strerror(status_code));
+
+    fxp_status_write(fxp->pool, &buf, &buflen, fxp->request_id, status_code,
+      fxp_strerror(status_code), NULL);
+
+    fxp_cmd_dispatch_err(cmd);
+
+    resp = fxp_packet_create(fxp->pool, fxp->channel_id);
+    resp->payload = fxb->ptr;
+    resp->payload_sz = (fxb->bufsz - buflen);
+
+    return fxp_packet_write(resp);
+  }
+
   res = pr_cmd_dispatch_phase(cmd, PRE_CMD, 0);
   if (res < 0) {
     uint32_t status_code = SSH2_FX_PERMISSION_DENIED;
@@ -12309,14 +12333,14 @@ static int fxp_handle_realpath(struct fxp_packet *fxp) {
    /* draft-ietf-secsh-filexfer-13 says:
     *
     *  SSH_FXP_REALPATH_NO_CHECK:
-    *    NOT resolve symbolic links (thus use lstat(2))
+    *    do NOT resolve symbolic links (thus use lstat(2))
     *
     *  SSH_FXP_REALPATH_STAT_IF:
     *    stat(2) the file, but if the stat(2) fails, do NOT fail the request,
     *    but send a NAME with type UNKNOWN.
     *
     *  SSH_FXP_REALPATH_STAT_ALWAYS:
-    *   stat(2) the file, and return any error.
+    *    stat(2) the file, and return any error.
     */
 
     pr_fs_clear_cache2(path);
