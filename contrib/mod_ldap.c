@@ -27,7 +27,7 @@
 #include "conf.h"
 #include "privs.h"
 
-#define MOD_LDAP_VERSION	"mod_ldap/2.9.5"
+#define MOD_LDAP_VERSION	"mod_ldap/2.10.0"
 
 #if PROFTPD_VERSION_NUMBER < 0x0001030103
 # error MOD_LDAP_VERSION " requires ProFTPD 1.3.4rc1 or later"
@@ -185,6 +185,41 @@ static array_header *ldap_servers = NULL;
 static struct server_info *curr_server_info = NULL;
 static unsigned int curr_server_index = 0;
 
+/* Configurable objectClass values for user and group lookups.
+ * This allows the module to work with non-POSIX LDAP schemas.
+ * Default to posixAccount/posixGroup for backward compatibility.
+ */
+static char *ldap_user_objclass = "posixAccount";
+static char *ldap_group_objclass = "posixGroup";
+
+/* Configurable group member attribute.
+ * Default to memberUid for POSIX groups (stores usernames).
+ * Can be set to 'member' or 'uniqueMember' for non-POSIX groups (stores DNs).
+ */
+static char *ldap_group_member_attr = "memberUid";
+
+/* Group type: TRUE for static groups (member attribute contains DNs/usernames),
+ * FALSE for dynamic groups (groupOfURLs - memberURL attribute contains LDAP URLs).
+ * When using dynamic groups, the module will:
+ * 1. Read memberURL from the group entry
+ * 2. Parse the LDAP URL to extract base DN, filter, and scope
+ * 3. Execute the URL as a sub-search to resolve group members
+ * 4. Recursively resolve nested groupOfURLs if needed
+ */
+static int ldap_group_type_static = TRUE;
+
+/* LDAP Session Tracking Control (RFC 5646 / draft-wahl-ldap-session).
+ * When enabled, adds a session identifier to LDAP requests, allowing the
+ * LDAP server to log/correlation client sessions for debugging/troubleshooting.
+ * Useful when clients are behind NAT or load-balancers.
+ */
+static int ldap_session_tracking = FALSE;
+
+/* Session tracking control OID (RFC 5646 / OpenLDAP)
+ * OID: 1.3.6.1.4.1.21008.108.63.1
+ */
+#define LDAP_CONTROL_SESSION	"1.3.6.1.4.1.21008.108.63.1"
+
 static char *ldap_dn, *ldap_dnpass, *ldap_sasl_mechs = NULL,
             *ldap_user_basedn = NULL, *ldap_user_name_filter = NULL,
             *ldap_user_uid_filter = NULL,
@@ -227,6 +262,11 @@ static gid_t ldap_defaultgid = -1;
 static LDAP *ld = NULL;
 static array_header *cached_ssh_pubkeys = NULL;
 
+/* Session tracking identifier - generated once per session, sent with each request.
+ * This allows the LDAP server to log/correlation the client session.
+ */
+static char *ldap_session_id = NULL;
+
 /* Necessary prototypes */
 static int ldap_sess_init(void);
 static struct sasl_info *sasl_info_create(pool *, LDAP *);
@@ -249,6 +289,84 @@ static void pr_ldap_unbind(void) {
   }
 
   ld = NULL;
+}
+
+/* Get session identifier from mod_unique_id if available.
+ * The UNIQUE_ID environment variable is set by mod_unique_id.
+ * This provides a consistent, unique session ID across modules.
+ */
+static void get_session_id(pool *p) {
+  const char *unique_id;
+
+  unique_id = pr_env_get(p, "UNIQUE_ID");
+  if (unique_id == NULL) {
+    pr_trace_msg(trace_channel, 5,
+      "UNIQUE_ID environment variable not found (mod_unique_id not loaded?)");
+    return;
+  }
+
+  ldap_session_id = pstrdup(p, unique_id);
+
+  (void) pr_log_writefile(ldap_logfd, MOD_LDAP_VERSION,
+    "LDAP session tracking enabled with session ID: %s", ldap_session_id);
+}
+
+/* Build the Session Tracking Control (RFC 5646) for LDAP requests.
+ * This control contains a session identifier that the LDAP server can log
+ * for client correlation/troubleshooting.
+ *
+ * The control value is a BER-encoded sequence containing:
+ * - sessionID (UTF-8 string)
+ * - authenticationLevel (integer, 0 = anonymous)
+ * - authorizationID (UTF-8 string, empty for anonymous)
+ */
+static int build_session_tracking_control(LDAP *conn_ld, LDAPControl **ctrl_out) {
+#if defined(LDAP_API_VERSION) && LDAP_API_VERSION >= 2000
+  BerElement *ber = NULL;
+  char *authzid = "";
+  int authlevel = 0;
+  int res;
+
+  if (ldap_session_id == NULL) {
+    return LDAP_PARAM_ERROR;
+  }
+
+  ber = ber_alloc_t(LBER_USE_DER);
+  if (ber == NULL) {
+    return LDAP_NO_MEMORY;
+  }
+
+  /* Encode: sessionID, authLevel, authzID */
+  res = ber_printf(ber, "{sii}", ldap_session_id, authlevel, authzid);
+  if (res < 0) {
+    ber_free(ber, 1);
+    return LDAP_PARAM_ERROR;
+  }
+
+  {
+    struct berval *bv = NULL;
+
+    res = ber_flatten(ber, &bv);
+    if (res < 0 || bv == NULL) {
+      if (bv != NULL) {
+        ber_memfree(bv->bv_val);
+        ber_memfree(bv);
+      }
+      ber_free(ber, 1);
+      return LDAP_NO_MEMORY;
+    }
+
+    /* ldap_control_create(ctrlOID, critical, struct berval *, flags, output) */
+    res = ldap_control_create(LDAP_CONTROL_SESSION, 0, bv, 0, ctrl_out);
+    ber_memfree(bv->bv_val);
+    ber_memfree(bv);
+  }
+
+  ber_free(ber, 1);
+  return res;
+#else
+  return LDAP_NOT_SUPPORTED;
+#endif
 }
 
 static void log_sasl_mechs(LDAP *conn_ld, const char *url_text) {
@@ -748,6 +866,10 @@ static LDAPMessage *pr_ldap_search(const char *basedn, const char *filter,
     char *attrs[], int sizelimit, int retry) {
   int res;
   LDAPMessage *result;
+#if LDAP_API_VERSION >= 2000
+  LDAPControl *session_ctrl = NULL;
+  LDAPControl *ctrls[2] = { NULL, NULL };
+#endif
 
   if (basedn == NULL) {
     (void) pr_log_writefile(ldap_logfd, MOD_LDAP_VERSION,
@@ -766,8 +888,39 @@ static LDAPMessage *pr_ldap_search(const char *basedn, const char *filter,
     }
   }
 
+#if LDAP_API_VERSION >= 2000
+  /* Add Session Tracking Control (RFC 5646) if enabled.
+   * This allows the LDAP server to log/correlation the client session
+   * for debugging/troubleshooting when clients are behind NAT/load-balancers.
+   */
+  if (ldap_session_tracking && ldap_session_id != NULL) {
+    res = build_session_tracking_control(ld, &session_ctrl);
+    if (res == LDAP_SUCCESS && session_ctrl != NULL) {
+      ctrls[0] = session_ctrl;
+      ctrls[1] = NULL;
+      pr_trace_msg(trace_channel, 15,
+        "sending LDAP Session Tracking control with session ID: %s",
+        ldap_session_id);
+    }
+  }
+
+  /* Execute search with session tracking control if available */
+  if (ctrls[0] != NULL) {
+    res = ldap_search_ext_s(ld, basedn, ldap_search_scope, filter, attrs,
+      0, ctrls, NULL, &ldap_querytimeout_tv, sizelimit, &result);
+  } else {
+    res = ldap_search_ext_s(ld, basedn, ldap_search_scope, filter, attrs,
+      0, NULL, NULL, &ldap_querytimeout_tv, sizelimit, &result);
+  }
+
+  if (session_ctrl != NULL) {
+    ldap_control_free(session_ctrl);
+  }
+#else
   res = LDAP_SEARCH(ld, basedn, ldap_search_scope, filter, attrs,
     &ldap_querytimeout_tv, sizelimit, &result);
+#endif
+
   if (res != LDAP_SUCCESS) {
     if (res != LDAP_SERVER_DOWN) {
       (void) pr_log_writefile(ldap_logfd, MOD_LDAP_VERSION,
@@ -1473,6 +1626,351 @@ static unsigned char pr_ldap_ssh_pubkey_lookup(pool *p, char *filter_template,
   return TRUE;
 }
 
+/* Parse a memberURL attribute value (from groupOfURLs) and extract LDAP URL components.
+ * memberURL format: ldap://host:port/baseDN?attributes?scope?filter
+ * Returns: TRUE on success, FALSE on failure
+ *
+ * For dynamic groups (groupOfURLs), the memberURL contains an LDAP search URL
+ * that is executed to determine group members. This function parses that URL
+ * and stores the components for later execution.
+ */
+static int parse_member_url(pool *p, const char *member_url,
+    char **basedn_out, char **filter_out, int *scope_out) {
+  LDAPURLDesc *url_desc = NULL;
+  int res;
+
+  if (member_url == NULL || strlen(member_url) == 0) {
+    return FALSE;
+  }
+
+  res = ldap_url_parse(member_url, &url_desc);
+  if (res != LDAP_URL_SUCCESS) {
+    pr_trace_msg(trace_channel, 3,
+      "failed to parse memberURL '%s': %s", member_url, ldap_err2string(res));
+    return FALSE;
+  }
+
+  /* Extract base DN from the URL */
+  if (url_desc->lud_dn != NULL && strlen(url_desc->lud_dn) > 0) {
+    *basedn_out = pstrdup(p, url_desc->lud_dn);
+  } else {
+    /* If no base DN in URL, return NULL to indicate fallback is needed */
+    *basedn_out = NULL;
+  }
+
+  /* Extract filter from the URL */
+  if (url_desc->lud_filter != NULL && strlen(url_desc->lud_filter) > 0) {
+    *filter_out = pstrdup(p, url_desc->lud_filter);
+  } else {
+    *filter_out = NULL;
+  }
+
+  /* Extract scope, default to subtree if not specified */
+  *scope_out = LDAP_SCOPE_SUBTREE;
+  if (url_desc->lud_scope != LDAP_SCOPE_DEFAULT && url_desc->lud_scope != 0) {
+    *scope_out = url_desc->lud_scope;
+  }
+
+  ldap_free_urldesc(url_desc);
+  return TRUE;
+}
+
+/* Recursively resolve members of a dynamic group (groupOfURLs).
+ * For each memberURL in the group entry, this function:
+ * 1. Parses the LDAP URL to extract base DN, filter, and scope
+ * 2. Executes the URL as a sub-search
+ * 3. If results are other groupOfURLs, recursively resolves them
+ * 4. Adds all resolved user DNs to the provided array
+ *
+ * Parameters:
+ *   p - memory pool for allocations
+ *   basedn - base DN for group search (used as fallback if memberURL has no base DN)
+ *   username - the username to resolve groups for
+ *   members - array to accumulate resolved member DNs
+ *   max_depth - maximum recursion depth to prevent infinite loops
+ */
+static void pr_ldap_resolve_dynamic_members(pool *p, const char *basedn,
+    const char *username, array_header *members, int max_depth) {
+  char *attrs[] = { "memberURL", ldap_attr_cn, NULL };
+  const char *filter;
+  LDAPMessage *result = NULL, *e;
+  LDAP_VALUE_T **member_urls;
+
+  if (max_depth <= 0) {
+    pr_trace_msg(trace_channel, 8,
+      "max recursion depth reached for dynamic group resolution, skipping");
+    return;
+  }
+
+  filter = pr_ldap_interpolate_filter(p, ldap_group_member_filter, username);
+  if (filter == NULL) {
+    return;
+  }
+
+  /* Use the configured group base DN, or the provided basedn as fallback */
+  if (ldap_gid_basedn != NULL) {
+    result = pr_ldap_search(ldap_gid_basedn, filter, attrs, 0, TRUE);
+  } else if (basedn != NULL) {
+    result = pr_ldap_search(basedn, filter, attrs, 0, TRUE);
+  }
+
+  if (result == NULL) {
+    return;
+  }
+
+  for (e = ldap_first_entry(ld, result); e; e = ldap_next_entry(ld, e)) {
+    member_urls = LDAP_GET_VALUES(ld, e, "memberURL");
+    if (member_urls == NULL) {
+      continue;
+    }
+
+    /* Process each memberURL in the group entry */
+    register unsigned int i;
+    for (i = 0; i < LDAP_COUNT_VALUES(member_urls); i++) {
+      char *url_basedn = NULL, *url_filter = NULL;
+      int url_scope = LDAP_SCOPE_SUBTREE;
+
+      pr_signals_handle();
+
+      if (!parse_member_url(p, LDAP_VALUE(member_urls, i), &url_basedn, &url_filter, &url_scope)) {
+        continue;
+      }
+
+      /* If memberURL has no base DN, use the configured group base DN */
+      if (url_basedn == NULL && ldap_gid_basedn != NULL) {
+        url_basedn = pstrdup(p, ldap_gid_basedn);
+      }
+
+      /* If memberURL has no filter, construct one based on the user attribute */
+      if (url_filter == NULL) {
+        url_filter = pstrcat(p, "(", ldap_attr_uid, "=*)", NULL);
+      }
+
+      pr_trace_msg(trace_channel, 12,
+        "resolving dynamic group members from URL: base='%s' scope=%d filter='%s'",
+        url_basedn ? url_basedn : "(null)", url_scope, url_filter);
+
+      /* Execute the memberURL as a sub-search */
+      {
+        LDAPMessage *member_result = NULL;
+        LDAPMessage *member_entry;
+        char *member_attrs[] = { ldap_attr_uid, ldap_attr_cn, NULL };
+
+        /* Ensure we have an active connection */
+        if (ld == NULL) {
+          if (pr_ldap_connect(&ld, TRUE) < 0) {
+            if (url_basedn) {
+            }
+            if (url_filter) {
+            }
+            continue;
+          }
+        }
+
+        /* Execute the search using the URL's scope */
+        int search_res = LDAP_SEARCH(ld, url_basedn, url_scope, url_filter,
+          member_attrs, &ldap_querytimeout_tv, 0, &member_result);
+
+        if (search_res != LDAP_SUCCESS) {
+          pr_trace_msg(trace_channel, 5,
+            "failed to execute memberURL search: %s", ldap_err2string(search_res));
+          if (url_basedn) {
+          }
+          if (url_filter) {
+          }
+          continue;
+        }
+
+        /* Process each member found in the memberURL search */
+        for (member_entry = ldap_first_entry(ld, member_result);
+             member_entry;
+             member_entry = ldap_next_entry(ld, member_entry)) {
+          LDAP_VALUE_T **uids, **cns;
+          char *member_dn;
+
+          member_dn = ldap_get_dn(ld, member_entry);
+          if (member_dn == NULL) {
+            continue;
+          }
+
+          /* Check if this member DN is already in our list (avoid duplicates) */
+          {
+            register unsigned int j;
+            char **existing_members = (char **) members->elts;
+            int found = FALSE;
+
+            for (j = 0; j < members->nelts; j++) {
+              if (strcmp(existing_members[j], member_dn) == 0) {
+                found = TRUE;
+                break;
+              }
+            }
+
+            if (!found) {
+              *((char **) push_array(members)) = pstrdup(p, member_dn);
+              pr_trace_msg(trace_channel, 12,
+                "added dynamic group member: %s", member_dn);
+
+              /* Check if this member is also a group (recursion for nested groups) */
+              uids = LDAP_GET_VALUES(ld, member_entry, ldap_attr_uid);
+              cns = LDAP_GET_VALUES(ld, member_entry, ldap_attr_cn);
+
+              if (cns != NULL) {
+                /* Check objectClass to see if this is a group */
+                LDAP_VALUE_T **objclasses = LDAP_GET_VALUES(ld, member_entry, "objectClass");
+                if (objclasses != NULL) {
+                  register unsigned int k;
+                  int is_group = FALSE;
+
+                  for (k = 0; k < LDAP_COUNT_VALUES(objclasses); k++) {
+                    if (strcasecmp(LDAP_VALUE(objclasses, k), ldap_group_objclass) == 0 ||
+                        strcasecmp(LDAP_VALUE(objclasses, k), "groupOfURLs") == 0 ||
+                        strcasecmp(LDAP_VALUE(objclasses, k), "groupOfNames") == 0) {
+                      is_group = TRUE;
+                      break;
+                    }
+                  }
+
+                  if (is_group && uids != NULL && LDAP_COUNT_VALUES(uids) > 0) {
+                    /* Recursively resolve nested group */
+                    pr_ldap_resolve_dynamic_members(p, NULL,
+                      LDAP_VALUE(uids, 0), members, max_depth - 1);
+                  }
+
+                  LDAP_VALUE_FREE(objclasses);
+                }
+
+                if (uids != NULL) LDAP_VALUE_FREE(uids);
+                if (cns != NULL) LDAP_VALUE_FREE(cns);
+              }
+            }
+
+            free(member_dn);
+          }
+        }
+
+        ldap_msgfree(member_result);
+      }
+
+      /* Clean up dynamically allocated strings */
+    }
+
+    LDAP_VALUE_FREE(member_urls);
+  }
+
+  ldap_msgfree(result);
+}
+
+/* Resolve group members for non-POSIX static groups (e.g., groupOfNames).
+ * Unlike POSIX groups which use 'memberUid' (usernames), non-POSIX groups
+ * typically use 'member' or 'uniqueMember' which store full DNs.
+ *
+ * This function:
+ * 1. Reads the configured member attribute from the group entry
+ * 2. For each member DN, extracts the username/identifier
+ * 3. Adds resolved usernames to the provided array
+ *
+ * Parameters:
+ *   p - memory pool
+ *   gr - the group struct (already populated with group name/GID)
+ *   members - array to accumulate resolved member usernames
+ *
+* Note: This function is available for future use when supporting
+  * non-POSIX static groups with DN-based member attributes.
+  */
+static void pr_ldap_resolve_static_members_nonposix(pool *p, struct group *gr,
+    array_header *members) {
+  char *attrs[] = { ldap_group_member_attr, NULL };
+  const char *filter;
+  LDAPMessage *result = NULL, *e;
+  LDAP_VALUE_T **member_dns;
+
+  if (ldap_gid_basedn == NULL) {
+    return;
+  }
+
+  filter = pr_ldap_interpolate_filter(p, ldap_group_gid_filter,
+    pr_gid2str(p, gr->gr_gid));
+  if (filter == NULL) {
+    return;
+  }
+
+  result = pr_ldap_search(ldap_gid_basedn, filter, attrs, 1, TRUE);
+  if (result == NULL) {
+    return;
+  }
+
+  e = ldap_first_entry(ld, result);
+  if (e == NULL) {
+    ldap_msgfree(result);
+    return;
+  }
+
+  member_dns = LDAP_GET_VALUES(ld, e, ldap_group_member_attr);
+  if (member_dns == NULL) {
+    ldap_msgfree(result);
+    return;
+  }
+
+  /* Process each member DN and extract the username from the DN */
+  register unsigned int i;
+  for (i = 0; i < LDAP_COUNT_VALUES(member_dns); i++) {
+    const char *dn = LDAP_VALUE(member_dns, i);
+    char *username = NULL;
+
+    pr_signals_handle();
+
+    /* Extract the first RDN value from the DN.
+     * For example, from "uid=jsmith,ou=users,dc=example,dc=com", extract "jsmith"
+     * This assumes the member attribute contains full DNs, not just UIDs.
+     */
+    {
+      LDAPDN parsed_dn;
+      int parse_res;
+
+      parse_res = ldap_str2dn(dn, &parsed_dn, LDAP_DN_FORMAT_LDAPV3);
+      if (parse_res == LDAP_SUCCESS && parsed_dn != NULL && parsed_dn[0] != NULL) {
+        LDAPRDN rdn = parsed_dn[0];
+        char *rdn_str = NULL;
+
+        if (ldap_rdn2str(rdn, &rdn_str, LDAP_DN_FORMAT_LDAPV3) == LDAP_SUCCESS) {
+          char *eq = strchr(rdn_str, '=');
+          if (eq != NULL) {
+            username = pstrdup(p, eq + 1);
+          }
+          ldap_memfree(rdn_str);
+        }
+
+        ldap_dnfree(parsed_dn);
+      }
+    }
+
+    if (username != NULL && strlen(username) > 0) {
+      /* Check for duplicates before adding */
+      register unsigned int j;
+      char **existing = (char **) members->elts;
+      int found = FALSE;
+
+      for (j = 0; j < members->nelts; j++) {
+        if (strcmp(existing[j], username) == 0) {
+          found = TRUE;
+          break;
+        }
+      }
+
+      if (!found) {
+        *((char **) push_array(members)) = username;
+        pr_trace_msg(trace_channel, 12,
+          "resolved static group member (non-POSIX): %s from DN %s",
+          username, dn);
+      }
+    }
+  }
+
+  LDAP_VALUE_FREE(member_dns);
+  ldap_msgfree(result);
+}
+
 static struct group *pr_ldap_getgrnam(pool *p, const char *group_name) {
   char *group_attrs[] = {
     ldap_attr_cn, ldap_attr_gidnumber, ldap_attr_memberuid, NULL,
@@ -1671,6 +2169,24 @@ MODRET ldap_auth_getgrgid(cmd_rec *cmd) {
   return PR_DECLINED(cmd);
 }
 
+/* ldap_auth_getgroups - Get all groups for a user.
+ *
+ * This function handles both static and dynamic groups, as well as both
+ * POSIX (memberUid) and non-POSIX (member, uniqueMember) group types.
+ *
+ * Static groups (default):
+ *   - Members stored directly in member attribute (memberUid, member, uniqueMember)
+ *   - For POSIX groups: memberUid contains usernames
+ *   - For non-POSIX groups: member/uniqueMember contains full DNs
+ *
+ * Dynamic groups (groupOfURLs):
+ *   - Members determined by memberURL attribute containing LDAP URL
+ *   - URL is executed to find matching users
+ *   - Supports recursive resolution of nested groupOfURLs
+ *
+ * For non-POSIX groups, member DNs are parsed to extract the username
+ * from the first RDN (e.g., "uid=jsmith" from "uid=jsmith,ou=users,dc=example,dc=com")
+ */
 MODRET ldap_auth_getgroups(cmd_rec *cmd) {
   const char *filter;
   char *w[] = {
@@ -1715,6 +2231,80 @@ MODRET ldap_auth_getgroups(cmd_rec *cmd) {
     goto return_groups;
   }
 
+  /* Handle dynamic groups (groupOfURLs) */
+  if (!ldap_group_type_static) {
+    array_header *member_dns = make_array(cmd->tmp_pool, 16, sizeof(char *));
+
+    pr_trace_msg(trace_channel, 8,
+      "resolving dynamic groups for user '%s'", (char *) cmd->argv[0]);
+
+    /* Recursively resolve dynamic group members via memberURL */
+    pr_ldap_resolve_dynamic_members(cmd->tmp_pool, NULL, cmd->argv[0],
+      member_dns, 10);
+
+    /* For each resolved member DN, look up the user and their groups */
+    {
+      register unsigned int i;
+      char **dns = (char **) member_dns->elts;
+
+      for (i = 0; i < member_dns->nelts; i++) {
+        struct passwd *member_pw = NULL;
+        LDAPDN parsed_dn;
+        char *username = NULL;
+
+        pr_signals_handle();
+
+        /* Parse the member DN to extract username */
+        if (ldap_str2dn(dns[i], &parsed_dn, LDAP_DN_FORMAT_LDAPV3) == LDAP_SUCCESS &&
+            parsed_dn != NULL && parsed_dn[0] != NULL) {
+          LDAPRDN rdn = parsed_dn[0];
+          char *rdn_str = NULL;
+
+          if (ldap_rdn2str(rdn, &rdn_str, LDAP_DN_FORMAT_LDAPV3) == LDAP_SUCCESS) {
+            char *eq = strchr(rdn_str, '=');
+            if (eq != NULL) {
+              username = pstrdup(cmd->tmp_pool, eq + 1);
+            }
+            ldap_memfree(rdn_str);
+          }
+          ldap_dnfree(parsed_dn);
+        }
+
+        if (username != NULL) {
+          member_pw = pr_ldap_getpwnam(cmd->tmp_pool, username);
+          if (member_pw != NULL) {
+            gr = pr_ldap_getgrgid(cmd->tmp_pool, member_pw->pw_gid);
+            if (gr != NULL && gr->gr_gid != pw->pw_gid) {
+              int found = FALSE;
+              register unsigned int j;
+              gid_t *existing_gids = (gid_t *) gids->elts;
+
+              /* Check if we already have this group */
+              for (j = 0; j < gids->nelts; j++) {
+                if (existing_gids[j] == gr->gr_gid) {
+                  found = TRUE;
+                  break;
+                }
+              }
+
+              if (!found) {
+                *((gid_t *) push_array(gids)) = gr->gr_gid;
+                *((char **) push_array(groups)) = pstrdup(session.pool, gr->gr_name);
+
+                (void) pr_log_writefile(ldap_logfd, MOD_LDAP_VERSION,
+                  "added user %s to group %s/%s (via dynamic group memberURL)",
+                  (char *) cmd->argv[0], gr->gr_name, pr_gid2str(NULL, gr->gr_gid));
+              }
+            }
+          }
+        }
+      }
+    }
+
+    goto return_groups;
+  }
+
+  /* Handle static groups - use member filter */
   filter = pr_ldap_interpolate_filter(cmd->tmp_pool,
     ldap_group_member_filter, cmd->argv[0]);
   if (filter == NULL) {
@@ -1749,6 +2339,7 @@ MODRET ldap_auth_getgroups(cmd_rec *cmd) {
       continue;
     }
 
+    /* Skip the primary group (already added above) */
     if (pw == NULL ||
         strtoul(LDAP_VALUE(gidNumber, 0), NULL, 10) != pw->pw_gid) {
       *((gid_t *) push_array(gids)) = strtoul(LDAP_VALUE(gidNumber, 0), NULL, 10);
@@ -3207,6 +3798,125 @@ MODRET set_ldapdefaultquota(cmd_rec *cmd) {
   return PR_HANDLED(cmd);
 }
 
+/* Allow users to specify the objectClass used for user lookups.
+ * This enables support for non-POSIX LDAP schemas like 'person', 'inetOrgPerson', etc.
+ * Default is 'posixAccount' for backward compatibility.
+ *
+ * Usage: LDAPUserObjectClass person
+ */
+MODRET set_ldapuserobjclass(cmd_rec *cmd) {
+  CHECK_ARGS(cmd, 1);
+  CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL);
+
+  if (strlen(cmd->argv[1]) == 0) {
+    CONF_ERROR(cmd, "LDAPUserObjectClass: objectClass name cannot be empty");
+  }
+
+  add_config_param_str(cmd->argv[0], 1, cmd->argv[1]);
+  return PR_HANDLED(cmd);
+}
+
+/* Allow users to specify the objectClass used for group lookups.
+ * This enables support for non-POSIX LDAP schemas like 'groupOfNames', 'groupOfURLs', etc.
+ * Default is 'posixGroup' for backward compatibility.
+ *
+ * Usage: LDAPGroupObjectClass groupOfNames
+ */
+MODRET set_ldapgroupobjclass(cmd_rec *cmd) {
+  CHECK_ARGS(cmd, 1);
+  CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL);
+
+  if (strlen(cmd->argv[1]) == 0) {
+    CONF_ERROR(cmd, "LDAPGroupObjectClass: objectClass name cannot be empty");
+  }
+
+  add_config_param_str(cmd->argv[0], 1, cmd->argv[1]);
+  return PR_HANDLED(cmd);
+}
+
+/* Specify the attribute used for group membership.
+ * For POSIX groups (default): 'memberUid' stores usernames.
+ * For groupOfNames: 'member' stores full DNs.
+ * For groupOfMembers: 'uniqueMember' stores full DNs.
+ *
+ * Usage: LDAPGroupMemberAttr member
+ */
+MODRET set_ldapgroupmemberattr(cmd_rec *cmd) {
+  CHECK_ARGS(cmd, 1);
+  CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL);
+
+  if (strlen(cmd->argv[1]) == 0) {
+    CONF_ERROR(cmd, "LDAPGroupMemberAttr: attribute name cannot be empty");
+  }
+
+  add_config_param_str(cmd->argv[0], 1, cmd->argv[1]);
+  return PR_HANDLED(cmd);
+}
+
+/* Specify whether groups are static or dynamic.
+ * Static groups: members are stored directly in the 'member'/'memberUid' attribute.
+ * Dynamic groups: members are determined by the 'memberURL' attribute which contains
+ *                 an LDAP URL that is executed to find members.
+ *
+ * Usage: LDAPGroupType static|dynamic
+ *
+ * For groupOfURLs (dynamic groups), the module will:
+ * 1. Read the memberURL attribute from the group entry
+ * 2. Parse the LDAP URL to extract base DN, filter, and scope
+ * 3. Execute the URL as a sub-search to resolve group members
+ * 4. Recursively resolve nested groupOfURLs if needed
+ */
+MODRET set_ldapgrouptype(cmd_rec *cmd) {
+  int b;
+  config_rec *c;
+
+  CHECK_ARGS(cmd, 1);
+  CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL);
+
+  if (strcasecmp(cmd->argv[1], "static") == 0) {
+    b = TRUE;
+  } else if (strcasecmp(cmd->argv[1], "dynamic") == 0) {
+    b = FALSE;
+  } else {
+    CONF_ERROR(cmd, "LDAPGroupType: must be 'static' or 'dynamic'");
+  }
+
+  c = add_config_param(cmd->argv[0], 1, NULL);
+  c->argv[0] = pcalloc(c->pool, sizeof(int));
+  *((int *) c->argv[0]) = b;
+
+  return PR_HANDLED(cmd);
+}
+
+/* Enable LDAP Session Tracking Control (RFC 5646).
+ * When enabled, a session identifier is sent with each LDAP request,
+ * allowing the LDAP server to log/correlation client sessions for debugging.
+ * This is useful when clients are behind NAT or load-balancers and you need
+ * to identify specific clients in the LDAP server logs.
+ *
+ * Usage: LDAPSessionTracking on|off
+ *
+ * The session ID format is: ProFTPD-session-<pid>-<timestamp>-<random>
+ */
+MODRET set_ldapsessiontracking(cmd_rec *cmd) {
+  int b;
+  config_rec *c;
+
+  CHECK_ARGS(cmd, 1);
+  CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL);
+
+  b = get_boolean(cmd, 1);
+  if (b == -1) {
+    CONF_ERROR(cmd, "expected Boolean parameter");
+  }
+
+  c = add_config_param(cmd->argv[0], 1, NULL);
+  c->argv[0] = pcalloc(c->pool, sizeof(int));
+  *((int *) c->argv[0]) = b;
+
+  return PR_HANDLED(cmd);
+}
+
 /* Event listeners
  */
 
@@ -3387,6 +4097,13 @@ static void ldap_sess_reinit_ev(const void *event_data, void *user_data) {
   ldap_group_name_filter = NULL;
   ldap_group_gid_filter = NULL;
   ldap_group_member_filter = NULL;
+
+  /* Reset configurable objectClass and member attribute defaults */
+  ldap_user_objclass = "posixAccount";
+  ldap_group_objclass = "posixGroup";
+  ldap_group_member_attr = "memberUid";
+  ldap_group_type_static = TRUE;
+
   ldap_default_quota = NULL;
   ldap_defaultuid = (uid_t) -1;
   ldap_defaultgid = (gid_t) -1;
@@ -3396,6 +4113,10 @@ static void ldap_sess_reinit_ev(const void *event_data, void *user_data) {
   ldap_genhdir = FALSE;
   ldap_genhdir_prefix = NULL;
   ldap_genhdir_prefix_nouname = FALSE;
+
+  /* Reset session tracking */
+  ldap_session_tracking = FALSE;
+  ldap_session_id = NULL;
 
   curr_server_info = NULL;
   curr_server_index = 0;
@@ -3659,8 +4380,12 @@ static int ldap_sess_init(void) {
       ldap_user_name_filter = pstrdup(ldap_pool, filter);
 
     } else {
+      /* Use configurable objectClass for user lookups instead of hardcoded posixAccount.
+       * This allows support for any LDAP user object class (e.g., person, inetOrgPerson, etc.)
+       * as long as it has the required attributes (uid, uidNumber, gidNumber, homeDirectory, etc.)
+       */
       ldap_user_name_filter = pstrcat(ldap_pool,
-        "(&(", ldap_attr_uid, "=%v)(objectclass=posixAccount))", NULL);
+        "(&(", ldap_attr_uid, "=%v)(objectclass=", ldap_user_objclass, "))", NULL);
     }
 
     filter = NULL;
@@ -3673,8 +4398,9 @@ static int ldap_sess_init(void) {
       ldap_user_uid_filter = pstrdup(ldap_pool, filter);
 
     } else {
+      /* Use configurable objectClass for UID-based user lookups */
       ldap_user_uid_filter = pstrcat(ldap_pool,
-        "(&(", ldap_attr_uidnumber, "=%v)(objectclass=posixAccount))", NULL);
+        "(&(", ldap_attr_uidnumber, "=%v)(objectclass=", ldap_user_objclass, "))", NULL);
     }
   }
 
@@ -3704,6 +4430,40 @@ static int ldap_sess_init(void) {
   ptr = get_param_ptr(main_server->conf, "LDAPForceGeneratedHomedir", FALSE);
   if (ptr != NULL) {
     ldap_forcegenhdir = *((int *) ptr);
+  }
+
+  /* Read configurable objectClass for user lookups.
+   * Allows using non-POSIX schemas like 'person', 'inetOrgPerson', etc.
+   */
+  c = find_config(main_server->conf, CONF_PARAM, "LDAPUserObjectClass", FALSE);
+  if (c != NULL) {
+    ldap_user_objclass = pstrdup(ldap_pool, c->argv[0]);
+  }
+
+  /* Read configurable objectClass for group lookups.
+   * Allows using non-POSIX schemas like 'groupOfNames', 'groupOfURLs', etc.
+   */
+  c = find_config(main_server->conf, CONF_PARAM, "LDAPGroupObjectClass", FALSE);
+  if (c != NULL) {
+    ldap_group_objclass = pstrdup(ldap_pool, c->argv[0]);
+  }
+
+  /* Read configurable group member attribute.
+   * Default is 'memberUid' for POSIX groups.
+   * Can be set to 'member' or 'uniqueMember' for non-POSIX groups that store DNs.
+   */
+  c = find_config(main_server->conf, CONF_PARAM, "LDAPGroupMemberAttr", FALSE);
+  if (c != NULL) {
+    ldap_group_member_attr = pstrdup(ldap_pool, c->argv[0]);
+  }
+
+  /* Read group type (static or dynamic).
+   * Static groups store members directly in member attribute.
+   * Dynamic groups use memberURL to execute LDAP URL for member resolution.
+   */
+  ptr = get_param_ptr(main_server->conf, "LDAPGroupType", FALSE);
+  if (ptr != NULL) {
+    ldap_group_type_static = *((int *) ptr);
   }
 
   ptr = get_param_ptr(main_server->conf, "LDAPGenerateHomedir", FALSE);
@@ -3737,8 +4497,11 @@ static int ldap_sess_init(void) {
       ldap_group_name_filter = pstrdup(ldap_pool, filter);
 
     } else {
+      /* Use configurable objectClass for group name lookups.
+       * Supports any group objectClass (e.g., groupOfNames, groupOfURLs, posixGroup, etc.)
+       */
       ldap_group_name_filter = pstrcat(ldap_pool,
-        "(&(", ldap_attr_cn, "=%v)(objectclass=posixGroup))", NULL);
+        "(&(", ldap_attr_cn, "=%v)(objectclass=", ldap_group_objclass, "))", NULL);
     }
 
     filter = NULL;
@@ -3751,8 +4514,9 @@ static int ldap_sess_init(void) {
       ldap_group_gid_filter = pstrdup(ldap_pool, filter);
 
     } else {
+      /* Use configurable objectClass for GID-based group lookups */
       ldap_group_gid_filter = pstrcat(ldap_pool,
-        "(&(", ldap_attr_gidnumber, "=%v)(objectclass=posixGroup))", NULL);
+        "(&(", ldap_attr_gidnumber, "=%v)(objectclass=", ldap_group_objclass, "))", NULL);
     }
 
     filter = NULL;
@@ -3765,8 +4529,13 @@ static int ldap_sess_init(void) {
       ldap_group_member_filter = pstrdup(ldap_pool, filter);
 
     } else {
+      /* Use configurable member attribute for group membership lookups.
+       * For POSIX groups (static), use 'memberUid' which stores usernames.
+       * For non-POSIX groups (static), use 'member' or 'uniqueMember' which store DNs.
+       * For dynamic groups (groupOfURLs), this filter is not used.
+       */
       ldap_group_member_filter = pstrcat(ldap_pool,
-        "(&(", ldap_attr_memberuid, "=%v)(objectclass=posixGroup))", NULL);
+        "(&(", ldap_group_member_attr, "=%v)(objectclass=", ldap_group_objclass, "))", NULL);
     }
   }
 
@@ -3817,6 +4586,19 @@ static int ldap_sess_init(void) {
       ": LDAPGroups not configured, skipping LDAP-based group memberships");
   }
 
+  /* Initialize LDAP Session Tracking (RFC 5646) if configured.
+   * This sends a session identifier with each LDAP request, allowing the
+   * LDAP server to log/correlation client sessions for debugging.
+   * Useful when clients are behind NAT or load-balancers.
+   */
+  ptr = get_param_ptr(main_server->conf, "LDAPSessionTracking", FALSE);
+  if (ptr != NULL) {
+    ldap_session_tracking = *((int *) ptr);
+    if (ldap_session_tracking) {
+      get_session_id(session.pool);
+    }
+  }
+
   return 0;
 }
 
@@ -3839,16 +4621,21 @@ static conftable ldap_conftab[] = {
   { "LDAPGenerateHomedir",	set_ldapgenhdir,		NULL },
   { "LDAPGenerateHomedirPrefix",set_ldapgenhdirprefix,		NULL },
   { "LDAPGenerateHomedirPrefixNoUsername",
-				set_ldapgenhdirprefixnouname,	NULL },
+ 				set_ldapgenhdirprefixnouname,	NULL },
+  { "LDAPGroupMemberAttr",	set_ldapgroupmemberattr,	NULL },
   { "LDAPGroups",		set_ldapgroups,			NULL },
+  { "LDAPGroupObjectClass",	set_ldapgroupobjclass,		NULL },
+  { "LDAPGroupType",		set_ldapgrouptype,		NULL },
   { "LDAPLog",			set_ldaplog,			NULL },
   { "LDAPProtocolVersion",	set_ldapprotoversion,		NULL },
   { "LDAPQueryTimeout",		set_ldapquerytimeout,		NULL },
   { "LDAPSearchScope",		set_ldapsearchscope,		NULL },
   { "LDAPServer",		set_ldapserver,			NULL },
+  { "LDAPSessionTracking",	set_ldapsessiontracking,	NULL },
   { "LDAPUsers",		set_ldapusers,			NULL },
   { "LDAPUseSASL",		set_ldapusesasl,		NULL },
   { "LDAPUseTLS",		set_ldapusetls,			NULL },
+  { "LDAPUserObjectClass",	set_ldapuserobjclass,		NULL },
 
   { NULL, NULL, NULL },
 };
