@@ -153,6 +153,9 @@ static int keys_ec_min_nbits = 160;
 #define SFTP_OPENSSH_KDFNAME		"bcrypt"
 #define SFTP_OPENSSH_MAGIC		"openssh-key-v1"
 
+/* Impose a maximum size of OpenSSH private keys files. */
+#define SFTP_OPENSSH_KEY_MAX_SZ		(1024 * 64)
+
 /* Encryption cipher info. */
 struct openssh_cipher {
   const char *algo;
@@ -3719,11 +3722,18 @@ static int read_openssh_private_key(pool *p, const char *path, int fd,
     return -1;
   }
 
-  tmp_pool = make_sub_pool(p);
-
   /* Read the entire file into memory. */
-  /* TODO: Impose maximum size limit for this treatment? */
   input_sz = st.st_size;
+  if (input_sz > SFTP_OPENSSH_KEY_MAX_SZ) {
+    (void) pr_log_debug(DEBUG0, MOD_SFTP_VERSION
+      ": unable to read '%s': file size %lu bytes exceeds maximum %lu bytes",
+      path, (unsigned long) st.st_size,
+      (unsigned long) SFTP_OPENSSH_KEY_MAX_SZ);
+    errno = E2BIG;
+    return -1;
+  }
+
+  tmp_pool = make_sub_pool(p);
   input_ptr = input_buf = palloc(tmp_pool, input_sz);
   input_len = 0;
 

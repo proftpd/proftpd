@@ -3973,7 +3973,7 @@ MODRET core_pasv(cmd_rec *cmd) {
   pr_inet_generate_socket_event("core.data-listen", main_server,
     session.d->local_addr, session.d->listen_fd);
 
-  pr_inet_set_block(session.pool, session.d);
+  (void) pr_inet_set_block(session.pool, session.d);
   if (pr_inet_listen(session.pool, session.d, 1, 0) < 0) {
     int xerrno = errno;
 
