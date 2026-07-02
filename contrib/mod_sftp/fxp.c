@@ -4212,7 +4212,17 @@ static int read_file_block(pr_fh_t *fh, EVP_MD_CTX *pctx, size_t blocksz,
       return 0;
     }
 
+#if OPENSSL_VERSION_NUMBER >= 0x000907000L
+    if (EVP_DigestUpdate(pctx, buf, nread) != 1) {
+      (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
+        "error updating message digest: %s", sftp_crypto_get_errors());
+      errno = EIO;
+      return -1;
+    }
+#else
     EVP_DigestUpdate(pctx, buf, nread);
+#endif /* OpenSSL 0.9.7 or later */
+
     total_len -= nread;
   }
 
@@ -4597,7 +4607,47 @@ static int fxp_handle_ext_check_file(struct fxp_packet *fxp, char *digest_list,
 #else
     EVP_MD_CTX_reset(pctx);
 #endif /* OpenSSL-1.1.0/LibreSSL-3.5.0 and later */
+
+#if OPENSSL_VERSION_NUMBER >= 0x000907000L
+    if (EVP_DigestInit(pctx, md) != 1) {
+      (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
+        "error initializing message digest: %s", sftp_crypto_get_errors());
+
+      (void) pr_fsio_close(fh);
+
+      xerrno = EIO;
+      status_code = fxp_errno2status(xerrno, &reason);
+
+      pr_trace_msg(trace_channel, 8, "sending response: STATUS %lu '%s' "
+        "('%s' [%d])", (unsigned long) status_code, reason,
+        strerror(xerrno), xerrno);
+
+      /* Since we already started writing the EXTENDED_REPLY, we have
+       * to reset the pointers and overwrite the existing message.
+       */
+      buf = ptr;
+      buflen = bufsz;
+
+      fxp_status_write(fxp->pool, &buf, &buflen, fxp->request_id, status_code,
+        reason, NULL);
+
+      resp = fxp_packet_create(fxp->pool, fxp->channel_id);
+      resp->payload = ptr;
+      resp->payload_sz = (bufsz - buflen);
+
+      /* Cleanup. */
+#if OPENSSL_VERSION_NUMBER < 0x10100000L || \
+    defined(HAVE_LIBRESSL)
+      EVP_MD_CTX_cleanup(pctx);
+#else
+      EVP_MD_CTX_free(pctx);
+#endif /* prior to OpenSSL-1.1.0 */
+
+      return fxp_packet_write(resp);
+    }
+#else
     EVP_DigestInit(pctx, md);
+#endif /* OpenSSL 0.9.7 or later */
 
     pr_trace_msg(trace_channel, 19,
       "reading block %lu (block size %" PR_LU ") from '%s'", block_count,
@@ -4641,7 +4691,47 @@ static int fxp_handle_ext_check_file(struct fxp_packet *fxp, char *digest_list,
       return fxp_packet_write(resp);
     }
 
+#if OPENSSL_VERSION_NUMBER >= 0x000907000L
+    if (EVP_DigestFinal(pctx, digest, &digest_len) != 1) {
+      (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
+        "error finalizing message digest: %s", sftp_crypto_get_errors());
+
+      (void) pr_fsio_close(fh);
+
+      xerrno = EIO;
+      status_code = fxp_errno2status(xerrno, &reason);
+
+      pr_trace_msg(trace_channel, 8, "sending response: STATUS %lu '%s' "
+        "('%s' [%d])", (unsigned long) status_code, reason,
+        strerror(xerrno), xerrno);
+
+      /* Since we already started writing the EXTENDED_REPLY, we have
+       * to reset the pointers and overwrite the existing message.
+       */
+      buf = ptr;
+      buflen = bufsz;
+
+      fxp_status_write(fxp->pool, &buf, &buflen, fxp->request_id, status_code,
+        reason, NULL);
+
+      resp = fxp_packet_create(fxp->pool, fxp->channel_id);
+      resp->payload = ptr;
+      resp->payload_sz = (bufsz - buflen);
+
+      /* Cleanup. */
+#if OPENSSL_VERSION_NUMBER < 0x10100000L || \
+    defined(HAVE_LIBRESSL)
+      EVP_MD_CTX_cleanup(pctx);
+#else
+      EVP_MD_CTX_free(pctx);
+#endif /* prior to OpenSSL-1.1.0 */
+
+      return fxp_packet_write(resp);
+    }
+#else
     EVP_DigestFinal(pctx, digest, &digest_len);
+#endif /* OpenSSL 0.9.7 or later */
+
     sftp_msg_write_data(&buf, &buflen, digest, digest_len, FALSE);
     pr_trace_msg(trace_channel, 19,
       "completed block %lu (block size %" PR_LU" ) of '%s'", block_count,
@@ -4649,7 +4739,7 @@ static int fxp_handle_ext_check_file(struct fxp_packet *fxp, char *digest_list,
   }
 
   /* Cleanup. */
-  pr_fsio_close(fh);
+  (void) pr_fsio_close(fh);
 #if OPENSSL_VERSION_NUMBER < 0x10100000L || \
     defined(HAVE_LIBRESSL)
   EVP_MD_CTX_cleanup(pctx);
