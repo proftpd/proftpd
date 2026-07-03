@@ -2253,6 +2253,7 @@ sub snmp_v1_get_daemon_segfault_count {
   my $setup = test_setup($tmpdir, 'snmp');
 
   my $table_dir = File::Spec->rel2abs("$tmpdir/var/snmp");
+  mkpath($table_dir);
 
   # Make sure that, if we're running as root, that the home directory has
   # permissions/privs set for the account we create
@@ -2385,7 +2386,7 @@ sub snmp_v1_get_daemon_segfault_count {
   server_stop($setup->{pid_file});
   $self->assert_child_ok($pid);
 
-  test_cleanup($setup->{log_file}, $ex);
+  test_cleanup($setup, $ex);
 }
 
 sub snmp_v1_get_daemon_maxinsts_count {
@@ -2394,6 +2395,7 @@ sub snmp_v1_get_daemon_maxinsts_count {
   my $setup = test_setup($tmpdir, 'snmp');
 
   my $table_dir = File::Spec->rel2abs("$tmpdir/var/snmp");
+  mkpath($table_dir);
 
   # Make sure that, if we're running as root, that the home directory has
   # permissions/privs set for the account we create
@@ -2543,7 +2545,7 @@ sub snmp_v1_get_daemon_maxinsts_count {
   server_stop($setup->{pid_file});
   $self->assert_child_ok($pid);
 
-  test_cleanup($setup->{log_file}, $ex);
+  test_cleanup($setup, $ex);
 }
 
 sub snmp_v1_get_daemon_connrefused_count {
@@ -2552,6 +2554,7 @@ sub snmp_v1_get_daemon_connrefused_count {
   my $setup = test_setup($tmpdir, 'snmp');
 
   my $table_dir = File::Spec->rel2abs("$tmpdir/var/snmp");
+  mkpath($table_dir);
 
   # Make sure that, if we're running as root, that the home directory has
   # permissions/privs set for the account we create
@@ -2699,7 +2702,7 @@ sub snmp_v1_get_daemon_connrefused_count {
   server_stop($setup->{pid_file});
   $self->assert_child_ok($pid);
 
-  test_cleanup($setup->{log_file}, $ex);
+  test_cleanup($setup, $ex);
 }
 
 sub snmp_v1_get_ftp_sess_counts {
@@ -4038,7 +4041,7 @@ sub snmp_v1_get_next_end_of_mib_view {
   server_stop($setup->{pid_file});
   $self->assert_child_ok($pid);
 
-  test_cleanup($setup->{log_file}, $ex);
+  test_cleanup($setup, $ex);
 }
 
 sub snmp_v1_get_next_multi {
@@ -5171,7 +5174,7 @@ sub snmp_v2_get_next_end_of_mib_view {
   server_stop($setup->{pid_file});
   $self->assert_child_ok($pid);
 
-  test_cleanup($setup->{log_file}, $ex);
+  test_cleanup($setup, $ex);
 }
 
 sub snmp_v2_get_bulk {
@@ -5693,7 +5696,7 @@ sub snmp_v2_get_bulk_end_of_mib_view {
   server_stop($setup->{pid_file});
   $self->assert_child_ok($pid);
 
-  test_cleanup($setup->{log_file}, $ex);
+  test_cleanup($setup, $ex);
 }
 
 sub snmp_v2_set_no_access {
