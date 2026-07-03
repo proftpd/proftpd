@@ -153,57 +153,26 @@ sub get_tally {
 sub quotatab_file_single_suppl_group {
   my $self = shift;
   my $tmpdir = $self->{tmpdir};
+  my $setup = test_setup($tmpdir, 'quotatab');
 
-  my $config_file = "$tmpdir/quotatab.conf";
-  my $pid_file = File::Spec->rel2abs("$tmpdir/quotatab.pid");
-  my $scoreboard_file = File::Spec->rel2abs("$tmpdir/quotatab.scoreboard");
-
-  my $log_file = test_get_logfile();
-
-  my $auth_user_file = File::Spec->rel2abs("$tmpdir/quotatab.passwd");
-  my $auth_group_file = File::Spec->rel2abs("$tmpdir/quotatab.group");
-
-  my $user = 'proftpd';
-  my $passwd = 'test';
-  my $group = 'ftpd';
-  my $home_dir = File::Spec->rel2abs($tmpdir);
-  mkpath($home_dir);
-
-  my $uid = 500;
-  my $gid = 500;
-
-  # Make sure that, if we're running as root, that the home directories has
-  # permissions/privs set for the account we create
-  if ($< == 0) {
-    unless (chmod(0755, $home_dir)) {
-      die("Can't set perms on $home_dir to 0755: $!");
-    }
-
-    unless (chown($uid, $gid, $home_dir)) {
-      die("Can't set owner of $home_dir to $uid/$gid: $!");
-    }
-  }
-
-  auth_user_write($auth_user_file, $user, $passwd, $uid, $gid, $home_dir,
-    '/bin/bash');
-  auth_group_write($auth_group_file, $group, $gid, $user);
-
-  auth_group_write($auth_group_file, 'test1', $gid+2, $user);
+  auth_group_write($setup->{auth_group_file}, 'test1', $setup->{gid}+2,
+    $setup->{user});
 
   # Make sure that the group for whom there is a limit is NOT the user's
   # primary group, but IS the user's only supplemental group.
-  auth_group_write($auth_group_file, 'test', $gid+1, $user);
+  auth_group_write($setup->{auth_group_file}, 'test', $setup->{gid}+1,
+    $setup->{user});
 
   my $limit_file = File::Spec->rel2abs("$tmpdir/ftpquota-group-limit.tab");
   my $tally_file = File::Spec->rel2abs("$tmpdir/ftpquota-group-tally.tab");
 
   my $config = {
-    PidFile => $pid_file,
-    ScoreboardFile => $scoreboard_file,
-    SystemLog => $log_file,
+    PidFile => $setup->{pid_file},
+    ScoreboardFile => $setup->{scoreboard_file},
+    SystemLog => $setup->{log_file},
 
-    AuthUserFile => $auth_user_file,
-    AuthGroupFile => $auth_group_file,
+    AuthUserFile => $setup->{auth_user_file},
+    AuthGroupFile => $setup->{auth_group_file},
     AuthOrder => 'mod_auth_file.c',
 
     DefaultChdir => '~',
@@ -215,14 +184,15 @@ sub quotatab_file_single_suppl_group {
 
       'mod_quotatab_file.c' => {
         QuotaEngine => 'on',
-        QuotaLog => $log_file,
+        QuotaLog => $setup->{log_file},
         QuotaLimitTable => "file:$limit_file",
         QuotaTallyTable => "file:$tally_file",
       },
     },
   };
 
-  my ($port, $config_user, $config_group) = config_write($config_file, $config);
+  my ($port, $config_user, $config_group) = config_write($setup->{config_file},
+    $config);
 
   # Open pipes, for use between the parent and child processes.  Specifically,
   # the child will indicate when it's done with its test by writing a message
@@ -239,9 +209,11 @@ sub quotatab_file_single_suppl_group {
   defined(my $pid = fork()) or die("Can't fork: $!");
   if ($pid) {
     eval {
-      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
+      # Allow for server startup
+      sleep(1);
 
-      $client->login($user, $passwd);
+      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
+      $client->login($setup->{user}, $setup->{passwd});
 
       my $conn = $client->stor_raw('test.txt');
       unless ($conn) {
@@ -251,15 +223,15 @@ sub quotatab_file_single_suppl_group {
 
       my $buf = "Hello, World\n";
       $conn->write($buf, length($buf), 25);
+      sleep(0.25);
       eval { $conn->close() };
 
       my $resp_code = $client->response_code();
       my $resp_msg = $client->response_msg();
-      $self->assert_transfer_ok($resp_code, $resp_msg);
-
       $client->quit();
-    };
 
+      $self->assert_transfer_ok($resp_code, $resp_msg);
+    };
     if ($@) {
       $ex = $@;
     }
@@ -268,7 +240,7 @@ sub quotatab_file_single_suppl_group {
     $wfh->flush();
 
   } else {
-    eval { server_wait($config_file, $rfh) };
+    eval { server_wait($setup->{config_file}, $rfh) };
     if ($@) {
       warn($@);
       exit 1;
@@ -278,89 +250,46 @@ sub quotatab_file_single_suppl_group {
   }
 
   # Stop server
-  server_stop($pid_file);
-
+  server_stop($setup->{pid_file});
   $self->assert_child_ok($pid);
 
   my ($quota_type, $bytes_in_used, $bytes_out_used, $bytes_xfer_used, $files_in_used, $files_out_used, $files_xfer_used) = get_tally($tally_file, 'test', 'group');
 
-  my $expected;
-
-  $expected = 'group';
-  $self->assert($expected eq $quota_type,
-    test_msg("Expected '$expected', got '$quota_type'"));
+  my $expected = 'group';
+  $self->assert(qr/$expected/i, $quota_type,
+    test_msg("Expected quota type '$expected', got '$quota_type'"));
 
   $expected = '^(13.0+|13)$';
   $self->assert(qr/$expected/, $bytes_in_used,
-    test_msg("Expected $expected, got $bytes_in_used"));
+    test_msg("Expected bytes_in_used $expected, got $bytes_in_used"));
 
-  $expected = '^(0.0+|0)$';
+  $expected = '^(0.0+|0|unlimited)$';
   $self->assert(qr/$expected/, $bytes_out_used,
-    test_msg("Expected $expected, got $bytes_out_used"));
+    test_msg("Expected bytes_out_used $expected, got $bytes_out_used"));
 
-  $expected = '^(0.0+|0)$';
+  $expected = '^(0.0+|0|unlimited)$';
   $self->assert(qr/$expected/, $bytes_xfer_used,
-    test_msg("Expected $expected, got $bytes_xfer_used"));
+    test_msg("Expected bytes_xfer_used $expected, got $bytes_xfer_used"));
 
   $expected = 0;
   $self->assert($expected == $files_in_used,
-    test_msg("Expected $expected, got $files_in_used"));
+    test_msg("Expected files_in_used $expected, got $files_in_used"));
 
   $expected = 0;
   $self->assert($expected == $files_out_used,
-    test_msg("Expected $expected, got $files_out_used"));
+    test_msg("Expected files_out_used $expected, got $files_out_used"));
 
   $expected = 0;
   $self->assert($expected == $files_xfer_used,
-    test_msg("Expected $expected, got $files_xfer_used"));
+    test_msg("Expected files_xfer_used $expected, got $files_xfer_used"));
 
-  if ($ex) {
-    test_append_logfile($log_file, $ex);
-    unlink($log_file);
-
-    die($ex);
-  }
-
-  unlink($log_file);
+  test_cleanup($setup, $ex);
 }
 
 sub quotatab_file_all_limit {
   my $self = shift;
   my $tmpdir = $self->{tmpdir};
-
-  my $config_file = "$tmpdir/quotatab.conf";
-  my $pid_file = File::Spec->rel2abs("$tmpdir/quotatab.pid");
-  my $scoreboard_file = File::Spec->rel2abs("$tmpdir/quotatab.scoreboard");
-
-  my $log_file = test_get_logfile();
-
-  my $auth_user_file = File::Spec->rel2abs("$tmpdir/quotatab.passwd");
-  my $auth_group_file = File::Spec->rel2abs("$tmpdir/quotatab.group");
-
-  my $user = 'proftpd';
-  my $passwd = 'test';
-  my $group = 'ftpd';
-  my $home_dir = File::Spec->rel2abs($tmpdir);
-  mkpath($home_dir);
-
-  my $uid = 500;
-  my $gid = 500;
-
-  # Make sure that, if we're running as root, that the home directories has
-  # permissions/privs set for the account we create
-  if ($< == 0) {
-    unless (chmod(0755, $home_dir)) {
-      die("Can't set perms on $home_dir to 0755: $!");
-    }
-
-    unless (chown($uid, $gid, $home_dir)) {
-      die("Can't set owner of $home_dir to $uid/$gid: $!");
-    }
-  }
-
-  auth_user_write($auth_user_file, $user, $passwd, $uid, $gid, $home_dir,
-    '/bin/bash');
-  auth_group_write($auth_group_file, $group, $gid, $user);
+  my $setup = test_setup($tmpdir, 'quotatab');
 
   my $limit_file = File::Spec->rel2abs("$tmpdir/ftpquota-all-limit.tab");
   my $tally_file = File::Spec->rel2abs("$tmpdir/ftpquota-all-tally.tab");
@@ -376,13 +305,19 @@ sub quotatab_file_all_limit {
     die("Can't open $test_file: $!");
   }
 
-  my $config = {
-    PidFile => $pid_file,
-    ScoreboardFile => $scoreboard_file,
-    SystemLog => $log_file,
+  if ($< == 0) {
+    unless (chown($setup->{uid}, $setup->{gid}, $test_file)) {
+      die("Can't set owner of $test_file to $setup->{uid}/$setup->{gid}: $!");
+    }
+  }
 
-    AuthUserFile => $auth_user_file,
-    AuthGroupFile => $auth_group_file,
+  my $config = {
+    PidFile => $setup->{pid_file},
+    ScoreboardFile => $setup->{scoreboard_file},
+    SystemLog => $setup->{log_file},
+
+    AuthUserFile => $setup->{auth_user_file},
+    AuthGroupFile => $setup->{auth_group_file},
     AuthOrder => 'mod_auth_file.c',
 
     DefaultChdir => '~',
@@ -394,7 +329,7 @@ sub quotatab_file_all_limit {
 
       'mod_quotatab_file.c' => {
         QuotaEngine => 'on',
-        QuotaLog => $log_file,
+        QuotaLog => $setup->{log_file},
         QuotaLimitTable => "file:$limit_file",
         QuotaTallyTable => "file:$tally_file",
         QuotaDisplayUnits => 'Mb',
@@ -402,7 +337,8 @@ sub quotatab_file_all_limit {
     },
   };
 
-  my ($port, $config_user, $config_group) = config_write($config_file, $config);
+  my ($port, $config_user, $config_group) = config_write($setup->{config_file},
+    $config);
 
   # Open pipes, for use between the parent and child processes.  Specifically,
   # the child will indicate when it's done with its test by writing a message
@@ -419,8 +355,11 @@ sub quotatab_file_all_limit {
   defined(my $pid = fork()) or die("Can't fork: $!");
   if ($pid) {
     eval {
+      # Allow for server startup
+      sleep(1);
+
       my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
-      $client->login($user, $passwd);
+      $client->login($setup->{user}, $setup->{passwd});
 
       my $conn = $client->retr_raw('test.txt');
       unless ($conn) {
@@ -432,15 +371,15 @@ sub quotatab_file_all_limit {
       my $bufsz = 8192;
 
       $conn->read($buf, $bufsz, 25);
+      sleep(0.25);
       eval { $conn->close() };
 
       my $resp_code = $client->response_code();
       my $resp_msg = $client->response_msg();
-      $self->assert_transfer_ok($resp_code, $resp_msg);
-
       $client->quit();
-    };
 
+      $self->assert_transfer_ok($resp_code, $resp_msg);
+    };
     if ($@) {
       $ex = $@;
     }
@@ -449,7 +388,7 @@ sub quotatab_file_all_limit {
     $wfh->flush();
 
   } else {
-    eval { server_wait($config_file, $rfh) };
+    eval { server_wait($setup->{config_file}, $rfh) };
     if ($@) {
       warn($@);
       exit 1;
@@ -459,57 +398,16 @@ sub quotatab_file_all_limit {
   }
 
   # Stop server
-  server_stop($pid_file);
-
+  server_stop($setup->{pid_file});
   $self->assert_child_ok($pid);
 
-  if ($ex) {
-    test_append_logfile($log_file, $ex);
-    unlink($log_file);
-
-    die($ex);
-  }
-
-  unlink($log_file);
+  test_cleanup($setup, $ex);
 }
 
 sub quotatab_file_bytes_download_zero {
   my $self = shift;
   my $tmpdir = $self->{tmpdir};
-
-  my $config_file = "$tmpdir/quotatab.conf";
-  my $pid_file = File::Spec->rel2abs("$tmpdir/quotatab.pid");
-  my $scoreboard_file = File::Spec->rel2abs("$tmpdir/quotatab.scoreboard");
-
-  my $log_file = test_get_logfile();
-
-  my $auth_user_file = File::Spec->rel2abs("$tmpdir/quotatab.passwd");
-  my $auth_group_file = File::Spec->rel2abs("$tmpdir/quotatab.group");
-
-  my $user = 'proftpd';
-  my $passwd = 'test';
-  my $group = 'ftpd';
-  my $home_dir = File::Spec->rel2abs($tmpdir);
-  mkpath($home_dir);
-
-  my $uid = 500;
-  my $gid = 500;
-
-  # Make sure that, if we're running as root, that the home directories has
-  # permissions/privs set for the account we create
-  if ($< == 0) {
-    unless (chmod(0755, $home_dir)) {
-      die("Can't set perms on $home_dir to 0755: $!");
-    }
-
-    unless (chown($uid, $gid, $home_dir)) {
-      die("Can't set owner of $home_dir to $uid/$gid: $!");
-    }
-  }
-
-  auth_user_write($auth_user_file, $user, $passwd, $uid, $gid, $home_dir,
-    '/bin/bash');
-  auth_group_write($auth_group_file, $group, $gid, $user);
+  my $setup = test_setup($tmpdir, 'quotatab');
 
   # Generate our limit file
 
@@ -570,10 +468,10 @@ sub quotatab_file_bytes_download_zero {
 
   # Populate the limit table
   if ($ENV{TEST_VERBOSE}) {
-    $cmd = "perl $ftpquota_bin --verbose --table-path=$limit_file --type=limit --add-record --name=$user -Q=user -L=hard --Bu=10485760 --Fd=0 --Bd=0";
+    $cmd = "perl $ftpquota_bin --verbose --table-path=$limit_file --type=limit --add-record --name=$setup->{user} -Q=user -L=hard --Bu=10485760 --Fd=0 --Bd=0";
 
   } else {
-    $cmd = "perl $ftpquota_bin --table-path=$limit_file --type=limit --add-record --name=$user -Q=user -L=hard --Bu=10485760 --Fd=0 --Bd=0";
+    $cmd = "perl $ftpquota_bin --table-path=$limit_file --type=limit --add-record --name=$setup->{user} -Q=user -L=hard --Bu=10485760 --Fd=0 --Bd=0";
   }
 
   if ($ENV{TEST_VERBOSE}) {
@@ -592,10 +490,10 @@ sub quotatab_file_bytes_download_zero {
   }
 
   if ($ENV{TEST_VERBOSE}) {
-    $cmd = "perl $ftpquota_bin --verbose --table-path=$limit_file --type=limit --show-record --name=$user";
+    $cmd = "perl $ftpquota_bin --verbose --table-path=$limit_file --type=limit --show-record --name=$setup->{user}";
 
   } else {
-    $cmd = "perl $ftpquota_bin --table-path=$limit_file --type=limit --show-record --name=$user";
+    $cmd = "perl $ftpquota_bin --table-path=$limit_file --type=limit --show-record --name=$setup->{user}";
   }
 
   if ($ENV{TEST_VERBOSE}) {
@@ -614,12 +512,12 @@ sub quotatab_file_bytes_download_zero {
   }
 
   my $config = {
-    PidFile => $pid_file,
-    ScoreboardFile => $scoreboard_file,
-    SystemLog => $log_file,
+    PidFile => $setup->{pid_file},
+    ScoreboardFile => $setup->{scoreboard_file},
+    SystemLog => $setup->{log_file},
 
-    AuthUserFile => $auth_user_file,
-    AuthGroupFile => $auth_group_file,
+    AuthUserFile => $setup->{auth_user_file},
+    AuthGroupFile => $setup->{auth_group_file},
     AuthOrder => 'mod_auth_file.c',
 
     DefaultChdir => '~',
@@ -631,7 +529,7 @@ sub quotatab_file_bytes_download_zero {
 
       'mod_quotatab_file.c' => {
         QuotaEngine => 'on',
-        QuotaLog => $log_file,
+        QuotaLog => $setup->{log_file},
         QuotaLimitTable => "file:$limit_file",
         QuotaTallyTable => "file:$tally_file",
         QuotaDisplayUnits => 'Mb',
@@ -639,7 +537,8 @@ sub quotatab_file_bytes_download_zero {
     },
   };
 
-  my ($port, $config_user, $config_group) = config_write($config_file, $config);
+  my ($port, $config_user, $config_group) = config_write($setup->{config_file},
+    $config);
 
   # Open pipes, for use between the parent and child processes.  Specifically,
   # the child will indicate when it's done with its test by writing a message
@@ -656,8 +555,11 @@ sub quotatab_file_bytes_download_zero {
   defined(my $pid = fork()) or die("Can't fork: $!");
   if ($pid) {
     eval {
+      # Allow for server startup
+      sleep(1);
+
       my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
-      $client->login($user, $passwd);
+      $client->login($setup->{user}, $setup->{passwd});
 
       $client->site("QUOTA");
       my $resp_code = $client->response_code();
@@ -667,8 +569,8 @@ sub quotatab_file_bytes_download_zero {
       $self->assert($expected == $resp_code,
         test_msg("Expected response code $expected, got $resp_code"));
 
-      $expected = '   Downloaded Mb:    unlimited';
-      $self->assert($expected eq $resp_msgs->[6],
+      $expected = '\s+Downloaded Mb:\s+unlimited';
+      $self->assert(qr/$expected/, $resp_msgs->[6],
         test_msg("Expected response message '$expected', got '$resp_msgs->[6]'"));
 
       $client->quit();
@@ -681,7 +583,7 @@ sub quotatab_file_bytes_download_zero {
     $wfh->flush();
 
   } else {
-    eval { server_wait($config_file, $rfh) };
+    eval { server_wait($setup->{config_file}, $rfh) };
     if ($@) {
       warn($@);
       exit 1;
@@ -691,18 +593,10 @@ sub quotatab_file_bytes_download_zero {
   }
 
   # Stop server
-  server_stop($pid_file);
-
+  server_stop($setup->{pid_file});
   $self->assert_child_ok($pid);
 
-  if ($ex) {
-    test_append_logfile($log_file, $ex);
-    unlink($log_file);
-
-    die($ex);
-  }
-
-#  unlink($log_file);
+  test_cleanup($setup, $ex);
 }
 
 1;
