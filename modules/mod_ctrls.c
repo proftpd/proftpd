@@ -1333,8 +1333,7 @@ static int ctrls_init(void) {
   }
 
   /* Make certain the socket ACL is initialized. */
-  memset(&ctrls_sock_acl, '\0', sizeof(ctrls_acl_t));
-  ctrls_sock_acl.acl_users.allow = ctrls_sock_acl.acl_groups.allow = FALSE;
+  pr_ctrls_init_acl(&ctrls_sock_acl);
 
   pr_event_register(&ctrls_module, "core.restart", ctrls_restart_ev, NULL);
   pr_event_register(&ctrls_module, "core.shutdown", ctrls_shutdown_ev, NULL);
