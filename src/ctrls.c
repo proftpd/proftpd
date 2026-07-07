@@ -496,6 +496,7 @@ static int ctrls_send_msg(pool *p, int fd, pr_json_object_t *json) {
 
     if ((size_t) res != msglen) {
       if (xerrno == EAGAIN) {
+        pr_signals_handle();
         continue;
       }
 
@@ -957,7 +958,18 @@ int pr_ctrls_recv_response(pool *p, int fd, int *status, char ***respargv) {
     "receiving Controls response message (%lu bytes) from fd %d",
     (unsigned long) msglen, fd);
 
-  /* Impose max response size limit here, for Issue #2036. */
+  /* Impose min/max response size limit here, for Issue #2036. */
+  if (msglen == 0) {
+    destroy_pool(tmp_pool);
+    pr_signals_unblock();
+
+    (void) pr_trace_msg(trace_channel, 3,
+      "message size (%lu bytes) less than min (1 byte), unable to receive "
+      "response", (unsigned long) msglen);
+    errno = EINVAL;
+    return -1;
+  }
+
   if (msglen > CTRLS_MAX_RESP_SIZE) {
     destroy_pool(tmp_pool);
     pr_signals_unblock();
