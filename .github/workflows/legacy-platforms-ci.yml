@@ -46,7 +46,7 @@ jobs:
       #  https://github.com/actions/checkout/issues/1809.
       ACTIONS_ALLOW_USE_UNSECURE_NODE_VERSION: true
 
-      PACKAGE_VERSION: 1.3.10rc3
+      PACKAGE_VERSION: 1.3.10rc4
       MEMCACHED_HOST: memcached
       REDIS_HOST: redis
 
