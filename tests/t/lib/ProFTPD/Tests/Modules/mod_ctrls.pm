@@ -25,6 +25,11 @@ my $TESTS = {
     test_class => [qw(forking)],
   },
 
+  ctrls_lsctrl_access_denied_default_socket_acl_issue2210 => {
+    order => ++$order,
+    test_class => [qw(bug forking)],
+  },
+
   ctrls_lsctrl_access_denied_issue1114 => {
     order => ++$order,
     test_class => [qw(bug forking)],
@@ -276,6 +281,92 @@ sub ctrls_lsctrl_system_user_ok {
     }
 
     $expected = 'help insctrl lsctrl rmctrl ';
+    $self->assert($expected eq $actions,
+      test_msg("Expected '$expected', got '$actions'"));
+  };
+  if ($@) {
+    $ex = $@;
+  }
+
+  server_stop($setup->{pid_file});
+  test_cleanup($setup, $ex);
+}
+
+sub ctrls_lsctrl_access_denied_default_socket_acl_issue2210 {
+  my $self = shift;
+  my $tmpdir = $self->{tmpdir};
+  my $setup = test_setup($tmpdir, 'ctrls');
+
+  my $ctrls_sock = File::Spec->rel2abs("$tmpdir/ctrls.sock");
+
+  my ($sys_user, $sys_group) = config_get_identity();
+
+  my $config = {
+    PidFile => $setup->{pid_file},
+    ScoreboardFile => $setup->{scoreboard_file},
+    SystemLog => $setup->{log_file},
+    TraceLog => $setup->{log_file},
+    Trace => 'DEFAULT:10',
+
+    AuthUserFile => $setup->{auth_user_file},
+    AuthGroupFile => $setup->{auth_group_file},
+    AuthOrder => 'mod_auth_file.c',
+
+    IfModules => {
+      'mod_ctrls.c' => {
+        ControlsEngine => 'on',
+        ControlsLog => $setup->{log_file},
+        ControlsSocket => $ctrls_sock,
+        ControlsACLs => "all allow user root,$sys_user",
+
+        # We deliberately omit any ControlsSocketACLs here in order to
+        # use the defaults, which SHOULD deny all users; see Issue #2210.
+      },
+
+      'mod_delay.c' => {
+        DelayEngine => 'off',
+      },
+    },
+  };
+
+  my ($port, $config_user, $config_group) = config_write($setup->{config_file},
+    $config);
+
+  my $ex;
+
+  # Start server
+  server_start($setup->{config_file});
+  sleep(1);
+
+  eval {
+    my ($exit_status, $lines) = ftpdctl($ctrls_sock, 'lsctrl');
+    if ($ENV{TEST_VERBOSE}) {
+      print STDERR "# ftpdctl: (exit status $exit_status)\n";
+      foreach my $line (@$lines) {
+        chomp($line);
+        print STDERR "#  $line\n";
+      }
+    }
+
+    my $expected = 2;
+    $self->assert($exit_status == $expected,
+      test_msg("Expected exit status $expected, got $exit_status"));
+
+    $lines = [grep { /access/ } @$lines];
+
+    $expected = 1;
+    my $matches = scalar(@$lines);
+    $self->assert($expected == $matches,
+      test_msg("Expected line count $expected, got $matches"));
+
+    my $actions = '';
+    foreach my $line (@$lines) {
+      if ($line =~ /^ftpdctl: (.*?)$/) {
+        $actions .= "$1";
+      }
+    }
+
+    $expected = 'access denied';
     $self->assert($expected eq $actions,
       test_msg("Expected '$expected', got '$actions'"));
   };
