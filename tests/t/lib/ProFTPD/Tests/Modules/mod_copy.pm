@@ -1097,7 +1097,7 @@ EOC
   server_stop($setup->{pid_file});
   $self->assert_child_ok($pid);
 
-  test_cleanup($setup->{log_file}, $ex);
+  test_cleanup($setup, $ex);
 }
 
 sub copy_config_allowoverwrite_file {
@@ -1203,7 +1203,7 @@ sub copy_config_allowoverwrite_file {
   server_stop($setup->{pid_file});
   $self->assert_child_ok($pid);
 
-  test_cleanup($setup->{log_file}, $ex);
+  test_cleanup($setup, $ex);
 }
 
 sub copy_config_allowoverwrite_dangling_symlink {
@@ -1307,7 +1307,7 @@ sub copy_config_allowoverwrite_dangling_symlink {
   server_stop($setup->{pid_file});
   $self->assert_child_ok($pid);
 
-  test_cleanup($setup->{log_file}, $ex);
+  test_cleanup($setup, $ex);
 }
 
 sub copy_config_pathdenyfilter {
@@ -3604,7 +3604,7 @@ EOS
   server_stop($setup->{pid_file});
   $self->assert_child_ok($pid);
 
-  test_cleanup($setup->{log_file}, $ex);
+  test_cleanup($setup, $ex);
 }
 
 sub copy_cpto_timeout_bug4263 {
@@ -3724,7 +3724,7 @@ sub copy_cpto_timeout_bug4263 {
   server_stop($setup->{pid_file});
   $self->assert_child_ok($pid);
 
-  test_cleanup($setup->{log_file}, $ex);
+  test_cleanup($setup, $ex);
 }
 
 sub copy_cpfr_config_limit_read_bug4372 {
@@ -3838,7 +3838,7 @@ EOC
   server_stop($setup->{pid_file});
   $self->assert_child_ok($pid);
 
-  test_cleanup($setup->{log_file}, $ex);
+  test_cleanup($setup, $ex);
 }
 
 sub copy_cpto_config_limit_write_bug4372 {
@@ -3964,7 +3964,7 @@ EOC
   server_stop($setup->{pid_file});
   $self->assert_child_ok($pid);
 
-  test_cleanup($setup->{log_file}, $ex);
+  test_cleanup($setup, $ex);
 }
 
 sub copy_anon_config_limits {
@@ -4098,7 +4098,7 @@ EOC
   server_stop($setup->{pid_file});
   $self->assert_child_ok($pid);
 
-  test_cleanup($setup->{log_file}, $ex);
+  test_cleanup($setup, $ex);
 }
 
 1;
