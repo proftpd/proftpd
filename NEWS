@@ -15,7 +15,7 @@
   where `N' is the issue number.
 -----------------------------------------------------------------------------
 
-1.3.10rc3
+1.3.10rc3 - Released 07-Jul-2026
 --------------------------------
 - Issue 2135 - ExecEnviron values not passed due to regression since 1.3.8.d.
 - Issue 2141 - FTP TYPE command silently ignores invalid format-control
