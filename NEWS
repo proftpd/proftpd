@@ -29,6 +29,8 @@
 - Issue 2188 - SQL group name lookup concatenates client-provided group names
   without escaping.
 - Issue 2190 - Authenticated SFTP sessions can overflow the SFTP packet buffer.
+- Issue 2210 - Default Controls socket ACLs unintentionally allow all users
+  access for sending Controls requests.
 
 1.3.9b - Released 02-Jun-2026
 --------------------------------
