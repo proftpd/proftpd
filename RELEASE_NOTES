@@ -9,7 +9,15 @@ ChangeLog files.
 1.3.10rc3
 ----------
 
-  + Implemented the SFTP "copy-data" extension.
+  + Implemented the SFTP "copy-data" extension (Issue #2198).
+
+  + Fixed SFTP packet buffer overflow for authenticated sessions (Issue #2190).
+
+  + Fixed mod_exec regression with handling of ExecEnviron directives
+    (Issue #2135).
+
+  + Enforced configured access policies properly for some FTP `SITE` commands,
+    SFTP requests.
 
 
 1.3.10rc2
