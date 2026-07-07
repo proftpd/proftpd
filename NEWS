@@ -36,6 +36,8 @@
   without escaping.
 - Issue 2190 - Authenticated SFTP sessions can overflow the SFTP packet buffer.
 - Issue 2198 - Implement SFTP copy-data extension.
+- Issue 2210 - Default Controls socket ACLs unintentionally allow all users
+  access for sending Controls requests.
 
 1.3.10rc2 - Released 02-Jun-2026
 --------------------------------
