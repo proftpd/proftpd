@@ -42,6 +42,8 @@
 
 #include "mod_ctrls.h"
 
+#define CTRLS_SOCKET_PREFIX	"/tmp/ftp.cl"
+
 #define CTRLS_MAX_REQ_SIZE	1024
 #define CTRLS_MAX_RESP_SIZE	(1024 * 1024)
 
@@ -1332,7 +1334,7 @@ int pr_ctrls_connect(const char *socket_file) {
 
   cl_sock.sun_family = AF_UNIX;
   pr_snprintf(cl_sock.sun_path, sizeof(cl_sock.sun_path) - 1, "%s%05u",
-    "/tmp/ftp.cl", (unsigned int) getpid());
+    CTRLS_SOCKET_PREFIX, (unsigned int) getpid());
   len = sizeof(cl_sock);
 
   /* Make sure the file doesn't already exist.  If it does exist AND is
@@ -1648,13 +1650,14 @@ static int ctrls_get_creds_local(int fd, uid_t *uid, gid_t *gid,
 static int ctrls_get_creds_basic(struct sockaddr_un *sock, int cl_fd,
     unsigned int max_age, uid_t *uid, gid_t *gid, pid_t *pid) {
   pid_t cl_pid = 0;
-  char *tmp = NULL;
+  char *tmp = NULL, *endp = NULL;
   time_t stale_time;
   struct stat st;
+  unsigned long file_pid = 0;
 
   /* Check the path -- hmmm... */
   PRIVS_ROOT
-  while (stat(sock->sun_path, &st) < 0) {
+  while (lstat(sock->sun_path, &st) < 0) {
     int xerrno = errno;
 
     if (xerrno == EINTR) {
@@ -1665,7 +1668,6 @@ static int ctrls_get_creds_basic(struct sockaddr_un *sock, int cl_fd,
     PRIVS_RELINQUISH
     pr_trace_msg(trace_channel, 2, "error: unable to stat %s: %s",
       sock->sun_path, strerror(xerrno));
-    (void) close(cl_fd);
 
     errno = xerrno;
     return -1;
@@ -1674,7 +1676,6 @@ static int ctrls_get_creds_basic(struct sockaddr_un *sock, int cl_fd,
 
   /* Is it a socket? */
   if (pr_ctrls_issock_unix(st.st_mode) < 0) {
-    (void) close(cl_fd);
     errno = ENOTSOCK;
     return -1;
   }
@@ -1684,7 +1685,6 @@ static int ctrls_get_creds_basic(struct sockaddr_un *sock, int cl_fd,
       ((st.st_mode & S_IRWXU) != PR_CTRLS_CL_MODE)) {
     pr_trace_msg(trace_channel, 3,
       "error: unable to accept connection: incorrect mode");
-    (void) close(cl_fd);
     errno = EPERM;
     return -1;
   }
@@ -1734,7 +1734,6 @@ static int ctrls_get_creds_basic(struct sockaddr_un *sock, int cl_fd,
     }
 
     destroy_pool(tmp_pool);
-    (void) close(cl_fd);
 
     errno = ETIMEDOUT;
     return -1;
@@ -1742,21 +1741,23 @@ static int ctrls_get_creds_basic(struct sockaddr_un *sock, int cl_fd,
 
   /* Parse the PID out of the path */
   tmp = sock->sun_path;
-  tmp += strlen("/tmp/ftp.cl");
-  cl_pid = atol(tmp);
+  tmp += strlen(CTRLS_SOCKET_PREFIX);
+
+  file_pid = strtoul(tmp, &endp, 10);
+  if (endp != NULL &&
+      *endp != '\0') {
+    pr_trace_msg(trace_channel, 3,
+      "error: unable to accept connection: invalid PID");
+    errno = EINVAL;
+    return -1;
+  }
+
+  cl_pid = (pid_t) file_pid;
 
   /* Return the IDs of the caller */
-  if (uid != NULL) {
-    *uid = st.st_uid;
-  }
-
-  if (gid != NULL) {
-    *gid = st.st_gid;
-  }
-
-  if (pid != NULL) {
-    *pid = cl_pid;
-  }
+  *uid = st.st_uid;
+  *gid = st.st_gid;
+  *pid = cl_pid;
 
   return 0;
 }
@@ -1766,6 +1767,9 @@ int pr_ctrls_accept(int fd, uid_t *uid, gid_t *gid, pid_t *pid,
   socklen_t len = 0;
   struct sockaddr_un sock;
   int cl_fd = -1, res = -1, xerrno;
+  uid_t basic_uid;
+  gid_t basic_gid;
+  pid_t basic_pid;
 
   len = sizeof(sock);
 
@@ -1791,6 +1795,33 @@ int pr_ctrls_accept(int fd, uid_t *uid, gid_t *gid, pid_t *pid,
   /* NULL terminate the name */
   sock.sun_path[sizeof(sock.sun_path)-1] = '\0';
 
+  if (strncmp(sock.sun_path, CTRLS_SOCKET_PREFIX,
+      strlen(CTRLS_SOCKET_PREFIX)) != 0) {
+    pr_trace_msg(trace_channel, 6, "refusing unexpected client path '%s'",
+      sock.sun_path);
+    (void) close(cl_fd);
+    errno = EINVAL;
+    return -1;
+  }
+
+  /* Use the Stevens method of determining connection credentials, as doing
+   * so performs other basic sanity checks of the provided path.
+   *
+   * If kernel-enforced means of determining credentials are available, we
+   * will use them as well.
+   */
+  pr_trace_msg(trace_channel, 5,
+    "checking client credentials using Stevens' method");
+  res = ctrls_get_creds_basic(&sock, cl_fd, max_age, &basic_uid, &basic_gid,
+    &basic_pid);
+  if (res < 0) {
+    xerrno = errno;
+
+    (void) close(cl_fd);
+    errno = xerrno;
+    return res;
+  }
+
 #if defined(SO_PEERCRED)
   pr_trace_msg(trace_channel, 5,
     "checking client credentials using SO_PEERCRED");
@@ -1814,15 +1845,22 @@ int pr_ctrls_accept(int fd, uid_t *uid, gid_t *gid, pid_t *pid,
   res = ctrls_get_creds_local(cl_fd, uid, gid, pid);
 #endif
 
-  /* Fallback to the Stevens method of determining connection credentials,
-   * if the kernel-enforced methods did not pan out.
-   */
   if (res < 0) {
     pr_trace_msg(trace_channel, 5,
-      "checking client credentials using Stevens' method");
-    res = ctrls_get_creds_basic(&sock, cl_fd, max_age, uid, gid, pid);
-    if (res < 0) {
-      return res;
+      "unable to obtain kernel-enforced client credentials: %s",
+       strerror(errno));
+
+    /* Fall back to using the Stevens' obtained credentials. */
+    if (uid != NULL) {
+      *uid = basic_uid;
+    }
+
+    if (gid != NULL) {
+      *gid = basic_gid;
+    }
+
+    if (pid != NULL) {
+      *pid = basic_pid;
     }
   }
 

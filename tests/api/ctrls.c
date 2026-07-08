@@ -98,6 +98,18 @@ static int rewind_fd(int fd) {
   return 0;
 }
 
+/* Largely copied from ctrls.c */
+static int connect_unix(int *fd) {
+  int fds[2], res;
+
+  if (socketpair(AF_UNIX, SOCK_STREAM, 0, fds) < 0) {
+    return -1;
+  }
+
+  *fd = fds[1];
+  return fds[0];
+}
+
 /* Largely copied from mod_ctrls. */
 static int listen_unix(const char *path) {
   int fd = -1, socklen = 0;
@@ -1417,71 +1429,23 @@ START_TEST (ctrls_accept_test) {
 }
 END_TEST
 
-START_TEST (ctrls_connect_eexist_directory_test) {
-  int res;
-  const char socket_path[1024];
+START_TEST (ctrls_accept_einval_path_test) {
+  int fd = -1, other_fd = -1, res;
 
   mark_point();
-  res = pr_ctrls_connect(NULL);
-  ck_assert_msg(res < 0, "Failed to handle null path");
-  ck_assert_msg(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
-    strerror(errno), errno);
-
-  mark_point();
-  memset(socket_path, '\0', sizeof(socket_path));
-  snprintf(socket_path, sizeof(socket_path)-1, "/tmp/ftp.cl%05u",
-    (unsigned int) getpid());
-  res = pr_ctrls_connect(socket_path);
-  ck_assert_msg(res < 0, "Failed to handle nonexistent socket path");
-  ck_assert_msg(errno == ECONNREFUSED || errno == ENOENT,
-    "Expected ECONNREFUSED (%d) or ENOENT (%d), got %s (%d)", ECONNREFUSED,
-    ENOENT, strerror(errno), errno);
-
-  mark_point();
-  if (mkdir(socket_path, 0777) < 0) {
+  fd = connect_unix(&other_fd);
+  if (fd < 0) {
     return;
   }
 
-  res = pr_ctrls_connect(socket_path);
-  ck_assert_msg(res < 0, "Failed to handle directory socket path");
-  ck_assert_msg(errno == EEXIST, "Expected EEXIST (%d), got %s (%d)",
-    EEXIST, strerror(errno), errno);
-
-  (void) rmdir(socket_path);
-}
-END_TEST
-
-START_TEST (ctrls_connect_eexist_symlink_test) {
-  int res;
-  const char socket_path[1024];
-
   mark_point();
-  res = pr_ctrls_connect(NULL);
-  ck_assert_msg(res < 0, "Failed to handle null path");
-  ck_assert_msg(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+  res = pr_ctrls_accept(fd, NULL, NULL, NULL, 5);
+  ck_assert_msg(res < 0, "Failed to handle invalid path");
+  ck_assert_msg(errno = EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
     strerror(errno), errno);
 
-  mark_point();
-  memset(socket_path, '\0', sizeof(socket_path));
-  snprintf(socket_path, sizeof(socket_path)-1, "/tmp/ftp.cl%05u",
-    (unsigned int) getpid());
-  res = pr_ctrls_connect(socket_path);
-  ck_assert_msg(res < 0, "Failed to handle nonexistent socket path");
-  ck_assert_msg(errno == ECONNREFUSED || errno == ENOENT,
-    "Expected ECONNREFUSED (%d) or ENOENT (%d), got %s (%d)", ECONNREFUSED,
-    ENOENT, strerror(errno), errno);
-
-  mark_point();
-  if (symlink(socket_path, "/foo/bar/baz") < 0) {
-    return;
-  }
-
-  res = pr_ctrls_connect(socket_path);
-  ck_assert_msg(res < 0, "Failed to handle symlink socket path");
-  ck_assert_msg(errno == EEXIST, "Expected EEXIST (%d), got %s (%d)",
-    EEXIST, strerror(errno), errno);
-
-  (void) unlink(socket_path);
+  (void) close(fd);
+  (void) close(other_fd);
 }
 END_TEST
 
@@ -1515,6 +1479,62 @@ START_TEST (ctrls_connect_test) {
 
   (void) close(res);
   (void) close(fd);
+  (void) unlink(socket_path);
+}
+END_TEST
+
+START_TEST (ctrls_connect_eexist_directory_test) {
+  int res;
+  const char socket_path[1024];
+
+  mark_point();
+  memset(socket_path, '\0', sizeof(socket_path));
+  snprintf(socket_path, sizeof(socket_path)-1, "/tmp/ftp.cl%05u",
+    (unsigned int) getpid());
+  res = pr_ctrls_connect(socket_path);
+  ck_assert_msg(res < 0, "Failed to handle nonexistent socket path");
+  ck_assert_msg(errno == ECONNREFUSED || errno == ENOENT,
+    "Expected ECONNREFUSED (%d) or ENOENT (%d), got %s (%d)", ECONNREFUSED,
+    ENOENT, strerror(errno), errno);
+
+  mark_point();
+  if (mkdir(socket_path, 0777) < 0) {
+    return;
+  }
+
+  res = pr_ctrls_connect(socket_path);
+  ck_assert_msg(res < 0, "Failed to handle directory socket path");
+  ck_assert_msg(errno == EEXIST, "Expected EEXIST (%d), got %s (%d)",
+    EEXIST, strerror(errno), errno);
+
+  (void) rmdir(socket_path);
+}
+END_TEST
+
+START_TEST (ctrls_connect_eexist_symlink_test) {
+  int res;
+  const char socket_path[1024];
+
+  mark_point();
+  memset(socket_path, '\0', sizeof(socket_path));
+  snprintf(socket_path, sizeof(socket_path)-1, "/tmp/ftp.cl%05u",
+    (unsigned int) getpid());
+  res = pr_ctrls_connect(socket_path);
+  ck_assert_msg(res < 0, "Failed to handle nonexistent socket path");
+  ck_assert_msg(errno == ECONNREFUSED || errno == ENOENT,
+    "Expected ECONNREFUSED (%d) or ENOENT (%d), got %s (%d)", ECONNREFUSED,
+    ENOENT, strerror(errno), errno);
+
+  mark_point();
+  if (symlink(socket_path, "/foo/bar/baz") < 0) {
+    return;
+  }
+
+  res = pr_ctrls_connect(socket_path);
+  ck_assert_msg(res < 0, "Failed to handle symlink socket path");
+  ck_assert_msg(errno == EEXIST, "Expected EEXIST (%d), got %s (%d)",
+    EEXIST, strerror(errno), errno);
+
   (void) unlink(socket_path);
 }
 END_TEST
@@ -2227,9 +2247,10 @@ Suite *tests_get_ctrls_suite(void) {
   tcase_add_test(testcase, ctrls_run_ctrls_test);
   tcase_add_test(testcase, ctrls_reset_ctrls_test);
   tcase_add_test(testcase, ctrls_accept_test);
+  tcase_add_test(testcase, ctrls_accept_einval_path_test);
+  tcase_add_test(testcase, ctrls_connect_test);
   tcase_add_test(testcase, ctrls_connect_eexist_directory_test);
   tcase_add_test(testcase, ctrls_connect_eexist_symlink_test);
-  tcase_add_test(testcase, ctrls_connect_test);
 
   /* mod_ctrls */
   tcase_add_test(testcase, ctrls_check_group_acl_test);
