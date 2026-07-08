@@ -45,6 +45,11 @@ my $TESTS = {
     test_class => [qw(bug forking)],
   },
 
+  ctrls_unknown_action_failed => {
+    order => ++$order,
+    test_class => [qw(forking)],
+  },
+
 };
 
 sub new {
@@ -636,6 +641,88 @@ sub ctrls_intvl_timeoutlogin_bug4298 {
   server_stop($setup->{pid_file});
   $self->assert_child_ok($pid);
 
+  test_cleanup($setup, $ex);
+}
+
+sub ctrls_unknown_action_failed {
+  my $self = shift;
+  my $tmpdir = $self->{tmpdir};
+  my $setup = test_setup($tmpdir, 'ctrls');
+
+  my $ctrls_sock = File::Spec->rel2abs("$tmpdir/ctrls.sock");
+
+  my ($user, $group) = config_get_identity();
+  my $poll_interval = 2;
+
+  my $config = {
+    PidFile => $setup->{pid_file},
+    ScoreboardFile => $setup->{scoreboard_file},
+    SystemLog => $setup->{log_file},
+    TraceLog => $setup->{log_file},
+    Trace => 'ctrls:20 event:10',
+
+    IfModules => {
+      'mod_ctrls.c' => {
+        ControlsEngine => 'on',
+        ControlsLog => $setup->{log_file},
+        ControlsSocket => $ctrls_sock,
+        ControlsACLs => "all allow user *",
+        ControlsSocketACL => "allow user *",
+        ControlsInterval => $poll_interval,
+      },
+
+      'mod_delay.c' => {
+        DelayEngine => 'off',
+      },
+    },
+  };
+
+  my ($port, $config_user, $config_group) = config_write($setup->{config_file},
+    $config);
+
+  my $ex;
+
+  # Start server
+  server_start($setup->{config_file});
+  sleep(2);
+
+  eval {
+    my ($exit_status, $lines) = ftpdctl($ctrls_sock, 'foobar', $poll_interval);
+    if ($ENV{TEST_VERBOSE}) {
+      print STDERR "# ftpdctl: (exit status $exit_status)\n";
+      foreach my $line (@$lines) {
+        chomp($line);
+        print STDERR "#  $line\n";
+      }
+    }
+
+    my $expected = 7;
+    $self->assert($exit_status == $expected,
+      test_msg("Expected exit status $expected, got $exit_status"));
+
+    $lines = [grep { /unsupported/ } @$lines];
+
+    $expected = 1;
+    my $matches = scalar(@$lines);
+    $self->assert($expected == $matches,
+      test_msg("Expected line count $expected, got $matches"));
+
+    my $actions = '';
+    foreach my $line (@$lines) {
+      if ($line =~ /^ftpdctl: (.*?)$/) {
+        $actions .= "$1";
+      }
+    }
+
+    $expected = 'unsupported action requested';
+    $self->assert($expected eq $actions,
+      test_msg("Expected '$expected', got '$actions'"));
+  };
+  if ($@) {
+    $ex = $@;
+  }
+
+  server_stop($setup->{pid_file});
   test_cleanup($setup, $ex);
 }
 
