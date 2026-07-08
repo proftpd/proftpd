@@ -646,7 +646,18 @@ int pr_ctrls_recv_request(pr_ctrls_cl_t *cl) {
     "receiving Controls request message (%lu bytes) from fd %d",
     (unsigned long) msglen, cl->cl_fd);
 
-  /* Impose max request size limit here, for Issue #2036. */
+  /* Impose min/max request size limit here, for Issue #2036. */
+  if (msglen == 0) {
+    destroy_pool(tmp_pool);
+    pr_signals_unblock();
+
+    (void) pr_trace_msg(trace_channel, 3,
+      "message size (%lu bytes) less than min (1 byte), unable to receive "
+      "response", (unsigned long) msglen);
+    errno = EINVAL;
+    return -1;
+  }
+
   if (msglen > CTRLS_MAX_REQ_SIZE) {
     destroy_pool(tmp_pool);
     pr_signals_unblock();
