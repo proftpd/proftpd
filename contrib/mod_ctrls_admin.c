@@ -47,6 +47,7 @@
 
 /* For the 'shutdown' control action */
 #define CTRLS_DEFAULT_SHUTDOWN_WAIT	5
+#define CTRLS_MAX_SHUTDOWN_TIMEOUT	300
 
 /* From src/dirtree.c */
 extern xaset_t *server_list;
@@ -435,6 +436,12 @@ static int ctrls_handle_debug(pr_ctrls_t *ctrl, int reqargc,
       level = atoi(reqargv[1]);
       if (level < 0) {
         pr_ctrls_add_response(ctrl, "debug level must not be negative");
+        return PR_CTRLS_STATUS_WRONG_PARAMETERS;
+      }
+
+      if (level > DEBUG10) {
+        pr_ctrls_add_response(ctrl, "debug level must not be greater than %u",
+          (unsigned int) DEBUG10);
         return PR_CTRLS_STATUS_WRONG_PARAMETERS;
       }
 
@@ -1132,11 +1139,25 @@ static int ctrls_handle_shutdown(pr_ctrls_t *ctrl, int reqargc,
       strcmp(reqargv[0], "graceful") == 0) {
     unsigned long nkids = 0;
     unsigned int waiting = CTRLS_DEFAULT_SHUTDOWN_WAIT;
-    unsigned int timeout = 0;
+    unsigned int timeout = CTRLS_DEFAULT_SHUTDOWN_WAIT;
     time_t now;
 
     if (reqargc == 2) {
-      timeout = atoi(reqargv[1]);
+      int client_timeout;
+
+      client_timeout = atoi(reqargv[1]);
+      if (client_timeout <= 0) {
+        pr_ctrls_add_response(ctrl, "timeout must be positive");
+        return PR_CTRLS_STATUS_WRONG_PARAMETERS;
+      }
+
+      if (client_timeout > CTRLS_MAX_SHUTDOWN_TIMEOUT) {
+        pr_ctrls_add_response(ctrl, "timeout must be less than %u secs",
+          (unsigned int) CTRLS_MAX_SHUTDOWN_TIMEOUT);
+        return PR_CTRLS_STATUS_WRONG_PARAMETERS;
+      }
+
+      timeout = client_timeout;
       time(&now);
 
       pr_ctrls_log(MOD_CTRLS_ADMIN_VERSION,
