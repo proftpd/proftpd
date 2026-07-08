@@ -1604,7 +1604,7 @@ START_TEST (ctrls_check_acl_test) {
   mark_point();
   action = "foobar";
   res = pr_ctrls_check_acl(ctrl, acttab, action);
-  ck_assert_msg(res == TRUE, "Expected TRUE, got %d", res);
+  ck_assert_msg(res == FALSE, "Expected FALSE, got %d", res);
 
   mark_point();
   action = "test";
@@ -1623,6 +1623,7 @@ START_TEST (ctrls_check_acl_test) {
   res = pr_ctrls_check_acl(ctrl, acttab, action);
   ck_assert_msg(res == TRUE, "Expected TRUE, got %d", res);
 
+  mark_point();
   acl->acl_users.nuids = 1;
   res = pr_ctrls_check_acl(ctrl, acttab, action);
   ck_assert_msg(res == TRUE, "Expected TRUE, got %d", res);

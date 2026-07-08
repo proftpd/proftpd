@@ -2028,6 +2028,7 @@ int pr_ctrls_check_user_acl(uid_t cl_uid, const ctrls_user_acl_t *user_acl) {
 int pr_ctrls_check_acl(const pr_ctrls_t *ctrl,
     const ctrls_acttab_t *acttab, const char *action) {
   register unsigned int i = 0;
+  int unknown_action = TRUE;
 
   if (ctrl == NULL ||
       ctrl->ctrls_cl == NULL ||
@@ -2041,18 +2042,38 @@ int pr_ctrls_check_acl(const pr_ctrls_t *ctrl,
     if (strcmp(acttab[i].act_action, action) == 0) {
       int user_check = FALSE, group_check = FALSE;
 
+      unknown_action = FALSE;
+
       if (acttab[i].act_acl != NULL) {
         user_check = pr_ctrls_check_user_acl(ctrl->ctrls_cl->cl_uid,
           &(acttab[i].act_acl->acl_users));
+        pr_trace_msg(trace_channel, 19,
+          "checking user ACL for action '%s' with UID %lu returned %s", action,
+          (unsigned long) ctrl->ctrls_cl->cl_uid,
+          user_check ? "true" : "false");
+
         group_check = pr_ctrls_check_group_acl(ctrl->ctrls_cl->cl_gid,
           &(acttab[i].act_acl->acl_groups));
+        pr_trace_msg(trace_channel, 19,
+          "checking group ACL for action '%s' with GID %lu returned %s", action,
+          (unsigned long) ctrl->ctrls_cl->cl_gid,
+          group_check ? "true" : "false");
       }
 
       if (user_check != TRUE &&
           group_check != TRUE) {
+        /* Known action is explicitly denied for user and group by this ACL. */
         return FALSE;
       }
     }
+  }
+
+  if (unknown_action == TRUE) {
+    pr_trace_msg(trace_channel, 19,
+      "checked ACL for unknown/unmatched action '%s', returning false", action);
+
+    /* Fail-close by returning false here for unmatched actions. */
+    return FALSE;
   }
 
   return TRUE;
