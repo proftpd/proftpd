@@ -662,6 +662,13 @@ static int ctrls_recv_cl_reqs(void) {
         ctrls_cl_freshness);
       xerrno = errno;
 
+      /* Restore blocking mode to the ctrl socket */
+      if (ctrls_setblock(ctrls_sockfd) < 0) {
+        pr_ctrls_log(MOD_CTRLS_VERSION,
+          "error: unable to set blocking on local socket: %s",
+          strerror(errno));
+      }
+
       if (cl_fd < 0) {
         if (xerrno != ETIMEDOUT) {
           pr_ctrls_log(MOD_CTRLS_VERSION,
@@ -669,13 +676,6 @@ static int ctrls_recv_cl_reqs(void) {
         }
 
         continue;
-      }
-
-      /* Restore blocking mode to the ctrl socket */
-      if (ctrls_setblock(ctrls_sockfd) < 0) {
-        pr_ctrls_log(MOD_CTRLS_VERSION,
-          "error: unable to set blocking on local socket: %s",
-          strerror(errno));
       }
 
       /* Set this socket as non-blocking */
