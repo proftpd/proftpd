@@ -1243,8 +1243,10 @@ int pr_set_registered_actions(module *mod, const char *action,
   return 0;
 }
 
-#if !defined(SO_PEERCRED) && !defined(HAVE_GETPEEREID) && \
-    !defined(HAVE_GETPEERUCRED) && defined(LOCAL_CREDS)
+#if !defined(SO_PEERCRED) && \
+    !defined(HAVE_GETPEEREID) && \
+    !defined(HAVE_GETPEERUCRED) && \
+    defined(LOCAL_CREDS)
 static int ctrls_connect_local_creds(int fd) {
   char buf[1] = {'\0'};
   int res;
@@ -1276,6 +1278,7 @@ static int ctrls_connect_local_creds(int fd) {
 int pr_ctrls_connect(const char *socket_file) {
   int fd = -1, len = 0;
   struct sockaddr_un cl_sock, ctrl_sock;
+  struct stat st;
 
   if (socket_file == NULL) {
     errno = EINVAL;
@@ -1321,7 +1324,23 @@ int pr_ctrls_connect(const char *socket_file) {
     "/tmp/ftp.cl", (unsigned int) getpid());
   len = sizeof(cl_sock);
 
-  /* Make sure the file doesn't already exist */
+  /* Make sure the file doesn't already exist.  If it does exist AND is
+   * a file or socket, we can remove it.
+   */
+  if (lstat(cl_sock.sun_path, &st) == 0) {
+    if (S_ISDIR(st.st_mode) ||
+        S_ISLNK(st.st_mode)) {
+      pr_trace_msg(trace_channel, 6,
+        "client path '%s' exists and is not a socket", cl_sock.sun_path);
+
+      (void) close(fd);
+      pr_signals_unblock();
+
+      errno = EEXIST;
+      return -1;
+    }
+  }
+
   (void) unlink(cl_sock.sun_path);
 
   /* Make it a socket */
@@ -1372,8 +1391,10 @@ int pr_ctrls_connect(const char *socket_file) {
     return -1;
   }
 
-#if !defined(SO_PEERCRED) && !defined(HAVE_GETPEEREID) && \
-    !defined(HAVE_GETPEERUCRED) && defined(LOCAL_CREDS)
+#if !defined(SO_PEERCRED) && \
+    !defined(HAVE_GETPEEREID) && \
+    !defined(HAVE_GETPEERUCRED) && \
+    defined(LOCAL_CREDS)
   if (ctrls_connect_local_creds(fd) < 0) {
     int xerrno = errno;
 

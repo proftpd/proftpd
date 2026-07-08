@@ -1417,6 +1417,74 @@ START_TEST (ctrls_accept_test) {
 }
 END_TEST
 
+START_TEST (ctrls_connect_eexist_directory_test) {
+  int res;
+  const char socket_path[1024];
+
+  mark_point();
+  res = pr_ctrls_connect(NULL);
+  ck_assert_msg(res < 0, "Failed to handle null path");
+  ck_assert_msg(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+    strerror(errno), errno);
+
+  mark_point();
+  memset(socket_path, '\0', sizeof(socket_path));
+  snprintf(socket_path, sizeof(socket_path)-1, "/tmp/ftp.cl%05u",
+    (unsigned int) getpid());
+  res = pr_ctrls_connect(socket_path);
+  ck_assert_msg(res < 0, "Failed to handle nonexistent socket path");
+  ck_assert_msg(errno == ECONNREFUSED || errno == ENOENT,
+    "Expected ECONNREFUSED (%d) or ENOENT (%d), got %s (%d)", ECONNREFUSED,
+    ENOENT, strerror(errno), errno);
+
+  mark_point();
+  if (mkdir(socket_path, 0777) < 0) {
+    return;
+  }
+
+  res = pr_ctrls_connect(socket_path);
+  ck_assert_msg(res < 0, "Failed to handle directory socket path");
+  ck_assert_msg(errno == EEXIST, "Expected EEXIST (%d), got %s (%d)",
+    EEXIST, strerror(errno), errno);
+
+  (void) rmdir(socket_path);
+}
+END_TEST
+
+START_TEST (ctrls_connect_eexist_symlink_test) {
+  int res;
+  const char socket_path[1024];
+
+  mark_point();
+  res = pr_ctrls_connect(NULL);
+  ck_assert_msg(res < 0, "Failed to handle null path");
+  ck_assert_msg(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+    strerror(errno), errno);
+
+  mark_point();
+  memset(socket_path, '\0', sizeof(socket_path));
+  snprintf(socket_path, sizeof(socket_path)-1, "/tmp/ftp.cl%05u",
+    (unsigned int) getpid());
+  res = pr_ctrls_connect(socket_path);
+  ck_assert_msg(res < 0, "Failed to handle nonexistent socket path");
+  ck_assert_msg(errno == ECONNREFUSED || errno == ENOENT,
+    "Expected ECONNREFUSED (%d) or ENOENT (%d), got %s (%d)", ECONNREFUSED,
+    ENOENT, strerror(errno), errno);
+
+  mark_point();
+  if (symlink(socket_path, "/foo/bar/baz") < 0) {
+    return;
+  }
+
+  res = pr_ctrls_connect(socket_path);
+  ck_assert_msg(res < 0, "Failed to handle symlink socket path");
+  ck_assert_msg(errno == EEXIST, "Expected EEXIST (%d), got %s (%d)",
+    EEXIST, strerror(errno), errno);
+
+  (void) unlink(socket_path);
+}
+END_TEST
+
 START_TEST (ctrls_connect_test) {
   int fd, res;
   const char *socket_path;
@@ -2159,6 +2227,8 @@ Suite *tests_get_ctrls_suite(void) {
   tcase_add_test(testcase, ctrls_run_ctrls_test);
   tcase_add_test(testcase, ctrls_reset_ctrls_test);
   tcase_add_test(testcase, ctrls_accept_test);
+  tcase_add_test(testcase, ctrls_connect_eexist_directory_test);
+  tcase_add_test(testcase, ctrls_connect_eexist_symlink_test);
   tcase_add_test(testcase, ctrls_connect_test);
 
   /* mod_ctrls */
