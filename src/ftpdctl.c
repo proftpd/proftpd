@@ -26,11 +26,14 @@
 #include "conf.h"
 #include "privs.h"
 
-#ifdef HAVE_GETOPT_H
+#if defined(HAVE_GETOPT_H)
 # include <getopt.h>
-#endif
+#endif /* HAVE_GETOPT_H */
 
 static const char *program = "ftpdctl";
+
+/* Limit the number of response lines we expect to handle. */
+#define FTPDCTL_MAX_RESP_COUNT		4096
 
 /* NOTE: these empty stubs are needed for proper linking.  What a mess. */
 
@@ -199,7 +202,7 @@ int sstrncpy(char *dst, const char *src, size_t n) {
   return res;
 }
 
-#ifdef PR_USE_CTRLS
+#if defined(PR_USE_CTRLS)
 
 /* need a SIGPIPE handler */
 static RETSIGTYPE sig_pipe(int sig) {
@@ -342,14 +345,40 @@ int main(int argc, char *argv[]) {
     exit(1);
   }
 
+  /* Expected Controls status codes are documented in include/ctrls.h */
+  if (status > 0) {
+    fprintf(stderr, "%s: invalid status code (%d) received, treating as 0\n",
+      program, status);
+    status = 0;
+
+  } else if (status < -10) {
+    fprintf(stderr, "%s: invalid status code (%d) received, treating as -1\n",
+      program, status);
+    status = -1;
+  }
+
   if (verbose == TRUE) {
     fprintf(stdout, "%s: received response status: %d\n", program,
       status);
   }
 
   if (respargv != NULL) {
-    for (i = 0; i < respargc; i++) {
+    unsigned int count;
+
+    count = respargc;
+    if (count > FTPDCTL_MAX_RESP_COUNT) {
+      count = FTPDCTL_MAX_RESP_COUNT;
+    }
+
+    for (i = 0; i < count; i++) {
       fprintf(stdout, "%s: %s\n", program, respargv[i]);
+    }
+
+    if (respargc > FTPDCTL_MAX_RESP_COUNT) {
+      fprintf(stdout, "%s: (%d lines skipped)\n", program,
+        (respargc - FTPDCTL_MAX_RESP_COUNT));
+      fprintf(stderr, "%s: received %d responses exceeded %u maximum\n",
+        program, respargc, (unsigned int) FTPDCTL_MAX_RESP_COUNT);
     }
 
   } else {
