@@ -257,14 +257,24 @@ static void log_sasl_mechs(LDAP *conn_ld, const char *url_text) {
 #if defined(LDAP_OPT_X_SASL_MECHLIST)
   char **sasl_mechs = NULL;
 
+  if (pr_trace_get_level(trace_channel) < 22) {
+    return;
+  }
+
   if (ldap_get_option(conn_ld, LDAP_OPT_X_SASL_MECHLIST,
       &sasl_mechs) == LDAP_OPT_SUCCESS) {
     if (sasl_mechs != NULL) {
       register unsigned int i;
 
       for (i = 0; sasl_mechs[i]; i++) {
-        pr_trace_msg(trace_channel, 22,
-          "%s: LDAP supported SASL mechanism = %s", url_text, sasl_mechs[i]);
+        if (url_text != NULL) {
+          pr_trace_msg(trace_channel, 22,
+            "%s: LDAP supported SASL mechanism = %s", url_text, sasl_mechs[i]);
+
+        } else {
+          pr_trace_msg(trace_channel, 22,
+            "LDAP supported SASL mechanism = %s", sasl_mechs[i]);
+        }
       }
     }
   }
@@ -296,7 +306,9 @@ static int do_ldap_prepare(LDAP **conn_ld) {
     return -1;
   }
 
-  ldap_search_scope = curr_server_info->url_desc->lud_scope;
+  if (curr_server_info != NULL) {
+    ldap_search_scope = curr_server_info->url_desc->lud_scope;
+  }
 
 #else
   char *host = NULL;
@@ -323,7 +335,8 @@ static int do_ldap_prepare(LDAP **conn_ld) {
   }
 #endif /* HAS_LDAP_INITIALIZE */
 
-  log_sasl_mechs(*conn_ld, curr_server_info->info_text);
+  log_sasl_mechs(*conn_ld,
+    curr_server_info != NULL ? curr_server_info->info_text : NULL);
   return 0;
 }
 
