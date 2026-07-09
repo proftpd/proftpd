@@ -29,6 +29,11 @@ static pool *child_pool = NULL;
 static xaset_t *child_list = NULL;
 static unsigned long child_listlen = 0;
 
+static void child_list_cleanup(void *user_data) {
+  child_list = NULL;
+  child_listlen = 0;
+}
+
 int child_add(pid_t pid, int fd) {
   pool *p;
   pr_child_t *ch;
@@ -44,6 +49,7 @@ int child_add(pid_t pid, int fd) {
 
     list_pool = make_sub_pool(child_pool);
     pr_pool_tag(list_pool, "Child List Pool");
+    register_cleanup2(list_pool, NULL, child_list_cleanup);
 
     child_list = xaset_create(list_pool, NULL);
   }
