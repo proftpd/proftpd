@@ -53,7 +53,7 @@ static pool *ldap_pool = NULL;
 static const char *trace_channel = "ldap";
 #if defined(LBER_OPT_LOG_PRINT_FN)
 static const char *libtrace_channel = "ldap.library";
-#endif
+#endif /* LBER_OPT_LOG_PRINT_FN */
 
 #if LDAP_API_VERSION >= 2000
 # define HAS_LDAP_SASL_BIND_S
@@ -65,28 +65,28 @@ static const char *libtrace_channel = "ldap.library";
 
 #if defined(LDAP_API_FEATURE_X_OPENLDAP) && (LDAP_VENDOR_VERSION >= 192)
 # define HAS_LDAP_UNBIND_EXT_S
-#endif
+#endif /* LDAP_API_FEATURE_X_OPENLDAP and new enough LDAP_VENDOR_VERSION */
 
 #if defined(LDAP_API_FEATURE_X_OPENLDAP) && (LDAP_VENDOR_VERSION >= 19905)
 # define HAS_LDAP_INITIALIZE
-#endif
+#endif /* LDAP_API_FEATURE_X_OPENLDAP and new enough LDAP_VENDOR_VERSION */
 
-#ifdef HAS_LDAP_UNBIND_EXT_S
+#if defined(HAS_LDAP_UNBIND_EXT_S)
 # define LDAP_UNBIND(ld) (ldap_unbind_ext_s(ld, NULL, NULL))
 #else
 # define LDAP_UNBIND(ld) (ldap_unbind_s(ld))
 static char *ldap_server;
 static int ldap_port = LDAP_PORT;
-#endif
+#endif /* HAS_LDAP_UNBIND_EXT_S */
 
 /* On some systems LDAP_OPT_DIAGNOSTIC_MESSAGE isn't there (e.g. OpenLDAP-2.3.x)
  * but LDAP_OPT_ERROR_STRING is.
  */
-#ifndef LDAP_OPT_DIAGNOSTIC_MESSAGE
-# ifdef LDAP_OPT_ERROR_STRING
+#if !defined(LDAP_OPT_DIAGNOSTIC_MESSAGE)
+# if defined(LDAP_OPT_ERROR_STRING)
 #  define LDAP_OPT_DIAGNOSTIC_MESSAGE LDAP_OPT_ERROR_STRING
-# endif
-#endif
+# endif /* LDAP_OPT_ERROR_STRING */
+#endif /* LDAP_OPT_DIAGNOSTIC_MESSAGE */
 
 #if LDAP_API_VERSION >= 2000
 # define LDAP_VALUE_T struct berval
@@ -105,7 +105,7 @@ static int ldap_port = LDAP_PORT;
 # define LDAP_VALUE_FREE(values) (ldap_value_free(values))
 
 static void pr_ldap_set_sizelimit(LDAP *limit_ld, int limit) {
-#ifdef LDAP_OPT_SIZELIMIT
+#if defined(LDAP_OPT_SIZELIMIT)
   int res;
 
   res = ldap_set_option(limit_ld, LDAP_OPT_SIZELIMIT, (void *) &limit);
@@ -124,7 +124,7 @@ static void pr_ldap_set_sizelimit(LDAP *limit_ld, int limit) {
 
   pr_trace_msg(trace_channel, 5,
     "set search query size limit to %d entries", limit);
-#endif
+#endif /* LDAP_OPT_SIZELIMIT */
 }
 
 static int
@@ -136,15 +136,17 @@ LDAP_SEARCH(LDAP *ld, char *base, int scope, char *filter, char *attrs[],
 #endif /* LDAP_API_VERSION >= 2000 */
 
 /* Thanks, Sun. */
-#ifndef LDAP_OPT_SUCCESS
+#if !defined(LDAP_OPT_SUCCESS)
 # define LDAP_OPT_SUCCESS LDAP_SUCCESS
-#endif
-#ifndef LDAP_URL_SUCCESS
+#endif /* LDAP_OPT_SUCCESS */
+
+#if !defined(LDAP_URL_SUCCESS)
 # define LDAP_URL_SUCCESS LDAP_SUCCESS
-#endif
-#ifndef LDAP_SCOPE_DEFAULT
+#endif /* LDAP_URL_SUCCESS */
+
+#if !defined(LDAP_SCOPE_DEFAULT)
 # define LDAP_SCOPE_DEFAULT LDAP_SCOPE_SUBTREE
-#endif
+#endif /* LDAP_SCOPE_DEFAULT */
 
 /* Config entries */
 
@@ -1144,7 +1146,11 @@ static struct passwd *pr_ldap_user_lookup(pool *p, char *filter_template,
   /* If we're doing auth binds, save the DN of this entry so we can
    * bind to the LDAP server as it later.
    */
-  if (user_dn) {
+  if (user_dn != NULL) {
+    if (*user_dn != NULL) {
+      ldap_memfree(*user_dn);
+    }
+
     *user_dn = ldap_get_dn(ld, e);
   }
 
@@ -1852,9 +1858,9 @@ MODRET ldap_auth_check(cmd_rec *cmd) {
   char *pass, *cryptpass, *hash_method, *crypted;
   int encname_len, res;
   LDAP *ld_auth;
-#ifdef HAS_LDAP_SASL_BIND_S
+#if defined(HAS_LDAP_SASL_BIND_S)
   struct berval bindcred;
-#endif
+#endif /* HAS_LDAP_SASL_BIND_S */
 
   if (ldap_do_users == FALSE) {
     return PR_DECLINED(cmd);
@@ -1891,7 +1897,7 @@ MODRET ldap_auth_check(cmd_rec *cmd) {
       return PR_DECLINED(cmd);
     }
 
-#ifdef HAS_LDAP_SASL_BIND_S
+#if defined(HAS_LDAP_SASL_BIND_S)
     bindcred.bv_val = cmd->argv[2];
     bindcred.bv_len = strlen(cmd->argv[2]);
     res = ldap_sasl_bind_s(ld_auth, ldap_authbind_dn, NULL, &bindcred,
@@ -2193,6 +2199,7 @@ static void server_info_get_ssl_defaults(struct server_info *info) {
         pr_trace_msg(trace_channel, 17,
           "using default 'ssl-ca' value: %s", ssl_val);
         info->ssl_ca_file = ldap_strdup(ssl_val);
+        ldap_memfree(ssl_val);
       }
     }
   }
@@ -2207,6 +2214,7 @@ static void server_info_get_ssl_defaults(struct server_info *info) {
         pr_trace_msg(trace_channel, 17,
           "using default 'ssl-cert' value: %s", ssl_val);
         info->ssl_cert_file = ldap_strdup(ssl_val);
+        ldap_memfree(ssl_val);
       }
     }
   }
@@ -2221,6 +2229,7 @@ static void server_info_get_ssl_defaults(struct server_info *info) {
         pr_trace_msg(trace_channel, 17,
           "using default 'ssl-key' value: %s", ssl_val);
         info->ssl_key_file = ldap_strdup(ssl_val);
+        ldap_memfree(ssl_val);
       }
     }
   }
@@ -2235,6 +2244,7 @@ static void server_info_get_ssl_defaults(struct server_info *info) {
         pr_trace_msg(trace_channel, 17,
           "using default 'ssl-ciphers' value: %s", ssl_val);
         info->ssl_ciphers = ldap_strdup(ssl_val);
+        ldap_memfree(ssl_val);
       }
     }
   }
@@ -2622,7 +2632,7 @@ MODRET set_ldapserver(cmd_rec *cmd) {
         info->url_text = url_text;
       }
 
-#ifdef HAS_LDAP_INITIALIZE
+#if defined(HAS_LDAP_INITIALIZE)
       if (strcasecmp(url_desc->lud_scheme, "ldap") != 0 &&
           strcasecmp(url_desc->lud_scheme, "ldaps") != 0) {
         CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "invalid scheme specified by URL '", item, "': valid schemes are 'ldap' or 'ldaps'", NULL));
@@ -3210,6 +3220,13 @@ MODRET set_ldapdefaultquota(cmd_rec *cmd) {
 /* Event listeners
  */
 
+static void ldap_exit_ev(const void *event_data, void *user_data) {
+  if (ldap_authbind_dn != NULL) {
+    ldap_memfree(ldap_authbind_dn);
+    ldap_authbind_dn = NULL;
+  }
+}
+
 #if defined(PR_SHARED_MODULE)
 static void ldap_mod_unload_ev(const void *event_data, void *user_data) {
   if (strcmp("mod_ldap.c", (const char *) event_data) != 0) {
@@ -3352,6 +3369,7 @@ static void ldap_sess_reinit_ev(const void *event_data, void *user_data) {
 
   /* A HOST command changed the main_server pointer; reinitialize ourselves. */
 
+  pr_event_unregister(&ldap_module, "core.exit", ldap_exit_ev);
   pr_event_unregister(&ldap_module, "core.session-reinit", ldap_sess_reinit_ev);
 
   /* Restore defaults. */
@@ -3368,6 +3386,10 @@ static void ldap_sess_reinit_ev(const void *event_data, void *user_data) {
   ldap_querytimeout = 0;
   ldap_dereference = LDAP_DEREF_NEVER;
   ldap_authbinds = TRUE;
+  if (ldap_authbind_dn != NULL) {
+    ldap_memfree(ldap_authbind_dn);
+    ldap_authbind_dn = NULL;
+  }
   ldap_defaultauthscheme = "crypt";
   ldap_attr_uid = "uid";
   ldap_attr_uidnumber = "uidNumber";
@@ -3494,6 +3516,7 @@ static int ldap_sess_init(void) {
   config_rec *c;
   void *ptr;
 
+  pr_event_register(&ldap_module, "core.exit", ldap_exit_ev, NULL);
   pr_event_register(&ldap_module, "core.session-reinit", ldap_sess_reinit_ev,
     NULL);
 
