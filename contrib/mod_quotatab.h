@@ -57,7 +57,7 @@ typedef enum {
 
 /* Quota objects */
 typedef struct {
-  char name[81];
+  char name[PR_TUNABLE_LOGIN_MAX+1];
 
   /* name refers to user, group, or class */
   quota_type_t quota_type;
@@ -83,7 +83,7 @@ typedef struct {
 } quota_limit_t;
 
 typedef struct {
-  char name[81];
+  char name[PR_TUNABLE_LOGIN_MAX+1];
 
   quota_type_t quota_type;
 
