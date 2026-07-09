@@ -1203,17 +1203,26 @@ sub scan_asan_logs {
     }
 
     if (open(my $fh, "< $asan_file")) {
-      # If present, any "ERROR" finding from ASAN is usually on the second line.
-      my $line = <$fh>;
-      $line = <$fh>;
-      chomp($line);
+      my $have_error = 0;
 
-      if ($line =~ /ERROR/) {
-        if ($ENV{TEST_VERBOSE}) {
-          print STDERR "# $line\n";
+      # If present, any "ERROR" finding from ASAN is usually in the first
+      # few lines.
+      for (my $i = 0; $i < 10; $i++) {
+        my $line = <$fh>;
+        $line = <$fh>;
+        chomp($line);
+
+        if ($line =~ /ERROR/) {
+          $have_error = 1;
+          if ($ENV{TEST_VERBOSE}) {
+            print STDERR "# $line\n";
+          }
+          last;
         }
+      }
 
-        while ($line = <$fh>) {
+      if ($have_error) {
+        while (my $line = <$fh>) {
           chomp($line);
 
           if ($ENV{TEST_VERBOSE}) {
