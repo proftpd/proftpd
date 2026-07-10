@@ -1869,7 +1869,8 @@ MODRET ldap_auth_auth(cmd_rec *cmd) {
  */
 MODRET ldap_auth_check(cmd_rec *cmd) {
   char *pass, *cryptpass, *hash_method, *crypted;
-  int encname_len, res;
+  size_t cryptpass_len = 0, encname_len = 0;
+  int res;
   LDAP *ld_auth;
 #if defined(HAS_LDAP_SASL_BIND_S)
   struct berval bindcred;
@@ -1937,20 +1938,31 @@ MODRET ldap_auth_check(cmd_rec *cmd) {
     return PR_HANDLED(cmd);
   }
 
-  /* Get the length of "scheme" in the leading {scheme} so we can skip it
-   * in the password comparison.
+  /* Check to see how the password is encrypted, and check accordingly.
+   *
+   * Get the length of "scheme" in the potential leading {scheme} so we can
+   * skip it in the password comparison.
    */
-  encname_len = strcspn(cryptpass + 1, "}");
-  hash_method = pstrndup(cmd->tmp_pool, cryptpass + 1, encname_len);
 
-  /* Check to see how the password is encrypted, and check accordingly. */
+  hash_method = ldap_defaultauthscheme;
 
-  if ((size_t) encname_len == strlen(cryptpass + 1)) {
-    /* No leading {scheme}. */
-    hash_method = ldap_defaultauthscheme;
-    encname_len = 0;
+  /* In order to have a well-formed "{scheme}" prefix, the password must have
+   * at least two characters (for "{}"), the first character must be '{', and
+   * there must be a '}' character after it.
+   */
 
-  } else {
+  cryptpass_len = strlen(cryptpass);
+  if (cryptpass_len > 1 &&
+      *cryptpass == '{' &&
+      strchr(cryptpass+1, '}') != NULL) {
+    encname_len = strcspn(cryptpass + 1, "}");
+
+    /* Watch for cases where the prefix is "{}". */
+    if (encname_len > 0) {
+      hash_method = pstrndup(cmd->tmp_pool, cryptpass + 1, encname_len);
+    }
+
+    /* Now account for the two "{}" characters once more. */
     encname_len += 2;
   }
 
@@ -1981,7 +1993,7 @@ MODRET ldap_auth_check(cmd_rec *cmd) {
   } else {
     /* Can't find a supported {scheme} */
     pr_trace_msg(trace_channel, 3,
-      "unsupported userPassword auth scheme: %s", hash_method);
+      "unsupported userPassword auth scheme: '%s'", hash_method);
     return PR_DECLINED(cmd);
   }
 
