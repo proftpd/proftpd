@@ -3693,22 +3693,26 @@ START_TEST (fs_clean_path_test) {
   mark_point();
   pr_fs_clean_path(path, res, 0);
 
+  mark_point();
   pr_fs_clean_path(path, res, sizeof(res)-1);
   ck_assert_msg(strcmp(res, path) == 0, "Expected cleaned path '%s', got '%s'",
     path, res);
 
+  mark_point();
   res[sizeof(res)-1] = '\0';
   path = "/test.txt";
   pr_fs_clean_path(path, res, sizeof(res)-1);
   ck_assert_msg(strcmp(res, path) == 0, "Expected cleaned path '%s', got '%s'",
     path, res);
 
+  mark_point();
   res[sizeof(res)-1] = '\0';
   path = "/test.txt";
   pr_fs_clean_path(path, res, sizeof(res)-1);
   ck_assert_msg(strcmp(res, path) == 0, "Expected cleaned path '%s', got '%s'",
     path, res);
 
+  mark_point();
   res[sizeof(res)-1] = '\0';
   path = "/./test.txt";
   pr_fs_clean_path(path, res, sizeof(res)-1);
@@ -3716,8 +3720,25 @@ START_TEST (fs_clean_path_test) {
   ck_assert_msg(strcmp(res, expected) == 0,
     "Expected cleaned path '%s', got '%s'", expected, res);
 
+  mark_point();
   res[sizeof(res)-1] = '\0';
   path = "test.txt";
+  pr_fs_clean_path(path, res, sizeof(res)-1);
+  expected = "/test.txt";
+  ck_assert_msg(strcmp(res, expected) == 0,
+    "Expected cleaned path '%s', got '%s'", path, res);
+
+  mark_point();
+  res[sizeof(res)-1] = '\0';
+  path = "/tmp/test.d/../../test.txt";
+  pr_fs_clean_path(path, res, sizeof(res)-1);
+  expected = "/test.txt";
+  ck_assert_msg(strcmp(res, expected) == 0,
+    "Expected cleaned path '%s', got '%s'", path, res);
+
+  mark_point();
+  res[sizeof(res)-1] = '\0';
+  path = "/tmp/../test.d/../.././../../../././/test.txt";
   pr_fs_clean_path(path, res, sizeof(res)-1);
   expected = "/test.txt";
   ck_assert_msg(strcmp(res, expected) == 0,
@@ -3743,13 +3764,13 @@ START_TEST (fs_clean_path2_test) {
   ck_assert_msg(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
     strerror(errno), errno);
 
-  res[sizeof(res)-1] = '\0';
-
   mark_point();
+  res[sizeof(res)-1] = '\0';
   code = pr_fs_clean_path2(path, res, 0, 0);
   ck_assert_msg(code == 0, "Failed to handle zero length buf: %s",
     strerror(errno));
 
+  mark_point();
   res[sizeof(res)-1] = '\0';
   path = "test.txt";
   code = pr_fs_clean_path2(path, res, sizeof(res)-1, 0);
@@ -3758,6 +3779,7 @@ START_TEST (fs_clean_path2_test) {
   ck_assert_msg(strcmp(res, path) == 0, "Expected cleaned path '%s', got '%s'",
     path, res);
 
+  mark_point();
   res[sizeof(res)-1] = '\0';
   path = "/./test.txt";
   code = pr_fs_clean_path2(path, res, sizeof(res)-1, 0);
@@ -3767,6 +3789,7 @@ START_TEST (fs_clean_path2_test) {
   ck_assert_msg(strcmp(res, expected) == 0,
     "Expected cleaned path '%s', got '%s'", expected, res);
 
+  mark_point();
   res[sizeof(res)-1] = '\0';
   path = "test.d///test.txt";
   code = pr_fs_clean_path2(path, res, sizeof(res)-1, 0);
@@ -3776,6 +3799,7 @@ START_TEST (fs_clean_path2_test) {
   ck_assert_msg(strcmp(res, expected) == 0,
     "Expected cleaned path '%s', got '%s'", expected, res);
 
+  mark_point();
   res[sizeof(res)-1] = '\0';
   path = "/test.d///test.txt";
   code = pr_fs_clean_path2(path, res, sizeof(res)-1,
@@ -3783,6 +3807,50 @@ START_TEST (fs_clean_path2_test) {
   ck_assert_msg(code == 0, "Failed to clean path '%s': %s", path,
     strerror(errno));
   expected = "/test.d/test.txt";
+  ck_assert_msg(strcmp(res, expected) == 0,
+    "Expected cleaned path '%s', got '%s'", expected, res);
+
+  mark_point();
+  res[sizeof(res)-1] = '\0';
+  path = "/tmp/test.d/../.././../../test.txt";
+  code = pr_fs_clean_path2(path, res, sizeof(res)-1,
+    PR_FSIO_CLEAN_PATH_FL_MAKE_ABS_PATH);
+  ck_assert_msg(code == 0, "Failed to clean path '%s': %s", path,
+    strerror(errno));
+  expected = "/test.txt";
+  ck_assert_msg(strcmp(res, expected) == 0,
+    "Expected cleaned path '%s', got '%s'", expected, res);
+
+  mark_point();
+  res[sizeof(res)-1] = '\0';
+  path = "../tmp/test.d/../.././../../test.txt";
+  code = pr_fs_clean_path2(path, res, sizeof(res)-1,
+    PR_FSIO_CLEAN_PATH_FL_MAKE_ABS_PATH);
+  ck_assert_msg(code == 0, "Failed to clean path '%s': %s", path,
+    strerror(errno));
+  expected = "/test.txt";
+  ck_assert_msg(strcmp(res, expected) == 0,
+    "Expected cleaned path '%s', got '%s'", expected, res);
+
+  mark_point();
+  res[sizeof(res)-1] = '\0';
+  path = "./tmp/test.d/../.././../../test.txt";
+  code = pr_fs_clean_path2(path, res, sizeof(res)-1,
+    PR_FSIO_CLEAN_PATH_FL_MAKE_ABS_PATH);
+  ck_assert_msg(code == 0, "Failed to clean path '%s': %s", path,
+    strerror(errno));
+  expected = "/test.txt";
+  ck_assert_msg(strcmp(res, expected) == 0,
+    "Expected cleaned path '%s', got '%s'", expected, res);
+
+  mark_point();
+  res[sizeof(res)-1] = '\0';
+  path = "./tmp/test.d/../.././../../test.txt/.";
+  code = pr_fs_clean_path2(path, res, sizeof(res)-1,
+    PR_FSIO_CLEAN_PATH_FL_MAKE_ABS_PATH);
+  ck_assert_msg(code == 0, "Failed to clean path '%s': %s", path,
+    strerror(errno));
+  expected = "/test.txt";
   ck_assert_msg(strcmp(res, expected) == 0,
     "Expected cleaned path '%s', got '%s'", expected, res);
 }
