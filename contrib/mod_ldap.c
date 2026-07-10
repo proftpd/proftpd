@@ -1080,8 +1080,13 @@ static struct passwd *pr_ldap_user_lookup(pool *p, char *filter_template,
             "%s attribute value '%s' not a valid UID, ignoring",
             ldap_attr_uidnumber, uid_text);
 
-          /* Avoid potential root logins for such cases. */
-          if (pw->pw_uid == PR_ROOT_UID) {
+          if (ldap_defaultuid != (uid_t) -1 &&
+              ldap_defaultuid != (uid_t) PR_LDAP_AUTO_DEFAULT_ID) {
+            /* If we have a configured LDAPDefaultUID, use that... */
+            pw->pw_uid = ldap_defaultuid;
+
+          } else {
+            /* ...otherwise, avoid potential root logins for such cases. */
             pw->pw_uid = (uid_t) -1;
           }
         }
@@ -1126,8 +1131,12 @@ static struct passwd *pr_ldap_user_lookup(pool *p, char *filter_template,
             "%s attribute value '%s' not a valid GID, ignoring",
             ldap_attr_gidnumber, gid_text);
 
-          /* Avoid potential root logins for such cases. */
-          if (pw->pw_gid == PR_ROOT_GID) {
+          if (ldap_defaultgid != (gid_t) -1) {
+            /* If we have a configured LDAPDefaultGID, use that... */
+            pw->pw_gid = ldap_defaultgid;
+
+          } else {
+            /* ...otherwise, avoid potential root logins for such cases. */
             pw->pw_gid = (gid_t) -1;
           }
         }
@@ -1297,8 +1306,12 @@ static struct group *pr_ldap_group_lookup(pool *p, char *filter_template,
           "%s attribute value '%s' not a valid GID, ignoring",
           ldap_attr_gidnumber, gid_text);
 
-        /* Avoid potential root logins for such cases. */
-        if (gr->gr_gid == PR_ROOT_GID) {
+        if (ldap_defaultgid != (gid_t) -1) {
+          /* If we have a configured LDAPDefaultGID, use that... */
+          gr->gr_gid = ldap_defaultgid;
+
+        } else {
+          /* ...otherwise, avoid potential root logins for such cases. */
           gr->gr_gid = (gid_t) -1;
         }
       }
