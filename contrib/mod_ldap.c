@@ -1058,7 +1058,23 @@ static struct passwd *pr_ldap_user_lookup(pool *p, char *filter_template,
         }
 
       } else {
-        pw->pw_uid = (uid_t) strtoul(LDAP_VALUE(values, 0), NULL, 10);
+        const char *uid_text;
+        uid_t uid;
+
+        uid_text = LDAP_VALUE(values, 0);
+        if (pr_str2uid(uid_text, &uid) == 0) {
+          pw->pw_uid = uid;
+
+        } else {
+          (void) pr_log_writefile(ldap_logfd, MOD_LDAP_VERSION,
+            "%s attribute value '%s' not a valid UID, ignoring",
+            ldap_attr_uidnumber, uid_text);
+
+          /* Avoid potential root logins for such cases. */
+          if (pw->pw_uid == PR_ROOT_UID) {
+            pw->pw_uid = (uid_t) -1;
+          }
+        }
       }
 
     } else if (strcasecmp(attrs[i], ldap_attr_gidnumber) == 0) {
@@ -1088,7 +1104,23 @@ static struct passwd *pr_ldap_user_lookup(pool *p, char *filter_template,
         }
 
       } else {
-        pw->pw_gid = (gid_t) strtoul(LDAP_VALUE(values, 0), NULL, 10);
+        const char *gid_text;
+        gid_t gid;
+
+        gid_text = LDAP_VALUE(values, 0);
+        if (pr_str2gid(gid_text, &gid) == 0) {
+          pw->pw_gid = gid;
+
+        } else {
+          (void) pr_log_writefile(ldap_logfd, MOD_LDAP_VERSION,
+            "%s attribute value '%s' not a valid GID, ignoring",
+            ldap_attr_gidnumber, gid_text);
+
+          /* Avoid potential root logins for such cases. */
+          if (pw->pw_gid == PR_ROOT_GID) {
+            pw->pw_gid = (gid_t) -1;
+          }
+        }
       }
 
     } else if (strcasecmp(attrs[i], ldap_attr_homedirectory) == 0) {
@@ -1243,7 +1275,23 @@ static struct group *pr_ldap_group_lookup(pool *p, char *filter_template,
       gr->gr_name = pstrdup(session.pool, LDAP_VALUE(values, 0));
 
     } else if (strcasecmp(attrs[i], ldap_attr_gidnumber) == 0) {
-      gr->gr_gid = strtoul(LDAP_VALUE(values, 0), NULL, 10);
+      const char *gid_text;
+      gid_t gid;
+
+      gid_text = LDAP_VALUE(values, 0);
+      if (pr_str2gid(gid_text, &gid) == 0) {
+        gr->gr_gid = gid;
+
+      } else {
+        (void) pr_log_writefile(ldap_logfd, MOD_LDAP_VERSION,
+          "%s attribute value '%s' not a valid GID, ignoring",
+          ldap_attr_gidnumber, gid_text);
+
+        /* Avoid potential root logins for such cases. */
+        if (gr->gr_gid == PR_ROOT_GID) {
+          gr->gr_gid = (gid_t) -1;
+        }
+      }
 
     } else if (strcasecmp(attrs[i], ldap_attr_memberuid) == 0) {
       value_count = LDAP_COUNT_VALUES(values);
