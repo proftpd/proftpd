@@ -869,7 +869,7 @@ static struct passwd *pr_ldap_user_lookup(pool *p, char *filter_template,
           (void) pr_log_writefile(ldap_logfd, MOD_LDAP_VERSION,
             "no %s attribute for DN %s found, and LDAPDefaultUID not "
             "configured", ldap_attr_uidnumber, dn);
-          free(dn);
+          ldap_memfree(dn);
           return NULL;
         }
 
@@ -911,7 +911,7 @@ static struct passwd *pr_ldap_user_lookup(pool *p, char *filter_template,
           (void) pr_log_writefile(ldap_logfd, MOD_LDAP_VERSION,
             "no %s attribute found for DN %s,  and LDAPDefaultGID not "
             "configured", ldap_attr_gidnumber, dn);
-          free(dn);
+          ldap_memfree(dn);
           return NULL;
         }
 
@@ -963,7 +963,7 @@ static struct passwd *pr_ldap_user_lookup(pool *p, char *filter_template,
               ldap_attr_homedirectory, dn);
           }
 
-          free(dn);
+          ldap_memfree(dn);
           return NULL;
         }
 
@@ -979,7 +979,7 @@ static struct passwd *pr_ldap_user_lookup(pool *p, char *filter_template,
             (void) pr_log_writefile(ldap_logfd, MOD_LDAP_VERSION,
               "could not get %s attribute for canonical username for DN %s",
               ldap_attr_uid, dn);
-            free(dn);
+            ldap_memfree(dn);
             return NULL;
           }
 
@@ -1015,7 +1015,7 @@ static struct passwd *pr_ldap_user_lookup(pool *p, char *filter_template,
       (void) pr_log_writefile(ldap_logfd, MOD_LDAP_VERSION,
         "could not get values for attribute %s for DN %s, ignoring request "
         "(perhaps this DN's entry does not have the attribute?)", attrs[i], dn);
-      free(dn);
+      ldap_memfree(dn);
       ldap_msgfree(result);
       return NULL;
     }
@@ -1159,7 +1159,7 @@ static struct passwd *pr_ldap_user_lookup(pool *p, char *filter_template,
             (void) pr_log_writefile(ldap_logfd, MOD_LDAP_VERSION,
               "could not get %s attribute for canonical username for DN %s",
               ldap_attr_uid, dn);
-            free(dn);
+            ldap_memfree(dn);
             return NULL;
           }
 
@@ -1261,13 +1261,13 @@ static struct group *pr_ldap_group_lookup(pool *p, char *filter_template,
         continue;
       }
 
-      ldap_msgfree(result);
       dn = ldap_get_dn(ld, e);
-
       (void) pr_log_writefile(ldap_logfd, MOD_LDAP_VERSION,
         "could not get values for attribute %s for DN %s, ignoring request "
         "(perhaps that DN does not have that attribute?)", attrs[i], dn);
-      free(dn);
+
+      ldap_memfree(dn);
+      ldap_msgfree(result);
       return NULL;
     }
 
