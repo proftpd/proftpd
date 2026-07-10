@@ -357,26 +357,34 @@ static int sasl_interact_cb(LDAP *conn_ld, unsigned int flags, void *user_data,
 
     switch (interacts->id) {
       case SASL_CB_AUTHNAME:
-        interacts->result = sasl->authentication_id;
-        interacts->len = strlen(interacts->result);
-        pr_trace_msg(trace_channel, 19, "SASL interaction: CB_AUTHNAME = '%s'",
-          (char *) interacts->result);
+        if (sasl->authentication_id != NULL) {
+          interacts->result = sasl->authentication_id;
+          interacts->len = strlen(interacts->result);
+          pr_trace_msg(trace_channel, 19,
+            "SASL interaction: CB_AUTHNAME = '%s'",
+            (char *) interacts->result);
+        }
         break;
 
       case SASL_CB_GETREALM:
         /* The cyrus-sasl library works just fine with an empty string for our
          * currently supported mechanisms.
          */
-        interacts->result = sasl->realm;
-        interacts->len = strlen(interacts->result);
-        pr_trace_msg(trace_channel, 19, "SASL interaction: CB_GETREALM = '%s'",
-          (char *) interacts->result);
+        if (sasl->realm != NULL) {
+          interacts->result = sasl->realm;
+          interacts->len = strlen(interacts->result);
+          pr_trace_msg(trace_channel, 19,
+            "SASL interaction: CB_GETREALM = '%s'",
+            (char *) interacts->result);
+        }
         break;
 
       case SASL_CB_PASS:
-        interacts->result = sasl->password;
-        interacts->len = strlen(interacts->result);
-        pr_trace_msg(trace_channel, 19, "SASL interaction: CB_PASS = '...'");
+        if (sasl->password != NULL) {
+          interacts->result = sasl->password;
+          interacts->len = strlen(interacts->result);
+          pr_trace_msg(trace_channel, 19, "SASL interaction: CB_PASS = '...'");
+        }
         break;
 
       case SASL_CB_USER:
@@ -384,10 +392,12 @@ static int sasl_interact_cb(LDAP *conn_ld, unsigned int flags, void *user_data,
          * and works just fine with an empty string for our currently
          * supported mechanisms.
          */
-        interacts->result = sasl->authorization_id;
-        interacts->len = strlen(interacts->result);
-        pr_trace_msg(trace_channel, 19, "SASL interaction: CB_USER = '%s'",
-          (char *) interacts->result);
+        if (sasl->authorization_id != NULL) {
+          interacts->result = sasl->authorization_id;
+          interacts->len = strlen(interacts->result);
+          pr_trace_msg(trace_channel, 19, "SASL interaction: CB_USER = '%s'",
+            (char *) interacts->result);
+        }
         break;
 
       case SASL_CB_ECHOPROMPT:
@@ -2114,7 +2124,9 @@ MODRET ldap_auth_name2gid(cmd_rec *cmd) {
 /* sasl_info functions. */
 
 /* Note: by proving empty strings, rather than NULLs, for the default values,
- * we make the logic in sasl_interact_cb() simpler.
+ * we make the logic in sasl_interact_cb() simpler.  However, it is still
+ * possible that some fields are NULL due to lack of preprocessor support
+ * for those values, or ldap_get_option() errors for the requested values.
  */
 static struct sasl_info *sasl_info_create(pool *p, LDAP *conn_ld) {
   pool *sasl_pool;
