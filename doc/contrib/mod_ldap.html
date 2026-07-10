@@ -141,12 +141,12 @@ By default, the DN specified by the
 <a href="#LDAPBindDN"><code>LDAPBindDN</code></a> will be used to bind to the
 LDAP server to obtain user information, including the <code>userPassword</code>
 attribute.  If <code>LDAPAuthBinds</code> is set to <em>on</em>, the DN
-specified by <code>LDAPDNInfo</code> will be used to fetch all user information
+specified by <code>LDAPBindDN</code> will be used to fetch all user information
 <i>except</i> the <code>userPassword</code> attribute.  Then, the
 <code>mod_ldap</code> module will bind to the LDAP server as the user who is
-logging in via FTP with the user-supplied password.  If this bind succeeds,
-the user is considered authenticated and is allowed to log in.  This method of
-LDAP authentication has the added benefit of supporting any password encryption
+logging in with the user-supplied password.  If this bind succeeds, the user
+is considered authenticated and is allowed to log in.  This method of LDAP
+authentication has the added benefit of supporting any password encryption
 scheme that your LDAP server supports.
 
 <p>
@@ -968,7 +968,7 @@ as <code>mod_ifsession</code>, are present in your <code>proftpd</code> build.
 <p>
 <hr>
 <font size=2><b><i>
-&copy; Copyright 2013-2023 TJ Saunders<br>
+&copy; Copyright 2013-2026 TJ Saunders<br>
  All Rights Reserved<br>
 </i></b></font>
 <hr>
