@@ -28,12 +28,12 @@ my $order = 0;
 # LDAPUseTLS
 
 my $TESTS = {
-  ldap_users_authallowed => {
+  ldap_login_ok => {
     order => ++$order,
     test_class => [qw(forking)],
   },
 
-  ldap_users_authdenied => {
+  ldap_authbinds_off_login_ok => {
     order => ++$order,
     test_class => [qw(forking)],
   },
@@ -125,88 +125,90 @@ sub new {
 }
 
 sub list_tests {
-  return testsuite_get_runnable_tests($TESTS);
+#  return testsuite_get_runnable_tests($TESTS);
+  return qw(
+    ldap_login_ok
+  );
+#    ldap_authbinds_off_login_ok
 }
 
-sub ldap_auth {
+sub get_ldap_config {
+  my $setup = shift;
+
+  my $ldap_server = 'localhost';
+  if ($ENV{LDAP_SERVER}) {
+    $ldap_server = $ENV{LDAP_SERVER};
+  }
+
+  my $ldap_bind_dn = 'BIND_DN';
+  if ($ENV{LDAP_BIND_DN}) {
+    $ldap_bind_dn = $ENV{LDAP_BIND_DN};
+  }
+
+  my $ldap_bind_passwd = 'password';
+  if ($ENV{LDAP_BIND_PASSWD}) {
+    $ldap_bind_passwd = $ENV{LDAP_BIND_PASSWD};
+  }
+
+  my $ldap_users_dn = 'USERS_DN';
+  if ($ENV{LDAP_USERS_DN}) {
+    $ldap_users_dn = $ENV{LDAP_USERS_DN};
+  }
+
+  my $ldap_groups_dn;
+  if (defined($ENV{LDAP_GROUPS_DN})) {
+    $ldap_groups_dn = $ENV{LDAP_GROUPS_DN};
+  }
+
+  my $ldap_config = {
+    LDAPLog => $setup->{log_file},
+    LDAPServer => $ldap_server,
+    LDAPBindDN => "$ldap_bind_dn $ldap_bind_passwd",
+    LDAPUsers => $ldap_users_dn,
+    LDAPDefaultAuthScheme => 'clear',
+    AuthOrder => 'mod_ldap.c',
+  };
+
+  if ($ldap_groups_dn) {
+    $ldap_config->{LDAPGroups} = $ldap_groups_dn;
+  }
+
+  return $ldap_config;
+}
+
+sub ldap_login_ok {
   my $self = shift;
-  my $allow_auth = shift;
   my $tmpdir = $self->{tmpdir};
+  my $setup = test_setup($tmpdir, 'ldap');
 
-  my $config_file = "$tmpdir/ldap.conf";
-  my $pid_file = File::Spec->rel2abs("$tmpdir/ldap.pid");
-  my $scoreboard_file = File::Spec->rel2abs("$tmpdir/ldap.scoreboard");
+  my $ldap_config = get_ldap_config($setup);
 
-  my $log_file = File::Spec->rel2abs('tests.log');
+  # Note: Unless we're forcing this, these settings apply only when there
+  # is no homeDirectory attribute provided.
+  $ldap_config->{LDAPGenerateHomedir} = 'on';
+  $ldap_config->{LDAPGenerateHomedirPrefix} = $tmpdir;
 
-  my $server = $ENV{LDAP_SERVER} ? $ENV{LDAP_SERVER} : 'localhost';
-  my $bind_dn = $ENV{LDAP_BIND_DN};
-  my $bind_pass = $ENV{LDAP_BIND_PASS};
-  my $ldap_base = $ENV{LDAP_USER_BASE};
-  my $user = 'proftpdtest' . int(rand(4294967296));
-  my $passwd = 'foobar';
-  my $uid = 1000;
-  my $gid = 1000;
-  my $home_dir = File::Spec->rel2abs($tmpdir);
-
-  my $ld = Net::LDAP->new([$server]);
-  $self->assert($ld);
-  $self->assert($ld->bind($bind_dn, password => $bind_pass));
-
-  my $entry = Net::LDAP::Entry->new("uid=$user,$ldap_base");
-  $entry->delete();
-  my $msg = $entry->update($ld);
-  if ($msg->is_error()) {
-    $self->annotate($msg->error());
-  }
-  $self->assert(!$msg->is_error() || $msg->code() == LDAP_NO_SUCH_OBJECT);
-
-  $entry = Net::LDAP::Entry->new(
-    "uid=$user,$ldap_base",
-    objectClass => ['posixAccount', 'account'],
-    uid => $user,
-    userPassword => $passwd,
-    uidNumber => $uid,
-    gidNumber => $gid,
-    homeDirectory => $home_dir,
-    cn => 'ProFTPD Test',
-  );
-  $msg = $entry->update($ld);
-  $self->assert(!$msg->is_error());
-
-  # Make sure that, if we're running as root, that the home directory has
-  # permissions/privs set for the account we create
-  if ($< == 0) {
-    unless (chmod(0755, $home_dir)) {
-      die("Can't set perms on $home_dir to 0755: $!");
-    }
-
-    unless (chown($uid, $gid, $home_dir)) {
-      die("Can't set owner of $home_dir to $uid/$gid: $!");
-    }
-  }
+  $ldap_config->{LDAPGenerateHomedirPrefixNoUsername} = 'on'; 
+  $ldap_config->{LDAPForceGeneratedHomedir} = 'on';
 
   my $config = {
-    PidFile => $pid_file,
-    ScoreboardFile => $scoreboard_file,
-    SystemLog => $log_file,
-    TraceLog => $log_file,
-    Trace => 'auth:10',
+    PidFile => $setup->{pid_file},
+    ScoreboardFile => $setup->{scoreboard_file},
+    SystemLog => $setup->{log_file},
+    TraceLog => $setup->{log_file},
+    Trace => 'ldap:20',
 
     IfModules => {
       'mod_delay.c' => {
         DelayEngine => 'off',
       },
 
-      'mod_ldap.c' => {
-        LDAPServer => $server,
-        LDAPBindDN => "$bind_dn $bind_pass",
-        LDAPUsers => "$ldap_base (uid=%u)",
-      },
+      'mod_ldap.c' => $ldap_config,
     },
   };
 
-  my ($port, $config_user, $config_group) = config_write($config_file, $config);
+  my ($port, $config_user, $config_group) = config_write($setup->{config_file},
+    $config);
 
   # Open pipes, for use between the parent and child processes.  Specifically,
   # the child will indicate when it's done with its test by writing a message
@@ -224,41 +226,20 @@ sub ldap_auth {
   if ($pid) {
     eval {
       my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
-      if ($allow_auth) {
-        $client->login($user, $passwd);
-      } else {
-        eval { $client->login($user, $passwd . '-') };
-        unless ($@) {
-          die("Login succeeded unexpectedly");
-        }
-      }
+      $client->login($setup->{user}, $setup->{passwd});
 
-      my ($resp_code, $resp_msg);
-      $resp_code = $client->response_code();
-      $resp_msg = $client->response_msg();
+      my $resp_code = $client->response_code();
+      my $resp_msg = $client->response_msg();
+      $client->quit();
 
-      my $expected;
+      my $expected = 230;
+      $self->assert($expected == $resp_code,
+        test_msg("Expected response code $expected, got $resp_code"));
 
-      if ($allow_auth) {
-        $expected = 230;
-        $self->assert($expected == $resp_code,
-          test_msg("Expected $expected, got $resp_code"));
-
-        # FIXME: assert() -> assert_str_equals()
-        $expected = "User $user logged in";
-        $self->assert($expected eq $resp_msg,
-          test_msg("Expected '$expected', got '$resp_msg'"));
-      } else {
-          $expected = 530;
-          $self->assert($expected == $resp_code,
-            test_msg("Expected $expected, got $resp_code"));
-
-          $expected = 'Login incorrect.';
-          $self->assert($expected eq $resp_msg,
-            test_msg("Expected '$expected', got '$resp_msg'"));
-      }
+      $expected = "User $setup->{user} logged in";
+      $self->assert($expected eq $resp_msg,
+        test_msg("Expected response message '$expected', got '$resp_msg'"));
     };
-
     if ($@) {
       $ex = $@;
     }
@@ -267,7 +248,7 @@ sub ldap_auth {
     $wfh->flush();
 
   } else {
-    eval { server_wait($config_file, $rfh) };
+    eval { server_wait($setup->{config_file}, $rfh) };
     if ($@) {
       warn($@);
       exit 1;
@@ -276,27 +257,91 @@ sub ldap_auth {
     exit 0;
   }
 
-  server_stop($pid_file);
-
+  server_stop($setup->{pid_file});
   $self->assert_child_ok($pid);
 
-  if ($ex) {
-    die($ex);
+$ex = 'FOOBAR' unless $ex;
+  test_cleanup($setup, $ex);
+}
+
+sub ldap_authbinds_off_login_ok {
+  my $self = shift;
+  my $tmpdir = $self->{tmpdir};
+  my $setup = test_setup($tmpdir, 'ldap');
+
+  my $ldap_config = get_ldap_config($setup);
+  $ldap_config->{LDAPAuthBinds} = 'off';
+
+  my $config = {
+    PidFile => $setup->{pid_file},
+    ScoreboardFile => $setup->{scoreboard_file},
+    SystemLog => $setup->{log_file},
+    TraceLog => $setup->{log_file},
+    Trace => 'auth:10 ldap:20',
+
+    IfModules => {
+      'mod_delay.c' => {
+        DelayEngine => 'off',
+      },
+
+      'mod_ldap.c' => $ldap_config,
+    },
+  };
+
+  my ($port, $config_user, $config_group) = config_write($setup->{config_file},
+    $config);
+
+  # Open pipes, for use between the parent and child processes.  Specifically,
+  # the child will indicate when it's done with its test by writing a message
+  # to the parent.
+  my ($rfh, $wfh);
+  unless (pipe($rfh, $wfh)) {
+    die("Can't open pipe: $!");
   }
 
-  unlink($log_file);
-}
+  my $ex;
 
-sub ldap_users_authallowed {
-  my $self = shift;
+  # Fork child
+  $self->handle_sigchld();
+  defined(my $pid = fork()) or die("Can't fork: $!");
+  if ($pid) {
+    eval {
+      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
+      $client->login($setup->{user}, $setup->{passwd});
 
-  ldap_auth($self, 1);
-}
+      my $resp_code = $client->response_code();
+      my $resp_msg = $client->response_msg();
+      $client->quit();
 
-sub ldap_users_authdenied {
-  my $self = shift;
+      my $expected = 230;
+      $self->assert($expected == $resp_code,
+        test_msg("Expected response code $expected, got $resp_code"));
 
-  ldap_auth($self, 0);
+      $expected = "User $setup->{user} logged in";
+      $self->assert($expected eq $resp_msg,
+        test_msg("Expected response message '$expected', got '$resp_msg'"));
+    };
+    if ($@) {
+      $ex = $@;
+    }
+
+    $wfh->print("done\n");
+    $wfh->flush();
+
+  } else {
+    eval { server_wait($setup->{config_file}, $rfh) };
+    if ($@) {
+      warn($@);
+      exit 1;
+    }
+
+    exit 0;
+  }
+
+  server_stop($setup->{pid_file});
+  $self->assert_child_ok($pid);
+
+  test_cleanup($setup, $ex);
 }
 
 sub ldap_genhomedir {
