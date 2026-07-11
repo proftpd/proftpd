@@ -477,6 +477,17 @@ my $TESTS = {
     order => ++$order,
     test_class => [qw(forking bug)],
   },
+
+  sql_sqllog_freeform_ignore_numeric_tag => {
+    order => ++$order,
+    test_class => [qw(bug forking)],
+  },
+
+  sql_sqllog_insert_ignore_numeric_tag => {
+    order => ++$order,
+    test_class => [qw(bug forking)],
+  },
+
 };
 
 sub new {
@@ -3449,38 +3460,7 @@ sub get_renames {
 sub sql_sqllog_var_w {
   my $self = shift;
   my $tmpdir = $self->{tmpdir};
-
-  my $config_file = "$tmpdir/sqlite.conf";
-  my $pid_file = File::Spec->rel2abs("$tmpdir/sqlite.pid");
-  my $scoreboard_file = File::Spec->rel2abs("$tmpdir/sqlite.scoreboard");
-
-  my $log_file = test_get_logfile();
-
-  my $auth_user_file = File::Spec->rel2abs("$tmpdir/sqlite.passwd");
-  my $auth_group_file = File::Spec->rel2abs("$tmpdir/sqlite.group");
-
-  my $user = 'proftpd';
-  my $passwd = 'test';
-  my $group = 'ftpd';
-  my $home_dir = File::Spec->rel2abs($tmpdir);
-  my $uid = 500;
-  my $gid = 500;
-
-  # Make sure that, if we're running as root, that the home directory has
-  # permissions/privs set for the account we create
-  if ($< == 0) {
-    unless (chmod(0755, $home_dir)) {
-      die("Can't set perms on $home_dir to 0755: $!");
-    }
-
-    unless (chown($uid, $gid, $home_dir)) {
-      die("Can't set owner of $home_dir to $uid/$gid: $!");
-    }
-  }
-
-  auth_user_write($auth_user_file, $user, $passwd, $uid, $gid, $home_dir,
-    '/bin/bash');
-  auth_group_write($auth_group_file, $group, $gid, $user);
+  my $setup = test_setup($tmpdir, 'sqlite');
 
   my $db_file = File::Spec->rel2abs("$tmpdir/proftpd.db");
 
@@ -3523,15 +3503,21 @@ EOS
     die("Can't open $src_file: $!");
   }
 
+  if ($< == 0) {
+    unless (chmod($setup->{uid}, $setup->{gid}, $src_file)) {
+      die("Can't set owner of $src_file to $setup->{uid}/$setup->{gid}: $!");
+    }
+  }
+
   my $dst_file = File::Spec->rel2abs("$tmpdir/foo.txt");
 
   my $config = {
-    PidFile => $pid_file,
-    ScoreboardFile => $scoreboard_file,
-    SystemLog => $log_file,
+    PidFile => $setup->{pid_file},
+    ScoreboardFile => $setup->{scoreboard_file},
+    SystemLog => $setup->{log_file},
 
-    AuthUserFile => $auth_user_file,
-    AuthGroupFile => $auth_group_file,
+    AuthUserFile => $setup->{auth_user_file},
+    AuthGroupFile => $setup->{auth_group_file},
     AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
@@ -3543,14 +3529,15 @@ EOS
         SQLEngine => 'log',
         SQLBackend => 'sqlite3',
         SQLConnectInfo => $db_file,
-        SQLLogFile => $log_file,
+        SQLLogFile => $setup->{log_file},
         SQLNamedQuery => 'rename FREEFORM "INSERT INTO ftpsessions (user, ip_addr, rename_from) VALUES (\'%u\', \'%L\', \'%w\')"',
         SQLLog => 'RNTO rename',
       },
     },
   };
 
-  my ($port, $config_user, $config_group) = config_write($config_file, $config);
+  my ($port, $config_user, $config_group) = config_write($setup->{config_file},
+    $config);
 
   # Open pipes, for use between the parent and child processes.  Specifically,
   # the child will indicate when it's done with its test by writing a message
@@ -3567,12 +3554,15 @@ EOS
   defined(my $pid = fork()) or die("Can't fork: $!");
   if ($pid) {
     eval {
+      # Allow for server startup
+      sleep(1);
+
       my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
-      $client->login($user, $passwd);
+      $client->login($setup->{user}, $setup->{passwd});
       $client->rnfr('test.txt');
       $client->rnto('foo.txt');
+      $client->quit();
     };
-
     if ($@) {
       $ex = $@;
     }
@@ -3581,7 +3571,7 @@ EOS
     $wfh->flush();
 
   } else {
-    eval { server_wait($config_file, $rfh) };
+    eval { server_wait($setup->{config_file}, $rfh) };
     if ($@) {
       warn($@);
       exit 1;
@@ -3591,28 +3581,20 @@ EOS
   }
 
   # Stop server
-  server_stop($pid_file);
-
+  server_stop($setup->{pid_file});
   $self->assert_child_ok($pid);
 
-  if ($ex) {
-    test_append_logfile($log_file, $ex);
-    unlink($log_file);
+  test_cleanup($setup, $ex) if $ex;
 
-    die($ex);
-  }
+  my ($login, $ip_addr, $rnfr_path) = get_renames($db_file, "user = \'$setup->{user}\'");
 
-  my ($login, $ip_addr, $rnfr_path) = get_renames($db_file, "user = \'$user\'");
-
-  my $expected;
-
-  $expected = $user;
+  my $expected = $setup->{user};
   $self->assert($expected eq $login,
-    test_msg("Expected '$expected', got '$login'"));
+    test_msg("Expected login '$expected', got '$login'"));
 
   $expected = '127.0.0.1';
   $self->assert($expected eq $ip_addr,
-    test_msg("Expected '$expected', got '$ip_addr'"));
+    test_msg("Expected IP address '$expected', got '$ip_addr'"));
 
   if ($^O eq 'darwin') {
     # MacOSX-specific hack
@@ -3621,9 +3603,9 @@ EOS
 
   $expected = $src_file;
   $self->assert($expected eq $rnfr_path,
-    test_msg("Expected '$expected', got '$rnfr_path'"));
+    test_msg("Expected path '$expected', got '$rnfr_path'"));
 
-  unlink($log_file);
+  test_cleanup($setup, undef);
 }
 
 sub sql_sqllog_var_w_chrooted {
@@ -5285,7 +5267,8 @@ EOS
     },
   };
 
-  my ($port, $config_user, $config_group) = config_write($config_file, $config);
+  my ($port, $config_user, $config_group) = config_write($setup->{config_file},
+    $config);
 
   # Open pipes, for use between the parent and child processes.  Specifically,
   # the child will indicate when it's done with its test by writing a message
@@ -5302,9 +5285,11 @@ EOS
   defined(my $pid = fork()) or die("Can't fork: $!");
   if ($pid) {
     eval {
-      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
+      # Allow for server startup
+      sleep(1);
 
-      $client->login($user, $passwd);
+      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
+      $client->login($setup->{user}, $setup->{passwd});
       $client->quit();
 
       # Let the session process gracefully finish its db routines.  Yay
@@ -5319,7 +5304,7 @@ EOS
     $wfh->flush();
 
   } else {
-    eval { server_wait($config_file, $rfh) };
+    eval { server_wait($setup->{config_file}, $rfh) };
     if ($@) {
       warn($@);
       exit 1;
@@ -5329,18 +5314,12 @@ EOS
   }
 
   # Stop server
-  server_stop($pid_file);
-
+  server_stop($setup->{pid_file});
   $self->assert_child_ok($pid);
 
-  if ($ex) {
-    test_append_logfile($log_file, $ex);
-    unlink($log_file);
+  test_cleanup($setup, $ex) if $ex;
 
-    die($ex);
-  }
-
-  my $query = "SELECT user, ip_addr FROM ftpsessions WHERE user = \'$user\'";
+  my $query = "SELECT user, ip_addr FROM ftpsessions WHERE user = \'$setup->{user}\'";
   $cmd = "sqlite3 $db_file \"$query\"";
 
   if ($ENV{TEST_VERBOSE}) {
@@ -5352,17 +5331,15 @@ EOS
 
   my ($login, $ip_addr) = split(/\|/, $res);
 
-  my $expected;
-
-  $expected = $user;
+  my $expected = $setup->{user};
   $self->assert($expected eq $login,
-    test_msg("Expected '$expected', got '$login'"));
+    test_msg("Expected login '$expected', got '$login'"));
 
   $expected = '127.0.0.1';
   $self->assert($expected eq $ip_addr,
-    test_msg("Expected '$expected', got '$ip_addr'"));
+    test_msg("Expected IP address '$expected', got '$ip_addr'"));
 
-  unlink($log_file);
+  test_cleanup($setup, undef);
 }
 
 sub sql_sqllog_exit_var_remote_port_bug4296 {
@@ -6803,7 +6780,7 @@ EOS
     ScoreboardFile => $setup->{scoreboard_file},
     SystemLog => $setup->{log_file},
     TraceLog => $setup->{log_file},
-    Trace => 'jot:20 sql:20',
+    Trace => 'jot:30 sql:30',
 
     IfModules => {
       'mod_delay.c' => {
@@ -16100,6 +16077,358 @@ EOS
     } else {
       die("Can't read $setup->{log_file}: $!");
     }
+  };
+  if ($@) {
+    $ex = $@;
+  }
+
+  test_cleanup($setup, $ex);
+}
+
+sub sql_sqllog_freeform_ignore_numeric_tag {
+  my $self = shift;
+  my $tmpdir = $self->{tmpdir};
+  my $setup = test_setup($tmpdir, 'sqlite');
+
+  my $db_file = File::Spec->rel2abs("$tmpdir/proftpd.db");
+
+  # Build up sqlite3 command to create users, groups tables and populate them
+  my $db_script = File::Spec->rel2abs("$tmpdir/proftpd.sql");
+
+  if (open(my $fh, "> $db_script")) {
+    print $fh <<EOS;
+CREATE TABLE ftpsessions (
+  user TEXT,
+  ip_addr TEXT,
+  rename_from TEXT
+);
+EOS
+
+    unless (close($fh)) {
+      die("Can't write $db_script: $!");
+    }
+
+  } else {
+    die("Can't open $db_script: $!");
+  }
+
+  my $cmd = "sqlite3 $db_file < $db_script";
+  build_db($cmd, $db_script);
+
+  # Make sure that, if we're running as root, the database file has
+  # the permissions/privs set for use by proftpd
+  if ($< == 0) {
+    unless (chmod(0666, $db_file)) {
+      die("Can't set perms on $db_file to 0666: $!");
+    }
+  }
+
+  my $test_file = File::Spec->rel2abs("$tmpdir/test.txt");
+  if (open(my $fh, "> $test_file")) {
+    print $fh "Hello, World!\n";
+    close($fh);
+
+  } else {
+    die("Can't open $test_file: $!");
+  }
+
+  if ($< == 0) {
+    unless (chmod($setup->{uid}, $setup->{gid}, $test_file)) {
+      die("Can't set owner of $test_file to $setup->{uid}/$setup->{gid}: $!");
+    }
+  }
+
+  my $config = {
+    PidFile => $setup->{pid_file},
+    ScoreboardFile => $setup->{scoreboard_file},
+    SystemLog => $setup->{log_file},
+    TraceLog => $setup->{log_file},
+    Trace => 'jot:30 sql:30',
+
+    AuthUserFile => $setup->{auth_user_file},
+    AuthGroupFile => $setup->{auth_group_file},
+    AuthOrder => 'mod_auth_file.c',
+
+    IfModules => {
+      'mod_delay.c' => {
+        DelayEngine => 'off',
+      },
+
+      'mod_sql.c' => {
+        SQLEngine => 'log',
+        SQLBackend => 'sqlite3',
+        SQLConnectInfo => $db_file,
+        SQLLogFile => $setup->{log_file},
+
+        # Yes, this "rename_from" column is not accurate.  I'm lazy, and
+        # am reusing existing code for this test.
+        SQLNamedQuery => 'log_download FREEFORM "INSERT INTO ftpsessions (user, ip_addr, rename_from) VALUES (\'%u\', \'%L\', \'%{0}\')"',
+        SQLLog => 'RETR log_download',
+      },
+    },
+  };
+
+  my ($port, $config_user, $config_group) = config_write($setup->{config_file},
+    $config);
+
+  # Open pipes, for use between the parent and child processes.  Specifically,
+  # the child will indicate when it's done with its test by writing a message
+  # to the parent.
+  my ($rfh, $wfh);
+  unless (pipe($rfh, $wfh)) {
+    die("Can't open pipe: $!");
+  }
+
+  my $ex;
+
+  # Fork child
+  $self->handle_sigchld();
+  defined(my $pid = fork()) or die("Can't fork: $!");
+  if ($pid) {
+    eval {
+      # Allow for server startup
+      sleep(1);
+
+      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
+      $client->login($setup->{user}, $setup->{passwd});
+
+      my $conn = $client->retr_raw('test.txt');
+      unless ($conn) {
+        die("Failed to RETR test.txt: " . $client->response_code() . " " .
+          $client->response_msg());
+      }
+
+      my $buf;
+      $conn->read($buf, 8129, 10);
+      sleep(0.25);
+      eval { $conn->close() };
+
+      my $resp_code = $client->response_code();
+      my $resp_msg = $client->response_msg();
+      $client->quit();
+
+      $self->assert_transfer_ok($resp_code, $resp_msg);
+    };
+    if ($@) {
+      $ex = $@;
+    }
+
+    $wfh->print("done\n");
+    $wfh->flush();
+
+  } else {
+    eval { server_wait($setup->{config_file}, $rfh) };
+    if ($@) {
+      warn($@);
+      exit 1;
+    }
+
+    exit 0;
+  }
+
+  # Stop server
+  server_stop($setup->{pid_file});
+  $self->assert_child_ok($pid);
+
+  test_cleanup($setup, $ex) if $ex;
+
+  my ($login, $ip_addr, $path) = get_renames($db_file, "user = \'$setup->{user}\'");
+
+  eval {
+    my $expected = $setup->{user};
+    $self->assert($expected eq $login,
+      test_msg("Expected login '$expected', got '$login'"));
+
+    $expected = '127.0.0.1';
+    $self->assert($expected eq $ip_addr,
+      test_msg("Expected IP address '$expected', got '$ip_addr'"));
+
+    if ($^O eq 'darwin') {
+      # MacOSX-specific hack
+      $test_file = '/private' . $test_file;
+    }
+
+    # We expect an empty path here since SQLNamedQuery is FREEFORM, and
+    # thus its numeric tag is not processed.
+    $expected = '';
+    $self->assert($expected eq $path,
+      test_msg("Expected path '$expected', got '$path'"));
+  };
+  if ($@) {
+    $ex = $@;
+  }
+
+  test_cleanup($setup, $ex);
+}
+
+sub sql_sqllog_insert_ignore_numeric_tag {
+  my $self = shift;
+  my $tmpdir = $self->{tmpdir};
+  my $setup = test_setup($tmpdir, 'sqlite');
+
+  my $db_file = File::Spec->rel2abs("$tmpdir/proftpd.db");
+
+  # Build up sqlite3 command to create users, groups tables and populate them
+  my $db_script = File::Spec->rel2abs("$tmpdir/proftpd.sql");
+
+  if (open(my $fh, "> $db_script")) {
+    print $fh <<EOS;
+CREATE TABLE ftpsessions (
+  user TEXT,
+  ip_addr TEXT,
+  rename_from TEXT
+);
+EOS
+
+    unless (close($fh)) {
+      die("Can't write $db_script: $!");
+    }
+
+  } else {
+    die("Can't open $db_script: $!");
+  }
+
+  my $cmd = "sqlite3 $db_file < $db_script";
+  build_db($cmd, $db_script);
+
+  # Make sure that, if we're running as root, the database file has
+  # the permissions/privs set for use by proftpd
+  if ($< == 0) {
+    unless (chmod(0666, $db_file)) {
+      die("Can't set perms on $db_file to 0666: $!");
+    }
+  }
+
+  my $test_file = File::Spec->rel2abs("$tmpdir/test.txt");
+  if (open(my $fh, "> $test_file")) {
+    print $fh "Hello, World!\n";
+    close($fh);
+
+  } else {
+    die("Can't open $test_file: $!");
+  }
+
+  if ($< == 0) {
+    unless (chmod($setup->{uid}, $setup->{gid}, $test_file)) {
+      die("Can't set owner of $test_file to $setup->{uid}/$setup->{gid}: $!");
+    }
+  }
+
+  my $config = {
+    PidFile => $setup->{pid_file},
+    ScoreboardFile => $setup->{scoreboard_file},
+    SystemLog => $setup->{log_file},
+    TraceLog => $setup->{log_file},
+    Trace => 'jot:30 sql:30',
+
+    AuthUserFile => $setup->{auth_user_file},
+    AuthGroupFile => $setup->{auth_group_file},
+    AuthOrder => 'mod_auth_file.c',
+
+    IfModules => {
+      'mod_delay.c' => {
+        DelayEngine => 'off',
+      },
+
+      'mod_sql.c' => {
+        SQLEngine => 'log',
+        SQLBackend => 'sqlite3',
+        SQLConnectInfo => $db_file,
+        SQLLogFile => $setup->{log_file},
+
+        # Yes, this "rename_from" column is not accurate.  I'm lazy, and
+        # am reusing existing code for this test.
+        SQLNamedQuery => 'log_download INSERT "\'%u\', \'%L\', \'%{999999}\'" ftpsessions',
+        SQLLog => 'RETR log_download',
+      },
+    },
+  };
+
+  my ($port, $config_user, $config_group) = config_write($setup->{config_file},
+    $config);
+
+  # Open pipes, for use between the parent and child processes.  Specifically,
+  # the child will indicate when it's done with its test by writing a message
+  # to the parent.
+  my ($rfh, $wfh);
+  unless (pipe($rfh, $wfh)) {
+    die("Can't open pipe: $!");
+  }
+
+  my $ex;
+
+  # Fork child
+  $self->handle_sigchld();
+  defined(my $pid = fork()) or die("Can't fork: $!");
+  if ($pid) {
+    eval {
+      # Allow for server startup
+      sleep(1);
+
+      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
+      $client->login($setup->{user}, $setup->{passwd});
+
+      my $conn = $client->retr_raw('test.txt');
+      unless ($conn) {
+        die("Failed to RETR test.txt: " . $client->response_code() . " " .
+          $client->response_msg());
+      }
+
+      my $buf;
+      $conn->read($buf, 8129, 10);
+      sleep(0.25);
+      eval { $conn->close() };
+
+      my $resp_code = $client->response_code();
+      my $resp_msg = $client->response_msg();
+      $client->quit();
+
+      $self->assert_transfer_ok($resp_code, $resp_msg);
+    };
+    if ($@) {
+      $ex = $@;
+    }
+
+    $wfh->print("done\n");
+    $wfh->flush();
+
+  } else {
+    eval { server_wait($setup->{config_file}, $rfh) };
+    if ($@) {
+      warn($@);
+      exit 1;
+    }
+
+    exit 0;
+  }
+
+  # Stop server
+  server_stop($setup->{pid_file});
+  $self->assert_child_ok($pid);
+
+  test_cleanup($setup, $ex) if $ex;
+
+  my ($login, $ip_addr, $path) = get_renames($db_file, "user = \'$setup->{user}\'");
+
+  eval {
+    my $expected = $setup->{user};
+    $self->assert($expected eq $login,
+      test_msg("Expected login '$expected', got '$login'"));
+
+    $expected = '127.0.0.1';
+    $self->assert($expected eq $ip_addr,
+      test_msg("Expected IP address '$expected', got '$ip_addr'"));
+
+    if ($^O eq 'darwin') {
+      # MacOSX-specific hack
+      $test_file = '/private' . $test_file;
+    }
+
+    # We expect an empty path here since SQLNamedQuery is FREEFORM, and
+    # thus its numeric tag is not processed.
+    $expected = '';
+    $self->assert($expected eq $path,
+      test_msg("Expected path '$expected', got '$path'"));
   };
   if ($@) {
     $ex = $@;

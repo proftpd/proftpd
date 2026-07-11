@@ -947,7 +947,7 @@ static int sql_resolve_on_meta(pool *p, pr_jot_ctx_t *jot_ctx,
         const char *val_text;
         size_t val_textlen;
         cmd_rec *cmd;
-        int is_numeric_tag = TRUE;
+        int is_hook_sql_cmd = FALSE, is_numeric_tag = TRUE;
 
         cmd = (cmd_rec *) jot_ctx->user_data;
         val_text = (const char *) val;
@@ -960,12 +960,37 @@ static int sql_resolve_on_meta(pool *p, pr_jot_ctx_t *jot_ctx,
           }
         }
 
+        /* Numeric tags are reserved ONLY for use by internally-generated
+         * "sql_lookup" or "sql_change" cmd_recs, which have at least 2
+         * parameters.  Hence why we add 2 to the retrieved index value later.
+         *
+         * Skip such processing for any other commd.  (Why only these two
+         * internally-generated commands?  Those are the ones registered as
+         * HOOKs, and are only used by other modules.)
+         */
         if (is_numeric_tag == TRUE) {
+          if (strcmp(cmd->argv[0], "sql_change") == 0) {
+            is_hook_sql_cmd = TRUE;
+
+          } else if (strcmp(cmd->argv[0], "sql_lookup") == 0) {
+            is_hook_sql_cmd = TRUE;
+          }
+
+          if (is_hook_sql_cmd == FALSE) {
+            sql_log(DEBUG_FUNC,
+              "ignoring non-internal SQL command '%s' for resolving numeric "
+              "reference '%s' in query", (char *) cmd->argv[0], val_text);
+          }
+        }
+
+        if (is_numeric_tag == TRUE &&
+            is_hook_sql_cmd == TRUE) {
           int idx;
 
           idx = resolve_numeric_val(cmd, val_text);
           if (idx < 0) {
-            sql_log(DEBUG_FUNC, "out-of-bounds numeric reference in query");
+            sql_log(DEBUG_FUNC, "out-of-bounds numeric reference '%s' in query",
+              val_text);
             errno = EIO;
             return -1;
           }
@@ -2788,6 +2813,7 @@ MODRET sql_post_retr(cmd_rec *cmd) {
 
 static int resolve_numeric_val(cmd_rec *cmd, const char *val) {
   int idx = -1;
+  unsigned int n;
   char *ptr = NULL;
 
   idx = strtol(val, &ptr, 10);
@@ -2799,7 +2825,12 @@ static int resolve_numeric_val(cmd_rec *cmd, const char *val) {
     return -1;
   }
 
-  if ((cmd->argc - 3) < (unsigned int) idx) {
+  /* Internally-generated "sql_change" or "sql_lookup" commands have at least
+   * two parameters: the command name, and the name of the SQLNamedQuery
+   * being processed.  They MAY have more parameters, or not.
+   */
+  n = idx + 2;
+  if (n > cmd->argc) {
     return -1;
   }
 
@@ -3625,6 +3656,30 @@ MODRET sql_lookup(cmd_rec *cmd) {
   return mr;
 }
 
+/*
+ * sql_change: executes a mutating query, properly constructing the query
+ *  based on the inputs.  See mod_sql.h for the definition of the _sql_data
+ *  structure which is used to return the result data.
+ *
+ * sql_change takes either exactly two inputs, or more than two.  If only
+ *  two inputs are given, the second is a monolithic query string.  See
+ *  the examples below.
+ *
+ * Inputs:
+ *  cmd->argv[0]: "sql_change"
+ *  cmd->argv[1]: SQLNamedQuery name
+ * Optional:
+ *  cmd->argv[2]: inputs into query, referenced by numeric index
+ *  cmd->argv[3]: ...
+ *
+ * Returns:
+ *  either a properly filled error modret_t if the query failed, or a
+ *  modret_t with the result data filled in.
+ *
+ * Notes:
+ *   The referenced SQLNamedQuery must be an INSERT, UPDATE, or FREEFORM;
+ *   any other type of query yields an error.
+ */
 MODRET sql_change(cmd_rec *cmd) {
   char *type = NULL;
   modret_t *mr = NULL;

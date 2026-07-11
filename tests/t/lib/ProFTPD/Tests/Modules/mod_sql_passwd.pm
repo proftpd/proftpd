@@ -3242,14 +3242,6 @@ sub sql_passwd_user_salt_sql {
   my $self = shift;
   my $tmpdir = $self->{tmpdir};
 
-  my $config_file = "$tmpdir/sqlpasswd.conf";
-  my $pid_file = File::Spec->rel2abs("$tmpdir/sqlpasswd.pid");
-  my $scoreboard_file = File::Spec->rel2abs("$tmpdir/sqlpasswd.scoreboard");
-
-  my $log_file = test_get_logfile();
-
-  my $user = 'proftpd';
-
   my $salt = 'MyS00p3r$3kr3t$@lt';
 
   # I used:
@@ -3259,9 +3251,7 @@ sub sql_passwd_user_salt_sql {
   # to generate this password.
   my $passwd = 'cbaae8ec99dad240e86b64c66d31272b39a87e2e';
 
-  my $home_dir = File::Spec->rel2abs($tmpdir);
-  my $uid = 500;
-  my $gid = 500;
+  my $setup = test_setup($tmpdir, 'sql_passwd', 'proftpd', $passwd);
 
   my $db_file = File::Spec->rel2abs("$tmpdir/proftpd.db");
 
@@ -3278,20 +3268,20 @@ CREATE TABLE users (
   homedir TEXT,
   shell TEXT
 );
-INSERT INTO users (userid, passwd, uid, gid, homedir, shell) VALUES ('$user', '$passwd', $uid, $gid, '$home_dir', '/bin/bash');
+INSERT INTO users (userid, passwd, uid, gid, homedir, shell) VALUES ('$setup->{user}', '$setup->{passwd}', $setup->{uid}, $setup->{gid}, '$setup->{home_dir}', '/bin/bash');
 
 CREATE TABLE groups (
   groupname TEXT,
   gid INTEGER,
   members TEXT
 );
-INSERT INTO groups (groupname, gid, members) VALUES ('ftpd', $gid, '$user');
+INSERT INTO groups (groupname, gid, members) VALUES ('$setup->{group}', $setup->{gid}, '$setup->{user}');
 
 CREATE TABLE user_salts (
   userid TEXT,
   salt TEXT
 );
-INSERT INTO user_salts (userid, salt) VALUES ('$user', '$salt');
+INSERT INTO user_salts (userid, salt) VALUES ('$setup->{user}', '$salt');
 EOS
 
     unless (close($fh)) {
@@ -3315,9 +3305,11 @@ EOS
   }
 
   my $config = {
-    PidFile => $pid_file,
-    ScoreboardFile => $scoreboard_file,
-    SystemLog => $log_file,
+    PidFile => $setup->{pid_file},
+    ScoreboardFile => $setup->{scoreboard_file},
+    SystemLog => $setup->{log_file},
+    TraceLog => $setup->{log_file},
+    Trace => 'jot:30 sql:30',
 
     IfModules => {
       'mod_delay.c' => {
@@ -3325,10 +3317,11 @@ EOS
       },
 
       'mod_sql.c' => {
+        AuthOrder => 'mod_sql.c',
         SQLAuthTypes => 'sha1',
         SQLBackend => 'sqlite3',
         SQLConnectInfo => $db_file,
-        SQLLogFile => $log_file,
+        SQLLogFile => $setup->{log_file},
         SQLNamedQuery => 'get-user-salt SELECT "salt FROM user_salts WHERE userid = \'%{0}\'"',
       },
 
@@ -3340,7 +3333,8 @@ EOS
     },
   };
 
-  my ($port, $config_user, $config_group) = config_write($config_file, $config);
+  my ($port, $config_user, $config_group) = config_write($setup->{config_file},
+    $config);
 
   # Open pipes, for use between the parent and child processes.  Specifically,
   # the child will indicate when it's done with its test by writing a message
@@ -3357,24 +3351,24 @@ EOS
   defined(my $pid = fork()) or die("Can't fork: $!");
   if ($pid) {
     eval {
+      # Allow for server startup
+      sleep(1);
+
       my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
-      $client->login($user, "password");
+      $client->login($setup->{user}, "password");
 
       my $resp_msgs = $client->response_msgs();
       my $nmsgs = scalar(@$resp_msgs);
+      $client->quit();
 
-      my $expected;
-
-      $expected = 1;
+      my $expected = 1;
       $self->assert($expected == $nmsgs,
-        test_msg("Expected $expected, got $nmsgs"));
+        test_msg("Expected count $expected, got $nmsgs"));
 
-      $expected = "User proftpd logged in";
+      $expected = "User $setup->{user} logged in";
       $self->assert($expected eq $resp_msgs->[0],
-        test_msg("Expected '$expected', got '$resp_msgs->[0]'"));
-
+        test_msg("Expected response message '$expected', got '$resp_msgs->[0]'"));
     };
-
     if ($@) {
       $ex = $@;
     }
@@ -3383,7 +3377,7 @@ EOS
     $wfh->flush();
 
   } else {
-    eval { server_wait($config_file, $rfh) };
+    eval { server_wait($setup->{config_file}, $rfh) };
     if ($@) {
       warn($@);
       exit 1;
@@ -3393,18 +3387,10 @@ EOS
   }
 
   # Stop server
-  server_stop($pid_file);
-
+  server_stop($setup->{pid_file});
   $self->assert_child_ok($pid);
 
-  if ($ex) {
-    test_append_logfile($log_file, $ex);
-    unlink($log_file);
-
-    die($ex);
-  }
-
-  unlink($log_file);
+  test_cleanup($setup, $ex);
 }
 
 sub sql_passwd_md5_hash_encode_salt_password_bug3500 {
