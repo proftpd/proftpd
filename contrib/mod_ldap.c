@@ -1171,6 +1171,9 @@ static struct passwd *pr_ldap_user_lookup(pool *p, char *filter_template,
 
         } else {
           LDAP_VALUE_T **canon_username;
+          char *home_dir, sanitized_home_dir[PR_TUNABLE_PATH_MAX+1];
+          size_t ldap_genhdir_prefixlen = 0;
+
           canon_username = LDAP_GET_VALUES(ld, e, ldap_attr_uid);
           if (canon_username == NULL) {
             dn = ldap_get_dn(ld, e);
@@ -1182,9 +1185,43 @@ static struct passwd *pr_ldap_user_lookup(pool *p, char *filter_template,
             return NULL;
           }
 
-          pw->pw_dir = pstrcat(session.pool, ldap_genhdir_prefix, "/",
+          home_dir = pstrcat(p, ldap_genhdir_prefix, "/",
             LDAP_VALUE(canon_username, 0), NULL);
           LDAP_VALUE_FREE(canon_username);
+
+          memset(sanitized_home_dir, '\0', sizeof(sanitized_home_dir));
+          pr_fs_clean_path2(home_dir, sanitized_home_dir,
+            sizeof(sanitized_home_dir)-1, PR_FSIO_CLEAN_PATH_FL_MAKE_ABS_PATH);
+
+          /* Double-check that the sanitized path still falls under the
+           * configured LDAPGenerateHomedirPrefix.
+           */
+
+          ldap_genhdir_prefixlen = strlen(ldap_genhdir_prefix);
+          if (strncmp(ldap_genhdir_prefix, sanitized_home_dir,
+              ldap_genhdir_prefixlen) != 0) {
+            (void) pr_log_writefile(ldap_logfd, MOD_LDAP_VERSION,
+              "generated home directory '%s' outside of "
+              "LDAPGenerateHomdirPrefix '%s', rejecting", home_dir,
+              ldap_genhdir_prefix);
+
+            LDAP_VALUE_FREE(values);
+            ldap_msgfree(result);
+            return NULL;
+          }
+
+          if (sanitized_home_dir[ldap_genhdir_prefixlen] != '/') {
+            (void) pr_log_writefile(ldap_logfd, MOD_LDAP_VERSION,
+              "sanitized generated home directory '%s' outside of "
+              "LDAPGenerateHomdirPrefix '%s', rejecting", sanitized_home_dir,
+              ldap_genhdir_prefix);
+
+            LDAP_VALUE_FREE(values);
+            ldap_msgfree(result);
+            return NULL;
+          }
+
+          pw->pw_dir = pstrdup(session.pool, sanitized_home_dir);
         }
 
       } else {
