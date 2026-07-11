@@ -9565,38 +9565,7 @@ EOC
 sub sql_opt_no_disconnect_on_error_with_extlog_bug3633 {
   my $self = shift;
   my $tmpdir = $self->{tmpdir};
-
-  my $config_file = "$tmpdir/sqlite.conf";
-  my $pid_file = File::Spec->rel2abs("$tmpdir/sqlite.pid");
-  my $scoreboard_file = File::Spec->rel2abs("$tmpdir/sqlite.scoreboard");
-
-  my $log_file = test_get_logfile();
-
-  my $auth_user_file = File::Spec->rel2abs("$tmpdir/sqlite.passwd");
-  my $auth_group_file = File::Spec->rel2abs("$tmpdir/sqlite.group");
-
-  my $user = 'proftpd';
-  my $passwd = 'test';
-  my $group = 'ftpd';
-  my $home_dir = File::Spec->rel2abs($tmpdir);
-  my $uid = 500;
-  my $gid = 500;
-
-  # Make sure that, if we're running as root, that the home directory has
-  # permissions/privs set for the account we create
-  if ($< == 0) {
-    unless (chmod(0755, $home_dir)) {
-      die("Can't set perms on $home_dir to 0755: $!");
-    }
-
-    unless (chown($uid, $gid, $home_dir)) {
-      die("Can't set owner of $home_dir to $uid/$gid: $!");
-    }
-  }
-
-  auth_user_write($auth_user_file, $user, $passwd, $uid, $gid, $home_dir,
-    '/bin/bash');
-  auth_group_write($auth_group_file, $group, $gid, $user);
+  my $setup = test_setup($tmpdir, 'sqlite');
 
   my $db_file = File::Spec->rel2abs("$tmpdir/proftpd.db");
 
@@ -9631,7 +9600,7 @@ EOS
     }
   }
 
-  my $test_file = File::Spec->rel2abs("$home_dir/test.txt");
+  my $test_file = File::Spec->rel2abs("$setup->{home_dir}/test.txt");
   if (open(my $fh, "> $test_file")) {
     print $fh "Hello, World!\n";
     unless (close($fh)) {
@@ -9645,14 +9614,14 @@ EOS
   my $ext_log = File::Spec->rel2abs("$tmpdir/custom.log");
 
   my $config = {
-    PidFile => $pid_file,
-    ScoreboardFile => $scoreboard_file,
-    SystemLog => $log_file,
-    TraceLog => $log_file,
+    PidFile => $setup->{pid_file},
+    ScoreboardFile => $setup->{scoreboard_file},
+    SystemLog => $setup->{log_file},
+    TraceLog => $setup->{log_file},
     Trace => 'DEFAULT:10 sql:20',
 
-    AuthUserFile => $auth_user_file,
-    AuthGroupFile => $auth_group_file,
+    AuthUserFile => $setup->{auth_user_file},
+    AuthGroupFile => $setup->{auth_group_file},
     AuthOrder => 'mod_auth_file.c',
 
     LogFormat => 'custom "%m %f"',
@@ -9667,7 +9636,7 @@ EOS
         SQLEngine => 'log',
         SQLBackend => 'sqlite3',
         SQLConnectInfo => $db_file,
-        SQLLogFile => $log_file,
+        SQLLogFile => $setup->{log_file},
         SQLNamedQuery => 'log_dele FREEFORM "INSERT INTO ftpsessions (user, ip_addr, ts) VALUES (\'%u\', \'%L\', \'%{time:%Y-%m-%d %H:%M:%S}\')"',
         SQLLog => 'DELE log_dele',
 
@@ -9676,7 +9645,8 @@ EOS
     },
   };
 
-  my ($port, $config_user, $config_group) = config_write($config_file, $config);
+  my ($port, $config_user, $config_group) = config_write($setup->{config_file},
+    $config);
 
   # Open pipes, for use between the parent and child processes.  Specifically,
   # the child will indicate when it's done with its test by writing a message
@@ -9694,12 +9664,10 @@ EOS
   if ($pid) {
     eval {
       my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
-
-      $client->login($user, $passwd);
+      $client->login($setup->{user}, $setup->{passwd});
       $client->dele('test.txt');
       $client->quit();
     };
-
     if ($@) {
       $ex = $@;
     }
@@ -9708,7 +9676,7 @@ EOS
     $wfh->flush();
 
   } else {
-    eval { server_wait($config_file, $rfh) };
+    eval { server_wait($setup->{config_file}, $rfh) };
     if ($@) {
       warn($@);
       exit 1;
@@ -9718,53 +9686,55 @@ EOS
   }
 
   # Stop server
-  server_stop($pid_file);
-
+  server_stop($setup->{pid_file});
   $self->assert_child_ok($pid);
 
-  if ($ex) {
-    test_append_logfile($log_file, $ex);
-    unlink($log_file);
-
-    die($ex);
-  }
+  test_cleanup($setup, $ex) if $ex;
 
   # Now, read in the ExtendedLog, and see whether the %f variable was
   # properly written out.
-  if (open(my $fh, "< $ext_log")) {
-    my $ok = 0;
+  eval {
+    if (open(my $fh, "< $ext_log")) {
+      my $ok = 0;
 
-    while (my $line = <$fh>) {
-      chomp($line);
+      while (my $line = <$fh>) {
+        chomp($line);
 
-      # We're only interested in the DELE log line
-      unless ($line =~ /^DELE (.*)$/i) {
-        next;
+        if ($ENV{TEST_VERBOSE}) {
+          print STDERR "# $line\n";
+        }
+
+        # We're only interested in the DELE log line
+        unless ($line =~ /^DELE (.*)$/i) {
+          next;
+        }
+
+        my $name = $1;
+
+        if ($^O eq 'darwin') {
+          # MacOSX-specific hack
+          $test_file = '/private' . $test_file;
+        }
+
+        my $expected = $test_file;
+        $self->assert($expected eq $name,
+          test_msg("Expected '$expected', got '$name'"));
+
+        $ok = 1;
       }
 
-      my $name = $1;
+      close($fh);
+      $self->assert($ok, test_msg("Expected ExtendedLog messages not found"));
 
-      if ($^O eq 'darwin') {
-        # MacOSX-specific hack
-        $test_file = '/private' . $test_file;
-      }
-
-      my $expected = $test_file;
-      $self->assert($expected eq $name,
-        test_msg("Expected '$expected', got '$name'"));
-
-      $ok = 1;
+    } else {
+      die("Can't read $ext_log: $!");
     }
-
-    close($fh);
-
-    $self->assert($ok, test_msg("Expected ExtendedLog messages not found"));
-
-  } else {
-    die("Can't read $ext_log: $!");
+  };
+  if ($@) {
+    $ex = $@;
   }
 
-  unlink($log_file);
+  test_cleanup($setup, $ex);
 }
 
 sub sql_sqllog_ignore_errors_bad_table_bug3692 {
