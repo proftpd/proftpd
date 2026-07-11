@@ -4607,9 +4607,9 @@ MODRET sql_auth_getgroups(cmd_rec *cmd) {
 
 MODRET sql_getstats(cmd_rec *cmd) {
   modret_t *mr;
-  char *query;
+  const char *real_user;
   sql_data_t *sd;
-  char *usrwhere, *where;
+  char *query, *usrwhere, *where;
 
   sql_log(DEBUG_FUNC, "%s", ">>> cmd_getstats");
 
@@ -4617,7 +4617,13 @@ MODRET sql_getstats(cmd_rec *cmd) {
     return PR_DECLINED(cmd);
   }
 
-  usrwhere = pstrcat(cmd->tmp_pool, cmap.usrfield, " = '", sql_realuser(cmd),
+  real_user = sql_realuser(cmd);
+  if (real_user == NULL) {
+    sql_log(DEBUG_FUNC, "%s", "<<< cmd_getstats");
+    return PR_ERROR_MSG(cmd, MOD_SQL_VERSION, "database error");
+  }
+
+  usrwhere = pstrcat(cmd->tmp_pool, cmap.usrfield, " = '", real_user,
     "'", NULL);
 
   where = sql_prepare_where(SQL_PREPARE_WHERE_FL_NO_TAGS, cmd, 2, usrwhere,
@@ -4634,8 +4640,12 @@ MODRET sql_getstats(cmd_rec *cmd) {
 
   sql_log(DEBUG_FUNC, "%s", "<<< cmd_getstats");
 
-  sd = mr->data;
+  if (mr == NULL ||
+      mr->data == NULL) {
+    return PR_ERROR(cmd);
+  }
 
+  sd = mr->data;
   if (sd->rnum == 0) {
     return PR_ERROR(cmd);
   }
@@ -4645,9 +4655,9 @@ MODRET sql_getstats(cmd_rec *cmd) {
 
 MODRET sql_getratio(cmd_rec *cmd) {
   modret_t *mr;
-  char *query;
+  const char *real_user;
   sql_data_t *sd;
-  char *usrwhere, *where;
+  char *query, *usrwhere, *where;
 
   if (!cmap.sql_frate) {
     return PR_DECLINED(cmd);
@@ -4655,7 +4665,13 @@ MODRET sql_getratio(cmd_rec *cmd) {
 
   sql_log(DEBUG_FUNC, "%s", ">>> cmd_getratio");
 
-  usrwhere = pstrcat(cmd->tmp_pool, cmap.usrfield, " = '", sql_realuser(cmd),
+  real_user = sql_realuser(cmd);
+  if (real_user == NULL) {
+    sql_log(DEBUG_FUNC, "%s", "<<< cmd_getratio");
+    return PR_ERROR_MSG(cmd, MOD_SQL_VERSION, "database error");
+  }
+
+  usrwhere = pstrcat(cmd->tmp_pool, cmap.usrfield, " = '", real_user,
     "'", NULL);
 
   where = sql_prepare_where(SQL_PREPARE_WHERE_FL_NO_TAGS, cmd, 2, usrwhere,
@@ -4672,8 +4688,12 @@ MODRET sql_getratio(cmd_rec *cmd) {
 
   sql_log(DEBUG_FUNC, "%s", "<<< cmd_getratio");
 
-  sd = mr->data;
+  if (mr == NULL ||
+      mr->data == NULL) {
+    return PR_ERROR(cmd);
+  }
 
+  sd = mr->data;
   if (sd->rnum == 0) {
     return PR_ERROR(cmd);
   }

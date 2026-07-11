@@ -169,8 +169,6 @@ _dispatch (cmd_rec * cmd, char *match)
 
   cr = _make_cmd (cmd->tmp_pool, 0);
   mr = _dispatch_ratio (cr, match);
-  if (cr->tmp_pool)
-    destroy_pool (cr->tmp_pool);
   return mr;
 }
 
@@ -282,7 +280,8 @@ MODRET calc_ratios (cmd_rec * cmd)
     return PR_DECLINED (cmd);
 
   mr = _dispatch (cmd, "getstats");
-  if (MODRET_HASDATA (mr))
+  if (MODRET_ISHANDLED(mr) &&
+      MODRET_HASDATA(mr))
     {
       data = mr->data;
       if (data[4])
@@ -292,7 +291,8 @@ MODRET calc_ratios (cmd_rec * cmd)
     }
 
   mr = _dispatch (cmd, "getratio");
-  if (MODRET_HASDATA (mr))
+  if (MODRET_ISHANDLED(mr) &&
+      MODRET_HASDATA(mr))
     {
       data = mr->data;
       if (data[4])
