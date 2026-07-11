@@ -806,8 +806,8 @@ static int sql_resolved_append_text(pool *p, struct sql_resolved *resolved,
     new_textlen = resolved->buflen;
   }
 
-  pr_trace_msg(trace_channel, 19, "appending text '%s' (%lu) to buffer",
-    new_text, (unsigned long) new_textlen);
+  pr_trace_msg(trace_channel, 19, "appending text '%.*s' (%lu) to buffer",
+    (int) new_textlen, new_text, (unsigned long) new_textlen);
   memcpy(resolved->buf, new_text, new_textlen);
   resolved->buf += new_textlen;
   resolved->buflen -= new_textlen;
@@ -1137,6 +1137,10 @@ static int sql_resolve_on_other(pool *p, pr_jot_ctx_t *jot_ctx,
 
   resolved = jot_ctx->log;
   if (resolved->buflen > 0) {
+    if (text_len > resolved->buflen) {
+      text_len = resolved->buflen;
+    }
+
     pr_trace_msg(trace_channel, 19, "appending text '%.*s' (%lu) to buffer",
       (int) text_len, text, (unsigned long) text_len);
     memcpy(resolved->buf, text, text_len);
