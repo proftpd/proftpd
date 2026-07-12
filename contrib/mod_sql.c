@@ -969,10 +969,10 @@ static int sql_resolve_on_meta(pool *p, pr_jot_ctx_t *jot_ctx,
          * HOOKs, and are only used by other modules.)
          */
         if (is_numeric_tag == TRUE) {
-          if (strcmp(cmd->argv[0], "sql_change") == 0) {
+          if (strcasecmp(cmd->argv[0], "sql_change") == 0) {
             is_hook_sql_cmd = TRUE;
 
-          } else if (strcmp(cmd->argv[0], "sql_lookup") == 0) {
+          } else if (strcasecmp(cmd->argv[0], "sql_lookup") == 0) {
             is_hook_sql_cmd = TRUE;
           }
 
