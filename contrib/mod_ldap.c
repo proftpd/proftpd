@@ -880,6 +880,7 @@ static struct passwd *pr_ldap_user_lookup(pool *p, char *filter_template,
             "no %s attribute for DN %s found, and LDAPDefaultUID not "
             "configured", ldap_attr_uidnumber, dn);
           ldap_memfree(dn);
+          ldap_msgfree(result);
           return NULL;
         }
 
@@ -895,12 +896,14 @@ static struct passwd *pr_ldap_user_lookup(pool *p, char *filter_template,
               (void) pr_log_writefile(ldap_logfd, MOD_LDAP_VERSION,
                 "LDAPDefaultUID Auto in effect but failed automatic user "
                 "'%s' lookup: %s", pw->pw_name, strerror(errno));
+              ldap_msgfree(result);
               return NULL;
             }
 
           } else {
             (void) pr_log_writefile(ldap_logfd, MOD_LDAP_VERSION,
               "LDAPDefaultUID Auto in effect but user name is missing");
+            ldap_msgfree(result);
             return NULL;
           }
 
@@ -922,6 +925,7 @@ static struct passwd *pr_ldap_user_lookup(pool *p, char *filter_template,
             "no %s attribute found for DN %s,  and LDAPDefaultGID not "
             "configured", ldap_attr_gidnumber, dn);
           ldap_memfree(dn);
+          ldap_msgfree(result);
           return NULL;
         }
 
@@ -937,12 +941,14 @@ static struct passwd *pr_ldap_user_lookup(pool *p, char *filter_template,
               (void) pr_log_writefile(ldap_logfd, MOD_LDAP_VERSION,
                 "LDAPDefaultGID Auto in effect but failed automatic user "
                 "'%s' lookup: %s", pw->pw_name, strerror(errno));
+              ldap_msgfree(result);
               return NULL;
             }
 
           } else {
             (void) pr_log_writefile(ldap_logfd, MOD_LDAP_VERSION,
               "LDAPDefaultGID Auto in effect but user name is missing");
+            ldap_msgfree(result);
             return NULL;
           }
 
@@ -974,6 +980,7 @@ static struct passwd *pr_ldap_user_lookup(pool *p, char *filter_template,
           }
 
           ldap_memfree(dn);
+          ldap_msgfree(result);
           return NULL;
         }
 
@@ -982,6 +989,7 @@ static struct passwd *pr_ldap_user_lookup(pool *p, char *filter_template,
 
         } else {
           LDAP_VALUE_T **canon_username;
+
           canon_username = LDAP_GET_VALUES(ld, e, ldap_attr_uid);
           if (canon_username == NULL) {
             dn = ldap_get_dn(ld, e);
@@ -990,6 +998,7 @@ static struct passwd *pr_ldap_user_lookup(pool *p, char *filter_template,
               "could not get %s attribute for canonical username for DN %s",
               ldap_attr_uid, dn);
             ldap_memfree(dn);
+            ldap_msgfree(result);
             return NULL;
           }
 
@@ -1158,6 +1167,8 @@ static struct passwd *pr_ldap_user_lookup(pool *p, char *filter_template,
               "missing required LDAPGenerateHomedirPrefix");
           }
 
+          LDAP_VALUE_FREE(values);
+          ldap_msgfree(result);
           return NULL;
         }
 
@@ -1181,7 +1192,10 @@ static struct passwd *pr_ldap_user_lookup(pool *p, char *filter_template,
             (void) pr_log_writefile(ldap_logfd, MOD_LDAP_VERSION,
               "could not get %s attribute for canonical username for DN %s",
               ldap_attr_uid, dn);
+
             ldap_memfree(dn);
+            LDAP_VALUE_FREE(values);
+            ldap_msgfree(result);
             return NULL;
           }
 
@@ -3222,13 +3236,20 @@ MODRET set_ldapgenhdir(cmd_rec *cmd) {
 
 MODRET set_ldapgenhdirprefix(cmd_rec *cmd) {
   char *prefix;
+  size_t prefix_len;
 
   CHECK_ARGS(cmd, 1);
   CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL);
 
   prefix = cmd->argv[1];
-  if (strlen(prefix) == 0) {
+  prefix_len = strlen(prefix);
+
+  if (prefix_len == 0) {
     CONF_ERROR(cmd, "must not be an empty string");
+  }
+
+  if (prefix_len > PR_TUNABLE_PATH_MAX) {
+    CONF_ERROR(cmd, "prefix too long");
   }
 
   add_config_param_str(cmd->argv[0], 1, prefix);
