@@ -3185,19 +3185,18 @@ AC_TRY_LINK(
   ]
 )
 
-dnl Run a small test program to see if the host's printf(3) family can
-dnl actually handle the %llu format.
-AC_MSG_CHECKING([whether printf supports %llu format]);
-AC_TRY_RUN(
-  [ #include <stdio.h>
-    int main(int argc, char *argv[]) {
-      return (fprintf(stderr, "%llu\n", (unsigned long long) 1) == 2 ? 0 : 1);
-    }
-  ],
-  AC_MSG_RESULT(yes); AC_DEFINE(HAVE_LLU, 1, [Define if you have %llu support]),
-  AC_MSG_RESULT(no); AC_DEFINE(HAVE_LU, 1, [Define if you have %lu support]),
-  AC_MSG_RESULT(cross-compiling); AC_DEFINE(HAVE_LU, 1, [Define if you have %lu support])
-)
+dnl Determine whether printf(3) supports the %llu format specifier.
+dnl Use the already-known sizeof(long long) rather than a runtime test so
+dnl that cross-compilation produces the correct result.  Any C99-compliant
+dnl platform with an 8-byte long long is guaranteed to support %llu.
+AC_MSG_CHECKING([whether printf supports %llu format])
+if test "$ac_cv_sizeof_long_long" -ge 8; then
+  AC_MSG_RESULT(yes)
+  AC_DEFINE(HAVE_LLU, 1, [Define if you have %llu support])
+else
+  AC_MSG_RESULT(no)
+  AC_DEFINE(HAVE_LU, 1, [Define if you have %lu support])
+fi
 
 dnl Run a small test program to see if the host's listen(2) function can
 dnl handle a negative backlog (Issue #1636).
