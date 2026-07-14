@@ -44,7 +44,24 @@ static unsigned char ldaptab_lookup(quota_table_t *ldaptab, void *ptr,
   quota_limit_t *limit = ptr;
 
   if (quota_type != USER_QUOTA) {
-    quotatab_log("error: mod_quotatab_ldap only supports user quotas");
+    const char *type_name;
+
+    switch (quota_type) {
+      case GROUP_QUOTA:
+        type_name = "group";
+        break;
+
+      case CLASS_QUOTA:
+        type_name = "class";
+        break;
+
+      case ALL_QUOTA:
+      default:
+        type_name = "all";
+    }
+
+    quotatab_log("error: mod_quotatab_ldap only supports user quotas, "
+      "not %s quotas", type_name);
     return FALSE;
   }
 

@@ -1056,6 +1056,15 @@ unsigned char quotatab_lookup(quota_tabtype_t tab_type, void *ptr,
       return FALSE;
     }
 
+    if (quota_type != ALL_QUOTA) {
+      pr_trace_msg(trace_channel, 19, "performing tally lookup for %s '%s'",
+        get_quota_type_text(quota_type), name);
+
+    } else {
+      pr_trace_msg(trace_channel, 19, "performing tally lookup for %s",
+        get_quota_type_text(quota_type));
+    }
+
     return tally_tab->tab_lookup(tally_tab, ptr, name, quota_type);
 
   } else if (tab_type == TYPE_LIMIT) {
@@ -1068,6 +1077,16 @@ unsigned char quotatab_lookup(quota_tabtype_t tab_type, void *ptr,
       res = FALSE;
 
     } else {
+
+      if (quota_type != ALL_QUOTA) {
+        pr_trace_msg(trace_channel, 19, "performing limit lookup for %s '%s'",
+          get_quota_type_text(quota_type), name);
+
+      } else {
+        pr_trace_msg(trace_channel, 19, "performing limit lookup for %s",
+          get_quota_type_text(quota_type));
+      }
+
       res = limit_tab->tab_lookup(limit_tab, ptr, name, quota_type);
     }
 
