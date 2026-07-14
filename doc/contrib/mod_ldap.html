@@ -48,6 +48,7 @@ questions, concerns, or suggestions regarding this module.
   <li><a href="#LDAPQueryTimeout">LDAPQueryTimeout</a>
   <li><a href="#LDAPSearchScope">LDAPSearchScope</a>
   <li><a href="#LDAPServer">LDAPServer</a>
+  <li><a href="#LDAPSessionTracking">LDAPSessionTracking</a>
   <li><a href="#LDAPUsers">LDAPUsers</a>
   <li><a href="#LDAPUseSASL">LDAPUseSASL</a>
   <li><a href="#LDAPUseTLS">LDAPUseTLS</a>
@@ -719,6 +720,35 @@ parameter, <i>e.g.</i>:
   LDAPServer ... ssl-ca:/path/to/cacert.pem \
     ssl-verify:off
 </pre>
+
+<p>
+<hr>
+<h3><a name="LDAPSessionTracking">LDAPSessionTracking</a></h3>
+<strong>Syntax:</strong> LDAPSessionTracking <em>on|off</em><br>
+<strong>Default:</strong> LDAPSessionTracking off<br>
+<strong>Context:</strong> server config, <code>&lt;VirtualHost&gt;</code>, <code>&lt;Global&gt;</code><br>
+<strong>Module:</strong> mod_ldap<br>
+<strong>Compatibility:</strong> 1.3.10rc4 and later
+
+<p>
+The <code>LDAPSessionTracking</code> directive enables LDAP Session Tracking
+Control (see <a href="https://datatracker.ietf.org/doc/html/draft-wahl-ldap-session-03">draft-wahl-ldap-session-03</a>) for LDAP requests.  When enabled, a
+unique session identifier is sent with each LDAP search request, allowing the
+LDAP server to log and correlate client sessions for debugging and
+troubleshooting.
+
+<p>
+This is particularly useful when clients are behind NAT or load balancers, as
+it allows you to identify specific clients in your LDAP server logs.
+
+<p>
+This feature <b>requires</b> the use of the
+<a href="mod_unique_id.html">mod_unique_id</a> module for generating the unique
+session identifier.
+
+<p>
+<b>Note:</b> Your LDAP server must support the Session Tracking Control
+extension for this feature to be effective.
 
 <p>
 <hr>
