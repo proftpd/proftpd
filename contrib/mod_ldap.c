@@ -94,8 +94,8 @@ static int ldap_port = LDAP_PORT;
 # define LDAP_VALUE(values, i) (values[i]->bv_val)
 # define LDAP_COUNT_VALUES(values) (ldap_count_values_len(values))
 # define LDAP_VALUE_FREE(values) (ldap_value_free_len(values))
-# define LDAP_SEARCH(ld, base, scope, filter, attrs, timeout, sizelimit, res) \
-   ldap_search_ext_s(ld, base, scope, filter, attrs, 0, NULL, NULL, \
+# define LDAP_SEARCH(ld, base, scope, filter, attrs, ctrls, timeout, sizelimit, res) \
+   ldap_search_ext_s(ld, base, scope, filter, attrs, 0, ctrls, NULL, \
                      timeout, sizelimit, res)
 #else /* LDAP_API_VERSION >= 2000 */
 # define LDAP_VALUE_T char
@@ -129,7 +129,9 @@ static void pr_ldap_set_sizelimit(LDAP *limit_ld, int limit) {
 
 static int
 LDAP_SEARCH(LDAP *ld, char *base, int scope, char *filter, char *attrs[],
-            struct timeval *timeout, int sizelimit, LDAPMessage **res) {
+            LDAPControl *ctrls, struct timeval *timeout, int sizelimit,
+            LDAPMessage **res) {
+  (void) ctrls;
   pr_ldap_set_sizelimit(ld, sizelimit);
   return ldap_search_st(ld, base, scope, filter, attrs, 0, timeout, res);
 }
@@ -226,6 +228,17 @@ static struct timeval ldap_querytimeout_tv;
 static uid_t ldap_defaultuid = -1;
 static gid_t ldap_defaultgid = -1;
 
+#if defined(LDAP_API_FEATURE_X_OPENLDAP) && \
+    defined(LDAP_CONTROL_X_SESSION_TRACKING)
+/* LDAP Session Tracking Control (draft-wahl-ldap-session). When enabled, adds
+ * a session identifier to LDAP requests, allowing the LDAP server to
+ * log/correlation client sessions for debugging/troubleshooting.  Useful when
+ * clients are behind NAT or load balancers.
+ */
+static int ldap_session_tracking = FALSE;
+static const char *ldap_session_id = NULL;
+#endif /* LDAP_API_FEATURE_X_OPENLDAP and LDAP_CONTROL_X_SESSION_TRACKING */
+
 static LDAP *ld = NULL;
 static array_header *cached_ssh_pubkeys = NULL;
 
@@ -252,6 +265,88 @@ static void pr_ldap_unbind(void) {
 
   ld = NULL;
 }
+
+#if defined(LDAP_API_FEATURE_X_OPENLDAP) && \
+    defined(LDAP_CONTROL_X_SESSION_TRACKING)
+/* Get session identifier from mod_unique_id if available. The UNIQUE_ID
+ * environment variable is set by mod_unique_id.  This provides a consistent,
+ * unique session ID across modules.
+ */
+static const char *get_session_id(pool *p) {
+  const char *unique_id;
+
+  unique_id = pr_env_get(p, "UNIQUE_ID");
+  if (unique_id == NULL) {
+    pr_trace_msg(trace_channel, 5,
+      "UNIQUE_ID environment variable not found (mod_unique_id not loaded?)");
+    return NULL;
+  }
+
+  return pstrdup(p, unique_id);
+}
+
+static LDAPControl *create_session_tracking_control(void) {
+# if LDAP_API_VERSION >= 2000
+  int res;
+  LDAPControl *ctrl = NULL;
+  const pr_netaddr_t *local_addr = NULL;
+  const char *source_ip, *source_name;
+  struct berval bv, *tracking_id = NULL;
+  pool *tmp_pool = NULL;
+
+  if (ldap_session_id == NULL) {
+    errno = EPERM;
+    return NULL;
+  }
+
+  tracking_id = ber_str2bv(ldap_session_id, 0, 1, NULL);
+  if (tracking_id == NULL) {
+    errno = ENOMEM;
+    return NULL;
+  }
+
+  tmp_pool = make_sub_pool(ldap_pool);
+  pr_pool_tag(tmp_pool, "LDAP Session Tracking Pool");
+
+  local_addr = pr_netaddr_get_sess_local_addr();
+  source_ip = pr_netaddr_get_ipstr(local_addr);
+  source_name = pr_netaddr_get_localaddr_str(tmp_pool);
+
+  res = ldap_create_session_tracking_value(ld, (char *) source_ip,
+    (char *) source_name, LDAP_CONTROL_X_SESSION_TRACKING ".4", tracking_id,
+    &bv);
+  if (res != LDAP_SUCCESS) {
+    pr_trace_msg(trace_channel, 9, "error creating session tracking value: %s",
+      ldap_err2string(res));
+    ber_bvfree(tracking_id);
+    destroy_pool(tmp_pool);
+    return NULL;
+  }
+
+  res = ldap_control_create(LDAP_CONTROL_X_SESSION_TRACKING, 0, &bv, 1, &ctrl);
+  ber_bvfree(tracking_id);
+  ber_memfree(bv.bv_val);
+  destroy_pool(tmp_pool);
+
+  if (res != LDAP_SUCCESS) {
+    pr_trace_msg(trace_channel, 9,
+      "error creating session tracking control: %s", ldap_err2string(res));
+
+    if (ctrl != NULL) {
+      ldap_control_free(ctrl);
+    }
+
+    errno = ENOMEM;
+    return NULL;
+  }
+
+  return ctrl;
+# else
+  errno = ENOSYS;
+  return NULL;
+# endif /* LDAP_API_VERSION 2000 or later */
+}
+#endif /* LDAP_API_FEATURE_X_OPENLDAP and LDAP_CONTROL_X_SESSION_TRACKING */
 
 static void log_sasl_mechs(LDAP *conn_ld, const char *url_text) {
 #if defined(LDAP_OPT_X_SASL_MECHLIST)
@@ -451,7 +546,6 @@ static int do_ldap_bind(LDAP *conn_ld) {
     bindcred.bv_len = ldap_dnpasslen;
 
     res = ldap_sasl_bind_s(conn_ld, ldap_dn, NULL, &bindcred, NULL, NULL, NULL);
-
     if (res == LDAP_SUCCESS) {
       if (ldap_dnpasslen > 0) {
         pr_trace_msg(trace_channel, 9,
@@ -772,6 +866,7 @@ static const char *pr_ldap_interpolate_filter(pool *p, char *template,
 static LDAPMessage *pr_ldap_search(const char *basedn, const char *filter,
     char *attrs[], int sizelimit, int retry) {
   int res;
+  LDAPControl *ctrls[2] = { NULL, NULL }, **server_ctrls = NULL;
   LDAPMessage *result;
 
   if (basedn == NULL) {
@@ -791,27 +886,50 @@ static LDAPMessage *pr_ldap_search(const char *basedn, const char *filter,
     }
   }
 
-  res = LDAP_SEARCH(ld, basedn, ldap_search_scope, filter, attrs,
+#if defined(LDAP_API_FEATURE_X_OPENLDAP) && \
+    defined(LDAP_CONTROL_X_SESSION_TRACKING)
+  if (ldap_session_tracking == TRUE) {
+    ctrls[0] = create_session_tracking_control();
+    if (ctrls[0] != NULL) {
+      server_ctrls = ctrls;
+    }
+  }
+#endif /* LDAP_API_FEATURE_X_OPENLDAP and LDAP_CONTROL_X_SESSION_TRACKING */
+
+  res = LDAP_SEARCH(ld, basedn, ldap_search_scope, filter, attrs, server_ctrls,
     &ldap_querytimeout_tv, sizelimit, &result);
   if (res != LDAP_SUCCESS) {
     if (res != LDAP_SERVER_DOWN) {
       (void) pr_log_writefile(ldap_logfd, MOD_LDAP_VERSION,
         "LDAP search use DN '%s', filter '%s' failed: %s", basedn, filter,
         ldap_err2string(res));
+      if (ctrls[0] != NULL) {
+        ldap_control_free(ctrls[0]);
+      }
       return NULL;
     }
 
     if (!retry) {
       (void) pr_log_writefile(ldap_logfd, MOD_LDAP_VERSION,
         "LDAP connection went away, search failed");
+      if (ctrls[0] != NULL) {
+        ldap_control_free(ctrls[0]);
+      }
       pr_ldap_unbind();
       return NULL;
     }
 
     (void) pr_log_writefile(ldap_logfd, MOD_LDAP_VERSION,
       "LDAP connection went away, retrying search operation");
+    if (ctrls[0] != NULL) {
+      ldap_control_free(ctrls[0]);
+    }
     pr_ldap_unbind();
     return pr_ldap_search(basedn, filter, attrs, sizelimit, FALSE);
+  }
+
+  if (ctrls[0] != NULL) {
+    ldap_control_free(ctrls[0]);
   }
 
   (void) pr_log_writefile(ldap_logfd, MOD_LDAP_VERSION,
@@ -3099,6 +3217,32 @@ MODRET set_ldapattr(cmd_rec *cmd) {
   return PR_HANDLED(cmd);
 }
 
+/* usage: LDAPSessionTracking true|false */
+MODRET set_ldapsessiontracking(cmd_rec *cmd) {
+#if defined(LDAP_API_FEATURE_X_OPENLDAP) && \
+    defined(LDAP_CONTROL_X_SESSION_TRACKING)
+  int session_tracking = FALSE;
+  config_rec *c;
+
+  CHECK_ARGS(cmd, 1);
+  CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL);
+
+  session_tracking = get_boolean(cmd, 1);
+  if (session_tracking == -1) {
+    CONF_ERROR(cmd, "expected Boolean parameter");
+  }
+
+  c = add_config_param(cmd->argv[0], 1, NULL);
+  c->argv[0] = pcalloc(c->pool, sizeof(int));
+  *((int *) c->argv[0]) = session_tracking;
+
+  return PR_HANDLED(cmd);
+#else
+  CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "session tracking requires OpenLDAP",
+    NULL));
+#endif /* LDAP_API_FEATURE_X_OPENLDAP and LDAP_CONTROL_X_SESSION_TRACKING */
+}
+
 /* usage: LDAPUsers base-dn [name-filter-template [uid-filter-template]] */
 MODRET set_ldapusers(cmd_rec *cmd) {
   config_rec *c;
@@ -3574,6 +3718,8 @@ static void ldap_sess_reinit_ev(const void *event_data, void *user_data) {
   ldap_genhdir = FALSE;
   ldap_genhdir_prefix = NULL;
   ldap_genhdir_prefix_nouname = FALSE;
+  ldap_session_tracking = FALSE;
+  ldap_session_id = NULL;
 
   curr_server_info = NULL;
   curr_server_index = 0;
@@ -3986,6 +4132,21 @@ static int ldap_sess_init(void) {
   }
 #endif /* LBER_OPT_LOG_PRINT_FN */
 
+#if defined(LDAP_API_FEATURE_X_OPENLDAP) && \
+    defined(LDAP_CONTROL_X_SESSION_TRACKING)
+  ptr = get_param_ptr(main_server->conf, "LDAPSessionTracking", FALSE);
+  if (ptr != NULL) {
+    ldap_session_tracking = *((int *) ptr);
+    if (ldap_session_tracking == TRUE) {
+      ldap_session_id = get_session_id(ldap_pool);
+      if (ldap_session_id != NULL) {
+        (void) pr_log_writefile(ldap_logfd, MOD_LDAP_VERSION,
+          "LDAP session tracking enabled with session ID: %s", ldap_session_id);
+      }
+    }
+  }
+#endif /* LDAP_API_FEATURE_X_OPENLDAP and LDAP_CONTROL_X_SESSION_TRACKING */
+
   if (ldap_do_users == FALSE) {
     pr_log_pri(PR_LOG_WARNING, MOD_LDAP_VERSION
       ": LDAPUsers not configured, skipping LDAP-based user authentication");
@@ -4025,6 +4186,7 @@ static conftable ldap_conftab[] = {
   { "LDAPQueryTimeout",		set_ldapquerytimeout,		NULL },
   { "LDAPSearchScope",		set_ldapsearchscope,		NULL },
   { "LDAPServer",		set_ldapserver,			NULL },
+  { "LDAPSessionTracking",	set_ldapsessiontracking,	NULL },
   { "LDAPUsers",		set_ldapusers,			NULL },
   { "LDAPUseSASL",		set_ldapusesasl,		NULL },
   { "LDAPUseTLS",		set_ldapusetls,			NULL },
