@@ -51,6 +51,7 @@ static int ldap_logfd = -1;
 static pool *ldap_pool = NULL;
 
 static const char *trace_channel = "ldap";
+
 #if defined(LBER_OPT_LOG_PRINT_FN)
 static const char *libtrace_channel = "ldap.library";
 #endif /* LBER_OPT_LOG_PRINT_FN */
@@ -223,6 +224,8 @@ static struct timeval ldap_connecttimeout_tv;
 
 static struct timeval ldap_querytimeout_tv;
 #define PR_LDAP_QUERY_TIMEOUT_DEFAULT		5
+
+#define PR_LDAP_MAX_RECURSION_DEPTH		10
 
 #define PR_LDAP_AUTO_DEFAULT_ID		-2
 static uid_t ldap_defaultuid = -1;
@@ -867,7 +870,7 @@ static LDAPMessage *pr_ldap_search(const char *basedn, const char *filter,
     char *attrs[], int sizelimit, int retry) {
   int res;
   LDAPControl *ctrls[2] = { NULL, NULL }, **server_ctrls = NULL;
-  LDAPMessage *result;
+  LDAPMessage *result = NULL;
 
   if (basedn == NULL) {
     (void) pr_log_writefile(ldap_logfd, MOD_LDAP_VERSION,
@@ -906,6 +909,9 @@ static LDAPMessage *pr_ldap_search(const char *basedn, const char *filter,
       if (ctrls[0] != NULL) {
         ldap_control_free(ctrls[0]);
       }
+      if (result != NULL) {
+        ldap_msgfree(result);
+      }
       return NULL;
     }
 
@@ -915,6 +921,9 @@ static LDAPMessage *pr_ldap_search(const char *basedn, const char *filter,
       if (ctrls[0] != NULL) {
         ldap_control_free(ctrls[0]);
       }
+      if (result != NULL) {
+        ldap_msgfree(result);
+      }
       pr_ldap_unbind();
       return NULL;
     }
@@ -923,6 +932,9 @@ static LDAPMessage *pr_ldap_search(const char *basedn, const char *filter,
       "LDAP connection went away, retrying search operation");
     if (ctrls[0] != NULL) {
       ldap_control_free(ctrls[0]);
+    }
+    if (result != NULL) {
+      ldap_msgfree(result);
     }
     pr_ldap_unbind();
     return pr_ldap_search(basedn, filter, attrs, sizelimit, FALSE);
@@ -1541,7 +1553,7 @@ static array_header *parse_quota(pool *p, const char *replace, char *str) {
 }
 
 static array_header *pr_ldap_quota_lookup(pool *p, char *filter_template,
-    const char *replace, const char *basedn) {
+    const char *replace, const char *basedn, unsigned int depth) {
   const char *filter = NULL;
   char *attrs[] = {
     ldap_attr_ftpquota,
@@ -1566,6 +1578,13 @@ static array_header *pr_ldap_quota_lookup(pool *p, char *filter_template,
     }
   }
 
+  if (depth > PR_LDAP_MAX_RECURSION_DEPTH) {
+    (void) pr_log_writefile(ldap_logfd, MOD_LDAP_VERSION,
+      "recursing for quota lookups reached maximum (%u), declining request",
+      (unsigned int) PR_LDAP_MAX_RECURSION_DEPTH);
+    return NULL;
+  }
+
   result = pr_ldap_search(basedn, filter, attrs, 2, TRUE);
   if (result == NULL) {
     return NULL;
@@ -1580,18 +1599,17 @@ static array_header *pr_ldap_quota_lookup(pool *p, char *filter_template,
           ldap_default_quota);
       quota = parse_quota(p, replace, pstrdup(p, ldap_default_quota));
       return quota;
-
-    } else {
-      (void) pr_log_writefile(ldap_logfd, MOD_LDAP_VERSION,
-        "multiple entries found for DN %s, aborting query", basedn);
     }
 
+    (void) pr_log_writefile(ldap_logfd, MOD_LDAP_VERSION,
+      "multiple entries found for DN %s, aborting query", basedn);
     return NULL;
   }
 
   e = ldap_first_entry(ld, result);
   if (e == NULL) {
     ldap_msgfree(result);
+
     if (ldap_default_quota == NULL) {
       if (filter == NULL) {
         (void) pr_log_writefile(ldap_logfd, MOD_LDAP_VERSION,
@@ -1630,6 +1648,8 @@ static array_header *pr_ldap_quota_lookup(pool *p, char *filter_template,
   }
 
   if (filter == NULL) {
+    ldap_msgfree(result);
+
     if (ldap_default_quota == NULL) {
       (void) pr_log_writefile(ldap_logfd, MOD_LDAP_VERSION,
         "referenced DN %s does not have an ftpQuota attribute, and no "
@@ -1644,11 +1664,21 @@ static array_header *pr_ldap_quota_lookup(pool *p, char *filter_template,
     return quota;
   }
 
+  /* Check for any returned ftpQuotaProfileDN attributes. */
   values = LDAP_GET_VALUES(ld, e, attrs[1]);
   if (values != NULL) {
+    const char *new_basedn;
+
     orig_scope = ldap_search_scope;
     ldap_search_scope = LDAP_SCOPE_BASE;
-    quota = pr_ldap_quota_lookup(p, NULL, replace, LDAP_VALUE(values, 0));
+
+    new_basedn = LDAP_VALUE(values, 0);
+    pr_trace_msg(trace_channel, 19,
+      "following %s attribute value '%s' (depth %u)",
+      ldap_attr_ftpquota_profiledn, new_basedn, depth);
+
+    quota = pr_ldap_quota_lookup(p, NULL, replace, new_basedn, ++depth);
+
     ldap_search_scope = orig_scope;
     LDAP_VALUE_FREE(values);
     ldap_msgfree(result);
@@ -1657,6 +1687,7 @@ static array_header *pr_ldap_quota_lookup(pool *p, char *filter_template,
   }
 
   ldap_msgfree(result);
+
   if (ldap_default_quota != NULL) {
     (void) pr_log_writefile(ldap_logfd, MOD_LDAP_VERSION,
       "no %s or %s attribute, using default quota %s", attrs[0], attrs[1],
@@ -1812,7 +1843,7 @@ MODRET handle_ldap_quota_lookup(cmd_rec *cmd) {
   }
 
   quota = pr_ldap_quota_lookup(cmd->tmp_pool, ldap_user_name_filter,
-    cmd->argv[0], basedn);
+    cmd->argv[0], basedn, 0);
   if (quota == NULL) {
     return PR_DECLINED(cmd);
   }
