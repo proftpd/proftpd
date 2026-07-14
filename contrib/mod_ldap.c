@@ -1677,7 +1677,16 @@ static array_header *pr_ldap_quota_lookup(pool *p, char *filter_template,
       "following %s attribute value '%s' (depth %u)",
       ldap_attr_ftpquota_profiledn, new_basedn, depth);
 
-    quota = pr_ldap_quota_lookup(p, NULL, replace, new_basedn, ++depth);
+    /* It is possible that, recursively, the DN found points to an entry that
+     * itself has a DN reference.  In order to support such cases, we do need
+     * to provide the same filter template as we were given.
+     *
+     * NOTE: If folks later want to be able to customize that filter template,
+     * we can re-create an "LDAPQuotas" directive for providing such things.
+     * But not unless and until we have a concrete use case for it.
+     */
+    quota = pr_ldap_quota_lookup(p, filter_template, replace, new_basedn,
+      ++depth);
 
     ldap_search_scope = orig_scope;
     LDAP_VALUE_FREE(values);
