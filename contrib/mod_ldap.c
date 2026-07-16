@@ -2294,7 +2294,7 @@ MODRET ldap_auth_uid2name(cmd_rec *cmd) {
     return PR_DECLINED(cmd);
   }
 
-  return mod_create_data(cmd, pstrdup(permanent_pool, pw->pw_name));
+  return mod_create_data(cmd, pstrdup(cmd->pool, pw->pw_name));
 }
 
 MODRET ldap_auth_gid2name(cmd_rec *cmd) {
@@ -2310,7 +2310,7 @@ MODRET ldap_auth_gid2name(cmd_rec *cmd) {
     return PR_DECLINED(cmd);
   }
 
-  return mod_create_data(cmd, pstrdup(permanent_pool, gr->gr_name));
+  return mod_create_data(cmd, pstrdup(cmd->pool, gr->gr_name));
 }
 
 MODRET ldap_auth_name2uid(cmd_rec *cmd) {
