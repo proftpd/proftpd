@@ -73,6 +73,11 @@ static int timer_cmp(struct timer *t1, struct timer *t2) {
   return 0;
 }
 
+static void timer_cleanup(void *user_data) {
+  timers = NULL;
+  free_timers = NULL;
+}
+
 /* This function does the work of iterating through the list of registered
  * timers, checking to see if their callbacks should be invoked and whether
  * they should be removed from the registration list. Its return value is
@@ -480,6 +485,7 @@ int pr_timer_add(int seconds, int timerno, module *mod, callback_t cb,
     if (timer_pool == NULL) {
       timer_pool = make_sub_pool(permanent_pool);
       pr_pool_tag(timer_pool, "Timer Pool");
+      register_cleanup2(timer_pool, NULL, timer_cleanup);
     }
 
     /* Must allocate a new one */
@@ -622,4 +628,5 @@ void timers_init(void) {
 
   timer_pool = make_sub_pool(permanent_pool);
   pr_pool_tag(timer_pool, "Timer Pool");
+  register_cleanup2(timer_pool, NULL, timer_cleanup);
 }
