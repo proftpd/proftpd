@@ -107,7 +107,7 @@ static unsigned char ldaptab_lookup(quota_table_t *ldaptab, void *ptr,
    *  files_{in,out,xfer}_avail
    */
 
-  memmove(limit->name, values[0], strlen(values[0]) + 1);
+  sstrncpy(limit->name, values[0], sizeof(limit->name)-1);
   limit->quota_type = USER_QUOTA;
 
   if (strcasecmp(values[1], "false") == 0) {
