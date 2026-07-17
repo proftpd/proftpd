@@ -98,6 +98,12 @@ sub statcache_file {
     die("Can't open $test_file: $!");
   }
 
+  if ($< == 0) {
+    unless (chown($setup->{uid}, $setup->{gid}, $test_file)) {
+      die("Can't set owner of $test_file to $setup->{uid}/$setup->{gid}: $!");
+    }
+  }
+
   my $statcache_tab = File::Spec->rel2abs("$tmpdir/statcache.tab");
 
   my $config = {
@@ -142,6 +148,7 @@ sub statcache_file {
   if ($pid) {
     eval {
       sleep(1);
+
       my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
       $client->login($setup->{user}, $setup->{passwd});
       my ($resp_code, $resp_msg) = $client->mlst('test.txt');
@@ -267,7 +274,7 @@ sub statcache_file {
     $ex = $@;
   }
 
-  test_cleanup($setup->{log_file}, $ex);
+  test_cleanup($setup, $ex);
 }
 
 sub statcache_file_chrooted {
@@ -495,40 +502,9 @@ sub statcache_file_chrooted {
 sub statcache_file_tilde {
   my $self = shift;
   my $tmpdir = $self->{tmpdir};
+  my $setup = test_setup($tmpdir, 'statcache');
 
-  my $config_file = "$tmpdir/statcache.conf";
-  my $pid_file = File::Spec->rel2abs("$tmpdir/statcache.pid");
-  my $scoreboard_file = File::Spec->rel2abs("$tmpdir/statcache.scoreboard");
-
-  my $log_file = test_get_logfile();
-
-  my $auth_user_file = File::Spec->rel2abs("$tmpdir/statcache.passwd");
-  my $auth_group_file = File::Spec->rel2abs("$tmpdir/statcache.group");
-
-  my $user = 'proftpd';
-  my $passwd = 'test';
-  my $group = 'ftpd';
-  my $home_dir = File::Spec->rel2abs($tmpdir);
-  my $uid = 500;
-  my $gid = 500;
-
-  # Make sure that, if we're running as root, that the home directory has
-  # permissions/privs set for the account we create
-  if ($< == 0) {
-    unless (chmod(0755, $home_dir)) {
-      die("Can't set perms on $home_dir to 0755: $!");
-    }
-
-    unless (chown($uid, $gid, $home_dir)) {
-      die("Can't set owner of $home_dir to $uid/$gid: $!");
-    }
-  }
-
-  auth_user_write($auth_user_file, $user, $passwd, $uid, $gid, $home_dir,
-    '/bin/bash');
-  auth_group_write($auth_group_file, $group, $gid, $user);
-
-  my $test_file = File::Spec->rel2abs("$home_dir/~test.txt");
+  my $test_file = File::Spec->rel2abs("$setup->{home_dir}/~test.txt");
   if (open(my $fh, "> $test_file")) {
     print $fh "Hello, World!\n";
     unless (close($fh)) {
@@ -539,17 +515,23 @@ sub statcache_file_tilde {
     die("Can't open $test_file: $!");
   }
 
+  if ($< == 0) {
+    unless (chown($setup->{uid}, $setup->{gid}, $test_file)) {
+      die("Can't set owner of $test_file to $setup->{uid}/$setup->{gid}: $!");
+    }
+  }
+
   my $statcache_tab = File::Spec->rel2abs("$tmpdir/statcache.tab");
 
   my $config = {
-    PidFile => $pid_file,
-    ScoreboardFile => $scoreboard_file,
-    SystemLog => $log_file,
-    TraceLog => $log_file,
+    PidFile => $setup->{pid_file},
+    ScoreboardFile => $setup->{scoreboard_file},
+    SystemLog => $setup->{log_file},
+    TraceLog => $setup->{log_file},
     Trace => 'fsio:10 statcache:20',
 
-    AuthUserFile => $auth_user_file,
-    AuthGroupFile => $auth_group_file,
+    AuthUserFile => $setup->{auth_user_file},
+    AuthGroupFile => $setup->{auth_group_file},
     AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
@@ -564,7 +546,8 @@ sub statcache_file_tilde {
     },
   };
 
-  my ($port, $config_user, $config_group) = config_write($config_file, $config);
+  my ($port, $config_user, $config_group) = config_write($setup->{config_file},
+    $config);
 
   # Open pipes, for use between the parent and child processes.  Specifically,
   # the child will indicate when it's done with its test by writing a message
@@ -582,12 +565,11 @@ sub statcache_file_tilde {
   if ($pid) {
     eval {
       my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
-      $client->login($user, $passwd);
+      $client->login($setup->{user}, $setup->{passwd});
+
       my ($resp_code, $resp_msg) = $client->mlst('~test.txt');
 
-      my $expected;
-
-      $expected = 250;
+      my $expected = 250;
       $self->assert($expected == $resp_code,
         test_msg("Expected response code $expected, got $resp_code"));
 
@@ -613,7 +595,7 @@ sub statcache_file_tilde {
       # Now connect again, do another MLST, and see if we're still using
       # the cached entry.
       $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
-      $client->login($user, $passwd);
+      $client->login($setup->{user}, $setup->{passwd});
       ($resp_code, $resp_msg) = $client->mlst('~test.txt');
 
       $expected = 250;
@@ -626,7 +608,6 @@ sub statcache_file_tilde {
 
       $client->quit();
     };
-
     if ($@) {
       $ex = $@;
     }
@@ -635,7 +616,7 @@ sub statcache_file_tilde {
     $wfh->flush();
 
   } else {
-    eval { server_wait($config_file, $rfh) };
+    eval { server_wait($setup->{config_file}, $rfh) };
     if ($@) {
       warn($@);
       exit 1;
@@ -645,12 +626,11 @@ sub statcache_file_tilde {
   }
 
   # Stop server
-  server_stop($pid_file);
-
+  server_stop($setup->{pid_file});
   $self->assert_child_ok($pid);
 
   eval {
-    if (open(my $fh, "< $log_file")) {
+    if (open(my $fh, "< $setup->{log_file}")) {
       my $adding_entry = 0;
       my $cached_stat = 0;
       my $cached_lstat = 0;
@@ -697,73 +677,45 @@ sub statcache_file_tilde {
         test_msg("Did not see expected 'statcache' TraceLog messages"));
 
     } else {
-      die("Can't read $log_file: $!");
+      die("Can't read $setup->{log_file}: $!");
     }
   };
   if ($@) {
     $ex = $@;
   }
 
-  if ($ex) {
-    test_append_logfile($log_file, $ex);
-    unlink($log_file);
-
-    die($ex);
-  }
-
-  unlink($log_file);
+  test_cleanup($setup, $ex);
 }
 
 sub statcache_dir {
   my $self = shift;
   my $tmpdir = $self->{tmpdir};
+  my $setup = test_setup($tmpdir, 'statcache');
 
-  my $config_file = "$tmpdir/statcache.conf";
-  my $pid_file = File::Spec->rel2abs("$tmpdir/statcache.pid");
-  my $scoreboard_file = File::Spec->rel2abs("$tmpdir/statcache.scoreboard");
-
-  my $log_file = test_get_logfile();
-
-  my $auth_user_file = File::Spec->rel2abs("$tmpdir/statcache.passwd");
-  my $auth_group_file = File::Spec->rel2abs("$tmpdir/statcache.group");
-
-  my $user = 'proftpd';
-  my $passwd = 'test';
-  my $group = 'ftpd';
-  my $home_dir = File::Spec->rel2abs($tmpdir);
-  my $uid = 500;
-  my $gid = 500;
-
-  my $test_dir = File::Spec->rel2abs("$home_dir/test.d");
+  my $test_dir = File::Spec->rel2abs("$setup->{home_dir}/test.d");
   mkpath($test_dir);
 
-  # Make sure that, if we're running as root, that the home directory has
-  # permissions/privs set for the account we create
   if ($< == 0) {
-    unless (chmod(0755, $home_dir, $test_dir)) {
-      die("Can't set perms on $home_dir to 0755: $!");
+    unless (chmod(0755, $test_dir)) {
+      die("Can't set perms on $test_dir to 0755: $!");
     }
 
-    unless (chown($uid, $gid, $home_dir, $test_dir)) {
-      die("Can't set owner of $home_dir to $uid/$gid: $!");
+    unless (chown($setup->{uid}, $setup->{gid}, $test_dir)) {
+      die("Can't set owner of $test_dir to $setup->{uid}/$setup->{gid}: $!");
     }
   }
-
-  auth_user_write($auth_user_file, $user, $passwd, $uid, $gid, $home_dir,
-    '/bin/bash');
-  auth_group_write($auth_group_file, $group, $gid, $user);
 
   my $statcache_tab = File::Spec->rel2abs("$tmpdir/statcache.tab");
 
   my $config = {
-    PidFile => $pid_file,
-    ScoreboardFile => $scoreboard_file,
-    SystemLog => $log_file,
-    TraceLog => $log_file,
+    PidFile => $setup->{pid_file},
+    ScoreboardFile => $setup->{scoreboard_file},
+    SystemLog => $setup->{log_file},
+    TraceLog => $setup->{log_file},
     Trace => 'fsio:10 statcache:20',
 
-    AuthUserFile => $auth_user_file,
-    AuthGroupFile => $auth_group_file,
+    AuthUserFile => $setup->{auth_user_file},
+    AuthGroupFile => $setup->{auth_group_file},
     AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
@@ -778,7 +730,8 @@ sub statcache_dir {
     },
   };
 
-  my ($port, $config_user, $config_group) = config_write($config_file, $config);
+  my ($port, $config_user, $config_group) = config_write($setup->{config_file},
+    $config);
 
   # Open pipes, for use between the parent and child processes.  Specifically,
   # the child will indicate when it's done with its test by writing a message
@@ -796,12 +749,11 @@ sub statcache_dir {
   if ($pid) {
     eval {
       my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
-      $client->login($user, $passwd);
+      $client->login($setup->{user}, $setup->{passwd});
+
       my ($resp_code, $resp_msg) = $client->mlst('test.d');
 
-      my $expected;
-
-      $expected = 250;
+      my $expected = 250;
       $self->assert($expected == $resp_code,
         test_msg("Expected response code $expected, got $resp_code"));
 
@@ -827,7 +779,8 @@ sub statcache_dir {
       # Now connect again, do another MLST, and see if we're still using
       # the cached entry.
       $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
-      $client->login($user, $passwd);
+      $client->login($setup->{user}, $setup->{passwd});
+
       ($resp_code, $resp_msg) = $client->mlst('test.d');
 
       $expected = 250;
@@ -840,7 +793,6 @@ sub statcache_dir {
 
       $client->quit();
     };
-
     if ($@) {
       $ex = $@;
     }
@@ -849,7 +801,7 @@ sub statcache_dir {
     $wfh->flush();
 
   } else {
-    eval { server_wait($config_file, $rfh) };
+    eval { server_wait($setup->{config_file}, $rfh) };
     if ($@) {
       warn($@);
       exit 1;
@@ -859,12 +811,11 @@ sub statcache_dir {
   }
 
   # Stop server
-  server_stop($pid_file);
-
+  server_stop($setup->{pid_file});
   $self->assert_child_ok($pid);
 
   eval {
-    if (open(my $fh, "< $log_file")) {
+    if (open(my $fh, "< $setup->{log_file}")) {
       my $adding_entry = 0;
       my $cached_stat = 0;
       my $cached_lstat = 0;
@@ -911,21 +862,14 @@ sub statcache_dir {
         test_msg("Did not see expected 'statcache' TraceLog messages"));
 
     } else {
-      die("Can't read $log_file: $!");
+      die("Can't read $setup->{log_file}: $!");
     }
   };
   if ($@) {
     $ex = $@;
   }
 
-  if ($ex) {
-    test_append_logfile($log_file, $ex);
-    unlink($log_file);
-
-    die($ex);
-  }
-
-  unlink($log_file);
+  test_cleanup($setup, $ex);
 }
 
 sub statcache_dir_chrooted {
@@ -1145,40 +1089,9 @@ sub statcache_dir_chrooted {
 sub statcache_rel_symlink_file {
   my $self = shift;
   my $tmpdir = $self->{tmpdir};
+  my $setup = test_setup($tmpdir, 'statcache');
 
-  my $config_file = "$tmpdir/statcache.conf";
-  my $pid_file = File::Spec->rel2abs("$tmpdir/statcache.pid");
-  my $scoreboard_file = File::Spec->rel2abs("$tmpdir/statcache.scoreboard");
-
-  my $log_file = test_get_logfile();
-
-  my $auth_user_file = File::Spec->rel2abs("$tmpdir/statcache.passwd");
-  my $auth_group_file = File::Spec->rel2abs("$tmpdir/statcache.group");
-
-  my $user = 'proftpd';
-  my $passwd = 'test';
-  my $group = 'ftpd';
-  my $home_dir = File::Spec->rel2abs($tmpdir);
-  my $uid = 500;
-  my $gid = 500;
-
-  # Make sure that, if we're running as root, that the home directory has
-  # permissions/privs set for the account we create
-  if ($< == 0) {
-    unless (chmod(0755, $home_dir)) {
-      die("Can't set perms on $home_dir to 0755: $!");
-    }
-
-    unless (chown($uid, $gid, $home_dir)) {
-      die("Can't set owner of $home_dir to $uid/$gid: $!");
-    }
-  }
-
-  auth_user_write($auth_user_file, $user, $passwd, $uid, $gid, $home_dir,
-    '/bin/bash');
-  auth_group_write($auth_group_file, $group, $gid, $user);
-
-  my $test_file = File::Spec->rel2abs("$home_dir/test.txt");
+  my $test_file = File::Spec->rel2abs("$setup->{home_dir}/test.txt");
   if (open(my $fh, "> $test_file")) {
     print $fh "Hello, World!\n";
     unless (close($fh)) {
@@ -1189,12 +1102,18 @@ sub statcache_rel_symlink_file {
     die("Can't open $test_file: $!");
   }
 
+  if ($< == 0) {
+    unless (chown($setup->{uid}, $setup->{gid}, $test_file)) {
+      die("Can't set owner of $test_file to $setup->{uid}/$setup->{gid}: $!");
+    }
+  }
+
   # Change to the directory in order to create a relative path in the
   # symlink we need.
 
   my $cwd = getcwd();
-  unless (chdir("$home_dir")) {
-    die("Can't chdir to $home_dir: $!");
+  unless (chdir($setup->{home_dir})) {
+    die("Can't chdir to $setup->{home_dir}: $!");
   }
 
   unless (symlink('test.txt', 'test.lnk')) {
@@ -1205,19 +1124,18 @@ sub statcache_rel_symlink_file {
     die("Can't chdir to $cwd: $!");
   }
 
-  my $test_symlink = File::Spec->rel2abs("$home_dir/test.lnk");
-
+  my $test_symlink = File::Spec->rel2abs("$setup->{home_dir}/test.lnk");
   my $statcache_tab = File::Spec->rel2abs("$tmpdir/statcache.tab");
 
   my $config = {
-    PidFile => $pid_file,
-    ScoreboardFile => $scoreboard_file,
-    SystemLog => $log_file,
-    TraceLog => $log_file,
+    PidFile => $setup->{pid_file},
+    ScoreboardFile => $setup->{scoreboard_file},
+    SystemLog => $setup->{log_file},
+    TraceLog => $setup->{log_file},
     Trace => 'fsio:10 statcache:20',
 
-    AuthUserFile => $auth_user_file,
-    AuthGroupFile => $auth_group_file,
+    AuthUserFile => $setup->{auth_user_file},
+    AuthGroupFile => $setup->{auth_group_file},
     AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
@@ -1232,7 +1150,8 @@ sub statcache_rel_symlink_file {
     },
   };
 
-  my ($port, $config_user, $config_group) = config_write($config_file, $config);
+  my ($port, $config_user, $config_group) = config_write($setup->{config_file},
+    $config);
 
   # Open pipes, for use between the parent and child processes.  Specifically,
   # the child will indicate when it's done with its test by writing a message
@@ -1250,12 +1169,11 @@ sub statcache_rel_symlink_file {
   if ($pid) {
     eval {
       my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
-      $client->login($user, $passwd);
+      $client->login($setup->{user}, $setup->{passwd});
+
       my ($resp_code, $resp_msg) = $client->mlst('test.lnk');
 
-      my $expected;
-
-      $expected = 250;
+      my $expected = 250;
       $self->assert($expected == $resp_code,
         test_msg("Expected response code $expected, got $resp_code"));
 
@@ -1281,7 +1199,8 @@ sub statcache_rel_symlink_file {
       # Now connect again, do another MLST, and see if we're still using
       # the cached entry.
       $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
-      $client->login($user, $passwd);
+      $client->login($setup->{user}, $setup->{passwd});
+
       ($resp_code, $resp_msg) = $client->mlst('test.lnk');
 
       $expected = 250;
@@ -1294,7 +1213,6 @@ sub statcache_rel_symlink_file {
 
       $client->quit();
     };
-
     if ($@) {
       $ex = $@;
     }
@@ -1303,7 +1221,7 @@ sub statcache_rel_symlink_file {
     $wfh->flush();
 
   } else {
-    eval { server_wait($config_file, $rfh) };
+    eval { server_wait($setup->{config_file}, $rfh) };
     if ($@) {
       warn($@);
       exit 1;
@@ -1313,12 +1231,11 @@ sub statcache_rel_symlink_file {
   }
 
   # Stop server
-  server_stop($pid_file);
-
+  server_stop($setup->{pid_file});
   $self->assert_child_ok($pid);
 
   eval {
-    if (open(my $fh, "< $log_file")) {
+    if (open(my $fh, "< $setup->{log_file}")) {
       my $adding_entry = 0;
       my $cached_stat = 0;
       my $cached_lstat = 0;
@@ -1370,21 +1287,14 @@ sub statcache_rel_symlink_file {
         test_msg("Did not see expected 'statcache' TraceLog messages"));
 
     } else {
-      die("Can't read $log_file: $!");
+      die("Can't read $setup->{log_file}: $!");
     }
   };
   if ($@) {
     $ex = $@;
   }
 
-  if ($ex) {
-    test_append_logfile($log_file, $ex);
-    unlink($log_file);
-
-    die($ex);
-  }
-
-  unlink($log_file);
+  test_cleanup($setup, $ex);
 }
 
 sub statcache_rel_symlink_file_chrooted {
@@ -2109,40 +2019,9 @@ sub statcache_rel_symlink_dir_chrooted {
 sub statcache_config_max_age {
   my $self = shift;
   my $tmpdir = $self->{tmpdir};
+  my $setup = test_setup($tmpdir, 'statcache');
 
-  my $config_file = "$tmpdir/statcache.conf";
-  my $pid_file = File::Spec->rel2abs("$tmpdir/statcache.pid");
-  my $scoreboard_file = File::Spec->rel2abs("$tmpdir/statcache.scoreboard");
-
-  my $log_file = test_get_logfile();
-
-  my $auth_user_file = File::Spec->rel2abs("$tmpdir/statcache.passwd");
-  my $auth_group_file = File::Spec->rel2abs("$tmpdir/statcache.group");
-
-  my $user = 'proftpd';
-  my $passwd = 'test';
-  my $group = 'ftpd';
-  my $home_dir = File::Spec->rel2abs($tmpdir);
-  my $uid = 500;
-  my $gid = 500;
-
-  # Make sure that, if we're running as root, that the home directory has
-  # permissions/privs set for the account we create
-  if ($< == 0) {
-    unless (chmod(0755, $home_dir)) {
-      die("Can't set perms on $home_dir to 0755: $!");
-    }
-
-    unless (chown($uid, $gid, $home_dir)) {
-      die("Can't set owner of $home_dir to $uid/$gid: $!");
-    }
-  }
-
-  auth_user_write($auth_user_file, $user, $passwd, $uid, $gid, $home_dir,
-    '/bin/bash');
-  auth_group_write($auth_group_file, $group, $gid, $user);
-
-  my $test_file = File::Spec->rel2abs("$home_dir/test.txt");
+  my $test_file = File::Spec->rel2abs("$setup->{home_dir}/test.txt");
   if (open(my $fh, "> $test_file")) {
     print $fh "Hello, World!\n";
     unless (close($fh)) {
@@ -2153,19 +2032,25 @@ sub statcache_config_max_age {
     die("Can't open $test_file: $!");
   }
 
+  if ($< == 0) {
+    unless (chown($setup->{uid}, $setup->{gid}, $test_file)) {
+      die("Can't set owner of $test_file to $setup->{uid}/$setup->{gid}: $!");
+    }
+  }
+
   my $statcache_tab = File::Spec->rel2abs("$tmpdir/statcache.tab");
   my $max_age = 3;
   my $timeout = 30;
 
   my $config = {
-    PidFile => $pid_file,
-    ScoreboardFile => $scoreboard_file,
-    SystemLog => $log_file,
-    TraceLog => $log_file,
+    PidFile => $setup->{pid_file},
+    ScoreboardFile => $setup->{scoreboard_file},
+    SystemLog => $setup->{log_file},
+    TraceLog => $setup->{log_file},
     Trace => 'fsio:10 statcache:20',
 
-    AuthUserFile => $auth_user_file,
-    AuthGroupFile => $auth_group_file,
+    AuthUserFile => $setup->{auth_user_file},
+    AuthGroupFile => $setup->{auth_group_file},
     AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
@@ -2181,7 +2066,8 @@ sub statcache_config_max_age {
     },
   };
 
-  my ($port, $config_user, $config_group) = config_write($config_file, $config);
+  my ($port, $config_user, $config_group) = config_write($setup->{config_file},
+    $config);
 
   # Open pipes, for use between the parent and child processes.  Specifically,
   # the child will indicate when it's done with its test by writing a message
@@ -2199,12 +2085,11 @@ sub statcache_config_max_age {
   if ($pid) {
     eval {
       my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
-      $client->login($user, $passwd);
+      $client->login($setup->{user}, $setup->{passwd});
+
       my ($resp_code, $resp_msg) = $client->mlst('test.txt');
 
-      my $expected;
-
-      $expected = 250;
+      my $expected = 250;
       $self->assert($expected == $resp_code,
         test_msg("Expected response code $expected, got $resp_code"));
 
@@ -2232,7 +2117,8 @@ sub statcache_config_max_age {
       sleep($max_age + 1);
 
       $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
-      $client->login($user, $passwd);
+      $client->login($setup->{user}, $setup->{passwd});
+
       ($resp_code, $resp_msg) = $client->mlst('test.txt');
 
       $expected = 250;
@@ -2245,7 +2131,6 @@ sub statcache_config_max_age {
 
       $client->quit();
     };
-
     if ($@) {
       $ex = $@;
     }
@@ -2254,7 +2139,7 @@ sub statcache_config_max_age {
     $wfh->flush();
 
   } else {
-    eval { server_wait($config_file, $rfh, $timeout) };
+    eval { server_wait($setup->{config_file}, $rfh, $timeout) };
     if ($@) {
       warn($@);
       exit 1;
@@ -2264,12 +2149,11 @@ sub statcache_config_max_age {
   }
 
   # Stop server
-  server_stop($pid_file);
-
+  server_stop($setup->{pid_file});
   $self->assert_child_ok($pid);
 
   eval {
-    if (open(my $fh, "< $log_file")) {
+    if (open(my $fh, "< $setup->{log_file}")) {
       my $adding_entry = 0;
       my $expired_entry = 0;
       my $cached_stat = 0;
@@ -2327,60 +2211,22 @@ sub statcache_config_max_age {
         test_msg("Did not see expected 'statcache' TraceLog messages"));
 
     } else {
-      die("Can't read $log_file: $!");
+      die("Can't read $setup->{log_file}: $!");
     }
   };
   if ($@) {
     $ex = $@;
   }
 
-  if ($ex) {
-    test_append_logfile($log_file, $ex);
-    unlink($log_file);
-
-    die($ex);
-  }
-
-  unlink($log_file);
+  test_cleanup($setup, $ex);
 }
 
 sub statcache_config_capacity {
   my $self = shift;
   my $tmpdir = $self->{tmpdir};
+  my $setup = test_setup($tmpdir, 'statcache');
 
-  my $config_file = "$tmpdir/statcache.conf";
-  my $pid_file = File::Spec->rel2abs("$tmpdir/statcache.pid");
-  my $scoreboard_file = File::Spec->rel2abs("$tmpdir/statcache.scoreboard");
-
-  my $log_file = test_get_logfile();
-
-  my $auth_user_file = File::Spec->rel2abs("$tmpdir/statcache.passwd");
-  my $auth_group_file = File::Spec->rel2abs("$tmpdir/statcache.group");
-
-  my $user = 'proftpd';
-  my $passwd = 'test';
-  my $group = 'ftpd';
-  my $home_dir = File::Spec->rel2abs($tmpdir);
-  my $uid = 500;
-  my $gid = 500;
-
-  # Make sure that, if we're running as root, that the home directory has
-  # permissions/privs set for the account we create
-  if ($< == 0) {
-    unless (chmod(0755, $home_dir)) {
-      die("Can't set perms on $home_dir to 0755: $!");
-    }
-
-    unless (chown($uid, $gid, $home_dir)) {
-      die("Can't set owner of $home_dir to $uid/$gid: $!");
-    }
-  }
-
-  auth_user_write($auth_user_file, $user, $passwd, $uid, $gid, $home_dir,
-    '/bin/bash');
-  auth_group_write($auth_group_file, $group, $gid, $user);
-
-  my $test_file = File::Spec->rel2abs("$home_dir/test.txt");
+  my $test_file = File::Spec->rel2abs("$setup->{home_dir}/test.txt");
   if (open(my $fh, "> $test_file")) {
     print $fh "Hello, World!\n";
     unless (close($fh)) {
@@ -2391,20 +2237,26 @@ sub statcache_config_capacity {
     die("Can't open $test_file: $!");
   }
 
+  if ($< == 0) {
+    unless (chown($setup->{uid}, $setup->{gid}, $test_file)) {
+      die("Can't set owner of $test_file to $setup->{uid}/$setup->{gid}: $!");
+    }
+  }
+
   my $statcache_tab = File::Spec->rel2abs("$tmpdir/statcache.tab");
   my $capacity = 10000;
   my $max_age = 5;
   my $timeout = 300;
 
   my $config = {
-    PidFile => $pid_file,
-    ScoreboardFile => $scoreboard_file,
-    SystemLog => $log_file,
-    TraceLog => $log_file,
+    PidFile => $setup->{pid_file},
+    ScoreboardFile => $setup->{scoreboard_file},
+    SystemLog => $setup->{log_file},
+    TraceLog => $setup->{log_file},
     Trace => 'fsio:10 statcache:20',
 
-    AuthUserFile => $auth_user_file,
-    AuthGroupFile => $auth_group_file,
+    AuthUserFile => $setup->{auth_user_file},
+    AuthGroupFile => $setup->{auth_group_file},
     AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
@@ -2420,7 +2272,8 @@ sub statcache_config_capacity {
     },
   };
 
-  my ($port, $config_user, $config_group) = config_write($config_file, $config);
+  my ($port, $config_user, $config_group) = config_write($setup->{config_file},
+    $config);
 
   # Open pipes, for use between the parent and child processes.  Specifically,
   # the child will indicate when it's done with its test by writing a message
@@ -2438,12 +2291,11 @@ sub statcache_config_capacity {
   if ($pid) {
     eval {
       my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
-      $client->login($user, $passwd);
+      $client->login($setup->{user}, $setup->{passwd});
+
       my ($resp_code, $resp_msg) = $client->mlst('test.txt');
 
-      my $expected;
-
-      $expected = 250;
+      my $expected = 250;
       $self->assert($expected == $resp_code,
         test_msg("Expected response code $expected, got $resp_code"));
 
@@ -2471,7 +2323,8 @@ sub statcache_config_capacity {
       sleep($max_age + 1);
 
       $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
-      $client->login($user, $passwd);
+      $client->login($setup->{user}, $setup->{passwd});
+
       ($resp_code, $resp_msg) = $client->mlst('test.txt');
 
       $expected = 250;
@@ -2484,7 +2337,6 @@ sub statcache_config_capacity {
 
       $client->quit();
     };
-
     if ($@) {
       $ex = $@;
     }
@@ -2493,7 +2345,7 @@ sub statcache_config_capacity {
     $wfh->flush();
 
   } else {
-    eval { server_wait($config_file, $rfh, $timeout) };
+    eval { server_wait($setup->{config_file}, $rfh, $timeout) };
     if ($@) {
       warn($@);
       exit 1;
@@ -2503,12 +2355,11 @@ sub statcache_config_capacity {
   }
 
   # Stop server
-  server_stop($pid_file);
-
+  server_stop($setup->{pid_file});
   $self->assert_child_ok($pid);
 
   eval {
-    if (open(my $fh, "< $log_file")) {
+    if (open(my $fh, "< $setup->{log_file}")) {
       my $adding_entry = 0;
       my $expired_entry = 0;
       my $cached_stat = 0;
@@ -2565,21 +2416,14 @@ sub statcache_config_capacity {
         test_msg("Did not see expected 'statcache' TraceLog messages"));
 
     } else {
-      die("Can't read $log_file: $!");
+      die("Can't read $setup->{log_file}: $!");
     }
   };
   if ($@) {
     $ex = $@;
   }
 
-  if ($ex) {
-    test_append_logfile($log_file, $ex);
-    unlink($log_file);
-
-    die($ex);
-  }
-
-  unlink($log_file);
+  test_cleanup($setup, $ex);
 }
 
 1;
