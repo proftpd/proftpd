@@ -981,7 +981,7 @@ unsigned char quotatab_lookup_default(quota_tabtype_t tab_type, void *ptr,
      *  files_{in,out,xfer}_avail
      */
 
-    memmove(limit->name, name, strlen(name) + 1);
+    sstrncpy(limit->name, name, sizeof(limit->name)-1);
     limit->quota_type = quota_type;
 
     limit->quota_per_session = pr_str_is_boolean(c->argv[1]);
@@ -4669,6 +4669,8 @@ static int quotatab_sess_init(void) {
     }
   }
 
+  memset(&sess_limit, 0, sizeof(sess_limit));
+  memset(&sess_tally, 0, sizeof(sess_tally));
   return 0;
 }
 
