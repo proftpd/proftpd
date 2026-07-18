@@ -67,6 +67,7 @@ static char *sqltab_get_escaped_text(pool *p, wrap2_table_t *sqltab,
   cmdtable *sql_cmdtab = NULL;
   cmd_rec *sql_cmd = NULL;
   modret_t *sql_res = NULL;
+  char *escaped_text = NULL;
 
   /* Find the cmdtable for the sql_escapestr command, as the provided
    * name needs to be properly escaped for SQL syntax; see Issue #2057.
@@ -79,21 +80,30 @@ static char *sqltab_get_escaped_text(pool *p, wrap2_table_t *sqltab,
     return NULL;
   }
 
+  tmp_pool = make_sub_pool(p);
+
   sql_cmd = sql_cmd_create(tmp_pool, 1, text);
   sql_res = pr_module_call(sql_cmdtab->m, sql_cmdtab->handler, sql_cmd);
   if (sql_res == NULL) {
+    destroy_pool(tmp_pool);
+
     wrap2_log("sql_escapestr '%s' returned no data; "
       "see the mod_sql.c SQLLogFile for more details", text);
     return NULL;
   }
 
   if (MODRET_ISERROR(sql_res)) {
+    destroy_pool(tmp_pool);
+
     wrap2_log("error processing sql_escapestr '%s': "
       "check the mod_sql.c SQLLogFile for more details", text);
     return NULL;
   }
 
-  return sql_res->data;
+  escaped_text = pstrdup(p, sql_res->data);
+  destroy_pool(tmp_pool);
+
+  return escaped_text;
 }
 
 static array_header *sqltab_fetch_clients_cb(wrap2_table_t *sqltab,
@@ -122,9 +132,10 @@ static array_header *sqltab_fetch_clients_cb(wrap2_table_t *sqltab,
   sql_cmdtab = pr_stash_get_symbol2(PR_SYM_HOOK, "sql_lookup", NULL, NULL,
     NULL);
   if (sql_cmdtab == NULL) {
+    destroy_pool(tmp_pool);
+
     wrap2_log("error: unable to find SQL hook symbol 'sql_lookup': "
       "perhaps your proftpd.conf needs 'LoadModule mod_sql.c'?");
-    destroy_pool(tmp_pool);
     return NULL;
   }
 
@@ -136,16 +147,18 @@ static array_header *sqltab_fetch_clients_cb(wrap2_table_t *sqltab,
 
   /* Check the results. */
   if (sql_res == NULL) {
+    destroy_pool(tmp_pool);
+
     wrap2_log("SQLNamedQuery '%s' returned no data; "
       "see the mod_sql.c SQLLogFile for more details", query);
-    destroy_pool(tmp_pool);
     return NULL;
   }
 
   if (MODRET_ISERROR(sql_res)) {
+    destroy_pool(tmp_pool);
+
     wrap2_log("error processing SQLNamedQuery '%s': "
       "check the mod_sql.c SQLLogFile for more details", query);
-    destroy_pool(tmp_pool);
     return NULL;
   }
 
@@ -153,9 +166,10 @@ static array_header *sqltab_fetch_clients_cb(wrap2_table_t *sqltab,
   vals = (char **) sql_data->elts;
 
   if (sql_data->nelts < 1) {
+    destroy_pool(tmp_pool);
+
     wrap2_log("SQLNamedQuery '%s' returned no data; "
       "see the mod_sql.c SQLLogFile for more details", query);
-    destroy_pool(tmp_pool);
     return NULL;
   }
 
