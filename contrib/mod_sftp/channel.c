@@ -535,6 +535,7 @@ static int read_channel_open(struct ssh2_packet *pkt, uint32_t *channel_id) {
     (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
       "maximum number of channels (%u) open, denying request to "
       "open '%s' channel", channel_count, channel_type);
+    errno = EPERM;
     return -1;
   }
 
@@ -556,6 +557,19 @@ static int read_channel_open(struct ssh2_packet *pkt, uint32_t *channel_id) {
     (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
       "unsupported channel type '%s' requested, denying", channel_type);
     pr_cmd_dispatch_phase(cmd, LOG_CMD_ERR, 0);
+    errno = ENOENT;
+    return -1;
+  }
+
+  /* Reject channels that request max packet sizes of zero length
+   * (Issue #2242).
+   */
+  if (max_packetsz == 0) {
+    (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
+      "unsupported channel max packet size %lu requested, denying",
+      (unsigned long) max_packetsz);
+    pr_cmd_dispatch_phase(cmd, LOG_CMD_ERR, 0);
+    errno = EINVAL;
     return -1;
   }
 
@@ -1436,25 +1450,40 @@ static int write_channel_open_confirm(struct ssh2_packet *pkt,
   return 0;
 }
 
-static int write_channel_open_failed(struct ssh2_packet *pkt,
-    uint32_t channel_id) {
+static void write_channel_open_failed(struct ssh2_packet *pkt,
+    uint32_t channel_id, int reason_code) {
   unsigned char *buf, *ptr;
   uint32_t buflen, bufsz;
+  char *reason_desc = "unknown error";
 
   buflen = bufsz = 1024;
   ptr = buf = palloc(pkt->pool, bufsz);
 
+  switch (reason_code) {
+    case SFTP_SSH2_CHANNEL_OPEN_ADMINISTRATIVELY_PROHIBITED:
+      reason_desc = "Invalid channel parameters provided";
+      break;
+
+    case SFTP_SSH2_CHANNEL_OPEN_UNKNOWN_CHANNEL_TYPE:
+      reason_desc = "Unsupported channel type requested";
+      break;
+
+    case SFTP_SSH2_CHANNEL_OPEN_RESOURCE_SHORTAGE:
+      reason_desc = "Resource shortage";
+      break;
+
+    default:
+      reason_desc = "Unknown error";
+  }
+
   sftp_msg_write_byte(&buf, &buflen, SFTP_SSH2_MSG_CHANNEL_OPEN_FAILURE);
   sftp_msg_write_int(&buf, &buflen, channel_id);
-  sftp_msg_write_int(&buf, &buflen,
-    SFTP_SSH2_CHANNEL_OPEN_UNKNOWN_CHANNEL_TYPE);
-  sftp_msg_write_string(&buf, &buflen, "Unsupported channel type requested");
+  sftp_msg_write_int(&buf, &buflen, reason_code);
+  sftp_msg_write_string(&buf, &buflen, reason_desc);
   sftp_msg_write_string(&buf, &buflen, "en-US");
 
   pkt->payload = ptr;
   pkt->payload_len = (bufsz - buflen);
-
-  return 0;
 }
 
 uint32_t sftp_channel_get_windowsz(uint32_t channel_id) {
@@ -1509,12 +1538,28 @@ int sftp_channel_handle(struct ssh2_packet *pkt, char msg_type) {
     case SFTP_SSH2_MSG_CHANNEL_OPEN: {
       res = read_channel_open(pkt, &channel_id);
       if (res < 0) {
+        int reason_code, xerrno;
         struct ssh2_packet *pkt2;
+
+        xerrno = errno;
         pkt2 = sftp_ssh2_packet_create(channel_pool);
 
-        if (write_channel_open_failed(pkt2, channel_id) == 0) {
-          (void) sftp_ssh2_packet_write(sftp_conn->wfd, pkt2);
+        switch (xerrno) {
+          case EPERM:
+            reason_code = SFTP_SSH2_CHANNEL_OPEN_RESOURCE_SHORTAGE;
+            break;
+
+          case EINVAL:
+            reason_code = SFTP_SSH2_CHANNEL_OPEN_ADMINISTRATIVELY_PROHIBITED;
+            break;
+
+          case ENOENT:
+          default:
+            reason_code = SFTP_SSH2_CHANNEL_OPEN_UNKNOWN_CHANNEL_TYPE;
         }
+
+        write_channel_open_failed(pkt2, channel_id, reason_code);
+        (void) sftp_ssh2_packet_write(sftp_conn->wfd, pkt2);
 
         destroy_pool(pkt2->pool);
         destroy_pool(pkt->pool);
