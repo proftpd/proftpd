@@ -15,6 +15,11 @@
   where `N' is the issue number.
 -----------------------------------------------------------------------------
 
+1.3.10rc4
+--------------------------------
+- Issue 2242 - SSH channel open request from authenticated client with max
+  packet size of zero leads to infinite loop.
+
 1.3.10rc3 - Released 07-Jul-2026
 --------------------------------
 - Issue 2135 - ExecEnviron values not passed due to regression since 1.3.8.d.
