@@ -574,6 +574,16 @@ static int read_channel_open(struct ssh2_packet *pkt, uint32_t *channel_id) {
     return -1;
   }
 
+  /* Same for initial window size of zero length (Issue #2242). */
+  if (initial_windowsz == 0) {
+    (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
+      "unsupported channel initial window size %lu requested, denying",
+      (unsigned long) initial_windowsz);
+    pr_cmd_dispatch_phase(cmd, LOG_CMD_ERR, 0);
+    errno = EINVAL;
+    return -1;
+  }
+
   if (alloc_channel(channel_type, *channel_id, initial_windowsz,
       max_packetsz) == NULL) {
     (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
