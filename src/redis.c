@@ -3918,7 +3918,7 @@ static int list_scan(pool *p, pr_redis_t *redis, const char *key, size_t keysz,
       value_elt = reply->element[i];
       if (value_elt->type == REDIS_REPLY_STRING) {
         value_datasz = value_elt->len;
-        value_data = pstrndup(p, value_elt->str, value_datasz)
+        value_data = pstrndup(p, value_elt->str, value_datasz);
 
       } else {
         pr_trace_msg(trace_channel, 2,
