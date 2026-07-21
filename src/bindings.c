@@ -410,7 +410,15 @@ int pr_ipbind_close(const pr_netaddr_t *addr, unsigned int port,
 
       pr_signals_handle();
 
-      for (ipbind = ipbind_table[i]; ipbind; ipbind = ipbind->ib_next) {
+      ipbind = ipbind_table[i];
+      if (ipbind == NULL) {
+        continue;
+      }
+
+      pr_trace_msg(trace_channel, 22,
+        "found ipbind %p at index %u in table, closing", ipbind, i);
+
+      for (; ipbind; ipbind = ipbind->ib_next) {
         if (SocketBindTight &&
             ipbind->ib_listener != NULL) {
           pr_inet_close(main_server->pool, ipbind->ib_listener);
@@ -423,7 +431,7 @@ int pr_ipbind_close(const pr_netaddr_t *addr, unsigned int port,
          */
         ipbind->ib_isactive = FALSE;
 
-        if (close_namebinds &&
+        if (close_namebinds == TRUE &&
             ipbind->ib_namebinds != NULL) {
           register unsigned int j = 0;
           pr_namebind_t **namebinds = NULL;
@@ -693,6 +701,9 @@ server_rec *pr_ipbind_get_server(const pr_netaddr_t *addr, unsigned int port) {
    */
   ipbind = pr_ipbind_find(addr, port, TRUE);
   if (ipbind != NULL) {
+    pr_trace_msg(trace_channel, 22,
+      "matching ipbind %p found for %s#%u, using '%s'", ipbind,
+      pr_netaddr_get_ipstr(addr), port, ipbind->ib_server->ServerName);
     pr_log_debug(DEBUG7, "matching vhost found for %s#%u, using '%s'",
       pr_netaddr_get_ipstr(addr), port, ipbind->ib_server->ServerName);
     return ipbind->ib_server;
@@ -714,13 +725,16 @@ server_rec *pr_ipbind_get_server(const pr_netaddr_t *addr, unsigned int port) {
 
   ipbind = pr_ipbind_find(&wildcard_addr, port, TRUE);
   if (ipbind != NULL) {
+    pr_trace_msg(trace_channel, 22, "no matching ipbind found for %s#%u, using "
+      "'%s' listening on wildcard ipbind %p", pr_netaddr_get_ipstr(addr), port,
+      ipbind->ib_server->ServerName, ipbind);
     pr_log_debug(DEBUG7, "no matching vhost found for %s#%u, using "
       "'%s' listening on wildcard address", pr_netaddr_get_ipstr(addr), port,
       ipbind->ib_server->ServerName);
     return ipbind->ib_server;
   }
 
-#ifdef PR_USE_IPV6
+#if defined(PR_USE_IPV6)
   if (addr_family == AF_INET6 &&
       pr_netaddr_use_ipv6()) {
 
@@ -758,8 +772,11 @@ server_rec *pr_ipbind_get_server(const pr_netaddr_t *addr, unsigned int port) {
   }
 
   /* Use the default server, if set. */
-  if (ipbind_default_server &&
+  if (ipbind_default_server != NULL &&
       ipbind_default_server->ib_isactive) {
+    pr_trace_msg(trace_channel, 22, "no matching ipbind found for %s#%u, using "
+      "DefaultServer '%s' (%p)", pr_netaddr_get_ipstr(addr), port,
+      ipbind_default_server->ib_server->ServerName, ipbind_default_server);
     pr_log_debug(DEBUG7, "no matching vhost found for %s#%u, using "
       "DefaultServer '%s'", pr_netaddr_get_ipstr(addr), port,
       ipbind_default_server->ib_server->ServerName);
@@ -769,8 +786,12 @@ server_rec *pr_ipbind_get_server(const pr_netaddr_t *addr, unsigned int port) {
   /* Not found in binding list, and no DefaultServer, so see if it's the
    * loopback address
    */
-  if (ipbind_localhost_server &&
-      pr_netaddr_is_loopback(addr)) {
+  if (pr_netaddr_is_loopback(addr) &&
+      ipbind_localhost_server != NULL &&
+      ipbind_localhost_server->ib_isactive) {
+    pr_trace_msg(trace_channel, 22, "no matching ipbind found for %s#%u, using "
+      "loopback ipbind %p", pr_netaddr_get_ipstr(addr), port,
+      ipbind_localhost_server);
     return ipbind_localhost_server->ib_server;
   }
 
