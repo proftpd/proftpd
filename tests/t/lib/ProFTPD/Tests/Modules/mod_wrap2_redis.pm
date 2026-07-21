@@ -155,6 +155,7 @@ sub list_tests {
 }
 
 sub provision_redis {
+  my $redis_server = shift;
   my $allowed_key = shift;
   my $allowed = shift;
   my $denied_key = shift;
@@ -164,6 +165,7 @@ sub provision_redis {
 
   require Redis;
   my $redis = Redis->new(
+    server => $redis_server,
     reconnect => 5,
     every => 250_000
   );
@@ -198,6 +200,11 @@ sub wrap2_allow_msg {
   my $tmpdir = $self->{tmpdir};
   my $setup = test_setup($tmpdir, 'wrap2');
 
+  my $redis_server = '127.0.0.1:6379';
+  if ($ENV{REDIS_SERVER}) {
+    $redis_server = $ENV{REDIS_SERVER};
+  }
+
   # XXX Create allow, deny lists in Redis, and populate them
   my $timeout_idle = 30;
 
@@ -208,6 +215,8 @@ sub wrap2_allow_msg {
 
     AuthUserFile => $setup->{auth_user_file},
     AuthGroupFile => $setup->{auth_group_file},
+    AuthOrder => 'mod_auth_file.c',
+
     TimeoutIdle => $timeout_idle,
 
     IfModules => {
@@ -217,7 +226,7 @@ sub wrap2_allow_msg {
 
       'mod_redis.c' => {
         RedisEngine => 'on',
-        RedisServer => '127.0.0.1:6379',
+        RedisServer => $redis_server,
         RedisLog => $setup->{log_file},
       },
 
@@ -255,9 +264,7 @@ sub wrap2_allow_msg {
       my $resp_msg = $client->response_msg(0);
       $client->quit();
 
-      my $expected;
-
-      $expected = 230;
+      my $expected = 230;
       $self->assert($expected == $resp_code,
         "Expected response code $expected, got $resp_code");
 
@@ -265,7 +272,6 @@ sub wrap2_allow_msg {
       $self->assert($expected eq $resp_msg,
         "Expected response message '$expected', got '$resp_msg'");
     };
-
     if ($@) {
       $ex = $@;
     }
@@ -287,7 +293,7 @@ sub wrap2_allow_msg {
   server_stop($setup->{pid_file});
   $self->assert_child_ok($pid);
 
-  test_cleanup($setup->{log_file}, $ex);
+  test_cleanup($setup, $ex);
 }
 
 sub wrap2_deny_msg {
@@ -295,10 +301,15 @@ sub wrap2_deny_msg {
   my $tmpdir = $self->{tmpdir};
   my $setup = test_setup($tmpdir, 'wrap2');
 
+  my $redis_server = '127.0.0.1:6379';
+  if ($ENV{REDIS_SERVER}) {
+    $redis_server = $ENV{REDIS_SERVER};
+  }
+
   # Create allow, deny lists in Redis, and populate them
   my $allowed_key = 'ftpallow';
   my $denied_key = 'ftpdeny';
-  provision_redis($allowed_key, [], $denied_key, [qw(ALL)]);
+  provision_redis($redis_server, $allowed_key, [], $denied_key, [qw(ALL)]);
 
   my $timeout_idle = 30;
 
@@ -306,9 +317,13 @@ sub wrap2_deny_msg {
     PidFile => $setup->{pid_file},
     ScoreboardFile => $setup->{scoreboard_file},
     SystemLog => $setup->{log_file},
+    TraceLog => $setup->{log_file},
+    Trace => 'redis:20 wrap2:20',
 
     AuthUserFile => $setup->{auth_user_file},
     AuthGroupFile => $setup->{auth_group_file},
+    AuthOrder => 'mod_auth_file.c',
+
     TimeoutIdle => $timeout_idle,
 
     IfModules => {
@@ -318,7 +333,7 @@ sub wrap2_deny_msg {
 
       'mod_redis.c' => {
         RedisEngine => 'on',
-        RedisServer => '127.0.0.1:6379',
+        RedisServer => $redis_server,
         RedisLog => $setup->{log_file},
       },
 
@@ -358,9 +373,7 @@ sub wrap2_deny_msg {
       my $resp_code = $client->response_code();
       my $resp_msg = $client->response_msg();
 
-      my $expected;
-
-      $expected = 530;
+      my $expected = 530;
       $self->assert($expected == $resp_code,
         "Expected response code $expected, got $resp_code");
 
@@ -368,7 +381,6 @@ sub wrap2_deny_msg {
       $self->assert($expected eq $resp_msg,
         "Expected response message '$expected', got '$resp_msg'");
     };
-
     if ($@) {
       $ex = $@;
     }
@@ -390,7 +402,7 @@ sub wrap2_deny_msg {
   server_stop($setup->{pid_file});
   $self->assert_child_ok($pid);
 
-  test_cleanup($setup->{log_file}, $ex);
+  test_cleanup($setup, $ex);
 }
 
 sub wrap2_engine {
@@ -398,10 +410,15 @@ sub wrap2_engine {
   my $tmpdir = $self->{tmpdir};
   my $setup = test_setup($tmpdir, 'wrap2');
 
+  my $redis_server = '127.0.0.1:6379';
+  if ($ENV{REDIS_SERVER}) {
+    $redis_server = $ENV{REDIS_SERVER};
+  }
+
   # Create allow, deny lists in Redis, and populate them
   my $allowed_key = 'ftpallow';
   my $denied_key = 'ftpdeny';
-  provision_redis($allowed_key, [], $denied_key, [qw(ALL)]);
+  provision_redis($redis_server, $allowed_key, [], $denied_key, [qw(ALL)]);
 
   my $timeout_idle = 30;
 
@@ -409,9 +426,13 @@ sub wrap2_engine {
     PidFile => $setup->{pid_file},
     ScoreboardFile => $setup->{scoreboard_file},
     SystemLog => $setup->{log_file},
+    TraceLog => $setup->{log_file},
+    Trace => 'redis:20 wrap2:20',
 
     AuthUserFile => $setup->{auth_user_file},
     AuthGroupFile => $setup->{auth_group_file},
+    AuthOrder => 'mod_auth_file.c',
+
     TimeoutIdle => $timeout_idle,
 
     IfModules => {
@@ -421,7 +442,7 @@ sub wrap2_engine {
 
       'mod_redis.c' => {
         RedisEngine => 'on',
-        RedisServer => '127.0.0.1:6379',
+        RedisServer => $redis_server,
         RedisLog => $setup->{log_file},
       },
 
@@ -457,9 +478,7 @@ sub wrap2_engine {
         $setup->{passwd});
       $client->quit();
 
-      my $expected;
-
-      $expected = 230;
+      my $expected = 230;
       $self->assert($expected == $resp_code,
         "Expected response code $expected, got $resp_code");
 
@@ -467,7 +486,6 @@ sub wrap2_engine {
       $self->assert($expected eq $resp_msg,
         "Expected response message '$expected', got '$resp_msg'");
     };
-
     if ($@) {
       $ex = $@;
     }
@@ -489,7 +507,7 @@ sub wrap2_engine {
   server_stop($setup->{pid_file});
   $self->assert_child_ok($pid);
 
-  test_cleanup($setup->{log_file}, $ex);
+  test_cleanup($setup, $ex);
 }
 
 sub wrap2_redis_allow_list {
@@ -497,10 +515,15 @@ sub wrap2_redis_allow_list {
   my $tmpdir = $self->{tmpdir};
   my $setup = test_setup($tmpdir, 'wrap2');
 
+  my $redis_server = '127.0.0.1:6379';
+  if ($ENV{REDIS_SERVER}) {
+    $redis_server = $ENV{REDIS_SERVER};
+  }
+
   # Create allow, deny lists in Redis, and populate them
   my $allowed_key = 'ftpallow';
   my $denied_key = 'ftpdeny';
-  provision_redis($allowed_key, [], $denied_key, []);
+  provision_redis($redis_server, $allowed_key, [], $denied_key, []);
 
   my $timeout_idle = 30;
 
@@ -508,9 +531,13 @@ sub wrap2_redis_allow_list {
     PidFile => $setup->{pid_file},
     ScoreboardFile => $setup->{scoreboard_file},
     SystemLog => $setup->{log_file},
+    TraceLog => $setup->{log_file},
+    Trace => 'redis:20 wrap2:20',
 
     AuthUserFile => $setup->{auth_user_file},
     AuthGroupFile => $setup->{auth_group_file},
+    AuthOrder => 'mod_auth_file.c',
+
     TimeoutIdle => $timeout_idle,
 
     IfModules => {
@@ -520,7 +547,7 @@ sub wrap2_redis_allow_list {
 
       'mod_redis.c' => {
         RedisEngine => 'on',
-        RedisServer => '127.0.0.1:6379',
+        RedisServer => $redis_server,
         RedisLog => $setup->{log_file},
       },
 
@@ -554,9 +581,7 @@ sub wrap2_redis_allow_list {
         $setup->{passwd});
       $client->quit();
 
-      my $expected;
-
-      $expected = 230;
+      my $expected = 230;
       $self->assert($expected == $resp_code,
         "Expected response code $expected, got $resp_code");
 
@@ -564,7 +589,6 @@ sub wrap2_redis_allow_list {
       $self->assert($expected eq $resp_msg,
         "Expected response message '$expected', got '$resp_msg'");
     };
-
     if ($@) {
       $ex = $@;
     }
@@ -587,10 +611,10 @@ sub wrap2_redis_allow_list {
     server_stop($setup->{pid_file});
     $self->assert_child_ok($pid);
 
-    test_cleanup($setup->{log_file}, $ex);
+    test_cleanup($setup, $ex);
   }
 
-  provision_redis($allowed_key, [qw(127.0.0.1)], $denied_key, [qw(ALL)]);
+  provision_redis($redis_server, $allowed_key, [qw(127.0.0.1)], $denied_key, [qw(ALL)]);
 
   eval {
     my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
@@ -598,9 +622,7 @@ sub wrap2_redis_allow_list {
       $setup->{passwd});
     $client->quit();
 
-    my $expected;
-
-    $expected = 230;
+    my $expected = 230;
     $self->assert($expected == $resp_code,
       "Expected response code $expected, got $resp_code");
 
@@ -616,7 +638,7 @@ sub wrap2_redis_allow_list {
   server_stop($setup->{pid_file});
   $self->assert_child_ok($pid);
 
-  test_cleanup($setup->{log_file}, $ex);
+  test_cleanup($setup, $ex);
 }
 
 sub wrap2_redis_allow_set {
@@ -624,10 +646,15 @@ sub wrap2_redis_allow_set {
   my $tmpdir = $self->{tmpdir};
   my $setup = test_setup($tmpdir, 'wrap2');
 
-  # Create allow, deny lists in Redis, and populate them
+  my $redis_server = '127.0.0.1:6379';
+  if ($ENV{REDIS_SERVER}) {
+    $redis_server = $ENV{REDIS_SERVER};
+  }
+
+  # Create allow, deny sets in Redis, and populate them
   my $allowed_key = 'ftpallow';
   my $denied_key = 'ftpdeny';
-  provision_redis($allowed_key, [], $denied_key, [], 1);
+  provision_redis($redis_server, $allowed_key, [], $denied_key, [], 1);
 
   my $timeout_idle = 30;
 
@@ -636,10 +663,12 @@ sub wrap2_redis_allow_set {
     ScoreboardFile => $setup->{scoreboard_file},
     SystemLog => $setup->{log_file},
     TraceLog => $setup->{log_file},
-    Trace => 'redis:20',
+    Trace => 'redis:20 wrap2:20',
 
     AuthUserFile => $setup->{auth_user_file},
     AuthGroupFile => $setup->{auth_group_file},
+    AuthOrder => 'mod_auth_file.c',
+
     TimeoutIdle => $timeout_idle,
 
     IfModules => {
@@ -649,7 +678,7 @@ sub wrap2_redis_allow_set {
 
       'mod_redis.c' => {
         RedisEngine => 'on',
-        RedisServer => '127.0.0.1:6379',
+        RedisServer => $redis_server,
         RedisLog => $setup->{log_file},
       },
 
@@ -683,9 +712,7 @@ sub wrap2_redis_allow_set {
         $setup->{passwd});
       $client->quit();
 
-      my $expected;
-
-      $expected = 230;
+      my $expected = 230;
       $self->assert($expected == $resp_code,
         "Expected response code $expected, got $resp_code");
 
@@ -693,7 +720,6 @@ sub wrap2_redis_allow_set {
       $self->assert($expected eq $resp_msg,
         "Expected response message '$expected', got '$resp_msg'");
     };
-
     if ($@) {
       $ex = $@;
     }
@@ -716,11 +742,11 @@ sub wrap2_redis_allow_set {
     server_stop($setup->{pid_file});
     $self->assert_child_ok($pid);
 
-    test_cleanup($setup->{log_file}, $ex);
+    test_cleanup($setup, $ex);
     return;
   }
 
-  provision_redis($allowed_key, [qw(127.0.0.1)], $denied_key, [qw(ALL)], 1);
+  provision_redis($redis_server, $allowed_key, [qw(127.0.0.1)], $denied_key, [qw(ALL)], 1);
 
   eval {
     my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
@@ -728,9 +754,7 @@ sub wrap2_redis_allow_set {
       $setup->{passwd});
     $client->quit();
 
-    my $expected;
-
-    $expected = 230;
+    my $expected = 230;
     $self->assert($expected == $resp_code,
       "Expected response code $expected, got $resp_code");
 
@@ -746,13 +770,18 @@ sub wrap2_redis_allow_set {
   server_stop($setup->{pid_file});
   $self->assert_child_ok($pid);
 
-  test_cleanup($setup->{log_file}, $ex);
+  test_cleanup($setup, $ex);
 }
 
 sub wrap2_redis_allow_list_multi_rows_multi_entries {
   my $self = shift;
   my $tmpdir = $self->{tmpdir};
   my $setup = test_setup($tmpdir, 'wrap2');
+
+  my $redis_server = '127.0.0.1:6379';
+  if ($ENV{REDIS_SERVER}) {
+    $redis_server = $ENV{REDIS_SERVER};
+  }
 
   # Create allow, deny lists in Redis, and populate them
   my $allowed_key = 'ftpallow';
@@ -763,7 +792,7 @@ sub wrap2_redis_allow_list_multi_rows_multi_entries {
     '192.168.127.1 192.168.127.2 127.0.0.1',
     '192.168.127.3,192.168.127.4 127.0.0.1'
   ];
-  provision_redis($allowed_key, $allowed, $denied_key, [qw(ALL)]);
+  provision_redis($redis_server, $allowed_key, $allowed, $denied_key, [qw(ALL)]);
 
   my $timeout_idle = 30;
 
@@ -771,9 +800,13 @@ sub wrap2_redis_allow_list_multi_rows_multi_entries {
     PidFile => $setup->{pid_file},
     ScoreboardFile => $setup->{scoreboard_file},
     SystemLog => $setup->{log_file},
+    TraceLog => $setup->{log_file},
+    Trace => 'redis:20 wrap2:20',
 
     AuthUserFile => $setup->{auth_user_file},
     AuthGroupFile => $setup->{auth_group_file},
+    AuthOrder => 'mod_auth_file.c',
+
     TimeoutIdle => $timeout_idle,
 
     IfModules => {
@@ -783,7 +816,7 @@ sub wrap2_redis_allow_list_multi_rows_multi_entries {
 
       'mod_redis.c' => {
         RedisEngine => 'on',
-        RedisServer => '127.0.0.1:6379',
+        RedisServer => $redis_server,
         RedisLog => $setup->{log_file},
       },
 
@@ -818,9 +851,7 @@ sub wrap2_redis_allow_list_multi_rows_multi_entries {
         $setup->{passwd});
       $client->quit();
 
-      my $expected;
-
-      $expected = 230;
+      my $expected = 230;
       $self->assert($expected == $resp_code,
         "Expected response code $expected, got $resp_code");
 
@@ -828,7 +859,6 @@ sub wrap2_redis_allow_list_multi_rows_multi_entries {
       $self->assert($expected eq $resp_msg,
         "Expected response message '$expected', got '$resp_msg'");
     };
-
     if ($@) {
       $ex = $@;
     }
@@ -850,7 +880,7 @@ sub wrap2_redis_allow_list_multi_rows_multi_entries {
   server_stop($setup->{pid_file});
   $self->assert_child_ok($pid);
 
-  test_cleanup($setup->{log_file}, $ex);
+  test_cleanup($setup, $ex);
 }
 
 sub wrap2_redis_allow_list_all {
@@ -858,10 +888,15 @@ sub wrap2_redis_allow_list_all {
   my $tmpdir = $self->{tmpdir};
   my $setup = test_setup($tmpdir, 'wrap2');
 
+  my $redis_server = '127.0.0.1:6379';
+  if ($ENV{REDIS_SERVER}) {
+    $redis_server = $ENV{REDIS_SERVER};
+  }
+
   # Create allow, deny lists in Redis, and populate them
   my $allowed_key = 'ftpallow';
   my $denied_key = 'ftpdeny';
-  provision_redis($allowed_key, [qw(ALL)], $denied_key, [qw(ALL)]);
+  provision_redis($redis_server, $allowed_key, [qw(ALL)], $denied_key, [qw(ALL)]);
 
   my $timeout_idle = 30;
 
@@ -870,10 +905,12 @@ sub wrap2_redis_allow_list_all {
     ScoreboardFile => $setup->{scoreboard_file},
     SystemLog => $setup->{log_file},
     TraceLog => $setup->{log_file},
-    Trace => 'dns:10',
+    Trace => 'dns:10 redis:20 wrap2:20',
 
     AuthUserFile => $setup->{auth_user_file},
     AuthGroupFile => $setup->{auth_group_file},
+    AuthOrder => 'mod_auth_file.c',
+
     TimeoutIdle => $timeout_idle,
 
     IfModules => {
@@ -883,7 +920,7 @@ sub wrap2_redis_allow_list_all {
 
       'mod_redis.c' => {
         RedisEngine => 'on',
-        RedisServer => '127.0.0.1:6379',
+        RedisServer => $redis_server,
         RedisLog => $setup->{log_file},
       },
 
@@ -917,9 +954,7 @@ sub wrap2_redis_allow_list_all {
         $setup->{passwd});
       $client->quit();
 
-      my $expected;
-
-      $expected = 230;
+      my $expected = 230;
       $self->assert($expected == $resp_code,
         "Expected response code $expected, got $resp_code");
 
@@ -927,7 +962,6 @@ sub wrap2_redis_allow_list_all {
       $self->assert($expected eq $resp_msg,
         "Expected response message '$expected', got '$resp_msg'");
     };
-
     if ($@) {
       $ex = $@;
     }
@@ -949,7 +983,7 @@ sub wrap2_redis_allow_list_all {
   server_stop($setup->{pid_file});
   $self->assert_child_ok($pid);
 
-  test_cleanup($setup->{log_file}, $ex);
+  test_cleanup($setup, $ex);
 }
 
 sub wrap2_redis_deny_list_ip_addr {
@@ -957,10 +991,15 @@ sub wrap2_redis_deny_list_ip_addr {
   my $tmpdir = $self->{tmpdir};
   my $setup = test_setup($tmpdir, 'wrap2');
 
+  my $redis_server = '127.0.0.1:6379';
+  if ($ENV{REDIS_SERVER}) {
+    $redis_server = $ENV{REDIS_SERVER};
+  }
+
   # Create allow, deny lists in Redis, and populate them
   my $allowed_key = 'ftpallow';
   my $denied_key = 'ftpdeny';
-  provision_redis($allowed_key, [], $denied_key, [qw(ALL)]);
+  provision_redis($redis_server, $allowed_key, [], $denied_key, [qw(ALL)]);
 
   my $timeout_idle = 30;
 
@@ -968,9 +1007,13 @@ sub wrap2_redis_deny_list_ip_addr {
     PidFile => $setup->{pid_file},
     ScoreboardFile => $setup->{scoreboard_file},
     SystemLog => $setup->{log_file},
+    TraceLog => $setup->{log_file},
+    Trace => 'redis:20 wrap2:20',
 
     AuthUserFile => $setup->{auth_user_file},
     AuthGroupFile => $setup->{auth_group_file},
+    AuthOrder => 'mod_auth_file.c',
+
     TimeoutIdle => $timeout_idle,
 
     IfModules => {
@@ -980,7 +1023,7 @@ sub wrap2_redis_deny_list_ip_addr {
 
       'mod_redis.c' => {
         RedisEngine => 'on',
-        RedisServer => '127.0.0.1:6379',
+        RedisServer => $redis_server,
         RedisLog => $setup->{log_file},
       },
 
@@ -1019,9 +1062,7 @@ sub wrap2_redis_deny_list_ip_addr {
       my $resp_code = $client->response_code();
       my $resp_msg = $client->response_msg();
 
-      my $expected;
-
-      $expected = 530;
+      my $expected = 530;
       $self->assert($expected == $resp_code,
         "Expected response code $expected, got $resp_code");
 
@@ -1029,7 +1070,6 @@ sub wrap2_redis_deny_list_ip_addr {
       $self->assert($expected eq $resp_msg,
         "Expected response message '$expected', got '$resp_msg'");
     };
-
     if ($@) {
       $ex = $@;
     }
@@ -1052,11 +1092,11 @@ sub wrap2_redis_deny_list_ip_addr {
     server_stop($setup->{pid_file});
     $self->assert_child_ok($pid);
 
-    test_cleanup($setup->{log_file}, $ex);
+    test_cleanup($setup, $ex);
     return;
   }
 
-  provision_redis($allowed_key, [], $denied_key, [qw(127.0.0.1)]);
+  provision_redis($redis_server, $allowed_key, [], $denied_key, [qw(127.0.0.1)]);
 
   eval {
     my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
@@ -1068,9 +1108,7 @@ sub wrap2_redis_deny_list_ip_addr {
     my $resp_code = $client->response_code();
     my $resp_msg = $client->response_msg();
 
-    my $expected;
-
-    $expected = 530;
+    my $expected = 530;
     $self->assert($expected == $resp_code,
       "Expected response code $expected, got $resp_code");
 
@@ -1086,7 +1124,7 @@ sub wrap2_redis_deny_list_ip_addr {
   server_stop($setup->{pid_file});
   $self->assert_child_ok($pid);
 
-  test_cleanup($setup->{log_file}, $ex);
+  test_cleanup($setup, $ex);
 }
 
 sub wrap2_redis_deny_set_ip_addr {
@@ -1094,10 +1132,15 @@ sub wrap2_redis_deny_set_ip_addr {
   my $tmpdir = $self->{tmpdir};
   my $setup = test_setup($tmpdir, 'wrap2');
 
-  # Create allow, deny lists in Redis, and populate them
+  my $redis_server = '127.0.0.1:6379';
+  if ($ENV{REDIS_SERVER}) {
+    $redis_server = $ENV{REDIS_SERVER};
+  }
+
+  # Create allow, deny sets in Redis, and populate them
   my $allowed_key = 'ftpallow';
   my $denied_key = 'ftpdeny';
-  provision_redis($allowed_key, [], $denied_key, [qw(ALL)], 1);
+  provision_redis($redis_server, $allowed_key, [], $denied_key, [qw(ALL)], 1);
 
   my $timeout_idle = 30;
 
@@ -1105,9 +1148,13 @@ sub wrap2_redis_deny_set_ip_addr {
     PidFile => $setup->{pid_file},
     ScoreboardFile => $setup->{scoreboard_file},
     SystemLog => $setup->{log_file},
+    TraceLog => $setup->{log_file},
+    Trace => 'redis:20 wrap2:20',
 
     AuthUserFile => $setup->{auth_user_file},
     AuthGroupFile => $setup->{auth_group_file},
+    AuthOrder => 'mod_auth_file.c',
+
     TimeoutIdle => $timeout_idle,
 
     IfModules => {
@@ -1117,7 +1164,7 @@ sub wrap2_redis_deny_set_ip_addr {
 
       'mod_redis.c' => {
         RedisEngine => 'on',
-        RedisServer => '127.0.0.1:6379',
+        RedisServer => $redis_server,
         RedisLog => $setup->{log_file},
       },
 
@@ -1156,9 +1203,7 @@ sub wrap2_redis_deny_set_ip_addr {
       my $resp_code = $client->response_code();
       my $resp_msg = $client->response_msg();
 
-      my $expected;
-
-      $expected = 530;
+      my $expected = 530;
       $self->assert($expected == $resp_code,
         "Expected response code $expected, got $resp_code");
 
@@ -1166,7 +1211,6 @@ sub wrap2_redis_deny_set_ip_addr {
       $self->assert($expected eq $resp_msg,
         "Expected response message '$expected', got '$resp_msg'");
     };
-
     if ($@) {
       $ex = $@;
     }
@@ -1189,11 +1233,11 @@ sub wrap2_redis_deny_set_ip_addr {
     server_stop($setup->{pid_file});
     $self->assert_child_ok($pid);
 
-    test_cleanup($setup->{log_file}, $ex);
+    test_cleanup($setup, $ex);
     return;
   }
 
-  provision_redis($allowed_key, [], $denied_key, [qw(127.0.0.1)], 1);
+  provision_redis($redis_server, $allowed_key, [], $denied_key, [qw(127.0.0.1)], 1);
 
   eval {
     my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
@@ -1205,9 +1249,7 @@ sub wrap2_redis_deny_set_ip_addr {
     my $resp_code = $client->response_code();
     my $resp_msg = $client->response_msg();
 
-    my $expected;
-
-    $expected = 530;
+    my $expected = 530;
     $self->assert($expected == $resp_code,
       "Expected response code $expected, got $resp_code");
 
@@ -1223,7 +1265,7 @@ sub wrap2_redis_deny_set_ip_addr {
   server_stop($setup->{pid_file});
   $self->assert_child_ok($pid);
 
-  test_cleanup($setup->{log_file}, $ex);
+  test_cleanup($setup, $ex);
 }
 
 sub wrap2_redis_deny_list_ipv4_netmask {
@@ -1231,10 +1273,15 @@ sub wrap2_redis_deny_list_ipv4_netmask {
   my $tmpdir = $self->{tmpdir};
   my $setup = test_setup($tmpdir, 'wrap2');
 
+  my $redis_server = '127.0.0.1:6379';
+  if ($ENV{REDIS_SERVER}) {
+    $redis_server = $ENV{REDIS_SERVER};
+  }
+
   # Create allow, deny lists in Redis, and populate them
   my $allowed_key = 'ftpallow';
   my $denied_key = 'ftpdeny';
-  provision_redis($allowed_key, [], $denied_key, [qw(ALL)]);
+  provision_redis($redis_server, $allowed_key, [], $denied_key, [qw(ALL)]);
 
   my $timeout_idle = 30;
 
@@ -1242,9 +1289,13 @@ sub wrap2_redis_deny_list_ipv4_netmask {
     PidFile => $setup->{pid_file},
     ScoreboardFile => $setup->{scoreboard_file},
     SystemLog => $setup->{log_file},
+    TraceLog => $setup->{log_file},
+    Trace => 'redis:20 wrap2:20',
 
     AuthUserFile => $setup->{auth_user_file},
     AuthGroupFile => $setup->{auth_group_file},
+    AuthOrder => 'mod_auth_file.c',
+
     TimeoutIdle => $timeout_idle,
 
     IfModules => {
@@ -1254,7 +1305,7 @@ sub wrap2_redis_deny_list_ipv4_netmask {
 
       'mod_redis.c' => {
         RedisEngine => 'on',
-        RedisServer => '127.0.0.1:6379',
+        RedisServer => $redis_server,
         RedisLog => $setup->{log_file},
       },
 
@@ -1293,9 +1344,7 @@ sub wrap2_redis_deny_list_ipv4_netmask {
       my $resp_code = $client->response_code();
       my $resp_msg = $client->response_msg();
 
-      my $expected;
-
-      $expected = 530;
+      my $expected = 530;
       $self->assert($expected == $resp_code,
         "Expected response code $expected, got $resp_code");
 
@@ -1303,7 +1352,6 @@ sub wrap2_redis_deny_list_ipv4_netmask {
       $self->assert($expected eq $resp_msg,
         "Expected response message '$expected', got '$resp_msg'");
     };
-
     if ($@) {
       $ex = $@;
     }
@@ -1326,11 +1374,11 @@ sub wrap2_redis_deny_list_ipv4_netmask {
     server_stop($setup->{pid_file});
     $self->assert_child_ok($pid);
 
-    test_cleanup($setup->{log_file}, $ex);
+    test_cleanup($setup, $ex);
     return;
   }
 
-  provision_redis($allowed_key, [], $denied_key, [qw(127.0.0.0/255.255.255.0)]);
+  provision_redis($redis_server, $allowed_key, [], $denied_key, [qw(127.0.0.0/255.255.255.0)]);
 
   eval {
     my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
@@ -1342,17 +1390,14 @@ sub wrap2_redis_deny_list_ipv4_netmask {
     my $resp_code = $client->response_code();
     my $resp_msg = $client->response_msg();
 
-    my $expected;
-
-    $expected = 530;
+    my $expected = 530;
     $self->assert($expected == $resp_code,
       "Expected response code $expected, got $resp_code");
 
     $expected = "Access denied";
     $self->assert($expected eq $resp_msg,
       "Expected response message '$expected', got '$resp_msg'");
-   };
-
+  };
   if ($@) {
     $ex = $@;
   }
@@ -1361,7 +1406,7 @@ sub wrap2_redis_deny_list_ipv4_netmask {
   server_stop($setup->{pid_file});
   $self->assert_child_ok($pid);
 
-  test_cleanup($setup->{log_file}, $ex);
+  test_cleanup($setup, $ex);
 }
 
 sub wrap2_redis_deny_list_ipv4mappedv6_netmask {
@@ -1369,10 +1414,15 @@ sub wrap2_redis_deny_list_ipv4mappedv6_netmask {
   my $tmpdir = $self->{tmpdir};
   my $setup = test_setup($tmpdir, 'wrap2');
 
+  my $redis_server = '127.0.0.1:6379';
+  if ($ENV{REDIS_SERVER}) {
+    $redis_server = $ENV{REDIS_SERVER};
+  }
+
   # Create allow, deny lists in Redis, and populate them
   my $allowed_key = 'ftpallow';
   my $denied_key = 'ftpdeny';
-  provision_redis($allowed_key, [], $denied_key, [qw(ALL)]);
+  provision_redis($redis_server, $allowed_key, [], $denied_key, [qw(ALL)]);
 
   my $timeout_idle = 30;
 
@@ -1380,11 +1430,14 @@ sub wrap2_redis_deny_list_ipv4mappedv6_netmask {
     PidFile => $setup->{pid_file},
     ScoreboardFile => $setup->{scoreboard_file},
     SystemLog => $setup->{log_file},
+    TraceLog => $setup->{log_file},
+    Trace => 'redis:20 wrap2:20',
 
     AuthUserFile => $setup->{auth_user_file},
     AuthGroupFile => $setup->{auth_group_file},
-    TimeoutIdle => $timeout_idle,
+    AuthOrder => 'mod_auth_file.c',
 
+    TimeoutIdle => $timeout_idle,
     UseIPv6 => 'on',
 
     IfModules => {
@@ -1394,7 +1447,7 @@ sub wrap2_redis_deny_list_ipv4mappedv6_netmask {
 
       'mod_redis.c' => {
         RedisEngine => 'on',
-        RedisServer => '127.0.0.1:6379',
+        RedisServer => $redis_server,
         RedisLog => $setup->{log_file},
       },
 
@@ -1433,9 +1486,7 @@ sub wrap2_redis_deny_list_ipv4mappedv6_netmask {
       my $resp_code = $client->response_code();
       my $resp_msg = $client->response_msg();
 
-      my $expected;
-
-      $expected = 530;
+      my $expected = 530;
       $self->assert($expected == $resp_code,
         "Expected response code $expected, got $resp_code");
 
@@ -1443,7 +1494,6 @@ sub wrap2_redis_deny_list_ipv4mappedv6_netmask {
       $self->assert($expected eq $resp_msg,
         "Expected response message '$expected', got '$resp_msg'");
     };
-
     if ($@) {
       $ex = $@;
     }
@@ -1466,13 +1516,13 @@ sub wrap2_redis_deny_list_ipv4mappedv6_netmask {
     server_stop($setup->{pid_file});
     $self->assert_child_ok($pid);
 
-    test_cleanup($setup->{log_file}, $ex);
+    test_cleanup($setup, $ex);
     return;
   }
 
   # Note: this does NOT actually test the handling of IPv4-mapped IPv6 ACLs;
   # the Net::FTP Perl module does not handle connecting to IPv6 addresses.
-  provision_redis($allowed_key, [], $denied_key, ['ALL, [::ffff:127.0.0.1]/32']);
+  provision_redis($redis_server, $allowed_key, [], $denied_key, ['ALL, [::ffff:127.0.0.1]/32']);
 
   eval {
     my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
@@ -1485,9 +1535,7 @@ sub wrap2_redis_deny_list_ipv4mappedv6_netmask {
     my $resp_code = $client->response_code();
     my $resp_msg = $client->response_msg();
 
-    my $expected;
-
-    $expected = 530;
+    my $expected = 530;
     $self->assert($expected == $resp_code,
       "Expected response code $expected, got $resp_code");
 
@@ -1495,7 +1543,6 @@ sub wrap2_redis_deny_list_ipv4mappedv6_netmask {
     $self->assert($expected eq $resp_msg,
       "Expected response message '$expected', got '$resp_msg'");
   };
-
   if ($@) {
     $ex = $@;
   }
@@ -1504,7 +1551,7 @@ sub wrap2_redis_deny_list_ipv4mappedv6_netmask {
   server_stop($setup->{pid_file});
   $self->assert_child_ok($pid);
 
-  test_cleanup($setup->{log_file}, $ex);
+  test_cleanup($setup, $ex);
 }
 
 sub wrap2_redis_deny_list_ipv6_netmask_bug3606 {
@@ -1512,10 +1559,15 @@ sub wrap2_redis_deny_list_ipv6_netmask_bug3606 {
   my $tmpdir = $self->{tmpdir};
   my $setup = test_setup($tmpdir, 'wrap2');
 
+  my $redis_server = '127.0.0.1:6379';
+  if ($ENV{REDIS_SERVER}) {
+    $redis_server = $ENV{REDIS_SERVER};
+  }
+
   # Create allow, deny lists in Redis, and populate them
   my $allowed_key = 'ftpallow';
   my $denied_key = 'ftpdeny';
-  provision_redis($allowed_key, [], $denied_key, [qw(ALL)]);
+  provision_redis($redis_server, $allowed_key, [], $denied_key, [qw(ALL)]);
 
   my $timeout_idle = 30;
 
@@ -1523,11 +1575,14 @@ sub wrap2_redis_deny_list_ipv6_netmask_bug3606 {
     PidFile => $setup->{pid_file},
     ScoreboardFile => $setup->{scoreboard_file},
     SystemLog => $setup->{log_file},
+    TraceLog => $setup->{log_file},
+    Trace => 'redis:20 wrap2:20',
 
     AuthUserFile => $setup->{auth_user_file},
     AuthGroupFile => $setup->{auth_group_file},
-    TimeoutIdle => $timeout_idle,
+    AuthOrder => 'mod_auth_file.c',
 
+    TimeoutIdle => $timeout_idle,
     DefaultAddress => '::1',
     UseIPv6 => 'on',
 
@@ -1538,7 +1593,7 @@ sub wrap2_redis_deny_list_ipv6_netmask_bug3606 {
 
       'mod_redis.c' => {
         RedisEngine => 'on',
-        RedisServer => '127.0.0.1:6379',
+        RedisServer => $redis_server,
         RedisLog => $setup->{log_file},
       },
 
@@ -1607,7 +1662,6 @@ sub wrap2_redis_deny_list_ipv6_netmask_bug3606 {
 
       $client->close();
     };
-
     if ($@) {
       $ex = $@;
     }
@@ -1630,11 +1684,11 @@ sub wrap2_redis_deny_list_ipv6_netmask_bug3606 {
     server_stop($setup->{pid_file});
     $self->assert_child_ok($pid);
 
-    test_cleanup($setup->{log_file}, $ex);
+    test_cleanup($setup, $ex);
     return;
   }
 
-  provision_redis($allowed_key, [], $denied_key, ['[::1]/32']);
+  provision_redis($redis_server, $allowed_key, [], $denied_key, ['[::1]/32']);
 
   eval {
     sleep(2);
@@ -1676,7 +1730,6 @@ sub wrap2_redis_deny_list_ipv6_netmask_bug3606 {
 
     $client->close();
   };
-
   if ($@) {
     $ex = $@;
   }
@@ -1685,7 +1738,7 @@ sub wrap2_redis_deny_list_ipv6_netmask_bug3606 {
   server_stop($setup->{pid_file});
   $self->assert_child_ok($pid);
 
-  test_cleanup($setup->{log_file}, $ex);
+  test_cleanup($setup, $ex);
 }
 
 sub wrap2_redis_deny_list_dns_name {
@@ -1693,10 +1746,15 @@ sub wrap2_redis_deny_list_dns_name {
   my $tmpdir = $self->{tmpdir};
   my $setup = test_setup($tmpdir, 'wrap2');
 
+  my $redis_server = '127.0.0.1:6379';
+  if ($ENV{REDIS_SERVER}) {
+    $redis_server = $ENV{REDIS_SERVER};
+  }
+
   # Create allow, deny lists in Redis, and populate them
   my $allowed_key = 'ftpallow';
   my $denied_key = 'ftpdeny';
-  provision_redis($allowed_key, [], $denied_key, [qw(ALL)]);
+  provision_redis($redis_server, $allowed_key, [], $denied_key, [qw(ALL)]);
 
   my $timeout_idle = 30;
 
@@ -1704,9 +1762,13 @@ sub wrap2_redis_deny_list_dns_name {
     PidFile => $setup->{pid_file},
     ScoreboardFile => $setup->{scoreboard_file},
     SystemLog => $setup->{log_file},
+    TraceLog => $setup->{log_file},
+    Trace => 'redis:20 wrap2:20',
 
     AuthUserFile => $setup->{auth_user_file},
     AuthGroupFile => $setup->{auth_group_file},
+    AuthOrder => 'mod_auth_file.c',
+
     TimeoutIdle => $timeout_idle,
     UseReverseDNS => 'on',
 
@@ -1717,7 +1779,7 @@ sub wrap2_redis_deny_list_dns_name {
 
       'mod_redis.c' => {
         RedisEngine => 'on',
-        RedisServer => '127.0.0.1:6379',
+        RedisServer => $redis_server,
         RedisLog => $setup->{log_file},
       },
 
@@ -1756,9 +1818,7 @@ sub wrap2_redis_deny_list_dns_name {
       my $resp_code = $client->response_code();
       my $resp_msg = $client->response_msg();
 
-      my $expected;
-
-      $expected = 530;
+      my $expected = 530;
       $self->assert($expected == $resp_code,
         "Expected response code $expected, got $resp_code");
 
@@ -1766,7 +1826,6 @@ sub wrap2_redis_deny_list_dns_name {
       $self->assert($expected eq $resp_msg,
         "Expected response message '$expected', got '$resp_msg'");
     };
-
     if ($@) {
       $ex = $@;
     }
@@ -1789,11 +1848,11 @@ sub wrap2_redis_deny_list_dns_name {
     server_stop($setup->{pid_file});
     $self->assert_child_ok($pid);
 
-    test_cleanup($setup->{log_file}, $ex);
+    test_cleanup($setup, $ex);
     return;
   }
 
-  provision_redis($allowed_key, [], $denied_key, [qw(localhost)]);
+  provision_redis($redis_server, $allowed_key, [], $denied_key, [qw(localhost)]);
 
   eval {
     my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
@@ -1805,9 +1864,7 @@ sub wrap2_redis_deny_list_dns_name {
     my $resp_code = $client->response_code();
     my $resp_msg = $client->response_msg();
 
-    my $expected;
-
-    $expected = 530;
+    my $expected = 530;
     $self->assert($expected == $resp_code,
       "Expected response code $expected, got $resp_code");
 
@@ -1823,7 +1880,7 @@ sub wrap2_redis_deny_list_dns_name {
   server_stop($setup->{pid_file});
   $self->assert_child_ok($pid);
 
-  test_cleanup($setup->{log_file}, $ex);
+  test_cleanup($setup, $ex);
 }
 
 sub wrap2_redis_deny_list_dns_domain_bug3558 {
@@ -1831,10 +1888,15 @@ sub wrap2_redis_deny_list_dns_domain_bug3558 {
   my $tmpdir = $self->{tmpdir};
   my $setup = test_setup($tmpdir, 'wrap2');
 
+  my $redis_server = '127.0.0.1:6379';
+  if ($ENV{REDIS_SERVER}) {
+    $redis_server = $ENV{REDIS_SERVER};
+  }
+
   # Create allow, deny lists in Redis, and populate them
   my $allowed_key = 'ftpallow';
   my $denied_key = 'ftpdeny';
-  provision_redis($allowed_key, [], $denied_key, [qw(ALL)]);
+  provision_redis($redis_server, $allowed_key, [], $denied_key, [qw(ALL)]);
 
   my $timeout_idle = 30;
 
@@ -1843,12 +1905,13 @@ sub wrap2_redis_deny_list_dns_domain_bug3558 {
     ScoreboardFile => $setup->{scoreboard_file},
     SystemLog => $setup->{log_file},
     TraceLog => $setup->{log_file},
-    Trace => 'dns:20',
+    Trace => 'dns:20 redis:20 wrap2:20',
 
     AuthUserFile => $setup->{auth_user_file},
     AuthGroupFile => $setup->{auth_group_file},
-    TimeoutIdle => $timeout_idle,
+    AuthOrder => 'mod_auth_file.c',
 
+    TimeoutIdle => $timeout_idle,
     UseReverseDNS => 'on',
 
     IfModules => {
@@ -1858,7 +1921,7 @@ sub wrap2_redis_deny_list_dns_domain_bug3558 {
 
       'mod_redis.c' => {
         RedisEngine => 'on',
-        RedisServer => '127.0.0.1:6379',
+        RedisServer => $redis_server,
         RedisLog => $setup->{log_file},
       },
 
@@ -1898,9 +1961,7 @@ sub wrap2_redis_deny_list_dns_domain_bug3558 {
       my $resp_code = $client->response_code();
       my $resp_msg = $client->response_msg();
 
-      my $expected;
-
-      $expected = 530;
+      my $expected = 530;
       $self->assert($expected == $resp_code,
         "Expected response code $expected, got $resp_code");
 
@@ -1930,11 +1991,11 @@ sub wrap2_redis_deny_list_dns_domain_bug3558 {
     server_stop($setup->{pid_file});
     $self->assert_child_ok($pid);
 
-    test_cleanup($setup->{log_file}, $ex);
+    test_cleanup($setup, $ex);
     return;
   }
 
-  provision_redis($allowed_key, [], $denied_key, [qw(.castaglia.org)]);
+  provision_redis($redis_server, $allowed_key, [], $denied_key, [qw(.castaglia.org)]);
 
   eval {
     my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
@@ -1946,9 +2007,7 @@ sub wrap2_redis_deny_list_dns_domain_bug3558 {
     my $resp_code = $client->response_code();
     my $resp_msg = $client->response_msg();
 
-    my $expected;
-
-    $expected = 530;
+    my $expected = 530;
     $self->assert($expected == $resp_code,
       "Expected response code $expected, got $resp_code");
 
@@ -1964,7 +2023,7 @@ sub wrap2_redis_deny_list_dns_domain_bug3558 {
   server_stop($setup->{pid_file});
   $self->assert_child_ok($pid);
 
-  test_cleanup($setup->{log_file}, $ex);
+  test_cleanup($setup, $ex);
 }
 
 sub wrap2_redis_user_lists {
@@ -1972,10 +2031,15 @@ sub wrap2_redis_user_lists {
   my $tmpdir = $self->{tmpdir};
   my $setup = test_setup($tmpdir, 'wrap2');
 
+  my $redis_server = '127.0.0.1:6379';
+  if ($ENV{REDIS_SERVER}) {
+    $redis_server = $ENV{REDIS_SERVER};
+  }
+
   # Create allow, deny lists in Redis, and populate them
   my $allowed_key = 'ftpallow';
   my $denied_key = "ftpdeny.$setup->{user}";
-  provision_redis($allowed_key, [], $denied_key, [qw(ALL)]);
+  provision_redis($redis_server, $allowed_key, [], $denied_key, [qw(ALL)]);
   $denied_key = 'ftpdeny.%{name}';
 
   my $timeout_idle = 30;
@@ -1985,10 +2049,12 @@ sub wrap2_redis_user_lists {
     ScoreboardFile => $setup->{scoreboard_file},
     SystemLog => $setup->{log_file},
     TraceLog => $setup->{log_file},
-    Trace => 'redis:20',
+    Trace => 'redis:20 wrap2:20',
 
     AuthUserFile => $setup->{auth_user_file},
     AuthGroupFile => $setup->{auth_group_file},
+    AuthOrder => 'mod_auth_file.c',
+
     TimeoutIdle => $timeout_idle,
 
     IfModules => {
@@ -1998,7 +2064,7 @@ sub wrap2_redis_user_lists {
 
       'mod_redis.c' => {
         RedisEngine => 'on',
-        RedisServer => '127.0.0.1:6379',
+        RedisServer => $redis_server,
         RedisLog => $setup->{log_file},
       },
 
@@ -2033,9 +2099,7 @@ sub wrap2_redis_user_lists {
         $setup->{passwd});
       $client->quit();
 
-      my $expected;
-
-      $expected = 230;
+      my $expected = 230;
       $self->assert($expected == $resp_code,
         "Expected response code $expected, got $resp_code");
 
@@ -2068,7 +2132,7 @@ sub wrap2_redis_user_lists {
   sleep(1);
 
   if ($ex) {
-    test_cleanup($setup->{log_file}, $ex);
+    test_cleanup($setup, $ex);
     return;
   }
 
@@ -2084,6 +2148,9 @@ sub wrap2_redis_user_lists {
   defined($pid = fork()) or die("Can't fork: $!");
   if ($pid) {
     eval {
+      # Allow for server startup
+      sleep(1);
+
       my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
       eval { $client->login($setup->{user}, $setup->{passwd}) };
       unless ($@) {
@@ -2093,9 +2160,7 @@ sub wrap2_redis_user_lists {
       my $resp_code = $client->response_code();
       my $resp_msg = $client->response_msg();
 
-      my $expected;
-
-      $expected = 530;
+      my $expected = 530;
       $self->assert($expected == $resp_code,
         "Expected response code $expected, got $resp_code");
 
@@ -2124,7 +2189,7 @@ sub wrap2_redis_user_lists {
   server_stop($setup->{pid_file});
   $self->assert_child_ok($pid);
 
-  test_cleanup($setup->{log_file}, $ex);
+  test_cleanup($setup, $ex);
 }
 
 sub wrap2_redis_group_lists {
@@ -2132,10 +2197,15 @@ sub wrap2_redis_group_lists {
   my $tmpdir = $self->{tmpdir};
   my $setup = test_setup($tmpdir, 'wrap2');
 
+  my $redis_server = '127.0.0.1:6379';
+  if ($ENV{REDIS_SERVER}) {
+    $redis_server = $ENV{REDIS_SERVER};
+  }
+
   # Create allow, deny lists in Redis, and populate them
   my $allowed_key = 'ftpallow';
   my $denied_key = "ftpdeny.$setup->{group}";
-  provision_redis($allowed_key, [], $denied_key, [qw(ALL)]);
+  provision_redis($redis_server, $allowed_key, [], $denied_key, [qw(ALL)]);
   $denied_key = 'ftpdeny.%{name}';
 
   my $timeout_idle = 30;
@@ -2149,6 +2219,8 @@ sub wrap2_redis_group_lists {
 
     AuthUserFile => $setup->{auth_user_file},
     AuthGroupFile => $setup->{auth_group_file},
+    AuthOrder => 'mod_auth_file.c',
+
     TimeoutIdle => $timeout_idle,
 
     IfModules => {
@@ -2158,7 +2230,7 @@ sub wrap2_redis_group_lists {
 
       'mod_redis.c' => {
         RedisEngine => 'on',
-        RedisServer => '127.0.0.1:6379',
+        RedisServer => $redis_server,
         RedisLog => $setup->{log_file},
       },
 
@@ -2193,9 +2265,7 @@ sub wrap2_redis_group_lists {
         $setup->{passwd});
       $client->quit();
 
-      my $expected;
-
-      $expected = 230;
+      my $expected = 230;
       $self->assert($expected == $resp_code,
         "Expected response code $expected, got $resp_code");
 
@@ -2228,7 +2298,7 @@ sub wrap2_redis_group_lists {
   sleep(1);
 
   if ($ex) {
-    test_cleanup($setup->{log_file}, $ex);
+    test_cleanup($setup, $ex);
     return;
   }
 
@@ -2253,9 +2323,7 @@ sub wrap2_redis_group_lists {
       my $resp_code = $client->response_code();
       my $resp_msg = $client->response_msg();
 
-      my $expected;
-
-      $expected = 530;
+      my $expected = 530;
       $self->assert($expected == $resp_code,
         "Expected response code $expected, got $resp_code");
 
@@ -2284,7 +2352,7 @@ sub wrap2_redis_group_lists {
   server_stop($setup->{pid_file});
   $self->assert_child_ok($pid);
 
-  test_cleanup($setup->{log_file}, $ex);
+  test_cleanup($setup, $ex);
 }
 
 sub wrap2_bug3341 {
@@ -2292,12 +2360,17 @@ sub wrap2_bug3341 {
   my $tmpdir = $self->{tmpdir};
   my $setup = test_setup($tmpdir, 'wrap2');
 
+  my $redis_server = '127.0.0.1:6379';
+  if ($ENV{REDIS_SERVER}) {
+    $redis_server = $ENV{REDIS_SERVER};
+  }
+
   # Create allow, deny lists in Redis, and populate them
   my $allowed_key = 'ftpallow';
   my $denied_key = 'ftpdeny';
 
   my $allowed = ['192.168.0.1,192.168.0.2 192.168.0.3, 192.168.0.4 127.0.0.1'];
-  provision_redis($allowed_key, $allowed, $denied_key, [qw(ALL)]);
+  provision_redis($redis_server, $allowed_key, $allowed, $denied_key, [qw(ALL)]);
 
   my $timeout_idle = 30;
 
@@ -2305,9 +2378,13 @@ sub wrap2_bug3341 {
     PidFile => $setup->{pid_file},
     ScoreboardFile => $setup->{scoreboard_file},
     SystemLog => $setup->{log_file},
+    TraceLog => $setup->{log_file},
+    Trace => 'redis:20 wrap2:20',
 
     AuthUserFile => $setup->{auth_user_file},
     AuthGroupFile => $setup->{auth_group_file},
+    AuthOrder => 'mod_auth_file.c',
+
     TimeoutIdle => $timeout_idle,
 
     IfModules => {
@@ -2317,7 +2394,7 @@ sub wrap2_bug3341 {
 
       'mod_redis.c' => {
         RedisEngine => 'on',
-        RedisServer => '127.0.0.1:6379',
+        RedisServer => $redis_server,
         RedisLog => $setup->{log_file},
       },
 
@@ -2359,9 +2436,7 @@ sub wrap2_bug3341 {
       my $resp_code = $client->response_code();
       my $resp_msg = $client->response_msg();
 
-      my $expected;
-
-      $expected = 530;
+      my $expected = 530;
       $self->assert($expected == $resp_code,
         "Expected response code $expected, got $resp_code");
 
@@ -2418,7 +2493,7 @@ sub wrap2_bug3341 {
   server_stop($setup->{pid_file});
   $self->assert_child_ok($pid);
 
-  test_cleanup($setup->{log_file}, $ex);
+  test_cleanup($setup, $ex);
 }
 
 sub wrap2_redis_opt_check_on_connect_bug3508 {
@@ -2426,10 +2501,15 @@ sub wrap2_redis_opt_check_on_connect_bug3508 {
   my $tmpdir = $self->{tmpdir};
   my $setup = test_setup($tmpdir, 'wrap2');
 
+  my $redis_server = '127.0.0.1:6379';
+  if ($ENV{REDIS_SERVER}) {
+    $redis_server = $ENV{REDIS_SERVER};
+  }
+
   # Create allow, deny lists in Redis, and populate them
   my $allowed_key = 'ftpallow';
   my $denied_key = 'ftpdeny';
-  provision_redis($allowed_key, [], $denied_key, [qw(127.0.0.2)]);
+  provision_redis($redis_server, $allowed_key, [], $denied_key, [qw(127.0.0.2)]);
 
   my $timeout_idle = 30;
 
@@ -2437,9 +2517,13 @@ sub wrap2_redis_opt_check_on_connect_bug3508 {
     PidFile => $setup->{pid_file},
     ScoreboardFile => $setup->{scoreboard_file},
     SystemLog => $setup->{log_file},
+    TraceLog => $setup->{log_file},
+    Trace => 'redis:20 wrap2:20',
 
     AuthUserFile => $setup->{auth_user_file},
     AuthGroupFile => $setup->{auth_group_file},
+    AuthOrder => 'mod_auth_file.c',
+
     TimeoutIdle => $timeout_idle,
 
     IfModules => {
@@ -2449,7 +2533,7 @@ sub wrap2_redis_opt_check_on_connect_bug3508 {
 
       'mod_redis.c' => {
         RedisEngine => 'on',
-        RedisServer => '127.0.0.1:6379',
+        RedisServer => $redis_server,
         RedisLog => $setup->{log_file},
       },
 
@@ -2484,9 +2568,7 @@ sub wrap2_redis_opt_check_on_connect_bug3508 {
       my ($resp_code, $resp_msg) = $client->login($setup->{user},
         $setup->{passwd});
 
-      my $expected;
-
-      $expected = 230;
+      my $expected = 230;
       $self->assert($expected == $resp_code,
         "Expected response code $expected, got $resp_code");
 
@@ -2516,11 +2598,11 @@ sub wrap2_redis_opt_check_on_connect_bug3508 {
     server_stop($setup->{pid_file});
     $self->assert_child_ok($pid);
 
-    test_cleanup($setup->{log_file}, $ex);
+    test_cleanup($setup, $ex);
     return;
   }
 
-  provision_redis($allowed_key, [], $denied_key, [qw(127.0.0.1)]);
+  provision_redis($redis_server, $allowed_key, [], $denied_key, [qw(127.0.0.1)]);
 
   eval {
     my $client;
@@ -2545,7 +2627,7 @@ sub wrap2_redis_opt_check_on_connect_bug3508 {
   server_stop($setup->{pid_file});
   $self->assert_child_ok($pid);
 
-  test_cleanup($setup->{log_file}, $ex);
+  test_cleanup($setup, $ex);
 }
 
 sub wrap2_allow_msg_bug3538 {
@@ -2553,10 +2635,15 @@ sub wrap2_allow_msg_bug3538 {
   my $tmpdir = $self->{tmpdir};
   my $setup = test_setup($tmpdir, 'wrap2');
 
+  my $redis_server = '127.0.0.1:6379';
+  if ($ENV{REDIS_SERVER}) {
+    $redis_server = $ENV{REDIS_SERVER};
+  }
+
   # Create allow, deny lists in Redis, and populate them
   my $allowed_key = 'ftpallow';
   my $denied_key = 'ftpdeny';
-  provision_redis($allowed_key, [], $denied_key, []);
+  provision_redis($redis_server, $allowed_key, [], $denied_key, []);
 
   my $timeout_idle = 30;
 
@@ -2564,10 +2651,14 @@ sub wrap2_allow_msg_bug3538 {
     PidFile => $setup->{pid_file},
     ScoreboardFile => $setup->{scoreboard_file},
     SystemLog => $setup->{log_file},
+    TraceLog => $setup->{log_file},
+    Trace => 'redis:20 wrap2:20',
 
-    AccessGrantMsg => '"User %u logged in."',
     AuthUserFile => $setup->{auth_user_file},
     AuthGroupFile => $setup->{auth_group_file},
+    AuthOrder => 'mod_auth_file.c',
+
+    AccessGrantMsg => '"User %u logged in."',
     TimeoutIdle => $timeout_idle,
 
     IfModules => {
@@ -2577,7 +2668,7 @@ sub wrap2_allow_msg_bug3538 {
 
       'mod_redis.c' => {
         RedisEngine => 'on',
-        RedisServer => '127.0.0.1:6379',
+        RedisServer => $redis_server,
         RedisLog => $setup->{log_file},
       },
 
@@ -2614,9 +2705,7 @@ sub wrap2_allow_msg_bug3538 {
       my $resp_code = $client->response_code();
       my $resp_msg = $client->response_msg(0);
 
-      my $expected;
-
-      $expected = 230;
+      my $expected = 230;
       $self->assert($expected == $resp_code,
         "Expected response code $expected, got $resp_code");
 
@@ -2653,7 +2742,7 @@ sub wrap2_allow_msg_bug3538 {
   server_stop($setup->{pid_file});
   $self->assert_child_ok($pid);
 
-  test_cleanup($setup->{log_file}, $ex);
+  test_cleanup($setup, $ex);
 }
 
 sub wrap2_allow_msg_anon_bug3538 {
@@ -2661,10 +2750,15 @@ sub wrap2_allow_msg_anon_bug3538 {
   my $tmpdir = $self->{tmpdir};
   my $setup = test_setup($tmpdir, 'wrap2');
 
+  my $redis_server = '127.0.0.1:6379';
+  if ($ENV{REDIS_SERVER}) {
+    $redis_server = $ENV{REDIS_SERVER};
+  }
+
   # Create allow, deny lists in Redis, and populate them
   my $allowed_key = 'ftpallow';
   my $denied_key = 'ftpdeny';
-  provision_redis($allowed_key, [], $denied_key, []);
+  provision_redis($redis_server, $allowed_key, [], $denied_key, []);
 
   my ($test_user, $test_group) = config_get_identity();
   my $passwd = 'test';
@@ -2676,10 +2770,15 @@ sub wrap2_allow_msg_anon_bug3538 {
     PidFile => $setup->{pid_file},
     ScoreboardFile => $setup->{scoreboard_file},
     SystemLog => $setup->{log_file},
+    TraceLog => $setup->{log_file},
+    Trace => 'redis:20 wrap2:20',
 
-    AccessGrantMsg => '"User %u logged in."',
+    # NOTE: We deliberately omit AuthOrder here, since the test user is
+    # based on the system passwd file.
     AuthUserFile => $setup->{auth_user_file},
     AuthGroupFile => $setup->{auth_group_file},
+
+    AccessGrantMsg => '"User %u logged in."',
     TimeoutIdle => $timeout_idle,
 
     Anonymous => {
@@ -2692,13 +2791,17 @@ sub wrap2_allow_msg_anon_bug3538 {
     },
 
     IfModules => {
+      'mod_auth_pam.c' => {
+        AuthPAM => 'off',
+      },
+
       'mod_delay.c' => {
         DelayEngine => 'off',
       },
 
       'mod_redis.c' => {
         RedisEngine => 'on',
-        RedisServer => '127.0.0.1:6379',
+        RedisServer => $redis_server,
         RedisLog => $setup->{log_file},
       },
 
@@ -2735,9 +2838,7 @@ sub wrap2_allow_msg_anon_bug3538 {
       my $resp_code = $client->response_code();
       my $resp_msg = $client->response_msg(0);
 
-      my $expected;
-
-      $expected = 230;
+      my $expected = 230;
       $self->assert($expected == $resp_code,
         "Expected response code $expected, got $resp_code");
 
@@ -2774,7 +2875,7 @@ sub wrap2_allow_msg_anon_bug3538 {
   server_stop($setup->{pid_file});
   $self->assert_child_ok($pid);
 
-  test_cleanup($setup->{log_file}, $ex);
+  test_cleanup($setup, $ex);
 }
 
 sub wrap2_redis_deny_event_exec_bug3209 {
@@ -2782,10 +2883,15 @@ sub wrap2_redis_deny_event_exec_bug3209 {
   my $tmpdir = $self->{tmpdir};
   my $setup = test_setup($tmpdir, 'wrap2');
 
+  my $redis_server = '127.0.0.1:6379';
+  if ($ENV{REDIS_SERVER}) {
+    $redis_server = $ENV{REDIS_SERVER};
+  }
+
   # Create allow, deny lists in Redis, and populate them
   my $allowed_key = 'ftpallow';
   my $denied_key = 'ftpdeny';
-  provision_redis($allowed_key, [], $denied_key, [qw(ALL)]);
+  provision_redis($redis_server, $allowed_key, [], $denied_key, [qw(ALL)]);
 
   my $event_file = File::Spec->rel2abs("$tmpdir/denied-client.txt");
   my $spawn_script = File::Spec->rel2abs("$tmpdir/spawn.sh");
@@ -2814,10 +2920,12 @@ EOS
     ScoreboardFile => $setup->{scoreboard_file},
     SystemLog => $setup->{log_file},
     TraceLog => $setup->{log_file},
-    Trace => 'event:20',
+    Trace => 'event:20 redis:20',
 
     AuthUserFile => $setup->{auth_user_file},
     AuthGroupFile => $setup->{auth_group_file},
+    AuthOrder => 'mod_auth_file.c',
+
     TimeoutIdle => $timeout_idle,
 
     IfModules => {
@@ -2834,7 +2942,7 @@ EOS
 
       'mod_redis.c' => {
         RedisEngine => 'on',
-        RedisServer => '127.0.0.1:6379',
+        RedisServer => $redis_server,
         RedisLog => $setup->{log_file},
       },
 
@@ -2873,9 +2981,7 @@ EOS
       my $resp_code = $client->response_code();
       my $resp_msg = $client->response_msg();
 
-      my $expected;
-
-      $expected = 530;
+      my $expected = 530;
       $self->assert($expected == $resp_code,
         "Expected response code $expected, got $resp_code");
 
@@ -2921,7 +3027,7 @@ EOS
   server_stop($setup->{pid_file});
   $self->assert_child_ok($pid);
 
-  test_cleanup($setup->{log_file}, $ex);
+  test_cleanup($setup, $ex);
 }
 
 1;
