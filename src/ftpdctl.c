@@ -363,7 +363,7 @@ int main(int argc, char *argv[]) {
   }
 
   if (respargv != NULL) {
-    unsigned int count;
+    int count;
 
     count = respargc;
     if (count > FTPDCTL_MAX_RESP_COUNT) {
