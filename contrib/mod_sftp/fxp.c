@@ -5453,6 +5453,29 @@ static int fxp_handle_ext_hardlink(struct fxp_packet *fxp, char *src,
   buflen = bufsz = FXP_RESPONSE_DATA_DEFAULT_SZ;
   buf = ptr = palloc(fxp->pool, bufsz);
 
+  if (pr_cmd_dispatch_phase(cmd, PRE_CMD, 0) < 0) {
+    status_code = SSH2_FX_PERMISSION_DENIED;
+
+    (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
+      "HARDLINK of '%s' to '%s' blocked by '%s' handler: %s", src, dst,
+      (char *) cmd->argv[0], strerror(errno));
+
+    pr_trace_msg(trace_channel, 8, "sending response: STATUS %lu '%s'",
+      (unsigned long) status_code, fxp_strerror(status_code));
+
+    pr_response_add_err(R_550, "%s: %s", cmd->arg, strerror(EACCES));
+    fxp_cmd_dispatch_err(cmd);
+
+    fxp_status_write(fxp->pool, &buf, &buflen, fxp->request_id, status_code,
+      fxp_strerror(status_code), NULL);
+
+    resp = fxp_packet_create(fxp->pool, fxp->channel_id);
+    resp->payload = ptr;
+    resp->payload_sz = (bufsz - buflen);
+
+    return fxp_packet_write(resp);
+  }
+
   path = dir_best_path(fxp->pool, src);
   if (path == NULL) {
     status_code = SSH2_FX_PERMISSION_DENIED;
@@ -9301,6 +9324,31 @@ static int fxp_handle_link(struct fxp_packet *fxp) {
 
   buflen = bufsz = FXP_RESPONSE_DATA_DEFAULT_SZ;
   buf = ptr = palloc(fxp->pool, bufsz);
+
+  if (is_symlink == FALSE) {
+    if (pr_cmd_dispatch_phase(cmd, PRE_CMD, 0) < 0) {
+      status_code = SSH2_FX_PERMISSION_DENIED;
+
+      (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
+        "HARDLINK of '%s' to '%s' blocked by '%s' handler: %s", link_path,
+        target_path, (char *) cmd->argv[0], strerror(errno));
+
+      pr_trace_msg(trace_channel, 8, "sending response: STATUS %lu '%s'",
+      (unsigned long) status_code, fxp_strerror(status_code));
+
+      pr_response_add_err(R_550, "%s: %s", cmd->arg, strerror(EACCES));
+      fxp_cmd_dispatch_err(cmd);
+
+      fxp_status_write(fxp->pool, &buf, &buflen, fxp->request_id, status_code,
+      fxp_strerror(status_code), NULL);
+
+      resp = fxp_packet_create(fxp->pool, fxp->channel_id);
+      resp->payload = ptr;
+      resp->payload_sz = (bufsz - buflen);
+
+      return fxp_packet_write(resp);
+    }
+  }
 
   cmd_name = cmd->argv[0];
   pr_cmd_set_name(cmd, "LINK");
@@ -14170,7 +14218,7 @@ static int fxp_handle_symlink(struct fxp_packet *fxp) {
     status_code = SSH2_FX_PERMISSION_DENIED;
 
     (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
-      "SYMLINK of '%s' to '%s' blocked by '%s' handler: %sl", target_path,
+      "SYMLINK of '%s' to '%s' blocked by '%s' handler: %s", target_path,
       link_path, (char *) cmd2->argv[0], strerror(errno));
 
     pr_trace_msg(trace_channel, 8, "sending response: STATUS %lu '%s'",
