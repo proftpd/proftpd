@@ -688,12 +688,12 @@ MODRET set_redislogoncommand(cmd_rec *cmd) {
         key_text, "': ", strerror(errno), NULL));
     }
 
-    destroy_pool(tmp_pool);
-
     key_fmtlen = jot_parsed->bufsz - jot_parsed->buflen;
     key_fmtbuf[key_fmtlen] = '\0';
     key_fmt = (unsigned char *) pstrndup(c->pool, (char *) key_fmtbuf,
       key_fmtlen);
+
+    destroy_pool(tmp_pool);
   }
 
   c->argv[0] = jot_filters;
@@ -772,12 +772,12 @@ MODRET set_redislogonevent(cmd_rec *cmd) {
         key_text, "': ", strerror(errno), NULL));
     }
 
-    destroy_pool(tmp_pool);
-
     key_fmtlen = jot_parsed->bufsz - jot_parsed->buflen;
     key_fmtbuf[key_fmtlen] = '\0';
     key_fmt = (unsigned char *) pstrndup(c->pool, (char *) key_fmtbuf,
       key_fmtlen);
+
+    destroy_pool(tmp_pool);
   }
 
   c->argv[0] = jot_filters;

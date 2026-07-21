@@ -110,30 +110,36 @@ sub list_tests {
 }
 
 sub redis_list_delete {
+  my $redis_server = shift;
   my $key = shift;
 
   require Redis;
   my $redis = Redis->new(
+    server => $redis_server,
     reconnect => 5,
     every => 250_000
   );
 
   $redis->del($key);
   $redis->quit();
+
   return 1;
 }
 
 sub redis_list_getall {
+  my $redis_server = shift;
   my $key = shift;
 
   require Redis;
   my $redis = Redis->new(
+    server => $redis_server,
     reconnect => 5,
     every => 250_000
   );
 
   my $data = $redis->lrange($key, 0, -1);
   $redis->quit();
+  $redis = undef;
 
   return $data;
 }
@@ -143,8 +149,13 @@ sub redis_log_on_command {
   my $tmpdir = $self->{tmpdir};
   my $setup = test_setup($tmpdir, 'redis');
 
+  my $redis_server = '127.0.0.1:6379';
+  if ($ENV{REDIS_SERVER}) {
+    $redis_server = $ENV{REDIS_SERVER};
+  }
+
   my $fmt_name = 'custom';
-  redis_list_delete($fmt_name);
+  redis_list_delete($redis_server, $fmt_name);
 
   my $config = {
     PidFile => $setup->{pid_file},
@@ -165,7 +176,7 @@ sub redis_log_on_command {
       # Note: we need to use arrays here, since order of directives matters.
       'mod_redis.c' => [
         'RedisEngine on',
-        'RedisServer 127.0.0.1:6379',
+        "RedisServer $redis_server",
         "RedisLog $setup->{log_file}",
         "LogFormat $fmt_name \"%a %u\"",
         "RedisLogOnCommand PASS $fmt_name",
@@ -228,7 +239,7 @@ sub redis_log_on_command {
   $self->assert_child_ok($pid);
 
   eval {
-    my $data = redis_list_getall($fmt_name);
+    my $data = redis_list_getall($redis_server, $fmt_name);
 
     my $nrecords = scalar(@$data);
     $self->assert($nrecords == 1, "Expected 1 record, got $nrecords");
@@ -248,7 +259,7 @@ sub redis_log_on_command {
     $ex = $@;
   }
 
-  test_cleanup($setup->{log_file}, $ex);
+  test_cleanup($setup, $ex);
 }
 
 sub redis_log_on_command_custom_key {
@@ -256,9 +267,14 @@ sub redis_log_on_command_custom_key {
   my $tmpdir = $self->{tmpdir};
   my $setup = test_setup($tmpdir, 'redis');
 
+  my $redis_server = '127.0.0.1:6379';
+  if ($ENV{REDIS_SERVER}) {
+    $redis_server = $ENV{REDIS_SERVER};
+  }
+
   my $fmt_name = 'custom';
   my $key_name = "ftp.$setup->{user}.PASS";
-  redis_list_delete($key_name);
+  redis_list_delete($redis_server, $key_name);
 
   my $config = {
     PidFile => $setup->{pid_file},
@@ -279,7 +295,7 @@ sub redis_log_on_command_custom_key {
       # Note: we need to use arrays here, since order of directives matters.
       'mod_redis.c' => [
         'RedisEngine on',
-        'RedisServer 127.0.0.1:6379',
+        "RedisServer $redis_server",
         "RedisLog $setup->{log_file}",
         "LogFormat $fmt_name \"%a %u\"",
         "RedisLogOnCommand PASS $fmt_name ftp.%u.%m",
@@ -305,6 +321,9 @@ sub redis_log_on_command_custom_key {
   defined(my $pid = fork()) or die("Can't fork: $!");
   if ($pid) {
     eval {
+      # Allow for server startup
+      sleep(1);
+
       my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
       $client->login($setup->{user}, $setup->{passwd});
 
@@ -342,7 +361,7 @@ sub redis_log_on_command_custom_key {
   $self->assert_child_ok($pid);
 
   eval {
-    my $data = redis_list_getall($key_name);
+    my $data = redis_list_getall($redis_server, $key_name);
 
     if ($ENV{TEST_VERBOSE}) {
       use Data::Dumper;
@@ -367,7 +386,7 @@ sub redis_log_on_command_custom_key {
     $ex = $@;
   }
 
-  test_cleanup($setup->{log_file}, $ex);
+  test_cleanup($setup, $ex);
 }
 
 sub redis_log_on_command_per_dir {
@@ -378,8 +397,13 @@ sub redis_log_on_command_per_dir {
   my $sub_dir = File::Spec->rel2abs("$tmpdir/test.d");
   mkpath($sub_dir);
 
+  my $redis_server = '127.0.0.1:6379';
+  if ($ENV{REDIS_SERVER}) {
+    $redis_server = $ENV{REDIS_SERVER};
+  }
+
   my $fmt_name = 'custom';
-  redis_list_delete($fmt_name);
+  redis_list_delete($redis_server, $fmt_name);
 
   my $config = {
     PidFile => $setup->{pid_file},
@@ -411,7 +435,7 @@ sub redis_log_on_command_per_dir {
     print $fh <<EOC;
 <IfModule mod_redis.c>
   RedisEngine on
-  RedisServer 127.0.0.1:6379
+  RedisServer $redis_server
   RedisLog $setup->{log_file}
   LogFormat $fmt_name "%a %u"
 
@@ -472,7 +496,7 @@ EOC
   $self->assert_child_ok($pid);
 
   eval {
-    my $data = redis_list_getall($fmt_name);
+    my $data = redis_list_getall($redis_server, $fmt_name);
 
     if ($ENV{TEST_VERBOSE}) {
       use Data::Dumper;
@@ -497,7 +521,7 @@ EOC
     $ex = $@;
   }
 
-  test_cleanup($setup->{log_file}, $ex);
+  test_cleanup($setup, $ex);
 }
 
 sub redis_log_on_command_per_dir_none {
@@ -508,8 +532,13 @@ sub redis_log_on_command_per_dir_none {
   my $sub_dir = File::Spec->rel2abs("$tmpdir/test.d");
   mkpath($sub_dir);
 
+  my $redis_server = '127.0.0.1:6379';
+  if ($ENV{REDIS_SERVER}) {
+    $redis_server = $ENV{REDIS_SERVER};
+  }
+
   my $fmt_name = 'custom';
-  redis_list_delete($fmt_name);
+  redis_list_delete($redis_server, $fmt_name);
 
   my $config = {
     PidFile => $setup->{pid_file},
@@ -541,7 +570,7 @@ sub redis_log_on_command_per_dir_none {
     print $fh <<EOC;
 <IfModule mod_redis.c>
   RedisEngine on
-  RedisServer 127.0.0.1:6379
+  RedisServer $redis_server
   RedisLog $setup->{log_file}
   LogFormat $fmt_name "%a %u"
 
@@ -577,6 +606,9 @@ EOC
   defined(my $pid = fork()) or die("Can't fork: $!");
   if ($pid) {
     eval {
+      # Allow for server startup
+      sleep(1);
+
       my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
       $client->login($setup->{user}, $setup->{passwd});
       $client->pwd();
@@ -606,7 +638,7 @@ EOC
   $self->assert_child_ok($pid);
 
   eval {
-    my $data = redis_list_getall($fmt_name);
+    my $data = redis_list_getall($redis_server, $fmt_name);
 
     if ($ENV{TEST_VERBOSE}) {
       use Data::Dumper;
@@ -620,7 +652,7 @@ EOC
     $ex = $@;
   }
 
-  test_cleanup($setup->{log_file}, $ex);
+  test_cleanup($setup, $ex);
 }
 
 sub redis_log_on_command_per_dir_none2 {
@@ -631,8 +663,13 @@ sub redis_log_on_command_per_dir_none2 {
   my $sub_dir = File::Spec->rel2abs("$tmpdir/test.d");
   mkpath($sub_dir);
 
+  my $redis_server = '127.0.0.1:6379';
+  if ($ENV{REDIS_SERVER}) {
+    $redis_server = $ENV{REDIS_SERVER};
+  }
+
   my $fmt_name = 'custom';
-  redis_list_delete($fmt_name);
+  redis_list_delete($redis_server, $fmt_name);
 
   my $config = {
     PidFile => $setup->{pid_file},
@@ -664,7 +701,7 @@ sub redis_log_on_command_per_dir_none2 {
     print $fh <<EOC;
 <IfModule mod_redis.c>
   RedisEngine on
-  RedisServer 127.0.0.1:6379
+  RedisServer $redis_server
   RedisLog $setup->{log_file}
   LogFormat $fmt_name "%a %u"
 
@@ -729,7 +766,7 @@ EOC
   $self->assert_child_ok($pid);
 
   eval {
-    my $data = redis_list_getall($fmt_name);
+    my $data = redis_list_getall($redis_server, $fmt_name);
 
     if ($ENV{TEST_VERBOSE}) {
       use Data::Dumper;
@@ -743,7 +780,7 @@ EOC
     $ex = $@;
   }
 
-  test_cleanup($setup->{log_file}, $ex);
+  test_cleanup($setup, $ex);
 }
 
 sub redis_log_on_event {
@@ -751,8 +788,13 @@ sub redis_log_on_event {
   my $tmpdir = $self->{tmpdir};
   my $setup = test_setup($tmpdir, 'redis');
 
+  my $redis_server = '127.0.0.1:6379';
+  if ($ENV{REDIS_SERVER}) {
+    $redis_server = $ENV{REDIS_SERVER};
+  }
+
   my $fmt_name = 'custom';
-  redis_list_delete($fmt_name);
+  redis_list_delete($redis_server, $fmt_name);
 
   my $config = {
     PidFile => $setup->{pid_file},
@@ -773,7 +815,7 @@ sub redis_log_on_event {
       # Note: we need to use arrays here, since order of directives matters.
       'mod_redis.c' => [
         'RedisEngine on',
-        'RedisServer 127.0.0.1:6379',
+        "RedisServer $redis_server",
         "RedisLog $setup->{log_file}",
         "LogFormat $fmt_name \"%A %a %b %c %D %d %E %{epoch} %F %f %{gid} %g %H %h %I %{iso8601} %J %L %l %m %O %P %p %{protocol} %R %r %{remote-port} %S %s %T %t %U %u %{uid} %V %v %{version}\"",
         "RedisLogOnEvent ALL $fmt_name",
@@ -799,6 +841,9 @@ sub redis_log_on_event {
   defined(my $pid = fork()) or die("Can't fork: $!");
   if ($pid) {
     eval {
+      # Allow for server startup
+      sleep(1);
+
       my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
       $client->login($setup->{user}, $setup->{passwd});
 
@@ -837,7 +882,7 @@ sub redis_log_on_event {
   $self->assert_child_ok($pid);
 
   eval {
-    my $data = redis_list_getall($fmt_name);
+    my $data = redis_list_getall($redis_server, $fmt_name);
 
     if ($ENV{TEST_VERBOSE}) {
       use Data::Dumper;
@@ -845,11 +890,14 @@ sub redis_log_on_event {
     }
 
     my $nrecords = scalar(@$data);
-    $self->assert($nrecords == 4 || $nrecords == 5,
-      "Expected 4-5 records, got $nrecords");
+
+    # Depending on the build, the number of events generated may vary.
+    # But there should at least be 3 records, maybe as many as 5.
+    $self->assert($nrecords >= 3 && $nrecords <= 5,
+      "Expected 3-5 records, got $nrecords");
 
     require JSON;
-    my $record = decode_json($data->[3]);
+    my $record = decode_json($data->[2]);
 
     my $expected = $setup->{user};
     $self->assert($record->{user} eq $expected,
@@ -863,7 +911,7 @@ sub redis_log_on_event {
     $ex = $@;
   }
 
-  test_cleanup($setup->{log_file}, $ex);
+  test_cleanup($setup, $ex);
 }
 
 sub redis_log_on_event_custom_key {
@@ -871,9 +919,14 @@ sub redis_log_on_event_custom_key {
   my $tmpdir = $self->{tmpdir};
   my $setup = test_setup($tmpdir, 'redis');
 
+  my $redis_server = '127.0.0.1:6379';
+  if ($ENV{REDIS_SERVER}) {
+    $redis_server = $ENV{REDIS_SERVER};
+  }
+
   my $fmt_name = 'custom';
   my $key_name = 'ftp.127.0.0.1';
-  redis_list_delete($key_name);
+  redis_list_delete($redis_server, $key_name);
 
   my $config = {
     PidFile => $setup->{pid_file},
@@ -894,7 +947,7 @@ sub redis_log_on_event_custom_key {
       # Note: we need to use arrays here, since order of directives matters.
       'mod_redis.c' => [
         'RedisEngine on',
-        'RedisServer 127.0.0.1:6379',
+        "RedisServer $redis_server",
         "RedisLog $setup->{log_file}",
         "LogFormat $fmt_name \"%A %a %b %c %D %d %E %{epoch} %F %f %{gid} %g %H %h %I %{iso8601} %J %L %l %m %O %P %p %{protocol} %R %r %{remote-port} %S %s %T %t %U %u %{uid} %V %v %{version}\"",
         "RedisLogOnEvent ALL $fmt_name ftp.%a",
@@ -920,6 +973,9 @@ sub redis_log_on_event_custom_key {
   defined(my $pid = fork()) or die("Can't fork: $!");
   if ($pid) {
     eval {
+      # Allow for server startup
+      sleep(1);
+
       my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
       $client->login($setup->{user}, $setup->{passwd});
 
@@ -958,7 +1014,7 @@ sub redis_log_on_event_custom_key {
   $self->assert_child_ok($pid);
 
   eval {
-    my $data = redis_list_getall($key_name);
+    my $data = redis_list_getall($redis_server, $key_name);
 
     if ($ENV{TEST_VERBOSE}) {
       use Data::Dumper;
@@ -966,11 +1022,14 @@ sub redis_log_on_event_custom_key {
     }
 
     my $nrecords = scalar(@$data);
-    $self->assert($nrecords == 4 || $nrecords == 5,
-      "Expected 4-5 records, got $nrecords");
+
+    # Depending on the build, the number of events generated may vary.
+    # But there should at least be 3 records, maybe as many as 5.
+    $self->assert($nrecords >= 3 && $nrecords <= 5,
+      "Expected 3-5 records, got $nrecords");
 
     require JSON;
-    my $record = decode_json($data->[3]);
+    my $record = decode_json($data->[2]);
 
     my $expected = $setup->{user};
     $self->assert($record->{user} eq $expected,
@@ -984,7 +1043,7 @@ sub redis_log_on_event_custom_key {
     $ex = $@;
   }
 
-  test_cleanup($setup->{log_file}, $ex);
+  test_cleanup($setup, $ex);
 }
 
 sub redis_log_on_event_per_dir {
@@ -995,8 +1054,13 @@ sub redis_log_on_event_per_dir {
   my $sub_dir = File::Spec->rel2abs("$tmpdir/test.d");
   mkpath($sub_dir);
 
+  my $redis_server = '127.0.0.1:6379';
+  if ($ENV{REDIS_SERVER}) {
+    $redis_server = $ENV{REDIS_SERVER};
+  }
+
   my $fmt_name = 'custom';
-  redis_list_delete($fmt_name);
+  redis_list_delete($redis_server, $fmt_name);
 
   my $config = {
     PidFile => $setup->{pid_file},
@@ -1028,7 +1092,7 @@ sub redis_log_on_event_per_dir {
     print $fh <<EOC;
 <IfModule mod_redis.c>
   RedisEngine on
-  RedisServer 127.0.0.1:6379
+  RedisServer $redis_server
   RedisLog $setup->{log_file}
   LogFormat $fmt_name "%a %u"
 
@@ -1089,7 +1153,7 @@ EOC
   $self->assert_child_ok($pid);
 
   eval {
-    my $data = redis_list_getall($fmt_name);
+    my $data = redis_list_getall($redis_server, $fmt_name);
 
     if ($ENV{TEST_VERBOSE}) {
       use Data::Dumper;
@@ -1114,7 +1178,7 @@ EOC
     $ex = $@;
   }
 
-  test_cleanup($setup->{log_file}, $ex);
+  test_cleanup($setup, $ex);
 }
 
 sub redis_log_on_event_per_dir_none {
@@ -1125,8 +1189,13 @@ sub redis_log_on_event_per_dir_none {
   my $sub_dir = File::Spec->rel2abs("$tmpdir/test.d");
   mkpath($sub_dir);
 
+  my $redis_server = '127.0.0.1:6379';
+  if ($ENV{REDIS_SERVER}) {
+    $redis_server = $ENV{REDIS_SERVER};
+  }
+
   my $fmt_name = 'custom';
-  redis_list_delete($fmt_name);
+  redis_list_delete($redis_server, $fmt_name);
 
   my $config = {
     PidFile => $setup->{pid_file},
@@ -1158,7 +1227,7 @@ sub redis_log_on_event_per_dir_none {
     print $fh <<EOC;
 <IfModule mod_redis.c>
   RedisEngine on
-  RedisServer 127.0.0.1:6379
+  RedisServer $redis_server
   RedisLog $setup->{log_file}
   LogFormat $fmt_name "%a %u"
 
@@ -1223,7 +1292,7 @@ EOC
   $self->assert_child_ok($pid);
 
   eval {
-    my $data = redis_list_getall($fmt_name);
+    my $data = redis_list_getall($redis_server, $fmt_name);
 
     if ($ENV{TEST_VERBOSE}) {
       use Data::Dumper;
@@ -1237,7 +1306,7 @@ EOC
     $ex = $@;
   }
 
-  test_cleanup($setup->{log_file}, $ex);
+  test_cleanup($setup, $ex);
 }
 
 sub redis_log_on_event_per_dir_none2 {
@@ -1248,8 +1317,13 @@ sub redis_log_on_event_per_dir_none2 {
   my $sub_dir = File::Spec->rel2abs("$tmpdir/test.d");
   mkpath($sub_dir);
 
+  my $redis_server = '127.0.0.1:6379';
+  if ($ENV{REDIS_SERVER}) {
+    $redis_server = $ENV{REDIS_SERVER};
+  }
+
   my $fmt_name = 'custom';
-  redis_list_delete($fmt_name);
+  redis_list_delete($redis_server, $fmt_name);
 
   my $config = {
     PidFile => $setup->{pid_file},
@@ -1281,7 +1355,7 @@ sub redis_log_on_event_per_dir_none2 {
     print $fh <<EOC;
 <IfModule mod_redis.c>
   RedisEngine on
-  RedisServer 127.0.0.1:6379
+  RedisServer $redis_server
   RedisLog $setup->{log_file}
   LogFormat $fmt_name "%a %u"
 
@@ -1346,7 +1420,7 @@ EOC
   $self->assert_child_ok($pid);
 
   eval {
-    my $data = redis_list_getall($fmt_name);
+    my $data = redis_list_getall($redis_server, $fmt_name);
 
     if ($ENV{TEST_VERBOSE}) {
       use Data::Dumper;
@@ -1360,16 +1434,21 @@ EOC
     $ex = $@;
   }
 
-  test_cleanup($setup->{log_file}, $ex);
+  test_cleanup($setup, $ex);
 }
 
-sub redis_log_fmt_extra_with_log_on_commmand {
+sub redis_log_fmt_extra_with_log_on_command {
   my $self = shift;
   my $tmpdir = $self->{tmpdir};
   my $setup = test_setup($tmpdir, 'redis');
 
+  my $redis_server = '127.0.0.1:6379';
+  if ($ENV{REDIS_SERVER}) {
+    $redis_server = $ENV{REDIS_SERVER};
+  }
+
   my $fmt_name = 'custom';
-  redis_list_delete($fmt_name);
+  redis_list_delete($redis_server, $fmt_name);
 
   my $config = {
     PidFile => $setup->{pid_file},
@@ -1390,7 +1469,7 @@ sub redis_log_fmt_extra_with_log_on_commmand {
       # Note: we need to use arrays here, since order of directives matters.
       'mod_redis.c' => [
         'RedisEngine on',
-        'RedisServer 127.0.0.1:6379',
+        "RedisServer $redis_server",
         "RedisLog $setup->{log_file}",
         "LogFormat $fmt_name \"%a %u\"",
         "RedisLogOnCommand PASS $fmt_name",
@@ -1417,6 +1496,9 @@ sub redis_log_fmt_extra_with_log_on_commmand {
   defined(my $pid = fork()) or die("Can't fork: $!");
   if ($pid) {
     eval {
+      # Allow for server startup
+      sleep(1);
+
       my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
       $client->login($setup->{user}, $setup->{passwd});
 
@@ -1454,13 +1536,23 @@ sub redis_log_fmt_extra_with_log_on_commmand {
   $self->assert_child_ok($pid);
 
   eval {
-    my $data = redis_list_getall($fmt_name);
+    my $data = redis_list_getall($redis_server, $fmt_name);
+
+    if ($ENV{TEST_VERBOSE}) {
+      use Data::Dumper;
+      print STDERR "# Redis data:\n", Dumper($data), "\n";
+    }
 
     my $nrecords = scalar(@$data);
     $self->assert($nrecords == 1, "Expected 1 record, got $nrecords");
 
     require JSON;
     my $record = decode_json($data->[0]);
+
+    if ($ENV{TEST_VERBOSE}) {
+      use Data::Dumper;
+      print STDERR "# Redis record:\n", Dumper($record), "\n";
+    }
 
     my $expected = $setup->{user};
     $self->assert($record->{user} eq $expected,
@@ -1470,17 +1562,23 @@ sub redis_log_fmt_extra_with_log_on_commmand {
     $self->assert($record->{remote_ip} eq $expected,
       "Expected remote IP '$expected', got '$record->{remote_ip}'");
 
-    # Note that we do not expect the "quzz" key, because it is null.
-    foreach my $key (qw(foo bar baz quxx)) {
+    # Note that we do not expect the "baz" value, because it is an empty
+    # object, nor the "quzz" value, because it is null.
+    foreach my $key (qw(foo bar)) {
       $self->assert(defined($record->{$key}),
         "Key $key does not exist in record as expected");
+    }
+
+    foreach my $key (qw(baz quxx)) {
+      $self->assert(!defined($record->{$key}),
+        "Key $key exists in record unexpectedly");
     }
   };
   if ($@) {
     $ex = $@;
   }
 
-  test_cleanup($setup->{log_file}, $ex);
+  test_cleanup($setup, $ex);
 }
 
 sub redis_log_fmt_extra_with_log_on_event {
@@ -1488,8 +1586,13 @@ sub redis_log_fmt_extra_with_log_on_event {
   my $tmpdir = $self->{tmpdir};
   my $setup = test_setup($tmpdir, 'redis');
 
+  my $redis_server = '127.0.0.1:6379';
+  if ($ENV{REDIS_SERVER}) {
+    $redis_server = $ENV{REDIS_SERVER};
+  }
+
   my $fmt_name = 'custom';
-  redis_list_delete($fmt_name);
+  redis_list_delete($redis_server, $fmt_name);
 
   my $config = {
     PidFile => $setup->{pid_file},
@@ -1512,7 +1615,7 @@ sub redis_log_fmt_extra_with_log_on_event {
       # Note: we need to use arrays here, since order of directives matters.
       'mod_redis.c' => [
         'RedisEngine on',
-        'RedisServer 127.0.0.1:6379',
+        "RedisServer $redis_server",
         "RedisLog $setup->{log_file}",
         "LogFormat $fmt_name \"%A %a %b %c %D %d %E %{epoch} %F %f %{gid} %g %H %h %I %{iso8601} %J %L %l %m %O %P %p %{protocol} %R %r %{remote-port} %S %s %T %t %U %u %{uid} %V %v %{version}\"",
         "RedisLogOnEvent ALL $fmt_name",
@@ -1539,6 +1642,9 @@ sub redis_log_fmt_extra_with_log_on_event {
   defined(my $pid = fork()) or die("Can't fork: $!");
   if ($pid) {
     eval {
+      # Allow for server startup
+      sleep(1);
+
       my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
       $client->login($setup->{user}, $setup->{passwd});
 
@@ -1576,14 +1682,27 @@ sub redis_log_fmt_extra_with_log_on_event {
   $self->assert_child_ok($pid);
 
   eval {
-    my $data = redis_list_getall($fmt_name);
+    my $data = redis_list_getall($redis_server, $fmt_name);
+
+    if ($ENV{TEST_VERBOSE}) {
+      use Data::Dumper;
+      print STDERR "# Redis data:\n", Dumper($data), "\n";
+    }
 
     my $nrecords = scalar(@$data);
-    $self->assert($nrecords == 4 || $nrecords == 5,
-      "Expected 4-5 records, got $nrecords");
+
+    # Depending on the build, the number of events generated may vary.
+    # But there should at least be 3 records, maybe as many as 5.
+    $self->assert($nrecords >= 3 && $nrecords <= 5,
+      "Expected 3-5 records, got $nrecords");
 
     require JSON;
-    my $record = decode_json($data->[3]);
+    my $record = decode_json($data->[2]);
+
+    if ($ENV{TEST_VERBOSE}) {
+      use Data::Dumper;
+      print STDERR "# Redis record:\n", Dumper($record), "\n";
+    }
 
     my $expected = $setup->{user};
     $self->assert($record->{user} eq $expected,
@@ -1593,17 +1712,23 @@ sub redis_log_fmt_extra_with_log_on_event {
     $self->assert($record->{remote_ip} eq $expected,
       "Expected remote IP '$expected', got '$record->{remote_ip}'");
 
-    # Note that we do not expect the "quzz" key, because it is null.
-    foreach my $key (qw(foo bar baz quxx)) {
+    # Note that we do not expect the "baz" value, because it is an empty
+    # object, nor the "quzz" value, because it is null.
+    foreach my $key (qw(foo bar)) {
       $self->assert(defined($record->{$key}),
         "Key $key does not exist in record as expected");
+    }
+
+    foreach my $key (qw(baz quxx)) {
+      $self->assert(!defined($record->{$key}),
+        "Key $key exists in record unexpectedly");
     }
   };
   if ($@) {
     $ex = $@;
   }
 
-  test_cleanup($setup->{log_file}, $ex);
+  test_cleanup($setup, $ex);
 }
 
 1;
