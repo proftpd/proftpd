@@ -172,12 +172,9 @@ sub ban_memcache_max_login_attempts {
 
   # Stop server
   server_stop($setup->{pid_file});
-
   $self->assert_child_ok($pid);
 
-  if ($ex) {
-    die($ex);
-  }
+  test_cleanup($setup, $ex) if $ex;
 
   # Close the pipe, then re-open it for the second daemon
   close($rfh);
@@ -232,10 +229,9 @@ sub ban_memcache_max_login_attempts {
 
   # Stop server
   server_stop($setup->{pid_file});
-
   $self->assert_child_ok($pid);
 
-  test_cleanup($setup->{log_file}, $ex);
+  test_cleanup($setup, $ex);
 }
 
 sub ban_memcache_json_max_login_attempts_bug4056 {
@@ -330,8 +326,8 @@ sub ban_memcache_json_max_login_attempts_bug4056 {
 
       my $conn_ex = ProFTPD::TestSuite::FTP::get_connect_exception();
 
-      $expected = "";
-      $self->assert($expected eq $conn_ex,
+      $expected = '(|Connection closed)';
+      $self->assert(qr/$expected/, $conn_ex,
         test_msg("Expected '$expected', got '$conn_ex'"));
     };
     if ($@) {
@@ -353,12 +349,9 @@ sub ban_memcache_json_max_login_attempts_bug4056 {
 
   # Stop server
   server_stop($setup->{pid_file});
-
   $self->assert_child_ok($pid);
 
-  if ($ex) {
-    die($ex);
-  }
+  test_cleanup($setup, $ex) if $ex;
 
   # Close the pipe, then re-open it for the second daemon
   close($rfh);
@@ -389,11 +382,10 @@ sub ban_memcache_json_max_login_attempts_bug4056 {
       # it means that the daemon hadn't even started up yet, which is not
       # the same as listening but rejecting our connection.
 
-      my $expected = '';
-      $self->assert($expected eq $conn_ex,
+      my $expected = '(|Connection closed)';
+      $self->assert(qr/$expected/, $conn_ex,
         test_msg("Expected '$expected', got '$conn_ex'"));
     };
-
     if ($@) {
       $ex = $@;
     }
@@ -413,10 +405,9 @@ sub ban_memcache_json_max_login_attempts_bug4056 {
 
   # Stop server
   server_stop($setup->{pid_file});
-
   $self->assert_child_ok($pid);
 
-  test_cleanup($setup->{log_file}, $ex);
+  test_cleanup($setup, $ex);
 }
 
 1;
