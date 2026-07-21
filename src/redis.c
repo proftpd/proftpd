@@ -3876,12 +3876,12 @@ static int list_scan(pool *p, pr_redis_t *redis, const char *key, size_t keysz,
     return -1;
   }
 
+  pr_trace_msg(trace_channel, 7, "%s reply: %lu %s", cmd,
+    (unsigned long) reply->elements,
+    reply->elements != 1 ? "elements" : "element");
+
   if (reply->elements > 0) {
     register unsigned int i;
-
-    pr_trace_msg(trace_channel, 7, "%s reply: %lu %s", cmd,
-      (unsigned long) reply->elements,
-      reply->elements != 1 ? "elements" : "element");
 
     for (i = 0; i < reply->elements; i++) {
       redisReply *value_elt;
@@ -3891,8 +3891,7 @@ static int list_scan(pool *p, pr_redis_t *redis, const char *key, size_t keysz,
       value_elt = reply->element[i];
       if (value_elt->type == REDIS_REPLY_STRING) {
         value_datasz = value_elt->len;
-        value_data = palloc(p, value_datasz);
-        memcpy(value_data, value_elt->str, value_datasz);
+        value_data = pstrndup(p, value_elt->str, value_datasz);
 
       } else {
         pr_trace_msg(trace_channel, 2,
@@ -3968,7 +3967,7 @@ int pr_redis_list_kgetall(pool *p, pr_redis_t *redis, module *m,
          cursor != -1) {
     pr_signals_handle();
 
-    res = list_scan(tmp_pool, redis, key, keysz, *values, *valueszs, &cursor,
+    res = list_scan(p, redis, key, keysz, *values, *valueszs, &cursor,
       PR_REDIS_SCAN_SIZE);
     xerrno = errno;
 
