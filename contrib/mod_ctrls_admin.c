@@ -35,9 +35,9 @@
 # error "ProFTPD 1.3.6rc2 or later required"
 #endif
 
-#ifndef PR_USE_CTRLS
+#if !defined(PR_USE_CTRLS)
 # error "Controls support required (use --enable-ctrls)"
-#endif
+#endif /* PR_USE_CTRLS */
 
 /* Values for the stop flags */
 #define CTRL_STOP_DEFAULT     (1 << 0)
@@ -433,7 +433,15 @@ static int ctrls_handle_debug(pr_ctrls_t *ctrl, int reqargc,
       pr_ctrls_add_response(ctrl, "debug level set to %d", level);
 
     } else if (reqargc == 2) {
-      level = atoi(reqargv[1]);
+      char *ptr = NULL;
+
+      level = (int) strtol(reqargv[1], &ptr, 10);
+      if (ptr != NULL && *ptr) {
+        pr_ctrls_add_response(ctrl, "debug level must be numeric: '%s'",
+          reqargv[1]);
+        return PR_CTRLS_STATUS_WRONG_PARAMETERS;
+      }
+
       if (level < 0) {
         pr_ctrls_add_response(ctrl, "debug level must not be negative");
         return PR_CTRLS_STATUS_WRONG_PARAMETERS;
@@ -477,6 +485,7 @@ static int ctrls_handle_debug(pr_ctrls_t *ctrl, int reqargc,
 
 static int ctrls_handle_dns(pr_ctrls_t *ctrl, int reqargc,
     char **reqargv) {
+
   /* Check the dns ACL */
   if (pr_ctrls_check_acl(ctrl, ctrls_admin_acttab, "dns") != TRUE) {
 
@@ -590,7 +599,11 @@ static int ctrls_handle_down(pr_ctrls_t *ctrl, int reqargc,
 
     /* Check for an argument of "all" */
     if (strcasecmp(server_str, "all") == 0) {
-      pr_ipbind_close(NULL, 0, FALSE);
+      if (pr_ipbind_close(NULL, 0, TRUE) < 0) {
+        pr_ctrls_log(MOD_CTRLS_ADMIN_VERSION,
+          "down: error disabling servers: %s", strerror(errno));
+      }
+
       pr_ctrls_add_response(ctrl, "down: all servers disabled");
       return PR_CTRLS_STATUS_OK;
     }
@@ -658,7 +671,8 @@ static int ctrls_handle_get(pr_ctrls_t *ctrl, int reqargc,
 
         c = find_config(main_server->conf, CONF_PARAM, reqargv[i], FALSE);
         if (c != NULL) {
-          pr_ctrls_add_response(ctrl, "%s: not retrievable", reqargv[i]);
+          pr_ctrls_add_response(ctrl, "%s: currently not displayable",
+            reqargv[i]);
 
         } else {
           pr_ctrls_add_response(ctrl, "%s: directive not found", reqargv[i]);
@@ -1132,9 +1146,6 @@ static int ctrls_handle_shutdown(pr_ctrls_t *ctrl, int reqargc,
     return PR_CTRLS_STATUS_ACCESS_DENIED;
   }
 
-  /* Add a response */
-  pr_ctrls_add_response(ctrl, "shutting down");
-
   if (reqargc >= 1 &&
       strcmp(reqargv[0], "graceful") == 0) {
     unsigned long nkids = 0;
@@ -1144,8 +1155,14 @@ static int ctrls_handle_shutdown(pr_ctrls_t *ctrl, int reqargc,
 
     if (reqargc == 2) {
       int client_timeout;
+      char *ptr = NULL;
 
-      client_timeout = atoi(reqargv[1]);
+      client_timeout = (int) strtol(reqargv[1], &ptr, 10);
+      if (ptr != NULL && *ptr) {
+        pr_ctrls_add_response(ctrl, "timeout must be numeric");
+        return PR_CTRLS_STATUS_WRONG_PARAMETERS;
+      }
+
       if (client_timeout <= 0) {
         pr_ctrls_add_response(ctrl, "timeout must be positive");
         return PR_CTRLS_STATUS_WRONG_PARAMETERS;
@@ -1206,6 +1223,11 @@ static int ctrls_handle_shutdown(pr_ctrls_t *ctrl, int reqargc,
       /* Always check for sent signals in a while() loop. */
       pr_signals_handle();
     }
+
+    pr_ctrls_add_response(ctrl, "shutting down");
+
+  } else {
+    pr_ctrls_add_response(ctrl, "shutting down");
   }
 
   /* This is one of the rare cases where the control handler needs to

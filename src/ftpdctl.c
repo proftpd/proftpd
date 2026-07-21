@@ -308,8 +308,8 @@ int main(int argc, char *argv[]) {
   }
 
   if (verbose == TRUE) {
-    fprintf(stdout, "%s: sending '%s' control request (%u args)\n", program,
-      action, reqargc);
+    fprintf(stdout, "%s: sending '%s' control request (%u %s)\n", program,
+      action, reqargc, reqargc != 1 ? "args" : "arg");
   }
 
   if (pr_ctrls_send_request(ctl_pool, sockfd, action, reqargc,
@@ -391,7 +391,11 @@ int main(int argc, char *argv[]) {
   /* Controls action status values are zero or negative, thus we need to
    * convert them to appropriate Unix exit status values.
    */
-  return (status * -1);
+  if (status < 0) {
+    exit(status * -1);
+  }
+
+  exit(0);
 }
 
 #else

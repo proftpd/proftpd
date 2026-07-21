@@ -475,6 +475,9 @@ static int ctrls_send_msg(pool *p, int fd, pr_json_object_t *json) {
 
   msglen = strlen(msg);
 
+  pr_trace_msg(trace_channel, 22, "sending Controls response: '%.*s'",
+    (int) msglen, msg);
+
   /* No interruptions. */
   pr_signals_block();
 
@@ -699,6 +702,9 @@ int pr_ctrls_recv_request(pr_ctrls_cl_t *cl) {
     errno = EPERM;
     return -1;
   }
+
+  pr_trace_msg(trace_channel, 22, "received Controls request: '%.*s'",
+    (int) msglen, msg);
 
   json = pr_json_object_from_text(tmp_pool, msg);
   xerrno = errno;
@@ -2043,7 +2049,13 @@ int pr_ctrls_check_group_acl(gid_t cl_gid, const ctrls_group_acl_t *group_acl) {
     register unsigned int i = 0;
 
     for (i = 0; i < group_acl->ngids; i++) {
-      if ((group_acl->gids)[i] == cl_gid) {
+      gid_t group_acl_gid;
+
+      group_acl_gid = (group_acl->gids)[i];
+      pr_trace_msg(trace_channel, 29,
+        "comparing client GID %lu against group ACL GID %lu (#%u)",
+        (unsigned long) cl_gid, (unsigned long) group_acl_gid, i+1);
+      if (group_acl_gid == cl_gid) {
         res = TRUE;
       }
     }
@@ -2078,7 +2090,14 @@ int pr_ctrls_check_user_acl(uid_t cl_uid, const ctrls_user_acl_t *user_acl) {
     register unsigned int i = 0;
 
     for (i = 0; i < user_acl->nuids; i++) {
-      if ((user_acl->uids)[i] == cl_uid) {
+      uid_t user_acl_uid;
+
+      user_acl_uid = (user_acl->uids)[i];
+
+      pr_trace_msg(trace_channel, 29,
+        "comparing client UID %lu against user ACL UID %lu (#%u)",
+        (unsigned long) cl_uid, (unsigned long) user_acl_uid, i+1);
+      if (user_acl_uid == cl_uid) {
         res = TRUE;
       }
     }
