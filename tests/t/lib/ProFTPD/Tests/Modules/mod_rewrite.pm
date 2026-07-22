@@ -233,7 +233,7 @@ my $TESTS = {
     test_class => [qw(bug feature_pcre forking)],
   },
 
-  # TODO: Need test for RewriteMap using text file
+  # TODO: Need tests for RewriteMap using text file
 };
 
 sub new {
@@ -477,6 +477,9 @@ sub rewrite_map_spaces_underscores {
   defined(my $pid = fork()) or die("Can't fork: $!");
   if ($pid) {
     eval {
+      # Allow for server startup
+      sleep(1);
+
       my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
       $client->login($setup->{user}, $setup->{passwd});
       $client->type('binary');
@@ -599,14 +602,15 @@ sub rewrite_map_whitespace_underscores {
   defined(my $pid = fork()) or die("Can't fork: $!");
   if ($pid) {
     eval {
-      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
-      my ($resp_code, $resp_msg);
+      # Allow for server startup
+      sleep(1);
 
+      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
       $client->login($setup->{user}, $setup->{passwd});
       $client->type('binary');
 
       # Send the path with spaces; the rewrite rules should handle it
-      ($resp_code, $resp_msg) = $client->size("tmp/test  file		here.txt");
+      my ($resp_code, $resp_msg) = $client->size("tmp/test  file		here.txt");
 
       my $expected = 213;
       $self->assert($expected == $resp_code,
@@ -637,7 +641,7 @@ sub rewrite_map_whitespace_underscores {
   server_stop($setup->{pid_file});
   $self->assert_child_ok($pid);
 
-  test_cleanup($setup->{log_file}, $ex);
+  test_cleanup($setup, $ex);
 }
 
 sub rewrite_map_whitespace_trim {
@@ -933,6 +937,9 @@ sub rewrite_bug2915 {
   defined(my $pid = fork()) or die("Can't fork: $!");
   if ($pid) {
     eval {
+      # Allow for server startup
+      sleep(1);
+
       my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
       $client->login($setup->{user}, $setup->{passwd});
 
@@ -976,48 +983,17 @@ sub rewrite_bug2915 {
 sub rewrite_bug3027 {
   my $self = shift;
   my $tmpdir = $self->{tmpdir};
-
-  my $config_file = "$tmpdir/rewrite.conf";
-  my $pid_file = File::Spec->rel2abs("$tmpdir/rewrite.pid");
-  my $scoreboard_file = File::Spec->rel2abs("$tmpdir/rewrite.scoreboard");
-
-  my $log_file = test_get_logfile();
-
-  my $auth_user_file = File::Spec->rel2abs("$tmpdir/rewrite.passwd");
-  my $auth_group_file = File::Spec->rel2abs("$tmpdir/rewrite.group");
-
-  my $user = 'proftpd';
-  my $passwd = 'test';
-  my $group = 'ftpd';
-  my $home_dir = File::Spec->rel2abs($tmpdir);
-  my $uid = 500;
-  my $gid = 500;
-
-  # Make sure that, if we're running as root, that the home directory has
-  # permissions/privs set for the account we create
-  if ($< == 0) {
-    unless (chmod(0755, $home_dir)) {
-      die("Can't set perms on $home_dir to 0755: $!");
-    }
-
-    unless (chown($uid, $gid, $home_dir)) {
-      die("Can't set owner of $home_dir to $uid/$gid: $!");
-    }
-  }
-
-  auth_user_write($auth_user_file, $user, $passwd, $uid, $gid, $home_dir,
-    '/bin/bash');
-  auth_group_write($auth_group_file, $group, $gid, $user);
+  my $setup = test_setup($tmpdir, 'rewrite');
 
   my $test_file = File::Spec->rel2abs("$tmpdir/test.txt");
 
   my $config = {
-    PidFile => $pid_file,
-    ScoreboardFile => $scoreboard_file,
-    SystemLog => $log_file,
+    PidFile => $setup->{pid_file},
+    ScoreboardFile => $setup->{scoreboard_file},
+    SystemLog => $setup->{log_file},
 
-    AuthUserFile => $auth_user_file,
-    AuthGroupFile => $auth_group_file,
+    AuthUserFile => $setup->{auth_user_file},
+    AuthGroupFile => $setup->{auth_group_file},
     AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
@@ -1027,7 +1003,7 @@ sub rewrite_bug3027 {
 
       'mod_rewrite.c' => [
         'RewriteEngine on',
-        "RewriteLog $log_file",
+        "RewriteLog $setup->{log_file}",
         'RewriteMap replace int:replaceall',
 
         # Attempt to handle the case where the filename portion of the
@@ -1041,7 +1017,8 @@ sub rewrite_bug3027 {
     },
   };
 
-  my ($port, $config_user, $config_group) = config_write($config_file, $config);
+  my ($port, $config_user, $config_group) = config_write($setup->{config_file},
+    $config);
 
   # Open pipes, for use between the parent and child processes.  Specifically,
   # the child will indicate when it's done with its test by writing a message
@@ -1059,36 +1036,30 @@ sub rewrite_bug3027 {
   if ($pid) {
     eval {
       my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
-
-      my ($resp_code, $resp_msg);
-
-      $client->login($user, $passwd);
+      $client->login($setup->{user}, $setup->{passwd});
 
       my $conn = $client->stor_raw(' test.txt');
+      unless ($conn) {
+        die("STOR failed: " . $client->response_code() . " " .
+          $client->response_msg());
+      }
 
       my $buf = "Hello, World\n";
       $conn->write($buf, length($buf));
+      sleep(0.25);
       eval { $conn->close() };
 
-      $resp_code = $client->response_code();
-      $resp_msg = $client->response_msg();
+      my $resp_code = $client->response_code();
+      my $resp_msg = $client->response_msg();
+      $self->assert_transfer_ok($resp_code, $resp_msg);
 
-      my $expected;
-
-      $expected = 226;
-      $self->assert($expected == $resp_code,
-        test_msg("Expected $expected, got $resp_code"));
-
-      $expected = "Transfer complete";
-      $self->assert($expected eq $resp_msg,
-        test_msg("Expected '$expected', got '$resp_msg'"));
+      $client->quit();
 
       # Had Bug#3027 been present, the file name would have been "$1test.txt",
       # not "test.txt".
       $self->assert(-f $test_file,
         test_msg("$test_file file does not exist as expected"));
     };
-
     if ($@) {
       $ex = $@;
     }
@@ -1097,7 +1068,7 @@ sub rewrite_bug3027 {
     $wfh->flush();
 
   } else {
-    eval { server_wait($config_file, $rfh) };
+    eval { server_wait($setup->{config_file}, $rfh) };
     if ($@) {
       warn($@);
       exit 1;
@@ -1107,63 +1078,24 @@ sub rewrite_bug3027 {
   }
 
   # Stop server
-  server_stop($pid_file);
-
+  server_stop($setup->{pid_file});
   $self->assert_child_ok($pid);
 
-  if ($ex) {
-    test_append_logfile($log_file, $ex);
-    unlink($log_file);
-
-    die($ex);
-  }
-
-  unlink($log_file);
+  test_cleanup($setup, $ex);
 }
 
 sub rewrite_bug3034 {
   my $self = shift;
   my $tmpdir = $self->{tmpdir};
-
-  my $config_file = "$tmpdir/rewrite.conf";
-  my $pid_file = File::Spec->rel2abs("$tmpdir/rewrite.pid");
-  my $scoreboard_file = File::Spec->rel2abs("$tmpdir/rewrite.scoreboard");
-
-  my $log_file = test_get_logfile();
-
-  my $auth_user_file = File::Spec->rel2abs("$tmpdir/rewrite.passwd");
-  my $auth_group_file = File::Spec->rel2abs("$tmpdir/rewrite.group");
-
-  my $user = 'proftpd';
-  my $passwd = 'test';
-  my $group = 'ftpd';
-  my $home_dir = File::Spec->rel2abs($tmpdir);
-  my $uid = 500;
-  my $gid = 500;
-
-  # Make sure that, if we're running as root, that the home directory has
-  # permissions/privs set for the account we create
-  if ($< == 0) {
-    unless (chmod(0755, $home_dir)) {
-      die("Can't set perms on $home_dir to 0755: $!");
-    }
-
-    unless (chown($uid, $gid, $home_dir)) {
-      die("Can't set owner of $home_dir to $uid/$gid: $!");
-    }
-  }
-
-  auth_user_write($auth_user_file, $user, $passwd, $uid, $gid, $home_dir,
-    '/bin/bash');
-  auth_group_write($auth_group_file, $group, $gid, $user);
+  my $setup = test_setup($tmpdir, 'rewrite');
 
   my $config = {
-    PidFile => $pid_file,
-    ScoreboardFile => $scoreboard_file,
-    SystemLog => $log_file,
+    PidFile => $setup->{pid_file},
+    ScoreboardFile => $setup->{scoreboard_file},
+    SystemLog => $setup->{log_file},
 
-    AuthUserFile => $auth_user_file,
-    AuthGroupFile => $auth_group_file,
+    AuthUserFile => $setup->{auth_user_file},
+    AuthGroupFile => $setup->{auth_group_file},
     AuthOrder => 'mod_auth_file.c',
 
     AllowForeignAddress => 'on',
@@ -1175,7 +1107,7 @@ sub rewrite_bug3034 {
 
       'mod_rewrite.c' => [
         'RewriteEngine on',
-        "RewriteLog $log_file",
+        "RewriteLog $setup->{log_file}",
         'RewriteMap replace int:replaceall',
 
         # Substitute in the IP address of the client, regardless of
@@ -1191,7 +1123,8 @@ sub rewrite_bug3034 {
     },
   };
 
-  my ($port, $config_user, $config_group) = config_write($config_file, $config);
+  my ($port, $config_user, $config_group) = config_write($setup->{config_file},
+    $config);
 
   # Open pipes, for use between the parent and child processes.  Specifically,
   # the child will indicate when it's done with its test by writing a message
@@ -1208,27 +1141,26 @@ sub rewrite_bug3034 {
   defined(my $pid = fork()) or die("Can't fork: $!");
   if ($pid) {
     eval {
+      # Allow for server startup
+      sleep(1);
+
       my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
-
-      my ($resp_code, $resp_msg);
-
-      $client->login($user, $passwd);
+      $client->login($setup->{user}, $setup->{passwd});
 
       # Deliberately send a bad address; the rewrite rules should handle
       # it and do The Right Thing(tm).
-      ($resp_code, $resp_msg) = $client->port('1,2,3,4,10,11');
+      my ($resp_code, $resp_msg) = $client->port('1,2,3,4,10,11');
 
-      my $expected;
-
-      $expected = 200;
+      my $expected = 200;
       $self->assert($expected == $resp_code,
-        test_msg("Expected $expected, got $resp_code"));
+        test_msg("Expected response code $expected, got $resp_code"));
 
       $expected = "PORT command successful";
       $self->assert($expected eq $resp_msg,
-        test_msg("Expected '$expected', got '$resp_msg'"));
-    };
+        test_msg("Expected response message '$expected', got '$resp_msg'"));
 
+      $client->quit();
+    };
     if ($@) {
       $ex = $@;
     }
@@ -1237,7 +1169,7 @@ sub rewrite_bug3034 {
     $wfh->flush();
 
   } else {
-    eval { server_wait($config_file, $rfh) };
+    eval { server_wait($setup->{config_file}, $rfh) };
     if ($@) {
       warn($@);
       exit 1;
@@ -1247,18 +1179,10 @@ sub rewrite_bug3034 {
   }
 
   # Stop server
-  server_stop($pid_file);
-
+  server_stop($setup->{pid_file});
   $self->assert_child_ok($pid);
 
-  if ($ex) {
-    test_append_logfile($log_file, $ex);
-    unlink($log_file);
-
-    die($ex);
-  }
-
-  unlink($log_file);
+  test_cleanup($setup, $ex);
 }
 
 sub rewrite_bug3169 {
@@ -1331,6 +1255,9 @@ sub rewrite_bug3169 {
   defined(my $pid = fork()) or die("Can't fork: $!");
   if ($pid) {
     eval {
+      # Allow for server startup
+      sleep(1);
+
       my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
       $client->login($setup->{user}, $setup->{passwd});
 
@@ -1605,22 +1532,7 @@ sub rewrite_map_unescape_bad_paths_issue2173 {
 sub rewrite_cond_env_var_failed {
   my $self = shift;
   my $tmpdir = $self->{tmpdir};
-
-  my $config_file = "$tmpdir/rewrite.conf";
-  my $pid_file = File::Spec->rel2abs("$tmpdir/rewrite.pid");
-  my $scoreboard_file = File::Spec->rel2abs("$tmpdir/rewrite.scoreboard");
-
-  my $log_file = test_get_logfile();
-
-  my $auth_user_file = File::Spec->rel2abs("$tmpdir/rewrite.passwd");
-  my $auth_group_file = File::Spec->rel2abs("$tmpdir/rewrite.group");
-
-  my $user = 'proftpd';
-  my $passwd = 'test';
-  my $group = 'ftpd';
-  my $home_dir = File::Spec->rel2abs($tmpdir);
-  my $uid = 500;
-  my $gid = 500;
+  my $setup = test_setup($tmpdir, 'rewrite');
 
   my $sub_dir = File::Spec->rel2abs("$tmpdir/tmp");
   mkpath($sub_dir);
@@ -1642,26 +1554,22 @@ sub rewrite_cond_env_var_failed {
   # Make sure that, if we're running as root, that the home directory has
   # permissions/privs set for the account we create
   if ($< == 0) {
-    unless (chmod(0755, $home_dir, $sub_dir)) {
-      die("Can't set perms on $home_dir to 0755: $!");
+    unless (chmod(0755, $sub_dir)) {
+      die("Can't set perms on $sub_dir to 0755: $!");
     }
 
-    unless (chown($uid, $gid, $home_dir, $sub_dir)) {
-      die("Can't set owner of $home_dir to $uid/$gid: $!");
+    unless (chown($setup->{uid}, $setup->{gid}, $sub_dir)) {
+      die("Can't set owner of $sub_dir to $setup->{uid}/$setup->{gid}: $!");
     }
   }
 
-  auth_user_write($auth_user_file, $user, $passwd, $uid, $gid, $home_dir,
-    '/bin/bash');
-  auth_group_write($auth_group_file, $group, $gid, $user);
-
   my $config = {
-    PidFile => $pid_file,
-    ScoreboardFile => $scoreboard_file,
-    SystemLog => $log_file,
+    PidFile => $setup->{pid_file},
+    ScoreboardFile => $setup->{scoreboard_file},
+    SystemLog => $setup->{log_file},
 
-    AuthUserFile => $auth_user_file,
-    AuthGroupFile => $auth_group_file,
+    AuthUserFile => $setup->{auth_user_file},
+    AuthGroupFile => $setup->{auth_group_file},
     AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
@@ -1671,7 +1579,7 @@ sub rewrite_cond_env_var_failed {
 
       'mod_rewrite.c' => [
         'RewriteEngine on',
-        "RewriteLog $log_file",
+        "RewriteLog $setup->{log_file}",
 
         'RewriteMap replace int:replaceall',
 
@@ -1682,7 +1590,8 @@ sub rewrite_cond_env_var_failed {
     },
   };
 
-  my ($port, $config_user, $config_group) = config_write($config_file, $config);
+  my ($port, $config_user, $config_group) = config_write($setup->{config_file},
+    $config);
 
   # Open pipes, for use between the parent and child processes.  Specifically,
   # the child will indicate when it's done with its test by writing a message
@@ -1700,10 +1609,7 @@ sub rewrite_cond_env_var_failed {
   if ($pid) {
     eval {
       my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
-
-      my ($resp_code, $resp_msg);
-
-      $client->login($user, $passwd);
+      $client->login($setup->{user}, $setup->{passwd});
       $client->type('binary');
 
       my $path = "tmp/test file here.txt";
@@ -1714,20 +1620,17 @@ sub rewrite_cond_env_var_failed {
         die("SIZE $path succeeded unexpectedly");
       }
 
-      $resp_code = $client->response_code();
-      $resp_msg = $client->response_msg();
+      my $resp_code = $client->response_code();
+      my $resp_msg = $client->response_msg();
 
-      my $expected;
-
-      $expected = 550;
+      my $expected = 550;
       $self->assert($expected == $resp_code,
-        test_msg("Expected $expected, got $resp_code"));
+        test_msg("Expected response code $expected, got $resp_code"));
 
       $expected = "$path: No such file or directory";
       $self->assert($expected eq $resp_msg,
-        test_msg("Expected '$expected', got '$resp_msg'"));
+        test_msg("Expected response message '$expected', got '$resp_msg'"));
     };
-
     if ($@) {
       $ex = $@;
     }
@@ -1736,7 +1639,7 @@ sub rewrite_cond_env_var_failed {
     $wfh->flush();
 
   } else {
-    eval { server_wait($config_file, $rfh) };
+    eval { server_wait($setup->{config_file}, $rfh) };
     if ($@) {
       warn($@);
       exit 1;
@@ -1746,39 +1649,16 @@ sub rewrite_cond_env_var_failed {
   }
 
   # Stop server
-  server_stop($pid_file);
-
+  server_stop($setup->{pid_file});
   $self->assert_child_ok($pid);
 
-  if ($ex) {
-    test_append_logfile($log_file, $ex);
-    unlink($log_file);
-
-    die($ex);
-  }
-
-  unlink($log_file);
+  test_cleanup($setup, $ex);
 }
 
 sub rewrite_cond_env_var_ok {
   my $self = shift;
   my $tmpdir = $self->{tmpdir};
-
-  my $config_file = "$tmpdir/rewrite.conf";
-  my $pid_file = File::Spec->rel2abs("$tmpdir/rewrite.pid");
-  my $scoreboard_file = File::Spec->rel2abs("$tmpdir/rewrite.scoreboard");
-
-  my $log_file = test_get_logfile();
-
-  my $auth_user_file = File::Spec->rel2abs("$tmpdir/rewrite.passwd");
-  my $auth_group_file = File::Spec->rel2abs("$tmpdir/rewrite.group");
-
-  my $user = 'proftpd';
-  my $passwd = 'test';
-  my $group = 'ftpd';
-  my $home_dir = File::Spec->rel2abs($tmpdir);
-  my $uid = 500;
-  my $gid = 500;
+  my $setup = test_setup($tmpdir, 'rewrite');
 
   my $sub_dir = File::Spec->rel2abs("$tmpdir/tmp");
   mkpath($sub_dir);
@@ -1800,26 +1680,22 @@ sub rewrite_cond_env_var_ok {
   # Make sure that, if we're running as root, that the home directory has
   # permissions/privs set for the account we create
   if ($< == 0) {
-    unless (chmod(0755, $home_dir, $sub_dir)) {
-      die("Can't set perms on $home_dir to 0755: $!");
+    unless (chmod(0755, $sub_dir)) {
+      die("Can't set perms on $sub_dir to 0755: $!");
     }
 
-    unless (chown($uid, $gid, $home_dir, $sub_dir)) {
-      die("Can't set owner of $home_dir to $uid/$gid: $!");
+    unless (chown($setup->{uid}, $setup->{gid}, $sub_dir)) {
+      die("Can't set owner of $sub_dir to $setup->{uid}/$setup->{gid}: $!");
     }
   }
 
-  auth_user_write($auth_user_file, $user, $passwd, $uid, $gid, $home_dir,
-    '/bin/bash');
-  auth_group_write($auth_group_file, $group, $gid, $user);
-
   my $config = {
-    PidFile => $pid_file,
-    ScoreboardFile => $scoreboard_file,
-    SystemLog => $log_file,
+    PidFile => $setup->{pid_file},
+    ScoreboardFile => $setup->{scoreboard_file},
+    SystemLog => $setup->{log_file},
 
-    AuthUserFile => $auth_user_file,
-    AuthGroupFile => $auth_group_file,
+    AuthUserFile => $setup->{auth_user_file},
+    AuthGroupFile => $setup->{auth_group_file},
     AuthOrder => 'mod_auth_file.c',
 
     SetEnv => 'PR_TEST_FOO foo',
@@ -1831,7 +1707,7 @@ sub rewrite_cond_env_var_ok {
 
       'mod_rewrite.c' => [
         'RewriteEngine on',
-        "RewriteLog $log_file",
+        "RewriteLog $setup->{log_file}",
 
         'RewriteMap replace int:replaceall',
 
@@ -1842,7 +1718,8 @@ sub rewrite_cond_env_var_ok {
     },
   };
 
-  my ($port, $config_user, $config_group) = config_write($config_file, $config);
+  my ($port, $config_user, $config_group) = config_write($setup->{config_file},
+    $config);
 
   # Open pipes, for use between the parent and child processes.  Specifically,
   # the child will indicate when it's done with its test by writing a message
@@ -1859,27 +1736,26 @@ sub rewrite_cond_env_var_ok {
   defined(my $pid = fork()) or die("Can't fork: $!");
   if ($pid) {
     eval {
+      # Allow for server startup
+      sleep(1);
+
       my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
-
-      my ($resp_code, $resp_msg);
-
-      $client->login($user, $passwd);
+      $client->login($setup->{user}, $setup->{passwd});
       $client->type('binary');
 
       # Send the path with spaces; the rewrite rules should handle it
-      ($resp_code, $resp_msg) = $client->size("tmp/test file here.txt");
+      my ($resp_code, $resp_msg) = $client->size("tmp/test file here.txt");
 
-      my $expected;
-
-      $expected = 213;
+      my $expected = 213;
       $self->assert($expected == $resp_code,
-        test_msg("Expected $expected, got $resp_code"));
+        test_msg("Expected response code $expected, got $resp_code"));
 
       $expected = '14';
       $self->assert($expected eq $resp_msg,
-        test_msg("Expected '$expected', got '$resp_msg'"));
-    };
+        test_msg("Expected response message '$expected', got '$resp_msg'"));
 
+      $client->quit();
+    };
     if ($@) {
       $ex = $@;
     }
@@ -1888,7 +1764,7 @@ sub rewrite_cond_env_var_ok {
     $wfh->flush();
 
   } else {
-    eval { server_wait($config_file, $rfh) };
+    eval { server_wait($setup->{config_file}, $rfh) };
     if ($@) {
       warn($@);
       exit 1;
@@ -1898,42 +1774,19 @@ sub rewrite_cond_env_var_ok {
   }
 
   # Stop server
-  server_stop($pid_file);
-
+  server_stop($setup->{pid_file});
   $self->assert_child_ok($pid);
 
-  if ($ex) {
-    test_append_logfile($log_file, $ex);
-    unlink($log_file);
-
-    die($ex);
-  }
-
-  unlink($log_file);
+  test_cleanup($setup, $ex);
 }
 
 sub rewrite_rule_env_var_failed {
   my $self = shift;
   my $tmpdir = $self->{tmpdir};
-
-  my $config_file = "$tmpdir/rewrite.conf";
-  my $pid_file = File::Spec->rel2abs("$tmpdir/rewrite.pid");
-  my $scoreboard_file = File::Spec->rel2abs("$tmpdir/rewrite.scoreboard");
-
-  my $log_file = test_get_logfile();
-
-  my $auth_user_file = File::Spec->rel2abs("$tmpdir/rewrite.passwd");
-  my $auth_group_file = File::Spec->rel2abs("$tmpdir/rewrite.group");
-
-  my $user = 'proftpd';
-  my $passwd = 'test';
-  my $group = 'ftpd';
-  my $home_dir = File::Spec->rel2abs($tmpdir);
-  my $uid = 500;
-  my $gid = 500;
+  my $setup = test_setup($tmpdir, 'rewrite');
 
   my $test_file = 'foo.txt';
-  my $test_path = File::Spec->rel2abs("$home_dir/$test_file");
+  my $test_path = File::Spec->rel2abs("$setup->{home_dir}/$test_file");
 
   if (open(my $fh, "> $test_path")) {
     print $fh "Hello, World!\n";
@@ -1946,29 +1799,19 @@ sub rewrite_rule_env_var_failed {
     die("Can't open $test_path: $!");
   }
 
-  # Make sure that, if we're running as root, that the home directory has
-  # permissions/privs set for the account we create
   if ($< == 0) {
-    unless (chmod(0755, $home_dir)) {
-      die("Can't set perms on $home_dir to 0755: $!");
-    }
-
-    unless (chown($uid, $gid, $home_dir)) {
-      die("Can't set owner of $home_dir to $uid/$gid: $!");
+    unless (chown($setup->{uid}, $setup->{gid}, $test_path)) {
+      die("Can't set owner of $test_path to $setup->{uid}/$setup->{gid}: $!");
     }
   }
 
-  auth_user_write($auth_user_file, $user, $passwd, $uid, $gid, $home_dir,
-    '/bin/bash');
-  auth_group_write($auth_group_file, $group, $gid, $user);
-
   my $config = {
-    PidFile => $pid_file,
-    ScoreboardFile => $scoreboard_file,
-    SystemLog => $log_file,
+    PidFile => $setup->{pid_file},
+    ScoreboardFile => $setup->{scoreboard_file},
+    SystemLog => $setup->{log_file},
 
-    AuthUserFile => $auth_user_file,
-    AuthGroupFile => $auth_group_file,
+    AuthUserFile => $setup->{auth_user_file},
+    AuthGroupFile => $setup->{auth_group_file},
     AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
@@ -1978,7 +1821,7 @@ sub rewrite_rule_env_var_failed {
 
       'mod_rewrite.c' => [
         'RewriteEngine on',
-        "RewriteLog $log_file",
+        "RewriteLog $setup->{log_file}",
 
         'RewriteCondition %m SIZE',
         'RewriteRule ^(.*) %{ENV:PR_TEST_FOO}.txt',
@@ -1986,7 +1829,8 @@ sub rewrite_rule_env_var_failed {
     },
   };
 
-  my ($port, $config_user, $config_group) = config_write($config_file, $config);
+  my ($port, $config_user, $config_group) = config_write($setup->{config_file},
+    $config);
 
   # Open pipes, for use between the parent and child processes.  Specifically,
   # the child will indicate when it's done with its test by writing a message
@@ -2004,10 +1848,7 @@ sub rewrite_rule_env_var_failed {
   if ($pid) {
     eval {
       my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
-
-      my ($resp_code, $resp_msg);
-
-      $client->login($user, $passwd);
+      $client->login($setup->{user}, $setup->{passwd});
       $client->type('binary');
 
       my $path = "foo.txt";
@@ -2018,20 +1859,19 @@ sub rewrite_rule_env_var_failed {
         die("SIZE $path succeeded unexpectedly");
       }
 
-      $resp_code = $client->response_code();
-      $resp_msg = $client->response_msg();
+      my $resp_code = $client->response_code();
+      my $resp_msg = $client->response_msg();
 
-      my $expected;
-
-      $expected = 550;
+      my $expected = 550;
       $self->assert($expected == $resp_code,
-        test_msg("Expected $expected, got $resp_code"));
+        test_msg("Expected response code $expected, got $resp_code"));
 
       $expected = ".txt: No such file or directory";
       $self->assert($expected eq $resp_msg,
-        test_msg("Expected '$expected', got '$resp_msg'"));
-    };
+        test_msg("Expected response message '$expected', got '$resp_msg'"));
 
+      $client->quit();
+    };
     if ($@) {
       $ex = $@;
     }
@@ -2040,7 +1880,7 @@ sub rewrite_rule_env_var_failed {
     $wfh->flush();
 
   } else {
-    eval { server_wait($config_file, $rfh) };
+    eval { server_wait($setup->{config_file}, $rfh) };
     if ($@) {
       warn($@);
       exit 1;
@@ -2050,42 +1890,19 @@ sub rewrite_rule_env_var_failed {
   }
 
   # Stop server
-  server_stop($pid_file);
-
+  server_stop($setup->{pid_file});
   $self->assert_child_ok($pid);
 
-  if ($ex) {
-    test_append_logfile($log_file, $ex);
-    unlink($log_file);
-
-    die($ex);
-  }
-
-  unlink($log_file);
+  test_cleanup($setup, $ex);
 }
 
 sub rewrite_rule_env_var_ok {
   my $self = shift;
   my $tmpdir = $self->{tmpdir};
-
-  my $config_file = "$tmpdir/rewrite.conf";
-  my $pid_file = File::Spec->rel2abs("$tmpdir/rewrite.pid");
-  my $scoreboard_file = File::Spec->rel2abs("$tmpdir/rewrite.scoreboard");
-
-  my $log_file = test_get_logfile();
-
-  my $auth_user_file = File::Spec->rel2abs("$tmpdir/rewrite.passwd");
-  my $auth_group_file = File::Spec->rel2abs("$tmpdir/rewrite.group");
-
-  my $user = 'proftpd';
-  my $passwd = 'test';
-  my $group = 'ftpd';
-  my $home_dir = File::Spec->rel2abs($tmpdir);
-  my $uid = 500;
-  my $gid = 500;
+  my $setup = test_setup($tmpdir, 'rewrite');
 
   my $test_file = 'foo.txt';
-  my $test_path = File::Spec->rel2abs("$home_dir/$test_file");
+  my $test_path = File::Spec->rel2abs("$setup->{home_dir}/$test_file");
 
   if (open(my $fh, "> $test_path")) {
     print $fh "Hello, World!\n";
@@ -2098,29 +1915,19 @@ sub rewrite_rule_env_var_ok {
     die("Can't open $test_path: $!");
   }
 
-  # Make sure that, if we're running as root, that the home directory has
-  # permissions/privs set for the account we create
   if ($< == 0) {
-    unless (chmod(0755, $home_dir)) {
-      die("Can't set perms on $home_dir to 0755: $!");
-    }
-
-    unless (chown($uid, $gid, $home_dir)) {
-      die("Can't set owner of $home_dir to $uid/$gid: $!");
+    unless (chown($setup->{uid}, $setup->{gid}, $test_path)) {
+      die("Can't set owner of $test_path to $setup->{uid}/$setup->{gid}: $!");
     }
   }
 
-  auth_user_write($auth_user_file, $user, $passwd, $uid, $gid, $home_dir,
-    '/bin/bash');
-  auth_group_write($auth_group_file, $group, $gid, $user);
-
   my $config = {
-    PidFile => $pid_file,
-    ScoreboardFile => $scoreboard_file,
-    SystemLog => $log_file,
+    PidFile => $setup->{pid_file},
+    ScoreboardFile => $setup->{scoreboard_file},
+    SystemLog => $setup->{log_file},
 
-    AuthUserFile => $auth_user_file,
-    AuthGroupFile => $auth_group_file,
+    AuthUserFile => $setup->{auth_user_file},
+    AuthGroupFile => $setup->{auth_group_file},
     AuthOrder => 'mod_auth_file.c',
 
     SetEnv => 'PR_TEST_FOO foo',
@@ -2132,7 +1939,7 @@ sub rewrite_rule_env_var_ok {
 
       'mod_rewrite.c' => [
         'RewriteEngine on',
-        "RewriteLog $log_file",
+        "RewriteLog $setup->{log_file}",
 
         'RewriteCondition %m SIZE',
         'RewriteRule ^(.*) %{ENV:PR_TEST_FOO}.txt',
@@ -2140,7 +1947,8 @@ sub rewrite_rule_env_var_ok {
     },
   };
 
-  my ($port, $config_user, $config_group) = config_write($config_file, $config);
+  my ($port, $config_user, $config_group) = config_write($setup->{config_file},
+    $config);
 
   # Open pipes, for use between the parent and child processes.  Specifically,
   # the child will indicate when it's done with its test by writing a message
@@ -2158,26 +1966,22 @@ sub rewrite_rule_env_var_ok {
   if ($pid) {
     eval {
       my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
-
-      my ($resp_code, $resp_msg);
-
-      $client->login($user, $passwd);
+      $client->login($setup->{user}, $setup->{passwd});
       $client->type('binary');
 
       # Send the path with spaces; the rewrite rules should handle it
-      ($resp_code, $resp_msg) = $client->size("foo.txt");
+      my ($resp_code, $resp_msg) = $client->size("foo.txt");
 
-      my $expected;
-
-      $expected = 213;
+      my $expected = 213;
       $self->assert($expected == $resp_code,
-        test_msg("Expected $expected, got $resp_code"));
+        test_msg("Expected response code $expected, got $resp_code"));
 
       $expected = '14';
       $self->assert($expected eq $resp_msg,
-        test_msg("Expected '$expected', got '$resp_msg'"));
-    };
+        test_msg("Expected response message '$expected', got '$resp_msg'"));
 
+      $client->quit();
+    };
     if ($@) {
       $ex = $@;
     }
@@ -2186,7 +1990,7 @@ sub rewrite_rule_env_var_ok {
     $wfh->flush();
 
   } else {
-    eval { server_wait($config_file, $rfh) };
+    eval { server_wait($setup->{config_file}, $rfh) };
     if ($@) {
       warn($@);
       exit 1;
@@ -2196,39 +2000,16 @@ sub rewrite_rule_env_var_ok {
   }
 
   # Stop server
-  server_stop($pid_file);
-
+  server_stop($setup->{pid_file});
   $self->assert_child_ok($pid);
 
-  if ($ex) {
-    test_append_logfile($log_file, $ex);
-    unlink($log_file);
-
-    die($ex);
-  }
-
-  unlink($log_file);
+  test_cleanup($setup, $ex);
 }
 
 sub rewrite_escape_rule_backref_bug3028 {
   my $self = shift;
   my $tmpdir = $self->{tmpdir};
-
-  my $config_file = "$tmpdir/rewrite.conf";
-  my $pid_file = File::Spec->rel2abs("$tmpdir/rewrite.pid");
-  my $scoreboard_file = File::Spec->rel2abs("$tmpdir/rewrite.scoreboard");
-
-  my $log_file = test_get_logfile();
-
-  my $auth_user_file = File::Spec->rel2abs("$tmpdir/rewrite.passwd");
-  my $auth_group_file = File::Spec->rel2abs("$tmpdir/rewrite.group");
-
-  my $user = 'proftpd';
-  my $passwd = 'test';
-  my $group = 'ftpd';
-  my $home_dir = File::Spec->rel2abs($tmpdir);
-  my $uid = 500;
-  my $gid = 500;
+  my $setup = test_setup($tmpdir, 'rewrite');
 
   my $test_file = File::Spec->rel2abs("$tmpdir/" . '$100dollars.txt');
   if (open(my $fh, "> $test_file")) {
@@ -2241,29 +2022,19 @@ sub rewrite_escape_rule_backref_bug3028 {
     die("Can't open $test_file: $!");
   }
 
-  # Make sure that, if we're running as root, that the home directory has
-  # permissions/privs set for the account we create
   if ($< == 0) {
-    unless (chmod(0755, $home_dir)) {
-      die("Can't set perms on $home_dir to 0755: $!");
-    }
-
-    unless (chown($uid, $gid, $home_dir)) {
-      die("Can't set owner of $home_dir to $uid/$gid: $!");
+    unless (chown($setup->{uid}, $setup->{gid}, $test_file)) {
+      die("Can't set owner of $test_file to $setup->{uid}/$setup->{gid}: $!");
     }
   }
 
-  auth_user_write($auth_user_file, $user, $passwd, $uid, $gid, $home_dir,
-    '/bin/bash');
-  auth_group_write($auth_group_file, $group, $gid, $user);
-
   my $config = {
-    PidFile => $pid_file,
-    ScoreboardFile => $scoreboard_file,
-    SystemLog => $log_file,
+    PidFile => $setup->{pid_file},
+    ScoreboardFile => $setup->{scoreboard_file},
+    SystemLog => $setup->{log_file},
 
-    AuthUserFile => $auth_user_file,
-    AuthGroupFile => $auth_group_file,
+    AuthUserFile => $setup->{auth_user_file},
+    AuthGroupFile => $setup->{auth_group_file},
     AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
@@ -2273,7 +2044,7 @@ sub rewrite_escape_rule_backref_bug3028 {
 
       'mod_rewrite.c' => [
         'RewriteEngine on',
-        "RewriteLog $log_file",
+        "RewriteLog $setup->{log_file}",
 
         'RewriteCondition %m SIZE',
         'RewriteRule (.*) $$100dollars.txt',
@@ -2281,7 +2052,8 @@ sub rewrite_escape_rule_backref_bug3028 {
     },
   };
 
-  my ($port, $config_user, $config_group) = config_write($config_file, $config);
+  my ($port, $config_user, $config_group) = config_write($setup->{config_file},
+    $config);
 
   # Open pipes, for use between the parent and child processes.  Specifically,
   # the child will indicate when it's done with its test by writing a message
@@ -2299,25 +2071,21 @@ sub rewrite_escape_rule_backref_bug3028 {
   if ($pid) {
     eval {
       my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
-
-      my ($resp_code, $resp_msg);
-
-      $client->login($user, $passwd);
+      $client->login($setup->{user}, $setup->{passwd});
       $client->type('binary');
 
-      ($resp_code, $resp_msg) = $client->size("tmp/test.txt");
+      my ($resp_code, $resp_msg) = $client->size("tmp/test.txt");
 
-      my $expected;
-
-      $expected = 213;
+      my $expected = 213;
       $self->assert($expected == $resp_code,
-        test_msg("Expected $expected, got $resp_code"));
+        test_msg("Expected response code $expected, got $resp_code"));
 
       $expected = 14;
       $self->assert($expected eq $resp_msg,
-        test_msg("Expected '$expected', got '$resp_msg'"));
-    };
+        test_msg("Expected response message '$expected', got '$resp_msg'"));
 
+      $client->quit();
+    };
     if ($@) {
       $ex = $@;
     }
@@ -2326,7 +2094,7 @@ sub rewrite_escape_rule_backref_bug3028 {
     $wfh->flush();
 
   } else {
-    eval { server_wait($config_file, $rfh) };
+    eval { server_wait($setup->{config_file}, $rfh) };
     if ($@) {
       warn($@);
       exit 1;
@@ -2336,39 +2104,16 @@ sub rewrite_escape_rule_backref_bug3028 {
   }
 
   # Stop server
-  server_stop($pid_file);
-
+  server_stop($setup->{pid_file});
   $self->assert_child_ok($pid);
 
-  if ($ex) {
-    test_append_logfile($log_file, $ex);
-    unlink($log_file);
-
-    die($ex);
-  }
-
-  unlink($log_file);
+  test_cleanup($setup, $ex);
 }
 
 sub rewrite_escape_cond_backref_bug3028 {
   my $self = shift;
   my $tmpdir = $self->{tmpdir};
-
-  my $config_file = "$tmpdir/rewrite.conf";
-  my $pid_file = File::Spec->rel2abs("$tmpdir/rewrite.pid");
-  my $scoreboard_file = File::Spec->rel2abs("$tmpdir/rewrite.scoreboard");
-
-  my $log_file = test_get_logfile();
-
-  my $auth_user_file = File::Spec->rel2abs("$tmpdir/rewrite.passwd");
-  my $auth_group_file = File::Spec->rel2abs("$tmpdir/rewrite.group");
-
-  my $user = 'proftpd';
-  my $passwd = 'test';
-  my $group = 'ftpd';
-  my $home_dir = File::Spec->rel2abs($tmpdir);
-  my $uid = 500;
-  my $gid = 500;
+  my $setup = test_setup($tmpdir, 'rewrite');
 
   my $test_file = File::Spec->rel2abs("$tmpdir/" . '%100dollars.txt');
   if (open(my $fh, "> $test_file")) {
@@ -2381,29 +2126,19 @@ sub rewrite_escape_cond_backref_bug3028 {
     die("Can't open $test_file: $!");
   }
 
-  # Make sure that, if we're running as root, that the home directory has
-  # permissions/privs set for the account we create
   if ($< == 0) {
-    unless (chmod(0755, $home_dir)) {
-      die("Can't set perms on $home_dir to 0755: $!");
-    }
-
-    unless (chown($uid, $gid, $home_dir)) {
-      die("Can't set owner of $home_dir to $uid/$gid: $!");
+    unless (chown($setup->{uid}, $setup->{gid}, $test_file)) {
+      die("Can't set owner of $test_file to $setup->{uid}/$setup->{gid}: $!");
     }
   }
 
-  auth_user_write($auth_user_file, $user, $passwd, $uid, $gid, $home_dir,
-    '/bin/bash');
-  auth_group_write($auth_group_file, $group, $gid, $user);
-
   my $config = {
-    PidFile => $pid_file,
-    ScoreboardFile => $scoreboard_file,
-    SystemLog => $log_file,
+    PidFile => $setup->{pid_file},
+    ScoreboardFile => $setup->{scoreboard_file},
+    SystemLog => $setup->{log_file},
 
-    AuthUserFile => $auth_user_file,
-    AuthGroupFile => $auth_group_file,
+    AuthUserFile => $setup->{auth_user_file},
+    AuthGroupFile => $setup->{auth_group_file},
     AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
@@ -2413,7 +2148,7 @@ sub rewrite_escape_cond_backref_bug3028 {
 
       'mod_rewrite.c' => [
         'RewriteEngine on',
-        "RewriteLog $log_file",
+        "RewriteLog $setup->{log_file}",
 
         'RewriteCondition %m SIZE',
         'RewriteRule (.*) %%100dollars.txt',
@@ -2421,7 +2156,8 @@ sub rewrite_escape_cond_backref_bug3028 {
     },
   };
 
-  my ($port, $config_user, $config_group) = config_write($config_file, $config);
+  my ($port, $config_user, $config_group) = config_write($setup->{config_file},
+    $config);
 
   # Open pipes, for use between the parent and child processes.  Specifically,
   # the child will indicate when it's done with its test by writing a message
@@ -2439,25 +2175,21 @@ sub rewrite_escape_cond_backref_bug3028 {
   if ($pid) {
     eval {
       my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
-
-      my ($resp_code, $resp_msg);
-
-      $client->login($user, $passwd);
+      $client->login($setup->{user}, $setup->{passwd});
       $client->type('binary');
 
-      ($resp_code, $resp_msg) = $client->size("tmp/test.txt");
+      my ($resp_code, $resp_msg) = $client->size("tmp/test.txt");
 
-      my $expected;
-
-      $expected = 213;
+      my $expected = 213;
       $self->assert($expected == $resp_code,
-        test_msg("Expected $expected, got $resp_code"));
+        test_msg("Expected response code $expected, got $resp_code"));
 
       $expected = 14;
       $self->assert($expected eq $resp_msg,
-        test_msg("Expected '$expected', got '$resp_msg'"));
-    };
+        test_msg("Expected response message '$expected', got '$resp_msg'"));
 
+      $client->quit();
+    };
     if ($@) {
       $ex = $@;
     }
@@ -2466,7 +2198,7 @@ sub rewrite_escape_cond_backref_bug3028 {
     $wfh->flush();
 
   } else {
-    eval { server_wait($config_file, $rfh) };
+    eval { server_wait($setup->{config_file}, $rfh) };
     if ($@) {
       warn($@);
       exit 1;
@@ -2476,39 +2208,16 @@ sub rewrite_escape_cond_backref_bug3028 {
   }
 
   # Stop server
-  server_stop($pid_file);
-
+  server_stop($setup->{pid_file});
   $self->assert_child_ok($pid);
 
-  if ($ex) {
-    test_append_logfile($log_file, $ex);
-    unlink($log_file);
-
-    die($ex);
-  }
-
-  unlink($log_file);
+  test_cleanup($setup, $ex);
 }
 
 sub rewrite_cond_rename_var_bug3029 {
   my $self = shift;
   my $tmpdir = $self->{tmpdir};
-
-  my $config_file = "$tmpdir/rewrite.conf";
-  my $pid_file = File::Spec->rel2abs("$tmpdir/rewrite.pid");
-  my $scoreboard_file = File::Spec->rel2abs("$tmpdir/rewrite.scoreboard");
-
-  my $log_file = test_get_logfile();
-
-  my $auth_user_file = File::Spec->rel2abs("$tmpdir/rewrite.passwd");
-  my $auth_group_file = File::Spec->rel2abs("$tmpdir/rewrite.group");
-
-  my $user = 'proftpd';
-  my $passwd = 'test';
-  my $group = 'ftpd';
-  my $home_dir = File::Spec->rel2abs($tmpdir);
-  my $uid = 500;
-  my $gid = 500;
+  my $setup = test_setup($tmpdir, 'rewrite');
 
   my $test_file = File::Spec->rel2abs("$tmpdir/" . '%100dollars.txt');
   if (open(my $fh, "> $test_file")) {
@@ -2521,34 +2230,34 @@ sub rewrite_cond_rename_var_bug3029 {
     die("Can't open $test_file: $!");
   }
 
-  # Make sure that, if we're running as root, that the home directory has
-  # permissions/privs set for the account we create
   if ($< == 0) {
-    unless (chmod(0755, $home_dir)) {
-      die("Can't set perms on $home_dir to 0755: $!");
-    }
-
-    unless (chown($uid, $gid, $home_dir)) {
-      die("Can't set owner of $home_dir to $uid/$gid: $!");
+    unless (chown($setup->{uid}, $setup->{gid}, $test_file)) {
+      die("Can't set owner of $test_file to $setup->{uid}/$setup->{gid}: $!");
     }
   }
-
-  auth_user_write($auth_user_file, $user, $passwd, $uid, $gid, $home_dir,
-    '/bin/bash');
-  auth_group_write($auth_group_file, $group, $gid, $user);
 
   my $src_dir = File::Spec->rel2abs("$tmpdir/srcdir");
   mkpath($src_dir);
 
+  if ($< == 0) {
+    unless (chmod(0755, $src_dir)) {
+      die("Can't set perms on $src_dir: $!");
+    }
+
+    unless (chmod($setup->{uid}, $setup->{gid}, $src_dir)) {
+      die("Can't set owner of $src_dir to $setup->{uid}/$setup->{gid}: $!");
+    }
+  }
+
   my $dst_dir = File::Spec->rel2abs("$tmpdir/dstdir");
 
   my $config = {
-    PidFile => $pid_file,
-    ScoreboardFile => $scoreboard_file,
-    SystemLog => $log_file,
+    PidFile => $setup->{pid_file},
+    ScoreboardFile => $setup->{scoreboard_file},
+    SystemLog => $setup->{log_file},
 
-    AuthUserFile => $auth_user_file,
-    AuthGroupFile => $auth_group_file,
+    AuthUserFile => $setup->{auth_user_file},
+    AuthGroupFile => $setup->{auth_group_file},
     AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
@@ -2558,7 +2267,7 @@ sub rewrite_cond_rename_var_bug3029 {
 
       'mod_rewrite.c' => [
         'RewriteEngine on',
-        "RewriteLog $log_file",
+        "RewriteLog $setup->{log_file}",
 
         'RewriteMap lowercase int:tolower',
         'RewriteCondition %m ^RNTO$',
@@ -2568,7 +2277,8 @@ sub rewrite_cond_rename_var_bug3029 {
     },
   };
 
-  my ($port, $config_user, $config_group) = config_write($config_file, $config);
+  my ($port, $config_user, $config_group) = config_write($setup->{config_file},
+    $config);
 
   # Open pipes, for use between the parent and child processes.  Specifically,
   # the child will indicate when it's done with its test by writing a message
@@ -2585,16 +2295,19 @@ sub rewrite_cond_rename_var_bug3029 {
   defined(my $pid = fork()) or die("Can't fork: $!");
   if ($pid) {
     eval {
-      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
+      # Allow for server startup
+      sleep(1);
 
-      $client->login($user, $passwd);
+      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
+      $client->login($setup->{user}, $setup->{passwd});
       $client->rnfr('srcdir');
       $client->rnto('DSTDIR');
 
       $self->assert(-d $dst_dir,
         test_msg("$dst_dir directory does not exist as expected"));
-    };
 
+      $client->quit();
+    };
     if ($@) {
       $ex = $@;
     }
@@ -2603,7 +2316,7 @@ sub rewrite_cond_rename_var_bug3029 {
     $wfh->flush();
 
   } else {
-    eval { server_wait($config_file, $rfh) };
+    eval { server_wait($setup->{config_file}, $rfh) };
     if ($@) {
       warn($@);
       exit 1;
@@ -2613,63 +2326,24 @@ sub rewrite_cond_rename_var_bug3029 {
   }
 
   # Stop server
-  server_stop($pid_file);
-
+  server_stop($setup->{pid_file});
   $self->assert_child_ok($pid);
 
-  if ($ex) {
-    test_append_logfile($log_file, $ex);
-    unlink($log_file);
-
-    die($ex);
-  }
-
-  unlink($log_file);
+  test_cleanup($setup, $ex);
 }
 
 sub rewrite_cond_or_flags_bug3269 {
   my $self = shift;
   my $tmpdir = $self->{tmpdir};
-
-  my $config_file = "$tmpdir/rewrite.conf";
-  my $pid_file = File::Spec->rel2abs("$tmpdir/rewrite.pid");
-  my $scoreboard_file = File::Spec->rel2abs("$tmpdir/rewrite.scoreboard");
-
-  my $log_file = test_get_logfile();
-
-  my $auth_user_file = File::Spec->rel2abs("$tmpdir/rewrite.passwd");
-  my $auth_group_file = File::Spec->rel2abs("$tmpdir/rewrite.group");
-
-  my $user = 'proftpd';
-  my $passwd = 'test';
-  my $group = 'ftpd';
-  my $home_dir = File::Spec->rel2abs($tmpdir);
-  my $uid = 500;
-  my $gid = 500;
-
-  # Make sure that, if we're running as root, that the home directory has
-  # permissions/privs set for the account we create
-  if ($< == 0) {
-    unless (chmod(0755, $home_dir)) {
-      die("Can't set perms on $home_dir to 0755: $!");
-    }
-
-    unless (chown($uid, $gid, $home_dir)) {
-      die("Can't set owner of $home_dir to $uid/$gid: $!");
-    }
-  }
-
-  auth_user_write($auth_user_file, $user, $passwd, $uid, $gid, $home_dir,
-    '/bin/bash');
-  auth_group_write($auth_group_file, $group, $gid, $user);
+  my $setup = test_setup($tmpdir, 'rewrite');
 
   my $config = {
-    PidFile => $pid_file,
-    ScoreboardFile => $scoreboard_file,
-    SystemLog => $log_file,
+    PidFile => $setup->{pid_file},
+    ScoreboardFile => $setup->{scoreboard_file},
+    SystemLog => $setup->{log_file},
 
-    AuthUserFile => $auth_user_file,
-    AuthGroupFile => $auth_group_file,
+    AuthUserFile => $setup->{auth_user_file},
+    AuthGroupFile => $setup->{auth_group_file},
     AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
@@ -2679,7 +2353,7 @@ sub rewrite_cond_or_flags_bug3269 {
 
       'mod_rewrite.c' => [
         'RewriteEngine on',
-        "RewriteLog $log_file",
+        "RewriteLog $setup->{log_file}",
 
         'RewriteCondition %m SIZE [OR]',
         'RewriteCondition %m STOU',
@@ -2688,7 +2362,8 @@ sub rewrite_cond_or_flags_bug3269 {
     },
   };
 
-  my ($port, $config_user, $config_group) = config_write($config_file, $config);
+  my ($port, $config_user, $config_group) = config_write($setup->{config_file},
+    $config);
 
   # Open pipes, for use between the parent and child processes.  Specifically,
   # the child will indicate when it's done with its test by writing a message
@@ -2706,32 +2381,27 @@ sub rewrite_cond_or_flags_bug3269 {
   if ($pid) {
     eval {
       my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
-
-      my ($resp_code, $resp_msg);
-
-      $client->login($user, $passwd);
+      $client->login($setup->{user}, $setup->{passwd});
       $client->type('binary');
 
       eval { $client->size("tmp/test.txt") };
       unless ($@) {
         die("SIZE succeeded unexpectedly");
-
-      } else {
-        $resp_code = $client->response_code();
-        $resp_msg = $client->response_msg();
       }
 
-      my $expected;
+      my $resp_code = $client->response_code();
+      my $resp_msg = $client->response_msg();
 
-      $expected = 550;
+      my $expected = 550;
       $self->assert($expected == $resp_code,
-        test_msg("Expected $expected, got $resp_code"));
+        test_msg("Expected response code $expected, got $resp_code"));
 
       $expected = 'tmp/test.txt.(\d+): No such file or directory';
       $self->assert(qr/$expected/, $resp_msg,
-        test_msg("Expected '$expected', got '$resp_msg'"));
-    };
+        test_msg("Expected response message '$expected', got '$resp_msg'"));
 
+      $client->quit();
+    };
     if ($@) {
       $ex = $@;
     }
@@ -2740,7 +2410,7 @@ sub rewrite_cond_or_flags_bug3269 {
     $wfh->flush();
 
   } else {
-    eval { server_wait($config_file, $rfh) };
+    eval { server_wait($setup->{config_file}, $rfh) };
     if ($@) {
       warn($@);
       exit 1;
@@ -2750,63 +2420,24 @@ sub rewrite_cond_or_flags_bug3269 {
   }
 
   # Stop server
-  server_stop($pid_file);
-
+  server_stop($setup->{pid_file});
   $self->assert_child_ok($pid);
 
-  if ($ex) {
-    test_append_logfile($log_file, $ex);
-    unlink($log_file);
-
-    die($ex);
-  }
-
-  unlink($log_file);
+  test_cleanup($setup, $ex);
 }
 
 sub rewrite_cond_nc_flags {
   my $self = shift;
   my $tmpdir = $self->{tmpdir};
-
-  my $config_file = "$tmpdir/rewrite.conf";
-  my $pid_file = File::Spec->rel2abs("$tmpdir/rewrite.pid");
-  my $scoreboard_file = File::Spec->rel2abs("$tmpdir/rewrite.scoreboard");
-
-  my $log_file = test_get_logfile();
-
-  my $auth_user_file = File::Spec->rel2abs("$tmpdir/rewrite.passwd");
-  my $auth_group_file = File::Spec->rel2abs("$tmpdir/rewrite.group");
-
-  my $user = 'proftpd';
-  my $passwd = 'test';
-  my $group = 'ftpd';
-  my $home_dir = File::Spec->rel2abs($tmpdir);
-  my $uid = 500;
-  my $gid = 500;
-
-  # Make sure that, if we're running as root, that the home directory has
-  # permissions/privs set for the account we create
-  if ($< == 0) {
-    unless (chmod(0755, $home_dir)) {
-      die("Can't set perms on $home_dir to 0755: $!");
-    }
-
-    unless (chown($uid, $gid, $home_dir)) {
-      die("Can't set owner of $home_dir to $uid/$gid: $!");
-    }
-  }
-
-  auth_user_write($auth_user_file, $user, $passwd, $uid, $gid, $home_dir,
-    '/bin/bash');
-  auth_group_write($auth_group_file, $group, $gid, $user);
+  my $setup = test_setup($tmpdir, 'rewrite');
 
   my $config = {
-    PidFile => $pid_file,
-    ScoreboardFile => $scoreboard_file,
-    SystemLog => $log_file,
+    PidFile => $setup->{pid_file},
+    ScoreboardFile => $setup->{scoreboard_file},
+    SystemLog => $setup->{log_file},
 
-    AuthUserFile => $auth_user_file,
-    AuthGroupFile => $auth_group_file,
+    AuthUserFile => $setup->{auth_user_file},
+    AuthGroupFile => $setup->{auth_group_file},
     AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
@@ -2816,7 +2447,7 @@ sub rewrite_cond_nc_flags {
 
       'mod_rewrite.c' => [
         'RewriteEngine on',
-        "RewriteLog $log_file",
+        "RewriteLog $setup->{log_file}",
 
         'RewriteCondition %u ^ProFTPD$ [NC]',
         'RewriteCondition %m SIZE',
@@ -2825,7 +2456,8 @@ sub rewrite_cond_nc_flags {
     },
   };
 
-  my ($port, $config_user, $config_group) = config_write($config_file, $config);
+  my ($port, $config_user, $config_group) = config_write($setup->{config_file},
+    $config);
 
   # Open pipes, for use between the parent and child processes.  Specifically,
   # the child will indicate when it's done with its test by writing a message
@@ -2843,32 +2475,27 @@ sub rewrite_cond_nc_flags {
   if ($pid) {
     eval {
       my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
-
-      my ($resp_code, $resp_msg);
-
-      $client->login($user, $passwd);
+      $client->login($setup->{user}, $setup->{passwd});
       $client->type('binary');
 
       eval { $client->size("tmp/test.txt") };
       unless ($@) {
         die("SIZE succeeded unexpectedly");
-
-      } else {
-        $resp_code = $client->response_code();
-        $resp_msg = $client->response_msg();
       }
 
-      my $expected;
+      my $resp_code = $client->response_code();
+      my $resp_msg = $client->response_msg();
 
-      $expected = 550;
+      my $expected = 550;
       $self->assert($expected == $resp_code,
-        test_msg("Expected $expected, got $resp_code"));
+        test_msg("Expected response code $expected, got $resp_code"));
 
       $expected = 'tmp/test.txt.(\d+): No such file or directory';
       $self->assert(qr/$expected/, $resp_msg,
-        test_msg("Expected '$expected', got '$resp_msg'"));
-    };
+        test_msg("Expected response message '$expected', got '$resp_msg'"));
 
+      $client->quit();
+    };
     if ($@) {
       $ex = $@;
     }
@@ -2877,7 +2504,7 @@ sub rewrite_cond_nc_flags {
     $wfh->flush();
 
   } else {
-    eval { server_wait($config_file, $rfh) };
+    eval { server_wait($setup->{config_file}, $rfh) };
     if ($@) {
       warn($@);
       exit 1;
@@ -2887,18 +2514,10 @@ sub rewrite_cond_nc_flags {
   }
 
   # Stop server
-  server_stop($pid_file);
-
+  server_stop($setup->{pid_file});
   $self->assert_child_ok($pid);
 
-  if ($ex) {
-    test_append_logfile($log_file, $ex);
-    unlink($log_file);
-
-    die($ex);
-  }
-
-  unlink($log_file);
+  test_cleanup($setup, $ex);
 }
 
 sub rewrite_map_fifo_bug3611 {
@@ -3062,46 +2681,15 @@ sub rewrite_map_fifo_bug3611 {
 sub rewrite_rule_replaceall_backslash_with_slash {
   my $self = shift;
   my $tmpdir = $self->{tmpdir};
-
-  my $config_file = "$tmpdir/rewrite.conf";
-  my $pid_file = File::Spec->rel2abs("$tmpdir/rewrite.pid");
-  my $scoreboard_file = File::Spec->rel2abs("$tmpdir/rewrite.scoreboard");
-
-  my $log_file = test_get_logfile();
-
-  my $auth_user_file = File::Spec->rel2abs("$tmpdir/rewrite.passwd");
-  my $auth_group_file = File::Spec->rel2abs("$tmpdir/rewrite.group");
-
-  my $user = 'proftpd';
-  my $passwd = 'test';
-  my $group = 'ftpd';
-  my $home_dir = File::Spec->rel2abs($tmpdir);
-  my $uid = 500;
-  my $gid = 500;
-
-  # Make sure that, if we're running as root, that the home directory has
-  # permissions/privs set for the account we create
-  if ($< == 0) {
-    unless (chmod(0755, $home_dir)) {
-      die("Can't set perms on $home_dir to 0755: $!");
-    }
-
-    unless (chown($uid, $gid, $home_dir)) {
-      die("Can't set owner of $home_dir to $uid/$gid: $!");
-    }
-  }
-
-  auth_user_write($auth_user_file, $user, $passwd, $uid, $gid, $home_dir,
-    '/bin/bash');
-  auth_group_write($auth_group_file, $group, $gid, $user);
+  my $setup = test_setup($tmpdir, 'rewrite');
 
   my $config = {
-    PidFile => $pid_file,
-    ScoreboardFile => $scoreboard_file,
-    SystemLog => $log_file,
+    PidFile => $setup->{pid_file},
+    ScoreboardFile => $setup->{scoreboard_file},
+    SystemLog => $setup->{log_file},
 
-    AuthUserFile => $auth_user_file,
-    AuthGroupFile => $auth_group_file,
+    AuthUserFile => $setup->{auth_user_file},
+    AuthGroupFile => $setup->{auth_group_file},
     AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
@@ -3111,7 +2699,7 @@ sub rewrite_rule_replaceall_backslash_with_slash {
 
       'mod_rewrite.c' => [
         'RewriteEngine on',
-        "RewriteLog $log_file",
+        "RewriteLog $setup->{log_file}",
 
         'RewriteMap replace int:replaceall',
         'RewriteCondition %m SIZE',
@@ -3120,7 +2708,8 @@ sub rewrite_rule_replaceall_backslash_with_slash {
     },
   };
 
-  my ($port, $config_user, $config_group) = config_write($config_file, $config);
+  my ($port, $config_user, $config_group) = config_write($setup->{config_file},
+    $config);
 
   # Open pipes, for use between the parent and child processes.  Specifically,
   # the child will indicate when it's done with its test by writing a message
@@ -3137,33 +2726,31 @@ sub rewrite_rule_replaceall_backslash_with_slash {
   defined(my $pid = fork()) or die("Can't fork: $!");
   if ($pid) {
     eval {
+      # Allow for server startup
+      sleep(1);
+
       my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
-
-      my ($resp_code, $resp_msg);
-
-      $client->login($user, $passwd);
+      $client->login($setup->{user}, $setup->{passwd});
       $client->type('binary');
 
       eval { $client->size("tmp\\test.txt") };
       unless ($@) {
         die("SIZE succeeded unexpectedly");
-
-      } else {
-        $resp_code = $client->response_code();
-        $resp_msg = $client->response_msg();
       }
 
-      my $expected;
+      my $resp_code = $client->response_code();
+      my $resp_msg = $client->response_msg();
 
-      $expected = 550;
+      my $expected = 550;
       $self->assert($expected == $resp_code,
-        test_msg("Expected $expected, got $resp_code"));
+        test_msg("Expected response code $expected, got $resp_code"));
 
       $expected = 'tmp/test.txt: No such file or directory';
       $self->assert(qr/$expected/, $resp_msg,
-        test_msg("Expected '$expected', got '$resp_msg'"));
-    };
+        test_msg("Expected response message '$expected', got '$resp_msg'"));
 
+      $client->quit();
+    };
     if ($@) {
       $ex = $@;
     }
@@ -3172,7 +2759,7 @@ sub rewrite_rule_replaceall_backslash_with_slash {
     $wfh->flush();
 
   } else {
-    eval { server_wait($config_file, $rfh) };
+    eval { server_wait($setup->{config_file}, $rfh) };
     if ($@) {
       warn($@);
       exit 1;
@@ -3182,39 +2769,16 @@ sub rewrite_rule_replaceall_backslash_with_slash {
   }
 
   # Stop server
-  server_stop($pid_file);
-
+  server_stop($setup->{pid_file});
   $self->assert_child_ok($pid);
 
-  if ($ex) {
-    test_append_logfile($log_file, $ex);
-    unlink($log_file);
-
-    die($ex);
-  }
-
-  unlink($log_file);
+  test_cleanup($setup, $ex);
 }
 
 sub rewrite_map_max_replace_bug3721 {
   my $self = shift;
   my $tmpdir = $self->{tmpdir};
-
-  my $config_file = "$tmpdir/rewrite.conf";
-  my $pid_file = File::Spec->rel2abs("$tmpdir/rewrite.pid");
-  my $scoreboard_file = File::Spec->rel2abs("$tmpdir/rewrite.scoreboard");
-
-  my $log_file = test_get_logfile();
-
-  my $auth_user_file = File::Spec->rel2abs("$tmpdir/rewrite.passwd");
-  my $auth_group_file = File::Spec->rel2abs("$tmpdir/rewrite.group");
-
-  my $user = 'proftpd';
-  my $passwd = 'test';
-  my $group = 'ftpd';
-  my $home_dir = File::Spec->rel2abs($tmpdir);
-  my $uid = 500;
-  my $gid = 500;
+  my $setup = test_setup($tmpdir, 'rewrite');
 
   my $sub_dir = File::Spec->rel2abs("$tmpdir/tmp");
   mkpath($sub_dir);
@@ -3236,29 +2800,23 @@ sub rewrite_map_max_replace_bug3721 {
     die("Can't open $test_path: $!");
   }
 
-  # Make sure that, if we're running as root, that the home directory has
-  # permissions/privs set for the account we create
   if ($< == 0) {
-    unless (chmod(0755, $home_dir, $sub_dir)) {
-      die("Can't set perms on $home_dir to 0755: $!");
+    unless (chmod(0755, $sub_dir)) {
+      die("Can't set perms on $sub_dir to 0755: $!");
     }
 
-    unless (chown($uid, $gid, $home_dir, $sub_dir)) {
-      die("Can't set owner of $home_dir to $uid/$gid: $!");
+    unless (chown($setup->{uid}, $setup->{gid}, $sub_dir)) {
+      die("Can't set owner of $sub_dir to $setup->{uid}/$setup->{gid}: $!");
     }
   }
 
-  auth_user_write($auth_user_file, $user, $passwd, $uid, $gid, $home_dir,
-    '/bin/bash');
-  auth_group_write($auth_group_file, $group, $gid, $user);
-
   my $config = {
-    PidFile => $pid_file,
-    ScoreboardFile => $scoreboard_file,
-    SystemLog => $log_file,
+    PidFile => $setup->{pid_file},
+    ScoreboardFile => $setup->{scoreboard_file},
+    SystemLog => $setup->{log_file},
 
-    AuthUserFile => $auth_user_file,
-    AuthGroupFile => $auth_group_file,
+    AuthUserFile => $setup->{auth_user_file},
+    AuthGroupFile => $setup->{auth_group_file},
     AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
@@ -3268,7 +2826,7 @@ sub rewrite_map_max_replace_bug3721 {
 
       'mod_rewrite.c' => [
         'RewriteEngine on',
-        "RewriteLog $log_file",
+        "RewriteLog $setup->{log_file}",
 
         'RewriteMap replace int:replaceall',
         'RewriteCondition %m SIZE',
@@ -3279,7 +2837,8 @@ sub rewrite_map_max_replace_bug3721 {
     },
   };
 
-  my ($port, $config_user, $config_group) = config_write($config_file, $config);
+  my ($port, $config_user, $config_group) = config_write($setup->{config_file},
+    $config);
 
   # Open pipes, for use between the parent and child processes.  Specifically,
   # the child will indicate when it's done with its test by writing a message
@@ -3296,27 +2855,26 @@ sub rewrite_map_max_replace_bug3721 {
   defined(my $pid = fork()) or die("Can't fork: $!");
   if ($pid) {
     eval {
+      # Allow for server startup
+      sleep(1);
+
       my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
-
-      my ($resp_code, $resp_msg);
-
-      $client->login($user, $passwd);
+      $client->login($setup->{user}, $setup->{passwd});
       $client->type('binary');
 
       # Send the path with spaces; the rewrite rules should handle it
-      ($resp_code, $resp_msg) = $client->size("tmp/$cmd_file");
+      my ($resp_code, $resp_msg) = $client->size("tmp/$cmd_file");
 
-      my $expected;
-
-      $expected = 213;
+      my $expected = 213;
       $self->assert($expected == $resp_code,
-        test_msg("Expected $expected, got $resp_code"));
+        test_msg("Expected response code $expected, got $resp_code"));
 
       $expected = '14';
       $self->assert($expected eq $resp_msg,
-        test_msg("Expected '$expected', got '$resp_msg'"));
-    };
+        test_msg("Expected response message '$expected', got '$resp_msg'"));
 
+      $client->quit();
+    };
     if ($@) {
       $ex = $@;
     }
@@ -3325,7 +2883,7 @@ sub rewrite_map_max_replace_bug3721 {
     $wfh->flush();
 
   } else {
-    eval { server_wait($config_file, $rfh) };
+    eval { server_wait($setup->{config_file}, $rfh) };
     if ($@) {
       warn($@);
       exit 1;
@@ -3335,18 +2893,10 @@ sub rewrite_map_max_replace_bug3721 {
   }
 
   # Stop server
-  server_stop($pid_file);
-
+  server_stop($setup->{pid_file});
   $self->assert_child_ok($pid);
 
-  if ($ex) {
-    test_append_logfile($log_file, $ex);
-    unlink($log_file);
-
-    die($ex);
-  }
-
-  unlink($log_file);
+  test_cleanup($setup, $ex);
 }
 
 sub rewrite_cond_time_var_bug3673 {
@@ -3486,22 +3036,7 @@ sub rewrite_cond_time_var_bug3673 {
 sub rewrite_cond_time_year_var_bug3673 {
   my $self = shift;
   my $tmpdir = $self->{tmpdir};
-
-  my $config_file = "$tmpdir/rewrite.conf";
-  my $pid_file = File::Spec->rel2abs("$tmpdir/rewrite.pid");
-  my $scoreboard_file = File::Spec->rel2abs("$tmpdir/rewrite.scoreboard");
-
-  my $log_file = test_get_logfile();
-
-  my $auth_user_file = File::Spec->rel2abs("$tmpdir/rewrite.passwd");
-  my $auth_group_file = File::Spec->rel2abs("$tmpdir/rewrite.group");
-
-  my $user = 'proftpd';
-  my $passwd = 'test';
-  my $group = 'ftpd';
-  my $home_dir = File::Spec->rel2abs($tmpdir);
-  my $uid = 500;
-  my $gid = 500;
+  my $setup = test_setup($tmpdir, 'rewrite');
 
   my $sub_dir = File::Spec->rel2abs("$tmpdir/tmp");
   mkpath($sub_dir);
@@ -3520,21 +3055,17 @@ sub rewrite_cond_time_year_var_bug3673 {
     die("Can't open $test_path: $!");
   }
 
-  # Make sure that, if we're running as root, that the home directory has
+  # Make sure that, if we're running as root, that the test directory has
   # permissions/privs set for the account we create
   if ($< == 0) {
-    unless (chmod(0755, $home_dir, $sub_dir)) {
-      die("Can't set perms on $home_dir to 0755: $!");
+    unless (chmod(0755, $sub_dir)) {
+      die("Can't set perms on $sub_dir to 0755: $!");
     }
 
-    unless (chown($uid, $gid, $home_dir, $sub_dir)) {
-      die("Can't set owner of $home_dir to $uid/$gid: $!");
+    unless (chown($setup->{uid}, $setup->{gid}, $sub_dir)) {
+      die("Can't set owner of $sub_dir to $setup->{uid}/$setup->{gid}: $!");
     }
   }
-
-  auth_user_write($auth_user_file, $user, $passwd, $uid, $gid, $home_dir,
-    '/bin/bash');
-  auth_group_write($auth_group_file, $group, $gid, $user);
 
   require DateTime;
 
@@ -3543,12 +3074,12 @@ sub rewrite_cond_time_year_var_bug3673 {
   my $timestamp = sprintf("%04d", $dt->year());
 
   my $config = {
-    PidFile => $pid_file,
-    ScoreboardFile => $scoreboard_file,
-    SystemLog => $log_file,
+    PidFile => $setup->{pid_file},
+    ScoreboardFile => $setup->{scoreboard_file},
+    SystemLog => $setup->{log_file},
 
-    AuthUserFile => $auth_user_file,
-    AuthGroupFile => $auth_group_file,
+    AuthUserFile => $setup->{auth_user_file},
+    AuthGroupFile => $setup->{auth_group_file},
     AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
@@ -3558,7 +3089,7 @@ sub rewrite_cond_time_year_var_bug3673 {
 
       'mod_rewrite.c' => [
         'RewriteEngine on',
-        "RewriteLog $log_file",
+        "RewriteLog $setup->{log_file}",
 
         'RewriteMap replace int:replaceall',
 
@@ -3569,7 +3100,8 @@ sub rewrite_cond_time_year_var_bug3673 {
     },
   };
 
-  my ($port, $config_user, $config_group) = config_write($config_file, $config);
+  my ($port, $config_user, $config_group) = config_write($setup->{config_file},
+    $config);
 
   # Open pipes, for use between the parent and child processes.  Specifically,
   # the child will indicate when it's done with its test by writing a message
@@ -3586,27 +3118,26 @@ sub rewrite_cond_time_year_var_bug3673 {
   defined(my $pid = fork()) or die("Can't fork: $!");
   if ($pid) {
     eval {
+      # Allow for server startup
+      sleep(1);
+
       my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
-
-      my ($resp_code, $resp_msg);
-
-      $client->login($user, $passwd);
+      $client->login($setup->{user}, $setup->{passwd});
       $client->type('binary');
 
       # Send the path with spaces; the rewrite rules should handle it
-      ($resp_code, $resp_msg) = $client->size("tmp/test file here.txt");
+      my ($resp_code, $resp_msg) = $client->size("tmp/test file here.txt");
 
-      my $expected;
-
-      $expected = 213;
+      my $expected = 213;
       $self->assert($expected == $resp_code,
-        test_msg("Expected $expected, got $resp_code"));
+        test_msg("Expected response code $expected, got $resp_code"));
 
       $expected = '14';
       $self->assert($expected eq $resp_msg,
-        test_msg("Expected '$expected', got '$resp_msg'"));
-    };
+        test_msg("Expected response message '$expected', got '$resp_msg'"));
 
+      $client->quit();
+    };
     if ($@) {
       $ex = $@;
     }
@@ -3615,7 +3146,7 @@ sub rewrite_cond_time_year_var_bug3673 {
     $wfh->flush();
 
   } else {
-    eval { server_wait($config_file, $rfh) };
+    eval { server_wait($setup->{config_file}, $rfh) };
     if ($@) {
       warn($@);
       exit 1;
@@ -3625,39 +3156,16 @@ sub rewrite_cond_time_year_var_bug3673 {
   }
 
   # Stop server
-  server_stop($pid_file);
-
+  server_stop($setup->{pid_file});
   $self->assert_child_ok($pid);
 
-  if ($ex) {
-    test_append_logfile($log_file, $ex);
-    unlink($log_file);
-
-    die($ex);
-  }
-
-  unlink($log_file);
+  test_cleanup($setup, $ex);
 }
 
 sub rewrite_cond_time_mon_var_bug3673 {
   my $self = shift;
   my $tmpdir = $self->{tmpdir};
-
-  my $config_file = "$tmpdir/rewrite.conf";
-  my $pid_file = File::Spec->rel2abs("$tmpdir/rewrite.pid");
-  my $scoreboard_file = File::Spec->rel2abs("$tmpdir/rewrite.scoreboard");
-
-  my $log_file = test_get_logfile();
-
-  my $auth_user_file = File::Spec->rel2abs("$tmpdir/rewrite.passwd");
-  my $auth_group_file = File::Spec->rel2abs("$tmpdir/rewrite.group");
-
-  my $user = 'proftpd';
-  my $passwd = 'test';
-  my $group = 'ftpd';
-  my $home_dir = File::Spec->rel2abs($tmpdir);
-  my $uid = 500;
-  my $gid = 500;
+  my $setup = test_setup($tmpdir, 'rewrite');
 
   my $sub_dir = File::Spec->rel2abs("$tmpdir/tmp");
   mkpath($sub_dir);
@@ -3676,21 +3184,17 @@ sub rewrite_cond_time_mon_var_bug3673 {
     die("Can't open $test_path: $!");
   }
 
-  # Make sure that, if we're running as root, that the home directory has
+  # Make sure that, if we're running as root, that the test directory has
   # permissions/privs set for the account we create
   if ($< == 0) {
-    unless (chmod(0755, $home_dir, $sub_dir)) {
-      die("Can't set perms on $home_dir to 0755: $!");
+    unless (chmod(0755, $sub_dir)) {
+      die("Can't set perms on $sub_dir to 0755: $!");
     }
 
-    unless (chown($uid, $gid, $home_dir, $sub_dir)) {
-      die("Can't set owner of $home_dir to $uid/$gid: $!");
+    unless (chown($setup->{uid}, $setup->{gid}, $sub_dir)) {
+      die("Can't set owner of $sub_dir to $setup->{uid}/$setup->{gid}: $!");
     }
   }
-
-  auth_user_write($auth_user_file, $user, $passwd, $uid, $gid, $home_dir,
-    '/bin/bash');
-  auth_group_write($auth_group_file, $group, $gid, $user);
 
   require DateTime;
 
@@ -3699,12 +3203,12 @@ sub rewrite_cond_time_mon_var_bug3673 {
   my $timestamp = sprintf("%02d", $dt->month());
 
   my $config = {
-    PidFile => $pid_file,
-    ScoreboardFile => $scoreboard_file,
-    SystemLog => $log_file,
+    PidFile => $setup->{pid_file},
+    ScoreboardFile => $setup->{scoreboard_file},
+    SystemLog => $setup->{log_file},
 
-    AuthUserFile => $auth_user_file,
-    AuthGroupFile => $auth_group_file,
+    AuthUserFile => $setup->{auth_user_file},
+    AuthGroupFile => $setup->{auth_group_file},
     AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
@@ -3714,7 +3218,7 @@ sub rewrite_cond_time_mon_var_bug3673 {
 
       'mod_rewrite.c' => [
         'RewriteEngine on',
-        "RewriteLog $log_file",
+        "RewriteLog $setup->{log_file}",
 
         'RewriteMap replace int:replaceall',
 
@@ -3725,7 +3229,8 @@ sub rewrite_cond_time_mon_var_bug3673 {
     },
   };
 
-  my ($port, $config_user, $config_group) = config_write($config_file, $config);
+  my ($port, $config_user, $config_group) = config_write($setup->{config_file},
+    $config);
 
   # Open pipes, for use between the parent and child processes.  Specifically,
   # the child will indicate when it's done with its test by writing a message
@@ -3742,27 +3247,26 @@ sub rewrite_cond_time_mon_var_bug3673 {
   defined(my $pid = fork()) or die("Can't fork: $!");
   if ($pid) {
     eval {
+      # Allow for server startup
+      sleep(1);
+
       my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
-
-      my ($resp_code, $resp_msg);
-
-      $client->login($user, $passwd);
+      $client->login($setup->{user}, $setup->{passwd});
       $client->type('binary');
 
       # Send the path with spaces; the rewrite rules should handle it
-      ($resp_code, $resp_msg) = $client->size("tmp/test file here.txt");
+      my ($resp_code, $resp_msg) = $client->size("tmp/test file here.txt");
 
-      my $expected;
-
-      $expected = 213;
+      my $expected = 213;
       $self->assert($expected == $resp_code,
-        test_msg("Expected $expected, got $resp_code"));
+        test_msg("Expected response code $expected, got $resp_code"));
 
       $expected = '14';
       $self->assert($expected eq $resp_msg,
-        test_msg("Expected '$expected', got '$resp_msg'"));
-    };
+        test_msg("Expected response message '$expected', got '$resp_msg'"));
 
+      $client->quit();
+    };
     if ($@) {
       $ex = $@;
     }
@@ -3771,7 +3275,7 @@ sub rewrite_cond_time_mon_var_bug3673 {
     $wfh->flush();
 
   } else {
-    eval { server_wait($config_file, $rfh) };
+    eval { server_wait($setup->{config_file}, $rfh) };
     if ($@) {
       warn($@);
       exit 1;
@@ -3781,39 +3285,16 @@ sub rewrite_cond_time_mon_var_bug3673 {
   }
 
   # Stop server
-  server_stop($pid_file);
-
+  server_stop($setup->{pid_file});
   $self->assert_child_ok($pid);
 
-  if ($ex) {
-    test_append_logfile($log_file, $ex);
-    unlink($log_file);
-
-    die($ex);
-  }
-
-  unlink($log_file);
+  test_cleanup($setup, $ex);
 }
 
 sub rewrite_cond_time_day_var_bug3673 {
   my $self = shift;
   my $tmpdir = $self->{tmpdir};
-
-  my $config_file = "$tmpdir/rewrite.conf";
-  my $pid_file = File::Spec->rel2abs("$tmpdir/rewrite.pid");
-  my $scoreboard_file = File::Spec->rel2abs("$tmpdir/rewrite.scoreboard");
-
-  my $log_file = test_get_logfile();
-
-  my $auth_user_file = File::Spec->rel2abs("$tmpdir/rewrite.passwd");
-  my $auth_group_file = File::Spec->rel2abs("$tmpdir/rewrite.group");
-
-  my $user = 'proftpd';
-  my $passwd = 'test';
-  my $group = 'ftpd';
-  my $home_dir = File::Spec->rel2abs($tmpdir);
-  my $uid = 500;
-  my $gid = 500;
+  my $setup = test_setup($tmpdir, 'rewrite');
 
   my $sub_dir = File::Spec->rel2abs("$tmpdir/tmp");
   mkpath($sub_dir);
@@ -3832,21 +3313,17 @@ sub rewrite_cond_time_day_var_bug3673 {
     die("Can't open $test_path: $!");
   }
 
-  # Make sure that, if we're running as root, that the home directory has
+  # Make sure that, if we're running as root, that the test directory has
   # permissions/privs set for the account we create
   if ($< == 0) {
-    unless (chmod(0755, $home_dir, $sub_dir)) {
-      die("Can't set perms on $home_dir to 0755: $!");
+    unless (chmod(0755, $sub_dir)) {
+      die("Can't set perms on $sub_dir to 0755: $!");
     }
 
-    unless (chown($uid, $gid, $home_dir, $sub_dir)) {
-      die("Can't set owner of $home_dir to $uid/$gid: $!");
+    unless (chown($setup->{uid}, $setup->{gid}, $sub_dir)) {
+      die("Can't set owner of $sub_dir to $setup->{uid}/$setup->{gid}: $!");
     }
   }
-
-  auth_user_write($auth_user_file, $user, $passwd, $uid, $gid, $home_dir,
-    '/bin/bash');
-  auth_group_write($auth_group_file, $group, $gid, $user);
 
   require DateTime;
 
@@ -3855,12 +3332,12 @@ sub rewrite_cond_time_day_var_bug3673 {
   my $timestamp = sprintf("%02d", $dt->day());
 
   my $config = {
-    PidFile => $pid_file,
-    ScoreboardFile => $scoreboard_file,
-    SystemLog => $log_file,
+    PidFile => $setup->{pid_file},
+    ScoreboardFile => $setup->{scoreboard_file},
+    SystemLog => $setup->{log_file},
 
-    AuthUserFile => $auth_user_file,
-    AuthGroupFile => $auth_group_file,
+    AuthUserFile => $setup->{auth_user_file},
+    AuthGroupFile => $setup->{auth_group_file},
     AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
@@ -3870,7 +3347,7 @@ sub rewrite_cond_time_day_var_bug3673 {
 
       'mod_rewrite.c' => [
         'RewriteEngine on',
-        "RewriteLog $log_file",
+        "RewriteLog $setup->{log_file}",
 
         'RewriteMap replace int:replaceall',
 
@@ -3881,7 +3358,8 @@ sub rewrite_cond_time_day_var_bug3673 {
     },
   };
 
-  my ($port, $config_user, $config_group) = config_write($config_file, $config);
+  my ($port, $config_user, $config_group) = config_write($setup->{config_file},
+    $config);
 
   # Open pipes, for use between the parent and child processes.  Specifically,
   # the child will indicate when it's done with its test by writing a message
@@ -3898,27 +3376,26 @@ sub rewrite_cond_time_day_var_bug3673 {
   defined(my $pid = fork()) or die("Can't fork: $!");
   if ($pid) {
     eval {
+      # Allow for server startup
+      sleep(1);
+
       my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
-
-      my ($resp_code, $resp_msg);
-
-      $client->login($user, $passwd);
+      $client->login($setup->{user}, $setup->{passwd});
       $client->type('binary');
 
       # Send the path with spaces; the rewrite rules should handle it
-      ($resp_code, $resp_msg) = $client->size("tmp/test file here.txt");
+      my ($resp_code, $resp_msg) = $client->size("tmp/test file here.txt");
 
-      my $expected;
-
-      $expected = 213;
+      my $expected = 213;
       $self->assert($expected == $resp_code,
-        test_msg("Expected $expected, got $resp_code"));
+        test_msg("Expected response code $expected, got $resp_code"));
 
       $expected = '14';
       $self->assert($expected eq $resp_msg,
-        test_msg("Expected '$expected', got '$resp_msg'"));
-    };
+        test_msg("Expected response message '$expected', got '$resp_msg'"));
 
+      $client->quit();
+    };
     if ($@) {
       $ex = $@;
     }
@@ -3927,7 +3404,7 @@ sub rewrite_cond_time_day_var_bug3673 {
     $wfh->flush();
 
   } else {
-    eval { server_wait($config_file, $rfh) };
+    eval { server_wait($setup->{config_file}, $rfh) };
     if ($@) {
       warn($@);
       exit 1;
@@ -3937,39 +3414,16 @@ sub rewrite_cond_time_day_var_bug3673 {
   }
 
   # Stop server
-  server_stop($pid_file);
-
+  server_stop($setup->{pid_file});
   $self->assert_child_ok($pid);
 
-  if ($ex) {
-    test_append_logfile($log_file, $ex);
-    unlink($log_file);
-
-    die($ex);
-  }
-
-  unlink($log_file);
+  test_cleanup($setup, $ex);
 }
 
 sub rewrite_cond_time_wday_var_bug3673 {
   my $self = shift;
   my $tmpdir = $self->{tmpdir};
-
-  my $config_file = "$tmpdir/rewrite.conf";
-  my $pid_file = File::Spec->rel2abs("$tmpdir/rewrite.pid");
-  my $scoreboard_file = File::Spec->rel2abs("$tmpdir/rewrite.scoreboard");
-
-  my $log_file = test_get_logfile();
-
-  my $auth_user_file = File::Spec->rel2abs("$tmpdir/rewrite.passwd");
-  my $auth_group_file = File::Spec->rel2abs("$tmpdir/rewrite.group");
-
-  my $user = 'proftpd';
-  my $passwd = 'test';
-  my $group = 'ftpd';
-  my $home_dir = File::Spec->rel2abs($tmpdir);
-  my $uid = 500;
-  my $gid = 500;
+  my $setup = test_setup($tmpdir, 'rewrite');
 
   my $sub_dir = File::Spec->rel2abs("$tmpdir/tmp");
   mkpath($sub_dir);
@@ -3988,21 +3442,17 @@ sub rewrite_cond_time_wday_var_bug3673 {
     die("Can't open $test_path: $!");
   }
 
-  # Make sure that, if we're running as root, that the home directory has
+  # Make sure that, if we're running as root, that the test directory has
   # permissions/privs set for the account we create
   if ($< == 0) {
-    unless (chmod(0755, $home_dir, $sub_dir)) {
-      die("Can't set perms on $home_dir to 0755: $!");
+    unless (chmod(0755, $sub_dir)) {
+      die("Can't set perms on $sub_dir to 0755: $!");
     }
 
-    unless (chown($uid, $gid, $home_dir, $sub_dir)) {
-      die("Can't set owner of $home_dir to $uid/$gid: $!");
+    unless (chown($setup->{uid}, $setup->{gid}, $sub_dir)) {
+      die("Can't set owner of $sub_dir to $setup->{uid}/$setup->{gid}: $!");
     }
   }
-
-  auth_user_write($auth_user_file, $user, $passwd, $uid, $gid, $home_dir,
-    '/bin/bash');
-  auth_group_write($auth_group_file, $group, $gid, $user);
 
   require DateTime;
 
@@ -4011,12 +3461,12 @@ sub rewrite_cond_time_wday_var_bug3673 {
   my $timestamp = sprintf("%02d", $dt->day_of_week());
 
   my $config = {
-    PidFile => $pid_file,
-    ScoreboardFile => $scoreboard_file,
-    SystemLog => $log_file,
+    PidFile => $setup->{pid_file},
+    ScoreboardFile => $setup->{scoreboard_file},
+    SystemLog => $setup->{log_file},
 
-    AuthUserFile => $auth_user_file,
-    AuthGroupFile => $auth_group_file,
+    AuthUserFile => $setup->{auth_user_file},
+    AuthGroupFile => $setup->{auth_group_file},
     AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
@@ -4026,7 +3476,7 @@ sub rewrite_cond_time_wday_var_bug3673 {
 
       'mod_rewrite.c' => [
         'RewriteEngine on',
-        "RewriteLog $log_file",
+        "RewriteLog $setup->{log_file}",
 
         'RewriteMap replace int:replaceall',
 
@@ -4037,7 +3487,8 @@ sub rewrite_cond_time_wday_var_bug3673 {
     },
   };
 
-  my ($port, $config_user, $config_group) = config_write($config_file, $config);
+  my ($port, $config_user, $config_group) = config_write($setup->{config_file},
+    $config);
 
   # Open pipes, for use between the parent and child processes.  Specifically,
   # the child will indicate when it's done with its test by writing a message
@@ -4054,27 +3505,26 @@ sub rewrite_cond_time_wday_var_bug3673 {
   defined(my $pid = fork()) or die("Can't fork: $!");
   if ($pid) {
     eval {
+      # Allow for server startup
+      sleep(1);
+
       my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
-
-      my ($resp_code, $resp_msg);
-
-      $client->login($user, $passwd);
+      $client->login($setup->{user}, $setup->{passwd});
       $client->type('binary');
 
       # Send the path with spaces; the rewrite rules should handle it
-      ($resp_code, $resp_msg) = $client->size("tmp/test file here.txt");
+      my ($resp_code, $resp_msg) = $client->size("tmp/test file here.txt");
 
-      my $expected;
-
-      $expected = 213;
+      my $expected = 213;
       $self->assert($expected == $resp_code,
-        test_msg("Expected $expected, got $resp_code"));
+        test_msg("Expected response code $expected, got $resp_code"));
 
       $expected = '14';
       $self->assert($expected eq $resp_msg,
-        test_msg("Expected '$expected', got '$resp_msg'"));
-    };
+        test_msg("Expected response message '$expected', got '$resp_msg'"));
 
+      $client->quit();
+    };
     if ($@) {
       $ex = $@;
     }
@@ -4083,7 +3533,7 @@ sub rewrite_cond_time_wday_var_bug3673 {
     $wfh->flush();
 
   } else {
-    eval { server_wait($config_file, $rfh) };
+    eval { server_wait($setup->{config_file}, $rfh) };
     if ($@) {
       warn($@);
       exit 1;
@@ -4093,18 +3543,10 @@ sub rewrite_cond_time_wday_var_bug3673 {
   }
 
   # Stop server
-  server_stop($pid_file);
-
+  server_stop($setup->{pid_file});
   $self->assert_child_ok($pid);
 
-  if ($ex) {
-    test_append_logfile($log_file, $ex);
-    unlink($log_file);
-
-    die($ex);
-  }
-
-  unlink($log_file);
+  test_cleanup($setup, $ex);
 }
 
 sub rewrite_cond_time_hour_var_bug3673 {
@@ -4237,22 +3679,7 @@ sub rewrite_cond_time_hour_var_bug3673 {
 sub rewrite_cond_time_min_var_bug3673 {
   my $self = shift;
   my $tmpdir = $self->{tmpdir};
-
-  my $config_file = "$tmpdir/rewrite.conf";
-  my $pid_file = File::Spec->rel2abs("$tmpdir/rewrite.pid");
-  my $scoreboard_file = File::Spec->rel2abs("$tmpdir/rewrite.scoreboard");
-
-  my $log_file = test_get_logfile();
-
-  my $auth_user_file = File::Spec->rel2abs("$tmpdir/rewrite.passwd");
-  my $auth_group_file = File::Spec->rel2abs("$tmpdir/rewrite.group");
-
-  my $user = 'proftpd';
-  my $passwd = 'test';
-  my $group = 'ftpd';
-  my $home_dir = File::Spec->rel2abs($tmpdir);
-  my $uid = 500;
-  my $gid = 500;
+  my $setup = test_setup($tmpdir, 'rewrite');
 
   my $sub_dir = File::Spec->rel2abs("$tmpdir/tmp");
   mkpath($sub_dir);
@@ -4271,21 +3698,17 @@ sub rewrite_cond_time_min_var_bug3673 {
     die("Can't open $test_path: $!");
   }
 
-  # Make sure that, if we're running as root, that the home directory has
+  # Make sure that, if we're running as root, that the test directory has
   # permissions/privs set for the account we create
   if ($< == 0) {
-    unless (chmod(0755, $home_dir, $sub_dir)) {
-      die("Can't set perms on $home_dir to 0755: $!");
+    unless (chmod(0755, $sub_dir)) {
+      die("Can't set perms on $sub_dir to 0755: $!");
     }
 
-    unless (chown($uid, $gid, $home_dir, $sub_dir)) {
-      die("Can't set owner of $home_dir to $uid/$gid: $!");
+    unless (chown($setup->{uid}, $setup->{gid}, $sub_dir)) {
+      die("Can't set owner of $sub_dir to $setup->{uid}/$setup->{gid}: $!");
     }
   }
-
-  auth_user_write($auth_user_file, $user, $passwd, $uid, $gid, $home_dir,
-    '/bin/bash');
-  auth_group_write($auth_group_file, $group, $gid, $user);
 
   require DateTime;
 
@@ -4294,12 +3717,12 @@ sub rewrite_cond_time_min_var_bug3673 {
   my $timestamp = sprintf("%02d", $dt->minute());
 
   my $config = {
-    PidFile => $pid_file,
-    ScoreboardFile => $scoreboard_file,
-    SystemLog => $log_file,
+    PidFile => $setup->{pid_file},
+    ScoreboardFile => $setup->{scoreboard_file},
+    SystemLog => $setup->{log_file},
 
-    AuthUserFile => $auth_user_file,
-    AuthGroupFile => $auth_group_file,
+    AuthUserFile => $setup->{auth_user_file},
+    AuthGroupFile => $setup->{auth_group_file},
     AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
@@ -4309,7 +3732,7 @@ sub rewrite_cond_time_min_var_bug3673 {
 
       'mod_rewrite.c' => [
         'RewriteEngine on',
-        "RewriteLog $log_file",
+        "RewriteLog $setup->{log_file}",
 
         'RewriteMap replace int:replaceall',
 
@@ -4320,7 +3743,8 @@ sub rewrite_cond_time_min_var_bug3673 {
     },
   };
 
-  my ($port, $config_user, $config_group) = config_write($config_file, $config);
+  my ($port, $config_user, $config_group) = config_write($setup->{config_file},
+    $config);
 
   # Open pipes, for use between the parent and child processes.  Specifically,
   # the child will indicate when it's done with its test by writing a message
@@ -4337,27 +3761,26 @@ sub rewrite_cond_time_min_var_bug3673 {
   defined(my $pid = fork()) or die("Can't fork: $!");
   if ($pid) {
     eval {
+      # Allow for server startup
+      sleep(1);
+
       my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
-
-      my ($resp_code, $resp_msg);
-
-      $client->login($user, $passwd);
+      $client->login($setup->{user}, $setup->{passwd});
       $client->type('binary');
 
       # Send the path with spaces; the rewrite rules should handle it
-      ($resp_code, $resp_msg) = $client->size("tmp/test file here.txt");
+      my ($resp_code, $resp_msg) = $client->size("tmp/test file here.txt");
 
-      my $expected;
-
-      $expected = 213;
+      my $expected = 213;
       $self->assert($expected == $resp_code,
-        test_msg("Expected $expected, got $resp_code"));
+        test_msg("Expected response code $expected, got $resp_code"));
 
       $expected = '14';
       $self->assert($expected eq $resp_msg,
-        test_msg("Expected '$expected', got '$resp_msg'"));
-    };
+        test_msg("Expected response message '$expected', got '$resp_msg'"));
 
+      $client->quit();
+    };
     if ($@) {
       $ex = $@;
     }
@@ -4366,7 +3789,7 @@ sub rewrite_cond_time_min_var_bug3673 {
     $wfh->flush();
 
   } else {
-    eval { server_wait($config_file, $rfh) };
+    eval { server_wait($setup->{config_file}, $rfh) };
     if ($@) {
       warn($@);
       exit 1;
@@ -4376,39 +3799,16 @@ sub rewrite_cond_time_min_var_bug3673 {
   }
 
   # Stop server
-  server_stop($pid_file);
-
+  server_stop($setup->{pid_file});
   $self->assert_child_ok($pid);
 
-  if ($ex) {
-    test_append_logfile($log_file, $ex);
-    unlink($log_file);
-
-    die($ex);
-  }
-
-  unlink($log_file);
+  test_cleanup($setup, $ex);
 }
 
 sub rewrite_cond_time_sec_var_bug3673 {
   my $self = shift;
   my $tmpdir = $self->{tmpdir};
-
-  my $config_file = "$tmpdir/rewrite.conf";
-  my $pid_file = File::Spec->rel2abs("$tmpdir/rewrite.pid");
-  my $scoreboard_file = File::Spec->rel2abs("$tmpdir/rewrite.scoreboard");
-
-  my $log_file = test_get_logfile();
-
-  my $auth_user_file = File::Spec->rel2abs("$tmpdir/rewrite.passwd");
-  my $auth_group_file = File::Spec->rel2abs("$tmpdir/rewrite.group");
-
-  my $user = 'proftpd';
-  my $passwd = 'test';
-  my $group = 'ftpd';
-  my $home_dir = File::Spec->rel2abs($tmpdir);
-  my $uid = 500;
-  my $gid = 500;
+  my $setup = test_setup($tmpdir, 'rewrite');
 
   my $sub_dir = File::Spec->rel2abs("$tmpdir/tmp");
   mkpath($sub_dir);
@@ -4427,21 +3827,17 @@ sub rewrite_cond_time_sec_var_bug3673 {
     die("Can't open $test_path: $!");
   }
 
-  # Make sure that, if we're running as root, that the home directory has
+  # Make sure that, if we're running as root, that the test directory has
   # permissions/privs set for the account we create
   if ($< == 0) {
-    unless (chmod(0755, $home_dir, $sub_dir)) {
-      die("Can't set perms on $home_dir to 0755: $!");
+    unless (chmod(0755, $sub_dir)) {
+      die("Can't set perms on $sub_dir to 0755: $!");
     }
 
-    unless (chown($uid, $gid, $home_dir, $sub_dir)) {
-      die("Can't set owner of $home_dir to $uid/$gid: $!");
+    unless (chown($setup->{uid}, $setup->{gid}, $sub_dir)) {
+      die("Can't set owner of $sub_dir to $setup->{uid}/$setup->{gid}: $!");
     }
   }
-
-  auth_user_write($auth_user_file, $user, $passwd, $uid, $gid, $home_dir,
-    '/bin/bash');
-  auth_group_write($auth_group_file, $group, $gid, $user);
 
   require DateTime;
 
@@ -4450,12 +3846,12 @@ sub rewrite_cond_time_sec_var_bug3673 {
   my $timestamp = sprintf("%02d", $dt->second());
 
   my $config = {
-    PidFile => $pid_file,
-    ScoreboardFile => $scoreboard_file,
-    SystemLog => $log_file,
+    PidFile => $setup->{pid_file},
+    ScoreboardFile => $setup->{scoreboard_file},
+    SystemLog => $setup->{log_file},
 
-    AuthUserFile => $auth_user_file,
-    AuthGroupFile => $auth_group_file,
+    AuthUserFile => $setup->{auth_user_file},
+    AuthGroupFile => $setup->{auth_group_file},
     AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
@@ -4465,7 +3861,7 @@ sub rewrite_cond_time_sec_var_bug3673 {
 
       'mod_rewrite.c' => [
         'RewriteEngine on',
-        "RewriteLog $log_file",
+        "RewriteLog $setup->{log_file}",
 
         'RewriteMap replace int:replaceall',
 
@@ -4476,7 +3872,8 @@ sub rewrite_cond_time_sec_var_bug3673 {
     },
   };
 
-  my ($port, $config_user, $config_group) = config_write($config_file, $config);
+  my ($port, $config_user, $config_group) = config_write($setup->{config_file},
+    $config);
 
   # Open pipes, for use between the parent and child processes.  Specifically,
   # the child will indicate when it's done with its test by writing a message
@@ -4493,27 +3890,26 @@ sub rewrite_cond_time_sec_var_bug3673 {
   defined(my $pid = fork()) or die("Can't fork: $!");
   if ($pid) {
     eval {
+      # Allow for server startup
+      sleep(1);
+
       my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
-
-      my ($resp_code, $resp_msg);
-
-      $client->login($user, $passwd);
+      $client->login($setup->{user}, $setup->{passwd});
       $client->type('binary');
 
       # Send the path with spaces; the rewrite rules should handle it
-      ($resp_code, $resp_msg) = $client->size("tmp/test file here.txt");
+      my ($resp_code, $resp_msg) = $client->size("tmp/test file here.txt");
 
-      my $expected;
-
-      $expected = 213;
+      my $expected = 213;
       $self->assert($expected == $resp_code,
-        test_msg("Expected $expected, got $resp_code"));
+        test_msg("Expected response code $expected, got $resp_code"));
 
       $expected = '14';
       $self->assert($expected eq $resp_msg,
-        test_msg("Expected '$expected', got '$resp_msg'"));
-    };
+        test_msg("Expected response message '$expected', got '$resp_msg'"));
 
+      $client->quit();
+    };
     if ($@) {
       $ex = $@;
     }
@@ -4522,7 +3918,7 @@ sub rewrite_cond_time_sec_var_bug3673 {
     $wfh->flush();
 
   } else {
-    eval { server_wait($config_file, $rfh) };
+    eval { server_wait($setup->{config_file}, $rfh) };
     if ($@) {
       warn($@);
       exit 1;
@@ -4532,39 +3928,16 @@ sub rewrite_cond_time_sec_var_bug3673 {
   }
 
   # Stop server
-  server_stop($pid_file);
-
+  server_stop($setup->{pid_file});
   $self->assert_child_ok($pid);
 
-  if ($ex) {
-    test_append_logfile($log_file, $ex);
-    unlink($log_file);
-
-    die($ex);
-  }
-
-  unlink($log_file);
+  test_cleanup($setup, $ex);
 }
 
 sub rewrite_rule_time_year_var_bug3673 {
   my $self = shift;
   my $tmpdir = $self->{tmpdir};
-
-  my $config_file = "$tmpdir/rewrite.conf";
-  my $pid_file = File::Spec->rel2abs("$tmpdir/rewrite.pid");
-  my $scoreboard_file = File::Spec->rel2abs("$tmpdir/rewrite.scoreboard");
-
-  my $log_file = test_get_logfile();
-
-  my $auth_user_file = File::Spec->rel2abs("$tmpdir/rewrite.passwd");
-  my $auth_group_file = File::Spec->rel2abs("$tmpdir/rewrite.group");
-
-  my $user = 'proftpd';
-  my $passwd = 'test';
-  my $group = 'ftpd';
-  my $home_dir = File::Spec->rel2abs($tmpdir);
-  my $uid = 500;
-  my $gid = 500;
+  my $setup = test_setup($tmpdir, 'rewrite');
 
   my $sub_dir = File::Spec->rel2abs("$tmpdir/tmp");
   mkpath($sub_dir);
@@ -4588,29 +3961,25 @@ sub rewrite_rule_time_year_var_bug3673 {
     die("Can't open $test_path: $!");
   }
 
-  # Make sure that, if we're running as root, that the home directory has
+  # Make sure that, if we're running as root, that the test directory has
   # permissions/privs set for the account we create
   if ($< == 0) {
-    unless (chmod(0755, $home_dir, $sub_dir)) {
-      die("Can't set perms on $home_dir to 0755: $!");
+    unless (chmod(0755, $sub_dir)) {
+      die("Can't set perms on $sub_dir to 0755: $!");
     }
 
-    unless (chown($uid, $gid, $home_dir, $sub_dir)) {
-      die("Can't set owner of $home_dir to $uid/$gid: $!");
+    unless (chown($setup->{uid}, $setup->{gid}, $sub_dir)) {
+      die("Can't set owner of $sub_dir to $setup->{uid}/$setup->{gid}: $!");
     }
   }
 
-  auth_user_write($auth_user_file, $user, $passwd, $uid, $gid, $home_dir,
-    '/bin/bash');
-  auth_group_write($auth_group_file, $group, $gid, $user);
-
   my $config = {
-    PidFile => $pid_file,
-    ScoreboardFile => $scoreboard_file,
-    SystemLog => $log_file,
+    PidFile => $setup->{pid_file},
+    ScoreboardFile => $setup->{scoreboard_file},
+    SystemLog => $setup->{log_file},
 
-    AuthUserFile => $auth_user_file,
-    AuthGroupFile => $auth_group_file,
+    AuthUserFile => $setup->{auth_user_file},
+    AuthGroupFile => $setup->{auth_group_file},
     AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
@@ -4620,7 +3989,7 @@ sub rewrite_rule_time_year_var_bug3673 {
 
       'mod_rewrite.c' => [
         'RewriteEngine on',
-        "RewriteLog $log_file",
+        "RewriteLog $setup->{log_file}",
 
         'RewriteCondition %m SIZE',
         'RewriteRule ^(.*) tmp/%{TIME_YEAR}.txt',
@@ -4628,7 +3997,8 @@ sub rewrite_rule_time_year_var_bug3673 {
     },
   };
 
-  my ($port, $config_user, $config_group) = config_write($config_file, $config);
+  my ($port, $config_user, $config_group) = config_write($setup->{config_file},
+    $config);
 
   # Open pipes, for use between the parent and child processes.  Specifically,
   # the child will indicate when it's done with its test by writing a message
@@ -4646,26 +4016,22 @@ sub rewrite_rule_time_year_var_bug3673 {
   if ($pid) {
     eval {
       my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
-
-      my ($resp_code, $resp_msg);
-
-      $client->login($user, $passwd);
+      $client->login($setup->{user}, $setup->{passwd});
       $client->type('binary');
 
       # Send the path with spaces; the rewrite rules should handle it
-      ($resp_code, $resp_msg) = $client->size("tmp/test file here.txt");
+      my ($resp_code, $resp_msg) = $client->size("tmp/test file here.txt");
 
-      my $expected;
-
-      $expected = 213;
+      my $expected = 213;
       $self->assert($expected == $resp_code,
-        test_msg("Expected $expected, got $resp_code"));
+        test_msg("Expected response code $expected, got $resp_code"));
 
       $expected = '14';
       $self->assert($expected eq $resp_msg,
-        test_msg("Expected '$expected', got '$resp_msg'"));
-    };
+        test_msg("Expected response message '$expected', got '$resp_msg'"));
 
+      $client->quit();
+    };
     if ($@) {
       $ex = $@;
     }
@@ -4674,7 +4040,7 @@ sub rewrite_rule_time_year_var_bug3673 {
     $wfh->flush();
 
   } else {
-    eval { server_wait($config_file, $rfh) };
+    eval { server_wait($setup->{config_file}, $rfh) };
     if ($@) {
       warn($@);
       exit 1;
@@ -4684,39 +4050,16 @@ sub rewrite_rule_time_year_var_bug3673 {
   }
 
   # Stop server
-  server_stop($pid_file);
-
+  server_stop($setup->{pid_file});
   $self->assert_child_ok($pid);
 
-  if ($ex) {
-    test_append_logfile($log_file, $ex);
-    unlink($log_file);
-
-    die($ex);
-  }
-
-  unlink($log_file);
+  test_cleanup($setup, $ex);
 }
 
 sub rewrite_rule_time_mon_var_bug3673 {
   my $self = shift;
   my $tmpdir = $self->{tmpdir};
-
-  my $config_file = "$tmpdir/rewrite.conf";
-  my $pid_file = File::Spec->rel2abs("$tmpdir/rewrite.pid");
-  my $scoreboard_file = File::Spec->rel2abs("$tmpdir/rewrite.scoreboard");
-
-  my $log_file = test_get_logfile();
-
-  my $auth_user_file = File::Spec->rel2abs("$tmpdir/rewrite.passwd");
-  my $auth_group_file = File::Spec->rel2abs("$tmpdir/rewrite.group");
-
-  my $user = 'proftpd';
-  my $passwd = 'test';
-  my $group = 'ftpd';
-  my $home_dir = File::Spec->rel2abs($tmpdir);
-  my $uid = 500;
-  my $gid = 500;
+  my $setup = test_setup($tmpdir, 'rewrite');
 
   my $sub_dir = File::Spec->rel2abs("$tmpdir/tmp");
   mkpath($sub_dir);
@@ -4740,29 +4083,25 @@ sub rewrite_rule_time_mon_var_bug3673 {
     die("Can't open $test_path: $!");
   }
 
-  # Make sure that, if we're running as root, that the home directory has
+  # Make sure that, if we're running as root, that the test directory has
   # permissions/privs set for the account we create
   if ($< == 0) {
-    unless (chmod(0755, $home_dir, $sub_dir)) {
-      die("Can't set perms on $home_dir to 0755: $!");
+    unless (chmod(0755, $sub_dir)) {
+      die("Can't set perms on $sub_dir to 0755: $!");
     }
 
-    unless (chown($uid, $gid, $home_dir, $sub_dir)) {
-      die("Can't set owner of $home_dir to $uid/$gid: $!");
+    unless (chown($setup->{uid}, $setup->{gid}, $sub_dir)) {
+      die("Can't set owner of $sub_dir to $setup->{uid}/$setup->{gid}: $!");
     }
   }
 
-  auth_user_write($auth_user_file, $user, $passwd, $uid, $gid, $home_dir,
-    '/bin/bash');
-  auth_group_write($auth_group_file, $group, $gid, $user);
-
   my $config = {
-    PidFile => $pid_file,
-    ScoreboardFile => $scoreboard_file,
-    SystemLog => $log_file,
+    PidFile => $setup->{pid_file},
+    ScoreboardFile => $setup->{scoreboard_file},
+    SystemLog => $setup->{log_file},
 
-    AuthUserFile => $auth_user_file,
-    AuthGroupFile => $auth_group_file,
+    AuthUserFile => $setup->{auth_user_file},
+    AuthGroupFile => $setup->{auth_group_file},
     AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
@@ -4772,7 +4111,7 @@ sub rewrite_rule_time_mon_var_bug3673 {
 
       'mod_rewrite.c' => [
         'RewriteEngine on',
-        "RewriteLog $log_file",
+        "RewriteLog $setup->{log_file}",
 
         'RewriteCondition %m SIZE',
         'RewriteRule ^(.*) tmp/%{TIME_MON}.txt',
@@ -4780,7 +4119,8 @@ sub rewrite_rule_time_mon_var_bug3673 {
     },
   };
 
-  my ($port, $config_user, $config_group) = config_write($config_file, $config);
+  my ($port, $config_user, $config_group) = config_write($setup->{config_file},
+    $config);
 
   # Open pipes, for use between the parent and child processes.  Specifically,
   # the child will indicate when it's done with its test by writing a message
@@ -4798,26 +4138,22 @@ sub rewrite_rule_time_mon_var_bug3673 {
   if ($pid) {
     eval {
       my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
-
-      my ($resp_code, $resp_msg);
-
-      $client->login($user, $passwd);
+      $client->login($setup->{user}, $setup->{passwd});
       $client->type('binary');
 
       # Send the path with spaces; the rewrite rules should handle it
-      ($resp_code, $resp_msg) = $client->size("tmp/test file here.txt");
+      my ($resp_code, $resp_msg) = $client->size("tmp/test file here.txt");
 
-      my $expected;
-
-      $expected = 213;
+      my $expected = 213;
       $self->assert($expected == $resp_code,
-        test_msg("Expected $expected, got $resp_code"));
+        test_msg("Expected response code $expected, got $resp_code"));
 
       $expected = '14';
       $self->assert($expected eq $resp_msg,
-        test_msg("Expected '$expected', got '$resp_msg'"));
-    };
+        test_msg("Expected response message '$expected', got '$resp_msg'"));
 
+      $client->quit();
+    };
     if ($@) {
       $ex = $@;
     }
@@ -4826,7 +4162,7 @@ sub rewrite_rule_time_mon_var_bug3673 {
     $wfh->flush();
 
   } else {
-    eval { server_wait($config_file, $rfh) };
+    eval { server_wait($setup->{config_file}, $rfh) };
     if ($@) {
       warn($@);
       exit 1;
@@ -4836,39 +4172,16 @@ sub rewrite_rule_time_mon_var_bug3673 {
   }
 
   # Stop server
-  server_stop($pid_file);
-
+  server_stop($setup->{pid_file});
   $self->assert_child_ok($pid);
 
-  if ($ex) {
-    test_append_logfile($log_file, $ex);
-    unlink($log_file);
-
-    die($ex);
-  }
-
-  unlink($log_file);
+  test_cleanup($setup, $ex);
 }
 
 sub rewrite_rule_time_day_var_bug3673 {
   my $self = shift;
   my $tmpdir = $self->{tmpdir};
-
-  my $config_file = "$tmpdir/rewrite.conf";
-  my $pid_file = File::Spec->rel2abs("$tmpdir/rewrite.pid");
-  my $scoreboard_file = File::Spec->rel2abs("$tmpdir/rewrite.scoreboard");
-
-  my $log_file = test_get_logfile();
-
-  my $auth_user_file = File::Spec->rel2abs("$tmpdir/rewrite.passwd");
-  my $auth_group_file = File::Spec->rel2abs("$tmpdir/rewrite.group");
-
-  my $user = 'proftpd';
-  my $passwd = 'test';
-  my $group = 'ftpd';
-  my $home_dir = File::Spec->rel2abs($tmpdir);
-  my $uid = 500;
-  my $gid = 500;
+  my $setup = test_setup($tmpdir, 'rewrite');
 
   my $sub_dir = File::Spec->rel2abs("$tmpdir/tmp");
   mkpath($sub_dir);
@@ -4892,29 +4205,25 @@ sub rewrite_rule_time_day_var_bug3673 {
     die("Can't open $test_path: $!");
   }
 
-  # Make sure that, if we're running as root, that the home directory has
+  # Make sure that, if we're running as root, that the test directory has
   # permissions/privs set for the account we create
   if ($< == 0) {
-    unless (chmod(0755, $home_dir, $sub_dir)) {
-      die("Can't set perms on $home_dir to 0755: $!");
+    unless (chmod(0755, $sub_dir)) {
+      die("Can't set perms on $sub_dir to 0755: $!");
     }
 
-    unless (chown($uid, $gid, $home_dir, $sub_dir)) {
-      die("Can't set owner of $home_dir to $uid/$gid: $!");
+    unless (chown($setup->{uid}, $setup->{gid}, $sub_dir)) {
+      die("Can't set owner of $sub_dir to $setup->{uid}/$setup->{gid}: $!");
     }
   }
 
-  auth_user_write($auth_user_file, $user, $passwd, $uid, $gid, $home_dir,
-    '/bin/bash');
-  auth_group_write($auth_group_file, $group, $gid, $user);
-
   my $config = {
-    PidFile => $pid_file,
-    ScoreboardFile => $scoreboard_file,
-    SystemLog => $log_file,
+    PidFile => $setup->{pid_file},
+    ScoreboardFile => $setup->{scoreboard_file},
+    SystemLog => $setup->{log_file},
 
-    AuthUserFile => $auth_user_file,
-    AuthGroupFile => $auth_group_file,
+    AuthUserFile => $setup->{auth_user_file},
+    AuthGroupFile => $setup->{auth_group_file},
     AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
@@ -4924,7 +4233,7 @@ sub rewrite_rule_time_day_var_bug3673 {
 
       'mod_rewrite.c' => [
         'RewriteEngine on',
-        "RewriteLog $log_file",
+        "RewriteLog $setup->{log_file}",
 
         'RewriteCondition %m SIZE',
         'RewriteRule ^(.*) tmp/%{TIME_DAY}.txt',
@@ -4932,7 +4241,8 @@ sub rewrite_rule_time_day_var_bug3673 {
     },
   };
 
-  my ($port, $config_user, $config_group) = config_write($config_file, $config);
+  my ($port, $config_user, $config_group) = config_write($setup->{config_file},
+    $config);
 
   # Open pipes, for use between the parent and child processes.  Specifically,
   # the child will indicate when it's done with its test by writing a message
@@ -4950,26 +4260,22 @@ sub rewrite_rule_time_day_var_bug3673 {
   if ($pid) {
     eval {
       my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
-
-      my ($resp_code, $resp_msg);
-
-      $client->login($user, $passwd);
+      $client->login($setup->{user}, $setup->{passwd});
       $client->type('binary');
 
       # Send the path with spaces; the rewrite rules should handle it
-      ($resp_code, $resp_msg) = $client->size("tmp/test file here.txt");
+      my ($resp_code, $resp_msg) = $client->size("tmp/test file here.txt");
 
-      my $expected;
-
-      $expected = 213;
+      my $expected = 213;
       $self->assert($expected == $resp_code,
-        test_msg("Expected $expected, got $resp_code"));
+        test_msg("Expected response code $expected, got $resp_code"));
 
       $expected = '14';
       $self->assert($expected eq $resp_msg,
-        test_msg("Expected '$expected', got '$resp_msg'"));
-    };
+        test_msg("Expected response message '$expected', got '$resp_msg'"));
 
+      $client->quit();
+    };
     if ($@) {
       $ex = $@;
     }
@@ -4978,7 +4284,7 @@ sub rewrite_rule_time_day_var_bug3673 {
     $wfh->flush();
 
   } else {
-    eval { server_wait($config_file, $rfh) };
+    eval { server_wait($setup->{config_file}, $rfh) };
     if ($@) {
       warn($@);
       exit 1;
@@ -4988,39 +4294,16 @@ sub rewrite_rule_time_day_var_bug3673 {
   }
 
   # Stop server
-  server_stop($pid_file);
-
+  server_stop($setup->{pid_file});
   $self->assert_child_ok($pid);
 
-  if ($ex) {
-    test_append_logfile($log_file, $ex);
-    unlink($log_file);
-
-    die($ex);
-  }
-
-  unlink($log_file);
+  test_cleanup($setup, $ex);
 }
 
 sub rewrite_rule_time_wday_var_bug3673 {
   my $self = shift;
   my $tmpdir = $self->{tmpdir};
-
-  my $config_file = "$tmpdir/rewrite.conf";
-  my $pid_file = File::Spec->rel2abs("$tmpdir/rewrite.pid");
-  my $scoreboard_file = File::Spec->rel2abs("$tmpdir/rewrite.scoreboard");
-
-  my $log_file = test_get_logfile();
-
-  my $auth_user_file = File::Spec->rel2abs("$tmpdir/rewrite.passwd");
-  my $auth_group_file = File::Spec->rel2abs("$tmpdir/rewrite.group");
-
-  my $user = 'proftpd';
-  my $passwd = 'test';
-  my $group = 'ftpd';
-  my $home_dir = File::Spec->rel2abs($tmpdir);
-  my $uid = 500;
-  my $gid = 500;
+  my $setup = test_setup($tmpdir, 'rewrite');
 
   my $sub_dir = File::Spec->rel2abs("$tmpdir/tmp");
   mkpath($sub_dir);
@@ -5044,29 +4327,25 @@ sub rewrite_rule_time_wday_var_bug3673 {
     die("Can't open $test_path: $!");
   }
 
-  # Make sure that, if we're running as root, that the home directory has
+  # Make sure that, if we're running as root, that the test directory has
   # permissions/privs set for the account we create
   if ($< == 0) {
-    unless (chmod(0755, $home_dir, $sub_dir)) {
-      die("Can't set perms on $home_dir to 0755: $!");
+    unless (chmod(0755, $sub_dir)) {
+      die("Can't set perms on $sub_dir to 0755: $!");
     }
 
-    unless (chown($uid, $gid, $home_dir, $sub_dir)) {
-      die("Can't set owner of $home_dir to $uid/$gid: $!");
+    unless (chown($setup->{uid}, $setup->{gid}, $sub_dir)) {
+      die("Can't set owner of $sub_dir to $setup->{uid}/$setup->{gid}: $!");
     }
   }
 
-  auth_user_write($auth_user_file, $user, $passwd, $uid, $gid, $home_dir,
-    '/bin/bash');
-  auth_group_write($auth_group_file, $group, $gid, $user);
-
   my $config = {
-    PidFile => $pid_file,
-    ScoreboardFile => $scoreboard_file,
-    SystemLog => $log_file,
+    PidFile => $setup->{pid_file},
+    ScoreboardFile => $setup->{scoreboard_file},
+    SystemLog => $setup->{log_file},
 
-    AuthUserFile => $auth_user_file,
-    AuthGroupFile => $auth_group_file,
+    AuthUserFile => $setup->{auth_user_file},
+    AuthGroupFile => $setup->{auth_group_file},
     AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
@@ -5076,7 +4355,7 @@ sub rewrite_rule_time_wday_var_bug3673 {
 
       'mod_rewrite.c' => [
         'RewriteEngine on',
-        "RewriteLog $log_file",
+        "RewriteLog $setup->{log_file}",
 
         'RewriteCondition %m SIZE',
         'RewriteRule ^(.*) tmp/%{TIME_WDAY}.txt',
@@ -5084,7 +4363,8 @@ sub rewrite_rule_time_wday_var_bug3673 {
     },
   };
 
-  my ($port, $config_user, $config_group) = config_write($config_file, $config);
+  my ($port, $config_user, $config_group) = config_write($setup->{config_file},
+    $config);
 
   # Open pipes, for use between the parent and child processes.  Specifically,
   # the child will indicate when it's done with its test by writing a message
@@ -5102,26 +4382,22 @@ sub rewrite_rule_time_wday_var_bug3673 {
   if ($pid) {
     eval {
       my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
-
-      my ($resp_code, $resp_msg);
-
-      $client->login($user, $passwd);
+      $client->login($setup->{user}, $setup->{passwd});
       $client->type('binary');
 
       # Send the path with spaces; the rewrite rules should handle it
-      ($resp_code, $resp_msg) = $client->size("tmp/test file here.txt");
+      my ($resp_code, $resp_msg) = $client->size("tmp/test file here.txt");
 
-      my $expected;
-
-      $expected = 213;
+      my $expected = 213;
       $self->assert($expected == $resp_code,
-        test_msg("Expected $expected, got $resp_code"));
+        test_msg("Expected response code $expected, got $resp_code"));
 
       $expected = '14';
       $self->assert($expected eq $resp_msg,
-        test_msg("Expected '$expected', got '$resp_msg'"));
-    };
+        test_msg("Expected response message '$expected', got '$resp_msg'"));
 
+      $client->quit();
+    };
     if ($@) {
       $ex = $@;
     }
@@ -5130,7 +4406,7 @@ sub rewrite_rule_time_wday_var_bug3673 {
     $wfh->flush();
 
   } else {
-    eval { server_wait($config_file, $rfh) };
+    eval { server_wait($setup->{config_file}, $rfh) };
     if ($@) {
       warn($@);
       exit 1;
@@ -5140,18 +4416,10 @@ sub rewrite_rule_time_wday_var_bug3673 {
   }
 
   # Stop server
-  server_stop($pid_file);
-
+  server_stop($setup->{pid_file});
   $self->assert_child_ok($pid);
 
-  if ($ex) {
-    test_append_logfile($log_file, $ex);
-    unlink($log_file);
-
-    die($ex);
-  }
-
-  unlink($log_file);
+  test_cleanup($setup, $ex);
 }
 
 sub rewrite_rule_time_hour_var_bug3673 {
@@ -5165,7 +4433,7 @@ sub rewrite_rule_time_hour_var_bug3673 {
   require DateTime;
 
   my $dt = DateTime->now();
-  my $time_zone = 'UTC';
+  my $time_zone = 'America/Los_Angeles';
   $dt->set_time_zone($time_zone);
 
   my $test_file = sprintf("%02d", $dt->hour()) . '.txt';
@@ -5243,6 +4511,9 @@ sub rewrite_rule_time_hour_var_bug3673 {
   defined(my $pid = fork()) or die("Can't fork: $!");
   if ($pid) {
     eval {
+      # Allow for server startup
+      sleep(1);
+
       my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
       $client->login($setup->{user}, $setup->{passwd});
       $client->type('binary');
@@ -5411,22 +4682,7 @@ sub rewrite_rule_time_min_var_bug3673 {
 sub rewrite_bug3767 {
   my $self = shift;
   my $tmpdir = $self->{tmpdir};
-
-  my $config_file = "$tmpdir/rewrite.conf";
-  my $pid_file = File::Spec->rel2abs("$tmpdir/rewrite.pid");
-  my $scoreboard_file = File::Spec->rel2abs("$tmpdir/rewrite.scoreboard");
-
-  my $log_file = test_get_logfile();
-
-  my $auth_user_file = File::Spec->rel2abs("$tmpdir/rewrite.passwd");
-  my $auth_group_file = File::Spec->rel2abs("$tmpdir/rewrite.group");
-
-  my $user = 'proftpd';
-  my $passwd = 'test';
-  my $group = 'ftpd';
-  my $home_dir = File::Spec->rel2abs($tmpdir);
-  my $uid = 500;
-  my $gid = 500;
+  my $setup = test_setup($tmpdir, 'rewrite');
 
   my $sub_dir = File::Spec->rel2abs("$tmpdir/tmp");
   mkpath($sub_dir);
@@ -5441,29 +4697,25 @@ sub rewrite_bug3767 {
     die("Can't open $test_path: $!");
   }
 
-  # Make sure that, if we're running as root, that the home directory has
+  # Make sure that, if we're running as root, that the test directory has
   # permissions/privs set for the account we create
   if ($< == 0) {
-    unless (chmod(0755, $home_dir, $sub_dir)) {
-      die("Can't set perms on $home_dir to 0755: $!");
+    unless (chmod(0755, $sub_dir)) {
+      die("Can't set perms on $sub_dir to 0755: $!");
     }
 
-    unless (chown($uid, $gid, $home_dir, $sub_dir)) {
-      die("Can't set owner of $home_dir to $uid/$gid: $!");
+    unless (chown($setup->{uid}, $setup->{gid}, $sub_dir)) {
+      die("Can't set owner of $sub_dir to $setup->{uid}/$setup->{gid}: $!");
     }
   }
 
-  auth_user_write($auth_user_file, $user, $passwd, $uid, $gid, $home_dir,
-    '/bin/bash');
-  auth_group_write($auth_group_file, $group, $gid, $user);
-
   my $config = {
-    PidFile => $pid_file,
-    ScoreboardFile => $scoreboard_file,
-    SystemLog => $log_file,
+    PidFile => $setup->{pid_file},
+    ScoreboardFile => $setup->{scoreboard_file},
+    SystemLog => $setup->{log_file},
 
-    AuthUserFile => $auth_user_file,
-    AuthGroupFile => $auth_group_file,
+    AuthUserFile => $setup->{auth_user_file},
+    AuthGroupFile => $setup->{auth_group_file},
     AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
@@ -5473,7 +4725,7 @@ sub rewrite_bug3767 {
 
       'mod_rewrite.c' => [
         'RewriteEngine on',
-        "RewriteLog $log_file",
+        "RewriteLog $setup->{log_file}",
         'RewriteMap replace int:replaceall',
         'RewriteCondition %m STOR',
         'RewriteRule ^(.*) "${replace:!$1!ABC!DEF}"',
@@ -5481,7 +4733,8 @@ sub rewrite_bug3767 {
     },
   };
 
-  my ($port, $config_user, $config_group) = config_write($config_file, $config);
+  my ($port, $config_user, $config_group) = config_write($setup->{config_file},
+    $config);
 
   # Open pipes, for use between the parent and child processes.  Specifically,
   # the child will indicate when it's done with its test by writing a message
@@ -5499,7 +4752,7 @@ sub rewrite_bug3767 {
   if ($pid) {
     eval {
       my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
-      $client->login($user, $passwd);
+      $client->login($setup->{user}, $setup->{passwd});
 
       eval { $client->site("chgrp") };
       unless ($@) {
@@ -5509,17 +4762,16 @@ sub rewrite_bug3767 {
       my $resp_code = $client->response_code();
       my $resp_msg = $client->response_msg();
 
-      my $expected;
-
-      $expected = 500;
+      my $expected = 500;
       $self->assert($expected == $resp_code,
         test_msg("Expected response code $expected, got $resp_code"));
 
       $expected = "SITE not understood";
       $self->assert($expected eq $resp_msg,
         test_msg("Expected response message '$expected', got '$resp_msg'"));
-    };
 
+      $client->quit();
+    };
     if ($@) {
       $ex = $@;
     }
@@ -5528,7 +4780,7 @@ sub rewrite_bug3767 {
     $wfh->flush();
 
   } else {
-    eval { server_wait($config_file, $rfh) };
+    eval { server_wait($setup->{config_file}, $rfh) };
     if ($@) {
       warn($@);
       exit 1;
@@ -5538,18 +4790,10 @@ sub rewrite_bug3767 {
   }
 
   # Stop server
-  server_stop($pid_file);
-
+  server_stop($setup->{pid_file});
   $self->assert_child_ok($pid);
 
-  if ($ex) {
-    test_append_logfile($log_file, $ex);
-    unlink($log_file);
-
-    die($ex);
-  }
-
-  unlink($log_file);
+  test_cleanup($setup, $ex);
 }
 
 sub rewrite_bug4017 {
@@ -5666,49 +4910,30 @@ sub rewrite_bug4017 {
 sub rewrite_using_pcre_bug4017 {
   my $self = shift;
   my $tmpdir = $self->{tmpdir};
-
-  my $config_file = "$tmpdir/rewrite.conf";
-  my $pid_file = File::Spec->rel2abs("$tmpdir/rewrite.pid");
-  my $scoreboard_file = File::Spec->rel2abs("$tmpdir/rewrite.scoreboard");
-
-  my $log_file = test_get_logfile();
-
-  my $auth_user_file = File::Spec->rel2abs("$tmpdir/rewrite.passwd");
-  my $auth_group_file = File::Spec->rel2abs("$tmpdir/rewrite.group");
-
-  my $user = 'proftpd';
-  my $passwd = 'test';
-  my $group = 'ftpd';
-  my $home_dir = File::Spec->rel2abs($tmpdir);
-  my $uid = 500;
-  my $gid = 500;
+  my $setup = test_setup($tmpdir, 'rewrite');
 
   my $test_dir = File::Spec->rel2abs("$tmpdir/foo.d");
   mkpath($test_dir);
 
-  # Make sure that, if we're running as root, that the home directory has
+  # Make sure that, if we're running as root, that the test directory has
   # permissions/privs set for the account we create
   if ($< == 0) {
-    unless (chmod(0755, $home_dir)) {
-      die("Can't set perms on $home_dir to 0755: $!");
+    unless (chmod(0755, $test_dir)) {
+      die("Can't set perms on $test_dir to 0755: $!");
     }
 
-    unless (chown($uid, $gid, $home_dir)) {
-      die("Can't set owner of $home_dir to $uid/$gid: $!");
+    unless (chown($setup->{uid}, $setup->{gid}, $test_dir)) {
+      die("Can't set owner of $test_dir to $setup->{uid}/$setup->{gid}: $!");
     }
   }
 
-  auth_user_write($auth_user_file, $user, $passwd, $uid, $gid, $home_dir,
-    '/bin/bash');
-  auth_group_write($auth_group_file, $group, $gid, $user);
-
   my $config = {
-    PidFile => $pid_file,
-    ScoreboardFile => $scoreboard_file,
-    SystemLog => $log_file,
+    PidFile => $setup->{pid_file},
+    ScoreboardFile => $setup->{scoreboard_file},
+    SystemLog => $setup->{log_file},
 
-    AuthUserFile => $auth_user_file,
-    AuthGroupFile => $auth_group_file,
+    AuthUserFile => $setup->{auth_user_file},
+    AuthGroupFile => $setup->{auth_group_file},
     AuthOrder => 'mod_auth_file.c',
 
     DefaultRoot => '~',
@@ -5720,7 +4945,7 @@ sub rewrite_using_pcre_bug4017 {
 
       'mod_rewrite.c' => [
         'RewriteEngine on',
-        "RewriteLog $log_file",
+        "RewriteLog $setup->{log_file}",
         'RewriteMap replace int:replaceall',
 
         'RewriteCondition %m !PASS',
@@ -5734,7 +4959,8 @@ sub rewrite_using_pcre_bug4017 {
     },
   };
 
-  my ($port, $config_user, $config_group) = config_write($config_file, $config);
+  my ($port, $config_user, $config_group) = config_write($setup->{config_file},
+    $config);
 
   # Open pipes, for use between the parent and child processes.  Specifically,
   # the child will indicate when it's done with its test by writing a message
@@ -5752,19 +4978,16 @@ sub rewrite_using_pcre_bug4017 {
   if ($pid) {
     eval {
       my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
-      $client->login($user, $passwd);
+      $client->login($setup->{user}, $setup->{passwd});
 
       my ($resp_code, $resp_msg) = $client->stat("/foo.d/\\bar.d/\\baz.d");
 
-      my $expected;
-
-      $expected = 211;
+      my $expected = 211;
       $self->assert($expected == $resp_code,
         test_msg("Expected response code $expected, got $resp_code"));
 
       $client->quit();
     };
-
     if ($@) {
       $ex = $@;
     }
@@ -5773,7 +4996,7 @@ sub rewrite_using_pcre_bug4017 {
     $wfh->flush();
 
   } else {
-    eval { server_wait($config_file, $rfh) };
+    eval { server_wait($setup->{config_file}, $rfh) };
     if ($@) {
       warn($@);
       exit 1;
@@ -5783,18 +5006,10 @@ sub rewrite_using_pcre_bug4017 {
   }
 
   # Stop server
-  server_stop($pid_file);
-
+  server_stop($setup->{pid_file});
   $self->assert_child_ok($pid);
 
-  if ($ex) {
-    test_append_logfile($log_file, $ex);
-    unlink($log_file);
-
-    die($ex);
-  }
-
-  unlink($log_file);
+  test_cleanup($setup, $ex);
 }
 
 sub rewrite_using_pcre_issue1300 {
