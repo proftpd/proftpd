@@ -748,6 +748,10 @@ static int resolve_on_other(pool *p, pr_jot_ctx_t *jot_ctx,
 
   log = jot_ctx->log;
   if (log->buflen > 0) {
+    if (text_len > log->buflen) {
+      text_len = log->buflen;
+    }
+
     pr_trace_msg(trace_channel, 19, "appending text '%.*s' (%lu) to buffer",
       (int) text_len, text, (unsigned long) text_len);
     memcpy(log->buf, text, text_len);
