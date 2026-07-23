@@ -2851,6 +2851,10 @@ static void jot_parsed_append_text(pr_jot_parsed_t *parsed, const char *text,
   pr_trace_msg(trace_channel, 19, "appending text '%.*s' to format",
     (int) text_len, text);
 
+  if (text_len == 0) {
+    return;
+  }
+
   for (i = 0; i < text_len; i++) {
     *(parsed->buf++) = (unsigned char) text[i];
   }
