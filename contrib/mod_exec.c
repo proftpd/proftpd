@@ -990,6 +990,11 @@ static void exec_jot_append_text(struct exec_jot_buffer *log, const char *text,
 
   pr_trace_msg(trace_channel, 19, "appending text '%.*s' (%lu) to buffer",
     (int) text_len, text, (unsigned long) text_len);
+
+  if (text_len == 0) {
+    return;
+  }
+
   memcpy(log->buf, text, text_len);
   log->buf += text_len;
   log->buflen -= text_len;

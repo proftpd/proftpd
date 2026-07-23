@@ -808,6 +808,11 @@ static int sql_resolved_append_text(pool *p, struct sql_resolved *resolved,
 
   pr_trace_msg(trace_channel, 19, "appending text '%.*s' (%lu) to buffer",
     (int) new_textlen, new_text, (unsigned long) new_textlen);
+
+  if (new_textlen == 0) {
+    return 0;
+  }
+
   memcpy(resolved->buf, new_text, new_textlen);
   resolved->buf += new_textlen;
   resolved->buflen -= new_textlen;
