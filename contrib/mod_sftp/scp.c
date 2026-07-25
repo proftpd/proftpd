@@ -382,7 +382,7 @@ static int write_confirm(pool *p, uint32_t channel_id, int code,
 
 /* Functions for receiving files from the client. */
 
-static int recv_ctl(uint32_t channel_id, struct scp_path *sp,
+static int recv_ctl(pool *p, uint32_t channel_id, struct scp_path *sp,
     unsigned char *data, uint32_t datalen,
     unsigned char **ctl_data, uint32_t *ctl_datalen) {
   register int i;
@@ -426,13 +426,15 @@ static int recv_ctl(uint32_t channel_id, struct scp_path *sp,
    * complete control message.
    */
   if (have_newline == TRUE) {
-    *ctl_data = sp->ctl_data;
     *ctl_datalen = sp->ctl_datalen;
+    *ctl_data = palloc(p, *ctl_datalen);
+    memcpy(*ctl_data, sp->ctl_data, sp->ctl_datalen);
 
     sp->ctl_data = NULL;
     sp->ctl_datalen = 0;
     destroy_pool(sp->ctl_pool);
     sp->ctl_pool = NULL;
+
     return 1;
   }
 
@@ -499,7 +501,7 @@ static int recv_timeinfo(pool *p, uint32_t channel_id, struct scp_path *sp,
   char *tmp = NULL;
   int res;
 
-  res = recv_ctl(channel_id, sp, buf, buflen, &data, &datalen);
+  res = recv_ctl(p, channel_id, sp, buf, buflen, &data, &datalen);
   if (res != 1) {
     return res;
   }
@@ -767,7 +769,7 @@ static int recv_finfo(pool *p, uint32_t channel_id, struct scp_path *sp,
   int have_dir = FALSE, res;
   cmd_rec *cmd = NULL;
 
-  res = recv_ctl(channel_id, sp, buf, buflen, &data, &datalen);
+  res = recv_ctl(p, channel_id, sp, buf, buflen, &data, &datalen);
   if (res != 1) {
     return res;
   }
@@ -1235,7 +1237,7 @@ static int recv_eod(pool *p, uint32_t channel_id, struct scp_path *sp,
   uint32_t datalen = 0;
   int ok = TRUE, res;
 
-  res = recv_ctl(channel_id, sp, buf, buflen, &data, &datalen);
+  res = recv_ctl(p, channel_id, sp, buf, buflen, &data, &datalen);
   if (res != 1) {
     return res;
   }
