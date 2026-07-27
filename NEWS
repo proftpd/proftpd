@@ -19,6 +19,8 @@
 --------------------------------
 - Issue 2242 - SSH channel open request from authenticated client with max
   packet size of zero leads to infinite loop.
+- Issue 2255 - Aborted/failed data transfers incorrectly clear any "EPSV ALL"
+  state.
 
 1.3.10rc3 - Released 07-Jul-2026
 --------------------------------
