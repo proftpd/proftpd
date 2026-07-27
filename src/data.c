@@ -469,7 +469,12 @@ void pr_data_reset(void) {
   }
 
   session.d = NULL;
-  session.sf_flags &= (SF_ALL^(SF_ABORT|SF_POST_ABORT|SF_XFER|SF_PASSIVE|SF_ASCII_OVERRIDE|SF_EPSV_ALL));
+
+  /* Note that we deliberately omit the SF_EPSV_ALL flag from here.  Once that
+   * session flag has been requested/set, it persists for the rest of the
+   * session, regardless of data transfer successs or failure (Issue #2255).
+   */
+  session.sf_flags &= (SF_ALL^(SF_ABORT|SF_POST_ABORT|SF_XFER|SF_PASSIVE|SF_ASCII_OVERRIDE));
 }
 
 int pr_data_ignore_ascii(int ignore_ascii) {
