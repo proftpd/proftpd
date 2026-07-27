@@ -63,45 +63,15 @@ sub list_tests {
 sub epsv_ok {
   my $self = shift;
   my $tmpdir = $self->{tmpdir};
-
-  my $config_file = "$tmpdir/cmds.conf";
-  my $pid_file = File::Spec->rel2abs("$tmpdir/cmds.pid");
-  my $scoreboard_file = File::Spec->rel2abs("$tmpdir/cmds.scoreboard");
-
-  my $log_file = test_get_logfile();
-
-  my $auth_user_file = File::Spec->rel2abs("$tmpdir/cmds.passwd");
-  my $auth_group_file = File::Spec->rel2abs("$tmpdir/cmds.group");
-
-  my $user = 'proftpd';
-  my $passwd = 'test';
-  my $home_dir = File::Spec->rel2abs($tmpdir);
-  my $uid = 500;
-  my $gid = 500;
-
-  # Make sure that, if we're running as root, that the home directory has
-  # permissions/privs set for the account we create
-  if ($< == 0) {
-    unless (chmod(0755, $home_dir)) {
-      die("Can't set perms on $home_dir to 0755: $!");
-    }
-
-    unless (chown($uid, $gid, $home_dir)) {
-      die("Can't set owner of $home_dir to $uid/$gid: $!");
-    }
-  }
-
-  auth_user_write($auth_user_file, $user, $passwd, $uid, $gid, $home_dir,
-    '/bin/bash');
-  auth_group_write($auth_group_file, 'ftpd', $gid, $user);
+  my $setup = test_setup($tmpdir, 'cmds');
 
   my $config = {
-    PidFile => $pid_file,
-    ScoreboardFile => $scoreboard_file,
-    SystemLog => $log_file,
+    PidFile => $setup->{pid_file},
+    ScoreboardFile => $setup->{scoreboard_file},
+    SystemLog => $setup->{log_file},
 
-    AuthUserFile => $auth_user_file,
-    AuthGroupFile => $auth_group_file,
+    AuthUserFile => $setup->{auth_user_file},
+    AuthGroupFile => $setup->{auth_group_file},
     AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
@@ -111,7 +81,8 @@ sub epsv_ok {
     },
   };
 
-  my ($port, $config_user, $config_group) = config_write($config_file, $config);
+  my ($port, $config_user, $config_group) = config_write($setup->{config_file},
+    $config);
 
   # Open pipes, for use between the parent and child processes.  Specifically,
   # the child will indicate when it's done with its test by writing a message
@@ -129,22 +100,20 @@ sub epsv_ok {
   if ($pid) {
     eval {
       my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
-      $client->login($user, $passwd);;
+      $client->login($setup->{user}, $setup->{passwd});
 
-      my ($resp_code, $resp_msg);
-      ($resp_code, $resp_msg) = $client->epsv();
+      my ($resp_code, $resp_msg) = $client->epsv();
 
-      my $expected;
-
-      $expected = 229;
+      my $expected = 229;
       $self->assert($expected == $resp_code,
-        test_msg("Expected $expected, got $resp_code"));
+        test_msg("Expected response code $expected, got $resp_code"));
 
       $expected = '^Entering Extended Passive Mode \(\|\|\|\d+\|\)';
       $self->assert(qr/$expected/, $resp_msg,
-        test_msg("Expected '$expected', got '$resp_msg'"));
-    };
+        test_msg("Expected response message '$expected', got '$resp_msg'"));
 
+      $client->quit();
+    };
     if ($@) {
       $ex = $@;
     }
@@ -153,7 +122,7 @@ sub epsv_ok {
     $wfh->flush();
 
   } else {
-    eval { server_wait($config_file, $rfh) };
+    eval { server_wait($setup->{config_file}, $rfh) };
     if ($@) {
       warn($@);
       exit 1;
@@ -163,62 +132,24 @@ sub epsv_ok {
   }
 
   # Stop server
-  server_stop($pid_file);
-
+  server_stop($setup->{pid_file});
   $self->assert_child_ok($pid);
 
-  if ($ex) {
-    test_append_logfile($log_file, $ex);
-    unlink($log_file);
-
-    die($ex);
-  }
-
-  unlink($log_file);
+  test_cleanup($setup, $ex);
 }
 
 sub epsv_ipv4_ok {
   my $self = shift;
   my $tmpdir = $self->{tmpdir};
-
-  my $config_file = "$tmpdir/cmds.conf";
-  my $pid_file = File::Spec->rel2abs("$tmpdir/cmds.pid");
-  my $scoreboard_file = File::Spec->rel2abs("$tmpdir/cmds.scoreboard");
-
-  my $log_file = test_get_logfile();
-
-  my $auth_user_file = File::Spec->rel2abs("$tmpdir/cmds.passwd");
-  my $auth_group_file = File::Spec->rel2abs("$tmpdir/cmds.group");
-
-  my $user = 'proftpd';
-  my $passwd = 'test';
-  my $home_dir = File::Spec->rel2abs($tmpdir);
-  my $uid = 500;
-  my $gid = 500;
-
-  # Make sure that, if we're running as root, that the home directory has
-  # permissions/privs set for the account we create
-  if ($< == 0) {
-    unless (chmod(0755, $home_dir)) {
-      die("Can't set perms on $home_dir to 0755: $!");
-    }
-
-    unless (chown($uid, $gid, $home_dir)) {
-      die("Can't set owner of $home_dir to $uid/$gid: $!");
-    }
-  }
-
-  auth_user_write($auth_user_file, $user, $passwd, $uid, $gid, $home_dir,
-    '/bin/bash');
-  auth_group_write($auth_group_file, 'ftpd', $gid, $user);
+  my $setup = test_setup($tmpdir, 'cmds');
 
   my $config = {
-    PidFile => $pid_file,
-    ScoreboardFile => $scoreboard_file,
-    SystemLog => $log_file,
+    PidFile => $setup->{pid_file},
+    ScoreboardFile => $setup->{scoreboard_file},
+    SystemLog => $setup->{log_file},
 
-    AuthUserFile => $auth_user_file,
-    AuthGroupFile => $auth_group_file,
+    AuthUserFile => $setup->{auth_user_file},
+    AuthGroupFile => $setup->{auth_group_file},
     AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
@@ -228,7 +159,8 @@ sub epsv_ipv4_ok {
     },
   };
 
-  my ($port, $config_user, $config_group) = config_write($config_file, $config);
+  my ($port, $config_user, $config_group) = config_write($setup->{config_file},
+    $config);
 
   # Open pipes, for use between the parent and child processes.  Specifically,
   # the child will indicate when it's done with its test by writing a message
@@ -246,22 +178,20 @@ sub epsv_ipv4_ok {
   if ($pid) {
     eval {
       my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
-      $client->login($user, $passwd);;
+      $client->login($setup->{user}, $setup->{passwd});
 
-      my ($resp_code, $resp_msg);
-      ($resp_code, $resp_msg) = $client->epsv('1');
+      my ($resp_code, $resp_msg) = $client->epsv('1');
 
-      my $expected;
-
-      $expected = 229;
+      my $expected = 229;
       $self->assert($expected == $resp_code,
-        test_msg("Expected $expected, got $resp_code"));
+        test_msg("Expected response code $expected, got $resp_code"));
 
       $expected = '^Entering Extended Passive Mode \(\|\|\|\d+\|\)';
       $self->assert(qr/$expected/, $resp_msg,
-        test_msg("Expected '$expected', got '$resp_msg'"));
-    };
+        test_msg("Expected response message '$expected', got '$resp_msg'"));
 
+      $client->quit();
+    };
     if ($@) {
       $ex = $@;
     }
@@ -270,7 +200,7 @@ sub epsv_ipv4_ok {
     $wfh->flush();
 
   } else {
-    eval { server_wait($config_file, $rfh) };
+    eval { server_wait($setup->{config_file}, $rfh) };
     if ($@) {
       warn($@);
       exit 1;
@@ -280,62 +210,24 @@ sub epsv_ipv4_ok {
   }
 
   # Stop server
-  server_stop($pid_file);
-
+  server_stop($setup->{pid_file});
   $self->assert_child_ok($pid);
 
-  if ($ex) {
-    test_append_logfile($log_file, $ex);
-    unlink($log_file);
-
-    die($ex);
-  }
-
-  unlink($log_file);
+  test_cleanup($setup, $ex);
 }
 
 sub epsv_ipv6_ok {
   my $self = shift;
   my $tmpdir = $self->{tmpdir};
-
-  my $config_file = "$tmpdir/cmds.conf";
-  my $pid_file = File::Spec->rel2abs("$tmpdir/cmds.pid");
-  my $scoreboard_file = File::Spec->rel2abs("$tmpdir/cmds.scoreboard");
-
-  my $log_file = test_get_logfile();
-
-  my $auth_user_file = File::Spec->rel2abs("$tmpdir/cmds.passwd");
-  my $auth_group_file = File::Spec->rel2abs("$tmpdir/cmds.group");
-
-  my $user = 'proftpd';
-  my $passwd = 'test';
-  my $home_dir = File::Spec->rel2abs($tmpdir);
-  my $uid = 500;
-  my $gid = 500;
-
-  # Make sure that, if we're running as root, that the home directory has
-  # permissions/privs set for the account we create
-  if ($< == 0) {
-    unless (chmod(0755, $home_dir)) {
-      die("Can't set perms on $home_dir to 0755: $!");
-    }
-
-    unless (chown($uid, $gid, $home_dir)) {
-      die("Can't set owner of $home_dir to $uid/$gid: $!");
-    }
-  }
-
-  auth_user_write($auth_user_file, $user, $passwd, $uid, $gid, $home_dir,
-    '/bin/bash');
-  auth_group_write($auth_group_file, 'ftpd', $gid, $user);
+  my $setup = test_setup($tmpdir, 'cmds');
 
   my $config = {
-    PidFile => $pid_file,
-    ScoreboardFile => $scoreboard_file,
-    SystemLog => $log_file,
+    PidFile => $setup->{pid_file},
+    ScoreboardFile => $setup->{scoreboard_file},
+    SystemLog => $setup->{log_file},
 
-    AuthUserFile => $auth_user_file,
-    AuthGroupFile => $auth_group_file,
+    AuthUserFile => $setup->{auth_user_file},
+    AuthGroupFile => $setup->{auth_group_file},
     AuthOrder => 'mod_auth_file.c',
 
     UseIPv6 => 'on',
@@ -347,7 +239,8 @@ sub epsv_ipv6_ok {
     },
   };
 
-  my ($port, $config_user, $config_group) = config_write($config_file, $config);
+  my ($port, $config_user, $config_group) = config_write($setup->{config_file},
+    $config);
 
   # Open pipes, for use between the parent and child processes.  Specifically,
   # the child will indicate when it's done with its test by writing a message
@@ -365,22 +258,20 @@ sub epsv_ipv6_ok {
   if ($pid) {
     eval {
       my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
-      $client->login($user, $passwd);;
+      $client->login($setup->{user}, $setup->{passwd});
 
-      my ($resp_code, $resp_msg);
-      ($resp_code, $resp_msg) = $client->epsv('2');
+      my ($resp_code, $resp_msg) = $client->epsv('2');
 
-      my $expected;
-
-      $expected = 229;
+      my $expected = 229;
       $self->assert($expected == $resp_code,
-        test_msg("Expected $expected, got $resp_code"));
+        test_msg("Expected response code $expected, got $resp_code"));
 
       $expected = '^Entering Extended Passive Mode \(\|\|\|\d+\|\)';
       $self->assert(qr/$expected/, $resp_msg,
-        test_msg("Expected '$expected', got '$resp_msg'"));
-    };
+        test_msg("Expected response message '$expected', got '$resp_msg'"));
 
+      $client->quit();
+    };
     if ($@) {
       $ex = $@;
     }
@@ -389,7 +280,7 @@ sub epsv_ipv6_ok {
     $wfh->flush();
 
   } else {
-    eval { server_wait($config_file, $rfh) };
+    eval { server_wait($setup->{config_file}, $rfh) };
     if ($@) {
       warn($@);
       exit 1;
@@ -399,62 +290,24 @@ sub epsv_ipv6_ok {
   }
 
   # Stop server
-  server_stop($pid_file);
-
+  server_stop($setup->{pid_file});
   $self->assert_child_ok($pid);
 
-  if ($ex) {
-    test_append_logfile($log_file, $ex);
-    unlink($log_file);
-
-    die($ex);
-  }
-
-  unlink($log_file);
+  test_cleanup($setup, $ex);
 }
 
 sub epsv_all_ok {
   my $self = shift;
   my $tmpdir = $self->{tmpdir};
-
-  my $config_file = "$tmpdir/cmds.conf";
-  my $pid_file = File::Spec->rel2abs("$tmpdir/cmds.pid");
-  my $scoreboard_file = File::Spec->rel2abs("$tmpdir/cmds.scoreboard");
-
-  my $log_file = test_get_logfile();
-
-  my $auth_user_file = File::Spec->rel2abs("$tmpdir/cmds.passwd");
-  my $auth_group_file = File::Spec->rel2abs("$tmpdir/cmds.group");
-
-  my $user = 'proftpd';
-  my $passwd = 'test';
-  my $home_dir = File::Spec->rel2abs($tmpdir);
-  my $uid = 500;
-  my $gid = 500;
-
-  # Make sure that, if we're running as root, that the home directory has
-  # permissions/privs set for the account we create
-  if ($< == 0) {
-    unless (chmod(0755, $home_dir)) {
-      die("Can't set perms on $home_dir to 0755: $!");
-    }
-
-    unless (chown($uid, $gid, $home_dir)) {
-      die("Can't set owner of $home_dir to $uid/$gid: $!");
-    }
-  }
-
-  auth_user_write($auth_user_file, $user, $passwd, $uid, $gid, $home_dir,
-    '/bin/bash');
-  auth_group_write($auth_group_file, 'ftpd', $gid, $user);
+  my $setup = test_setup($tmpdir, 'cmds');
 
   my $config = {
-    PidFile => $pid_file,
-    ScoreboardFile => $scoreboard_file,
-    SystemLog => $log_file,
+    PidFile => $setup->{pid_file},
+    ScoreboardFile => $setup->{scoreboard_file},
+    SystemLog => $setup->{log_file},
 
-    AuthUserFile => $auth_user_file,
-    AuthGroupFile => $auth_group_file,
+    AuthUserFile => $setup->{auth_user_file},
+    AuthGroupFile => $setup->{auth_group_file},
     AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
@@ -464,7 +317,8 @@ sub epsv_all_ok {
     },
   };
 
-  my ($port, $config_user, $config_group) = config_write($config_file, $config);
+  my ($port, $config_user, $config_group) = config_write($setup->{config_file},
+    $config);
 
   # Open pipes, for use between the parent and child processes.  Specifically,
   # the child will indicate when it's done with its test by writing a message
@@ -482,22 +336,20 @@ sub epsv_all_ok {
   if ($pid) {
     eval {
       my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
-      $client->login($user, $passwd);;
+      $client->login($setup->{user}, $setup->{passwd});
 
-      my ($resp_code, $resp_msg);
-      ($resp_code, $resp_msg) = $client->epsv('all');
+      my ($resp_code, $resp_msg) = $client->epsv('all');
 
-      my $expected;
-
-      $expected = 200;
+      my $expected = 200;
       $self->assert($expected == $resp_code,
-        test_msg("Expected $expected, got $resp_code"));
+        test_msg("Expected response code $expected, got $resp_code"));
 
       $expected = 'EPSV ALL command successful';
       $self->assert($expected eq $resp_msg,
-        test_msg("Expected '$expected', got '$resp_msg'"));
-    };
+        test_msg("Expected response message '$expected', got '$resp_msg'"));
 
+      $client->quit();
+    };
     if ($@) {
       $ex = $@;
     }
@@ -506,7 +358,7 @@ sub epsv_all_ok {
     $wfh->flush();
 
   } else {
-    eval { server_wait($config_file, $rfh) };
+    eval { server_wait($setup->{config_file}, $rfh) };
     if ($@) {
       warn($@);
       exit 1;
@@ -516,34 +368,21 @@ sub epsv_all_ok {
   }
 
   # Stop server
-  server_stop($pid_file);
-
+  server_stop($setup->{pid_file});
   $self->assert_child_ok($pid);
 
-  if ($ex) {
-    test_append_logfile($log_file, $ex);
-    unlink($log_file);
-
-    die($ex);
-  }
-
-  unlink($log_file);
+  test_cleanup($setup, $ex);
 }
 
 sub epsv_fails_login_required {
   my $self = shift;
   my $tmpdir = $self->{tmpdir};
-
-  my $config_file = "$tmpdir/cmds.conf";
-  my $pid_file = File::Spec->rel2abs("$tmpdir/cmds.pid");
-  my $scoreboard_file = File::Spec->rel2abs("$tmpdir/cmds.scoreboard");
-
-  my $log_file = test_get_logfile();
+  my $setup = test_setup($tmpdir, 'cmds');
 
   my $config = {
-    PidFile => $pid_file,
-    ScoreboardFile => $scoreboard_file,
-    SystemLog => $log_file,
+    PidFile => $setup->{pid_file},
+    ScoreboardFile => $setup->{scoreboard_file},
+    SystemLog => $setup->{log_file},
 
     IfModules => {
       'mod_delay.c' => {
@@ -552,7 +391,8 @@ sub epsv_fails_login_required {
     },
   };
 
-  my ($port, $config_user, $config_group) = config_write($config_file, $config);
+  my ($port, $config_user, $config_group) = config_write($setup->{config_file},
+    $config);
 
   # Open pipes, for use between the parent and child processes.  Specifically,
   # the child will indicate when it's done with its test by writing a message
@@ -571,27 +411,24 @@ sub epsv_fails_login_required {
     eval {
       my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
 
-      my ($resp_code, $resp_msg);
-      eval { ($resp_code, $resp_msg) = $client->epsv() };
+      eval { $client->epsv() };
       unless ($@) {
         die("PASV succeeded unexpectedly");
-
-      } else {
-        $resp_code = $client->response_code();
-        $resp_msg = $client->response_msg();
       }
 
-      my $expected;
+      my $resp_code = $client->response_code();
+      my $resp_msg = $client->response_msg();
 
-      $expected = 530;
+      my $expected = 530;
       $self->assert($expected == $resp_code,
-        test_msg("Expected $expected, got $resp_code"));
+        test_msg("Expected response code $expected, got $resp_code"));
 
       $expected = "Please login with USER and PASS";
       $self->assert($expected eq $resp_msg,
-        test_msg("Expected '$expected', got '$resp_msg'"));
-    };
+        test_msg("Expected response message '$expected', got '$resp_msg'"));
 
+      $client->quit();
+    };
     if ($@) {
       $ex = $@;
     }
@@ -600,7 +437,7 @@ sub epsv_fails_login_required {
     $wfh->flush();
 
   } else {
-    eval { server_wait($config_file, $rfh) };
+    eval { server_wait($setup->{config_file}, $rfh) };
     if ($@) {
       warn($@);
       exit 1;
@@ -610,62 +447,24 @@ sub epsv_fails_login_required {
   }
 
   # Stop server
-  server_stop($pid_file);
-
+  server_stop($setup->{pid_file});
   $self->assert_child_ok($pid);
 
-  if ($ex) {
-    test_append_logfile($log_file, $ex);
-    unlink($log_file);
-
-    die($ex);
-  }
-
-  unlink($log_file);
+  test_cleanup($setup, $ex);
 }
 
 sub epsv_fails_bad_proto {
   my $self = shift;
   my $tmpdir = $self->{tmpdir};
-
-  my $config_file = "$tmpdir/cmds.conf";
-  my $pid_file = File::Spec->rel2abs("$tmpdir/cmds.pid");
-  my $scoreboard_file = File::Spec->rel2abs("$tmpdir/cmds.scoreboard");
-
-  my $log_file = test_get_logfile();
-
-  my $auth_user_file = File::Spec->rel2abs("$tmpdir/cmds.passwd");
-  my $auth_group_file = File::Spec->rel2abs("$tmpdir/cmds.group");
-
-  my $user = 'proftpd';
-  my $passwd = 'test';
-  my $home_dir = File::Spec->rel2abs($tmpdir);
-  my $uid = 500;
-  my $gid = 500;
-
-  # Make sure that, if we're running as root, that the home directory has
-  # permissions/privs set for the account we create
-  if ($< == 0) {
-    unless (chmod(0755, $home_dir)) {
-      die("Can't set perms on $home_dir to 0755: $!");
-    }
-
-    unless (chown($uid, $gid, $home_dir)) {
-      die("Can't set owner of $home_dir to $uid/$gid: $!");
-    }
-  }
-
-  auth_user_write($auth_user_file, $user, $passwd, $uid, $gid, $home_dir,
-    '/bin/bash');
-  auth_group_write($auth_group_file, 'ftpd', $gid, $user);
+  my $setup = test_setup($tmpdir, 'cmds');
 
   my $config = {
-    PidFile => $pid_file,
-    ScoreboardFile => $scoreboard_file,
-    SystemLog => $log_file,
+    PidFile => $setup->{pid_file},
+    ScoreboardFile => $setup->{scoreboard_file},
+    SystemLog => $setup->{log_file},
 
-    AuthUserFile => $auth_user_file,
-    AuthGroupFile => $auth_group_file,
+    AuthUserFile => $setup->{auth_user_file},
+    AuthGroupFile => $setup->{auth_group_file},
     AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
@@ -680,7 +479,8 @@ sub epsv_fails_bad_proto {
     $config->{UseIPv6} = 'on';
   }
 
-  my ($port, $config_user, $config_group) = config_write($config_file, $config);
+  my ($port, $config_user, $config_group) = config_write($setup->{config_file},
+    $config);
 
   # Open pipes, for use between the parent and child processes.  Specifically,
   # the child will indicate when it's done with its test by writing a message
@@ -698,24 +498,20 @@ sub epsv_fails_bad_proto {
   if ($pid) {
     eval {
       my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
-      $client->login($user, $passwd);;
+      $client->login($setup->{user}, $setup->{passwd});
 
-      my ($resp_code, $resp_msg);
       eval { $client->epsv('4') };
       unless ($@) {
         die("EPSV succeeded unexpectedly: " . $client->response_code() . " " .
           $client->response_msg());
-
-      } else {
-        $resp_code = $client->response_code();
-        $resp_msg = $client->response_msg();
       }
 
-      my $expected;
+      my $resp_code = $client->response_code();
+      my $resp_msg = $client->response_msg();
 
-      $expected = 522;
+      my $expected = 522;
       $self->assert($expected == $resp_code,
-        test_msg("Expected $expected, got $resp_code"));
+        test_msg("Expected response code $expected, got $resp_code"));
 
       if ($have_ipv6) {
         $expected = "Network protocol not supported, use (1,2)";
@@ -725,9 +521,10 @@ sub epsv_fails_bad_proto {
       }
 
       $self->assert($expected eq $resp_msg,
-        test_msg("Expected '$expected', got '$resp_msg'"));
-    };
+        test_msg("Expected response message '$expected', got '$resp_msg'"));
 
+      $client->quit();
+    };
     if ($@) {
       $ex = $@;
     }
@@ -736,7 +533,7 @@ sub epsv_fails_bad_proto {
     $wfh->flush();
 
   } else {
-    eval { server_wait($config_file, $rfh) };
+    eval { server_wait($setup->{config_file}, $rfh) };
     if ($@) {
       warn($@);
       exit 1;
@@ -746,50 +543,16 @@ sub epsv_fails_bad_proto {
   }
 
   # Stop server
-  server_stop($pid_file);
-
+  server_stop($setup->{pid_file});
   $self->assert_child_ok($pid);
 
-  if ($ex) {
-    test_append_logfile($log_file, $ex);
-    unlink($log_file);
-
-    die($ex);
-  }
-
-  unlink($log_file);
+  test_cleanup($setup, $ex);
 }
 
 sub epsv_during_xfer_bug3487 {
   my $self = shift;
   my $tmpdir = $self->{tmpdir};
-
-  my $config_file = "$tmpdir/cmds.conf";
-  my $pid_file = File::Spec->rel2abs("$tmpdir/cmds.pid");
-  my $scoreboard_file = File::Spec->rel2abs("$tmpdir/cmds.scoreboard");
-
-  my $log_file = test_get_logfile();
-
-  my $auth_user_file = File::Spec->rel2abs("$tmpdir/cmds.passwd");
-  my $auth_group_file = File::Spec->rel2abs("$tmpdir/cmds.group");
-
-  my $user = 'proftpd';
-  my $passwd = 'test';
-  my $home_dir = File::Spec->rel2abs($tmpdir);
-  my $uid = 500;
-  my $gid = 500;
-
-  # Make sure that, if we're running as root, that the home directory has
-  # permissions/privs set for the account we create
-  if ($< == 0) {
-    unless (chmod(0755, $home_dir)) {
-      die("Can't set perms on $home_dir to 0755: $!");
-    }
-
-    unless (chown($uid, $gid, $home_dir)) {
-      die("Can't set owner of $home_dir to $uid/$gid: $!");
-    }
-  }
+  my $setup = test_setup($tmpdir, 'cmds');
 
   # For this test, we need to create many files in the home directory
   my $test_file_prefix = File::Spec->rel2abs("$tmpdir/test_");
@@ -797,7 +560,7 @@ sub epsv_during_xfer_bug3487 {
   my $count = 7000;
   for (my $i = 1; $i <= $count; $i++) {
     my $test_file = 'test_' . sprintf("%07s", $i);
-    my $test_path = "$home_dir/$test_file";
+    my $test_path = "$setup->{home_dir}/$test_file";
 
     if (open(my $fh, "> $test_path")) {
       close($fh);
@@ -807,17 +570,13 @@ sub epsv_during_xfer_bug3487 {
     }
   }
 
-  auth_user_write($auth_user_file, $user, $passwd, $uid, $gid, $home_dir,
-    '/bin/bash');
-  auth_group_write($auth_group_file, 'ftpd', $gid, $user);
-
   my $config = {
-    PidFile => $pid_file,
-    ScoreboardFile => $scoreboard_file,
-    SystemLog => $log_file,
+    PidFile => $setup->{pid_file},
+    ScoreboardFile => $setup->{scoreboard_file},
+    SystemLog => $setup->{log_file},
 
-    AuthUserFile => $auth_user_file,
-    AuthGroupFile => $auth_group_file,
+    AuthUserFile => $setup->{auth_user_file},
+    AuthGroupFile => $setup->{auth_group_file},
     AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
@@ -827,7 +586,8 @@ sub epsv_during_xfer_bug3487 {
     },
   };
 
-  my ($port, $config_user, $config_group) = config_write($config_file, $config);
+  my ($port, $config_user, $config_group) = config_write($setup->{config_file},
+    $config);
 
   # Open pipes, for use between the parent and child processes.  Specifically,
   # the child will indicate when it's done with its test by writing a message
@@ -845,7 +605,7 @@ sub epsv_during_xfer_bug3487 {
   if ($pid) {
     eval {
       my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
-      $client->login($user, $passwd);
+      $client->login($setup->{user}, $setup->{passwd});
 
       my $conn = $client->list_raw();
       unless ($conn) {
@@ -865,34 +625,27 @@ sub epsv_during_xfer_bug3487 {
       my $resp_code = $client->response_code();
       my $resp_msg = $client->response_msg();
 
-      my $expected;
-
-      $expected = 450;
+      my $expected = 450;
       $self->assert($expected == $resp_code,
-        test_msg("Expected $expected, got $resp_code"));
+        test_msg("Expected response code $expected, got $resp_code"));
 
       $expected = 'EPSV: data transfer in progress';
       $self->assert($expected eq $resp_msg,
-        test_msg("Expected '$expected', got '$resp_msg'"));
+        test_msg("Expected response message '$expected', got '$resp_msg'"));
 
       # Finish reading the data
       while ($conn->read($tmp, 32768, 30)) {
         $buf .= $tmp;
       }
-      $conn->close();
+      sleep(0.25);
+      eval { $conn->close() };
 
       $resp_code = $client->response_code();
       $resp_msg = $client->response_msg();
+      $self->assert_transfer_ok($resp_code, $resp_msg);
 
-      $expected = 226;
-      $self->assert($expected == $resp_code,
-        test_msg("Expected $expected, got $resp_code"));
-
-      $expected = 'Transfer complete';
-      $self->assert($expected eq $resp_msg,
-        test_msg("Expected '$expected', got '$resp_msg'"));
+      $client->quit();
     };
-
     if ($@) {
       $ex = $@;
     }
@@ -901,7 +654,7 @@ sub epsv_during_xfer_bug3487 {
     $wfh->flush();
 
   } else {
-    eval { server_wait($config_file, $rfh) };
+    eval { server_wait($setup->{config_file}, $rfh) };
     if ($@) {
       warn($@);
       exit 1;
@@ -911,18 +664,10 @@ sub epsv_during_xfer_bug3487 {
   }
 
   # Stop server
-  server_stop($pid_file);
-
+  server_stop($setup->{pid_file});
   $self->assert_child_ok($pid);
 
-  if ($ex) {
-    test_append_logfile($log_file, $ex);
-    unlink($log_file);
-
-    die($ex);
-  }
-
-  unlink($log_file);
+  test_cleanup($setup, $ex);
 }
 
 1;
