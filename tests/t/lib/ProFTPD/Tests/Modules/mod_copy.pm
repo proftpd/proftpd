@@ -31,6 +31,21 @@ my $TESTS = {
     test_class => [qw(forking)],
   },
 
+  copy_src_symlink => {
+    order => ++$order,
+    test_class => [qw(forking)],
+  },
+
+  copy_dst_symlink => {
+    order => ++$order,
+    test_class => [qw(forking)],
+  },
+
+  copy_src_dst_symlinks => {
+    order => ++$order,
+    test_class => [qw(forking)],
+  },
+
   copy_enoent => {
     order => ++$order,
     test_class => [qw(forking)],
@@ -464,6 +479,406 @@ sub copy_dir {
 
       unless (-f $dst_file) {
         die("File $dst_file does not exist as expected");
+      }
+    };
+    if ($@) {
+      $ex = $@;
+    }
+
+    $wfh->print("done\n");
+    $wfh->flush();
+
+  } else {
+    eval { server_wait($setup->{config_file}, $rfh) };
+    if ($@) {
+      warn($@);
+      exit 1;
+    }
+
+    exit 0;
+  }
+
+  # Stop server
+  server_stop($setup->{pid_file});
+  $self->assert_child_ok($pid);
+
+  test_cleanup($setup, $ex);
+}
+
+sub copy_src_symlink {
+  my $self = shift;
+  my $tmpdir = $self->{tmpdir};
+  my $setup = test_setup($tmpdir, 'copy');
+
+  my $src_text = 'Hello, World!';
+  my $src_file = File::Spec->rel2abs("$setup->{home_dir}/foo.txt");
+  if (open(my $fh, "> $src_file")) {
+    print $fh "$src_text\n";
+
+    unless (close($fh)) {
+      die("Can't write $src_file: $!");
+    }
+
+  } else {
+    die("Can't open $src_file: $!");
+  }
+
+  if ($< == 0) {
+    unless (chown($setup->{uid}, $setup->{gid}, $src_file)) {
+      die("Can't set owner of $src_file to $setup->{uid}/$setup->{gid}: $!");
+    }
+  }
+
+  my $src_symlink = File::Spec->rel2abs("$setup->{home_dir}/foo.lnk");
+
+  unless (symlink($src_file, $src_symlink)) {
+    die("Can't symlink $src_symlink to $src_file: $!");
+  }
+
+  my $dst_file = File::Spec->rel2abs("$setup->{home_dir}/bar.txt");
+
+  my $config = {
+    PidFile => $setup->{pid_file},
+    ScoreboardFile => $setup->{scoreboard_file},
+    SystemLog => $setup->{log_file},
+
+    AuthUserFile => $setup->{auth_user_file},
+    AuthGroupFile => $setup->{auth_group_file},
+    AuthOrder => 'mod_auth_file.c',
+
+    IfModules => {
+      'mod_delay.c' => {
+        DelayEngine => 'off',
+      },
+    },
+  };
+
+  my ($port, $config_user, $config_group) = config_write($setup->{config_file},
+    $config);
+
+  # Open pipes, for use between the parent and child processes.  Specifically,
+  # the child will indicate when it's done with its test by writing a message
+  # to the parent.
+  my ($rfh, $wfh);
+  unless (pipe($rfh, $wfh)) {
+    die("Can't open pipe: $!");
+  }
+
+  my $ex;
+
+  # Fork child
+  $self->handle_sigchld();
+  defined(my $pid = fork()) or die("Can't fork: $!");
+  if ($pid) {
+    eval {
+      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
+      $client->login($setup->{user}, $setup->{passwd});
+
+      my ($resp_code, $resp_msg) = $client->site('COPY', 'foo.lnk', 'bar.txt');
+      $client->quit();
+
+      my $expected = 200;
+      $self->assert($expected == $resp_code,
+        test_msg("Expected response code $expected, got $resp_code"));
+
+      $expected = "SITE COPY command successful";
+      $self->assert($expected eq $resp_msg,
+        test_msg("Expected response message '$expected', got '$resp_msg'"));
+
+      $self->assert(-f $dst_file,
+        test_msg("File $dst_file does not exist as expected"));
+
+      if (open(my $fh, "< $dst_file")) {
+        my $line = <$fh>;
+        chomp($line);
+
+        if ($ENV{TEST_VERBOSE}) {
+          print STDERR "# $line\n";
+        }
+
+        close($fh);
+        $self->assert($line eq $src_text,
+          test_msg("Expected '$src_text', got '$line'"));
+
+      } else {
+        die("Can't read $dst_file: $!");
+      }
+    };
+    if ($@) {
+      $ex = $@;
+    }
+
+    $wfh->print("done\n");
+    $wfh->flush();
+
+  } else {
+    eval { server_wait($setup->{config_file}, $rfh) };
+    if ($@) {
+      warn($@);
+      exit 1;
+    }
+
+    exit 0;
+  }
+
+  # Stop server
+  server_stop($setup->{pid_file});
+  $self->assert_child_ok($pid);
+
+  test_cleanup($setup, $ex);
+}
+
+sub copy_dst_symlink {
+  my $self = shift;
+  my $tmpdir = $self->{tmpdir};
+  my $setup = test_setup($tmpdir, 'copy');
+
+  my $src_text = 'Hello, World!';
+  my $src_file = File::Spec->rel2abs("$setup->{home_dir}/foo.txt");
+  if (open(my $fh, "> $src_file")) {
+    print $fh "$src_text\n";
+
+    unless (close($fh)) {
+      die("Can't write $src_file: $!");
+    }
+
+  } else {
+    die("Can't open $src_file: $!");
+  }
+
+  my $dst_text = 'foobar';
+  my $dst_file = File::Spec->rel2abs("$setup->{home_dir}/bar.txt");
+  if (open(my $fh, "> $dst_file")) {
+    print $fh "$dst_text\n";
+
+    unless (close($fh)) {
+      die("Can't write $dst_file: $!");
+    }
+
+  } else {
+    die("Can't open $dst_file: $!");
+  }
+
+  if ($< == 0) {
+    unless (chown($setup->{uid}, $setup->{gid}, $src_file, $dst_file)) {
+      die("Can't set owner of $src_file to $setup->{uid}/$setup->{gid}: $!");
+    }
+  }
+
+  my $dst_symlink = File::Spec->rel2abs("$setup->{home_dir}/bar.lnk");
+  unless (symlink($dst_file, $dst_symlink)) {
+    die("Can't symlink $dst_symlink to $dst_file: $!");
+  }
+
+  my $config = {
+    PidFile => $setup->{pid_file},
+    ScoreboardFile => $setup->{scoreboard_file},
+    SystemLog => $setup->{log_file},
+
+    AuthUserFile => $setup->{auth_user_file},
+    AuthGroupFile => $setup->{auth_group_file},
+    AuthOrder => 'mod_auth_file.c',
+
+    AllowOverwrite => 'on',
+
+    IfModules => {
+      'mod_delay.c' => {
+        DelayEngine => 'off',
+      },
+    },
+  };
+
+  my ($port, $config_user, $config_group) = config_write($setup->{config_file},
+    $config);
+
+  # Open pipes, for use between the parent and child processes.  Specifically,
+  # the child will indicate when it's done with its test by writing a message
+  # to the parent.
+  my ($rfh, $wfh);
+  unless (pipe($rfh, $wfh)) {
+    die("Can't open pipe: $!");
+  }
+
+  my $ex;
+
+  # Fork child
+  $self->handle_sigchld();
+  defined(my $pid = fork()) or die("Can't fork: $!");
+  if ($pid) {
+    eval {
+      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
+      $client->login($setup->{user}, $setup->{passwd});
+
+      my ($resp_code, $resp_msg) = $client->site('COPY', 'foo.txt', 'bar.lnk');
+      $client->quit();
+
+      my $expected = 200;
+      $self->assert($expected == $resp_code,
+        test_msg("Expected response code $expected, got $resp_code"));
+
+      $expected = "SITE COPY command successful";
+      $self->assert($expected eq $resp_msg,
+        test_msg("Expected response message '$expected', got '$resp_msg'"));
+
+      $self->assert(-f $dst_file,
+        test_msg("File $dst_file does not exist as expected"));
+
+      if (open(my $fh, "< $dst_file")) {
+        my $line = <$fh>;
+        chomp($line);
+
+        if ($ENV{TEST_VERBOSE}) {
+          print STDERR "# $line\n";
+        }
+
+        close($fh);
+        $self->assert($line eq $src_text,
+          test_msg("Expected '$src_text', got '$line'"));
+
+      } else {
+        die("Can't read $dst_file: $!");
+      }
+    };
+    if ($@) {
+      $ex = $@;
+    }
+
+    $wfh->print("done\n");
+    $wfh->flush();
+
+  } else {
+    eval { server_wait($setup->{config_file}, $rfh) };
+    if ($@) {
+      warn($@);
+      exit 1;
+    }
+
+    exit 0;
+  }
+
+  # Stop server
+  server_stop($setup->{pid_file});
+  $self->assert_child_ok($pid);
+
+  test_cleanup($setup, $ex);
+}
+
+sub copy_src_dst_symlinks {
+  my $self = shift;
+  my $tmpdir = $self->{tmpdir};
+  my $setup = test_setup($tmpdir, 'copy');
+
+  my $src_text = 'Hello, World!';
+  my $src_file = File::Spec->rel2abs("$setup->{home_dir}/foo.txt");
+  if (open(my $fh, "> $src_file")) {
+    print $fh "$src_text\n";
+
+    unless (close($fh)) {
+      die("Can't write $src_file: $!");
+    }
+
+  } else {
+    die("Can't open $src_file: $!");
+  }
+
+  my $dst_text = 'foobar';
+  my $dst_file = File::Spec->rel2abs("$setup->{home_dir}/bar.txt");
+  if (open(my $fh, "> $dst_file")) {
+    print $fh "$dst_text\n";
+
+    unless (close($fh)) {
+      die("Can't write $dst_file: $!");
+    }
+
+  } else {
+    die("Can't open $dst_file: $!");
+  }
+
+  if ($< == 0) {
+    unless (chown($setup->{uid}, $setup->{gid}, $src_file, $dst_file)) {
+      die("Can't set owner of $src_file to $setup->{uid}/$setup->{gid}: $!");
+    }
+  }
+
+  my $src_symlink = File::Spec->rel2abs("$setup->{home_dir}/foo.lnk");
+  unless (symlink($src_file, $src_symlink)) {
+    die("Can't symlink $src_symlink to $src_file: $!");
+  }
+
+  my $dst_symlink = File::Spec->rel2abs("$setup->{home_dir}/bar.lnk");
+  unless (symlink($dst_file, $dst_symlink)) {
+    die("Can't symlink $dst_symlink to $dst_file: $!");
+  }
+
+  my $config = {
+    PidFile => $setup->{pid_file},
+    ScoreboardFile => $setup->{scoreboard_file},
+    SystemLog => $setup->{log_file},
+    TraceLog => $setup->{log_file},
+    Trace => 'copy:20 fsio:20',
+
+    AuthUserFile => $setup->{auth_user_file},
+    AuthGroupFile => $setup->{auth_group_file},
+    AuthOrder => 'mod_auth_file.c',
+
+    AllowOverwrite => 'on',
+
+    IfModules => {
+      'mod_delay.c' => {
+        DelayEngine => 'off',
+      },
+    },
+  };
+
+  my ($port, $config_user, $config_group) = config_write($setup->{config_file},
+    $config);
+
+  # Open pipes, for use between the parent and child processes.  Specifically,
+  # the child will indicate when it's done with its test by writing a message
+  # to the parent.
+  my ($rfh, $wfh);
+  unless (pipe($rfh, $wfh)) {
+    die("Can't open pipe: $!");
+  }
+
+  my $ex;
+
+  # Fork child
+  $self->handle_sigchld();
+  defined(my $pid = fork()) or die("Can't fork: $!");
+  if ($pid) {
+    eval {
+      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
+      $client->login($setup->{user}, $setup->{passwd});
+
+      my ($resp_code, $resp_msg) = $client->site('COPY', 'foo.lnk', 'bar.lnk');
+      $client->quit();
+
+      my $expected = 200;
+      $self->assert($expected == $resp_code,
+        test_msg("Expected response code $expected, got $resp_code"));
+
+      $expected = "SITE COPY command successful";
+      $self->assert($expected eq $resp_msg,
+        test_msg("Expected response message '$expected', got '$resp_msg'"));
+
+      $self->assert(-f $dst_file,
+        test_msg("File $dst_file does not exist as expected"));
+
+      if (open(my $fh, "< $dst_file")) {
+        my $line = <$fh>;
+        chomp($line);
+
+        if ($ENV{TEST_VERBOSE}) {
+          print STDERR "# $line\n";
+        }
+
+        close($fh);
+        $self->assert($line eq $src_text,
+          test_msg("Expected '$src_text', got '$line'"));
+
+      } else {
+        die("Can't read $dst_file: $!");
       }
     };
     if ($@) {

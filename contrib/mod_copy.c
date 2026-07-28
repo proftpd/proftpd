@@ -441,12 +441,13 @@ static int copy_paths(pool *p, const char *from, const char *to) {
         errno = EACCES;
         return -1;
       }
+
     } else {
       pr_trace_msg(trace_channel, 19,
         "lstat(2) error for destination path '%s': %s", to, strerror(errno));
     }
 
-    res = pr_fs_copy_symlink(from, to, flags);
+    res = pr_fs_copy_file2(from, to, flags, NULL);
     if (res < 0) {
       int xerrno = errno;
 
