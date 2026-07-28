@@ -5833,6 +5833,118 @@ static int fxp_handle_ext_limits(struct fxp_packet *fxp) {
   return fxp_packet_write(resp);
 }
 
+static int rename_across_mounts(pool *p, const char *src_path,
+    const char *dst_path) {
+  int res, xerrno;
+  struct stat src_st, dst_st;
+
+  pr_fs_clear_cache2(src_path);
+  res = pr_fsio_lstat(src_path, &src_st);
+  if (res < 0) {
+    xerrno = errno;
+
+    pr_trace_msg(trace_channel, 3, "rename: lstat(2) error on '%s': %s",
+      src_path, strerror(xerrno));
+
+    errno = xerrno;
+    return -1;
+  }
+
+  if (S_ISDIR(src_st.st_mode)) {
+    xerrno = EISDIR;
+
+    pr_trace_msg(trace_channel, 3,
+      "rename: cannot rename '%s' across mounts: %s", src_path,
+      strerror(xerrno));
+
+    errno = xerrno;
+    return -1;
+  }
+
+  if (!S_ISREG(src_st.st_mode) &&
+      !S_ISLNK(src_st.st_mode)) {
+    xerrno = EPERM;
+
+    pr_trace_msg(trace_channel, 3,
+      "rename: cannot rename unsupported file type '%s' across mounts: %s",
+      src_path, strerror(xerrno));
+
+    errno = xerrno;
+    return -1;
+  }
+
+  pr_fs_clear_cache2(dst_path);
+  res = pr_fsio_lstat(dst_path, &dst_st);
+  if (res < 0 &&
+      errno != ENOENT) {
+    xerrno = errno;
+
+    pr_trace_msg(trace_channel, 3, "rename: lstat(2) error on '%s': %s",
+      dst_path, strerror(xerrno));
+
+    errno = xerrno;
+    return -1;
+  }
+
+  if (res == 0) {
+    if (S_ISDIR(dst_st.st_mode)) {
+      xerrno = EPERM;
+
+      pr_trace_msg(trace_channel, 3,
+        "rename: cannot rename '%s' across mounts into directory '%s': %s",
+        src_path, dst_path, strerror(xerrno));
+
+      errno = xerrno;
+      return -1;
+    }
+
+    res = pr_fsio_unlink(dst_path);
+    if (res < 0) {
+      xerrno = errno;
+
+      pr_trace_msg(trace_channel, 3, "rename: unlink(2) error on '%s': %s",
+        dst_path, strerror(xerrno));
+
+      errno = xerrno;
+      return -1;
+    }
+  }
+
+  /* At this point, we know that the source path exists, and is a regular file
+   * or a symlink.  And we know that the destination path does not exist.
+   */
+
+  if (S_ISREG(src_st.st_mode)) {
+    res = pr_fs_copy_file(src_path, dst_path);
+    xerrno = errno;
+
+  } else if (S_ISLNK(src_st.st_mode)) {
+    res = pr_fs_copy_symlink(src_path, dst_path, 0);
+    xerrno = errno;
+  }
+
+  if (res < 0) {
+    (void) pr_trace_msg("fileperms", 1, "RENAME, user '%s' (UID %s, "
+      "GID %s): error copying '%s' to '%s': %s", session.user,
+      pr_uid2str(p, session.uid), pr_gid2str(p, session.gid), src_path,
+      dst_path, strerror(xerrno));
+
+    (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
+      "error copying '%s' to '%s': %s", src_path, dst_path, strerror(xerrno));
+
+    errno = xerrno;
+    return -1;
+  }
+
+  /* Once copied, remove the original path. */
+  if (pr_fsio_unlink(src_path) < 0) {
+    (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
+      "error deleting '%s': %s", src_path, strerror(errno));
+  }
+
+  return 0;
+}
+
 static int fxp_handle_ext_posix_rename(struct fxp_packet *fxp, char *src,
     char *dst) {
   unsigned char *buf, *ptr;
@@ -6094,7 +6206,7 @@ static int fxp_handle_ext_posix_rename(struct fxp_packet *fxp, char *src,
        */
       errno = 0;
 
-      res = pr_fs_copy_file2(src, dst, 0, NULL);
+      res = rename_across_mounts(fxp->pool, src, dst);
       if (res < 0) {
         xerrno = errno;
 
@@ -6108,15 +6220,6 @@ static int fxp_handle_ext_posix_rename(struct fxp_packet *fxp, char *src,
           "error copying '%s' to '%s': %s", src, dst, strerror(xerrno));
 
         errno = xerrno;
-
-      } else {
-        /* Once copied, remove the original path. */
-        if (pr_fsio_unlink(src) < 0) {
-          (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
-            "error deleting '%s': %s", src, strerror(errno));
-        }
-
-        xerrno = errno = 0;
       }
     }
 
@@ -6132,7 +6235,7 @@ static int fxp_handle_ext_posix_rename(struct fxp_packet *fxp, char *src,
     xerrno != EOF ? strerror(xerrno) : "End of file", xerrno);
 
   /* Clear out any transfer-specific data. */
-  if (session.xfer.p) {
+  if (session.xfer.p != NULL) {
     destroy_pool(session.xfer.p);
   }
   memset(&session.xfer, 0, sizeof(session.xfer));
@@ -13233,33 +13336,25 @@ static int fxp_handle_rename(struct fxp_packet *fxp) {
       errno = xerrno;
 
     } else {
+      errno = 0;
+
       /* In this case, we should manually copy the file from the source
        * path to the destination path.
        */
-      errno = 0;
-      if (pr_fs_copy_file2(old_path, new_path, 0, NULL) < 0) {
+      if (rename_across_mounts(fxp->pool, old_path, new_path) < 0) {
         xerrno = errno;
 
         (void) pr_trace_msg("fileperms", 1, "RENAME, user '%s' (UID %s, "
-          "GID %s): error copying '%s' to '%s': %s", session.user,
+          "GID %s): error renaming '%s' to '%s': %s", session.user,
           pr_uid2str(fxp->pool, session.uid),
           pr_gid2str(fxp->pool, session.gid), old_path, new_path,
           strerror(xerrno));
 
         (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
-          "error copying '%s' to '%s': %s", old_path, new_path,
-          strerror(xerrno));
+          "RENAME of '%s' to '%s' across mounts failed: %s", old_path,
+          new_path, strerror(xerrno));
 
         errno = xerrno;
-
-      } else {
-        /* Once copied, remove the original path. */
-        if (pr_fsio_unlink(old_path) < 0) {
-          (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
-            "error deleting '%s': %s", old_path, strerror(errno));
-        }
-
-        xerrno = errno = 0;
       }
     }
 
@@ -13275,7 +13370,7 @@ static int fxp_handle_rename(struct fxp_packet *fxp) {
     xerrno != EOF ? strerror(xerrno) : "End of file", xerrno);
 
   /* Clear out any transfer-specific data. */
-  if (session.xfer.p) {
+  if (session.xfer.p != NULL) {
     destroy_pool(session.xfer.p);
   }
   memset(&session.xfer, 0, sizeof(session.xfer));
