@@ -25,12 +25,12 @@
 
 #include "tests.h"
 
-#ifdef PR_USE_XATTR
+#if defined(PR_USE_XATTR)
 /* Handle the case where ENOATTR may not be defined. */
-# ifndef ENOATTR
+# if !defined(ENOATTR)
 #  define ENOATTR ENODATA
-# endif
-#endif
+# endif /* ENOATTR */
+#endif /* PR_USE_XATTR */
 
 static pool *p = NULL;
 
@@ -41,7 +41,9 @@ static const char *fsio_unlink_path = "/tmp/prt-fsio-link.dat";
 static const char *fsio_link_path = "/tmp/prt-fsio-symlink.lnk";
 static const char *fsio_testdir_path = "/tmp/prt-fsio-test.d";
 static const char *fsio_copy_src_path = "/tmp/prt-fs-src.dat";
+static const char *fsio_copy_src_symlink = "/tmp/prt-fs-src.lnk";
 static const char *fsio_copy_dst_path = "/tmp/prt-fs-dst.dat";
+static const char *fsio_copy_dst_symlink = "/tmp/prt-fs-dst.lnk";
 
 /* Fixtures */
 
@@ -1441,7 +1443,7 @@ START_TEST (fsio_sys_fsync_test) {
     strerror(errno));
 
   res = pr_fsio_fsync(fh);
-#ifdef HAVE_FSYNC
+#if defined(HAVE_FSYNC)
   ck_assert_msg(res == 0, "fsync of '%s' failed: %s", fsio_test_path,
     strerror(errno));
 #else
@@ -1508,12 +1510,11 @@ START_TEST (fsio_sys_getxattr_test) {
 
   (void) pr_fsio_set_options(fsio_opts);
   res = pr_fsio_getxattr(p, path, name, NULL, 0);
-#ifdef PR_USE_XATTR
+#if defined(PR_USE_XATTR)
   ck_assert_msg(res < 0, "Failed to handle nonexist attribute '%s'", name);
   ck_assert_msg(errno == ENOENT || errno == ENOATTR || errno == ENOTSUP,
     "Expected ENOENT (%d), ENOATTR (%d) or ENOTSUP (%d), got %s (%d)",
     ENOENT, ENOATTR, ENOTSUP, strerror(errno), errno);
-
 #else
   ck_assert_msg(res < 0, "Failed to handle --disable-xattr");
   ck_assert_msg(errno == ENOSYS, "Expected ENOSYS (%d), got %s (%d)", ENOSYS,
@@ -1553,12 +1554,11 @@ START_TEST (fsio_sys_lgetxattr_test) {
 
   pr_fsio_set_options(fsio_opts);
   res = pr_fsio_lgetxattr(p, path, name, NULL, 0);
-#ifdef PR_USE_XATTR
+#if defined(PR_USE_XATTR)
   ck_assert_msg(res < 0, "Failed to handle nonexist attribute '%s'", name);
   ck_assert_msg(errno == ENOENT || errno == ENOATTR || errno == ENOTSUP,
     "Expected ENOENT (%d), ENOATTR (%d) or ENOTSUP (%d), got %s (%d)",
     ENOENT, ENOATTR, ENOTSUP, strerror(errno), errno);
-
 #else
   ck_assert_msg(res < 0, "Failed to handle --disable-xattr");
   ck_assert_msg(errno == ENOSYS, "Expected ENOSYS (%d), got %s (%d)", ENOSYS,
@@ -1603,12 +1603,11 @@ START_TEST (fsio_sys_fgetxattr_test) {
 
   pr_fsio_set_options(fsio_opts);
   res = pr_fsio_fgetxattr(p, fh, name, NULL, 0);
-#ifdef PR_USE_XATTR
+#if defined(PR_USE_XATTR)
   ck_assert_msg(res < 0, "Failed to handle nonexist attribute '%s'", name);
   ck_assert_msg(errno == ENOENT || errno == ENOATTR || errno == ENOTSUP,
     "Expected ENOENT (%d), ENOATTR (%d) or ENOTSUP (%d), got %s (%d)",
     ENOENT, ENOATTR, ENOTSUP, strerror(errno), errno);
-
 #else
   ck_assert_msg(res < 0, "Failed to handle --disable-xattr");
   ck_assert_msg(errno == ENOSYS, "Expected ENOSYS (%d), got %s (%d)", ENOSYS,
@@ -1651,7 +1650,7 @@ START_TEST (fsio_sys_listxattr_test) {
 
   pr_fsio_set_options(fsio_opts);
   res = pr_fsio_listxattr(p, path, &names);
-#ifdef PR_USE_XATTR
+#if defined(PR_USE_XATTR)
   ck_assert_msg(res < 0, "Failed to handle nonexistent path '%s'", path);
   ck_assert_msg(errno == ENOENT, "Expected ENOENT (%d), got %s (%d)", ENOENT,
     strerror(errno), errno);
@@ -1706,7 +1705,7 @@ START_TEST (fsio_sys_llistxattr_test) {
 
   pr_fsio_set_options(fsio_opts);
   res = pr_fsio_llistxattr(p, path, &names);
-#ifdef PR_USE_XATTR
+#if defined(PR_USE_XATTR)
   ck_assert_msg(res < 0, "Failed to handle nonexistent path '%s'", path);
   ck_assert_msg(errno == ENOENT, "Expected ENOENT (%d), got %s (%d)", ENOENT,
     strerror(errno), errno);
@@ -1764,10 +1763,9 @@ START_TEST (fsio_sys_flistxattr_test) {
 
   pr_fsio_set_options(fsio_opts);
   res = pr_fsio_flistxattr(p, fh, &names);
-#ifdef PR_USE_XATTR
+#if defined(PR_USE_XATTR)
   ck_assert_msg(res >= 0, "Failed to list xattrs for '%s': %s", fsio_test_path,
     strerror(errno));
-
 #else
   ck_assert_msg(res < 0, "Failed to handle --disable-xattr");
   ck_assert_msg(errno == ENOSYS, "Expected ENOSYS (%d), got %s (%d)", ENOSYS,
@@ -1810,12 +1808,11 @@ START_TEST (fsio_sys_removexattr_test) {
 
   pr_fsio_set_options(fsio_opts);
   res = pr_fsio_removexattr(p, path, name);
-#ifdef PR_USE_XATTR
+#if defined(PR_USE_XATTR)
   ck_assert_msg(res < 0, "Failed to handle nonexistent attribute '%s'", name);
   ck_assert_msg(errno == ENOENT || errno == ENOATTR || errno == ENOTSUP,
     "Expected ENOENT (%d), ENOATTR (%d) or ENOTSUP (%d), got %s (%d)",
     ENOENT, ENOATTR, ENOTSUP, strerror(errno), errno);
-
 #else
   ck_assert_msg(res < 0, "Failed to handle --disable-xattr");
   ck_assert_msg(errno == ENOSYS, "Expected ENOSYS (%d), got %s (%d)", ENOSYS,
@@ -1855,12 +1852,11 @@ START_TEST (fsio_sys_lremovexattr_test) {
 
   pr_fsio_set_options(fsio_opts);
   res = pr_fsio_lremovexattr(p, path, name);
-#ifdef PR_USE_XATTR
+#if defined(PR_USE_XATTR)
   ck_assert_msg(res < 0, "Failed to handle nonexistent attribute '%s'", name);
   ck_assert_msg(errno == ENOENT || errno == ENOATTR || errno == ENOTSUP,
     "Expected ENOENT (%d), ENOATTR (%d) or ENOTSUP (%d), got %s (%d)",
     ENOENT, ENOATTR, ENOTSUP, strerror(errno), errno);
-
 #else
   ck_assert_msg(res < 0, "Failed to handle --disable-xattr");
   ck_assert_msg(errno == ENOSYS, "Expected ENOSYS (%d), got %s (%d)", ENOSYS,
@@ -1905,12 +1901,11 @@ START_TEST (fsio_sys_fremovexattr_test) {
 
   pr_fsio_set_options(fsio_opts);
   res = pr_fsio_fremovexattr(p, fh, name);
-#ifdef PR_USE_XATTR
+#if defined(PR_USE_XATTR)
   ck_assert_msg(res < 0, "Failed to handle nonexistent attribute '%s'", name);
   ck_assert_msg(errno == ENOENT || errno == ENOATTR || errno == ENOTSUP,
     "Expected ENOENT (%d), ENOATTR (%d) or ENOTSUP (%d), got %s (%d)",
     ENOENT, ENOATTR, ENOTSUP, strerror(errno), errno);
-
 #else
   ck_assert_msg(res < 0, "Failed to handle --disable-xattr");
   ck_assert_msg(errno == ENOSYS, "Expected ENOSYS (%d), got %s (%d)", ENOSYS,
@@ -1955,7 +1950,7 @@ START_TEST (fsio_sys_setxattr_test) {
 
   pr_fsio_set_options(fsio_opts);
   res = pr_fsio_setxattr(p, path, name, NULL, 0, flags);
-#ifdef PR_USE_XATTR
+#if defined(PR_USE_XATTR)
   ck_assert_msg(res < 0, "Failed to handle nonexistent file '%s'", path);
   ck_assert_msg(errno == ENOENT, "Expected ENOENT (%d), got %s (%d)", ENOENT,
     strerror(errno), errno);
@@ -2015,7 +2010,7 @@ START_TEST (fsio_sys_lsetxattr_test) {
 
   pr_fsio_set_options(fsio_opts);
   res = pr_fsio_lsetxattr(p, path, name, NULL, 0, flags);
-#ifdef PR_USE_XATTR
+#if defined(PR_USE_XATTR)
   ck_assert_msg(res < 0, "Failed to handle nonexistent file '%s'", path);
   ck_assert_msg(errno == ENOENT, "Expected ENOENT (%d), got %s (%d)", ENOENT,
     strerror(errno), errno);
@@ -2079,12 +2074,11 @@ START_TEST (fsio_sys_fsetxattr_test) {
 
   pr_fsio_set_options(fsio_opts);
   res = pr_fsio_fsetxattr(p, fh, name, NULL, 0, flags);
-#ifdef PR_USE_XATTR
+#if defined(PR_USE_XATTR)
   if (res < 0) {
     ck_assert_msg(errno == ENOTSUP, "Expected ENOTSUP (%d), got %s (%d)", ENOTSUP,
       strerror(errno), errno);
   }
-
 #else
   ck_assert_msg(res < 0, "Failed to handle --disable-xattr");
   ck_assert_msg(errno == ENOSYS, "Expected ENOSYS (%d), got %s (%d)", ENOSYS,
@@ -4057,7 +4051,7 @@ static void copy_progress_cb(int nwritten) {
   copy_progress_iter++;
 }
 
-START_TEST (fs_copy_file2_test) {
+START_TEST (fs_copy_file2_files_test) {
   int res, flags;
   char *src_path, *dst_path, *text;
   pr_fh_t *fh;
@@ -4089,8 +4083,171 @@ START_TEST (fs_copy_file2_test) {
   (void) pr_fsio_unlink(src_path);
   (void) pr_fsio_unlink(dst_path);
 
-  ck_assert_msg(copy_progress_iter > 0, "Unexpected progress callback count (%u)",
-    copy_progress_iter);
+  ck_assert_msg(copy_progress_iter > 0,
+    "Unexpected progress callback count (%u)", copy_progress_iter);
+}
+END_TEST
+
+START_TEST (fs_copy_file2_src_file_dst_symlink_test) {
+  int res, flags;
+  char *src_path, *dst_path, *text;
+  pr_fh_t *fh;
+  struct stat st;
+
+  src_path = (char *) fsio_copy_src_path;
+  dst_path = (char *) fsio_copy_dst_symlink;
+  flags = 0;
+
+  (void) unlink(src_path);
+  (void) unlink(dst_path);
+
+  fh = pr_fsio_open(src_path, O_CREAT|O_EXCL|O_WRONLY);
+  ck_assert_msg(fh != NULL, "Failed to open '%s': %s", src_path, strerror(errno));
+
+  text = "Hello, World!\n";
+  res = pr_fsio_write(fh, text, strlen(text));
+  ck_assert_msg(res >= 0, "Failed to write '%s' to '%s': %s", text, src_path,
+    strerror(errno));
+
+  res = pr_fsio_close(fh);
+  ck_assert_msg(res == 0, "Failed to close '%s': %s", src_path, strerror(errno));
+
+  res = pr_fsio_symlink(fsio_copy_dst_path, dst_path);
+  ck_assert_msg(res == 0, "Failed to symlink '%s' to '%s': %s", dst_path,
+    fsio_copy_dst_path, strerror(errno));
+
+  mark_point();
+  res = pr_fs_copy_file2(src_path, dst_path, flags, NULL);
+  ck_assert_msg(res == 0, "Failed to copy file: %s", strerror(errno));
+
+  mark_point();
+  pr_fs_clear_cache2(fsio_copy_dst_path);
+  res = pr_fsio_lstat(fsio_copy_dst_path, &st);
+  ck_assert_msg(res == 0, "Failed to lstat '%s': %s", fsio_copy_dst_path,
+    strerror(errno));
+  ck_assert_msg(S_ISREG(st.st_mode), "'%s' is not a regular file",
+    fsio_copy_dst_path);
+
+  (void) pr_fsio_unlink(src_path);
+  (void) pr_fsio_unlink(dst_path);
+  (void) pr_fsio_unlink(fsio_copy_dst_path);
+}
+END_TEST
+
+START_TEST (fs_copy_file2_src_symlink_dst_file_test) {
+  int res, flags;
+  char *src_path, *dst_path, *text;
+  pr_fh_t *fh;
+  struct stat st;
+
+  src_path = (char *) fsio_copy_src_symlink;
+  dst_path = (char *) fsio_copy_dst_path;
+  flags = 0;
+
+  (void) unlink(src_path);
+  (void) unlink(dst_path);
+
+  fh = pr_fsio_open(fsio_copy_src_path, O_CREAT|O_EXCL|O_WRONLY);
+  ck_assert_msg(fh != NULL, "Failed to open '%s': %s", fsio_copy_src_path,
+    strerror(errno));
+
+  text = "Hello, World!\n";
+  res = pr_fsio_write(fh, text, strlen(text));
+  ck_assert_msg(res >= 0, "Failed to write '%s' to '%s': %s", text,
+    fsio_copy_src_path, strerror(errno));
+
+  res = pr_fsio_close(fh);
+  ck_assert_msg(res == 0, "Failed to close '%s': %s", fsio_copy_src_path,
+    strerror(errno));
+
+  res = pr_fsio_symlink(fsio_copy_src_path, src_path);
+  ck_assert_msg(res == 0, "Failed to symlink '%s' to '%s': %s", src_path,
+    fsio_copy_src_path, strerror(errno));
+
+  mark_point();
+  res = pr_fs_copy_file2(src_path, dst_path, flags, NULL);
+  ck_assert_msg(res == 0, "Failed to copy file: %s", strerror(errno));
+
+  mark_point();
+  pr_fs_clear_cache2(dst_path);
+  res = pr_fsio_lstat(dst_path, &st);
+  ck_assert_msg(res == 0, "Failed to lstat '%s': %s", dst_path,
+    strerror(errno));
+  ck_assert_msg(S_ISREG(st.st_mode), "'%s' is not a regular file",
+    dst_path);
+
+  (void) pr_fsio_unlink(src_path);
+  (void) pr_fsio_unlink(fsio_copy_src_path);
+  (void) pr_fsio_unlink(dst_path);
+}
+END_TEST
+
+START_TEST (fs_copy_file2_src_symlink_dst_symlink_test) {
+  int res, flags;
+  char *src_path, *dst_path, *text;
+  pr_fh_t *fh;
+  struct stat st;
+
+  src_path = (char *) fsio_copy_src_symlink;
+  dst_path = (char *) fsio_copy_dst_symlink;
+  flags = 0;
+
+  (void) unlink(src_path);
+  (void) unlink(dst_path);
+
+  mark_point();
+  fh = pr_fsio_open(fsio_copy_src_path, O_CREAT|O_EXCL|O_WRONLY);
+  ck_assert_msg(fh != NULL, "Failed to open '%s': %s", fsio_copy_src_path,
+    strerror(errno));
+
+  text = "Hello, World!\n";
+  res = pr_fsio_write(fh, text, strlen(text));
+  ck_assert_msg(res >= 0, "Failed to write '%s' to '%s': %s", text,
+    fsio_copy_src_path, strerror(errno));
+
+  res = pr_fsio_close(fh);
+  ck_assert_msg(res == 0, "Failed to close '%s': %s", fsio_copy_src_path,
+    strerror(errno));
+
+  res = pr_fsio_symlink(fsio_copy_src_path, src_path);
+  ck_assert_msg(res == 0, "Failed to symlink '%s' to '%s': %s", src_path,
+    fsio_copy_src_path, strerror(errno));
+
+  mark_point();
+  fh = pr_fsio_open(fsio_copy_dst_path, O_CREAT|O_EXCL|O_WRONLY);
+  ck_assert_msg(fh != NULL, "Failed to open '%s': %s", fsio_copy_dst_path,
+    strerror(errno));
+
+  res = pr_fsio_close(fh);
+  ck_assert_msg(res == 0, "Failed to close '%s': %s", fsio_copy_dst_path,
+    strerror(errno));
+
+  res = pr_fsio_symlink(fsio_copy_dst_path, dst_path);
+  ck_assert_msg(res == 0, "Failed to symlink '%s' to '%s': %s", dst_path,
+    fsio_copy_dst_path, strerror(errno));
+
+  mark_point();
+  res = pr_fs_copy_file2(src_path, dst_path, flags, NULL);
+  ck_assert_msg(res == 0, "Failed to copy file: %s", strerror(errno));
+
+  mark_point();
+  pr_fs_clear_cache2(dst_path);
+  res = pr_fsio_lstat(dst_path, &st);
+  ck_assert_msg(res == 0, "Failed to lstat '%s': %s", dst_path,
+    strerror(errno));
+  ck_assert_msg(S_ISLNK(st.st_mode), "'%s' is not a symlink", dst_path);
+
+  pr_fs_clear_cache2(fsio_copy_dst_path);
+  res = pr_fsio_lstat(fsio_copy_dst_path, &st);
+  ck_assert_msg(res == 0, "Failed to lstat '%s': %s", fsio_copy_dst_path,
+    strerror(errno));
+  ck_assert_msg(S_ISREG(st.st_mode), "'%s' is not a regular file",
+    fsio_copy_dst_path);
+
+  (void) pr_fsio_unlink(src_path);
+  (void) pr_fsio_unlink(fsio_copy_src_path);
+  (void) pr_fsio_unlink(dst_path);
+  (void) pr_fsio_unlink(fsio_copy_dst_path);
 }
 END_TEST
 
@@ -5060,7 +5217,7 @@ START_TEST (fsio_smkdir_test) {
   ck_assert_msg(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
     strerror(errno), errno);
 
-#ifdef HAVE_MKDTEMP
+#if defined(HAVE_MKDTEMP)
   res = pr_fsio_set_use_mkdtemp(FALSE);
   ck_assert_msg(res == TRUE, "Expected TRUE, got %d", res);
 
@@ -5430,7 +5587,10 @@ Suite *tests_get_fsio_suite(void) {
   tcase_add_test(testcase, fs_setcwd_test);
   tcase_add_test(testcase, fs_glob_test);
   tcase_add_test(testcase, fs_copy_file_test);
-  tcase_add_test(testcase, fs_copy_file2_test);
+  tcase_add_test(testcase, fs_copy_file2_files_test);
+  tcase_add_test(testcase, fs_copy_file2_src_file_dst_symlink_test);
+  tcase_add_test(testcase, fs_copy_file2_src_symlink_dst_file_test);
+  tcase_add_test(testcase, fs_copy_file2_src_symlink_dst_symlink_test);
   tcase_add_test(testcase, fs_interpolate_test);
   tcase_add_test(testcase, fs_resolve_partial_test);
   tcase_add_test(testcase, fs_resolve_path_test);

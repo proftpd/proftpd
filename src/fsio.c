@@ -1852,7 +1852,7 @@ int pr_fs_copy_file2(const char *src, const char *dst, int flags,
   char *buf;
   size_t bufsz;
   int dst_existed = FALSE, res;
-#ifdef PR_USE_XATTR
+#if defined(PR_USE_XATTR)
   array_header *xattrs = NULL;
 #endif /* PR_USE_XATTR */
 
@@ -1960,7 +1960,7 @@ int pr_fs_copy_file2(const char *src, const char *dst, int flags,
     (void) pr_fsio_close(dst_fh);
 
     /* Don't unlink the destination file if it already existed. */
-    if (!dst_existed) {
+    if (dst_existed == FALSE) {
       if (!(flags & PR_FSIO_COPY_FILE_FL_NO_DELETE_ON_FAILURE)) {
         if (pr_fsio_unlink(dst) < 0) {
           pr_trace_msg(trace_channel, 12,
@@ -2002,12 +2002,12 @@ int pr_fs_copy_file2(const char *src, const char *dst, int flags,
     exit(1);
   }
 
-#ifdef S_ISFIFO
+#if defined(S_ISFIFO)
   if (!S_ISFIFO(dst_st.st_mode)) {
     /* Make sure the destination file starts with a zero size. */
     pr_fsio_truncate(dst, 0);
   }
-#endif
+#endif /* S_ISFIFO */
 
   while ((res = pr_fsio_read(src_fh, buf, bufsz)) > 0) {
     size_t datalen;
@@ -2034,7 +2034,7 @@ int pr_fs_copy_file2(const char *src, const char *dst, int flags,
         (void) pr_fsio_close(dst_fh);
 
         /* Don't unlink the destination file if it already existed. */
-        if (!dst_existed) {
+        if (dst_existed == FALSE) {
           if (!(flags & PR_FSIO_COPY_FILE_FL_NO_DELETE_ON_FAILURE)) {
             if (pr_fsio_unlink(dst) < 0) {
               pr_trace_msg(trace_channel, 12,
@@ -2161,7 +2161,7 @@ int pr_fs_copy_file2(const char *src, const char *dst, int flags,
   }
 #endif /* HAVE_POSIX_ACL */
 
-#ifdef PR_USE_XATTR
+#if defined(PR_USE_XATTR)
   /* Copy any xattrs that the source file may have. We'll use the
    * destination file handle's pool for our xattr allocations.
    */
@@ -2212,7 +2212,7 @@ int pr_fs_copy_file2(const char *src, const char *dst, int flags,
     int xerrno = errno;
 
     /* Don't unlink the destination file if it already existed. */
-    if (!dst_existed) {
+    if (dst_existed == FALSE) {
       if (!(flags & PR_FSIO_COPY_FILE_FL_NO_DELETE_ON_FAILURE)) {
         if (pr_fsio_unlink(dst) < 0) {
           pr_trace_msg(trace_channel, 12,
