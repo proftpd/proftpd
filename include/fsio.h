@@ -412,6 +412,11 @@ int pr_fs_copy_file2(const char *src, const char *dst, int flags,
   void (*progress_cb)(int));
 #define PR_FSIO_COPY_FILE_FL_NO_DELETE_ON_FAILURE	0x0001
 
+/* Copy a symlink from the given source path to the destination path, creating
+ * a symlink pointing to the same file at the destination.
+ */
+int pr_fs_copy_symlink(const char *src, const char *dst, int flags);
+
 int pr_fs_setcwd(const char *);
 const char *pr_fs_getcwd(void);
 const char *pr_fs_getvwd(void);
