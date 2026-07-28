@@ -4251,6 +4251,91 @@ START_TEST (fs_copy_file2_src_symlink_dst_symlink_test) {
 }
 END_TEST
 
+START_TEST (fs_copy_symlink_test) {
+  int res, flags;
+  char *src_path, *dst_path, *text;
+  pr_fh_t *fh;
+  struct stat st;
+
+  src_path = (char *) fsio_copy_src_symlink;
+  dst_path = (char *) fsio_copy_dst_symlink;
+  flags = 0;
+
+  (void) unlink(src_path);
+  (void) unlink(dst_path);
+
+  mark_point();
+  res = pr_fs_copy_symlink(NULL, NULL, 0);
+  ck_assert_msg(res < 0, "Failed to handle null source");
+  ck_assert_msg(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+    strerror(errno), errno);
+
+  mark_point();
+  res = pr_fs_copy_symlink(src_path, NULL, 0);
+  ck_assert_msg(res < 0, "Failed to handle null destination");
+  ck_assert_msg(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+    strerror(errno), errno);
+
+  mark_point();
+  res = pr_fs_copy_symlink(src_path, dst_path, 0);
+  ck_assert_msg(res < 0, "Failed to handle nonexistent source");
+  ck_assert_msg(errno == ENOENT, "Expected ENOENT (%d), got %s (%d)", ENOENT,
+    strerror(errno), errno);
+
+  mark_point();
+  fh = pr_fsio_open(fsio_copy_src_path, O_CREAT|O_EXCL|O_WRONLY);
+  ck_assert_msg(fh != NULL, "Failed to open '%s': %s", fsio_copy_src_path,
+    strerror(errno));
+
+  text = "Hello, World!\n";
+  res = pr_fsio_write(fh, text, strlen(text));
+  ck_assert_msg(res >= 0, "Failed to write '%s' to '%s': %s", text,
+    fsio_copy_src_path, strerror(errno));
+
+  res = pr_fsio_close(fh);
+  ck_assert_msg(res == 0, "Failed to close '%s': %s", fsio_copy_src_path,
+    strerror(errno));
+
+  res = pr_fsio_symlink(fsio_copy_src_path, src_path);
+  ck_assert_msg(res == 0, "Failed to symlink '%s' to '%s': %s", src_path,
+    fsio_copy_src_path, strerror(errno));
+
+  mark_point();
+  fh = pr_fsio_open(fsio_copy_dst_path, O_CREAT|O_EXCL|O_WRONLY);
+  ck_assert_msg(fh != NULL, "Failed to open '%s': %s", fsio_copy_dst_path,
+    strerror(errno));
+
+  res = pr_fsio_close(fh);
+  ck_assert_msg(res == 0, "Failed to close '%s': %s", fsio_copy_dst_path,
+    strerror(errno));
+
+  mark_point();
+  res = pr_fs_copy_symlink(src_path, fsio_copy_dst_path, flags);
+  ck_assert_msg(res < 0, "Failed to handle existing destination");
+  ck_assert_msg(errno == EEXIST, "Expected EEXIST (%d), got %s (%d)", EEXIST,
+    strerror(errno), errno);
+
+  mark_point();
+  (void) pr_fsio_unlink(fsio_copy_dst_path);
+
+  mark_point();
+  res = pr_fs_copy_symlink(src_path, dst_path, flags);
+  ck_assert_msg(res == 0, "Failed to symlink file: %s", strerror(errno));
+
+  mark_point();
+  pr_fs_clear_cache2(dst_path);
+  res = pr_fsio_lstat(dst_path, &st);
+  ck_assert_msg(res == 0, "Failed to lstat '%s': %s", dst_path,
+    strerror(errno));
+  ck_assert_msg(S_ISLNK(st.st_mode), "'%s' is not a symlink", dst_path);
+
+  (void) pr_fsio_unlink(src_path);
+  (void) pr_fsio_unlink(fsio_copy_src_path);
+  (void) pr_fsio_unlink(dst_path);
+  (void) pr_fsio_unlink(fsio_copy_dst_path);
+}
+END_TEST
+
 START_TEST (fs_interpolate_test) {
   int res;
   char buf[PR_TUNABLE_PATH_MAX], *path;
@@ -5591,6 +5676,7 @@ Suite *tests_get_fsio_suite(void) {
   tcase_add_test(testcase, fs_copy_file2_src_file_dst_symlink_test);
   tcase_add_test(testcase, fs_copy_file2_src_symlink_dst_file_test);
   tcase_add_test(testcase, fs_copy_file2_src_symlink_dst_symlink_test);
+  tcase_add_test(testcase, fs_copy_symlink_test);
   tcase_add_test(testcase, fs_interpolate_test);
   tcase_add_test(testcase, fs_resolve_partial_test);
   tcase_add_test(testcase, fs_resolve_path_test);

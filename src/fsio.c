@@ -2234,6 +2234,45 @@ int pr_fs_copy_file(const char *src, const char *dst) {
   return pr_fs_copy_file2(src, dst, 0, NULL);
 }
 
+int pr_fs_copy_symlink(const char *src, const char *dst, int flags) {
+  char link_path[PR_TUNABLE_BUFFER_SIZE];
+  int len;
+
+  /* Currently unused. */
+  (void) flags;
+
+  if (src == NULL ||
+      dst == NULL) {
+    errno = EINVAL;
+    return -1;
+  }
+
+  memset(link_path, '\0', sizeof(link_path));
+  len = pr_fsio_readlink(src, link_path, sizeof(link_path)-1);
+  if (len < 0) {
+    int xerrno = errno;
+
+    pr_log_pri(PR_LOG_WARNING, "error reading symlink '%s': %s", src,
+      strerror(xerrno));
+
+    errno = xerrno;
+    return -1;
+  }
+  link_path[len] = '\0';
+
+  if (pr_fsio_symlink(link_path, dst) < 0) {
+    int xerrno = errno;
+
+    pr_log_pri(PR_LOG_WARNING, "error symlinking '%s' to '%s': %s", link_path,
+      dst, strerror(xerrno));
+
+    errno = xerrno;
+    return -1;
+  }
+
+  return 0;
+}
+
 pr_fs_t *pr_register_fs2(pool *p, const char *name, const char *path,
     int flags) {
   pr_fs_t *fs = NULL;

@@ -156,37 +156,6 @@ static int create_path(pool *p, const char *path) {
   return 0;
 }
 
-static int copy_symlink(pool *p, const char *src_path, const char *dst_path,
-    int flags) {
-  char *link_path = pcalloc(p, PR_TUNABLE_BUFFER_SIZE);
-  int len;
-
-  len = pr_fsio_readlink(src_path, link_path, PR_TUNABLE_BUFFER_SIZE-1);
-  if (len < 0) {
-    int xerrno = errno;
-
-    pr_log_pri(PR_LOG_WARNING, MOD_COPY_VERSION ": error reading link '%s': %s",
-      src_path, strerror(xerrno));
-
-    errno = xerrno;
-    return -1;
-  }
-  link_path[len] = '\0';
-
-  if (pr_fsio_symlink(link_path, dst_path) < 0) {
-    int xerrno = errno;
-
-    pr_log_pri(PR_LOG_WARNING, MOD_COPY_VERSION
-      ": error symlinking '%s' to '%s': %s", link_path, dst_path,
-      strerror(xerrno));
-
-    errno = xerrno;
-    return -1;
-  }
-
-  return 0;
-}
-
 static int copy_dir(pool *p, const char *src_dir, const char *dst_dir,
     int flags) {
   DIR *dh = NULL;
@@ -316,7 +285,7 @@ static int copy_dir(pool *p, const char *src_dir, const char *dst_dir,
 
     /* Is this path a symlink? */
     } else if (S_ISLNK(st.st_mode)) {
-      if (copy_symlink(iter_pool, src_path, dst_path, flags) < 0) {
+      if (pr_fs_copy_symlink(src_path, dst_path, flags) < 0) {
         res = -1;
         break;
       }
@@ -477,7 +446,7 @@ static int copy_paths(pool *p, const char *from, const char *to) {
         "lstat(2) error for destination path '%s': %s", to, strerror(errno));
     }
 
-    res = copy_symlink(p, from, to, flags);
+    res = pr_fs_copy_symlink(from, to, flags);
     if (res < 0) {
       int xerrno = errno;
 
