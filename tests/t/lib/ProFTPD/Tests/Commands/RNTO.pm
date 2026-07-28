@@ -17,7 +17,17 @@ $| = 1;
 my $order = 0;
 
 my $TESTS = {
-  rnto_ok => {
+  rnto_dst_not_exist_ok => {
+    order => ++$order,
+    test_class => [qw(forking)],
+  },
+
+  rnto_dst_file_exists_ok => {
+    order => ++$order,
+    test_class => [qw(forking)],
+  },
+
+  rnto_dst_symlink_exists_ok => {
     order => ++$order,
     test_class => [qw(forking)],
   },
@@ -107,7 +117,7 @@ sub list_tests {
   return testsuite_get_runnable_tests($TESTS);
 }
 
-sub rnto_ok {
+sub rnto_dst_not_exist_ok {
   my $self = shift;
   my $tmpdir = $self->{tmpdir};
   my $setup = test_setup($tmpdir, 'cmds');
@@ -169,6 +179,9 @@ sub rnto_ok {
   defined(my $pid = fork()) or die("Can't fork: $!");
   if ($pid) {
     eval {
+      # Allow for server startup
+      sleep(1);
+
       my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port, 0, 1);
       $client->login($setup->{user}, $setup->{passwd});
 
@@ -209,7 +222,328 @@ sub rnto_ok {
   server_stop($setup->{pid_file});
   $self->assert_child_ok($pid);
 
-  test_cleanup($setup->{log_file}, $ex);
+  test_cleanup($setup, $ex);
+}
+
+sub rnto_dst_file_exists_ok {
+  my $self = shift;
+  my $tmpdir = $self->{tmpdir};
+  my $setup = test_setup($tmpdir, 'cmds');
+
+  my $test_dir = File::Spec->rel2abs("$tmpdir/test.d");
+  mkpath($test_dir);
+
+  my $src_text = "Foo!";
+  my $src_file = File::Spec->rel2abs("$test_dir/test.txt");
+  if (open(my $fh, "> $src_file")) {
+    print $fh "$src_text\n";
+    unless (close($fh)) {
+      die("Can't write $src_file: $!");
+    }
+
+  } else {
+    die("Can't open $src_file: $!");
+  }
+
+  my $src_size = -s $src_file;
+
+  my $dst_file = File::Spec->rel2abs("$test_dir/bar.txt");
+  if (open(my $fh, "> $dst_file")) {
+    print $fh "bar\n";
+    unless (close($fh)) {
+      die("Can't write $dst_file: $!");
+    }
+
+  } else {
+    die("Can't open $dst_file: $!");
+  }
+
+  if ($< == 0) {
+    unless (chmod(0755, $test_dir)) {
+      die("Can't set perms on $test_dir to 0755: $!");
+    }
+
+    unless (chown($setup->{uid}, $setup->{gid}, $test_dir, $src_file, $dst_file)) {
+      die("Can't set owner of $test_dir to $setup->{uid}/$setup->{gid}: $!");
+    }
+  }
+
+  my $config = {
+    PidFile => $setup->{pid_file},
+    ScoreboardFile => $setup->{scoreboard_file},
+    SystemLog => $setup->{log_file},
+
+    AuthUserFile => $setup->{auth_user_file},
+    AuthGroupFile => $setup->{auth_group_file},
+    AuthOrder => 'mod_auth_file.c',
+
+    AllowOverwrite => 'on',
+
+    IfModules => {
+      'mod_delay.c' => {
+        DelayEngine => 'off',
+      },
+    },
+  };
+
+  my ($port, $config_user, $config_group) = config_write($setup->{config_file},
+    $config);
+
+  # Open pipes, for use between the parent and child processes.  Specifically,
+  # the child will indicate when it's done with its test by writing a message
+  # to the parent.
+  my ($rfh, $wfh);
+  unless (pipe($rfh, $wfh)) {
+    die("Can't open pipe: $!");
+  }
+
+  my $ex;
+
+  # Fork child
+  $self->handle_sigchld();
+  defined(my $pid = fork()) or die("Can't fork: $!");
+  if ($pid) {
+    eval {
+      # Allow for server startup
+      sleep(1);
+
+      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port, 0, 1);
+      $client->login($setup->{user}, $setup->{passwd});
+
+      my ($resp_code, $resp_msg) = $client->rnfr($src_file);
+      ($resp_code, $resp_msg) = $client->rnto($dst_file);
+
+      my $expected = 250;
+      $self->assert($expected == $resp_code,
+        test_msg("Expected response code $expected, got $resp_code"));
+
+      $expected = "Rename successful";
+      $self->assert($expected eq $resp_msg,
+        test_msg("Expected response message '$expected', got '$resp_msg'"));
+
+      $self->assert(!-f $src_file,
+        test_msg("File $src_file exists unexpectedly"));
+      $self->assert(-f $dst_file,
+        test_msg("File $dst_file does not exist as expected"));
+
+      my $dst_size = -s $dst_file;
+      $self->assert($dst_size == $src_size,
+        test_msg("Expected target size $src_size, got $dst_size"));
+
+      if (open(my $fh, "< $dst_file")) {
+        my $line = <$fh>;
+        chomp($line);
+
+        if ($ENV{TEST_VERBOSE}) {
+          print STDERR "# $line\n";
+        }
+
+        close($fh);
+        $self->assert($line eq $src_text,
+          test_msg("Expected '$src_text', got '$line'"));
+
+      } else {
+        die("Can't read $dst_file: $!");
+      }
+    };
+    if ($@) {
+      $ex = $@;
+    }
+
+    $wfh->print("done\n");
+    $wfh->flush();
+
+  } else {
+    eval { server_wait($setup->{config_file}, $rfh) };
+    if ($@) {
+      warn($@);
+      exit 1;
+    }
+
+    exit 0;
+  }
+
+  # Stop server
+  server_stop($setup->{pid_file});
+  $self->assert_child_ok($pid);
+
+  test_cleanup($setup, $ex);
+}
+
+sub rnto_dst_symlink_exists_ok {
+  my $self = shift;
+  my $tmpdir = $self->{tmpdir};
+  my $setup = test_setup($tmpdir, 'cmds');
+
+  my $test_dir = File::Spec->rel2abs("$tmpdir/test.d");
+  mkpath($test_dir);
+
+  my $src_text = "Foo!";
+  my $src_file = File::Spec->rel2abs("$test_dir/test.txt");
+  if (open(my $fh, "> $src_file")) {
+    print $fh "$src_text\n";
+    unless (close($fh)) {
+      die("Can't write $src_file: $!");
+    }
+
+  } else {
+    die("Can't open $src_file: $!");
+  }
+
+  my $src_size = -s $src_file;
+
+  my $dst_text = "bar";
+  my $dst_file = File::Spec->rel2abs("$test_dir/bar.txt");
+  if (open(my $fh, "> $dst_file")) {
+    print $fh "$dst_text\n";
+    unless (close($fh)) {
+      die("Can't write $dst_file: $!");
+    }
+
+  } else {
+    die("Can't open $dst_file: $!");
+  }
+
+  my $dst_symlink = File::Spec->rel2abs("$test_dir/bar.lnk");
+
+  my $dst_path = $dst_file;
+  if ($^O eq 'darwin') {
+    # MacOSX-specific hack
+    $dst_path = '/private' . $dst_path;
+  }
+
+  unless (symlink($dst_path, $dst_symlink)) {
+    die("Can't symlink $dst_symlink to $dst_path: $!");
+  }
+
+  if ($< == 0) {
+    unless (chmod(0755, $test_dir)) {
+      die("Can't set perms on $test_dir to 0755: $!");
+    }
+
+    unless (chown($setup->{uid}, $setup->{gid}, $test_dir, $src_file, $dst_file)) {
+      die("Can't set owner of $test_dir to $setup->{uid}/$setup->{gid}: $!");
+    }
+  }
+
+  my $config = {
+    PidFile => $setup->{pid_file},
+    ScoreboardFile => $setup->{scoreboard_file},
+    SystemLog => $setup->{log_file},
+
+    AuthUserFile => $setup->{auth_user_file},
+    AuthGroupFile => $setup->{auth_group_file},
+    AuthOrder => 'mod_auth_file.c',
+
+    AllowOverwrite => 'on',
+
+    IfModules => {
+      'mod_delay.c' => {
+        DelayEngine => 'off',
+      },
+    },
+  };
+
+  my ($port, $config_user, $config_group) = config_write($setup->{config_file},
+    $config);
+
+  # Open pipes, for use between the parent and child processes.  Specifically,
+  # the child will indicate when it's done with its test by writing a message
+  # to the parent.
+  my ($rfh, $wfh);
+  unless (pipe($rfh, $wfh)) {
+    die("Can't open pipe: $!");
+  }
+
+  my $ex;
+
+  # Fork child
+  $self->handle_sigchld();
+  defined(my $pid = fork()) or die("Can't fork: $!");
+  if ($pid) {
+    eval {
+      # Allow for server startup
+      sleep(1);
+
+      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port, 0, 1);
+      $client->login($setup->{user}, $setup->{passwd});
+
+      my ($resp_code, $resp_msg) = $client->rnfr($src_file);
+      ($resp_code, $resp_msg) = $client->rnto($dst_symlink);
+
+      my $expected = 250;
+      $self->assert($expected == $resp_code,
+        test_msg("Expected response code $expected, got $resp_code"));
+
+      $expected = "Rename successful";
+      $self->assert($expected eq $resp_msg,
+        test_msg("Expected response message '$expected', got '$resp_msg'"));
+
+      $self->assert(!-f $src_file,
+        test_msg("File $src_file exists unexpectedly"));
+      $self->assert(-f $dst_file,
+        test_msg("File $dst_file does not exist as expected"));
+      $self->assert(!-l $dst_symlink && -f $dst_symlink,
+        test_msg("File $dst_symlink does not exist as expected"));
+
+      my $dst_size = -s $dst_symlink;
+      $self->assert($dst_size == $src_size,
+        test_msg("Expected target size $src_size, got $dst_size"));
+
+      if (open(my $fh, "< $dst_symlink")) {
+        my $line = <$fh>;
+        chomp($line);
+
+        if ($ENV{TEST_VERBOSE}) {
+          print STDERR "# $line\n";
+        }
+
+        close($fh);
+        $self->assert($line eq $src_text,
+          test_msg("Expected '$src_text', got '$line'"));
+
+      } else {
+        die("Can't read $dst_symlink: $!");
+      }
+
+      if (open(my $fh, "< $dst_path")) {
+        my $line = <$fh>;
+        chomp($line);
+
+        if ($ENV{TEST_VERBOSE}) {
+          print STDERR "# $line\n";
+        }
+
+        close($fh);
+        $self->assert($line eq $dst_text,
+          test_msg("Expected '$dst_text', got '$line'"));
+
+      } else {
+        die("Can't read $dst_path: $!");
+      }
+    };
+    if ($@) {
+      $ex = $@;
+    }
+
+    $wfh->print("done\n");
+    $wfh->flush();
+
+  } else {
+    eval { server_wait($setup->{config_file}, $rfh) };
+    if ($@) {
+      warn($@);
+      exit 1;
+    }
+
+    exit 0;
+  }
+
+  # Stop server
+  server_stop($setup->{pid_file});
+  $self->assert_child_ok($pid);
+
+  test_cleanup($setup, $ex);
 }
 
 sub rnto_abs_dst_symlink {
@@ -260,6 +594,8 @@ sub rnto_abs_dst_symlink {
     AuthGroupFile => $setup->{auth_group_file},
     AuthOrder => 'mod_auth_file.c',
 
+    AllowOverwrite => 'on',
+
     IfModules => {
       'mod_delay.c' => {
         DelayEngine => 'off',
@@ -285,6 +621,9 @@ sub rnto_abs_dst_symlink {
   defined(my $pid = fork()) or die("Can't fork: $!");
   if ($pid) {
     eval {
+      # Allow for server startup
+      sleep(1);
+
       my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port, 0, 1);
       $client->login($setup->{user}, $setup->{passwd});
 
@@ -338,7 +677,7 @@ sub rnto_abs_dst_symlink {
   server_stop($setup->{pid_file});
   $self->assert_child_ok($pid);
 
-  test_cleanup($setup->{log_file}, $ex);
+  test_cleanup($setup, $ex);
 }
 
 sub rnto_rel_dst_symlink {
@@ -395,6 +734,8 @@ sub rnto_rel_dst_symlink {
     AuthGroupFile => $setup->{auth_group_file},
     AuthOrder => 'mod_auth_file.c',
 
+    AllowOverwrite => 'on',
+
     IfModules => {
       'mod_delay.c' => {
         DelayEngine => 'off',
@@ -420,6 +761,9 @@ sub rnto_rel_dst_symlink {
   defined(my $pid = fork()) or die("Can't fork: $!");
   if ($pid) {
     eval {
+      # Allow for server startup
+      sleep(1);
+
       my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port, 0, 1);
       $client->login($setup->{user}, $setup->{passwd});
 
@@ -474,7 +818,7 @@ sub rnto_rel_dst_symlink {
   server_stop($setup->{pid_file});
   $self->assert_child_ok($pid);
 
-  test_cleanup($setup->{log_file}, $ex);
+  test_cleanup($setup, $ex);
 }
 
 sub rnto_abs_src_symlink {
@@ -551,6 +895,9 @@ sub rnto_abs_src_symlink {
   defined(my $pid = fork()) or die("Can't fork: $!");
   if ($pid) {
     eval {
+      # Allow for server startup
+      sleep(1);
+
       my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port, 0, 1);
       $client->login($setup->{user}, $setup->{passwd});
 
@@ -615,7 +962,7 @@ sub rnto_abs_src_symlink {
   server_stop($setup->{pid_file});
   $self->assert_child_ok($pid);
 
-  test_cleanup($setup->{log_file}, $ex);
+  test_cleanup($setup, $ex);
 }
 
 sub rnto_rel_src_symlink {
@@ -692,6 +1039,9 @@ sub rnto_rel_src_symlink {
   defined(my $pid = fork()) or die("Can't fork: $!");
   if ($pid) {
     eval {
+      # Allow for server startup
+      sleep(1);
+
       my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port, 0, 1);
       $client->login($setup->{user}, $setup->{passwd});
 
@@ -757,7 +1107,7 @@ sub rnto_rel_src_symlink {
   server_stop($setup->{pid_file});
   $self->assert_child_ok($pid);
 
-  test_cleanup($setup->{log_file}, $ex);
+  test_cleanup($setup, $ex);
 }
 
 sub rnto_fails_login_required {
@@ -831,6 +1181,9 @@ sub rnto_fails_login_required {
   defined(my $pid = fork()) or die("Can't fork: $!");
   if ($pid) {
     eval {
+      # Allow for server startup
+      sleep(1);
+
       my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
 
       my ($resp_code, $resp_msg);
@@ -957,8 +1310,10 @@ sub rnto_fails_no_rnfr {
   defined(my $pid = fork()) or die("Can't fork: $!");
   if ($pid) {
     eval {
-      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
+      # Allow for server startup
+      sleep(1);
 
+      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
       $client->login($user, $passwd);
 
       my ($resp_code, $resp_msg);
@@ -1076,6 +1431,9 @@ sub rnto_fails_enoent_no_file {
   defined(my $pid = fork()) or die("Can't fork: $!");
   if ($pid) {
     eval {
+      # Allow for server startup
+      sleep(1);
+
       my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port, 0, 1);
       $client->login($setup->{user}, $setup->{passwd});
 
@@ -1120,7 +1478,7 @@ sub rnto_fails_enoent_no_file {
   server_stop($setup->{pid_file});
   $self->assert_child_ok($pid);
 
-  test_cleanup($setup->{log_file}, $ex);
+  test_cleanup($setup, $ex);
 }
 
 sub rnto_fails_enoent_no_dir {
@@ -1185,6 +1543,9 @@ sub rnto_fails_enoent_no_dir {
   defined(my $pid = fork()) or die("Can't fork: $!");
   if ($pid) {
     eval {
+      # Allow for server startup
+      sleep(1);
+
       my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port, 0, 1);
       $client->login($setup->{user}, $setup->{passwd});
 
@@ -1227,7 +1588,7 @@ sub rnto_fails_enoent_no_dir {
   server_stop($setup->{pid_file});
   $self->assert_child_ok($pid);
 
-  test_cleanup($setup->{log_file}, $ex);
+  test_cleanup($setup, $ex);
 }
 
 sub rnto_fails_eperm {
@@ -1309,8 +1670,10 @@ sub rnto_fails_eperm {
   defined(my $pid = fork()) or die("Can't fork: $!");
   if ($pid) {
     eval {
-      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
+      # Allow for server startup
+      sleep(1);
 
+      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
       $client->login($user, $passwd);
 
       my ($resp_code, $resp_msg);
@@ -1454,8 +1817,10 @@ sub rnto_fails_allow_overwrite {
   defined(my $pid = fork()) or die("Can't fork: $!");
   if ($pid) {
     eval {
-      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
+      # Allow for server startup
+      sleep(1);
 
+      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
       $client->login($user, $passwd);
 
       my ($resp_code, $resp_msg);
@@ -1603,8 +1968,10 @@ sub rnto_fails_device_full_bug3354 {
   defined(my $pid = fork()) or die("Can't fork: $!");
   if ($pid) {
     eval {
-      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
+      # Allow for server startup
+      sleep(1);
 
+      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
       $client->login($user, $passwd);
 
       my ($resp_code, $resp_msg);
@@ -1767,6 +2134,9 @@ EOC
   defined(my $pid = fork()) or die("Can't fork: $!");
   if ($pid) {
     eval {
+      # Allow for server startup
+      sleep(1);
+
       my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port, 0, 1);
       $client->login($setup->{user}, $setup->{passwd});
       $client->cwd('sub.d');
@@ -1813,7 +2183,7 @@ EOC
   server_stop($setup->{pid_file});
   $self->assert_child_ok($pid);
 
-  test_cleanup($setup->{log_file}, $ex);
+  test_cleanup($setup, $ex);
 }
 
 sub rnto_lowercase_issue1023 {
@@ -1880,6 +2250,9 @@ sub rnto_lowercase_issue1023 {
   defined(my $pid = fork()) or die("Can't fork: $!");
   if ($pid) {
     eval {
+      # Allow for server startup
+      sleep(1);
+
       my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port, 0, 1);
       $client->login($setup->{user}, $setup->{passwd});
 
@@ -1920,7 +2293,7 @@ sub rnto_lowercase_issue1023 {
   server_stop($setup->{pid_file});
   $self->assert_child_ok($pid);
 
-  test_cleanup($setup->{log_file}, $ex);
+  test_cleanup($setup, $ex);
 }
 
 sub rnto_user_pass_issue2003 {
@@ -1967,6 +2340,9 @@ sub rnto_user_pass_issue2003 {
   defined(my $pid = fork()) or die("Can't fork: $!");
   if ($pid) {
     eval {
+      # Allow for server startup
+      sleep(1);
+
       my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port, 0, 1);
 
       eval { $client->rnto($src_file); };
@@ -2045,7 +2421,7 @@ sub rnto_user_pass_issue2003 {
   server_stop($setup->{pid_file});
   $self->assert_child_ok($pid);
 
-  test_cleanup($setup->{log_file}, $ex);
+  test_cleanup($setup, $ex);
 }
 
 1;

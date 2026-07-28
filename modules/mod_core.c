@@ -6303,8 +6303,127 @@ MODRET core_dele(cmd_rec *cmd) {
   return PR_HANDLED(cmd);
 }
 
+static int handle_cross_mount_rename(cmd_rec *cmd, const char *src_path,
+    const char *dst_path, struct stat *dst_st) {
+  int res, xerrno;
+  struct stat src_st;
+
+  pr_fs_clear_cache2(src_path);
+  res = pr_fsio_lstat(src_path, &src_st);
+  if (res < 0) {
+    xerrno = errno;
+
+    pr_log_debug(DEBUG4, "Unable to stat '%s' for cross filesystem mount "
+      "point rename: %s", src_path, strerror(xerrno));
+
+    pr_response_add_err(R_550, _("%s: %s"), cmd->arg, strerror(xerrno));
+    pr_cmd_set_errno(cmd, xerrno);
+    errno = xerrno;
+
+    return -1;
+  }
+
+  if (S_ISDIR(src_st.st_mode)) {
+    xerrno = EPERM;
+
+    pr_log_debug(DEBUG4, "Cannot rename directory '%s' across a filesystem "
+      "mount", src_path);
+
+    pr_response_add_err(R_550, _("%s: %s"), cmd->arg, strerror(xerrno));
+    pr_cmd_set_errno(cmd, xerrno);
+    errno = xerrno;
+
+    return -1;
+  }
+
+  if (!S_ISREG(src_st.st_mode) &&
+      !S_ISLNK(src_st.st_mode)) {
+    xerrno = EPERM;
+
+    pr_log_debug(DEBUG4, "Cannot rename unsupported file type '%s' across "
+      "a filesystem mount", src_path);
+
+    pr_response_add_err(R_550, _("%s: %s"), cmd->arg, strerror(xerrno));
+    pr_cmd_set_errno(cmd, xerrno);
+    errno = xerrno;
+
+    return -1;
+  }
+
+  /* If the destination exists, unlink it first.  Unless it is a directory,
+   * in which case we error out now; we do not copy into directories across
+   * mounts at the moment.
+   */
+  if (dst_st != NULL) {
+    if (S_ISDIR(dst_st->st_mode)) {
+      xerrno = EPERM;
+
+      pr_log_debug(DEBUG4, "Cannot rename path '%s' across a filesystem mount "
+        "point into directory '%s'", src_path, dst_path);
+
+      pr_response_add_err(R_550, _("%s: %s"), cmd->arg, strerror(xerrno));
+      pr_cmd_set_errno(cmd, xerrno);
+      errno = xerrno;
+
+      return -1;
+    }
+
+    res = pr_fsio_unlink(dst_path);
+    if (res < 0) {
+      xerrno = errno;
+
+      pr_log_debug(DEBUG4, "Unable to delete '%s' for cross filesystem mount "
+        "point rename: %s", dst_path, strerror(xerrno));
+
+      pr_response_add_err(R_550, _("%s: %s"), cmd->arg, strerror(xerrno));
+      pr_cmd_set_errno(cmd, xerrno);
+      errno = xerrno;
+
+      return -1;
+    }
+
+    dst_st = NULL;
+  }
+
+  /* At this point, we know that the source path exists, and is a regular file
+   * or symlink.  And we know that the destination path does not exist.
+   */
+
+  if (S_ISREG(src_st.st_mode)) {
+    res = pr_fs_copy_file(src_path, dst_path);
+    xerrno = errno;
+
+  } else if (S_ISLNK(src_st.st_mode)) {
+    res = pr_fs_copy_symlink(src_path, dst_path, 0);
+    xerrno = errno;
+  }
+
+  if (res < 0) {
+    (void) pr_trace_msg("fileperms", 1, "%s, user '%s' (UID %s, GID %s): "
+      "error copying '%s' to '%s': %s", (char *) cmd->argv[0], session.user,
+      pr_uid2str(cmd->tmp_pool, session.uid),
+      pr_gid2str(cmd->tmp_pool, session.gid), src_path, dst_path,
+      strerror(xerrno));
+
+    pr_response_add_err(R_550, _("Rename %s: %s"), cmd->arg,
+      strerror(xerrno));
+    pr_cmd_set_errno(cmd, xerrno);
+    errno = xerrno;
+
+    return -1;
+  }
+
+  /* Once copied, unlink the original file. */
+  res = pr_fsio_unlink(src_path);
+  if (res < 0) {
+    pr_log_debug(DEBUG0, "error deleting '%s': %s", src_path, strerror(errno));
+  }
+
+  return 0;
+}
+
 MODRET core_rnto(cmd_rec *cmd) {
-  int res;
+  int res, xerrno, dst_exists = FALSE;
   char *decoded_path, *path;
   unsigned char *allow_overwrite = NULL;
   struct stat st;
@@ -6325,7 +6444,7 @@ MODRET core_rnto(cmd_rec *cmd) {
   decoded_path = pr_fs_decode_path2(cmd->tmp_pool, cmd->arg,
     FSIO_DECODE_FL_TELL_ERRORS);
   if (decoded_path == NULL) {
-    int xerrno = errno;
+    xerrno = errno;
 
     pr_log_debug(DEBUG8, "'%s' failed to decode properly: %s", cmd->arg,
       strerror(xerrno));
@@ -6365,23 +6484,28 @@ MODRET core_rnto(cmd_rec *cmd) {
 
   path = dir_canonical_path(cmd->tmp_pool, path);
 
-  allow_overwrite = get_param_ptr(CURRENT_CONF, "AllowOverwrite", FALSE);
-
   /* Deny the rename if AllowOverwrites are not allowed, and the destination
    * rename file already exists.
    */
-  pr_fs_clear_cache2(path);
-  if ((!allow_overwrite || *allow_overwrite == FALSE) &&
-      pr_fsio_stat(path, &st) == 0) {
-    pr_log_debug(DEBUG6, "AllowOverwrite denied permission for %s", path);
-    pr_response_add_err(R_550, _("%s: Rename permission denied"), cmd->arg);
+  allow_overwrite = get_param_ptr(CURRENT_CONF, "AllowOverwrite", FALSE);
 
-    pr_cmd_set_errno(cmd, EACCES);
-    errno = EACCES;
-    return PR_ERROR(cmd);
+  pr_fs_clear_cache2(path);
+  res = pr_fsio_lstat(path, &st);
+  if (res == 0) {
+    dst_exists = TRUE;
+
+    if (allow_overwrite == NULL ||
+        *allow_overwrite == FALSE) {
+      pr_log_debug(DEBUG6, "AllowOverwrite denied permission for %s", path);
+      pr_response_add_err(R_550, _("%s: Rename permission denied"), cmd->arg);
+
+      pr_cmd_set_errno(cmd, EACCES);
+      errno = EACCES;
+      return PR_ERROR(cmd);
+    }
   }
 
-  if (!path ||
+  if (path == NULL ||
       !dir_check_canon(cmd->tmp_pool, cmd, cmd->group, path, NULL)) {
     pr_log_debug(DEBUG8, "%s command denied by <Limit> config",
       (char *) cmd->argv[0]);
@@ -6394,7 +6518,7 @@ MODRET core_rnto(cmd_rec *cmd) {
 
   res = pr_fsio_rename_with_error(cmd->pool, session.xfer.path, path, &err);
   if (res < 0) {
-    int xerrno = errno;
+    xerrno = errno;
 
     pr_error_set_where(err, &core_module, __FILE__, __LINE__ - 4);
     pr_error_set_why(err, pstrcat(cmd->pool, "rename '", session.xfer.path,
@@ -6461,41 +6585,9 @@ MODRET core_rnto(cmd_rec *cmd) {
     /* In this case, we'll need to manually copy the file from the source
      * to the destination paths.
      */
-    if (pr_fs_copy_file(session.xfer.path, path) < 0) {
-      xerrno = errno;
-
-      (void) pr_trace_msg("fileperms", 1, "%s, user '%s' (UID %s, GID %s): "
-        "error copying '%s' to '%s': %s", (char *) cmd->argv[0], session.user,
-        pr_uid2str(cmd->tmp_pool, session.uid),
-        pr_gid2str(cmd->tmp_pool, session.gid), session.xfer.path, path,
-        strerror(xerrno));
-
-      pr_response_add_err(R_550, _("Rename %s: %s"), cmd->arg,
-        strerror(xerrno));
-
-      pr_cmd_set_errno(cmd, xerrno);
-      errno = xerrno;
+    if (handle_cross_mount_rename(cmd, session.xfer.path, path,
+        dst_exists == TRUE ? &st : NULL) < 0) {
       return PR_ERROR(cmd);
-    }
-
-    /* Once copied, unlink the original file. */
-    res = pr_fsio_unlink_with_error(cmd->pool, session.xfer.path, &err);
-    if (res < 0) {
-      xerrno = errno;
-
-      pr_error_set_where(err, &core_module, __FILE__, __LINE__ - 4);
-      pr_error_set_why(err, pstrcat(cmd->pool, "delete file '",
-        session.xfer.path, "'", NULL));
-
-      if (err != NULL) {
-        pr_log_debug(DEBUG0, "%s", pr_error_strerror(err, 0));
-        pr_error_destroy(err);
-        err = NULL;
-
-      } else {
-        pr_log_debug(DEBUG0, "error deleting '%s': %s", session.xfer.path,
-          strerror(xerrno));
-      }
     }
   }
 
