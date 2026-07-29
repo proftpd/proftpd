@@ -347,6 +347,21 @@ if (scalar(@ARGV) > 0) {
       test_class => [qw(mod_log_forensic)],
     },
 
+    't/modules/mod_procfs.t' => {
+      order => ++$order,
+      test_class => [qw(mod_procfs)],
+    },
+
+    't/modules/mod_procfs/digest.t' => {
+      order => ++$order,
+      test_class => [qw(mod_digest mod_procfs)],
+    },
+
+    't/modules/mod_procfs/sftp.t' => {
+      order => ++$order,
+      test_class => [qw(mod_procfs mod_sftp)],
+    },
+
     't/modules/mod_quotatab_file.t' => {
       order => ++$order,
       test_class => [qw(mod_quotatab mod_quotatab_file)],

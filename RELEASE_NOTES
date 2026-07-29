@@ -9,6 +9,16 @@ ChangeLog files.
 1.3.10rc4
 ----------
 
+  + New Modules
+
+      mod_procfs
+ 
+        The mod_procfs module automatically blocks/rejects any client
+        request to access procfs and sysfs mount points, as these virtual
+        filesystems provide too much sensitive information if accessed
+        remotely.  This module is built by default.  See
+        doc/modules/mod_procfs.html for more information.
+
   + New Directives
 
       LDAPSessionTracking

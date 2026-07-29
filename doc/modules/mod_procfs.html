@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html>
+<head>
+<title>ProFTPD module mod_procfs</title>
+</head>
+
+<body bgcolor=white>
+
+<hr>
+<center>
+<h2><b>ProFTPD module <code>mod_procfs</code></b></h2>
+</center>
+<hr><br>
+
+<p>
+The <code>mod_procfs</code> module affects the visibility and usage of the
+<code>/proc</code> and <code>/sys</code> pseudo-filesystem directories.
+
+<p>
+This module is contained in the <code>mod_procfs</code> file for
+ProFTPD 1.3.<i>x</i>, and is not compiled by default.  Installation
+instructions are discussed <a href="#Installation">here</a>.  More examples
+of <code>mod_procfs</code> usage can be found <a href="#Usage">here</a>.
+
+<p>
+The most current version of <code>mod_procfs</code> is distributed with the
+ProFTPD source code.
+
+<h2>Author</h2>
+<p>
+Please contact TJ Saunders &lt;tj <i>at</i> castaglia.org&gt; with any
+questions, concerns, or suggestions regarding this module.
+
+<h2>Directives</h2>
+<ul>
+  <li><a href="#ProcfsEngine">ProcfsEngine</a>
+  <li><a href="#ProcfsLog">ProcfsLog</a>
+</ul>
+
+<hr>
+<h2><a name="ProcfsEngine">ProcfsEngine</a></h2>
+<strong>Syntax:</strong> ProcfsEngine <em>on|off</em><br>
+<strong>Default:</strong> <em>on</em><br>
+<strong>Context:</strong> &quot;server config&quot;, <code>&lt;VirtualHost&gt;</code>, <code>&lt;Global&gt;</code><br>
+<strong>Module:</strong> mod_procfs<br>
+<strong>Compatibility:</strong> 1.3.1rc1 and later
+
+<p>
+The <code>ProcfsEngine</code> directive enables or disables the module's
+hiding of the <code>/proc</code> and <code>/sys</code> filesystems.  When
+enabled, <code>mod_procfs</code> works to prevent access to the
+<code>/proc</code> and <code>/sys</code> pseudo-filesystems, returning
+"No such file or directory" errors for such access attempts.
+
+<p>
+<b>Note</b> that <code>ProcfsEngine</code> is <em>automatically enabled</em>
+if the module detects, on startup, that the <code>/proc</code> or
+<code>/sys</code> filesystems are present.  If the <code>/proc</code> and
+<code>/sys</code> filesystems are not present on startup, then
+<code>ProcfsEngine</code> is automatically disabled.  Explicitly setting this
+directive overrides the automatic behavior.
+
+<hr>
+<h2><a name="ProcfsLog">ProcfsLog</a></h2>
+<strong>Syntax:</strong> ProcfsLog <em>file</em><br>
+<strong>Default:</strong> None<br>
+<strong>Context:</strong> server config, <code>&lt;VirtualHost&gt;</code>, <code>&lt;Global&gt;</code><br>
+<strong>Module:</strong> mod_procfs<br>
+<strong>Compatibility:</strong> 1.3.1rc1 and later
+
+<p>
+The <code>ProcfsLog</code> directive is used to a specify a log file for
+<code>mod_procfs</code> reporting and debugging, and can be done a per-server
+basis.  The <em>file</em> parameter must be the full path to the file to use for
+logging.  Note that this path must <b>not</b> be to a world-writeable
+directory and, unless <code>AllowLogSymlinks</code> is explicitly set to
+<em>on</em> (generally a bad idea), the path must <b>not</b> be a symbolic
+link.
+
+<p>
+If <em>file</em> is &quot;none&quot;, no logging will be done at all; this
+setting can be used to override a <code>ProcfsLog</code> setting inherited from
+a <code>&lt;Global&gt;</code> context.
+
+<p>
+<hr>
+<h2><a name="Installation">Installation</a></h2>
+To install <code>mod_procfs</code>, copy the <code>mod_procfs.c</code> file
+into:
+<pre>
+  <i>proftpd-dir</i>/contrib/
+</pre>
+after unpacking the latest proftpd-1.3.<i>x</i> source code.  For including
+<code>mod_procfs</code> as a statically linked module:
+<pre>
+  ./configure --with-modules=mod_procfs
+</pre>
+To build <code>mod_procfs</code> as a DSO module:
+<pre>
+  ./configure --enable-dso --with-shared=mod_procfs
+</pre>
+Then follow the usual steps:
+<pre>
+  make
+  make install
+</pre>
+
+<p>
+For those with an existing ProFTPD installation, you can use the
+<code>prxs</code> tool to add <code>mod_procfs</code>, as a DSO module, to
+your existing server:
+<pre>
+  # prxs -c -i -d mod_procfs.c
+</pre>
+
+<p>
+<hr>
+<h2><a name="Usage">Usage</a></h2>
+
+<p>
+The <code>mod_procfs</code> module works by using the ProFTPD command dispatch
+system to intercept all commands/requests that use paths; if the paths
+being used reference the <code>/proc</code> or <code>/sys</code> filesystems,
+those commands will fail with a "No such file or directory" error.
+
+<p>
+Example configuration:
+<pre>
+  &lt;IfModule mod_procfs.c&gt;
+    # This is not required; the module automatically determines when it is
+    # needed.
+    ProcfsEngine on
+    ProcfsLog /var/log/proftpd/procfs.log
+  &lt;/IfModule&gt;
+</pre>
+
+<p>
+<b>Logging</b><br>
+The <code>mod_procfs</code> module supports different forms of logging.  The
+main module logging is done via the
+<a href="#ProcfsLog"><code>ProcfsLog</code></a> directive.  For debugging
+purposes, the module also uses
+<a href="http://www.proftpd.org/docs/howto/Tracing.html">trace logging</a>, via
+the module-specific channels:
+<ul>
+  <li>procfs
+</ul>
+
+<p>
+Thus for trace logging, to aid in debugging, you would use the following in
+your <code>proftpd.conf</code>:
+<pre>
+  TraceLog /path/to/proftpd-trace.log
+  Trace command:10 response:10 procfs:20
+</pre>
+This trace logging can generate large files; it is intended for debugging
+use only, and should be removed from any production configuration.
+
+<p>
+<hr>
+
+<font size=2><b><i>
+&copy; Copyright 2026 TJ Saunders<br>
+ All Rights Reserved<br>
+</i></b></font>
+
+<hr>
+</body>
+</html>
