@@ -1175,7 +1175,6 @@ static int ctrls_handle_shutdown(pr_ctrls_t *ctrl, int reqargc,
       }
 
       timeout = client_timeout;
-      time(&now);
 
       pr_ctrls_log(MOD_CTRLS_ADMIN_VERSION,
         "shutdown: waiting %u seconds before shutting down", timeout);
@@ -1197,6 +1196,8 @@ static int ctrls_handle_shutdown(pr_ctrls_t *ctrl, int reqargc,
      */
 
     nkids = child_count();
+    time(&now);
+
     while (nkids > 0) {
       if (timeout &&
           time(NULL) - now > timeout) {
