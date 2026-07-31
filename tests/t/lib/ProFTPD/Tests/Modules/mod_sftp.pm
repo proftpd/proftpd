@@ -33337,6 +33337,8 @@ sub sftp_config_auth_public_keys_issue1806 {
     die("Can't copy $dsa_rfc4716_key to $authorized_keys: $!");
   }
 
+  my $pubkey_algs = 'ssh-rsa';
+
   my $config = {
     PidFile => $setup->{pid_file},
     ScoreboardFile => $setup->{scoreboard_file},
@@ -33362,7 +33364,7 @@ sub sftp_config_auth_public_keys_issue1806 {
         "SFTPAuthorizedUserKeys file:~/.authorized_keys",
 
         # The user has an authorized DSA public key, but we only allow RSA keys.
-        "SFTPAuthPublicKeys ssh-rsa",
+        "SFTPAuthPublicKeys $pubkey_algs",
       ],
     },
   };
@@ -33429,7 +33431,8 @@ sub sftp_config_auth_public_keys_issue1806 {
 
   eval {
     if (open(my $fh, "< $setup->{log_file}")) {
-      my $saw_expected_msg = 0;
+      my $serversigalgs_msg = 0;
+      my $authpubkeys_msg = 0;
 
       while (my $line = <$fh>) {
         chomp($line);
@@ -33438,15 +33441,26 @@ sub sftp_config_auth_public_keys_issue1806 {
           print STDERR "# $line\n";
         }
 
+        if ($line =~ /writing 'server\-sig\-algs' EXT_INFO extension: (.*)?/) {
+          my $algs = $1;
+
+          if ($algs eq $pubkey_algs) {
+            $serversigalgs_msg = 1;
+          }
+        }
+
         if ($line =~ /public key algorithm (\S+)? disabled by SFTPAuthPublicKeys, rejecting request/) {
-          $saw_expected_msg = 1;
+          $authpubkeys_msg = 1;
           last;
         }
       }
 
       close($fh);
-      $self->assert($saw_expected_msg,
-        test_msg("Did not see expected message during authentication"));
+
+      $self->assert($serversigalgs_msg,
+        test_msg("Did not see expected server-sig-algs message during authentication"));
+      $self->assert($authpubkeys_msg,
+        test_msg("Did not see expected SFTPLog message during authentication"));
 
     } else {
       die("Can't read $setup->{log_file}: $!");
