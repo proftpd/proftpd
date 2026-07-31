@@ -5835,7 +5835,7 @@ static int fxp_handle_ext_limits(struct fxp_packet *fxp) {
 
 static int rename_across_mounts(pool *p, const char *src_path,
     const char *dst_path) {
-  int res, xerrno;
+  int res, xerrno = 0;
   struct stat src_st, dst_st;
 
   pr_fs_clear_cache2(src_path);
