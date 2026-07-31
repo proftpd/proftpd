@@ -3176,37 +3176,54 @@ static int write_newkeys_reply(struct ssh2_packet *pkt) {
 static int write_ext_info_server_sig_algs(struct ssh2_packet *pkt,
     unsigned char **buf, uint32_t *buflen) {
   char *sig_algs = "";
+  config_rec *c;
 
+  c = find_config(main_server->conf, CONF_PARAM, "SFTPAuthPublicKeys", FALSE);
+  if (c != NULL) {
+    register unsigned int i;
+
+    for (i = 0; i < c->argc; i++) {
+      const char *algo;
+
+      algo = c->argv[i];
+      sig_algs = pstrcat(pkt->pool, sig_algs, *sig_algs ? "," : "", algo, NULL);
+    }
+
+  } else {
+    /* No explicit list of publickey algorithms configured; provide the full
+     * list of supported algorithms.
+     */
 #if defined(HAVE_X448_OPENSSL)
-  sig_algs = pstrcat(pkt->pool, sig_algs, *sig_algs ? "," : "", "ssh-ed448",
-    NULL);
+    sig_algs = pstrcat(pkt->pool, sig_algs, *sig_algs ? "," : "", "ssh-ed448",
+      NULL);
 #endif /* HAVE_X448_OPENSSL */
 
 #if defined(PR_USE_SODIUM)
-  sig_algs = pstrcat(pkt->pool, sig_algs, *sig_algs ? "," : "", "ssh-ed25519",
-    NULL);
+    sig_algs = pstrcat(pkt->pool, sig_algs, *sig_algs ? "," : "", "ssh-ed25519",
+      NULL);
 #endif /* PR_USE_SODIUM */
 
 #if defined(HAVE_SHA256_OPENSSL)
-  sig_algs = pstrcat(pkt->pool, sig_algs, *sig_algs ? "," : "", "rsa-sha2-256",
-    NULL);
+    sig_algs = pstrcat(pkt->pool, sig_algs, *sig_algs ? "," : "",
+      "rsa-sha2-256", NULL);
 #endif /* HAVE_SHA256_OPENSSL */
 
 #if defined(HAVE_SHA512_OPENSSL)
-  sig_algs = pstrcat(pkt->pool, sig_algs, *sig_algs ? "," : "", "rsa-sha2-512",
-    NULL);
+    sig_algs = pstrcat(pkt->pool, sig_algs, *sig_algs ? "," : "",
+      "rsa-sha2-512", NULL);
 #endif /* HAVE_SHA512_OPENSSL */
 
 #if defined(PR_USE_OPENSSL_ECC)
-  sig_algs = pstrcat(pkt->pool, sig_algs, *sig_algs ? "," : "",
-    "ecdsa-sha2-nistp256,ecdsa-sha2-nistp384,ecdsa-sha2-nistp521", NULL);
+    sig_algs = pstrcat(pkt->pool, sig_algs, *sig_algs ? "," : "",
+      "ecdsa-sha2-nistp256,ecdsa-sha2-nistp384,ecdsa-sha2-nistp521", NULL);
 #endif /* PR_USE_OPENSSL_ECC */
 
-  sig_algs = pstrcat(pkt->pool, sig_algs, *sig_algs ? "," : "", "ssh-rsa",
-    NULL);
+    sig_algs = pstrcat(pkt->pool, sig_algs, *sig_algs ? "," : "", "ssh-rsa",
+      NULL);
 #if !defined(OPENSSL_NO_DSA)
-  sig_algs = pstrcat(pkt->pool, sig_algs, ",", "ssh-dss", NULL);
+    sig_algs = pstrcat(pkt->pool, sig_algs, ",", "ssh-dss", NULL);
 #endif /* OPENSSL_NO_DSA */
+  }
 
   pr_trace_msg(trace_channel, 11,
     "writing 'server-sig-algs' EXT_INFO extension: %s", sig_algs);
