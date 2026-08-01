@@ -4121,7 +4121,11 @@ static BIO *load_file_hostkey_bio(pool *p, int fd) {
   while (res > 0) {
     pr_signals_handle();
 
-    BIO_write(bio, buf, res);
+    if (BIO_write(bio, buf, res) < 0) {
+      pr_trace_msg(trace_channel, 3, "error writing to hostkey BIO: %s",
+        sftp_crypto_get_errors());
+    }
+
     pr_memscrub(buf, res);
 
     res = read(fd, buf, bufsz);
