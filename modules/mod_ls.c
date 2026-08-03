@@ -938,7 +938,15 @@ struct sort_filename {
 static struct filename *head = NULL;
 static struct filename *tail = NULL;
 static array_header *sort_arr = NULL;
-static pool *fpool = NULL;
+static pool *sort_pool = NULL;
+
+static void sort_cleanup(void *user_data) {
+  sort_pool = NULL;
+  sort_arr = NULL;
+  head = tail = NULL;
+  colwidth = 0;
+  filenames = 0;
+}
 
 static void addfile(cmd_rec *cmd, const char *name, const char *suffix,
     time_t sort_time, off_t size) {
@@ -960,23 +968,24 @@ static void addfile(cmd_rec *cmd, const char *name, const char *suffix,
     return;
   }
 
-  if (fpool == NULL) {
-    fpool = make_sub_pool(cmd->tmp_pool);
-    pr_pool_tag(fpool, "mod_ls addfile pool");
+  if (sort_pool == NULL) {
+    sort_pool = make_sub_pool(cmd->tmp_pool);
+    pr_pool_tag(sort_pool, "mod_ls sort pool");
+    register_cleanup2(sort_pool, NULL, sort_cleanup);
   }
 
   if (opt_S || opt_t) {
     struct sort_filename *s;
 
     if (sort_arr == NULL) {
-      sort_arr = make_array(fpool, 50, sizeof(struct sort_filename));
+      sort_arr = make_array(sort_pool, 50, sizeof(struct sort_filename));
     }
 
     s = (struct sort_filename *) push_array(sort_arr);
     s->sort_time = sort_time;
     s->size = size;
-    s->name = pstrdup(fpool, name);
-    s->suffix = pstrdup(fpool, suffix);
+    s->name = pstrdup(sort_pool, name);
+    s->suffix = pstrdup(sort_pool, suffix);
 
     return;
   }
@@ -986,8 +995,8 @@ static void addfile(cmd_rec *cmd, const char *name, const char *suffix,
     colwidth = l;
   }
 
-  p = (struct filename *) pcalloc(fpool, sizeof(struct filename));
-  p->line = pcalloc(fpool, l + 2);
+  p = (struct filename *) pcalloc(sort_pool, sizeof(struct filename));
+  p->line = pcalloc(sort_pool, l + 2);
   pr_snprintf(p->line, l + 1, "%s%s", name, suffix);
 
   if (tail) {
@@ -1102,12 +1111,8 @@ static int outputfiles(cmd_rec *cmd) {
       res = -1;
     }
 
-    destroy_pool(fpool);
-    fpool = NULL;
-    sort_arr = NULL;
-    head = tail = NULL;
-    colwidth = 0;
-    filenames = 0;
+    destroy_pool(sort_pool);
+    sort_pool = NULL;
 
     return res;
   }
@@ -1196,37 +1201,39 @@ static int outputfiles(cmd_rec *cmd) {
         pad[idx] = '\0';
       }
 
-      if (sendline(0, "%s%s", q->line, pad) < 0) {
-        return -1;
+      if (session.curr_cmd_id == PR_CMD_LIST_ID) {
+        res = sendline(0, "%s%s", q->line, pad);
+
+      } else {
+        pr_response_add(NULL, "%s%s", q->line, pad);
+        res = 0;
+      }
+
+      if (res < 0) {
+        break;
       }
 
       q = q->right;
     }
   }
 
-  if (sendline(LS_SENDLINE_FL_FLUSH, " ") < 0) {
-    res = -1;
+  if (session.curr_cmd_id != PR_CMD_STAT_ID) {
+    if (sendline(LS_SENDLINE_FL_FLUSH, " ") < 0) {
+      res = -1;
+    }
   }
 
-  destroy_pool(fpool);
-  fpool = NULL;
-  sort_arr = NULL;
-  head = tail = NULL;
-  colwidth = 0;
-  filenames = 0;
+  destroy_pool(sort_pool);
+  sort_pool = NULL;
 
   return res;
 }
 
 static void discard_output(void) {
-  if (fpool) {
-    destroy_pool(fpool);
+  if (sort_pool != NULL) {
+    destroy_pool(sort_pool);
+    sort_pool = NULL;
   }
-  fpool = NULL;
-
-  head = tail = NULL;
-  colwidth = 0;
-  filenames = 0;
 }
 
 static int dircmp(const void *a, const void *b) {
