@@ -9,6 +9,9 @@ ChangeLog files.
 1.3.10rc4
 ----------
 
+  + The -C option is no longer honored for FTP STAT commands.
+
+
   + New Modules
 
       mod_procfs

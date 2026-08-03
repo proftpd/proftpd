@@ -108,8 +108,7 @@ static int
     opt_S = 0,
     opt_t = 0,
     opt_U = 0,
-    opt_u = 0,
-    opt_STAT = 0;
+    opt_u = 0;
 
 /* Determines which struct st timestamp is used for sorting, if any. */
 static int ls_sort_by = 0;
@@ -897,7 +896,7 @@ static int listfile(cmd_rec *cmd, pool *p, const char *resp_code,
           nameline[sizeof(nameline)-1] = '\0';
         }
 
-        if (opt_STAT) {
+        if (session.curr_cmd_id == PR_CMD_STAT_ID) {
           pr_response_add(resp_code, "%s%s", nameline, suffix);
 
         } else {
@@ -1107,8 +1106,10 @@ static int outputfiles(cmd_rec *cmd) {
 
   if (head == NULL) {
     /* Nothing to display. */
-    if (sendline(LS_SENDLINE_FL_FLUSH, " ") < 0) {
-      res = -1;
+    if (session.curr_cmd_id != PR_CMD_STAT_ID) {
+      if (sendline(LS_SENDLINE_FL_FLUSH, " ") < 0) {
+        res = -1;
+      }
     }
 
     destroy_pool(sort_pool);
@@ -1131,6 +1132,9 @@ static int outputfiles(cmd_rec *cmd) {
     colwidth = 75;
   }
 
+  /* Note that the -C option will only be enabled, if requested, for LIST
+   * commands, and not for NLST or STAT (see Issue #2265).
+   */
   if (opt_C) {
     p = head;
     p->top = 1;
@@ -1201,14 +1205,7 @@ static int outputfiles(cmd_rec *cmd) {
         pad[idx] = '\0';
       }
 
-      if (session.curr_cmd_id == PR_CMD_LIST_ID) {
-        res = sendline(0, "%s%s", q->line, pad);
-
-      } else {
-        pr_response_add(NULL, "%s%s", q->line, pad);
-        res = 0;
-      }
-
+      res = sendline(0, "%s%s", q->line, pad);
       if (res < 0) {
         break;
       }
@@ -1503,7 +1500,7 @@ static int listdir(cmd_rec *cmd, pool *workp, const char *resp_code,
           subdir = pdircat(workp, name, *r, NULL);
         }
 
-        if (opt_STAT) {
+        if (session.curr_cmd_id == PR_CMD_STAT_ID) {
           pr_response_add(resp_code, "%s", "");
           pr_response_add(resp_code, "%s:",
             pr_fs_encode_path(cmd->tmp_pool, subdir));
@@ -1585,7 +1582,7 @@ static int listdir(cmd_rec *cmd, pool *workp, const char *resp_code,
 }
 
 static void ls_terminate(void) {
-  if (!opt_STAT) {
+  if (session.curr_cmd_id != PR_CMD_STAT_ID) {
     discard_output();
 
     if (!XFER_ABORTED) {
@@ -1650,7 +1647,7 @@ static void parse_list_opts(char **opt, int *glob_flags, int handle_plus_opts) {
           break;
 
         case 'C':
-          if (session.curr_cmd_id != PR_CMD_NLST_ID) {
+          if (session.curr_cmd_id == PR_CMD_LIST_ID) {
             opt_l = 0;
             opt_C = 1;
           }
@@ -1715,8 +1712,10 @@ static void parse_list_opts(char **opt, int *glob_flags, int handle_plus_opts) {
           break;
 
         case 'U':
-          opt_U = 1;
-          opt_c = opt_S = opt_t = 0;
+          if (session.curr_cmd_id != PR_CMD_STAT_ID) {
+            opt_U = 1;
+            opt_c = opt_S = opt_t = 0;
+          }
           break;
 
         case 'u':
@@ -1918,7 +1917,7 @@ static int dolist(cmd_rec *cmd, const char *opt, const char *resp_code,
 
   if (clear_flags) {
     opt_1 = opt_A = opt_a = opt_B = opt_C = opt_d = opt_F = opt_h = opt_n =
-      opt_r = opt_R = opt_S = opt_t = opt_STAT = opt_L = 0;
+      opt_r = opt_R = opt_S = opt_t = opt_L = 0;
   }
 
   if (have_options(cmd, arg)) {
@@ -2018,7 +2017,7 @@ static int dolist(cmd_rec *cmd, const char *opt, const char *resp_code,
     target = *pbuffer ? pbuffer : arg;
 
     /* Open data connection */
-    if (!opt_STAT) {
+    if (session.curr_cmd_id != PR_CMD_STAT_ID) {
       if (pr_data_open(NULL, "file list", PR_NETIO_IO_WR, 0) < 0) {
         int xerrno = errno;
 
@@ -2178,7 +2177,7 @@ static int dolist(cmd_rec *cmd, const char *opt, const char *resp_code,
           unsigned char symhold;
 
           if (!justone) {
-            if (opt_STAT) {
+            if (session.curr_cmd_id == PR_CMD_STAT_ID) {
               pr_response_add(resp_code, "%s", "");
               pr_response_add(resp_code, "%s:",
                 pr_fs_encode_path(cmd->tmp_pool, *path));
@@ -2270,7 +2269,7 @@ static int dolist(cmd_rec *cmd, const char *opt, const char *resp_code,
   } else {
 
     /* Open data connection */
-    if (!opt_STAT) {
+    if (session.curr_cmd_id != PR_CMD_STAT_ID) {
       if (pr_data_open(NULL, "file list", PR_NETIO_IO_WR, 0) < 0) {
         int xerrno = errno;
 
@@ -2936,7 +2935,7 @@ MODRET ls_stat(cmd_rec *cmd) {
   }
 
   opt_C = opt_d = opt_F = opt_R = 0;
-  opt_a = opt_l = opt_STAT = 1;
+  opt_a = opt_l = 1;
 
   path = (arg && *arg) ? arg : ".";
 
@@ -3061,7 +3060,7 @@ MODRET ls_nlst(cmd_rec *cmd) {
 
   /* Clear the listing option flags. */
   opt_1 = opt_A = opt_a = opt_B = opt_C = opt_d = opt_F = opt_n = opt_r =
-    opt_R = opt_S = opt_t = opt_STAT = opt_L = 0;
+    opt_R = opt_S = opt_t = opt_L = 0;
 
   if (have_options(cmd, target)) {
     if (!list_strict_opts) {
