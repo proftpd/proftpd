@@ -971,7 +971,13 @@ static void addfile(cmd_rec *cmd, const char *name, const char *suffix,
    * directories (Bug#4060).
    */
   if (opt_U == 1) {
-    (void) sendline(0, "%s%s\r\n", name, suffix);
+    if (session.curr_cmd_id == PR_CMD_STAT_ID) {
+      pr_response_add(NULL, "%s%s", name, suffix);
+
+    } else {
+      (void) sendline(0, "%s%s\r\n", name, suffix);
+    }
+
     return;
   }
 
@@ -1721,10 +1727,8 @@ static void parse_list_opts(char **opt, int *glob_flags, int handle_plus_opts) {
           break;
 
         case 'U':
-          if (session.curr_cmd_id != PR_CMD_STAT_ID) {
-            opt_U = 1;
-            opt_c = opt_S = opt_t = opt_u = 0;
-          }
+          opt_U = 1;
+          opt_c = opt_S = opt_t = opt_u = 0;
           break;
 
         case 'u':
