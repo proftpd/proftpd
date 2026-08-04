@@ -110,13 +110,21 @@ static int
     opt_U = 0,
     opt_u = 0;
 
-/* Determines which struct st timestamp is used for sorting, if any. */
+/* Determines which struct st timestamp is used for sorting, if any.  The
+ * default, when sorting, is by mtime.
+ */
 static int ls_sort_by = 0;
 #define LS_SORT_BY_MTIME	100
 #define LS_SORT_BY_CTIME	101
 #define LS_SORT_BY_ATIME	102
 
 static char cwd[PR_TUNABLE_PATH_MAX+1] = "";
+
+static void clear_list_opts(void) {
+  opt_1 = opt_A = opt_a = opt_B = opt_C = opt_c = opt_d = opt_F = opt_h =
+    opt_L = opt_l = opt_n = opt_R = opt_r = opt_S = opt_t = opt_U = opt_u = 0;
+  ls_sort_by = 0;
+}
 
 /* Find a <Limit> block that limits the given command (which will probably
  * be LIST).  This code borrowed for src/dirtree.c's dir_check_limit().
@@ -1706,6 +1714,7 @@ static void parse_list_opts(char **opt, int *glob_flags, int handle_plus_opts) {
 
         case 't':
           opt_t = 1;
+          ls_sort_by = LS_SORT_BY_MTIME;
           if (glob_flags) {
             *glob_flags |= GLOB_NOSORT;
           }
@@ -1714,7 +1723,7 @@ static void parse_list_opts(char **opt, int *glob_flags, int handle_plus_opts) {
         case 'U':
           if (session.curr_cmd_id != PR_CMD_STAT_ID) {
             opt_U = 1;
-            opt_c = opt_S = opt_t = 0;
+            opt_c = opt_S = opt_t = opt_u = 0;
           }
           break;
 
@@ -1781,8 +1790,12 @@ static void parse_list_opts(char **opt, int *glob_flags, int handle_plus_opts) {
         case 'c':
           opt_c = 0;
 
-          /* -u is still in effect, sort by that, otherwise use the default. */
-          ls_sort_by = opt_u ? LS_SORT_BY_ATIME : LS_SORT_BY_MTIME;
+          if (opt_t) {
+            /* -u is still in effect, sort by that, otherwise use the
+             * default.
+             */
+            ls_sort_by = opt_u ? LS_SORT_BY_ATIME : LS_SORT_BY_MTIME;
+          }
           break;
 
         case 'd':
@@ -1823,6 +1836,7 @@ static void parse_list_opts(char **opt, int *glob_flags, int handle_plus_opts) {
 
         case 't':
           opt_t = 0;
+          ls_sort_by = 0;
           if (glob_flags) {
             *glob_flags &= GLOB_NOSORT;
           }
@@ -1835,8 +1849,12 @@ static void parse_list_opts(char **opt, int *glob_flags, int handle_plus_opts) {
         case 'u':
           opt_u = 0;
 
-          /* -c is still in effect, sort by that, otherwise use the default. */
-          ls_sort_by = opt_c ? LS_SORT_BY_CTIME : LS_SORT_BY_MTIME;
+          if (opt_t) {
+            /* -c is still in effect, sort by that, otherwise use the
+             * default.
+             */
+            ls_sort_by = opt_c ? LS_SORT_BY_CTIME : LS_SORT_BY_MTIME;
+          }
           break;
       }
     }
@@ -1916,8 +1934,7 @@ static int dolist(cmd_rec *cmd, const char *opt, const char *resp_code,
   ls_curtime = time(NULL);
 
   if (clear_flags) {
-    opt_1 = opt_A = opt_a = opt_B = opt_C = opt_d = opt_F = opt_h = opt_n =
-      opt_r = opt_R = opt_S = opt_t = opt_L = 0;
+    clear_list_opts();
   }
 
   if (have_options(cmd, arg)) {
@@ -3059,8 +3076,7 @@ MODRET ls_nlst(cmd_rec *cmd) {
   }
 
   /* Clear the listing option flags. */
-  opt_1 = opt_A = opt_a = opt_B = opt_C = opt_d = opt_F = opt_n = opt_r =
-    opt_R = opt_S = opt_t = opt_L = 0;
+  clear_list_opts();
 
   if (have_options(cmd, target)) {
     if (!list_strict_opts) {
