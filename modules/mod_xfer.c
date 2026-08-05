@@ -851,41 +851,43 @@ static void stor_chown(pool *p) {
         pr_log_debug(DEBUG0,
           "'%s' stat(2) error during root chmod: %s", xfer_path,
           strerror(errno));
-      }
-
-      /* The chmod happens after the chown because chown will remove
-       * the S{U,G}ID bits on some files (namely, directories); the subsequent
-       * chmod is used to restore those dropped bits.  This makes it
-       * necessary to use root privs when doing the chmod as well (at least
-       * in the case of chown'ing the file via root privs) in order to ensure
-       * that the mode can be set (a file might be being "given away", and if
-       * root privs aren't used, the chmod() will fail because the old owner/
-       * session user doesn't have the necessary privileges to do so).
-       */
-      xerrno = 0;
-      PRIVS_ROOT
-      res = pr_fsio_chmod_with_error(p, xfer_path, st.st_mode, &err);
-      xerrno = errno;
-      PRIVS_RELINQUISH
-
-      if (res < 0) {
-        pr_error_set_where(err, &xfer_module, __FILE__, __LINE__ - 5);
-        pr_error_set_why(err, pstrcat(p, "restore SUID/SGID on '", xfer_path,
-          "'", NULL));
-
-        if (err != NULL) {
-          pr_log_debug(DEBUG0, "%s", pr_error_strerror(err, 0));
-          pr_error_destroy(err);
-          err = NULL;
-
-        } else {
-          pr_log_debug(DEBUG0, "root chmod(%s) to %04o failed: %s", xfer_path,
-            (unsigned int) st.st_mode, strerror(xerrno));
-        }
 
       } else {
-        pr_log_debug(DEBUG2, "root chmod(%s) to %04o successful", xfer_path,
-          (unsigned int) st.st_mode);
+        /* The chmod happens after the chown because chown will remove
+         * the S{U,G}ID bits on some files (namely, directories); the subsequent
+         * chmod is used to restore those dropped bits.  This makes it
+         * necessary to use root privs when doing the chmod as well (at least
+         * in the case of chown'ing the file via root privs) in order to ensure
+         * that the mode can be set (a file might be being "given away", and if
+         * root privs aren't used, the chmod() will fail because the old owner/
+         * session user doesn't have the necessary privileges to do so).
+         */
+        xerrno = 0;
+
+        PRIVS_ROOT
+        res = pr_fsio_chmod_with_error(p, xfer_path, st.st_mode, &err);
+        xerrno = errno;
+        PRIVS_RELINQUISH
+
+        if (res < 0) {
+          pr_error_set_where(err, &xfer_module, __FILE__, __LINE__ - 5);
+          pr_error_set_why(err, pstrcat(p, "restore SUID/SGID on '", xfer_path,
+            "'", NULL));
+
+          if (err != NULL) {
+            pr_log_debug(DEBUG0, "%s", pr_error_strerror(err, 0));
+            pr_error_destroy(err);
+            err = NULL;
+
+          } else {
+            pr_log_debug(DEBUG0, "root chmod(%s) to %04o failed: %s", xfer_path,
+              (unsigned int) st.st_mode, strerror(xerrno));
+          }
+
+        } else {
+          pr_log_debug(DEBUG2, "root chmod(%s) to %04o successful", xfer_path,
+            (unsigned int) st.st_mode);
+        }
       }
     }
 
@@ -942,33 +944,35 @@ static void stor_chown(pool *p) {
         pr_log_debug(DEBUG0,
           "'%s' stat(2) error during %schmod: %s", xfer_path,
           use_root_privs ? "root " : "", strerror(errno));
-      }
 
-      if (use_root_privs) {
-        PRIVS_ROOT
-      }
+      } else {
 
-      res = pr_fsio_chmod_with_error(p, xfer_path, st.st_mode, &err);
-      xerrno = errno;
+        if (use_root_privs) {
+          PRIVS_ROOT
+        }
 
-      if (use_root_privs) {
-        PRIVS_RELINQUISH
-      }
+        res = pr_fsio_chmod_with_error(p, xfer_path, st.st_mode, &err);
+        xerrno = errno;
 
-      if (res < 0) {
-        pr_error_set_where(err, &xfer_module, __FILE__, __LINE__ - 8);
-        pr_error_set_why(err, pstrcat(p, "restore SUID/SGID of '", xfer_path,
-          "'", NULL));
+        if (use_root_privs) {
+          PRIVS_RELINQUISH
+        }
 
-        if (err != NULL) {
-          pr_log_debug(DEBUG0, "%s", pr_error_strerror(err, 0));
-          pr_error_destroy(err);
-          err = NULL;
+        if (res < 0) {
+          pr_error_set_where(err, &xfer_module, __FILE__, __LINE__ - 8);
+          pr_error_set_why(err, pstrcat(p, "restore SUID/SGID of '", xfer_path,
+            "'", NULL));
 
-        } else {
-          pr_log_debug(DEBUG0, "%schmod(%s) to %04o failed: %s",
-            use_root_privs ? "root " : "", xfer_path, (unsigned int) st.st_mode,
-            strerror(xerrno));
+          if (err != NULL) {
+            pr_log_debug(DEBUG0, "%s", pr_error_strerror(err, 0));
+            pr_error_destroy(err);
+            err = NULL;
+
+          } else {
+            pr_log_debug(DEBUG0, "%schmod(%s) to %04o failed: %s",
+              use_root_privs ? "root " : "", xfer_path,
+              (unsigned int) st.st_mode, strerror(xerrno));
+          }
         }
       }
     }
