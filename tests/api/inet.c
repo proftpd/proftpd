@@ -38,6 +38,10 @@ static void set_up(void) {
     p = permanent_pool = make_sub_pool(NULL);
   }
 
+  main_server = pcalloc(p, sizeof(server_rec));
+  main_server->pool = p;
+
+  init_class();
   init_netaddr();
   init_netio();
   init_inet();
@@ -48,6 +52,7 @@ static void set_up(void) {
   }
 
   if (getenv("TEST_VERBOSE") != NULL) {
+    pr_trace_set_levels("class", 1, 20);
     pr_trace_set_levels("inet", 1, 20);
   }
 
@@ -56,6 +61,7 @@ static void set_up(void) {
 
 static void tear_down(void) {
   if (getenv("TEST_VERBOSE") != NULL) {
+    pr_trace_set_levels("class", 0, 0);
     pr_trace_set_levels("inet", 0, 0);
   }
 
@@ -64,6 +70,7 @@ static void tear_down(void) {
 
   if (p) {
     destroy_pool(p);
+    main_server = NULL;
     p = permanent_pool = NULL;
   }
 }
@@ -1135,6 +1142,265 @@ START_TEST (inet_generate_socket_event_test) {
 }
 END_TEST
 
+START_TEST (inet_allowforeignaddress_default_test) {
+  int res;
+  const pr_netaddr_t *proposed_addr, *actual_addr;
+  const char *name;
+
+  mark_point();
+  res = pr_inet_allowforeignaddress(NULL, NULL, NULL, NULL);
+  ck_assert_msg(res < 0, "Failed to handle null pool");
+  ck_assert_msg(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+    strerror(errno), errno);
+
+  mark_point();
+  res = pr_inet_allowforeignaddress(p, NULL, NULL, NULL);
+  ck_assert_msg(res < 0, "Failed to handle null proposed address");
+  ck_assert_msg(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+    strerror(errno), errno);
+
+  /* First, use matching addresses. */
+  name = "127.0.0.1";
+  proposed_addr = pr_netaddr_get_addr(p, name, NULL);
+  ck_assert_msg(proposed_addr != NULL, "Failed to resolve '%s': %s",
+    name, strerror(errno));
+
+  mark_point();
+  res = pr_inet_allowforeignaddress(p, proposed_addr, proposed_addr, NULL);
+  ck_assert_msg(res == 1, "Address not allowed as expected (%d)", res);
+
+  /* Now, use mismatching addresses. */
+
+  name = "127.0.0.2";
+  actual_addr = pr_netaddr_get_addr(p, name, NULL);
+  ck_assert_msg(actual_addr != NULL, "Failed to resolve '%s': %s",
+    name, strerror(errno));
+
+  mark_point();
+  res = pr_inet_allowforeignaddress(p, proposed_addr, actual_addr, NULL);
+  ck_assert_msg(res == 0, "Address not denied as expected (%d)", res);
+}
+END_TEST
+
+START_TEST (inet_allowforeignaddress_off_test) {
+  int res;
+  config_rec *c;
+  const pr_netaddr_t *proposed_addr, *actual_addr;
+  const char *name;
+
+  c = pcalloc(p, sizeof(config_rec));
+  c->argc = 2;
+  c->argv = pcalloc(p, sizeof(void *) * (c->argc + 1));
+  c->argv[0] = palloc(p, sizeof(int));
+  *((int *) c->argv[0]) = FALSE;
+
+  /* First, use matching addresses. */
+  name = "127.0.0.1";
+  proposed_addr = pr_netaddr_get_addr(p, name, NULL);
+  ck_assert_msg(proposed_addr != NULL, "Failed to resolve '%s': %s",
+    name, strerror(errno));
+
+  mark_point();
+  res = pr_inet_allowforeignaddress(p, proposed_addr, proposed_addr, c);
+  ck_assert_msg(res == 1, "Address not allowed as expected (%d)", res);
+
+  /* Now, use mismatching addresses. */
+
+  name = "127.0.0.2";
+  actual_addr = pr_netaddr_get_addr(p, name, NULL);
+  ck_assert_msg(actual_addr != NULL, "Failed to resolve '%s': %s",
+    name, strerror(errno));
+
+  mark_point();
+  res = pr_inet_allowforeignaddress(p, proposed_addr, actual_addr, c);
+  ck_assert_msg(res == 0, "Address not denied as expected (%d)", res);
+}
+END_TEST
+
+START_TEST (inet_allowforeignaddress_on_test) {
+  int res;
+  config_rec *c;
+  const pr_netaddr_t *proposed_addr, *actual_addr;
+  const char *name;
+
+  c = pcalloc(p, sizeof(config_rec));
+  c->argc = 2;
+  c->argv = pcalloc(p, sizeof(void *) * (c->argc + 1));
+  c->argv[0] = palloc(p, sizeof(int));
+  *((int *) c->argv[0]) = TRUE;
+
+  /* First, use matching addresses. */
+  name = "127.0.0.1";
+  proposed_addr = pr_netaddr_get_addr(p, name, NULL);
+  ck_assert_msg(proposed_addr != NULL, "Failed to resolve '%s': %s",
+    name, strerror(errno));
+
+  mark_point();
+  res = pr_inet_allowforeignaddress(p, proposed_addr, proposed_addr, c);
+  ck_assert_msg(res == 1, "Address not allowed as expected (%d)", res);
+
+  /* Now, use mismatching addresses. */
+
+  name = "127.0.0.2";
+  actual_addr = pr_netaddr_get_addr(p, name, NULL);
+  ck_assert_msg(actual_addr != NULL, "Failed to resolve '%s': %s",
+    name, strerror(errno));
+
+  mark_point();
+  res = pr_inet_allowforeignaddress(p, proposed_addr, actual_addr, c);
+  ck_assert_msg(res == 1, "Address not allowed as expected (%d)", res);
+}
+END_TEST
+
+START_TEST (inet_allowforeignaddress_matching_class_test) {
+  int res;
+  config_rec *c;
+  const pr_netaddr_t *proposed_addr, *actual_addr;
+  const char *name, *class_name;
+  pr_netacl_t *acl;
+
+  mark_point();
+  class_name = "test-class";
+  res = pr_class_open(p, class_name);
+  ck_assert_msg(res == 0, "Failed to open '%s' class: %s", class_name,
+    strerror(errno));
+
+  acl = pr_netacl_create(p, "all");
+  ck_assert_msg(acl != NULL, "Failed to create 'all' ACL: %s", strerror(errno));
+
+  res = pr_class_add_acl(acl);
+  ck_assert_msg(res == 0, "Failed to add ACL to '%s' class: %s", class_name,
+    strerror(errno));
+
+  res = pr_class_close();
+  ck_assert_msg(res == 0, "Failed to close '%s' class: %s", class_name,
+    strerror(errno));
+
+  c = pcalloc(p, sizeof(config_rec));
+  c->argc = 2;
+  c->argv = pcalloc(p, sizeof(void *) * (c->argc + 1));
+  c->argv[0] = palloc(p, sizeof(int));
+  *((int *) c->argv[0]) = -1;
+  c->argv[1] = pstrdup(p, class_name);
+
+  /* First, use matching addresses. */
+  name = "127.0.0.1";
+  proposed_addr = pr_netaddr_get_addr(p, name, NULL);
+  ck_assert_msg(proposed_addr != NULL, "Failed to resolve '%s': %s",
+    name, strerror(errno));
+
+  mark_point();
+  res = pr_inet_allowforeignaddress(p, proposed_addr, proposed_addr, c);
+  ck_assert_msg(res == 1, "Address not allowed as expected (%d)", res);
+
+  /* Now, use mismatching addresses. */
+
+  name = "127.0.0.2";
+  actual_addr = pr_netaddr_get_addr(p, name, NULL);
+  ck_assert_msg(actual_addr != NULL, "Failed to resolve '%s': %s",
+    name, strerror(errno));
+
+  mark_point();
+  res = pr_inet_allowforeignaddress(p, proposed_addr, actual_addr, c);
+  ck_assert_msg(res == 1, "Address not allowed as expected (%d)", res);
+}
+END_TEST
+
+START_TEST (inet_allowforeignaddress_mismatching_class_test) {
+  int res;
+  config_rec *c;
+  const pr_netaddr_t *proposed_addr, *actual_addr;
+  const char *name, *class_name;
+  pr_netacl_t *acl;
+
+  mark_point();
+  class_name = "test-class";
+  res = pr_class_open(p, class_name);
+  ck_assert_msg(res == 0, "Failed to open '%s' class: %s", class_name,
+    strerror(errno));
+
+  acl = pr_netacl_create(p, "none");
+  ck_assert_msg(acl != NULL, "Failed to create 'none' ACL: %s",
+    strerror(errno));
+
+  res = pr_class_add_acl(acl);
+  ck_assert_msg(res == 0, "Failed to add ACL to '%s' class: %s", class_name,
+    strerror(errno));
+
+  res = pr_class_close();
+  ck_assert_msg(res == 0, "Failed to close '%s' class: %s", class_name,
+    strerror(errno));
+
+  c = pcalloc(p, sizeof(config_rec));
+  c->argc = 2;
+  c->argv = pcalloc(p, sizeof(void *) * (c->argc + 1));
+  c->argv[0] = palloc(p, sizeof(int));
+  *((int *) c->argv[0]) = -1;
+  c->argv[1] = pstrdup(p, class_name);
+
+  /* First, use matching addresses. */
+  name = "127.0.0.1";
+  proposed_addr = pr_netaddr_get_addr(p, name, NULL);
+  ck_assert_msg(proposed_addr != NULL, "Failed to resolve '%s': %s",
+    name, strerror(errno));
+
+  mark_point();
+  res = pr_inet_allowforeignaddress(p, proposed_addr, proposed_addr, c);
+  ck_assert_msg(res == 1, "Address not allowed as expected (%d)", res);
+
+  /* Now, use mismatching addresses. */
+
+  name = "127.0.0.2";
+  actual_addr = pr_netaddr_get_addr(p, name, NULL);
+  ck_assert_msg(actual_addr != NULL, "Failed to resolve '%s': %s",
+    name, strerror(errno));
+
+  mark_point();
+  res = pr_inet_allowforeignaddress(p, proposed_addr, actual_addr, c);
+  ck_assert_msg(res == 0, "Address not denied as expected (%d)", res);
+}
+END_TEST
+
+START_TEST (inet_allowforeignaddress_unknown_class_test) {
+  int res;
+  config_rec *c;
+  const pr_netaddr_t *proposed_addr, *actual_addr;
+  const char *name, *class_name;
+  pr_netacl_t *acl;
+
+  mark_point();
+  class_name = "test-class";
+
+  c = pcalloc(p, sizeof(config_rec));
+  c->argc = 2;
+  c->argv = pcalloc(p, sizeof(void *) * (c->argc + 1));
+  c->argv[0] = palloc(p, sizeof(int));
+  *((int *) c->argv[0]) = -1;
+  c->argv[1] = pstrdup(p, class_name);
+
+  /* First, use matching addresses. */
+  name = "127.0.0.1";
+  proposed_addr = pr_netaddr_get_addr(p, name, NULL);
+  ck_assert_msg(proposed_addr != NULL, "Failed to resolve '%s': %s",
+    name, strerror(errno));
+
+  mark_point();
+  res = pr_inet_allowforeignaddress(p, proposed_addr, proposed_addr, c);
+  ck_assert_msg(res == 1, "Address not allowed as expected (%d)", res);
+
+  /* Now, use mismatching addresses. */
+
+  name = "127.0.0.2";
+  actual_addr = pr_netaddr_get_addr(p, name, NULL);
+  ck_assert_msg(actual_addr != NULL, "Failed to resolve '%s': %s",
+    name, strerror(errno));
+
+  mark_point();
+  res = pr_inet_allowforeignaddress(p, proposed_addr, actual_addr, c);
+  ck_assert_msg(res == 0, "Address not denied as expected (%d)", res);
+}
+END_TEST
+
 Suite *tests_get_inet_suite(void) {
   Suite *suite;
   TCase *testcase;
@@ -1169,6 +1435,12 @@ Suite *tests_get_inet_suite(void) {
   tcase_add_test(testcase, inet_conn_info_test);
   tcase_add_test(testcase, inet_openrw_test);
   tcase_add_test(testcase, inet_generate_socket_event_test);
+  tcase_add_test(testcase, inet_allowforeignaddress_default_test);
+  tcase_add_test(testcase, inet_allowforeignaddress_off_test);
+  tcase_add_test(testcase, inet_allowforeignaddress_on_test);
+  tcase_add_test(testcase, inet_allowforeignaddress_matching_class_test);
+  tcase_add_test(testcase, inet_allowforeignaddress_mismatching_class_test);
+  tcase_add_test(testcase, inet_allowforeignaddress_unknown_class_test);
 
   suite_add_tcase(suite, testcase);
   return suite;

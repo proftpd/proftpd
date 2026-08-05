@@ -3968,14 +3968,14 @@ MODRET core_pasv(cmd_rec *cmd) {
 MODRET core_port(cmd_rec *cmd) {
   const pr_netaddr_t *listen_addr = NULL, *port_addr = NULL;
   char *port_info;
-#ifdef PR_USE_IPV6
+#if defined(PR_USE_IPV6)
   char buf[INET6_ADDRSTRLEN] = {'\0'};
 #else
   char buf[INET_ADDRSTRLEN] = {'\0'};
 #endif /* PR_USE_IPV6 */
   unsigned int h1, h2, h3, h4, p1, p2;
   unsigned short port;
-  int allow_foreign_addr = FALSE, *root_revoke = NULL;
+  int *root_revoke = NULL, res;
   config_rec *c;
   const char *proto;
 
@@ -4126,42 +4126,9 @@ MODRET core_port(cmd_rec *cmd) {
    */
 
   c = find_config(TOPLEVEL_CONF, CONF_PARAM, "AllowForeignAddress", FALSE);
-  if (c != NULL) {
-    int allowed;
-
-    allowed = *((int *) c->argv[0]);
-    switch (allowed) {
-      case TRUE:
-        allow_foreign_addr = TRUE;
-        break;
-
-      case FALSE:
-        break;
-
-      default: {
-        char *class_name;
-        const pr_class_t *cls;
-
-        class_name = c->argv[1];
-        cls = pr_class_find(class_name);
-        if (cls != NULL) {
-          if (pr_class_satisfied(cmd->tmp_pool, cls, port_addr) == TRUE) {
-            allow_foreign_addr = TRUE;
-
-          } else {
-            pr_log_debug(DEBUG8, "<Class> '%s' not satisfied by foreign "
-              "address '%s'", class_name, pr_netaddr_get_ipstr(port_addr));
-          }
-
-        } else {
-          pr_log_debug(DEBUG8, "<Class> '%s' not found for filtering "
-            "AllowForeignAddress", class_name);
-        }
-      }
-    }
-  }
-
-  if (allow_foreign_addr == FALSE) {
+  res = pr_inet_allowforeignaddress(cmd->tmp_pool, port_addr,
+    session.c->remote_addr, c);
+  if (res != 1) {
     const pr_netaddr_t *remote_addr = session.c->remote_addr;
 
 #if defined(PR_USE_IPV6)
@@ -4182,15 +4149,13 @@ MODRET core_port(cmd_rec *cmd) {
     }
 #endif /* PR_USE_IPV6 */
 
-    if (pr_netaddr_cmp(port_addr, remote_addr) != 0) {
-      pr_log_pri(PR_LOG_WARNING, "Refused PORT %s (address mismatch)",
-        cmd->arg);
-      pr_response_add_err(R_500, _("Illegal PORT command"));
+    pr_log_pri(PR_LOG_WARNING, "Refused PORT %s (address mismatch)",
+      cmd->arg);
+    pr_response_add_err(R_500, _("Illegal PORT command"));
 
-      pr_cmd_set_errno(cmd, EPERM);
-      errno = EPERM;
-      return PR_ERROR(cmd);
-    }
+    pr_cmd_set_errno(cmd, EPERM);
+    errno = EPERM;
+    return PR_ERROR(cmd);
   }
 
   /* Additionally, make sure that the port number used is a "high numbered"
@@ -4229,9 +4194,9 @@ MODRET core_port(cmd_rec *cmd) {
 MODRET core_eprt(cmd_rec *cmd) {
   const pr_netaddr_t *listen_addr = NULL;
   pr_netaddr_t na;
-  int family = 0;
+  int family = 0, res;
   unsigned short port = 0;
-  int allow_foreign_addr = FALSE, *root_revoke = NULL;
+  int *root_revoke = NULL;
   char delim = '\0', *argstr = pstrdup(cmd->tmp_pool, cmd->argv[1]);
   char *tmp = NULL;
   config_rec *c;
@@ -4300,14 +4265,15 @@ MODRET core_eprt(cmd_rec *cmd) {
     case 1:
       break;
 
-#ifdef PR_USE_IPV6
+#if defined(PR_USE_IPV6)
     case 2:
-      if (pr_netaddr_use_ipv6())
+      if (pr_netaddr_use_ipv6()) {
         break;
+      }
 #endif /* PR_USE_IPV6 */
 
     default:
-#ifdef PR_USE_IPV6
+#if defined(PR_USE_IPV6)
       if (pr_netaddr_use_ipv6()) {
         pr_response_add_err(R_522,
           _("Network protocol not supported, use (1,2)"));
@@ -4359,8 +4325,6 @@ MODRET core_eprt(cmd_rec *cmd) {
    * by pr_inet_pton().
    */
   *tmp = '\0';
-
-  memset(&na, 0, sizeof(na));
 
   /* Use pr_inet_pton() to translate the address string into the address
    * value.
@@ -4484,51 +4448,16 @@ MODRET core_eprt(cmd_rec *cmd) {
    */
 
   c = find_config(TOPLEVEL_CONF, CONF_PARAM, "AllowForeignAddress", FALSE);
-  if (c != NULL) {
-    int allowed;
+  res = pr_inet_allowforeignaddress(cmd->tmp_pool, &na,
+    session.c->remote_addr, c);
+  if (res != 1 || !port) {
+    pr_log_pri(PR_LOG_WARNING, "Refused EPRT %s (address mismatch)",
+      cmd->arg);
+    pr_response_add_err(R_500, _("Illegal EPRT command"));
 
-    allowed = *((int *) c->argv[0]);
-    switch (allowed) {
-      case TRUE:
-        allow_foreign_addr = TRUE;
-        break;
-
-      case FALSE:
-        break;
-
-      default: {
-        char *class_name;
-        const pr_class_t *cls;
-
-        class_name = c->argv[1];
-        cls = pr_class_find(class_name);
-        if (cls != NULL) {
-          if (pr_class_satisfied(cmd->tmp_pool, cls, &na) == TRUE) {
-            allow_foreign_addr = TRUE;
-
-          } else {
-            pr_log_debug(DEBUG8, "<Class> '%s' not satisfied by foreign "
-              "address '%s'", class_name, pr_netaddr_get_ipstr(&na));
-          }
-
-        } else {
-          pr_log_debug(DEBUG8, "<Class> '%s' not found for filtering "
-            "AllowForeignAddress", class_name);
-        }
-      }
-    }
-  }
-
-  if (allow_foreign_addr == FALSE) {
-    if (pr_netaddr_cmp(&na, session.c->remote_addr) != 0 || !port) {
-      pr_log_pri(PR_LOG_WARNING, "Refused EPRT %s (address mismatch)",
-        cmd->arg);
-      pr_response_add_err(R_500, _("Illegal EPRT command"));
-
-      pr_cmd_set_errno(cmd, EPERM);
-      errno = EPERM;
-      return PR_ERROR(cmd);
-    }
+    pr_cmd_set_errno(cmd, EPERM);
+    errno = EPERM;
+    return PR_ERROR(cmd);
   }
 
   /* Additionally, make sure that the port number used is a "high numbered"
@@ -4567,7 +4496,7 @@ MODRET core_eprt(cmd_rec *cmd) {
   session.sf_flags &= (SF_ALL^SF_PASSIVE);
 
   /* If we already have a data connection open, kill it. */
-  if (session.d) {
+  if (session.d != NULL) {
     pr_inet_close(session.d->pool, session.d);
     session.d = NULL;
   }
