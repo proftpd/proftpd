@@ -1210,6 +1210,8 @@ sub scan_asan_logs {
       for (my $i = 0; $i < 10; $i++) {
         my $line = <$fh>;
         $line = <$fh>;
+        next unless $line;
+
         chomp($line);
 
         if ($line =~ /ERROR/) {
