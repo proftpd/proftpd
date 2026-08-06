@@ -31,7 +31,7 @@
 
 #define MOD_SQL_PASSWD_VERSION		"mod_sql_passwd/1.2"
 
-#ifdef PR_USE_SODIUM
+#if defined(PR_USE_SODIUM)
 # include <sodium.h>
 /* Use/support Argon2, if libsodium is new enough. */
 # if SODIUM_LIBRARY_VERSION_MAJOR > 9 || \
@@ -102,14 +102,14 @@ static int sql_passwd_pbkdf2_len = -1;
 #define SQL_PASSWD_ERR_PBKDF2_BAD_ROUNDS		-3
 #define SQL_PASSWD_ERR_PBKDF2_BAD_LENGTH		-4
 
-#ifdef PR_USE_SODIUM
+#if defined(PR_USE_SODIUM)
 /* For Scrypt */
 # define SQL_PASSWD_SCRYPT_DEFAULT_HASH_SIZE	32U
 # define SQL_PASSWD_SCRYPT_DEFAULT_SALT_SIZE	32U
 static unsigned int sql_passwd_scrypt_hash_len = SQL_PASSWD_SCRYPT_DEFAULT_HASH_SIZE;
 
 /* For Argon2 */
-# ifdef USE_SODIUM_ARGON2
+# if defined(USE_SODIUM_ARGON2)
 #  define SQL_PASSWD_ARGON2_DEFAULT_HASH_SIZE	32U
 #  define SQL_PASSWD_ARGON2_DEFAULT_SALT_SIZE	16U
 static unsigned int sql_passwd_argon2_hash_len = SQL_PASSWD_ARGON2_DEFAULT_HASH_SIZE;
@@ -925,7 +925,7 @@ static modret_t *sql_passwd_pbkdf2(cmd_rec *cmd, const char *plaintext,
   return PR_ERROR_INT(cmd, PR_AUTH_BADPWD);
 }
 
-#ifdef PR_USE_SODIUM
+#if defined(PR_USE_SODIUM)
 static modret_t *sql_passwd_scrypt(cmd_rec *cmd, const char *plaintext,
     const char *ciphertext) {
   int res;
@@ -1148,6 +1148,7 @@ static modret_t *sql_passwd_argon2(cmd_rec *cmd, const char *plaintext,
   return PR_ERROR_INT(cmd, PR_AUTH_ERROR);
 # endif /* USE_SODIUM_ARGON2 */
 }
+#endif /* PR_USE_SODIUM */
 
 /* Event handlers
  */
@@ -1161,7 +1162,7 @@ static void sql_passwd_mod_unload_ev(const void *event_data, void *user_data) {
     sql_unregister_authtype("sha256");
     sql_unregister_authtype("sha512");
     sql_unregister_authtype("pbkdf2");
-# ifdef PR_USE_SODIUM
+# if defined(PR_USE_SODIUM)
     sql_unregister_authtype("argon2");
     sql_unregister_authtype("scrypt");
 # endif /* PR_USE_SODIUM */
@@ -1394,7 +1395,7 @@ MODRET sql_passwd_pre_pass(cmd_rec *cmd) {
 
 /* usage: SQLPasswordArgon2 len */
 MODRET set_sqlpasswdargon2(cmd_rec *cmd) {
-#ifdef USE_SODIUM_ARGON2
+#if defined(USE_SODIUM_ARGON2)
   config_rec *c;
   int len;
 
@@ -1666,7 +1667,7 @@ MODRET set_sqlpasswdsaltfile(cmd_rec *cmd) {
 
 /* usage: SQLPasswordScrypt len */
 MODRET set_sqlpasswdscrypt(cmd_rec *cmd) {
-#ifdef PR_USE_SODIUM
+#if defined(PR_USE_SODIUM)
   config_rec *c;
   int len;
 
@@ -1752,9 +1753,9 @@ static void sql_passwd_sess_reinit_ev(const void *event_data, void *user_data) {
   sql_passwd_opts = 0UL;
   sql_passwd_nrounds = 1;
 
-#ifdef PR_USE_SODIUM
+#if defined(PR_USE_SODIUM)
   sql_passwd_scrypt_hash_len = SQL_PASSWD_SCRYPT_DEFAULT_HASH_SIZE;
-# ifdef USE_SODIUM_ARGON2
+# if defined(USE_SODIUM_ARGON2)
   sql_passwd_argon2_hash_len = SQL_PASSWD_ARGON2_DEFAULT_HASH_SIZE;
 # endif /* USE_SODIUM_ARGON2 */
 #endif /* PR_USE_SODIUM */
@@ -1780,7 +1781,7 @@ static int sql_passwd_init(void) {
     sql_passwd_mod_unload_ev, NULL);
 #endif /* PR_SHARED_MODULE */
 
-#ifdef PR_USE_SODIUM
+#if defined(PR_USE_SODIUM)
   if (sodium_init() < 0) {
     pr_log_pri(PR_LOG_NOTICE, MOD_SQL_PASSWD_VERSION
       ": error initializing libsodium");
@@ -1848,7 +1849,7 @@ static int sql_passwd_init(void) {
       ": registered 'pbkdf2' SQLAuthType handler");
   }
 
-#ifdef PR_USE_SODIUM
+#if defined(PR_USE_SODIUM)
   if (sql_register_authtype("scrypt", sql_passwd_scrypt) < 0) {
     pr_log_pri(PR_LOG_WARNING, MOD_SQL_PASSWD_VERSION
       ": unable to register 'scrypt' SQLAuthType handler: %s", strerror(errno));
@@ -2023,13 +2024,13 @@ static int sql_passwd_sess_init(void) {
     }
   }
 
-#ifdef PR_USE_SODIUM
+#if defined(PR_USE_SODIUM)
   c = find_config(main_server->conf, CONF_PARAM, "SQLPasswordScrypt", FALSE);
   if (c != NULL) {
     sql_passwd_scrypt_hash_len = *((unsigned int *) c->argv[0]);
   }
 
-# ifdef USE_SODIUM_ARGON2
+# if defined(USE_SODIUM_ARGON2)
   c = find_config(main_server->conf, CONF_PARAM, "SQLPasswordArgon2", FALSE);
   if (c != NULL) {
     sql_passwd_argon2_hash_len = *((unsigned int *) c->argv[0]);
