@@ -504,7 +504,7 @@ static modret_t *sql_passwd_auth(cmd_rec *cmd, const char *plaintext,
   const EVP_MD *md;
   unsigned char *hash = NULL, *data = NULL, *prefix = NULL, *suffix = NULL;
   size_t data_len = 0, prefix_len = 0, suffix_len = 0;
-  unsigned int hash_len = 0;
+  unsigned int cmp_len = 0, copytext_len = 0, hash_len = 0;
 
   /* Temporary copy of the ciphertext string */
   char *copytext;
@@ -516,6 +516,13 @@ static modret_t *sql_passwd_auth(cmd_rec *cmd, const char *plaintext,
     sql_log(DEBUG_WARN, MOD_SQL_PASSWD_VERSION
       ": SQLPasswordEngine disabled; unable to handle %s SQLAuthType", digest);
     return PR_ERROR_INT(cmd, PR_AUTH_ERROR);
+  }
+
+  /* Reject stored empty password fields (Issue #2275). */
+  if (*ciphertext == '\0') {
+    sql_log(DEBUG_WARN, MOD_SQL_PASSWD_VERSION
+      ": ignoring empty password field");
+    return PR_ERROR_INT(cmd, PR_AUTH_BADPWD);
   }
 
   md = EVP_get_digestbyname(digest);
@@ -734,7 +741,14 @@ static modret_t *sql_passwd_auth(cmd_rec *cmd, const char *plaintext,
     }
   }
 
-  if (timingsafe_bcmp(encodedtext, copytext, strlen(copytext)) == 0) {
+  /* Use the longer of the two texts for comparison length. */
+  cmp_len = strlen(encodedtext);
+  copytext_len = strlen(copytext);
+  if (copytext_len > cmp_len) {
+    cmp_len = copytext_len;
+  }
+
+  if (timingsafe_bcmp(encodedtext, copytext, cmp_len) == 0) {
     return PR_HANDLED(cmd);
   }
 
@@ -749,7 +763,7 @@ static modret_t *sql_passwd_auth(cmd_rec *cmd, const char *plaintext,
 static modret_t *sql_passwd_bcrypt(cmd_rec *cmd, const char *plaintext,
     const char *ciphertext) {
   char *hashed;
-  size_t hashed_len = 0;
+  size_t ciphertext_len = 0, cmp_len = 0, hashed_len = 0;
 
   if (sql_passwd_engine == FALSE) {
     pr_log_pri(PR_LOG_INFO, MOD_SQL_PASSWD_VERSION
@@ -757,6 +771,13 @@ static modret_t *sql_passwd_bcrypt(cmd_rec *cmd, const char *plaintext,
     sql_log(DEBUG_WARN, MOD_SQL_PASSWD_VERSION
       ": SQLPasswordEngine disabled; unable to handle bcrypt SQLAuthType");
     return PR_ERROR_INT(cmd, PR_AUTH_ERROR);
+  }
+
+  /* Reject stored empty password fields (Issue #2275). */
+  if (*ciphertext == '\0') {
+    sql_log(DEBUG_WARN, MOD_SQL_PASSWD_VERSION
+      ": ignoring empty password field");
+    return PR_ERROR_INT(cmd, PR_AUTH_BADPWD);
   }
 
   /* OpenSSL does not implement the bcrypt algorithm, so we handle it
@@ -769,7 +790,14 @@ static modret_t *sql_passwd_bcrypt(cmd_rec *cmd, const char *plaintext,
     return PR_ERROR_INT(cmd, PR_AUTH_BADPWD);
   }
 
-  if (timingsafe_bcmp(hashed, ciphertext, strlen(ciphertext)) == 0) {
+  /* Use the longer of the two texts for comparison length. */
+  cmp_len = strlen(hashed);
+  ciphertext_len = strlen(ciphertext);
+  if (ciphertext_len > cmp_len) {
+    cmp_len = ciphertext_len;
+  }
+
+  if (timingsafe_bcmp(hashed, ciphertext, cmp_len) == 0) {
     return PR_HANDLED(cmd);
   }
 
@@ -805,7 +833,7 @@ static modret_t *sql_passwd_pbkdf2(cmd_rec *cmd, const char *plaintext,
   unsigned char *derived_key;
   const char *encodedtext;
   char *pbkdf2_salt = NULL;
-  size_t pbkdf2_salt_len = 0;
+  size_t ciphertext_len = 0, cmp_len = 0, pbkdf2_salt_len = 0;
   int res;
 
   if (sql_passwd_engine == FALSE) {
@@ -814,6 +842,13 @@ static modret_t *sql_passwd_pbkdf2(cmd_rec *cmd, const char *plaintext,
     sql_log(DEBUG_WARN, MOD_SQL_PASSWD_VERSION
       ": SQLPasswordEngine disabled; unable to handle PBKDF2 SQLAuthType");
     return PR_ERROR_INT(cmd, PR_AUTH_ERROR);
+  }
+
+  /* Reject stored empty password fields (Issue #2275). */
+  if (*ciphertext == '\0') {
+    sql_log(DEBUG_WARN, MOD_SQL_PASSWD_VERSION
+      ": ignoring empty password field");
+    return PR_ERROR_INT(cmd, PR_AUTH_BADPWD);
   }
 
   if (sql_passwd_pbkdf2_digest == NULL) {
@@ -871,7 +906,14 @@ static modret_t *sql_passwd_pbkdf2(cmd_rec *cmd, const char *plaintext,
     return PR_ERROR_INT(cmd, PR_AUTH_ERROR);
   }
 
-  if (timingsafe_bcmp(encodedtext, ciphertext, strlen(ciphertext)) == 0) {
+  /* Use the longer of the two texts for comparison length. */
+  cmp_len = strlen(encodedtext);
+  ciphertext_len = strlen(ciphertext);
+  if (ciphertext_len > cmp_len) {
+    cmp_len = ciphertext_len;
+  }
+
+  if (timingsafe_bcmp(encodedtext, ciphertext, cmp_len) == 0) {
     return PR_HANDLED(cmd);
   }
 
@@ -891,6 +933,7 @@ static modret_t *sql_passwd_scrypt(cmd_rec *cmd, const char *plaintext,
   unsigned int hash_len = 0;
   const char *encodedtext;
   const unsigned char *scrypt_salt;
+  size_t ciphertext_len = 0, cmp_len = 0;
   size_t ops_limit, mem_limit, plaintext_len, scrypt_salt_len;
 
   if (sql_passwd_engine == FALSE) {
@@ -899,6 +942,13 @@ static modret_t *sql_passwd_scrypt(cmd_rec *cmd, const char *plaintext,
     sql_log(DEBUG_WARN, MOD_SQL_PASSWD_VERSION
       ": SQLPasswordEngine disabled; unable to handle scrypt SQLAuthType");
     return PR_ERROR_INT(cmd, PR_AUTH_ERROR);
+  }
+
+  /* Reject stored empty password fields (Issue #2275). */
+  if (*ciphertext == '\0') {
+    sql_log(DEBUG_WARN, MOD_SQL_PASSWD_VERSION
+      ": ignoring empty password field");
+    return PR_ERROR_INT(cmd, PR_AUTH_BADPWD);
   }
 
   /* scrypt requires a salt; if no salt is configured, it is an error. */
@@ -964,7 +1014,14 @@ static modret_t *sql_passwd_scrypt(cmd_rec *cmd, const char *plaintext,
     return PR_ERROR_INT(cmd, PR_AUTH_ERROR);
   }
 
-  if (timingsafe_bcmp(encodedtext, ciphertext, strlen(ciphertext)) == 0) {
+  /* Use the longer of the two texts for comparison length. */
+  cmp_len = strlen(encodedtext);
+  ciphertext_len = strlen(ciphertext);
+  if (ciphertext_len > cmp_len) {
+    cmp_len = ciphertext_len;
+  }
+
+  if (timingsafe_bcmp(encodedtext, ciphertext, cmp_len) == 0) {
     return PR_HANDLED(cmd);
   }
 
@@ -984,6 +1041,7 @@ static modret_t *sql_passwd_argon2(cmd_rec *cmd, const char *plaintext,
   unsigned int hash_len = 0;
   const char *encodedtext;
   const unsigned char *argon2_salt;
+  size_t ciphertext_len = 0, cmp_len = 0;
   size_t ops_limit, mem_limit, plaintext_len, argon2_salt_len;
 
   if (sql_passwd_engine == FALSE) {
@@ -992,6 +1050,13 @@ static modret_t *sql_passwd_argon2(cmd_rec *cmd, const char *plaintext,
     sql_log(DEBUG_WARN, MOD_SQL_PASSWD_VERSION
       ": SQLPasswordEngine disabled; unable to handle argon2 SQLAuthType");
     return PR_ERROR_INT(cmd, PR_AUTH_ERROR);
+  }
+
+  /* Reject stored empty password fields (Issue #2275). */
+  if (*ciphertext == '\0') {
+    sql_log(DEBUG_WARN, MOD_SQL_PASSWD_VERSION
+      ": ignoring empty password field");
+    return PR_ERROR_INT(cmd, PR_AUTH_BADPWD);
   }
 
   /* argon2 requires a salt; if no salt is configured, it is an error. */
@@ -1059,7 +1124,14 @@ static modret_t *sql_passwd_argon2(cmd_rec *cmd, const char *plaintext,
     return PR_ERROR_INT(cmd, PR_AUTH_ERROR);
   }
 
-  if (timingsafe_bcmp(encodedtext, ciphertext, strlen(ciphertext)) == 0) {
+  /* Use the longer of the two texts for comparison length. */
+  cmp_len = strlen(encodedtext);
+  ciphertext_len = strlen(ciphertext);
+  if (ciphertext_len > cmp_len) {
+    cmp_len = ciphertext_len;
+  }
+
+  if (timingsafe_bcmp(encodedtext, ciphertext, cmp_len) == 0) {
     return PR_HANDLED(cmd);
   }
 
@@ -1076,7 +1148,6 @@ static modret_t *sql_passwd_argon2(cmd_rec *cmd, const char *plaintext,
   return PR_ERROR_INT(cmd, PR_AUTH_ERROR);
 # endif /* USE_SODIUM_ARGON2 */
 }
-#endif /* PR_USE_SODIUM */
 
 /* Event handlers
  */
