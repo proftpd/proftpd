@@ -29,6 +29,8 @@
   commands.
 - Issue 2272 - Passive FTP data transfers do not honor AllowForeignAddress
   policy properly.
+- Issue 2275 - Empty password fields should be rejected by the mod_sql_passwd
+  module.
 
 1.3.10rc3 - Released 07-Jul-2026
 --------------------------------
