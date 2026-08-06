@@ -36,7 +36,6 @@
 #
 #   mod_auth_otp (needs openssl [--with ssl])
 #   mod_digest (needs openssl [--with ssl])
-#   mod_geoip (needs geoip [--with geoip])
 #   mod_ldap (needs openldap [--with ldap])
 #   mod_quotatab_ldap (needs openldap [--with ldap])
 #   mod_sftp (needs openssl [--with ssl], sodium [--with sodium])
@@ -72,10 +71,10 @@
 %global rpm_release %{release_version}
 %endif
 
-%global usecvsversion             	0%{?_with_cvs:1}
+%global usecvsversion                   0%{?_with_cvs:1}
 
-%global proftpd_cvs_version_main	1.3.10
-%global proftpd_cvs_version_date  	20250314
+%global proftpd_cvs_version_main        1.3.10
+%global proftpd_cvs_version_date        20250314
 
 # Spec default assumes that a gzipped tarball is used, since nightly CVS builds,
 # release candidates and stable/maint releases are all available in that form;
@@ -89,7 +88,6 @@
 # --with rhel5 inhibits features not available on RHEL5 and clones
 # --with rhel6 inhibits features not available on RHEL6 and clones
 %if 0%{?_with_everything:1}
-%global _with_geoip 1
 %global _with_ldap 1
 %if 0%{!?_with_rhel5:1} && 0%{!?_with_rhel6:1}
 %global _with_memcache 1
@@ -110,11 +108,6 @@
 %endif
 %endif
 #
-# --with geoip (for mod_geoip)
-%if 0%{?_with_geoip:1}
-BuildRequires: geoip-devel
-%endif
-#
 # --with ldap (for mod_ldap, mod_quotatab_ldap)
 %if 0%{?_with_ldap:1}
 BuildRequires: cyrus-sasl-devel, openldap-devel
@@ -127,12 +120,12 @@ BuildRequires: libmemcached-devel >= 0.41
 #
 # --with mysql (for mod_sql_mysql)
 %if 0%{?_with_mysql:1}
-BuildRequires: mysql-devel
+BuildRequires: mariadb-connector-c-devel
 %endif
 #
-# --with pcre (to use pcre rather than glibc regex engine)
+# --with pcre (to use pcre2 rather than glibc regex engine)
 %if 0%{?_with_pcre:1}
-BuildRequires: pcre-devel >= 7.0
+BuildRequires: pcre2-devel >= 10.44 
 %endif
 #
 # --with postgresql (for mod_sql_postgres)
@@ -179,7 +172,6 @@ Summary:                ProFTPD - Professional FTP Server
 Name:                   proftpd
 License:                GPLv2+
 Group:                  System Environment/Daemons
-Packager:               The ProFTPD Project <core@proftpd.org>
 Vendor:                 The ProFTPD Project
 URL:                    http://www.proftpd.org/
 %if %{usecvsversion}
@@ -224,16 +216,6 @@ needed scripts to have it run by xinetd instead are included.
 Modules requiring additional dependencies such as mod_sql_mysql, mod_ldap,
 etc. are in separate sub-packages so as not to inconvenience users that
 do not need that functionality.
-
-%if 0%{?_with_geoip:1}
-%package geoip
-Summary:        ProFTPD - Modules relying on GeoIP
-Group:          System Environment/Daemons
-Requires:       proftpd = %{version}-%{release}
-
-%description geoip
-This optional package contains the modules using GeoIP.
-%endif
 
 %if 0%{?_with_ldap:1}
 %package ldap
@@ -298,11 +280,10 @@ Requires:       pkgconfig
 Requires:       pam-devel
 Requires:       ncurses-devel
 Requires:       zlib-devel
-%{?_with_geoip:Requires:      geoip-devel}
 %{?_with_ldap:Requires:       cyrus-sasl-devel, openldap-devel}
 %{?_with_memcache:Requires:   libmemcached-devel >= 0.41}
-%{?_with_mysql:Requires:      mysql-devel}
-%{?_with_pcre:Requires:       pcre-devel >= 7.0}
+%{?_with_mysql:Requires:      mariadb-connector-c-devel}
+%{?_with_pcre:Requires:       pcre2-devel >= 10.44}
 %{?_with_postgresql:Requires: postgresql-devel}
 %{?_with_redis:Requires:      hiredis}
 %{?_with_ssl:Requires:        openssl-devel}
@@ -383,7 +364,6 @@ STANDARD_MODULE_LIST="  mod_auth_pam            \
 OPTIONAL_MODULE_LIST="                          \
 %{?_with_ssl:           mod_auth_otp}           \
 %{?_with_ssl:           mod_digest}             \
-%{?_with_geoip:         mod_geoip}              \
 %{?_with_ldap:          mod_ldap}               \
 %{?_with_ldap:          mod_quotatab_ldap}      \
 %{?_with_ssl:           mod_sftp}               \
@@ -412,7 +392,7 @@ MODULE_LIST=$(echo ${STANDARD_MODULE_LIST} ${OPTIONAL_MODULE_LIST} mod_ifsession
         --enable-ipv6 \
         --enable-nls \
         %{?_with_memcache:--enable-memcache} \
-        %{?_with_pcre:--enable-pcre} \
+        %{?_with_pcre:--enable-pcre2} \
         %{?_with_redis:--enable-redis} \
         %{?_with_ssl:--enable-openssl} \
         --enable-shadow \
@@ -523,10 +503,6 @@ else
 %endif
 fi
 
-%clean
-rm -rf %{buildroot}
-rm -rf %{_builddir}/%{name}-%{version}
-
 %files -f proftpd.lang
 %{_bindir}/ftpdctl
 %{?_with_ssl:%{_sbindir}/auth-otp}
@@ -546,7 +522,6 @@ rm -rf %{_builddir}/%{name}-%{version}
 %{_libexecdir}/proftpd/mod_dynmasq.so
 %{_libexecdir}/proftpd/mod_exec.so
 %{_libexecdir}/proftpd/mod_facl.so
-%{?_with_geoip:%{_libexecdir}/proftpd/mod_geoip.so}
 %{_libexecdir}/proftpd/mod_ifsession.so
 %{_libexecdir}/proftpd/mod_load.so
 %{_libexecdir}/proftpd/mod_quotatab.so
