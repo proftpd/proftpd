@@ -56,7 +56,7 @@ typedef struct file_rec {
   authfile_id_t af_min_id;
   authfile_id_t af_max_id;
 
-#ifdef PR_USE_REGEX
+#if defined(PR_USE_REGEX)
   unsigned char af_restricted_names;
   char *af_name_filter;
   pr_regex_t *af_name_regex;
@@ -67,7 +67,6 @@ typedef struct file_rec {
   char *af_home_filter;
   pr_regex_t *af_home_regex;
   unsigned char af_home_regex_inverted;
-
 #endif /* regex support */
 
 } authfile_file_t;
@@ -86,8 +85,6 @@ static unsigned long auth_file_opts = 0UL;
  * startup.
  */
 #define AUTH_FILE_OPT_SYNTAX_CHECK		0x0002
-
-static int handle_empty_salt = FALSE;
 
 static int authfile_sess_init(void);
 
@@ -571,7 +568,7 @@ static int af_allow_grent(pool *p, struct group *grp) {
     }
   }
 
-#ifdef PR_USE_REGEX
+#if defined(PR_USE_REGEX)
   /* Check if the grent has an acceptable name. */
   if (af_group_file->af_restricted_names) {
     int res;
@@ -588,7 +585,7 @@ static int af_allow_grent(pool *p, struct group *grp) {
       return -1;
     }
   }
-#endif /* regex support */
+#endif /* PR_USE_REGEX */
 
   return 0;
 }
@@ -826,6 +823,15 @@ static int af_allow_pwent(pool *p, struct passwd *pwd) {
     return -1;
   }
 
+  /* If the password field is an empty string, it's a problem (Issue #2279). */
+  if (pwd->pw_passwd != NULL &&
+      strcmp(pwd->pw_passwd, "") == 0) {
+    pr_log_debug(DEBUG3, MOD_AUTH_FILE_VERSION ": skipping user '%s': "
+      "password field is empty", pwd->pw_name);
+    errno = EINVAL;
+    return -1;
+  }
+
   /* Check that the pwent is within the ID restrictions (if present). */
   if (af_user_file->af_restricted_ids) {
 
@@ -848,7 +854,7 @@ static int af_allow_pwent(pool *p, struct passwd *pwd) {
     }
   }
 
-#ifdef PR_USE_REGEX
+#if defined(PR_USE_REGEX)
   /* Check if the pwent has an acceptable name. */
   if (af_user_file->af_restricted_names) {
     int res;
@@ -882,7 +888,7 @@ static int af_allow_pwent(pool *p, struct passwd *pwd) {
       return -1;
     }
   }
-#endif /* regex support */
+#endif /* PR_USE_REGEX */
 
   return 0;
 }
@@ -1559,10 +1565,11 @@ MODRET authfile_chkpass(cmd_rec *cmd) {
   const char *ciphertxt_pass = cmd->argv[0];
   const char *cleartxt_pass = cmd->argv[2];
   char *crypted_pass = NULL;
-  size_t ciphertxt_passlen = 0;
+  size_t ciphertxt_passlen = 0, cmp_len = 0;
   int xerrno;
 
-  if (ciphertxt_pass == NULL) {
+  if (ciphertxt_pass == NULL ||
+      *ciphertxt_pass == '\0') {
     pr_log_debug(DEBUG2, MOD_AUTH_FILE_VERSION
       ": missing ciphertext password for comparison");
     return PR_DECLINED(cmd);
@@ -1586,12 +1593,6 @@ MODRET authfile_chkpass(cmd_rec *cmd) {
   crypted_pass = crypt(cleartxt_pass, ciphertxt_pass);
   xerrno = errno;
 
-  ciphertxt_passlen = strlen(ciphertxt_pass);
-  if (handle_empty_salt == TRUE &&
-      ciphertxt_passlen == 0) {
-    crypted_pass = "";
-  }
-
   if (crypted_pass == NULL) {
     const char *user;
 
@@ -1608,7 +1609,13 @@ MODRET authfile_chkpass(cmd_rec *cmd) {
     return PR_DECLINED(cmd);
   }
 
-  if (strcmp(crypted_pass, ciphertxt_pass) == 0) {
+  cmp_len = strlen(crypted_pass);
+  ciphertxt_passlen = strlen(ciphertxt_pass);
+  if (ciphertxt_passlen > cmp_len) {
+    cmp_len = ciphertxt_passlen;
+  }
+
+  if (pr_timingsafe_bcmp(crypted_pass, ciphertxt_pass, cmp_len) == 0) {
     session.auth_mech = "mod_auth_file.c";
     return PR_HANDLED(cmd);
   }
@@ -1668,13 +1675,13 @@ MODRET set_authgroupfile(cmd_rec *cmd) {
   int flags = 0;
   char *path;
 
-#ifdef PR_USE_REGEX
+#if defined(PR_USE_REGEX)
   if (cmd->argc-1 < 1 ||
       cmd->argc-1 > 5) {
 #else
   if (cmd->argc-1 < 1 ||
       cmd->argc-1 > 2) {
-#endif /* regex support */
+#endif /* PR_USE_REGEX */
     CONF_ERROR(cmd, "wrong number of parameters");
   }
 
@@ -1760,7 +1767,7 @@ MODRET set_authgroupfile(cmd_rec *cmd) {
         file->af_max_id.gid = max;
         file->af_restricted_ids = TRUE;
 
-#ifdef PR_USE_REGEX
+#if defined(PR_USE_REGEX)
       } else if (strcasecmp(cmd->argv[i], "name") == 0) {
         char *filter = cmd->argv[++i];
         pr_regex_t *pre = NULL;
@@ -1788,7 +1795,7 @@ MODRET set_authgroupfile(cmd_rec *cmd) {
         file->af_name_filter = pstrdup(c->pool, cmd->argv[i]);
         file->af_name_regex = pre;
         file->af_restricted_names = TRUE;
-#endif /* regex support */
+#endif /* PR_USE_REGEX */
 
       } else {
         CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, ": unknown restriction '",
@@ -1807,13 +1814,13 @@ MODRET set_authuserfile(cmd_rec *cmd) {
   int flags = 0;
   char *path;
 
-#ifdef PR_USE_REGEX
+#if defined(PR_USE_REGEX)
   if (cmd->argc-1 < 1 ||
       cmd->argc-1 > 7) {
 #else
   if (cmd->argc-1 < 1 ||
       cmd->argc-1 > 2) {
-#endif /* regex support */
+#endif /* PR_USE_REGEX */
     CONF_ERROR(cmd, "wrong number of parameters");
   }
 
@@ -1899,7 +1906,7 @@ MODRET set_authuserfile(cmd_rec *cmd) {
         file->af_max_id.uid = max;
         file->af_restricted_ids = TRUE;
 
-#ifdef PR_USE_REGEX
+#if defined(PR_USE_REGEX)
       } else if (strcasecmp(cmd->argv[i], "home") == 0) {
         char *filter = cmd->argv[++i];
         pr_regex_t *pre = NULL;
@@ -1955,7 +1962,7 @@ MODRET set_authuserfile(cmd_rec *cmd) {
         file->af_name_filter = pstrdup(c->pool, cmd->argv[i]);
         file->af_name_regex = pre;
         file->af_restricted_names = TRUE;
-#endif /* regex support */
+#endif /* PR_USE_REGEX */
 
       } else {
         CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, ": unknown restriction '",
@@ -1990,36 +1997,6 @@ static void authfile_sess_reinit_ev(const void *event_data, void *user_data) {
 
 /* Initialization routines
  */
-
-static int authfile_init(void) {
-  const char *key, *salt, *hash;
-
-  /* On some Unix platforms, giving crypt(3) an empty string for the salt,
-   * no matter what the input key, results in an empty string being returned.
-   * (The salt string is what is obtained from the AuthUserFile that has been
-   * configured.)
-   *
-   * On other platforms, given crypt(3) a real key and an empty string for
-   * the salt returns in a real string.  (I'm looking at you, Mac OSX.)
-   *
-   * Thus in order to handle the edge case of an AuthUserFile with a passwd
-   * field being empty the same on such differing platforms, we perform a
-   * runtime check (at startup), to see how crypt(3) behaves -- and then
-   * preserve the principle of least surprise appropriately.
-   */
-
-  key = "key";
-  salt = "";
-  hash = crypt(key, salt);
-  if (hash != NULL) {
-    if (strcmp(hash, "") != 0) {
-      /* We're probably on a Mac OSX or similar platform. */
-      handle_empty_salt = TRUE;
-    }
-  }
-
-  return 0;
-}
 
 static int authfile_sess_init(void) {
   config_rec *c = NULL;
@@ -2098,7 +2075,7 @@ module auth_file_module = {
   authfile_authtab,
 
   /* Module initialization function */
-  authfile_init,
+  NULL,
 
   /* Session initialization function */
   authfile_sess_init,
