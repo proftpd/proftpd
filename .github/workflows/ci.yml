@@ -65,7 +65,6 @@ jobs:
           - clang
           - gcc
         container:
-          - almalinux:8
           - almalinux:10
           - alpine:3.18
           - alpine:3.23
@@ -209,68 +208,6 @@ jobs:
 
           # The modules to build are distro-specific
           echo "PROFTPD_MODULES=mod_sql:mod_sql_mysql:mod_sql_odbc:mod_sql_postgres:mod_sql_sqlite:mod_sql_passwd:mod_sftp:mod_sftp_sql:mod_sftp_pam:mod_tls:mod_tls_fscache:mod_tls_shmcache:mod_tls_memcache:mod_tls_redis:mod_ban:mod_copy:mod_ctrls_admin:mod_deflate:mod_dnsbl:mod_dynmasq:mod_exec:mod_facl:mod_geoip:mod_ifversion:mod_ldap:mod_load:mod_log_forensic:mod_qos:mod_quotatab:mod_quotatab_file:mod_quotatab_ldap:mod_quotatab_radius:mod_quotatab_sql:mod_radius:mod_readme:mod_rewrite:mod_shaper:mod_site_misc:mod_snmp:mod_wrap2:mod_wrap2_file:mod_wrap2_redis:mod_wrap2_sql:mod_digest:mod_auth_otp:mod_statcache:mod_unique_id:mod_ifsession" >> $GITHUB_ENV
-
-      - name: Install AlmaLinux 8 RPM packages
-        if: ${{ matrix.container == 'almalinux:8' }}
-        run: |
-          # Need to add other repos for e.g. libsodium
-          yum install -y dnf-plugins-core epel-release yum-utils gcc make
-          dnf config-manager --enable epel
-          dnf config-manager --set-enabled powertools
-          # for unit tests
-          yum install -y check-devel https://cbs.centos.org/kojifiles/packages/subunit/1.4.0/1.el8/x86_64/subunit-1.4.0-1.el8.x86_64.rpm https://cbs.centos.org/kojifiles/packages/subunit/1.4.0/1.el8/x86_64/subunit-devel-1.4.0-1.el8.x86_64.rpm
-          # for mod_lang
-          yum install -y gettext-devel glibc-all-langpacks glibc-gconv-extra
-          # for xattr support
-          yum install -y libattr-devel
-          # for mod_cap
-          yum install -y libacl-devel libcap-devel
-          # for mod_geoip
-          yum install -y GeoIP-devel
-          # for mod_ldap
-          yum install -y openldap-devel cyrus-sasl-devel
-          # for mod_rewrite
-          yum install -y libidn2-devel
-          # for memcache support
-          yum install -y libmemcached-devel
-          # for redis support
-          yum install -y hiredis-devel
-          # for mod_sql_mysql
-          yum install -y mysql-devel
-          # for PAM support
-          yum install -y pam-devel
-          # for mod_sql_postgres
-          yum install -y postgresql-devel
-          # for mod_sql_odbc
-          yum install -y unixODBC-devel
-          # for OpenSSL support
-          yum install -y openssl openssl-devel
-          # for Sodium support
-          yum install -y libsodium-devel
-          # for mod_sql_sqlite
-          yum install -y sqlite-devel
-          # for PCRE2 support
-          yum install -y pcre2-devel
-          # for ftptop
-          yum install -y ncurses-devel
-          # for zlib support
-          yum install -y zlib-devel
-          # for static code analysis
-          # - sudo yum install -y cppcheck
-          # - sudo yum install rats
-          # for integration/regression test
-          # for test code coverage
-          # for HTML validation
-          # for clang
-          yum install -y clang
-
-          # The modules to build are distro-specific
-          echo "PROFTPD_MODULES=mod_sql:mod_sql_mysql:mod_sql_odbc:mod_sql_postgres:mod_sql_sqlite:mod_sql_passwd:mod_sftp:mod_sftp_sql:mod_sftp_pam:mod_tls:mod_tls_fscache:mod_tls_shmcache:mod_tls_memcache:mod_tls_redis:mod_ban:mod_copy:mod_ctrls_admin:mod_deflate:mod_dnsbl:mod_dynmasq:mod_exec:mod_facl:mod_geoip:mod_ifversion:mod_ldap:mod_load:mod_log_forensic:mod_qos:mod_quotatab:mod_quotatab_file:mod_quotatab_ldap:mod_quotatab_radius:mod_quotatab_sql:mod_radius:mod_readme:mod_rewrite:mod_shaper:mod_site_misc:mod_snmp:mod_wrap2:mod_wrap2_file:mod_wrap2_redis:mod_wrap2_sql:mod_digest:mod_auth_otp:mod_statcache:mod_unique_id:mod_ifsession" >> $GITHUB_ENV
-
-          # for debugging
-          clang --version
-          gcc --version
-          openssl version -a
 
       - name: Install AlmaLinux 10 RPM packages
         if: ${{ matrix.container == 'almalinux:10' }}
