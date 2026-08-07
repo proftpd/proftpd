@@ -1549,7 +1549,6 @@ MODRET authfile_chkpass(cmd_rec *cmd) {
   const char *ciphertxt_pass = cmd->argv[0];
   const char *cleartxt_pass = cmd->argv[2];
   char *crypted_pass = NULL;
-  size_t ciphertxt_passlen = 0, cmp_len = 0;
   int xerrno;
 
   if (ciphertxt_pass == NULL ||
@@ -1593,13 +1592,7 @@ MODRET authfile_chkpass(cmd_rec *cmd) {
     return PR_DECLINED(cmd);
   }
 
-  cmp_len = strlen(crypted_pass);
-  ciphertxt_passlen = strlen(ciphertxt_pass);
-  if (ciphertxt_passlen > cmp_len) {
-    cmp_len = ciphertxt_passlen;
-  }
-
-  if (strcmp(crypted_pass, ciphertxt_pass, cmp_len) == 0) {
+  if (strcmp(crypted_pass, ciphertxt_pass) == 0) {
     session.auth_mech = "mod_auth_file.c";
     return PR_HANDLED(cmd);
   }
