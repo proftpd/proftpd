@@ -193,7 +193,13 @@ sub auth_user_write {
   my $existed = -f $user_file;
   my $prev_mode;
 
-  my $passwd = get_passwd($user_passwd);
+  my $passwd;
+  if ($user_passwd ne '') {
+    $passwd = get_passwd($user_passwd);
+
+  } else {
+    $passwd = '';
+  }
 
   if ($existed) {
     # Get current permissions

@@ -132,6 +132,11 @@ my $TESTS = {
     test_class => [qw(bug forking)],
   },
 
+  auth_user_file_empty_passwd_syntax_check_issue2279 => {
+    order => ++$order,
+    test_class => [qw(bug forking)],
+  },
+
   auth_file_symlink_segfault_bug4145 => {
     order => ++$order,
     test_class => [qw(bug forking)],
@@ -1550,6 +1555,152 @@ sub auth_user_file_world_writable_bug3892 {
   unlink($log_file);
 }
 
+sub auth_user_file_empty_passwd_syntax_check_issue2279 {
+  my $self = shift;
+  my $tmpdir = $self->{tmpdir};
+
+  my $user = 'proftpd';
+  my $passwd = '';
+  my $setup = test_setup($tmpdir, 'authfile', $user, $passwd);
+
+  my $auth_user_file = $setup->{auth_user_file};
+  if ($^O eq 'darwin') {
+    # MacOSX hack
+    $auth_user_file = '/private' . $auth_user_file;
+  }
+
+  my $auth_group_file = $setup->{auth_group_file};
+  if ($^O eq 'darwin') {
+    # MacOSX hack
+    $auth_group_file = '/private' . $auth_group_file;
+  }
+
+  # Order of directives matters for this test, so we use an array.
+  my $config = [
+    "PidFile $setup->{pid_file}",
+    "ScoreboardFile $setup->{scoreboard_file}",
+    "SystemLog $setup->{log_file}",
+    "TraceLog $setup->{log_file}",
+    'Trace auth.file:20',
+
+    'AuthFileOptions SyntaxCheck',
+
+    "AuthUserFile $auth_user_file",
+    "AuthGroupFile $auth_group_file",
+    'AuthOrder mod_auth_file.c',
+
+    'MaxLoginAttempts 5',
+  ];
+
+  my ($port, $config_user, $config_group) = config_write($setup->{config_file},
+    $config);
+  if (open(my $fh, ">> $setup->{config_file}")) {
+    print $fh <<EOC;
+<IfModule mod_delay.c>
+  DelayEngine off
+</IfModule>
+EOC
+    unless (close($fh)) {
+      die("Can't write $setup->{config_file}: $!");
+    }
+
+  } else {
+    die("Can't open $setup->{config_file}: $!");
+  }
+
+  # Open pipes, for use between the parent and child processes.  Specifically,
+  # the child will indicate when it's done with its test by writing a message
+  # to the parent.
+  my ($rfh, $wfh);
+  unless (pipe($rfh, $wfh)) {
+    die("Can't open pipe: $!");
+  }
+
+  my $ex;
+
+  # Fork child
+  $self->handle_sigchld();
+  defined(my $pid = fork()) or die("Can't fork: $!");
+  if ($pid) {
+    eval {
+      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port, 1, 1);
+
+      # This user has an empty passwd field, and thus should never succeed
+      # in logging in, regardless (Issue #2279).
+      eval { $client->login($setup->{user}, $setup->{passwd}) };
+      unless ($@) {
+        die("Login succeeded unexpectedly");
+      }
+
+      my $resp_code = $client->response_code();
+      my $resp_msg = $client->response_msg();
+
+      my $expected = 530;
+      $self->assert($expected == $resp_code,
+        test_msg("Expected response code $expected, got $resp_code"));
+
+      $expected = 'Login incorrect.';
+      $self->assert($expected eq $resp_msg,
+        test_msg("Expected response message '$expected', got '$resp_msg'"));
+
+      eval { $client->login($setup->{user}, '') };
+      unless ($@) {
+        die("Login succeeded unexpectedly");
+      }
+
+      $resp_code = $client->response_code();
+      $resp_msg = $client->response_msg();
+
+      $expected = 530;
+      $self->assert($expected == $resp_code,
+        test_msg("Expected response code $expected, got $resp_code"));
+
+      $expected = 'Login incorrect.';
+      $self->assert($expected eq $resp_msg,
+        test_msg("Expected response message '$expected', got '$resp_msg'"));
+
+      eval { $client->login($setup->{user}, 'WrongPasswordHere') };
+      unless ($@) {
+        die("Login succeeded unexpectedly");
+      }
+
+      $resp_code = $client->response_code();
+      $resp_msg = $client->response_msg();
+
+      $expected = 530;
+      $self->assert($expected == $resp_code,
+        test_msg("Expected response code $expected, got $resp_code"));
+
+      $expected = 'Login incorrect.';
+      $self->assert($expected eq $resp_msg,
+        test_msg("Expected response message '$expected', got '$resp_msg'"));
+
+      $client->quit();
+    };
+    if ($@) {
+      $ex = $@;
+    }
+
+    $wfh->print("done\n");
+    $wfh->flush();
+
+  } else {
+    eval { server_wait($setup->{config_file}, $rfh) };
+    if ($@) {
+      warn($@);
+      exit 1;
+    }
+
+    exit 0;
+  }
+
+  # Stop server
+  server_stop($setup->{pid_file});
+  $self->assert_child_ok($pid);
+
+  test_cleanup($setup, $ex);
+}
+
 sub auth_user_file_world_readable_insecure_perms_opt {
   my $self = shift;
   my $tmpdir = $self->{tmpdir};
@@ -1756,38 +1907,7 @@ sub auth_group_file_world_writable_bug3892 {
 sub auth_user_file_world_writable_parent_dir_bug3892 {
   my $self = shift;
   my $tmpdir = $self->{tmpdir};
-
-  my $config_file = "$tmpdir/authfile.conf";
-  my $pid_file = File::Spec->rel2abs("$tmpdir/authfile.pid");
-  my $scoreboard_file = File::Spec->rel2abs("$tmpdir/authfile.scoreboard");
-
-  my $log_file = test_get_logfile();
-
-  my $auth_user_file = File::Spec->rel2abs("$tmpdir/authfile.passwd");
-  my $auth_group_file = File::Spec->rel2abs("$tmpdir/authfile.group");
-
-  my $user = 'proftpd';
-  my $passwd = 'test';
-  my $group = 'ftpd';
-  my $home_dir = File::Spec->rel2abs($tmpdir);
-  my $uid = 500;
-  my $gid = 500;
-
-  # Make sure that, if we're running as root, that the home directory has
-  # permissions/privs set for the account we create
-  if ($< == 0) {
-    unless (chmod(0755, $home_dir)) {
-      die("Can't set perms on $home_dir to 0755: $!");
-    }
-
-    unless (chown($uid, $gid, $home_dir)) {
-      die("Can't set owner of $home_dir to $uid/$gid: $!");
-    }
-  }
-
-  auth_user_write($auth_user_file, $user, $passwd, $uid, $gid, $home_dir,
-    '/bin/bash');
-  auth_group_write($auth_group_file, $group, $gid, $user);
+  my $setup = test_setup($tmpdir, 'authfile');
 
   # Deliberately set world-writable perms on the parent directory of the
   # AuthUserFile, to trigger the checks done for Bug#3892.
@@ -1796,12 +1916,12 @@ sub auth_user_file_world_writable_parent_dir_bug3892 {
   }
 
   my $config = {
-    PidFile => $pid_file,
-    ScoreboardFile => $scoreboard_file,
-    SystemLog => $log_file,
+    PidFile => $setup->{pid_file},
+    ScoreboardFile => $setup->{scoreboard_file},
+    SystemLog => $setup->{log_file},
 
-    AuthUserFile => $auth_user_file,
-    AuthGroupFile => $auth_group_file,
+    AuthUserFile => $setup->{auth_user_file},
+    AuthGroupFile => $setup->{auth_group_file},
     AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
@@ -1811,20 +1931,21 @@ sub auth_user_file_world_writable_parent_dir_bug3892 {
     },
   };
 
-  my ($port, $config_user, $config_group) = config_write($config_file, $config);
+  my ($port, $config_user, $config_group) = config_write($setup->{config_file},
+    $config);
 
-  eval { server_start($config_file, $pid_file) };
+  eval { server_start($setup->{config_file}, $setup->{pid_file}) };
   unless ($@) {
-    server_stop($pid_file);
+    server_stop($setup->{pid_file});
 
     my $ex = "Server started up unexpectedly with world-writable AuthUserFile parent directory";
-    test_append_logfile($log_file, $ex);
-    unlink($log_file);
+    test_append_logfile($setup->{log_file}, $ex);
+    unlink($setup->{log_file});
 
     die($ex);
   }
 
-  unlink($log_file);
+  unlink($setup->{log_file});
 }
 
 sub auth_user_file_symlink_world_writable_parent_dir_bug3892 {
