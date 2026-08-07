@@ -1578,11 +1578,13 @@ MODRET authfile_chkpass(cmd_rec *cmd) {
 
   if (crypted_pass == NULL) {
     const char *user;
+    size_t ciphertxt_passlen = 0;
 
     user = cmd->argv[1];
     pr_log_debug(DEBUG0, MOD_AUTH_FILE_VERSION
       ": error using crypt(3) for user '%s': %s", user, strerror(xerrno));
 
+    ciphertxt_passlen = strlen(ciphertxt_pass);
     if (ciphertxt_passlen > 0 &&
         (xerrno == EINVAL ||
          xerrno == EPERM)) {
