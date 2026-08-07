@@ -1600,9 +1600,9 @@ MODRET authfile_chkpass(cmd_rec *cmd) {
     pr_log_debug(DEBUG0, MOD_AUTH_FILE_VERSION
       ": error using crypt(3) for user '%s': %s", user, strerror(xerrno));
 
-    if (ciphertxt_passlen > 0 &&
-        (xerrno == EINVAL ||
-         xerrno == EPERM)) {
+    if (xerrno == EINVAL ||
+        xerrno == EPERM) {
+      ciphertxt_passlen = strlen(ciphertxt_pass);
       check_unsupported_algo(user, ciphertxt_pass, ciphertxt_passlen);
     }
 
