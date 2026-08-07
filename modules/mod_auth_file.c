@@ -1599,7 +1599,7 @@ MODRET authfile_chkpass(cmd_rec *cmd) {
     cmp_len = ciphertxt_passlen;
   }
 
-  if (pr_timingsafe_bcmp(crypted_pass, ciphertxt_pass, cmp_len) == 0) {
+  if (strcmp(crypted_pass, ciphertxt_pass, cmp_len) == 0) {
     session.auth_mech = "mod_auth_file.c";
     return PR_HANDLED(cmd);
   }
