@@ -29,6 +29,7 @@
   module.
 - Issue 2279 - Empty password fields should be rejected by the mod_auth_file
   module.
+- Issue 2282 - .ftpaccess file policy bypass possible in certain configurations.
 
 1.3.9c - Released 07-Jul-2026
 --------------------------------
