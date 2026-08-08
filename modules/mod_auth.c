@@ -593,7 +593,7 @@ MODRET auth_post_pass(cmd_rec *cmd) {
    * or denied .ftpaccess-parsing separately from the containing server.
    */
   if (pr_fsio_stat(session.cwd, &st) != -1) {
-    build_dyn_config(cmd->tmp_pool, session.cwd, &st, TRUE);
+    build_dyn_config2(cmd->tmp_pool, session.cwd, &st);
   }
 
   have_user_timeout = have_group_timeout = have_class_timeout =
