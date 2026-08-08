@@ -1761,6 +1761,10 @@ void build_dyn_config(pool *p, const char *_path, struct stat *stp,
   }
 }
 
+void build_dyn_config2(pool *p, const char *path, struct stat *st) {
+  build_dyn_config(p, path, st, TRUE);
+}
+
 /* dir_check_full() fully recurses the path passed
  * returns 1 if operation is allowed on current path,
  * or 0 if not.
@@ -1810,7 +1814,7 @@ int dir_check_full(pool *pp, cmd_rec *cmd, const char *group, const char *path,
     memset(&st, '\0', sizeof(st));
   }
 
-  build_dyn_config(p, path, &st, TRUE);
+  build_dyn_config2(p, path, &st);
 
   /* Check to see if this path is hidden by HideFiles. */
   regex_hidden = dir_hide_file(path);
@@ -1942,11 +1946,32 @@ int dir_check_full(pool *pp, cmd_rec *cmd, const char *group, const char *path,
   return res;
 }
 
+/* Returns TRUE if the given ancestor path is indeed an ancestor, by path
+ * prefix, of the path, FALSE otherwise.
+ */
+static int is_ancestor_path(const char *ancestor_path, const char *path) {
+  size_t ancestor_pathlen, pathlen;
+
+  ancestor_pathlen = strlen(ancestor_path);
+  pathlen = strlen(path);
+
+  /* By definition, a path than is an ancestor is shorter. */
+  if (ancestor_pathlen >= pathlen) {
+    return FALSE;
+  }
+
+  if (strncmp(ancestor_path, path, ancestor_pathlen) == 0 &&
+      path[ancestor_pathlen] == '/') {
+    return TRUE;
+  }
+
+  return FALSE;
+}
+
 /* dir_check() checks the current dir configuration against the path,
  * if it matches (partially), a search is done only in the subconfig,
- * otherwise handed off to dir_check_full
+ * otherwise handed off to dir_check_full().
  */
-
 int dir_check(pool *pp, cmd_rec *cmd, const char *group, const char *path,
     int *hidden) {
   char *fullpath, *owner;
@@ -1975,7 +2000,7 @@ int dir_check(pool *pp, cmd_rec *cmd, const char *group, const char *path,
         (session.anon_config ? session.anon_config : NULL));
 
   if (c == NULL ||
-      strncmp(c->name, fullpath, strlen(c->name)) != 0) {
+      is_ancestor_path(c->name, fullpath) != TRUE) {
     destroy_pool(p);
     return dir_check_full(pp, cmd, group, path, hidden);
   }
@@ -1986,7 +2011,7 @@ int dir_check(pool *pp, cmd_rec *cmd, const char *group, const char *path,
     memset(&st, 0, sizeof(st));
   }
 
-  build_dyn_config(p, path, &st, FALSE);
+  build_dyn_config2(p, path, &st);
 
   /* Check to see if this path is hidden by HideFiles. */
   regex_hidden = dir_hide_file(path);

@@ -703,7 +703,7 @@ static int setup_env(pool *p, const char *user) {
   }
 
   if (pr_fsio_stat(session.cwd, &st) != -1) {
-    build_dyn_config(p, session.cwd, &st, TRUE);
+    build_dyn_config2(p, session.cwd, &st);
   }
 
   pr_scoreboard_entry_update(session.pid,
