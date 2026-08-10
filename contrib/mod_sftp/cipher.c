@@ -1599,27 +1599,46 @@ int sftp_cipher_init(void) {
 
 int sftp_cipher_free(void) {
 #if OPENSSL_VERSION_NUMBER >= 0x1000000fL
-  EVP_CIPHER_CTX_free(read_ctxs[0]);
-  EVP_CIPHER_CTX_free(read_ctxs[1]);
-  EVP_CIPHER_CTX_free(write_ctxs[0]);
-  EVP_CIPHER_CTX_free(write_ctxs[1]);
+  if (read_ctxs[0] != NULL) {
+    EVP_CIPHER_CTX_free(read_ctxs[0]);
+    read_ctxs[0] = NULL;
+  }
+
+  if (read_ctxs[1] != NULL) {
+    EVP_CIPHER_CTX_free(read_ctxs[1]);
+    read_ctxs[1] = NULL;
+  }
+
+  if (write_ctxs[0] != NULL) {
+    EVP_CIPHER_CTX_free(write_ctxs[0]);
+    write_ctxs[0] = NULL;
+  }
+
+  if (write_ctxs[1] != NULL) {
+    EVP_CIPHER_CTX_free(write_ctxs[1]);
+    write_ctxs[1] = NULL;
+  }
 
 # if defined(HAVE_EVP_CHACHA20_OPENSSL) && \
     !defined(HAVE_BROKEN_CHACHA20)
   if (read_header_ctxs[0] != NULL) {
     EVP_CIPHER_CTX_free(read_header_ctxs[0]);
+    read_header_ctxs[0] = NULL;
   }
 
   if (read_header_ctxs[1] != NULL) {
     EVP_CIPHER_CTX_free(read_header_ctxs[1]);
+    read_header_ctxs[1] = NULL;
   }
 
   if (write_header_ctxs[0] != NULL) {
     EVP_CIPHER_CTX_free(write_header_ctxs[0]);
+    write_header_ctxs[0] = NULL;
   }
 
   if (write_header_ctxs[1] != NULL) {
     EVP_CIPHER_CTX_free(write_header_ctxs[1]);
+    write_header_ctxs[1] = NULL;
   }
 # endif /* HAVE_EVP_CHACHA20_OPENSSL and !HAVE_BROKEN_CHACHA20 */
 #endif /* OpenSSL-1.0.0 and later */

@@ -1103,10 +1103,25 @@ int sftp_mac_init(void) {
 int sftp_mac_free(void) {
 #if (OPENSSL_VERSION_NUMBER >= 0x10100000L && !defined(HAVE_LIBRESSL)) || \
     (defined(HAVE_LIBRESSL) && LIBRESSL_VERSION_NUMBER >= 0x3050000L)
-  HMAC_CTX_free(hmac_read_ctxs[0]);
-  HMAC_CTX_free(hmac_read_ctxs[1]);
-  HMAC_CTX_free(hmac_write_ctxs[0]);
-  HMAC_CTX_free(hmac_write_ctxs[1]);
+  if (hmac_read_ctxs[0] != NULL) {
+    HMAC_CTX_free(hmac_read_ctxs[0]);
+    hmac_read_ctxs[0] = NULL;
+  }
+
+  if (hmac_read_ctxs[1] != NULL) {
+    HMAC_CTX_free(hmac_read_ctxs[1]);
+    hmac_read_ctxs[1] = NULL;
+  }
+
+  if (hmac_write_ctxs[0] != NULL) {
+    HMAC_CTX_free(hmac_write_ctxs[0]);
+    hmac_write_ctxs[0] = NULL;
+  }
+
+  if (hmac_write_ctxs[1] != NULL) {
+    HMAC_CTX_free(hmac_write_ctxs[1]);
+    hmac_write_ctxs[1] = NULL;
+  }
 #endif /* OpenSSL-1.1.0/LibreSSL-3.5.0 and later */
   return 0;
 }
