@@ -15,7 +15,7 @@
   where `N' is the issue number.
 -----------------------------------------------------------------------------
 
-1.3.10rc4
+1.3.10rc4 - Released 14-Aug-2026
 --------------------------------
 - Issue 2242 - SSH channel open request from authenticated client with max
   packet size of zero leads to infinite loop.
@@ -30,6 +30,8 @@
 - Issue 2272 - Passive FTP data transfers do not honor AllowForeignAddress
   policy properly.
 - Issue 2275 - Empty password fields should be rejected by the mod_sql_passwd
+  module.
+- Issue 2279 - Empty password fields should be rejected by the mod_auth_file
   module.
 - Issue 2282 - .ftpaccess file policy bypass possible in certain configurations.
 
