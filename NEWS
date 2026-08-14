@@ -15,7 +15,7 @@
   where `N' is the issue number.
 -----------------------------------------------------------------------------
 
-1.3.9d
+1.3.9d - Released 14-Aug-2026
 --------------------------------
 - Issue 2242 - SSH channel open request from authenticated client with max
   packet size of zero leads to infinite loop.
