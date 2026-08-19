@@ -2447,6 +2447,8 @@ MODRET xfer_stor(cmd_rec *cmd) {
 /* Should this become part of the String API? */
 static int parse_offset(char *str, off_t *num) {
   char *ptr, *tmp = NULL;
+  unsigned long n;
+  off_t sz;
 
   /* Don't allow negative numbers.  strtoul()/strtoull() will silently
    * handle them.
@@ -2457,17 +2459,38 @@ static int parse_offset(char *str, off_t *num) {
     return -1;
   }
 
-#ifdef HAVE_STRTOULL
-  *num = strtoull(ptr, &tmp, 10);
+  errno = 0;
+
+#if defined(HAVE_STRTOULL)
+  n = strtoull(ptr, &tmp, 10);
 #else
-  *num = strtoul(ptr, &tmp, 10);
+  n = strtoul(ptr, &tmp, 10);
 #endif /* HAVE_STRTOULL */
+
+  if (errno == ERANGE) {
+    pr_trace_msg(trace_channel, 3,
+      "client-sent offset '%s' conversion error: %s", ptr, strerror(errno));
+    errno = EINVAL;
+    return -1;
+  }
 
   if (tmp && *tmp) {
     errno = EINVAL;
     return -1;
   }
 
+  /* Watch for cases where the sent file offset might overflow our size
+   * type (Issue #2286).
+   */
+  sz = n;
+  if (sz < 0) {
+    pr_trace_msg(trace_channel, 3,
+      "client-sent offset '%s' out of range, rejecting", ptr);
+    errno = EINVAL;
+    return -1;
+  }
+
+  *num = sz;
   return 0;
 }
 
