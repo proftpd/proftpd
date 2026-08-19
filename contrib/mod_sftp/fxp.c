@@ -4371,12 +4371,13 @@ static int fxp_handle_ext_check_file(struct fxp_packet *fxp, char *digest_list,
     return fxp_packet_write(resp);
   }
 
-  if (offset >= st.st_size) {
+  if (offset < 0 ||
+      offset >= st.st_size) {
     xerrno = EINVAL;
 
     (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
       "client check-file request sent invalid offset (%" PR_LU
-      " >= %" PR_LU " file size)", (pr_off_t) offset, (pr_off_t) st.st_size);
+      " vs %" PR_LU " file size)", (pr_off_t) offset, (pr_off_t) st.st_size);
 
     status_code = fxp_errno2status(xerrno, &reason);
 
@@ -4755,8 +4756,8 @@ static int fxp_handle_ext_check_file(struct fxp_packet *fxp, char *digest_list,
 }
 
 static int fxp_handle_ext_copy_data(struct fxp_packet *fxp,
-    const char *src_name, uint64_t src_offset,
-    const char *dst_name, uint64_t dst_offset, uint64_t copy_len) {
+    const char *src_name, off_t src_offset,
+    const char *dst_name, off_t dst_offset, uint64_t copy_len) {
   int res, xerrno;
   const char *src_path, *dst_path, *reason;
   unsigned char *buf, *ptr;
@@ -4769,8 +4770,8 @@ static int fxp_handle_ext_copy_data(struct fxp_packet *fxp,
 
   pr_trace_msg(trace_channel, 7,
     "received extension request: copy-data %s %llu %llu %s %llu",
-    src_name, (unsigned long long) src_offset, (unsigned long long) copy_len,
-    dst_name, (unsigned long long) dst_offset);
+    src_name, (pr_off_t) src_offset, (unsigned long long) copy_len,
+    dst_name, (pr_off_t) dst_offset);
 
   buflen = bufsz = FXP_RESPONSE_DATA_DEFAULT_SZ;
   buf = ptr = palloc(fxp->pool, bufsz);
@@ -4805,6 +4806,30 @@ static int fxp_handle_ext_copy_data(struct fxp_packet *fxp,
       fxp_strerror(status_code), NULL);
 
     fxp_cmd_dispatch_err(cmd);
+
+    resp = fxp_packet_create(fxp->pool, fxp->channel_id);
+    resp->payload = ptr;
+    resp->payload_sz = (bufsz - buflen);
+
+    return fxp_packet_write(resp);
+  }
+
+  if (src_offset < 0 ||
+      dst_offset < 0) {
+    xerrno = EINVAL;
+
+    (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
+      "client copy-data request sent invalid offsets (source %" PR_LU
+      ", destination %" PR_LU ")", (pr_off_t) src_offset,
+      (pr_off_t) dst_offset);
+
+    status_code = fxp_errno2status(xerrno, &reason);
+
+    pr_trace_msg(trace_channel, 8, "sending response: STATUS %lu '%s'",
+      (unsigned long) status_code, reason);
+
+    fxp_status_write(fxp->pool, &buf, &buflen, fxp->request_id, status_code,
+      reason, NULL);
 
     resp = fxp_packet_create(fxp->pool, fxp->channel_id);
     resp->payload = ptr;
@@ -4936,11 +4961,11 @@ static int fxp_handle_ext_copy_data(struct fxp_packet *fxp,
     return fxp_packet_write(resp);
   }
 
-  if (pr_fsio_lseek(src_fxh->fh, (off_t) src_offset, SEEK_SET) < 0) {
+  if (pr_fsio_lseek(src_fxh->fh, src_offset, SEEK_SET) < 0) {
     xerrno = errno;
 
     pr_trace_msg(trace_channel, 17, "copy-data error seeking to %llu in %s: %s",
-      (unsigned long long) src_offset, src_path, strerror(xerrno));
+      (pr_off_t) src_offset, src_path, strerror(xerrno));
 
     status_code = fxp_errno2status(xerrno, &reason);
 
@@ -4959,11 +4984,11 @@ static int fxp_handle_ext_copy_data(struct fxp_packet *fxp,
     return fxp_packet_write(resp);
   }
 
-  if (pr_fsio_lseek(dst_fxh->fh, (off_t) dst_offset, SEEK_SET) < 0) {
+  if (pr_fsio_lseek(dst_fxh->fh, dst_offset, SEEK_SET) < 0) {
     xerrno = errno;
 
     pr_trace_msg(trace_channel, 17, "copy-data error seeking to %llu in %s: %s",
-      (unsigned long long) dst_offset, dst_path, strerror(xerrno));
+      (pr_off_t) dst_offset, dst_path, strerror(xerrno));
 
     status_code = fxp_errno2status(xerrno, &reason);
 
@@ -11494,6 +11519,31 @@ static int fxp_handle_read(struct fxp_packet *fxp) {
   pr_scoreboard_entry_update(session.pid,
     PR_SCORE_CMD_ARG, "%s", fxh->fh->fh_path, NULL, NULL);
 
+  if (((off_t) offset) < 0) {
+    int xerrno = EINVAL;
+    uint32_t status_code;
+    const char *reason;
+
+    (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
+      "requested invalid read offset (%" PR_LU " bytes)", (pr_off_t) offset);
+
+    status_code = fxp_errno2status(xerrno, &reason);
+
+    pr_trace_msg(trace_channel, 8, "sending response: STATUS %lu '%s'",
+      (unsigned long) status_code, fxp_strerror(status_code));
+
+    fxp_status_write(fxp->pool, &buf, &buflen, fxp->request_id, status_code,
+      reason, NULL);
+
+    fxp_cmd_dispatch_err(cmd);
+
+    resp = fxp_packet_create(fxp->pool, fxp->channel_id);
+    resp->payload = ptr;
+    resp->payload_sz = (bufsz - buflen);
+
+    return fxp_packet_write(resp);
+  }
+
   if ((off_t) offset > fxh->fh_st->st_size) {
     uint32_t status_code;
     const char *reason;
@@ -14603,6 +14653,31 @@ static int fxp_handle_write(struct fxp_packet *fxp) {
   pr_scoreboard_entry_update(session.pid,
     PR_SCORE_CMD_ARG, "%s", fxh->fh->fh_path, NULL, NULL);
   fxh->xfer.total_bytes += datalen;
+
+  if (((off_t) offset) < 0) {
+    int xerrno = EINVAL;
+    uint32_t status_code;
+    const char *reason;
+
+    (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
+      "requested invalid write offset (%" PR_LU " bytes)", (pr_off_t) offset);
+
+    status_code = fxp_errno2status(xerrno, &reason);
+
+    pr_trace_msg(trace_channel, 8, "sending response: STATUS %lu '%s'",
+      (unsigned long) status_code, fxp_strerror(status_code));
+
+    fxp_status_write(fxp->pool, &buf, &buflen, fxp->request_id, status_code,
+      reason, NULL);
+
+    fxp_cmd_dispatch_err(cmd);
+
+    resp = fxp_packet_create(fxp->pool, fxp->channel_id);
+    resp->payload = ptr;
+    resp->payload_sz = (bufsz - buflen);
+
+    return fxp_packet_write(resp);
+  }
 
   /* It would be nice to check the requested offset against the size of
    * the file.  However, the protocol specifically allows for sparse files,
