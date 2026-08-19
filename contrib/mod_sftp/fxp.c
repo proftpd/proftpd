@@ -1,6 +1,6 @@
 /*
  * ProFTPD - mod_sftp sftp
- * Copyright (c) 2008-2024 TJ Saunders
+ * Copyright (c) 2008-2026 TJ Saunders
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -13,8 +13,7 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software
- * Foundation, Inc., 51 Franklin Street, Suite 500, Boston, MA 02110-1335, USA.
+ * along with this program; if not, see <https://www.gnu.org/licenses/>.
  *
  * As a special exemption, TJ Saunders and other respective copyright holders
  * give permission to link this program with OpenSSL, and distribute the
@@ -4325,12 +4324,13 @@ static int fxp_handle_ext_check_file(struct fxp_packet *fxp, char *digest_list,
     return fxp_packet_write(resp);
   }
 
-  if (offset >= st.st_size) {
+  if (offset < 0 ||
+      offset >= st.st_size) {
     xerrno = EINVAL;
 
     (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
       "client check-file request sent invalid offset (%" PR_LU
-      " >= %" PR_LU " file size)", (pr_off_t) offset, (pr_off_t) st.st_size);
+      " vs %" PR_LU " file size)", (pr_off_t) offset, (pr_off_t) st.st_size);
 
     status_code = fxp_errno2status(xerrno, &reason);
 
@@ -10525,6 +10525,31 @@ static int fxp_handle_read(struct fxp_packet *fxp) {
   pr_scoreboard_entry_update(session.pid,
     PR_SCORE_CMD_ARG, "%s", fxh->fh->fh_path, NULL, NULL);
 
+  if (((off_t) offset) < 0) {
+    int xerrno = EINVAL;
+    uint32_t status_code;
+    const char *reason;
+
+    (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
+      "requested invalid read offset (%" PR_LU " bytes)", (pr_off_t) offset);
+
+    status_code = fxp_errno2status(xerrno, &reason);
+
+    pr_trace_msg(trace_channel, 8, "sending response: STATUS %lu '%s'",
+      (unsigned long) status_code, fxp_strerror(status_code));
+
+    fxp_status_write(fxp->pool, &buf, &buflen, fxp->request_id, status_code,
+      reason, NULL);
+
+    fxp_cmd_dispatch_err(cmd);
+
+    resp = fxp_packet_create(fxp->pool, fxp->channel_id);
+    resp->payload = ptr;
+    resp->payload_sz = (bufsz - buflen);
+
+    return fxp_packet_write(resp);
+  }
+
   if ((off_t) offset > fxh->fh_st->st_size) {
     uint32_t status_code;
     const char *reason;
@@ -13581,6 +13606,31 @@ static int fxp_handle_write(struct fxp_packet *fxp) {
   pr_scoreboard_entry_update(session.pid,
     PR_SCORE_CMD_ARG, "%s", fxh->fh->fh_path, NULL, NULL);
   fxh->xfer.total_bytes += datalen;
+
+  if (((off_t) offset) < 0) {
+    int xerrno = EINVAL;
+    uint32_t status_code;
+    const char *reason;
+
+    (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
+      "requested invalid write offset (%" PR_LU " bytes)", (pr_off_t) offset);
+
+    status_code = fxp_errno2status(xerrno, &reason);
+
+    pr_trace_msg(trace_channel, 8, "sending response: STATUS %lu '%s'",
+      (unsigned long) status_code, fxp_strerror(status_code));
+
+    fxp_status_write(fxp->pool, &buf, &buflen, fxp->request_id, status_code,
+      reason, NULL);
+
+    fxp_cmd_dispatch_err(cmd);
+
+    resp = fxp_packet_create(fxp->pool, fxp->channel_id);
+    resp->payload = ptr;
+    resp->payload_sz = (bufsz - buflen);
+
+    return fxp_packet_write(resp);
+  }
 
   /* It would be nice to check the requested offset against the size of
    * the file.  However, the protocol specifically allows for sparse files,
