@@ -954,7 +954,7 @@ void pr_data_abort(int err, int quiet) {
 /* From response.c.  XXX Need to provide these symbols another way. */
 extern pr_response_t *resp_list, *resp_err_list;
 
-static int peek_is_abor_cmd(void) {
+static int peek_is_aborting_cmd(int *is_quit_cmd) {
   int fd, res;
   fd_set rfds;
   struct timeval tv;
@@ -1021,13 +1021,20 @@ static int peek_is_abor_cmd(void) {
     return TRUE;
   }
 
-  pr_trace_msg(trace_channel, 20, "peeked data '%.*s' not ABOR command",
+  if (strncasecmp(buf, "QUIT\r", len) == 0) {
+    pr_trace_msg(trace_channel, 20, "peeked data probably 'QUIT' command");
+    *is_quit_cmd = TRUE;
+
+    return TRUE;
+  }
+
+  pr_trace_msg(trace_channel, 20, "peeked data '%.*s' not ABOR or QUIT command",
     (int) len, buf);
   return FALSE;
 }
 
 static void poll_ctrl(void) {
-  int res;
+  int res, is_quit_cmd = FALSE;
 
   if (session.c == NULL) {
     return;
@@ -1041,12 +1048,13 @@ static void poll_ctrl(void) {
   if (res == 0 &&
       !(session.sf_flags & SF_ABORT)) {
 
-    /* First, we peek at the data, to see if it is an ABOR command.  Why?
+    /* First, we peek at the data, to see if it is an ABOR (or QUIT) command.
+     * Why?
      *
      * Consider the case where a client uses the TCP OOB mechanism and
      * marks the ABOR command with the marker.  In that case, a SIGURG signal
      * will have been raised, and the SF_ABORT flag set.  The actual "ABOR"
-     * data on the control connection will be read only AFTER the data transfer
+     * bytes on the control connection will be read only AFTER the data transfer
      * has been failed.  This leads the proper ordering of multiple responses
      * (first for failed transfer, second for successful ABOR) in such cases.
      *
@@ -1058,12 +1066,13 @@ static void poll_ctrl(void) {
      * leads to different behavior, different ordering of responses.
      *
      * Thus we cheat here, and only peek at the control connection data.  IFF
-     * it is the "ABOR\r\n" text, then we set the SF_ABORT flag ourselves
-     * here, and preserve the expected semantics (Bug #4402).
+     * it is the "ABOR\r\n" (or "QUIT\r\n") text, then we set the SF_ABORT
+     * flag ourselves here, and preserve the expected semantics (Bug #4402).
      */
-    if (peek_is_abor_cmd() == TRUE) {
-      pr_trace_msg(trace_channel, 5, "client sent 'ABOR' command during data "
-        "transfer, setting 'aborted' session flag");
+    if (peek_is_aborting_cmd(&is_quit_cmd) == TRUE) {
+      pr_trace_msg(trace_channel, 5, "client sent '%s' command during data "
+        "transfer, setting 'aborted' session flag",
+        is_quit_cmd ? "QUIT" : "ABOR");
 
       session.sf_flags |= SF_ABORT;
 
@@ -1071,170 +1080,6 @@ static void poll_ctrl(void) {
         pr_netio_abort(nstrm);
         errno = 0;
       }
-    }
-  }
-
-  if (res == 0 &&
-      !(session.sf_flags & SF_ABORT)) {
-    cmd_rec *cmd = NULL;
-
-    pr_trace_msg(trace_channel, 1,
-      "data available for reading on control channel during data transfer, "
-      "reading control data");
-    res = pr_cmd_read(&cmd);
-    if (res < 0) {
-      int xerrno;
-
-#if defined(ECONNABORTED)
-      xerrno = ECONNABORTED;
-#elif defined(ENOTCONN)
-      xerrno = ENOTCONN;
-#else
-      xerrno = EIO;
-#endif
-
-      pr_trace_msg(trace_channel, 1,
-        "unable to read control command during data transfer: %s",
-        strerror(xerrno));
-      errno = xerrno;
-
-#ifndef PR_DEVEL_NO_DAEMON
-      /* Otherwise, EOF */
-      pr_session_disconnect(NULL, PR_SESS_DISCONNECT_CLIENT_EOF, NULL);
-#else
-      return;
-#endif /* PR_DEVEL_NO_DAEMON */
-
-    } else if (cmd != NULL) {
-      char *ch;
-
-      for (ch = cmd->argv[0]; *ch; ch++) {
-        if (PR_ISALPHA((int) *ch)) {
-          *ch = toupper((int) *ch);
-        }
-      }
-
-      cmd->cmd_id = pr_cmd_get_id(cmd->argv[0]);
-
-      /* Only handle commands which do not involve data transfers; we
-       * already have a data transfer in progress.  For any data transfer
-       * command, send a 450 ("busy") reply.  Looks like almost all of the
-       * data transfer commands accept that response, as per RFC959.
-       *
-       * We also prevent the EPRT, EPSV, PASV, and PORT commands, since
-       * they will also interfere with the current data transfer.  In doing
-       * so, we break RFC compliance a little; RFC959 does not allow a
-       * response code of 450 for those commands (although it should).
-       */
-      if (pr_cmd_cmp(cmd, PR_CMD_APPE_ID) == 0 ||
-          pr_cmd_cmp(cmd, PR_CMD_LIST_ID) == 0 ||
-          pr_cmd_cmp(cmd, PR_CMD_MLSD_ID) == 0 ||
-          pr_cmd_cmp(cmd, PR_CMD_NLST_ID) == 0 ||
-          pr_cmd_cmp(cmd, PR_CMD_RETR_ID) == 0 ||
-          pr_cmd_cmp(cmd, PR_CMD_STOR_ID) == 0 ||
-          pr_cmd_cmp(cmd, PR_CMD_STOU_ID) == 0 ||
-          pr_cmd_cmp(cmd, PR_CMD_RNFR_ID) == 0 ||
-          pr_cmd_cmp(cmd, PR_CMD_RNTO_ID) == 0 ||
-          pr_cmd_cmp(cmd, PR_CMD_PORT_ID) == 0 ||
-          pr_cmd_cmp(cmd, PR_CMD_EPRT_ID) == 0 ||
-          pr_cmd_cmp(cmd, PR_CMD_PASV_ID) == 0 ||
-          pr_cmd_cmp(cmd, PR_CMD_EPSV_ID) == 0) {
-        pool *resp_pool;
-
-        pr_trace_msg(trace_channel, 5,
-          "client sent '%s' command during data transfer, denying",
-          (char *) cmd->argv[0]);
-
-        resp_list = resp_err_list = NULL;
-        resp_pool = pr_response_get_pool();
-
-        pr_response_set_pool(cmd->pool);
-
-        pr_response_add_err(R_450, _("%s: data transfer in progress"),
-          (char *) cmd->argv[0]);
-
-        pr_response_flush(&resp_err_list);
-
-        pr_response_set_pool(resp_pool);
-        destroy_pool(cmd->pool);
-
-      /* We don't want to actually dispatch the NOOP command, since that
-       * would overwrite the scoreboard with the NOOP state; admins probably
-       * want to see the command that caused the data transfer.  And since
-       * NOOP doesn't take a 450 response (as per RFC959), we will simply
-       * return 200.
-       */
-      } else if (pr_cmd_cmp(cmd, PR_CMD_NOOP_ID) == 0) {
-        pool *resp_pool;
-
-        pr_trace_msg(trace_channel, 5,
-          "client sent '%s' command during data transfer, ignoring",
-          (char *) cmd->argv[0]);
-
-        resp_list = resp_err_list = NULL;
-        resp_pool = pr_response_get_pool();
-
-        pr_response_set_pool(cmd->pool);
-
-        pr_response_add(R_200, _("%s: data transfer in progress"),
-          (char *) cmd->argv[0]);
-
-        pr_response_flush(&resp_list);
-
-        pr_response_set_pool(resp_pool);
-        destroy_pool(cmd->pool);
-
-      } else {
-        char *title_buf = NULL;
-        int curr_cmd_id = 0, title_len = -1;
-        const char *curr_cmd = NULL, *sce_cmd = NULL, *sce_cmd_arg = NULL;
-        cmd_rec *curr_cmd_rec = NULL;
-        pool *resp_pool;
-
-        pr_trace_msg(trace_channel, 5,
-          "client sent '%s' command during data transfer, dispatching",
-          (char *) cmd->argv[0]);
-
-        title_len = pr_proctitle_get(NULL, 0);
-        if (title_len > 0) {
-          title_buf = pcalloc(cmd->pool, title_len + 1);
-          pr_proctitle_get(title_buf, title_len + 1);
-        }
-
-        curr_cmd = session.curr_cmd;
-        curr_cmd_id = session.curr_cmd_id;
-        curr_cmd_rec = session.curr_cmd_rec;
-        sce_cmd = pr_scoreboard_entry_get(PR_SCORE_CMD);
-        sce_cmd_arg = pr_scoreboard_entry_get(PR_SCORE_CMD_ARG);
-
-        resp_list = resp_err_list = NULL;
-        resp_pool = pr_response_get_pool();
-
-        pr_response_set_pool(cmd->pool);
-        pr_cmd_dispatch(cmd);
-
-        pr_scoreboard_entry_update(session.pid,
-          PR_SCORE_CMD, "%s", sce_cmd, NULL, NULL);
-        pr_scoreboard_entry_update(session.pid,
-          PR_SCORE_CMD_ARG, "%s", sce_cmd_arg, NULL, NULL);
-
-        if (title_len > 0) {
-          pr_proctitle_set_str(title_buf);
-        }
-
-        pr_response_flush(&resp_list);
-        pr_response_set_pool(resp_pool);
-        destroy_pool(cmd->pool);
-
-        session.curr_cmd = curr_cmd;
-        session.curr_cmd_id = curr_cmd_id;
-        session.curr_cmd_rec = curr_cmd_rec;
-      }
-
-    } else {
-      pr_trace_msg(trace_channel, 3,
-        "invalid command sent, sending error response");
-      pr_response_send(R_500, _("Invalid command: try being more creative"));
     }
   }
 }
