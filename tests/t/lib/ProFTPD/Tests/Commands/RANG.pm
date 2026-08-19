@@ -60,9 +60,19 @@ my $TESTS = {
     test_class => [qw(forking)],
   },
 
+  rang_fails_negative_start_via_overflow_issue2286 => {
+    order => ++$order,
+    test_class => [qw(bug forking)],
+  },
+
   rang_fails_negative_end => {
     order => ++$order,
     test_class => [qw(forking)],
+  },
+
+  rang_fails_negative_end_via_overflow_issue2286 => {
+    order => ++$order,
+    test_class => [qw(bug forking)],
   },
 
   rang_fails_start_after_end => {
@@ -218,7 +228,7 @@ sub rang_ok {
   server_stop($setup->{pid_file});
   $self->assert_child_ok($pid);
 
-  test_cleanup($setup->{log_file}, $ex);
+  test_cleanup($setup, $ex);
 }
 
 sub rang_ok_feat {
@@ -304,7 +314,7 @@ sub rang_ok_feat {
   server_stop($setup->{pid_file});
   $self->assert_child_ok($pid);
 
-  test_cleanup($setup->{log_file}, $ex);
+  test_cleanup($setup, $ex);
 }
 
 sub rang_ok_help {
@@ -390,7 +400,7 @@ sub rang_ok_help {
   server_stop($setup->{pid_file});
   $self->assert_child_ok($pid);
 
-  test_cleanup($setup->{log_file}, $ex);
+  test_cleanup($setup, $ex);
 }
 
 sub rang_ok_reset {
@@ -470,7 +480,7 @@ sub rang_ok_reset {
   server_stop($setup->{pid_file});
   $self->assert_child_ok($pid);
 
-  test_cleanup($setup->{log_file}, $ex);
+  test_cleanup($setup, $ex);
 }
 
 sub rang_fails_login_required {
@@ -548,7 +558,7 @@ sub rang_fails_login_required {
   server_stop($setup->{pid_file});
   $self->assert_child_ok($pid);
 
-  test_cleanup($setup->{log_file}, $ex);
+  test_cleanup($setup, $ex);
 }
 
 sub rang_fails_ascii {
@@ -631,7 +641,7 @@ sub rang_fails_ascii {
   server_stop($setup->{pid_file});
   $self->assert_child_ok($pid);
 
-  test_cleanup($setup->{log_file}, $ex);
+  test_cleanup($setup, $ex);
 }
 
 sub rang_fails_invalid_start {
@@ -718,7 +728,7 @@ sub rang_fails_invalid_start {
   server_stop($setup->{pid_file});
   $self->assert_child_ok($pid);
 
-  test_cleanup($setup->{log_file}, $ex);
+  test_cleanup($setup, $ex);
 }
 
 sub rang_fails_invalid_end {
@@ -805,7 +815,7 @@ sub rang_fails_invalid_end {
   server_stop($setup->{pid_file});
   $self->assert_child_ok($pid);
 
-  test_cleanup($setup->{log_file}, $ex);
+  test_cleanup($setup, $ex);
 }
 
 sub rang_fails_negative_start {
@@ -892,7 +902,94 @@ sub rang_fails_negative_start {
   server_stop($setup->{pid_file});
   $self->assert_child_ok($pid);
 
-  test_cleanup($setup->{log_file}, $ex);
+  test_cleanup($setup, $ex);
+}
+
+sub rang_fails_negative_start_via_overflow_issue2286 {
+  my $self = shift;
+  my $tmpdir = $self->{tmpdir};
+  my $setup = test_setup($tmpdir, 'cmds');
+
+  my $config = {
+    PidFile => $setup->{pid_file},
+    ScoreboardFile => $setup->{scoreboard_file},
+    SystemLog => $setup->{log_file},
+
+    AuthUserFile => $setup->{auth_user_file},
+    AuthGroupFile => $setup->{auth_group_file},
+    AuthOrder => 'mod_auth_file.c',
+
+    IfModules => {
+      'mod_delay.c' => {
+        DelayEngine => 'off',
+      },
+    },
+  };
+
+  my ($port, $config_user, $config_group) = config_write($setup->{config_file},
+    $config);
+
+  # Open pipes, for use between the parent and child processes.  Specifically,
+  # the child will indicate when it's done with its test by writing a message
+  # to the parent.
+  my ($rfh, $wfh);
+  unless (pipe($rfh, $wfh)) {
+    die("Can't open pipe: $!");
+  }
+
+  my $ex;
+
+  # Fork child
+  $self->handle_sigchld();
+  defined(my $pid = fork()) or die("Can't fork: $!");
+  if ($pid) {
+    eval {
+      # Allow for server startup
+      sleep(1);
+
+      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port, 0);
+      $client->login($setup->{user}, $setup->{passwd});
+      $client->type('binary');
+      eval { $client->rang(sprintf("%.f", 2**63), 1) };
+      unless ($@) {
+        die("RANG succeeded unexpectedly");
+      }
+
+      my $resp_code = $client->response_code();
+      my $resp_msg = $client->response_msg();
+
+      my $expected = 501;
+      $self->assert($expected == $resp_code,
+        test_msg("Expected response code $expected, got $resp_code"));
+
+      $expected = "RANG requires a value greater than or equal to 0";
+      $self->assert($expected eq $resp_msg,
+        test_msg("Expected response message '$expected', got '$resp_msg'"));
+
+      $client->quit();
+    };
+    if ($@) {
+      $ex = $@;
+    }
+
+    $wfh->print("done\n");
+    $wfh->flush();
+
+  } else {
+    eval { server_wait($setup->{config_file}, $rfh) };
+    if ($@) {
+      warn($@);
+      exit 1;
+    }
+
+    exit 0;
+  }
+
+  # Stop server
+  server_stop($setup->{pid_file});
+  $self->assert_child_ok($pid);
+
+  test_cleanup($setup, $ex);
 }
 
 sub rang_fails_negative_end {
@@ -976,7 +1073,91 @@ sub rang_fails_negative_end {
   server_stop($setup->{pid_file});
   $self->assert_child_ok($pid);
 
-  test_cleanup($setup->{log_file}, $ex);
+  test_cleanup($setup, $ex);
+}
+
+sub rang_fails_negative_end_via_overflow_issue2286 {
+  my $self = shift;
+  my $tmpdir = $self->{tmpdir};
+  my $setup = test_setup($tmpdir, 'cmds');
+
+  my $config = {
+    PidFile => $setup->{pid_file},
+    ScoreboardFile => $setup->{scoreboard_file},
+    SystemLog => $setup->{log_file},
+
+    AuthUserFile => $setup->{auth_user_file},
+    AuthGroupFile => $setup->{auth_group_file},
+    AuthOrder => 'mod_auth_file.c',
+
+    IfModules => {
+      'mod_delay.c' => {
+        DelayEngine => 'off',
+      },
+    },
+  };
+
+  my ($port, $config_user, $config_group) = config_write($setup->{config_file},
+    $config);
+
+  # Open pipes, for use between the parent and child processes.  Specifically,
+  # the child will indicate when it's done with its test by writing a message
+  # to the parent.
+  my ($rfh, $wfh);
+  unless (pipe($rfh, $wfh)) {
+    die("Can't open pipe: $!");
+  }
+
+  my $ex;
+
+  # Fork child
+  $self->handle_sigchld();
+  defined(my $pid = fork()) or die("Can't fork: $!");
+  if ($pid) {
+    eval {
+      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port, 0);
+      $client->login($setup->{user}, $setup->{passwd});
+      $client->type('binary');
+      eval { $client->rang(1, sprintf("%.f", 2**63)) };
+      unless ($@) {
+        die("RANG succeeded unexpectedly");
+      }
+
+      my $resp_code = $client->response_code();
+      my $resp_msg = $client->response_msg();
+
+      my $expected = 501;
+      $self->assert($expected == $resp_code,
+        test_msg("Expected response code $expected, got $resp_code"));
+
+      $expected = "RANG requires a value greater than or equal to 0";
+      $self->assert($expected eq $resp_msg,
+        test_msg("Expected response message '$expected', got '$resp_msg'"));
+
+      $client->quit();
+    };
+    if ($@) {
+      $ex = $@;
+    }
+
+    $wfh->print("done\n");
+    $wfh->flush();
+
+  } else {
+    eval { server_wait($setup->{config_file}, $rfh) };
+    if ($@) {
+      warn($@);
+      exit 1;
+    }
+
+    exit 0;
+  }
+
+  # Stop server
+  server_stop($setup->{pid_file});
+  $self->assert_child_ok($pid);
+
+  test_cleanup($setup, $ex);
 }
 
 sub rang_fails_start_after_end {
@@ -1063,7 +1244,7 @@ sub rang_fails_start_after_end {
   server_stop($setup->{pid_file});
   $self->assert_child_ok($pid);
 
-  test_cleanup($setup->{log_file}, $ex);
+  test_cleanup($setup, $ex);
 }
 
 sub rang_retr_ok_with_sendfile {
@@ -1177,7 +1358,7 @@ sub rang_retr_ok_with_sendfile {
   server_stop($setup->{pid_file});
   $self->assert_child_ok($pid);
 
-  test_cleanup($setup->{log_file}, $ex);
+  test_cleanup($setup, $ex);
 }
 
 sub rang_retr_ok_no_sendfile {
@@ -1249,6 +1430,7 @@ sub rang_retr_ok_no_sendfile {
 
       my $buf;
       my $len = $conn->read($buf, 1024);
+      sleep(0.25);
       eval { $conn->close() };
 
       my $resp_code = $client->response_code();
@@ -1280,7 +1462,7 @@ sub rang_retr_ok_no_sendfile {
   server_stop($setup->{pid_file});
   $self->assert_child_ok($pid);
 
-  test_cleanup($setup->{log_file}, $ex);
+  test_cleanup($setup, $ex);
 }
 
 sub rang_retr_ok_end_exceeds_file_size {
@@ -1347,6 +1529,7 @@ sub rang_retr_ok_end_exceeds_file_size {
 
       my $buf;
       my $len = $conn->read($buf, 1024);
+      sleep(0.25);
       eval { $conn->close() };
 
       my $resp_code = $client->response_code();
@@ -1378,7 +1561,7 @@ sub rang_retr_ok_end_exceeds_file_size {
   server_stop($setup->{pid_file});
   $self->assert_child_ok($pid);
 
-  test_cleanup($setup->{log_file}, $ex);
+  test_cleanup($setup, $ex);
 }
 
 sub rang_retr_fails_bad_start {
@@ -1476,7 +1659,7 @@ sub rang_retr_fails_bad_start {
   server_stop($setup->{pid_file});
   $self->assert_child_ok($pid);
 
-  test_cleanup($setup->{log_file}, $ex);
+  test_cleanup($setup, $ex);
 }
 
 sub rang_stor_ok {
@@ -1597,7 +1780,7 @@ sub rang_stor_ok {
   server_stop($setup->{pid_file});
   $self->assert_child_ok($pid);
 
-  test_cleanup($setup->{log_file}, $ex);
+  test_cleanup($setup, $ex);
 }
 
 sub rang_stor_ok_no_existing_file {
@@ -1696,7 +1879,7 @@ sub rang_stor_ok_no_existing_file {
   server_stop($setup->{pid_file});
   $self->assert_child_ok($pid);
 
-  test_cleanup($setup->{log_file}, $ex);
+  test_cleanup($setup, $ex);
 }
 
 sub rang_stor_fails_bad_start {
@@ -1786,7 +1969,7 @@ sub rang_stor_fails_bad_start {
   server_stop($setup->{pid_file});
   $self->assert_child_ok($pid);
 
-  test_cleanup($setup->{log_file}, $ex);
+  test_cleanup($setup, $ex);
 }
 
 sub rang_stor_fails_too_little_data {
@@ -1881,7 +2064,7 @@ sub rang_stor_fails_too_little_data {
   server_stop($setup->{pid_file});
   $self->assert_child_ok($pid);
 
-  test_cleanup($setup->{log_file}, $ex);
+  test_cleanup($setup, $ex);
 }
 
 sub rang_stor_fails_too_much_data {
@@ -1976,7 +2159,7 @@ sub rang_stor_fails_too_much_data {
   server_stop($setup->{pid_file});
   $self->assert_child_ok($pid);
 
-  test_cleanup($setup->{log_file}, $ex);
+  test_cleanup($setup, $ex);
 }
 
 sub rang_appe_fails {
@@ -2075,7 +2258,7 @@ sub rang_appe_fails {
   server_stop($setup->{pid_file});
   $self->assert_child_ok($pid);
 
-  test_cleanup($setup->{log_file}, $ex);
+  test_cleanup($setup, $ex);
 }
 
 sub rang_stou_fails {
@@ -2174,7 +2357,7 @@ sub rang_stou_fails {
   server_stop($setup->{pid_file});
   $self->assert_child_ok($pid);
 
-  test_cleanup($setup->{log_file}, $ex);
+  test_cleanup($setup, $ex);
 }
 
 sub rang_config_limit_deny {
@@ -2272,7 +2455,7 @@ EOC
   server_stop($setup->{pid_file});
   $self->assert_child_ok($pid);
 
-  test_cleanup($setup->{log_file}, $ex);
+  test_cleanup($setup, $ex);
 }
 
 1;

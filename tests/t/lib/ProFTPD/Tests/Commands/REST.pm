@@ -30,6 +30,11 @@ my $TESTS = {
     test_class => [qw(forking)],
   },
 
+  rest_fails_negative_offset_via_overflow_issue2286 => {
+    order => ++$order,
+    test_class => [qw(bug forking)],
+  },
+
   rest_fails_bad_offset => {
     order => ++$order,
     test_class => [qw(forking)],
@@ -275,45 +280,15 @@ sub rest_fails_login_required {
 sub rest_fails_negative_offset {
   my $self = shift;
   my $tmpdir = $self->{tmpdir};
-
-  my $config_file = "$tmpdir/cmds.conf";
-  my $pid_file = File::Spec->rel2abs("$tmpdir/cmds.pid");
-  my $scoreboard_file = File::Spec->rel2abs("$tmpdir/cmds.scoreboard");
-
-  my $log_file = test_get_logfile();
-
-  my $auth_user_file = File::Spec->rel2abs("$tmpdir/cmds.passwd");
-  my $auth_group_file = File::Spec->rel2abs("$tmpdir/cmds.group");
-
-  my $user = 'proftpd';
-  my $passwd = 'test';
-  my $home_dir = File::Spec->rel2abs($tmpdir);
-  my $uid = 500;
-  my $gid = 500;
-
-  # Make sure that, if we're running as root, that the home directory has
-  # permissions/privs set for the account we create
-  if ($< == 0) {
-    unless (chmod(0755, $home_dir)) {
-      die("Can't set perms on $home_dir to 0755: $!");
-    }
-
-    unless (chown($uid, $gid, $home_dir)) {
-      die("Can't set owner of $home_dir to $uid/$gid: $!");
-    }
-  }
-
-  auth_user_write($auth_user_file, $user, $passwd, $uid, $gid, $home_dir,
-    '/bin/bash');
-  auth_group_write($auth_group_file, 'ftpd', $gid, $user);
+  my $setup = test_setup($tmpdir, 'cmds');
 
   my $config = {
-    PidFile => $pid_file,
-    ScoreboardFile => $scoreboard_file,
-    SystemLog => $log_file,
+    PidFile => $setup->{pid_file},
+    ScoreboardFile => $setup->{scoreboard_file},
+    SystemLog => $setup->{log_file},
 
-    AuthUserFile => $auth_user_file,
-    AuthGroupFile => $auth_group_file,
+    AuthUserFile => $setup->{auth_user_file},
+    AuthGroupFile => $setup->{auth_group_file},
     AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
@@ -323,7 +298,8 @@ sub rest_fails_negative_offset {
     },
   };
 
-  my ($port, $config_user, $config_group) = config_write($config_file, $config);
+  my ($port, $config_user, $config_group) = config_write($setup->{config_file},
+    $config);
 
   # Open pipes, for use between the parent and child processes.  Specifically,
   # the child will indicate when it's done with its test by writing a message
@@ -340,31 +316,29 @@ sub rest_fails_negative_offset {
   defined(my $pid = fork()) or die("Can't fork: $!");
   if ($pid) {
     eval {
+      # Allow for server startup
+      sleep(1);
+
       my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
+      $client->login($setup->{user}, $setup->{passwd});
 
-      $client->login($user, $passwd);
-
-      my ($resp_code, $resp_msg);
-      eval { ($resp_code, $resp_msg) = $client->rest(-1) };
+      eval { $client->rest(-1) };
       unless ($@) {
         die("REST succeeded unexpectedly");
-
-      } else {
-        $resp_code = $client->response_code();
-        $resp_msg = $client->response_msg();
       }
 
-      my $expected;
+      my $resp_code = $client->response_code();
+      my $resp_msg = $client->response_msg();
+      $client->quit();
 
-      $expected = 501;
+      my $expected = 501;
       $self->assert($expected == $resp_code,
-        test_msg("Expected $expected, got $resp_code"));
+        test_msg("Expected response code $expected, got $resp_code"));
 
       $expected = "REST requires a value greater than or equal to 0";
       $self->assert($expected eq $resp_msg,
-        test_msg("Expected '$expected', got '$resp_msg'"));
+        test_msg("Expected response message '$expected', got '$resp_msg'"));
     };
-
     if ($@) {
       $ex = $@;
     }
@@ -373,7 +347,7 @@ sub rest_fails_negative_offset {
     $wfh->flush();
 
   } else {
-    eval { server_wait($config_file, $rfh) };
+    eval { server_wait($setup->{config_file}, $rfh) };
     if ($@) {
       warn($@);
       exit 1;
@@ -383,18 +357,98 @@ sub rest_fails_negative_offset {
   }
 
   # Stop server
-  server_stop($pid_file);
-
+  server_stop($setup->{pid_file});
   $self->assert_child_ok($pid);
 
-  if ($ex) {
-    test_append_logfile($log_file, $ex);
-    unlink($log_file);
+  test_cleanup($setup, $ex);
+}
 
-    die($ex);
+sub rest_fails_negative_offset_via_overflow_issue2286 {
+  my $self = shift;
+  my $tmpdir = $self->{tmpdir};
+  my $setup = test_setup($tmpdir, 'cmds');
+
+  my $config = {
+    PidFile => $setup->{pid_file},
+    ScoreboardFile => $setup->{scoreboard_file},
+    SystemLog => $setup->{log_file},
+    TraceLog => $setup->{log_file},
+    Trace => 'xfer:10',
+
+    AuthUserFile => $setup->{auth_user_file},
+    AuthGroupFile => $setup->{auth_group_file},
+    AuthOrder => 'mod_auth_file.c',
+
+    IfModules => {
+      'mod_delay.c' => {
+        DelayEngine => 'off',
+      },
+    },
+  };
+
+  my ($port, $config_user, $config_group) = config_write($setup->{config_file},
+    $config);
+
+  # Open pipes, for use between the parent and child processes.  Specifically,
+  # the child will indicate when it's done with its test by writing a message
+  # to the parent.
+  my ($rfh, $wfh);
+  unless (pipe($rfh, $wfh)) {
+    die("Can't open pipe: $!");
   }
 
-  unlink($log_file);
+  my $ex;
+
+  # Fork child
+  $self->handle_sigchld();
+  defined(my $pid = fork()) or die("Can't fork: $!");
+  if ($pid) {
+    eval {
+      # Allow for server startup
+      sleep(1);
+
+      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
+      $client->login($setup->{user}, $setup->{passwd});
+
+      eval { $client->rest(sprintf("%.f", 2**63)) };
+      unless ($@) {
+        die("REST succeeded unexpectedly");
+      }
+
+      my $resp_code = $client->response_code();
+      my $resp_msg = $client->response_msg();
+      $client->quit();
+
+      my $expected = 501;
+      $self->assert($expected == $resp_code,
+        test_msg("Expected response code $expected, got $resp_code"));
+
+      $expected = "REST requires a value greater than or equal to 0";
+      $self->assert($expected eq $resp_msg,
+        test_msg("Expected response message '$expected', got '$resp_msg'"));
+    };
+    if ($@) {
+      $ex = $@;
+    }
+
+    $wfh->print("done\n");
+    $wfh->flush();
+
+  } else {
+    eval { server_wait($setup->{config_file}, $rfh) };
+    if ($@) {
+      warn($@);
+      exit 1;
+    }
+
+    exit 0;
+  }
+
+  # Stop server
+  server_stop($setup->{pid_file});
+  $self->assert_child_ok($pid);
+
+  test_cleanup($setup, $ex);
 }
 
 sub rest_fails_bad_offset {
