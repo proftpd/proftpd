@@ -605,21 +605,38 @@ static int recv_perms(pool *p, uint32_t channel_id, char *mode_str,
 
 static int recv_filesz(pool *p, uint32_t channel_id, char *size_str,
     off_t *filesz) {
+  int res = 0;
   char *endp = NULL;
   unsigned long long sz;
+
   *filesz = 0;
 
+  errno = 0;
 #if defined(HAVE_STROULL)
   sz = strtoull(size_str, &endp, 10);
+  if (sz == ULLONG_MAX &&
+      errno == ERANGE) {
+    res = -1;
+  }
 #else
   sz = strtoul(size_str, &endp, 10);
+  if (sz == ULONG_MAX &&
+      errno == ERANGE) {
+    res = -1;
+  }
 #endif /* HAVE_STROULL */
+
+  /* Watch for cases where the sent file size might overflow our size type. */
+  if (res < 0) {
+    pr_trace_msg(trace_channel, 2, "file size '%s' out of range", size_str);
+    write_confirm(p, channel_id, 1, "file size out of range");
+    return -1;
+  }
 
   *filesz = (off_t) sz;
 
-  /* Watch for cases where the sent file size might overflow our size type. */
   if (*filesz < 0) {
-    pr_trace_msg(trace_channel, 2, "file size out of range");
+    pr_trace_msg(trace_channel, 2, "file size '%s' out of range", size_str);
     write_confirm(p, channel_id, 1, "file size out of range");
     return -1;
   }
