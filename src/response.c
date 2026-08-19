@@ -140,7 +140,7 @@ void pr_response_clear(pr_response_t **head) {
 }
 
 void pr_response_flush(pr_response_t **head) {
-  unsigned char ml = FALSE;
+  int multiline = FALSE;
   const char *last_numeric = NULL;
   pr_response_t *resp = NULL;
 
@@ -165,14 +165,14 @@ void pr_response_flush(pr_response_t **head) {
   }
 
   for (resp = *head; resp; resp = resp->next) {
-    if (ml) {
+    if (multiline == TRUE) {
       /* Look for end of multiline */
       if (resp->next == NULL ||
           (resp->num != NULL &&
            strcmp(resp->num, last_numeric) != 0)) {
         RESPONSE_WRITE_NUM_STR(session.c->outstrm, "%s %s\r\n", last_numeric,
           resp->msg)
-        ml = FALSE;
+        multiline = FALSE;
 
       } else {
         /* RFC2228's multiline responses are required for protected sessions. */
@@ -192,7 +192,7 @@ void pr_response_flush(pr_response_t **head) {
            strcmp(resp->num, resp->next->num) == 0)) {
         RESPONSE_WRITE_NUM_STR(session.c->outstrm, "%s-%s\r\n", resp->num,
           resp->msg)
-        ml = TRUE;
+        multiline = TRUE;
         last_numeric = resp->num;
 
       } else {
