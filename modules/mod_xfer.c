@@ -2447,6 +2447,7 @@ MODRET xfer_stor(cmd_rec *cmd) {
 
 /* Should this become part of the String API? */
 static int parse_offset(char *str, off_t *num) {
+  int res = 0;
   char *ptr, *tmp = NULL;
   unsigned long n;
   off_t sz;
@@ -2464,11 +2465,19 @@ static int parse_offset(char *str, off_t *num) {
 
 #if defined(HAVE_STRTOULL)
   n = strtoull(ptr, &tmp, 10);
+  if (n == ULLONG_MAX &&
+      errno == ERANGE) {
+    res = -1;
+  }
 #else
   n = strtoul(ptr, &tmp, 10);
+  if (n == ULONG_MAX &&
+      errno == ERANGE) {
+    res = -1;
+  }
 #endif /* HAVE_STRTOULL */
 
-  if (errno == ERANGE) {
+  if (res < 0) {
     pr_trace_msg(trace_channel, 3,
       "client-sent offset '%s' conversion error: %s", ptr, strerror(errno));
     errno = EINVAL;
