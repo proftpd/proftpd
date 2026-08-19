@@ -54,6 +54,12 @@ sub new {
     my $callback_timeout = 3;
     $callback_timeout = $cmd_timeout if defined($cmd_timeout);
     $Net::Cmd::timeout = sub { $callback_timeout };
+
+    # We also need to install our custom set_status routine, so that we can
+    # properly accumulate multiple different responses from an abort.
+    # Changes to Net::Cmd broke this previous behavior with their new
+    # "set_status" stuff.  Grr.
+    *Net::Cmd::set_status = sub { set_status(@_) };
   }
 
   while (1) {
@@ -193,6 +199,42 @@ sub response_uniq {
   }
 
   return $uniq;
+}
+
+sub set_status {
+  my $cmd = shift;
+  my $code = shift;
+  my $msg = shift;
+
+  my $prev_code = ${*$cmd}{'net_cmd_code'};
+  my $prev_msgs = ${*$cmd}{'net_cmd_resp'};
+
+  my $resp = defined($msg) ? [$msg] : [] unless ref($msg);
+
+  # In order to properly accumulate the multiple responses from an aborted
+  # data transfer/session, we only want to ovewrite the any existing
+  # responses if the previous response code is not a 426.  What an ugly hack.
+  my $overwrite_resp = 0;
+
+  if ($prev_code != 426) {
+    $overwrite_resp = 1;
+  }
+
+  # And even more shenanigans for aborted data transfers where the data
+  # transfer completed despite the aborted session.
+
+  if ($prev_code == 226) {
+    if (scalar(grep(/Transfer complete/, @$prev_msgs)) > 0 &&
+        scalar(grep(/Abort successful/, @$prev_msgs)) == 0) {
+      $overwrite_resp = 0;
+    }
+  }
+
+  if ($overwrite_resp) {
+    (${*$cmd}{'net_cmd_code'}, ${*$cmd}{'net_cmd_resp'}) = ($code, $resp);
+  }
+
+  1;
 }
 
 my $login_timeout = 0;

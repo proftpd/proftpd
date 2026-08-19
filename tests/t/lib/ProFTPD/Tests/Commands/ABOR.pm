@@ -312,7 +312,7 @@ sub abor_retr_binary_ok {
   server_stop($setup->{pid_file});
   $self->assert_child_ok($pid);
 
-  test_cleanup($setup->{log_file}, $ex);
+  test_cleanup($setup, $ex);
 }
 
 sub abor_retr_ascii_ok {
@@ -412,7 +412,7 @@ sub abor_retr_ascii_ok {
   server_stop($setup->{pid_file});
   $self->assert_child_ok($pid);
 
-  test_cleanup($setup->{log_file}, $ex);
+  test_cleanup($setup, $ex);
 }
 
 sub abor_retr_ascii_largefile_ok {
@@ -538,7 +538,7 @@ sub abor_retr_ascii_largefile_ok {
   server_stop($setup->{pid_file});
   $self->assert_child_ok($pid);
 
-  test_cleanup($setup->{log_file}, $ex);
+  test_cleanup($setup, $ex);
 }
 
 sub abor_retr_ascii_largefile_followed_by_list_ok {
@@ -617,7 +617,7 @@ sub abor_retr_ascii_largefile_followed_by_list_ok {
       $self->assert_transfer_ok($resp_code, $resp_msg, 1);
 
       # Make sure we can do another data transfer after the abort
-      $conn = $client->list_raw();
+      $conn = $client->list_raw('-l');
       unless ($conn) {
         die("Failed to LIST: " . $client->response_code() . " " .
           $client->response_msg());
@@ -641,6 +641,10 @@ sub abor_retr_ascii_largefile_followed_by_list_ok {
         }
       }
 
+      if (scalar(keys(%$res)) == 0) {
+        die("No matching entries found in LIST data");
+      }
+
       my $expected = {
         'abor.conf' => 1,
         'abor.group' => 1,
@@ -654,6 +658,9 @@ sub abor_retr_ascii_largefile_followed_by_list_ok {
       my $ok = 1;
       my $mismatch;
       foreach my $name (keys(%$res)) {
+        # Ignore ASAN logs
+        next if $name =~ /asan\.log/;
+
         unless (defined($expected->{$name})) {
           $mismatch = $name;
           $ok = 0;
@@ -697,7 +704,7 @@ sub abor_retr_ascii_largefile_followed_by_list_ok {
   server_stop($setup->{pid_file});
   $self->assert_child_ok($pid);
 
-  test_cleanup($setup->{log_file}, $ex);
+  test_cleanup($setup, $ex);
 }
 
 sub abor_retr_binary_largefile_followed_by_retr_ok {
@@ -837,7 +844,7 @@ sub abor_retr_binary_largefile_followed_by_retr_ok {
   server_stop($setup->{pid_file});
   $self->assert_child_ok($pid);
 
-  test_cleanup($setup->{log_file}, $ex);
+  test_cleanup($setup, $ex);
 }
 
 sub abor_retr_binary_largefile_with_sendfile {
@@ -967,7 +974,7 @@ sub abor_retr_binary_largefile_with_sendfile {
   server_stop($setup->{pid_file});
   $self->assert_child_ok($pid);
 
-  test_cleanup($setup->{log_file}, $ex);
+  test_cleanup($setup, $ex);
 }
 
 sub abor_retr_binary_largefile_without_sendfile {
@@ -1094,7 +1101,7 @@ sub abor_retr_binary_largefile_without_sendfile {
   server_stop($setup->{pid_file});
   $self->assert_child_ok($pid);
 
-  test_cleanup($setup->{log_file}, $ex);
+  test_cleanup($setup, $ex);
 }
 
 sub abor_stor_binary_ok {
@@ -1210,7 +1217,7 @@ sub abor_stor_binary_ok {
   server_stop($setup->{pid_file});
   $self->assert_child_ok($pid);
 
-  test_cleanup($setup->{log_file}, $ex);
+  test_cleanup($setup, $ex);
 }
 
 sub abor_stor_ascii_ok {
@@ -1326,7 +1333,7 @@ sub abor_stor_ascii_ok {
   server_stop($setup->{pid_file});
   $self->assert_child_ok($pid);
 
-  test_cleanup($setup->{log_file}, $ex);
+  test_cleanup($setup, $ex);
 }
 
 sub abor_with_cyrillic_encoding_ok {
@@ -1446,7 +1453,7 @@ sub abor_with_cyrillic_encoding_ok {
   server_stop($setup->{pid_file});
   $self->assert_child_ok($pid);
 
-  test_cleanup($setup->{log_file}, $ex);
+  test_cleanup($setup, $ex);
 }
 
 sub abor_no_xfer_ok {
@@ -1534,7 +1541,7 @@ sub abor_no_xfer_ok {
   server_stop($setup->{pid_file});
   $self->assert_child_ok($pid);
 
-  test_cleanup($setup->{log_file}, $ex);
+  test_cleanup($setup, $ex);
 }
 
 sub abor_list_ok {
@@ -1587,7 +1594,7 @@ sub abor_list_ok {
       # not all fit in the transfer buffer, so we can interrupt the buffer.
       # A too-small request will fit in the buffer, and be fulfilled, before
       # our abort is read.
-      my $conn = $client->list_raw('-R /');
+      my $conn = $client->list_raw('-lR /');
       unless ($conn) {
         die("Failed to LIST: " . $client->response_code() . " " .
           $client->response_msg());
@@ -1650,7 +1657,7 @@ sub abor_list_ok {
   server_stop($setup->{pid_file});
   $self->assert_child_ok($pid);
 
-  test_cleanup($setup->{log_file}, $ex);
+  test_cleanup($setup, $ex);
 }
 
 sub abor_mlsd_ok {
@@ -1775,7 +1782,7 @@ sub abor_mlsd_ok {
   server_stop($setup->{pid_file});
   $self->assert_child_ok($pid);
 
-  test_cleanup($setup->{log_file}, $ex);
+  test_cleanup($setup, $ex);
 }
 
 sub abor_only_retr_ascii {
@@ -1795,18 +1802,20 @@ sub abor_only_retr_ascii {
     die("Can't open $test_file: $!");
   }
 
+  my $timeout_linger = 3;
+
   my $config = {
     PidFile => $setup->{pid_file},
     ScoreboardFile => $setup->{scoreboard_file},
     SystemLog => $setup->{log_file},
     TraceLog => $setup->{log_file},
-    Trace => 'DEFAULT:10 data:20',
+    Trace => 'command:10 data:20 event:10 netio:20 response:20',
 
     AuthUserFile => $setup->{auth_user_file},
     AuthGroupFile => $setup->{auth_group_file},
     AuthOrder => 'mod_auth_file.c',
 
-    TimeoutLinger => 5,
+    TimeoutLinger => $timeout_linger,
 
     IfModules => {
       'mod_delay.c' => {
@@ -1833,7 +1842,8 @@ sub abor_only_retr_ascii {
   defined(my $pid = fork()) or die("Can't fork: $!");
   if ($pid) {
     eval {
-      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
+      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port, 0,
+        $timeout_linger + 1, $timeout_linger + 1);
       $client->login($setup->{user}, $setup->{passwd});
       $client->pasv();
       $client->type('ascii');
@@ -1901,7 +1911,7 @@ sub abor_only_retr_ascii {
   server_stop($setup->{pid_file});
   $self->assert_child_ok($pid);
 
-  test_cleanup($setup->{log_file}, $ex);
+  test_cleanup($setup, $ex);
 }
 
 sub abor_only_retr_binary_with_sendfile {
@@ -1921,6 +1931,8 @@ sub abor_only_retr_binary_with_sendfile {
     die("Can't open $test_file: $!");
   }
 
+  my $timeout_linger = 3;
+
   my $config = {
     PidFile => $setup->{pid_file},
     ScoreboardFile => $setup->{scoreboard_file},
@@ -1932,7 +1944,7 @@ sub abor_only_retr_binary_with_sendfile {
     AuthGroupFile => $setup->{auth_group_file},
     AuthOrder => 'mod_auth_file.c',
 
-    TimeoutLinger => 5,
+    TimeoutLinger => $timeout_linger,
 
     IfModules => {
       'mod_delay.c' => {
@@ -1963,7 +1975,8 @@ sub abor_only_retr_binary_with_sendfile {
   defined(my $pid = fork()) or die("Can't fork: $!");
   if ($pid) {
     eval {
-      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
+      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port, 0,
+        $timeout_linger + 1, $timeout_linger + 1);
       $client->login($setup->{user}, $setup->{passwd});
       $client->type('binary');
 
@@ -2034,7 +2047,7 @@ sub abor_only_retr_binary_with_sendfile {
   server_stop($setup->{pid_file});
   $self->assert_child_ok($pid);
 
-  test_cleanup($setup->{log_file}, $ex);
+  test_cleanup($setup, $ex);
 }
 
 sub abor_only_retr_binary_without_sendfile {
@@ -2054,6 +2067,8 @@ sub abor_only_retr_binary_without_sendfile {
     die("Can't open $test_file: $!");
   }
 
+  my $timeout_linger = 3;
+
   my $config = {
     PidFile => $setup->{pid_file},
     ScoreboardFile => $setup->{scoreboard_file},
@@ -2065,7 +2080,7 @@ sub abor_only_retr_binary_without_sendfile {
     AuthGroupFile => $setup->{auth_group_file},
     AuthOrder => 'mod_auth_file.c',
 
-    TimeoutLinger => 5,
+    TimeoutLinger => $timeout_linger,
     UseSendfile => 'off',
 
     IfModules => {
@@ -2093,7 +2108,8 @@ sub abor_only_retr_binary_without_sendfile {
   defined(my $pid = fork()) or die("Can't fork: $!");
   if ($pid) {
     eval {
-      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
+      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port, 0,
+        $timeout_linger + 1, $timeout_linger + 1);
       $client->login($setup->{user}, $setup->{passwd});
       $client->type('binary');
 
@@ -2163,7 +2179,7 @@ sub abor_only_retr_binary_without_sendfile {
   server_stop($setup->{pid_file});
   $self->assert_child_ok($pid);
 
-  test_cleanup($setup->{log_file}, $ex);
+  test_cleanup($setup, $ex);
 }
 
 sub abor_only_stor_ascii {
@@ -2279,7 +2295,7 @@ sub abor_only_stor_ascii {
   server_stop($setup->{pid_file});
   $self->assert_child_ok($pid);
 
-  test_cleanup($setup->{log_file}, $ex);
+  test_cleanup($setup, $ex);
 }
 
 sub abor_only_stor_binary {
@@ -2395,13 +2411,15 @@ sub abor_only_stor_binary {
   server_stop($setup->{pid_file});
   $self->assert_child_ok($pid);
 
-  test_cleanup($setup->{log_file}, $ex);
+  test_cleanup($setup, $ex);
 }
 
 sub abor_only_list {
   my $self = shift;
   my $tmpdir = $self->{tmpdir};
   my $setup = test_setup($tmpdir, 'abor');
+
+  my $timeout_linger = 3;
 
   my $config = {
     PidFile => $setup->{pid_file},
@@ -2414,7 +2432,7 @@ sub abor_only_list {
     AuthGroupFile => $setup->{auth_group_file},
     AuthOrder => 'mod_auth_file.c',
 
-    TimeoutLinger => 5,
+    TimeoutLinger => $timeout_linger,
 
     IfModules => {
       'mod_delay.c' => {
@@ -2441,14 +2459,15 @@ sub abor_only_list {
   defined(my $pid = fork()) or die("Can't fork: $!");
   if ($pid) {
     eval {
-      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
+      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port, 0,
+        $timeout_linger + 1, $timeout_linger + 1);
       $client->login($setup->{user}, $setup->{passwd});
 
       # Use a recursive listing, to generate more data, such that it will
       # not all fit in the transfer buffer, so we can interrupt the buffer.
       # A too-small request will fit in the buffer, and be fulfilled, before
       # our abort is read.
-      my $conn = $client->list_raw('-R /');
+      my $conn = $client->list_raw('-lR /');
       unless ($conn) {
         die("Failed to LIST: " . $client->response_code() . " " .
           $client->response_msg());
@@ -2511,7 +2530,7 @@ sub abor_only_list {
   server_stop($setup->{pid_file});
   $self->assert_child_ok($pid);
 
-  test_cleanup($setup->{log_file}, $ex);
+  test_cleanup($setup, $ex);
 }
 
 sub abor_only_mlsd {
@@ -2532,6 +2551,8 @@ sub abor_only_mlsd {
     }
   }
 
+  my $timeout_linger = 3;
+
   my $config = {
     PidFile => $setup->{pid_file},
     ScoreboardFile => $setup->{scoreboard_file},
@@ -2543,7 +2564,7 @@ sub abor_only_mlsd {
     AuthGroupFile => $setup->{auth_group_file},
     AuthOrder => 'mod_auth_file.c',
 
-    TimeoutLinger => 5,
+    TimeoutLinger => $timeout_linger,
 
     IfModules => {
       'mod_delay.c' => {
@@ -2570,7 +2591,8 @@ sub abor_only_mlsd {
   defined(my $pid = fork()) or die("Can't fork: $!");
   if ($pid) {
     eval {
-      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
+      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port, 0, 
+        $timeout_linger + 1, $timeout_linger + 1);
       $client->login($setup->{user}, $setup->{passwd});
 
       my $conn = $client->mlsd_raw($tmpdir);
@@ -2636,7 +2658,7 @@ sub abor_only_mlsd {
   server_stop($setup->{pid_file});
   $self->assert_child_ok($pid);
 
-  test_cleanup($setup->{log_file}, $ex);
+  test_cleanup($setup, $ex);
 }
 
 sub abor_only_no_xfer {
@@ -2725,7 +2747,7 @@ sub abor_only_no_xfer {
   server_stop($setup->{pid_file});
   $self->assert_child_ok($pid);
 
-  test_cleanup($setup->{log_file}, $ex);
+  test_cleanup($setup, $ex);
 }
 
 sub data_eof_retr_ascii {
@@ -2846,7 +2868,7 @@ sub data_eof_retr_ascii {
   server_stop($setup->{pid_file});
   $self->assert_child_ok($pid);
 
-  test_cleanup($setup->{log_file}, $ex);
+  test_cleanup($setup, $ex);
 }
 
 sub data_eof_retr_binary_with_sendfile {
@@ -2961,7 +2983,7 @@ sub data_eof_retr_binary_with_sendfile {
   server_stop($setup->{pid_file});
   $self->assert_child_ok($pid);
 
-  test_cleanup($setup->{log_file}, $ex);
+  test_cleanup($setup, $ex);
 }
 
 sub data_eof_retr_binary_without_sendfile {
@@ -3083,7 +3105,7 @@ sub data_eof_retr_binary_without_sendfile {
   server_stop($setup->{pid_file});
   $self->assert_child_ok($pid);
 
-  test_cleanup($setup->{log_file}, $ex);
+  test_cleanup($setup, $ex);
 }
 
 sub data_eof_stor_ascii {
@@ -3191,7 +3213,7 @@ sub data_eof_stor_ascii {
   server_stop($setup->{pid_file});
   $self->assert_child_ok($pid);
 
-  test_cleanup($setup->{log_file}, $ex);
+  test_cleanup($setup, $ex);
 }
 
 sub data_eof_stor_binary {
@@ -3299,13 +3321,15 @@ sub data_eof_stor_binary {
   server_stop($setup->{pid_file});
   $self->assert_child_ok($pid);
 
-  test_cleanup($setup->{log_file}, $ex);
+  test_cleanup($setup, $ex);
 }
 
 sub data_eof_list {
   my $self = shift;
   my $tmpdir = $self->{tmpdir};
   my $setup = test_setup($tmpdir, 'abor');
+
+  my $timeout_linger = 3;
 
   my $config = {
     PidFile => $setup->{pid_file},
@@ -3318,7 +3342,7 @@ sub data_eof_list {
     AuthGroupFile => $setup->{auth_group_file},
     AuthOrder => 'mod_auth_file.c',
 
-    TimeoutLinger => 5,
+    TimeoutLinger => $timeout_linger,
 
     IfModules => {
       'mod_delay.c' => {
@@ -3345,14 +3369,15 @@ sub data_eof_list {
   defined(my $pid = fork()) or die("Can't fork: $!");
   if ($pid) {
     eval {
-      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
+      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port, 0,
+        $timeout_linger + 1, $timeout_linger + 1);
       $client->login($setup->{user}, $setup->{passwd});
 
       # Use a recursive listing, to generate more data, such that it will
       # not all fit in the transfer buffer, so we can interrupt the buffer.
       # A too-small request will fit in the buffer, and be fulfilled, before
       # our abort is read.
-      my $conn = $client->list_raw('-R /');
+      my $conn = $client->list_raw('-lR /');
       unless ($conn) {
         die("Failed to LIST: " . $client->response_code() . " " .
           $client->response_msg());
@@ -3410,7 +3435,7 @@ sub data_eof_list {
   server_stop($setup->{pid_file});
   $self->assert_child_ok($pid);
 
-  test_cleanup($setup->{log_file}, $ex);
+  test_cleanup($setup, $ex);
 }
 
 sub data_eof_mlsd {
@@ -3530,7 +3555,7 @@ sub data_eof_mlsd {
   server_stop($setup->{pid_file});
   $self->assert_child_ok($pid);
 
-  test_cleanup($setup->{log_file}, $ex);
+  test_cleanup($setup, $ex);
 }
 
 sub data_eof_before_abor_retr_ascii {
@@ -3665,7 +3690,7 @@ sub data_eof_before_abor_retr_ascii {
   server_stop($setup->{pid_file});
   $self->assert_child_ok($pid);
 
-  test_cleanup($setup->{log_file}, $ex);
+  test_cleanup($setup, $ex);
 }
 
 sub data_eof_before_abor_retr_binary_with_sendfile {
@@ -3806,7 +3831,7 @@ sub data_eof_before_abor_retr_binary_with_sendfile {
   server_stop($setup->{pid_file});
   $self->assert_child_ok($pid);
 
-  test_cleanup($setup->{log_file}, $ex);
+  test_cleanup($setup, $ex);
 }
 
 sub data_eof_before_abor_retr_binary_without_sendfile {
@@ -3942,7 +3967,7 @@ sub data_eof_before_abor_retr_binary_without_sendfile {
   server_stop($setup->{pid_file});
   $self->assert_child_ok($pid);
 
-  test_cleanup($setup->{log_file}, $ex);
+  test_cleanup($setup, $ex);
 }
 
 sub data_eof_before_abor_stor_ascii {
@@ -4064,7 +4089,7 @@ sub data_eof_before_abor_stor_ascii {
   server_stop($setup->{pid_file});
   $self->assert_child_ok($pid);
 
-  test_cleanup($setup->{log_file}, $ex);
+  test_cleanup($setup, $ex);
 }
 
 sub data_eof_before_abor_stor_binary {
@@ -4186,13 +4211,15 @@ sub data_eof_before_abor_stor_binary {
   server_stop($setup->{pid_file});
   $self->assert_child_ok($pid);
 
-  test_cleanup($setup->{log_file}, $ex);
+  test_cleanup($setup, $ex);
 }
 
 sub data_eof_before_abor_list {
   my $self = shift;
   my $tmpdir = $self->{tmpdir};
   my $setup = test_setup($tmpdir, 'abor');
+
+  my $timeout_linger = 3;
 
   my $config = {
     PidFile => $setup->{pid_file},
@@ -4205,7 +4232,7 @@ sub data_eof_before_abor_list {
     AuthGroupFile => $setup->{auth_group_file},
     AuthOrder => 'mod_auth_file.c',
 
-    TimeoutLinger => 5,
+    TimeoutLinger => $timeout_linger,
 
     IfModules => {
       'mod_delay.c' => {
@@ -4232,14 +4259,15 @@ sub data_eof_before_abor_list {
   defined(my $pid = fork()) or die("Can't fork: $!");
   if ($pid) {
     eval {
-      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
+      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port, 0,
+        $timeout_linger + 1, $timeout_linger + 1);
       $client->login($setup->{user}, $setup->{passwd});
 
       # Use a recursive listing, to generate more data, such that it will
       # not all fit in the transfer buffer, so we can interrupt the buffer.
       # A too-small request will fit in the buffer, and be fulfilled, before
       # our abort is read.
-      my $conn = $client->list_raw('-R /');
+      my $conn = $client->list_raw('-lR /');
       unless ($conn) {
         die("Failed to LIST: " . $client->response_code() . " " .
           $client->response_msg());
@@ -4311,7 +4339,7 @@ sub data_eof_before_abor_list {
   server_stop($setup->{pid_file});
   $self->assert_child_ok($pid);
 
-  test_cleanup($setup->{log_file}, $ex);
+  test_cleanup($setup, $ex);
 }
 
 sub data_eof_before_abor_mlsd {
@@ -4445,7 +4473,7 @@ sub data_eof_before_abor_mlsd {
   server_stop($setup->{pid_file});
   $self->assert_child_ok($pid);
 
-  test_cleanup($setup->{log_file}, $ex);
+  test_cleanup($setup, $ex);
 }
 
 1;
