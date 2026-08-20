@@ -969,7 +969,7 @@ static int sql_resolve_on_meta(pool *p, pr_jot_ctx_t *jot_ctx,
          * "sql_lookup" or "sql_change" cmd_recs, which have at least 2
          * parameters.  Hence why we add 2 to the retrieved index value later.
          *
-         * Skip such processing for any other commd.  (Why only these two
+         * Skip such processing for any other command.  (Why only these two
          * internally-generated commands?  Those are the ones registered as
          * HOOKs, and are only used by other modules.)
          */
