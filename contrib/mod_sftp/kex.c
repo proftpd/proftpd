@@ -286,7 +286,6 @@ static const char *dh_group18_str =
   "9558E4475677E9AA9E3050E2765694DFC81F56E880B96E71"
   "60C980DD98EDD3DFFFFFFFFFFFFFFFFF";
 
-
 #define SFTP_DH_GROUP1_SHA1		1
 #define SFTP_DH_GROUP14_SHA1		2
 #define SFTP_DH_GEX_SHA1		3
@@ -3635,12 +3634,14 @@ static int get_dh_gex_group(struct sftp_kex *kex, uint32_t min,
     }
   }
 
-  if (use_fixed_modulus) {
+  if (use_fixed_modulus == TRUE) {
     BIGNUM *dh_p, *dh_g;
 
     dh_p = BN_new();
 
-    /* Note: Consider using a stronger fixed DH group here! */
+    /* Note: Consider using a stronger fixed DH group here! The DH group 14
+     * parameter has a 2048 bit size, for future reference.
+     */
     if (BN_hex2bn(&dh_p, dh_group14_str) == 0) {
       (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
         "error setting DH P: %s", sftp_crypto_get_errors());
