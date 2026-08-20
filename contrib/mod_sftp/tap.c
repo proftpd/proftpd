@@ -82,7 +82,7 @@ static int check_packet_times_cb(CALLBACK_FRAME) {
 
   /* If it's been less than min_secs, do NOT send a packet. */
   if (since_recvd <= curr_policy.min_secs &&
-      since_sent <= curr_policy.max_secs) {
+      since_sent <= curr_policy.min_secs) {
     return 1;
   }
 
