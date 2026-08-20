@@ -19,6 +19,7 @@
 --------------------------------
 - Issue 2286 - Insufficient validation of FTP RANG, REST parameters can lead
   to use of negative file offsets.
+- Issue 2293 - Regression with custom user/group info SQLNamedQuery in 1.3.9d.
 
 1.3.9d - Released 14-Aug-2026
 --------------------------------
