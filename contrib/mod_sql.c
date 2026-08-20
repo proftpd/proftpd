@@ -1803,7 +1803,7 @@ static int sql_getuserprimarykey(cmd_rec *cmd, const char *username) {
     }
 
   } else {
-    mr = sql_lookup(sql_make_cmd(cmd->tmp_pool, 3, MOD_SQL_DEF_CONN_NAME, ptr,
+    mr = sql_lookup(sql_make_cmd(cmd->tmp_pool, 3, "sql_lookup", ptr,
       username));
     if (check_response(mr, 0) < 0) {
       return -1;
@@ -1898,7 +1898,7 @@ static int sql_getgroupprimarykey(cmd_rec *cmd, const char *groupname) {
     }
 
   } else {
-    mr = sql_lookup(sql_make_cmd(cmd->tmp_pool, 3, MOD_SQL_DEF_CONN_NAME, ptr,
+    mr = sql_lookup(sql_make_cmd(cmd->tmp_pool, 3, "sql_lookup", ptr,
       groupname));
     if (check_response(mr, 0) < 0) {
       return -1;
@@ -2004,7 +2004,7 @@ static struct passwd *sql_getpasswd(cmd_rec *cmd, struct passwd *p) {
 
     sql_log(DEBUG_WARN, "cache miss for user '%s'", realname);
 
-    if (!cmap.usercustom) {
+    if (cmap.usercustom == NULL) {
       /* The following nested function calls may look a little strange, but
        * it is deliberate.  We want to handle any tags/variables within the
        * cmap.userwhere string (i.e. the SQLUserWhereClause directive, if
@@ -2031,7 +2031,7 @@ static struct passwd *sql_getpasswd(cmd_rec *cmd, struct passwd *p) {
       /* The username has been escaped according to the backend database' rules
        * at this point.
        */
-      mr = sql_lookup(sql_make_cmd(cmd->tmp_pool, 3, MOD_SQL_DEF_CONN_NAME,
+      mr = sql_lookup(sql_make_cmd(cmd->tmp_pool, 3, "sql_lookup",
         cmap.usercustom, username ? username : "NULL"));
 
       if (check_response(mr, 0) < 0) {
@@ -2066,8 +2066,8 @@ static struct passwd *sql_getpasswd(cmd_rec *cmd, struct passwd *p) {
     uidstr = pr_uid2str(cmd->tmp_pool, p->pw_uid);
     sql_log(DEBUG_WARN, "cache miss for UID '%s'", uidstr);
 
-    if (!cmap.usercustombyid) {
-      if (cmap.uidfield) {
+    if (cmap.usercustombyid == NULL) {
+      if (cmap.uidfield != NULL) {
         usrwhere = pstrcat(cmd->tmp_pool, cmap.uidfield, " = ", uidstr, NULL);
 
         where = sql_prepare_where(SQL_PREPARE_WHERE_FL_NO_TAGS, cmd, 2,
@@ -2097,7 +2097,7 @@ static struct passwd *sql_getpasswd(cmd_rec *cmd, struct passwd *p) {
     } else {
       array_header *ah = NULL;
 
-      mr = sql_lookup(sql_make_cmd(cmd->tmp_pool, 3, MOD_SQL_DEF_CONN_NAME,
+      mr = sql_lookup(sql_make_cmd(cmd->tmp_pool, 3, "sql_lookup",
         cmap.usercustombyid, uidstr));
       if (check_response(mr, 0) < 0) {
         return NULL;
@@ -2337,8 +2337,8 @@ static struct group *sql_getgroup(cmd_rec *cmd, struct group *g) {
 
     sql_log(DEBUG_WARN, "cache miss for GID '%s'", gidstr);
 
-    if (!cmap.groupcustombyid) {
-      if (cmap.grpgidfield) {
+    if (cmap.groupcustombyid == NULL) {
+      if (cmap.grpgidfield != NULL) {
         grpwhere = pstrcat(cmd->tmp_pool, cmap.grpgidfield, " = ", gidstr,
           NULL);
 
@@ -2364,7 +2364,7 @@ static struct group *sql_getgroup(cmd_rec *cmd, struct group *g) {
       sd = (sql_data_t *) mr->data;
 
     } else {
-      mr = sql_lookup(sql_make_cmd(cmd->tmp_pool, 3, MOD_SQL_DEF_CONN_NAME,
+      mr = sql_lookup(sql_make_cmd(cmd->tmp_pool, 3, "sql_lookup",
         cmap.groupcustombyid, gidstr));
       if (check_response(mr, 0) < 0) {
         return NULL;
@@ -2397,7 +2397,7 @@ static struct group *sql_getgroup(cmd_rec *cmd, struct group *g) {
    * at this point.
    */
 
-  if (!cmap.groupcustombyname) {
+  if (cmap.groupcustombyname == NULL) {
     grpwhere = pstrcat(cmd->tmp_pool, cmap.grpfield, " = '", groupname, "'",
       NULL);
 
@@ -2413,7 +2413,7 @@ static struct group *sql_getgroup(cmd_rec *cmd, struct group *g) {
     sd = (sql_data_t *) mr->data;
 
   } else {
-    mr = sql_lookup(sql_make_cmd(cmd->tmp_pool, 3, MOD_SQL_DEF_CONN_NAME,
+    mr = sql_lookup(sql_make_cmd(cmd->tmp_pool, 3, "sql_lookup",
       cmap.groupcustombyname, groupname ? groupname : "NULL"));
     if (check_response(mr, 0) < 0) {
       return NULL;
@@ -2574,7 +2574,7 @@ static int sql_getgroups(cmd_rec *cmd) {
 
   username = (char *) mr->data;
 
-  if (!cmap.groupcustommembers) {
+  if (cmap.groupcustommembers == NULL) {
     if (!(pr_sql_opts & SQL_OPT_USE_NORMALIZED_GROUP_SCHEMA)) {
 
       /* Use a SELECT with a LIKE clause:
@@ -2616,7 +2616,7 @@ static int sql_getgroups(cmd_rec *cmd) {
     /* The username has been escaped according to the backend database' rules
      * at this point.
      */
-    mr = sql_lookup(sql_make_cmd(cmd->tmp_pool, 3, MOD_SQL_DEF_CONN_NAME,
+    mr = sql_lookup(sql_make_cmd(cmd->tmp_pool, 3, "sql_lookup",
       cmap.groupcustommembers, username));
     if (check_response(mr, 0) < 0) {
       cmd->argc = argc;
@@ -3771,7 +3771,7 @@ MODRET sql_auth_setpwent(cmd_rec *cmd) {
       sd = (sql_data_t *) mr->data;
 
     } else {
-      mr = sql_lookup(sql_make_cmd(cmd->tmp_pool, 2, MOD_SQL_DEF_CONN_NAME,
+      mr = sql_lookup(sql_make_cmd(cmd->tmp_pool, 2, "sql_lookup",
         cmap.usercustomusersetfast));
       if (check_response(mr, 0) < 0) {
         return mr;
@@ -3881,7 +3881,7 @@ MODRET sql_auth_setpwent(cmd_rec *cmd) {
       sd = (sql_data_t *) mr->data;
 
     } else {
-      mr = sql_lookup(sql_make_cmd(cmd->tmp_pool, 2, MOD_SQL_DEF_CONN_NAME,
+      mr = sql_lookup(sql_make_cmd(cmd->tmp_pool, 2, "sql_lookup",
         cmap.usercustomuserset));
       if (check_response(mr, 0) < 0) {
         return mr;
@@ -4017,7 +4017,7 @@ MODRET sql_auth_setgrent(cmd_rec *cmd) {
       sd = (sql_data_t *) mr->data;
 
     } else {
-      mr = sql_lookup(sql_make_cmd(cmd->tmp_pool, 2, MOD_SQL_DEF_CONN_NAME,
+      mr = sql_lookup(sql_make_cmd(cmd->tmp_pool, 2, "sql_lookup",
         cmap.groupcustomgroupsetfast));
       if (check_response(mr, 0) < 0) {
         return mr;
@@ -4079,7 +4079,7 @@ MODRET sql_auth_setgrent(cmd_rec *cmd) {
       sd = (sql_data_t *) mr->data;
 
     } else {
-      mr = sql_lookup(sql_make_cmd(cmd->tmp_pool, 2, MOD_SQL_DEF_CONN_NAME,
+      mr = sql_lookup(sql_make_cmd(cmd->tmp_pool, 2, "sql_lookup",
         cmap.groupcustomgroupset));
       if (check_response(mr, 0) < 0) {
         return mr;
