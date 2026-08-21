@@ -653,7 +653,7 @@ static const char *get_meta_basename(cmd_rec *cmd) {
   if (path != NULL) {
     char *ptr = NULL;
 
-    ptr = strrchr(path, '/');
+    ptr = strrchr((char *) path, '/');
     if (ptr != NULL) {
       if (ptr != path) {
         base = ptr + 1;
@@ -933,7 +933,7 @@ static const char *get_meta_transfer_failure(cmd_rec *cmd) {
             char *ptr;
 
             /* Parse out/prettify the resp_msg here */
-            ptr = strchr(resp_msg, '.');
+            ptr = strchr((char *) resp_msg, '.');
             if (ptr != NULL) {
               transfer_failure = ptr + 2;
 
@@ -2633,7 +2633,7 @@ static int parse_unknown_id(const char *text, const char **logfmt_data,
     return -1;
   }
 
-  ptr = strchr(text + 1, '}');
+  ptr = strchr(((char *) text) + 1, '}');
   if (ptr == NULL) {
     errno = ENOENT;
     return -1;
@@ -2656,7 +2656,7 @@ static int parse_long_id(const char *text, unsigned char *logfmt_id,
   if (strncmp(text, "{env:", 5) == 0) {
     char *ptr;
 
-    ptr = strchr(text + 5, '}');
+    ptr = strchr(((char *) text) + 5, '}');
     if (ptr != NULL) {
       *logfmt_id = LOGFMT_META_ENV_VAR;
       *logfmt_data = text + 5;
@@ -2712,7 +2712,7 @@ static int parse_long_id(const char *text, unsigned char *logfmt_id,
   if (strncmp(text, "{note:", 6) == 0) {
     char *ptr;
 
-    ptr = strchr(text + 6, '}');
+    ptr = strchr(((char *) text) + 6, '}');
     if (ptr != NULL) {
       *logfmt_id = LOGFMT_META_NOTE_VAR;
       *logfmt_data = text + 6;
@@ -2728,7 +2728,7 @@ static int parse_long_id(const char *text, unsigned char *logfmt_id,
   if (strncmp(text, "{var:", 5) == 0) {
     char *ptr;
 
-    ptr = strchr(text + 5, '}');
+    ptr = strchr(((char *) text) + 5, '}');
     if (ptr != NULL) {
       *logfmt_id = LOGFMT_META_VAR_VAR;
       *logfmt_data = text + 5;
@@ -2754,7 +2754,7 @@ static int parse_long_id(const char *text, unsigned char *logfmt_id,
   if (strncmp(text, "{time:", 6) == 0) {
     char *ptr;
 
-    ptr = strchr(text + 6, '}');
+    ptr = strchr(((char *) text) + 6, '}');
     if (ptr != NULL) {
       *logfmt_id = LOGFMT_META_TIME;
       *logfmt_data = text + 6;
