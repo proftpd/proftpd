@@ -1071,11 +1071,22 @@ static int ctrls_handle_restart(pr_ctrls_t *ctrl, int reqargc,
   }
 
   if (reqargc == 0) {
+    int res, xerrno;
+
     PRIVS_ROOT
-    raise(SIGHUP);
+    res = raise(SIGHUP);
+    xerrno = errno;
     PRIVS_RELINQUISH
 
-    pr_ctrls_add_response(ctrl, "restarted server");
+    if (res < 0) {
+      pr_ctrls_log(MOD_CTRLS_ADMIN_VERSION,
+        "restart: error raising SIGHUP signal: %s", strerror(xerrno));
+      pr_ctrls_add_response(ctrl, "error restarting server: %s",
+        strerror(xerrno));
+
+    } else {
+      pr_ctrls_add_response(ctrl, "restarted server");
+    }
 
   } else if (reqargc == 1) {
     if (strcmp(reqargv[0], "count") == 0) {
@@ -1260,7 +1271,10 @@ static int ctrls_handle_shutdown(pr_ctrls_t *ctrl, int reqargc,
   }
 
   /* Shutdown by raising SIGTERM.  Easy. */
-  raise(SIGTERM);
+  if (raise(SIGTERM) < 0) {
+    pr_ctrls_log(MOD_CTRLS_ADMIN_VERSION,
+      "shutdown: error raising SIGTERM signal: %s", strerror(errno));
+  }
 
   return PR_CTRLS_STATUS_OK;
 }
