@@ -60,8 +60,8 @@ static const char *str_vreplace(pool *p, unsigned int max_replaces,
      * the given match and replacement strings, multiplied by the number
      * of times the match string occurs in the source string.
      */
-    tmp = strstr(s, m);
-    while (tmp) {
+    tmp = (char *) strstr(s, m);
+    while (tmp != NULL) {
       pr_signals_handle();
       count++;
       if (count > max_replaces) {
@@ -853,7 +853,7 @@ array_header *pr_str_text_to_array(pool *p, const char *text, char delimiter) {
     return items;
   }
 
-  ptr = memchr(text, delimiter, text_len);
+  ptr = (char *) memchr(text, delimiter, text_len);
   while (ptr != NULL) {
     size_t item_len;
 
@@ -878,7 +878,7 @@ array_header *pr_str_text_to_array(pool *p, const char *text, char delimiter) {
       break;
     }
 
-    ptr = memchr(text, delimiter, text_len);
+    ptr = (char *) memchr(text, delimiter, text_len);
   }
 
   if (text_len > 0) {
@@ -916,7 +916,7 @@ char *pr_str_array_to_text(pool *p, const array_header *items,
 }
 
 int pr_str2uid(const char *val, uid_t *uid) {
-#ifdef HAVE_STRTOULL
+#if defined(HAVE_STRTOULL)
   unsigned long long ull = 0ULL;
 #endif /* HAVE_STRTOULL */
   unsigned long ul = 0UL;
@@ -928,7 +928,7 @@ int pr_str2uid(const char *val, uid_t *uid) {
   }
 
 #if SIZEOF_UID_T == SIZEOF_LONG_LONG
-# ifdef HAVE_STRTOULL
+# if defined(HAVE_STRTOULL)
   if (parse_ull(val, &ull) < 0) {
     return -1;
   }
@@ -952,7 +952,7 @@ int pr_str2uid(const char *val, uid_t *uid) {
 }
 
 int pr_str2gid(const char *val, gid_t *gid) {
-#ifdef HAVE_STRTOULL
+#if defined(HAVE_STRTOULL)
   unsigned long long ull = 0ULL;
 #endif /* HAVE_STRTOULL */
   unsigned long ul = 0UL;
@@ -964,7 +964,7 @@ int pr_str2gid(const char *val, gid_t *gid) {
   }
 
 #if SIZEOF_GID_T == SIZEOF_LONG_LONG
-# ifdef HAVE_STRTOULL
+# if defined(HAVE_STRTOULL)
   if (parse_ull(val, &ull) < 0) {
     return -1;
   }
@@ -1205,7 +1205,7 @@ int pr_str_get_nbytes(const char *str, const char *units, off_t *nbytes) {
 
   errno = 0;
 
-#ifdef HAVE_STRTOULL
+#if defined(HAVE_STRTOULL)
   sz = strtoull(str, &ptr, 10);
 #else
   sz = strtoul(str, &ptr, 10);
@@ -1222,7 +1222,7 @@ int pr_str_get_nbytes(const char *str, const char *units, off_t *nbytes) {
   }
 
   /* Don't bother applying the factor if the result will overflow the result. */
-#ifdef ULLONG_MAX
+#if defined(ULLONG_MAX)
   if (sz > (ULLONG_MAX / factor)) {
 #else
   if (sz > (ULONG_MAX / factor)) {

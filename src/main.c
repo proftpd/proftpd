@@ -303,10 +303,10 @@ static int dispatch_cmd(cmd_rec *cmd, int cmd_type, int validate, char *match) {
            * memchr(2); see Bug#3714.
            */
           if (cmdargstrlen > 0) {
-            args = memchr(cmdargstr, ' ', cmdargstrlen);
+            args = (char *) memchr(cmdargstr, ' ', cmdargstrlen);
 
           } else {
-            args = strchr(cmdargstr, ' ');
+            args = (char *) strchr(cmdargstr, ' ');
           }
 
           pr_scoreboard_entry_update(session.pid,
