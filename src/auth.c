@@ -1491,7 +1491,7 @@ int pr_auth_getgroups(pool *p, const char *name, array_header **group_ids,
      * always be at least 1, as per getgroups(2) behavior.  This one
      * ID is present because it is the primary group membership set in
      * struct passwd, from /etc/passwd.  This will need to be documented
-     * for the benefit of auth_getgroup() implementors.
+     * for the benefit of auth_getgroup() implementers.
      */
 
     if (group_ids != NULL) {

@@ -24,14 +24,14 @@ users that you wish to have ratios saved. If there is a problem
 accessing the files, ProFTPD will revert back to the old per session
 ratio method (u/l d/l stats will be forgotten on disconnect).
 
-touch and chmod both files to allow r/w from all users whos ratios
+touch and chmod both files to allow r/w from all users whose ratios
 will be saved. Enable ratios, users are added to the ratios file as
 they log in and stat tracking begins.
 
 If you are using DefaultRoot along with this command, the Ratio files
 will need to be stored within the Root directory. One easy way is to
 create a sub-directory off of DefaultRoot that is rwx by all users
-and then restrict ALL access to these directorys within ProFTPD...
+and then restrict ALL access to these directories within ProFTPD...
 
 	<Directory /workdir>
 		<Limit ALL>

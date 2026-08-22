@@ -133,7 +133,7 @@
 - Issue 1984 - mod_quotatab_ldap interactions can lead to segfault due to
   stale pointer.
 - Issue 2003 - RNTO before authentication leads to out-of-order response codes.
-- Issue 2002 - Enviroment variable substitution for multi-word values not
+- Issue 2002 - Environment variable substitution for multi-word values not
   supported as needed.
 - Issue 2009 - MaxLoginAttemptsFromUser event never triggers in mod_ban for
   SFTP sessions.

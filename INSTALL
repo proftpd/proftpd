@@ -331,7 +331,7 @@ Good luck!
 Troubleshooting
 ---------------
 
-This section is far from comprehensive.  See the FAQ and other resourses
+This section is far from comprehensive.  See the FAQ and other resources
 for further assistance.
 
 
@@ -433,7 +433,7 @@ T6. Another diagnostic technique is to monitor the FTP protocol communication
     between the proftpd server and the ftp client.  Many ftp clients have a
     debug or trace option.  Though requiring detailed knowledge of the FTP
     protocol, telnet can be used to connect and directly converse with the
-    proftpd server.  Lastly, the FTP converstation can be traced using a
+    proftpd server.  Lastly, the FTP conversation can be traced using a
     network monitoring tool, such as tcpdump, ethereal, snoop or netsnoop.
 
 

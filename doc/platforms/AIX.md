@@ -5,7 +5,7 @@ using the proper configure command lines.
 
 One problem involves the less than optimal default shared object search path
 that the IBM linker inserts into executables.  The second problem is
-compilaton failure stemming from an incompatibility with the `<string.h>`
+compilation failure stemming from an incompatibility with the `<string.h>`
 header file when the IBM compiler attempts to inline some string functions.
 
 Also, a minor usage note: do _not_ use the `--enable-autoshadow` or

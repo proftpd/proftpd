@@ -2105,7 +2105,7 @@ EOC
 
       $expected = 530;
       $self->assert($expected == $resp_code,
-        test_msg("Expected respones code $expected, got $resp_code"));
+        test_msg("Expected response code $expected, got $resp_code"));
 
       $expected = 'Login incorrect.';
       $self->assert($expected eq $resp_msg,

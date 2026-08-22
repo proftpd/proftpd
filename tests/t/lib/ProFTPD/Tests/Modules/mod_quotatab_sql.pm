@@ -5378,7 +5378,7 @@ EOS
 
       my $expected = 552;
       $self->assert($expected == $resp_code,
-        test_msg("Expected respones code $expected, got $resp_code"));
+        test_msg("Expected response code $expected, got $resp_code"));
 
       $expected = 'STOR denied: quota exceeded: used \S+ of \S+ upload bytes';
       $self->assert(qr/$expected/, $resp_msg,

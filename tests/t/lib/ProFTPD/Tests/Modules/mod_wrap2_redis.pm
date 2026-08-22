@@ -2717,7 +2717,7 @@ sub wrap2_allow_msg_bug3538 {
 
       $expected = "User $setup->{user} logged in.";
       $self->assert($expected eq $resp_msg,
-        "Expected response meessage '$expected', got '$resp_msg'");
+        "Expected response message '$expected', got '$resp_msg'");
 
       $client->quit();
     };

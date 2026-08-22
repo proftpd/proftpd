@@ -1715,7 +1715,7 @@ MODRET xfer_pre_stou(cmd_rec *cmd) {
 
   /* Some FTP clients are "broken" in that they will send a filename
    * along with STOU.  Technically this violates RFC959, but for now, just
-   * ignore that filename.  Stupid client implementors.
+   * ignore that filename.  Stupid client implementers.
    */
 
   if (cmd->argc > 2) {
