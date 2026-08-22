@@ -216,14 +216,16 @@ sub set_status {
   # responses if the previous response code is not a 426.  What an ugly hack.
   my $overwrite_resp = 0;
 
-  if ($prev_code != 426) {
+  if (!defined($prev_code) ||
+      $prev_code != 426) {
     $overwrite_resp = 1;
   }
 
   # And even more shenanigans for aborted data transfers where the data
   # transfer completed despite the aborted session.
 
-  if ($prev_code == 226) {
+  if (defined($prev_code) &&
+      $prev_code == 226) {
     if (scalar(grep(/Transfer complete/, @$prev_msgs)) > 0 &&
         scalar(grep(/Abort successful/, @$prev_msgs)) == 0) {
       $overwrite_resp = 0;
