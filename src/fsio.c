@@ -29,29 +29,29 @@
 #include "conf.h"
 #include "privs.h"
 
-#ifdef HAVE_SYS_STATVFS_H
+#if defined(HAVE_SYS_STATVFS_H)
 # include <sys/statvfs.h>
-#endif
+#endif /* HAVE_SYS_STATVFS_H */
 
-#ifdef HAVE_SYS_VFS_H
+#if defined(HAVE_SYS_VFS_H)
 # include <sys/vfs.h>
-#endif
+#endif /* HAVE_SYS_VFS_H */
 
-#ifdef HAVE_SYS_PARAM_H
+#if defined(HAVE_SYS_PARAM_H)
 # include <sys/param.h>
-#endif
+#endif /* HAVE_SYS_PARAM_H */
 
-#ifdef HAVE_SYS_MOUNT_H
+#if defined(HAVE_SYS_MOUNT_H)
 # include <sys/mount.h>
-#endif
+#endif /* HAVE_SYS_MOUNT_H */
 
-#ifdef AIX3
+#if defined(AIX3)
 # include <sys/statfs.h>
-#endif
+#endif /* AIX3 */
 
-#ifdef HAVE_ACL_LIBACL_H
+#if defined(HAVE_ACL_LIBACL_H)
 # include <acl/libacl.h>
-#endif
+#endif /* HAVE_ACL_LIBACL_H */
 
 /* We will reset timers in the progress callback every Nth iteration of the
  * callback when copying a file.
@@ -104,7 +104,7 @@ static int fsio_guard_chroot = FALSE;
 static unsigned long fsio_opts = 0UL;
 
 /* Runtime enabling/disabling of mkdtemp(3) use. */
-#ifdef HAVE_MKDTEMP
+#if defined(HAVE_MKDTEMP)
 static int fsio_use_mkdtemp = TRUE;
 #else
 static int fsio_use_mkdtemp = FALSE;
@@ -247,12 +247,12 @@ static int sys_unlink(pr_fs_t *fs, const char *path) {
 static int sys_open(pr_fh_t *fh, const char *path, int flags) {
   int res;
 
-#ifdef O_BINARY
+#if defined(O_BINARY)
   /* On Cygwin systems, we need the open(2) equivalent of fopen(3)'s "b"
    * option.  Cygwin defines an O_BINARY flag for this purpose.
    */
   flags |= O_BINARY;
-#endif
+#endif /* O_BINARY */
 
   if (fsio_guard_chroot) {
     /* If we are creating (or truncating) a file, then we need to check.
@@ -446,7 +446,7 @@ static int sys_utimes(pr_fs_t *fs, const char *path, struct timeval *tvs) {
 }
 
 static int sys_futimes(pr_fh_t *fh, int fd, struct timeval *tvs) {
-#ifdef HAVE_FUTIMES
+#if defined(HAVE_FUTIMES)
   int res;
 
   /* Check for an ENOSYS errno; if so, fallback to using sys_utimes.  Some
@@ -462,13 +462,13 @@ static int sys_futimes(pr_fh_t *fh, int fd, struct timeval *tvs) {
   return res;
 #else
   return sys_utimes(fh->fh_fs, fh->fh_path, tvs);
-#endif
+#endif /* HAVE_FUTIMES */
 }
 
 static int sys_fsync(pr_fh_t *fh, int fd) {
   int res;
 
-#ifdef HAVE_FSYNC
+#if defined(HAVE_FSYNC)
   res = fsync(fd);
 #else
   errno = ENOSYS;
@@ -2869,7 +2869,7 @@ int pr_fs_interpolate(const char *path, char *buf, size_t buflen) {
     }
   }
 
-  ptr = strchr(path, '/');
+  ptr = strchr((char *) path, '/');
   if (ptr == NULL) {
     struct stat st;
 
@@ -3564,7 +3564,7 @@ char *pr_fs_decode_path(pool *p, const char *path) {
 }
 
 char *pr_fs_encode_path(pool *p, const char *path) {
-#ifdef PR_USE_NLS
+#if defined(PR_USE_NLS)
   size_t outlen;
   char *res;
 
@@ -4283,7 +4283,7 @@ int pr_fsio_set_use_mkdtemp(int value) {
 
   prev_value = fsio_use_mkdtemp;
 
-#ifdef HAVE_MKDTEMP
+#if defined(HAVE_MKDTEMP)
   fsio_use_mkdtemp = value;
 #endif /* HAVE_MKDTEMP */
 
@@ -4317,9 +4317,9 @@ static int schmod_dir(pool *p, const char *path, mode_t perms, int use_root) {
    * avoid symlinks, and b) get an fd on the (hopefully) directory.
    */
   flags = O_RDONLY;
-#ifdef O_NOFOLLOW
+#if defined(O_NOFOLLOW)
   flags |= O_NOFOLLOW;
-#endif
+#endif /* O_NOFOLLOW */
   fd = open(path, flags);
   xerrno = errno;
 
@@ -4508,12 +4508,12 @@ int pr_fsio_smkdir(pool *p, const char *path, mode_t mode, uid_t uid,
     }
   }
 
-#ifdef HAVE_MKDTEMP
+#if defined(HAVE_MKDTEMP)
   if (use_mkdtemp == TRUE) {
     char *ptr;
     struct stat st;
 
-    ptr = strrchr(path, '/');
+    ptr = strrchr((char *) path, '/');
     if (ptr == NULL) {
       errno = EINVAL;
       return -1;
@@ -4730,7 +4730,7 @@ int pr_fsio_smkdir(pool *p, const char *path, mode_t mode, uid_t uid,
 
       (void) rmdir(tmpl_path);
 
-#ifdef ENOTEMPTY
+#if defined(ENOTEMPTY)
       if (xerrno == ENOTEMPTY) {
         /* If the rename(2) failed with "Directory not empty" (ENOTEMPTY),
          * then change the errno to "File exists" (EEXIST), so that the
@@ -7634,7 +7634,7 @@ int init_fs(void) {
   return 0;
 }
 
-#ifdef PR_USE_DEVEL
+#if defined(PR_USE_DEVEL)
 
 static const char *get_fs_hooks_str(pool *p, pr_fs_t *fs) {
   char *hooks = "";

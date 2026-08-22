@@ -67,7 +67,7 @@ bcrypt_hashpass(const char *key, const char *salt, char *encrypted,
 	u_int16_t j;
 	size_t key_len;
 	u_int8_t salt_len, logr, minor;
-	u_int8_t ciphertext[4 * BCRYPT_WORDS] = "OrpheanBeholderScryDoubt";
+	u_int8_t __attribute__ ((__nonstring__)) ciphertext[4 * BCRYPT_WORDS] = "OrpheanBeholderScryDoubt";
 	u_int8_t csalt[BCRYPT_MAXSALT];
 	u_int32_t cdata[BCRYPT_WORDS];
 

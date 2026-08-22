@@ -483,7 +483,7 @@ int dir_readlink(pool *p, const char *path, char *buf, size_t bufsz,
     /* Since we have a relative destination path, we will concat it
      * with the source path's directory, then clean up that path.
      */
-    ptr = strrchr(path, '/');
+    ptr = strrchr((char *) path, '/');
     if (ptr != NULL &&
         ptr != path) {
       char *parent_dir;
@@ -543,7 +543,7 @@ int dir_readlink(pool *p, const char *path, char *buf, size_t bufsz,
      * with the source path's directory, then clean up that path.
      */
 
-    ptr = strrchr(path, '/');
+    ptr = strrchr((char *) path, '/');
     if (ptr != NULL) {
       if (ptr != path) {
         char *parent_dir;
@@ -1363,7 +1363,7 @@ const char *path_subst_uservar(pool *path_pool, const char **path) {
    */
 
   substr_path = *path;
-  substr = substr_path ? strstr(substr_path, "%u[") : NULL;
+  substr = substr_path ? strstr((char *) substr_path, "%u[") : NULL;
   while (substr != NULL) {
     long i = 0;
     char *substr_end = NULL, *substr_dup = NULL, *endp = NULL;
@@ -1445,7 +1445,7 @@ const char *path_subst_uservar(pool *path_pool, const char **path) {
      * referenced character/string.
      */
     substr_path = sreplace(path_pool, substr_path, substr_dup, ref_char, NULL);
-    substr = substr_path ? strstr(substr_path, "%u[") : NULL;
+    substr = substr_path ? strstr((char *) substr_path, "%u[") : NULL;
   }
 
   /* Check for any bare "%u", and handle those if present. */

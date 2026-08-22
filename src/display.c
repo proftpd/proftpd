@@ -380,7 +380,7 @@ static int display_fh(pr_fh_t *fh, const char *fs, const char *resp_code,
       outs = sreplace(p, buf, key, val, NULL);
       sstrncpy(buf, outs, sizeof(buf));
 
-      tmp = strstr(outs, "%{");
+      tmp = strstr((char *) outs, "%{");
     }
 
     outs = sreplace(p, buf,

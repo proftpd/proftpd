@@ -860,7 +860,7 @@ static int is_symlink_path(pool *p, const char *path, size_t pathlen) {
    * calling ourselves recursively.
    */
 
-  ptr = strrchr(path, '/');
+  ptr = strrchr((char *) path, '/');
   if (ptr != NULL) {
     char *new_path;
     size_t new_pathlen;

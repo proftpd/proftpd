@@ -1031,7 +1031,7 @@ static int parse_wildcard_config_path(pool *p, const char *path,
 
     pr_signals_handle();
 
-    ptr = strchr(component, '/');
+    ptr = strchr((char *) component, '/');
     if (ptr != NULL) {
       component_len = ptr - component;
 
