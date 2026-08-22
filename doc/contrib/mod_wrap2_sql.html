@@ -95,7 +95,7 @@ These example SQL statements assume the existence of two tables: a
   SQLNamedQuery get-denied-clients SELECT "denied FROM wrapdeny WHERE name = '%{0}'"
   ...
   SQLNamedQuery get-all-allowed-clients SELECT "allowed FROM wrapallow"
-  SQLNamedQuery get-all-denied-clients SELET "denied FROM wrapdeny"
+  SQLNamedQuery get-all-denied-clients SELECT "denied FROM wrapdeny"
 </pre>
 These define the SQL statements to return the required list of words. The
 <code>%{0}</code> meta sequence will be substituted with the name being looked
@@ -211,7 +211,7 @@ options in a single row, in an appropriately formatted string.
 <p>
 <hr>
 <font size=2><b><i>
-&copy; Copyright 2000-2017 TJ Saunders<br>
+&copy; Copyright 2000-2026 TJ Saunders<br>
  All Rights Reserved<br>
 </i></b></font>
 <hr>

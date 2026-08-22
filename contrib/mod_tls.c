@@ -8086,7 +8086,7 @@ static int tls_accept(conn_t *conn, unsigned char on_data) {
         /* The error codes in the OpenSSL error queue are "packed"; we need
          * to unpack them to get the reason value.
          *
-         * Try to provide more context for the most commonly ocurring/reported
+         * Try to provide more context for the most commonly occurring/reported
          * handshake errors here.
          */
 
@@ -11008,11 +11008,11 @@ static int tls_verify_ocsp_url(X509_STORE_CTX *ctx, X509 *cert,
   }
 
 # if 0
-  /* XXX ideally we would set the requestor name to the subject name of the
+  /* XXX ideally we would set the requester name to the subject name of the
    * cert configured via TLS{DSA,RSA}CertificateFile here.
    */
   if (OCSP_request_set1_name(req, /* server cert X509_NAME subj name */) != 1) {
-    tls_log("error adding requestor name '%s' to OCSP request: %s",
+    tls_log("error adding requester name '%s' to OCSP request: %s",
       requestor_name, tls_get_errors());
 
     if (ocsp_ssl_ctx != NULL) {

@@ -3708,7 +3708,7 @@ EOS
 
       $expected = "User $user logged in.";
       $self->assert($expected eq $resp_msg,
-        test_msg("Expected response meessage '$expected', got '$resp_msg'"));
+        test_msg("Expected response message '$expected', got '$resp_msg'"));
     };
 
     if ($@) {

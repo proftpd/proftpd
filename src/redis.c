@@ -5337,7 +5337,7 @@ int pr_redis_sorted_set_kscore(pr_redis_t *redis, module *m, const char *key,
   reply = handle_reply(redis, cmd, reply);
   if (reply == NULL) {
     pr_trace_msg(trace_channel, 2,
-      "error gettin score for key (%lu bytes) using %s: %s",
+      "error getting score for key (%lu bytes) using %s: %s",
       (unsigned long) keysz, cmd, strerror(errno));
     destroy_pool(tmp_pool);
     errno = EIO;

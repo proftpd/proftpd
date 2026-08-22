@@ -2407,7 +2407,7 @@ sub showsymlinks_off_mlst_rel_symlinked_file_chrooted {
 
       $expected = 'modify=\d+;perm=adfr(w)?;size=\d+;type=file;unique=\S+;UNIX\.group=\d+;UNIX\.groupname=\S+;UNIX\.mode=\d+;UNIX\.owner=\d+;UNIX\.ownername=\S+; ' . $test_symlink . '$';
       $self->assert(qr/$expected/, $resp_msg,
-        test_msg("Expected respone message '$expected', got '$resp_msg'"));
+        test_msg("Expected response message '$expected', got '$resp_msg'"));
 
       $client->quit();
     };

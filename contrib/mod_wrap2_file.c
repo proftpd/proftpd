@@ -180,7 +180,7 @@ static void filetab_parse_table(wrap2_table_t *filetab) {
       }
 
     } else {
-      wrap2_log("file '%s': skipping irrevelant daemon/service ('%s') line %u",
+      wrap2_log("file '%s': skipping irrelevant daemon/service ('%s') line %u",
         filetab->tab_name, service, lineno);
     }
   }

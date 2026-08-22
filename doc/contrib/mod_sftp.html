@@ -2406,11 +2406,11 @@ However, when I telnet to the port on which <code>mod_sftp</code> is listening,
 I see the version banner plus some data which can't be rendered in the terminal.
 What is that extra data?<br>
 <font color=blue>Answer</font>: The short answer is that <code>mod_sftp</code>
-is pre-emptively sending the first key exchange data; it is this data which is
+is preemptively sending the first key exchange data; it is this data which is
 not displayed well.
 
 <p>
-This pre-emptive sending of the first key exchange message is an optimization.
+This preemptive sending of the first key exchange message is an optimization.
 The SSH2 protocol (and many SSH2 servers) start off doing:
 <pre>
  (1) <i>client</i> ------------ connect -------------&gt; <i>server</i>

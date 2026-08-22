@@ -255,7 +255,7 @@ The current supported authentication methods are:
   <li><b>OpenSSL</b><br>
     Allows passwords in the database to be of the form
     <code>'{digest-name}hashed-value'</code>, where <code>hashed-value</code>
-    is the base64-encoded digest of the passsword.  Only available if you
+    is the base64-encoded digest of the password.  Only available if you
     define <code>HAVE_OPENSSL</code> when you compile <code>proftpd</code>
     and you link with OpenSSL's <code>libcrypto</code> library; the easiest
     way to handle this is to use the <code>--enable-openssl</code> configure
@@ -1060,7 +1060,7 @@ meta-sequences available to <code>SQLNamedQuery</code> are largely equivalent.
 
 <p>
 The first parameter, <em>name</em>, should be unique across all named queries
-and must not contain spaces.  The result of re-using a name is undefined.
+and must not contain spaces.  The result of reusing a name is undefined.
 
 <p>
 The second parameter, <em>type</em>, is the type of query, either

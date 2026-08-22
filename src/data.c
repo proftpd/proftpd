@@ -487,7 +487,7 @@ void pr_data_reset(void) {
 
   /* Note that we deliberately omit the SF_EPSV_ALL flag from here.  Once that
    * session flag has been requested/set, it persists for the rest of the
-   * session, regardless of data transfer successs or failure (Issue #2255).
+   * session, regardless of data transfer success or failure (Issue #2255).
    */
   session.sf_flags &= (SF_ALL^(SF_ABORT|SF_POST_ABORT|SF_XFER|SF_PASSIVE|SF_ASCII_OVERRIDE));
 }
@@ -1055,7 +1055,7 @@ static void poll_ctrl(void) {
      * marks the ABOR command with the marker.  In that case, a SIGURG signal
      * will have been raised, and the SF_ABORT flag set.  The actual "ABOR"
      * bytes on the control connection will be read only AFTER the data transfer
-     * has been failed.  This leads the proper ordering of multiple responses
+     * has been failed.  This leads to the proper ordering of multiple responses
      * (first for failed transfer, second for successful ABOR) in such cases.
      *
      * Now consider the case where a client does NOT use the TCP OOB mechanism,

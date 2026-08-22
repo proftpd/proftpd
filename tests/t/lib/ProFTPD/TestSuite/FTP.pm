@@ -212,7 +212,7 @@ sub set_status {
   my $resp = defined($msg) ? [$msg] : [] unless ref($msg);
 
   # In order to properly accumulate the multiple responses from an aborted
-  # data transfer/session, we only want to ovewrite the any existing
+  # data transfer/session, we only want to overwrite the any existing
   # responses if the previous response code is not a 426.  What an ugly hack.
   my $overwrite_resp = 0;
 

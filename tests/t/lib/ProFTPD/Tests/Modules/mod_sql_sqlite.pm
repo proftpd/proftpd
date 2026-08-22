@@ -1717,7 +1717,8 @@ EOS
       },
 
       # Bug#3149 occurred because mod_sql's resolve_short_tag() function
-      # was not able to resolve %V properly (it was deferencing a bad pointer).
+      # was not able to resolve %V properly (it was dereferencing a bad
+      * pointer).
       'mod_sql.c' => {
         SQLAuthTypes => 'plaintext',
         SQLBackend => 'sqlite3',
@@ -14109,7 +14110,7 @@ EOS
     die($ex);
   }
 
-  # Note: We are simply re-using the existing get_locations() function here
+  # Note: We are simply reusing the existing get_locations() function here
   # for convenience/expedience.
   my ($login, $ip_addr, $name) = get_locations($db_file, "user = \'$user\'");
 

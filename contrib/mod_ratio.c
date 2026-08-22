@@ -46,7 +46,7 @@
    * 1999-10-03: v3.0: Uses generic API to access SQL data at runtime.
      Supports negative ratios (upload X to get 1) by popular demand.
      Added proper SITE command and help.  Various presentation
-     idiosyncracies fixed.
+     idiosyncrasies fixed.
 
    * 1999-06-13: v2.2: fixed ratio display, it was printing ratios in
      reverse order.
