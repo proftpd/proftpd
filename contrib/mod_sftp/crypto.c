@@ -93,14 +93,13 @@ static struct sftp_cipher ciphers[] = {
 #endif /* HAVE_EVP_CHACHA20_OPENSSL and !HAVE_BROKEN_CHACHA20 */
 
 #if OPENSSL_VERSION_NUMBER > 0x000907000L
-  { "aes256-ctr",	NULL,		0, 0,	NULL,	TRUE, TRUE },
-  { "aes192-ctr",	NULL,		0, 0,	NULL,	TRUE, TRUE },
-  { "aes128-ctr",	NULL,		0, 0,	NULL,	TRUE, TRUE },
-
 # if defined(HAVE_EVP_AES_256_GCM_OPENSSL)
   { "aes256-gcm@openssh.com", "aes-256-gcm", 16, 0, EVP_aes_256_gcm, TRUE, TRUE },
   { "aes128-gcm@openssh.com", "aes-128-gcm", 16, 0, EVP_aes_128_gcm, TRUE, TRUE },
-# endif
+# endif /* HAVE_EVP_AES_256_GCM_OPENSSL */
+  { "aes256-ctr",	NULL,		0, 0,	NULL,	TRUE, TRUE },
+  { "aes192-ctr",	NULL,		0, 0,	NULL,	TRUE, TRUE },
+  { "aes128-ctr",	NULL,		0, 0,	NULL,	TRUE, TRUE },
 
 # if !defined(HAVE_AES_CRIPPLED_OPENSSL)
   { "aes256-cbc",	"aes-256-cbc",	0, 0,	EVP_aes_256_cbc, TRUE, TRUE },
@@ -108,7 +107,7 @@ static struct sftp_cipher ciphers[] = {
 # endif /* !HAVE_AES_CRIPPLED_OPENSSL */
 
   { "aes128-cbc",	"aes-128-cbc",	0, 0,	EVP_aes_128_cbc, TRUE, TRUE },
-#endif
+#endif /* OpenSSL-0.9.7 or later */
 
 #if !defined(OPENSSL_NO_BF) && \
     (!defined(HAVE_LIBRESSL) || \
@@ -163,7 +162,7 @@ struct sftp_digest {
   const EVP_MD *(*get_type)(void);
 #else
   EVP_MD *(*get_type)(void);
-#endif
+#endif /* OpenSSL-0.9.7 or later */
 
   uint32_t mac_len;
 
@@ -178,35 +177,48 @@ struct sftp_digest {
   int fips_allowed;
 };
 
+/* Note that the order of algorithms in this table is the order in which
+ * they will be sent to clients, by default.  So we try to use ETM modes
+ * before non-ETM modes, and prefer UMACs over HMACs.  The OpenSSL preprocessor
+ * guards make this a little messy.
+ */
 static struct sftp_digest digests[] = {
   /* The handling of NULL openssl_name and get_type fields is done in
    * sftp_crypto_get_digest(), as special cases.
    */
-#if defined(HAVE_SHA256_OPENSSL)
-  { "hmac-sha2-256",	"sha256",		EVP_sha256,	0, TRUE, TRUE },
+#if OPENSSL_VERSION_NUMBER > 0x000907000L
+  { "umac-128-etm@openssh.com", NULL,	NULL,		16,	TRUE, FALSE },
+  { "umac-64-etm@openssh.com", NULL,	NULL,		8,	TRUE, FALSE },
+# if defined(HAVE_SHA512_OPENSSL)
+  { "hmac-sha2-512-etm@openssh.com", "sha512",	EVP_sha512,	0, TRUE, TRUE },
+# endif /* HAVE_SHA512_OPENSSL */
+# if defined(HAVE_SHA256_OPENSSL)
   { "hmac-sha2-256-etm@openssh.com", "sha256",	EVP_sha256,	0, TRUE, TRUE },
-#endif /* SHA256 support in OpenSSL */
+# endif /* HAVE_SHA256_OPENSSL */
+#endif /* OpenSSL-0.9.7 or later */
+  { "hmac-sha1-etm@openssh.com", "sha1",EVP_sha1,	0, 	TRUE, TRUE },
+  { "hmac-sha1-96-etm@openssh.com", "sha1", EVP_sha1,	12, 	TRUE, TRUE },
+  { "hmac-md5-etm@openssh.com", "md5",	EVP_md5,	0, 	FALSE, TRUE },
+  { "hmac-md5-96-etm@openssh.com", "md5", EVP_md5,	12, 	FALSE, TRUE },
+
+#if OPENSSL_VERSION_NUMBER > 0x000907000L
+  { "umac-128@openssh.com", NULL,	NULL,		16,	TRUE, FALSE },
+  { "umac-64@openssh.com", NULL,	NULL,		8,	TRUE, FALSE },
+#endif /* OpenSSL-0.9.7 or later */
 #if defined(HAVE_SHA512_OPENSSL)
   { "hmac-sha2-512",	"sha512",		EVP_sha512,	0, TRUE, TRUE },
-  { "hmac-sha2-512-etm@openssh.com", "sha512",	EVP_sha512,	0, TRUE, TRUE },
-#endif /* SHA512 support in OpenSSL */
+#endif /* HAVE_SHA512_OPENSSL */
+#if defined(HAVE_SHA256_OPENSSL)
+  { "hmac-sha2-256",	"sha256",		EVP_sha256,	0, TRUE, TRUE },
+#endif /* HAVE_SHA256_OPENSSL */
   { "hmac-sha1",	"sha1",		EVP_sha1,	0, 	TRUE, TRUE },
-  { "hmac-sha1-etm@openssh.com", "sha1",EVP_sha1,	0, 	TRUE, TRUE },
   { "hmac-sha1-96",	"sha1",		EVP_sha1,	12,	TRUE, TRUE },
-  { "hmac-sha1-96-etm@openssh.com", "sha1", EVP_sha1,	12, 	TRUE, TRUE },
   { "hmac-md5",		"md5",		EVP_md5,	0,	FALSE, FALSE },
-  { "hmac-md5-etm@openssh.com", "md5",	EVP_md5,	0, 	FALSE, TRUE },
   { "hmac-md5-96",	"md5",		EVP_md5,	12,	FALSE, FALSE },
-  { "hmac-md5-96-etm@openssh.com", "md5", EVP_md5,	12, 	FALSE, TRUE },
 #if !defined(OPENSSL_NO_RIPEMD)
   { "hmac-ripemd160",	"rmd160",	EVP_ripemd160,	0,	FALSE, FALSE },
 #endif /* !OPENSSL_NO_RIPEMD */
-#if OPENSSL_VERSION_NUMBER > 0x000907000L
-  { "umac-64@openssh.com", NULL,	NULL,		8,	TRUE, FALSE },
-  { "umac-64-etm@openssh.com", NULL,	NULL,		8,	TRUE, FALSE },
-  { "umac-128@openssh.com", NULL,	NULL,		16,	TRUE, FALSE },
-  { "umac-128-etm@openssh.com", NULL,	NULL,		16,	TRUE, FALSE },
-#endif /* OpenSSL-0.9.7 or later */
+
   { "none",		"null",		EVP_md_null,	0,	FALSE, TRUE },
   { NULL, NULL, NULL, 0, FALSE, FALSE }
 };
