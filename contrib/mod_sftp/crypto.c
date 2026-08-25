@@ -23,6 +23,7 @@
 
 #include "mod_sftp.h"
 #include "crypto.h"
+#include "keys.h"
 #include "provider.h"
 #include "umac.h"
 
@@ -40,6 +41,8 @@
     defined(PR_USE_OPENSSL_ENGINE)
 static const char *crypto_engine = NULL;
 #endif /* PR_USE_OPENSSL_ENGINE */
+
+static const char *trace_channel = "ssh2";
 
 struct sftp_cipher {
   const char *name;
@@ -224,12 +227,12 @@ static struct sftp_digest digests[] = {
 };
 
 static const char *hostkey_algos[] = {
-#if defined(PR_USE_SODIUM)
-  "ssh-ed25519",
-#endif /* PR_USE_SODIUM */
 #if defined(HAVE_X448_OPENSSL)
   "ssh-ed448",
 #endif /* HAVE_X448_OPENSSL */
+#if defined(PR_USE_SODIUM)
+  "ssh-ed25519",
+#endif /* PR_USE_SODIUM */
 #if defined(PR_USE_OPENSSL_ECC)
   "ecdsa-sha2-nistp256",
   "ecdsa-sha2-nistp384",
@@ -246,29 +249,16 @@ static const char *hostkey_algos[] = {
   NULL
 };
 
+/* Note that in this default list of key exchange algorithms, one of the
+ * REQUIRED algorithms is conspicuously absent:
+ *
+ *   diffie-hellman-group1-sha1
+ *
+ * This exchange has a weak hardcoded DH group, and will thus only be used
+ * if explicitly requested via SFTPKeyExchanges, or if the AllowWeakDH
+ * SFTPOption is used.
+ */
 static const char *key_exchanges[] = {
-  "diffie-hellman-group1-sha1",
-  "diffie-hellman-group14-sha1",
-#if (OPENSSL_VERSION_NUMBER > 0x000907000L && defined(OPENSSL_FIPS)) || \
-    (OPENSSL_VERSION_NUMBER > 0x000908000L)
-  "diffie-hellman-group14-sha256",
-  "diffie-hellman-group16-sha512",
-  "diffie-hellman-group18-sha512",
-  "diffie-hellman-group-exchange-sha256",
-#endif
-  "diffie-hellman-group-exchange-sha1",
-#if defined(PR_USE_OPENSSL_ECC)
-  "ecdh-sha2-nistp256",
-  "ecdh-sha2-nistp384",
-  "ecdh-sha2-nistp521",
-#endif /* PR_USE_OPENSSL_ECC */
-#if defined(HAVE_SODIUM_H) && defined(HAVE_SHA256_OPENSSL)
-  "curve25519-sha256",
-  "curve25519-sha256@libssh.org",
-#endif /* HAVE_SODIUM_H and HAVE_SHA256_OPENSSL */
-#if defined(HAVE_X448_OPENSSL) && defined(HAVE_SHA512_OPENSSL)
-  "curve448-sha512",
-#endif /* HAVE_X448_OPENSSL and HAVE_SHA512_OPENSSL */
 #if defined(HAVE_MLKEM768_OPENSSL) && defined(HAVE_SHA256_OPENSSL)
   "mlkem768x25519-sha256",
 #endif /* HAVE_MLKEM768_OPENSSL and HAVE_SHA256_OPENSSL */
@@ -276,11 +266,48 @@ static const char *key_exchanges[] = {
   "sntrup761x25519-sha512",
   "sntrup761x25519-sha512@openssh.com",
 #endif /* HAVE_X25519_OPENSSL and HAVE_SHA512_OPENSSL */
+#if defined(HAVE_X448_OPENSSL) && defined(HAVE_SHA512_OPENSSL)
+  "curve448-sha512",
+#endif /* HAVE_X448_OPENSSL and HAVE_SHA512_OPENSSL */
+#if defined(HAVE_SODIUM_H) && defined(HAVE_SHA256_OPENSSL)
+  "curve25519-sha256",
+  "curve25519-sha256@libssh.org",
+#endif /* HAVE_SODIUM_H and HAVE_SHA256_OPENSSL */
+#if defined(PR_USE_OPENSSL_ECC)
+  "ecdh-sha2-nistp521",
+  "ecdh-sha2-nistp384",
+  "ecdh-sha2-nistp256",
+#endif /* PR_USE_OPENSSL_ECC */
+#if (OPENSSL_VERSION_NUMBER > 0x000907000L && defined(OPENSSL_FIPS)) || \
+    (OPENSSL_VERSION_NUMBER > 0x000908000L)
+# if defined(HAVE_SHA512_OPENSSL)
+  "diffie-hellman-group18-sha512",
+  "diffie-hellman-group16-sha512",
+# endif /* HAVE_SHA512_OPENSSL */
+# if defined(HAVE_SHA256_OPENSSL)
+  "diffie-hellman-group-exchange-sha256",
+  "diffie-hellman-group14-sha256",
+# endif /* HAVE_SHA256_OPENSSL */
+  "diffie-hellman-group14-sha1",
+#endif
+  "diffie-hellman-group-exchange-sha1",
+
+#if 0
+/* We cannot currently support rsa2048-sha256, since it requires support
+ * for PKCS#1 v2.1 (RFC3447).  OpenSSL only supports PKCS#1 v2.0 (RFC2437)
+ * at present, which only allows EME-OAEP using SHA1.  v2.1 allows for
+ * using other message digests, e.g. SHA256, for EME-OAEP.
+ */
+#if ((OPENSSL_VERSION_NUMBER > 0x000907000L && defined(OPENSSL_FIPS)) || \
+     (OPENSSL_VERSION_NUMBER > 0x000908000L)) && \
+     defined(HAVE_SHA256_OPENSSL)
+  "rsa2048-sha256",
+#endif
+#endif
+
   "rsa1024-sha1",
   NULL
 };
-
-static const char *trace_channel = "ssh2";
 
 #if OPENSSL_VERSION_NUMBER < 0x30000000L && \
     (!defined(HAVE_LIBRESSL) || \
@@ -1316,6 +1343,13 @@ int sftp_crypto_is_key_exchange(const char *name) {
     return -1;
   }
 
+  /* We hardcode this comparison, so that this weak algorithm need not appear
+   * in our key exchange list.
+   */
+  if (strcmp(name, "diffie-hellman-group1-sha1") == 0) {
+    return TRUE;
+  }
+
   for (i = 0; key_exchanges[i]; i++) {
     if (strcmp(key_exchanges[i], name) == 0) {
       return TRUE;
@@ -1577,6 +1611,188 @@ const char *sftp_crypto_get_kexinit_digest_list(pool *p) {
   }
 
   return res;
+}
+
+const char *sftp_crypto_get_kexinit_key_exchange_list(pool *p) {
+  char *res = "";
+  config_rec *c;
+
+  c = find_config(main_server->conf, CONF_PARAM, "SFTPKeyExchanges", FALSE);
+  if (c != NULL) {
+    res = pstrdup(p, c->argv[0]);
+
+  } else {
+    register unsigned int i;
+
+    for (i = 0; key_exchanges[i]; i++) {
+      res = pstrcat(p, res, *res ? "," : "", pstrdup(p, key_exchanges[i]),
+        NULL);
+    }
+
+    if (sftp_opts & SFTP_OPT_ALLOW_WEAK_DH) {
+      /* The hardcoded group for this exchange is rather weak in the face of
+       * the "Logjam" vulnerability (see https://weakdh.org).  Thus it is
+       * only appended to the end of the default exchanges if the AllowWeakDH
+       * SFTPOption is in effect.
+       */
+      res = pstrcat(p, res, ",", pstrdup(p, "diffie-hellman-group1-sha1"),
+        NULL);
+    }
+  }
+
+  return res;
+}
+
+const char *sftp_crypto_get_kexinit_hostkey_list(pool *p) {
+  register unsigned int i;
+  config_rec *c;
+  array_header *hostkey_list;
+  char *list = "";
+
+  /* Our list of supported hostkey algorithms depends on the hostkeys
+   * that have been configured.  Show a preference for RSA over DSA,
+   * and ECDSA over both RSA and DSA, and ED25519/ED448 over all.
+   */
+  hostkey_list = make_array(p, 1, sizeof(char *));
+
+  c = find_config(main_server->conf, CONF_PARAM, "SFTPHostKeys", FALSE);
+  if (c != NULL) {
+    for (i = 0; i < c->argc; i++) {
+      *((char **) push_array(hostkey_list)) = pstrdup(p, c->argv[i]);
+    }
+
+  } else {
+    for (i = 0; hostkey_algos[i]; i++) {
+      *((char **) push_array(hostkey_list)) = pstrdup(p, hostkey_algos[i]);
+    }
+  }
+
+  for (i = 0; i < hostkey_list->nelts; i++) {
+    const char *algo;
+    int have_key = FALSE, supported_algo = FALSE;
+
+    pr_signals_handle();
+
+    algo = ((char **) hostkey_list->elts)[i];
+
+    if (strcmp(algo, "ssh-ed25519") == 0) {
+#if defined(PR_USE_SODIUM)
+      supported_algo = TRUE;
+#endif /* PR_USE_SODIUM */
+
+      if (sftp_keys_have_ed25519_hostkey() == 0) {
+        have_key = TRUE;
+      }
+
+    } else if (strcmp(algo, "ssh-ed448") == 0) {
+#if defined(HAVE_X448_OPENSSL)
+      supported_algo = TRUE;
+#endif /* HAVE_X448_OPENSSL */
+
+      if (sftp_keys_have_ed448_hostkey() == 0) {
+        have_key = TRUE;
+      }
+
+#if defined(PR_USE_OPENSSL_ECC)
+    } else if (strcmp(algo, "ecdsa-sha2-nistp256") == 0) {
+      int *nids = NULL, res;
+
+      supported_algo = TRUE;
+      res = sftp_keys_have_ecdsa_hostkey(p, &nids);
+      if (res > 0) {
+        register int j;
+
+        for (j = 0; j < res; j++) {
+          if (nids[j] == NID_X9_62_prime256v1) {
+            have_key = TRUE;
+            break;
+          }
+        }
+      }
+
+    } else if (strcmp(algo, "ecdsa-sha2-nistp384") == 0) {
+      int *nids = NULL, res;
+
+      supported_algo = TRUE;
+      res = sftp_keys_have_ecdsa_hostkey(p, &nids);
+      if (res > 0) {
+        register int j;
+
+        for (j = 0; j < res; j++) {
+          if (nids[j] == NID_secp384r1) {
+            have_key = TRUE;
+            break;
+          }
+        }
+      }
+
+    } else if (strcmp(algo, "ecdsa-sha2-nistp521") == 0) {
+      int *nids = NULL, res;
+
+      supported_algo = TRUE;
+      res = sftp_keys_have_ecdsa_hostkey(p, &nids);
+      if (res > 0) {
+        register int j;
+
+        for (j = 0; j < res; j++) {
+          if (nids[j] == NID_secp521r1) {
+            have_key = TRUE;
+            break;
+          }
+        }
+      }
+#endif /* PR_USE_OPENSSL_ECC */
+
+#if defined(HAVE_SHA512_OPENSSL)
+    } else if (strcmp(algo, "rsa-sha2-512") == 0) {
+      supported_algo = TRUE;
+
+      if (sftp_keys_have_rsa_hostkey() == 0) {
+        have_key = TRUE;
+      }
+#endif /* HAVE_SHA512_OPENSSL */
+
+#if defined(HAVE_SHA256_OPENSSL)
+    } else if (strcmp(algo, "rsa-sha2-256") == 0) {
+      supported_algo = TRUE;
+
+      if (sftp_keys_have_rsa_hostkey() == 0) {
+        have_key = TRUE;
+      }
+#endif /* HAVE_SHA256_OPENSSL */
+
+    } else if (strcmp(algo, "ssh-rsa") == 0) {
+      supported_algo = TRUE;
+
+      if (sftp_keys_have_rsa_hostkey() == 0) {
+        have_key = TRUE;
+      }
+
+    } else if (strcmp(algo, "ssh-dss") == 0) {
+      supported_algo = TRUE;
+
+      if (sftp_keys_have_dsa_hostkey() == 0) {
+        have_key = TRUE;
+      }
+    }
+
+    if (supported_algo == TRUE &&
+        have_key == TRUE) {
+      list = pstrcat(p, list, *list ? "," : "", algo, NULL);
+
+    } else {
+      if (supported_algo == FALSE) {
+        pr_trace_msg(trace_channel, 19,
+          "omitting host key algorithm '%s' due to lack of support", algo);
+
+      } else {
+        pr_trace_msg(trace_channel, 19,
+          "omitting host key algorithm '%s' due to lack of key", algo);
+      }
+    }
+  }
+
+  return list;
 }
 
 const char *sftp_crypto_get_errors(void) {
