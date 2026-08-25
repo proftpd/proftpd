@@ -1906,6 +1906,12 @@ static struct tls_label tls_sigalgo_labels[] = {
   { 0x0809, "rsa_pss_pss_sha256" },
   { 0x080A, "rsa_pss_pss_sha384" },
   { 0x080B, "rsa_pss_pss_sha512" },
+  { 0x081A, "ecdsa_brainpoolP256r1tls13_sha256" },
+  { 0x081B, "ecdsa_brainpoolP384r1tls13_sha384" },
+  { 0x081C, "ecdsa_brainpoolP512r1tls13_sha512" },
+  { 0x0904, "mldsa44" },
+  { 0x0905, "mldsa65" },
+  { 0x0906, "mldsa87" },
 
   { 0, NULL }
 };
