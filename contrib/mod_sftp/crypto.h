@@ -34,13 +34,16 @@ int sftp_crypto_init(void);
 void sftp_crypto_free(int);
 const EVP_CIPHER *sftp_crypto_get_cipher(const char *name, size_t *key_len,
   size_t *auth_len, size_t *discard_len);
-const EVP_MD *sftp_crypto_get_digest(const char *, uint32_t *, int *);
+const EVP_MD *sftp_crypto_get_digest(const char *name, uint32_t *mac_len,
+  int *free_md);
 void sftp_crypto_free_digest(const EVP_MD *md);
 int sftp_crypto_is_hostkey(const char *name);
 int sftp_crypto_is_key_exchange(const char *name);
-int sftp_crypto_set_driver(const char *);
-const char *sftp_crypto_get_kexinit_cipher_list(pool *);
-const char *sftp_crypto_get_kexinit_digest_list(pool *);
+int sftp_crypto_set_driver(const char *driver_name);
+
+/* Return the comma-separated lists of algorithms for KEXINIT. */
+const char *sftp_crypto_get_kexinit_cipher_list(pool *p);
+const char *sftp_crypto_get_kexinit_digest_list(pool *p);
 
 size_t sftp_crypto_get_size(size_t, size_t);
 
