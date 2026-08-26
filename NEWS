@@ -21,6 +21,8 @@
   to use of negative file offsets.
 - Issue 2293 - Regression with custom user/group info SQLNamedQuery in 1.3.9d.
 - Issue 2298 - Reorder the default lists of SFTP cipher and digest algorithms.
+- Issue 2301 - Unauthenticated SNMP UDP packets kill SNMP agent due to
+  underflow computation.
 
 1.3.10rc4 - Released 14-Aug-2026
 --------------------------------
