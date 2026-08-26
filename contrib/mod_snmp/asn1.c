@@ -223,6 +223,17 @@ static int asn1_read_len(pool *p, unsigned char **buf, size_t *buflen,
       return -1;
     }
 
+    /* Make sure the provided buffer is large enough for the amount of data
+     * received (Issue #2301).
+     */
+    if (byte > *buflen) {
+      (void) pr_log_writefile(snmp_logfd, MOD_SNMP_VERSION,
+        "ASN.1 error: provided ASN1 length value %u exceeds buffer (%lu bytes)",
+        (unsigned int) byte, (unsigned long) *buflen);
+      errno = EINVAL;
+      return -1;
+    }
+
     *asn1_len = 0;
     memmove(asn1_len, *buf, (size_t) byte);
     (*buf) += byte;
@@ -317,6 +328,16 @@ int snmp_asn1_read_int(pool *p, unsigned char **buf, size_t *buflen,
   /* Length */
   res = asn1_read_len(p, buf, buflen, &objlen);
   if (res < 0) {
+    return -1;
+  }
+
+  /* Sanity check on the object length, to make sure it is not absurd. */
+  if (objlen > SNMP_ASN1_MAX_OBJECT_LEN) {
+    pr_trace_msg(trace_channel, 3,
+      "failed reading object integer: object length (%u bytes) is greater "
+      "than max object length (%u bytes)", objlen, SNMP_ASN1_MAX_OBJECT_LEN);
+    pr_log_stacktrace(snmp_logfd, MOD_SNMP_VERSION);
+    errno = EINVAL;
     return -1;
   }
 
@@ -462,6 +483,16 @@ int snmp_asn1_read_oid(pool *p, unsigned char **buf, size_t *buflen,
     return -1;
   }
 
+  /* Sanity check on the object length, to make sure it is not absurd. */
+  if (objlen > SNMP_ASN1_MAX_OBJECT_LEN) {
+    pr_trace_msg(trace_channel, 3,
+      "failed reading object OID: object length (%u bytes) is greater "
+      "than max object length (%u bytes)", objlen, SNMP_ASN1_MAX_OBJECT_LEN);
+    pr_log_stacktrace(snmp_logfd, MOD_SNMP_VERSION);
+    errno = EINVAL;
+    return -1;
+  }
+
   /* Is there enough data remaining in the buffer for the indicated object? */
   if (objlen > *buflen) {
     pr_trace_msg(trace_channel, 3,
@@ -566,6 +597,16 @@ int snmp_asn1_read_string(pool *p, unsigned char **buf, size_t *buflen,
   /* Length */
   res = asn1_read_len(p, buf, buflen, &objlen);
   if (res < 0) {
+    return -1;
+  }
+
+  /* Sanity check on the object length, to make sure it is not absurd. */
+  if (objlen > SNMP_ASN1_MAX_OBJECT_LEN) {
+    pr_trace_msg(trace_channel, 3,
+      "failed reading object string: object length (%u bytes) is greater "
+      "than max object length (%u bytes)", objlen, SNMP_ASN1_MAX_OBJECT_LEN);
+    pr_log_stacktrace(snmp_logfd, MOD_SNMP_VERSION);
+    errno = EINVAL;
     return -1;
   }
 

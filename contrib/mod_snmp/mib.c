@@ -44,7 +44,7 @@ static struct snmp_mib snmp_mibs[] = {
   /* Miscellaneous non-mod_snmp MIBs */
   { { SNMP_MGMT_SYS_OID_UPTIME, 0 },
     SNMP_MGMT_SYS_OIDLEN_UPTIME + 1,
-    0, TRUE, TRUE,
+    SNMP_DB_NOTIFY_F_SYS_UPTIME, TRUE, TRUE,
     SNMP_MGMT_SYS_MIB_NAME_PREFIX "sysUpTime",
     SNMP_MGMT_SYS_MIB_NAME_PREFIX "sysUpTime.0",
     SNMP_SMI_TIMETICKS },
