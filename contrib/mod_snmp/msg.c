@@ -71,9 +71,8 @@ const char *snmp_msg_get_versionstr(long snmp_version) {
  *    }
  */
 
-int snmp_msg_read(pool *p, unsigned char **buf, size_t *buflen,
-    char **community, unsigned int *community_len, long *snmp_version,
-    struct snmp_pdu **pdu) {
+int snmp_msg_read_header(pool *p, unsigned char **buf, size_t *buflen,
+    char **community, unsigned int *community_len, long *snmp_version) {
   unsigned char asn1_type;
   unsigned int asn1_len;
   int res;
@@ -85,7 +84,7 @@ int snmp_msg_read(pool *p, unsigned char **buf, size_t *buflen,
 
   if (asn1_type != (SNMP_ASN1_TYPE_SEQUENCE|SNMP_ASN1_CONSTRUCT)) {
     pr_trace_msg(trace_channel, 3,
-      "unable to read SNMP message (tag '%s')",
+      "unable to read SNMP message (tag \"%s\")",
       snmp_asn1_get_tagstr(p, asn1_type));
 
     errno = EINVAL;
@@ -127,7 +126,7 @@ int snmp_msg_read(pool *p, unsigned char **buf, size_t *buflen,
   /* Check that asn1_type is a UNIVERSAL/PRIMITIVE/OCTETSTRING. */
   if (!(asn1_type == (SNMP_ASN1_CLASS_UNIVERSAL|SNMP_ASN1_PRIMITIVE|SNMP_ASN1_TYPE_OCTETSTRING))) {
     pr_trace_msg(trace_channel, 3,
-      "unable to read OCTET_STRING (received type '%s')",
+      "unable to read OCTET_STRING (received type \"%s\")",
       snmp_asn1_get_tagstr(p, asn1_type));
     errno = EINVAL;
     return -1;
@@ -137,7 +136,14 @@ int snmp_msg_read(pool *p, unsigned char **buf, size_t *buflen,
     "read %s message: community = '%s'",
     snmp_msg_get_versionstr(*snmp_version), *community);
 
-  res = snmp_pdu_read(p, buf, buflen, pdu, *snmp_version);
+  return 0;
+}
+
+int snmp_msg_read_pdu(pool *p, unsigned char **buf, size_t *buflen,
+    struct snmp_pdu **pdu, long snmp_version) {
+  int res;
+
+  res = snmp_pdu_read(p, buf, buflen, pdu, snmp_version);
   if (res < 0) {
     return -1;
   }

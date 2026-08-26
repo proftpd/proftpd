@@ -1405,12 +1405,12 @@ static int snmp_agent_handle_packet(int sockfd, pr_netaddr_t *agent_addr) {
     return -1;
   }
 
-  res = snmp_msg_read(pkt->pool, &(pkt->req_data), &(pkt->req_datalen),
-    &(pkt->community), &(pkt->community_len), &(pkt->snmp_version),
-    &(pkt->req_pdu));
+  /* Read the packet fields needed for authentication. */
+  res = snmp_msg_read_header(pkt->pool, &(pkt->req_data), &(pkt->req_datalen),
+    &(pkt->community), &(pkt->community_len), &(pkt->snmp_version));
   if (res < 0) {
     (void) pr_log_writefile(snmp_logfd, MOD_SNMP_VERSION,
-      "error reading SNMP message from UDP packet: %s", strerror(errno));
+      "error reading SNMP message header from UDP packet: %s", strerror(errno));
 
     destroy_pool(pkt->pool);
     errno = EINVAL;
@@ -1423,6 +1423,17 @@ static int snmp_agent_handle_packet(int sockfd, pr_netaddr_t *agent_addr) {
     (void) pr_log_writefile(snmp_logfd, MOD_SNMP_VERSION,
       "%s message does not contain correct authentication info, "
       "ignoring message", snmp_msg_get_versionstr(pkt->snmp_version));
+
+    destroy_pool(pkt->pool);
+    errno = EINVAL;
+    return -1;
+  }
+
+  res = snmp_msg_read_pdu(pkt->pool, &(pkt->req_data), &(pkt->req_datalen),
+    &(pkt->req_pdu), pkt->snmp_version);
+  if (res < 0) {
+    (void) pr_log_writefile(snmp_logfd, MOD_SNMP_VERSION,
+      "error reading SNMP message data from UDP packet: %s", strerror(errno));
 
     destroy_pool(pkt->pool);
     errno = EINVAL;
