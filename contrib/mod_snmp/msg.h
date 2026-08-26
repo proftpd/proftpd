@@ -29,9 +29,10 @@
 
 const char *snmp_msg_get_versionstr(long snmp_version);
 
-int snmp_msg_read(pool *p, unsigned char **buf, size_t *buflen,
-  char **community, unsigned int *community_len, long *snmp_version,
-  struct snmp_pdu **pdu);
+int snmp_msg_read_header(pool *p, unsigned char **buf, size_t *buflen,
+  char **community, unsigned int *community_len, long *snmp_version);
+int snmp_msg_read_pdu(pool *p, unsigned char **buf, size_t *buflen,
+  struct snmp_pdu **pdu, long snmp_version);
 int snmp_msg_write(pool *p, unsigned char **buf, size_t *buflen,
   char *community, unsigned int community_len, long snmp_version,
   struct snmp_pdu *pdu);
