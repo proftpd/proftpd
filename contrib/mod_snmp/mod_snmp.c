@@ -530,11 +530,11 @@ static int snmp_openlog(void) {
  * already forked.
  */
 static void snmp_daemonize(const char *daemon_dir) {
-#ifndef HAVE_SETSID
+#if !defined(HAVE_SETSID)
   int tty_fd;
-#endif
+#endif /* HAVE_SETSID */
 
-#ifdef HAVE_SETSID
+#if defined(HAVE_SETSID)
   /* setsid() is the preferred way to disassociate from the
    * controlling terminal
    */
@@ -559,11 +559,11 @@ static void snmp_daemonize(const char *daemon_dir) {
 
   /* Portable way to prevent re-acquiring a tty in the future */
 
-#ifdef HAVE_SETPGID
+#if defined(HAVE_SETPGID)
   setpgid(0, getpid());
 
 #else
-# ifdef SETPGRP_VOID
+# if defined(SETPGRP_VOID)
   setpgrp();
 
 # else
@@ -605,7 +605,7 @@ static int snmp_agent_handle_get(struct snmp_packet *pkt) {
   for (iter_var = pkt->req_pdu->varlist; iter_var; iter_var = iter_var->next) {
     struct snmp_mib *mib = NULL;
     struct snmp_var *resp_var = NULL;
-    int32_t mib_int = -1;
+    int32_t mib_int = 0;
     char *mib_str = NULL;
     size_t mib_strlen = 0;
     int lacks_instance_id = FALSE;
@@ -723,7 +723,7 @@ static int snmp_agent_handle_getnext(struct snmp_packet *pkt) {
     struct snmp_mib *mib = NULL;
     struct snmp_var *resp_var = NULL;
     int mib_idx = -1, next_idx = -1, lacks_instance_id = FALSE;
-    int32_t mib_int = -1;
+    int32_t mib_int = 0;
     char *mib_str = NULL;
     size_t mib_strlen = 0;
 
@@ -963,7 +963,7 @@ static int snmp_agent_handle_getbulk(struct snmp_packet *pkt) {
     struct snmp_mib *mib = NULL;
     struct snmp_var *resp_var = NULL;
     int mib_idx = -1, lacks_instance_id = FALSE;
-    int32_t mib_int = -1;
+    int32_t mib_int = 0;
     char *mib_str = NULL;
     size_t mib_strlen = 0;
 
@@ -1083,7 +1083,7 @@ static int snmp_agent_handle_getbulk(struct snmp_packet *pkt) {
     struct snmp_mib *mib = NULL;
     struct snmp_var *resp_var = NULL;
     int mib_idx = -1, lacks_instance_id = FALSE;
-    int32_t mib_int = -1;
+    int32_t mib_int = 0;
     char *mib_str = NULL;
     size_t mib_strlen = 0;
 
@@ -1609,6 +1609,9 @@ static pid_t snmp_agent_start(const char *tables_dir, int agent_type,
       /* We're the parent. */
       return agent_pid;
   }
+
+  /* Mark our daemon uptime here, via agent uptime. */
+  gettimeofday(&snmp_start_tv, NULL);
 
   /* Reset the cached PID, so that it is correctly reflected in the logs. */
   session.pid = getpid();
@@ -3668,8 +3671,6 @@ static void snmp_startup_ev(const void *event_data, void *user_data) {
       ": cannot support SNMP for ServerType inetd, disabling module");
     return;
   }
-
-  gettimeofday(&snmp_start_tv, NULL);
 }
 
 static void snmp_timeout_idle_ev(const void *event_data, void *user_data) {
