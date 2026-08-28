@@ -28,6 +28,6 @@
 #include "conf.h"
 #include "privs.h"
 
-#define MOD_DNSBL_VERSION                       "mod_dnsbl/0.1.5"
+#define MOD_DNSBL_VERSION                       "mod_dnsbl/0.1.6"
 
 #endif /* MOD_DNSBL_H */
