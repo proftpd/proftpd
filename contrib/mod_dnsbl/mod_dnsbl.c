@@ -52,7 +52,7 @@ typedef enum {
 
 } dnsbl_policy_e;
 
-static const char *reverse_ip_addr(pool *p, const char *ip_addr) {
+static const char *reverse_ipv4_addr(pool *p, const char *ip_addr) {
   char *addr2, *res, *tmp;
   size_t addrlen;
 
@@ -92,7 +92,7 @@ static const char *get_reversed_addr(pool *p) {
   if (pr_netaddr_get_family(session.c->remote_addr) == AF_INET) {
     ipstr = pr_netaddr_get_ipstr(session.c->remote_addr);
 
-#ifdef PR_USE_IPV6
+#if defined(PR_USE_IPV6)
   } else {
     if (pr_netaddr_use_ipv6() &&
         pr_netaddr_get_family(session.c->remote_addr) == AF_INET6 &&
@@ -113,12 +113,15 @@ static const char *get_reversed_addr(pool *p) {
         "IPv4 address '%s'", ipv6str, ipstr);
 
     } else {
+      /* NOTE: RFC 5782 defines a way to look up non-mapped IPv6 addresses.
+       * Something to consider for future implementation, upon request.
+       */
       return NULL;
     }
 #endif /* PR_USE_IPV6 */
   }
 
-  return reverse_ip_addr(p, ipstr);
+  return reverse_ipv4_addr(p, ipstr);
 }
 
 static void lookup_reason(pool *p, const char *name) {
@@ -150,11 +153,14 @@ static void lookup_reason(pool *p, const char *name) {
       }
 
       if (ns_rr_type(rr) == ns_t_txt) {
+        const unsigned char *reject_data;
         char *reject_reason;
-        size_t len = ns_rr_rdlen(rr);
+        size_t reject_reason_len;
 
-        reject_reason = pcalloc(p, len+1);
-        memcpy(reject_reason, (unsigned char *) ns_rr_rdata(rr), len);
+        reject_data = ns_rr_rdata(rr);
+        reject_reason_len = ns_rr_rdlen(rr);
+        reject_reason = pstrndup(p, (const char *) reject_data,
+          reject_reason_len);
 
         (void) pr_log_writefile(dnsbl_logfd, MOD_DNSBL_VERSION,
          "reason for blacklisting client address: '%s'", reject_reason);
@@ -167,13 +173,14 @@ static void lookup_reason(pool *p, const char *name) {
 
 static int lookup_addr(pool *p, const char *addr, const char *domain) {
   const pr_netaddr_t *reject_addr = NULL;
-  const char *name = pstrcat(p, addr, ".", domain, NULL);
+  const char *name;
 
+  name = pstrcat(p, addr, ".", domain, NULL);
   (void) pr_log_writefile(dnsbl_logfd, MOD_DNSBL_VERSION,
     "for DNSBLDomain '%s', resolving DNS name '%s'", domain, name);
 
   reject_addr = pr_netaddr_get_addr(p, name, NULL);
-  if (reject_addr) {
+  if (reject_addr != NULL) {
     (void) pr_log_writefile(dnsbl_logfd, MOD_DNSBL_VERSION,
       "found record for DNS name '%s', client address has been blacklisted",
       name);
@@ -199,7 +206,7 @@ static int dnsbl_reject_conn(void) {
   dnsbl_policy_e policy = DNSBL_POLICY_DENY_ALLOW;
 
   c = find_config(main_server->conf, CONF_PARAM, "DNSBLPolicy", FALSE);
-  if (c) {
+  if (c != NULL) {
     policy = *((dnsbl_policy_e *) c->argv[0]);
   }
 
@@ -259,7 +266,7 @@ static int dnsbl_reject_conn(void) {
      */
     case DNSBL_POLICY_DENY_ALLOW: {
       c = find_config(main_server->conf, CONF_PARAM, "DNSBLDomain", FALSE);
-      while (c) {
+      while (c != NULL) {
         const char *domain;
 
         pr_signals_handle();
@@ -283,7 +290,7 @@ static int dnsbl_reject_conn(void) {
 
   destroy_pool(tmp_pool);
 
-  if (reject_conn) {
+  if (reject_conn == TRUE) {
     return TRUE;
   }
 
@@ -303,8 +310,9 @@ MODRET set_dnsbldomain(cmd_rec *cmd) {
   domain = cmd->argv[1];
 
   /* Ignore leading '.' in domain, if present. */
-  if (*domain == '.')
+  if (*domain == '.') {
     domain++;
+  }
 
   c = add_config_param_str(cmd->argv[0], 1, domain);
   c->flags |= CF_MERGEDOWN_MULTI;
@@ -337,9 +345,10 @@ MODRET set_dnsbllog(cmd_rec *cmd) {
   CHECK_ARGS(cmd, 1);
   CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL);
 
-  if (pr_fs_valid_path(cmd->argv[1]) < 0)
+  if (pr_fs_valid_path(cmd->argv[1]) < 0) {
     CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, ": ", cmd->argv[1],
       " is not a valid path", NULL));
+  }
 
   (void) add_config_param_str(cmd->argv[0], 1, cmd->argv[1]);
   return PR_HANDLED(cmd);
@@ -396,6 +405,7 @@ static void dnsbl_sess_reinit_ev(const void *event_data, void *user_data) {
 }
 
 static int dnsbl_sess_init(void) {
+  int res, xerrno = 0;
   config_rec *c;
 
   pr_event_register(&dnsbl_module, "core.session-reinit", dnsbl_sess_reinit_ev,
@@ -413,8 +423,6 @@ static int dnsbl_sess_init(void) {
   c = find_config(main_server->conf, CONF_PARAM, "DNSBLLog", FALSE);
   if (c != NULL &&
       strcasecmp(c->argv[0], "none") != 0) {
-    int res, xerrno = 0;
-
     PRIVS_ROOT
     res = pr_log_openfile(c->argv[0], &dnsbl_logfd, 0600);
     xerrno = errno;
@@ -446,11 +454,16 @@ static int dnsbl_sess_init(void) {
       "client not allowed by DNSBLPolicy, rejecting connection");
     pr_log_pri(PR_LOG_NOTICE, MOD_DNSBL_VERSION ": client not allowed by "
       "DNSBLPolicy, rejecting connection");
-    errno = EACCES;
-    return -1;
+    xerrno = EACCES;
+    res = -1;
   }
 
-  return 0;
+  /* Once we're done, we no longer need to keep our log fd open. */
+  (void) close(dnsbl_logfd);
+  dnsbl_logfd = -1;
+
+  errno = xerrno;
+  return res;
 }
 
 /* Module API tables
