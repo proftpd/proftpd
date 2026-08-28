@@ -991,6 +991,34 @@ int snmp_db_close(pool *p, int db_id) {
   return 0;
 }
 
+/* Provide our own implementation of `timersub`, which is not available
+ * everywhere.
+ */
+static void timeval_diff(struct timeval *end_tv, struct timeval *start_tv,
+    struct timeval *diff_tv) {
+
+  /* Perform the carry/borrow for the subtraction. */
+  if (end_tv->tv_usec < start_tv->tv_usec) {
+    int nsecs;
+
+    nsecs = (start_tv->tv_usec - end_tv->tv_usec) / 1000000 + 1;
+    start_tv->tv_usec -= 1000000 * nsecs;
+    start_tv->tv_sec += nsecs;
+  }
+
+  if (end_tv->tv_usec - start_tv->tv_usec > 1000000) {
+    int nsecs;
+
+    nsecs = (end_tv->tv_usec - start_tv->tv_usec) / 1000000;
+    start_tv->tv_usec += 1000000 * nsecs;
+    start_tv->tv_sec -= nsecs;
+  }
+
+  /* Now we can compute the actual difference. */
+  diff_tv->tv_sec = end_tv->tv_sec - start_tv->tv_sec;
+  diff_tv->tv_usec = end_tv->tv_usec - start_tv->tv_usec;
+}
+
 int snmp_db_get_value(pool *p, unsigned int field, int32_t *int_value,
     char **str_value, size_t *str_valuelen) {
   void *db_data, *field_data;
@@ -1000,7 +1028,7 @@ int snmp_db_get_value(pool *p, unsigned int field, int32_t *int_value,
 
   switch (field) {
     case SNMP_DB_NOTIFY_F_SYS_UPTIME: {
-      struct timeval start_tv, now_tv;
+      struct timeval start_tv, now_tv, duration_tv;
 
       /* TimeTicks are in hundredths of seconds since start time. */
       res = snmp_uptime_get(p, &start_tv);
@@ -1009,9 +1037,10 @@ int snmp_db_get_value(pool *p, unsigned int field, int32_t *int_value,
       }
 
       gettimeofday(&now_tv, NULL);
+      timeval_diff(&now_tv, &start_tv, &duration_tv);
 
-      *int_value = (int32_t) (((now_tv.tv_sec - start_tv.tv_sec) * 100) +
-        ((now_tv.tv_usec - start_tv.tv_usec) / 10000));
+      *int_value = (int32_t) ((duration_tv.tv_sec * 100) +
+        (duration_tv.tv_usec / 10000));
 
       pr_trace_msg(trace_channel, 19,
         "read value %lu for field %s", (unsigned long) *int_value,
@@ -1140,13 +1169,14 @@ int snmp_db_get_value(pool *p, unsigned int field, int32_t *int_value,
       return 0;
 
     case SNMP_DB_DAEMON_F_UPTIME: {
-      struct timeval now_tv;
+      struct timeval now_tv, duration_tv;
 
       /* TimeTicks are in hundredths of seconds since start time. */
       gettimeofday(&now_tv, NULL);
+      timeval_diff(&now_tv, &snmp_start_tv, &duration_tv);
 
-      *int_value = (int32_t) (((now_tv.tv_sec - snmp_start_tv.tv_sec) * 100) +
-        ((now_tv.tv_usec - snmp_start_tv.tv_usec) / 10000));
+      *int_value = (int32_t) ((duration_tv.tv_sec * 100) +
+        (duration_tv.tv_usec / 10000));
 
       pr_trace_msg(trace_channel, 19,
         "read value %lu for field %s", (unsigned long) *int_value,
