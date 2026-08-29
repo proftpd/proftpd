@@ -114,13 +114,22 @@ sub storeuniqueprefix_ok {
 
       my $buf = "Hello, World!\n";
       $conn->write($buf, length($buf));
-      $conn->close();
 
       my $resp_code = $client->response_code();
       my $resp_msg = $client->response_msg();
 
       my $expected;
+      $expected = 150;
+      $self->assert($expected == $resp_code,
+        test_msg("Expected $expected, got $resp_code"));
+      my $uniq_file;
+      if ($resp_msg =~ /^FILE:\s+(\S+)$/) {
+          $uniq_file = $1;
+      }
+      eval { $conn->close() };
 
+      $resp_code = $client->response_code();
+      $resp_msg = $client->response_msg();
       $expected = 226;
       $self->assert($expected == $resp_code,
         test_msg("Expected $expected, got $resp_code"));
@@ -128,8 +137,6 @@ sub storeuniqueprefix_ok {
       $expected = "Transfer complete";
       $self->assert($expected eq $resp_msg,
         test_msg("Expected '$expected', got '$resp_msg'"));
-
-      my $uniq_file = $client->response_uniq();
 
       $client->quit();
 
