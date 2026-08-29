@@ -198,10 +198,11 @@ EOF
 
       my $buf;
       $conn->read($buf, 8192, 30);
-      eval { $conn->close() };
 
-      $resp_code = $client->response_code();
+      $resp_code = $client->read_response();
       $resp_msg = $client->response_msg();
+
+      eval { $conn->close() };
 
       $expected = 226;
       $self->assert($expected == $resp_code,
@@ -218,10 +219,11 @@ EOF
       }
 
       $conn->read($buf, 8192, 30);
-      eval { $conn->close() };
 
-      $resp_code = $client->response_code();
+      $resp_code = $client->read_response();
       $resp_msg = $client->response_msg();
+
+      eval { $conn->close() };
 
       $expected = 226;
       $self->assert($expected == $resp_code,
