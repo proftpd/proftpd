@@ -43,7 +43,9 @@ unless (defined($ENV{PROFTPD_TEST_BIN})) {
 # Set this environment variable, for other test cases which may want to
 # know the directory, and not necessarily just the location of the uninstalled
 # `proftpd' binary.  This is useful, for example, for using the utilities.
-$ENV{PROFTPD_TEST_PATH} = $test_dir;
+unless (defined($ENV{PROFTPD_TEST_PATH})) {
+  $ENV{PROFTPD_TEST_PATH} = $test_dir;
+}
 
 $| = 1;
 
