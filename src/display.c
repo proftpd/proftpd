@@ -159,6 +159,12 @@ static int display_fh(pr_fh_t *fh, const char *fs, const char *resp_code,
   memset(&st, 0, sizeof(st));
   if (pr_fsio_fstat(fh, &st) == 0) {
     fh->fh_iosz = st.st_blksize;
+
+    if (st.st_size == 0) {
+      pr_trace_msg(trace_channel, 3, "%s is an empty file", fh->fh_path);
+      errno = ENOENT;
+      return -1;
+    }
   }
 
   /* Note: The size provided by pr_fs_getsize() is in KB, not bytes. */
@@ -311,6 +317,8 @@ static int display_fh(pr_fh_t *fh, const char *fs, const char *resp_code,
       buf[len-1] = '\0';
       len--;
     }
+
+    pr_trace_msg(trace_channel, 19, "read line '%s' from %s", buf, fh->fh_path);
 
     /* Check for any Variable-type strings. */
     tmp = strstr(buf, "%{");
@@ -489,6 +497,8 @@ int pr_display_file(const char *path, const char *fs, const char *resp_code,
     return -1;
   }
 
+  pr_trace_msg(trace_channel, 19,
+    "displaying '%s' with response code %s, flags %d", path, resp_code, flags);
   res = display_fh(fh, fs, resp_code, flags);
   xerrno = errno;
 
