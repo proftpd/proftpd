@@ -139,6 +139,11 @@ my $TESTS = {
     test_class => [qw(bug forking)],
   },
 
+  wrap2_file_opt_check_on_connect_allowed => {
+    order => ++$order,
+    test_class => [qw(forking)],
+  },
+
   wrap2_file_opt_check_on_connect_bug3508 => {
     order => ++$order,
     test_class => [qw(bug forking)],
@@ -3256,14 +3261,14 @@ sub wrap2_file_user_plus_global_tables {
   unlink($log_file);
 }
 
-sub wrap2_file_opt_check_on_connect_bug3508 {
+sub wrap2_file_opt_check_on_connect_allowed {
   my $self = shift;
   my $tmpdir = $self->{tmpdir};
   my $setup = test_setup($tmpdir, 'wrap2');
 
-  my $fh;
   my $allow_file = File::Spec->rel2abs("$tmpdir/wrap2.allow");
-  if (open($fh, "> $allow_file")) {
+  if (open(my $fh, "> $allow_file")) {
+    print $fh "proftpd: ALL\n";
     unless (close($fh)) {
       die("Can't write $allow_file: $!");
     }
@@ -3273,7 +3278,7 @@ sub wrap2_file_opt_check_on_connect_bug3508 {
   }
 
   my $deny_file = File::Spec->rel2abs("$tmpdir/wrap2.deny");
-  if (open($fh, "> $deny_file")) {
+  if (open(my $fh, "> $deny_file")) {
     print $fh "ALL: ALL\n";
 
     unless (close($fh)) {
@@ -3293,6 +3298,137 @@ sub wrap2_file_opt_check_on_connect_bug3508 {
 
     AuthUserFile => $setup->{auth_user_file},
     AuthGroupFile => $setup->{auth_group_file},
+    AuthOrder => 'mod_auth_file.c',
+
+    IfModules => {
+      'mod_delay.c' => {
+        DelayEngine => 'off',
+      },
+
+      'mod_wrap2.c' => {
+        WrapEngine => 'on',
+        WrapLog => $setup->{log_file},
+        WrapTables => "file:$allow_file file:$deny_file",
+        WrapOptions => 'CheckOnConnect',
+      },
+    },
+  };
+
+  my ($port, $config_user, $config_group) = config_write($setup->{config_file},
+    $config);
+
+  # Open pipes, for use between the parent and child processes.  Specifically,
+  # the child will indicate when it's done with its test by writing a message
+  # to the parent.
+  my ($rfh, $wfh);
+  unless (pipe($rfh, $wfh)) {
+    die("Can't open pipe: $!");
+  }
+
+  my $ex;
+
+  # Fork child
+  $self->handle_sigchld();
+  defined(my $pid = fork()) or die("Can't fork: $!");
+  if ($pid) {
+    eval {
+      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port, undef, 2);
+      unless ($client) {
+        die("Failed to connect: " . ProFTPD::TestSuite::FTP::get_connect_exception());
+      }
+      $client->login($setup->{user}, $setup->{passwd});
+      $client->quit();
+    };
+    if ($@) {
+      $ex = $@;
+    }
+
+    $wfh->print("done\n");
+    $wfh->flush();
+
+  } else {
+    eval { server_wait($setup->{config_file}, $rfh) };
+    if ($@) {
+      warn($@);
+      exit 1;
+    }
+
+    exit 0;
+  }
+
+  # Stop server
+  server_stop($setup->{pid_file});
+  $self->assert_child_ok($pid);
+
+  eval {
+    if (open(my $fh, "< $setup->{log_file}")) {
+      my $checked_rules = 0;
+
+      while (my $line = <$fh>) {
+        chomp($line);
+
+        if ($ENV{TEST_VERBOSE}) {
+          print STDERR "# $line\n";
+        }
+
+        if ($line =~ /checking access rules for connection/) {
+          $checked_rules++;
+        }
+      }
+
+      close($fh);
+
+      my $expected = 1;
+      $self->assert($checked_rules == $expected,
+        test_msg("Expected checking rules count $expected, got $checked_rules"));
+    } else {
+      die("Can't open $setup->{log_file}: $!");
+    }
+  };
+  if ($@) {
+    $ex = $@ unless $ex;
+  }
+
+  test_cleanup($setup, $ex);
+}
+
+sub wrap2_file_opt_check_on_connect_bug3508 {
+  my $self = shift;
+  my $tmpdir = $self->{tmpdir};
+  my $setup = test_setup($tmpdir, 'wrap2');
+
+  my $allow_file = File::Spec->rel2abs("$tmpdir/wrap2.allow");
+  if (open(my $fh, "> $allow_file")) {
+    unless (close($fh)) {
+      die("Can't write $allow_file: $!");
+    }
+
+  } else {
+    die("Can't open $allow_file: $!");
+  }
+
+  my $deny_file = File::Spec->rel2abs("$tmpdir/wrap2.deny");
+  if (open(my $fh, "> $deny_file")) {
+    print $fh "ALL: ALL\n";
+
+    unless (close($fh)) {
+      die("Can't write $deny_file: $!");
+    }
+
+  } else {
+    die("Can't open $deny_file: $!");
+  }
+
+  my $config = {
+    PidFile => $setup->{pid_file},
+    ScoreboardFile => $setup->{scoreboard_file},
+    SystemLog => $setup->{log_file},
+    TraceLog => $setup->{log_file},
+    Trace => 'wrap2:20',
+
+    AuthUserFile => $setup->{auth_user_file},
+    AuthGroupFile => $setup->{auth_group_file},
+    AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
       'mod_delay.c' => {
@@ -3360,7 +3496,7 @@ sub wrap2_file_opt_check_on_connect_bug3508 {
   server_stop($setup->{pid_file});
   $self->assert_child_ok($pid);
 
-  test_cleanup($setup->{log_file}, $ex);
+  test_cleanup($setup, $ex);
 }
 
 sub wrap2_file_tilde_opt_check_on_connect_bug3508 {

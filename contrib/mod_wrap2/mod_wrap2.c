@@ -1725,6 +1725,13 @@ MODRET wrap2_pre_pass(cmd_rec *cmd) {
     return PR_DECLINED(cmd);
   }
 
+  /* If we have already checked the tables for this connection earlier, then
+   * we need not do it again here.
+   */
+  if (wrap2_opts & WRAP_OPT_CHECK_ON_CONNECT) {
+    return PR_DECLINED(cmd);
+  }
+
   /* Hide passwords */
   session.hide_password = TRUE;
 
