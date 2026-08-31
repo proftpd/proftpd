@@ -932,6 +932,8 @@ static int getloadavg(double *loadavg, int nelem) {
 
 module load_module;
 
+static const char *trace_channel = "load";
+
 static double load_get_system_load(void) {
   int res;
   double loadavg = -1.0;
@@ -947,8 +949,9 @@ static double load_get_system_load(void) {
   /* Return the default value if we did not receive the expected number
    * of elements from getloadavg().
    */
-  if (res != 1)
+  if (res != 1) {
     return -1.0;
+  }
 
   return loadavg;
 }
@@ -956,22 +959,34 @@ static double load_get_system_load(void) {
 /* Configuration handlers
  */
 
-/* usage: MaxLoad max [mesg] */
+/* usage: MaxLoad max [msg] */
 MODRET set_maxload(cmd_rec *cmd) {
   double loadval = 0.0;
   config_rec *c = NULL;
 
-  if (cmd->argc-1 < 1 || cmd->argc-1 > 2)
+  if (cmd->argc-1 < 1 ||
+      cmd->argc-1 > 2) {
     CONF_ERROR(cmd, "incorrect number of parameters");
+  }
 
   CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL);
 
-  if (strcasecmp(cmd->argv[1], "none") == 0)
+  if (strcasecmp(cmd->argv[1], "none") == 0) {
     loadval = -1.0;
-  else {
-    loadval = atof(cmd->argv[1]);
-    if (loadval < 0.0)
+
+  } else {
+    char *ptr = NULL;
+
+    loadval = strtof(cmd->argv[1], &ptr);
+    if (ptr != NULL &&
+        *ptr) {
+      CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "'", cmd->argv[1],
+        "' is not a valid number", NULL));
+    }
+
+    if (loadval < 0.0) {
       CONF_ERROR(cmd, "positive load limit required");
+    }
   }
 
   c = add_config_param(cmd->argv[0], cmd->argc-1, NULL);
@@ -1002,12 +1017,15 @@ static int load_sess_init(void) {
 
   /* Lookup any configured load limit. */
   c = find_config(main_server->conf, CONF_PARAM, "MaxLoad", FALSE);
-  if (!c)
+  if (c == NULL) {
     return 0;
+  }
 
   /* If the config_rec is present, but argv[0] is NULL, do nothing */
-  if (!c->argv[0])
+  if (!c->argv[0]) {
     return 0;
+  }
+
   max_load = *((double *) c->argv[0]);
 
   curr_load = load_get_system_load();
@@ -1017,6 +1035,8 @@ static int load_sess_init(void) {
     return 0;
   }
 
+  pr_trace_msg(trace_channel, 9, "current system load = %.2f, max load = %.2f",
+    curr_load, max_load);
   pr_log_debug(DEBUG5, MOD_LOAD_VERSION ": current system load: %.2f",
     curr_load);
 

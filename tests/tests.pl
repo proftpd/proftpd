@@ -342,6 +342,11 @@ if (scalar(@ARGV) > 0) {
       test_class => [qw(mod_lang)],
     },
 
+    't/modules/mod_load.t' => {
+      order => ++$order,
+      test_class => [qw(mod_load)],
+    },
+
     't/modules/mod_log_forensic.t' => {
       order => ++$order,
       test_class => [qw(mod_log_forensic)],
