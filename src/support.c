@@ -1244,6 +1244,11 @@ int pr_gettimeofday_millis(uint64_t *millis) {
   return 0;
 }
 
+/* Ugly hack to prevent stack overflow due to recursion, when having issues
+ * doing text formatting.
+ */
+static int logging_fmt_error = FALSE;
+
 int pr_vsnprintfl(const char *file, int lineno, char *buf, size_t bufsz,
     const char *fmt, va_list msg) {
   int res, xerrno = 0;
@@ -1278,9 +1283,17 @@ int pr_vsnprintfl(const char *file, int lineno, char *buf, size_t bufsz,
 
   /* We are mostly concerned with tracking down the locations of truncated
    * buffers, hence the stacktrace logging only for these conditions.
+   *
+   * Note that if we are already in the middle of logging a formatting error,
+   * when we use pr_log_pri(), it will recursively call back to us.  Which can
+   * cause stack overflows.  So if we are already in the middle of logging an
+   * error, do not try to log again.
    */
   if (res < 0 &&
-      xerrno == ENOSPC) {
+      xerrno == ENOSPC &&
+      logging_fmt_error == FALSE) {
+    logging_fmt_error = TRUE;
+
     if (file != NULL &&
         lineno > 0) {
       pr_log_pri(PR_LOG_WARNING,
@@ -1294,6 +1307,7 @@ int pr_vsnprintfl(const char *file, int lineno, char *buf, size_t bufsz,
     }
 
     pr_log_stacktrace(-1, NULL);
+    logging_fmt_error = FALSE;
   }
 
   errno = xerrno;
