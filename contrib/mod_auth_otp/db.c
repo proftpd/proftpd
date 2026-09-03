@@ -89,7 +89,7 @@ struct auth_otp_db *auth_otp_db_open(pool *p, const char *tabinfo) {
    * handle.
    */
 
-  ptr = strchr(tabinfo, '/');
+  ptr = strchr((char *) tabinfo, '/');
   if (ptr == NULL) {
     pr_log_writefile(auth_otp_logfd, MOD_AUTH_OTP_VERSION,
       "error: badly formatted table info '%s'", tabinfo);

@@ -3378,7 +3378,7 @@ static void ban_handle_event(unsigned int ev_type, int ban_type,
       char *ptr;
 
       user = pstrdup(tmp_pool, src);
-      ptr = strchr(user, '@');
+      ptr = strchr((char *) user, '@');
       if (ptr != NULL) {
         *ptr = '\0';
       }

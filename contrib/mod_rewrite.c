@@ -1029,7 +1029,7 @@ static const char *rewrite_subst_backrefs(cmd_rec *cmd, const char *pattern,
     /* Make sure there's a backreference for this in the substitution
      * pattern.
      */
-    ptr = strstr(replacement_pattern, buf);
+    ptr = strstr((char *) replacement_pattern, buf);
     if (ptr == NULL) {
 
       /* Even if there is no backref in the substitution pattern, we

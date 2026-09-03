@@ -833,7 +833,7 @@ static sftp_keystore_t *sqlstore_open(pool *parent_pool,
    *
    *  "/<select-named-query"
    */
-  ptr = strchr(store_info, '/');
+  ptr = strchr((char *) store_info, '/');
   if (ptr == NULL) {
     (void) pr_log_writefile(sftp_logfd, MOD_SFTP_SQL_VERSION,
       "badly formatted store info '%s'", store_info);

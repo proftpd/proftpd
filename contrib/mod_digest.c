@@ -1120,7 +1120,7 @@ static int can_digest_file(pool *p, const char *path, off_t start, size_t len,
    * Make sure we check any possible .ftpaccess files in the directory which
    * might themselves contain a DigestEnable configuration.
    */
-  ptr = strrchr(path, '/');
+  ptr = strrchr((char *) path, '/');
   if (ptr == NULL ||
       ptr == path) {
     /* Note that this check for the last '/' character should NEVER fail; we

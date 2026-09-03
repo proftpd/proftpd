@@ -726,8 +726,8 @@ MODRET cmd_defineconnection(cmd_rec *cmd) {
 
   db = pstrdup(cmd->tmp_pool, info);
 
-  have_host = strchr(db, '@');
-  have_port = strchr(db, ':');
+  have_host = strchr((char *) db, '@');
+  have_port = strchr((char *) db, ':');
 
   /* If have_port, parse it, otherwise default it.
    * If have_port, set it to '\0'

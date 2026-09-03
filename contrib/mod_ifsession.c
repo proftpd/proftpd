@@ -220,7 +220,7 @@ static char *ifsess_dir_interpolate(pool *p, const char *path) {
     char *interp_dir = NULL, *ptr;
 
     user = pstrdup(p, ret+1);
-    ptr = strchr(user, '/');
+    ptr = strchr((char *) user, '/');
 
     if (ptr != NULL) {
       *ptr++ = '\0';
