@@ -131,6 +131,7 @@ sub xferlog_retr_ascii_ok {
 
       my $buf;
       $conn->read($buf, 8192, 30);
+      sleep(0.25);
       eval { $conn->close() };
 
       my $resp_code = $client->response_code();
@@ -208,10 +209,10 @@ sub xferlog_retr_ascii_ok {
     }
   };
   if ($@) {
-    $ex = $@;
+    $ex = $@ unless $ex;
   }
 
-  test_cleanup($setup->{log_file}, $ex);
+  test_cleanup($setup, $ex);
 }
 
 sub xferlog_retr_binary_ok {

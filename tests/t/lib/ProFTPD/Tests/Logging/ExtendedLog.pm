@@ -1228,7 +1228,7 @@ sub extlog_mlsd_var_d_D_f_F_bug3950 {
     }
   };
   if ($@) {
-    $ex = $@;
+    $ex = $@ unless $ex;
   }
 
   test_cleanup($setup, $ex);
@@ -1427,7 +1427,7 @@ sub extlog_sftp_mlsd_var_d_D_f_F_bug3950 {
     }
   };
   if ($@) {
-    $ex = $@;
+    $ex = $@ unless $ex;
   }
 
   test_cleanup($setup, $ex);
@@ -2094,7 +2094,7 @@ sub extlog_rename_from {
     }
   };
   if ($@) {
-    $ex = $@;
+    $ex = $@ unless $ex;
   }
 
   test_cleanup($setup, $ex);
@@ -2276,7 +2276,7 @@ sub extlog_sftp_rename_from {
     }
   };
   if ($@) {
-    $ex = $@;
+    $ex = $@ unless $ex;
   }
 
   test_cleanup($setup, $ex);
@@ -2512,7 +2512,7 @@ sub extlog_ext_sftp_posix_rename_bug3949 {
     }
   };
   if ($@) {
-    $ex = $@;
+    $ex = $@ unless $ex;
   }
 
   test_cleanup($setup, $ex);
@@ -2620,7 +2620,7 @@ sub extlog_orig_user {
     }
   };
   if ($@) {
-    $ex = $@;
+    $ex = $@ unless $ex;
   }
 
   test_cleanup($setup, $ex);
@@ -2776,7 +2776,7 @@ sub extlog_bug1908 {
       test_msg("Expected $expected, got $anon_extlog_nlines"));
   };
   if ($@) {
-    $ex = $@;
+    $ex = $@ unless $ex;
   }
 
   test_cleanup($setup, $ex);
@@ -2861,7 +2861,6 @@ sub extlog_file_modified_bug3457 {
       eval { $conn->close() };
       $client->quit();
     };
-
     if ($@) {
       $ex = $@;
     }
@@ -2900,7 +2899,7 @@ sub extlog_file_modified_bug3457 {
     }
   };
   if ($@) {
-    $ex = $@;
+    $ex = $@ unless $ex;
   }
 
   test_cleanup($setup, $ex);
@@ -3032,7 +3031,7 @@ sub extlog_dele_bug3469 {
     }
   };
   if ($@) {
-    $ex = $@;
+    $ex = $@ unless $ex;
   }
 
   test_cleanup($setup, $ex);
@@ -3159,7 +3158,7 @@ sub extlog_client_dir_bug3395 {
     }
   };
   if ($@) {
-    $ex = $@;
+    $ex = $@ unless $ex;
   }
 
   test_cleanup($setup, $ex);
@@ -3282,7 +3281,7 @@ sub extlog_client_dir_chroot_bug3395 {
     }
   };
   if ($@) {
-    $ex = $@;
+    $ex = $@ unless $ex;
   }
 
   test_cleanup($setup, $ex);
@@ -3478,7 +3477,7 @@ sub extlog_uid_bug3390 {
     }
   };
   if ($@) {
-    $ex = $@;
+    $ex = $@ unless $ex;
   }
 
   test_cleanup($setup, $ex);
@@ -3582,7 +3581,7 @@ sub extlog_gid_bug3390 {
     }
   };
   if ($@) {
-    $ex = $@;
+    $ex = $@ unless $ex;
   }
 
   test_cleanup($setup, $ex);
@@ -3696,7 +3695,7 @@ sub extlog_pass_ok_var_s_bug3528 {
     }
   };
   if ($@) {
-    $ex = $@;
+    $ex = $@ unless $ex;
   }
 
   test_cleanup($setup, $ex);
@@ -3818,7 +3817,7 @@ sub extlog_pass_failed_var_s_bug3528 {
     }
   };
   if ($@) {
-    $ex = $@;
+    $ex = $@ unless $ex;
   }
 
   test_cleanup($setup, $ex);
@@ -3958,7 +3957,7 @@ sub extlog_ftp_raw_bytes_bug3554 {
     }
   };
   if ($@) {
-    $ex = $@;
+    $ex = $@ unless $ex;
   }
 
   test_cleanup($setup, $ex);
@@ -4118,7 +4117,7 @@ sub extlog_ftp_sendfile_raw_bytes_bug3554 {
     }
   };
   if ($@) {
-    $ex = $@;
+    $ex = $@ unless $ex;
   }
 
   test_cleanup($setup, $ex);
@@ -4269,7 +4268,7 @@ sub extlog_ftp_deflate_raw_bytes_bug3554 {
     }
   };
   if ($@) {
-    $ex = $@;
+    $ex = $@ unless $ex;
   }
 
   test_cleanup($setup, $ex);
@@ -4453,7 +4452,7 @@ sub extlog_ftps_raw_bytes_bug3554 {
     }
   };
   if ($@) {
-    $ex = $@;
+    $ex = $@ unless $ex;
   }
 
   test_cleanup($setup, $ex);
@@ -4625,7 +4624,7 @@ sub extlog_sftp_raw_bytes_bug3554 {
     }
   };
   if ($@) {
-    $ex = $@;
+    $ex = $@ unless $ex;
   }
 
   test_cleanup($setup, $ex);
@@ -4805,7 +4804,7 @@ sub extlog_scp_raw_bytes_bug3554 {
     }
   };
   if ($@) {
-    $ex = $@;
+    $ex = $@ unless $ex;
   }
 
   test_cleanup($setup, $ex);
@@ -4951,7 +4950,7 @@ sub extlog_exit_bug3559 {
     }
   };
   if ($@) {
-    $ex = $@;
+    $ex = $@ unless $ex;
   }
 
   test_cleanup($setup, $ex);
@@ -5063,7 +5062,7 @@ sub extlog_eos_reason_quit {
     }
   };
   if ($@) {
-    $ex = $@;
+    $ex = $@ unless $ex;
   }
 
   test_cleanup($setup, $ex);
@@ -5175,7 +5174,7 @@ sub extlog_eos_reason_eof {
     }
   };
   if ($@) {
-    $ex = $@;
+    $ex = $@ unless $ex;
   }
 
   test_cleanup($setup, $ex);
@@ -5293,7 +5292,7 @@ sub extlog_eos_reason_timeoutidle {
     }
   };
   if ($@) {
-    $ex = $@;
+    $ex = $@ unless $ex;
   }
 
   test_cleanup($setup, $ex);
@@ -5412,7 +5411,7 @@ sub extlog_eos_reason_timeoutlogin {
     }
   };
   if ($@) {
-    $ex = $@;
+    $ex = $@ unless $ex;
   }
 
   test_cleanup($setup, $ex);
@@ -5545,7 +5544,7 @@ sub extlog_eos_reason_timeoutnotransfer {
     }
   };
   if ($@) {
-    $ex = $@;
+    $ex = $@ unless $ex;
   }
 
   test_cleanup($setup, $ex);
@@ -5664,7 +5663,7 @@ sub extlog_eos_reason_timeoutsession {
     }
   };
   if ($@) {
-    $ex = $@;
+    $ex = $@ unless $ex;
   }
 
   test_cleanup($setup, $ex);
@@ -5814,7 +5813,7 @@ sub extlog_eos_reason_timeoutstalled {
     }
   };
   if ($@) {
-    $ex = $@;
+    $ex = $@ unless $ex;
   }
 
   test_cleanup($setup, $ex);
@@ -5925,7 +5924,7 @@ sub extlog_vars_H_L_matching_server_bug3620 {
     }
   };
   if ($@) {
-    $ex = $@;
+    $ex = $@ unless $ex;
   }
 
   test_cleanup($setup, $ex);
@@ -6064,7 +6063,7 @@ EOC
     }
   };
   if ($@) {
-    $ex = $@;
+    $ex = $@ unless $ex;
   }
 
   test_cleanup($setup, $ex);
@@ -6179,7 +6178,7 @@ sub extlog_user_pass {
     }
   };
   if ($@) {
-    $ex = $@;
+    $ex = $@ unless $ex;
   }
 
   test_cleanup($setup, $ex);
@@ -6313,7 +6312,7 @@ sub extlog_anon_user_pass {
     }
   };
   if ($@) {
-    $ex = $@;
+    $ex = $@ unless $ex;
   }
 
   test_cleanup($setup, $ex);
@@ -6436,7 +6435,7 @@ sub extlog_cmd_resp {
     }
   };
   if ($@) {
-    $ex = $@;
+    $ex = $@ unless $ex;
   }
 
   test_cleanup($setup, $ex);
@@ -6557,7 +6556,7 @@ sub extlog_xfer_timeout_bug3696 {
     }
   };
   if ($@) {
-    $ex = $@;
+    $ex = $@ unless $ex;
   }
 
   test_cleanup($setup, $ex);
@@ -6716,7 +6715,7 @@ sub extlog_sftp_xfer_timeout_bug3696 {
     }
   };
   if ($@) {
-    $ex = $@;
+    $ex = $@ unless $ex;
   }
 
   test_cleanup($setup, $ex);
@@ -6843,7 +6842,7 @@ sub extlog_var_r {
     }
   };
   if ($@) {
-    $ex = $@;
+    $ex = $@ unless $ex;
   }
 
   test_cleanup($setup, $ex);
@@ -6952,7 +6951,7 @@ sub extlog_pass_var_r {
     }
   };
   if ($@) {
-    $ex = $@;
+    $ex = $@ unless $ex;
   }
 
   test_cleanup($setup, $ex);
@@ -7102,7 +7101,7 @@ sub extlog_sftp_pass_var_r {
     }
   };
   if ($@) {
-    $ex = $@;
+    $ex = $@ unless $ex;
   }
 
   test_cleanup($setup, $ex);
@@ -7289,7 +7288,7 @@ sub extlog_sftp_retr_var_s_bug3948 {
     }
   };
   if ($@) {
-    $ex = $@;
+    $ex = $@ unless $ex;
   }
 
   test_cleanup($setup, $ex);
@@ -7452,7 +7451,7 @@ sub extlog_sftp_stor_var_s_bug3948 {
     }
   };
   if ($@) {
-    $ex = $@;
+    $ex = $@ unless $ex;
   }
 
   test_cleanup($setup, $ex);
@@ -7589,7 +7588,7 @@ sub extlog_abor {
     }
   };
   if ($@) {
-    $ex = $@;
+    $ex = $@ unless $ex;
   }
 
   test_cleanup($setup, $ex);
@@ -7726,7 +7725,7 @@ EOC
     }
   };
   if ($@) {
-    $ex = $@;
+    $ex = $@ unless $ex;
   }
 
   test_cleanup($setup, $ex);
@@ -7881,7 +7880,7 @@ EOC
     }
   };
   if ($@) {
-    $ex = $@;
+    $ex = $@ unless $ex;
   }
 
   test_cleanup($setup, $ex);
@@ -8035,7 +8034,7 @@ EOC
     }
   };
   if ($@) {
-    $ex = $@;
+    $ex = $@ unless $ex;
   }
 
   test_cleanup($setup, $ex);
@@ -8199,7 +8198,7 @@ EOC
     }
   };
   if ($@) {
-    $ex = $@;
+    $ex = $@ unless $ex;
   }
 
   test_cleanup($setup, $ex);
@@ -8370,7 +8369,7 @@ EOC
     }
   };
   if ($@) {
-    $ex = $@;
+    $ex = $@ unless $ex;
   }
 
   test_cleanup($setup, $ex);
@@ -8523,7 +8522,7 @@ EOC
     }
   };
   if ($@) {
-    $ex = $@;
+    $ex = $@ unless $ex;
   }
 
   test_cleanup($setup, $ex);
@@ -8690,7 +8689,7 @@ EOC
     }
   };
   if ($@) {
-    $ex = $@;
+    $ex = $@ unless $ex;
   }
 
   test_cleanup($setup, $ex);
@@ -8900,7 +8899,7 @@ EOC
     }
   };
   if ($@) {
-    $ex = $@;
+    $ex = $@ unless $ex;
   }
 
   if ($ex =~ /failed due to test callback/) {
@@ -9116,7 +9115,7 @@ EOC
     }
   };
   if ($@) {
-    $ex = $@;
+    $ex = $@ unless $ex;
   }
 
   test_cleanup($setup, $ex);
@@ -9254,7 +9253,7 @@ sub extlog_login_maxclients_bug3811 {
     }
   };
   if ($@) {
-    $ex = $@;
+    $ex = $@ unless $ex;
   }
 
   test_cleanup($setup, $ex);
@@ -9410,7 +9409,7 @@ EOC
     }
   };
   if ($@) {
-    $ex = $@;
+    $ex = $@ unless $ex;
   }
 
   test_cleanup($setup, $ex);
@@ -9549,7 +9548,7 @@ sub extlog_login_maxclientsperhost_bug3811 {
     }
   };
   if ($@) {
-    $ex = $@;
+    $ex = $@ unless $ex;
   }
 
   test_cleanup($setup, $ex);
@@ -9688,7 +9687,7 @@ sub extlog_login_maxclientsperuser_bug3811 {
     }
   };
   if ($@) {
-    $ex = $@;
+    $ex = $@ unless $ex;
   }
 
   test_cleanup($setup, $ex);
@@ -9802,7 +9801,7 @@ sub extlog_preauth_var_U_bug3822 {
     }
   };
   if ($@) {
-    $ex = $@;
+    $ex = $@ unless $ex;
   }
 
   test_cleanup($setup, $ex);
@@ -9917,7 +9916,7 @@ sub extlog_preauth_var_u_bug3822 {
     }
   };
   if ($@) {
-    $ex = $@;
+    $ex = $@ unless $ex;
   }
 
   test_cleanup($setup, $ex);
@@ -9981,6 +9980,7 @@ sub extlog_micros_ts_bug3889 {
 
       my $buf;
       $conn->read($buf, 8192, 30);
+      sleep(0.25);
       eval { $conn->close() };
 
       my $resp_code = $client->response_code();
@@ -10041,7 +10041,7 @@ sub extlog_micros_ts_bug3889 {
     }
   };
   if ($@) {
-    $ex = $@;
+    $ex = $@ unless $ex;
   }
 
   test_cleanup($setup, $ex);
@@ -10164,7 +10164,7 @@ sub extlog_millis_ts_bug3889 {
     }
   };
   if ($@) {
-    $ex = $@;
+    $ex = $@ unless $ex;
   }
 
   test_cleanup($setup, $ex);
@@ -10292,7 +10292,7 @@ sub extlog_iso8601_ts_bug3889 {
     }
   };
   if ($@) {
-    $ex = $@;
+    $ex = $@ unless $ex;
   }
 
   test_cleanup($setup, $ex);
@@ -10474,7 +10474,7 @@ sub extlog_dirs_class_var_f_bug3966 {
     }
   };
   if ($@) {
-    $ex = $@;
+    $ex = $@ unless $ex;
   }
 
   test_cleanup($setup, $ex);
@@ -10581,7 +10581,7 @@ sub extlog_var_basename_bug3987 {
     }
   };
   if ($@) {
-    $ex = $@;
+    $ex = $@ unless $ex;
   }
 
   test_cleanup($setup, $ex);
@@ -10692,7 +10692,7 @@ sub extlog_exclusion_bug4067 {
     }
   };
   if ($@) {
-    $ex = $@;
+    $ex = $@ unless $ex;
   }
 
   test_cleanup($setup, $ex);
@@ -10864,7 +10864,7 @@ sub extlog_sftp_ssh_ssh_issue1617 {
     }
   };
   if ($@) {
-    $ex = $@;
+    $ex = $@ unless $ex;
   }
 
   test_cleanup($setup, $ex);
@@ -11037,7 +11037,7 @@ sub extlog_sftp_ssh_sftp_bug4067 {
     }
   };
   if ($@) {
-    $ex = $@;
+    $ex = $@ unless $ex;
   }
 
   test_cleanup($setup, $ex);
@@ -11210,7 +11210,7 @@ sub extlog_sftp_ssh_sftp_exclusion_bug4067 {
     }
   };
   if ($@) {
-    $ex = $@;
+    $ex = $@ unless $ex;
   }
 
   test_cleanup($setup, $ex);
@@ -11409,7 +11409,7 @@ sub extlog_sftp_read_write_bug4067 {
     }
   };
   if ($@) {
-    $ex = $@;
+    $ex = $@ unless $ex;
   }
 
   test_cleanup($setup, $ex);
@@ -11558,7 +11558,7 @@ sub extlog_sftp_xfer_status_filtered {
     }
   };
   if ($@) {
-    $ex = $@;
+    $ex = $@ unless $ex;
   }
 
   test_cleanup($setup, $ex);
@@ -11705,7 +11705,7 @@ sub extlog_var_file_offset {
     }
   };
   if ($@) {
-    $ex = $@;
+    $ex = $@ unless $ex;
   }
 
   test_cleanup($setup, $ex);
@@ -11770,6 +11770,7 @@ sub extlog_var_file_size_retr {
 
       my $buf;
       $conn->read($buf, 8192, 30);
+      sleep(0.25);
       eval { $conn->close() };
 
       my $resp_code = $client->response_code();
@@ -11836,7 +11837,7 @@ sub extlog_var_file_size_retr {
     }
   };
   if ($@) {
-    $ex = $@;
+    $ex = $@ unless $ex;
   }
 
   test_cleanup($setup, $ex);
@@ -12015,7 +12016,7 @@ sub extlog_sftp_var_file_size_retr {
     }
   };
   if ($@) {
-    $ex = $@;
+    $ex = $@ unless $ex;
   }
 
   test_cleanup($setup, $ex);
@@ -12144,7 +12145,7 @@ sub extlog_var_file_size_stor {
     }
   };
   if ($@) {
-    $ex = $@;
+    $ex = $@ unless $ex;
   }
 
   test_cleanup($setup, $ex);
@@ -12316,7 +12317,7 @@ sub extlog_sftp_var_file_size_stor {
     }
   };
   if ($@) {
-    $ex = $@;
+    $ex = $@ unless $ex;
   }
 
   test_cleanup($setup, $ex);
@@ -12381,6 +12382,7 @@ sub extlog_var_transfer_type_retr {
 
       my $buf;
       $conn->read($buf, 8192, 30);
+      sleep(0.25);
       eval { $conn->close() };
 
       my $resp_code = $client->response_code();
@@ -12396,6 +12398,7 @@ sub extlog_var_transfer_type_retr {
       }
 
       $conn->read($buf, 8192, 30);
+      sleep(0.25);
       eval { $conn->close() };
 
       $resp_code = $client->response_code();
@@ -12471,7 +12474,7 @@ sub extlog_var_transfer_type_retr {
     }
   };
   if ($@) {
-    $ex = $@;
+    $ex = $@ unless $ex;
   }
 
   test_cleanup($setup, $ex);
@@ -12628,7 +12631,7 @@ sub extlog_var_transfer_type_stor {
     }
   };
   if ($@) {
-    $ex = $@;
+    $ex = $@ unless $ex;
   }
 
   test_cleanup($setup, $ex);
@@ -12717,7 +12720,6 @@ sub extlog_file_transfer_secs {
 
       $client->quit();
     };
-
     if ($@) {
       $ex = $@;
     }
@@ -12780,7 +12782,7 @@ sub extlog_file_transfer_secs {
     }
   };
   if ($@) {
-    $ex = $@;
+    $ex = $@ unless $ex;
   }
 
   test_cleanup($setup, $ex);
@@ -12869,7 +12871,6 @@ sub extlog_file_transfer_millisecs_bug4218 {
 
       $client->quit();
     };
-
     if ($@) {
       $ex = $@;
     }
@@ -12932,7 +12933,7 @@ sub extlog_file_transfer_millisecs_bug4218 {
     }
   };
   if ($@) {
-    $ex = $@;
+    $ex = $@ unless $ex;
   }
 
   test_cleanup($setup, $ex);
@@ -13021,7 +13022,6 @@ sub extlog_response_millisecs_bug4218 {
 
       $client->quit();
     };
-
     if ($@) {
       $ex = $@;
     }
@@ -13070,7 +13070,7 @@ sub extlog_response_millisecs_bug4218 {
     }
   };
   if ($@) {
-    $ex = $@;
+    $ex = $@ unless $ex;
   }
 
   test_cleanup($setup, $ex);
@@ -13226,7 +13226,7 @@ sub extlog_stor_var_f_xfer_timed_out {
     }
   };
   if ($@) {
-    $ex = $@;
+    $ex = $@ unless $ex;
   }
 
   test_cleanup($setup, $ex);
@@ -13325,7 +13325,7 @@ sub extlog_write_invalid_cmd_bug4313 {
     }
   };
   if ($@) {
-    $ex = $@;
+    $ex = $@ unless $ex;
   }
 
   test_cleanup($setup, $ex);
@@ -13457,7 +13457,7 @@ EOC
     }
   };
   if ($@) {
-    $ex = $@;
+    $ex = $@ unless $ex;
   }
 
   test_cleanup($setup, $ex);
@@ -13629,7 +13629,7 @@ EOC
     }
   };
   if ($@) {
-    $ex = $@;
+    $ex = $@ unless $ex;
   }
 
   test_cleanup($setup, $ex);
@@ -13793,7 +13793,7 @@ sub extlog_sftp_xfer_port_issue912 {
     }
   };
   if ($@) {
-    $ex = $@;
+    $ex = $@ unless $ex;
   }
 
   test_cleanup($setup, $ex);
@@ -13953,7 +13953,7 @@ sub extlog_sftp_sift_writes_issue1813 {
     }
   };
   if ($@) {
-    $ex = $@;
+    $ex = $@ unless $ex;
   }
 
   test_cleanup($setup, $ex);
@@ -14088,7 +14088,7 @@ EOC
     }
   };
   if ($@) {
-    $ex = $@;
+    $ex = $@ unless $ex;
   }
 
   test_cleanup($setup, $ex);
@@ -14263,7 +14263,7 @@ EOC
     }
   };
   if ($@) {
-    $ex = $@;
+    $ex = $@ unless $ex;
   }
 
   test_cleanup($setup, $ex);
@@ -14436,7 +14436,7 @@ EOC
     }
   };
   if ($@) {
-    $ex = $@;
+    $ex = $@ unless $ex;
   }
 
   test_cleanup($setup, $ex);
@@ -14605,7 +14605,7 @@ EOC
     }
   };
   if ($@) {
-    $ex = $@;
+    $ex = $@ unless $ex;
   }
 
   test_cleanup($setup, $ex);
@@ -14771,7 +14771,7 @@ EOC
     }
   };
   if ($@) {
-    $ex = $@;
+    $ex = $@ unless $ex;
   }
 
   test_cleanup($setup, $ex);
