@@ -14655,13 +14655,12 @@ static int fxp_handle_write(struct fxp_packet *fxp) {
   fxh->xfer.total_bytes += datalen;
 
   if (((off_t) offset) < 0) {
-    int xerrno = EINVAL;
-    uint32_t status_code;
     const char *reason;
 
     (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
       "requested invalid write offset (%" PR_LU " bytes)", (pr_off_t) offset);
 
+    xerrno = EINVAL;
     status_code = fxp_errno2status(xerrno, &reason);
 
     pr_trace_msg(trace_channel, 8, "sending response: STATUS %lu '%s'",

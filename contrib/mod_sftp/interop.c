@@ -206,7 +206,7 @@ int sftp_interop_handle_version(pool *p, const char *client_version) {
   /* Look for the optional comments field in the received client version; if
    * present, trim it out, so that we do not try to match on it.
    */
-  ptr = strchr(version, ' ');
+  ptr = strchr((char *) version, ' ');
   if (ptr != NULL) {
     pr_trace_msg(trace_channel, 11, "read client version with comments: '%s'",
       version);

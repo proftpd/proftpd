@@ -252,7 +252,7 @@ const char *sftp_display_fh_get_msg(pool *p, pr_fh_t *fh) {
       outs = sreplace(p, buf, key, val, NULL);
       sstrncpy(buf, outs, sizeof(buf));
 
-      tmp = strstr(outs, "%{");
+      tmp = strstr((char *) outs, "%{");
     }
 
     outs = sreplace(p, buf,

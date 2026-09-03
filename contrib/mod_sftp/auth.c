@@ -1752,7 +1752,7 @@ int sftp_auth_chain_parse_method(pool *p, const char *name,
   }
 
   /* Look for the syntax indicating a submethod name. */
-  ptr = strchr(name, ':');
+  ptr = strchr((char *) name, ':');
   if (ptr == NULL) {
     method_namelen = strlen(name);
   } else {
@@ -1818,7 +1818,7 @@ array_header *sftp_auth_chain_parse_method_chain(pool *p,
     return NULL;
   }
 
-  ptr = strchr(method_list, '+');
+  ptr = strchr((char *) method_list, '+');
   if (ptr == NULL) {
     method_names = make_array(p, 0, sizeof(char *));
     *((char **) push_array(method_names)) = pstrdup(p, method_list);
@@ -1855,7 +1855,7 @@ array_header *sftp_auth_chain_parse_method_chain(pool *p,
     *((char **) push_array(method_names)) = pstrndup(p, method_list, namelen);
 
     method_list = ptr + 1;
-    ptr = strchr(method_list, '+');
+    ptr = strchr((char *) method_list, '+');
 
     /* Don't forget the last name in the list. */
     if (ptr == NULL) {
