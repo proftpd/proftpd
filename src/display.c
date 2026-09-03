@@ -321,7 +321,7 @@ static int display_fh(pr_fh_t *fh, const char *fs, const char *resp_code,
     pr_trace_msg(trace_channel, 19, "read line '%s' from %s", buf, fh->fh_path);
 
     /* Check for any Variable-type strings. */
-    tmp = strstr(buf, "%{");
+    tmp = strstr((char *) buf, "%{");
     while (tmp) {
       char *key, *tmp2;
       const char *val;
