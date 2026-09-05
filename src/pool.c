@@ -636,7 +636,7 @@ void destroy_pool(pool *p) {
 static void *alloc_pool(struct pool_rec *p, size_t reqsz, int exact) {
   /* Round up requested size to an even number of aligned units */
   size_t nclicks = 1 + ((reqsz - 1) / CLICK_SZ);
-  size_t sz = nclicks * CLICK_SZ;
+  size_t sz;
   union block_hdr *blok;
   char *first_avail, *new_first_avail;
 
@@ -644,6 +644,24 @@ static void *alloc_pool(struct pool_rec *p, size_t reqsz, int exact) {
     errno = EINVAL;
     return NULL;
   }
+
+  if (reqsz == 0) {
+    /* Don't try to allocate memory of zero length.
+     *
+     * This should NOT happen normally; if it does, by returning NULL we
+     * almost guarantee a null pointer dereference.
+     */
+    errno = EINVAL;
+    return NULL;
+  }
+
+  /* Prevent integer overflow for too-large requests. */
+  if (nclicks > (SIZE_MAX - 1) / CLICK_SZ) {
+    errno = ENOMEM;
+    return NULL;
+  }
+
+  sz = nclicks * CLICK_SZ;
 
   /* For performance, see if space is available in the most recently
    * allocated block.
@@ -656,17 +674,6 @@ static void *alloc_pool(struct pool_rec *p, size_t reqsz, int exact) {
   }
 
   first_avail = blok->h.first_avail;
-
-  if (reqsz == 0) {
-    /* Don't try to allocate memory of zero length.
-     *
-     * This should NOT happen normally; if it does, by returning NULL we
-     * almost guarantee a null pointer dereference.
-     */
-    errno = EINVAL;
-    return NULL;
-  }
-
   new_first_avail = first_avail + sz;
 
   if (new_first_avail <= (char *) blok->h.endp) {

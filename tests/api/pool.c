@@ -189,18 +189,30 @@ START_TEST (pool_palloc_test) {
   p = make_sub_pool(NULL);
   ck_assert_msg(p != NULL, "Failed to allocate parent pool");
 
+  mark_point();
   sz = 0;
   v = palloc(p, sz);
   ck_assert_msg(v == NULL, "Allocated %lu-len memory", (unsigned long)sz);
 
+  mark_point();
   sz = 1;
   v = palloc(p, sz);
   ck_assert_msg(v != NULL, "Failed to allocate %lu-len memory", (unsigned long)sz);
 
+  mark_point();
   sz = 16382;
   v = palloc(p, sz);
-  ck_assert_msg(v != NULL, "Failed to allocate %lu-len memory", (unsigned long)sz);
+  ck_assert_msg(v != NULL, "Failed to allocate %lu-len memory",
+    (unsigned long) sz);
 
+  mark_point();
+  sz = 18446744073709551610;
+  v = palloc(p, sz);
+  ck_assert_msg(v == NULL, "Failed to reject too-large request");
+  ck_assert_msg(errno == ENOMEM, "Expected %s (%d), got %s (%d)",
+    strerror(ENOMEM), ENOMEM, strerror(errno), errno);
+
+  mark_point();
   destroy_pool(p);
 }
 END_TEST
@@ -213,21 +225,25 @@ START_TEST (pool_pallocsz_test) {
   p = make_sub_pool(NULL);
   ck_assert_msg(p != NULL, "Failed to allocate parent pool");
 
+  mark_point();
   sz = 0;
   v = pallocsz(NULL, sz);
   ck_assert_msg(v == NULL, "Failed to handle null pool");
   ck_assert_msg(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
     strerror(errno), errno);
 
+  mark_point();
   v = pallocsz(p, sz);
   ck_assert_msg(v == NULL, "Failed to handle zero size");
   ck_assert_msg(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
     strerror(errno), errno);
 
+  mark_point();
   sz = 1;
   v = pallocsz(p, sz);
   ck_assert_msg(v != NULL, "Failed to allocate %lu-len memory", (unsigned long)sz);
 
+  mark_point();
   sz = 16382;
   v = pallocsz(p, sz);
   ck_assert_msg(v != NULL, "Failed to allocate %lu-len memory", (unsigned long)sz);
