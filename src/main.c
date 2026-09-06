@@ -877,6 +877,13 @@ static cmd_rec *make_ftp_cmd(pool *p, char *buf, size_t buflen, int flags) {
    * it does the proper handling of CRNUL sequences itself.
    */
   arg_len = buflen - strlen(wrd);
+  if (arg_len > 0) {
+    /* This additional -1 is for the whitespace character, after the `wrd`
+     * token, consumed by pr_str_get_word().
+     */
+    arg_len -= 1;
+  }
+
   arg = pcalloc(cmd->pool, arg_len + 1);
 
   /* Remember that ptr here is advanced past the first word. */
