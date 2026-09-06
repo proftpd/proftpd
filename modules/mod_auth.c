@@ -28,20 +28,20 @@
 #include "conf.h"
 #include "privs.h"
 
-#ifdef HAVE_USERSEC_H
+#if defined(HAVE_USERSEC_H)
 # include <usersec.h>
-#endif
+#endif /* HAVE_USERSEC_H */
 
-#ifdef HAVE_SYS_AUDIT_H
+#if defined(HAVE_SYS_AUDIT_H)
 # include <sys/audit.h>
-#endif
+#endif /* HAVE_SYS_AUDIT_H */
 
 extern pid_t mpid;
 
 module auth_module;
 
-#ifdef PR_USE_LASTLOG
-static unsigned char lastlog = FALSE;
+#if defined(PR_USE_LASTLOG)
+static unsigned char auth_use_lastlog = FALSE;
 #endif /* PR_USE_LASTLOG */
 
 static unsigned char mkhome = FALSE;
@@ -171,7 +171,7 @@ static void auth_sess_reinit_ev(const void *event_data, void *user_data) {
   (void) pr_auth_set_max_password_len(session.pool, 0);
 
 #if defined(PR_USE_LASTLOG)
-  lastlog = FALSE;
+  auth_use_lastlog = FALSE;
 #endif /* PR_USE_LASTLOG */
   mkhome = FALSE;
 
@@ -327,15 +327,15 @@ static int auth_sess_init(void) {
     mkhome = FALSE;
   }
 
-#ifdef PR_USE_LASTLOG
+#if defined(PR_USE_LASTLOG)
   /* Use the lastlog file, if supported and requested. */
   tmp = get_param_ptr(main_server->conf, "UseLastlog", FALSE);
-  if (tmp &&
+  if (tmp != NULL &&
       *tmp == TRUE) {
-    lastlog = TRUE;
+    auth_use_lastlog = TRUE;
 
   } else {
-    lastlog = FALSE;
+    auth_use_lastlog = FALSE;
   }
 #endif /* PR_USE_LASTLOG */
 
@@ -1430,7 +1430,7 @@ static int setup_env(pool *p, cmd_rec *cmd, const char *user, char *pass) {
     }
 
 #if !defined(PR_DEVEL_COREDUMP)
-# ifdef __hpux
+# if defined(__hpux)
     if (setresuid(0, 0, 0) < 0) {
       pr_log_pri(PR_LOG_ERR, "unable to setresuid(): %s", strerror(errno));
     }
@@ -1566,7 +1566,7 @@ static int setup_env(pool *p, cmd_rec *cmd, const char *user, char *pass) {
     }
 
 #if !defined(PR_DEVEL_COREDUMP)
-# ifdef __hpux
+# if defined(__hpux)
     if (setresuid(0, 0, 0) < 0) {
       pr_log_pri(PR_LOG_ERR, "unable to setresuid(): %s", strerror(errno));
     }
@@ -1739,8 +1739,8 @@ static int setup_env(pool *p, cmd_rec *cmd, const char *user, char *pass) {
     session.wtmp_log = TRUE;
   }
 
-#ifdef PR_USE_LASTLOG
-  if (lastlog) {
+#if defined(PR_USE_LASTLOG)
+  if (auth_use_lastlog == TRUE) {
     log_lastlog(pw->pw_uid, session.user, sess_ttyname, session.c->remote_addr);
   }
 #endif /* PR_USE_LASTLOG */
@@ -1828,8 +1828,8 @@ static int setup_env(pool *p, cmd_rec *cmd, const char *user, char *pass) {
 
   PRIVS_ROOT
 
-#ifndef PR_DEVEL_COREDUMP
-# ifdef __hpux
+#if !defined(PR_DEVEL_COREDUMP)
+# if defined(__hpux)
     if (setresuid(0, 0, 0) < 0) {
       pr_log_pri(PR_LOG_ERR, "unable to setresuid(): %s", strerror(errno));
     }
@@ -1850,7 +1850,7 @@ static int setup_env(pool *p, cmd_rec *cmd, const char *user, char *pass) {
 
   PRIVS_SETUP(pw->pw_uid, pw->pw_gid)
 
-#ifdef HAVE_GETEUID
+#if defined(HAVE_GETEUID)
   if (getegid() != pw->pw_gid ||
      geteuid() != pw->pw_uid) {
 
@@ -1860,7 +1860,7 @@ static int setup_env(pool *p, cmd_rec *cmd, const char *user, char *pass) {
     pr_response_send(R_530, _("Login incorrect."));
     pr_session_end(0);
   }
-#endif
+#endif /* HAVE_GETEUID */
 
   /* If the home directory is NULL or "", reject the login. */
   if (pw->pw_dir == NULL ||
@@ -3132,7 +3132,7 @@ MODRET set_anonrequirepassword(cmd_rec *cmd) {
 
 /* usage: AnonRejectPasswords pattern [flags] */
 MODRET set_anonrejectpasswords(cmd_rec *cmd) {
-#ifdef PR_USE_REGEX
+#if defined(PR_USE_REGEX)
   config_rec *c;
   pr_regex_t *pre = NULL;
   int notmatch = FALSE, regex_flags = REG_EXTENDED|REG_NOSUB, res = 0;
@@ -3195,7 +3195,7 @@ MODRET set_anonrejectpasswords(cmd_rec *cmd) {
   CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "The ", cmd->argv[0], " directive "
     "cannot be used on this system, as you do not have POSIX compliant "
     "regex support", NULL));
-#endif
+#endif /* PR_USE_REGEX */
 }
 
 MODRET set_authaliasonly(cmd_rec *cmd) {
