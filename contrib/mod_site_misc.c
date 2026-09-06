@@ -253,8 +253,6 @@ static int site_misc_delete_dir(pool *p, const char *dir) {
       xerrno = errno;
 
       if (res < 0) {
-        pr_fsio_closedir(dirh);
-
         pr_cmd_dispatch_phase(cmd, POST_CMD_ERR, 0);
         pr_cmd_dispatch_phase(cmd, LOG_CMD_ERR, 0);
         pr_response_clear(&resp_err_list);
