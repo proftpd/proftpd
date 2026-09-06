@@ -233,6 +233,11 @@ my $TESTS = {
     test_class => [qw(bug feature_pcre forking)],
   },
 
+  rewrite_map_utf8trans_long_keys => {
+    order => ++$order,
+    test_class => [qw(bug forking)],
+  },
+
   # TODO: Need tests for RewriteMap using text file
 };
 
@@ -5218,6 +5223,88 @@ sub rewrite_rule_with_matchall_condition_bug4495 {
       $expected = 'Transfer complete';
       $self->assert($expected eq $resp_msg,
         test_msg("Expected response message '$expected', got '$resp_msg'"));
+    };
+    if ($@) {
+      $ex = $@;
+    }
+
+    $wfh->print("done\n");
+    $wfh->flush();
+
+  } else {
+    eval { server_wait($setup->{config_file}, $rfh) };
+    if ($@) {
+      warn($@);
+      exit 1;
+    }
+
+    exit 0;
+  }
+
+  # Stop server
+  server_stop($setup->{pid_file});
+  $self->assert_child_ok($pid);
+
+  test_cleanup($setup, $ex);
+}
+
+sub rewrite_map_utf8trans_long_keys {
+  my $self = shift;
+  my $tmpdir = $self->{tmpdir};
+  my $setup = test_setup($tmpdir, 'rewrite');
+
+  my $config = {
+    PidFile => $setup->{pid_file},
+    ScoreboardFile => $setup->{scoreboard_file},
+    SystemLog => $setup->{log_file},
+
+    AuthUserFile => $setup->{auth_user_file},
+    AuthGroupFile => $setup->{auth_group_file},
+    AuthOrder => 'mod_auth_file.c',
+
+    IfModules => {
+      'mod_delay.c' => {
+        DelayEngine => 'off',
+      },
+
+      'mod_rewrite.c' => [
+        'RewriteEngine on',
+        "RewriteLog $setup->{log_file}",
+
+        'RewriteCondition %m !PASS',
+        'RewriteMap utf8 int:utf8trans',
+        'RewriteRule ^(.*) ${utf8:$1}',
+      ],
+    },
+  };
+
+  my ($port, $config_user, $config_group) = config_write($setup->{config_file},
+    $config);
+
+  # Open pipes, for use between the parent and child processes.  Specifically,
+  # the child will indicate when it's done with its test by writing a message
+  # to the parent.
+  my ($rfh, $wfh);
+  unless (pipe($rfh, $wfh)) {
+    die("Can't open pipe: $!");
+  }
+
+  my $ex;
+
+  # Fork child
+  $self->handle_sigchld();
+  defined(my $pid = fork()) or die("Can't fork: $!");
+  if ($pid) {
+    eval {
+      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
+
+      my $long_username = 'A' x 2048;
+      eval { $client->login($long_username, $setup->{passwd}) };
+      unless ($@) {
+        die("Login succeeded unexpectedly");
+      }
+
+      $client->quit();
     };
     if ($@) {
       $ex = $@;
