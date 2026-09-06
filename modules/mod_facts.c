@@ -514,6 +514,17 @@ static void facts_mlinfobuf_init(void) {
   if (mlinfo_buf == NULL) {
     mlinfo_bufsz = pr_config_get_server_xfer_bufsz(PR_NETIO_IO_WR);
 
+    /* Make sure that the preferred network IO write buffer size is large
+     * enough; some admin may have configured a too-small SocketOptions setting
+     * for our needs.
+     */
+    if (mlinfo_bufsz < FACTS_MLINFO_BUFSZ) {
+      pr_trace_msg("data", 9, "configured network buffer size (%lu bytes) is "
+        "too small for MLSD entries (%lu bytes), ignoring",
+        (unsigned long) mlinfo_bufsz, (unsigned long) FACTS_MLINFO_BUFSZ);
+      mlinfo_bufsz = FACTS_MLINFO_BUFSZ;
+    }
+
     if (mlinfo_pool != NULL) {
       destroy_pool(mlinfo_pool);
     }
@@ -532,25 +543,51 @@ static void facts_mlinfobuf_init(void) {
 }
 
 static int facts_mlinfobuf_add(struct mlinfo *info, int flags) {
-  char buf[FACTS_MLINFO_BUFSZ];
-  size_t buflen;
+  char buf[FACTS_MLINFO_BUFSZ], *ptr = NULL;
+  size_t fmtlen, mlinfo_capacity;
 
-  buflen = facts_mlinfo_fmt(info, buf, sizeof(buf), flags);
-
-  /* If this buffer will exceed the capacity of mlinfo_buf, then flush
-   * mlinfo_buf.
+  /* If our formatted entry exceeds the capacity of our aggregating buffer, it
+   * may take several writes/flushes to deal with it.
    */
-  if (buflen >= (mlinfo_bufsz - mlinfo_buflen)) {
+
+  fmtlen = facts_mlinfo_fmt(info, buf, sizeof(buf), flags);
+  mlinfo_capacity = mlinfo_bufsz - mlinfo_buflen;
+
+  ptr = buf;
+  while (fmtlen >= mlinfo_capacity) {
+    size_t written_len;
+
+    pr_signals_handle();
+
+    sstrcat(mlinfo_bufptr, ptr, mlinfo_capacity);
+
+    /* How much was actually copied into the buffer for sending to the client?
+     * We know that sstrcat() refuses to copy more than the given capacity,
+     * AND that it will reserve one byte for the terminating NUL.
+     *
+     * So if the formatted buffer length still exceeds that capacity, the
+     * entry will be truncated.
+     */
+
+    written_len = mlinfo_capacity - 1;
+
+    mlinfo_bufptr += written_len;
+    mlinfo_buflen += written_len;
+    ptr += written_len;
+    fmtlen -= written_len;
 
     /* This can fail, if the client closes its end abruptly. */
     if (facts_mlinfobuf_flush() < 0) {
       return -1;
     }
+
+    /* Calculate the mlinfo_buf capacity again due to the flushing. */
+    mlinfo_capacity = mlinfo_bufsz - mlinfo_buflen;
   }
 
-  sstrcat(mlinfo_bufptr, buf, mlinfo_bufsz - mlinfo_buflen);
-  mlinfo_bufptr += buflen;
-  mlinfo_buflen += buflen;
+  sstrcat(mlinfo_bufptr, ptr, mlinfo_capacity);
+  mlinfo_bufptr += fmtlen;
+  mlinfo_buflen += fmtlen;
 
   return 0;
 }
