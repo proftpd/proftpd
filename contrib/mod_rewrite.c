@@ -1686,9 +1686,10 @@ static char rewrite_hex_to_char(const char *what) {
  */
 static int rewrite_utf8_to_ucs4(unsigned long *ucs4_buf,
     size_t utf8_len, unsigned char *utf8_buf) {
-  const unsigned char *utf8_endbuf = utf8_buf + utf8_len;
+  const unsigned char *utf8_endbuf;
   int ucs_len = 0;
 
+  utf8_endbuf = utf8_buf + utf8_len;
   while (utf8_buf != utf8_endbuf) {
     pr_signals_handle();
 
@@ -2075,13 +2076,27 @@ static int rewrite_write_fifo(int fd, char *buf, size_t buflen) {
 }
 
 static char *rewrite_map_int_utf8trans(pool *map_pool, char *key) {
-  int ucs4strlen = 0;
   static unsigned char utf8_val[PR_TUNABLE_BUFFER_SIZE] = {'\0'};
   static unsigned long ucs4_longs[PR_TUNABLE_BUFFER_SIZE] = {0L};
+  int ucs4strlen = 0;
+  size_t key_len = 0;
 
   /* If the key is NULL or empty, do nothing. */
+  if (key != NULL) {
+    key_len = strlen(key);
+  }
+
   if (key == NULL ||
-      strlen(key) == 0) {
+      key_len == 0) {
+    return NULL;
+  }
+
+  /* If the key length exceeds our buffers, reject it. */
+  if (key_len >= sizeof(utf8_val)) {
+    rewrite_log("utf8trans: key '%.100s...' length (%lu bytes) exceeds "
+      "maximum allowed length (%lu bytes), rejecting", key,
+      (unsigned long) key_len, (unsigned long) sizeof(utf8_val));
+    errno = EPERM;
     return NULL;
   }
 
