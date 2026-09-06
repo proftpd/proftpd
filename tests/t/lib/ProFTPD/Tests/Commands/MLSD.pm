@@ -203,6 +203,7 @@ sub mlsd_ok_raw_active {
 
       my $buf;
       $conn->read($buf, 8192, 30);
+      sleep(0.25);
       eval { $conn->close() };
 
       if ($ENV{TEST_VERBOSE}) {
@@ -236,6 +237,9 @@ sub mlsd_ok_raw_active {
       my $ok = 1;
       my $mismatch;
       foreach my $name (keys(%$res)) {
+        # Ignore ASAN logs
+        next if $name =~ /asan\.log/;
+
         unless (defined($expected->{$name})) {
           $mismatch = $name;
           $ok = 0;
@@ -247,7 +251,6 @@ sub mlsd_ok_raw_active {
         die("Unexpected name '$mismatch' appeared in MLSD data")
       }
     };
-
     if ($@) {
       $ex = $@;
     }
@@ -269,7 +272,7 @@ sub mlsd_ok_raw_active {
   server_stop($setup->{pid_file});
   $self->assert_child_ok($pid);
 
-  test_cleanup($setup->{log_file}, $ex);
+  test_cleanup($setup, $ex);
 }
 
 sub mlsd_ok_raw_passive {
@@ -377,6 +380,9 @@ sub mlsd_ok_raw_passive {
       my $ok = 1;
       my $mismatch;
       foreach my $name (keys(%$res)) {
+        # Ignore ASAN logs
+        next if $name =~ /asan\.log/;
+
         unless (defined($expected->{$name})) {
           $mismatch = $name;
           $ok = 0;
@@ -924,7 +930,7 @@ sub mlsd_ok_chrooted_dir {
   server_stop($setup->{pid_file});
   $self->assert_child_ok($pid);
 
-  test_cleanup($setup->{log_file}, $ex);
+  test_cleanup($setup, $ex);
 }
 
 sub mlsd_ok_empty_dir {
@@ -2235,7 +2241,7 @@ sub mlsd_symlink_showsymlinks_off_bug3318 {
   server_stop($setup->{pid_file});
   $self->assert_child_ok($pid);
 
-  test_cleanup($setup->{log_file}, $ex);
+  test_cleanup($setup, $ex);
 }
 
 sub mlsd_symlink_showsymlinks_on_bug3318 {
@@ -2389,7 +2395,7 @@ sub mlsd_symlink_showsymlinks_on_bug3318 {
   server_stop($setup->{pid_file});
   $self->assert_child_ok($pid);
 
-  test_cleanup($setup->{log_file}, $ex);
+  test_cleanup($setup, $ex);
 }
 
 sub mlsd_symlink_showsymlinks_on_chrooted_bug4219 {
@@ -2546,7 +2552,7 @@ sub mlsd_symlink_showsymlinks_on_chrooted_bug4219 {
   server_stop($setup->{pid_file});
   $self->assert_child_ok($pid);
 
-  test_cleanup($setup->{log_file}, $ex);
+  test_cleanup($setup, $ex);
 }
 
 sub mlsd_symlink_showsymlinks_on_use_slink_chrooted_bug4219 {
@@ -2648,6 +2654,7 @@ sub mlsd_symlink_showsymlinks_on_use_slink_chrooted_bug4219 {
 
       my $buf;
       $conn->read($buf, 8192, 30);
+      sleep(0.25);
       eval { $conn->close() };
 
       if ($ENV{TEST_VERBOSE}) {
@@ -2704,7 +2711,7 @@ sub mlsd_symlink_showsymlinks_on_use_slink_chrooted_bug4219 {
   server_stop($setup->{pid_file});
   $self->assert_child_ok($pid);
 
-  test_cleanup($setup->{log_file}, $ex);
+  test_cleanup($setup, $ex);
 }
 
 # See also:
@@ -3184,7 +3191,7 @@ sub mlsd_wide_dir {
   server_stop($setup->{pid_file});
   $self->assert_child_ok($pid);
 
-  test_cleanup($setup->{log_file}, $ex);
+  test_cleanup($setup, $ex);
 }
 
 sub mlsd_symlink_rel_path_chrooted_bug4322 {
@@ -3328,7 +3335,7 @@ sub mlsd_symlink_rel_path_chrooted_bug4322 {
   server_stop($setup->{pid_file});
   $self->assert_child_ok($pid);
 
-  test_cleanup($setup->{log_file}, $ex);
+  test_cleanup($setup, $ex);
 }
 
 sub mlsd_symlink_rel_path_subdir_chrooted_bug4322 {
@@ -3472,7 +3479,7 @@ sub mlsd_symlink_rel_path_subdir_chrooted_bug4322 {
   server_stop($setup->{pid_file});
   $self->assert_child_ok($pid);
 
-  test_cleanup($setup->{log_file}, $ex);
+  test_cleanup($setup, $ex);
 }
 
 sub mlsd_symlink_rel_path_subdir_cwd_chrooted_bug4322 {
@@ -3617,7 +3624,7 @@ sub mlsd_symlink_rel_path_subdir_cwd_chrooted_bug4322 {
   server_stop($setup->{pid_file});
   $self->assert_child_ok($pid);
 
-  test_cleanup($setup->{log_file}, $ex);
+  test_cleanup($setup, $ex);
 }
 
 1;
