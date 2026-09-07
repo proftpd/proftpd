@@ -9569,7 +9569,7 @@ static void tls_fatal_error(long error, int lineno) {
  * of the "user".
  */
 static int tls_dotlogin_allow(const char *user) {
-  char buf[512] = {'\0'}, *home = NULL;
+  char *buf, *home = NULL;
   FILE *fp = NULL;
   X509 *client_cert = NULL, *file_cert = NULL;
   struct passwd *pwd = NULL;
@@ -9592,6 +9592,7 @@ static int tls_dotlogin_allow(const char *user) {
   }
 
   tmp_pool = make_sub_pool(permanent_pool);
+  pr_pool_tag(tmp_pool, "TLS .tlslogin pool");
 
   PRIVS_ROOT
   pwd = pr_auth_getpwnam(tmp_pool, user);
@@ -9608,12 +9609,7 @@ static int tls_dotlogin_allow(const char *user) {
   home = dir_realpath(tmp_pool, pwd->pw_dir);
   PRIVS_RELINQUISH
 
-  pr_snprintf(buf, sizeof(buf), "%s/.tlslogin", home ? home : pwd->pw_dir);
-  buf[sizeof(buf)-1] = '\0';
-
-  /* No need for the temporary pool any more. */
-  destroy_pool(tmp_pool);
-  tmp_pool = NULL;
+  buf = pdircat(tmp_pool, home ? home : pwd->pw_dir, ".tlslogin", NULL);
 
   PRIVS_ROOT
   fp = fopen(buf, "r");
@@ -9623,6 +9619,8 @@ static int tls_dotlogin_allow(const char *user) {
   if (fp == NULL) {
     X509_free(client_cert);
     tls_log(".tlslogin check: unable to open '%s': %s", buf, strerror(xerrno));
+    destroy_pool(tmp_pool);
+
     return FALSE;
   }
 
@@ -9692,6 +9690,7 @@ static int tls_dotlogin_allow(const char *user) {
 
   X509_free(client_cert);
   fclose(fp);
+  destroy_pool(tmp_pool);
 
   return allow_user;
 }
