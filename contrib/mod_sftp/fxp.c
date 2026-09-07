@@ -3161,7 +3161,7 @@ static int fxp_handle_abort(const void *key_data, size_t key_datasz,
 
   if (pr_fsio_close(fxh->fh) < 0) {
     (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
-      "error writing aborted file '%s': %s", fxh->fh->fh_path, strerror(errno));
+      "error writing aborted file '%s': %s", curr_path, strerror(errno));
   }
 
   fxh->fh = NULL;
@@ -15147,11 +15147,11 @@ static int fxp_handle_unlock(struct fxp_packet *fxp) {
 }
 
 static int fxp_send_display_login_file(uint32_t channel_id) {
-  const char *msg;
+  const char *msg, *displaylogin_path;
   int res, xerrno;
   pool *sub_pool;
 
-  if (fxp_sent_display_login_file) {
+  if (fxp_sent_display_login_file == TRUE) {
     /* Already sent the file; no need to do it again. */
     return 0;
   }
@@ -15168,19 +15168,22 @@ static int fxp_send_display_login_file(uint32_t channel_id) {
 
   sub_pool = make_sub_pool(fxp_pool);
   pr_pool_tag(sub_pool, "SFTP DisplayLogin pool");
+  displaylogin_path = pstrdup(sub_pool, fxp_displaylogin_fh->fh_path);
 
   msg = sftp_display_fh_get_msg(sub_pool, fxp_displaylogin_fh);
-  pr_fsio_close(fxp_displaylogin_fh);
+  xerrno = errno;
+
+  (void) pr_fsio_close(fxp_displaylogin_fh);
+  fxp_displaylogin_fh = NULL;
 
   if (msg == NULL) {
     destroy_pool(sub_pool);
-    fxp_displaylogin_fh = NULL;
+    errno = xerrno;
     return -1;
   }
 
   pr_trace_msg(trace_channel, 3,
-    "sending data from DisplayLogin file '%s'", fxp_displaylogin_fh->fh_path);
-  fxp_displaylogin_fh = NULL;
+    "sending data from DisplayLogin file '%s'", displaylogin_path);
 
   res = sftp_channel_write_ext_data_stderr(sub_pool, channel_id,
     (unsigned char *) msg, strlen(msg));
