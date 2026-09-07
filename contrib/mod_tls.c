@@ -38,9 +38,9 @@
 #include "privs.h"
 #include "mod_tls.h"
 
-#ifdef PR_USE_CTRLS
+#if defined(PR_USE_CTRLS)
 # include "mod_ctrls.h"
-#endif
+#endif /* PR_USE_CTRLS */
 
 /* Define if you have the LibreSSL library.
  *
@@ -69,10 +69,10 @@
 #include <openssl/pkcs12.h>
 #include <openssl/rand.h>
 #if OPENSSL_VERSION_NUMBER > 0x000907000L
-# ifdef PR_USE_OPENSSL_ENGINE
+# if defined(PR_USE_OPENSSL_ENGINE)
 #  include <openssl/engine.h>
 # endif /* PR_USE_OPENSSL_ENGINE */
-# ifdef PR_USE_OPENSSL_OCSP
+# if defined(PR_USE_OPENSSL_OCSP)
 #  include <openssl/ocsp.h>
 # endif /* PR_USE_OPENSSL_OCSP */
 # if defined(PR_USE_OPENSSL_OSSL_PROVIDER_LOAD)
@@ -80,14 +80,14 @@
 #  include <openssl/store.h>
 # endif /* PR_USE_OPENSSL_OSSL_PROVIDER_LOAD */
 #endif /* OpenSSL-0.9.7 and later */
-#ifdef PR_USE_OPENSSL_ECC
+#if defined(PR_USE_OPENSSL_ECC)
 # include <openssl/ec.h>
 # include <openssl/ecdh.h>
 #endif /* PR_USE_OPENSSL_ECC */
 
-#ifdef HAVE_MLOCK
+#if defined(HAVE_MLOCK)
 # include <sys/mman.h>
-#endif
+#endif /* HAVE_MLOCK */
 
 #define MOD_TLS_VERSION		"mod_tls/2.9.3"
 
@@ -611,14 +611,14 @@ static unsigned int tls_protocol = TLS_PROTO_DEFAULT;
 /* This is used for e.g. "TLSProtocol ALL -SSLv3 ...". */
 #define TLS_PROTO_ALL			(TLS_PROTO_SSL_V3|TLS_PROTO_TLS_V1|TLS_PROTO_TLS_V1_1|TLS_PROTO_TLS_V1_2|TLS_PROTO_TLS_V1_3)
 
-#ifdef SSL_OP_DONT_INSERT_EMPTY_FRAGMENTS
+#if defined(SSL_OP_DONT_INSERT_EMPTY_FRAGMENTS)
 static int tls_ssl_opts = (SSL_OP_ALL|SSL_OP_NO_SSLv2|SSL_OP_SINGLE_DH_USE)^SSL_OP_DONT_INSERT_EMPTY_FRAGMENTS;
 #else
 /* OpenSSL-0.9.6 and earlier (yes, it appears people still have these versions
  * installed) does not define the DONT_INSERT_EMPTY_FRAGMENTS option.
  */
 static int tls_ssl_opts = SSL_OP_ALL|SSL_OP_NO_SSLv2|SSL_OP_SINGLE_DH_USE;
-#endif
+#endif /* SSL_OP_DONT_INSERT_EMPTY_FRAGMENTS */
 
 static int tls_required_on_auth = 0;
 static int tls_required_on_ctrl = 0;
@@ -1144,7 +1144,7 @@ static const char *get_pkey_typestr(int pkey_type) {
       str = "DSA";
       break;
 
-#ifdef PR_USE_OPENSSL_ECC
+#if defined(PR_USE_OPENSSL_ECC)
     case EVP_PKEY_EC:
       str = "EC";
       break;
@@ -1354,11 +1354,11 @@ static void tls_info_cb(const SSL *ssl, int where, int ret) {
 
     ssl_state = SSL_get_state(ssl);
     switch (ssl_state) {
-#ifdef SSL_ST_BEFORE
+#if defined(SSL_ST_BEFORE)
       case SSL_ST_BEFORE:
         str = "before";
         break;
-#endif
+#endif /* SSL_ST_BEFORE */
 
 #if OPENSSL_VERSION_NUMBER >= 0x10100000L && \
     !defined(HAVE_LIBRESSL)
@@ -1369,11 +1369,11 @@ static void tls_info_cb(const SSL *ssl, int where, int ret) {
         str = "ok";
         break;
 
-#ifdef SSL_ST_RENEGOTIATE
+#if defined(SSL_ST_RENEGOTIATE)
       case SSL_ST_RENEGOTIATE:
         str = "renegotiating";
         break;
-#endif
+#endif /* SSL_ST_RENEGOTIATE */
 
       default:
         break;
@@ -2192,7 +2192,7 @@ static void tls_print_server_hello(int io_flag, int version, int content_type,
   BIO_puts(bio, "\nServerHello:\n");
   tls_print_ssl_version(bio, "server_version", &buf, &buflen, &server_version);
 
-#ifdef TLS1_3_VERSION
+#if defined(TLS1_3_VERSION)
   if (server_version == TLS1_3_VERSION) {
     print_session_id = FALSE;
     print_compressions = FALSE;
@@ -2243,7 +2243,7 @@ static void tls_print_server_hello(int io_flag, int version, int content_type,
   BIO_free(bio);
 }
 
-#ifdef SSL3_MT_NEWSESSION_TICKET
+#if defined(SSL3_MT_NEWSESSION_TICKET)
 static void tls_print_ticket(int io_flag, int version, int content_type,
     const unsigned char *buf, size_t buflen, SSL *ssl, void *arg) {
   BIO *bio;
@@ -2344,7 +2344,7 @@ static void tls_msg_cb(int io_flag, int version, int content_type,
 # endif /* TLS1_3_VERSION */
 
     default:
-#ifdef SSL3_RT_HEADER
+#if defined(SSL3_RT_HEADER)
       /* OpenSSL calls this callback for SSL records received; filter those
        * from true "unknowns".
        */
@@ -2355,7 +2355,7 @@ static void tls_msg_cb(int io_flag, int version, int content_type,
       }
 #else
       tls_log("[msg] unknown/unsupported version: %d", version);
-#endif
+#endif /* SSL3_RT_HEADER */
       break;
   }
 
@@ -2442,7 +2442,7 @@ static void tls_msg_cb(int io_flag, int version, int content_type,
                 (unsigned int) buflen, bytes_str);
               break;
 
-#ifdef SSL3_AD_NO_CERTIFICATE
+#if defined(SSL3_AD_NO_CERTIFICATE)
             case SSL3_AD_NO_CERTIFICATE:
               tls_log("[msg] %s %s %s 'no_certificate' Alert message "
                 "(%u %s)", action_str, version_str, severity_str,
@@ -2450,7 +2450,7 @@ static void tls_msg_cb(int io_flag, int version, int content_type,
               break;
 #endif /* SSL3_AD_NO_CERTIFICATE */
 
-#ifdef SSL3_AD_BAD_CERTIFICATE
+#if defined(SSL3_AD_BAD_CERTIFICATE)
             case SSL3_AD_BAD_CERTIFICATE:
               tls_log("[msg] %s %s %s 'bad_certificate' Alert message "
                 "(%u %s)", action_str, version_str, severity_str,
@@ -2458,7 +2458,7 @@ static void tls_msg_cb(int io_flag, int version, int content_type,
               break;
 #endif /* SSL3_AD_BAD_CERTIFICATE */
 
-#ifdef SSL3_AD_UNSUPPORTED_CERTIFICATE
+#if defined(SSL3_AD_UNSUPPORTED_CERTIFICATE)
             case SSL3_AD_UNSUPPORTED_CERTIFICATE:
               tls_log("[msg] %s %s %s 'unsupported_certificate' Alert message "
                 "(%u %s)", action_str, version_str, severity_str,
@@ -2466,7 +2466,7 @@ static void tls_msg_cb(int io_flag, int version, int content_type,
               break;
 #endif /* SSL3_AD_UNSUPPORTED_CERTIFICATE */
 
-#ifdef SSL3_AD_CERTIFICATE_REVOKED
+#if defined(SSL3_AD_CERTIFICATE_REVOKED)
             case SSL3_AD_CERTIFICATE_REVOKED:
               tls_log("[msg] %s %s %s 'certificate_revoked' Alert message "
                 "(%u %s)", action_str, version_str, severity_str,
@@ -2474,7 +2474,7 @@ static void tls_msg_cb(int io_flag, int version, int content_type,
               break;
 #endif /* SSL3_AD_CERTIFICATE_REVOKED */
 
-#ifdef SSL3_AD_CERTIFICATE_EXPIRED
+#if defined(SSL3_AD_CERTIFICATE_EXPIRED)
             case SSL3_AD_CERTIFICATE_EXPIRED:
               tls_log("[msg] %s %s %s 'certificate_expired' Alert message "
                 "(%u %s)", action_str, version_str, severity_str,
@@ -2482,7 +2482,7 @@ static void tls_msg_cb(int io_flag, int version, int content_type,
               break;
 #endif /* SSL3_AD_CERTIFICATE_EXPIRED */
 
-#ifdef SSL3_AD_CERTIFICATE_UNKNOWN
+#if defined(SSL3_AD_CERTIFICATE_UNKNOWN)
             case SSL3_AD_CERTIFICATE_UNKNOWN:
               tls_log("[msg] %s %s %s 'certificate_unknown' Alert message "
                 "(%u %s)", action_str, version_str, severity_str,
@@ -2490,7 +2490,7 @@ static void tls_msg_cb(int io_flag, int version, int content_type,
               break;
 #endif /* SSL3_AD_CERTIFICATE_UNKNOWN */
 
-#ifdef SSL3_AD_ILLEGAL_PARAMETER
+#if defined(SSL3_AD_ILLEGAL_PARAMETER)
             case SSL3_AD_ILLEGAL_PARAMETER:
               tls_log("[msg] %s %s %s 'illegal_parameter' Alert message "
                 "(%u %s)", action_str, version_str, severity_str,
@@ -2550,7 +2550,7 @@ static void tls_msg_cb(int io_flag, int version, int content_type,
               break;
             }
 
-#ifdef SSL3_MT_NEWSESSION_TICKET
+#if defined(SSL3_MT_NEWSESSION_TICKET)
             case SSL3_MT_NEWSESSION_TICKET: {
               const unsigned char *msg;
               size_t msglen;
@@ -2607,7 +2607,7 @@ static void tls_msg_cb(int io_flag, int version, int content_type,
                 action_str, version_str, (unsigned int) buflen, bytes_str);
               break;
 
-#ifdef SSL3_MT_CERTIFICATE_STATUS
+#if defined(SSL3_MT_CERTIFICATE_STATUS)
             case SSL3_MT_CERTIFICATE_STATUS:
               tls_log("[msg] %s %s 'CertificateStatus' Handshake message "
                 "(%u %s)", action_str, version_str, (unsigned int) buflen,
@@ -2615,7 +2615,7 @@ static void tls_msg_cb(int io_flag, int version, int content_type,
               break;
 #endif /* SSL3_MT_CERTIFICATE_STATUS */
 
-#ifdef SSL3_MT_ENCRYPTED_EXTENSIONS
+#if defined(SSL3_MT_ENCRYPTED_EXTENSIONS)
             case SSL3_MT_ENCRYPTED_EXTENSIONS: {
               const unsigned char *msg;
               size_t msglen;
@@ -2753,7 +2753,7 @@ static void tls_msg_cb(int io_flag, int version, int content_type,
         (unsigned int) buflen, bytes_str);
     }
 
-#ifdef SSL3_RT_HEADER
+#if defined(SSL3_RT_HEADER)
   } else if (version == 0 &&
              content_type == SSL3_RT_HEADER &&
              buflen == SSL3_RT_HEADER_LENGTH) {
@@ -2767,7 +2767,7 @@ static void tls_msg_cb(int io_flag, int version, int content_type,
 
     tls_log("[msg] %s protocol record message (content type = %s, len = %d)",
       action_str, record_type, msg_len);
-#endif
+#endif /* SSL3_RT_HEADER */
 
   } else {
     /* This case might indicate an issue with OpenSSL itself; the version
@@ -9929,13 +9929,13 @@ static ssize_t tls_read(SSL *ssl, void *buf, size_t len) {
           /* Still missing data after timeout. Simulate an EINTR and return.
            */
           xerrno = EINTR;
-
-          /* If err < 0, i.e. some error from the select(), everything is
-           * already in place; errno is properly set and this function
-           * returns -1.
-           */
-          break;
         }
+
+        /* If err < 0, i.e. some error from the select(), everything is
+         * already in place; errno is properly set and this function
+         * returns -1.
+         */
+        break;
 
       case SSL_ERROR_WANT_WRITE:
         /* OpenSSL needs to write more data to the wire to finish the current
@@ -9952,13 +9952,13 @@ static ssize_t tls_read(SSL *ssl, void *buf, size_t len) {
           /* Still missing data after timeout. Simulate an EINTR and return.
            */
           xerrno = EINTR;
-
-          /* If err < 0, i.e. some error from the select(), everything is
-           * already in place; errno is properly set and this function
-           * returns -1.
-           */
-          break;
         }
+
+        /* If err < 0, i.e. some error from the select(), everything is
+         * already in place; errno is properly set and this function
+         * returns -1.
+         */
+        break;
 
       case SSL_ERROR_ZERO_RETURN:
         tls_log("read EOF from client");

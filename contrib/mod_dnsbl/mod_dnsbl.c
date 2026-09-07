@@ -405,7 +405,7 @@ static void dnsbl_sess_reinit_ev(const void *event_data, void *user_data) {
 }
 
 static int dnsbl_sess_init(void) {
-  int res, xerrno = 0;
+  int res = 0, xerrno = 0;
   config_rec *c;
 
   pr_event_register(&dnsbl_module, "core.session-reinit", dnsbl_sess_reinit_ev,

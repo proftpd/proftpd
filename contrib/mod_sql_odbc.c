@@ -232,20 +232,20 @@ static const char *sqlodbc_typestr(SQLSMALLINT type) {
     case SQL_LONGVARCHAR:
       return "SQL_LONGVARCHAR";
 
-#ifdef SQL_WCHAR
+#if defined(SQL_WCHAR)
     case SQL_WCHAR:
       return "SQL_WCHAR";
-#endif
+#endif /* SQL_WCHAR */
 
-#ifdef SQL_WVARCHAR
+#if defined(SQL_WVARCHAR)
     case SQL_WVARCHAR:
       return "SQL_WVARCHAR";
-#endif
+#endif /* SQL_WVARCHAR */
 
-#ifdef SQL_WLONGVARCHAR
+#if defined(SQL_WLONGVARCHAR)
     case SQL_WLONGVARCHAR:
       return "SQL_WLONGVARCHAR";
-#endif
+#endif /* SQL_WLONGVARCHAR */
 
     case SQL_DECIMAL:
       return "SQL_DECIMAL";
@@ -310,10 +310,10 @@ static const char *sqlodbc_strerror(SQLSMALLINT odbc_error) {
     case SQL_SUCCESS_WITH_INFO:
       return "Success with info";
 
-#ifdef SQL_NO_DATA
+#if defined(SQL_NO_DATA)
     case SQL_NO_DATA:
       return "No data";
-#endif
+#endif /* SQL_NO_DATA */
 
     case SQL_ERROR:
       return "Error";
@@ -346,10 +346,10 @@ static modret_t *sqlodbc_get_error(cmd_rec *cmd, SQLSMALLINT handle_type,
   res = SQLGetDiagRec(handle_type, handle, recno++, state, &odbc_errno,
     errstr, sizeof(errstr), &errlen);
   while (res != SQL_NO_DATA
-#ifdef SQL_ERROR
+#if defined(SQL_ERROR)
          && res != SQL_ERROR
 #endif /* SQL_ERROR */
-#ifdef SQL_INVALID_HANDLE
+#if defined(SQL_INVALID_HANDLE)
          && res != SQL_INVALID_HANDLE
 #endif /* SQL_INVALID_HANDLE */
         ) {
@@ -421,9 +421,9 @@ static modret_t *sqlodbc_get_data(cmd_rec *cmd, db_conn_t *conn) {
         break;
 
       case SQL_SUCCESS_WITH_INFO:
-        /* Note: this deliberately falls through to the SQL_SUCCESS case. */
         sql_log(DEBUG_WARN, "fetching row %lu: %s", sd->rnum + 1,
           sqlodbc_errstr(SQL_HANDLE_STMT, conn->sth, NULL));
+        /* FALLTHROUGH */
 
       case SQL_SUCCESS:
         sd->rnum++;
@@ -446,9 +446,9 @@ static modret_t *sqlodbc_get_data(cmd_rec *cmd, db_conn_t *conn) {
               case SQL_CHAR:
               case SQL_LONGVARCHAR:
               case SQL_VARCHAR:
-#ifdef SQL_WVARCHAR
+#if defined(SQL_WVARCHAR)
               case SQL_WVARCHAR:
-#endif
+#endif /* SQL_WVARCHAR */
                 col_ctype = SQL_C_CHAR;
 
                 if (col_size) {

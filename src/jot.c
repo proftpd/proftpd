@@ -2100,7 +2100,7 @@ static int resolve_meta(pool *p, unsigned char **logfmt, pr_jot_ctx_t *ctx,
     case LOGFMT_META_ENV_VAR:
     case LOGFMT_META_NOTE_VAR:
     case LOGFMT_META_VAR_VAR:
-    case LOGFMT_META_TIME: {
+    case LOGFMT_META_TIME:
       if (*(ptr + 1) == LOGFMT_META_START &&
           *(ptr + 2) == LOGFMT_META_ARG) {
         logfmt_data = get_meta_arg(p, (ptr + 3), &logfmt_datalen);
@@ -2108,7 +2108,7 @@ static int resolve_meta(pool *p, unsigned char **logfmt, pr_jot_ctx_t *ctx,
         /* Skip past the META_START, META_ARG, META_ARG_END, and the data. */
         consumed_bytes += (3 + logfmt_datalen);
       }
-    }
+      /* FALLTHROUGH */
 
     default:
       consumed_bytes += 1;
@@ -3047,7 +3047,7 @@ static int scan_meta(pool *p, unsigned char **logfmt, pr_jot_ctx_t *ctx,
     case LOGFMT_META_ENV_VAR:
     case LOGFMT_META_NOTE_VAR:
     case LOGFMT_META_VAR_VAR:
-    case LOGFMT_META_TIME: {
+    case LOGFMT_META_TIME:
       if (*(ptr + 1) == LOGFMT_META_START &&
           *(ptr + 2) == LOGFMT_META_ARG) {
         size_t logfmt_datalen = 0;
@@ -3059,7 +3059,7 @@ static int scan_meta(pool *p, unsigned char **logfmt, pr_jot_ctx_t *ctx,
         consumed_bytes += (3 + logfmt_datalen);
         break;
       }
-    }
+      /* FALLTHROUGH */
 
     default:
       res = (on_meta)(p, ctx, logfmt_id, NULL, 0);
