@@ -740,6 +740,7 @@ static int send_userauth_banner_file(void) {
   char *path;
   unsigned char *buf, *ptr;
   const char *msg;
+  size_t msglen = 0;
   int res;
   uint32_t buflen, bufsz;
   config_rec *c;
@@ -747,7 +748,7 @@ static int send_userauth_banner_file(void) {
   pool *sub_pool;
   struct stat st;
 
-  if (auth_sent_userauth_banner_file) {
+  if (auth_sent_userauth_banner_file == TRUE) {
     /* Already sent the banner; no need to do it again. */
     return 0;
   }
@@ -803,12 +804,21 @@ static int send_userauth_banner_file(void) {
     return -1;
   }
 
+  msglen = strlen(msg);
+  if (msglen + 32 >= UINT32_MAX) {
+    (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
+      "unable to use SFTPDisplayBanner '%s': %s", path, strerror(E2BIG));
+
+    destroy_pool(sub_pool);
+    return 0;
+  }
+
   pr_trace_msg(trace_channel, 3,
     "sending userauth banner from SFTPDisplayBanner file '%s'", path);
 
   pkt = sftp_ssh2_packet_create(sub_pool);
 
-  buflen = bufsz = strlen(msg) + 32;
+  buflen = bufsz = msglen + 32;
   ptr = buf = palloc(pkt->pool, bufsz);
 
   sftp_msg_write_byte(&buf, &buflen, SFTP_SSH2_MSG_USER_AUTH_BANNER);
