@@ -2487,7 +2487,8 @@ static const char *test_close_explainer(pool *err_pool, int xerrno, int fd,
 }
 
 START_TEST (fsio_sys_close_with_error_test) {
-  int res;
+  int res, real_fd;
+  pr_fh_t *fh = NULL;
   pr_error_t *err = NULL;
   const char *errstr, *expected;
   module m;
@@ -2526,6 +2527,35 @@ START_TEST (fsio_sys_close_with_error_test) {
   ck_assert_msg(strcmp(errstr, expected) == 0, "Expected '%s', got '%s'",
     expected, errstr);
 
+  mark_point();
+  fh = pr_fsio_open("/etc/hosts", O_RDONLY);
+  ck_assert_msg(fh != NULL, "Failed to open /etc/hosts: %s",
+    strerror(errno));
+
+  /* Deliberately corrupt the handle's fd, to trigger an error (EBADF) on
+   * close.
+   */
+  real_fd = fh->fh_fd;
+  fh->fh_fd = -1;
+
+  mark_point();
+  res = pr_fsio_close_with_error(p, fh, &err);
+  ck_assert_msg(res < 0, "Failed to handle bad fd");
+  ck_assert_msg(errno == EBADF, "Expected EBADF (%d), %s (%d)", EBADF,
+    strerror(errno), errno);
+  ck_assert_msg(err != NULL, "Failed to populate error");
+
+  expected = pstrcat(p,
+    "close() failed with \"Bad file descriptor [EBADF (",
+    get_errnum(p, EBADF), ")]\"", NULL);
+  errstr = pr_error_strerror(err, PR_ERROR_FORMAT_USE_MINIMAL);
+  ck_assert_msg(strcmp(errstr, expected) == 0, "Expected '%s', got '%s'",
+    expected, errstr);
+
+  res = close(real_fd);
+  ck_assert_msg(res == 0, "Failed to close fd: %s", strerror(errno));
+
+  mark_point();
   (void) pr_error_unregister_explainer(p, &m, NULL);
   pr_error_destroy(err);
 }
