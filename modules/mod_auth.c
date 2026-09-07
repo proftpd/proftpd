@@ -161,15 +161,13 @@ static void auth_sess_reinit_ev(const void *event_data, void *user_data) {
 
   pr_timer_remove(PR_TIMER_LOGIN, &auth_module);
 
-  /* Reset the CreateHome setting. */
-  mkhome = FALSE;
-
   /* Reset any MaxPasswordSize setting. */
   (void) pr_auth_set_max_password_len(session.pool, 0);
 
 #if defined(PR_USE_LASTLOG)
   lastlog = FALSE;
 #endif /* PR_USE_LASTLOG */
+  authenticated_without_pass = FALSE;
   mkhome = FALSE;
 
   res = auth_sess_init();
@@ -1277,12 +1275,12 @@ static int setup_env(pool *p, cmd_rec *cmd, const char *user, char *pass) {
      * the handling of the USER command, as by an RFC2228 mechanism.  If
      * that had happened, we won't need to call do_auth() here.
      */
-    if (!authenticated_without_pass) {
-      auth_code = do_auth(p, c ? c->subset : main_server->conf, user_name,
-        pass);
+    if (authenticated_without_pass == TRUE) {
+      auth_code = PR_AUTH_OK_NO_PASS;
 
     } else {
-      auth_code = PR_AUTH_OK_NO_PASS;
+      auth_code = do_auth(p, c ? c->subset : main_server->conf, user_name,
+        pass);
     }
 
     pr_event_generate("mod_auth.authentication-code", &auth_code);
@@ -2017,9 +2015,11 @@ auth_failure:
   if (pass != NULL) {
     pr_memscrub(pass, strlen(pass));
   }
+  authenticated_without_pass = FALSE;
   session.user = session.user_homedir = session.group = NULL;
   session.gids = session.groups = NULL;
   session.wtmp_log = FALSE;
+
   return 0;
 }
 
@@ -2516,13 +2516,14 @@ MODRET auth_user(cmd_rec *cmd) {
     nopass = TRUE;
   }
 
+  authenticated_without_pass = FALSE;
   session.gids = NULL;
   session.groups = NULL;
   session.user = NULL;
   session.user_homedir = NULL;
   session.group = NULL;
 
-  if (nopass) {
+  if (nopass == TRUE) {
     pr_response_add(R_331, _("Anonymous login ok, send your complete email "
       "address as your password"));
 
@@ -2743,6 +2744,7 @@ MODRET auth_pass(cmd_rec *cmd) {
   }
 
   (void) pr_table_remove(session.notes, "mod_auth.anon-passwd", NULL);
+  authenticated_without_pass = FALSE;
 
   if (res == 0) {
     unsigned int max_logins, *max = NULL;
