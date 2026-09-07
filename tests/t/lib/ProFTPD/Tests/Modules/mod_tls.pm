@@ -406,6 +406,11 @@ my $TESTS = {
     test_class => [qw(forking)],
   },
 
+  tls_opts_allow_dot_login_different_user_issue2319 => {
+    order => ++$order,
+    test_class => [qw(bug forking)],
+  },
+
   tls_opts_allow_dot_login_mismatch => {
     order => ++$order,
     test_class => [qw(forking)],
@@ -11591,20 +11596,25 @@ sub tls_opts_allow_dot_login_ok {
       sleep(2);
 
       # IO::Socket::SSL options
-      my $ssl_opts = {
+      my $openssl_opts = {
         SSL_use_cert => 1,
         SSL_cert_file => $client_cert,
         SSL_key_file => $client_cert,
         SSL_ca_file => $ca_cert,
       };
 
-      my $client = Net::FTPSSL->new('127.0.0.1',
+      my $ssl_opts = {
         Croak => 1,
         Encryption => 'E',
         Port => $port,
-        SSL_Client_Certificate => $ssl_opts,
-      );
+        SSL_Client_Certificate => $openssl_opts,
+      };
 
+      if ($ENV{TEST_VERBOSE}) {
+        $ssl_opts->{Debug} = 2;
+      }
+
+      my $client = Net::FTPSSL->new('127.0.0.1', %$ssl_opts);
       unless ($client) {
         die("Can't connect to FTPS server: " . IO::Socket::SSL::errstr());
       }
@@ -11648,7 +11658,167 @@ sub tls_opts_allow_dot_login_ok {
   server_stop($setup->{pid_file});
   $self->assert_child_ok($pid);
 
-  test_cleanup($setup->{log_file}, $ex);
+  test_cleanup($setup, $ex);
+}
+
+sub tls_opts_allow_dot_login_different_user_issue2319 {
+  my $self = shift;
+  my $tmpdir = $self->{tmpdir};
+  my $setup = test_setup($tmpdir, 'tls');
+
+  my $server_cert = File::Spec->rel2abs('t/etc/modules/mod_tls/server-cert.pem');
+  my $client_cert = File::Spec->rel2abs('t/etc/modules/mod_tls/client-cert.pem');
+  my $ca_cert = File::Spec->rel2abs('t/etc/modules/mod_tls/ca-cert.pem');
+
+  my $tlslogin_file = File::Spec->rel2abs("$tmpdir/.tlslogin");
+  unless (copy($client_cert, $tlslogin_file)) {
+    die("Can't copy $client_cert to $tlslogin_file: $!");
+  }
+
+  # Create a second account
+  my $other_user = 'foobar';
+  my $other_passwd = 'BazQuxx';
+  my $other_home = '/tmp';
+
+  auth_user_write($setup->{auth_user_file}, $other_user, $other_passwd,
+    $setup->{uid}, $setup->{gid}, $other_home, '/bin/bash');
+  auth_group_write($setup->{auth_group_file}, $setup->{group}, $setup->{gid},
+    $other_user);
+
+  my $config = {
+    PidFile => $setup->{pid_file},
+    ScoreboardFile => $setup->{scoreboard_file},
+    SystemLog => $setup->{log_file},
+    TraceLog => $setup->{log_file},
+    Trace => 'tls:30',
+
+    AuthUserFile => $setup->{auth_user_file},
+    AuthGroupFile => $setup->{auth_group_file},
+    AuthOrder => 'mod_auth_file.c',
+
+    IfModules => {
+      'mod_delay.c' => {
+        DelayEngine => 'off',
+      },
+
+      'mod_tls.c' => {
+        TLSEngine => 'on',
+        TLSLog => $setup->{log_file},
+        TLSRequired => 'on',
+        TLSRSACertificateFile => $server_cert,
+        TLSCACertificateFile => $ca_cert,
+        TLSVerifyClient => 'optional',
+        TLSOptions => 'AllowDotLogin',
+      },
+    },
+
+    Limit => {
+      LOGIN => {
+        DenyUser => $setup->{user},
+      },
+    },
+  };
+
+  my ($port, $config_user, $config_group) = config_write($setup->{config_file},
+    $config);
+
+  # Open pipes, for use between the parent and child processes.  Specifically,
+  # the child will indicate when it's done with its test by writing a message
+  # to the parent.
+  my ($rfh, $wfh);
+  unless (pipe($rfh, $wfh)) {
+    die("Can't open pipe: $!");
+  }
+
+  require Net::FTPSSL;
+
+  my $ex;
+
+  # Fork child
+  $self->handle_sigchld();
+  defined(my $pid = fork()) or die("Can't fork: $!");
+  if ($pid) {
+    eval {
+      # Give the server a chance to start up
+      sleep(2);
+
+      # IO::Socket::SSL options
+      my $openssl_opts = {
+        SSL_use_cert => 1,
+        SSL_cert_file => $client_cert,
+        SSL_key_file => $client_cert,
+        SSL_ca_file => $ca_cert,
+      };
+
+      my $ssl_opts = {
+        Croak => 1,
+        Encryption => 'E',
+        Port => $port,
+        SSL_Client_Certificate => $openssl_opts,
+      };
+
+      if ($ENV{TEST_VERBOSE}) {
+        $ssl_opts->{Debug} = 2;
+      }
+
+      my $client = Net::FTPSSL->new('127.0.0.1', %$ssl_opts);
+      unless ($client) {
+        die("Can't connect to FTPS server: " . IO::Socket::SSL::errstr());
+      }
+
+      # We expect this to fail, due to the <Limit LOGIN> DenyUser setting.
+      if ($client->_user($setup->{user})) {
+        die("User $setup->{user} login succeeded unexpectedly");
+      }
+
+      my $expected = "530 Login incorrect.";
+      my $resp = $client->last_message();
+      $self->assert($expected eq $resp,
+        test_msg("Expected response '$expected', got '$resp'"));
+
+      unless ($client->_user($other_user)) {
+        die("USER error: " . $client->last_message());
+      }
+
+      $expected = "331 Password required for $other_user";
+      $resp = $client->last_message();
+      $self->assert($expected eq $resp,
+        test_msg("Expected response '$expected', got '$resp'"));
+
+      my $bad_passwd = 'NotARealPassword!?';
+      if ($client->_passwd($bad_passwd)) {
+        die("Login succeeded unexpectedly");
+      }
+
+      $expected = "530 Login incorrect.";
+      $resp = $client->last_message();
+      $self->assert($expected eq $resp,
+        test_msg("Expected response '$expected', got '$resp'"));
+
+      $client->quit();
+    };
+    if ($@) {
+      $ex = $@;
+    }
+
+    $wfh->print("done\n");
+    $wfh->flush();
+
+  } else {
+    eval { server_wait($setup->{config_file}, $rfh) };
+    if ($@) {
+      warn($@);
+      exit 1;
+    }
+
+    exit 0;
+  }
+
+  # Stop server
+  server_stop($setup->{pid_file});
+  $self->assert_child_ok($pid);
+
+  test_cleanup($setup, $ex);
 }
 
 sub tls_opts_allow_dot_login_mismatch {
@@ -11719,20 +11889,25 @@ sub tls_opts_allow_dot_login_mismatch {
       sleep(2);
 
       # IO::Socket::SSL options
-      my $ssl_opts = {
+      my $openssl_opts = {
         SSL_use_cert => 1,
         SSL_cert_file => $client_cert,
         SSL_key_file => $client_cert,
         SSL_ca_file => $ca_cert,
       };
 
-      my $client = Net::FTPSSL->new('127.0.0.1',
+      my $ssl_opts = {
         Croak => 1,
         Encryption => 'E',
         Port => $port,
-        SSL_Client_Certificate => $ssl_opts,
-      );
+        SSL_Client_Certificate => $openssl_opts,
+      };
 
+      if ($ENV{TEST_VERBOSE}) {
+        $ssl_opts->{Debug} = 2;
+      }
+
+      my $client = Net::FTPSSL->new('127.0.0.1', %$ssl_opts);
       unless ($client) {
         die("Can't connect to FTPS server: " . IO::Socket::SSL::errstr());
       }
@@ -11776,7 +11951,7 @@ sub tls_opts_allow_dot_login_mismatch {
   server_stop($setup->{pid_file});
   $self->assert_child_ok($pid);
 
-  test_cleanup($setup->{log_file}, $ex);
+  test_cleanup($setup, $ex);
 }
 
 sub tls_opts_multiple_lines_bug3800 {
