@@ -63,7 +63,7 @@ static int site_misc_create_dir(const char *dir) {
   int res;
 
   pr_fs_clear_cache2(dir);
-  res = pr_fsio_stat(dir, &st);
+  res = pr_fsio_lstat(dir, &st);
   if (res < 0 &&
       errno != ENOENT) {
     int xerrno = errno;
@@ -98,7 +98,7 @@ static int site_misc_create_path(pool *p, const char *path) {
   char *curr_path, *tmp_path;
 
   pr_fs_clear_cache2(path);
-  if (pr_fsio_stat(path, &st) == 0) {
+  if (pr_fsio_lstat(path, &st) == 0) {
     return 0;
   }
 
@@ -206,7 +206,7 @@ static int site_misc_delete_dir(pool *p, const char *dir) {
 
     file = pdircat(p, dir, dent->d_name, NULL);
 
-    if (pr_fsio_stat(file, &st) < 0) {
+    if (pr_fsio_lstat(file, &st) < 0) {
       continue;
     }
 
@@ -338,7 +338,7 @@ static int site_misc_delete_path(pool *p, const char *path) {
   struct stat st;
 
   pr_fs_clear_cache2(path);
-  if (pr_fsio_stat(path, &st) < 0) {
+  if (pr_fsio_lstat(path, &st) < 0) {
     pr_log_debug(DEBUG4, MOD_SITE_MISC_VERSION
       ": error checking path %s", path);
     return -1;
