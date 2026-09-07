@@ -307,9 +307,9 @@ static wrap2_table_t *filetab_open_cb(pool *parent_pool, const char *srcinfo) {
   if (pr_fsio_fstat((pr_fh_t *) tab->tab_handle, &st) < 0) {
     int xerrno = errno;
 
-    destroy_pool(tab->tab_pool);
-    pr_fsio_close((pr_fh_t *) tab->tab_handle);
+    (void) pr_fsio_close((pr_fh_t *) tab->tab_handle);
     tab->tab_handle = NULL;
+    destroy_pool(tab->tab_pool);
 
     errno = xerrno;
     return NULL;
@@ -318,9 +318,9 @@ static wrap2_table_t *filetab_open_cb(pool *parent_pool, const char *srcinfo) {
   if (S_ISDIR(st.st_mode)) {
     int xerrno = EISDIR;
 
-    destroy_pool(tab->tab_pool);
-    pr_fsio_close((pr_fh_t *) tab->tab_handle);
+    (void) pr_fsio_close((pr_fh_t *) tab->tab_handle);
     tab->tab_handle = NULL;
+    destroy_pool(tab->tab_pool);
 
     errno = xerrno;
     return NULL;

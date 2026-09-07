@@ -3728,6 +3728,7 @@ static int write_dh_gex_reply(struct ssh2_packet *pkt, struct sftp_kex *kex,
 static int handle_kex_dh_gex(struct ssh2_packet *pkt, struct sftp_kex *kex,
     int old_request) {
   int res;
+  struct ssh2_packet *dhgex_pkt = NULL;
   uint32_t min = 0, pref = 0, max = 0;
   cmd_rec *cmd;
 
@@ -3759,50 +3760,52 @@ static int handle_kex_dh_gex(struct ssh2_packet *pkt, struct sftp_kex *kex,
   }
 
   pr_cmd_dispatch_phase(cmd, LOG_CMD, 0);
-  destroy_pool(pkt->pool);
 
    pr_trace_msg(trace_channel, 9,
      "read DH_GEX_GROUP message from client: DH group size min = %lu, "
      "preferred = %lu, max = %lu bits", (unsigned long) min,
      (unsigned long) pref, (unsigned long) max);
 
-  pkt = sftp_ssh2_packet_create(kex_pool);
-  res = write_dh_gex_group(pkt, kex, min, pref, max);
+  /* Allocate a separate packet for use for the DH group exchange. */
+  dhgex_pkt = sftp_ssh2_packet_create(kex_pool);
+  res = write_dh_gex_group(dhgex_pkt, kex, min, pref, max);
   if (res < 0) {
-    destroy_pool(pkt->pool);
+    destroy_pool(dhgex_pkt->pool);
     SFTP_DISCONNECT_CONN(SFTP_SSH2_DISCONNECT_KEY_EXCHANGE_FAILED, NULL);
   }
 
   pr_trace_msg(trace_channel, 9, "writing DH_GEX_GROUP message to client");
 
-  res = sftp_ssh2_packet_write(sftp_conn->wfd, pkt);
+  res = sftp_ssh2_packet_write(sftp_conn->wfd, dhgex_pkt);
   if (res < 0) {
-    destroy_pool(pkt->pool);
+    destroy_pool(dhgex_pkt->pool);
     SFTP_DISCONNECT_CONN(SFTP_SSH2_DISCONNECT_KEY_EXCHANGE_FAILED, NULL);
   }
 
-  destroy_pool(pkt->pool);
+  destroy_pool(dhgex_pkt->pool);
 
-  pkt = read_kex_packet(kex_pool, kex, SFTP_SSH2_DISCONNECT_KEY_EXCHANGE_FAILED,
-    NULL, 1, SFTP_SSH2_MSG_KEX_DH_GEX_INIT);
+  dhgex_pkt = read_kex_packet(kex_pool, kex,
+    SFTP_SSH2_DISCONNECT_KEY_EXCHANGE_FAILED, NULL, 1,
+    SFTP_SSH2_MSG_KEX_DH_GEX_INIT);
 
-  cmd = pr_cmd_alloc(pkt->pool, 1, pstrdup(pkt->pool, "DH_GEX_INIT"));
+  cmd = pr_cmd_alloc(dhgex_pkt->pool, 1,
+    pstrdup(dhgex_pkt->pool, "DH_GEX_INIT"));
   cmd->arg = "(data)";
   cmd->cmd_class = CL_SEC|CL_SSH;
   cmd->cmd_id = SFTP_CMD_ID;
 
   pr_trace_msg(trace_channel, 9, "reading DH_GEX_INIT message from client");
 
-  res = read_dh_gex_init(pkt, kex);
+  res = read_dh_gex_init(dhgex_pkt, kex);
   if (res < 0) {
     pr_cmd_dispatch_phase(cmd, LOG_CMD_ERR, 0);
 
-    destroy_pool(pkt->pool);
+    destroy_pool(dhgex_pkt->pool);
     return -1;
   }
 
   pr_cmd_dispatch_phase(cmd, LOG_CMD, 0);
-  destroy_pool(pkt->pool);
+  destroy_pool(dhgex_pkt->pool);
 
   if (finish_dh(kex) < 0) {
     (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
@@ -3810,21 +3813,24 @@ static int handle_kex_dh_gex(struct ssh2_packet *pkt, struct sftp_kex *kex,
     return -1;
   }
 
-  pkt = sftp_ssh2_packet_create(kex_pool);
-  res = write_dh_gex_reply(pkt, kex, min, pref, max, old_request);
+  dhgex_pkt = sftp_ssh2_packet_create(kex_pool);
+  res = write_dh_gex_reply(dhgex_pkt, kex, min, pref, max, old_request);
   if (res < 0) {
-    destroy_pool(pkt->pool);
+    destroy_pool(dhgex_pkt->pool);
     SFTP_DISCONNECT_CONN(SFTP_SSH2_DISCONNECT_KEY_EXCHANGE_FAILED, NULL);
   }
 
   pr_trace_msg(trace_channel, 9, "writing DH_GEX_REPLY message to client");
 
-  res = sftp_ssh2_packet_write(sftp_conn->wfd, pkt);
+  res = sftp_ssh2_packet_write(sftp_conn->wfd, dhgex_pkt);
   if (res < 0) {
-    destroy_pool(pkt->pool);
+    destroy_pool(dhgex_pkt->pool);
     SFTP_DISCONNECT_CONN(SFTP_SSH2_DISCONNECT_KEY_EXCHANGE_FAILED, NULL);
   }
 
+  destroy_pool(dhgex_pkt->pool);
+
+  /* Now we can destroy the originally-provided packet as well. */
   destroy_pool(pkt->pool);
   return 0;
 }

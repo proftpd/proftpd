@@ -5255,7 +5255,11 @@ int pr_fsio_close(pr_fh_t *fh) {
 }
 
 int pr_fsio_close_with_error(pool *p, pr_fh_t *fh, pr_error_t **err) {
-  int res;
+  int fh_fd = -1, res;
+
+  if (fh != NULL) {
+    fh_fd = fh->fh_fd;
+  }
 
   res = pr_fsio_close(fh);
   if (res < 0) {
@@ -5263,15 +5267,9 @@ int pr_fsio_close_with_error(pool *p, pr_fh_t *fh, pr_error_t **err) {
 
     if (p != NULL &&
         err != NULL) {
-      int fd = -1;
-
       *err = pr_error_create(p, xerrno);
 
-      if (fh != NULL) {
-        fd = fh->fh_fd;
-      }
-
-      if (pr_error_explain_close(*err, fd) < 0) {
+      if (pr_error_explain_close(*err, fh_fd) < 0) {
         pr_error_destroy(*err);
         *err = NULL;
       }
