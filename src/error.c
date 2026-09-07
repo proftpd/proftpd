@@ -92,229 +92,229 @@ struct errno_info {
 };
 
 static struct errno_info errno_names[] = {
-#ifdef E2BIG
+#if defined(E2BIG)
   { E2BIG, "E2BIG" },
 #endif /* E2BIG */
-#ifdef EACCES
+#if defined(EACCES)
   { EACCES, "EACCES" },
 #endif /* EACCES */
-#ifdef EADDRINUSE
+#if defined(EADDRINUSE)
   { EADDRINUSE, "EADDRINUSE" },
 #endif /* EADDRINUSE */
-#ifdef EADDRNOTAVAIL
+#if defined(EADDRNOTAVAIL)
   { EADDRNOTAVAIL, "EADDRNOTAVAIL" },
 #endif /* EADDRNOTAVAIL */
-#ifdef EAFNOSUPPORT
+#if defined(EAFNOSUPPORT)
   { EAFNOSUPPORT, "EAFNOSUPPORT" },
 #endif /* EAFNOSUPPORT */
-#ifdef EAGAIN
+#if defined(EAGAIN)
   { EAGAIN, "EAGAIN" },
 #endif /* EAGAIN */
-#ifdef EALREADY
+#if defined(EALREADY)
   { EALREADY, "EALREADY" },
 #endif /* EALREADY */
-#ifdef EBADF
+#if defined(EBADF)
   { EBADF, "EBADF" },
 #endif /* EBADF */
-#ifdef EBADFD
+#if defined(EBADFD)
   { EBADFD, "EBADFD" },
 #endif /* EBADFD */
-#ifdef EBUSY
+#if defined(EBUSY)
   { EBUSY, "EBUSY" },
 #endif /* EBUSY */
-#ifdef ECANCELED
+#if defined(ECANCELED)
   { ECANCELED, "ECANCELED" },
 #endif /* ECANCELED */
-#ifdef ECOMM
+#if defined(ECOMM)
   { ECOMM, "ECOMM" },
 #endif /* ECOMM */
-#ifdef ECONNABORTED
+#if defined(ECONNABORTED)
   { ECONNABORTED, "ECONNABORTED" },
 #endif /* ECONNABORTED */
-#ifdef ECONNREFUSED
+#if defined(ECONNREFUSED)
   { ECONNREFUSED, "ECONNREFUSED" },
 #endif /* ECONNREFUSED */
-#ifdef ECONNRESET
+#if defined(ECONNRESET)
   { ECONNRESET, "ECONNRESET" },
 #endif /* ECONNRESET */
-#ifdef EDEADLK
+#if defined(EDEADLK)
   { EDEADLK, "EDEADLK" },
 #endif /* EDEADLK */
-#ifdef EDEADLOCK
+#if defined(EDEADLOCK)
   { EDEADLOCK, "EDEADLOCK" },
 #endif /* EDEADLOCK */
-#ifdef EDQUOT
+#if defined(EDQUOT)
   { EDQUOT, "EDQUOT" },
 #endif /* EDQUOT */
-#ifdef EEXIST
+#if defined(EEXIST)
   { EEXIST, "EEXIST" },
 #endif /* EEXIST */
-#ifdef EFAULT
+#if defined(EFAULT)
   { EFAULT, "EFAULT" },
 #endif /* EFAULT */
-#ifdef EFBIG
+#if defined(EFBIG)
   { EFBIG, "EFBIG" },
 #endif /* EFBIG */
-#ifdef EHOSTDOWN
+#if defined(EHOSTDOWN)
   { EHOSTDOWN, "EHOSTDOWN" },
 #endif /* EHOSTDOWN */
-#ifdef EHOSTUNREACH
+#if defined(EHOSTUNREACH)
   { EHOSTUNREACH, "EHOSTUNREACH" },
 #endif /* EHOSTUNREACH */
-#ifdef EILSEQ
+#if defined(EILSEQ)
   { EILSEQ, "EILSEQ" },
 #endif /* EILSEQ */
-#ifdef EINPROGRESS
+#if defined(EINPROGRESS)
   { EINPROGRESS, "EINPROGRESS" },
 #endif /* EINPROGRESS */
-#ifdef EINTR
+#if defined(EINTR)
   { EINTR, "EINTR" },
 #endif /* EINTR */
-#ifdef EINVAL
+#if defined(EINVAL)
   { EINVAL, "EINVAL" },
 #endif /* EINVAL */
-#ifdef EISCONN
+#if defined(EISCONN)
   { EISCONN, "EISCONN" },
 #endif /* EISCONN */
-#ifdef EISDIR
+#if defined(EISDIR)
   { EISDIR, "EISDIR" },
 #endif /* EISDIR */
-#ifdef EIO
+#if defined(EIO)
   { EIO, "EIO" },
 #endif /* EIO */
-#ifdef ELOOP
+#if defined(ELOOP)
   { ELOOP, "ELOOP" },
 #endif /* ELOOP */
-#ifdef EMFILE
+#if defined(EMFILE)
   { EMFILE, "EMFILE" },
 #endif /* EMFILE */
-#ifdef EMLINK
+#if defined(EMLINK)
   { EMLINK, "EMLINK" },
 #endif /* EMLINK */
-#ifdef EMSGSIZE
+#if defined(EMSGSIZE)
   { EMSGSIZE, "EMSGSIZE" },
 #endif /* EMSGSIZE */
-#ifdef ENAMETOOLONG
+#if defined(ENAMETOOLONG)
   { ENAMETOOLONG, "ENAMETOOLONG" },
 #endif /* ENAMETOOLONG */
-#ifdef ENFILE
+#if defined(ENFILE)
   { ENFILE, "ENFILE" },
 #endif /* ENFILE */
-#ifdef ENETDOWN
+#if defined(ENETDOWN)
   { ENETDOWN, "ENETDOWN" },
 #endif /* ENETDOWN */
-#ifdef ENETRESET
+#if defined(ENETRESET)
   { ENETRESET, "ENETRESET" },
 #endif /* ENETRESET */
-#ifdef ENETUNREACH
+#if defined(ENETUNREACH)
   { ENETUNREACH, "ENETUNREACH" },
 #endif /* ENETUNREACH */
-#ifdef ENOBUFS
+#if defined(ENOBUFS)
   { ENOBUFS, "ENOBUFS" },
 #endif /* ENOBUFS */
-#ifdef ENODATA
+#if defined(ENODATA)
   { ENODATA, "ENODATA" },
 #endif /* ENODATA */
-#ifdef ENOATTR
+#if defined(ENOATTR)
   { ENOATTR, "ENOATTR" },
 #endif /* ENOATTR */
-#ifdef ENOLCK
+#if defined(ENOLCK)
   { ENOLCK, "ENOLCK" },
 #endif /* ENOLCK */
-#ifdef ENOLINK
+#if defined(ENOLINK)
   { ENOLINK, "ENOLINK" },
 #endif /* ENOLINK */
-#ifdef ENOMEDIUM
+#if defined(ENOMEDIUM)
   { ENOMEDIUM, "ENOMEDIUM" },
 #endif /* ENOMEDIUM */
-#ifdef ENOMEM
+#if defined(ENOMEM)
   { ENOMEM, "ENOMEM" },
 #endif /* ENOMEM */
-#ifdef ENONET
+#if defined(ENONET)
   { ENONET, "ENONET" },
 #endif /* ENONET */
-#ifdef ENOTCONN
+#if defined(ENOTCONN)
   { ENOTCONN, "ENOTCONN" },
 #endif /* ENOTSCONN */
-#ifdef ENOTEMPTY
+#if defined(ENOTEMPTY)
   { ENOTEMPTY, "ENOTEMPTY" },
 #endif /* ENOTEMPTY */
-#ifdef ENOSPC
+#if defined(ENOSPC)
   { ENOSPC, "ENOSPC" },
 #endif /* ENOSPC */
-#ifdef ENOSYS
+#if defined(ENOSYS)
   { ENOSYS, "ENOSYS" },
 #endif /* ENOSYS */
-#ifdef ENXIO
+#if defined(ENXIO)
   { ENXIO, "ENXIO" },
 #endif /* ENXIO */
-#ifdef ENOENT
+#if defined(ENOENT)
   { ENOENT, "ENOENT" },
 #endif /* ENOENT */
-#ifdef ENOTDIR
+#if defined(ENOTDIR)
   { ENOTDIR, "ENOTDIR" },
 #endif /* ENOTDIR */
-#ifdef ENOTSOCK
+#if defined(ENOTSOCK)
   { ENOTSOCK, "ENOTSOCK" },
 #endif /* ENOTSOCK */
-#ifdef ENOTSUP
+#if defined(ENOTSUP)
   { ENOTSUP, "ENOTSUP" },
 #endif /* ENOTSUP */
-#ifdef EOPNOTSUPP
+#if defined(EOPNOTSUPP)
   { EOPNOTSUPP, "EOPNOTSUPP" },
 #endif /* EOPNOTSUPP */
-#ifdef EPERM
+#if defined(EPERM)
   { EPERM, "EPERM" },
 #endif /* EPERM */
-#ifdef EPFNOSUPPORT
+#if defined(EPFNOSUPPORT)
   { EPFNOSUPPORT, "EPFNOSUPPORT" },
 #endif /* EPFNOSUPPORT */
-#ifdef EPIPE
+#if defined(EPIPE)
   { EPIPE, "EPIPE" },
 #endif /* EPIPE */
-#ifdef EPROTO
+#if defined(EPROTO)
   { EPROTO, "EPROTO" },
 #endif /* EPROTO */
-#ifdef EPROTONOSUPPORT
+#if defined(EPROTONOSUPPORT)
   { EPROTONOSUPPORT, "EPROTONOSUPPORT" },
 #endif /* EPROTONOSUPPORT */
-#ifdef EPROTOOPT
+#if defined(EPROTOOPT)
   { EPROTOOPT, "EPROTOOPT" },
 #endif /* EPROTOOPT */
-#ifdef EPROTOTYPE
+#if defined(EPROTOTYPE)
   { EPROTOTYPE, "EPROTOTYPE" },
 #endif /* EPROTOTYPE */
-#ifdef ERANGE
+#if defined(ERANGE)
   { ERANGE, "ERANGE" },
 #endif /* ERANGE */
-#ifdef EROFS
+#if defined(EROFS)
   { EROFS, "EROFS" },
 #endif /* EROFS */
-#ifdef ESHUTDOWN
+#if defined(ESHUTDOWN)
   { ESHUTDOWN, "ESHUTDOWN" },
 #endif /* ESHUTDOWN */
-#ifdef ESPIPE
+#if defined(ESPIPE)
   { ESPIPE, "ESPIPE" },
 #endif /* ESPIPE */
-#ifdef ERESTART
+#if defined(ERESTART)
   { ERESTART, "ERESTART" },
 #endif /* ERESTART */
-#ifdef ESRCH
+#if defined(ESRCH)
   { ESRCH, "ESRCH" },
 #endif /* ESRCH */
-#ifdef ESTALE
+#if defined(ESTALE)
   { ESTALE, "ESTALE" },
 #endif /* ESTALE */
-#ifdef ETIMEDOUT
+#if defined(ETIMEDOUT)
   { ETIMEDOUT, "ETIMEDOUT" },
 #endif /* ETIMEDOUT */
-#ifdef ETXTBSY
+#if defined(ETXTBSY)
   { ETXTBSY, "ETXTBSY" },
 #endif /* ETXTBSY */
-#ifdef EWOULDBLOCK
+#if defined(EWOULDBLOCK)
   { EWOULDBLOCK, "EWOULDBLOCK" },
 #endif /* EWOULDBLOCK */
-#ifdef EXDEV
+#if defined(EXDEV)
   { EXDEV, "EXDEV" },
 #endif /* EXDEV */
 
@@ -804,20 +804,20 @@ const char *pr_error_strerror(pr_error_t *err, int use_format) {
 
   switch (use_format) {
     case PR_ERROR_FORMAT_USE_DETAILED:
-      if (!(error_formats & PR_ERROR_FORMAT_USE_DETAILED)) {
-        use_format = PR_ERROR_FORMAT_USE_TERSE;
-
-      } else {
+      if (error_formats & PR_ERROR_FORMAT_USE_DETAILED) {
         break;
       }
+
+      use_format = PR_ERROR_FORMAT_USE_TERSE;
+      /* FALLTHROUGH */
 
     case PR_ERROR_FORMAT_USE_TERSE:
-      if (!(error_formats & PR_ERROR_FORMAT_USE_TERSE)) {
-        use_format = PR_ERROR_FORMAT_USE_MINIMAL;
-
-      } else {
+      if (error_formats & PR_ERROR_FORMAT_USE_TERSE) {
         break;
       }
+
+      use_format = PR_ERROR_FORMAT_USE_MINIMAL;
+      /* FALLTHROUGH */
 
     case PR_ERROR_FORMAT_USE_MINIMAL:
       break;

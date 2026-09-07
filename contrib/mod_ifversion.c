@@ -299,7 +299,7 @@ static int compare_version(pool *p, char *version_str, char **error) {
 }
 
 static int match_version(pool *p, const char *pattern_str, char **error) {
-#ifdef PR_USE_REGEX
+#if defined(PR_USE_REGEX)
   pr_regex_t *pre;
   int res;
 
@@ -331,7 +331,7 @@ static int match_version(pool *p, const char *pattern_str, char **error) {
 #else
   *error = pstrdup(p, "system does not support POSIX regular expressions");
   return 0;
-#endif /* regex support */
+#endif /* PR_USE_REGEX */
 }
 
 /* Configuration handlers
@@ -395,6 +395,7 @@ MODRET start_ifversion(cmd_rec *cmd) {
        */
       version_str[strlen(version_str)-1] = '\0';
       version_str++;
+      /* FALLTHROUGH */
 
     case '~':
       /* Regular expression */

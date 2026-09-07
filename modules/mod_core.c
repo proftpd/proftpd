@@ -55,7 +55,7 @@ char AddressCollisionCheck = TRUE;
 static int core_scrub_timer_id = -1;
 static pr_fh_t *displayquit_fh = NULL;
 
-#ifdef PR_USE_TRACE
+#if defined(PR_USE_TRACE)
 static const char *trace_log = NULL;
 #endif /* PR_USE_TRACE */
 
@@ -1671,7 +1671,7 @@ MODRET set_group(cmd_rec *cmd) {
 
 /* usage: Trace ["session"] channel1:level1 ... */
 MODRET set_trace(cmd_rec *cmd) {
-#ifdef PR_USE_TRACE
+#if defined(PR_USE_TRACE)
   register unsigned int i;
   int per_session = FALSE, ctx = 0;
   unsigned int idx = 1;
@@ -1769,7 +1769,7 @@ MODRET set_trace(cmd_rec *cmd) {
 
 /* usage: TraceLog path */
 MODRET set_tracelog(cmd_rec *cmd) {
-#ifdef PR_USE_TRACE
+#if defined(PR_USE_TRACE)
   if (cmd->argc-1 != 1) {
     CONF_ERROR(cmd, "wrong number of parameters");
   }
@@ -1800,7 +1800,7 @@ MODRET set_tracelog(cmd_rec *cmd) {
 
 /* usage: TraceOptions opt1 ... optN */
 MODRET set_traceoptions(cmd_rec *cmd) {
-#ifdef PR_USE_TRACE
+#if defined(PR_USE_TRACE)
   register unsigned int i;
   int ctx;
   config_rec *c;
@@ -2093,13 +2093,13 @@ MODRET set_syslogfacility(cmd_rec *cmd) {
   } factable[] = {
   { "AUTH",		LOG_AUTHPRIV		},
   { "AUTHPRIV",		LOG_AUTHPRIV		},
-#ifdef HAVE_LOG_FTP
-  { "FTP",		LOG_FTP			},
-#endif
-#ifdef HAVE_LOG_CRON
+#if defined(HAVE_LOG_CRON)
   { "CRON",		LOG_CRON		},
-#endif
+#endif /* HAVE_LOG_CRON */
   { "DAEMON",		LOG_DAEMON		},
+#if defined(HAVE_LOG_FTP)
+  { "FTP",		LOG_FTP			},
+#endif /* HAVE_LOG_FTP */
   { "KERN",		LOG_KERN		},
   { "LOCAL0",		LOG_LOCAL0		},
   { "LOCAL1",		LOG_LOCAL1		},
@@ -2176,7 +2176,7 @@ MODRET set_timesgmt(cmd_rec *cmd) {
 }
 
 MODRET set_regex(cmd_rec *cmd, char *param, char *type) {
-#ifdef PR_USE_REGEX
+#if defined(PR_USE_REGEX)
   pr_regex_t *pre = NULL;
   config_rec *c = NULL;
   int regex_flags = REG_EXTENDED|REG_NOSUB, res = 0;
@@ -2230,15 +2230,15 @@ MODRET set_regex(cmd_rec *cmd, char *param, char *type) {
   c->flags |= CF_MERGEDOWN;
   return PR_HANDLED(cmd);
 
-#else /* no regular expression support at the moment */
+#else
   CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "The ", param, " directive cannot be "
     "used on this system, as you do not have POSIX compliant regex support",
     NULL));
-#endif
+#endif /* PR_USE_REGEX */
 }
 
 MODRET set_allowdenyfilter(cmd_rec *cmd) {
-#ifdef PR_USE_REGEX
+#if defined(PR_USE_REGEX)
   pr_regex_t *pre = NULL;
   config_rec *c = NULL;
   int regex_flags = REG_EXTENDED|REG_NOSUB, res = 0;
@@ -2292,11 +2292,11 @@ MODRET set_allowdenyfilter(cmd_rec *cmd) {
   c->flags |= CF_MERGEDOWN;
   return PR_HANDLED(cmd);
 
-#else /* no regular expression support at the moment */
+#else
   CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "The ", cmd->argv[0],
     " directive cannot be used on this system, as you do not have POSIX "
     "compliant regex support", NULL));
-#endif
+#endif /* PR_USE_REGEX */
 }
 
 MODRET set_passiveports(cmd_rec *cmd) {
@@ -2512,7 +2512,7 @@ MODRET add_directory(cmd_rec *cmd) {
 }
 
 MODRET set_hidefiles(cmd_rec *cmd) {
-#ifdef PR_USE_REGEX
+#if defined(PR_USE_REGEX)
   pr_regex_t *pre = NULL;
   config_rec *c = NULL;
   unsigned int precedence = 0;
@@ -2655,11 +2655,11 @@ MODRET set_hidefiles(cmd_rec *cmd) {
 
   return PR_HANDLED(cmd);
 
-#else /* no regular expression support at the moment */
+#else
   CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "The HideFiles directive cannot be "
     "used on this system, as you do not have POSIX compliant regex support",
     NULL));
-#endif
+#endif /* PR_USE_REGEX */
 }
 
 MODRET set_hidenoaccess(cmd_rec *cmd) {
@@ -3141,7 +3141,7 @@ MODRET set_allowdenyusergroupclass(cmd_rec *cmd) {
       argv = cmd->argv+1;
 
     } else if (strcasecmp(cmd->argv[1], "regex") == 0) {
-#ifdef PR_USE_REGEX
+#if defined(PR_USE_REGEX)
       pr_regex_t *pre;
       int res;
 
@@ -3172,7 +3172,7 @@ MODRET set_allowdenyusergroupclass(cmd_rec *cmd) {
 #else
       CONF_ERROR(cmd, "The 'regex' parameter cannot be used on this system, "
         "as you do not have POSIX compliant regex support");
-#endif /* regex support */
+#endif /* PR_USE_REGEX */
 
     } else {
       argc = cmd->argc-1;
@@ -3650,7 +3650,7 @@ MODRET end_virtualhost(cmd_rec *cmd) {
   return PR_HANDLED(cmd);
 }
 
-#ifdef PR_USE_REGEX
+#if defined(PR_USE_REGEX)
 MODRET regex_filters(cmd_rec *cmd) {
   pr_regex_t *allow_regex = NULL, *deny_regex = NULL;
 
@@ -3691,7 +3691,7 @@ MODRET regex_filters(cmd_rec *cmd) {
 
   return PR_DECLINED(cmd);
 }
-#endif /* regex support */
+#endif /* PR_USE_REGEX */
 
 MODRET core_pre_any(cmd_rec *cmd) {
   unsigned long cmd_delay = 0;
@@ -4355,6 +4355,7 @@ MODRET core_eprt(cmd_rec *cmd) {
         break;
       }
 #endif /* PR_USE_IPV6 */
+      /* FALLTHROUGH */
 
     default:
 #if defined(PR_USE_IPV6)
@@ -4658,6 +4659,7 @@ MODRET core_epsv(cmd_rec *cmd) {
           break;
         }
 #endif /* PR_USE_IPV6 */
+        /* FALLTHROUGH */
 
       default:
         family = 0;
@@ -4675,6 +4677,7 @@ MODRET core_epsv(cmd_rec *cmd) {
         break;
       }
 #endif /* PR_USE_IPV6 */
+      /* FALLTHROUGH */
 
     default:
 #if defined(PR_USE_IPV6)
@@ -6166,7 +6169,7 @@ MODRET core_dele(cmd_rec *cmd) {
     return PR_ERROR(cmd);
   }
 
-#ifdef EISDIR
+#if defined(EISDIR)
   /* If the path is a directory, try to return a good error message (e.g.
    * EISDIR).
    */
@@ -6185,7 +6188,7 @@ MODRET core_dele(cmd_rec *cmd) {
     errno = xerrno;
     return PR_ERROR(cmd);
   }
-#endif /* !EISDIR */
+#endif /* EISDIR */
 
   res = pr_fsio_unlink_with_error(cmd->pool, path, &err);
   if (res < 0) {
@@ -6771,7 +6774,7 @@ MODRET core_post_pass(cmd_rec *cmd) {
     }
   }
 
-#ifdef PR_USE_TRACE
+#if defined(PR_USE_TRACE)
   /* Handle any user/group-specific Trace settings. */
   c = find_config(main_server->conf, CONF_PARAM, "Trace", FALSE);
   if (c != NULL) {
@@ -7045,8 +7048,8 @@ static void core_restart_ev(const void *event_data, void *user_data) {
   pr_fs_statcache_reset();
   pr_scoreboard_scrub();
 
-#ifdef PR_USE_TRACE
-  if (trace_log) {
+#if defined(PR_USE_TRACE)
+  if (trace_log != NULL) {
     (void) pr_trace_set_levels(PR_TRACE_DEFAULT_CHANNEL, -1, -1);
     pr_trace_set_file(NULL);
     trace_log = NULL;
@@ -7670,9 +7673,9 @@ static conftable core_conftab[] = {
 };
 
 static cmdtable core_cmdtab[] = {
-#ifdef PR_USE_REGEX
+#if defined(PR_USE_REGEX)
   { PRE_CMD, C_ANY, G_NONE,  regex_filters, FALSE, FALSE, CL_NONE },
-#endif
+#endif /* PR_USE_REGEX */
   { PRE_CMD, C_ANY, G_NONE, core_pre_any,FALSE, FALSE, CL_NONE },
   { CMD, C_HELP, G_NONE,  core_help,	FALSE,	FALSE, CL_INFO },
   { CMD, C_PORT, G_NONE,  core_port,	TRUE,	FALSE, CL_MISC },

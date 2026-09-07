@@ -6019,6 +6019,7 @@ static struct ssh2_packet *read_kex_packet(pool *p, struct sftp_kex *kex,
           pkt = NULL;
           break;
         }
+        /* FALLTHROUGH */
 
       case SFTP_SSH2_MSG_IGNORE:
         if (use_strict_kex == FALSE) {
@@ -6027,6 +6028,7 @@ static struct ssh2_packet *read_kex_packet(pool *p, struct sftp_kex *kex,
           pkt = NULL;
           break;
         }
+        /* FALLTHROUGH */
 
       case SFTP_SSH2_MSG_UNIMPLEMENTED:
         if (use_strict_kex == FALSE) {
@@ -6035,6 +6037,7 @@ static struct ssh2_packet *read_kex_packet(pool *p, struct sftp_kex *kex,
           pkt = NULL;
           break;
         }
+        /* FALLTHROUGH */
 
       default:
         /* For any other message type, it's considered a protocol error. */
