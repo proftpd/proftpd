@@ -2109,19 +2109,21 @@ static struct passwd *sql_getpasswd(cmd_rec *cmd, struct passwd *p) {
         return NULL;
       }
 
-      ah = mr->data;
+      if (MODRET_HASDATA(mr)) {
+        ah = mr->data;
 
-      sd = pcalloc(cmd->tmp_pool, sizeof(sql_data_t));
+        sd = pcalloc(cmd->tmp_pool, sizeof(sql_data_t));
 
-      /* Assume the query only return 1 row. */
-      sd->fnum = ah->nelts;
-      if (sd->fnum) {
-        sd->rnum = 1;
-        sd->data = (char **) ah->elts;
+        /* Assume the query only return 1 row. */
+        sd->fnum = ah->nelts;
+        if (sd->fnum > 0) {
+          sd->rnum = 1;
+          sd->data = (char **) ah->elts;
 
-      } else {
-        sd->rnum = 0;
-        sd->data = NULL;
+        } else {
+          sd->rnum = 0;
+          sd->data = NULL;
+        }
       }
     }
   }
@@ -2375,24 +2377,27 @@ static struct group *sql_getgroup(cmd_rec *cmd, struct group *g) {
         return NULL;
       }
 
-      ah = mr->data;
+      if (MODRET_HASDATA(mr)) {
+        ah = mr->data;
 
-      sd = pcalloc(cmd->tmp_pool, sizeof(sql_data_t));
+        sd = pcalloc(cmd->tmp_pool, sizeof(sql_data_t));
 
-      /* Assume the query only return 1 row. */
-      sd->fnum = ah->nelts;
-      if (sd->fnum) {
-        sd->rnum = 1;
-        sd->data = (char **) ah->elts;
+        /* Assume the query only return 1 row. */
+        sd->fnum = ah->nelts;
+        if (sd->fnum > 0) {
+          sd->rnum = 1;
+          sd->data = (char **) ah->elts;
 
-      } else {
-        sd->rnum = 0;
-        sd->data = NULL;
+        } else {
+          sd->rnum = 0;
+          sd->data = NULL;
+        }
       }
     }
 
     /* If we have no data.. */
-    if (sd->rnum == 0) {
+    if (sd == NULL ||
+        sd->rnum == 0) {
       return NULL;
     }
 
@@ -2425,24 +2430,27 @@ static struct group *sql_getgroup(cmd_rec *cmd, struct group *g) {
       return NULL;
     }
 
-    ah = mr->data;
-    sd = pcalloc(cmd->tmp_pool, sizeof(sql_data_t));
+    if (MODRET_HASDATA(mr)) {
+      ah = mr->data;
+      sd = pcalloc(cmd->tmp_pool, sizeof(sql_data_t));
 
-    /* Assume the query only returned 1 row. */
-    sd->fnum = ah->nelts;
+      /* Assume the query only returned 1 row. */
+      sd->fnum = ah->nelts;
 
-    if (sd->fnum) {
-      sd->rnum = 1;
-      sd->data = (char **) ah->elts;
+      if (sd->fnum > 0) {
+        sd->rnum = 1;
+        sd->data = (char **) ah->elts;
 
-    } else {
-      sd->rnum = 0;
-      sd->data = NULL;
+      } else {
+        sd->rnum = 0;
+        sd->data = NULL;
+      }
     }
   }
 
   /* if we have no data.. */
-  if (sd->rnum == 0) {
+  if (sd == NULL ||
+      sd->rnum == 0) {
     if (cmap.negative_cache == FALSE) {
       return NULL;
     }
@@ -2615,7 +2623,7 @@ static int sql_getgroups(cmd_rec *cmd) {
     sd = (sql_data_t *) mr->data;
 
   } else {
-    array_header *ah;
+    array_header *ah = NULL;
 
     /* The username has been escaped according to the backend database' rules
      * at this point.
@@ -2627,27 +2635,30 @@ static int sql_getgroups(cmd_rec *cmd) {
       return -1;
     }
 
-    ah = mr->data;
-    sd = pcalloc(cmd->tmp_pool, sizeof(sql_data_t));
+    if (MODRET_HASDATA(mr)) {
+      ah = mr->data;
+      sd = pcalloc(cmd->tmp_pool, sizeof(sql_data_t));
 
-    /* Assume the query returned N rows, 3 columns per row. */
-    if (ah->nelts % 3 == 0) {
-      sd->fnum = 3;
-      sd->rnum = ah->nelts / 3;
+      /* Assume the query returned N rows, 3 columns per row. */
+      if (ah->nelts % 3 == 0) {
+        sd->fnum = 3;
+        sd->rnum = ah->nelts / 3;
 
-      if (sd->rnum > 0) {
-        sd->data = (char **) ah->elts;
+        if (sd->rnum > 0) {
+          sd->data = (char **) ah->elts;
+        }
+
+      } else {
+        sql_log(DEBUG_INFO, "wrong number of columns (%d) returned by custom SQLGroupInfo members query, ignoring results", ah->nelts % 3);
+        sd->rnum = 0;
+        sd->data = NULL;
       }
-
-    } else {
-      sql_log(DEBUG_INFO, "wrong number of columns (%d) returned by custom SQLGroupInfo members query, ignoring results", ah->nelts % 3);
-      sd->rnum = 0;
-      sd->data = NULL;
     }
   }
 
   /* If we have no data... */
-  if (sd->rnum == 0) {
+  if (sd == NULL ||
+      sd->rnum == 0) {
     cmd->argc = argc;
     return -1;
   }
