@@ -1276,6 +1276,11 @@ my $TESTS = {
     test_class => [qw(forking sftp)],
   },
 
+  sftp_config_display_banner => {
+    order => ++$order,
+    test_class => [qw(bug forking sftp)],
+  },
+
   sftp_config_hiddenstores => {
     order => ++$order,
     test_class => [qw(forking sftp)],
@@ -34326,13 +34331,13 @@ sub sftp_config_createhome {
   my $self = shift;
   my $tmpdir = $self->{tmpdir};
 
-  my $rsa_host_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/ssh_host_rsa_key');
-  my $dsa_host_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/ssh_host_dsa_key');
-
   my $home_dir = File::Spec->rel2abs("$tmpdir/foo/bar");
   my $setup = test_setup($tmpdir, 'sftp', 'proftpd', 'test', 'ftpd', 500, 500, $home_dir);
 
   my $home_gid = 777;
+
+  my $rsa_host_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/ssh_host_rsa_key');
+  my $dsa_host_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/ssh_host_dsa_key');
 
   my $config = {
     PidFile => $setup->{pid_file},
@@ -34865,6 +34870,206 @@ sub sftp_config_dirfakemode {
         'sftp.pid' => '0310',
         'sftp.scoreboard' => '0310',
         'sftp.scoreboard.lck' => '0310',
+      };
+
+      # To issue the FXP_CLOSE, we have to explicitly destroy the dirhandle
+      $dir = undef;
+
+      # To close the SFTP channel, we have to explicitly destroy the object
+      $sftp = undef;
+
+      $ssh2->disconnect();
+
+      my $file_ok = 1;
+      my $mode_ok = 1;
+      my $mismatch;
+
+      my $seen = [];
+      foreach my $name (keys(%$res)) {
+        # Ignore ASAN logs
+        next if $name =~ /asan\.log/;
+
+        push(@$seen, $name);
+
+        unless (defined($expected->{$name})) {
+          $mismatch = $name;
+          $file_ok = 0;
+          last;
+        }
+
+        unless ($res->{$name} eq $expected->{$name}) {
+          $mismatch = "$name: $res->{$name}";
+          $mode_ok = 0;
+          last;
+        }
+      }
+
+      unless ($file_ok) {
+        die("Unexpected name '$mismatch' appeared in READDIR data")
+      }
+
+      unless ($mode_ok) {
+        die("Unexpected mode '$mismatch' appeared in READDIR data")
+      }
+
+      # Now remove from $expected all of the paths we saw; if there are
+      # any entries remaining in $expected, something went wrong.
+      foreach my $name (@$seen) {
+        delete($expected->{$name});
+      }
+
+      my $remaining = scalar(keys(%$expected));
+      $self->assert(0 == $remaining,
+        test_msg("Expected 0, got $remaining"));
+    };
+    if ($@) {
+      $ex = $@;
+    }
+
+    $wfh->print("done\n");
+    $wfh->flush();
+
+  } else {
+    eval { server_wait($setup->{config_file}, $rfh) };
+    if ($@) {
+      warn($@);
+      exit 1;
+    }
+
+    exit 0;
+  }
+
+  # Stop server
+  server_stop($setup->{pid_file});
+  $self->assert_child_ok($pid);
+
+  test_cleanup($setup, $ex);
+}
+
+sub sftp_config_display_banner {
+  my $self = shift;
+  my $tmpdir = $self->{tmpdir};
+  my $setup = test_setup($tmpdir, 'sftp');
+
+  my $rsa_host_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/ssh_host_rsa_key');
+  my $dsa_host_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/ssh_host_dsa_key');
+
+  my $env_key = 'FOO';
+  my $env_val = 'B' x 8192;
+
+  my $banner_file = File::Spec->rel2abs("$tmpdir/banner.txt");
+  if (open(my $fh, "> $banner_file")) {
+    print $fh 'AbCdEf' x 1024;
+    print $fh "\n\${}\n";
+    print $fh "\${env:$env_key}\n";
+
+    unless (close($fh)) {
+      die("Can't write $banner_file: $!");
+    }
+
+  } else {
+    die("Can't open $banner_file: $!");
+  }
+
+  my $config = {
+    PidFile => $setup->{pid_file},
+    ScoreboardFile => $setup->{scoreboard_file},
+    SystemLog => $setup->{log_file},
+    TraceLog => $setup->{log_file},
+    Trace => 'DEFAULT:10 ssh2:20 sftp:20 scp:20',
+
+    AuthUserFile => $setup->{auth_user_file},
+    AuthGroupFile => $setup->{auth_group_file},
+    AuthOrder => 'mod_auth_file.c',
+
+    SetEnv => "$env_key $env_val",
+
+    IfModules => {
+      'mod_delay.c' => {
+        DelayEngine => 'off',
+      },
+
+      'mod_sftp.c' => [
+        "SFTPEngine on",
+        "SFTPLog $setup->{log_file}",
+        "SFTPHostKey $rsa_host_key",
+        "SFTPHostKey $dsa_host_key",
+
+        "SFTPDisplayBanner $banner_file",
+      ],
+    },
+  };
+
+  my ($port, $config_user, $config_group) = config_write($setup->{config_file},
+    $config);
+
+  # Open pipes, for use between the parent and child processes.  Specifically,
+  # the child will indicate when it's done with its test by writing a message
+  # to the parent.
+  my ($rfh, $wfh);
+  unless (pipe($rfh, $wfh)) {
+    die("Can't open pipe: $!");
+  }
+
+  require Net::SSH2;
+
+  my $ex;
+
+  # Ignore SIGPIPE
+  local $SIG{PIPE} = sub { };
+
+  # Fork child
+  $self->handle_sigchld();
+  defined(my $pid = fork()) or die("Can't fork: $!");
+  if ($pid) {
+    eval {
+      # Allow for server startup
+      sleep(1);
+
+      my $ssh2 = Net::SSH2->new();
+      unless ($ssh2->connect('127.0.0.1', $port)) {
+        my ($err_code, $err_name, $err_str) = $ssh2->error();
+        die("Can't connect to SSH2 server: [$err_name] ($err_code) $err_str");
+      }
+
+      unless ($ssh2->auth_password($setup->{user}, $setup->{passwd})) {
+        my ($err_code, $err_name, $err_str) = $ssh2->error();
+        die("Can't login to SSH2 server: [$err_name] ($err_code) $err_str");
+      }
+
+      my $sftp = $ssh2->sftp();
+      unless ($sftp) {
+        my ($err_code, $err_name, $err_str) = $ssh2->error();
+        die("Can't use SFTP on SSH2 server: [$err_name] ($err_code) $err_str");
+      }
+
+      my $dir = $sftp->opendir('.');
+      unless ($dir) {
+        my ($err_code, $err_name) = $sftp->error();
+        die("Can't open directory '.': [$err_name] ($err_code)");
+      }
+
+      my $res = {};
+
+      my $file = $dir->read();
+      while ($file) {
+        # Ignore ASAN logs
+        next if $file =~ /asan\.log/;
+
+        $res->{$file->{name}} = sprintf("%04o", $file->{mode} & 0777);
+        $file = $dir->read();
+      }
+
+      my $expected = {
+        '.' => '0755',
+        '..' => '0777',
+        'banner.txt' => '0644',
+        'sftp.conf' => '0644',
+        'sftp.group' => '0440',
+        'sftp.passwd' => '0440',
+        'sftp.pid' => '0644',
+        'sftp.scoreboard' => '0644',
+        'sftp.scoreboard.lck' => '0644',
       };
 
       # To issue the FXP_CLOSE, we have to explicitly destroy the dirhandle
