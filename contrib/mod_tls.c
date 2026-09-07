@@ -4046,7 +4046,7 @@ static void tls_scrub_pkey(tls_pkey_t *k) {
     k->dsa_passlen = 0;
   }
 
-#ifdef PR_USE_OPENSSL_ECC
+#if defined(PR_USE_OPENSSL_ECC)
   if (k->ec_pkey != NULL) {
     pr_memscrub(k->ec_pkey, k->pkeysz);
     free(k->ec_pkey_ptr);
@@ -4194,46 +4194,13 @@ static void tls_remove_pkey(tls_pkey_t *k) {
 
 static void tls_scrub_pkeys(void) {
   tls_pkey_t *k, *knext;
-  unsigned int passphrase_count = 0;
 
   if (tls_pkey_list == NULL) {
     return;
   }
 
-  /* Scrub and free all passphrases in memory. */
-  for (k = tls_pkey_list; k; k = k->next) {
-    if (k->rsa_pkey != NULL &&
-        k->rsa_passlen > 0) {
-      passphrase_count++;
-    }
-
-    if (k->dsa_pkey != NULL &&
-        k->dsa_passlen > 0) {
-      passphrase_count++;
-    }
-
-#if defined(PR_USE_OPENSSL_ECC)
-    if (k->ec_pkey != NULL &&
-        k->ec_passlen > 0) {
-      passphrase_count++;
-    }
-#endif /* PR_USE_OPENSSL_ECC */
-
-    if (k->pkcs12_passwd != NULL &&
-        k->pkcs12_passlen > 0) {
-      passphrase_count++;
-    }
-  }
-
-  if (passphrase_count == 0) {
-    tls_pkey_list = NULL;
-    tls_npkeys = 0;
-    return;
-  }
-
   pr_log_debug(DEBUG5, MOD_TLS_VERSION
-    ": scrubbing %u %s from memory", passphrase_count,
-    passphrase_count != 1 ? "passphrases" : "passphrase");
+    ": scrubbing keys and passphrases from memory");
 
   for (k = tls_pkey_list; k; k = knext) {
     knext = k->next;
@@ -6885,7 +6852,7 @@ static void destroy_ticket_key(struct tls_ticket_key *k) {
 }
 
 static int remove_expired_ticket_keys(void) {
-  struct tls_ticket_key *k = NULL;
+  struct tls_ticket_key *k = NULL, *knext = NULL;
   int expired_count = 0;
   time_t now;
 
@@ -6898,12 +6865,14 @@ static int remove_expired_ticket_keys(void) {
 
   for (k = (struct tls_ticket_key *) tls_ticket_keys->xas_list;
        k;
-       k = k->next) {
+       k = knext) {
     time_t key_age;
 
+    knext = k->next;
     key_age = now - k->created;
     if (key_age > tls_ticket_key_max_age) {
       if (xaset_remove(tls_ticket_keys, (xasetmember_t *) k) == 0) {
+        destroy_ticket_key(k);
         expired_count++;
         tls_ticket_key_curr_count--;
       }
@@ -6929,6 +6898,7 @@ static int remove_oldest_ticket_key(void) {
 
   res = xaset_remove(tls_ticket_keys, (xasetmember_t *) k);
   if (res == 0) {
+    destroy_ticket_key(k);
     tls_ticket_key_curr_count--;
   }
 
@@ -7037,14 +7007,14 @@ static void lock_ticket_keys(void) {
 }
 
 static void scrub_ticket_keys(void) {
-  struct tls_ticket_key *k, *next_k;
+  struct tls_ticket_key *k, *knext;
 
   if (tls_ticket_keys == NULL) {
     return;
   }
 
-  for (k = (struct tls_ticket_key *) tls_ticket_keys->xas_list; k; k = next_k) {
-    next_k = k->next;
+  for (k = (struct tls_ticket_key *) tls_ticket_keys->xas_list; k; k = knext) {
+    knext = k->next;
     destroy_ticket_key(k);
   }
 
