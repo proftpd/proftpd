@@ -1718,7 +1718,7 @@ EOS
 
       # Bug#3149 occurred because mod_sql's resolve_short_tag() function
       # was not able to resolve %V properly (it was dereferencing a bad
-      * pointer).
+      # pointer).
       'mod_sql.c' => {
         SQLAuthTypes => 'plaintext',
         SQLBackend => 'sqlite3',
