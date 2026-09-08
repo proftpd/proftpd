@@ -102,7 +102,10 @@ static void data_new_xfer(char *filename, int direction) {
   session.xfer.buf = pcalloc(session.xfer.p, session.xfer.bufsize + 1);
   pr_trace_msg(trace_channel, 8, "allocated data transfer buffer of %lu bytes",
     (unsigned long) session.xfer.bufsize);
-  session.xfer.buf++;	/* leave room for ascii translation */
+  if (session.xfer.buf != NULL) {
+    /* Leave room for ASCII translation. */
+    session.xfer.buf++;
+  }
   session.xfer.buflen = 0;
 }
 
