@@ -1328,9 +1328,9 @@ AC_ARG_ENABLE(scoreboard-updates,
   [
     if test x"$enableval" = xyes || test x"$enableval" = xno ; then
       AC_MSG_WARN(scoreboard updates defaulting to 10)
-      AC_DEFINE_UNQUOTED(PR_TUNABLE_XFER_SCOREBOARD_UPDATES, 10, [Define the scoreboard update count])
+      AC_DEFINE_UNQUOTED(PR_TUNABLE_XFER_SCOREBOARD_UPDATES, 10, [Define the scoreboard update interval in deciseconds])
     else
-      AC_DEFINE_UNQUOTED(PR_TUNABLE_XFER_SCOREBOARD_UPDATES, $enableval, [Define the scoreboard update count])
+      AC_DEFINE_UNQUOTED(PR_TUNABLE_XFER_SCOREBOARD_UPDATES, $enableval, [Define the scoreboard update interval in deciseconds])
     fi
   ])
 
