@@ -229,9 +229,10 @@ static unsigned int resp_nlines = 0;
 static char *resp_line = NULL;
 
 static char *response_handler_cb(pool *cb_pool, const char *fmt, ...) {
-  char buf[PR_RESPONSE_BUFFER_SIZE] = {'\0'};
+  char buf[PR_RESPONSE_BUFFER_SIZE * 4];
   va_list msg;
 
+  memset(buf, '\0', sizeof(buf));
   va_start(msg, fmt);
   vsnprintf(buf, sizeof(buf), fmt, msg);
   va_end(msg);
@@ -354,6 +355,60 @@ START_TEST (response_send_async_test) {
 }
 END_TEST
 
+START_TEST (response_send_async_too_large_test) {
+  char buf[PR_TUNABLE_BUFFER_SIZE * 2], expected[PR_TUNABLE_BUFFER_SIZE];
+  int res, sockfd = -2;
+  conn_t *conn;
+  pr_netio_t *netio;
+
+  netio = pr_alloc_netio2(p, NULL, "testsuite");
+  netio->poll = response_netio_poll_cb;
+  netio->write = response_netio_write_cb;
+
+  res = pr_register_netio(netio, PR_NETIO_STRM_CTRL);
+  ck_assert_msg(res == 0, "Failed to register custom ctrl NetIO: %s",
+    strerror(errno));
+
+  conn = pr_inet_create_conn(p, sockfd, NULL, INPORT_ANY, FALSE);
+  session.c = conn;
+
+  pr_response_register_handler(response_handler_cb);
+
+  resp_nlines = 0;
+  resp_line = NULL;
+  pr_response_set_pool(p);
+
+  mark_point();
+  memset(buf, 'A', sizeof(buf)-1);
+  buf[sizeof(buf)-1] = '\0';
+  pr_response_send_async(R_200, "%s", buf);
+
+  mark_point();
+  pr_response_register_handler(NULL);
+  pr_inet_close(p, session.c);
+  session.c = NULL;
+  pr_unregister_netio(PR_NETIO_STRM_CTRL);
+
+  ck_assert_msg(resp_nlines == 1, "Expected 1 response line flushed, got %u",
+    resp_nlines);
+  ck_assert_msg(resp_line != NULL, "Expected response line");
+
+  mark_point();
+  expected[0] = '2';
+  expected[1] = '0';
+  expected[2] = '0';
+  expected[3] = ' ';
+  memset(expected + 4, 'A', sizeof(expected)-4);
+  expected[sizeof(expected)-3] = '\r';
+  expected[sizeof(expected)-2] = '\n';
+  expected[sizeof(expected)-1] = '\0';
+
+  mark_point();
+  ck_assert_msg(strcmp(resp_line, expected) == 0,
+    "Expected '%.100s...', got '%s'", expected, resp_line);
+}
+END_TEST
+
 START_TEST (response_send_raw_test) {
   int res, sockfd = -2;
   conn_t *conn;
@@ -457,6 +512,7 @@ Suite *tests_get_response_suite(void) {
   tcase_add_test(testcase, response_flush_test);
   tcase_add_test(testcase, response_send_test);
   tcase_add_test(testcase, response_send_async_test);
+  tcase_add_test(testcase, response_send_async_too_large_test);
   tcase_add_test(testcase, response_send_raw_test);
 
 #if defined(TEST_BUG3711)
