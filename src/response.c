@@ -326,7 +326,7 @@ void pr_response_add(const char *numeric, const char *fmt, ...) {
 
 void pr_response_send_async(const char *resp_numeric, const char *fmt, ...) {
   int res;
-  char buf[PR_TUNABLE_BUFFER_SIZE] = {'\0'};
+  char buf[PR_TUNABLE_BUFFER_SIZE] = {'\0'}, *ptr;
   va_list msg;
   size_t len, max_len;
 
@@ -343,25 +343,40 @@ void pr_response_send_async(const char *resp_numeric, const char *fmt, ...) {
     return;
   }
 
-  sstrncpy(buf, resp_numeric, sizeof(buf));
+  ptr = buf;
+  sstrncpy(ptr, resp_numeric, sizeof(buf));
 
   len = strlen(resp_numeric);
-  sstrcat(buf + len, " ", sizeof(buf) - len);
+  ptr += len;
 
-  max_len = sizeof(buf) - (len + 1);
+  sstrcat(ptr, " ", sizeof(buf) - len);
+  ptr += 1;
+
+  /* Make sure we reserve two bytes for the terminating CRLF. */
+  max_len = sizeof(buf) - (len + 1) - 2;
 
   va_start(msg, fmt);
-  res = pr_vsnprintf(buf + len + 1, max_len, fmt, msg);
+  res = pr_vsnprintf(ptr, max_len, fmt, msg);
   va_end(msg);
 
-  buf[sizeof(buf) - 1] = '\0';
+  buf[sizeof(buf)-1] = '\0';
 
   resp_last_response_code = pstrdup(resp_pool, resp_numeric);
   resp_last_response_msg = pstrdup(resp_pool, buf + len + 1);
 
-  sstrcat(buf + res, "\r\n", max_len - res);
+  if (res < 0) {
+    /* The buffer is full; adjust accordingly. */
+    ptr = buf + max_len;
+    res = 0;
 
-  pr_trace_msg(trace_channel, 1, "async: %s", buf);
+  } else {
+    ptr += res;
+  }
+
+  sstrcat(ptr, "\r\n", max_len - res);
+
+  pr_trace_msg(trace_channel, 1, "async: %s (%lu bytes)", buf,
+    (unsigned long) strlen(buf));
   if (resp_handler_cb != NULL) {
     pr_netio_printf_async(session.c->outstrm, "%s",
       resp_handler_cb(resp_pool, "%s", buf));
