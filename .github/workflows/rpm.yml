@@ -46,6 +46,13 @@ jobs:
       - name: Configure RPM repos
         if: ${{ matrix.container == 'almalinux:10' }}
         run: |
+          # Optimize DNF configuration
+          tee -a /etc/dnf/dnf.conf <<EOD
+          deltarpm=False
+          fastestmirror=True
+          max_parallel_downloads=10
+          EOD
+
           # Need to add other repos for e.g. libsodium
           yum install -y dnf-plugins-core epel-release yum-utils
           crb enable
