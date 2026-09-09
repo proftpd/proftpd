@@ -1968,7 +1968,8 @@ static const char *get_namespace_key(pool *p, pr_redis_t *redis, module *m,
       size_t new_keysz;
 
       pr_trace_msg(trace_channel, 25,
-        "using namespace prefix '%s' for module 'mod_%s.c'", prefix, m->name);
+        "using namespace prefix '%.*s' for module 'mod_%s.c'", (int) prefixsz,
+        prefix, m->name);
 
       /* Since the given key may not be text, we cannot simply use pstrcat()
        * to prepend our namespace value.
@@ -2306,9 +2307,10 @@ int pr_redis_kdecr(pr_redis_t *redis, module *m, const char *key, size_t keysz,
    * REMOVE the auto-created key, and return ENOENT.
    */
   if ((decr * -1) == (uint32_t) reply->integer) {
+    (void) pr_redis_kremove(redis, m, key, keysz);
+
     freeReplyObject(reply);
     destroy_pool(tmp_pool);
-    (void) pr_redis_kremove(redis, m, key, keysz);
     errno = ENOENT;
     return -1;
   }
@@ -2504,9 +2506,10 @@ int pr_redis_kincr(pr_redis_t *redis, module *m, const char *key, size_t keysz,
    * REMOVE the auto-created key, and return ENOENT.
    */
   if (incr == (uint32_t) reply->integer) {
+    (void) pr_redis_kremove(redis, m, key, keysz);
+
     freeReplyObject(reply);
     destroy_pool(tmp_pool);
-    (void) pr_redis_kremove(redis, m, key, keysz);
     errno = ENOENT;
     return -1;
   }
