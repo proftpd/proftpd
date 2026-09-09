@@ -316,6 +316,7 @@ static int sess_cache_entry_decode_json(pool *p, void *value, size_t valuesz,
   const char *key;
   char *entry, *text;
   double number = 0;
+  unsigned int sess_datalen = 0;
 
   entry = value;
   if (pr_json_text_validate(p, entry) == FALSE) {
@@ -350,11 +351,20 @@ static int sess_cache_entry_decode_json(pool *p, void *value, size_t valuesz,
     size_t base64_datalen;
     unsigned char *data;
 
-    tmp_pool = make_sub_pool(p);
-    pr_pool_tag(tmp_pool, "TLS Redis session cache base64 data pool");
-
     base64_data = text;
     base64_datalen = strlen(base64_data);
+
+    if (base64_datalen == 0) {
+      pr_trace_msg(trace_channel, 5,
+        "error base64-decoding empty session data in '%s', rejecting", entry);
+      (void) pr_json_object_free(json);
+
+      errno = EINVAL;
+      return -1;
+    }
+
+    tmp_pool = make_sub_pool(p);
+    pr_pool_tag(tmp_pool, "TLS Redis session cache base64 data pool");
 
     /* Due to Base64's padding, we need to detect if the last block was
      * padded with zeros; we do this by looking for '=' characters at the
@@ -394,6 +404,7 @@ static int sess_cache_entry_decode_json(pool *p, void *value, size_t valuesz,
     if (res <= TLS_MAX_SSL_SESSION_SIZE) {
       /* Base64-decoded data will fit into our buffer as expected. */
       memcpy(se->sess_data, data, res);
+      sess_datalen = res;
 
     } else {
       tls_log(MOD_TLS_REDIS_VERSION
@@ -424,6 +435,19 @@ static int sess_cache_entry_decode_json(pool *p, void *value, size_t valuesz,
     errno = xerrno;
     return -1;
   }
+
+  /* Does this number match the length of data we decoded already? */
+  if ((unsigned int) number != sess_datalen) {
+    int xerrno = EINVAL;
+
+    tls_log(MOD_TLS_REDIS_VERSION
+      ": decoded JSON session cache entry length is invalid (%0.2f, "
+      "expected %u), ignoring", (float) number, sess_datalen);
+    (void) pr_json_object_free(json);
+    errno = xerrno;
+    return -1;
+  }
+
   se->sess_datalen = (unsigned int) number;
 
   (void) pr_json_object_free(json);
@@ -595,6 +619,23 @@ static int sess_cache_redis_entry_set(pool *p, const unsigned char *sess_id,
   return 0;
 }
 
+static void sess_cache_shutdown_ev(const void *event_data, void *user_data) {
+  tls_sess_cache_t *cache;
+
+  cache = (tls_sess_cache_t *) user_data;
+
+  if (sess_redis != NULL) {
+    pr_redis_conn_close(sess_redis);
+    sess_redis = NULL;
+  }
+
+  if (cache != NULL &&
+      cache->cache_pool != NULL) {
+    destroy_pool(cache->cache_pool);
+    cache->cache_pool = NULL;
+  }
+}
+
 static int sess_cache_open(tls_sess_cache_t *cache, char *info, long timeout) {
   config_rec *c;
 
@@ -629,6 +670,13 @@ static int sess_cache_open(tls_sess_cache_t *cache, char *info, long timeout) {
     errno = EPERM;
     return -1;
   }
+
+  /* Since we are creating our own Redis connection here, now, we are also
+   * responsible for closing that connection.  Doing that correctly means
+   * registering a listener for the shutdown event in this process.
+   */
+  pr_event_register(&tls_redis_module, "core.shutdown", sess_cache_shutdown_ev,
+    cache);
 
   /* Configure a namespace prefix for our Redis keys. */
   if (pr_redis_conn_set_namespace(sess_redis, &tls_redis_module,
@@ -680,11 +728,13 @@ static int sess_cache_add_large_sess(tls_sess_cache_t *cache,
 
   if (sess_len > TLS_MAX_SSL_SESSION_SIZE) {
     int res;
-    const char *exceeds_key = sesscache_keys[SESSCACHE_KEY_EXCEEDS].key,
-      *max_len_key = sesscache_keys[SESSCACHE_KEY_MAX_LEN].key;
+    const char *exceeds_key, *max_len_key;
     void *value = NULL;
     size_t valuesz = 0;
     pool *tmp_pool;
+
+    exceeds_key = sesscache_keys[SESSCACHE_KEY_EXCEEDS].key;
+    max_len_key = sesscache_keys[SESSCACHE_KEY_MAX_LEN].key;
 
     res = pr_redis_incr(sess_redis, &tls_redis_module, exceeds_key, 1, NULL);
     if (res < 0) {
@@ -700,15 +750,23 @@ static int sess_cache_add_large_sess(tls_sess_cache_t *cache,
     value = pr_redis_get(tmp_pool, sess_redis, &tls_redis_module, max_len_key,
       &valuesz);
     if (value != NULL) {
-      uint64_t max_len;
+      if (valuesz == sizeof(uint64_t)) {
+        uint64_t max_len;
 
-      memcpy(&max_len, value, valuesz);
-      if ((uint64_t) sess_len > max_len) {
-        if (pr_redis_set(sess_redis, &tls_redis_module, max_len_key, &max_len,
-            sizeof(max_len), 0) < 0) {
-          pr_trace_msg(trace_channel, 2,
-            "error setting '%s' value: %s", max_len_key, strerror(errno));
+        memcpy(&max_len, value, valuesz);
+        if ((uint64_t) sess_len > max_len) {
+          if (pr_redis_set(sess_redis, &tls_redis_module, max_len_key, &max_len,
+              sizeof(max_len), 0) < 0) {
+            pr_trace_msg(trace_channel, 2,
+              "error setting '%s' value: %s", max_len_key, strerror(errno));
+          }
         }
+
+      } else {
+        pr_trace_msg(trace_channel, 3,
+          "Redis session cache %p key '%s' has unexpected value size "
+          "(%lu, expected %lu), ignoring", cache, max_len_key,
+          (unsigned long) valuesz, sizeof(uint64_t));
       }
 
     } else {
@@ -810,7 +868,9 @@ static int sess_cache_add(tls_sess_cache_t *cache, const unsigned char *sess_id,
         sess, sess_len);
 
   } else {
-    const char *key = sesscache_keys[SESSCACHE_KEY_STORES].key;
+    const char *key;
+
+    key = sesscache_keys[SESSCACHE_KEY_STORES].key;
 
     if (pr_redis_incr(sess_redis, &tls_redis_module, key, 1, NULL) < 0) {
       pr_trace_msg(trace_channel, 2,
@@ -878,7 +938,9 @@ static SSL_SESSION *sess_cache_get(tls_sess_cache_t *cache,
     ptr = entry.sess_data;
     sess = d2i_SSL_SESSION(NULL, &ptr, entry.sess_datalen);
     if (sess != NULL) {
-      const char *key = sesscache_keys[SESSCACHE_KEY_HITS].key;
+      const char *key;
+
+      key = sesscache_keys[SESSCACHE_KEY_HITS].key;
 
       if (pr_redis_incr(sess_redis, &tls_redis_module, key, 1, NULL) < 0) {
         pr_trace_msg(trace_channel, 2,
@@ -886,7 +948,9 @@ static SSL_SESSION *sess_cache_get(tls_sess_cache_t *cache,
       }
 
     } else {
-      const char *key = sesscache_keys[SESSCACHE_KEY_ERRORS].key;
+      const char *key;
+
+      key = sesscache_keys[SESSCACHE_KEY_ERRORS].key;
 
       pr_trace_msg(trace_channel, 2,
         "error retrieving session from cache: %s", redis_get_errors());
@@ -900,7 +964,9 @@ static SSL_SESSION *sess_cache_get(tls_sess_cache_t *cache,
   }
 
   if (sess == NULL) {
-    const char *key = sesscache_keys[SESSCACHE_KEY_MISSES].key;
+    const char *key;
+
+    key = sesscache_keys[SESSCACHE_KEY_MISSES].key;
 
     if (pr_redis_incr(sess_redis, &tls_redis_module, key, 1, NULL) < 0) {
       pr_trace_msg(trace_channel, 2,
@@ -915,8 +981,10 @@ static SSL_SESSION *sess_cache_get(tls_sess_cache_t *cache,
 
 static int sess_cache_delete(tls_sess_cache_t *cache,
     const unsigned char *sess_id, unsigned int sess_id_len) {
-  const char *key = sesscache_keys[SESSCACHE_KEY_DELETES].key;
+  const char *key;
   int res;
+
+  key = sesscache_keys[SESSCACHE_KEY_DELETES].key;
 
   pr_trace_msg(trace_channel, 9, "removing session from Redis cache %p", cache);
 
@@ -1021,9 +1089,18 @@ static int sess_cache_status(tls_sess_cache_t *cache,
     value = pr_redis_get(tmp_pool, sess_redis, &tls_redis_module, key,
       &valuesz);
     if (value != NULL) {
-      uint64_t num = 0;
-      memcpy(&num, value, valuesz);
-      statusf(arg, "%s: %lu", desc, (unsigned long) num);
+      if (valuesz == sizeof(uint64_t)) {
+        uint64_t num = 0;
+        memcpy(&num, value, valuesz);
+        statusf(arg, "%s: %lu", desc, (unsigned long) num);
+
+      } else {
+        pr_trace_msg(trace_channel, 3,
+          "Redis session cache %p key '%s' has unexpected value size "
+          "(%lu, expected %lu), ignoring", cache, key, (unsigned long) valuesz,
+          sizeof(uint64_t));
+        statusf(arg, "%s: (unknown)", desc);
+      }
     }
   }
 
@@ -1181,6 +1258,7 @@ static int ocsp_cache_entry_decode_json(pool *p, void *value, size_t valuesz,
   const char *key;
   char *entry, *text;
   double number = 0;
+  unsigned int resp_derlen = 0;
 
   entry = value;
   if (pr_json_text_validate(p, entry) == FALSE) {
@@ -1215,11 +1293,20 @@ static int ocsp_cache_entry_decode_json(pool *p, void *value, size_t valuesz,
     size_t base64_datalen;
     unsigned char *data;
 
-    tmp_pool = make_sub_pool(p);
-    pr_pool_tag(tmp_pool, "TLS Redis OCSP cache base64 data pool");
-
     base64_data = text;
     base64_datalen = strlen(base64_data);
+
+    if (base64_datalen == 0) {
+      pr_trace_msg(trace_channel, 5,
+        "error base64-decoding empty OCSP data in '%s', rejecting", entry);
+      (void) pr_json_object_free(json);
+
+      errno = EINVAL;
+      return -1;
+    }
+
+    tmp_pool = make_sub_pool(p);
+    pr_pool_tag(tmp_pool, "TLS Redis OCSP cache base64 data pool");
 
     /* Due to Base64's padding, we need to detect if the last block was
      * padded with zeros; we do this by looking for '=' characters at the
@@ -1259,6 +1346,7 @@ static int ocsp_cache_entry_decode_json(pool *p, void *value, size_t valuesz,
     if (res <= TLS_MAX_OCSP_RESPONSE_SIZE) {
       /* Base64-decoded data will fit into our buffer as expected. */
       memcpy(oe->resp_der, data, res);
+      resp_derlen = res;
 
     } else {
       tls_log(MOD_TLS_REDIS_VERSION
@@ -1289,6 +1377,19 @@ static int ocsp_cache_entry_decode_json(pool *p, void *value, size_t valuesz,
     errno = xerrno;
     return -1;
   }
+
+  /* Does this number match the length of data we decoded already? */
+  if ((unsigned int) number != resp_derlen) {
+    int xerrno = EINVAL;
+
+    tls_log(MOD_TLS_REDIS_VERSION
+      ": decoded JSON OCSP cache entry length is invalid (%0.2f, expected %u), "
+      "ignoring", (float) number, resp_derlen);
+    (void) pr_json_object_free(json);
+    errno = xerrno;
+    return -1;
+  }
+
   oe->resp_derlen = (unsigned int) number;
 
   (void) pr_json_object_free(json);
@@ -1445,6 +1546,23 @@ static int ocsp_cache_redis_entry_set(pool *p, const char *fingerprint,
   return 0;
 }
 
+static void ocsp_cache_shutdown_ev(const void *event_data, void *user_data) {
+  tls_ocsp_cache_t *cache;
+
+  cache = (tls_ocsp_cache_t *) user_data;
+
+  if (ocsp_redis != NULL) {
+    pr_redis_conn_close(ocsp_redis);
+    ocsp_redis = NULL;
+  }
+
+  if (cache != NULL &&
+      cache->cache_pool != NULL) {
+    destroy_pool(cache->cache_pool);
+    cache->cache_pool = NULL;
+  }
+}
+
 static int ocsp_cache_open(tls_ocsp_cache_t *cache, char *info) {
   config_rec *c;
 
@@ -1480,6 +1598,14 @@ static int ocsp_cache_open(tls_ocsp_cache_t *cache, char *info) {
     return -1;
   }
 
+  /* Since we are creating our own Redis connection here, now, we are also
+   * responsible for closing that connection.  Doing that correctly means
+   * registering a listener for the shutdown event in this process.
+   */
+  pr_event_register(&tls_redis_module, "core.shutdown", ocsp_cache_shutdown_ev,
+    cache);
+
+  /* Configure a namespace prefix for our Redis keys. */
   /* Configure a namespace prefix for our Redis keys. */
   if (pr_redis_conn_set_namespace(ocsp_redis, &tls_redis_module,
       "mod_tls_redis.ocsp.", 19) < 0) {
@@ -1532,11 +1658,13 @@ static int ocsp_cache_add_large_resp(tls_ocsp_cache_t *cache,
 
   resp_derlen = i2d_OCSP_RESPONSE(resp, NULL);
   if (resp_derlen > TLS_MAX_OCSP_RESPONSE_SIZE) {
-    const char *exceeds_key = ocspcache_keys[OCSPCACHE_KEY_EXCEEDS].key,
-      *max_len_key = ocspcache_keys[OCSPCACHE_KEY_MAX_LEN].key;
+    const char *exceeds_key, *max_len_key;
     void *value = NULL;
     size_t valuesz = 0;
     pool *tmp_pool;
+
+    exceeds_key = ocspcache_keys[OCSPCACHE_KEY_EXCEEDS].key;
+    max_len_key = ocspcache_keys[OCSPCACHE_KEY_MAX_LEN].key;
 
     if (pr_redis_incr(ocsp_redis, &tls_redis_module, exceeds_key, 1,
         NULL) < 0) {
@@ -1552,15 +1680,23 @@ static int ocsp_cache_add_large_resp(tls_ocsp_cache_t *cache,
     value = pr_redis_get(tmp_pool, ocsp_redis, &tls_redis_module, max_len_key,
       &valuesz);
     if (value != NULL) {
-      uint64_t max_len;
+      if (valuesz == sizeof(uint64_t)) {
+        uint64_t max_len;
 
-      memcpy(&max_len, value, valuesz);
-      if ((uint64_t) resp_derlen > max_len) {
-        if (pr_redis_set(ocsp_redis, &tls_redis_module, max_len_key, &max_len,
-            sizeof(max_len), 0) < 0) {
-          pr_trace_msg(trace_channel, 2,
-            "error setting '%s' value: %s", max_len_key, strerror(errno));
+        memcpy(&max_len, value, valuesz);
+        if ((uint64_t) resp_derlen > max_len) {
+          if (pr_redis_set(ocsp_redis, &tls_redis_module, max_len_key, &max_len,
+              sizeof(max_len), 0) < 0) {
+            pr_trace_msg(trace_channel, 2,
+              "error setting '%s' value: %s", max_len_key, strerror(errno));
+          }
         }
+
+      } else {
+        pr_trace_msg(trace_channel, 3,
+          "Redis OCSP cache %p key '%s' has unexpected value size "
+          "(%lu, expected %lu), ignoring", cache, max_len_key,
+          (unsigned long) valuesz, sizeof(uint64_t));
       }
 
     } else {
@@ -1658,7 +1794,9 @@ static int ocsp_cache_add(tls_ocsp_cache_t *cache, const char *fingerprint,
     return ocsp_cache_add_large_resp(cache, fingerprint, resp, resp_age);
 
   } else {
-    const char *key = ocspcache_keys[OCSPCACHE_KEY_STORES].key;
+    const char *key;
+
+    key = ocspcache_keys[OCSPCACHE_KEY_STORES].key;
 
     if (pr_redis_incr(ocsp_redis, &tls_redis_module, key, 1, NULL) < 0) {
       pr_trace_msg(trace_channel, 2,
@@ -1720,8 +1858,9 @@ static OCSP_RESPONSE *ocsp_cache_get(tls_ocsp_cache_t *cache,
   ptr = entry.resp_der;
   resp = d2i_OCSP_RESPONSE(NULL, &ptr, entry.resp_derlen);
   if (resp != NULL) {
-    const char *key = ocspcache_keys[OCSPCACHE_KEY_HITS].key;
+    const char *key;
 
+    key = ocspcache_keys[OCSPCACHE_KEY_HITS].key;
     *resp_age = entry.age;
 
     if (pr_redis_incr(ocsp_redis, &tls_redis_module, key, 1, NULL) < 0) {
@@ -1742,7 +1881,9 @@ static OCSP_RESPONSE *ocsp_cache_get(tls_ocsp_cache_t *cache,
   }
 
   if (resp == NULL) {
-    const char *key = ocspcache_keys[OCSPCACHE_KEY_MISSES].key;
+    const char *key;
+
+    key = ocspcache_keys[OCSPCACHE_KEY_MISSES].key;
 
     if (pr_redis_incr(ocsp_redis, &tls_redis_module, key, 1, NULL) < 0) {
       pr_trace_msg(trace_channel, 2,
@@ -1757,13 +1898,14 @@ static OCSP_RESPONSE *ocsp_cache_get(tls_ocsp_cache_t *cache,
 
 static int ocsp_cache_delete(tls_ocsp_cache_t *cache,
     const char *fingerprint) {
-  const char *key = ocspcache_keys[OCSPCACHE_KEY_DELETES].key;
+  const char *key;
   int res;
   size_t fingerprint_len;
 
   pr_trace_msg(trace_channel, 9, "deleting response from Redis ocsp cache %p",
     cache);
 
+  key = ocspcache_keys[OCSPCACHE_KEY_DELETES].key;
   fingerprint_len = strlen(fingerprint);
 
   /* Look for the requested response in the "large response" list first. */
@@ -1874,9 +2016,18 @@ static int ocsp_cache_status(tls_ocsp_cache_t *cache,
     value = pr_redis_get(tmp_pool, ocsp_redis, &tls_redis_module, key,
       &valuesz);
     if (value != NULL) {
-      uint64_t num = 0;
-      memcpy(&num, value, valuesz);
-      statusf(arg, "%s: %lu", desc, (unsigned long) num);
+      if (valuesz == sizeof(uint64_t)) {
+        uint64_t num = 0;
+        memcpy(&num, value, valuesz);
+        statusf(arg, "%s: %lu", desc, (unsigned long) num);
+
+      } else {
+        pr_trace_msg(trace_channel, 3,
+          "Redis ocsp cache %p key '%s' has unexpected value size "
+          "(%lu, expected %lu), ignoring", cache, key, (unsigned long) valuesz,
+          sizeof(uint64_t));
+        statusf(arg, "%s: (unknown)", desc);
+      }
     }
   }
 
