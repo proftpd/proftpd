@@ -3577,6 +3577,7 @@ int pr_redis_hash_ksetall(pr_redis_t *redis, module *m, const char *key,
 
   key = get_namespace_key(tmp_pool, redis, m, key, &keysz);
 
+  cmd = "HMSET";
   args = make_array(tmp_pool, count + 1, sizeof(char *));
   arglens = make_array(tmp_pool, count + 1, sizeof(size_t));
 
@@ -3612,7 +3613,6 @@ int pr_redis_hash_ksetall(pr_redis_t *redis, module *m, const char *key,
     key_data = pr_table_knext(hash, &key_datasz);
   }
 
-  cmd = "HMSET";
   pr_trace_msg(trace_channel, 7, "sending command: %s", cmd);
   reply = redisCommandArgv(redis->ctx, args->nelts, args->elts, arglens->elts);
   xerrno = errno;
@@ -4582,6 +4582,7 @@ int pr_redis_list_ksetall(pr_redis_t *redis, module *m, const char *key,
 
   key = get_namespace_key(tmp_pool, redis, m, key, &keysz);
 
+  cmd = "RPUSH";
   args = make_array(tmp_pool, 0, sizeof(char *));
   arglens = make_array(tmp_pool, 0, sizeof(size_t));
 
@@ -4598,7 +4599,6 @@ int pr_redis_list_ksetall(pr_redis_t *redis, module *m, const char *key,
     *((size_t *) push_array(arglens)) = ((size_t *) valueszs->elts)[i];
   }
 
-  cmd = "RPUSH";
   pr_trace_msg(trace_channel, 7, "sending command: %s", cmd);
   reply = redisCommandArgv(redis->ctx, args->nelts, args->elts, arglens->elts);
   xerrno = errno;
@@ -5087,6 +5087,7 @@ int pr_redis_set_ksetall(pr_redis_t *redis, module *m, const char *key,
 
   key = get_namespace_key(tmp_pool, redis, m, key, &keysz);
 
+  cmd = "SADD";
   args = make_array(tmp_pool, 0, sizeof(char *));
   arglens = make_array(tmp_pool, 0, sizeof(size_t));
 
@@ -5103,7 +5104,6 @@ int pr_redis_set_ksetall(pr_redis_t *redis, module *m, const char *key,
     *((size_t *) push_array(arglens)) = ((size_t *) valueszs->elts)[i];
   }
 
-  cmd = "SADD";
   pr_trace_msg(trace_channel, 7, "sending command: %s", cmd);
   reply = redisCommandArgv(redis->ctx, args->nelts, args->elts, arglens->elts);
   xerrno = errno;
@@ -5910,6 +5910,7 @@ int pr_redis_sorted_set_ksetall(pr_redis_t *redis, module *m, const char *key,
 
   key = get_namespace_key(tmp_pool, redis, m, key, &keysz);
 
+  cmd = "ZADD";
   args = make_array(tmp_pool, 0, sizeof(char *));
   arglens = make_array(tmp_pool, 0, sizeof(size_t));
 
@@ -5932,7 +5933,6 @@ int pr_redis_sorted_set_ksetall(pr_redis_t *redis, module *m, const char *key,
     *((size_t *) push_array(arglens)) = ((size_t *) valueszs->elts)[i];
   }
 
-  cmd = "ZADD";
   pr_trace_msg(trace_channel, 7, "sending command: %s", cmd);
   reply = redisCommandArgv(redis->ctx, args->nelts, args->elts, arglens->elts);
   xerrno = errno;
