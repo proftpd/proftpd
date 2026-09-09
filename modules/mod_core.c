@@ -4316,7 +4316,7 @@ MODRET core_eprt(cmd_rec *cmd) {
 
   /* Block active transfers (the EPRT command) if RootRevoke is in effect
    * and the server's port is below 1024 (binding to the data port in this
-   * case would require root privs, which will have been dropped.
+   * case would require root privs, which will have been dropped).
    *
    * A RootRevoke value of 0 indicates 'false', 1 indicates 'true', and
    * 2 indicates 'NonCompliantActiveTransfer'.  We only block active transfers
@@ -4340,7 +4340,7 @@ MODRET core_eprt(cmd_rec *cmd) {
    */
   delim = *argstr++;
 
-  /* atoi() will happily any trailing non-numeric characters, so feeding
+  /* atoi() will happily ignore any trailing non-numeric characters, so feeding
    * the parameter string won't hurt.
    */
   family = atoi(argstr);
