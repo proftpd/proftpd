@@ -512,7 +512,7 @@ The currently supported SSH2/SFTP keys which can be tuned via
   <li>sftpCiphers</br>
     The <em>value</em> for this key should be a comma-separated list
     of cipher algorithms, as for the
-    <a href="#SFTPCiphers><code>SFTPCiphers</code></a> directive.  Use of
+    <a href="#SFTPCiphers"><code>SFTPCiphers</code></a> directive.  Use of
     this <em>key</em> automatically enables the <code>PessimisticKexinit</code>
     SFTPOption as well.
 
@@ -525,7 +525,7 @@ The currently supported SSH2/SFTP keys which can be tuned via
   <li>sftpDigests</br>
     The <em>value</em> for this key should be a comma-separated list
     of digest algorithms, as for the
-    <a href="#SFTPDigests><code>SFTPDigests</code></a> directive.  Use of
+    <a href="#SFTPDigests"><code>SFTPDigests</code></a> directive.  Use of
     this <em>key</em> automatically enables the <code>PessimisticKexinit</code>
     SFTPOption as well.
 
@@ -538,7 +538,7 @@ The currently supported SSH2/SFTP keys which can be tuned via
   <li>sftpHostKeys</br>
     The <em>value</em> for this key should be a comma-separated list
     of host key algorithms, as for the
-    <a href="#SFTPHostKeys><code>SFTPHostKeys</code></a> directive.  Use of
+    <a href="#SFTPHostKeys"><code>SFTPHostKeys</code></a> directive.  Use of
     this <em>key</em> automatically enables the <code>PessimisticKexinit</code>
     SFTPOption as well.
 
@@ -1111,7 +1111,7 @@ algorithm (or MD5, if the version of OpenSSL was too old), and use
 compatibility, use:
 <pre>
   SFTPKeyFingerprints sha256+hex+colons
-<pre>
+</pre>
 Similarly, to match the fingerprint displayed by using:
 <pre>
   # Display the MD5 key fingerprint using ssh-keygen
@@ -2042,7 +2042,7 @@ to indicate whether this key requires proof of user presence ("touch required"),
 and/or proof of user verification ("verify required").  How?  Using the
 custom <code>X-FIDO-Touch-Required</code> and
 <code>X-FIDO-Verify-Required</code> headers supported by <code>mod_sftp</code>:
-</pre>
+<pre>
   ---- BEGIN SSH2 PUBLIC KEY ----
   Comment: "256-bit ECDSA-SK, converted by ... from OpenSSH"
   x-fido-touch-required: false

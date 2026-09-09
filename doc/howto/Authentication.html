@@ -128,7 +128,7 @@ If you feel your logins are slow, then you might be encountering another
 The timeouts when performing RFC931 <code>ident</code> lookups, and
 DNS reverse resolutions, add a noticeable delay to a login.
 
-<p><a name="anonymous"><b>Anonymous Logins</b><br>
+<p><a name="anonymous"><b>Anonymous Logins</b></a><br>
 Anonymous logins are allowed by defining an <a href="http://www.proftpd.org/docs/modules/mod_core.html#Anonymous"><code>&lt;Anonymous&gt;</code></a>
 section, or <i>context</i>, in your <code>proftpd.conf</code>.  No
 <code>&lt;Anonymous&gt;</code> contexts mean that <code>proftpd</code> will
@@ -290,7 +290,7 @@ Note that the <code>mod_auth.c</code> module should <b>never</b> be used in an
 <font color=red>Question</font>: Why are logins slow for users that belong to
 many groups?<br>
 <font color=blue>Answer</font>: Upon successful authentication, ProFTPD will discover all of the groups (names <em>and</em> IDs) for that user, since group
-names are used in configuration directives such as <code>&lt;Limit&gt;<code>
+names are used in configuration directives such as <code>&lt;Limit&gt;</code>
 sections, <code>Allow/Deny</code> ddirectives, <i>etc</i>.  Unfortunately this
 group discovery process, when using normal Unix authentication (<i>e.g.</i>
 <code>/etc/passwd</code> and <code>/etc/group</code> files) or the
@@ -309,7 +309,7 @@ code goes out of its way to ensure that the password is never logged.
 <p>
 <hr>
 <font size=2><b><i>
-&copy; Copyright 2017-2025 The ProFTPD Project<br>
+&copy; Copyright 2017-2026 The ProFTPD Project<br>
  All Rights Reserved<br>
 </i></b></font>
 <hr>
