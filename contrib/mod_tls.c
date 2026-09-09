@@ -1841,7 +1841,9 @@ static struct tls_label tls_compression_labels[] = {
   { 0, NULL }
 };
 
-/* Extensions */
+/* Extension types.  These values come from:
+ *   https://www.iana.org/assignments/tls-extensiontype-values#tls-extensiontype-values-1
+ */
 static struct tls_label tls_extension_labels[] = {
   { 0, "server_name" },
   { 1, "max_fragment_length" },
@@ -1864,6 +1866,7 @@ static struct tls_label tls_extension_labels[] = {
   { 21, "padding" },
   { 22, "encrypt_then_mac" },
   { 23, "extended_master_secret" },
+  { 27, "compress_certificate" },
   { 35, "session_ticket" },
   { 41, "psk" },
   { 42, "early_data" },
@@ -1930,6 +1933,20 @@ static struct tls_label tls_psk_kex_labels[] = {
   { 0, NULL }
 };
 #endif /* TLSEXT_TYPE_psk_kex_modes */
+
+#if defined(TLSEXT_TYPE_compress_certificate)
+/* Compression algorithms.  These values come from:
+ *   https://datatracker.ietf.org/doc/html/rfc8879#section-7.3
+ */
+static struct tls_label tls_compress_certificate_labels[] = {
+  { 0, "reserved" },
+  { 1, "zlib" },
+  { 2, "brotli" },
+  { 3, "zstd" },
+
+  { 0, NULL }
+};
+#endif /* TLSEXT_TYPE_compress_certificate */
 
 static const char *tls_get_label(int labelno, struct tls_label *labels) {
   register unsigned int i;
@@ -5191,6 +5208,64 @@ static void tls_tlsext_cb(SSL *ssl, int server, int type,
                 tls_get_label(kex_mode, tls_psk_kex_labels), kex_mode);
               len -= 1;
               tlsext_data += 1;
+            }
+          }
+        }
+
+        ext_infolen = BIO_get_mem_data(bio, &ext_info);
+        if (ext_info != NULL) {
+          ext_info[ext_infolen] = '\0';
+        }
+      }
+
+      pr_trace_msg(trace_channel, 6,
+        "[tls.tlsext] TLS %s extension \"%s\" (ID %d, %d %s)%.*s",
+        server ? "server" : "client", extension_name, type,
+        tlsext_datalen, tlsext_datalen != 1 ? "bytes" : "byte",
+        (int) ext_infolen, ext_info != NULL ? ext_info : "");
+
+      if (bio != NULL) {
+        BIO_free(bio);
+      }
+
+      print_basic_info = FALSE;
+      break;
+    }
+# endif
+
+# ifdef TLSEXT_TYPE_compress_certificate
+    case TLSEXT_TYPE_compress_certificate: {
+      BIO *bio = NULL;
+      char *ext_info = NULL;
+      long ext_infolen = 0;
+
+      extension_name = "Compression algorithms";
+
+      if (pr_trace_get_level(trace_channel) >= 19) {
+        if (tlsext_datalen >= 1) {
+          int len;
+
+          bio = BIO_new(BIO_s_mem());
+          len = tlsext_data[0];
+
+          if (tlsext_datalen == len + 1) {
+            tlsext_data += 1;
+
+            BIO_puts(bio, "\n");
+
+            while (len > 0) {
+              int algo;
+
+              pr_signals_handle();
+
+              /* Compression algorithm IDs are 2 bytes long. */
+              algo = tlsext_data[0];
+              algo = (algo << 8) | tlsext_data[1];
+
+              BIO_printf(bio, "  %s (%d)\n",
+                tls_get_label(algo, tls_compress_certificate_labels), algo);
+              len -= 2;
+              tlsext_data += 2;
             }
           }
         }
