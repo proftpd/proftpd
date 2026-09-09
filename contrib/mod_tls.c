@@ -11617,10 +11617,12 @@ static int tls_sess_cache_close(void) {
   }
 
   res = (tls_sess_cache->close)(tls_sess_cache);
+  tls_sess_cache = NULL;
+
   return res;
 }
 
-#ifdef PR_USE_CTRLS
+#if defined(PR_USE_CTRLS)
 static int tls_sess_cache_clear(void) {
   int res;
 
@@ -11834,6 +11836,8 @@ static int tls_ocsp_cache_close(void) {
   }
 
   res = (tls_ocsp_cache->close)(tls_ocsp_cache);
+  tls_ocsp_cache = NULL;
+
   return res;
 #else
   errno = ENOSYS;
@@ -11841,7 +11845,7 @@ static int tls_ocsp_cache_close(void) {
 #endif /* PR_USE_OPENSSL_OCSP */
 }
 
-#ifdef PR_USE_CTRLS
+#if defined(PR_USE_CTRLS)
 static int tls_ocsp_cache_clear(void) {
 # if defined(PR_USE_OPENSSL_OCSP)
   int res;
@@ -15907,17 +15911,9 @@ static void tls_sess_reinit_ev(const void *event_data, void *user_data) {
 extern pid_t mpid;
 
 static void tls_shutdown_ev(const void *event_data, void *user_data) {
-  if (mpid == getpid()) {
-    tls_scrub_pkeys();
-#if defined(TLS_USE_SESSION_TICKETS)
-    scrub_ticket_keys();
-#endif /* TLS_USE_SESSION_TICKETS */
-    destroy_pool(tls_pool);
-    tls_pool = NULL;
-  }
 
   /* Write out a new RandomSeed file, for use later. */
-  if (tls_rand_file) {
+  if (tls_rand_file != NULL) {
     int res;
 
     res = RAND_write_file(tls_rand_file);
@@ -15935,6 +15931,19 @@ static void tls_shutdown_ev(const void *event_data, void *user_data) {
   if (ssl_ctx != NULL) {
     SSL_CTX_free(ssl_ctx);
     ssl_ctx = NULL;
+  }
+
+  if (mpid == getpid()) {
+    tls_scrub_pkeys();
+#if defined(TLS_USE_SESSION_TICKETS)
+    scrub_ticket_keys();
+#endif /* TLS_USE_SESSION_TICKETS */
+
+    tls_sess_cache_close();
+    tls_ocsp_cache_close();
+
+    destroy_pool(tls_pool);
+    tls_pool = NULL;
   }
 
 #if OPENSSL_VERSION_NUMBER < 0x10100000L
