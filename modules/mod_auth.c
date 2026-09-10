@@ -66,10 +66,10 @@ static int auth_sess_init(void);
 /* auth_cmd_chk_cb() is hooked into the main server's auth_hook function,
  * so that we can deny all commands until authentication is complete.
  *
- * Note: Once this function returns true (i.e. client has authenticated),
- * it will ALWAYS return true.  At least until REIN is implemented.  Thus
- * we have a flag for such a situation, to save on redundant lookups for
- * the "authenticated" record.
+ * Note: Once this function returns true (i.e. client has successfully
+ * authenticated and logged in), it will ALWAYS return true.  At least until
+ * REIN is implemented.  Thus we have a flag for such a situation, to save on
+ * redundant lookups for the "authenticated" record.
  */
 static int auth_have_authenticated = FALSE;
 
@@ -144,6 +144,21 @@ static int auth_session_timeout_cb(CALLBACK_FRAME) {
   return 0;
 }
 
+static void reset_authenticated_without_pass(cmd_rec *cmd) {
+  unsigned char *authenticated;
+
+  authenticated = get_param_ptr(cmd->server->conf, "authenticated", FALSE);
+  if (authenticated != NULL) {
+    remove_config(main_server->conf, "authenticated", FALSE);
+  }
+
+  if (cmd != NULL) {
+    (void) pr_table_remove(cmd->notes, "mod_auth.checked-auth", NULL);
+  }
+
+  authenticated_without_pass = FALSE;
+}
+
 /* Event listeners
  */
 
@@ -170,7 +185,8 @@ static void auth_sess_reinit_ev(const void *event_data, void *user_data) {
 #if defined(PR_USE_LASTLOG)
   auth_use_lastlog = FALSE;
 #endif /* PR_USE_LASTLOG */
-  authenticated_without_pass = FALSE;
+  reset_authenticated_without_pass(NULL);
+  auth_have_authenticated = FALSE;
   mkhome = FALSE;
 
   res = auth_sess_init();
@@ -2011,7 +2027,7 @@ auth_failure:
   if (pass != NULL) {
     pr_memscrub(pass, strlen(pass));
   }
-  authenticated_without_pass = FALSE;
+  reset_authenticated_without_pass(cmd);
   session.user = session.user_homedir = session.group = NULL;
   session.gids = session.groups = NULL;
   session.wtmp_log = FALSE;
@@ -2512,7 +2528,7 @@ MODRET auth_user(cmd_rec *cmd) {
     nopass = TRUE;
   }
 
-  authenticated_without_pass = FALSE;
+  reset_authenticated_without_pass(cmd);
   session.gids = NULL;
   session.groups = NULL;
   session.user = NULL;
@@ -2740,7 +2756,7 @@ MODRET auth_pass(cmd_rec *cmd) {
   }
 
   (void) pr_table_remove(session.notes, "mod_auth.anon-passwd", NULL);
-  authenticated_without_pass = FALSE;
+  reset_authenticated_without_pass(cmd);
 
   if (res == 0) {
     unsigned int max_logins, *max = NULL;
