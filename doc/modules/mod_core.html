@@ -2335,7 +2335,7 @@ Example:
 
 <p>
 The <code>ServerAlias</code> directive is used to configure a <em>hostname</em>
-for the virtual server, such than an FTP client can connect to that virtual
+for the virtual server, such that an FTP client can connect to that virtual
 server using the <code>HOST</code> command.  In effect, you use
 <code>ServerAlias</code> to define the names that you want to support, for
 true name-based virtual hosting.
@@ -2379,7 +2379,7 @@ would work just like:
     ...
   &lt;/VirtualHost&gt;
 </pre>
-(assuming that "example.com" resolved to 1.2.3.4, of course).
+assuming that "example.com" resolved to 1.2.3.4, of course.
 
 <p>
 <hr>
@@ -2434,8 +2434,8 @@ For example:
 <p>
 <hr>
 <h3><a name="ServerName">ServerName</a></h3>
-<strong>Syntax:</strong> ServerName <em>"standalone"|"inetd"</em><br>
-<strong>Default:</strong> ServerName "ProFTPD"
+<strong>Syntax:</strong> ServerName <em>name</em><br>
+<strong>Default:</strong> ServerName "ProFTPD"<br>
 <strong>Context:</strong> server config, <code>&lt;VirtualHost&gt;</code><br>
 <strong>Module:</strong> mod_core<br>
 <strong>Compatibility:</strong> 0.99.0 and later
