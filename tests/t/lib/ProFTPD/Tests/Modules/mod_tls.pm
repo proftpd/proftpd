@@ -11685,16 +11685,22 @@ sub tls_opts_allow_dot_login_different_user_issue2319 {
   auth_group_write($setup->{auth_group_file}, $setup->{group}, $setup->{gid},
     $other_user);
 
+  my $server_alias = 'castaglia';
+
   my $config = {
     PidFile => $setup->{pid_file},
     ScoreboardFile => $setup->{scoreboard_file},
     SystemLog => $setup->{log_file},
     TraceLog => $setup->{log_file},
-    Trace => 'tls:30',
+    Trace => 'binding:20 tls:30',
 
     AuthUserFile => $setup->{auth_user_file},
     AuthGroupFile => $setup->{auth_group_file},
     AuthOrder => 'mod_auth_file.c',
+
+    DefaultAddress => '127.0.0.1',
+    DefaultServer => 'on',
+    ServerAlias => $server_alias,
 
     IfModules => {
       'mod_delay.c' => {
@@ -11708,7 +11714,7 @@ sub tls_opts_allow_dot_login_different_user_issue2319 {
         TLSRSACertificateFile => $server_cert,
         TLSCACertificateFile => $ca_cert,
         TLSVerifyClient => 'optional',
-        TLSOptions => 'AllowDotLogin',
+        TLSOptions => 'AllowDotLogin EnableDiags',
       },
     },
 
@@ -11748,10 +11754,12 @@ sub tls_opts_allow_dot_login_different_user_issue2319 {
         SSL_cert_file => $client_cert,
         SSL_key_file => $client_cert,
         SSL_ca_file => $ca_cert,
+        SSL_hostname => $server_alias,
+        SSL_verify_mode => IO::Socket::SSL::SSL_VERIFY_NONE(),
       };
 
       my $ssl_opts = {
-        Croak => 1,
+        Croak => 0,
         Encryption => 'E',
         Port => $port,
         SSL_Client_Certificate => $openssl_opts,
@@ -11773,6 +11781,24 @@ sub tls_opts_allow_dot_login_different_user_issue2319 {
 
       my $expected = "530 Login incorrect.";
       my $resp = $client->last_message();
+      $self->assert($expected eq $resp,
+        test_msg("Expected response '$expected', got '$resp'"));
+
+      $client->quot('HOST', $server_alias);
+
+      # This should also fail, since we did not succesfully log in.
+      $client->pwd();
+      $resp = $client->last_message();
+      if ($resp =~ /^257/) {
+        if ($ENV{TEST_VERBOSE}) {
+          print STDERR "# PWD response: $resp\n";
+        }
+
+        die("PWD succeeded unexpectedly");
+      }
+
+      $resp = $client->last_message();
+      $expected = '530 Please login with USER and PASS';
       $self->assert($expected eq $resp,
         test_msg("Expected response '$expected', got '$resp'"));
 
