@@ -219,7 +219,7 @@ MODRET set_procfsengine(cmd_rec *cmd) {
   int engine = -1;
   config_rec *c = NULL;
 
-  CHECK_ARGS(cmd, 1); 
+  CHECK_ARGS(cmd, 1);
   CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL);
 
   engine = get_boolean(cmd, 1);
@@ -234,15 +234,15 @@ MODRET set_procfsengine(cmd_rec *cmd) {
   return PR_HANDLED(cmd);
 }
 
-/* usage: ProcfsLog path|"none" */ 
+/* usage: ProcfsLog path|"none" */
 MODRET set_procfslog(cmd_rec *cmd) {
-  CHECK_ARGS(cmd, 1); 
+  CHECK_ARGS(cmd, 1);
   CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL);
- 
+
   if (pr_fs_valid_path(cmd->argv[1]) < 0) {
     CONF_ERROR(cmd, "must be an absolute path");
   }
- 
+
   (void) add_config_param_str(cmd->argv[0], 1, cmd->argv[1]);
   return PR_HANDLED(cmd);
 }

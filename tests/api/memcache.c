@@ -821,7 +821,7 @@ START_TEST (memcache_decr_test) {
    */
 
   value = "31";
-  valsz = strlen(value); 
+  valsz = strlen(value);
   expires = 0;
 
   mark_point();

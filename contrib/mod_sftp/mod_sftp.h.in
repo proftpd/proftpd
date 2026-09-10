@@ -237,7 +237,7 @@ typedef struct kbdint_st {
    * to and from the client:
    *
    *   sftp_kbdint_send_challenge()
-   *   sftp_kbdint_read_response() 
+   *   sftp_kbdint_read_response()
    *
    * The array_header argument to the read_response() function will be
    * populated with strings from the client.
