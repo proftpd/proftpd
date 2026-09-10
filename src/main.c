@@ -2352,6 +2352,7 @@ static void show_settings(void) {
   /* Tunable settings */
   printf("%s", "\n  Tunable Options:\n");
   printf("    PR_TUNABLE_BUFFER_SIZE = %u\n", PR_TUNABLE_BUFFER_SIZE);
+  printf("    PR_TUNABLE_DEFAULT_BACKLOG = %d\n", PR_TUNABLE_DEFAULT_BACKLOG);
   printf("    PR_TUNABLE_DEFAULT_RCVBUFSZ = %u\n", PR_TUNABLE_DEFAULT_RCVBUFSZ);
   printf("    PR_TUNABLE_DEFAULT_SNDBUFSZ = %u\n", PR_TUNABLE_DEFAULT_SNDBUFSZ);
   printf("    PR_TUNABLE_ENV_MAX = %u\n", PR_TUNABLE_ENV_MAX);
