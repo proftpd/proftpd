@@ -337,7 +337,7 @@ sub tls_sess_cache_memcache {
   server_stop($setup->{pid_file});
   $self->assert_child_ok($pid);
 
-  test_cleanup($setup->{log_file}, $ex);
+  test_cleanup($setup, $ex);
 }
 
 sub tls_sess_cache_memcache_json_bug4057 {
@@ -581,7 +581,7 @@ sub tls_sess_cache_memcache_json_bug4057 {
   server_stop($setup->{pid_file});
   $self->assert_child_ok($pid);
 
-  test_cleanup($setup->{log_file}, $ex);
+  test_cleanup($setup, $ex);
 }
 
 sub starttls_ftp {
@@ -757,7 +757,7 @@ sub tls_stapling_on_memcache_bug4175 {
   server_stop($setup->{pid_file});
   $self->assert_child_ok($pid);
 
-  test_cleanup($setup->{log_file}, $ex);
+  test_cleanup($setup, $ex);
 }
 
 1;

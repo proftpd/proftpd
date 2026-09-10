@@ -174,6 +174,7 @@ sub tls_sess_cache_redis {
       my @cmd = (
         $openssl,
         's_client',
+        '-tls1_2',
         '-connect',
         "127.0.0.1:$port",
         '-starttls',
@@ -205,6 +206,10 @@ sub tls_sess_cache_redis {
       my ($res, $cipher_str, $err_str, $out_str);
       if ($? >> 8) {
         $err_str = join('', <$tls_eh>);
+        if ($ENV{TEST_VERBOSE}) {
+          print STDERR "Stderr: $err_str\n";
+        }
+
         $res = 0;
 
       } else {
@@ -239,9 +244,13 @@ sub tls_sess_cache_redis {
       $self->assert(qr/$expected/, $cipher_str,
         test_msg("Expected '$expected', got '$cipher_str'"));
 
+      # Instrumented builds (e.g. ASAN) can be slightly slower
+      sleep(2);
+
       @cmd = (
         $openssl,
         's_client',
+        '-tls1_2',
         '-connect',
         "127.0.0.1:$port",
         '-starttls',
@@ -275,6 +284,10 @@ sub tls_sess_cache_redis {
 
       if ($? >> 8) {
         $err_str = join('', <$tls_eh>);
+        if ($ENV{TEST_VERBOSE}) {
+          print STDERR "Stderr: $err_str\n";
+        }
+
         $res = 0;
 
       } else {
@@ -330,7 +343,7 @@ sub tls_sess_cache_redis {
   server_stop($setup->{pid_file});
   $self->assert_child_ok($pid);
 
-  test_cleanup($setup->{log_file}, $ex);
+  test_cleanup($setup, $ex);
 }
 
 sub starttls_ftp {
@@ -509,7 +522,7 @@ sub tls_stapling_on_redis {
   server_stop($setup->{pid_file});
   $self->assert_child_ok($pid);
 
-  test_cleanup($setup->{log_file}, $ex);
+  test_cleanup($setup, $ex);
 }
 
 1;
