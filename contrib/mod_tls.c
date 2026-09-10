@@ -13557,7 +13557,7 @@ MODRET tls_ccc(cmd_rec *cmd) {
    */
   pr_response_send_async(R_200, _("Clearing control channel protection"));
 
-  /* Close the TLS session, but only one the control channel.
+  /* Close the TLS session, but only on the control channel.
    * The data channel, if protected, should remain so.
    */
 
