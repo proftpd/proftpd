@@ -34,10 +34,11 @@ static int ipbind_table_initialized = FALSE;
 
 static pool *binding_pool = NULL;
 static pr_ipbind_t *ipbind_default_server = NULL,
-                   *ipbind_localhost_server = NULL;
+  *ipbind_localhost_server = NULL;
 
 static const char *trace_channel = "binding";
 
+static unsigned int process_serveralias(server_rec *s);
 static void trace_ipbind_table(void);
 
 static void init_ipbind_table(void) {
@@ -1000,7 +1001,7 @@ int pr_namebind_create(server_rec *server, const char *name,
     pr_netaddr_set_sockaddr_any(&wildcard_addr);
 
     ipbind = pr_ipbind_find(&wildcard_addr, port, FALSE);
-#ifdef PR_USE_IPV6
+#if defined(PR_USE_IPV6)
     if (ipbind == FALSE &&
         addr_family == AF_INET6 &&
         pr_netaddr_use_ipv6()) {
@@ -1105,7 +1106,7 @@ pr_namebind_t *pr_namebind_find(const char *name, const pr_netaddr_t *addr,
     pr_netaddr_set_sockaddr_any(&wildcard_addr);
 
     ipbind = pr_ipbind_find(&wildcard_addr, port, FALSE);
-#ifdef PR_USE_IPV6
+#if defined(PR_USE_IPV6)
     if (ipbind == FALSE &&
         addr_family == AF_INET6 &&
         pr_netaddr_use_ipv6()) {
@@ -1352,6 +1353,8 @@ static int init_inetd_bindings(void) {
       __LINE__, main_server->ServerAddress, strerror(errno));
   }
 
+  (void) process_serveralias(main_server);
+
   /* Now attach the faked connection to all virtual servers. */
   for (serv = main_server->next; serv; serv = serv->next) {
 
@@ -1392,6 +1395,8 @@ static int init_inetd_bindings(void) {
         "%s:%d: notice: unable to add binds to ipbind '%s': %s", __FILE__,
         __LINE__, serv->ServerAddress, strerror(errno));
     }
+
+    (void) process_serveralias(serv);
   }
 
   return 0;
@@ -1652,6 +1657,8 @@ static int init_standalone_bindings(void) {
         "%s:%d: notice: unable to add binds to ipbind '%s': %s", __FILE__,
         __LINE__, main_server->ServerAddress, strerror(errno));
     }
+
+    (void) process_serveralias(main_server);
   }
 
   for (serv = main_server->next; serv; serv = serv->next) {
@@ -1687,7 +1694,7 @@ static int init_standalone_bindings(void) {
 
       if (serv->ServerPort > 0) {
         if (SocketBindTight == FALSE) {
-#ifdef PR_USE_IPV6
+#if defined(PR_USE_IPV6)
           if (pr_netaddr_use_ipv6()) {
             pr_inet_set_default_family(NULL, AF_INET6);
 
@@ -1824,7 +1831,7 @@ static int init_standalone_bindings(void) {
 void init_bindings(void) {
   int res = 0;
 
-#ifdef PR_USE_IPV6
+#if defined(PR_USE_IPV6)
   int sock;
 
   /* Check to see whether we can actually create an IPv6 socket. */
