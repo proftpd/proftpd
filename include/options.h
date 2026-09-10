@@ -45,15 +45,12 @@
 
 /* "Backlog" is the number of connections that can be received at one
  * burst before the kernel rejects.  This can be configured by the
- * "tcpBackLog" configuration directive, this value is just the default.
- * If a backlog value of -1 is supported, it means "use system/kernel default".
+ * "TCPBacklog" configuration directive, this value is just the default.
+ *
+ * Note that the 511 value is also used by Apache and nginx.
  */
 #ifndef PR_TUNABLE_DEFAULT_BACKLOG
-# ifdef LISTEN_NEGATIVE_BACKLOG
-#   define PR_TUNABLE_DEFAULT_BACKLOG	-1
-# else
-#   define PR_TUNABLE_DEFAULT_BACKLOG	128
-# endif /* LISTEN_NEGATIVE_BACKLOG */
+# define PR_TUNABLE_DEFAULT_BACKLOG	511
 #endif /* PR_TUNABLE_DEFAULT_BACKLOG */
 
 /* The default TCP send/receive buffer sizes, should explicit sizes not
