@@ -38,11 +38,11 @@ module qos_module;
 /* The level argument in a setsockopt(2) call for the TCP level is platform
  * dependent.  Linux wants SOL_IP, *BSD wants IPPROTO_IP.
  */
-#ifdef SOL_IP
+#if defined(SOL_IP)
 static int ip_level = SOL_IP;
 #else
 static int ip_level = IPPROTO_IP;
-#endif /* !SOL_IP */
+#endif /* SOL_IP */
 
 /* These particular bits have yet to be widely deployed, thus the autodetection
  * fun here.
@@ -52,133 +52,133 @@ static int ip_level = IPPROTO_IP;
  * global conventions/semantics to attach to these categories.
  */
 
-#ifdef IPTOS_CLASS_CS0
+#if defined(IPTOS_CLASS_CS0)
 # define QOS_CLASS_CS0	IPTOS_CLASS_CS0
 #else
 # define QOS_CLASS_CS0	0x00
-#endif
+#endif /* IPTOS_CLASS_CS0 */
 
-#ifdef IPTOS_CLASS_CS1
+#if defined(IPTOS_CLASS_CS1)
 # define QOS_CLASS_CS1	IPTOS_CLASS_CS1
 #else
 # define QOS_CLASS_CS1	0x20
-#endif
+#endif /* IPTOS_CLASS_CS1 */
 
-#ifdef IPTOS_CLASS_CS2
+#if defined(IPTOS_CLASS_CS2)
 # define QOS_CLASS_CS2	IPTOS_CLASS_CS2
 #else
 # define QOS_CLASS_CS2	0x40
-#endif
+#endif /* IPTOS_CLASS_CS2 */
 
-#ifdef IPTOS_CLASS_CS3
+#if defined(IPTOS_CLASS_CS3)
 # define QOS_CLASS_CS3	IPTOS_CLASS_CS3
 #else
 # define QOS_CLASS_CS3	0x60
-#endif
+#endif /* IPTOS_CLASS_CS3 */
 
-#ifdef IPTOS_CLASS_CS4
+#if defined(IPTOS_CLASS_CS4)
 # define QOS_CLASS_CS4	IPTOS_CLASS_CS4
 #else
 # define QOS_CLASS_CS4	0x80
-#endif
+#endif /* IPTOS_CLASS_CS4 */
 
-#ifdef IPTOS_CLASS_CS5
+#if defined(IPTOS_CLASS_CS5)
 # define QOS_CLASS_CS5	IPTOS_CLASS_CS5
 #else
 # define QOS_CLASS_CS5	0xa0
-#endif
+#endif /* IPTOS_CLASS_CS5 */
 
-#ifdef IPTOS_CLASS_CS6
+#if defined(IPTOS_CLASS_CS6)
 # define QOS_CLASS_CS6	IPTOS_CLASS_CS6
 #else
 # define QOS_CLASS_CS6	0xc0
-#endif
+#endif /* IPTOS_CLASS_CS6 */
 
-#ifdef IPTOS_CLASS_CS7
+#if defined(IPTOS_CLASS_CS7)
 # define QOS_CLASS_CS7	IPTOS_CLASS_CS7
 #else
 # define QOS_CLASS_CS7	0xe0
-#endif
+#endif /* IPTOS_CLASS_CS7 */
 
 /* See RFC2474 for a discussion of Differentiated Services field */
 
-#ifdef IPTOS_DSCP_AF11
+#if defined(IPTOS_DSCP_AF11)
 # define QOS_DSCP_AF11	IPTOS_DSCP_AF11
 #else
 # define QOS_DSCP_AF11	0x28
-#endif
+#endif /* IPTOS_DSCP_AF11 */
 
-#ifdef IPTOS_DSCP_AF12
+#if defined(IPTOS_DSCP_AF12)
 # define QOS_DSCP_AF12	IPTOS_DSCP_AF12
 #else
 # define QOS_DSCP_AF12	0x30
-#endif
+#endif /* IPTOS_DSCP_AF12 */
 
-#ifdef IPTOS_DSCP_AF13
+#if defined(IPTOS_DSCP_AF13)
 # define QOS_DSCP_AF13	IPTOS_DSCP_AF13
 #else
 # define QOS_DSCP_AF13	0x38
-#endif
+#endif /* IPTOS_DSCP_AF13 */
 
-#ifdef IPTOS_DSCP_AF21
+#if defined(IPTOS_DSCP_AF21)
 # define QOS_DSCP_AF21	IPTOS_DSCP_AF21
 #else
 # define QOS_DSCP_AF21	0x48
-#endif
+#endif /* IPTOS_DSCP_AF21 */
 
-#ifdef IPTOS_DSCP_AF22
+#if defined(IPTOS_DSCP_AF22)
 # define QOS_DSCP_AF22	IPTOS_DSCP_AF22
 #else
 # define QOS_DSCP_AF22	0x50
-#endif
+#endif /* IPTOS_DSCP_AF22 */
 
-#ifdef IPTOS_DSCP_AF23
+#if defined(IPTOS_DSCP_AF23)
 # define QOS_DSCP_AF23	IPTOS_DSCP_AF23
 #else
 # define QOS_DSCP_AF23	0x58
-#endif
+#endif /* IPTOS_DSCP_AF23 */
 
-#ifdef IPTOS_DSCP_AF31
+#if defined(IPTOS_DSCP_AF31)
 # define QOS_DSCP_AF31	IPTOS_DSCP_AF31
 #else
 # define QOS_DSCP_AF31	0x68
-#endif
+#endif /* IPTOS_DSCP_AF31 */
 
-#ifdef IPTOS_DSCP_AF32
+#if defined(IPTOS_DSCP_AF32)
 # define QOS_DSCP_AF32	IPTOS_DSCP_AF32
 #else
 # define QOS_DSCP_AF32	0x70
-#endif
+#endif /* IPTOS_DSCP_AF32 */
 
-#ifdef IPTOS_DSCP_AF33
+#if defined(IPTOS_DSCP_AF33)
 # define QOS_DSCP_AF33	IPTOS_DSCP_AF33
 #else
 # define QOS_DSCP_AF33	0x78
-#endif
+#endif /* IPTOS_DSCP_AF33 */
 
-#ifdef IPTOS_DSCP_AF41
+#if defined(IPTOS_DSCP_AF41)
 # define QOS_DSCP_AF41	IPTOS_DSCP_AF41
 #else
 # define QOS_DSCP_AF41	0x88
-#endif
+#endif /* IPTOS_DSCP_AF41 */
 
-#ifdef IPTOS_DSCP_AF42
+#if defined(IPTOS_DSCP_AF42)
 # define QOS_DSCP_AF42	IPTOS_DSCP_AF42
 #else
 # define QOS_DSCP_AF42	0x90
-#endif
+#endif /* IPTOS_DSCP_AF42 */
 
-#ifdef IPTOS_DSCP_AF43
+#if defined(IPTOS_DSCP_AF43)
 # define QOS_DSCP_AF43	IPTOS_DSCP_AF43
 #else
 # define QOS_DSCP_AF43	0x98
-#endif
+#endif /* IPTOS_DSCP_AF43 */
 
-#ifdef IPTOS_DSCP_EF
+#if defined(IPTOS_DSCP_EF)
 # define QOS_DSCP_EF	IPTOS_DSCP_EF
 #else
 # define QOS_DSCP_EF	0xb8
-#endif
+#endif /* IPTOS_DSCP_EF */
 
 struct qos_rec {
   const char *name;
@@ -211,25 +211,25 @@ static struct qos_rec qos_vals[] = {
   { "ef",	QOS_DSCP_EF },
 
   /* Some more human-readable strings */
-#ifdef IPTOS_LOWDELAY
+#if defined(IPTOS_LOWDELAY)
   { "lowdelay",	IPTOS_LOWDELAY },
-#endif
+#endif /* IPTOS_LOWDELAY */
 
-#ifdef IPTOS_THROUGHPUT
-  { "throughput",IPTOS_THROUGHPUT },
-#endif
+#if defined(IPTOS_THROUGHPUT)
+  { "throughput", IPTOS_THROUGHPUT },
+#endif /* IPTOS_THROUGHPUT */
 
-#ifdef IPTOS_RELIABILITY
-  { "reliability",IPTOS_RELIABILITY },
-#endif
+#if defined(IPTOS_RELIABILITY)
+  { "reliability", IPTOS_RELIABILITY },
+#endif /* IPTOS_RELIABILITY */
 
-#ifdef IPTOS_LOWCOST
+#if defined(IPTOS_LOWCOST)
   { "lowcost",	IPTOS_LOWCOST },
-#endif
+#endif /* IPTOS_LOWCOST */
 
-#ifdef IPTOS_MINCOST
+#if defined(IPTOS_MINCOST)
   { "mincost",	IPTOS_MINCOST },
-#endif
+#endif /* IPTOS_MINCOST */
 
   { NULL,	-1 }
 };
@@ -298,7 +298,7 @@ MODRET set_qosoptions(cmd_rec *cmd) {
 /* Event handlers
  */
 
-#ifdef IP_TOS
+#if defined(IP_TOS)
 static void qos_ctrl_listen_ev(const void *event_data, void *user_data) {
   const struct socket_ctx *sc;
 
@@ -310,9 +310,9 @@ static void qos_ctrl_listen_ev(const void *event_data, void *user_data) {
 
   if (pr_netaddr_get_family(sc->addr) == AF_INET) {
     config_rec *c;
-    c = find_config(sc->server->conf, CONF_PARAM, "QoSOptions", FALSE);
 
-    if (c) {
+    c = find_config(sc->server->conf, CONF_PARAM, "QoSOptions", FALSE);
+    if (c != NULL) {
       int ctrlqos;
 
       ctrlqos = *((int *) c->argv[0]);
@@ -342,7 +342,7 @@ static void qos_data_listen_ev(const void *event_data, void *user_data) {
     config_rec *c;
 
     c = find_config(sc->server->conf, CONF_PARAM, "QoSOptions", FALSE);
-    if (c) {
+    if (c != NULL) {
       int dataqos, res;
 
       dataqos = *((int *) c->argv[1]);
@@ -367,8 +367,9 @@ static void qos_data_connect_ev(const void *event_data, void *user_data) {
    */
   if (pr_netaddr_get_family(sc->addr) == AF_INET) {
     config_rec *c;
+
     c = find_config(sc->server->conf, CONF_PARAM, "QoSOptions", FALSE);
-    if (c) {
+    if (c != NULL) {
       int dataqos, res;
 
       dataqos = *((int *) c->argv[1]);
@@ -384,7 +385,7 @@ static void qos_data_connect_ev(const void *event_data, void *user_data) {
 }
 #endif /* IP_TOS */
 
-#ifdef PR_SHARED_MODULE
+#if defined(PR_SHARED_MODULE)
 static void qos_mod_unload_ev(const void *event_data, void *user_data) {
   if (strcmp("mod_qos.c", (const char *) event_data) == 0) {
     pr_event_unregister(&qos_module, NULL, NULL);
@@ -412,22 +413,23 @@ static void qos_sess_reinit_ev(const void *event_data, void *user_data) {
  */
 
 static int qos_init(void) {
-#ifdef IP_TOS
+#if defined(IP_TOS)
   pr_event_register(&qos_module, "core.ctrl-listen", qos_ctrl_listen_ev, NULL);
-#endif
+#endif /* IP_TOS */
 
-#ifdef PR_SHARED_MODULE
+#if defined(PR_SHARED_MODULE)
   pr_event_register(&qos_module, "core.module-unload", qos_mod_unload_ev, NULL);
-#endif
+#endif /* PR_SHARED_MODULE */
+
   return 0;
 }
 
 static int qos_sess_init(void) {
-#ifdef IP_TOS
+#if defined(IP_TOS)
   config_rec *c;
 
   c = find_config(main_server->conf, CONF_PARAM, "QoSOptions", FALSE);
-  if (c) {
+  if (c != NULL) {
     int dataqos;
 
     dataqos = *((int *) c->argv[1]);
@@ -438,7 +440,7 @@ static int qos_sess_init(void) {
         NULL);
     }
   }
-#endif
+#endif /* IP_TOS */
 
   pr_event_register(&qos_module, "core.session-reinit", qos_sess_reinit_ev,
     NULL);
