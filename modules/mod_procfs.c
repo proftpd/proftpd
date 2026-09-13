@@ -431,6 +431,42 @@ MODRET procfs_sftp_pre_path(cmd_rec *cmd) {
   return handle_path(cmd, cmd->argv[0], path);
 }
 
+MODRET procfs_sftp_pre_extended(cmd_rec *cmd) {
+  const char *src_path = NULL, *dst_path = NULL, *proto;
+  modret_t *mr;
+
+  if (procfs_engine == FALSE) {
+    return PR_DECLINED(cmd);
+  }
+
+  proto = pr_session_get_protocol(0);
+  if (strcmp(proto, "sftp") != 0) {
+    return PR_DECLINED(cmd);
+  }
+
+  /* Not all SFTP extensions use paths to be checked. */
+  if (cmd->argv[2] == NULL &&
+      cmd->argv[3] == NULL) {
+    return PR_DECLINED(cmd);
+  }
+
+  if (cmd->argv[2] != NULL) {
+    src_path = cmd->argv[2];
+
+    mr = handle_path(cmd, cmd->argv[1], src_path);
+    if (MODRET_ISERROR(mr)) {
+      return mr;
+    }
+  }
+
+  if (cmd->argv[3] == NULL) {
+    return PR_DECLINED(cmd);
+  }
+
+  dst_path = cmd->argv[3];
+  return handle_path(cmd, cmd->argv[1], dst_path);
+}
+
 MODRET procfs_sftp_pre_hardlink(cmd_rec *cmd) {
   const char *src_path, *dst_path, *proto;
   char *ptr;
@@ -696,7 +732,7 @@ static cmdtable procfs_cmdtab[] = {
   { PRE_CMD,	"XSHA512",	G_NONE,	procfs_pre_path,	FALSE, FALSE },
 
   /* SFTP */
-  { PRE_CMD, "HARDLINK",	G_NONE, procfs_sftp_pre_hardlink, FALSE, FALSE },
+  { PRE_CMD, "EXTENDED",	G_NONE, procfs_sftp_pre_extended, FALSE, FALSE },
   { PRE_CMD, "LINK",		G_NONE, procfs_sftp_pre_hardlink, FALSE, FALSE },
   { PRE_CMD, "LSTAT",		G_NONE, procfs_sftp_pre_path, FALSE, FALSE },
   { PRE_CMD, "OPENDIR",		G_NONE, procfs_sftp_pre_path, FALSE, FALSE },
