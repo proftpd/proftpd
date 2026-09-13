@@ -8179,8 +8179,46 @@ static int fxp_handle_close(struct fxp_packet *fxp) {
   return fxp_packet_write(resp);
 }
 
+/* We use a slightly different helper for allocating our SFTP extension
+ * cmd_recs, since some of these extensions will have paths to be examined
+ * by e.g. mod_procfs.
+ */
+static cmd_rec *fxp_ext_cmd_alloc(pool *p, const char *name, char *arg) {
+  cmd_rec *cmd;
+
+  /* Allocate enough space for optional paths, to be filled in later. */
+  cmd = pr_cmd_alloc(p, 4, pstrdup(p, name), arg ? arg : "", NULL, NULL);
+  cmd->arg = arg;
+
+  return cmd;
+}
+
+static int fxp_ext_cmd_failed(struct fxp_packet *fxp, int xerrno) {
+  const char *reason;
+  unsigned char *buf, *ptr;
+  uint32_t buflen, bufsz, status_code;
+  struct fxp_packet *resp;
+
+  status_code = fxp_errno2status(xerrno, &reason);
+
+  pr_trace_msg(trace_channel, 8, "sending extension response: STATUS %lu '%s'",
+    (unsigned long) status_code, reason);
+
+  buflen = bufsz = FXP_RESPONSE_DATA_DEFAULT_SZ;
+  buf = ptr = palloc(fxp->pool, bufsz);
+
+  fxp_status_write(fxp->pool, &buf, &buflen, fxp->request_id, status_code,
+    reason, NULL);
+
+  resp = fxp_packet_create(fxp->pool, fxp->channel_id);
+  resp->payload = ptr;
+  resp->payload_sz = (bufsz - buflen);
+
+  return fxp_packet_write(resp);
+}
+
 static int fxp_handle_extended(struct fxp_packet *fxp) {
-  int res;
+  int res = 0;
   unsigned char *buf, *ptr;
   char *ext_request_name;
   uint32_t buflen, bufsz, status_code;
@@ -8190,7 +8228,7 @@ static int fxp_handle_extended(struct fxp_packet *fxp) {
   ext_request_name = sftp_msg_read_string(fxp->pool, &fxp->payload,
     &fxp->payload_sz);
 
-  cmd = fxp_cmd_alloc(fxp->pool, "EXTENDED", ext_request_name);
+  cmd = fxp_ext_cmd_alloc(fxp->pool, "EXTENDED", ext_request_name);
   cmd->cmd_class = CL_MISC|CL_SFTP;
   cmd->cmd_id = SFTP_CMD_ID;
 
@@ -8255,8 +8293,18 @@ static int fxp_handle_extended(struct fxp_packet *fxp) {
     len = sftp_msg_read_long(fxp->pool, &fxp->payload, &fxp->payload_sz);
     blocksz = sftp_msg_read_int(fxp->pool, &fxp->payload, &fxp->payload_sz);
 
-    res = fxp_handle_ext_check_file(fxp, digest_list, path, offset, len,
-      blocksz);
+    cmd->argv[2] = pstrdup(cmd->pool, path);
+
+    if (pr_cmd_dispatch_phase(cmd, PRE_CMD, 0) < 0) {
+      fxp_ext_cmd_failed(fxp, pr_cmd_get_errno(cmd));
+      res = -1;
+    }
+
+    if (res == 0) {
+      res = fxp_handle_ext_check_file(fxp, digest_list, path, offset, len,
+        blocksz);
+    }
+
     if (res == 0) {
       fxp_cmd_dispatch(cmd);
 
@@ -8352,10 +8400,18 @@ static int fxp_handle_extended(struct fxp_packet *fxp) {
     dst = sftp_msg_read_string(fxp->pool, &fxp->payload, &fxp->payload_sz);
     dst_offset = sftp_msg_read_long(fxp->pool, &fxp->payload, &fxp->payload_sz);
 
+    /* The "copy-data" extension operates on file handles, which are obtained
+     * via OPEN requests, which are already checked.  Thus we need not do
+     * additional processing (e.g. via mod_procfs) on these handles.
+     */
+
     res = fxp_handle_ext_copy_data(fxp, src, src_offset, dst, dst_offset,
       copy_len);
     if (res == 0) {
       fxp_cmd_dispatch(cmd);
+
+    } else {
+      fxp_cmd_dispatch_err(cmd);
     }
 
     return res;
@@ -8370,9 +8426,23 @@ static int fxp_handle_extended(struct fxp_packet *fxp) {
     dst = sftp_msg_read_string(fxp->pool, &fxp->payload, &fxp->payload_sz);
     overwrite = sftp_msg_read_bool(fxp->pool, &fxp->payload, &fxp->payload_sz);
 
-    res = fxp_handle_ext_copy_file(fxp, src, dst, overwrite);
+    cmd->argv[2] = pstrdup(cmd->pool, src);
+    cmd->argv[3] = pstrdup(cmd->pool, dst);
+
+    if (pr_cmd_dispatch_phase(cmd, PRE_CMD, 0) < 0) {
+      fxp_ext_cmd_failed(fxp, pr_cmd_get_errno(cmd));
+      res = -1;
+    }
+
+    if (res == 0) {
+      res = fxp_handle_ext_copy_file(fxp, src, dst, overwrite);
+    }
+
     if (res == 0) {
       fxp_cmd_dispatch(cmd);
+
+    } else {
+      fxp_cmd_dispatch_err(cmd);
     }
 
     return res;
@@ -8454,7 +8524,18 @@ static int fxp_handle_extended(struct fxp_packet *fxp) {
       dst = sftp_utf8_decode_str(fxp->pool, dst);
     }
 
-    res = fxp_handle_ext_hardlink(fxp, src, dst);
+    cmd->argv[2] = pstrdup(cmd->pool, src);
+    cmd->argv[3] = pstrdup(cmd->pool, dst);
+
+    if (pr_cmd_dispatch_phase(cmd, PRE_CMD, 0) < 0) {
+      fxp_ext_cmd_failed(fxp, pr_cmd_get_errno(cmd));
+      res = -1;
+    }
+
+    if (res == 0) {
+      res = fxp_handle_ext_hardlink(fxp, src, dst);
+    }
+
     if (res == 0) {
       fxp_cmd_dispatch(cmd);
 
@@ -8510,7 +8591,18 @@ static int fxp_handle_extended(struct fxp_packet *fxp) {
       dst = sftp_utf8_decode_str(fxp->pool, dst);
     }
 
-    res = fxp_handle_ext_posix_rename(fxp, src, dst);
+    cmd->argv[2] = pstrdup(cmd->pool, src);
+    cmd->argv[3] = pstrdup(cmd->pool, dst);
+
+    if (pr_cmd_dispatch_phase(cmd, PRE_CMD, 0) < 0) {
+      fxp_ext_cmd_failed(fxp, pr_cmd_get_errno(cmd));
+      res = -1;
+    }
+
+    if (res == 0) {
+      res = fxp_handle_ext_posix_rename(fxp, src, dst);
+    }
+
     if (res == 0) {
       fxp_cmd_dispatch(cmd);
 
@@ -8528,7 +8620,17 @@ static int fxp_handle_extended(struct fxp_packet *fxp) {
 
     path = sftp_msg_read_string(fxp->pool, &fxp->payload, &fxp->payload_sz);
 
-    res = fxp_handle_ext_space_avail(fxp, path);
+    cmd->argv[2] = pstrdup(cmd->pool, path);
+
+    if (pr_cmd_dispatch_phase(cmd, PRE_CMD, 0) < 0) {
+      fxp_ext_cmd_failed(fxp, pr_cmd_get_errno(cmd));
+      res = -1;
+    }
+
+    if (res == 0) {
+      res = fxp_handle_ext_space_avail(fxp, path);
+    }
+
     if (res == 0) {
       fxp_cmd_dispatch(cmd);
 
@@ -8545,7 +8647,17 @@ static int fxp_handle_extended(struct fxp_packet *fxp) {
 
     path = sftp_msg_read_string(fxp->pool, &fxp->payload, &fxp->payload_sz);
 
-    res = fxp_handle_ext_statvfs(fxp, path);
+    cmd->argv[2] = pstrdup(cmd->pool, path);
+
+    if (pr_cmd_dispatch_phase(cmd, PRE_CMD, 0) < 0) {
+      fxp_ext_cmd_failed(fxp, pr_cmd_get_errno(cmd));
+      res = -1;
+    }
+
+    if (res == 0) {
+      res = fxp_handle_ext_statvfs(fxp, path);
+    }
+
     if (res == 0) {
       fxp_cmd_dispatch(cmd);
 
@@ -8699,7 +8811,17 @@ static int fxp_handle_extended(struct fxp_packet *fxp) {
       name = sftp_msg_read_string(fxp->pool, &fxp->payload, &fxp->payload_sz);
       valsz = sftp_msg_read_int(fxp->pool, &fxp->payload, &fxp->payload_sz);
 
-      res = fxp_handle_ext_getxattr(fxp, cmd, path, name, valsz);
+      cmd->argv[2] = pstrdup(cmd->pool, path);
+
+      if (pr_cmd_dispatch_phase(cmd, PRE_CMD, 0) < 0) {
+        fxp_ext_cmd_failed(fxp, pr_cmd_get_errno(cmd));
+        res = -1;
+      }
+
+      if (res == 0) {
+        res = fxp_handle_ext_getxattr(fxp, cmd, path, name, valsz);
+      }
+
       if (res == 0) {
         fxp_cmd_dispatch(cmd);
 
@@ -8715,7 +8837,17 @@ static int fxp_handle_extended(struct fxp_packet *fxp) {
 
       path = sftp_msg_read_string(fxp->pool, &fxp->payload, &fxp->payload_sz);
 
-      res = fxp_handle_ext_listxattr(fxp, cmd, path);
+      cmd->argv[2] = pstrdup(cmd->pool, path);
+
+      if (pr_cmd_dispatch_phase(cmd, PRE_CMD, 0) < 0) {
+        fxp_ext_cmd_failed(fxp, pr_cmd_get_errno(cmd));
+        res = -1;
+      }
+
+      if (res == 0) {
+        res = fxp_handle_ext_listxattr(fxp, cmd, path);
+      }
+
       if (res == 0) {
         fxp_cmd_dispatch(cmd);
 
@@ -8732,7 +8864,17 @@ static int fxp_handle_extended(struct fxp_packet *fxp) {
       path = sftp_msg_read_string(fxp->pool, &fxp->payload, &fxp->payload_sz);
       name = sftp_msg_read_string(fxp->pool, &fxp->payload, &fxp->payload_sz);
 
-      res = fxp_handle_ext_removexattr(fxp, cmd, path, name);
+      cmd->argv[2] = pstrdup(cmd->pool, path);
+
+      if (pr_cmd_dispatch_phase(cmd, PRE_CMD, 0) < 0) {
+        fxp_ext_cmd_failed(fxp, pr_cmd_get_errno(cmd));
+        res = -1;
+      }
+
+      if (res == 0) {
+        res = fxp_handle_ext_removexattr(fxp, cmd, path, name);
+      }
+
       if (res == 0) {
         fxp_cmd_dispatch(cmd);
 
@@ -8755,7 +8897,17 @@ static int fxp_handle_extended(struct fxp_packet *fxp) {
         &fxp->payload_sz, valsz);
       pflags = sftp_msg_read_int(fxp->pool, &fxp->payload, &fxp->payload_sz);
 
-      res = fxp_handle_ext_setxattr(fxp, cmd, path, name, val, valsz, pflags);
+      cmd->argv[2] = pstrdup(cmd->pool, path);
+
+      if (pr_cmd_dispatch_phase(cmd, PRE_CMD, 0) < 0) {
+        fxp_ext_cmd_failed(fxp, pr_cmd_get_errno(cmd));
+        res = -1;
+      }
+
+      if (res == 0) {
+        res = fxp_handle_ext_setxattr(fxp, cmd, path, name, val, valsz, pflags);
+      }
+
       if (res == 0) {
         fxp_cmd_dispatch(cmd);
 
