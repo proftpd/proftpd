@@ -27,6 +27,7 @@
   wrong passwords to authenticate.
 - Issue 2326 - Update default TCPBacklog value as build-time test does not
   work correctly on AIX.
+- Issue 2330 - Stack overflow possible via long PASS text in mod_radius module.
 
 1.3.10rc4 - Released 14-Aug-2026
 --------------------------------

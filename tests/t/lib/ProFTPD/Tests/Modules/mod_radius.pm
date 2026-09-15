@@ -20,6 +20,16 @@ my $TESTS = {
     test_class => [qw(forking)],
   },
 
+  radius_auth_username_too_long_issue2330 => {
+    order => ++$order,
+    test_class => [qw(bug forking)],
+  },
+
+  radius_auth_passwd_too_long_issue2330 => {
+    order => ++$order,
+    test_class => [qw(bug forking)],
+  },
+
   radius_acct => {
     order => ++$order,
     test_class => [qw(forking)],
@@ -125,6 +135,223 @@ sub radius_auth {
         test_msg("Expected response code $expected, got $resp_code"));
 
       $expected = "User $setup->{user} logged in";
+      $self->assert($expected eq $resp_msg,
+        test_msg("Expected response message '$expected', got '$resp_msg'"));
+    };
+    if ($@) {
+      $ex = $@;
+    }
+
+    $wfh->print("done\n");
+    $wfh->flush();
+
+  } else {
+    eval { server_wait($setup->{config_file}, $rfh) };
+    if ($@) {
+      warn($@);
+      exit 1;
+    }
+
+    exit 0;
+  }
+
+  server_stop($setup->{pid_file});
+  $self->assert_child_ok($pid);
+
+  test_cleanup($setup, $ex);
+}
+
+sub radius_auth_username_too_long_issue2330 {
+  my $self = shift;
+  my $tmpdir = $self->{tmpdir};
+
+  my $radius_user = 'proftpd';
+  if ($ENV{RADIUS_USER}) {
+    $radius_user = $ENV{RADIUS_USER};
+  }
+
+  my $radius_passwd = 'test';
+  if ($ENV{RADIUS_PASSWD}) {
+    $radius_passwd = $ENV{RADIUS_PASSWD};
+  }
+
+  my $radius_server = '127.0.0.1';
+  if ($ENV{RADIUS_HOST}) {
+    $radius_server = $ENV{RADIUS_HOST};
+  }
+
+  my $setup = test_setup($tmpdir, 'radius', $radius_user, $radius_passwd);
+
+  my $bad_username = ('A' x 1024) . 'B';
+
+  my $config = {
+    PidFile => $setup->{pid_file},
+    ScoreboardFile => $setup->{scoreboard_file},
+    SystemLog => $setup->{log_file},
+    TraceLog => $setup->{log_file},
+    Trace => 'auth:10 radius:20',
+
+    IfModules => {
+      'mod_delay.c' => {
+        DelayEngine => 'off',
+      },
+
+      'mod_radius.c' => {
+        RadiusEngine => 'on',
+        RadiusLog => $setup->{log_file},
+        RadiusAuthServer => "$radius_server:1812 testing123 5",
+        RadiusUserInfo => "$setup->{uid} $setup->{gid} $setup->{home_dir} /bin/bash",
+        RadiusGroupInfo => "$setup->{group} $radius_user $setup->{gid}",
+      },
+    },
+  };
+
+  my ($port, $config_user, $config_group) = config_write($setup->{config_file},
+    $config);
+
+  # Open pipes, for use between the parent and child processes.  Specifically,
+  # the child will indicate when it's done with its test by writing a message
+  # to the parent.
+  my ($rfh, $wfh);
+  unless (pipe($rfh, $wfh)) {
+    die("Can't open pipe: $!");
+  }
+
+  my $ex;
+
+  # Make sure that radiusd is running before running these tests, e.g.:
+  #
+  #  sudo /path/to/freeradius-dir/sbin/radiusd -X -f -xx
+
+  # Fork child
+  $self->handle_sigchld();
+  defined(my $pid = fork()) or die("Can't fork: $!");
+  if ($pid) {
+    eval {
+      # Allow for server startup
+      sleep(1);
+
+      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
+      eval { $client->login($bad_username, $setup->{passwd}) };
+      unless ($@) {
+        die("Login succeeded unexpectedly");
+      }
+
+      my $resp_code = $client->response_code();
+      my $resp_msg = $client->response_msg();
+      $client->quit();
+
+      my $expected = 501;
+      $self->assert($expected == $resp_code,
+        test_msg("Expected response code $expected, got $resp_code"));
+
+      $expected = "Login incorrect.";
+      $self->assert($expected eq $resp_msg,
+        test_msg("Expected response message '$expected', got '$resp_msg'"));
+    };
+    if ($@) {
+      $ex = $@;
+    }
+
+    $wfh->print("done\n");
+    $wfh->flush();
+
+  } else {
+    eval { server_wait($setup->{config_file}, $rfh) };
+    if ($@) {
+      warn($@);
+      exit 1;
+    }
+
+    exit 0;
+  }
+
+  server_stop($setup->{pid_file});
+  $self->assert_child_ok($pid);
+
+  test_cleanup($setup, $ex);
+}
+
+sub radius_auth_passwd_too_long_issue2330 {
+  my $self = shift;
+  my $tmpdir = $self->{tmpdir};
+
+  my $radius_user = 'proftpd';
+  if ($ENV{RADIUS_USER}) {
+    $radius_user = $ENV{RADIUS_USER};
+  }
+
+  my $radius_server = '127.0.0.1';
+  if ($ENV{RADIUS_HOST}) {
+    $radius_server = $ENV{RADIUS_HOST};
+  }
+
+  my $setup = test_setup($tmpdir, 'radius', $radius_user, 'test');
+
+  my $bad_passwd = ('A' x 1024) . 'B';
+
+  my $config = {
+    PidFile => $setup->{pid_file},
+    ScoreboardFile => $setup->{scoreboard_file},
+    SystemLog => $setup->{log_file},
+    TraceLog => $setup->{log_file},
+    Trace => 'auth:10 radius:20',
+
+    IfModules => {
+      'mod_delay.c' => {
+        DelayEngine => 'off',
+      },
+
+      'mod_radius.c' => {
+        RadiusEngine => 'on',
+        RadiusLog => $setup->{log_file},
+        RadiusAuthServer => "$radius_server:1812 testing123 5",
+        RadiusUserInfo => "$setup->{uid} $setup->{gid} $setup->{home_dir} /bin/bash",
+        RadiusGroupInfo => "$setup->{group} $radius_user $setup->{gid}",
+      },
+    },
+  };
+
+  my ($port, $config_user, $config_group) = config_write($setup->{config_file},
+    $config);
+
+  # Open pipes, for use between the parent and child processes.  Specifically,
+  # the child will indicate when it's done with its test by writing a message
+  # to the parent.
+  my ($rfh, $wfh);
+  unless (pipe($rfh, $wfh)) {
+    die("Can't open pipe: $!");
+  }
+
+  my $ex;
+
+  # Make sure that radiusd is running before running these tests, e.g.:
+  #
+  #  sudo /path/to/freeradius-dir/sbin/radiusd -X -f -xx
+
+  # Fork child
+  $self->handle_sigchld();
+  defined(my $pid = fork()) or die("Can't fork: $!");
+  if ($pid) {
+    eval {
+      # Allow for server startup
+      sleep(1);
+
+      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
+      eval { $client->login($setup->{user}, $bad_passwd) };
+      unless ($@) {
+        die("Login succeeded unexpectedly");
+      }
+
+      my $resp_code = $client->response_code();
+      my $resp_msg = $client->response_msg();
+      $client->quit();
+
+      my $expected = 501;
+      $self->assert($expected == $resp_code,
+        test_msg("Expected response code $expected, got $resp_code"));
+
+      $expected = "Login incorrect.";
       $self->assert($expected eq $resp_msg,
         test_msg("Expected response message '$expected', got '$resp_msg'"));
     };
