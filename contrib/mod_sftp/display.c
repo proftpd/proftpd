@@ -223,7 +223,7 @@ const char *sftp_display_fh_get_msg(pool *p, pr_fh_t *fh) {
 
         tm = pr_localtime(p, &now);
         if (tm != NULL) {
-          strftime(time_str, sizeof(time_str), fmt, tm);
+          strftime(time_str, sizeof(time_str)-1, fmt, tm);
         }
 
         val = pstrdup(p, time_str);

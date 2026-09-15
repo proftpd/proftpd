@@ -358,7 +358,7 @@ static int display_fh(pr_fh_t *fh, const char *fs, const char *resp_code,
 
         tm = pr_localtime(p, &now);
         if (tm != NULL) {
-          strftime(time_str, sizeof(time_str), fmt, tm);
+          strftime(time_str, sizeof(time_str)-1, fmt, tm);
         }
 
         val = pstrdup(p, time_str);
