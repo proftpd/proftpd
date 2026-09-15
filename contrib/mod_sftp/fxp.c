@@ -3664,20 +3664,39 @@ static struct fxp_packet *fxp_packet_read(uint32_t channel_id,
   return NULL;
 }
 
+static unsigned char *fxp_resp_buffer_alloc(pool *p, size_t sz) {
+  unsigned char *buf;
+
+  /* We deliberately allocate 4 bytes more than requested, saving space for
+   * for the 4-byte length header/prefix, that will be added later by
+   * fxp_packet_write().
+   */
+  buf = palloc(p, sz + sizeof(uint32_t));
+
+  /* Now we increment the pointer past those 4 bytes, so that the caller is
+   * none the wiser.
+   */
+  buf += sizeof(uint32_t);
+
+  return buf;
+}
+
 static int fxp_packet_write(struct fxp_packet *fxp) {
   unsigned char *buf, *ptr;
   uint32_t buflen, bufsz;
-  int res;
 
-  /* Use a buffer that's a little larger than the FX packet size */
-  buflen = bufsz = fxp->payload_sz + 32;
-  buf = ptr = palloc(fxp->pool, bufsz);
+  /* We know, a priori, that the payload pointer is actually 4 bytes past its
+   * actual start.
+   */
+  buflen = bufsz = fxp->payload_sz + 4;
+  buf = ptr = fxp->payload;
 
-  sftp_msg_write_data(&buf, &buflen, fxp->payload, fxp->payload_sz, TRUE);
+  /* ...now take back the 4 bytes for whose length header this buffer is... */
+  buf -= sizeof(uint32_t);
+  ptr -= sizeof(uint32_t);
 
-  res = sftp_channel_write_data(fxp->pool, fxp->channel_id, ptr,
-    (bufsz - buflen));
-  return res;
+  sftp_msg_write_int(&buf, &buflen, fxp->payload_sz);
+  return sftp_channel_write_data(fxp->pool, fxp->channel_id, ptr, bufsz);
 }
 
 /* Miscellaneous */
@@ -4261,7 +4280,7 @@ static int fxp_handle_ext_check_file(struct fxp_packet *fxp, char *digest_list,
    * and/or the block size is small.  Be prepared.
    */
   buflen = bufsz = (FXP_RESPONSE_DATA_DEFAULT_SZ * 2);
-  buf = ptr = palloc(fxp->pool, bufsz);
+  buf = ptr = fxp_resp_buffer_alloc(fxp->pool, bufsz);
 
   /* The minimum block size required by this extension is 256 bytes. */
   if (blocksz != 0 &&
@@ -4774,7 +4793,7 @@ static int fxp_handle_ext_copy_data(struct fxp_packet *fxp,
     dst_name, (pr_off_t) dst_offset);
 
   buflen = bufsz = FXP_RESPONSE_DATA_DEFAULT_SZ;
-  buf = ptr = palloc(fxp->pool, bufsz);
+  buf = ptr = fxp_resp_buffer_alloc(fxp->pool, bufsz);
 
   cmd = pr_cmd_alloc(fxp->pool, 4, pstrdup(fxp->pool, "SITE"),
     pstrdup(fxp->pool, "COPY"), src_name, dst_name);
@@ -5126,7 +5145,7 @@ static int fxp_handle_ext_copy_file(struct fxp_packet *fxp, char *src,
     src, dst);
 
   buflen = bufsz = FXP_RESPONSE_DATA_DEFAULT_SZ;
-  buf = ptr = palloc(fxp->pool, bufsz);
+  buf = ptr = fxp_resp_buffer_alloc(fxp->pool, bufsz);
 
   if (pr_cmd_dispatch_phase(cmd, PRE_CMD, 0) < 0) {
     status_code = SSH2_FX_PERMISSION_DENIED;
@@ -5390,7 +5409,7 @@ static int fxp_handle_ext_fsync(struct fxp_packet *fxp,
   cmd->cmd_id = SFTP_CMD_ID;
 
   buflen = bufsz = FXP_RESPONSE_DATA_DEFAULT_SZ;
-  buf = ptr = palloc(fxp->pool, bufsz);
+  buf = ptr = fxp_resp_buffer_alloc(fxp->pool, bufsz);
 
   if (pr_cmd_dispatch_phase(cmd, PRE_CMD, 0) < 0) {
     status_code = SSH2_FX_PERMISSION_DENIED;
@@ -5476,7 +5495,7 @@ static int fxp_handle_ext_hardlink(struct fxp_packet *fxp, char *src,
   cmd->cmd_id = SFTP_CMD_ID;
 
   buflen = bufsz = FXP_RESPONSE_DATA_DEFAULT_SZ;
-  buf = ptr = palloc(fxp->pool, bufsz);
+  buf = ptr = fxp_resp_buffer_alloc(fxp->pool, bufsz);
 
   if (pr_cmd_dispatch_phase(cmd, PRE_CMD, 0) < 0) {
     status_code = SSH2_FX_PERMISSION_DENIED;
@@ -5684,7 +5703,7 @@ static int fxp_handle_ext_homedir(struct fxp_packet *fxp, const char *name) {
   cmd->cmd_id = SFTP_CMD_ID;
 
   buflen = bufsz = FXP_RESPONSE_DATA_DEFAULT_SZ;
-  buf = ptr = palloc(fxp->pool, bufsz);
+  buf = ptr = fxp_resp_buffer_alloc(fxp->pool, bufsz);
 
   pw = pr_auth_getpwnam(fxp->pool, name);
   xerrno = errno;
@@ -5797,7 +5816,7 @@ static int fxp_handle_ext_limits(struct fxp_packet *fxp) {
   cmd->cmd_id = SFTP_CMD_ID;
 
   buflen = bufsz = FXP_RESPONSE_DATA_DEFAULT_SZ;
-  buf = ptr = palloc(fxp->pool, bufsz);
+  buf = ptr = fxp_resp_buffer_alloc(fxp->pool, bufsz);
 
   max_packet_len = FXP_MAX_PACKET_LEN;
   max_read_len = max_write_len = FXP_MAX_PACKET_LEN - 1024;
@@ -5994,7 +6013,7 @@ static int fxp_handle_ext_posix_rename(struct fxp_packet *fxp, char *src,
   cmd->cmd_class = CL_MISC|CL_WRITE|CL_SFTP;
 
   buflen = bufsz = FXP_RESPONSE_DATA_DEFAULT_SZ;
-  buf = ptr = palloc(fxp->pool, bufsz);
+  buf = ptr = fxp_resp_buffer_alloc(fxp->pool, bufsz);
 
   cmd2 = fxp_cmd_alloc(fxp->pool, C_RNFR, src);
   cmd2->cmd_class = CL_MISC|CL_WRITE;
@@ -6438,7 +6457,7 @@ static int fxp_handle_ext_space_avail(struct fxp_packet *fxp,
     "path = '%s'", path);
 
   buflen = bufsz = FXP_RESPONSE_DATA_DEFAULT_SZ;
-  buf = ptr = palloc(fxp->pool, bufsz);
+  buf = ptr = fxp_resp_buffer_alloc(fxp->pool, bufsz);
 
   real_path = pr_fsio_realpath(fxp->pool, path);
   if (real_path != NULL) {
@@ -6517,7 +6536,7 @@ static int fxp_handle_ext_statvfs(struct fxp_packet *fxp, const char *path) {
 # endif /* LFS && !Solaris 2.5.1 && !Solaris 2.6 && !Solaris 2.7 */
 
   buflen = bufsz = FXP_RESPONSE_DATA_DEFAULT_SZ;
-  buf = ptr = palloc(fxp->pool, bufsz);
+  buf = ptr = fxp_resp_buffer_alloc(fxp->pool, bufsz);
 
   real_path = pr_fsio_realpath(fxp->pool, path);
   if (real_path != NULL) {
@@ -6625,7 +6644,7 @@ static int xattr_pre_cmd_dispatch(struct fxp_packet *fxp, cmd_rec *cmd) {
     (unsigned long) status_code, fxp_strerror(status_code));
 
   buflen = bufsz = FXP_RESPONSE_DATA_DEFAULT_SZ;
-  buf = ptr = palloc(fxp->pool, bufsz);
+  buf = ptr = fxp_resp_buffer_alloc(fxp->pool, bufsz);
 
   fxp_status_write(fxp->pool, &buf, &buflen, fxp->request_id, status_code,
     fxp_strerror(status_code), NULL);
@@ -6674,7 +6693,7 @@ static int xattr_dir_check(struct fxp_packet *fxp, cmd_rec *cmd,
     (unsigned long) status_code, fxp_strerror(status_code));
 
   buflen = bufsz = FXP_RESPONSE_DATA_DEFAULT_SZ;
-  buf = ptr = palloc(fxp->pool, bufsz);
+  buf = ptr = fxp_resp_buffer_alloc(fxp->pool, bufsz);
 
   fxp_status_write(fxp->pool, &buf, &buflen, fxp->request_id, status_code,
     fxp_strerror(status_code), NULL);
@@ -6741,7 +6760,7 @@ static int fxp_handle_ext_getxattr(struct fxp_packet *fxp, cmd_rec *cmd,
   }
 
   buflen = bufsz = FXP_RESPONSE_DATA_DEFAULT_SZ;
-  buf = ptr = palloc(fxp->pool, bufsz);
+  buf = ptr = fxp_resp_buffer_alloc(fxp->pool, bufsz);
 
   if (valsz > FXP_XATTR_VALUE_MAX_LEN) {
     int xerrno = EINVAL;
@@ -6777,7 +6796,7 @@ static int fxp_handle_ext_getxattr(struct fxp_packet *fxp, cmd_rec *cmd,
   val = pcalloc(fxp->pool, (size_t) valsz+1);
 
   buflen = bufsz = FXP_RESPONSE_DATA_DEFAULT_SZ + valsz;
-  buf = ptr = palloc(fxp->pool, bufsz);
+  buf = ptr = fxp_resp_buffer_alloc(fxp->pool, bufsz);
 
   res = pr_fsio_lgetxattr(fxp->pool, path, name, val, (size_t) valsz);
   if (res < 0) {
@@ -6833,7 +6852,7 @@ static int fxp_handle_ext_fgetxattr(struct fxp_packet *fxp, cmd_rec *cmd,
   }
 
   buflen = bufsz = FXP_RESPONSE_DATA_DEFAULT_SZ;
-  buf = ptr = palloc(fxp->pool, bufsz);
+  buf = ptr = fxp_resp_buffer_alloc(fxp->pool, bufsz);
 
   fxh = fxp_handle_get(handle);
   if (fxh == NULL) {
@@ -6914,7 +6933,7 @@ static int fxp_handle_ext_fgetxattr(struct fxp_packet *fxp, cmd_rec *cmd,
    * buffer for that size.
    */
   buflen = bufsz = FXP_RESPONSE_DATA_DEFAULT_SZ + valsz;
-  buf = ptr = palloc(fxp->pool, bufsz);
+  buf = ptr = fxp_resp_buffer_alloc(fxp->pool, bufsz);
 
   val = pcalloc(fxp->pool, (size_t) valsz+1);
 
@@ -6976,7 +6995,7 @@ static int fxp_handle_ext_listxattr(struct fxp_packet *fxp, cmd_rec *cmd,
   }
 
   buflen = bufsz = FXP_RESPONSE_NAME_DEFAULT_SZ;
-  buf = ptr = palloc(fxp->pool, bufsz);
+  buf = ptr = fxp_resp_buffer_alloc(fxp->pool, bufsz);
 
   res = pr_fsio_llistxattr(fxp->pool, path, &names);
   if (res < 0) {
@@ -7038,7 +7057,7 @@ static int fxp_handle_ext_flistxattr(struct fxp_packet *fxp, cmd_rec *cmd,
   }
 
   buflen = bufsz = FXP_RESPONSE_NAME_DEFAULT_SZ;
-  buf = ptr = palloc(fxp->pool, bufsz);
+  buf = ptr = fxp_resp_buffer_alloc(fxp->pool, bufsz);
 
   fxh = fxp_handle_get(handle);
   if (fxh == NULL) {
@@ -7148,7 +7167,7 @@ static int fxp_handle_ext_removexattr(struct fxp_packet *fxp, cmd_rec *cmd,
   }
 
   buflen = bufsz = FXP_RESPONSE_DATA_DEFAULT_SZ;
-  buf = ptr = palloc(fxp->pool, bufsz);
+  buf = ptr = fxp_resp_buffer_alloc(fxp->pool, bufsz);
 
   if (xattr_write_dir_check(fxp, cmd, path) < 0) {
     return 0;
@@ -7232,7 +7251,7 @@ static int fxp_handle_ext_fremovexattr(struct fxp_packet *fxp, cmd_rec *cmd,
   }
 
   buflen = bufsz = FXP_RESPONSE_DATA_DEFAULT_SZ;
-  buf = ptr = palloc(fxp->pool, bufsz);
+  buf = ptr = fxp_resp_buffer_alloc(fxp->pool, bufsz);
 
   fxh = fxp_handle_get(handle);
   if (fxh == NULL) {
@@ -7363,7 +7382,7 @@ static int fxp_handle_ext_setxattr(struct fxp_packet *fxp, cmd_rec *cmd,
   }
 
   buflen = bufsz = FXP_RESPONSE_DATA_DEFAULT_SZ;
-  buf = ptr = palloc(fxp->pool, bufsz);
+  buf = ptr = fxp_resp_buffer_alloc(fxp->pool, bufsz);
 
   if (pflags & SSH2_FXE_XATTR_CREATE) {
     flags |= PR_FSIO_XATTR_FL_CREATE;
@@ -7456,7 +7475,7 @@ static int fxp_handle_ext_fsetxattr(struct fxp_packet *fxp, cmd_rec *cmd,
   }
 
   buflen = bufsz = FXP_RESPONSE_DATA_DEFAULT_SZ;
-  buf = ptr = palloc(fxp->pool, bufsz);
+  buf = ptr = fxp_resp_buffer_alloc(fxp->pool, bufsz);
 
   fxh = fxp_handle_get(handle);
   if (fxh == NULL) {
@@ -7673,7 +7692,7 @@ static int fxp_handle_ext_user_group_names(struct fxp_packet *fxp) {
   }
 
   buflen = bufsz = (FXP_PACKET_DATA_DEFAULT_SZ * 2);
-  buf = ptr = palloc(fxp->pool, bufsz);
+  buf = ptr = fxp_resp_buffer_alloc(fxp->pool, bufsz);
 
   sftp_msg_write_byte(&buf, &buflen, SFTP_SSH2_FXP_EXTENDED_REPLY);
   /* Note: The current OpenSSH spec for this request is missing this
@@ -7723,7 +7742,7 @@ static int fxp_handle_ext_vendor_id(struct fxp_packet *fxp) {
     vendor_name, product_name, product_version, (pr_off_t) build_number);
 
   buflen = bufsz = FXP_RESPONSE_DATA_DEFAULT_SZ;
-  buf = ptr = palloc(fxp->pool, bufsz);
+  buf = ptr = fxp_resp_buffer_alloc(fxp->pool, bufsz);
 
   status_code = SSH2_FX_OK;
   reason = "OK";
@@ -7751,7 +7770,7 @@ static int fxp_handle_ext_version_select(struct fxp_packet *fxp,
   unsigned int version = 0;
 
   buflen = bufsz = FXP_RESPONSE_DATA_DEFAULT_SZ;
-  buf = ptr = palloc(fxp->pool, bufsz);
+  buf = ptr = fxp_resp_buffer_alloc(fxp->pool, bufsz);
 
   if (!allow_version_select) {
     int xerrno = EACCES;
@@ -7900,7 +7919,7 @@ static int fxp_handle_close(struct fxp_packet *fxp) {
   pr_trace_msg(trace_channel, 7, "received request: CLOSE %s", name);
 
   buflen = bufsz = FXP_RESPONSE_DATA_DEFAULT_SZ;
-  buf = ptr = palloc(fxp->pool, bufsz);
+  buf = ptr = fxp_resp_buffer_alloc(fxp->pool, bufsz);
 
   fxh = fxp_handle_get(name);
   if (fxh == NULL) {
@@ -8205,7 +8224,7 @@ static int fxp_ext_cmd_failed(struct fxp_packet *fxp, int xerrno) {
     (unsigned long) status_code, reason);
 
   buflen = bufsz = FXP_RESPONSE_DATA_DEFAULT_SZ;
-  buf = ptr = palloc(fxp->pool, bufsz);
+  buf = ptr = fxp_resp_buffer_alloc(fxp->pool, bufsz);
 
   fxp_status_write(fxp->pool, &buf, &buflen, fxp->request_id, status_code,
     reason, NULL);
@@ -8244,7 +8263,7 @@ static int fxp_handle_extended(struct fxp_packet *fxp) {
     ext_request_name);
 
   buflen = bufsz = FXP_RESPONSE_DATA_DEFAULT_SZ;
-  buf = ptr = palloc(fxp->pool, bufsz);
+  buf = ptr = fxp_resp_buffer_alloc(fxp->pool, bufsz);
 
   /* We always handle an EXTENDED vendor-id request from the client; the
    * client is telling us its vendor information; it is not requesting that
@@ -8980,7 +8999,7 @@ static int fxp_handle_fsetstat(struct fxp_packet *fxp) {
     attrs_str);
 
   buflen = bufsz = FXP_RESPONSE_DATA_DEFAULT_SZ;
-  buf = ptr = palloc(fxp->pool, bufsz);
+  buf = ptr = fxp_resp_buffer_alloc(fxp->pool, bufsz);
 
   fxh = fxp_handle_get(name);
   if (fxh == NULL) {
@@ -9438,7 +9457,7 @@ static int fxp_handle_init(struct fxp_packet *fxp) {
     (unsigned long) fxp_session->client_version);
 
   buflen = bufsz = FXP_RESPONSE_DATA_DEFAULT_SZ;
-  buf = ptr = palloc(fxp->pool, bufsz);
+  buf = ptr = fxp_resp_buffer_alloc(fxp->pool, bufsz);
 
   sftp_msg_write_byte(&buf, &buflen, SFTP_SSH2_FXP_VERSION);
 
@@ -9603,7 +9622,7 @@ static int fxp_handle_link(struct fxp_packet *fxp) {
   target_path = dir_canonical_vpath(fxp->pool, target_path);
 
   buflen = bufsz = FXP_RESPONSE_DATA_DEFAULT_SZ;
-  buf = ptr = palloc(fxp->pool, bufsz);
+  buf = ptr = fxp_resp_buffer_alloc(fxp->pool, bufsz);
 
   if (is_symlink == FALSE) {
     if (pr_cmd_dispatch_phase(cmd, PRE_CMD, 0) < 0) {
@@ -9759,7 +9778,7 @@ static int fxp_handle_lock(struct fxp_packet *fxp) {
     name, (pr_off_t) offset, (pr_off_t) lock_len, (unsigned long) lock_flags);
 
   buflen = bufsz = FXP_RESPONSE_DATA_DEFAULT_SZ;
-  buf = ptr = palloc(fxp->pool, bufsz);
+  buf = ptr = fxp_resp_buffer_alloc(fxp->pool, bufsz);
 
   fxh = fxp_handle_get(name);
   if (fxh == NULL) {
@@ -10248,7 +10267,7 @@ static int fxp_handle_mkdir(struct fxp_packet *fxp) {
   }
 
   buflen = bufsz = FXP_RESPONSE_DATA_DEFAULT_SZ;
-  buf = ptr = palloc(fxp->pool, bufsz);
+  buf = ptr = fxp_resp_buffer_alloc(fxp->pool, bufsz);
 
   cmd = fxp_cmd_alloc(fxp->pool, "MKDIR", path);
   cmd->cmd_class = CL_DIRS|CL_WRITE|CL_SFTP;
@@ -10492,7 +10511,7 @@ static int fxp_handle_open(struct fxp_packet *fxp) {
   pr_proctitle_set("%s - %s: OPEN %s", session.user, session.proc_prefix, path);
 
   buflen = bufsz = FXP_RESPONSE_DATA_DEFAULT_SZ;
-  buf = ptr = palloc(fxp->pool, bufsz);
+  buf = ptr = fxp_resp_buffer_alloc(fxp->pool, bufsz);
 
   if (fxp_session->client_version > 4) {
     desired_access = sftp_msg_read_int(fxp->pool, &fxp->payload,
@@ -11261,7 +11280,7 @@ static int fxp_handle_opendir(struct fxp_packet *fxp) {
   cmd->cmd_id = SFTP_CMD_ID;
 
   buflen = bufsz = FXP_RESPONSE_DATA_DEFAULT_SZ;
-  buf = ptr = palloc(fxp->pool, bufsz);
+  buf = ptr = fxp_resp_buffer_alloc(fxp->pool, bufsz);
 
   if (pr_cmd_dispatch_phase(cmd, PRE_CMD, 0) < 0) {
     uint32_t status_code = SSH2_FX_PERMISSION_DENIED;
@@ -11620,7 +11639,7 @@ static int fxp_handle_read(struct fxp_packet *fxp) {
     name, (pr_off_t) offset, (unsigned long) datalen);
 
   buflen = bufsz = datalen + 64;
-  buf = ptr = palloc(fxp->pool, bufsz);
+  buf = ptr = fxp_resp_buffer_alloc(fxp->pool, bufsz);
 
   fxh = fxp_handle_get(name);
   if (fxh == NULL) {
@@ -12959,7 +12978,7 @@ static int fxp_handle_remove(struct fxp_packet *fxp) {
   cmd->cmd_id = SFTP_CMD_ID;
 
   buflen = bufsz = FXP_RESPONSE_DATA_DEFAULT_SZ;
-  buf = ptr = palloc(fxp->pool, bufsz);
+  buf = ptr = fxp_resp_buffer_alloc(fxp->pool, bufsz);
 
   if (pr_cmd_dispatch_phase(cmd, PRE_CMD, 0) < 0) {
     status_code = SSH2_FX_PERMISSION_DENIED;
@@ -13283,7 +13302,7 @@ static int fxp_handle_rename(struct fxp_packet *fxp) {
   cmd->cmd_id = SFTP_CMD_ID;
 
   buflen = bufsz = FXP_RESPONSE_DATA_DEFAULT_SZ;
-  buf = ptr = palloc(fxp->pool, bufsz);
+  buf = ptr = fxp_resp_buffer_alloc(fxp->pool, bufsz);
 
   cmd2 = fxp_cmd_alloc(fxp->pool, C_RNFR, old_path);
   cmd2->cmd_class = CL_MISC|CL_WRITE;
@@ -13671,7 +13690,7 @@ static int fxp_handle_rmdir(struct fxp_packet *fxp) {
   cmd->cmd_id = SFTP_CMD_ID;
 
   buflen = bufsz = FXP_RESPONSE_DATA_DEFAULT_SZ;
-  buf = ptr = palloc(fxp->pool, bufsz);
+  buf = ptr = fxp_resp_buffer_alloc(fxp->pool, bufsz);
 
   if (pr_cmd_dispatch_phase(cmd, PRE_CMD, 0) < 0) {
     status_code = SSH2_FX_PERMISSION_DENIED;
@@ -13959,7 +13978,7 @@ static int fxp_handle_setstat(struct fxp_packet *fxp) {
   cmd->cmd_id = SFTP_CMD_ID;
 
   buflen = bufsz = FXP_RESPONSE_DATA_DEFAULT_SZ;
-  buf = ptr = palloc(fxp->pool, bufsz);
+  buf = ptr = fxp_resp_buffer_alloc(fxp->pool, bufsz);
 
   if (pr_cmd_dispatch_phase(cmd, PRE_CMD, 0) < 0) {
     status_code = SSH2_FX_PERMISSION_DENIED;
@@ -14441,7 +14460,7 @@ static int fxp_handle_symlink(struct fxp_packet *fxp) {
   }
 
   buflen = bufsz = FXP_RESPONSE_DATA_DEFAULT_SZ;
-  buf = ptr = palloc(fxp->pool, bufsz);
+  buf = ptr = fxp_resp_buffer_alloc(fxp->pool, bufsz);
 
   /* Make sure we use the full paths. */
   vpath = dir_canonical_vpath(fxp->pool, target_path);
@@ -14756,7 +14775,7 @@ static int fxp_handle_write(struct fxp_packet *fxp) {
     name, (pr_off_t) offset, (unsigned long) datalen);
 
   buflen = bufsz = FXP_RESPONSE_DATA_DEFAULT_SZ;
-  buf = ptr = palloc(fxp->pool, bufsz);
+  buf = ptr = fxp_resp_buffer_alloc(fxp->pool, bufsz);
 
   fxh = fxp_handle_get(name);
   if (fxh == NULL) {
@@ -15129,7 +15148,7 @@ static int fxp_handle_unlock(struct fxp_packet *fxp) {
     (pr_off_t) offset, (pr_off_t) lock_len, (unsigned long) lock_flags);
 
   buflen = bufsz = FXP_RESPONSE_DATA_DEFAULT_SZ;
-  buf = ptr = palloc(fxp->pool, bufsz);
+  buf = ptr = fxp_resp_buffer_alloc(fxp->pool, bufsz);
 
   fxh = fxp_handle_get(name);
   if (fxh == NULL) {
