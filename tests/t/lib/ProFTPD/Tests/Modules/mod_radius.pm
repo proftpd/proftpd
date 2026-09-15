@@ -182,7 +182,11 @@ sub radius_auth_username_too_long_issue2330 {
 
   my $setup = test_setup($tmpdir, 'radius', $radius_user, $radius_passwd);
 
-  my $bad_username = ('A' x 1024) . 'B';
+  # PR_TUNABLE_LOGIN_MAX, enforced by mod_auth, is 256 by default.  But
+  # RADIUS packet attributes are usually only 255 bytes (253 bytes of data
+  # preceded by 2 bytes for the data length).  Let's see what happens if
+  # we use a username whose length threads that needle, eh?
+  my $bad_username = ('A' x 255);
 
   my $config = {
     PidFile => $setup->{pid_file},
@@ -231,7 +235,7 @@ sub radius_auth_username_too_long_issue2330 {
       # Allow for server startup
       sleep(1);
 
-      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
+      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port, 0, 10);
       eval { $client->login($bad_username, $setup->{passwd}) };
       unless ($@) {
         die("Login succeeded unexpectedly");
@@ -241,7 +245,7 @@ sub radius_auth_username_too_long_issue2330 {
       my $resp_msg = $client->response_msg();
       $client->quit();
 
-      my $expected = 501;
+      my $expected = 530;
       $self->assert($expected == $resp_code,
         test_msg("Expected response code $expected, got $resp_code"));
 
@@ -268,6 +272,35 @@ sub radius_auth_username_too_long_issue2330 {
 
   server_stop($setup->{pid_file});
   $self->assert_child_ok($pid);
+
+  eval {
+    if (open(my $fh, "< $setup->{log_file}")) {
+      my $ok = 0;
+
+      while (my $line = <$fh>) {
+        chomp($line);
+
+        if ($ENV{TEST_VERBOSE}) {
+          print STDERR "# $line\n";
+        }
+
+        if ($line =~ /client-supplied username length/) {
+          $ok = 1;
+          last;
+        }
+      }
+
+      close($fh);
+      $self->assert($ok, test_msg("Did not see expected Trace message"));
+
+    } else {
+      die("Can't read $setup->{log_file}: $!");
+    }
+
+  };
+  if ($@) {
+    $ex = $@ unless $ex;
+  }
 
   test_cleanup($setup, $ex);
 }
