@@ -24,6 +24,7 @@
   underflow computation.
 - Issue 2319 - Stale password-less authentication flag in mod_auth can allow
   wrong passwords to authenticate.
+- Issue 2330 - Stack overflow possible via long PASS text in mod_radius module.
 
 1.3.9d - Released 14-Aug-2026
 --------------------------------
