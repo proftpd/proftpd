@@ -2611,6 +2611,16 @@ static int radius_build_packet(radius_packet_t *packet,
 
   /* Add the user attribute. */
   userlen = strlen((const char *) user);
+  if (userlen > RADIUS_STRING_LEN) {
+    /* For now, just truncate usernames that exceed the "string" RADIUS
+     * attribute max length.
+     */
+    pr_trace_msg(trace_channel, 3,
+      "client-supplied username length (%lu) exceeds maximum (%lu), truncating",
+      (unsigned long) userlen, (unsigned long) RADIUS_STRING_LEN);
+    userlen = RADIUS_STRING_LEN;
+  }
+
   radius_add_attrib(packet, RADIUS_USER_NAME, user, userlen);
 
   /* Add the password attribute, if given. */
