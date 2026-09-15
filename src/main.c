@@ -2361,6 +2361,7 @@ static void show_settings(void) {
   printf("    PR_TUNABLE_HASH_TABLE_SIZE = %u\n", PR_TUNABLE_HASH_TABLE_SIZE);
   printf("    PR_TUNABLE_LOGIN_MAX = %u\n", PR_TUNABLE_LOGIN_MAX);
   printf("    PR_TUNABLE_NEW_POOL_SIZE = %u\n", PR_TUNABLE_NEW_POOL_SIZE);
+  printf("    PR_TUNABLE_PASSWORD_MAX = %u\n", PR_TUNABLE_PASSWORD_MAX);
   printf("    PR_TUNABLE_PATH_MAX = %u\n", PR_TUNABLE_PATH_MAX);
   printf("    PR_TUNABLE_SCOREBOARD_BUFFER_SIZE = %u\n",
     PR_TUNABLE_SCOREBOARD_BUFFER_SIZE);
