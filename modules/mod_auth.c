@@ -145,9 +145,12 @@ static int auth_session_timeout_cb(CALLBACK_FRAME) {
 }
 
 static void reset_authenticated_without_pass(cmd_rec *cmd) {
-  unsigned char *authenticated;
+  unsigned char *authenticated = NULL;
 
-  authenticated = get_param_ptr(cmd->server->conf, "authenticated", FALSE);
+  if (cmd != NULL) {
+    authenticated = get_param_ptr(cmd->server->conf, "authenticated", FALSE);
+  }
+
   if (authenticated != NULL) {
     remove_config(main_server->conf, "authenticated", FALSE);
   }
