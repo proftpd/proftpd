@@ -1541,6 +1541,21 @@ my $TESTS = {
     test_class => [qw(bug forking sftp)],
   },
 
+  sftp_config_key_fingerprint_sha512_base64_issue1916 => {
+    order => ++$order,
+    test_class => [qw(bug forking sftp)],
+  },
+
+  sftp_config_key_fingerprint_sha512_hex_issue1916 => {
+    order => ++$order,
+    test_class => [qw(bug forking sftp)],
+  },
+
+  sftp_config_key_fingerprint_sha512_hex_colons_issue1916 => {
+    order => ++$order,
+    test_class => [qw(bug forking sftp)],
+  },
+
   sftp_config_key_fingerprint_sha256_base64_issue1916 => {
     order => ++$order,
     test_class => [qw(bug forking sftp)],
@@ -44363,6 +44378,36 @@ sub sftp_config_key_fingerprint_default_issue1916 {
   my $key_fingerprints;
   my $expected_algo = 'SHA256';
   my $expected_fingerprint = 'rRPP8wf0HyCVROVx2ek8nPpLKtENkPsfpQ536sGR+Tc';
+
+  sftp_config_key_fingerprints($self, $key_fingerprints, $expected_algo,
+    $expected_fingerprint);
+}
+
+sub sftp_config_key_fingerprint_sha512_base64_issue1916 {
+  my $self = shift;
+  my $key_fingerprints = 'sha512+base64';
+  my $expected_algo = 'SHA512';
+  my $expected_fingerprint = '+A+xjJxzEIqn6hneTKysfgkZCf/2/rzdydp4BGL945XBh6cdUIjqPbj5UaNZmb/EYaAmtywnzeRamrurqXg3OA';
+
+  sftp_config_key_fingerprints($self, $key_fingerprints, $expected_algo,
+    $expected_fingerprint);
+}
+
+sub sftp_config_key_fingerprint_sha512_hex_issue1916 {
+  my $self = shift;
+  my $key_fingerprints = 'sha512+hex';
+  my $expected_algo = 'SHA512';
+  my $expected_fingerprint = 'f80fb18c9c73108aa7ea19de4cacac7e091909fff6febcddc9da780462fde395c187a71d5088ea3db8f951a35999bfc461a026b72c27cde45a9abbaba9783738';
+
+  sftp_config_key_fingerprints($self, $key_fingerprints, $expected_algo,
+    $expected_fingerprint);
+}
+
+sub sftp_config_key_fingerprint_sha512_hex_colons_issue1916 {
+  my $self = shift;
+  my $key_fingerprints = 'sha512+hex+colons';
+  my $expected_algo = 'SHA512';
+  my $expected_fingerprint = 'f8:0f:b1:8c:9c:73:10:8a:a7:ea:19:de:4c:ac:ac:7e:09:19:09:ff:f6:fe:bc:dd:c9:da:78:04:62:fd:e3:95:c1:87:a7:1d:50:88:ea:3d:b8:f9:51:a3:59:99:bf:c4:61:a0:26:b7:2c:27:cd:e4:5a:9a:bb:ab:a9:78:37:38';
 
   sftp_config_key_fingerprints($self, $key_fingerprints, $expected_algo,
     $expected_fingerprint);

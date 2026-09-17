@@ -1775,7 +1775,11 @@ MODRET set_sftpkeyfingerprints(cmd_rec *cmd) {
     *ptr = '\0';
   }
 
-  if (strcasecmp(text, "SHA256") == 0) {
+  if (strcasecmp(text, "SHA512") == 0) {
+    algo_id = SFTP_KEYS_FP_DIGEST_SHA512;
+    algo = "SHA512";
+
+  } else if (strcasecmp(text, "SHA256") == 0) {
     algo_id = SFTP_KEYS_FP_DIGEST_SHA256;
     algo = "SHA256";
 

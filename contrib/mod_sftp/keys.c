@@ -2552,6 +2552,13 @@ const char *sftp_keys_get_fingerprint2(pool *p, unsigned char *key_data,
       break;
 #endif /* HAVE_SHA256_OPENSSL */
 
+#if defined(HAVE_SHA512_OPENSSL)
+    case SFTP_KEYS_FP_DIGEST_SHA512:
+      digest = EVP_sha512();
+      digest_name = "sha512";
+      break;
+#endif /* HAVE_SHA512_OPENSSL */
+
     default:
       (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
         "unsupported key fingerprint digest algorithm (%d)", digest_algo);
