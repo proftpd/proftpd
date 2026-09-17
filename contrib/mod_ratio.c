@@ -66,7 +66,9 @@
 
 #include "conf.h"
 
-int gotratuser,fileerr;
+static int ratio_engine = FALSE;
+
+static int gotratuser = 0, fileerr = 0;
 
 static struct
 {
@@ -82,7 +84,6 @@ static struct
 
 static struct
 {
-  int enable;
   int save;
   char user [PR_TUNABLE_LOGIN_MAX];
 
@@ -272,14 +273,16 @@ MODRET calc_ratios (cmd_rec * cmd)
   char **data;
   void *ptr;
 
-  ptr = get_param_ptr (main_server->conf, "Ratios", FALSE);
-  if (ptr)
-    g.enable = *((int *) ptr);
+  ptr = get_param_ptr(main_server->conf, "Ratios", FALSE);
+  if (ptr != NULL) {
+    ratio_engine = *((int *) ptr);
+  }
 
-  if (!g.enable)
-    return PR_DECLINED (cmd);
+  if (ratio_engine == FALSE) {
+    return PR_DECLINED(cmd);
+  }
 
-  mr = _dispatch (cmd, "getstats");
+  mr = _dispatch(cmd, "getstats");
   if (MODRET_ISHANDLED(mr) &&
       MODRET_HASDATA(mr))
     {
@@ -389,9 +392,7 @@ MODRET calc_ratios (cmd_rec * cmd)
   return PR_DECLINED (cmd);
 }
 
-static void
-log_ratios (cmd_rec * cmd)
-{
+static void log_ratios(cmd_rec *cmd) {
   char buf[1024] = {'\0'};
 
   memset(buf, '\0', sizeof(buf));
@@ -523,17 +524,20 @@ update_stats (void)
         fclose(newfile);
 }
 
-MODRET
-pre_cmd_retr (cmd_rec * cmd)
-{
+/* Command handlers.
+ */
+
+MODRET pre_cmd_retr(cmd_rec *cmd) {
   char *path;
   int fsize = 0;
   struct stat sbuf;
 
-  calc_ratios (cmd);
-  if (!g.enable)
-    return PR_DECLINED (cmd);
-  log_ratios (cmd);
+  if (ratio_engine == FALSE) {
+    return PR_DECLINED(cmd);
+  }
+
+  calc_ratios(cmd);
+  log_ratios(cmd);
 
   if (!RATIO_ENFORCE)
     return PR_DECLINED (cmd);
@@ -569,64 +573,84 @@ pre_cmd_retr (cmd_rec * cmd)
   return PR_DECLINED (cmd);
 }
 
-MODRET ratio_log_pass(cmd_rec *cmd) {
-  if (session.anon_user) {
+MODRET log_pass(cmd_rec *cmd) {
+  char buf[256];
+
+  if (ratio_engine == FALSE) {
+    return PR_DECLINED(cmd);
+  }
+
+  if (session.anon_user != NULL) {
     sstrncpy(g.user, session.anon_user, sizeof(g.user));
   }
 
-  calc_ratios (cmd);
-  if (g.enable) {
-    char buf[256];
 
-    memset(buf, '\0', sizeof(buf));
-    pr_snprintf(buf, sizeof(buf)-1, RATIO_STUFFS);
-    pr_log_pri(PR_LOG_INFO, "Ratio: %s/%s %s[%s]: %s.", g.user,
-      session.group, session.c->remote_name, pr_netaddr_get_ipstr
-      (session.c->remote_addr), buf);
+  calc_ratios(cmd);
+
+  memset(buf, '\0', sizeof(buf));
+  pr_snprintf(buf, sizeof(buf)-1, RATIO_STUFFS);
+  pr_log_pri(PR_LOG_INFO, "Ratio: %s/%s %s[%s]: %s.", g.user, session.group,
+    session.c->remote_name, pr_netaddr_get_ipstr(session.c->remote_addr), buf);
+
+  return PR_DECLINED(cmd);
+}
+
+MODRET pre_cmd(cmd_rec *cmd) {
+  if (ratio_engine == FALSE) {
+    return PR_DECLINED(cmd);
   }
 
-  return PR_DECLINED (cmd);
+  if (pr_cmd_cmp(cmd, PR_CMD_RETR_ID) == 0 ||
+      pr_cmd_cmp(cmd, PR_CMD_STOR_ID) == 0) {
+    calc_ratios(cmd);
+  }
+
+  log_ratios(cmd);
+  return PR_DECLINED(cmd);
 }
 
-MODRET
-pre_cmd (cmd_rec * cmd)
-{
-  if (g.enable)
-    {
-    /*  if (!strcasecmp (cmd->argv[0], "STOR")) */
-      if (strcasecmp (cmd->argv[0], "STOR") || strcasecmp(cmd->argv[0], "RETR"))
-	calc_ratios (cmd);
-      log_ratios (cmd);
+MODRET post_cwd(cmd_rec *cmd) {
+  config_rec *c;
+
+  if (ratio_engine == FALSE) {
+    return PR_DECLINED(cmd);
+  }
+
+  c = find_config(main_server->conf, CONF_PARAM, "CwdRatioMsg", TRUE);
+  if (c != NULL) {
+    char *path;
+
+    path = dir_realpath(cmd->tmp_pool, cmd->argv[1]);
+    while (path != NULL && c != NULL) {
+      char *cwd_ratio_msg;
+
+      cwd_ratio_msg = c->argv[0];
+
+      /* Handle an empty text message. */
+      if (*cwd_ratio_msg == '\0') {
+        return PR_DECLINED(cmd);
+      }
+
+      pr_response_add(R_250, "%s", cwd_ratio_msg);
+
+      c = find_config_next(c, c->next, CONF_PARAM, "CwdRatioMsg", FALSE);
     }
-  return PR_DECLINED (cmd);
+  }
+
+  return PR_DECLINED(cmd);
 }
 
-MODRET
-cmd_cwd (cmd_rec * cmd)
-{
-  char *dir;
-  config_rec *c = find_config (main_server->conf, CONF_PARAM, "CwdRatioMsg", TRUE);
-  if (c)
-    {
-      dir = dir_realpath (cmd->tmp_pool, cmd->argv[1]);
-      while (dir && c)
-	{
-	  if (!*((char *) c->argv[0]))
-	    return PR_DECLINED (cmd);
-	  pr_response_add (R_250, "%s", (char *) c->argv[0]);
-	  c = find_config_next (c, c->next, CONF_PARAM, "CwdRatioMsg", FALSE);
-	}
-    }
-  return PR_DECLINED (cmd);
-}
-
-MODRET ratio_post_cmd(cmd_rec *cmd) {
+MODRET post_cmd(cmd_rec *cmd) {
   FILE *usrfile = NULL, *newfile = NULL;
   char sbuf1[128] = {'\0'}, sbuf2[128] = {'\0'},
        sbuf3[128] = {'\0'}, usrstr[256] = {'\0'};
   char *ratname;
-  int ulfiles,dlfiles,cpc;
+  int ulfiles, dlfiles, cpc;
   off_t ulbytes = 0, dlbytes = 0;
+
+  if (ratio_engine == FALSE) {
+    return PR_DECLINED(cmd);
+  }
 
   if (!gotratuser && g.save) {
 	usrfile = fopen(g.ratiofile, "r");
@@ -634,8 +658,8 @@ MODRET ratio_post_cmd(cmd_rec *cmd) {
 	    pr_log_debug(DEBUG3, MOD_RATIO_VERSION
                 ": error opening ratios file '%s': %s", g.ratiofile,
                 strerror(errno));
-	    gotratuser = 1;
-	    fileerr = 1;
+            gotratuser = 1;
+            fileerr = 1;
         }
   }
 
@@ -763,7 +787,7 @@ MODRET ratio_post_cmd(cmd_rec *cmd) {
       }
   }
 
-  if (g.enable) {
+  if (ratio_engine == TRUE) {
       int cwding = !strcasecmp (cmd->argv[0], "CWD");
     char *r = (cwding) ? R_250 : R_DUP;
       sbuf1[0] = sbuf2[0] = sbuf3[0] = 0;
@@ -795,76 +819,100 @@ MODRET ratio_post_cmd(cmd_rec *cmd) {
   return PR_DECLINED(cmd);
 }
 
-MODRET
-cmd_site (cmd_rec * cmd)
-{
+MODRET cmd_site(cmd_rec *cmd) {
   char buf[128] = {'\0'};
 
-  if (cmd->argc < 2)
+  if (ratio_engine == FALSE) {
     return PR_DECLINED(cmd);
+  }
+
+  if (cmd->argc < 2) {
+    return PR_DECLINED(cmd);
+  }
 
   if (strcasecmp(cmd->argv[1], "RATIO") == 0) {
     calc_ratios(cmd);
-    pr_snprintf(buf, sizeof(buf), RATIO_STUFFS);
+
+    memset(buf, '\0', sizeof(buf));
+    pr_snprintf(buf, sizeof(buf)-1, RATIO_STUFFS);
     pr_response_add(R_214, "Current Ratio: ( %s )", buf);
-    if(stats.frate)
+
+    if (stats.frate > 0) {
       pr_response_add(R_214,
-		   "Files: %s  Down: %d  Up: %d  CR: %d file%s",
-		   stats.ftext, stats.fretr, stats.fstor,
-		   stats.files, (stats.files != 1) ? "s" : "");
-    if(stats.brate)
+        "Files: %s  Down: %d  Up: %d  CR: %d file%s", stats.ftext,
+        stats.fretr, stats.fstor, stats.files, (stats.files != 1) ? "s" : "");
+    }
+
+    if (stats.brate > 0) {
       pr_response_add(R_214,
-		   "Bytes: %s  Down: %lumb  Up: %lumb  CR: %lu Mbytes",
-		   stats.btext, (unsigned long) (stats.bretr / 1024),
-                   (unsigned long) (stats.bstor / 1024),
-                   (unsigned long) (stats.bytes / 1024));
+        "Bytes: %s  Down: %lumb  Up: %lumb  CR: %lu Mbytes", stats.btext,
+        (unsigned long) (stats.bretr / 1024),
+        (unsigned long) (stats.bstor / 1024),
+        (unsigned long) (stats.bytes / 1024));
+    }
+
     return PR_HANDLED(cmd);
   }
 
-  if (strcasecmp (cmd->argv[1], "HELP") == 0) {
-    pr_response_add(R_214,
-		 "The following SITE extensions are recognized:");
-    pr_response_add(R_214, "RATIO " "-- show all ratios in effect");
+  if (strcasecmp(cmd->argv[1], "HELP") == 0) {
+    pr_response_add(R_214, "%s",
+      "The following SITE extensions are recognized:");
+    pr_response_add(R_214, "%s", "RATIO -- show all ratios in effect");
   }
 
-  return PR_DECLINED (cmd);
+  return PR_DECLINED(cmd);
 }
 
 /* FIXME: because of how ratio and sql interact, the status sent after
    STOR and RETR commands is always out-of-date.  Reorder module loading?  */
 
-MODRET ratio_post_retr(cmd_rec *cmd) {
+MODRET post_retr(cmd_rec *cmd) {
+  if (ratio_engine == FALSE) {
+    return PR_DECLINED(cmd);
+  }
+
   stats.fretr++;
   stats.bretr += (session.xfer.total_bytes / 1024);
 
-  calc_ratios (cmd);
+  calc_ratios(cmd);
 
   if (!fileerr && g.save) {
-      update_stats ();
+    update_stats();
   }
 
-  return ratio_post_cmd(cmd);
+  return post_cmd(cmd);
 }
 
-MODRET ratio_post_stor(cmd_rec *cmd) {
+MODRET post_stor(cmd_rec *cmd) {
+  if (ratio_engine == FALSE) {
+    return PR_DECLINED(cmd);
+  }
+
   stats.fstor++;
   stats.bstor += (session.xfer.total_bytes / 1024);
 
-  calc_ratios (cmd);
+  calc_ratios(cmd);
 
   if (!fileerr && g.save) {
-      update_stats ();
+    update_stats();
   }
 
-  return ratio_post_cmd(cmd);
+  return post_cmd(cmd);
 }
 
-MODRET
-cmd_user (cmd_rec * cmd)
-{
-  if (!g.user[0])
-    sstrncpy (g.user, cmd->argv[1], PR_TUNABLE_LOGIN_MAX);
-  return PR_DECLINED (cmd);
+MODRET post_pass(cmd_rec *cmd) {
+  if (ratio_engine == FALSE) {
+    return PR_DECLINED(cmd);
+  }
+
+  /* Make a copy of the provided username, but only once authentication has
+   * completed successfully.
+   */
+  if (!g.user[0]) {
+    sstrncpy(g.user, session.user, sizeof(g.user));
+  }
+
+  return PR_DECLINED(cmd);
 }
 
 /* **************************************************************** */
@@ -935,31 +983,46 @@ add_str (cmd_rec * cmd)
 static int ratio_sess_init(void) {
   void *ptr;
 
-  memset(&g, 0, sizeof (g));
+  memset(&g, 0, sizeof(g));
 
-  ptr = get_param_ptr(TOPLEVEL_CONF, "Ratios", FALSE);
-  if (ptr) {
-    g.enable = *((int *) ptr);
+  ptr = get_param_ptr(main_server->conf, "Ratios", FALSE);
+  if (ptr != NULL) {
+    ratio_engine = *((int *) ptr);
   }
 
-  ptr = get_param_ptr (TOPLEVEL_CONF, "SaveRatios", FALSE);
-  if (ptr)
+  if (ratio_engine == FALSE) {
+    return 0;
+  }
+
+  ptr = get_param_ptr(main_server->conf, "SaveRatios", FALSE);
+  if (ptr != NULL) {
     g.save = *((int *) ptr);
+  }
 
-  if (!(g.filemsg = get_param_ptr (TOPLEVEL_CONF, "FileRatioErrMsg", FALSE)))
+  g.filemsg = get_param_ptr(main_server->conf, "FileRatioErrMsg", FALSE);
+  if (g.filemsg == NULL) {
     g.filemsg = "Too few files uploaded to earn file -- please upload more.";
+  }
 
-  if (!(g.ratiofile = get_param_ptr (TOPLEVEL_CONF, "RatioFile", FALSE)))
+  g.ratiofile = get_param_ptr(main_server->conf, "RatioFile", FALSE);
+  if (g.ratiofile == NULL) {
     g.ratiofile = "";
+  }
 
-  if (!(g.ratiotmp = get_param_ptr (TOPLEVEL_CONF, "RatioTempFile", FALSE)))
+  g.ratiotmp = get_param_ptr(main_server->conf, "RatioTempFile", FALSE);
+  if (g.ratiotmp == NULL) {
     g.ratiotmp = "";
+  }
 
-  if (!(g.bytemsg = get_param_ptr (TOPLEVEL_CONF, "ByteRatioErrMsg", FALSE)))
+  g.bytemsg = get_param_ptr(main_server->conf, "ByteRatioErrMsg", FALSE);
+  if (g.bytemsg == NULL) {
     g.bytemsg = "Too few bytes uploaded to earn more data -- please upload.";
+  }
 
-  if (!(g.leechmsg = get_param_ptr (TOPLEVEL_CONF, "LeechRatioMsg", FALSE)))
+  g.leechmsg = get_param_ptr(main_server->conf, "LeechRatioMsg", FALSE);
+  if (g.leechmsg == NULL) {
     g.leechmsg = "10,000,000:1  CR: LEECH";
+  }
 
   return 0;
 }
@@ -968,27 +1031,26 @@ static int ratio_sess_init(void) {
  */
 
 static cmdtable ratio_cmdtab[] = {
-  { PRE_CMD,  C_CWD,	G_NONE, pre_cmd, 	FALSE, FALSE },
-  { CMD,      C_CWD,	G_NONE, cmd_cwd, 	FALSE, FALSE },
+  { PRE_CMD,  C_CWD,	G_NONE, pre_cmd, 	TRUE, FALSE },
+  { POST_CMD, C_CWD,	G_NONE, post_cwd, 	FALSE, FALSE },
 
-  { PRE_CMD,  C_LIST,	G_NONE, pre_cmd, 	FALSE, FALSE },
-  { POST_CMD, C_LIST,	G_NONE, ratio_post_cmd,	FALSE, FALSE },
+  { PRE_CMD,  C_LIST,	G_NONE, pre_cmd, 	TRUE, FALSE },
+  { POST_CMD, C_LIST,	G_NONE, post_cmd,	FALSE, FALSE },
 
-  { PRE_CMD,  C_NLST,	G_NONE, pre_cmd, 	FALSE, FALSE },
-  { POST_CMD, C_NLST,	G_NONE, ratio_post_cmd,	FALSE, FALSE },
+  { PRE_CMD,  C_NLST,	G_NONE, pre_cmd, 	TRUE, FALSE },
+  { POST_CMD, C_NLST,	G_NONE, post_cmd,	FALSE, FALSE },
 
-  { PRE_CMD,  C_RETR,   G_NONE, pre_cmd_retr,	FALSE, FALSE },
-  { POST_CMD, C_RETR,   G_NONE, ratio_post_retr,FALSE, FALSE },
+  { PRE_CMD,  C_RETR,   G_NONE, pre_cmd_retr,	TRUE, FALSE },
+  { POST_CMD, C_RETR,   G_NONE, post_retr,	FALSE, FALSE },
 
-  { PRE_CMD,  C_STOR,	G_NONE, pre_cmd, 	FALSE, FALSE },
-  { POST_CMD, C_STOR,	G_NONE, ratio_post_stor,FALSE, FALSE },
+  { PRE_CMD,  C_STOR,	G_NONE, pre_cmd, 	TRUE, FALSE },
+  { POST_CMD, C_STOR,	G_NONE, post_stor,	FALSE, FALSE },
 
-  { CMD,      C_SITE,	G_NONE, cmd_site, 	FALSE, FALSE },
+  { CMD,      C_SITE,	G_NONE, cmd_site, 	TRUE, FALSE },
 
-  { CMD,      C_USER,	G_NONE, cmd_user, 	FALSE, FALSE },
-
-  { POST_CMD, C_PASS,	G_NONE, ratio_post_cmd, FALSE, FALSE },
-  { LOG_CMD,  C_PASS,	G_NONE, ratio_log_pass, FALSE, FALSE },
+  { POST_CMD, C_PASS,	G_NONE, post_cmd,	FALSE, FALSE },
+  { POST_CMD, C_PASS,	G_NONE, post_pass,	FALSE, FALSE },
+  { LOG_CMD,  C_PASS,	G_NONE, log_pass,	FALSE, FALSE },
 
   { 0, NULL }
 };
