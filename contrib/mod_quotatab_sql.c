@@ -670,7 +670,7 @@ static quota_table_t *sqltab_open(pool *parent_pool, quota_tabtype_t tab_type,
      *  "/<select-named-query>/<update-named-query>/<insert-named-query>/"
      */
 
-    start = strchr(srcinfo, '/');
+    start = (char *) strchr(srcinfo, '/');
     if (start == NULL) {
       quotatab_log("error: badly formatted source info '%s'", srcinfo);
       destroy_pool(tmp_pool);
@@ -764,7 +764,7 @@ static quota_table_t *sqltab_open(pool *parent_pool, quota_tabtype_t tab_type,
     ((char **) tab->tab_data)[2] = pstrdup(tab->tab_pool, insert_query);
 
   } else if (tab->tab_type == TYPE_LIMIT) {
-    char *start = NULL, *select_query = NULL;
+    const char *start = NULL, *select_query = NULL;
 
     /* Parse the SELECT query name out of the srcinfo string.  Lookup and
      * store the queries in the tab_data area, so that it need not be looked
