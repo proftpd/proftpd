@@ -87,8 +87,6 @@ static struct
   int save;
   char user [PR_TUNABLE_LOGIN_MAX];
 
-  const char *rtype;          /* The ratio type currently in effect. */
-
   const char *filemsg;
   const char *bytemsg;
   const char *leechmsg;
@@ -302,7 +300,6 @@ MODRET calc_ratios (cmd_rec * cmd)
 	pr_log_debug(DEBUG4, MOD_RATIO_VERSION
           ": warning: getratio on %s not unique", g.user);
       update_ratios(data[0], data[1], data[2], data[3]);
-      g.rtype = "U";
       return PR_DECLINED (cmd);
     }
 
@@ -328,7 +325,6 @@ MODRET calc_ratios (cmd_rec * cmd)
 		       PR_FNM_NOESCAPE | PR_FNM_CASEFOLD))
 	{
 	  update_ratios(c->argv[1], c->argv[2], c->argv[3], c->argv[4]);
-	  g.rtype = "h";
 	  return PR_DECLINED (cmd);
 	}
       c = find_config_next (c, c->next, CONF_PARAM, "HostRatio", FALSE);
@@ -341,7 +337,6 @@ MODRET calc_ratios (cmd_rec * cmd)
 		*(char *) c->argv[0] == '*')
 	{
 	  update_ratios(c->argv[1], c->argv[2], c->argv[3], c->argv[4]);
-	  g.rtype = "a";
 	  return PR_DECLINED (cmd);
 	}
       c = find_config_next (c, c->next, CONF_PARAM, "AnonRatio", FALSE);
@@ -353,7 +348,6 @@ MODRET calc_ratios (cmd_rec * cmd)
       if (*(char *) c->argv[0] == '*' || !strcmp (c->argv[0], g.user))
 	{
 	  update_ratios(c->argv[1], c->argv[2], c->argv[3], c->argv[4]);
-	  g.rtype = "u";
 	  return PR_DECLINED (cmd);
 	}
       c = find_config_next (c, c->next, CONF_PARAM, "UserRatio", FALSE);
@@ -365,7 +359,6 @@ MODRET calc_ratios (cmd_rec * cmd)
 
     if (strcmp(c->argv[0], session.group) == 0) {
       update_ratios(c->argv[1], c->argv[2], c->argv[3], c->argv[4]);
-      g.rtype = "g";
 
       return PR_DECLINED(cmd);
 
@@ -378,7 +371,6 @@ MODRET calc_ratios (cmd_rec * cmd)
         for (i = 0; i < session.groups->nelts-1; i++) {
           if (strcmp(c->argv[0], group_names[i]) == 0) {
             update_ratios(c->argv[1], c->argv[2], c->argv[3], c->argv[4]);
-            g.rtype = "g";
 
             return PR_DECLINED(cmd);
           }
