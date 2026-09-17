@@ -65,6 +65,7 @@ const char *sftp_keys_get_fingerprint(pool *p, unsigned char *key_data,
 #define SFTP_KEYS_FP_DIGEST_MD5		1
 #define SFTP_KEYS_FP_DIGEST_SHA1	2
 #define SFTP_KEYS_FP_DIGEST_SHA256	3
+#define SFTP_KEYS_FP_DIGEST_SHA512	4
 
 const char *sftp_keys_get_fingerprint2(pool *p, unsigned char *key_data,
   uint32_t key_datalen, int digest_algo_id, int fmt_id);
