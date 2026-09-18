@@ -3198,7 +3198,6 @@ MODRET ls_nlst(cmd_rec *cmd) {
             }
 
             session.sf_flags |= SF_ASCII_OVERRIDE;
-            pr_response_add(R_226, _("Transfer complete"));
             ls_done(cmd);
 
             return PR_HANDLED(cmd);
@@ -3224,7 +3223,6 @@ MODRET ls_nlst(cmd_rec *cmd) {
           }
 
           session.sf_flags |= SF_ASCII_OVERRIDE;
-          pr_response_add(R_226, _("Transfer complete"));
           ls_done(cmd);
 
           return PR_HANDLED(cmd);
@@ -3342,7 +3340,6 @@ MODRET ls_nlst(cmd_rec *cmd) {
           return PR_ERROR(cmd);
         }
         session.sf_flags |= SF_ASCII_OVERRIDE;
-        pr_response_add(R_226, _("Transfer complete"));
         ls_done(cmd);
 
         return PR_HANDLED(cmd);
@@ -3376,7 +3373,6 @@ MODRET ls_nlst(cmd_rec *cmd) {
               return PR_ERROR(cmd);
             }
             session.sf_flags |= SF_ASCII_OVERRIDE;
-            pr_response_add(R_226, _("Transfer complete"));
             ls_done(cmd);
 
             return PR_HANDLED(cmd);
@@ -3414,7 +3410,6 @@ MODRET ls_nlst(cmd_rec *cmd) {
           return PR_ERROR(cmd);
         }
         session.sf_flags |= SF_ASCII_OVERRIDE;
-        pr_response_add(R_226, _("Transfer complete"));
         ls_done(cmd);
 
         return PR_HANDLED(cmd);
