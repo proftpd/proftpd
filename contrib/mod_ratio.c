@@ -572,11 +572,6 @@ MODRET log_pass(cmd_rec *cmd) {
     return PR_DECLINED(cmd);
   }
 
-  if (session.anon_user != NULL) {
-    sstrncpy(g.user, session.anon_user, sizeof(g.user));
-  }
-
-
   calc_ratios(cmd);
 
   memset(buf, '\0', sizeof(buf));
@@ -655,11 +650,24 @@ MODRET post_cmd(cmd_rec *cmd) {
         }
   }
 
-  if (session.anon_user)
-     sstrncpy(g.user, session.anon_user, sizeof(g.user));
+  /* This post_cmd() handler is called for multiple commands, and due to
+   * ordering of phases, if this is a PASS command, then we want to record
+   * the name of the successfully authenticated (and possibly anonymous)
+   * user, for use in processing ratio files.
+   */
+  if (pr_cmd_cmp(cmd, PR_CMD_PASS_ID) == 0) {
+    if (session.anon_user != NULL) {
+      sstrncpy(g.user, session.anon_user, sizeof(g.user));
 
-  if (strlen(g.user) == 0)
-     sstrncpy(g.user, "NOBODY", sizeof(g.user));
+    } else if (session.user != NULL) {
+      sstrncpy(g.user, session.user, sizeof(g.user));
+    }
+
+  } else {
+    if (strlen(g.user) == 0) {
+      sstrncpy(g.user, "NOBODY", sizeof(g.user));
+    }
+  }
 
   if (!gotratuser && !fileerr && g.save) {
       if (!usrfile)
@@ -892,21 +900,6 @@ MODRET post_stor(cmd_rec *cmd) {
   return post_cmd(cmd);
 }
 
-MODRET post_pass(cmd_rec *cmd) {
-  if (ratio_engine == FALSE) {
-    return PR_DECLINED(cmd);
-  }
-
-  /* Make a copy of the provided username, but only once authentication has
-   * completed successfully.
-   */
-  if (!g.user[0]) {
-    sstrncpy(g.user, session.user, sizeof(g.user));
-  }
-
-  return PR_DECLINED(cmd);
-}
-
 /* **************************************************************** */
 
 MODRET
@@ -1041,7 +1034,6 @@ static cmdtable ratio_cmdtab[] = {
   { CMD,      C_SITE,	G_NONE, cmd_site, 	TRUE, FALSE },
 
   { POST_CMD, C_PASS,	G_NONE, post_cmd,	FALSE, FALSE },
-  { POST_CMD, C_PASS,	G_NONE, post_pass,	FALSE, FALSE },
   { LOG_CMD,  C_PASS,	G_NONE, log_pass,	FALSE, FALSE },
 
   { 0, NULL }
