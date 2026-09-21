@@ -258,7 +258,8 @@ int snmp_asn1_read_header(pool *p, unsigned char **buf, size_t *buflen,
   /* XXX Currently don't support extension octets.  We check this by looking
    * at the first byte of data to see if extension length bit is set.
    */
-  if ((*buf)[0] == SNMP_ASN1_LEN_EXTENSION) {
+  if (*buflen > 0 &&
+      (*buf)[0] == SNMP_ASN1_LEN_EXTENSION) {
     pr_trace_msg(trace_channel, 3,
       "failed reading object header: extension length bit set (%c)", (*buf)[0]);
 
