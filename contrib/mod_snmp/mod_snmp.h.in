@@ -44,13 +44,13 @@
 
 #include <signal.h>
 
-#if HAVE_SYS_MMAN_H
+#if defined(HAVE_SYS_MMAN_H)
 # include <sys/mman.h>
-#endif
+#endif /* HAVE_SYS_MMAN_H */
 
-#if HAVE_SYS_UIO_H
+#if defined(HAVE_SYS_UIO_H)
 # include <sys/uio.h>
-#endif
+#endif /* HAVE_SYS_UIO_H */
 
 #define MOD_SNMP_VERSION	"mod_snmp/0.2"
 
@@ -73,4 +73,4 @@ extern pool *snmp_pool;
 extern struct timeval snmp_start_tv;
 extern int snmp_proto_udp;
 
-#endif
+#endif /* MOD_SNMP_H */

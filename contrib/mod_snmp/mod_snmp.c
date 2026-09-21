@@ -3986,7 +3986,7 @@ static void snmp_ban_expired_ban_ev(const void *event_data, void *user_data) {
 
     ban_desc = (const char *) event_data;
 
-    ptr = strchr(ban_desc, ':');
+    ptr = strchr((char *) ban_desc, ':');
     if (ptr != NULL) {
       /* To get the specific ban criteria/name later, use ptr + 1. */
 
@@ -4017,7 +4017,7 @@ static void snmp_ban_client_disconn_ev(const void *event_data,
 
     ban_desc = (const char *) event_data;
 
-    ptr = strchr(ban_desc, ':');
+    ptr = strchr((char *) ban_desc, ':');
     if (ptr != NULL) {
       /* To get the specific ban criteria/name later, use ptr + 1. */
 
