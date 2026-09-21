@@ -283,7 +283,7 @@ static int stat_server(pr_redis_t *redis, const char *section) {
   if (reply == NULL &&
       errno == EAGAIN) {
     pr_trace_msg(trace_channel, 7, "retrying command: %s", cmd);
-    reply = redisCommand(redis->ctx, "%s %s", cmd);
+    reply = redisCommand(redis->ctx, "%s %s", cmd, section);
     reply = handle_reply(redis, cmd, reply);
   }
 
