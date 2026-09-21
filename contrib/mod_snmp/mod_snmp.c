@@ -61,6 +61,7 @@ static const char *snmp_logname = NULL;
 static unsigned long snmp_opts = 0UL;
 
 static const char *snmp_community = NULL;
+static size_t snmp_communitylen = 0;
 
 /* The list of SNMPNotify receivers/managers to which to send notifications. */
 static array_header *snmp_notifys = NULL;
@@ -388,7 +389,8 @@ static int snmp_security_check(struct snmp_packet *pkt) {
     case SNMP_PROTOCOL_VERSION_1:
     case SNMP_PROTOCOL_VERSION_2:
       /* Check the community string against the configured SNMPCommunity. */
-      if (strncmp(snmp_community, pkt->community, pkt->community_len) != 0) {
+      if (pkt->community_len != snmp_communitylen ||
+          strncmp(snmp_community, pkt->community, snmp_communitylen) != 0) {
         (void) pr_log_writefile(snmp_logfd, MOD_SNMP_VERSION,
           "%s message community '%s' does not match configured community, "
           "ignoring message", snmp_msg_get_versionstr(pkt->snmp_version),
@@ -3495,6 +3497,7 @@ static void snmp_postparse_ev(const void *event_data, void *user_data) {
   }
 
   snmp_community = c->argv[0];
+  snmp_communitylen = strlen(snmp_community);
 
   c = find_config(main_server->conf, CONF_PARAM, "SNMPMaxVariables", FALSE);
   if (c != NULL) {
