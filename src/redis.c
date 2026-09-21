@@ -211,7 +211,15 @@ static int ping_server(pr_redis_t *redis) {
   cmd = "PING";
   pr_trace_msg(trace_channel, 7, "sending command: %s", cmd);
   reply = redisCommand(redis->ctx, "%s", cmd);
+
   reply = handle_reply(redis, cmd, reply);
+  if (reply == NULL &&
+      errno == EAGAIN) {
+    pr_trace_msg(trace_channel, 7, "retrying command: %s", cmd);
+    reply = redisCommand(redis->ctx, "%s", cmd);
+    reply = handle_reply(redis, cmd, reply);
+  }
+
   if (reply == NULL) {
     return -1;
   }
