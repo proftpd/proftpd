@@ -30,7 +30,7 @@
 #include "json.h"
 #include "jot.h"
 
-#define MOD_REDIS_VERSION		"mod_redis/0.2.3"
+#define MOD_REDIS_VERSION		"mod_redis/0.2.4"
 
 #if PROFTPD_VERSION_NUMBER < 0x0001030605
 # error "ProFTPD 1.3.6rc5 or later required"
@@ -724,9 +724,9 @@ MODRET set_redislogonevent(cmd_rec *cmd) {
 
     if (cmd->argc == 2 &&
         strcasecmp(cmd->argv[1], "none") == 0) {
-       c = add_config_param(cmd->argv[0], 4, NULL, NULL, NULL, NULL);
-       c->flags |= CF_MERGEDOWN;
-       return PR_HANDLED(cmd);
+      c = add_config_param(cmd->argv[0], 4, NULL, NULL, NULL, NULL);
+      c->flags |= CF_MERGEDOWN;
+      return PR_HANDLED(cmd);
     }
 
     CONF_ERROR(cmd, "wrong number of parameters");
@@ -811,6 +811,9 @@ MODRET set_redisoptions(cmd_rec *cmd) {
   for (i = 1; i < cmd->argc; i++) {
     if (strcmp(cmd->argv[i], "NoReconnect") == 0) {
       opts |= PR_REDIS_CONN_FL_NO_RECONNECT;
+
+    } else if (strcmp(cmd->argv[i], "EnableDiags") == 0) {
+      opts |= PR_REDIS_CONN_FL_ENABLE_DIAGS;
 
     } else {
       CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, ": unknown RedisOption '",
