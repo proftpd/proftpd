@@ -25,6 +25,8 @@
 - Issue 2319 - Stale password-less authentication flag in mod_auth can allow
   wrong passwords to authenticate.
 - Issue 2330 - Stack overflow possible via long PASS text in mod_radius module.
+- Issue 2344 - Error out if configured for SSL/TLS Redis usage, but hiredis
+  library lacks SSL/TLS support.
 
 1.3.9d - Released 14-Aug-2026
 --------------------------------
