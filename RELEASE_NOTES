@@ -12,6 +12,11 @@ ChangeLog files.
   + The default TCP backlog value is now 511 (Issue #2326)
 
 
+  + Changed Directives
+
+      RedisOptions EnableDiags
+
+
 1.3.10rc4
 ----------
 

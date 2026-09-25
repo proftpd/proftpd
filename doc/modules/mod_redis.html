@@ -218,6 +218,19 @@ Example:
 <p>
 The currently implemented options are:
 <ul>
+  <li><code>EnableDiags</code><br>
+    <p>
+    Sets callbacks in the OpenSSL library such that SSL/TLS protocol
+    information is logged to the "redis"
+    <a href="mod_core.html#Trace"><code>Trace</code></a> channel, trace
+    level 19 or higher.  This option is very useful when debugging strange
+    SSL/TLS interactions with Redis servers.
+
+    <p>
+    <b>Note</b> that this option first appeared in
+    <code>proftpd-1.3.10rc5</code>.
+  </li>
+
   <li><code>NoReconnect</code><br>
     <p>
     If the connection to Redis breaks unexpectedly, <code>mod_redis</code>
@@ -703,7 +716,7 @@ needed to provide/fill in that timestamp.
 <p>
 <hr>
 <font size=2><b><i>
-&copy; Copyright 2017-2021 The ProFTPD Project<br>
+&copy; Copyright 2017-2026 The ProFTPD Project<br>
  All Rights Reserved<br>
 </i></b></font>
 <hr>

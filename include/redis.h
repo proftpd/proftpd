@@ -40,6 +40,7 @@ pr_redis_t *pr_redis_conn_new(pool *p, module *owner, unsigned long flags);
 
 /* These flags are used for tweaking connection behaviors. */
 #define PR_REDIS_CONN_FL_NO_RECONNECT		0x0001
+#define PR_REDIS_CONN_FL_ENABLE_DIAGS		0x0002
 
 int pr_redis_conn_close(pr_redis_t *redis);
 int pr_redis_conn_destroy(pr_redis_t *redis);

@@ -37,6 +37,12 @@
 # define PR_USE_REDIS_SSL
 #endif /* HAVE_HIREDIS_REDISINITIATESSL */
 
+#if defined(PR_USE_REDIS_SSL)
+# include <openssl/bio.h>
+# include <openssl/err.h>
+# include <openssl/ssl.h>
+#endif /* PR_USE_REDIS_SSL */
+
 #if !defined(REDIS_CONNECT_RETRIES)
 # define REDIS_CONNECT_RETRIES	10
 #endif /* REDIS_CONNECT_RETRIES */
@@ -49,7 +55,7 @@ struct redis_rec {
   module *owner;
   redisContext *ctx;
 #if defined(PR_USE_REDIS_SSL)
-  redisSSLContext *ssl_ctx;
+  SSL_CTX *ssl_ctx;
 #endif /* PR_USE_REDIS_SSL */
   unsigned long flags;
 
@@ -152,6 +158,9 @@ static int conn_reconnect(pool *p, pr_redis_t *redis) {
 
     pr_trace_msg(trace_channel, 9, "attempt #%u to reconnect", i+1);
 
+    /* TODO: If we are using SSL, I think we might need to redo the
+     * redisInitiateSSL bit here as well, for an entirely new TCP connection.
+     */
     res = redisReconnect(redis->ctx);
     xerrno = errno;
     if (res == REDIS_OK) {
@@ -366,8 +375,294 @@ static void sess_redis_cleanup(void *data) {
   sess_redis = NULL;
 }
 
+#if defined(PR_USE_REDIS_SSL)
+static const char *redis_ssl_get_errors(BIO *bio) {
+  unsigned int count = 0;
+  unsigned long error_code;
+  char *data = NULL;
+  long datalen;
+  const char *error_data = NULL;
+  int error_flags = 0;
+
+  /* Use ERR_print_errors() and a memory BIO to build up a string with
+   * all of the error messages from the error queue.
+   */
+
+  error_code = ERR_get_error_line_data(NULL, NULL, &error_data, &error_flags);
+  while (error_code) {
+    pr_signals_handle();
+
+    if (error_flags & ERR_TXT_STRING) {
+      BIO_printf(bio, "\n  (%u) %s [%s]", ++count,
+        ERR_error_string(error_code, NULL), error_data);
+
+    } else {
+      BIO_printf(bio, "\n  (%u) %s", ++count,
+        ERR_error_string(error_code, NULL));
+    }
+
+    error_data = NULL;
+    error_flags = 0;
+    error_code = ERR_get_error_line_data(NULL, NULL, &error_data, &error_flags);
+  }
+
+  datalen = BIO_get_mem_data(bio, &data);
+  if (data != NULL) {
+    data[datalen] = '\0';
+
+  } else {
+    data = "(unknown)";
+  }
+
+  return data;
+}
+
+static void redis_ssl_info_cb(const SSL *ssl, int where, int ret) {
+  const char *text = "(unknown)";
+  int w, xerrno = errno;
+
+  pr_signals_handle();
+
+  w = where & ~SSL_ST_MASK;
+  if (w & SSL_ST_CONNECT) {
+    text = "connecting";
+
+  } else if (w & SSL_ST_ACCEPT) {
+    text = "accepting";
+
+  } else {
+    int ssl_state;
+
+    ssl_state = SSL_get_state(ssl);
+    switch (ssl_state) {
+#if defined(SSL_ST_BEFORE)
+      case SSL_ST_BEFORE:
+        text = "before";
+        break;
+#endif /* SSL_ST_BEFORE */
+
+#if OPENSSL_VERSION_NUMBER >= 0x10100000L && \
+    !defined(HAVE_LIBRESSL)
+      case TLS_ST_OK:
+#else
+      case SSL_ST_OK:
+#endif /* OpenSSL-1.1.x and later */
+        text = "ok";
+        break;
+
+#if defined(SSL_ST_RENEGOTIATE)
+      case SSL_ST_RENEGOTIATE:
+        text = "renegotiating";
+        break;
+#endif /* SSL_ST_RENEGOTIATE */
+
+      default:
+        break;
+    }
+  }
+
+  if (where & SSL_CB_ACCEPT_LOOP) {
+    pr_trace_msg(trace_channel, 19, "[ssl] %s: %s", text,
+      SSL_state_string_long(ssl));
+
+  } else if (where & SSL_CB_HANDSHAKE_START) {
+    pr_trace_msg(trace_channel, 19, "[ssl] %s: %s (HANDSHAKE_START)", text,
+      SSL_state_string_long(ssl));
+
+  } else if (where & SSL_CB_HANDSHAKE_DONE) {
+    int reused;
+
+    pr_trace_msg(trace_channel, 19, "[ssl] %s: %s (HANDSHAKE_DONE)", text,
+      SSL_state_string_long(ssl));
+
+    reused = SSL_session_reused((SSL *) ssl);
+    pr_trace_msg(trace_channel, 19,
+      "[ssl] %s: %s handshake accepted, using cipher %s (%d bits%s)", text,
+      SSL_get_version(ssl), SSL_get_cipher_name(ssl),
+      SSL_get_cipher_bits(ssl, NULL), reused > 0 ? ", resumed session" : "");
+
+  } else if (where & SSL_CB_LOOP) {
+    pr_trace_msg(trace_channel, 19, "[ssl] %s: %s", text,
+      SSL_state_string_long(ssl));
+
+  } else if (where & SSL_CB_ALERT) {
+    text = (where & SSL_CB_READ) ? "reading" : "writing";
+
+    /* Note: The ret value here, for alerts, is handled abysmally.  This
+     * single integer value actually encodes both the alert level, and the
+     * alert type:
+     *
+     *  ret = ((level << 8) + type)
+     *
+     * Thus a value of 628 is actually alert level 2 (fatal) + alert type 116
+     * (in this case, a TLSv1.3-specific alert value indicating "certificate
+     * required"):
+     *
+     *  alert type = (ret & 0xff)
+     *  116        = (628 & 0xff)
+     *
+     * The SSL_alert_desc_string() functions do not know about the
+     * TLSv1.3-specific alerts such as "certificate required", hence they will
+     * return "unknown".
+     */
+    pr_trace_msg(trace_channel, 19, "[ssl] %s: SSL/TLS alert %d: %s %s",
+      text, ret, SSL_alert_type_string_long(ret),
+      SSL_alert_desc_string_long(ret));
+
+  } else if (where & SSL_CB_EXIT) {
+    if (ret == 0) {
+      BIO *bio;
+      const char *err_text;
+
+      bio = BIO_new(BIO_s_mem());
+      err_text = redis_ssl_get_errors(bio);
+
+      pr_trace_msg(trace_channel, 19, "[ssl] %s: failed in %s: %s", text,
+        SSL_state_string_long(ssl), err_text);
+
+      BIO_free(bio);
+
+    } else if (ret < 0 &&
+               errno != 0) {
+      pr_trace_msg(trace_channel, 19, "[ssl] %s: error in %s (errno %d: %s)",
+        text, SSL_state_string_long(ssl), xerrno, strerror(xerrno));
+    }
+  }
+
+  errno = xerrno;
+}
+
+static SSL_CTX *redis_ssl_ctx_init(void) {
+  const SSL_METHOD *ssl_method;
+  SSL_CTX *ssl_ctx;
+  int res;
+
+# if OPENSSL_VERSION_NUMBER >= 0x10100000L
+  ssl_method = TLS_client_method();
+# else
+  ssl_method = SSLv23_client_method();
+# endif /* OpenSSL 1.1.0 and later */
+  ssl_ctx = SSL_CTX_new(ssl_method);
+  if (ssl_ctx == NULL) {
+    BIO *bio;
+    const char *err_text;
+
+    bio = BIO_new(BIO_s_mem());
+    err_text = redis_ssl_get_errors(bio);
+
+    pr_trace_msg(trace_channel, 3, "error creating SSL context: %s", err_text);
+    BIO_free(bio);
+
+    errno = EPERM;
+    return NULL;
+  }
+
+  /* Restrict TLS protocol versions to just TLSv1.2 and TLSv1.3. */
+# if OPENSSL_VERSION_NUMBER >= 0x10100000L
+  SSL_CTX_set_min_proto_version(ssl_ctx, TLS1_2_VERSION);
+#else
+  SSL_CTX_set_options(ssl_ctx, SSL_OP_NO_SSLv2|SSL_OP_NO_SSLv3|SSL_OP_NO_TLSv1|SSL_OP_NO_TLSv1_1);
+#endif /* OpenSSL 1.1.0 and later */
+
+  SSL_CTX_set_verify(ssl_ctx, SSL_VERIFY_PEER, NULL);
+
+  if (redis_ssl_cacert != NULL) {
+    res = SSL_CTX_load_verify_locations(ssl_ctx, redis_ssl_cacert, NULL);
+
+  } else {
+    res = SSL_CTX_set_default_verify_paths(ssl_ctx);
+  }
+
+  if (res != 1) {
+    BIO *bio;
+    const char *err_text;
+
+    bio = BIO_new(BIO_s_mem());
+    err_text = redis_ssl_get_errors(bio);
+    pr_trace_msg(trace_channel, 3,
+      "error setting TLS verification locations: %s", err_text);
+    BIO_free(bio);
+
+    SSL_CTX_free(ssl_ctx);
+    return NULL;
+  }
+
+  if (redis_ssl_cert != NULL) {
+    res = SSL_CTX_use_certificate_chain_file(ssl_ctx, redis_ssl_cert);
+    if (res == 1) {
+      res = SSL_CTX_use_PrivateKey_file(ssl_ctx, redis_ssl_key,
+        SSL_FILETYPE_PEM);
+    }
+
+    if (res != 1) {
+      BIO *bio;
+      const char *err_text;
+
+      bio = BIO_new(BIO_s_mem());
+      err_text = redis_ssl_get_errors(bio);
+      pr_trace_msg(trace_channel, 3,
+        "error loading TLS client certificate/key: %s", err_text);
+      BIO_free(bio);
+
+      SSL_CTX_free(ssl_ctx);
+      return NULL;
+    }
+  }
+
+  /* Per the SSL_MODE_AUTO_RETRY docs and blocking BIOs, we could clear this
+   * flag, as we do use blocking sockets for Redis interactions.
+   *
+   * However, local experimentation shows that clearing this flag causes
+   * problems that look like "I/O error: Success", along with broken/unusable
+   * connections to Redis.
+   */
+
+  return ssl_ctx;
+}
+
+static SSL *redis_ssl_init(SSL_CTX *ctx, const char *host) {
+  SSL *ssl;
+
+  ssl = SSL_new(ctx);
+  if (ssl == NULL) {
+    BIO *bio;
+    const char *err_text;
+
+    bio = BIO_new(BIO_s_mem());
+    err_text = redis_ssl_get_errors(bio);
+    pr_trace_msg(trace_channel, 3, "error allocating SSL: %s", err_text);
+    BIO_free(bio);
+
+    errno = ENOMEM;
+    return NULL;
+  }
+
+  /* If we are connecting to a Unix domain socket, then we will not really
+   * have a hostname for e.g. SNI.
+   */
+  if (host != NULL) {
+    if (SSL_set_tlsext_host_name(ssl, host)  != 1) {
+      BIO *bio;
+      const char *err_text;
+
+      bio = BIO_new(BIO_s_mem());
+      err_text = redis_ssl_get_errors(bio);
+      pr_trace_msg(trace_channel, 3, "error setting SNI '%s': %s", host,
+        err_text);
+      BIO_free(bio);
+
+      SSL_free(ssl);
+      errno = EPERM;
+      return NULL;
+    }
+  }
+
+  return ssl;
+}
+#endif /* PR_USE_REDIS_SSL */
+
 static pr_redis_t *make_redis_conn(pool *p, const char *host, int port,
-    int use_ssl) {
+    int use_ssl, unsigned long flags) {
   int uses_ip = TRUE, xerrno;
   pr_redis_t *redis;
   pool *sub_pool;
@@ -410,8 +705,8 @@ static pr_redis_t *make_redis_conn(pool *p, const char *host, int port,
         redis_strerror(tmp_pool, ctx, xerrno));
     }
 
-    destroy_pool(tmp_pool);
     redisFree(ctx);
+    destroy_pool(tmp_pool);
     errno = EIO;
     return NULL;
   }
@@ -425,43 +720,70 @@ static pr_redis_t *make_redis_conn(pool *p, const char *host, int port,
 
 #if defined(PR_USE_REDIS_SSL)
   if (use_ssl == TRUE) {
-    redisSSLContext *ssl_ctx;
-    redisSSLContextError ssl_ctx_err;
+    SSL_CTX *ssl_ctx;
+    SSL *ssl;
+    int res;
 
-    ssl_ctx = redisCreateSSLContext(redis_ssl_cacert, NULL,
-      redis_ssl_cert, redis_ssl_key, host, &ssl_ctx_err);
+    ssl_ctx = redis_ssl_ctx_init();
     if (ssl_ctx == NULL) {
-      pr_trace_msg(trace_channel, 3,
-        "error creating SSL context: %s", redisSSLContextGetError(ssl_ctx_err));
+      redisFree(redis->ctx);
+      redis->ctx = NULL;
 
-    } else {
-      int res;
-
-      res = redisInitiateSSLWithContext(redis->ctx, ssl_ctx);
-      if (res != REDIS_OK) {
-        pr_trace_msg(trace_channel, 3,
-          "TLS handshake error with '%s:%d': %s", host, port,
-          redis->ctx->errstr);
-
-        redisFreeSSLContext(ssl_ctx);
-        redisFree(redis->ctx);
-        destroy_pool(sub_pool);
-        errno = EIO;
-        return NULL;
-      }
-
-      pr_trace_msg(trace_channel, 17, "established TLS connection with '%s:%d'",
-        host, port);
-      redis->ssl_ctx = ssl_ctx;
+      destroy_pool(sub_pool);
+      errno = EPERM;
+      return NULL;
     }
+
+    if (flags & PR_REDIS_CONN_FL_ENABLE_DIAGS) {
+      SSL_CTX_set_info_callback(ssl_ctx, redis_ssl_info_cb);
+    }
+
+    ssl = redis_ssl_init(ssl_ctx, uses_ip ? host : NULL);
+    if (ssl == NULL) {
+      SSL_CTX_free(ssl_ctx);
+      redisFree(redis->ctx);
+      redis->ctx = NULL;
+
+      destroy_pool(sub_pool);
+      errno = EPERM;
+      return NULL;
+    }
+
+    /* Note: This SSL object will be freed by hiredis. */
+    res = redisInitiateSSL(redis->ctx, ssl);
+    if (res != REDIS_OK) {
+      const char *err_text;
+
+      err_text = redis->ctx->errstr;
+      pr_trace_msg(trace_channel, 3,
+        "TLS handshake error with '%s:%d': %s", host, port, err_text);
+
+      SSL_CTX_free(ssl_ctx);
+      redisFree(redis->ctx);
+      redis->ctx = NULL;
+
+      destroy_pool(sub_pool);
+      errno = EIO;
+      return NULL;
+    }
+
+    pr_trace_msg(trace_channel, 17, "established TLS connection with '%s:%d'",
+      host, port);
+
+    if (redis->ssl_ctx != NULL) {
+      SSL_CTX_free(redis->ssl_ctx);
+    }
+
+    redis->ssl_ctx = ssl_ctx;
   }
 #endif /* PR_USE_REDIS_SSL */
 
+  redis->flags = flags;
   return redis;
 }
 
 static int discover_redis_master(pool *p, const char *host, int port,
-    const char *master, int use_ssl) {
+    const char *master, int use_ssl, unsigned long flags) {
   int res = 0, xerrno = 0;
   pool *tmp_pool;
   pr_redis_t *redis;
@@ -469,7 +791,7 @@ static int discover_redis_master(pool *p, const char *host, int port,
 
   tmp_pool = make_sub_pool(p);
 
-  redis = make_redis_conn(tmp_pool, host, port, use_ssl);
+  redis = make_redis_conn(tmp_pool, host, port, use_ssl, flags);
   xerrno = errno;
 
   if (redis == NULL) {
@@ -545,7 +867,7 @@ pr_redis_t *pr_redis_conn_new(pool *p, module *m, unsigned long flags) {
       port = ntohs(pr_netaddr_get_port(addr));
 
       if (discover_redis_master(p, sentinel, port,
-          redis_sentinel_master, redis_use_ssl) == 0) {
+          redis_sentinel_master, redis_use_ssl, flags) == 0) {
         pr_trace_msg(trace_channel, 17,
           "discovered Redis server %s:%d using Sentinel #%u (%s:%d)",
           redis_server, redis_port, i+1, sentinel, port);
@@ -568,14 +890,13 @@ pr_redis_t *pr_redis_conn_new(pool *p, module *m, unsigned long flags) {
     return NULL;
   }
 
-  redis = make_redis_conn(p, redis_server, redis_port, redis_use_ssl);
+  redis = make_redis_conn(p, redis_server, redis_port, redis_use_ssl, flags);
   if (redis == NULL) {
     return NULL;
   }
 
   redis->owner = m;
   redis->refcount = 1;
-  redis->flags = flags;
 
   /* The namespace table is null; it will be created if/when callers
    * configure namespace prefixes.
@@ -681,8 +1002,8 @@ int pr_redis_conn_close(pr_redis_t *redis) {
       }
 
 #if defined(PR_USE_REDIS_SSL)
-      if (redis->ssl_ctx) {
-        redisFreeSSLContext(redis->ssl_ctx);
+      if (redis->ssl_ctx != NULL) {
+        SSL_CTX_free(redis->ssl_ctx);
         redis->ssl_ctx = NULL;
       }
 #endif /* PR_USE_REDIS_SSL */
@@ -6308,6 +6629,11 @@ int redis_clear(void) {
 }
 
 int redis_init(void) {
+
+#if defined(PR_USE_REDIS_SSL)
+  redisInitOpenSSL();
+#endif /* PR_USE_REDIS_SSL */
+
   return 0;
 }
 
