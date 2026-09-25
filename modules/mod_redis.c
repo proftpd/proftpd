@@ -1198,8 +1198,22 @@ MODRET set_redisserver(cmd_rec *cmd) {
     /* If we're the "server config" context, set the server now.  This
      * would let mod_redis talk to those servers for e.g. ftpdctl actions.
      */
-    (void) redis_set_server3(c->argv[0], port, 0UL, c->argv[2], c->argv[3],
-      c->argv[4], use_ssl, ssl_cacert, ssl_cert, ssl_key);
+    if (redis_set_server3(c->argv[0], port, 0UL, c->argv[2], c->argv[3],
+        c->argv[4], use_ssl, ssl_cacert, ssl_cert, ssl_key) < 0) {
+#if defined(HAVE_HIREDIS_REDISINITIATESSL)
+      CONF_ERROR(cmd, pstrcat(cmd->tmp_pool,
+        "unable to configure RedisServer: ", strerror(errno), NULL));
+#else
+      if (use_ssl == TRUE &&
+          errno == ENOTSUP) {
+        CONF_ERROR(cmd, pstrcat(cmd->tmp_pool,
+          "unable to configure RedisServer to use SSL/TLS: hiredis library lacks SSL/TLS support", NULL));
+      } else {
+        CONF_ERROR(cmd, pstrcat(cmd->tmp_pool,
+          "unable to configure RedisServer: ", strerror(errno), NULL));
+      }
+#endif /* HAVE_HIREDIS_REDISINITIATESSL */
+    }
   }
 
   return PR_HANDLED(cmd);
@@ -1534,8 +1548,29 @@ static int redis_sess_init(void) {
     ssl_cert = c->argv[7];
     ssl_key = c->argv[8];
 
-    (void) redis_set_server3(server, port, redis_opts, username, password,
-      db_idx, use_ssl, ssl_cacert, ssl_cert, ssl_key);
+    if (redis_set_server3(server, port, redis_opts, username, password,
+        db_idx, use_ssl, ssl_cacert, ssl_cert, ssl_key) < 0) {
+      int xerrno = errno;
+
+#if defined(HAVE_HIREDIS_REDISINITIATESSL)
+      (void) pr_log_writefile(redis_logfd, MOD_REDIS_VERSION,
+        "unable to configure RedisServer: %s", strerror(errno));
+#else
+      if (use_ssl == TRUE &&
+          errno == ENOTSUP) {
+        (void) pr_log_writefile(redis_logfd, MOD_REDIS_VERSION,
+          "unable to configure RedisServer to use SSL/TLS: hiredis library "
+          "lacks SSL/TLS support");
+
+      } else {
+        (void) pr_log_writefile(redis_logfd, MOD_REDIS_VERSION,
+          "unable to configure RedisServer: %s", strerror(errno));
+      }
+#endif /* HAVE_HIREDIS_REDISINITIATESSL */
+
+      errno = xerrno;
+      return -1;
+    }
   }
 
   c = find_config(main_server->conf, CONF_PARAM, "RedisTimeouts", FALSE);

@@ -355,6 +355,16 @@ static pr_redis_t *make_redis_conn(pool *p, const char *host, int port,
   redisContext *ctx;
   struct timeval tv;
 
+#if !defined(PR_USE_REDIS_SSL)
+  if (use_ssl == TRUE) {
+    pr_trace_msg(trace_channel, 1, "%s", "SSL/TLS requested for Redis "
+      "connection, but hiredis library lacks SSL/TLS support, refusing to "
+      "connect");
+    errno = ENOTSUP;
+    return NULL;
+  }
+#endif /* PR_USE_REDIS_SSL */
+
   millis2timeval(&tv, redis_connect_millis);
 
   /* If the given redis "server" string starts with a '/' character, assume
@@ -5838,6 +5848,13 @@ int redis_set_server3(const char *server, int port, unsigned long flags,
   redis_ssl_cacert = ssl_cacert;
   redis_ssl_cert = ssl_cert;
   redis_ssl_key = ssl_key;
+#else
+  if (use_ssl == TRUE) {
+    pr_trace_msg(trace_channel, 1, "%s", "SSL/TLS requested for Redis "
+      "connections, but hiredis library lacks SSL/TLS support");
+    errno = ENOTSUP;
+    return -1;
+  }
 #endif /* PR_USE_REDIS_SSL */
 
   return 0;
@@ -5872,6 +5889,13 @@ int redis_set_sentinels2(array_header *sentinels, const char *name,
   redis_ssl_cacert = ssl_cacert;
   redis_ssl_cert = ssl_cert;
   redis_ssl_key = ssl_key;
+#else
+  if (use_ssl == TRUE) {
+    pr_trace_msg(trace_channel, 1, "%s", "SSL/TLS requested for Redis "
+      "connections, but hiredis library lacks SSL/TLS support");
+    errno = ENOTSUP;
+    return -1;
+  }
 #endif /* PR_USE_REDIS_SSL */
 
   return 0;
