@@ -204,10 +204,11 @@ static struct sftp_digest digests[] = {
   { "hmac-md5-etm@openssh.com", "md5",	EVP_md5,	0, 	FALSE, TRUE },
   { "hmac-md5-96-etm@openssh.com", "md5", EVP_md5,	12, 	FALSE, TRUE },
 
-#if OPENSSL_VERSION_NUMBER > 0x000907000L
+#if (OPENSSL_VERSION_NUMBER > 0x000907000L && !defined(HAVE_LIBRESSL)) || \
+    (defined(HAVE_LIBRESSL) && LIBRESSL_VERSION_NUMBER >= 0x3050000L && LIBRESSL_VERSION_NUMBER < 0x4000000fL)
   { "umac-128@openssh.com", NULL,	NULL,		16,	TRUE, FALSE },
   { "umac-64@openssh.com", NULL,	NULL,		8,	TRUE, FALSE },
-#endif /* OpenSSL-0.9.7 or later */
+#endif /* OpenSSL-0.9.7 or later, LibreSSL-3.5.0 to 4.0.0 */
 #if defined(HAVE_SHA512_OPENSSL)
   { "hmac-sha2-512",	"sha512",		EVP_sha512,	0, TRUE, TRUE },
 #endif /* HAVE_SHA512_OPENSSL */
@@ -1078,7 +1079,7 @@ static const EVP_MD *get_umac64_digest(int *free_md) {
 
 #else
 # if (OPENSSL_VERSION_NUMBER >= 0x10100000L && !defined(HAVE_LIBRESSL)) || \
-     (defined(HAVE_LIBRESSL) && LIBRESSL_VERSION_NUMBER >= 0x3050000L)
+     (defined(HAVE_LIBRESSL) && LIBRESSL_VERSION_NUMBER >= 0x3050000L && LIBRESSL_VERSION_NUMBER < 0x4000000fL)
   /* XXX TODO: At some point, we also need to call EVP_MD_meth_free() on
    * this, to avoid a resource leak.
    */
@@ -1089,6 +1090,12 @@ static const EVP_MD *get_umac64_digest(int *free_md) {
   EVP_MD_meth_set_update(md, update_umac64);
   EVP_MD_meth_set_final(md, final_umac64);
   EVP_MD_meth_set_cleanup(md, delete_umac64);
+# elif (defined(HAVE_LIBRESSL) && LIBRESSL_VERSION_NUMBER >= 0x4000000fL)
+  /* LibreSSL-4.0.0 and later removed the necessary APIs for implementing a
+   * custom EVP_MD implementation for e.g. CRC32 support.
+   */
+  errno = ENOSYS;
+  return NULL;
 # else
   static EVP_MD umac64_digest;
 
@@ -1127,7 +1134,7 @@ static const EVP_MD *get_umac128_digest(int *free_md) {
 
 #else
 # if (OPENSSL_VERSION_NUMBER >= 0x10100000L && !defined(HAVE_LIBRESSL)) || \
-     (defined(HAVE_LIBRESSL) && LIBRESSL_VERSION_NUMBER >= 0x3050000L)
+     (defined(HAVE_LIBRESSL) && LIBRESSL_VERSION_NUMBER >= 0x3050000L && LIBRESSL_VERSION_NUMBER < 0x4000000fL)
   /* XXX TODO: At some point, we also need to call EVP_MD_meth_free() on
    * this, to avoid a resource leak.
    */
@@ -1138,6 +1145,12 @@ static const EVP_MD *get_umac128_digest(int *free_md) {
   EVP_MD_meth_set_update(md, update_umac128);
   EVP_MD_meth_set_final(md, final_umac128);
   EVP_MD_meth_set_cleanup(md, delete_umac128);
+# elif (defined(HAVE_LIBRESSL) && LIBRESSL_VERSION_NUMBER >= 0x4000000fL)
+  /* LibreSSL-4.0.0 and later removed the necessary APIs for implementing a
+   * custom EVP_MD implementation for e.g. CRC32 support.
+   */
+  errno = ENOSYS;
+  return NULL;
 # else
   static EVP_MD umac128_digest;
 
@@ -1262,13 +1275,12 @@ const EVP_CIPHER *sftp_crypto_get_cipher(const char *name, size_t *key_len,
 }
 
 void sftp_crypto_free_digest(const EVP_MD *md) {
-#if (OPENSSL_VERSION_NUMBER >= 0x30000000L && !defined(HAVE_LIBRESSL)) || \
-     (defined(HAVE_LIBRESSL) && LIBRESSL_VERSION_NUMBER >= 0x3080000L)
+#if OPENSSL_VERSION_NUMBER >= 0x40000000L && !defined(HAVE_LIBRESSL)
   EVP_MD_free((EVP_MD *) md);
 #else
   /* Avoid compiler warnings. */
   (void) md;
-#endif /* OpenSSL-3.x/LibreSSL-3.8.x and later */
+#endif /* OpenSSL before 4.x */
 }
 
 const EVP_MD *sftp_crypto_get_digest(const char *name, uint32_t *mac_len,

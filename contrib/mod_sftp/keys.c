@@ -826,7 +826,13 @@ static int get_passphrase(struct sftp_pkey *k, const char *path) {
   PRIVS_RELINQUISH
 
   if (fd < 0) {
+#if !defined(HAVE_LIBRESSL) || \
+    (defined(HAVE_LIBRESSL) && LIBRESSL_VERSION_NUMBER < 0x4020000fL)
     SYSerr(SYS_F_FOPEN, xerrno);
+#else
+    ERR_put_error(ERR_LIB_SYS, SYS_F_FOPEN, xerrno, NULL, 0);
+#endif /* LibreSSL-4.2.0 and later */
+
     errno = xerrno;
     return -1;
   }
@@ -871,7 +877,12 @@ static int get_passphrase(struct sftp_pkey *k, const char *path) {
 
       (void) close(fd);
       destroy_pool(tmp_pool);
+#if !defined(HAVE_LIBRESSL) || \
+    (defined(HAVE_LIBRESSL) && LIBRESSL_VERSION_NUMBER < 0x4020000fL)
       SYSerr(SYS_F_FOPEN, xerrno);
+#else
+      ERR_put_error(ERR_LIB_SYS, SYS_F_FOPEN, xerrno, NULL, 0);
+#endif /* LibreSSL-4.2.0 and later */
 
       errno = xerrno;
       return -1;
@@ -1930,12 +1941,15 @@ int sftp_keys_validate_ecdsa_params(const EC_GROUP *group,
   int coord_nbits, ec_order_nbits;
   EC_POINT *subgroup_order = NULL;
 
+#if !defined(HAVE_LIBRESSL) || \
+    (defined(HAVE_LIBRESSL) && LIBRESSL_VERSION_NUMBER < 0x4010000fL)
   if (EC_METHOD_get_field_type(EC_GROUP_method_of(group)) != NID_X9_62_prime_field) {
     (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
       "ECDSA group is not a prime field, rejecting");
     errno = EACCES;
     return -1;
   }
+#endif /* OpenSSL, or LibreSSL before 4.1.0 */
 
   /* A Q of infinity is unacceptable. */
   if (EC_POINT_is_at_infinity(group, point) != 0) {
