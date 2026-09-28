@@ -1008,6 +1008,8 @@ static EVP_PKEY *get_pkcs11_key(pool *p, const char *text, char **errors) {
   return pkey;
 #endif /* PR_USE_OPENSSL_OSSL_PROVIDER_LOAD */
 
+  *errors = pstrcat(p, "unable to use PKCS11 '", text, "': ", strerror(ENOSYS),
+    NULL);
   errno = ENOSYS;
   return NULL;
 }
