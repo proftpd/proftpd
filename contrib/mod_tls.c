@@ -17907,7 +17907,16 @@ static int tls_ctx_set_dsa_cert(pool *p, SSL_CTX *ctx, X509 **dsa_cert) {
       res = SSL_CTX_use_PrivateKey(ctx, pkey);
 
     } else {
+      xerrno = errno;
+
+      if (errors == NULL) {
+        errors = pstrcat(p, "unable to use PKCS11 '", key_file, "': ",
+          strerror(xerrno), NULL);
+      }
+
       pr_trace_msg(trace_channel, 9, "%s", errors);
+
+      errno = xerrno;
       res = -1;
     }
 
@@ -18017,7 +18026,16 @@ static int tls_ctx_set_ec_cert(pool *p, SSL_CTX *ctx, X509 **ec_cert) {
       res = SSL_CTX_use_PrivateKey(ctx, pkey);
 
     } else {
+      xerrno = errno;
+
+      if (errors == NULL) {
+        errors = pstrcat(p, "unable to use PKCS11 '", key_file, "': ",
+          strerror(xerrno), NULL);
+      }
+
       pr_trace_msg(trace_channel, 9, "%s", errors);
+
+      errno = xerrno;
       res = -1;
     }
 
@@ -18325,7 +18343,16 @@ static int tls_ctx_set_rsa_cert(pool *p, SSL_CTX *ctx, X509 **rsa_cert) {
       res = SSL_CTX_use_PrivateKey(ctx, pkey);
 
     } else {
+      xerrno = errno;
+
+      if (errors == NULL) {
+        errors = pstrcat(p, "unable to use PKCS11 '", key_file, "': ",
+          strerror(xerrno), NULL);
+      }
+
       pr_trace_msg(trace_channel, 9, "%s", errors);
+
+      errno = xerrno;
       res = -1;
     }
 
