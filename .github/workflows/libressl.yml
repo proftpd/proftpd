@@ -1,0 +1,182 @@
+name: LibreSSL
+
+on:
+  push:
+    branches:
+      - master
+    paths-ignore:
+      - NEWS
+      - RELEASE_NOTES
+      - 'doc/**'
+      - '**/*.html'
+      - '**/*.md'
+  pull_request:
+    branches:
+      - master
+    paths-ignore:
+      - NEWS
+      - RELEASE_NOTES
+      - 'doc/**'
+      - '**/*.html'
+      - '**/*.md'
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    env:
+      # Let's try opting into use of Nodejs v24; see:
+      #  https://github.blog/changelog/2025-09-19-deprecation-of-node-20-on-github-actions-runners/
+      # GitHub runners still causing problems with NodeJS v20; see:
+      FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
+      PROFTPD_MODULES: mod_sql:mod_sql_sqlite:mod_sql_passwd:mod_sftp:mod_tls:mod_tls_fscache:mod_tls_shmcache:mod_radius:mod_digest:mod_auth_otp
+
+    strategy:
+      matrix:
+        container:
+          - alpine:3.18
+          - alpine:3.19
+          - alpine:3.20
+          - alpine:3.21
+          - alpine:3.22
+          - alpine:3.23
+          - alpine:3.24
+
+    container: ${{ matrix.container }}
+
+    steps:
+      - name: Checkout source code
+        uses: actions/checkout@v6
+
+      - name: Install Alpine 3.18 packages
+        if: ${{ matrix.container == 'alpine:3.18' }}
+        run: |
+          apk update
+          # for builds
+          apk add bash build-base compiler-rt gcc make
+
+          # for mod_sql_odbc
+          apk add unixodbc-dev
+          # for LibreSSL support
+          apk add libressl-dev libressl
+          # for mod_sql_sqlite
+          apk add sqlite sqlite-dev
+
+          # for debugging
+          gcc --version
+
+      - name: Install Alpine 3.19 packages
+        if: ${{ matrix.container == 'alpine:3.19' }}
+        run: |
+          apk update
+          # for builds
+          apk add bash build-base compiler-rt gcc make
+
+          # for mod_sql_odbc
+          apk add unixodbc-dev
+          # for LibreSSL support
+          apk add libressl-dev libressl
+          # for mod_sql_sqlite
+          apk add sqlite sqlite-dev
+
+          # for debugging
+          gcc --version
+
+      - name: Install Alpine 3.20 packages
+        if: ${{ matrix.container == 'alpine:3.20' }}
+        run: |
+          apk update
+          # for builds
+          apk add bash build-base compiler-rt gcc make
+
+          # for mod_sql_odbc
+          apk add unixodbc-dev
+          # for LibreSSL support
+          apk add libressl-dev libressl
+          # for mod_sql_sqlite
+          apk add sqlite sqlite-dev
+
+          # for debugging
+          gcc --version
+
+      - name: Install Alpine 3.21 packages
+        if: ${{ matrix.container == 'alpine:3.21' }}
+        run: |
+          apk update
+          # for builds
+          apk add bash build-base compiler-rt gcc make
+
+          # for mod_sql_odbc
+          apk add unixodbc-dev
+          # for LibreSSL support
+          apk add libressl-dev libressl
+          # for mod_sql_sqlite
+          apk add sqlite sqlite-dev
+
+          # for debugging
+          gcc --version
+
+      - name: Install Alpine 3.22 packages
+        if: ${{ matrix.container == 'alpine:3.22' }}
+        run: |
+          apk update
+          # for builds
+          apk add bash build-base compiler-rt gcc make
+
+          # for mod_sql_odbc
+          apk add unixodbc-dev
+          # for LibreSSL support
+          apk add libressl-dev libressl
+          # for mod_sql_sqlite
+          apk add sqlite sqlite-dev
+
+          # for debugging
+          gcc --version
+
+      - name: Install Alpine 3.23 packages
+        if: ${{ matrix.container == 'alpine:3.23' }}
+        run: |
+          apk update
+          # for builds
+          apk add bash build-base compiler-rt gcc make
+
+          # for mod_sql_odbc
+          apk add unixodbc-dev
+          # for LibreSSL support
+          apk add libressl-dev libressl
+          # for mod_sql_sqlite
+          apk add sqlite sqlite-dev
+
+          # for debugging
+          gcc --version
+
+      - name: Install Alpine 3.24 packages
+        if: ${{ matrix.container == 'alpine:3.24' }}
+        run: |
+          apk update
+          # for builds
+          apk add bash build-base compiler-rt gcc make
+
+          # for mod_sql_odbc
+          apk add unixodbc-dev
+          # for LibreSSL support
+          apk add libressl-dev libressl
+          # for mod_sql_sqlite
+          apk add sqlite sqlite-dev
+
+          # for debugging
+          gcc --version
+
+      - name: Build and install with static modules
+        run: |
+          ./configure --enable-devel=fortify --with-modules="${{ env.PROFTPD_MODULES }}"
+          make
+          make install
+
+      - name: Build and install with shared modules
+        run: |
+          make clean
+          ./configure --enable-devel=fortify --enable-dso --with-shared="${{ env.PROFTPD_MODULES }}"
+          make
+          make install
