@@ -49,8 +49,10 @@
 #if !defined(HAVE_OPENSSL) && !defined(PR_USE_OPENSSL)
 # error "OpenSSL support required (--enable-openssl)"
 #else
-# include <openssl/evp.h>
+# include <openssl/bio.h>
+# include <openssl/crypto.h>
 # include <openssl/err.h>
+# include <openssl/evp.h>
 # include <openssl/objects.h>
 # include <openssl/sha.h>
 #endif
