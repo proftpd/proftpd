@@ -50,7 +50,7 @@
  */
 #if defined(LIBRESSL_VERSION_NUMBER)
 # define HAVE_LIBRESSL	1
-#endif
+#endif /* LIBRESSL_VERSION_NUMBER */
 
 /* Note that the openssl/ssl.h header is already included in mod_tls.h, so
  * we don't need to include it here.
@@ -3919,7 +3919,12 @@ static int tls_get_passphrase(server_rec *s, const char *path,
     PRIVS_RELINQUISH
 
     if (fd < 0) {
+#if !defined(HAVE_LIBRESSL) || \
+    (defined(HAVE_LIBRESSL) && LIBRESSL_VERSION_NUMBER < 0x4020000fL)
       SYSerr(SYS_F_FOPEN, xerrno);
+#else
+      ERR_put_error(ERR_LIB_SYS, SYS_F_FOPEN, xerrno, NULL, 0);
+#endif /* LibreSSL-4.2.0 and later */
       return -1;
     }
 
@@ -3937,7 +3942,12 @@ static int tls_get_passphrase(server_rec *s, const char *path,
       xerrno = errno;
 
       (void) close(fd);
+#if !defined(HAVE_LIBRESSL) || \
+    (defined(HAVE_LIBRESSL) && LIBRESSL_VERSION_NUMBER < 0x4020000fL)
       SYSerr(SYS_F_FOPEN, xerrno);
+#else
+      ERR_put_error(ERR_LIB_SYS, SYS_F_FOPEN, xerrno, NULL, 0);
+#endif /* LibreSSL-4.2.0 and later */
       return -1;
     }
 
@@ -10831,7 +10841,11 @@ static int tls_verify_crl(int ok, X509_STORE_CTX *ctx) {
       crl = sk_X509_CRL_value(crls, i);
       BIO_printf(b, "Issuer: ");
       crl_issuer = X509_CRL_get_issuer(crl);
+#if (defined(HAVE_LIBRESSL) && LIBRESSL_VERSION_NUMBER >= 0x4010000fL)
+      X509_NAME_print_ex(b, crl_issuer, 0, XN_FLAG_COMPAT);
+#else
       X509_NAME_print(b, crl_issuer, 0);
+#endif /* LibreSSL-4.1.0 and later */
 
       BIO_printf(b, ", lastUpdate: ");
 #if OPENSSL_VERSION_NUMBER >= 0x10100000L

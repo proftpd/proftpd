@@ -68,18 +68,18 @@
 # error "ProFTPD 1.3.6rc2 or later required"
 #endif
 
-#if !defined(HAVE_OPENSSL) && !defined(PR_USE_OPENSSL)
+#if !defined(PR_USE_OPENSSL)
 # error "OpenSSL support required (--enable-openssl)"
 #else
 # include <openssl/bio.h>
 # include <openssl/evp.h>
 # include <openssl/err.h>
-#endif
+#endif /* PR_USE_OPENSSL */
 
 /* Define if you have the LibreSSL library.  */
 #if defined(LIBRESSL_VERSION_NUMBER)
 # define HAVE_LIBRESSL  1
-#endif
+#endif /* LIBRESSL_VERSION_NUMBER */
 
 #if OPENSSL_VERSION_NUMBER >= 0x40000000L && !defined(HAVE_LIBRESSL)
 # include <openssl/core.h>
@@ -529,7 +529,8 @@ static const EVP_MD *EVP_crc32(void) {
   EVP_MD *md;
 
 #if (OPENSSL_VERSION_NUMBER >= 0x10100000L && !defined(HAVE_LIBRESSL)) || \
-    (defined(HAVE_LIBRESSL) && LIBRESSL_VERSION_NUMBER >= 0x3050000L)
+    (defined(HAVE_LIBRESSL) && LIBRESSL_VERSION_NUMBER >= 0x3050000L && LIBRESSL_VERSION_NUMBER < 0x4000000fL)
+
   /* XXX TODO: At some point, we also need to call EVP_MD_meth_free() on
    * this, to avoid a resource leak.
    */
@@ -542,6 +543,12 @@ static const EVP_MD *EVP_crc32(void) {
   EVP_MD_meth_set_final(md, crc32_final);
   EVP_MD_meth_set_cleanup(md, crc32_free);
   EVP_MD_meth_set_flags(md, 0);
+#elif (defined(HAVE_LIBRESSL) && LIBRESSL_VERSION_NUMBER >= 0x4000000fL)
+  /* LibreSSL-4.0.0 and later removed the necessary APIs for implementing a
+   * custom EVP_MD implementation for e.g. CRC32 support.
+   */
+  errno = ENOSYS;
+  return NULL;
 #else
   md = &crc32_md;
 #endif /* prior to OpenSSL-1.1.0/LibreSSL-3.5.0 */
@@ -1338,13 +1345,12 @@ static int compute_digest(pool *p, const char *path, off_t start, off_t len,
 }
 
 static void free_algo_md(const EVP_MD *md) {
-#if (OPENSSL_VERSION_NUMBER >= 0x30000000L && !defined(HAVE_LIBRESSL)) || \
-     (defined(HAVE_LIBRESSL) && LIBRESSL_VERSION_NUMBER >= 0x3080000L)
+#if OPENSSL_VERSION_NUMBER >= 0x40000000L && !defined(HAVE_LIBRESSL)
   EVP_MD_free((EVP_MD *) md);
 #else
   /* Avoid compiler warnings. */
   (void) md;
-#endif /* OpenSSL-3.x/LibreSSL-3.8.x and later */
+#endif /* OpenSSL before 4.x */
 }
 
 static const EVP_MD *get_algo_md(unsigned long algo, int *free_md) {
@@ -1365,6 +1371,10 @@ static const EVP_MD *get_algo_md(unsigned long algo, int *free_md) {
       }
 #else
       md = EVP_crc32();
+      if (md == NULL) {
+        pr_trace_msg(trace_channel, 3, "error obtaining CRC32 EVP_MD: %s",
+          strerror(ENOSYS));
+      }
 #endif /* OpenSSL before 4.x */
       break;
 
@@ -2312,8 +2322,15 @@ MODRET digest_opts_hash(cmd_rec *cmd) {
         free_algo_md(digest_hash_md);
       }
 
-      digest_hash_algo = DIGEST_ALGO_CRC32;
       digest_hash_md = get_algo_md(digest_hash_algo, &digest_hash_free_md);
+      if (digest_hash_md == NULL) {
+        digest_algos &= ~DIGEST_ALGO_CRC32;
+
+        pr_response_add_err(R_501, _("%s: Unsupported algorithm"), algo_name);
+        return PR_ERROR(cmd);
+      }
+
+      digest_hash_algo = DIGEST_ALGO_CRC32;
 
     } else {
       pr_response_add_err(R_501, _("%s: Unsupported algorithm"), algo_name);
@@ -2327,8 +2344,15 @@ MODRET digest_opts_hash(cmd_rec *cmd) {
         free_algo_md(digest_hash_md);
       }
 
-      digest_hash_algo = DIGEST_ALGO_MD5;
       digest_hash_md = get_algo_md(digest_hash_algo, &digest_hash_free_md);
+      if (digest_hash_md == NULL) {
+        digest_algos &= ~DIGEST_ALGO_MD5;
+
+        pr_response_add_err(R_501, _("%s: Unsupported algorithm"), algo_name);
+        return PR_ERROR(cmd);
+      }
+
+      digest_hash_algo = DIGEST_ALGO_MD5;
 
     } else {
       pr_response_add_err(R_501, _("%s: Unsupported algorithm"), algo_name);
@@ -2343,8 +2367,15 @@ MODRET digest_opts_hash(cmd_rec *cmd) {
         free_algo_md(digest_hash_md);
       }
 
-      digest_hash_algo = DIGEST_ALGO_SHA1;
       digest_hash_md = get_algo_md(digest_hash_algo, &digest_hash_free_md);
+      if (digest_hash_md == NULL) {
+        digest_algos &= ~DIGEST_ALGO_SHA1;
+
+        pr_response_add_err(R_501, _("%s: Unsupported algorithm"), algo_name);
+        return PR_ERROR(cmd);
+      }
+
+      digest_hash_algo = DIGEST_ALGO_SHA1;
 
     } else {
       pr_response_add_err(R_501, _("%s: Unsupported algorithm"), algo_name);
@@ -2359,8 +2390,15 @@ MODRET digest_opts_hash(cmd_rec *cmd) {
         free_algo_md(digest_hash_md);
       }
 
-      digest_hash_algo = DIGEST_ALGO_SHA256;
       digest_hash_md = get_algo_md(digest_hash_algo, &digest_hash_free_md);
+      if (digest_hash_md == NULL) {
+        digest_algos &= ~DIGEST_ALGO_SHA256;
+
+        pr_response_add_err(R_501, _("%s: Unsupported algorithm"), algo_name);
+        return PR_ERROR(cmd);
+      }
+
+      digest_hash_algo = DIGEST_ALGO_SHA256;
 
     } else {
       pr_response_add_err(R_501, _("%s: Unsupported algorithm"), algo_name);
@@ -2375,8 +2413,15 @@ MODRET digest_opts_hash(cmd_rec *cmd) {
         free_algo_md(digest_hash_md);
       }
 
-      digest_hash_algo = DIGEST_ALGO_SHA512;
       digest_hash_md = get_algo_md(digest_hash_algo, &digest_hash_free_md);
+      if (digest_hash_md == NULL) {
+        digest_algos &= ~DIGEST_ALGO_SHA512;
+
+        pr_response_add_err(R_501, _("%s: Unsupported algorithm"), algo_name);
+        return PR_ERROR(cmd);
+      }
+
+      digest_hash_algo = DIGEST_ALGO_SHA512;
 
     } else {
       pr_response_add_err(R_501, _("%s: Unsupported algorithm"), algo_name);
