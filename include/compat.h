@@ -31,4 +31,9 @@
 /* The following macros first appeared in 1.3.6rc2. */
 #define _sql_make_cmd			sql_make_cmd
 
+/* Backward-compatibility macro; see Issue #2345. */
+#if defined(PR_USE_OPENSSL)
+# define HAVE_OPENSSL	1
+#endif /* PR_USE_OPENSSL */
+
 #endif /* PR_COMPAT_H */

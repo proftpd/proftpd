@@ -34,14 +34,14 @@
 # include <crypt.h>
 #endif
 
-#if defined(HAVE_OPENSSL) || defined(PR_USE_OPENSSL)
+#if defined(PR_USE_OPENSSL)
 # include <openssl/evp.h>
-#endif
+#endif /* PR_USE_OPENSSL */
 
 /* Define if you have the LibreSSL library.  */
 #if defined(LIBRESSL_VERSION_NUMBER)
 # define HAVE_LIBRESSL  1
-#endif
+#endif /* LIBRESSL_VERSION_NUMBER */
 
 /* default information for tables and fields */
 #define MOD_SQL_DEF_USERTABLE			"users"
@@ -1203,7 +1203,7 @@ static modret_t *sql_auth_empty(cmd_rec *cmd, const char *plaintext,
   return PR_ERROR_INT(cmd, PR_AUTH_BADPWD);
 }
 
-#if defined(HAVE_OPENSSL) || defined(PR_USE_OPENSSL)
+#if defined(PR_USE_OPENSSL)
 static modret_t *sql_auth_openssl(cmd_rec *cmd, const char *plaintext,
     const char *ciphertext) {
 
@@ -1244,8 +1244,8 @@ static modret_t *sql_auth_openssl(cmd_rec *cmd, const char *plaintext,
   *hashvalue = '\0';
   hashvalue++;
 
-#if OPENSSL_VERSION_NUMBER < 0x10100000L || \
-    defined(HAVE_LIBRESSL)
+# if OPENSSL_VERSION_NUMBER < 0x10100000L || \
+     defined(HAVE_LIBRESSL)
   OpenSSL_add_all_digests();
 #endif /* OpenSSL-1.1.0 and later */
 
@@ -1270,7 +1270,7 @@ static modret_t *sql_auth_openssl(cmd_rec *cmd, const char *plaintext,
 
   return PR_ERROR_INT(cmd, PR_AUTH_BADPWD);
 }
-#endif
+#endif /* PR_USE_OPENSSL */
 
 struct sql_authtype_handler {
   struct sql_authtype_handler *next, *prev;
@@ -6145,9 +6145,9 @@ static void sql_mod_unload_ev(const void *event_data, void *user_data) {
   (void) sql_unregister_authtype("Empty");
   (void) sql_unregister_authtype("Plaintext");
 
-#if defined(HAVE_OPENSSL) || defined(PR_USE_OPENSSL)
+#if defined(PR_USE_OPENSSL)
   (void) sql_unregister_authtype("OpenSSL");
-#endif /* HAVE_OPENSSL */
+#endif /* PR_USE_OPENSSL */
 
   close(sql_logfd);
   sql_logfd = -1;
@@ -6239,9 +6239,9 @@ static int sql_init(void) {
   (void) sql_register_authtype("Empty", sql_auth_empty);
   (void) sql_register_authtype("Plaintext", sql_auth_plaintext);
 
-#if defined(HAVE_OPENSSL) || defined(PR_USE_OPENSSL)
+#if defined(PR_USE_OPENSSL)
   (void) sql_register_authtype("OpenSSL", sql_auth_openssl);
-#endif /* HAVE_OPENSSL */
+#endif /* PR_USE_OPENSSL */
 
   return 0;
 }
