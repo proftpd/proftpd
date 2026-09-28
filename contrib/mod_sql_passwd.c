@@ -46,7 +46,7 @@
 # error "ProFTPD 1.3.7rc3 or later required"
 #endif
 
-#if !defined(HAVE_OPENSSL) && !defined(PR_USE_OPENSSL)
+#if !defined(PR_USE_OPENSSL)
 # error "OpenSSL support required (--enable-openssl)"
 #else
 # include <openssl/bio.h>
@@ -55,7 +55,7 @@
 # include <openssl/evp.h>
 # include <openssl/objects.h>
 # include <openssl/sha.h>
-#endif
+#endif /* PR_USE_OPENSSL */
 
 /* Define if you have the LibreSSL library.  */
 #if defined(LIBRESSL_VERSION_NUMBER)

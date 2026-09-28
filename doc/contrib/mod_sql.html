@@ -256,7 +256,7 @@ The current supported authentication methods are:
     Allows passwords in the database to be of the form
     <code>'{digest-name}hashed-value'</code>, where <code>hashed-value</code>
     is the base64-encoded digest of the password.  Only available if you
-    define <code>HAVE_OPENSSL</code> when you compile <code>proftpd</code>
+    define <code>PR_USE_OPENSSL</code> when you compile <code>proftpd</code>
     and you link with OpenSSL's <code>libcrypto</code> library; the easiest
     way to handle this is to use the <code>--enable-openssl</code> configure
     option.<br>
