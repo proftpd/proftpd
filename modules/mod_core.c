@@ -4213,10 +4213,10 @@ MODRET core_port(cmd_rec *cmd) {
   res = pr_inet_allowforeignaddress(cmd->tmp_pool, port_addr,
     session.c->remote_addr, c);
   if (res != 1) {
-    const pr_netaddr_t *remote_addr = session.c->remote_addr;
-
 #if defined(PR_USE_IPV6)
     if (pr_netaddr_use_ipv6()) {
+      const pr_netaddr_t *remote_addr = session.c->remote_addr;
+
       /* We can only compare the PORT-given address against the remote client
        * address if the remote client address is an IPv4-mapped IPv6 address.
        */
