@@ -728,6 +728,17 @@ static pr_redis_t *make_redis_conn(pool *p, const char *host, int port,
   redis->pool = sub_pool;
   redis->ctx = ctx;
 
+  if (uses_ip == TRUE) {
+    int on = 1;
+
+    /* Always disable Nagle for Redis TCP connections. */
+    if (setsockopt(ctx->fd, SOL_TCP, TCP_NODELAY, (void *) &on,
+        sizeof(on)) < 0) {
+      pr_trace_msg(trace_channel, 2, "error setting TCP_NODELAY=1 on fd %d: %s",
+        ctx->fd, strerror(errno));
+    }
+  }
+
 #if defined(PR_USE_REDIS_SSL)
   if (use_ssl == TRUE) {
     SSL_CTX *ssl_ctx;
