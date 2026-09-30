@@ -330,4 +330,4 @@ int sftp_channel_register_exec_handler(module *, const char *,
   int (*finish_chan)(uint32_t),
   int (**write_data)(pool *, uint32_t, unsigned char *, uint32_t));
 
-#endif
+#endif /* MOD_SFTP_H */
