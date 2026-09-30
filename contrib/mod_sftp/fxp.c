@@ -4427,6 +4427,37 @@ static int fxp_handle_ext_check_file(struct fxp_packet *fxp, char *digest_list,
     "calculate %s digest of %lu %s", path, digest_name, block_count,
     block_count == 1 ? "block/checksum" : "blocks/checksums");
 
+  /* Calculate the size of the response buffer, based on the number of blocks.
+   *
+   * Each block needs at most EVP_MAX_MD_SIZE bytes, plus 4 bytes for the
+   * length prefix.
+   */
+  expected_buflen = FXP_RESPONSE_DATA_DEFAULT_SZ +
+    (block_count * (EVP_MAX_MD_SIZE + 4));
+  if (expected_buflen > SFTP_MAX_PACKET_LEN) {
+    xerrno = EPERM;
+
+    (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
+      "expected response size (%lu bytes) for check-file request on '%s' "
+      "exceeds maximum (%lu bytes), rejecting request",
+      (unsigned long) expected_buflen, path,
+      (unsigned long) SFTP_MAX_PACKET_LEN);
+
+    status_code = fxp_errno2status(xerrno, &reason);
+
+    pr_trace_msg(trace_channel, 8, "sending response: STATUS %lu '%s'",
+      (unsigned long) status_code, reason);
+
+    fxp_status_write(fxp->pool, &buf, &buflen, fxp->request_id, status_code,
+      reason, NULL);
+
+    resp = fxp_packet_create(fxp->pool, fxp->channel_id);
+    resp->payload = ptr;
+    resp->payload_sz = (bufsz - buflen);
+
+    return fxp_packet_write(resp);
+  }
+
   fh = pr_fsio_open(path, O_RDONLY);
   if (fh == NULL) {
     xerrno = errno;
@@ -4512,16 +4543,11 @@ static int fxp_handle_ext_check_file(struct fxp_packet *fxp, char *digest_list,
     return fxp_packet_write(resp);
   }
 
-  /* Calculate the size of the response buffer, based on the number of blocks.
-   * Our already-allocated response buffer might be too small (see Issue #576).
-   *
-   * Each block needs at most EVP_MAX_MD_SIZE bytes, plus 4 bytes for the
-   * length prefix.
+  /* If our already-allocated response buffer is too small, allocate a larger
+   * one now (see Issue #576).
    */
-  expected_buflen = FXP_RESPONSE_DATA_DEFAULT_SZ +
-    (block_count * (EVP_MAX_MD_SIZE + 4));
   if (buflen < expected_buflen) {
-    pr_trace_msg(trace_channel, 15, "allocated larger buffer (%lu bytes) for "
+    pr_trace_msg(trace_channel, 15, "allocating larger buffer (%lu bytes) for "
       "check-file request on '%s', %s digest, %lu %s",
       (unsigned long) expected_buflen, path, digest_name, block_count,
       block_count == 1 ? "block/checksum" : "blocks/checksums");
