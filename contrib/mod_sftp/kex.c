@@ -5166,6 +5166,7 @@ static int write_mlkem768_reply(struct ssh2_packet *pkt, struct sftp_kex *kex) {
   res = get_mlkem768_shared_key(pkt->pool, kex->client_mlkem768, &mlkem_key,
     &mlkem_keylen, &ciphertext, &ciphertext_len);
   if (res < 0) {
+    pr_memscrub(x25519_key, X25519_KEYLEN);
     return -1;
   }
 
@@ -5183,6 +5184,9 @@ static int write_mlkem768_reply(struct ssh2_packet *pkt, struct sftp_kex *kex) {
    */
   sftp_msg_write_data(&buf, &buflen, mlkem_key, mlkem_keylen, FALSE);
   sftp_msg_write_data(&buf, &buflen, x25519_key, X25519_KEYLEN, FALSE);
+
+  pr_memscrub(x25519_key, X25519_KEYLEN);
+  pr_memscrub(mlkem_key, mlkem_keylen);
 
   pctx = EVP_MD_CTX_new();
 
@@ -5544,6 +5548,7 @@ static int write_sntrup761_reply(struct ssh2_packet *pkt,
   res = get_sntrup761_shared_key(pkt->pool, kex->client_sntrup761, &sntrup_key,
     &sntrup_keylen, &ciphertext, &ciphertext_len);
   if (res < 0) {
+    pr_memscrub(x25519_key, X25519_KEYLEN);
     return -1;
   }
 
@@ -5561,6 +5566,9 @@ static int write_sntrup761_reply(struct ssh2_packet *pkt,
    */
   sftp_msg_write_data(&buf, &buflen, sntrup_key, sntrup_keylen, FALSE);
   sftp_msg_write_data(&buf, &buflen, x25519_key, X25519_KEYLEN, FALSE);
+
+  pr_memscrub(x25519_key, X25519_KEYLEN);
+  pr_memscrub(sntrup_key, sntrup_keylen);
 
   pctx = EVP_MD_CTX_new();
 
@@ -5794,6 +5802,7 @@ static int write_ecdh_reply(struct ssh2_packet *pkt, struct sftp_kex *kex) {
     (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
       "computed ECDH shared secret length (%d) does not match needed length "
       "(%lu), rejecting", res, (unsigned long) ecdhlen);
+    pr_memscrub(buf, res);
     return -1;
   }
 
