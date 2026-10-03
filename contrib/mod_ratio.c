@@ -188,7 +188,7 @@ set_stats (const char *fstor, const char *fretr, const char *bstor,
     off_t res;
 
     res = strtoull(bstor, &tmp, 10);
-    if (tmp == NULL)
+    if (tmp != bstor)
       stats.bstor = res;
   }
 
@@ -197,7 +197,7 @@ set_stats (const char *fstor, const char *fretr, const char *bstor,
     off_t res;
 
     res = strtoull(bretr, &tmp, 10);
-    if (tmp == NULL)
+    if (tmp != bretr)
       stats.bretr = res;
   }
 #else
@@ -206,7 +206,7 @@ set_stats (const char *fstor, const char *fretr, const char *bstor,
     off_t res;
 
     res = strtoul(bstor, &tmp, 10);
-    if (tmp == NULL)
+    if (tmp != bstor)
       stats.bstor = res;
   }
 
@@ -215,7 +215,7 @@ set_stats (const char *fstor, const char *fretr, const char *bstor,
     off_t res;
 
     res = strtoul(bretr, &tmp, 10);
-    if (tmp == NULL)
+    if (tmp != bretr)
       stats.bretr = res;
   }
 #endif /* HAVE_STRTOULL */
@@ -439,7 +439,7 @@ update_stats (void)
                 res = strtoul(tok, &tmp, 10);
 #endif /* HAVE_STRTOULL */
 
-                if (tmp == NULL)
+                if (tmp != tok)
                     ulbytes = res;
             }
 
@@ -457,7 +457,7 @@ update_stats (void)
                 res = strtoul(tok, &tmp, 10);
 #endif /* HAVE_STRTOULL */
 
-                if (tmp == NULL)
+                if (tmp != tok)
                     dlbytes = res;
             }
 
@@ -696,7 +696,7 @@ MODRET post_cmd(cmd_rec *cmd) {
                   res = strtoul(tok, &tmp, 10);
 #endif /* HAVE_STRTOULL */
 
-                  if (tmp == NULL)
+                  if (tmp != tok)
                       ulbytes = res;
               }
 
@@ -714,7 +714,7 @@ MODRET post_cmd(cmd_rec *cmd) {
                   res = strtoul(tok, &tmp, 10);
 #endif /* HAVE_STRTOULL */
 
-                  if (tmp == NULL)
+                  if (tmp != tok)
                       dlbytes = res;
               }
 
