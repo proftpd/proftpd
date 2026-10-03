@@ -94,6 +94,15 @@ static struct
   const char *ratiotmp;
 } g;
 
+/* The totals of g.user as this session last read them from, or wrote them
+ * to, the RatioFile.  update_stats() adds only what changed since, so that
+ * concurrent sessions of the same user do not overwrite each other's counts.
+ */
+static struct {
+  int fstor, fretr;
+  off_t bstor, bretr;
+} saved;
+
 #define RATIO_ENFORCE (stats.frate || stats.brate)
 
 #define RATIO_STUFFS "-%d/%lu +%d/%lu (%d %d %d %d) = %d/%lu%s%s", \
@@ -394,6 +403,43 @@ static void log_ratios(cmd_rec *cmd) {
     RATIO_ENFORCE ? buf : "");
 }
 
+/* Serialises the read-modify-write of the RatioFile, and of the shared
+ * RatioTempFile, between sessions.  flock(2) is used because the RatioFile
+ * is reopened and closed while the lock is held, which would release an
+ * fcntl(2) lock.
+ */
+static int lock_ratiofile(void) {
+  int fd = -1;
+
+#ifdef HAVE_FLOCK
+  fd = open(g.ratiofile, O_RDONLY);
+  if (fd < 0) {
+    return -1;
+  }
+
+  while (flock(fd, LOCK_EX) < 0) {
+    if (errno == EINTR) {
+      pr_signals_handle();
+      continue;
+    }
+
+    pr_log_debug(DEBUG3, MOD_RATIO_VERSION
+      ": error locking ratios file '%s': %s", g.ratiofile, strerror(errno));
+    (void) close(fd);
+    return -1;
+  }
+#endif /* HAVE_FLOCK */
+
+  return fd;
+}
+
+static void unlock_ratiofile(int fd) {
+  if (fd >= 0) {
+    /* Closing the descriptor releases the lock. */
+    (void) close(fd);
+  }
+}
+
 static void
 update_stats (void)
 {
@@ -401,6 +447,9 @@ update_stats (void)
     char usrstr[256] = {'\0'}, *ratname;
     int ulfiles,dlfiles,cpc;
     off_t ulbytes = 0, dlbytes = 0;
+    int lockfd;
+
+    lockfd = lock_ratiofile();
 
     if (!fileerr) {
         newfile = fopen(g.ratiotmp, "w");
@@ -410,6 +459,7 @@ update_stats (void)
                 strerror(errno));
             gotratuser = 1;
             fileerr = 1;
+            unlock_ratiofile(lockfd);
             return;
         }
     }
@@ -462,6 +512,19 @@ update_stats (void)
             }
 
             if (strcmp(ratname, g.user) == 0) {
+                /* Another session of this user may have updated the entry
+                 * since we read it; add only what this session did since.
+                 */
+                stats.fstor = ulfiles + (stats.fstor - saved.fstor);
+                stats.bstor = ulbytes + (stats.bstor - saved.bstor);
+                stats.fretr = dlfiles + (stats.fretr - saved.fretr);
+                stats.bretr = dlbytes + (stats.bretr - saved.bretr);
+
+                saved.fstor = stats.fstor;
+                saved.bstor = stats.bstor;
+                saved.fretr = stats.fretr;
+                saved.bretr = stats.bretr;
+
                 fprintf(newfile, "%s|%d|%" PR_LU "|%d|%" PR_LU "\n", g.user,
                     stats.fstor, (pr_off_t) stats.bstor, stats.fretr,
                     (pr_off_t) stats.bretr);
@@ -514,6 +577,8 @@ update_stats (void)
 
     if (newfile)
         fclose(newfile);
+
+    unlock_ratiofile(lockfd);
 }
 
 /* Command handlers.
@@ -634,12 +699,14 @@ MODRET post_cmd(cmd_rec *cmd) {
   char *ratname;
   int ulfiles, dlfiles, cpc;
   off_t ulbytes = 0, dlbytes = 0;
+  int lockfd = -1;
 
   if (ratio_engine == FALSE) {
     return PR_DECLINED(cmd);
   }
 
   if (!gotratuser && g.save) {
+	lockfd = lock_ratiofile();
 	usrfile = fopen(g.ratiofile, "r");
 	if (usrfile == NULL) {
 	    pr_log_debug(DEBUG3, MOD_RATIO_VERSION
@@ -723,6 +790,10 @@ MODRET post_cmd(cmd_rec *cmd) {
                   stats.bretr += dlbytes;
                   stats.fstor += ulfiles;
                   stats.bstor += ulbytes;
+                  saved.fstor = ulfiles;
+                  saved.bstor = ulbytes;
+                  saved.fretr = dlfiles;
+                  saved.bretr = dlbytes;
                   gotratuser = 1;
               }
           }
@@ -761,6 +832,10 @@ MODRET post_cmd(cmd_rec *cmd) {
               fprintf(newfile, "%s|%d|%" PR_LU "|%d|%" PR_LU "\n", g.user,
                   stats.fstor, (pr_off_t) stats.bstor, stats.fretr,
                   (pr_off_t) stats.bretr);
+              saved.fstor = stats.fstor;
+              saved.bstor = stats.bstor;
+              saved.fretr = stats.fretr;
+              saved.bretr = stats.bretr;
 
               fclose(usrfile);
               fclose(newfile);
@@ -786,6 +861,8 @@ MODRET post_cmd(cmd_rec *cmd) {
           }
       }
   }
+
+  unlock_ratiofile(lockfd);
 
   if (ratio_engine == TRUE) {
       int cwding = !strcasecmp (cmd->argv[0], "CWD");

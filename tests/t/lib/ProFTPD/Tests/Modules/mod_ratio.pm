@@ -25,6 +25,11 @@ my $TESTS = {
     test_class => [qw(bug forking)],
   },
 
+  ratio_concurrent_sessions => {
+    order => ++$order,
+    test_class => [qw(bug forking)],
+  },
+
   ratio_keeps_other_users_bytes => {
     order => ++$order,
     test_class => [qw(bug forking)],
@@ -344,6 +349,158 @@ sub ratio_after_disconnect {
       close($fh);
 
       my $expected = "$setup->{user}|2|0|1|0";
+      $self->assert($line eq $expected,
+        test_msg("Expected RatioFile content '$expected', got '$line'"));
+
+    } else {
+      die("Can't read $ratio_file: $!");
+    }
+  };
+  if ($@) {
+    $ex = $@ unless $ex;
+  }
+
+  test_cleanup($setup, $ex);
+}
+
+sub ratio_concurrent_sessions {
+  my $self = shift;
+  my $tmpdir = $self->{tmpdir};
+  my $setup = test_setup($tmpdir, 'ratio');
+
+  # The user already has an entry, as after any earlier session.
+  my $ratio_file = File::Spec->rel2abs("$setup->{home_dir}/ratios.dat");
+  if (open(my $fh, "> $ratio_file")) {
+    print $fh "$setup->{user}|0|0|0|0\n";
+    unless (close($fh)) {
+      die("Can't write $ratio_file: $!");
+    }
+
+  } else {
+    die("Can't open $ratio_file: $!");
+  }
+
+  my $test_file = File::Spec->rel2abs("$setup->{home_dir}/test.txt");
+  if (open(my $fh, "> $test_file")) {
+    print $fh "Hello, World!\n";
+    unless (close($fh)) {
+      die("Can't write $test_file: $!");
+    }
+
+  } else {
+    die("Can't open $test_file: $!");
+  }
+
+  if ($< == 0) {
+    unless (chown($setup->{uid}, $setup->{gid}, $ratio_file, $test_file)) {
+      die("Can't set owner of $ratio_file to $setup->{uid}/$setup->{gid}: $!");
+    }
+  }
+
+  my $ratio_tmp_file = File::Spec->rel2abs("$setup->{home_dir}/ratios.tmp");
+
+  my $config = {
+    PidFile => $setup->{pid_file},
+    ScoreboardFile => $setup->{scoreboard_file},
+    SystemLog => $setup->{log_file},
+    TraceLog => $setup->{log_file},
+    Trace => 'response:10',
+
+    AuthUserFile => $setup->{auth_user_file},
+    AuthGroupFile => $setup->{auth_group_file},
+    AuthOrder => 'mod_auth_file.c',
+
+    IfModules => {
+      'mod_delay.c' => {
+        DelayEngine => 'off',
+      },
+
+      'mod_ratio.c' => {
+        Ratios => 'on',
+        SaveRatios => 'on',
+        RatioFile => $ratio_file,
+        RatioTempFile => $ratio_tmp_file,
+      },
+    },
+  };
+
+  my ($port, $config_user, $config_group) = config_write($setup->{config_file},
+    $config);
+
+  # Open pipes, for use between the parent and child processes.  Specifically,
+  # the child will indicate when it's done with its test by writing a message
+  # to the parent.
+  my ($rfh, $wfh);
+  unless (pipe($rfh, $wfh)) {
+    die("Can't open pipe: $!");
+  }
+
+  my $ex;
+
+  # Fork child
+  $self->handle_sigchld();
+  defined(my $pid = fork()) or die("Can't fork: $!");
+  if ($pid) {
+    eval {
+      # Both sessions log in, and so read the ratio file, before either one
+      # downloads anything.
+      my $client1 = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
+      $client1->login($setup->{user}, $setup->{passwd});
+
+      my $client2 = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
+      $client2->login($setup->{user}, $setup->{passwd});
+
+      foreach my $client ($client1, $client2) {
+        my $conn = $client->retr_raw("test.txt");
+        unless ($conn) {
+          die("RETR test.txt failed: " . $client->response_code() . " " .
+            $client->response_msg());
+        }
+
+        my $buf;
+        $conn->read($buf, 8192, 5);
+        eval { $conn->close() };
+
+        my $resp_code = $client->response_code();
+        my $resp_msg = $client->response_msg(0);
+        $self->assert_transfer_ok($resp_code, $resp_msg);
+      }
+
+      $client1->quit();
+      $client2->quit();
+
+      # Allow for slow session shutdown
+      sleep(1);
+    };
+    if ($@) {
+      $ex = $@;
+    }
+
+    $wfh->print("done\n");
+    $wfh->flush();
+
+  } else {
+    eval { server_wait($setup->{config_file}, $rfh) };
+    if ($@) {
+      warn($@);
+      exit 1;
+    }
+
+    exit 0;
+  }
+
+  # Stop server
+  server_stop($setup->{pid_file});
+  $self->assert_child_ok($pid);
+
+  eval {
+    if (open(my $fh, "< $ratio_file")) {
+      my $line = <$fh>;
+      chomp($line);
+      close($fh);
+
+      # Each session counts its own download; neither overwrites the other.
+      my $expected = "$setup->{user}|0|0|2|0";
       $self->assert($line eq $expected,
         test_msg("Expected RatioFile content '$expected', got '$line'"));
 
