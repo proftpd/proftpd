@@ -453,6 +453,11 @@ static struct sqlstore_key *sqlstore_get_key_rfc4716(pool *p, char **blob,
     }
   }
 
+  if (bio != NULL) {
+    BIO_free_all(bio);
+    bio = NULL;
+  }
+
   return key;
 }
 
@@ -461,8 +466,9 @@ static char *sqlstore_get_str(pool *p, char *str) {
   cmd_rec *cmd;
   modret_t *res;
 
-  if (strlen(str) == 0)
+  if (strlen(str) == 0) {
     return str;
+  }
 
   /* Find the cmdtable for the sql_escapestr command. */
   cmdtab = pr_stash_get_symbol2(PR_SYM_HOOK, "sql_escapestr", NULL, NULL, NULL);

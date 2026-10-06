@@ -376,6 +376,11 @@ static struct filestore_key *filestore_get_key(sftp_keystore_t *store,
     }
   }
 
+  if (bio != NULL) {
+    BIO_free_all(bio);
+    bio = NULL;
+  }
+
   return key;
 }
 
