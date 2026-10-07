@@ -36,7 +36,7 @@
 # error "mod_sftp_pam requires PAM support on your system"
 #endif /* HAVE_PAM */
 
-#define MOD_SFTP_PAM_VERSION		"mod_sftp_pam/0.3"
+#define MOD_SFTP_PAM_VERSION		"mod_sftp_pam/0.4"
 
 /* Make sure the version of proftpd is as necessary. */
 #if PROFTPD_VERSION_NUMBER < 0x0001030202
