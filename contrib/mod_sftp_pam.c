@@ -33,9 +33,9 @@
 #include "privs.h"
 #include "mod_sftp.h"
 
-#ifndef HAVE_PAM
+#if !defined(HAVE_PAM)
 # error "mod_sftp_pam requires PAM support on your system"
-#endif
+#endif /* HAVE_PAM */
 
 #define MOD_SFTP_PAM_VERSION		"mod_sftp_pam/0.3"
 
@@ -44,7 +44,7 @@
 # error "ProFTPD 1.3.2rc2 or later required"
 #endif
 
-#ifdef HAVE_SECURITY_PAM_APPL_H
+#if defined(HAVE_SECURITY_PAM_APPL_H)
 # ifdef HPUX11
 #  ifndef COMSEC
 #    define COMSEC 1
@@ -53,16 +53,16 @@
 # include <security/pam_appl.h>
 #endif /* HAVE_SECURITY_PAM_APPL_H */
 
-#ifdef HAVE_SECURITY_PAM_MODULES_H
+#if defined(HAVE_SECURITY_PAM_MODULES_H)
 # include <security/pam_modules.h>
 #endif /* HAVE_SECURITY_PAM_MODULES_H */
 
 /* Needed for the MAXLOGNAME restriction. */
-#ifdef HAVE_SYS_PARAM_H
+#if defined(HAVE_SYS_PARAM_H)
 # include <sys/param.h>
-#endif
+#endif /* HAVE_SYS_PARAM_H */
 
-#ifdef HAVE_PAM_PAM_APPL_H
+#if defined(HAVE_PAM_PAM_APPL_H)
 #include <pam/pam_appl.h>
 #endif /* HAVE_PAM_PAM_APPL_H */
 
@@ -74,17 +74,17 @@
 # define SFTP_PAM_MSG_MEMBER(msg, n, member)	((*(msg))[(n)].member)
 #else
 # define SFTP_PAM_MSG_MEMBER(msg, n, member)	((msg)[(n)]->member)
-#endif
+#endif /* Solaris or HPUX */
 
 /* On non-Solaris systems, the struct pam_message argument of pam_conv is
  * declared const, but on Solaris, it isn't.  To avoid compiler warnings about
  * incompatible pointer types, we need to use const or not as appropriate.
  */
-#ifndef SOLARIS2
+#if !defined(SOLARIS2)
 # define PR_PAM_CONST   const
 #else
 # define PR_PAM_CONST
-#endif
+#endif /* SOLARIS2 */
 
 #define SFTP_PAM_OPT_NO_TTY		0x001
 #define SFTP_PAM_OPT_NO_INFO_MSGS	0x002
@@ -111,12 +111,30 @@ static char sftppam_tty[32];
 
 static const char *trace_channel = "ssh2";
 
+static void sftppam_free_resps(struct pam_response *resps, unsigned int count) {
+  register unsigned int i;
+
+  if (resps == NULL ||
+      count == 0) {
+    return;
+  }
+
+  for (i = 0; i < count; i++) {
+    if (resps[i].resp != NULL) {
+      free(resps[i].resp);
+      resps[i].resp = NULL;
+    }
+  }
+
+  free(resps);
+}
+
 /* PAM interaction
  */
 
 static int sftppam_converse(int nmsgs, PR_PAM_CONST struct pam_message **msgs,
     struct pam_response **resps, void *app_data) {
-  register int i = 0, j = 0;
+  register int i = 0;
   array_header *list;
   uint32_t recvd_count = 0;
   const char **recvd_responses = NULL;
@@ -156,7 +174,7 @@ static int sftppam_converse(int nmsgs, PR_PAM_CONST struct pam_message **msgs,
 
       continue;
 
-#ifdef PAM_RADIO_TYPE
+#if defined(PAM_RADIO_TYPE)
     } else if (SFTP_PAM_MSG_MEMBER(msgs, i, msg_style) == PAM_RADIO_TYPE) {
       if (sftppam_opts & SFTP_PAM_OPT_NO_RADIO_MSGS) {
         pr_trace_msg(trace_channel, 9,
@@ -239,7 +257,7 @@ static int sftppam_converse(int nmsgs, PR_PAM_CONST struct pam_message **msgs,
         res[i].resp = NULL;
         break;
 
-#ifdef PAM_RADIO_TYPE
+#if defined(PAM_RADIO_TYPE)
     case PAM_RADIO_TYPE:
         pr_trace_msg(trace_channel, 9, "received PAM_RADIO_TYPE message: %s",
           SFTP_PAM_MSG_MEMBER(msgs, i, msg));
@@ -251,15 +269,7 @@ static int sftppam_converse(int nmsgs, PR_PAM_CONST struct pam_message **msgs,
         pr_trace_msg(trace_channel, 3,
           "received unknown PAM message style (%d), treating it as an error",
           SFTP_PAM_MSG_MEMBER(msgs, i, msg_style));
-        for (j = 0; j < nmsgs; j++) {
-          if (res[i].resp != NULL) {
-            free(res[i].resp);
-            res[i].resp = NULL;
-          }
-        }
-
-        free(res);
-
+        sftppam_free_resps(res, nmsgs);
         return PAM_CONV_ERR;
     }
   }
@@ -276,6 +286,22 @@ static const struct pam_conv sftppam_conv = { &sftppam_converse, NULL };
 static int sftppam_driver_open(sftp_kbdint_driver_t *driver, const char *user) {
   int res;
   config_rec *c;
+
+  if (sftppam_pamh != NULL) {
+    res = pam_end(sftppam_pamh, PAM_SUCCESS);
+    if (res != PAM_SUCCESS) {
+      pr_trace_msg(trace_channel, 1, "error freeing stale PAM handle: %s",
+        pam_strerror(sftppam_pamh, res));
+    }
+
+    sftppam_pamh = NULL;
+  }
+
+  if (sftppam_user != NULL) {
+    free(sftppam_user);
+    sftppam_user = NULL;
+    sftppam_userlen = 0;
+  }
 
   /* XXX Should we pay attention to AuthOrder here?  I.e. if AuthOrder
    * does not include mod_sftp_pam or mod_auth_pam, should we fail to
@@ -300,7 +326,7 @@ static int sftppam_driver_open(sftp_kbdint_driver_t *driver, const char *user) {
     sftppam_userlen = PAM_MAX_MSG_SIZE + 1;
   }
 
-#ifdef MAXLOGNAME
+#if defined(MAXLOGNAME)
   /* Some platforms' PAM libraries do not handle login strings that exceed
    * this length.
    */
@@ -313,7 +339,7 @@ static int sftppam_driver_open(sftp_kbdint_driver_t *driver, const char *user) {
     errno = EPERM;
     return -1;
   }
-#endif
+#endif /* MAXLOGNAME */
 
   sftppam_user = malloc(sftppam_userlen);
   if (sftppam_user == NULL) {
@@ -336,7 +362,7 @@ static int sftppam_driver_open(sftp_kbdint_driver_t *driver, const char *user) {
     c = find_config_next(c, c->next, CONF_PARAM, "SFTPPAMOptions", FALSE);
   }
 
-#ifdef SOLARIS2
+#if defined(SOLARIS2)
   /* For Solaris environments, the TTY environment will always be set,
    * in order to workaround a bug (Solaris Bug ID 4250887) where
    * pam_open_session() will crash unless both PAM_RHOST and PAM_TTY are
@@ -373,7 +399,11 @@ static int sftppam_driver_open(sftp_kbdint_driver_t *driver, const char *user) {
     return -1;
   }
 
+  pr_trace_msg(trace_channel, 9, "setting PAM_RUSER to '%s'", sftppam_user);
   pam_set_item(sftppam_pamh, PAM_RUSER, sftppam_user);
+
+  pr_trace_msg(trace_channel, 9, "setting PAM_RHOST to '%s'",
+    session.c->remote_name);
   pam_set_item(sftppam_pamh, PAM_RHOST, session.c->remote_name);
 
   if (!(sftppam_opts & SFTP_PAM_OPT_NO_TTY)) {
@@ -456,12 +486,12 @@ static int sftppam_driver_authenticate(sftp_kbdint_driver_t *driver,
   res = pam_acct_mgmt(sftppam_pamh, 0);
   if (res != PAM_SUCCESS) {
     switch (res) {
-#ifdef PAM_AUTHTOKEN_REQD
+#if defined(PAM_AUTHTOKEN_REQD)
       case PAM_AUTHTOKEN_REQD:
         pr_trace_msg(trace_channel, 8,
           "PAM account mgmt error: PAM_AUTHTOKEN_REQD");
         break;
-#endif
+#endif /* PAM_AUTHTOKEN_REQD */
 
       case PAM_ACCT_EXPIRED:
         pr_trace_msg(trace_channel, 8,
@@ -469,13 +499,13 @@ static int sftppam_driver_authenticate(sftp_kbdint_driver_t *driver,
         sftppam_auth_code = PR_AUTH_DISABLEDPWD;
         break;
 
-#ifdef PAM_ACCT_DISABLED
+#if defined(PAM_ACCT_DISABLED)
       case PAM_ACCT_DISABLED:
         pr_trace_msg(trace_channel, 8,
           "PAM account mgmt error: PAM_ACCT_DISABLED");
         sftppam_auth_code = PR_AUTH_DISABLEDPWD;
         break;
-#endif
+#endif /* PAM_ACCT_DISABLED */
 
       case PAM_USER_UNKNOWN:
         pr_trace_msg(trace_channel, 8,
@@ -514,11 +544,11 @@ static int sftppam_driver_authenticate(sftp_kbdint_driver_t *driver,
     return -1;
   }
 
-#ifdef PAM_CRED_ESTABLISH
+#if defined(PAM_CRED_ESTABLISH)
   res = pam_setcred(sftppam_pamh, PAM_CRED_ESTABLISH);
 #else
   res = pam_setcred(sftppam_pamh, PAM_ESTABLISH_CRED);
-#endif /* !PAM_CRED_ESTABLISH */
+#endif /* PAM_CRED_ESTABLISH */
   if (res != PAM_SUCCESS) {
     switch (res) {
       case PAM_CRED_EXPIRED:
@@ -556,7 +586,7 @@ static int sftppam_driver_authenticate(sftp_kbdint_driver_t *driver,
     pam_end(sftppam_pamh, PAM_SUCCESS);
     sftppam_pamh = NULL;
   }
-#endif
+#endif /* Solaris, HPUX 10, HPUX 11 */
 
   PRIVS_RELINQUISH
   pr_signals_unblock();
@@ -570,7 +600,7 @@ static int sftppam_driver_close(sftp_kbdint_driver_t *driver) {
     driver->driver_pool = NULL;
   }
 
-  if (sftppam_user) {
+  if (sftppam_user != NULL) {
     free(sftppam_user);
     sftppam_user = NULL;
     sftppam_userlen = 0;
@@ -685,11 +715,11 @@ static void sftppam_exit_ev(const void *event_data, void *user_data) {
   if (sftppam_pamh != NULL) {
     int res;
 
-#ifdef PAM_CRED_DELETE
+#if defined(PAM_CRED_DELETE)
     res = pam_setcred(sftppam_pamh, PAM_CRED_DELETE);
 #else
     res = pam_setcred(sftppam_pamh, PAM_DELETE_CRED);
-#endif
+#endif /* PAM_CRED_DELETE */
     if (res != PAM_SUCCESS) {
       pr_trace_msg(trace_channel, 9, "PAM error setting PAM_DELETE_CRED: %s",
         pam_strerror(sftppam_pamh, res));
