@@ -117,7 +117,7 @@ static int sftppam_converse(int nmsgs, PR_PAM_CONST struct pam_message **msgs,
     struct pam_response **resps, void *app_data) {
   register int i = 0, j = 0;
   array_header *list;
-  uint32_t recvd_count = 0;
+  uint32_t recvd_count = 0, recvd_idx = 0;
   const char **recvd_responses = NULL;
   struct pam_response *res = NULL;
 
@@ -208,6 +208,9 @@ static int sftppam_converse(int nmsgs, PR_PAM_CONST struct pam_message **msgs,
     return PAM_BUF_ERR;
   }
 
+  /* Only the prompts were sent to the client as challenges, so the received
+   * responses are indexed separately from the PAM messages.
+   */
   for (i = 0; i < nmsgs; i++) {
     res[i].resp_retcode = 0;
 
@@ -215,15 +218,15 @@ static int sftppam_converse(int nmsgs, PR_PAM_CONST struct pam_message **msgs,
       case PAM_PROMPT_ECHO_ON:
         pr_trace_msg(trace_channel, 9,
           "received PAM_PROMPT_ECHO_ON message '%s', responding with '%s'",
-          SFTP_PAM_MSG_MEMBER(msgs, i, msg), recvd_responses[i]);
-        res[i].resp = strdup(recvd_responses[i]);
+          SFTP_PAM_MSG_MEMBER(msgs, i, msg), recvd_responses[recvd_idx]);
+        res[i].resp = strdup(recvd_responses[recvd_idx++]);
         break;
 
       case PAM_PROMPT_ECHO_OFF:
         pr_trace_msg(trace_channel, 9,
           "received PAM_PROMPT_ECHO_OFF message '%s', responding with text",
           SFTP_PAM_MSG_MEMBER(msgs, i, msg));
-        res[i].resp = strdup(recvd_responses[i]);
+        res[i].resp = strdup(recvd_responses[recvd_idx++]);
         break;
 
       case PAM_TEXT_INFO:
