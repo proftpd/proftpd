@@ -156,6 +156,9 @@ static int keys_ec_min_nbits = 160;
 /* Impose a maximum size of OpenSSH private keys files. */
 #define SFTP_OPENSSH_KEY_MAX_SZ		(1024 * 64)
 
+/* And a limit on the maximum number of KDF rounds for OpenSSH private keys. */
+#define SFTP_OPENSSH_KEY_MAX_KDF_ROUNDS	(1024 * 32)
+
 /* Encryption cipher info. */
 struct openssh_cipher {
   const char *algo;
@@ -3266,6 +3269,15 @@ static int decrypt_openssh_data(pool *p, const char *path,
   pr_trace_msg(trace_channel, 9,
     "'%s' key %s KDF using %lu bytes of salt, %lu rounds", path,
     kdf_name, (unsigned long) salt_len, (unsigned long) rounds);
+
+  if (rounds > SFTP_OPENSSH_KEY_MAX_KDF_ROUNDS) {
+    pr_trace_msg(trace_channel, 3,
+      "'%s' key KDF rounds (%lu) exceeds maximum (%lu), rejecting",
+      path, (unsigned long) rounds,
+      (unsigned long) SFTP_OPENSSH_KEY_MAX_KDF_ROUNDS);
+    errno = EINVAL;
+    return -1;
+  }
 
   /* Compute the decryption key using the KDF and the passphrase.  Note that
    * we derive the key AND the IV using this approach at the same time.
