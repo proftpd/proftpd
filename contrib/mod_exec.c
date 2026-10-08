@@ -1631,7 +1631,8 @@ MODRET set_execenviron(cmd_rec *cmd) {
   jot_ctx->log = jot_parsed;
 
   res = pr_jot_parse_logfmt(cmd->tmp_pool, text, jot_ctx, pr_jot_parse_on_meta,
-    pr_jot_parse_on_unknown, pr_jot_parse_on_other, 0);
+    pr_jot_parse_on_unknown, pr_jot_parse_on_other,
+    PR_JOT_LOGFMT_PARSE_FL_UNKNOWN_AS_CUSTOM);
   if (res < 0) {
     pr_log_pri(PR_LOG_INFO, MOD_EXEC_VERSION ": error parsing '%s': %s",
       text, strerror(errno));
