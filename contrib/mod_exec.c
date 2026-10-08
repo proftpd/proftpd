@@ -1942,13 +1942,19 @@ static void exec_any_ev(const void *event_data, void *user_data) {
   int res;
   unsigned int path_idx = EXEC_IDX_LOGFMTS+1;
   const char *path;
+  pool *tmp_pool;
+  cmd_rec *cmd;
 
   if (exec_engine == FALSE) {
     return;
   }
 
+  /* Generate a fake temporary cmd_rec. */
+  tmp_pool = make_sub_pool(exec_pool);
+  cmd = pr_cmd_alloc(tmp_pool, 1, "ExecOnEvent");
+
   path = eed->c->argv[path_idx];
-  res = exec_ssystem(NULL, eed->c, eed->flags);
+  res = exec_ssystem(cmd, eed->c, eed->flags);
   if (res != 0) {
     exec_log("ExecOnEvent '%s' for %s failed: %s", eed->event,
       path, strerror(res));
@@ -1956,6 +1962,8 @@ static void exec_any_ev(const void *event_data, void *user_data) {
   } else {
     exec_log("ExecOnEvent '%s' for %s succeeded", eed->event, path);
   }
+
+  destroy_pool(tmp_pool);
 }
 
 #if defined(PR_SHARED_MODULE)
