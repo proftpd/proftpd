@@ -738,19 +738,30 @@ static int exec_ssystem(cmd_rec *cmd, config_rec *c, int flags) {
         (exec_opts & EXEC_OPT_LOG_STDERR) ||
         (exec_opts & EXEC_OPT_SEND_STDOUT) ||
         exec_timeout > 0) {
-      int maxfd = -1, fds, send_sigterm = 1;
+      int maxfd = -1, fds, send_sigterm = TRUE;
       fd_set readfds;
       struct timeval tv;
       time_t start_time = time(NULL);
       pool *tmp_pool;
+      long buflen = 0, bufsz = 0;
+      char *buf = NULL;
 
       tmp_pool = cmd ? cmd->tmp_pool : make_sub_pool(session.pool);
+
+      if (exec_stdout_pipe[0] >= 0) {
+        buf = pr_fsio_getpipebuf(tmp_pool, exec_stdout_pipe[0], &bufsz);
+
+      } else {
+        buf = pr_fsio_getpipebuf(tmp_pool, exec_stderr_pipe[0], &bufsz);
+      }
 
       /* We set the result value to zero initially, so that at least one
        * pass through the stdout/stderr reading code happens.
        */
       res = 0;
       while (res <= 0) {
+        int xerrno;
+
         if (res < 0) {
           if (errno != EINTR) {
             exec_log("error: unable to wait for pid %d: %s", pid,
@@ -760,6 +771,7 @@ static int exec_ssystem(cmd_rec *cmd, config_rec *c, int flags) {
           }
 
           pr_signals_handle();
+          res = 0;
           continue;
         }
 
@@ -768,8 +780,8 @@ static int exec_ssystem(cmd_rec *cmd, config_rec *c, int flags) {
           if ((time(NULL) - start_time) > exec_timeout) {
 
             /* Send TERM, the first time, to be polite. */
-            if (send_sigterm) {
-              send_sigterm = 0;
+            if (send_sigterm == TRUE) {
+              send_sigterm = FALSE;
               exec_log("'%s' has exceeded ExecTimeout (%lu seconds), sending "
                 "SIGTERM (signal %d)", path, (unsigned long) exec_timeout,
                 SIGTERM);
@@ -791,9 +803,15 @@ static int exec_ssystem(cmd_rec *cmd, config_rec *c, int flags) {
          * to tell us.
          */
         FD_ZERO(&readfds);
+        maxfd = -1;
 
-        if ((exec_opts & EXEC_OPT_LOG_STDOUT) ||
-            (exec_opts & EXEC_OPT_SEND_STDOUT)) {
+        /* We might close the stdout/stderr pipes on EOF, hence why we check
+         * whether they are still open/valid here (Issue #2358).
+         */
+
+        if (exec_stdout_pipe[0] >= 0 &&
+            ((exec_opts & EXEC_OPT_LOG_STDOUT) ||
+             (exec_opts & EXEC_OPT_SEND_STDOUT))) {
           FD_SET(exec_stdout_pipe[0], &readfds);
 
           if (exec_stdout_pipe[0] > maxfd) {
@@ -801,7 +819,8 @@ static int exec_ssystem(cmd_rec *cmd, config_rec *c, int flags) {
           }
         }
 
-        if (exec_opts & EXEC_OPT_LOG_STDERR) {
+        if (exec_stderr_pipe[0] >= 0 &&
+            (exec_opts & EXEC_OPT_LOG_STDERR)) {
           FD_SET(exec_stderr_pipe[0], &readfds);
 
           if (exec_stderr_pipe[0] > maxfd) {
@@ -813,27 +832,37 @@ static int exec_ssystem(cmd_rec *cmd, config_rec *c, int flags) {
         tv.tv_sec = 2L;
         tv.tv_usec = 0L;
 
+        pr_trace_msg(trace_channel, 19,
+          "monitoring '%s': select (stdout = %d, stderr = %d, maxfd = %d, "
+          "timeout = 2s) called", path, exec_stdout_pipe[0],
+          exec_stderr_pipe[0], maxfd);
         fds = select(maxfd + 1, &readfds, NULL, NULL, &tv);
-        if (fds == -1 &&
-            errno == EINTR) {
-          pr_signals_handle();
+        xerrno = errno;
+
+        pr_trace_msg(trace_channel, 19,
+          "monitored '%s': select (maxfd = %d) returned %d", path, maxfd, fds);
+        errno = xerrno;
+
+        if (fds <= 0) {
+          /* Nothing from our fds; short circuit the loop here. */
+
+          if (errno == EINTR) {
+            pr_signals_handle();
+          }
+
+          res = waitpid(pid, &status, WNOHANG);
+          continue;
         }
 
-        if (fds >= 0) {
-          long buflen, bufsz;
-          char *buf;
-
-          buf = pr_fsio_getpipebuf(tmp_pool, exec_stdout_pipe[0], &bufsz);
-
+        if (fds > 0) {
           /* The child sent us something.  How thoughtful. */
 
-          if (FD_ISSET(exec_stdout_pipe[0], &readfds)) {
+          if (exec_stdout_pipe[0] >= 0 &&
+              FD_ISSET(exec_stdout_pipe[0], &readfds)) {
             memset(buf, '\0', bufsz);
-
             buflen = read(exec_stdout_pipe[0], buf, bufsz-1);
             if (buflen > 0) {
               if (exec_opts & EXEC_OPT_SEND_STDOUT) {
-
                 if (!(flags & EXEC_FL_NO_SEND)) {
                   if (flags & EXEC_FL_USE_SEND) {
                     pr_response_send(R_220, "%s", buf);
@@ -872,12 +901,23 @@ static int exec_ssystem(cmd_rec *cmd, config_rec *c, int flags) {
                 exec_log("error reading stdout from '%s': %s", path,
                   strerror(errno));
               }
+
+            } else {
+              /* In this case, we read EOF from the stdout pipe, and EOF
+               * pipes are always readable to select(2).  Close it such that
+               * select(2) ignores it (Issue #2358).
+               */
+              pr_trace_msg(trace_channel, 9,
+                "'%s' stdout pipe returned EOF, closing it", path);
+              FD_CLR(exec_stdout_pipe[0], &readfds);
+              (void) close(exec_stdout_pipe[0]);
+              exec_stdout_pipe[0] = -1;
             }
           }
 
-          if (FD_ISSET(exec_stderr_pipe[0], &readfds)) {
+          if (exec_stderr_pipe[0] >= 0 &&
+              FD_ISSET(exec_stderr_pipe[0], &readfds)) {
             memset(buf, '\0', bufsz);
-
             buflen = read(exec_stderr_pipe[0], buf, bufsz-1);
             if (buflen > 0) {
 
@@ -905,10 +945,23 @@ static int exec_ssystem(cmd_rec *cmd, config_rec *c, int flags) {
                 exec_log("error reading stderr from '%s': %s", path,
                   strerror(errno));
               }
+
+            } else {
+              /* In this case, we read EOF from the stderr pipe, and EOF
+               * pipes are always readable to select(2).  Close it such that
+               * select(2) ignores it (Issue #2358).
+               */
+              pr_trace_msg(trace_channel, 9,
+                "'%s' stderr pipe returned EOF, closing it", path);
+              FD_CLR(exec_stderr_pipe[0], &readfds);
+              (void) close(exec_stderr_pipe[0]);
+              exec_stderr_pipe[0] = -1;
             }
           }
         }
 
+        pr_trace_msg(trace_channel, 19, "waiting for '%s' (PID %lu) to finish",
+          path, (unsigned long) pid);
         res = waitpid(pid, &status, WNOHANG);
       }
 
@@ -936,8 +989,15 @@ static int exec_ssystem(cmd_rec *cmd, config_rec *c, int flags) {
     }
   }
 
-  close(exec_stdout_pipe[0]);
-  close(exec_stderr_pipe[0]);
+  if (exec_stdout_pipe[0] >= 0) {
+    (void) close(exec_stdout_pipe[0]);
+    exec_stdout_pipe[0] = -1;
+  }
+
+  if (exec_stderr_pipe[0] >= 0) {
+    (void) close(exec_stderr_pipe[0]);
+    exec_stderr_pipe[0] = -1;
+  }
 
   /* Restore the previous signal actions. */
   if (sigaction(SIGINT, &sa_intr, NULL) < 0) {

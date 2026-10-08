@@ -62,6 +62,11 @@ my $TESTS = {
     test_class => [qw(forking)],
   },
 
+  exec_opt_log_stdout_stderr_issue2358 => {
+    order => ++$order,
+    test_class => [qw(bug forking)],
+  },
+
   exec_opt_send_stdout => {
     order => ++$order,
     test_class => [qw(forking)],
@@ -1123,6 +1128,146 @@ EOS
   test_cleanup($setup, $ex);
 }
 
+sub exec_opt_log_stdout_stderr_issue2358 {
+  my $self = shift;
+  my $tmpdir = $self->{tmpdir};
+  my $setup = test_setup($tmpdir, 'exec');
+
+  my $script = File::Spec->rel2abs("$tmpdir/exec.sh");
+  if (open(my $fh, "> $script")) {
+    print $fh <<EOS;
+#!/usr/bin/env bash
+sleep 1
+exec 2>>/dev/null
+sleep 1
+echo "\$1"
+EOS
+    unless (close($fh)) {
+      die("Can't write $script: $!");
+    }
+
+    unless (chmod(0755, $script)) {
+      die("Can't set perms on $script to 0755: $!");
+    }
+
+  } else {
+    die("Can't open $script: $!");
+  }
+
+  my $config = {
+    PidFile => $setup->{pid_file},
+    ScoreboardFile => $setup->{scoreboard_file},
+    SystemLog => $setup->{log_file},
+    TraceLog => $setup->{log_file},
+    Trace => 'exec:20',
+
+    AuthUserFile => $setup->{auth_user_file},
+    AuthGroupFile => $setup->{auth_group_file},
+    AuthOrder => 'mod_auth_file.c',
+
+    IfModules => {
+      'mod_exec.c' => {
+        ExecEngine => 'on',
+        ExecLog => $setup->{log_file},
+        ExecOnCommand => "LIST $script addr=%a",
+        ExecOptions => 'logStdout logStderr',
+      },
+
+      'mod_delay.c' => {
+        DelayEngine => 'off',
+      },
+    },
+  };
+
+  my ($port, $config_user, $config_group) = config_write($setup->{config_file},
+    $config);
+
+  # Open pipes, for use between the parent and child processes.  Specifically,
+  # the child will indicate when it's done with its test by writing a message
+  # to the parent.
+  my ($rfh, $wfh);
+  unless (pipe($rfh, $wfh)) {
+    die("Can't open pipe: $!");
+  }
+
+  my $ex;
+
+  # Fork child
+  $self->handle_sigchld();
+  defined(my $pid = fork()) or die("Can't fork: $!");
+  if ($pid) {
+    eval {
+      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port, 0, 15);
+      $client->login($setup->{user}, $setup->{passwd});
+      $client->list();
+      $client->quit();
+    };
+    if ($@) {
+      $ex = $@;
+    }
+
+    $wfh->print("done\n");
+    $wfh->flush();
+
+  } else {
+    eval { server_wait($setup->{config_file}, $rfh, 30) };
+    if ($@) {
+      warn($@);
+      exit 1;
+    }
+
+    exit 0;
+  }
+
+  # Stop server
+  server_stop($setup->{pid_file});
+  $self->assert_child_ok($pid);
+
+  eval {
+    if (open(my $fh, "< $setup->{log_file}")) {
+      my $line;
+      my $stderr_ok = 0;
+
+      while ($line = <$fh>) {
+        chomp($line);
+
+        if ($ENV{TEST_VERBOSE}) {
+          print STDERR "# $line\n";
+        }
+
+        if ($line =~ /stderr pipe returned EOF/) {
+          $stderr_ok = 1;
+          next;
+        }
+
+        if ($line =~ /stdout from '$script'/) {
+          last;
+        }
+      }
+
+      close($fh);
+
+      $self->assert($stderr_ok,
+        test_msg("Did not see expected 'stderr pipe EOF' trace message"));
+
+      $line =~ /stdout from '$script': '(.*?)'/;
+      my $stdout = $1;
+
+      my $expected = 'addr=127.0.0.1';
+      $self->assert($expected eq $stdout,
+        test_msg("Expected stdout '$expected', got '$stdout'"));
+
+    } else {
+      die("Can't read $setup->{log_file}: $!");
+    }
+  };
+  if ($@) {
+    $ex = $@ unless $ex;
+  }
+
+  test_cleanup($setup, $ex);
+}
+
 sub exec_opt_send_stdout {
   my $self = shift;
   my $tmpdir = $self->{tmpdir};
@@ -1863,6 +2008,8 @@ EOS
     PidFile => $setup->{pid_file},
     ScoreboardFile => $setup->{scoreboard_file},
     SystemLog => $setup->{log_file},
+    TraceLog => $setup->{log_file},
+    Trace => 'exec:20 jot:20',
 
     AuthUserFile => $setup->{auth_user_file},
     AuthGroupFile => $setup->{auth_group_file},
