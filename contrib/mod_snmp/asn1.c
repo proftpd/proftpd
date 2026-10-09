@@ -351,7 +351,12 @@ int snmp_asn1_read_int(pool *p, unsigned char **buf, size_t *buflen,
     return -1;
   }
 
-  if ((*buf)[0] & 0x80) {
+  /* Make sure that the buffer is not empty before checking the first byte
+   * for the negative integer sign bit; a zero-length INTEGER at the very end
+   * of the packet would otherwise cause a read past the end of the buffer.
+   */
+  if (*buflen > 0 &&
+      ((*buf)[0] & 0x80)) {
     /* The integer is negative; the negative sign bit is set. */
 
     if (flags & SNMP_ASN1_FL_UNSIGNED) {
