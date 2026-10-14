@@ -30,12 +30,17 @@
 #define SFTP_COMPRESS_FL_NEW_KEY		1
 #define SFTP_COMPRESS_FL_AUTHENTICATED		2
 
-int sftp_compress_init_read(int);
+/* Tell the SFTP Compression API to enable only the use of Huffman encoding
+ * in zlib (Issue #2366).
+ */
+#define SFTP_COMPRESS_OPT_USE_HUFFMAN_ONLY	0x001
+
+int sftp_compress_init_read(int flags, unsigned long compress_opts);
 const char *sftp_compress_get_read_algo(void);
 int sftp_compress_set_read_algo(const char *);
 int sftp_compress_read_data(struct ssh2_packet *);
 
-int sftp_compress_init_write(int);
+int sftp_compress_init_write(int flags, unsigned long compress_opts);
 const char *sftp_compress_get_write_algo(void);
 int sftp_compress_set_write_algo(const char *);
 int sftp_compress_write_data(struct ssh2_packet *);

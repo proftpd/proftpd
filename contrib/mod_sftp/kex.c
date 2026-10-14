@@ -1634,7 +1634,7 @@ static struct sftp_kex *create_kex(pool *p) {
   kex->server_names->s2c_mac_algo = list;
 
   c = find_config(main_server->conf, CONF_PARAM, "SFTPCompression", FALSE);
-  if (c) {
+  if (c != NULL) {
     int comp_mode;
 
     comp_mode = *((int *) c->argv[0]);
@@ -2690,9 +2690,11 @@ static void set_note_var(pool *p, const char *k, const char *v) {
 }
 
 static int set_session_keys(struct sftp_kex *kex) {
+  config_rec *c;
   unsigned char *buf, *ptr;
   uint32_t buflen, bufsz, klen;
   int comp_read_flags, comp_write_flags;
+  unsigned long comp_opts = 0UL;
 
   /* To date, the kex algo that has generated the largest K that I have
    * seen so far is "diffie-hellman-group18-sha512".
@@ -2734,6 +2736,14 @@ static int set_session_keys(struct sftp_kex *kex) {
 
   pr_memscrub(ptr, bufsz);
 
+  c = find_config(main_server->conf, CONF_PARAM, "SFTPCompression", FALSE);
+  if (c != NULL) {
+    unsigned long opts;
+
+    opts = *((unsigned long *) c->argv[1]);
+    comp_opts |= opts;
+  }
+
   comp_read_flags = comp_write_flags = SFTP_COMPRESS_FL_NEW_KEY;
 
   /* If we are rekeying, AND the existing compression is "delayed", then
@@ -2753,11 +2763,11 @@ static int set_session_keys(struct sftp_kex *kex) {
     }
   }
 
-  if (sftp_compress_init_read(comp_read_flags) < 0) {
+  if (sftp_compress_init_read(comp_read_flags, comp_opts) < 0) {
     return -1;
   }
 
-  if (sftp_compress_init_write(comp_write_flags) < 0) {
+  if (sftp_compress_init_write(comp_write_flags, comp_opts) < 0) {
     return -1;
   }
 

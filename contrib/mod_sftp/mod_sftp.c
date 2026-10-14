@@ -40,6 +40,7 @@
 #include "service.h"
 #include "auth.h"
 #include "channel.h"
+#include "compress.h"
 #include "tap.h"
 #include "kbdint.h"
 #include "fxp.h"
@@ -1216,12 +1217,14 @@ MODRET set_sftpclientmatch(cmd_rec *cmd) {
 #endif
 }
 
-/* usage: SFTPCompression on|off|delayed */
+/* usage: SFTPCompression on|off|delayed [options] */
 MODRET set_sftpcompression(cmd_rec *cmd) {
   config_rec *c;
   int use_compression = FALSE;
+  unsigned long compress_opts = 0UL;
 
-  if (cmd->argc != 2) {
+  if (cmd->argc < 2 ||
+      cmd->argc > 3) {
     CONF_ERROR(cmd, "Wrong number of parameters");
   }
 
@@ -1242,9 +1245,22 @@ MODRET set_sftpcompression(cmd_rec *cmd) {
   use_compression = 0;
 #endif /* !HAVE_ZLIB_H */
 
+  if (cmd->argc > 2) {
+    if (strcasecmp(cmd->argv[2], "UseHuffmanOnly") == 0) {
+      compress_opts |= SFTP_COMPRESS_OPT_USE_HUFFMAN_ONLY;
+
+    } else {
+      pr_log_debug(DEBUG0, MOD_SFTP_VERSION
+        ": ignoring unknown/unsupported SFTPCompression option '%s'",
+        (char *) cmd->argv[2]);
+    }
+  }
+
   c = add_config_param(cmd->argv[0], 1, NULL);
   c->argv[0] = pcalloc(c->pool, sizeof(int));
   *((int *) c->argv[0]) = use_compression;
+  c->argv[1] = palloc(c->pool, sizeof(unsigned long));
+  *((unsigned long *) c->argv[1]) = compress_opts;
 
   return PR_HANDLED(cmd);
 }
