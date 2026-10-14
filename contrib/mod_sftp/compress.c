@@ -87,7 +87,7 @@ static void switch_read_compress(int flags) {
 
   /* First we can free up the read stream, kept from rekeying. */
   if (comp->use_zlib == flags &&
-      comp->stream_ready) {
+      comp->stream_ready == TRUE) {
 
     (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
       "done decompressing data: decompressed %" PR_LU " bytes to %" PR_LU
@@ -119,7 +119,7 @@ static void switch_write_compress(int flags) {
 
   /* First we can free up the write stream, kept from rekeying. */
   if (comp->use_zlib == flags &&
-      comp->stream_ready) {
+      comp->stream_ready == TRUE) {
 
     (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
       "done compressing data: compressed %" PR_LU " bytes to %" PR_LU
@@ -163,24 +163,24 @@ const char *sftp_compress_get_read_algo(void) {
 int sftp_compress_set_read_algo(const char *algo) {
   unsigned int idx = read_comp_idx;
 
-  if (read_compresses[idx].stream_ready) {
+  if (read_compresses[idx].stream_ready == TRUE) {
     /* If we have an existing stream, it means that we are currently
      * rekeying.
      */
     idx = get_next_read_index();
   }
 
-  if (strncmp(algo, "zlib@openssh.com", 17) == 0) {
+  if (strcmp(algo, "zlib@openssh.com") == 0) {
     read_compresses[idx].use_zlib = SFTP_COMPRESS_FL_AUTHENTICATED;
     return 0;
   }
 
-  if (strncmp(algo, "zlib", 5) == 0) {
+  if (strcmp(algo, "zlib") == 0) {
     read_compresses[idx].use_zlib = SFTP_COMPRESS_FL_NEW_KEY;
     return 0;
   }
 
-  if (strncmp(algo, "none", 5) == 0) {
+  if (strcmp(algo, "none") == 0) {
     return 0;
   }
 
@@ -188,9 +188,12 @@ int sftp_compress_set_read_algo(const char *algo) {
   return -1;
 }
 
-int sftp_compress_init_read(int flags) {
+int sftp_compress_init_read(int flags, unsigned long compress_opts) {
   struct sftp_compress *comp;
   z_stream *stream;
+
+  /* Unused here, for now. */
+  (void) compress_opts;
 
   switch_read_compress(flags);
 
@@ -198,7 +201,7 @@ int sftp_compress_init_read(int flags) {
   stream = &(read_streams[read_comp_idx]);
 
   if (comp->use_zlib == flags &&
-      !comp->stream_ready) {
+      comp->stream_ready == FALSE) {
     int zres;
 
     zres = inflateInit(stream);
@@ -222,7 +225,7 @@ int sftp_compress_read_data(struct ssh2_packet *pkt) {
   stream = &(read_streams[read_comp_idx]);
 
   if (comp->use_zlib &&
-      comp->stream_ready) {
+      comp->stream_ready == TRUE) {
     unsigned char buf[16384], *input;
     char *payload;
     uint32_t input_len, payload_len = 0, payload_sz;
@@ -366,24 +369,24 @@ const char *sftp_compress_get_write_algo(void) {
 int sftp_compress_set_write_algo(const char *algo) {
   unsigned int idx = write_comp_idx;
 
-  if (write_compresses[idx].stream_ready) {
+  if (write_compresses[idx].stream_ready == TRUE) {
     /* If we have an existing stream, it means that we are currently
      * rekeying.
      */
     idx = get_next_write_index();
   }
 
-  if (strncmp(algo, "zlib@openssh.com", 17) == 0) {
+  if (strcmp(algo, "zlib@openssh.com") == 0) {
     write_compresses[idx].use_zlib = SFTP_COMPRESS_FL_AUTHENTICATED;
     return 0;
   }
 
-  if (strncmp(algo, "zlib", 5) == 0) {
+  if (strcmp(algo, "zlib") == 0) {
     write_compresses[idx].use_zlib = SFTP_COMPRESS_FL_NEW_KEY;
     return 0;
   }
 
-  if (strncmp(algo, "none", 5) == 0) {
+  if (strcmp(algo, "none") == 0) {
     return 0;
   }
 
@@ -391,7 +394,7 @@ int sftp_compress_set_write_algo(const char *algo) {
   return -1;
 }
 
-int sftp_compress_init_write(int flags) {
+int sftp_compress_init_write(int flags, unsigned long compress_opts) {
   struct sftp_compress *comp;
   z_stream *stream;
 
@@ -401,10 +404,22 @@ int sftp_compress_init_write(int flags) {
   stream = &(write_streams[write_comp_idx]);
 
   if (comp->use_zlib == flags &&
-      !comp->stream_ready) {
+      comp->stream_ready == FALSE) {
     int zres;
 
-    zres = deflateInit(stream, Z_DEFAULT_COMPRESSION);
+    if (compress_opts & SFTP_COMPRESS_OPT_USE_HUFFMAN_ONLY) {
+      /* Since Huffman encoding is slower, we want to try for the best
+       * speed of uncompression possible.
+       */
+      pr_trace_msg(trace_channel, 19, "%s",
+        "initializing compression using Huffman encoding only");
+      zres = deflateInit2(stream, Z_BEST_SPEED, Z_DEFLATED, 15, 8,
+        Z_HUFFMAN_ONLY);
+
+    } else {
+      zres = deflateInit(stream, Z_DEFAULT_COMPRESSION);
+    }
+
     if (zres != Z_OK) {
       (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
         "error preparing compression stream (%d)", zres);
@@ -425,7 +440,7 @@ int sftp_compress_write_data(struct ssh2_packet *pkt) {
   stream = &(write_streams[write_comp_idx]);
 
   if (comp->use_zlib &&
-      comp->stream_ready) {
+      comp->stream_ready == TRUE) {
     unsigned char buf[16384], *input;
     char *payload;
     uint32_t input_len, payload_len = 0, payload_sz;
@@ -536,7 +551,10 @@ int sftp_compress_write_data(struct ssh2_packet *pkt) {
 
 #else
 
-int sftp_compress_init_read(int flags) {
+int sftp_compress_init_read(int flags, unsigned long compress_opts) {
+  (void) flags;
+  (void) compress_opts;
+
   return 0;
 }
 
@@ -557,7 +575,10 @@ int sftp_compress_read_data(struct ssh2_packet *pkt) {
   return 0;
 }
 
-int sftp_compress_init_write(int flags) {
+int sftp_compress_init_write(int flags, unsigned long compress_opts) {
+  (void) flags;
+  (void) compress_opts;
+
   return 0;
 }
 

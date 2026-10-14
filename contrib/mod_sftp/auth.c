@@ -945,10 +945,12 @@ static int send_userauth_failure(char *failed_meth) {
 }
 
 static int send_userauth_success(void) {
+  config_rec *c;
   struct ssh2_packet *pkt;
   unsigned char *buf, *ptr;
   uint32_t buflen, bufsz = 1024;
-  int res;
+  int comp_flags, res;
+  unsigned long comp_opts = 0UL;
 
   if (auth_sent_userauth_success) {
     return 0;
@@ -978,8 +980,18 @@ static int send_userauth_success(void) {
   /* We call the compression init routines here as well, in case the
    * client selected "delayed" compression.
    */
-  sftp_compress_init_read(SFTP_COMPRESS_FL_AUTHENTICATED);
-  sftp_compress_init_write(SFTP_COMPRESS_FL_AUTHENTICATED);
+  comp_flags = SFTP_COMPRESS_FL_AUTHENTICATED;
+
+  c = find_config(main_server->conf, CONF_PARAM, "SFTPCompression", FALSE);
+  if (c != NULL) {
+    unsigned long opts;
+
+    opts = *((unsigned long *) c->argv[1]);
+    comp_opts |= opts;
+  }
+
+  sftp_compress_init_read(comp_flags, comp_opts);
+  sftp_compress_init_write(comp_flags, comp_opts);
 
   return 0;
 }
