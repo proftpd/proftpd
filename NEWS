@@ -32,6 +32,7 @@
   library lacks SSL/TLS support.
 - Issue 2358 - ExecOptions can lead to excessive CPU/memory usage in some
   conditions.
+- Issue 2366 - Support using Huffman encoding only for SSH channel compression.
 
 1.3.10rc4 - Released 14-Aug-2026
 --------------------------------
