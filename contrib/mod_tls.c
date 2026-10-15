@@ -6787,6 +6787,28 @@ static int tls_ticket_key_cb(SSL *ssl, unsigned char *key_name,
       return -1;
     }
 
+    /* If we are handling an FTP data transfer, AND the client did not present a
+     * TLSv1.3 session ticket (because e.g. the NoSessionReuseRequired
+     * TLSOption was configured), then OpenSSL will request that new session
+     * tickets be constructed and issued.  This, then, risks the same
+     * ECONNRESET behavior as seen in Issue #959.
+     *
+     * Thus we try to handle such situations here as well (Issue #2367).
+     */
+    if (ssl != ctrl_ssl &&
+        (session.curr_cmd_id == PR_CMD_APPE_ID ||
+         session.curr_cmd_id == PR_CMD_LIST_ID ||
+         session.curr_cmd_id == PR_CMD_MLSD_ID ||
+         session.curr_cmd_id == PR_CMD_NLST_ID ||
+         session.curr_cmd_id == PR_CMD_RETR_ID ||
+         session.curr_cmd_id == PR_CMD_STOR_ID ||
+         session.curr_cmd_id == PR_CMD_STOU_ID)) {
+      pr_trace_msg(trace_channel, 3,
+        "ignoring %s session ticket key request for FTP %s data transfer",
+        SSL_get_version(ssl), session.curr_cmd);
+      return 0;
+    }
+
     /* Creating a new session ticket.  Always use the first key in the set. */
     k = (struct tls_ticket_key *) tls_ticket_keys->xas_list;
 
