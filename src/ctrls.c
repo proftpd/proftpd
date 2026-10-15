@@ -653,23 +653,25 @@ int pr_ctrls_recv_request(pr_ctrls_cl_t *cl) {
 
   /* Impose min/max request size limit here, for Issue #2036. */
   if (msglen == 0) {
-    destroy_pool(tmp_pool);
     pr_signals_unblock();
 
     (void) pr_trace_msg(trace_channel, 3,
       "message size (%lu bytes) less than min (1 byte), unable to receive "
       "response", (unsigned long) msglen);
+
+    destroy_pool(tmp_pool);
     errno = EINVAL;
     return -1;
   }
 
   if (msglen > CTRLS_MAX_REQ_SIZE) {
-    destroy_pool(tmp_pool);
     pr_signals_unblock();
 
     (void) pr_trace_msg(trace_channel, 3,
       "message size (%lu bytes) exceeds max (%lu bytes), unable to receive "
       "request", (unsigned long) msglen, (unsigned long) CTRLS_MAX_REQ_SIZE);
+
+    destroy_pool(tmp_pool);
     errno = E2BIG;
     return -1;
   }
@@ -681,24 +683,26 @@ int pr_ctrls_recv_request(pr_ctrls_cl_t *cl) {
   xerrno = errno;
 
   if (nread < 0) {
-    destroy_pool(tmp_pool);
     pr_signals_unblock();
 
     pr_trace_msg(trace_channel, 3,
       "error reading %lu bytes of request message: %s",
       (unsigned long) msglen, strerror(xerrno));
+
+    destroy_pool(tmp_pool);
     errno = xerrno;
     return -1;
   }
 
   /* Watch for short reads. */
   if ((unsigned int) nread != msglen) {
-    destroy_pool(tmp_pool);
     pr_signals_unblock();
 
     (void) pr_trace_msg(trace_channel, 3,
       "short read (%d of %u bytes) of message text, unable to receive request",
       nread, (unsigned int) msglen);
+
+    destroy_pool(tmp_pool);
     errno = EPERM;
     return -1;
   }
@@ -710,13 +714,14 @@ int pr_ctrls_recv_request(pr_ctrls_cl_t *cl) {
   xerrno = errno;
 
   if (json == NULL) {
-    destroy_pool(tmp_pool);
     pr_signals_unblock();
 
     (void) pr_trace_msg(trace_channel, 3,
       "read invalid JSON message text ('%.*s' [%lu bytes]), unable to "
       "receive request: %s", (int) msglen, msg, (unsigned long) msglen,
       strerror(xerrno));
+
+    destroy_pool(tmp_pool);
     errno = EINVAL;
     return -1;
   }
@@ -726,13 +731,14 @@ int pr_ctrls_recv_request(pr_ctrls_cl_t *cl) {
   xerrno = errno;
 
   if (res < 0) {
-    pr_json_object_free(json);
-    destroy_pool(tmp_pool);
     pr_signals_unblock();
 
     (void) pr_trace_msg(trace_channel, 3,
       "unable to read message action (%s), unable to receive request",
       strerror(xerrno));
+
+    pr_json_object_free(json);
+    destroy_pool(tmp_pool);
     errno = EINVAL;
     return -1;
   }
@@ -741,13 +747,14 @@ int pr_ctrls_recv_request(pr_ctrls_cl_t *cl) {
   xerrno = errno;
 
   if (res < 0) {
-    pr_json_object_free(json);
-    destroy_pool(tmp_pool);
     pr_signals_unblock();
 
     (void) pr_trace_msg(trace_channel, 3,
       "unable to read message arguments (%s), unable to receive request",
       strerror(xerrno));
+
+    pr_json_object_free(json);
+    destroy_pool(tmp_pool);
     errno = EINVAL;
     return -1;
   }
@@ -760,12 +767,14 @@ int pr_ctrls_recv_request(pr_ctrls_cl_t *cl) {
    */
   ctrl = ctrls_lookup_action(NULL, reqaction, TRUE);
   if (ctrl == NULL) {
+    pr_signals_unblock();
+
     (void) pr_trace_msg(trace_channel, 3,
       "unknown action requested '%s', unable to receive request", reqaction);
+
     pr_json_array_free(args);
     pr_json_object_free(json);
     destroy_pool(tmp_pool);
-    pr_signals_unblock();
 
     /* XXX This is where we could also add "did you mean" functionality. */
     errno = EINVAL;
@@ -782,13 +791,15 @@ int pr_ctrls_recv_request(pr_ctrls_cl_t *cl) {
     xerrno = errno;
 
     if (res < 0) {
+      pr_signals_unblock();
+
       (void) pr_trace_msg(trace_channel, 3,
         "unable to read message argument #%u (%s), unable to receive request",
         i+1, strerror(xerrno));
+
       pr_json_array_free(args);
       pr_json_object_free(json);
       destroy_pool(tmp_pool);
-      pr_signals_unblock();
 
       errno = EINVAL;
       return -1;
@@ -799,13 +810,15 @@ int pr_ctrls_recv_request(pr_ctrls_cl_t *cl) {
     xerrno = errno;
 
     if (res < 0) {
+      pr_signals_unblock();
+
       pr_trace_msg(trace_channel, 3,
         "error adding message argument #%u (%s): %s", i+1, reqarg,
         strerror(xerrno));
+
       pr_json_array_free(args);
       pr_json_object_free(json);
       destroy_pool(tmp_pool);
-      pr_signals_unblock();
 
       errno = xerrno;
       return -1;
