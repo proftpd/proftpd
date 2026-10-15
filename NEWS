@@ -33,6 +33,8 @@
 - Issue 2358 - ExecOptions can lead to excessive CPU/memory usage in some
   conditions.
 - Issue 2366 - Support using Huffman encoding only for SSH channel compression.
+- Issue 2367 - FTP TLSv1.3 uploads may fail with ECONNRESET if client does not
+  provide session ticket for data transfer.
 
 1.3.10rc4 - Released 14-Aug-2026
 --------------------------------
