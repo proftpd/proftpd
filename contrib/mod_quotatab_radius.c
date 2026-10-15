@@ -70,17 +70,18 @@ static unsigned char radiustab_lookup(quota_table_t *radiustab, void *ptr,
   cmd = pr_cmd_alloc(tmp_pool, 1, name);
   res = pr_module_call(cmdtab->m, cmdtab->handler, cmd);
 
-  destroy_pool(tmp_pool);
-
   /* Check the results. */
-  if (!res || MODRET_ISERROR(res)) {
+  if (!res ||
+      MODRET_ISERROR(res)) {
     quotatab_log("error retrieving RADIUS quota attributes");
+    destroy_pool(tmp_pool);
     return FALSE;
   }
 
   data = (array_header *) res->data;
   if (data->nelts != 9) {
     quotatab_log("RADIUS server returned wrong number of attributes");
+    destroy_pool(tmp_pool);
     return FALSE;
   }
 
@@ -118,6 +119,7 @@ static unsigned char radiustab_lookup(quota_table_t *radiustab, void *ptr,
   limit->files_out_avail = atoi(values[7]);
   limit->files_xfer_avail = atoi(values[8]);
 
+  destroy_pool(tmp_pool);
   return TRUE;
 }
 
