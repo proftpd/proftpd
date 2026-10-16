@@ -79,7 +79,17 @@ int sftp_auth_chain_isvalid(struct sftp_auth_chain *);
  * for publickey authentication.  If the algorithm is valid/supported, the
  * corresponding key type will be returned in the optional key_type argument.
  */
-int sftp_auth_publickey_isvalid(const char *algo,
+int sftp_auth_hostbased_algo_isvalid(const char *algo,
+  enum sftp_key_type_e *key_type);
+int sftp_auth_publickey_algo_isvalid(const char *algo,
+  enum sftp_key_type_e *key_type);
+
+/* Returns true if the given certificate algorithm name is a
+ * valid/supported algorithm for publickey certificate-based user
+ * authentication.  If the algorithm is valid/supported, the corresponding key
+ * type will be returned in the optional key_type argument.
+ */
+int sftp_auth_certificate_algo_isvalid(const char *algo,
   enum sftp_key_type_e *key_type);
 
 char *sftp_auth_get_default_dir(void);

@@ -29,6 +29,7 @@
 #include "session.h"
 #include "keys.h"
 #include "keystore.h"
+#include "castore.h"
 #include "interop.h"
 #include "blacklist.h"
 #include "utf8.h"
@@ -45,6 +46,8 @@ int sftp_auth_hostbased(struct ssh2_packet *pkt, cmd_rec *pass_cmd,
   unsigned char *buf2, *ptr2;
   const unsigned char *id;
   uint32_t buflen2, bufsz2, hostkey_datalen, id_len, signature_len;
+  int hostkey_algo_valid = FALSE;
+  int cert_algo_valid = FALSE, cert_algo_enabled = TRUE;
   enum sftp_key_type_e pubkey_type;
   struct sftp_verify_details *details = NULL;
   pr_table_t *verify_notes = NULL;
@@ -92,52 +95,13 @@ int sftp_auth_hostbased(struct ssh2_packet *pkt, cmd_rec *pass_cmd,
     "client sent '%s' host key, FQDN %s, and remote user '%s'",
     hostkey_algo, host_fqdn, host_user);
 
-  if (strcmp(hostkey_algo, "ssh-rsa") == 0) {
-    pubkey_type = SFTP_KEY_RSA;
+  hostkey_algo_valid = sftp_auth_hostbased_algo_isvalid(hostkey_algo,
+    &pubkey_type);
+  cert_algo_valid = sftp_auth_certificate_algo_isvalid(hostkey_algo,
+    &pubkey_type);
 
-#if defined(HAVE_SHA256_OPENSSL)
-  } else if (strcmp(hostkey_algo, "rsa-sha2-256") == 0) {
-    pubkey_type = SFTP_KEY_RSA_SHA256;
-#endif /* HAVE_SHA256_OPENSSL */
-
-#if defined(HAVE_SHA512_OPENSSL)
-  } else if (strcmp(hostkey_algo, "rsa-sha2-512") == 0) {
-    pubkey_type = SFTP_KEY_RSA_SHA512;
-#endif /* HAVE_SHA512_OPENSSL */
-
-  } else if (strcmp(hostkey_algo, "ssh-dss") == 0) {
-    pubkey_type = SFTP_KEY_DSA;
-
-#if defined(PR_USE_OPENSSL_ECC)
-  } else if (strcmp(hostkey_algo, "ecdsa-sha2-nistp256") == 0) {
-    pubkey_type = SFTP_KEY_ECDSA_256;
-
-  } else if (strcmp(hostkey_algo, "ecdsa-sha2-nistp384") == 0) {
-    pubkey_type = SFTP_KEY_ECDSA_384;
-
-  } else if (strcmp(hostkey_algo, "ecdsa-sha2-nistp521") == 0) {
-    pubkey_type = SFTP_KEY_ECDSA_521;
-
-  } else if (strcmp(hostkey_algo, "sk-ecdsa-sha2-nistp256@openssh.com") == 0) {
-    pubkey_type = SFTP_KEY_ECDSA_256_SK;
-#endif /* PR_USE_OPENSSL_ECC */
-
-#if defined(PR_USE_SODIUM)
-  } else if (strcmp(hostkey_algo, "ssh-ed25519") == 0) {
-    pubkey_type = SFTP_KEY_ED25519;
-
-  } else if (strcmp(hostkey_algo, "sk-ssh-ed25519@openssh.com") == 0) {
-    pubkey_type = SFTP_KEY_ED25519_SK;
-#endif /* PR_USE_SODIUM */
-
-#if defined(HAVE_X448_OPENSSL)
-  } else if (strcmp(hostkey_algo, "ssh-ed448") == 0) {
-    pubkey_type = SFTP_KEY_ED448;
-#endif /* HAVE_X448_OPENSSL */
-
-  /* XXX Need to support X509v3 certs here */
-
-  } else {
+  if (hostkey_algo_valid == FALSE &&
+      cert_algo_valid == FALSE) {
     (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
       "unsupported host key algorithm '%s' requested, rejecting request",
       hostkey_algo);
@@ -145,6 +109,40 @@ int sftp_auth_hostbased(struct ssh2_packet *pkt, cmd_rec *pass_cmd,
     pr_log_auth(PR_LOG_NOTICE,
       "USER %s (Login failed): unsupported host key algorithm '%s' requested",
       user, hostkey_algo);
+
+    *send_userauth_fail = TRUE;
+    errno = EINVAL;
+    return 0;
+  }
+
+  if (cert_algo_valid == TRUE) {
+    config_rec *c;
+
+    c = find_config(main_server->conf, CONF_PARAM, "SFTPAuthCertificates",
+      FALSE);
+    if (c != NULL) {
+      register unsigned int i;
+
+      cert_algo_enabled = FALSE;
+
+      for (i = 0; i < c->argc; i++) {
+        if (strcmp(hostkey_algo, (const char *) c->argv[i]) == 0) {
+          cert_algo_enabled = TRUE;
+          break;
+        }
+      }
+    }
+  }
+
+  if (cert_algo_valid == TRUE &&
+      cert_algo_enabled == FALSE) {
+    (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
+      "host key algorithm '%s' disabled by SFTPAuthCertificates, "
+      "rejecting request", hostkey_algo);
+
+    pr_log_auth(PR_LOG_NOTICE,
+      "USER %s (Login failed): host key algorithm '%s' disabled by "
+      "SFTPAuthCertificates", user, hostkey_algo);
 
     *send_userauth_fail = TRUE;
     errno = EINVAL;
@@ -213,18 +211,43 @@ int sftp_auth_hostbased(struct ssh2_packet *pkt, cmd_rec *pass_cmd,
    */
 
   verify_notes = pr_table_nalloc(pkt->pool, 0, 1);
-  if (sftp_keystore_verify_host_key(pkt->pool, user, host_fqdn, host_user,
-      hostkey_data, hostkey_datalen, verify_notes) < 0) {
-    pr_log_auth(PR_LOG_NOTICE, "USER %s (Login failed): authentication "
-      "via '%s' host key failed", user, hostkey_algo);
 
-    *send_userauth_fail = TRUE;
-    errno = EACCES;
-    return 0;
+  if (sftp_keys_is_cert_type(pubkey_type) == FALSE) {
+    if (sftp_keystore_verify_host_key(pkt->pool, user, host_fqdn, host_user,
+        hostkey_data, hostkey_datalen, verify_notes) < 0) {
+      pr_log_auth(PR_LOG_NOTICE, "USER %s (Login failed): authentication "
+        "via '%s' host key failed", user, hostkey_algo);
+
+      *send_userauth_fail = TRUE;
+      errno = EACCES;
+      return 0;
+    }
+
+  } else {
+    unsigned long cert_opts = 0UL;
+    config_rec *c;
+
+    c = find_config(main_server->conf, CONF_PARAM, "SFTPCertificateOptions",
+      FALSE);
+    if (c != NULL) {
+      unsigned long opts;
+
+      opts = *((unsigned long *) c->argv[0]);
+      cert_opts |= opts;
+    }
+
+    if (sftp_castore_verify_host_cert(pkt->pool, user, host_fqdn, host_user,
+        hostkey_data, hostkey_datalen, cert_opts, verify_notes) < 0) {
+      pr_log_auth(PR_LOG_NOTICE, "USER %s (Login failed): authentication "
+        "via '%s' certificate failed", user, hostkey_algo);
+
+      *send_userauth_fail = TRUE;
+      errno = EACCES;
+      return 0;
+    }
   }
 
   /* Make sure the signature matches as well. */
-
   id_len = sftp_session_get_id(&id);
 
   /* XXX Is this buffer large enough?  Too large? */

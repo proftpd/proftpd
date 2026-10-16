@@ -40,7 +40,18 @@ enum sftp_key_type_e {
 
   /* OpenSSH security keys */
   SFTP_KEY_ECDSA_256_SK,
-  SFTP_KEY_ED25519_SK
+  SFTP_KEY_ED25519_SK,
+
+  /* Certificates */
+  SFTP_KEY_DSA_CERT,
+  SFTP_KEY_RSA_CERT,
+  SFTP_KEY_RSA_SHA256_CERT,
+  SFTP_KEY_RSA_SHA512_CERT,
+  SFTP_KEY_ECDSA_256_CERT,
+  SFTP_KEY_ECDSA_384_CERT,
+  SFTP_KEY_ECDSA_521_CERT,
+  SFTP_KEY_ED25519_CERT,
+  SFTP_KEY_ED448_CERT
 };
 
 /* Details learned during verification of signed data, such as for
@@ -89,16 +100,19 @@ void sftp_keys_get_passphrases(void);
 int sftp_keys_set_passphrase_provider(const char *);
 const unsigned char *sftp_keys_sign_data(pool *, enum sftp_key_type_e,
   const unsigned char *, size_t, size_t *);
-#ifdef PR_USE_OPENSSL_ECC
+#if defined(PR_USE_OPENSSL_ECC)
 int sftp_keys_validate_ecdsa_params(const EC_GROUP *, const EC_POINT *);
 #endif /* PR_USE_OPENSSL_ECC */
-int sftp_keys_verify_pubkey_type(pool *, unsigned char *, uint32_t,
-  enum sftp_key_type_e);
+uint32_t sftp_keys_skip_pubkey_data(pool *p, unsigned char *pubkey_data,
+  uint32_t pubkey_datalen);
+int sftp_keys_verify_pubkey_type(pool *p, unsigned char *pubkey_data,
+  uint32_t pubkey_datalen, enum sftp_key_type_e pubkey_type);
 int sftp_keys_verify_signed_data(pool *, const char *,
   unsigned char *, uint32_t, unsigned char *, uint32_t,
   unsigned char *, size_t, struct sftp_verify_details *);
 int sftp_keys_permit_key(pool *, const char *, const char *,
   struct sftp_verify_details *, pr_table_t *);
+int sftp_keys_is_cert_type(enum sftp_key_type_e);
 
 /* Sets minimum key sizes. */
 int sftp_keys_set_key_limits(int rsa_min, int dsa_min, int ec_min);

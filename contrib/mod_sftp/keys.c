@@ -29,6 +29,7 @@
 #include "crypto.h"
 #include "kex.h"
 #include "keys.h"
+#include "certs.h"
 #include "agent.h"
 #include "interop.h"
 #include "session.h"
@@ -184,6 +185,7 @@ static struct openssh_cipher ciphers[] = {
 };
 
 static void free_hostkey_bio(BIO *bio);
+static const char *get_key_type_desc(enum sftp_key_type_e key_type);
 static BIO *load_file_hostkey_bio(pool *p, int fd);
 #if defined(PR_USE_SODIUM)
 static int handle_ed25519_hostkey(pool *p, const unsigned char *key_data,
@@ -1023,7 +1025,7 @@ static int get_passphrase(struct sftp_pkey *k, const char *path) {
     RAND_add(pdata.buf, pdata.buflen, pdata.buflen * 0.25);
 #endif
 
-#ifdef HAVE_MLOCK
+#if defined(HAVE_MLOCK)
     PRIVS_ROOT
     if (mlock(k->host_pkey, k->pkeysz) < 0) {
       pr_log_debug(DEBUG1, MOD_SFTP_VERSION
@@ -1033,7 +1035,7 @@ static int get_passphrase(struct sftp_pkey *k, const char *path) {
       pr_log_debug(DEBUG1, MOD_SFTP_VERSION ": passphrase locked into memory");
     }
     PRIVS_RELINQUISH
-#endif
+#endif /* HAVE_MLOCK */
   }
 
   return 0;
@@ -1154,9 +1156,30 @@ static uint32_t read_pkey_from_data(pool *p, unsigned char *pkey_data,
   }
   len += res;
 
-  if (strcmp(pkey_type, "ssh-rsa") == 0) {
+  if (strcmp(pkey_type, "ssh-rsa") == 0 ||
+      strcmp(pkey_type, "ssh-rsa-cert") == 0 ||
+      strcmp(pkey_type, "ssh-rsa-cert-v01@openssh.com") == 0) {
     RSA *rsa;
     const BIGNUM *rsa_e = NULL, *rsa_n = NULL, *rsa_d = NULL;
+
+    /* If we have an SSH RSA certificate, we need to read/skip the nonce
+     * here.
+     */
+    if (strcmp(pkey_type, "ssh-rsa-cert") == 0 ||
+        strcmp(pkey_type, "ssh-rsa-cert-v01@openssh.com") == 0) {
+      res = sftp_certs_read_nonce(p, pkey_data, pkey_datalen, pkey_type, NULL);
+      if (res == 0) {
+        pr_trace_msg(trace_channel, 19,
+          "error reading nonce from %s certificate", pkey_type);
+        (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
+          "error reading %s key: invalid/unsupported key format", pkey_type);
+        return 0;
+      }
+
+      pkey_datalen -= res;
+      pkey_data += res;
+      len += res;
+    }
 
     *pkey = EVP_PKEY_new();
     if (*pkey == NULL) {
@@ -1289,13 +1312,37 @@ static uint32_t read_pkey_from_data(pool *p, unsigned char *pkey_data,
     }
 
     if (key_type != NULL) {
-      *key_type = SFTP_KEY_RSA;
+      if (strcmp(pkey_type, "ssh-rsa") == 0) {
+        *key_type = SFTP_KEY_RSA;
+
+      } else {
+        *key_type = SFTP_KEY_RSA_CERT;
+      }
     }
 
-  } else if (strcmp(pkey_type, "ssh-dss") == 0) {
+  } else if (strcmp(pkey_type, "ssh-dss") == 0 ||
+             strcmp(pkey_type, "ssh-dss-cert") == 0) {
 #if !defined(OPENSSL_NO_DSA)
     DSA *dsa;
     const BIGNUM *dsa_p, *dsa_q, *dsa_g, *dsa_pub_key, *dsa_priv_key = NULL;
+
+    /* If we have an SSH DSA certificate, we need to read/skip the nonce
+     * here.
+     */
+    if (strcmp(pkey_type, "ssh-dss-cert") == 0) {
+      res = sftp_certs_read_nonce(p, pkey_data, pkey_datalen, pkey_type, NULL);
+      if (res == 0) {
+        pr_trace_msg(trace_channel, 19,
+          "error reading nonce from %s certificate", pkey_type);
+        (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
+          "error reading %s key: invalid/unsupported key format", pkey_type);
+        return 0;
+      }
+
+      pkey_datalen -= res;
+      pkey_data += res;
+      len += res;
+    }
 
     *pkey = EVP_PKEY_new();
     if (*pkey == NULL) {
@@ -1392,7 +1439,12 @@ static uint32_t read_pkey_from_data(pool *p, unsigned char *pkey_data,
     }
 
     if (key_type != NULL) {
-      *key_type = SFTP_KEY_DSA;
+      if (strcmp(pkey_type, "ssh-dss") == 0) {
+        *key_type = SFTP_KEY_DSA;
+
+      } else {
+        *key_type = SFTP_KEY_DSA_CERT;
+      }
     }
 #else
     (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
@@ -1404,13 +1456,42 @@ static uint32_t read_pkey_from_data(pool *p, unsigned char *pkey_data,
 #if defined(PR_USE_OPENSSL_ECC)
   } else if (strcmp(pkey_type, "ecdsa-sha2-nistp256") == 0 ||
              strcmp(pkey_type, "ecdsa-sha2-nistp384") == 0 ||
-             strcmp(pkey_type, "ecdsa-sha2-nistp521") == 0) {
+             strcmp(pkey_type, "ecdsa-sha2-nistp521") == 0 ||
+             strcmp(pkey_type, "ecdsa-sha2-nistp256-cert") == 0 ||
+             strcmp(pkey_type, "ecdsa-sha2-nistp384-cert") == 0 ||
+             strcmp(pkey_type, "ecdsa-sha2-nistp521-cert") == 0 ||
+             strcmp(pkey_type, "ecdsa-sha2-nistp256-cert-v01@openssh.com") == 0 ||
+             strcmp(pkey_type, "ecdsa-sha2-nistp384-cert-v01@openssh.com") == 0 ||
+             strcmp(pkey_type, "ecdsa-sha2-nistp521-cert-v01@openssh.com") == 0) {
     EC_KEY *ec;
     const char *curve_name;
     const EC_GROUP *curve;
     EC_POINT *point;
     int ec_nid;
     char *ptr = NULL;
+
+    /* If we have an SSH ECDSA certificate, we need to read/skip the nonce
+     * here.
+     */
+    if (strcmp(pkey_type, "ecdsa-sha2-nistp256-cert") == 0 ||
+        strcmp(pkey_type, "ecdsa-sha2-nistp384-cert") == 0 ||
+        strcmp(pkey_type, "ecdsa-sha2-nistp521-cert") == 0 ||
+        strcmp(pkey_type, "ecdsa-sha2-nistp256-cert-v01@openssh.com") == 0 ||
+        strcmp(pkey_type, "ecdsa-sha2-nistp384-cert-v01@openssh.com") == 0 ||
+        strcmp(pkey_type, "ecdsa-sha2-nistp521-cert-v01@openssh.com") == 0) {
+      res = sftp_certs_read_nonce(p, pkey_data, pkey_datalen, pkey_type, NULL);
+      if (res == 0) {
+        pr_trace_msg(trace_channel, 19,
+          "error reading nonce from %s certificate", pkey_type);
+        (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
+          "error reading %s key: invalid/unsupported key format", pkey_type);
+        return 0;
+      }
+
+      pkey_datalen -= res;
+      pkey_data += res;
+      len += res;
+    }
 
     res = sftp_msg_read_string2(p, &pkey_data, &pkey_datalen, &ptr);
     if (res == 0) {
@@ -1422,36 +1503,67 @@ static uint32_t read_pkey_from_data(pool *p, unsigned char *pkey_data,
 
     curve_name = (const char *) ptr;
 
-    /* If the curve name does not match the last 8 characters of the
-     * public key type (which, in the case of ECDSA keys, contains the
-     * curve name), then it's definitely a mismatch.
-     */
-    if (strncmp(pkey_type + 11, curve_name, 9) != 0) {
-      (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
-        "EC public key curve name '%s' does not match public key "
-        "algorithm '%s'", curve_name, pkey_type);
-      return 0;
-    }
-
     if (strcmp(curve_name, "nistp256") == 0) {
+      if (strcmp(pkey_type, "ecdsa-sha2-nistp256") != 0 &&
+          strcmp(pkey_type, "ecdsa-sha2-nistp256-cert") != 0 &&
+          strcmp(pkey_type, "ecdsa-sha2-nistp256-cert-v01@openssh.com") != 0) {
+        (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
+          "EC public key curve name '%s' does not match public key "
+          "algorithm '%s'", curve_name, pkey_type);
+        return 0;
+      }
+
       ec_nid = NID_X9_62_prime256v1;
 
       if (key_type != NULL) {
-        *key_type = SFTP_KEY_ECDSA_256;
+        if (strcmp(pkey_type, "ecdsa-sha2-nistp256") == 0) {
+          *key_type = SFTP_KEY_ECDSA_256;
+
+        } else {
+          *key_type = SFTP_KEY_ECDSA_256_CERT;
+        }
       }
 
     } else if (strcmp(curve_name, "nistp384") == 0) {
+      if (strcmp(pkey_type, "ecdsa-sha2-nistp384") != 0 &&
+          strcmp(pkey_type, "ecdsa-sha2-nistp384-cert") != 0 &&
+          strcmp(pkey_type, "ecdsa-sha2-nistp384-cert-v01@openssh.com") != 0) {
+        (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
+          "EC public key curve name '%s' does not match public key "
+          "algorithm '%s'", curve_name, pkey_type);
+        return 0;
+      }
+
       ec_nid = NID_secp384r1;
 
       if (key_type != NULL) {
-        *key_type = SFTP_KEY_ECDSA_384;
+        if (strcmp(pkey_type, "ecdsa-sha2-nistp384") == 0) {
+          *key_type = SFTP_KEY_ECDSA_384;
+
+        } else {
+          *key_type = SFTP_KEY_ECDSA_384_CERT;
+        }
       }
 
     } else if (strcmp(curve_name, "nistp521") == 0) {
+      if (strcmp(pkey_type, "ecdsa-sha2-nistp521") != 0 &&
+          strcmp(pkey_type, "ecdsa-sha2-nistp521-cert") != 0 &&
+          strcmp(pkey_type, "ecdsa-sha2-nistp521-cert-v01@openssh.com") != 0) {
+        (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
+          "EC public key curve name '%s' does not match public key "
+          "algorithm '%s'", curve_name, pkey_type);
+        return 0;
+      }
+
       ec_nid = NID_secp521r1;
 
       if (key_type != NULL) {
-        *key_type = SFTP_KEY_ECDSA_521;
+        if (strcmp(pkey_type, "ecdsa-sha2-nistp521") == 0) {
+          *key_type = SFTP_KEY_ECDSA_521;
+
+        } else {
+          *key_type = SFTP_KEY_ECDSA_521_CERT;
+        }
       }
 
     } else {
@@ -1519,7 +1631,6 @@ static uint32_t read_pkey_from_data(pool *p, unsigned char *pkey_data,
           "error reading %s key: invalid/unsupported key format", pkey_type);
         EC_POINT_free(point);
         EC_KEY_free(ec);
-        *pkey = NULL;
         return 0;
       }
       len += res;
@@ -1677,10 +1788,68 @@ static uint32_t read_pkey_from_data(pool *p, unsigned char *pkey_data,
 #endif /* PR_USE_OPENSSL_ECC */
 
 #if defined(PR_USE_SODIUM)
-  } else if (strcmp(pkey_type, "ssh-ed25519") == 0) {
+  } else if (strcmp(pkey_type, "ssh-ed25519") == 0 ||
+             strcmp(pkey_type, "ssh-ed25519-cert") == 0 ||
+             strcmp(pkey_type, "ssh-ed25519-cert-v01@openssh.com") == 0) {
+    unsigned char *public_key = NULL;
+    uint32_t public_keylen = 0;
+
     if (key_type != NULL) {
-      *key_type = SFTP_KEY_ED25519;
+      if (strcmp(pkey_type, "ssh-ed25519") == 0) {
+        *key_type = SFTP_KEY_ED25519;
+
+      } else {
+        *key_type = SFTP_KEY_ED25519_CERT;
+      }
     }
+
+    /* If we have an SSH ED25519 certificate, we need to read/skip the nonce
+     * here.
+     */
+    if (strcmp(pkey_type, "ssh-ed25519-cert") == 0 ||
+        strcmp(pkey_type, "ssh-ed25519-cert-v01@openssh.com") == 0) {
+      res = sftp_certs_read_nonce(p, pkey_data, pkey_datalen, pkey_type, NULL);
+      if (res == 0) {
+        pr_trace_msg(trace_channel, 19,
+          "error reading nonce from %s certificate", pkey_type);
+        (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
+          "error reading %s key: invalid/unsupported key format", pkey_type);
+        return 0;
+      }
+
+      pkey_datalen -= res;
+      pkey_data += res;
+      len += res;
+    }
+
+    res = sftp_msg_read_int2(p, &pkey_data, &pkey_datalen, &public_keylen);
+    if (res == 0) {
+      (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
+        "error reading %s key: invalid/unsupported key format", pkey_type);
+      return 0;
+    }
+    len += res;
+
+    if (public_keylen != crypto_sign_ed25519_PUBLICKEYBYTES) {
+      pr_trace_msg(trace_channel, 8,
+        "%s public key length (%lu bytes) does not match expected "
+        "length (%lu bytes)", get_key_type_desc(*key_type),
+        (unsigned long) public_keylen,
+        (unsigned long) crypto_sign_ed25519_PUBLICKEYBYTES);
+      (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
+        "error reading %s key: invalid/unsupported key format", pkey_type);
+      return 0;
+    }
+
+    public_key = palloc(p, public_keylen);
+    res = sftp_msg_read_data2(p, &pkey_data, &pkey_datalen, public_keylen,
+      &public_key);
+    if (res == 0) {
+      (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
+        "error reading %s key: invalid/unsupported key format", pkey_type);
+      return 0;
+    }
+    len += res;
 
   } else if (strcmp(pkey_type, "sk-ssh-ed25519@openssh.com") == 0) {
     char *ptr = NULL;
@@ -1698,6 +1867,17 @@ static uint32_t read_pkey_from_data(pool *p, unsigned char *pkey_data,
       return 0;
     }
     len += res;
+
+    if (public_keylen != crypto_sign_ed25519_PUBLICKEYBYTES) {
+      pr_trace_msg(trace_channel, 8,
+        "%s public key length (%lu bytes) does not match expected "
+        "length (%lu bytes)", get_key_type_desc(*key_type),
+        (unsigned long) public_keylen,
+        (unsigned long) crypto_sign_ed25519_PUBLICKEYBYTES);
+      (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
+        "error reading %s key: invalid/unsupported key format", pkey_type);
+      return 0;
+    }
 
     res = sftp_msg_read_data2(p, &pkey_data, &pkey_datalen, public_keylen,
       &public_key);
@@ -1721,12 +1901,68 @@ static uint32_t read_pkey_from_data(pool *p, unsigned char *pkey_data,
     }
 #endif /* PR_USE_SODIUM */
 
-#if defined(HAVE_X448_OPENSSL)
-  } else if (strcmp(pkey_type, "ssh-ed448") == 0) {
+#if defined(HAVE_X448_OPENSSL) && defined(HAVE_SHA512_OPENSSL)
+  } else if (strcmp(pkey_type, "ssh-ed448") == 0 ||
+             strcmp(pkey_type, "ssh-ed448-cert") == 0) {
+    unsigned char *public_key = NULL;
+    uint32_t public_keylen = 0;
+
     if (key_type != NULL) {
-      *key_type = SFTP_KEY_ED448;
+      if (strcmp(pkey_type, "ssh-ed448") == 0) {
+        *key_type = SFTP_KEY_ED448;
+
+      } else {
+        *key_type = SFTP_KEY_ED448_CERT;
+      }
     }
-#endif /* HAVE_X448_OPENSSL */
+
+    /* If we have an SSH ED448 certificate, we need to read/skip the nonce
+     * here.
+     */
+    if (strcmp(pkey_type, "ssh-ed448-cert") == 0) {
+      res = sftp_certs_read_nonce(p, pkey_data, pkey_datalen, pkey_type, NULL);
+      if (res == 0) {
+        pr_trace_msg(trace_channel, 19,
+          "error reading nonce from %s certificate", pkey_type);
+        (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
+          "error reading %s key: invalid/unsupported key format", pkey_type);
+        return 0;
+      }
+
+      pkey_datalen -= res;
+      pkey_data += res;
+      len += res;
+    }
+
+    res = sftp_msg_read_int2(p, &pkey_data, &pkey_datalen, &public_keylen);
+    if (res == 0) {
+      (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
+        "error reading %s key: invalid/unsupported key format", pkey_type);
+      return 0;
+    }
+    len += res;
+
+    /* Verify here that the public key length is the expected 57 bytes,
+     * per RFC 8709, Section 4.
+     */
+    if (public_keylen != CURVE448_SIZE &&
+        public_keylen != (CURVE448_SIZE + 1)) {
+      (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
+        "error reading %s key: invalid key length (%lu, expected 57)",
+        pkey_type, (unsigned long) public_keylen);
+      return 0;
+    }
+
+    public_key = palloc(p, public_keylen);
+    res = sftp_msg_read_data2(p, &pkey_data, &pkey_datalen, public_keylen,
+      &public_key);
+    if (res == 0) {
+      (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
+        "error reading %s key: invalid/unsupported key format", pkey_type);
+      return 0;
+    }
+    len += res;
+#endif /* HAVE_X448_OPENSSL and HAVE_SHA512_OPENSSL */
 
   } else {
     pr_trace_msg(trace_channel, 3, "unsupported public key algorithm '%s'",
@@ -1744,35 +1980,35 @@ static const char *get_pkey_type_desc(int pkey_type) {
   const char *key_desc = NULL;
 
   switch (pkey_type) {
-#ifdef EVP_PKEY_NONE
+#if defined(EVP_PKEY_NONE)
     case EVP_PKEY_NONE:
       key_desc = "undefined";
       break;
-#endif
+#endif /* EVP_PKEY_NONE */
 
-#ifdef EVP_PKEY_RSA
+#if defined(EVP_PKEY_RSA)
     case EVP_PKEY_RSA:
       key_desc = "RSA";
       break;
-#endif
+#endif /* EVP_PKEY_RSA */
 
-#ifdef EVP_PKEY_DSA
+#if defined(EVP_PKEY_DSA)
     case EVP_PKEY_DSA:
       key_desc = "DSA";
       break;
-#endif
+#endif /* EVP_PKEY_DSA */
 
-#ifdef EVP_PKEY_DH
+#if defined(EVP_PKEY_DH)
     case EVP_PKEY_DH:
       key_desc = "DH";
       break;
-#endif
+#endif /* EVP_PKEY_DH */
 
-#ifdef EVP_PKEY_EC
+#if defined(EVP_PKEY_EC)
     case EVP_PKEY_EC:
       key_desc = "ECC";
       break;
-#endif
+#endif /* EVP_PKEY_EC */
 
     default:
       key_desc = "unknown";
@@ -1825,12 +2061,65 @@ static const char *get_key_type_desc(enum sftp_key_type_e key_type) {
       key_desc = "ED25519-SK";
       break;
 
+    /* Certificates */
+
+    case SFTP_KEY_DSA_CERT:
+      key_desc = "DSA-CERT";
+      break;
+
+    case SFTP_KEY_RSA_CERT:
+      key_desc = "RSA-CERT";
+      break;
+
+    case SFTP_KEY_ECDSA_256_CERT:
+      key_desc = "ECDSA256-CERT";
+      break;
+
+    case SFTP_KEY_ECDSA_384_CERT:
+      key_desc = "ECDSA384-CERT";
+      break;
+
+    case SFTP_KEY_ECDSA_521_CERT:
+      key_desc = "ECDSA521-CERT";
+      break;
+
+    case SFTP_KEY_ED25519_CERT:
+      key_desc = "ED25519-CERT";
+      break;
+
+    case SFTP_KEY_ED448_CERT:
+      key_desc = "ED448-CERT";
+      break;
+
     default:
       key_desc = "undefined";
       break;
   }
 
   return key_desc;
+}
+
+int sftp_keys_is_cert_type(enum sftp_key_type_e key_type) {
+  int res = FALSE;
+
+  switch (key_type) {
+    case SFTP_KEY_DSA_CERT:
+    case SFTP_KEY_RSA_CERT:
+    case SFTP_KEY_RSA_SHA256_CERT:
+    case SFTP_KEY_RSA_SHA512_CERT:
+    case SFTP_KEY_ECDSA_256_CERT:
+    case SFTP_KEY_ECDSA_384_CERT:
+    case SFTP_KEY_ECDSA_521_CERT:
+    case SFTP_KEY_ED25519_CERT:
+    case SFTP_KEY_ED448_CERT:
+      res = TRUE;
+      break;
+
+    default:
+      break;
+  }
+
+  return res;
 }
 
 #if defined(PR_USE_OPENSSL_ECC)
@@ -3389,8 +3678,8 @@ static int deserialize_openssh_private_key(pool *p, const char *path,
     EVP_PKEY **pkey, unsigned char **key, uint32_t *keylen) {
   uint32_t len = 0;
   const char *pkey_type;
-  uint32_t public_keylen = 0, secret_keylen = 0;
-  unsigned char *public_key = NULL, *secret_key = NULL;
+  uint32_t secret_keylen = 0;
+  unsigned char *secret_key = NULL;
   int have_extra_public_key = FALSE;
 
   len = read_pkey_from_data(p, *data, *data_len, pkey, key_type, NULL, TRUE);
@@ -3428,15 +3717,6 @@ static int deserialize_openssh_private_key(pool *p, const char *path,
       *key = NULL;
       *keylen = 0;
       return 0;
-  }
-
-  public_keylen = sftp_msg_read_int(p, data, data_len);
-  public_key = sftp_msg_read_data(p, data, data_len, public_keylen);
-  if (public_key == NULL) {
-    pr_trace_msg(trace_channel, 2,
-      "error reading %s key: invalid/supported key format", pkey_type);
-    errno = EINVAL;
-    return -1;
   }
 
   secret_keylen = sftp_msg_read_int(p, data, data_len);
@@ -5499,6 +5779,30 @@ const unsigned char *sftp_keys_sign_data(pool *p,
   return res;
 }
 
+uint32_t sftp_keys_skip_pubkey_data(pool *p, unsigned char *pubkey_data,
+    uint32_t pubkey_datalen) {
+  EVP_PKEY *pkey = NULL;
+  uint32_t len;
+
+  if (pubkey_data == NULL ||
+      pubkey_datalen == 0) {
+    errno = EINVAL;
+    return 0;
+  }
+
+  len = read_pkey_from_data(p, pubkey_data, pubkey_datalen, &pkey, NULL, NULL,
+    FALSE);
+  if (len == 0) {
+    return 0;
+  }
+
+  if (pkey != NULL) {
+    EVP_PKEY_free(pkey);
+  }
+
+  return len;
+}
+
 int sftp_keys_verify_pubkey_type(pool *p, unsigned char *pubkey_data,
     uint32_t pubkey_len, enum sftp_key_type_e pubkey_type) {
   EVP_PKEY *pkey = NULL;
@@ -5521,10 +5825,14 @@ int sftp_keys_verify_pubkey_type(pool *p, unsigned char *pubkey_data,
     case SFTP_KEY_RSA:
     case SFTP_KEY_RSA_SHA256:
     case SFTP_KEY_RSA_SHA512:
+    case SFTP_KEY_RSA_CERT:
+    case SFTP_KEY_RSA_SHA256_CERT:
+    case SFTP_KEY_RSA_SHA512_CERT:
       res = (get_pkey_type(pkey) == EVP_PKEY_RSA);
       break;
 
     case SFTP_KEY_DSA:
+    case SFTP_KEY_DSA_CERT:
       res = (get_pkey_type(pkey) == EVP_PKEY_DSA);
       break;
 
@@ -5532,6 +5840,9 @@ int sftp_keys_verify_pubkey_type(pool *p, unsigned char *pubkey_data,
     case SFTP_KEY_ECDSA_256:
     case SFTP_KEY_ECDSA_384:
     case SFTP_KEY_ECDSA_521:
+    case SFTP_KEY_ECDSA_256_CERT:
+    case SFTP_KEY_ECDSA_384_CERT:
+    case SFTP_KEY_ECDSA_521_CERT:
       if (get_pkey_type(pkey) == EVP_PKEY_EC) {
         EC_KEY *ec;
         int ec_nid;
@@ -5542,15 +5853,24 @@ int sftp_keys_verify_pubkey_type(pool *p, unsigned char *pubkey_data,
 
         switch (ec_nid) {
           case NID_X9_62_prime256v1:
-            res = (pubkey_type == SFTP_KEY_ECDSA_256);
+            if (pubkey_type == SFTP_KEY_ECDSA_256 ||
+                pubkey_type == SFTP_KEY_ECDSA_256_CERT) {
+              res = TRUE;
+            }
             break;
 
           case NID_secp384r1:
-            res = (pubkey_type == SFTP_KEY_ECDSA_384);
+            if (pubkey_type == SFTP_KEY_ECDSA_384 ||
+                pubkey_type == SFTP_KEY_ECDSA_384_CERT) {
+              res = TRUE;
+            }
             break;
 
           case NID_secp521r1:
-            res = (pubkey_type == SFTP_KEY_ECDSA_521);
+            if (pubkey_type == SFTP_KEY_ECDSA_521 ||
+                pubkey_type == SFTP_KEY_ECDSA_521_CERT) {
+              res = TRUE;
+            }
             break;
 
           default:
@@ -5578,86 +5898,17 @@ int sftp_keys_verify_pubkey_type(pool *p, unsigned char *pubkey_data,
 
 #if defined(PR_USE_SODIUM)
     case SFTP_KEY_ED25519:
-    case SFTP_KEY_ED25519_SK: {
-      char *pkey_type;
-
-      pkey_type = sftp_msg_read_string(p, &pubkey_data, &pubkey_len);
-      if (strcmp(pkey_type, "ssh-ed25519") == 0) {
-        if (pubkey_type == SFTP_KEY_ED25519) {
-          res = TRUE;
-
-        } else {
-          pr_trace_msg(trace_channel, 8,
-            "invalid public key algorithm '%s' for expected %s key", pkey_type,
-             get_key_type_desc(pubkey_type));
-          res = FALSE;
-        }
-
-      } else if (strcmp(pkey_type, "sk-ssh-ed25519@openssh.com") == 0) {
-        if (pubkey_type == SFTP_KEY_ED25519_SK) {
-          res = TRUE;
-
-        } else {
-          pr_trace_msg(trace_channel, 8,
-            "invalid public key algorithm '%s' for expected %s key", pkey_type,
-             get_key_type_desc(pubkey_type));
-          res = FALSE;
-        }
-
-      } else {
-        pr_trace_msg(trace_channel, 8,
-         "invalid public key algorithm '%s' for Ed25519 key", pkey_type);
-        res = FALSE;
-      }
-
-      if (res == TRUE) {
-        uint32_t pklen;
-
-        pklen = sftp_msg_read_int(p, &pubkey_data, &pubkey_len);
-
-        res = (pklen == (uint32_t) crypto_sign_ed25519_PUBLICKEYBYTES);
-        if (res == FALSE) {
-          pr_trace_msg(trace_channel, 8,
-           "%s public key length (%lu bytes) does not match expected "
-           "length (%lu bytes)", get_key_type_desc(pubkey_type),
-           (unsigned long) pklen,
-           (unsigned long) crypto_sign_ed25519_PUBLICKEYBYTES);
-        }
-      }
+    case SFTP_KEY_ED25519_CERT:
+    case SFTP_KEY_ED25519_SK:
+      res = TRUE;
       break;
-    }
 #endif /* PR_USE_SODIUM */
 
 #if defined(HAVE_X448_OPENSSL)
-    case SFTP_KEY_ED448: {
-      char *pkey_type;
-
-      pkey_type = sftp_msg_read_string(p, &pubkey_data, &pubkey_len);
-      if (strcmp(pkey_type, "ssh-ed448") != 0) {
-        pr_trace_msg(trace_channel, 8,
-         "invalid public key type '%s' for Ed448 key", pkey_type);
-        res = FALSE;
-
-      } else {
-        uint32_t pklen;
-
-        pklen = sftp_msg_read_int(p, &pubkey_data, &pubkey_len);
-
-        res = FALSE;
-        if (pklen == (uint32_t) CURVE448_SIZE ||
-            pklen == ((uint32_t) CURVE448_SIZE + 1)) {
-          res = TRUE;
-        }
-
-        if (res == FALSE) {
-          pr_trace_msg(trace_channel, 8,
-           "Ed448 public key length (%lu bytes) does not match expected "
-           "length (%lu bytes)", (unsigned long) pklen,
-           (unsigned long) CURVE448_SIZE);
-        }
-      }
+    case SFTP_KEY_ED448:
+    case SFTP_KEY_ED448_CERT:
+      res = TRUE;
       break;
-    }
 #endif /* HAVE_X448_OPENSSL */
 
     default:
@@ -6230,16 +6481,39 @@ static int ed25519_verify_signed_data(pool *p,
   }
 
   if (strcmp(pkey_type, "ssh-ed25519") != 0 &&
-      strcmp(pkey_type, "sk-ssh-ed25519@openssh.com") != 0) {
+      strcmp(pkey_type, "sk-ssh-ed25519@openssh.com") != 0 &&
+      strcmp(pkey_type, "ssh-ed25519-cert") != 0 &&
+      strcmp(pkey_type, "ssh-ed25519-cert-v01@openssh.com") != 0) {
     pr_trace_msg(trace_channel, 17,
       "public key type '%s' does not match expected key types "
-      "'ssh-ed25519', 'sk-ssh-ed25519@openssh.com'", pkey_type);
+      "'ssh-ed25519', 'sk-ssh-ed25519@openssh.com', 'ssh-ed25519-cert'",
+      pkey_type);
     errno = EINVAL;
     return -1;
   }
 
   if (strcmp(pkey_type, "sk-ssh-ed25519@openssh.com") == 0) {
     details->is_security_key = is_security_key_sig = TRUE;
+  }
+
+  /* If we have an SSH ED25519 certificate, we need to read/skip the nonce
+   * here.
+   */
+  if (strcmp(pkey_type, "ssh-ed25519-cert") == 0 ||
+      strcmp(pkey_type, "ssh-ed25519-cert-v01@openssh.com") == 0) {
+    len = sftp_certs_read_nonce(p, pubkey_data, pubkey_datalen, pkey_type,
+      NULL);
+    if (len == 0) {
+      pr_trace_msg(trace_channel, 19,
+        "error reading nonce from %s certificate", pkey_type);
+      (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
+        "error reading %s key: invalid/unsupported key format", pkey_type);
+      errno = EINVAL;
+      return -1;
+    }
+
+    pubkey_datalen -= len;
+    pubkey_data += len;
   }
 
   len = sftp_msg_read_int2(p, &pubkey_data, &pubkey_datalen, &public_keylen);
@@ -6560,7 +6834,9 @@ int sftp_keys_verify_signed_data(pool *p, const char *pubkey_algo,
   }
 
   if (strcmp(sig_type, "ssh-rsa") == 0) {
-    if (strcmp(pubkey_algo, sig_type) != 0) {
+    if (strcmp(pubkey_algo, sig_type) != 0 &&
+        strcmp(pubkey_algo, "ssh-rsa-cert") != 0 &&
+        strcmp(pubkey_algo, "ssh-rsa-cert-v01@openssh.com") != 0) {
       (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
         "unable to verify signed data: signature type '%s' does not match "
         "publickey algorithm '%s'", sig_type, pubkey_algo);
@@ -6574,7 +6850,10 @@ int sftp_keys_verify_signed_data(pool *p, const char *pubkey_algo,
 #if defined(HAVE_SHA256_OPENSSL)
   } else if (strcmp(sig_type, "rsa-sha2-256") == 0) {
     if (strcmp(pubkey_algo, sig_type) != 0 &&
-        strcmp(pubkey_algo, "ssh-rsa") != 0) {
+        strcmp(pubkey_algo, "ssh-rsa") != 0 &&
+        strcmp(pubkey_algo, "ssh-rsa-cert") != 0 &&
+        strcmp(pubkey_algo, "ssh-rsa-cert-v01@openssh.com") != 0 &&
+        strcmp(pubkey_algo, "rsa-sha2-256-cert-v01@openssh.com") != 0) {
       (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
         "unable to verify signed data: signature type '%s' does not match "
         "publickey algorithm '%s'", sig_type, pubkey_algo);
@@ -6589,7 +6868,10 @@ int sftp_keys_verify_signed_data(pool *p, const char *pubkey_algo,
 #if defined(HAVE_SHA512_OPENSSL)
   } else if (strcmp(sig_type, "rsa-sha2-512") == 0) {
     if (strcmp(pubkey_algo, sig_type) != 0 &&
-        strcmp(pubkey_algo, "ssh-rsa") != 0) {
+        strcmp(pubkey_algo, "ssh-rsa") != 0 &&
+        strcmp(pubkey_algo, "ssh-rsa-cert") != 0 &&
+        strcmp(pubkey_algo, "ssh-rsa-cert-v01@openssh.com") != 0 &&
+        strcmp(pubkey_algo, "rsa-sha2-512-cert-v01@openssh.com") != 0) {
       (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
         "unable to verify signed data: signature type '%s' does not match "
         "publickey algorithm '%s'", sig_type, pubkey_algo);
@@ -6603,7 +6885,8 @@ int sftp_keys_verify_signed_data(pool *p, const char *pubkey_algo,
 
 #if !defined(OPENSSL_NO_DSA)
   } else if (strcmp(sig_type, "ssh-dss") == 0) {
-    if (strcmp(pubkey_algo, sig_type) != 0) {
+    if (strcmp(pubkey_algo, sig_type) != 0 &&
+        strcmp(pubkey_algo, "ssh-dss-cert") != 0) {
       (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
         "unable to verify signed data: signature type '%s' does not match "
         "publickey algorithm '%s'", sig_type, pubkey_algo);
@@ -6621,7 +6904,13 @@ int sftp_keys_verify_signed_data(pool *p, const char *pubkey_algo,
              strcmp(sig_type, "ecdsa-sha2-nistp521") == 0 ||
              strcmp(sig_type, "sk-ecdsa-sha2-nistp256@openssh.com") == 0) {
 
-    if (strcmp(pubkey_algo, sig_type) != 0) {
+    if (strcmp(pubkey_algo, sig_type) != 0 &&
+        strcmp(pubkey_algo, "ecdsa-sha2-nistp256-cert") != 0 &&
+        strcmp(pubkey_algo, "ecdsa-sha2-nistp384-cert") != 0 &&
+        strcmp(pubkey_algo, "ecdsa-sha2-nistp521-cert") != 0 &&
+        strcmp(pubkey_algo, "ecdsa-sha2-nistp256-cert-v01@openssh.com") != 0 &&
+        strcmp(pubkey_algo, "ecdsa-sha2-nistp384-cert-v01@openssh.com") != 0 &&
+        strcmp(pubkey_algo, "ecdsa-sha2-nistp521-cert-v01@openssh.com") != 0) {
       (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
         "unable to verify signed data: public key algorithm '%s' does not "
         "match signature algorithm '%s'", pubkey_algo, sig_type);

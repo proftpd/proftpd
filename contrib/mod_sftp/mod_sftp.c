@@ -34,6 +34,7 @@
 #include "mac.h"
 #include "keys.h"
 #include "keystore.h"
+#include "castore.h"
 #include "disconnect.h"
 #include "kex.h"
 #include "blacklist.h"
@@ -385,6 +386,33 @@ MODRET set_sftpacceptenv(cmd_rec *cmd) {
   return PR_HANDLED(cmd);
 }
 
+/* usage: SFTPAuthCertificates list */
+MODRET set_sftpauthcertificates(cmd_rec *cmd) {
+  register unsigned int i;
+  config_rec *c;
+
+  if (cmd->argc < 2) {
+    CONF_ERROR(cmd, "Wrong number of parameters");
+  }
+
+  CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL);
+
+  for (i = 1; i < cmd->argc; i++) {
+    if (sftp_auth_certificate_algo_isvalid(cmd->argv[i], NULL) < 0) {
+      CONF_ERROR(cmd, pstrcat(cmd->tmp_pool,
+        "unsupported auth certificate algorithm: ", (char *) cmd->argv[i],
+        NULL));
+    }
+  }
+
+  c = add_config_param(cmd->argv[0], cmd->argc-1, NULL);
+  for (i = 1; i < cmd->argc; i++) {
+    c->argv[i-1] = pstrdup(c->pool, cmd->argv[i]);
+  }
+
+  return PR_HANDLED(cmd);
+}
+
 /* usage: SFTPAuthMethods method-list1 ... method-listN */
 MODRET set_sftpauthmeths(cmd_rec *cmd) {
   register unsigned int i;
@@ -466,7 +494,7 @@ MODRET set_sftpauthpublickeys(cmd_rec *cmd) {
   CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL);
 
   for (i = 1; i < cmd->argc; i++) {
-    if (sftp_auth_publickey_isvalid(cmd->argv[i], NULL) < 0) {
+    if (sftp_auth_publickey_algo_isvalid(cmd->argv[i], NULL) < 0) {
       CONF_ERROR(cmd, pstrcat(cmd->tmp_pool,
         "unsupported auth public key algorithm: ", (char *) cmd->argv[i],
         NULL));
@@ -474,6 +502,57 @@ MODRET set_sftpauthpublickeys(cmd_rec *cmd) {
   }
 
   c = add_config_param(cmd->argv[0], cmd->argc-1, NULL);
+  for (i = 1; i < cmd->argc; i++) {
+    c->argv[i-1] = pstrdup(c->pool, cmd->argv[i]);
+  }
+
+  return PR_HANDLED(cmd);
+}
+
+/* usage: SFTPAuthorized{Host,User}CAKeys store1 ... */
+MODRET set_sftpauthorizedcakeys(cmd_rec *cmd) {
+  register unsigned int i;
+  int requested_cert_type = 0;
+  config_rec *c;
+
+  if (cmd->argc < 2) {
+    CONF_ERROR(cmd, "wrong number of parameters");
+  }
+
+  CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL);
+
+  if (strcasecmp(cmd->argv[0], "SFTPAuthorizedHostCAKeys") == 0) {
+    requested_cert_type = SFTP_SSH2_HOST_CA_KEY_STORE;
+
+  } else if (strcasecmp(cmd->argv[0], "SFTPAuthorizedUserCAKeys") == 0) {
+    requested_cert_type = SFTP_SSH2_USER_CA_KEY_STORE;
+  }
+
+  for (i = 1; i < cmd->argc; i++) {
+    char *ptr;
+
+    /* Separate the parameter into its separate store-type:store-info pieces. */
+    ptr = strchr(cmd->argv[i], ':');
+    if (ptr == NULL) {
+      CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "badly formatted parameter: '",
+        (char *) cmd->argv[i], "'", NULL));
+    }
+    *ptr = '\0';
+
+    /* Verify that the requested store type has been registered, and supports
+     * the type of CA key store requested (host or user CA).
+     */
+    if (sftp_castore_supports_store(cmd->argv[i], requested_cert_type) < 0) {
+      CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "unsupported CA key store: '",
+        (char *) cmd->argv[i], "'", NULL));
+    }
+
+    *ptr = ':';
+  }
+
+  c = add_config_param(cmd->argv[0], 0);
+  c->argc = cmd->argc-1;
+  c->argv = pcalloc(c->pool, c->argc * (sizeof(char *)));
   for (i = 1; i < cmd->argc; i++) {
     c->argv[i-1] = pstrdup(c->pool, cmd->argv[i]);
   }
@@ -527,6 +606,46 @@ MODRET set_sftpauthorizedkeys(cmd_rec *cmd) {
   c->argv = pcalloc(c->pool, c->argc * (sizeof(char *)));
   for (i = 1; i < cmd->argc; i++) {
     c->argv[i-1] = pstrdup(c->pool, cmd->argv[i]);
+  }
+
+  return PR_HANDLED(cmd);
+}
+
+/* usage: SFTPCertificateOptions opt1 ... optN */
+MODRET set_sftpcertificateoptions(cmd_rec *cmd) {
+  register unsigned int i;
+  config_rec *c;
+  unsigned long opts = 0UL;
+
+  if (cmd->argc-1 == 0) {
+    CONF_ERROR(cmd, "wrong number of parameters");
+  }
+
+  CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL);
+
+  c = add_config_param(cmd->argv[0], 1, NULL);
+
+  for (i = 1; i < cmd->argc; i++) {
+    if (strcmp(cmd->argv[i], "AllowEmptyPrincipals") == 0) {
+      opts |= SFTP_CERT_OPT_ALLOW_EMPTY_PRINCIPALS;
+
+    } else if (strcmp(cmd->argv[i], "AllowMatchPrincipals") == 0) {
+      opts |= SFTP_CERT_OPT_ALLOW_MATCH_PRINCIPALS;
+
+    } else {
+      CONF_ERROR(cmd, pstrcat(cmd->tmp_pool,
+        ": unknown SFTPCertificateOption '", cmd->argv[i], "'", NULL));
+    }
+  }
+
+  c->argv[0] = pcalloc(c->pool, sizeof(unsigned long));
+  *((unsigned long *) c->argv[0]) = opts;
+
+  if (pr_module_exists("mod_ifsession.c")) {
+    /* These are needed in case this directive is used with mod_ifsession
+     * configuration.
+     */
+    c->flags |= CF_MULTI;
   }
 
   return PR_HANDLED(cmd);
@@ -3185,10 +3304,14 @@ static int sftp_sess_init(void) {
 
 static conftable sftp_conftab[] = {
   { "SFTPAcceptEnv",		set_sftpacceptenv,		NULL },
+  { "SFTPAuthCertificates",	set_sftpauthcertificates,	NULL },
   { "SFTPAuthMethods",		set_sftpauthmeths,		NULL },
   { "SFTPAuthPublicKeys",	set_sftpauthpublickeys,		NULL },
+  { "SFTPAuthorizedHostCAKeys",	set_sftpauthorizedcakeys,	NULL },
   { "SFTPAuthorizedHostKeys",	set_sftpauthorizedkeys,		NULL },
+  { "SFTPAuthorizedUserCAKeys",	set_sftpauthorizedcakeys,	NULL },
   { "SFTPAuthorizedUserKeys",	set_sftpauthorizedkeys,		NULL },
+  { "SFTPCertificateOptions",	set_sftpcertificateoptions,	NULL },
   { "SFTPCiphers",		set_sftpciphers,		NULL },
   { "SFTPClientAlive",		set_sftpclientalive,		NULL },
   { "SFTPClientMatch",		set_sftpclientmatch,		NULL },

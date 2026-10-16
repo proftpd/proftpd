@@ -29,6 +29,7 @@
 #include "session.h"
 #include "keys.h"
 #include "keystore.h"
+#include "castore.h"
 #include "interop.h"
 #include "blacklist.h"
 
@@ -82,6 +83,8 @@ int sftp_auth_publickey(struct ssh2_packet *pkt, cmd_rec *pass_cmd,
     const char *orig_user, const char *user, const char *service,
     unsigned char **buf, uint32_t *buflen, int *send_userauth_fail) {
   int fp_algo_id = 0, fp_fmt_id = 0, have_signature, res;
+  int pubkey_algo_valid = FALSE, pubkey_algo_enabled = TRUE;
+  int cert_algo_valid = FALSE, cert_algo_enabled = TRUE;
   enum sftp_key_type_e pubkey_type;
   struct sftp_verify_details *details = NULL;
   pr_table_t *verify_notes = NULL;
@@ -90,7 +93,6 @@ int sftp_auth_publickey(struct ssh2_packet *pkt, cmd_rec *pass_cmd,
   const char *fp = NULL, *fp_algo = NULL;
   uint32_t pubkey_len;
   struct passwd *pw;
-  config_rec *c;
 
   if (pr_cmd_dispatch_phase(pass_cmd, PRE_CMD, 0) < 0) {
     (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
@@ -127,8 +129,13 @@ int sftp_auth_publickey(struct ssh2_packet *pkt, cmd_rec *pass_cmd,
   pr_trace_msg(trace_channel, 9, "client sent '%s' public key %s",
     pubkey_algo, have_signature ? "with signature" : "without signature");
 
-  res = sftp_auth_publickey_isvalid(pubkey_algo, &pubkey_type);
-  if (res != TRUE) {
+  pubkey_algo_valid = sftp_auth_publickey_algo_isvalid(pubkey_algo,
+    &pubkey_type);
+  cert_algo_valid = sftp_auth_certificate_algo_isvalid(pubkey_algo,
+    &pubkey_type);
+
+  if (pubkey_algo_valid == FALSE &&
+      cert_algo_valid == FALSE) {
     (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
       "unsupported public key algorithm '%s' requested, rejecting request",
       pubkey_algo);
@@ -146,31 +153,68 @@ int sftp_auth_publickey(struct ssh2_packet *pkt, cmd_rec *pass_cmd,
    * have to check whether that algorithm has been enabled/disabled by
    * configuration (Issue #1806).
    */
-  c = find_config(main_server->conf, CONF_PARAM, "SFTPAuthPublicKeys", FALSE);
-  if (c != NULL) {
-    register unsigned int i;
-    int algo_enabled = FALSE;
+  if (pubkey_algo_valid == TRUE) {
+    config_rec *c;
 
-    for (i = 0; i < c->argc; i++) {
-      if (strcmp(pubkey_algo, (const char *) c->argv[i]) == 0) {
-        algo_enabled = TRUE;
-        break;
+    c = find_config(main_server->conf, CONF_PARAM, "SFTPAuthPublicKeys", FALSE);
+    if (c != NULL) {
+      register unsigned int i;
+
+      pubkey_algo_enabled = FALSE;
+
+      for (i = 0; i < c->argc; i++) {
+        if (strcmp(pubkey_algo, (const char *) c->argv[i]) == 0) {
+          pubkey_algo_enabled = TRUE;
+          break;
+        }
       }
     }
+  }
 
-    if (algo_enabled == FALSE) {
-      (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
-        "public key algorithm '%s' disabled by SFTPAuthPublicKeys, "
-        "rejecting request", pubkey_algo);
+  if (cert_algo_valid == TRUE) {
+    config_rec *c;
 
-      pr_log_auth(PR_LOG_NOTICE,
-        "USER %s (Login failed): public key algorithm '%s' disabled by "
-        "SFTPAuthPublicKeys", user, pubkey_algo);
+    c = find_config(main_server->conf, CONF_PARAM, "SFTPAuthCertificates",
+      FALSE);
+    if (c != NULL) {
+      register unsigned int i;
 
-      *send_userauth_fail = TRUE;
-      errno = EINVAL;
-      return 0;
+      cert_algo_enabled = FALSE;
+
+      for (i = 0; i < c->argc; i++) {
+        if (strcmp(pubkey_algo, (const char *) c->argv[i]) == 0) {
+          cert_algo_enabled = TRUE;
+          break;
+        }
+      }
     }
+  }
+
+  if (pubkey_algo_valid == TRUE &&
+      pubkey_algo_enabled == FALSE) {
+
+    (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
+      "public key algorithm '%s' disabled by SFTPAuthPublicKeys, "
+      "rejecting request", pubkey_algo);
+
+    *send_userauth_fail = TRUE;
+    errno = EINVAL;
+    return 0;
+  }
+
+  if (cert_algo_valid == TRUE &&
+      cert_algo_enabled == FALSE) {
+    (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
+      "public key algorithm '%s' disabled by SFTPAuthCertificates, "
+      "rejecting request", pubkey_algo);
+
+    pr_log_auth(PR_LOG_NOTICE,
+      "USER %s (Login failed): public key algorithm '%s' disabled by "
+      "SFTPAuthCertificates", user, pubkey_algo);
+
+    *send_userauth_fail = TRUE;
+    errno = EINVAL;
+    return 0;
   }
 
   res = sftp_keys_verify_pubkey_type(pkt->pool, pubkey_data, pubkey_len,
@@ -251,7 +295,7 @@ int sftp_auth_publickey(struct ssh2_packet *pkt, cmd_rec *pass_cmd,
     return 0;
   }
 
-  if (!have_signature) {
+  if (have_signature == FALSE) {
     /* We don't perform the actual authentication just yet; we need to
      * let the client know that the pubkey algorithms are acceptable.
      */
@@ -265,21 +309,6 @@ int sftp_auth_publickey(struct ssh2_packet *pkt, cmd_rec *pass_cmd,
     const unsigned char *id;
     unsigned char *buf2, *ptr2, *signature_data;
     uint32_t buflen2, bufsz2, id_len, signature_len;
-
-    /* XXX This should become a more generic "is this key data
-     * usable/acceptable?" check (and take the pubkey_type parameter), so that
-     * that is where we would check the validity/usability of an X509v3 cert
-     * (if a cert), or if the key is on the blacklist (if a key).
-     */
-
-    if (sftp_blacklist_reject_key(pkt->pool, pubkey_data, pubkey_len)) {
-      pr_log_auth(PR_LOG_NOTICE, "USER %s (Login failed): requested public "
-        "key is blacklisted", user);
-
-      *send_userauth_fail = TRUE;
-      errno = EPERM;
-      return 0;
-    }
 
     signature_len = sftp_msg_read_int(pkt->pool, buf, buflen);
     signature_data = sftp_msg_read_data(pkt->pool, buf, buflen, signature_len);
@@ -300,14 +329,51 @@ int sftp_auth_publickey(struct ssh2_packet *pkt, cmd_rec *pass_cmd,
      */
 
     verify_notes = pr_table_nalloc(pkt->pool, 0, 1);
-    if (sftp_keystore_verify_user_key(pkt->pool, user, pubkey_data,
-        pubkey_len, verify_notes) < 0) {
-      pr_log_auth(PR_LOG_NOTICE, "USER %s (Login failed): authentication "
-        "via '%s' public key failed", user, pubkey_algo);
 
-      *send_userauth_fail = TRUE;
-      errno = EACCES;
-      return 0;
+    if (sftp_keys_is_cert_type(pubkey_type) == FALSE) {
+      if (sftp_blacklist_reject_key(pkt->pool, pubkey_data, pubkey_len)) {
+        pr_log_auth(PR_LOG_NOTICE, "USER %s (Login failed): requested public "
+          "key is blacklisted", user);
+
+        *send_userauth_fail = TRUE;
+        errno = EPERM;
+        return 0;
+      }
+
+      /* XXX Are there other ways to block specific keys? */
+
+      if (sftp_keystore_verify_user_key(pkt->pool, user, pubkey_data,
+          pubkey_len, verify_notes) < 0) {
+        pr_log_auth(PR_LOG_NOTICE, "USER %s (Login failed): authentication "
+          "via '%s' public key failed", user, pubkey_algo);
+
+        *send_userauth_fail = TRUE;
+        errno = EACCES;
+        return 0;
+      }
+
+    } else {
+      unsigned long cert_opts = 0UL;
+      config_rec *c;
+
+      c = find_config(main_server->conf, CONF_PARAM, "SFTPCertificateOptions",
+        FALSE);
+      if (c != NULL) {
+        unsigned long opts;
+
+        opts = *((unsigned long *) c->argv[0]);
+        cert_opts |= opts;
+      }
+
+      if (sftp_castore_verify_user_cert(pkt->pool, user, pubkey_data,
+          pubkey_len, cert_opts, verify_notes) < 0) {
+        pr_log_auth(PR_LOG_NOTICE, "USER %s (Login failed): authentication "
+          "via '%s' certificate failed", user, pubkey_algo);
+
+        *send_userauth_fail = TRUE;
+        errno = EACCES;
+        return 0;
+      }
     }
 
     /* Make sure the signature matches as well. */

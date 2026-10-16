@@ -128,10 +128,14 @@ questions, concerns, or suggestions regarding this module.
 <h2>Directives</h2>
 <ul>
   <li><a href="#SFTPAcceptEnv">SFTPAcceptEnv</a>
+  <li><a href="#SFTPAuthCertificates">SFTPAuthCertificates</a>
   <li><a href="#SFTPAuthMethods">SFTPAuthMethods</a>
   <li><a href="#SFTPAuthPublicKeys">SFTPAuthPublicKeys</a>
+  <li><a href="#SFTPAuthorizedHostCAKeys">SFTPAuthorizedHostCAKeys</a>
   <li><a href="#SFTPAuthorizedHostKeys">SFTPAuthorizedHostKeys</a>
+  <li><a href="#SFTPAuthorizedUserCAKeys">SFTPAuthorizedUserCAKeys</a>
   <li><a href="#SFTPAuthorizedUserKeys">SFTPAuthorizedUserKeys</a>
+  <li><a href="#SFTPCertificateOptions">SFTPCertificateOptions</a>
   <li><a href="#SFTPCiphers">SFTPCiphers</a>
   <li><a href="#SFTPClientAlive">SFTPClientAlive</a>
   <li><a href="#SFTPClientMatch">SFTPClientMatch</a>
@@ -176,6 +180,38 @@ directives.
 <p>
 Be warned that some environment variables may have special meaning to
 underlying libraries; care should be taken in the use of this directive.
+
+<p>
+<hr>
+<h3><a name="SFTPAuthCertificates">SFTPAuthCertificates</a></h3>
+<strong>Syntax:</strong> SFTPAuthCertificates <em>algo1 ...</em><br>
+<strong>Default:</strong> <em>None</em><br>
+<strong>Context:</strong> server config, <code>&lt;VirtualHost&gt;</code>, <code>&lt;Global&gt;</code><br>
+<strong>Module:</strong> mod_sftp<br>
+<strong>Compatibility:</strong> 1.3.10rc5 and later
+
+<p>
+The <code>SFTPAuthCertificates</code> directive is used to specify the list of
+SSH certificate algorithms that <code>mod_sftp</code> allows during
+authentication.  The current list of supported SSH certificate algorithms is:
+<ul>
+  <li>ssh-dss-cert
+  <li>ssh-rsa-cert
+  <li>ecdsa-sha2-nistp256-cert
+  <li>ecdsa-sha2-nistp384-cert
+  <li>ecdsa-sha2-nistp521-cert
+  <li>ssh-ed25519-cert (<i>requires Sodium</i>)
+  <li>ssh-ed448-cert (<i>requires OpenSSL 1.1.1 or later</i>)
+</ul>
+Note that for backward compatibility, certificate algorithm names with the
+"-v01@openssh.com" suffix are also supported.
+
+<p>
+By default, all of the above certificate algorithms are allowed.
+
+<p>
+In general, there is no need to use this directive unless specific certificate
+algorithms must be used (or avoided).
 
 <p>
 <hr>
@@ -353,6 +389,52 @@ users to manage their own authorized keys.  For example:
 <pre>
   SFTPAuthorizedUserKeys file:/etc/sftp/authorized_keys/%u
 </pre>
+
+<p>
+<hr>
+<h3><a name="SFTPCertificateOptions">SFTPCertificateOptions</a></h3>
+<strong>Syntax:</strong> SFTPCertificateOptions <em>opt1 ...</em><br>
+<strong>Default:</strong> None<br>
+<strong>Context:</strong> server config, <code>&lt;VirtualHost&gt;</code>, <code>&lt;Global&gt;</code><br>
+<strong>Module:</strong> mod_sftp<br>
+<strong>Compatibility:</strong> 1.3.10rc5 and later
+
+<p>
+The <code>SFTPCertificateOptions</code> directive is used to configure various
+optional SSH certificate handling behavior of <code>mod_sftp</code>.
+
+<p>
+For example:
+<pre>
+  SFTPCertificateOptions AllowMatchPrincipals
+</pre>
+
+<p>
+The currently implemented options are:
+<ul>
+  <li><code>AllowEmptyPrincipals</code><br>
+    <p>
+    By default, <code>mod_sftp</code> will <b>not</b> treat an empty
+    principals list as a "wildcard" match for any/all host IP/DNS addresses,
+    when an SSH certificate is used for <b>hostbased</b> (not publickey)
+    authentication.  Pre-Draft SSH certificates, based on the early OpenSSH
+    spec, <i>did</i> allow for this behavior.  Use this option to enable the
+    pre-Draft hostbased "wildcard" behavior for SSH certificates with empty
+    principals.
+
+    <p>
+    Note that this option is ignored for publickey authentication.
+  </li>
+
+  <p>
+  <li><code>AllowMatchPrincipals</code><br>
+    <p>
+    The <code>mod_sftp</code> does not treat the <code>?</code> or
+    <code>*</code> characters in SSH certificate principals as special
+    characters by default.  To enable the handling of these as <em>match</em>
+    characters, use this option.
+  </li>
+</ul>
 
 <p>
 <hr>

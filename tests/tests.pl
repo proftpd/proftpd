@@ -428,6 +428,11 @@ if (scalar(@ARGV) > 0) {
       test_class => [qw(mod_ban mod_sftp)],
     },
 
+    't/modules/mod_sftp/certs.t' => {
+      order => ++$order,
+      test_class => [qw(mod_sftp)],
+    },
+
     't/modules/mod_sftp/exec.t' => {
       order => ++$order,
       test_class => [qw(mod_exec mod_sftp)],

@@ -30,10 +30,12 @@
 int sftp_keystore_init(void);
 int sftp_keystore_free(void);
 
-int sftp_keystore_supports_store(const char *, unsigned int);
-int sftp_keystore_verify_host_key(pool *, const char *, const char *,
-  const char *, unsigned char *, uint32_t, pr_table_t *);
-int sftp_keystore_verify_user_key(pool *, const char *, unsigned char *,
-  uint32_t, pr_table_t *);
+int sftp_keystore_supports_store(const char *store_type,
+  unsigned int store_ktype);
+int sftp_keystore_verify_host_key(pool *p, const char *user,
+  const char *host_fqdn, const char *host_user, unsigned char *key_data,
+  uint32_t key_datalen, pr_table_t *verify_notes);
+int sftp_keystore_verify_user_key(pool *p, const char *user,
+  unsigned char *key_data, uint32_t key_datalen, pr_table_t *verify_notes);
 
 #endif /* MOD_SFTP_KEYSTORE_H */

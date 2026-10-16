@@ -1,0 +1,276 @@
+
+-------------------------------------
+User CAs, Certificates
+-------------------------------------
+To create the RSA user CA key files:
+
+  $ ssh-keygen -t rsa -C "ProFTPD mod_sftp Testing RSA CA Key" -f authorized_user_rsa_ca_key
+
+  # After this, manually edit the generated text to replace the OpenSSH
+  # Comment with the above -C text.
+  $ ssh-keygen -e -f ./authorized_user_rsa_ca_key.pub > authorized_user_rsa_ca_keys
+
+To sign the RSA user certificates:
+
+  $ ssh-keygen -s authorized_user_rsa_ca_key -I "mod_sftp test RSA cert" -n proftpd -V +30d -z 1 ../test_rsa_key.pub
+  $ mv ../test_rsa_key-cert.pub ./user_rsa_ca_rsa_cert.pub
+
+  # For use for AllowMatchPrincipals integration tests
+  $ ssh-keygen -s authorized_user_rsa_ca_key -I "mod_sftp test RSA cert with AllowMatchPrincipals" -n 'pr?ftp*' -V +30d -z 6 ../test_rsa_key.pub
+  $ mv ../test_rsa_key-cert.pub ./user_rsa_ca_rsa_cert_match_principals.pub
+
+  $ ssh-keygen -s authorized_user_rsa_ca_key -I "mod_sftp test ECDSA256 cert" -n proftpd -V +30d -z 2 ../test_ecdsa256_key.pub
+  $ mv ../test_ecdsa256_key-cert.pub ./user_rsa_ca_ecdsa256_cert.pub
+
+  $ ssh-keygen -s authorized_user_rsa_ca_key -I "mod_sftp test ECDSA384 cert" -n proftpd -V +30d -z 3 ../test_ecdsa384_key.pub
+  $ mv ../test_ecdsa384_key-cert.pub ./user_rsa_ca_ecdsa384_cert.pub
+
+  $ ssh-keygen -s authorized_user_rsa_ca_key -I "mod_sftp test ECDSA521 cert" -n proftpd -V +30d -z 4 ../test_ecdsa521_key.pub
+  $ mv ../test_ecdsa521_key-cert.pub ./user_rsa_ca_ecdsa521_cert.pub
+
+  $ ssh-keygen -s authorized_user_rsa_ca_key -I "mod_sftp test ED25519 cert" -n proftpd -V +30d -z 5 ../test_openssh_ed25519_key.pub
+  $ mv ../test_openssh_ed25519_key-cert.pub ./user_rsa_ca_ed25519_cert.pub
+
+------------------------------------------
+To create the ECDSA256 user CA key files:
+
+  $ ssh-keygen -t ecdsa -b 256 -C "ProFTPD mod_sftp Testing ECDSA256 CA Key" -f authorized_user_ecdsa256_ca_key
+
+  # After this, manually edit the generated text to replace the OpenSSH
+  # Comment with the above -C text.
+  $ ssh-keygen -e -f ./authorized_user_ecdsa256_ca_key.pub > authorized_user_ecdsa256_ca_keys
+
+To sign the user certificates:
+
+  $ ssh-keygen -s authorized_user_ecdsa256_ca_key -I "mod_sftp test RSA cert" -n proftpd -V +30d -z 10 ../test_rsa_key.pub
+  $ mv ../test_rsa_key-cert.pub ./user_ecdsa256_ca_rsa_cert.pub
+
+  $ ssh-keygen -s authorized_user_ecdsa256_ca_key -I "mod_sftp test ECDSA256 cert" -n proftpd -V +30d -z 11 ../test_ecdsa256_key.pub
+  $ mv ../test_ecdsa256_key-cert.pub ./user_ecdsa256_ca_ecdsa256_cert.pub
+
+  $ ssh-keygen -s authorized_user_ecdsa256_ca_key -I "mod_sftp test ECDSA384 cert" -n proftpd -V +30d -z 12 ../test_ecdsa384_key.pub
+  $ mv ../test_ecdsa384_key-cert.pub ./user_ecdsa256_ca_ecdsa384_cert.pub
+
+  $ ssh-keygen -s authorized_user_ecdsa256_ca_key -I "mod_sftp test ECDSA521 cert" -n proftpd -V +30d -z 13 ../test_ecdsa521_key.pub
+  $ mv ../test_ecdsa521_key-cert.pub ./user_ecdsa256_ca_ecdsa521_cert.pub
+
+  $ ssh-keygen -s authorized_user_ecdsa256_ca_key -I "mod_sftp test ED25519 cert" -n proftpd -V +30d -z 14 ../test_openssh_ed25519_key.pub
+  $ mv ../test_openssh_ed25519_key-cert.pub ./user_ecdsa256_ca_ed25519_cert.pub
+
+------------------------------------------
+To create the ECDSA384 user CA key files:
+
+  $ ssh-keygen -t ecdsa -b 384 -C "ProFTPD mod_sftp Testing ECDSA384 CA Key" -f authorized_user_ecdsa384_ca_key
+
+  # After this, manually edit the generated text to replace the OpenSSH
+  # Comment with the above -C text.
+  $ ssh-keygen -e -f ./authorized_user_ecdsa384_ca_key.pub > authorized_user_ecdsa384_ca_keys
+
+To sign the user certificates:
+
+  $ ssh-keygen -s authorized_user_ecdsa384_ca_key -I "mod_sftp test RSA cert" -n proftpd -V +30d -z 20 ../test_rsa_key.pub
+  $ mv ../test_rsa_key-cert.pub ./user_ecdsa384_ca_rsa_cert.pub
+
+  $ ssh-keygen -s authorized_user_ecdsa384_ca_key -I "mod_sftp test ECDSA256 cert" -n proftpd -V +30d -z 21 ../test_ecdsa256_key.pub
+  $ mv ../test_ecdsa256_key-cert.pub ./user_ecdsa384_ca_ecdsa256_cert.pub
+
+  $ ssh-keygen -s authorized_user_ecdsa384_ca_key -I "mod_sftp test ECDSA384 cert" -n proftpd -V +30d -z 22 ../test_ecdsa384_key.pub
+  $ mv ../test_ecdsa384_key-cert.pub ./user_ecdsa384_ca_ecdsa384_cert.pub
+
+  $ ssh-keygen -s authorized_user_ecdsa384_ca_key -I "mod_sftp test ECDSA521 cert" -n proftpd -V +30d -z 23 ../test_ecdsa521_key.pub
+  $ mv ../test_ecdsa521_key-cert.pub ./user_ecdsa384_ca_ecdsa521_cert.pub
+
+  $ ssh-keygen -s authorized_user_ecdsa384_ca_key -I "mod_sftp test ED25519 cert" -n proftpd -V +30d -z 24 ../test_openssh_ed25519_key.pub
+  $ mv ../test_openssh_ed25519_key-cert.pub ./user_ecdsa384_ca_ed25519_cert.pub
+
+------------------------------------------
+To create the ECDSA521 user CA key files:
+
+  $ ssh-keygen -t ecdsa -b 521 -C "ProFTPD mod_sftp Testing ECDSA521 CA Key" -f authorized_user_ecdsa521_ca_key
+
+  # After this, manually edit the generated text to replace the OpenSSH
+  # Comment with the above -C text.
+  $ ssh-keygen -e -f ./authorized_user_ecdsa521_ca_key.pub > authorized_user_ecdsa521_ca_keys
+
+To sign the user certificates:
+
+  $ ssh-keygen -s authorized_user_ecdsa521_ca_key -I "mod_sftp test RSA cert" -n proftpd -V +30d -z 30 ../test_rsa_key.pub
+  $ mv ../test_rsa_key-cert.pub ./user_ecdsa521_ca_rsa_cert.pub
+
+  $ ssh-keygen -s authorized_user_ecdsa521_ca_key -I "mod_sftp test ECDSA256 cert" -n proftpd -V +30d -z 31 ../test_ecdsa256_key.pub
+  $ mv ../test_ecdsa256_key-cert.pub ./user_ecdsa521_ca_ecdsa256_cert.pub
+
+  $ ssh-keygen -s authorized_user_ecdsa521_ca_key -I "mod_sftp test ECDSA384 cert" -n proftpd -V +30d -z 32 ../test_ecdsa384_key.pub
+  $ mv ../test_ecdsa384_key-cert.pub ./user_ecdsa521_ca_ecdsa384_cert.pub
+
+  $ ssh-keygen -s authorized_user_ecdsa521_ca_key -I "mod_sftp test ECDSA521 cert" -n proftpd -V +30d -z 33 ../test_ecdsa521_key.pub
+  $ mv ../test_ecdsa521_key-cert.pub ./user_ecdsa521_ca_ecdsa521_cert.pub
+
+  $ ssh-keygen -s authorized_user_ecdsa521_ca_key -I "mod_sftp test ED25519 cert" -n proftpd -V +30d -z 34 ../test_openssh_ed25519_key.pub
+  $ mv ../test_openssh_ed25519_key-cert.pub ./user_ecdsa521_ca_ed25519_cert.pub
+
+-----------------------------------------
+To create the ED25519 user CA key files:
+
+  $ ssh-keygen -t ed25519 -C "ProFTPD mod_sftp Testing ED25519 CA Key" -f authorized_user_ed25519_ca_key
+
+  # After this, manually edit the generated text to replace the OpenSSH
+  # Comment with the above -C text.
+  $ ssh-keygen -e -f ./authorized_user_ed25519_ca_key.pub > authorized_user_ed25519_ca_keys
+
+To sign the user certificates:
+
+  $ ssh-keygen -s authorized_user_ed25519_ca_key -I "mod_sftp test RSA cert" -n proftpd -V +30d -z 40 ../test_rsa_key.pub
+  $ mv ../test_rsa_key-cert.pub ./user_ed25519_ca_rsa_cert.pub
+
+  $ ssh-keygen -s authorized_user_ed25519_ca_key -I "mod_sftp test ECDSA256 cert" -n proftpd -V +30d -z 41 ../test_ecdsa256_key.pub
+  $ mv ../test_ecdsa256_key-cert.pub ./user_ed25519_ca_ecdsa256_cert.pub
+
+  $ ssh-keygen -s authorized_user_ed25519_ca_key -I "mod_sftp test ECDSA384 cert" -n proftpd -V +30d -z 42 ../test_ecdsa384_key.pub
+  $ mv ../test_ecdsa384_key-cert.pub ./user_ed25519_ca_ecdsa384_cert.pub
+
+  $ ssh-keygen -s authorized_user_ed25519_ca_key -I "mod_sftp test ECDSA521 cert" -n proftpd -V +30d -z 43 ../test_ecdsa521_key.pub
+  $ mv ../test_ecdsa521_key-cert.pub ./user_ed25519_ca_ecdsa521_cert.pub
+
+  $ ssh-keygen -s authorized_user_ed25519_ca_key -I "mod_sftp test ED25519 cert" -n proftpd -V +30d -z 44 ../test_openssh_ed25519_key.pub
+  $ mv ../test_openssh_ed25519_key-cert.pub ./user_ed25519_ca_ed25519_cert.pub
+
+-------------------------------------
+Host CAs, Certificates
+-------------------------------------
+To create the RSA host CA key files:
+
+  $ ssh-keygen -t rsa -C "ProFTPD mod_sftp Testing RSA Host CA Key" -f authorized_host_rsa_ca_key
+
+  # After this, manually edit the generated text to replace the OpenSSH
+  # Comment with the above -C text.
+  $ ssh-keygen -e -f ./authorized_host_rsa_ca_key.pub > authorized_host_rsa_ca_keys
+
+To sign the RSA host certificates:
+
+  $ ssh-keygen -s authorized_host_rsa_ca_key -I "mod_sftp test RSA cert" -h -n 127.0.0.1 -V +30d -z 101 ../test_rsa_key.pub
+  $ mv ../test_rsa_key-cert.pub ./host_rsa_ca_rsa_cert.pub
+
+  # For use for AllowMatchPrincipals integration tests
+  $ ssh-keygen -s authorized_host_rsa_ca_key -I "mod_sftp test RSA cert with AllowMatchPrincipals" -h -n '127.?.?.*,l?calh*' -V +30d -z 106 ../test_rsa_key.pub
+  $ mv ../test_rsa_key-cert.pub ./host_rsa_ca_rsa_cert_match_principals.pub
+
+  # For use for AllowEmptyPrincipals integration tests
+  $ ssh-keygen -s authorized_host_rsa_ca_key -I "mod_sftp test RSA cert with AllowEmptyPrincipals" -h -V +30d -z 107 ../test_rsa_key.pub
+  $ mv ../test_rsa_key-cert.pub ./host_rsa_ca_rsa_cert_empty_principals.pub
+
+  $ ssh-keygen -s authorized_host_rsa_ca_key -I "mod_sftp test ECDSA256 cert" -h -n 127.0.0.1 -V +30d -z 102 ../test_ecdsa256_key.pub
+  $ mv ../test_ecdsa256_key-cert.pub ./host_rsa_ca_ecdsa256_cert.pub
+
+  $ ssh-keygen -s authorized_host_rsa_ca_key -I "mod_sftp test ECDSA384 cert" -h -n 127.0.0.1 -V +30d -z 103 ../test_ecdsa384_key.pub
+  $ mv ../test_ecdsa384_key-cert.pub ./host_rsa_ca_ecdsa384_cert.pub
+
+  $ ssh-keygen -s authorized_host_rsa_ca_key -I "mod_sftp test ECDSA521 cert" -h -n 127.0.0.1 -V +30d -z 104 ../test_ecdsa521_key.pub
+  $ mv ../test_ecdsa521_key-cert.pub ./host_rsa_ca_ecdsa521_cert.pub
+
+  $ ssh-keygen -s authorized_host_rsa_ca_key -I "mod_sftp test ED25519 cert" -h -n 127.0.0.1 -V +30d -z 105 ../test_openssh_ed25519_key.pub
+  $ mv ../test_openssh_ed25519_key-cert.pub ./host_rsa_ca_ed25519_cert.pub
+
+------------------------------------------
+To create the ECDSA256 host CA key files:
+
+  $ ssh-keygen -t ecdsa -b 256 -C "ProFTPD mod_sftp Testing ECDSA256 Host CA Key" -f authorized_host_ecdsa256_ca_key
+
+  # After this, manually edit the generated text to replace the OpenSSH
+  # Comment with the above -C text.
+  $ ssh-keygen -e -f ./authorized_host_ecdsa256_ca_key.pub > authorized_host_ecdsa256_ca_keys
+
+To sign the host certificates:
+
+  $ ssh-keygen -s authorized_host_ecdsa256_ca_key -I "mod_sftp test RSA cert" -h -n 127.0.0.1 -V +30d -z 110 ../test_rsa_key.pub
+  $ mv ../test_rsa_key-cert.pub ./host_ecdsa256_ca_rsa_cert.pub
+
+  $ ssh-keygen -s authorized_host_ecdsa256_ca_key -I "mod_sftp test ECDSA256 cert" -h -n 127.0.0.1 -V +30d -z 111 ../test_ecdsa256_key.pub
+  $ mv ../test_ecdsa256_key-cert.pub ./host_ecdsa256_ca_ecdsa256_cert.pub
+
+  $ ssh-keygen -s authorized_host_ecdsa256_ca_key -I "mod_sftp test ECDSA384 cert" -h -n 127.0.0.1 -V +30d -z 112 ../test_ecdsa384_key.pub
+  $ mv ../test_ecdsa384_key-cert.pub ./host_ecdsa256_ca_ecdsa384_cert.pub
+
+  $ ssh-keygen -s authorized_host_ecdsa256_ca_key -I "mod_sftp test ECDSA521 cert" -h -n 127.0.0.1 -V +30d -z 113 ../test_ecdsa521_key.pub
+  $ mv ../test_ecdsa521_key-cert.pub ./host_ecdsa256_ca_ecdsa521_cert.pub
+
+  $ ssh-keygen -s authorized_host_ecdsa256_ca_key -I "mod_sftp test ED25519 cert" -h -n 127.0.0.1 -V +30d -z 114 ../test_openssh_ed25519_key.pub
+  $ mv ../test_openssh_ed25519_key-cert.pub ./host_ecdsa256_ca_ed25519_cert.pub
+
+------------------------------------------
+To create the ECDSA384 host CA key files:
+
+  $ ssh-keygen -t ecdsa -b 384 -C "ProFTPD mod_sftp Testing ECDSA384 Host CA Key" -f authorized_host_ecdsa384_ca_key
+
+  # After this, manually edit the generated text to replace the OpenSSH
+  # Comment with the above -C text.
+  $ ssh-keygen -e -f ./authorized_host_ecdsa384_ca_key.pub > authorized_host_ecdsa384_ca_keys
+
+To sign the host certificates:
+
+  $ ssh-keygen -s authorized_host_ecdsa384_ca_key -I "mod_sftp test RSA cert" -h -n 127.0.0.1 -V +30d -z 120 ../test_rsa_key.pub
+  $ mv ../test_rsa_key-cert.pub ./host_ecdsa384_ca_rsa_cert.pub
+
+  $ ssh-keygen -s authorized_host_ecdsa384_ca_key -I "mod_sftp test ECDSA256 cert" -h -n 127.0.0.1 -V +30d -z 121 ../test_ecdsa256_key.pub
+  $ mv ../test_ecdsa256_key-cert.pub ./host_ecdsa384_ca_ecdsa256_cert.pub
+
+  $ ssh-keygen -s authorized_host_ecdsa384_ca_key -I "mod_sftp test ECDSA384 cert" -h -n 127.0.0.1 -V +30d -z 122 ../test_ecdsa384_key.pub
+  $ mv ../test_ecdsa384_key-cert.pub ./host_ecdsa384_ca_ecdsa384_cert.pub
+
+  $ ssh-keygen -s authorized_host_ecdsa384_ca_key -I "mod_sftp test ECDSA521 cert" -h -n 127.0.0.1 -V +30d -z 123 ../test_ecdsa521_key.pub
+  $ mv ../test_ecdsa521_key-cert.pub ./host_ecdsa384_ca_ecdsa521_cert.pub
+
+  $ ssh-keygen -s authorized_host_ecdsa384_ca_key -I "mod_sftp test ED25519 cert" -h -n 127.0.0.1 -V +30d -z 124 ../test_openssh_ed25519_key.pub
+  $ mv ../test_openssh_ed25519_key-cert.pub ./host_ecdsa384_ca_ed25519_cert.pub
+
+------------------------------------------
+To create the ECDSA521 host CA key files:
+
+  $ ssh-keygen -t ecdsa -b 521 -C "ProFTPD mod_sftp Testing ECDSA521 Host CA Key" -f authorized_host_ecdsa521_ca_key
+
+  # After this, manually edit the generated text to replace the OpenSSH
+  # Comment with the above -C text.
+  $ ssh-keygen -e -f ./authorized_host_ecdsa521_ca_key.pub > authorized_host_ecdsa521_ca_keys
+
+To sign the host certificates:
+
+  $ ssh-keygen -s authorized_host_ecdsa521_ca_key -I "mod_sftp test RSA cert" -h -n 127.0.0.1 -V +30d -z 130 ../test_rsa_key.pub
+  $ mv ../test_rsa_key-cert.pub ./host_ecdsa521_ca_rsa_cert.pub
+
+  $ ssh-keygen -s authorized_host_ecdsa521_ca_key -I "mod_sftp test ECDSA256 cert" -h -n 127.0.0.1 -V +30d -z 131 ../test_ecdsa256_key.pub
+  $ mv ../test_ecdsa256_key-cert.pub ./host_ecdsa521_ca_ecdsa256_cert.pub
+
+  $ ssh-keygen -s authorized_host_ecdsa521_ca_key -I "mod_sftp test ECDSA384 cert" -h -n 127.0.0.1 -V +30d -z 132 ../test_ecdsa384_key.pub
+  $ mv ../test_ecdsa384_key-cert.pub ./host_ecdsa521_ca_ecdsa384_cert.pub
+
+  $ ssh-keygen -s authorized_host_ecdsa521_ca_key -I "mod_sftp test ECDSA521 cert" -h -n 127.0.0.1 -V +30d -z 133 ../test_ecdsa521_key.pub
+  $ mv ../test_ecdsa521_key-cert.pub ./host_ecdsa521_ca_ecdsa521_cert.pub
+
+  $ ssh-keygen -s authorized_host_ecdsa521_ca_key -I "mod_sftp test ED25519 cert" -h -n 127.0.0.1 -V +30d -z 134 ../test_openssh_ed25519_key.pub
+  $ mv ../test_openssh_ed25519_key-cert.pub ./host_ecdsa521_ca_ed25519_cert.pub
+
+-----------------------------------------
+To create the ED25519 host CA key files:
+
+  $ ssh-keygen -t ed25519 -C "ProFTPD mod_sftp Testing ED25519 Host CA Key" -f authorized_host_ed25519_ca_key
+
+  # After this, manually edit the generated text to replace the OpenSSH
+  # Comment with the above -C text.
+  $ ssh-keygen -e -f ./authorized_host_ed25519_ca_key.pub > authorized_host_ed25519_ca_keys
+
+To sign the host certificates:
+
+  $ ssh-keygen -s authorized_host_ed25519_ca_key -I "mod_sftp test RSA cert" -h -n 127.0.0.1 -V +30d -z 140 ../test_rsa_key.pub
+  $ mv ../test_rsa_key-cert.pub ./host_ed25519_ca_rsa_cert.pub
+
+  $ ssh-keygen -s authorized_host_ed25519_ca_key -I "mod_sftp test ECDSA256 cert" -h -n 127.0.0.1 -V +30d -z 141 ../test_ecdsa256_key.pub
+  $ mv ../test_ecdsa256_key-cert.pub ./host_ed25519_ca_ecdsa256_cert.pub
+
+  $ ssh-keygen -s authorized_host_ed25519_ca_key -I "mod_sftp test ECDSA384 cert" -h -n 127.0.0.1 -V +30d -z 142 ../test_ecdsa384_key.pub
+  $ mv ../test_ecdsa384_key-cert.pub ./host_ed25519_ca_ecdsa384_cert.pub
+
+  $ ssh-keygen -s authorized_host_ed25519_ca_key -I "mod_sftp test ECDSA521 cert" -h -n 127.0.0.1 -V +30d -z 143 ../test_ecdsa521_key.pub
+  $ mv ../test_ecdsa521_key-cert.pub ./host_ed25519_ca_ecdsa521_cert.pub
+
+  $ ssh-keygen -s authorized_host_ed25519_ca_key -I "mod_sftp test ED25519 cert" -h -n 127.0.0.1 -V +30d -z 144 ../test_openssh_ed25519_key.pub
+  $ mv ../test_openssh_ed25519_key-cert.pub ./host_ed25519_ca_ed25519_cert.pub

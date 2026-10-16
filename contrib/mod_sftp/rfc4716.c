@@ -23,7 +23,6 @@
 
 #include "mod_sftp.h"
 #include "keys.h"
-#include "keystore.h"
 #include "crypto.h"
 #include "rfc4716.h"
 
@@ -56,9 +55,8 @@ static const char *trace_channel = "ssh2";
  * is 74 bytes (72 + CRLF); this also means 73 + CR or 73 + LF.  The extra
  * byte is for the terminating NUL.
  */
-static char *filestore_getline(sftp_keystore_t *store, pool *p) {
+static char *filestore_getline(struct filestore_data *store_data, pool *p) {
   char linebuf[75], *line = "", *res;
-  struct filestore_data *store_data = store->keystore_data;
 
   while (TRUE) {
     size_t linelen;
@@ -224,20 +222,19 @@ static struct filestore_key *filestore_alloc_key(pool *p) {
   return key;
 }
 
-static struct filestore_key *filestore_get_key(sftp_keystore_t *store,
-    pool *p) {
+static struct filestore_key *filestore_get_key(
+    struct filestore_data *store_data, pool *p) {
   char *line;
   BIO *bio = NULL;
   struct filestore_key *key = NULL;
-  struct filestore_data *store_data = store->keystore_data;
   size_t begin_markerlen = 0, end_markerlen = 0;
 
-  line = filestore_getline(store, p);
+  line = filestore_getline(store_data, p);
   while (line == NULL &&
          errno == EINVAL) {
     pr_signals_handle();
 
-    line = filestore_getline(store, p);
+    line = filestore_getline(store_data, p);
   }
 
   if (line == NULL) {
@@ -367,12 +364,12 @@ static struct filestore_key *filestore_get_key(sftp_keystore_t *store,
       }
     }
 
-    line = filestore_getline(store, p);
+    line = filestore_getline(store_data, p);
     while (line == NULL &&
            errno == EINVAL) {
       pr_signals_handle();
 
-      line = filestore_getline(store, p);
+      line = filestore_getline(store_data, p);
     }
   }
 
@@ -383,6 +380,8 @@ static struct filestore_key *filestore_get_key(sftp_keystore_t *store,
 
   return key;
 }
+
+/* Keys */
 
 static int filestore_verify_host_key(sftp_keystore_t *store, pool *p,
     const char *user, const char *host_fqdn, const char *host_user,
@@ -400,7 +399,7 @@ static int filestore_verify_host_key(sftp_keystore_t *store, pool *p,
    * There's room for improvement; perhaps mmap() the file into memory?
    */
 
-  key = filestore_get_key(store, p);
+  key = filestore_get_key(store_data, p);
   while (key != NULL) {
     int ok;
 
@@ -423,7 +422,7 @@ static int filestore_verify_host_key(sftp_keystore_t *store, pool *p,
       break;
     }
 
-    key = filestore_get_key(store, p);
+    key = filestore_get_key(store_data, p);
   }
 
   if (res == 0) {
@@ -466,7 +465,7 @@ static int filestore_verify_user_key(sftp_keystore_t *store, pool *p,
    * There's room for improvement; perhaps mmap() the file into memory?
    */
 
-  key = filestore_get_key(store, p);
+  key = filestore_get_key(store_data, p);
   while (key != NULL) {
     int ok;
 
@@ -510,7 +509,7 @@ static int filestore_verify_user_key(sftp_keystore_t *store, pool *p,
       }
     }
 
-    key = filestore_get_key(store, p);
+    key = filestore_get_key(store_data, p);
   }
 
   if (res == 0) {
@@ -536,7 +535,7 @@ static int filestore_verify_user_key(sftp_keystore_t *store, pool *p,
   return res;
 }
 
-static int filestore_close(sftp_keystore_t *store) {
+static int key_filestore_close(sftp_keystore_t *store) {
   struct filestore_data *store_data;
 
   store_data = store->keystore_data;
@@ -544,7 +543,7 @@ static int filestore_close(sftp_keystore_t *store) {
   return 0;
 }
 
-static sftp_keystore_t *filestore_open(pool *parent_pool,
+static sftp_keystore_t *key_filestore_open(pool *parent_pool,
     int requested_key_type, const char *store_info, const char *user) {
   int xerrno;
   sftp_keystore_t *store;
@@ -645,13 +644,255 @@ static sftp_keystore_t *filestore_open(pool *parent_pool,
       break;
   }
 
-  store->store_close = filestore_close;
+  store->store_close = key_filestore_close;
+  return store;
+}
+
+/* Certificates */
+
+static int filestore_verify_host_cert_ca_key(sftp_castore_t *store, pool *p,
+    const char *user, const char *host_fqdn, const char *host_user,
+    unsigned char *ca_pubkey_data, uint32_t ca_pubkey_datalen,
+    pr_table_t *headers) {
+  struct filestore_data *store_data = store->castore_data;
+  struct filestore_key *ca_key = NULL;
+  unsigned int count = 0;
+  int res = -1;
+
+  if (store_data->path == NULL) {
+    errno = EPERM;
+    return -1;
+  }
+
+  /* XXX Note that this will scan the file from the beginning, each time.
+   * There's room for improvement; perhaps mmap() the file into memory?
+   */
+
+  ca_key = filestore_get_key(store_data, p);
+  while (ca_key != NULL) {
+    int ok;
+
+    pr_signals_handle();
+    count++;
+
+    ok = sftp_keys_compare_keys(p, ca_pubkey_data, ca_pubkey_datalen,
+      ca_key->key_data, ca_key->key_datalen);
+    if (ok != TRUE) {
+      if (ok == -1) {
+        (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
+          "error comparing keys from '%s': %s", store_data->path,
+          strerror(errno));
+
+      } else {
+        pr_trace_msg(trace_channel, 10,
+          "failed to match key #%u from file '%s'", count, store_data->path);
+      }
+
+    } else {
+      res = 0;
+      break;
+    }
+
+    ca_key = filestore_get_key(store_data, p);
+  }
+
+  if (res == 0) {
+    pr_trace_msg(trace_channel, 10,
+      "found matching CA key for host '%s' in '%s'", host_fqdn,
+      store_data->path);
+
+    if (pr_table_copy(headers, ca_key->headers, 0) < 0) {
+      pr_trace_msg(trace_channel, 19, "error copying verify notes: %s",
+        strerror(errno));
+    }
+  }
+
+  if (pr_fsio_lseek(store_data->fh, 0, SEEK_SET) < 0) {
+    int xerrno = errno;
+
+    (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
+      "error seeking to start of '%s': %s", store_data->path, strerror(xerrno));
+
+    xerrno = errno;
+    return -1;
+  }
+
+  store_data->lineno = 0;
+  return res;
+}
+
+static int filestore_verify_user_cert_ca_key(sftp_castore_t *store, pool *p,
+    const char *user, unsigned char *ca_pubkey_data, uint32_t ca_pubkey_datalen,
+    pr_table_t *headers) {
+  struct filestore_data *store_data = store->castore_data;
+  struct filestore_key *ca_key = NULL;
+  unsigned int count = 0;
+  int res = -1;
+
+  if (store_data->path == NULL) {
+    errno = EPERM;
+    return -1;
+  }
+
+  /* XXX Note that this will scan the file from the beginning, each time.
+   * There's room for improvement; perhaps mmap() the file into memory?
+   */
+
+  ca_key = filestore_get_key(store_data, p);
+  while (ca_key != NULL) {
+    int ok;
+
+    pr_signals_handle();
+    count++;
+
+    ok = sftp_keys_compare_keys(p, ca_pubkey_data, ca_pubkey_datalen,
+      ca_key->key_data, ca_key->key_datalen);
+    if (ok != TRUE) {
+      if (ok == -1) {
+        (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
+          "error comparing keys from '%s': %s", store_data->path,
+          strerror(errno));
+
+      } else {
+        pr_trace_msg(trace_channel, 10,
+          "failed to match key #%u from file '%s'", count, store_data->path);
+      }
+
+    } else {
+      res = 0;
+      break;
+    }
+
+    ca_key = filestore_get_key(store_data, p);
+  }
+
+  if (res == 0) {
+    pr_trace_msg(trace_channel, 10,
+      "found matching CA key for user '%s' in '%s'", user, store_data->path);
+
+    if (pr_table_copy(headers, ca_key->headers, 0) < 0) {
+      pr_trace_msg(trace_channel, 19, "error copying verify notes: %s",
+        strerror(errno));
+    }
+  }
+
+  if (pr_fsio_lseek(store_data->fh, 0, SEEK_SET) < 0) {
+    int xerrno = errno;
+
+    (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
+      "error seeking to start of '%s': %s", store_data->path, strerror(xerrno));
+
+    xerrno = errno;
+    return -1;
+  }
+
+  store_data->lineno = 0;
+  return res;
+}
+
+static int ca_filestore_close(sftp_castore_t *store) {
+  struct filestore_data *store_data;
+
+  store_data = store->castore_data;
+  (void) pr_fsio_close(store_data->fh);
+  return 0;
+}
+
+static sftp_castore_t *ca_filestore_open(pool *parent_pool,
+    int requested_cert_type, const char *store_info, const char *user) {
+  int xerrno;
+  sftp_castore_t *store;
+  pool *filestore_pool;
+  struct filestore_data *store_data;
+  pr_fh_t *fh;
+  char *path;
+  struct stat st;
+
+  filestore_pool = make_sub_pool(parent_pool);
+  pr_pool_tag(filestore_pool, "SFTP File-based CA Store Pool");
+
+  store = pcalloc(filestore_pool, sizeof(sftp_castore_t));
+  store->castore_pool = filestore_pool;
+
+  /* Note: we deliberately do NOT support interpolation of the given path
+   * for CAs.
+   */
+  path = pstrdup(filestore_pool, store_info);
+
+  PRIVS_ROOT
+  fh = pr_fsio_open(path, O_RDONLY|O_NONBLOCK);
+  xerrno = errno;
+  PRIVS_RELINQUISH
+
+  if (fh == NULL) {
+    destroy_pool(filestore_pool);
+    errno = xerrno;
+    return NULL;
+  }
+
+  if (pr_fsio_set_block(fh) < 0) {
+   xerrno = errno;
+
+    destroy_pool(filestore_pool);
+    (void) pr_fsio_close(fh);
+
+    errno = xerrno;
+    return NULL;
+  }
+
+  /* Stat the opened file to determine the optimal buffer size for IO. */
+  memset(&st, 0, sizeof(st));
+  if (pr_fsio_fstat(fh, &st) < 0) {
+    xerrno = errno;
+
+    destroy_pool(filestore_pool);
+    (void) pr_fsio_close(fh);
+
+    errno = xerrno;
+    return NULL;
+  }
+
+  if (S_ISDIR(st.st_mode)) {
+    destroy_pool(filestore_pool);
+    (void) pr_fsio_close(fh);
+
+    errno = EISDIR;
+    return NULL;
+  }
+
+  fh->fh_iosz = st.st_blksize;
+
+  store_data = pcalloc(filestore_pool, sizeof(struct filestore_data));
+  store->castore_data = store_data;
+
+  store_data->path = path;
+  store_data->fh = fh;
+  store_data->lineno = 0;
+
+  store->store_ctypes = requested_cert_type;
+
+  switch (requested_cert_type) {
+    case SFTP_SSH2_HOST_CA_KEY_STORE:
+      store->verify_host_cert_ca_key = filestore_verify_host_cert_ca_key;
+      break;
+
+    case SFTP_SSH2_USER_CA_KEY_STORE:
+      store->verify_user_cert_ca_key = filestore_verify_user_cert_ca_key;
+      break;
+
+    default:
+      break;
+  }
+
+  store->store_close = ca_filestore_close;
   return store;
 }
 
 int sftp_rfc4716_init(void) {
-  sftp_keystore_register_store("file", filestore_open,
+  sftp_keystore_register_store("file", key_filestore_open,
     SFTP_SSH2_HOST_KEY_STORE|SFTP_SSH2_USER_KEY_STORE);
+  sftp_castore_register_store("file", ca_filestore_open,
+    SFTP_SSH2_HOST_CA_KEY_STORE|SFTP_SSH2_USER_CA_KEY_STORE);
 
   return 0;
 }
@@ -659,6 +900,8 @@ int sftp_rfc4716_init(void) {
 int sftp_rfc4716_free(void) {
   sftp_keystore_unregister_store("file",
     SFTP_SSH2_HOST_KEY_STORE|SFTP_SSH2_USER_KEY_STORE);
+  sftp_castore_unregister_store("file",
+    SFTP_SSH2_HOST_CA_KEY_STORE|SFTP_SSH2_USER_CA_KEY_STORE);
 
   return 0;
 }
