@@ -113,6 +113,11 @@ my $TESTS = {
     test_class => [qw(bug forking ssh2)],
   },
 
+  ssh2_auth_ext_publickey_certificate_rsa_cakeys_sql_issue2357 => {
+    order => ++$order,
+    test_class => [qw(bug forking ssh2)],
+  },
+
 };
 
 sub new {
@@ -3517,6 +3522,249 @@ EOS
   $self->assert_child_ok($pid);
 
   test_cleanup($setup->{log_file}, $ex);
+}
+
+sub ssh2_auth_ext_publickey_certificate_rsa_cakeys_sql_issue2357 {
+  my $self = shift;
+  my $tmpdir = $self->{tmpdir};
+  my $setup = test_setup($tmpdir, 'sftp_sql');
+
+  my $db_file = File::Spec->rel2abs("$tmpdir/sftp.db");
+
+  my $rsa_rfc4716_data = '---- BEGIN SSH2 PUBLIC KEY ----
+Comment: "ProFTPD mod_sftp Testing RSA CA Key"
+AAAAB3NzaC1yc2EAAAADAQABAAABgQDY3SykHhMV4qWuOPlAGroZ4Y7i4gCoFapCPrKkgb
+3Io9PyWmpqXSrSGB/+u3wRcf/RbNsHk8f5o7y2n5bRkYV0g1UN1DrlP9mm/jGc+o6V/Ba9
+0WtMil2noppmQrSZZbAmjl0ExCm50mczxKBSMsUYkVKxYSNVH9OVCjn/03oEMqxyF4rX0M
+RacQEX69wMos8IJu6SUcQC89xri497wc/0Z/qPMvCE7TAHXMDBYe+Jv3Xqd2fghFCJqHYz
+fOasg63Qkms2GDNxDT0VMdA4USSP+dGTqztt9FhuCZ3q952VitgDJ+HJlmVP8Ir3TLSCcv
+axWvM/Kkc5R92EGCuhEvxGkxio+N7EECqUfIcxPWrjBdj4HJ6v+cdLdWtfQG3HIKbKqRT/
+kXqJCMkIUPD4Y0VgXGjTvOp0nusmB1jdcQjI5d2O/oaO0vmiNoyGBvItHUcPSaGJnvjwTi
+yHQKDIv6IyyTnX7+kEmv+nkFFXaHFS3a1qBZLKUKEr5DO3dYuxql8=
+---- END SSH2 PUBLIC KEY ----';
+
+  my $db_script = File::Spec->rel2abs("$tmpdir/sftp.sql");
+
+  my $fh;
+  if (open($fh, "> $db_script")) {
+    print $fh <<EOS;
+CREATE TABLE sftpuserkeys (
+  name TEXT NOT NULL PRIMARY KEY,
+  key BLOB NOT NULL
+);
+
+INSERT INTO sftpuserkeys (name, key) VALUES ('$setup->{user}', '$rsa_rfc4716_data');
+EOS
+    unless (close($fh)) {
+      die("Can't write $db_script: $!");
+    }
+
+  } else {
+    die("Can't open $db_script: $!");
+  }
+
+  my $cmd = "sqlite3 $db_file < $db_script";
+  if ($ENV{TEST_VERBOSE}) {
+    print STDERR "Executing sqlite3: $cmd\n";
+  }
+
+  my @output = `$cmd`;
+
+  unlink($db_script);
+
+  my $rsa_host_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/ssh_host_rsa_key');
+  my $dsa_host_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/ssh_host_dsa_key');
+
+  my $priv_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/test_rsa_key');
+  my $cert = File::Spec->rel2abs('t/etc/modules/mod_sftp/certs/user_rsa_ca_rsa_cert.pub');
+
+  my $batch_file = File::Spec->rel2abs("$tmpdir/sftp-batch.txt");
+  if (open(my $fh, "> $batch_file")) {
+    print $fh "ls -al\n";
+
+    unless (close($fh)) {
+      die("Can't write $batch_file: $!");
+    }
+
+  } else {
+    die("Can't open $batch_file: $!");
+  }
+
+  my $config = {
+    PidFile => $setup->{pid_file},
+    ScoreboardFile => $setup->{scoreboard_file},
+    SystemLog => $setup->{log_file},
+    TraceLog => $setup->{log_file},
+    Trace => 'ssh2:30 sftp:20 sftp.sql:20 sql:30 sql.sqlite:30',
+
+    AuthUserFile => $setup->{auth_user_file},
+    AuthGroupFile => $setup->{auth_group_file},
+    AuthOrder => 'mod_auth_file.c',
+
+    IfModules => {
+      'mod_delay.c' => {
+        DelayEngine => 'off',
+      },
+
+      'mod_sql_sqlite.c' => {
+        SQLAuthenticate => 'off',
+        SQLConnectInfo => $db_file,
+        SQLLogFile => $setup->{log_file},
+        SQLNamedQuery => 'get-user-authorized-keys SELECT "key FROM sftpuserkeys WHERE name = \'%{0}\'"',
+      },
+
+      'mod_sftp.c' => [
+        "SFTPEngine on",
+        "SFTPLog $setup->{log_file}",
+        "SFTPHostKey $rsa_host_key",
+        "SFTPHostKey $dsa_host_key",
+        "SFTPAuthorizedUserCAKeys sql:/get-user-authorized-keys",
+      ],
+    },
+  };
+
+  my ($port, $config_user, $config_group) = config_write($setup->{config_file},
+    $config);
+
+  # Open pipes, for use between the parent and child processes.  Specifically,
+  # the child will indicate when it's done with its test by writing a message
+  # to the parent.
+  my ($rfh, $wfh);
+  unless (pipe($rfh, $wfh)) {
+    die("Can't open pipe: $!");
+  }
+
+  my $ex;
+
+  # Ignore SIGPIPE
+  local $SIG{PIPE} = sub { };
+
+  # Fork child
+  $self->handle_sigchld();
+  defined(my $pid = fork()) or die("Can't fork: $!");
+  if ($pid) {
+    eval {
+      # Allow for server startup
+      sleep(2);
+
+      my $sftp = 'sftp';
+
+      my @cmd = (
+        $sftp,
+        '-oBatchMode=yes',
+        '-oCheckHostIP=no',
+        '-oCompression=yes',
+        "-oPort=$port",
+        '-oIdentitiesOnly=yes',
+        "-oIdentityFile=$priv_key",
+        "-oCertificateFile=$cert",
+        '-oPubkeyAuthentication=yes',
+        '-oStrictHostKeyChecking=no',
+        '-oUpdateHostkeys=no',
+        '-oUserKnownHostsFile=/dev/null',
+        '-oHostKeyAlgorithms=ssh-rsa,ssh-dss',
+        '-vvv',
+        '-b',
+        "$batch_file",
+        "$setup->{user}\@127.0.0.1",
+      );
+
+      my $sftp_rh = IO::Handle->new();
+      my $sftp_wh = IO::Handle->new();
+      my $sftp_eh = IO::Handle->new();
+
+      $sftp_wh->autoflush(1);
+
+      sleep(1);
+
+      local $SIG{CHLD} = 'DEFAULT';
+
+      # Make sure that the perms on the cert, key are what OpenSSH wants
+      unless (chmod(0400, $cert, $priv_key)) {
+        die("Can't set perms on $cert to 0400: $!");
+      }
+
+      if ($ENV{TEST_VERBOSE}) {
+        print STDERR "Executing: ", join(' ', @cmd), "\n";
+      }
+
+      my $sftp_pid = open3($sftp_wh, $sftp_rh, $sftp_eh, @cmd);
+      waitpid($sftp_pid, 0);
+      my $exit_status = $?;
+
+      # Restore the perms on the cert, key
+      unless (chmod(0644, $cert, $priv_key)) {
+        die("Can't set perms on $cert to 0644: $!");
+      }
+
+      my ($res, $errstr);
+      if ($exit_status >> 8 == 0) {
+        $errstr = join('', <$sftp_eh>);
+        $res = 0;
+
+      } else {
+        $errstr = join('', <$sftp_eh>);
+        $res = 1;
+      }
+
+      if ($ENV{TEST_VERBOSE}) {
+        print STDERR "Stderr: $errstr\n";
+      }
+
+      unless ($res == 0) {
+        die("Can't list files on server: $errstr");
+      }
+    };
+    if ($@) {
+      $ex = $@;
+    }
+
+    $wfh->print("done\n");
+    $wfh->flush();
+
+  } else {
+    eval { server_wait($setup->{config_file}, $rfh) };
+    if ($@) {
+      warn($@);
+      exit 1;
+    }
+
+    exit 0;
+  }
+
+  # Stop server
+  server_stop($setup->{pid_file});
+  $self->assert_child_ok($pid);
+
+  eval {
+    if (open(my $fh, "< $setup->{log_file}")) {
+      my $ok = 0;
+
+      while (my $line = <$fh>) {
+        chomp($line);
+
+        if ($ENV{TEST_VERBOSE}) {
+          print STDERR "# $line\n";
+        }
+
+        if ($line =~ /EXTENDED_REPLY limits\@openssh.com: .*$/) {
+          $ok = 1;
+          last;
+        }
+      }
+
+      close($fh);
+      $self->assert($ok, test_msg("Did not see expected log message"));
+
+    } else {
+      die("Can't read $setup->{log_file}: $!");
+    }
+  };
+  if ($@) {
+    $ex = $@ unless $ex;
+  }
+
+  test_cleanup($setup, $ex);
 }
 
 1;

@@ -29,18 +29,18 @@
 
 #include <signal.h>
 
-#if HAVE_MLOCK
+#if defined(HAVE_MLOCK)
 # include <sys/mman.h>
-#endif
+#endif /* HAVE_MLOCK */
 
-#if HAVE_SYS_UIO_H
+#if defined(HAVE_SYS_UIO_H)
 # include <sys/uio.h>
-#endif
+#endif /* HAVE_SYS_UIO_H */
 
-#ifndef MAX
+#if !defined(MAX)
 # define MAX(x, y) (((x) > (y)) ? (x) : (y))
 # define MIN(x, y) (((x) < (y)) ? (x) : (y))
-#endif
+#endif /* MAX */
 
 /* Define if you have the <zlib.h> header.  */
 #undef HAVE_ZLIB_H
@@ -81,7 +81,7 @@
 /* Define if you have OpenSSL with X448 support. */
 #undef HAVE_X448_OPENSSL
 
-#define MOD_SFTP_VERSION	"mod_sftp/1.2.1"
+#define MOD_SFTP_VERSION	"mod_sftp/1.3.0"
 
 /* Make sure the version of proftpd is as necessary. */
 #if PROFTPD_VERSION_NUMBER < 0x0001030402
@@ -172,6 +172,10 @@
 #define SFTP_OPT_FIDO_TOUCH_REQUIRED		0x040000
 #define SFTP_OPT_FIDO_VERIFY_REQUIRED		0x080000
 #define SFTP_OPT_NO_STRICT_KEX			0x100000
+
+/* mod_sftp certificate option flags */
+#define SFTP_CERT_OPT_ALLOW_EMPTY_PRINCIPALS	0x000001
+#define SFTP_CERT_OPT_ALLOW_MATCH_PRINCIPALS	0x000002
 
 /* mod_sftp service flags */
 #define SFTP_SERVICE_FL_SFTP		0x0001
@@ -303,12 +307,56 @@ int sftp_keystore_register_store(const char *,
   unsigned int);
 int sftp_keystore_unregister_store(const char *, unsigned int);
 
+/* API for modules that which to register CA key stores, for the
+ * SFTPAuthorizedHostCAKeys and SFTPAuthorizedUserCAKeys directives.
+ */
+
+typedef struct castore_st {
+  /* Memory pool for this CA store. */
+  pool *castore_pool;
+
+  /* Arbitrary CA store-specific data. */
+  void *castore_data;
+
+  /* The type of certificates (host, user) that this store can handle. */
+  unsigned int store_ctypes;
+
+  /* Verify the given host certificate CA key.  Returns zero on success,
+   * -1 otherwise.
+   */
+  int (*verify_host_cert_ca_key)(struct castore_st *store, pool *p,
+    const char *user, const char *host_fqdn, const char *host_user,
+    unsigned char *host_cert_ca_key, uint32_t host_cert_ca_keylen,
+    pr_table_t *key_notes);
+
+  /* Verify the given user certificate CA key.  Returns zero on success, -
+   *  otherwise.
+   */
+  int (*verify_user_cert_ca_key)(struct castore_st *store, pool *p,
+    const char *user, unsigned char *user_cert_ca_key,
+    uint32_t user_cert_ca_keylen, pr_table_t *key_notes);
+
+  /* Close this keystore, clean up any allocated resources.  Returns
+   * zero on success, -1 otherwise (with errno set appropriately).
+   */
+  int (*store_close)(struct castore_st *store);
+
+} sftp_castore_t;
+
+#define SFTP_SSH2_HOST_CA_KEY_STORE	0x01
+#define SFTP_SSH2_USER_CA_KEY_STORE	0x02
+
+int sftp_castore_register_store(const char *,
+  sftp_castore_t *(*store_open)(pool *, int, const char *, const char *),
+  unsigned int);
+int sftp_castore_unregister_store(const char *, unsigned int);
+
 /* For use by keystore backend modules. */
 int sftp_keys_compare_keys(pool *, unsigned char *, uint32_t, unsigned char *,
   uint32_t);
 
 /* These strings are part of any RFC4716 key; thus they will be needed by
- * any keystore backend modules.
+ * any keystore/castore backend modules.
  */
 #define SFTP_SSH2_PUBKEY_BEGIN_MARKER   "---- BEGIN SSH2 PUBLIC KEY ----"
 #define SFTP_SSH2_PUBKEY_END_MARKER     "---- END SSH2 PUBLIC KEY ----"

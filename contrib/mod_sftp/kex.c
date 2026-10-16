@@ -2943,12 +2943,20 @@ static int write_ext_info_server_sig_algs(struct ssh2_packet *pkt,
       const char *algo;
 
       algo = c->argv[i];
+
+      /* Skip/omit any certificate algorithms from this signature algorithm
+       * list.
+       */
+      if (strstr(algo, "cert") != NULL) {
+        continue;
+      }
+
       sig_algs = pstrcat(pkt->pool, sig_algs, *sig_algs ? "," : "", algo, NULL);
     }
 
   } else {
     /* No explicit list of publickey algorithms configured; provide the full
-     * list of supported algorithms.
+     * list of supported signature algorithms.
      */
 #if defined(HAVE_X448_OPENSSL)
     sig_algs = pstrcat(pkt->pool, sig_algs, *sig_algs ? "," : "", "ssh-ed448",

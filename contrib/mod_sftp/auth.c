@@ -91,6 +91,48 @@ static struct sftp_auth_publickey publickeys[] = {
 #if defined(HAVE_X448_OPENSSL)
   { "ssh-ed448", SFTP_KEY_ED448 },
 #endif /* HAVE_X448_OPENSSL */
+
+  { NULL, 0 }
+};
+
+static struct sftp_auth_publickey certkeys[] = {
+  { "ssh-dss-cert",			SFTP_KEY_DSA_CERT },
+  { "ssh-dss-cert-v01@openssh.com",	SFTP_KEY_DSA_CERT },
+  { "ssh-rsa-cert",			SFTP_KEY_RSA_CERT },
+  { "ssh-rsa-cert-v01@openssh.com",	SFTP_KEY_RSA_CERT },
+
+  /* Note that, once ratified, SSH RSA certificates will NOT have the
+   * signature algorithm as part of the key type name.
+   */
+#if defined(HAVE_SHA256_OPENSSL)
+  { "rsa-sha2-256-cert",		 SFTP_KEY_RSA_SHA256_CERT },
+  { "rsa-sha2-256-cert-v01@openssh.com", SFTP_KEY_RSA_SHA256_CERT },
+#endif /* HAVE_SHA256_OPENSSL */
+#if defined(HAVE_SHA512_OPENSSL)
+  { "rsa-sha2-512-cert",		 SFTP_KEY_RSA_SHA512_CERT },
+  { "rsa-sha2-512-cert-v01@openssh.com", SFTP_KEY_RSA_SHA512_CERT },
+#endif /* HAVE_SHA512_OPENSSL */
+#if defined(PR_USE_OPENSSL_ECC)
+  { "ecdsa-sha2-nistp256-cert",			SFTP_KEY_ECDSA_256_CERT },
+  { "ecdsa-sha2-nistp256-cert-v01@openssh.com", SFTP_KEY_ECDSA_256_CERT },
+  { "ecdsa-sha2-nistp384-cert",			SFTP_KEY_ECDSA_384_CERT },
+  { "ecdsa-sha2-nistp384-cert-v01@openssh.com", SFTP_KEY_ECDSA_384_CERT },
+  { "ecdsa-sha2-nistp521-cert",			SFTP_KEY_ECDSA_521_CERT },
+  { "ecdsa-sha2-nistp521-cert-v01@openssh.com", SFTP_KEY_ECDSA_521_CERT },
+#endif /* PR_USE_OPENSSL_ECC */
+#if defined(PR_USE_SODIUM)
+  { "ssh-ed25519-cert",			SFTP_KEY_ED25519_CERT },
+  { "ssh-ed25519-cert-v01@openssh.com", SFTP_KEY_ED25519_CERT },
+#endif /* PR_USE_SODIUM */
+
+  /* Note that, while the SSH Certificate Draft defines Ed448 certificates,
+   * OpenSSH does not implement them, which makes testing a little more
+   * difficult.  Perhaps newer PuTTY releases can be used?
+   */
+#if defined(HAVE_X448_OPENSSL)
+  { "ssh-ed448-cert",		SFTP_KEY_ED448_CERT },
+#endif /* HAVE_X448_OPENSSL */
+
   { NULL, 0 }
 };
 
@@ -239,32 +281,58 @@ static void set_userauth_methods(void) {
 
   } else {
     struct sftp_auth_chain *auth_chain;
+    int have_authorized_host_keys = FALSE, have_authorized_host_ca_keys = FALSE;
+    int have_authorized_user_keys = FALSE, have_authorized_user_ca_keys = FALSE;
 
     auth_chains = make_array(auth_pool, 0, sizeof(struct sftp_auth_chain *));
 
     c = find_config(main_server->conf, CONF_PARAM, "SFTPAuthorizedUserKeys",
       FALSE);
     if (c != NULL) {
+      have_authorized_user_keys = TRUE;
+    }
+
+    c = find_config(main_server->conf, CONF_PARAM, "SFTPAuthorizedUserCAKeys",
+      FALSE);
+    if (c != NULL) {
+      have_authorized_user_ca_keys = TRUE;
+    }
+
+    if (have_authorized_user_keys == TRUE ||
+        have_authorized_user_ca_keys == TRUE) {
       auth_chain = sftp_auth_chain_alloc(auth_pool);
       sftp_auth_chain_add_method(auth_chain, SFTP_AUTH_FL_METH_PUBLICKEY,
         "publickey", NULL);
       *((struct sftp_auth_chain **) push_array(auth_chains)) = auth_chain;
 
     } else {
-      pr_trace_msg(trace_channel, 9, "no SFTPAuthorizedUserKeys configured, "
+      pr_trace_msg(trace_channel, 9,
+        "no SFTPAuthorizedUserKeys or SFTPAuthorizedUserCAKeys configured, "
         "not offering 'publickey' authentication");
     }
 
     c = find_config(main_server->conf, CONF_PARAM, "SFTPAuthorizedHostKeys",
       FALSE);
     if (c != NULL) {
+      have_authorized_host_keys = TRUE;
+    }
+
+    c = find_config(main_server->conf, CONF_PARAM, "SFTPAuthorizedHostCAKeys",
+      FALSE);
+    if (c != NULL) {
+      have_authorized_host_ca_keys = TRUE;
+    }
+
+    if (have_authorized_host_keys == TRUE ||
+        have_authorized_host_ca_keys == TRUE) {
       auth_chain = sftp_auth_chain_alloc(auth_pool);
       sftp_auth_chain_add_method(auth_chain, SFTP_AUTH_FL_METH_HOSTBASED,
         "hostbased", NULL);
       *((struct sftp_auth_chain **) push_array(auth_chains)) = auth_chain;
 
     } else {
-      pr_trace_msg(trace_channel, 9, "no SFTPAuthorizedHostKeys configured, "
+      pr_trace_msg(trace_channel, 9,
+        "no SFTPAuthorizedHostKeys or SFTPAuthorizedHostCAKeys configured, "
         "not offering 'hostbased' authentication");
     }
 
@@ -1880,7 +1948,12 @@ char *sftp_auth_get_default_dir(void) {
   return auth_default_dir;
 }
 
-int sftp_auth_publickey_isvalid(const char *algo,
+int sftp_auth_hostbased_algo_isvalid(const char *algo,
+    enum sftp_key_type_e *pubkey_type) {
+  return sftp_auth_publickey_algo_isvalid(algo, pubkey_type);
+}
+
+int sftp_auth_publickey_algo_isvalid(const char *algo,
     enum sftp_key_type_e *pubkey_type) {
   register unsigned int i;
 
@@ -1893,6 +1966,28 @@ int sftp_auth_publickey_isvalid(const char *algo,
     if (strcmp(publickeys[i].algo, algo) == 0) {
       if (pubkey_type != NULL) {
         *pubkey_type = publickeys[i].key_type;
+      }
+
+      return TRUE;
+    }
+  }
+
+  return FALSE;
+}
+
+int sftp_auth_certificate_algo_isvalid(const char *algo,
+    enum sftp_key_type_e *pubkey_type) {
+  register unsigned int i;
+
+  if (algo == NULL) {
+    errno = EINVAL;
+    return -1;
+  }
+
+  for (i = 0; certkeys[i].algo != NULL; i++) {
+    if (strcmp(certkeys[i].algo, algo) == 0) {
+      if (pubkey_type != NULL) {
+        *pubkey_type = certkeys[i].key_type;
       }
 
       return TRUE;

@@ -29,7 +29,7 @@
 #include "mod_sftp.h"
 #include "mod_sql.h"
 
-#define MOD_SFTP_SQL_VERSION		"mod_sftp_sql/0.4"
+#define MOD_SFTP_SQL_VERSION		"mod_sftp_sql/0.5"
 
 module sftp_sql_module;
 
@@ -338,7 +338,7 @@ static struct sqlstore_key *sqlstore_get_key_rfc4716(pool *p, char **blob,
 
     if (key == NULL &&
         strncmp(line, SFTP_SSH2_PUBKEY_BEGIN_MARKER, begin_markerlen) == 0) {
-      key = pcalloc(p, sizeof(struct sqlstore_key));
+      key = sqlstore_alloc_key(p);
       bio = BIO_new(BIO_s_mem());
 
     } else if (key != NULL &&
@@ -394,7 +394,6 @@ static struct sqlstore_key *sqlstore_get_key_rfc4716(pool *p, char **blob,
 
         if (data != NULL &&
             datalen > 0) {
-          key = pcalloc(p, sizeof(struct sqlstore_key));
           key->key_data = pcalloc(p, datalen + 1);
           key->key_datalen = datalen;
           memcpy(key->key_data, data, datalen);
@@ -461,8 +460,9 @@ static char *sqlstore_get_str(pool *p, char *str) {
   cmd_rec *cmd;
   modret_t *res;
 
-  if (strlen(str) == 0)
+  if (strlen(str) == 0) {
     return str;
+  }
 
   /* Find the cmdtable for the sql_escapestr command. */
   cmdtab = pr_stash_get_symbol2(PR_SYM_HOOK, "sql_escapestr", NULL, NULL, NULL);
@@ -567,7 +567,7 @@ static int sqlstore_verify_key_rfc4716(pool *p,
 
     if (pr_table_copy(headers, key->headers, 0) < 0) {
       pr_trace_msg(trace_channel, 19, "error copying verify notes: %s",
-         strerror(errno));
+        strerror(errno));
     }
 
     return 0;
@@ -576,6 +576,8 @@ static int sqlstore_verify_key_rfc4716(pool *p,
   errno = xerrno;
   return -1;
 }
+
+/* Keys */
 
 static int sqlstore_verify_host_key(sftp_keystore_t *store, pool *p,
     const char *user, const char *host_fqdn, const char *host_user,
@@ -793,12 +795,12 @@ static int sqlstore_verify_user_key(sftp_keystore_t *store, pool *p,
   return -1;
 }
 
-static int sqlstore_close(sftp_keystore_t *store) {
+static int key_sqlstore_close(sftp_keystore_t *store) {
   sqlstore_user = NULL;
   return 0;
 }
 
-static sftp_keystore_t *sqlstore_open(pool *parent_pool,
+static sftp_keystore_t *key_sqlstore_open(pool *parent_pool,
     int requested_key_type, const char *store_info, const char *user) {
   sftp_keystore_t *store;
   pool *sqlstore_pool, *tmp_pool;
@@ -827,7 +829,7 @@ static sftp_keystore_t *sqlstore_open(pool *parent_pool,
       break;
   }
 
-  store->store_close = sqlstore_close;
+  store->store_close = key_sqlstore_close;
 
   /* Parse the SELECT query name out of the store_info string:
    *
@@ -869,6 +871,268 @@ static sftp_keystore_t *sqlstore_open(pool *parent_pool,
   return store;
 }
 
+/* Certificates */
+
+static int sqlstore_verify_host_cert_ca_key(sftp_castore_t *store, pool *p,
+    const char *user, const char *host_fqdn, const char *host_user,
+    unsigned char *ca_pubkey_data, uint32_t ca_pubkey_datalen,
+    pr_table_t *headers) {
+  register unsigned int i;
+  struct sqlstore_data *store_data;
+  pool *tmp_pool;
+  cmdtable *sql_cmdtab;
+  cmd_rec *sql_cmd;
+  modret_t *sql_res;
+  array_header *sql_data;
+  char **values;
+  int res;
+
+  store_data = store->castore_data;
+
+  /* Find the cmdtable for the sql_lookup command. */
+  sql_cmdtab = pr_stash_get_symbol2(PR_SYM_HOOK, "sql_lookup", NULL, NULL,
+    NULL);
+  if (sql_cmdtab == NULL) {
+    (void) pr_log_writefile(sftp_logfd, MOD_SFTP_SQL_VERSION,
+      "unable to find SQL hook symbol 'sql_lookup'");
+    errno = EPERM;
+    return -1;
+  }
+
+  tmp_pool = make_sub_pool(store->castore_pool);
+
+  /* Prepare the SELECT query. */
+  sql_cmd = sqlstore_cmd_create(tmp_pool, 3, "sql_lookup",
+    store_data->select_query, sqlstore_get_str(tmp_pool, (char *) host_fqdn));
+
+  /* Call the handler. */
+  sql_res = pr_module_call(sql_cmdtab->m, sql_cmdtab->handler, sql_cmd);
+  if (sql_res == NULL ||
+      MODRET_ISERROR(sql_res)) {
+    (void) pr_log_writefile(sftp_logfd, MOD_SFTP_SQL_VERSION,
+      "error processing SQLNamedQuery '%s'", store_data->select_query);
+    destroy_pool(tmp_pool);
+
+    errno = EPERM;
+    return -1;
+  }
+
+  sql_data = (array_header *) sql_res->data;
+
+  if (sql_data->nelts == 0) {
+    (void) pr_log_writefile(sftp_logfd, MOD_SFTP_SQL_VERSION,
+      "SQLNamedQuery '%s' returned zero results", store_data->select_query);
+    destroy_pool(tmp_pool);
+    errno = ENOENT;
+    return -1;
+  }
+
+  (void) pr_log_writefile(sftp_logfd, MOD_SFTP_SQL_VERSION,
+    "SQLNamedQuery '%s' returned %d %s", store_data->select_query,
+    sql_data->nelts, sql_data->nelts != 1 ? "rows" : "row");
+
+  values = (char **) sql_data->elts;
+  for (i = 0; i < sql_data->nelts; i++) {
+    char *col_data;
+    size_t col_datalen;
+
+    pr_signals_handle();
+
+    col_data = values[i];
+    if (col_data == NULL) {
+      (void) pr_log_writefile(sftp_logfd, MOD_SFTP_SQL_VERSION,
+        "SQLNamedQuery '%s' returned NULL data", store_data->select_query);
+      destroy_pool(tmp_pool);
+      errno = EINVAL;
+      return -1;
+    }
+
+    col_datalen = strlen(values[i]);
+
+    res = sqlstore_verify_key_rfc4716(p, store_data, i, col_data, col_datalen,
+      ca_pubkey_data, ca_pubkey_datalen, headers);
+    if (res == 0) {
+      pr_trace_msg(trace_channel, 10, "found matching RFC4716 CA key "
+        "(row %u) for host '%s' using SQLNamedQuery '%s'", i+1, host_fqdn,
+        store_data->select_query);
+      destroy_pool(tmp_pool);
+      return 0;
+    }
+  }
+
+  destroy_pool(tmp_pool);
+  errno = ENOENT;
+  return -1;
+}
+
+static int sqlstore_verify_user_cert_ca_key(sftp_castore_t *store, pool *p,
+    const char *user, unsigned char *ca_pubkey_data, uint32_t ca_pubkey_datalen,
+    pr_table_t *headers) {
+  register unsigned int i;
+  struct sqlstore_data *store_data = store->castore_data;
+  pool *tmp_pool;
+  cmdtable *sql_cmdtab;
+  cmd_rec *sql_cmd;
+  modret_t *sql_res;
+  array_header *sql_data;
+  char **values;
+
+  store_data = store->castore_data;
+
+  /* Find the cmdtable for the sql_lookup command. */
+  sql_cmdtab = pr_stash_get_symbol2(PR_SYM_HOOK, "sql_lookup", NULL, NULL,
+    NULL);
+  if (sql_cmdtab == NULL) {
+    (void) pr_log_writefile(sftp_logfd, MOD_SFTP_SQL_VERSION,
+      "unable to find SQL hook symbol 'sql_lookup'");
+    errno = EPERM;
+    return -1;
+  }
+
+  tmp_pool = make_sub_pool(store->castore_pool);
+
+  /* Prepare the SELECT query. */
+  sql_cmd = sqlstore_cmd_create(tmp_pool, 3, "sql_lookup",
+    store_data->select_query, sqlstore_get_str(tmp_pool, (char *) user));
+
+  /* Call the handler. */
+  sql_res = pr_module_call(sql_cmdtab->m, sql_cmdtab->handler, sql_cmd);
+  if (sql_res == NULL ||
+      MODRET_ISERROR(sql_res)) {
+    (void) pr_log_writefile(sftp_logfd, MOD_SFTP_SQL_VERSION,
+      "error processing SQLNamedQuery '%s'", store_data->select_query);
+    destroy_pool(tmp_pool);
+
+    errno = EPERM;
+    return -1;
+  }
+
+  sql_data = (array_header *) sql_res->data;
+
+  if (sql_data->nelts == 0) {
+    (void) pr_log_writefile(sftp_logfd, MOD_SFTP_SQL_VERSION,
+      "SQLNamedQuery '%s' returned zero results", store_data->select_query);
+    destroy_pool(tmp_pool);
+    errno = ENOENT;
+    return -1;
+  }
+
+  (void) pr_log_writefile(sftp_logfd, MOD_SFTP_SQL_VERSION,
+    "SQLNamedQuery '%s' returned %d %s", store_data->select_query,
+    sql_data->nelts, sql_data->nelts != 1 ? "rows" : "row");
+
+  values = (char **) sql_data->elts;
+  for (i = 0; i < sql_data->nelts; i++) {
+    int res;
+    char *col_data;
+    size_t col_datalen;
+
+    pr_signals_handle();
+
+    col_data = values[i];
+    if (col_data == NULL) {
+      (void) pr_log_writefile(sftp_logfd, MOD_SFTP_SQL_VERSION,
+        "SQLNamedQuery '%s' returned NULL data", store_data->select_query);
+      destroy_pool(tmp_pool);
+      errno = EINVAL;
+      return -1;
+    }
+
+    col_datalen = strlen(values[i]);
+
+    res = sqlstore_verify_key_rfc4716(p, store_data, i, col_data, col_datalen,
+      ca_pubkey_data, ca_pubkey_datalen, headers);
+    if (res == 0) {
+      pr_trace_msg(trace_channel, 10, "found matching RFC4716 CA key "
+        "(row %u) for user '%s' using SQLNamedQuery '%s'", i+1, user,
+        store_data->select_query);
+
+      destroy_pool(tmp_pool);
+      return 0;
+    }
+  }
+
+  destroy_pool(tmp_pool);
+  errno = ENOENT;
+  return -1;
+}
+
+static int ca_sqlstore_close(sftp_castore_t *store) {
+  sqlstore_user = NULL;
+  return 0;
+}
+
+static sftp_castore_t *ca_sqlstore_open(pool *parent_pool,
+    int requested_cert_type, const char *store_info, const char *user) {
+  sftp_castore_t *store;
+  pool *sqlstore_pool, *tmp_pool;
+  struct sqlstore_data *store_data;
+  char *named_query, *select_query, *ptr;
+  config_rec *c;
+
+  tmp_pool = make_sub_pool(parent_pool);
+
+  sqlstore_pool = make_sub_pool(parent_pool);
+  pr_pool_tag(sqlstore_pool, "SFTP SQL-based CA Store Pool");
+
+  sqlstore_user = pstrdup(sqlstore_pool, user);
+
+  store = pcalloc(sqlstore_pool, sizeof(sftp_castore_t));
+  store->castore_pool = sqlstore_pool;
+  store->store_ctypes = requested_cert_type;
+
+  switch (requested_cert_type) {
+    case SFTP_SSH2_HOST_CA_KEY_STORE:
+      store->verify_host_cert_ca_key = sqlstore_verify_host_cert_ca_key;
+      break;
+
+    case SFTP_SSH2_USER_CA_KEY_STORE:
+      store->verify_user_cert_ca_key = sqlstore_verify_user_cert_ca_key;
+      break;
+  }
+
+  store->store_close = ca_sqlstore_close;
+
+  /* Parse the SELECT query name out of the store_info string:
+   *
+   *  "/<select-named-query"
+   */
+  ptr = strchr((char *) store_info, '/');
+  if (ptr == NULL) {
+    (void) pr_log_writefile(sftp_logfd, MOD_SFTP_SQL_VERSION,
+      "badly formatted store info '%s'", store_info);
+    destroy_pool(tmp_pool);
+
+    errno = EINVAL;
+    return NULL;
+  }
+
+  ptr++;
+  select_query = pstrdup(sqlstore_pool, ptr);
+
+  /* Verify that the named query has indeed been configured.  This is based
+   * on how mod_sql creates its config_rec names.
+   */
+  named_query = pstrcat(tmp_pool, "SQLNamedQuery_", select_query, NULL);
+
+  c = find_config(main_server->conf, CONF_PARAM, named_query, FALSE);
+  if (c == NULL) {
+    (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
+      "unable to resolve SQLNamedQuery '%s'", select_query);
+    destroy_pool(tmp_pool);
+
+    errno = EINVAL;
+    return NULL;
+  }
+
+  store_data = pcalloc(sqlstore_pool, sizeof(struct sqlstore_data));
+  store->castore_data = store_data;
+  store_data->select_query = pstrdup(sqlstore_pool, select_query);
+
+  destroy_pool(tmp_pool);
+  return store;
+}
+
 /* Event Handlers
  */
 
@@ -881,6 +1145,9 @@ static void sftpsql_mod_unload_ev(const void *event_data, void *user_data) {
   sqlstore_user = NULL;
   sftp_keystore_unregister_store("sql",
     SFTP_SSH2_HOST_KEY_STORE|SFTP_SSH2_USER_KEY_STORE);
+  sftp_castore_unregister_store("sql",
+    SFTP_SSH2_HOST_CA_KEY_STORE|SFTP_SSH2_USER_CA_KEY_STORE);
+
   pr_event_unregister(&sftp_sql_module, NULL, NULL);
 }
 #endif /* !PR_SHARED_MODULE */
@@ -889,8 +1156,10 @@ static void sftpsql_mod_unload_ev(const void *event_data, void *user_data) {
  */
 
 static int sftpsql_init(void) {
-  sftp_keystore_register_store("sql", sqlstore_open,
+  sftp_keystore_register_store("sql", key_sqlstore_open,
     SFTP_SSH2_HOST_KEY_STORE|SFTP_SSH2_USER_KEY_STORE);
+  sftp_castore_register_store("sql", ca_sqlstore_open,
+    SFTP_SSH2_HOST_CA_KEY_STORE|SFTP_SSH2_USER_CA_KEY_STORE);
 
 #if defined(PR_SHARED_MODULE)
   pr_event_register(&sftp_sql_module, "core.module-unload",
