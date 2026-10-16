@@ -9,7 +9,7 @@ ChangeLog files.
 1.3.10rc5
 ----------
 
-  + Implemented support for SSH certificates in mod_sftp (Issue #2357)
+  + Implemented support for SSH client certificates in mod_sftp (Issue #2357)
 
   + The default TCP backlog value is now 511 (Issue #2326)
 
