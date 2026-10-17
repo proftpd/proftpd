@@ -24181,37 +24181,20 @@ rm -f core conftest.err conftest.$ac_objext \
     conftest$ac_exeext conftest.$ac_ext
 
 { $as_echo "$as_me:${as_lineno-$LINENO}: checking whether printf supports %llu format" >&5
-$as_echo_n "checking whether printf supports %llu format... " >&6; };
-if test "$cross_compiling" = yes; then :
-  { $as_echo "$as_me:${as_lineno-$LINENO}: result: cross-compiling" >&5
-$as_echo "cross-compiling" >&6; };
-$as_echo "#define HAVE_LU 1" >>confdefs.h
-
-
-else
-  cat confdefs.h - <<_ACEOF >conftest.$ac_ext
-/* end confdefs.h.  */
- #include <stdio.h>
-    int main(int argc, char *argv[]) {
-      return (fprintf(stderr, "%llu\n", (unsigned long long) 1) == 2 ? 0 : 1);
-    }
-
-_ACEOF
-if ac_fn_c_try_run "$LINENO"; then :
+$as_echo_n "checking whether printf supports %llu format... " >&6; }
+if test "$ac_cv_sizeof_long_long" -ge 8; then
   { $as_echo "$as_me:${as_lineno-$LINENO}: result: yes" >&5
-$as_echo "yes" >&6; };
+$as_echo "yes" >&6; }
+
 $as_echo "#define HAVE_LLU 1" >>confdefs.h
 
 else
   { $as_echo "$as_me:${as_lineno-$LINENO}: result: no" >&5
-$as_echo "no" >&6; };
+$as_echo "no" >&6; }
+
 $as_echo "#define HAVE_LU 1" >>confdefs.h
 
 fi
-rm -f core *.core core.conftest.* gmon.out bb.out conftest$ac_exeext \
-  conftest.$ac_objext conftest.beam conftest.$ac_ext
-fi
-
 
 ac_shared_module_dirs=
 ac_static_module_dirs=
