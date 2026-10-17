@@ -13,6 +13,9 @@ ChangeLog files.
 
   + The default TCP backlog value is now 511 (Issue #2326)
 
+  + SITE COPY commands now properly honor <Limit WRITE> configurations for
+    destination symlinks.
+
 
   + New Directives
 

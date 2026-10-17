@@ -36,6 +36,8 @@
 - Issue 2367 - FTP TLSv1.3 uploads may fail with ECONNRESET if client does not
   provide session ticket for data transfer.
 - Issue 2357 - Implement support for SSH client certificates in mod_sftp.
+- Issue 2374 - <Limit WRITE> configurations are not honored for symlinks by
+  SITE COPY as they should be.
 
 1.3.10rc4 - Released 14-Aug-2026
 --------------------------------

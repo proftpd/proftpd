@@ -81,6 +81,11 @@ my $TESTS = {
     test_class => [qw(bug forking)],
   },
 
+  copy_config_limit_write_symlinks_issue2374 => {
+    order => ++$order,
+    test_class => [qw(bug forking)],
+  },
+
   copy_config_pathdenyfilter => {
     order => ++$order,
     test_class => [qw(forking)],
@@ -1490,6 +1495,160 @@ EOC
       if (-f $dst_file) {
         die("File $dst_file exists unexpectedly");
       }
+    };
+    if ($@) {
+      $ex = $@;
+    }
+
+    $wfh->print("done\n");
+    $wfh->flush();
+
+  } else {
+    eval { server_wait($setup->{config_file}, $rfh) };
+    if ($@) {
+      warn($@);
+      exit 1;
+    }
+
+    exit 0;
+  }
+
+  # Stop server
+  server_stop($setup->{pid_file});
+  $self->assert_child_ok($pid);
+
+  test_cleanup($setup, $ex);
+}
+
+sub copy_config_limit_write_symlinks_issue2374 {
+  my $self = shift;
+  my $tmpdir = $self->{tmpdir};
+  my $setup = test_setup($tmpdir, 'copy');
+
+  my $src_file = File::Spec->rel2abs("$setup->{home_dir}/foo.txt");
+
+  if (open(my $fh, "> $src_file")) {
+    unless (close($fh)) {
+      die("Can't write $src_file: $!");
+    }
+
+  } else {
+    die("Can't open $src_file: $!");
+  }
+
+  # Make this symlink point to a directory where writes are blocked
+  # via <Limit WRITE>.
+  my $unwritable_dir = File::Spec->rel2abs("$setup->{home_dir}/unwritable");
+  mkpath($unwritable_dir);
+
+  if ($< == 0) {
+    unless (chown($setup->{uid}, $setup->{gid}, $unwritable_dir)) {
+      die("Can't set owner of $unwritable_dir to $setup->{uid}/$setup->{gid}: $!");
+    }
+  }
+
+  # Note: if this destination file does not exist, then dir_realpath()
+  # will return NULL, due to lstat() on this path returning an error.  The
+  # bug occurs for _overwriting_ this file.
+  my $dst_file = File::Spec->rel2abs("$unwritable_dir/bar.txt");
+  if (open(my $fh, "> $dst_file")) {
+    close($fh);
+
+  } else {
+    die("Can't open $dst_file: $!");
+  }
+
+  my $dst_symlink = File::Spec->rel2abs("$setup->{home_dir}/bar.lnk");
+  unless (symlink($dst_file, $dst_symlink)) {
+    die("Can't symlink $dst_symlink to $dst_file: $!");
+  }
+
+  my $config = {
+    PidFile => $setup->{pid_file},
+    ScoreboardFile => $setup->{scoreboard_file},
+    SystemLog => $setup->{log_file},
+    TraceLog => $setup->{log_file},
+    Trace => 'fsio:10',
+
+    AuthUserFile => $setup->{auth_user_file},
+    AuthGroupFile => $setup->{auth_group_file},
+    AuthOrder => 'mod_auth_file.c',
+
+    # Since our destination path is a symlink to a file, and that file exists,
+    # we need to allow overwrite permission.
+    AllowOverwrite => 'on',
+
+    IfModules => {
+      'mod_delay.c' => {
+        DelayEngine => 'off',
+      },
+    },
+  };
+
+  my ($port, $config_user, $config_group) = config_write($setup->{config_file},
+    $config);
+
+  if (open(my $fh, ">> $setup->{config_file}")) {
+    my $dst_dir = $unwritable_dir;
+
+    if ($^O eq 'darwin') {
+      # Mac OSX hack
+      $dst_dir = '/private' . $dst_dir;
+    }
+
+    print $fh <<EOC;
+<Directory $dst_dir>
+  <Limit WRITE>
+    DenyAll
+  </Limit>
+</Directory>
+EOC
+
+    unless (close($fh)) {
+      die("Can't write $setup->{config_file}: $!");
+    }
+
+  } else {
+    die("Can't open $setup->{config_file}: $!");
+  }
+
+  # Open pipes, for use between the parent and child processes.  Specifically,
+  # the child will indicate when it's done with its test by writing a message
+  # to the parent.
+  my ($rfh, $wfh);
+  unless (pipe($rfh, $wfh)) {
+    die("Can't open pipe: $!");
+  }
+
+  my $ex;
+
+  # Fork child
+  $self->handle_sigchld();
+  defined(my $pid = fork()) or die("Can't fork: $!");
+  if ($pid) {
+    eval {
+      # Allow for server startup
+      sleep(1);
+
+      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
+      $client->login($setup->{user}, $setup->{passwd});
+
+      eval { $client->site('COPY', 'foo.txt', 'bar.lnk') };
+      unless ($@) {
+        die("SITE COPY succeeded unexpectedly");
+      }
+
+      my $resp_code = $client->response_code();
+      my $resp_msg = $client->response_msg();
+      $client->quit();
+
+      my $expected = 550;
+      $self->assert($expected == $resp_code,
+        test_msg("Expected response code $expected, got $resp_code"));
+
+      $expected = "bar.lnk: Operation not permitted";
+      $self->assert($expected eq $resp_msg,
+        test_msg("Expected response message '$expected', got '$resp_msg'"));
     };
     if ($@) {
       $ex = $@;
