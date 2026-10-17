@@ -593,7 +593,12 @@ MODRET copy_copy(cmd_rec *cmd) {
       return PR_ERROR(cmd);
     }
 
-    to = dir_canonical_vpath(cmd->tmp_pool, decoded_path);
+    pr_fs_clear_cache2(decoded_path);
+    to = dir_realpath(cmd->tmp_pool, decoded_path);
+    if (to == NULL) {
+      /* Try using dir_best_path(), as xfer_pre_stor() does. */
+      to = dir_best_path(cmd->tmp_pool, decoded_path);
+    }
 
     cmd_name = cmd->argv[0];
     pr_cmd_set_name(cmd, "SITE_COPY");
@@ -833,7 +838,12 @@ MODRET copy_cpto(cmd_rec *cmd) {
     to = pstrcat(cmd->tmp_pool, to, *to ? " " : "", decoded_path, NULL);
   }
 
-  resolved_to = dir_canonical_vpath(cmd->tmp_pool, to);
+  pr_fs_clear_cache2(to);
+  resolved_to = dir_realpath(cmd->tmp_pool, to);
+  if (resolved_to == NULL) {
+    /* Try using dir_best_path(), as xfer_pre_stor() does. */
+    resolved_to = dir_best_path(cmd->tmp_pool, to);
+  }
 
   cmd_name = cmd->argv[0];
   pr_cmd_set_name(cmd, "SITE_CPTO");
