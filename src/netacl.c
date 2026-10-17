@@ -78,23 +78,28 @@ int pr_netacl_match(const pr_netacl_t *acl, const pr_netaddr_t *addr) {
         pr_netaddr_get_ipstr(addr), acl->aclstr);
 
       if (pr_netaddr_ncmp(addr, acl->addr, acl->masklen) == 0) {
-        pr_trace_msg(trace_channel, 10, "addr '%s' matched IP mask rule '%s'",
-          pr_netaddr_get_ipstr(addr), acl->aclstr);
-
-        if (acl->negated) {
+        if (acl->negated == TRUE) {
+          pr_trace_msg(trace_channel, 10,
+            "addr '%s' did NOT match IP mask rule '%s'",
+            pr_netaddr_get_ipstr(addr), acl->aclstr);
           res = -1;
 
         } else {
+          pr_trace_msg(trace_channel, 10, "addr '%s' matched IP mask rule '%s'",
+            pr_netaddr_get_ipstr(addr), acl->aclstr);
           res = 1;
         }
 
       } else {
-        pr_trace_msg(trace_channel, 10,
-          "addr '%s' did NOT match IP mask rule '%s'",
-          pr_netaddr_get_ipstr(addr), acl->aclstr);
-
-        if (acl->negated) {
+        if (acl->negated == TRUE) {
+          pr_trace_msg(trace_channel, 10, "addr '%s' matched IP mask rule '%s'",
+            pr_netaddr_get_ipstr(addr), acl->aclstr);
           res = 1;
+
+        } else {
+          pr_trace_msg(trace_channel, 10,
+            "addr '%s' did NOT match IP mask rule '%s'",
+            pr_netaddr_get_ipstr(addr), acl->aclstr);
         }
       }
       break;
@@ -105,24 +110,30 @@ int pr_netacl_match(const pr_netacl_t *acl, const pr_netaddr_t *addr) {
         pr_netaddr_get_ipstr(addr), acl->aclstr);
 
       if (pr_netaddr_cmp(addr, acl->addr) == 0) {
-        pr_trace_msg(trace_channel, 10,
-          "addr '%s' matched IP address rule '%s'",
-          pr_netaddr_get_ipstr(addr), acl->aclstr);
-
-        if (acl->negated) {
+        if (acl->negated == TRUE) {
+          pr_trace_msg(trace_channel, 10,
+            "addr '%s' did NOT match IP address rule '%s'",
+            pr_netaddr_get_ipstr(addr), acl->aclstr);
           res = -1;
 
         } else {
+          pr_trace_msg(trace_channel, 10,
+            "addr '%s' matched IP address rule '%s'",
+            pr_netaddr_get_ipstr(addr), acl->aclstr);
           res = 1;
         }
 
       } else {
-        pr_trace_msg(trace_channel, 10,
-          "addr '%s' did NOT match IP address rule '%s'",
-          pr_netaddr_get_ipstr(addr), acl->aclstr);
-
-        if (acl->negated) {
+        if (acl->negated == TRUE) {
+          pr_trace_msg(trace_channel, 10,
+            "addr '%s' matched IP address rule '%s'",
+            pr_netaddr_get_ipstr(addr), acl->aclstr);
           res = 1;
+
+        } else {
+          pr_trace_msg(trace_channel, 10,
+            "addr '%s' did NOT match IP address rule '%s'",
+            pr_netaddr_get_ipstr(addr), acl->aclstr);
         }
       }
       break;
@@ -133,26 +144,34 @@ int pr_netacl_match(const pr_netacl_t *acl, const pr_netaddr_t *addr) {
         pr_netaddr_get_dnsstr(addr), acl->pattern);
 
       if (strcmp(pr_netaddr_get_dnsstr(addr), acl->pattern) == 0) {
-        pr_trace_msg(trace_channel, 10,
-          "addr '%s' (%s) matched DNS name rule '%s'",
-          pr_netaddr_get_ipstr(addr), pr_netaddr_get_dnsstr(addr),
-          acl->aclstr);
-
-        if (acl->negated) {
+        if (acl->negated == TRUE) {
+          pr_trace_msg(trace_channel, 10,
+            "addr '%s' (%s) did NOT match DNS name rule '%s'",
+            pr_netaddr_get_ipstr(addr), pr_netaddr_get_dnsstr(addr),
+            acl->aclstr);
           res = -1;
 
         } else {
+          pr_trace_msg(trace_channel, 10,
+            "addr '%s' (%s) matched DNS name rule '%s'",
+            pr_netaddr_get_ipstr(addr), pr_netaddr_get_dnsstr(addr),
+            acl->aclstr);
           res = 1;
         }
 
       } else {
-        pr_trace_msg(trace_channel, 10,
-          "addr '%s' (%s) did NOT match DNS name rule '%s'",
-          pr_netaddr_get_ipstr(addr), pr_netaddr_get_dnsstr(addr),
-          acl->aclstr);
-
-        if (acl->negated) {
+        if (acl->negated == TRUE) {
+          pr_trace_msg(trace_channel, 10,
+            "addr '%s' (%s) matched DNS name rule '%s'",
+            pr_netaddr_get_ipstr(addr), pr_netaddr_get_dnsstr(addr),
+            acl->aclstr);
           res = 1;
+
+        } else {
+          pr_trace_msg(trace_channel, 10,
+            "addr '%s' (%s) did NOT match DNS name rule '%s'",
+            pr_netaddr_get_ipstr(addr), pr_netaddr_get_dnsstr(addr),
+            acl->aclstr);
         }
       }
       break;
@@ -164,24 +183,30 @@ int pr_netacl_match(const pr_netacl_t *acl, const pr_netaddr_t *addr) {
 
       if (pr_netaddr_fnmatch(addr, acl->pattern,
           PR_NETADDR_MATCH_IP) == TRUE) {
-        pr_trace_msg(trace_channel, 10,
-          "addr '%s' matched IP glob rule '%s'",
-          pr_netaddr_get_ipstr(addr), acl->aclstr);
-
-        if (acl->negated) {
+        if (acl->negated == TRUE) {
+          pr_trace_msg(trace_channel, 10,
+            "addr '%s' did NOT match IP glob rule '%s'",
+            pr_netaddr_get_ipstr(addr), acl->aclstr);
           res = -1;
 
         } else {
+          pr_trace_msg(trace_channel, 10,
+            "addr '%s' matched IP glob rule '%s'",
+            pr_netaddr_get_ipstr(addr), acl->aclstr);
           res = 1;
         }
 
       } else {
-        pr_trace_msg(trace_channel, 10,
-          "addr '%s' did NOT match IP glob rule '%s'",
-          pr_netaddr_get_ipstr(addr), acl->aclstr);
-
-        if (acl->negated) {
+        if (acl->negated == TRUE) {
+          pr_trace_msg(trace_channel, 10,
+            "addr '%s' matched IP glob rule '%s'",
+            pr_netaddr_get_ipstr(addr), acl->aclstr);
           res = 1;
+
+        } else {
+          pr_trace_msg(trace_channel, 10,
+            "addr '%s' did NOT match IP glob rule '%s'",
+            pr_netaddr_get_ipstr(addr), acl->aclstr);
         }
       }
       break;
@@ -194,26 +219,34 @@ int pr_netacl_match(const pr_netacl_t *acl, const pr_netaddr_t *addr) {
 
         if (pr_netaddr_fnmatch(addr, acl->pattern,
             PR_NETADDR_MATCH_DNS) == TRUE) {
-          pr_trace_msg(trace_channel, 10,
-            "addr '%s' (%s) matched DNS glob rule '%s'",
-            pr_netaddr_get_ipstr(addr), pr_netaddr_get_dnsstr(addr),
-            acl->aclstr);
-
-          if (acl->negated) {
+          if (acl->negated == TRUE) {
+            pr_trace_msg(trace_channel, 10,
+              "addr '%s' (%s) did NOT match DNS glob rule '%s'",
+              pr_netaddr_get_ipstr(addr), pr_netaddr_get_dnsstr(addr),
+              acl->aclstr);
             res = -1;
 
           } else {
+            pr_trace_msg(trace_channel, 10,
+              "addr '%s' (%s) matched DNS glob rule '%s'",
+              pr_netaddr_get_ipstr(addr), pr_netaddr_get_dnsstr(addr),
+              acl->aclstr);
             res = 1;
           }
 
         } else {
-          pr_trace_msg(trace_channel, 10,
-            "addr '%s' (%s) did NOT match DNS glob rule '%s'",
-            pr_netaddr_get_ipstr(addr), pr_netaddr_get_dnsstr(addr),
-            acl->aclstr);
-
-          if (acl->negated) {
+          if (acl->negated == TRUE) {
+            pr_trace_msg(trace_channel, 10,
+              "addr '%s' (%s) matched DNS glob rule '%s'",
+              pr_netaddr_get_ipstr(addr), pr_netaddr_get_dnsstr(addr),
+              acl->aclstr);
             res = 1;
+
+          } else {
+            pr_trace_msg(trace_channel, 10,
+              "addr '%s' (%s) did NOT match DNS glob rule '%s'",
+              pr_netaddr_get_ipstr(addr), pr_netaddr_get_dnsstr(addr),
+              acl->aclstr);
           }
         }
 
@@ -336,7 +369,7 @@ pr_netacl_t *pr_netacl_create(pool *p, char *aclstr) {
         break;
     }
 
-#ifdef PR_USE_IPV6
+#if defined(PR_USE_IPV6)
   } else if (pr_netaddr_use_ipv6() &&
              strspn(aclstr, "0123456789ABCDEFabcdef.:!") != strlen(aclstr)) {
 #else
@@ -363,7 +396,7 @@ pr_netacl_t *pr_netacl_create(pool *p, char *aclstr) {
        */
       for (i = 0; i < aclstr_len; i++) {
         if (PR_ISALPHA(aclstr[i])) {
-#ifdef PR_USE_IPV6
+#if defined(PR_USE_IPV6)
           if (pr_netaddr_use_ipv6()) {
             if (aclstr[i] == 'A' || aclstr[i] == 'a' ||
                 aclstr[i] == 'B' || aclstr[i] == 'b' ||
@@ -424,7 +457,7 @@ pr_netacl_t *pr_netacl_create(pool *p, char *aclstr) {
       use_dns = TRUE;
 
     } else {
-#ifdef PR_USE_IPV6
+#if defined(PR_USE_IPV6)
       if (pr_netaddr_use_ipv6() == FALSE) {
         pr_trace_msg(trace_channel, 1, "possibly using IPv6 %s '%s' when "
           "IPv6 support is disabled, which will not work as expected",
@@ -495,7 +528,7 @@ pr_netacl_t *pr_netacl_create(pool *p, char *aclstr) {
       aclstr_len = strlen(aclstr);
       for (i = 0; i < aclstr_len; i++) {
         if (PR_ISALPHA(aclstr[i])) {
-#ifdef PR_USE_IPV6
+#if defined(PR_USE_IPV6)
           if (pr_netaddr_use_ipv6()) {
             if (aclstr[i] == 'A' || aclstr[i] == 'a' ||
                 aclstr[i] == 'B' || aclstr[i] == 'b' ||
@@ -519,7 +552,7 @@ pr_netacl_t *pr_netacl_create(pool *p, char *aclstr) {
         }
       }
 
-      if (!use_dns) {
+      if (use_dns == FALSE) {
         acl->type = use_glob ? PR_NETACL_TYPE_IPGLOB : PR_NETACL_TYPE_IPMATCH;
         acl->addr = pr_netaddr_get_addr(p, aclstr, NULL);
         if (acl->addr == NULL) {
