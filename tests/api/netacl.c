@@ -139,13 +139,15 @@ START_TEST (netacl_create_test) {
 
   acl_str = pstrdup(p, "::1/136");
   res = pr_netacl_create(p, acl_str);
-  ck_assert_msg(res == NULL, "Failed to handle bad ACL string '%s': %s", acl_str,
-    strerror(errno));
+  ck_assert_msg(res == NULL, "Failed to handle bad ACL string '%s'", acl_str);
+
+  acl_str = pstrdup(p, "::1/");
+  res = pr_netacl_create(p, acl_str);
+  ck_assert_msg(res == NULL, "Failed to handle bad ACL string '%s'", acl_str);
 
   acl_str = pstrdup(p, "::ffff:127.0.0.1/136");
   res = pr_netacl_create(p, acl_str);
-  ck_assert_msg(res == NULL, "Failed to handle bad ACL string '%s': %s", acl_str,
-    strerror(errno));
+  ck_assert_msg(res == NULL, "Failed to handle bad ACL string '%s'", acl_str);
 
   acl_str = pstrdup(p, "::1");
   res = pr_netacl_create(p, acl_str);
@@ -177,18 +179,19 @@ START_TEST (netacl_create_test) {
 
   acl_str = pstrdup(p, "127.0.0.1/-1");
   res = pr_netacl_create(p, acl_str);
-  ck_assert_msg(res == NULL, "Failed to handle bad ACL string '%s': %s", acl_str,
-    strerror(errno));
+  ck_assert_msg(res == NULL, "Failed to handle bad ACL string '%s'", acl_str);
 
   acl_str = pstrdup(p, "127.0.0.1.2/24");
   res = pr_netacl_create(p, acl_str);
-  ck_assert_msg(res == NULL, "Failed to handle bad ACL string '%s': %s", acl_str,
-    strerror(errno));
+  ck_assert_msg(res == NULL, "Failed to handle bad ACL string '%s'", acl_str);
 
   acl_str = pstrdup(p, "127.0.0.1/25f");
   res = pr_netacl_create(p, acl_str);
-  ck_assert_msg(res == NULL, "Failed to handle bad ACL string '%s': %s", acl_str,
-    strerror(errno));
+  ck_assert_msg(res == NULL, "Failed to handle bad ACL string '%s'", acl_str);
+
+  acl_str = pstrdup(p, "127.0.0.1/");
+  res = pr_netacl_create(p, acl_str);
+  ck_assert_msg(res == NULL, "Failed to handle bad ACL string '%s': %s", acl_str, pr_netacl_get_str(p, res));
 
   acl_str = pstrdup(p, "127.0.0.");
   res = pr_netacl_create(p, acl_str);
