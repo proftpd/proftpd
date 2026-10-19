@@ -317,8 +317,13 @@ pr_netacl_t *pr_netacl_create(pool *p, char *aclstr) {
     }
 
     /* Determine what the given bitmask is. */
-    acl->masklen = strtol(cp + 1, &tmp, 10);
+    if (*(cp + 1) == '\0') {
+      /* Missing mask length. */
+      errno = EINVAL;
+      return NULL;
+    }
 
+    acl->masklen = strtol(cp + 1, &tmp, 10);
     if (tmp && *tmp) {
       /* Invalid bitmask syntax. */
       errno = EINVAL;
