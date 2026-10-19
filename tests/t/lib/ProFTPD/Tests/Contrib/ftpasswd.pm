@@ -66,6 +66,11 @@ my $TESTS = {
     test_class => [qw(bug forking)],
   },
 
+  ftpasswd_avoid_symlinks_issue2378 => {
+    order => ++$order,
+    test_class => [qw(bug forking)],
+  },
+
 };
 
 sub new {
@@ -962,6 +967,63 @@ sub ftpasswd_delete_user_no_such_user_issue898 {
   }
 
   test_cleanup($setup->{log_file}, $ex);
+}
+
+sub ftpasswd_avoid_symlinks_issue2378 {
+  my $self = shift;
+  my $tmpdir = $self->{tmpdir};
+
+  my $log_file = test_get_logfile();
+
+  my $passwd_file = File::Spec->rel2abs("$tmpdir/ftpd.passwd");
+
+  if (open(my $fh, "> $passwd_file")) {
+    unless (close($fh)) {
+      die("Can't write $passwd_file: $!");
+    }
+
+  } else {
+    die("Can't open $passwd_file: $!");
+  }
+
+  my $passwd_symlink = File::Spec->rel2abs("$tmpdir/ftpd.passwd.lnk");
+
+  unless (symlink($passwd_file, $passwd_symlink)) {
+    die("Can't symlink $passwd_symlink to $passwd_file: $!");
+  }
+
+  my $user = 'proftpd';
+  my $passwd = 'test1';
+  my $home_dir = File::Spec->rel2abs($tmpdir);
+  my $uid = 500;
+  my $gid = 500;
+
+  my $ftpasswd = get_ftpasswd_bin();
+  my $cmd = "$ftpasswd --passwd --file=$passwd_symlink --name=$user --uid=$uid --gid=$gid --home=$home_dir --shell=/bin/false 2>&1";
+
+  if ($ENV{TEST_VERBOSE}) {
+    print STDERR "Executing ftpasswd: $cmd\n";
+  }
+
+  eval {
+    my $output = `$cmd`;
+    if ($ENV{TEST_VERBOSE}) {
+      print STDERR "# Output: $output\n";
+    }
+
+    my $expected = "unable to use symlink: $passwd_symlink";
+    $self->assert(qr/$expected/, $output,
+      test_msg("Expected '$expected', got '$output'"));
+  };
+  if ($@) {
+    my $ex = $@;
+    test_append_logfile($log_file, $ex);
+    unlink($log_file);
+
+    die($ex);
+  }
+
+  unlink($log_file);
 }
 
 1;

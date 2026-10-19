@@ -80,6 +80,9 @@ usage() if (defined($opts{'h'}));
 
 version() if (defined($opts{'version'}));
 
+STDOUT->autoflush(1);
+STDERR->autoflush(1);
+
 # Per Bug#4171, check if we are on a Linux system, AND it has the
 # /proc/sys/crypto/fips_enabled file, AND that entry says that FIPS mode is
 # enabled.  If these conditions are met, then neither DES nor MD5 will work.
@@ -144,6 +147,10 @@ if ((exists($opts{'passwd'}) && exists($opts{'group'})) ||
   } else {
     $output_file = $default_passwd_file;
   } 
+
+  if (-l $output_file) {
+    die "$program: unable to use symlink: $output_file\n";
+  }
 
   # make sure that the required arguments are present
   die "$program: --passwd: missing required argument: --name\n"
