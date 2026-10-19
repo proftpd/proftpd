@@ -1365,7 +1365,6 @@ START_TEST (inet_allowforeignaddress_unknown_class_test) {
   config_rec *c;
   const pr_netaddr_t *proposed_addr, *actual_addr;
   const char *name, *class_name;
-  pr_netacl_t *acl;
 
   mark_point();
   class_name = "test-class";
