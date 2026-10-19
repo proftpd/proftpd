@@ -144,8 +144,9 @@ static pr_table_t *parse_critical_options(pool *p,
   critical_options = pr_table_nalloc(p, 0, 2);
 
   while (critical_datalen != 0) {
-    char *key, *val;
+    char *key = NULL, *val = NULL;
     uint32_t key_len, val_len;
+    size_t val_sz = 0;
 
     pr_signals_handle();
 
@@ -154,13 +155,16 @@ static pr_table_t *parse_critical_options(pool *p,
       return NULL;
     }
 
-    /* Note that the value length could legitimately be zero. */
     val_len = sftp_msg_read_string2(p, &critical_data, &critical_datalen, &val);
+    if (val_len == 0) {
+      return NULL;
+    }
 
-    if (pr_table_add(critical_options, key, val, val_len) < 0) {
+    val_sz = strlen(val);
+    if (pr_table_add(critical_options, key, val, val_sz) < 0) {
       pr_trace_msg(trace_channel, 7,
         "error adding critical option '%s' value (%lu bytes): %s", key,
-        (unsigned long) val_len, strerror(errno));
+        (unsigned long) val_sz, strerror(errno));
     }
   }
 
