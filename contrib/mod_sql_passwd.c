@@ -1375,6 +1375,11 @@ MODRET sql_passwd_pre_pass(cmd_rec *cmd) {
       }
 
       user = pr_table_get(session.notes, "mod_auth.orig-user", NULL);
+      if (user == NULL) {
+        pr_log_debug(DEBUG3, MOD_SQL_PASSWD_VERSION
+          ": unable to determine original USER name");
+        return PR_DECLINED(cmd);
+      }
 
       sql_cmd = sql_passwd_cmd_create(cmd->tmp_pool, 3, "sql_lookup", ptr,
         sql_passwd_get_str(cmd->tmp_pool, user));
