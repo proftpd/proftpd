@@ -110,15 +110,14 @@ START_TEST (netacl_create_test) {
 
   acl_str = pstrdup(p, "127.0.0.1/36");
   res = pr_netacl_create(p, acl_str);
-  ck_assert_msg(res == NULL, "Failed to handle bad ACL string '%s': %s", acl_str,
-    strerror(errno));
+  ck_assert_msg(res == NULL, "Failed to handle bad ACL string '%s'", acl_str);
 
   acl_str = pstrdup(p, "0.0.0.0/0");
   res = pr_netacl_create(p, acl_str);
   ck_assert_msg(res != NULL, "Failed to handle ACL string '%s': %s", acl_str,
     strerror(errno));
 
-#ifdef PR_USE_IPV6
+#if defined(PR_USE_IPV6)
   acl_str = pstrdup(p, "::1/36");
   res = pr_netacl_create(p, acl_str);
   ck_assert_msg(res != NULL, "Failed to handle ACL string '%s': %s", acl_str,
@@ -164,7 +163,7 @@ START_TEST (netacl_create_test) {
   acl_type = pr_netacl_get_type(res);
   ck_assert_msg(acl_type == PR_NETACL_TYPE_IPMATCH,
     "Failed to have IPMATCH type for ACL string '%s'", acl_str);
-#endif
+#endif /* PR_USE_IPV6 */
 
   acl_str = pstrdup(p, "127.0.0.1/0");
   res = pr_netacl_create(p, acl_str);
@@ -219,13 +218,11 @@ START_TEST (netacl_create_test) {
 
   acl_str = pstrdup(p, "127.0.0.1.1");
   res = pr_netacl_create(p, acl_str);
-  ck_assert_msg(res == NULL, "Failed to handle bad ACL string '%s': %s", acl_str,
-    strerror(errno));
+  ck_assert_msg(res == NULL, "Failed to handle bad ACL string '%s'", acl_str);
 
   acl_str = pstrdup(p, ".0.0.1");
   res = pr_netacl_create(p, acl_str);
-  ck_assert_msg(res == NULL, "Failed to handle bad ACL string '%s': %s", acl_str,
-    strerror(errno));
+  ck_assert_msg(res == NULL, "Failed to handle bad ACL string '%s'", acl_str);
 
   acl_str = pstrdup(p, "*.0.0.1");
   res = pr_netacl_create(p, acl_str);
@@ -280,6 +277,10 @@ START_TEST (netacl_create_test) {
   acl_type = pr_netacl_get_type(res);
   ck_assert_msg(acl_type == PR_NETACL_TYPE_DNSGLOB,
     "Failed to have DNSGLOB type for ACL string '%s'", acl_str);
+
+  acl_str = pstrdup(p, "!");
+  res = pr_netacl_create(p, acl_str);
+  ck_assert_msg(res == NULL, "Failed to handle bad ACL string '%s'", acl_str);
 }
 END_TEST
 
@@ -407,7 +408,7 @@ START_TEST (netacl_get_str_test) {
   ck_assert_msg(res != NULL, "Failed to get ACL string: %s", strerror(errno));
   ck_assert_msg(strcmp(res, ok) == 0, "Expected '%s', got '%s'", ok, res);
 
-#ifdef PR_USE_IPV6
+#if defined(PR_USE_IPV6)
   acl_str = pstrdup(p, "::1/24");
   acl = pr_netacl_create(p, acl_str);
   ck_assert_msg(acl != NULL, "Failed to create ACL: %s", strerror(errno));
@@ -434,7 +435,7 @@ START_TEST (netacl_get_str_test) {
   res = pr_netacl_get_str(p, acl);
   ck_assert_msg(res != NULL, "Failed to get ACL string: %s", strerror(errno));
   ck_assert_msg(strcmp(res, ok) == 0, "Expected '%s', got '%s'", ok, res);
-#endif
+#endif /* PR_USE_IPV6 */
 }
 END_TEST
 
@@ -563,7 +564,7 @@ START_TEST (netacl_get_str2_test) {
   ck_assert_msg(res != NULL, "Failed to get ACL string: %s", strerror(errno));
   ck_assert_msg(strcmp(res, ok) == 0, "Expected '%s', got '%s'", ok, res);
 
-#ifdef PR_USE_IPV6
+#if defined(PR_USE_IPV6)
   acl_str = pstrdup(p, "::1/24");
   acl = pr_netacl_create(p, acl_str);
   ck_assert_msg(acl != NULL, "Failed to create ACL: %s", strerror(errno));
@@ -590,7 +591,7 @@ START_TEST (netacl_get_str2_test) {
   res = pr_netacl_get_str2(p, acl, flags);
   ck_assert_msg(res != NULL, "Failed to get ACL string: %s", strerror(errno));
   ck_assert_msg(strcmp(res, ok) == 0, "Expected '%s', got '%s'", ok, res);
-#endif
+#endif /* PR_USE_IPV6 */
 }
 END_TEST
 
@@ -614,9 +615,9 @@ START_TEST (netacl_dup_test) {
 
   res = pr_netacl_dup(p, acl);
   ck_assert_msg(res != NULL, "Failed to dup ACL: %s", strerror(errno));
-  ck_assert_msg(strcmp(pr_netacl_get_str(p, res), pr_netacl_get_str(p, acl)) == 0,
-    "Expected '%s', got '%s'", pr_netacl_get_str(p, acl),
-    pr_netacl_get_str(p, res));
+  ck_assert_msg(strcmp(pr_netacl_get_str(p, res),
+    pr_netacl_get_str(p, acl)) == 0, "Expected '%s', got '%s'",
+    pr_netacl_get_str(p, acl), pr_netacl_get_str(p, res));
 }
 END_TEST
 
