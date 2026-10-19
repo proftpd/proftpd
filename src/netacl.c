@@ -382,6 +382,11 @@ pr_netacl_t *pr_netacl_create(pool *p, char *aclstr) {
       aclstr++;
     }
 
+    if (*aclstr == '\0') {
+      errno = EINVAL;
+      return NULL;
+    }
+
     /* If there are any glob characters (e.g. '{', '[', '*', or '?'), or if the
      * first character is a '.', then treat the rule as a glob.
      */
@@ -443,6 +448,11 @@ pr_netacl_t *pr_netacl_create(pool *p, char *aclstr) {
       aclstr++;
     }
 
+    if (*aclstr == '\0') {
+      errno = EINVAL;
+      return NULL;
+    }
+
     /* If there are any glob characters (e.g. '{', '[', '*', or '?'), or if the
      * first character is a '.', then treat the rule as a glob.
      */
@@ -502,6 +512,11 @@ pr_netacl_t *pr_netacl_create(pool *p, char *aclstr) {
     if (*aclstr == '!') {
       acl->negated = TRUE;
       aclstr++;
+    }
+
+    if (*aclstr == '\0') {
+      errno = EINVAL;
+      return NULL;
     }
 
     /* If the last character is a '.', then treat the rule as an IP glob. */
