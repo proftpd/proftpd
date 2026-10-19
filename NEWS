@@ -38,6 +38,8 @@
 - Issue 2357 - Implement support for SSH client certificates in mod_sftp.
 - Issue 2374 - <Limit WRITE> configurations are not honored for symlinks by
   SITE COPY as they should be.
+- Issue 2377 - ftpscrub follows symlinks, can corrupt symlink target file when
+  run as root.
 
 1.3.10rc4 - Released 14-Aug-2026
 --------------------------------

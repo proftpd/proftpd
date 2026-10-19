@@ -136,7 +136,6 @@ const char *util_get_scoreboard(void) {
 
 int util_open_scoreboard(int flags) {
   int res;
-  struct stat st;
 
   /* Prevent writing to a symlink while avoiding a race condition: open
    * the file name O_RDWR|O_CREAT first, then check to see if it's a symlink.
@@ -144,26 +143,15 @@ int util_open_scoreboard(int flags) {
    * and continue.
    */
   util_scoreboard_fd = open(util_scoreboard_file, flags);
-  if (util_scoreboard_fd < 0)
-    return -1;
-
-  if (fstat(util_scoreboard_fd, &st) < 0) {
-    close(util_scoreboard_fd);
-    util_scoreboard_fd = -1;
-    return -1;
-  }
-
-  if (S_ISLNK(st.st_mode)) {
-    close(util_scoreboard_fd);
-    util_scoreboard_fd = -1;
-    errno = EPERM;
+  if (util_scoreboard_fd < 0) {
     return -1;
   }
 
   /* Check the header of this scoreboard file. */
   res = read_scoreboard_header(&util_header);
-  if (res < 0)
+  if (res < 0) {
     return res;
+  }
 
   return 0;
 }
@@ -262,19 +250,50 @@ pr_scoreboard_entry_t *util_scoreboard_entry_read(void) {
 }
 
 int util_scoreboard_scrub(int verbose) {
-  int fd = -1, res = 0;
+  int fd = -1, flags, res = 0;
   off_t curr_offset = 0;
   struct flock lock;
+#if !defined(O_NOFOLLOW)
+  struct stat st;
+#endif /* O_NOFOLLOW */
   pr_scoreboard_entry_t sce;
 
   if (verbose) {
-    fprintf(stdout, "scrubbing ScoreboardFile %s\n", util_get_scoreboard());
+    fprintf(stdout, "scrubbing ScoreboardFile %s\n", util_scoreboard_file);
   }
 
   /* Manually open the scoreboard.  It won't hurt if the process already
    * has a descriptor opened on the scoreboard file.
+   *
+   * Avoid any symlinks (see Issue #2377).  Ideally we use O_NOFOLLOW, but
+   * some platforms do not support that flag, so we might have to detect such
+   * manually.
    */
-  fd = open(util_get_scoreboard(), O_RDWR);
+  flags = O_RDWR;
+#if defined(O_NOFOLLOW)
+  flags |= O_NOFOLLOW;
+#else
+  if (lstat(util_scoreboard_file, &st) == 0) {
+    if (S_ISLNK(st.st_mode)) {
+      errno = EPERM;
+
+      if (verbose) {
+        fprintf(stdout, "error opening scoreboard: %s", strerror(errno));
+      }
+
+      return -1;
+    }
+
+  } else {
+    if (verbose) {
+      fprintf(stdout, "error checking scoreboard: %s", strerror(errno));
+    }
+
+    return -1;
+  }
+#endif /* O_NOFOLLOW */
+
+  fd = open(util_scoreboard_file, flags);
   if (fd < 0) {
     if (verbose) {
       fprintf(stdout, "error opening scoreboard: %s", strerror(errno));
