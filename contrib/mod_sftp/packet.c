@@ -398,8 +398,19 @@ static void handle_global_request_msg(struct ssh2_packet *pkt) {
     return;
   }
 
-  (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
-    "client sent GLOBAL_REQUEST for '%s', denying", request_name);
+  /* Clients send keepalive requests (e.g. "keepalive@openssh.com") only to
+   * elicit a reply, and REQUEST_FAILURE is the expected answer.  Some clients
+   * send them very frequently, so log them as trace messages rather than
+   * filling the SFTPLog.
+   */
+  if (strncmp(request_name, "keepalive@", 10) == 0) {
+    pr_trace_msg(trace_channel, 9,
+      "client sent GLOBAL_REQUEST for '%s', denying", request_name);
+
+  } else {
+    (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
+      "client sent GLOBAL_REQUEST for '%s', denying", request_name);
+  }
 
   if (want_reply) {
     struct ssh2_packet *pkt2;
