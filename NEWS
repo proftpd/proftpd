@@ -30,6 +30,8 @@
 - Issue 2366 - Support using Huffman encoding only for SSH channel compression.
 - Issue 2367 - FTP TLSv1.3 uploads may fail with ECONNRESET if client does not
   provide session ticket for data transfer.
+- Issue 2380 - Selection of median delay value leads to out-of-bounds read on
+  first login.
 
 1.3.9d - Released 14-Aug-2026
 --------------------------------
