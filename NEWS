@@ -48,6 +48,8 @@
   first login.
 - Issue 2382 - AuthOTPTableLock is never assigned, allowing for possible HOTP
   counter replays.
+- Issue 2384 - mod_radius does not verify that UDP packets are received from
+  the same address to which UDP packets are sent.
 
 1.3.10rc4 - Released 14-Aug-2026
 --------------------------------
