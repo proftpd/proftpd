@@ -2525,6 +2525,56 @@ static void set_stats(cmd_rec *cmd, int fstor, int fretr, int bstor,
   (void) check_response(mr, 0);
 }
 
+static char *sql_escape_like_wildcards(pool *p, char *username,
+    char *selected_escape) {
+  register unsigned int i, j;
+  char *res = NULL, escape = 0;
+  size_t nescapes, username_len;
+  const char *escapes = "!$^|-+/";
+
+  if (strchr(username, '%') == NULL &&
+      strchr(username, '_') == NULL) {
+    /* No LIKE wildcard characters.  Nice. */
+    *selected_escape = '\0';
+    return username;
+  }
+
+  /* Iterater through our list of preferred escape characters, hopefully
+   * finding one that does not appear in the provided username.
+   */
+  nescapes = strlen(escapes);
+  for (i = 0; i < nescapes; i++) {
+    if (strchr(username, escapes[i]) == NULL) {
+      escape = escapes[i];
+      pr_trace_msg(trace_channel, 19,
+        "selected '%c' character for LIKE query wildcard escaping", escape);
+      break;
+    }
+  }
+
+  if (escape == 0) {
+    /* No valid/usable escape character determined.  Ugh. */
+    errno = EPERM;
+    return NULL;
+  }
+
+  /* Worst case scenario, we have to escape every single character. */
+  username_len = strlen(username);
+  res = pcalloc(p, (username_len * 2) + 1);
+
+  for (i = 0, j = 0; i < username_len; i++) {
+    if (username[i] == '%' ||
+        username[i] == '_') {
+      res[j++] = escape;
+    }
+
+    res[j++] = username[i];
+  }
+
+  *selected_escape = escape;
+  return res;
+}
+
 static int sql_getgroups(cmd_rec *cmd) {
   struct passwd *pw = NULL, lpw;
   struct group *grp, lgr;
@@ -2588,18 +2638,43 @@ static int sql_getgroups(cmd_rec *cmd) {
 
   if (cmap.groupcustommembers == NULL) {
     if (!(pr_sql_opts & SQL_OPT_USE_NORMALIZED_GROUP_SCHEMA)) {
+      char selected_escape[2], *escaped_username = NULL;
 
       /* Use a SELECT with a LIKE clause:
        *
-       *  SELECT groupname,gid,members FROM groups
-       *    WHERE members LIKE '%,<user>,%' OR LIKE '<user>,%' OR LIKE '%,<user>';
+       *  SELECT groupname,gid,members FROM groups WHERE
+       *    members LIKE '%,<user>,%' OR LIKE '<user>,%' OR LIKE '%,<user>'
+       *    ESCAPE '!'
        */
+
+      if (!(pr_sql_opts & SQL_OPT_NO_ESCAPE_LIKE_WILDCARDS)) {
+        /* Make sure we escape any LIKE-specific wildcard characters in our
+         * escaped username as well, to avoid inadvertent matches.
+         */
+        selected_escape[0] = '\0';
+        selected_escape[1] = '\0';
+        escaped_username = sql_escape_like_wildcards(cmd->tmp_pool, username,
+          selected_escape);
+        if (escaped_username == NULL) {
+          /* Ideally this will not happen.  But for now, if it does, we
+           * fall back to the orignal username.  Not ideal.
+           */
+          escaped_username = username;
+        }
+
+      } else {
+        escaped_username = username;
+      }
 
       grpwhere = pstrcat(cmd->tmp_pool,
         cmap.grpmembersfield, " = '", username, "' OR ",
-        cmap.grpmembersfield, " LIKE '", username, ",%' OR ",
-        cmap.grpmembersfield, " LIKE '%,", username, "' OR ",
-        cmap.grpmembersfield, " LIKE '%,", username, ",%'", NULL);
+        cmap.grpmembersfield, " LIKE '", escaped_username, ",%' OR ",
+        cmap.grpmembersfield, " LIKE '%,", escaped_username, "' OR ",
+        cmap.grpmembersfield, " LIKE '%,", escaped_username, ",%'", NULL);
+      if (selected_escape[0] != '\0') {
+        grpwhere = pstrcat(cmd->tmp_pool, grpwhere, " ESCAPE '",
+          selected_escape, "'", NULL);
+      }
 
     } else {
       /* Use a single SELECT:
@@ -4803,6 +4878,9 @@ MODRET set_sqloptions(cmd_rec *cmd) {
 
     } else if (strcasecmp(cmd->argv[i], "IgnoreConfigFile") == 0) {
       opts |= SQL_OPT_IGNORE_CONFIG_FILE;
+
+    } else if (strcasecmp(cmd->argv[i], "NoEscapeLikeWildcards") == 0) {
+      opts |= SQL_OPT_NO_ESCAPE_LIKE_WILDCARDS;
 
     } else {
       CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "unknown SQLOption '",

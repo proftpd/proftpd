@@ -1241,6 +1241,20 @@ The currently implemented options are:
     whenever there is a database error.  If this option is enabled,
     <code>mod_sql</code> will attempt to continue functioning despite
     database errors.
+  </li>
+
+  <p>
+  <li><code>NoEscapeLikeWildcards</code><br>
+    <p>
+    When using its built-in, <code>LIKE</code>-using query for group lookups,
+    <code>mod_sql</code> will escape <code>LIKE</code>-specific wildcard
+    characters (<code>%</code> and <code>_</code>) in usernames, should they
+    be used.  Use this option to disable such escaping.
+
+    <p>
+    <b>Note</b> that this option first appeared in
+    <code>proftpd-1.3.10rc5</code>.
+  </li>
 
   <p>
   <li><code>NoReconnect</code><br>
@@ -1249,6 +1263,7 @@ The currently implemented options are:
     try to automatically reconnect <i>once</i>, if it determines that the
     connection to the database server was lost.  Use "NoReconnect" to disable
     this auto-reconnection attempt.
+  </li>
 
   <p>
   <li><code>UseNormalizedGroupSchema</code><br>
