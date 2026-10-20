@@ -152,6 +152,35 @@ struct auth_otp_db *auth_otp_db_open(pool *p, const char *tabinfo) {
     return NULL;
   }
 
+  c = find_config(main_server->conf, CONF_PARAM, "AuthOTPTableLock", FALSE);
+  if (c != NULL) {
+    int fd, xerrno;
+    const char *path;
+
+    path = c->argv[0];
+
+    /* Make sure the AuthOTPTableLock file exists. */
+    fd = open(path, O_RDWR|O_CREAT, 0600);
+    xerrno = errno;
+
+    if (fd < 0) {
+      pr_log_writefile(auth_otp_logfd, MOD_AUTH_OTP_VERSION,
+        "error: unable to AuthOTPTableLock '%s': %s", path, strerror(xerrno));
+      destroy_pool(tmp_pool);
+      errno = EINVAL;
+      return NULL;
+    }
+
+    /* Make sure that this fd is not one of the main three. */
+    if (pr_fs_get_usable_fd2(&fd) < 0) {
+      pr_log_writefile(auth_otp_logfd, MOD_AUTH_OTP_VERSION,
+        "warning: unable to find usable fd for lockfd %d: %s", fd,
+        strerror(errno));
+    }
+
+    dbh->db_lockfd = fd;
+  }
+
   destroy_pool(tmp_pool);
 
   dbh->select_query = select_query;
