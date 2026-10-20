@@ -1,6 +1,5 @@
 /*
  * ProFTPD: mod_sql.h -- header file for mod_sql and backends
- * Time-stamp: <1999-10-04 03:21:21 root>
  * Copyright (c) 1998-1999 Johnie Ingram.
  * Copyright (c) 2001 Andrew Houghton
  * Copyright (c) 2002-2026 The ProFTPD Project
@@ -89,6 +88,7 @@ extern unsigned long pr_sql_opts;
 #define SQL_OPT_USE_NORMALIZED_GROUP_SCHEMA     0x0002
 #define SQL_OPT_NO_RECONNECT                    0x0004
 #define SQL_OPT_IGNORE_CONFIG_FILE		0x0008
+#define SQL_OPT_NO_ESCAPE_LIKE_WILDCARDS	0x0010
 
 /* SQL connection policy */
 extern unsigned int pr_sql_conn_policy;
