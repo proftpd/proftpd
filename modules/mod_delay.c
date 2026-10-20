@@ -165,14 +165,17 @@ static const char *trace_channel = "delay";
 
 static long delay_select_k(unsigned long k, array_header *values) {
   unsigned long l, ir, tmp = 0;
-  long *elts = (long *) values->elts;
-  unsigned int nelts = values->nelts;
+  long *elts;
+  unsigned int nelts;
 
   /* This is from "Numeric Recipes in C", Ch. 8.5, as the select()
    * algorithm, an in-place sorting algorithm for finding the Kth
    * element in an array, where all elements to the left of K are
    * smaller than K, and all elements to the right are larger.
    */
+
+  elts = (long *) values->elts;
+  nelts = values->nelts;
 
   l = 1;
   ir = values->nelts - 1;
@@ -256,6 +259,7 @@ static long delay_get_median(pool *p, unsigned int rownum, const char *protocol,
   struct delay_rec *row;
   struct delay_vals_rec *dv = NULL;
   long *tab_vals = NULL, median;
+  unsigned long k;
   array_header *list = make_array(p, 1, sizeof(long));
 
   /* Calculate the median value of the current command's recorded values,
@@ -300,7 +304,10 @@ static long delay_get_median(pool *p, unsigned int rownum, const char *protocol,
   pr_trace_msg(trace_channel, 6, "selecting median interval from %d %s",
     list->nelts, list->nelts != 1 ? "values" : "value");
 
-  median = delay_select_k(((list->nelts + 1) / 2), list);
+  k = ((list->nelts + 1) / 2);
+
+  /* Take back one for whose zero-based array this is (Issue #2380). */
+  median = delay_select_k(k-1, list);
   if (median >= 0) {
 
     /* Enforce an additional restriction: no delays over a hard limit. */
