@@ -439,7 +439,8 @@ static void ls_done(cmd_rec *cmd) {
   }
 }
 
-static char units[6][2] = { "", "k", "M", "G", "T", "P" };
+#define LS_SIZE_FMTS_COUNT	6
+static char units[LS_SIZE_FMTS_COUNT][2] = { "", "k", "M", "G", "T", "P" };
 
 static void ls_fmt_filesize(char *buf, size_t buflen, off_t sz) {
   if (!opt_h || sz < 1000) {
@@ -451,6 +452,10 @@ static void ls_fmt_filesize(char *buf, size_t buflen, off_t sz) {
 
     /* Determine the appropriate units label to use. */
     while (size >= 1024.0) {
+      if (i == (LS_SIZE_FMTS_COUNT - 1)) {
+        break;
+      }
+
       size /= 1024.0;
       i++;
     }
