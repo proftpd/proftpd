@@ -32,6 +32,8 @@
   provide session ticket for data transfer.
 - Issue 2380 - Selection of median delay value leads to out-of-bounds read on
   first login.
+- Issue 2384 - mod_radius does not verify that UDP packets are received from
+  the same address to which UDP packets are sent.
 
 1.3.9d - Released 14-Aug-2026
 --------------------------------
