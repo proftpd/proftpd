@@ -2825,13 +2825,14 @@ static int radius_open_socket(void) {
 static radius_packet_t *radius_recv_packet(int sockfd, unsigned int timeout) {
   static unsigned char recvbuf[RADIUS_PACKET_LEN];
   radius_packet_t *packet = NULL;
-  int res = 0, recvlen = -1;
-  socklen_t sockaddrlen = sizeof(struct sockaddr);
+  int res = 0, recvlen = -1, xerrno;
+  struct sockaddr_in from_sockaddr;
+  socklen_t from_sockaddrlen;
+  pr_netaddr_t from_addr, remote_addr;
   struct timeval tv;
   fd_set rset;
 
   /* receive the response, waiting as necessary */
-  memset(recvbuf, '\0', sizeof(recvbuf));
 
   tv.tv_sec = timeout;
   tv.tv_usec = 0;
@@ -2840,14 +2841,15 @@ static radius_packet_t *radius_recv_packet(int sockfd, unsigned int timeout) {
   FD_SET(sockfd, &rset);
 
   res = select(sockfd + 1, &rset, NULL, NULL, &tv);
+  xerrno = errno;
+
   if (res == 0) {
     (void) pr_log_writefile(radius_logfd, MOD_RADIUS_VERSION,
       "server failed to respond in %u seconds", timeout);
     return NULL;
+  }
 
-  } else if (res < 0) {
-    int xerrno = errno;
-
+  if (res < 0) {
     (void) pr_log_writefile(radius_logfd, MOD_RADIUS_VERSION,
       "error: unable to receive response: %s", strerror(xerrno));
 
@@ -2855,15 +2857,42 @@ static radius_packet_t *radius_recv_packet(int sockfd, unsigned int timeout) {
     return NULL;
   }
 
-  recvlen = recvfrom(sockfd, (char *) recvbuf, RADIUS_PACKET_LEN, 0,
-    &radius_remote_sock, &sockaddrlen);
-  if (recvlen < 0) {
-    int xerrno = errno;
+  memset(recvbuf, '\0', sizeof(recvbuf));
+  from_sockaddrlen = sizeof(struct sockaddr_in);
 
+  recvlen = recvfrom(sockfd, (char *) recvbuf, RADIUS_PACKET_LEN, 0,
+    (struct sockaddr *) &from_sockaddr, &from_sockaddrlen);
+  xerrno = errno;
+
+  if (recvlen < 0) {
     (void) pr_log_writefile(radius_logfd, MOD_RADIUS_VERSION,
       "error reading packet: %s", strerror(xerrno));
 
     errno = xerrno;
+    return NULL;
+  }
+
+  /* Verify that the sender address matches that to which we just sent our
+   * packet (Issue #2384).
+   */
+  pr_netaddr_clear(&from_addr);
+  pr_netaddr_set_family(&from_addr, AF_INET);
+  pr_netaddr_set_sockaddr(&from_addr, (struct sockaddr *) &from_sockaddr);
+
+  pr_trace_msg(trace_channel, 3, "read %d UDP bytes from %s#%u", recvlen,
+    pr_netaddr_get_ipstr(&from_addr), ntohs(pr_netaddr_get_port(&from_addr)));
+
+  pr_netaddr_clear(&remote_addr);
+  pr_netaddr_set_family(&remote_addr, AF_INET);
+  pr_netaddr_set_sockaddr(&remote_addr,
+    (struct sockaddr *) &radius_remote_sock);
+
+  if (pr_netaddr_cmp(&from_addr, &remote_addr) != 0) {
+    (void) pr_log_writefile(radius_logfd, MOD_RADIUS_VERSION,
+      "received UDP packet from source address %s, expected %s, ignoring",
+      pr_netaddr_get_ipstr(&from_addr), pr_netaddr_get_ipstr(&remote_addr));
+
+    errno = EPERM;
     return NULL;
   }
 
