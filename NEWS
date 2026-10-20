@@ -46,6 +46,8 @@
   characters.
 - Issue 2380 - Selection of median delay value leads to out-of-bounds read on
   first login.
+- Issue 2382 - AuthOTPTableLock is never assigned, allowing for possible HOTP
+  counter replays.
 
 1.3.10rc4 - Released 14-Aug-2026
 --------------------------------

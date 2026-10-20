@@ -389,7 +389,7 @@ EOS
   server_stop($setup->{pid_file});
   $self->assert_child_ok($pid);
 
-  test_cleanup($setup->{log_file}, $ex);
+  test_cleanup($setup, $ex);
 }
 
 sub auth_otp_sftp_hotp_login_ok_via_password {
@@ -547,7 +547,7 @@ EOS
   server_stop($setup->{pid_file});
   $self->assert_child_ok($pid);
 
-  test_cleanup($setup->{log_file}, $ex);
+  test_cleanup($setup, $ex);
 }
 
 sub auth_otp_sftp_hotp_login_failed_bad_secret {
@@ -707,10 +707,9 @@ EOS
 
   # Stop server
   server_stop($setup->{pid_file});
-
   $self->assert_child_ok($pid);
 
-  test_cleanup($setup->{log_file}, $ex);
+  test_cleanup($setup, $ex);
 }
 
 sub auth_otp_sftp_hotp_login_failed_missing_otp_entry_issue1560 {
@@ -870,7 +869,7 @@ EOS
   server_stop($setup->{pid_file});
   $self->assert_child_ok($pid);
 
-  test_cleanup($setup->{log_file}, $ex);
+  test_cleanup($setup, $ex);
 }
 
 sub auth_otp_sftp_hotp_login_ok_missing_otp_entry_chained_auth_issue1560 {
@@ -1040,7 +1039,7 @@ EOS
   server_stop($setup->{pid_file});
   $self->assert_child_ok($pid);
 
-  test_cleanup($setup->{log_file}, $ex);
+  test_cleanup($setup, $ex);
 }
 
 sub auth_otp_sftp_totp_login_ok_via_kbdint {
@@ -1197,7 +1196,7 @@ EOS
   server_stop($setup->{pid_file});
   $self->assert_child_ok($pid);
 
-  test_cleanup($setup->{log_file}, $ex);
+  test_cleanup($setup, $ex);
 }
 
 sub auth_otp_sftp_totp_login_ok_via_password {
@@ -1355,7 +1354,7 @@ EOS
   server_stop($setup->{pid_file});
   $self->assert_child_ok($pid);
 
-  test_cleanup($setup->{log_file}, $ex);
+  test_cleanup($setup, $ex);
 }
 
 sub auth_otp_sftp_totp_login_failed_bad_secret {
@@ -1515,10 +1514,9 @@ EOS
 
   # Stop server
   server_stop($setup->{pid_file});
-
   $self->assert_child_ok($pid);
 
-  test_cleanup($setup->{log_file}, $ex);
+  test_cleanup($setup, $ex);
 }
 
 sub auth_otp_sftp_totp_login_failed_missing_otp_entry_issue1560 {
@@ -1678,7 +1676,7 @@ EOS
   server_stop($setup->{pid_file});
   $self->assert_child_ok($pid);
 
-  test_cleanup($setup->{log_file}, $ex);
+  test_cleanup($setup, $ex);
 }
 
 sub auth_otp_sftp_totp_login_ok_missing_otp_entry_chained_auth_issue1560 {
@@ -1844,7 +1842,7 @@ EOS
   server_stop($setup->{pid_file});
   $self->assert_child_ok($pid);
 
-  test_cleanup($setup->{log_file}, $ex);
+  test_cleanup($setup, $ex);
 }
 
 sub auth_otp_sftp_totp_login_authoritative {
@@ -2001,10 +1999,9 @@ EOS
 
   # Stop server
   server_stop($setup->{pid_file});
-
   $self->assert_child_ok($pid);
 
-  test_cleanup($setup->{log_file}, $ex);
+  test_cleanup($setup, $ex);
 }
 
 sub auth_otp_sftp_totp_login_authoritative_failed {
@@ -2165,10 +2162,9 @@ EOS
 
   # Stop server
   server_stop($setup->{pid_file});
-
   $self->assert_child_ok($pid);
 
-  test_cleanup($setup->{log_file}, $ex);
+  test_cleanup($setup, $ex);
 }
 
 sub auth_otp_sftp_password_failed {
@@ -2327,7 +2323,7 @@ EOS
   server_stop($setup->{pid_file});
   $self->assert_child_ok($pid);
 
-  test_cleanup($setup->{log_file}, $ex);
+  test_cleanup($setup, $ex);
 }
 
 sub auth_otp_sftp_publickey_plus_totp_ok {
@@ -2502,7 +2498,7 @@ EOS
   server_stop($setup->{pid_file});
   $self->assert_child_ok($pid);
 
-  test_cleanup($setup->{log_file}, $ex);
+  test_cleanup($setup, $ex);
 }
 
 sub auth_otp_sftp_password_plus_totp_ok {
@@ -2666,7 +2662,7 @@ EOS
   server_stop($setup->{pid_file});
   $self->assert_child_ok($pid);
 
-  test_cleanup($setup->{log_file}, $ex);
+  test_cleanup($setup, $ex);
 }
 
 sub auth_otp_sftp_publickey_plus_totp_with_display_verification_code_opt {
@@ -2858,7 +2854,7 @@ EOS
   server_stop($setup->{pid_file});
   $self->assert_child_ok($pid);
 
-  test_cleanup($setup->{log_file}, $ex);
+  test_cleanup($setup, $ex);
 }
 
 sub auth_otp_sftp_password_plus_totp_with_display_verification_code_opt {
@@ -3039,7 +3035,7 @@ EOS
   server_stop($setup->{pid_file});
   $self->assert_child_ok($pid);
 
-  test_cleanup($setup->{log_file}, $ex);
+  test_cleanup($setup, $ex);
 }
 
 sub auth_otp_sftp_publickey_plus_totp_lacking_table_entry_issue1319 {
@@ -3207,7 +3203,7 @@ EOS
   server_stop($setup->{pid_file});
   $self->assert_child_ok($pid);
 
-  test_cleanup($setup->{log_file}, $ex);
+  test_cleanup($setup, $ex);
 }
 
 sub auth_otp_sftp_password_plus_totp_lacking_table_entry_issue1319 {
@@ -3365,7 +3361,7 @@ EOS
   server_stop($setup->{pid_file});
   $self->assert_child_ok($pid);
 
-  test_cleanup($setup->{log_file}, $ex);
+  test_cleanup($setup, $ex);
 }
 
 1;
