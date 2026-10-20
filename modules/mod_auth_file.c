@@ -1611,8 +1611,11 @@ MODRET authfile_chkpass(cmd_rec *cmd) {
 
   cmp_len = strlen(crypted_pass);
   ciphertxt_passlen = strlen(ciphertxt_pass);
-  if (ciphertxt_passlen > cmp_len) {
-    cmp_len = ciphertxt_passlen;
+  if (ciphertxt_passlen != cmp_len) {
+    /* We know, a priori, that these are different lengths, therefore they
+     * cannot match.
+     */
+    return PR_DECLINED(cmd);
   }
 
   if (pr_timingsafe_bcmp(crypted_pass, ciphertxt_pass, cmp_len) == 0) {
