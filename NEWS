@@ -50,6 +50,8 @@
   counter replays.
 - Issue 2384 - mod_radius does not verify that UDP packets are received from
   the same address to which UDP packets are sent.
+- Issue 2386 - SSH client keepalive GLOBAL_REQUESTs fill the SFTPLog; use
+  trace logging instead for keepalive requests.
 
 1.3.10rc4 - Released 14-Aug-2026
 --------------------------------
