@@ -801,7 +801,7 @@ static int ban_cache_entry_set(pool *p, struct ban_cache_entry *bce) {
  * i.e. SysV shm.
  */
 static struct ban_data *ban_get_shm(pr_fh_t *tabfh) {
-  int shmid;
+  int shmid, xerrno;
   int shm_existed = FALSE;
   struct ban_data *data = NULL;
   key_t key;
@@ -815,7 +815,7 @@ static struct ban_data *ban_get_shm(pr_fh_t *tabfh) {
   /* Get a key for this path. */
   key = ftok(tabfh->fh_path, BAN_PROJ_ID);
   if (key == (key_t) -1) {
-    int xerrno = errno;
+    xerrno = errno;
 
     (void) pr_log_writefile(ban_logfd, MOD_BAN_VERSION,
       "unable to get key for '%s': %s", tabfh->fh_path, strerror(xerrno));
@@ -828,23 +828,28 @@ static struct ban_data *ban_get_shm(pr_fh_t *tabfh) {
    * shm for this key.  If there is, try again, using a flag of zero.
    */
 
-  shmid = shmget(key, sizeof(struct ban_data), IPC_CREAT|IPC_EXCL|0600);
+  PRIVS_ROOT
+  shmid = shmget(key, sizeof(struct ban_data), IPC_CREAT|IPC_EXCL|0666);
+  xerrno = errno;
+  PRIVS_RELINQUISH
+
   if (shmid < 0) {
-
-    if (errno == EEXIST) {
-      shm_existed = TRUE;
-
-      shmid = shmget(key, 0, 0);
-
-    } else {
+    if (xerrno != EEXIST) {
+      errno = xerrno;
       return NULL;
     }
+
+    shm_existed = TRUE;
+
+    PRIVS_ROOT
+    shmid = shmget(key, 0, 0);
+    PRIVS_RELINQUISH
   }
 
   /* Attach to the shm. */
   data = (struct ban_data *) shmat(shmid, NULL, 0);
   if (data == NULL) {
-    int xerrno = errno;
+    xerrno = errno;
 
     (void) pr_log_writefile(ban_logfd, MOD_BAN_VERSION,
       "unable to attach to shm: %s", strerror(xerrno));
@@ -853,7 +858,7 @@ static struct ban_data *ban_get_shm(pr_fh_t *tabfh) {
     return NULL;
   }
 
-  if (!shm_existed) {
+  if (shm_existed == FALSE) {
 
     /* Make sure the memory is initialized. */
     if (ban_lock_shm(LOCK_EX) < 0) {
