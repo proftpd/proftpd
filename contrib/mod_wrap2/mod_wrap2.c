@@ -532,18 +532,28 @@ static unsigned char wrap2_match_host(char *tok, wrap2_host_t *host) {
 
   } else if (tok[0] == '.') {
     char *primary_name;
+    size_t primary_namelen, tok_len;
     array_header *dns_names;
 
     /* Suffix */
     primary_name = wrap2_get_hostname(host);
-    len = strlen(primary_name) - strlen(tok);
+    primary_namelen = strlen(primary_name);
+    tok_len = strlen(tok);
 
-    wrap2_log("comparing client hostname '%s' (part %s) against DNS "
-      "pattern '%s'", primary_name, primary_name+len, tok);
+    if (primary_namelen > tok_len) {
+      len = primary_namelen - tok_len;
+      wrap2_log("comparing client hostname '%s' (part %s) against DNS "
+        "pattern '%s'", primary_name, primary_name+len, tok);
 
-    if (len > 0 &&
-        strcasecmp(tok, primary_name + len) == 0) {
-      return TRUE;
+      if (len > 0 &&
+          strcasecmp(tok, primary_name + len) == 0) {
+        return TRUE;
+      }
+
+    } else {
+      pr_trace_msg(trace_channel, 11,
+        "DNS pattern '%s' length exceeds client hostname '%s' length, skipping",
+        tok, primary_name);
     }
 
     if (!(wrap2_opts & WRAP_OPT_CHECK_ALL_NAMES)) {
@@ -563,14 +573,25 @@ static unsigned char wrap2_match_host(char *tok, wrap2_host_t *host) {
 
         name = names[i];
         if (name != NULL) {
-          len = strlen(name) - strlen(tok);
+          size_t name_len;
 
-          wrap2_log("comparing client hostname '%s' (part %s) against DNS "
-            "pattern '%s'", name, name+len, tok);
+          name_len = strlen(name);
 
-          if (len > 0 &&
-              strcasecmp(tok, name + len) == 0) {
-            return TRUE;
+          if (name_len > tok_len) {
+            len = name_len - tok_len;
+
+            wrap2_log("comparing client hostname '%s' (part %s) against DNS "
+              "pattern '%s'", name, name+len, tok);
+
+            if (len > 0 &&
+                strcasecmp(tok, name + len) == 0) {
+              return TRUE;
+            }
+
+          } else {
+            pr_trace_msg(trace_channel, 11,
+              "DNS pattern '%s' length exceeds client hostname '%s' length, "
+              "skipping", tok, name);
           }
         }
       }
