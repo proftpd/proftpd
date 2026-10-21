@@ -4774,28 +4774,21 @@ static int fxp_handle_ext_copy_file(struct fxp_packet *fxp, char *src,
   res = pr_fsio_stat(dst, &st);
   if (res == 0) {
     unsigned char *allow_overwrite = NULL;
-    int limit_allow;
 
     allow_overwrite = get_param_ptr(get_dir_ctxt(fxp->pool, dst),
       "AllowOverwrite", FALSE);
 
     cmd2 = pr_cmd_alloc(fxp->pool, 3, "SITE_COPY", src, dst);
     cmd2->arg = pstrdup(fxp->pool, args);
-    limit_allow = dir_check(fxp->pool, cmd2, "WRITE", dst, NULL);
 
     if (!overwrite ||
         (allow_overwrite == NULL ||
-         *allow_overwrite == FALSE) ||
-        !limit_allow) {
+         *allow_overwrite == FALSE)) {
       xerrno = EACCES;
 
       if (!overwrite) {
         (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
           "'%s' exists and client did not request COPY overwrites", dst);
-
-      } else if (!limit_allow) {
-        (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
-          "COPY to '%s' blocked by <Limit> configuration", dst);
 
       } else {
         (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
@@ -4854,6 +4847,29 @@ static int fxp_handle_ext_copy_file(struct fxp_packet *fxp, char *src,
     pr_trace_msg(trace_channel, 8, "sending response: STATUS %lu '%s' "
       "('%s' [%d])", (unsigned long) status_code, reason, strerror(xerrno),
       xerrno);
+
+    fxp_status_write(fxp->pool, &buf, &buflen, fxp->request_id, status_code,
+      reason, NULL);
+
+    fxp_cmd_dispatch_err(cmd);
+
+    resp = fxp_packet_create(fxp->pool, fxp->channel_id);
+    resp->payload = ptr;
+    resp->payload_sz = (bufsz - buflen);
+
+    return fxp_packet_write(resp);
+  }
+
+  if (!dir_check(fxp->pool, cmd2, "WRITE", dst, NULL)) {
+    xerrno = EACCES;
+
+    (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
+      "COPY to '%s' blocked by <Limit> configuration", dst);
+
+    status_code = fxp_errno2status(xerrno, &reason);
+
+    pr_trace_msg(trace_channel, 8, "sending response: STATUS %lu '%s'",
+      (unsigned long) status_code, reason);
 
     fxp_status_write(fxp->pool, &buf, &buflen, fxp->request_id, status_code,
       reason, NULL);
