@@ -559,6 +559,11 @@ my $TESTS = {
     test_class => [qw(bug forking ssh2)],
   },
 
+  ssh2_global_request_keepalive => {
+    order => ++$order,
+    test_class => [qw(forking ssh2)],
+  },
+
   ssh2_interop_scanner => {
     order => ++$order,
     test_class => [qw(forking ssh2)],
@@ -16442,6 +16447,188 @@ sub ssh2_auth_publickey_bad_format_issue1400 {
 
       close($fh);
       $self->assert($saw_msg, test_msg("Did not see expected SFTPLog message"));
+
+    } else {
+      die("Can't read $setup->{log_file}: $!");
+    }
+  };
+  if ($@) {
+    $ex = $@;
+  }
+
+  test_cleanup($setup, $ex);
+}
+
+sub ssh2_global_request_keepalive {
+  my $self = shift;
+  my $tmpdir = $self->{tmpdir};
+  my $setup = test_setup($tmpdir, 'sftp');
+
+  # Use a separate SFTPLog, so that we can check that the keepalive is
+  # logged to the TraceLog, but not to the SFTPLog.
+  my $sftp_log = File::Spec->rel2abs("$tmpdir/sftp.log");
+
+  my $rsa_host_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/ssh_host_rsa_key');
+  my $dsa_host_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/ssh_host_dsa_key');
+
+  my $config = {
+    PidFile => $setup->{pid_file},
+    ScoreboardFile => $setup->{scoreboard_file},
+    SystemLog => $setup->{log_file},
+    TraceLog => $setup->{log_file},
+    Trace => 'DEFAULT:10 ssh2:20',
+
+    AuthUserFile => $setup->{auth_user_file},
+    AuthGroupFile => $setup->{auth_group_file},
+    AuthOrder => 'mod_auth_file.c',
+
+    IfModules => {
+      'mod_delay.c' => {
+        DelayEngine => 'off',
+      },
+
+      'mod_sftp.c' => [
+        "SFTPEngine on",
+        "SFTPLog $sftp_log",
+        "SFTPHostKey $rsa_host_key",
+        "SFTPHostKey $dsa_host_key",
+      ],
+    },
+  };
+
+  my ($port, $config_user, $config_group) = config_write($setup->{config_file},
+    $config);
+
+  # Open pipes, for use between the parent and child processes.  Specifically,
+  # the child will indicate when it's done with its test by writing a message
+  # to the parent.
+  my ($rfh, $wfh);
+  unless (pipe($rfh, $wfh)) {
+    die("Can't open pipe: $!");
+  }
+
+  require Net::SSH2;
+
+  my $ex;
+
+  # Fork child
+  $self->handle_sigchld();
+  defined(my $pid = fork()) or die("Can't fork: $!");
+  if ($pid) {
+    eval {
+      # Allow for server startup
+      sleep(1);
+
+      my $ssh2 = Net::SSH2->new();
+      unless ($ssh2->connect('127.0.0.1', $port)) {
+        my ($err_code, $err_name, $err_str) = $ssh2->error();
+        die("Can't connect to SSH2 server: [$err_name] ($err_code) $err_str");
+      }
+
+      unless ($ssh2->auth_password($setup->{user}, $setup->{passwd})) {
+        my ($err_code, $err_name, $err_str) = $ssh2->error();
+        die("Can't authenticate to SSH2 server: [$err_name] ($err_code) $err_str");
+      }
+
+      # libssh2 sends its keepalives as "keepalive@libssh2.org"
+      # GLOBAL_REQUESTs.  This is the first keepalive of the session, so
+      # keepalive_send() sends it right away.
+      $ssh2->keepalive_config(1, 1);
+      unless (defined($ssh2->keepalive_send())) {
+        my ($err_code, $err_name, $err_str) = $ssh2->error();
+        die("Can't send keepalive to SSH2 server: [$err_name] ($err_code) $err_str");
+      }
+
+      # Opening a channel makes sure that the server has read the keepalive
+      # before we disconnect.
+      my $sftp = $ssh2->sftp();
+      unless ($sftp) {
+        my ($err_code, $err_name, $err_str) = $ssh2->error();
+        die("Can't use SFTP on SSH2 server: [$err_name] ($err_code) $err_str");
+      }
+
+      $sftp = undef;
+      $ssh2->disconnect();
+    };
+    if ($@) {
+      $ex = $@;
+    }
+
+    $wfh->print("done\n");
+    $wfh->flush();
+
+  } else {
+    eval { server_wait($setup->{config_file}, $rfh) };
+    if ($@) {
+      warn($@);
+      exit 1;
+    }
+
+    exit 0;
+  }
+
+  # Stop server
+  server_stop($setup->{pid_file});
+  $self->assert_child_ok($pid);
+
+  eval {
+    if (open(my $fh, "< $sftp_log")) {
+      my $saw_keepalive = 0;
+
+      while (my $line = <$fh>) {
+        chomp($line);
+
+        if ($ENV{TEST_VERBOSE}) {
+          print STDERR "# $line\n";
+        }
+
+        if ($line =~ /GLOBAL_REQUEST for 'keepalive\@/) {
+          $saw_keepalive = 1;
+          last;
+        }
+      }
+
+      close($fh);
+      $self->assert(!$saw_keepalive,
+        test_msg("Saw unexpected keepalive message in SFTPLog"));
+
+    } else {
+      die("Can't read $sftp_log: $!");
+    }
+
+    # Make sure that the server did see the keepalive, so that the SFTPLog
+    # check above is meaningful, and that it still sent the REQUEST_FAILURE
+    # reply after logging it.
+    if (open(my $fh, "< $setup->{log_file}")) {
+      my $saw_trace = 0;
+      my $saw_reply = 0;
+
+      while (my $line = <$fh>) {
+        chomp($line);
+
+        if ($ENV{TEST_VERBOSE}) {
+          print STDERR "# $line\n";
+        }
+
+        unless ($saw_trace) {
+          if ($line =~ /GLOBAL_REQUEST for 'keepalive\@libssh2\.org', denying/) {
+            $saw_trace = 1;
+          }
+
+          next;
+        }
+
+        if ($line =~ /sent SSH_MSG_REQUEST_FAILURE \(82\) packet/) {
+          $saw_reply = 1;
+          last;
+        }
+      }
+
+      close($fh);
+      $self->assert($saw_trace,
+        test_msg("Did not see expected TraceLog message"));
+      $self->assert($saw_reply,
+        test_msg("Did not see expected REQUEST_FAILURE TraceLog message"));
 
     } else {
       die("Can't read $setup->{log_file}: $!");
