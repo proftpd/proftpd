@@ -494,8 +494,10 @@ sub ban_message {
   defined(my $pid = fork()) or die("Can't fork: $!");
   if ($pid) {
     eval {
-      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
+      # Allow for server startup
+      sleep(1);
 
+      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port, 0, 2);
       eval { $client->login($setup->{user}, 'foo') };
       unless ($@) {
         die("Login succeeded unexpectedly");
@@ -529,8 +531,7 @@ sub ban_message {
         test_msg("Expected response message '$expected', got '$resp_msg'"));
 
       # Now try again with the correct info; we should be banned.
-      eval { $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port,
-        undef, 0) };
+      eval { $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port, 0, 2) };
       unless ($@) {
         die("Connect succeeded unexpectedly");
       }
