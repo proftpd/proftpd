@@ -828,7 +828,7 @@ static struct ban_data *ban_get_shm(pr_fh_t *tabfh) {
    * shm for this key.  If there is, try again, using a flag of zero.
    */
 
-  shmid = shmget(key, sizeof(struct ban_data), IPC_CREAT|IPC_EXCL|0666);
+  shmid = shmget(key, sizeof(struct ban_data), IPC_CREAT|IPC_EXCL|0600);
   if (shmid < 0) {
 
     if (errno == EEXIST) {
