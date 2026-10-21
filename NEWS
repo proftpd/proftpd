@@ -34,6 +34,8 @@
   first login.
 - Issue 2384 - mod_radius does not verify that UDP packets are received from
   the same address to which UDP packets are sent.
+- Issue 2388 - mod_ban SysV shared memory segment default permissions allow
+  for local unprivileged user read/write access.
 
 1.3.9d - Released 14-Aug-2026
 --------------------------------
