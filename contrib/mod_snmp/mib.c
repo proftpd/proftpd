@@ -1012,9 +1012,7 @@ int snmp_mib_get_nearest_idx(oid_t *mib_oid, unsigned int mib_oidlen) {
        * 1.3.6.1.4.1.17852.2.2.2, and Do The Right Thing(tm).
        */
       for (i = SNMP_MIB_FIRST_IDX; snmp_mibs[i].mib_oidlen != 0; i++) {
-        register unsigned int j;
-        unsigned int nsubids, oidlen;
-        int prefix_matched = FALSE;
+        unsigned int oidlen;
 
         pr_signals_handle();
 
@@ -1028,25 +1026,19 @@ int snmp_mib_get_nearest_idx(oid_t *mib_oid, unsigned int mib_oidlen) {
           continue;
         }
 
+        /* Only compare the sub-ids that both OIDs have; comparing more than
+         * that reads past the end of the shorter OID.
+         */
         if (mib_oidlen > snmp_mibs[i].mib_oidlen) {
-          nsubids = mib_oidlen - snmp_mibs[i].mib_oidlen;
-          oidlen = mib_oidlen;
+          oidlen = snmp_mibs[i].mib_oidlen;
 
         } else {
-          nsubids = snmp_mibs[i].mib_oidlen - mib_oidlen;
-          oidlen = snmp_mibs[i].mib_oidlen;
+          oidlen = mib_oidlen;
         }
 
-        for (j = 0; j <= nsubids; j++) {
-          if (memcmp(snmp_mibs[i].mib_oid, mib_oid,
-              (oidlen - j) * sizeof(oid_t)) == 0) {
-            mib_idx = i;
-            prefix_matched = TRUE;
-            break;
-          }
-        }
-
-        if (prefix_matched) {
+        if (memcmp(snmp_mibs[i].mib_oid, mib_oid,
+            oidlen * sizeof(oid_t)) == 0) {
+          mib_idx = i;
           break;
         }
       }
