@@ -915,16 +915,39 @@ unsigned int pr_config_get_id(const char *name) {
   return id;
 }
 
+int pr_config_remove_id(const char *name) {
+  int count;
+
+  if (name == NULL) {
+    errno = EINVAL;
+    return -1;
+  }
+
+  if (config_tab == NULL) {
+    errno = EPERM;
+    return -1;
+  }
+
+  count = pr_table_exists(config_tab, name);
+  if (count > 0) {
+    (void) pr_table_remove(config_tab, name, NULL);
+    return 0;
+  }
+
+  errno = ENOENT;
+  return -1;
+}
+
 unsigned int pr_config_set_id(const char *name) {
   unsigned int *ptr = NULL;
   unsigned int id;
 
-  if (!name) {
+  if (name == NULL) {
     errno = EINVAL;
     return 0;
   }
 
-  if (!config_tab) {
+  if (config_tab == NULL) {
     errno = EPERM;
     return 0;
   }

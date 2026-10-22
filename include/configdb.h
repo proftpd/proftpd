@@ -134,6 +134,9 @@ unsigned int pr_config_get_id(const char *name);
  */
 unsigned int pr_config_set_id(const char *name);
 
+/* Removes the mapping of directive to ID from the lookup table. */
+int pr_config_remove_id(const char *name);
+
 void *get_param_ptr(xaset_t *, const char *, int);
 void *get_param_ptr_next(const char *, int);
 
