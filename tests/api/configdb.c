@@ -689,6 +689,35 @@ START_TEST (config_set_get_id_test) {
 }
 END_TEST
 
+START_TEST (config_set_remove_id_test) {
+  int res;
+  unsigned int id;
+  const char *name;
+
+  mark_point();
+  res = pr_config_remove_id(NULL);
+  ck_assert_msg(res < 0, "Failed to handle null argument");
+  ck_assert_msg(errno == EINVAL, "Failed to set errno to EINVAL, got %d (%s)",
+    errno, strerror(errno));
+
+  name = "GreenGoat";
+
+  mark_point();
+  res = pr_config_remove_id(name);
+  ck_assert_msg(res < 0, "Failed to handle unknown name");
+  ck_assert_msg(errno == ENOENT, "Failed to set errno to ENOENT, got %d (%s)",
+    errno, strerror(errno));
+
+  id = pr_config_set_id(name);
+  ck_assert_msg(id > 0, "Failed to set ID for config '%s': %s", name,
+    strerror(errno));
+
+  res = pr_config_remove_id(name);
+  ck_assert_msg(res == 0, "Failed to remove config ID for '%s': %s", name,
+    strerror(errno));
+}
+END_TEST
+
 START_TEST (config_merge_down_test) {
   xaset_t *set;
   config_rec *c, *src, *dst;
@@ -785,6 +814,7 @@ Suite *tests_get_config_suite(void) {
   tcase_add_test(testcase, config_find_config_set_top_test);
   tcase_add_test(testcase, config_get_param_ptr_test);
   tcase_add_test(testcase, config_set_get_id_test);
+  tcase_add_test(testcase, config_set_remove_id_test);
   tcase_add_test(testcase, config_merge_down_test);
 
   suite_add_tcase(suite, testcase);
