@@ -212,22 +212,33 @@ static int check_bsd_facl(pool *p, const char *path, int mode, void *acl,
   /* 2. If not matched above, and if the given user ID matches one of the
    *    named user entries, use that entry for access.
    */
-  for (i = 0; !have_access_entry && i < acl_users->nelts; i++) {
-    acl_entry_t e = ((acl_entry_t *) acl_users->elts)[i];
+  for (i = 0;
+       have_access_entry == FALSE && i < acl_users->nelts;
+       i++) {
+    acl_entry_t e;
+    void *qualifier;
 
-    if (uid == *((uid_t *) acl_get_qualifier(e))) {
+    e = ((acl_entry_t *) acl_users->elts)[i];
+    qualifier = acl_get_qualifier(e);
 
-      /* Check this entry for access. Note that it'll need to
-       * be modified by the mask, if any, later.
-       */
-      ae = e;
-      ae_type = ACL_USER;
-      have_access_entry = TRUE;
+    if (qualifier != NULL) {
+      if (uid == *((uid_t *) qualifier)) {
 
-      pr_trace_msg(trace_channel, 10,
-        "user ID %s matches ACL allowed users list", pr_uid2str(NULL, uid));
+        /* Check this entry for access. Note that it'll need to
+         * be modified by the mask, if any, later.
+         */
+        ae = e;
+        ae_type = ACL_USER;
+        have_access_entry = TRUE;
 
-      break;
+        pr_trace_msg(trace_channel, 10,
+          "user ID %s matches ACL allowed users list", pr_uid2str(NULL, uid));
+
+        acl_free(qualifier);
+        break;
+      }
+
+      acl_free(qualifier);
     }
   }
 
@@ -235,14 +246,14 @@ static int check_bsd_facl(pool *p, const char *path, int mode, void *acl,
    *    group owner entry, and the group owner entry contains the
    *    requested permissions, use that entry for access.
    */
-  if (!have_access_entry &&
+  if (have_access_entry == FALSE &&
       gid == st->st_gid) {
     int ret;
+    acl_permset_t perms;
 
     /* Check the acl_group_entry for access. First though, we need to
      * see if the acl_group_entry contains the requested permissions.
      */
-    acl_permset_t perms;
     if (acl_get_permset(acl_group_entry, &perms) < 0) {
       pr_trace_msg(trace_channel, 5, "error retrieving permission set: %s",
         strerror(errno));
@@ -271,17 +282,20 @@ static int check_bsd_facl(pool *p, const char *path, int mode, void *acl,
     }
   }
 
-  if (suppl_gids) {
-    for (i = 0; !have_access_entry && i < suppl_gids->nelts; i++) {
-      gid_t suppl_gid = ((gid_t *) suppl_gids->elts)[i];
+  if (suppl_gids != NULL) {
+    for (i = 0;
+         have_access_entry == FALSE && i < suppl_gids->nelts;
+         i++) {
+      gid_t suppl_gid;
 
+      suppl_gid = ((gid_t *) suppl_gids->elts)[i];
       if (suppl_gid == st->st_gid) {
         int ret;
+        acl_permset_t perms;
 
         /* Check the acl_group_entry for access. First though, we need to
          * see if the acl_group_entry contains the requested permissions.
          */
-        acl_permset_t perms;
         if (acl_get_permset(acl_group_entry, &perms) < 0) {
           pr_trace_msg(trace_channel, 5, "error retrieving permission set: %s",
             strerror(errno));
@@ -319,88 +333,110 @@ static int check_bsd_facl(pool *p, const char *path, int mode, void *acl,
    *    of the named group entries, and that entry contains the requested
    *    permissions, use that entry for access.
    */
-  for (i = 0; !have_access_entry && i < acl_groups->nelts; i++) {
-    acl_entry_t e = ((acl_entry_t *) acl_groups->elts)[i];
+  for (i = 0;
+       have_access_entry == FALSE && i < acl_groups->nelts;
+       i++) {
+    acl_entry_t e;
+    void *qualifier;
 
-    if (gid == *((gid_t *) acl_get_qualifier(e))) {
-      int ret;
+    e = ((acl_entry_t *) acl_groups->elts)[i];
+    qualifier = acl_get_qualifier(e);
 
-      /* Check this entry for access. Note that it'll need to
-       * be modified by the mask, if any, later.
-       */
-      acl_permset_t perms;
-      if (acl_get_permset(e, &perms) < 0) {
-        pr_trace_msg(trace_channel, 5, "error retrieving permission set: %s",
-          strerror(errno));
-      }
+    if (qualifier != NULL) {
+      if (gid == *((gid_t *) qualifier)) {
+        int ret;
+        acl_permset_t perms;
+
+        /* Check this entry for access. Note that it'll need to be modified by
+         * the mask, if any, later.
+         */
+        if (acl_get_permset(e, &perms) < 0) {
+          pr_trace_msg(trace_channel, 5, "error retrieving permission set: %s",
+            strerror(errno));
+        }
 
 #  if defined(HAVE_BSD_POSIX_ACL)
-      ret = acl_get_perm_np(perms, get_facl_perm_for_mode(mode));
+        ret = acl_get_perm_np(perms, get_facl_perm_for_mode(mode));
 #  elif defined(HAVE_LINUX_POSIX_ACL)
-      ret = acl_get_perm(perms, get_facl_perm_for_mode(mode));
+        ret = acl_get_perm(perms, get_facl_perm_for_mode(mode));
 #  endif
-      if (ret == 1) {
-        ae = e;
-        ae_type = ACL_GROUP;
-        have_access_entry = TRUE;
+        if (ret == 1) {
+          ae = e;
+          ae_type = ACL_GROUP;
+          have_access_entry = TRUE;
 
-        pr_trace_msg(trace_channel, 10,
-          "primary group ID %s matches ACL allowed groups list",
-          pr_gid2str(NULL, gid));
+          pr_trace_msg(trace_channel, 10,
+            "primary group ID %s matches ACL allowed groups list",
+            pr_gid2str(NULL, gid));
 
-        break;
+          acl_free(qualifier);
+          break;
 
-      } else if (ret < 0) {
-        int xerrno = errno;
+        } else if (ret < 0) {
+          int xerrno = errno;
 
-        pr_trace_msg(trace_channel, 5,
-          "error checking permissions in permission set: %s", strerror(errno));
-        errno = xerrno;
+          pr_trace_msg(trace_channel, 5,
+            "error checking permissions in permission set: %s",
+            strerror(xerrno));
+          errno = xerrno;
+        }
       }
+
+      acl_free(qualifier);
     }
 
-    if (suppl_gids) {
+    if (suppl_gids != NULL) {
       register unsigned int j;
 
-      for (j = 0; !have_access_entry && j < suppl_gids->nelts; j++) {
-        gid_t suppl_gid = ((gid_t *) suppl_gids->elts)[j];
+      for (j = 0;
+           have_access_entry == FALSE && j < suppl_gids->nelts;
+           j++) {
+        gid_t suppl_gid;
 
-        if (suppl_gid == *((gid_t *) acl_get_qualifier(e))) {
-          int ret;
+        suppl_gid = ((gid_t *) suppl_gids->elts)[j];
 
-          /* Check this entry for access. Note that it'll need to
-           * be modified by the mask, if any, later.
-           */
-          acl_permset_t perms;
-          if (acl_get_permset(e, &perms) < 0) {
-            pr_trace_msg(trace_channel, 5,
-              "error retrieving permission set: %s", strerror(errno));
-          }
+        qualifier = acl_get_qualifier(e);
+        if (qualifier != NULL) {
+          if (suppl_gid == *((gid_t *) qualifier)) {
+            int ret;
+            acl_permset_t perms;
+
+            /* Check this entry for access. Note that it'll need to be modified
+             * by the mask, if any, later.
+             */
+            if (acl_get_permset(e, &perms) < 0) {
+              pr_trace_msg(trace_channel, 5,
+                "error retrieving permission set: %s", strerror(errno));
+            }
 
 #  if defined(HAVE_BSD_POSIX_ACL)
-          ret = acl_get_perm_np(perms, get_facl_perm_for_mode(mode));
+            ret = acl_get_perm_np(perms, get_facl_perm_for_mode(mode));
 #  elif defined(HAVE_LINUX_POSIX_ACL)
-          ret = acl_get_perm(perms, get_facl_perm_for_mode(mode));
+            ret = acl_get_perm(perms, get_facl_perm_for_mode(mode));
 #  endif
-          if (ret == 1) {
-            ae = e;
-            ae_type = ACL_GROUP;
-            have_access_entry = TRUE;
+            if (ret == 1) {
+              ae = e;
+              ae_type = ACL_GROUP;
+              have_access_entry = TRUE;
 
-            pr_trace_msg(trace_channel, 10,
-              "supplemental group ID %s matches ACL allowed groups list",
-              pr_gid2str(NULL, suppl_gid));
+              pr_trace_msg(trace_channel, 10,
+                "supplemental group ID %s matches ACL allowed groups list",
+                pr_gid2str(NULL, suppl_gid));
 
-            break;
+              acl_free(qualifier);
+              break;
 
-          } else if (ret < 0) {
-            int xerrno = errno;
+            } else if (ret < 0) {
+              int xerrno = errno;
 
-            pr_trace_msg(trace_channel, 5,
-              "error checking permissions in permission set: %s",
-              strerror(xerrno));
-            errno = xerrno;
+             pr_trace_msg(trace_channel, 5,
+                "error checking permissions in permission set: %s",
+                strerror(xerrno));
+              errno = xerrno;
+            }
           }
+
+          acl_free(qualifier);
         }
       }
     }
@@ -411,12 +447,123 @@ static int check_bsd_facl(pool *p, const char *path, int mode, void *acl,
    *    the group owner entry nor any of the named group entries contains
    *    the requested permissions, access is denied.
    */
+  for (i = 0;
+       have_access_entry == FALSE && i < acl_groups->nelts;
+       i++) {
+    acl_entry_t e;
+    void *qualifier;
 
-  /* XXX implement this condition properly */
+    e = ((acl_entry_t *) acl_groups->elts)[i];
+    qualifier = acl_get_qualifier(e);
 
-  /* 6. If not matched above, the other entry determines access.
-   */
-  if (!have_access_entry) {
+    if (qualifier != NULL) {
+      if (gid == *((gid_t *) qualifier)) {
+        int ret;
+        acl_permset_t perms;
+
+        /* Check this entry for access. Note that it'll need to be modified by
+         * the mask, if any, later.
+         */
+        if (acl_get_permset(e, &perms) < 0) {
+          pr_trace_msg(trace_channel, 5, "error retrieving permission set: %s",
+            strerror(errno));
+        }
+
+        /* In this case, we are specifically looking for NO matching
+         * permissions.
+         */
+#  if defined(HAVE_BSD_POSIX_ACL)
+        ret = acl_get_perm_np(perms, get_facl_perm_for_mode(mode));
+#  elif defined(HAVE_LINUX_POSIX_ACL)
+        ret = acl_get_perm(perms, get_facl_perm_for_mode(mode));
+#  endif
+        if (ret == 0) {
+          ae = e;
+          ae_type = ACL_GROUP;
+          have_access_entry = TRUE;
+
+          pr_trace_msg(trace_channel, 10,
+            "primary group ID %s matches ACL denied groups list",
+            pr_gid2str(NULL, gid));
+
+          acl_free(qualifier);
+          break;
+
+        } else if (ret < 0) {
+          int xerrno = errno;
+
+          pr_trace_msg(trace_channel, 5,
+            "error checking permissions in permission set: %s",
+            strerror(xerrno));
+          errno = xerrno;
+        }
+      }
+
+      acl_free(qualifier);
+    }
+
+    if (suppl_gids != NULL) {
+      register unsigned int j;
+
+      for (j = 0;
+           have_access_entry == FALSE && j < suppl_gids->nelts;
+           j++) {
+        gid_t suppl_gid;
+
+        suppl_gid = ((gid_t *) suppl_gids->elts)[j];
+
+        qualifier = acl_get_qualifier(e);
+        if (qualifier != NULL) {
+          if (suppl_gid == *((gid_t *) qualifier)) {
+            int ret;
+            acl_permset_t perms;
+
+            /* Check this entry for access. Note that it'll need to be modified
+             * by the mask, if any, later.
+             */
+            if (acl_get_permset(e, &perms) < 0) {
+              pr_trace_msg(trace_channel, 5,
+                "error retrieving permission set: %s", strerror(errno));
+            }
+
+            /* In this case, we are specifically looking for NO matching
+             * permissions.
+             */
+#  if defined(HAVE_BSD_POSIX_ACL)
+            ret = acl_get_perm_np(perms, get_facl_perm_for_mode(mode));
+#  elif defined(HAVE_LINUX_POSIX_ACL)
+            ret = acl_get_perm(perms, get_facl_perm_for_mode(mode));
+#  endif
+            if (ret == 0) {
+              ae = e;
+              ae_type = ACL_GROUP;
+              have_access_entry = TRUE;
+
+              pr_trace_msg(trace_channel, 10,
+                "supplemental group ID %s matches ACL denied groups list",
+                pr_gid2str(NULL, suppl_gid));
+
+              acl_free(qualifier);
+              break;
+
+            } else if (ret < 0) {
+              int xerrno = errno;
+
+             pr_trace_msg(trace_channel, 5,
+                "error checking permissions in permission set: %s",
+                strerror(xerrno));
+              errno = xerrno;
+            }
+          }
+
+          acl_free(qualifier);
+        }
+      }
+    }
+  }
+
+  /* 6. If not matched above, the other entry determines access.  */
+  if (have_access_entry == FALSE) {
     ae = acl_other_entry;
     ae_type = ACL_OTHER;
     have_access_entry = TRUE;
@@ -439,8 +586,8 @@ static int check_bsd_facl(pool *p, const char *path, int mode, void *acl,
     case ACL_USER_OBJ:
     case ACL_OTHER: {
       int ret;
-
       acl_permset_t perms;
+
       if (acl_get_permset(ae, &perms) < 0) {
         pr_trace_msg(trace_channel, 5, "error retrieving permission set: %s",
           strerror(errno));
@@ -497,7 +644,8 @@ static int check_bsd_facl(pool *p, const char *path, int mode, void *acl,
         ret2 = 1;
       }
 
-      if (ret1 == 1 && ret2 == 1) {
+      if (ret1 == 1 &&
+          ret2 == 1) {
         res = 0;
 
       } else {
@@ -607,8 +755,8 @@ static int check_macosx_facl(pool *p, const char *path, int mode, void *acl,
 
     if (ae_type & ACL_TYPE_EXTENDED) {
       int ret;
-
       acl_permset_t perms;
+
       if (acl_get_permset(ae, &perms) < 0) {
         pr_trace_msg(trace_channel, 5, "error retrieving permission set: %s",
           strerror(errno));
