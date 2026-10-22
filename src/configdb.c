@@ -744,7 +744,7 @@ int pr_config_remove(xaset_t *set, const char *name, int flags, int recurse) {
     xaset_remove(found_set, (xasetmember_t *) c);
 
     c->set = NULL;
-    (void) pr_table_remove(config_tab, name, NULL);
+    (void) pr_config_remove_id(name);
 
     if (found_set->xas_list == NULL) {
       /* First, set any pointers to the container of the set to NULL. */

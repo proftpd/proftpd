@@ -438,6 +438,7 @@ static void shaper_remove_config(unsigned int prio) {
     set = c->set;
 
     xaset_remove(set, (xasetmember_t *) c);
+    (void) pr_config_remove_id("TransferRate");
 
     if (!set->xas_list) {
       if (c->parent && c->parent->subset == set)
