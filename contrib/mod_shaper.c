@@ -34,7 +34,7 @@
 #include <sys/msg.h>
 #include <sys/uio.h>
 
-#define MOD_SHAPER_VERSION		"mod_shaper/0.6.6"
+#define MOD_SHAPER_VERSION		"mod_shaper/0.6.7"
 
 /* Make sure the version of proftpd is as necessary. */
 #if PROFTPD_VERSION_NUMBER < 0x0001030402
@@ -44,6 +44,12 @@
 #if !defined(PR_USE_CTRLS)
 # error "Controls support required (use --enable-ctrls)"
 #endif /* PR_USE_CTRLS */
+
+#if defined(PR_USE_OPENSSL)
+# include <openssl/err.h>
+# include <openssl/evp.h>
+# include <openssl/rand.h>
+#endif /* PR_USE_OPENSSL */
 
 /* From src/main.c */
 extern pid_t mpid;
@@ -63,6 +69,24 @@ static int shaper_scrub_timer_id = -1;
 static char *shaper_tab_path = NULL;
 static pool *shaper_tab_pool = NULL;
 static int shaper_tabfd = -1;
+static unsigned long shaper_opts = 0UL;
+
+#if defined(PR_USE_OPENSSL)
+static unsigned char *shaper_key = NULL;
+
+/* These lengths are appropriate for using AES256-CBC for encryption. */
+# define SHAPER_KEY_LEN		32
+# define SHAPER_IV_LEN		16
+# define SHAPER_BLOCK_SIZE	16
+
+static EVP_CIPHER_CTX *shaper_encrypt_ctx = NULL;
+static EVP_CIPHER_CTX *shaper_decrypt_ctx = NULL;
+#endif /* PR_USE_OPENSSL */
+
+/* mod_shaper option flags */
+#define SHAPER_OPT_NO_ENCRYPTED_MESSAGES	0x0001
+
+static const char *trace_channel = "shaper";
 
 #define SHAPER_PROJ_ID		24
 
@@ -205,6 +229,174 @@ static int shaper_get_queue(const char *path) {
   return qid;
 }
 
+static int shaper_decrypt_msg(pool *p,
+    struct shaper_msg *in_msg, size_t in_msglen,
+    struct shaper_msg **out_msg, size_t *out_msglen) {
+#if defined(PR_USE_OPENSSL)
+  unsigned char *iv, *ptr, *decrypted_msg;
+  size_t msgsz;
+  int len, res, decrypted_msglen = 0;
+
+  if (shaper_decrypt_ctx == NULL) {
+    /* Decryption not initialized; skip it. */
+    *out_msg = in_msg;
+    *out_msglen = in_msglen;
+    return 0;
+  }
+
+  msgsz = sizeof(unsigned int) + sizeof(long double) + sizeof(long double);
+
+  /* If the received (hopefully encrypted) message length is less than our
+   * expected plaintext message size, plus a type and an IV, it is too short.
+   * Reject it.
+   */
+  if (in_msglen < (sizeof(long) + SHAPER_IV_LEN + msgsz)) {
+    pr_trace_msg(trace_channel, 3, "received encrypted message (%lu bytes) "
+      "is less than minimium expected (%lu bytes), ignoring",
+      (unsigned long) in_msglen,
+      (unsigned long) (sizeof(long) + SHAPER_IV_LEN + msgsz));
+
+    errno = EINVAL;
+    return -1;
+  }
+
+  /* Skip past the the message "type" bytes (target PID). */
+  ptr = (unsigned char *) in_msg;
+  ptr += sizeof(long);
+  in_msglen -= sizeof(long);
+
+  /* Read off the IV prefix. */
+  iv = palloc(p, SHAPER_IV_LEN);
+  memcpy(iv, ptr, SHAPER_IV_LEN);
+  ptr += SHAPER_IV_LEN;
+  in_msglen -= SHAPER_IV_LEN;
+
+  res = EVP_DecryptInit_ex(shaper_decrypt_ctx, NULL, NULL, NULL, iv);
+  if (res != 1) {
+    pr_trace_msg(trace_channel, 3, "error setting decrypt cipher IV: %s",
+      ERR_error_string(ERR_get_error(), NULL));
+    errno = EPERM;
+    return -1;
+  }
+
+  decrypted_msg = pcalloc(p, in_msglen);
+
+  res = EVP_DecryptUpdate(shaper_decrypt_ctx, decrypted_msg, &len, ptr,
+    in_msglen);
+  if (res != 1) {
+    pr_trace_msg(trace_channel, 3, "error decrypting message: %s",
+      ERR_error_string(ERR_get_error(), NULL));
+    errno = EPERM;
+    return -1;
+  }
+
+  decrypted_msglen = len;
+
+  res = EVP_DecryptFinal_ex(shaper_decrypt_ctx, decrypted_msg + len, &len);
+  if (res != 1) {
+    pr_trace_msg(trace_channel, 3, "error finishing decrypting message: %s",
+      ERR_error_string(ERR_get_error(), NULL));
+    errno = EPERM;
+    return -1;
+  }
+
+  decrypted_msglen += len;
+
+  *out_msg = (struct shaper_msg *) decrypted_msg;
+  *out_msglen = decrypted_msglen;
+
+  pr_trace_msg(trace_channel, 7,
+    "decrypted %lu bytes of message data to %lu bytes",
+    (unsigned long) in_msglen + SHAPER_IV_LEN + sizeof(long),
+    (unsigned long) *out_msglen);
+
+#else
+  *out_msg = in_msg;
+  *out_msglen = in_msglen;
+#endif /* PR_USE_OPENSSL */
+
+  return 0;
+}
+
+static int shaper_encrypt_msg(pool *p,
+    struct shaper_msg *in_msg, size_t in_msglen,
+    struct shaper_msg **out_msg, size_t *out_msglen) {
+#if defined(PR_USE_OPENSSL)
+  unsigned char *iv, *encrypted_msg, *ptr;
+  size_t encrypted_msgsz = 0;
+  int len, res, encrypted_msglen = 0;
+
+  if (shaper_encrypt_ctx == NULL) {
+    /* Encryption not initialized; skip it. */
+    *out_msg = in_msg;
+    *out_msglen = in_msglen;
+    return 0;
+  }
+
+  iv = palloc(p, SHAPER_IV_LEN);
+  if (RAND_bytes(iv, SHAPER_IV_LEN) != 1) {
+    pr_trace_msg(trace_channel, 3, "error generating random bytes: %s",
+      ERR_error_string(ERR_get_error(), NULL));
+  }
+
+  res = EVP_EncryptInit_ex(shaper_encrypt_ctx, NULL, NULL, NULL, iv);
+  if (res != 1) {
+    pr_trace_msg(trace_channel, 3, "error setting encrypt cipher IV: %s",
+      ERR_error_string(ERR_get_error(), NULL));
+    errno = EPERM;
+    return -1;
+  }
+
+  /* Make sure we allocate enough room for padding, as well as our IV prefix. */
+  encrypted_msgsz = sizeof(long) + SHAPER_IV_LEN + in_msglen +
+    SHAPER_BLOCK_SIZE;
+  encrypted_msg = ptr = palloc(p, encrypted_msgsz);
+
+  /* We need to keep the "message type" as the first bytes of the data,
+   * so that the SysV queue knows how to route the message.
+   */
+  memcpy(encrypted_msg, &(in_msg->mtype), sizeof(long));
+  encrypted_msg += sizeof(long);
+
+  memcpy(encrypted_msg, iv, SHAPER_IV_LEN);
+  encrypted_msg += SHAPER_IV_LEN;
+
+  res = EVP_EncryptUpdate(shaper_encrypt_ctx, encrypted_msg, &len,
+    (const unsigned char *) in_msg, in_msglen);
+  if (res != 1) {
+    pr_trace_msg(trace_channel, 3, "error encrypting message: %s",
+      ERR_error_string(ERR_get_error(), NULL));
+    errno = EPERM;
+    return -1;
+  }
+
+  encrypted_msglen = len;
+
+  res = EVP_EncryptFinal_ex(shaper_encrypt_ctx, encrypted_msg + len,
+    &len);
+  if (res != 1) {
+    pr_trace_msg(trace_channel, 3, "error finishing encrypting message: %s",
+      ERR_error_string(ERR_get_error(), NULL));
+    errno = EPERM;
+    return -1;
+  }
+
+  encrypted_msglen += len;
+
+  *out_msg = (struct shaper_msg *) ptr;
+  *out_msglen = (sizeof(long) + SHAPER_IV_LEN + encrypted_msglen);
+  pr_trace_msg(trace_channel, 7,
+    "encrypted %lu bytes of message data to %lu bytes",
+    (unsigned long) in_msglen, (unsigned long) *out_msglen);
+
+#else
+  *out_msg = in_msg;
+  *out_msglen = in_msglen;
+#endif /* PR_USE_OPENSSL */
+
+  return 0;
+}
+
 static int shaper_remove_queue(void) {
   struct msqid_ds ds;
   int res;
@@ -226,35 +418,63 @@ static int shaper_remove_queue(void) {
 }
 
 static int shaper_msg_recv(void) {
-  int nmsgs = 0;
+  pool *tmp_pool;
+  int nmsgs = 0, xerrno;
   ssize_t msglen = 0;
   struct shaper_msg *msg;
+  size_t msgsz;
+
+  tmp_pool = make_sub_pool(shaper_pool);
+  pr_pool_tag(tmp_pool, "Shaper Message Receiving Pool");
 
   /* The expected message length consists of a priority (the unsigned int),
    * the new downrate (the long double), and the new uprate (another long
    * double).
    */
-  size_t msgsz = sizeof(unsigned int) + sizeof(long double) +
-    sizeof(long double);
-
-  msg = malloc(sizeof(struct shaper_msg) + msgsz - sizeof(msg->mtext));
-  if (msg == NULL) {
-    pr_log_pri(PR_LOG_ALERT, MOD_SHAPER_VERSION ": Out of memory!");
-    pr_session_disconnect(&shaper_module, PR_SESS_DISCONNECT_NOMEM, NULL);
+  msgsz = sizeof(unsigned int) + sizeof(long double) + sizeof(long double);
+#if defined(PR_USE_OPENSSL)
+  if (shaper_decrypt_ctx != NULL) {
+    msgsz += (sizeof(long) + SHAPER_IV_LEN + SHAPER_BLOCK_SIZE);
   }
+#endif /* PR_USE_OPENSSL */
+
+  msg = palloc(tmp_pool,
+    sizeof(struct shaper_msg) + msgsz - sizeof(msg->mtext));
 
   msglen = msgrcv(shaper_qid, msg, msgsz, getpid(), IPC_NOWAIT|MSG_NOERROR);
+  xerrno = errno;
+
   while (msglen > 0) {
+    struct shaper_msg *rcvd_msg = NULL;
+    size_t rcvd_msglen = 0;
     unsigned int prio;
     long double downrate, uprate;
 
     pr_signals_handle();
     nmsgs++;
 
-    memcpy(&prio, msg->mtext, sizeof(unsigned int));
-    memcpy(&downrate, msg->mtext + sizeof(unsigned int), sizeof(long double));
-    memcpy(&uprate, msg->mtext + sizeof(unsigned int) + sizeof(long double),
+    pr_trace_msg(trace_channel, 19,
+      "received message (%lu bytes) from queue ID %d", (unsigned long) msglen,
+      shaper_qid);
+
+    /* Ignore messages we cannot decrypt (Issue #2391). */
+    if (shaper_decrypt_msg(tmp_pool, msg, msglen, &rcvd_msg,
+        &rcvd_msglen) < 0) {
+      (void) pr_log_writefile(shaper_logfd, MOD_SHAPER_VERSION,
+        "unable to decrypt/verify %lu received message bytes, ignoring",
+        (unsigned long) msglen);
+      msglen = msgrcv(shaper_qid, msg, msgsz, getpid(), IPC_NOWAIT|MSG_NOERROR);
+      continue;
+    }
+
+    msg = rcvd_msg;
+    msglen = rcvd_msglen;
+
+    memcpy(&prio, rcvd_msg->mtext, sizeof(unsigned int));
+    memcpy(&downrate, rcvd_msg->mtext + sizeof(unsigned int),
       sizeof(long double));
+    memcpy(&uprate, rcvd_msg->mtext + sizeof(unsigned int) +
+      sizeof(long double), sizeof(long double));
 
     (void) pr_log_writefile(shaper_logfd, MOD_SHAPER_VERSION,
       "received prio %u, rate %3.2Lf down, %3.2Lf up", prio, downrate,
@@ -266,15 +486,17 @@ static int shaper_msg_recv(void) {
     }
 
     msglen = msgrcv(shaper_qid, msg, msgsz, getpid(), IPC_NOWAIT|MSG_NOERROR);
+    xerrno = errno;
   }
 
-  free(msg);
+  destroy_pool(tmp_pool);
 
   if (msglen < 0 &&
 #if defined(ENOMSG)
-      errno != ENOMSG &&
+      xerrno != ENOMSG &&
 #endif /* ENOMSG */
-      errno != EAGAIN) {
+      xerrno != EAGAIN) {
+    errno = xerrno;
     return -1;
   }
 
@@ -283,18 +505,18 @@ static int shaper_msg_recv(void) {
 
 static int shaper_msg_send(pid_t dst_pid, unsigned int prio,
     long double downrate, long double uprate) {
+  pool *tmp_pool = NULL;
   unsigned int error_count = 0;
-  int res;
-  struct shaper_msg *msg;
-  size_t msgsz = sizeof(unsigned int) + sizeof(long double) +
-    sizeof(long double);
+  int res, xerrno;
+  struct shaper_msg *msg, *send_msg = NULL;
+  size_t msgsz, send_msgsz = 0;
 
-  msg = malloc(sizeof(struct shaper_msg) + msgsz - sizeof(msg->mtext));
-  if (msg == NULL) {
-    pr_log_pri(PR_LOG_ALERT, MOD_SHAPER_VERSION ": Out of memory!");
-    pr_session_disconnect(&shaper_module, PR_SESS_DISCONNECT_NOMEM, NULL);
-  }
+  tmp_pool = make_sub_pool(shaper_pool);
+  pr_pool_tag(tmp_pool, "Shaper Message Sending Pool");
 
+  msgsz = sizeof(unsigned int) + sizeof(long double) + sizeof(long double);
+  msg = palloc(tmp_pool,
+    sizeof(struct shaper_msg) + msgsz - sizeof(msg->mtext));
   msg->mtype = dst_pid;
   memcpy(msg->mtext, &prio, sizeof(unsigned int));
   memcpy(msg->mtext + sizeof(unsigned int), &downrate, sizeof(long double));
@@ -307,67 +529,81 @@ static int shaper_msg_send(pid_t dst_pid, unsigned int prio,
    */
   shaper_msg_clear(dst_pid);
 
-  while (msgsnd(shaper_qid, msg, msgsz, IPC_NOWAIT) < 0) {
+  if (shaper_encrypt_msg(tmp_pool, msg, msgsz, &send_msg, &send_msgsz) < 0) {
+    xerrno = errno;
+
+    destroy_pool(tmp_pool);
+    errno = xerrno;
+    return -1;
+  }
+
+  pr_trace_msg(trace_channel, 19,
+    "sending message (%lu bytes) to queue ID %d, PID %lu",
+    (unsigned long) send_msgsz, shaper_qid, (unsigned long) msg->mtype);
+
+  while (msgsnd(shaper_qid, send_msg, send_msgsz, IPC_NOWAIT) < 0) {
+    struct msqid_ds ds;
+
+    xerrno = errno;
     pr_signals_handle();
 
-    if (errno != EAGAIN) {
-      free(msg);
+    if (xerrno != EAGAIN) {
+      destroy_pool(tmp_pool);
+      errno = xerrno;
       return -1;
-
-    } else {
-      /* The EAGAIN error happens when there are too many bytes of messages
-       * on the queue.  Check to see what the current number of messages
-       * on the queue is, and log the error.
-       *
-       * If this error is hit too many times in a loop, we may need to give
-       * up permanently.  (XXX in the future, if one queue is too small for
-       * a busy daemon, look into a different queue allocation strategy.)
-       */
-      struct msqid_ds ds;
-
-      if (msgctl(shaper_qid, IPC_STAT, &ds) < 0) {
-        (void) pr_log_writefile(shaper_logfd, MOD_SHAPER_VERSION,
-          "error checking queue ID %d: %s", shaper_qid, strerror(errno));
-
-      } else {
-        (void) pr_log_writefile(shaper_logfd, MOD_SHAPER_VERSION,
-          "unable to send message to PID %lu via queue ID %d, max bytes (%lu) "
-          "reached (%lu messages of %lu bytes currently in queue)",
-          (unsigned long) dst_pid, shaper_qid, shaper_qmaxbytes,
-          (unsigned long) ds.msg_qnum, (unsigned long) ds.msg_qnum * msgsz);
-      }
-
-      error_count++;
-      if (error_count > SHAPER_MAX_SEND_ATTEMPTS) {
-        free(msg);
-
-        (void) pr_log_writefile(shaper_logfd, MOD_SHAPER_VERSION,
-          "unable to send message to PID %lu via queue ID %d after %u attempts "
-          "(%u max attempts allowed), failing", (unsigned long) dst_pid,
-          shaper_qid, error_count, SHAPER_MAX_SEND_ATTEMPTS);
-
-        errno = EPERM;
-        return -1;
-      }
     }
 
+    /* The EAGAIN error happens when there are too many bytes of messages
+     * on the queue.  Check to see what the current number of messages
+     * on the queue is, and log the error.
+     *
+     * If this error is hit too many times in a loop, we may need to give
+     * up permanently.  (XXX in the future, if one queue is too small for
+     * a busy daemon, look into a different queue allocation strategy.)
+     */
+
+    if (msgctl(shaper_qid, IPC_STAT, &ds) < 0) {
+      (void) pr_log_writefile(shaper_logfd, MOD_SHAPER_VERSION,
+        "error checking queue ID %d: %s", shaper_qid, strerror(errno));
+
+    } else {
+      (void) pr_log_writefile(shaper_logfd, MOD_SHAPER_VERSION,
+        "unable to send message to PID %lu via queue ID %d, max bytes (%lu) "
+        "reached (%lu messages of %lu bytes currently in queue)",
+        (unsigned long) dst_pid, shaper_qid, shaper_qmaxbytes,
+        (unsigned long) ds.msg_qnum, (unsigned long) ds.msg_qnum * msgsz);
+    }
+
+    error_count++;
+    if (error_count > SHAPER_MAX_SEND_ATTEMPTS) {
+      (void) pr_log_writefile(shaper_logfd, MOD_SHAPER_VERSION,
+        "unable to send message to PID %lu via queue ID %d after %u attempts "
+        "(%u max attempts allowed), failing", (unsigned long) dst_pid,
+        shaper_qid, error_count, SHAPER_MAX_SEND_ATTEMPTS);
+
+      destroy_pool(tmp_pool);
+      errno = EPERM;
+      return -1;
+    }
   }
-  free(msg);
+
+  destroy_pool(tmp_pool);
 
   /* Send SIGUSR2 to the destination process, to let it know that it should
    * check the queue for messages.
    */
   PRIVS_ROOT
   res = kill(dst_pid, SIGUSR2);
+  xerrno = errno;
   PRIVS_RELINQUISH
 
   if (res < 0) {
-    if (errno == ESRCH) {
+    if (xerrno == ESRCH) {
       shaper_msg_clear(dst_pid);
 
     } else {
       (void) pr_log_writefile(shaper_logfd, MOD_SHAPER_VERSION,
-        "error sending notice: %s", strerror(errno));
+        "error sending notice: %s", strerror(xerrno));
     }
   }
 
@@ -382,16 +618,21 @@ static int shaper_msg_send(pid_t dst_pid, unsigned int prio,
 }
 
 static void shaper_msg_clear(pid_t dst_pid) {
+  pool *tmp_pool;
   ssize_t msglen = 0;
   struct shaper_msg *msg;
-  size_t msgsz = sizeof(unsigned int) + sizeof(long double) +
-    sizeof(long double);
+  size_t msgsz;
 
-  msg = malloc(sizeof(struct shaper_msg) + msgsz - sizeof(msg->mtext));
-  if (msg == NULL) {
-    pr_log_pri(PR_LOG_ALERT, MOD_SHAPER_VERSION ": Out of memory!");
-    pr_session_disconnect(&shaper_module, PR_SESS_DISCONNECT_NOMEM, NULL);
-  }
+  tmp_pool = make_sub_pool(shaper_pool);
+  pr_pool_tag(tmp_pool, "Shaper Message Clearing Pool");
+
+  msgsz = sizeof(unsigned int) + sizeof(long double) + sizeof(long double);
+#if defined(PR_USE_OPENSSL)
+  msgsz += (sizeof(long) + SHAPER_IV_LEN + SHAPER_BLOCK_SIZE);
+#endif /* PR_USE_OPENSSL */
+
+  msg = palloc(tmp_pool,
+    sizeof(struct shaper_msg) + msgsz - sizeof(msg->mtext));
 
   (void) pr_log_writefile(shaper_logfd, MOD_SHAPER_VERSION,
     "clearing queue ID %d of messages for process ID %lu", shaper_qid,
@@ -400,17 +641,23 @@ static void shaper_msg_clear(pid_t dst_pid) {
   while (msglen > 0) {
     pr_signals_handle();
 
+    pr_trace_msg(trace_channel, 19,
+      "cleared message (%lu bytes) from queue ID %d", (unsigned long) msglen,
+      shaper_qid);
     msglen = msgrcv(shaper_qid, msg, msgsz, dst_pid, IPC_NOWAIT|MSG_NOERROR);
   }
 
-  free(msg);
+  destroy_pool(tmp_pool);
 }
 
 static void shaper_remove_config(unsigned int prio) {
   config_rec *c;
   register unsigned int i;
-  pool *tmp_pool = make_sub_pool(shaper_pool);
-  array_header *list = make_array(tmp_pool, 1, sizeof(config_rec *));
+  pool *tmp_pool;
+  array_header *list;
+
+  tmp_pool = make_sub_pool(shaper_pool);
+  list = make_array(tmp_pool, 1, sizeof(config_rec *));
 
   /* This function is very similar to remove_config(), except that we
    * want to remove only TransferRate config_recs, and only those
@@ -424,11 +671,12 @@ static void shaper_remove_config(unsigned int prio) {
    */
 
   c = find_config(main_server->conf, CONF_PARAM, "TransferRate", TRUE);
-  while (c) {
+  while (c != NULL) {
     pr_signals_handle();
 
-    if (*((unsigned int *) c->argv[3]) == prio)
+    if (*((unsigned int *) c->argv[3]) == prio) {
       *((config_rec **) push_array(list)) = c;
+    }
 
     c = find_config_next(c, c->next, CONF_PARAM, "TransferRate", TRUE);
   }
@@ -442,12 +690,14 @@ static void shaper_remove_config(unsigned int prio) {
     xaset_remove(set, (xasetmember_t *) c);
     (void) pr_config_remove_id("TransferRate");
 
-    if (!set->xas_list) {
-      if (c->parent && c->parent->subset == set)
+    if (set->xas_list == NULL) {
+      if (c->parent != NULL &&
+          c->parent->subset == set) {
         c->parent->subset = NULL;
 
-      else if (main_server->conf == set)
+      } else if (main_server->conf == set) {
         main_server->conf = NULL;
+      }
 
       destroy_pool(set->pool);
 
@@ -1988,6 +2238,57 @@ MODRET set_shaperlog(cmd_rec *cmd) {
   return PR_HANDLED(cmd);
 }
 
+/* usage: ShaperOptions opt1 opt2 ... */
+MODRET set_shaperoptions(cmd_rec *cmd) {
+  register unsigned int i;
+  config_rec *c;
+  unsigned long opts = 0UL;
+  int ctx_type;
+
+  if (cmd->argc-1 == 0) {
+    CONF_ERROR(cmd, "wrong number of parameters");
+  }
+
+  CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL);
+
+  c = add_config_param(cmd->argv[0], 1, NULL);
+
+  for (i = 1; i < cmd->argc; i++) {
+    if (strcmp(cmd->argv[i], "NoEncryptedMessages") == 0) {
+      opts |= SHAPER_OPT_NO_ENCRYPTED_MESSAGES;
+
+    } else {
+      CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, ": unknown ShaperOption '",
+        cmd->argv[i], "'", NULL));
+    }
+  }
+
+  c->argv[0] = palloc(c->pool, sizeof(unsigned long));
+  *((unsigned long *) c->argv[0]) = opts;
+
+  ctx_type = (cmd->config && cmd->config->config_type != CONF_PARAM ?
+    cmd->config->config_type : cmd->server->config_type ?
+    cmd->server->config_type : CONF_ROOT);
+  if (ctx_type == CONF_ROOT) {
+    /* Encryption applies to ALL messages, or none.  So this option really
+     * has impact only if configured in the daemon-wide "server config"
+     * context.
+     */
+    if (opts & SHAPER_OPT_NO_ENCRYPTED_MESSAGES) {
+      shaper_opts |= opts;
+    }
+  }
+
+  if (pr_module_exists("mod_ifsession.c")) {
+    /* These are needed in case this directive is used with mod_ifsession
+     * configuration.
+     */
+    c->flags |= CF_MULTI;
+  }
+
+  return PR_HANDLED(cmd);
+}
+
 /* usage: ShaperSession [priority prio] [shares num] [downshares num]
  *   [upshares num]
  */
@@ -2201,6 +2502,23 @@ static void shaper_shutdown_ev(const void *event_data, void *user_data) {
           ": error unlinking '%s': %s", shaper_tab_path, strerror(errno));
       }
     }
+
+#if defined(PR_USE_OPENSSL)
+    if (shaper_key != NULL) {
+      pr_memscrub(shaper_key, SHAPER_KEY_LEN);
+      shaper_key = NULL;
+    }
+
+    if (shaper_encrypt_ctx != NULL) {
+      EVP_CIPHER_CTX_free(shaper_encrypt_ctx);
+      shaper_encrypt_ctx = NULL;
+    }
+
+    if (shaper_decrypt_ctx != NULL) {
+      EVP_CIPHER_CTX_free(shaper_decrypt_ctx);
+      shaper_decrypt_ctx = NULL;
+    }
+#endif /* PR_USE_OPENSSL */
   }
 }
 
@@ -2327,6 +2645,89 @@ static void shaper_postparse_ev(const void *event_data, void *user_data) {
       } else {
         shaper_qmaxbytes = ds.msg_qbytes;
       }
+
+#if defined(PR_USE_OPENSSL)
+      /* If we are being restarted, these values will already exist; leave
+       * them alone.  Otherwise, we'll need to allocate memory for these
+       * out of the permanent_pool, so that they survive restarts (unlike
+       * the shaper_pool).
+       */
+      if (shaper_key == NULL) {
+        if (shaper_opts & SHAPER_OPT_NO_ENCRYPTED_MESSAGES) {
+          pr_trace_msg(trace_channel, 2,
+            "encryption of shaper messages disabled via NoEncryptedMessages "
+            "ShaperOption");
+
+        } else {
+          shaper_key = palloc(permanent_pool, SHAPER_KEY_LEN);
+          if (RAND_bytes(shaper_key, SHAPER_KEY_LEN) != 1) {
+            pr_trace_msg(trace_channel, 3, "error generating random bytes: %s",
+              ERR_error_string(ERR_get_error(), NULL));
+          }
+        }
+
+        if (shaper_key != NULL &&
+            shaper_encrypt_ctx == NULL) {
+          shaper_encrypt_ctx = EVP_CIPHER_CTX_new();
+          if (shaper_encrypt_ctx == NULL) {
+            (void) pr_log_writefile(shaper_logfd, MOD_SHAPER_VERSION,
+              "error allocating encryption context: %s",
+              ERR_error_string(ERR_get_error(), NULL));
+            pr_memscrub(shaper_key, SHAPER_KEY_LEN);
+            shaper_key = NULL;
+
+          } else {
+            /* We supply a per-message IV. */
+            if (EVP_EncryptInit_ex(shaper_encrypt_ctx, EVP_aes_256_cbc(), NULL,
+                shaper_key, NULL) != 1) {
+              (void) pr_log_writefile(shaper_logfd, MOD_SHAPER_VERSION,
+                "error initializing encryption context: %s",
+                ERR_error_string(ERR_get_error(), NULL));
+              EVP_CIPHER_CTX_free(shaper_encrypt_ctx);
+              shaper_encrypt_ctx = NULL;
+              pr_memscrub(shaper_key, SHAPER_KEY_LEN);
+              shaper_key = NULL;
+            }
+          }
+        }
+
+        if (shaper_key != NULL &&
+            shaper_encrypt_ctx != NULL &&
+            shaper_decrypt_ctx == NULL) {
+          shaper_decrypt_ctx = EVP_CIPHER_CTX_new();
+          if (shaper_decrypt_ctx == NULL) {
+            (void) pr_log_writefile(shaper_logfd, MOD_SHAPER_VERSION,
+              "error allocating decryption context: %s",
+              ERR_error_string(ERR_get_error(), NULL));
+            EVP_CIPHER_CTX_free(shaper_encrypt_ctx);
+            shaper_encrypt_ctx = NULL;
+            pr_memscrub(shaper_key, SHAPER_KEY_LEN);
+            shaper_key = NULL;
+
+          } else {
+            /* We supply a per-message IV. */
+            if (EVP_DecryptInit_ex(shaper_decrypt_ctx, EVP_aes_256_cbc(), NULL,
+                shaper_key, NULL) != 1) {
+              (void) pr_log_writefile(shaper_logfd, MOD_SHAPER_VERSION,
+                "error initializing decryption context: %s",
+                ERR_error_string(ERR_get_error(), NULL));
+              EVP_CIPHER_CTX_free(shaper_encrypt_ctx);
+              shaper_encrypt_ctx = NULL;
+              EVP_CIPHER_CTX_free(shaper_decrypt_ctx);
+              shaper_decrypt_ctx = NULL;
+              pr_memscrub(shaper_key, SHAPER_KEY_LEN);
+              shaper_key = NULL;
+            }
+          }
+        }
+      }
+
+      if (shaper_key != NULL &&
+          shaper_encrypt_ctx != NULL &&
+          shaper_decrypt_ctx != NULL) {
+        pr_trace_msg(trace_channel, 9, "encryption of shaper messages enabled");
+      }
+#endif /* PR_USE_OPENSSL */
 
       /* We could be being restarted, in which case we want to send our
        * reinitialized table to existing sessions.
@@ -2484,6 +2885,7 @@ static conftable shaper_conftab[] = {
   { "ShaperControlsACLs",	set_shaperctrlsacls,	NULL },
   { "ShaperEngine",		set_shaperengine,	NULL },
   { "ShaperLog",		set_shaperlog,		NULL },
+  { "ShaperOptions",		set_shaperoptions,	NULL },
   { "ShaperSession",		set_shapersession,	NULL },
   { "ShaperTable",		set_shapertable,	NULL },
   { NULL }
