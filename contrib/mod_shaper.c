@@ -41,9 +41,9 @@
 # error "ProFTPD 1.3.4rc2 or later required"
 #endif
 
-#ifndef PR_USE_CTRLS
+#if !defined(PR_USE_CTRLS)
 # error "Controls support required (use --enable-ctrls)"
-#endif
+#endif /* PR_USE_CTRLS */
 
 /* From src/main.c */
 extern pid_t mpid;
@@ -76,12 +76,12 @@ static int shaper_tabfd = -1;
 #  define SHAPER_IOV_BASE		(void *)
 #endif
 
-#ifndef HAVE_FLOCK
+#if !defined(HAVE_FLOCK)
 # define LOCK_SH	1
 # define LOCK_EX	2
 # define LOCK_NB	4
 # define LOCK_UN	8
-#endif /* !HAVE_FLOCK */
+#endif /* HAVE_FLOCK */
 
 #define SHAPER_DEFAULT_RATE		-1.0
 #define SHAPER_DEFAULT_PRIO		10
@@ -91,9 +91,9 @@ static int shaper_tabfd = -1;
 
 #define SHAPER_SCRUB_INTERVAL		60
 
-#ifndef SHAPER_MAX_SEND_ATTEMPTS
+#if !defined(SHAPER_MAX_SEND_ATTEMPTS)
 # define SHAPER_MAX_SEND_ATTEMPTS	5
-#endif
+#endif /* SHAPER_MAX_SEND_ATTEMPTS */
 
 struct shaper_sess {
   pid_t sess_pid;
@@ -195,11 +195,11 @@ static int shaper_get_queue(const char *path) {
    */
   qid = msgget(key, IPC_CREAT|IPC_EXCL|0666);
   if (qid < 0) {
-    if (errno == EEXIST)
-      qid = msgget(key, 0);
-
-    else
+    if (errno != EEXIST) {
       return -1;
+    }
+
+    qid = msgget(key, 0);
   }
 
   return qid;
@@ -271,11 +271,12 @@ static int shaper_msg_recv(void) {
   free(msg);
 
   if (msglen < 0 &&
-#ifdef ENOMSG
+#if defined(ENOMSG)
       errno != ENOMSG &&
 #endif /* ENOMSG */
-      errno != EAGAIN)
+      errno != EAGAIN) {
     return -1;
+  }
 
   return nmsgs;
 }
@@ -372,8 +373,9 @@ static int shaper_msg_send(pid_t dst_pid, unsigned int prio,
 
 #if 0
   /* Handle our own signal, if necessary. */
-  if (getpid() == dst_pid)
+  if (getpid() == dst_pid) {
     pr_signals_handle();
+  }
 #endif
 
   return 0;
@@ -455,7 +457,6 @@ static void shaper_remove_config(unsigned int prio) {
   }
 
   destroy_pool(tmp_pool);
-  return;
 }
 
 static int shaper_rate_alter(unsigned int prio, long double downrate,
@@ -575,15 +576,16 @@ static int shaper_table_flush(void) {
     tab_iov[5].iov_len = sizeof(long double);
 
     res = writev(shaper_tabfd, tab_iov, 6);
-    if (res < 0)
+    if (res < 0) {
       (void) pr_log_writefile(shaper_logfd, MOD_SHAPER_VERSION,
         "error writing ShaperTable session entry: %s", strerror(errno));
+    }
   }
 
   return 0;
 }
 
-#ifndef HAVE_FLOCK
+#if !defined(HAVE_FLOCK)
 static const char *get_lock_type(struct flock *lock) {
   const char *lock_type;
 
@@ -606,27 +608,27 @@ static const char *get_lock_type(struct flock *lock) {
 
   return lock_type;
 }
-#endif /* !HAVE_FLOCK */
+#endif /* HAVE_FLOCK */
 
 static int shaper_table_lock(int op) {
   static int have_lock = FALSE;
 
-#ifndef HAVE_FLOCK
+#if !defined(HAVE_FLOCK)
   int flag;
   struct flock lock;
-#endif /* !HAVE_FLOCK */
+#endif /* HAVE_FLOCK */
 
-  if (have_lock &&
+  if (have_lock == TRUE &&
       ((op & LOCK_SH) || (op & LOCK_EX))) {
     return 0;
   }
 
-  if (!have_lock &&
+  if (have_lock == FALSE &&
       (op & LOCK_UN)) {
     return 0;
   }
 
-#ifdef HAVE_FLOCK
+#if defined(HAVE_FLOCK)
   pr_trace_msg("lock", 9, "attempting to %s ShaperTable fd %d via flock(2)",
     op == LOCK_UN ? "unlock" : "lock", shaper_tabfd);
   while (flock(shaper_tabfd, op) < 0) {
@@ -676,8 +678,9 @@ static int shaper_table_lock(int op) {
     return -1;
   }
 
-  if (op & LOCK_NB)
+  if (op & LOCK_NB) {
     flag = F_SETLK;
+  }
 
   pr_trace_msg("lock", 9, "attempting to %s ShaperTable fd %d via fcntl(2)",
     op == LOCK_UN ? "unlock" : "lock", shaper_tabfd);
@@ -878,8 +881,9 @@ static void shaper_table_scrub(void) {
   array_header *new_sess_list;
   int send_tab = FALSE;
 
-  if (shaper_table_lock(LOCK_EX) < 0)
+  if (shaper_table_lock(LOCK_EX) < 0) {
     return;
+  }
 
   if (shaper_table_refresh() < 0) {
     shaper_table_lock(LOCK_UN);
@@ -941,7 +945,6 @@ static void shaper_table_scrub(void) {
   }
 
   shaper_table_lock(LOCK_UN);
-  return;
 }
 
 static int shaper_table_scrub_cb(CALLBACK_FRAME) {
@@ -1067,8 +1070,9 @@ static int shaper_table_sess_modify(pid_t sess_pid, unsigned int prio,
   int found = FALSE, adj_down_ok = FALSE, adj_up_ok = FALSE;
   struct shaper_sess *sess_list;
 
-  if (shaper_table_lock(LOCK_EX) < 0)
+  if (shaper_table_lock(LOCK_EX) < 0) {
     return -1;
+  }
 
   if (shaper_table_refresh() < 0) {
     int xerrno = errno;
@@ -1083,8 +1087,9 @@ static int shaper_table_sess_modify(pid_t sess_pid, unsigned int prio,
    */
   sess_list = shaper_tab.sess_list->elts;
   for (i = 0; i < shaper_tab.nsessions; i++) {
-    if (sess_list[i].sess_pid != sess_pid)
+    if (sess_list[i].sess_pid != sess_pid) {
       continue;
+    }
 
     found = TRUE;
 
@@ -1100,8 +1105,9 @@ static int shaper_table_sess_modify(pid_t sess_pid, unsigned int prio,
       sess_list[i].sess_upincr += upincr;
     }
 
-    if (prio != (unsigned int) -1)
+    if (prio != (unsigned int) -1) {
       sess_list[i].sess_prio = prio;
+    }
 
     break;
   }
@@ -1109,20 +1115,21 @@ static int shaper_table_sess_modify(pid_t sess_pid, unsigned int prio,
   /* If the session was not found, or if the given adjustments were not OK,
    * do not send the changes out, but be done now.
    */
-  if (!found || (!adj_down_ok && !adj_up_ok)) {
+  if (found == FALSE ||
+      (adj_down_ok == FALSE && adj_up_ok == FALSE)) {
     shaper_table_lock(LOCK_UN);
 
-    if (!found)
+    if (found == FALSE) {
       errno = ENOENT;
 
-    else if (!adj_down_ok) {
+    } else if (adj_down_ok == FALSE) {
       (void) pr_log_writefile(shaper_logfd, MOD_SHAPER_VERSION,
         "error modifying session: shares increment (%s%d) will drop "
         "session downshares (%u) below 1", downincr > 0 ? "+" : "", downincr,
         shaper_tab.def_downshares);
       errno = EINVAL;
 
-    } else if (!adj_up_ok) {
+    } else if (adj_up_ok == FALSE) {
       (void) pr_log_writefile(shaper_logfd, MOD_SHAPER_VERSION,
         "error modifying session: shares increment (%s%d) will drop "
         "session upshares (%u) below 1", upincr > 0 ? "+" : "", upincr,
@@ -1159,8 +1166,9 @@ static int shaper_table_sess_remove(pid_t sess_pid) {
   struct shaper_sess *sess_list;
   array_header *new_sess_list;
 
-  if (shaper_table_lock(LOCK_EX) < 0)
+  if (shaper_table_lock(LOCK_EX) < 0) {
     return -1;
+  }
 
   if (shaper_table_refresh() < 0) {
     int xerrno = errno;
@@ -1190,12 +1198,14 @@ static int shaper_table_sess_remove(pid_t sess_pid) {
       sess->sess_upincr = sess_list[i].sess_upincr;
       sess->sess_uprate = sess_list[i].sess_uprate;
 
-    } else
-       found = TRUE;
+    } else {
+      found = TRUE;
+    }
   }
 
-  if (found)
+  if (found == TRUE) {
     shaper_tab.nsessions--;
+  }
 
   /* Replace the session list.  The memory pointed to by the overwritten
    * pointer will be freed when shaper_tab_pool is freed, which will be
@@ -1803,8 +1813,9 @@ static int shaper_handle_shaper(pr_ctrls_t *ctrl, int reqargc,
 MODRET set_shaperall(cmd_rec *cmd) {
   register unsigned int i;
 
-  if (cmd->argc-1 < 2 || cmd->argc-1 > 14 || (cmd->argc-1) % 2 != 0)
+  if (cmd->argc-1 < 2 || cmd->argc-1 > 14 || (cmd->argc-1) % 2 != 0) {
     CONF_ERROR(cmd, "wrong number of parameters");
+  }
 
   CHECK_CONF(cmd, CONF_ROOT);
 
@@ -1815,11 +1826,13 @@ MODRET set_shaperall(cmd_rec *cmd) {
 
       rate = strtod(cmd->argv[i+1], &tmp);
 
-      if (tmp && *tmp)
+      if (tmp && *tmp) {
         CONF_ERROR(cmd, "invalid downrate parameter");
+      }
 
-      if (rate < 0.0)
+      if (rate < 0.0) {
         CONF_ERROR(cmd, "downrate must be greater than 0");
+      }
 
       shaper_tab.downrate = rate;
       i += 2;
@@ -1827,8 +1840,9 @@ MODRET set_shaperall(cmd_rec *cmd) {
     } else if (strcmp(cmd->argv[i], "downshares") == 0) {
       int shares = atoi(cmd->argv[i+1]);
 
-      if (shares < 1)
+      if (shares < 1) {
         CONF_ERROR(cmd, "downshares must be greater than 1");
+      }
 
       shaper_tab.def_downshares = shares;
       i += 2;
@@ -1836,8 +1850,9 @@ MODRET set_shaperall(cmd_rec *cmd) {
     } else if (strcmp(cmd->argv[i], "priority") == 0) {
       int prio = atoi(cmd->argv[i+1]);
 
-      if (prio < 0)
+      if (prio < 0) {
         CONF_ERROR(cmd, "priority must be greater than 0");
+      }
 
       shaper_tab.def_prio = prio;
       i += 2;
@@ -1848,11 +1863,13 @@ MODRET set_shaperall(cmd_rec *cmd) {
 
       rate = strtod(cmd->argv[i+1], &tmp);
 
-      if (tmp && *tmp)
+      if (tmp && *tmp) {
         CONF_ERROR(cmd, "invalid rate parameter");
+      }
 
-      if (rate < 0.0)
+      if (rate < 0.0) {
         CONF_ERROR(cmd, "rate must be greater than 0");
+      }
 
       shaper_tab.downrate = rate;
       shaper_tab.uprate = rate;
@@ -1861,8 +1878,9 @@ MODRET set_shaperall(cmd_rec *cmd) {
     } else if (strcmp(cmd->argv[i], "shares") == 0) {
       int shares = atoi(cmd->argv[i+1]);
 
-      if (shares < 1)
+      if (shares < 1) {
         CONF_ERROR(cmd, "shares must be greater than 1");
+      }
 
       shaper_tab.def_downshares = shares;
       shaper_tab.def_upshares = shares;
@@ -1874,11 +1892,13 @@ MODRET set_shaperall(cmd_rec *cmd) {
 
       rate = strtod(cmd->argv[i+1], &tmp);
 
-      if (tmp && *tmp)
+      if (tmp && *tmp) {
         CONF_ERROR(cmd, "invalid uprate parameter");
+      }
 
-      if (rate < 0.0)
+      if (rate < 0.0) {
         CONF_ERROR(cmd, "uprate must be greater than 0");
+      }
 
       shaper_tab.uprate = rate;
       i += 2;
@@ -1886,15 +1906,17 @@ MODRET set_shaperall(cmd_rec *cmd) {
     } else if (strcmp(cmd->argv[i], "upshares") == 0) {
       int shares = atoi(cmd->argv[i+1]);
 
-      if (shares < 1)
+      if (shares < 1) {
         CONF_ERROR(cmd, "upshares must be greater than 1");
+      }
 
       shaper_tab.def_upshares = shares;
       i += 2;
 
-    } else
+    } else {
       CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "unknown option: '",
         cmd->argv[i], "'", NULL));
+    }
   }
 
   return PR_HANDLED(cmd);
@@ -2101,13 +2123,13 @@ MODRET shaper_post_pass(cmd_rec *cmd) {
 
   } else {
     /* Don't need the ShaperTable open anymore. */
-    close(shaper_tabfd);
+    (void) close(shaper_tabfd);
     shaper_tabfd = -1;
 
     return PR_DECLINED(cmd);
   }
 
-  if (!shaper_tab_path) {
+  if (shaper_tab_path == NULL) {
     (void) pr_log_writefile(shaper_logfd, MOD_SHAPER_VERSION,
       "ShaperTable not configured, disabling ShaperEngine");
     shaper_engine = FALSE;
@@ -2133,7 +2155,7 @@ MODRET shaper_post_pass(cmd_rec *cmd) {
     NULL);
 
   c = find_config(TOPLEVEL_CONF, CONF_PARAM, "ShaperSession", FALSE);
-  if (c) {
+  if (c != NULL) {
     prio = *((unsigned int *) c->argv[0]);
     downincr = *((int *) c->argv[1]);
     upincr = *((int *) c->argv[2]);
@@ -2151,7 +2173,7 @@ MODRET shaper_post_pass(cmd_rec *cmd) {
 MODRET shaper_post_err_pass(cmd_rec *cmd) {
 
   /* Close the ShaperTable if we failed to authenticate. */
-  close(shaper_tabfd);
+  (void) close(shaper_tabfd);
   shaper_tabfd = -1;
 
   return PR_DECLINED(cmd);
@@ -2173,15 +2195,13 @@ static void shaper_shutdown_ev(const void *event_data, void *user_data) {
       shaper_remove_queue();
     }
 
-    if (shaper_tab_path) {
+    if (shaper_tab_path != NULL) {
       if (pr_fsio_unlink(shaper_tab_path) < 0) {
         pr_log_debug(DEBUG9, MOD_SHAPER_VERSION
           ": error unlinking '%s': %s", shaper_tab_path, strerror(errno));
       }
     }
   }
-
-  return;
 }
 
 static void shaper_sess_exit_ev(const void *event_data, void *user_data) {
@@ -2194,8 +2214,6 @@ static void shaper_sess_exit_ev(const void *event_data, void *user_data) {
 
   /* Clear any messages for this session from the queue as well. */
   shaper_msg_clear(getpid());
-
-  return;
 }
 
 #if defined(PR_SHARED_MODULE)
@@ -2212,7 +2230,7 @@ static void shaper_mod_unload_ev(const void *event_data, void *user_data) {
       shaper_scrub_timer_id = -1;
     }
 
-    if (shaper_pool) {
+    if (shaper_pool != NULL) {
       destroy_pool(shaper_pool);
       shaper_pool = NULL;
       shaper_tab_pool = NULL;
@@ -2223,7 +2241,7 @@ static void shaper_mod_unload_ev(const void *event_data, void *user_data) {
 #endif /* PR_SHARED_MODULE */
 
 static void shaper_postparse_ev(const void *event_data, void *user_data) {
-  if (shaper_log_path &&
+  if (shaper_log_path != NULL &&
       strcasecmp(shaper_log_path, "none") != 0 &&
       pr_log_openfile(shaper_log_path, &shaper_logfd, 0660) < 0) {
     pr_log_debug(DEBUG2, MOD_SHAPER_VERSION
@@ -2231,7 +2249,7 @@ static void shaper_postparse_ev(const void *event_data, void *user_data) {
     shaper_logfd = -1;
   }
 
-  if (shaper_tab_path) {
+  if (shaper_tab_path != NULL) {
     pr_fh_t *fh;
     int xerrno;
     struct stat st;
@@ -2283,9 +2301,10 @@ static void shaper_postparse_ev(const void *event_data, void *user_data) {
     }
 
     /* Initialize ShaperTable */
-    if (shaper_table_init(fh) < 0)
+    if (shaper_table_init(fh) < 0) {
       (void) pr_log_writefile(shaper_logfd, MOD_SHAPER_VERSION,
         "error initializing ShaperTable: %s", strerror(errno));
+    }
 
     (void) pr_log_writefile(shaper_logfd, MOD_SHAPER_VERSION,
       "determining queue ID for path '%s'", shaper_tab_path);
@@ -2346,7 +2365,6 @@ static void shaper_postparse_ev(const void *event_data, void *user_data) {
     (void) pr_log_writefile(shaper_logfd, MOD_SHAPER_VERSION,
       "no ShaperTable configured");
   }
-
 }
 
 static void shaper_restart_ev(const void *event_data, void *user_data) {
@@ -2356,7 +2374,7 @@ static void shaper_restart_ev(const void *event_data, void *user_data) {
   shaper_logfd = -1;
   shaper_log_path = NULL;
 
-  if (shaper_pool) {
+  if (shaper_pool != NULL) {
     destroy_pool(shaper_pool);
 
     /* Make sure to mark subpools as invalid now as well. */
@@ -2376,8 +2394,6 @@ static void shaper_restart_ev(const void *event_data, void *user_data) {
     (void) pr_timer_remove(shaper_scrub_timer_id, &shaper_module);
     shaper_scrub_timer_id = -1;
   }
-
-  return;
 }
 
 static void shaper_sigusr2_ev(const void *event_data, void *user_data) {
@@ -2403,15 +2419,12 @@ static void shaper_sigusr2_ev(const void *event_data, void *user_data) {
         "received signal, read in %d %s for pid %lu", res,
         res == 1 ? "update" : "updates", (unsigned long) getpid());
   }
-
-  return;
 }
 
 /* Initialization functions
  */
 
 static int shaper_init(void) {
-
   shaper_pool = make_sub_pool(permanent_pool);
   pr_pool_tag(shaper_pool, MOD_SHAPER_VERSION);
 
