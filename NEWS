@@ -54,6 +54,8 @@
   trace logging instead for keepalive requests.
 - Issue 2388 - mod_ban SysV shared memory segment default permissions allow
   for local unprivileged user read/write access.
+- Issue 2389 - POSIX ACLs that have group deny permissions are not properly
+  honored by mod_facl.
 
 1.3.10rc4 - Released 14-Aug-2026
 --------------------------------
