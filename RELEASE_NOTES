@@ -24,6 +24,8 @@ ChangeLog files.
       SFTPAuthorizedUserCAKeys
       SFTPCertificateOptions
 
+      ShaperOptions NoEncryptedMessages (Issue #2391)
+
   + Changed Directives
 
       RedisOptions EnableDiags

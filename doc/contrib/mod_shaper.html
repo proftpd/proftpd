@@ -43,6 +43,7 @@ questions, concerns, or suggestions regarding this module.
   <li><a href="#ShaperControlsACLs">ShaperControlsACLs</a>
   <li><a href="#ShaperEngine">ShaperEngine</a>
   <li><a href="#ShaperLog">ShaperLog</a>
+  <li><a href="#ShaperOptions">ShaperOptions</a>
   <li><a href="#ShaperSession">ShaperSession</a>
   <li><a href="#ShaperTable">ShaperTable</a>
 </ul>
@@ -181,6 +182,41 @@ must be the full path to the file to use for logging.  Note that this path must
 
 <p>
 If <em>path</em> is &quot;none&quot;, no logging will be done at all.
+
+<p>
+<hr>
+<h3><a name="ShaperOptions">ShaperOptions</a></h3>
+<strong>Syntax:</strong> ShaperOptions <em>opt1 ...</em><br>
+<strong>Default:</strong> None<br>
+<strong>Context:</strong> server config, <code>&lt;VirtualHost&gt;</code>, <code>&lt;Global&gt;</code><br>
+<strong>Module:</strong> mod_shaper<br>
+<strong>Compatibility:</strong> 1.3.10rc5 and later
+
+<p>
+The <code>ShaperOptions</code> directive is used to configure various optional
+behavior of <code>mod_shaper</code>.
+
+<p>
+Example:
+<pre>
+  ShaperOptions NoEncryptedMessages
+</pre>
+
+<p>
+The currently implemented options are:
+<ul>
+  <li><code>NoEncryptedMessages</code><br>
+    <p>
+    By default, when OpenSSL support is enabled, mod_shaper will generate a
+    random key, and use it to encrypt/decrypt the messages used to coordinate
+    the shaping rates among session processes.  If this encryption causes
+    issues, use this option to disable the use of encrypted messages.
+
+    <p>
+    <b>Note</b> that this option first appeared in
+    <code>proftpd-1.3.10rc5</code>.
+  </li>
+</ul>
 
 <p>
 <hr>
@@ -602,7 +638,7 @@ while the daemon and sessions are running, to set the desired shaping values.
 <p>
 <hr>
 <font size=2><b><i>
-&copy; Copyright 2004-2017 TJ Saunders<br>
+&copy; Copyright 2004-2026 TJ Saunders<br>
  All Rights Reserved<br>
 </i></b></font>
 <hr>
