@@ -1317,6 +1317,126 @@ START_TEST (ctrls_run_ctrls_test) {
 }
 END_TEST
 
+START_TEST (ctrls_remove_cl_test) {
+  int fd, res;
+  uint32_t msglen = 0;
+  char *msg = NULL;
+  const char *action, *desc;
+  pool *cl_pool;
+  pr_ctrls_cl_t *cl;
+  module m;
+
+  mark_point();
+  res = pr_ctrls_remove_cl(NULL);
+  ck_assert_msg(res < 0, "Failed to handle null cl");
+  ck_assert_msg(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+    strerror(errno), errno);
+
+  mark_point();
+  action = "test";
+  desc = "desc";
+  m.name = "test";
+  res = pr_ctrls_register(&m, action, desc, ctrls_test_cb);
+  ck_assert_msg(res >= 0, "Failed to register ctrls action: %s", strerror(errno));
+
+  mark_point();
+  fd = tmpfile_fd();
+  if (fd < 0) {
+    return;
+  }
+
+  cl_pool = make_sub_pool(p);
+  cl = pcalloc(cl_pool, sizeof(pr_ctrls_cl_t));
+  cl->cl_pool = cl_pool;
+  cl->cl_ctrls = make_array(cl_pool, 0, sizeof(pr_ctrls_t *));
+  cl->cl_fd = fd;
+
+  msg = "{\"action\":\"test\",\"args\":[\"FOO\"]}";
+  msglen = strlen(msg);
+  (void) write(fd, &msglen, sizeof(msglen));
+  (void) write(fd, msg, msglen);
+  rewind_fd(fd);
+  res = pr_ctrls_recv_request(cl);
+  ck_assert_msg(res == 0, "Failed to handle known action: %s", strerror(errno));
+  ck_assert_msg(cl->cl_ctrls->nelts == 1, "Expected 1 ctrl, got %d",
+    cl->cl_ctrls->nelts);
+
+  mark_point();
+  res = pr_ctrls_remove_cl(cl);
+  ck_assert_msg(res == 0, "Failed to remove client: %s", strerror(errno));
+
+  mark_point();
+  res = pr_ctrls_unregister(NULL, action);
+  ck_assert_msg(res == 0, "Failed to unregister ctrls action: %s",
+    strerror(errno));
+
+  destroy_pool(cl_pool);
+  (void) close(fd);
+}
+END_TEST
+
+START_TEST (ctrls_removed_cl_run_ctrls_test) {
+  int fd, res;
+  uint32_t msglen = 0;
+  char *msg = NULL;
+  const char *action, *desc;
+  pool *cl_pool;
+  pr_ctrls_cl_t *cl;
+  pr_ctrls_t *ctrl;
+  module m, m2;
+  time_t now;
+
+  mark_point();
+  action = "test";
+  desc = "desc";
+  m.name = "test";
+  m2.name = "test2";
+  res = pr_ctrls_register(&m, action, desc, ctrls_test_cb);
+  ck_assert_msg(res >= 0, "Failed to register ctrls action: %s", strerror(errno));
+
+  mark_point();
+  fd = tmpfile_fd();
+  if (fd < 0) {
+    return;
+  }
+
+  cl_pool = make_sub_pool(p);
+  cl = pcalloc(cl_pool, sizeof(pr_ctrls_cl_t));
+  cl->cl_pool = cl_pool;
+  cl->cl_ctrls = make_array(cl_pool, 0, sizeof(pr_ctrls_t *));
+  cl->cl_fd = fd;
+
+  msg = "{\"action\":\"test\",\"args\":[\"FOO\"]}";
+  msglen = strlen(msg);
+  (void) write(fd, &msglen, sizeof(msglen));
+  (void) write(fd, msg, msglen);
+  rewind_fd(fd);
+  res = pr_ctrls_recv_request(cl);
+  ck_assert_msg(res == 0, "Failed to handle known action: %s", strerror(errno));
+  ck_assert_msg(cl->cl_ctrls->nelts == 1, "Expected 1 ctrl, got %d",
+    cl->cl_ctrls->nelts);
+  ctrl = ((pr_ctrls_t **) cl->cl_ctrls->elts)[0];
+
+  mark_point();
+  res = pr_ctrls_remove_cl(cl);
+  ck_assert_msg(res == 0, "Failed to remove client: %s", strerror(errno));
+
+  destroy_pool(cl->cl_pool);
+
+  mark_point();
+  ctrl->ctrls_flags |= PR_CTRLS_FL_REQUESTED;
+  res = pr_run_ctrls(&m, "test");
+  ck_assert_msg(res == 0, "Failed to run ctrls: %s", strerror(errno));
+
+  mark_point();
+  res = pr_ctrls_unregister(NULL, action);
+  ck_assert_msg(res == 0, "Failed to unregister ctrls action: %s",
+    strerror(errno));
+
+  (void) close(fd);
+}
+END_TEST
+
 START_TEST (ctrls_reset_ctrls_test) {
   int res;
   const char *action, *desc;
@@ -2103,6 +2223,8 @@ Suite *tests_get_ctrls_suite(void) {
   tcase_add_test(testcase, ctrls_set_registered_actions_test);
   tcase_add_test(testcase, ctrls_check_actions_test);
   tcase_add_test(testcase, ctrls_run_ctrls_test);
+  tcase_add_test(testcase, ctrls_remove_cl_test);
+  tcase_add_test(testcase, ctrls_removed_cl_run_ctrls_test);
   tcase_add_test(testcase, ctrls_reset_ctrls_test);
   tcase_add_test(testcase, ctrls_accept_test);
   tcase_add_test(testcase, ctrls_connect_test);
