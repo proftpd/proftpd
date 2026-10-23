@@ -50,6 +50,11 @@ module ldap_module;
 static int ldap_logfd = -1;
 static pool *ldap_pool = NULL;
 
+#if !defined(LDAP_STR_MAX_REPLACEMENTS)
+/* Allow more than the default number of max replacements, for now. */
+# define LDAP_STR_MAX_REPLACEMENTS	16
+#endif /* LDAP_STR_MAX_REPLACEMENTS */
+
 static const char *trace_channel = "ldap";
 
 #if defined(LBER_OPT_LOG_PRINT_FN)
@@ -838,24 +843,22 @@ static const char *pr_ldap_interpolate_filter(pool *p, char *template,
     const char *value) {
   const char *escaped_value, *filter;
 
-  escaped_value = sreplace(p, (char *) value,
+  escaped_value = pr_str_replace(p, LDAP_STR_MAX_REPLACEMENTS, (char *) value,
     "\\", "\\\\",
     "*", "\\*",
     "(", "\\(",
     ")", "\\)",
     NULL
   );
-
   if (escaped_value == NULL) {
     return NULL;
   }
 
-  filter = sreplace(p, template,
+  filter = pr_str_replace(p, LDAP_STR_MAX_REPLACEMENTS, template,
     "%u", escaped_value,
     "%v", escaped_value,
     NULL
   );
-
   if (filter == NULL) {
     return NULL;
   }
