@@ -179,6 +179,7 @@ int pr_ctrls_free(pr_ctrls_t *ctrl) {
   ctrl->ctrls_prev = NULL;
   ctrl->ctrls_id = 0;
   ctrl->ctrls_module = NULL;
+  ctrl->ctrls_cl = NULL;
   ctrl->ctrls_action = NULL;
   ctrl->ctrls_cb = NULL;
   ctrl->ctrls_cb_retval = PR_CTRLS_STATUS_PENDING;
@@ -192,6 +193,7 @@ int pr_ctrls_free(pr_ctrls_t *ctrl) {
   ctrl->ctrls_cb_args = NULL;
   ctrl->ctrls_cb_resps = NULL;
   ctrl->ctrls_data = NULL;
+  ctrl->ctrls_flags = 0;
 
   ctrl->ctrls_next = ctrls_free_list;
   ctrls_free_list = ctrl;
@@ -2004,6 +2006,32 @@ int pr_run_ctrls(module *mod, const char *action) {
     ctrl->ctrls_flags |= PR_CTRLS_FL_HANDLED;
 
     ctrl->ctrls_cb_retval = res;
+  }
+
+  return 0;
+}
+
+int pr_ctrls_remove_cl(pr_ctrls_cl_t *cl) {
+  pr_ctrls_t *ctrl = NULL, *next_ctrl = NULL;
+
+  if (cl == NULL) {
+    errno = EINVAL;
+    return -1;
+  }
+
+  if (ctrls_active_list == NULL) {
+    /* Nothing to do. */
+    return 0;
+  }
+
+  for (ctrl = ctrls_active_list; ctrl; ctrl = next_ctrl) {
+    next_ctrl = ctrl->ctrls_next;
+
+    pr_signals_handle();
+
+    if (ctrl->ctrls_cl == cl) {
+      pr_ctrls_free(ctrl);
+    }
   }
 
   return 0;
