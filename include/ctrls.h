@@ -237,7 +237,7 @@ int pr_ctrls_accept(int sockfd, uid_t *uid, gid_t *gid, pid_t *pid,
 int pr_get_registered_actions(pr_ctrls_t *ctrl, int flags);
 
 int pr_set_registered_actions(module *mod, const char *action,
-    unsigned char skip_disabled, unsigned int flags);
+  unsigned char skip_disabled, unsigned int flags);
 
 /* Blocks ctrls from being run. */
 void pr_block_ctrls(void);
@@ -257,9 +257,15 @@ int pr_run_ctrls(module *mod, const char *action);
 /* Run through the registered controls, freeing up any that are available. */
 int pr_ctrls_reset(void);
 
+/* Remove any controls for the given client, as the client will soon be
+ * removed/closed.
+ */
+int pr_ctrls_remove_cl(pr_ctrls_cl_t *cl);
+
 /* For internal use only. */
 pr_ctrls_t *pr_ctrls_alloc(void);
 int pr_ctrls_free(pr_ctrls_t *ctrl);
+
 void init_ctrls(void);
 int init_ctrls2(const char *socket_path);
 

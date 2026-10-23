@@ -232,6 +232,8 @@ static void ctrls_del_cl(pr_ctrls_cl_t *cl) {
     cl_list = cl->cl_next;
   }
 
+  pr_ctrls_remove_cl(cl);
+
   (void) close(cl->cl_fd);
   cl->cl_fd = -1;
 
