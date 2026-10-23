@@ -428,8 +428,8 @@ int snmp_smi_read_vars(pool *p, unsigned char **buf, size_t *buflen,
     /* Now read in the value */
     switch (var->smi_type) {
       case SNMP_SMI_INTEGER:
-        var->value.integer = palloc(var->pool, sizeof(long));
         var->valuelen = sizeof(long);
+        var->value.integer = palloc(var->pool, var->valuelen);
         res = snmp_asn1_read_int(p, buf, buflen,
           &(var->smi_type), var->value.integer, 0);
         if (res == 0) {
@@ -441,8 +441,8 @@ int snmp_smi_read_vars(pool *p, unsigned char **buf, size_t *buflen,
       case SNMP_SMI_COUNTER32:
       case SNMP_SMI_GAUGE32:
       case SNMP_SMI_TIMETICKS:
-        var->value.integer = palloc(var->pool, sizeof(long));
         var->valuelen = sizeof(long);
+        var->value.integer = palloc(var->pool, var->valuelen);
         res = snmp_asn1_read_uint(p, buf, buflen,
           &(var->smi_type), (unsigned long *) var->value.integer);
         if (res == 0) {
