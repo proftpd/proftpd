@@ -460,13 +460,11 @@ static int recv_errors(pool *p, uint32_t channel_id, struct scp_path *sp,
       }
     }
 
-    if (i < datalen) {
-      msg = pstrndup(p, (char *) &(data[1]), i + 1);
-
-    } else {
-      msg = pcalloc(p, i + 1);
-      memcpy(msg, &(data[1]), i);
-    }
+    /* i will be the index of the newline (if any), or the end of the data.
+     * We skip the first byte of data as the error type indicator, thus
+     * the message length is after that first byte, up to i.
+     */
+    msg = pstrndup(p, (char *) &(data[1]), i - 1);
 
     pr_trace_msg(trace_channel, 3,
       "received error '%s' from client while receiving path '%s', skipping",
