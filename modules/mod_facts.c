@@ -1234,7 +1234,11 @@ MODRET facts_mff(cmd_rec *cmd) {
     return PR_ERROR(cmd);
   }
 
-  canon_path = dir_canonical_path(cmd->tmp_pool, decoded_path);
+  canon_path = dir_realpath(cmd->tmp_pool, decoded_path);
+  if (canon_path == NULL) {
+    canon_path = dir_best_path(cmd->tmp_pool, decoded_path);
+  }
+
   if (canon_path == NULL) {
     int xerrno = EINVAL;
 
@@ -1246,12 +1250,14 @@ MODRET facts_mff(cmd_rec *cmd) {
   }
 
   if (!dir_check(cmd->tmp_pool, cmd, cmd->group, canon_path, NULL)) {
+    int xerrno = EACCES;
+
     pr_log_debug(DEBUG4, MOD_FACTS_VERSION ": %s command denied by <Limit>",
       (char *) cmd->argv[0]);
-    pr_response_add_err(R_550, _("Unable to handle command"));
+    pr_response_add_err(R_550, "%s: %s", path, strerror(xerrno));
 
-    pr_cmd_set_errno(cmd, EPERM);
-    errno = EPERM;
+    pr_cmd_set_errno(cmd, xerrno);
+    errno = xerrno;
     return PR_ERROR(cmd);
   }
 
@@ -1465,7 +1471,11 @@ MODRET facts_mfmt(cmd_rec *cmd) {
     return PR_ERROR(cmd);
   }
 
-  canon_path = dir_canonical_path(cmd->tmp_pool, decoded_path);
+  canon_path = dir_realpath(cmd->tmp_pool, decoded_path);
+  if (canon_path == NULL) {
+    canon_path = dir_best_path(cmd->tmp_pool, decoded_path);
+  }
+
   if (canon_path == NULL) {
     int xerrno = EINVAL;
 
@@ -1477,12 +1487,14 @@ MODRET facts_mfmt(cmd_rec *cmd) {
   }
 
   if (!dir_check(cmd->tmp_pool, cmd, cmd->group, canon_path, NULL)) {
+    int xerrno = EACCES;
+
     pr_log_debug(DEBUG4, MOD_FACTS_VERSION ": %s command denied by <Limit>",
       (char *) cmd->argv[0]);
-    pr_response_add_err(R_550, _("Unable to handle command"));
+    pr_response_add_err(R_550, "%s: %s", path, strerror(xerrno));
 
-    pr_cmd_set_errno(cmd, EPERM);
-    errno = EPERM;
+    pr_cmd_set_errno(cmd, xerrno);
+    errno = xerrno;
     return PR_ERROR(cmd);
   }
 
@@ -1582,12 +1594,14 @@ MODRET facts_mlsd(cmd_rec *cmd) {
   }
 
   if (!dir_check(cmd->tmp_pool, cmd, cmd->group, (char *) decoded_path, NULL)) {
+    int xerrno = EACCES;
+
     pr_log_debug(DEBUG4, MOD_FACTS_VERSION ": %s command denied by <Limit>",
       (char *) cmd->argv[0]);
-    pr_response_add_err(R_550, _("Unable to handle command"));
+    pr_response_add_err(R_550, "%s: %s", path, strerror(xerrno));
 
-    pr_cmd_set_errno(cmd, EPERM);
-    errno = EPERM;
+    pr_cmd_set_errno(cmd, xerrno);
+    errno = xerrno;
     return PR_ERROR(cmd);
   }
 
@@ -1861,12 +1875,14 @@ MODRET facts_mlst(cmd_rec *cmd) {
 
   if (!dir_check(cmd->tmp_pool, cmd, cmd->group, (char *) decoded_path,
       &hidden)) {
+    int xerrno = EACCES;
+
     pr_log_debug(DEBUG4, MOD_FACTS_VERSION ": %s command denied by <Limit>",
       (char *) cmd->argv[0]);
-    pr_response_add_err(R_550, _("Unable to handle command"));
+    pr_response_add_err(R_550, "%s: %s", path, strerror(xerrno));
 
-    pr_cmd_set_errno(cmd, EPERM);
-    errno = EPERM;
+    pr_cmd_set_errno(cmd, xerrno);
+    errno = xerrno;
     return PR_ERROR(cmd);
   }
 
