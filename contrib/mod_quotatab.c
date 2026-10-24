@@ -179,6 +179,8 @@ static int quotatab_runlock(quota_table_t *);
 static int quotatab_wlock(quota_table_t *);
 static int quotatab_wunlock(quota_table_t *);
 
+#define QUOTA_WRITE_FL_UPDATE_SESS_TALLY	0x001
+
 /* Support routines
  */
 
@@ -1359,9 +1361,10 @@ static int quotatab_wunlock(quota_table_t *tab) {
   return res;
 }
 
-int quotatab_write(quota_tally_t *tally,
+static int quotatab_write2(quota_limit_t *limit, quota_tally_t *tally,
     double bytes_in_inc, double bytes_out_inc, double bytes_xfer_inc,
-    int files_in_inc, int files_out_inc, int files_xfer_inc) {
+    int files_in_inc, int files_out_inc, int files_xfer_inc,
+    unsigned int flags) {
 
   /* NOTE: Even if session.quota_per_session is TRUE, we DO want to obtain
    * a write-lock, and update the sess_tally struct.  Why?  Because that
@@ -1389,82 +1392,84 @@ int quotatab_write(quota_tally_t *tally,
   /* Make sure the deltas are cleared. */
   memset(&quotatab_deltas, '\0', sizeof(quotatab_deltas));
 
-  /* Read in the tally (to catch any possible updates by other processes). */
-  QUOTATAB_TALLY_READ
+  if (flags & QUOTA_WRITE_FL_UPDATE_SESS_TALLY) {
+    /* Read in the tally (to catch any possible updates by other processes). */
+    QUOTATAB_TALLY_READ
+  }
 
   /* Only update the tally if the value is not "unlimited". */
-  if (sess_limit.bytes_in_avail > 0.0) {
-    sess_tally.bytes_in_used += bytes_in_inc;
+  if (limit->bytes_in_avail > 0.0) {
+    tally->bytes_in_used += bytes_in_inc;
 
     /* Prevent underflows. */
-    if (sess_tally.bytes_in_used < 0.0) {
-      sess_tally.bytes_in_used = 0.0;
+    if (tally->bytes_in_used < 0.0) {
+      tally->bytes_in_used = 0.0;
     }
 
     quotatab_deltas.bytes_in_delta = bytes_in_inc;
   }
 
   /* Only update the tally if the value is not "unlimited". */
-  if (sess_limit.bytes_out_avail > 0.0) {
-    sess_tally.bytes_out_used += bytes_out_inc;
+  if (limit->bytes_out_avail > 0.0) {
+    tally->bytes_out_used += bytes_out_inc;
 
     /* Prevent underflows. */
-    if (sess_tally.bytes_out_used < 0.0) {
-      sess_tally.bytes_out_used = 0.0;
+    if (tally->bytes_out_used < 0.0) {
+      tally->bytes_out_used = 0.0;
     }
 
     quotatab_deltas.bytes_out_delta = bytes_out_inc;
   }
 
   /* Only update the tally if the value is not "unlimited". */
-  if (sess_limit.bytes_xfer_avail > 0.0) {
-    sess_tally.bytes_xfer_used += bytes_xfer_inc;
+  if (limit->bytes_xfer_avail > 0.0) {
+    tally->bytes_xfer_used += bytes_xfer_inc;
 
     /* Prevent underflows. */
-    if (sess_tally.bytes_xfer_used < 0.0) {
-      sess_tally.bytes_xfer_used = 0.0;
+    if (tally->bytes_xfer_used < 0.0) {
+      tally->bytes_xfer_used = 0.0;
     }
 
     quotatab_deltas.bytes_xfer_delta = bytes_xfer_inc;
   }
 
   /* Only update the tally if the value is not "unlimited". */
-  if (sess_limit.files_in_avail != 0) {
+  if (limit->files_in_avail != 0) {
 
     /* Prevent underflows. As this is an unsigned data type, the
      * underflow check is not as straightforward as checking for a value
      * less than zero.
      */
-    if (!(sess_tally.files_in_used == 0 && files_in_inc < 0)) {
-      sess_tally.files_in_used += files_in_inc;
+    if (!(tally->files_in_used == 0 && files_in_inc < 0)) {
+      tally->files_in_used += files_in_inc;
     }
 
     quotatab_deltas.files_in_delta = files_in_inc;
   }
 
   /* Only update the tally if the value is not "unlimited". */
-  if (sess_limit.files_out_avail != 0) {
+  if (limit->files_out_avail != 0) {
 
     /* Prevent underflows. As this is an unsigned data type, the
      * underflow check is not as straightforward as checking for a value
      * less than zero.
      */
-    if (!(sess_tally.files_out_used == 0 && files_out_inc < 0)) {
-      sess_tally.files_out_used += files_out_inc;
+    if (!(tally->files_out_used == 0 && files_out_inc < 0)) {
+      tally->files_out_used += files_out_inc;
     }
 
     quotatab_deltas.files_out_delta = files_out_inc;
   }
 
   /* Only update the tally if the value is not "unlimited". */
-  if (sess_limit.files_xfer_avail != 0) {
+  if (limit->files_xfer_avail != 0) {
 
     /* Prevent underflows. As this is an unsigned data type, the
      * underflow check is not as straightforward as checking for a value
      * less than zero.
      */
-    if (!(sess_tally.files_xfer_used == 0 && files_xfer_inc < 0)) {
-      sess_tally.files_xfer_used += files_xfer_inc;
+    if (!(tally->files_xfer_used == 0 && files_xfer_inc < 0)) {
+      tally->files_xfer_used += files_xfer_inc;
     }
 
     quotatab_deltas.files_xfer_delta = files_xfer_inc;
@@ -1502,6 +1507,15 @@ int quotatab_write(quota_tally_t *tally,
 
   memset(&quotatab_deltas, '\0', sizeof(quotatab_deltas));
   return 0;
+}
+
+int quotatab_write(quota_tally_t *tally,
+    double bytes_in_inc, double bytes_out_inc, double bytes_xfer_inc,
+    int files_in_inc, int files_out_inc, int files_xfer_inc) {
+  unsigned int flags = QUOTA_WRITE_FL_UPDATE_SESS_TALLY;
+
+  return quotatab_write2(&sess_limit, &sess_tally, bytes_in_inc, bytes_out_inc,
+    bytes_xfer_inc, files_in_inc, files_out_inc, files_xfer_inc, flags);
 }
 
 /* FSIO handlers
@@ -2774,8 +2788,8 @@ MODRET quotatab_post_dele(cmd_rec *cmd) {
           quotatab_log("found tally entry for user '%s'", user_owner);
           quotatab_mutex_lock(F_UNLCK);
 
-          if (quotatab_write(&dele_tally, -quotatab_disk_nbytes, 0, 0, -1,
-              0, 0) < 0) {
+          if (quotatab_write2(&dele_limit, &dele_tally, -quotatab_disk_nbytes,
+              0, 0, -1, 0, 0, 0) < 0) {
             quotatab_log("error: unable to write tally: %s", strerror(errno));
 
           } else {
@@ -2808,8 +2822,8 @@ MODRET quotatab_post_dele(cmd_rec *cmd) {
             quotatab_log("found tally entry for group '%s'", group_owner);
             quotatab_mutex_lock(F_UNLCK);
 
-            if (quotatab_write(&dele_tally, -quotatab_disk_nbytes, 0, 0, -1,
-                0, 0) < 0) {
+            if (quotatab_write2(&dele_limit, &dele_tally, -quotatab_disk_nbytes,
+                0, 0, -1, 0, 0, 0) < 0) {
               quotatab_log("error: unable to write tally: %s", strerror(errno));
 
             } else {
