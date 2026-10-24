@@ -15028,7 +15028,17 @@ static int fxp_handle_write(struct fxp_packet *fxp) {
 
   /* Handle zero-length writes as a special case; see Bug#4398. */
   if (datalen > 0) {
-    res = pr_fsio_pwrite(fxh->fh, data, datalen, offset);
+    if (fxh->fh_flags & O_APPEND) {
+      /* Use write(2) for O_APPEND descriptors; pwrite(2) with O_APPEND
+       * is not portable.  Some libcs (e.g. musl) return EOPNOTSUPP when
+       * they cannot suppress the append behavior, whereas write(2) has
+       * the intended append semantics.
+       */
+      res = pr_fsio_write(fxh->fh, data, datalen);
+
+    } else {
+      res = pr_fsio_pwrite(fxh->fh, data, datalen, offset);
+    }
 
   } else {
     res = 0;
