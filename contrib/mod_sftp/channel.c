@@ -744,6 +744,11 @@ static int handle_channel_data(struct ssh2_packet *pkt, uint32_t *channel_id) {
     "processing %lu %s of data for channel ID %lu", (unsigned long) datalen,
     datalen != 1 ? "bytes" : "byte", (unsigned long) *channel_id);
   data = sftp_msg_read_data_direct(pkt->pool, &buf, &buflen, datalen);
+  if (data == NULL) {
+    (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
+      "received illegal channel message with no payload, disconnecting");
+    SFTP_DISCONNECT_CONN(SFTP_SSH2_DISCONNECT_BY_APPLICATION, NULL);
+  }
 
   return process_channel_data(chan, pkt, data, datalen);
 }
