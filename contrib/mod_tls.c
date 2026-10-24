@@ -581,7 +581,7 @@ static unsigned long tls_stapling_opts = 0UL;
 # define TLS_STAPLING_OPT_NO_FAKE_TRY_LATER	0x0004
 static const char *tls_stapling_responder = NULL;
 
-#define TLS_DEFAULT_STAPLING_TIMEOUT	10
+#define TLS_DEFAULT_STAPLING_TIMEOUT	5
 static unsigned int tls_stapling_timeout = TLS_DEFAULT_STAPLING_TIMEOUT;
 #endif
 
@@ -11140,7 +11140,11 @@ static int tls_verify_ocsp_url(X509_STORE_CTX *ctx, X509 *cert,
     }
   }
 
-  resp = ocsp_send_request(session.pool, conn, host, uri, req, 0);
+  /* We'll reuse the TLSStaplingTimeout here, since it applies to timeouts
+   * when making requests to OCSP responders.
+   */
+  resp = ocsp_send_request(session.pool, conn, host, uri, req,
+    tls_stapling_timeout);
   if (resp == NULL) {
     tls_log("error receiving response from OCSP responder at '%s': %s", url,
       tls_get_errors());
@@ -11377,10 +11381,40 @@ static int tls_verify_ocsp(int ok, X509_STORE_CTX *ctx) {
 
     desc = sk_ACCESS_DESCRIPTION_value(descs, i);
     if (OBJ_obj2nid(desc->method) == NID_ad_OCSP) {
+      char *ocsp_url;
+      size_t ocsp_urllen;
+
       /* Found an OCSP AuthorityInfoAccess attribute */
 
       if (desc->location->type != GEN_URI) {
         /* Not a valid URI, ignore it. */
+        continue;
+      }
+
+#if OPENSSL_VERSION_NUMBER >= 0x10100000L && \
+    !defined(HAVE_LIBRESSL)
+      ocsp_url = (char *) ASN1_STRING_get0_data(desc->location->d.uniformResourceIdentifier);
+#else
+      ocsp_url = (char *) ASN1_STRING_data(desc->location->d.uniformResourceIdentifier);
+#endif /* OpenSSL 1.1.x and later */
+
+      ocsp_urllen = strlen(ocsp_url);
+
+      /* Only support HTTP/S schemes for OCSP URLs. */
+      if (ocsp_urllen < 8) {
+        /* Not long enough to have the required schemes; ignore it. */
+        pr_trace_msg(trace_channel, 17,
+          "OCSP URL '%s' too short to use required HTTP/S schemes, ignoring",
+          ocsp_url);
+        continue;
+      }
+
+      if (strncasecmp(ocsp_url, "http://", 7) != 0 &&
+          strncasecmp(ocsp_url, "https://", 8) != 0) {
+        /* Unsupported OCSP URL scheme used; ignore it. */
+        pr_trace_msg(trace_channel, 17,
+          "OCSP URL '%s' does not use required HTTP/S schemes, ignoring",
+          ocsp_url);
         continue;
       }
 
@@ -11390,14 +11424,7 @@ static int tls_verify_ocsp(int ok, X509_STORE_CTX *ctx) {
         ocsp_urls = make_array(tmp_pool, 1, sizeof(char *));
       }
 
-#if OPENSSL_VERSION_NUMBER >= 0x10100000L && \
-    !defined(HAVE_LIBRESSL)
-      *((char **) push_array(ocsp_urls)) = pstrdup(tmp_pool,
-        (char *) ASN1_STRING_get0_data(desc->location->d.uniformResourceIdentifier));
-#else
-      *((char **) push_array(ocsp_urls)) = pstrdup(tmp_pool,
-        (char *) ASN1_STRING_data(desc->location->d.uniformResourceIdentifier));
-#endif /* OpenSSL 1.1.x and later */
+      *((char **) push_array(ocsp_urls)) = pstrdup(tmp_pool, ocsp_url);
     }
   }
 
@@ -11415,14 +11442,15 @@ static int tls_verify_ocsp(int ok, X509_STORE_CTX *ctx) {
   for (i = 0; i < (int) ocsp_urls->nelts; i++) {
     char *url = ((char **) ocsp_urls->elts)[i];
 
+    pr_trace_msg(trace_channel, 17, "checking OCSP URL '%s'", url);
     ok = tls_verify_ocsp_url(ctx, cert, url);
-    if (ok)
+    if (ok) {
       break;
+    }
   }
 
-  destroy_pool(tmp_pool);
   AUTHORITY_INFO_ACCESS_free(descs);
-
+  destroy_pool(tmp_pool);
   return ok;
 #else
   return ok;
