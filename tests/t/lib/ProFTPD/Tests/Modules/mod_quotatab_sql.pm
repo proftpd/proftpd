@@ -390,6 +390,14 @@ EOS
     print STDERR "Output: ", join('', @output), "\n";
   }
 
+  # Make sure that, if we're running as root, the database file has
+  # the permissions/privs set for use by proftpd
+  if ($< == 0) {
+    unless (chmod(0666, $db_file)) {
+      die("Can't set perms on $db_file to 0666: $!");
+    }
+  }
+
   my $config = {
     PidFile => $setup->{pid_file},
     ScoreboardFile => $setup->{scoreboard_file},
@@ -415,6 +423,7 @@ EOS
       ],
 
       'mod_sql.c' => {
+        AuthOrder => 'mod_sql.c',
         SQLAuthTypes => 'plaintext',
         SQLBackend => 'sqlite3',
         SQLConnectInfo => $db_file,
@@ -605,6 +614,14 @@ EOS
     print STDERR "Output: ", join('', @output), "\n";
   }
 
+  # Make sure that, if we're running as root, the database file has
+  # the permissions/privs set for use by proftpd
+  if ($< == 0) {
+    unless (chmod(0666, $db_file)) {
+      die("Can't set perms on $db_file to 0666: $!");
+    }
+  }
+
   my $config = {
     PidFile => $setup->{pid_file},
     ScoreboardFile => $setup->{scoreboard_file},
@@ -632,6 +649,7 @@ EOS
       ],
 
       'mod_sql.c' => {
+        AuthOrder => 'mod_sql.c',
         SQLAuthTypes => 'plaintext',
         SQLBackend => 'sqlite3',
         SQLConnectInfo => $db_file,
@@ -811,6 +829,14 @@ EOS
     print STDERR "Output: ", join('', @output), "\n";
   }
 
+  # Make sure that, if we're running as root, the database file has
+  # the permissions/privs set for use by proftpd
+  if ($< == 0) {
+    unless (chmod(0666, $db_file)) {
+      die("Can't set perms on $db_file to 0666: $!");
+    }
+  }
+
   my $config = {
     PidFile => $setup->{pid_file},
     ScoreboardFile => $setup->{scoreboard_file},
@@ -838,6 +864,7 @@ EOS
       ],
 
       'mod_sql.c' => {
+        AuthOrder => 'mod_sql.c',
         SQLAuthTypes => 'plaintext',
         SQLBackend => 'sqlite3',
         SQLConnectInfo => $db_file,
@@ -1008,6 +1035,14 @@ EOS
     print STDERR "Output: ", join('', @output), "\n";
   }
 
+  # Make sure that, if we're running as root, the database file has
+  # the permissions/privs set for use by proftpd
+  if ($< == 0) {
+    unless (chmod(0666, $db_file)) {
+      die("Can't set perms on $db_file to 0666: $!");
+    }
+  }
+
   my $config = {
     PidFile => $setup->{pid_file},
     ScoreboardFile => $setup->{scoreboard_file},
@@ -1035,6 +1070,7 @@ EOS
       ],
 
       'mod_sql.c' => {
+        AuthOrder => 'mod_sql.c',
         SQLAuthTypes => 'plaintext',
         SQLBackend => 'sqlite3',
         SQLConnectInfo => $db_file,
@@ -1211,12 +1247,20 @@ EOS
     print STDERR "Output: ", join('', @output), "\n";
   }
 
+  # Make sure that, if we're running as root, the database file has
+  # the permissions/privs set for use by proftpd
+  if ($< == 0) {
+    unless (chmod(0666, $db_file)) {
+      die("Can't set perms on $db_file to 0666: $!");
+    }
+  }
+
   my $config = {
     PidFile => $setup->{pid_file},
     ScoreboardFile => $setup->{scoreboard_file},
     SystemLog => $setup->{log_file},
     TraceLog => $setup->{log_file},
-    Trace => 'DEFAULT:10 jot:30 sql:20',
+    Trace => 'jot:30 sql:20',
 
     DefaultChdir => '~',
 
@@ -1238,6 +1282,7 @@ EOS
       ],
 
       'mod_sql.c' => {
+        AuthOrder => 'mod_sql.c',
         SQLAuthTypes => 'plaintext',
         SQLBackend => 'sqlite3',
         SQLConnectInfo => $db_file,
@@ -1265,6 +1310,9 @@ EOS
   defined(my $pid = fork()) or die("Can't fork: $!");
   if ($pid) {
     eval {
+      # Allow for server startup
+      sleep(1);
+
       my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port, 1);
       $client->login($setup->{user}, $setup->{passwd});
 
@@ -1402,6 +1450,14 @@ EOS
     print STDERR "Output: ", join('', @output), "\n";
   }
 
+  # Make sure that, if we're running as root, the database file has
+  # the permissions/privs set for use by proftpd
+  if ($< == 0) {
+    unless (chmod(0666, $db_file)) {
+      die("Can't set perms on $db_file to 0666: $!");
+    }
+  }
+
   my $config = {
     PidFile => $setup->{pid_file},
     ScoreboardFile => $setup->{scoreboard_file},
@@ -1427,6 +1483,7 @@ EOS
       ],
 
       'mod_sql.c' => {
+        AuthOrder => 'mod_sql.c',
         SQLAuthTypes => 'plaintext',
         SQLBackend => 'sqlite3',
         SQLConnectInfo => $db_file,
@@ -1590,6 +1647,14 @@ EOS
     print STDERR "Output: ", join('', @output), "\n";
   }
 
+  # Make sure that, if we're running as root, the database file has
+  # the permissions/privs set for use by proftpd
+  if ($< == 0) {
+    unless (chmod(0666, $db_file)) {
+      die("Can't set perms on $db_file to 0666: $!");
+    }
+  }
+
   my $test_file = File::Spec->rel2abs("$tmpdir/test.txt");
 
   my $config = {
@@ -1617,6 +1682,7 @@ EOS
       ],
 
       'mod_sql.c' => {
+        AuthOrder => 'mod_sql.c',
         SQLAuthTypes => 'plaintext',
         SQLBackend => 'sqlite3',
         SQLConnectInfo => $db_file,
@@ -1774,6 +1840,14 @@ EOS
     print STDERR "Output: ", join('', @output), "\n";
   }
 
+  # Make sure that, if we're running as root, the database file has
+  # the permissions/privs set for use by proftpd
+  if ($< == 0) {
+    unless (chmod(0666, $db_file)) {
+      die("Can't set perms on $db_file to 0666: $!");
+    }
+  }
+
   my $test_file = File::Spec->rel2abs("$tmpdir/test.txt");
   if (open(my $fh, "> $test_file")) {
     print $fh "Who goes there?\n";
@@ -1812,6 +1886,7 @@ EOS
       ],
 
       'mod_sql.c' => {
+        AuthOrder => 'mod_sql.c',
         SQLAuthTypes => 'plaintext',
         SQLBackend => 'sqlite3',
         SQLConnectInfo => $db_file,
@@ -1968,6 +2043,14 @@ EOS
     print STDERR "Output: ", join('', @output), "\n";
   }
 
+  # Make sure that, if we're running as root, the database file has
+  # the permissions/privs set for use by proftpd
+  if ($< == 0) {
+    unless (chmod(0666, $db_file)) {
+      die("Can't set perms on $db_file to 0666: $!");
+    }
+  }
+
   my $config = {
     PidFile => $setup->{pid_file},
     ScoreboardFile => $setup->{scoreboard_file},
@@ -1995,6 +2078,7 @@ EOS
       ],
 
       'mod_sql.c' => {
+        AuthOrder => 'mod_sql.c',
         SQLAuthTypes => 'plaintext',
         SQLBackend => 'sqlite3',
         SQLConnectInfo => $db_file,
@@ -2157,6 +2241,14 @@ EOS
     print STDERR "Output: ", join('', @output), "\n";
   }
 
+  # Make sure that, if we're running as root, the database file has
+  # the permissions/privs set for use by proftpd
+  if ($< == 0) {
+    unless (chmod(0666, $db_file)) {
+      die("Can't set perms on $db_file to 0666: $!");
+    }
+  }
+
   my $test_file = File::Spec->rel2abs("$tmpdir/test.txt");
 
   my $config = {
@@ -2186,6 +2278,7 @@ EOS
       ],
 
       'mod_sql.c' => {
+        AuthOrder => 'mod_sql.c',
         SQLAuthTypes => 'plaintext',
         SQLBackend => 'sqlite3',
         SQLConnectInfo => $db_file,
@@ -2343,6 +2436,14 @@ EOS
     print STDERR "Output: ", join('', @output), "\n";
   }
 
+  # Make sure that, if we're running as root, the database file has
+  # the permissions/privs set for use by proftpd
+  if ($< == 0) {
+    unless (chmod(0666, $db_file)) {
+      die("Can't set perms on $db_file to 0666: $!");
+    }
+  }
+
   my $test_file = File::Spec->rel2abs("$tmpdir/test.txt");
 
   my $config = {
@@ -2370,6 +2471,7 @@ EOS
       ],
 
       'mod_sql.c' => {
+        AuthOrder => 'mod_sql.c',
         SQLAuthTypes => 'plaintext',
         SQLBackend => 'sqlite3',
         SQLConnectInfo => $db_file,
@@ -2568,6 +2670,14 @@ EOS
     print STDERR "Output: ", join('', @output), "\n";
   }
 
+  # Make sure that, if we're running as root, the database file has
+  # the permissions/privs set for use by proftpd
+  if ($< == 0) {
+    unless (chmod(0666, $db_file)) {
+      die("Can't set perms on $db_file to 0666: $!");
+    }
+  }
+
   my $config = {
     PidFile => $setup->{pid_file},
     ScoreboardFile => $setup->{scoreboard_file},
@@ -2594,6 +2704,7 @@ EOS
       ],
 
       'mod_sql.c' => {
+        AuthOrder => 'mod_sql.c',
         SQLAuthTypes => 'plaintext',
         SQLBackend => 'sqlite3',
         SQLConnectInfo => $db_file,
@@ -2841,6 +2952,14 @@ EOS
     print STDERR "Output: ", join('', @output), "\n";
   }
 
+  # Make sure that, if we're running as root, the database file has
+  # the permissions/privs set for use by proftpd
+  if ($< == 0) {
+    unless (chmod(0666, $db_file)) {
+      die("Can't set perms on $db_file to 0666: $!");
+    }
+  }
+
   my $config = {
     PidFile => $setup->{pid_file},
     ScoreboardFile => $setup->{scoreboard_file},
@@ -2867,6 +2986,7 @@ EOS
       ],
 
       'mod_sql.c' => {
+        AuthOrder => 'mod_sql.c',
         SQLAuthTypes => 'plaintext',
         SQLBackend => 'sqlite3',
         SQLConnectInfo => $db_file,
@@ -3112,6 +3232,14 @@ EOS
     print STDERR "Output: ", join('', @output), "\n";
   }
 
+  # Make sure that, if we're running as root, the database file has
+  # the permissions/privs set for use by proftpd
+  if ($< == 0) {
+    unless (chmod(0666, $db_file)) {
+      die("Can't set perms on $db_file to 0666: $!");
+    }
+  }
+
   my $config = {
     PidFile => $setup->{pid_file},
     ScoreboardFile => $setup->{scoreboard_file},
@@ -3137,6 +3265,7 @@ EOS
       ],
 
       'mod_sql.c' => {
+        AuthOrder => 'mod_sql.c',
         SQLAuthTypes => 'plaintext',
         SQLBackend => 'sqlite3',
         SQLConnectInfo => $db_file,
@@ -3365,6 +3494,14 @@ EOS
     print STDERR "Output: ", join('', @output), "\n";
   }
 
+  # Make sure that, if we're running as root, the database file has
+  # the permissions/privs set for use by proftpd
+  if ($< == 0) {
+    unless (chmod(0666, $db_file)) {
+      die("Can't set perms on $db_file to 0666: $!");
+    }
+  }
+
   my $config = {
     PidFile => $setup->{pid_file},
     ScoreboardFile => $setup->{scoreboard_file},
@@ -3390,6 +3527,7 @@ EOS
       ],
 
       'mod_sql.c' => {
+        AuthOrder => 'mod_sql.c',
         SQLAuthTypes => 'plaintext',
         SQLBackend => 'sqlite3',
         SQLConnectInfo => $db_file,
@@ -3591,6 +3729,14 @@ EOS
     print STDERR "Output: ", join('', @output), "\n";
   }
 
+  # Make sure that, if we're running as root, the database file has
+  # the permissions/privs set for use by proftpd
+  if ($< == 0) {
+    unless (chmod(0666, $db_file)) {
+      die("Can't set perms on $db_file to 0666: $!");
+    }
+  }
+
   my $config = {
     PidFile => $setup->{pid_file},
     ScoreboardFile => $setup->{scoreboard_file},
@@ -3616,6 +3762,7 @@ EOS
       ],
 
       'mod_sql.c' => {
+        AuthOrder => 'mod_sql.c',
         SQLAuthTypes => 'plaintext',
         SQLBackend => 'sqlite3',
         SQLConnectInfo => $db_file,
@@ -3824,6 +3971,14 @@ EOS
     print STDERR "Output: ", join('', @output), "\n";
   }
 
+  # Make sure that, if we're running as root, the database file has
+  # the permissions/privs set for use by proftpd
+  if ($< == 0) {
+    unless (chmod(0666, $db_file)) {
+      die("Can't set perms on $db_file to 0666: $!");
+    }
+  }
+
   my $config = {
     PidFile => $setup->{pid_file},
     ScoreboardFile => $setup->{scoreboard_file},
@@ -3849,6 +4004,7 @@ EOS
       ],
 
       'mod_sql.c' => {
+        AuthOrder => 'mod_sql.c',
         SQLAuthTypes => 'plaintext',
         SQLBackend => 'sqlite3',
         SQLConnectInfo => $db_file,
@@ -4048,6 +4204,14 @@ EOS
     print STDERR "Output: ", join('', @output), "\n";
   }
 
+  # Make sure that, if we're running as root, the database file has
+  # the permissions/privs set for use by proftpd
+  if ($< == 0) {
+    unless (chmod(0666, $db_file)) {
+      die("Can't set perms on $db_file to 0666: $!");
+    }
+  }
+
   my $config = {
     PidFile => $setup->{pid_file},
     ScoreboardFile => $setup->{scoreboard_file},
@@ -4074,6 +4238,7 @@ EOS
       ],
 
       'mod_sql.c' => {
+        AuthOrder => 'mod_sql.c',
         SQLAuthTypes => 'plaintext',
         SQLBackend => 'sqlite3',
         SQLConnectInfo => $db_file,
@@ -4304,6 +4469,14 @@ EOS
     print STDERR "Output: ", join('', @output), "\n";
   }
 
+  # Make sure that, if we're running as root, the database file has
+  # the permissions/privs set for use by proftpd
+  if ($< == 0) {
+    unless (chmod(0666, $db_file)) {
+      die("Can't set perms on $db_file to 0666: $!");
+    }
+  }
+
   my $config = {
     PidFile => $setup->{pid_file},
     ScoreboardFile => $setup->{scoreboard_file},
@@ -4335,6 +4508,7 @@ EOS
       ],
 
       'mod_sql.c' => {
+        AuthOrder => 'mod_sql.c',
         SQLAuthTypes => 'plaintext',
         SQLBackend => 'sqlite3',
         SQLConnectInfo => $db_file,
@@ -4563,6 +4737,14 @@ EOS
     print STDERR "Output: ", join('', @output), "\n";
   }
 
+  # Make sure that, if we're running as root, the database file has
+  # the permissions/privs set for use by proftpd
+  if ($< == 0) {
+    unless (chmod(0666, $db_file)) {
+      die("Can't set perms on $db_file to 0666: $!");
+    }
+  }
+
   my $config = {
     PidFile => $setup->{pid_file},
     ScoreboardFile => $setup->{scoreboard_file},
@@ -4594,6 +4776,7 @@ EOS
       ],
 
       'mod_sql.c' => {
+        AuthOrder => 'mod_sql.c',
         SQLAuthTypes => 'plaintext',
         SQLBackend => 'sqlite3',
         SQLConnectInfo => $db_file,
@@ -4797,6 +4980,14 @@ EOS
     print STDERR "Output: ", join('', @output), "\n";
   }
 
+  # Make sure that, if we're running as root, the database file has
+  # the permissions/privs set for use by proftpd
+  if ($< == 0) {
+    unless (chmod(0666, $db_file)) {
+      die("Can't set perms on $db_file to 0666: $!");
+    }
+  }
+
   my $config = {
     PidFile => $setup->{pid_file},
     ScoreboardFile => $setup->{scoreboard_file},
@@ -4828,6 +5019,7 @@ EOS
       ],
 
       'mod_sql.c' => {
+        AuthOrder => 'mod_sql.c',
         SQLAuthTypes => 'plaintext',
         SQLBackend => 'sqlite3',
         SQLConnectInfo => $db_file,
@@ -5040,6 +5232,14 @@ EOS
     print STDERR "Output: ", join('', @output), "\n";
   }
 
+  # Make sure that, if we're running as root, the database file has
+  # the permissions/privs set for use by proftpd
+  if ($< == 0) {
+    unless (chmod(0666, $db_file)) {
+      die("Can't set perms on $db_file to 0666: $!");
+    }
+  }
+
   my $config = {
     PidFile => $setup->{pid_file},
     ScoreboardFile => $setup->{scoreboard_file},
@@ -5071,6 +5271,7 @@ EOS
       ],
 
       'mod_sql.c' => {
+        AuthOrder => 'mod_sql.c',
         SQLAuthTypes => 'plaintext',
         SQLBackend => 'sqlite3',
         SQLConnectInfo => $db_file,
@@ -5270,6 +5471,14 @@ EOS
     print STDERR "Output: ", join('', @output), "\n";
   }
 
+  # Make sure that, if we're running as root, the database file has
+  # the permissions/privs set for use by proftpd
+  if ($< == 0) {
+    unless (chmod(0666, $db_file)) {
+      die("Can't set perms on $db_file to 0666: $!");
+    }
+  }
+
   my $config = {
     PidFile => $setup->{pid_file},
     ScoreboardFile => $setup->{scoreboard_file},
@@ -5295,6 +5504,7 @@ EOS
       ],
 
       'mod_sql.c' => {
+        AuthOrder => 'mod_sql.c',
         SQLAuthTypes => 'plaintext',
         SQLBackend => 'sqlite3',
         SQLConnectInfo => $db_file,
@@ -5521,6 +5731,14 @@ EOS
     print STDERR "Output: ", join('', @output), "\n";
   }
 
+  # Make sure that, if we're running as root, the database file has
+  # the permissions/privs set for use by proftpd
+  if ($< == 0) {
+    unless (chmod(0666, $db_file)) {
+      die("Can't set perms on $db_file to 0666: $!");
+    }
+  }
+
   my $config = {
     PidFile => $setup->{pid_file},
     ScoreboardFile => $setup->{scoreboard_file},
@@ -5546,6 +5764,7 @@ EOS
       ],
 
       'mod_sql.c' => {
+        AuthOrder => 'mod_sql.c',
         SQLAuthTypes => 'plaintext',
         SQLBackend => 'sqlite3',
         SQLConnectInfo => $db_file,
@@ -5747,6 +5966,14 @@ EOS
     print STDERR "Output: ", join('', @output), "\n";
   }
 
+  # Make sure that, if we're running as root, the database file has
+  # the permissions/privs set for use by proftpd
+  if ($< == 0) {
+    unless (chmod(0666, $db_file)) {
+      die("Can't set perms on $db_file to 0666: $!");
+    }
+  }
+
   my $config = {
     PidFile => $setup->{pid_file},
     ScoreboardFile => $setup->{scoreboard_file},
@@ -5772,6 +5999,7 @@ EOS
       ],
 
       'mod_sql.c' => {
+        AuthOrder => 'mod_sql.c',
         SQLAuthTypes => 'plaintext',
         SQLBackend => 'sqlite3',
         SQLConnectInfo => $db_file,
@@ -5982,6 +6210,14 @@ EOS
     print STDERR "Output: ", join('', @output), "\n";
   }
 
+  # Make sure that, if we're running as root, the database file has
+  # the permissions/privs set for use by proftpd
+  if ($< == 0) {
+    unless (chmod(0666, $db_file)) {
+      die("Can't set perms on $db_file to 0666: $!");
+    }
+  }
+
   my $config = {
     PidFile => $setup->{pid_file},
     ScoreboardFile => $setup->{scoreboard_file},
@@ -6007,6 +6243,7 @@ EOS
       ],
 
       'mod_sql.c' => {
+        AuthOrder => 'mod_sql.c',
         SQLAuthTypes => 'plaintext',
         SQLBackend => 'sqlite3',
         SQLConnectInfo => $db_file,
@@ -6177,6 +6414,14 @@ EOS
     print STDERR "Output: ", join('', @output), "\n";
   }
 
+  # Make sure that, if we're running as root, the database file has
+  # the permissions/privs set for use by proftpd
+  if ($< == 0) {
+    unless (chmod(0666, $db_file)) {
+      die("Can't set perms on $db_file to 0666: $!");
+    }
+  }
+
   my $config = {
     PidFile => $setup->{pid_file},
     ScoreboardFile => $setup->{scoreboard_file},
@@ -6202,6 +6447,7 @@ EOS
       ],
 
       'mod_sql.c' => {
+        AuthOrder => 'mod_sql.c',
         SQLAuthTypes => 'plaintext',
         SQLBackend => 'sqlite3',
         SQLConnectInfo => $db_file,
@@ -6392,6 +6638,14 @@ EOS
     print STDERR "Output: ", join('', @output), "\n";
   }
 
+  # Make sure that, if we're running as root, the database file has
+  # the permissions/privs set for use by proftpd
+  if ($< == 0) {
+    unless (chmod(0666, $db_file)) {
+      die("Can't set perms on $db_file to 0666: $!");
+    }
+  }
+
   my $test_file = File::Spec->rel2abs("$tmpdir/test.txt");
   if (open(my $fh, "> $test_file")) {
     print $fh "Hello, World!\n";
@@ -6431,6 +6685,7 @@ EOS
       ],
 
       'mod_sql.c' => {
+        AuthOrder => 'mod_sql.c',
         SQLAuthTypes => 'plaintext',
         SQLBackend => 'sqlite3',
         SQLConnectInfo => $db_file,
@@ -6617,6 +6872,14 @@ EOS
     print STDERR "Output: ", join('', @output), "\n";
   }
 
+  # Make sure that, if we're running as root, the database file has
+  # the permissions/privs set for use by proftpd
+  if ($< == 0) {
+    unless (chmod(0666, $db_file)) {
+      die("Can't set perms on $db_file to 0666: $!");
+    }
+  }
+
   my $test_file = File::Spec->rel2abs("$tmpdir/test.txt");
   if (open(my $fh, "> $test_file")) {
     print $fh "Hello, World!\n";
@@ -6658,6 +6921,7 @@ EOS
       ],
 
       'mod_sql.c' => {
+        AuthOrder => 'mod_sql.c',
         SQLAuthTypes => 'plaintext',
         SQLBackend => 'sqlite3',
         SQLConnectInfo => $db_file,
@@ -6876,6 +7140,14 @@ EOS
     print STDERR "Output: ", join('', @output), "\n";
   }
 
+  # Make sure that, if we're running as root, the database file has
+  # the permissions/privs set for use by proftpd
+  if ($< == 0) {
+    unless (chmod(0666, $db_file)) {
+      die("Can't set perms on $db_file to 0666: $!");
+    }
+  }
+
   my $test_file = File::Spec->rel2abs("$tmpdir/test.txt");
   if (open(my $fh, "> $test_file")) {
     print $fh "Hello, World!\n";
@@ -6917,6 +7189,7 @@ EOS
       ],
 
       'mod_sql.c' => {
+        AuthOrder => 'mod_sql.c',
         SQLAuthTypes => 'plaintext',
         SQLBackend => 'sqlite3',
         SQLConnectInfo => $db_file,
@@ -7125,6 +7398,14 @@ EOS
     print STDERR "Output: ", join('', @output), "\n";
   }
 
+  # Make sure that, if we're running as root, the database file has
+  # the permissions/privs set for use by proftpd
+  if ($< == 0) {
+    unless (chmod(0666, $db_file)) {
+      die("Can't set perms on $db_file to 0666: $!");
+    }
+  }
+
   my $quota_lock = File::Spec->rel2abs("$tmpdir/quota.lock");
 
   my $config = {
@@ -7153,6 +7434,7 @@ EOS
       ],
 
       'mod_sql.c' => {
+        AuthOrder => 'mod_sql.c',
         SQLAuthTypes => 'plaintext',
         SQLBackend => 'sqlite3',
         SQLConnectInfo => $db_file,
@@ -7323,6 +7605,14 @@ EOS
     print STDERR "Output: ", join('', @output), "\n";
   }
 
+  # Make sure that, if we're running as root, the database file has
+  # the permissions/privs set for use by proftpd
+  if ($< == 0) {
+    unless (chmod(0666, $db_file)) {
+      die("Can't set perms on $db_file to 0666: $!");
+    }
+  }
+
   my $exclude_filter = $tmpdir;
 
   my $config = {
@@ -7351,6 +7641,7 @@ EOS
       ],
 
       'mod_sql.c' => {
+        AuthOrder => 'mod_sql.c',
         SQLAuthTypes => 'plaintext',
         SQLBackend => 'sqlite3',
         SQLConnectInfo => $db_file,
@@ -7533,6 +7824,14 @@ EOS
     print STDERR "Output: ", join('', @output), "\n";
   }
 
+  # Make sure that, if we're running as root, the database file has
+  # the permissions/privs set for use by proftpd
+  if ($< == 0) {
+    unless (chmod(0666, $db_file)) {
+      die("Can't set perms on $db_file to 0666: $!");
+    }
+  }
+
   my $config = {
     PidFile => $setup->{pid_file},
     ScoreboardFile => $setup->{scoreboard_file},
@@ -7559,6 +7858,7 @@ EOS
       ],
 
       'mod_sql.c' => {
+        AuthOrder => 'mod_sql.c',
         SQLAuthTypes => 'plaintext',
         SQLBackend => 'sqlite3',
         SQLConnectInfo => $db_file,
@@ -7741,6 +8041,14 @@ EOS
     print STDERR "Output: ", join('', @output), "\n";
   }
 
+  # Make sure that, if we're running as root, the database file has
+  # the permissions/privs set for use by proftpd
+  if ($< == 0) {
+    unless (chmod(0666, $db_file)) {
+      die("Can't set perms on $db_file to 0666: $!");
+    }
+  }
+
   my $exclude_filter = $tmpdir;
 
   my $config = {
@@ -7769,6 +8077,7 @@ EOS
       ],
 
       'mod_sql.c' => {
+        AuthOrder => 'mod_sql.c',
         SQLAuthTypes => 'plaintext',
         SQLBackend => 'sqlite3',
         SQLConnectInfo => $db_file,
@@ -7965,6 +8274,14 @@ EOS
     print STDERR "Output: ", join('', @output), "\n";
   }
 
+  # Make sure that, if we're running as root, the database file has
+  # the permissions/privs set for use by proftpd
+  if ($< == 0) {
+    unless (chmod(0666, $db_file)) {
+      die("Can't set perms on $db_file to 0666: $!");
+    }
+  }
+
   my $test_file = File::Spec->rel2abs("$home_dir/welcome.txt");
   if (open(my $fh, "> $test_file")) {
     print $fh <<EOH;
@@ -8032,6 +8349,7 @@ EOH
       ],
 
       'mod_sql.c' => {
+        AuthOrder => 'mod_sql.c',
         SQLAuthTypes => 'plaintext',
         SQLBackend => 'sqlite3',
         SQLConnectInfo => $db_file,
@@ -8202,6 +8520,14 @@ EOS
     print STDERR "Output: ", join('', @output), "\n";
   }
 
+  # Make sure that, if we're running as root, the database file has
+  # the permissions/privs set for use by proftpd
+  if ($< == 0) {
+    unless (chmod(0666, $db_file)) {
+      die("Can't set perms on $db_file to 0666: $!");
+    }
+  }
+
   my $test_file = File::Spec->rel2abs("$home_dir/welcome.txt");
   if (open(my $fh, "> $test_file")) {
     print $fh <<EOH;
@@ -8269,6 +8595,7 @@ EOH
       ],
 
       'mod_sql.c' => {
+        AuthOrder => 'mod_sql.c',
         SQLAuthTypes => 'plaintext',
         SQLBackend => 'sqlite3',
         SQLConnectInfo => $db_file,
@@ -8438,6 +8765,14 @@ EOS
     print STDERR "Output: ", join('', @output), "\n";
   }
 
+  # Make sure that, if we're running as root, the database file has
+  # the permissions/privs set for use by proftpd
+  if ($< == 0) {
+    unless (chmod(0666, $db_file)) {
+      die("Can't set perms on $db_file to 0666: $!");
+    }
+  }
+
   my $test_file = File::Spec->rel2abs("$home_dir/welcome.txt");
   if (open(my $fh, "> $test_file")) {
     print $fh <<EOH;
@@ -8505,6 +8840,7 @@ EOH
       ],
 
       'mod_sql.c' => {
+        AuthOrder => 'mod_sql.c',
         SQLAuthTypes => 'plaintext',
         SQLBackend => 'sqlite3',
         SQLConnectInfo => $db_file,
@@ -8671,6 +9007,14 @@ EOS
     print STDERR "Output: ", join('', @output), "\n";
   }
 
+  # Make sure that, if we're running as root, the database file has
+  # the permissions/privs set for use by proftpd
+  if ($< == 0) {
+    unless (chmod(0666, $db_file)) {
+      die("Can't set perms on $db_file to 0666: $!");
+    }
+  }
+
   my $config = {
     PidFile => $setup->{pid_file},
     ScoreboardFile => $setup->{scoreboard_file},
@@ -8694,6 +9038,7 @@ EOS
       ],
 
       'mod_sql.c' => {
+        AuthOrder => 'mod_sql.c',
         SQLAuthTypes => 'plaintext',
         SQLBackend => 'sqlite3',
         SQLConnectInfo => $db_file,
@@ -8844,6 +9189,14 @@ EOS
     print STDERR "Output: ", join('', @output), "\n";
   }
 
+  # Make sure that, if we're running as root, the database file has
+  # the permissions/privs set for use by proftpd
+  if ($< == 0) {
+    unless (chmod(0666, $db_file)) {
+      die("Can't set perms on $db_file to 0666: $!");
+    }
+  }
+
   my $config = {
     PidFile => $setup->{pid_file},
     ScoreboardFile => $setup->{scoreboard_file},
@@ -8869,6 +9222,7 @@ EOS
       ],
 
       'mod_sql.c' => {
+        AuthOrder => 'mod_sql.c',
         SQLAuthTypes => 'plaintext',
         SQLBackend => 'sqlite3',
         SQLConnectInfo => $db_file,
@@ -9055,6 +9409,14 @@ EOS
     print STDERR "Output: ", join('', @output), "\n";
   }
 
+  # Make sure that, if we're running as root, the database file has
+  # the permissions/privs set for use by proftpd
+  if ($< == 0) {
+    unless (chmod(0666, $db_file)) {
+      die("Can't set perms on $db_file to 0666: $!");
+    }
+  }
+
   my $test_file = File::Spec->rel2abs("$tmpdir/test.txt");
   if (open(my $fh, "> $test_file")) {
     print $fh "Hello, World!\n";
@@ -9094,6 +9456,7 @@ EOS
       ],
 
       'mod_sql.c' => {
+        AuthOrder => 'mod_sql.c',
         SQLAuthTypes => 'plaintext',
         SQLBackend => 'sqlite3',
         SQLConnectInfo => $db_file,
@@ -9304,6 +9667,14 @@ EOS
     print STDERR "Output: ", join('', @output), "\n";
   }
 
+  # Make sure that, if we're running as root, the database file has
+  # the permissions/privs set for use by proftpd
+  if ($< == 0) {
+    unless (chmod(0666, $db_file)) {
+      die("Can't set perms on $db_file to 0666: $!");
+    }
+  }
+
   my $config = {
     PidFile => $setup->{pid_file},
     ScoreboardFile => $setup->{scoreboard_file},
@@ -9331,6 +9702,7 @@ EOS
       ],
 
       'mod_sql.c' => {
+        AuthOrder => 'mod_sql.c',
         SQLAuthTypes => 'plaintext',
         SQLBackend => 'sqlite3',
         SQLConnectInfo => $db_file,
@@ -9512,6 +9884,14 @@ EOS
     print STDERR "Output: ", join('', @output), "\n";
   }
 
+  # Make sure that, if we're running as root, the database file has
+  # the permissions/privs set for use by proftpd
+  if ($< == 0) {
+    unless (chmod(0666, $db_file)) {
+      die("Can't set perms on $db_file to 0666: $!");
+    }
+  }
+
   my $config = {
     PidFile => $setup->{pid_file},
     ScoreboardFile => $setup->{scoreboard_file},
@@ -9539,6 +9919,7 @@ EOS
       ],
 
       'mod_sql.c' => {
+        AuthOrder => 'mod_sql.c',
         SQLAuthTypes => 'plaintext',
         SQLBackend => 'sqlite3',
         SQLConnectInfo => $db_file,
@@ -9725,6 +10106,14 @@ EOS
     print STDERR "Output: ", join('', @output), "\n";
   }
 
+  # Make sure that, if we're running as root, the database file has
+  # the permissions/privs set for use by proftpd
+  if ($< == 0) {
+    unless (chmod(0666, $db_file)) {
+      die("Can't set perms on $db_file to 0666: $!");
+    }
+  }
+
   my $config = {
     PidFile => $setup->{pid_file},
     ScoreboardFile => $setup->{scoreboard_file},
@@ -9750,6 +10139,7 @@ EOS
       ],
 
       'mod_sql.c' => {
+        AuthOrder => 'mod_sql.c',
         SQLAuthTypes => 'plaintext',
         SQLBackend => 'sqlite3',
         SQLConnectInfo => $db_file,
@@ -9919,6 +10309,14 @@ EOS
   if (scalar(@output) &&
       $ENV{TEST_VERBOSE}) {
     print STDERR "Output: ", join('', @output), "\n";
+  }
+
+  # Make sure that, if we're running as root, the database file has
+  # the permissions/privs set for use by proftpd
+  if ($< == 0) {
+    unless (chmod(0666, $db_file)) {
+      die("Can't set perms on $db_file to 0666: $!");
+    }
   }
 
   my $config = {
