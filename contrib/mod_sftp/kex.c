@@ -3857,6 +3857,13 @@ static int read_kexrsa_secret(struct ssh2_packet *pkt, struct sftp_kex *kex) {
   encrypted_len = sftp_msg_read_int(pkt->pool, &buf, &buflen);
   encrypted = (unsigned char *) sftp_msg_read_data(pkt->pool, &buf, &buflen,
     encrypted_len);
+  if (encrypted == NULL) {
+    (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
+      "client provided empty data, disconnecting");
+    RSA_free(kex->rsa);
+    kex->rsa = NULL;
+    SFTP_DISCONNECT_CONN(SFTP_SSH2_DISCONNECT_KEY_EXCHANGE_FAILED, NULL);
+  }
 
   /* Save the encrypted secret for calculating H. */
   kex->rsa_encrypted_len = encrypted_len;
