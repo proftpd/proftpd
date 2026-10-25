@@ -44,6 +44,7 @@ static int outputfiles(cmd_rec *);
 static int listfile(cmd_rec *, pool *, const char *, const char *);
 static int listdir(cmd_rec *, pool *, const char *, const char *);
 
+static int sendline_buf_flush(void);
 static int sendline(int flags, char *fmt, ...)
 #ifdef __GNUC__
        __attribute__ ((format (printf, 2, 3)));
@@ -67,6 +68,9 @@ static int list_style = LS_LIST_STYLE_UNIX;
  * entries in a directory (Bug#4247).
  */
 #define LS_MAX_DSIZE			(1024 * 1024 * 8)
+
+/* Allocate buffers large enough for long path names to appear twice. */
+#define LS_SENDLINE_BUFSZ		((PR_TUNABLE_PATH_MAX * 2) + 256)
 
 static unsigned char list_strict_opts = FALSE;
 static char *list_options = NULL;
@@ -321,113 +325,142 @@ static int ls_perms(pool *p, cmd_rec *cmd, const char *path, int *hidden) {
  * to get the optimal buffer size for network transfers.
  */
 static char *listbuf = NULL, *listbuf_ptr = NULL;
-static size_t listbufsz = 0;
+static size_t listbufsz = 0, listbuflen = 0;
 
-static int sendline(int flags, char *fmt, ...) {
-  va_list msg;
-  char buf[PR_TUNABLE_BUFFER_SIZE+1];
-  int res = 0;
-  size_t buflen, listbuflen;
-
-  memset(buf, '\0', sizeof(buf));
-
+static void sendline_buf_init(void) {
   if (listbuf == NULL) {
     listbufsz = pr_config_get_server_xfer_bufsz(PR_NETIO_IO_WR);
+
+    /* Make sure that the preferred network IO write buffer size is large
+     * enough; some admin may have configured a too-small SocketOptions setting
+     * for our needs.
+     */
+    if (listbufsz < LS_SENDLINE_BUFSZ) {
+      pr_trace_msg("data", 9, "configured network buffer size (%lu bytes) is "
+        "too small for LIST/NLST entries (%lu bytes), ignoring",
+        (unsigned long) listbufsz, (unsigned long) LS_SENDLINE_BUFSZ);
+      listbufsz = LS_SENDLINE_BUFSZ;
+    }
+
     listbuf = listbuf_ptr = pcalloc(session.pool, listbufsz);
     pr_trace_msg("data", 8, "allocated list buffer of %lu bytes",
       (unsigned long) listbufsz);
   }
 
-  if (flags & LS_SENDLINE_FL_FLUSH) {
-    listbuflen = (listbuf_ptr - listbuf) + strlen(listbuf_ptr);
+  memset(listbuf, '\0', listbufsz);
+  listbuf_ptr = listbuf;
+  listbuflen = 0;
+}
 
-    if (listbuflen > 0) {
-      int using_ascii = FALSE;
+static int sendline_buf_flush(void) {
+  int res = 0, xerrno = 0;
 
-      /* Make sure the ASCII flags are cleared from the session flags,
-       * so that the pr_data_xfer() function does not try to perform
-       * ASCII translation on this data.
-       */
-      if (session.sf_flags & SF_ASCII) {
-        using_ascii = TRUE;
-      }
+  if (listbuflen > 0) {
+    int using_ascii = FALSE;
 
-      session.sf_flags &= ~SF_ASCII;
-      session.sf_flags &= ~SF_ASCII_OVERRIDE;
-
-      res = pr_data_xfer(listbuf, listbuflen);
-      if (res < 0 &&
-          errno != 0) {
-        int xerrno = errno;
-
-        if (session.d != NULL &&
-            session.d->outstrm != NULL) {
-          xerrno = PR_NETIO_ERRNO(session.d->outstrm);
-        }
-
-        pr_log_debug(DEBUG3, "pr_data_xfer returned %d, error = %s", res,
-          strerror(xerrno));
-      }
-
-      if (using_ascii) {
-        session.sf_flags |= SF_ASCII;
-      }
-      session.sf_flags |= SF_ASCII_OVERRIDE;
-
-      memset(listbuf, '\0', listbufsz);
-      listbuf_ptr = listbuf;
-      pr_trace_msg("data", 8, "flushed %lu bytes of list buffer",
-        (unsigned long) listbuflen);
-      listbuflen = 0;
-    }
-
-    return res;
-  }
-
-  va_start(msg, fmt);
-  pr_vsnprintf(buf, sizeof(buf), fmt, msg);
-  va_end(msg);
-
-  buf[sizeof(buf)-1] = '\0';
-
-  /* If buf won't fit completely into listbuf, flush listbuf */
-  listbuflen = (listbuf_ptr - listbuf) + strlen(listbuf_ptr);
-
-  buflen = strlen(buf);
-  if (buflen >= (listbufsz - listbuflen)) {
     /* Make sure the ASCII flags are cleared from the session flags,
      * so that the pr_data_xfer() function does not try to perform
      * ASCII translation on this data.
      */
+    if (session.sf_flags & SF_ASCII) {
+      using_ascii = TRUE;
+    }
+
+    session.sf_flags &= ~SF_ASCII;
     session.sf_flags &= ~SF_ASCII_OVERRIDE;
 
     res = pr_data_xfer(listbuf, listbuflen);
+    xerrno = errno;
     if (res < 0 &&
-        errno != 0) {
-      int xerrno = errno;
-
-      if (session.d != NULL &&
-          session.d->outstrm) {
-        xerrno = PR_NETIO_ERRNO(session.d->outstrm);
-      }
-
-      pr_log_debug(DEBUG3, "pr_data_xfer returned %d, error = %s", res,
+        xerrno != 0) {
+      pr_log_debug(DEBUG3, "error transferring data: [%d] %s", xerrno,
         strerror(xerrno));
     }
 
+    if (using_ascii == TRUE) {
+      session.sf_flags |= SF_ASCII;
+    }
     session.sf_flags |= SF_ASCII_OVERRIDE;
 
-    memset(listbuf, '\0', listbufsz);
-    listbuf_ptr = listbuf;
     pr_trace_msg("data", 8, "flushed %lu bytes of list buffer",
       (unsigned long) listbuflen);
-    listbuflen = 0;
   }
 
-  sstrcat(listbuf_ptr, buf, listbufsz - listbuflen);
-  listbuf_ptr += buflen;
+  sendline_buf_init();
 
+  errno = xerrno;
   return res;
+}
+
+static int sendline(int flags, char *fmt, ...) {
+  va_list msg;
+  char buf[LS_SENDLINE_BUFSZ], *ptr;
+  size_t fmtlen, listbuf_capacity;
+  int res = 0;
+
+  if (listbuf == NULL) {
+    sendline_buf_init();
+  }
+
+  if (flags & LS_SENDLINE_FL_FLUSH) {
+    return sendline_buf_flush();
+  }
+
+  memset(buf, '\0', sizeof(buf));
+  va_start(msg, fmt);
+  res = pr_vsnprintf(buf, sizeof(buf), fmt, msg);
+  va_end(msg);
+
+  if (res < 0) {
+    fmtlen = sizeof(buf)-1;
+
+  } else {
+    fmtlen = res;
+  }
+
+  /* If our formatted entry exceeds the capacity of our aggregating buffer, it
+   * make take several writes/flushes to deal with it.
+   */
+
+  listbuf_capacity = listbufsz - listbuflen;
+
+  ptr = buf;
+  while (fmtlen >= listbuf_capacity) {
+    size_t written_len;
+
+    pr_signals_handle();
+
+    sstrcat(listbuf_ptr, ptr, listbuf_capacity);
+
+    /* How much was actually copied into the buffer for sending to the client?
+     * We know that sstrcat() refuses to copy more than the given capacity,
+     * AND that it will reserve one byte for the terminating NUL.
+     *
+     * So if the formatted buffer length still exceeds that capacity, the
+     * entry will be truncated.
+     */
+
+    written_len = listbuf_capacity - 1;
+
+    listbuf_ptr += written_len;
+    listbuflen += written_len;
+    ptr += written_len;
+    fmtlen -= written_len;
+
+    /* This can fail, if the client closes its end abruptly. */
+    if (sendline_buf_flush() < 0) {
+      return -1;
+    }
+
+    /* Calculate the listbuf capacity again due to the flushing. */
+    listbuf_capacity = listbufsz - listbuflen;
+  }
+
+  sstrcat(listbuf_ptr, ptr, listbuf_capacity);
+  listbuf_ptr += fmtlen;
+  listbuflen += fmtlen;
+
+  return 0;
 }
 
 static void ls_done(cmd_rec *cmd) {
