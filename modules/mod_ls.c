@@ -37,6 +37,8 @@
 #define MAP_GID(x) \
   (fakegroup ? fakegroup : pr_auth_gid2name(cmd->tmp_pool, (x)))
 
+module ls_module;
+
 static void addfile(cmd_rec *, const char *, const char *, time_t, off_t);
 static int outputfiles(cmd_rec *);
 
@@ -460,6 +462,13 @@ static int sendline(int flags, char *fmt, ...) {
 
     /* Calculate the listbuf capacity again due to the flushing. */
     listbuf_capacity = listbufsz - listbuflen;
+  }
+
+  if (listbuf_ptr >= (listbuf + listbufsz)) {
+    pr_log_pri(PR_LOG_ERR,
+      "memory manipulation attempt detected, disconnecting");
+    pr_session_disconnect(&ls_module, PR_SESS_DISCONNECT_BY_APPLICATION,
+      NULL);
   }
 
   sstrcat(listbuf_ptr, ptr, listbuf_capacity);

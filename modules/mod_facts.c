@@ -587,6 +587,13 @@ static int facts_mlinfobuf_add(struct mlinfo *info, int flags) {
     mlinfo_capacity = mlinfo_bufsz - mlinfo_buflen;
   }
 
+  if (mlinfo_bufptr >= (mlinfo_buf + mlinfo_bufsz)) {
+    pr_log_pri(PR_LOG_ERR,
+      "memory manipulation attempt detected, disconnecting");
+    pr_session_disconnect(&facts_module, PR_SESS_DISCONNECT_BY_APPLICATION,
+      NULL);
+  }
+
   sstrcat(mlinfo_bufptr, ptr, mlinfo_capacity);
   mlinfo_bufptr += fmtlen;
   mlinfo_buflen += fmtlen;
