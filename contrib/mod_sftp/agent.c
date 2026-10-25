@@ -318,7 +318,15 @@ int sftp_agent_get_keys(pool *p, const char *agent_path,
 
     key_datalen = sftp_msg_read_int(p, &resp, &resplen);
     key_data = sftp_msg_read_data(p, &resp, &resplen, key_datalen);
+    if (key_data == NULL) {
+      pr_trace_msg(trace_channel, 2,
+        "SSH agent at '%s' provided empty key for key #%u, skipping",
+        agent_path, (i + 1));
+      continue;
+    }
+
     key_comment = sftp_msg_read_string(p, &resp, &resplen);
+
     if (key_comment != NULL) {
       pr_trace_msg(trace_channel, 9,
         "SSH agent at '%s' provided comment '%s' for key #%u", agent_path,
