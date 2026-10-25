@@ -3537,6 +3537,14 @@ static int decrypt_openssh_data(pool *p, const char *path,
   uint32_t buflen, key_len, rounds, salt_len;
   size_t passphrase_len = 0;
 
+  if (encrypted_data == NULL ||
+      kdf_data == NULL) {
+    pr_trace_msg(trace_channel, 3,
+      "'%s' key is missing required data", path);
+    errno = EINVAL;
+    return -1;
+  }
+
   if (strcmp(kdf_name, "none") == 0) {
     *decrypted_data = encrypted_data;
     *decrypted_len = encrypted_len;
@@ -7285,6 +7293,11 @@ static const unsigned char *prove_hostkey(pool *p,
   const unsigned char *session_id, *hsig;
   unsigned char *buf, *ptr;
   uint32_t buflen, bufsz, session_idsz;
+
+  if (hostkey_data == NULL) {
+    errno = EINVAL;
+    return NULL;
+  }
 
   tmp_pool = make_sub_pool(p);
   pr_pool_tag(tmp_pool, "hostkeys-prove-00@openssh.com pool");
