@@ -55,7 +55,7 @@ jobs:
       # GitHub runners still causing problems with NodeJS v20; see:
       FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
 
-      PACKAGE_VERSION: 1.3.10rc5
+      PACKAGE_VERSION: 1.3.10rc6
       MEMCACHED_HOST: memcached
       REDIS_HOST: redis
 
