@@ -2504,6 +2504,13 @@ static char *scp_canonicalize_target(pool *p, char *target) {
 
   target_len = strlen(target);
 
+  /* Don't process the text unless there are at least two characters, since
+   * we want to handle matching enclosing quotation characters.
+   */
+  if (target_len < 2) {
+    return target;
+  }
+
   /* Remove any enclosing shell quotations, e.g. single and double quotation
    * marks.  Some SCP clients (i.e. newer libssh2) will quote the paths,
    * assuming that the handling server (us) uses a shell to handle the
