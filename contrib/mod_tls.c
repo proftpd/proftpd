@@ -4911,7 +4911,8 @@ static void tls_tlsext_cb(SSL *ssl, int server, int type,
 
         ext_len = (tlsext_data[0] << 8) | tlsext_data[1];
         if (tlsext_datalen == ext_len + 2 &&
-            (ext_len & 1) == 0) {
+            (ext_len & 1) == 0 &&
+            tlsext_datalen >= 5) {
           int name_type;
           tlsext_data += 2;
 
@@ -4924,13 +4925,18 @@ static void tls_tlsext_cb(SSL *ssl, int server, int type,
             name_len = (tlsext_data[0] << 8) | tlsext_data[1];
             tlsext_data += 2;
 
-            bio = BIO_new(BIO_s_mem());
-            BIO_printf(bio, "\n  %.*s (%lu)", (int) name_len, tlsext_data,
-              (unsigned long) name_len);
+            /* Make sure the advertised name length does not run past the
+             * end of the extension data.
+             */
+            if (name_len <= (size_t) (tlsext_datalen - 5)) {
+              bio = BIO_new(BIO_s_mem());
+              BIO_printf(bio, "\n  %.*s (%lu)", (int) name_len, tlsext_data,
+                (unsigned long) name_len);
 
-            ext_infolen = BIO_get_mem_data(bio, &ext_info);
-            if (ext_info != NULL) {
-              ext_info[ext_infolen] = '\0';
+              ext_infolen = BIO_get_mem_data(bio, &ext_info);
+              if (ext_info != NULL) {
+                ext_info[ext_infolen] = '\0';
+              }
             }
           }
         }
@@ -5154,7 +5160,7 @@ static void tls_tlsext_cb(SSL *ssl, int server, int type,
 
               BIO_puts(bio, "\n");
 
-              while (len > 0) {
+              while (len >= 2) {
                 int version;
 
                 pr_signals_handle();
@@ -5265,7 +5271,7 @@ static void tls_tlsext_cb(SSL *ssl, int server, int type,
 
             BIO_puts(bio, "\n");
 
-            while (len > 0) {
+            while (len >= 2) {
               int algo;
 
               pr_signals_handle();
