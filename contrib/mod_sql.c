@@ -28,7 +28,7 @@
 #include "mod_sql.h"
 #include "jot.h"
 
-#define MOD_SQL_VERSION			"mod_sql/4.5"
+#define MOD_SQL_VERSION			"mod_sql/4.6"
 
 #if defined(HAVE_CRYPT_H) && !defined(AIX4) && !defined(AIX5)
 # include <crypt.h>
