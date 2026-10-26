@@ -19,20 +19,40 @@ ChangeLog files.
 
   + New Directives
 
-      SFTPAuthCertificates
-      SFTPAuthorizedHostCAKeys
-      SFTPAuthorizedUserCAKeys
-      SFTPCertificateOptions
+      SFTPAuthCertificates, SFTPAuthorizedHostCAKeys,
+        SFTPAuthorizedUserCAKeys,SFTPCertificateOptions
 
-      ShaperOptions NoEncryptedMessages (Issue #2391)
+        These new directives are for configuring support for SSH
+        certificates for client authentication.  Please see their
+        respective descriptions for details.
+
+      ShaperOptions NoEncryptedMessages
+
+        The mod_shaper module now encrypts its interprocess messages by
+        default, mitigating local user access to the underlying System V
+        message queue.  Use this option to disable this encryption if it
+        causes issues.
+
 
   + Changed Directives
 
       RedisOptions EnableDiags
 
-      SFTPCompression UseHuffmanOnly (Issue #2366)
+        Use this option to enable more diagnostic logging of Redis
+        interactions, such as for TLS connections.
 
-      SQLOptions NoEscapeLikeWildcards (Issue #2379)
+      SFTPCompression UseHuffmanOnly
+
+        Some information leak issues can occur for SSH connections that
+        have multiple simultaneous channels open over the same SSH
+        connection that uses compression.  Use this option to use a
+        particular compression codec that does not leak such information.
+
+      SQLOptions NoEscapeLikeWildcards
+
+        When using its default group query, the mod_sql module will now
+        properly escape any LIKE-specific wildcard characters in the query.
+        If this new behavior causes issues, use this option.
 
 
 1.3.10rc4

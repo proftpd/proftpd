@@ -15,7 +15,7 @@
   where `N' is the issue number.
 -----------------------------------------------------------------------------
 
-1.3.10rc5
+1.3.10rc5 - Released 26-Oct-2026
 --------------------------------
 - Issue 2286 - Insufficient validation of FTP RANG, REST parameters can lead
   to use of negative file offsets.
