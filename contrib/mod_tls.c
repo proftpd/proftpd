@@ -4875,7 +4875,7 @@ static void tls_tlsext_cb(SSL *ssl, int server, int type,
 
               BIO_puts(bio, "\n");
 
-              while (len > 0) {
+              while (len >= 2) {
                 int version;
 
                 pr_signals_handle();
@@ -4885,6 +4885,14 @@ static void tls_tlsext_cb(SSL *ssl, int server, int type,
                   tls_get_label(version, tls_version_labels), version);
                 len -= 2;
                 tlsext_data += 2;
+              }
+
+              if (len > 0) {
+                /* This occurs if a badly behaving server provides
+                 * an unexpected length value that is not a multiple of 2.
+                 */
+                pr_trace_msg(trace_channel, 19,
+                  "server provided invalid supported version length, ignoring");
               }
             }
           }
