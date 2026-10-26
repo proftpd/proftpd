@@ -2502,8 +2502,13 @@ static radius_attrib_t *radius_get_next_attrib(radius_packet_t *packet,
   }
 
   while (attrib->type != attrib_type) {
+    /* Since len is unsigned, use a comparison here rather than subtracting
+     * first: an attribute whose length exceeds the remaining data would
+     * otherwise wrap len around to a large value, and the walk would step
+     * past the end of the packet buffer.
+     */
     if (attrib->length == 0 ||
-        (len -= attrib->length) <= 0) {
+        attrib->length >= len) {
 
       /* Requested attribute not found. */
       if (packet_len != NULL) {
@@ -2512,6 +2517,8 @@ static radius_attrib_t *radius_get_next_attrib(radius_packet_t *packet,
 
       return NULL;
     }
+
+    len -= attrib->length;
 
     /* Examine the next attribute in the packet. */
     attrib = (radius_attrib_t *) ((char *) attrib + attrib->length);
