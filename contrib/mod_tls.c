@@ -4617,10 +4617,11 @@ static void tls_tlsext_cb(SSL *ssl, int server, int type,
          * format specification, see:
          *   https://tools.ietf.org/html/rfc6066#section-3
          */
-        int ext_len;
+        int header_len = 5, ext_len;
 
         ext_len = (tlsext_data[0] << 8) | tlsext_data[1];
-        if (tlsext_datalen == ext_len + 2 &&
+        if (tlsext_datalen >= header_len &&
+            tlsext_datalen == ext_len + 2 &&
             (ext_len & 1) == 0) {
           int name_type;
           tlsext_data += 2;
@@ -4632,6 +4633,16 @@ static void tls_tlsext_cb(SSL *ssl, int server, int type,
             size_t name_len;
 
             name_len = (tlsext_data[0] << 8) | tlsext_data[1];
+            if (name_len > (tlsext_datalen - header_len)) {
+              /* If the provided SNI name length exceeds the provided
+               * extension length, truncate the name.  Silly client.
+               */
+              pr_trace_msg(trace_channel, 19,
+                "provided SNI name length (%lu) exceeds extension length "
+                "(%lu), truncating name length", (unsigned long) name_len,
+                (unsigned long) (tlsext_datalen - header_len));
+              name_len = (tlsext_datalen - header_len);
+            }
             tlsext_data += 2;
 
             bio = BIO_new(BIO_s_mem());
