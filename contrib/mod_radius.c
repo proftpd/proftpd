@@ -2502,11 +2502,10 @@ static radius_attrib_t *radius_get_next_attrib(radius_packet_t *packet,
   }
 
   while (attrib->type != attrib_type) {
-    /* Since len is unsigned, use a comparison here rather than subtracting
-     * first: an attribute whose length exceeds the remaining data would
-     * otherwise wrap len around to a large value, and the walk would step
-     * past the end of the packet buffer.
+    /* Be wary of cases where the provided attribute length value actually
+     * exceeds the size of the packet.
      */
+
     if (attrib->length == 0 ||
         attrib->length >= len) {
 
