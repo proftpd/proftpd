@@ -5284,7 +5284,7 @@ static void tls_tlsext_cb(SSL *ssl, int server, int type,
 
             BIO_puts(bio, "\n");
 
-            while (len > 0) {
+            while (len >= 2) {
               int algo;
 
               pr_signals_handle();
@@ -5297,6 +5297,15 @@ static void tls_tlsext_cb(SSL *ssl, int server, int type,
                 tls_get_label(algo, tls_compress_certificate_labels), algo);
               len -= 2;
               tlsext_data += 2;
+            }
+
+            if (len > 0) {
+              /* This occurs if a badly behaving server provides
+               * an unexpected length value that is not a multiple of 2.
+               */
+              pr_trace_msg(trace_channel, 19,
+                "client provided invalid compress certificate algorithm "
+                "length, ignoring");
             }
           }
         }
