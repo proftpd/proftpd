@@ -20,7 +20,7 @@ ChangeLog files.
   + New Directives
 
       SFTPAuthCertificates, SFTPAuthorizedHostCAKeys,
-        SFTPAuthorizedUserCAKeys,SFTPCertificateOptions
+        SFTPAuthorizedUserCAKeys, SFTPCertificateOptions
 
         These new directives are for configuring support for SSH
         certificates for client authentication.  Please see their
