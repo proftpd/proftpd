@@ -36,7 +36,7 @@
 /* Define if you have mod_sftp support. */
 #undef HAVE_SFTP
 
-#define MOD_AUTH_OTP_VERSION	"mod_auth_otp/0.4"
+#define MOD_AUTH_OTP_VERSION	"mod_auth_otp/0.5"
 
 /* Make sure the version of proftpd is as necessary. */
 #if PROFTPD_VERSION_NUMBER < 0x0001030402
@@ -54,7 +54,7 @@
 /* Define if you have the LibreSSL library.  */
 #if defined(LIBRESSL_VERSION_NUMBER)
 # define HAVE_LIBRESSL	1
-#endif
+#endif /* LIBRESSL_VERSION_NUMBER */
 
 /* mod_auth_otp option flags */
 
@@ -69,4 +69,4 @@ extern unsigned long auth_otp_opts;
 #define AUTH_OTP_ALGO_TOTP_SHA256	3
 #define AUTH_OTP_ALGO_TOTP_SHA512	4
 
-#endif
+#endif /* MOD_AUTH_OTP_H */
