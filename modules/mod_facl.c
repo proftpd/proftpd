@@ -26,7 +26,7 @@
 
 #include "conf.h"
 
-#define MOD_FACL_VERSION		"mod_facl/0.6"
+#define MOD_FACL_VERSION		"mod_facl/0.7"
 
 /* Make sure the version of proftpd is as necessary. */
 #if PROFTPD_VERSION_NUMBER < 0x0001030101
@@ -38,16 +38,16 @@ module facl_module;
 static int facl_engine = TRUE;
 static const char *trace_channel = "facl";
 
-#ifdef HAVE_POSIX_ACL
+#if defined(HAVE_POSIX_ACL)
 
-#ifdef HAVE_SYS_ACL_H
+#if defined(HAVE_SYS_ACL_H)
 # include <sys/acl.h>
-#endif
+#endif /* HAVE_SYS_ACL_H */
 
 /* This header appears on Linux. */
-#ifdef HAVE_ACL_LIBACL_H
+#if defined(HAVE_ACL_LIBACL_H)
 # include <acl/libacl.h>
-#endif
+#endif /* HAVE_ACL_LIBACL_H */
 
 static int is_errno_eperm(int xerrno) {
   if (xerrno == EPERM) {
