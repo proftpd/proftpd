@@ -26,7 +26,7 @@
  * mod_auth_radius for Apache, in part on the FreeRADIUS project's code.
  */
 
-#define MOD_RADIUS_VERSION	"mod_radius/0.9.3"
+#define MOD_RADIUS_VERSION	"mod_radius/0.10"
 
 #include "conf.h"
 #include "privs.h"
