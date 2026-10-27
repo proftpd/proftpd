@@ -1108,6 +1108,7 @@ void restart_daemon(void *d1, void *d2, void *d3, void *d4) {
   init_bindings();
 
   gettimeofday(&restart_finish, NULL);
+  pr_event_generate("core.restarted", NULL);
 
   restart_elapsed = ((restart_finish.tv_sec - restart_start.tv_sec) * 1000L) +
     ((restart_finish.tv_usec - restart_start.tv_usec) / 1000L);
@@ -1997,15 +1998,15 @@ static void standalone_main(void) {
   PRIVS_RELINQUISH
   pr_close_scoreboard(TRUE);
 
-  pr_event_generate("core.startup", NULL);
-
-  init_bindings();
-
   if (pr_pidfile_write() < 0) {
     pr_log_pri(PR_LOG_ERR, "error writing PidFile '%s': %s", pr_pidfile_get(),
       strerror(errno));
     exit(1);
   }
+
+  pr_event_generate("core.startup", NULL);
+
+  init_bindings();
 
   pr_log_pri(PR_LOG_NOTICE, "ProFTPD %s (built %s) standalone mode STARTUP",
     PROFTPD_VERSION_TEXT " " PR_STATUS, BUILD_STAMP);
@@ -2764,6 +2765,11 @@ int main(int argc, char *argv[], char **envp) {
     pr_log_pri(PR_LOG_WARNING,
       "fatal: error processing configuration file '%s'", config_filename);
     exit(1);
+  }
+
+  /* Let any interested listeners know if we are doing a syntax check. */
+  if (syntax_check) {
+    pr_event_generate("core.syntax-check", NULL);
   }
 
   pr_event_generate("core.postparse", NULL);

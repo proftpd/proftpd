@@ -34,7 +34,8 @@ extern char ServerType;
 module systemd_module;
 
 static int systemd_engine = TRUE;
-static int started_up = FALSE;
+static pid_t init_pid = 0;
+static int syntax_check = FALSE;
 
 static const char *trace_channel = "systemd";
 
@@ -161,13 +162,12 @@ static void systemd_mod_unload_ev(const void *event_data, void *user_data) {
 
   pr_event_unregister(&systemd_module, NULL, NULL);
   systemd_engine = TRUE;
-  started_up = FALSE;
+  syntax_check = FALSE;
 }
 #endif /* PR_SHARED_MODULE */
 
 static void systemd_postparse_ev(const void *event_data, void *user_data) {
   config_rec *c;
-  char main_pid[1024];
 
   c = find_config(main_server->conf, CONF_PARAM, "SystemdEngine", FALSE);
   if (c != NULL) {
@@ -182,19 +182,15 @@ static void systemd_postparse_ev(const void *event_data, void *user_data) {
     return;
   }
 
-  /* Note that this event is generated prior to writing out the PidFile,
-   * at least on initial startup.  And that means that systemd won't be
-   * able to read the PidFile, and thus won't know the "main PID", without
-   * which, it gets fussy.
+  /* If we have not already started up (via "core.startup" event), then
+   * we are the initial process, prior to any possible daemonization.
+   * Remember our current PID then, for comparison later, as a way of
+   * determining whether we daemonized or not (Issue #2412).
    *
-   * To work around this, we notify systemd directly of the main PID.
+   * And if we happen to be reloading the module, storing our current PID
+   * here will have no effect, but will not cause problems.
    */
-  memset(main_pid, '\0', sizeof(main_pid));
-  pr_snprintf(main_pid, sizeof(main_pid)-1, "MAINPID=%lu",
-    (unsigned long) getpid());
-  notify_systemd(main_pid);
-
-  notify_systemd("READY=1");
+  init_pid = getpid();
 }
 
 static void get_current_time(struct timespec *ts) {
@@ -232,6 +228,18 @@ static void systemd_restart_ev(const void *event_data, void *user_data) {
   notify_systemd(text);
 }
 
+static void systemd_restarted_ev(const void *event_data, void *user_data) {
+  if (systemd_engine == FALSE) {
+    return;
+  }
+
+  if (ServerType != SERVER_STANDALONE) {
+    return;
+  }
+
+  notify_systemd("READY=1");
+}
+
 static void systemd_shutdown_ev(const void *event_data, void *user_data) {
   if (systemd_engine == FALSE) {
     return;
@@ -241,13 +249,16 @@ static void systemd_shutdown_ev(const void *event_data, void *user_data) {
     return;
   }
 
-  if (started_up == TRUE) {
+  if (syntax_check == FALSE) {
     notify_systemd("STOPPING=1");
-    started_up = FALSE;
   }
+
+  syntax_check = FALSE;
 }
 
 static void systemd_startup_ev(const void *event_data, void *user_data) {
+  char main_pid[1024];
+
   if (systemd_engine == FALSE) {
     return;
   }
@@ -256,14 +267,57 @@ static void systemd_startup_ev(const void *event_data, void *user_data) {
     return;
   }
 
-  /* Set a flag to indicate that the process did, in fact, start up.
-   *
-   * Why is this necessary?  During a syntax check, this startup event
-   * will not happen, but the shutdown event will.  We want to notify
-   * systemd when we are shutting down, but only if we started up in the
-   * first place and not, for example, after doing just a syntax check.
+  /* If this event has been generated, then we are definitely NOT in a
+   * syntax check only scenario.
    */
-  started_up = TRUE;
+  syntax_check = FALSE;
+
+  if (init_pid != getpid()) {
+    int res;
+
+    /* If we have daemonized, we need to wait for our parent process to
+     * exit, so that the cgroup to which we belong is just us (see Issue #2412).
+     */
+    PRIVS_ROOT
+    res = kill(init_pid, 0);
+    PRIVS_RELINQUISH
+
+    if (res == 0) {
+      pr_trace_msg(trace_channel, 9,
+        "due to daemonization, waiting for initial PID %lu to exit",
+        (unsigned long) init_pid);
+
+      while (res == 0) {
+        pr_timer_usleep(250 * 1000);
+
+        PRIVS_ROOT
+        res = kill(init_pid, 0);
+        PRIVS_RELINQUISH
+      }
+    }
+
+    pr_trace_msg(trace_channel, 9, "initial PID %lu has exited",
+      (unsigned long) init_pid);
+    init_pid = 0;
+  }
+
+  memset(main_pid, '\0', sizeof(main_pid));
+  pr_snprintf(main_pid, sizeof(main_pid)-1, "MAINPID=%lu\nREADY=1",
+    (unsigned long) getpid());
+  notify_systemd(main_pid);
+}
+
+static void systemd_syntax_check_ev(const void *event_data, void *user_data) {
+  if (systemd_engine == FALSE) {
+    return;
+  }
+
+  if (ServerType != SERVER_STANDALONE) {
+    return;
+  }
+
+  pr_trace_msg(trace_channel, 19, "handling syntax check");
+  syntax_check = TRUE;
 }
 
 /* Initialization routines
@@ -278,10 +332,14 @@ static int systemd_init(void) {
     NULL);
   pr_event_register(&systemd_module, "core.restart", systemd_restart_ev,
     NULL);
+  pr_event_register(&systemd_module, "core.restarted", systemd_restarted_ev,
+    NULL);
   pr_event_register(&systemd_module, "core.shutdown", systemd_shutdown_ev,
     NULL);
   pr_event_register(&systemd_module, "core.startup", systemd_startup_ev,
     NULL);
+  pr_event_register(&systemd_module, "core.syntax-check",
+    systemd_syntax_check_ev, NULL);
 
   return 0;
 }
