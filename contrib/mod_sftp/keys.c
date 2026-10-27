@@ -3093,8 +3093,10 @@ static int decrypt_openssh_data(pool *p, const char *path,
   uint32_t buflen, key_len, rounds, salt_len;
   size_t passphrase_len;
 
-  if (encrypted_data == NULL ||
-      kdf_data == NULL) {
+  /* Note: kdf_data CAN legitimately be NULL here, as for keys which
+   * are not passphrase-encrypted (Issue #2411).
+   */
+  if (encrypted_data == NULL) {
     pr_trace_msg(trace_channel, 3,
       "'%s' key is missing required data", path);
     errno = EINVAL;
