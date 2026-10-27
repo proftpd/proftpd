@@ -600,7 +600,12 @@ sub stat_symlink_showsymlinks_on {
       $self->assert(qr/$expected/, $resp_msg,
         test_msg("Expected response message '$expected', got '$resp_msg'"));
 
-      $expected = '.*?test\.d\/test\.lnk \-> test\.d\/test\.txt$';
+      $expected = '.*test\.d\/test\.lnk \-> \./test\.txt$';
+      if ($^O eq 'solaris') {
+        $expected = '.*test\.d\/test\.lnk \-> \./test\.txt$';
+      } else {
+        $expected = '.*?test\.d\/test\.lnk \-> test\.d\/test\.txt$';
+      }
       $self->assert(qr/$expected/, $resp_msg,
         test_msg("Expected response message '$expected', got '$resp_msg'"));
     };
