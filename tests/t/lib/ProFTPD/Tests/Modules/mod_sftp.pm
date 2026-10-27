@@ -2226,7 +2226,6 @@ sub set_up {
   my $passphrase_openssh_ed25519_host_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/passphrase_host_openssh_ed25519_key');
   my $passphrase_openssh_ed25519_cbc_host_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/passphrase_host_openssh_ed25519_cbc_key');
 
-=pod
   unless (chmod(0400, $rsa_host_key, $rsa1024_host_key, $dsa_host_key,
       $ecdsa256_host_key, $ecdsa384_host_key, $ecdsa521_host_key,
       $passphrase_rsa_host_key, $passphrase_dsa_host_key,
@@ -2235,7 +2234,6 @@ sub set_up {
       $passphrase_openssh_ed25519_host_key, $passphrase_openssh_ed25519_cbc_host_key)) {
     die("Can't set perms on $rsa_host_key, $rsa1024_host_key, $dsa_host_key, $ecdsa256_host_key, $ecdsa384_host_key, $ecdsa521_host_key, $passphrase_rsa_host_key, $passphrase_dsa_host_key, $openssh_rsa_host_key, $openssh_dsa_host_key, $openssh_ecdsa_host_key, $openssh_ed25519_host_key, $passphrase_openssh_rsa_host_key, $passphrase_openssh_ed25519_host_key, $passphrase_openssh_ed25519_cbc_host_key: $!");
   }
-=cut
 }
 
 sub concat_files {
