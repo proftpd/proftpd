@@ -189,6 +189,16 @@ EOF
       # Now prove that the failures are caused by the .ftpaccess file
       # by deleting that file.
       unlink($ftpaccess_file);
+      $client->quit();
+
+      #
+      # reconnect so .ftpaccess is refreshed. I believe session
+      # process relies on stale information. so we get new session
+      # process with fresh information on .ftpaccess files.
+      # 
+      $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
+      $client->login($user, $passwd);
+      $client->cwd($sub_dir);
 
       $conn = $client->retr_raw("test.txt");
       unless ($conn) {
