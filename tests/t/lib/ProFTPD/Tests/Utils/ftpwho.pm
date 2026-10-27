@@ -64,7 +64,7 @@ sub ftpwho {
     $ftpwho_bin = '../ftpwho';
   }
 
-  my $cmd = "$ftpwho_bin -f $scoreboard_file $ftpwho_opts >$output_file 2>/dev/null &";
+  my $cmd = "$ftpwho_bin -f $scoreboard_file $ftpwho_opts >$output_file 2>/dev/null";
 
   if ($ENV{TEST_VERBOSE}) {
     print STDERR "Executing ftpwho: $cmd\n";

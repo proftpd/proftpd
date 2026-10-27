@@ -52,7 +52,7 @@ sub ftpcount {
     $ftpcount_bin = '../ftpcount';
   }
 
-  my $cmd = "$ftpcount_bin -f $scoreboard_file > $output_file 2>/dev/null &";
+  my $cmd = "$ftpcount_bin -f $scoreboard_file > $output_file 2>/dev/null";
 
   if ($ENV{TEST_VERBOSE}) {
     print STDERR "Executing ftpcount: $cmd\n";
