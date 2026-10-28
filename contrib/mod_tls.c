@@ -8088,6 +8088,20 @@ static int tls_accept(conn_t *conn, unsigned char on_data) {
       }
     }
 #endif /* PR_USE_OPENSSL_SSL_SESSION_TICKET_CALLBACK */
+
+#if OPENSSL_VERSION_NUMBER >= 0x10101000L && \
+    defined(TLS1_3_VERSION)
+    /* Do not issue any new TLSv1.3 session tickets on data connections
+     * (Issue #2367).  Declining in tls_ticket_key_cb() is not sufficient:
+     * OpenSSL versions before 3.0 then send a malformed, empty TLSv1.3
+     * NewSessionTicket message, which clients reject (Issue #2416).
+     */
+    if (SSL_set_num_tickets(ssl, 0) != 1) {
+      pr_trace_msg(trace_channel, 3,
+        "error disabling TLSv1.3 session tickets for data transfer: %s",
+        tls_get_errors());
+    }
+#endif /* OpenSSL 1.1.1 or later */
   }
 
   retry:
