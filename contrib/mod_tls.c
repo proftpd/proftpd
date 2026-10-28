@@ -8087,6 +8087,23 @@ static int tls_accept(conn_t *conn, unsigned char on_data) {
           tls_get_errors());
       }
     }
+
+# if OPENSSL_VERSION_NUMBER < 0x30000050L
+    /* Due to Issue #2367, we now try to return 0 in our TLS ticket key
+     * callback.  This works as desired for newer OpenSSL versions, but a
+     * bug in older OpenSSL (prior to 3.0.5) versions means that such a
+     * return value is NOT handled as desired; see Issue #2416.
+     *
+     * If this is the case, then we set the number of TLS tickets (regardless
+     * of protocol version, which we do not yet know) for this data
+     * session to zero.
+     */
+    if (SSL_set_num_tickets(ssl, 0) != 1) {
+      pr_trace_msg(trace_channel, 3,
+        "error disabling TLS session tickets for data transfer: %s",
+        tls_get_errors());
+    }
+# endif /* OpenSSL 3.0.4 and earlier. */
 #endif /* PR_USE_OPENSSL_SSL_SESSION_TICKET_CALLBACK */
   }
 
