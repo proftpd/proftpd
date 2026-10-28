@@ -22,7 +22,7 @@
 #include "conf.h"
 #include "privs.h"
 
-#define MOD_SYSTEMD_VERSION	"mod_systemd/0.2"
+#define MOD_SYSTEMD_VERSION	"mod_systemd/0.3"
 
 /* Make sure the version of ProFTPD is as necessary. */
 #if PROFTPD_VERSION_NUMBER < 0x0001030A01
