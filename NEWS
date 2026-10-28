@@ -19,6 +19,8 @@
 --------------------------------
 - Issue 2411 - mod_sftp regression with handling of OpenSSH-specific private
   key format leading to unexpected passphrase prompting on startup.
+- Issue 2412 - Race conditions between initial and daemon processes during
+  startup cause systemd notification issues when using mod_systemd.
 
 1.3.10rc5 - Released 26-Oct-2026
 --------------------------------
