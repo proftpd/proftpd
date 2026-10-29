@@ -4278,7 +4278,7 @@ MODRET core_port(cmd_rec *cmd) {
 MODRET core_eprt(cmd_rec *cmd) {
   const pr_netaddr_t *listen_addr = NULL;
   pr_netaddr_t na;
-  int family = 0, res;
+  int family = 0, port_num, res;
   unsigned short port = 0;
   int *root_revoke = NULL;
   char delim = '\0', *argstr = pstrdup(cmd->tmp_pool, cmd->argv[1]);
@@ -4461,7 +4461,7 @@ MODRET core_eprt(cmd_rec *cmd) {
   /* Advance past the address portion of the argument. */
   argstr = ++tmp;
 
-  port = atoi(argstr);
+  port_num = atoi(argstr);
 
   while (PR_ISDIGIT(*argstr)) {
     argstr++;
@@ -4535,7 +4535,7 @@ MODRET core_eprt(cmd_rec *cmd) {
   c = find_config(TOPLEVEL_CONF, CONF_PARAM, "AllowForeignAddress", FALSE);
   res = pr_inet_allowforeignaddress(cmd->tmp_pool, &na,
     session.c->remote_addr, c);
-  if (res != 1 || !port) {
+  if (res != 1) {
     pr_log_pri(PR_LOG_WARNING, "Refused EPRT %s (address mismatch)",
       cmd->arg);
     pr_response_add_err(R_500, _("Illegal EPRT command"));
@@ -4550,6 +4550,19 @@ MODRET core_eprt(cmd_rec *cmd) {
    * port numbers mean little.  However, there are also quite a few Unix
    * machines out there for whom the port number matters...
    */
+
+  if (port_num < 1 ||
+      port_num > USHRT_MAX) {
+    pr_log_pri(PR_LOG_WARNING,
+      "Refused EPRT %s (invalid port %d provided)", cmd->arg, port_num);
+    pr_response_add_err(R_500, _("Illegal EPRT command"));
+
+    pr_cmd_set_errno(cmd, EPERM);
+    errno = EPERM;
+    return PR_ERROR(cmd);
+  }
+
+  port = port_num;
 
   if (port < 1024) {
     pr_log_pri(PR_LOG_WARNING,
