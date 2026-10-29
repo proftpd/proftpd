@@ -10,6 +10,8 @@ on:
       - 'doc/**'
       - '**/*.html'
       - '**/*.md'
+      - '**/*.pl'
+      - '**/*.pm'
   pull_request:
     branches:
       - master
@@ -19,6 +21,8 @@ on:
       - 'doc/**'
       - '**/*.html'
       - '**/*.md'
+      - '**/*.pl'
+      - '**/*.pm'
   schedule:
     - cron: "34 15 * * 4"
 
