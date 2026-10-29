@@ -2589,7 +2589,7 @@ EOD
       my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
       $client->login($user, $passwd);
 
-      my $conn = $client->list_raw();
+      my $conn = $client->list_raw('-l');
       unless ($conn) {
         die("Failed to LIST: " . $client->response_code() . " " .
           $client->response_msg());
@@ -2600,7 +2600,12 @@ EOD
       while ($conn->read($tmp, 8192, 30)) {
         $buf .= $tmp;
       }
-      $conn->close();
+      sleep(0.25);
+      eval { $conn->close() };
+
+      if ($ENV{TEST_VERBOSE}) {
+        print STDERR "# data:\n$buf";
+      }
 
       # We have to be careful of the fact that readdir returns directory
       # entries in an unordered fashion.

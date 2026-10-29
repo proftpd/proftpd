@@ -1,7 +1,7 @@
 package ProFTPD::Tests::Commands;
 
 use lib qw(t/lib);
-use base qw(Test::Unit::TestCase ProFTPD::TestSuite::Child);
+use base qw(ProFTPD::TestSuite::Child);
 use strict;
 
 use File::Path qw(mkpath rmtree);
@@ -176,51 +176,18 @@ sub list_tests {
   return testsuite_get_runnable_tests($TESTS);
 }
 
-sub set_up {
-  my $self = shift;
-
-  # Create temporary scratch dir
-  eval { mkpath('tmp') };
-  if ($@) {
-    my $abs_path = File::Spec->rel2abs('tmp');
-    die("Can't create dir $abs_path: $@");
-  }
-}
-
-sub tear_down {
-  my $self = shift;
-  undef $self;
-
-  # Remove temporary scratch dir
-  eval { rmtree('tmp') };
-};
-
 sub cmds_pwd_ok {
   my $self = shift;
-
-  my $config_file = 'tmp/cmds.conf';
-  my $pid_file = File::Spec->rel2abs('tmp/cmds.pid');
-  my $scoreboard_file = File::Spec->rel2abs('tmp/cmds.scoreboard');
-  my $log_file = File::Spec->rel2abs('cmds.log');
-
-  my $auth_user_file = File::Spec->rel2abs('tmp/cmds.passwd');
-  my $auth_group_file = File::Spec->rel2abs('tmp/cmds.group');
-
-  my $user = 'proftpd';
-  my $passwd = 'test';
-  my $home_dir = File::Spec->rel2abs('tmp');
-
-  auth_user_write($auth_user_file, $user, $passwd, 500, 500, $home_dir,
-    '/bin/bash');
-  auth_group_write($auth_group_file, 'ftpd', 500, $user);
+  my $tmpdir = $self->{tmpdir};
+  my $setup = test_setup($tmpdir, 'cmds');
 
   my $config = {
-    PidFile => $pid_file,
-    ScoreboardFile => $scoreboard_file,
-    SystemLog => $log_file,
+    PidFile => $setup->{pid_file},
+    ScoreboardFile => $setup->{scoreboard_file},
+    SystemLog => $setup->{log_file},
 
-    AuthUserFile => $auth_user_file,
-    AuthGroupFile => $auth_group_file,
+    AuthUserFile => $setup->{auth_user_file},
+    AuthGroupFile => $setup->{auth_group_file},
     AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
@@ -230,17 +197,16 @@ sub cmds_pwd_ok {
     },
   };
 
-  my ($port, $config_user, $config_group) = config_write($config_file, $config);
+  my ($port, $config_user, $config_group) = config_write($setup->{config_file},
+    $config);
 
   # Open pipes, for use between the parent and child processes.  Specifically,
   # the child will indicate when it's done with its test by writing a message
   # to the parent.
-  my ($readh, $writeh);
-  unless (pipe($readh, $writeh)) {
+  my ($rfh, $wfh);
+  unless (pipe($rfh, $wfh)) {
     die("Can't open pipe: $!");
   }
-
-  $writeh->autoflush(1);
 
   my $ex;
 
@@ -250,95 +216,56 @@ sub cmds_pwd_ok {
   if ($pid) {
     eval {
       my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
+      $client->login($setup->{user}, $setup->{passwd});
 
-      eval { $client->login($user, $passwd) };
-      if ($@) {
-        my $err = $@;
-        print $writeh "done\n";
-        die("Failed to log in: $err");
-      }
+      my ($resp_code, $resp_msg) = $client->pwd();
+      $client->quit();
 
-      my ($resp_code, $resp_msg);
-      eval { ($resp_code, $resp_msg) = $client->pwd() };
-      if ($@) {
-        my $err = $@;
-        print $writeh "done\n";
-        die("Failed to PWD: $err");
-      }
-
-      my $expected;
-
-      $expected = 257;
+      my $expected = 257;
       $self->assert($expected == $resp_code,
-        test_msg("Expected $expected, got $resp_code"));
+        test_msg("Expected response code $expected, got $resp_code"));
 
-      $expected = "\"$home_dir\" is the current directory";
+      $expected = "\"$setup->{home_dir}\" is the current directory";
       chomp($resp_msg);
       $self->assert($expected eq $resp_msg,
-        test_msg("Expected '$expected', got '$resp_msg'"));
+        test_msg("Expected response message '$expected', got '$resp_msg'"));
     };
-
     if ($@) {
       $ex = $@;
     }
 
-    print $writeh "done\n";
+    $wfh->print("done\n");
+    $wfh->flush();
 
   } else {
-    # Start server
-    server_start($config_file);
-
-    # Wait until we receive word from the child that it has finished its
-    # test.
-    while (my $msg = <$readh>) {
-      chomp($msg);
-
-      if ($msg eq 'done') {
-        last;
-      }
+    eval { server_wait($setup->{config_file}, $rfh) };
+    if ($@) {
+      warn($@);
+      exit 1;
     }
 
     exit 0;
   }
 
   # Stop server
-  server_stop($pid_file);
-
+  server_stop($setup->{pid_file});
   $self->assert_child_ok($pid);
 
-  if ($ex) {
-    die($ex);
-  }
-
-  unlink($log_file);
+  test_cleanup($setup, $ex);
 }
 
 sub cmds_xpwd_ok {
   my $self = shift;
-
-  my $config_file = 'tmp/cmds.conf';
-  my $pid_file = File::Spec->rel2abs('tmp/cmds.pid');
-  my $scoreboard_file = File::Spec->rel2abs('tmp/cmds.scoreboard');
-  my $log_file = File::Spec->rel2abs('cmds.log');
-
-  my $auth_user_file = File::Spec->rel2abs('tmp/cmds.passwd');
-  my $auth_group_file = File::Spec->rel2abs('tmp/cmds.group');
-
-  my $user = 'proftpd';
-  my $passwd = 'test';
-  my $home_dir = File::Spec->rel2abs('tmp');
-
-  auth_user_write($auth_user_file, $user, $passwd, 500, 500, $home_dir,
-    '/bin/bash');
-  auth_group_write($auth_group_file, 'ftpd', 500, $user);
+  my $tmpdir = $self->{tmpdir};
+  my $setup = test_setup($tmpdir, 'cmds');
 
   my $config = {
-    PidFile => $pid_file,
-    ScoreboardFile => $scoreboard_file,
-    SystemLog => $log_file,
+    PidFile => $setup->{pid_file},
+    ScoreboardFile => $setup->{scoreboard_file},
+    SystemLog => $setup->{log_file},
 
-    AuthUserFile => $auth_user_file,
-    AuthGroupFile => $auth_group_file,
+    AuthUserFile => $setup->{auth_user_file},
+    AuthGroupFile => $setup->{auth_group_file},
     AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
@@ -348,17 +275,16 @@ sub cmds_xpwd_ok {
     },
   };
 
-  my ($port, $config_user, $config_group) = config_write($config_file, $config);
+  my ($port, $config_user, $config_group) = config_write($setup->{config_file},
+    $config);
 
   # Open pipes, for use between the parent and child processes.  Specifically,
   # the child will indicate when it's done with its test by writing a message
   # to the parent.
-  my ($readh, $writeh);
-  unless (pipe($readh, $writeh)) {
+  my ($rfh, $wfh);
+  unless (pipe($rfh, $wfh)) {
     die("Can't open pipe: $!");
   }
-
-  $writeh->autoflush(1);
 
   my $ex;
 
@@ -368,98 +294,69 @@ sub cmds_xpwd_ok {
   if ($pid) {
     eval {
       my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
+      $client->login($setup->{user}, $setup->{passwd});
 
-      eval { $client->login($user, $passwd) };
-      if ($@) {
-        my $err = $@;
-        print $writeh "done\n";
-        die("Failed to log in: $err");
-      }
+      my ($resp_code, $resp_msg) = $client->xpwd();
+      $client->quit();
 
-      my ($resp_code, $resp_msg);
-      eval { ($resp_code, $resp_msg) = $client->xpwd() };
-      if ($@) {
-        my $err = $@;
-        print $writeh "done\n";
-        die("Failed to XPWD: $err");
-      }
-
-      my $expected;
-
-      $expected = 257;
+      my $expected = 257;
       $self->assert($expected == $resp_code,
-        test_msg("Expected $expected, got $resp_code"));
+        test_msg("Expected response code $expected, got $resp_code"));
 
-      $expected = "\"$home_dir\" is the current directory";
+      $expected = "\"$setup->{home_dir}\" is the current directory";
       chomp($resp_msg);
       $self->assert($expected eq $resp_msg,
-        test_msg("Expected '$expected', got '$resp_msg'"));
+        test_msg("Expected response message '$expected', got '$resp_msg'"));
     };
-
     if ($@) {
       $ex = $@;
     }
 
-    print $writeh "done\n";
+    $wfh->print("done\n");
+    $wfh->flush();
 
   } else {
-    # Start server
-    server_start($config_file);
-
-    # Wait until we receive word from the child that it has finished its
-    # test.
-    while (my $msg = <$readh>) {
-      chomp($msg);
-
-      if ($msg eq 'done') {
-        last;
-      }
+    eval { server_wait($setup->{config_file}, $rfh) };
+    if ($@) {
+      warn($@);
+      exit 1;
     }
 
     exit 0;
   }
 
   # Stop server
-  server_stop($pid_file);
-
+  server_stop($setup->{pid_file});
   $self->assert_child_ok($pid);
 
-  if ($ex) {
-    die($ex);
-  }
-
-  unlink($log_file);
+  test_cleanup($setup, $ex);
 }
 
 sub cmds_cwd_ok {
   my $self = shift;
+  my $tmpdir = $self->{tmpdir};
+  my $setup = test_setup($tmpdir, 'cmds');
 
-  my $config_file = 'tmp/cmds.conf';
-  my $pid_file = File::Spec->rel2abs('tmp/cmds.pid');
-  my $scoreboard_file = File::Spec->rel2abs('tmp/cmds.scoreboard');
-  my $log_file = File::Spec->rel2abs('cmds.log');
-
-  my $auth_user_file = File::Spec->rel2abs('tmp/cmds.passwd');
-  my $auth_group_file = File::Spec->rel2abs('tmp/cmds.group');
-
-  my $user = 'proftpd';
-  my $passwd = 'test';
-  my $home_dir = File::Spec->rel2abs('tmp');
-
-  my $sub_dir = File::Spec->rel2abs('tmp/foo');
+  my $sub_dir = File::Spec->rel2abs("$tmpdir/test.d");
   mkpath($sub_dir);
 
-  auth_user_write($auth_user_file, $user, $passwd, 500, 500, $home_dir,
-    '/bin/bash');
-  auth_group_write($auth_group_file, 'ftpd', 500, $user);
+  if ($< == 0) {
+    unless (chmod(0755, $sub_dir)) {
+      die("Can't set perms on $sub_dir: $!");
+    }
+
+    unless (chown($setup->{uid}, $setup->{gid}, $sub_dir)) {
+      die("Can't set owner of $sub_dir to $setup->{uid}/$setup->{gid}: $!");
+    }
+  }
 
   my $config = {
-    PidFile => $pid_file,
-    ScoreboardFile => $scoreboard_file,
-    SystemLog => $log_file,
+    PidFile => $setup->{pid_file},
+    ScoreboardFile => $setup->{scoreboard_file},
+    SystemLog => $setup->{log_file},
 
-    AuthUserFile => $auth_user_file,
-    AuthGroupFile => $auth_group_file,
+    AuthUserFile => $setup->{auth_user_file},
+    AuthGroupFile => $setup->{auth_group_file},
     AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
@@ -469,17 +366,16 @@ sub cmds_cwd_ok {
     },
   };
 
-  my ($port, $config_user, $config_group) = config_write($config_file, $config);
+  my ($port, $config_user, $config_group) = config_write($setup->{config_file},
+    $config);
 
   # Open pipes, for use between the parent and child processes.  Specifically,
   # the child will indicate when it's done with its test by writing a message
   # to the parent.
-  my ($readh, $writeh);
-  unless (pipe($readh, $writeh)) {
+  my ($rfh, $wfh);
+  unless (pipe($rfh, $wfh)) {
     die("Can't open pipe: $!");
   }
-
-  $writeh->autoflush(1);
 
   my $ex;
 
@@ -489,97 +385,58 @@ sub cmds_cwd_ok {
   if ($pid) {
     eval {
       my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
+      $client->login($setup->{user}, $setup->{passwd});
 
-      eval { $client->login($user, $passwd) };
-      if ($@) {
-        my $err = $@;
-        print $writeh "done\n";
-        die("Failed to log in: $err");
-      }
+      my ($resp_code, $resp_msg) = $client->cwd($sub_dir);
+      $client->quit();
 
-      my ($resp_code, $resp_msg);
-      eval { ($resp_code, $resp_msg) = $client->cwd($sub_dir) };
-      if ($@) {
-        my $err = $@;
-        print $writeh "done\n";
-        die("Failed to CWD: $err");
-      }
-
-      my $expected;
-
-      $expected = 250;
+      my $expected = 250;
       $self->assert($expected == $resp_code,
-        test_msg("Expected $expected, got $resp_code"));
+        test_msg("Expected response message $expected, got $resp_code"));
 
       $expected = "CWD command successful";
       chomp($resp_msg);
       $self->assert($expected eq $resp_msg,
-        test_msg("Expected '$expected', got '$resp_msg'"));
+        test_msg("Expected response message '$expected', got '$resp_msg'"));
     };
-
     if ($@) {
       $ex = $@;
     }
 
-    print $writeh "done\n";
+    $wfh->print("done\n");
+    $wfh->flush();
 
   } else {
-    # Start server
-    server_start($config_file);
-
-    # Wait until we receive word from the child that it has finished its
-    # test.
-    while (my $msg = <$readh>) {
-      chomp($msg);
-
-      if ($msg eq 'done') {
-        last;
-      }
+    eval { server_wait($setup->{config_file}, $rfh) };
+    if ($@) {
+      warn($@);
+      exit 1;
     }
 
     exit 0;
   }
 
   # Stop server
-  server_stop($pid_file);
-
+  server_stop($setup->{pid_file});
   $self->assert_child_ok($pid);
 
-  if ($ex) {
-    die($ex);
-  }
-
-  unlink($log_file);
+  test_cleanup($setup, $ex);
 }
 
 sub cmds_cwd_fails_enoent {
   my $self = shift;
+  my $tmpdir = $self->{tmpdir};
+  my $setup = test_setup($tmpdir, 'cmds');
 
-  my $config_file = 'tmp/cmds.conf';
-  my $pid_file = File::Spec->rel2abs('tmp/cmds.pid');
-  my $scoreboard_file = File::Spec->rel2abs('tmp/cmds.scoreboard');
-  my $log_file = File::Spec->rel2abs('cmds.log');
-
-  my $auth_user_file = File::Spec->rel2abs('tmp/cmds.passwd');
-  my $auth_group_file = File::Spec->rel2abs('tmp/cmds.group');
-
-  my $user = 'proftpd';
-  my $passwd = 'test';
-  my $home_dir = File::Spec->rel2abs('tmp');
-
-  my $sub_dir = File::Spec->rel2abs('tmp/foo');
-
-  auth_user_write($auth_user_file, $user, $passwd, 500, 500, $home_dir,
-    '/bin/bash');
-  auth_group_write($auth_group_file, 'ftpd', 500, $user);
+  my $sub_dir = File::Spec->rel2abs("$tmpdir/test.d");
 
   my $config = {
-    PidFile => $pid_file,
-    ScoreboardFile => $scoreboard_file,
-    SystemLog => $log_file,
+    PidFile => $setup->{pid_file},
+    ScoreboardFile => $setup->{scoreboard_file},
+    SystemLog => $setup->{log_file},
 
-    AuthUserFile => $auth_user_file,
-    AuthGroupFile => $auth_group_file,
+    AuthUserFile => $setup->{auth_user_file},
+    AuthGroupFile => $setup->{auth_group_file},
     AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
@@ -589,17 +446,16 @@ sub cmds_cwd_fails_enoent {
     },
   };
 
-  my ($port, $config_user, $config_group) = config_write($config_file, $config);
+  my ($port, $config_user, $config_group) = config_write($setup->{config_file},
+    $config);
 
   # Open pipes, for use between the parent and child processes.  Specifically,
   # the child will indicate when it's done with its test by writing a message
   # to the parent.
-  my ($readh, $writeh);
-  unless (pipe($readh, $writeh)) {
+  my ($rfh, $wfh);
+  unless (pipe($rfh, $wfh)) {
     die("Can't open pipe: $!");
   }
-
-  $writeh->autoflush(1);
 
   my $ex;
 
@@ -609,101 +465,75 @@ sub cmds_cwd_fails_enoent {
   if ($pid) {
     eval {
       my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
+      $client->login($setup->{user}, $setup->{passwd});
 
-      eval { $client->login($user, $passwd) };
-      if ($@) {
-        my $err = $@;
-        print $writeh "done\n";
-        die("Failed to log in: $err");
-      }
-
-      my ($resp_code, $resp_msg);
-      eval { ($resp_code, $resp_msg) = $client->cwd($sub_dir) };
+      eval { $client->cwd($sub_dir) };
       unless ($@) {
-        print $writeh "done\n";
         die("CWD succeeded unexpectedly");
-
-      } else {
-        $resp_code = $client->response_code();
-        $resp_msg = $client->response_msg();
       }
 
-      my $expected;
+      my $resp_code = $client->response_code();
+      my $resp_msg = $client->response_msg();
+      $client->quit();
 
-      $expected = 550;
+      my $expected = 550;
       $self->assert($expected == $resp_code,
-        test_msg("Expected $expected, got $resp_code"));
+        test_msg("Expected response code $expected, got $resp_code"));
 
       $expected = "$sub_dir: No such file or directory";
       chomp($resp_msg);
       $self->assert($expected eq $resp_msg,
-        test_msg("Expected '$expected', got '$resp_msg'"));
+        test_msg("Expected response message '$expected', got '$resp_msg'"));
     };
-
     if ($@) {
       $ex = $@;
     }
 
-    print $writeh "done\n";
+    $wfh->print("done\n");
+    $wfh->flush();
 
   } else {
-    # Start server
-    server_start($config_file);
-
-    # Wait until we receive word from the child that it has finished its
-    # test.
-    while (my $msg = <$readh>) {
-      chomp($msg);
-
-      if ($msg eq 'done') {
-        last;
-      }
+    eval { server_wait($setup->{config_file}, $rfh) };
+    if ($@) {
+      warn($@);
+      exit 1;
     }
 
     exit 0;
   }
 
   # Stop server
-  server_stop($pid_file);
-
+  server_stop($setup->{pid_file});
   $self->assert_child_ok($pid);
 
-  if ($ex) {
-    die($ex);
-  }
-
-  unlink($log_file);
+  test_cleanup($setup, $ex);
 }
 
 sub cmds_cwd_fails_eperm {
   my $self = shift;
+  my $tmpdir = $self->{tmpdir};
+  my $setup = test_setup($tmpdir, 'cmds');
 
-  my $config_file = 'tmp/cmds.conf';
-  my $pid_file = File::Spec->rel2abs('tmp/cmds.pid');
-  my $scoreboard_file = File::Spec->rel2abs('tmp/cmds.scoreboard');
-  my $log_file = File::Spec->rel2abs('cmds.log');
-
-  my $auth_user_file = File::Spec->rel2abs('tmp/cmds.passwd');
-  my $auth_group_file = File::Spec->rel2abs('tmp/cmds.group');
-
-  my $user = 'proftpd';
-  my $passwd = 'test';
-  my $home_dir = File::Spec->rel2abs('tmp');
-
-  my $sub_dir = File::Spec->rel2abs('tmp/foo');
+  my $sub_dir = File::Spec->rel2abs("$tmpdir/test.d");
   mkpath($sub_dir);
 
-  auth_user_write($auth_user_file, $user, $passwd, 500, 500, $home_dir,
-    '/bin/bash');
-  auth_group_write($auth_group_file, 'ftpd', 500, $user);
+  if ($< == 0) {
+    unless (chmod(0755, $sub_dir)) {
+      die("Can't set perms on $sub_dir: $!");
+    }
+
+    unless (chown($setup->{uid}, $setup->{gid}, $sub_dir)) {
+      die("Can't set owner of $sub_dir to $setup->{uid}/$setup->{gid}: $!");
+    }
+  }
 
   my $config = {
-    PidFile => $pid_file,
-    ScoreboardFile => $scoreboard_file,
-    SystemLog => $log_file,
+    PidFile => $setup->{pid_file},
+    ScoreboardFile => $setup->{scoreboard_file},
+    SystemLog => $setup->{log_file},
 
-    AuthUserFile => $auth_user_file,
-    AuthGroupFile => $auth_group_file,
+    AuthUserFile => $setup->{auth_user_file},
+    AuthGroupFile => $setup->{auth_group_file},
     AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
@@ -713,17 +543,16 @@ sub cmds_cwd_fails_eperm {
     },
   };
 
-  my ($port, $config_user, $config_group) = config_write($config_file, $config);
+  my ($port, $config_user, $config_group) = config_write($setup->{config_file},
+    $config);
 
   # Open pipes, for use between the parent and child processes.  Specifically,
   # the child will indicate when it's done with its test by writing a message
   # to the parent.
-  my ($readh, $writeh);
-  unless (pipe($readh, $writeh)) {
+  my ($rfh, $wfh);
+  unless (pipe($rfh, $wfh)) {
     die("Can't open pipe: $!");
   }
-
-  $writeh->autoflush(1);
 
   my $ex;
 
@@ -733,108 +562,79 @@ sub cmds_cwd_fails_eperm {
   if ($pid) {
     eval {
       my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
-
-      eval { $client->login($user, $passwd) };
-      if ($@) {
-        my $err = $@;
-        print $writeh "done\n";
-        die("Failed to log in: $err");
-      }
+      $client->login($setup->{user}, $setup->{passwd});
 
       # Make it such that perms on the dir do not allow chdirs
       unless (chmod(0440, $sub_dir)) {
-        my $err = $!;
-        print $writeh "done\n";
-        die("Failed to change perms on $sub_dir: $err");
+        die("Failed to change perms on $sub_dir: $!");
       }
 
-      my ($resp_code, $resp_msg);
-      eval { ($resp_code, $resp_msg) = $client->cwd($sub_dir) };
+      eval { $client->cwd($sub_dir) };
       unless ($@) {
-        print $writeh "done\n";
         die("CWD succeeded unexpectedly");
-
-      } else {
-        $resp_code = $client->response_code();
-        $resp_msg = $client->response_msg();
       }
 
-      my $expected;
+      my $resp_code = $client->response_code();
+      my $resp_msg = $client->response_msg();
 
-      $expected = 550;
+      my $expected = 550;
       $self->assert($expected == $resp_code,
-        test_msg("Expected $expected, got $resp_code"));
+        test_msg("Expected response code $expected, got $resp_code"));
 
-      $expected = "$sub_dir: No such file or directory";
+      $expected = "$sub_dir: Permission denied";
       chomp($resp_msg);
       $self->assert($expected eq $resp_msg,
-        test_msg("Expected '$expected', got '$resp_msg'"));
+        test_msg("Expected response message '$expected', got '$resp_msg'"));
     };
-
     if ($@) {
       $ex = $@;
     }
 
-    print $writeh "done\n";
+    $wfh->print("done\n");
+    $wfh->flush();
 
   } else {
-    # Start server
-    server_start($config_file);
-
-    # Wait until we receive word from the child that it has finished its
-    # test.
-    while (my $msg = <$readh>) {
-      chomp($msg);
-
-      if ($msg eq 'done') {
-        last;
-      }
+    eval { server_wait($setup->{config_file}, $rfh) };
+    if ($@) {
+      warn($@);
+      exit 1;
     }
 
     exit 0;
   }
 
   # Stop server
-  server_stop($pid_file);
-
+  server_stop($setup->{pid_file});
   $self->assert_child_ok($pid);
 
-  if ($ex) {
-    die($ex);
-  }
-
-  unlink($log_file);
+  test_cleanup($setup, $ex);
 }
 
 sub cmds_xcwd_ok {
   my $self = shift;
+  my $tmpdir = $self->{tmpdir};
+  my $setup = test_setup($tmpdir, 'cmds');
 
-  my $config_file = 'tmp/cmds.conf';
-  my $pid_file = File::Spec->rel2abs('tmp/cmds.pid');
-  my $scoreboard_file = File::Spec->rel2abs('tmp/cmds.scoreboard');
-  my $log_file = File::Spec->rel2abs('cmds.log');
-
-  my $auth_user_file = File::Spec->rel2abs('tmp/cmds.passwd');
-  my $auth_group_file = File::Spec->rel2abs('tmp/cmds.group');
-
-  my $user = 'proftpd';
-  my $passwd = 'test';
-  my $home_dir = File::Spec->rel2abs('tmp');
-
-  my $sub_dir = File::Spec->rel2abs('tmp/foo');
+  my $sub_dir = File::Spec->rel2abs("$tmpdir/test.d");
   mkpath($sub_dir);
 
-  auth_user_write($auth_user_file, $user, $passwd, 500, 500, $home_dir,
-    '/bin/bash');
-  auth_group_write($auth_group_file, 'ftpd', 500, $user);
+  if ($< == 0) {
+    unless (chmod(0755, $sub_dir)) {
+      die("Can't set perms on $sub_dir: $!");
+    }
+
+    unless (chown($setup->{uid}, $setup->{gid}, $sub_dir)) {
+      die("Can't set owner of $sub_dir to $setup->{uid}/$setup->{gid}: $!");
+    }
+  }
 
   my $config = {
-    PidFile => $pid_file,
-    ScoreboardFile => $scoreboard_file,
-    SystemLog => $log_file,
+    PidFile => $setup->{pid_file},
+    ScoreboardFile => $setup->{scoreboard_file},
+    SystemLog => $setup->{log_file},
 
-    AuthUserFile => $auth_user_file,
-    AuthGroupFile => $auth_group_file,
+    AuthUserFile => $setup->{auth_user_file},
+    AuthGroupFile => $setup->{auth_group_file},
     AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
@@ -844,17 +644,16 @@ sub cmds_xcwd_ok {
     },
   };
 
-  my ($port, $config_user, $config_group) = config_write($config_file, $config);
+  my ($port, $config_user, $config_group) = config_write($setup->{config_file},
+    $config);
 
   # Open pipes, for use between the parent and child processes.  Specifically,
   # the child will indicate when it's done with its test by writing a message
   # to the parent.
-  my ($readh, $writeh);
-  unless (pipe($readh, $writeh)) {
+  my ($rfh, $wfh);
+  unless (pipe($rfh, $wfh)) {
     die("Can't open pipe: $!");
   }
-
-  $writeh->autoflush(1);
 
   my $ex;
 
@@ -864,95 +663,56 @@ sub cmds_xcwd_ok {
   if ($pid) {
     eval {
       my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
+      $client->login($setup->{user}, $setup->{passwd});
 
-      eval { $client->login($user, $passwd) };
-      if ($@) {
-        my $err = $@;
-        print $writeh "done\n";
-        die("Failed to log in: $err");
-      }
+      my ($resp_code, $resp_msg) = $client->xcwd($sub_dir);
+      $client->quit();
 
-      my ($resp_code, $resp_msg);
-      eval { ($resp_code, $resp_msg) = $client->xcwd($sub_dir) };
-      if ($@) {
-        my $err = $@;
-        print $writeh "done\n";
-        die("Failed to XCWD: $err");
-      }
-
-      my $expected;
-
-      $expected = 250;
+      my $expected = 250;
       $self->assert($expected == $resp_code,
-        test_msg("Expected $expected, got $resp_code"));
+        test_msg("Expected response code $expected, got $resp_code"));
 
       $expected = "XCWD command successful";
       chomp($resp_msg);
       $self->assert($expected eq $resp_msg,
-        test_msg("Expected '$expected', got '$resp_msg'"));
+        test_msg("Expected response message '$expected', got '$resp_msg'"));
     };
-
     if ($@) {
       $ex = $@;
     }
 
-    print $writeh "done\n";
+    $wfh->print("done\n");
+    $wfh->flush();
 
   } else {
-    # Start server
-    server_start($config_file);
-
-    # Wait until we receive word from the child that it has finished its
-    # test.
-    while (my $msg = <$readh>) {
-      chomp($msg);
-
-      if ($msg eq 'done') {
-        last;
-      }
+    eval { server_wait($setup->{config_file}, $rfh) };
+    if ($@) {
+      warn($@);
+      exit 1;
     }
 
     exit 0;
   }
 
   # Stop server
-  server_stop($pid_file);
-
+  server_stop($setup->{pid_file});
   $self->assert_child_ok($pid);
 
-  if ($ex) {
-    die($ex);
-  }
-
-  unlink($log_file);
+  test_cleanup($setup, $ex);
 }
 
 sub cmds_cdup_ok {
   my $self = shift;
-
-  my $config_file = 'tmp/cmds.conf';
-  my $pid_file = File::Spec->rel2abs('tmp/cmds.pid');
-  my $scoreboard_file = File::Spec->rel2abs('tmp/cmds.scoreboard');
-  my $log_file = File::Spec->rel2abs('cmds.log');
-
-  my $auth_user_file = File::Spec->rel2abs('tmp/cmds.passwd');
-  my $auth_group_file = File::Spec->rel2abs('tmp/cmds.group');
-
-  my $user = 'proftpd';
-  my $passwd = 'test';
-  my $home_dir = File::Spec->rel2abs('tmp');
-
-  auth_user_write($auth_user_file, $user, $passwd, 500, 500, $home_dir,
-    '/bin/bash');
-  auth_group_write($auth_group_file, 'ftpd', 500, $user);
+  my $tmpdir = $self->{tmpdir};
+  my $setup = test_setup($tmpdir, 'cmds');
 
   my $config = {
-    PidFile => $pid_file,
-    ScoreboardFile => $scoreboard_file,
-    SystemLog => $log_file,
+    PidFile => $setup->{pid_file},
+    ScoreboardFile => $setup->{scoreboard_file},
+    SystemLog => $setup->{log_file},
 
-    AuthUserFile => $auth_user_file,
-    AuthGroupFile => $auth_group_file,
+    AuthUserFile => $setup->{auth_user_file},
+    AuthGroupFile => $setup->{auth_group_file},
     AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
@@ -962,17 +722,16 @@ sub cmds_cdup_ok {
     },
   };
 
-  my ($port, $config_user, $config_group) = config_write($config_file, $config);
+  my ($port, $config_user, $config_group) = config_write($setup->{config_file},
+    $config);
 
   # Open pipes, for use between the parent and child processes.  Specifically,
   # the child will indicate when it's done with its test by writing a message
   # to the parent.
-  my ($readh, $writeh);
-  unless (pipe($readh, $writeh)) {
+  my ($rfh, $wfh);
+  unless (pipe($rfh, $wfh)) {
     die("Can't open pipe: $!");
   }
-
-  $writeh->autoflush(1);
 
   my $ex;
 
@@ -982,95 +741,56 @@ sub cmds_cdup_ok {
   if ($pid) {
     eval {
       my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
+      $client->login($setup->{user}, $setup->{passwd});
 
-      eval { $client->login($user, $passwd) };
-      if ($@) {
-        my $err = $@;
-        print $writeh "done\n";
-        die("Failed to log in: $err");
-      }
+      my ($resp_code, $resp_msg) = $client->cdup();
+      $client->quit();
 
-      my ($resp_code, $resp_msg);
-      eval { ($resp_code, $resp_msg) = $client->cdup() };
-      if ($@) {
-        my $err = $@;
-        print $writeh "done\n";
-        die("Failed to CDUP: $err");
-      }
-
-      my $expected;
-
-      $expected = 250;
+      my $expected = 250;
       $self->assert($expected == $resp_code,
-        test_msg("Expected $expected, got $resp_code"));
+        test_msg("Expected response code $expected, got $resp_code"));
 
       $expected = "CDUP command successful";
       chomp($resp_msg);
       $self->assert($expected eq $resp_msg,
-        test_msg("Expected '$expected', got '$resp_msg'"));
+        test_msg("Expected response message '$expected', got '$resp_msg'"));
     };
-
     if ($@) {
       $ex = $@;
     }
 
-    print $writeh "done\n";
+    $wfh->print("done\n");
+    $wfh->flush();
 
   } else {
-    # Start server
-    server_start($config_file);
-
-    # Wait until we receive word from the child that it has finished its
-    # test.
-    while (my $msg = <$readh>) {
-      chomp($msg);
-
-      if ($msg eq 'done') {
-        last;
-      }
+    eval { server_wait($setup->{config_file}, $rfh) };
+    if ($@) {
+      warn($@);
+      exit 1;
     }
 
     exit 0;
   }
 
   # Stop server
-  server_stop($pid_file);
-
+  server_stop($setup->{pid_file});
   $self->assert_child_ok($pid);
 
-  if ($ex) {
-    die($ex);
-  }
-
-  unlink($log_file);
+  test_cleanup($setup, $ex);
 }
 
 sub cmds_xcup_ok {
   my $self = shift;
-
-  my $config_file = 'tmp/cmds.conf';
-  my $pid_file = File::Spec->rel2abs('tmp/cmds.pid');
-  my $scoreboard_file = File::Spec->rel2abs('tmp/cmds.scoreboard');
-  my $log_file = File::Spec->rel2abs('cmds.log');
-
-  my $auth_user_file = File::Spec->rel2abs('tmp/cmds.passwd');
-  my $auth_group_file = File::Spec->rel2abs('tmp/cmds.group');
-
-  my $user = 'proftpd';
-  my $passwd = 'test';
-  my $home_dir = File::Spec->rel2abs('tmp');
-
-  auth_user_write($auth_user_file, $user, $passwd, 500, 500, $home_dir,
-    '/bin/bash');
-  auth_group_write($auth_group_file, 'ftpd', 500, $user);
+  my $tmpdir = $self->{tmpdir};
+  my $setup = test_setup($tmpdir, 'cmds');
 
   my $config = {
-    PidFile => $pid_file,
-    ScoreboardFile => $scoreboard_file,
-    SystemLog => $log_file,
+    PidFile => $setup->{pid_file},
+    ScoreboardFile => $setup->{scoreboard_file},
+    SystemLog => $setup->{log_file},
 
-    AuthUserFile => $auth_user_file,
-    AuthGroupFile => $auth_group_file,
+    AuthUserFile => $setup->{auth_user_file},
+    AuthGroupFile => $setup->{auth_group_file},
     AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
@@ -1080,17 +800,16 @@ sub cmds_xcup_ok {
     },
   };
 
-  my ($port, $config_user, $config_group) = config_write($config_file, $config);
+  my ($port, $config_user, $config_group) = config_write($setup->{config_file},
+    $config);
 
   # Open pipes, for use between the parent and child processes.  Specifically,
   # the child will indicate when it's done with its test by writing a message
   # to the parent.
-  my ($readh, $writeh);
-  unless (pipe($readh, $writeh)) {
+  my ($rfh, $wfh);
+  unless (pipe($rfh, $wfh)) {
     die("Can't open pipe: $!");
   }
-
-  $writeh->autoflush(1);
 
   my $ex;
 
@@ -1100,81 +819,53 @@ sub cmds_xcup_ok {
   if ($pid) {
     eval {
       my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
+      $client->login($setup->{user}, $setup->{passwd});
 
-      eval { $client->login($user, $passwd) };
-      if ($@) {
-        my $err = $@;
-        print $writeh "done\n";
-        die("Failed to log in: $err");
-      }
+      my ($resp_code, $resp_msg) = $client->xcup();
+      $client->quit();
 
-      my ($resp_code, $resp_msg);
-      eval { ($resp_code, $resp_msg) = $client->xcup() };
-      if ($@) {
-        my $err = $@;
-        print $writeh "done\n";
-        die("Failed to XCUP: $err");
-      }
-
-      my $expected;
-
-      $expected = 250;
+      my $expected = 250;
       $self->assert($expected == $resp_code,
-        test_msg("Expected $expected, got $resp_code"));
+        test_msg("Expected response code $expected, got $resp_code"));
 
       $expected = "XCUP command successful";
       chomp($resp_msg);
       $self->assert($expected eq $resp_msg,
-        test_msg("Expected '$expected', got '$resp_msg'"));
+        test_msg("Expected response message '$expected', got '$resp_msg'"));
     };
-
     if ($@) {
       $ex = $@;
     }
 
-    print $writeh "done\n";
+    $wfh->print("done\n");
+    $wfh->flush();
 
   } else {
-    # Start server
-    server_start($config_file);
-
-    # Wait until we receive word from the child that it has finished its
-    # test.
-    while (my $msg = <$readh>) {
-      chomp($msg);
-
-      if ($msg eq 'done') {
-        last;
-      }
+    eval { server_wait($setup->{config_file}, $rfh) };
+    if ($@) {
+      warn($@);
+      exit 1;
     }
 
     exit 0;
   }
 
   # Stop server
-  server_stop($pid_file);
-
+  server_stop($setup->{pid_file});
   $self->assert_child_ok($pid);
 
-  if ($ex) {
-    die($ex);
-  }
-
-  unlink($log_file);
+  test_cleanup($setup, $ex);
 }
 
 sub cmds_syst_ok {
   my $self = shift;
-
-  my $config_file = 'tmp/cmds.conf';
-  my $pid_file = File::Spec->rel2abs('tmp/cmds.pid');
-  my $scoreboard_file = File::Spec->rel2abs('tmp/cmds.scoreboard');
-  my $log_file = File::Spec->rel2abs('cmds.log');
+  my $tmpdir = $self->{tmpdir};
+  my $setup = test_setup($tmpdir, 'cmds');
 
   my $config = {
-    PidFile => $pid_file,
-    ScoreboardFile => $scoreboard_file,
-    SystemLog => $log_file,
+    PidFile => $setup->{pid_file},
+    ScoreboardFile => $setup->{scoreboard_file},
+    SystemLog => $setup->{log_file},
 
     IfModules => {
       'mod_delay.c' => {
@@ -1183,17 +874,16 @@ sub cmds_syst_ok {
     },
   };
 
-  my ($port, $config_user, $config_group) = config_write($config_file, $config);
+  my ($port, $config_user, $config_group) = config_write($setup->{config_file},
+    $config);
 
   # Open pipes, for use between the parent and child processes.  Specifically,
   # the child will indicate when it's done with its test by writing a message
   # to the parent.
-  my ($readh, $writeh);
-  unless (pipe($readh, $writeh)) {
+  my ($rfh, $wfh);
+  unless (pipe($rfh, $wfh)) {
     die("Can't open pipe: $!");
   }
-
-  $writeh->autoflush(1);
 
   my $ex;
 
@@ -1204,73 +894,51 @@ sub cmds_syst_ok {
     eval {
       my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
 
-      my ($resp_code, $resp_msg);
-      eval { ($resp_code, $resp_msg) = $client->syst() };
-      if ($@) {
-        my $err = $@;
-        print $writeh "done\n";
-        die("Failed to SYST: $err");
-      }
+      my ($resp_code, $resp_msg) = $client->syst();
+      $client->quit();
 
-      my $expected;
-
-      $expected = 215;
+      my $expected = 215;
       $self->assert($expected == $resp_code,
-        test_msg("Expected $expected, got $resp_code"));
+        test_msg("Expected response code $expected, got $resp_code"));
 
       $expected = "UNIX Type: L8";
       chomp($resp_msg);
       $self->assert($expected eq $resp_msg,
-        test_msg("Expected '$expected', got '$resp_msg'"));
+        test_msg("Expected response message '$expected', got '$resp_msg'"));
     };
-
     if ($@) {
       $ex = $@;
     }
 
-    print $writeh "done\n";
+    $wfh->print("done\n");
+    $wfh->flush();
 
   } else {
-    # Start server
-    server_start($config_file);
-
-    # Wait until we receive word from the child that it has finished its
-    # test.
-    while (my $msg = <$readh>) {
-      chomp($msg);
-
-      if ($msg eq 'done') {
-        last;
-      }
+    eval { server_wait($setup->{config_file}, $rfh) };
+    if ($@) {
+      warn($@);
+      exit 1;
     }
 
     exit 0;
   }
 
   # Stop server
-  server_stop($pid_file);
-
+  server_stop($setup->{pid_file});
   $self->assert_child_ok($pid);
 
-  if ($ex) {
-    die($ex);
-  }
-
-  unlink($log_file);
+  test_cleanup($setup, $ex);
 }
 
 sub cmds_type_ascii_ok {
   my $self = shift;
-
-  my $config_file = 'tmp/cmds.conf';
-  my $pid_file = File::Spec->rel2abs('tmp/cmds.pid');
-  my $scoreboard_file = File::Spec->rel2abs('tmp/cmds.scoreboard');
-  my $log_file = File::Spec->rel2abs('cmds.log');
+  my $tmpdir = $self->{tmpdir};
+  my $setup = test_setup($tmpdir, 'cmds');
 
   my $config = {
-    PidFile => $pid_file,
-    ScoreboardFile => $scoreboard_file,
-    SystemLog => $log_file,
+    PidFile => $setup->{pid_file},
+    ScoreboardFile => $setup->{scoreboard_file},
+    SystemLog => $setup->{log_file},
 
     IfModules => {
       'mod_delay.c' => {
@@ -1279,17 +947,16 @@ sub cmds_type_ascii_ok {
     },
   };
 
-  my ($port, $config_user, $config_group) = config_write($config_file, $config);
+  my ($port, $config_user, $config_group) = config_write($setup->{config_file},
+    $config);
 
   # Open pipes, for use between the parent and child processes.  Specifically,
   # the child will indicate when it's done with its test by writing a message
   # to the parent.
-  my ($readh, $writeh);
-  unless (pipe($readh, $writeh)) {
+  my ($rfh, $wfh);
+  unless (pipe($rfh, $wfh)) {
     die("Can't open pipe: $!");
   }
-
-  $writeh->autoflush(1);
 
   my $ex;
 
@@ -1300,73 +967,51 @@ sub cmds_type_ascii_ok {
     eval {
       my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
 
-      my ($resp_code, $resp_msg);
-      eval { ($resp_code, $resp_msg) = $client->type('ascii') };
-      if ($@) {
-        my $err = $@;
-        print $writeh "done\n";
-        die("Failed to TYPE: $err");
-      }
+      my ($resp_code, $resp_msg) = $client->type('ascii');
+      $client->quit();
 
-      my $expected;
-
-      $expected = 200;
+      my $expected = 200;
       $self->assert($expected == $resp_code,
-        test_msg("Expected $expected, got $resp_code"));
+        test_msg("Expected response code $expected, got $resp_code"));
 
       $expected = "Type set to A";
       chomp($resp_msg);
       $self->assert($expected eq $resp_msg,
-        test_msg("Expected '$expected', got '$resp_msg'"));
+        test_msg("Expected response message '$expected', got '$resp_msg'"));
     };
-
     if ($@) {
       $ex = $@;
     }
 
-    print $writeh "done\n";
+    $wfh->print("done\n");
+    $wfh->flush();
 
   } else {
-    # Start server
-    server_start($config_file);
-
-    # Wait until we receive word from the child that it has finished its
-    # test.
-    while (my $msg = <$readh>) {
-      chomp($msg);
-
-      if ($msg eq 'done') {
-        last;
-      }
+    eval { server_wait($setup->{config_file}, $rfh) };
+    if ($@) {
+      warn($@);
+      exit 1;
     }
 
     exit 0;
   }
 
   # Stop server
-  server_stop($pid_file);
-
+  server_stop($setup->{pid_file});
   $self->assert_child_ok($pid);
 
-  if ($ex) {
-    die($ex);
-  }
-
-  unlink($log_file);
+  test_cleanup($setup, $ex);
 }
 
 sub cmds_type_binary_ok {
   my $self = shift;
-
-  my $config_file = 'tmp/cmds.conf';
-  my $pid_file = File::Spec->rel2abs('tmp/cmds.pid');
-  my $scoreboard_file = File::Spec->rel2abs('tmp/cmds.scoreboard');
-  my $log_file = File::Spec->rel2abs('cmds.log');
+  my $tmpdir = $self->{tmpdir};
+  my $setup = test_setup($tmpdir, 'cmds');
 
   my $config = {
-    PidFile => $pid_file,
-    ScoreboardFile => $scoreboard_file,
-    SystemLog => $log_file,
+    PidFile => $setup->{pid_file},
+    ScoreboardFile => $setup->{scoreboard_file},
+    SystemLog => $setup->{log_file},
 
     IfModules => {
       'mod_delay.c' => {
@@ -1375,17 +1020,16 @@ sub cmds_type_binary_ok {
     },
   };
 
-  my ($port, $config_user, $config_group) = config_write($config_file, $config);
+  my ($port, $config_user, $config_group) = config_write($setup->{config_file},
+    $config);
 
   # Open pipes, for use between the parent and child processes.  Specifically,
   # the child will indicate when it's done with its test by writing a message
   # to the parent.
-  my ($readh, $writeh);
-  unless (pipe($readh, $writeh)) {
+  my ($rfh, $wfh);
+  unless (pipe($rfh, $wfh)) {
     die("Can't open pipe: $!");
   }
-
-  $writeh->autoflush(1);
 
   my $ex;
 
@@ -1396,73 +1040,51 @@ sub cmds_type_binary_ok {
     eval {
       my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
 
-      my ($resp_code, $resp_msg);
-      eval { ($resp_code, $resp_msg) = $client->type('binary') };
-      if ($@) {
-        my $err = $@;
-        print $writeh "done\n";
-        die("Failed to TYPE: $err");
-      }
+      my ($resp_code, $resp_msg) = $client->type('binary');
+      $client->quit();
 
-      my $expected;
-
-      $expected = 200;
+      my $expected = 200;
       $self->assert($expected == $resp_code,
-        test_msg("Expected $expected, got $resp_code"));
+        test_msg("Expected response code $expected, got $resp_code"));
 
       $expected = "Type set to I";
       chomp($resp_msg);
       $self->assert($expected eq $resp_msg,
-        test_msg("Expected '$expected', got '$resp_msg'"));
+        test_msg("Expected response message '$expected', got '$resp_msg'"));
     };
-
     if ($@) {
       $ex = $@;
     }
 
-    print $writeh "done\n";
+    $wfh->print("done\n");
+    $wfh->flush();
 
   } else {
-    # Start server
-    server_start($config_file);
-
-    # Wait until we receive word from the child that it has finished its
-    # test.
-    while (my $msg = <$readh>) {
-      chomp($msg);
-
-      if ($msg eq 'done') {
-        last;
-      }
+    eval { server_wait($setup->{config_file}, $rfh) };
+    if ($@) {
+      warn($@);
+      exit 1;
     }
 
     exit 0;
   }
 
   # Stop server
-  server_stop($pid_file);
-
+  server_stop($setup->{pid_file});
   $self->assert_child_ok($pid);
 
-  if ($ex) {
-    die($ex);
-  }
-
-  unlink($log_file);
+  test_cleanup($setup, $ex);
 }
 
 sub cmds_type_other_fails {
   my $self = shift;
-
-  my $config_file = 'tmp/cmds.conf';
-  my $pid_file = File::Spec->rel2abs('tmp/cmds.pid');
-  my $scoreboard_file = File::Spec->rel2abs('tmp/cmds.scoreboard');
-  my $log_file = File::Spec->rel2abs('cmds.log');
+  my $tmpdir = $self->{tmpdir};
+  my $setup = test_setup($tmpdir, 'cmds');
 
   my $config = {
-    PidFile => $pid_file,
-    ScoreboardFile => $scoreboard_file,
-    SystemLog => $log_file,
+    PidFile => $setup->{pid_file},
+    ScoreboardFile => $setup->{scoreboard_file},
+    SystemLog => $setup->{log_file},
 
     IfModules => {
       'mod_delay.c' => {
@@ -1471,17 +1093,16 @@ sub cmds_type_other_fails {
     },
   };
 
-  my ($port, $config_user, $config_group) = config_write($config_file, $config);
+  my ($port, $config_user, $config_group) = config_write($setup->{config_file},
+    $config);
 
   # Open pipes, for use between the parent and child processes.  Specifically,
   # the child will indicate when it's done with its test by writing a message
   # to the parent.
-  my ($readh, $writeh);
-  unless (pipe($readh, $writeh)) {
+  my ($rfh, $wfh);
+  unless (pipe($rfh, $wfh)) {
     die("Can't open pipe: $!");
   }
-
-  $writeh->autoflush(1);
 
   my $ex;
 
@@ -1492,93 +1113,62 @@ sub cmds_type_other_fails {
     eval {
       my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
 
-      my ($resp_code, $resp_msg);
-      eval { ($resp_code, $resp_msg) = $client->type('other') };
+      eval { $client->type('other') };
       unless ($@) {
-        my $err = $@;
-        print $writeh "done\n";
         die("TYPE succeeded unexpectedly");
-
-      } else {
-        $resp_code = $client->response_code();
-        $resp_msg = $client->response_msg();
       }
 
-      my $expected;
+      my $resp_code = $client->response_code();
+      my $resp_msg = $client->response_msg();
+      $client->quit();
 
-      $expected = 500;
+      my $expected = 504;
       $self->assert($expected == $resp_code,
-        test_msg("Expected $expected, got $resp_code"));
+        test_msg("Expected response code $expected, got $resp_code"));
 
-      $expected = "'TYPE other' not understood";
+      $expected = "TYPE not implemented for 'other' parameter";
       chomp($resp_msg);
       $self->assert($expected eq $resp_msg,
-        test_msg("Expected '$expected', got '$resp_msg'"));
+        test_msg("Expected response message '$expected', got '$resp_msg'"));
     };
-
     if ($@) {
       $ex = $@;
     }
 
-    print $writeh "done\n";
+    $wfh->print("done\n");
+    $wfh->flush();
 
   } else {
-    # Start server
-    server_start($config_file);
-
-    # Wait until we receive word from the child that it has finished its
-    # test.
-    while (my $msg = <$readh>) {
-      chomp($msg);
-
-      if ($msg eq 'done') {
-        last;
-      }
+    eval { server_wait($setup->{config_file}, $rfh) };
+    if ($@) {
+      warn($@);
+      exit 1;
     }
 
     exit 0;
   }
 
   # Stop server
-  server_stop($pid_file);
-
+  server_stop($setup->{pid_file});
   $self->assert_child_ok($pid);
 
-  if ($ex) {
-    die($ex);
-  }
-
-  unlink($log_file);
+  test_cleanup($setup, $ex);
 }
 
 sub cmds_mkd_ok {
   my $self = shift;
+  my $tmpdir = $self->{tmpdir};
+  my $setup = test_setup($tmpdir, 'cmds');
 
-  my $config_file = 'tmp/cmds.conf';
-  my $pid_file = File::Spec->rel2abs('tmp/cmds.pid');
-  my $scoreboard_file = File::Spec->rel2abs('tmp/cmds.scoreboard');
-  my $log_file = File::Spec->rel2abs('cmds.log');
-
-  my $auth_user_file = File::Spec->rel2abs('tmp/cmds.passwd');
-  my $auth_group_file = File::Spec->rel2abs('tmp/cmds.group');
-
-  my $user = 'proftpd';
-  my $passwd = 'test';
-  my $home_dir = File::Spec->rel2abs('tmp');
-
-  my $sub_dir = File::Spec->rel2abs('tmp/foo');
-
-  auth_user_write($auth_user_file, $user, $passwd, 500, 500, $home_dir,
-    '/bin/bash');
-  auth_group_write($auth_group_file, 'ftpd', 500, $user);
+  my $test_dir = File::Spec->rel2abs("$tmpdir/test.d");
 
   my $config = {
-    PidFile => $pid_file,
-    ScoreboardFile => $scoreboard_file,
-    SystemLog => $log_file,
+    PidFile => $setup->{pid_file},
+    ScoreboardFile => $setup->{scoreboard_file},
+    SystemLog => $setup->{log_file},
 
-    AuthUserFile => $auth_user_file,
-    AuthGroupFile => $auth_group_file,
+    AuthUserFile => $setup->{auth_user_file},
+    AuthGroupFile => $setup->{auth_group_file},
     AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
@@ -1588,17 +1178,16 @@ sub cmds_mkd_ok {
     },
   };
 
-  my ($port, $config_user, $config_group) = config_write($config_file, $config);
+  my ($port, $config_user, $config_group) = config_write($setup->{config_file},
+    $config);
 
   # Open pipes, for use between the parent and child processes.  Specifically,
   # the child will indicate when it's done with its test by writing a message
   # to the parent.
-  my ($readh, $writeh);
-  unless (pipe($readh, $writeh)) {
+  my ($rfh, $wfh);
+  unless (pipe($rfh, $wfh)) {
     die("Can't open pipe: $!");
   }
-
-  $writeh->autoflush(1);
 
   my $ex;
 
@@ -1608,97 +1197,58 @@ sub cmds_mkd_ok {
   if ($pid) {
     eval {
       my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
+      $client->login($setup->{user}, $setup->{passwd});
 
-      eval { $client->login($user, $passwd) };
-      if ($@) {
-        my $err = $@;
-        print $writeh "done\n";
-        die("Failed to log in: $err");
-      }
+      my ($resp_code, $resp_msg) = $client->mkd($test_dir);
+      $client->quit();
 
-      my ($resp_code, $resp_msg);
-      eval { ($resp_code, $resp_msg) = $client->mkd($sub_dir) };
-      if ($@) {
-        my $err = $@;
-        print $writeh "done\n";
-        die("Failed to MKD: $err");
-      }
-
-      my $expected;
-
-      $expected = 257;
+      my $expected = 257;
       $self->assert($expected == $resp_code,
-        test_msg("Expected $expected, got $resp_code"));
+        test_msg("Expected response code $expected, got $resp_code"));
 
-      $expected = "\"$sub_dir\" - Directory successfully created";
+      $expected = "\"$test_dir\" - Directory successfully created";
       chomp($resp_msg);
       $self->assert($expected eq $resp_msg,
-        test_msg("Expected '$expected', got '$resp_msg'"));
+        test_msg("Expected response message '$expected', got '$resp_msg'"));
     };
-
     if ($@) {
       $ex = $@;
     }
 
-    print $writeh "done\n";
+    $wfh->print("done\n");
+    $wfh->flush();
 
   } else {
-    # Start server
-    server_start($config_file);
-
-    # Wait until we receive word from the child that it has finished its
-    # test.
-    while (my $msg = <$readh>) {
-      chomp($msg);
-
-      if ($msg eq 'done') {
-        last;
-      }
+    eval { server_wait($setup->{config_file}, $rfh) };
+    if ($@) {
+      warn($@);
+      exit 1;
     }
 
     exit 0;
   }
 
   # Stop server
-  server_stop($pid_file);
-
+  server_stop($setup->{pid_file});
   $self->assert_child_ok($pid);
 
-  if ($ex) {
-    die($ex);
-  }
-
-  unlink($log_file);
+  test_cleanup($setup, $ex);
 }
 
 sub cmds_mkd_fails_enoent {
   my $self = shift;
+  my $tmpdir = $self->{tmpdir};
+  my $setup = test_setup($tmpdir, 'cmds');
 
-  my $config_file = 'tmp/cmds.conf';
-  my $pid_file = File::Spec->rel2abs('tmp/cmds.pid');
-  my $scoreboard_file = File::Spec->rel2abs('tmp/cmds.scoreboard');
-  my $log_file = File::Spec->rel2abs('cmds.log');
-
-  my $auth_user_file = File::Spec->rel2abs('tmp/cmds.passwd');
-  my $auth_group_file = File::Spec->rel2abs('tmp/cmds.group');
-
-  my $user = 'proftpd';
-  my $passwd = 'test';
-  my $home_dir = File::Spec->rel2abs('tmp');
-
-  my $sub_dir = File::Spec->rel2abs('tmp/foo/bar');
-
-  auth_user_write($auth_user_file, $user, $passwd, 500, 500, $home_dir,
-    '/bin/bash');
-  auth_group_write($auth_group_file, 'ftpd', 500, $user);
+  my $test_dir = File::Spec->rel2abs("$tmpdir/foo/bar");
 
   my $config = {
-    PidFile => $pid_file,
-    ScoreboardFile => $scoreboard_file,
-    SystemLog => $log_file,
+    PidFile => $setup->{pid_file},
+    ScoreboardFile => $setup->{scoreboard_file},
+    SystemLog => $setup->{log_file},
 
-    AuthUserFile => $auth_user_file,
-    AuthGroupFile => $auth_group_file,
+    AuthUserFile => $setup->{auth_user_file},
+    AuthGroupFile => $setup->{auth_group_file},
     AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
@@ -1708,17 +1258,16 @@ sub cmds_mkd_fails_enoent {
     },
   };
 
-  my ($port, $config_user, $config_group) = config_write($config_file, $config);
+  my ($port, $config_user, $config_group) = config_write($setup->{config_file},
+    $config);
 
   # Open pipes, for use between the parent and child processes.  Specifically,
   # the child will indicate when it's done with its test by writing a message
   # to the parent.
-  my ($readh, $writeh);
-  unless (pipe($readh, $writeh)) {
+  my ($rfh, $wfh);
+  unless (pipe($rfh, $wfh)) {
     die("Can't open pipe: $!");
   }
-
-  $writeh->autoflush(1);
 
   my $ex;
 
@@ -1728,100 +1277,64 @@ sub cmds_mkd_fails_enoent {
   if ($pid) {
     eval {
       my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
+      $client->login($setup->{user}, $setup->{passwd});
 
-      eval { $client->login($user, $passwd) };
-      if ($@) {
-        my $err = $@;
-        print $writeh "done\n";
-        die("Failed to log in: $err");
-      }
-
-      my ($resp_code, $resp_msg);
-      eval { ($resp_code, $resp_msg) = $client->mkd($sub_dir) };
+      eval { $client->mkd($test_dir) };
       unless ($@) {
-        print $writeh "done\n";
         die("MKD succeeded unexpectedly");
-
-      } else {
-        $resp_code = $client->response_code();
-        $resp_msg = $client->response_msg();
       }
 
-      my $expected;
+      my $resp_code = $client->response_code();
+      my $resp_msg = $client->response_msg();
+      $client->quit();
 
-      $expected = 550;
+      my $expected = 550;
       $self->assert($expected == $resp_code,
-        test_msg("Expected $expected, got $resp_code"));
+        test_msg("Expected response code $expected, got $resp_code"));
 
-      $expected = "$sub_dir: Operation not permitted";
+      $expected = "$test_dir: No such file or directory";
       chomp($resp_msg);
       $self->assert($expected eq $resp_msg,
-        test_msg("Expected '$expected', got '$resp_msg'"));
+        test_msg("Expected response message '$expected', got '$resp_msg'"));
     };
-
     if ($@) {
       $ex = $@;
     }
 
-    print $writeh "done\n";
+    $wfh->print("done\n");
+    $wfh->flush();
 
   } else {
-    # Start server
-    server_start($config_file);
-
-    # Wait until we receive word from the child that it has finished its
-    # test.
-    while (my $msg = <$readh>) {
-      chomp($msg);
-
-      if ($msg eq 'done') {
-        last;
-      }
+    eval { server_wait($setup->{config_file}, $rfh) };
+    if ($@) {
+      warn($@);
+      exit 1;
     }
 
     exit 0;
   }
 
   # Stop server
-  server_stop($pid_file);
-
+  server_stop($setup->{pid_file});
   $self->assert_child_ok($pid);
 
-  if ($ex) {
-    die($ex);
-  }
-
-  unlink($log_file);
+  test_cleanup($setup, $ex);
 }
 
 sub cmds_mkd_fails_eperm {
   my $self = shift;
+  my $tmpdir = $self->{tmpdir};
+  my $setup = test_setup($tmpdir, 'cmds');
 
-  my $config_file = 'tmp/cmds.conf';
-  my $pid_file = File::Spec->rel2abs('tmp/cmds.pid');
-  my $scoreboard_file = File::Spec->rel2abs('tmp/cmds.scoreboard');
-  my $log_file = File::Spec->rel2abs('cmds.log');
-
-  my $auth_user_file = File::Spec->rel2abs('tmp/cmds.passwd');
-  my $auth_group_file = File::Spec->rel2abs('tmp/cmds.group');
-
-  my $user = 'proftpd';
-  my $passwd = 'test';
-  my $home_dir = File::Spec->rel2abs('tmp');
-
-  my $sub_dir = File::Spec->rel2abs('tmp/foo');
-
-  auth_user_write($auth_user_file, $user, $passwd, 500, 500, $home_dir,
-    '/bin/bash');
-  auth_group_write($auth_group_file, 'ftpd', 500, $user);
+  my $test_dir = File::Spec->rel2abs("$tmpdir/test.d");
 
   my $config = {
-    PidFile => $pid_file,
-    ScoreboardFile => $scoreboard_file,
-    SystemLog => $log_file,
+    PidFile => $setup->{pid_file},
+    ScoreboardFile => $setup->{scoreboard_file},
+    SystemLog => $setup->{log_file},
 
-    AuthUserFile => $auth_user_file,
-    AuthGroupFile => $auth_group_file,
+    AuthUserFile => $setup->{auth_user_file},
+    AuthGroupFile => $setup->{auth_group_file},
     AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
@@ -1831,17 +1344,16 @@ sub cmds_mkd_fails_eperm {
     },
   };
 
-  my ($port, $config_user, $config_group) = config_write($config_file, $config);
+  my ($port, $config_user, $config_group) = config_write($setup->{config_file},
+    $config);
 
   # Open pipes, for use between the parent and child processes.  Specifically,
   # the child will indicate when it's done with its test by writing a message
   # to the parent.
-  my ($readh, $writeh);
-  unless (pipe($readh, $writeh)) {
+  my ($rfh, $wfh);
+  unless (pipe($rfh, $wfh)) {
     die("Can't open pipe: $!");
   }
-
-  $writeh->autoflush(1);
 
   my $ex;
 
@@ -1851,111 +1363,73 @@ sub cmds_mkd_fails_eperm {
   if ($pid) {
     eval {
       my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
-
-      eval { $client->login($user, $passwd) };
-      if ($@) {
-        my $err = $@;
-        print $writeh "done\n";
-        die("Failed to log in: $err");
-      }
+      $client->login($setup->{user}, $setup->{passwd});
 
       # Make it such that perms on the parent dir do not allow writes
-      my $perms = (stat($home_dir))[2];
-      unless (chmod(0550, $home_dir)) {
-        my $err = $!;
-        print $writeh "done\n";
-        die("Failed to change perms on $home_dir: $err");
+      my $perms = (stat($setup->{home_dir}))[2];
+      unless (chmod(0550, $setup->{home_dir})) {
+        die("Failed to change perms on $setup->{home_dir}: $!");
       }
 
-      my ($resp_code, $resp_msg);
-      eval { ($resp_code, $resp_msg) = $client->mkd($sub_dir) };
+      eval { $client->mkd($test_dir) };
       unless ($@) {
-        print $writeh "done\n";
         die("MKD succeeded unexpectedly");
-
-      } else {
-        $resp_code = $client->response_code();
-        $resp_msg = $client->response_msg();
       }
+
+      my $resp_code = $client->response_code();
+      my $resp_msg = $client->response_msg();
+      $client->quit();
 
       # Restore the perms
-      chmod($perms, $home_dir);
+      chmod($perms, $setup->{home_dir});
 
-      my $expected;
-
-      $expected = 550;
+      my $expected = 550;
       $self->assert($expected == $resp_code,
-        test_msg("Expected $expected, got $resp_code"));
+        test_msg("Expected response code $expected, got $resp_code"));
 
-      $expected = "$sub_dir: Operation not permitted";
+      $expected = "$test_dir: (Operation not permitted|Permission denied)";
       chomp($resp_msg);
-      $self->assert($expected eq $resp_msg,
-        test_msg("Expected '$expected', got '$resp_msg'"));
+      $self->assert(qr/$expected/, $resp_msg,
+        test_msg("Expected response message '$expected', got '$resp_msg'"));
     };
-
     if ($@) {
       $ex = $@;
     }
 
-    print $writeh "done\n";
+    $wfh->print("done\n");
+    $wfh->flush();
 
   } else {
-    # Start server
-    server_start($config_file);
-
-    # Wait until we receive word from the child that it has finished its
-    # test.
-    while (my $msg = <$readh>) {
-      chomp($msg);
-
-      if ($msg eq 'done') {
-        last;
-      }
+    eval { server_wait($setup->{config_file}, $rfh) };
+    if ($@) {
+      warn($@);
+      exit 1;
     }
 
     exit 0;
   }
 
   # Stop server
-  server_stop($pid_file);
-
+  server_stop($setup->{pid_file});
   $self->assert_child_ok($pid);
 
-  if ($ex) {
-    die($ex);
-  }
-
-  unlink($log_file);
+  test_cleanup($setup, $ex);
 }
 
 sub cmds_xmkd_ok {
   my $self = shift;
+  my $tmpdir = $self->{tmpdir};
+  my $setup = test_setup($tmpdir, 'cmds');
 
-  my $config_file = 'tmp/cmds.conf';
-  my $pid_file = File::Spec->rel2abs('tmp/cmds.pid');
-  my $scoreboard_file = File::Spec->rel2abs('tmp/cmds.scoreboard');
-  my $log_file = File::Spec->rel2abs('cmds.log');
-
-  my $auth_user_file = File::Spec->rel2abs('tmp/cmds.passwd');
-  my $auth_group_file = File::Spec->rel2abs('tmp/cmds.group');
-
-  my $user = 'proftpd';
-  my $passwd = 'test';
-  my $home_dir = File::Spec->rel2abs('tmp');
-
-  my $sub_dir = File::Spec->rel2abs('tmp/foo');
-
-  auth_user_write($auth_user_file, $user, $passwd, 500, 500, $home_dir,
-    '/bin/bash');
-  auth_group_write($auth_group_file, 'ftpd', 500, $user);
+  my $test_dir = File::Spec->rel2abs("$tmpdir/test.d");
 
   my $config = {
-    PidFile => $pid_file,
-    ScoreboardFile => $scoreboard_file,
-    SystemLog => $log_file,
+    PidFile => $setup->{pid_file},
+    ScoreboardFile => $setup->{scoreboard_file},
+    SystemLog => $setup->{log_file},
 
-    AuthUserFile => $auth_user_file,
-    AuthGroupFile => $auth_group_file,
+    AuthUserFile => $setup->{auth_user_file},
+    AuthGroupFile => $setup->{auth_group_file},
     AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
@@ -1965,17 +1439,16 @@ sub cmds_xmkd_ok {
     },
   };
 
-  my ($port, $config_user, $config_group) = config_write($config_file, $config);
+  my ($port, $config_user, $config_group) = config_write($setup->{config_file},
+    $config);
 
   # Open pipes, for use between the parent and child processes.  Specifically,
   # the child will indicate when it's done with its test by writing a message
   # to the parent.
-  my ($readh, $writeh);
-  unless (pipe($readh, $writeh)) {
+  my ($rfh, $wfh);
+  unless (pipe($rfh, $wfh)) {
     die("Can't open pipe: $!");
   }
-
-  $writeh->autoflush(1);
 
   my $ex;
 
@@ -1985,98 +1458,69 @@ sub cmds_xmkd_ok {
   if ($pid) {
     eval {
       my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
+      $client->login($setup->{user}, $setup->{passwd});
 
-      eval { $client->login($user, $passwd) };
-      if ($@) {
-        my $err = $@;
-        print $writeh "done\n";
-        die("Failed to log in: $err");
-      }
+      my ($resp_code, $resp_msg) = $client->xmkd($test_dir);
+      $client->quit();
 
-      my ($resp_code, $resp_msg);
-      eval { ($resp_code, $resp_msg) = $client->xmkd($sub_dir) };
-      if ($@) {
-        my $err = $@;
-        print $writeh "done\n";
-        die("Failed to XMKD: $err");
-      }
-
-      my $expected;
-
-      $expected = 257;
+      my $expected = 257;
       $self->assert($expected == $resp_code,
-        test_msg("Expected $expected, got $resp_code"));
+        test_msg("Expected response code $expected, got $resp_code"));
 
-      $expected = "\"$sub_dir\" - Directory successfully created";
+      $expected = "\"$test_dir\" - Directory successfully created";
       chomp($resp_msg);
       $self->assert($expected eq $resp_msg,
-        test_msg("Expected '$expected', got '$resp_msg'"));
+        test_msg("Expected response message '$expected', got '$resp_msg'"));
     };
-
     if ($@) {
       $ex = $@;
     }
 
-    print $writeh "done\n";
+    $wfh->print("done\n");
+    $wfh->flush();
 
   } else {
-    # Start server
-    server_start($config_file);
-
-    # Wait until we receive word from the child that it has finished its
-    # test.
-    while (my $msg = <$readh>) {
-      chomp($msg);
-
-      if ($msg eq 'done') {
-        last;
-      }
+    eval { server_wait($setup->{config_file}, $rfh) };
+    if ($@) {
+      warn($@);
+      exit 1;
     }
 
     exit 0;
   }
 
   # Stop server
-  server_stop($pid_file);
-
+  server_stop($setup->{pid_file});
   $self->assert_child_ok($pid);
 
-  if ($ex) {
-    die($ex);
-  }
-
-  unlink($log_file);
+  test_cleanup($setup, $ex);
 }
 
 sub cmds_rmd_ok {
   my $self = shift;
+  my $tmpdir = $self->{tmpdir};
+  my $setup = test_setup($tmpdir, 'cmds');
 
-  my $config_file = 'tmp/cmds.conf';
-  my $pid_file = File::Spec->rel2abs('tmp/cmds.pid');
-  my $scoreboard_file = File::Spec->rel2abs('tmp/cmds.scoreboard');
-  my $log_file = File::Spec->rel2abs('cmds.log');
+  my $test_dir = File::Spec->rel2abs("$tmpdir/test.d");
+  mkpath($test_dir);
 
-  my $auth_user_file = File::Spec->rel2abs('tmp/cmds.passwd');
-  my $auth_group_file = File::Spec->rel2abs('tmp/cmds.group');
+  if ($< == 0) {
+    unless (chmod(0755, $test_dir)) {
+      die("Can't set perms on $test_dir: $!");
+    }
 
-  my $user = 'proftpd';
-  my $passwd = 'test';
-  my $home_dir = File::Spec->rel2abs('tmp');
-
-  my $sub_dir = File::Spec->rel2abs('tmp/foo');
-  mkpath($sub_dir);
-
-  auth_user_write($auth_user_file, $user, $passwd, 500, 500, $home_dir,
-    '/bin/bash');
-  auth_group_write($auth_group_file, 'ftpd', 500, $user);
+    unless (chown($setup->{uid}, $setup->{gid}, $test_dir)) {
+      die("Can't set owner of $test_dir to $setup->{uid}/$setup->{gid}: $!");
+    }
+  }
 
   my $config = {
-    PidFile => $pid_file,
-    ScoreboardFile => $scoreboard_file,
-    SystemLog => $log_file,
+    PidFile => $setup->{pid_file},
+    ScoreboardFile => $setup->{scoreboard_file},
+    SystemLog => $setup->{log_file},
 
-    AuthUserFile => $auth_user_file,
-    AuthGroupFile => $auth_group_file,
+    AuthUserFile => $setup->{auth_user_file},
+    AuthGroupFile => $setup->{auth_group_file},
     AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
@@ -2086,17 +1530,16 @@ sub cmds_rmd_ok {
     },
   };
 
-  my ($port, $config_user, $config_group) = config_write($config_file, $config);
+  my ($port, $config_user, $config_group) = config_write($setup->{config_file},
+    $config);
 
   # Open pipes, for use between the parent and child processes.  Specifically,
   # the child will indicate when it's done with its test by writing a message
   # to the parent.
-  my ($readh, $writeh);
-  unless (pipe($readh, $writeh)) {
+  my ($rfh, $wfh);
+  unless (pipe($rfh, $wfh)) {
     die("Can't open pipe: $!");
   }
-
-  $writeh->autoflush(1);
 
   my $ex;
 
@@ -2106,97 +1549,58 @@ sub cmds_rmd_ok {
   if ($pid) {
     eval {
       my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
+      $client->login($setup->{user}, $setup->{passwd});
 
-      eval { $client->login($user, $passwd) };
-      if ($@) {
-        my $err = $@;
-        print $writeh "done\n";
-        die("Failed to log in: $err");
-      }
+      my ($resp_code, $resp_msg) = $client->rmd($test_dir);
+      $client->quit();
 
-      my ($resp_code, $resp_msg);
-      eval { ($resp_code, $resp_msg) = $client->rmd($sub_dir) };
-      if ($@) {
-        my $err = $@;
-        print $writeh "done\n";
-        die("Failed to RMD: $err");
-      }
-
-      my $expected;
-
-      $expected = 250;
+      my $expected = 250;
       $self->assert($expected == $resp_code,
-        test_msg("Expected $expected, got $resp_code"));
+        test_msg("Expected response code $expected, got $resp_code"));
 
       $expected = "RMD command successful";
       chomp($resp_msg);
       $self->assert($expected eq $resp_msg,
-        test_msg("Expected '$expected', got '$resp_msg'"));
+        test_msg("Expected response message '$expected', got '$resp_msg'"));
     };
-
     if ($@) {
       $ex = $@;
     }
 
-    print $writeh "done\n";
+    $wfh->print("done\n");
+    $wfh->flush();
 
   } else {
-    # Start server
-    server_start($config_file);
-
-    # Wait until we receive word from the child that it has finished its
-    # test.
-    while (my $msg = <$readh>) {
-      chomp($msg);
-
-      if ($msg eq 'done') {
-        last;
-      }
+    eval { server_wait($setup->{config_file}, $rfh) };
+    if ($@) {
+      warn($@);
+      exit 1;
     }
 
     exit 0;
   }
 
   # Stop server
-  server_stop($pid_file);
-
+  server_stop($setup->{pid_file});
   $self->assert_child_ok($pid);
 
-  if ($ex) {
-    die($ex);
-  }
-
-  unlink($log_file);
+  test_cleanup($setup, $ex);
 }
 
 sub cmds_rmd_fails_enoent {
   my $self = shift;
+  my $tmpdir = $self->{tmpdir};
+  my $setup = test_setup($tmpdir, 'cmds');
 
-  my $config_file = 'tmp/cmds.conf';
-  my $pid_file = File::Spec->rel2abs('tmp/cmds.pid');
-  my $scoreboard_file = File::Spec->rel2abs('tmp/cmds.scoreboard');
-  my $log_file = File::Spec->rel2abs('cmds.log');
-
-  my $auth_user_file = File::Spec->rel2abs('tmp/cmds.passwd');
-  my $auth_group_file = File::Spec->rel2abs('tmp/cmds.group');
-
-  my $user = 'proftpd';
-  my $passwd = 'test';
-  my $home_dir = File::Spec->rel2abs('tmp');
-
-  my $sub_dir = File::Spec->rel2abs('tmp/foo');
-
-  auth_user_write($auth_user_file, $user, $passwd, 500, 500, $home_dir,
-    '/bin/bash');
-  auth_group_write($auth_group_file, 'ftpd', 500, $user);
+  my $test_dir = File::Spec->rel2abs("$tmpdir/test.d");
 
   my $config = {
-    PidFile => $pid_file,
-    ScoreboardFile => $scoreboard_file,
-    SystemLog => $log_file,
+    PidFile => $setup->{pid_file},
+    ScoreboardFile => $setup->{scoreboard_file},
+    SystemLog => $setup->{log_file},
 
-    AuthUserFile => $auth_user_file,
-    AuthGroupFile => $auth_group_file,
+    AuthUserFile => $setup->{auth_user_file},
+    AuthGroupFile => $setup->{auth_group_file},
     AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
@@ -2206,17 +1610,16 @@ sub cmds_rmd_fails_enoent {
     },
   };
 
-  my ($port, $config_user, $config_group) = config_write($config_file, $config);
+  my ($port, $config_user, $config_group) = config_write($setup->{config_file},
+    $config);
 
   # Open pipes, for use between the parent and child processes.  Specifically,
   # the child will indicate when it's done with its test by writing a message
   # to the parent.
-  my ($readh, $writeh);
-  unless (pipe($readh, $writeh)) {
+  my ($rfh, $wfh);
+  unless (pipe($rfh, $wfh)) {
     die("Can't open pipe: $!");
   }
-
-  $writeh->autoflush(1);
 
   my $ex;
 
@@ -2226,100 +1629,75 @@ sub cmds_rmd_fails_enoent {
   if ($pid) {
     eval {
       my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
+      $client->login($setup->{user}, $setup->{passwd});
 
-      eval { $client->login($user, $passwd) };
-      if ($@) {
-        my $err = $@;
-        print $writeh "done\n";
-        die("Failed to log in: $err");
-      }
-
-      my ($resp_code, $resp_msg);
-      eval { ($resp_code, $resp_msg) = $client->rmd($sub_dir) };
+      eval { $client->rmd($test_dir) };
       unless ($@) {
-        print $writeh "done\n";
         die("RMD succeeded unexpectedly");
-
-      } else {
-        $resp_code = $client->response_code();
-        $resp_msg = $client->response_msg();
       }
 
-      my $expected;
+      my $resp_code = $client->response_code();
+      my $resp_msg = $client->response_msg();
+      $client->quit();
 
-      $expected = 550;
+      my $expected = 550;
       $self->assert($expected == $resp_code,
-        test_msg("Expected $expected, got $resp_code"));
+        test_msg("Expected response code $expected, got $resp_code"));
 
-      $expected = "$sub_dir: Operation not permitted";
+      $expected = "$test_dir: No such file or directory";
       chomp($resp_msg);
       $self->assert($expected eq $resp_msg,
-        test_msg("Expected '$expected', got '$resp_msg'"));
+        test_msg("Expected response message '$expected', got '$resp_msg'"));
     };
-
     if ($@) {
       $ex = $@;
     }
 
-    print $writeh "done\n";
+    $wfh->print("done\n");
+    $wfh->flush();
 
   } else {
-    # Start server
-    server_start($config_file);
-
-    # Wait until we receive word from the child that it has finished its
-    # test.
-    while (my $msg = <$readh>) {
-      chomp($msg);
-
-      if ($msg eq 'done') {
-        last;
-      }
+    eval { server_wait($setup->{config_file}, $rfh) };
+    if ($@) {
+      warn($@);
+      exit 1;
     }
 
     exit 0;
   }
 
   # Stop server
-  server_stop($pid_file);
-
+  server_stop($setup->{pid_file});
   $self->assert_child_ok($pid);
 
-  if ($ex) {
-    die($ex);
-  }
-
-  unlink($log_file);
+  test_cleanup($setup, $ex);
 }
 
 sub cmds_rmd_fails_eperm {
   my $self = shift;
+  my $tmpdir = $self->{tmpdir};
+  my $setup = test_setup($tmpdir, 'cmds');
 
-  my $config_file = 'tmp/cmds.conf';
-  my $pid_file = File::Spec->rel2abs('tmp/cmds.pid');
-  my $scoreboard_file = File::Spec->rel2abs('tmp/cmds.scoreboard');
-  my $log_file = File::Spec->rel2abs('cmds.log');
+  my $test_dir = File::Spec->rel2abs("$tmpdir/test.d");
+  mkpath($test_dir);
 
-  my $auth_user_file = File::Spec->rel2abs('tmp/cmds.passwd');
-  my $auth_group_file = File::Spec->rel2abs('tmp/cmds.group');
+  if ($< == 0) {
+    unless (chmod(0755, $test_dir)) {
+      die("Can't set perms on $test_dir: $!");
+    }
 
-  my $user = 'proftpd';
-  my $passwd = 'test';
-  my $home_dir = File::Spec->rel2abs('tmp');
-
-  my $sub_dir = File::Spec->rel2abs('tmp/foo');
-
-  auth_user_write($auth_user_file, $user, $passwd, 500, 500, $home_dir,
-    '/bin/bash');
-  auth_group_write($auth_group_file, 'ftpd', 500, $user);
+    unless (chown($setup->{uid}, $setup->{gid}, $test_dir)) {
+      die("Can't set owner of $test_dir to $setup->{uid}/$setup->{gid}: $!");
+    }
+  }
 
   my $config = {
-    PidFile => $pid_file,
-    ScoreboardFile => $scoreboard_file,
-    SystemLog => $log_file,
+    PidFile => $setup->{pid_file},
+    ScoreboardFile => $setup->{scoreboard_file},
+    SystemLog => $setup->{log_file},
 
-    AuthUserFile => $auth_user_file,
-    AuthGroupFile => $auth_group_file,
+    AuthUserFile => $setup->{auth_user_file},
+    AuthGroupFile => $setup->{auth_group_file},
     AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
@@ -2329,17 +1707,16 @@ sub cmds_rmd_fails_eperm {
     },
   };
 
-  my ($port, $config_user, $config_group) = config_write($config_file, $config);
+  my ($port, $config_user, $config_group) = config_write($setup->{config_file},
+    $config);
 
   # Open pipes, for use between the parent and child processes.  Specifically,
   # the child will indicate when it's done with its test by writing a message
   # to the parent.
-  my ($readh, $writeh);
-  unless (pipe($readh, $writeh)) {
+  my ($rfh, $wfh);
+  unless (pipe($rfh, $wfh)) {
     die("Can't open pipe: $!");
   }
-
-  $writeh->autoflush(1);
 
   my $ex;
 
@@ -2349,112 +1726,84 @@ sub cmds_rmd_fails_eperm {
   if ($pid) {
     eval {
       my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
-
-      eval { $client->login($user, $passwd) };
-      if ($@) {
-        my $err = $@;
-        print $writeh "done\n";
-        die("Failed to log in: $err");
-      }
+      $client->login($setup->{user}, $setup->{passwd});
 
       # Make it such that perms on the parent dir do not allow writes
-      my $perms = (stat($home_dir))[2];
-      unless (chmod(0550, $home_dir)) {
-        my $err = $!;
-        print $writeh "done\n";
-        die("Failed to change perms on $home_dir: $err");
+      my $perms = (stat($setup->{home_dir}))[2];
+      unless (chmod(0550, $setup->{home_dir})) {
+        die("Failed to change perms on $setup->{home_dir}: $!");
       }
 
-      my ($resp_code, $resp_msg);
-      eval { ($resp_code, $resp_msg) = $client->rmd($sub_dir) };
+      eval { $client->rmd($test_dir) };
       unless ($@) {
-        print $writeh "done\n";
         die("RMD succeeded unexpectedly");
-
-      } else {
-        $resp_code = $client->response_code();
-        $resp_msg = $client->response_msg();
       }
+
+      my $resp_code = $client->response_code();
+      my $resp_msg = $client->response_msg();
+      $client->quit();
 
       # Restore the perms
-      chmod($perms, $home_dir);
+      chmod($perms, $setup->{home_dir});
 
-      my $expected;
-
-      $expected = 550;
+      my $expected = 550;
       $self->assert($expected == $resp_code,
-        test_msg("Expected $expected, got $resp_code"));
+        test_msg("Expected response code $expected, got $resp_code"));
 
-      $expected = "$sub_dir: Operation not permitted";
+      $expected = "$test_dir: (Operation not permitted|Permission denied)";
       chomp($resp_msg);
-      $self->assert($expected eq $resp_msg,
-        test_msg("Expected '$expected', got '$resp_msg'"));
+      $self->assert(qr/$expected/, $resp_msg,
+        test_msg("Expected response message '$expected', got '$resp_msg'"));
     };
-
     if ($@) {
       $ex = $@;
     }
 
-    print $writeh "done\n";
+    $wfh->print("done\n");
+    $wfh->flush();
 
   } else {
-    # Start server
-    server_start($config_file);
-
-    # Wait until we receive word from the child that it has finished its
-    # test.
-    while (my $msg = <$readh>) {
-      chomp($msg);
-
-      if ($msg eq 'done') {
-        last;
-      }
+    eval { server_wait($setup->{config_file}, $rfh) };
+    if ($@) {
+      warn($@);
+      exit 1;
     }
 
     exit 0;
   }
 
   # Stop server
-  server_stop($pid_file);
-
+  server_stop($setup->{pid_file});
   $self->assert_child_ok($pid);
 
-  if ($ex) {
-    die($ex);
-  }
-
-  unlink($log_file);
+  test_cleanup($setup, $ex);
 }
 
 sub cmds_xrmd_ok {
   my $self = shift;
+  my $tmpdir = $self->{tmpdir};
+  my $setup = test_setup($tmpdir, 'cmds');
 
-  my $config_file = 'tmp/cmds.conf';
-  my $pid_file = File::Spec->rel2abs('tmp/cmds.pid');
-  my $scoreboard_file = File::Spec->rel2abs('tmp/cmds.scoreboard');
-  my $log_file = File::Spec->rel2abs('cmds.log');
+  my $test_dir = File::Spec->rel2abs("$tmpdir/test.d");
+  mkpath($test_dir);
 
-  my $auth_user_file = File::Spec->rel2abs('tmp/cmds.passwd');
-  my $auth_group_file = File::Spec->rel2abs('tmp/cmds.group');
+  if ($< == 0) {
+    unless (chmod(0755, $test_dir)) {
+      die("Can't set perms on $test_dir: $!");
+    }
 
-  my $user = 'proftpd';
-  my $passwd = 'test';
-  my $home_dir = File::Spec->rel2abs('tmp');
-
-  my $sub_dir = File::Spec->rel2abs('tmp/foo');
-  mkpath($sub_dir);
-
-  auth_user_write($auth_user_file, $user, $passwd, 500, 500, $home_dir,
-    '/bin/bash');
-  auth_group_write($auth_group_file, 'ftpd', 500, $user);
+    unless (chown($setup->{uid}, $setup->{gid}, $test_dir)) {
+      die("Can't set owner of $test_dir to $setup->{uid}/$setup->{gid}: $!");
+    }
+  }
 
   my $config = {
-    PidFile => $pid_file,
-    ScoreboardFile => $scoreboard_file,
-    SystemLog => $log_file,
+    PidFile => $setup->{pid_file},
+    ScoreboardFile => $setup->{scoreboard_file},
+    SystemLog => $setup->{log_file},
 
-    AuthUserFile => $auth_user_file,
-    AuthGroupFile => $auth_group_file,
+    AuthUserFile => $setup->{auth_user_file},
+    AuthGroupFile => $setup->{auth_group_file},
     AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
@@ -2464,17 +1813,16 @@ sub cmds_xrmd_ok {
     },
   };
 
-  my ($port, $config_user, $config_group) = config_write($config_file, $config);
+  my ($port, $config_user, $config_group) = config_write($setup->{config_file},
+    $config);
 
   # Open pipes, for use between the parent and child processes.  Specifically,
   # the child will indicate when it's done with its test by writing a message
   # to the parent.
-  my ($readh, $writeh);
-  unless (pipe($readh, $writeh)) {
+  my ($rfh, $wfh);
+  unless (pipe($rfh, $wfh)) {
     die("Can't open pipe: $!");
   }
-
-  $writeh->autoflush(1);
 
   my $ex;
 
@@ -2484,85 +1832,50 @@ sub cmds_xrmd_ok {
   if ($pid) {
     eval {
       my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
+      $client->login($setup->{user}, $setup->{passwd});
 
-      eval { $client->login($user, $passwd) };
-      if ($@) {
-        my $err = $@;
-        print $writeh "done\n";
-        die("Failed to log in: $err");
-      }
+      my ($resp_code, $resp_msg) = $client->xrmd($test_dir);
+      $client->quit();
 
-      my ($resp_code, $resp_msg);
-      eval { ($resp_code, $resp_msg) = $client->xrmd($sub_dir) };
-      if ($@) {
-        my $err = $@;
-        print $writeh "done\n";
-        die("Failed to XRMD: $err");
-      }
-
-      my $expected;
-
-      $expected = 250;
+      my $expected = 250;
       $self->assert($expected == $resp_code,
-        test_msg("Expected $expected, got $resp_code"));
+        test_msg("Expected response code $expected, got $resp_code"));
 
       $expected = "XRMD command successful";
       chomp($resp_msg);
       $self->assert($expected eq $resp_msg,
-        test_msg("Expected '$expected', got '$resp_msg'"));
+        test_msg("Expected response message '$expected', got '$resp_msg'"));
     };
-
     if ($@) {
       $ex = $@;
     }
 
-    print $writeh "done\n";
+    $wfh->print("done\n");
+    $wfh->flush();
 
   } else {
-    # Start server
-    server_start($config_file);
-
-    # Wait until we receive word from the child that it has finished its
-    # test.
-    while (my $msg = <$readh>) {
-      chomp($msg);
-
-      if ($msg eq 'done') {
-        last;
-      }
+    eval { server_wait($setup->{config_file}, $rfh) };
+    if ($@) {
+      warn($@);
+      exit 1;
     }
 
     exit 0;
   }
 
   # Stop server
-  server_stop($pid_file);
-
+  server_stop($setup->{pid_file});
   $self->assert_child_ok($pid);
 
-  if ($ex) {
-    die($ex);
-  }
-
-  unlink($log_file);
+  test_cleanup($setup, $ex);
 }
 
 sub cmds_dele_ok {
   my $self = shift;
+  my $tmpdir = $self->{tmpdir};
+  my $setup = test_setup($tmpdir, 'cmds');
 
-  my $config_file = 'tmp/cmds.conf';
-  my $pid_file = File::Spec->rel2abs('tmp/cmds.pid');
-  my $scoreboard_file = File::Spec->rel2abs('tmp/cmds.scoreboard');
-  my $log_file = File::Spec->rel2abs('cmds.log');
-
-  my $auth_user_file = File::Spec->rel2abs('tmp/cmds.passwd');
-  my $auth_group_file = File::Spec->rel2abs('tmp/cmds.group');
-
-  my $user = 'proftpd';
-  my $passwd = 'test';
-  my $home_dir = File::Spec->rel2abs('tmp');
-
-  my $test_file = File::Spec->rel2abs('tmp/foo');
+  my $test_file = File::Spec->rel2abs("$tmpdir/test.dat");
   if (open(my $fh, "> $test_file")) {
     close($fh);
 
@@ -2570,17 +1883,13 @@ sub cmds_dele_ok {
     die("Can't create $test_file: $!");
   }
 
-  auth_user_write($auth_user_file, $user, $passwd, 500, 500, $home_dir,
-    '/bin/bash');
-  auth_group_write($auth_group_file, 'ftpd', 500, $user);
-
   my $config = {
-    PidFile => $pid_file,
-    ScoreboardFile => $scoreboard_file,
-    SystemLog => $log_file,
+    PidFile => $setup->{pid_file},
+    ScoreboardFile => $setup->{scoreboard_file},
+    SystemLog => $setup->{log_file},
 
-    AuthUserFile => $auth_user_file,
-    AuthGroupFile => $auth_group_file,
+    AuthUserFile => $setup->{auth_user_file},
+    AuthGroupFile => $setup->{auth_group_file},
     AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
@@ -2590,17 +1899,16 @@ sub cmds_dele_ok {
     },
   };
 
-  my ($port, $config_user, $config_group) = config_write($config_file, $config);
+  my ($port, $config_user, $config_group) = config_write($setup->{config_file},
+    $config);
 
   # Open pipes, for use between the parent and child processes.  Specifically,
   # the child will indicate when it's done with its test by writing a message
   # to the parent.
-  my ($readh, $writeh);
-  unless (pipe($readh, $writeh)) {
+  my ($rfh, $wfh);
+  unless (pipe($rfh, $wfh)) {
     die("Can't open pipe: $!");
   }
-
-  $writeh->autoflush(1);
 
   my $ex;
 
@@ -2610,97 +1918,58 @@ sub cmds_dele_ok {
   if ($pid) {
     eval {
       my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
+      $client->login($setup->{user}, $setup->{passwd});
 
-      eval { $client->login($user, $passwd) };
-      if ($@) {
-        my $err = $@;
-        print $writeh "done\n";
-        die("Failed to log in: $err");
-      }
+      my ($resp_code, $resp_msg) = $client->dele($test_file);
+      $client->quit();
 
-      my ($resp_code, $resp_msg);
-      eval { ($resp_code, $resp_msg) = $client->dele($test_file) };
-      if ($@) {
-        my $err = $@;
-        print $writeh "done\n";
-        die("Failed to DELE: $err");
-      }
-
-      my $expected;
-
-      $expected = 250;
+      my $expected = 250;
       $self->assert($expected == $resp_code,
-        test_msg("Expected $expected, got $resp_code"));
+        test_msg("Expected response code $expected, got $resp_code"));
 
       $expected = "DELE command successful";
       chomp($resp_msg);
       $self->assert($expected eq $resp_msg,
-        test_msg("Expected '$expected', got '$resp_msg'"));
+        test_msg("Expected response message '$expected', got '$resp_msg'"));
     };
-
     if ($@) {
       $ex = $@;
     }
 
-    print $writeh "done\n";
+    $wfh->print("done\n");
+    $wfh->flush();
 
   } else {
-    # Start server
-    server_start($config_file);
-
-    # Wait until we receive word from the child that it has finished its
-    # test.
-    while (my $msg = <$readh>) {
-      chomp($msg);
-
-      if ($msg eq 'done') {
-        last;
-      }
+    eval { server_wait($setup->{config_file}, $rfh) };
+    if ($@) {
+      warn($@);
+      exit 1;
     }
 
     exit 0;
   }
 
   # Stop server
-  server_stop($pid_file);
-
+  server_stop($setup->{pid_file});
   $self->assert_child_ok($pid);
 
-  if ($ex) {
-    die($ex);
-  }
-
-  unlink($log_file);
+  test_cleanup($setup, $ex);
 }
 
 sub cmds_dele_fails_enoent {
   my $self = shift;
+  my $tmpdir = $self->{tmpdir};
+  my $setup = test_setup($tmpdir, 'cmds');
 
-  my $config_file = 'tmp/cmds.conf';
-  my $pid_file = File::Spec->rel2abs('tmp/cmds.pid');
-  my $scoreboard_file = File::Spec->rel2abs('tmp/cmds.scoreboard');
-  my $log_file = File::Spec->rel2abs('cmds.log');
-
-  my $auth_user_file = File::Spec->rel2abs('tmp/cmds.passwd');
-  my $auth_group_file = File::Spec->rel2abs('tmp/cmds.group');
-
-  my $user = 'proftpd';
-  my $passwd = 'test';
-  my $home_dir = File::Spec->rel2abs('tmp');
-
-  my $test_file = File::Spec->rel2abs('tmp/foo');
-
-  auth_user_write($auth_user_file, $user, $passwd, 500, 500, $home_dir,
-    '/bin/bash');
-  auth_group_write($auth_group_file, 'ftpd', 500, $user);
+  my $test_file = File::Spec->rel2abs("$tmpdir/test.dat");
 
   my $config = {
-    PidFile => $pid_file,
-    ScoreboardFile => $scoreboard_file,
-    SystemLog => $log_file,
+    PidFile => $setup->{pid_file},
+    ScoreboardFile => $setup->{scoreboard_file},
+    SystemLog => $setup->{log_file},
 
-    AuthUserFile => $auth_user_file,
-    AuthGroupFile => $auth_group_file,
+    AuthUserFile => $setup->{auth_user_file},
+    AuthGroupFile => $setup->{auth_group_file},
     AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
@@ -2710,17 +1979,16 @@ sub cmds_dele_fails_enoent {
     },
   };
 
-  my ($port, $config_user, $config_group) = config_write($config_file, $config);
+  my ($port, $config_user, $config_group) = config_write($setup->{config_file},
+    $config);
 
   # Open pipes, for use between the parent and child processes.  Specifically,
   # the child will indicate when it's done with its test by writing a message
   # to the parent.
-  my ($readh, $writeh);
-  unless (pipe($readh, $writeh)) {
+  my ($rfh, $wfh);
+  unless (pipe($rfh, $wfh)) {
     die("Can't open pipe: $!");
   }
-
-  $writeh->autoflush(1);
 
   my $ex;
 
@@ -2730,88 +1998,56 @@ sub cmds_dele_fails_enoent {
   if ($pid) {
     eval {
       my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
+      $client->login($setup->{user}, $setup->{passwd});
 
-      eval { $client->login($user, $passwd) };
-      if ($@) {
-        my $err = $@;
-        print $writeh "done\n";
-        die("Failed to log in: $err");
-      }
-
-      my ($resp_code, $resp_msg);
-      eval { ($resp_code, $resp_msg) = $client->dele($test_file) };
+      eval { $client->dele($test_file) };
       unless ($@) {
-        print $writeh "done\n";
         die("DELE succeeded unexpectedly");
-
-      } else {
-        $resp_code = $client->response_code();
-        $resp_msg = $client->response_msg();
       }
 
-      my $expected;
+      my $resp_code = $client->response_code();
+      my $resp_msg = $client->response_msg();
+      $client->quit();
 
-      $expected = 550;
+      my $expected = 550;
       $self->assert($expected == $resp_code,
-        test_msg("Expected $expected, got $resp_code"));
+        test_msg("Expected response code $expected, got $resp_code"));
 
       $expected = "$test_file: No such file or directory";
       chomp($resp_msg);
       $self->assert($expected eq $resp_msg,
-        test_msg("Expected '$expected', got '$resp_msg'"));
+        test_msg("Expected response message '$expected', got '$resp_msg'"));
     };
-
     if ($@) {
       $ex = $@;
     }
 
-    print $writeh "done\n";
+    $wfh->print("done\n");
+    $wfh->flush();
 
   } else {
-    # Start server
-    server_start($config_file);
-
-    # Wait until we receive word from the child that it has finished its
-    # test.
-    while (my $msg = <$readh>) {
-      chomp($msg);
-
-      if ($msg eq 'done') {
-        last;
-      }
+    eval { server_wait($setup->{config_file}, $rfh) };
+    if ($@) {
+      warn($@);
+      exit 1;
     }
 
     exit 0;
   }
 
   # Stop server
-  server_stop($pid_file);
-
+  server_stop($setup->{pid_file});
   $self->assert_child_ok($pid);
 
-  if ($ex) {
-    die($ex);
-  }
-
-  unlink($log_file);
+  test_cleanup($setup, $ex);
 }
 
 sub cmds_dele_fails_eperm {
   my $self = shift;
+  my $tmpdir = $self->{tmpdir};
+  my $setup = test_setup($tmpdir, 'cmds');
 
-  my $config_file = 'tmp/cmds.conf';
-  my $pid_file = File::Spec->rel2abs('tmp/cmds.pid');
-  my $scoreboard_file = File::Spec->rel2abs('tmp/cmds.scoreboard');
-  my $log_file = File::Spec->rel2abs('cmds.log');
-
-  my $auth_user_file = File::Spec->rel2abs('tmp/cmds.passwd');
-  my $auth_group_file = File::Spec->rel2abs('tmp/cmds.group');
-
-  my $user = 'proftpd';
-  my $passwd = 'test';
-  my $home_dir = File::Spec->rel2abs('tmp');
-
-  my $test_file = File::Spec->rel2abs('tmp/foo');
+  my $test_file = File::Spec->rel2abs("$tmpdir/test.dat");
   if (open(my $fh, "> $test_file")) {
     close($fh);
 
@@ -2819,17 +2055,13 @@ sub cmds_dele_fails_eperm {
     die("Can't create $test_file: $!");
   }
 
-  auth_user_write($auth_user_file, $user, $passwd, 500, 500, $home_dir,
-    '/bin/bash');
-  auth_group_write($auth_group_file, 'ftpd', 500, $user);
-
   my $config = {
-    PidFile => $pid_file,
-    ScoreboardFile => $scoreboard_file,
-    SystemLog => $log_file,
+    PidFile => $setup->{pid_file},
+    ScoreboardFile => $setup->{scoreboard_file},
+    SystemLog => $setup->{log_file},
 
-    AuthUserFile => $auth_user_file,
-    AuthGroupFile => $auth_group_file,
+    AuthUserFile => $setup->{auth_user_file},
+    AuthGroupFile => $setup->{auth_group_file},
     AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
@@ -2839,17 +2071,16 @@ sub cmds_dele_fails_eperm {
     },
   };
 
-  my ($port, $config_user, $config_group) = config_write($config_file, $config);
+  my ($port, $config_user, $config_group) = config_write($setup->{config_file},
+    $config);
 
   # Open pipes, for use between the parent and child processes.  Specifically,
   # the child will indicate when it's done with its test by writing a message
   # to the parent.
-  my ($readh, $writeh);
-  unless (pipe($readh, $writeh)) {
+  my ($rfh, $wfh);
+  unless (pipe($rfh, $wfh)) {
     die("Can't open pipe: $!");
   }
-
-  $writeh->autoflush(1);
 
   my $ex;
 
@@ -2859,98 +2090,64 @@ sub cmds_dele_fails_eperm {
   if ($pid) {
     eval {
       my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
-
-      eval { $client->login($user, $passwd) };
-      if ($@) {
-        my $err = $@;
-        print $writeh "done\n";
-        die("Failed to log in: $err");
-      }
+      $client->login($setup->{user}, $setup->{passwd});
 
       # Make it such that perms on the dir do not allow writes
-      my $perms = (stat($home_dir))[2];
-      unless (chmod(0550, $home_dir)) {
-        my $err = $!;
-        print $writeh "done\n";
-        die("Failed to change perms on $home_dir: $err");
+      my $perms = (stat($setup->{home_dir}))[2];
+      unless (chmod(0550, $setup->{home_dir})) {
+        die("Failed to change perms on $setup->{home_dir}: $!");
       }
 
-      my ($resp_code, $resp_msg);
-      eval { ($resp_code, $resp_msg) = $client->dele($test_file) };
+      eval { $client->dele($test_file) };
       unless ($@) {
-        print $writeh "done\n";
         die("DELE succeeded unexpectedly");
-
-      } else {
-        $resp_code = $client->response_code();
-        $resp_msg = $client->response_msg();
       }
 
-      chmod($perms, $home_dir);
+      my $resp_code = $client->response_code();
+      my $resp_msg = $client->response_msg();
+      $client->quit();
 
-      my $expected;
+      chmod($perms, $setup->{home_dir});
 
-      $expected = 550;
+      my $expected = 550;
       $self->assert($expected == $resp_code,
-        test_msg("Expected $expected, got $resp_code"));
+        test_msg("Expected response code $expected, got $resp_code"));
 
-      $expected = "$test_file: Operation not permitted";
+      $expected = "$test_file: (Operation not permitted|Permission denied)";
       chomp($resp_msg);
-      $self->assert($expected eq $resp_msg,
-        test_msg("Expected '$expected', got '$resp_msg'"));
+      $self->assert(qr/$expected/, $resp_msg,
+        test_msg("Expected response message '$expected', got '$resp_msg'"));
     };
-
     if ($@) {
       $ex = $@;
     }
 
-    print $writeh "done\n";
+    $wfh->print("done\n");
+    $wfh->flush();
 
   } else {
-    # Start server
-    server_start($config_file);
-
-    # Wait until we receive word from the child that it has finished its
-    # test.
-    while (my $msg = <$readh>) {
-      chomp($msg);
-
-      if ($msg eq 'done') {
-        last;
-      }
+    eval { server_wait($setup->{config_file}, $rfh) };
+    if ($@) {
+      warn($@);
+      exit 1;
     }
 
     exit 0;
   }
 
   # Stop server
-  server_stop($pid_file);
-
+  server_stop($setup->{pid_file});
   $self->assert_child_ok($pid);
 
-  if ($ex) {
-    die($ex);
-  }
-
-  unlink($log_file);
+  test_cleanup($setup, $ex);
 }
 
 sub cmds_mdtm_ok {
   my $self = shift;
+  my $tmpdir = $self->{tmpdir};
+  my $setup = test_setup($tmpdir, 'cmds');
 
-  my $config_file = 'tmp/cmds.conf';
-  my $pid_file = File::Spec->rel2abs('tmp/cmds.pid');
-  my $scoreboard_file = File::Spec->rel2abs('tmp/cmds.scoreboard');
-  my $log_file = File::Spec->rel2abs('cmds.log');
-
-  my $auth_user_file = File::Spec->rel2abs('tmp/cmds.passwd');
-  my $auth_group_file = File::Spec->rel2abs('tmp/cmds.group');
-
-  my $user = 'proftpd';
-  my $passwd = 'test';
-  my $home_dir = File::Spec->rel2abs('tmp');
-
-  my $test_file = File::Spec->rel2abs('tmp/foo');
+  my $test_file = File::Spec->rel2abs("$tmpdir/test.dat");
   if (open(my $fh, "> $test_file")) {
     close($fh);
 
@@ -2958,17 +2155,13 @@ sub cmds_mdtm_ok {
     die("Can't create $test_file: $!");
   }
 
-  auth_user_write($auth_user_file, $user, $passwd, 500, 500, $home_dir,
-    '/bin/bash');
-  auth_group_write($auth_group_file, 'ftpd', 500, $user);
-
   my $config = {
-    PidFile => $pid_file,
-    ScoreboardFile => $scoreboard_file,
-    SystemLog => $log_file,
+    PidFile => $setup->{pid_file},
+    ScoreboardFile => $setup->{scoreboard_file},
+    SystemLog => $setup->{log_file},
 
-    AuthUserFile => $auth_user_file,
-    AuthGroupFile => $auth_group_file,
+    AuthUserFile => $setup->{auth_user_file},
+    AuthGroupFile => $setup->{auth_group_file},
     AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
@@ -2978,17 +2171,16 @@ sub cmds_mdtm_ok {
     },
   };
 
-  my ($port, $config_user, $config_group) = config_write($config_file, $config);
+  my ($port, $config_user, $config_group) = config_write($setup->{config_file},
+    $config);
 
   # Open pipes, for use between the parent and child processes.  Specifically,
   # the child will indicate when it's done with its test by writing a message
   # to the parent.
-  my ($readh, $writeh);
-  unless (pipe($readh, $writeh)) {
+  my ($rfh, $wfh);
+  unless (pipe($rfh, $wfh)) {
     die("Can't open pipe: $!");
   }
-
-  $writeh->autoflush(1);
 
   my $ex;
 
@@ -2998,95 +2190,57 @@ sub cmds_mdtm_ok {
   if ($pid) {
     eval {
       my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
+      $client->login($setup->{user}, $setup->{passwd});
 
-      eval { $client->login($user, $passwd) };
-      if ($@) {
-        my $err = $@;
-        print $writeh "done\n";
-        die("Failed to log in: $err");
-      }
+      my ($resp_code, $resp_msg) = $client->mdtm($test_file);
+      $client->quit();
 
-      my ($resp_code, $resp_msg);
-      eval { ($resp_code, $resp_msg) = $client->mdtm($test_file) };
-      if ($@) {
-        my $err = $@;
-        print $writeh "done\n";
-        die("Failed to MDTM: $err");
-      }
-
-      my $expected;
-
-      $expected = 213;
+      my $expected = 213;
       $self->assert($expected == $resp_code,
-        test_msg("Expected $expected, got $resp_code"));
+        test_msg("Expected response code $expected, got $resp_code"));
 
       chomp($resp_msg);
-      $self->assert(qr/\d+/, $resp_msg);
+      $self->assert(qr/\d+/, $resp_msg,
+        test_msg("Expected numeric response message, got '$resp_msg'"));
     };
-
     if ($@) {
       $ex = $@;
     }
 
-    print $writeh "done\n";
+    $wfh->print("done\n");
+    $wfh->flush();
 
   } else {
-    # Start server
-    server_start($config_file);
-
-    # Wait until we receive word from the child that it has finished its
-    # test.
-    while (my $msg = <$readh>) {
-      chomp($msg);
-
-      if ($msg eq 'done') {
-        last;
-      }
+    eval { server_wait($setup->{config_file}, $rfh) };
+    if ($@) {
+      warn($@);
+      exit 1;
     }
 
     exit 0;
   }
 
   # Stop server
-  server_stop($pid_file);
-
+  server_stop($setup->{pid_file});
   $self->assert_child_ok($pid);
 
-  if ($ex) {
-    die($ex);
-  }
-
-  unlink($log_file);
+  test_cleanup($setup, $ex);
 }
 
 sub cmds_mdtm_fails_enoent {
   my $self = shift;
+  my $tmpdir = $self->{tmpdir};
+  my $setup = test_setup($tmpdir, 'cmds');
 
-  my $config_file = 'tmp/cmds.conf';
-  my $pid_file = File::Spec->rel2abs('tmp/cmds.pid');
-  my $scoreboard_file = File::Spec->rel2abs('tmp/cmds.scoreboard');
-  my $log_file = File::Spec->rel2abs('cmds.log');
-
-  my $auth_user_file = File::Spec->rel2abs('tmp/cmds.passwd');
-  my $auth_group_file = File::Spec->rel2abs('tmp/cmds.group');
-
-  my $user = 'proftpd';
-  my $passwd = 'test';
-  my $home_dir = File::Spec->rel2abs('tmp');
-
-  my $test_file = File::Spec->rel2abs('tmp/foo');
-
-  auth_user_write($auth_user_file, $user, $passwd, 500, 500, $home_dir,
-    '/bin/bash');
-  auth_group_write($auth_group_file, 'ftpd', 500, $user);
+  my $test_file = File::Spec->rel2abs("$tmpdir/test.dat");
 
   my $config = {
-    PidFile => $pid_file,
-    ScoreboardFile => $scoreboard_file,
-    SystemLog => $log_file,
+    PidFile => $setup->{pid_file},
+    ScoreboardFile => $setup->{scoreboard_file},
+    SystemLog => $setup->{log_file},
 
-    AuthUserFile => $auth_user_file,
-    AuthGroupFile => $auth_group_file,
+    AuthUserFile => $setup->{auth_user_file},
+    AuthGroupFile => $setup->{auth_group_file},
     AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
@@ -3096,17 +2250,16 @@ sub cmds_mdtm_fails_enoent {
     },
   };
 
-  my ($port, $config_user, $config_group) = config_write($config_file, $config);
+  my ($port, $config_user, $config_group) = config_write($setup->{config_file},
+    $config);
 
   # Open pipes, for use between the parent and child processes.  Specifically,
   # the child will indicate when it's done with its test by writing a message
   # to the parent.
-  my ($readh, $writeh);
-  unless (pipe($readh, $writeh)) {
+  my ($rfh, $wfh);
+  unless (pipe($rfh, $wfh)) {
     die("Can't open pipe: $!");
   }
-
-  $writeh->autoflush(1);
 
   my $ex;
 
@@ -3116,88 +2269,56 @@ sub cmds_mdtm_fails_enoent {
   if ($pid) {
     eval {
       my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
+      $client->login($setup->{user}, $setup->{passwd});
 
-      eval { $client->login($user, $passwd) };
-      if ($@) {
-        my $err = $@;
-        print $writeh "done\n";
-        die("Failed to log in: $err");
-      }
-
-      my ($resp_code, $resp_msg);
-      eval { ($resp_code, $resp_msg) = $client->mdtm($test_file) };
+      eval { $client->mdtm($test_file) };
       unless ($@) {
-        print $writeh "done\n";
         die("MDTM succeeded unexpectedly");
-
-      } else {
-        $resp_code = $client->response_code();
-        $resp_msg = $client->response_msg();
       }
 
-      my $expected;
+      my $resp_code = $client->response_code();
+      my $resp_msg = $client->response_msg();
+      $client->quit();
 
-      $expected = 550;
+      my $expected = 550;
       $self->assert($expected == $resp_code,
-        test_msg("Expected $expected, got $resp_code"));
+        test_msg("Expected response code $expected, got $resp_code"));
 
       $expected = "$test_file: No such file or directory";
       chomp($resp_msg);
       $self->assert($expected eq $resp_msg,
-        test_msg("Expected '$expected', got '$resp_msg'"));
+        test_msg("Expected response message '$expected', got '$resp_msg'"));
     };
-
     if ($@) {
       $ex = $@;
     }
 
-    print $writeh "done\n";
+    $wfh->print("done\n");
+    $wfh->flush();
 
   } else {
-    # Start server
-    server_start($config_file);
-
-    # Wait until we receive word from the child that it has finished its
-    # test.
-    while (my $msg = <$readh>) {
-      chomp($msg);
-
-      if ($msg eq 'done') {
-        last;
-      }
+    eval { server_wait($setup->{config_file}, $rfh) };
+    if ($@) {
+      warn($@);
+      exit 1;
     }
 
     exit 0;
   }
 
   # Stop server
-  server_stop($pid_file);
-
+  server_stop($setup->{pid_file});
   $self->assert_child_ok($pid);
 
-  if ($ex) {
-    die($ex);
-  }
-
-  unlink($log_file);
+  test_cleanup($setup, $ex);
 }
 
 sub cmds_mdtm_fails_eperm {
   my $self = shift;
+  my $tmpdir = $self->{tmpdir};
+  my $setup = test_setup($tmpdir, 'cmds');
 
-  my $config_file = 'tmp/cmds.conf';
-  my $pid_file = File::Spec->rel2abs('tmp/cmds.pid');
-  my $scoreboard_file = File::Spec->rel2abs('tmp/cmds.scoreboard');
-  my $log_file = File::Spec->rel2abs('cmds.log');
-
-  my $auth_user_file = File::Spec->rel2abs('tmp/cmds.passwd');
-  my $auth_group_file = File::Spec->rel2abs('tmp/cmds.group');
-
-  my $user = 'proftpd';
-  my $passwd = 'test';
-  my $home_dir = File::Spec->rel2abs('tmp');
-
-  my $test_file = File::Spec->rel2abs('tmp/foo');
+  my $test_file = File::Spec->rel2abs("$tmpdir/test.dat");
   if (open(my $fh, "> $test_file")) {
     close($fh);
 
@@ -3205,17 +2326,13 @@ sub cmds_mdtm_fails_eperm {
     die("Can't create $test_file: $!");
   }
 
-  auth_user_write($auth_user_file, $user, $passwd, 500, 500, $home_dir,
-    '/bin/bash');
-  auth_group_write($auth_group_file, 'ftpd', 500, $user);
-
   my $config = {
-    PidFile => $pid_file,
-    ScoreboardFile => $scoreboard_file,
-    SystemLog => $log_file,
+    PidFile => $setup->{pid_file},
+    ScoreboardFile => $setup->{scoreboard_file},
+    SystemLog => $setup->{log_file},
 
-    AuthUserFile => $auth_user_file,
-    AuthGroupFile => $auth_group_file,
+    AuthUserFile => $setup->{auth_user_file},
+    AuthGroupFile => $setup->{auth_group_file},
     AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
@@ -3225,17 +2342,16 @@ sub cmds_mdtm_fails_eperm {
     },
   };
 
-  my ($port, $config_user, $config_group) = config_write($config_file, $config);
+  my ($port, $config_user, $config_group) = config_write($setup->{config_file},
+    $config);
 
   # Open pipes, for use between the parent and child processes.  Specifically,
   # the child will indicate when it's done with its test by writing a message
   # to the parent.
-  my ($readh, $writeh);
-  unless (pipe($readh, $writeh)) {
+  my ($rfh, $wfh);
+  unless (pipe($rfh, $wfh)) {
     die("Can't open pipe: $!");
   }
-
-  $writeh->autoflush(1);
 
   my $ex;
 
@@ -3245,98 +2361,64 @@ sub cmds_mdtm_fails_eperm {
   if ($pid) {
     eval {
       my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
-
-      eval { $client->login($user, $passwd) };
-      if ($@) {
-        my $err = $@;
-        print $writeh "done\n";
-        die("Failed to log in: $err");
-      }
+      $client->login($setup->{user}, $setup->{passwd});
 
       # Make it such that perms on the home do to not allow reads
-      my $perms = (stat($home_dir))[2];
-      unless (chmod(0220, $home_dir)) {
-        my $err = $!;
-        print $writeh "done\n";
-        die("Failed to change perms on $home_dir: $err");
+      my $perms = (stat($setup->{home_dir}))[2];
+      unless (chmod(0220, $setup->{home_dir})) {
+        die("Failed to change perms on $setup->{home_dir}: $!");
       }
 
-      my ($resp_code, $resp_msg);
-      eval { ($resp_code, $resp_msg) = $client->mdtm($test_file) };
+      eval { $client->mdtm($test_file) };
       unless ($@) {
-        print $writeh "done\n";
         die("MDTM succeeded unexpectedly");
-
-      } else {
-        $resp_code = $client->response_code();
-        $resp_msg = $client->response_msg();
       }
 
-      chmod($perms, $home_dir);
+      my $resp_code = $client->response_code();
+      my $resp_msg = $client->response_msg();
+      $client->quit();
 
-      my $expected;
+      chmod($perms, $setup->{home_dir});
 
-      $expected = 550;
+      my $expected = 550;
       $self->assert($expected == $resp_code,
-        test_msg("Expected $expected, got $resp_code"));
+        test_msg("Expected response code $expected, got $resp_code"));
 
       $expected = "$test_file: Permission denied";
       chomp($resp_msg);
       $self->assert($expected eq $resp_msg,
-        test_msg("Expected '$expected', got '$resp_msg'"));
+        test_msg("Expected response message '$expected', got '$resp_msg'"));
     };
-
     if ($@) {
       $ex = $@;
     }
 
-    print $writeh "done\n";
+    $wfh->print("done\n");
+    $wfh->flush();
 
   } else {
-    # Start server
-    server_start($config_file);
-
-    # Wait until we receive word from the child that it has finished its
-    # test.
-    while (my $msg = <$readh>) {
-      chomp($msg);
-
-      if ($msg eq 'done') {
-        last;
-      }
+    eval { server_wait($setup->{config_file}, $rfh) };
+    if ($@) {
+      warn($@);
+      exit 1;
     }
 
     exit 0;
   }
 
   # Stop server
-  server_stop($pid_file);
-
+  server_stop($setup->{pid_file});
   $self->assert_child_ok($pid);
 
-  if ($ex) {
-    die($ex);
-  }
-
-  unlink($log_file);
+  test_cleanup($setup, $ex);
 }
 
 sub cmds_size_ok {
   my $self = shift;
+  my $tmpdir = $self->{tmpdir};
+  my $setup = test_setup($tmpdir, 'cmds');
 
-  my $config_file = 'tmp/cmds.conf';
-  my $pid_file = File::Spec->rel2abs('tmp/cmds.pid');
-  my $scoreboard_file = File::Spec->rel2abs('tmp/cmds.scoreboard');
-  my $log_file = File::Spec->rel2abs('cmds.log');
-
-  my $auth_user_file = File::Spec->rel2abs('tmp/cmds.passwd');
-  my $auth_group_file = File::Spec->rel2abs('tmp/cmds.group');
-
-  my $user = 'proftpd';
-  my $passwd = 'test';
-  my $home_dir = File::Spec->rel2abs('tmp');
-
-  my $test_file = File::Spec->rel2abs('tmp/foo');
+  my $test_file = File::Spec->rel2abs("$tmpdir/test.dat");
   if (open(my $fh, "> $test_file")) {
     print $fh "Hello, World!\n";
     close($fh);
@@ -3345,17 +2427,13 @@ sub cmds_size_ok {
     die("Can't create $test_file: $!");
   }
 
-  auth_user_write($auth_user_file, $user, $passwd, 500, 500, $home_dir,
-    '/bin/bash');
-  auth_group_write($auth_group_file, 'ftpd', 500, $user);
-
   my $config = {
-    PidFile => $pid_file,
-    ScoreboardFile => $scoreboard_file,
-    SystemLog => $log_file,
+    PidFile => $setup->{pid_file},
+    ScoreboardFile => $setup->{scoreboard_file},
+    SystemLog => $setup->{log_file},
 
-    AuthUserFile => $auth_user_file,
-    AuthGroupFile => $auth_group_file,
+    AuthUserFile => $setup->{auth_user_file},
+    AuthGroupFile => $setup->{auth_group_file},
     AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
@@ -3365,17 +2443,16 @@ sub cmds_size_ok {
     },
   };
 
-  my ($port, $config_user, $config_group) = config_write($config_file, $config);
+  my ($port, $config_user, $config_group) = config_write($setup->{config_file},
+    $config);
 
   # Open pipes, for use between the parent and child processes.  Specifically,
   # the child will indicate when it's done with its test by writing a message
   # to the parent.
-  my ($readh, $writeh);
-  unless (pipe($readh, $writeh)) {
+  my ($rfh, $wfh);
+  unless (pipe($rfh, $wfh)) {
     die("Can't open pipe: $!");
   }
-
-  $writeh->autoflush(1);
 
   my $ex;
 
@@ -3385,104 +2462,65 @@ sub cmds_size_ok {
   if ($pid) {
     eval {
       my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
+      $client->login($setup->{user}, $setup->{passwd});
+      $client->type('binary');
 
-      eval { $client->login($user, $passwd) };
-      if ($@) {
-        my $err = $@;
-        print $writeh "done\n";
-        die("Failed to log in: $err");
-      }
+      my ($resp_code, $resp_msg) = $client->size($test_file);
+      $client->quit();
 
-      eval { $client->type('binary') };
-      if ($@) {
-        my $err = $@;
-        print $writeh "done\n";
-        die("Failed to TYPE: $err");
-      }
-
-      my ($resp_code, $resp_msg);
-      eval { ($resp_code, $resp_msg) = $client->size($test_file) };
-      if ($@) {
-        my $err = $@;
-        print $writeh "done\n";
-        die("Failed to SIZE: $err");
-      }
-
-      my $expected;
-
-      $expected = 213;
+      my $expected = 213;
       $self->assert($expected == $resp_code,
-        test_msg("Expected $expected, got $resp_code"));
+        test_msg("Expected response code $expected, got $resp_code"));
 
-      $expected = 14;
+      $expected = '14';
       chomp($resp_msg);
-      $self->assert($expected == $resp_msg,
-        test_msg("Expected $expected, got $resp_msg"));
+      $self->assert($expected eq $resp_msg,
+        test_msg("Expected response message '$expected', got '$resp_msg'"));
     };
-
     if ($@) {
       $ex = $@;
     }
 
-    print $writeh "done\n";
+    $wfh->print("done\n");
+    $wfh->flush();
 
   } else {
-    # Start server
-    server_start($config_file);
-
-    # Wait until we receive word from the child that it has finished its
-    # test.
-    while (my $msg = <$readh>) {
-      chomp($msg);
-
-      if ($msg eq 'done') {
-        last;
-      }
+    eval { server_wait($setup->{config_file}, $rfh) };
+    if ($@) {
+      warn($@);
+      exit 1;
     }
 
     exit 0;
   }
 
   # Stop server
-  server_stop($pid_file);
-
+  server_stop($setup->{pid_file});
   $self->assert_child_ok($pid);
 
-  if ($ex) {
-    die($ex);
-  }
-
-  unlink($log_file);
+  test_cleanup($setup, $ex);
 }
 
 sub cmds_size_fails_ascii {
   my $self = shift;
+  my $tmpdir = $self->{tmpdir};
+  my $setup = test_setup($tmpdir, 'cmds');
 
-  my $config_file = 'tmp/cmds.conf';
-  my $pid_file = File::Spec->rel2abs('tmp/cmds.pid');
-  my $scoreboard_file = File::Spec->rel2abs('tmp/cmds.scoreboard');
-  my $log_file = File::Spec->rel2abs('cmds.log');
+  my $test_file = File::Spec->rel2abs("$tmpdir/test.dat");
+  if (open(my $fh, "> $test_file")) {
+    close($fh);
 
-  my $auth_user_file = File::Spec->rel2abs('tmp/cmds.passwd');
-  my $auth_group_file = File::Spec->rel2abs('tmp/cmds.group');
-
-  my $user = 'proftpd';
-  my $passwd = 'test';
-  my $home_dir = File::Spec->rel2abs('tmp');
-
-  my $test_file = File::Spec->rel2abs('tmp/foo');
-
-  auth_user_write($auth_user_file, $user, $passwd, 500, 500, $home_dir,
-    '/bin/bash');
-  auth_group_write($auth_group_file, 'ftpd', 500, $user);
+  } else {
+    die("Can't write $test_file: $!");
+  }
 
   my $config = {
-    PidFile => $pid_file,
-    ScoreboardFile => $scoreboard_file,
-    SystemLog => $log_file,
+    PidFile => $setup->{pid_file},
+    ScoreboardFile => $setup->{scoreboard_file},
+    SystemLog => $setup->{log_file},
 
-    AuthUserFile => $auth_user_file,
-    AuthGroupFile => $auth_group_file,
+    AuthUserFile => $setup->{auth_user_file},
+    AuthGroupFile => $setup->{auth_group_file},
     AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
@@ -3492,17 +2530,16 @@ sub cmds_size_fails_ascii {
     },
   };
 
-  my ($port, $config_user, $config_group) = config_write($config_file, $config);
+  my ($port, $config_user, $config_group) = config_write($setup->{config_file},
+    $config);
 
   # Open pipes, for use between the parent and child processes.  Specifically,
   # the child will indicate when it's done with its test by writing a message
   # to the parent.
-  my ($readh, $writeh);
-  unless (pipe($readh, $writeh)) {
+  my ($rfh, $wfh);
+  unless (pipe($rfh, $wfh)) {
     die("Can't open pipe: $!");
   }
-
-  $writeh->autoflush(1);
 
   my $ex;
 
@@ -3512,107 +2549,66 @@ sub cmds_size_fails_ascii {
   if ($pid) {
     eval {
       my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
+      $client->login($setup->{user}, $setup->{passwd});
 
-      eval { $client->login($user, $passwd) };
-      if ($@) {
-        my $err = $@;
-        print $writeh "done\n";
-        die("Failed to log in: $err");
-      }
+      $client->type('ascii');
 
-      eval { $client->type('ascii') };
-      if ($@) {
-        my $err = $@;
-        print $writeh "done\n";
-        die("Failed to TYPE: $err");
-      }
-
-      my ($resp_code, $resp_msg);
-      eval { ($resp_code, $resp_msg) = $client->size($test_file) };
+      eval { $client->size($test_file) };
       unless ($@) {
-        print $writeh "done\n";
         die("SIZE succeeded unexpectedly");
-
-      } else {
-        $resp_code = $client->response_code();
-        $resp_msg = $client->response_msg();
       }
 
-      my $expected;
+      my $resp_code = $client->response_code();
+      my $resp_msg = $client->response_msg();
+      $client->quit();
 
-      $expected = 550;
+      my $expected = 550;
       $self->assert($expected == $resp_code,
-        test_msg("Expected $expected, got $resp_code"));
+        test_msg("Expected response code $expected, got $resp_code"));
 
       $expected = "SIZE not allowed in ASCII mode";
       chomp($resp_msg);
       $self->assert($expected eq $resp_msg,
-        test_msg("Expected '$expected', got '$resp_msg'"));
+        test_msg("Expected response message '$expected', got '$resp_msg'"));
     };
-
     if ($@) {
       $ex = $@;
     }
 
-    print $writeh "done\n";
+    $wfh->print("done\n");
+    $wfh->flush();
 
   } else {
-    # Start server
-    server_start($config_file);
-
-    # Wait until we receive word from the child that it has finished its
-    # test.
-    while (my $msg = <$readh>) {
-      chomp($msg);
-
-      if ($msg eq 'done') {
-        last;
-      }
+    eval { server_wait($setup->{config_file}, $rfh) };
+    if ($@) {
+      warn($@);
+      exit 1;
     }
 
     exit 0;
   }
 
   # Stop server
-  server_stop($pid_file);
-
+  server_stop($setup->{pid_file});
   $self->assert_child_ok($pid);
 
-  if ($ex) {
-    die($ex);
-  }
-
-  unlink($log_file);
+  test_cleanup($setup, $ex);
 }
 
 sub cmds_size_fails_enoent {
   my $self = shift;
+  my $tmpdir = $self->{tmpdir};
+  my $setup = test_setup($tmpdir, 'cmds');
 
-  my $config_file = 'tmp/cmds.conf';
-  my $pid_file = File::Spec->rel2abs('tmp/cmds.pid');
-  my $scoreboard_file = File::Spec->rel2abs('tmp/cmds.scoreboard');
-  my $log_file = File::Spec->rel2abs('cmds.log');
-
-  my $auth_user_file = File::Spec->rel2abs('tmp/cmds.passwd');
-  my $auth_group_file = File::Spec->rel2abs('tmp/cmds.group');
-
-  my $user = 'proftpd';
-  my $passwd = 'test';
-  my $home_dir = File::Spec->rel2abs('tmp');
-
-  my $test_file = File::Spec->rel2abs('tmp/foo');
-
-  auth_user_write($auth_user_file, $user, $passwd, 500, 500, $home_dir,
-    '/bin/bash');
-  auth_group_write($auth_group_file, 'ftpd', 500, $user);
+  my $test_file = File::Spec->rel2abs("$tmpdir/test.dat");
 
   my $config = {
-    PidFile => $pid_file,
-    ScoreboardFile => $scoreboard_file,
-    SystemLog => $log_file,
+    PidFile => $setup->{pid_file},
+    ScoreboardFile => $setup->{scoreboard_file},
+    SystemLog => $setup->{log_file},
 
-    AuthUserFile => $auth_user_file,
-    AuthGroupFile => $auth_group_file,
+    AuthUserFile => $setup->{auth_user_file},
+    AuthGroupFile => $setup->{auth_group_file},
     AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
@@ -3622,17 +2618,16 @@ sub cmds_size_fails_enoent {
     },
   };
 
-  my ($port, $config_user, $config_group) = config_write($config_file, $config);
+  my ($port, $config_user, $config_group) = config_write($setup->{config_file},
+    $config);
 
   # Open pipes, for use between the parent and child processes.  Specifically,
   # the child will indicate when it's done with its test by writing a message
   # to the parent.
-  my ($readh, $writeh);
-  unless (pipe($readh, $writeh)) {
+  my ($rfh, $wfh);
+  unless (pipe($rfh, $wfh)) {
     die("Can't open pipe: $!");
   }
-
-  $writeh->autoflush(1);
 
   my $ex;
 
@@ -3642,95 +2637,58 @@ sub cmds_size_fails_enoent {
   if ($pid) {
     eval {
       my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
+      $client->login($setup->{user}, $setup->{passwd});
 
-      eval { $client->login($user, $passwd) };
-      if ($@) {
-        my $err = $@;
-        print $writeh "done\n";
-        die("Failed to log in: $err");
-      }
+      $client->type('binary');
 
-      eval { $client->type('binary') };
-      if ($@) {
-        my $err = $@;
-        print $writeh "done\n";
-        die("Failed to TYPE: $err");
-      }
-
-      my ($resp_code, $resp_msg);
-      eval { ($resp_code, $resp_msg) = $client->size($test_file) };
+      eval { $client->size($test_file) };
       unless ($@) {
-        print $writeh "done\n";
         die("SIZE succeeded unexpectedly");
-
-      } else {
-        $resp_code = $client->response_code();
-        $resp_msg = $client->response_msg();
       }
 
-      my $expected;
+      my $resp_code = $client->response_code();
+      my $resp_msg = $client->response_msg();
+      $client->quit();
 
-      $expected = 550;
+      my $expected = 550;
       $self->assert($expected == $resp_code,
-        test_msg("Expected $expected, got $resp_code"));
+        test_msg("Expected response code $expected, got $resp_code"));
 
       $expected = "$test_file: No such file or directory";
       chomp($resp_msg);
       $self->assert($expected eq $resp_msg,
-        test_msg("Expected '$expected', got '$resp_msg'"));
+        test_msg("Expected response message '$expected', got '$resp_msg'"));
     };
-
     if ($@) {
       $ex = $@;
     }
 
-    print $writeh "done\n";
+    $wfh->print("done\n");
+    $wfh->flush();
 
   } else {
-    # Start server
-    server_start($config_file);
-
-    # Wait until we receive word from the child that it has finished its
-    # test.
-    while (my $msg = <$readh>) {
-      chomp($msg);
-
-      if ($msg eq 'done') {
-        last;
-      }
+    eval { server_wait($setup->{config_file}, $rfh) };
+    if ($@) {
+      warn($@);
+      exit 1;
     }
 
     exit 0;
   }
 
   # Stop server
-  server_stop($pid_file);
-
+  server_stop($setup->{pid_file});
   $self->assert_child_ok($pid);
 
-  if ($ex) {
-    die($ex);
-  }
-
-  unlink($log_file);
+  test_cleanup($setup, $ex);
 }
 
 sub cmds_size_fails_eperm {
   my $self = shift;
+  my $tmpdir = $self->{tmpdir};
+  my $setup = test_setup($tmpdir, 'cmds');
 
-  my $config_file = 'tmp/cmds.conf';
-  my $pid_file = File::Spec->rel2abs('tmp/cmds.pid');
-  my $scoreboard_file = File::Spec->rel2abs('tmp/cmds.scoreboard');
-  my $log_file = File::Spec->rel2abs('cmds.log');
-
-  my $auth_user_file = File::Spec->rel2abs('tmp/cmds.passwd');
-  my $auth_group_file = File::Spec->rel2abs('tmp/cmds.group');
-
-  my $user = 'proftpd';
-  my $passwd = 'test';
-  my $home_dir = File::Spec->rel2abs('tmp');
-
-  my $test_file = File::Spec->rel2abs('tmp/foo');
+  my $test_file = File::Spec->rel2abs("$tmpdir/test.dat");
   if (open(my $fh, "> $test_file")) {
     close($fh);
 
@@ -3738,17 +2696,13 @@ sub cmds_size_fails_eperm {
     die("Can't create $test_file: $!");
   }
 
-  auth_user_write($auth_user_file, $user, $passwd, 500, 500, $home_dir,
-    '/bin/bash');
-  auth_group_write($auth_group_file, 'ftpd', 500, $user);
-
   my $config = {
-    PidFile => $pid_file,
-    ScoreboardFile => $scoreboard_file,
-    SystemLog => $log_file,
+    PidFile => $setup->{pid_file},
+    ScoreboardFile => $setup->{scoreboard_file},
+    SystemLog => $setup->{log_file},
 
-    AuthUserFile => $auth_user_file,
-    AuthGroupFile => $auth_group_file,
+    AuthUserFile => $setup->{auth_user_file},
+    AuthGroupFile => $setup->{auth_group_file},
     AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
@@ -3758,17 +2712,16 @@ sub cmds_size_fails_eperm {
     },
   };
 
-  my ($port, $config_user, $config_group) = config_write($config_file, $config);
+  my ($port, $config_user, $config_group) = config_write($setup->{config_file},
+    $config);
 
   # Open pipes, for use between the parent and child processes.  Specifically,
   # the child will indicate when it's done with its test by writing a message
   # to the parent.
-  my ($readh, $writeh);
-  unless (pipe($readh, $writeh)) {
+  my ($rfh, $wfh);
+  unless (pipe($rfh, $wfh)) {
     die("Can't open pipe: $!");
   }
-
-  $writeh->autoflush(1);
 
   my $ex;
 
@@ -3778,87 +2731,57 @@ sub cmds_size_fails_eperm {
   if ($pid) {
     eval {
       my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
-
-      eval { $client->login($user, $passwd) };
-      if ($@) {
-        my $err = $@;
-        print $writeh "done\n";
-        die("Failed to log in: $err");
-      }
-
-      eval { $client->type('binary') };
-      if ($@) {
-        my $err = $@;
-        print $writeh "done\n";
-        die("Failed to TYPE: $err");
-      }
+      $client->login($setup->{user}, $setup->{passwd});
+      $client->type('binary');
 
       # Make it such that perms on the home dir do not allow reads
-      my $perms = (stat($home_dir))[2];
-      unless (chmod(0220, $home_dir)) {
-        my $err = $!;
-        print $writeh "done\n";
-        die("Failed to change perms on $home_dir: $err");
+      my $perms = (stat($setup->{home_dir}))[2];
+      unless (chmod(0220, $setup->{home_dir})) {
+        die("Failed to change perms on $setup->{home_dir}: $!");
       }
 
-      my ($resp_code, $resp_msg);
-      eval { ($resp_code, $resp_msg) = $client->mdtm($test_file) };
+      eval { $client->mdtm($test_file) };
       unless ($@) {
-        print $writeh "done\n";
         die("MDTM succeeded unexpectedly");
-
-      } else {
-        $resp_code = $client->response_code();
-        $resp_msg = $client->response_msg();
       }
 
-      chmod($perms, $home_dir);
+      my $resp_code = $client->response_code();
+      my $resp_msg = $client->response_msg();
+      $client->quit();
 
-      my $expected;
+      chmod($perms, $setup->{home_dir});
 
-      $expected = 550;
+      my $expected = 550;
       $self->assert($expected == $resp_code,
-        test_msg("Expected $expected, got $resp_code"));
+        test_msg("Expected response code $expected, got $resp_code"));
 
       $expected = "$test_file: Permission denied";
       chomp($resp_msg);
       $self->assert($expected eq $resp_msg,
-        test_msg("Expected '$expected', got '$resp_msg'"));
+        test_msg("Expected response message '$expected', got '$resp_msg'"));
     };
-
     if ($@) {
       $ex = $@;
     }
 
-    print $writeh "done\n";
+    $wfh->print("done\n");
+    $wfh->flush();
 
   } else {
-    # Start server
-    server_start($config_file);
-
-    # Wait until we receive word from the child that it has finished its
-    # test.
-    while (my $msg = <$readh>) {
-      chomp($msg);
-
-      if ($msg eq 'done') {
-        last;
-      }
+    eval { server_wait($setup->{config_file}, $rfh) };
+    if ($@) {
+      warn($@);
+      exit 1;
     }
 
     exit 0;
   }
 
   # Stop server
-  server_stop($pid_file);
-
+  server_stop($setup->{pid_file});
   $self->assert_child_ok($pid);
 
-  if ($ex) {
-    die($ex);
-  }
-
-  unlink($log_file);
+  test_cleanup($setup, $ex);
 }
 
 1;

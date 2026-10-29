@@ -27,27 +27,27 @@ my $TESTS = {
     test_class => [qw(forking)],
   },
 
-  site_chrgrp_ok => {
+  site_chgrp_ok => {
     order => ++$order,
     test_class => [qw(forking rootprivs)],
   },
 
-  site_chrgrp_abs_symlink => {
+  site_chgrp_abs_symlink => {
     order => ++$order,
     test_class => [qw(forking rootprivs)],
   },
 
-  site_chrgrp_abs_symlink_chrooted_bug4219 => {
+  site_chgrp_abs_symlink_chrooted_bug4219 => {
     order => ++$order,
     test_class => [qw(bug forking rootprivs)],
   },
 
-  site_chrgrp_rel_symlink => {
+  site_chgrp_rel_symlink => {
     order => ++$order,
     test_class => [qw(forking rootprivs)],
   },
 
-  site_chrgrp_rel_symlink_chrooted_bug4219 => {
+  site_chgrp_rel_symlink_chrooted_bug4219 => {
     order => ++$order,
     test_class => [qw(bug forking rootprivs)],
   },
@@ -619,7 +619,7 @@ sub site_chgrp_abs_symlink_chrooted_bug4219 {
   }
 
   if ($< == 0) {
-    unless (chown($setup->{uid}, 0, $test_file)) {
+    unless (chown($setup->{uid}, 0, $test_file, $test_symlink)) {
       die("Can't set owner of $test_file to $setup->{uid}/0: $!");
     }
   }
@@ -667,22 +667,28 @@ sub site_chgrp_abs_symlink_chrooted_bug4219 {
       $client->login($setup->{user}, $setup->{passwd});
 
       my $path = 'test.d/test.lnk';
-      $client->site('CHGRP', "$setup->{group} $path");
+      eval { $client->site('CHGRP', "$setup->{group} $path") };
+      unless ($@) {
+        die("SITE CHGRP succeeded unexpectedly");
+      }
+
+      # We expect this to fail because symlinks using absolute paths, within
+      # a chroot, will not resolve as expected.
 
       my $resp_code = $client->response_code();
       my $resp_msg = $client->response_msg();
       $client->quit();
 
-      my $expected = 200;
+      my $expected = 550;
       $self->assert($expected == $resp_code,
         test_msg("Expected response code $expected, got $resp_code"));
 
-      $expected = 'SITE CHGRP command successful';
+      $expected = "$path: No such file or directory";
       $self->assert($expected eq $resp_msg,
         test_msg("Expected response message '$expected', got '$resp_msg'"));
 
       my $file_gid = (stat($test_file))[5];
-      $expected = $setup->{gid};
+      $expected = 0;
       $self->assert($expected == $file_gid,
         test_msg("Expected file GID $expected, got $file_gid"));
     };
@@ -707,7 +713,7 @@ sub site_chgrp_abs_symlink_chrooted_bug4219 {
   server_stop($setup->{pid_file});
   $self->assert_child_ok($pid);
 
-  test_cleanup($setup->{log_file}, $ex);
+  test_cleanup($setup, $ex);
 }
 
 sub site_chgrp_rel_symlink {
@@ -1524,19 +1530,27 @@ sub site_chmod_abs_symlink_chrooted_bug4219 {
       $client->login($setup->{user}, $setup->{passwd});
 
       my $path = 'test.d/test.lnk';
-      my ($resp_code, $resp_msg) = $client->site('CHMOD', "ugo+rwx $path");
+      eval { $client->site('CHMOD', "ugo+rwx $path") };
+      unless ($@) {
+        die("SITE CHMOD succeeded unexpectedly");
+      }
+
+      # We expect this to fail because symlinks using absolute paths, when
+      # resolved within a chroot, will not resolve as expected.
+      my $resp_code = $client->response_code();
+      my $resp_msg = $client->response_msg();
       $client->quit();
 
-      my $expected = 200;
+      my $expected = 550;
       $self->assert($expected == $resp_code,
         test_msg("Expected response code $expected, got $resp_code"));
 
-      $expected = 'SITE CHMOD command successful';
+      $expected = "$path: No such file or directory";
       $self->assert($expected eq $resp_msg,
         test_msg("Expected response message '$expected', got '$resp_msg'"));
 
       my $perms = ((stat($test_file))[2] &07777);
-      $expected = 0777;
+      $expected = 0644;
       $self->assert($expected == $perms,
         test_msg("Expected perms '$expected', got '$perms'"));
     };
@@ -1561,7 +1575,7 @@ sub site_chmod_abs_symlink_chrooted_bug4219 {
   server_stop($setup->{pid_file});
   $self->assert_child_ok($pid);
 
-  test_cleanup($setup->{log_file}, $ex);
+  test_cleanup($setup, $ex);
 }
 
 sub site_chmod_rel_symlink {

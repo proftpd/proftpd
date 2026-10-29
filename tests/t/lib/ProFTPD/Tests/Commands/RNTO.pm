@@ -2363,7 +2363,7 @@ sub rnto_user_pass_issue2003 {
 
       ($resp_code, $resp_msg) = $client->user($setup->{user});
 
-      my $expected = 331;
+      $expected = 331;
       $self->assert($expected == $resp_code,
         test_msg("Expected response code $expected, got $resp_code"));
 
@@ -2374,7 +2374,7 @@ sub rnto_user_pass_issue2003 {
 
       ($resp_code, $resp_msg) = $client->pass($setup->{passwd});
 
-      my $expected = 230;
+      $expected = 230;
       $self->assert($expected == $resp_code,
         test_msg("Expected response code $expected, got $resp_code"));
 
@@ -2384,7 +2384,7 @@ sub rnto_user_pass_issue2003 {
 
       ($resp_code, $resp_msg) = $client->pwd();
 
-      my $expected = 257;
+      $expected = 257;
       $self->assert($expected == $resp_code,
         test_msg("Expected response code $expected, got $resp_code"));
 

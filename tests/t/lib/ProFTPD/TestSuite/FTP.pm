@@ -1,9 +1,9 @@
 package ProFTPD::TestSuite::FTP;
 
 use strict;
+no warnings qw(redefine);
 
 use Carp;
-use Net::INET6Glue::FTP;
 use Net::FTP;
 use POSIX qw(:sys_wait_h);
 

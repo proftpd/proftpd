@@ -1961,6 +1961,9 @@ sub login_logging_bad_password_issue693 {
   defined(my $pid = fork()) or die("Can't fork: $!");
   if ($pid) {
     eval {
+      # Allow for server startup
+      sleep(1);
+
       my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
 
       # In parent process, login to server using a plaintext password which
@@ -2018,10 +2021,10 @@ sub login_logging_bad_password_issue693 {
     }
   };
   if ($@) {
-    $ex = $@;
+    $ex = $@ unless $ex;
   }
 
-  test_cleanup($setup->{log_file}, $ex);
+  test_cleanup($setup, $ex);
 }
 
 1;

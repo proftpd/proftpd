@@ -416,7 +416,7 @@ sub list_ok_raw_passive {
       my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port, 1, 1);
       $client->login($setup->{user}, $setup->{passwd});
 
-      my $conn = $client->list_raw();
+      my $conn = $client->list_raw('-l');
       unless ($conn) {
         die("Failed to LIST: " . $client->response_code() . " " .
           $client->response_msg());
@@ -424,6 +424,7 @@ sub list_ok_raw_passive {
 
       my $buf;
       $conn->read($buf, 8192, 30);
+      sleep(0.25);
       eval { $conn->close() };
 
       my $resp_code = $client->response_code();
@@ -6675,6 +6676,7 @@ sub list_symlink_rel_path_chrooted_bug4322 {
 
       my $buf;
       my $res = $conn->read($buf, 8192, 25);
+      sleep(0.25);
       eval { $conn->close() };
 
       my $resp_code = $client->response_code();
@@ -6690,7 +6692,7 @@ sub list_symlink_rel_path_chrooted_bug4322 {
       my $lines = [split(/(\r)?\n/, $buf)];
       my $line_count = 0;
       foreach my $line (@$lines) {
-        if ($line =~ /\s+(\S+)$/) {
+        if ($line =~ /\s+?(\S+)$/) {
           $line_count++;
           $res->{$1} = 1;
         }
@@ -7074,6 +7076,7 @@ sub list_style_windows {
 
       my $buf;
       $conn->read($buf, 8192, 30);
+      sleep(0.25);
       eval { $conn->close() };
 
       if ($ENV{TEST_VERBOSE}) {
@@ -7088,6 +7091,10 @@ sub list_style_windows {
 
       # We have to be careful of the fact that readdir returns directory
       # entries in an unordered fashion.
+
+      if ($ENV{TEST_VERBOSE}) {
+        print STDERR "# data:\n$buf";
+      }
 
       my $res = {};
       my $lines = [split(/(\r)?\n/, $buf)];
