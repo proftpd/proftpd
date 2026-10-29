@@ -72,5 +72,5 @@ jobs:
           PROFTPD_TEST_CI: github
           PROFTPD_TEST_DIR: ${{ github.workspace }}/proftpd/tests
         run: |
-          cd proftpd
+          cd proftpd/tests
           perl tests.pl
