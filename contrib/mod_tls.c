@@ -8088,7 +8088,7 @@ static int tls_accept(conn_t *conn, unsigned char on_data) {
       }
     }
 
-# if OPENSSL_VERSION_NUMBER >= 0x10101000L &&
+# if OPENSSL_VERSION_NUMBER >= 0x10101000L && \
      OPENSSL_VERSION_NUMBER < 0x30000050L
     /* Due to Issue #2367, we now try to return 0 in our TLS ticket key
      * callback.  This works as desired for newer OpenSSL versions, but a
