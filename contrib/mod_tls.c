@@ -8088,7 +8088,8 @@ static int tls_accept(conn_t *conn, unsigned char on_data) {
       }
     }
 
-# if OPENSSL_VERSION_NUMBER < 0x30000050L
+# if OPENSSL_VERSION_NUMBER >= 0x10101000L &&
+     OPENSSL_VERSION_NUMBER < 0x30000050L
     /* Due to Issue #2367, we now try to return 0 in our TLS ticket key
      * callback.  This works as desired for newer OpenSSL versions, but a
      * bug in older OpenSSL (prior to 3.0.5) versions means that such a
@@ -8103,7 +8104,7 @@ static int tls_accept(conn_t *conn, unsigned char on_data) {
         "error disabling TLS session tickets for data transfer: %s",
         tls_get_errors());
     }
-# endif /* OpenSSL 3.0.4 and earlier. */
+# endif /* OpenSSL 1.1.1 through 3.0.4. */
 #endif /* PR_USE_OPENSSL_SSL_SESSION_TICKET_CALLBACK */
   }
 
