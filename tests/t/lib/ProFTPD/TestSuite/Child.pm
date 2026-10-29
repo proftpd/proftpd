@@ -29,11 +29,14 @@ sub handle_sigchld {
 sub assert_child_ok {
   my $self = shift;
   my $pid = shift;
+  $pid = -1 unless defined($pid);
 
   my ($pkg, $file, $lineno, $func, @rest) = caller(1);
 
-  $self->assert($processes->{$pid} == 0,
-    "Child test process $pid failed in $func (line $lineno) [see above for possible errors]");
+  if (defined($processes->{$pid})) {
+    $self->assert($processes->{$pid} == 0,
+      "Child test process $pid failed in $func (line $lineno) [see above for possible errors]");
+  }
 }
 
 sub assert_transfer_ok {

@@ -84,12 +84,12 @@ my $TESTS = {
 
   auth_user_file_world_readable_insecure_perms_opt => {
     order => ++$order,
-    test_class => [qw(bug forking)],
+    test_class => [qw(bug flaky forking)],
   },
 
   auth_group_file_world_readable_bug3892 => {
     order => ++$order,
-    test_class => [qw(bug forking)],
+    test_class => [qw(bug flaky forking)],
   },
 
   auth_group_file_world_writable_bug3892 => {
@@ -139,7 +139,7 @@ my $TESTS = {
 
   auth_file_symlink_segfault_bug4145 => {
     order => ++$order,
-    test_class => [qw(bug forking)],
+    test_class => [qw(bug forking inprogress)],
   },
 
   auth_file_line_too_long_issue1321 => {
@@ -1760,52 +1760,21 @@ EOC
 sub auth_group_file_world_readable_bug3892 {
   my $self = shift;
   my $tmpdir = $self->{tmpdir};
-
-  my $config_file = "$tmpdir/authfile.conf";
-  my $pid_file = File::Spec->rel2abs("$tmpdir/authfile.pid");
-  my $scoreboard_file = File::Spec->rel2abs("$tmpdir/authfile.scoreboard");
-
-  my $log_file = test_get_logfile();
-
-  my $auth_user_file = File::Spec->rel2abs("$tmpdir/authfile.passwd");
-  my $auth_group_file = File::Spec->rel2abs("$tmpdir/authfile.group");
-
-  my $user = 'proftpd';
-  my $passwd = 'test';
-  my $group = 'ftpd';
-  my $home_dir = File::Spec->rel2abs($tmpdir);
-  my $uid = 500;
-  my $gid = 500;
-
-  # Make sure that, if we're running as root, that the home directory has
-  # permissions/privs set for the account we create
-  if ($< == 0) {
-    unless (chmod(0755, $home_dir)) {
-      die("Can't set perms on $home_dir to 0755: $!");
-    }
-
-    unless (chown($uid, $gid, $home_dir)) {
-      die("Can't set owner of $home_dir to $uid/$gid: $!");
-    }
-  }
-
-  auth_user_write($auth_user_file, $user, $passwd, $uid, $gid, $home_dir,
-    '/bin/bash');
-  auth_group_write($auth_group_file, $group, $gid, $user);
+  my $setup = test_setup($tmpdir, 'authfile');
 
   # Deliberately set world-readable perms on the AuthGroupFile, to trigger
   # the checks done for Bug#3892.
-  unless (chmod(0444, $auth_group_file)) {
-    die("Can't set perms on $auth_group_file: $!");
+  unless (chmod(0444, $setup->{auth_group_file})) {
+    die("Can't set perms on $setup->{auth_group_file}: $!");
   }
 
   my $config = {
-    PidFile => $pid_file,
-    ScoreboardFile => $scoreboard_file,
-    SystemLog => $log_file,
+    PidFile => $setup->{pid_file},
+    ScoreboardFile => $setup->{scoreboard_file},
+    SystemLog => $setup->{log_file},
 
-    AuthUserFile => $auth_user_file,
-    AuthGroupFile => $auth_group_file,
+    AuthUserFile => $setup->{auth_user_file},
+    AuthGroupFile => $setup->{auth_group_file},
     AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
@@ -1815,19 +1784,18 @@ sub auth_group_file_world_readable_bug3892 {
     },
   };
 
-  my ($port, $config_user, $config_group) = config_write($config_file, $config);
+  my ($port, $config_user, $config_group) = config_write($setup->{config_file},
+    $config);
 
-  eval { server_start($config_file, $pid_file) };
+  my $ex;
+
+  eval { server_start($setup->{config_file}, $setup->{pid_file}) };
   if ($@) {
-    my $ex = $@;
-    test_append_logfile($log_file, $ex);
-    unlink($log_file);
-
-    die($ex);
+    $ex = $@;
   }
 
-  server_stop($pid_file);
-  unlink($log_file);
+  server_stop($setup->{pid_file});
+  test_cleanup($setup, $ex);
 }
 
 sub auth_group_file_world_writable_bug3892 {

@@ -113,6 +113,7 @@ sub empty_bug3240 {
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
+    AuthOrder => 'mod_auth_file.c',
 
     AllowOverride => 'on',
 
@@ -203,15 +204,7 @@ sub empty_bug3240 {
 sub empty_bug3279 {
   my $self = shift;
   my $tmpdir = $self->{tmpdir};
-
-  my $config_file = "$tmpdir/config.conf";
-  my $pid_file = File::Spec->rel2abs("$tmpdir/config.pid");
-  my $scoreboard_file = File::Spec->rel2abs("$tmpdir/config.scoreboard");
-
-  my $log_file = test_get_logfile();
-
-  my $auth_user_file = File::Spec->rel2abs("$tmpdir/config.passwd");
-  my $auth_group_file = File::Spec->rel2abs("$tmpdir/config.group");
+  my $setup = test_setup($tmpdir, 'config');
 
   # As per Bug#3279, a reproduction layout looks like:
   #
@@ -229,14 +222,7 @@ sub empty_bug3279 {
   # bug not to trigger.  Don't know if the .ftpaccess file that should
   # be hidden is empty or not.
 
-  my $user = 'proftpd';
-  my $passwd = 'test';
-  my $group = 'ftpd';
-  my $home_dir = File::Spec->rel2abs($tmpdir);
-  my $uid = 500;
-  my $gid = 500;
-
-  my $ftpaccess_file = File::Spec->rel2abs("$home_dir/.ftpaccess");
+  my $ftpaccess_file = File::Spec->rel2abs("$setup->{home_dir}/.ftpaccess");
   if (open(my $fh, "> $ftpaccess_file")) {
     unless (close($fh)) {
       die("Can't write $ftpaccess_file: $!");
@@ -246,34 +232,19 @@ sub empty_bug3279 {
     die("Can't open $ftpaccess_file: $!");
   }
 
-  # Make sure that, if we're running as root, that the home directory has
-  # permissions/privs set for the account we create
-  if ($< == 0) {
-    unless (chmod(0755, $home_dir)) {
-      die("Can't set perms on $home_dir to 0755: $!");
-    }
-
-    unless (chown($uid, $gid, $home_dir)) {
-      die("Can't set owner of $home_dir to $uid/$gid: $!");
-    }
-  }
-
-  auth_user_write($auth_user_file, $user, $passwd, $uid, $gid, $home_dir,
-    '/bin/bash');
-  auth_group_write($auth_group_file, $group, $gid, $user);
-
   my $config = {
-    PidFile => $pid_file,
-    ScoreboardFile => $scoreboard_file,
-    SystemLog => $log_file,
-    TraceLog => $log_file,
+    PidFile => $setup->{pid_file},
+    ScoreboardFile => $setup->{scoreboard_file},
+    SystemLog => $setup->{log_file},
+    TraceLog => $setup->{log_file},
     Trace => 'DEFAULT:10 ftpaccess:10',
 
-    AuthUserFile => $auth_user_file,
-    AuthGroupFile => $auth_group_file,
-    DefaultRoot => '~',
+    AuthUserFile => $setup->{auth_user_file},
+    AuthGroupFile => $setup->{auth_group_file},
+    AuthOrder => 'mod_auth_file.c',
 
     AllowOverride => 'on',
+    DefaultRoot => '~',
 
     IfModules => {
       'mod_delay.c' => {
@@ -282,20 +253,21 @@ sub empty_bug3279 {
     },
   };
 
-  my ($port, $config_user, $config_group) = config_write($config_file, $config);
+  my ($port, $config_user, $config_group) = config_write($setup->{config_file},
+    $config);
 
-  if (open(my $fh, ">> $config_file")) {
+  if (open(my $fh, ">> $setup->{config_file}")) {
     print $fh <<EOD;
 <Directory />
   HideFiles ^\\.ftpaccess\$
 </Directory>
 EOD
     unless (close($fh)) {
-      die("Can't write $config_file: $!");
+      die("Can't write $setup->{config_file}: $!");
     }
 
   } else {
-    die("Can't open $config_file: $!");
+    die("Can't open $setup->{config_file}: $!");
   }
 
   # Open pipes, for use between the parent and child processes.  Specifically,
@@ -314,9 +286,9 @@ EOD
   if ($pid) {
     eval {
       my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
-      $client->login($user, $passwd);
+      $client->login($setup->{user}, $setup->{passwd});
 
-      my $conn = $client->list_raw("-a");
+      my $conn = $client->list_raw("-al");
       unless ($conn) {
         die("Failed to LIST: " . $client->response_code() . " " .
           $client->response_msg());
@@ -327,12 +299,17 @@ EOD
       while ($conn->read($tmp, 8192, 30)) {
         $buf .= $tmp;
       }
+      sleep(0.25);
       eval { $conn->close() };
+
+      if ($ENV{TEST_VERBOSE}) {
+        print STDERR "# data:\n$buf";
+      }
 
       # We have to be careful of the fact that readdir returns directory
       # entries in an unordered fashion.
       my $res = {};
-      my $lines = [split(/\n/, $buf)];
+      my $lines = [split(/\r?\n/, $buf)];
       foreach my $line (@$lines) {
         if ($line =~ /^\S+\s+\d+\s+\S+\s+\S+\s+.*?\s+(\S+)$/) {
           $res->{$1} = 1;
@@ -351,6 +328,7 @@ EOD
         'config.passwd' => 1,
         'config.pid' => 1,
         'config.scoreboard' => 1,
+        'config.scoreboard.lck' => 1,
       };
 
       my $ok = 1;
@@ -369,7 +347,6 @@ EOD
 
       $client->quit();
     };
-
     if ($@) {
       $ex = $@;
     }
@@ -378,7 +355,7 @@ EOD
     $wfh->flush();
 
   } else {
-    eval { server_wait($config_file, $rfh) };
+    eval { server_wait($setup->{config_file}, $rfh) };
     if ($@) {
       warn($@);
       exit 1;
@@ -388,18 +365,10 @@ EOD
   }
 
   # Stop server
-  server_stop($pid_file);
-
+  server_stop($setup->{pid_file});
   $self->assert_child_ok($pid);
 
-  if ($ex) {
-    test_append_logfile($log_file, $ex);
-    unlink($log_file);
-
-    die($ex);
-  }
-
-  unlink($log_file);
+  test_cleanup($setup, $ex);
 }
 
 sub empty_bug3398 {
@@ -490,9 +459,10 @@ EOC
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
-    DefaultRoot => '~',
+    AuthOrder => 'mod_auth_file.c',
 
     AllowOverride => 'on',
+    DefaultRoot => '~',
     ListOptions => '-la',
 
     IfModules => {

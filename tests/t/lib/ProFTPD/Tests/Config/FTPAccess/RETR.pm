@@ -44,30 +44,14 @@ sub list_tests {
 sub ftpaccess_retr_bug2038 {
   my $self = shift;
   my $tmpdir = $self->{tmpdir};
-
-  my $config_file = "$tmpdir/ftpaccess.conf";
-  my $pid_file = File::Spec->rel2abs("$tmpdir/ftpaccess.pid");
-  my $scoreboard_file = File::Spec->rel2abs("$tmpdir/ftpaccess.scoreboard");
-
-  my $log_file = File::Spec->rel2abs('tests.log');
-
-  my $auth_user_file = File::Spec->rel2abs("$tmpdir/ftpaccess.passwd");
-  my $auth_group_file = File::Spec->rel2abs("$tmpdir/ftpaccess.group");
-
-  my $user = 'proftpd';
-  my $passwd = 'test';
-  my $home_dir = File::Spec->rel2abs($tmpdir);
-  my $uid = 500;
-  my $gid = 500;
+  my $setup = test_setup($tmpdir, 'ftpaccess');
 
   my $sub_dir = File::Spec->rel2abs("$tmpdir/foo");
   mkpath($sub_dir);
 
-  my $fh;
-
   # Write a .ftpaccess file in the sub dir which denies all access
   my $ftpaccess_file = File::Spec->rel2abs("$tmpdir/foo/.ftpaccess");
-  if (open($fh, "> $ftpaccess_file")) {
+  if (open(my $fh, "> $ftpaccess_file")) {
     print $fh <<EOF;
 <Limit RETR>
   DenyAll
@@ -84,7 +68,7 @@ EOF
 
   # Next, write a test file in the sub dir.
   my $test_file = File::Spec->rel2abs("$tmpdir/foo/test.txt");
-  if (open($fh, "> $test_file")) {
+  if (open(my $fh, "> $test_file")) {
     print $fh "Hello, World!\n";
 
     unless (close($fh)) {
@@ -95,29 +79,24 @@ EOF
     die("Can't open $test_file: $!");
   }
 
-  # Make sure that, if we're running as root, that the home directory has
-  # permissions/privs set for the account we create
   if ($< == 0) {
-    unless (chmod(0755, $home_dir, $sub_dir)) {
-      die("Can't set perms on $home_dir, $sub_dir to 0755: $!");
+    unless (chmod(0755, $sub_dir)) {
+      die("Can't set perms on $sub_dir to 0755: $!");
     }
 
-    unless (chown($uid, $gid, $home_dir, $sub_dir)) {
-      die("Can't set owner of $home_dir, $sub_dir to $uid/$gid: $!");
+    unless (chown($setup->{uid}, $setup->{gid}, $sub_dir)) {
+      die("Can't set owner of $sub_dir to $setup->{uid}/$setup->{gid}: $!");
     }
   }
 
-  auth_user_write($auth_user_file, $user, $passwd, $uid, $gid, $home_dir,
-    '/bin/bash');
-  auth_group_write($auth_group_file, 'ftpd', $gid, $user);
-
   my $config = {
-    PidFile => $pid_file,
-    ScoreboardFile => $scoreboard_file,
-    SystemLog => $log_file,
+    PidFile => $setup->{pid_file},
+    ScoreboardFile => $setup->{scoreboard_file},
+    SystemLog => $setup->{log_file},
 
-    AuthUserFile => $auth_user_file,
-    AuthGroupFile => $auth_group_file,
+    AuthUserFile => $setup->{auth_user_file},
+    AuthGroupFile => $setup->{auth_group_file},
+    AuthOrder => 'mod_auth_file.c',
 
     AllowOverride => 'on',
 
@@ -128,7 +107,8 @@ EOF
     },
   };
 
-  my ($port, $config_user, $config_group) = config_write($config_file, $config);
+  my ($port, $config_user, $config_group) = config_write($setup->{config_file},
+    $config);
 
   # Open pipes, for use between the parent and child processes.  Specifically,
   # the child will indicate when it's done with its test by writing a message
@@ -146,28 +126,24 @@ EOF
   if ($pid) {
     eval {
       my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
-      $client->login($user, $passwd);
+      $client->login($setup->{user}, $setup->{passwd});
       $client->cwd($sub_dir);
-
-      my ($resp_code, $resp_msg);
 
       my $conn = $client->retr_raw("test.txt");
       if ($conn) {
         die("RETR test.txt succeeded unexpectedly");
       }
 
-      $resp_code = $client->response_code();
-      $resp_msg = $client->response_msg();
+      my $resp_code = $client->response_code();
+      my $resp_msg = $client->response_msg();
 
-      my $expected;
-
-      $expected = 550;
+      my $expected = 550;
       $self->assert($expected == $resp_code,
-        test_msg("Expected $expected, got $resp_code"));
+        test_msg("Expected response code $expected, got $resp_code"));
 
       $expected = "test.txt: Operation not permitted";
       $self->assert($expected eq $resp_msg,
-        test_msg("Expected '$expected', got '$resp_msg'"));
+        test_msg("Expected response message '$expected', got '$resp_msg'"));
 
       # Now download the file again, only this time using the full path
       $conn = $client->retr_raw($test_file);
@@ -180,11 +156,11 @@ EOF
 
       $expected = 550;
       $self->assert($expected == $resp_code,
-        test_msg("Expected $expected, got $resp_code"));
+        test_msg("Expected response message $expected, got $resp_code"));
 
       $expected = "$test_file: Operation not permitted";
       $self->assert($expected eq $resp_msg,
-        test_msg("Expected '$expected', got '$resp_msg'"));
+        test_msg("Expected response message '$expected', got '$resp_msg'"));
 
       # Now prove that the failures are caused by the .ftpaccess file
       # by deleting that file.
@@ -198,18 +174,12 @@ EOF
 
       my $buf;
       $conn->read($buf, 8192, 30);
+      sleep(0.25);
       eval { $conn->close() };
 
       $resp_code = $client->response_code();
       $resp_msg = $client->response_msg();
-
-      $expected = 226;
-      $self->assert($expected == $resp_code,
-        test_msg("Expected $expected, got $resp_code"));
-
-      $expected = "Transfer complete";
-      $self->assert($expected eq $resp_msg,
-        test_msg("Expected '$expected', got '$resp_msg'"));
+      $self->assert_transfer_ok($resp_code, $resp_msg);
 
       $conn = $client->retr_raw($test_file);
       unless ($conn) {
@@ -218,20 +188,14 @@ EOF
       }
 
       $conn->read($buf, 8192, 30);
+      sleep(0.25);
       eval { $conn->close() };
 
       $resp_code = $client->response_code();
       $resp_msg = $client->response_msg();
-
-      $expected = 226;
-      $self->assert($expected == $resp_code,
-        test_msg("Expected $expected, got $resp_code"));
-
-      $expected = "Transfer complete";
-      $self->assert($expected eq $resp_msg,
-        test_msg("Expected '$expected', got '$resp_msg'"));
+      $client->quit();
+      $self->assert_transfer_ok($resp_code, $resp_msg);
     };
-
     if ($@) {
       $ex = $@;
     }
@@ -240,7 +204,7 @@ EOF
     $wfh->flush();
 
   } else {
-    eval { server_wait($config_file, $rfh) };
+    eval { server_wait($setup->{config_file}, $rfh) };
     if ($@) {
       warn($@);
       exit 1;
@@ -250,15 +214,10 @@ EOF
   }
 
   # Stop server
-  server_stop($pid_file);
-
+  server_stop($setup->{pid_file});
   $self->assert_child_ok($pid);
 
-  if ($ex) {
-    die($ex);
-  }
-
-  unlink($log_file);
+  test_cleanup($setup, $ex);
 }
 
 sub ftpaccess_anon_retr_bug2038 {
@@ -327,6 +286,8 @@ EOF
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
+    AuthOrder => 'mod_auth_file.c',
+
     AllowOverride => 'on',
 
     Anonymous => {
@@ -416,6 +377,7 @@ EOF
 
       my $buf;
       $conn->read($buf, 8192, 30);
+      sleep(0.25);
       eval { $conn->close() };
 
       $resp_code = $client->response_code();
@@ -436,6 +398,7 @@ EOF
       }
 
       $conn->read($buf, 8192, 30);
+      sleep(0.25);
       eval { $conn->close() };
 
       $resp_code = $client->response_code();
@@ -482,25 +445,11 @@ EOF
 sub ftpaccess_anon_retr_bug2461 {
   my $self = shift;
   my $tmpdir = $self->{tmpdir};
-
-  my $config_file = "$tmpdir/ftpaccess.conf";
-  my $pid_file = File::Spec->rel2abs("$tmpdir/ftpaccess.pid");
-  my $scoreboard_file = File::Spec->rel2abs("$tmpdir/ftpaccess.scoreboard");
-
-  my $log_file = File::Spec->rel2abs('tests.log');
-
-  my $auth_user_file = File::Spec->rel2abs("$tmpdir/ftpaccess.passwd");
-  my $auth_group_file = File::Spec->rel2abs("$tmpdir/ftpaccess.group");
-
-  my ($config_user, $config_group) = config_get_identity();
-
-  my $anon_dir = File::Spec->rel2abs($tmpdir);
-
-  my $fh;
+  my $setup = test_setup($tmpdir, 'ftpaccess');
 
   # Write a .ftpaccess file in the sub dir which denies all access
   my $ftpaccess_file = File::Spec->rel2abs("$tmpdir/.ftpaccess");
-  if (open($fh, "> $ftpaccess_file")) {
+  if (open(my $fh, "> $ftpaccess_file")) {
     print $fh <<EOF;
 <Limit READ>
   Allow from 127.0.0.2
@@ -518,7 +467,7 @@ EOF
 
   # Next, write a test file in the anon dir.
   my $test_file = File::Spec->rel2abs("$tmpdir/test.txt");
-  if (open($fh, "> $test_file")) {
+  if (open(my $fh, "> $test_file")) {
     print $fh "Hello, World!\n";
 
     unless (close($fh)) {
@@ -532,24 +481,22 @@ EOF
   # Make a version of the path that the client would see.
   my $anon_test_file = "/test.txt";
 
-  auth_user_write($auth_user_file, $config_user, 'foo', 500, 500, '/tmp',
-    '/bin/bash');
-  auth_group_write($auth_group_file, $config_group, 500, $config_user);
-
   my $config = {
-    PidFile => $pid_file,
-    ScoreboardFile => $scoreboard_file,
-    SystemLog => $log_file,
+    PidFile => $setup->{pid_file},
+    ScoreboardFile => $setup->{scoreboard_file},
+    SystemLog => $setup->{log_file},
 
-    AuthUserFile => $auth_user_file,
-    AuthGroupFile => $auth_group_file,
+    AuthUserFile => $setup->{auth_user_file},
+    AuthGroupFile => $setup->{auth_group_file},
+    AuthOrder => 'mod_auth_file.c',
+
     AllowOverride => 'on',
 
     Anonymous => {
-      $anon_dir => {
-        User => $config_user,
-        Group => $config_group,
-        UserAlias => "anonymous $config_user",
+      $setup->{home_dir} => {
+        User => $setup->{user},
+        Group => $setup->{group},
+        UserAlias => "anonymous $setup->{user}",
         RequireValidShell => 'off',
       },
     },
@@ -561,8 +508,8 @@ EOF
     },
   };
 
-  my $port;
-  ($port, $config_user, $config_group) = config_write($config_file, $config);
+  my ($port, $config_user, $config_group) = config_write($setup->{config_file},
+    $config);
 
   # Open pipes, for use between the parent and child processes.  Specifically,
   # the child will indicate when it's done with its test by writing a message
@@ -582,25 +529,21 @@ EOF
       my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
       $client->login('anonymous', 'ftp@nospam.org');
 
-      my ($resp_code, $resp_msg);
-
       my $conn = $client->retr_raw("test.txt");
       if ($conn) {
         die("RETR test.txt succeeded unexpectedly");
       }
 
-      $resp_code = $client->response_code();
-      $resp_msg = $client->response_msg();
+      my $resp_code = $client->response_code();
+      my $resp_msg = $client->response_msg();
 
-      my $expected;
-
-      $expected = 550;
+      my $expected = 550;
       $self->assert($expected == $resp_code,
-        test_msg("Expected $expected, got $resp_code"));
+        test_msg("Expected response code $expected, got $resp_code"));
 
       $expected = "test.txt: Operation not permitted";
       $self->assert($expected eq $resp_msg,
-        test_msg("Expected '$expected', got '$resp_msg'"));
+        test_msg("Expected response message '$expected', got '$resp_msg'"));
 
       # Now do a directory listing...
       $client->list();
@@ -616,11 +559,11 @@ EOF
 
       $expected = 550;
       $self->assert($expected == $resp_code,
-        test_msg("Expected $expected, got $resp_code"));
+        test_msg("Expected response code $expected, got $resp_code"));
 
       $expected = "test.txt: Operation not permitted";
       $self->assert($expected eq $resp_msg,
-        test_msg("Expected '$expected', got '$resp_msg'"));
+        test_msg("Expected response message '$expected', got '$resp_msg'"));
 
       # Now prove that the failures are caused by the .ftpaccess file
       # by deleting that file.
@@ -634,20 +577,14 @@ EOF
 
       my $buf;
       $conn->read($buf, 8192, 30);
+      sleep(0.25);
       eval { $conn->close() };
 
       $resp_code = $client->response_code();
       $resp_msg = $client->response_msg();
-
-      $expected = 226;
-      $self->assert($expected == $resp_code,
-        test_msg("Expected $expected, got $resp_code"));
-
-      $expected = "Transfer complete";
-      $self->assert($expected eq $resp_msg,
-        test_msg("Expected '$expected', got '$resp_msg'"));
+      $client->quit();
+      $self->assert_transfer_ok($resp_code, $resp_msg);
     };
-
     if ($@) {
       $ex = $@;
     }
@@ -656,7 +593,7 @@ EOF
     $wfh->flush();
 
   } else {
-    eval { server_wait($config_file, $rfh) };
+    eval { server_wait($setup->{config_file}, $rfh) };
     if ($@) {
       warn($@);
       exit 1;
@@ -666,15 +603,10 @@ EOF
   }
 
   # Stop server
-  server_stop($pid_file);
-
+  server_stop($setup->{pid_file});
   $self->assert_child_ok($pid);
 
-  if ($ex) {
-    die($ex);
-  }
-
-  unlink($log_file);
+  test_cleanup($setup, $ex);
 }
 
 1;

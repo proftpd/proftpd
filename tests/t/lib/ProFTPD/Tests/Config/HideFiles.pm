@@ -1486,34 +1486,7 @@ sub hidefiles_per_not_user_ok {
 sub hidefiles_anon_list_rel_path_bug3226 {
   my $self = shift;
   my $tmpdir = $self->{tmpdir};
-
-  my $config_file = "$tmpdir/config.conf";
-  my $pid_file = File::Spec->rel2abs("$tmpdir/config.pid");
-  my $scoreboard_file = File::Spec->rel2abs("$tmpdir/config.scoreboard");
-
-  my $log_file = test_get_logfile();
-
-  my $auth_user_file = File::Spec->rel2abs("$tmpdir/config.passwd");
-  my $auth_group_file = File::Spec->rel2abs("$tmpdir/config.group");
-
-  my $user = 'proftpd';
-  my $passwd = 'test';
-  my $group = 'ftpd';
-  my $home_dir = File::Spec->rel2abs($tmpdir);
-  my $uid = 500;
-  my $gid = 500;
-
-  # Make sure that, if we're running as root, that the home directory has
-  # permissions/privs set for the account we create
-  if ($< == 0) {
-    unless (chmod(0755, $home_dir)) {
-      die("Can't set perms on $home_dir to 0755: $!");
-    }
-
-    unless (chown($uid, $gid, $home_dir)) {
-      die("Can't set owner of $home_dir to $uid/$gid: $!");
-    }
-  }
+  my $setup = test_setup($tmpdir, 'config');
 
   my $pub_dir = File::Spec->rel2abs("$tmpdir/pub");
   mkpath($pub_dir);
@@ -1532,22 +1505,18 @@ sub hidefiles_anon_list_rel_path_bug3226 {
     die("Can't write test file $sub_dir2/$test_file: $!");
   }
 
-  auth_user_write($auth_user_file, $user, $passwd, $uid, $gid, $home_dir,
-    '/bin/bash');
-  auth_group_write($auth_group_file, $group, $gid, $user);
-
   my $config = {
-    PidFile => $pid_file,
-    ScoreboardFile => $scoreboard_file,
-    SystemLog => $log_file,
-    DebugLevel => 10,
-
-    TraceLog => $log_file,
+    PidFile => $setup->{pid_file},
+    ScoreboardFile => $setup->{scoreboard_file},
+    SystemLog => $setup->{log_file},
+    TraceLog => $setup->{log_file},
     Trace => 'DEFAULT:10',
 
-    AuthUserFile => $auth_user_file,
-    AuthGroupFile => $auth_group_file,
+    AuthUserFile => $setup->{auth_user_file},
+    AuthGroupFile => $setup->{auth_group_file},
     AuthOrder => 'mod_auth_file.c',
+
+    DebugLevel => 10,
 
     IfModules => {
       'mod_delay.c' => {
@@ -1556,10 +1525,10 @@ sub hidefiles_anon_list_rel_path_bug3226 {
     },
 
     Anonymous => {
-      $home_dir => [
-        "User $user",
-        "Group $group",
-        "UserAlias anonymous $user",
+      $setup->{home_dir} => [
+        "User $setup->{user}",
+        "Group $setup->{group}",
+        "UserAlias anonymous $setup->{user}",
         'RequireValidShell off',
 
         '  <Limit ALL>',
@@ -1571,10 +1540,10 @@ sub hidefiles_anon_list_rel_path_bug3226 {
         '  </Directory>',
       ],
     },
-
   };
 
-  my ($port, $config_user, $config_group) = config_write($config_file, $config);
+  my ($port, $config_user, $config_group) = config_write($setup->{config_file},
+    $config);
 
   # Open pipes, for use between the parent and child processes.  Specifically,
   # the child will indicate when it's done with its test by writing a message
@@ -1592,11 +1561,10 @@ sub hidefiles_anon_list_rel_path_bug3226 {
   if ($pid) {
     eval {
       my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
-
       $client->login('anonymous', 'nospam');
       $client->cwd('pub');
 
-      my $conn = $client->list_raw();
+      my $conn = $client->list_raw('-l');
       unless ($conn) {
         die("Failed to LIST: " . $client->response_code() . " " .
           $client->response_msg());
@@ -1604,14 +1572,19 @@ sub hidefiles_anon_list_rel_path_bug3226 {
 
       my $buf;
       $conn->read($buf, 8192, 30);
-      $conn->close();
+      sleep(0.25);
+      eval { $conn->close() };
 
       $client->quit();
+
+      if ($ENV{TEST_VERBOSE}) {
+        print STDERR "# data:\n$buf";
+      }
 
       # We have to be careful of the fact that readdir returns directory
       # entries in an unordered fashion.
       my $res = {};
-      my $lines = [split(/\n/, $buf)];
+      my $lines = [split(/\r?\n/, $buf)];
       foreach my $line (@$lines) {
         if ($line =~ /^\S+\s+\d+\s+\S+\s+\S+\s+.*?\s+(\S+)$/) {
           $res->{$1} = 1;
@@ -1650,7 +1623,6 @@ sub hidefiles_anon_list_rel_path_bug3226 {
       $self->assert(0 == $remaining,
         test_msg("Expected 0, got $remaining"));
     };
-
     if ($@) {
       $ex = $@;
     }
@@ -1659,7 +1631,7 @@ sub hidefiles_anon_list_rel_path_bug3226 {
     $wfh->flush();
 
   } else {
-    eval { server_wait($config_file, $rfh) };
+    eval { server_wait($setup->{config_file}, $rfh) };
     if ($@) {
       warn($@);
       exit 1;
@@ -1669,18 +1641,10 @@ sub hidefiles_anon_list_rel_path_bug3226 {
   }
 
   # Stop server
-  server_stop($pid_file);
-
+  server_stop($setup->{pid_file});
   $self->assert_child_ok($pid);
 
-  if ($ex) {
-    test_append_logfile($log_file, $ex);
-    unlink($log_file);
-
-    die($ex);
-  }
-
-  unlink($log_file);
+  test_cleanup($setup, $ex);
 }
 
 sub hidefiles_anon_nlst_rel_path_bug3226 {
@@ -1884,34 +1848,7 @@ sub hidefiles_anon_nlst_rel_path_bug3226 {
 sub hidefiles_anon_list_abs_path_bug3226 {
   my $self = shift;
   my $tmpdir = $self->{tmpdir};
-
-  my $config_file = "$tmpdir/config.conf";
-  my $pid_file = File::Spec->rel2abs("$tmpdir/config.pid");
-  my $scoreboard_file = File::Spec->rel2abs("$tmpdir/config.scoreboard");
-
-  my $log_file = test_get_logfile();
-
-  my $auth_user_file = File::Spec->rel2abs("$tmpdir/config.passwd");
-  my $auth_group_file = File::Spec->rel2abs("$tmpdir/config.group");
-
-  my $user = 'proftpd';
-  my $passwd = 'test';
-  my $group = 'ftpd';
-  my $home_dir = File::Spec->rel2abs($tmpdir);
-  my $uid = 500;
-  my $gid = 500;
-
-  # Make sure that, if we're running as root, that the home directory has
-  # permissions/privs set for the account we create
-  if ($< == 0) {
-    unless (chmod(0755, $home_dir)) {
-      die("Can't set perms on $home_dir to 0755: $!");
-    }
-
-    unless (chown($uid, $gid, $home_dir)) {
-      die("Can't set owner of $home_dir to $uid/$gid: $!");
-    }
-  }
+  my $setup = test_setup($tmpdir, 'config');
 
   my $pub_dir = File::Spec->rel2abs("$tmpdir/pub");
   mkpath($pub_dir);
@@ -1930,22 +1867,18 @@ sub hidefiles_anon_list_abs_path_bug3226 {
     die("Can't write test file $sub_dir2/$test_file: $!");
   }
 
-  auth_user_write($auth_user_file, $user, $passwd, $uid, $gid, $home_dir,
-    '/bin/bash');
-  auth_group_write($auth_group_file, $group, $gid, $user);
-
   my $config = {
-    PidFile => $pid_file,
-    ScoreboardFile => $scoreboard_file,
-    SystemLog => $log_file,
-    DebugLevel => 10,
-
-    TraceLog => $log_file,
+    PidFile => $setup->{pid_file},
+    ScoreboardFile => $setup->{scoreboard_file},
+    SystemLog => $setup->{log_file},
+    TraceLog => $setup->{log_file},
     Trace => 'DEFAULT:10',
 
-    AuthUserFile => $auth_user_file,
-    AuthGroupFile => $auth_group_file,
+    AuthUserFile => $setup->{auth_user_file},
+    AuthGroupFile => $setup->{auth_group_file},
     AuthOrder => 'mod_auth_file.c',
+
+    DebugLevel => 10,
 
     IfModules => {
       'mod_delay.c' => {
@@ -1954,10 +1887,10 @@ sub hidefiles_anon_list_abs_path_bug3226 {
     },
 
     Anonymous => {
-      $home_dir => [
-        "User $user",
-        "Group $group",
-        "UserAlias anonymous $user",
+      $setup->{home_dir} => [
+        "User $setup->{user}",
+        "Group $setup->{group}",
+        "UserAlias anonymous $setup->{user}",
         'RequireValidShell off',
 
         '  <Limit ALL>',
@@ -1967,13 +1900,12 @@ sub hidefiles_anon_list_abs_path_bug3226 {
         "  <Directory $pub_dir>",
         '    HideFiles !foo',
         '  </Directory>',
-
       ],
     },
-
   };
 
-  my ($port, $config_user, $config_group) = config_write($config_file, $config);
+  my ($port, $config_user, $config_group) = config_write($setup->{config_file},
+    $config);
 
   # Open pipes, for use between the parent and child processes.  Specifically,
   # the child will indicate when it's done with its test by writing a message
@@ -1991,11 +1923,10 @@ sub hidefiles_anon_list_abs_path_bug3226 {
   if ($pid) {
     eval {
       my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
-
       $client->login('anonymous', 'nospam');
       $client->cwd('pub');
 
-      my $conn = $client->list_raw();
+      my $conn = $client->list_raw('-l');
       unless ($conn) {
         die("Failed to LIST: " . $client->response_code() . " " .
           $client->response_msg());
@@ -2003,14 +1934,19 @@ sub hidefiles_anon_list_abs_path_bug3226 {
 
       my $buf;
       $conn->read($buf, 8192, 30);
-      $conn->close();
+      sleep(0.25);
+      eval { $conn->close() };
 
       $client->quit();
+
+      if ($ENV{TEST_VERBOSE}) {
+        print STDERR "# data:\n$buf";
+      }
 
       # We have to be careful of the fact that readdir returns directory
       # entries in an unordered fashion.
       my $res = {};
-      my $lines = [split(/\n/, $buf)];
+      my $lines = [split(/\r?\n/, $buf)];
       foreach my $line (@$lines) {
         if ($line =~ /^\S+\s+\d+\s+\S+\s+\S+\s+.*?\s+(\S+)$/) {
           $res->{$1} = 1;
@@ -2049,7 +1985,6 @@ sub hidefiles_anon_list_abs_path_bug3226 {
       $self->assert(0 == $remaining,
         test_msg("Expected 0, got $remaining"));
     };
-
     if ($@) {
       $ex = $@;
     }
@@ -2058,7 +1993,7 @@ sub hidefiles_anon_list_abs_path_bug3226 {
     $wfh->flush();
 
   } else {
-    eval { server_wait($config_file, $rfh) };
+    eval { server_wait($setup->{config_file}, $rfh) };
     if ($@) {
       warn($@);
       exit 1;
@@ -2068,18 +2003,10 @@ sub hidefiles_anon_list_abs_path_bug3226 {
   }
 
   # Stop server
-  server_stop($pid_file);
-
+  server_stop($setup->{pid_file});
   $self->assert_child_ok($pid);
 
-  if ($ex) {
-    test_append_logfile($log_file, $ex);
-    unlink($log_file);
-
-    die($ex);
-  }
-
-  unlink($log_file);
+  test_cleanup($setup, $ex);
 }
 
 sub hidefiles_anon_nlst_abs_path_bug3226 {
@@ -2283,39 +2210,18 @@ sub hidefiles_anon_nlst_abs_path_bug3226 {
 sub hidefiles_negated_bug3276 {
   my $self = shift;
   my $tmpdir = $self->{tmpdir};
+  my $setup = test_setup($tmpdir, 'config');
 
-  my $config_file = "$tmpdir/config.conf";
-  my $pid_file = File::Spec->rel2abs("$tmpdir/config.pid");
-  my $scoreboard_file = File::Spec->rel2abs("$tmpdir/config.scoreboard");
-
-  my $auth_user_file = File::Spec->rel2abs("$tmpdir/config.passwd");
-  my $auth_group_file = File::Spec->rel2abs("$tmpdir/config.group");
-
-  my $log_file = test_get_logfile();
-
-  my $user = 'proftpd';
-  my $passwd = 'test';
-  my $group = 'ftpd';
-  my $home_dir = File::Spec->rel2abs($tmpdir);
-  my $uid = 500;
-  my $gid = 500;
-
-  my $sub_dir = File::Spec->rel2abs("$home_dir/subdir");
+  my $sub_dir = File::Spec->rel2abs("$setup->{home_dir}/subdir");
   mkpath($sub_dir);
 
-  auth_user_write($auth_user_file, $user, $passwd, $uid, $gid, $home_dir,
-    '/bin/bash');
-  auth_group_write($auth_group_file, $group, $gid, $user);
-
-  # Make sure that, if we're running as root, that the home directory has
-  # permissions/privs set for the account we create
   if ($< == 0) {
-    unless (chmod(0755, $home_dir, $sub_dir)) {
-      die("Can't set perms on $home_dir, $sub_dir to 0755: $!");
+    unless (chmod(0755, $sub_dir)) {
+      die("Can't set perms on $sub_dir to 0755: $!");
     }
 
-    unless (chown($uid, $gid, $home_dir, $sub_dir)) {
-      die("Can't set owner of $home_dir, $sub_dir to $uid/$gid: $!");
+    unless (chown($setup->{uid}, $setup->{gid}, $sub_dir)) {
+      die("Can't set owner of $sub_dir to $setup->{uid}/$setup->{gid}: $!");
     }
   }
 
@@ -2338,12 +2244,12 @@ sub hidefiles_negated_bug3276 {
   }
 
   my $config = {
-    PidFile => $pid_file,
-    ScoreboardFile => $scoreboard_file,
-    SystemLog => $log_file,
+    PidFile => $setup->{pid_file},
+    ScoreboardFile => $setup->{scoreboard_file},
+    SystemLog => $setup->{log_file},
 
-    AuthUserFile => $auth_user_file,
-    AuthGroupFile => $auth_group_file,
+    AuthUserFile => $setup->{auth_user_file},
+    AuthGroupFile => $setup->{auth_group_file},
     AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
@@ -2353,9 +2259,10 @@ sub hidefiles_negated_bug3276 {
     },
   };
 
-  my ($port, $config_user, $config_group) = config_write($config_file, $config);
+  my ($port, $config_user, $config_group) = config_write($setup->{config_file},
+    $config);
 
-  if (open(my $fh, ">> $config_file")) {
+  if (open(my $fh, ">> $setup->{config_file}")) {
 
     if ($^O eq 'darwin') {
       $sub_dir = ('/private' . $sub_dir);
@@ -2372,11 +2279,11 @@ sub hidefiles_negated_bug3276 {
 EOD
 
     unless (close($fh)) {
-      die("Can't write $config_file: $!");
+      die("Can't write $setup->{config_file}: $!");
     }
 
   } else {
-    die("Can't open $config_file: $!");
+    die("Can't open $setup->{config_file}: $!");
   }
 
   # Open pipes, for use between the parent and child processes.  Specifically,
@@ -2395,9 +2302,9 @@ EOD
   if ($pid) {
     eval {
       my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
-      $client->login($user, $passwd);
+      $client->login($setup->{user}, $setup->{passwd});
 
-      my $conn = $client->list_raw('subdir');
+      my $conn = $client->list_raw('-l subdir');
       unless ($conn) {
         die("Failed to LIST: " . $client->response_code() . " " .
           $client->response_msg());
@@ -2408,200 +2315,9 @@ EOD
       while ($conn->read($tmp, 8192, 25)) {
         $buf .= $tmp;
       }
-      eval { $conn->close() };
-
-      # We have to be careful of the fact that readdir returns directory
-      # entries in an unordered fashion.
-      my $res = {};
-      my $lines = [split(/\n/, $buf)];
-      foreach my $line (@$lines) {
-        if ($line =~ /^\S+\s+\d+\s+\S+\s+\S+\s+.*?\s+(\S+)$/) {
-          $res->{$1} = 1;
-        }
-      }
-
-      unless (scalar(keys(%$res)) > 0) {
-        die("LIST returned no files unexpectedly");
-      }
-
-      my $expected = {
-        'remedydev' => 1,
-        'remedytest' => 1,
-      };
-
-      my $ok = 1;
-      my $mismatch;
-      foreach my $name (keys(%$res)) {
-        unless (defined($expected->{$name})) {
-          $mismatch = $name;
-          $ok = 0;
-          last;
-        }
-      }
-
-      unless ($ok) {
-        die("Unexpected name '$mismatch' appeared in LIST data")
-      }
-
-      $client->quit();
-    };
-
-    if ($@) {
-      $ex = $@;
-    }
-
-    $wfh->print("done\n");
-    $wfh->flush();
-
-  } else {
-    eval { server_wait($config_file, $rfh) };
-    if ($@) {
-      warn($@);
-      exit 1;
-    }
-
-    exit 0;
-  }
-
-  # Stop server
-  server_stop($pid_file);
-
-  $self->assert_child_ok($pid);
-
-  if ($ex) {
-    test_append_logfile($log_file, $ex);
-    unlink($log_file);
-
-    die($ex);
-  }
-
-  unlink($log_file);
-}
-
-sub hidefiles_negated_chroot_bug3276 {
-  my $self = shift;
-  my $tmpdir = $self->{tmpdir};
-
-  my $config_file = "$tmpdir/config.conf";
-  my $pid_file = File::Spec->rel2abs("$tmpdir/config.pid");
-  my $scoreboard_file = File::Spec->rel2abs("$tmpdir/config.scoreboard");
-
-  my $auth_user_file = File::Spec->rel2abs("$tmpdir/config.passwd");
-  my $auth_group_file = File::Spec->rel2abs("$tmpdir/config.group");
-
-  my $log_file = test_get_logfile();
-
-  my $user = 'proftpd';
-  my $passwd = 'test';
-  my $group = 'ftpd';
-  my $home_dir = File::Spec->rel2abs($tmpdir);
-  my $uid = 500;
-  my $gid = 500;
-
-  auth_user_write($auth_user_file, $user, $passwd, $uid, $gid, $home_dir,
-    '/bin/bash');
-  auth_group_write($auth_group_file, $group, $gid, $user);
-
-  # Make sure that, if we're running as root, that the home directory has
-  # permissions/privs set for the account we create
-  if ($< == 0) {
-    unless (chmod(0755, $home_dir)) {
-      die("Can't set perms on $home_dir to 0755: $!");
-    }
-
-    unless (chown($uid, $gid, $home_dir)) {
-      die("Can't set owner of $home_dir to $uid/$gid: $!");
-    }
-  }
-
-  my $test_files = [qw(
-    perf
-    perfcsv_data
-    perftxt_data
-    remedydev
-    remedytest
-    unix
-  )];
-
-  foreach my $test_file (@$test_files) {
-    if (open(my $fh, "> $home_dir/$test_file")) {
-      close($fh);
-
-    } else {
-      die("Can't write test file $home_dir/$test_file: $!");
-    }
-  }
-
-  my $config = {
-    PidFile => $pid_file,
-    ScoreboardFile => $scoreboard_file,
-    SystemLog => $log_file,
-
-    AuthUserFile => $auth_user_file,
-    AuthGroupFile => $auth_group_file,
-    AuthOrder => 'mod_auth_file.c',
-
-    DefaultRoot => '~',
-
-    IfModules => {
-      'mod_delay.c' => {
-        DelayEngine => 'off',
-      },
-    },
-  };
-
-  my ($port, $config_user, $config_group) = config_write($config_file, $config);
-
-  if (open(my $fh, ">> $config_file")) {
-    print $fh <<EOD;
-<Directory />
-  HideFiles !(^\$|remedydev|remedytest)
-  HideNoAccess on
-  <Limit DIRS>
-    IgnoreHidden on
-  </Limit>
-</Directory>
-EOD
-
-    unless (close($fh)) {
-      die("Can't write $config_file: $!");
-    }
-
-  } else {
-    die("Can't open $config_file: $!");
-  }
-
-  # Open pipes, for use between the parent and child processes.  Specifically,
-  # the child will indicate when it's done with its test by writing a message
-  # to the parent.
-  my ($rfh, $wfh);
-  unless (pipe($rfh, $wfh)) {
-    die("Can't open pipe: $!");
-  }
-
-  my $ex;
-
-  # Fork child
-  $self->handle_sigchld();
-  defined(my $pid = fork()) or die("Can't fork: $!");
-  if ($pid) {
-    eval {
-      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
-      $client->login($user, $passwd);
-
-      my $conn = $client->list_raw('-l');
-      unless ($conn) {
-        die("Failed to LIST: " . $client->response_code() . " " .
-          $client->response_msg());
-      }
-
-      my $buf;
-      my $tmp;
-      while ($conn->read($tmp, 8192, 30)) {
-        $buf .= $tmp;
-      }
       sleep(0.25);
       eval { $conn->close() };
+      $client->quit();
 
       if ($ENV{TEST_VERBOSE}) {
         print STDERR "# data:\n$buf";
@@ -2639,10 +2355,7 @@ EOD
       unless ($ok) {
         die("Unexpected name '$mismatch' appeared in LIST data")
       }
-
-      $client->quit();
     };
-
     if ($@) {
       $ex = $@;
     }
@@ -2651,7 +2364,7 @@ EOD
     $wfh->flush();
 
   } else {
-    eval { server_wait($config_file, $rfh) };
+    eval { server_wait($setup->{config_file}, $rfh) };
     if ($@) {
       warn($@);
       exit 1;
@@ -2661,90 +2374,55 @@ EOD
   }
 
   # Stop server
-  server_stop($pid_file);
-
+  server_stop($setup->{pid_file});
   $self->assert_child_ok($pid);
 
-  if ($ex) {
-    test_append_logfile($log_file, $ex);
-    unlink($log_file);
-
-    die($ex);
-  }
-
-  unlink($log_file);
+  test_cleanup($setup, $ex);
 }
 
-sub hidefiles_negated_chroot_subdirs_visible_bug3276 {
+sub hidefiles_negated_chroot_bug3276 {
   my $self = shift;
   my $tmpdir = $self->{tmpdir};
-
-  my $config_file = "$tmpdir/config.conf";
-  my $pid_file = File::Spec->rel2abs("$tmpdir/config.pid");
-  my $scoreboard_file = File::Spec->rel2abs("$tmpdir/config.scoreboard");
-
-  my $auth_user_file = File::Spec->rel2abs("$tmpdir/config.passwd");
-  my $auth_group_file = File::Spec->rel2abs("$tmpdir/config.group");
-
-  my $log_file = test_get_logfile();
-
-  my $user = 'proftpd';
-  my $passwd = 'test';
-  my $group = 'ftpd';
-  my $home_dir = File::Spec->rel2abs($tmpdir);
-  my $uid = 500;
-  my $gid = 500;
-
-  auth_user_write($auth_user_file, $user, $passwd, $uid, $gid, $home_dir,
-    '/bin/bash');
-  auth_group_write($auth_group_file, $group, $gid, $user);
-
-  # Make sure that, if we're running as root, that the home directory has
-  # permissions/privs set for the account we create
-  if ($< == 0) {
-    unless (chmod(0755, $home_dir)) {
-      die("Can't set perms on $home_dir to 0755: $!");
-    }
-
-    unless (chown($uid, $gid, $home_dir)) {
-      die("Can't set owner of $home_dir to $uid/$gid: $!");
-    }
-  }
+  my $setup = test_setup($tmpdir, 'config');
 
   my $test_files = [qw(
     perf
     perfcsv_data
     perftxt_data
+    remedydev
+    remedytest
     unix
   )];
 
   foreach my $test_file (@$test_files) {
-    if (open(my $fh, "> $home_dir/$test_file")) {
+    my $test_path = File::Spec->rel2abs("$setup->{home_dir}/$test_file");
+    if (open(my $fh, "> $test_path")) {
       close($fh);
 
     } else {
-      die("Can't write test file $home_dir/$test_file: $!");
+      die("Can't write test file $test_path: $!");
+    }
+
+    if ($< == 0) {
+      unless (chmod(0644, $test_path)) {
+        die("Can't set perms on $test_path: $!");
+      }
+
+      unless (chown($setup->{uid}, $setup->{gid}, $test_path)) {
+        die("Can't set owner of $test_path to $setup->{uid}/$setup->{gid}: $!");
+      }
     }
   }
 
-  my $test_dirs = [qw(
-    remedydev
-    remedydev/foo
-    remedytest
-    remedytest/bar
-  )];
-
-  foreach my $test_dir (@$test_dirs) {
-    mkpath("$home_dir/$test_dir");
-  }
-
   my $config = {
-    PidFile => $pid_file,
-    ScoreboardFile => $scoreboard_file,
-    SystemLog => $log_file,
+    PidFile => $setup->{pid_file},
+    ScoreboardFile => $setup->{scoreboard_file},
+    SystemLog => $setup->{log_file},
+    TraceLog => $setup->{log_file},
+    Trace => 'hiding:20',
 
-    AuthUserFile => $auth_user_file,
-    AuthGroupFile => $auth_group_file,
+    AuthUserFile => $setup->{auth_user_file},
+    AuthGroupFile => $setup->{auth_group_file},
     AuthOrder => 'mod_auth_file.c',
 
     DefaultRoot => '~',
@@ -2756,33 +2434,26 @@ sub hidefiles_negated_chroot_subdirs_visible_bug3276 {
     },
   };
 
-  my ($port, $config_user, $config_group) = config_write($config_file, $config);
+  my ($port, $config_user, $config_group) = config_write($setup->{config_file},
+    $config);
 
-  if (open(my $fh, ">> $config_file")) {
+  if (open(my $fh, ">> $setup->{config_file}")) {
     print $fh <<EOD;
 <Directory ~>
-  HideFiles !(^\$|remedydev|remedytest)
+  HideFiles !(^\$|\/|remedydev|remedytest)
   HideNoAccess on
   <Limit DIRS>
     IgnoreHidden on
   </Limit>
 </Directory>
-
-<Directory ~/remedydev>
-  HideFiles none
-</Directory>
-
-<Directory ~/remedytest>
-  HideFiles none
-</Directory>
 EOD
 
     unless (close($fh)) {
-      die("Can't write $config_file: $!");
+      die("Can't write $setup->{config_file}: $!");
     }
 
   } else {
-    die("Can't open $config_file: $!");
+    die("Can't open $setup->{config_file}: $!");
   }
 
   # Open pipes, for use between the parent and child processes.  Specifically,
@@ -2801,9 +2472,9 @@ EOD
   if ($pid) {
     eval {
       my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
-      $client->login($user, $passwd);
+      $client->login($setup->{user}, $setup->{passwd});
 
-      my $conn = $client->list_raw();
+      my $conn = $client->list_raw('-l');
       unless ($conn) {
         die("Failed to LIST: " . $client->response_code() . " " .
           $client->response_msg());
@@ -2814,12 +2485,193 @@ EOD
       while ($conn->read($tmp, 8192, 30)) {
         $buf .= $tmp;
       }
-      $conn->close();
+      sleep(0.25);
+      eval { $conn->close() };
+
+      if ($ENV{TEST_VERBOSE}) {
+        print STDERR "# data:\n$buf";
+      }
 
       # We have to be careful of the fact that readdir returns directory
       # entries in an unordered fashion.
       my $res = {};
-      my $lines = [split(/\n/, $buf)];
+      my $lines = [split(/\r?\n/, $buf)];
+      foreach my $line (@$lines) {
+        if ($line =~ /^\S+\s+\d+\s+\S+\s+\S+\s+.*?\s+(\S+)$/) {
+          $res->{$1} = 1;
+        }
+      }
+
+      unless (scalar(keys(%$res)) > 0) {
+        die("LIST returned no files unexpectedly");
+      }
+
+      my $expected = {
+        'remedydev' => 1,
+        'remedytest' => 1,
+      };
+
+      my $ok = 1;
+      my $mismatch;
+      foreach my $name (keys(%$res)) {
+        unless (defined($expected->{$name})) {
+          $mismatch = $name;
+          $ok = 0;
+          last;
+        }
+      }
+
+      unless ($ok) {
+        die("Unexpected name '$mismatch' appeared in LIST data")
+      }
+
+      $client->quit();
+    };
+    if ($@) {
+      $ex = $@;
+    }
+
+    $wfh->print("done\n");
+    $wfh->flush();
+
+  } else {
+    eval { server_wait($setup->{config_file}, $rfh) };
+    if ($@) {
+      warn($@);
+      exit 1;
+    }
+
+    exit 0;
+  }
+
+  # Stop server
+  server_stop($setup->{pid_file});
+  $self->assert_child_ok($pid);
+
+  test_cleanup($setup, $ex);
+}
+
+sub hidefiles_negated_chroot_subdirs_visible_bug3276 {
+  my $self = shift;
+  my $tmpdir = $self->{tmpdir};
+  my $setup = test_setup($tmpdir, 'config');
+
+  my $test_files = [qw(
+    perf
+    perfcsv_data
+    perftxt_data
+    unix
+  )];
+
+  foreach my $test_file (@$test_files) {
+    my $test_path = File::Spec->rel2abs("$setup->{home_dir}/$test_file");
+    if (open(my $fh, "> $test_path")) {
+      close($fh);
+
+    } else {
+      die("Can't write test file $test_path: $!");
+    }
+  }
+
+  my $test_dirs = [qw(
+    remedydev
+    remedydev/foo
+    remedytest
+    remedytest/bar
+  )];
+
+  foreach my $test_dir (@$test_dirs) {
+    mkpath("$setup->{home_dir}/$test_dir");
+  }
+
+  my $config = {
+    PidFile => $setup->{pid_file},
+    ScoreboardFile => $setup->{scoreboard_file},
+    SystemLog => $setup->{log_file},
+
+    AuthUserFile => $setup->{auth_user_file},
+    AuthGroupFile => $setup->{auth_group_file},
+    AuthOrder => 'mod_auth_file.c',
+
+    DefaultRoot => '~',
+
+    IfModules => {
+      'mod_delay.c' => {
+        DelayEngine => 'off',
+      },
+    },
+  };
+
+  my ($port, $config_user, $config_group) = config_write($setup->{config_file},
+    $config);
+
+  if (open(my $fh, ">> $setup->{config_file}")) {
+    print $fh <<EOD;
+<Directory ~>
+  HideFiles !(^\$|\/|remedydev|remedytest)
+  HideNoAccess on
+  <Limit DIRS>
+    IgnoreHidden on
+  </Limit>
+</Directory>
+
+<Directory ~/remedydev>
+  HideFiles none
+</Directory>
+
+<Directory ~/remedytest>
+  HideFiles none
+</Directory>
+EOD
+
+    unless (close($fh)) {
+      die("Can't write $setup->{config_file}: $!");
+    }
+
+  } else {
+    die("Can't open $setup->{config_file}: $!");
+  }
+
+  # Open pipes, for use between the parent and child processes.  Specifically,
+  # the child will indicate when it's done with its test by writing a message
+  # to the parent.
+  my ($rfh, $wfh);
+  unless (pipe($rfh, $wfh)) {
+    die("Can't open pipe: $!");
+  }
+
+  my $ex;
+
+  # Fork child
+  $self->handle_sigchld();
+  defined(my $pid = fork()) or die("Can't fork: $!");
+  if ($pid) {
+    eval {
+      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
+      $client->login($setup->{user}, $setup->{passwd});
+
+      my $conn = $client->list_raw('-l');
+      unless ($conn) {
+        die("Failed to LIST: " . $client->response_code() . " " .
+          $client->response_msg());
+      }
+
+      my $buf;
+      my $tmp;
+      while ($conn->read($tmp, 8192, 30)) {
+        $buf .= $tmp;
+      }
+      sleep(0.25);
+      eval { $conn->close() };
+
+      if ($ENV{TEST_VERBOSE}) {
+        print STDERR "# data:\n$buf";
+      }
+
+      # We have to be careful of the fact that readdir returns directory
+      # entries in an unordered fashion.
+      my $res = {};
+      my $lines = [split(/\r?\n/, $buf)];
       foreach my $line (@$lines) {
         if ($line =~ /^\S+\s+\d+\s+\S+\s+\S+\s+.*?\s+(\S+)$/) {
           $res->{$1} = 1;
@@ -2851,7 +2703,7 @@ EOD
 
       $client->cwd("remedydev");
 
-      $conn = $client->list_raw();
+      $conn = $client->list_raw('-l');
       unless ($conn) {
         die("Failed to LIST: " . $client->response_code() . " " .
           $client->response_msg());
@@ -2862,12 +2714,17 @@ EOD
       while ($conn->read($tmp, 8192, 30)) {
         $buf .= $tmp;
       }
-      $conn->close();
+      sleep(0.25);
+      eval { $conn->close() };
+
+      if ($ENV{TEST_VERBOSE}) {
+        print STDERR "# data:\n$buf";
+      }
 
       # We have to be careful of the fact that readdir returns directory
       # entries in an unordered fashion.
       $res = {};
-      $lines = [split(/\n/, $buf)];
+      $lines = [split(/\r?\n/, $buf)];
       foreach my $line (@$lines) {
         if ($line =~ /^\S+\s+\d+\s+\S+\s+\S+\s+.*?\s+(\S+)$/) {
           $res->{$1} = 1;
@@ -2898,7 +2755,6 @@ EOD
 
       $client->quit();
     };
-
     if ($@) {
       $ex = $@;
     }
@@ -2907,7 +2763,7 @@ EOD
     $wfh->flush();
 
   } else {
-    eval { server_wait($config_file, $rfh) };
+    eval { server_wait($setup->{config_file}, $rfh) };
     if ($@) {
       warn($@);
       exit 1;
@@ -2917,18 +2773,10 @@ EOD
   }
 
   # Stop server
-  server_stop($pid_file);
-
+  server_stop($setup->{pid_file});
   $self->assert_child_ok($pid);
 
-  if ($ex) {
-    test_append_logfile($log_file, $ex);
-    unlink($log_file);
-
-    die($ex);
-  }
-
-  unlink($log_file);
+  test_cleanup($setup, $ex);
 }
 
 sub hidefiles_none_per_user_bug3397 {

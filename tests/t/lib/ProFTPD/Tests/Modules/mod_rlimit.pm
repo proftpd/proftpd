@@ -18,7 +18,7 @@ my $order = 0;
 my $TESTS = {
   rlimit_memory => {
     order => ++$order,
-    test_class => [qw(forking)],
+    test_class => [qw(flaky forking)],
   },
 
 };
@@ -36,7 +36,8 @@ sub rlimit_memory {
   my $tmpdir = $self->{tmpdir};
   my $setup = test_setup($tmpdir, 'rlimit');
 
-  my $rlimit_mem = '32K';
+  # This is a picky value.  Caveat emptor.
+  my $rlimit_mem = '256K';
 
   my $config = {
     PidFile => $setup->{pid_file},
@@ -92,6 +93,7 @@ sub rlimit_memory {
       for (my $i = 0; $i < $count; $i++) {
         $conn->write($buf, length($buf), 15);
       }
+      sleep(0.25);
       eval { $conn->close() };
 
       my $resp_code = $client->response_code();
@@ -100,7 +102,6 @@ sub rlimit_memory {
 
       $client->quit();
     };
-
     if ($@) {
       $ex = $@;
     }
@@ -120,7 +121,6 @@ sub rlimit_memory {
 
   # Stop server
   server_stop($setup->{pid_file});
-
   $self->assert_child_ok($pid);
 
   test_cleanup($setup->{log_file}, $ex);

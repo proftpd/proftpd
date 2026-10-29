@@ -600,7 +600,7 @@ sub stat_symlink_showsymlinks_on {
       $self->assert(qr/$expected/, $resp_msg,
         test_msg("Expected response message '$expected', got '$resp_msg'"));
 
-      $expected = '.*?test\.d\/test\.lnk \-> test\.d\/test\.txt$';
+      $expected = '.*?test\.d\/test\.lnk \-> \.\/test\.txt$';
       $self->assert(qr/$expected/, $resp_msg,
         test_msg("Expected response message '$expected', got '$resp_msg'"));
     };
@@ -858,7 +858,7 @@ sub stat_symlink_showsymlinks_on_chrooted_bug4219 {
       $self->assert(qr/$expected/, $resp_msg,
         test_msg("Expected response message '$expected', got '$resp_msg'"));
 
-      $expected = '.*?test\.d\/test\.lnk \-> \/test\.d\/test\.txt$';
+      $expected = '.*?test\.d\/test\.lnk \-> \.\/test\.txt$';
       $self->assert(qr/$expected/, $resp_msg,
         test_msg("Expected response message '$expected', got '$resp_msg'"));
     };

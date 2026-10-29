@@ -33,56 +33,32 @@ sub list_tests {
 sub authgroupfile_bug3347 {
   my $self = shift;
   my $tmpdir = $self->{tmpdir};
-
-  my $config_file = "$tmpdir/config.conf";
-  my $pid_file = File::Spec->rel2abs("$tmpdir/config.pid");
-  my $scoreboard_file = File::Spec->rel2abs("$tmpdir/config.scoreboard");
-
-  my $log_file = test_get_logfile();
-
-  my $auth_user_file = File::Spec->rel2abs("$tmpdir/config.passwd");
-  my $auth_group_file = File::Spec->rel2abs("$tmpdir/config.group");
+  my $setup = test_setup($tmpdir, 'config');
 
   my ($user, $group) = config_get_identity();
-  my $passwd = 'test';
-  my $home_dir = File::Spec->rel2abs($tmpdir);
-  my $uid = 500;
-  my $gid = (getgrnam($group))[2];
+  my $passwd = 'Yarr!';
 
-  # Make sure that, if we're running as root, that the home directory has
-  # permissions/privs set for the account we create
-  if ($< == 0) {
-    unless (chmod(0775, $home_dir)) {
-      die("Can't set perms on $home_dir to 0755: $!");
-    }
-
-    # Use a UID different that the user's UID for the home dir ownership
-    unless (chown(100, $gid, $home_dir)) {
-      die("Can't set owner of $home_dir to 100/$gid: $!");
-    }
-  }
-
-  auth_user_write($auth_user_file, 'foo', 'bar', $uid, $gid, $home_dir,
-    '/bin/bash');
-  auth_group_write($auth_group_file, 'pirates', 999, '');
+  auth_user_write($setup->{auth_user_file}, $user, 'bar', $setup->{uid},
+    $setup->{gid}, $setup->{home_dir}, '/bin/bash');
+  auth_group_write($setup->{auth_group_file}, 'pirates', 999, '');
 
   my $user_password = ProFTPD::TestSuite::Utils::get_passwd($passwd);
 
   my $config = {
-    PidFile => $pid_file,
-    ScoreboardFile => $scoreboard_file,
-    SystemLog => $log_file,
-    TraceLog => $log_file,
+    PidFile => $setup->{pid_file},
+    ScoreboardFile => $setup->{scoreboard_file},
+    SystemLog => $setup->{log_file},
+    TraceLog => $setup->{log_file},
     Trace => 'auth:10',
 
     User => $user,
     Group => $group,
-    DefaultRoot => $home_dir,
+    DefaultRoot => $setup->{home_dir},
     PersistentPasswd => 'off',
     UserPassword => "$user $user_password",
 
-    AuthUserFile => $auth_user_file,
-    AuthGroupFile => $auth_group_file,
+    AuthUserFile => $setup->{auth_user_file},
+    AuthGroupFile => $setup->{auth_group_file},
     AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
@@ -92,7 +68,8 @@ sub authgroupfile_bug3347 {
     },
   };
 
-  my ($port, $config_user, $config_group) = config_write($config_file, $config);
+  my ($port, $config_user, $config_group) = config_write($setup->{config_file},
+    $config);
 
   # Open pipes, for use between the parent and child processes.  Specifically,
   # the child will indicate when it's done with its test by writing a message
@@ -120,16 +97,15 @@ sub authgroupfile_bug3347 {
 
       my $buf = "Hello, World!\n";
       $conn->write($buf, length($buf));
-      $conn->close();
+      sleep(0.25);
+      eval { $conn->close() };
 
       my $resp_code = $client->response_code();
       my $resp_msg = $client->response_msg();
+      $client->quit();
 
       $self->assert_transfer_ok($resp_code, $resp_msg);
-
-      $client->quit();
     };
-
     if ($@) {
       $ex = $@;
     }
@@ -138,7 +114,7 @@ sub authgroupfile_bug3347 {
     $wfh->flush();
 
   } else {
-    eval { server_wait($config_file, $rfh) };
+    eval { server_wait($setup->{config_file}, $rfh) };
     if ($@) {
       warn($@);
       exit 1;
@@ -148,18 +124,10 @@ sub authgroupfile_bug3347 {
   }
 
   # Stop server
-  server_stop($pid_file);
-
+  server_stop($setup->{pid_file});
   $self->assert_child_ok($pid);
 
-  if ($ex) {
-    test_append_logfile($log_file, $ex);
-    unlink($log_file);
-
-    die($ex);
-  }
-
-  unlink($log_file);
+  test_cleanup($setup, $ex);
 }
 
 1;

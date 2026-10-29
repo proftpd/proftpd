@@ -1152,7 +1152,7 @@ sub delay_table_default_issue1440 {
 
     IfModules => {
       'mod_delay.c' => {
-        'DelayEngine on',
+        DelayEngine => 'on',
       },
     },
   };

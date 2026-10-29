@@ -271,6 +271,7 @@ sub xferlog_retr_binary_ok {
 
       my $buf;
       $conn->read($buf, 8192, 30);
+      sleep(0.25);
       eval { $conn->close() };
 
       my $resp_code = $client->response_code();
@@ -348,10 +349,10 @@ sub xferlog_retr_binary_ok {
     }
   };
   if ($@) {
-    $ex = $@;
+    $ex = $@ unless $ex;
   }
 
-  test_cleanup($setup->{log_file}, $ex);
+  test_cleanup($setup, $ex);
 }
 
 sub xferlog_retr_aborted {
@@ -429,6 +430,7 @@ sub xferlog_retr_aborted {
 
       my $buf;
       $conn->read($buf, 1, 30);
+      sleep(0.25);
       $conn->abort();
     };
     if ($@) {
@@ -496,10 +498,10 @@ sub xferlog_retr_aborted {
     }
   };
   if ($@) {
-    $ex = $@;
+    $ex = $@ unless $ex;
   }
 
-  test_cleanup($setup->{log_file}, $ex);
+  test_cleanup($setup, $ex);
 }
 
 sub xferlog_stor_ascii_ok {
@@ -635,10 +637,10 @@ sub xferlog_stor_ascii_ok {
     }
   };
   if ($@) {
-    $ex = $@;
+    $ex = $@ unless $ex;
   }
 
-  test_cleanup($setup->{log_file}, $ex);
+  test_cleanup($setup, $ex);
 }
 
 sub xferlog_stor_binary_ok {
@@ -774,10 +776,10 @@ sub xferlog_stor_binary_ok {
     }
   };
   if ($@) {
-    $ex = $@;
+    $ex = $@ unless $ex;
   }
 
-  test_cleanup($setup->{log_file}, $ex);
+  test_cleanup($setup, $ex);
 }
 
 sub xferlog_stor_aborted {
@@ -903,10 +905,10 @@ sub xferlog_stor_aborted {
     }
   };
   if ($@) {
-    $ex = $@;
+    $ex = $@ unless $ex;
   }
 
-  test_cleanup($setup->{log_file}, $ex);
+  test_cleanup($setup, $ex);
 }
 
 sub xferlog_stor_enospc_bug3895 {
@@ -1219,10 +1221,10 @@ sub xferlog_dele_ok {
     }
   };
   if ($@) {
-    $ex = $@;
+    $ex = $@ unless $ex;
   }
 
-  test_cleanup($setup->{log_file}, $ex);
+  test_cleanup($setup, $ex);
 }
 
 sub xferlog_device_full_for_log {

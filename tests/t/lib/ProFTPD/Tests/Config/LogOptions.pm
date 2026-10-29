@@ -259,6 +259,8 @@ sub logoptions_no_virtualhost {
     AuthGroupFile => $setup->{auth_group_file},
     AuthOrder => 'mod_auth_file.c',
 
+    # The expected log message is emitted at this level
+    DebugLevel => 9,
     LogOptions => '-VirtualHost',
 
     IfModules => {
@@ -359,6 +361,8 @@ sub logoptions_use_rolebasedprocesslabels {
     AuthGroupFile => $setup->{auth_group_file},
     AuthOrder => 'mod_auth_file.c',
 
+    # The expected log messages are emitted at this level
+    DebugLevel => 9,
     LogOptions => '+RoleBasedProcessLabels',
 
     IfModules => {

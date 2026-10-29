@@ -232,13 +232,11 @@ sub mlst_file_chrooted_ok {
 
       my ($resp_code, $resp_msg) = $client->mlst('cmds.conf');
 
-      my $expected;
-
-      $expected = 250;
+      my $expected = 250;
       $self->assert($expected == $resp_code,
         test_msg("Expected response code $expected, got $resp_code"));
 
-      $expected = 'modify=\d+;perm=adfr(w)?;size=\d+;type=file;unique=\S+;UNIX\.group=\d+;UNIX\.groupname=\S+;UNIX\.mode=\d+;UNIX\.owner=\d+;UNIX\.owername=\S+; /cmds.conf$';
+      $expected = 'modify=\d+;perm=adfr(w)?;size=\d+;type=file;unique=\S+;UNIX\.group=\d+;UNIX\.groupname=\S+;UNIX\.mode=\d+;UNIX\.owner=\d+;UNIX\.ownername=\S+; /cmds.conf$';
       $self->assert(qr/$expected/, $resp_msg,
         test_msg("Expected response message '$expected', got '$resp_msg'"));
 
@@ -704,17 +702,26 @@ sub mlst_symlink_showsymlinks_on_chrooted_bug4219 {
       my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port, 0, 1);
       $client->login($setup->{user}, $setup->{passwd});
 
-      my ($resp_code, $resp_msg) = $client->mlst('test.lnk');
+      # We expect this to fail because symlinks using absolute paths cannot
+      # be resolved within a chroot.
 
-      my $expected = 250;
+      my $path = 'test.lnk';
+      eval { $client->mlst($path) };
+      unless ($@) {
+        die("MLST succeeded unexpectedly");
+      }
+
+      my $resp_code = $client->response_code();
+      my $resp_msg = $client->response_msg();
+      $client->quit();
+
+      my $expected = 550;
       $self->assert($expected == $resp_code,
         test_msg("Expected response code $expected, got $resp_code"));
 
-      $expected = 'modify=\d+;perm=(a)?dfr(w)?;size=\d+;type=OS.unix=symlink;unique=\S+;UNIX\.group=\d+;UNIX\.groupname=\S+;UNIX\.mode=\d+;UNIX\.owner=\d+;UNIX\.ownername=\S+; \/test\.lnk$';
-      $self->assert(qr/$expected/, $resp_msg,
+      $expected = "'$path' cannot be listed";
+      $self->assert($expected eq $resp_msg,
         test_msg("Expected response message '$expected', got '$resp_msg'"));
-
-      $client->quit();
     };
     if ($@) {
       $ex = $@;
@@ -923,17 +930,23 @@ sub mlst_symlink_showsymlinks_on_use_slink_chrooted_bug4219 {
       my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port, 0, 1);
       $client->login($setup->{user}, $setup->{passwd});
 
-      my ($resp_code, $resp_msg) = $client->mlst('test.lnk');
+      my $path = 'test.lnk';
+      eval { $client->mlst('test.lnk') };
+      unless ($@) {
+        die("MLST succeeded unexpectedly");
+      }
 
-      my $expected = 250;
+      my $resp_code = $client->response_code();
+      my $resp_msg = $client->response_msg();
+      $client->quit();
+
+      my $expected = 550;
       $self->assert($expected == $resp_code,
         test_msg("Expected response code $expected, got $resp_code"));
 
-      $expected = ' modify=\d+;perm=(a)?dfr(w)?;size=\d+;type=OS\.unix=slink:\/test\.txt;unique=\S+;UNIX\.group=\d+;UNIX\.groupname=\S+;UNIX\.mode=\d+;UNIX\.owner=\d+;UNIX\.ownername=\S+; \/test\.lnk$';
-      $self->assert(qr/$expected/, $resp_msg,
+      $expected = "'$path' cannot be listed";
+      $self->assert($expected eq $resp_msg,
         test_msg("Expected response message '$expected', got '$resp_msg'"));
-
-      $client->quit();
     };
     if ($@) {
       $ex = $@;

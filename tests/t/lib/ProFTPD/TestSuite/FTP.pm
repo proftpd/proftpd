@@ -211,6 +211,14 @@ sub set_status {
 
   my $resp = defined($msg) ? [$msg] : [] unless ref($msg);
 
+  # Properly handle STOU replies here as well.  Silly changes.
+  if (defined($prev_code) &&
+      $prev_code == 150) {
+    if ($prev_msgs->[0] =~ /^FILE: (\S+)$/) {
+      ${*$cmd}{'net_ftp_unique'} = $1;
+    }
+  }
+
   # In order to properly accumulate the multiple responses from an aborted
   # data transfer/session, we only want to overwrite the any existing
   # responses if the previous response code is not a 426.  What an ugly hack.

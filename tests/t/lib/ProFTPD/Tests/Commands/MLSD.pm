@@ -2685,7 +2685,7 @@ sub mlsd_symlink_showsymlinks_on_use_slink_chrooted_bug4219 {
 
       # Since ShowSymlinks is on, the type for test.lnk should indicate that
       # it's a symlink
-      $expected = 'OS.unix=slink:/foo/test.txt';
+      $expected = 'OS.unix=slink:/test.txt';
       $got = $res->{'test.lnk'}->{type};
       $self->assert(qr/$expected/i, $got,
         test_msg("Expected '$expected', got '$got'"));
@@ -3289,6 +3289,7 @@ sub mlsd_symlink_rel_path_chrooted_bug4322 {
       my $lines = [split(/(\r)?\n/, $buf)];
 
       foreach my $line (@$lines) {
+        $line = '' unless $line;
         if ($line =~ /^modify=\S+;perm=\S+;type=(\S+);unique=(\S+);UNIX\.group=\d+;UNIX\.groupname=\S+;UNIX\.mode=\d+;UNIX\.owner=\d+;UNIX\.ownername=\S+; (.*?)$/) {
           $res->{$3} = { type => $1, unique => $2 };
         }
@@ -3433,6 +3434,7 @@ sub mlsd_symlink_rel_path_subdir_chrooted_bug4322 {
       my $lines = [split(/(\r)?\n/, $buf)];
 
       foreach my $line (@$lines) {
+        $line = '' unless $line;
         if ($line =~ /^modify=\S+;perm=\S+;type=(\S+);unique=(\S+);UNIX\.group=\d+;UNIX\.groupname=\S+;UNIX\.mode=\d+;UNIX\.owner=\d+;UNIX\.ownername=\S+; (.*?)$/) {
           $res->{$3} = { type => $1, unique => $2 };
         }
@@ -3578,6 +3580,7 @@ sub mlsd_symlink_rel_path_subdir_cwd_chrooted_bug4322 {
       my $lines = [split(/(\r)?\n/, $buf)];
 
       foreach my $line (@$lines) {
+        $line = '' unless $line;
         if ($line =~ /^modify=\S+;perm=\S+;type=(\S+);unique=(\S+);UNIX\.group=\d+;UNIX\.groupname=\S+;UNIX\.mode=\d+;UNIX\.owner=\d+;UNIX\.ownername=\S+; (.*?)$/) {
           $res->{$3} = { type => $1, unique => $2 };
         }

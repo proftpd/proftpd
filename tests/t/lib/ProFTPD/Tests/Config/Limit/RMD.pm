@@ -34,40 +34,23 @@ sub list_tests {
 sub rmd_unremovable_subdir {
   my $self = shift;
   my $tmpdir = $self->{tmpdir};
+  my $setup = test_setup($tmpdir, 'limit');
 
-  my $config_file = "$tmpdir/limit.conf";
-  my $pid_file = File::Spec->rel2abs("$tmpdir/limit.pid");
-  my $scoreboard_file = File::Spec->rel2abs("$tmpdir/limit.scoreboard");
+  my $web_dir = File::Spec->rel2abs("$tmpdir/domain.com/web");
+  my $sub_dir = File::Spec->rel2abs("$web_dir/special");
+  mkpath($web_dir, $sub_dir, { verbose => 0 });
 
-  my $log_file = File::Spec->rel2abs('tests.log');
-
-  my $auth_user_file = File::Spec->rel2abs("$tmpdir/limit.passwd");
-  my $auth_group_file = File::Spec->rel2abs("$tmpdir/limit.group");
-
-  my $user = 'proftpd';
-  my $passwd = 'test';
-  my $home_dir = File::Spec->rel2abs($tmpdir);
-  my $uid = 500;
-  my $gid = 500;
-
-  my $sub_dir = File::Spec->rel2abs("$tmpdir/domain.com/web/special");
-  mkpath($sub_dir);
-
-  # Make sure that, if we're running as root, that the home directory has
-  # permissions/privs set for the account we create
   if ($< == 0) {
-    unless (chmod(0755, $home_dir)) {
-      die("Can't set perms on $home_dir to 0755: $!");
+    unless (chmod(0755, $web_dir, $sub_dir)) {
+      die("Can't set perms on $web_dir to 0755: $!");
     }
 
-    unless (chown($uid, $gid, $home_dir)) {
-      die("Can't set owner of $home_dir to $uid/$gid: $!");
+    unless (chown($setup->{uid}, $setup->{gid}, $web_dir, $sub_dir)) {
+      die("Can't set owner of $web_dir to $setup->{uid}/$setup->{gid}: $!");
     }
   }
 
-  auth_user_write($auth_user_file, $user, $passwd, $uid, $gid, $home_dir,
-    '/bin/bash');
-  auth_group_write($auth_group_file, 'ftpd', $gid, $user);
+  my $home_dir = $setup->{home_dir};
 
   if ($^O eq 'darwin') {
     # Mac OSX hack
@@ -76,14 +59,14 @@ sub rmd_unremovable_subdir {
   }
 
   my $config = {
-    PidFile => $pid_file,
-    ScoreboardFile => $scoreboard_file,
-    SystemLog => $log_file,
-    TraceLog => $log_file,
+    PidFile => $setup->{pid_file},
+    ScoreboardFile => $setup->{scoreboard_file},
+    SystemLog => $setup->{log_file},
+    TraceLog => $setup->{log_file},
     Trace => 'command:10 directory:10',
 
-    AuthUserFile => $auth_user_file,
-    AuthGroupFile => $auth_group_file,
+    AuthUserFile => $setup->{auth_user_file},
+    AuthGroupFile => $setup->{auth_group_file},
     AuthOrder => 'mod_auth_file.c',
 
     DefaultChdir => '~',
@@ -93,12 +76,12 @@ sub rmd_unremovable_subdir {
         DelayEngine => 'off',
       },
     },
-
   };
 
-  my ($port, $config_user, $config_group) = config_write($config_file, $config);
+  my ($port, $config_user, $config_group) = config_write($setup->{config_file},
+    $config);
 
-  if (open(my $fh, ">> $config_file")) {
+  if (open(my $fh, ">> $setup->{config_file}")) {
     print $fh <<EOC;
 <Directory />
   <Limit ALL SITE_CHMOD>
@@ -127,11 +110,11 @@ sub rmd_unremovable_subdir {
 </Directory>
 EOC
     unless (close($fh)) {
-      die("Can't write $config_file: $!");
+      die("Can't write $setup->{config_file}: $!");
     }
 
   } else {
-    die("Can't open $config_file: $!");
+    die("Can't open $setup->{config_file}: $!");
   }
 
   # Open pipes, for use between the parent and child processes.  Specifically,
@@ -150,7 +133,7 @@ EOC
   if ($pid) {
     eval {
       my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
-      $client->login($user, $passwd);
+      $client->login($setup->{user}, $setup->{passwd});
 
       # We should be able to create and delete a directory under web/.
       # We should be able to create and delete a directory under web/special/.
@@ -158,9 +141,7 @@ EOC
 
       my ($resp_code, $resp_msg) = $client->mkd('domain.com/web/foo');
 
-      my $expected;
-
-      $expected = 257;
+      my $expected = 257;
       $self->assert($expected == $resp_code,
         test_msg("Expected response code $expected, got $resp_code"));
 
@@ -213,8 +194,9 @@ EOC
       $expected = "domain.com/web/special: Permission denied";
       $self->assert($expected eq $resp_msg,
         test_msg("Expected response message '$expected', got '$resp_msg'"));
-    };
 
+      $client->quit();
+    };
     if ($@) {
       $ex = $@;
     }
@@ -223,7 +205,7 @@ EOC
     $wfh->flush();
 
   } else {
-    eval { server_wait($config_file, $rfh) };
+    eval { server_wait($setup->{config_file}, $rfh) };
     if ($@) {
       warn($@);
       exit 1;
@@ -233,15 +215,10 @@ EOC
   }
 
   # Stop server
-  server_stop($pid_file);
-
+  server_stop($setup->{pid_file});
   $self->assert_child_ok($pid);
 
-  if ($ex) {
-    die($ex);
-  }
-
-  unlink($log_file);
+  test_cleanup($setup, $ex);
 }
 
 1;

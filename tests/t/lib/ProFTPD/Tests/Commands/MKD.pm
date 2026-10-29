@@ -231,7 +231,7 @@ sub mkd_fails_abs_symlink_new {
   my $tmpdir = $self->{tmpdir};
   my $setup = test_setup($tmpdir, 'cmds');
 
-  my $test_dir = File::Spec->rel2abs("$tmpdir/foo.d");
+  my $test_dir = File::Spec->rel2abs("$tmpdir/test.d");
   my $test_symlink = File::Spec->rel2abs("$tmpdir/test.lnk");
 
   my $dst_path = $test_dir;
@@ -283,16 +283,10 @@ sub mkd_fails_abs_symlink_new {
       my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port, 0, 1);
       $client->login($setup->{user}, $setup->{passwd});
 
-      eval { $client->mkd('test.lnk') };
-      unless ($@) {
-        die("MKD succeeded unexpectedly");
-      }
-
-      my $resp_code = $client->response_code();
-      my $resp_msg = $client->response_msg();
+      my ($resp_code, $resp_msg) = $client->mkd('test.lnk');
       $client->quit();
 
-      my $expected = 550;
+      my $expected = 257;
       $self->assert($expected == $resp_code,
         test_msg("Expected response code $expected, got $resp_code"));
 
@@ -301,10 +295,11 @@ sub mkd_fails_abs_symlink_new {
         $test_symlink = '/private' . $test_symlink;
       }
 
-      $expected = "test.lnk: File exists";
-      $self->assert($expected eq $resp_msg,
+      $expected = 'Directory successfully created';
+      $self->assert(qr/$expected/, $resp_msg,
         test_msg("Expected response message '$expected', got '$resp_msg'"));
 
+      # This happens because of the EEXIST hack done for mkdir(2).  Sigh.
       $self->assert(!-d $test_dir,
         test_msg("$test_dir directory does not exist as expected"));
     };
@@ -329,7 +324,7 @@ sub mkd_fails_abs_symlink_new {
   server_stop($setup->{pid_file});
   $self->assert_child_ok($pid);
 
-  test_cleanup($setup->{log_file}, $ex);
+  test_cleanup($setup, $ex);
 }
 
 sub mkd_fails_abs_symlink_new_chrooted_bug4219 {
@@ -337,7 +332,7 @@ sub mkd_fails_abs_symlink_new_chrooted_bug4219 {
   my $tmpdir = $self->{tmpdir};
   my $setup = test_setup($tmpdir, 'cmds');
 
-  my $test_dir = File::Spec->rel2abs("$tmpdir/foo.d");
+  my $test_dir = File::Spec->rel2abs("$tmpdir/test.d");
   my $test_symlink = File::Spec->rel2abs("$tmpdir/test.lnk");
 
   my $dst_path = $test_dir;
@@ -391,16 +386,10 @@ sub mkd_fails_abs_symlink_new_chrooted_bug4219 {
       my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port, 0, 1);
       $client->login($setup->{user}, $setup->{passwd});
 
-      eval { $client->mkd('test.lnk') };
-      unless ($@) {
-        die("MKD succeeded unexpectedly");
-      }
-
-      my $resp_code = $client->response_code();
-      my $resp_msg = $client->response_msg();
+      my ($resp_code, $resp_msg) = $client->mkd('test.lnk');
       $client->quit();
 
-      my $expected = 550;
+      my $expected = 257;
       $self->assert($expected == $resp_code,
         test_msg("Expected response code $expected, got $resp_code"));
 
@@ -409,10 +398,11 @@ sub mkd_fails_abs_symlink_new_chrooted_bug4219 {
         $test_symlink = '/private' . $test_symlink;
       }
 
-      $expected = "test.lnk: File exists";
-      $self->assert($expected eq $resp_msg,
+      $expected = 'Directory successfully created';
+      $self->assert(qr/$expected/, $resp_msg,
         test_msg("Expected response message '$expected', got '$resp_msg'"));
 
+      # This happens because of the EEXIST hack done for mkdir(2).  Sigh.
       $self->assert(!-d $test_dir,
         test_msg("$test_dir directory does not exist as expected"));
     };
@@ -503,21 +493,16 @@ sub mkd_fails_rel_symlink_new {
       my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port, 0, 1);
       $client->login($setup->{user}, $setup->{passwd});
 
-      eval { $client->mkd('test.d/test.lnk') };
-      unless ($@) {
-        die("MKD succeeded unexpectedly");
-      }
-
-      my $resp_code = $client->response_code();
-      my $resp_msg = $client->response_msg();
+      my ($resp_code, $resp_msg) = $client->mkd('test.d/test.lnk');
       $client->quit();
 
-      my $expected = 550;
+      my $expected = 257;
       $self->assert($expected == $resp_code,
         test_msg("Expected response code $expected, got $resp_code"));
 
-      $expected = "test.d\/test.lnk: File exists";
-      $self->assert($expected eq $resp_msg,
+      # This happens because of the EEXIST hack done for mkdir(2).  Sigh.
+      $expected = 'Directory successfully created';
+      $self->assert(qr/$expected/, $resp_msg,
         test_msg("Expected response message '$expected', got '$resp_msg'"));
     };
     if ($@) {
@@ -609,21 +594,16 @@ sub mkd_fails_rel_symlink_new_chrooted_bug4219 {
       my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port, 0, 1);
       $client->login($setup->{user}, $setup->{passwd});
 
-      eval { $client->mkd('test.d/test.lnk') };
-      unless ($@) {
-        die("MKD succeeded unexpectedly");
-      }
-
-      my $resp_code = $client->response_code();
-      my $resp_msg = $client->response_msg();
+      my ($resp_code, $resp_msg) = $client->mkd('test.d/test.lnk');
       $client->quit();
 
-      my $expected = 550;
+      my $expected = 257;
       $self->assert($expected == $resp_code,
         test_msg("Expected response code $expected, got $resp_code"));
 
-      $expected = "test.d\/test.lnk: File exists";
-      $self->assert($expected eq $resp_msg,
+      # This happens because of the EEXIST hack done for mkdir(2).  Sigh.
+      $expected = 'Directory successfully created';
+      $self->assert(qr/$expected/, $resp_msg,
         test_msg("Expected response message '$expected', got '$resp_msg'"));
     };
     if ($@) {

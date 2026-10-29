@@ -345,16 +345,25 @@ sub size_abs_symlink_file_chrooted_bug4219 {
       $client->login($setup->{user}, $setup->{passwd});
       $client->type('binary');
 
-      my ($resp_code, $resp_msg) = $client->size('sub.d/test.lnk');
+      # We expect this to fail because symlinks using absolute paths will
+      # not resolve properly within a chroot.
+
+      eval { $client->size('sub.d/test.lnk') };
+      unless ($@) {
+        die("SIZE succeeded unexpectedly");
+      }
+
+      my $resp_code = $client->response_code();
+      my $resp_msg = $client->response_msg();
       $client->quit();
 
-      my $expected = 213;
+      my $expected = 550;
       $self->assert($expected == $resp_code,
         test_msg("Expected response code $expected, got $resp_code"));
 
-      $expected = -s $test_file;
-      $self->assert($expected == $resp_msg,
-        test_msg("Expected response message $expected, got $resp_msg"));
+      $expected = 'sub.d/test.lnk: No such file or directory';
+      $self->assert($expected eq $resp_msg,
+        test_msg("Expected response message '$expected', got '$resp_msg'"));
     };
     if ($@) {
       $ex = $@;
@@ -377,7 +386,7 @@ sub size_abs_symlink_file_chrooted_bug4219 {
   server_stop($setup->{pid_file});
   $self->assert_child_ok($pid);
 
-  test_cleanup($setup->{log_file}, $ex);
+  test_cleanup($setup, $ex);
 }
 
 sub size_rel_symlink_file {
@@ -767,7 +776,7 @@ sub size_abs_symlink_dir_chrooted_bug4219 {
       $self->assert($expected == $resp_code,
         test_msg("Expected response code $expected, got $resp_code"));
 
-      $expected = "$path: not a regular file";
+      $expected = "$path: No such file or directory";
       $self->assert($expected eq $resp_msg,
         test_msg("Expected response message $expected, got $resp_msg"));
     };

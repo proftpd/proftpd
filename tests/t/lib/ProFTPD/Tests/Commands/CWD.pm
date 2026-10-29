@@ -385,15 +385,24 @@ sub cwd_abs_symlink_chrooted_bug4219 {
       my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port, 0, 1);
       $client->login($setup->{user}, $setup->{passwd});
 
+      # We expect this to fail because symlinks using absolute paths will not
+      # be resolved properly within a chroot.
+
       my $path = 'sub.d/test.lnk';
-      my ($resp_code, $resp_msg) = $client->cwd($path);
+      eval { $client->cwd($path) };
+      unless ($@) {
+        die("CWD succeeded unexpectedly");
+      }
+
+      my $resp_code = $client->response_code();
+      my $resp_msg = $client->response_msg();
       $client->quit();
 
-      my $expected = 250;
+      my $expected = 550;
       $self->assert($expected == $resp_code,
         test_msg("Expected response code $expected, got $resp_code"));
 
-      $expected = "CWD command successful";
+      $expected = "$path: No such file or directory";
       $self->assert($expected eq $resp_msg,
         test_msg("Expected response message '$expected', got '$resp_msg'"));
     };
@@ -1089,6 +1098,9 @@ sub cwd_fails_abs_symlink_enotdir_chrooted_bug4219 {
       my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port, 0, 1);
       $client->login($setup->{user}, $setup->{passwd});
 
+      # We expect this to fail because symlinks using absolute paths will not
+      # be resolved properly within a chroot.
+
       my $path = 'sub.d/test.lnk';
       eval { $client->cwd($path) };
       unless ($@) {
@@ -1103,7 +1115,7 @@ sub cwd_fails_abs_symlink_enotdir_chrooted_bug4219 {
       $self->assert($expected == $resp_code,
         test_msg("Expected response code $expected, got $resp_code"));
 
-      $expected = "$path: Not a directory";
+      $expected = "$path: No such file or directory";
       $self->assert($expected eq $resp_msg,
         test_msg("Expected response message '$expected', got '$resp_msg'"));
     };
@@ -1839,7 +1851,7 @@ sub cwd_long_path_bug3730 {
   defined(my $pid = fork()) or die("Can't fork: $!");
   if ($pid) {
     eval {
-      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port, 0, 1);
+      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port, 0, 1, 5);
       $client->login($setup->{user}, $setup->{passwd});
       eval { $client->cwd($long_path) };
       eval { $client->quit() };

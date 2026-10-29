@@ -59,13 +59,24 @@ sub site_chgrp_by_name_ok {
     die("Can't open $test_file: $!");
   }
 
+  if ($< == 0) {
+    unless (chown($setup->{uid}, $setup->{gid}, $test_file)) {
+      die("Can't set owner of $test_file to $setup->{uid}/$setup->{gid}: $!");
+    }
+
+    # We also need to pick a different file GID value
+    $file_gid = $setup->{gid};
+  }
+
   # Need to add our local group name/ID to our AuthGroupFile, for lookup
-  auth_group_write($setup->{auth_group_file}, $file_group, $file_gid);
+  auth_group_write($setup->{auth_group_file}, $file_group, $file_gid, $setup->{group});
 
   my $config = {
     PidFile => $setup->{pid_file},
     ScoreboardFile => $setup->{scoreboard_file},
     SystemLog => $setup->{log_file},
+    TraceLog => $setup->{log_file},
+    Trace => 'fileperms:20',
 
     AuthUserFile => $setup->{auth_user_file},
     AuthGroupFile => $setup->{auth_group_file},
@@ -96,7 +107,10 @@ sub site_chgrp_by_name_ok {
   defined(my $pid = fork()) or die("Can't fork: $!");
   if ($pid) {
     eval {
-      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
+      # Allow for server startup
+      sleep(1);
+
+      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port, 0, 2);
       $client->login($setup->{user}, $setup->{passwd});
 
       $client->site('CHGRP', $file_group, 'test.txt');
