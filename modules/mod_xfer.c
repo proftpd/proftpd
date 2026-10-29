@@ -2752,7 +2752,8 @@ MODRET xfer_pre_retr(cmd_rec *cmd) {
     return PR_ERROR(cmd);
   }
 
-  if (!S_ISREG(fmode)
+  if (!S_ISREG(fmode) &&
+      !S_ISLNK(fmode)
 #ifdef S_ISFIFO
       && !S_ISFIFO(fmode)
 #endif
