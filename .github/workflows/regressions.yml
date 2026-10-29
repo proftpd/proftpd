@@ -1,0 +1,76 @@
+name: Regression Tests
+
+on:
+  workflow_dispatch:
+
+jobs:
+  regressions:
+    runs-on: ubuntu-latest
+
+    env:
+      # Let's try opting into use of Nodejs v24; see:
+      #  https://github.blog/changelog/2025-09-19-deprecation-of-node-20-on-github-actions-runners/
+      # GitHub runners still causing problems with NodeJS v20; see:
+      FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
+      DEBIAN_FRONTEND: noninteractive
+      TZ: America/Los_Angeles
+
+    container: ubuntu:26.04
+
+    steps:
+      - name: Checkout ProFTPD
+        uses: actions/checkout@v6
+        with:
+          repository: proftpd/proftpd
+          path: proftpd
+
+      - name: Install Ubuntu packages
+        run: |
+          apt-get update -qq
+          # for builds
+          apt-get install -y --no-install-recommends build-essential gcc git make tzdata
+
+          # for crypt(3) support
+          apt-get install -y --no-install-recommends libcrypt1
+
+          # for integration/regression tests
+          apt-get install -y --no-install-recommends \
+            libauthen-oath-perl \
+            libcompress-raw-zlib-perl \
+            libdata-dumper-simple-perl \
+            libdatetime-perl \
+            libfile-copy-recursive-perl \
+            libfile-path-tiny-perl \
+            libfile-spec-native-perl \
+            libmime-base32-perl \
+            libnet-address-ip-local-perl \
+            libnet-ssh2-perl \
+            libnet-ssleay-perl \
+            libnet-telnet-perl \
+            libposix-2008-perl \
+            libtest-unit-perl \
+            libtime-hr-perl \
+            libwww-perl
+          PERL_MM_USE_DEFAULT=1 perl -MCPAN -e 'install Net::FTPSSL'
+
+          # for debugging
+          gcc --version
+
+      - name: Install with static modules
+        # NOTE: Docker does not have good IPv6 support, hence we disable it.
+        run: |
+          cd proftpd
+          ./configure --disable-ipv6
+          make
+          ./proftpd -V
+          make install
+
+      - name: Run integration tests
+        env:
+          PROFTPD_TEST_BIN: /usr/local/sbin/proftpd
+          PROFTPD_TEST_CI: github
+          PROFTPD_TEST_DIR: ${{ github.workspace }}/proftpd/tests
+        run: |
+          cd proftpd
+          perl tests.pl
