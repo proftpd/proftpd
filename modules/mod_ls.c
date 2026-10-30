@@ -1050,7 +1050,8 @@ static void addfile(cmd_rec *cmd, const char *name, const char *suffix,
     register_cleanup2(sort_pool, NULL, sort_cleanup);
   }
 
-  if (opt_S || opt_t) {
+  /* Any of these options trigger sorting. */
+  if (opt_c || opt_S || opt_t || opt_u) {
     struct sort_filename *s;
 
     if (sort_arr == NULL) {
@@ -1126,19 +1127,41 @@ static int file_size_reverse_cmp(const struct sort_filename *f1,
 
 static void sortfiles(cmd_rec *cmd) {
 
-  if (sort_arr) {
+  if (sort_arr != NULL) {
+    int sort_by_size = FALSE, sort_by_time = FALSE;
+
+    if (opt_c ||
+        opt_t ||
+        opt_u) {
+      sort_by_time = TRUE;
+
+    } else if (opt_S) {
+      sort_by_size = TRUE;
+    }
 
     /* Sort by time? */
-    if (opt_t) {
+    if (sort_by_time == TRUE) {
       register unsigned int i = 0;
-      int setting = opt_S;
+      int reverse_sorting = FALSE, setting = opt_S;
       struct sort_filename *elts = sort_arr->elts;
+
+      /* Interestingly, the documented semantics of the -t option are that
+       * sorting by mtime is done in descending order (which is opposite the
+       * ascending sort order used for the other atime, ctime timestamps).
+       */
+      if (opt_t && !(opt_c || opt_u)) {
+        reverse_sorting = TRUE;
+      }
+
+      if (opt_r) {
+        reverse_sorting = !reverse_sorting;
+      }
 
       qsort(sort_arr->elts, sort_arr->nelts, sizeof(struct sort_filename),
         (int (*)(const void *, const void *))
           (opt_r ? file_time_reverse_cmp : file_time_cmp));
 
-      opt_S = opt_t = 0;
+      opt_c = opt_S = opt_t = opt_u = 0;
 
       for (i = 0; i < sort_arr->nelts; i++) {
         addfile(cmd, elts[i].name, elts[i].suffix, elts[i].sort_time,
@@ -1146,19 +1169,35 @@ static void sortfiles(cmd_rec *cmd) {
       }
 
       opt_S = setting;
-      opt_t = 1;
+
+      switch (ls_sort_by) {
+        case LS_SORT_BY_CTIME:
+          opt_c = 1;
+          break;
+
+        case LS_SORT_BY_ATIME:
+          opt_u = 1;
+          break;
+
+        case LS_SORT_BY_MTIME:
+          opt_t = 1;
+          break;
+
+        default:
+          /* Ignore */
+          break;
+      }
 
     /* Sort by file size? */
-    } else if (opt_S) {
+    } else if (sort_by_size == TRUE) {
       register unsigned int i = 0;
-      int setting = opt_t;
       struct sort_filename *elts = sort_arr->elts;
 
       qsort(sort_arr->elts, sort_arr->nelts, sizeof(struct sort_filename),
         (int (*)(const void *, const void *))
           (opt_r ? file_size_reverse_cmp : file_size_cmp));
 
-      opt_S = opt_t = 0;
+      opt_c = opt_S = opt_t = opt_u = 0;
 
       for (i = 0; i < sort_arr->nelts; i++) {
         addfile(cmd, elts[i].name, elts[i].suffix, elts[i].sort_time,
@@ -1166,7 +1205,23 @@ static void sortfiles(cmd_rec *cmd) {
       }
 
       opt_S = 1;
-      opt_t = setting;
+      switch (ls_sort_by) {
+        case LS_SORT_BY_CTIME:
+          opt_c = 1;
+          break;
+
+        case LS_SORT_BY_ATIME:
+          opt_u = 1;
+          break;
+
+        case LS_SORT_BY_MTIME:
+          opt_t = 1;
+          break;
+
+        default:
+          /* Ignore */
+          break;
+      }
     }
   }
 
@@ -1177,7 +1232,8 @@ static int outputfiles(cmd_rec *cmd) {
   int n, res = 0;
   struct filename *p = NULL, *q = NULL;
 
-  if (opt_S || opt_t) {
+  /* Any of these options require sorting. */
+  if (opt_c || opt_S || opt_t || opt_u) {
     sortfiles(cmd);
   }
 
