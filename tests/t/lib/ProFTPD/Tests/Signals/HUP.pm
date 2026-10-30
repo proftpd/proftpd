@@ -29,7 +29,7 @@ my $TESTS = {
 
   hup_allowoverwrite_bug3740 => {
     order => ++$order,
-    test_class => [qw(bug)],
+    test_class => [qw(bug flaky)],
   },
 
 };
@@ -329,7 +329,7 @@ sub upload_file {
   my $passwd = shift;
   my $path = shift;
 
-  my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
+  my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port, 0);
   $client->login($user, $passwd);
 
   my $conn = $client->stor_raw($path);

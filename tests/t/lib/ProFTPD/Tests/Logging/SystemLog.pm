@@ -422,11 +422,14 @@ sub systemlog_ifclass_matching_class_bug3832 {
   my $config = {
     PidFile => $setup->{pid_file},
     ScoreboardFile => $setup->{scoreboard_file},
-    SystemLog => $setup->{system_log},
+    SystemLog => $system_log,
 
     AuthUserFile => $setup->{auth_user_file},
     AuthGroupFile => $setup->{auth_group_file},
     AuthOrder => 'mod_auth_file.c',
+
+    # The expected log message is emitted at this level
+    SyslogLevel => 'info',
 
     IfModules => {
       'mod_delay.c' => {
@@ -485,6 +488,7 @@ EOC
 
       my $buf;
       $conn->read($buf, 8192, 25);
+      sleep(0.25);
       eval { $conn->close() };
       $client->quit();
     };
@@ -549,11 +553,14 @@ sub systemlog_ifclass_not_matching_class_bug3832 {
   my $config = {
     PidFile => $setup->{pid_file},
     ScoreboardFile => $setup->{scoreboard_file},
-    SystemLog => $setup->{system_log},
+    SystemLog => $system_log,
 
     AuthUserFile => $setup->{auth_user_file},
     AuthGroupFile => $setup->{auth_group_file},
     AuthOrder => 'mod_auth_file.c',
+
+    # The expected log messages are emitted at this level
+    SyslogLevel => 'info',
 
     IfModules => {
       'mod_delay.c' => {
@@ -613,6 +620,7 @@ EOC
       my $buf;
       $conn->read($buf, 8192, 25);
       eval { $conn->close() };
+      sleep(0.25);
       $client->quit();
     };
     if ($@) {

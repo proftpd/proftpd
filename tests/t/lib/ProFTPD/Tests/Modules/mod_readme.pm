@@ -233,8 +233,10 @@ sub readme_login_path_nonexistent {
         test_msg("Expected response message '$expected', got '$resp_msg'"));
 
       $resp_msg = $client->response_msg(2);
-      $self->assert(!defined($resp_msg),
-        test_msg("Expected undefined, got '$resp_msg'"));
+      if (defined($resp_msg)) {
+        $self->assert(!defined($resp_msg),
+          test_msg("Expected undefined, got '$resp_msg'"));
+      }
 
       $client->quit();
     };
