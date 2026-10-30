@@ -1855,51 +1855,20 @@ EOC
 sub ifclass_global_no_logging {
   my $self = shift;
   my $tmpdir = $self->{tmpdir};
-
-  my $config_file = "$tmpdir/ifsess.conf";
-  my $pid_file = File::Spec->rel2abs("$tmpdir/ifsess.pid");
-  my $scoreboard_file = File::Spec->rel2abs("$tmpdir/ifsess.scoreboard");
-
-  my $log_file = test_get_logfile();
-
-  my $auth_user_file = File::Spec->rel2abs("$tmpdir/ifsess.passwd");
-  my $auth_group_file = File::Spec->rel2abs("$tmpdir/ifsess.group");
+  my $setup = test_setup($tmpdir, 'ifsess');
 
   my $ext_log = File::Spec->rel2abs("$tmpdir/ext.log");
   my $xfer_log = File::Spec->rel2abs("$tmpdir/xfer.log");
 
-  my $user = 'proftpd';
-  my $passwd = 'test';
-  my $group = 'ftpd';
-  my $home_dir = File::Spec->rel2abs($tmpdir);
-  my $uid = 500;
-  my $gid = 500;
-
-  # Make sure that, if we're running as root, that the home directory has
-  # permissions/privs set for the account we create
-  if ($< == 0) {
-    unless (chmod(0755, $home_dir)) {
-      die("Can't set perms on $home_dir to 0755: $!");
-    }
-
-    unless (chown($uid, $gid, $home_dir)) {
-      die("Can't set owner of $home_dir to $uid/$gid: $!");
-    }
-  }
-
-  auth_user_write($auth_user_file, $user, $passwd, $uid, $gid, $home_dir,
-    '/bin/bash');
-  auth_group_write($auth_group_file, $group, $gid, $user);
-
   my $config = {
-    PidFile => $pid_file,
-    ScoreboardFile => $scoreboard_file,
-    SystemLog => $log_file,
-    TraceLog => $log_file,
-    Trace => 'directory:20',
+    PidFile => $setup->{pid_file},
+    ScoreboardFile => $setup->{scoreboard_file},
+    SystemLog => $setup->{log_file},
+    TraceLog => $setup->{log_file},
+    Trace => 'directory:20 jot:20',
 
-    AuthUserFile => $auth_user_file,
-    AuthGroupFile => $auth_group_file,
+    AuthUserFile => $setup->{auth_user_file},
+    AuthGroupFile => $setup->{auth_group_file},
     AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
@@ -1909,17 +1878,17 @@ sub ifclass_global_no_logging {
     },
   };
 
-  my ($port, $config_user, $config_group) = config_write($config_file, $config);
+  my ($port, $config_user, $config_group) = config_write($setup->{config_file},
+    $config);
 
   # Append the mod_ifsession config to the end of the config file
-  if (open(my $fh, ">> $config_file")) {
-    my $limit_dir = $home_dir;
+  if (open(my $fh, ">> $setup->{config_file}")) {
+    my $limit_dir = $setup->{home_dir};
     if ($^O eq 'darwin') {
-      $limit_dir = ('/private' . $home_dir);
+      $limit_dir = ('/private' . $setup->{home_dir});
     }
 
     print $fh <<EOC;
-
 ExtendedLog $ext_log ALL default
 TransferLog $xfer_log
 
@@ -1935,11 +1904,11 @@ TransferLog $xfer_log
 </Global>
 EOC
     unless (close($fh)) {
-      die("Can't write $config_file: $!");
+      die("Can't write $setup->{config_file}: $!");
     }
 
   } else {
-    die("Can't open $config_file: $!");
+    die("Can't open $setup->{config_file}: $!");
   }
 
   # Open pipes, for use between the parent and child processes.  Specifically,
@@ -1958,12 +1927,11 @@ EOC
   if ($pid) {
     eval {
       my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
-      $client->login($user, $passwd);
+      $client->login($setup->{user}, $setup->{passwd});
       $client->mkd('foo');
-      $client->retr($config_file);
+      $client->retr($setup->{config_file});
       $client->quit();
     };
-
     if ($@) {
       $ex = $@;
     }
@@ -1972,7 +1940,7 @@ EOC
     $wfh->flush();
 
   } else {
-    eval { server_wait($config_file, $rfh) };
+    eval { server_wait($setup->{config_file}, $rfh) };
     if ($@) {
       warn($@);
       exit 1;
@@ -1982,8 +1950,7 @@ EOC
   }
 
   # Stop server
-  server_stop($pid_file);
-
+  server_stop($setup->{pid_file});
   $self->assert_child_ok($pid);
 
   eval {
@@ -1995,11 +1962,10 @@ EOC
         $ok = 0;
 
         if ($ENV{TEST_VERBOSE}) {
-          print STDERR "+ ExtendedLog: $line\n";
+          print STDERR "# $line\n";
         }
       }
       close($fh);
-
       $self->assert($ok, test_msg("Saw ExtendedLog messages unexpectedly"));
 
     } else {
@@ -2012,17 +1978,10 @@ EOC
     }
   };
   if ($@) {
-    $ex = $@;
+    $ex = $@ unless $ex;
   }
 
-  if ($ex) {
-    test_append_logfile($log_file, $ex);
-    unlink($log_file);
-
-    die($ex);
-  }
-
-  unlink($log_file);
+  test_cleanup($setup, $ex);
 }
 
 sub ifuser_no_pass_bug4199 {
