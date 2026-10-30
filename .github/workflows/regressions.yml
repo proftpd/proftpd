@@ -2,7 +2,7 @@ name: Regression Tests
 
 on:
   schedule:
-    - cron: "44 24 * * 4"
+    - cron: '44 2 * * 4'
   workflow_dispatch:
 
 jobs:
@@ -63,7 +63,7 @@ jobs:
         # NOTE: Docker does not have good IPv6 support, hence we disable it.
         run: |
           cd proftpd
-          ./configure --disable-ipv6
+          ./configure --disable-ipv6 --with-modules=mod_readme:mod_unique_id:mod_ifsession
           make
           ./proftpd -V
           make install
