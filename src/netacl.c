@@ -572,14 +572,22 @@ pr_netacl_t *pr_netacl_create(pool *p, char *aclstr) {
       }
 
       if (use_dns == FALSE) {
-        acl->type = use_glob ? PR_NETACL_TYPE_IPGLOB : PR_NETACL_TYPE_IPMATCH;
-        acl->addr = pr_netaddr_get_addr(p, aclstr, NULL);
-        if (acl->addr == NULL) {
-          return NULL;
+        if (use_glob == TRUE) {
+          acl->type = PR_NETACL_TYPE_IPGLOB;
+          acl->pattern = pstrdup(p, aclstr);
+
+        } else {
+          acl->addr = pr_netaddr_get_addr(p, aclstr, NULL);
+          if (acl->addr == NULL) {
+            return NULL;
+          }
+
+          acl->type = PR_NETACL_TYPE_IPMATCH;
+          acl->pattern = pstrdup(p, aclstr);
         }
 
       } else {
-        if (use_glob) {
+        if (use_glob == TRUE) {
           acl->type = PR_NETACL_TYPE_DNSGLOB;
           acl->pattern = pstrdup(p, aclstr);
 
