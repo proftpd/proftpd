@@ -61,6 +61,7 @@ START_TEST (netacl_create_test) {
   pr_netacl_type_t acl_type;
   char *acl_str;
 
+  mark_point();
   res = pr_netacl_create(NULL, NULL);
   ck_assert_msg(res == NULL, "Failed to handle NULL arguments");
   ck_assert_msg(errno == EINVAL, "Failed to set errno to EINVAL");
@@ -284,6 +285,40 @@ START_TEST (netacl_create_test) {
   acl_str = pstrdup(p, "!");
   res = pr_netacl_create(p, acl_str);
   ck_assert_msg(res == NULL, "Failed to handle bad ACL string '%s'", acl_str);
+
+  /* See ranges from Bug#3484. */
+#if defined(PR_USE_IPV6)
+  if (pr_netaddr_use_ipv6() == TRUE) {
+    acl_str = pstrdup(p, "127.0.0.[0-9]");
+    res = pr_netacl_create(p, acl_str);
+    ck_assert_msg(res != NULL, "Failed to handle ACL string '%s': %s", acl_str,
+      strerror(errno));
+
+    acl_type = pr_netacl_get_type(res);
+    ck_assert_msg(acl_type == PR_NETACL_TYPE_IPGLOB,
+      "Failed to have IPGLOB type for ACL string '%s'", acl_str);
+
+    pr_netaddr_disable_ipv6();
+    res = pr_netacl_create(p, acl_str);
+    ck_assert_msg(res != NULL, "Failed to handle ACL string '%s': %s", acl_str,
+      strerror(errno));
+
+    acl_type = pr_netacl_get_type(res);
+    ck_assert_msg(acl_type == PR_NETACL_TYPE_IPGLOB,
+      "Failed to have IPGLOB type for ACL string '%s'", acl_str);
+
+    pr_netaddr_enable_ipv6();
+  }
+#else
+  acl_str = pstrdup(p, "127.0.0.[0-9]");
+  res = pr_netacl_create(p, acl_str);
+  ck_assert_msg(res != NULL, "Failed to handle ACL string '%s': %s", acl_str,
+    strerror(errno));
+
+  acl_type = pr_netacl_get_type(res);
+  ck_assert_msg(acl_type == PR_NETACL_TYPE_IPGLOB,
+    "Failed to have IPGLOB type for ACL string '%s'", acl_str);
+#endif /* PR_USE_IPV6 */
 }
 END_TEST
 
