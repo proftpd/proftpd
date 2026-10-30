@@ -956,6 +956,14 @@ static int listfile(cmd_rec *cmd, pool *p, const char *resp_code,
 
         } else {
           addfile(cmd, nameline, suffix, sort_time, st.st_size);
+
+          /* We need to return 1 for directories, to signal our caller that
+           * it is a directory, and thus to act accordingly.  Such as honoring
+           * any -R option properly.
+           */
+          if (S_ISDIR(st.st_mode)) {
+            rval = 1;
+          }
         }
       }
 
@@ -965,6 +973,14 @@ static int listfile(cmd_rec *cmd, pool *p, const char *resp_code,
           S_ISLNK(st.st_mode)) {
         addfile(cmd, pr_fs_encode_path(cmd->tmp_pool, name), suffix, sort_time,
           st.st_size);
+
+        /* We need to return 1 for directories, to signal our caller that
+         * it is a directory, and thus to act accordingly.  Such as honoring
+         * any -R option properly.
+         */
+        if (S_ISDIR(st.st_mode)) {
+          rval = 1;
+        }
       }
     }
   }
