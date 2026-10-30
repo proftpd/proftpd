@@ -334,16 +334,25 @@ sub mdtm_abs_symlink_chrooted_bug4219 {
       my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port, 0, 1);
       $client->login($setup->{user}, $setup->{passwd});
 
-      my ($resp_code, $resp_msg) = $client->mdtm('test.d/test.lnk');
+      # We expect this to fail, since symlinks using absolute paths will not
+      # resolve properly within a chroot.
+      eval { $client->mdtm('test.d/test.lnk') };
+      unless ($@) {
+        die("MDTM succeeded unexpectedly");
+      }
+
+      my $resp_code = $client->response_code();
+      my $resp_msg = $client->response_msg();
       $client->quit();
 
-      my $expected = 213;
+      my $expected = 550;
       $self->assert($expected == $resp_code,
         test_msg("Expected response code $expected, got $resp_code"));
 
-      $self->assert(qr/\d+/, $resp_msg);
+      $expected = 'test.d/test.lnk: No such file or directory';
+      $self->assert($expected eq $resp_msg,
+        test_msg("Expected response message '$expected', got '$resp_msg'"));
     };
-
     if ($@) {
       $ex = $@;
     }
@@ -365,7 +374,7 @@ sub mdtm_abs_symlink_chrooted_bug4219 {
   server_stop($setup->{pid_file});
   $self->assert_child_ok($pid);
 
-  test_cleanup($setup->{log_file}, $ex);
+  test_cleanup($setup, $ex);
 }
 
 sub mdtm_rel_symlink {

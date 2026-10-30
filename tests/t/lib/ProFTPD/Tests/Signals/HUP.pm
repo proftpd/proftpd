@@ -340,16 +340,14 @@ sub upload_file {
 
   my $buf = "Hello again\n";
   $conn->write($buf, length($buf), 30);
+  sleep(0.25);
   eval { $conn->close() };
 
   my $resp_code = $client->response_code();
   my $resp_msg = $client->response_msg();
-
   $client->quit();
 
-  my $expected;
-
-  $expected = 226;
+  my $expected = 226;
   unless ($resp_code == $expected) {
     die("Expected response code $expected, got $resp_code");
   }
@@ -456,7 +454,6 @@ EOC
   }
 
   server_stop($setup->{pid_file});
-
   test_cleanup($setup, undef);
 }
 

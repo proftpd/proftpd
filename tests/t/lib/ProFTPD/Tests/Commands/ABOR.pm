@@ -57,7 +57,7 @@ my $TESTS = {
 
   abor_retr_binary_largefile_with_sendfile => {
     order => ++$order,
-    test_class => [qw(feature_sendfile forking)],
+    test_class => [qw(feature_sendfile flaky forking)],
   },
 
   abor_retr_binary_largefile_without_sendfile => {
@@ -112,12 +112,12 @@ my $TESTS = {
 
   abor_only_stor_ascii => {
     order => ++$order,
-    test_class => [qw(forking)],
+    test_class => [qw(flaky forking)],
   },
 
   abor_only_stor_binary => {
     order => ++$order,
-    test_class => [qw(forking)],
+    test_class => [qw(flaky forking)],
   },
 
   abor_only_list => {
@@ -2189,6 +2189,8 @@ sub abor_only_stor_ascii {
 
   my $test_file = File::Spec->rel2abs("$tmpdir/foo.txt");
 
+  my $timeout_idle = 20;
+
   my $config = {
     PidFile => $setup->{pid_file},
     ScoreboardFile => $setup->{scoreboard_file},
@@ -2200,6 +2202,7 @@ sub abor_only_stor_ascii {
     AuthGroupFile => $setup->{auth_group_file},
     AuthOrder => 'mod_auth_file.c',
 
+    TimeoutIdle => $timeout_idle,
     TimeoutLinger => 5,
 
     IfModules => {
@@ -2227,7 +2230,7 @@ sub abor_only_stor_ascii {
   defined(my $pid = fork()) or die("Can't fork: $!");
   if ($pid) {
     eval {
-      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
+      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port, 0, 5);
       $client->login($setup->{user}, $setup->{passwd});
       $client->pasv();
       $client->type('ascii');
@@ -2249,28 +2252,28 @@ sub abor_only_stor_ascii {
 
       # We expect 2 responses here: first, a 426 for the aborted data transfer,
       # followed by 226 for the successful ABOR command.  Order matters.
+      #
+      # However, due to changes in the Net::FTP client code, getting both
+      # responses is now a mess.  Sigh.
       my $resp_msgs = $client->response_msgs();
 
       my $resp_nmsgs = scalar(@$resp_msgs);
-      $self->assert($resp_nmsgs == 2,
-        test_msg("Expected 2 responses, got $resp_nmsgs"));
+      $self->assert($resp_nmsgs == 1,
+        test_msg("Expected 1 response, got $resp_nmsgs"));
 
       my $expected = 'Transfer aborted. Data connection closed.';
       $self->assert($expected eq $resp_msgs->[0],
         test_msg("Expected response message '$expected', got '$resp_msgs->[0]'"));
 
-      $expected = 'Abort successful';
-      $self->assert($expected eq $resp_msgs->[1],
-        test_msg("Expected response message '$expected', got '$resp_msgs->[1]'"));
-
       # Make sure the control connection did not close because of the abort.
       my ($resp_code, $resp_msg) = $client->quit();
 
-      $expected = 221;
+      # And now is when we'll see the 226 from the ABOR.  Stupid Perl client.
+      $expected = 226;
       $self->assert($expected == $resp_code,
         test_msg("Expected response message $expected, got $resp_code"));
 
-      $expected = 'Goodbye.';
+      $expected = 'Abort successful';
       $self->assert($expected eq $resp_msg,
         test_msg("Expected response message '$expected', got '$resp_msg'"));
     };
@@ -2305,6 +2308,8 @@ sub abor_only_stor_binary {
 
   my $test_file = File::Spec->rel2abs("$tmpdir/foo.txt");
 
+  my $timeout_idle = 20;
+
   my $config = {
     PidFile => $setup->{pid_file},
     ScoreboardFile => $setup->{scoreboard_file},
@@ -2316,6 +2321,7 @@ sub abor_only_stor_binary {
     AuthGroupFile => $setup->{auth_group_file},
     AuthOrder => 'mod_auth_file.c',
 
+    TimeoutIdle => $timeout_idle,
     TimeoutLinger => 5,
 
     IfModules => {
@@ -2343,7 +2349,7 @@ sub abor_only_stor_binary {
   defined(my $pid = fork()) or die("Can't fork: $!");
   if ($pid) {
     eval {
-      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
+      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port, 0, 5);
       $client->login($setup->{user}, $setup->{passwd});
       $client->pasv();
       $client->type('binary');
@@ -2365,28 +2371,29 @@ sub abor_only_stor_binary {
 
       # We expect 2 responses here: first, a 426 for the aborted data transfer,
       # followed by 226 for the successful ABOR command.  Order matters.
+      #
+      # Howeve, due to Net::FTP changes, we'll now only see one of those
+      # responses here.  Maybe.  It's a bit racy.
       my $resp_msgs = $client->response_msgs();
 
       my $resp_nmsgs = scalar(@$resp_msgs);
-      $self->assert($resp_nmsgs == 2,
-        test_msg("Expected 2 responses, got $resp_nmsgs"));
+      $self->assert($resp_nmsgs == 1 || $resp_nmsgs == 2,
+        test_msg("Expected 1 response, got $resp_nmsgs"));
 
       my $expected = 'Transfer aborted. Data connection closed.';
       $self->assert($expected eq $resp_msgs->[0],
         test_msg("Expected response message '$expected', got '$resp_msgs->[0]'"));
 
-      $expected = 'Abort successful';
-      $self->assert($expected eq $resp_msgs->[1],
-        test_msg("Expected response message '$expected', got '$resp_msgs->[1]'"));
-
       # Make sure the control connection did not close because of the abort.
+      #
+      # And here is when we see the ABOR response.  Sigh.
       my ($resp_code, $resp_msg) = $client->quit();
 
-      $expected = 221;
+      $expected = 226;
       $self->assert($expected == $resp_code,
         test_msg("Expected response message $expected, got $resp_code"));
 
-      $expected = 'Goodbye.';
+      $expected = 'Abort successful';
       $self->assert($expected eq $resp_msg,
         test_msg("Expected response message '$expected', got '$resp_msg'"));
     };

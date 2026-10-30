@@ -1355,7 +1355,7 @@ sub rnfr_during_xfer_bug3492 {
       my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
       $client->login($user, $passwd);
 
-      my $conn = $client->list_raw();
+      my $conn = $client->list_raw('-l');
       unless ($conn) {
         die("Failed to LIST: " . $client->response_code() . " " .
           $client->response_msg());
@@ -1365,21 +1365,19 @@ sub rnfr_during_xfer_bug3492 {
       $conn->read($tmp, 8, 30);
       $buf .= $tmp;
 
-      eval { $client->rnfr($src_file) };
-      unless ($@) {
-        die("RNFR succeeded unexpectedly");
-      }
+      # Even though we send this command now, the response we receive
+      # will be from the LIST command, so that protocol synchronization is
+      # preserved.
+      $client->rnfr($src_file);
 
       my $resp_code = $client->response_code();
       my $resp_msg = $client->response_msg();
 
-      my $expected;
-
-      $expected = 450;
+      my $expected = 226;
       $self->assert($expected == $resp_code,
         test_msg("Expected $expected, got $resp_code"));
 
-      $expected = "RNFR: data transfer in progress";
+      $expected = 'Transfer complete';
       $self->assert($expected eq $resp_msg,
         test_msg("Expected '$expected', got '$resp_msg'"));
 
@@ -1391,7 +1389,6 @@ sub rnfr_during_xfer_bug3492 {
 
       $client->quit();
     };
-
     if ($@) {
       $ex = $@;
     }

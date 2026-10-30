@@ -104,12 +104,12 @@ sub ssh2_session {
       }
       $client->close();
 
+      $resp = '' unless $resp;
       chomp($resp);
       my $expected = '';
-      $self->assert(qr/$expected/, $resp,
+      $self->assert($expected eq $resp,
         test_msg("Expected response '$expected', got '$resp'"));
     };
-
     if ($@) {
       $ex = $@;
     }

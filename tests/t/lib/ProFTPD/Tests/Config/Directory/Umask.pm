@@ -54,22 +54,7 @@ sub list_tests {
 sub umask_root_dir_bug2677 {
   my $self = shift;
   my $tmpdir = $self->{tmpdir};
-
-  my $config_file = "$tmpdir/dir.conf";
-  my $pid_file = File::Spec->rel2abs("$tmpdir/dir.pid");
-  my $scoreboard_file = File::Spec->rel2abs("$tmpdir/dir.scoreboard");
-
-  my $log_file = test_get_logfile();
-
-  my $auth_user_file = File::Spec->rel2abs("$tmpdir/dir.passwd");
-  my $auth_group_file = File::Spec->rel2abs("$tmpdir/dir.group");
-
-  my $user = 'proftpd';
-  my $passwd = 'test';
-  my $group = 'ftpd';
-  my $home_dir = File::Spec->rel2abs($tmpdir);
-  my $uid = 500;
-  my $gid = 500;
+  my $setup = test_setup($tmpdir, 'dir');
 
   my $sub_dir = File::Spec->rel2abs("$tmpdir/foo");
   mkpath($sub_dir);
@@ -77,54 +62,28 @@ sub umask_root_dir_bug2677 {
   my $test_dir = File::Spec->rel2abs("$tmpdir/foo/testdir");
   my $test_file = File::Spec->rel2abs("$tmpdir/foo/test.txt");
 
-  # Make sure that, if we're running as root, that the home directory has
-  # permissions/privs set for the account we create
   if ($< == 0) {
-    unless (chmod(0755, $home_dir, $sub_dir)) {
-      die("Can't set perms on $home_dir, $sub_dir to 0755: $!");
+    unless (chmod(0755, $sub_dir)) {
+      die("Can't set perms on $sub_dir to 0755: $!");
     }
 
-    unless (chown($uid, $gid, $home_dir, $sub_dir)) {
-      die("Can't set owner of $home_dir, $sub_dir to $uid/$gid: $!");
+    unless (chown($setup->{uid}, $setup->{gid}, $sub_dir)) {
+      die("Can't set owner of $sub_dir to $setup->{uid}/$setup->{gid}: $!");
     }
   }
 
-  auth_user_write($auth_user_file, $user, $passwd, $uid, $gid, $home_dir,
-    '/bin/bash');
-  auth_group_write($auth_group_file, $group, $gid, $user);
-
   my $config = {
-    PidFile => $pid_file,
-    ScoreboardFile => $scoreboard_file,
-    SystemLog => $log_file,
-    TraceLog => $log_file,
+    PidFile => $setup->{pid_file},
+    ScoreboardFile => $setup->{scoreboard_file},
+    SystemLog => $setup->{log_file},
+    TraceLog => $setup->{log_file},
     Trace => 'directory:10',
 
-    AuthUserFile => $auth_user_file,
-    AuthGroupFile => $auth_group_file,
+    AuthUserFile => $setup->{auth_user_file},
+    AuthGroupFile => $setup->{auth_group_file},
+    AuthOrder => 'mod_auth_file.c',
 
     DefaultChdir => '~',
-
-    Directory => {
-      '/' => {
-        Umask => '066 077',
-        Limit => {
-          'MKD STOR' => {
-            DenyAll => '',
-          },
-        },
-      },
-
-      "~" => {
-        Umask => '000 000',
-        Limit => {
-          'CWD MKD STOR' => {
-            AllowUser => $user,
-            DenyAll => '',
-          },
-        },
-      },
-    },
 
     IfModules => {
       'mod_delay.c' => {
@@ -133,7 +92,35 @@ sub umask_root_dir_bug2677 {
     },
   };
 
-  my ($port, $config_user, $config_group) = config_write($config_file, $config);
+  my ($port, $config_user, $config_group) = config_write($setup->{config_file},
+    $config);
+
+  if (open(my $fh, ">> $setup->{config_file}")) {
+    print $fh <<EOC;
+<Directory />
+  Umask 066 077
+
+  <Limit MKD STOR>
+    DenyAll
+  </Limit>
+</Directory>
+
+<Directory ~>
+  Umask 000 000
+
+  <Limit CWD MKD STOR>
+    AllowUser $setup->{user}
+    DenyAll
+  </Limit>
+</Directory>
+EOC
+    unless (close($fh)) {
+      die("Can't write $setup->{config_file}: $!");
+    }
+
+  } else {
+    die("Can't open $setup->{config_file}: $!");
+  }
 
   # Open pipes, for use between the parent and child processes.  Specifically,
   # the child will indicate when it's done with its test by writing a message
@@ -151,16 +138,13 @@ sub umask_root_dir_bug2677 {
   if ($pid) {
     eval {
       my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
-      $client->login($user, $passwd);
+      $client->login($setup->{user}, $setup->{passwd});
 
-      my ($resp_code, $resp_msg);
-      ($resp_code, $resp_msg) = $client->mkd("foo/testdir");
+      my ($resp_code, $resp_msg) = $client->mkd("foo/testdir");
 
-      my $expected;
-
-      $expected = 257;
+      my $expected = 257;
       $self->assert($expected == $resp_code,
-        test_msg("Expected $expected, got $resp_code"));
+        test_msg("Expected response code $expected, got $resp_code"));
 
       $expected = "\"$test_dir\" - Directory successfully created";
       $self->assert($expected eq $resp_msg,
@@ -179,25 +163,19 @@ sub umask_root_dir_bug2677 {
 
       my $buf = "Foo!\n";
       $conn->write($buf, length($buf));
-      $conn->close();
+      sleep(0.25);
+      eval { $conn->close() };
 
       $resp_code = $client->response_code();
       $resp_msg = $client->response_msg();
-
-      $expected = 226;
-      $self->assert($expected == $resp_code,
-        test_msg("Expected '$expected', got '$resp_code'"));
-
-      $expected = "Transfer complete";
-      $self->assert($expected eq $resp_msg,
-        test_msg("Expected '$expected', got '$resp_msg'"));
+      $client->quit();
+      $self->assert_transfer_ok($resp_code, $resp_msg);
 
       $mode = sprintf("%04o", (stat($test_file))[2] & 07777);
       $expected = '0666';
       $self->assert($expected == $mode,
         test_msg("Expected '$expected', got '$mode'"));
     };
-
     if ($@) {
       $ex = $@;
     }
@@ -206,7 +184,7 @@ sub umask_root_dir_bug2677 {
     $wfh->flush();
 
   } else {
-    eval { server_wait($config_file, $rfh) };
+    eval { server_wait($setup->{config_file}, $rfh) };
     if ($@) {
       warn($@);
       exit 1;
@@ -216,39 +194,16 @@ sub umask_root_dir_bug2677 {
   }
 
   # Stop server
-  server_stop($pid_file);
-
+  server_stop($setup->{pid_file});
   $self->assert_child_ok($pid);
 
-  if ($ex) {
-    test_append_logfile($log_file, $ex);
-    unlink($log_file);
-
-    die($ex);
-  }
-
-  unlink($log_file);
+  test_cleanup($setup, $ex);
 }
 
 sub umask_server_config_bug2677 {
   my $self = shift;
   my $tmpdir = $self->{tmpdir};
-
-  my $config_file = "$tmpdir/dir.conf";
-  my $pid_file = File::Spec->rel2abs("$tmpdir/dir.pid");
-  my $scoreboard_file = File::Spec->rel2abs("$tmpdir/dir.scoreboard");
-
-  my $log_file = test_get_logfile();
-
-  my $auth_user_file = File::Spec->rel2abs("$tmpdir/dir.passwd");
-  my $auth_group_file = File::Spec->rel2abs("$tmpdir/dir.group");
-
-  my $user = 'proftpd';
-  my $passwd = 'test';
-  my $group = 'ftpd';
-  my $home_dir = File::Spec->rel2abs($tmpdir);
-  my $uid = 500;
-  my $gid = 500;
+  my $setup = test_setup($tmpdir, 'dir');
 
   my $sub_dir = File::Spec->rel2abs("$tmpdir/foo");
   mkpath($sub_dir);
@@ -256,54 +211,29 @@ sub umask_server_config_bug2677 {
   my $test_dir = File::Spec->rel2abs("$tmpdir/foo/testdir");
   my $test_file = File::Spec->rel2abs("$tmpdir/foo/test.txt");
 
-  # Make sure that, if we're running as root, that the home directory has
-  # permissions/privs set for the account we create
   if ($< == 0) {
-    unless (chmod(0755, $home_dir, $sub_dir)) {
-      die("Can't set perms on $home_dir, $sub_dir to 0755: $!");
+    unless (chmod(0755, $sub_dir)) {
+      die("Can't set perms on $sub_dir to 0755: $!");
     }
 
-    unless (chown($uid, $gid, $home_dir, $sub_dir)) {
-      die("Can't set owner of $home_dir, $sub_dir to $uid/$gid: $!");
+    unless (chown($setup->{uid}, $setup->{gid}, $sub_dir)) {
+      die("Can't set owner of $sub_dir to $setup->{uid}/$setup->{gid}: $!");
     }
   }
 
-  auth_user_write($auth_user_file, $user, $passwd, $uid, $gid, $home_dir,
-    '/bin/bash');
-  auth_group_write($auth_group_file, $group, $gid, $user);
-
   my $config = {
-    PidFile => $pid_file,
-    ScoreboardFile => $scoreboard_file,
-    SystemLog => $log_file,
-    TraceLog => $log_file,
+    PidFile => $setup->{pid_file},
+    ScoreboardFile => $setup->{scoreboard_file},
+    SystemLog => $setup->{log_file},
+    TraceLog => $setup->{log_file},
     Trace => 'directory:10',
 
-    AuthUserFile => $auth_user_file,
-    AuthGroupFile => $auth_group_file,
+    AuthUserFile => $setup->{auth_user_file},
+    AuthGroupFile => $setup->{auth_group_file},
+    AuthOrder => 'mod_auth_file.c',
 
     DefaultChdir => '~',
     Umask => '066 077',
-
-    Directory => {
-      '/' => {
-        Limit => {
-          'MKD STOR' => {
-            DenyAll => '',
-          },
-        },
-      },
-
-      '~' => {
-        Umask => '000 000',
-        Limit => {
-          'CWD MKD STOR' => {
-            AllowUser => $user,
-            DenyAll => '',
-          },
-        },
-      },
-    },
 
     IfModules => {
       'mod_delay.c' => {
@@ -312,7 +242,33 @@ sub umask_server_config_bug2677 {
     },
   };
 
-  my ($port, $config_user, $config_group) = config_write($config_file, $config);
+  my ($port, $config_user, $config_group) = config_write($setup->{config_file},
+    $config);
+
+  if (open(my $fh, ">> $setup->{config_file}")) {
+    print $fh <<EOC;
+<Directory />
+  <Limit MKD STOR>
+    DenyAll
+  </Limit>
+</Directory>
+
+<Directory ~>
+  Umask 000 000
+
+  <Limit CWD MKD STOR>
+    AllowUser $setup->{user}
+    DenyAll
+  </Limit>
+</Directory>
+EOC
+    unless (close($fh)) {
+      die("Can't write $setup->{config_file}: $!");
+    }
+
+  } else {
+    die("Can't open $setup->{config_file}: $!");
+  }
 
   # Open pipes, for use between the parent and child processes.  Specifically,
   # the child will indicate when it's done with its test by writing a message
@@ -330,16 +286,13 @@ sub umask_server_config_bug2677 {
   if ($pid) {
     eval {
       my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
-      $client->login($user, $passwd);
+      $client->login($setup->{user}, $setup->{passwd});
 
-      my ($resp_code, $resp_msg);
-      ($resp_code, $resp_msg) = $client->mkd("foo/testdir");
+      my ($resp_code, $resp_msg) = $client->mkd("foo/testdir");
 
-      my $expected;
-
-      $expected = 257;
+      my $expected = 257;
       $self->assert($expected == $resp_code,
-        test_msg("Expected $expected, got $resp_code"));
+        test_msg("Expected response code $expected, got $resp_code"));
 
       $expected = "\"$test_dir\" - Directory successfully created";
       $self->assert($expected eq $resp_msg,
@@ -358,25 +311,19 @@ sub umask_server_config_bug2677 {
 
       my $buf = "Foo!\n";
       $conn->write($buf, length($buf));
-      $conn->close();
+      sleep(0.25);
+      eval { $conn->close() };
 
       $resp_code = $client->response_code();
       $resp_msg = $client->response_msg();
-
-      $expected = 226;
-      $self->assert($expected == $resp_code,
-        test_msg("Expected '$expected', got '$resp_code'"));
-
-      $expected = "Transfer complete";
-      $self->assert($expected eq $resp_msg,
-        test_msg("Expected '$expected', got '$resp_msg'"));
+      $client->quit();
+      $self->assert_transfer_ok($resp_code, $resp_msg);
 
       $mode = sprintf("%04o", (stat($test_file))[2] & 07777);
       $expected = '0666';
       $self->assert($expected == $mode,
         test_msg("Expected '$expected', got '$mode'"));
     };
-
     if ($@) {
       $ex = $@;
     }
@@ -385,7 +332,7 @@ sub umask_server_config_bug2677 {
     $wfh->flush();
 
   } else {
-    eval { server_wait($config_file, $rfh) };
+    eval { server_wait($setup->{config_file}, $rfh) };
     if ($@) {
       warn($@);
       exit 1;
@@ -395,18 +342,10 @@ sub umask_server_config_bug2677 {
   }
 
   # Stop server
-  server_stop($pid_file);
-
+  server_stop($setup->{pid_file});
   $self->assert_child_ok($pid);
 
-  if ($ex) {
-    test_append_logfile($log_file, $ex);
-    unlink($log_file);
-
-    die($ex);
-  }
-
-  unlink($log_file);
+  test_cleanup($setup, $ex);
 }
 
 sub umask_glob_subdirs {
@@ -464,6 +403,7 @@ sub umask_glob_subdirs {
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
+    AuthOrder => 'mod_auth_file.c',
 
     DefaultChdir => '~',
 
@@ -621,22 +561,7 @@ sub umask_glob_subdirs {
 sub umask_glob_dir_bug3491 {
   my $self = shift;
   my $tmpdir = $self->{tmpdir};
-
-  my $config_file = "$tmpdir/dir.conf";
-  my $pid_file = File::Spec->rel2abs("$tmpdir/dir.pid");
-  my $scoreboard_file = File::Spec->rel2abs("$tmpdir/dir.scoreboard");
-
-  my $log_file = test_get_logfile();
-
-  my $auth_user_file = File::Spec->rel2abs("$tmpdir/dir.passwd");
-  my $auth_group_file = File::Spec->rel2abs("$tmpdir/dir.group");
-
-  my $user = 'proftpd';
-  my $passwd = 'test';
-  my $group = 'ftpd';
-  my $home_dir = File::Spec->rel2abs($tmpdir);
-  my $uid = 500;
-  my $gid = 500;
+  my $setup = test_setup($tmpdir, 'dir');
 
   my $sub_dir1 = File::Spec->rel2abs("$tmpdir/subdir");
   mkpath($sub_dir1);
@@ -648,46 +573,31 @@ sub umask_glob_dir_bug3491 {
 
   my $test_dir3 = File::Spec->rel2abs("$tmpdir/thirddir");
 
-  # Make sure that, if we're running as root, that the home directory has
-  # permissions/privs set for the account we create
   if ($< == 0) {
-    unless (chmod(0755, $home_dir, $sub_dir1, $sub_dir2)) {
-      die("Can't set perms on $home_dir, $sub_dir1, $sub_dir2 to 0755: $!");
+    unless (chmod(0755, $sub_dir1, $sub_dir2)) {
+      die("Can't set perms on $sub_dir1, $sub_dir2 to 0755: $!");
     }
 
-    unless (chown($uid, $gid, $home_dir, $sub_dir1, $sub_dir2)) {
-      die("Can't set owner of $home_dir, $sub_dir1, $sub_dir2 to $uid/$gid: $!");
+    unless (chown($setup->{uid}, $setup->{gid}, $sub_dir1, $sub_dir2)) {
+      die("Can't set owner of $sub_dir1, $sub_dir2 to $setup->{uid}/$setup->{gid}: $!");
     }
   }
 
-  auth_user_write($auth_user_file, $user, $passwd, $uid, $gid, $home_dir,
-    '/bin/bash');
-  auth_group_write($auth_group_file, $group, $gid, $user);
-
   my $config = {
-    PidFile => $pid_file,
-    ScoreboardFile => $scoreboard_file,
-    SystemLog => $log_file,
-    TraceLog => $log_file,
+    PidFile => $setup->{pid_file},
+    ScoreboardFile => $setup->{scoreboard_file},
+    SystemLog => $setup->{log_file},
+    TraceLog => $setup->{log_file},
     Trace => 'directory:10',
 
-    AuthUserFile => $auth_user_file,
-    AuthGroupFile => $auth_group_file,
+    AuthUserFile => $setup->{auth_user_file},
+    AuthGroupFile => $setup->{auth_group_file},
+    AuthOrder => 'mod_auth_file.c',
 
     # Set a default umask
     Umask => '027 027',
 
     DefaultChdir => '~',
-
-    Directory => {
-      '~/*/foo' => {
-        Umask => '066 077',
-      },
-
-      '~/subdir/foo' => {
-        Umask => '066 077',
-      },
-    },
 
     IfModules => {
       'mod_delay.c' => {
@@ -696,7 +606,26 @@ sub umask_glob_dir_bug3491 {
     },
   };
 
-  my ($port, $config_user, $config_group) = config_write($config_file, $config);
+  my ($port, $config_user, $config_group) = config_write($setup->{config_file},
+    $config);
+
+  if (open(my $fh, ">> $setup->{config_file}")) {
+    print $fh <<EOC;
+<Directory ~/*/foo>
+  Umask 066 077
+</Directory>
+
+<Directory ~/subdir/foo>
+  Umask 066 077
+</Directory>
+EOC
+    unless (close($fh)) {
+      die("Can't write $setup->{config_file}: $!");
+    }
+
+  } else {
+    die("Can't open $setup->{config_file}: $!");
+  }
 
   # Open pipes, for use between the parent and child processes.  Specifically,
   # the child will indicate when it's done with its test by writing a message
@@ -714,20 +643,17 @@ sub umask_glob_dir_bug3491 {
   if ($pid) {
     eval {
       my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
-      $client->login($user, $passwd);
+      $client->login($setup->{user}, $setup->{passwd});
 
-      my $expected;
-      my ($resp_code, $resp_msg);
+      my ($resp_code, $resp_msg) = $client->mkd("subdir/foo");
 
-      ($resp_code, $resp_msg) = $client->mkd("subdir/foo");
-
-      $expected = 257;
+      my $expected = 257;
       $self->assert($expected == $resp_code,
-        test_msg("Expected $expected, got $resp_code"));
+        test_msg("Expected response code $expected, got $resp_code"));
 
       $expected = "\"$test_dir1\" - Directory successfully created";
       $self->assert($expected eq $resp_msg,
-        test_msg("Expected '$expected', got '$resp_msg'"));
+        test_msg("Expected response message '$expected', got '$resp_msg'"));
 
       my $mode = sprintf("%04o", (stat($test_dir1))[2] & 07777);
       $expected = '0700';
@@ -738,34 +664,34 @@ sub umask_glob_dir_bug3491 {
 
       $expected = 257;
       $self->assert($expected == $resp_code,
-        test_msg("Expected $expected, got $resp_code"));
+        test_msg("Expected response code $expected, got $resp_code"));
 
       $expected = "\"$test_dir2\" - Directory successfully created";
       $self->assert($expected eq $resp_msg,
-        test_msg("Expected '$expected', got '$resp_msg'"));
+        test_msg("Expected response message '$expected', got '$resp_msg'"));
 
       $mode = sprintf("%04o", (stat($test_dir2))[2] & 07777);
       $expected = '0700';
       $self->assert($expected == $mode,
-        test_msg("Expected '$expected', got '$mode'"));
+        test_msg("Expected perms '$expected', got '$mode'"));
 
       ($resp_code, $resp_msg) = $client->mkd("thirddir");
 
       $expected = 257;
       $self->assert($expected == $resp_code,
-        test_msg("Expected $expected, got $resp_code"));
+        test_msg("Expected response code $expected, got $resp_code"));
 
       $expected = "\"$test_dir3\" - Directory successfully created";
       $self->assert($expected eq $resp_msg,
-        test_msg("Expected '$expected', got '$resp_msg'"));
+        test_msg("Expected response message '$expected', got '$resp_msg'"));
 
       $mode = sprintf("%04o", (stat($test_dir3))[2] & 07777);
       $expected = '0750';
       $self->assert($expected == $mode,
-        test_msg("Expected '$expected', got '$mode'"));
+        test_msg("Expected perms '$expected', got '$mode'"));
 
+      $client->quit();
     };
-
     if ($@) {
       $ex = $@;
     }
@@ -774,7 +700,7 @@ sub umask_glob_dir_bug3491 {
     $wfh->flush();
 
   } else {
-    eval { server_wait($config_file, $rfh) };
+    eval { server_wait($setup->{config_file}, $rfh) };
     if ($@) {
       warn($@);
       exit 1;
@@ -784,18 +710,10 @@ sub umask_glob_dir_bug3491 {
   }
 
   # Stop server
-  server_stop($pid_file);
-
+  server_stop($setup->{pid_file});
   $self->assert_child_ok($pid);
 
-  if ($ex) {
-    test_append_logfile($log_file, $ex);
-    unlink($log_file);
-
-    die($ex);
-  }
-
-  unlink($log_file);
+  test_cleanup($setup, $ex);
 }
 
 sub umask_no_glob_dir_bug3491 {
@@ -853,6 +771,7 @@ sub umask_no_glob_dir_bug3491 {
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
+    AuthOrder => 'mod_auth_file.c',
 
     # Set a default umask
     Umask => '027 027',

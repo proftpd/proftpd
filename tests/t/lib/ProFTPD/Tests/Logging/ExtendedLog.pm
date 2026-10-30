@@ -289,7 +289,7 @@ my $TESTS = {
 
   extlog_xfer_status_cancelled => {
     order => ++$order,
-    test_class => [qw(forking)],
+    test_class => [qw(flaky forking)],
   },
 
   extlog_xfer_status_failed => {

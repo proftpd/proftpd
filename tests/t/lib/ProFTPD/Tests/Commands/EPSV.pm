@@ -804,7 +804,7 @@ sub epsv_during_xfer_bug3487 {
       my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
       $client->login($setup->{user}, $setup->{passwd});
 
-      my $conn = $client->list_raw();
+      my $conn = $client->list_raw('-l');
       unless ($conn) {
         die("Failed to LIST: " . $client->response_code() . " " .
           $client->response_msg());
@@ -814,19 +814,19 @@ sub epsv_during_xfer_bug3487 {
       $conn->read($tmp, 8, 30);
       $buf .= $tmp;
 
+      # The response we received here will be from the previous LIST command,
+      # in order to preserve protocol synchronization.
+
       eval { $client->epsv() };
-      unless ($@) {
-        die("EPSV succeeded unexpectedly");
-      }
 
       my $resp_code = $client->response_code();
       my $resp_msg = $client->response_msg();
 
-      my $expected = 450;
+      my $expected = 226;
       $self->assert($expected == $resp_code,
         test_msg("Expected response code $expected, got $resp_code"));
 
-      $expected = 'EPSV: data transfer in progress';
+      $expected = 'Transfer complete';
       $self->assert($expected eq $resp_msg,
         test_msg("Expected response message '$expected', got '$resp_msg'"));
 
@@ -839,7 +839,14 @@ sub epsv_during_xfer_bug3487 {
 
       $resp_code = $client->response_code();
       $resp_msg = $client->response_msg();
-      $self->assert_transfer_ok($resp_code, $resp_msg);
+
+      $expected = 229;
+      $self->assert($expected == $resp_code,
+        test_msg("Expected response code $expected, got $resp_code"));
+
+      $expected = '^Entering Extended Passive Mode';
+      $self->assert(qr/$expected/, $resp_msg,
+        test_msg("Expected response message '$expected', got '$resp_msg'"));
 
       $client->quit();
     };

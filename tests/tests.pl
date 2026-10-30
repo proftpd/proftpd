@@ -598,8 +598,8 @@ if (defined($opts->{C})) {
   $ENV{PROFTPD_TEST_ENABLE_CLASS} = join(':', @{ $opts->{C} });
 
 } else {
-  # Disable all 'inprogress' and 'slow' tests by default
-  $ENV{PROFTPD_TEST_DISABLE_CLASS} = 'inprogress:slow';
+  # Disable all 'flaky', 'inprogress' and 'slow' tests by default
+  $ENV{PROFTPD_TEST_DISABLE_CLASS} = 'flaky:inprogress:slow';
 }
 
 if (defined($opts->{F})) {

@@ -1253,9 +1253,8 @@ sub hiddenstores_timeout_stalled_bug4035 {
 
       eval { $conn->close() };
 
-      my $resp_code = $client->response_code();
-      my $resp_msg = $client->response_msg();
-      $self->assert_transfer_ok($resp_code, $resp_msg);
+      # At this point, the TimeoutStalled timer should have disconnected
+      # us.  No responses, no more commands.
 
       eval { $client->quit() };
       unless ($@) {

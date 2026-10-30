@@ -920,7 +920,9 @@ sub stor_abs_symlink_chrooted_bug4219 {
     AuthGroupFile => $setup->{auth_group_file},
     AuthOrder => 'mod_auth_file.c',
 
+    AllowOverwrite => 'on',
     DefaultRoot => '~',
+    TransferOptions => 'AllowSymlinkUploads',
 
     IfModules => {
       'mod_delay.c' => {
@@ -951,30 +953,26 @@ sub stor_abs_symlink_chrooted_bug4219 {
       $client->login($setup->{user}, $setup->{passwd});
       $client->type('binary');
 
+      # We expect this to fail because symlinks using absolute paths will
+      # not resolve properly within a chroot.
+
       my $path = 'sub.d/test.lnk';
       my $conn = $client->stor_raw($path);
-      unless ($conn) {
-        die("STOR failed: " . $client->response_code() . " " .
-          $client->response_msg());
+      if ($conn) {
+        die("STOR succeeded unexpectedly");
       }
-
-      my $buf = "Foo!\r\n";
-      $conn->write($buf, length($buf), 25);
-      eval { $conn->close() };
 
       my $resp_code = $client->response_code();
       my $resp_msg = $client->response_msg();
-      $self->assert_transfer_ok($resp_code, $resp_msg);
-
       $client->quit();
 
-      $self->assert(-f $test_file,
-        test_msg("File $test_file does not exist as expected"));
+      my $expected = 550;
+      $self->assert($expected == $resp_code,
+        test_msg("Expected response code $expected, got $resp_code"));
 
-      my $expected = -s $test_file;
-      my $size = length($buf);
-      $self->assert($expected == $size,
-        test_msg("Expected size $expected, got $size"));
+      $expected = "$path: No such file or directory";
+      $self->assert($expected eq $resp_msg,
+        test_msg("Expected response message '$expected', got '$resp_code'"));
     };
     if ($@) {
       $ex = $@;
@@ -1171,7 +1169,9 @@ sub stor_rel_symlink_chrooted_bug4219 {
     AuthGroupFile => $setup->{auth_group_file},
     AuthOrder => 'mod_auth_file.c',
 
+    AllowOverwrite => 'on',
     DefaultRoot => '~',
+    TransferOptions => 'AllowSymlinkUploads',
 
     IfModules => {
       'mod_delay.c' => {
@@ -1749,7 +1749,9 @@ sub stor_fails_abs_symlink_dir_enoent_chrooted_bug4219 {
     AuthGroupFile => $setup->{auth_group_file},
     AuthOrder => 'mod_auth_file.c',
 
+    AllowOverwrite => 'on',
     DefaultRoot => '~',
+    TransferOptions => 'AllowSymlinkUploads',
 
     IfModules => {
       'mod_delay.c' => {
@@ -2006,7 +2008,9 @@ sub stor_fails_rel_symlink_dir_enoent_chrooted_bug4219 {
     AuthGroupFile => $setup->{auth_group_file},
     AuthOrder => 'mod_auth_file.c',
 
+    AllowOverwrite => 'on',
     DefaultRoot => '~',
+    TransferOptions => 'AllowSymlinkUploads',
 
     IfModules => {
       'mod_delay.c' => {

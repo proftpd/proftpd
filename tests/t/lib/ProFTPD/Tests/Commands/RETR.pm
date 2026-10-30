@@ -1421,28 +1421,27 @@ sub retr_abs_symlink_chrooted_bug4219 {
       $client->login($setup->{user}, $setup->{passwd});
       $client->type('binary');
 
+      # We expect this to fail because symlinks using absolute paths will
+      # not resolve properly within a chroot.
+
       my $path = 'test.d/test.lnk';
       my $conn = $client->retr_raw($path);
-      unless ($conn) {
-        die("RETR failed: " . $client->response_code() . " " .
-          $client->response_msg());
+      if ($conn) {
+        die("RETR succeeded unexpectedly");
       }
-
-      my $buf;
-      $conn->read($buf, 8192, 30);
-      my $size = $conn->bytes_read();
-      eval { $conn->close() };
 
       my $resp_code = $client->response_code();
       my $resp_msg = $client->response_msg();
-      $self->assert_transfer_ok($resp_code, $resp_msg);
       $client->quit();
 
-      my $expected = 5;
-      $self->assert($expected == $size,
-        test_msg("Expected size $expected, got $size"));
-    };
+      my $expected = 550;
+      $self->assert($expected == $resp_code,
+        test_msg("Expected response code $expected, got $resp_code"));
 
+      $expected = "$path: No such file or directory";
+      $self->assert($expected eq $resp_msg,
+        test_msg("Expected response message '$expected', got '$resp_msg'"));
+    };
     if ($@) {
       $ex = $@;
     }

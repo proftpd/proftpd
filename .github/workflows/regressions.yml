@@ -1,6 +1,8 @@
 name: Regression Tests
 
 on:
+  schedule:
+    - cron: "44 24 * * 4"
   workflow_dispatch:
 
 jobs:

@@ -79,38 +79,7 @@ sub list_tests {
 sub listoptions_opt_t {
   my $self = shift;
   my $tmpdir = $self->{tmpdir};
-
-  my $config_file = "$tmpdir/config.conf";
-  my $pid_file = File::Spec->rel2abs("$tmpdir/config.pid");
-  my $scoreboard_file = File::Spec->rel2abs("$tmpdir/config.scoreboard");
-
-  my $log_file = test_get_logfile();
-
-  my $auth_user_file = File::Spec->rel2abs("$tmpdir/config.passwd");
-  my $auth_group_file = File::Spec->rel2abs("$tmpdir/config.group");
-
-  my $user = 'proftpd';
-  my $passwd = 'test';
-  my $group = 'ftpd';
-  my $home_dir = File::Spec->rel2abs($tmpdir);
-  my $uid = 500;
-  my $gid = 500;
-
-  # Make sure that, if we're running as root, that the home directory has
-  # permissions/privs set for the account we create
-  if ($< == 0) {
-    unless (chmod(0755, $home_dir)) {
-      die("Can't set perms on $home_dir to 0755: $!");
-    }
-
-    unless (chown($uid, $gid, $home_dir)) {
-      die("Can't set owner of $home_dir to $uid/$gid: $!");
-    }
-  }
-
-  auth_user_write($auth_user_file, $user, $passwd, $uid, $gid, $home_dir,
-    '/bin/bash');
-  auth_group_write($auth_group_file, $group, $gid, $user);
+  my $setup = test_setup($tmpdir, 'config');
 
   # Create three files, and use utime() to modify the last-mod time of
   # each.
@@ -137,10 +106,13 @@ sub listoptions_opt_t {
         die("Can't write $path: $!");
       }
 
-      my $mtime = (time() - ($count * 10));
-      unless (utime(undef, $mtime, $path)) {
+      my $now = time();
+      my $mtime = ($now - ($count * 10));
+      unless (utime($now, $mtime, $path)) {
         die("Can't change mtime for $path: $!");
       }
+
+      sleep(1);
 
     } else {
       die("Can't open $path: $!");
@@ -148,12 +120,12 @@ sub listoptions_opt_t {
   }
 
   my $config = {
-    PidFile => $pid_file,
-    ScoreboardFile => $scoreboard_file,
-    SystemLog => $log_file,
+    PidFile => $setup->{pid_file},
+    ScoreboardFile => $setup->{scoreboard_file},
+    SystemLog => $setup->{log_file},
 
-    AuthUserFile => $auth_user_file,
-    AuthGroupFile => $auth_group_file,
+    AuthUserFile => $setup->{auth_user_file},
+    AuthGroupFile => $setup->{auth_group_file},
     AuthOrder => 'mod_auth_file.c',
 
     ListOptions => '-t',
@@ -165,7 +137,8 @@ sub listoptions_opt_t {
     },
   };
 
-  my ($port, $config_user, $config_group) = config_write($config_file, $config);
+  my ($port, $config_user, $config_group) = config_write($setup->{config_file},
+    $config);
 
   # Open pipes, for use between the parent and child processes.  Specifically,
   # the child will indicate when it's done with its test by writing a message
@@ -183,9 +156,9 @@ sub listoptions_opt_t {
   if ($pid) {
     eval {
       my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
-      $client->login($user, $passwd);
+      $client->login($setup->{user}, $setup->{passwd});
 
-      my $conn = $client->list_raw("*.txt");
+      my $conn = $client->list_raw("-l *.txt");
       unless ($conn) {
         die("Failed to LIST: " . $client->response_code() . " " .
           $client->response_msg());
@@ -196,35 +169,30 @@ sub listoptions_opt_t {
       while ($conn->read($tmp, 8192, 25)) {
         $buf .= $tmp;
       }
+      sleep(0.25);
       eval { $conn->close() };
 
       my $resp_code = $client->response_code();
       my $resp_msg = $client->response_msg();
-
-      my $expected;
-
-      $expected = 226;
-      $self->assert($expected == $resp_code,
-        test_msg("Expected $expected, got $resp_code"));
-
-      $expected = "Transfer complete";
-      $self->assert($expected eq $resp_msg,
-        test_msg("Expected '$expected', got '$resp_msg'"));
-
       $client->quit();
+
+      $self->assert_transfer_ok($resp_code, $resp_msg);
+
+      if ($ENV{TEST_VERBOSE}) {
+        print STDERR "# data:\n$buf";
+      }
 
       # We have to be careful of the fact that readdir returns directory
       # entries in an unordered fashion.
       my $res = [];
-      my $lines = [split(/\n/, $buf)];
+      my $lines = [split(/\r?\n/, $buf)];
       foreach my $line (@$lines) {
         if ($line =~ /^\S+\s+\d+\s+\S+\s+\S+\s+.*?\s+(\S+)$/) {
           push(@$res, $1);
         }
       }
 
-      $expected = [reverse(@$test_files)];
-
+      my $expected = [reverse(@$test_files)];
       my $nexpected = scalar(@$expected);
       my $nres = scalar(@$res);
 
@@ -235,7 +203,6 @@ sub listoptions_opt_t {
           test_msg("Expected '$expected->[$i]' at index $i, got '$res->[$i]'"));
       }
     };
-
     if ($@) {
       $ex = $@;
     }
@@ -244,7 +211,7 @@ sub listoptions_opt_t {
     $wfh->flush();
 
   } else {
-    eval { server_wait($config_file, $rfh) };
+    eval { server_wait($setup->{config_file}, $rfh) };
     if ($@) {
       warn($@);
       exit 1;
@@ -254,18 +221,10 @@ sub listoptions_opt_t {
   }
 
   # Stop server
-  server_stop($pid_file);
-
+  server_stop($setup->{pid_file});
   $self->assert_child_ok($pid);
 
-  if ($ex) {
-    test_append_logfile($log_file, $ex);
-    unlink($log_file);
-
-    die($ex);
-  }
-
-  unlink($log_file);
+  test_cleanup($setup, $ex);
 }
 
 sub listoptions_opt_1_list {
@@ -1114,38 +1073,7 @@ sub listoptions_listonly {
 sub listoptions_nlstonly {
   my $self = shift;
   my $tmpdir = $self->{tmpdir};
-
-  my $config_file = "$tmpdir/config.conf";
-  my $pid_file = File::Spec->rel2abs("$tmpdir/config.pid");
-  my $scoreboard_file = File::Spec->rel2abs("$tmpdir/config.scoreboard");
-
-  my $log_file = test_get_logfile();
-
-  my $auth_user_file = File::Spec->rel2abs("$tmpdir/config.passwd");
-  my $auth_group_file = File::Spec->rel2abs("$tmpdir/config.group");
-
-  my $user = 'proftpd';
-  my $passwd = 'test';
-  my $group = 'ftpd';
-  my $home_dir = File::Spec->rel2abs($tmpdir);
-  my $uid = 500;
-  my $gid = 500;
-
-  # Make sure that, if we're running as root, that the home directory has
-  # permissions/privs set for the account we create
-  if ($< == 0) {
-    unless (chmod(0755, $home_dir)) {
-      die("Can't set perms on $home_dir to 0755: $!");
-    }
-
-    unless (chown($uid, $gid, $home_dir)) {
-      die("Can't set owner of $home_dir to $uid/$gid: $!");
-    }
-  }
-
-  auth_user_write($auth_user_file, $user, $passwd, $uid, $gid, $home_dir,
-    '/bin/bash');
-  auth_group_write($auth_group_file, $group, $gid, $user);
+  my $setup = test_setup($tmpdir, 'config');
 
   my $test_files = [qw(
     a.txt
@@ -1177,16 +1105,16 @@ sub listoptions_nlstonly {
   }
 
   my $config = {
-    PidFile => $pid_file,
-    ScoreboardFile => $scoreboard_file,
-    SystemLog => $log_file,
+    PidFile => $setup->{pid_file},
+    ScoreboardFile => $setup->{scoreboard_file},
+    SystemLog => $setup->{log_file},
 
-    AuthUserFile => $auth_user_file,
-    AuthGroupFile => $auth_group_file,
+    AuthUserFile => $setup->{auth_user_file},
+    AuthGroupFile => $setup->{auth_group_file},
     AuthOrder => 'mod_auth_file.c',
 
-    TimeoutLinger => 1,
     ListOptions => '"-A -1" NLSTOnly',
+    TimeoutLinger => 1,
 
     IfModules => {
       'mod_delay.c' => {
@@ -1195,7 +1123,8 @@ sub listoptions_nlstonly {
     },
   };
 
-  my ($port, $config_user, $config_group) = config_write($config_file, $config);
+  my ($port, $config_user, $config_group) = config_write($setup->{config_file},
+    $config);
 
   # Open pipes, for use between the parent and child processes.  Specifically,
   # the child will indicate when it's done with its test by writing a message
@@ -1212,12 +1141,11 @@ sub listoptions_nlstonly {
   defined(my $pid = fork()) or die("Can't fork: $!");
   if ($pid) {
     eval {
-      # First, connect, do a LIST, examine the results
       my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
-      $client->login($user, $passwd);
+      $client->login($setup->{user}, $setup->{passwd});
 
       # First, do a LIST and see what we get
-      my $conn = $client->list_raw('test.d');
+      my $conn = $client->list_raw('-l test.d');
       unless ($conn) {
         die("Failed to LIST: " . $client->response_code() . " " .
           $client->response_msg());
@@ -1225,18 +1153,23 @@ sub listoptions_nlstonly {
 
       my $buf;
       $conn->read($buf, 16384, 25);
+      sleep(0.25);
       eval { $conn->close() };
-      sleep(2);
 
       my $resp_code = $client->response_code();
       my $resp_msg = $client->response_msg();
-      $self->assert_transfer_ok($resp_code, $resp_msg);
       $client->quit();
+
+      $self->assert_transfer_ok($resp_code, $resp_msg);
+
+      if ($ENV{TEST_VERBOSE}) {
+        print STDERR "# data:\n$buf";
+      }
 
       # We have to be careful of the fact that readdir returns directory
       # entries in an unordered fashion.
       my $res = [];
-      my $lines = [split(/\n/, $buf)];
+      my $lines = [split(/\r?\n/, $buf)];
       foreach my $line (@$lines) {
         if ($line =~ /^\S+\s+\d+\s+\S+\s+\S+\s+.*?\s+(\S+)$/) {
           push(@$res, $1);
@@ -1256,7 +1189,7 @@ sub listoptions_nlstonly {
 
       # Next, connect, do a NLST, examine the results
       $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
-      $client->login($user, $passwd);
+      $client->login($setup->{user}, $setup->{passwd});
 
       $conn = $client->nlst_raw('test.d');
       unless ($conn) {
@@ -1266,18 +1199,23 @@ sub listoptions_nlstonly {
 
       $buf = '';
       $conn->read($buf, 16384, 25);
+      sleep(0.25);
       eval { $conn->close() };
-      sleep(2);
 
       $resp_code = $client->response_code();
       $resp_msg = $client->response_msg();
-      $self->assert_transfer_ok($resp_code, $resp_msg);
       $client->quit();
+
+      $self->assert_transfer_ok($resp_code, $resp_msg);
+
+      if ($ENV{TEST_VERBOSE}) {
+        print STDERR "# data:\n$buf";
+      }
 
       # We have to be careful of the fact that readdir returns directory
       # entries in an unordered fashion.
       $res = [];
-      $lines = [split(/\n/, $buf)];
+      $lines = [split(/\r?\n/, $buf)];
       foreach my $line (@$lines) {
         push(@$res, $line);
       }
@@ -1296,7 +1234,6 @@ sub listoptions_nlstonly {
           test_msg("Expected '$expected->[$i]' at index $i, got '$res->[$i]'"));
       }
     };
-
     if ($@) {
       $ex = $@;
     }
@@ -1305,7 +1242,7 @@ sub listoptions_nlstonly {
     $wfh->flush();
 
   } else {
-    eval { server_wait($config_file, $rfh, 30) };
+    eval { server_wait($setup->{config_file}, $rfh, 30) };
     if ($@) {
       warn($@);
       exit 1;
@@ -1315,18 +1252,10 @@ sub listoptions_nlstonly {
   }
 
   # Stop server
-  server_stop($pid_file);
-
+  server_stop($setup->{pid_file});
   $self->assert_child_ok($pid);
 
-  if ($ex) {
-    test_append_logfile($log_file, $ex);
-    unlink($log_file);
-
-    die($ex);
-  }
-
-  unlink($log_file);
+  test_cleanup($setup, $ex);
 }
 
 sub listoptions_sortednlst_bug4267 {
@@ -1521,7 +1450,11 @@ sub listoptions_maxfiles {
   my $max_files = 100000;
 
   my $count = $max_files + 10000;
-  print STDOUT "# Creating $count files in $tmpdir\n";
+
+  if ($ENV{TEST_VERBOSE}) {
+    print STDERR "# Creating $count files in $tmpdir\n";
+  }
+
   for (my $i = 1; $i <= $count; $i++) {
     my $test_file = 'test_' . sprintf("%07s", $i);
     my $test_path = "$home_dir/$test_file";
@@ -1533,8 +1466,10 @@ sub listoptions_maxfiles {
       die("Can't open $test_path: $!");
     }
 
-    if ($i % 10000 == 0) {
-      print STDOUT "# Created file $test_file\n";
+    if ($ENV{TEST_VERBOSE}) {
+      if ($i % 10000 == 0) {
+        print STDERR "# Created file $test_file\n";
+      }
     }
   }
 

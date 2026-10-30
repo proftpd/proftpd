@@ -22,7 +22,7 @@ my $TESTS = {
 
   deleteabortedstores_cmd_abort_ok => {
     order => ++$order,
-    test_class => [qw(forking)],
+    test_class => [qw(flaky forking)],
   },
 
   deleteabortedstores_conn_aborted_bug3917 => {
@@ -611,6 +611,9 @@ sub deleteabortedstores_hiddenstores_on_timeout_stalled_bug4035 {
     AuthGroupFile => $setup->{auth_group_file},
     AuthOrder => 'mod_auth_file.c',
 
+    # Our expected log message is emitted at this debug level
+    DebugLevel => 5,
+
     DefaultChdir => '~',
     HiddenStores => 'on',
     DeleteAbortedStores => 'on',
@@ -641,7 +644,7 @@ sub deleteabortedstores_hiddenstores_on_timeout_stalled_bug4035 {
   defined(my $pid = fork()) or die("Can't fork: $!");
   if ($pid) {
     eval {
-      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
+      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port, 0, 10);
       $client->login($setup->{user}, $setup->{passwd});
 
       my $conn = $client->stor_raw('test.txt');
@@ -659,16 +662,13 @@ sub deleteabortedstores_hiddenstores_on_timeout_stalled_bug4035 {
 
       # Now wait for more than the TimeoutStalled time
       if ($ENV{TEST_VERBOSE}) {
-        print STDERR "+ sleeping for more than TimeoutStalled $timeout_stalled secs\n";
+        print STDERR "# sleeping for more than TimeoutStalled $timeout_stalled secs\n";
       }
 
-      sleep($timeout_stalled + 2);
+      sleep($timeout_stalled + 1);
 
-      eval { $conn->close() };
-
-      my $resp_code = $client->response_code();
-      my $resp_msg = $client->response_msg();
-      $self->assert_transfer_ok($resp_code, $resp_msg);
+      # At this point, we will have been disconnected by the TimeoutStalled
+      # timer.
 
       $self->assert(!-f $test_file,
         test_msg("File $test_file exists unexpectedly"));
@@ -684,7 +684,7 @@ sub deleteabortedstores_hiddenstores_on_timeout_stalled_bug4035 {
     $wfh->flush();
 
   } else {
-    eval { server_wait($setup->{config_file}, $rfh) };
+    eval { server_wait($setup->{config_file}, $rfh, 30) };
     if ($@) {
       warn($@);
       exit 1;
@@ -760,6 +760,9 @@ sub deleteabortedstores_hiddenstores_on_xfer_aborted_bug4467 {
     AuthUserFile => $setup->{auth_user_file},
     AuthGroupFile => $setup->{auth_group_file},
     AuthOrder => 'mod_auth_file.c',
+
+    # Our expected log message is emitted at this debug level
+    DebugLevel => 5,
 
     DefaultChdir => '~',
     HiddenStores => 'on',

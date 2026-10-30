@@ -66,6 +66,9 @@ sub userdirroot_ok {
     AuthGroupFile => $setup->{auth_group_file},
     AuthOrder => 'mod_auth_file.c',
 
+    # The expected log message is emitted at this level
+    DebugLevel => 1,
+
     Anonymous => {
       $setup->{home_dir} => {
         User => $setup->{user},
@@ -194,6 +197,9 @@ sub userdirroot_sanitized_ok {
     AuthUserFile => $setup->{auth_user_file},
     AuthGroupFile => $setup->{auth_group_file},
     AuthOrder => 'mod_auth_file.c',
+
+    # The expected log message is emitted at this level
+    DebugLevel => 1,
 
     Anonymous => {
       $setup->{home_dir} => {

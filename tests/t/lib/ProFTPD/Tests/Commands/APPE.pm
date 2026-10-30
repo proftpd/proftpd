@@ -1327,24 +1327,26 @@ sub appe_ok_abs_symlink_existing_chrooted_bug4219 {
       my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port, 0, 1);
       $client->login($setup->{user}, $setup->{passwd});
 
-      my $conn = $client->appe_raw('test.d/test.lnk');
-      unless ($conn) {
-        die("APPE failed: " . $client->response_code() . " " .
-          $client->response_msg());
-      }
+      # We expect this to fail because symlinks using absolute paths will
+      # fail to resolve properly within a chroot.
 
-      my $buf = "Foo!\n";
-      $conn->write($buf, length($buf), 25);
-      eval { $conn->close() };
+      my $path = 'test.d/test.lnk';
+      my $conn = $client->appe_raw($path);
+      if ($conn) {
+        die("APPE succeeded unexpectedly");
+      }
 
       my $resp_code = $client->response_code();
       my $resp_msg = $client->response_msg();
-      $self->assert_transfer_ok($resp_code, $resp_msg);
+      $client->quit();
 
-      my $expected = -s $test_file;
-      my $size = length($buf);
-      $self->assert($expected == $size,
-        test_msg("Expected $expected, got $size"));
+      my $expected = 550;
+      $self->assert($expected == $resp_code,
+        test_msg("Expected response code $expected, got $resp_code"));
+
+      $expected = "$path: No such file or directory";
+      $self->assert($expected eq $resp_msg,
+        test_msg("Expected response message '$expected', got '$resp_msg'"));
     };
     if ($@) {
       $ex = $@;
@@ -1367,7 +1369,7 @@ sub appe_ok_abs_symlink_existing_chrooted_bug4219 {
   server_stop($setup->{pid_file});
   $self->assert_child_ok($pid);
 
-  test_cleanup($setup->{log_file}, $ex);
+  test_cleanup($setup, $ex);
 }
 
 sub appe_ok_rel_symlink_existing {

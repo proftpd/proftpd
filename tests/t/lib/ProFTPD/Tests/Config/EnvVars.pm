@@ -108,7 +108,10 @@ sub envvar_bug2048 {
       $self->assert($expected == $resp_code,
         test_msg("Expected response code $expected, got $resp_code"));
 
-      $expected = 'ProFTPD Server \(' . $server_name . '\) \[\S+\]';
+      # Here we remove the quotations, needed to enclose the space character
+      # in the environment.
+      my $expected_name = 'Green Goat';
+      $expected = 'ProFTPD Server \(' . $expected_name . '\) \[\S+\]';
       $self->assert(qr/$expected/, $resp_msg,
         test_msg("Expected response message '$expected', got '$resp_msg'"));
     };
@@ -155,7 +158,7 @@ sub envvar_bug3502 {
     AuthOrder => 'mod_auth_file.c',
 
     ServerIdent => 'on',
-    ServerName => '"Green %{env:PR_SERVER_NAME}"',
+    ServerName => '"Green%{env:PR_SERVER_NAME}"',
 
     IfModules => {
       'mod_delay.c' => {
@@ -195,7 +198,7 @@ sub envvar_bug3502 {
       $self->assert($expected == $resp_code,
         test_msg("Expected response code $expected, got $resp_code"));
 
-      my $expected_server_name = 'Green Goat';
+      my $expected_server_name = 'GreenGoat';
       $expected = 'ProFTPD Server \(' . $expected_server_name . '\) \[\S+\]';
       $self->assert(qr/$expected/, $resp_msg,
         test_msg("Expected response message '$expected', got '$resp_msg'"));
@@ -422,7 +425,7 @@ sub envvar_global_context_issue857 {
   my $tmpdir = $self->{tmpdir};
   my $setup = test_setup($tmpdir, 'config');
 
-  my $server_name = '"Green Goat"';
+  my $server_name = 'Goat';
 
   my $config = {
     PidFile => $setup->{pid_file},
@@ -436,7 +439,7 @@ sub envvar_global_context_issue857 {
     AuthOrder => 'mod_auth_file.c',
 
     Global => {
-      ServerIdent => 'on "ProFTPD Server (%{env:PR_SERVER_NAME}) [127.0.0.1]"',
+      ServerIdent => 'on "Green%{env:PR_SERVER_NAME}"',
     },
 
     IfModules => {
@@ -477,7 +480,7 @@ sub envvar_global_context_issue857 {
       $self->assert($expected == $resp_code,
         test_msg("Expected response code $expected, got $resp_code"));
 
-      $expected = 'ProFTPD Server \(' . $server_name . '\) \[\S+\]';
+      $expected = $server_name;
       $self->assert(qr/$expected/, $resp_msg,
         test_msg("Expected response message '$expected', got '$resp_msg'"));
     };

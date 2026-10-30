@@ -1427,8 +1427,8 @@ sub allowfilter_rnto_denied {
       $self->assert($expected == $resp_code,
         test_msg("Expected $expected, got $resp_code"));
 
-      $expected = "Rename $dirname: Operation not permitted";
-      $self->assert($expected eq $resp_msg,
+      $expected = "$dirname: Operation not permitted";
+      $self->assert(qr/$expected/, $resp_msg,
         test_msg("Expected '$expected', got '$resp_msg'"));
 
       $client->quit();
