@@ -40,6 +40,9 @@
 #define RADIUS_PASSWD_LEN	16
 #define RADIUS_VECTOR_LEN	16
 
+/* Maximum User-Password length, per RFC 2865, Section 5.2. */
+#define RADIUS_MAX_PASSWD_LEN	128
+
 /* From RFC2138 */
 #define RADIUS_STRING_LEN	254
 
@@ -2342,11 +2345,20 @@ static int radius_add_passwd(radius_packet_t *packet, unsigned char type,
 
   pwlen = strlen((const char *) passwd);
 
-  /* We need to check for excessively long passwords; see Issue #2330. */
-  if (pwlen > sizeof(pwhash)) {
+  /* We need to check for excessively long passwords; see Issue #2330.
+   *
+   * The encrypted password is padded up to a multiple of RADIUS_PASSWD_LEN
+   * and written into a single RADIUS attribute, whose length is stored in a
+   * one-octet field, and into the request packet, which only has room for
+   * RADIUS_HEADER_LEN plus PR_TUNABLE_BUFFER_SIZE bytes of attributes.  A
+   * password longer than the RFC 2865 maximum (Section 5.2) would both wrap
+   * the attribute length octet and overrun the packet buffer, so reject it
+   * here rather than bounding only against the local hashing buffer.
+   */
+  if (pwlen > RADIUS_MAX_PASSWD_LEN) {
     pr_log_pri(PR_LOG_ERR, MOD_RADIUS_VERSION
       ": client-supplied password length (%lu) exceeds maximum (%lu)",
-      (unsigned long) pwlen, (unsigned long) sizeof(pwhash));
+      (unsigned long) pwlen, (unsigned long) RADIUS_MAX_PASSWD_LEN);
     errno = EACCES;
     return -1;
   }
