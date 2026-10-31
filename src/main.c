@@ -548,9 +548,18 @@ int pr_cmd_read(cmd_rec **res) {
     }
   }
 
+  if (cmd_buflen == 0) {
+    return 0;
+  }
+
   ptr = cmd_buf;
   if (*ptr == '\r') {
     ptr++;
+    cmd_buflen--;
+
+    if (cmd_buflen == 0) {
+      return 0;
+    }
   }
 
   if (*ptr) {
