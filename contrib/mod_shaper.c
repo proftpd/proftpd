@@ -252,7 +252,7 @@ static int shaper_decrypt_msg(pool *p,
    */
   if (in_msglen < (sizeof(long) + SHAPER_IV_LEN + msgsz)) {
     pr_trace_msg(trace_channel, 3, "received encrypted message (%lu bytes) "
-      "is less than minimium expected (%lu bytes), ignoring",
+      "is less than minimum expected (%lu bytes), ignoring",
       (unsigned long) in_msglen,
       (unsigned long) (sizeof(long) + SHAPER_IV_LEN + msgsz));
 

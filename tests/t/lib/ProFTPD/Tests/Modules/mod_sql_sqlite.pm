@@ -163,13 +163,13 @@ my $TESTS = {
     test_class => [qw(bug forking)],
   },
 
-  # This one can be a litte racy, indeterministic.
+  # This one can be a little racy, indeterministic.
   sql_sqllog_var_transfer_millisecs_retr_bug4218 => {
     order => ++$order,
     test_class => [qw(bug flaky forking)],
   },
 
-  # This one can be a litte racy, indeterministic.
+  # This one can be a little racy, indeterministic.
   sql_sqllog_var_R_retr_bug4218 => {
     order => ++$order,
     test_class => [qw(bug flaky forking)],

@@ -4675,7 +4675,7 @@ sub list_opt_u {
       my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
       $client->login($setup->{user}, $setup->{passwd});
 
-      # Use the -u option to sort by time, specfically st_atime. Thus the
+      # Use the -u option to sort by time, specifically st_atime. Thus the
       # last file we created should appear first in the returned list.
       my $conn = $client->list_raw("-u F0*");
       unless ($conn) {

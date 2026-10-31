@@ -2891,7 +2891,7 @@ sub tls_login_with_sni_matching_host_case_insensitive_issue850 {
   #  https://tools.ietf.org/html/rfc6066#section-3
   #
   # the comparison of SNI hostnames (like any other DNS name) should be
-  # case-INSENSITVE.  So verify that that is the case.
+  # case-INSENSITIVE.  So verify that that is the case.
 
   my $host = 'Castaglia';
 
@@ -11725,7 +11725,7 @@ sub tls_opts_allow_dot_login_different_user_issue2319 {
 
       $client->quot('HOST', $server_alias);
 
-      # This should also fail, since we did not succesfully log in.
+      # This should also fail, since we did not successfully log in.
       $client->pwd();
       $resp = $client->last_message();
       if ($resp =~ /^257/) {

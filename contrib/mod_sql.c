@@ -2657,7 +2657,7 @@ static int sql_getgroups(cmd_rec *cmd) {
           selected_escape);
         if (escaped_username == NULL) {
           /* Ideally this will not happen.  But for now, if it does, we
-           * fall back to the orignal username.  Not ideal.
+           * fall back to the original username.  Not ideal.
            */
           escaped_username = username;
         }
