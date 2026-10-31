@@ -1062,6 +1062,10 @@ START_TEST (netio_telnet_gets_telnet_single_iac_test) {
   pr_netio_buffer_alloc(in);
   pbuf = in->strm_buf;
 
+  /* With Issue #2426, we now expect Telnet IAC bytes that are not followed
+   * by supported opcodes, but rather by "normal" bytes, to be silently
+   * consumed.
+   */
   len = snprintf(pbuf->buf, pbuf->buflen-1, "Hello, %cWorld!\n", TELNET_IAC);
   pbuf->remaining = pbuf->buflen - len;
   pbuf->current = pbuf->buf;
@@ -1075,10 +1079,10 @@ START_TEST (netio_telnet_gets_telnet_single_iac_test) {
     xerrno, strerror(xerrno));
   ck_assert_msg(strncmp(buf, cmd, 7) == 0, "Expected string '%.*s', got '%.*s'",
     7, cmd, 7, buf);
-  ck_assert_msg(buf[7] == (char) TELNET_IAC, "Expected IAC at index 7, got %d",
+  ck_assert_msg(buf[7] == 'W', "Expected W at index 7, got %d",
     buf[7]);
-  ck_assert_msg(strcmp(buf + 8, cmd + 7) == 0, "Expected string '%s', got '%s'",
-    cmd + 7, buf + 8);
+  ck_assert_msg(strcmp(buf + 7, cmd + 7) == 0, "Expected string '%s', got '%s'",
+    cmd + 7, buf + 7);
 
   pr_netio_close(in);
   pr_netio_close(out);
