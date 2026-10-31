@@ -132,6 +132,20 @@ typedef struct {
  */
 #define RADIUS_PACKET_LEN		1600
 
+/* Maximum password length, as permitted by the RADIUS attribute format.
+ *
+ * Interestly, RFC 2865, Section 5.2 defines a maximum password length of 128
+ * (or 130, depending on which statement is used).  However, many RADIUS
+ * implementations will handle longer passwords.
+ *
+ * This value, then, is bounded by the use of a byte ("octet") to transmit
+ * the length of the attribute.  An unsigned char has a maximum value of 255.
+ * That value covers both the "type" byte, and the length byte itself, thus:
+ *
+ *  255 (max attribute length value) - 1 (type byte) - 1 (length byte) = 253
+ */
+#define RADIUS_MAX_PASSWD_LEN		253
+
 /* This value needs to be a multiple of RADIUS_PASSWD_LEN (16) due to the
  * XOR implementation.
  */
@@ -2347,11 +2361,14 @@ static int radius_add_passwd(radius_packet_t *packet, unsigned char type,
 
   pwlen = strlen((const char *) passwd);
 
-  /* We need to check for excessively long passwords; see Issue #2330. */
-  if (pwlen > sizeof(pwhash)) {
+  /* We need to check for excessively long passwords; see Issue #2330.
+   * In addition, we need to ensure the password provided will fit within
+   * the necessary RADIUS attribute.
+   */
+  if (pwlen > RADIUS_MAX_PASSWD_LEN) {
     pr_log_pri(PR_LOG_ERR, MOD_RADIUS_VERSION
       ": client-supplied password length (%lu) exceeds maximum (%lu)",
-      (unsigned long) pwlen, (unsigned long) sizeof(pwhash));
+      (unsigned long) pwlen, (unsigned long) RADIUS_MAX_PASSWD_LEN);
     errno = EACCES;
     return -1;
   }
