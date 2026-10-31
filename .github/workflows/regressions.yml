@@ -36,6 +36,12 @@ jobs:
           # for crypt(3) support
           apt-get install -y --no-install-recommends libcrypt1
 
+          # for SQLite support
+          apt-get install -y --no-install-recommends libsqlite3-dev sqlite3
+
+          # for SSL/TLS support
+          apt-get install -y --no-install-recommends libssl-dev openssl
+
           # for integration/regression tests
           apt-get install -y --no-install-recommends \
             libauthen-oath-perl \
@@ -58,12 +64,13 @@ jobs:
 
           # for debugging
           gcc --version
+          openssl --version
 
       - name: Install with static modules
         # NOTE: Docker does not have good IPv6 support, hence we disable it.
         run: |
           cd proftpd
-          ./configure --disable-ipv6 --with-modules=mod_readme:mod_unique_id:mod_ifsession
+          ./configure --disable-ipv6 --enable-openssl --with-modules=mod_readme:mod_sql:mod_sql_sqlite:mod_unique_id:mod_ifsession
           make
           ./proftpd -V
           make install

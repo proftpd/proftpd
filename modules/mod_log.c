@@ -416,7 +416,6 @@ MODRET set_serverlog(cmd_rec *cmd) {
   CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL);
 
   add_config_param_str(cmd->argv[0], 1, cmd->argv[1]);
-
   return PR_HANDLED(cmd);
 }
 
