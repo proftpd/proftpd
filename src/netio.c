@@ -1780,14 +1780,20 @@ int pr_netio_telnet_gets2(char *buf, size_t bufsz,
 
               default:
                 /* In this case, we know that the previous byte was TELNET_IAC,
-                 * but the current byte is not a value we care about.  So
-                 * write the TELNET_IAC into the output buffer, break out of
-                 * of the switch, and let that handle the writing of the
-                 * current byte into the output buffer.
+                 * but the current byte is not a value we care about, e.g. it
+                 * might be an unimplemented/unsupported Telnet IAC opcode
+                 * (Issue #2426).
+                 *
+                 * Per RFC 854, IAC codes are values 240 and above.
                  */
-                *bp++ = (char) TELNET_IAC;
-                buflen--;
-
+                if (cp >= 240) {
+                  pr_log_pri(PR_LOG_NOTICE,
+                    "client sent unsupported Telnet IAC opcode (%d), "
+                    "disconnecting", (int) cp);
+                  pr_event_generate("core.bad-protocol", NULL);
+                  pr_session_disconnect(NULL, PR_SESS_DISCONNECT_BAD_PROTOCOL,
+                    "unsupported Telnet IAC opcode");
+                }
                 telnet_mode = 0;
                 break;
             }
@@ -1810,6 +1816,42 @@ int pr_netio_telnet_gets2(char *buf, size_t bufsz,
           default:
             if (cp == TELNET_IAC) {
               telnet_mode = cp;
+
+              if (toread > 0) {
+                unsigned char opcode;
+
+                opcode = *(pbuf->current + 1);
+                switch (opcode) {
+                  case TELNET_IAC:  /* FALLTHROUGH */
+                  case TELNET_WILL: /* FALLTHROUGH */
+                  case TELNET_WONT: /* FALLTHROUGH */
+                  case TELNET_DO:   /* FALLTHROUGH */
+                  case TELNET_DONT: /* FALLTHROUGH */
+                  case TELNET_IP:   /* FALLTHROUGH */
+                  case TELNET_DM:   /* FALLTHROUGH */
+                    break;
+
+                  default:
+                    /* In this case, we know that the previous byte was
+                     * TELNET_IAC, but the next byte is not a value we care
+                     * about, e.g. it might be an unimplemented/unsupported
+                     * Telnet IAC opcode (Issue #2426).
+                     *
+                     * Per RFC 854, IAC codes are values 240 and above.
+                     */
+                    if (opcode >= 240) {
+                      pr_log_pri(PR_LOG_NOTICE,
+                        "client sent unsupported Telnet IAC opcode (%d), "
+                        "disconnecting", (int) opcode);
+                      pr_event_generate("core.bad-protocol", NULL);
+                      pr_session_disconnect(NULL,
+                        PR_SESS_DISCONNECT_BAD_PROTOCOL,
+                        "unsupported Telnet IAC opcode");
+                    }
+                    break;
+                }
+              }
+
               continue;
             }
             break;

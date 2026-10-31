@@ -23,6 +23,7 @@
   startup cause systemd notification issues when using mod_systemd.
 - Issue 2416 - FTPS data transfers over TLSv1.3 fail with older OpenSSL 1.x
   versions.
+- Issue 2426 - Disconnect upon receiving unsupported Telnet IAC opcodes.
 
 1.3.10rc5 - Released 26-Oct-2026
 --------------------------------
