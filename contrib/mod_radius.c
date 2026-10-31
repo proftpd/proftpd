@@ -133,6 +133,11 @@ typedef struct {
  */
 #define RADIUS_PACKET_LEN		1600
 
+/* This value needs to be a multiple of RADIUS_PASSWD_LEN (16) due to the
+ * XOR implementation.
+ */
+#define RADIUS_PASSWD_BUFFER_SIZE	1024
+
 /* Miscellaneous default values */
 #define DEFAULT_RADIUS_TIMEOUT		10
 
@@ -2336,7 +2341,7 @@ static int radius_add_passwd(radius_packet_t *packet, unsigned char type,
   MD5_CTX ctx, secret_ctx;
   radius_attrib_t *attrib = NULL;
   unsigned char calculated[RADIUS_VECTOR_LEN];
-  unsigned char pwhash[PR_TUNABLE_BUFFER_SIZE];
+  unsigned char pwhash[RADIUS_PASSWD_BUFFER_SIZE];
   unsigned char *digest = NULL;
   register unsigned int i = 0;
   size_t pwlen;
