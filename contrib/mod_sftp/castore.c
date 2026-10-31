@@ -370,7 +370,7 @@ int sftp_castore_verify_host_cert(pool *p, const char *user,
       cert->signature_pubkey_datalen, SFTP_KEYS_FP_DIGEST_SHA256,
       SFTP_KEYS_FP_FMT_BASE64);
     pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
-      "Accepted %s host certicate ID '%s' (serial number %lu) signed by "
+      "Accepted %s host certificate ID '%s' (serial number %lu) signed by "
       "%s CA %s via %s", cert->cert_algo, cert->cert_id,
       (unsigned long) cert->serialno, cert->signature_pubkey_algo, ca_fp,
       store_type);
@@ -557,7 +557,7 @@ int sftp_castore_verify_user_cert(pool *p, const char *user,
       cert->signature_pubkey_datalen, SFTP_KEYS_FP_DIGEST_SHA256,
       SFTP_KEYS_FP_FMT_BASE64);
     pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
-      "Accepted %s user certicate ID '%s' (serial number %lu) signed by "
+      "Accepted %s user certificate ID '%s' (serial number %lu) signed by "
       "%s CA %s via %s", cert->cert_algo, cert->cert_id,
       (unsigned long) cert->serialno, cert->signature_pubkey_algo, ca_fp,
       store_type);
