@@ -36,11 +36,38 @@ jobs:
           # for crypt(3) support
           apt-get install -y --no-install-recommends libcrypt1
 
+          # for Linux capabilities
+          apt-get install -y --no-install-recommends libcap-dev
+
+          # for Memcache support
+          apt-get install -y --no-install-recommends libmemcached-dev
+
+          # for PAM support
+          apt-get install -y --no-install-recommends libpam0g-dev
+
+          # for PCRE2 support
+          apt-get install -y --no-install-recommends libpcre2-dev libpcre2-posix3
+
+          # for POSIX ACL support
+          apt-get install -y --no-install-recommends libacl1-dev acl
+
+          # for Redis support
+          apt-get install -y --no-install-recommends libhiredis-dev
+
+          # for Sodium support
+          apt-get install -y --no-install-recommends libsodium-dev
+
           # for SQLite support
           apt-get install -y --no-install-recommends libsqlite3-dev sqlite3
 
           # for SSL/TLS support
           apt-get install -y --no-install-recommends libssl-dev openssl
+
+          # for TCP Wrappers support
+          apt-get install -y --no-install-recommends libwrap0-dev
+
+          # for zlib support
+          apt-get install -y --no-install-recommends zlib1g-dev
 
           # for integration/regression tests
           apt-get install -y --no-install-recommends \
