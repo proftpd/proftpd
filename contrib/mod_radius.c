@@ -134,9 +134,9 @@ typedef struct {
 
 /* Maximum password length, as permitted by the RADIUS attribute format.
  *
- * Interestly, RFC 2865, Section 5.2 defines a maximum password length of 128
- * (or 130, depending on which statement is used).  However, many RADIUS
- * implementations will handle longer passwords.
+ * Interestingly, RFC 2865, Section 5.2 defines a maximum password length
+ * of 128 (or 130, depending on which statement is used).  However, many
+ * RADIUS implementations will handle longer passwords.
  *
  * This value, then, is bounded by the use of a byte ("octet") to transmit
  * the length of the attribute.  An unsigned char has a maximum value of 255.
