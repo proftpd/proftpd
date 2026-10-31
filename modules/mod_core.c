@@ -2376,7 +2376,8 @@ MODRET set_commandbuffersize(cmd_rec *cmd) {
   config_rec *c = NULL;
   const char *units = NULL;
 
-  if (cmd->argc < 2 || cmd->argc > 3) {
+  if (cmd->argc < 2 ||
+      cmd->argc > 3) {
     CONF_ERROR(cmd, "wrong number of parameters")
   }
 
@@ -2391,6 +2392,14 @@ MODRET set_commandbuffersize(cmd_rec *cmd) {
       cmd->argv[1], " ", units ? units : "", ": ", strerror(errno), NULL));
   }
 
+  /* Impose a minimum buffer size, to prevent inadvertent configurations
+   * that would cause unnecessary problems.
+   */
+  if (nbytes < 8) {
+    CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "size ", cmd->argv[1],
+      units ? units : "", " does not meet minimum size 8", NULL));
+  }
+
   if (nbytes > PR_TUNABLE_CMD_BUFFER_SIZE) {
     char max[1024];
 
@@ -2399,7 +2408,7 @@ MODRET set_commandbuffersize(cmd_rec *cmd) {
     max[sizeof(max)-1] = '\0';
 
     CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "size ", cmd->argv[1],
-      units ? units : "", "exceeds max size ", max, NULL));
+      units ? units : "", " exceeds max size ", max, NULL));
   }
 
   /* Possible truncation here, but only for an absurdly large size. */
