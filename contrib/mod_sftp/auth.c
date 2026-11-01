@@ -200,12 +200,71 @@ static const char *get_default_chdir(pool *p) {
   return path;
 }
 
-static const char *get_default_root(pool *p) {
+static int is_symlink_path(pool *p, const char *path, size_t pathlen) {
+  int res, xerrno = 0;
+  struct stat st;
+  char *ptr;
+
+  if (pathlen == 0) {
+    return 0;
+  }
+
+  pr_fs_clear_cache2(path);
+  res = pr_fsio_lstat(path, &st);
+  xerrno = errno;
+
+  if (res < 0) {
+    pr_log_pri(PR_LOG_WARNING, "error: unable to check %s: %s", path,
+      strerror(xerrno));
+
+    errno = xerrno;
+    return -1;
+  }
+
+  if (S_ISLNK(st.st_mode)) {
+    errno = EPERM;
+    return -1;
+  }
+
+  /* To handle the case where a component further up the path might be a
+   * symlink (which lstat(2) will NOT handle), we walk the path backwards,
+   * calling ourselves recursively.
+   */
+
+  ptr = strrchr((char *) path, '/');
+  if (ptr != NULL) {
+    char *new_path;
+    size_t new_pathlen;
+
+    pr_signals_handle();
+
+    new_pathlen = ptr - path;
+
+    /* Make sure our pointer actually changed position. */
+    if (new_pathlen == pathlen) {
+      return 0;
+    }
+
+    new_path = pstrndup(p, path, new_pathlen);
+
+    pr_log_debug(DEBUG10,
+      "AllowChrootSymlink: path '%s' not a symlink, checking '%s'", path,
+      new_path);
+    res = is_symlink_path(p, new_path, new_pathlen);
+    if (res < 0) {
+      return -1;
+    }
+  }
+
+  return 0;
+}
+
+static int get_default_root(pool *p, int allow_symlinks, const char **root) {
   config_rec *c;
   const char *path = NULL;
 
   c = find_config(main_server->conf, CONF_PARAM, "DefaultRoot", FALSE);
-  while (c) {
+  while (c != NULL) {
     int res;
 
     pr_signals_handle();
@@ -232,16 +291,64 @@ static const char *get_default_root(pool *p) {
 
     } else {
       char *real_path;
-      int xerrno = 0;
+      int res, xerrno = 0;
+
+      if (allow_symlinks == FALSE) {
+        char *path2, target_path[PR_TUNABLE_PATH_MAX + 1];
+        size_t pathlen2;
+
+        /* First, deal with any possible interpolation.  dir_realpath() will
+         * do this for us, but dir_realpath() ALSO automatically follows
+         * symlinks, which is what we do NOT want to do here.
+         */
+
+        path2 = pstrdup(p, path);
+        if (*path2 != '/') {
+          if (*path2 == '~') {
+            if (pr_fs_interpolate(path, target_path,
+                sizeof(target_path)-1) < 0) {
+              return -1;
+            }
+
+            path2 = target_path;
+          }
+        }
+
+        /* Note: lstat(2) is sensitive to the presence of a trailing slash on
+         * the path, particularly in the case of a symlink to a directory.
+         * Thus to get the correct test, we need to remove any trailing slash
+         * that might be present.  Subtle.
+         */
+        pathlen2 = strlen(path2);
+        if (pathlen2 > 1 &&
+            path2[pathlen2-1] == '/') {
+          path2[pathlen2-1] = '\0';
+        }
+
+        PRIVS_USER
+        res = is_symlink_path(p, path2, pathlen2);
+        xerrno = errno;
+        PRIVS_RELINQUISH
+
+        if (res < 0) {
+          if (xerrno == EPERM) {
+            pr_log_pri(PR_LOG_WARNING, "error: DefaultRoot %s is a symlink "
+              "(denied by AllowChrootSymlinks config)", path2);
+          }
+
+          errno = EPERM;
+          return -1;
+        }
+      }
+
+      pr_fs_clear_cache2(path);
 
       PRIVS_USER
       real_path = dir_realpath(p, path);
-      if (real_path == NULL) {
-        xerrno = errno;
-      }
+      xerrno = errno;
       PRIVS_RELINQUISH
 
-      if (real_path) {
+      if (real_path != NULL) {
         path = real_path;
 
       } else {
@@ -254,11 +361,14 @@ static const char *get_default_root(pool *p) {
           "notice: unable to use DefaultRoot %s (resolved to '%s'): %s",
             path, interp_path,
           strerror(xerrno));
+
+        errno = xerrno;
       }
     }
   }
 
-  return path;
+  *root = path;
+  return 0;
 }
 
 static void set_userauth_methods(void) {
@@ -403,9 +513,9 @@ static int setup_env(pool *p, const char *user) {
   struct passwd *pw;
   config_rec *c;
   int login_acl, i, res, root_revoke = TRUE, show_symlinks = FALSE, xerrno;
-  int auth_code = PR_AUTH_OK;
+  int auth_code = PR_AUTH_OK, allow_chroot_symlinks = TRUE;
   struct stat st;
-  const char *default_chdir, *default_root, *home_dir;
+  const char *default_chdir, *default_root = NULL, *home_dir;
   const char *sess_ttyname = NULL, *xferlog = NULL;
   cmd_rec *cmd;
 
@@ -501,6 +611,11 @@ static int setup_env(pool *p, const char *user) {
       *((gid_t *) push_array(session.gids)) = session.login_gid;
       *((char **) push_array(session.groups)) = pstrdup(p, session.group);
     }
+  }
+
+  c = find_config(main_server->conf, CONF_PARAM, "AllowChrootSymlinks", FALSE);
+  if (c != NULL) {
+    allow_chroot_symlinks = *((int *) c->argv[0]);
   }
 
   login_acl = login_check_limits(main_server->conf, FALSE, TRUE, &i);
@@ -629,10 +744,16 @@ static int setup_env(pool *p, const char *user) {
     }
   }
 
-  default_root = get_default_root(session.pool);
-  if (default_root != NULL) {
-    ensure_open_passwd(p);
+  res = get_default_root(session.pool, allow_chroot_symlinks, &default_root);
+  if (res < 0) {
+    pr_log_pri(PR_LOG_WARNING, "unable to determine DefaultRoot directory");
+    errno = EPERM;
+    return -1;
+  }
 
+  ensure_open_passwd(p);
+
+  if (default_root != NULL) {
     if (pr_auth_chroot(default_root) < 0) {
       pr_log_pri(PR_LOG_WARNING, "unable to set DefaultRoot directory '%s'",
         default_root);

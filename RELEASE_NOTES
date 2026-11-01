@@ -11,6 +11,8 @@ ChangeLog files.
 
   + Disconnect upon receiving unsupported Telnet IAC opcodes (Issue #2426).
 
+  + mod_sftp now honors the AllowChrootSymlinks directive.
+
 
 1.3.10rc5
 ----------

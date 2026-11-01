@@ -1612,6 +1612,11 @@ my $TESTS = {
     test_class => [qw(bug forking sftp)],
   },
 
+  sftp_config_defaultroot_allowchrootsymlinks_issue2415 => {
+    order => ++$order,
+    test_class => [qw(bug forking rootprivs sftp)],
+  },
+
   sftp_multi_channels => {
     order => ++$order,
     test_class => [qw(forking sftp)],
@@ -34922,7 +34927,7 @@ sub sftp_config_createhome {
       test_msg("Expected GID $expected, got $gid_owner"));
   };
   if ($@) {
-    $ex = $@;
+    $ex = $@ unless $ex;
   }
 
   test_cleanup($setup, $ex);
@@ -43992,6 +43997,140 @@ sub sftp_config_maxclientsperuser_issue750 {
       $first_sftp = undef;
       $first_ssh2->disconnect();
       $first_ssh2 = undef;
+    };
+    if ($@) {
+      $ex = $@;
+    }
+
+    $wfh->print("done\n");
+    $wfh->flush();
+
+  } else {
+    eval { server_wait($setup->{config_file}, $rfh) };
+    if ($@) {
+      warn($@);
+      exit 1;
+    }
+
+    exit 0;
+  }
+
+  # Stop server
+  server_stop($setup->{pid_file});
+  $self->assert_child_ok($pid);
+
+  test_cleanup($setup, $ex);
+}
+
+sub sftp_config_defaultroot_allowchrootsymlinks_issue2415 {
+  my $self = shift;
+  my $tmpdir = $self->{tmpdir};
+
+  my $user = 'proftpd';
+  my $passwd = 'test';
+  my $group = 'ftpd';
+  my $uid = 500;
+  my $gid = 500;
+  my $home_dir = File::Spec->rel2abs("$tmpdir/home.d/symlinks/$user");
+
+  my $symlink_dst = File::Spec->rel2abs("$tmpdir/real");
+
+  my $cwd = getcwd();
+
+  unless (chdir($tmpdir)) {
+    die("Can't chdir to $tmpdir: $!");
+  }
+
+  unless (symlink("./real", "./home.d")) {
+    die("Can't symlink './real' to './home.d': $!");
+  }
+
+  unless (chdir($cwd)) {
+    die("Can't chdir to $cwd: $!");
+  }
+
+  mkpath(File::Spec->rel2abs("$tmpdir/real/symlinks/$user"));
+
+  my $setup = test_setup($tmpdir, 'sftp', $user, $passwd, $group, $uid, $gid,
+    $home_dir);
+
+  my $rsa_host_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/ssh_host_rsa_key');
+  my $dsa_host_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/ssh_host_dsa_key');
+
+  my $config = {
+    PidFile => $setup->{pid_file},
+    ScoreboardFile => $setup->{scoreboard_file},
+    SystemLog => $setup->{log_file},
+    TraceLog => $setup->{log_file},
+    Trace => 'ssh2:20 sftp:20',
+
+    AuthUserFile => $setup->{auth_user_file},
+    AuthGroupFile => $setup->{auth_group_file},
+    AuthOrder => 'mod_auth_file.c',
+
+    AllowChrootSymlinks => 'off',
+    DefaultRoot => '~',
+
+    IfModules => {
+      'mod_delay.c' => {
+        DelayEngine => 'off',
+      },
+
+      'mod_sftp.c' => [
+        "SFTPEngine on",
+        "SFTPLog $setup->{log_file}",
+        "SFTPHostKey $rsa_host_key",
+        "SFTPHostKey $dsa_host_key",
+      ],
+    },
+  };
+
+  my ($port, $config_user, $config_group) = config_write($setup->{config_file},
+    $config);
+
+  # Open pipes, for use between the parent and child processes.  Specifically,
+  # the child will indicate when it's done with its test by writing a message
+  # to the parent.
+  my ($rfh, $wfh);
+  unless (pipe($rfh, $wfh)) {
+    die("Can't open pipe: $!");
+  }
+
+  require Net::SSH2;
+
+  my $ex;
+
+  # Ignore SIGPIPE
+  local $SIG{PIPE} = sub { };
+
+  # Fork child
+  $self->handle_sigchld();
+  defined(my $pid = fork()) or die("Can't fork: $!");
+  if ($pid) {
+    eval {
+      # Allow for server startup
+      sleep(1);
+
+      my $ssh2 = Net::SSH2->new();
+      unless ($ssh2->connect('127.0.0.1', $port)) {
+        my ($err_code, $err_name, $err_str) = $ssh2->error();
+        die("Can't connect to SSH2 server: [$err_name] ($err_code) $err_str");
+      }
+
+      if ($ssh2->auth_password($setup->{user}, $setup->{passwd})) {
+        die("Logged into SSH2 server successfully unexpectedly");
+      }
+
+      my ($err_code, $err_name, $err_text) = $ssh2->error();
+      $ssh2->disconnect();
+
+      my $expected = 'LIBSSH2_ERROR_AUTHENTICATION_FAILED';
+      $self->assert($expected eq $err_name,
+        test_msg("Expected libssh2 error '$expected', got '$err_name'"));
+
+      $expected = 'Authentication failed';
+      $self->assert(qr/$expected/, $err_text,
+        test_msg("Expected libssh2 error '$expected', got '$err_text'"));
     };
     if ($@) {
       $ex = $@;
