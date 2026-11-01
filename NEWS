@@ -21,6 +21,8 @@
   key format leading to unexpected passphrase prompting on startup.
 - Issue 2416 - FTPS data transfers over TLSv1.3 fail with older OpenSSL 1.x
   versions.
+- Issue 2374 - <Limit WRITE> configurations are not honored for symlinks by
+  SITE COPY as they should be.
 
 1.3.9e - Released 26-Oct-2026
 --------------------------------
