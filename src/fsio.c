@@ -4519,7 +4519,7 @@ int pr_fsio_smkdir(pool *p, const char *path, mode_t mode, uid_t uid,
      */
     tmpl_len = dst_dirlen + 15;
     tmpl = pcalloc(p, tmpl_len);
-    pr_snprintf(tmpl, tmpl_len-1, "%s/.dstXXXXXXXXX",
+    pr_snprintf(tmpl, tmpl_len, "%s/.dstXXXXXXXXX",
       dst_dirlen > 1 ? dst_dir : "");
 
     /* Use mkdtemp(3) to create the temporary directory (in the same destination
