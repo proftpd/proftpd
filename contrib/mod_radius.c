@@ -143,8 +143,12 @@ typedef struct {
  * That value covers both the "type" byte, and the length byte itself, thus:
  *
  *  255 (max attribute length value) - 1 (type byte) - 1 (length byte) = 253
+ *
+ * However, there is an additional wrinkle: the 16-byte "block" size of the
+ * XOR with the shared secret.  The largest multiple of 16, that is less
+ * than 253, is 240.
  */
-#define RADIUS_MAX_PASSWD_LEN		253
+#define RADIUS_MAX_PASSWD_LEN		240
 
 /* This value needs to be a multiple of RADIUS_PASSWD_LEN (16) due to the
  * XOR implementation.
