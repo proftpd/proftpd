@@ -274,8 +274,14 @@ typedef struct keystore_st {
   /* Arbitrary keystore-specific data. */
   void *keystore_data;
 
-  /* The type of keys (host, user) that this store can handle. */
+  /* The type of keys (host, user) that this store can verify. */
   unsigned int store_ktypes;
+
+  /* Determine if the provided public key has been revoked.  Returns TRUE
+   * if revoked, FALSE if not revoked, and -1 on error.
+   */
+  int (*is_revoked_key)(struct keystore_st *store, pool *p, const char *user,
+    unsigned char *public_key, uint32_t public_keylen);
 
   /* Verify the given host key.  Returns zero on success, -1 otherwise. */
   int (*verify_host_key)(struct keystore_st *store, pool *p, const char *user,
@@ -295,6 +301,7 @@ typedef struct keystore_st {
 
 #define SFTP_SSH2_HOST_KEY_STORE	0x01
 #define SFTP_SSH2_USER_KEY_STORE	0x02
+#define SFTP_SSH2_REVOKED_KEY_STORE	0x04
 
 /* Known/supported RFC4716 headers. */
 #define SFTP_KEYSTORE_HEADER_COMMENT			"Comment"
@@ -302,10 +309,11 @@ typedef struct keystore_st {
 #define SFTP_KEYSTORE_HEADER_FIDO_TOUCH_REQUIRED	"X-FIDO-Touch-Required"
 #define SFTP_KEYSTORE_HEADER_FIDO_VERIFY_REQUIRED	"X-FIDO-Verify-Required"
 
-int sftp_keystore_register_store(const char *,
-  sftp_keystore_t *(*store_open)(pool *, int, const char *, const char *),
-  unsigned int);
-int sftp_keystore_unregister_store(const char *, unsigned int);
+int sftp_keystore_register_store(const char *store_typ,
+  sftp_keystore_t *(*store_open)(pool *p, int ktype, const char *store_info,
+  const char *user), unsigned int store_ktypes);
+int sftp_keystore_unregister_store(const char *store_type,
+  unsigned int store_ktypes);
 
 /* API for modules that which to register CA key stores, for the
  * SFTPAuthorizedHostCAKeys and SFTPAuthorizedUserCAKeys directives.
@@ -346,10 +354,11 @@ typedef struct castore_st {
 #define SFTP_SSH2_HOST_CA_KEY_STORE	0x01
 #define SFTP_SSH2_USER_CA_KEY_STORE	0x02
 
-int sftp_castore_register_store(const char *,
-  sftp_castore_t *(*store_open)(pool *, int, const char *, const char *),
-  unsigned int);
-int sftp_castore_unregister_store(const char *, unsigned int);
+int sftp_castore_register_store(const char *store_type,
+  sftp_castore_t *(*store_open)(pool *p, int ctype, const char *store_info,
+  const char *user), unsigned int store_ctypes);
+int sftp_castore_unregister_store(const char *store_type,
+  unsigned int store_ctypes);
 
 /* For use by keystore backend modules. */
 int sftp_keys_compare_keys(pool *, unsigned char *, uint32_t, unsigned char *,

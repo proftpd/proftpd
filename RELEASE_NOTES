@@ -13,6 +13,18 @@ ChangeLog files.
 
   + mod_sftp now honors the AllowChrootSymlinks directive.
 
+  + Implement support for revoking SSH public keys, whether as part of SSH
+    client certificates or used as regular keys.
+
+
+  + New Directives
+
+      SFTPRevokedKeys
+
+        This new directive is used for configuring keys which should no
+        longer be considered valid for authentication, whether used in
+        SSH certificates or not.  Please see the docs for details.
+
 
 1.3.10rc5
 ----------

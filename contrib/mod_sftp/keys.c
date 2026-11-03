@@ -2689,6 +2689,53 @@ static int ed448_compare_keys(pool *p,
 }
 #endif /* HAVE_X448_OPENSSL */
 
+static enum sftp_key_type_e get_noncert_key_type(enum sftp_key_type_e key_type) {
+  enum sftp_key_type_e noncert_key_type = SFTP_KEY_UNKNOWN;
+
+  switch (key_type) {
+    case SFTP_KEY_DSA_CERT:
+      noncert_key_type = SFTP_KEY_DSA;
+      break;
+
+    case SFTP_KEY_RSA_CERT:
+      noncert_key_type = SFTP_KEY_RSA;
+      break;
+
+    case SFTP_KEY_RSA_SHA256_CERT:
+      noncert_key_type = SFTP_KEY_RSA_SHA256;
+      break;
+
+    case SFTP_KEY_RSA_SHA512_CERT:
+      noncert_key_type = SFTP_KEY_RSA_SHA512;
+      break;
+
+    case SFTP_KEY_ECDSA_256_CERT:
+      noncert_key_type = SFTP_KEY_ECDSA_256;
+      break;
+
+    case SFTP_KEY_ECDSA_384_CERT:
+      noncert_key_type = SFTP_KEY_ECDSA_384;
+      break;
+
+    case SFTP_KEY_ECDSA_521_CERT:
+      noncert_key_type = SFTP_KEY_ECDSA_521;
+      break;
+
+    case SFTP_KEY_ED25519_CERT:
+      noncert_key_type = SFTP_KEY_ED25519;
+      break;
+
+    case SFTP_KEY_ED448_CERT:
+      noncert_key_type = SFTP_KEY_ED448;
+      break;
+
+    default:
+      break;
+  }
+
+  return noncert_key_type;
+}
+
 /* Compare a "blob" of pubkey data sent by the client for authentication
  * with a local file pubkey (from an RFC4716 formatted file).  Returns -1 if
  * there was an error, TRUE if the keys are equals, and FALSE if not.
@@ -2726,6 +2773,14 @@ int sftp_keys_compare_keys(pool *p,
 
     errno = xerrno;
     return -1;
+  }
+
+  /* We could be being asked to compare certificate-provided keys against
+   * regular keys.  As long as the underlying key algorithm (e.g. RSA) is
+   * the same, such comparisons should be allowed.
+   */
+  if (sftp_keys_is_cert_type(remote_key_type)) {
+    remote_key_type = get_noncert_key_type(remote_key_type);
   }
 
   if (remote_pkey != NULL &&

@@ -2269,6 +2269,50 @@ MODRET set_sftprekey(cmd_rec *cmd) {
   return PR_HANDLED(cmd);
 }
 
+/* usage: SFTPRevokedKeys store1 ... */
+MODRET set_sftprevokedkeys(cmd_rec *cmd) {
+  register unsigned int i;
+  config_rec *c;
+
+  if (cmd->argc < 2) {
+    CONF_ERROR(cmd, "wrong number of parameters");
+  }
+
+  CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL);
+
+  for (i = 1; i < cmd->argc; i++) {
+    char *ptr;
+
+    /* Separate the parameter into its separate store-type:store-info pieces. */
+    ptr = strchr(cmd->argv[i], ':');
+    if (ptr == NULL) {
+      CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "badly formatted parameter: '",
+        (char *) cmd->argv[i], "'", NULL));
+    }
+    *ptr = '\0';
+
+    /* Verify that the requested store type has been registered, and supports
+     * the type of keystore requested (revoked key).
+     */
+    if (sftp_keystore_supports_store(cmd->argv[i],
+        SFTP_SSH2_REVOKED_KEY_STORE) < 0) {
+      CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "unsupported key store: '",
+        (char *) cmd->argv[i], "'", NULL));
+    }
+
+    *ptr = ':';
+  }
+
+  c = add_config_param(cmd->argv[0], 0);
+  c->argc = cmd->argc-1;
+  c->argv = pcalloc(c->pool, c->argc * (sizeof(char *)));
+  for (i = 1; i < cmd->argc; i++) {
+    c->argv[i-1] = pstrdup(c->pool, cmd->argv[i]);
+  }
+
+  return PR_HANDLED(cmd);
+}
+
 /* usage: SFTPTrafficPolicy policy */
 MODRET set_sftptrafficpolicy(cmd_rec *cmd) {
   CHECK_ARGS(cmd, 1);
@@ -3333,6 +3377,7 @@ static conftable sftp_conftab[] = {
   { "SFTPOptions",		set_sftpoptions,		NULL },
   { "SFTPPassPhraseProvider",	set_sftppassphraseprovider,	NULL },
   { "SFTPRekey",		set_sftprekey,			NULL },
+  { "SFTPRevokedKeys",		set_sftprevokedkeys,		NULL },
   { "SFTPTrafficPolicy",	set_sftptrafficpolicy,		NULL },
   { NULL }
 };

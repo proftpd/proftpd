@@ -22,6 +22,7 @@
  */
 
 #include "mod_sftp.h"
+#include "keys.h"
 #include "keystore.h"
 #include "rfc4716.h"
 
@@ -95,8 +96,8 @@ static struct sftp_keystore_store *keystore_get_store(const char *store_type,
 /* Main keystore API */
 
 int sftp_keystore_register_store(const char *store_type,
-    sftp_keystore_t *(*store_open)(pool *, int, const char *, const char *),
-    unsigned int store_ktypes) {
+    sftp_keystore_t *(*store_open)(pool *p, int store_ktype,
+    const char *store_info, const char *user), unsigned int store_ktypes) {
   struct sftp_keystore_store *store;
 
   if (store_type == NULL ||
@@ -186,6 +187,106 @@ int sftp_keystore_supports_store(const char *store_type,
   return -1;
 }
 
+int sftp_keystore_is_revoked_key(pool *p, const char *user,
+    unsigned char *public_key, uint32_t public_keylen) {
+  register unsigned int i;
+  int res = -1;
+  config_rec *c;
+
+  if (user == NULL ||
+      public_key == NULL ||
+      public_keylen == 0) {
+    errno = EINVAL;
+    return -1;
+  }
+
+  c = find_config(main_server->conf, CONF_PARAM, "SFTPRevokedKeys",
+    FALSE);
+  if (c == NULL) {
+    pr_trace_msg(trace_channel, 9, "no SFTPRevokedKeys configured");
+    return FALSE;
+  }
+
+  for (i = 0; i < c->argc; i++) {
+    struct sftp_keystore_store *sks;
+    char *store_type, *store_info, *ptr;
+
+    res = -1;
+    pr_signals_handle();
+
+    store_type = c->argv[i];
+
+    pr_trace_msg(trace_channel, 2,
+      "using SFTPRevokedKeys '%s' for checking public key", store_type);
+
+    ptr = strchr(store_type, ':');
+    if (ptr == NULL) {
+      pr_trace_msg(trace_channel, 2,
+        "skipping badly formatted SFTPRevokedKeys '%s'", store_type);
+      continue;
+    }
+
+    *ptr = '\0';
+    store_info = ptr + 1;
+
+    sks = keystore_get_store(store_type, SFTP_SSH2_REVOKED_KEY_STORE);
+    if (sks != NULL) {
+      sftp_keystore_t *store;
+
+      store = (sks->store_open)(p, SFTP_SSH2_REVOKED_KEY_STORE, store_info,
+        user);
+      if (store != NULL) {
+        if (store->is_revoked_key != NULL) {
+          int xerrno;
+
+          res = (store->is_revoked_key)(store, p, user, public_key,
+            public_keylen);
+          xerrno = errno;
+          (store->store_close)(store);
+
+          *ptr = ':';
+          if (res == TRUE) {
+            const char *revoked_fp;
+
+            revoked_fp = sftp_keys_get_fingerprint2(p, public_key,
+              public_keylen, SFTP_KEYS_FP_DIGEST_SHA256,
+              SFTP_KEYS_FP_FMT_BASE64);
+
+            (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
+              "public key %s used by user '%s' has been revoked by '%s'",
+              revoked_fp, user, store_type);
+            break;
+          }
+
+          if (res < 0) {
+            pr_trace_msg(trace_channel, 3,
+              "error checking whether public key is revoked via '%s': %s",
+              store_type, strerror(xerrno));
+          }
+
+        } else {
+          *ptr = ':';
+          pr_trace_msg(trace_channel, 7,
+            "error using SFTPRevokedKeys '%s': %s", store_type,
+            strerror(ENOSYS));
+        }
+
+        continue;
+
+      } else {
+        *ptr = ':';
+        pr_trace_msg(trace_channel, 7,
+          "error opening SFTPRevokedKeys '%s': %s", store_type,
+          strerror(errno));
+      }
+    }
+
+    *ptr = ':';
+  }
+
+  return res;
+}
+
 int sftp_keystore_verify_host_key(pool *p, const char *user,
     const char *host_fqdn, const char *host_user, unsigned char *key_data,
     uint32_t key_len, pr_table_t *notes) {
@@ -231,7 +332,7 @@ int sftp_keystore_verify_host_key(pool *p, const char *user,
 
   for (i = 0; i < c->argc; i++) {
     struct sftp_keystore_store *sks;
-    char *store_type, *ptr;
+    char *store_type, *store_info, *ptr;
 
     res = -1;
     pr_signals_handle();
@@ -250,12 +351,13 @@ int sftp_keystore_verify_host_key(pool *p, const char *user,
     }
 
     *ptr = '\0';
+    store_info = ptr + 1;
 
     sks = keystore_get_store(store_type, SFTP_SSH2_HOST_KEY_STORE);
     if (sks != NULL) {
       sftp_keystore_t *store;
 
-      store = (sks->store_open)(p, SFTP_SSH2_HOST_KEY_STORE, ptr + 1, user);
+      store = (sks->store_open)(p, SFTP_SSH2_HOST_KEY_STORE, store_info, user);
       if (store != NULL) {
         if (store->verify_host_key != NULL) {
           int xerrno;
@@ -301,8 +403,14 @@ int sftp_keystore_verify_host_key(pool *p, const char *user,
   }
 
   if (res == 0) {
+    if (sftp_keystore_is_revoked_key(p, user, key_data, key_len) == TRUE) {
+      errno = EACCES;
+      return -1;
+    }
+
     pr_trace_msg(trace_channel, 8,
       "verified host public key for user '%s', host '%s'", user, host_fqdn);
+
     return res;
   }
 
@@ -415,8 +523,14 @@ int sftp_keystore_verify_user_key(pool *p, const char *user,
   }
 
   if (res == 0) {
+    if (sftp_keystore_is_revoked_key(p, user, key_data, key_len) == TRUE) {
+      errno = EACCES;
+      return -1;
+    }
+
     pr_trace_msg(trace_channel, 8,
       "verified public key for user '%s'", user);
+
     return res;
   }
 

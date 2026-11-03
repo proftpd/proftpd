@@ -23,6 +23,7 @@
 
 #include "mod_sftp.h"
 #include "certs.h"
+#include "keystore.h"
 #include "castore.h"
 #include "rfc4716.h"
 
@@ -363,6 +364,26 @@ int sftp_castore_verify_host_cert(pool *p, const char *user,
   if (res == 0) {
     const char *ca_fp;
 
+    /* Once we've verified the certificate, we can check whether its keys
+     * have been revoked.  We do this now, rather than earlier, to mitigate
+     * being an oracle for keys whose ownership had not yet been proven via
+     * signature.
+     */
+
+    if (sftp_keystore_is_revoked_key(p, user, cert->pubkey_data,
+        cert->pubkey_datalen) == TRUE) {
+      destroy_pool(cert->cert_pool);
+      errno = EACCES;
+      return -1;
+    }
+
+    if (sftp_keystore_is_revoked_key(p, user, cert->signature_pubkey_data,
+        cert->signature_pubkey_datalen) == TRUE) {
+      destroy_pool(cert->cert_pool);
+      errno = EACCES;
+      return -1;
+    }
+
     pr_trace_msg(trace_channel, 8,
       "verified host certificate for user '%s', host '%s'", user, host_fqdn);
 
@@ -549,6 +570,26 @@ int sftp_castore_verify_user_cert(pool *p, const char *user,
 
   if (res == 0) {
     const char *ca_fp;
+
+    /* Once we've verified the certificate, we can check whether its keys
+     * have been revoked.  We do this now, rather than earlier, to mitigate
+     * being an oracle for keys whose ownership had not yet been proven via
+     * signature.
+     */
+
+    if (sftp_keystore_is_revoked_key(p, user, cert->pubkey_data,
+        cert->pubkey_datalen) == TRUE) {
+      destroy_pool(cert->cert_pool);
+      errno = EACCES;
+      return -1;
+    }
+
+    if (sftp_keystore_is_revoked_key(p, user, cert->signature_pubkey_data,
+        cert->signature_pubkey_datalen) == TRUE) {
+      destroy_pool(cert->cert_pool);
+      errno = EACCES;
+      return -1;
+    }
 
     pr_trace_msg(trace_channel, 8,
       "verified certificate for user '%s'", user);

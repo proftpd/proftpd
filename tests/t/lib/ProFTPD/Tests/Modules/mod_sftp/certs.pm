@@ -167,6 +167,16 @@ my $TESTS = {
     test_class => [qw(bug forking sftp)],
   },
 
+  sftp_ext_publickey_certificate_revoked_key_issue2357 => {
+    order => ++$order,
+    test_class => [qw(bug forking sftp)],
+  },
+
+  sftp_ext_publickey_certificate_revoked_ca_key_issue2357 => {
+    order => ++$order,
+    test_class => [qw(bug forking sftp)],
+  },
+
   # TODO: Same tests as above, but using hostbased authentication.  Note that
   # these require running in a Docker Compose setup, since OpenSSH'
   # command-line hostbased authentication support is restrictive/opinionated
@@ -316,6 +326,16 @@ my $TESTS = {
     test_class => [qw(bug forking inprogress os_linux sftp)],
   },
 
+  sftp_ext_hostbased_certificate_revoked_key_issue2357 => {
+    order => ++$order,
+    test_class => [qw(bug forking sftp)],
+  },
+
+  sftp_ext_hostbased_certificate_revoked_ca_key_issue2357 => {
+    order => ++$order,
+    test_class => [qw(bug forking sftp)],
+  },
+
 };
 
 sub new {
@@ -323,8 +343,7 @@ sub new {
 }
 
 sub list_tests {
-  my @tests = testsuite_get_runnable_tests($TESTS);
-  return @tests;
+  return testsuite_get_runnable_tests($TESTS);
 }
 
 sub set_up {
@@ -337,11 +356,9 @@ sub set_up {
   my $rsa_host_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/ssh_host_rsa_key');
   my $dsa_host_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/ssh_host_dsa_key');
 
-=pod
   unless (chmod(0400, $rsa_host_key, $dsa_host_key)) {
     die("Can't set perms on $rsa_host_key, $dsa_host_key: $!");
   }
-=cut
 }
 
 sub sftp_ext_hostbased_ca_cert {
@@ -356,6 +373,8 @@ sub sftp_ext_hostbased_ca_cert {
   my $cert = shift;
   my $priv_key = shift;
   my $addl_directives = shift;
+  my $failure_expected = shift;
+  $failure_expected = 0 unless defined($failure_expected);
 
   my $rsa_host_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/ssh_host_rsa_key');
   my $dsa_host_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/ssh_host_dsa_key');
@@ -547,6 +566,18 @@ sub sftp_ext_hostbased_ca_cert {
     $ex = $@ unless $ex;
   }
 
+  if ($failure_expected == 1) {
+    # If we have an exception/failure already, clear it, as it is expected.
+    if ($ex) {
+      $ex = undef;
+
+    # Otherwise, the lack of an exception/failure, when we expect one, is
+    # itself a problem.
+    } else {
+      $ex = 'Test succeeded unexpectedly' unless $ex;
+    }
+  }
+
   test_cleanup($setup, $ex);
 }
 
@@ -559,6 +590,8 @@ sub sftp_ext_publickey_ca_cert {
   my $cert = shift;
   my $priv_key = shift;
   my $addl_directives = shift;
+  my $failure_expected = shift;
+  $failure_expected = 0 unless defined($failure_expected);
 
   my $rsa_host_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/ssh_host_rsa_key');
   my $dsa_host_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/ssh_host_dsa_key');
@@ -749,6 +782,18 @@ sub sftp_ext_publickey_ca_cert {
   };
   if ($@) {
     $ex = $@ unless $ex;
+  }
+
+  if ($failure_expected == 1) {
+    # If we have an exception/failure already, clear it, as it is expected.
+    if ($ex) {
+      $ex = undef;
+
+    # Otherwise, the lack of an exception/failure, when we expect one, is
+    # itself a problem.
+    } else {
+      $ex = 'Test succeeded unexpectedly' unless $ex;
+    }
   }
 
   test_cleanup($setup, $ex);
@@ -1113,6 +1158,55 @@ sub sftp_ext_publickey_certificate_options_allow_match_principals_issue2357 {
     $rsa_priv_key, $addl_configs);
 }
 
+sub sftp_ext_publickey_certificate_revoked_key_issue2357 {
+  my $self = shift;
+  my $tmpdir = $self->{tmpdir};
+  my $setup = test_setup($tmpdir, 'sftp');
+
+  my $rsa_priv_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/test_rsa_key');
+  my $rsa_pub_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/authorized_rsa_keys');
+  my $rsa_cert = File::Spec->rel2abs('t/etc/modules/mod_sftp/certs/user_rsa_ca_rsa_cert.pub');
+  my $rsa_rfc4716_ca_keys = File::Spec->rel2abs('t/etc/modules/mod_sftp/certs/authorized_user_rsa_ca_keys');
+
+  my $revoked_keys = File::Spec->rel2abs("$tmpdir/revoked_keys");
+  unless (copy($rsa_pub_key, $revoked_keys)) {
+    die("Can't copy $rsa_pub_key to $revoked_keys: $!");
+  }
+
+  my $addl_configs = [
+    "SFTPRevokedKeys file:$revoked_keys",
+  ];
+
+  # With this configuration, we expect the login to fail, due to the use
+  # of a revoked key.
+  sftp_ext_publickey_ca_cert($self, $rsa_rfc4716_ca_keys, $rsa_cert,
+    $rsa_priv_key, $addl_configs, 1);
+}
+
+sub sftp_ext_publickey_certificate_revoked_ca_key_issue2357 {
+  my $self = shift;
+  my $tmpdir = $self->{tmpdir};
+  my $setup = test_setup($tmpdir, 'sftp');
+
+  my $rsa_priv_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/test_rsa_key');
+  my $rsa_cert = File::Spec->rel2abs('t/etc/modules/mod_sftp/certs/user_rsa_ca_rsa_cert.pub');
+  my $rsa_rfc4716_ca_keys = File::Spec->rel2abs('t/etc/modules/mod_sftp/certs/authorized_user_rsa_ca_keys');
+
+  my $revoked_keys = File::Spec->rel2abs("$tmpdir/revoked_keys");
+  unless (copy($rsa_rfc4716_ca_keys, $revoked_keys)) {
+    die("Can't copy $rsa_rfc4716_ca_keys to $revoked_keys: $!");
+  }
+
+  my $addl_configs = [
+    "SFTPRevokedKeys file:$revoked_keys",
+  ];
+
+  # With this configuration, we expect the login to fail, due to the use
+  # of a revoked key.
+  sftp_ext_publickey_ca_cert($self, $rsa_rfc4716_ca_keys, $rsa_cert,
+    $rsa_priv_key, $addl_configs, 1);
+}
+
 sub sftp_ext_hostbased_rsa_ca_rsa_cert_issue2357 {
   my $self = shift;
   my $tmpdir = $self->{tmpdir};
@@ -1470,6 +1564,55 @@ sub sftp_ext_hostbased_certificate_options_allow_match_principals_issue2357 {
 
   sftp_ext_hostbased_ca_cert($self, $rsa_rfc4716_ca_keys, $rsa_cert,
     $rsa_priv_key, $addl_configs);
+}
+
+sub sftp_ext_hostbased_certificate_revoked_key_issue2357 {
+  my $self = shift;
+  my $tmpdir = $self->{tmpdir};
+  my $setup = test_setup($tmpdir, 'sftp');
+
+  my $rsa_priv_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/test_rsa_key');
+  my $rsa_pub_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/authorized_rsa_keys');
+  my $rsa_cert = File::Spec->rel2abs('t/etc/modules/mod_sftp/certs/host_rsa_ca_rsa_cert.pub');
+  my $rsa_rfc4716_ca_keys = File::Spec->rel2abs('t/etc/modules/mod_sftp/certs/authorized_host_rsa_ca_keys');
+
+  my $revoked_keys = File::Spec->rel2abs("$tmpdir/revoked_keys");
+  unless (copy($rsa_pub_key, $revoked_keys)) {
+    die("Can't copy $rsa_pub_key to $revoked_keys: $!");
+  }
+
+  my $addl_configs = [
+    "SFTPRevokedKeys file:$revoked_keys",
+  ];
+
+  # With this configuration, we expect the login to fail, due to the use
+  # of a revoked key.
+  sftp_ext_hostbased_ca_cert($self, $rsa_rfc4716_ca_keys, $rsa_cert,
+    $rsa_priv_key, $addl_configs, 1);
+}
+
+sub sftp_ext_hostbased_certificate_revoked_ca_key_issue2357 {
+  my $self = shift;
+  my $tmpdir = $self->{tmpdir};
+  my $setup = test_setup($tmpdir, 'sftp');
+
+  my $rsa_priv_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/test_rsa_key');
+  my $rsa_cert = File::Spec->rel2abs('t/etc/modules/mod_sftp/certs/host_rsa_ca_rsa_cert.pub');
+  my $rsa_rfc4716_ca_keys = File::Spec->rel2abs('t/etc/modules/mod_sftp/certs/authorized_host_rsa_ca_keys');
+
+  my $revoked_keys = File::Spec->rel2abs("$tmpdir/revoked_keys");
+  unless (copy($rsa_rfc4716_ca_keys, $revoked_keys)) {
+    die("Can't copy $rsa_rfc4716_ca_keys to $revoked_keys: $!");
+  }
+
+  my $addl_configs = [
+    "SFTPRevokedKeys file:$revoked_keys",
+  ];
+
+  # With this configuration, we expect the login to fail, due to the use
+  # of a revoked key.
+  sftp_ext_hostbased_ca_cert($self, $rsa_rfc4716_ca_keys, $rsa_cert,
+    $rsa_priv_key, $addl_configs, 1);
 }
 
 1;

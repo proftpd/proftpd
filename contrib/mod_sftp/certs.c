@@ -382,6 +382,13 @@ int sftp_certs_parse_cert(pool *p, unsigned char *cert_data,
     return -1;
   }
 
+  /* Stash the signed public key for later use, e.g. checking for
+   * revocation.
+   */
+  res->pubkey_datalen = len;
+  res->pubkey_data = palloc(res->cert_pool, len);
+  memcpy(res->pubkey_data, cert_data, len);
+
   cert_data += len;
   cert_datalen -= len;
 
