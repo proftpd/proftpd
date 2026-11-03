@@ -383,6 +383,56 @@ static struct filestore_key *filestore_get_key(
 
 /* Keys */
 
+static int filestore_is_revoked_key(sftp_keystore_t *store, pool *p,
+    const char *user, unsigned char *key_data, uint32_t key_len) {
+  struct filestore_key *key = NULL;
+  struct filestore_data *store_data = store->keystore_data;
+  int res = -1;
+
+  if (store_data->path == NULL) {
+    errno = EPERM;
+    return -1;
+  }
+
+  /* XXX Note that this will scan the file from the beginning, each time.
+   * There's room for improvement; perhaps mmap() the file into memory?
+   */
+
+  key = filestore_get_key(store_data, p);
+  while (key != NULL) {
+    int ok;
+
+    pr_signals_handle();
+
+    ok = sftp_keys_compare_keys(p, key_data, key_len, key->key_data,
+      key->key_datalen);
+    if (ok == TRUE) {
+      res = TRUE;
+      break;
+    }
+
+    key = filestore_get_key(store_data, p);
+  }
+
+  if (res == TRUE) {
+    pr_trace_msg(trace_channel, 10, "found matching revoked public key "
+      "for user '%s' in '%s'", user, store_data->path);
+  }
+
+  if (pr_fsio_lseek(store_data->fh, 0, SEEK_SET) < 0) {
+    int xerrno = errno;
+
+    (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
+      "error seeking to start of '%s': %s", store_data->path, strerror(xerrno));
+
+    errno = xerrno;
+    return -1;
+  }
+
+  store_data->lineno = 0;
+  return res;
+}
+
 static int filestore_verify_host_key(sftp_keystore_t *store, pool *p,
     const char *user, const char *host_fqdn, const char *host_user,
     unsigned char *key_data, uint32_t key_len, pr_table_t *headers) {
@@ -640,6 +690,10 @@ static sftp_keystore_t *key_filestore_open(pool *parent_pool,
       store->verify_user_key = filestore_verify_user_key;
       break;
 
+    case SFTP_SSH2_REVOKED_KEY_STORE:
+      store->is_revoked_key = filestore_is_revoked_key;
+      break;
+
     default:
       break;
   }
@@ -890,7 +944,7 @@ static sftp_castore_t *ca_filestore_open(pool *parent_pool,
 
 int sftp_rfc4716_init(void) {
   sftp_keystore_register_store("file", key_filestore_open,
-    SFTP_SSH2_HOST_KEY_STORE|SFTP_SSH2_USER_KEY_STORE);
+    SFTP_SSH2_HOST_KEY_STORE|SFTP_SSH2_USER_KEY_STORE|SFTP_SSH2_REVOKED_KEY_STORE);
   sftp_castore_register_store("file", ca_filestore_open,
     SFTP_SSH2_HOST_CA_KEY_STORE|SFTP_SSH2_USER_CA_KEY_STORE);
 
@@ -899,7 +953,7 @@ int sftp_rfc4716_init(void) {
 
 int sftp_rfc4716_free(void) {
   sftp_keystore_unregister_store("file",
-    SFTP_SSH2_HOST_KEY_STORE|SFTP_SSH2_USER_KEY_STORE);
+    SFTP_SSH2_HOST_KEY_STORE|SFTP_SSH2_USER_KEY_STORE|SFTP_SSH2_REVOKED_KEY_STORE);
   sftp_castore_unregister_store("file",
     SFTP_SSH2_HOST_CA_KEY_STORE|SFTP_SSH2_USER_CA_KEY_STORE);
 

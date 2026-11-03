@@ -37,5 +37,7 @@ int sftp_keystore_verify_host_key(pool *p, const char *user,
   uint32_t key_datalen, pr_table_t *verify_notes);
 int sftp_keystore_verify_user_key(pool *p, const char *user,
   unsigned char *key_data, uint32_t key_datalen, pr_table_t *verify_notes);
+int sftp_keystore_is_revoked_key(pool *p, const char *user,
+  unsigned char *public_key, uint32_t public_keylen);
 
 #endif /* MOD_SFTP_KEYSTORE_H */

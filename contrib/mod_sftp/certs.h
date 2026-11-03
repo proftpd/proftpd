@@ -45,6 +45,10 @@ struct sftp_cert {
   pr_table_t *critical_options;
   pr_table_t *extensions;
 
+  /* Signed key */
+  unsigned char *pubkey_data;
+  uint32_t pubkey_datalen;
+
   /* Signature key */
   const char *signature_pubkey_algo;
   unsigned char *signature_pubkey_data;

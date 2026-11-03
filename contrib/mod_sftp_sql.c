@@ -492,7 +492,7 @@ static char *sqlstore_get_str(pool *p, char *str) {
   return res->data;
 }
 
-static int sqlstore_verify_key_raw(pool *p, struct sqlstore_data *store_data,
+static int sqlstore_compare_key_raw(pool *p, struct sqlstore_data *store_data,
     int nrow, char *col_data, size_t col_datalen, unsigned char *key_data,
     uint32_t key_datalen) {
   struct sqlstore_key *key;
@@ -533,7 +533,7 @@ static int sqlstore_verify_key_raw(pool *p, struct sqlstore_data *store_data,
   return res;
 }
 
-static int sqlstore_verify_key_rfc4716(pool *p,
+static int sqlstore_compare_key_rfc4716(pool *p,
     struct sqlstore_data *store_data, int nrow, char *col_data,
     size_t col_datalen, unsigned char *key_data, uint32_t key_datalen,
     pr_table_t *headers) {
@@ -570,9 +570,11 @@ static int sqlstore_verify_key_rfc4716(pool *p,
       continue;
     }
 
-    if (pr_table_copy(headers, key->headers, 0) < 0) {
-      pr_trace_msg(trace_channel, 19, "error copying verify notes: %s",
-        strerror(errno));
+    if (headers != NULL) {
+      if (pr_table_copy(headers, key->headers, 0) < 0) {
+        pr_trace_msg(trace_channel, 19, "error copying verify notes: %s",
+          strerror(errno));
+      }
     }
 
     return 0;
@@ -583,6 +585,95 @@ static int sqlstore_verify_key_rfc4716(pool *p,
 }
 
 /* Keys */
+
+static int sqlstore_is_revoked_key(sftp_keystore_t *store, pool *p,
+    const char *user, unsigned char *key_data, uint32_t key_datalen) {
+  register unsigned int i;
+  struct sqlstore_data *store_data;
+  pool *tmp_pool;
+  cmdtable *sql_cmdtab;
+  cmd_rec *sql_cmd;
+  modret_t *sql_res;
+  array_header *sql_data;
+  char **values;
+  int res;
+
+  store_data = store->keystore_data;
+
+  /* Find the cmdtable for the sql_lookup command. */
+  sql_cmdtab = pr_stash_get_symbol2(PR_SYM_HOOK, "sql_lookup", NULL, NULL,
+    NULL);
+  if (sql_cmdtab == NULL) {
+    (void) pr_log_writefile(sftp_logfd, MOD_SFTP_SQL_VERSION,
+      "unable to find SQL hook symbol 'sql_lookup'");
+    errno = EPERM;
+    return -1;
+  }
+
+  tmp_pool = make_sub_pool(store->keystore_pool);
+
+  /* Prepare the SELECT query. */
+  sql_cmd = sqlstore_cmd_create(tmp_pool, 3, "sql_lookup",
+    store_data->select_query, sqlstore_get_str(tmp_pool, (char *) user));
+
+  /* Call the handler. */
+  sql_res = pr_module_call(sql_cmdtab->m, sql_cmdtab->handler, sql_cmd);
+  if (sql_res == NULL ||
+      MODRET_ISERROR(sql_res)) {
+    (void) pr_log_writefile(sftp_logfd, MOD_SFTP_SQL_VERSION,
+      "error processing SQLNamedQuery '%s'", store_data->select_query);
+    destroy_pool(tmp_pool);
+
+    errno = EPERM;
+    return -1;
+  }
+
+  sql_data = (array_header *) sql_res->data;
+
+  if (sql_data->nelts == 0) {
+    (void) pr_log_writefile(sftp_logfd, MOD_SFTP_SQL_VERSION,
+      "SQLNamedQuery '%s' returned zero results", store_data->select_query);
+    destroy_pool(tmp_pool);
+    errno = ENOENT;
+    return -1;
+  }
+
+  (void) pr_log_writefile(sftp_logfd, MOD_SFTP_SQL_VERSION,
+    "SQLNamedQuery '%s' returned %d %s", store_data->select_query,
+    sql_data->nelts, sql_data->nelts != 1 ? "rows" : "row");
+
+  values = (char **) sql_data->elts;
+  for (i = 0; i < sql_data->nelts; i++) {
+    char *col_data;
+    size_t col_datalen;
+
+    pr_signals_handle();
+
+    col_data = values[i];
+    if (col_data == NULL) {
+      (void) pr_log_writefile(sftp_logfd, MOD_SFTP_SQL_VERSION,
+        "SQLNamedQuery '%s' returned NULL data", store_data->select_query);
+      destroy_pool(tmp_pool);
+      errno = EINVAL;
+      return -1;
+    }
+
+    col_datalen = strlen(values[i]);
+
+    res = sqlstore_compare_key_rfc4716(p, store_data, i, col_data, col_datalen,
+      key_data, key_datalen, NULL);
+    if (res == 0) {
+      pr_trace_msg(trace_channel, 10, "found matching RFC4716 revoked public "
+        "key (row %u) for user '%s' using SQLNamedQuery '%s'", i+1, user,
+        store_data->select_query);
+      destroy_pool(tmp_pool);
+      return TRUE;
+    }
+  }
+
+  destroy_pool(tmp_pool);
+  return FALSE;
+}
 
 static int sqlstore_verify_host_key(sftp_keystore_t *store, pool *p,
     const char *user, const char *host_fqdn, const char *host_user,
@@ -659,7 +750,7 @@ static int sqlstore_verify_host_key(sftp_keystore_t *store, pool *p,
 
     col_datalen = strlen(values[i]);
 
-    res = sqlstore_verify_key_rfc4716(p, store_data, i, col_data, col_datalen,
+    res = sqlstore_compare_key_rfc4716(p, store_data, i, col_data, col_datalen,
       key_data, key_datalen, headers);
     if (res == 0) {
       pr_trace_msg(trace_channel, 10, "found matching RFC4716 public key "
@@ -675,7 +766,7 @@ static int sqlstore_verify_host_key(sftp_keystore_t *store, pool *p,
      * (wrong RSA key, or comparing RSA and EC keys).
      */
     if (errno == EINVAL) {
-      res = sqlstore_verify_key_raw(p, store_data, i, col_data, col_datalen,
+      res = sqlstore_compare_key_raw(p, store_data, i, col_data, col_datalen,
         key_data, key_datalen);
       if (res == 0) {
         pr_trace_msg(trace_channel, 10, "found matching public key (row %u) "
@@ -767,7 +858,7 @@ static int sqlstore_verify_user_key(sftp_keystore_t *store, pool *p,
 
     col_datalen = strlen(values[i]);
 
-    res = sqlstore_verify_key_rfc4716(p, store_data, i, col_data, col_datalen,
+    res = sqlstore_compare_key_rfc4716(p, store_data, i, col_data, col_datalen,
       key_data, key_datalen, headers);
     if (res == 0) {
       pr_trace_msg(trace_channel, 10, "found matching RFC4716 public key "
@@ -783,7 +874,7 @@ static int sqlstore_verify_user_key(sftp_keystore_t *store, pool *p,
      * (wrong RSA key, or comparing RSA and EC keys).
      */
     if (errno == EINVAL) {
-      res = sqlstore_verify_key_raw(p, store_data, i, col_data, col_datalen,
+      res = sqlstore_compare_key_raw(p, store_data, i, col_data, col_datalen,
         key_data, key_datalen);
       if (res == 0) {
         pr_trace_msg(trace_channel, 10, "found matching public key (row %u) "
@@ -831,6 +922,13 @@ static sftp_keystore_t *key_sqlstore_open(pool *parent_pool,
 
     case SFTP_SSH2_USER_KEY_STORE:
       store->verify_user_key = sqlstore_verify_user_key;
+      break;
+
+    case SFTP_SSH2_REVOKED_KEY_STORE:
+      store->is_revoked_key = sqlstore_is_revoked_key;
+      break;
+
+    default:
       break;
   }
 
@@ -954,7 +1052,7 @@ static int sqlstore_verify_host_cert_ca_key(sftp_castore_t *store, pool *p,
 
     col_datalen = strlen(values[i]);
 
-    res = sqlstore_verify_key_rfc4716(p, store_data, i, col_data, col_datalen,
+    res = sqlstore_compare_key_rfc4716(p, store_data, i, col_data, col_datalen,
       ca_pubkey_data, ca_pubkey_datalen, headers);
     if (res == 0) {
       pr_trace_msg(trace_channel, 10, "found matching RFC4716 CA key "
@@ -1045,7 +1143,7 @@ static int sqlstore_verify_user_cert_ca_key(sftp_castore_t *store, pool *p,
 
     col_datalen = strlen(values[i]);
 
-    res = sqlstore_verify_key_rfc4716(p, store_data, i, col_data, col_datalen,
+    res = sqlstore_compare_key_rfc4716(p, store_data, i, col_data, col_datalen,
       ca_pubkey_data, ca_pubkey_datalen, headers);
     if (res == 0) {
       pr_trace_msg(trace_channel, 10, "found matching RFC4716 CA key "
@@ -1149,7 +1247,7 @@ static void sftpsql_mod_unload_ev(const void *event_data, void *user_data) {
 
   sqlstore_user = NULL;
   sftp_keystore_unregister_store("sql",
-    SFTP_SSH2_HOST_KEY_STORE|SFTP_SSH2_USER_KEY_STORE);
+    SFTP_SSH2_HOST_KEY_STORE|SFTP_SSH2_USER_KEY_STORE|SFTP_SSH2_REVOKED_KEY_STORE);
   sftp_castore_unregister_store("sql",
     SFTP_SSH2_HOST_CA_KEY_STORE|SFTP_SSH2_USER_CA_KEY_STORE);
 
@@ -1162,7 +1260,7 @@ static void sftpsql_mod_unload_ev(const void *event_data, void *user_data) {
 
 static int sftpsql_init(void) {
   sftp_keystore_register_store("sql", key_sqlstore_open,
-    SFTP_SSH2_HOST_KEY_STORE|SFTP_SSH2_USER_KEY_STORE);
+    SFTP_SSH2_HOST_KEY_STORE|SFTP_SSH2_USER_KEY_STORE|SFTP_SSH2_REVOKED_KEY_STORE);
   sftp_castore_register_store("sql", ca_sqlstore_open,
     SFTP_SSH2_HOST_CA_KEY_STORE|SFTP_SSH2_USER_CA_KEY_STORE);
 
