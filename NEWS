@@ -23,6 +23,8 @@
   versions.
 - Issue 2374 - <Limit WRITE> configurations are not honored for symlinks by
   SITE COPY as they should be.
+- Issue 2432 - Use of pwrite(2) for O_APPEND SFTP WRITE requests is not
+  portable.
 
 1.3.9e - Released 26-Oct-2026
 --------------------------------
