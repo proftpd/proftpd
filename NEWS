@@ -25,6 +25,8 @@
   versions.
 - Issue 2426 - Disconnect upon receiving unsupported Telnet IAC opcodes.
 - Issue 2415 - mod_sftp should honor AllowChrootSymlinks.
+- Issue 2432 - Use of pwrite(2) for O_APPEND SFTP WRITE requests is not
+  portable.
 
 1.3.10rc5 - Released 26-Oct-2026
 --------------------------------
