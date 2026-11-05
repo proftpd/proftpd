@@ -497,12 +497,12 @@ static int sqlstore_compare_key_raw(pool *p, struct sqlstore_data *store_data,
     uint32_t key_datalen) {
   struct sqlstore_key *key;
   int res, xerrno = EINVAL;
-  char *datastart, dataend;
+  char *datastart, *dataend;
 
   /* Strip any leading OpenSSH key type and trailing comments */
   if (!(strncmp(col_data, "ssh", 3) && strncmp(col_data, "ecdsa", 5))) {
-    datastart = strchr(col_data, (int)' ') + 1;
-    dataend = strchr(datastart, (int)' ');
+    datastart = strchr(col_data, ' ') + 1;
+    dataend = strchr(datastart, ' ');
     if (dataend) {
       col_datalen = dataend - datastart;
     } else {
