@@ -228,6 +228,11 @@ static struct sftp_digest digests[] = {
 };
 
 static const char *hostkey_algos[] = {
+#if defined(HAVE_MLDSA44_OPENSSL) && \
+    defined(HAVE_X25519_OPENSSL) && \
+    defined(HAVE_SHA512_OPENSSL)
+  "ssh-mldsa44-ed25519",
+#endif /* HAVE_MLDSA44_OPENSSL, HAVE_X25519_OPENSSL, HAVE_SHA512_OPENSSL */
 #if defined(HAVE_X448_OPENSSL)
   "ssh-ed448",
 #endif /* HAVE_X448_OPENSSL */
@@ -1702,6 +1707,17 @@ const char *sftp_crypto_get_kexinit_hostkey_list(pool *p) {
 #endif /* HAVE_X448_OPENSSL */
 
       if (sftp_keys_have_ed448_hostkey() == 0) {
+        have_key = TRUE;
+      }
+
+    } else if (strcmp(algo, "ssh-mldsa44-ed25519") == 0) {
+#if defined(HAVE_MLDSA44_OPENSSL) && \
+    defined(HAVE_X25519_OPENSSL) && \
+    defined(HAVE_SHA512_OPENSSL)
+      supported_algo = TRUE;
+#endif /* HAVE_MLDSA44_OPENSSL, HAVE_X25519_OPENSSL, HAVE_SHA512_OPENSSL */
+
+      if (sftp_keys_have_mldsa44_ed25519_hostkey() == 0) {
         have_key = TRUE;
       }
 
