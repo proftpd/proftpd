@@ -15032,7 +15032,7 @@ static int fxp_handle_write(struct fxp_packet *fxp) {
       /* Use write(2) for O_APPEND semantics; pwrite(2) with O_APPEND
        * is not portable (see Issue #2432).
        */
-      res = pr_fsio_write(fxh->fh, data, datalen);
+      res = pr_fsio_write(fxh->fh, (const char *) data, datalen);
 
     } else {
       res = pr_fsio_pwrite(fxh->fh, data, datalen, offset);
