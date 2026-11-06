@@ -2043,6 +2043,14 @@ static int setup_hostkey_algo(struct sftp_kex *kex, const char *algo) {
     kex->use_hostkey_type = kex_used_hostkey_type = SFTP_KEY_ED448;
     res = 0;
 #endif /* HAVE_X448_OPENSSL */
+
+#if defined(HAVE_MLDSA44_OPENSSL) && \
+    defined(HAVE_X25519_OPENSSL) && \
+    defined(HAVE_SHA512_OPENSSL)
+  } else if (strcmp(algo, "ssh-mldsa44-ed25519") == 0) {
+    kex->use_hostkey_type = kex_used_hostkey_type = SFTP_KEY_MLDSA44_ED25519;
+    res = 0;
+#endif /* HAVE_MLDSA44_OPENSSL, HAVE_X25519_OPENSSL, HAVE_SHA512_OPENSSL */
   }
 
   /* XXX Need to handle "x509v3-ssh-dss", "x509v3-ssh-rsa", "x509v3-sign"
@@ -2050,6 +2058,8 @@ static int setup_hostkey_algo(struct sftp_kex *kex, const char *algo) {
    */
 
   if (res < 0) {
+    (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
+      "unsupported host key algorithm: %s", algo);
     errno = EINVAL;
     return -1;
   }
@@ -4276,7 +4286,7 @@ static int write_curve25519_reply(struct ssh2_packet *pkt,
   }
 
   /* XXX Is this large enough?  Too large? */
-  buflen = bufsz = 4096;
+  buflen = bufsz = 8192;
   ptr = buf = palloc(pkt->pool, bufsz);
 
   sftp_msg_write_byte(&buf, &buflen, SFTP_SSH2_MSG_KEX_ECDH_REPLY);
@@ -4712,7 +4722,7 @@ static int write_curve448_reply(struct ssh2_packet *pkt, struct sftp_kex *kex) {
   }
 
   /* XXX Is this large enough?  Too large? */
-  buflen = bufsz = 4096;
+  buflen = bufsz = 8192;
   ptr = buf = palloc(pkt->pool, bufsz);
 
   sftp_msg_write_byte(&buf, &buflen, SFTP_SSH2_MSG_KEX_ECDH_REPLY);
@@ -5302,7 +5312,7 @@ static int write_mlkem768_reply(struct ssh2_packet *pkt, struct sftp_kex *kex) {
   }
 
   /* XXX Is this large enough?  Too large? */
-  buflen = bufsz = 4096;
+  buflen = bufsz = 8192;
   ptr = buf = palloc(pkt->pool, bufsz);
 
   sftp_msg_write_byte(&buf, &buflen, SFTP_SSH2_MSG_KEX_ECDH_REPLY);
@@ -5684,7 +5694,7 @@ static int write_sntrup761_reply(struct ssh2_packet *pkt,
   }
 
   /* XXX Is this large enough?  Too large? */
-  buflen = bufsz = 4096;
+  buflen = bufsz = 8192;
   ptr = buf = palloc(pkt->pool, bufsz);
 
   sftp_msg_write_byte(&buf, &buflen, SFTP_SSH2_MSG_KEX_ECDH_REPLY);
@@ -5891,7 +5901,7 @@ static int write_ecdh_reply(struct ssh2_packet *pkt, struct sftp_kex *kex) {
   }
 
   /* XXX Is this large enough?  Too large? */
-  buflen = bufsz = 4096;
+  buflen = bufsz = 8192;
   ptr = buf = palloc(pkt->pool, bufsz);
 
   sftp_msg_write_byte(&buf, &buflen, SFTP_SSH2_MSG_KEX_ECDH_REPLY);

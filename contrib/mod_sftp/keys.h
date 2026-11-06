@@ -35,6 +35,7 @@ enum sftp_key_type_e {
   SFTP_KEY_ECDSA_521,
   SFTP_KEY_ED25519,
   SFTP_KEY_ED448,
+  SFTP_KEY_MLDSA44_ED25519,
   SFTP_KEY_RSA_SHA256,
   SFTP_KEY_RSA_SHA512,
 
@@ -129,10 +130,13 @@ int sftp_keys_clear_dsa_hostkey(void);
 int sftp_keys_clear_ecdsa_hostkey(void);
 int sftp_keys_clear_ed25519_hostkey(void);
 int sftp_keys_clear_ed448_hostkey(void);
+int sftp_keys_clear_mldsa44_ed25519_hostkey(void);
 int sftp_keys_clear_rsa_hostkey(void);
+
 int sftp_keys_have_dsa_hostkey(void);
 int sftp_keys_have_ecdsa_hostkey(pool *, int **);
 int sftp_keys_have_ed25519_hostkey(void);
 int sftp_keys_have_ed448_hostkey(void);
+int sftp_keys_have_mldsa44_ed25519_hostkey(void);
 int sftp_keys_have_rsa_hostkey(void);
 #endif /* MOD_SFTP_KEYS_H */
