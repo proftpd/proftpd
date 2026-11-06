@@ -886,9 +886,47 @@ static int recv_finfo(pool *p, uint32_t channel_id, struct scp_path *sp,
       if (xerrno == ENOENT) {
         pr_trace_msg(trace_channel, 5, "creating directory '%s'", sp->filename);
 
-        /* XXX Dispatch a C_MKD command here?  Should <Limit MKD> apply to
-         * recursive directory uploads via SCP?
+        /* Creating a directory for a recursive upload is the same operation
+         * as an FTP MKD or an SFTP MKDIR, and needs the same checks.
          */
+        cmd = scp_cmd_alloc(p, C_MKD, sp->filename);
+
+        if (pr_cmd_dispatch_phase(cmd, PRE_CMD, 0) < 0) {
+          (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
+            "scp directory upload to '%s' blocked by '%s' handler",
+            sp->filename, (char *) cmd->argv[0]);
+
+          (void) pr_cmd_dispatch_phase(cmd, POST_CMD_ERR, 0);
+          (void) pr_cmd_dispatch_phase(cmd, LOG_CMD_ERR, 0);
+
+          write_confirm(p, channel_id, 1,
+            pstrcat(p, sp->filename, ": ", strerror(EACCES), NULL));
+          sp->wrote_errors = TRUE;
+
+          return 1;
+        }
+
+        if (strcmp(sp->filename, cmd->arg) != 0) {
+          sp->filename = cmd->arg;
+          sp->best_path = dir_canonical_vpath(scp_pool, sp->filename);
+        }
+
+        if (pr_filter_allow_path(get_dir_ctxt(p, (char *) sp->best_path),
+              sp->best_path) != 0 ||
+            !dir_check_canon(p, cmd, G_WRITE, sp->best_path, NULL)) {
+          (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
+            "scp directory upload to '%s' blocked by configuration",
+            sp->best_path);
+
+          (void) pr_cmd_dispatch_phase(cmd, POST_CMD_ERR, 0);
+          (void) pr_cmd_dispatch_phase(cmd, LOG_CMD_ERR, 0);
+
+          write_confirm(p, channel_id, 1,
+            pstrcat(p, sp->filename, ": ", strerror(EACCES), NULL));
+          sp->wrote_errors = TRUE;
+
+          return 1;
+        }
 
         pr_fs_clear_cache2(sp->filename);
         if (pr_fsio_smkdir(p, sp->filename, 0777, (uid_t) -1, (gid_t) -1) < 0) {
@@ -897,6 +935,10 @@ static int recv_finfo(pool *p, uint32_t channel_id, struct scp_path *sp,
           (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
             "scp: error creating directory '%s': %s", sp->filename,
             strerror(xerrno));
+
+          (void) pr_cmd_dispatch_phase(cmd, POST_CMD_ERR, 0);
+          (void) pr_cmd_dispatch_phase(cmd, LOG_CMD_ERR, 0);
+
           write_confirm(p, channel_id, 1,
             pstrcat(p, sp->filename, ": ", strerror(xerrno), NULL));
           sp->wrote_errors = TRUE;
@@ -906,6 +948,9 @@ static int recv_finfo(pool *p, uint32_t channel_id, struct scp_path *sp,
         }
 
         sftp_misc_chown_path(p, sp->filename);
+
+        (void) pr_cmd_dispatch_phase(cmd, POST_CMD, 0);
+        (void) pr_cmd_dispatch_phase(cmd, LOG_CMD, 0);
 
       } else {
         (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
