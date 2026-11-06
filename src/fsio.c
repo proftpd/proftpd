@@ -3929,14 +3929,14 @@ int pr_fsio_chdir_canon(const char *path, int hidesymlink) {
   res = (fs->chdir)(fs, resbuf);
   if (res == 0) {
     /* chdir succeeded, so we set fs_cwd for future references. */
-     fs_cwd = fs;
+    fs_cwd = fs;
 
-     if (hidesymlink) {
-       pr_fs_virtual_path(path, vwd, sizeof(vwd)-1);
+    if (hidesymlink) {
+      pr_fs_virtual_path(path, vwd, sizeof(vwd)-1);
 
-     } else {
-       sstrncpy(vwd, resbuf, sizeof(vwd));
-     }
+    } else {
+      sstrncpy(vwd, resbuf, sizeof(vwd));
+    }
   }
 
   return res;
