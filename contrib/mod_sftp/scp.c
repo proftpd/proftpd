@@ -886,9 +886,6 @@ static int recv_finfo(pool *p, uint32_t channel_id, struct scp_path *sp,
       if (xerrno == ENOENT) {
         pr_trace_msg(trace_channel, 5, "creating directory '%s'", sp->filename);
 
-        /* Creating a directory for a recursive upload is the same operation
-         * as an FTP MKD or an SFTP MKDIR, and needs the same checks.
-         */
         cmd = scp_cmd_alloc(p, C_MKD, sp->filename);
 
         if (pr_cmd_dispatch_phase(cmd, PRE_CMD, 0) < 0) {
@@ -956,6 +953,10 @@ static int recv_finfo(pool *p, uint32_t channel_id, struct scp_path *sp,
         (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
           "scp: error checking directory '%s': %s", sp->filename,
           strerror(xerrno));
+
+        (void) pr_cmd_dispatch_phase(cmd, POST_CMD_ERR, 0);
+        (void) pr_cmd_dispatch_phase(cmd, LOG_CMD_ERR, 0);
+
         write_confirm(p, channel_id, 1,
           pstrcat(p, sp->filename, ": ", strerror(xerrno), NULL));
         sp->wrote_errors = TRUE;
