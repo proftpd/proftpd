@@ -2717,11 +2717,49 @@ static int ecdsa_compare_keys(pool *p, EVP_PKEY *remote_pkey,
 }
 #endif /* PR_USE_OPENSSL_ECC */
 
+#if defined(PR_USE_SODIUM) || defined(HAVE_X448_OPENSSL)
+/* Skip past the key type, and the nonce of a certificate key, so that the
+ * remaining public key data can be compared regardless of whether the key
+ * was provided in a certificate.
+ */
+static int skip_eddsa_key_type(pool *p, unsigned char **key_data,
+    uint32_t *key_datalen) {
+  char *key_type = NULL;
+  uint32_t len;
+
+  len = sftp_msg_read_string2(p, key_data, key_datalen, &key_type);
+  if (len == 0) {
+    return -1;
+  }
+
+  if (strstr(key_type, "-cert") != NULL) {
+    len = sftp_certs_read_nonce(p, *key_data, *key_datalen, key_type, NULL);
+    if (len == 0) {
+      return -1;
+    }
+
+    *key_data += len;
+    *key_datalen -= len;
+  }
+
+  return 0;
+}
+#endif /* PR_USE_SODIUM or HAVE_X448_OPENSSL */
+
 #if defined(PR_USE_SODIUM)
 static int ed25519_compare_keys(pool *p,
     unsigned char *remote_pubkey_data, uint32_t remote_pubkey_datalen,
     unsigned char *local_pubkey_data, uint32_t local_pubkey_datalen) {
   int res = 0;
+
+  if (skip_eddsa_key_type(p, &remote_pubkey_data,
+      &remote_pubkey_datalen) < 0) {
+    return -1;
+  }
+
+  if (skip_eddsa_key_type(p, &local_pubkey_data, &local_pubkey_datalen) < 0) {
+    return -1;
+  }
 
   if (remote_pubkey_datalen != local_pubkey_datalen) {
     return -1;
@@ -2740,6 +2778,15 @@ static int ed448_compare_keys(pool *p,
     unsigned char *remote_pubkey_data, uint32_t remote_pubkey_datalen,
     unsigned char *local_pubkey_data, uint32_t local_pubkey_datalen) {
   int res = 0;
+
+  if (skip_eddsa_key_type(p, &remote_pubkey_data,
+      &remote_pubkey_datalen) < 0) {
+    return -1;
+  }
+
+  if (skip_eddsa_key_type(p, &local_pubkey_data, &local_pubkey_datalen) < 0) {
+    return -1;
+  }
 
   if (remote_pubkey_datalen != local_pubkey_datalen) {
     return -1;
