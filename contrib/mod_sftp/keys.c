@@ -2723,6 +2723,11 @@ static int ed25519_compare_keys(pool *p,
     unsigned char *local_pubkey_data, uint32_t local_pubkey_datalen) {
   int res = 0;
 
+  pr_trace_msg(trace_channel, 19,
+    "comparing Ed25519 keys (local %lu bytes, remote %lu bytes)",
+    (unsigned long) local_pubkey_datalen,
+    (unsigned long) remote_pubkey_datalen);
+
   if (remote_pubkey_datalen != local_pubkey_datalen) {
     return -1;
   }
@@ -2740,6 +2745,11 @@ static int ed448_compare_keys(pool *p,
     unsigned char *remote_pubkey_data, uint32_t remote_pubkey_datalen,
     unsigned char *local_pubkey_data, uint32_t local_pubkey_datalen) {
   int res = 0;
+
+  pr_trace_msg(trace_channel, 19,
+    "comparing Ed448 keys (local %lu bytes, remote %lu bytes)",
+    (unsigned long) local_pubkey_datalen,
+    (unsigned long) remote_pubkey_datalen);
 
   if (remote_pubkey_datalen != local_pubkey_datalen) {
     return -1;
@@ -2844,7 +2854,75 @@ int sftp_keys_compare_keys(pool *p,
    * the same, such comparisons should be allowed.
    */
   if (sftp_keys_is_cert_type(remote_key_type)) {
-    remote_key_type = get_noncert_key_type(remote_key_type);
+    enum sftp_key_type_e remote_raw_key_type;
+
+    remote_raw_key_type = get_noncert_key_type(remote_key_type);
+
+    /* Ed25519/Ed448 keys do not have corresponding EVP_PKEY objects,
+     * so their comparisons are done manually.  Which, in turn, means we
+     * need to ensure that their bytes have any cert-specific prefaced bytes,
+     * such as certificate algorithm name and nonce, removed.  After that,
+     * we need to re-add the non-cert key algorithm name prefix.
+     */
+    if (remote_key_type == SFTP_KEY_ED25519_CERT ||
+        remote_key_type == SFTP_KEY_ED448_CERT) {
+      char *key_algo = NULL, *pkey_type = NULL;
+      uint32_t header_len, nonce_len;
+
+      header_len = sftp_msg_read_string2(p, &remote_pubkey_data,
+        &remote_pubkey_datalen, &pkey_type);
+      if (header_len == 0) {
+        (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
+          "error parsing remote %s data for comparing: invalid/unsupported "
+          "format", get_key_type_desc(remote_key_type));
+        errno = EINVAL;
+        return -1;
+      }
+
+      nonce_len = sftp_certs_read_nonce(p, remote_pubkey_data,
+        remote_pubkey_datalen, pkey_type, NULL);
+      if (nonce_len == 0) {
+        (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
+          "error parsing remote %s data for comparing: invalid/unsupported "
+          "format", get_key_type_desc(remote_key_type));
+        errno = EINVAL;
+        return -1;
+      }
+
+      remote_pubkey_data += nonce_len;
+      remote_pubkey_datalen -= nonce_len;
+
+      if (remote_key_type == SFTP_KEY_ED25519_CERT) {
+        key_algo = "ssh-ed25519";
+
+      } else if (remote_key_type == SFTP_KEY_ED448_CERT) {
+        key_algo = "ssh-ed448";
+      }
+
+      if (key_algo != NULL) {
+        unsigned char *ptr, *buf;
+        uint32_t bufsz, buflen;
+        size_t key_algolen = 0;
+
+        key_algolen = strlen(key_algo);
+
+        bufsz = buflen = 4 + key_algolen + remote_pubkey_datalen;
+        ptr = buf = palloc(p, bufsz);
+
+        sftp_msg_write_string(&buf, &buflen, key_algo);
+
+        /* The provided key data already has its 4-byte length prefix, hence
+         * why we do not need to provide it again.
+         */
+        sftp_msg_write_data(&buf, &buflen, remote_pubkey_data,
+          remote_pubkey_datalen, FALSE);
+
+        remote_pubkey_data = ptr;
+        remote_pubkey_datalen = bufsz;
+      }
+    }
+
+    remote_key_type = remote_raw_key_type;
   }
 
   if (remote_pkey != NULL &&
