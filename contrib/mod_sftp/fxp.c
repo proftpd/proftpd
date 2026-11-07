@@ -6244,6 +6244,46 @@ static int fxp_handle_ext_posix_rename(struct fxp_packet *fxp, char *src,
     return fxp_packet_write(resp);
   }
 
+  /* posix-rename always replaces an existing destination, so honor
+   * AllowOverwrite the same way core_rnto() does for RNTO.
+   */
+  if (exists2(fxp->pool, dst)) {
+    unsigned char *allow_overwrite = NULL;
+
+    allow_overwrite = get_param_ptr(get_dir_ctxt(fxp->pool, dst),
+      "AllowOverwrite", FALSE);
+    if (allow_overwrite == NULL ||
+        *allow_overwrite == FALSE) {
+      xerrno = EACCES;
+
+      (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
+        "denying RENAME of '%s' to '%s': AllowOverwrite permission denied "
+        "for '%s'", src, dst, dst);
+
+      status_code = fxp_errno2status(xerrno, &reason);
+
+      pr_trace_msg(trace_channel, 8, "sending response: STATUS %lu '%s'",
+        (unsigned long) status_code, reason);
+
+      pr_response_add_err(R_550, "%s: %s", cmd3->arg, strerror(xerrno));
+      fxp_cmd_dispatch_err(cmd3);
+
+      pr_response_add_err(R_550, "%s: %s", cmd2->arg, strerror(xerrno));
+      fxp_cmd_dispatch_err(cmd2);
+
+      fxp_status_write(fxp->pool, &buf, &buflen, fxp->request_id, status_code,
+        reason, NULL);
+
+      fxp_cmd_dispatch_err(cmd);
+
+      resp = fxp_packet_create(fxp->pool, fxp->channel_id);
+      resp->payload = ptr;
+      resp->payload_sz = (bufsz - buflen);
+
+      return fxp_packet_write(resp);
+    }
+  }
+
   if (fxp_path_pass_regex_filters(fxp->pool, "RENAME", src) < 0 ||
       fxp_path_pass_regex_filters(fxp->pool, "RENAME", dst) < 0) {
     xerrno = errno;
@@ -13554,6 +13594,44 @@ static int fxp_handle_rename(struct fxp_packet *fxp) {
     resp->payload_sz = (bufsz - buflen);
 
     return fxp_packet_write(resp);
+  }
+
+  if ((flags & SSH2_FXR_OVERWRITE) &&
+      exists2(fxp->pool, new_path)) {
+    unsigned char *allow_overwrite = NULL;
+
+    allow_overwrite = get_param_ptr(get_dir_ctxt(fxp->pool, new_path),
+      "AllowOverwrite", FALSE);
+    if (allow_overwrite == NULL ||
+        *allow_overwrite == FALSE) {
+      xerrno = EACCES;
+
+      (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
+        "denying RENAME of '%s' to '%s': AllowOverwrite permission denied "
+        "for '%s'", old_path, new_path, new_path);
+
+      status_code = fxp_errno2status(xerrno, &reason);
+
+      pr_trace_msg(trace_channel, 8, "sending response: STATUS %lu '%s'",
+        (unsigned long) status_code, reason);
+
+      pr_response_add_err(R_550, "%s: %s", cmd2->arg, strerror(xerrno));
+      fxp_cmd_dispatch_err(cmd2);
+
+      pr_response_add_err(R_550, "%s: %s", cmd3->arg, strerror(xerrno));
+      fxp_cmd_dispatch_err(cmd3);
+
+      fxp_status_write(fxp->pool, &buf, &buflen, fxp->request_id, status_code,
+        reason, NULL);
+
+      fxp_cmd_dispatch_err(cmd);
+
+      resp = fxp_packet_create(fxp->pool, fxp->channel_id);
+      resp->payload = ptr;
+      resp->payload_sz = (bufsz - buflen);
+
+      return fxp_packet_write(resp);
+    }
   }
 
   if (fxp_path_pass_regex_filters(fxp->pool, "RENAME", old_path) < 0 ||
