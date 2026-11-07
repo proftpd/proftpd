@@ -2978,6 +2978,13 @@ static int write_ext_info_server_sig_algs(struct ssh2_packet *pkt,
     /* No explicit list of publickey algorithms configured; provide the full
      * list of supported signature algorithms.
      */
+#if defined(HAVE_MLDSA44_OPENSSL) && \
+    defined(HAVE_X25519_OPENSSL) && \
+    defined(HAVE_SHA512_OPENSSL)
+    sig_algs = pstrcat(pkt->pool, sig_algs, *sig_algs ? "," : "",
+      "ssh-mldsa44-ed25519", NULL);
+#endif /* HAVE_MLDSA44_OPENSSL, HAVE_X25519_OPENSSL, HAVE_SHA512_OPENSSL */
+
 #if defined(HAVE_X448_OPENSSL)
     sig_algs = pstrcat(pkt->pool, sig_algs, *sig_algs ? "," : "", "ssh-ed448",
       NULL);
