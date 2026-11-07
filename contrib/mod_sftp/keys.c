@@ -7572,6 +7572,7 @@ static int mldsa44_ed25519_verify_signed_data(pool *p,
   EVP_PKEY_CTX *pkey_ctx = NULL;
   EVP_SIGNATURE *sig_algo = NULL;
   EVP_PKEY *pkey = NULL;
+  OSSL_PARAM params[2];
   EVP_MD_CTX *md_ctx;
   const char *text = NULL;
   size_t textlen = 0;
@@ -7733,7 +7734,15 @@ static int mldsa44_ed25519_verify_signed_data(pool *p,
     return -1;
   }
 
-  if (EVP_PKEY_verify_message_init(pkey_ctx, sig_algo, NULL) != 1) {
+  /* We also provide the label to the MLDSA44 verification function. */
+  text = "COMPSIG-MLDSA44-Ed25519-SHA512";
+  textlen = strlen(text);
+
+  params[0] = OSSL_PARAM_construct_octet_string(
+    OSSL_SIGNATURE_PARAM_CONTEXT_STRING, (unsigned char *) text, textlen);
+  params[1] = OSSL_PARAM_construct_end();
+
+  if (EVP_PKEY_verify_message_init(pkey_ctx, sig_algo, params) != 1) {
     (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
       "error initializing MLDSA44 verification: %s", sftp_crypto_get_errors());
     EVP_PKEY_CTX_free(pkey_ctx);
