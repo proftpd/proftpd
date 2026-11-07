@@ -195,7 +195,7 @@ static array_header *ldap_servers = NULL;
 static struct server_info *curr_server_info = NULL;
 static unsigned int curr_server_index = 0;
 
-static char *ldap_dn, *ldap_dnpass, *ldap_sasl_mechs = NULL,
+static char *ldap_dn, *ldap_dnpass = NULL, *ldap_sasl_mechs = NULL,
             *ldap_user_basedn = NULL, *ldap_user_name_filter = NULL,
             *ldap_user_uid_filter = NULL,
             *ldap_gid_basedn = NULL, *ldap_group_gid_filter = NULL,
@@ -2348,7 +2348,7 @@ MODRET ldap_auth_name2gid(cmd_rec *cmd) {
 
 /* sasl_info functions. */
 
-/* Note: by proving empty strings, rather than NULLs, for the default values,
+/* Note: by providing empty strings, rather than NULLs, for the default values,
  * we make the logic in sasl_interact_cb() simpler.  However, it is still
  * possible that some fields are NULL due to lack of preprocessor support
  * for those values, or ldap_get_option() errors for the requested values.
