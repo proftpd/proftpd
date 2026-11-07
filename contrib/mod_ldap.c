@@ -1927,6 +1927,12 @@ MODRET ldap_auth_check(cmd_rec *cmd) {
     return PR_HANDLED(cmd);
   }
 
+  if (cryptpass == NULL) {
+    /* Perhaps some other module provided a NULL ciphertext here. */
+    pr_trace_msg(trace_channel, 3, "NULL ciphertext provided, ignoring");
+    return PR_DECLINED(cmd);
+  }
+
   /* Get the length of "scheme" in the leading {scheme} so we can skip it
    * in the password comparison.
    */

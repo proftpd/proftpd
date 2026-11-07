@@ -12773,8 +12773,13 @@ MODRET tls_authenticate(cmd_rec *cmd) {
  *  cmd->argv[2]: cleartext password
  */
 MODRET tls_auth_check(cmd_rec *cmd) {
-  if (!tls_engine)
+  if (tls_engine == FALSE) {
     return PR_DECLINED(cmd);
+  }
+
+  /* Note that while it is possible that the provided ciphertext is NULL,
+   * as from mod_ldap, we do not use/examine that parameter here.
+   */
 
   /* Possible authentication combinations:
    *
@@ -12783,37 +12788,41 @@ MODRET tls_auth_check(cmd_rec *cmd) {
    */
 
   if (tls_flags & TLS_SESS_ON_CTRL) {
+    const char *ciphertxt_pass, *cleartxt_pass, *username;
     config_rec *c;
 
+    ciphertxt_pass = cmd->argv[0];
+    username = cmd->argv[1];
+    cleartxt_pass = cmd->argv[2];
+
     if (tls_opts & TLS_OPT_ALLOW_DOT_LOGIN) {
-      if (tls_dotlogin_allow(cmd->argv[1])) {
+      if (tls_dotlogin_allow(username)) {
         tls_log("TLS/X509 .tlslogin check successful for user '%s'",
-          (char *) cmd->argv[0]);
+          username);
         pr_log_auth(PR_LOG_NOTICE, "USER %s: TLS/X509 .tlslogin authentication "
-          "successful", (char *) cmd->argv[1]);
+          "successful", username);
         session.auth_mech = "mod_tls.c";
         return mod_create_data(cmd, (void *) PR_AUTH_RFC2228_OK);
 
       } else {
-        tls_log("TLS/X509 .tlslogin check failed for user '%s'",
-          (char *) cmd->argv[1]);
+        tls_log("TLS/X509 .tlslogin check failed for user '%s'", username);
       }
     }
 
     c = find_config(main_server->conf, CONF_PARAM, "TLSUserName", FALSE);
     if (c != NULL) {
-      if (tls_cert_to_user(cmd->argv[0], c->argv[0])) {
+      if (tls_cert_to_user(username, c->argv[0])) {
         tls_log("TLS/X509 TLSUserName '%s' check successful for user '%s'",
-          (char *) c->argv[0], (char *) cmd->argv[0]);
+          (char *) c->argv[0], username);
         pr_log_auth(PR_LOG_NOTICE,
           "USER %s: TLS/X509 TLSUserName authentication successful",
-          (char *) cmd->argv[0]);
+          username);
         session.auth_mech = "mod_tls.c";
         return mod_create_data(cmd, (void *) PR_AUTH_RFC2228_OK);
 
       } else {
         tls_log("TLS/X509 TLSUserName '%s' check failed for user '%s'",
-          (char *) c->argv[0], (char *) cmd->argv[0]);
+          (char *) c->argv[0], username);
       }
     }
   }

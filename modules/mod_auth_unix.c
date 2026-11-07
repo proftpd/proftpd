@@ -873,8 +873,7 @@ MODRET pw_authz(cmd_rec *cmd) {
  */
 
 MODRET pw_check(cmd_rec *cmd) {
-  const char *cpw = cmd->argv[0];
-  const char *pw = cmd->argv[2];
+  const char *cpw = NULL, *pw = NULL;
   modret_t *mr = NULL;
   cmd_rec *cmd2 = NULL;
   char *crypted_text = NULL;
@@ -886,6 +885,15 @@ MODRET pw_check(cmd_rec *cmd) {
   struct passwd *pwd;
   char *user = NULL;
 #endif
+
+  cpw = cmd->argv[0];
+  pw = cmd->argv[2];
+
+  if (cpw == NULL) {
+    /* Modules like mod_ldap might provide NULL ciphertexts. */
+    pr_trace_msg(trace_channel, 3, "NULL ciphertext provided, ignoring");
+    return PR_DECLINED(cmd);
+  }
 
 #ifdef COMSEC
   if (iscomsec()) {
