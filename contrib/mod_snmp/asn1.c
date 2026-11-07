@@ -625,8 +625,15 @@ int snmp_asn1_read_string(pool *p, unsigned char **buf, size_t *buflen,
     return -1;
   }
 
+  /* Copy out exactly objlen bytes.  An OCTET STRING is binary data and may
+   * contain embedded NULs; pstrndup(3) would stop at the first one, leaving
+   * the rest of the objlen-byte value (which asn1_strlen still reports) as
+   * uninitialised pool memory that later gets echoed back to the requester.
+   */
   *asn1_strlen = objlen;
-  *asn1_str = pstrndup(p, (char *) *buf, objlen);
+  *asn1_str = palloc(p, objlen + 1);
+  memmove(*asn1_str, *buf, objlen);
+  (*asn1_str)[objlen] = '\0';
   (*buf) += objlen;
   (*buflen) -= objlen;
 
