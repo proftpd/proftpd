@@ -1375,7 +1375,7 @@ MODRET set_sftpcompression(cmd_rec *cmd) {
     }
   }
 
-  c = add_config_param(cmd->argv[0], 1, NULL);
+  c = add_config_param(cmd->argv[0], 2, NULL, NULL);
   c->argv[0] = pcalloc(c->pool, sizeof(int));
   *((int *) c->argv[0]) = use_compression;
   c->argv[1] = palloc(c->pool, sizeof(unsigned long));
