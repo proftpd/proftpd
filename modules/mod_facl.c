@@ -36,6 +36,8 @@
 module facl_module;
 
 static int facl_engine = TRUE;
+static pool *facl_pool = NULL;
+
 static const char *trace_channel = "facl";
 
 #if defined(HAVE_POSIX_ACL)
@@ -1426,48 +1428,25 @@ MODRET set_faclengine(cmd_rec *cmd) {
   return PR_HANDLED(cmd);
 }
 
-/* Event listeners
+/* Initialization routines
  */
 
-static void unmount_facl(void) {
-  pr_fs_t *fs;
-
-  fs = pr_unmount_fs("/", "facl");
-  if (fs != NULL) {
-    destroy_pool(fs->fs_pool);
-    return;
-  }
-
-  if (errno != ENOENT) {
-    pr_log_debug(DEBUG0, MOD_FACL_VERSION
-      ": error unmounting 'facl' FS: %s", strerror(errno));
-  }
-}
-
-#if defined(PR_SHARED_MODULE) && \
-    defined(PR_USE_FACL) && \
-    defined(HAVE_POSIX_ACL)
-static void facl_mod_unload_ev(const void *event_data, void *user_data) {
-  if (strcmp("mod_facl.c", (const char *) event_data) == 0) {
-    pr_event_unregister(&facl_module, NULL, NULL);
-    unmount_facl();
-  }
-}
-#endif /* !PR_SHARED_MODULE */
-
-static void facl_postparse_ev(const void *event_data, void *user_data) {
+static int facl_sess_init(void) {
 #if defined(PR_USE_FACL) && \
     defined(HAVE_POSIX_ACL)
   pr_fs_t *fs;
 #endif /* PR_USE_FACL and HAVE_POSIX_ACL */
 
   if (facl_engine == FALSE) {
-    return;
+    return 0;
   }
+
+  facl_pool = make_sub_pool(session.pool);
+  pr_pool_tag(facl_pool, MOD_FACL_VERSION);
 
 #if defined(PR_USE_FACL) && \
     defined(HAVE_POSIX_ACL)
-  fs = pr_register_fs(permanent_pool, "facl", "/");
+  fs = pr_register_fs(facl_pool, "facl", "/");
   if (fs == NULL) {
     int xerrno = errno;
 
@@ -1481,30 +1460,10 @@ static void facl_postparse_ev(const void *event_data, void *user_data) {
   /* Ensure that our ACL-checking handlers are used. */
   fs->access = facl_fsio_access;
   fs->faccess = facl_fsio_faccess;
+
+  /* Make sure our newly registered FS is known to the FSIO API. */
+  pr_fsio_chdir(pr_fs_getcwd(), FALSE);
 #endif /* PR_USE_FACL and HAVE_POSIX_ACL */
-}
-
-static void facl_restart_ev(const void *event_data, void *user_data) {
-  if (facl_engine == FALSE) {
-    return;
-  }
-
-  unmount_facl();
-}
-
-/* Initialization routines
- */
-
-static int facl_init(void) {
-#if defined(PR_USE_FACL) && \
-    defined(HAVE_POSIX_ACL)
-# if defined(PR_SHARED_MODULE)
-  pr_event_register(&facl_module, "core.module-unload", facl_mod_unload_ev,
-    NULL);
-# endif /* !PR_SHARED_MODULE */
-#endif /* PR_USE_FACL and HAVE_POSIX_ACL */
-  pr_event_register(&facl_module, "core.postparse", facl_postparse_ev, NULL);
-  pr_event_register(&facl_module, "core.restart", facl_restart_ev, NULL);
 
   return 0;
 }
@@ -1537,10 +1496,10 @@ module facl_module = {
   NULL,
 
   /* Module initialization */
-  facl_init,
+  NULL,
 
   /* Session initialization */
-  NULL,
+  facl_sess_init,
 
   /* Module version */
   MOD_FACL_VERSION
