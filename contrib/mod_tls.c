@@ -12795,6 +12795,10 @@ MODRET tls_auth_check(cmd_rec *cmd) {
     username = cmd->argv[1];
     cleartxt_pass = cmd->argv[2];
 
+    /* Quell compiler warnings about set-but-not-used variables. */
+    (void) ciphertxt_pass;
+    (void) cleartxt_pass;
+
     if (tls_opts & TLS_OPT_ALLOW_DOT_LOGIN) {
       if (tls_dotlogin_allow(username)) {
         tls_log("TLS/X509 .tlslogin check successful for user '%s'",
