@@ -2572,6 +2572,11 @@ pr_fs_t *pr_unmount_fs(const char *path, const char *name) {
       fs_objs[i] = fsi->fs_next;
       fsi->fs_next = fsi->fs_prev = NULL;
 
+      /* If the FS being unmounted is our current FS, reset the current FS. */
+      if (fs_cwd == fsi) {
+        fs_cwd = root_fs;
+      }
+
       chk_fs_map = TRUE;
       return fsi;
     }
