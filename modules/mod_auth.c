@@ -2547,12 +2547,14 @@ MODRET auth_user(cmd_rec *cmd) {
       "address as your password"));
 
   } else if (pr_auth_requires_pass(cmd->tmp_pool, user) == FALSE) {
+    cmd_rec *fakecmd;
+
     /* Check to see if a password from the client is required.  In the
      * vast majority of cases, a password will be required.
      */
 
     /* Act as if we received a PASS command from the client. */
-    cmd_rec *fakecmd = pr_cmd_alloc(cmd->pool, 2, NULL);
+    fakecmd = pr_cmd_alloc(cmd->pool, 2, NULL);
 
     /* We use pstrdup() here, rather than assigning C_PASS directly, since
      * code elsewhere will attempt to modify this buffer, and C_PASS is
@@ -2562,14 +2564,24 @@ MODRET auth_user(cmd_rec *cmd) {
     fakecmd->argv[1] = NULL;
     fakecmd->arg = NULL;
 
-    c = add_config_param_set(&cmd->server->conf, "authenticated", 1, NULL);
-    c->argv[0] = pcalloc(c->pool, sizeof(unsigned char));
-    *((unsigned char *) c->argv[0]) = TRUE;
-
+    /* We have to set this here, before dispatching our fake PASS cmd, as
+     * it is examined/used during setup_env().  Just make sure to clear it
+     * afterward.
+     */
     authenticated_without_pass = TRUE;
-    pr_log_auth(PR_LOG_NOTICE, "USER %s: Authenticated without password", user);
 
-    pr_cmd_dispatch(fakecmd);
+    if (pr_cmd_dispatch(fakecmd) == 1 &&
+        session.user != NULL) {
+      c = add_config_param_set(&cmd->server->conf, "authenticated", 1, NULL);
+      c->argv[0] = pcalloc(c->pool, sizeof(unsigned char));
+      *((unsigned char *) c->argv[0]) = TRUE;
+
+      pr_log_auth(PR_LOG_NOTICE, "USER %s: Authenticated without password",
+        user);
+
+    } else {
+      reset_authenticated_without_pass(cmd);
+    }
 
   } else {
     pr_response_add(R_331, _("Password required for %s"),
