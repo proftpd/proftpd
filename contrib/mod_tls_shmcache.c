@@ -950,6 +950,7 @@ static int sess_cache_add_large_sess(tls_sess_cache_t *cache,
     const unsigned char *sess_id, unsigned int sess_id_len, time_t expires,
     SSL_SESSION *sess, int sess_len) {
   struct sesscache_large_entry *entry = NULL;
+  unsigned char *ptr;
 
   if (sess_len > TLS_MAX_SSL_SESSION_SIZE) {
     /* We may get sessions to add to the list which do not exceed the max
@@ -1009,8 +1010,8 @@ static int sess_cache_add_large_sess(tls_sess_cache_t *cache,
   entry->sess_id = palloc(cache->cache_pool, sess_id_len);
   memcpy((char *) entry->sess_id, sess_id, sess_id_len);
   entry->sess_datalen = sess_len;
-  entry->sess_data = palloc(cache->cache_pool, sess_len);
-  i2d_SSL_SESSION(sess, (unsigned char **) &(entry->sess_data));
+  entry->sess_data = ptr = palloc(cache->cache_pool, sess_len);
+  i2d_SSL_SESSION(sess, &ptr);
 
   return 0;
 }
@@ -2027,9 +2028,7 @@ static int ocsp_cache_add_large_resp(tls_ocsp_cache_t *cache,
   entry->fingerprint = palloc(cache->cache_pool, entry->fingerprint_len);
   memcpy(entry->fingerprint, fingerprint, entry->fingerprint_len);
   entry->resp_derlen = resp_derlen;
-  entry->resp_der = palloc(cache->cache_pool, resp_derlen);
-
-  ptr = entry->resp_der;
+  entry->resp_der = ptr = palloc(cache->cache_pool, resp_derlen);
   i2d_OCSP_RESPONSE(resp, &ptr);
 
   return 0;
