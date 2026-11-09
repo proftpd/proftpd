@@ -212,7 +212,7 @@ static int ocsp_cache_close(tls_ocsp_cache_t *cache) {
 static int ocsp_cache_add(tls_ocsp_cache_t *cache, const char *fingerprint,
     OCSP_RESPONSE *resp, time_t resp_age) {
   int fd, res, resp_derlen = -1, xerrno = 0;
-  unsigned char *resp_der = NULL;
+  unsigned char *resp_der = NULL, *ptr;
   const char *cache_dir;
   char *path, *tmpl;
   pool *tmp_pool;
@@ -221,7 +221,8 @@ static int ocsp_cache_add(tls_ocsp_cache_t *cache, const char *fingerprint,
   pr_trace_msg(trace_channel, 9, "adding OCSP response to fscache cache %p",
     cache);
 
-  resp_derlen = i2d_OCSP_RESPONSE(resp, &resp_der);
+  ptr = resp_der;
+  resp_derlen = i2d_OCSP_RESPONSE(resp, &ptr);
   if (resp_derlen <= 0) {
     pr_trace_msg(trace_channel, 1,
       "error DER-encoding OCSP response: %s", fscache_get_errors());
