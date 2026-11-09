@@ -900,8 +900,6 @@ static int sess_cache_close(tls_sess_cache_t *cache) {
 
   if (cache != NULL &&
       cache->cache_pool != NULL) {
-    destroy_pool(cache->cache_pool);
-
     if (sesscache_sess_list != NULL) {
       register unsigned int i;
       struct sesscache_large_entry *entries;
@@ -918,6 +916,8 @@ static int sess_cache_close(tls_sess_cache_t *cache) {
 
       sesscache_sess_list = NULL;
     }
+
+    destroy_pool(cache->cache_pool);
   }
 
   if (sesscache_shmid >= 0) {
