@@ -353,7 +353,7 @@ static int shmcache_lock_shm(pr_fh_t *fh, int lock_type) {
 }
 
 /* Use a hash function to hash the given lookup key to a slot in the entries
- * list.  This hash, module the number of entries, is the initial iteration
+ * list.  This hash, modulo the number of entries, is the initial iteration
  * start point.  This will hopefully avoid having to do many linear scans for
  * the add/get/delete operations.
  *
@@ -364,13 +364,12 @@ static unsigned int shmcache_hash(const unsigned char *id, unsigned int len) {
   size_t sz = len;
 
   while (sz--) {
-    const unsigned char *k = id;
-    unsigned int c = *k;
-    k++;
+    unsigned int c;
 
     /* Always handle signals in potentially long-running while loops. */
     pr_signals_handle();
 
+    c = id[sz];
     i = (i * 33) + c;
   }
 
