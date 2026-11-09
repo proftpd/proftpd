@@ -984,7 +984,7 @@ static int sess_cache_add_large_sess(tls_sess_cache_t *cache,
     for (i = 0; i < sesscache_sess_list->nelts; i++) {
       entry = &(entries[i]);
 
-      if (entry->expires > now) {
+      if (entry->expires <= now) {
         /* This entry has expired; clear and reuse its slot. */
         entry->expires = 0;
         pr_memscrub((void *) entry->sess_data, entry->sess_datalen);
