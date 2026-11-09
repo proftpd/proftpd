@@ -196,7 +196,7 @@ static int ocsp_cache_open(tls_ocsp_cache_t *cache, char *info) {
 static int ocsp_cache_close(tls_ocsp_cache_t *cache) {
 
   if (cache != NULL) {
-    pr_trace_msg(trace_channel, 9, "closing fscache cache %p", cache);
+    pr_trace_msg(trace_channel, 9, "closing fscache ocsp cache %p", cache);
 
     if (cache->cache_pool != NULL) {
       destroy_pool(cache->cache_pool);
