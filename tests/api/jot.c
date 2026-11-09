@@ -5085,7 +5085,7 @@ END_TEST
 START_TEST (jot_on_json_test) {
   pr_jot_ctx_t *ctx;
   pr_json_object_t *json;
-  double num;
+  double num = 0.0;
   int res, truth;
   const char *text;
 
