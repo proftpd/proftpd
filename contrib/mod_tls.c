@@ -6804,7 +6804,7 @@ static OCSP_RESPONSE *ocsp_get_response(pool *p, SSL *ssl) {
 
 static int tls_ocsp_cb(SSL *ssl, void *user_data) {
   OCSP_RESPONSE *resp;
-  int resp_derlen, reused;
+  int resp_derlen = 0, reused;
   unsigned char *resp_der = NULL;
   pool *ocsp_pool;
 
@@ -6828,16 +6828,26 @@ static int tls_ocsp_cb(SSL *ssl, void *user_data) {
   pr_pool_tag(ocsp_pool, "Session OCSP response pool");
 
   resp = ocsp_get_response(ocsp_pool, ssl);
-  resp_derlen = i2d_OCSP_RESPONSE(resp, &resp_der);
-  if (resp_derlen <= 0) {
-    tls_log("error determining OCSP response length: %s", tls_get_errors());
+  if (resp != NULL) {
+    resp_derlen = i2d_OCSP_RESPONSE(resp, NULL);
+
+    if (resp_derlen <= 0) {
+      tls_log("error determining OCSP response length: %s", tls_get_errors());
+
+    } else {
+      unsigned char *ptr;
+
+      resp_der = ptr = OPENSSL_malloc(resp_derlen);
+      resp_derlen = i2d_OCSP_RESPONSE(resp, &ptr);
+    }
   }
   destroy_pool(ocsp_pool);
 
   /* Success or failure, we're done with the OCSP response. */
   OCSP_RESPONSE_free(resp);
 
-  if (resp_derlen <= 0) {
+  if (resp_derlen <= 0 ||
+      resp_der == NULL) {
     return SSL_TLSEXT_ERR_NOACK;
   }
 
