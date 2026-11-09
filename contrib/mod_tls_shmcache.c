@@ -33,14 +33,14 @@
 #include <sys/ipc.h>
 #include <sys/shm.h>
 
-#ifdef HAVE_MLOCK
+#if defined(HAVE_MLOCK)
 # include <sys/mman.h>
-#endif
+#endif /* HAVE_MLOCK */
 
 /* Define if you have the LibreSSL library.  */
 #if defined(LIBRESSL_VERSION_NUMBER)
 # define HAVE_LIBRESSL	1
-#endif
+#endif /* LIBRESSL_VERSION_NUMBER */
 
 #define MOD_TLS_SHMCACHE_VERSION		"mod_tls_shmcache/0.2"
 
@@ -58,9 +58,9 @@ module tls_shmcache_module;
  * There is no limit imposed on the length of the ASN1 description of the
  * SSL session data.
  */
-#ifndef TLS_MAX_SSL_SESSION_SIZE
+#if !defined(TLS_MAX_SSL_SESSION_SIZE)
 # define TLS_MAX_SSL_SESSION_SIZE	1024 * 10
-#endif
+#endif /* TLS_MAX_SSL_SESSION_SIZE */
 
 /* The default number of SSL sessions cached in OpenSSL's internal cache
  * is SSL_SESSION_CACHE_MAX_SIZE_DEFAULT, which is defined as 1024*20.
@@ -142,9 +142,9 @@ static array_header *sesscache_sess_list = NULL;
 
 /* Assume a maximum OCSP response (serialized) length of 4K.
  */
-# ifndef TLS_MAX_OCSP_RESPONSE_SIZE
+# if !defined(TLS_MAX_OCSP_RESPONSE_SIZE)
 #  define TLS_MAX_OCSP_RESPONSE_SIZE		1024 * 4
-# endif
+# endif /* TLS_MAX_OCSP_RESPONSE_SIZE */
 
 struct ocspcache_entry {
   time_t age;
@@ -1096,7 +1096,7 @@ static int sess_cache_add(tls_sess_cache_t *cache, const unsigned char *sess_id,
   }
 
   i = idx;
-  last = idx > 0 ? (idx - 1) : 0;
+  last = idx > 0 ? (idx - 1) : (sesscache_data->sd_listsz - 1);
 
   do {
     struct sesscache_entry *entry;
@@ -1134,8 +1134,9 @@ static int sess_cache_add(tls_sess_cache_t *cache, const unsigned char *sess_id,
 
     if (i < sesscache_data->sd_listsz) {
       i++;
+    }
 
-    } else {
+    if (i == sesscache_data->sd_listsz) {
       i = 0;
     }
 
@@ -1212,7 +1213,7 @@ static SSL_SESSION *sess_cache_get(tls_sess_cache_t *cache,
     unsigned int last;
 
     i = idx;
-    last = idx > 0 ? (idx -1) : 0;
+    last = idx > 0 ? (idx - 1) : (sesscache_data->sd_listsz - 1);
 
     do {
       struct sesscache_entry *entry;
@@ -1248,8 +1249,9 @@ static SSL_SESSION *sess_cache_get(tls_sess_cache_t *cache,
 
       if (i < sesscache_data->sd_listsz) {
         i++;
+      }
 
-      } else {
+      if (i == sesscache_data->sd_listsz) {
         i = 0;
       }
 
@@ -1310,7 +1312,7 @@ static int sess_cache_delete(tls_sess_cache_t *cache,
     unsigned int last;
 
     i = idx;
-    last = idx > 0 ? (idx - 1) : 0;
+    last = idx > 0 ? (idx - 1) : (sesscache_data->sd_listsz - 1);
 
     do {
       struct sesscache_entry *entry;
@@ -1343,8 +1345,9 @@ static int sess_cache_delete(tls_sess_cache_t *cache,
 
       if (i < sesscache_data->sd_listsz) {
         i++;
+      }
 
-      } else {
+      if (i == sesscache_data->sd_listsz) {
         i = 0;
       }
 
@@ -1615,7 +1618,7 @@ static int sess_cache_status(tls_sess_cache_t *cache,
             break;
 #endif /* TLS1_2_VERSION */
 
-#ifdef TLS1_3_VERSION
+#if defined(TLS1_3_VERSION)
           case TLS1_3_VERSION:
             statusf(arg, "    Protocol: %s", "TLSv1.3");
             break;
@@ -2121,7 +2124,7 @@ static int ocsp_cache_add(tls_ocsp_cache_t *cache, const char *fingerprint,
   }
 
   i = idx;
-  last = idx > 0 ? (idx - 1) : 0;
+  last = idx > 0 ? (idx - 1) : (ocspcache_data->od_listsz - 1);
 
   do {
     struct ocspcache_entry *entry;
@@ -2150,10 +2153,12 @@ static int ocsp_cache_add(tls_ocsp_cache_t *cache, const char *fingerprint,
 
     if (i < ocspcache_data->od_listsz) {
       i++;
+    }
 
-    } else {
+    if (i == ocspcache_data->od_listsz) {
       i = 0;
     }
+
   } while (i != last);
 
   /* There is a race condition possible between the open slots check
@@ -2225,7 +2230,7 @@ static OCSP_RESPONSE *ocsp_cache_get(tls_ocsp_cache_t *cache,
     unsigned int last;
 
     i = idx;
-    last = idx > 0 ? (idx -1) : 0;
+    last = idx > 0 ? (idx - 1) : (ocspcache_data->od_listsz - 1);
 
     do {
       struct ocspcache_entry *entry;
@@ -2257,10 +2262,12 @@ static OCSP_RESPONSE *ocsp_cache_get(tls_ocsp_cache_t *cache,
 
       if (i < ocspcache_data->od_listsz) {
         i++;
+      }
 
-      } else {
+      if (i == ocspcache_data->od_listsz) {
         i = 0;
       }
+
     } while (i != last);
 
     if (resp == NULL) {
@@ -2323,7 +2330,7 @@ static int ocsp_cache_delete(tls_ocsp_cache_t *cache, const char *fingerprint) {
     unsigned int last;
 
     i = idx;
-    last = idx > 0 ? (idx - 1) : 0;
+    last = idx > 0 ? (idx - 1) : (ocspcache_data->od_listsz - 1);
 
     do {
       struct ocspcache_entry *entry;
@@ -2359,8 +2366,9 @@ static int ocsp_cache_delete(tls_ocsp_cache_t *cache, const char *fingerprint) {
 
       if (i < ocspcache_data->od_listsz) {
         i++;
+      }
 
-      } else {
+      if (i == ocspcache_data->od_listsz) {
         i = 0;
       }
 
@@ -2628,13 +2636,13 @@ static int tls_shmcache_init(void) {
   sess_cache.remove = sess_cache_remove;
   sess_cache.status = sess_cache_status;
 
-#ifdef SSL_SESS_CACHE_NO_INTERNAL_LOOKUP
+#if defined(SSL_SESS_CACHE_NO_INTERNAL_LOOKUP)
   /* Take a chance, and inform OpenSSL that it does not need to use its own
    * internal session cache lookups; using the external session cache (i.e. us)
    * will be enough.
    */
   sess_cache.cache_mode = SSL_SESS_CACHE_NO_INTERNAL_LOOKUP;
-#endif
+#endif /* SSL_SESS_CACHE_NO_INTERNAL_LOOKUP */
 
   /* Register ourselves with mod_tls. */
   if (tls_sess_cache_register("shm", &sess_cache) < 0) {
@@ -2670,7 +2678,7 @@ static int tls_shmcache_init(void) {
 
 static int tls_shmcache_sess_init(void) {
 
-#ifdef HAVE_MLOCK
+#if defined(HAVE_MLOCK)
   if (sesscache_data != NULL) {
     int res, xerrno = 0;
 
@@ -2696,7 +2704,7 @@ static int tls_shmcache_sess_init(void) {
         (unsigned long) sesscache_datasz);
     }
   }
-#endif
+#endif /* HAVE_MLOCK */
 
   return 0;
 }
