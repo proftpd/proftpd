@@ -947,6 +947,7 @@ static void auth_otp_sess_reinit_ev(const void *event_data, void *user_data) {
 
   if (auth_otp_pool != NULL) {
     destroy_pool(auth_otp_pool);
+    auth_otp_pool = NULL;
   }
 
   res = auth_otp_sess_init();
