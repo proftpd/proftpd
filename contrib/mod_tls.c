@@ -7539,9 +7539,14 @@ static int tls_alpn_select_cb(SSL *ssl,
   pr_trace_msg(trace_channel, 9, "%s",
     "ALPN protocols advertised by client:");
   for (i = 0; i < advertised_protolen; i++) {
-    pr_trace_msg(trace_channel, 9,
-      " %.*s", advertised_proto[i], &(advertised_proto[i+1]));
-    i += advertised_proto[i] + 1;
+    int len;
+    const unsigned char *proto;
+
+    len = advertised_proto[i];
+    proto = &(advertised_proto[i+1]);
+
+    pr_trace_msg(trace_channel, 9, " %.*s", len, proto);
+    i += len;
   }
 
   next_proto = user_data;
@@ -12530,6 +12535,7 @@ static int tls_netio_close_cb(pr_netio_stream_t *nstrm) {
         tls_ctrl_wr_nstrm = NULL;
 
         tls_end_sess(ssl, session.c, 0);
+        ctrl_ssl = NULL;
         tls_ctrl_netio = NULL;
         tls_flags &= ~TLS_SESS_ON_CTRL;
       }
