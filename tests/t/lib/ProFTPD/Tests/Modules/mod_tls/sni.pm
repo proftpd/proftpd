@@ -141,6 +141,8 @@ sub test_curl_sni {
 
     AuthUserFile => $setup->{auth_user_file},
     AuthGroupFile => $setup->{auth_group_file},
+    AuthOrder => 'mod_auth_file.c',
+
     TransferLog => 'none',
     WtmpLog => 'off',
 
@@ -178,6 +180,7 @@ sub test_curl_sni {
   AuthUserFile $setup->{auth_user_file}
   AuthGroupFile $setup->{auth_group_file}
   AuthOrder mod_auth_file.c
+
   TransferLog none
   WtmpLog off
 
