@@ -1161,7 +1161,7 @@ EOS
 
   my $test_file = File::Spec->rel2abs("$tmpdir/test.txt");
   if (open(my $fh, "> $test_file")) {
-    print $fh >> "Hello, World!  How are you doing?\n";
+    print $fh "Hello, World!  How are you doing?\n";
 
     unless (close($fh)) {
       die("Can't write $test_file: $!");

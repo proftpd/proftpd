@@ -234,7 +234,7 @@ my $TESTS = {
 
   ssh2_cipher_c2s_none => {
     order => ++$order,
-    test_class => [qw(forking ssh2)],
+    test_class => [qw(forking manual ssh2)],
   },
 
   ssh2_cipher_s2c_aes256_cbc => {
@@ -274,7 +274,7 @@ my $TESTS = {
 
   ssh2_cipher_s2c_none => {
     order => ++$order,
-    test_class => [qw(forking ssh2)],
+    test_class => [qw(forking manual ssh2)],
   },
 
   ssh2_ext_cipher_aes128_gcm_bug3759 => {
@@ -319,7 +319,7 @@ my $TESTS = {
 
   ssh2_mac_c2s_none => {
     order => ++$order,
-    test_class => [qw(forking ssh2)],
+    test_class => [qw(forking manual ssh2)],
   },
 
   ssh2_mac_s2c_hmac_sha1 => {
@@ -349,7 +349,7 @@ my $TESTS = {
 
   ssh2_mac_s2c_none => {
     order => ++$order,
-    test_class => [qw(forking ssh2)],
+    test_class => [qw(forking manual ssh2)],
   },
 
   ssh2_ext_mac_umac64_openssh => {
@@ -1539,7 +1539,7 @@ my $TESTS = {
 
   sftp_config_insecure_hostkey_perms_bug4098 => {
     order => ++$order,
-    test_class => [qw(bug forking sftp)],
+    test_class => [qw(bug flaky forking sftp)],
   },
 
   sftp_config_allow_empty_passwords_off_bug4309 => {
@@ -2219,6 +2219,20 @@ sub list_tests {
     ssh2_hostkey_dss_bug3634 => 1,
   };
 
+  # If the underlying libssh2 version is 1.11 or later, then it has lost its
+  # support for DSA, so skip those tests as well.
+  my ($libssh2_major, $libssh2_minor, $libssh2_rev) = get_libssh2_version();
+  if ($libssh2_major) {
+    if ($libssh2_major >= 1 &&
+        $libssh2_minor >= 11) {
+      $skipped_tests->{ssh2_hostkey_dss} = 1;
+      $skipped_tests->{ssh2_auth_publickey_dsa1024} = 1;
+      $skipped_tests->{ssh2_auth_publickey_dsa2048} = 1;
+      $skipped_tests->{ssh2_auth_publickey_dsa4096} = 1;
+      $skipped_tests->{ssh2_auth_publickey_dsa8192} = 1;
+    }
+  }
+
   foreach my $key (keys(%$skipped_tests)) {
     my $ntests = scalar(@tests);
     for (my $i = 0; $i < $ntests; $i++) {
@@ -2265,6 +2279,57 @@ sub set_up {
       $passphrase_openssh_rsa_host_key, $passphrase_openssh_ed25519_host_key,
       $passphrase_openssh_ed25519_cbc_host_key)) {
     die("Can't set perms on $rsa_host_key, $rsa1024_host_key, $dsa_host_key, $ecdsa256_host_key, $ecdsa384_host_key, $ecdsa521_host_key, $passphrase_rsa_host_key, $passphrase_dsa_host_key, $openssh_rsa_host_key, $openssh_dsa_host_key, $openssh_ecdsa_host_key, $openssh_ed25519_host_key, $openssh_mldsa44_ed25519_host_key, $passphrase_openssh_rsa_host_key, $passphrase_openssh_ed25519_host_key, $passphrase_openssh_ed25519_cbc_host_key: $!");
+  }
+}
+
+sub get_libssh2_version {
+  my $libssh2_version;
+  my ($major, $minor, $revision);
+
+  my $version = Net::SSH2::version();
+  $libssh2_version = "libssh2_$version";
+  if ($libssh2_version =~ /libssh2_(\d+)\.(\d+)\.(\d+)?/) {
+    $major = $1;
+    $minor = $2;
+    $revision = $3;
+  }
+
+  if ($ENV{TEST_VERBOSE}) {
+    print STDERR "# Detected libssh2 version: $libssh2_version\n";
+  }
+
+  return ($major, $minor, $revision);
+}
+
+sub get_openssh_version {
+  my $openssh_version;
+  my ($major, $minor, $revision);
+
+  if (open(my $cmdh, 'ssh -V 2>&1 |')) {
+    while (my $line = <$cmdh>) {
+      chomp($line);
+
+      next unless $line =~ /^(OpenSSH_\d+\.\d+(p\d+)?)/;
+      $openssh_version = $1;
+      last;
+    }
+
+    close($cmdh);
+
+    if ($ENV{TEST_VERBOSE}) {
+      print STDERR "# Detected OpenSSH version: $openssh_version\n";
+    }
+
+    if ($openssh_version =~ /OpenSSH_(\d+)\.(\d+)p(\d+)/) {
+      $major = $1;
+      $minor = $2;
+      $revision = $3;
+    }
+
+    return ($major, $minor, $revision);
+
+  } else {
+    die("Error executing 'ssh'");
   }
 }
 
@@ -6683,6 +6748,22 @@ sub ssh2_ext_hostkey_openssh_rsa_passphraseprovider_issue793 {
 sub ssh2_ext_hostkey_openssh_dsa_issue793 {
   my $self = shift;
   my $tmpdir = $self->{tmpdir};
+
+  my ($openssh_major, $openssh_minor, $openssh_rev) = get_openssh_version();
+  if ($openssh_major) {
+    if ($openssh_major >= 10) {
+      print STDERR "# OpenSSH $openssh_major.x too new, skipping this test\n";
+      return;
+    }
+
+    if ($openssh_major == 9) {
+      if ($openssh_minor >= 7) {
+        print STDERR "# OpenSSH $openssh_major.$openssh_minor too new, skipping this test\n";
+        return;
+      }
+    }
+  }
+
   my $setup = test_setup($tmpdir, 'sftp');
 
   my $openssh_dsa_host_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/ssh_host_openssh_dsa_key');
@@ -7709,6 +7790,22 @@ EOC
 sub ssh2_ext_hostkey_openssh_mldsa44_ed25519_issue2435 {
   my $self = shift;
   my $tmpdir = $self->{tmpdir};
+
+  my ($openssh_major, $openssh_minor, $openssh_rev) = get_openssh_version();
+  if ($openssh_major) {
+    if ($openssh_major < 10) {
+      print STDERR "# OpenSSH $openssh_major.x too old, skipping this test\n";
+      return;
+    }
+
+    if ($openssh_major == 10) {
+      if ($openssh_minor < 6) {
+        print STDERR "# OpenSSH $openssh_major.$openssh_minor too old, skipping this test\n";
+        return;
+      }
+    }
+  }
+
   my $setup = test_setup($tmpdir, 'sftp');
 
   my $openssh_mldsa44_ed25519_host_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/ssh_host_openssh_mldsa44_ed25519_key');
@@ -16679,17 +16776,17 @@ sub ssh2_auth_publickey_publickey_chain_bug4153 {
   my $rsa_pub_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/test_rsa_key.pub');
   my $rsa_rfc4716_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/authorized_rsa_keys');
 
-  my $dsa_priv_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/test_dsa_key');
-  my $dsa_pub_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/test_dsa_key.pub');
-  my $dsa_rfc4716_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/authorized_dsa_keys');
+  my $other_priv_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/test_rsa4096_key');
+  my $other_pub_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/test_rsa4096_key.pub');
+  my $other_rfc4716_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/authorized_rsa4096_keys');
 
   my $authorized_keys = File::Spec->rel2abs("$tmpdir/.authorized_keys");
   unless (copy($rsa_rfc4716_key, $authorized_keys)) {
     die("Can't copy $rsa_rfc4716_key to $authorized_keys: $!");
   }
 
-  unless (concat_files($dsa_rfc4716_key, $authorized_keys)) {
-    die("Can't append $dsa_rfc4716_key to $authorized_keys");
+  unless (concat_files($other_rfc4716_key, $authorized_keys)) {
+    die("Can't append $other_rfc4716_key to $authorized_keys");
   }
 
   my $config = {
@@ -16752,7 +16849,7 @@ sub ssh2_auth_publickey_publickey_chain_bug4153 {
         die("Login succeeded unexpectedly with just publickey authentication");
       }
 
-      unless ($ssh2->auth_publickey($setup->{user}, $dsa_pub_key, $dsa_priv_key)) {
+      unless ($ssh2->auth_publickey($setup->{user}, $other_pub_key, $other_priv_key)) {
         my ($err_code, $err_name, $err_str) = $ssh2->error();
         die("Can't login to SSH2 server: [$err_name] ($err_code) $err_str");
       }
@@ -26928,6 +27025,8 @@ sub sftp_upload_fifo_bug3313 {
   # Stop server
   server_stop($setup->{pid_file});
   $self->assert_child_ok($pid);
+
+  eval { unlink($fifo) };
 
   test_cleanup($setup, $ex);
 }
@@ -41998,7 +42097,7 @@ EOF
     ScoreboardFile => $setup->{scoreboard_file},
     SystemLog => $setup->{log_file},
     TraceLog => $setup->{log_file},
-    Trace => 'DEFAULT:10 ssh2:20 sftp:20 scp:20 directory:20 ftpaccess:20',
+    Trace => 'ssh2:20 sftp:20 directory:20 ftpaccess:20',
 
     AuthUserFile => $setup->{auth_user_file},
     AuthGroupFile => $setup->{auth_group_file},
@@ -42082,7 +42181,7 @@ EOF
         die("FXP_REALPATH '.' failed: [$err_name] ($err_code)");
       }
 
-      my $path = $sftp->realpath("$base_path/writable/subwritable");
+      my $path = $sftp->realpath("$base_path/data/writable/subwritable");
       unless ($path) {
         my ($err_code, $err_name) = $sftp->error();
         die("FXP_REALPATH '$base_path/writable/subwritable' failed: [$err_name] ($err_code)");
@@ -62566,7 +62665,7 @@ sub sftp_ext_hostkey_rotation_issue1323 {
         '-oStrictHostKeyChecking=no',
         '-oUpdateHostkeys=yes',
         "-oUserKnownHostsFile=$known_hosts_file",
-        '-oHostKeyAlgorithms=ssh-rsa,ssh-dss',
+        '-oHostKeyAlgorithms=ssh-rsa,rsa-sha2-256,rsa-sha2-512',
         '-vvv',
         '-b',
         "$batch_file",
@@ -62676,6 +62775,22 @@ sub sftp_ext_hostkey_rotation_issue1323 {
 sub sftp_ext_copy_data_issue2198 {
   my $self = shift;
   my $tmpdir = $self->{tmpdir};
+
+  my ($openssh_major, $openssh_minor, $openssh_rev) = get_openssh_version();
+  if ($openssh_major) {
+    if ($openssh_major < 10) {
+      print STDERR "# OpenSSH $openssh_major.x too old, skipping this test\n";
+      return;
+    }
+
+    if ($openssh_major == 10) {
+      if ($openssh_minor < 3) {
+        print STDERR "# OpenSSH $openssh_major.$openssh_minor too old, skipping this test\n";
+        return;
+      }
+    }
+  }
+
   my $setup = test_setup($tmpdir, 'sftp');
 
   my $rsa_host_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/ssh_host_rsa_key');
