@@ -13773,7 +13773,7 @@ sub extlog_sftp_xfer_port_issue912 {
           my $xfer_port = $2;
 
           if ($cmd eq 'STOR') {
-            if ($xfer_port == '-') {
+            if ($xfer_port eq '-') {
               $expected_xfer_port = 1;
 
             } else {
