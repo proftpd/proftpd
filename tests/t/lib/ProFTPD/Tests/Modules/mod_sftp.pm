@@ -1092,6 +1092,16 @@ my $TESTS = {
     test_class => [qw(bug forking sftp)],
   },
 
+  sftp_mkdir_with_userowner => {
+    order => ++$order,
+    test_class => [qw(forking rootprivs sftp)],
+  },
+
+  sftp_mkdir_eexist_with_userowner => {
+    order => ++$order,
+    test_class => [qw(forking rootprivs sftp)],
+  },
+
   sftp_rmdir => {
     order => ++$order,
     test_class => [qw(forking sftp)],
@@ -1915,6 +1925,11 @@ my $TESTS = {
   scp_ext_upload_recursive_dir_with_limit_mkd => {
     order => ++$order,
     test_class => [qw(forking scp)],
+  },
+
+  scp_ext_upload_recursive_dir_with_userowner => {
+    order => ++$order,
+    test_class => [qw(forking rootprivs scp)],
   },
 
   scp_ext_upload_shorter_file_bug4013 => {
@@ -31863,6 +31878,277 @@ sub sftp_mkdir_readdir_bug3481 {
   test_cleanup($setup, $ex);
 }
 
+sub sftp_mkdir_with_userowner {
+  my $self = shift;
+  my $tmpdir = $self->{tmpdir};
+  my $setup = test_setup($tmpdir, 'sftp');
+
+  my $other_user = 'www';
+  my $other_uid = 777;
+
+  auth_user_write($setup->{auth_user_file}, $other_user, 'x', $other_uid,
+    $other_uid, '/tmp', '/bin/bash');
+
+  my $rsa_host_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/ssh_host_rsa_key');
+  my $dsa_host_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/ssh_host_dsa_key');
+
+  my $test_dir = File::Spec->rel2abs("$tmpdir/testdir");
+
+  my $config = {
+    PidFile => $setup->{pid_file},
+    ScoreboardFile => $setup->{scoreboard_file},
+    SystemLog => $setup->{log_file},
+    TraceLog => $setup->{log_file},
+    Trace => 'DEFAULT:10 ssh2:20 sftp:20 scp:20',
+
+    AuthUserFile => $setup->{auth_user_file},
+    AuthGroupFile => $setup->{auth_group_file},
+    AuthOrder => 'mod_auth_file.c',
+
+    Directory => {
+      '/' => {
+        UserOwner => $other_user,
+      },
+    },
+
+    IfModules => {
+      'mod_delay.c' => {
+        DelayEngine => 'off',
+      },
+
+      'mod_sftp.c' => [
+        "SFTPEngine on",
+        "SFTPLog $setup->{log_file}",
+        "SFTPHostKey $rsa_host_key",
+        "SFTPHostKey $dsa_host_key",
+      ],
+    },
+  };
+
+  my ($port, $config_user, $config_group) = config_write($setup->{config_file},
+    $config);
+
+  # Open pipes, for use between the parent and child processes.  Specifically,
+  # the child will indicate when it's done with its test by writing a message
+  # to the parent.
+  my ($rfh, $wfh);
+  unless (pipe($rfh, $wfh)) {
+    die("Can't open pipe: $!");
+  }
+
+  require Net::SSH2;
+
+  my $ex;
+
+  # Fork child
+  $self->handle_sigchld();
+  defined(my $pid = fork()) or die("Can't fork: $!");
+  if ($pid) {
+    eval {
+      # Allow for server startup
+      sleep(1);
+
+      my $ssh2 = Net::SSH2->new();
+      unless ($ssh2->connect('127.0.0.1', $port)) {
+        my ($err_code, $err_name, $err_str) = $ssh2->error();
+        die("Can't connect to SSH2 server: [$err_name] ($err_code) $err_str");
+      }
+
+      unless ($ssh2->auth_password($setup->{user}, $setup->{passwd})) {
+        my ($err_code, $err_name, $err_str) = $ssh2->error();
+        die("Can't login to SSH2 server: [$err_name] ($err_code) $err_str");
+      }
+
+      my $sftp = $ssh2->sftp();
+      unless ($sftp) {
+        my ($err_code, $err_name, $err_str) = $ssh2->error();
+        die("Can't use SFTP on SSH2 server: [$err_name] ($err_code) $err_str");
+      }
+
+      my $res = $sftp->mkdir('testdir');
+      unless ($res) {
+        my ($err_code, $err_name) = $sftp->error();
+        die("Can't mkdir testdir: [$err_name] ($err_code)");
+      }
+
+      $sftp = undef;
+      $ssh2->disconnect();
+
+      unless (-d $test_dir) {
+        die("$test_dir directory does not exist as expected");
+      }
+
+      my $owning_uid = (stat($test_dir))[4];
+      $self->assert($owning_uid == $other_uid,
+        test_msg("Expected owning UID $other_uid, got $owning_uid"));
+    };
+    if ($@) {
+      $ex = $@;
+    }
+
+    $wfh->print("done\n");
+    $wfh->flush();
+
+  } else {
+    eval { server_wait($setup->{config_file}, $rfh) };
+    if ($@) {
+      warn($@);
+      exit 1;
+    }
+
+    exit 0;
+  }
+
+  # Stop server
+  server_stop($setup->{pid_file});
+  $self->assert_child_ok($pid);
+
+  test_cleanup($setup, $ex);
+}
+
+sub sftp_mkdir_eexist_with_userowner {
+  my $self = shift;
+  my $tmpdir = $self->{tmpdir};
+  my $setup = test_setup($tmpdir, 'sftp');
+
+  my $other_user = 'www';
+  my $other_uid = 777;
+
+  auth_user_write($setup->{auth_user_file}, $other_user, 'x', $other_uid,
+    $other_uid, '/tmp', '/bin/bash');
+
+  my $rsa_host_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/ssh_host_rsa_key');
+  my $dsa_host_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/ssh_host_dsa_key');
+
+  my $test_dir = File::Spec->rel2abs("$tmpdir/testdir");
+  mkpath($test_dir);
+
+  # Make sure that, if we're running as root, that the home directory has
+  # permissions/privs set for the account we create
+  if ($< == 0) {
+    unless (chmod(0755, $test_dir)) {
+      die("Can't set perms on $test_dir to 0755: $!");
+    }
+
+    unless (chown($setup->{uid}, $setup->{gid}, $test_dir)) {
+      die("Can't set owner of $test_dir to $setup->{uid}/$setup->{gid}: $!");
+    }
+  }
+
+  my $config = {
+    PidFile => $setup->{pid_file},
+    ScoreboardFile => $setup->{scoreboard_file},
+    SystemLog => $setup->{log_file},
+    TraceLog => $setup->{log_file},
+    Trace => 'DEFAULT:10 ssh2:20 sftp:20 scp:20',
+
+    AuthUserFile => $setup->{auth_user_file},
+    AuthGroupFile => $setup->{auth_group_file},
+    AuthOrder => 'mod_auth_file.c',
+
+    Directory => {
+      '/' => {
+        UserOwner => $other_user,
+      },
+    },
+
+    IfModules => {
+      'mod_delay.c' => {
+        DelayEngine => 'off',
+      },
+
+      'mod_sftp.c' => [
+        "SFTPEngine on",
+        "SFTPLog $setup->{log_file}",
+        "SFTPHostKey $rsa_host_key",
+        "SFTPHostKey $dsa_host_key",
+      ],
+    },
+  };
+
+  my ($port, $config_user, $config_group) = config_write($setup->{config_file},
+    $config);
+
+  # Open pipes, for use between the parent and child processes.  Specifically,
+  # the child will indicate when it's done with its test by writing a message
+  # to the parent.
+  my ($rfh, $wfh);
+  unless (pipe($rfh, $wfh)) {
+    die("Can't open pipe: $!");
+  }
+
+  require Net::SSH2;
+
+  my $ex;
+
+  # Fork child
+  $self->handle_sigchld();
+  defined(my $pid = fork()) or die("Can't fork: $!");
+  if ($pid) {
+    eval {
+      # Allow for server startup
+      sleep(1);
+
+      my $ssh2 = Net::SSH2->new();
+      unless ($ssh2->connect('127.0.0.1', $port)) {
+        my ($err_code, $err_name, $err_str) = $ssh2->error();
+        die("Can't connect to SSH2 server: [$err_name] ($err_code) $err_str");
+      }
+
+      unless ($ssh2->auth_password($setup->{user}, $setup->{passwd})) {
+        my ($err_code, $err_name, $err_str) = $ssh2->error();
+        die("Can't login to SSH2 server: [$err_name] ($err_code) $err_str");
+      }
+
+      my $sftp = $ssh2->sftp();
+      unless ($sftp) {
+        my ($err_code, $err_name, $err_str) = $ssh2->error();
+        die("Can't use SFTP on SSH2 server: [$err_name] ($err_code) $err_str");
+      }
+
+      # We now expect mod_sftp to gracefully handle an EEXIST error, and
+      # not convey it to the client (Issue #1639).
+      my $res = $sftp->mkdir('testdir');
+      unless ($res) {
+        my ($err_code, $err_name, $err_str) = $ssh2->error();
+        die("MKDIR request to SFTP server failed: [$err_name] ($err_code) $err_str");
+      }
+
+      $sftp = undef;
+      $ssh2->disconnect();
+
+      unless (-d $test_dir) {
+        die("$test_dir directory does not exist as expected");
+      }
+
+      my $owning_uid = (stat($test_dir))[4];
+      $self->assert($owning_uid == $other_uid,
+        test_msg("Expected owning UID $other_uid, got $owning_uid"));
+    };
+    if ($@) {
+      $ex = $@;
+    }
+
+    $wfh->print("done\n");
+    $wfh->flush();
+
+  } else {
+    eval { server_wait($setup->{config_file}, $rfh) };
+    if ($@) {
+      warn($@);
+      exit 1;
+    }
+
+    exit 0;
+  }
+
+  # Stop server
+  server_stop($setup->{pid_file});
+  $self->assert_child_ok($pid);
+
+  test_cleanup($setup, $ex);
+}
+
 sub sftp_rmdir {
   my $self = shift;
   my $tmpdir = $self->{tmpdir};
@@ -55741,6 +56027,192 @@ EOL
       if (-d "$dst_dir/src.d") {
         die("Directory '$dst_dir/src.d' exists unexpectedly");
       }
+    };
+    if ($@) {
+      $ex = $@;
+    }
+
+    $wfh->print("done\n");
+    $wfh->flush();
+
+  } else {
+    eval { server_wait($setup->{config_file}, $rfh) };
+    if ($@) {
+      warn($@);
+      exit 1;
+    }
+
+    exit 0;
+  }
+
+  # Stop server
+  server_stop($setup->{pid_file});
+  $self->assert_child_ok($pid);
+
+  test_cleanup($setup, $ex);
+}
+
+sub scp_ext_upload_recursive_dir_with_userowner {
+  my $self = shift;
+  my $tmpdir = $self->{tmpdir};
+  my $setup = test_setup($tmpdir, 'sftp');
+
+  my $other_user = 'www';
+  my $other_uid = 777;
+
+  auth_user_write($setup->{auth_user_file}, $other_user, 'x', $other_uid,
+    $other_uid, '/tmp', '/bin/bash');
+
+  my $rsa_host_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/ssh_host_rsa_key');
+  my $dsa_host_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/ssh_host_dsa_key');
+
+  my $rsa_priv_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/test_rsa_key');
+  my $rsa_pub_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/test_rsa_key.pub');
+  my $rsa_rfc4716_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/authorized_rsa_keys');
+
+  my $authorized_keys = File::Spec->rel2abs("$tmpdir/.authorized_keys");
+  unless (copy($rsa_rfc4716_key, $authorized_keys)) {
+    die("Can't copy $rsa_rfc4716_key to $authorized_keys: $!");
+  }
+
+  my $src_dir = File::Spec->rel2abs("$tmpdir/src.d");
+  mkpath($src_dir);
+
+  my $dst_dir = File::Spec->rel2abs("$tmpdir/dst.d");
+  mkpath($dst_dir);
+
+  # Make sure that, if we're running as root, that the target directory has
+  # permissions/privs set for the account we create
+  if ($< == 0) {
+    unless (chmod(0755, $dst_dir)) {
+      die("Can't set perms on $dst_dir to 0755: $!");
+    }
+
+    unless (chown($setup->{uid}, $setup->{gid}, $dst_dir)) {
+      die("Can't set owner of $dst_dir to $setup->{uid}/$setup->{gid}: $!");
+    }
+  }
+
+  my $config = {
+    PidFile => $setup->{pid_file},
+    ScoreboardFile => $setup->{scoreboard_file},
+    SystemLog => $setup->{log_file},
+    TraceLog => $setup->{log_file},
+    Trace => 'DEFAULT:10 ssh2:20 sftp:20 scp:20',
+
+    AuthUserFile => $setup->{auth_user_file},
+    AuthGroupFile => $setup->{auth_group_file},
+    AuthOrder => 'mod_auth_file.c',
+
+    Directory => {
+      '/' => {
+        UserOwner => $other_user,
+      },
+    },
+
+    IfModules => {
+      'mod_delay.c' => {
+        DelayEngine => 'off',
+      },
+
+      'mod_sftp.c' => [
+        "SFTPEngine on",
+        "SFTPLog $setup->{log_file}",
+        "SFTPHostKey $rsa_host_key",
+        "SFTPHostKey $dsa_host_key",
+        "SFTPAuthorizedUserKeys file:~/.authorized_keys",
+
+        # NOTE: UserOwner will cause the created directories to be owned
+        # by the named user.  And that, in turn, means that the logged-in
+        # user will not have permissions to change things like permissions
+        # on that created directory.  C'est la vie.
+        "SFTPOptions IgnoreSCPUploadPerms",
+      ],
+    },
+  };
+
+  my ($port, $config_user, $config_group) = config_write($setup->{config_file},
+    $config);
+
+  # Open pipes, for use between the parent and child processes.  Specifically,
+  # the child will indicate when it's done with its test by writing a message
+  # to the parent.
+  my ($rfh, $wfh);
+  unless (pipe($rfh, $wfh)) {
+    die("Can't open pipe: $!");
+  }
+
+  require Net::SSH2;
+
+  my $ex;
+
+  # Ignore SIGPIPE
+  local $SIG{PIPE} = sub { };
+
+  # Fork child
+  $self->handle_sigchld();
+  defined(my $pid = fork()) or die("Can't fork: $!");
+  if ($pid) {
+    eval {
+      my @cmd = (
+        'scp',
+        '-r',
+        '-v',
+        '-O',
+        '-oBatchMode=yes',
+        '-oCheckHostIP=no',
+        "-oPort=$port",
+        "-oIdentityFile=$rsa_priv_key",
+        '-oPubkeyAuthentication=yes',
+        '-oStrictHostKeyChecking=no',
+        '-oUserKnownHostsFile=/dev/null',
+        "$src_dir/",
+        "$setup->{user}\@127.0.0.1:dst.d/",
+      );
+
+      my $scp_rh = IO::Handle->new();
+      my $scp_wh = IO::Handle->new();
+      my $scp_eh = IO::Handle->new();
+
+      $scp_wh->autoflush(1);
+
+      sleep(1);
+
+      local $SIG{CHLD} = 'DEFAULT';
+
+      # Make sure that the perms on the priv key are what OpenSSH wants
+      unless (chmod(0400, $rsa_priv_key)) {
+        die("Can't set perms on $rsa_priv_key to 0400: $!");
+      }
+
+      if ($ENV{TEST_VERBOSE}) {
+        print STDERR "Executing: ", join(' ', @cmd), "\n";
+      }
+
+      my $scp_pid = open3($scp_wh, $scp_rh, $scp_eh, @cmd);
+      waitpid($scp_pid, 0);
+      my $exit_status = $?;
+
+      # Restore the perms on the priv key
+      unless (chmod(0644, $rsa_priv_key)) {
+        die("Can't set perms on $rsa_priv_key to 0644: $!");
+      }
+
+      if ($ENV{TEST_VERBOSE}) {
+        print STDERR "Stderr: ", join('', <$scp_eh>), "\n";
+      }
+
+      unless ($exit_status >> 8 == 0) {
+        die("Upload of $src_dir failed unexpectedly");
+      }
+
+      unless (-d "$dst_dir/src.d") {
+        die("Directory '$dst_dir/src.d' does not exist as expected");
+      }
+
+      my $owning_uid = (stat("$dst_dir/src.d"))[4];
+      $self->assert($owning_uid == $other_uid,
+        test_msg("Expected owning UID $other_uid, got $owning_uid"));
     };
     if ($@) {
       $ex = $@;

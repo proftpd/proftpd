@@ -10494,7 +10494,9 @@ static int fxp_handle_mkdir(struct fxp_packet *fxp) {
   (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
     "creating directory '%s' with mode 0%o", path, (unsigned int) dir_mode);
 
-  /* Note that will also handle any relevant UserOwner/GroupOwner changes. */
+  /* Note that this will also handle any relevant UserOwner/GroupOwner
+   * changes.
+   */
   res = pr_fsio_smkdir(fxp->pool, path, dir_mode, session.fsuid, session.fsgid);
   if (res < 0 &&
       errno != EEXIST) {
