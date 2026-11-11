@@ -10494,7 +10494,8 @@ static int fxp_handle_mkdir(struct fxp_packet *fxp) {
   (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
     "creating directory '%s' with mode 0%o", path, (unsigned int) dir_mode);
 
-  res = pr_fsio_smkdir(fxp->pool, path, dir_mode, (uid_t) -1, (gid_t) -1);
+  /* Note that will also handle any relevant UserOwner/GroupOwner changes. */
+  res = pr_fsio_smkdir(fxp->pool, path, dir_mode, session.fsuid, session.fsgid);
   if (res < 0 &&
       errno != EEXIST) {
     const char *reason;
@@ -10527,14 +10528,6 @@ static int fxp_handle_mkdir(struct fxp_packet *fxp) {
     resp->payload_sz = (bufsz - buflen);
 
     return fxp_packet_write(resp);
-  }
-
-  /* Handle any possible UserOwner/GroupOwner directives for created
-   * directories.
-   */
-  if (sftp_misc_chown_path(fxp->pool, path) < 0) {
-    (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
-      "error changing ownership on path '%s': %s", path, strerror(errno));
   }
 
   status_code = SSH2_FX_OK;
