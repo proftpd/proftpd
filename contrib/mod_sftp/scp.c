@@ -886,8 +886,12 @@ static int recv_finfo(pool *p, uint32_t channel_id, struct scp_path *sp,
          * recursive directory uploads via SCP?
          */
 
-        pr_fs_clear_cache2(sp->filename);
-        if (pr_fsio_smkdir(p, sp->filename, 0777, (uid_t) -1, (gid_t) -1) < 0) {
+        /* Note that this will also handle any relevant UserOwner/GroupOwner
+         * changes.
+         */
+        pr_fs_clear_cache2(sp->best_path);
+        if (pr_fsio_smkdir(p, sp->best_path, 0777, session.fsuid,
+            session.fsgid) < 0) {
           xerrno = errno;
 
           (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
@@ -901,7 +905,8 @@ static int recv_finfo(pool *p, uint32_t channel_id, struct scp_path *sp,
           return 1;
         }
 
-        sftp_misc_chown_path(p, sp->filename);
+        (void) pr_cmd_dispatch_phase(cmd, POST_CMD, 0);
+        (void) pr_cmd_dispatch_phase(cmd, LOG_CMD, 0);
 
       } else {
         (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,

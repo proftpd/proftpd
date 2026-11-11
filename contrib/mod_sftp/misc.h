@@ -28,7 +28,6 @@
 #include "mod_sftp.h"
 
 int sftp_misc_chown_file(pool *, pr_fh_t *);
-int sftp_misc_chown_path(pool *, const char *);
 const char *sftp_misc_get_chroot(pool *);
 int sftp_misc_namelist_contains(pool *, const char *, const char *);
 const char *sftp_misc_namelist_shared(pool *, const char *, const char *);
