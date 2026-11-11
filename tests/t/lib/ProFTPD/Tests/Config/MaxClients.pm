@@ -48,33 +48,17 @@ sub list_tests {
 sub maxclients_one {
   my $self = shift;
   my $tmpdir = $self->{tmpdir};
-
-  my $config_file = "$tmpdir/config.conf";
-  my $pid_file = File::Spec->rel2abs("$tmpdir/config.pid");
-  my $scoreboard_file = File::Spec->rel2abs("$tmpdir/config.scoreboard");
-
-  my $log_file = File::Spec->rel2abs('tests.log');
-
-  my $auth_user_file = File::Spec->rel2abs("$tmpdir/config.passwd");
-  my $auth_group_file = File::Spec->rel2abs("$tmpdir/config.group");
-
-  my $user = 'proftpd';
-  my $passwd = 'test';
-  my $home_dir = File::Spec->rel2abs($tmpdir);
-
-  auth_user_write($auth_user_file, $user, $passwd, 500, 500, $home_dir,
-    '/bin/bash');
-  auth_group_write($auth_group_file, 'ftpd', 500, $user);
+  my $setup = test_setup($tmpdir, 'config');
 
   my $max_clients = 1;
 
   my $config = {
-    PidFile => $pid_file,
-    ScoreboardFile => $scoreboard_file,
-    SystemLog => $log_file,
+    PidFile => $setup->{pid_file},
+    ScoreboardFile => $setup->{scoreboard_file},
+    SystemLog => $setup->{log_file},
 
-    AuthUserFile => $auth_user_file,
-    AuthGroupFile => $auth_group_file,
+    AuthUserFile => $setup->{auth_user_file},
+    AuthGroupFile => $setup->{auth_group_file},
     AuthOrder => 'mod_auth_file.c',
 
     MaxClients => $max_clients,
@@ -86,7 +70,8 @@ sub maxclients_one {
     },
   };
 
-  my ($port, $config_user, $config_group) = config_write($config_file, $config);
+  my ($port, $config_user, $config_group) = config_write($setup->{config_file},
+    $config);
 
   # Open pipes, for use between the parent and child processes.  Specifically,
   # the child will indicate when it's done with its test by writing a message
@@ -105,19 +90,18 @@ sub maxclients_one {
     eval {
       # First client should be able to connect and log in...
       my $client1 = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
-      $client1->login($user, $passwd);
+      $client1->login($setup->{user}, $setup->{passwd});
 
       # ...but the second client should be able to connect, but not login.
       my $client2 = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
 
-      eval { $client2->login($user, $passwd) };
+      eval { $client2->login($setup->{user}, $setup->{passwd}) };
       unless ($@) {
         die("Login succeeded unexpectedly");
       }
 
       $client1->quit();
     };
-
     if ($@) {
       $ex = $@;
     }
@@ -126,7 +110,7 @@ sub maxclients_one {
     $wfh->flush();
 
   } else {
-    eval { server_wait($config_file, $rfh) };
+    eval { server_wait($setup->{config_file}, $rfh) };
     if ($@) {
       warn($@);
       exit 1;
@@ -136,47 +120,26 @@ sub maxclients_one {
   }
 
   # Stop server
-  server_stop($pid_file);
-
+  server_stop($setup->{pid_file});
   $self->assert_child_ok($pid);
 
-  if ($ex) {
-    die($ex);
-  }
-
-  unlink($log_file);
+  test_cleanup($setup, $ex);
 }
 
 sub maxclients_one_ifsess_per_user_regex {
   my $self = shift;
   my $tmpdir = $self->{tmpdir};
-
-  my $config_file = "$tmpdir/config.conf";
-  my $pid_file = File::Spec->rel2abs("$tmpdir/config.pid");
-  my $scoreboard_file = File::Spec->rel2abs("$tmpdir/config.scoreboard");
-
-  my $log_file = File::Spec->rel2abs('tests.log');
-
-  my $auth_user_file = File::Spec->rel2abs("$tmpdir/config.passwd");
-  my $auth_group_file = File::Spec->rel2abs("$tmpdir/config.group");
-
-  my $user = 'proftpd';
-  my $passwd = 'test';
-  my $home_dir = File::Spec->rel2abs($tmpdir);
-
-  auth_user_write($auth_user_file, $user, $passwd, 500, 500, $home_dir,
-    '/bin/bash');
-  auth_group_write($auth_group_file, 'ftpd', 500, $user);
+  my $setup = test_setup($tmpdir, 'config');
 
   my $max_clients = 1;
 
   my $config = {
-    PidFile => $pid_file,
-    ScoreboardFile => $scoreboard_file,
-    SystemLog => $log_file,
+    PidFile => $setup->{pid_file},
+    ScoreboardFile => $setup->{scoreboard_file},
+    SystemLog => $setup->{log_file},
 
-    AuthUserFile => $auth_user_file,
-    AuthGroupFile => $auth_group_file,
+    AuthUserFile => $setup->{auth_user_file},
+    AuthGroupFile => $setup->{auth_group_file},
     AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
@@ -186,23 +149,24 @@ sub maxclients_one_ifsess_per_user_regex {
     },
   };
 
-  my ($port, $config_user, $config_group) = config_write($config_file, $config);
+  my ($port, $config_user, $config_group) = config_write($setup->{config_file},
+    $config);
 
-  if (open(my $fh, ">> $config_file")) {
+  if (open(my $fh, ">> $setup->{config_file}")) {
     print $fh <<EOC;
 <IfModule mod_ifsession.c>
-  <IfUser regex ^$user>
+  <IfUser regex ^$setup->{user}>
     MaxClients $max_clients
   </IfUser>
 </IfModule>
 EOC
 
     unless (close($fh)) {
-      die("Can't write $config_file: $!");
+      die("Can't write $setup->{config_file}: $!");
     }
 
   } else {
-    die("Can't open $config_file: $!");
+    die("Can't open $setup->{config_file}: $!");
   }
 
   # Open pipes, for use between the parent and child processes.  Specifically,
@@ -222,19 +186,18 @@ EOC
     eval {
       # First client should be able to connect and log in...
       my $client1 = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
-      $client1->login($user, $passwd);
+      $client1->login($setup->{user}, $setup->{passwd});
 
       # ...but the second client should be able to connect, but not login.
       my $client2 = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
 
-      eval { $client2->login($user, $passwd) };
+      eval { $client2->login($setup->{user}, $setup->{passwd}) };
       unless ($@) {
         die("Login succeeded unexpectedly");
       }
 
       $client1->quit();
     };
-
     if ($@) {
       $ex = $@;
     }
@@ -243,7 +206,7 @@ EOC
     $wfh->flush();
 
   } else {
-    eval { server_wait($config_file, $rfh) };
+    eval { server_wait($setup->{config_file}, $rfh) };
     if ($@) {
       warn($@);
       exit 1;
@@ -253,32 +216,16 @@ EOC
   }
 
   # Stop server
-  server_stop($pid_file);
-
+  server_stop($setup->{pid_file});
   $self->assert_child_ok($pid);
 
-  if ($ex) {
-    die($ex);
-  }
-
-  unlink($log_file);
+  test_cleanup($setup, $ex);
 }
 
 sub maxclients_one_ifsess_sql_per_user_regex {
   my $self = shift;
   my $tmpdir = $self->{tmpdir};
-
-  my $config_file = "$tmpdir/config.conf";
-  my $pid_file = File::Spec->rel2abs("$tmpdir/config.pid");
-  my $scoreboard_file = File::Spec->rel2abs("$tmpdir/config.scoreboard");
-
-  my $log_file = File::Spec->rel2abs('tests.log');
-
-  my $user = 'proftpd';
-  my $passwd = 'test';
-  my $home_dir = File::Spec->rel2abs($tmpdir);
-  my $gid = 500;
-  my $uid = 500;
+  my $setup = test_setup($tmpdir, 'config');
 
   my $db_file = File::Spec->rel2abs("$tmpdir/proftpd.db");
 
@@ -296,13 +243,14 @@ CREATE TABLE users (
   shell TEXT,
   lastdir TEXT
 );
-INSERT INTO users (userid, passwd, uid, gid, homedir, shell) VALUES ('$user', '$passwd', 500, 500, '$home_dir', '/bin/bash');
+INSERT INTO users (userid, passwd, uid, gid, homedir, shell) VALUES ('$setup->{user}', '$setup->{passwd}', $setup->{uid}, $setup->{gid}, '$setup->{home_dir}', '/bin/bash');
+
 CREATE TABLE groups (
   groupname TEXT,
   gid INTEGER,
   members TEXT
 );
-INSERT INTO groups (groupname, gid, members) VALUES ('ftpd', 500, '$user');
+INSERT INTO groups (groupname, gid, members) VALUES ('$setup->{group}', $setup->{gid}, '$setup->{user}');
 EOS
 
     unless (close($fh)) {
@@ -328,9 +276,9 @@ EOS
   my $max_clients = 1;
 
   my $config = {
-    PidFile => $pid_file,
-    ScoreboardFile => $scoreboard_file,
-    SystemLog => $log_file,
+    PidFile => $setup->{pid_file},
+    ScoreboardFile => $setup->{scoreboard_file},
+    SystemLog => $setup->{log_file},
 
     IfModules => {
       'mod_delay.c' => {
@@ -338,31 +286,33 @@ EOS
       },
 
       'mod_sql.c' => {
+        AuthOrder => 'mod_sql.c',
         SQLAuthTypes => 'plaintext',
         SQLBackend => 'sqlite3',
         SQLConnectInfo => $db_file,
-        SQLLogFile => $log_file,
+        SQLLogFile => $setup->{log_file},
       },
     },
   };
 
-  my ($port, $config_user, $config_group) = config_write($config_file, $config);
+  my ($port, $config_user, $config_group) = config_write($setup->{config_file},
+    $config);
 
-  if (open(my $fh, ">> $config_file")) {
+  if (open(my $fh, ">> $setup->{config_file}")) {
     print $fh <<EOC;
 <IfModule mod_ifsession.c>
-  <IfUser regex ^$user>
+  <IfUser regex ^$setup->{user}>
     MaxClients $max_clients
   </IfUser>
 </IfModule>
 EOC
 
     unless (close($fh)) {
-      die("Can't write $config_file: $!");
+      die("Can't write $setup->{config_file}: $!");
     }
 
   } else {
-    die("Can't open $config_file: $!");
+    die("Can't open $setup->{config_file}: $!");
   }
 
   # Open pipes, for use between the parent and child processes.  Specifically,
@@ -382,19 +332,18 @@ EOC
     eval {
       # First client should be able to connect and log in...
       my $client1 = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
-      $client1->login($user, $passwd);
+      $client1->login($setup->{user}, $setup->{passwd});
 
       # ...but the second client should be able to connect, but not login.
       my $client2 = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
 
-      eval { $client2->login($user, $passwd) };
+      eval { $client2->login($setup->{user}, $setup->{passwd}) };
       unless ($@) {
         die("Login succeeded unexpectedly");
       }
 
       $client1->quit();
     };
-
     if ($@) {
       $ex = $@;
     }
@@ -403,7 +352,7 @@ EOC
     $wfh->flush();
 
   } else {
-    eval { server_wait($config_file, $rfh) };
+    eval { server_wait($setup->{config_file}, $rfh) };
     if ($@) {
       warn($@);
       exit 1;
@@ -413,56 +362,33 @@ EOC
   }
 
   # Stop server
-  server_stop($pid_file);
-
+  server_stop($setup->{pid_file});
   $self->assert_child_ok($pid);
 
-  if ($ex) {
-    die($ex);
-  }
-
-  unlink($log_file);
+  test_cleanup($setup, $ex);
 }
 
 sub maxclients_one_anon_bug4068 {
   my $self = shift;
   my $tmpdir = $self->{tmpdir};
-
-  my $config_file = "$tmpdir/config.conf";
-  my $pid_file = File::Spec->rel2abs("$tmpdir/config.pid");
-  my $scoreboard_file = File::Spec->rel2abs("$tmpdir/config.scoreboard");
-
-  my $log_file = File::Spec->rel2abs('tests.log');
-
-  my $auth_user_file = File::Spec->rel2abs("$tmpdir/config.passwd");
-  my $auth_group_file = File::Spec->rel2abs("$tmpdir/config.group");
-
-  my ($config_user, $config_group) = config_get_identity();
-
-  my $anon_dir = File::Spec->rel2abs($tmpdir);
-  my $uid = 500;
-  my $gid = 500;
-
-  auth_user_write($auth_user_file, $config_user, 'foo', $uid, $gid,
-    '/tmp', '/bin/bash');
-  auth_group_write($auth_group_file, $config_group, $gid, $config_user);
+  my $setup = test_setup($tmpdir, 'config');
 
   my $max_clients = 1;
 
   my $config = {
-    PidFile => $pid_file,
-    ScoreboardFile => $scoreboard_file,
-    SystemLog => $log_file,
+    PidFile => $setup->{pid_file},
+    ScoreboardFile => $setup->{scoreboard_file},
+    SystemLog => $setup->{log_file},
 
-    AuthUserFile => $auth_user_file,
-    AuthGroupFile => $auth_group_file,
+    AuthUserFile => $setup->{auth_user_file},
+    AuthGroupFile => $setup->{auth_group_file},
     AuthOrder => 'mod_auth_file.c',
 
     Anonymous => {
-      $anon_dir => {
-        User => $config_user,
-        Group => $config_group,
-        UserAlias => "anonymous $config_user",
+      $setup->{home_dir} => {
+        User => $setup->{user},
+        Group => $setup->{group},
+        UserAlias => "anonymous $setup->{user}",
         RequireValidShell => 'off',
         MaxClients => $max_clients,
       },
@@ -475,8 +401,8 @@ sub maxclients_one_anon_bug4068 {
     },
   };
 
-  my $port;
-  ($port, $config_user, $config_group) = config_write($config_file, $config);
+  my ($port, $config_user, $config_group) = config_write($setup->{config_file},
+    $config);
 
   # Open pipes, for use between the parent and child processes.  Specifically,
   # the child will indicate when it's done with its test by writing a message
@@ -495,19 +421,18 @@ sub maxclients_one_anon_bug4068 {
     eval {
       # First client should be able to connect and log in...
       my $client1 = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
-      $client1->login($config_user, 'ftp@nospam.org');
+      $client1->login($setup->{user}, 'ftp@nospam.org');
 
       # ...but the second client should be able to connect, but not login.
       my $client2 = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
 
-      eval { $client2->login($config_user, 'ftp@nospam.org') };
+      eval { $client2->login($setup->{user}, 'ftp@nospam.org') };
       unless ($@) {
         die("Login succeeded unexpectedly");
       }
 
       $client1->quit();
     };
-
     if ($@) {
       $ex = $@;
     }
@@ -516,7 +441,7 @@ sub maxclients_one_anon_bug4068 {
     $wfh->flush();
 
   } else {
-    eval { server_wait($config_file, $rfh) };
+    eval { server_wait($setup->{config_file}, $rfh) };
     if ($@) {
       warn($@);
       exit 1;
@@ -526,15 +451,10 @@ sub maxclients_one_anon_bug4068 {
   }
 
   # Stop server
-  server_stop($pid_file);
-
+  server_stop($setup->{pid_file});
   $self->assert_child_ok($pid);
 
-  if ($ex) {
-    die($ex);
-  }
-
-  unlink($log_file);
+  test_cleanup($setup, $ex);
 }
 
 1;
