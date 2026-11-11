@@ -1376,7 +1376,7 @@ static int sess_cache_clear(tls_sess_cache_t *cache) {
   pr_trace_msg(trace_channel, 9, "clearing shmcache session cache %p", cache);
 
   if (sesscache_shmid < 0) {
-    errno = EINVAL;
+    errno = ENOENT;
     return -1;
   }
 
@@ -1394,8 +1394,12 @@ static int sess_cache_clear(tls_sess_cache_t *cache) {
   }
 
   if (shmcache_lock_shm(sesscache_fh, F_WRLCK) < 0) {
+    int xerrno = errno;
+
     tls_log("shmcache: unable to clear cache: error write-locking shmcache: %s",
-      strerror(errno));
+      strerror(xerrno));
+
+    errno = xerrno;
     return -1;
   }
 
@@ -1436,7 +1440,7 @@ static int sess_cache_remove(tls_sess_cache_t *cache) {
   (void) sess_cache_close(cache);
 
   if (sesscache_shmid < 0) {
-    errno = EINVAL;
+    errno = ENOENT;
     return -1;
   }
 
@@ -1473,8 +1477,12 @@ static int sess_cache_status(tls_sess_cache_t *cache,
   pr_trace_msg(trace_channel, 9, "checking shmcache session cache %p", cache);
 
   if (shmcache_lock_shm(sesscache_fh, F_RDLCK) < 0) {
+    int xerrno = errno;
+
     pr_log_debug(DEBUG1, MOD_TLS_SHMCACHE_VERSION
       ": error read-locking shmcache: %s", strerror(errno));
+
+    errno = xerrno;
     return -1;
   }
 
@@ -2397,7 +2405,7 @@ static int ocsp_cache_clear(tls_ocsp_cache_t *cache) {
   pr_trace_msg(trace_channel, 9, "clearing shmcache ocsp cache %p", cache);
 
   if (ocspcache_shmid < 0) {
-    errno = EINVAL;
+    errno = ENOENT;
     return -1;
   }
 
@@ -2462,7 +2470,7 @@ static int ocsp_cache_remove(tls_ocsp_cache_t *cache) {
   (void) ocsp_cache_close(cache);
 
   if (ocspcache_shmid < 0) {
-    errno = EINVAL;
+    errno = ENOENT;
     return -1;
   }
 
@@ -2608,7 +2616,7 @@ static void shmcache_restart_ev(const void *event_data, void *user_data) {
    * resumed cached sessions from a more relaxed security config is not a
    * Good Thing at all.
    */
-  sess_cache_clear(NULL);
+  sess_cache_clear(&sess_cache);
 }
 
 /* Initialization functions
