@@ -925,7 +925,7 @@ static int recv_finfo(pool *p, uint32_t channel_id, struct scp_path *sp,
           return 1;
         }
 
-        /* Note that will also handle any relevant UserOwner/GroupOwner
+        /* Note that this will also handle any relevant UserOwner/GroupOwner
          * changes.
          */
         pr_fs_clear_cache2(sp->best_path);
