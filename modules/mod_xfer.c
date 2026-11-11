@@ -45,6 +45,7 @@
 
 extern module auth_module;
 extern pid_t mpid;
+extern pr_response_t *resp_err_list;
 
 /* Variables for this module */
 static pr_fh_t *retr_fh = NULL;
@@ -4389,17 +4390,23 @@ static void xfer_exit_ev(const void *event_data, void *user_data) {
   }
 
   if (session.sf_flags & SF_XFER) {
-    cmd_rec *cmd = NULL;
-
     pr_data_abort(0, FALSE);
+    pr_response_flush(&resp_err_list);
 
-    cmd = session.curr_cmd_rec;
-    if (cmd == NULL) {
-      cmd = pr_cmd_alloc(session.pool, 2, session.curr_cmd, session.xfer.path);
+    /* Issue #2360 demonstrated that sometimes, due to different module
+     * load order, assumptions about session state may not always be
+     * valid.  So we double-check for our fields of interest.
+     */
+    if (session.xfer.xfer_cmd != NULL &&
+        session.xfer.path != NULL) {
+      cmd_rec *cmd = NULL;
+
+      cmd = pr_cmd_alloc(session.pool, 2, session.xfer.xfer_cmd,
+        session.xfer.path);
+      (void) pr_cmd_dispatch_phase(cmd, POST_CMD_ERR, 0);
+      (void) pr_cmd_dispatch_phase(cmd, LOG_CMD_ERR, 0);
+      destroy_pool(cmd->pool);
     }
-
-    (void) pr_cmd_dispatch_phase(cmd, POST_CMD_ERR, 0);
-    (void) pr_cmd_dispatch_phase(cmd, LOG_CMD_ERR, 0);
   }
 }
 
