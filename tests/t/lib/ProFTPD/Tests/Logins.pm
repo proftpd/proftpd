@@ -1938,6 +1938,10 @@ sub login_logging_bad_password_issue693 {
     Trace => 'auth:20',
 
     IfModules => {
+      'mod_auth_pam.c' => {
+        AuthPAM => 'off',
+      },
+
       'mod_delay.c' => {
         DelayEngine => 'off',
       },

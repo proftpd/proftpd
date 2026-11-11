@@ -63039,7 +63039,7 @@ sub sftp_ext_hostkey_rotation_issue1323 {
   my $setup = test_setup($tmpdir, 'sftp');
 
   my $rsa_host_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/ssh_host_rsa_key');
-  my $dsa_host_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/ssh_host_dsa_key');
+  my $ecdsa_host_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/ssh_host_ecdsa256_key');
 
   my $rsa_priv_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/test_rsa_key');
   my $rsa_pub_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/test_rsa_key.pub');
@@ -63082,7 +63082,7 @@ sub sftp_ext_hostkey_rotation_issue1323 {
         "SFTPEngine on",
         "SFTPLog $setup->{log_file}",
         "SFTPHostKey $rsa_host_key",
-        "SFTPHostKey $dsa_host_key",
+        "SFTPHostKey $ecdsa_host_key",
         "SFTPAuthorizedUserKeys file:~/.authorized_keys",
       ],
     },
@@ -63137,7 +63137,7 @@ sub sftp_ext_hostkey_rotation_issue1323 {
         '-oStrictHostKeyChecking=no',
         '-oUpdateHostkeys=yes',
         "-oUserKnownHostsFile=$known_hosts_file",
-        '-oHostKeyAlgorithms=ssh-rsa,rsa-sha2-256,rsa-sha2-512',
+        '-oHostKeyAlgorithms=ssh-rsa,ecdsa-sha2-nistp256',
         '-vvv',
         '-b',
         "$batch_file",
@@ -63215,6 +63215,8 @@ sub sftp_ext_hostkey_rotation_issue1323 {
     if (open(my $fh, "< $known_hosts_file")) {
       my $ok = 0;
 
+      # Newer OpenSSH versions have change the default formatting used
+      # for their "known hosts" file.  Sigh.
       while (my $line = <$fh>) {
         chomp($line);
 
@@ -63222,7 +63224,7 @@ sub sftp_ext_hostkey_rotation_issue1323 {
           print STDERR "# $line\n";
         }
 
-        if ($line =~ /ssh-dss/) {
+        if ($line =~ /ecdsa-sha2-nistp256/) {
           $ok = 1;
           last;
         }
@@ -63231,7 +63233,7 @@ sub sftp_ext_hostkey_rotation_issue1323 {
       close($fh);
 
       $self->assert($ok,
-        test_msg("Did not see expected 'ssh-dss' entry in UserKnownHostsFile"));
+        test_msg("Did not see expected 'ecdsa-sha2-nistp256' entry in UserKnownHostsFile"));
 
     } else {
       die("Can't read $known_hosts_file: $!");
