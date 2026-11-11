@@ -190,145 +190,148 @@ my $TESTS = {
   # libssh2's certificate support is only for RSA certs, and even then it
   # is broken; it uses the certificate algorithm name as the request
   # signature name, which is invalid.  Sigh.
+  #
+  # If/when mod_proxy gains support for SSH certificates, we'll be able to
+  # run these tests in its regression suite.
 
   # RSA Host CA key tests
   sftp_ext_hostbased_rsa_ca_rsa_cert_issue2357 => {
     order => ++$order,
-    test_class => [qw(bug forking inprogress os_linux sftp)],
+    test_class => [qw(bug forking manual os_linux sftp)],
   },
 
   sftp_ext_hostbased_rsa_ca_ecdsa256_cert_issue2357 => {
     order => ++$order,
-    test_class => [qw(bug forking inprogress os_linux sftp)],
+    test_class => [qw(bug forking manual os_linux sftp)],
   },
 
   sftp_ext_hostbased_rsa_ca_ecdsa384_cert_issue2357 => {
     order => ++$order,
-    test_class => [qw(bug forking inprogress os_linux sftp)],
+    test_class => [qw(bug forking manual os_linux sftp)],
   },
 
   sftp_ext_hostbased_rsa_ca_ecdsa521_cert_issue2357 => {
     order => ++$order,
-    test_class => [qw(bug forking inprogress os_linux sftp)],
+    test_class => [qw(bug forking manual os_linux sftp)],
   },
 
   sftp_ext_hostbased_rsa_ca_ed25519_cert_issue2357 => {
     order => ++$order,
-    test_class => [qw(bug forking inprogress os_linux sftp)],
+    test_class => [qw(bug forking manual os_linux sftp)],
   },
 
   # ECDSA256 Host CA key tests
   sftp_ext_hostbased_ecdsa256_ca_rsa_cert_issue2357 => {
     order => ++$order,
-    test_class => [qw(bug forking inprogress os_linux sftp)],
+    test_class => [qw(bug forking manual os_linux sftp)],
   },
 
   sftp_ext_hostbased_ecdsa256_ca_ecdsa256_cert_issue2357 => {
     order => ++$order,
-    test_class => [qw(bug forking inprogress os_linux sftp)],
+    test_class => [qw(bug forking manual os_linux sftp)],
   },
 
   sftp_ext_hostbased_ecdsa256_ca_ecdsa384_cert_issue2357 => {
     order => ++$order,
-    test_class => [qw(bug forking inprogress os_linux sftp)],
+    test_class => [qw(bug forking manual os_linux sftp)],
   },
 
   sftp_ext_hostbased_ecdsa256_ca_ecdsa521_cert_issue2357 => {
     order => ++$order,
-    test_class => [qw(bug forking inprogress os_linux sftp)],
+    test_class => [qw(bug forking manual os_linux sftp)],
   },
 
   sftp_ext_hostbased_ecdsa256_ca_ed25519_cert_issue2357 => {
     order => ++$order,
-    test_class => [qw(bug forking inprogress os_linux sftp)],
+    test_class => [qw(bug forking manual os_linux sftp)],
   },
 
   # ECDSA384 Host CA key tests
   sftp_ext_hostbased_ecdsa384_ca_rsa_cert_issue2357 => {
     order => ++$order,
-    test_class => [qw(bug forking inprogress os_linux sftp)],
+    test_class => [qw(bug forking manual os_linux sftp)],
   },
 
   sftp_ext_hostbased_ecdsa384_ca_ecdsa256_cert_issue2357 => {
     order => ++$order,
-    test_class => [qw(bug forking inprogress os_linux sftp)],
+    test_class => [qw(bug forking manual os_linux sftp)],
   },
 
   sftp_ext_hostbased_ecdsa384_ca_ecdsa384_cert_issue2357 => {
     order => ++$order,
-    test_class => [qw(bug forking inprogress os_linux sftp)],
+    test_class => [qw(bug forking manual os_linux sftp)],
   },
 
   sftp_ext_hostbased_ecdsa384_ca_ecdsa521_cert_issue2357 => {
     order => ++$order,
-    test_class => [qw(bug forking inprogress os_linux sftp)],
+    test_class => [qw(bug forking manual os_linux sftp)],
   },
 
   sftp_ext_hostbased_ecdsa384_ca_ed25519_cert_issue2357 => {
     order => ++$order,
-    test_class => [qw(bug forking inprogress os_linux sftp)],
+    test_class => [qw(bug forking manual os_linux sftp)],
   },
 
   # ECDSA521 Host CA key tests
   sftp_ext_hostbased_ecdsa521_ca_rsa_cert_issue2357 => {
     order => ++$order,
-    test_class => [qw(bug forking inprogress os_linux sftp)],
+    test_class => [qw(bug forking manual os_linux sftp)],
   },
 
   sftp_ext_hostbased_ecdsa521_ca_ecdsa256_cert_issue2357 => {
     order => ++$order,
-    test_class => [qw(bug forking inprogress os_linux sftp)],
+    test_class => [qw(bug forking manual os_linux sftp)],
   },
 
   sftp_ext_hostbased_ecdsa521_ca_ecdsa384_cert_issue2357 => {
     order => ++$order,
-    test_class => [qw(bug forking inprogress os_linux sftp)],
+    test_class => [qw(bug forking manual os_linux sftp)],
   },
 
   sftp_ext_hostbased_ecdsa521_ca_ecdsa521_cert_issue2357 => {
     order => ++$order,
-    test_class => [qw(bug forking inprogress os_linux sftp)],
+    test_class => [qw(bug forking manual os_linux sftp)],
   },
 
   sftp_ext_hostbased_ecdsa521_ca_ed25519_cert_issue2357 => {
     order => ++$order,
-    test_class => [qw(bug forking inprogress os_linux sftp)],
+    test_class => [qw(bug forking manual os_linux sftp)],
   },
 
   # ED25519 Host CA key tests
   sftp_ext_hostbased_ed25519_ca_rsa_cert_issue2357 => {
     order => ++$order,
-    test_class => [qw(bug forking inprogress os_linux sftp)],
+    test_class => [qw(bug forking manual os_linux sftp)],
   },
 
   sftp_ext_hostbased_ed25519_ca_ecdsa256_cert_issue2357 => {
     order => ++$order,
-    test_class => [qw(bug forking inprogress os_linux sftp)],
+    test_class => [qw(bug forking manual os_linux sftp)],
   },
 
   sftp_ext_hostbased_ed25519_ca_ecdsa384_cert_issue2357 => {
     order => ++$order,
-    test_class => [qw(bug forking inprogress os_linux sftp)],
+    test_class => [qw(bug forking manual os_linux sftp)],
   },
 
   sftp_ext_hostbased_ed25519_ca_ecdsa521_cert_issue2357 => {
     order => ++$order,
-    test_class => [qw(bug forking inprogress os_linux sftp)],
+    test_class => [qw(bug forking manual os_linux sftp)],
   },
 
   sftp_ext_hostbased_ed25519_ca_ed25519_cert_issue2357 => {
     order => ++$order,
-    test_class => [qw(bug forking inprogress os_linux sftp)],
+    test_class => [qw(bug forking manual os_linux sftp)],
   },
 
   sftp_ext_hostbased_certificate_options_allow_empty_principals_issue2357 => {
     order => ++$order,
-    test_class => [qw(bug forking inprogress os_linux sftp)],
+    test_class => [qw(bug forking manual os_linux sftp)],
   },
 
   sftp_ext_hostbased_certificate_options_allow_match_principals_issue2357 => {
     order => ++$order,
-    test_class => [qw(bug forking inprogress os_linux sftp)],
+    test_class => [qw(bug forking manual os_linux sftp)],
   },
 
   sftp_ext_hostbased_certificate_revoked_rsa_key_issue2357 => {
@@ -369,6 +372,14 @@ sub set_up {
   unless (chmod(0400, $rsa_host_key, $dsa_host_key)) {
     die("Can't set perms on $rsa_host_key, $dsa_host_key: $!");
   }
+
+  # And ensure that the necessary test certificate are live enough for us.
+  my $cmd = "$ENV{PROFTPD_TEST_DIR}/t/etc/modules/mod_sftp/certs/mkcerts.pl";
+
+  if ($ENV{TEST_VERBOSE}) {
+    print STDERR "# Executing command: $cmd\n";
+  }
+  `$cmd`;
 }
 
 sub sftp_ext_hostbased_ca_cert {
