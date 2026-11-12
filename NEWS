@@ -29,6 +29,8 @@
   configured in <Global> context.  This is a regression caused by Issue #2366.
 - Issue 2456 - SFTP OPEN request with CREAT|EXCL flags on an existing file
   succeeds unexpectedly when HiddenStores configured.
+- Issue 2360 - Unexpected mod_xfer module load order leads to SIGSEGV if
+  session is terminated during a file transfer.
 
 1.3.9e - Released 26-Oct-2026
 --------------------------------
