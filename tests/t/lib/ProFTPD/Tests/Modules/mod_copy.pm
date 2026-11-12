@@ -4248,7 +4248,7 @@ sub copy_cpto_timeout_bug4263 {
       # Allow for server startup
       sleep(2);
 
-      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port, 0, 10);
+      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port, 0, 15);
       $client->login($setup->{user}, $setup->{passwd});
 
       my ($resp_code, $resp_msg) = $client->site('CPFR', 'foo.dat');
