@@ -7938,6 +7938,7 @@ sub get_checksums {
   if ($where) {
     $sql .= " WHERE $where";
   }
+  $sql .= " LIMIT 1;"
 
   my $cmd = "sqlite3 $db_file \"$sql\"";
 
