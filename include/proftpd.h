@@ -157,6 +157,7 @@ typedef struct {
 
     int xfer_type;     /* xfer session attributes, default/append/hidden */
     int direction;
+    const char *xfer_cmd;		/* Command that started the transfer */
     const char *filename;		/* As shown to user */
     const char *path;			/* As used in transfer */
     const char *path_hidden;		/* As used in hidden stor */

@@ -1666,6 +1666,8 @@ static int recv_path(pool *p, uint32_t channel_id, struct scp_path *sp,
       }
     }
 
+    session.xfer.xfer_cmd = pstrdup(session.xfer.p, C_STOR);
+
     if (sp->file_existed) {
       if (pr_table_add(cmd->notes, "mod_xfer.file-modified",
           pstrdup(cmd->pool, "true"), 0) < 0) {
@@ -1704,6 +1706,7 @@ static int recv_path(pool *p, uint32_t channel_id, struct scp_path *sp,
       }
     }
 
+    session.xfer.xfer_cmd = pstrdup(session.xfer.p, C_STOR);
     (void) pr_cmd_dispatch_phase(cmd, POST_CMD_ERR, 0);
     (void) pr_cmd_dispatch_phase(cmd, LOG_CMD_ERR, 0);
   }
@@ -2289,6 +2292,7 @@ static int send_path(pool *p, uint32_t channel_id, struct scp_path *sp) {
 
   if (session.xfer.p == NULL) {
     session.xfer.p = pr_pool_create_sz(scp_pool, 64);
+    session.xfer.xfer_cmd = pstrdup(session.xfer.p, C_RETR);
     session.xfer.path = pstrdup(session.xfer.p, sp->best_path);
     memset(&session.xfer.start_time, 0, sizeof(session.xfer.start_time));
     gettimeofday(&session.xfer.start_time, NULL);
