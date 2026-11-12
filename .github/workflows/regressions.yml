@@ -78,6 +78,9 @@ jobs:
             libcompress-raw-zlib-perl \
             libdata-dumper-simple-perl \
             libdatetime-perl \
+            libdigest-crc-perl \
+            libdigest-perl-md5-perl \
+            libdigest-sha-perl \
             libfile-copy-recursive-perl \
             libfile-path-tiny-perl \
             libfile-spec-native-perl \
