@@ -35,6 +35,8 @@ sub help_ok {
   my $tmpdir = $self->{tmpdir};
   my $setup = test_setup($tmpdir, 'cmds');
 
+  my $have_digest = feature_have_module_compiled('mod_digest.c');
+
   my $config = {
     PidFile => $setup->{pid_file},
     ScoreboardFile => $setup->{scoreboard_file},
@@ -57,6 +59,10 @@ sub help_ok {
   my $auth_helps = [
     ' NOOP    FEAT    OPTS    HOST    CLNT    AUTH*   CCC*    CONF*   ',
     ' ENC*    MIC*    PBSZ*   PROT*   TYPE    STRU    MODE    RETR    ',
+  ];
+
+  my $digest_helps = [
+    ' HASH    XCRC    MD5     XMD5    XSHA    XSHA1   XSHA256 XSHA512 ',
   ];
 
   # Open pipes, for use between the parent and child processes.  Specifically,
@@ -88,6 +94,10 @@ sub help_ok {
         test_msg("Expected response code $expected, got $resp_code"));
 
       $expected = 9;
+      if ($have_digest) {
+        $expected += 1;
+      }
+
       my $nhelp = scalar(@$resp_msgs);
       $self->assert($expected == $nhelp,
         test_msg("Expected $expected lines, got $nhelp"));
@@ -100,8 +110,13 @@ sub help_ok {
         @$auth_helps,
         ' STOR    STOU    APPE    REST    ABOR    RANG    USER    PASS    ',
         ' ACCT*   REIN*   LIST    NLST    STAT    SITE    MLSD    MLST    ',
-        'Direct comments to root@127.0.0.1',
       )];
+
+      if ($have_digest) {
+        push(@$helps, @$digest_helps);
+      }
+
+      push(@$helps, 'Direct comments to root@127.0.0.1');
 
       for (my $i = 0; $i < $nhelp; $i++) {
         $expected = $helps->[$i];
