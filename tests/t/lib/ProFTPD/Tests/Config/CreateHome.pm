@@ -4,7 +4,7 @@ use lib qw(t/lib);
 use base qw(ProFTPD::TestSuite::Child);
 use strict;
 
-use File::Path qw(mkpath);
+use File::Path qw(mkpath rmtree);
 use File::Spec;
 use IO::Handle;
 
@@ -70,32 +70,28 @@ sub createhome_ok {
   my $self = shift;
   my $tmpdir = $self->{tmpdir};
 
-  my $config_file = "$tmpdir/config.conf";
-  my $pid_file = File::Spec->rel2abs("$tmpdir/config.pid");
-  my $scoreboard_file = File::Spec->rel2abs("$tmpdir/config.scoreboard");
-
-  my $log_file = File::Spec->rel2abs('tests.log');
-
-  my $auth_user_file = File::Spec->rel2abs("$tmpdir/config.passwd");
-  my $auth_group_file = File::Spec->rel2abs("$tmpdir/config.group");
-
   my $user = 'proftpd';
   my $passwd = 'test';
-  my $home_dir = File::Spec->rel2abs("$tmpdir/foo/bar");
+  my $group = 'ftpd';
   my $uid = 500;
   my $gid = 500;
+  my $home_dir = File::Spec->rel2abs("$tmpdir/foo/bar");
 
-  auth_user_write($auth_user_file, $user, $passwd, $uid, $gid, $home_dir,
-    '/bin/bash');
-  auth_group_write($auth_group_file, 'ftpd', $gid, $user);
+  my $setup = test_setup($tmpdir, 'config', $user, $passwd, $group, $uid,
+    $gid, $home_dir);
+
+  # Now we deliberate remove the directory that test_setup() creates for us.
+  rmtree($home_dir);
 
   my $config = {
-    PidFile => $pid_file,
-    ScoreboardFile => $scoreboard_file,
-    SystemLog => $log_file,
+    PidFile => $setup->{pid_file},
+    ScoreboardFile => $setup->{scoreboard_file},
+    SystemLog => $setup->{log_file},
+    TraceLog => $setup->{log_file},
+    Trace => 'fsio:20 mkhome:20',
 
-    AuthUserFile => $auth_user_file,
-    AuthGroupFile => $auth_group_file,
+    AuthUserFile => $setup->{auth_user_file},
+    AuthGroupFile => $setup->{auth_group_file},
     AuthOrder => 'mod_auth_file.c',
 
     CreateHome => 'on',
@@ -107,7 +103,8 @@ sub createhome_ok {
     },
   };
 
-  my ($port, $config_user, $config_group) = config_write($config_file, $config);
+  my ($port, $config_user, $config_group) = config_write($setup->{config_file},
+    $config);
 
   # Open pipes, for use between the parent and child processes.  Specifically,
   # the child will indicate when it's done with its test by writing a message
@@ -125,9 +122,9 @@ sub createhome_ok {
   if ($pid) {
     eval {
       my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
-      $client->login($user, $passwd);
+      $client->login($setup->{user}, $setup->{passwd});
+      $client->quit();
     };
-
     if ($@) {
       $ex = $@;
     }
@@ -136,7 +133,7 @@ sub createhome_ok {
     $wfh->flush();
 
   } else {
-    eval { server_wait($config_file, $rfh) };
+    eval { server_wait($setup->{config_file}, $rfh) };
     if ($@) {
       warn($@);
       exit 1;
@@ -146,61 +143,57 @@ sub createhome_ok {
   }
 
   # Stop server
-  server_stop($pid_file);
-
+  server_stop($setup->{pid_file});
   $self->assert_child_ok($pid);
 
-  # Check that the home directory exists, and that the parent directory
-  # of $tmpdir/foo is owned by UID/GID root.
-  $self->assert(-d $home_dir,
-    test_msg("Expected $home_dir directory to exist"));
+  eval {
+    # Check that the home directory exists, and that the parent directory
+    # of $tmpdir/foo is owned by UID/GID root.
+    $self->assert(-d $home_dir,
+      test_msg("Expected $home_dir directory to exist"));
 
-  my $parent_dir = "$tmpdir/foo";
-  my ($uid_owner, $gid_owner) = (stat($parent_dir))[4,5];
+    my $parent_dir = "$tmpdir/foo";
+    my ($uid_owner, $gid_owner) = (stat($parent_dir))[4,5];
 
-  my $expected = 0;
-  $self->assert($expected == $uid_owner,
-    test_msg("Expected $expected, got $uid_owner"));
-  $self->assert($expected == $gid_owner,
-    test_msg("Expected $expected, got $gid_owner"));
-
-  if ($ex) {
-    die($ex);
+    my $expected = 0;
+    $self->assert($expected == $uid_owner,
+      test_msg("Expected owning UID $expected, got $uid_owner"));
+    $self->assert($expected == $gid_owner,
+      test_msg("Expected owning GID $expected, got $gid_owner"));
+  };
+  if ($@) {
+    $ex = $@ unless $ex;
   }
 
-  unlink($log_file);
+  test_cleanup($setup, $ex);
 }
 
 sub createhome_dirmode_ok {
   my $self = shift;
   my $tmpdir = $self->{tmpdir};
 
-  my $config_file = "$tmpdir/config.conf";
-  my $pid_file = File::Spec->rel2abs("$tmpdir/config.pid");
-  my $scoreboard_file = File::Spec->rel2abs("$tmpdir/config.scoreboard");
-
-  my $log_file = File::Spec->rel2abs('tests.log');
-
-  my $auth_user_file = File::Spec->rel2abs("$tmpdir/config.passwd");
-  my $auth_group_file = File::Spec->rel2abs("$tmpdir/config.group");
-
   my $user = 'proftpd';
   my $passwd = 'test';
-  my $home_dir = File::Spec->rel2abs("$tmpdir/foo/bar");
+  my $group = 'ftpd';
   my $uid = 500;
   my $gid = 500;
+  my $home_dir = File::Spec->rel2abs("$tmpdir/foo/bar");
 
-  auth_user_write($auth_user_file, $user, $passwd, $uid, $gid, $home_dir,
-    '/bin/bash');
-  auth_group_write($auth_group_file, 'ftpd', $gid, $user);
+  my $setup = test_setup($tmpdir, 'config', $user, $passwd, $group, $uid,
+    $gid, $home_dir);
+
+  # Now we deliberate remove the directory that test_setup() creates for us.
+  rmtree($home_dir);
 
   my $config = {
-    PidFile => $pid_file,
-    ScoreboardFile => $scoreboard_file,
-    SystemLog => $log_file,
+    PidFile => $setup->{pid_file},
+    ScoreboardFile => $setup->{scoreboard_file},
+    SystemLog => $setup->{log_file},
+    TraceLog => $setup->{log_file},
+    Trace => 'fsio:20 mkhome:20',
 
-    AuthUserFile => $auth_user_file,
-    AuthGroupFile => $auth_group_file,
+    AuthUserFile => $setup->{auth_user_file},
+    AuthGroupFile => $setup->{auth_group_file},
     AuthOrder => 'mod_auth_file.c',
 
     CreateHome => 'on 711 dirmode 755',
@@ -212,7 +205,8 @@ sub createhome_dirmode_ok {
     },
   };
 
-  my ($port, $config_user, $config_group) = config_write($config_file, $config);
+  my ($port, $config_user, $config_group) = config_write($setup->{config_file},
+    $config);
 
   # Open pipes, for use between the parent and child processes.  Specifically,
   # the child will indicate when it's done with its test by writing a message
@@ -230,9 +224,9 @@ sub createhome_dirmode_ok {
   if ($pid) {
     eval {
       my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
-      $client->login($user, $passwd);
+      $client->login($setup->{user}, $setup->{passwd});
+      $client->quit();
     };
-
     if ($@) {
       $ex = $@;
     }
@@ -241,7 +235,7 @@ sub createhome_dirmode_ok {
     $wfh->flush();
 
   } else {
-    eval { server_wait($config_file, $rfh) };
+    eval { server_wait($setup->{config_file}, $rfh) };
     if ($@) {
       warn($@);
       exit 1;
@@ -251,76 +245,73 @@ sub createhome_dirmode_ok {
   }
 
   # Stop server
-  server_stop($pid_file);
-
+  server_stop($setup->{pid_file});
   $self->assert_child_ok($pid);
 
-  # Check that the home directory exists, and that the parent directory
-  # of $tmpdir/foo is owned by UID/GID root.
-  $self->assert(-d $home_dir,
-    test_msg("Expected $home_dir directory to exist"));
+  eval {
+    # Check that the home directory exists, and that the parent directory
+    # of $tmpdir/foo is owned by UID/GID root.
+    $self->assert(-d $home_dir,
+      test_msg("Expected $home_dir directory to exist"));
 
-  my $parent_dir = "$tmpdir/foo";
-  my ($uid_owner, $gid_owner) = (stat($parent_dir))[4,5];
+    my $parent_dir = "$tmpdir/foo";
+    my ($uid_owner, $gid_owner) = (stat($parent_dir))[4,5];
 
-  my $expected = 0;
-  $self->assert($expected == $uid_owner,
-    test_msg("Expected $expected, got $uid_owner"));
-  $self->assert($expected == $gid_owner,
-    test_msg("Expected $expected, got $gid_owner"));
+    my $expected = 0;
+    $self->assert($expected == $uid_owner,
+      test_msg("Expected owning UID $expected, got $uid_owner"));
+    $self->assert($expected == $gid_owner,
+      test_msg("Expected owning GID $expected, got $gid_owner"));
 
-  # Make sure that the permissions on the directories match the expected modes
-  my $mode = sprintf("%04o", (stat($home_dir))[2] & 07777);
+    # Make sure that the permissions on the directories match the
+    # expected modes.
+    my $mode = sprintf("%04o", (stat($home_dir))[2] & 07777);
 
-  $expected = '0711';
-  $self->assert($expected eq $mode,
-    test_msg("Expected '$expected', got '$mode'"));
+    $expected = '0711';
+    $self->assert($expected eq $mode,
+      test_msg("Expected mode '$expected', got '$mode'"));
 
-  $mode = sprintf("%04o", (stat("$tmpdir/foo"))[2] & 07777);
+    $mode = sprintf("%04o", (stat("$tmpdir/foo"))[2] & 07777);
 
-  $expected = '0755';
-  $self->assert($expected eq $mode,
-    test_msg("Expected '$expected', got '$mode'"));
-
-  if ($ex) {
-    die($ex);
+    $expected = '0755';
+    $self->assert($expected eq $mode,
+      test_msg("Expected mode '$expected', got '$mode'"));
+  };
+  if ($@) {
+    $ex = $@ unless $ex;
   }
 
-  unlink($log_file);
+  test_cleanup($setup, $ex);
 }
 
 sub createhome_explicit_parent_owner_ok {
   my $self = shift;
   my $tmpdir = $self->{tmpdir};
 
-  my $config_file = "$tmpdir/config.conf";
-  my $pid_file = File::Spec->rel2abs("$tmpdir/config.pid");
-  my $scoreboard_file = File::Spec->rel2abs("$tmpdir/config.scoreboard");
-
-  my $log_file = File::Spec->rel2abs('tests.log');
-
-  my $auth_user_file = File::Spec->rel2abs("$tmpdir/config.passwd");
-  my $auth_group_file = File::Spec->rel2abs("$tmpdir/config.group");
-
   my $user = 'proftpd';
   my $passwd = 'test';
-  my $home_dir = File::Spec->rel2abs("$tmpdir/foo/bar");
+  my $group = 'ftpd';
   my $uid = 500;
   my $gid = 500;
+  my $home_dir = File::Spec->rel2abs("$tmpdir/foo/bar");
+
+  my $setup = test_setup($tmpdir, 'config', $user, $passwd, $group, $uid,
+    $gid, $home_dir);
+
+  # Now we deliberate remove the directory that test_setup() creates for us.
+  rmtree($home_dir);
 
   my $explicit_guid = 250;
 
-  auth_user_write($auth_user_file, $user, $passwd, $uid, $gid, $home_dir,
-    '/bin/bash');
-  auth_group_write($auth_group_file, 'ftpd', $gid, $user);
-
   my $config = {
-    PidFile => $pid_file,
-    ScoreboardFile => $scoreboard_file,
-    SystemLog => $log_file,
+    PidFile => $setup->{pid_file},
+    ScoreboardFile => $setup->{scoreboard_file},
+    SystemLog => $setup->{log_file},
+    TraceLog => $setup->{log_file},
+    Trace => 'fsio:20 mkhome:20',
 
-    AuthUserFile => $auth_user_file,
-    AuthGroupFile => $auth_group_file,
+    AuthUserFile => $setup->{auth_user_file},
+    AuthGroupFile => $setup->{auth_group_file},
     AuthOrder => 'mod_auth_file.c',
 
     CreateHome => "on 711 uid $explicit_guid gid $explicit_guid",
@@ -332,7 +323,8 @@ sub createhome_explicit_parent_owner_ok {
     },
   };
 
-  my ($port, $config_user, $config_group) = config_write($config_file, $config);
+  my ($port, $config_user, $config_group) = config_write($setup->{config_file},
+    $config);
 
   # Open pipes, for use between the parent and child processes.  Specifically,
   # the child will indicate when it's done with its test by writing a message
@@ -350,9 +342,9 @@ sub createhome_explicit_parent_owner_ok {
   if ($pid) {
     eval {
       my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
-      $client->login($user, $passwd);
+      $client->login($setup->{user}, $setup->{passwd});
+      $client->quit();
     };
-
     if ($@) {
       $ex = $@;
     }
@@ -361,7 +353,7 @@ sub createhome_explicit_parent_owner_ok {
     $wfh->flush();
 
   } else {
-    eval { server_wait($config_file, $rfh) };
+    eval { server_wait($setup->{config_file}, $rfh) };
     if ($@) {
       warn($@);
       exit 1;
@@ -371,61 +363,57 @@ sub createhome_explicit_parent_owner_ok {
   }
 
   # Stop server
-  server_stop($pid_file);
-
+  server_stop($setup->{pid_file});
   $self->assert_child_ok($pid);
 
-  # Check that the home directory exists, and that the parent directory
-  # of $tmpdir/foo is owned by UID/GID root.
-  $self->assert(-d $home_dir,
-    test_msg("Expected $home_dir directory to exist"));
+  eval {
+    # Check that the home directory exists, and that the parent directory
+    # of $tmpdir/foo is owned by UID/GID root.
+    $self->assert(-d $home_dir,
+      test_msg("Expected $home_dir directory to exist"));
 
-  my $parent_dir = "$tmpdir/foo";
-  my ($uid_owner, $gid_owner) = (stat($parent_dir))[4,5];
+    my $parent_dir = "$tmpdir/foo";
+    my ($uid_owner, $gid_owner) = (stat($parent_dir))[4,5];
 
-  my $expected = $explicit_guid;
-  $self->assert($expected == $uid_owner,
-    test_msg("Expected $expected, got $uid_owner"));
-  $self->assert($expected == $gid_owner,
-    test_msg("Expected $expected, got $gid_owner"));
-
-  if ($ex) {
-    die($ex);
+    my $expected = $explicit_guid;
+    $self->assert($expected == $uid_owner,
+      test_msg("Expected owning UID $expected, got $uid_owner"));
+    $self->assert($expected == $gid_owner,
+      test_msg("Expected owning GID $expected, got $gid_owner"));
+  };
+  if ($@) {
+    $ex = $@ unless $ex;
   }
 
-  unlink($log_file);
+  test_cleanup($setup, $ex);
 }
 
 sub createhome_user_parent_owner_ok {
   my $self = shift;
   my $tmpdir = $self->{tmpdir};
 
-  my $config_file = "$tmpdir/config.conf";
-  my $pid_file = File::Spec->rel2abs("$tmpdir/config.pid");
-  my $scoreboard_file = File::Spec->rel2abs("$tmpdir/config.scoreboard");
-
-  my $log_file = File::Spec->rel2abs('tests.log');
-
-  my $auth_user_file = File::Spec->rel2abs("$tmpdir/config.passwd");
-  my $auth_group_file = File::Spec->rel2abs("$tmpdir/config.group");
-
   my $user = 'proftpd';
   my $passwd = 'test';
-  my $home_dir = File::Spec->rel2abs("$tmpdir/foo/bar");
+  my $group = 'ftpd';
   my $uid = 500;
   my $gid = 500;
+  my $home_dir = File::Spec->rel2abs("$tmpdir/foo/bar");
 
-  auth_user_write($auth_user_file, $user, $passwd, $uid, $gid, $home_dir,
-    '/bin/bash');
-  auth_group_write($auth_group_file, 'ftpd', $gid, $user);
+  my $setup = test_setup($tmpdir, 'config', $user, $passwd, $group, $uid,
+    $gid, $home_dir);
+
+  # Now we deliberate remove the directory that test_setup() creates for us.
+  rmtree($home_dir);
 
   my $config = {
-    PidFile => $pid_file,
-    ScoreboardFile => $scoreboard_file,
-    SystemLog => $log_file,
+    PidFile => $setup->{pid_file},
+    ScoreboardFile => $setup->{scoreboard_file},
+    SystemLog => $setup->{log_file},
+    TraceLog => $setup->{log_file},
+    Trace => 'fsio:20 mkhome:20',
 
-    AuthUserFile => $auth_user_file,
-    AuthGroupFile => $auth_group_file,
+    AuthUserFile => $setup->{auth_user_file},
+    AuthGroupFile => $setup->{auth_group_file},
     AuthOrder => 'mod_auth_file.c',
 
     CreateHome => "on 711 uid ~ gid ~",
@@ -437,7 +425,8 @@ sub createhome_user_parent_owner_ok {
     },
   };
 
-  my ($port, $config_user, $config_group) = config_write($config_file, $config);
+  my ($port, $config_user, $config_group) = config_write($setup->{config_file},
+    $config);
 
   # Open pipes, for use between the parent and child processes.  Specifically,
   # the child will indicate when it's done with its test by writing a message
@@ -455,9 +444,9 @@ sub createhome_user_parent_owner_ok {
   if ($pid) {
     eval {
       my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
-      $client->login($user, $passwd);
+      $client->login($setup->{user}, $setup->{passwd});
+      $client->quit();
     };
-
     if ($@) {
       $ex = $@;
     }
@@ -466,7 +455,7 @@ sub createhome_user_parent_owner_ok {
     $wfh->flush();
 
   } else {
-    eval { server_wait($config_file, $rfh) };
+    eval { server_wait($setup->{config_file}, $rfh) };
     if ($@) {
       warn($@);
       exit 1;
@@ -476,51 +465,49 @@ sub createhome_user_parent_owner_ok {
   }
 
   # Stop server
-  server_stop($pid_file);
-
+  server_stop($setup->{pid_file});
   $self->assert_child_ok($pid);
 
-  # Check that the home directory exists, and that the parent directory
-  # of $tmpdir/foo is owned by UID/GID root.
-  $self->assert(-d $home_dir,
-    test_msg("Expected $home_dir directory to exist"));
+  eval {
+    # Check that the home directory exists, and that the parent directory
+    # of $tmpdir/foo is owned by UID/GID of the user.
+    $self->assert(-d $home_dir,
+      test_msg("Expected $home_dir directory to exist"));
 
-  my $parent_dir = "$tmpdir/foo";
-  my ($uid_owner, $gid_owner) = (stat($parent_dir))[4,5];
+    my $parent_dir = "$tmpdir/foo";
+    my ($uid_owner, $gid_owner) = (stat($parent_dir))[4,5];
 
-  my $expected = $uid;
-  $self->assert($expected == $uid_owner,
-    test_msg("Expected $expected, got $uid_owner"));
+    my $expected = $setup->{uid};
+    $self->assert($expected == $uid_owner,
+      test_msg("Expected owning UID $expected, got $uid_owner"));
 
-  $expected = $gid;
-  $self->assert($expected == $gid_owner,
-    test_msg("Expected $expected, got $gid_owner"));
-
-  if ($ex) {
-    die($ex);
+    $expected = $setup->{gid};
+    $self->assert($expected == $gid_owner,
+      test_msg("Expected owning GID $expected, got $gid_owner"));
+  };
+  if ($@) {
+    $ex = $@ unless $ex;
   }
 
-  unlink($log_file);
+  test_cleanup($setup, $ex);
 }
 
 sub createhome_skel_ok {
   my $self = shift;
   my $tmpdir = $self->{tmpdir};
 
-  my $config_file = "$tmpdir/config.conf";
-  my $pid_file = File::Spec->rel2abs("$tmpdir/config.pid");
-  my $scoreboard_file = File::Spec->rel2abs("$tmpdir/config.scoreboard");
-
-  my $log_file = File::Spec->rel2abs('tests.log');
-
-  my $auth_user_file = File::Spec->rel2abs("$tmpdir/config.passwd");
-  my $auth_group_file = File::Spec->rel2abs("$tmpdir/config.group");
-
   my $user = 'proftpd';
   my $passwd = 'test';
-  my $home_dir = File::Spec->rel2abs("$tmpdir/foo/bar");
+  my $group = 'ftpd';
   my $uid = 500;
   my $gid = 500;
+  my $home_dir = File::Spec->rel2abs("$tmpdir/foo/bar");
+
+  my $setup = test_setup($tmpdir, 'config', $user, $passwd, $group, $uid,
+    $gid, $home_dir);
+
+  # Now we deliberate remove the directory that test_setup() creates for us.
+  rmtree($home_dir);
 
   my $skel = File::Spec->rel2abs("$tmpdir/skel");
   mkpath($skel);
@@ -552,17 +539,15 @@ sub createhome_skel_ok {
     die("Can't open $skel_file: $!");
   }
 
-  auth_user_write($auth_user_file, $user, $passwd, $uid, $gid, $home_dir,
-    '/bin/bash');
-  auth_group_write($auth_group_file, 'ftpd', $gid, $user);
-
   my $config = {
-    PidFile => $pid_file,
-    ScoreboardFile => $scoreboard_file,
-    SystemLog => $log_file,
+    PidFile => $setup->{pid_file},
+    ScoreboardFile => $setup->{scoreboard_file},
+    SystemLog => $setup->{log_file},
+    TraceLog => $setup->{log_file},
+    Trace => 'fsio:20 mkhome:20',
 
-    AuthUserFile => $auth_user_file,
-    AuthGroupFile => $auth_group_file,
+    AuthUserFile => $setup->{auth_user_file},
+    AuthGroupFile => $setup->{auth_group_file},
     AuthOrder => 'mod_auth_file.c',
 
     CreateHome => "on skel $skel",
@@ -574,7 +559,8 @@ sub createhome_skel_ok {
     },
   };
 
-  my ($port, $config_user, $config_group) = config_write($config_file, $config);
+  my ($port, $config_user, $config_group) = config_write($setup->{config_file},
+    $config);
 
   # Open pipes, for use between the parent and child processes.  Specifically,
   # the child will indicate when it's done with its test by writing a message
@@ -592,9 +578,9 @@ sub createhome_skel_ok {
   if ($pid) {
     eval {
       my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
-      $client->login($user, $passwd);
+      $client->login($setup->{user}, $setup->{passwd});
+      $client->quit();
     };
-
     if ($@) {
       $ex = $@;
     }
@@ -603,7 +589,7 @@ sub createhome_skel_ok {
     $wfh->flush();
 
   } else {
-    eval { server_wait($config_file, $rfh) };
+    eval { server_wait($setup->{config_file}, $rfh) };
     if ($@) {
       warn($@);
       exit 1;
@@ -613,63 +599,59 @@ sub createhome_skel_ok {
   }
 
   # Stop server
-  server_stop($pid_file);
-
+  server_stop($setup->{pid_file});
   $self->assert_child_ok($pid);
 
-  # Check that the home directory exists, and that it contains the
-  # skeleton dirs/files.
-  $self->assert(-d $home_dir,
-    test_msg("Expected '$home_dir' directory to exist"));
+  eval {
+    # Check that the home directory exists, and that it contains the
+    # skeleton dirs/files.
+    $self->assert(-d $home_dir,
+      test_msg("Expected '$home_dir' directory to exist"));
 
-  $self->assert(-d "$home_dir/subdir",
-    test_msg("Expected '$home_dir/subdir' directory to exist"));
+    $self->assert(-d "$home_dir/subdir",
+      test_msg("Expected '$home_dir/subdir' directory to exist"));
 
-  $self->assert(-f "$home_dir/welcome.txt",
-    test_msg("Expected '$home_dir/welcome.txt' file to exist"));
+    $self->assert(-f "$home_dir/welcome.txt",
+      test_msg("Expected '$home_dir/welcome.txt' file to exist"));
 
-  $self->assert(-f "$home_dir/subdir/test.txt",
-    test_msg("Expected '$home_dir/subdir/test.txt' file to exist"));
-
-  if ($ex) {
-    die($ex);
+    $self->assert(-f "$home_dir/subdir/test.txt",
+      test_msg("Expected '$home_dir/subdir/test.txt' file to exist"));
+  };
+  if ($@) {
+    $ex = $@ unless $ex;
   }
 
-  unlink($log_file);
+  test_cleanup($setup, $ex);
 }
 
 sub createhome_homegid_bug3503 {
   my $self = shift;
   my $tmpdir = $self->{tmpdir};
 
-  my $config_file = "$tmpdir/config.conf";
-  my $pid_file = File::Spec->rel2abs("$tmpdir/config.pid");
-  my $scoreboard_file = File::Spec->rel2abs("$tmpdir/config.scoreboard");
-
-  my $log_file = File::Spec->rel2abs('tests.log');
-
-  my $auth_user_file = File::Spec->rel2abs("$tmpdir/config.passwd");
-  my $auth_group_file = File::Spec->rel2abs("$tmpdir/config.group");
-
   my $user = 'proftpd';
   my $passwd = 'test';
-  my $home_dir = File::Spec->rel2abs("$tmpdir/foo/bar");
+  my $group = 'ftpd';
   my $uid = 500;
   my $gid = 500;
+  my $home_dir = File::Spec->rel2abs("$tmpdir/foo/bar");
 
-  auth_user_write($auth_user_file, $user, $passwd, $uid, $gid, $home_dir,
-    '/bin/bash');
-  auth_group_write($auth_group_file, 'ftpd', $gid, $user);
+  my $setup = test_setup($tmpdir, 'config', $user, $passwd, $group, $uid,
+    $gid, $home_dir);
+
+  # Now we deliberate remove the directory that test_setup() creates for us.
+  rmtree($home_dir);
 
   my $home_gid = 777;
 
   my $config = {
-    PidFile => $pid_file,
-    ScoreboardFile => $scoreboard_file,
-    SystemLog => $log_file,
+    PidFile => $setup->{pid_file},
+    ScoreboardFile => $setup->{scoreboard_file},
+    SystemLog => $setup->{log_file},
+    TraceLog => $setup->{log_file},
+    Trace => 'fsio:20 mkhome:20',
 
-    AuthUserFile => $auth_user_file,
-    AuthGroupFile => $auth_group_file,
+    AuthUserFile => $setup->{auth_user_file},
+    AuthGroupFile => $setup->{auth_group_file},
     AuthOrder => 'mod_auth_file.c',
 
     CreateHome => "on 711 homegid $home_gid",
@@ -681,7 +663,8 @@ sub createhome_homegid_bug3503 {
     },
   };
 
-  my ($port, $config_user, $config_group) = config_write($config_file, $config);
+  my ($port, $config_user, $config_group) = config_write($setup->{config_file},
+    $config);
 
   # Open pipes, for use between the parent and child processes.  Specifically,
   # the child will indicate when it's done with its test by writing a message
@@ -699,9 +682,9 @@ sub createhome_homegid_bug3503 {
   if ($pid) {
     eval {
       my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
-      $client->login($user, $passwd);
+      $client->login($setup->{user}, $setup->{passwd});
+      $client->quit();
     };
-
     if ($@) {
       $ex = $@;
     }
@@ -710,7 +693,7 @@ sub createhome_homegid_bug3503 {
     $wfh->flush();
 
   } else {
-    eval { server_wait($config_file, $rfh) };
+    eval { server_wait($setup->{config_file}, $rfh) };
     if ($@) {
       warn($@);
       exit 1;
@@ -720,69 +703,64 @@ sub createhome_homegid_bug3503 {
   }
 
   # Stop server
-  server_stop($pid_file);
-
+  server_stop($setup->{pid_file});
   $self->assert_child_ok($pid);
 
-  # Check that the home directory exists, and that the home directory
-  # of $tmpdir/foo/bar is owned by root UID and configured GID.
-  $self->assert(-d $home_dir,
-    test_msg("Expected $home_dir directory to exist"));
+  eval {
+    # Check that the home directory exists, and that the home directory
+    # of $tmpdir/foo/bar is owned by root UID and configured GID.
+    $self->assert(-d $home_dir,
+      test_msg("Expected $home_dir directory to exist"));
 
-  my ($uid_owner, $gid_owner) = (stat($home_dir))[4,5];
+    my ($uid_owner, $gid_owner) = (stat($home_dir))[4,5];
 
-  my $expected = $uid;
-  $self->assert($expected == $uid_owner,
-    test_msg("Expected $expected, got $uid_owner"));
+    my $expected = $setup->{uid};
+    $self->assert($expected == $uid_owner,
+      test_msg("Expected owning UID $expected, got $uid_owner"));
 
-  $expected = $home_gid;
-  $self->assert($expected == $gid_owner,
-    test_msg("Expected $expected, got $gid_owner"));
-
-  if ($ex) {
-    die($ex);
+    $expected = $home_gid;
+    $self->assert($expected == $gid_owner,
+      test_msg("Expected owning GID $expected, got $gid_owner"));
+  };
+  if ($@) {
+    $ex = $@ unless $ex;
   }
 
-  unlink($log_file);
+  test_cleanup($setup, $ex);
 }
 
 sub createhome_dirmode_uid_gid_ok {
   my $self = shift;
   my $tmpdir = $self->{tmpdir};
 
-  my $config_file = "$tmpdir/config.conf";
-  my $pid_file = File::Spec->rel2abs("$tmpdir/config.pid");
-  my $scoreboard_file = File::Spec->rel2abs("$tmpdir/config.scoreboard");
-
-  my $log_file = File::Spec->rel2abs('tests.log');
-
-  my $auth_user_file = File::Spec->rel2abs("$tmpdir/config.passwd");
-  my $auth_group_file = File::Spec->rel2abs("$tmpdir/config.group");
-
   my $user = 'proftpd';
   my $passwd = 'test';
   my $group = 'ftpd';
-  my $home_dir = File::Spec->rel2abs("$tmpdir/foo/bar");
   my $uid = 500;
   my $gid = 500;
+  my $home_dir = File::Spec->rel2abs("$tmpdir/foo/bar");
+
+  my $setup = test_setup($tmpdir, 'config', $user, $passwd, $group, $uid,
+    $gid, $home_dir);
+
+  # Now we deliberate remove the directory that test_setup() creates for us.
+  rmtree($home_dir);
 
   my $explicit_guid = 250;
-
-  auth_user_write($auth_user_file, $user, $passwd, $uid, $gid, $home_dir,
-    '/bin/bash');
-  auth_group_write($auth_group_file, $group, $gid, $user);
 
   # Trying to debug:
   #
   #  http://forums.proftpd.org/smf/index.php/topic,5534.0.html
 
   my $config = {
-    PidFile => $pid_file,
-    ScoreboardFile => $scoreboard_file,
-    SystemLog => $log_file,
+    PidFile => $setup->{pid_file},
+    ScoreboardFile => $setup->{scoreboard_file},
+    SystemLog => $setup->{log_file},
+    TraceLog => $setup->{log_file},
+    Trace => 'fsio:20 mkhome:20',
 
-    AuthUserFile => $auth_user_file,
-    AuthGroupFile => $auth_group_file,
+    AuthUserFile => $setup->{auth_user_file},
+    AuthGroupFile => $setup->{auth_group_file},
     AuthOrder => 'mod_auth_file.c',
 
     CreateHome => "on 700 dirmode 700 uid ~ gid ~",
@@ -794,7 +772,8 @@ sub createhome_dirmode_uid_gid_ok {
     },
   };
 
-  my ($port, $config_user, $config_group) = config_write($config_file, $config);
+  my ($port, $config_user, $config_group) = config_write($setup->{config_file},
+    $config);
 
   # Open pipes, for use between the parent and child processes.  Specifically,
   # the child will indicate when it's done with its test by writing a message
@@ -812,9 +791,9 @@ sub createhome_dirmode_uid_gid_ok {
   if ($pid) {
     eval {
       my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
-      $client->login($user, $passwd);
+      $client->login($setup->{user}, $setup->{passwd});
+      $client->quit();
     };
-
     if ($@) {
       $ex = $@;
     }
@@ -823,7 +802,7 @@ sub createhome_dirmode_uid_gid_ok {
     $wfh->flush();
 
   } else {
-    eval { server_wait($config_file, $rfh) };
+    eval { server_wait($setup->{config_file}, $rfh) };
     if ($@) {
       warn($@);
       exit 1;
@@ -833,79 +812,75 @@ sub createhome_dirmode_uid_gid_ok {
   }
 
   # Stop server
-  server_stop($pid_file);
-
+  server_stop($setup->{pid_file});
   $self->assert_child_ok($pid);
 
-  # Check that the home directory exists, and that the parent directory
-  # of $tmpdir/foo is owned by UID/GID root.
-  $self->assert(-d $home_dir,
-    test_msg("Expected $home_dir directory to exist"));
+  eval {
+   # Check that the home directory exists, and that the parent directory
+    # of $tmpdir/foo is owned by UID/GID root.
+    $self->assert(-d $home_dir,
+      test_msg("Expected $home_dir directory to exist"));
 
-  my $parent_dir = "$tmpdir/foo";
-  my ($uid_owner, $gid_owner) = (stat($parent_dir))[4,5];
+    my $parent_dir = "$tmpdir/foo";
+    my ($uid_owner, $gid_owner) = (stat($parent_dir))[4,5];
 
-  my $expected = $uid;
-  $self->assert($expected == $uid_owner,
-    test_msg("Expected $expected, got $uid_owner"));
+    my $expected = $setup->{uid};
+    $self->assert($expected == $uid_owner,
+      test_msg("Expected owning UID $expected, got $uid_owner"));
 
-  $expected = $gid;
-  $self->assert($expected == $gid_owner,
-    test_msg("Expected $expected, got $gid_owner"));
+    $expected = $setup->{gid};
+    $self->assert($expected == $gid_owner,
+      test_msg("Expected owning GID $expected, got $gid_owner"));
 
-  # Make sure that the permissions on the directories match the expected modes
-  my $mode = sprintf("%04o", (stat($home_dir))[2] & 07777);
+    # Make sure that the permissions on the directories match the
+    # expected modes.
+    my $mode = sprintf("%04o", (stat($home_dir))[2] & 07777);
 
-  $expected = '0700';
-  $self->assert($expected eq $mode,
-    test_msg("Expected '$expected', got '$mode'"));
+    $expected = '0700';
+    $self->assert($expected eq $mode,
+      test_msg("Expected mode '$expected', got '$mode'"));
 
-  $mode = sprintf("%04o", (stat("$tmpdir/foo"))[2] & 07777);
+    $mode = sprintf("%04o", (stat("$tmpdir/foo"))[2] & 07777);
 
-  $expected = '0700';
-  $self->assert($expected eq $mode,
-    test_msg("Expected '$expected', got '$mode'"));
-
-  if ($ex) {
-    die($ex);
+    $expected = '0700';
+    $self->assert($expected eq $mode,
+      test_msg("Expected mode '$expected', got '$mode'"));
+  };
+  if ($@) {
+    $ex = $@ unless $ex;
   }
 
-  unlink($log_file);
+  test_cleanup($setup, $ex);
 }
 
 sub createhome_dirmode_uid_gid_norootprivs_bug3813 {
   my $self = shift;
   my $tmpdir = $self->{tmpdir};
 
-  my $config_file = "$tmpdir/config.conf";
-  my $pid_file = File::Spec->rel2abs("$tmpdir/config.pid");
-  my $scoreboard_file = File::Spec->rel2abs("$tmpdir/config.scoreboard");
-
-  my $log_file = File::Spec->rel2abs('tests.log');
-
-  my $auth_user_file = File::Spec->rel2abs("$tmpdir/config.passwd");
-  my $auth_group_file = File::Spec->rel2abs("$tmpdir/config.group");
-
   my $user = 'proftpd';
   my $passwd = 'test';
   my $group = 'ftpd';
-  my $home_dir = File::Spec->rel2abs("$tmpdir/foo/bar");
   my $uid = 500;
   my $gid = 500;
+  my $home_dir = File::Spec->rel2abs("$tmpdir/foo/bar");
+
+  my $setup = test_setup($tmpdir, 'config', $user, $passwd, $group, $uid,
+    $gid, $home_dir);
+
+  # Now we deliberate remove the directory that test_setup() creates for us.
+  rmtree($home_dir);
 
   my $explicit_guid = 250;
 
-  auth_user_write($auth_user_file, $user, $passwd, $uid, $gid, $home_dir,
-    '/bin/bash');
-  auth_group_write($auth_group_file, $group, $gid, $user);
-
   my $config = {
-    PidFile => $pid_file,
-    ScoreboardFile => $scoreboard_file,
-    SystemLog => $log_file,
+    PidFile => $setup->{pid_file},
+    ScoreboardFile => $setup->{scoreboard_file},
+    SystemLog => $setup->{log_file},
+    TraceLog => $setup->{log_file},
+    Trace => 'fsio:20 mkhome:20',
 
-    AuthUserFile => $auth_user_file,
-    AuthGroupFile => $auth_group_file,
+    AuthUserFile => $setup->{auth_user_file},
+    AuthGroupFile => $setup->{auth_group_file},
     AuthOrder => 'mod_auth_file.c',
 
     CreateHome => "on 700 dirmode 700 uid ~ gid ~ NoRootPrivs",
@@ -917,7 +892,8 @@ sub createhome_dirmode_uid_gid_norootprivs_bug3813 {
     },
   };
 
-  my ($port, $config_user, $config_group) = config_write($config_file, $config);
+  my ($port, $config_user, $config_group) = config_write($setup->{config_file},
+    $config);
 
   # Open pipes, for use between the parent and child processes.  Specifically,
   # the child will indicate when it's done with its test by writing a message
@@ -935,9 +911,9 @@ sub createhome_dirmode_uid_gid_norootprivs_bug3813 {
   if ($pid) {
     eval {
       my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
-      $client->login($user, $passwd);
+      $client->login($setup->{user}, $setup->{passwd});
+      $client->quit();
     };
-
     if ($@) {
       $ex = $@;
     }
@@ -946,7 +922,7 @@ sub createhome_dirmode_uid_gid_norootprivs_bug3813 {
     $wfh->flush();
 
   } else {
-    eval { server_wait($config_file, $rfh) };
+    eval { server_wait($setup->{config_file}, $rfh) };
     if ($@) {
       warn($@);
       exit 1;
@@ -956,44 +932,45 @@ sub createhome_dirmode_uid_gid_norootprivs_bug3813 {
   }
 
   # Stop server
-  server_stop($pid_file);
-
+  server_stop($setup->{pid_file});
   $self->assert_child_ok($pid);
 
-  # Check that the home directory exists, and that the parent directory
-  # of $tmpdir/foo is owned by UID/GID root.
-  $self->assert(-d $home_dir,
-    test_msg("Expected $home_dir directory to exist"));
+  eval {
+    # Check that the home directory exists, and that the parent directory
+    # of $tmpdir/foo is owned by UID/GID root.
+    $self->assert(-d $home_dir,
+      test_msg("Expected $home_dir directory to exist"));
 
-  my $parent_dir = "$tmpdir/foo";
-  my ($uid_owner, $gid_owner) = (stat($parent_dir))[4,5];
+    my $parent_dir = "$tmpdir/foo";
+    my ($uid_owner, $gid_owner) = (stat($parent_dir))[4,5];
 
-  my $expected = $<;
-  $self->assert($expected == $uid_owner,
-    test_msg("Expected $expected, got $uid_owner"));
+    my $expected = $<;
+    $self->assert($expected == $uid_owner,
+      test_msg("Expected owning UID $expected, got $uid_owner"));
 
-  $expected = $(;
-  $self->assert($expected == $gid_owner,
-    test_msg("Expected $expected, got $gid_owner"));
+    $expected = $(;
+    $self->assert($expected == $gid_owner,
+      test_msg("Expected owning GID $expected, got $gid_owner"));
 
-  # Make sure that the permissions on the directories match the expected modes
-  my $mode = sprintf("%04o", (stat($home_dir))[2] & 07777);
+    # Make sure that the permissions on the directories match the
+    # expected modes.
+    my $mode = sprintf("%04o", (stat($home_dir))[2] & 07777);
 
-  $expected = '0700';
-  $self->assert($expected eq $mode,
-    test_msg("Expected '$expected', got '$mode'"));
+    $expected = '0700';
+    $self->assert($expected eq $mode,
+      test_msg("Expected mode '$expected', got '$mode'"));
 
-  $mode = sprintf("%04o", (stat("$tmpdir/foo"))[2] & 07777);
+    $mode = sprintf("%04o", (stat("$tmpdir/foo"))[2] & 07777);
 
-  $expected = '0700';
-  $self->assert($expected eq $mode,
-    test_msg("Expected '$expected', got '$mode'"));
-
-  if ($ex) {
-    die($ex);
+    $expected = '0700';
+    $self->assert($expected eq $mode,
+      test_msg("Expected mode '$expected', got '$mode'"));
+  };
+  if ($@) {
+    $ex = $@ unless $ex;
   }
 
-  unlink($log_file);
+  test_cleanup($setup, $ex);
 }
 
 1;
