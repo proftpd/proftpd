@@ -9691,15 +9691,8 @@ static int fxp_handle_open(struct fxp_packet *fxp) {
      * dispatch above, by mod_xfer.
      */
     if (session.xfer.xfer_type == STOR_HIDDEN) {
-      const void *nfs;
-
       hiddenstore_path = pr_table_get(cmd2->notes,
         "mod_xfer.store-hidden-path", NULL);
-
-      nfs = pr_table_get(cmd2->notes, "mod_xfer.store-hidden-nfs", NULL);
-      if (nfs == NULL) {
-        open_flags |= O_EXCL;
-      }
 
     } else {
       pr_fs_clear_cache2(path);
@@ -9766,6 +9759,51 @@ static int fxp_handle_open(struct fxp_packet *fxp) {
 
   pr_fs_clear_cache2(path);
   if (exists2(fxp->pool, path)) {
+    /* Issue #2456 rightly points out that if the O_CREAT|O_EXCL flags are
+     * being used, and the target file exists, then we MUST fail the request,
+     * per Draft spec.  Use of HiddenStores must be ignored for this use case.
+     */
+    if ((open_flags & O_CREAT) &&
+        (open_flags & O_EXCL)) {
+      int xerrno;
+      uint32_t status_code;
+      const char *reason;
+
+      xerrno = EEXIST;
+
+      (void) pr_trace_msg("fileperms", 1, "OPEN, user '%s' (UID %s, GID %s): "
+        "error opening '%s': %s", session.user,
+        pr_uid2str(fxp->pool, session.uid), pr_gid2str(fxp->pool, session.gid),
+        path, strerror(xerrno));
+
+      (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
+        "unable to open '%s' using O_CREAT|O_EXCL: %s", path, strerror(xerrno));
+
+      status_code = fxp_errno2status(xerrno, &reason);
+
+      pr_trace_msg(trace_channel, 8, "sending response: STATUS %lu '%s' "
+        "('%s' [%d])", (unsigned long) status_code, reason,
+        strerror(xerrno), xerrno);
+
+      if (cmd2 != NULL) {
+        pr_response_add_err(R_451, "%s: %s", cmd2->arg, strerror(xerrno));
+        fxp_cmd_note_file_status(cmd2, "failed");
+        fxp_cmd_dispatch_err(cmd2);
+      }
+
+      fxp_status_write(fxp->pool, &buf, &buflen, fxp->request_id, status_code,
+        reason, NULL);
+
+      fxp_cmd_note_file_status(cmd, "failed");
+      fxp_cmd_dispatch_err(cmd);
+
+      resp = fxp_packet_create(fxp->pool, fxp->channel_id);
+      resp->payload = ptr;
+      resp->payload_sz = (bufsz - buflen);
+
+      return fxp_packet_write(resp);
+    }
+
     /* draft-ietf-secsh-filexfer-06.txt, section 7.1.1 specifically
      * states that any attributes in a OPEN request are ignored if the
      * file already exists.
@@ -9782,6 +9820,15 @@ static int fxp_handle_open(struct fxp_packet *fxp) {
         "OPEN request for existing path, ignoring ownership sent by client");
       attr_flags &= ~SSH2_FX_ATTR_UIDGID;
       attr_flags &= ~SSH2_FX_ATTR_OWNERGROUP;
+    }
+  }
+
+  if (hiddenstore_path != NULL) {
+    const void *nfs;
+
+    nfs = pr_table_get(cmd2->notes, "mod_xfer.store-hidden-nfs", NULL);
+    if (nfs == NULL) {
+      open_flags |= O_EXCL;
     }
   }
 
