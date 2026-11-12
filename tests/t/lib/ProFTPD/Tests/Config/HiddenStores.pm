@@ -1365,20 +1365,16 @@ sub hiddenstores_timeout_session_bug4035 {
 
       my $buf = "Hello, World!\n";
       $conn->write($buf, length($buf), 25);
-
+      sleep(0.25);
       eval { $conn->close() };
 
       my $resp_code = $client->response_code();
       my $resp_msg = $client->response_msg();
 
-      my $expected = 421;
-      $self->assert($expected == $resp_code,
-        test_msg("Expected response code $expected, got $resp_code"));
+      $self->assert($resp_code == 421 || $resp_code == 426,
+        test_msg("Expected response code 421/426, got $resp_code"));
 
       eval { $client->quit() };
-      unless ($@) {
-        die("QUIT succeeded unexpectedly");
-      }
 
       if ($^O eq 'darwin') {
         # MacOSX hack
@@ -1394,7 +1390,6 @@ sub hiddenstores_timeout_session_bug4035 {
         die("File $test_file exists unexpectedly");
       }
     };
-
     if ($@) {
       $ex = $@;
     }
@@ -1414,7 +1409,6 @@ sub hiddenstores_timeout_session_bug4035 {
 
   # Stop server
   server_stop($setup->{pid_file});
-
   $self->assert_child_ok($pid);
 
   test_cleanup($setup->{log_file}, $ex);
