@@ -68,6 +68,12 @@ static void sess_cleanup(int flags) {
       pr_netaddr_get_sess_remote_addr());
   }
 
+  /* Run all the exit handlers.  Doing this now allows for any exit
+   * event listeners to flush/dispatch any final responses out to the client,
+   * before we close the control connection.
+   */
+  pr_event_generate("core.exit", NULL);
+
   /* These are necessary in order that cleanups associated with these pools
    * (and their subpools) are properly run.
    */
@@ -80,9 +86,6 @@ static void sess_cleanup(int flags) {
     pr_inet_close(session.pool, session.c);
     session.c = NULL;
   }
-
-  /* Run all the exit handlers */
-  pr_event_generate("core.exit", NULL);
 
   if (is_master == FALSE) {
     log_sess_closed = TRUE;

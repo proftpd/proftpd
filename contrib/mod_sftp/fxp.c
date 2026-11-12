@@ -225,6 +225,7 @@ struct fxp_handle {
   struct {
     int xfer_type;
     int direction;
+    const char *xfer_cmd;     /* Command that started the transfer */
     const char *filename;     /* Same as requested path */
     const char *path;         /* Same as fxh->fh->fh_path */
     const char *path_hidden;  /* Used for HiddenStores if applicable */
@@ -680,6 +681,7 @@ static void fxp_set_filehandle_sess_xfer(struct fxp_handle *fxh) {
   session.xfer.xfer_type = fxh->xfer.xfer_type;
   session.xfer.direction = fxh->xfer.direction;
 
+  session.xfer.xfer_cmd = pstrdup(session.xfer.p, fxh->xfer.xfer_cmd);
   session.xfer.filename = pstrdup(session.xfer.p, fxh->xfer.filename);
   session.xfer.path = pstrdup(session.xfer.p, fxh->xfer.path);
   session.xfer.path_hidden = pstrdup(session.xfer.p, fxh->xfer.path_hidden);
@@ -11260,6 +11262,7 @@ static int fxp_handle_open(struct fxp_packet *fxp) {
   memcpy(fxh->fh_st, &st, sizeof(struct stat));
 
   fxh->xfer.xfer_type = session.xfer.xfer_type;
+  fxh->xfer.xfer_cmd = pstrdup(fxh->pool, session.curr_cmd);
   fxh->xfer.filename = pstrdup(fxh->pool, orig_path);
   fxh->xfer.path = pstrdup(fxh->pool, fxh->fh->fh_path);
 
