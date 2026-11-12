@@ -350,10 +350,13 @@ static int copy_paths(pool *p, const char *from, const char *to) {
   }
 
   if (S_ISREG(from_st.st_mode)) {
+    int xerrno;
     char *abs_path;
 
     pr_fs_clear_cache2(to);
     res = pr_fsio_lstat(to, &to_st);
+    xerrno = errno;
+
     if (res == 0) {
       unsigned char *allow_overwrite;
 
@@ -367,8 +370,11 @@ static int copy_paths(pool *p, const char *from, const char *to) {
       }
 
     } else {
-      pr_trace_msg(trace_channel, 19,
-        "lstat(2) error for destination path '%s': %s", to, strerror(errno));
+      /* Allow for the destination path to not exist yet. */
+      if (xerrno != ENOENT) {
+        pr_trace_msg(trace_channel, 19,
+          "lstat(2) error for destination path '%s': %s", to, strerror(xerrno));
+      }
     }
 
     res = pr_fs_copy_file2(from, to, flags, NULL);
