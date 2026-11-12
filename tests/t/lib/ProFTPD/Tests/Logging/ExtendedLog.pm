@@ -13106,7 +13106,7 @@ sub extlog_stor_var_f_xfer_timed_out {
     ScoreboardFile => $setup->{scoreboard_file},
     SystemLog => $setup->{log_file},
     TraceLog => $setup->{log_file},
-    Trace => 'response:20',
+    Trace => 'event:10 command:10 response:20',
 
     AuthUserFile => $setup->{auth_user_file},
     AuthGroupFile => $setup->{auth_group_file},
@@ -13158,9 +13158,11 @@ sub extlog_stor_var_f_xfer_timed_out {
         print STDERR "# Sleeping for $timeout_stalled secs\n";
       }
       sleep($timeout_stalled + 1);
+      eval { $conn->close() };
 
       # Normally we would send a QUIT, but a TimeoutStalled timer would
       # have disconnected us.
+      eval { $client->quit() };
     };
     if ($@) {
       $ex = $@;
@@ -13199,11 +13201,16 @@ sub extlog_stor_var_f_xfer_timed_out {
       while (my $line = <$fh>) {
         chomp($line);
 
+        if ($ENV{TEST_VERBOSE}) {
+          print STDERR "# $line\n";
+        }
+
         if ($line =~ /^STOR 150: (\S+)$/) {
           my $path = $1;
 
           if ($path eq $expected) {
             $first_ok = 1;
+            next;
           }
         }
 

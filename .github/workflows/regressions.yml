@@ -100,7 +100,7 @@ jobs:
         # NOTE: Docker does not have good IPv6 support, hence we disable it.
         run: |
           cd proftpd
-          ./configure --disable-ipv6 --enable-ctrls --enable-facl --enable-nls --enable-openssl --with-modules=mod_copy:mod_deflate:mod_readme:mod_sql:mod_sql_sqlite:mod_sql_passwd:mod_facl:mod_sftp:mod_unique_id:mod_ifsession
+          ./configure --disable-ipv6 --enable-facl --enable-openssl --with-modules=mod_readme:mod_sql:mod_sql_sqlite:mod_facl:mod_sftp:mod_unique_id:mod_ifsession
           make
           ./proftpd -V
           make install
@@ -110,6 +110,7 @@ jobs:
           PROFTPD_TEST_BIN: /usr/local/sbin/proftpd
           PROFTPD_TEST_CI: github
           PROFTPD_TEST_DIR: ${{ github.workspace }}/proftpd/tests
+          PROFTPD_TEST_PATH: /usr/local/bin
         run: |
           cd proftpd/tests
           perl tests.pl
