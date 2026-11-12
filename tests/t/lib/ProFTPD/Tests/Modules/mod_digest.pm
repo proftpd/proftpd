@@ -312,6 +312,11 @@ my $TESTS = {
     test_class => [qw(forking mod_ifsession)],
   },
 
+  # NOTE: These SQLLog-related tests only pass correctly IFF mod_digest is
+  # loaded BEFORE mod_sql, not after.  This means that mod_digest needs to
+  # appear AFTER mod_sql in the --with-modules list, or appear BEFORE
+  # mod_sql in a list of LoadModule directives.
+
   digest_sqllog_retr_transfer_cache => {
     order => ++$order,
     test_class => [qw(forking mod_sql mod_sql_sqlite)],
@@ -5305,9 +5310,7 @@ sub digest_caching_retr {
       my $algo = 'CRC32';
       my ($resp_code, $resp_msg) = $client->opts('HASH', $algo);
 
-      my $expected;
-
-      $expected = 200;
+      my $expected = 200;
       $self->assert($expected == $resp_code,
         test_msg("Expected response code $expected, got $resp_code"));
 
@@ -5327,6 +5330,7 @@ sub digest_caching_retr {
 
       my $buf;
       $conn->read($buf, 8192, 10);
+      sleep(0.25);
       eval { $conn->close() };
 
       $resp_code = $client->response_code();
@@ -5346,7 +5350,6 @@ sub digest_caching_retr {
 
       $client->quit();
     };
-
     if ($@) {
       $ex = $@;
     }
@@ -7938,7 +7941,7 @@ sub get_checksums {
   if ($where) {
     $sql .= " WHERE $where";
   }
-  $sql .= " LIMIT 1;"
+  $sql .= " LIMIT 1;";
 
   my $cmd = "sqlite3 $db_file \"$sql\"";
 

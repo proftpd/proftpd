@@ -101,9 +101,12 @@ jobs:
 
       - name: Install with static modules
         # NOTE: Docker does not have good IPv6 support, hence we disable it.
+        #
+        # The mod_digest SQLLog-related regression tests require that the
+        # module appear AFTER mod_sql in the --with-modules list.
         run: |
           cd proftpd
-          ./configure --disable-ipv6 --enable-ctrls --enable-facl --enable-nls --enable-openssl --with-modules=mod_copy:mod_deflate:mod_digest:mod_readme:mod_sql:mod_sql_sqlite:mod_sql_passwd:mod_facl:mod_sftp:mod_unique_id:mod_ifsession
+          ./configure --disable-ipv6 --enable-ctrls --enable-facl --enable-nls --enable-openssl --with-modules=mod_copy:mod_deflate:mod_readme:mod_sql:mod_sql_sqlite:mod_sql_passwd:mod_digest:mod_facl:mod_sftp:mod_unique_id:mod_ifsession
           make
           ./proftpd -V
           make install
