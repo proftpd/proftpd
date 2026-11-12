@@ -27,6 +27,8 @@
   portable.
 - Issue 2445 - Segfault after SSH key exchange when SFTPCompression is
   configured in <Global> context.  This is a regression caused by Issue #2366.
+- Issue 2456 - SFTP OPEN request with CREAT|EXCL flags on an existing file
+  succeeds unexpectedly when HiddenStores configured.
 
 1.3.9e - Released 26-Oct-2026
 --------------------------------
