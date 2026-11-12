@@ -264,6 +264,11 @@ int pr_fsio_mkdir(const char *, mode_t);
 int pr_fsio_rmdir(const char *);
 int pr_fsio_rename(const char *, const char *);
 int pr_fsio_smkdir(pool *, const char *, mode_t, uid_t, gid_t);
+int pr_fsio_smkdir2(pool *, const char *, mode_t, uid_t, gid_t, int);
+/* smkdir flags */
+#define PR_FSIO_SMKDIR_FL_IGNORE_UMASK	0x001
+#define PR_FSIO_SMKDIR_FL_NO_ROOT_PRIVS	0x002
+
 int pr_fsio_unlink(const char *);
 pr_fh_t *pr_fsio_open(const char *, int);
 pr_fh_t *pr_fsio_open_canon(const char *, int);
