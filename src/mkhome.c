@@ -28,19 +28,18 @@
 
 static const char *trace_channel = "mkhome";
 
-static int create_dir(const char *dir, uid_t uid, gid_t gid,
-    mode_t mode) {
+static int create_dir(pool *p, const char *dir, uid_t uid, gid_t gid,
+    mode_t mode, int smkdir_flags) {
+  int res = -1, xerrno;
   mode_t prev_mask;
   struct stat st;
-  int res = -1;
 
   pr_fs_clear_cache2(dir);
   res = pr_fsio_stat(dir, &st);
+  xerrno = errno;
 
-  if (res == -1 &&
-      errno != ENOENT) {
-    int xerrno = errno;
-
+  if (res < 0 &&
+      xerrno != ENOENT) {
     pr_log_pri(PR_LOG_WARNING, "error checking '%s': %s", dir,
       strerror(xerrno));
 
@@ -58,9 +57,10 @@ static int create_dir(const char *dir, uid_t uid, gid_t gid,
   /* The given mode is absolute, not subject to any Umask setting. */
   prev_mask = umask(0);
 
-  if (pr_fsio_mkdir(dir, mode) < 0) {
-    int xerrno = errno;
+  res = pr_fsio_smkdir2(p, dir, mode, uid, gid, smkdir_flags);
+  xerrno = errno;
 
+  if (res < 0) {
     umask(prev_mask);
     pr_log_pri(PR_LOG_WARNING, "error creating '%s': %s", dir,
       strerror(xerrno));
@@ -70,16 +70,6 @@ static int create_dir(const char *dir, uid_t uid, gid_t gid,
   }
 
   umask(prev_mask);
-
-  if (pr_fsio_chown(dir, uid, gid) < 0) {
-    int xerrno = errno;
-
-    pr_log_pri(PR_LOG_WARNING, "error setting ownership of '%s': %s", dir,
-      strerror(xerrno));
-
-    errno = xerrno;
-    return -1;
-  }
 
   pr_trace_msg(trace_channel, 8, "directory '%s' created", dir);
   pr_log_debug(DEBUG6, "CreateHome: directory '%s' created", dir);
@@ -91,7 +81,7 @@ static int create_dir(const char *dir, uid_t uid, gid_t gid,
  */
 static int create_path(pool *p, const char *path, const char *user,
     uid_t dir_uid, gid_t dir_gid, mode_t dir_mode,
-    uid_t dst_uid, gid_t dst_gid, mode_t dst_mode) {
+    uid_t dst_uid, gid_t dst_gid, mode_t dst_mode, int smkdir_flags) {
   char *currpath = NULL, *tmppath = NULL;
   struct stat st;
 
@@ -134,10 +124,10 @@ static int create_path(pool *p, const char *path, const char *user,
      */
     if (tmppath == NULL ||
         (*tmppath == '\0')) {
-      create_dir(currpath, dst_uid, dst_gid, dst_mode);
+      create_dir(p, currpath, dst_uid, dst_gid, dst_mode, smkdir_flags);
 
     } else {
-      create_dir(currpath, dir_uid, dir_gid, dir_mode);
+      create_dir(p, currpath, dir_uid, dir_gid, dir_mode, smkdir_flags);
     }
   }
 
@@ -194,7 +184,7 @@ static int copy_symlink(pool *p, const char *src_dir, const char *src_path,
  * to be populated with the files in srcdir.
  */
 static int copy_dir(pool *p, const char *src_dir, const char *dst_dir,
-    uid_t uid, gid_t gid) {
+    uid_t uid, gid_t gid, int smkdir_flags) {
   DIR *dh = NULL;
   struct dirent *dent = NULL;
 
@@ -232,8 +222,8 @@ static int copy_dir(pool *p, const char *src_dir, const char *dst_dir,
 
     /* Is this path to a directory? */
     if (S_ISDIR(st.st_mode)) {
-      create_dir(dst_path, uid, gid, st.st_mode);
-      copy_dir(p, src_path, dst_path, uid, gid);
+      create_dir(p, dst_path, uid, gid, st.st_mode, smkdir_flags);
+      copy_dir(p, src_path, dst_path, uid, gid, smkdir_flags);
       continue;
     }
 
@@ -287,7 +277,7 @@ static int copy_dir(pool *p, const char *src_dir, const char *dst_dir,
  */
 int create_home(pool *p, const char *home, const char *user, uid_t uid,
     gid_t gid) {
-  int res;
+  int res, smkdir_flags = PR_FSIO_SMKDIR_FL_IGNORE_UMASK;
   unsigned long flags = 0;
   config_rec *c;
   mode_t dir_mode, dst_mode;
@@ -314,11 +304,12 @@ int create_home(pool *p, const char *home, const char *user, uid_t uid,
   dst_mode = *((mode_t *) c->argv[1]);
 
   if (flags & PR_MKHOME_FL_USE_USER_PRIVS) {
-    /* Make sure we are the actual end user here (Issue#568).  Without this,
+    /* Make sure we are the actual end user here (Issue #568).  Without this,
      * we will not be using root privs, true, but we will not be creating
      * the directory as the logging-in user; we will be creating the directory
      * using the User/Group identity, which is not expected.
      */
+    smkdir_flags |= PR_FSIO_SMKDIR_FL_NO_ROOT_PRIVS;
     PRIVS_USER
 
   } else {
@@ -328,7 +319,7 @@ int create_home(pool *p, const char *home, const char *user, uid_t uid,
   pr_event_generate("core.creating-home", user);
 
   res = create_path(p, home, user, dir_uid, dir_gid, dir_mode,
-    dst_uid, dst_gid, dst_mode);
+    dst_uid, dst_gid, dst_mode, smkdir_flags);
 
   if (res < 0 &&
       errno != EEXIST) {
@@ -355,7 +346,7 @@ int create_home(pool *p, const char *home, const char *user, uid_t uid,
 
     pr_event_generate("core.copying-skel", user);
 
-    if (copy_dir(p, skel_dir, home, uid, gid) < 0) {
+    if (copy_dir(p, skel_dir, home, uid, gid, smkdir_flags) < 0) {
       pr_log_debug(DEBUG4, "CreateHome: error copying skel files");
 
     } else {
