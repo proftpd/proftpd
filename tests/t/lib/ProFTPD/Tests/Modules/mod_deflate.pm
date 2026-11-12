@@ -496,6 +496,7 @@ sub deflate_list_alternating_modes {
         my $res = {};
         my $lines = [split(/(\r)?\n/, $inflated)];
         foreach my $line (@$lines) {
+          next unless $line;
           if ($line =~ /\S+\s+\d+\s+\S+\s+\S+\s+.*?\s+(\S+)$/) {
             $res->{$1} = 1;
           }
