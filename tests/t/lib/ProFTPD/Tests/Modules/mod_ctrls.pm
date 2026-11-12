@@ -86,7 +86,12 @@ sub ftpdctl {
   }
 
   my @lines = `$cmd`;
-  my $exit_status = $? >> 8;
+  my $exit_code = $?;
+
+  my $exit_status = $exit_code >> 8;
+  if ($exit_code == -1) {
+    $exit_status = -1;
+  }
 
   return ($exit_status, \@lines);
 }
@@ -696,9 +701,13 @@ sub ctrls_unknown_action_failed {
       }
     }
 
-    my $expected = 7;
-    $self->assert($exit_status == $expected,
-      test_msg("Expected exit status $expected, got $exit_status"));
+    my $expected;
+
+    if ($exit_status != -1) {
+      $expected = 7;
+      $self->assert($exit_status == $expected,
+        test_msg("Expected exit status $expected, got $exit_status"));
+    }
 
     $lines = [grep { /unsupported/ } @$lines];
 

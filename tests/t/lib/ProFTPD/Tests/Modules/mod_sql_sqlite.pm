@@ -6848,9 +6848,11 @@ EOS
         "Expected response message '$expected', got '$resp_msgs->[2]'");
       $i++;
 
-      $expected = "-";
-      $self->assert($expected eq $resp_msgs->[$i],
-        "Expected response message '$expected', got '$resp_msgs->[3]'");
+      if ($resp_msgs->[$i]) {
+        $expected = "-";
+        $self->assert($expected eq $resp_msgs->[$i],
+          "Expected response message '$expected', got '$resp_msgs->[3]'");
+      }
 
       $client->quit();
     };

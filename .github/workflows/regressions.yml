@@ -42,6 +42,9 @@ jobs:
           # for Memcache support
           apt-get install -y --no-install-recommends libmemcached-dev
 
+          # for NLS support
+          apt-get install -y --no-install-recommends gettext
+
           # for OpenSSH tests
           apt-get install -y openssh-client
 
