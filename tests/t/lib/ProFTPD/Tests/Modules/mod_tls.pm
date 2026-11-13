@@ -705,6 +705,12 @@ sub tls_login_rsa {
       # Give the server a chance to start up
       sleep(2);
 
+      # Suppress annoying warning from IO::Socket::SSL.
+      local $SIG{__WARN__} = sub {
+        my $msg = shift;
+        warn $msg unless $msg =~ /^Use of uninitialized value.*at .*IO\/Socket\/SSL\.pm/;
+      };
+
       my $client_opts = {
         Encryption => 'E',
         Port => $port,
@@ -835,6 +841,12 @@ sub tls_login_dsa {
     eval {
       # Give the server a chance to start up
       sleep(2);
+
+      # Suppress annoying warning from IO::Socket::SSL.
+      local $SIG{__WARN__} = sub {
+        my $msg = shift;
+        warn $msg unless $msg =~ /^Use of uninitialized value.*at .*IO\/Socket\/SSL\.pm/;
+      };
 
       my $client_opts = {
         Encryption => 'E',
@@ -969,11 +981,23 @@ sub tls_double_auth {
       # Give the server a chance to start up
       sleep(2);
 
-      my $client = Net::FTPSSL->new('127.0.0.1',
+      # Suppress annoying warning from IO::Socket::SSL.
+      local $SIG{__WARN__} = sub {
+        my $msg = shift;
+        warn $msg unless $msg =~ /^Use of uninitialized value.*at .*IO\/Socket\/SSL\.pm/;
+      };
+
+      my $client_opts = {
         Encryption => 'E',
         Port => $port,
-      );
+        Croak => 0,
+      };
 
+      if ($ENV{TEST_VERBOSE}) {
+        $client_opts->{Debug} = 2;
+      }
+
+      my $client = Net::FTPSSL->new('127.0.0.1', $client_opts);
       unless ($client) {
         die("Can't connect to FTPS server: " . IO::Socket::SSL::errstr());
       }
@@ -1092,11 +1116,23 @@ sub tls_login_pkcs12 {
       # Give the server a chance to start up
       sleep(2);
 
-      my $client = Net::FTPSSL->new('127.0.0.1',
+      # Suppress annoying warning from IO::Socket::SSL.
+      local $SIG{__WARN__} = sub {
+        my $msg = shift;
+        warn $msg unless $msg =~ /^Use of uninitialized value.*at .*IO\/Socket\/SSL\.pm/;
+      };
+
+      my $client_opts = {
         Encryption => 'E',
         Port => $port,
-      );
+        Croak => 0,
+      };
 
+      if ($ENV{TEST_VERBOSE}) {
+        $client_opts->{Debug} = 2;
+      }
+
+      my $client = Net::FTPSSL->new('127.0.0.1', $client_opts);
       unless ($client) {
         die("Can't connect to FTPS server: " . IO::Socket::SSL::errstr());
       }
@@ -1214,6 +1250,12 @@ sub tls_dh_ciphersuite {
       # Give the server a chance to start up
       sleep(2);
 
+      # Suppress annoying warning from IO::Socket::SSL.
+      local $SIG{__WARN__} = sub {
+        my $msg = shift;
+        warn $msg unless $msg =~ /^Use of uninitialized value.*at .*IO\/Socket\/SSL\.pm/;
+      };
+
       my $ssl_opts = {
         # Results in set_tmp_dh_callback() keylength of 1024 BITS
         SSL_cipher_list => 'DHE-RSA-AES256-SHA',
@@ -1225,7 +1267,6 @@ sub tls_dh_ciphersuite {
         Port => $port,
         SSL_Client_Certificate => $ssl_opts,
       );
-
       unless ($client) {
         die("Can't connect to FTPS server: " . IO::Socket::SSL::errstr());
       }
@@ -1336,6 +1377,12 @@ sub tls_crl_file_ok {
       my $client;
 
       eval {
+        # Suppress annoying warning from IO::Socket::SSL.
+        local $SIG{__WARN__} = sub {
+          my $msg = shift;
+          warn $msg unless $msg =~ /^Use of uninitialized value.*at .*IO\/Socket\/SSL\.pm/;
+        };
+
         # IO::Socket::SSL options
         my $ssl_opts = {
           SSL_use_cert => 1,
@@ -1451,7 +1498,11 @@ sub tls_crl_file_other_ca_bug4468 {
       # Give the server a chance to start up
       sleep(2);
 
-      my $client;
+      # Suppress annoying warning from IO::Socket::SSL.
+      local $SIG{__WARN__} = sub {
+        my $msg = shift;
+        warn $msg unless $msg =~ /^Use of uninitialized value.*at .*IO\/Socket\/SSL\.pm/;
+      };
 
       # IO::Socket::SSL options
       my $ssl_opts = {
@@ -1461,7 +1512,7 @@ sub tls_crl_file_other_ca_bug4468 {
         SSL_ca_file => $ca_cert,
       };
 
-      $client = Net::FTPSSL->new('127.0.0.1',
+      my $client = Net::FTPSSL->new('127.0.0.1',
         Croak => 1,
         Encryption => 'E',
         Port => $port,
@@ -1559,7 +1610,11 @@ sub tls_crl_file_multiple_cas_crls_issue1960 {
       # Give the server a chance to start up
       sleep(2);
 
-      my $client;
+      # Suppress annoying warning from IO::Socket::SSL.
+      local $SIG{__WARN__} = sub {
+        my $msg = shift;
+        warn $msg unless $msg =~ /^Use of uninitialized value.*at .*IO\/Socket\/SSL\.pm/;
+      };
 
       # IO::Socket::SSL options
       my $ssl_opts = {
@@ -1573,7 +1628,7 @@ sub tls_crl_file_multiple_cas_crls_issue1960 {
         SSL_verifycn_scheme => 'none',
       };
 
-      $client = Net::FTPSSL->new('127.0.0.1',
+      my $client = Net::FTPSSL->new('127.0.0.1',
         Croak => 1,
         Encryption => 'E',
         Port => $port,
@@ -1730,6 +1785,12 @@ EOC
       # Give the server a chance to start up
       sleep(2);
 
+      # Suppress annoying warning from IO::Socket::SSL.
+      local $SIG{__WARN__} = sub {
+        my $msg = shift;
+        warn $msg unless $msg =~ /^Use of uninitialized value.*at .*IO\/Socket\/SSL\.pm/;
+      };
+
       my $client_opts = {
         Encryption => 'E',
         Port => $port,
@@ -1738,9 +1799,9 @@ EOC
         SSL_verify_mode => IO::Socket::SSL::SSL_VERIFY_PEER(),
       };
 
-#      if ($ENV{TEST_VERBOSE}) {
-#        $client_opts->{Debug} = 2;
-#      }
+      if ($ENV{TEST_VERBOSE}) {
+        $client_opts->{Debug} = 2;
+      }
 
       # The named vhost does not have any certs configured, so the handshake
       # should fail.
@@ -1917,6 +1978,12 @@ EOC
       # Give the server a chance to start up
       sleep(2);
 
+      # Suppress annoying warning from IO::Socket::SSL.
+      local $SIG{__WARN__} = sub {
+        my $msg = shift;
+        warn $msg unless $msg =~ /^Use of uninitialized value.*at .*IO\/Socket\/SSL\.pm/;
+      };
+
       my $ssl_opts = {
         Encryption => 'E',
         Port => $port,
@@ -2073,6 +2140,12 @@ EOC
       # Give the server a chance to start up
       sleep(2);
 
+      # Suppress annoying warning from IO::Socket::SSL.
+      local $SIG{__WARN__} = sub {
+        my $msg = shift;
+        warn $msg unless $msg =~ /^Use of uninitialized value.*at .*IO\/Socket\/SSL\.pm/;
+      };
+
       my $ssl_opts = {
         Encryption => 'E',
         Port => $port,
@@ -2182,6 +2255,12 @@ sub tls_login_with_sni_unknown_host_no_serveraliases_issue850 {
     eval {
       # Give the server a chance to start up
       sleep(2);
+
+      # Suppress annoying warning from IO::Socket::SSL.
+      local $SIG{__WARN__} = sub {
+        my $msg = shift;
+        warn $msg unless $msg =~ /^Use of uninitialized value.*at .*IO\/Socket\/SSL\.pm/;
+      };
 
       my $host = 'castaglia';
 
@@ -2361,6 +2440,12 @@ EOC
       # Give the server a chance to start up
       sleep(2);
 
+      # Suppress annoying warning from IO::Socket::SSL.
+      local $SIG{__WARN__} = sub {
+        my $msg = shift;
+        warn $msg unless $msg =~ /^Use of uninitialized value.*at .*IO\/Socket\/SSL\.pm/;
+      };
+
       my $ssl_opts = {
         Encryption => 'E',
         Port => $port,
@@ -2518,6 +2603,12 @@ EOC
     eval {
       # Give the server a chance to start up
       sleep(2);
+
+      # Suppress annoying warning from IO::Socket::SSL.
+      local $SIG{__WARN__} = sub {
+        my $msg = shift;
+        warn $msg unless $msg =~ /^Use of uninitialized value.*at .*IO\/Socket\/SSL\.pm/;
+      };
 
       my $ssl_opts = {
         Encryption => 'E',
@@ -2677,6 +2768,12 @@ EOC
     eval {
       # Give the server a chance to start up
       sleep(2);
+
+      # Suppress annoying warning from IO::Socket::SSL.
+      local $SIG{__WARN__} = sub {
+        my $msg = shift;
+        warn $msg unless $msg =~ /^Use of uninitialized value.*at .*IO\/Socket\/SSL\.pm/;
+      };
 
       my $ssl_opts = {
         Encryption => 'E',
@@ -2855,6 +2952,12 @@ EOC
       # Give the server a chance to start up
       sleep(2);
 
+      # Suppress annoying warning from IO::Socket::SSL.
+      local $SIG{__WARN__} = sub {
+        my $msg = shift;
+        warn $msg unless $msg =~ /^Use of uninitialized value.*at .*IO\/Socket\/SSL\.pm/;
+      };
+
       my $ssl_opts = {
         Encryption => 'E',
         Port => $port,
@@ -3032,6 +3135,12 @@ EOC
       # Give the server a chance to start up
       sleep(2);
 
+      # Suppress annoying warning from IO::Socket::SSL.
+      local $SIG{__WARN__} = sub {
+        my $msg = shift;
+        warn $msg unless $msg =~ /^Use of uninitialized value.*at .*IO\/Socket\/SSL\.pm/;
+      };
+
       my $ssl_opts = {
         Encryption => 'E',
         Port => $port,
@@ -3208,6 +3317,12 @@ EOC
       # Give the server a chance to start up
       sleep(2);
 
+      # Suppress annoying warning from IO::Socket::SSL.
+      local $SIG{__WARN__} = sub {
+        my $msg = shift;
+        warn $msg unless $msg =~ /^Use of uninitialized value.*at .*IO\/Socket\/SSL\.pm/;
+      };
+
       my $ssl_opts = {
         Encryption => 'E',
         Port => $port,
@@ -3363,6 +3478,12 @@ EOC
       # Give the server a chance to start up
       sleep(2);
 
+      # Suppress annoying warning from IO::Socket::SSL.
+      local $SIG{__WARN__} = sub {
+        my $msg = shift;
+        warn $msg unless $msg =~ /^Use of uninitialized value.*at .*IO\/Socket\/SSL\.pm/;
+      };
+
       my $ssl_opts = {
         Encryption => 'E',
         Port => $port,
@@ -3502,6 +3623,12 @@ EOC
     eval {
       # Give the server a chance to start up
       sleep(2);
+
+      # Suppress annoying warning from IO::Socket::SSL.
+      local $SIG{__WARN__} = sub {
+        my $msg = shift;
+        warn $msg unless $msg =~ /^Use of uninitialized value.*at .*IO\/Socket\/SSL\.pm/;
+      };
 
       my $ssl_opts = {
         Encryption => 'E',
@@ -3651,6 +3778,12 @@ EOC
     eval {
       # Give the server a chance to start up
       sleep(2);
+
+      # Suppress annoying warning from IO::Socket::SSL.
+      local $SIG{__WARN__} = sub {
+        my $msg = shift;
+        warn $msg unless $msg =~ /^Use of uninitialized value.*at .*IO\/Socket\/SSL\.pm/;
+      };
 
       my $ssl_opts = {
         Encryption => 'E',
@@ -3834,6 +3967,12 @@ EOC
     eval {
       # Give the server a chance to start up
       sleep(2);
+
+      # Suppress annoying warning from IO::Socket::SSL.
+      local $SIG{__WARN__} = sub {
+        my $msg = shift;
+        warn $msg unless $msg =~ /^Use of uninitialized value.*at .*IO\/Socket\/SSL\.pm/;
+      };
 
       my $ssl_opts = {
         Encryption => 'E',
@@ -4058,6 +4197,12 @@ sub tls_list_no_session_reuse {
       # Give the server a chance to start up
       sleep(2);
 
+      # Suppress annoying warning from IO::Socket::SSL.
+      local $SIG{__WARN__} = sub {
+        my $msg = shift;
+        warn $msg unless $msg =~ /^Use of uninitialized value.*at .*IO\/Socket\/SSL\.pm/;
+      };
+
       my $client = Net::FTPSSL->new('127.0.0.1',
         Encryption => 'E',
         Port => $port,
@@ -4165,6 +4310,12 @@ sub tls_list_with_session_reuse {
     eval {
       # Give the server a chance to start up
       sleep(2);
+
+      # Suppress annoying warning from IO::Socket::SSL.
+      local $SIG{__WARN__} = sub {
+        my $msg = shift;
+        warn $msg unless $msg =~ /^Use of uninitialized value.*at .*IO\/Socket\/SSL\.pm/;
+      };
 
       my $client = Net::FTPSSL->new('127.0.0.1',
         Encryption => 'E',
@@ -4305,6 +4456,12 @@ sub tls_list_with_no_session_reuse_required_opt {
       # Give the server a chance to start up
       sleep(2);
 
+      # Suppress annoying warning from IO::Socket::SSL.
+      local $SIG{__WARN__} = sub {
+        my $msg = shift;
+        warn $msg unless $msg =~ /^Use of uninitialized value.*at .*IO\/Socket\/SSL\.pm/;
+      };
+
       my $client = Net::FTPSSL->new('127.0.0.1',
         Encryption => 'E',
         Port => $port,
@@ -4425,7 +4582,11 @@ sub tls_list_fails_tls_required_by_dir_bug2178 {
       # Give the server a chance to start up
       sleep(2);
 
-      my $client;
+      # Suppress annoying warning from IO::Socket::SSL.
+      local $SIG{__WARN__} = sub {
+        my $msg = shift;
+        warn $msg unless $msg =~ /^Use of uninitialized value.*at .*IO\/Socket\/SSL\.pm/;
+      };
 
       # IO::Socket::SSL options
       my $ssl_opts = {
@@ -4435,7 +4596,7 @@ sub tls_list_fails_tls_required_by_dir_bug2178 {
         SSL_ca_file => $ca_cert,
       };
 
-      $client = Net::FTPSSL->new('127.0.0.1',
+      my $client = Net::FTPSSL->new('127.0.0.1',
         Croak => 1,
         DataProtLevel => 'C',
         Encryption => 'E',
@@ -4577,7 +4738,11 @@ sub tls_list_ok_tls_required_by_dir_bug2178 {
       # Give the server a chance to start up
       sleep(2);
 
-      my $client;
+      # Suppress annoying warning from IO::Socket::SSL.
+      local $SIG{__WARN__} = sub {
+        my $msg = shift;
+        warn $msg unless $msg =~ /^Use of uninitialized value.*at .*IO\/Socket\/SSL\.pm/;
+      };
 
       # IO::Socket::SSL options
       my $ssl_opts = {
@@ -4587,7 +4752,7 @@ sub tls_list_ok_tls_required_by_dir_bug2178 {
         SSL_ca_file => $ca_cert,
       };
 
-      $client = Net::FTPSSL->new('127.0.0.1',
+      my $client = Net::FTPSSL->new('127.0.0.1',
         Croak => 1,
         DataProtLevel => 'P',
         Encryption => 'E',
@@ -4749,7 +4914,11 @@ sub tls_list_fails_tls_required_by_ftpaccess_bug2178 {
       # Give the server a chance to start up
       sleep(2);
 
-      my $client;
+      # Suppress annoying warning from IO::Socket::SSL.
+      local $SIG{__WARN__} = sub {
+        my $msg = shift;
+        warn $msg unless $msg =~ /^Use of uninitialized value.*at .*IO\/Socket\/SSL\.pm/;
+      };
 
       # IO::Socket::SSL options
       my $ssl_opts = {
@@ -4759,7 +4928,7 @@ sub tls_list_fails_tls_required_by_ftpaccess_bug2178 {
         SSL_ca_file => $ca_cert,
       };
 
-      $client = Net::FTPSSL->new('127.0.0.1',
+      my $client = Net::FTPSSL->new('127.0.0.1',
         Croak => 1,
         DataProtLevel => 'C',
         Encryption => 'E',
@@ -4921,7 +5090,11 @@ sub tls_list_ok_tls_required_by_ftpaccess_bug2178 {
       # Give the server a chance to start up
       sleep(2);
 
-      my $client;
+      # Suppress annoying warning from IO::Socket::SSL.
+      local $SIG{__WARN__} = sub {
+        my $msg = shift;
+        warn $msg unless $msg =~ /^Use of uninitialized value.*at .*IO\/Socket\/SSL\.pm/;
+      };
 
       # IO::Socket::SSL options
       my $ssl_opts = {
@@ -4931,7 +5104,7 @@ sub tls_list_ok_tls_required_by_ftpaccess_bug2178 {
         SSL_ca_file => $ca_cert,
       };
 
-      $client = Net::FTPSSL->new('127.0.0.1',
+      my $client = Net::FTPSSL->new('127.0.0.1',
         Croak => 1,
         DataProtLevel => 'P',
         Encryption => 'E',
@@ -5131,6 +5304,12 @@ sub tls_implicit_ssl_bug3266 {
       # Give the server a chance to start up
       sleep(2);
 
+      # Suppress annoying warning from IO::Socket::SSL.
+      local $SIG{__WARN__} = sub {
+        my $msg = shift;
+        warn $msg unless $msg =~ /^Use of uninitialized value.*at .*IO\/Socket\/SSL\.pm/;
+      };
+
       my $client_opts = {
         Encryption => 'I',
         Port => $port,
@@ -5141,7 +5320,6 @@ sub tls_implicit_ssl_bug3266 {
       }
 
       my $client = Net::FTPSSL->new('127.0.0.1', %$client_opts);
-
       unless ($client) {
         die("Can't connect to FTPS server: " . IO::Socket::SSL::errstr());
       }
@@ -5277,6 +5455,12 @@ sub tls_client_cert_verify_failed_embedded_nul_bug3275 {
     eval {
       # Give the server a chance to start up
       sleep(2);
+
+      # Suppress annoying warning from IO::Socket::SSL.
+      local $SIG{__WARN__} = sub {
+        my $msg = shift;
+        warn $msg unless $msg =~ /^Use of uninitialized value.*at .*IO\/Socket\/SSL\.pm/;
+      };
 
       # IO::Socket::SSL options
       my $ssl_opts = {
@@ -5442,11 +5626,16 @@ sub tls_opts_std_env_vars {
       # Give the server a chance to start up
       sleep(2);
 
+      # Suppress annoying warning from IO::Socket::SSL.
+      local $SIG{__WARN__} = sub {
+        my $msg = shift;
+        warn $msg unless $msg =~ /^Use of uninitialized value.*at .*IO\/Socket\/SSL\.pm/;
+      };
+
       my $client = Net::FTPSSL->new('127.0.0.1',
         Encryption => 'E',
         Port => $port,
       );
-
       unless ($client) {
         die("Can't connect to FTPS server: " . IO::Socket::SSL::errstr());
       }
@@ -5628,6 +5817,12 @@ sub tls_opts_std_env_vars_client_vars {
       # Give the server a chance to start up
       sleep(2);
 
+      # Suppress annoying warning from IO::Socket::SSL.
+      local $SIG{__WARN__} = sub {
+        my $msg = shift;
+        warn $msg unless $msg =~ /^Use of uninitialized value.*at .*IO\/Socket\/SSL\.pm/;
+      };
+
       # IO::Socket::SSL options
       my $ssl_opts = {
         SSL_use_cert => 1,
@@ -5805,6 +6000,12 @@ sub tls_opts_ipaddr_required_ipv4 {
       # Give the server a chance to start up
       sleep(2);
 
+      # Suppress annoying warning from IO::Socket::SSL.
+      local $SIG{__WARN__} = sub {
+        my $msg = shift;
+        warn $msg unless $msg =~ /^Use of uninitialized value.*at .*IO\/Socket\/SSL\.pm/;
+      };
+
       # IO::Socket::SSL options
       my $ssl_opts = {
         SSL_use_cert => 1,
@@ -5931,6 +6132,12 @@ sub tls_opts_ipaddr_required_ipv6 {
     eval {
       # Give the server a chance to start up
       sleep(2);
+
+      # Suppress annoying warning from IO::Socket::SSL.
+      local $SIG{__WARN__} = sub {
+        my $msg = shift;
+        warn $msg unless $msg =~ /^Use of uninitialized value.*at .*IO\/Socket\/SSL\.pm/;
+      };
 
       # IO::Socket::SSL options
       my $ssl_opts = {
@@ -6080,6 +6287,12 @@ EOC
     eval {
       # Give the server a chance to start up
       sleep(2);
+
+      # Suppress annoying warning from IO::Socket::SSL.
+      local $SIG{__WARN__} = sub {
+        my $msg = shift;
+        warn $msg unless $msg =~ /^Use of uninitialized value.*at .*IO\/Socket\/SSL\.pm/;
+      };
 
       my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
 
@@ -7160,6 +7373,12 @@ EOC
       # Give the server a chance to start up
       sleep(2);
 
+      # Suppress annoying warning from IO::Socket::SSL.
+      local $SIG{__WARN__} = sub {
+        my $msg = shift;
+        warn $msg unless $msg =~ /^Use of uninitialized value.*at .*IO\/Socket\/SSL\.pm/;
+      };
+
       my $client = Net::FTPSSL->new('127.0.0.1',
         Encryption => 'E',
         Port => $port,
@@ -7261,6 +7480,12 @@ sub tls_opts_allow_weak_security_issue1048 {
     eval {
       # Give the server a chance to start up
       sleep(2);
+
+      # Suppress annoying warning from IO::Socket::SSL.
+      local $SIG{__WARN__} = sub {
+        my $msg = shift;
+        warn $msg unless $msg =~ /^Use of uninitialized value.*at .*IO\/Socket\/SSL\.pm/;
+      };
 
       my $client = Net::FTPSSL->new('127.0.0.1',
         Encryption => 'E',
@@ -7424,6 +7649,12 @@ sub tls_rest_2gb_last_byte {
     eval {
       # Give the server a chance to start up
       sleep(2);
+
+      # Suppress annoying warning from IO::Socket::SSL.
+      local $SIG{__WARN__} = sub {
+        my $msg = shift;
+        warn $msg unless $msg =~ /^Use of uninitialized value.*at .*IO\/Socket\/SSL\.pm/;
+      };
 
       my $client = Net::FTPSSL->new('127.0.0.1',
         Encryption => 'E',
@@ -7638,6 +7869,12 @@ sub tls_rest_4gb_last_byte {
       # Give the server a chance to start up
       sleep(2);
 
+      # Suppress annoying warning from IO::Socket::SSL.
+      local $SIG{__WARN__} = sub {
+        my $msg = shift;
+        warn $msg unless $msg =~ /^Use of uninitialized value.*at .*IO\/Socket\/SSL\.pm/;
+      };
+
       my $client = Net::FTPSSL->new('127.0.0.1',
         Encryption => 'E',
         Port => $port,
@@ -7795,6 +8032,12 @@ sub tls_stor_empty_file {
       # Give the server a chance to start up
       sleep(2);
 
+      # Suppress annoying warning from IO::Socket::SSL.
+      local $SIG{__WARN__} = sub {
+        my $msg = shift;
+        warn $msg unless $msg =~ /^Use of uninitialized value.*at .*IO\/Socket\/SSL\.pm/;
+      };
+
       my $ssl_opts = {
         Encryption => 'E',
         Port => $port,
@@ -7951,6 +8194,12 @@ sub tls_retr_empty_file {
     eval {
       # Give the server a chance to start up
       sleep(2);
+
+      # Suppress annoying warning from IO::Socket::SSL.
+      local $SIG{__WARN__} = sub {
+        my $msg = shift;
+        warn $msg unless $msg =~ /^Use of uninitialized value.*at .*IO\/Socket\/SSL\.pm/;
+      };
 
       my $client = Net::FTPSSL->new('127.0.0.1',
         Encryption => 'E',
@@ -8223,6 +8472,12 @@ sub tls_implicit_ssl_bug3437 {
       # Give the server a chance to start up
       sleep(2);
 
+      # Suppress annoying warning from IO::Socket::SSL.
+      local $SIG{__WARN__} = sub {
+        my $msg = shift;
+        warn $msg unless $msg =~ /^Use of uninitialized value.*at .*IO\/Socket\/SSL\.pm/;
+      };
+
       my $client_opts = {
         Encryption => 'I',
         Port => $port,
@@ -8342,6 +8597,12 @@ sub tls_ccc_list_bug3465 {
       # Give the server a chance to start up
       sleep(2);
 
+      # Suppress annoying warning from IO::Socket::SSL.
+      local $SIG{__WARN__} = sub {
+        my $msg = shift;
+        warn $msg unless $msg =~ /^Use of uninitialized value.*at .*IO\/Socket\/SSL\.pm/;
+      };
+
       my $client_opts = {
         Encryption => 'E',
         Port => $port,
@@ -8453,6 +8714,12 @@ sub tls_ccc_before_login {
     eval {
       # Give the server a chance to start up
       sleep(2);
+
+      # Suppress annoying warning from IO::Socket::SSL.
+      local $SIG{__WARN__} = sub {
+        my $msg = shift;
+        warn $msg unless $msg =~ /^Use of uninitialized value.*at .*IO\/Socket\/SSL\.pm/;
+      };
 
       my $client_opts = {
         PeerHost => '127.0.0.1',
@@ -8662,6 +8929,12 @@ sub tls_opts_commonname_required_bug3512 {
       # Give the server a chance to start up
       sleep(2);
 
+      # Suppress annoying warning from IO::Socket::SSL.
+      local $SIG{__WARN__} = sub {
+        my $msg = shift;
+        warn $msg unless $msg =~ /^Use of uninitialized value.*at .*IO\/Socket\/SSL\.pm/;
+      };
+
       # IO::Socket::SSL options
       my $ssl_opts = {
         SSL_use_cert => 1,
@@ -8830,6 +9103,12 @@ sub tls_opts_dns_name_required {
       # Give the server a chance to start up
       sleep(2);
 
+      # Suppress annoying warning from IO::Socket::SSL.
+      local $SIG{__WARN__} = sub {
+        my $msg = shift;
+        warn $msg unless $msg =~ /^Use of uninitialized value.*at .*IO\/Socket\/SSL\.pm/;
+      };
+
       # IO::Socket::SSL options
       my $ssl_opts = {
         SSL_use_cert => 1,
@@ -8997,6 +9276,12 @@ sub tls_opts_ip_addr_dns_name_cn_required {
     eval {
       # Give the server a chance to start up
       sleep(2);
+
+      # Suppress annoying warning from IO::Socket::SSL.
+      local $SIG{__WARN__} = sub {
+        my $msg = shift;
+        warn $msg unless $msg =~ /^Use of uninitialized value.*at .*IO\/Socket\/SSL\.pm/;
+      };
 
       # IO::Socket::SSL options
       my $ssl_opts = {
@@ -9167,11 +9452,16 @@ sub tls_site_chmod_ok {
       # Give the server a chance to start up
       sleep(2);
 
+      # Suppress annoying warning from IO::Socket::SSL.
+      local $SIG{__WARN__} = sub {
+        my $msg = shift;
+        warn $msg unless $msg =~ /^Use of uninitialized value.*at .*IO\/Socket\/SSL\.pm/;
+      };
+
       my $client = Net::FTPSSL->new('127.0.0.1',
         Encryption => 'E',
         Port => $port,
       );
-
       unless ($client) {
         die("Can't connect to FTPS server: " . IO::Socket::SSL::errstr());
       }
@@ -9317,12 +9607,17 @@ sub tls_default_tlsrequired {
       # Give the server a chance to start up
       sleep(2);
 
+      # Suppress annoying warning from IO::Socket::SSL.
+      local $SIG{__WARN__} = sub {
+        my $msg = shift;
+        warn $msg unless $msg =~ /^Use of uninitialized value.*at .*IO\/Socket\/SSL\.pm/;
+      };
+
       # Login first with FTPS...
       my $client = Net::FTPSSL->new('127.0.0.1',
         Encryption => 'E',
         Port => $port,
       );
-
       unless ($client) {
         die("Can't connect to FTPS server: " . IO::Socket::SSL::errstr());
       }
@@ -9456,11 +9751,16 @@ sub tls_protocols_default {
       # Give the server a chance to start up
       sleep(2);
 
+      # Suppress annoying warning from IO::Socket::SSL.
+      local $SIG{__WARN__} = sub {
+        my $msg = shift;
+        warn $msg unless $msg =~ /^Use of uninitialized value.*at .*IO\/Socket\/SSL\.pm/;
+      };
+
       my $client = Net::FTPSSL->new('127.0.0.1',
         Encryption => 'E',
         Port => $port,
       );
-
       unless ($client) {
         die("Can't connect to FTPS server: " . IO::Socket::SSL::errstr());
       }
@@ -9595,11 +9895,16 @@ sub tls_protocols_with_ftps {
       # Give the server a chance to start up
       sleep(2);
 
+      # Suppress annoying warning from IO::Socket::SSL.
+      local $SIG{__WARN__} = sub {
+        my $msg = shift;
+        warn $msg unless $msg =~ /^Use of uninitialized value.*at .*IO\/Socket\/SSL\.pm/;
+      };
+
       my $client = Net::FTPSSL->new('127.0.0.1',
         Encryption => 'E',
         Port => $port,
       );
-
       unless ($client) {
         die("Can't connect to FTPS server: " . IO::Socket::SSL::errstr());
       }
@@ -9734,11 +10039,16 @@ sub tls_protocols_without_ftps {
       # Give the server a chance to start up
       sleep(2);
 
+      # Suppress annoying warning from IO::Socket::SSL.
+      local $SIG{__WARN__} = sub {
+        my $msg = shift;
+        warn $msg unless $msg =~ /^Use of uninitialized value.*at .*IO\/Socket\/SSL\.pm/;
+      };
+
       my $client = Net::FTPSSL->new('127.0.0.1',
         Encryption => 'E',
         Port => $port,
       );
-
       unless ($client) {
         die("Can't connect to FTPS server: " . IO::Socket::SSL::errstr());
       }
@@ -9892,11 +10202,16 @@ EOC
       # Give the server a chance to start up
       sleep(2);
 
+      # Suppress annoying warning from IO::Socket::SSL.
+      local $SIG{__WARN__} = sub {
+        my $msg = shift;
+        warn $msg unless $msg =~ /^Use of uninitialized value.*at .*IO\/Socket\/SSL\.pm/;
+      };
+
       my $client = Net::FTPSSL->new('127.0.0.1',
         Encryption => 'E',
         Port => $port,
       );
-
       unless ($client) {
         die("Can't connect to FTPS server: " . IO::Socket::SSL::errstr());
       }
@@ -10050,11 +10365,16 @@ EOC
       # Give the server a chance to start up
       sleep(2);
 
+      # Suppress annoying warning from IO::Socket::SSL.
+      local $SIG{__WARN__} = sub {
+        my $msg = shift;
+        warn $msg unless $msg =~ /^Use of uninitialized value.*at .*IO\/Socket\/SSL\.pm/;
+      };
+
       my $client = Net::FTPSSL->new('127.0.0.1',
         Encryption => 'E',
         Port => $port,
       );
-
       unless ($client) {
         die("Can't connect to FTPS server: " . IO::Socket::SSL::errstr());
       }
@@ -10189,11 +10509,16 @@ sub tls_sess_cache_internal_bug3580 {
       # Give the server a chance to start up
       sleep(2);
 
+      # Suppress annoying warning from IO::Socket::SSL.
+      local $SIG{__WARN__} = sub {
+        my $msg = shift;
+        warn $msg unless $msg =~ /^Use of uninitialized value.*at .*IO\/Socket\/SSL\.pm/;
+      };
+
       my $client = Net::FTPSSL->new('127.0.0.1',
         Encryption => 'E',
         Port => $port,
       );
-
       unless ($client) {
         die("Can't connect to FTPS server: " . IO::Socket::SSL::errstr());
       }
@@ -10201,8 +10526,9 @@ sub tls_sess_cache_internal_bug3580 {
       unless ($client->login($user, $passwd)) {
         die("Can't login: " . $client->last_message());
       }
-    };
 
+      $client->quit();
+    };
     if ($@) {
       $ex = $@;
     }
@@ -10294,13 +10620,18 @@ sub tls_passphraseprovider_rsacertfile {
   if ($pid) {
     eval {
       # Give the server a chance to start up
-      sleep(5);
+      sleep(2);
+
+      # Suppress annoying warning from IO::Socket::SSL.
+      local $SIG{__WARN__} = sub {
+        my $msg = shift;
+        warn $msg unless $msg =~ /^Use of uninitialized value.*at .*IO\/Socket\/SSL\.pm/;
+      };
 
       my $client = Net::FTPSSL->new('127.0.0.1',
         Encryption => 'E',
         Port => $port,
       );
-
       unless ($client) {
         die("Can't connect to FTPS server: " . IO::Socket::SSL::errstr());
       }
@@ -10396,13 +10727,18 @@ sub tls_passphraseprovider_rsakeyfile_issue1179 {
   if ($pid) {
     eval {
       # Give the server a chance to start up
-      sleep(5);
+      sleep(2);
+
+      # Suppress annoying warning from IO::Socket::SSL.
+      local $SIG{__WARN__} = sub {
+        my $msg = shift;
+        warn $msg unless $msg =~ /^Use of uninitialized value.*at .*IO\/Socket\/SSL\.pm/;
+      };
 
       my $client = Net::FTPSSL->new('127.0.0.1',
         Encryption => 'E',
         Port => $port,
       );
-
       unless ($client) {
         die("Can't connect to FTPS server: " . IO::Socket::SSL::errstr());
       }
@@ -10410,6 +10746,8 @@ sub tls_passphraseprovider_rsakeyfile_issue1179 {
       unless ($client->login($setup->{user}, $setup->{passwd})) {
         die("Can't login: " . $client->last_message());
       }
+
+      $client->quit();
     };
     if ($@) {
       $ex = $@;
@@ -10528,8 +10866,13 @@ sub tls_verify_order_crl_bug3658 {
       # Give the server a chance to start up
       sleep(2);
 
-      my $client;
+      # Suppress annoying warning from IO::Socket::SSL.
+      local $SIG{__WARN__} = sub {
+        my $msg = shift;
+        warn $msg unless $msg =~ /^Use of uninitialized value.*at .*IO\/Socket\/SSL\.pm/;
+      };
 
+      my $client;
       eval {
         # IO::Socket::SSL options
         my $ssl_opts = {
@@ -10667,6 +11010,12 @@ sub tls_verify_order_ocsp {
     eval {
       # Give the server a chance to start up
       sleep(2);
+
+      # Suppress annoying warning from IO::Socket::SSL.
+      local $SIG{__WARN__} = sub {
+        my $msg = shift;
+        warn $msg unless $msg =~ /^Use of uninitialized value.*at .*IO\/Socket\/SSL\.pm/;
+      };
 
       my $client;
 
@@ -10836,6 +11185,12 @@ sub tls_verify_order_ocsp_https {
       # Give the server a chance to start up
       sleep(2);
 
+      # Suppress annoying warning from IO::Socket::SSL.
+      local $SIG{__WARN__} = sub {
+        my $msg = shift;
+        warn $msg unless $msg =~ /^Use of uninitialized value.*at .*IO\/Socket\/SSL\.pm/;
+      };
+
       my $client;
 
       eval {
@@ -10994,6 +11349,12 @@ sub tls_client_cert_verify_failed_selfsigned_cert_only_bug3742 {
     eval {
       # Give the server a chance to start up
       sleep(2);
+
+      # Suppress annoying warning from IO::Socket::SSL.
+      local $SIG{__WARN__} = sub {
+        my $msg = shift;
+        warn $msg unless $msg =~ /^Use of uninitialized value.*at .*IO\/Socket\/SSL\.pm/;
+      };
 
       my $client;
 
@@ -11196,6 +11557,12 @@ sub tls_client_cert_verify_failed_selfsigned_cert_in_chain_bug3742 {
       # Give the server a chance to start up
       sleep(2);
 
+      # Suppress annoying warning from IO::Socket::SSL.
+      local $SIG{__WARN__} = sub {
+        my $msg = shift;
+        warn $msg unless $msg =~ /^Use of uninitialized value.*at .*IO\/Socket\/SSL\.pm/;
+      };
+
       my $client;
 
       eval {
@@ -11368,6 +11735,12 @@ sub tls_client_cert_verify_ok_server_selfsigned_cert_in_chain_bug3742 {
       # Give the server a chance to start up
       sleep(2);
 
+      # Suppress annoying warning from IO::Socket::SSL.
+      local $SIG{__WARN__} = sub {
+        my $msg = shift;
+        warn $msg unless $msg =~ /^Use of uninitialized value.*at .*IO\/Socket\/SSL\.pm/;
+      };
+
       my $client;
 
       eval {
@@ -11481,6 +11854,12 @@ sub tls_opts_allow_dot_login_ok {
     eval {
       # Give the server a chance to start up
       sleep(2);
+
+      # Suppress annoying warning from IO::Socket::SSL.
+      local $SIG{__WARN__} = sub {
+        my $msg = shift;
+        warn $msg unless $msg =~ /^Use of uninitialized value.*at .*IO\/Socket\/SSL\.pm/;
+      };
 
       # IO::Socket::SSL options
       my $openssl_opts = {
@@ -11634,6 +12013,12 @@ sub tls_opts_allow_dot_login_different_user_issue2319 {
     eval {
       # Give the server a chance to start up
       sleep(2);
+
+      # Suppress annoying warning from IO::Socket::SSL.
+      local $SIG{__WARN__} = sub {
+        my $msg = shift;
+        warn $msg unless $msg =~ /^Use of uninitialized value.*at .*IO\/Socket\/SSL\.pm/;
+      };
 
       # IO::Socket::SSL options
       my $openssl_opts = {
@@ -11801,6 +12186,12 @@ sub tls_opts_allow_dot_login_mismatch {
       # Give the server a chance to start up
       sleep(2);
 
+      # Suppress annoying warning from IO::Socket::SSL.
+      local $SIG{__WARN__} = sub {
+        my $msg = shift;
+        warn $msg unless $msg =~ /^Use of uninitialized value.*at .*IO\/Socket\/SSL\.pm/;
+      };
+
       # IO::Socket::SSL options
       my $openssl_opts = {
         SSL_use_cert => 1,
@@ -11955,6 +12346,12 @@ sub tls_opts_multiple_lines_bug3800 {
       # Give the server a chance to start up
       sleep(2);
 
+      # Suppress annoying warning from IO::Socket::SSL.
+      local $SIG{__WARN__} = sub {
+        my $msg = shift;
+        warn $msg unless $msg =~ /^Use of uninitialized value.*at .*IO\/Socket\/SSL\.pm/;
+      };
+
       my $client = Net::FTPSSL->new('127.0.0.1',
         Encryption => 'E',
         Port => $port,
@@ -12095,6 +12492,12 @@ sub tls_config_tlsmasqueradeaddress_bug3862 {
       # Give the server a chance to start up
       sleep(2);
 
+      # Suppress annoying warning from IO::Socket::SSL.
+      local $SIG{__WARN__} = sub {
+        my $msg = shift;
+        warn $msg unless $msg =~ /^Use of uninitialized value.*at .*IO\/Socket\/SSL\.pm/;
+      };
+
       my $client = Net::FTPSSL->new('127.0.0.1',
         Encryption => 'E',
         Port => $port,
@@ -12217,6 +12620,12 @@ sub tls_config_tlsdhparamfile_bug3868 {
     eval {
       # Give the server a chance to start up
       sleep(2);
+
+      # Suppress annoying warning from IO::Socket::SSL.
+      local $SIG{__WARN__} = sub {
+        my $msg = shift;
+        warn $msg unless $msg =~ /^Use of uninitialized value.*at .*IO\/Socket\/SSL\.pm/;
+      };
 
       my $ssl_opts = {
         # Results in set_tmp_dh_callback() keylength of 1024 BITS
@@ -12754,6 +13163,12 @@ sub tls_session_cache_off_bug3869 {
       # Give the server a chance to start up
       sleep(2);
 
+      # Suppress annoying warning from IO::Socket::SSL.
+      local $SIG{__WARN__} = sub {
+        my $msg = shift;
+        warn $msg unless $msg =~ /^Use of uninitialized value.*at .*IO\/Socket\/SSL\.pm/;
+      };
+
       my $debug = 0;
       if ($ENV{TEST_VERBOSE}) {
         $debug = 2;
@@ -12917,6 +13332,12 @@ EOC
     eval {
       # Give the server a chance to start up
       sleep(2);
+
+      # Suppress annoying warning from IO::Socket::SSL.
+      local $SIG{__WARN__} = sub {
+        my $msg = shift;
+        warn $msg unless $msg =~ /^Use of uninitialized value.*at .*IO\/Socket\/SSL\.pm/;
+      };
 
       my $client;
 
@@ -13096,6 +13517,12 @@ sub tls_config_tlsusername_bug3899 {
       # Give the server a chance to start up
       sleep(2);
 
+      # Suppress annoying warning from IO::Socket::SSL.
+      local $SIG{__WARN__} = sub {
+        my $msg = shift;
+        warn $msg unless $msg =~ /^Use of uninitialized value.*at .*IO\/Socket\/SSL\.pm/;
+      };
+
       # IO::Socket::SSL options
       my $ssl_opts = {
         SSL_use_cert => 1,
@@ -13222,6 +13649,12 @@ sub tls_config_tlsrenegotiate_ctrl {
     eval {
       # Give the server a chance to start up
       sleep(2);
+
+      # Suppress annoying warning from IO::Socket::SSL.
+      local $SIG{__WARN__} = sub {
+        my $msg = shift;
+        warn $msg unless $msg =~ /^Use of uninitialized value.*at .*IO\/Socket\/SSL\.pm/;
+      };
 
       # Make sure we do not use TLSv1.3 here.
       my $ssl_opts = {
@@ -13389,6 +13822,12 @@ sub tls_config_tlsrenegotiate_download {
     eval {
       # Give the server a chance to start up
       sleep(2);
+
+      # Suppress annoying warning from IO::Socket::SSL.
+      local $SIG{__WARN__} = sub {
+        my $msg = shift;
+        warn $msg unless $msg =~ /^Use of uninitialized value.*at .*IO\/Socket\/SSL\.pm/;
+      };
 
       # Make sure we do not use TLSv1.3 here.
       my $ssl_opts = {
@@ -13578,6 +14017,12 @@ sub tls_config_tlsrenegotiate_upload {
       # Give the server a chance to start up
       sleep(2);
 
+      # Suppress annoying warning from IO::Socket::SSL.
+      local $SIG{__WARN__} = sub {
+        my $msg = shift;
+        warn $msg unless $msg =~ /^Use of uninitialized value.*at .*IO\/Socket\/SSL\.pm/;
+      };
+
       # Make sure we do not use TLSv1.3 here.
       my $ssl_opts = {
         SSL_version => 'TLSv1_2',
@@ -13755,11 +14200,16 @@ sub tls_sscn_no_args_bug3955 {
       # Give the server a chance to start up
       sleep(2);
 
+      # Suppress annoying warning from IO::Socket::SSL.
+      local $SIG{__WARN__} = sub {
+        my $msg = shift;
+        warn $msg unless $msg =~ /^Use of uninitialized value.*at .*IO\/Socket\/SSL\.pm/;
+      };
+
       my $client = Net::FTPSSL->new('127.0.0.1',
         Encryption => 'E',
         Port => $port,
       );
-
       unless ($client) {
         die("Can't connect to FTPS server: " . IO::Socket::SSL::errstr());
       }
@@ -13899,11 +14349,16 @@ sub tls_sscn_too_many_args_bug3955 {
       # Give the server a chance to start up
       sleep(2);
 
+      # Suppress annoying warning from IO::Socket::SSL.
+      local $SIG{__WARN__} = sub {
+        my $msg = shift;
+        warn $msg unless $msg =~ /^Use of uninitialized value.*at .*IO\/Socket\/SSL\.pm/;
+      };
+
       my $client = Net::FTPSSL->new('127.0.0.1',
         Encryption => 'E',
         Port => $port,
       );
-
       unless ($client) {
         die("Can't connect to FTPS server: " . IO::Socket::SSL::errstr());
       }
@@ -14043,11 +14498,16 @@ sub tls_sscn_bad_arg_bug3955 {
       # Give the server a chance to start up
       sleep(2);
 
+      # Suppress annoying warning from IO::Socket::SSL.
+      local $SIG{__WARN__} = sub {
+        my $msg = shift;
+        warn $msg unless $msg =~ /^Use of uninitialized value.*at .*IO\/Socket\/SSL\.pm/;
+      };
+
       my $client = Net::FTPSSL->new('127.0.0.1',
         Encryption => 'E',
         Port => $port,
       );
-
       unless ($client) {
         die("Can't connect to FTPS server: " . IO::Socket::SSL::errstr());
       }
@@ -14196,11 +14656,16 @@ sub tls_sscn_toggle_bug3955 {
       # Give the server a chance to start up
       sleep(2);
 
+      # Suppress annoying warning from IO::Socket::SSL.
+      local $SIG{__WARN__} = sub {
+        my $msg = shift;
+        warn $msg unless $msg =~ /^Use of uninitialized value.*at .*IO\/Socket\/SSL\.pm/;
+      };
+
       my $client = Net::FTPSSL->new('127.0.0.1',
         Encryption => 'E',
         Port => $port,
       );
-
       unless ($client) {
         die("Can't connect to FTPS server: " . IO::Socket::SSL::errstr());
       }
@@ -14396,11 +14861,16 @@ sub tls_config_limit_sscn_bug3955 {
       # Give the server a chance to start up
       sleep(2);
 
+      # Suppress annoying warning from IO::Socket::SSL.
+      local $SIG{__WARN__} = sub {
+        my $msg = shift;
+        warn $msg unless $msg =~ /^Use of uninitialized value.*at .*IO\/Socket\/SSL\.pm/;
+      };
+
       my $client = Net::FTPSSL->new('127.0.0.1',
         Encryption => 'E',
         Port => $port,
       );
-
       unless ($client) {
         die("Can't connect to FTPS server: " . IO::Socket::SSL::errstr());
       }
@@ -14517,11 +14987,16 @@ sub tls_config_missing_certs {
       # Give the server a chance to start up
       sleep(2);
 
+      # Suppress annoying warning from IO::Socket::SSL.
+      local $SIG{__WARN__} = sub {
+        my $msg = shift;
+        warn $msg unless $msg =~ /^Use of uninitialized value.*at .*IO\/Socket\/SSL\.pm/;
+      };
+
       my $client = Net::FTPSSL->new('127.0.0.1',
         Encryption => 'E',
         Port => $port,
       );
-
       if ($client) {
         die("Connected via AUTH TLS unexpectedly");
       }
@@ -15000,6 +15475,12 @@ sub tls_fxp_issue618 {
     eval {
       # Allow server to start up
       sleep(2);
+
+      # Suppress annoying warning from IO::Socket::SSL.
+      local $SIG{__WARN__} = sub {
+        my $msg = shift;
+        warn $msg unless $msg =~ /^Use of uninitialized value.*at .*IO\/Socket\/SSL\.pm/;
+      };
 
       my $client_opts = {
         Encryption => 'E',
@@ -15705,6 +16186,12 @@ sub tls_explicit_plaintext_fallback_issue192 {
       # Give the server a chance to start up
       sleep(2);
 
+      # Suppress annoying warning from IO::Socket::SSL.
+      local $SIG{__WARN__} = sub {
+        my $msg = shift;
+        warn $msg unless $msg =~ /^Use of uninitialized value.*at .*IO\/Socket\/SSL\.pm/;
+      };
+
       # Note that we cannot use Net::FTPSSL here, as it makes assumptions which
       # complicate the testing of this use case.  Thus we do it manually.
 
@@ -15878,6 +16365,12 @@ sub tls_implicit_plaintext_fallback_issue192 {
       # Give the server a chance to start up
       sleep(2);
 
+      # Suppress annoying warning from IO::Socket::SSL.
+      local $SIG{__WARN__} = sub {
+        my $msg = shift;
+        warn $msg unless $msg =~ /^Use of uninitialized value.*at .*IO\/Socket\/SSL\.pm/;
+      };
+
       # Note that we cannot use Net::FTPSSL here, as it makes assumptions which
       # complicate the testing of this use case.  Thus we do it manually.
 
@@ -16030,6 +16523,12 @@ sub tls_stor_tlsv13_no_data_conn_session_ticket_issue2367 {
     eval {
       # Give the server a chance to start up
       sleep(2);
+
+      # Suppress annoying warning from IO::Socket::SSL.
+      local $SIG{__WARN__} = sub {
+        my $msg = shift;
+        warn $msg unless $msg =~ /^Use of uninitialized value.*at .*IO\/Socket\/SSL\.pm/;
+      };
 
       my $ssl_opts = {
         Encryption => 'E',
