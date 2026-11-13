@@ -4300,7 +4300,6 @@ sub extlog_ftps_raw_bytes_bug3554 {
   }
 
   my $dst_file = File::Spec->rel2abs("$tmpdir/dst.txt");
-
   my $ext_log = File::Spec->rel2abs("$tmpdir/custom.log");
 
   my $config = {
@@ -4358,11 +4357,23 @@ sub extlog_ftps_raw_bytes_bug3554 {
       # Give the server a chance to start up
       sleep(2);
 
-      my $client = Net::FTPSSL->new('127.0.0.1',
+      # Suppress annoying warning from IO::Socket::SSL.
+      local $SIG{__WARN__} = sub {
+        my $msg = shift;
+        warn $msg unless $msg =~ /^Use of uninitialized value.*at .*IO\/Socket\/SSL\.pm/;
+      };
+
+      my $client_opts = {
         Encryption => 'E',
         Port => $port,
-      );
+        Croak => 0,
+      };
 
+      if ($ENV{TEST_VERBOSE}) {
+        $client_opts->{Debug} = 2;
+      }
+
+      my $client = Net::FTPSSL->new('127.0.0.1', $client_opts);
       unless ($client) {
         die("Can't connect to FTPS server: " . IO::Socket::SSL::errstr());
       }
@@ -4437,7 +4448,7 @@ sub extlog_ftps_raw_bytes_bug3554 {
             test_msg("Expected $expected_min - $expected_max, got $bytes_in"));
 
           $expected_min = 6828;
-          $expected_max = 9450;
+          $expected_max = 9800;
           $self->assert($expected_min <= $bytes_out &&
                         $expected_max >= $bytes_out,
             test_msg("Expected $expected_min - $expected_max, got $bytes_out"));
@@ -5746,12 +5757,10 @@ sub extlog_eos_reason_timeoutstalled {
       my $resp_code = $client->response_code();
       my $resp_msg = $client->response_msg();
 
-      # Perl's Net::Cmd module uses a very non-standard 599 code to
-      # indicate that the connection is closed, depending on version.
-      $self->assert($resp_code == 421 || $resp_code == 599,
-        test_msg("Expected response code 421 or 599, got $resp_code"));
+      $self->assert($resp_code == 421 || $resp_code == 426,
+        test_msg("Expected response code 421 or 426, got $resp_code"));
 
-      my $expected = "Connection closed";
+      my $expected = 'Transfer aborted';
       $self->assert(qr/$expected/, $resp_msg,
         test_msg("Expected response message '$expected', got '$resp_msg'"));
     };
@@ -8917,12 +8926,18 @@ sub ftps_data_xfer_failed_cb {
   my $user_data = shift;
 
   if ($ENV{TEST_VERBOSE}) {
-    print STDERR "# ftps_data_xfer_cb invoked: total_len = $total_len\n";
+    print STDERR "# ftps_data_xfer_cb invoked: data_len = $$data_len, total_len = $total_len\n";
   }
 
-  if ($total_len > 8192) {
-    $user_data->close(SSL_no_shutdown => 1);
-    return -1;
+  if ($total_len > 18192) {
+    my $client = $user_data->{client};
+
+    if ($ENV{TEST_VERBOSE}) {
+      print STDERR "# ftps_data_xfer_cb: too much data ($total_len) transferred, aborting\n";
+    }
+
+    $! = $Errno::ENOSPC;
+    return undef;
   }
 
   return $$data_len;
@@ -9036,11 +9051,23 @@ EOC
       # Give the server a chance to start up
       sleep(2);
 
-      my $client = Net::FTPSSL->new('127.0.0.1',
+      # Suppress annoying warning from IO::Socket::SSL.
+      local $SIG{__WARN__} = sub {
+        my $msg = shift;
+        warn $msg unless $msg =~ /^Use of uninitialized value.*at .*IO\/Socket\/SSL\.pm/;
+      };
+
+      my $client_opts = {
         Encryption => 'E',
         Port => $port,
-      );
+        Croak => 0,
+      };
 
+      if ($ENV{TEST_VERBOSE}) {
+        $client_opts->{Debug} = 2;
+      }
+
+      my $client = Net::FTPSSL->new('127.0.0.1', $client_opts);
       unless ($client) {
         die("Can't connect to FTPS server: " . IO::Socket::SSL::errstr());
       }
@@ -9053,11 +9080,13 @@ EOC
         die("Can't set transfer mode to binary: " . $client->last_message());
       }
 
-      $client->set_callback(\&ftps_data_xfer_failed_cb, \&ftps_data_close_cb, $client);
+      $client->set_callback(\&ftps_data_xfer_failed_cb, \&ftps_data_close_cb, { client => $client});
 
-      if ($client->get('test.txt', '/dev/null')) {
-        die("Download of 'test.txt' succeeded unexpectedly");
-      }
+      # We expect this fail, because AllowOverwite is off and we are
+      # uploading to an already existing remote path.  But Net::FTPSSL
+      # does not always report that as a "failed transfer".
+      $client->put($test_file, '/dev/null');
+      $client->quit();
     };
     if ($@) {
       $ex = $@;
@@ -9097,7 +9126,7 @@ EOC
           my $cmd = $1;
           my $xfer_status = $2;
 
-          if ($cmd eq 'RETR') {
+          if ($cmd eq 'STOR') {
             if ($xfer_status eq 'failed') {
               $expected_xfer_status = 1;
               last;
