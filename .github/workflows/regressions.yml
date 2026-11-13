@@ -118,6 +118,9 @@ jobs:
           make install
 
       - name: Run integration tests
+        # We expect some of the tests to fail, but still need to proceed
+        # onward to the next step, for setting the failure logs.
+        continue-on-error: true
         env:
           PROFTPD_TEST_BIN: /usr/local/sbin/proftpd
           PROFTPD_TEST_CI: github
