@@ -35,7 +35,7 @@ import ProFTPD::TestSuite::Utils qw(:testsuite);
 
 # The default number of parallels jobs is 9, per the Test::Harness docs.
 if ($opts->{j}) {
-  $njobs = $opts->{j};
+  my $njobs = $opts->{j};
   $ENV{HARNESS_OPTIONS} = "j$njobs";
 }
 
