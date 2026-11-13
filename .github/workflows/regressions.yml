@@ -126,3 +126,8 @@ jobs:
         run: |
           cd proftpd/tests
           perl tests.pl
+
+      - name: Report test failures
+        run: |
+          cd proftpd/tests
+          cat tests.log
