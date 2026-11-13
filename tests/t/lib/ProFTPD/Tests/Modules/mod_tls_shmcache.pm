@@ -98,6 +98,9 @@ sub tls_sess_cache_shm {
         TLSRSACertificateFile => $cert_file,
         TLSCACertificateFile => $ca_file,
         TLSVerifyClient => 'off',
+
+        # For session IDs, we need to use TLSv1.2, not TLSv1.3
+        TLSProtocol => 'TLSv1.2',
       },
 
       'mod_tls_shmcache.c' => {
@@ -139,6 +142,7 @@ sub tls_sess_cache_shm {
       my @cmd = (
         $openssl,
         's_client',
+        '-crlf',
         '-connect',
         "127.0.0.1:$port",
         '-starttls',
@@ -162,7 +166,7 @@ sub tls_sess_cache_shm {
       }
 
       my $tls_pid = open3($tls_wh, $tls_rh, $tls_eh, @cmd);
-      print $tls_wh "quit\n";
+      print $tls_wh "QUIT\n";
       waitpid($tls_pid, 0);
 
       my ($res, $cipher_str, $err_str, $out_str);
@@ -208,6 +212,7 @@ sub tls_sess_cache_shm {
       @cmd = (
         $openssl,
         's_client',
+        '-crlf',
         '-connect',
         "127.0.0.1:$port",
         '-starttls',
@@ -229,7 +234,7 @@ sub tls_sess_cache_shm {
       }
 
       $tls_pid = open3($tls_wh, $tls_rh, $tls_eh, @cmd);
-      print $tls_wh "quit\n";
+      print $tls_wh "QUIT\n";
       waitpid($tls_pid, 0);
 
       $res = 0;

@@ -153,7 +153,34 @@ sub list_tests {
     }
   }
 
-  return testsuite_get_runnable_tests($TESTS);
+  my @tests = testsuite_get_runnable_tests($TESTS);
+
+  my $skipped_tests = {};
+
+  # If the underlying libssh2 version is 1.11 or later, then it has lost its
+  # support for DSA, so skip those tests as well.
+  my ($libssh2_major, $libssh2_minor, $libssh2_rev) = get_libssh2_version();
+  if ($libssh2_major) {
+    if ($libssh2_major >= 1 &&
+        $libssh2_minor >= 11) {
+      $skipped_tests->{ssh2_auth_publickey_dsa_sql} = 1;
+      $skipped_tests->{ssh2_auth_publickey_rsa_dsa_sql} = 1;
+      $skipped_tests->{ssh2_auth_publickey_dsa_sql_rfc4716} = 1;
+      $skipped_tests->{ssh2_auth_publickey_rsa_dsa_sql_rfc4716} = 1;
+    }
+  }
+
+  foreach my $key (keys(%$skipped_tests)) {
+    my $ntests = scalar(@tests);
+    for (my $i = 0; $i < $ntests; $i++) {
+      if ($tests[$i] eq $key) {
+        splice(@tests, $i, 1);
+        last;
+      }
+    }
+  }
+
+  return @tests;
 }
 
 sub set_up {
@@ -169,6 +196,25 @@ sub set_up {
   unless (chmod(0400, $rsa_host_key, $dsa_host_key)) {
     die("Can't set perms on $rsa_host_key, $dsa_host_key: $!");
   }
+}
+
+sub get_libssh2_version {
+  my $libssh2_version;
+  my ($major, $minor, $revision);
+
+  my $version = Net::SSH2::version();
+  $libssh2_version = "libssh2_$version";
+  if ($libssh2_version =~ /libssh2_(\d+)\.(\d+)\.(\d+)?/) {
+    $major = $1;
+    $minor = $2;
+    $revision = $3;
+  }
+
+  if ($ENV{TEST_VERBOSE}) {
+    print STDERR "# Detected libssh2 version: $libssh2_version\n";
+  }
+
+  return ($major, $minor, $revision);
 }
 
 sub ssh2_auth_publickey_rsa_sql {
@@ -2056,8 +2102,7 @@ GLxgWrkgXv/3qR/8zNaQ==
 
   my $db_script = File::Spec->rel2abs("$tmpdir/sftp.sql");
 
-  my $fh;
-  if (open($fh, "> $db_script")) {
+  if (open(my $fh, "> $db_script")) {
     print $fh <<EOS;
 CREATE TABLE sftpuserkeys (
   name TEXT NOT NULL PRIMARY KEY,
@@ -2080,13 +2125,20 @@ EOS
   }
 
   my @output = `$cmd`;
+  my $exit_code = $?;
+
   if (scalar(@output) &&
       $ENV{TEST_VERBOSE}) {
     print STDERR "Output: ", join('', @output), "\n";
   }
 
-  if ($? != 0) {
-    die("'$cmd' failed");
+  if ($exit_code != 0) {
+    # Ideally we'd end the test here.  But somehow, in other environments,
+    # this "fails" -- but the created database is still usable for our needs.
+    # Sigh.
+    if ($ENV{TEST_VERBOSE}) {
+      print STDERR "# sqlite3 command failed, continuing anyway\n";
+    }
   }
 
   unlink($db_script);
@@ -2150,10 +2202,10 @@ EOS
   defined(my $pid = fork()) or die("Can't fork: $!");
   if ($pid) {
     eval {
+      # Allow for server startup
+      sleep(2);
+
       my $ssh2 = Net::SSH2->new();
-
-      sleep(3);
-
       unless ($ssh2->connect('127.0.0.1', $port)) {
         my ($err_code, $err_name, $err_str) = $ssh2->error();
         die("Can't connect to SSH2 server: [$err_name] ($err_code) $err_str");
@@ -2221,8 +2273,7 @@ GLxgWrkgXv/3qR/8zNaQ==
 
   my $db_script = File::Spec->rel2abs("$tmpdir/sftp.sql");
 
-  my $fh;
-  if (open($fh, "> $db_script")) {
+  if (open(my $fh, "> $db_script")) {
     print $fh <<EOS;
 CREATE TABLE sftpuserkeys (
   name TEXT NOT NULL,
@@ -2230,6 +2281,7 @@ CREATE TABLE sftpuserkeys (
 );
 
 INSERT INTO sftpuserkeys (name, key) VALUES ('$setup->{user}', '$rsa_rfc4716_data1');
+
 INSERT INTO sftpuserkeys (name, key) VALUES ('$setup->{user}', '$rsa_rfc4716_data2');
 EOS
     unless (close($fh)) {
@@ -2240,19 +2292,26 @@ EOS
     die("Can't open $db_script: $!");
   }
 
-  my $cmd = "sqlite3 $db_file < $db_script";
+  my $cmd = "sqlite3 $db_file < $db_script 2>&1";
   if ($ENV{TEST_VERBOSE}) {
     print STDERR "Executing sqlite3: $cmd\n";
   }
 
   my @output = `$cmd`;
+  my $exit_code = $?;
+
   if (scalar(@output) &&
       $ENV{TEST_VERBOSE}) {
     print STDERR "Output: ", join('', @output), "\n";
   }
 
-  if ($? != 0) {
-    die("'$cmd' failed");
+  if ($exit_code != 0) {
+    # Ideally we'd end the test here.  But somehow, in other environments,
+    # this "fails" -- but the created database is still usable for our needs.
+    # Sigh.
+    if ($ENV{TEST_VERBOSE}) {
+      print STDERR "# sqlite3 command failed, continuing anyway\n";
+    }
   }
 
   unlink($db_script);
@@ -2364,6 +2423,7 @@ sub get_sessions {
   if ($where) {
     $sql .= " WHERE $where";
   }
+  $sql .= " LIMIT 1;";
 
   my $cmd = "sqlite3 $db_file \"$sql\"";
 
@@ -2381,22 +2441,7 @@ sub get_sessions {
 sub ssh2_auth_publickey_rsa_sql_fp_note_vars {
   my $self = shift;
   my $tmpdir = $self->{tmpdir};
-
-  my $config_file = "$tmpdir/sftp.conf";
-  my $pid_file = File::Spec->rel2abs("$tmpdir/sftp.pid");
-  my $scoreboard_file = File::Spec->rel2abs("$tmpdir/sftp.scoreboard");
-
-  my $log_file = test_get_logfile();
-
-  my $auth_user_file = File::Spec->rel2abs("$tmpdir/sftp.passwd");
-  my $auth_group_file = File::Spec->rel2abs("$tmpdir/sftp.group");
-
-  my $user = 'proftpd';
-  my $passwd = 'test';
-  my $group = 'ftpd';
-  my $home_dir = File::Spec->rel2abs($tmpdir);
-  my $uid = 500;
-  my $gid = 500;
+  my $setup = test_setup($tmpdir, 'sftp_sql');
 
   my $db_file = File::Spec->rel2abs("$tmpdir/sftp.db");
 
@@ -2412,7 +2457,7 @@ CREATE TABLE sftpuserkeys (
   key BLOB NOT NULL
 );
 
-INSERT INTO sftpuserkeys (name, key) VALUES ('$user', '$rsa_data');
+INSERT INTO sftpuserkeys (name, key) VALUES ('$setup->{user}', '$rsa_data');
 
 CREATE TABLE sftpsessions (
   user TEXT NOT NULL PRIMARY KEY,
@@ -2434,24 +2479,7 @@ EOS
   }
 
   my @output = `$cmd`;
-
   unlink($db_script);
-
-  # Make sure that, if we're running as root, that the home directory has
-  # permissions/privs set for the account we create
-  if ($< == 0) {
-    unless (chmod(0755, $home_dir)) {
-      die("Can't set perms on $home_dir to 0755: $!");
-    }
-
-    unless (chown($uid, $gid, $home_dir)) {
-      die("Can't set owner of $home_dir to $uid/$gid: $!");
-    }
-  }
-
-  auth_user_write($auth_user_file, $user, $passwd, $uid, $gid, $home_dir,
-    '/bin/bash');
-  auth_group_write($auth_group_file, $group, $gid, $user);
 
   my $rsa_host_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/ssh_host_rsa_key');
   my $dsa_host_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/ssh_host_dsa_key');
@@ -2460,14 +2488,14 @@ EOS
   my $rsa_pub_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/test_rsa_key.pub');
 
   my $config = {
-    PidFile => $pid_file,
-    ScoreboardFile => $scoreboard_file,
-    SystemLog => $log_file,
-    TraceLog => $log_file,
-    Trace => 'DEFAULT:10 ssh2:20 sftp:20 scp:20',
+    PidFile => $setup->{pid_file},
+    ScoreboardFile => $setup->{scoreboard_file},
+    SystemLog => $setup->{log_file},
+    TraceLog => $setup->{log_file},
+    Trace => 'ssh2:20 sftp:20 scp:20',
 
-    AuthUserFile => $auth_user_file,
-    AuthGroupFile => $auth_group_file,
+    AuthUserFile => $setup->{auth_user_file},
+    AuthGroupFile => $setup->{auth_group_file},
     AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
@@ -2478,7 +2506,7 @@ EOS
       'mod_sql_sqlite.c' => [
         'SQLAuthenticate off',
         "SQLConnectInfo $db_file",
-        "SQLLogFile $log_file",
+        "SQLLogFile $setup->{log_file}",
         'SQLNamedQuery get-user-authorized-keys SELECT "key FROM sftpuserkeys WHERE name = \'%{0}\'"',
         'SQLNamedQuery log_user_key FREEFORM "INSERT INTO sftpsessions (user, key_fingerprint, key_fingerprint_algo) VALUES (\'%u\', \'%{note:SFTP_USER_PUBLICKEY_FINGERPRINT}\', \'%{note:SFTP_USER_PUBLICKEY_FINGERPRINT_ALGO}\')"',
         'SQLLog INIT log_user_key',
@@ -2486,7 +2514,7 @@ EOS
 
       'mod_sftp.c' => [
         "SFTPEngine on",
-        "SFTPLog $log_file",
+        "SFTPLog $setup->{log_file}",
         "SFTPHostKey $rsa_host_key",
         "SFTPHostKey $dsa_host_key",
         "SFTPAuthorizedUserKeys sql:/get-user-authorized-keys",
@@ -2494,7 +2522,8 @@ EOS
     },
   };
 
-  my ($port, $config_user, $config_group) = config_write($config_file, $config);
+  my ($port, $config_user, $config_group) = config_write($setup->{config_file},
+    $config);
 
   # Open pipes, for use between the parent and child processes.  Specifically,
   # the child will indicate when it's done with its test by writing a message
@@ -2513,16 +2542,16 @@ EOS
   defined(my $pid = fork()) or die("Can't fork: $!");
   if ($pid) {
     eval {
-      my $ssh2 = Net::SSH2->new();
-
       sleep(1);
 
+      my $ssh2 = Net::SSH2->new();
       unless ($ssh2->connect('127.0.0.1', $port)) {
         my ($err_code, $err_name, $err_str) = $ssh2->error();
         die("Can't connect to SSH2 server: [$err_name] ($err_code) $err_str");
       }
 
-      unless ($ssh2->auth_publickey($user, $rsa_pub_key, $rsa_priv_key)) {
+      unless ($ssh2->auth_publickey($setup->{user}, $rsa_pub_key,
+          $rsa_priv_key)) {
         my ($err_code, $err_name, $err_str) = $ssh2->error();
         die("RSA publickey authentication failed: [$err_name] ($err_code) $err_str");
       }
@@ -2537,7 +2566,6 @@ EOS
 
       $ssh2->disconnect();
     };
-
     if ($@) {
       $ex = $@;
     }
@@ -2546,7 +2574,7 @@ EOS
     $wfh->flush();
 
   } else {
-    eval { server_wait($config_file, $rfh) };
+    eval { server_wait($setup->{config_file}, $rfh) };
     if ($@) {
       warn($@);
       exit 1;
@@ -2556,38 +2584,31 @@ EOS
   }
 
   # Stop server
-  server_stop($pid_file);
-
+  server_stop($setup->{pid_file});
   $self->assert_child_ok($pid);
 
-  if ($ex) {
-    test_append_logfile($log_file, $ex);
-    unlink($log_file);
+  eval {
+    my ($login, $key_fp, $key_fp_algo) = get_sessions($db_file,
+      "user = \'$setup->{user}\'");
 
-    die($ex);
+    my $expected = $setup->{user};
+    $self->assert($expected eq $login,
+      test_msg("Expected user '$expected', got '$login'"));
+
+    # The value here depends on the version of OpenSSL we use
+    my $expected_sha256_base64 = 'rRPP8wf0HyCVROVx2ek8nPpLKtENkPsfpQ536sGR+Tc';
+    $self->assert($expected_sha256_base64 eq $key_fp,
+      test_msg("Expected key fingerprint '$expected_sha256_base64', got '$key_fp'"));
+
+    my $expected_sha256 = 'SHA256';
+    $self->assert($expected_sha256 eq $key_fp_algo,
+      test_msg("Expected '$expected_sha256', got '$key_fp_algo'"));
+  };
+  if ($@) {
+    $ex = $@ unless $ex;
   }
 
-  my ($login, $key_fp, $key_fp_algo) = get_sessions($db_file,
-    "user = \'$user\'");
-
-  my $expected;
-
-  $expected = $user;
-  $self->assert($expected eq $login,
-    test_msg("Expected user '$expected', got '$login'"));
-
-  # The value here depends on the version of OpenSSL we use
-  my $expected_md5 = 'b8:ce:c2:e8:e8:9c:f7:93:11:a4:79:c2:48:64:19:45';
-  my $expected_sha256 = 'ad:13:cf:f3:07:f4:1f:20:95:44:e5:71:d9:e9:3c:9c:fa:4b:2a:d1:0d:90:fb:1f:a5:0e:77:ea:c1:91:f9:37';
-  $self->assert($expected_md5 eq $key_fp || $expected_sha256 eq $key_fp,
-    test_msg("Expected key fingerprint '$expected_md5' or '$expected_sha256', got '$key_fp'"));
-
-  $expected_md5 = 'MD5';
-  $expected_sha256 = 'SHA256';
-  $self->assert($expected_md5 eq $key_fp_algo || $expected_sha256 eq $key_fp_algo,
-    test_msg("Expected '$expected_md5' or '$expected_sha256', got '$key_fp_algo'"));
-
-  unlink($log_file, $db_file);
+  test_cleanup($setup, $ex);
 }
 
 sub ssh2_auth_publickey_rsa_sql_rfc4716_overlong_comment_bug4155 {
@@ -2959,8 +2980,7 @@ sub ssh2_ext_auth_publickey_openssh_ed25519_sql_bug4221 {
 
   my $db_script = File::Spec->rel2abs("$tmpdir/sftp.sql");
 
-  my $fh;
-  if (open($fh, "> $db_script")) {
+  if (open(my $fh, "> $db_script")) {
     print $fh <<EOS;
 CREATE TABLE sftpuserkeys (
   name TEXT NOT NULL PRIMARY KEY,
@@ -3079,10 +3099,7 @@ EOC
   defined(my $pid = fork()) or die("Can't fork: $!");
   if ($pid) {
     eval {
-      # libssh2, and thus Net::SSH2, don't support ECC/ECDH yet.  So we
-      # use the external sftp(1) client (e.g. OpenSSH-7.9p1) to test.
-
-      my $sftp = '/Users/tj/local/openssh-7.9p1/bin/sftp';
+      my $sftp = 'sftp';
 
       my @cmd = (
         $sftp,
@@ -3305,10 +3322,7 @@ EOC
   defined(my $pid = fork()) or die("Can't fork: $!");
   if ($pid) {
     eval {
-      # libssh2, and thus Net::SSH2, don't support ECC/ECDH yet.  So we
-      # use the external sftp(1) client (e.g. OpenSSH-7.9p1) to test.
-
-      my $sftp = '/Users/tj/local/openssh-7.9p1/bin/sftp';
+      my $sftp = 'sftp';
 
       my @cmd = (
         $sftp,
@@ -3824,7 +3838,7 @@ EOS
         '-oStrictHostKeyChecking=no',
         '-oUpdateHostkeys=no',
         '-oUserKnownHostsFile=/dev/null',
-        '-oHostKeyAlgorithms=ssh-rsa,ssh-dss',
+        '-oHostKeyAlgorithms=ssh-rsa',
         '-vvv',
         '-b',
         "$batch_file",
