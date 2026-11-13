@@ -1217,6 +1217,7 @@ static const char *tls_get_fingerprint_from_file(pool *p, const char *path,
         pr_log_pri(PR_LOG_NOTICE, MOD_TLS_VERSION
           ": certificate '%s': expected %s certificate, found %s", path,
           get_pkey_typestr(expected_pkey_type), get_pkey_typestr(pkey_type));
+        return NULL;
       }
     }
 
@@ -1796,6 +1797,16 @@ static struct tls_label tls_ciphersuite_labels[] = {
   { 0xC030, "TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384" },
   { 0xC031, "TLS_ECDH_RSA_WITH_AES_128_GCM_SHA256" },
   { 0xC032, "TLS_ECDH_RSA_WITH_AES_256_GCM_SHA384" },
+  { 0xC050, "TLS_RSA_WITH_ARIA_128_GCM_SHA256" },
+  { 0xC051, "TLS_RSA_WITH_ARIA_256_GCM_SHA384" },
+  { 0xC052, "TLS_DHE_RSA_WITH_ARIA_128_GCM_SHA256" },
+  { 0xC053, "TLS_DHE_RSA_WITH_ARIA_256_GCM_SHA384" },
+  { 0xC056, "TLS_DHE_DSS_WITH_ARIA_128_GCM_SHA256" },
+  { 0xC057, "TLS_DHE_DSS_WITH_ARIA_256_GCM_SHA384" },
+  { 0xC05C, "TLS_ECDHE_ECDSA_WITH_ARIA_128_GCM_SHA256" },
+  { 0xC05D, "TLS_ECDHE_ECDSA_WITH_ARIA_256_GCM_SHA384" },
+  { 0xC060, "TLS_ECDHE_RSA_WITH_ARIA_128_GCM_SHA256" },
+  { 0xC061, "TLS_ECDHE_RSA_WITH_ARIA_256_GCM_SHA384" },
   { 0xC072, "TLS_ECDHE_ECDSA_WITH_CAMELLIA_128_CBC_SHA256" },
   { 0xC073, "TLS_ECDHE_ECDSA_WITH_CAMELLIA_256_CBC_SHA384" },
   { 0xC076, "TLS_ECDHE_RSA_WITH_CAMELLIA_128_CBC_SHA256" },
@@ -2925,7 +2936,7 @@ static int tls_cert_match_ip_san(pool *p, X509 *cert, const char *ipstr) {
       if (alt_name->type == GEN_IPADD) {
         const unsigned char *san_data = NULL;
         int have_ipstr = FALSE, san_datalen;
-#ifdef PR_USE_IPV6
+#if defined(PR_USE_IPV6)
         char san_ipstr[INET6_ADDRSTRLEN + 1] = {'\0'};
 #else
         char san_ipstr[INET_ADDRSTRLEN + 1] = {'\0'};
@@ -2947,7 +2958,7 @@ static int tls_cert_match_ip_san(pool *p, X509 *cert, const char *ipstr) {
             san_data[0], san_data[1], san_data[2], san_data[3]);
           have_ipstr = TRUE;
 
-#ifdef PR_USE_IPV6
+#if defined(PR_USE_IPV6)
         } else if (san_datalen == 16) {
           /* IPv6 address */
 
@@ -4039,7 +4050,7 @@ static int tls_get_passphrase(server_rec *s, const char *path,
     RAND_add(buf, pdata.buflen, pdata.buflen * 0.25);
 #endif
 
-#ifdef HAVE_MLOCK
+#if defined(HAVE_MLOCK)
     PRIVS_ROOT
     if (mlock(buf, bufsz) < 0) {
       pr_log_debug(DEBUG1, MOD_TLS_VERSION
@@ -4049,7 +4060,7 @@ static int tls_get_passphrase(server_rec *s, const char *path,
       pr_log_debug(DEBUG1, MOD_TLS_VERSION ": passphrase locked into memory");
     }
     PRIVS_RELINQUISH
-#endif
+#endif /* HAVE_MLOCK */
   }
 
   return pdata.buflen;
@@ -4186,7 +4197,7 @@ static int tls_pkey_cb(char *buf, int buflen, int rwflag, void *data) {
     return strlen(buf);
   }
 
-#ifdef PR_USE_OPENSSL_ECC
+#if defined(PR_USE_OPENSSL_ECC)
   if ((k->flags & TLS_PKEY_USE_EC) && k->ec_pkey) {
     sstrncpy(buf, k->ec_pkey, buflen);
     buf[buflen - 1] = '\0';
@@ -4891,7 +4902,7 @@ static void tls_tlsext_cb(SSL *ssl, int server, int type,
    *  http://www.iana.org/assignments/tls-extensiontype-values/tls-extensiontype-values.xhtml#tls-extensiontype-values-1
    */
   switch (type) {
-# ifdef TLSEXT_TYPE_server_name
+# if defined(TLSEXT_TYPE_server_name)
     case TLSEXT_TYPE_server_name: {
       BIO *bio = NULL;
       char *ext_info = "";
@@ -4960,81 +4971,81 @@ static void tls_tlsext_cb(SSL *ssl, int server, int type,
       print_basic_info = FALSE;
       break;
     }
-# endif
+# endif /* TLSEXT_TYPE_server_name */
 
-# ifdef TLSEXT_TYPE_max_fragment_length
+# if defined(TLSEXT_TYPE_max_fragment_length)
     case TLSEXT_TYPE_max_fragment_length:
       extension_name = "max fragment length";
       break;
-# endif
+# endif /* TLSEXT_TYPE_max_fragment_length */
 
-# ifdef TLSEXT_TYPE_client_certificate_url
+# if defined(TLSEXT_TYPE_client_certificate_url)
     case TLSEXT_TYPE_client_certificate_url:
       extension_name = "client certificate URL";
       break;
-# endif
+# endif /* TLSEXT_TYPE_client_certificate_url */
 
-# ifdef TLSEXT_TYPE_trusted_ca_keys
+# if defined(TLSEXT_TYPE_trusted_ca_keys)
     case TLSEXT_TYPE_trusted_ca_keys:
       extension_name = "trusted CA keys";
       break;
-# endif
+# endif /* TLSEXT_TYPE_trusted_ca_keys */
 
-# ifdef TLSEXT_TYPE_truncated_hmac
+# if defined(TLSEXT_TYPE_truncated_hmac)
     case TLSEXT_TYPE_truncated_hmac:
       extension_name = "truncated HMAC";
       break;
-# endif
+# endif /* TLSEXT_TYPE_truncated_hmac */
 
-# ifdef TLSEXT_TYPE_status_request
+# if defined(TLSEXT_TYPE_status_request)
     case TLSEXT_TYPE_status_request:
       extension_name = "status request";
       break;
-# endif
+# endif /* TLSEXT_TYPE_status_request */
 
-# ifdef TLSEXT_TYPE_user_mapping
+# if defined(TLSEXT_TYPE_user_mapping)
     case TLSEXT_TYPE_user_mapping:
       extension_name = "user mapping";
       break;
-# endif
+# endif /* TLSEXT_TYPE_user_mapping */
 
-# ifdef TLSEXT_TYPE_client_authz
+# if defined(TLSEXT_TYPE_client_authz)
     case TLSEXT_TYPE_client_authz:
       extension_name = "client authz";
       break;
-# endif
+# endif /* TLSEXT_TYPE_client_authz */
 
-# ifdef TLSEXT_TYPE_server_authz
+# if defined(TLSEXT_TYPE_server_authz)
     case TLSEXT_TYPE_server_authz:
       extension_name = "server authz";
       break;
-# endif
+# endif /* TLSEXT_TYPE_server_authz */
 
-# ifdef TLSEXT_TYPE_cert_type
+# if defined(TLSEXT_TYPE_cert_type)
     case TLSEXT_TYPE_cert_type:
       extension_name = "cert type";
       break;
-# endif
+# endif /* TLSEXT_TYPE_cert_type */
 
-# ifdef TLSEXT_TYPE_elliptic_curves
+# if defined(TLSEXT_TYPE_elliptic_curves)
     case TLSEXT_TYPE_elliptic_curves:
       extension_name = "elliptic curves";
       break;
-# endif
+# endif /* TLSEXT_TYPE_elliptic_curves */
 
-# ifdef TLSEXT_TYPE_ec_point_formats
+# if defined(TLSEXT_TYPE_ec_point_formats)
     case TLSEXT_TYPE_ec_point_formats:
       extension_name = "EC point formats";
       break;
-# endif
+# endif /* TLSEXT_TYPE_ec_point_formats */
 
-# ifdef TLSEXT_TYPE_srp
+# if defined(TLSEXT_TYPE_srp)
     case TLSEXT_TYPE_srp:
       extension_name = "SRP";
       break;
-# endif
+# endif /* TLSEXT_TYPE_srp */
 
-# ifdef TLSEXT_TYPE_signature_algorithms
+# if defined(TLSEXT_TYPE_signature_algorithms)
     case TLSEXT_TYPE_signature_algorithms: {
       BIO *bio = NULL;
       char *ext_info = "";
@@ -5086,51 +5097,51 @@ static void tls_tlsext_cb(SSL *ssl, int server, int type,
       print_basic_info = FALSE;
       break;
     }
-# endif
+# endif /* TLSEXT_TYPE_signature_algorithms */
 
-# ifdef TLSEXT_TYPE_use_srtp
+# if defined(TLSEXT_TYPE_use_srtp)
     case TLSEXT_TYPE_use_srtp:
       extension_name = "use SRTP";
       break;
-# endif
+# endif /* TLSEXT_TYPE_use_srtp */
 
-# ifdef TLSEXT_TYPE_heartbeat
+# if defined(TLSEXT_TYPE_heartbeat)
     case TLSEXT_TYPE_heartbeat:
       extension_name = "heartbeat";
       break;
-# endif
+# endif /* TLSEXT_TYPE_heartbeat */
 
-# ifdef TLSEXT_TYPE_signed_certificate_timestamp
+# if defined(TLSEXT_TYPE_signed_certificate_timestamp)
     case TLSEXT_TYPE_signed_certificate_timestamp:
       extension_name = "signed certificate timestamp";
       break;
-# endif
+# endif /* TLSEXT_TYPE_signed_certificate_timestamp */
 
-# ifdef TLSEXT_TYPE_encrypt_then_mac
+# if defined(TLSEXT_TYPE_encrypt_then_mac)
     case TLSEXT_TYPE_encrypt_then_mac:
       extension_name = "encrypt then mac";
       break;
-# endif
+# endif /* TLSEXT_TYPE_encrypt_then_mac */
 
-# ifdef TLSEXT_TYPE_extended_master_secret
+# if defined(TLSEXT_TYPE_extended_master_secret)
     case TLSEXT_TYPE_extended_master_secret:
       extension_name = "extended master secret";
       break;
-# endif
+# endif /* TLSEXT_TYPE_extended_master_secret */
 
-# ifdef TLSEXT_TYPE_session_ticket
+# if defined(TLSEXT_TYPE_session_ticket)
     case TLSEXT_TYPE_session_ticket:
       extension_name = "session ticket";
       break;
-# endif
+# endif /* TLSEXT_TYPE_session_ticket */
 
-# ifdef TLSEXT_TYPE_psk
+# if defined(TLSEXT_TYPE_psk)
     case TLSEXT_TYPE_psk:
       extension_name = "PSK";
       break;
-# endif
+# endif /* TLSEXT_TYPE_psk */
 
-# ifdef TLSEXT_TYPE_supported_versions
+# if defined(TLSEXT_TYPE_supported_versions)
     case TLSEXT_TYPE_supported_versions: {
       BIO *bio = NULL;
       char *ext_info = NULL;
@@ -5207,9 +5218,9 @@ static void tls_tlsext_cb(SSL *ssl, int server, int type,
       print_basic_info = FALSE;
       break;
     }
-# endif
+# endif /* TLSEXT_TYPE_supported_versions */
 
-# ifdef TLSEXT_TYPE_psk_kex_modes
+# if defined(TLSEXT_TYPE_psk_kex_modes)
     case TLSEXT_TYPE_psk_kex_modes: {
       BIO *bio = NULL;
       char *ext_info = NULL;
@@ -5262,9 +5273,9 @@ static void tls_tlsext_cb(SSL *ssl, int server, int type,
       print_basic_info = FALSE;
       break;
     }
-# endif
+# endif /* TLSEXT_TYPE_psk_kex_modes */
 
-# ifdef TLSEXT_TYPE_compress_certificate
+# if defined(TLSEXT_TYPE_compress_certificate)
     case TLSEXT_TYPE_compress_certificate: {
       BIO *bio = NULL;
       char *ext_info = NULL;
@@ -5329,55 +5340,55 @@ static void tls_tlsext_cb(SSL *ssl, int server, int type,
       print_basic_info = FALSE;
       break;
     }
-# endif
+# endif /* TLSEXT_TYPE_compress_certificate */
 
-# ifdef TLSEXT_TYPE_key_share
+# if defined(TLSEXT_TYPE_key_share)
     case TLSEXT_TYPE_key_share:
       extension_name = "key share";
       break;
-# endif
+# endif /* TLSEXT_TYPE_key_share */
 
-# ifdef TLSEXT_TYPE_renegotiate
+# if defined(TLSEXT_TYPE_renegotiate)
     case TLSEXT_TYPE_renegotiate:
       extension_name = "renegotiation info";
       break;
-# endif
+# endif /* TLSEXT_TYPE_renegotiate */
 
-# ifdef TLSEXT_TYPE_opaque_prf_input
+# if defined(TLSEXT_TYPE_opaque_prf_input)
     case TLSEXT_TYPE_opaque_prf_input:
       extension_name = "opaque PRF input";
       break;
-# endif
+# endif /* TLSEXT_TYPE_opaque_prf_input */
 
-# ifdef TLSEXT_TYPE_next_proto_neg
+# if defined(TLSEXT_TYPE_next_proto_neg)
     case TLSEXT_TYPE_next_proto_neg:
       extension_name = "next protocol";
       break;
-# endif
+# endif /* TLSEXT_TYPE_next_proto_neg */
 
-# ifdef TLSEXT_TYPE_application_layer_protocol_negotiation
+# if defined(TLSEXT_TYPE_application_layer_protocol_negotiation)
     case TLSEXT_TYPE_application_layer_protocol_negotiation:
       extension_name = "application layer protocol";
       break;
-# endif
+# endif /* TLSEXT_TYPE_application_layer_protocol_negotiation */
 
-# ifdef TLSEXT_TYPE_padding
+# if defined(TLSEXT_TYPE_padding)
     case TLSEXT_TYPE_padding:
       extension_name = "TLS padding";
       break;
-# endif
+# endif /* TLSEXT_TYPE_padding */
 
-# ifdef TLSEXT_TYPE_early_data
+# if defined(TLSEXT_TYPE_early_data)
     case TLSEXT_TYPE_early_data:
       extension_name = "early data";
       break;
-# endif
+# endif /* TLSEXT_TYPE_early_data */
 
-# ifdef TLSEXT_TYPE_post_handshake_auth
+# if defined(TLSEXT_TYPE_post_handshake_auth)
     case TLSEXT_TYPE_post_handshake_auth:
       extension_name = "post handshake auth";
       break;
-# endif
+# endif /* TLSEXT_TYPE_post_handshake_auth */
 
     default:
       print_basic_info = TRUE;
@@ -7100,7 +7111,7 @@ static int new_ticket_key_timer_cb(CALLBACK_FRAME) {
  * we want to renew those locks for session processes.
  */
 static void lock_ticket_keys(void) {
-# ifdef HAVE_MLOCK
+# if defined(HAVE_MLOCK)
   struct tls_ticket_key *k;
 
   if (tls_ticket_keys == NULL) {
@@ -7633,7 +7644,7 @@ static int tls_set_fips(void) {
     return 0;
   }
 
-#ifdef OPENSSL_FIPS
+#if defined(OPENSSL_FIPS)
   if (!FIPS_mode()) {
     /* Make sure OpenSSL is set to use the default RNG, as per an email
      * discussion on the OpenSSL developer list:
@@ -7704,7 +7715,7 @@ static SSL_CTX *tls_init_ctx(server_rec *s) {
 #endif
 
   /* Disable SSL compression. */
-#ifdef SSL_OP_NO_COMPRESSION
+#if defined(SSL_OP_NO_COMPRESSION)
   ssl_opts |= SSL_OP_NO_COMPRESSION;
 #endif /* SSL_OP_NO_COMPRESSION */
 
@@ -7865,15 +7876,15 @@ static int get_disabled_protocols(unsigned int supported_protocols) {
   /* First, create an options value where ALL protocols are disabled. */
   disabled_protocols = (SSL_OP_NO_SSLv2|SSL_OP_NO_SSLv3|SSL_OP_NO_TLSv1);
 
-#ifdef SSL_OP_NO_TLSv1_1
+#if defined(SSL_OP_NO_TLSv1_1)
   disabled_protocols |= SSL_OP_NO_TLSv1_1;
-#endif
-#ifdef SSL_OP_NO_TLSv1_2
+#endif /* SSL_OP_NO_TLSv1_1 */
+#if defined(SSL_OP_NO_TLSv1_2)
   disabled_protocols |= SSL_OP_NO_TLSv1_2;
-#endif
-#ifdef SSL_OP_NO_TLSv1_3
+#endif /* SSL_OP_NO_TLSv1_2 */
+#if defined(SSL_OP_NO_TLSv1_3)
   disabled_protocols |= SSL_OP_NO_TLSv1_3;
-#endif
+#endif /* SSL_OP_NO_TLSv1_3 */
 
   /* Now, based on the given bitset of supported protocols, clear the
    * necessary bits.
@@ -7897,11 +7908,11 @@ static int get_disabled_protocols(unsigned int supported_protocols) {
   }
 #endif /* OpenSSL-1.0.1 or later */
 
-#ifdef SSL_OP_NO_TLSv1_3
+#if defined(SSL_OP_NO_TLSv1_3)
   if (supported_protocols & TLS_PROTO_TLS_V1_3) {
     disabled_protocols &= ~SSL_OP_NO_TLSv1_3;
   }
-#endif /* OpenSSL 1.1.1 or later */
+#endif /* SSL_OP_NO_TLSv1_3 */
 
   return disabled_protocols;
 }
@@ -8008,7 +8019,7 @@ static int tls_accept(conn_t *conn, unsigned char on_data) {
     /* Note that older OpenSSL versions, e.g. 0.9.8, do not implement this
      * callback.  Newer versions which DO implement it do as via a macro.
      */
-# ifdef SSL_set_tlsext_debug_callback
+# if defined(SSL_set_tlsext_debug_callback)
     SSL_set_tlsext_debug_callback(ssl, tls_tlsext_cb);
 # endif /* SSL_set_tlsext_debug_callback */
   }
@@ -8262,26 +8273,26 @@ static int tls_accept(conn_t *conn, unsigned char on_data) {
                 "TLSv1", NULL);
             }
 
-#ifdef SSL_OP_NO_TLSv1_1
+#if defined(SSL_OP_NO_TLSv1_1)
             if (ssl_opts & SSL_OP_NO_TLSv1_1) {
               proto_str = pstrcat(tmp_pool, proto_str, *proto_str ? ", " : "",
                 "TLSv1.1", NULL);
             }
-#endif /* TLSv1.1 */
+#endif /* SSL_OP_NO_TLSv1_1 */
 
-#ifdef SSL_OP_NO_TLSv1_2
+#if defined(SSL_OP_NO_TLSv1_2)
             if (ssl_opts & SSL_OP_NO_TLSv1_2) {
               proto_str = pstrcat(tmp_pool, proto_str, *proto_str ? ", " : "",
                 "TLSv1.2", NULL);
             }
-#endif /* TLSv1.2 */
+#endif /* SSL_OP_NO_TLSv1_2 */
 
-#ifdef SSL_OP_NO_TLSv1_3
+#if defined(SSL_OP_NO_TLSv1_3)
             if (ssl_opts & SSL_OP_NO_TLSv1_3) {
               proto_str = pstrcat(tmp_pool, proto_str, *proto_str ? ", " : "",
                 "TLSv1.3", NULL);
             }
-#endif /* TLSv1.3 */
+#endif /* SSL_OP_NO_TLSv1_3 */
 
             tls_log("%s: perhaps client requested disabled TLS protocol "
               "version: %s", msg, proto_str);
@@ -8389,7 +8400,17 @@ static int tls_accept(conn_t *conn, unsigned char on_data) {
       pr_event_generate("mod_tls.ctrl-handshake-failed", &errcode);
     }
 
+    if (on_data == FALSE) {
+      /* Set this only to produce more accurate logging. */
+      ctrl_ssl = ssl;
+    }
+
     tls_end_sess(ssl, on_data ? session.d : session.c, 0);
+
+    if (on_data == FALSE) {
+      ctrl_ssl = NULL;
+    }
+
     return -3;
   }
 
@@ -8643,7 +8664,7 @@ static int tls_accept(conn_t *conn, unsigned char on_data) {
 
           matching_sess = tls_compare_session_ids(ctrl_sess, data_sess);
 
-#ifdef TLS1_3_VERSION
+#if defined(TLS1_3_VERSION)
           /* TLSv1.3 sessions will show session reuse, but NOT matching session
            * IDs.  Why?  TLSv1.3 completely redid session resumption, and now
            * favors session tickets (and stateless servers) rather than
@@ -9367,7 +9388,7 @@ static void tls_end_sess(SSL *ssl, conn_t *conn, int flags) {
            * to unpack them to get the reason value.
            */
 
-#ifdef SSL_R_SHUTDOWN_WHILE_IN_INIT
+#if defined(SSL_R_SHUTDOWN_WHILE_IN_INIT)
           if (ERR_GET_REASON(ssl_errcode) != SSL_R_SHUTDOWN_WHILE_IN_INIT) {
             /* This SHUTDOWN_WHILE_IN_INIT can happen if the TLS handshake
              * failed before being completed.  As such, logging this shutdown
@@ -9378,7 +9399,7 @@ static void tls_end_sess(SSL *ssl, conn_t *conn, int flags) {
 #else
           (void) ssl_errcode;
           tls_log("SSL_shutdown error: SSL: %s", tls_get_errors());
-#endif /* No SSL_R_SHUTDOWN_WHILE_IN_INIT */
+#endif /* SSL_R_SHUTDOWN_WHILE_IN_INIT */
 
           break;
         }
@@ -9431,7 +9452,7 @@ static void tls_end_sess(SSL *ssl, conn_t *conn, int flags) {
          * to unpack them to get the reason value.
          */
 
-#ifdef SSL_R_SHUTDOWN_WHILE_IN_INIT
+#if defined(SSL_R_SHUTDOWN_WHILE_IN_INIT)
         if (ERR_GET_REASON(ssl_errcode) != SSL_R_SHUTDOWN_WHILE_IN_INIT) {
           /* This SHUTDOWN_WHILE_IN_INIT can happen if the TLS handshake
            * failed before being completed.  As such, logging this shutdown
@@ -9442,7 +9463,7 @@ static void tls_end_sess(SSL *ssl, conn_t *conn, int flags) {
 #else
         (void) ssl_errcode;
         tls_log("SSL_shutdown error: SSL: %s", tls_get_errors());
-#endif /* No SSL_R_SHUTDOWN_WHILE_IN_INIT */
+#endif /* SSL_R_SHUTDOWN_WHILE_IN_INIT */
         break;
       }
 
@@ -9799,12 +9820,12 @@ static int tls_dotlogin_allow(const char *user) {
 
       nameflags = XN_FLAG_ONELINE;
       skipflags = X509_FLAG_NO_PUBKEY|X509_FLAG_NO_EXTENSIONS|X509_FLAG_NO_SIGDUMP|X509_FLAG_NO_AUX;
-#ifdef X509_FLAG_NO_ATTRIBUTES
+#if defined(X509_FLAG_NO_ATTRIBUTES)
       skipflags |= X509_FLAG_NO_ATTRIBUTES;
-#endif
-#ifdef X509_FLAG_NO_IDS
+#endif /* X509_FLAG_NO_ATTRIBUTES */
+#if defined(X509_FLAG_NO_IDS)
       skipflags |= X509_FLAG_NO_IDS;
-#endif
+#endif /* X509_FLAG_NO_IDS */
 
       tls_log(".tlslogin local/remote certificate MISMATCH");
       bio = BIO_new(BIO_s_mem());
@@ -12331,7 +12352,7 @@ static int tls_sess_cache_add_sess_cb(SSL *ssl, SSL_SESSION *sess) {
       tls_sess_cache->cache_name, strerror(errno));
 
     cache_mode = tls_sess_cache_get_cache_mode();
-#ifdef SSL_SESS_CACHE_NO_INTERNAL
+#if defined(SSL_SESS_CACHE_NO_INTERNAL)
     if (cache_mode & SSL_SESS_CACHE_NO_INTERNAL) {
       /* Call SSL_SESSION_free() here, and return 1.  We told OpenSSL that we
        * are the only cache, so failing to call SSL_SESSION_free() could
@@ -12340,7 +12361,7 @@ static int tls_sess_cache_add_sess_cb(SSL *ssl, SSL_SESSION *sess) {
       SSL_SESSION_free(sess);
       return 1;
     }
-#endif /* !SSL_SESS_CACHE_NO_INTERNAL */
+#endif /* SSL_SESS_CACHE_NO_INTERNAL */
   }
 
   /* Return zero to indicate to OpenSSL that we have not called
@@ -14652,7 +14673,7 @@ MODRET set_tlsdsakeyfile(cmd_rec *cmd) {
 
 /* usage: TLSECCertificateFile file */
 MODRET set_tlseccertfile(cmd_rec *cmd) {
-#ifdef PR_USE_OPENSSL_ECC
+#if defined(PR_USE_OPENSSL_ECC)
   char *path;
   const char *fingerprint, *errstr = NULL;
 
@@ -14713,7 +14734,7 @@ MODRET set_tlseckeyfile(cmd_rec *cmd) {
 
 /* usage: TLSECDHCurve name */
 MODRET set_tlsecdhcurve(cmd_rec *cmd) {
-#ifdef PR_USE_OPENSSL_ECC
+#if defined(PR_USE_OPENSSL_ECC)
   char *curve_names = NULL;
 # if defined(SSL_CTX_set1_curves_list)
   SSL_CTX *ctx = NULL;
@@ -14785,7 +14806,6 @@ MODRET set_tlsecdhcurve(cmd_rec *cmd) {
 # endif /* pre-OpenSSL-1.0.2 */
 
   return PR_HANDLED(cmd);
-
 #else
   CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "The ", cmd->argv[0],
     " directive cannot be used on this system, as your OpenSSL version "
@@ -14919,7 +14939,7 @@ MODRET set_tlsoptions(cmd_rec *cmd) {
     } else if (strcmp(cmd->argv[i], "IgnoreSNI") == 0) {
       opts |= TLS_OPT_IGNORE_SNI;
 
-#ifdef SSL_OP_DONT_INSERT_EMPTY_FRAGMENTS
+#if defined(SSL_OP_DONT_INSERT_EMPTY_FRAGMENTS)
     } else if (strcmp(cmd->argv[i], "NoEmptyFragments") == 0) {
       /* Unlike the other TLSOptions, this option is handled slightly
        * differently, due to the fact that option affects the creation
@@ -14929,7 +14949,7 @@ MODRET set_tlsoptions(cmd_rec *cmd) {
       tls_ssl_opts |= SSL_OP_DONT_INSERT_EMPTY_FRAGMENTS;
 #else
       pr_log_pri(PR_LOG_NOTICE, MOD_TLS_VERSION ": TLSOption NoEmptyFragments not supported (OpenSSL version is too old)");
-#endif
+#endif /* SSL_OP_DONT_INSERT_EMPTY_FRAGMENTS */
 
     } else if (strcmp(cmd->argv[i], "NoSessionReuseRequired") == 0) {
       opts |= TLS_OPT_NO_SESSION_REUSE_REQUIRED;
@@ -15147,7 +15167,7 @@ MODRET set_tlsprotocol(cmd_rec *cmd) {
 #endif /* OpenSSL 1.0.1 or later */
 
       } else if (strncasecmp(proto_name, "TLSv1.3", 8) == 0) {
-#ifdef TLS1_3_VERSION
+#if defined(TLS1_3_VERSION)
         if (disable) {
           protocols &= ~TLS_PROTO_TLS_V1_3;
         } else {
@@ -15155,7 +15175,7 @@ MODRET set_tlsprotocol(cmd_rec *cmd) {
         }
 #else
         CONF_ERROR(cmd, "Your OpenSSL installation does not support TLSv1.3");
-#endif /* OpenSSL 1.1.1 or later */
+#endif /* TLS1_3_VERSION */
 
       } else {
         CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "unknown protocol: '",
@@ -15168,15 +15188,15 @@ MODRET set_tlsprotocol(cmd_rec *cmd) {
       if (strncasecmp(cmd->argv[i], "SSLv23", 7) == 0) {
         protocols |= TLS_PROTO_SSL_V3;
         protocols |= TLS_PROTO_TLS_V1;
-#ifdef SSL_OP_NO_TLSv1_1
+#if defined(SSL_OP_NO_TLSv1_1)
         protocols |= TLS_PROTO_TLS_V1_1;
-#endif
-#ifdef SSL_OP_NO_TLSv1_2
+#endif /* SSL_OP_NO_TLSv1_1 */
+#if defined(SSL_OP_NO_TLSv1_2)
         protocols |= TLS_PROTO_TLS_V1_2;
-#endif
-#ifdef SSL_OP_NO_TLSv1_3
+#endif /* SSL_OP_NO_TLSv1_2 */
+#if defined(SSL_OP_NO_TLSv1_3)
         protocols |= TLS_PROTO_TLS_V1_3;
-#endif
+#endif /* SSL_OP_NO_TLSv1_3 */
 
       } else if (strncasecmp(cmd->argv[i], "SSLv3", 6) == 0) {
         protocols |= TLS_PROTO_SSL_V3;
@@ -15200,11 +15220,11 @@ MODRET set_tlsprotocol(cmd_rec *cmd) {
 #endif /* OpenSSL 1.0.1 or later */
 
       } else if (strncasecmp(cmd->argv[i], "TLSv1.3", 8) == 0) {
-#ifdef TLS1_3_VERSION
+#if defined(TLS1_3_VERSION)
         protocols |= TLS_PROTO_TLS_V1_3;
 #else
         CONF_ERROR(cmd, "Your OpenSSL installation does not support TLSv1.3");
-#endif /* OpenSSL 1.1.1 or later */
+#endif /* TLS1_3_VERSION */
 
       } else {
         CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "unknown protocol: '",
@@ -15441,9 +15461,9 @@ MODRET set_tlsrsakeyfile(cmd_rec *cmd) {
 /* usage: TLSServerCipherPreference on|off */
 MODRET set_tlsservercipherpreference(cmd_rec *cmd) {
   int use_server_prefs = -1;
-#ifdef SSL_OP_CIPHER_SERVER_PREFERENCE
+#if defined(SSL_OP_CIPHER_SERVER_PREFERENCE)
   config_rec *c = NULL;
-#endif
+#endif /* SSL_OP_CIPHER_SERVER_PREFERENCE */
 
   CHECK_ARGS(cmd, 1);
   CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL);
@@ -15453,11 +15473,10 @@ MODRET set_tlsservercipherpreference(cmd_rec *cmd) {
     CONF_ERROR(cmd, "expected Boolean parameter");
   }
 
-#ifdef SSL_OP_CIPHER_SERVER_PREFERENCE
+#if defined(SSL_OP_CIPHER_SERVER_PREFERENCE)
   c = add_config_param(cmd->argv[0], 1, NULL);
   c->argv[0] = pcalloc(c->pool, sizeof(int));
   *((int *) c->argv[0]) = use_server_prefs;
-
 #else
   pr_log_debug(DEBUG0,
     "%s is not supported by this version of OpenSSL, ignoring",
@@ -15981,7 +16000,7 @@ static void tls_mod_unload_ev(const void *event_data, void *user_data) {
     scrub_ticket_keys();
 # endif /* TLS_USE_SESSION_TICKETS */
 
-# ifdef PR_USE_CTRLS
+# if defined(PR_USE_CTRLS)
     /* Unregister any control actions. */
     pr_ctrls_unregister(&tls_module, "tls");
 
@@ -16251,7 +16270,7 @@ static tls_pkey_t *tls_find_pkey(server_rec *s, int flags) {
           break;
 
         case TLS_PASSPHRASE_FL_EC_KEY:
-#ifdef PR_USE_OPENSSL_ECC
+#if defined(PR_USE_OPENSSL_ECC)
           if (k->ec_pkey != NULL) {
             pkey = k;
           }
@@ -16471,7 +16490,7 @@ static void tls_get_passphrases(void) {
       k = tls_get_key_passphrase(s, path, TLS_PASSPHRASE_FL_DSA_KEY);
     }
 
-#ifdef PR_USE_OPENSSL_ECC
+#if defined(PR_USE_OPENSSL_ECC)
     if (ec != NULL) {
       path = ec->argv[0];
       k = tls_get_key_passphrase(s, path, TLS_PASSPHRASE_FL_EC_KEY);
@@ -18299,7 +18318,7 @@ static int tls_ctx_set_pkcs12_cert(SSL_CTX *ctx, X509 **dsa_cert,
         tls_pkey->flags &= ~(TLS_PKEY_USE_RSA|TLS_PKEY_USE_EC);
         break;
 
-#ifdef PR_USE_OPENSSL_ECC
+#if defined(PR_USE_OPENSSL_ECC)
       case EVP_PKEY_EC:
         tls_pkey->flags |= TLS_PKEY_USE_EC;
         tls_pkey->flags &= ~(TLS_PKEY_USE_RSA|TLS_PKEY_USE_DSA);
@@ -18362,7 +18381,7 @@ static int tls_ctx_set_pkcs12_cert(SSL_CTX *ctx, X509 **dsa_cert,
         *dsa_cert = cert;
         break;
 
-#ifdef PR_USE_OPENSSL_ECC
+#if defined(PR_USE_OPENSSL_ECC)
       case EVP_PKEY_EC:
         *ec_cert = cert;
         break;
@@ -19308,7 +19327,7 @@ static int tls_init(void) {
   ERR_load_crypto_strings();
 #endif /* prior to OpenSSL-1.1.x */
 
-#ifdef PR_USE_CTRLS
+#if defined(PR_USE_CTRLS)
   if (pr_ctrls_register(&tls_module, "tls", "query/tune mod_tls settings",
       tls_handle_tls) < 0) {
     pr_log_pri(PR_LOG_NOTICE, MOD_TLS_VERSION
