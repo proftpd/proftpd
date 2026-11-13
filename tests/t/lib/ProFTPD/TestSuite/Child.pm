@@ -80,7 +80,10 @@ sub tear_down {
   # Remove temporary scratch dir
   if ($self->{tmpdir} &&
       !$ENV{KEEP_TMPFILES}) {
-    eval { rmtree($self->{tmpdir}, { verbose => 0 }) };
+    # Used for accumulating (then ignoring) any errors such as permissions,
+    # etc.
+    my $err;
+    eval { rmtree($self->{tmpdir}, { verbose => 0, error => \$err }) };
   }
 }
 
