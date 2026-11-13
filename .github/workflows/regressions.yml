@@ -75,6 +75,9 @@ jobs:
           # for zlib support
           apt-get install -y --no-install-recommends zlib1g-dev
 
+          # for command-line tests
+          apt-get install -y --no-install-recommends curl
+
           # for integration/regression tests
           apt-get install -y --no-install-recommends \
             libauthen-oath-perl \

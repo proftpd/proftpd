@@ -112,7 +112,74 @@ sub new {
 }
 
 sub list_tests {
-  return testsuite_get_runnable_tests($TESTS);
+  my @tests = testsuite_get_runnable_tests($TESTS);
+
+  # Some of these tests rely on TLS protocol versions no longer supported
+  # by newer OpenSSL versions.
+  my $skipped_tests = {
+  };
+
+  # If the OpenSSL version is 3.0 or later, skip the TLSv1.0, TLSv.1 tests.
+  my ($openssl_major, $openssl_minor, $openssl_rev) = get_openssl_version();
+  if ($openssl_major) {
+    if ($openssl_major >= 3) {
+      if ($ENV{TEST_VERBOSE}) {
+        print STDERR "# OpenSSL $openssl_major.x too new, skipping TLSv1.0, TLSv1.1 tests\n";
+      }
+
+      $skipped_tests->{tls_sni_tlsv10} = 1;
+      $skipped_tests->{tls_sni_tlsv10_opt_ignoresni} = 1;
+      $skipped_tests->{tls_sni_tlsv10_session_cache} = 1;
+      $skipped_tests->{tls_sni_tlsv11} = 1;
+      $skipped_tests->{tls_sni_tlsv11_opt_ignoresni} = 1;
+      $skipped_tests->{tls_sni_tlsv11_session_cache} = 1;
+    }
+  }
+
+  foreach my $key (keys(%$skipped_tests)) {
+    my $ntests = scalar(@tests);
+    for (my $i = 0; $i < $ntests; $i++) {
+      if ($tests[$i] eq $key) {
+        splice(@tests, $i, 1);
+        last;
+      }
+    }
+  }
+
+  return @tests;
+}
+
+sub get_openssl_version {
+  my $proftpd_bin = $ENV{PROFTPD_TEST_BIN};
+  my $openssl_version;
+  my ($major, $minor, $revision);
+
+  if (open(my $cmdh, "$proftpd_bin -V |")) {
+    while (my $line = <$cmdh>) {
+      chomp($line);
+
+      next unless $line =~ /\s+\+ OpenSSL support \((.*?)\)/;
+      $openssl_version = $1;
+      last;
+    }
+
+    close($cmdh);
+
+    if ($ENV{TEST_VERBOSE}) {
+      print STDERR "# Detected OpenSSL version: $openssl_version\n";
+    }
+
+    if ($openssl_version =~ /OpenSSL (\d+)\.(\d+)\.(\d+)/) {
+      $major = $1;
+      $minor = $2;
+      $revision = $3;
+    }
+
+    return ($major, $minor, $revision);
+
+  } else {
+    die("Error listing features");
+  }
 }
 
 sub test_curl_sni {
@@ -160,10 +227,14 @@ sub test_curl_sni {
         TLSProtocol => $tls_protocol,
         TLSOptions => $tls_options,
       },
-
-      $addl_config,
     },
   };
+
+  if (%$addl_config) {
+    foreach my $key (keys(%$addl_config)) {
+      $config->{IfModules}->{$key} = $addl_config->{$key};
+    }
+  }
 
   my ($port, $config_user, $config_group) = config_write($setup->{config_file},
     $config);
@@ -296,7 +367,7 @@ EOC
   server_stop($setup->{pid_file});
   $self->assert_child_ok($pid);
 
-  test_cleanup($setup->{log_file}, $ex);
+  test_cleanup($setup, $ex);
 }
 
 # Testing TLSv1.0
@@ -658,7 +729,7 @@ EOC
   server_stop($setup->{pid_file});
   $self->assert_child_ok($pid);
 
-  test_cleanup($setup->{log_file}, $ex);
+  test_cleanup($setup, $ex);
 }
 
 sub tls_sni_crls_issue1960 {
@@ -853,7 +924,7 @@ EOC
   server_stop($setup->{pid_file});
   $self->assert_child_ok($pid);
 
-  test_cleanup($setup->{log_file}, $ex);
+  test_cleanup($setup, $ex);
 }
 
 1;

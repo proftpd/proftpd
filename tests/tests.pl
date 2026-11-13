@@ -8,7 +8,7 @@ use Getopt::Long;
 use Test::Harness qw(&runtests $verbose);
 
 my $opts = {};
-GetOptions($opts, 'h|help', 'C|class=s@', 'K|keep-tmpfiles', 'F|file-pattern=s',
+GetOptions($opts, 'h|help', 'j|jobs=i', 'C|class=s@', 'K|keep-tmpfiles', 'F|file-pattern=s',
   'V|verbose');
 
 if ($opts->{h}) {
@@ -32,6 +32,14 @@ push(@INC, "$test_dir/t/lib");
 
 require ProFTPD::TestSuite::Utils;
 import ProFTPD::TestSuite::Utils qw(:testsuite);
+
+# The default number of parallels jobs is 9, per the Test::Harness docs.
+# Let's use a smaller number, and reduce resource contention.
+my $njobs = 5;
+if ($opts->{j}) {
+  $njobs = $opts->{j};
+}
+$ENV{HARNESS_OPTIONS} = "j$njobs";
 
 # This is to handle the case where this tests.pl script might be
 # being used to run test files other than those that ship with proftpd,
@@ -627,7 +635,7 @@ exit 0;
 sub usage {
   print STDOUT <<EOH;
 
-$0: [--help] [--class=\$name] [--verbose]
+$0: [--help] [--jobs=\$njobs] [--class=\$name] [--verbose]
 
 Examples:
 
