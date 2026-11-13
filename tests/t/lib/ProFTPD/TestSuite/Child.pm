@@ -80,7 +80,7 @@ sub tear_down {
   # Remove temporary scratch dir
   if ($self->{tmpdir} &&
       !$ENV{KEEP_TMPFILES}) {
-    eval { rmtree($self->{tmpdir}) };
+    eval { rmtree($self->{tmpdir}, { verbose => 0 }) };
   }
 }
 
