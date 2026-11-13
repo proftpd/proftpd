@@ -15327,6 +15327,7 @@ CREATE TABLE users (
   lastdir TEXT
 );
 INSERT INTO users (userid, passwd, uid, gid, homedir, shell) VALUES ('$setup->{user}', '$setup->{passwd}', $setup->{uid}, $setup->{gid}, '$setup->{home_dir}', '/bin/bash');
+
 CREATE TABLE groups (
   groupname TEXT,
   gid INTEGER,
@@ -15366,7 +15367,8 @@ EOS
 
     AuthUserFile => $setup->{auth_user_file},
     AuthGroupFile => $setup->{auth_group_file},
-    AuthOrder => 'mod_auth_file.c',
+
+    ServerAlias => 'test',
 
     Global => {
       AuthOrder => 'mod_sql.c',
@@ -15375,6 +15377,7 @@ EOS
       SQLBackend => 'sqlite3',
       SQLConnectInfo => $db_file,
       SQLLogFile => $setup->{log_file},
+      SQLMinID => 100,
     },
 
     IfModules => {
@@ -15388,6 +15391,7 @@ EOS
         TLSRequired => 'on',
         TLSRSACertificateFile => $cert_file,
         TLSCACertificateFile => $ca_file,
+        TLSOptions => 'EnableDiags',
       },
     },
   };
@@ -15430,21 +15434,22 @@ EOC
       # Give the server a chance to start up
       sleep(2);
 
-      my $client = Net::FTPSSL->new('127.0.0.1',
+      my $client_opts = {
         Encryption => 'E',
         Port => $port,
         SSL_hostname => $server_alias,
-      );
+      };
 
-      unless ($client) {
-        die("Can't connect to FTPS server: " . IO::Socket::SSL::errstr());
+      if ($ENV{TEST_VERBOSE}) {
+        $client_opts->{Debug} = 2;
       }
 
-      unless ($client->login($setup->{user}, $setup->{passwd})) {
-        die("Login failed unexpectedly: " + $client->message());
+      # We are connecting to the namebased vhost, which does NOT have TLS
+      # support enabled, thus we expect this to fail.
+      my $client = Net::FTPSSL->new('127.0.0.1', $client_opts);
+      if ($client) {
+        die("Connect to FTPS server succeeded unexpectedly");
       }
-
-      $client->quit();
     };
     if ($@) {
       $ex = $@;
