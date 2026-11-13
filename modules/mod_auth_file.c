@@ -1575,6 +1575,17 @@ MODRET authfile_chkpass(cmd_rec *cmd) {
     return PR_DECLINED(cmd);
   }
 
+  /* Reject locked or disabled accounts before calling crypt(3).
+   * Common markers: "*" (BSD locked), "!" or "!!" (Linux locked).
+   * A valid password hash is always longer than 2 characters.
+   */
+  if (strlen(ciphertxt_pass) < 3 ||
+      ciphertxt_pass[0] == '*' || ciphertxt_pass[0] == '!') {
+    pr_log_debug(DEBUG4, MOD_AUTH_FILE_VERSION
+      ": rejecting locked/disabled account");
+    return PR_DECLINED(cmd);
+  }
+
   if (cleartxt_pass == NULL) {
     pr_log_debug(DEBUG2, MOD_AUTH_FILE_VERSION
       ": missing client-provided password for comparison");
@@ -1610,6 +1621,18 @@ MODRET authfile_chkpass(cmd_rec *cmd) {
   }
 
   cmp_len = strlen(crypted_pass);
+
+  /* Reject crypt(3) results that look like error tokens rather than
+   * real hashes.  A valid hash from any known scheme is at least 13
+   * characters (traditional DES crypt).  This catches bare "*", "*0",
+   * "*1" etc. that some crypt() implementations return on error.
+   */
+  if (cmp_len < 13) {
+    pr_log_debug(DEBUG4, MOD_AUTH_FILE_VERSION
+      ": rejecting short crypt(3) result (possible error token)");
+    return PR_DECLINED(cmd);
+  }
+
   ciphertxt_passlen = strlen(ciphertxt_pass);
   if (ciphertxt_passlen != cmp_len) {
     /* We know, a priori, that these are different lengths, therefore they

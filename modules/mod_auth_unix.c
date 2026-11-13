@@ -1070,9 +1070,30 @@ MODRET pw_check(cmd_rec *cmd) {
     return PR_DECLINED(cmd);
   }
 
+  /* Reject locked or disabled accounts before calling crypt(3).
+   * Common markers: "*" (BSD locked), "!" or "!!" (Linux locked),
+   * "x" (shadow placeholder).  A valid password hash is always
+   * longer than 2 characters.
+   */
+  if (strlen(cpw) < 3 || cpw[0] == '*' || cpw[0] == '!') {
+    pr_log_debug(DEBUG4, "mod_auth_unix: rejecting locked/disabled account");
+    return PR_DECLINED(cmd);
+  }
+
   crypted_text = (char *) crypt(pw, cpw);
   if (crypted_text == NULL) {
     pr_log_pri(PR_LOG_NOTICE, "crypt(3) failed: %s", strerror(errno));
+    return PR_DECLINED(cmd);
+  }
+
+  /* Reject crypt(3) results that look like error tokens rather than
+   * real hashes.  A valid hash from any known scheme is at least 13
+   * characters (traditional DES crypt).  This catches bare "*", "*0",
+   * "*1" etc. that some crypt() implementations return on error.
+   */
+  if (strlen(crypted_text) < 13) {
+    pr_log_debug(DEBUG4,
+      "mod_auth_unix: rejecting short crypt(3) result (possible error token)");
     return PR_DECLINED(cmd);
   }
 
