@@ -291,7 +291,7 @@ jobs:
           # Need to add other repos for e.g. libsodium
           apt-get update -qq
           # for builds
-          apt-get install --no-install-recommends -y clang gcc git make
+          apt-get install --no-install-recommends -y build-essential clang gcc git make
           # for unit tests
           apt-get install -y --no-install-recommends check libsubunit-dev
           # for mod_lang
