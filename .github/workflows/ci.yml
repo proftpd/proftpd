@@ -74,6 +74,10 @@ jobs:
           - alpine:3.23
           - ubuntu:22.04
           - ubuntu:26.04
+        exclude:
+          # clang on Ubuntu 22.04, on GitHub, is now untrustworthy
+          - container: ubuntu:22.04
+            compiler: clang
 
     container: ${{ matrix.container }}
 
@@ -538,23 +542,21 @@ jobs:
         env:
           ASAN_OPTIONS: abort_on_error=1,check_initialization_order=true,debug=true,detect_invalid_pointer_pairs=2,detect_leaks=1,detect_stack_use_after_return=true,strict_string_checks=true,verbosity=0
           CC: ${{ matrix.compiler }}
-          CFLAGS: -fsanitize=address,undefined -DPR_DEVEL_NO_POOL_FREELIST
-          LDFLAGS: -fsanitize=address,undefined
-        if: ${{ matrix.compiler == 'clang' && matrix.container == 'ubuntu:22.04' }}
+        if: ${{ matrix.compiler == 'clang' && matrix.container == 'ubuntu:26.04' }}
         run: |
           make clean
-          ./configure LIBS="-lm -lsubunit -lrt -pthread" --enable-devel --enable-ctrls --enable-facl --enable-nls --enable-pcre2 --enable-redis --enable-tests --enable-wrapper-options
+          ./configure LIBS="-lm -lsubunit -lrt -pthread" --enable-devel=sanitize --enable-ctrls --enable-facl --enable-nls --enable-pcre2 --enable-redis --enable-tests --enable-wrapper-options
           make
           export ASAN_SYMBOLIZER_PATH=$(readlink -f $(which llvm-symbolizer-14))
           make check-api
 
       - name: Check Perl scripts
-        if: ${{ matrix.container == 'ubuntu:22.04' }}
+        if: ${{ matrix.container == 'ubuntu:26.04' }}
         run: |
           perl -cw contrib/ftpasswd
           perl -cw contrib/ftpquota
 
       - name: Check HTML docs
-        if: ${{ matrix.container == 'ubuntu:22.04' }}
+        if: ${{ matrix.container == 'ubuntu:26.04' }}
         run: |
           for f in $(/bin/ls doc/contrib/*.html doc/directives/*.html doc/howto/*.html doc/modules/*.html doc/utils/*.html); do echo "Processing $f"; tidy -errors -omit -q $f; done || exit 0
