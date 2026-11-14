@@ -36,12 +36,20 @@ my $TESTS = {
     test_class => [qw(bug forking)],
   },
 
-  telnet_iac_unsupported_opcode_issue2426 => {
+  telnet_iac_unsupported_opcode_interspersed_issue2426 => {
     order => ++$order,
     test_class => [qw(bug forking)],
   },
 
-  telnet_iac_non_opcode_issue2426 => {
+  telnet_iac_non_opcode_interspersed_issue2426 => {
+    order => ++$order,
+    test_class => [qw(bug forking)],
+  },
+
+  # Note that we do not expect this to fail with an ASAN build, due to e.g.
+  # out-of-bounds read, because the core code always reserves the last byte
+  # of the command buffer as a NUL character.
+  telnet_iac_unsupported_opcode_last_bytes_issue2426 => {
     order => ++$order,
     test_class => [qw(bug forking)],
   },
@@ -562,7 +570,7 @@ sub telnet_nonascii_uppercase_issue2019 {
   test_cleanup($setup, $ex);
 }
 
-sub telnet_iac_unsupported_opcode_issue2426 {
+sub telnet_iac_unsupported_opcode_interspersed_issue2426 {
   my $self = shift;
   my $tmpdir = $self->{tmpdir};
   my $setup = test_setup($tmpdir, 'telnet');
@@ -671,7 +679,7 @@ sub telnet_iac_unsupported_opcode_issue2426 {
   test_cleanup($setup, $ex);
 }
 
-sub telnet_iac_non_opcode_issue2426 {
+sub telnet_iac_non_opcode_interspersed_issue2426 {
   my $self = shift;
   my $tmpdir = $self->{tmpdir};
   my $setup = test_setup($tmpdir, 'telnet');
@@ -757,6 +765,134 @@ sub telnet_iac_non_opcode_issue2426 {
       );
       unless ($res) {
         die("QUIT failed unexpectedly");
+      }
+    };
+    if ($@) {
+      $ex = $@;
+    }
+
+    $wfh->print("done\n");
+    $wfh->flush();
+
+  } else {
+    eval { server_wait($setup->{config_file}, $rfh) };
+    if ($@) {
+      warn($@);
+      exit 1;
+    }
+
+    exit 0;
+  }
+
+  # Stop server
+  server_stop($setup->{pid_file});
+  $self->assert_child_ok($pid);
+
+  test_cleanup($setup, $ex);
+}
+
+sub telnet_iac_unsupported_opcode_last_bytes_issue2426 {
+  my $self = shift;
+  my $tmpdir = $self->{tmpdir};
+  my $setup = test_setup($tmpdir, 'telnet');
+
+  # The smallest command buffer size allowed.  However, the function always
+  # saves one bytes as a NUL terminator, so we add one to this.
+  my $cmd_buffer_size = 9;
+
+  my $config = {
+    PidFile => $setup->{pid_file},
+    ScoreboardFile => $setup->{scoreboard_file},
+    SystemLog => $setup->{log_file},
+    TraceLog => $setup->{log_file},
+    Trace => 'command:20 netio:30 response:20',
+
+    AuthUserFile => $setup->{auth_user_file},
+    AuthGroupFile => $setup->{auth_group_file},
+    AuthOrder => 'mod_auth_file.c',
+
+    CommandBufferSize => $cmd_buffer_size,
+
+    IfModules => {
+      'mod_delay.c' => {
+        DelayEngine => 'off',
+      },
+    },
+  };
+
+  my ($port, $config_user, $config_group) = config_write($setup->{config_file},
+    $config);
+
+  # Open pipes, for use between the parent and child processes.  Specifically,
+  # the child will indicate when it's done with its test by writing a message
+  # to the parent.
+  my ($rfh, $wfh);
+  unless (pipe($rfh, $wfh)) {
+    die("Can't open pipe: $!");
+  }
+
+  require Net::Telnet;
+
+  my $ex;
+
+  # Fork child
+  $self->handle_sigchld();
+  defined(my $pid = fork()) or die("Can't fork: $!");
+  if ($pid) {
+    eval {
+      sleep(1);
+
+      # For this, we want to see just what happens if the last two
+      # bytes of the text are a Telnet IAC byte, followed by an unsupported op
+      # code.
+
+      my $client = Net::Telnet->new(
+        Host => '127.0.0.1',
+        Port => $port,
+        Timeout => 3,
+        Errmode => 'return',
+
+        # Net::Telnet automatically escapes IAC by default.  Not nice.
+        Telnetmode => 0,
+      );
+
+      if ($ENV{TEST_VERBOSE}) {
+        $client->dump_log(*STDERR);
+      }
+
+      my $buf = 'A' x ($cmd_buffer_size - 3);
+      $buf .= chr(Net::Telnet::TELNET_IAC());
+      $buf .= chr(Net::Telnet::TELNET_AYT());
+
+      # Disable Net::Telnet's automatic newline translation for this; we want
+      # send ONLY these two bytes.  We need to disable the default output
+      # record separator as well.
+      $client->binmode(1);
+
+      eval {
+        $client->cmd(
+        String => $buf,
+        Prompt => "/$setup->{user}/",
+        Errmode => 'die',
+        Ors => '',
+      ) };
+      unless ($@) {
+        die("Telnet text succeeded expectedly");
+      }
+
+      $client->binmode(0);
+      my $errmsg = $client->errmsg;
+      chomp($errmsg);
+      $self->assert($client->eof(),
+        test_msg("Expected EOF, got '$errmsg'"));
+
+      # We should be disconnected at this point.
+      my $res = $client->cmd(
+        String => 'QUIT',
+        Prompt => '/Goodbye/',
+      );
+      if ($res) {
+        die("QUIT succeeded unexpectedly");
       }
     };
     if ($@) {

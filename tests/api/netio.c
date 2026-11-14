@@ -28,13 +28,14 @@
 /* See RFC 854 for the definition of these Telnet values */
 
 /* Telnet "Interpret As Command" indicator */
-#define TELNET_IAC     255
-#define TELNET_DONT    254
-#define TELNET_DO      253
-#define TELNET_WONT    252
-#define TELNET_WILL    251
-#define TELNET_IP      244
-#define TELNET_DM      242
+#define TELNET_IAC	255
+#define TELNET_DONT	254
+#define TELNET_DO	253
+#define TELNET_WONT	252
+#define TELNET_WILL	251
+#define TELNET_IP	244
+#define TELNET_DM	242
+#define TELNET_AYT	246
 
 static pool *p = NULL;
 static int xfer_bufsz = -1;
@@ -1408,6 +1409,47 @@ START_TEST (netio_telnet_gets2_random_data_test) {
 }
 END_TEST
 
+START_TEST (netio_telnet_gets2_unsupported_opcode_issue2426_test) {
+  int res;
+  char *buf, telnet_buf[2];
+  size_t bufsz;
+  pr_netio_stream_t *in, *out;
+  pr_buffer_t *pbuf;
+  int xerrno;
+
+  in = pr_netio_open(p, PR_NETIO_STRM_CTRL, -1, PR_NETIO_IO_RD);
+  out = pr_netio_open(p, PR_NETIO_STRM_CTRL, -1, PR_NETIO_IO_WR);
+
+  pbuf = pr_netio_buffer_alloc(in);
+
+  /* Replace the debug pbuf size with our deliberately truncated version,
+   * for testing the lookahead logic.
+   */
+  pbuf->buflen = sizeof(telnet_buf);
+  pbuf->buf = telnet_buf;
+
+  /* Fill the input buffer with 2 bytes only. */
+  pbuf->buf[0] = TELNET_IAC;
+  pbuf->buf[1] = TELNET_AYT;
+
+  pbuf->remaining = 0;
+  pbuf->current = pbuf->buf;
+
+  bufsz = 128;
+  buf = palloc(p, bufsz);
+
+  res = pr_netio_telnet_gets2(buf, bufsz, in, out);
+  xerrno = errno;
+
+  ck_assert_msg(res > 0, "Failed to get string from stream: (%d) %s",
+    xerrno, strerror(xerrno));
+
+  pbuf->buf = NULL;
+  pr_netio_close(in);
+  pr_netio_close(out);
+}
+END_TEST
+
 static int netio_close_cb(pr_netio_stream_t *nstrm) {
   return 0;
 }
@@ -2497,6 +2539,7 @@ Suite *tests_get_netio_suite(void) {
   tcase_add_test(testcase, netio_telnet_gets2_single_line_crnul_test);
   tcase_add_test(testcase, netio_telnet_gets2_single_line_lf_test);
   tcase_add_test(testcase, netio_telnet_gets2_random_data_test);
+  tcase_add_test(testcase, netio_telnet_gets2_unsupported_opcode_issue2426_test);
 
   tcase_add_test(testcase, netio_read_test);
   tcase_add_test(testcase, netio_gets_test);

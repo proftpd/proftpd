@@ -1729,6 +1729,7 @@ int pr_netio_telnet_gets2(char *buf, size_t bufsz,
     }
 
     toread = pbuf->buflen - pbuf->remaining;
+    pr_trace_msg(trace_channel, 19, "read %d bytes", toread);
 
     /* If we do not encounter an LF, or, if we DO encounter an LF (and the
      * character before the LF is not a CR), we copy the encountered character
