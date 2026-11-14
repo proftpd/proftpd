@@ -1820,7 +1820,11 @@ int pr_netio_telnet_gets2(char *buf, size_t bufsz,
               if (toread > 0) {
                 unsigned char opcode;
 
-                opcode = *(pbuf->current + 1);
+                /* `cp = *pbuf->current++` above already advanced past this
+                 * IAC byte, so pbuf->current now points at the opcode, which
+                 * `toread > 0` guarantees was received (Issue #2426).
+                 */
+                opcode = *pbuf->current;
                 switch (opcode) {
                   case TELNET_IAC:  /* FALLTHROUGH */
                   case TELNET_WILL: /* FALLTHROUGH */
