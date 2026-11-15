@@ -4753,6 +4753,23 @@ EOS
     }
   }
 
+  my $test_file = File::Spec->rel2abs("$tmpdir/test.dat");
+  if (open(my $fh, "> $test_file")) {
+    print $fh "AbCdEfGh" x 10240;
+    unless (close($fh)) {
+      die("Can't write $test_file: $!");
+    }
+
+  } else {
+    die("Can't open $test_file: $!");
+  }
+
+  if ($< == 0) {
+    unless (chown($setup->{uid}, $setup->{gid}, $test_file)) {
+      die("Can't set owner of $test_file to $setup->{uid}/$setup->{gid}: $!");
+    }
+  }
+
   my $config = {
     PidFile => $setup->{pid_file},
     ScoreboardFile => $setup->{scoreboard_file},
@@ -4761,6 +4778,9 @@ EOS
     AuthUserFile => $setup->{auth_user_file},
     AuthGroupFile => $setup->{auth_group_file},
     AuthOrder => 'mod_auth_file.c',
+
+    # Slow the download a little for our test case assertions.
+    TransferRate => 'RETR 15',
 
     IfModules => {
       'mod_delay.c' => {
@@ -4799,9 +4819,9 @@ EOS
       my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port, 0, 1);
       $client->login($setup->{user}, $setup->{passwd});
 
-      my $conn = $client->retr_raw('sqlite.conf');
+      my $conn = $client->retr_raw('test.dat');
       unless ($conn) {
-        die("RETR sqlite.conf failed: " . $client->response_code() . " " .
+        die("RETR failed: " . $client->response_code() . " " .
           $client->response_msg());
       }
 
@@ -4816,7 +4836,6 @@ EOS
 
       $client->quit();
     };
-
     if ($@) {
       $ex = $@;
     }
