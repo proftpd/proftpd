@@ -126,8 +126,13 @@ struct sesscache_data {
    */
   unsigned int sd_listlen, sd_listsz;
 
-  /* It is important that this field be the last in the struct! */
-  struct sesscache_entry *sd_entries;
+  /* It is important that this field be the last in the struct!
+   *
+   * We deliberately reserve at least one byte here.  Later, we allocate
+   * more than that out of the SysV memory segment, but we use this field
+   * to have a pointer into that extra memory.
+   */
+  unsigned char sd_entries[1];
 };
 
 static tls_sess_cache_t sess_cache;
@@ -136,6 +141,7 @@ static size_t sesscache_datasz = 0;
 static int sesscache_shmid = -1;
 static pr_fh_t *sesscache_fh = NULL;
 static array_header *sesscache_sess_list = NULL;
+static struct sesscache_entry *sesscache_sd_entries = NULL;
 
 #if defined(PR_USE_OPENSSL_OCSP)
 # define TLS_SHMCACHE_OCSP_PROJECT_ID		249
@@ -194,8 +200,13 @@ struct ocspcache_data {
    */
   unsigned int od_listlen, od_listsz;
 
-  /* It is important that this field be the last in the struct! */
-  struct ocspcache_entry *od_entries;
+  /* It is important that this field be the last in the struct!
+   *
+   * We deliberately reserve at least one byte here.  Later, we allocate
+   * more than that out of the SysV memory segment, but we use this field
+   * to have a pointer into that extra memory.
+   */
+  unsigned char od_entries[1];
 };
 
 static tls_ocsp_cache_t ocsp_cache;
@@ -204,6 +215,7 @@ static size_t ocspcache_datasz = 0;
 static int ocspcache_shmid = -1;
 static pr_fh_t *ocspcache_fh = NULL;
 static array_header *ocspcache_resp_list = NULL;
+static struct ocspcache_entry *ocspcache_od_entries = NULL;
 #endif /* PR_USE_OPENSSL_OCSP */
 
 static const char *trace_channel = "tls.shmcache";
@@ -527,8 +539,8 @@ static void *shmcache_get_shm(pr_fh_t *fh, size_t *shm_size, int project_id,
   return data;
 }
 
-static struct sesscache_data *sess_cache_get_shm(pr_fh_t *fh,
-    size_t requested_size) {
+static struct sesscache_data *sess_cache_get_shm(tls_sess_cache_t *cache,
+    pr_fh_t *fh, size_t requested_size) {
   int shmid, xerrno = 0;
   struct sesscache_data *data = NULL;
   size_t shm_size;
@@ -549,7 +561,7 @@ static struct sesscache_data *sess_cache_get_shm(pr_fh_t *fh,
     xerrno = errno;
 
     if (errno == EEXIST) {
-      sess_cache_close(NULL);
+      sess_cache_close(cache);
     }
 
     errno = xerrno;
@@ -562,15 +574,19 @@ static struct sesscache_data *sess_cache_get_shm(pr_fh_t *fh,
     "using shm ID %d for sesscache path '%s' (%u sessions)", sesscache_shmid,
     fh->fh_path, shm_sess_max);
 
-  data->sd_entries = (struct sesscache_entry *) (data + 1);
   data->sd_listsz = shm_sess_max;
+
+  /* Store a pointer to the SysV memory segment in our local process space,
+   * and not the other way around.
+   */
+  sesscache_sd_entries = (struct sesscache_entry *) data->sd_entries;
 
   return data;
 }
 
 #if defined(PR_USE_OPENSSL_OCSP)
-static struct ocspcache_data *ocsp_cache_get_shm(pr_fh_t *fh,
-    size_t requested_size) {
+static struct ocspcache_data *ocsp_cache_get_shm(tls_ocsp_cache_t *cache,
+    pr_fh_t *fh, size_t requested_size) {
   int shmid, xerrno = 0;
   struct ocspcache_data *data = NULL;
   size_t shm_size;
@@ -591,7 +607,7 @@ static struct ocspcache_data *ocsp_cache_get_shm(pr_fh_t *fh,
     xerrno = errno;
 
     if (errno == EEXIST) {
-      ocsp_cache_close(NULL);
+      ocsp_cache_close(cache);
     }
 
     errno = xerrno;
@@ -604,8 +620,12 @@ static struct ocspcache_data *ocsp_cache_get_shm(pr_fh_t *fh,
     "using shm ID %d for ocspcache path '%s' (%u responses)", ocspcache_shmid,
     fh->fh_path, shm_resp_max);
 
-  data->od_entries = (struct ocspcache_entry *) (data + 1);
   data->od_listsz = shm_resp_max;
+
+  /* Store a pointer to the SysV memory segment in our local process space,
+   * and not the other way around.
+   */
+  ocspcache_od_entries = (struct ocspcache_entry *) data->od_entries;
 
   return data;
 }
@@ -662,7 +682,7 @@ static unsigned int sess_cache_flush(void) {
   for (i = 0; i < sesscache_data->sd_listsz; i++) {
     struct sesscache_entry *entry;
 
-    entry = &(sesscache_data->sd_entries[i]);
+    entry = &(sesscache_sd_entries[i]);
     if (entry->expires > 0) {
       if (entry->expires > now) {
         if (entry->expires < next_expiring) {
@@ -868,7 +888,7 @@ static int sess_cache_open(tls_sess_cache_t *cache, char *info, long timeout) {
   pr_trace_msg(trace_channel, 9,
     "requested session cache size: %lu bytes", (unsigned long) requested_size);
 
-  sesscache_data = sess_cache_get_shm(sesscache_fh, requested_size);
+  sesscache_data = sess_cache_get_shm(cache, sesscache_fh, requested_size);
   if (sesscache_data == NULL) {
     xerrno = errno;
 
@@ -1021,8 +1041,8 @@ static int sess_cache_add(tls_sess_cache_t *cache, const unsigned char *sess_id,
   unsigned int h, idx, last;
   int found_slot = FALSE, need_lock = TRUE, res = 0, sess_len;
 
-  pr_trace_msg(trace_channel, 9, "adding session to shmcache session cache %p",
-    cache);
+  pr_trace_msg(trace_channel, 9,
+    "adding session to shmcache session cache %p", cache);
 
   /* First we need to find out how much space is needed for the serialized
    * session data.  There is no known maximum size for SSL session data;
@@ -1103,7 +1123,7 @@ static int sess_cache_add(tls_sess_cache_t *cache, const unsigned char *sess_id,
     pr_signals_handle();
 
     /* Look for the first open slot (i.e. expires == 0). */
-    entry = &(sesscache_data->sd_entries[i]);
+    entry = &(sesscache_sd_entries[i]);
     if (entry->expires == 0) {
       unsigned char *ptr;
 
@@ -1200,7 +1220,10 @@ static SSL_SESSION *sess_cache_get(tls_sess_cache_t *cache,
     }
   }
 
-  if (sess) {
+  if (sess != NULL) {
+    pr_trace_msg(trace_channel, 11,
+      "found matching session from shmcache large session cache %p", cache);
+
     return sess;
   }
 
@@ -1219,7 +1242,7 @@ static SSL_SESSION *sess_cache_get(tls_sess_cache_t *cache,
 
       pr_signals_handle();
 
-      entry = &(sesscache_data->sd_entries[i]);
+      entry = &(sesscache_sd_entries[i]);
       if (entry->expires > 0 &&
           entry->sess_id_len == sess_id_len &&
           memcmp(entry->sess_id, sess_id, entry->sess_id_len) == 0) {
@@ -1272,6 +1295,11 @@ static SSL_SESSION *sess_cache_get(tls_sess_cache_t *cache,
     errno = EPERM;
   }
 
+  if (sess != NULL) {
+    pr_trace_msg(trace_channel, 11,
+      "found matching session from shmcache session cache %p", cache);
+  }
+
   return sess;
 }
 
@@ -1283,18 +1311,28 @@ static int sess_cache_delete(tls_sess_cache_t *cache,
   pr_trace_msg(trace_channel, 9,
     "removing session from shmcache session cache %p", cache);
 
+  /* Just because OpenSSL is telling us the session is ending does NOT mean
+   * we have to remove it from our case.  Perhaps that session will be used
+   * by a different connection shortly?  Thus we will only remove that
+   * matching entry from our cache IFF it has expired.
+   */
+
   /* Look for the requested session in the "large session" list first. */
   if (sesscache_sess_list != NULL) {
     register unsigned int i;
     struct sesscache_large_entry *entries;
+    time_t now;
 
     entries = sesscache_sess_list->elts;
+    now = time(NULL);
+
     for (i = 0; i < sesscache_sess_list->nelts; i++) {
       struct sesscache_large_entry *entry;
 
       entry = &(entries[i]);
       if (entry->sess_id_len == sess_id_len &&
-          memcmp(entry->sess_id, sess_id, entry->sess_id_len) == 0) {
+          memcmp(entry->sess_id, sess_id, entry->sess_id_len) == 0 &&
+          entry->expires <= now) {
 
         pr_memscrub((void *) entry->sess_data, entry->sess_datalen);
         entry->expires = 0;
@@ -1309,19 +1347,22 @@ static int sess_cache_delete(tls_sess_cache_t *cache,
   if (shmcache_lock_shm(sesscache_fh, F_WRLCK) == 0) {
     register unsigned int i;
     unsigned int last;
+    time_t now;
 
     i = idx;
     last = idx > 0 ? (idx - 1) : (sesscache_data->sd_listsz - 1);
+
+    now = time(NULL);
 
     do {
       struct sesscache_entry *entry;
 
       pr_signals_handle();
 
-      entry = &(sesscache_data->sd_entries[i]);
+      entry = &(sesscache_sd_entries[i]);
       if (entry->sess_id_len == sess_id_len &&
-          memcmp(entry->sess_id, sess_id, entry->sess_id_len) == 0) {
-        time_t now;
+          memcmp(entry->sess_id, sess_id, entry->sess_id_len) == 0 &&
+          entry->expires <= now) {
 
         pr_memscrub((void *) entry->sess_data, entry->sess_datalen);
 
@@ -1329,15 +1370,7 @@ static int sess_cache_delete(tls_sess_cache_t *cache,
           sesscache_data->sd_listlen--;
         }
 
-        /* Don't forget to update the stats. */
-        now = time(NULL);
-        if (entry->expires > now) {
-          sesscache_data->ndeleted++;
-
-        } else {
-          sesscache_data->nexpired++;
-        }
-
+        sesscache_data->nexpired++;
         entry->expires = 0;
         break;
       }
@@ -1406,7 +1439,7 @@ static int sess_cache_clear(tls_sess_cache_t *cache) {
   for (i = 0; i < sesscache_data->sd_listsz; i++) {
     struct sesscache_entry *entry;
 
-    entry = &(sesscache_data->sd_entries[i]);
+    entry = &(sesscache_sd_entries[i]);
 
     entry->expires = 0;
     pr_memscrub((void *) entry->sess_data, entry->sess_datalen);
@@ -1556,7 +1589,7 @@ static int sess_cache_status(tls_sess_cache_t *cache,
 
       pr_signals_handle();
 
-      entry = &(sesscache_data->sd_entries[i]);
+      entry = &(sesscache_sd_entries[i]);
       if (entry->expires > 0) {
         SSL_SESSION *sess;
         TLS_D2I_SSL_SESSION_CONST unsigned char *ptr;
@@ -1700,7 +1733,7 @@ static unsigned int ocsp_cache_flush(void) {
   for (i = 0; i < ocspcache_data->od_listsz; i++) {
     struct ocspcache_entry *entry;
 
-    entry = &(ocspcache_data->od_entries[i]);
+    entry = &(ocspcache_od_entries[i]);
     if (entry->age > (now - 3600)) {
       /* This entry has expired; clear its slot. */
       pr_memscrub(entry->resp_der, entry->resp_derlen);
@@ -1896,7 +1929,7 @@ static int ocsp_cache_open(tls_ocsp_cache_t *cache, char *info) {
     PR_FH_FD(ocspcache_fh));
   pr_trace_msg(trace_channel, 9,
     "requested OCSP cache size: %lu bytes", (unsigned long) requested_size);
-  ocspcache_data = ocsp_cache_get_shm(ocspcache_fh, requested_size);
+  ocspcache_data = ocsp_cache_get_shm(cache, ocspcache_fh, requested_size);
   if (ocspcache_data == NULL) {
     xerrno = errno;
 
@@ -2139,7 +2172,7 @@ static int ocsp_cache_add(tls_ocsp_cache_t *cache, const char *fingerprint,
     pr_signals_handle();
 
     /* Look for the first open slot (i.e. fingerprint_len == 0). */
-    entry = &(ocspcache_data->od_entries[i]);
+    entry = &(ocspcache_od_entries[i]);
     if (entry->fingerprint_len == 0) {
       unsigned char *ptr;
 
@@ -2225,7 +2258,11 @@ static OCSP_RESPONSE *ocsp_cache_get(tls_ocsp_cache_t *cache,
     }
   }
 
-  if (resp) {
+  if (resp != NULL) {
+    pr_trace_msg(trace_channel, 11,
+      "found matching OCSP response from shmcache large response cache %p",
+      cache);
+
     return resp;
   }
 
@@ -2244,7 +2281,7 @@ static OCSP_RESPONSE *ocsp_cache_get(tls_ocsp_cache_t *cache,
 
       pr_signals_handle();
 
-      entry = &(ocspcache_data->od_entries[i]);
+      entry = &(ocspcache_od_entries[i]);
       if (entry->fingerprint_len > 0 &&
           entry->fingerprint_len == fingerprint_len &&
           memcmp(entry->fingerprint, fingerprint, fingerprint_len) == 0) {
@@ -2291,6 +2328,11 @@ static OCSP_RESPONSE *ocsp_cache_get(tls_ocsp_cache_t *cache,
       "write-locking shmcache: %s", strerror(errno));
 
     errno = EPERM;
+  }
+
+  if (resp != NULL) {
+    pr_trace_msg(trace_channel, 11,
+      "found matching OCSP response from shmcache response cache %p", cache);
   }
 
   return resp;
@@ -2344,7 +2386,7 @@ static int ocsp_cache_delete(tls_ocsp_cache_t *cache, const char *fingerprint) {
 
       pr_signals_handle();
 
-      entry = &(ocspcache_data->od_entries[i]);
+      entry = &(ocspcache_od_entries[i]);
       if (entry->fingerprint_len == fingerprint_len &&
           memcmp(entry->fingerprint, fingerprint, fingerprint_len) == 0) {
         time_t now;
@@ -2434,7 +2476,7 @@ static int ocsp_cache_clear(tls_ocsp_cache_t *cache) {
   for (i = 0; i < ocspcache_data->od_listsz; i++) {
     struct ocspcache_entry *entry;
 
-    entry = &(ocspcache_data->od_entries[i]);
+    entry = &(ocspcache_od_entries[i]);
 
     entry->age = 0;
     pr_memscrub(entry->resp_der, entry->resp_derlen);
