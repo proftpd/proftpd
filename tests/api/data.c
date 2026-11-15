@@ -783,6 +783,22 @@ START_TEST (data_clear_xfer_pool_test) {
   ck_assert_msg(session.xfer.p == NULL, "Failed to clear session.xfer.p");
   ck_assert_msg(session.xfer.xfer_type == xfer_type, "Expected %d, got %d",
     xfer_type, session.xfer.xfer_type);
+
+  /* The RNFR path note lives in the transfer pool, and must not outlive it. */
+  session.notes = pr_table_alloc(p, 0);
+  session.xfer.p = make_sub_pool(p);
+  (void) pr_table_add(session.notes, "mod_core.rnfr-path",
+    pstrdup(session.xfer.p, "/tmp/foo"), 0);
+
+  mark_point();
+  pr_data_clear_xfer_pool();
+  ck_assert_msg(session.xfer.p == NULL, "Failed to clear session.xfer.p");
+  ck_assert_msg(pr_table_get(session.notes, "mod_core.rnfr-path",
+    NULL) == NULL, "Failed to remove 'mod_core.rnfr-path' note");
+
+  (void) pr_table_empty(session.notes);
+  (void) pr_table_free(session.notes);
+  session.notes = NULL;
 }
 END_TEST
 
