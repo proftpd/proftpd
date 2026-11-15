@@ -300,6 +300,11 @@ my $TESTS = {
     test_class => [qw(bug forking)],
   },
 
+  sql_passwd_ssha_nul_in_digest => {
+    order => ++$order,
+    test_class => [qw(bug forking)],
+  },
+
   sql_passwd_bcrypt_empty_stored_passwd_issue2275 => {
     order => ++$order,
     test_class => [qw(bug forking)],
@@ -8394,6 +8399,134 @@ sub sql_passwd_ssha_issue1884 {
   # I used a Perl script to generate this password, using "password" and "salt"
   # as the respective values; see https://www.openldap.org/faq/data/cache/347.html
   my $passwd = '{SSHA}yI6cZwQadOA1e+/f+T+H3eCQQhRzYWx0';
+
+  my $db_file = File::Spec->rel2abs("$tmpdir/proftpd.db");
+
+  # Build up sqlite3 command to create users, groups tables and populate them
+  my $db_script = File::Spec->rel2abs("$tmpdir/proftpd.sql");
+
+  if (open(my $fh, "> $db_script")) {
+    print $fh <<EOS;
+CREATE TABLE users (
+  userid TEXT,
+  passwd TEXT,
+  uid INTEGER,
+  gid INTEGER,
+  homedir TEXT,
+  shell TEXT
+);
+INSERT INTO users (userid, passwd, uid, gid, homedir, shell) VALUES ('$setup->{user}', '$passwd', $setup->{uid}, $setup->{gid}, '$setup->{home_dir}', '/bin/bash');
+
+CREATE TABLE groups (
+  groupname TEXT,
+  gid INTEGER,
+  members TEXT
+);
+INSERT INTO groups (groupname, gid, members) VALUES ('$setup->{group}', $setup->{gid}, '$setup->{user}');
+EOS
+
+    unless (close($fh)) {
+      die("Can't write $db_script: $!");
+    }
+
+  } else {
+    die("Can't open $db_script: $!");
+  }
+
+  build_db($db_script, $db_file);
+
+  my $config = {
+    PidFile => $setup->{pid_file},
+    ScoreboardFile => $setup->{scoreboard_file},
+    SystemLog => $setup->{log_file},
+    TraceLog => $setup->{log_file},
+    Trace => 'sql.passwd:20',
+
+    IfModules => {
+      'mod_delay.c' => {
+        DelayEngine => 'off',
+      },
+
+      'mod_sql.c' => {
+        AuthOrder => 'mod_sql.c',
+        SQLAuthTypes => 'SSHA',
+        SQLBackend => 'sqlite3',
+        SQLConnectInfo => $db_file,
+        SQLLogFile => $setup->{log_file},
+      },
+
+      'mod_sql_passwd.c' => {
+        SQLPasswordEngine => 'on',
+      },
+    },
+  };
+
+  my ($port, $config_user, $config_group) = config_write($setup->{config_file},
+    $config);
+
+  # Open pipes, for use between the parent and child processes.  Specifically,
+  # the child will indicate when it's done with its test by writing a message
+  # to the parent.
+  my ($rfh, $wfh);
+  unless (pipe($rfh, $wfh)) {
+    die("Can't open pipe: $!");
+  }
+
+  my $ex;
+
+  # Fork child
+  $self->handle_sigchld();
+  defined(my $pid = fork()) or die("Can't fork: $!");
+  if ($pid) {
+    eval {
+      sleep(1);
+      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port, 0, 1, 30);
+      $client->login($setup->{user}, "password");
+
+      my $resp_msgs = $client->response_msgs();
+      my $nmsgs = scalar(@$resp_msgs);
+
+      my $expected = 1;
+      $self->assert($expected == $nmsgs,
+        test_msg("Expected $expected, got $nmsgs"));
+
+      $expected = "User $setup->{user} logged in";
+      $self->assert($expected eq $resp_msgs->[0],
+        test_msg("Expected response message '$expected', got '$resp_msgs->[0]'"));
+      $client->quit();
+    };
+    if ($@) {
+      $ex = $@;
+    }
+
+    $wfh->print("done\n");
+    $wfh->flush();
+
+  } else {
+    eval { server_wait($setup->{config_file}, $rfh) };
+    if ($@) {
+      warn($@);
+      exit 1;
+    }
+
+    exit 0;
+  }
+
+  # Stop server
+  server_stop($setup->{pid_file});
+  $self->assert_child_ok($pid);
+
+  test_cleanup($setup->{log_file}, $ex);
+}
+
+sub sql_passwd_ssha_nul_in_digest {
+  my $self = shift;
+  my $tmpdir = $self->{tmpdir};
+  my $setup = test_setup($tmpdir, 'sql_passwd');
+
+  # Generated using "password" and "salt636" as the respective values; the
+  # SHA1 digest of this password and salt begins with a NUL byte.
+  my $passwd = '{SSHA}AIiCkoJj5XgY0z6LI0uZ5hRr4sFzYWx0NjM2';
 
   my $db_file = File::Spec->rel2abs("$tmpdir/proftpd.db");
 
