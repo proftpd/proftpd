@@ -1477,7 +1477,7 @@ static int sess_cache_status(tls_sess_cache_t *cache,
   pr_trace_msg(trace_channel, 9, "checking shmcache session cache %p", cache);
 
   if (shmcache_lock_shm(sesscache_fh, F_RDLCK) < 0) {
-    int xerrno = errno;
+    xerrno = errno;
 
     pr_log_debug(DEBUG1, MOD_TLS_SHMCACHE_VERSION
       ": error read-locking shmcache: %s", strerror(errno));
