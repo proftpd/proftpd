@@ -2047,7 +2047,10 @@ static void tls_print_random(BIO *bio, const unsigned char **msg,
 
   ptr = *msg;
 
-  ts = ((ptr[0] << 24) | (ptr[1] << 16) | (ptr[2] << 8) | ptr[3]);
+  ts = ((((unsigned int) (ptr[0]) << 24)) |
+         ((unsigned int) (ptr[1] << 16)) |
+         ((unsigned int) (ptr[2] << 8)) |
+         ((unsigned int) ptr[3]));
   ptr += 4;
 
   tmp_pool = make_sub_pool(session.pool);
