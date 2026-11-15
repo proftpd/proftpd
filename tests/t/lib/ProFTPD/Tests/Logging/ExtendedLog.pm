@@ -77,6 +77,11 @@ my $TESTS = {
     test_class => [qw(forking)],
   },
 
+  extlog_rename_from_after_bad_sequence => {
+    order => ++$order,
+    test_class => [qw(forking)],
+  },
+
   extlog_sftp_rename_from => {
     order => ++$order,
     test_class => [qw(bug forking mod_sftp)],
@@ -2084,6 +2089,170 @@ sub extlog_rename_from {
       }
 
       $expected = "RNTO: $src_file $dst_file";
+      $self->assert($expected eq $line,
+        test_msg("Expected '$expected', got '$line'"));
+
+      close($fh);
+
+    } else {
+      die("Can't read $ext_log: $!");
+    }
+  };
+  if ($@) {
+    $ex = $@ unless $ex;
+  }
+
+  test_cleanup($setup, $ex);
+}
+
+sub extlog_rename_from_after_bad_sequence {
+  my $self = shift;
+  my $tmpdir = $self->{tmpdir};
+  my $setup = test_setup($tmpdir, 'extlog');
+
+  my $ext_log = File::Spec->rel2abs("$tmpdir/custom.log");
+
+  my $src_file = File::Spec->rel2abs("$tmpdir/test.txt");
+  if (open(my $fh, "> $src_file")) {
+    close($fh);
+
+  } else {
+    die("Can't open $src_file: $!");
+  }
+
+  if ($< == 0) {
+    unless (chmod($setup->{uid}, $setup->{gid}, $src_file)) {
+      die("Can't set owner of $src_file to $setup->{uid}/$setup->{gid}: $!");
+    }
+  }
+
+  my $dst_file = File::Spec->rel2abs("$tmpdir/foo.txt");
+
+  my $config = {
+    PidFile => $setup->{pid_file},
+    ScoreboardFile => $setup->{scoreboard_file},
+    SystemLog => $setup->{log_file},
+
+    AuthUserFile => $setup->{auth_user_file},
+    AuthGroupFile => $setup->{auth_group_file},
+    AuthOrder => 'mod_auth_file.c',
+
+    LogFormat => 'custom "%m: %w"',
+    ExtendedLog => "$ext_log WRITE custom",
+
+    IfModules => {
+      'mod_delay.c' => {
+        DelayEngine => 'off',
+      },
+    },
+  };
+
+  my ($port, $config_user, $config_group) = config_write($setup->{config_file},
+    $config);
+
+  # Open pipes, for use between the parent and child processes.  Specifically,
+  # the child will indicate when it's done with its test by writing a message
+  # to the parent.
+  my ($rfh, $wfh);
+  unless (pipe($rfh, $wfh)) {
+    die("Can't open pipe: $!");
+  }
+
+  my $ex;
+
+  # Fork child
+  $self->handle_sigchld();
+  defined(my $pid = fork()) or die("Can't fork: $!");
+  if ($pid) {
+    eval {
+      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
+      $client->login($setup->{user}, $setup->{passwd});
+      $client->rnfr('test.txt');
+
+      # Now we deliberately issue a command that should elicit a
+      # "Bad sequence of commands" response.
+      #
+      # I'm sending LIST directly here to avoid having Net::FTP send a
+      # PASV command first; I specifically want the LIST error cleanup
+      # handler to run.
+      eval { $client->quote('LIST') };
+      unless ($@) {
+        die("LIST succeeded unexpectedly");
+      }
+
+      my $resp_code = $client->response_code();
+      my $resp_msg = $client->response_msg();
+
+      my $expected = 501;
+      $self->assert($expected == $resp_code,
+        test_msg("Expected response code $expected, got $resp_code"));
+
+      $expected = 'Bad sequence of commands';
+      $self->assert($expected eq $resp_msg,
+        test_msg("Expected response message '$expected', got '$resp_msg'"));
+
+      eval { $client->rnto('foo.txt') };
+      unless ($@) {
+        die("RNTO succeeded unexpectedly");
+      }
+
+      $resp_code = $client->response_code();
+      $resp_msg = $client->response_msg();
+
+      $expected = 503;
+      $self->assert($expected == $resp_code,
+        test_msg("Expected response code $expected, got $resp_code"));
+
+      $expected = 'Bad sequence of commands';
+      $self->assert($expected eq $resp_msg,
+        test_msg("Expected response message '$expected', got '$resp_msg'"));
+
+      $client->quit();
+    };
+    if ($@) {
+      $ex = $@;
+    }
+
+    $wfh->print("done\n");
+    $wfh->flush();
+
+  } else {
+    eval { server_wait($setup->{config_file}, $rfh) };
+    if ($@) {
+      warn($@);
+      exit 1;
+    }
+
+    exit 0;
+  }
+
+  # Stop server
+  server_stop($setup->{pid_file});
+  $self->assert_child_ok($pid);
+
+  # Now, read in the ExtendedLog, and see whether the %f and %w variables were
+  # properly written out.
+  eval {
+    if (open(my $fh, "< $ext_log")) {
+      my $line = <$fh>;
+      chomp($line);
+
+      if ($ENV{TEST_VERBOSE}) {
+        print STDERR "# $line\n";
+      }
+
+      my $expected = 'RNFR: -';
+      $self->assert($expected eq $line,
+        test_msg("Expected '$expected', got '$line'"));
+
+      $line = <$fh>;
+      chomp($line);
+
+      if ($ENV{TEST_VERBOSE}) {
+        print STDERR "# $line\n";
+      }
+
+      $expected = 'RNTO: -';
       $self->assert($expected eq $line,
         test_msg("Expected '$expected', got '$line'"));
 
