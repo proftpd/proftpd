@@ -468,6 +468,11 @@ void pr_data_clear_xfer_pool(void) {
     destroy_pool(session.xfer.p);
   }
 
+  /* The RNFR path note is allocated out of the transfer pool; remove it
+   * now, lest it be left pointing to freed memory.
+   */
+  (void) pr_table_remove(session.notes, "mod_core.rnfr-path", NULL);
+
   /* Note that session.xfer.xfer_type may have been set already, e.g.
    * for STOR_UNIQUE uploads.  To support this, we need to preserve that
    * value.
