@@ -912,10 +912,19 @@ static modret_t *sql_passwd_ssha(cmd_rec *cmd, const char *plaintext,
     return PR_ERROR_INT(cmd, PR_AUTH_BADPWD);
   }
 
-  /* Append the salt */
-  hash = (unsigned char *) pstrcat(cmd->tmp_pool, (char *) hash, (char *) salt,
-    NULL);
-  hash_len = hash_len + salt_len;
+  /* Append the salt.  Both the digest and the salt are binary data, which
+   * may contain NULs, so we cannot use string functions here.
+   */
+  if (salt_len > 0) {
+    unsigned char *salted_hash;
+
+    salted_hash = palloc(cmd->tmp_pool, hash_len + salt_len);
+    memcpy(salted_hash, hash, hash_len);
+    memcpy(salted_hash + hash_len, salt, salt_len);
+
+    hash = salted_hash;
+    hash_len = hash_len + salt_len;
+  }
 
   encodedtext = sql_passwd_encode(cmd->tmp_pool, SQL_PASSWD_ENC_USE_BASE64,
     hash, hash_len);
