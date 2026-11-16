@@ -17,6 +17,11 @@ $| = 1;
 my $order = 0;
 
 my $TESTS = {
+  quotatab_file_site_quota_issue2468 => {
+    order => ++$order,
+    test_class => [qw(bug forking)],
+  },
+
   quotatab_file_single_suppl_group => {
     order => ++$order,
     test_class => [qw(bug forking)],
@@ -81,8 +86,8 @@ sub set_up {
 sub get_ftpquota_bin {
   my $ftpquota_bin;
 
-  if ($ENV{PROFTPD_TEST_PATH}) {
-    $ftpquota_bin = File::Spec->rel2abs("$ENV{PROFTPD_TEST_PATH}/contrib/ftpquota");
+  if (defined($ENV{PROFTPD_TEST_PATH})) {
+    $ftpquota_bin = File::Spec->rel2abs("$ENV{PROFTPD_TEST_PATH}/ftpquota");
 
   } else {
     $ftpquota_bin = File::Spec->rel2abs('../contrib/ftpquota');
@@ -118,10 +123,6 @@ sub get_tally {
     print STDERR "Output: ", join('', @res), "\n";
   }
 
-  if ($? != 0) {
-    die("'$cmd' failed");
-  }
-
   my ($bytes_in_used, $bytes_out_used, $bytes_xfer_used, $files_in_used, $files_out_used, $files_xfer_used);
 
   foreach my $line (@res) {
@@ -148,6 +149,159 @@ sub get_tally {
   }
 
   return ($quota_type, $bytes_in_used, $bytes_out_used, $bytes_xfer_used, $files_in_used, $files_out_used, $files_xfer_used);
+}
+
+sub quotatab_file_site_quota_issue2468 {
+  my $self = shift;
+  my $tmpdir = $self->{tmpdir};
+  my $setup = test_setup($tmpdir, 'quotatab');
+
+  auth_group_write($setup->{auth_group_file}, 'test1', $setup->{gid}+2,
+    $setup->{user});
+
+  # Make sure that the group for whom there is a limit is NOT the user's
+  # primary group, but IS the user's only supplemental group.
+  auth_group_write($setup->{auth_group_file}, 'test', $setup->{gid}+1,
+    $setup->{user});
+
+  my $limit_file = File::Spec->rel2abs("$tmpdir/ftpquota-group-limit.tab");
+  my $tally_file = File::Spec->rel2abs("$tmpdir/ftpquota-group-tally.tab");
+
+  my $config = {
+    PidFile => $setup->{pid_file},
+    ScoreboardFile => $setup->{scoreboard_file},
+    SystemLog => $setup->{log_file},
+
+    AuthUserFile => $setup->{auth_user_file},
+    AuthGroupFile => $setup->{auth_group_file},
+    AuthOrder => 'mod_auth_file.c',
+
+    DefaultChdir => '~',
+
+    IfModules => {
+      'mod_delay.c' => {
+        DelayEngine => 'off',
+      },
+
+      'mod_quotatab_file.c' => {
+        QuotaEngine => 'on',
+        QuotaLog => $setup->{log_file},
+        QuotaLimitTable => "file:$limit_file",
+        QuotaTallyTable => "file:$tally_file",
+        QuotaShowQuotas => 'on',
+      },
+    },
+  };
+
+  my ($port, $config_user, $config_group) = config_write($setup->{config_file},
+    $config);
+
+  # Open pipes, for use between the parent and child processes.  Specifically,
+  # the child will indicate when it's done with its test by writing a message
+  # to the parent.
+  my ($rfh, $wfh);
+  unless (pipe($rfh, $wfh)) {
+    die("Can't open pipe: $!");
+  }
+
+  my $ex;
+
+  # Fork child
+  $self->handle_sigchld();
+  defined(my $pid = fork()) or die("Can't fork: $!");
+  if ($pid) {
+    eval {
+      # Allow for server startup
+      sleep(1);
+
+      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
+      $client->login($setup->{user}, $setup->{passwd});
+
+      my $conn = $client->stor_raw('test.txt');
+      unless ($conn) {
+        die("Failed to STOR test.txt: " . $client->response_code() . " " .
+          $client->response_msg());
+      }
+
+      my $buf = "Hello, World\n";
+      $conn->write($buf, length($buf), 25);
+      sleep(0.25);
+      eval { $conn->close() };
+
+      my $resp_code = $client->response_code();
+      my $resp_msg = $client->response_msg();
+      $self->assert_transfer_ok($resp_code, $resp_msg);
+
+      # This is what we expect to see:
+      #
+      # ftpquota \
+      # --table-path t/etc/modules/mod_quotatab_file/ftpquota-group-limit.tab \
+      # --type limit \
+      # --show-records
+      # -------------------------------------------
+      #   Name: test
+      #   Quota Type: Group
+      #   Per Session: False
+      #   Limit Type: Hard
+      #     Uploaded bytes:	19327352832.00
+      #     Downloaded bytes:	unlimited
+      #     Transferred bytes:	unlimited
+      #     Uploaded files:	unlimited
+      #     Downloaded files:	unlimited
+      #     Transferred files:	unlimited
+
+      $client->site('QUOTA');
+      $resp_code = $client->response_code();
+      my $resp_msgs = $client->response_msgs();
+
+      my $expected = 200;
+      $self->assert($expected == $resp_code,
+        test_msg("Expected response code $expected, got $resp_code"));
+
+      $expected = ' Name: test';
+      $self->assert($expected eq $resp_msgs->[2],
+        test_msg("Expected '$expected', got '$resp_msgs->[2]'"));
+
+      $expected = ' Quota Type: Group';
+      $self->assert($expected eq $resp_msgs->[3],
+        test_msg("Expected '$expected', got '$resp_msgs->[3]'"));
+
+      $expected = ' Per Session: False';
+      $self->assert($expected eq $resp_msgs->[4],
+        test_msg("Expected '$expected', got '$resp_msgs->[4]'"));
+
+      $expected = ' Limit Type: Hard';
+      $self->assert($expected eq $resp_msgs->[5],
+        test_msg("Expected '$expected', got '$resp_msgs->[5]'"));
+
+      $expected = '   Uploaded bytes:\s+13\.00\/19327352832\.00';
+      $self->assert(qr/$expected/, $resp_msgs->[6],
+        test_msg("Expected '$expected', got '$resp_msgs->[6]'"));
+
+      $client->quit();
+    };
+    if ($@) {
+      $ex = $@;
+    }
+
+    $wfh->print("done\n");
+    $wfh->flush();
+
+  } else {
+    eval { server_wait($setup->{config_file}, $rfh) };
+    if ($@) {
+      warn($@);
+      exit 1;
+    }
+
+    exit 0;
+  }
+
+  # Stop server
+  server_stop($setup->{pid_file});
+  $self->assert_child_ok($pid);
+
+  test_cleanup($setup, $ex);
 }
 
 sub quotatab_file_single_suppl_group {
@@ -253,35 +407,40 @@ sub quotatab_file_single_suppl_group {
   server_stop($setup->{pid_file});
   $self->assert_child_ok($pid);
 
-  my ($quota_type, $bytes_in_used, $bytes_out_used, $bytes_xfer_used, $files_in_used, $files_out_used, $files_xfer_used) = get_tally($tally_file, 'test', 'group');
+  eval {
+    my ($quota_type, $bytes_in_used, $bytes_out_used, $bytes_xfer_used, $files_in_used, $files_out_used, $files_xfer_used) = get_tally($tally_file, 'test', 'group');
 
-  my $expected = 'group';
-  $self->assert(qr/$expected/i, $quota_type,
-    test_msg("Expected quota type '$expected', got '$quota_type'"));
+    my $expected = 'group';
+    $self->assert(qr/$expected/i, $quota_type,
+      test_msg("Expected quota type '$expected', got '$quota_type'"));
 
-  $expected = '^(13.0+|13)$';
-  $self->assert(qr/$expected/, $bytes_in_used,
-    test_msg("Expected bytes_in_used $expected, got $bytes_in_used"));
+    $expected = '^(13.0+|13)$';
+    $self->assert(qr/$expected/, $bytes_in_used,
+      test_msg("Expected bytes_in_used $expected, got $bytes_in_used"));
 
-  $expected = '^(0.0+|0|unlimited)$';
-  $self->assert(qr/$expected/, $bytes_out_used,
-    test_msg("Expected bytes_out_used $expected, got $bytes_out_used"));
+    $expected = '^(0.0+|0|unlimited)$';
+    $self->assert(qr/$expected/, $bytes_out_used,
+      test_msg("Expected bytes_out_used $expected, got $bytes_out_used"));
 
-  $expected = '^(0.0+|0|unlimited)$';
-  $self->assert(qr/$expected/, $bytes_xfer_used,
-    test_msg("Expected bytes_xfer_used $expected, got $bytes_xfer_used"));
+    $expected = '^(0.0+|0|unlimited)$';
+    $self->assert(qr/$expected/, $bytes_xfer_used,
+      test_msg("Expected bytes_xfer_used $expected, got $bytes_xfer_used"));
 
-  $expected = 0;
-  $self->assert($expected == $files_in_used,
-    test_msg("Expected files_in_used $expected, got $files_in_used"));
+    $expected = 0;
+    $self->assert($expected == $files_in_used,
+      test_msg("Expected files_in_used $expected, got $files_in_used"));
 
-  $expected = 0;
-  $self->assert($expected == $files_out_used,
-    test_msg("Expected files_out_used $expected, got $files_out_used"));
+    $expected = 0;
+    $self->assert($expected == $files_out_used,
+      test_msg("Expected files_out_used $expected, got $files_out_used"));
 
-  $expected = 0;
-  $self->assert($expected == $files_xfer_used,
-    test_msg("Expected files_xfer_used $expected, got $files_xfer_used"));
+    $expected = 0;
+    $self->assert($expected == $files_xfer_used,
+      test_msg("Expected files_xfer_used $expected, got $files_xfer_used"));
+  };
+  if ($@) {
+    $ex = $@ unless $ex;
+  }
 
   test_cleanup($setup, $ex);
 }
@@ -439,10 +598,6 @@ sub quotatab_file_bytes_download_zero {
     print STDERR "Output: ", join('', @res), "\n";
   }
 
-  if ($? != 0) {
-    die("'$cmd' failed");
-  }
-
   # Create the tally table
   if ($ENV{TEST_VERBOSE}) {
     $cmd = "perl $ftpquota_bin --verbose --create-table --table-path=$tally_file --type=tally";
@@ -460,10 +615,6 @@ sub quotatab_file_bytes_download_zero {
   if (scalar(@res) &&
       $ENV{TEST_VERBOSE}) {
     print STDERR "Output: ", join('', @res), "\n";
-  }
-
-  if ($? != 0) {
-    die("'$cmd' failed");
   }
 
   # Populate the limit table
@@ -485,10 +636,6 @@ sub quotatab_file_bytes_download_zero {
     print STDERR "Output: ", join('', @res), "\n";
   }
 
-  if ($? != 0) {
-    die("'$cmd' failed");
-  }
-
   if ($ENV{TEST_VERBOSE}) {
     $cmd = "perl $ftpquota_bin --verbose --table-path=$limit_file --type=limit --show-record --name=$setup->{user}";
 
@@ -505,10 +652,6 @@ sub quotatab_file_bytes_download_zero {
   if (scalar(@res) &&
       $ENV{TEST_VERBOSE}) {
     print STDERR "Output: ", join('', @res), "\n";
-  }
-
-  if ($? != 0) {
-    die("'$cmd' failed");
   }
 
   my $config = {
