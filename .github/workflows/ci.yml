@@ -57,6 +57,10 @@ jobs:
           - almalinux:8
           - alpine:3.18
           - ubuntu:22.04
+        exclude:
+          # clang on Ubuntu 22.04, on GitHub, is now untrustworthy
+          - container: ubuntu:22.04
+            compiler: clang
 
     container: ${{ matrix.container }}
 
