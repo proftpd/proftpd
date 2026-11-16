@@ -1065,6 +1065,36 @@ START_TEST (ctrls_recv_response_too_large_test) {
 }
 END_TEST
 
+START_TEST (ctrls_recv_response_invalid_json_object_test) {
+  int fd, res, status;
+  uint32_t msglen;
+  char *msg = NULL;
+
+  mark_point();
+  fd = tmpfile_fd();
+  if (fd < 0) {
+    return;
+  }
+
+  /* We deliberately provide a valid JSON array, when the code is explicitly
+   * expecting a JSON object, to test that error handling code path.
+   */
+  mark_point();
+  msg = "[\"status\"\"responses\",\"foo\"]";
+  msglen = strlen(msg);
+  (void) write(fd, &msglen, sizeof(msglen));
+  (void) write(fd, msg, msglen);
+  rewind_fd(fd);
+  res = pr_ctrls_recv_response(p, fd, &status, NULL);
+  ck_assert_msg(res < 1, "Failed to handle invalid response: %s",
+    strerror(errno));
+  ck_assert_msg(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
+    strerror(errno), errno);
+
+  (void) close(fd);
+}
+END_TEST
+
 START_TEST (ctrls_issock_unix_test) {
   int res;
   mode_t mode;
@@ -2359,6 +2389,7 @@ Suite *tests_get_ctrls_suite(void) {
   tcase_add_test(testcase, ctrls_recv_request_valid_test);
   tcase_add_test(testcase, ctrls_recv_response_test);
   tcase_add_test(testcase, ctrls_recv_response_too_large_test);
+  tcase_add_test(testcase, ctrls_recv_response_invalid_json_object_test);
 
   tcase_add_test(testcase, ctrls_issock_unix_test);
   tcase_add_test(testcase, ctrls_get_registered_actions_test);
