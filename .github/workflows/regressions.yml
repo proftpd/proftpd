@@ -118,10 +118,8 @@ jobs:
           make install
 
       - name: Run integration tests
-        id: testsuite
         # We expect some of the tests to fail, but still need to proceed
         # onward to the next step, for setting the failure logs.
-        continue-on-error: true
         env:
           PROFTPD_TEST_BIN: /usr/local/sbin/proftpd
           PROFTPD_TEST_CI: github
@@ -130,9 +128,4 @@ jobs:
         run: |
           cd proftpd/tests
           perl tests.pl
-
-      - name: Report test failures
-        if: steps.testsuite.outcome == 'failure'
-        run: |
-          cd proftpd/tests
           cat tests.log
