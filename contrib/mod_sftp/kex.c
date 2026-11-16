@@ -6702,6 +6702,34 @@ int sftp_kex_rekey_set_interval(int rekey_interval) {
   }
 
   kex_rekey_interval = rekey_interval;
+
+  /* Initially any rekey timer is set just after KEX completes.  However,
+   * the lookup of the SFTPRekey settings only happens once authentication
+   * successfully completed, which is after that initial KEX occurs.
+   *
+   * That means we also need to set any rekey timer here, now, as the
+   * caller might be the post-authentication SFTPRekey settings lookup.
+   */
+
+  if (rekey_interval > 0) {
+    /* If we already have this timer in place, ASSUME it is for the same
+     * interval as requested.
+     *
+     * If not, we can deal with that use case later.
+     */
+    if (kex_rekey_timerno == -1) {
+      /* Register the rekey timer. */
+      kex_rekey_timerno = pr_timer_add(kex_rekey_interval, -1,
+        &sftp_module, kex_rekey_timer_cb, "SFTP KEX Rekey timer");
+    }
+
+  } else {
+    if (kex_rekey_timerno != -1) {
+      (void) pr_timer_remove(kex_rekey_timerno, &sftp_module);
+      kex_rekey_timerno = -1;
+    }
+  }
+
   return 0;
 }
 
