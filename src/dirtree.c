@@ -284,20 +284,19 @@ unsigned char dir_hide_file(const char *path) {
       have_class_regex ? "class" : "session");
 
     if (pre == NULL) {
-      destroy_pool(tmp_pool);
-
       /* HideFiles none for this user/group/class */
 
       pr_log_debug(DEBUG9, "file '%s' did not match HideFiles pattern 'none'",
         file_name);
+      destroy_pool(tmp_pool);
+
       return FALSE;
     }
 
     if (pr_regexp_exec(pre, file_name, 0, NULL, 0, 0, 0) != 0) {
-      destroy_pool(tmp_pool);
-
       pr_log_debug(DEBUG9, "file '%s' did not match %sHideFiles pattern",
         file_name, negated ? "negated " : "");
+      destroy_pool(tmp_pool);
 
       /* The file failed to match the HideFiles regex, which means it should
        * be treated as a "visible" file.  If the regex was negated, though,
@@ -306,10 +305,9 @@ unsigned char dir_hide_file(const char *path) {
       return (negated ? TRUE : FALSE);
     }
 
-    destroy_pool(tmp_pool);
-
     pr_log_debug(DEBUG9, "file '%s' matched %sHideFiles pattern", file_name,
       negated ? "negated " : "");
+    destroy_pool(tmp_pool);
 
     /* The file matched the HideFiles regex, which means it should be
      * considered a "hidden" file.  If the regex was negated, though,
