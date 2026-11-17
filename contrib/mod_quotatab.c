@@ -4342,9 +4342,19 @@ MODRET quotatab_post_stor_err(cmd_rec *cmd) {
 }
 
 MODRET quotatab_pre_site(cmd_rec *cmd) {
+  unsigned char *authenticated;
 
   /* Make sure it's a valid SITE command */
   if (cmd->argc < 2) {
+    return PR_DECLINED(cmd);
+  }
+
+  /* If the client has not authenticated yet, we should do nothing with this
+   * command.
+   */
+  authenticated = get_param_ptr(cmd->server->conf, "authenticated", FALSE);
+  if (authenticated == NULL ||
+      *authenticated == FALSE) {
     return PR_DECLINED(cmd);
   }
 
@@ -4495,9 +4505,19 @@ MODRET quotatab_site(cmd_rec *cmd) {
 }
 
 MODRET quotatab_post_site(cmd_rec *cmd) {
+  unsigned char *authenticated;
 
   /* Make sure it's a valid SITE command */
   if (cmd->argc < 2) {
+    return PR_DECLINED(cmd);
+  }
+
+  /* If the client has not authenticated yet, we should do nothing with this
+   * command.
+   */
+  authenticated = get_param_ptr(cmd->server->conf, "authenticated", FALSE);
+  if (authenticated == NULL ||
+      *authenticated == FALSE) {
     return PR_DECLINED(cmd);
   }
 
@@ -4540,9 +4560,19 @@ MODRET quotatab_post_site(cmd_rec *cmd) {
 }
 
 MODRET quotatab_post_site_err(cmd_rec *cmd) {
+  unsigned char *authenticated;
 
   /* Make sure it's a valid SITE command */
   if (cmd->argc < 2) {
+    return PR_DECLINED(cmd);
+  }
+
+  /* If the client has not authenticated yet, we should do nothing with this
+   * command.
+   */
+  authenticated = get_param_ptr(cmd->server->conf, "authenticated", FALSE);
+  if (authenticated == NULL ||
+      *authenticated == FALSE) {
     return PR_DECLINED(cmd);
   }
 
