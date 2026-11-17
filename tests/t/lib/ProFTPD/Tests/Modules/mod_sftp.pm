@@ -2182,7 +2182,7 @@ my $TESTS = {
 sub get_sftplog {
   my $db_file = shift;
 
-  my $sql = "SELECT user, operation, filename, full_path, filesize, xfertime FROM sftplog";
+  my $sql = "SELECT user, operation, filename, full_path, filesize, xfertime FROM sftplog LIMIT 1;";
 
   my $cmd = "sqlite3 $db_file \"$sql\"";
 
@@ -16272,10 +16272,9 @@ sub ssh2_auth_no_authorized_keys {
   defined(my $pid = fork()) or die("Can't fork: $!");
   if ($pid) {
     eval {
-      my $ssh2 = Net::SSH2->new();
-
       sleep(1);
 
+      my $ssh2 = Net::SSH2->new();
       unless ($ssh2->connect('127.0.0.1', $port)) {
         my ($err_code, $err_name, $err_str) = $ssh2->error();
         die("Can't connect to SSH2 server: [$err_name] ($err_code) $err_str");
@@ -16293,7 +16292,7 @@ sub ssh2_auth_no_authorized_keys {
 
         # Unless we have mod_sftp_pam involved, we shouldn't see
         # 'keyboard-interactive', either.
-        if ($have_sftp_pam &&
+        if (!$have_sftp_pam &&
             $meth eq 'keyboard-interactive') {
           die("Unexpected SSH2 authentication method '$meth' provided");
         }
@@ -16430,6 +16429,13 @@ sub ssh2_auth_kbdint_failed_password_ok {
   my $rsa_host_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/ssh_host_rsa_key');
   my $dsa_host_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/ssh_host_dsa_key');
 
+  my $rsa_rfc4716_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/authorized_rsa_keys');
+
+  my $authorized_keys = File::Spec->rel2abs("$tmpdir/.authorized_keys");
+  unless (copy($rsa_rfc4716_key, $authorized_keys)) {
+    die("Can't copy $rsa_rfc4716_key to $authorized_keys: $!");
+  }
+
   my $auth_meths = "publickey keyboard-interactive password";
 
   my $config = {
@@ -16453,6 +16459,7 @@ sub ssh2_auth_kbdint_failed_password_ok {
         "SFTPLog $setup->{log_file}",
         "SFTPHostKey $rsa_host_key",
         "SFTPHostKey $dsa_host_key",
+        "SFTPAuthorizedUserKeys file:~/.authorized_keys",
 
         # We want to specifically configure the list of offered auth methods,
         # such that 'keyboard-interactive' is in the middle of the list.
