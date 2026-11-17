@@ -886,17 +886,60 @@ static int recv_finfo(pool *p, uint32_t channel_id, struct scp_path *sp,
       if (xerrno == ENOENT) {
         pr_trace_msg(trace_channel, 5, "creating directory '%s'", sp->filename);
 
-        /* XXX Dispatch a C_MKD command here?  Should <Limit MKD> apply to
-         * recursive directory uploads via SCP?
-         */
+        cmd = scp_cmd_alloc(p, C_MKD, sp->filename);
 
-        pr_fs_clear_cache2(sp->filename);
-        if (pr_fsio_smkdir(p, sp->filename, 0777, (uid_t) -1, (gid_t) -1) < 0) {
+        if (pr_cmd_dispatch_phase(cmd, PRE_CMD, 0) < 0) {
+          (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
+            "scp directory upload to '%s' blocked by '%s' handler",
+            sp->filename, (char *) cmd->argv[0]);
+
+          (void) pr_cmd_dispatch_phase(cmd, POST_CMD_ERR, 0);
+          (void) pr_cmd_dispatch_phase(cmd, LOG_CMD_ERR, 0);
+
+          write_confirm(p, channel_id, 1,
+            pstrcat(p, sp->filename, ": ", strerror(EACCES), NULL));
+          sp->wrote_errors = TRUE;
+
+          return 1;
+        }
+
+        if (strcmp(sp->filename, cmd->arg) != 0) {
+          sp->filename = cmd->arg;
+          sp->best_path = dir_canonical_vpath(scp_pool, sp->filename);
+        }
+
+        if (pr_filter_allow_path(get_dir_ctxt(p, (char *) sp->best_path),
+              sp->best_path) != 0 ||
+            !dir_check_canon(p, cmd, G_WRITE, sp->best_path, NULL)) {
+          (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
+            "scp directory upload to '%s' blocked by configuration",
+            sp->best_path);
+
+          (void) pr_cmd_dispatch_phase(cmd, POST_CMD_ERR, 0);
+          (void) pr_cmd_dispatch_phase(cmd, LOG_CMD_ERR, 0);
+
+          write_confirm(p, channel_id, 1,
+            pstrcat(p, sp->filename, ": ", strerror(EACCES), NULL));
+          sp->wrote_errors = TRUE;
+
+          return 1;
+        }
+
+        /* Note that this will also handle any relevant UserOwner/GroupOwner
+         * changes.
+         */
+        pr_fs_clear_cache2(sp->best_path);
+        if (pr_fsio_smkdir(p, sp->best_path, 0777, session.fsuid,
+            session.fsgid) < 0) {
           xerrno = errno;
 
           (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
             "scp: error creating directory '%s': %s", sp->filename,
             strerror(xerrno));
+
+          (void) pr_cmd_dispatch_phase(cmd, POST_CMD_ERR, 0);
+          (void) pr_cmd_dispatch_phase(cmd, LOG_CMD_ERR, 0);
+
           write_confirm(p, channel_id, 1,
             pstrcat(p, sp->filename, ": ", strerror(xerrno), NULL));
           sp->wrote_errors = TRUE;
@@ -905,12 +948,17 @@ static int recv_finfo(pool *p, uint32_t channel_id, struct scp_path *sp,
           return 1;
         }
 
-        sftp_misc_chown_path(p, sp->filename);
+        (void) pr_cmd_dispatch_phase(cmd, POST_CMD, 0);
+        (void) pr_cmd_dispatch_phase(cmd, LOG_CMD, 0);
 
       } else {
         (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
           "scp: error checking directory '%s': %s", sp->filename,
           strerror(xerrno));
+
+        (void) pr_cmd_dispatch_phase(cmd, POST_CMD_ERR, 0);
+        (void) pr_cmd_dispatch_phase(cmd, LOG_CMD_ERR, 0);
+
         write_confirm(p, channel_id, 1,
           pstrcat(p, sp->filename, ": ", strerror(xerrno), NULL));
         sp->wrote_errors = TRUE;
@@ -1665,6 +1713,8 @@ static int recv_path(pool *p, uint32_t channel_id, struct scp_path *sp,
       }
     }
 
+    session.xfer.xfer_cmd = pstrdup(session.xfer.p, C_STOR);
+
     if (sp->file_existed) {
       if (pr_table_add(cmd->notes, "mod_xfer.file-modified",
           pstrdup(cmd->pool, "true"), 0) < 0) {
@@ -1703,6 +1753,7 @@ static int recv_path(pool *p, uint32_t channel_id, struct scp_path *sp,
       }
     }
 
+    session.xfer.xfer_cmd = pstrdup(session.xfer.p, C_STOR);
     (void) pr_cmd_dispatch_phase(cmd, POST_CMD_ERR, 0);
     (void) pr_cmd_dispatch_phase(cmd, LOG_CMD_ERR, 0);
   }
@@ -2290,6 +2341,7 @@ static int send_path(pool *p, uint32_t channel_id, struct scp_path *sp) {
 
   if (session.xfer.p == NULL) {
     session.xfer.p = pr_pool_create_sz(scp_pool, 64);
+    session.xfer.xfer_cmd = pstrdup(session.xfer.p, C_RETR);
     session.xfer.path = pstrdup(session.xfer.p, sp->best_path);
     memset(&session.xfer.start_time, 0, sizeof(session.xfer.start_time));
     gettimeofday(&session.xfer.start_time, NULL);

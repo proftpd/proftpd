@@ -1392,12 +1392,11 @@ EOC
     eval {
       my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
       $client->host($server_alias);
+
       my $resp_code = $client->response_code();
       my $resp_msg = $client->response_msg();
 
-      my $expected;
-
-      $expected = 220;
+      my $expected = 220;
       $self->assert($expected == $resp_code,
         test_msg("Expected response code $expected, got $resp_code"));
 
@@ -1426,7 +1425,6 @@ EOC
 
       $client->quit();
     };
-
     if ($@) {
       $ex = $@;
     }
@@ -1446,10 +1444,9 @@ EOC
 
   # Stop server
   server_stop($setup->{pid_file});
-
   $self->assert_child_ok($pid);
 
-  test_cleanup($setup->{log_file}, $ex);
+  test_cleanup($setup, $ex);
 }
 
 sub host_after_feat_ok {
@@ -1472,6 +1469,9 @@ sub host_after_feat_ok {
     AuthGroupFile => $setup->{auth_group_file},
     AuthOrder => 'mod_auth_file.c',
 
+    DefaultServer => 'on',
+    SocketBindTight => 'on',
+
     IfModules => {
       'mod_delay.c' => {
         DelayEngine => 'off',
@@ -1488,6 +1488,7 @@ sub host_after_feat_ok {
   Port $port
   ServerName "$server_name"
   ServerAlias $server_alias
+  DefaultServer off
 
   TLSEngine on
   TLSLog $setup->{log_file}
@@ -1524,9 +1525,7 @@ EOC
       my $resp_code = $client->response_code();
       my $resp_msgs = $client->response_msgs();
 
-      my $expected;
-
-      $expected = 211;
+      my $expected = 211;
       $self->assert($expected == $resp_code,
         test_msg("Expected response code $expected, got $resp_code"));
 
@@ -1555,7 +1554,6 @@ EOC
 
       $client->quit();
     };
-
     if ($@) {
       $ex = $@;
     }
@@ -1575,10 +1573,9 @@ EOC
 
   # Stop server
   server_stop($setup->{pid_file});
-
   $self->assert_child_ok($pid);
 
-  test_cleanup($setup->{log_file}, $ex);
+  test_cleanup($setup, $ex);
 }
 
 1;

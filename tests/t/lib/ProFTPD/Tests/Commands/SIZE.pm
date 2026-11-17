@@ -135,7 +135,7 @@ sub size_ok {
   defined(my $pid = fork()) or die("Can't fork: $!");
   if ($pid) {
     eval {
-      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port, 0, 1);
+      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
       $client->login($setup->{user}, $setup->{passwd});
       $client->type('binary');
 
@@ -237,7 +237,7 @@ sub size_abs_symlink_file {
   defined(my $pid = fork()) or die("Can't fork: $!");
   if ($pid) {
     eval {
-      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port, 0, 1);
+      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
       $client->login($setup->{user}, $setup->{passwd});
       $client->type('binary');
 
@@ -341,7 +341,7 @@ sub size_abs_symlink_file_chrooted_bug4219 {
   defined(my $pid = fork()) or die("Can't fork: $!");
   if ($pid) {
     eval {
-      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port, 0, 1);
+      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
       $client->login($setup->{user}, $setup->{passwd});
       $client->type('binary');
 
@@ -453,7 +453,7 @@ sub size_rel_symlink_file {
   defined(my $pid = fork()) or die("Can't fork: $!");
   if ($pid) {
     eval {
-      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port, 0, 1);
+      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
       $client->login($setup->{user}, $setup->{passwd});
       $client->type('binary');
 
@@ -558,7 +558,7 @@ sub size_rel_symlink_file_chrooted_bug4219 {
   defined(my $pid = fork()) or die("Can't fork: $!");
   if ($pid) {
     eval {
-      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port, 0, 1);
+      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
       $client->login($setup->{user}, $setup->{passwd});
       $client->type('binary');
 
@@ -653,7 +653,7 @@ sub size_abs_symlink_dir {
   defined(my $pid = fork()) or die("Can't fork: $!");
   if ($pid) {
     eval {
-      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port, 0, 1);
+      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
       $client->login($setup->{user}, $setup->{passwd});
       $client->type('binary');
 
@@ -758,7 +758,7 @@ sub size_abs_symlink_dir_chrooted_bug4219 {
   defined(my $pid = fork()) or die("Can't fork: $!");
   if ($pid) {
     eval {
-      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port, 0, 1);
+      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
       $client->login($setup->{user}, $setup->{passwd});
       $client->type('binary');
 
@@ -862,7 +862,7 @@ sub size_rel_symlink_dir {
   defined(my $pid = fork()) or die("Can't fork: $!");
   if ($pid) {
     eval {
-      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port, 0, 1);
+      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
       $client->login($setup->{user}, $setup->{passwd});
       $client->type('binary');
 
@@ -968,7 +968,7 @@ sub size_rel_symlink_dir_chrooted_bug4219 {
   defined(my $pid = fork()) or die("Can't fork: $!");
   if ($pid) {
     eval {
-      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port, 0, 1);
+      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
       $client->login($setup->{user}, $setup->{passwd});
       $client->type('binary');
 
@@ -1061,7 +1061,7 @@ sub size_fails_ascii {
   defined(my $pid = fork()) or die("Can't fork: $!");
   if ($pid) {
     eval {
-      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port, 0, 1);
+      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
       $client->login($setup->{user}, $setup->{passwd});
       $client->type('ascii');
 
@@ -1147,7 +1147,7 @@ sub size_fails_enoent {
   defined(my $pid = fork()) or die("Can't fork: $!");
   if ($pid) {
     eval {
-      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port, 0, 1);
+      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
       $client->login($setup->{user}, $setup->{passwd});
       $client->type('binary');
 
@@ -1239,7 +1239,7 @@ sub size_fails_eperm {
   defined(my $pid = fork()) or die("Can't fork: $!");
   if ($pid) {
     eval {
-      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port, 0, 1);
+      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
       $client->login($setup->{user}, $setup->{passwd});
       $client->type('binary');
 

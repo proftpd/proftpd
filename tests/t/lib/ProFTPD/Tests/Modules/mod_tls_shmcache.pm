@@ -29,6 +29,11 @@ my $TESTS = {
     test_class => [qw(bug forking)],
   },
 
+  tls_sess_cache_shm_sighup => {
+    order => ++$order,
+    test_class => [qw(forking)],
+  },
+
 };
 
 sub new {
@@ -67,38 +72,7 @@ sub list_tests {
 sub tls_sess_cache_shm {
   my $self = shift;
   my $tmpdir = $self->{tmpdir};
-
-  my $config_file = "$tmpdir/tls.conf";
-  my $pid_file = File::Spec->rel2abs("$tmpdir/tls.pid");
-  my $scoreboard_file = File::Spec->rel2abs("$tmpdir/tls.scoreboard");
-
-  my $log_file = test_get_logfile();
-
-  my $auth_user_file = File::Spec->rel2abs("$tmpdir/tls.passwd");
-  my $auth_group_file = File::Spec->rel2abs("$tmpdir/tls.group");
-
-  my $user = 'proftpd';
-  my $passwd = 'test';
-  my $group = 'ftpd';
-  my $home_dir = File::Spec->rel2abs($tmpdir);
-  my $uid = 500;
-  my $gid = 500;
-
-  # Make sure that, if we're running as root, that the home directory has
-  # permissions/privs set for the account we create
-  if ($< == 0) {
-    unless (chmod(0755, $home_dir)) {
-      die("Can't set perms on $home_dir to 0755: $!");
-    }
-
-    unless (chown($uid, $gid, $home_dir)) {
-      die("Can't set owner of $home_dir to $uid/$gid: $!");
-    }
-  }
-
-  auth_user_write($auth_user_file, $user, $passwd, $uid, $gid, $home_dir,
-    '/bin/bash');
-  auth_group_write($auth_group_file, $group, $gid, $user);
+  my $setup = test_setup($tmpdir, 'tls_shmcache');
 
   my $cert_file = File::Spec->rel2abs('t/etc/modules/mod_tls/server-cert.pem');
   my $ca_file = File::Spec->rel2abs('t/etc/modules/mod_tls/ca-cert.pem');
@@ -107,14 +81,15 @@ sub tls_sess_cache_shm {
   my $sessid_file = File::Spec->rel2abs("$tmpdir/sessid.pem");
 
   my $config = {
-    PidFile => $pid_file,
-    ScoreboardFile => $scoreboard_file,
-    SystemLog => $log_file,
-    TraceLog => $log_file,
+    PidFile => $setup->{pid_file},
+    ScoreboardFile => $setup->{scoreboard_file},
+    SystemLog => $setup->{log_file},
+    TraceLog => $setup->{log_file},
     Trace => 'tls.shmcache:20',
 
-    AuthUserFile => $auth_user_file,
-    AuthGroupFile => $auth_group_file,
+    AuthUserFile => $setup->{auth_user_file},
+    AuthGroupFile => $setup->{auth_group_file},
+    AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
       'mod_delay.c' => {
@@ -123,11 +98,14 @@ sub tls_sess_cache_shm {
 
       'mod_tls.c' => {
         TLSEngine => 'on',
-        TLSLog => $log_file,
+        TLSLog => $setup->{log_file},
         TLSRequired => 'on',
         TLSRSACertificateFile => $cert_file,
         TLSCACertificateFile => $ca_file,
         TLSVerifyClient => 'off',
+
+        # For session IDs, we need to use TLSv1.2, not TLSv1.3
+        TLSProtocol => 'TLSv1.2',
       },
 
       'mod_tls_shmcache.c' => {
@@ -137,7 +115,8 @@ sub tls_sess_cache_shm {
     },
   };
 
-  my ($port, $config_user, $config_group) = config_write($config_file, $config);
+  my ($port, $config_user, $config_group) = config_write($setup->{config_file},
+    $config);
 
   # Open pipes, for use between the parent and child processes.  Specifically,
   # the child will indicate when it's done with its test by writing a message
@@ -168,6 +147,7 @@ sub tls_sess_cache_shm {
       my @cmd = (
         $openssl,
         's_client',
+        '-crlf',
         '-connect',
         "127.0.0.1:$port",
         '-starttls',
@@ -191,7 +171,7 @@ sub tls_sess_cache_shm {
       }
 
       my $tls_pid = open3($tls_wh, $tls_rh, $tls_eh, @cmd);
-      print $tls_wh "quit\n";
+      print $tls_wh "QUIT\n";
       waitpid($tls_pid, 0);
 
       my ($res, $cipher_str, $err_str, $out_str);
@@ -237,6 +217,7 @@ sub tls_sess_cache_shm {
       @cmd = (
         $openssl,
         's_client',
+        '-crlf',
         '-connect',
         "127.0.0.1:$port",
         '-starttls',
@@ -258,7 +239,7 @@ sub tls_sess_cache_shm {
       }
 
       $tls_pid = open3($tls_wh, $tls_rh, $tls_eh, @cmd);
-      print $tls_wh "quit\n";
+      print $tls_wh "QUIT\n";
       waitpid($tls_pid, 0);
 
       $res = 0;
@@ -302,7 +283,6 @@ sub tls_sess_cache_shm {
       $self->assert(qr/$expected/, $cipher_str,
         test_msg("Expected '$expected', got '$cipher_str'"));
     };
-
     if ($@) {
       $ex = $@;
     }
@@ -311,7 +291,7 @@ sub tls_sess_cache_shm {
     $wfh->flush();
 
   } else {
-    eval { server_wait($config_file, $rfh, 45) };
+    eval { server_wait($setup->{config_file}, $rfh, 45) };
     if ($@) {
       warn($@);
       exit 1;
@@ -321,18 +301,10 @@ sub tls_sess_cache_shm {
   }
 
   # Stop server
-  server_stop($pid_file);
-
+  server_stop($setup->{pid_file});
   $self->assert_child_ok($pid);
 
-  if ($ex) {
-    test_append_logfile($log_file, $ex);
-    unlink($log_file);
-
-    die($ex);
-  }
-
-  unlink($log_file);
+  test_cleanup($setup, $ex);
 }
 
 sub starttls_ftp {
@@ -417,6 +389,7 @@ sub tls_stapling_on_shmcache_bug4175 {
 
     AuthUserFile => $setup->{auth_user_file},
     AuthGroupFile => $setup->{auth_group_file},
+    AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
       'mod_delay.c' => {
@@ -460,6 +433,12 @@ sub tls_stapling_on_shmcache_bug4175 {
       # Give the server a chance to start up
       sleep(2);
 
+      # Suppress annoying warning from IO::Socket::SSL.
+      local $SIG{__WARN__} = sub {
+        my $msg = shift;
+        warn $msg unless $msg =~ /^Use of uninitialized value.*at .*IO\/Socket\/SSL\.pm/;
+      };
+
       # Manually simulate the STARTTLS protocol
 
       my $ssl_opts = {
@@ -482,7 +461,6 @@ sub tls_stapling_on_shmcache_bug4175 {
       # Do it again, see if we actually read our our cached OCSP response
       starttls_ftp($port, $ssl_opts);
     };
-
     if ($@) {
       $ex = $@;
     }
@@ -502,10 +480,343 @@ sub tls_stapling_on_shmcache_bug4175 {
 
   # Stop server
   server_stop($setup->{pid_file});
-
   $self->assert_child_ok($pid);
 
-  test_cleanup($setup->{log_file}, $ex);
+  test_cleanup($setup, $ex);
+}
+
+sub shmcache_server_restart {
+  my $pid_file = shift;
+
+  my $pid;
+  if (open(my $fh, "< $pid_file")) {
+    $pid = <$fh>;
+    chomp($pid);
+    close($fh);
+
+  } else {
+    die("Can't read $pid_file: $!");
+  }
+
+  my $cmd = "kill -HUP $pid";
+
+  if ($ENV{TEST_VERBOSE}) {
+    print STDERR "# Restarting server: $cmd\n";
+  }
+
+  if (open(my $cmdh, "-| $cmd")) {
+    my @output = <$cmdh>;
+    close($cmdh);
+    if ($? != 0) {
+      return undef;
+    }
+  }
+
+  return 1;
+}
+
+sub tls_sess_cache_shm_sighup {
+  my $self = shift;
+  my $tmpdir = $self->{tmpdir};
+  my $setup = test_setup($tmpdir, 'tls_shmcache');
+
+  my $cert_file = File::Spec->rel2abs('t/etc/modules/mod_tls/server-cert.pem');
+  my $ca_file = File::Spec->rel2abs('t/etc/modules/mod_tls/ca-cert.pem');
+
+  my $shm_path = File::Spec->rel2abs("$tmpdir/tls-shmcache");
+  my $sessid_file = File::Spec->rel2abs("$tmpdir/sessid.pem");
+
+  my $timeout_idle = 30;
+
+  my $config = {
+    PidFile => $setup->{pid_file},
+    ScoreboardFile => $setup->{scoreboard_file},
+    SystemLog => $setup->{log_file},
+    TraceLog => $setup->{log_file},
+    Trace => 'tls:20 tls.shmcache:20',
+
+    AuthUserFile => $setup->{auth_user_file},
+    AuthGroupFile => $setup->{auth_group_file},
+    AuthOrder => 'mod_auth_file.c',
+
+    TimeoutIdle => $timeout_idle,
+
+    IfModules => {
+      'mod_delay.c' => {
+        DelayEngine => 'off',
+      },
+
+      'mod_tls.c' => {
+        TLSEngine => 'on',
+        TLSLog => $setup->{log_file},
+        TLSRequired => 'on',
+        TLSRSACertificateFile => $cert_file,
+        TLSCACertificateFile => $ca_file,
+        TLSVerifyClient => 'off',
+        TLSOptions => 'NoSessionReuseRequired EnableDiags',
+
+        # For session IDs, we need to use TLSv1.2, not TLSv1.3
+        TLSProtocol => 'TLSv1.2',
+      },
+
+      'mod_tls_shmcache.c' => {
+        # 10332 is the minimum number of bytes for shmcache
+#        TLSSessionCache => "shm:/file=$shm_path&size=20664",
+        TLSSessionCache => "shm:/file=$shm_path&size=82656",
+      },
+    },
+  };
+
+  my ($port, $config_user, $config_group) = config_write($setup->{config_file},
+    $config);
+
+  # Open pipes, for use between the parent and child processes.  Specifically,
+  # the child will indicate when it's done with its test by writing a message
+  # to the parent.
+  my ($rfh, $wfh);
+  unless (pipe($rfh, $wfh)) {
+    die("Can't open pipe: $!");
+  }
+
+  my $ex;
+
+  # Fork child
+  $self->handle_sigchld();
+  defined(my $pid = fork()) or die("Can't fork: $!");
+  if ($pid) {
+    eval {
+      # Give the server a chance to start up
+      sleep(2);
+
+      # Suppress annoying warning from IO::Socket::SSL.
+      local $SIG{__WARN__} = sub {
+        my $msg = shift;
+        warn $msg unless $msg =~ /^Use of uninitialized value.*at .*IO\/Socket\/SSL\.pm/;
+      };
+
+      my $openssl = 'openssl';
+      my @cmd = (
+        $openssl,
+        's_client',
+        '-crlf',
+        '-connect',
+        "127.0.0.1:$port",
+        '-starttls',
+        'ftp',
+        '-sess_out',
+        $sessid_file,
+        '-CAfile',
+        $ca_file,
+      );
+
+      my $tls_rh = IO::Handle->new();
+      my $tls_wh = IO::Handle->new();
+      my $tls_eh = IO::Handle->new();
+
+      $tls_wh->autoflush(1);
+
+      local $SIG{CHLD} = 'DEFAULT';
+
+      if ($ENV{TEST_VERBOSE}) {
+        print STDERR "Executing: ", join(' ', @cmd), "\n";
+      }
+
+      my $tls_pid = open3($tls_wh, $tls_rh, $tls_eh, @cmd);
+      print $tls_wh "QUIT\n";
+      waitpid($tls_pid, 0);
+
+      my ($res, $cipher_str, $err_str, $out_str);
+      if ($? >> 8) {
+        $err_str = join('', <$tls_eh>);
+        $res = 0;
+
+      } else {
+        my $output = [<$tls_rh>];
+
+        # Specifically look for the line containing 'Cipher is'
+        foreach my $line (@$output) {
+          if ($line =~ /Cipher is/) {
+            $cipher_str = $line;
+            chomp($cipher_str);
+          }
+        }
+
+        if ($ENV{TEST_VERBOSE}) {
+          $out_str = join('', @$output);
+          print STDERR "Stdout: $out_str\n";
+        }
+
+        if ($ENV{TEST_VERBOSE}) {
+          $err_str = join('', <$tls_eh>);
+          print STDERR "Stderr: $err_str\n";
+        }
+
+        $res = 1;
+      }
+      unless ($res) {
+        die("Can't talk to server: $err_str");
+      }
+
+      my $expected = '^New';
+      $self->assert(qr/$expected/, $cipher_str,
+        test_msg("Expected '$expected', got '$cipher_str'"));
+
+      shmcache_server_restart($setup->{pid_file});
+
+      my $client1_opts = {
+        Encryption => 'E',
+        Port => $port,
+        Croak => 0,
+        ReuseSession => 1,
+      };
+
+      if ($ENV{TEST_VERBOSE}) {
+        $client1_opts->{Debug} = 1;
+      }
+
+      my $client1 = Net::FTPSSL->new('127.0.0.1', $client1_opts);
+      unless ($client1) {
+        die("Can't connect to FTPS server: " . IO::Socket::SSL::errstr());
+      }
+
+      unless ($client1->login($setup->{user}, $setup->{passwd})) {
+        die("Can't login: " . $client1->last_message);
+      }
+
+      shmcache_server_restart($setup->{pid_file});
+
+      unless ($client1->list('.')) {
+        die("Can't list files: " . $client1->last_message);
+      }
+
+      shmcache_server_restart($setup->{pid_file});
+
+      my $client2_opts = {
+        Encryption => 'E',
+        Port => $port,
+        Croak => 0,
+        ReuseSession => 0,
+      };
+
+      if ($ENV{TEST_VERBOSE}) {
+        $client2_opts->{Debug} = 1;
+      }
+
+      my $client2 = Net::FTPSSL->new('127.0.0.1', $client2_opts);
+      unless ($client2) {
+        die("Can't connect to FTPS server: " . IO::Socket::SSL::errstr());
+      }
+
+      shmcache_server_restart($setup->{pid_file});
+
+      unless ($client2->login($setup->{user}, $setup->{passwd})) {
+        die("Can't login: " . $client2->last_message);
+      }
+
+      shmcache_server_restart($setup->{pid_file});
+
+      unless ($client2->list('.')) {
+        die("Can't list files: " . $client2->last_message);
+      }
+
+      shmcache_server_restart($setup->{pid_file});
+      $client2->quit();
+
+      shmcache_server_restart($setup->{pid_file});
+      $client1->quit();
+
+      shmcache_server_restart($setup->{pid_file});
+
+      @cmd = (
+        $openssl,
+        's_client',
+        '-crlf',
+        '-connect',
+        "127.0.0.1:$port",
+        '-starttls',
+        'ftp',
+        '-sess_in',
+        $sessid_file,
+        '-CAfile',
+        $ca_file,
+      );
+
+      $tls_rh = IO::Handle->new();
+      $tls_wh = IO::Handle->new();
+      $tls_eh = IO::Handle->new();
+
+      $tls_wh->autoflush(1);
+
+      if ($ENV{TEST_VERBOSE}) {
+        print STDERR "Executing: ", join(' ', @cmd), "\n";
+      }
+
+      $tls_pid = open3($tls_wh, $tls_rh, $tls_eh, @cmd);
+      print $tls_wh "QUIT\n";
+      waitpid($tls_pid, 0);
+
+      $res = 0;
+      $cipher_str = undef;
+      $err_str = undef;
+      $out_str = undef;
+
+      if ($? >> 8) {
+        $err_str = join('', <$tls_eh>);
+        $res = 0;
+
+      } else {
+        my $output = [<$tls_rh>];
+
+        # Specifically look for the line containing 'Cipher is'
+        foreach my $line (@$output) {
+          if ($line =~ /Cipher is/) {
+            $cipher_str = $line;
+            chomp($cipher_str);
+          }
+        }
+
+        if ($ENV{TEST_VERBOSE}) {
+          $out_str = join('', @$output);
+          print STDERR "Stdout: $out_str\n";
+        }
+
+        if ($ENV{TEST_VERBOSE}) {
+          $err_str = join('', <$tls_eh>);
+          print STDERR "Stderr: $err_str\n";
+        }
+
+        $res = 1;
+      }
+      unless ($res) {
+        die("Can't talk to server: $err_str");
+      }
+
+      $expected = '^Reused';
+      $self->assert(qr/$expected/, $cipher_str,
+        test_msg("Expected '$expected', got '$cipher_str'"));
+    };
+    if ($@) {
+      $ex = $@;
+    }
+
+    $wfh->print("done\n");
+    $wfh->flush();
+
+  } else {
+    eval { server_wait($setup->{config_file}, $rfh, $timeout_idle + 15) };
+    if ($@) {
+      warn($@);
+      exit 1;
+    }
+
+    exit 0;
+  }
+
+  # Stop server
+  server_stop($setup->{pid_file});
+  $self->assert_child_ok($pid);
+
+  test_cleanup($setup, $ex);
 }
 
 1;

@@ -254,6 +254,7 @@ sub get_tally {
   if ($where) {
     $sql .= " WHERE $where";
   }
+  $sql .= " LIMIT 1;";
 
   my $cmd = "sqlite3 $db_file \"$sql\"";
 
@@ -9947,7 +9948,7 @@ EOS
   defined(my $pid = fork()) or die("Can't fork: $!");
   if ($pid) {
     eval {
-      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
+      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port, 0, 10);
       $client->login($setup->{user}, $setup->{passwd});
 
       my $conn = $client->stor_raw('test.txt');
@@ -9959,7 +9960,12 @@ EOS
       my $buf = "Hello, World\n";
       $conn->write($buf, length($buf), 25);
 
-      eval { $client->quote('ABOR'); };
+      # ProFTPD no longer dispatches/handles command in the middle of a
+      # data transfer (as doing so causes loss of protocol synchronization),
+      # so we abort our transfer ourselves.
+      eval { $conn->abort() };
+
+      eval { $client->quote('ABOR') };
 
       my $resp_code = $client->response_code();
       my $resp_msg = $client->response_msg();
@@ -9982,7 +9988,7 @@ EOS
     $wfh->flush();
 
   } else {
-    eval { server_wait($setup->{config_file}, $rfh) };
+    eval { server_wait($setup->{config_file}, $rfh, 30) };
     if ($@) {
       warn($@);
       exit 1;

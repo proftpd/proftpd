@@ -38,6 +38,20 @@
 #  define QUOTATAB_IOV_BASE_TYPE        (void *)
 #endif
 
+/* Issue #2468 demonstrated how changing the size of a fixed length field
+ * the mod_quotatab.h header can have unintended consequences.  Now,
+ * mod_quotatab_file will ensure that it uses the previous field length
+ * independently of that header.
+ *
+ * IMPORTANT: If/when this length changes, we will also need to change:
+ *  - the "magic number" of the limit/tally headers to signal the difference
+ *  - the format string used in the ftpquota tool for new length, magic
+ */
+#define QUOTATAB_FILE_NAME_MAX		80
+
+#define QUOTATAB_FILE_LIMIT_MAGIC	0x07626
+#define QUOTATAB_FILE_TALLY_MAGIC	0x07644
+
 module quotatab_file_module;
 
 static const char *trace_channel = "quotatab.file";
@@ -63,7 +77,7 @@ static int filetab_create(quota_table_t *filetab, void *ptr) {
    */
 
   quotav[0].iov_base = QUOTATAB_IOV_BASE_TYPE tally->name;
-  quotav[0].iov_len = sizeof(tally->name);
+  quotav[0].iov_len = QUOTATAB_FILE_NAME_MAX + 1;
 
   quotav[1].iov_base = QUOTATAB_IOV_BASE_TYPE &(tally->quota_type);
   quotav[1].iov_len = sizeof(tally->quota_type);
@@ -219,7 +233,7 @@ static int filetab_read(quota_table_t *filetab, void *ptr) {
     quota_tally_t *tally = ptr;
 
     quotav[0].iov_base = QUOTATAB_IOV_BASE_TYPE tally->name;
-    quotav[0].iov_len = sizeof(tally->name);
+    quotav[0].iov_len = QUOTATAB_FILE_NAME_MAX + 1;
 
     quotav[1].iov_base = QUOTATAB_IOV_BASE_TYPE &(tally->quota_type);
     quotav[1].iov_len = sizeof(tally->quota_type);
@@ -275,7 +289,7 @@ static int filetab_read(quota_table_t *filetab, void *ptr) {
     quota_limit_t *limit = ptr;
 
     quotav[0].iov_base = QUOTATAB_IOV_BASE_TYPE limit->name;
-    quotav[0].iov_len = sizeof(limit->name);
+    quotav[0].iov_len = QUOTATAB_FILE_NAME_MAX + 1;
 
     quotav[1].iov_base = QUOTATAB_IOV_BASE_TYPE &(limit->quota_type);
     quotav[1].iov_len = sizeof(limit->quota_type);
@@ -334,7 +348,6 @@ static int filetab_read(quota_table_t *filetab, void *ptr) {
     return res;
   }
 
-  /* default */
   errno = EINVAL;
   return -1;
 }
@@ -378,7 +391,7 @@ static int filetab_write(quota_table_t *filetab, void *ptr) {
    */
 
   quotav[0].iov_base = QUOTATAB_IOV_BASE_TYPE tally->name;
-  quotav[0].iov_len = sizeof(tally->name);
+  quotav[0].iov_len = QUOTATAB_FILE_NAME_MAX + 1;
 
   quotav[1].iov_base = QUOTATAB_IOV_BASE_TYPE &(tally->quota_type);
   quotav[1].iov_len = sizeof(tally->quota_type);
@@ -460,10 +473,15 @@ static quota_table_t *filetab_open(pool *parent_pool,
 
   if (tab->tab_type == TYPE_TALLY) {
     /* File-based tally table magic number */
-    tab->tab_magic = 0x07644;
+    tab->tab_magic = QUOTATAB_FILE_TALLY_MAGIC;
 
     /* File-based tally record length, manually defined to avoid alignment/
      * padding issues when using sizeof().
+     *
+     * NOTE: If the QUOTATAB_FILE_NAME_MAX field size changes, this number
+     * must be updated accordingly:
+     *
+     *  121 = name (80 + 1) + type (4) + double (3 * 8) + unsigned (3 * 4)
      */
     tab->tab_quotalen = 121;
 
@@ -486,12 +504,19 @@ static quota_table_t *filetab_open(pool *parent_pool,
 
   } else if (tab->tab_type == TYPE_LIMIT) {
     /* File-based limit table magic number */
-    tab->tab_magic = 0x07626;
+    tab->tab_magic = QUOTATAB_FILE_LIMIT_MAGIC;
 
     /* File-based limit record length, manually defined to avoid alignment/
      * padding issues when using sizeof().
+     *
+     * NOTE: If the QUOTATAB_FILE_NAME_MAX field size changes, this number
+     * must be updated accordingly.
+     *
+     *  126 = name (80 + 1) + type (4) + per_session (1) + limit_type (4) +
+     *    double (3 * 8) + unsigned (3 * 4)
      */
     tab->tab_quotalen = 126;
+
     tab->tab_lock.l_whence = SEEK_CUR;
     tab->tab_lock.l_start = 0;
     tab->tab_lock.l_len = tab->tab_quotalen;

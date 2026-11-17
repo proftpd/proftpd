@@ -27,6 +27,16 @@
 - Issue 2415 - mod_sftp should honor AllowChrootSymlinks.
 - Issue 2432 - Use of pwrite(2) for O_APPEND SFTP WRITE requests is not
   portable.
+- Issue 2435 - Add support for post-quantum host key algorithm in mod_sftp.
+  The mod_sftp module now supports the "ssh-mldsa44-ed25519" algorithm.
+- Issue 2445 - Segfault after SSH key exchange when SFTPCompression is
+  configured in <Global> context.  This is a regression caused by Issue #2366.
+- Issue 2456 - SFTP OPEN request with CREAT|EXCL flags on an existing file
+  succeeds unexpectedly when HiddenStores configured.
+- Issue 2360 - Unexpected mod_xfer module load order leads to SIGSEGV if
+  session is terminated during a file transfer.
+- Issue 2468 - mod_quotatab_file limit/tally record corruption caused by
+  fixed-length field change causing regression.
 
 1.3.10rc5 - Released 26-Oct-2026
 --------------------------------

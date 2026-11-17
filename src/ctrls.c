@@ -994,23 +994,25 @@ int pr_ctrls_recv_response(pool *p, int fd, int *status, char ***respargv) {
 
   /* Impose min/max response size limit here, for Issue #2036. */
   if (msglen == 0) {
-    destroy_pool(tmp_pool);
     pr_signals_unblock();
 
     (void) pr_trace_msg(trace_channel, 3,
       "message size (%lu bytes) less than min (1 byte), unable to receive "
       "response", (unsigned long) msglen);
+
+    destroy_pool(tmp_pool);
     errno = EINVAL;
     return -1;
   }
 
   if (msglen > CTRLS_MAX_RESP_SIZE) {
-    destroy_pool(tmp_pool);
     pr_signals_unblock();
 
     (void) pr_trace_msg(trace_channel, 3,
       "message size (%lu bytes) exceeds max (%lu bytes), unable to receive "
       "response", (unsigned long) msglen, (unsigned long) CTRLS_MAX_RESP_SIZE);
+
+    destroy_pool(tmp_pool);
     errno = E2BIG;
     return -1;
   }
@@ -1021,24 +1023,26 @@ int pr_ctrls_recv_response(pool *p, int fd, int *status, char ***respargv) {
   xerrno = errno;
 
   if (nread < 0) {
-    destroy_pool(tmp_pool);
     pr_signals_unblock();
 
     pr_trace_msg(trace_channel, 3,
       "error reading %lu bytes of response message: %s",
       (unsigned long) msglen, strerror(xerrno));
+
+    destroy_pool(tmp_pool);
     errno = xerrno;
     return -1;
   }
 
   /* Watch for short reads. */
   if ((unsigned int) nread != msglen) {
-    destroy_pool(tmp_pool);
     pr_signals_unblock();
 
     (void) pr_trace_msg(trace_channel, 3,
       "short read (%d of %u bytes) of message text, unable to receive response",
       nread, (unsigned int) msglen);
+
+    destroy_pool(tmp_pool);
     errno = EPERM;
     return -1;
   }
@@ -1047,13 +1051,14 @@ int pr_ctrls_recv_response(pool *p, int fd, int *status, char ***respargv) {
   xerrno = errno;
 
   if (json == NULL) {
-    destroy_pool(tmp_pool);
     pr_signals_unblock();
 
     (void) pr_trace_msg(trace_channel, 3,
       "read invalid JSON message text ('%.*s' [%lu bytes]), unable to "
       "receive response: %s", (int) msglen, msg, (unsigned long) msglen,
       strerror(xerrno));
+
+    destroy_pool(tmp_pool);
     errno = EINVAL;
     return -1;
   }
@@ -1063,12 +1068,13 @@ int pr_ctrls_recv_response(pool *p, int fd, int *status, char ***respargv) {
 
   if (res < 0) {
     pr_json_object_free(json);
-    destroy_pool(tmp_pool);
     pr_signals_unblock();
 
     (void) pr_trace_msg(trace_channel, 3,
       "unable to read response status (%s), unable to receive response",
       strerror(xerrno));
+
+    destroy_pool(tmp_pool);
     errno = EINVAL;
     return -1;
   }
@@ -1084,9 +1090,9 @@ int pr_ctrls_recv_response(pool *p, int fd, int *status, char ***respargv) {
       "unable to read message responses (%s), unable to receive response",
       strerror(xerrno));
     pr_json_object_free(json);
-    destroy_pool(tmp_pool);
     pr_signals_unblock();
 
+    destroy_pool(tmp_pool);
     errno = EINVAL;
     return -1;
   }
@@ -1113,9 +1119,9 @@ int pr_ctrls_recv_response(pool *p, int fd, int *status, char ***respargv) {
         i+1, strerror(xerrno));
       pr_json_array_free(resps);
       pr_json_object_free(json);
-      destroy_pool(tmp_pool);
       pr_signals_unblock();
 
+      destroy_pool(tmp_pool);
       errno = EINVAL;
       return -1;
     }

@@ -176,7 +176,7 @@ sub appe_ok_raw_active {
   defined(my $pid = fork()) or die("Can't fork: $!");
   if ($pid) {
     eval {
-      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port, 1, 1);
+      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port, 1);
       $client->login($setup->{user}, $setup->{passwd});
 
       my $conn = $client->appe_raw('bar');
@@ -258,7 +258,7 @@ sub appe_ok_raw_passive {
   defined(my $pid = fork()) or die("Can't fork: $!");
   if ($pid) {
     eval {
-      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port, 1, 1);
+      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port, 1);
       $client->login($setup->{user}, $setup->{passwd});
 
       my $conn = $client->appe_raw('bar');
@@ -345,7 +345,7 @@ sub appe_ok_file_new {
   defined(my $pid = fork()) or die("Can't fork: $!");
   if ($pid) {
     eval {
-      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port, 0, 1);
+      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port, 0);
       $client->login($setup->{user}, $setup->{passwd});
 
       my $conn = $client->appe_raw('bar');
@@ -456,7 +456,7 @@ sub appe_ok_file_existing {
   defined(my $pid = fork()) or die("Can't fork: $!");
   if ($pid) {
     eval {
-      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port, 0, 1);
+      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port, 0);
       $client->login($setup->{user}, $setup->{passwd});
 
       my $conn = $client->appe_raw('bar');
@@ -547,7 +547,7 @@ sub appe_ok_files_new_and_existing_bug3612 {
   defined(my $pid = fork()) or die("Can't fork: $!");
   if ($pid) {
     eval {
-      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port, 0, 1);
+      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port, 0);
       $client->login($setup->{user}, $setup->{passwd});
 
       # 1.  STOR foo
@@ -719,7 +719,7 @@ sub appe_fails_abs_symlink_new {
   defined(my $pid = fork()) or die("Can't fork: $!");
   if ($pid) {
     eval {
-      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port, 0, 1);
+      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port, 0);
       $client->login($setup->{user}, $setup->{passwd});
 
       my $conn = $client->appe_raw('test.d/test.lnk');
@@ -833,7 +833,7 @@ sub appe_fails_abs_symlink_new_chrooted_bug4219 {
   defined(my $pid = fork()) or die("Can't fork: $!");
   if ($pid) {
     eval {
-      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port, 0, 1);
+      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port, 0);
       $client->login($setup->{user}, $setup->{passwd});
 
       my $conn = $client->appe_raw('test.d/test.lnk');
@@ -955,7 +955,7 @@ sub appe_fails_rel_symlink_new {
   defined(my $pid = fork()) or die("Can't fork: $!");
   if ($pid) {
     eval {
-      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port, 0, 1);
+      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port, 0);
       $client->login($setup->{user}, $setup->{passwd});
 
       my $conn = $client->appe_raw('test.d/test.lnk');
@@ -1078,7 +1078,7 @@ sub appe_fails_rel_symlink_new_chrooted_bug4219 {
   defined(my $pid = fork()) or die("Can't fork: $!");
   if ($pid) {
     eval {
-      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port, 0, 1);
+      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port, 0);
       $client->login($setup->{user}, $setup->{passwd});
 
       my $conn = $client->appe_raw('test.d/test.lnk');
@@ -1198,7 +1198,7 @@ sub appe_ok_abs_symlink_existing {
   defined(my $pid = fork()) or die("Can't fork: $!");
   if ($pid) {
     eval {
-      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port, 0, 1);
+      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port, 0);
       $client->login($setup->{user}, $setup->{passwd});
 
       my $conn = $client->appe_raw('test.d/test.lnk');
@@ -1324,7 +1324,7 @@ sub appe_ok_abs_symlink_existing_chrooted_bug4219 {
   defined(my $pid = fork()) or die("Can't fork: $!");
   if ($pid) {
     eval {
-      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port, 0, 1);
+      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port, 0);
       $client->login($setup->{user}, $setup->{passwd});
 
       # We expect this to fail because symlinks using absolute paths will
@@ -1453,7 +1453,7 @@ sub appe_ok_rel_symlink_existing {
   defined(my $pid = fork()) or die("Can't fork: $!");
   if ($pid) {
     eval {
-      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port, 0, 1);
+      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port, 0);
       $client->login($setup->{user}, $setup->{passwd});
 
       my $conn = $client->appe_raw('test.d/test.lnk');
@@ -1583,7 +1583,7 @@ sub appe_ok_rel_symlink_existing_chrooted_bug4219 {
   defined(my $pid = fork()) or die("Can't fork: $!");
   if ($pid) {
     eval {
-      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port, 0, 1);
+      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port, 0);
       $client->login($setup->{user}, $setup->{passwd});
 
       my $conn = $client->appe_raw('test.d/test.lnk');
@@ -1670,7 +1670,7 @@ sub appe_fails_not_reg {
   defined(my $pid = fork()) or die("Can't fork: $!");
   if ($pid) {
     eval {
-      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port, 0, 1);
+      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port, 0);
       $client->login($setup->{user}, $setup->{passwd});
 
       my $conn = $client->appe_raw($setup->{home_dir});
@@ -1783,7 +1783,7 @@ sub appe_fails_abs_symlink_not_reg {
   defined(my $pid = fork()) or die("Can't fork: $!");
   if ($pid) {
     eval {
-      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port, 0, 1);
+      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port, 0);
       $client->login($setup->{user}, $setup->{passwd});
 
       my $conn = $client->appe_raw('test.d/foo.d');
@@ -1891,7 +1891,7 @@ sub appe_fails_abs_symlink_not_reg_chrooted_bug4219 {
   defined(my $pid = fork()) or die("Can't fork: $!");
   if ($pid) {
     eval {
-      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port, 0, 1);
+      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port, 0);
       $client->login($setup->{user}, $setup->{passwd});
 
       my $conn = $client->appe_raw('test.d/foo.d');
@@ -2008,7 +2008,7 @@ sub appe_fails_rel_symlink_not_reg {
   defined(my $pid = fork()) or die("Can't fork: $!");
   if ($pid) {
     eval {
-      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port, 0, 1);
+      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port, 0);
       $client->login($setup->{user}, $setup->{passwd});
 
       my $conn = $client->appe_raw('test.d/foo.d');
@@ -2126,7 +2126,7 @@ sub appe_fails_rel_symlink_not_reg_chrooted_bug4219 {
   defined(my $pid = fork()) or die("Can't fork: $!");
   if ($pid) {
     eval {
-      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port, 0, 1);
+      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port, 0);
       $client->login($setup->{user}, $setup->{passwd});
 
       my $conn = $client->appe_raw('test.d/foo.d');
@@ -2205,7 +2205,7 @@ sub appe_fails_login_required {
   defined(my $pid = fork()) or die("Can't fork: $!");
   if ($pid) {
     eval {
-      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port, 0, 1);
+      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port, 0);
       my ($resp_code, $resp_msg);
 
       my $path = $setup->{config_file};
@@ -2291,7 +2291,7 @@ sub appe_fails_no_path {
   defined(my $pid = fork()) or die("Can't fork: $!");
   if ($pid) {
     eval {
-      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port, 0, 1);
+      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port, 0);
       $client->login($setup->{user}, $setup->{passwd});
 
       my ($resp_code, $resp_msg);
@@ -2402,7 +2402,7 @@ sub appe_fails_eperm {
   defined(my $pid = fork()) or die("Can't fork: $!");
   if ($pid) {
     eval {
-      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port, 1, 1);
+      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port, 1);
       $client->login($setup->{user}, $setup->{passwd});
       $client->port();
 
@@ -2495,7 +2495,7 @@ sub appe_hiddenstores_bug4144 {
   defined(my $pid = fork()) or die("Can't fork: $!");
   if ($pid) {
     eval {
-      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port, 0, 1);
+      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port, 0);
       $client->login($setup->{user}, $setup->{passwd});
 
       my $conn = $client->appe_raw('bar');

@@ -8,7 +8,7 @@ use Getopt::Long;
 use Test::Harness qw(&runtests $verbose);
 
 my $opts = {};
-GetOptions($opts, 'h|help', 'C|class=s@', 'K|keep-tmpfiles', 'F|file-pattern=s',
+GetOptions($opts, 'h|help', 'j|jobs=i', 'C|class=s@', 'K|keep-tmpfiles', 'F|file-pattern=s',
   'V|verbose');
 
 if ($opts->{h}) {
@@ -33,6 +33,12 @@ push(@INC, "$test_dir/t/lib");
 require ProFTPD::TestSuite::Utils;
 import ProFTPD::TestSuite::Utils qw(:testsuite);
 
+# The default number of parallels jobs is 9, per the Test::Harness docs.
+if ($opts->{j}) {
+  my $njobs = $opts->{j};
+  $ENV{HARNESS_OPTIONS} = "j$njobs";
+}
+
 # This is to handle the case where this tests.pl script might be
 # being used to run test files other than those that ship with proftpd,
 # e.g. to run the tests that come with third-party modules.
@@ -43,7 +49,9 @@ unless (defined($ENV{PROFTPD_TEST_BIN})) {
 # Set this environment variable, for other test cases which may want to
 # know the directory, and not necessarily just the location of the uninstalled
 # `proftpd' binary.  This is useful, for example, for using the utilities.
-$ENV{PROFTPD_TEST_PATH} = $test_dir;
+unless (defined($ENV{PROFTPD_TEST_PATH})) {
+  $ENV{PROFTPD_TEST_PATH} = $test_dir;
+}
 
 $| = 1;
 
@@ -488,6 +496,21 @@ if (scalar(@ARGV) > 0) {
       test_class => [qw(mod_snmp)],
     },
 
+    't/modules/mod_snmp/ban.t' => {
+      order => ++$order,
+      test_class => [qw(mod_ban mod_snmp)],
+    },
+
+    't/modules/mod_snmp/sftp.t' => {
+      order => ++$order,
+      test_class => [qw(mod_sftp mod_snmp)],
+    },
+
+    't/modules/mod_snmp/tls.t' => {
+      order => ++$order,
+      test_class => [qw(mod_snmp mod_tls)],
+    },
+
     't/modules/mod_sql.t' => {
       order => ++$order,
       test_class => [qw(mod_sql)],
@@ -598,8 +621,8 @@ if (defined($opts->{C})) {
   $ENV{PROFTPD_TEST_ENABLE_CLASS} = join(':', @{ $opts->{C} });
 
 } else {
-  # Disable all 'flaky', 'inprogress' and 'slow' tests by default
-  $ENV{PROFTPD_TEST_DISABLE_CLASS} = 'flaky:inprogress:slow';
+  # Disable all 'flaky', 'inprogress', 'manual', and 'slow' tests by default
+  $ENV{PROFTPD_TEST_DISABLE_CLASS} = 'flaky:inprogress:manual:slow';
 }
 
 if (defined($opts->{F})) {
@@ -625,7 +648,7 @@ exit 0;
 sub usage {
   print STDOUT <<EOH;
 
-$0: [--help] [--class=\$name] [--verbose]
+$0: [--help] [--jobs=\$njobs] [--class=\$name] [--verbose]
 
 Examples:
 

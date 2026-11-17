@@ -2572,6 +2572,11 @@ pr_fs_t *pr_unmount_fs(const char *path, const char *name) {
       fs_objs[i] = fsi->fs_next;
       fsi->fs_next = fsi->fs_prev = NULL;
 
+      /* If the FS being unmounted is our current FS, reset the current FS. */
+      if (fs_cwd == fsi) {
+        fs_cwd = root_fs;
+      }
+
       chk_fs_map = TRUE;
       return fsi;
     }
@@ -3929,14 +3934,14 @@ int pr_fsio_chdir_canon(const char *path, int hidesymlink) {
   res = (fs->chdir)(fs, resbuf);
   if (res == 0) {
     /* chdir succeeded, so we set fs_cwd for future references. */
-     fs_cwd = fs;
+    fs_cwd = fs;
 
-     if (hidesymlink) {
-       pr_fs_virtual_path(path, vwd, sizeof(vwd)-1);
+    if (hidesymlink) {
+      pr_fs_virtual_path(path, vwd, sizeof(vwd)-1);
 
-     } else {
-       sstrncpy(vwd, resbuf, sizeof(vwd));
-     }
+    } else {
+      sstrncpy(vwd, resbuf, sizeof(vwd));
+    }
   }
 
   return res;
@@ -4451,8 +4456,8 @@ static int schmod_dir(pool *p, const char *path, mode_t perms, int use_root) {
  * race (hopefully) before the UserOwner/GroupOwner ownership changes are
  * applied.
  */
-int pr_fsio_smkdir(pool *p, const char *path, mode_t mode, uid_t uid,
-    gid_t gid) {
+int pr_fsio_smkdir2(pool *p, const char *path, mode_t mode, uid_t uid,
+    gid_t gid, int flags) {
   int res, set_sgid = FALSE, use_mkdtemp, use_root_chown = FALSE, xerrno = 0;
   char *tmpl_path;
   char *dst_dir, *tmpl;
@@ -4501,6 +4506,11 @@ int pr_fsio_smkdir(pool *p, const char *path, mode_t mode, uid_t uid,
           break;
         }
       }
+    }
+
+    if (flags & PR_FSIO_SMKDIR_FL_NO_ROOT_PRIVS) {
+      /* The caller has explicitly requested that root privs not be used. */
+      use_root_chown = FALSE;
     }
 
     if (use_root_chown == FALSE) {
@@ -4596,7 +4606,6 @@ int pr_fsio_smkdir(pool *p, const char *path, mode_t mode, uid_t uid,
     tmpl_path = pstrdup(p, path);
   }
 #else
-
   res = pr_fsio_mkdir(path, mode);
   if (res < 0) {
     xerrno = errno;
@@ -4613,29 +4622,37 @@ int pr_fsio_smkdir(pool *p, const char *path, mode_t mode, uid_t uid,
 #endif /* HAVE_MKDTEMP */
 
   if (use_mkdtemp == TRUE) {
-    mode_t mask, *dir_umask, perms;
+    mode_t perms;
 
-    /* mkdtemp(3) creates a directory with 0700 perms; we are given the
-     * target mode (modulo the configured Umask).
-     */
-    dir_umask = get_param_ptr(CURRENT_CONF, "DirUmask", FALSE);
-    if (dir_umask == NULL) {
-      /* If Umask was configured with a single parameter, then DirUmask
-       * would not be present; we still should check for Umask.
+    if (!(flags & PR_FSIO_SMKDIR_FL_IGNORE_UMASK)) {
+      mode_t mask, *dir_umask;
+
+      /* mkdtemp(3) creates a directory with 0700 perms; we are given the
+       * target mode (modulo the configured Umask).
        */
-      dir_umask = get_param_ptr(CURRENT_CONF, "Umask", FALSE);
-    }
+      dir_umask = get_param_ptr(CURRENT_CONF, "DirUmask", FALSE);
+      if (dir_umask == NULL) {
+        /* If Umask was configured with a single parameter, then DirUmask
+         * would not be present; we still should check for Umask.
+         */
+        dir_umask = get_param_ptr(CURRENT_CONF, "Umask", FALSE);
+      }
 
-    if (dir_umask) {
-      mask = *dir_umask;
+      if (dir_umask != NULL) {
+        mask = *dir_umask;
+
+      } else {
+        mask = (mode_t) 0022;
+      }
+
+      perms = (mode & ~mask);
 
     } else {
-      mask = (mode_t) 0022;
+      /* The caller wants to us to use the provided mode as is. */
+      perms = mode;
     }
 
-    perms = (mode & ~mask);
-
-    if (set_sgid) {
+    if (set_sgid == TRUE) {
       perms |= S_ISGID;
     }
 
@@ -4748,6 +4765,11 @@ int pr_fsio_smkdir(pool *p, const char *path, mode_t mode, uid_t uid,
 
   pr_fs_clear_cache2(path);
   return 0;
+}
+
+int pr_fsio_smkdir(pool *p, const char *path, mode_t mode, uid_t uid,
+    gid_t gid) {
+  return pr_fsio_smkdir2(p, path, mode, uid, gid, 0);
 }
 
 int pr_fsio_rmdir(const char *path) {

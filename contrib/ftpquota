@@ -160,6 +160,14 @@ sub add_record {
     exit(1);
   }
 
+  # If the provided name will exceed our hardcoded fixed-length name field,
+  # error out now (see Issue #2468).
+  my $namelen = length($record{'name'});
+  if ($namelen > 80) {
+    print STDOUT "$program: unable to add record: $record{'name'} length exceeds 80 byte maximum\n";
+    exit(1);
+  }
+
   # move to the end of the table, and write the new record
   set_table_position(0, SEEK_END);
 
@@ -948,7 +956,6 @@ sub update_record {
       @junk) = unpack($limit_format, $current_record);
 
   } elsif ($table_type == $TALLY_TABLE) {
-
     ($name, $quota_type, @junk) = unpack($tally_format, $current_record);
   }
 

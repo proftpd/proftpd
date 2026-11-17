@@ -24,7 +24,7 @@ my $TESTS = {
 
   facl_group_deny_list_hidenoaccess_issue2389 => {
     order => ++$order,
-    test_class => [qw(bug forking os_linux)],
+    test_class => [qw(bug forking os_linux rootprivs)],
   },
 
 };
@@ -88,14 +88,14 @@ sub facl_bug4303 {
     print STDERR join('', @$output), "\n";
   }
 
-  $cmd = "getfacl --access $sub_dir | setfacl -d -M- $sub_dir 2>&1";
+  $cmd = "getfacl --access $sub_dir 2>/dev/null | setfacl -d -M- $sub_dir 2>&1";
   $output = [`$cmd`];
   if ($ENV{TEST_VERBOSE}) {
     print STDERR "# Results for command: $cmd:\n";
     print STDERR join('', @$output), "\n";
   }
 
-  $cmd = "getfacl $sub_dir 2>&1";
+  $cmd = "getfacl $sub_dir 2>/dev/null";
   $output = [`$cmd`];
   if ($ENV{TEST_VERBOSE}) {
     print STDERR "# Results for command: $cmd:\n";
@@ -169,7 +169,7 @@ sub facl_bug4303 {
   server_stop($setup->{pid_file});
   $self->assert_child_ok($pid);
 
-  $cmd = "getfacl $test_dir 2>&1";
+  $cmd = "getfacl $test_dir 2>/dev/null";
   $output = [`$cmd`];
   if ($ENV{TEST_VERBOSE}) {
     print STDERR "# Results for command: $cmd:\n";
@@ -199,7 +199,7 @@ sub facl_group_deny_list_hidenoaccess_issue2389 {
     die("Can't open $test_file: $!");
   }
 
-  # Ensure that the test user does not have access.
+  # Ensure that the test user (i.e. a UID other than ours) does not have access.
   my $cmd = "setfacl -m u:1:rwx $test_file 2>&1";
   my $output = [`$cmd`];
   if ($ENV{TEST_VERBOSE}) {
@@ -207,7 +207,8 @@ sub facl_group_deny_list_hidenoaccess_issue2389 {
     print STDERR join('', @$output), "\n";
   }
 
-  # Ensure that the test group does not have access.
+  # Ensure that the test group (i.e. a GID other than ours) does not have
+  # access.
   $cmd = "setfacl -m g:1:rx $test_file 2>&1";
   $output = [`$cmd`];
   if ($ENV{TEST_VERBOSE}) {
@@ -215,6 +216,7 @@ sub facl_group_deny_list_hidenoaccess_issue2389 {
     print STDERR join('', @$output), "\n";
   }
 
+  # Ensure that our test group explicitly has no access.
   $cmd = "setfacl -m g:$setup->{gid}:--- $test_file 2>&1";
   $output = [`$cmd`];
   if ($ENV{TEST_VERBOSE}) {
@@ -222,7 +224,7 @@ sub facl_group_deny_list_hidenoaccess_issue2389 {
     print STDERR join('', @$output), "\n";
   }
 
-  $cmd = "getfacl $test_file 2>&1";
+  $cmd = "getfacl $test_file 2>/dev/null";
   $output = [`$cmd`];
   if ($ENV{TEST_VERBOSE}) {
     print STDERR "# Results for command: $cmd:\n";

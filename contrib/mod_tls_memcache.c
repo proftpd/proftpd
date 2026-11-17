@@ -848,6 +848,7 @@ static int sess_cache_add_large_sess(tls_sess_cache_t *cache,
     const unsigned char *sess_id, unsigned int sess_id_len, time_t expires,
     SSL_SESSION *sess, int sess_len) {
   struct sesscache_large_entry *entry = NULL;
+  unsigned char *ptr;
 
   if (sess_len > TLS_MAX_SSL_SESSION_SIZE) {
     const char *exceeds_key, *max_len_key;
@@ -933,8 +934,8 @@ static int sess_cache_add_large_sess(tls_sess_cache_t *cache,
   entry->sess_id = palloc(cache->cache_pool, sess_id_len);
   memcpy((unsigned char *) entry->sess_id, sess_id, sess_id_len);
   entry->sess_datalen = sess_len;
-  entry->sess_data = palloc(cache->cache_pool, sess_len);
-  i2d_SSL_SESSION(sess, (unsigned char **) &(entry->sess_data));
+  entry->sess_data = ptr = palloc(cache->cache_pool, sess_len);
+  i2d_SSL_SESSION(sess, &ptr);
 
   return 0;
 }

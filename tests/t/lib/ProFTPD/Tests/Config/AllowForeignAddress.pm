@@ -127,10 +127,10 @@ sub fxp_denied {
   defined(my $pid = fork()) or die("Can't fork: $!");
   if ($pid) {
     eval {
-      my $client1 = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port, 1, 1);
+      my $client1 = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port, 1);
       $client1->login($setup->{user}, $setup->{passwd});
 
-      my $client2 = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port, 0, 1);
+      my $client2 = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port, 0);
       $client2->login($setup->{user}, $setup->{passwd});
 
       # Get the PASV address from the first connection, and give it
@@ -274,10 +274,10 @@ sub fxp_denied_eprt {
   defined(my $pid = fork()) or die("Can't fork: $!");
   if ($pid) {
     eval {
-      my $client1 = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port, 1, 1);
+      my $client1 = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port, 1);
       $client1->login($setup->{user}, $setup->{passwd});
 
-      my $client2 = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port, 0, 1);
+      my $client2 = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port, 0);
       $client2->login($setup->{user}, $setup->{passwd});
 
       # Get the PASV address from the first connection, and give it
@@ -436,10 +436,10 @@ EOC
   defined(my $pid = fork()) or die("Can't fork: $!");
   if ($pid) {
     eval {
-      my $client1 = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port, 1, 1);
+      my $client1 = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port, 1);
       $client1->login($setup->{user}, $setup->{passwd});
 
-      my $client2 = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port, 0, 1);
+      my $client2 = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port, 0);
       $client2->login($setup->{user}, $setup->{passwd});
 
       # Get the PASV address from the first connection, and give it
@@ -589,7 +589,7 @@ EOC
   defined(my $pid = fork()) or die("Can't fork: $!");
   if ($pid) {
     eval {
-      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port, 0, 3);
+      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
       $client->login($setup->{user}, $setup->{passwd});
 
       # Attempting a data transfer should fail, due to the AllowForeignAddress
@@ -724,10 +724,10 @@ sub fxp_allowed {
   defined(my $pid = fork()) or die("Can't fork: $!");
   if ($pid) {
     eval {
-      my $client1 = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port, 1, 1);
+      my $client1 = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port, 1);
       $client1->login($setup->{user}, $setup->{passwd});
 
-      my $client2 = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port, 0, 1);
+      my $client2 = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port, 0);
       $client2->login($setup->{user}, $setup->{passwd});
 
       # Get the PASV address from the first connection, and give it
@@ -855,10 +855,10 @@ sub fxp_allowed_eprt {
   defined(my $pid = fork()) or die("Can't fork: $!");
   if ($pid) {
     eval {
-      my $client1 = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port, 1, 1);
+      my $client1 = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port, 1);
       $client1->login($setup->{user}, $setup->{passwd});
 
-      my $client2 = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port, 0, 1);
+      my $client2 = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port, 0);
       $client2->login($setup->{user}, $setup->{passwd});
 
       # Get the PASV address from the first connection, and give it
@@ -1004,10 +1004,10 @@ EOC
   defined(my $pid = fork()) or die("Can't fork: $!");
   if ($pid) {
     eval {
-      my $client1 = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port, 1, 1);
+      my $client1 = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port, 1);
       $client1->login($setup->{user}, $setup->{passwd});
 
-      my $client2 = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port, 0, 1);
+      my $client2 = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port, 0);
       $client2->login($setup->{user}, $setup->{passwd});
 
       # Get the PASV address from the first connection, and give it
@@ -1138,7 +1138,7 @@ EOC
   defined(my $pid = fork()) or die("Can't fork: $!");
   if ($pid) {
     eval {
-      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port, 0, 3);
+      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
       $client->login($setup->{user}, $setup->{passwd});
 
       # Attempting a data transfer should succeed, due to the
@@ -1247,10 +1247,10 @@ sub fxp_allowed_2gb {
   defined(my $pid = fork()) or die("Can't fork: $!");
   if ($pid) {
     eval {
-      my $client1 = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port, 1, 1);
+      my $client1 = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port, 1);
       $client1->login($setup->{user}, $setup->{passwd});
 
-      my $client2 = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port, 0, 1);
+      my $client2 = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port, 0);
       $client2->login($setup->{user}, $setup->{passwd});
 
       # Get the PASV address from the first connection, and give it

@@ -226,7 +226,7 @@ sub nlst_ok_raw_active {
   defined(my $pid = fork()) or die("Can't fork: $!");
   if ($pid) {
     eval {
-      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port, 1, 1);
+      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port, 1);
       $client->login($setup->{user}, $setup->{passwd});
 
       my $conn = $client->nlst_raw();
@@ -340,7 +340,7 @@ sub nlst_ok_raw_passive {
   defined(my $pid = fork()) or die("Can't fork: $!");
   if ($pid) {
     eval {
-      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port, 1, 1);
+      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port, 1);
       $client->login($setup->{user}, $setup->{passwd});
 
       my $conn = $client->nlst_raw();
@@ -459,7 +459,7 @@ sub nlst_ok_file {
   defined(my $pid = fork()) or die("Can't fork: $!");
   if ($pid) {
     eval {
-      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port, 0, 1);
+      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port, 0);
       $client->login($setup->{user}, $setup->{passwd});
 
       my $conn = $client->nlst_raw($test_file);
@@ -556,7 +556,7 @@ sub nlst_ok_dir {
   defined(my $pid = fork()) or die("Can't fork: $!");
   if ($pid) {
     eval {
-      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port, 0, 1);
+      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port, 0);
       $client->login($setup->{user}, $setup->{passwd});
 
       my $conn = $client->nlst_raw($setup->{home_dir});
@@ -689,7 +689,7 @@ sub nlst_ok_symlink {
   defined(my $pid = fork()) or die("Can't fork: $!");
   if ($pid) {
     eval {
-      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port, 0, 1);
+      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port, 0);
       $client->login($setup->{user}, $setup->{passwd});
 
       my $path = 'test.d/test.lnk';
@@ -832,7 +832,7 @@ sub nlst_ok_symlink_chrooted_bug4219 {
   defined(my $pid = fork()) or die("Can't fork: $!");
   if ($pid) {
     eval {
-      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port, 0, 1);
+      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port, 0);
       $client->login($setup->{user}, $setup->{passwd});
 
       my $path = 'test.d/test.lnk';
@@ -965,7 +965,6 @@ sub nlst_ok_no_path {
   if ($pid) {
     eval {
       my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
-
       $client->login($user, $passwd);
 
       my $conn = $client->nlst_raw();
@@ -1541,25 +1540,23 @@ sub nlst_fails_login_required {
     eval {
       my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
 
-      my ($resp_code, $resp_msg);
-      eval { ($resp_code, $resp_msg) = $client->nlst() };
+      eval { $client->nlst() };
       unless ($@) {
         die("NLST succeeded unexpectedly");
-
-      } else {
-        $resp_code = $client->response_code();
-        $resp_msg = $client->response_msg();
       }
 
-      my $expected;
+      my $resp_code = $client->response_code();
+      my $resp_msg = $client->response_msg();
 
-      $expected = 530;
+      my $expected = 530;
       $self->assert($expected == $resp_code,
-        test_msg("Expected $expected, got $resp_code"));
+        test_msg("Expected response code $expected, got $resp_code"));
 
       $expected = "Please login with USER and PASS";
       $self->assert($expected eq $resp_msg,
-        test_msg("Expected '$expected', got '$resp_msg'"));
+        test_msg("Expected response message '$expected', got '$resp_msg'"));
+
+      $client->quit();
     };
 
     if ($@) {
@@ -1664,7 +1661,6 @@ sub nlst_fails_enoent {
   if ($pid) {
     eval {
       my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
-
       $client->login($user, $passwd);
 
       my ($resp_code, $resp_msg);
@@ -1794,7 +1790,6 @@ sub nlst_fails_enoent_glob {
   if ($pid) {
     eval {
       my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
-
       $client->login($user, $passwd);
       $client->port();
 
@@ -1934,7 +1929,6 @@ sub nlst_fails_eperm {
   if ($pid) {
     eval {
       my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
-
       $client->login($user, $passwd);
       $client->port();
 
@@ -2064,7 +2058,7 @@ sub nlst_bug2821 {
       # Allow for server startup
       sleep(1);
 
-      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port, 0, 2, 30);
+      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port, 0, 5, 30);
       $client->login($setup->{user}, $setup->{passwd});
 
       # One of the symptoms of Bug#2821 is that a LIST (or NLST) glob
@@ -2216,7 +2210,6 @@ sub nlst_nonascii_chars_bug3032 {
   if ($pid) {
     eval {
       my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
-
       $client->login($user, $passwd);
 
       my $conn = $client->nlst_raw("-B test*");
@@ -3080,7 +3073,6 @@ sub nlst_dash_filename_bug3476 {
   if ($pid) {
     eval {
       my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
-
       $client->login($user, $passwd);
 
       my $conn = $client->nlst_raw('-test.txt');

@@ -738,51 +738,20 @@ sub sftp_rewrite_stat {
 sub sftp_rewrite_lstat {
   my $self = shift;
   my $tmpdir = $self->{tmpdir};
-
-  my $config_file = "$tmpdir/sftp.conf";
-  my $pid_file = File::Spec->rel2abs("$tmpdir/sftp.pid");
-  my $scoreboard_file = File::Spec->rel2abs("$tmpdir/sftp.scoreboard");
-
-  my $log_file = test_get_logfile();
-
-  my $auth_user_file = File::Spec->rel2abs("$tmpdir/sftp.passwd");
-  my $auth_group_file = File::Spec->rel2abs("$tmpdir/sftp.group");
-
-  my $user = 'proftpd';
-  my $passwd = 'test';
-  my $group = 'ftpd';
-  my $home_dir = File::Spec->rel2abs($tmpdir);
-  my $uid = 500;
-  my $gid = 500;
-
-  # Make sure that, if we're running as root, that the home directory has
-  # permissions/privs set for the account we create
-  if ($< == 0) {
-    unless (chmod(0755, $home_dir)) {
-      die("Can't set perms on $home_dir to 0755: $!");
-    }
-
-    unless (chown($uid, $gid, $home_dir)) {
-      die("Can't set owner of $home_dir to $uid/$gid: $!");
-    }
-  }
-
-  auth_user_write($auth_user_file, $user, $passwd, $uid, $gid, $home_dir,
-    '/bin/bash');
-  auth_group_write($auth_group_file, $group, $gid, $user);
+  my $setup = test_setup($tmpdir, 'sftp');
 
   my $rsa_host_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/ssh_host_rsa_key');
   my $dsa_host_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/ssh_host_dsa_key');
 
   my $config = {
-    PidFile => $pid_file,
-    ScoreboardFile => $scoreboard_file,
-    SystemLog => $log_file,
-    TraceLog => $log_file,
-    Trace => 'DEFAULT:10 ssh2:20 sftp:20 scp:20',
+    PidFile => $setup->{pid_file},
+    ScoreboardFile => $setup->{scoreboard_file},
+    SystemLog => $setup->{log_file},
+    TraceLog => $setup->{log_file},
+    Trace => 'ssh2:20 sftp:20',
 
-    AuthUserFile => $auth_user_file,
-    AuthGroupFile => $auth_group_file,
+    AuthUserFile => $setup->{auth_user_file},
+    AuthGroupFile => $setup->{auth_group_file},
     AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
@@ -792,7 +761,7 @@ sub sftp_rewrite_lstat {
 
       'mod_rewrite.c' => [
         'RewriteEngine on',
-        "RewriteLog $log_file",
+        "RewriteLog $setup->{log_file}",
 
         'RewriteMap replace int:replaceall',
         'RewriteCondition %m LSTAT',
@@ -801,14 +770,15 @@ sub sftp_rewrite_lstat {
 
       'mod_sftp.c' => [
         "SFTPEngine on",
-        "SFTPLog $log_file",
+        "SFTPLog $setup->{log_file}",
         "SFTPHostKey $rsa_host_key",
         "SFTPHostKey $dsa_host_key",
       ],
     },
   };
 
-  my ($port, $config_user, $config_group) = config_write($config_file, $config);
+  my ($port, $config_user, $config_group) = config_write($setup->{config_file},
+    $config);
 
   my $test_file = File::Spec->rel2abs("$tmpdir/test_file.txt");
   if (open(my $fh, "> $test_file")) {
@@ -826,8 +796,6 @@ sub sftp_rewrite_lstat {
     die("Can't symlink $test_symlink to $test_file: $!");
   }
 
-  my $test_size = (lstat($test_symlink))[7];
-
   # Open pipes, for use between the parent and child processes.  Specifically,
   # the child will indicate when it's done with its test by writing a message
   # to the parent.
@@ -845,16 +813,16 @@ sub sftp_rewrite_lstat {
   defined(my $pid = fork()) or die("Can't fork: $!");
   if ($pid) {
     eval {
-      my $ssh2 = Net::SSH2->new();
-
+      # Allow for server startup
       sleep(1);
 
+      my $ssh2 = Net::SSH2->new();
       unless ($ssh2->connect('127.0.0.1', $port)) {
         my ($err_code, $err_name, $err_str) = $ssh2->error();
         die("Can't connect to SSH2 server: [$err_name] ($err_code) $err_str");
       }
 
-      unless ($ssh2->auth_password($user, $passwd)) {
+      unless ($ssh2->auth_password($setup->{user}, $setup->{passwd})) {
         my ($err_code, $err_name, $err_str) = $ssh2->error();
         die("Can't login to SSH2 server: [$err_name] ($err_code) $err_str");
       }
@@ -871,11 +839,11 @@ sub sftp_rewrite_lstat {
         die("FXP_LSTAT failed: [$err_name] ($err_code)");
       }
 
-      my $expected;
-
-      $expected = $test_size;
+      # Different OS/platforms have different sizes for a symlink, so we
+      # accept any number, for now.
+      my $expected = '\d+';
       my $file_size = $attrs->{size};
-      $self->assert($expected == $file_size,
+      $self->assert(qr/$expected/, $file_size,
         test_msg("Expected '$expected', got '$file_size'"));
 
       $expected = $<;
@@ -890,7 +858,6 @@ sub sftp_rewrite_lstat {
 
       $ssh2->disconnect();
     };
-
     if ($@) {
       $ex = $@;
     }
@@ -899,7 +866,7 @@ sub sftp_rewrite_lstat {
     $wfh->flush();
 
   } else {
-    eval { server_wait($config_file, $rfh) };
+    eval { server_wait($setup->{config_file}, $rfh) };
     if ($@) {
       warn($@);
       exit 1;
@@ -909,68 +876,29 @@ sub sftp_rewrite_lstat {
   }
 
   # Stop server
-  server_stop($pid_file);
-
+  server_stop($setup->{pid_file});
   $self->assert_child_ok($pid);
 
-  if ($ex) {
-    test_append_logfile($log_file, $ex);
-    unlink($log_file);
-
-    die($ex);
-  }
-
-  unlink($log_file);
+  test_cleanup($setup, $ex);
 }
 
 sub sftp_rewrite_setstat {
   my $self = shift;
   my $tmpdir = $self->{tmpdir};
-
-  my $config_file = "$tmpdir/sftp.conf";
-  my $pid_file = File::Spec->rel2abs("$tmpdir/sftp.pid");
-  my $scoreboard_file = File::Spec->rel2abs("$tmpdir/sftp.scoreboard");
-
-  my $log_file = test_get_logfile();
-
-  my $auth_user_file = File::Spec->rel2abs("$tmpdir/sftp.passwd");
-  my $auth_group_file = File::Spec->rel2abs("$tmpdir/sftp.group");
-
-  my $user = 'proftpd';
-  my $passwd = 'test';
-  my $group = 'ftpd';
-  my $home_dir = File::Spec->rel2abs($tmpdir);
-  my $uid = 500;
-  my $gid = 500;
-
-  # Make sure that, if we're running as root, that the home directory has
-  # permissions/privs set for the account we create
-  if ($< == 0) {
-    unless (chmod(0755, $home_dir)) {
-      die("Can't set perms on $home_dir to 0755: $!");
-    }
-
-    unless (chown($uid, $gid, $home_dir)) {
-      die("Can't set owner of $home_dir to $uid/$gid: $!");
-    }
-  }
-
-  auth_user_write($auth_user_file, $user, $passwd, $uid, $gid, $home_dir,
-    '/bin/bash');
-  auth_group_write($auth_group_file, $group, $gid, $user);
+  my $setup = test_setup($tmpdir, 'sftp');
 
   my $rsa_host_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/ssh_host_rsa_key');
   my $dsa_host_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/ssh_host_dsa_key');
 
   my $config = {
-    PidFile => $pid_file,
-    ScoreboardFile => $scoreboard_file,
-    SystemLog => $log_file,
-    TraceLog => $log_file,
-    Trace => 'DEFAULT:10 ssh2:20 sftp:20 scp:20',
+    PidFile => $setup->{pid_file},
+    ScoreboardFile => $setup->{scoreboard_file},
+    SystemLog => $setup->{log_file},
+    TraceLog => $setup->{log_file},
+    Trace => 'rewrite:10 ssh2:20 sftp:20',
 
-    AuthUserFile => $auth_user_file,
-    AuthGroupFile => $auth_group_file,
+    AuthUserFile => $setup->{auth_user_file},
+    AuthGroupFile => $setup->{auth_group_file},
     AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
@@ -980,7 +908,7 @@ sub sftp_rewrite_setstat {
 
       'mod_rewrite.c' => [
         'RewriteEngine on',
-        "RewriteLog $log_file",
+        "RewriteLog $setup->{log_file}",
 
         'RewriteMap replace int:replaceall',
         'RewriteCondition %m ^(STAT|SETSTAT)$',
@@ -989,14 +917,15 @@ sub sftp_rewrite_setstat {
 
       'mod_sftp.c' => [
         "SFTPEngine on",
-        "SFTPLog $log_file",
+        "SFTPLog $setup->{log_file}",
         "SFTPHostKey $rsa_host_key",
         "SFTPHostKey $dsa_host_key",
       ],
     },
   };
 
-  my ($port, $config_user, $config_group) = config_write($config_file, $config);
+  my ($port, $config_user, $config_group) = config_write($setup->{config_file},
+    $config);
 
   my $test_file = File::Spec->rel2abs("$tmpdir/test_file.txt");
   if (open(my $fh, "> $test_file")) {
@@ -1007,6 +936,12 @@ sub sftp_rewrite_setstat {
 
   } else {
     die("Can't open $test_file: $!");
+  }
+
+  if ($< == 0) {
+    unless (chown($setup->{uid}, $setup->{gid}, $test_file)) {
+      die("Can't set owner of $test_file to $setup->{uid}/$setup->{gid}: $!");
+    }
   }
 
   # Open pipes, for use between the parent and child processes.  Specifically,
@@ -1026,16 +961,16 @@ sub sftp_rewrite_setstat {
   defined(my $pid = fork()) or die("Can't fork: $!");
   if ($pid) {
     eval {
-      my $ssh2 = Net::SSH2->new();
-
+      # Allow for server startup
       sleep(1);
 
+      my $ssh2 = Net::SSH2->new();
       unless ($ssh2->connect('127.0.0.1', $port)) {
         my ($err_code, $err_name, $err_str) = $ssh2->error();
         die("Can't connect to SSH2 server: [$err_name] ($err_code) $err_str");
       }
 
-      unless ($ssh2->auth_password($user, $passwd)) {
+      unless ($ssh2->auth_password($setup->{user}, $setup->{passwd})) {
         my ($err_code, $err_name, $err_str) = $ssh2->error();
         die("Can't login to SSH2 server: [$err_name] ($err_code) $err_str");
       }
@@ -1063,18 +998,15 @@ sub sftp_rewrite_setstat {
 
       $ssh2->disconnect();
 
-      my $expected;
-
-      $expected = 0;
+      my $expected = 0;
       my $file_atime = $attrs->{atime};
       $self->assert($expected == $file_atime,
-        test_msg("Expected '$expected', got '$file_atime'"));
+        test_msg("Expected file atime '$expected', got '$file_atime'"));
 
       my $file_mtime = $attrs->{mtime};
       $self->assert($expected == $file_mtime,
-        test_msg("Expected '$expected', got '$file_mtime'"));
+        test_msg("Expected file mtime '$expected', got '$file_mtime'"));
     };
-
     if ($@) {
       $ex = $@;
     }
@@ -1083,7 +1015,7 @@ sub sftp_rewrite_setstat {
     $wfh->flush();
 
   } else {
-    eval { server_wait($config_file, $rfh) };
+    eval { server_wait($setup->{config_file}, $rfh) };
     if ($@) {
       warn($@);
       exit 1;
@@ -1093,18 +1025,10 @@ sub sftp_rewrite_setstat {
   }
 
   # Stop server
-  server_stop($pid_file);
-
+  server_stop($setup->{pid_file});
   $self->assert_child_ok($pid);
 
-  if ($ex) {
-    test_append_logfile($log_file, $ex);
-    unlink($log_file);
-
-    die($ex);
-  }
-
-  unlink($log_file);
+  test_cleanup($setup, $ex);
 }
 
 sub sftp_rewrite_realpath {

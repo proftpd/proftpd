@@ -147,7 +147,7 @@ sub mlst_file_ok {
   defined(my $pid = fork()) or die("Can't fork: $!");
   if ($pid) {
     eval {
-      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port, 0, 1);
+      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port, 0);
       $client->login($setup->{user}, $setup->{passwd});
 
       my ($resp_code, $resp_msg) = $client->mlst('cmds.conf');
@@ -227,7 +227,7 @@ sub mlst_file_chrooted_ok {
   defined(my $pid = fork()) or die("Can't fork: $!");
   if ($pid) {
     eval {
-      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port, 0, 1);
+      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port, 0);
       $client->login($setup->{user}, $setup->{passwd});
 
       my ($resp_code, $resp_msg) = $client->mlst('cmds.conf');
@@ -497,7 +497,7 @@ sub mlst_symlink_showsymlinks_off_bug3318 {
   defined(my $pid = fork()) or die("Can't fork: $!");
   if ($pid) {
     eval {
-      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port, 0, 1);
+      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port, 0);
       $client->login($setup->{user}, $setup->{passwd});
 
       my ($resp_code, $resp_msg) = $client->mlst('test.lnk');
@@ -594,7 +594,7 @@ sub mlst_symlink_showsymlinks_on_bug3318 {
   defined(my $pid = fork()) or die("Can't fork: $!");
   if ($pid) {
     eval {
-      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port, 0, 1);
+      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port, 0);
       $client->login($setup->{user}, $setup->{passwd});
 
       my ($resp_code, $resp_msg) = $client->mlst('test.lnk');
@@ -699,7 +699,7 @@ sub mlst_symlink_showsymlinks_on_chrooted_bug4219 {
   defined(my $pid = fork()) or die("Can't fork: $!");
   if ($pid) {
     eval {
-      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port, 0, 1);
+      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port, 0);
       $client->login($setup->{user}, $setup->{passwd});
 
       # We expect this to fail because symlinks using absolute paths cannot
@@ -813,7 +813,7 @@ sub mlst_symlink_showsymlinks_on_use_slink {
   defined(my $pid = fork()) or die("Can't fork: $!");
   if ($pid) {
     eval {
-      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port, 0, 1);
+      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port, 0);
       $client->login($setup->{user}, $setup->{passwd});
 
       my ($resp_code, $resp_msg) = $client->mlst('test.lnk');
@@ -927,7 +927,7 @@ sub mlst_symlink_showsymlinks_on_use_slink_chrooted_bug4219 {
   defined(my $pid = fork()) or die("Can't fork: $!");
   if ($pid) {
     eval {
-      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port, 0, 1);
+      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port, 0);
       $client->login($setup->{user}, $setup->{passwd});
 
       my $path = 'test.lnk';

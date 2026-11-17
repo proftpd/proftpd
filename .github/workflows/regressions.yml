@@ -42,6 +42,12 @@ jobs:
           # for Memcache support
           apt-get install -y --no-install-recommends libmemcached-dev
 
+          # for NLS support
+          apt-get install -y --no-install-recommends gettext
+
+          # for OpenSSH tests
+          apt-get install -y openssh-client
+
           # for PAM support
           apt-get install -y --no-install-recommends libpam0g-dev
 
@@ -69,12 +75,18 @@ jobs:
           # for zlib support
           apt-get install -y --no-install-recommends zlib1g-dev
 
+          # for command-line tests
+          apt-get install -y --no-install-recommends curl
+
           # for integration/regression tests
           apt-get install -y --no-install-recommends \
             libauthen-oath-perl \
             libcompress-raw-zlib-perl \
             libdata-dumper-simple-perl \
             libdatetime-perl \
+            libdigest-crc-perl \
+            libdigest-perl-md5-perl \
+            libdigest-sha-perl \
             libfile-copy-recursive-perl \
             libfile-path-tiny-perl \
             libfile-spec-native-perl \
@@ -84,6 +96,7 @@ jobs:
             libnet-ssleay-perl \
             libnet-telnet-perl \
             libposix-2008-perl \
+            libnet-snmp-perl \
             libtest-unit-perl \
             libtime-hr-perl \
             libwww-perl
@@ -95,18 +108,25 @@ jobs:
 
       - name: Install with static modules
         # NOTE: Docker does not have good IPv6 support, hence we disable it.
+        #
+        # The mod_digest SQLLog-related regression tests require that the
+        # module appear AFTER mod_sql in the --with-modules list.
         run: |
           cd proftpd
-          ./configure --disable-ipv6 --enable-openssl --with-modules=mod_readme:mod_sql:mod_sql_sqlite:mod_unique_id:mod_ifsession
+          ./configure --disable-ipv6 --enable-ctrls --enable-facl --enable-nls --enable-pcre2 --enable-openssl --with-modules=mod_copy:mod_deflate:mod_readme:mod_rewrite:mod_site_misc:mod_sql:mod_sql_sqlite:mod_sql_passwd:mod_digest:mod_facl:mod_quotatab:mod_quotatab_file:mod_quotatab_sql:mod_sftp:mod_sftp_pam:mod_sftp_sql:mod_tls:mod_tls_fscache:mod_tls_shmcache:mod_snmp:mod_unique_id:mod_ifsession
           make
           ./proftpd -V
           make install
 
       - name: Run integration tests
+        # We expect some of the tests to fail, but still need to proceed
+        # onward to the next step, for setting the failure logs.
         env:
           PROFTPD_TEST_BIN: /usr/local/sbin/proftpd
           PROFTPD_TEST_CI: github
           PROFTPD_TEST_DIR: ${{ github.workspace }}/proftpd/tests
+          PROFTPD_TEST_PATH: /usr/local/bin
         run: |
           cd proftpd/tests
           perl tests.pl
+          cat tests.log

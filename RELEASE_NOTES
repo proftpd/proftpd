@@ -16,6 +16,8 @@ ChangeLog files.
   + Implement support for revoking SSH public keys, whether as part of SSH
     client certificates or used as regular keys.
 
+  + Implement support for the "ssh-mldsa44-ed25519" SSH host key algorithm.
+
 
   + New Directives
 

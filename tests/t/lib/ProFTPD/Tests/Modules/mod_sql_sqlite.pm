@@ -4753,6 +4753,23 @@ EOS
     }
   }
 
+  my $test_file = File::Spec->rel2abs("$tmpdir/test.dat");
+  if (open(my $fh, "> $test_file")) {
+    print $fh "AbCdEfGh" x 10240;
+    unless (close($fh)) {
+      die("Can't write $test_file: $!");
+    }
+
+  } else {
+    die("Can't open $test_file: $!");
+  }
+
+  if ($< == 0) {
+    unless (chown($setup->{uid}, $setup->{gid}, $test_file)) {
+      die("Can't set owner of $test_file to $setup->{uid}/$setup->{gid}: $!");
+    }
+  }
+
   my $config = {
     PidFile => $setup->{pid_file},
     ScoreboardFile => $setup->{scoreboard_file},
@@ -4761,6 +4778,9 @@ EOS
     AuthUserFile => $setup->{auth_user_file},
     AuthGroupFile => $setup->{auth_group_file},
     AuthOrder => 'mod_auth_file.c',
+
+    # Slow the download a little for our test case assertions.
+    TransferRate => 'RETR 15',
 
     IfModules => {
       'mod_delay.c' => {
@@ -4799,9 +4819,9 @@ EOS
       my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port, 0, 1);
       $client->login($setup->{user}, $setup->{passwd});
 
-      my $conn = $client->retr_raw('sqlite.conf');
+      my $conn = $client->retr_raw('test.dat');
       unless ($conn) {
-        die("RETR sqlite.conf failed: " . $client->response_code() . " " .
+        die("RETR failed: " . $client->response_code() . " " .
           $client->response_msg());
       }
 
@@ -4816,7 +4836,6 @@ EOS
 
       $client->quit();
     };
-
     if ($@) {
       $ex = $@;
     }
@@ -6848,9 +6867,11 @@ EOS
         "Expected response message '$expected', got '$resp_msgs->[2]'");
       $i++;
 
-      $expected = "-";
-      $self->assert($expected eq $resp_msgs->[$i],
-        "Expected response message '$expected', got '$resp_msgs->[3]'");
+      if ($resp_msgs->[$i]) {
+        $expected = "-";
+        $self->assert($expected eq $resp_msgs->[$i],
+          "Expected response message '$expected', got '$resp_msgs->[3]'");
+      }
 
       $client->quit();
     };
@@ -14849,11 +14870,16 @@ EOS
       # Give the server a chance to start up
       sleep(2);
 
+      # Suppress annoying warning from IO::Socket::SSL.
+      local $SIG{__WARN__} = sub {
+        my $msg = shift;
+        warn $msg unless $msg =~ /^Use of uninitialized value.*at .*IO\/Socket\/SSL\.pm/;
+      };
+
       my $client = Net::FTPSSL->new('127.0.0.1',
         Encryption => 'E',
         Port => $port,
       );
-
       unless ($client) {
         die("Can't connect to FTPS server: " . IO::Socket::SSL::errstr());
       }
@@ -15325,6 +15351,7 @@ CREATE TABLE users (
   lastdir TEXT
 );
 INSERT INTO users (userid, passwd, uid, gid, homedir, shell) VALUES ('$setup->{user}', '$setup->{passwd}', $setup->{uid}, $setup->{gid}, '$setup->{home_dir}', '/bin/bash');
+
 CREATE TABLE groups (
   groupname TEXT,
   gid INTEGER,
@@ -15364,7 +15391,8 @@ EOS
 
     AuthUserFile => $setup->{auth_user_file},
     AuthGroupFile => $setup->{auth_group_file},
-    AuthOrder => 'mod_auth_file.c',
+
+    ServerAlias => 'test',
 
     Global => {
       AuthOrder => 'mod_sql.c',
@@ -15373,6 +15401,7 @@ EOS
       SQLBackend => 'sqlite3',
       SQLConnectInfo => $db_file,
       SQLLogFile => $setup->{log_file},
+      SQLMinID => 100,
     },
 
     IfModules => {
@@ -15386,6 +15415,7 @@ EOS
         TLSRequired => 'on',
         TLSRSACertificateFile => $cert_file,
         TLSCACertificateFile => $ca_file,
+        TLSOptions => 'EnableDiags',
       },
     },
   };
@@ -15428,21 +15458,28 @@ EOC
       # Give the server a chance to start up
       sleep(2);
 
-      my $client = Net::FTPSSL->new('127.0.0.1',
+      # Suppress annoying warning from IO::Socket::SSL.
+      local $SIG{__WARN__} = sub {
+        my $msg = shift;
+        warn $msg unless $msg =~ /^Use of uninitialized value.*at .*IO\/Socket\/SSL\.pm/;
+      };
+
+      my $client_opts = {
         Encryption => 'E',
         Port => $port,
         SSL_hostname => $server_alias,
-      );
+      };
 
-      unless ($client) {
-        die("Can't connect to FTPS server: " . IO::Socket::SSL::errstr());
+      if ($ENV{TEST_VERBOSE}) {
+        $client_opts->{Debug} = 2;
       }
 
-      unless ($client->login($setup->{user}, $setup->{passwd})) {
-        die("Login failed unexpectedly: " + $client->message());
+      # We are connecting to the namebased vhost, which does NOT have TLS
+      # support enabled, thus we expect this to fail.
+      my $client = Net::FTPSSL->new('127.0.0.1', $client_opts);
+      if ($client) {
+        die("Connect to FTPS server succeeded unexpectedly");
       }
-
-      $client->quit();
     };
     if ($@) {
       $ex = $@;

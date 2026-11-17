@@ -228,6 +228,7 @@ sub wrap2_allow_msg {
 
     AuthUserFile => $setup->{auth_user_file},
     AuthGroupFile => $setup->{auth_group_file},
+    AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
       'mod_delay.c' => {
@@ -335,6 +336,8 @@ sub wrap2_deny_msg {
 
     AuthUserFile => $setup->{auth_user_file},
     AuthGroupFile => $setup->{auth_group_file},
+    AuthOrder => 'mod_auth_file.c',
+
     TimeoutIdle => $timeout_idle,
     UseReverseDNS => 'off',
 
@@ -478,6 +481,7 @@ sub wrap2_engine {
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
+    AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
       'mod_delay.c' => {
@@ -597,6 +601,7 @@ sub wrap2_file_allow_table {
 
     AuthUserFile => $setup->{auth_user_file},
     AuthGroupFile => $setup->{auth_group_file},
+    AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
       'mod_delay.c' => {
@@ -741,6 +746,8 @@ sub wrap2_file_allow_table_multi_rows_multi_entries {
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
+    AuthOrder => 'mod_auth_file.c',
+
     TimeoutIdle => $timeout_idle,
 
     IfModules => {
@@ -894,6 +901,8 @@ sub wrap2_file_allow_table_ip_addr_prefix {
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
+    AuthOrder => 'mod_auth_file.c',
+
     TimeoutIdle => $timeout_idle,
 
     IfModules => {
@@ -1047,6 +1056,8 @@ sub wrap2_file_allow_table_keyword_local {
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
+    AuthOrder => 'mod_auth_file.c',
+
     TimeoutIdle => $timeout_idle,
     UseReverseDNS => 'on',
 
@@ -1193,6 +1204,7 @@ sub wrap2_file_allow_table_user_ip_addr_prefix {
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
+    AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
       'mod_delay.c' => {
@@ -1340,6 +1352,7 @@ sub wrap2_file_allow_table_user_ip_addr_netmask {
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
+    AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
       'mod_delay.c' => {
@@ -1582,6 +1595,7 @@ sub wrap2_file_allow_table_tilde {
 
     AuthUserFile => $setup->{auth_user_file},
     AuthGroupFile => $setup->{auth_group_file},
+    AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
       'mod_delay.c' => {
@@ -1690,6 +1704,7 @@ sub wrap2_file_allow_table_var_U {
 
     AuthUserFile => $setup->{auth_user_file},
     AuthGroupFile => $setup->{auth_group_file},
+    AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
       'mod_delay.c' => {
@@ -1797,6 +1812,7 @@ sub wrap2_file_deny_table_ipv4_addr {
 
     AuthUserFile => $setup->{auth_user_file},
     AuthGroupFile => $setup->{auth_group_file},
+    AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
       'mod_delay.c' => {
@@ -1910,6 +1926,8 @@ sub wrap2_file_deny_table_ipv6_addr_bug4090 {
 
     AuthUserFile => $setup->{auth_user_file},
     AuthGroupFile => $setup->{auth_group_file},
+    AuthOrder => 'mod_auth_file.c',
+
     DefaultAddress => '::1',
     UseIPv6 => 'on',
 
@@ -2046,6 +2064,8 @@ sub wrap2_file_deny_table_dns_name {
 
     AuthUserFile => $setup->{auth_user_file},
     AuthGroupFile => $setup->{auth_group_file},
+    AuthOrder => 'mod_auth_file.c',
+
     UseReverseDNS => 'on',
 
     IfModules => {
@@ -2160,6 +2180,7 @@ sub wrap2_file_deny_table_tilde {
 
     AuthUserFile => $setup->{auth_user_file},
     AuthGroupFile => $setup->{auth_group_file},
+    AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
       'mod_delay.c' => {
@@ -2274,6 +2295,7 @@ sub wrap2_file_service_name {
 
     AuthUserFile => $setup->{auth_user_file},
     AuthGroupFile => $setup->{auth_group_file},
+    AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
       'mod_delay.c' => {
@@ -2387,6 +2409,7 @@ sub wrap2_file_user_tables_not_matching_user {
 
     AuthUserFile => $setup->{auth_user_file},
     AuthGroupFile => $setup->{auth_group_file},
+    AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
       'mod_delay.c' => {
@@ -2496,6 +2519,7 @@ sub wrap2_file_user_tables_matching_user {
 
     AuthUserFile => $setup->{auth_user_file},
     AuthGroupFile => $setup->{auth_group_file},
+    AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
       'mod_delay.c' => {
@@ -2608,6 +2632,7 @@ sub wrap2_file_group_tables_not_matching_group {
 
     AuthUserFile => $setup->{auth_user_file},
     AuthGroupFile => $setup->{auth_group_file},
+    AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
       'mod_delay.c' => {
@@ -2717,6 +2742,7 @@ sub wrap2_file_group_tables_matching_group {
 
     AuthUserFile => $setup->{auth_user_file},
     AuthGroupFile => $setup->{auth_group_file},
+    AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
       'mod_delay.c' => {
@@ -2859,6 +2885,7 @@ sub wrap2_file_bug3048 {
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
+    AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
       'mod_delay.c' => {
@@ -3013,6 +3040,8 @@ sub wrap2_file_syntax {
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
+    AuthOrder => 'mod_auth_file.c',
+
     TimeoutIdle => $timeout_idle,
 
     IfModules => {
@@ -3176,6 +3205,7 @@ sub wrap2_file_user_plus_global_tables {
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
+    AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
       'mod_delay.c' => {
@@ -3536,6 +3566,7 @@ sub wrap2_file_tilde_opt_check_on_connect_bug3508 {
 
     AuthUserFile => $setup->{auth_user_file},
     AuthGroupFile => $setup->{auth_group_file},
+    AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
       'mod_delay.c' => {
@@ -3670,6 +3701,7 @@ sub wrap2_sftp_extlog_user_bug3727 {
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
+    AuthOrder => 'mod_auth_file.c',
 
     LogFormat => 'login "%h %l %u %m"',
     ExtendedLog => "$extlog_file ALL login",
@@ -3868,6 +3900,7 @@ sub wrap2_file_user_table_reverse_dns_bug3938 {
 
     AuthUserFile => $auth_user_file,
     AuthGroupFile => $auth_group_file,
+    AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
       'mod_delay.c' => {
@@ -4035,6 +4068,7 @@ sub wrap2_file_allow_includes_issue1133 {
 
     AuthUserFile => $setup->{auth_user_file},
     AuthGroupFile => $setup->{auth_group_file},
+    AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
       'mod_delay.c' => {
@@ -4152,6 +4186,7 @@ sub wrap2_file_deny_includes_issue1133 {
 
     AuthUserFile => $setup->{auth_user_file},
     AuthGroupFile => $setup->{auth_group_file},
+    AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
       'mod_delay.c' => {

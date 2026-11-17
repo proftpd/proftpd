@@ -30,38 +30,46 @@
 #define MOD_DIGEST_VERSION      "mod_digest/2.0.1"
 
 /* Define the custom commands/responses used. */
-#ifndef C_HASH
+#if !defined(C_HASH)
 # define C_HASH		"HASH"
-#endif
-#ifndef C_MD5
+#endif /* C_HASH */
+
+#if !defined(C_MD5)
 # define C_MD5		"MD5"
-#endif
-#ifndef C_XCRC
+#endif /* C_MD5 */
+
+#if !defined(C_XCRC)
 # define C_XCRC		"XCRC"
-#endif
-#ifndef C_XMD5
+#endif /* C_XCRC */
+
+#if !defined(C_XMD5)
 # define C_XMD5		"XMD5"
-#endif
-#ifndef C_XSHA
+#endif /* C_XMD5 */
+
+#if !defined(C_XSHA)
 # define C_XSHA		"XSHA"
-#endif
-#ifndef C_XSHA1
+#endif /* C_XSHA */
+
+#if !defined(C_XSHA1)
 # define C_XSHA1	"XSHA1"
-#endif
-#ifndef C_XSHA256
+#endif /* C_XSHA1 */
+
+#if !defined(C_XSHA256)
 # define C_XSHA256	"XSHA256"
-#endif
-#ifndef C_XSHA512
+#endif /* C_XSHA256 */
+
+#if !defined(C_XSHA512)
 # define C_XSHA512	"XSHA512"
-#endif
+#endif /* C_XSHA512 */
 
 /* Non-standard FTP response/status codes */
-#ifndef R_251
+#if !defined(R_251)
 # define R_251		"251"
-#endif
-#ifndef R_556
+#endif /* R_251 */
+
+#if !defined(R_556)
 # define R_556		"556"
-#endif
+#endif /* R_556 */
 
 /* Make sure the version of proftpd is as necessary. */
 #if PROFTPD_VERSION_NUMBER < 0x0001030602
@@ -93,12 +101,12 @@ module digest_module;
 
 static int digest_caching = TRUE;
 
-#ifndef DIGEST_CACHE_DEFAULT_SIZE
+#if !defined(DIGEST_CACHE_DEFAULT_SIZE)
 # define DIGEST_CACHE_DEFAULT_SIZE	10000
-#endif
-#ifndef DIGEST_CACHE_DEFAULT_MAX_AGE
+#endif /* DIGEST_CACHE_DEFAULT_SIZE */
+#if !defined(DIGEST_CACHE_DEFAULT_MAX_AGE)
 # define DIGEST_CACHE_DEFAULT_MAX_AGE	30
-#endif
+#endif /* DIGEST_CACHE_DEFAULT_MAX_AGE */
 static unsigned int digest_cache_max_size = DIGEST_CACHE_DEFAULT_SIZE;
 static unsigned int digest_cache_max_age = DIGEST_CACHE_DEFAULT_MAX_AGE;
 
@@ -148,22 +156,25 @@ static xaset_t *digest_cache_keys = NULL;
 
 /* Digest algorithms supported by mod_digest. */
 #define DIGEST_ALGO_CRC32		0x0001
-#ifndef OPENSSL_NO_MD5
+#if !defined(OPENSSL_NO_MD5)
 # define DIGEST_ALGO_MD5		0x0002
 #else
 # define DIGEST_ALGO_MD5		0x0000
 #endif /* OPENSSL_NO_MD5 */
-#ifndef OPENSSL_NO_SHA
+
+#if !defined(OPENSSL_NO_SHA)
 # define DIGEST_ALGO_SHA1		0x0004
 #else
 # define DIGEST_ALGO_SHA1		0x0000
 #endif /* OPENSSL_NO_SHA */
-#ifndef OPENSSL_NO_SHA256
+
+#if !defined(OPENSSL_NO_SHA256)
 # define DIGEST_ALGO_SHA256		0x0008
 #else
 # define DIGEST_ALGO_SHA256		0x0000
 #endif /* OPENSSL_NO_SHA256 */
-#ifndef OPENSSL_NO_SHA512
+
+#if !defined(OPENSSL_NO_SHA512)
 # define DIGEST_ALGO_SHA512		0x0010
 #else
 # define DIGEST_ALGO_SHA512		0x0000
@@ -184,9 +195,9 @@ static int digest_hash_free_md = FALSE;
 /* We will invoke the progress callback every Nth iteration of the read(2)
  * loop when digesting a file.
  */
-#ifndef DIGEST_PROGRESS_NTH_ITER
+#if !defined(DIGEST_PROGRESS_NTH_ITER)
 # define DIGEST_PROGRESS_NTH_ITER	40000
-#endif
+#endif /* DIGEST_PROGRESS_NTH_ITER */
 
 #if OPENSSL_VERSION_NUMBER >= 0x40000000L && !defined(HAVE_LIBRESSL)
 static OSSL_PROVIDER *crc32_provider = NULL;
@@ -904,28 +915,28 @@ MODRET set_digestdefaultalgo(cmd_rec *cmd) {
     algo = DIGEST_ALGO_CRC32;
 
   } else if (strcasecmp(algo_name, "md5") == 0) {
-#ifndef OPENSSL_NO_MD5
+#if !defined(OPENSSL_NO_MD5)
     algo = DIGEST_ALGO_MD5;
 #else
     CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "installed OpenSSL does not support the '", algo_name, "' DigestAlgorithm", NULL));
 #endif /* OPENSSL_NO_MD5 */
 
   } else if (strcasecmp(algo_name, "sha1") == 0) {
-#ifndef OPENSSL_NO_SHA
+#if !defined(OPENSSL_NO_SHA)
     algo = DIGEST_ALGO_SHA1;
 #else
     CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "installed OpenSSL does not support the '", algo_name, "' DigestAlgorithm", NULL));
 #endif /* OPENSSL_NO_SHA */
 
   } else if (strcasecmp(algo_name, "sha256") == 0) {
-#ifndef OPENSSL_NO_SHA256
+#if !defined(OPENSSL_NO_SHA256)
     algo = DIGEST_ALGO_SHA256;
 #else
     CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "installed OpenSSL does not support the '", algo_name, "' DigestAlgorithm", NULL));
 #endif /* OPENSSL_NO_SHA256 */
 
   } else if (strcasecmp(algo_name, "sha512") == 0) {
-#ifndef OPENSSL_NO_SHA512
+#if !defined(OPENSSL_NO_SHA512)
     algo = DIGEST_ALGO_SHA512;
 #else
     CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "installed OpenSSL does not support the '", algo_name, "' DigestAlgorithm", NULL));
@@ -2322,7 +2333,7 @@ MODRET digest_opts_hash(cmd_rec *cmd) {
         free_algo_md(digest_hash_md);
       }
 
-      digest_hash_md = get_algo_md(digest_hash_algo, &digest_hash_free_md);
+      digest_hash_md = get_algo_md(DIGEST_ALGO_CRC32, &digest_hash_free_md);
       if (digest_hash_md == NULL) {
         digest_algos &= ~DIGEST_ALGO_CRC32;
 
@@ -2344,7 +2355,7 @@ MODRET digest_opts_hash(cmd_rec *cmd) {
         free_algo_md(digest_hash_md);
       }
 
-      digest_hash_md = get_algo_md(digest_hash_algo, &digest_hash_free_md);
+      digest_hash_md = get_algo_md(DIGEST_ALGO_MD5, &digest_hash_free_md);
       if (digest_hash_md == NULL) {
         digest_algos &= ~DIGEST_ALGO_MD5;
 
@@ -2367,7 +2378,7 @@ MODRET digest_opts_hash(cmd_rec *cmd) {
         free_algo_md(digest_hash_md);
       }
 
-      digest_hash_md = get_algo_md(digest_hash_algo, &digest_hash_free_md);
+      digest_hash_md = get_algo_md(DIGEST_ALGO_SHA1, &digest_hash_free_md);
       if (digest_hash_md == NULL) {
         digest_algos &= ~DIGEST_ALGO_SHA1;
 
@@ -2390,7 +2401,7 @@ MODRET digest_opts_hash(cmd_rec *cmd) {
         free_algo_md(digest_hash_md);
       }
 
-      digest_hash_md = get_algo_md(digest_hash_algo, &digest_hash_free_md);
+      digest_hash_md = get_algo_md(DIGEST_ALGO_SHA256, &digest_hash_free_md);
       if (digest_hash_md == NULL) {
         digest_algos &= ~DIGEST_ALGO_SHA256;
 
@@ -2413,7 +2424,7 @@ MODRET digest_opts_hash(cmd_rec *cmd) {
         free_algo_md(digest_hash_md);
       }
 
-      digest_hash_md = get_algo_md(digest_hash_algo, &digest_hash_free_md);
+      digest_hash_md = get_algo_md(DIGEST_ALGO_SHA512, &digest_hash_free_md);
       if (digest_hash_md == NULL) {
         digest_algos &= ~DIGEST_ALGO_SHA512;
 
@@ -2547,7 +2558,7 @@ MODRET digest_log(cmd_rec *cmd) {
 
   algo_name = get_algo_name(digest_hash_algo, 0);
   digest_len = EVP_MD_size(digest_hash_md);
-  digest = palloc(cmd->tmp_pool, digest_len);
+  digest = pcalloc(cmd->tmp_pool, digest_len);
 
   if (EVP_DigestFinal_ex(digest_cache_xfer_ctx, digest, &digest_len) != 1) {
     pr_trace_msg(trace_channel, 1,

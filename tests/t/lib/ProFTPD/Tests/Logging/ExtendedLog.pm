@@ -77,6 +77,11 @@ my $TESTS = {
     test_class => [qw(forking)],
   },
 
+  extlog_rename_from_after_bad_sequence => {
+    order => ++$order,
+    test_class => [qw(forking)],
+  },
+
   extlog_sftp_rename_from => {
     order => ++$order,
     test_class => [qw(bug forking mod_sftp)],
@@ -2084,6 +2089,170 @@ sub extlog_rename_from {
       }
 
       $expected = "RNTO: $src_file $dst_file";
+      $self->assert($expected eq $line,
+        test_msg("Expected '$expected', got '$line'"));
+
+      close($fh);
+
+    } else {
+      die("Can't read $ext_log: $!");
+    }
+  };
+  if ($@) {
+    $ex = $@ unless $ex;
+  }
+
+  test_cleanup($setup, $ex);
+}
+
+sub extlog_rename_from_after_bad_sequence {
+  my $self = shift;
+  my $tmpdir = $self->{tmpdir};
+  my $setup = test_setup($tmpdir, 'extlog');
+
+  my $ext_log = File::Spec->rel2abs("$tmpdir/custom.log");
+
+  my $src_file = File::Spec->rel2abs("$tmpdir/test.txt");
+  if (open(my $fh, "> $src_file")) {
+    close($fh);
+
+  } else {
+    die("Can't open $src_file: $!");
+  }
+
+  if ($< == 0) {
+    unless (chmod($setup->{uid}, $setup->{gid}, $src_file)) {
+      die("Can't set owner of $src_file to $setup->{uid}/$setup->{gid}: $!");
+    }
+  }
+
+  my $dst_file = File::Spec->rel2abs("$tmpdir/foo.txt");
+
+  my $config = {
+    PidFile => $setup->{pid_file},
+    ScoreboardFile => $setup->{scoreboard_file},
+    SystemLog => $setup->{log_file},
+
+    AuthUserFile => $setup->{auth_user_file},
+    AuthGroupFile => $setup->{auth_group_file},
+    AuthOrder => 'mod_auth_file.c',
+
+    LogFormat => 'custom "%m: %w"',
+    ExtendedLog => "$ext_log WRITE custom",
+
+    IfModules => {
+      'mod_delay.c' => {
+        DelayEngine => 'off',
+      },
+    },
+  };
+
+  my ($port, $config_user, $config_group) = config_write($setup->{config_file},
+    $config);
+
+  # Open pipes, for use between the parent and child processes.  Specifically,
+  # the child will indicate when it's done with its test by writing a message
+  # to the parent.
+  my ($rfh, $wfh);
+  unless (pipe($rfh, $wfh)) {
+    die("Can't open pipe: $!");
+  }
+
+  my $ex;
+
+  # Fork child
+  $self->handle_sigchld();
+  defined(my $pid = fork()) or die("Can't fork: $!");
+  if ($pid) {
+    eval {
+      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
+      $client->login($setup->{user}, $setup->{passwd});
+      $client->rnfr('test.txt');
+
+      # Now we deliberately issue a command that should elicit a
+      # "Bad sequence of commands" response.
+      #
+      # I'm sending LIST directly here to avoid having Net::FTP send a
+      # PASV command first; I specifically want the LIST error cleanup
+      # handler to run.
+      eval { $client->quote('LIST') };
+      unless ($@) {
+        die("LIST succeeded unexpectedly");
+      }
+
+      my $resp_code = $client->response_code();
+      my $resp_msg = $client->response_msg();
+
+      my $expected = 501;
+      $self->assert($expected == $resp_code,
+        test_msg("Expected response code $expected, got $resp_code"));
+
+      $expected = 'Bad sequence of commands';
+      $self->assert($expected eq $resp_msg,
+        test_msg("Expected response message '$expected', got '$resp_msg'"));
+
+      eval { $client->rnto('foo.txt') };
+      unless ($@) {
+        die("RNTO succeeded unexpectedly");
+      }
+
+      $resp_code = $client->response_code();
+      $resp_msg = $client->response_msg();
+
+      $expected = 503;
+      $self->assert($expected == $resp_code,
+        test_msg("Expected response code $expected, got $resp_code"));
+
+      $expected = 'Bad sequence of commands';
+      $self->assert($expected eq $resp_msg,
+        test_msg("Expected response message '$expected', got '$resp_msg'"));
+
+      $client->quit();
+    };
+    if ($@) {
+      $ex = $@;
+    }
+
+    $wfh->print("done\n");
+    $wfh->flush();
+
+  } else {
+    eval { server_wait($setup->{config_file}, $rfh) };
+    if ($@) {
+      warn($@);
+      exit 1;
+    }
+
+    exit 0;
+  }
+
+  # Stop server
+  server_stop($setup->{pid_file});
+  $self->assert_child_ok($pid);
+
+  # Now, read in the ExtendedLog, and see whether the %f and %w variables were
+  # properly written out.
+  eval {
+    if (open(my $fh, "< $ext_log")) {
+      my $line = <$fh>;
+      chomp($line);
+
+      if ($ENV{TEST_VERBOSE}) {
+        print STDERR "# $line\n";
+      }
+
+      my $expected = 'RNFR: -';
+      $self->assert($expected eq $line,
+        test_msg("Expected '$expected', got '$line'"));
+
+      $line = <$fh>;
+      chomp($line);
+
+      if ($ENV{TEST_VERBOSE}) {
+        print STDERR "# $line\n";
+      }
+
+      $expected = 'RNTO: -';
       $self->assert($expected eq $line,
         test_msg("Expected '$expected', got '$line'"));
 
@@ -4300,7 +4469,6 @@ sub extlog_ftps_raw_bytes_bug3554 {
   }
 
   my $dst_file = File::Spec->rel2abs("$tmpdir/dst.txt");
-
   my $ext_log = File::Spec->rel2abs("$tmpdir/custom.log");
 
   my $config = {
@@ -4358,11 +4526,23 @@ sub extlog_ftps_raw_bytes_bug3554 {
       # Give the server a chance to start up
       sleep(2);
 
-      my $client = Net::FTPSSL->new('127.0.0.1',
+      # Suppress annoying warning from IO::Socket::SSL.
+      local $SIG{__WARN__} = sub {
+        my $msg = shift;
+        warn $msg unless $msg =~ /^Use of uninitialized value.*at .*IO\/Socket\/SSL\.pm/;
+      };
+
+      my $client_opts = {
         Encryption => 'E',
         Port => $port,
-      );
+        Croak => 0,
+      };
 
+      if ($ENV{TEST_VERBOSE}) {
+        $client_opts->{Debug} = 2;
+      }
+
+      my $client = Net::FTPSSL->new('127.0.0.1', $client_opts);
       unless ($client) {
         die("Can't connect to FTPS server: " . IO::Socket::SSL::errstr());
       }
@@ -4437,7 +4617,7 @@ sub extlog_ftps_raw_bytes_bug3554 {
             test_msg("Expected $expected_min - $expected_max, got $bytes_in"));
 
           $expected_min = 6828;
-          $expected_max = 9450;
+          $expected_max = 9800;
           $self->assert($expected_min <= $bytes_out &&
                         $expected_max >= $bytes_out,
             test_msg("Expected $expected_min - $expected_max, got $bytes_out"));
@@ -5746,12 +5926,10 @@ sub extlog_eos_reason_timeoutstalled {
       my $resp_code = $client->response_code();
       my $resp_msg = $client->response_msg();
 
-      # Perl's Net::Cmd module uses a very non-standard 599 code to
-      # indicate that the connection is closed, depending on version.
-      $self->assert($resp_code == 421 || $resp_code == 599,
-        test_msg("Expected response code 421 or 599, got $resp_code"));
+      $self->assert($resp_code == 421 || $resp_code == 426,
+        test_msg("Expected response code 421 or 426, got $resp_code"));
 
-      my $expected = "Connection closed";
+      my $expected = 'Transfer aborted';
       $self->assert(qr/$expected/, $resp_msg,
         test_msg("Expected response message '$expected', got '$resp_msg'"));
     };
@@ -8812,12 +8990,17 @@ EOC
       # Give the server a chance to start up
       sleep(2);
 
+      # Suppress annoying warning from IO::Socket::SSL.
+      local $SIG{__WARN__} = sub {
+        my $msg = shift;
+        warn $msg unless $msg =~ /^Use of uninitialized value.*at .*IO\/Socket\/SSL\.pm/;
+      };
+
       my $client = Net::FTPSSL->new('127.0.0.1',
         Encryption => 'E',
         Port => $port,
         Croak => 1,
       );
-
       unless ($client) {
         die("Can't connect to FTPS server: " . IO::Socket::SSL::errstr());
       }
@@ -8917,12 +9100,18 @@ sub ftps_data_xfer_failed_cb {
   my $user_data = shift;
 
   if ($ENV{TEST_VERBOSE}) {
-    print STDERR "# ftps_data_xfer_cb invoked: total_len = $total_len\n";
+    print STDERR "# ftps_data_xfer_cb invoked: data_len = $$data_len, total_len = $total_len\n";
   }
 
-  if ($total_len > 8192) {
-    $user_data->close(SSL_no_shutdown => 1);
-    return -1;
+  if ($total_len > 18192) {
+    my $client = $user_data->{client};
+
+    if ($ENV{TEST_VERBOSE}) {
+      print STDERR "# ftps_data_xfer_cb: too much data ($total_len) transferred, aborting\n";
+    }
+
+    $! = $Errno::ENOSPC;
+    return undef;
   }
 
   return $$data_len;
@@ -9036,11 +9225,23 @@ EOC
       # Give the server a chance to start up
       sleep(2);
 
-      my $client = Net::FTPSSL->new('127.0.0.1',
+      # Suppress annoying warning from IO::Socket::SSL.
+      local $SIG{__WARN__} = sub {
+        my $msg = shift;
+        warn $msg unless $msg =~ /^Use of uninitialized value.*at .*IO\/Socket\/SSL\.pm/;
+      };
+
+      my $client_opts = {
         Encryption => 'E',
         Port => $port,
-      );
+        Croak => 0,
+      };
 
+      if ($ENV{TEST_VERBOSE}) {
+        $client_opts->{Debug} = 2;
+      }
+
+      my $client = Net::FTPSSL->new('127.0.0.1', $client_opts);
       unless ($client) {
         die("Can't connect to FTPS server: " . IO::Socket::SSL::errstr());
       }
@@ -9053,11 +9254,13 @@ EOC
         die("Can't set transfer mode to binary: " . $client->last_message());
       }
 
-      $client->set_callback(\&ftps_data_xfer_failed_cb, \&ftps_data_close_cb, $client);
+      $client->set_callback(\&ftps_data_xfer_failed_cb, \&ftps_data_close_cb, { client => $client});
 
-      if ($client->get('test.txt', '/dev/null')) {
-        die("Download of 'test.txt' succeeded unexpectedly");
-      }
+      # We expect this fail, because AllowOverwite is off and we are
+      # uploading to an already existing remote path.  But Net::FTPSSL
+      # does not always report that as a "failed transfer".
+      $client->put($test_file, '/dev/null');
+      $client->quit();
     };
     if ($@) {
       $ex = $@;
@@ -9097,7 +9300,7 @@ EOC
           my $cmd = $1;
           my $xfer_status = $2;
 
-          if ($cmd eq 'RETR') {
+          if ($cmd eq 'STOR') {
             if ($xfer_status eq 'failed') {
               $expected_xfer_status = 1;
               last;
@@ -13106,7 +13309,7 @@ sub extlog_stor_var_f_xfer_timed_out {
     ScoreboardFile => $setup->{scoreboard_file},
     SystemLog => $setup->{log_file},
     TraceLog => $setup->{log_file},
-    Trace => 'response:20',
+    Trace => 'event:10 command:10 response:20',
 
     AuthUserFile => $setup->{auth_user_file},
     AuthGroupFile => $setup->{auth_group_file},
@@ -13158,9 +13361,11 @@ sub extlog_stor_var_f_xfer_timed_out {
         print STDERR "# Sleeping for $timeout_stalled secs\n";
       }
       sleep($timeout_stalled + 1);
+      eval { $conn->close() };
 
       # Normally we would send a QUIT, but a TimeoutStalled timer would
       # have disconnected us.
+      eval { $client->quit() };
     };
     if ($@) {
       $ex = $@;
@@ -13199,11 +13404,16 @@ sub extlog_stor_var_f_xfer_timed_out {
       while (my $line = <$fh>) {
         chomp($line);
 
+        if ($ENV{TEST_VERBOSE}) {
+          print STDERR "# $line\n";
+        }
+
         if ($line =~ /^STOR 150: (\S+)$/) {
           my $path = $1;
 
           if ($path eq $expected) {
             $first_ok = 1;
+            next;
           }
         }
 
@@ -13773,7 +13983,7 @@ sub extlog_sftp_xfer_port_issue912 {
           my $xfer_port = $2;
 
           if ($cmd eq 'STOR') {
-            if ($xfer_port == '-') {
+            if ($xfer_port eq '-') {
               $expected_xfer_port = 1;
 
             } else {

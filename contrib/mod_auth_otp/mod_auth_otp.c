@@ -631,6 +631,12 @@ MODRET auth_otp_chkpass(cmd_rec *cmd) {
   user = cmd->argv[1];
   user_otp = cmd->argv[2];
 
+  if (real_otp == NULL) {
+    /* Modules like mod_ldap might provide NULL ciphertexts. */
+    pr_trace_msg(trace_channel, 3, "NULL ciphertext provided, ignoring");
+    return PR_DECLINED(cmd);
+  }
+
   if (strcmp(real_otp, user_otp) == 0) {
     return PR_HANDLED(cmd);
   }
@@ -941,6 +947,7 @@ static void auth_otp_sess_reinit_ev(const void *event_data, void *user_data) {
 
   if (auth_otp_pool != NULL) {
     destroy_pool(auth_otp_pool);
+    auth_otp_pool = NULL;
   }
 
   res = auth_otp_sess_init();

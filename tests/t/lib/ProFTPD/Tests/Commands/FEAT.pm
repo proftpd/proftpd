@@ -80,6 +80,11 @@ sub feat_ok {
     $expected_nfeat += 2;
   }
 
+  my $have_digest = feature_have_module_compiled('mod_digest.c');
+  if ($have_digest) {
+    $expected_nfeat += 8;
+  }
+
   my $have_site_misc = feature_have_module_compiled('mod_site_misc.c');
   if ($have_site_misc) {
     # For the following SITE commands added by mod_site_misc: MKDIR,
@@ -156,6 +161,17 @@ sub feat_ok {
         $feats->{' LANG en-US.UTF-8*'} = 1;
       }
 
+      if ($have_digest) {
+        $feats->{' HASH CRC32;MD5;SHA-1*;SHA-256;SHA-512;'} = 1;
+        $feats->{' MD5'} = 1;
+        $feats->{' XCRC'} = 1;
+        $feats->{' XMD5'} = 1;
+        $feats->{' XSHA'} = 1;
+        $feats->{' XSHA1'} = 1;
+        $feats->{' XSHA256'} = 1;
+        $feats->{' XSHA512'} = 1;
+      }
+
       if ($have_site_misc) {
         $feats->{' SITE MKDIR'} = 1;
         $feats->{' SITE RMDIR'} = 1;
@@ -224,6 +240,11 @@ sub feat_crlf {
   my $have_nls = feature_have_feature_enabled('nls');
   if ($have_nls) {
     $expected_nfeat += 2;
+  }
+
+  my $have_digest = feature_have_module_compiled('mod_digest.c');
+  if ($have_digest) {
+    $expected_nfeat += 8;
   }
 
   my $have_site_misc = feature_have_module_compiled('mod_site_misc.c');
@@ -383,6 +404,11 @@ sub feat_eprt_limit_issue1383 {
     $expected_nfeat += 2;
   }
 
+  my $have_digest = feature_have_module_compiled('mod_digest.c');
+  if ($have_digest) {
+    $expected_nfeat += 8;
+  }
+
   my $have_site_misc = feature_have_module_compiled('mod_site_misc.c');
   if ($have_site_misc) {
     # For the following SITE commands added by mod_site_misc: MKDIR,
@@ -472,6 +498,17 @@ EOC
         $feats->{' LANG en-US.UTF-8*'} = 1;
       }
 
+      if ($have_digest) {
+        $feats->{' HASH CRC32;MD5;SHA-1*;SHA-256;SHA-512;'} = 1;
+        $feats->{' MD5'} = 1;
+        $feats->{' XCRC'} = 1;
+        $feats->{' XMD5'} = 1;
+        $feats->{' XSHA'} = 1;
+        $feats->{' XSHA1'} = 1;
+        $feats->{' XSHA256'} = 1;
+        $feats->{' XSHA512'} = 1;
+      }
+
       if ($have_site_misc) {
         $feats->{' SITE MKDIR'} = 1;
         $feats->{' SITE RMDIR'} = 1;
@@ -540,6 +577,11 @@ sub feat_epsv_limit_issue1383 {
   my $have_nls = feature_have_feature_enabled('nls');
   if ($have_nls) {
     $expected_nfeat += 2;
+  }
+
+  my $have_digest = feature_have_module_compiled('mod_digest.c');
+  if ($have_digest) {
+    $expected_nfeat += 8;
   }
 
   my $have_site_misc = feature_have_module_compiled('mod_site_misc.c');
@@ -631,6 +673,17 @@ EOC
         $feats->{' LANG en-US.UTF-8*'} = 1;
       }
 
+      if ($have_digest) {
+        $feats->{' HASH CRC32;MD5;SHA-1*;SHA-256;SHA-512;'} = 1;
+        $feats->{' MD5'} = 1;
+        $feats->{' XCRC'} = 1;
+        $feats->{' XMD5'} = 1;
+        $feats->{' XSHA'} = 1;
+        $feats->{' XSHA1'} = 1;
+        $feats->{' XSHA256'} = 1;
+        $feats->{' XSHA512'} = 1;
+      }
+
       if ($have_site_misc) {
         $feats->{' SITE MKDIR'} = 1;
         $feats->{' SITE RMDIR'} = 1;
@@ -699,6 +752,11 @@ sub feat_eprt_epsv_limit_issue1383 {
   my $have_nls = feature_have_feature_enabled('nls');
   if ($have_nls) {
     $expected_nfeat += 2;
+  }
+
+  my $have_digest = feature_have_module_compiled('mod_digest.c');
+  if ($have_digest) {
+    $expected_nfeat += 8;
   }
 
   my $have_site_misc = feature_have_module_compiled('mod_site_misc.c');
@@ -787,6 +845,17 @@ EOC
         $feats->{' LANG en_US.UTF-8'} = 1;
         $feats->{' LANG en-US.UTF-8'} = 1;
         $feats->{' LANG en-US.UTF-8*'} = 1;
+      }
+
+      if ($have_digest) {
+        $feats->{' HASH CRC32;MD5;SHA-1*;SHA-256;SHA-512;'} = 1;
+        $feats->{' MD5'} = 1;
+        $feats->{' XCRC'} = 1;
+        $feats->{' XMD5'} = 1;
+        $feats->{' XSHA'} = 1;
+        $feats->{' XSHA1'} = 1;
+        $feats->{' XSHA256'} = 1;
+        $feats->{' XSHA512'} = 1;
       }
 
       if ($have_site_misc) {

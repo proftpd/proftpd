@@ -96,6 +96,7 @@ static void data_new_xfer(char *filename, int direction) {
   session.xfer.p = make_sub_pool(session.pool);
   pr_pool_tag(session.xfer.p, "Data Transfer pool");
 
+  session.xfer.xfer_cmd = pstrdup(session.xfer.p, session.curr_cmd);
   session.xfer.filename = pstrdup(session.xfer.p, filename);
   session.xfer.direction = direction;
   session.xfer.bufsize = pr_config_get_server_xfer_bufsz(direction);
@@ -466,6 +467,11 @@ void pr_data_clear_xfer_pool(void) {
   if (session.xfer.p != NULL) {
     destroy_pool(session.xfer.p);
   }
+
+  /* The RNFR path note is allocated out of the transfer pool; remove it
+   * now, lest it be left pointing to freed memory.
+   */
+  (void) pr_table_remove(session.notes, "mod_core.rnfr-path", NULL);
 
   /* Note that session.xfer.xfer_type may have been set already, e.g.
    * for STOR_UNIQUE uploads.  To support this, we need to preserve that

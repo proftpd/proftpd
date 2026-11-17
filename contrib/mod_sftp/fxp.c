@@ -225,6 +225,7 @@ struct fxp_handle {
   struct {
     int xfer_type;
     int direction;
+    const char *xfer_cmd;     /* Command that started the transfer */
     const char *filename;     /* Same as requested path */
     const char *path;         /* Same as fxh->fh->fh_path */
     const char *path_hidden;  /* Used for HiddenStores if applicable */
@@ -680,6 +681,7 @@ static void fxp_set_filehandle_sess_xfer(struct fxp_handle *fxh) {
   session.xfer.xfer_type = fxh->xfer.xfer_type;
   session.xfer.direction = fxh->xfer.direction;
 
+  session.xfer.xfer_cmd = pstrdup(session.xfer.p, fxh->xfer.xfer_cmd);
   session.xfer.filename = pstrdup(session.xfer.p, fxh->xfer.filename);
   session.xfer.path = pstrdup(session.xfer.p, fxh->xfer.path);
   session.xfer.path_hidden = pstrdup(session.xfer.p, fxh->xfer.path_hidden);
@@ -5608,7 +5610,7 @@ static int fxp_handle_ext_hardlink(struct fxp_packet *fxp, char *src,
   }
   dst = path;
 
-  if (!dir_check(fxp->pool, cmd, G_DIRS, src, NULL) ||
+  if (!dir_check(fxp->pool, cmd, G_READ, src, NULL) ||
       !dir_check(fxp->pool, cmd, G_WRITE, dst, NULL)) {
     status_code = SSH2_FX_PERMISSION_DENIED;
 
@@ -6242,6 +6244,46 @@ static int fxp_handle_ext_posix_rename(struct fxp_packet *fxp, char *src,
     resp->payload_sz = (bufsz - buflen);
 
     return fxp_packet_write(resp);
+  }
+
+  /* posix-rename always replaces an existing destination, so honor
+   * AllowOverwrite the same way core_rnto() does for RNTO.
+   */
+  if (exists2(fxp->pool, dst)) {
+    unsigned char *allow_overwrite = NULL;
+
+    allow_overwrite = get_param_ptr(get_dir_ctxt(fxp->pool, dst),
+      "AllowOverwrite", FALSE);
+    if (allow_overwrite == NULL ||
+        *allow_overwrite == FALSE) {
+      xerrno = EACCES;
+
+      (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
+        "denying RENAME of '%s' to '%s': AllowOverwrite permission denied "
+        "for '%s'", src, dst, dst);
+
+      status_code = fxp_errno2status(xerrno, &reason);
+
+      pr_trace_msg(trace_channel, 8, "sending response: STATUS %lu '%s'",
+        (unsigned long) status_code, reason);
+
+      pr_response_add_err(R_550, "%s: %s", cmd3->arg, strerror(xerrno));
+      fxp_cmd_dispatch_err(cmd3);
+
+      pr_response_add_err(R_550, "%s: %s", cmd2->arg, strerror(xerrno));
+      fxp_cmd_dispatch_err(cmd2);
+
+      fxp_status_write(fxp->pool, &buf, &buflen, fxp->request_id, status_code,
+        reason, NULL);
+
+      fxp_cmd_dispatch_err(cmd);
+
+      resp = fxp_packet_create(fxp->pool, fxp->channel_id);
+      resp->payload = ptr;
+      resp->payload_sz = (bufsz - buflen);
+
+      return fxp_packet_write(resp);
+    }
   }
 
   if (fxp_path_pass_regex_filters(fxp->pool, "RENAME", src) < 0 ||
@@ -10454,7 +10496,10 @@ static int fxp_handle_mkdir(struct fxp_packet *fxp) {
   (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
     "creating directory '%s' with mode 0%o", path, (unsigned int) dir_mode);
 
-  res = pr_fsio_smkdir(fxp->pool, path, dir_mode, (uid_t) -1, (gid_t) -1);
+  /* Note that this will also handle any relevant UserOwner/GroupOwner
+   * changes.
+   */
+  res = pr_fsio_smkdir(fxp->pool, path, dir_mode, session.fsuid, session.fsgid);
   if (res < 0 &&
       errno != EEXIST) {
     const char *reason;
@@ -10487,14 +10532,6 @@ static int fxp_handle_mkdir(struct fxp_packet *fxp) {
     resp->payload_sz = (bufsz - buflen);
 
     return fxp_packet_write(resp);
-  }
-
-  /* Handle any possible UserOwner/GroupOwner directives for created
-   * directories.
-   */
-  if (sftp_misc_chown_path(fxp->pool, path) < 0) {
-    (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
-      "error changing ownership on path '%s': %s", path, strerror(errno));
   }
 
   status_code = SSH2_FX_OK;
@@ -10863,15 +10900,8 @@ static int fxp_handle_open(struct fxp_packet *fxp) {
      * dispatch above, by mod_xfer.
      */
     if (session.xfer.xfer_type == STOR_HIDDEN) {
-      const void *nfs;
-
       hiddenstore_path = pr_table_get(cmd2->notes,
         "mod_xfer.store-hidden-path", NULL);
-
-      nfs = pr_table_get(cmd2->notes, "mod_xfer.store-hidden-nfs", NULL);
-      if (nfs == NULL) {
-        open_flags |= O_EXCL;
-      }
 
     } else {
       pr_fs_clear_cache2(path);
@@ -10938,6 +10968,51 @@ static int fxp_handle_open(struct fxp_packet *fxp) {
 
   pr_fs_clear_cache2(path);
   if (exists2(fxp->pool, path)) {
+    /* Issue #2456 rightly points out that if the O_CREAT|O_EXCL flags are
+     * being used, and the target file exists, then we MUST fail the request,
+     * per Draft spec.  Use of HiddenStores must be ignored for this use case.
+     */
+    if ((open_flags & O_CREAT) &&
+        (open_flags & O_EXCL)) {
+      int xerrno;
+      uint32_t status_code;
+      const char *reason;
+
+      xerrno = EEXIST;
+
+      (void) pr_trace_msg("fileperms", 1, "OPEN, user '%s' (UID %s, GID %s): "
+        "error opening '%s': %s", session.user,
+        pr_uid2str(fxp->pool, session.uid), pr_gid2str(fxp->pool, session.gid),
+        path, strerror(xerrno));
+
+      (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
+        "unable to open '%s' using O_CREAT|O_EXCL: %s", path, strerror(xerrno));
+
+      status_code = fxp_errno2status(xerrno, &reason);
+
+      pr_trace_msg(trace_channel, 8, "sending response: STATUS %lu '%s' "
+        "('%s' [%d])", (unsigned long) status_code, reason,
+        strerror(xerrno), xerrno);
+
+      if (cmd2 != NULL) {
+        pr_response_add_err(R_451, "%s: %s", cmd2->arg, strerror(xerrno));
+        fxp_cmd_note_file_status(cmd2, "failed");
+        fxp_cmd_dispatch_err(cmd2);
+      }
+
+      fxp_status_write(fxp->pool, &buf, &buflen, fxp->request_id, status_code,
+        reason, NULL);
+
+      fxp_cmd_note_file_status(cmd, "failed");
+      fxp_cmd_dispatch_err(cmd);
+
+      resp = fxp_packet_create(fxp->pool, fxp->channel_id);
+      resp->payload = ptr;
+      resp->payload_sz = (bufsz - buflen);
+
+      return fxp_packet_write(resp);
+    }
+
     /* draft-ietf-secsh-filexfer-06.txt, section 7.1.1 specifically
      * states that any attributes in a OPEN request are ignored if the
      * file already exists.
@@ -10954,6 +11029,15 @@ static int fxp_handle_open(struct fxp_packet *fxp) {
         "OPEN request for existing path, ignoring ownership sent by client");
       attr_flags &= ~SSH2_FX_ATTR_UIDGID;
       attr_flags &= ~SSH2_FX_ATTR_OWNERGROUP;
+    }
+  }
+
+  if (hiddenstore_path != NULL) {
+    const void *nfs;
+
+    nfs = pr_table_get(cmd2->notes, "mod_xfer.store-hidden-nfs", NULL);
+    if (nfs == NULL) {
+      open_flags |= O_EXCL;
     }
   }
 
@@ -11178,6 +11262,7 @@ static int fxp_handle_open(struct fxp_packet *fxp) {
   memcpy(fxh->fh_st, &st, sizeof(struct stat));
 
   fxh->xfer.xfer_type = session.xfer.xfer_type;
+  fxh->xfer.xfer_cmd = pstrdup(fxh->pool, session.curr_cmd);
   fxh->xfer.filename = pstrdup(fxh->pool, orig_path);
   fxh->xfer.path = pstrdup(fxh->pool, fxh->fh->fh_path);
 
@@ -13556,6 +13641,44 @@ static int fxp_handle_rename(struct fxp_packet *fxp) {
     return fxp_packet_write(resp);
   }
 
+  if ((flags & SSH2_FXR_OVERWRITE) &&
+      exists2(fxp->pool, new_path)) {
+    unsigned char *allow_overwrite = NULL;
+
+    allow_overwrite = get_param_ptr(get_dir_ctxt(fxp->pool, new_path),
+      "AllowOverwrite", FALSE);
+    if (allow_overwrite == NULL ||
+        *allow_overwrite == FALSE) {
+      xerrno = EACCES;
+
+      (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
+        "denying RENAME of '%s' to '%s': AllowOverwrite permission denied "
+        "for '%s'", old_path, new_path, new_path);
+
+      status_code = fxp_errno2status(xerrno, &reason);
+
+      pr_trace_msg(trace_channel, 8, "sending response: STATUS %lu '%s'",
+        (unsigned long) status_code, reason);
+
+      pr_response_add_err(R_550, "%s: %s", cmd2->arg, strerror(xerrno));
+      fxp_cmd_dispatch_err(cmd2);
+
+      pr_response_add_err(R_550, "%s: %s", cmd3->arg, strerror(xerrno));
+      fxp_cmd_dispatch_err(cmd3);
+
+      fxp_status_write(fxp->pool, &buf, &buflen, fxp->request_id, status_code,
+        reason, NULL);
+
+      fxp_cmd_dispatch_err(cmd);
+
+      resp = fxp_packet_create(fxp->pool, fxp->channel_id);
+      resp->payload = ptr;
+      resp->payload_sz = (bufsz - buflen);
+
+      return fxp_packet_write(resp);
+    }
+  }
+
   if (fxp_path_pass_regex_filters(fxp->pool, "RENAME", old_path) < 0 ||
       fxp_path_pass_regex_filters(fxp->pool, "RENAME", new_path) < 0) {
     xerrno = errno;
@@ -15032,7 +15155,7 @@ static int fxp_handle_write(struct fxp_packet *fxp) {
       /* Use write(2) for O_APPEND semantics; pwrite(2) with O_APPEND
        * is not portable (see Issue #2432).
        */
-      res = pr_fsio_write(fxh->fh, data, datalen);
+      res = pr_fsio_write(fxh->fh, (const char *) data, datalen);
 
     } else {
       res = pr_fsio_pwrite(fxh->fh, data, datalen, offset);

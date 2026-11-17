@@ -46,7 +46,7 @@ sub ftpcount {
 
   my $ftpcount_bin;
   if ($ENV{PROFTPD_TEST_PATH}) {
-    $ftpcount_bin = "$ENV{PROFTPD_TEST_PATH}/../ftpcount";
+    $ftpcount_bin = "$ENV{PROFTPD_TEST_PATH}/ftpcount";
 
   } else {
     $ftpcount_bin = '../ftpcount';

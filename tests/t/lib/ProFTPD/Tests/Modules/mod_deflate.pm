@@ -326,7 +326,7 @@ sub deflate_list {
       $client->login($setup->{user}, $setup->{passwd});
       $client->mode('Z');
 
-      my $conn = $client->list_raw();
+      my $conn = $client->list_raw('-l');
       unless ($conn) {
         die("LIST failed: " . $client->response_code() . " " .
           $client->response_msg());
@@ -470,7 +470,7 @@ sub deflate_list_alternating_modes {
           $client->mode('S');
         }
 
-        my $conn = $client->list_raw();
+        my $conn = $client->list_raw('-l');
         unless ($conn) {
           die("LIST failed: " . $client->response_code() . " " .
             $client->response_msg());
@@ -496,6 +496,7 @@ sub deflate_list_alternating_modes {
         my $res = {};
         my $lines = [split(/(\r)?\n/, $inflated)];
         foreach my $line (@$lines) {
+          next unless $line;
           if ($line =~ /\S+\s+\d+\s+\S+\s+\S+\s+.*?\s+(\S+)$/) {
             $res->{$1} = 1;
           }
@@ -1225,7 +1226,7 @@ sub deflate_stor_64kb_binary {
   my $tmpdir = $self->{tmpdir};
   my $setup = test_setup($tmpdir, 'deflate');
 
-  my $input_file = File::Spec->rel2abs("t/etc/modules/mod_deflate/zmode.pdf");
+  my $input_file = File::Spec->rel2abs("t/etc/modules/mod_sftp/bug3550.php");
   my $test_file = File::Spec->rel2abs("$tmpdir/zmode.pdf");
 
   # Calculate the expected MD5 checksum of this file, for comparison with the
@@ -1433,7 +1434,7 @@ sub deflate_stor_64kb_binary_chunks {
   my $tmpdir = $self->{tmpdir};
   my $setup = test_setup($tmpdir, 'deflate');
 
-  my $input_file = File::Spec->rel2abs("t/etc/modules/mod_deflate/zmode.pdf");
+  my $input_file = File::Spec->rel2abs("t/etc/modules/mod_sftp/bug3550.php");
   my $test_file = File::Spec->rel2abs("$tmpdir/zmode.pdf");
 
   # Calculate the expected MD5 checksum of this file, for comparison with the

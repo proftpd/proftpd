@@ -2043,6 +2043,14 @@ static int setup_hostkey_algo(struct sftp_kex *kex, const char *algo) {
     kex->use_hostkey_type = kex_used_hostkey_type = SFTP_KEY_ED448;
     res = 0;
 #endif /* HAVE_X448_OPENSSL */
+
+#if defined(HAVE_MLDSA44_OPENSSL) && \
+    defined(HAVE_X25519_OPENSSL) && \
+    defined(HAVE_SHA512_OPENSSL)
+  } else if (strcmp(algo, "ssh-mldsa44-ed25519") == 0) {
+    kex->use_hostkey_type = kex_used_hostkey_type = SFTP_KEY_MLDSA44_ED25519;
+    res = 0;
+#endif /* HAVE_MLDSA44_OPENSSL, HAVE_X25519_OPENSSL, HAVE_SHA512_OPENSSL */
   }
 
   /* XXX Need to handle "x509v3-ssh-dss", "x509v3-ssh-rsa", "x509v3-sign"
@@ -2050,6 +2058,8 @@ static int setup_hostkey_algo(struct sftp_kex *kex, const char *algo) {
    */
 
   if (res < 0) {
+    (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
+      "unsupported host key algorithm: %s", algo);
     errno = EINVAL;
     return -1;
   }
@@ -2968,6 +2978,13 @@ static int write_ext_info_server_sig_algs(struct ssh2_packet *pkt,
     /* No explicit list of publickey algorithms configured; provide the full
      * list of supported signature algorithms.
      */
+#if defined(HAVE_MLDSA44_OPENSSL) && \
+    defined(HAVE_X25519_OPENSSL) && \
+    defined(HAVE_SHA512_OPENSSL)
+    sig_algs = pstrcat(pkt->pool, sig_algs, *sig_algs ? "," : "",
+      "ssh-mldsa44-ed25519", NULL);
+#endif /* HAVE_MLDSA44_OPENSSL, HAVE_X25519_OPENSSL, HAVE_SHA512_OPENSSL */
+
 #if defined(HAVE_X448_OPENSSL)
     sig_algs = pstrcat(pkt->pool, sig_algs, *sig_algs ? "," : "", "ssh-ed448",
       NULL);
@@ -4276,7 +4293,7 @@ static int write_curve25519_reply(struct ssh2_packet *pkt,
   }
 
   /* XXX Is this large enough?  Too large? */
-  buflen = bufsz = 4096;
+  buflen = bufsz = 8192;
   ptr = buf = palloc(pkt->pool, bufsz);
 
   sftp_msg_write_byte(&buf, &buflen, SFTP_SSH2_MSG_KEX_ECDH_REPLY);
@@ -4712,7 +4729,7 @@ static int write_curve448_reply(struct ssh2_packet *pkt, struct sftp_kex *kex) {
   }
 
   /* XXX Is this large enough?  Too large? */
-  buflen = bufsz = 4096;
+  buflen = bufsz = 8192;
   ptr = buf = palloc(pkt->pool, bufsz);
 
   sftp_msg_write_byte(&buf, &buflen, SFTP_SSH2_MSG_KEX_ECDH_REPLY);
@@ -5302,7 +5319,7 @@ static int write_mlkem768_reply(struct ssh2_packet *pkt, struct sftp_kex *kex) {
   }
 
   /* XXX Is this large enough?  Too large? */
-  buflen = bufsz = 4096;
+  buflen = bufsz = 8192;
   ptr = buf = palloc(pkt->pool, bufsz);
 
   sftp_msg_write_byte(&buf, &buflen, SFTP_SSH2_MSG_KEX_ECDH_REPLY);
@@ -5684,7 +5701,7 @@ static int write_sntrup761_reply(struct ssh2_packet *pkt,
   }
 
   /* XXX Is this large enough?  Too large? */
-  buflen = bufsz = 4096;
+  buflen = bufsz = 8192;
   ptr = buf = palloc(pkt->pool, bufsz);
 
   sftp_msg_write_byte(&buf, &buflen, SFTP_SSH2_MSG_KEX_ECDH_REPLY);
@@ -5891,7 +5908,7 @@ static int write_ecdh_reply(struct ssh2_packet *pkt, struct sftp_kex *kex) {
   }
 
   /* XXX Is this large enough?  Too large? */
-  buflen = bufsz = 4096;
+  buflen = bufsz = 8192;
   ptr = buf = palloc(pkt->pool, bufsz);
 
   sftp_msg_write_byte(&buf, &buflen, SFTP_SSH2_MSG_KEX_ECDH_REPLY);
@@ -6638,15 +6655,7 @@ int sftp_kex_rekey(void) {
   }
 
   pr_trace_msg(trace_channel, 17, "sending rekey KEXINIT");
-
-  /* Some SSH2 clients are very particular about rekeying, and do NOT want
-   * other data while they are rekeying.  Other clients are more forgiving.
-   * For the strict clients, we set the REKEYING flag here, such that the
-   * Channel API will buffer up its responses until the rekeying completes.
-   */
-  if (sftp_interop_supports_feature(SFTP_SSH2_FEAT_NO_DATA_WHILE_REKEYING)) {
-    sftp_sess_state |= SFTP_SESS_STATE_REKEYING;
-  }
+  sftp_sess_state |= SFTP_SESS_STATE_REKEYING;
 
   sftp_kex_init(NULL, NULL);
 
@@ -6693,6 +6702,34 @@ int sftp_kex_rekey_set_interval(int rekey_interval) {
   }
 
   kex_rekey_interval = rekey_interval;
+
+  /* Initially any rekey timer is set just after KEX completes.  However,
+   * the lookup of the SFTPRekey settings only happens once authentication
+   * successfully completed, which is after that initial KEX occurs.
+   *
+   * That means we also need to set any rekey timer here, now, as the
+   * caller might be the post-authentication SFTPRekey settings lookup.
+   */
+
+  if (rekey_interval > 0) {
+    /* If we already have this timer in place, ASSUME it is for the same
+     * interval as requested.
+     *
+     * If not, we can deal with that use case later.
+     */
+    if (kex_rekey_timerno == -1) {
+      /* Register the rekey timer. */
+      kex_rekey_timerno = pr_timer_add(kex_rekey_interval, -1,
+        &sftp_module, kex_rekey_timer_cb, "SFTP KEX Rekey timer");
+    }
+
+  } else {
+    if (kex_rekey_timerno != -1) {
+      (void) pr_timer_remove(kex_rekey_timerno, &sftp_module);
+      kex_rekey_timerno = -1;
+    }
+  }
+
   return 0;
 }
 
