@@ -4173,13 +4173,23 @@ MODRET quotatab_post_stor_err(cmd_rec *cmd) {
 }
 
 MODRET quotatab_pre_site(cmd_rec *cmd) {
+  unsigned char *authenticated;
 
   /* Make sure it's a valid SITE command */
   if (cmd->argc < 2) {
     return PR_DECLINED(cmd);
   }
 
-  if (strncasecmp(cmd->argv[1], "COPY", 5) == 0) {
+  /* If the client has not authenticated yet, we should do nothing with this
+   * command.
+   */
+  authenticated = get_param_ptr(cmd->server->conf, "authenticated", FALSE);
+  if (authenticated == NULL ||
+      *authenticated == FALSE) {
+    return PR_DECLINED(cmd);
+  }
+
+  if (strcasecmp(cmd->argv[1], "COPY") == 0) {
     cmd_rec *copy_cmd;
 
     copy_cmd = pr_cmd_alloc(cmd->tmp_pool, 3, cmd->argv[1], cmd->argv[2],
@@ -4322,12 +4332,22 @@ MODRET quotatab_site(cmd_rec *cmd) {
 }
 
 MODRET quotatab_post_site(cmd_rec *cmd) {
+  unsigned char *authenticated;
 
   /* Make sure it's a valid SITE command */
   if (cmd->argc < 2)
     return PR_DECLINED(cmd);
 
-  if (strncasecmp(cmd->argv[1], "COPY", 5) == 0) {
+  /* If the client has not authenticated yet, we should do nothing with this
+   * command.
+   */
+  authenticated = get_param_ptr(cmd->server->conf, "authenticated", FALSE);
+  if (authenticated == NULL ||
+      *authenticated == FALSE) {
+    return PR_DECLINED(cmd);
+  }
+
+  if (strcasecmp(cmd->argv[1], "COPY") == 0) {
     cmd_rec *copy_cmd;
 
     copy_cmd = pr_cmd_alloc(cmd->tmp_pool, 3, cmd->argv[1], cmd->argv[2],
@@ -4365,12 +4385,22 @@ MODRET quotatab_post_site(cmd_rec *cmd) {
 }
 
 MODRET quotatab_post_site_err(cmd_rec *cmd) {
+  unsigned char *authenticated;
 
   /* Make sure it's a valid SITE command */
   if (cmd->argc < 2)
     return PR_DECLINED(cmd);
 
-  if (strncasecmp(cmd->argv[1], "COPY", 5) == 0) {
+  /* If the client has not authenticated yet, we should do nothing with this
+   * command.
+   */
+  authenticated = get_param_ptr(cmd->server->conf, "authenticated", FALSE);
+  if (authenticated == NULL ||
+      *authenticated == FALSE) {
+    return PR_DECLINED(cmd);
+  }
+
+  if (strcasecmp(cmd->argv[1], "COPY") == 0) {
     cmd_rec *copy_cmd;
 
     copy_cmd = pr_cmd_alloc(cmd->tmp_pool, 3, cmd->argv[1], cmd->argv[2],
