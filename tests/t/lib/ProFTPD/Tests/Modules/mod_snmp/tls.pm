@@ -371,11 +371,22 @@ sub list_dir {
 
   require Net::FTPSSL;
 
-  my $client = Net::FTPSSL->new('127.0.0.1',
+  # Suppress annoying warning from IO::Socket::SSL.
+  local $SIG{__WARN__} = sub {
+    my $msg = shift;
+    warn $msg unless $msg =~ /^Use of uninitialized value.*at .*IO\/Socket\/SSL\.pm/;
+  };
+
+  my $client_opts = {
     Encryption => 'E',
     Port => $port,
-  );
+  };
 
+  if ($ENV{TEST_VERBOSE}) {
+    $client_opts->{Debug} = 1;
+  }
+
+  my $client = Net::FTPSSL->new('127.0.0.1', $client_opts);
   unless ($client) {
     die("Can't connect to FTPS server: " . IO::Socket::SSL::errstr());
   }
@@ -389,7 +400,6 @@ sub list_dir {
   }
 
   $client->quit();
-
   return 1;
 }
 
@@ -402,11 +412,22 @@ sub download_file {
 
   require Net::FTPSSL;
 
-  my $client = Net::FTPSSL->new('127.0.0.1',
+  # Suppress annoying warning from IO::Socket::SSL.
+  local $SIG{__WARN__} = sub {
+    my $msg = shift;
+    warn $msg unless $msg =~ /^Use of uninitialized value.*at .*IO\/Socket\/SSL\.pm/;
+  };
+
+  my $client_opts = {
     Encryption => 'E',
     Port => $port,
-  );
+  };
 
+  if ($ENV{TEST_VERBOSE}) {
+    $client_opts->{Debug} = 1;
+  }
+
+  my $client = Net::FTPSSL->new('127.0.0.1', $client_opts);
   unless ($client) {
     die("Can't connect to FTPS server: " . IO::Socket::SSL::errstr());
   }
@@ -422,7 +443,6 @@ sub download_file {
   }
 
   $client->quit();
-
   return 1;
 }
 
@@ -436,11 +456,22 @@ sub upload_file {
 
   require Net::FTPSSL;
 
-  my $client = Net::FTPSSL->new('127.0.0.1',
+  # Suppress annoying warning from IO::Socket::SSL.
+  local $SIG{__WARN__} = sub {
+    my $msg = shift;
+    warn $msg unless $msg =~ /^Use of uninitialized value.*at .*IO\/Socket\/SSL\.pm/;
+  };
+
+  my $client_opts = {
     Encryption => 'E',
     Port => $port,
-  );
+  };
 
+  if ($ENV{TEST_VERBOSE}) {
+    $client_opts->{Debug} = 1;
+  }
+
+  my $client = Net::FTPSSL->new('127.0.0.1', $client_opts);
   unless ($client) {
     die("Can't connect to FTPS server: " . IO::Socket::SSL::errstr());
   }
@@ -579,13 +610,17 @@ sub snmp_tls_v1_get_sess_counts {
       # Give the server time to start up
       sleep(2);
 
-      my $expected;
+      # Suppress annoying warning from IO::Socket::SSL.
+      local $SIG{__WARN__} = sub {
+        my $msg = shift;
+        warn $msg unless $msg =~ /^Use of uninitialized value.*at .*IO\/Socket\/SSL\.pm/;
+      };
 
       # First, get the session count
       my ($sess_count, $sess_total) = get_tls_sess_info($agent_port,
         $snmp_community);
 
-      $expected = 0;
+      my $expected = 0;
       $self->assert($sess_count == $expected,
         test_msg("Expected session count $expected, got $sess_count"));
 
@@ -594,11 +629,16 @@ sub snmp_tls_v1_get_sess_counts {
         test_msg("Expected session total $expected, got $sess_total"));
 
       # Now, connect
-      my $client = Net::FTPSSL->new('127.0.0.1',
+      my $client_opts = {
         Encryption => 'E',
         Port => $port,
-      );
+      };
 
+      if ($ENV{TEST_VERBOSE}) {
+        $client_opts->{Debug} = 1;
+      }
+
+      my $client = Net::FTPSSL->new('127.0.0.1', $client_opts);
       unless ($client) {
         die("Can't connect to FTPS server: " . IO::Socket::SSL::errstr());
       }
