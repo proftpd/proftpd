@@ -2925,8 +2925,9 @@ sub retr_bug3496 {
       # Close the _control_ connection immediately
       $client->{ftp}->close();
 
-      my $client2 = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port, 1, 1);
+      my $client2 = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port, 1);
       $client2->login($setup->{user}, $setup->{passwd});
+      $client2->quit();
     };
     if ($@) {
       $ex = $@;
@@ -2993,7 +2994,7 @@ sub retr_2nd_transfer_terminates_1st_transfer_bug4010 {
   defined(my $pid = fork()) or die("Can't fork: $!");
   if ($pid) {
     eval {
-      my $client1 = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port, 0, 1);
+      my $client1 = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port, 0);
       $client1->login($setup->{user}, $setup->{passwd});
 
       my $conn1 = $client1->retr_raw($test_file);
@@ -3008,7 +3009,7 @@ sub retr_2nd_transfer_terminates_1st_transfer_bug4010 {
 
       # Now, log in a second time with same user/passwd, do a directory
       # listing, then close the client.
-      my $client2 = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port, 0, 1);
+      my $client2 = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port, 0);
       $client2->login($setup->{user}, $setup->{passwd});
 
       my $conn2 = $client2->list_raw('foo.bar.baz');

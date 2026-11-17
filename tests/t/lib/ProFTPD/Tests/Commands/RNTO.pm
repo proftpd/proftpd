@@ -182,7 +182,7 @@ sub rnto_dst_not_exist_ok {
       # Allow for server startup
       sleep(1);
 
-      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port, 0, 1);
+      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
       $client->login($setup->{user}, $setup->{passwd});
 
       my ($resp_code, $resp_msg) = $client->rnfr($src_file);
@@ -307,7 +307,7 @@ sub rnto_dst_file_exists_ok {
       # Allow for server startup
       sleep(1);
 
-      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port, 0, 1);
+      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
       $client->login($setup->{user}, $setup->{passwd});
 
       my ($resp_code, $resp_msg) = $client->rnfr($src_file);
@@ -465,7 +465,7 @@ sub rnto_dst_symlink_exists_ok {
       # Allow for server startup
       sleep(1);
 
-      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port, 0, 1);
+      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
       $client->login($setup->{user}, $setup->{passwd});
 
       my ($resp_code, $resp_msg) = $client->rnfr($src_file);
@@ -624,7 +624,7 @@ sub rnto_abs_dst_symlink {
       # Allow for server startup
       sleep(1);
 
-      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port, 0, 1);
+      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
       $client->login($setup->{user}, $setup->{passwd});
 
       my $src_path = 'test.d/foo.txt';
@@ -764,7 +764,7 @@ sub rnto_rel_dst_symlink {
       # Allow for server startup
       sleep(1);
 
-      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port, 0, 1);
+      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
       $client->login($setup->{user}, $setup->{passwd});
 
       my $src_path = 'test.d/foo.txt';
@@ -898,7 +898,7 @@ sub rnto_abs_src_symlink {
       # Allow for server startup
       sleep(1);
 
-      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port, 0, 1);
+      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
       $client->login($setup->{user}, $setup->{passwd});
 
       $client->rnfr($src_path);
@@ -1042,7 +1042,7 @@ sub rnto_rel_src_symlink {
       # Allow for server startup
       sleep(1);
 
-      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port, 0, 1);
+      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
       $client->login($setup->{user}, $setup->{passwd});
 
       $src_path = 'test.d/src.lnk';
@@ -1434,7 +1434,7 @@ sub rnto_fails_enoent_no_file {
       # Allow for server startup
       sleep(1);
 
-      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port, 0, 1);
+      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
       $client->login($setup->{user}, $setup->{passwd});
 
       my ($resp_code, $resp_msg) = $client->rnfr($src_file);
@@ -1546,7 +1546,7 @@ sub rnto_fails_enoent_no_dir {
       # Allow for server startup
       sleep(1);
 
-      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port, 0, 1);
+      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
       $client->login($setup->{user}, $setup->{passwd});
 
       $client->rnfr($src_file);
@@ -2101,7 +2101,7 @@ EOC
       # Allow for server startup
       sleep(1);
 
-      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port, 0, 1);
+      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
       $client->login($setup->{user}, $setup->{passwd});
       $client->cwd('sub.d');
 
@@ -2217,7 +2217,7 @@ sub rnto_lowercase_issue1023 {
       # Allow for server startup
       sleep(1);
 
-      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port, 0, 1);
+      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
       $client->login($setup->{user}, $setup->{passwd});
 
       my ($resp_code, $resp_msg) = $client->rnfr($src_file);
@@ -2307,7 +2307,7 @@ sub rnto_user_pass_issue2003 {
       # Allow for server startup
       sleep(1);
 
-      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port, 0, 1);
+      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
 
       eval { $client->rnto($src_file); };
       unless ($@) {

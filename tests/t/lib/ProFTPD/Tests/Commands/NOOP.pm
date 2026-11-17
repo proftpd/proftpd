@@ -70,7 +70,7 @@ sub noop_ok {
   defined(my $pid = fork()) or die("Can't fork: $!");
   if ($pid) {
     eval {
-      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port, 1, 1);
+      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
       my ($resp_code, $resp_msg) = $client->noop();
 
       my $expected = 200;
@@ -80,8 +80,9 @@ sub noop_ok {
       $expected = "NOOP command successful";
       $self->assert($expected eq $resp_msg,
         "Expected response message '$expected', got '$resp_msg'");
-    };
 
+      $client->quit();
+    };
     if ($@) {
       $ex = $@;
     }
@@ -147,7 +148,7 @@ sub noop_limit_deny_issue684 {
   defined(my $pid = fork()) or die("Can't fork: $!");
   if ($pid) {
     eval {
-      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port, 1, 1);
+      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
 
       eval { $client->noop() };
       unless ($@) {
@@ -165,7 +166,6 @@ sub noop_limit_deny_issue684 {
       $self->assert($expected eq $resp_msg,
         "Expected response message '$expected', got '$resp_msg'");
     };
-
     if ($@) {
       $ex = $@;
     }

@@ -110,7 +110,7 @@ sub site_chgrp_by_name_ok {
       # Allow for server startup
       sleep(1);
 
-      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port, 0, 2);
+      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
       $client->login($setup->{user}, $setup->{passwd});
 
       $client->site('CHGRP', $file_group, 'test.txt');
