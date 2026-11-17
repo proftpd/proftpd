@@ -2267,7 +2267,7 @@ EOS
       sleep(2);
 
       my $oath = Authen::OATH->new();
-      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port, 0, 2);
+      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
 
       # Calculate HOTP
       my $hotp = $oath->hotp($secret, $counter);
@@ -2445,7 +2445,7 @@ EOS
       sleep(2);
 
       my $oath = Authen::OATH->new();
-      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port, 0, 2);
+      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
 
       # Calculate HOTP
       my $hotp = $oath->hotp($secret, $counter);

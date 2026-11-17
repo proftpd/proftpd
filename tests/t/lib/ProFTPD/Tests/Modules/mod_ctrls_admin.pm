@@ -1900,7 +1900,7 @@ sub ctrls_admin_down_up_ok {
   defined(my $pid = fork()) or die("Can't fork: $!");
   if ($pid == 0) {
     eval {
-      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port, 1, 1);
+      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
       if ($client) {
         die("Logged in unexpectedly");
       }
@@ -1952,7 +1952,7 @@ sub ctrls_admin_down_up_ok {
   defined(my $pid = fork()) or die("Can't fork: $!");
   if ($pid == 0) {
     eval {
-      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port, 1, 1);
+      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
       $client->login($setup->{user}, $setup->{passwd});
       $client->quit();
     };

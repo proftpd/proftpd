@@ -123,7 +123,7 @@ sub ban_memcache_max_login_attempts {
   defined(my $pid = fork()) or die("Can't fork: $!");
   if ($pid) {
     eval {
-      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port, 0, 1);
+      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
       eval { $client->login($setup->{user}, 'foo') };
       unless ($@) {
         die("Login succeeded unexpectedly");
@@ -300,7 +300,7 @@ sub ban_memcache_json_max_login_attempts_bug4056 {
   defined(my $pid = fork()) or die("Can't fork: $!");
   if ($pid) {
     eval {
-      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port, 0, 1);
+      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
       eval { $client->login($setup->{user}, 'foo') };
       unless ($@) {
         die("Login succeeded unexpectedly");

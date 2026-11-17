@@ -104,11 +104,11 @@ sub authaliasonly_on {
   defined(my $pid = fork()) or die("Can't fork: $!");
   if ($pid) {
     eval {
-      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port, 0, 1);
+      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
       $client->login($alias, $setup->{passwd});
       $client->quit();
 
-      $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port, 0, 1);
+      $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
       eval { $client->login($setup->{user}, $setup->{passwd}) };
       unless ($@) {
         die("Login using user '$setup->{user}' succeeded unexpectedly");
@@ -364,7 +364,7 @@ sub authaliasonly_on_anon_bug3501 {
   defined(my $pid = fork()) or die("Can't fork: $!");
   if ($pid) {
     eval {
-      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port, 0, 1);
+      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
       my ($resp_code, $resp_msg) = $client->user($config_user);
 
       my $expected = 331;
@@ -621,7 +621,7 @@ sub authaliasonly_on_anon_bug4255 {
       sleep(1);
 
       # First, try logging in as user 'anonymous', i.e. the alias.
-      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port, 0, 1);
+      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
       my ($resp_code, $resp_msg) = $client->user("anonymous");
 
       my $expected = 331;
@@ -729,7 +729,7 @@ sub authaliasonly_on_anon_bug4314 {
       sleep(1);
 
       # First, try logging in as user 'anonymous', i.e. the alias.
-      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port, 0, 1);
+      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
       my ($resp_code, $resp_msg) = $client->user("anonymous");
 
       my $expected = 331;
@@ -860,7 +860,7 @@ EOC
       sleep(1);
 
       # First, try logging in as user 'anonymous', i.e. the alias.
-      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port, 0, 1);
+      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
       my ($resp_code, $resp_msg) = $client->user("anonymous");
 
       my $expected = 331;

@@ -435,7 +435,7 @@ sub digest_hash_feat {
       # Allow server to start up
       sleep(1);
 
-      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port, 0, 1);
+      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
       $client->feat();
 
       my $resp_code = $client->response_code();
@@ -533,14 +533,12 @@ sub digest_hash_opts {
       # Allow server to start up
       sleep(1);
 
-      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port, 0, 1);
+      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
       $client->login($setup->{user}, $setup->{passwd});
 
       my ($resp_code, $resp_msg) = $client->opts('HASH');
 
-      my $expected;
-
-      $expected = 200;
+      my $expected = 200;
       $self->assert($expected == $resp_code,
         test_msg("Expected response code $expected, got $resp_code"));
 
@@ -1016,7 +1014,7 @@ sub digest_hash_crc32_abs_symlink_chrooted_bug4219 {
       # Allow server to start up
       sleep(1);
 
-      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port, 0, 1);
+      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
       $client->login($setup->{user}, $setup->{passwd});
 
       my $algo = 'CRC32';
@@ -1330,7 +1328,7 @@ sub digest_hash_crc32_rel_symlink_chrooted_bug4219 {
       # Allow server to start up
       sleep(1);
 
-      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port, 0, 1);
+      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
       $client->login($setup->{user}, $setup->{passwd});
 
       my $algo = 'CRC32';
@@ -1584,7 +1582,7 @@ sub digest_hash_sha1 {
       # Allow server to start up
       sleep(1);
 
-      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port, 0, 1);
+      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
       $client->login($setup->{user}, $setup->{passwd});
 
       my $algo = 'SHA-1';
@@ -1712,7 +1710,7 @@ sub digest_hash_sha256 {
       # Allow server to start up
       sleep(1);
 
-      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port, 0, 1);
+      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
       $client->login($setup->{user}, $setup->{passwd});
 
       my $algo = 'SHA-256';
@@ -1840,7 +1838,7 @@ sub digest_hash_sha512 {
       # Allow server to start up
       sleep(1);
 
-      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port, 0, 1);
+      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
       $client->login($setup->{user}, $setup->{passwd});
 
       my $algo = 'SHA-512';
@@ -1944,7 +1942,7 @@ sub digest_hash_failed_not_logged_in {
       # Allow server to start up
       sleep(1);
 
-      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port, 0, 1);
+      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
 
       my $algo = 'CRC32';
       my ($resp_code, $resp_msg) = $client->opts('HASH', $algo);
@@ -2052,7 +2050,7 @@ sub digest_hash_failed_enoent {
       # Allow server to start up
       sleep(1);
 
-      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port, 0, 1);
+      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
       $client->login($setup->{user}, $setup->{passwd});
 
       my $algo = 'CRC32';
@@ -2162,7 +2160,7 @@ sub digest_hash_failed_not_file {
       # Allow server to start up
       sleep(1);
 
-      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port, 0, 1);
+      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
       $client->login($setup->{user}, $setup->{passwd});
 
       my $algo = 'CRC32';
@@ -2287,7 +2285,7 @@ sub digest_hash_failed_config_limit {
       # Allow server to start up
       sleep(1);
 
-      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port, 0, 1);
+      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
       $client->login($setup->{user}, $setup->{passwd});
 
       my $algo = 'CRC32';
@@ -2403,7 +2401,7 @@ sub digest_hash_failed_blacklisted_files {
       # Allow server to start up
       sleep(1);
 
-      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port, 0, 1);
+      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
       $client->login($setup->{user}, $setup->{passwd});
 
       my $algo = 'CRC32';
@@ -2539,7 +2537,7 @@ sub digest_xcrc {
       # Allow server to start up
       sleep(1);
 
-      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port, 0, 1);
+      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
       $client->login($setup->{user}, $setup->{passwd});
       my ($resp_code, $resp_msg) = $client->quote('XCRC', 'test.txt');
       $client->quit();
@@ -2677,7 +2675,7 @@ sub digest_xcrc_abs_symlink {
       # Allow server to start up
       sleep(1);
 
-      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port, 0, 1);
+      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
       $client->login($setup->{user}, $setup->{passwd});
 
       my $path = 'test.d/test.lnk';
@@ -2816,7 +2814,7 @@ sub digest_xcrc_abs_symlink_chrooted_bug4219 {
       # Allow server to start up
       sleep(1);
 
-      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port, 0, 1);
+      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
       $client->login($setup->{user}, $setup->{passwd});
 
       my $path = 'test.d/test.lnk';
@@ -2957,7 +2955,7 @@ sub digest_xcrc_rel_symlink {
       # Allow server to start up
       sleep(1);
 
-      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port, 0, 1);
+      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
       $client->login($setup->{user}, $setup->{passwd});
 
       my $path = 'test.d/test.lnk';
@@ -3100,7 +3098,7 @@ sub digest_xcrc_rel_symlink_chrooted_bug4219 {
       # Allow server to start up
       sleep(1);
 
-      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port, 0, 1);
+      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
       $client->login($setup->{user}, $setup->{passwd});
 
       my $path = 'test.d/test.lnk';
@@ -3238,7 +3236,7 @@ sub digest_xcrc_2gb {
       # Allow server to start up
       sleep(1);
 
-      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port, 0, 2, 30);
+      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port, 0, 3, 30);
       $client->login($setup->{user}, $setup->{passwd});
       $client->quote('XCRC', 'test.dat');
 
@@ -3353,16 +3351,14 @@ sub digest_md5 {
       # Allow server to start up
       sleep(1);
 
-      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port, 0, 1);
+      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
       $client->login($setup->{user}, $setup->{passwd});
 
       my $file = 'test.txt';
       my ($resp_code, $resp_msg) = $client->quote('MD5', $file);
       $client->quit();
 
-      my $expected;
-
-      $expected = 251;
+      my $expected = 251;
       $self->assert($expected == $resp_code,
         test_msg("Expected response code $expected, got $resp_code"));
 
@@ -3446,7 +3442,7 @@ sub digest_md5_failed_not_file {
       # Allow server to start up
       sleep(1);
 
-      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port, 0, 1);
+      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
       $client->login($setup->{user}, $setup->{passwd});
 
       my $file = 'test.d';
@@ -3568,14 +3564,12 @@ sub digest_xmd5 {
       # Allow server to start up
       sleep(1);
 
-      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port, 0, 1);
+      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
       $client->login($setup->{user}, $setup->{passwd});
       my ($resp_code, $resp_msg) = $client->quote('XMD5', 'test.txt');
       $client->quit();
 
-      my $expected;
-
-      $expected = 213;
+      my $expected = 213;
       $self->assert($expected == $resp_code,
         test_msg("Expected response code $expected, got $resp_code"));
 
@@ -3681,14 +3675,12 @@ sub digest_xsha {
       # Allow server to start up
       sleep(1);
 
-      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port, 0, 1);
+      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
       $client->login($setup->{user}, $setup->{passwd});
       my ($resp_code, $resp_msg) = $client->quote('XSHA', 'test.txt');
       $client->quit();
 
-      my $expected;
-
-      $expected = 213;
+      my $expected = 213;
       $self->assert($expected == $resp_code,
         test_msg("Expected response code $expected, got $resp_code"));
 
@@ -3794,14 +3786,12 @@ sub digest_xsha1 {
       # Allow server to start up
       sleep(1);
 
-      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port, 0, 1);
+      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
       $client->login($setup->{user}, $setup->{passwd});
       my ($resp_code, $resp_msg) = $client->quote('XSHA1', 'test.txt');
       $client->quit();
 
-      my $expected;
-
-      $expected = 213;
+      my $expected = 213;
       $self->assert($expected == $resp_code,
         test_msg("Expected response code $expected, got $resp_code"));
 
@@ -3908,14 +3898,12 @@ sub digest_xsha256 {
       # Allow server to start up
       sleep(1);
 
-      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port, 0, 1);
+      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
       $client->login($setup->{user}, $setup->{passwd});
       my ($resp_code, $resp_msg) = $client->quote('XSHA256', 'test.txt');
       $client->quit();
 
-      my $expected;
-
-      $expected = 213;
+      my $expected = 213;
       $self->assert($expected == $resp_code,
         test_msg("Expected response code $expected, got $resp_code"));
 
@@ -4022,14 +4010,12 @@ sub digest_xsha512 {
       # Allow server to start up
       sleep(1);
 
-      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port, 0, 1);
+      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
       $client->login($setup->{user}, $setup->{passwd});
       my ($resp_code, $resp_msg) = $client->quote('XSHA512', 'test.txt');
       $client->quit();
 
-      my $expected;
-
-      $expected = 213;
+      my $expected = 213;
       $self->assert($expected == $resp_code,
         test_msg("Expected response code $expected, got $resp_code"));
 
@@ -4170,7 +4156,7 @@ EOC
       sleep(1);
 
       my $algo = 'SHA-1';
-      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port, 0, 1);
+      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
       my ($resp_code, $resp_msg) = $client->host($host);
 
       my $expected = 220;
@@ -4334,14 +4320,12 @@ sub digest_path_offset_length {
       # Allow server to start up
       sleep(1);
 
-      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port, 0, 1);
+      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
       $client->login($setup->{user}, $setup->{passwd});
       my ($resp_code, $resp_msg) = $client->quote('XCRC', 'test.txt', '0', '5');
       $client->quit();
 
-      my $expected;
-
-      $expected = 213;
+      my $expected = 213;
       $self->assert($expected == $resp_code,
         test_msg("Expected response code $expected, got $resp_code"));
 
@@ -4447,14 +4431,12 @@ sub digest_path_with_spaces {
       # Allow server to start up
       sleep(1);
 
-      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port, 0, 1);
+      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
       $client->login($setup->{user}, $setup->{passwd});
       my ($resp_code, $resp_msg) = $client->quote('XCRC', '"test file.txt"');
       $client->quit();
 
-      my $expected;
-
-      $expected = 213;
+      my $expected = 213;
       $self->assert($expected == $resp_code,
         test_msg("Expected response code $expected, got $resp_code"));
 
@@ -4566,15 +4548,13 @@ sub digest_path_with_spaces_offset_length {
       # Allow server to start up
       sleep(1);
 
-      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port, 0, 1);
+      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
       $client->login($setup->{user}, $setup->{passwd});
       my ($resp_code, $resp_msg) = $client->quote('XCRC', '"test file.txt"',
         '0', '5');
       $client->quit();
 
-      my $expected;
-
-      $expected = 213;
+      my $expected = 213;
       $self->assert($expected == $resp_code,
         test_msg("Expected response code $expected, got $resp_code"));
 
@@ -4680,7 +4660,7 @@ sub digest_caching {
       # Allow server to start up
       sleep(1);
 
-      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port, 0, 1);
+      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
       $client->login($setup->{user}, $setup->{passwd});
 
       # We deliberately do this multiple times, to test the in-memory
@@ -4691,9 +4671,7 @@ sub digest_caching {
       ($resp_code, $resp_msg) = $client->quote('XCRC', 'test.txt');
       $client->quit();
 
-      my $expected;
-
-      $expected = 213;
+      my $expected = 213;
       $self->assert($expected == $resp_code,
         test_msg("Expected response code $expected, got $resp_code"));
 
@@ -4800,7 +4778,7 @@ sub digest_caching_max_size {
       # Allow server to start up
       sleep(1);
 
-      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port, 0, 1);
+      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
       $client->login($setup->{user}, $setup->{passwd});
 
       # We deliberately do this multiple times, to test the in-memory
@@ -4971,7 +4949,7 @@ sub digest_caching_max_age_same_file {
       # Allow server to start up
       sleep(1);
 
-      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port, 0, 1);
+      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
       $client->login($setup->{user}, $setup->{passwd});
 
       # We deliberately do this multiple times, to test the in-memory
@@ -5303,7 +5281,7 @@ sub digest_caching_retr {
       # Allow server to start up
       sleep(1);
 
-      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port, 0, 1);
+      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
       $client->login($setup->{user}, $setup->{passwd});
       $client->type('binary');
 
@@ -5449,16 +5427,14 @@ sub digest_caching_rest_retr {
       # Allow server to start up
       sleep(1);
 
-      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port, 0, 1);
+      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
       $client->login($setup->{user}, $setup->{passwd});
       $client->type('binary');
 
       my $algo = 'CRC32';
       my ($resp_code, $resp_msg) = $client->opts('HASH', $algo);
 
-      my $expected;
-
-      $expected = 200;
+      my $expected = 200;
       $self->assert($expected == $resp_code,
         test_msg("Expected response code $expected, got $resp_code"));
 
@@ -5588,16 +5564,14 @@ sub digest_caching_stor {
       # Allow server to start up
       sleep(1);
 
-      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port, 0, 1);
+      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
       $client->login($setup->{user}, $setup->{passwd});
       $client->type('binary');
 
       my $algo = 'CRC32';
       my ($resp_code, $resp_msg) = $client->opts('HASH', $algo);
 
-      my $expected;
-
-      $expected = 200;
+      my $expected = 200;
       $self->assert($expected == $resp_code,
         test_msg("Expected response code $expected, got $resp_code"));
 
@@ -5717,16 +5691,14 @@ sub digest_caching_rest_stor {
       # Allow server to start up
       sleep(1);
 
-      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port, 0, 1);
+      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
       $client->login($setup->{user}, $setup->{passwd});
       $client->type('binary');
 
       my $algo = 'CRC32';
       my ($resp_code, $resp_msg) = $client->opts('HASH', $algo);
 
-      my $expected;
-
-      $expected = 200;
+      my $expected = 200;
       $self->assert($expected == $resp_code,
         test_msg("Expected response code $expected, got $resp_code"));
 
@@ -5856,16 +5828,14 @@ sub digest_caching_appe {
       # Allow server to start up
       sleep(1);
 
-      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port, 0, 1);
+      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
       $client->login($setup->{user}, $setup->{passwd});
       $client->type('binary');
 
       my $algo = 'CRC32';
       my ($resp_code, $resp_msg) = $client->opts('HASH', $algo);
 
-      my $expected;
-
-      $expected = 200;
+      my $expected = 200;
       $self->assert($expected == $resp_code,
         test_msg("Expected response code $expected, got $resp_code"));
 
@@ -5976,7 +5946,7 @@ sub digest_failed_not_logged_in {
       # Allow server to start up
       sleep(1);
 
-      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port, 0, 1);
+      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
       eval { $client->quote('XCRC', 'test.txt') };
       unless ($@) {
         die("XCRC test.txt succeeded unexpectedly");
@@ -5986,9 +5956,7 @@ sub digest_failed_not_logged_in {
 
       $client->quit();
 
-      my $expected;
-
-      $expected = 530;
+      my $expected = 530;
       $self->assert($expected == $resp_code,
         test_msg("Expected response code $expected, got $resp_code"));
 
@@ -6069,7 +6037,7 @@ sub digest_failed_enoent {
       # Allow server to start up
       sleep(1);
 
-      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port, 0, 1);
+      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
       $client->login($setup->{user}, $setup->{passwd});
       eval { $client->quote('XCRC', 'test.txt') };
       unless ($@) {
@@ -6080,9 +6048,7 @@ sub digest_failed_enoent {
 
       $client->quit();
 
-      my $expected;
-
-      $expected = 550;
+      my $expected = 550;
       $self->assert($expected == $resp_code,
         test_msg("Expected response code $expected, got $resp_code"));
 
@@ -6166,7 +6132,7 @@ sub digest_failed_not_file {
       # Allow server to start up
       sleep(1);
 
-      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port, 0, 1);
+      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
       $client->login($setup->{user}, $setup->{passwd});
       eval { $client->quote('XCRC', 'test.d') };
       unless ($@) {
@@ -6177,9 +6143,7 @@ sub digest_failed_not_file {
 
       $client->quit();
 
-      my $expected;
-
-      $expected = 550;
+      my $expected = 550;
       $self->assert($expected == $resp_code,
         test_msg("Expected response code $expected, got $resp_code"));
 
@@ -6268,7 +6232,7 @@ sub digest_failed_blacklisted_files {
       # Allow server to start up
       sleep(1);
 
-      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port, 0, 1);
+      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
       $client->login($setup->{user}, $setup->{passwd});
 
       foreach my $test_file (@$test_files) {
@@ -6281,9 +6245,7 @@ sub digest_failed_blacklisted_files {
         my $resp_code = $client->response_code();
         my $resp_msg = $client->response_msg();
 
-        my $expected;
-
-        $expected = 550;
+        my $expected = 550;
         $self->assert($expected == $resp_code,
           test_msg("Expected response code $expected, got $resp_code"));
 
@@ -6378,7 +6340,7 @@ sub digest_failed_start_pos_invalid_number {
       # Allow server to start up
       sleep(1);
 
-      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port, 0, 1);
+      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
       $client->login($setup->{user}, $setup->{passwd});
 
       eval { $client->quote('XCRC', $test_file, 'a', '5') };
@@ -6388,9 +6350,7 @@ sub digest_failed_start_pos_invalid_number {
       my $resp_code = $client->response_code();
       my $resp_msg = $client->response_msg();
 
-      my $expected;
-
-      $expected = 501;
+      my $expected = 501;
       $self->assert($expected == $resp_code,
         test_msg("Expected response code $expected, got $resp_code"));
 
@@ -6484,7 +6444,7 @@ sub digest_failed_end_pos_invalid_number {
       # Allow server to start up
       sleep(1);
 
-      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port, 0, 1);
+      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
       $client->login($setup->{user}, $setup->{passwd});
 
       eval { $client->quote('XCRC', $test_file, '1', 'a') };
@@ -6494,9 +6454,7 @@ sub digest_failed_end_pos_invalid_number {
       my $resp_code = $client->response_code();
       my $resp_msg = $client->response_msg();
 
-      my $expected;
-
-      $expected = 501;
+      my $expected = 501;
       $self->assert($expected == $resp_code,
         test_msg("Expected response code $expected, got $resp_code"));
 
@@ -6590,7 +6548,7 @@ sub digest_failed_end_pos_too_large {
       # Allow server to start up
       sleep(1);
 
-      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port, 0, 1);
+      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
       $client->login($setup->{user}, $setup->{passwd});
 
       eval { $client->quote('XCRC', $test_file, '0', '1000') };
@@ -6600,9 +6558,7 @@ sub digest_failed_end_pos_too_large {
       my $resp_code = $client->response_code();
       my $resp_msg = $client->response_msg();
 
-      my $expected;
-
-      $expected = 501;
+      my $expected = 501;
       $self->assert($expected == $resp_code,
         test_msg("Expected response code $expected, got $resp_code"));
 
@@ -6696,7 +6652,7 @@ sub digest_failed_start_pos_after_end_pos {
       # Allow server to start up
       sleep(1);
 
-      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port, 0, 1);
+      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
       $client->login($setup->{user}, $setup->{passwd});
 
       my $start_pos = 10;
@@ -6708,9 +6664,7 @@ sub digest_failed_start_pos_after_end_pos {
       my $resp_code = $client->response_code();
       my $resp_msg = $client->response_msg();
 
-      my $expected;
-
-      $expected = 501;
+      my $expected = 501;
       $self->assert($expected == $resp_code,
         test_msg("Expected response code $expected, got $resp_code"));
 
@@ -6839,7 +6793,7 @@ sub digest_config_algorithms {
       sleep(1);
 
       my $algo = 'SHA-256';
-      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port, 0, 1);
+      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
 
       my ($resp_code, $resp_msg) = $client->opts('HASH');
 
@@ -6986,7 +6940,7 @@ sub digest_config_default_algo {
       sleep(1);
 
       my $algo = 'MD5';
-      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port, 0, 1);
+      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
 
       my ($resp_code, $resp_msg) = $client->opts('HASH');
 
@@ -7094,7 +7048,7 @@ sub digest_config_engine {
       sleep(1);
 
       my $algo = 'SHA-256';
-      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port, 0, 1);
+      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
 
       eval { $client->opts('HASH') };
       unless ($@) {
@@ -7255,7 +7209,7 @@ EOC
       sleep(1);
 
       my $algo = 'SHA-1';
-      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port, 0, 1);
+      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
 
       # We have not logged in yet, thus the per-user setting hasn't taken
       # effect.
@@ -7418,7 +7372,7 @@ sub digest_config_enable {
 
       my $file = 'test.txt';
 
-      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port, 0, 1);
+      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
       $client->login($setup->{user}, $setup->{passwd});
 
       eval { $client->quote('HASH', $file) };
@@ -7556,7 +7510,7 @@ EOC
 
       my $file = 'test.txt';
 
-      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port, 0, 1);
+      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
       $client->login($setup->{user}, $setup->{passwd});
 
       eval { $client->quote('HASH', $file) };
@@ -7680,15 +7634,13 @@ sub digest_config_max_size {
       # Allow server to start up
       sleep(1);
 
-      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port, 0, 1);
+      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
       $client->login($setup->{user}, $setup->{passwd});
 
       my $algo = 'CRC32';
       my ($resp_code, $resp_msg) = $client->opts('HASH', $algo);
 
-      my $expected;
-
-      $expected = 200;
+      my $expected = 200;
       $self->assert($expected == $resp_code,
         test_msg("Expected response code $expected, got $resp_code"));
 
@@ -7831,15 +7783,13 @@ EOC
       # Allow server to start up
       sleep(1);
 
-      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port, 0, 1);
+      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
       $client->login($setup->{user}, $setup->{passwd});
 
       my $algo = 'CRC32';
       my ($resp_code, $resp_msg) = $client->opts('HASH', $algo);
 
-      my $expected;
-
-      $expected = 200;
+      my $expected = 200;
       $self->assert($expected == $resp_code,
         test_msg("Expected response code $expected, got $resp_code"));
 
@@ -8065,7 +8015,7 @@ EOS
       # Allow server to start up
       sleep(1);
 
-      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port, 0, 1);
+      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
       $client->login($setup->{user}, $setup->{passwd});
       $client->type('binary');
 
@@ -8233,7 +8183,7 @@ EOS
       # Allow server to start up
       sleep(1);
 
-      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port, 0, 1);
+      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
       $client->login($setup->{user}, $setup->{passwd});
       $client->type('binary');
 
@@ -8432,7 +8382,6 @@ EOS
       sleep(1);
 
       my $ssh2 = Net::SSH2->new();
-
       unless ($ssh2->connect('127.0.0.1', $port)) {
         my ($err_code, $err_name, $err_str) = $ssh2->error();
         die("Can't connect to SSH2 server: [$err_name] ($err_code) $err_str");
@@ -8632,7 +8581,6 @@ EOS
       sleep(1);
 
       my $ssh2 = Net::SSH2->new();
-
       unless ($ssh2->connect('127.0.0.1', $port)) {
         my ($err_code, $err_name, $err_str) = $ssh2->error();
         die("Can't connect to SSH2 server: [$err_name] ($err_code) $err_str");

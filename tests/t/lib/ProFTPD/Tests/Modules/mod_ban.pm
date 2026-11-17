@@ -497,7 +497,7 @@ sub ban_message {
       # Allow for server startup
       sleep(1);
 
-      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port, 0, 2);
+      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
       eval { $client->login($setup->{user}, 'foo') };
       unless ($@) {
         die("Login succeeded unexpectedly");
@@ -531,7 +531,7 @@ sub ban_message {
         test_msg("Expected response message '$expected', got '$resp_msg'"));
 
       # Now try again with the correct info; we should be banned.
-      eval { $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port, 0, 2) };
+      eval { $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port) };
       unless ($@) {
         die("Connect succeeded unexpectedly");
       }

@@ -1178,7 +1178,7 @@ sub delay_table_default_issue1440 {
       # Allow for server startup
       sleep(1);
 
-      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port, 0, 2);
+      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
 
       my $start = [gettimeofday()];
       $client->login($setup->{user}, $setup->{passwd});

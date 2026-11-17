@@ -102,7 +102,7 @@ sub anon_allow_robots_on_enoent {
   defined(my $pid = fork()) or die("Can't fork: $!");
   if ($pid) {
     eval {
-      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port, 0, 1);
+      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port, 0);
       $client->login($user, 'ftp@nospam.org');
 
       my $conn = $client->retr_raw('/robots.txt');
@@ -210,7 +210,7 @@ sub anon_allow_robots_on {
   defined(my $pid = fork()) or die("Can't fork: $!");
   if ($pid) {
     eval {
-      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port, 0, 1);
+      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port, 0);
       $client->login($user, 'ftp@nospam.org');
       $client->type('binary');
 
@@ -313,7 +313,7 @@ sub anon_allow_robots_off {
   defined(my $pid = fork()) or die("Can't fork: $!");
   if ($pid) {
     eval {
-      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port, 0, 1);
+      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port, 0);
       $client->login($user, 'ftp@nospam.org');
       $client->type('binary');
 
@@ -437,7 +437,7 @@ sub anon_allow_robots_off_existing_file {
   defined(my $pid = fork()) or die("Can't fork: $!");
   if ($pid) {
     eval {
-      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port, 0, 1);
+      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port, 0);
       $client->login($user, 'ftp@nospam.org');
       $client->type('binary');
 
@@ -538,7 +538,7 @@ sub anon_allow_robots_off_non_anon_login {
   defined(my $pid = fork()) or die("Can't fork: $!");
   if ($pid) {
     eval {
-      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port, 0, 1);
+      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port, 0);
 
       # Deliberately log in as a non-anonymous user
       $client->login($setup->{user}, $setup->{passwd});
