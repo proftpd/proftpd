@@ -96,6 +96,7 @@ jobs:
             libnet-ssleay-perl \
             libnet-telnet-perl \
             libposix-2008-perl \
+            libnet-snmp-perl \
             libtest-unit-perl \
             libtime-hr-perl \
             libwww-perl
