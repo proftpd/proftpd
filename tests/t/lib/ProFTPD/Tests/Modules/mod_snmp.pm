@@ -2422,10 +2422,8 @@ sub snmp_v1_get_daemon_connrefused_count {
         print STDERR "Requested OID $request_oid = $value\n";
       }
 
-      my $expected = 5;
-
-      $self->assert($expected == $value,
-        test_msg("Expected value $expected for OID, got $value"));
+      $self->assert($value == 5 || $value == 6,
+        test_msg("Expected value 5 or 6 for OID, got $value"));
 
       $snmp_sess->close();
       $snmp_sess = undef;

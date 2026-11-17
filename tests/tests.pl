@@ -496,6 +496,21 @@ if (scalar(@ARGV) > 0) {
       test_class => [qw(mod_snmp)],
     },
 
+    't/modules/mod_snmp/ban.t' => {
+      order => ++$order,
+      test_class => [qw(mod_ban mod_snmp)],
+    },
+
+    't/modules/mod_snmp/sftp.t' => {
+      order => ++$order,
+      test_class => [qw(mod_sftp mod_snmp)],
+    },
+
+    't/modules/mod_snmp/tls.t' => {
+      order => ++$order,
+      test_class => [qw(mod_snmp mod_tls)],
+    },
+
     't/modules/mod_sql.t' => {
       order => ++$order,
       test_class => [qw(mod_sql)],
