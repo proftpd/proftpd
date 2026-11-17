@@ -644,7 +644,8 @@ static const char *get_meta_basename(cmd_rec *cmd) {
         pr_cmd_cmp(cmd, PR_CMD_XRMD_ID) == 0) {
        path = pr_fs_decode_path(p, cmd->arg);
 
-    } else if (pr_cmd_cmp(cmd, PR_CMD_MFMT_ID) == 0) {
+    } else if (pr_cmd_cmp(cmd, PR_CMD_MFMT_ID) == 0 &&
+               cmd->argc > 2) {
       /* MFMT has, as its filename, the second argument. */
       path = pr_fs_decode_path(p, cmd->argv[2]);
     }
@@ -865,7 +866,8 @@ static const char *get_meta_filename(cmd_rec *cmd) {
         filename = decoded_path;
       }
 
-    } else if (pr_cmd_cmp(cmd, PR_CMD_MFMT_ID) == 0) {
+    } else if (pr_cmd_cmp(cmd, PR_CMD_MFMT_ID) == 0 &&
+               cmd->argc > 2) {
       char *decoded_path;
 
       /* MFMT has, as its filename, the second argument. */
