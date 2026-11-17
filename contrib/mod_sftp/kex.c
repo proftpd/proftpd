@@ -1033,24 +1033,24 @@ static int create_dh(struct sftp_kex *kex, int type) {
     return -1;
   }
 
-  if (kex->dh) {
+  if (kex->dh != NULL) {
 #if OPENSSL_VERSION_NUMBER < 0x10100000L
-    if (kex->dh->p) {
+    if (kex->dh->p != NULL) {
       BN_clear_free(kex->dh->p);
       kex->dh->p = NULL;
     }
 
-    if (kex->dh->g) {
+    if (kex->dh->g != NULL) {
       BN_clear_free(kex->dh->g);
       kex->dh->g = NULL;
     }
 
-    if (kex->dh->priv_key) {
+    if (kex->dh->priv_key != NULL) {
       BN_clear_free(kex->dh->priv_key);
       kex->dh->priv_key = NULL;
     }
 
-    if (kex->dh->pub_key) {
+    if (kex->dh->pub_key != NULL) {
       BN_clear_free(kex->dh->pub_key);
       kex->dh->pub_key = NULL;
     }
@@ -3682,6 +3682,9 @@ static int handle_kex_dh_gex(struct ssh2_packet *pkt, struct sftp_kex *kex,
   dhgex_pkt = read_kex_packet(kex_pool, kex,
     SFTP_SSH2_DISCONNECT_KEY_EXCHANGE_FAILED, NULL, 1,
     SFTP_SSH2_MSG_KEX_DH_GEX_INIT);
+  if (dhgex_pkt == NULL) {
+    SFTP_DISCONNECT_CONN(SFTP_SSH2_DISCONNECT_KEY_EXCHANGE_FAILED, NULL);
+  }
 
   cmd = pr_cmd_alloc(dhgex_pkt->pool, 1,
     pstrdup(dhgex_pkt->pool, "DH_GEX_INIT"));
@@ -3970,6 +3973,9 @@ static int handle_kex_rsa(struct sftp_kex *kex) {
 
   pkt = read_kex_packet(kex_pool, kex, SFTP_SSH2_DISCONNECT_KEY_EXCHANGE_FAILED,
     NULL, 1, SFTP_SSH2_MSG_KEXRSA_SECRET);
+  if (pkt == NULL) {
+    SFTP_DISCONNECT_CONN(SFTP_SSH2_DISCONNECT_KEY_EXCHANGE_FAILED, NULL);
+  }
 
   cmd = pr_cmd_alloc(pkt->pool, 1, pstrdup(pkt->pool, "KEXRSA_SECRET"));
   cmd->arg = "(data)";
@@ -6238,6 +6244,9 @@ int sftp_kex_handle(struct ssh2_packet *pkt) {
         SFTP_SSH2_MSG_KEX_DH_INIT,
         SFTP_SSH2_MSG_KEX_DH_GEX_INIT,
         SFTP_SSH2_MSG_KEX_ECDH_INIT);
+      if (pkt == NULL) {
+        SFTP_DISCONNECT_CONN(SFTP_SSH2_DISCONNECT_KEY_EXCHANGE_FAILED, NULL);
+      }
 
       pr_trace_msg(trace_channel, 3,
         "ignored %s (%d) guess message sent by client",
@@ -6298,6 +6307,9 @@ int sftp_kex_handle(struct ssh2_packet *pkt) {
       SFTP_SSH2_MSG_KEX_DH_INIT,
       SFTP_SSH2_MSG_KEX_DH_GEX_REQUEST,
       SFTP_SSH2_MSG_KEX_ECDH_INIT);
+    if (pkt == NULL) {
+      SFTP_DISCONNECT_CONN(SFTP_SSH2_DISCONNECT_KEY_EXCHANGE_FAILED, NULL);
+    }
 
     switch (msg_type) {
       case SFTP_SSH2_MSG_KEX_DH_INIT:
@@ -6409,6 +6421,9 @@ int sftp_kex_handle(struct ssh2_packet *pkt) {
 
   pkt = read_kex_packet(kex_pool, kex, SFTP_SSH2_DISCONNECT_PROTOCOL_ERROR,
     NULL, 1, SFTP_SSH2_MSG_NEWKEYS);
+  if (pkt == NULL) {
+    SFTP_DISCONNECT_CONN(SFTP_SSH2_DISCONNECT_KEY_EXCHANGE_FAILED, NULL);
+  }
 
   /* If we didn't send our NEWKEYS message earlier, do it now. */
   if (sent_newkeys == FALSE) {
