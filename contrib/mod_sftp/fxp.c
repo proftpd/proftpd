@@ -5068,7 +5068,7 @@ static int fxp_handle_ext_hardlink(struct fxp_packet *fxp, char *src,
   }
   dst = path;
 
-  if (!dir_check(fxp->pool, cmd, G_DIRS, src, NULL) ||
+  if (!dir_check(fxp->pool, cmd, G_READ, src, NULL) ||
       !dir_check(fxp->pool, cmd, G_WRITE, dst, NULL)) {
     status_code = SSH2_FX_PERMISSION_DENIED;
 
