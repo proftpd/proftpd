@@ -37,6 +37,8 @@
   session is terminated during a file transfer.
 - Issue 2468 - mod_quotatab_file limit/tally record corruption caused by
   fixed-length field change causing regression.
+- Issue 2473 - Stack overflow possible with bundled glob(3) brace expansion
+  implementation.
 
 1.3.10rc5 - Released 26-Oct-2026
 --------------------------------
