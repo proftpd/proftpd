@@ -5167,7 +5167,6 @@ static struct ssh2_packet *read_kex_packet(pool *p, struct sftp_kex *kex,
     if (res < 0) {
       int xerrno = errno;
 
-      destroy_kex(kex);
       destroy_pool(pkt->pool);
 
       errno = xerrno;

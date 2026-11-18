@@ -688,7 +688,8 @@ static int read_packet_payload(int sockfd, struct ssh2_packet *pkt,
    * of the payload, unencrypted.  That will leave the remaining payload
    * data, if any, to be read in and decrypted.
    */
-  if (*buflen > 0) {
+  if (*buflen > 0 &&
+      payload_len > 0) {
     if (*buflen < payload_len) {
       memmove(pkt->payload, buf + *offset, *buflen);
 
@@ -1151,7 +1152,7 @@ int sftp_ssh2_packet_read(int sockfd, struct ssh2_packet *pkt) {
       pr_trace_msg(trace_channel, 20, "SSH2 packet padding len = %u bytes",
         (unsigned int) pkt->padding_len);
 
-      if (pkt->packet_len < (pkt->padding_len + 1)) {
+      if (pkt->packet_len < (uint32_t) (pkt->padding_len + 1)) {
         (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
           "illegal padding length (%u bytes) exceeds packet length "
           "(%lu bytes)", (unsigned int) pkt->padding_len,
@@ -1261,6 +1262,16 @@ int sftp_ssh2_packet_read(int sockfd, struct ssh2_packet *pkt) {
       (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
         "packet length (%lu) not a multiple of the required block size (%lu)",
         (unsigned long) encrypted_datasz, (unsigned long) req_blocksz);
+      read_packet_discard(sockfd);
+      return -1;
+    }
+
+    if (pkt->payload_len == 0) {
+      (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
+        "payload length too short (%lu), below mininum payload length (%lu) "
+        "(packet len %lu, padding len %u)", (unsigned long) pkt->payload_len,
+        (unsigned long) 1, (unsigned long) pkt->packet_len,
+        (unsigned int) pkt->padding_len);
       read_packet_discard(sockfd);
       return -1;
     }
