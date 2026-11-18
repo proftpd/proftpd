@@ -354,12 +354,8 @@ extern int getlogin_r __P ((char *, size_t));
 #else
 extern char *getlogin __P ((void));
 #endif
-
-static
-#if __GNUC__ - 0 >= 2
-inline
-#endif
-const char *next_brace_sub __P ((const char *begin));
+
+static const char *next_brace_sub __P ((const char *begin, int flags));
 
 #endif /* GLOB_ONLY_P */
 
@@ -380,48 +376,29 @@ static int __glob_pattern_p (const char *pattern, int quote);
 static int prefix_array __P ((const char *prefix, char **array, size_t n));
 static int collated_compare __P ((const __ptr_t, const __ptr_t));
 
-/* Find the end of the sub-pattern in a brace expression.  We define
-   this as an inline function if the compiler permits.  */
-static
-#if __GNUC__ - 0 >= 2
-inline
-#endif
-const char *
-next_brace_sub (const char *begin)
+/* Find the end of the sub-pattern in a brace expression.  */
+static const char *
+next_brace_sub (const char *cp, int flags)
 {
   unsigned int depth = 0;
-  const char *cp = begin;
 
-  while (1)
-    {
-      if (depth == 0)
-	{
-	  if (*cp != ',' && *cp != '}' && *cp != '\0')
-	    {
-	      if (*cp == '{')
-		++depth;
-	      ++cp;
-	      continue;
-	    }
-	}
-      else
-	{
-	  while (*cp != '\0' && (*cp != '}' || depth > 0))
-	    {
-	      if (*cp == '}')
-		--depth;
-	      ++cp;
-	    }
-	  if (*cp == '\0')
-	    /* An incorrectly terminated brace expression.  */
-	    return NULL;
+  while (*cp != '\0')
+    if ((flags & GLOB_NOESCAPE) == 0 && *cp == '\\')
+      {
+	if (*++cp == '\0')
+	  break;
+	++cp;
+      }
+    else
+      {
+	if ((*cp == '}' && depth-- == 0) || (*cp == ',' && depth == 0))
+	  break;
 
-	  continue;
-	}
-      break;
-    }
+	if (*cp++ == '{')
+	  depth++;
+      }
 
-  return cp;
+  return *cp != '\0' ? cp : NULL;
 }
 
 #endif /* !GLOB_ONLY_P */
@@ -460,7 +437,30 @@ glob_limited (unsigned int depth, const char *pattern, int flags,
 
   if (flags & GLOB_BRACE)
     {
-      const char *begin = strchr (pattern, '{');
+      const char *begin;
+
+      if (flags & GLOB_NOESCAPE)
+        begin = strchr (pattern, '{');
+      else
+        {
+          begin = pattern;
+          while (1)
+            {
+              if (*begin == '\0')
+                {
+                  begin = NULL;
+                  break;
+                }
+
+              if (*begin == '\\' && begin[1] != '\0')
+                ++begin;
+              else if (*begin == '{')
+                break;
+
+              ++begin;
+            }
+        }
+
       if (begin != NULL)
 	{
 	  /* Allocate working buffer large enough for our work.  Note that
@@ -493,7 +493,7 @@ glob_limited (unsigned int depth, const char *pattern, int flags,
 
 	  /* Find the first sub-pattern and at the same time find the
 	     rest after the closing brace.  */
-	  next = next_brace_sub (begin + 1);
+	  next = next_brace_sub (begin + 1, flags);
 	  if (next == NULL)
 	    {
 	      /* It is an illegal expression.  */
@@ -507,7 +507,7 @@ glob_limited (unsigned int depth, const char *pattern, int flags,
 	  rest = next;
 	  while (*rest != '}')
 	    {
-	      rest = next_brace_sub (rest + 1);
+	      rest = next_brace_sub (rest + 1, flags);
 	      if (rest == NULL)
 		{
 		  /* It is an illegal expression.  */
@@ -569,7 +569,7 @@ glob_limited (unsigned int depth, const char *pattern, int flags,
 		break;
 
 	      p = next + 1;
-	      next = next_brace_sub (p);
+	      next = next_brace_sub (p, flags);
 	      assert (next != NULL);
 	    }
 
@@ -797,7 +797,7 @@ glob_limited (unsigned int depth, const char *pattern, int flags,
 # if !defined _AMIGA && !defined WINDOWS32
       else
 	{
-	  char *end_name = strchr (dirname, '/');
+	  char *end_name = (char *) strchr (dirname, '/');
 	  const char *user_name;
 	  const char *home_dir;
 
@@ -1174,6 +1174,7 @@ globfree (register glob_t *pglob)
 	if (pglob->gl_pathv[pglob->gl_offs + i] != NULL)
 	  free ((__ptr_t) pglob->gl_pathv[pglob->gl_offs + i]);
       free ((__ptr_t) pglob->gl_pathv);
+      pglob->gl_pathv = NULL;
     }
 }
 
