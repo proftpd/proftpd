@@ -4949,6 +4949,18 @@ int pr_fs_glob(const char *pattern, int flags,
     return -1;
   }
 
+  /* The GLOB_TILDE flag has encountered many issues over the years.
+   * None of the core code uses this flag, so let's preemptively prevent its
+   * usage altogether.
+   */
+  if (flags & GLOB_TILDE) {
+    flags &= ~GLOB_TILDE;
+  }
+
+  if (flags & GLOB_TILDE_CHECK) {
+    flags &= ~GLOB_TILDE_CHECK;
+  }
+
   flags |= GLOB_ALTDIRFUNC;
 
   pglob->gl_closedir = (void (*)(void *)) pr_fsio_closedir;
