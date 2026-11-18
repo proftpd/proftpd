@@ -497,6 +497,38 @@ static int sqlstore_compare_key_raw(pool *p, struct sqlstore_data *store_data,
     uint32_t key_datalen) {
   struct sqlstore_key *key;
   int res, xerrno = EINVAL;
+  char *datastart, *dataend;
+
+  /* Strip any leading OpenSSH key type and trailing comments */
+  if (strncmp(col_data, "ssh-rsa", 7) == 0 ||
+#if !defined(OPENSSL_NO_DSA)
+    strncmp(col_data, "ssh-dss", 7) == 0 ||
+#endif /* !OPENSSL_NO_DSA */
+#if defined(PR_USE_OPENSSL_ECC)
+    strncmp(col_data, "ecdsa-sha2-nistp256", 19) == 0 ||
+    strncmp(col_data, "ecdsa-sha2-nistp384", 19) == 0 ||
+    strncmp(col_data, "ecdsa-sha2-nistp521", 19) == 0 ||
+# if PROFTPD_VERSION_NUMBER >= 0x0001030901
+    strncmp(col_data, "sk-ecdsa-sha2-nistp256@openssh.com",
+      31) == 0 ||
+# endif /* Prior to ProFTPD 1.3.9rc1 */
+#endif /* PR_USE_OPENSSL_ECC */
+#if defined(PR_USE_SODIUM)
+    strncmp(col_data, "ssh-ed25519", 11) == 0 ||
+# if PROFTPD_VERSION_NUMBER >= 0x0001030901
+    strncmp(col_data, "sk-ssh-ed25519@openssh.com", 23) == 0 ||
+# endif /* Prior to ProFTPD 1.3.9rc1 */
+#endif /* PR_USE_SODIUM */
+  FALSE) {
+    datastart = strchr(col_data, ' ') + 1;
+    dataend = strchr(datastart, ' ');
+    if (dataend) {
+      col_datalen = dataend - datastart;
+    } else {
+      col_datalen -= (datastart - col_data);
+    }
+    col_data = datastart;
+  }
 
   key = sqlstore_get_key_raw(p, &col_data, &col_datalen);
   if (key == NULL) {
