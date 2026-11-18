@@ -1307,6 +1307,20 @@ int sftp_ssh2_packet_read(int sockfd, struct ssh2_packet *pkt) {
       return -1;
     }
 
+    /* Every SSH2 message has at least a message type byte; reject empty
+     * payloads here, since not every caller checks for them before using
+     * sftp_ssh2_packet_get_msg_type().
+     */
+    if (pkt->payload_len == 0 ||
+        pkt->payload == NULL) {
+      (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
+        "received illegal packet with no payload (packet len %lu, "
+        "padding len %u)", (unsigned long) pkt->packet_len,
+        (unsigned int) pkt->padding_len);
+      read_packet_discard(sockfd);
+      return -1;
+    }
+
     packet_client_seqno++;
 
     /* Handle the case where timers might be being processed at the
