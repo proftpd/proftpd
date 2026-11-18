@@ -19,9 +19,10 @@ if ($opts->{K}) {
   $ENV{KEEP_TMPFILES} = 1;
 }
 
+$verbose = 1;
+
 if ($opts->{V}) {
   $ENV{TEST_VERBOSE} = 1;
-  $verbose = 1;
 }
 
 # We use this, rather than use(), since use() is equivalent to a BEGIN
