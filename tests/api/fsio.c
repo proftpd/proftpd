@@ -3987,28 +3987,35 @@ START_TEST (fs_glob_test) {
   glob_t pglob;
   int res;
 
+  mark_point();
   res = pr_fs_glob(NULL, 0, NULL, NULL);
   ck_assert_msg(res < 0, "Failed to handle null arguments");
   ck_assert_msg(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
     strerror(errno), errno);
 
+  mark_point();
   res = pr_fs_glob(NULL, 0, NULL, &pglob);
   ck_assert_msg(res < 0, "Failed to handle null arguments");
   ck_assert_msg(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
     strerror(errno), errno);
 
+  mark_point();
   memset(&pglob, 0, sizeof(pglob));
   res = pr_fs_glob("*", 0, NULL, &pglob);
   ck_assert_msg(res == 0, "Failed to glob: glob(3) returned %d: %s", res,
     strerror(errno));
   ck_assert_msg(pglob.gl_pathc > 0, "Expected >0, got %lu",
     (unsigned long) pglob.gl_pathc);
+  pr_fs_globfree(&pglob);
+
+  mark_point();
+  memset(&pglob, 0, sizeof(pglob));
+  res = pr_fs_glob("{a,", GLOB_NOSORT|GLOB_BRACE, NULL, &pglob);
+  ck_assert_msg(res == GLOB_NOMATCH, "Expected GLOB_NOMATCH, got %d", res);
+  pr_fs_globfree(&pglob);
 
   mark_point();
   pr_fs_globfree(NULL);
-  if (res == 0) {
-    pr_fs_globfree(&pglob);
-  }
 }
 END_TEST
 
@@ -5257,6 +5264,7 @@ START_TEST (fs_have_access_test) {
 }
 END_TEST
 
+#if defined(HAVE_STATFS_F_TYPE) || defined(HAVE_STATFS_F_FSTYPENAME)
 START_TEST (fs_is_nfs_test) {
   int res;
 
@@ -5269,6 +5277,7 @@ START_TEST (fs_is_nfs_test) {
   ck_assert_msg(res == FALSE, "Expected FALSE, got %d", res);
 }
 END_TEST
+#endif /* HAVE_STATFS_F_TYPE or HAVE_STATFS_F_FSTYPENAME */
 
 START_TEST (fs_valid_path_test) {
   int res;
@@ -5802,7 +5811,7 @@ Suite *tests_get_fsio_suite(void) {
   tcase_add_test(testcase, fs_have_access_test);
 #if defined(HAVE_STATFS_F_TYPE) || defined(HAVE_STATFS_F_FSTYPENAME)
   tcase_add_test(testcase, fs_is_nfs_test);
-#endif
+#endif /* HAVE_STATFS_F_TYPE or HAVE_STATFS_F_FSTYPENAME */
   tcase_add_test(testcase, fs_valid_path_test);
   tcase_add_test(testcase, fsio_smkdir_test);
   tcase_add_test(testcase, fsio_smkdir2_ignore_umask_test);
