@@ -31,6 +31,8 @@
   succeeds unexpectedly when HiddenStores configured.
 - Issue 2360 - Unexpected mod_xfer module load order leads to SIGSEGV if
   session is terminated during a file transfer.
+- Issue 2473 - Stack overflow possible with bundled glob(3) brace expansion
+  implementation.
 
 1.3.9e - Released 26-Oct-2026
 --------------------------------
