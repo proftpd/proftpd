@@ -1,0 +1,21 @@
+# JSON keys used by the ProFTPD Controls request protocol.
+key_action="action"
+key_args="args"
+# JSON structural tokens.
+lbracket="{"
+rbracket="}"
+lbracket_arr="["
+rbracket_arr="]"
+colon=":"
+comma=","
+true_lit="true"
+false_lit="false"
+null_lit="null"
+# Registered/typical action names.
+act_fuzz="fuzzaction"
+act_get="get"
+act_dump="dump"
+act_help="help"
+# Common argument shapes.
+empty_str="\"\""
+blank_arg="-v"
