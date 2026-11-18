@@ -3986,6 +3986,7 @@ END_TEST
 START_TEST (fs_glob_test) {
   glob_t pglob;
   int res;
+  char buf[16382];
 
   mark_point();
   res = pr_fs_glob(NULL, 0, NULL, NULL);
@@ -4008,10 +4009,36 @@ START_TEST (fs_glob_test) {
     (unsigned long) pglob.gl_pathc);
   pr_fs_globfree(&pglob);
 
+  /* See Issue #2473. */
   mark_point();
   memset(&pglob, 0, sizeof(pglob));
   res = pr_fs_glob("{a,", GLOB_NOSORT|GLOB_BRACE, NULL, &pglob);
   ck_assert_msg(res == GLOB_NOMATCH, "Expected GLOB_NOMATCH, got %d", res);
+  pr_fs_globfree(&pglob);
+
+  mark_point();
+  memset(buf, '/', sizeof(buf)-1);
+  buf[sizeof(buf)-1] = '\0';
+  memset(&pglob, 0, sizeof(pglob));
+  res = pr_fs_glob(buf, 0, NULL, &pglob);
+  ck_assert_msg(res == GLOB_NOSPACE, "Expected GLOB_NOSPACE, got %d", res);
+  pr_fs_globfree(&pglob);
+
+  mark_point();
+  memset(buf, '/', sizeof(buf)-1);
+  buf[1] = '*';
+  buf[sizeof(buf)-3] = 's';
+  buf[sizeof(buf)-2] = 'h';
+  buf[sizeof(buf)-1] = '\0';
+  memset(&pglob, 0, sizeof(pglob));
+  res = pr_fs_glob(buf, 0, NULL, &pglob);
+  ck_assert_msg(res == GLOB_NOSPACE, "Expected GLOB_NOSPACE, got %d", res);
+  pr_fs_globfree(&pglob);
+
+  mark_point();
+  memset(&pglob, 0, sizeof(pglob));
+  res = pr_fs_glob("", 0, NULL, &pglob);
+  ck_assert_msg(res == 0, "Expected 0, got %d", res);
   pr_fs_globfree(&pglob);
 
   mark_point();

@@ -429,6 +429,11 @@ glob_limited (unsigned int depth, const char *pattern, int flags,
       return -1;
     }
 
+  /* POSIX requires all slashes to be matched.  This means that with
+     a trailing slash we must match only directories.  */
+  if (pattern[0] && pattern[strlen (pattern) - 1] == '/')
+    flags |= GLOB_ONLYDIR;
+
   if (!(flags & GLOB_DOOFFS))
     /* Have to do this so `globfree' knows where to start freeing.  It
        also makes all the code that uses gl_offs simpler. */
@@ -584,6 +589,26 @@ glob_limited (unsigned int depth, const char *pattern, int flags,
 	}
     }
 
+  if (!(flags & GLOB_APPEND))
+    {
+      pglob->gl_pathc = 0;
+      if (!(flags & GLOB_DOOFFS))
+        pglob->gl_pathv = NULL;
+      else
+	{
+	  size_t i;
+	  pglob->gl_pathv = (char **) malloc ((pglob->gl_offs + 1)
+					      * sizeof (char *));
+	  if (pglob->gl_pathv == NULL)
+	    return GLOB_NOSPACE;
+
+	  for (i = 0; i <= pglob->gl_offs; ++i)
+	    pglob->gl_pathv[i] = NULL;
+	}
+    }
+
+  oldcount = pglob->gl_pathc + pglob->gl_offs;
+
   /* Find the filename.  */
   filename = strrchr (pattern, '/');
 #if defined __MSDOS__ || defined WINDOWS32
@@ -679,26 +704,6 @@ glob_limited (unsigned int depth, const char *pattern, int flags,
 	  return val;
 	}
     }
-
-  if (!(flags & GLOB_APPEND))
-    {
-      pglob->gl_pathc = 0;
-      if (!(flags & GLOB_DOOFFS))
-        pglob->gl_pathv = NULL;
-      else
-	{
-	  size_t i;
-	  pglob->gl_pathv = (char **) malloc ((pglob->gl_offs + 1)
-					      * sizeof (char *));
-	  if (pglob->gl_pathv == NULL)
-	    return GLOB_NOSPACE;
-
-	  for (i = 0; i <= pglob->gl_offs; ++i)
-	    pglob->gl_pathv[i] = NULL;
-	}
-    }
-
-  oldcount = pglob->gl_pathc + pglob->gl_offs;
 
 #ifndef VMS
   if ((flags & (GLOB_TILDE|GLOB_TILDE_CHECK)) && dirname[0] == '~')
@@ -807,7 +812,7 @@ glob_limited (unsigned int depth, const char *pattern, int flags,
 	      char *newp;
 	      newp = (char *) __alloca (end_name - dirname);
 # ifdef HAVE_MEMPCPY
-	      *((char *) mempcpy (newp, dirname + 1, end_name - dirname))
+	      *((char *) mempcpy (newp, dirname + 1, end_name - dirname - 1))
 		= '\0';
 # else
 	      memcpy (newp, dirname + 1, end_name - dirname);
