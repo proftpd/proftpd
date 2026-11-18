@@ -196,6 +196,7 @@ int sftp_castore_verify_host_cert(pool *p, const char *user,
   int matched_principal = FALSE, res = -1;
   config_rec *c;
   char *store_type = NULL;
+  const char *host_ip;
 
   if (host_fqdn == NULL ||
       host_user == NULL ||
@@ -235,13 +236,15 @@ int sftp_castore_verify_host_cert(pool *p, const char *user,
     return -1;
   }
 
-  /* Verify the principals list contains the given name of the host. */
+  host_ip = pr_netaddr_get_ipstr(session.c->remote_addr);
+
+  /* Verify the principals list contains the given name/IP of the host. */
   if (cert->principals == NULL &&
       (cert_opts & SFTP_CERT_OPT_ALLOW_EMPTY_PRINCIPALS)) {
     (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
       "%s host certificate has empty principals, using AllowEmptyPrincipals "
-      "to authenticate user '%s' from host '%s'", cert->cert_algo, user,
-      host_fqdn);
+      "to authenticate user '%s' from host '%s' (%s)", cert->cert_algo, user,
+      host_fqdn, host_ip);
     matched_principal = TRUE;
 
   } else {
@@ -251,16 +254,22 @@ int sftp_castore_verify_host_cert(pool *p, const char *user,
       principal = ((char **) cert->principals->elts)[i];
 
       pr_trace_msg(trace_channel, 25,
-        "comparing host certificate principal '%s' against host '%s'",
-        principal, host_fqdn);
+        "comparing host certificate principal '%s' against host '%s' (%s)",
+        principal, host_fqdn, host_ip);
 
       if (cert_opts & SFTP_CERT_OPT_ALLOW_MATCH_PRINCIPALS) {
         if (pr_fnmatch(principal, host_fqdn, 0) == 0) {
           matched_principal = TRUE;
+
+        } else if (pr_fnmatch(principal, host_ip, 0) == 0) {
+          matched_principal = TRUE;
         }
 
       } else {
-        if (strcmp(principal, host_fqdn) == 0) {
+        if (strcasecmp(principal, host_fqdn) == 0) {
+          matched_principal = TRUE;
+
+        } else if (strcmp(principal, host_ip) == 0) {
           matched_principal = TRUE;
         }
       }
@@ -273,8 +282,8 @@ int sftp_castore_verify_host_cert(pool *p, const char *user,
 
   if (matched_principal == FALSE) {
     (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
-      "%s certificate is invalid, for host '%s' is not a listed principal",
-      cert->cert_algo, host_fqdn);
+      "%s certificate is invalid, for host '%s' (%s) is not a listed principal",
+      cert->cert_algo, host_fqdn, host_ip);
     destroy_pool(cert->cert_pool);
     errno = EPERM;
     return -1;
@@ -301,7 +310,7 @@ int sftp_castore_verify_host_cert(pool *p, const char *user,
 
     pr_trace_msg(trace_channel, 2,
       "using SFTPAuthorizedHostCAKeys '%s' for certificate authentication for "
-      "user '%s', host %s", store_type, user, host_fqdn);
+      "user '%s', host '%s' (%s)", store_type, user, host_fqdn, host_ip);
 
     ptr = strchr(store_type, ':');
     if (ptr == NULL) {
@@ -334,11 +343,13 @@ int sftp_castore_verify_host_cert(pool *p, const char *user,
           }
 
           pr_trace_msg(trace_channel, 3,
-            "error verifying certificate for host '%s', user '%s' ('%s'): %s",
-            host_fqdn, user, host_user, strerror(xerrno));
+            "error verifying certificate for host '%s' %s), "
+            "user '%s' ('%s'): %s", host_fqdn, host_ip, user, host_user,
+            strerror(xerrno));
           if (xerrno == ENOENT) {
             pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
-              "no matching CA found for host '%s' in '%s'", host_fqdn, ptr + 1);
+              "no matching CA found for host '%s' (%s) in '%s'", host_fqdn,
+              host_ip, ptr + 1);
           }
 
         } else {
@@ -385,7 +396,8 @@ int sftp_castore_verify_host_cert(pool *p, const char *user,
     }
 
     pr_trace_msg(trace_channel, 8,
-      "verified host certificate for user '%s', host '%s'", user, host_fqdn);
+      "verified host certificate for user '%s', host '%s' (%s)", user,
+      host_fqdn, host_ip);
 
     ca_fp = sftp_keys_get_fingerprint2(p, cert->signature_pubkey_data,
       cert->signature_pubkey_datalen, SFTP_KEYS_FP_DIGEST_SHA256,
