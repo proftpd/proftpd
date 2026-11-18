@@ -343,7 +343,7 @@ int sftp_castore_verify_host_cert(pool *p, const char *user,
           }
 
           pr_trace_msg(trace_channel, 3,
-            "error verifying certificate for host '%s' %s), "
+            "error verifying certificate for host '%s' (%s), "
             "user '%s' ('%s'): %s", host_fqdn, host_ip, user, host_user,
             strerror(xerrno));
           if (xerrno == ENOENT) {
