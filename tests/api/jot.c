@@ -1550,6 +1550,21 @@ START_TEST (jot_resolve_logfmt_basename_test) {
     "Expected on_default count 0, got %u", resolve_on_default_count);
   ck_assert_msg(resolve_on_other_count == 0,
     "Expected on_other count 0, got %u", resolve_on_other_count);
+
+  /* MFMT without any arguments has no filename. */
+  mark_point();
+  cmd = pr_cmd_alloc(p, 1, pstrdup(p, "MFMT"));
+  cmd->cmd_class = CL_MISC;
+  resolve_on_meta_count = resolve_on_default_count = resolve_on_other_count = 0;
+  res = pr_jot_resolve_logfmt(p, cmd, NULL, logfmt, NULL,
+    resolve_on_meta, resolve_on_default, resolve_on_other);
+  ck_assert_msg(res == 0, "Failed to handle logfmt: %s", strerror(errno));
+  ck_assert_msg(resolve_on_meta_count == 0,
+    "Expected on_meta count 0, got %u", resolve_on_meta_count);
+  ck_assert_msg(resolve_on_default_count == 1,
+    "Expected on_default count 1, got %u", resolve_on_default_count);
+  ck_assert_msg(resolve_on_other_count == 0,
+    "Expected on_other count 0, got %u", resolve_on_other_count);
 }
 END_TEST
 
@@ -2003,6 +2018,21 @@ START_TEST (jot_resolve_logfmt_filename_test) {
     "Expected on_meta count 1, got %u", resolve_on_meta_count);
   ck_assert_msg(resolve_on_default_count == 0,
     "Expected on_default count 0, got %u", resolve_on_default_count);
+  ck_assert_msg(resolve_on_other_count == 0,
+    "Expected on_other count 0, got %u", resolve_on_other_count);
+
+  /* MFMT without any arguments has no filename. */
+  mark_point();
+  cmd = pr_cmd_alloc(p, 1, pstrdup(p, "MFMT"));
+  cmd->cmd_class = CL_MISC;
+  resolve_on_meta_count = resolve_on_default_count = resolve_on_other_count = 0;
+  res = pr_jot_resolve_logfmt(p, cmd, NULL, logfmt, NULL,
+    resolve_on_meta, resolve_on_default, resolve_on_other);
+  ck_assert_msg(res == 0, "Failed to handle logfmt: %s", strerror(errno));
+  ck_assert_msg(resolve_on_meta_count == 0,
+    "Expected on_meta count 0, got %u", resolve_on_meta_count);
+  ck_assert_msg(resolve_on_default_count == 1,
+    "Expected on_default count 1, got %u", resolve_on_default_count);
   ck_assert_msg(resolve_on_other_count == 0,
     "Expected on_other count 0, got %u", resolve_on_other_count);
 }
