@@ -380,7 +380,7 @@ static int copy_paths(pool *p, const char *from, const char *to) {
 
     res = pr_fs_copy_file2(from, to, flags, NULL);
     if (res < 0) {
-      int xerrno = errno;
+      xerrno = errno;
 
       pr_log_debug(DEBUG7, MOD_COPY_VERSION
         ": error copying file '%s' to '%s': %s", from, to, strerror(xerrno));
