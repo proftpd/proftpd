@@ -213,6 +213,26 @@ static int copy_dir(pool *p, const char *src_dir, const char *dst_dir,
     /* Is this path to a regular file? */
     } else if (S_ISREG(st.st_mode)) {
       cmd_rec *cmd;
+      struct stat dst_st;
+
+      /* Honor AllowOverwrite for existing destination files, as copy_paths()
+       * does for a single file.
+       */
+      pr_fs_clear_cache2(dst_path);
+      if (pr_fsio_lstat(dst_path, &dst_st) == 0) {
+        unsigned char *allow_overwrite;
+
+        allow_overwrite = get_param_ptr(get_dir_ctxt(iter_pool, dst_path),
+          "AllowOverwrite", FALSE);
+        if (allow_overwrite == NULL ||
+            *allow_overwrite == FALSE) {
+          pr_log_debug(DEBUG6, MOD_COPY_VERSION
+            ": AllowOverwrite permission denied for '%s'", dst_path);
+          errno = EACCES;
+          res = -1;
+          break;
+        }
+      }
 
       /* Dispatch fake COPY command, e.g. for mod_quotatab */
       cmd = pr_cmd_alloc(iter_pool, 4, pstrdup(iter_pool, "SITE"),
