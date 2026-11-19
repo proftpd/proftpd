@@ -1266,16 +1266,6 @@ int sftp_ssh2_packet_read(int sockfd, struct ssh2_packet *pkt) {
       return -1;
     }
 
-    if (pkt->payload_len == 0) {
-      (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
-        "payload length too short (%lu), below mininum payload length (%lu) "
-        "(packet len %lu, padding len %u)", (unsigned long) pkt->payload_len,
-        (unsigned long) 1, (unsigned long) pkt->packet_len,
-        (unsigned int) pkt->padding_len);
-      read_packet_discard(sockfd);
-      return -1;
-    }
-
     /* XXX I'm not so sure about this check; we SHOULD have a maximum
      * payload check, but using the max packet length check for the payload
      * length seems awkward.
@@ -1292,6 +1282,16 @@ int sftp_ssh2_packet_read(int sockfd, struct ssh2_packet *pkt) {
 
     /* Sanity checks passed; move on to the reading the packet payload. */
     if (sftp_compress_read_data(pkt) < 0) {
+      return -1;
+    }
+
+    if (pkt->payload_len == 0) {
+      (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
+        "payload length too short (%lu), below mininum payload length (%lu) "
+        "(packet len %lu, padding len %u)", (unsigned long) pkt->payload_len,
+        (unsigned long) 1, (unsigned long) pkt->packet_len,
+        (unsigned int) pkt->padding_len);
+      read_packet_discard(sockfd);
       return -1;
     }
 
