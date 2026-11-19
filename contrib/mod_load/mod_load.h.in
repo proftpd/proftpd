@@ -1,3 +1,8 @@
+/*
+ * Copyright (c) 2026 The ProFTPD Project team
+ * SPDX-License-Identifier: GPL-2.0-only WITH vsftpd-openssl-exception
+ */
+
 /* config.h.in.  Generated automatically from configure.in by autoheader.  */
 
 /* Define if on AIX 3.
