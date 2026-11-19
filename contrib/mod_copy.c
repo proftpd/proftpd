@@ -212,8 +212,8 @@ static int copy_dir(pool *p, const char *src_dir, const char *dst_dir,
 
     /* Is this path to a regular file? */
     } else if (S_ISREG(st.st_mode)) {
-      cmd_rec *cmd;
       struct stat dst_st;
+      cmd_rec *cmd;
 
       /* Honor AllowOverwrite for existing destination files, as copy_paths()
        * does for a single file.

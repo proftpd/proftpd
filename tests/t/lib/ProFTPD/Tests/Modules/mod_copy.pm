@@ -1794,7 +1794,7 @@ sub copy_config_allowoverwrite_dir {
   my $tmpdir = $self->{tmpdir};
   my $setup = test_setup($tmpdir, 'copy');
 
-  my $src_dir = File::Spec->rel2abs("$setup->{home_dir}/foo");
+  my $src_dir = File::Spec->rel2abs("$setup->{home_dir}/src.d");
   mkpath($src_dir);
 
   my $src_file = File::Spec->rel2abs("$src_dir/test.txt");
@@ -1808,7 +1808,7 @@ sub copy_config_allowoverwrite_dir {
     die("Can't open $src_file: $!");
   }
 
-  my $dst_dir = File::Spec->rel2abs("$setup->{home_dir}/bar");
+  my $dst_dir = File::Spec->rel2abs("$setup->{home_dir}/dst.d");
   mkpath($dst_dir);
 
   my $dst_file = File::Spec->rel2abs("$dst_dir/test.txt");
@@ -1823,8 +1823,6 @@ sub copy_config_allowoverwrite_dir {
     die("Can't open $dst_file: $!");
   }
 
-  # Make sure that, if we're running as root, that the test directories have
-  # permissions/privs set for the account we create
   if ($< == 0) {
     unless (chmod(0755, $src_dir, $dst_dir)) {
       die("Can't set perms on $src_dir, $dst_dir to 0755: $!");
@@ -1844,6 +1842,9 @@ sub copy_config_allowoverwrite_dir {
     AuthUserFile => $setup->{auth_user_file},
     AuthGroupFile => $setup->{auth_group_file},
     AuthOrder => 'mod_auth_file.c',
+
+    # The log message we expect is emitted at this level
+    DebugLevel => 6,
 
     IfModules => {
       'mod_delay.c' => {
@@ -1875,7 +1876,7 @@ sub copy_config_allowoverwrite_dir {
 
       # With AllowOverwrite off (the default), copying a directory must not
       # replace a file which already exists in the destination directory.
-      eval { $client->site('COPY', 'foo', 'bar') };
+      eval { $client->site('COPY', 'src.d', 'dst.d') };
       unless ($@) {
         die("SITE COPY succeeded unexpectedly");
       }
@@ -1926,6 +1927,38 @@ sub copy_config_allowoverwrite_dir {
   # Stop server
   server_stop($setup->{pid_file});
   $self->assert_child_ok($pid);
+
+  eval {
+    if (open(my $fh, "< $setup->{log_file}")) {
+      my $ok = 0;
+
+      while (my $line = <$fh>) {
+        chomp($line);
+
+        if ($ENV{TEST_VERBOSE}) {
+          print STDERR "# $line\n";
+        }
+
+        if ($line =~ /AllowOverwrite permission denied for '(.*)?'/) {
+          my $denied_path = $1;
+
+          if ($denied_path eq $dst_file) {
+            $ok = 1;
+            last;
+          }
+        }
+      }
+
+      close($fh);
+      $self->assert($ok, test_msg("Did not see expected log message"));
+
+    } else {
+      die("Can't read $setup->{log_file}: $!");
+    }
+  };
+  if ($@) {
+    $ex = $@ unless $ex;
+  }
 
   test_cleanup($setup, $ex);
 }
