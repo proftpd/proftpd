@@ -103,6 +103,10 @@ my $TESTS = {
     test_class => [qw(bug forking)],
   },
 
+  ifsess_ftpaccess_closing_ctx => {
+    order => ++$order,
+    test_class => [qw(bug forking)],
+  },
 };
 
 sub new {
@@ -2514,6 +2518,143 @@ EOC
   $self->assert_child_ok($pid);
 
   test_cleanup($setup->{log_file}, $ex);
+}
+
+sub ifsess_ftpaccess_closing_ctx {
+  my $self = shift;
+  my $tmpdir = $self->{tmpdir};
+  my $setup = test_setup($tmpdir, 'ifsess');
+
+  my $test_dir = File::Spec->rel2abs("$tmpdir/test.d");
+  mkpath($test_dir);
+
+  # We deliberately write an incomplete/unclosed config snippet here
+  my $ftpaccess_file = File::Spec->rel2abs("$test_dir/.ftpaccess");
+  if (open(my $fh, "> $ftpaccess_file")) {
+    print $fh <<EOC;
+ServerAdmin MadeYouLook
+</IfUser>
+ServerAdmin MadeYouLookAgain
+EOC
+    unless (close($fh)) {
+      die("Can't write $ftpaccess_file: $!");
+    }
+
+  } else {
+    die("Can't open $ftpaccess_file: $!");
+  }
+
+  if ($< == 0) {
+    unless (chmod(0755, $test_dir)) {
+      die("Can't set perms on $test_dir: $!");
+    }
+
+    unless (chown($setup->{uid}, $setup->{gid}, $test_dir)) {
+      die("Can't set owner of $test_dir to $setup->{uid}/$setup->{gid}: $!");
+    }
+  }
+
+  my $config = {
+    PidFile => $setup->{pid_file},
+    ScoreboardFile => $setup->{scoreboard_file},
+    SystemLog => $setup->{log_file},
+
+    AuthUserFile => $setup->{auth_user_file},
+    AuthGroupFile => $setup->{auth_group_file},
+    AuthOrder => 'mod_auth_file.c',
+
+    AllowOverride => 'on',
+
+    IfModules => {
+      'mod_delay.c' => {
+        DelayEngine => 'off',
+      },
+    },
+  };
+
+  my ($port, $config_user, $config_group) = config_write($setup->{config_file},
+    $config);
+
+  # Open pipes, for use between the parent and child processes.  Specifically,
+  # the child will indicate when it's done with its test by writing a message
+  # to the parent.
+  my ($rfh, $wfh);
+  unless (pipe($rfh, $wfh)) {
+    die("Can't open pipe: $!");
+  }
+
+  my $ex;
+
+  # Fork child
+  $self->handle_sigchld();
+  defined(my $pid = fork()) or die("Can't fork: $!");
+  if ($pid) {
+    eval {
+      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
+      $client->login($setup->{user}, $setup->{passwd});
+
+      $client->cwd('test.d');
+      my ($resp_code, $resp_msg) = $client->noop();
+      $client->quit();
+
+      my $expected = 200;
+      $self->assert($expected == $resp_code,
+        test_msg("Expected response code $expected, got $resp_code"));
+
+      $expected = 'NOOP command successful';
+      $self->assert($expected eq $resp_msg,
+        test_msg("Expected response message '$expected', got '$resp_msg'"));
+    };
+    if ($@) {
+      $ex = $@;
+    }
+
+    $wfh->print("done\n");
+    $wfh->flush();
+
+  } else {
+    eval { server_wait($setup->{config_file}, $rfh) };
+    if ($@) {
+      warn($@);
+      exit 1;
+    }
+
+    exit 0;
+  }
+
+  # Stop server
+  server_stop($setup->{pid_file});
+  $self->assert_child_ok($pid);
+
+  eval {
+    if (open(my $fh, "< $setup->{log_file}")) {
+      my $ok = 0;
+
+      while (my $line = <$fh>) {
+        chomp($line);
+
+        if ($ENV{TEST_VERBOSE}) {
+          print STDERR "# $line\n";
+        }
+
+        if ($line =~ /ServerAdmin: directive not allowed in \.ftpaccess context/) {
+          $ok = 1;
+          last;
+        }
+      }
+
+      close($fh);
+      $self->assert($ok, test_msg("Did not see expected log message"));
+
+    } else {
+      die("Can't read $setup->{log_file}: $!");
+    }
+  };
+  if ($@) {
+    $ex = $@ unless $ex;
+  }
+
+  test_cleanup($setup, $ex);
 }
 
 1;
