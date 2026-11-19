@@ -18,6 +18,11 @@ dnl Process this file with autoconf to produce a configure script.
 
 AC_INIT(./mod_wrap2.c)
 
+# Deliberately placed here after AC_INIT, so that these appear in the
+# generated script:
+# Copyright (c) 2012-2026 TJ Saunders <tj@castaglia.org>
+# SPDX-License-Identifier: GPL-2.0-only WITH vsftpd-openssl-exception
+
 dnl Need to support/handle the --with-includes and --with-libraries options
 AC_ARG_WITH(includes,
   [AC_HELP_STRING(

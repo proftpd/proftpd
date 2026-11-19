@@ -16,10 +16,32 @@ path = [
   "NEWS",
   "README.md",
   "RELEASE_NOTES",
+  "contrib/README",
+  "contrib/README.ratio",
+  "contrib/mod_quotatab_ldap.ldif",
+  "contrib/mod_quotatab_ldap.schema",
   "contrib/mod_sftp/blacklist.dat",
+  "contrib/mod_snmp/PROFTPD-MIB.txt",
+  "lib/README.tpl",
+  "m4/proftpd.m4",
 ]
 SPDX-FileCopyrightText = "2026 The ProFTPD Project"
 SPDX-License-Identifier = "GPL-2.0-only WITH vsftpd-openssl-exception"
+
+[[annotations]]
+path = [
+  "contrib/mod_sftp/bcrypt.c",
+  "contrib/mod_sftp/poly1305.c",
+  "contrib/mod_sftp/poly1305.h",
+  "contrib/mod_sftp/sntrup761.c",
+  "contrib/mod_sftp/sntrup761.h",
+  "contrib/mod_sftp/sntrup761.sh",
+  "contrib/mod_sftp/umac.c",
+  "contrib/mod_sftp/umac.h",
+  "lib/openbsd-bcrypt.c",
+]
+SPDX-FileCopyrightText = "NONE"
+SPDX-License-Identifier = "Unlicense"
 
 [[annotations]]
 path = [
@@ -46,9 +68,11 @@ SPDX-License-Identifier = "GPL-2.0-or-later"
 path = [
   ".github/**",
   "contrib/dist/**",
+  "contrib/mod_snmp/contrib/**",
   "doc/platforms/**.md",
   "locale/**",
   "sample-configurations/**",
+  "tests/api/etc/**",
   "tests/t/etc/**",
 ]
 SPDX-FileCopyrightText = "2026 The ProFTPD Project"
