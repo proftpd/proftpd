@@ -88,7 +88,7 @@ my $TESTS = {
 
   ifuser_no_pass_bug4199 => {
     order => ++$order,
-    test_class => [qw(bug mod_tls forking)],
+    test_class => [qw(bug forking mod_tls)],
   },
 
   ifclass_and_not_classes => {
@@ -134,22 +134,7 @@ sub set_up {
 sub ifuser_allowoverwrite {
   my $self = shift;
   my $tmpdir = $self->{tmpdir};
-
-  my $config_file = "$tmpdir/ifsess.conf";
-  my $pid_file = File::Spec->rel2abs("$tmpdir/ifsess.pid");
-  my $scoreboard_file = File::Spec->rel2abs("$tmpdir/ifsess.scoreboard");
-
-  my $log_file = test_get_logfile();
-
-  my $auth_user_file = File::Spec->rel2abs("$tmpdir/ifsess.passwd");
-  my $auth_group_file = File::Spec->rel2abs("$tmpdir/ifsess.group");
-
-  my $user = 'proftpd';
-  my $passwd = 'test';
-  my $group = 'ftpd';
-  my $home_dir = File::Spec->rel2abs($tmpdir);
-  my $uid = 500;
-  my $gid = 500;
+  my $setup = test_setup($tmpdir, 'ifsess');
 
   my $ftpaccess_file = File::Spec->rel2abs("$tmpdir/.ftpaccess");
   if (open(my $fh, "> $ftpaccess_file")) {
@@ -171,29 +156,19 @@ sub ifuser_allowoverwrite {
     die("Can't open $test_file: $!");
   }
 
-  # Make sure that, if we're running as root, that the home directory has
-  # permissions/privs set for the account we create
   if ($< == 0) {
-    unless (chmod(0755, $home_dir, $test_file)) {
-      die("Can't set perms on $home_dir to 0755: $!");
-    }
-
-    unless (chown($uid, $gid, $home_dir, $test_file)) {
-      die("Can't set owner of $home_dir to $uid/$gid: $!");
+    unless (chown($setup->{uid}, $setup->{gid}, $test_file)) {
+      die("Can't set owner of $test_file to $setup->{uid}/$setup->{gid}: $!");
     }
   }
 
-  auth_user_write($auth_user_file, $user, $passwd, $uid, $gid, $home_dir,
-    '/bin/bash');
-  auth_group_write($auth_group_file, $group, $gid, $user);
-
   my $config = {
-    PidFile => $pid_file,
-    ScoreboardFile => $scoreboard_file,
-    SystemLog => $log_file,
+    PidFile => $setup->{pid_file},
+    ScoreboardFile => $setup->{scoreboard_file},
+    SystemLog => $setup->{log_file},
 
-    AuthUserFile => $auth_user_file,
-    AuthGroupFile => $auth_group_file,
+    AuthUserFile => $setup->{auth_user_file},
+    AuthGroupFile => $setup->{auth_group_file},
     AuthOrder => 'mod_auth_file.c',
 
     AllowOverride => 'on',
@@ -205,27 +180,28 @@ sub ifuser_allowoverwrite {
     },
   };
 
-  my ($port, $config_user, $config_group) = config_write($config_file, $config);
+  my ($port, $config_user, $config_group) = config_write($setup->{config_file},
+    $config);
 
   # Append the mod_ifsession config to the end of the config file
-  if (open(my $fh, ">> $config_file")) {
+  if (open(my $fh, ">> $setup->{config_file}")) {
     print $fh <<EOC;
 <IfModule mod_ifsession.c>
-  <IfUser $user>
+  <IfUser $setup->{user}>
     AllowOverride on
   </IfUser>
 
-  <IfUser !$user>
+  <IfUser !$setup->{user}>
     AllowOverride off
   </IfUser>
 </IfModule>
 EOC
     unless (close($fh)) {
-      die("Can't write $config_file: $!");
+      die("Can't write $setup->{config_file}: $!");
     }
 
   } else {
-    die("Can't open $config_file: $!");
+    die("Can't open $setup->{config_file}: $!");
   }
 
   # Open pipes, for use between the parent and child processes.  Specifically,
@@ -244,7 +220,7 @@ EOC
   if ($pid) {
     eval {
       my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
-      $client->login($user, $passwd);
+      $client->login($setup->{user}, $setup->{passwd});
 
       my $conn = $client->stor_raw('test.txt');
       unless ($conn) {
@@ -252,6 +228,7 @@ EOC
           $client->response_msg());
       }
 
+      sleep(0.25);
       eval { $conn->close() };
 
       my $resp_code = $client->response_code();
@@ -260,7 +237,6 @@ EOC
 
       $client->quit();
     };
-
     if ($@) {
       $ex = $@;
     }
@@ -269,7 +245,7 @@ EOC
     $wfh->flush();
 
   } else {
-    eval { server_wait($config_file, $rfh) };
+    eval { server_wait($setup->{config_file}, $rfh) };
     if ($@) {
       warn($@);
       exit 1;
@@ -279,43 +255,18 @@ EOC
   }
 
   # Stop server
-  server_stop($pid_file);
-
+  server_stop($setup->{pid_file});
   $self->assert_child_ok($pid);
 
-  if ($ex) {
-    test_append_logfile($log_file, $ex);
-    unlink($log_file);
-
-    die($ex);
-  }
-
-  unlink($log_file);
+  test_cleanup($setup, $ex);
 }
 
 sub ifgroup_dir_allow_mkd_bug3467 {
   my $self = shift;
   my $tmpdir = $self->{tmpdir};
+  my $setup = test_setup($tmpdir, 'ifsess');
 
-  my $config_file = "$tmpdir/ifsess.conf";
-  my $pid_file = File::Spec->rel2abs("$tmpdir/ifsess.pid");
-  my $scoreboard_file = File::Spec->rel2abs("$tmpdir/ifsess.scoreboard");
-
-  my $log_file = test_get_logfile();
-
-  my $auth_user_file = File::Spec->rel2abs("$tmpdir/ifsess.passwd");
-  my $auth_group_file = File::Spec->rel2abs("$tmpdir/ifsess.group");
-
-  my $test_file = File::Spec->rel2abs($config_file);
-
-  my $user = 'proftpd';
-  my $passwd = 'test';
-  my $group = 'ftpd';
-  my $home_dir = File::Spec->rel2abs($tmpdir);
-  my $uid = 500;
-  my $gid = 500;
-
-  my $user_dir = File::Spec->rel2abs("$home_dir/$user");
+  my $user_dir = File::Spec->rel2abs("$setup->{home_dir}/$setup->{user}");
   mkpath($user_dir);
 
   my $ftpaccess_file = File::Spec->rel2abs("$user_dir/.ftpaccess");
@@ -330,33 +281,27 @@ sub ifgroup_dir_allow_mkd_bug3467 {
     die("Can't open $ftpaccess_file: $!");
   }
 
-  # Make sure that, if we're running as root, that the home directory has
-  # permissions/privs set for the account we create
   if ($< == 0) {
-    unless (chmod(0755, $home_dir, $user_dir)) {
-      die("Can't set perms on $home_dir to 0755: $!");
+    unless (chmod(0755, $user_dir)) {
+      die("Can't set perms on $user_dir to 0755: $!");
     }
 
-    unless (chown($uid, $gid, $home_dir, $user_dir)) {
-      die("Can't set owner of $home_dir to $uid/$gid: $!");
+    unless (chown($setup->{uid}, $setup->{gid}, $user_dir)) {
+      die("Can't set owner of $user_dir to $setup->{uid}/$setup->{gid}: $!");
     }
   }
 
-  auth_user_write($auth_user_file, $user, $passwd, $uid, $gid, $home_dir,
-    '/bin/bash');
-  auth_group_write($auth_group_file, $group, $gid, $user);
-
   my $config = {
-    PidFile => $pid_file,
-    ScoreboardFile => $scoreboard_file,
-    SystemLog => $log_file,
+    PidFile => $setup->{pid_file},
+    ScoreboardFile => $setup->{scoreboard_file},
+    SystemLog => $setup->{log_file},
 
-    AuthUserFile => $auth_user_file,
-    AuthGroupFile => $auth_group_file,
+    AuthUserFile => $setup->{auth_user_file},
+    AuthGroupFile => $setup->{auth_group_file},
     AuthOrder => 'mod_auth_file.c',
 
     AllowOverride => 'on',
-    DefaultRoot => "~ $group",
+    DefaultRoot => "~ $setup->{group}",
 
     IfModules => {
       'mod_delay.c' => {
@@ -365,10 +310,11 @@ sub ifgroup_dir_allow_mkd_bug3467 {
     },
   };
 
-  my ($port, $config_user, $config_group) = config_write($config_file, $config);
+  my ($port, $config_user, $config_group) = config_write($setup->{config_file},
+    $config);
 
   # Append the mod_ifsession config to the end of the config file
-  if (open(my $fh, ">> $config_file")) {
+  if (open(my $fh, ">> $setup->{config_file}")) {
     print $fh <<EOC;
 <Directory />
   <Limit ALL>
@@ -376,7 +322,7 @@ sub ifgroup_dir_allow_mkd_bug3467 {
   </Limit>
 </Directory>
 
-<IfGroup $group>
+<IfGroup $setup->{group}>
   <Directory ~>
     <Limit ALL>
       AllowAll
@@ -385,11 +331,11 @@ sub ifgroup_dir_allow_mkd_bug3467 {
 </IfGroup>
 EOC
     unless (close($fh)) {
-      die("Can't write $config_file: $!");
+      die("Can't write $setup->{config_file}: $!");
     }
 
   } else {
-    die("Can't open $config_file: $!");
+    die("Can't open $setup->{config_file}: $!");
   }
 
   # Open pipes, for use between the parent and child processes.  Specifically,
@@ -408,13 +354,12 @@ EOC
   if ($pid) {
     eval {
       my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
-      $client->login($user, $passwd);
+      $client->login($setup->{user}, $setup->{passwd});
 
       $client->pwd();
       $client->mkd('foo');
       $client->quit();
     };
-
     if ($@) {
       $ex = $@;
     }
@@ -423,7 +368,7 @@ EOC
     $wfh->flush();
 
   } else {
-    eval { server_wait($config_file, $rfh) };
+    eval { server_wait($setup->{config_file}, $rfh) };
     if ($@) {
       warn($@);
       exit 1;
@@ -433,67 +378,26 @@ EOC
   }
 
   # Stop server
-  server_stop($pid_file);
-
+  server_stop($setup->{pid_file});
   $self->assert_child_ok($pid);
 
-  if ($ex) {
-    test_append_logfile($log_file, $ex);
-    unlink($log_file);
-
-    die($ex);
-  }
-
-  unlink($log_file);
+  test_cleanup($setup, $ex);
 }
 
 sub ifuser_dir_allow_mkd_bug3467 {
   my $self = shift;
   my $tmpdir = $self->{tmpdir};
-
-  my $config_file = "$tmpdir/ifsess.conf";
-  my $pid_file = File::Spec->rel2abs("$tmpdir/ifsess.pid");
-  my $scoreboard_file = File::Spec->rel2abs("$tmpdir/ifsess.scoreboard");
-
-  my $log_file = test_get_logfile();
-
-  my $auth_user_file = File::Spec->rel2abs("$tmpdir/ifsess.passwd");
-  my $auth_group_file = File::Spec->rel2abs("$tmpdir/ifsess.group");
-
-  my $test_file = File::Spec->rel2abs($config_file);
-
-  my $user = 'proftpd';
-  my $passwd = 'test';
-  my $group = 'ftpd';
-  my $home_dir = File::Spec->rel2abs($tmpdir);
-  my $uid = 500;
-  my $gid = 500;
-
-  # Make sure that, if we're running as root, that the home directory has
-  # permissions/privs set for the account we create
-  if ($< == 0) {
-    unless (chmod(0755, $home_dir)) {
-      die("Can't set perms on $home_dir to 0755: $!");
-    }
-
-    unless (chown($uid, $gid, $home_dir)) {
-      die("Can't set owner of $home_dir to $uid/$gid: $!");
-    }
-  }
-
-  auth_user_write($auth_user_file, $user, $passwd, $uid, $gid, $home_dir,
-    '/bin/bash');
-  auth_group_write($auth_group_file, $group, $gid, $user);
+  my $setup = test_setup($tmpdir, 'ifsess');
 
   my $config = {
-    PidFile => $pid_file,
-    ScoreboardFile => $scoreboard_file,
-    SystemLog => $log_file,
-    TraceLog => $log_file,
+    PidFile => $setup->{pid_file},
+    ScoreboardFile => $setup->{scoreboard_file},
+    SystemLog => $setup->{log_file},
+    TraceLog => $setup->{log_file},
     Trace => 'directory:20',
 
-    AuthUserFile => $auth_user_file,
-    AuthGroupFile => $auth_group_file,
+    AuthUserFile => $setup->{auth_user_file},
+    AuthGroupFile => $setup->{auth_group_file},
     AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
@@ -503,14 +407,15 @@ sub ifuser_dir_allow_mkd_bug3467 {
     },
   };
 
-  my ($port, $config_user, $config_group) = config_write($config_file, $config);
+  my ($port, $config_user, $config_group) = config_write($setup->{config_file},
+    $config);
 
   # Append the mod_ifsession config to the end of the config file
-  if (open(my $fh, ">> $config_file")) {
-    my $limit_dir = $home_dir;
+  if (open(my $fh, ">> $setup->{config_file}")) {
+    my $limit_dir = $setup->{home_dir};
     if ($^O eq 'darwin') {
       # MacOSX hack
-      $limit_dir = ('/private' . $home_dir);
+      $limit_dir = ('/private' . $setup->{home_dir});
     }
 
     print $fh <<EOC;
@@ -520,7 +425,7 @@ sub ifuser_dir_allow_mkd_bug3467 {
   </Limit>
 </Directory>
 
-<IfUser $user>
+<IfUser $setup->{user}>
   <Directory $limit_dir>
     <Limit MKD>
       AllowAll
@@ -529,11 +434,11 @@ sub ifuser_dir_allow_mkd_bug3467 {
 </IfUser>
 EOC
     unless (close($fh)) {
-      die("Can't write $config_file: $!");
+      die("Can't write $setup->{config_file}: $!");
     }
 
   } else {
-    die("Can't open $config_file: $!");
+    die("Can't open $setup->{config_file}: $!");
   }
 
   # Open pipes, for use between the parent and child processes.  Specifically,
@@ -552,12 +457,11 @@ EOC
   if ($pid) {
     eval {
       my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
-      $client->login($user, $passwd);
+      $client->login($setup->{user}, $setup->{passwd});
 
       $client->mkd('foo');
       $client->quit();
     };
-
     if ($@) {
       $ex = $@;
     }
@@ -566,7 +470,7 @@ EOC
     $wfh->flush();
 
   } else {
-    eval { server_wait($config_file, $rfh) };
+    eval { server_wait($setup->{config_file}, $rfh) };
     if ($@) {
       warn($@);
       exit 1;
@@ -576,67 +480,26 @@ EOC
   }
 
   # Stop server
-  server_stop($pid_file);
-
+  server_stop($setup->{pid_file});
   $self->assert_child_ok($pid);
 
-  if ($ex) {
-    test_append_logfile($log_file, $ex);
-    unlink($log_file);
-
-    die($ex);
-  }
-
-  unlink($log_file);
+  test_cleanup($setup, $ex);
 }
 
 sub ifclass_dir_allow_mkd_bug3467 {
   my $self = shift;
   my $tmpdir = $self->{tmpdir};
-
-  my $config_file = "$tmpdir/ifsess.conf";
-  my $pid_file = File::Spec->rel2abs("$tmpdir/ifsess.pid");
-  my $scoreboard_file = File::Spec->rel2abs("$tmpdir/ifsess.scoreboard");
-
-  my $log_file = test_get_logfile();
-
-  my $auth_user_file = File::Spec->rel2abs("$tmpdir/ifsess.passwd");
-  my $auth_group_file = File::Spec->rel2abs("$tmpdir/ifsess.group");
-
-  my $test_file = File::Spec->rel2abs($config_file);
-
-  my $user = 'proftpd';
-  my $passwd = 'test';
-  my $group = 'ftpd';
-  my $home_dir = File::Spec->rel2abs($tmpdir);
-  my $uid = 500;
-  my $gid = 500;
-
-  # Make sure that, if we're running as root, that the home directory has
-  # permissions/privs set for the account we create
-  if ($< == 0) {
-    unless (chmod(0755, $home_dir)) {
-      die("Can't set perms on $home_dir to 0755: $!");
-    }
-
-    unless (chown($uid, $gid, $home_dir)) {
-      die("Can't set owner of $home_dir to $uid/$gid: $!");
-    }
-  }
-
-  auth_user_write($auth_user_file, $user, $passwd, $uid, $gid, $home_dir,
-    '/bin/bash');
-  auth_group_write($auth_group_file, $group, $gid, $user);
+  my $setup = test_setup($tmpdir, 'ifsess');
 
   my $config = {
-    PidFile => $pid_file,
-    ScoreboardFile => $scoreboard_file,
-    SystemLog => $log_file,
-    TraceLog => $log_file,
+    PidFile => $setup->{pid_file},
+    ScoreboardFile => $setup->{scoreboard_file},
+    SystemLog => $setup->{log_file},
+    TraceLog => $setup->{log_file},
     Trace => 'directory:20',
 
-    AuthUserFile => $auth_user_file,
-    AuthGroupFile => $auth_group_file,
+    AuthUserFile => $setup->{auth_user_file},
+    AuthGroupFile => $setup->{auth_group_file},
     AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
@@ -646,13 +509,14 @@ sub ifclass_dir_allow_mkd_bug3467 {
     },
   };
 
-  my ($port, $config_user, $config_group) = config_write($config_file, $config);
+  my ($port, $config_user, $config_group) = config_write($setup->{config_file},
+    $config);
 
   # Append the mod_ifsession config to the end of the config file
-  if (open(my $fh, ">> $config_file")) {
-    my $limit_dir = $home_dir;
+  if (open(my $fh, ">> $setup->{config_file}")) {
+    my $limit_dir = $setup->{home_dir};
     if ($^O eq 'darwin') {
-      $limit_dir = ('/private' . $home_dir);
+      $limit_dir = ('/private' . $setup->{home_dir});
     }
 
     print $fh <<EOC;
@@ -675,11 +539,11 @@ sub ifclass_dir_allow_mkd_bug3467 {
 </IfClass>
 EOC
     unless (close($fh)) {
-      die("Can't write $config_file: $!");
+      die("Can't write $setup->{config_file}: $!");
     }
 
   } else {
-    die("Can't open $config_file: $!");
+    die("Can't open $setup->{config_file}: $!");
   }
 
   # Open pipes, for use between the parent and child processes.  Specifically,
@@ -698,12 +562,11 @@ EOC
   if ($pid) {
     eval {
       my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
-      $client->login($user, $passwd);
+      $client->login($setup->{user}, $setup->{passwd});
 
       $client->mkd('foo');
       $client->quit();
     };
-
     if ($@) {
       $ex = $@;
     }
@@ -712,7 +575,7 @@ EOC
     $wfh->flush();
 
   } else {
-    eval { server_wait($config_file, $rfh) };
+    eval { server_wait($setup->{config_file}, $rfh) };
     if ($@) {
       warn($@);
       exit 1;
@@ -722,18 +585,10 @@ EOC
   }
 
   # Stop server
-  server_stop($pid_file);
-
+  server_stop($setup->{pid_file});
   $self->assert_child_ok($pid);
 
-  if ($ex) {
-    test_append_logfile($log_file, $ex);
-    unlink($log_file);
-
-    die($ex);
-  }
-
-  unlink($log_file);
+  test_cleanup($setup, $ex);
 }
 
 sub ifuser_login_deny_by_ip  {
@@ -825,7 +680,7 @@ EOC
   server_stop($setup->{pid_file});
   $self->assert_child_ok($pid);
 
-  test_cleanup($setup->{log_file}, $ex);
+  test_cleanup($setup, $ex);
 }
 
 sub ifuser_login_deny_by_user  {
@@ -912,58 +767,29 @@ EOC
   server_stop($setup->{pid_file});
   $self->assert_child_ok($pid);
 
-  test_cleanup($setup->{log_file}, $ex);
+  test_cleanup($setup, $ex);
 }
 
 sub ifgroup_ifclass_login_allowclass_bug3547 {
   my $self = shift;
   my $tmpdir = $self->{tmpdir};
-
-  my $config_file = "$tmpdir/ifsess.conf";
-  my $pid_file = File::Spec->rel2abs("$tmpdir/ifsess.pid");
-  my $scoreboard_file = File::Spec->rel2abs("$tmpdir/ifsess.scoreboard");
-
-  my $log_file = test_get_logfile();
-
-  my $auth_user_file = File::Spec->rel2abs("$tmpdir/ifsess.passwd");
-  my $auth_group_file = File::Spec->rel2abs("$tmpdir/ifsess.group");
-
-  my $user = 'proftpd';
-  my $passwd = 'test';
-  my $group = 'ftpd';
-  my $home_dir = File::Spec->rel2abs($tmpdir);
-  my $uid = 500;
-  my $gid = 500;
-
-  # Make sure that, if we're running as root, that the home directory has
-  # permissions/privs set for the account we create
-  if ($< == 0) {
-    unless (chmod(0755, $home_dir)) {
-      die("Can't set perms on $home_dir to 0755: $!");
-    }
-
-    unless (chown($uid, $gid, $home_dir)) {
-      die("Can't set owner of $home_dir to $uid/$gid: $!");
-    }
-  }
+  my $setup = test_setup($tmpdir, 'ifsess');
 
   my $test_group = 'test';
   my $test_gid = 501;
 
-  auth_user_write($auth_user_file, $user, $passwd, $uid, $gid, $home_dir,
-    '/bin/bash');
-  auth_group_write($auth_group_file, $group, $gid, $user);
-  auth_group_write($auth_group_file, $test_group, $test_gid, $user);
+  auth_group_write($setup->{auth_group_file}, $test_group, $test_gid,
+    $setup->{user});
 
   my $config = {
-    PidFile => $pid_file,
-    ScoreboardFile => $scoreboard_file,
-    SystemLog => $log_file,
-    TraceLog => $log_file,
+    PidFile => $setup->{pid_file},
+    ScoreboardFile => $setup->{scoreboard_file},
+    SystemLog => $setup->{log_file},
+    TraceLog => $setup->{log_file},
     Trace => 'ifsession:20',
 
-    AuthUserFile => $auth_user_file,
-    AuthGroupFile => $auth_group_file,
+    AuthUserFile => $setup->{auth_user_file},
+    AuthGroupFile => $setup->{auth_group_file},
     AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
@@ -973,9 +799,10 @@ sub ifgroup_ifclass_login_allowclass_bug3547 {
     },
   };
 
-  my ($port, $config_user, $config_group) = config_write($config_file, $config);
+  my ($port, $config_user, $config_group) = config_write($setup->{config_file},
+    $config);
 
-  if (open(my $fh, ">> $config_file")) {
+  if (open(my $fh, ">> $setup->{config_file}")) {
     print $fh <<EOC;
 <IfModule mod_ifsession.c>
   <Class local>
@@ -1004,11 +831,11 @@ sub ifgroup_ifclass_login_allowclass_bug3547 {
 </IfModule>
 EOC
     unless (close($fh)) {
-      die("Can't write $config_file: $!");
+      die("Can't write $setup->{config_file}: $!");
     }
 
   } else {
-    die("Can't open $config_file: $!");
+    die("Can't open $setup->{config_file}: $!");
   }
 
   # Open pipes, for use between the parent and child processes.  Specifically,
@@ -1027,9 +854,8 @@ EOC
   if ($pid) {
     eval {
       my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
-      $client->login($user, $passwd);
+      $client->login($setup->{user}, $setup->{passwd});
     };
-
     if ($@) {
       $ex = $@;
     }
@@ -1038,7 +864,7 @@ EOC
     $wfh->flush();
 
   } else {
-    eval { server_wait($config_file, $rfh) };
+    eval { server_wait($setup->{config_file}, $rfh) };
     if ($@) {
       warn($@);
       exit 1;
@@ -1048,65 +874,24 @@ EOC
   }
 
   # Stop server
-  server_stop($pid_file);
-
+  server_stop($setup->{pid_file});
   $self->assert_child_ok($pid);
 
-  if ($ex) {
-    test_append_logfile($log_file, $ex);
-    unlink($log_file);
-
-    die($ex);
-  }
-
-  unlink($log_file);
+  test_cleanup($setup, $ex);
 }
 
 sub ifuser_regex_login_deny_by_ip_bug3625  {
   my $self = shift;
   my $tmpdir = $self->{tmpdir};
-
-  my $config_file = "$tmpdir/ifsess.conf";
-  my $pid_file = File::Spec->rel2abs("$tmpdir/ifsess.pid");
-  my $scoreboard_file = File::Spec->rel2abs("$tmpdir/ifsess.scoreboard");
-
-  my $log_file = test_get_logfile();
-
-  my $auth_user_file = File::Spec->rel2abs("$tmpdir/ifsess.passwd");
-  my $auth_group_file = File::Spec->rel2abs("$tmpdir/ifsess.group");
-
-  my $test_file = File::Spec->rel2abs($config_file);
-
-  my $user = 'proftpd';
-  my $passwd = 'test';
-  my $group = 'ftpd';
-  my $home_dir = File::Spec->rel2abs($tmpdir);
-  my $uid = 500;
-  my $gid = 500;
-
-  # Make sure that, if we're running as root, that the home directory has
-  # permissions/privs set for the account we create
-  if ($< == 0) {
-    unless (chmod(0755, $home_dir)) {
-      die("Can't set perms on $home_dir to 0755: $!");
-    }
-
-    unless (chown($uid, $gid, $home_dir)) {
-      die("Can't set owner of $home_dir to $uid/$gid: $!");
-    }
-  }
-
-  auth_user_write($auth_user_file, $user, $passwd, $uid, $gid, $home_dir,
-    '/bin/bash');
-  auth_group_write($auth_group_file, $group, $gid, $user);
+  my $setup = test_setup($tmpdir, 'ifsess');
 
   my $config = {
-    PidFile => $pid_file,
-    ScoreboardFile => $scoreboard_file,
-    SystemLog => $log_file,
+    PidFile => $setup->{pid_file},
+    ScoreboardFile => $setup->{scoreboard_file},
+    SystemLog => $setup->{log_file},
 
-    AuthUserFile => $auth_user_file,
-    AuthGroupFile => $auth_group_file,
+    AuthUserFile => $setup->{auth_user_file},
+    AuthGroupFile => $setup->{auth_group_file},
     AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
@@ -1116,12 +901,13 @@ sub ifuser_regex_login_deny_by_ip_bug3625  {
     },
   };
 
-  my ($port, $config_user, $config_group) = config_write($config_file, $config);
+  my ($port, $config_user, $config_group) = config_write($setup->{config_file},
+    $config);
 
-  if (open(my $fh, ">> $config_file")) {
+  if (open(my $fh, ">> $setup->{config_file}")) {
     print $fh <<EOC;
 <IfModule mod_ifsession.c>
-  <IfUser regex $user>
+  <IfUser regex $setup->{user}>
     <Limit LOGIN>
       Deny from 127.0.0.1
     </Limit>
@@ -1129,11 +915,11 @@ sub ifuser_regex_login_deny_by_ip_bug3625  {
 </IfModule>
 EOC
     unless (close($fh)) {
-      die("Can't write $config_file: $!");
+      die("Can't write $setup->{config_file}: $!");
     }
 
   } else {
-    die("Can't open $config_file: $!");
+    die("Can't open $setup->{config_file}: $!");
   }
 
   # Open pipes, for use between the parent and child processes.  Specifically,
@@ -1152,12 +938,11 @@ EOC
   if ($pid) {
     eval {
       my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
-      eval { $client->login($user, $passwd) };
+      eval { $client->login($setup->{user}, $setup->{passwd}) };
       unless ($@) {
         die("Login succeeded unexpectedly");
       }
     };
-
     if ($@) {
       $ex = $@;
     }
@@ -1166,7 +951,7 @@ EOC
     $wfh->flush();
 
   } else {
-    eval { server_wait($config_file, $rfh) };
+    eval { server_wait($setup->{config_file}, $rfh) };
     if ($@) {
       warn($@);
       exit 1;
@@ -1176,39 +961,16 @@ EOC
   }
 
   # Stop server
-  server_stop($pid_file);
-
+  server_stop($setup->{pid_file});
   $self->assert_child_ok($pid);
 
-  if ($ex) {
-    test_append_logfile($log_file, $ex);
-    unlink($log_file);
-
-    die($ex);
-  }
-
-  unlink($log_file);
+  test_cleanup($setup, $ex);
 }
 
 sub ifauthenticated_bug3629 {
   my $self = shift;
   my $tmpdir = $self->{tmpdir};
-
-  my $config_file = "$tmpdir/ifsess.conf";
-  my $pid_file = File::Spec->rel2abs("$tmpdir/ifsess.pid");
-  my $scoreboard_file = File::Spec->rel2abs("$tmpdir/ifsess.scoreboard");
-
-  my $log_file = test_get_logfile();
-
-  my $auth_user_file = File::Spec->rel2abs("$tmpdir/ifsess.passwd");
-  my $auth_group_file = File::Spec->rel2abs("$tmpdir/ifsess.group");
-
-  my $user = 'proftpd';
-  my $passwd = 'test';
-  my $group = 'ftpd';
-  my $home_dir = File::Spec->rel2abs($tmpdir);
-  my $uid = 500;
-  my $gid = 500;
+  my $setup = test_setup($tmpdir, 'ifsess');
 
   my $test_file = File::Spec->rel2abs("$tmpdir/test.txt");
   if (open(my $fh, "> $test_file")) {
@@ -1218,31 +980,21 @@ sub ifauthenticated_bug3629 {
     die("Can't open $test_file: $!");
   }
 
-  # Make sure that, if we're running as root, that the home directory has
-  # permissions/privs set for the account we create
   if ($< == 0) {
-    unless (chmod(0755, $home_dir, $test_file)) {
-      die("Can't set perms on $home_dir to 0755: $!");
-    }
-
-    unless (chown($uid, $gid, $home_dir, $test_file)) {
-      die("Can't set owner of $home_dir to $uid/$gid: $!");
+    unless (chown($setup->{uid}, $setup->{gid}, $test_file)) {
+      die("Can't set owner of $test_file to $setup->{uid}/$setup->{gid}: $!");
     }
   }
 
-  auth_user_write($auth_user_file, $user, $passwd, $uid, $gid, $home_dir,
-    '/bin/bash');
-  auth_group_write($auth_group_file, $group, $gid, $user);
-
   my $config = {
-    PidFile => $pid_file,
-    ScoreboardFile => $scoreboard_file,
-    SystemLog => $log_file,
-    TraceLog => $log_file,
+    PidFile => $setup->{pid_file},
+    ScoreboardFile => $setup->{scoreboard_file},
+    SystemLog => $setup->{log_file},
+    TraceLog => $setup->{log_file},
     Trace => 'directory:20',
 
-    AuthUserFile => $auth_user_file,
-    AuthGroupFile => $auth_group_file,
+    AuthUserFile => $setup->{auth_user_file},
+    AuthGroupFile => $setup->{auth_group_file},
     AuthOrder => 'mod_auth_file.c',
 
     AllowOverwrite => 'on',
@@ -1254,14 +1006,15 @@ sub ifauthenticated_bug3629 {
     },
   };
 
-  my ($port, $config_user, $config_group) = config_write($config_file, $config);
+  my ($port, $config_user, $config_group) = config_write($setup->{config_file},
+    $config);
 
   # Append the mod_ifsession config to the end of the config file
-  if (open(my $fh, ">> $config_file")) {
-    my $limit_dir = $home_dir;
+  if (open(my $fh, ">> $setup->{config_file}")) {
+    my $limit_dir = $setup->{home_dir};
     if ($^O eq 'darwin') {
       # MacOSX hack
-      $limit_dir = ('/private' . $home_dir);
+      $limit_dir = ('/private' . $setup->{home_dir});
     }
 
     print $fh <<EOC;
@@ -1282,11 +1035,11 @@ sub ifauthenticated_bug3629 {
 </IfModule>
 EOC
     unless (close($fh)) {
-      die("Can't write $config_file: $!");
+      die("Can't write $setup->{config_file}: $!");
     }
 
   } else {
-    die("Can't open $config_file: $!");
+    die("Can't open $setup->{config_file}: $!");
   }
 
   # Open pipes, for use between the parent and child processes.  Specifically,
@@ -1305,7 +1058,7 @@ EOC
   if ($pid) {
     eval {
       my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
-      $client->login($user, $passwd);
+      $client->login($setup->{user}, $setup->{passwd});
 
       my $conn = $client->stor_raw('test.txt');
       unless ($conn) {
@@ -1313,6 +1066,7 @@ EOC
           $client->response_msg());
       }
 
+      sleep(0.25);
       eval { $conn->close() };
 
       my $resp_code = $client->response_code();
@@ -1321,7 +1075,6 @@ EOC
 
       $client->quit();
     };
-
     if ($@) {
       $ex = $@;
     }
@@ -1330,7 +1083,7 @@ EOC
     $wfh->flush();
 
   } else {
-    eval { server_wait($config_file, $rfh) };
+    eval { server_wait($setup->{config_file}, $rfh) };
     if ($@) {
       warn($@);
       exit 1;
@@ -1340,18 +1093,10 @@ EOC
   }
 
   # Stop server
-  server_stop($pid_file);
-
+  server_stop($setup->{pid_file});
   $self->assert_child_ok($pid);
 
-  if ($ex) {
-    test_append_logfile($log_file, $ex);
-    unlink($log_file);
-
-    die($ex);
-  }
-
-  unlink($log_file);
+  test_cleanup($setup, $ex);
 }
 
 sub ifgroup_displaylogin_bug3882 {
@@ -1466,41 +1211,32 @@ EOC
   server_stop($setup->{pid_file});
   $self->assert_child_ok($pid);
 
-  test_cleanup($setup->{log_file}, $ex);
+  test_cleanup($setup, $ex);
 }
 
 sub ifgroup_dir_allow_stor_bug3881 {
   my $self = shift;
   my $tmpdir = $self->{tmpdir};
 
-  my $config_file = "$tmpdir/ifsess.conf";
-  my $pid_file = File::Spec->rel2abs("$tmpdir/ifsess.pid");
-  my $scoreboard_file = File::Spec->rel2abs("$tmpdir/ifsess.scoreboard");
-
-  my $log_file = test_get_logfile();
-
-  my $auth_user_file = File::Spec->rel2abs("$tmpdir/ifsess.passwd");
-  my $auth_group_file = File::Spec->rel2abs("$tmpdir/ifsess.group");
-
-  my $test_file = File::Spec->rel2abs($config_file);
-
   my $user = 'proftpd';
   my $passwd = 'test';
   my $group = 'ftpd';
-  my $home_dir = File::Spec->rel2abs("$tmpdir/users/$user");
-  mkpath($home_dir);
   my $uid = 500;
   my $gid = 500;
+  my $home_dir = File::Spec->rel2abs("$tmpdir/users/$user");
 
-  my $sub_dir = File::Spec->rel2abs("$home_dir/test.d");
+  my $setup = test_setup($tmpdir, 'ifsess', $user, $passwd, $group, $uid,
+    $gid, $home_dir);
+
+  mkpath($home_dir);
+
+  my $sub_dir = File::Spec->rel2abs("$setup->{home_dir}/test.d");
   mkpath($sub_dir);
 
   if ($^O eq 'darwin') {
     $home_dir = ('/private' . $home_dir);
   }
 
-  # Make sure that, if we're running as root, that the home directory has
-  # permissions/privs set for the account we create
   if ($< == 0) {
     unless (chmod(0755, $home_dir, $sub_dir)) {
       die("Can't set perms on $home_dir to 0755: $!");
@@ -1511,19 +1247,15 @@ sub ifgroup_dir_allow_stor_bug3881 {
     }
   }
 
-  auth_user_write($auth_user_file, $user, $passwd, $uid, $gid, $home_dir,
-    '/bin/bash');
-  auth_group_write($auth_group_file, $group, $gid, $user);
-
   my $config = {
-    PidFile => $pid_file,
-    ScoreboardFile => $scoreboard_file,
-    SystemLog => $log_file,
-    TraceLog => $log_file,
+    PidFile => $setup->{pid_file},
+    ScoreboardFile => $setup->{scoreboard_file},
+    SystemLog => $setup->{log_file},
+    TraceLog => $setup->{log_file},
     Trace => 'directory:20 fileperms:10 ifsession:20',
 
-    AuthUserFile => $auth_user_file,
-    AuthGroupFile => $auth_group_file,
+    AuthUserFile => $setup->{auth_user_file},
+    AuthGroupFile => $setup->{auth_group_file},
     AuthOrder => 'mod_auth_file.c',
 
     DefaultRoot => '~',
@@ -1535,10 +1267,11 @@ sub ifgroup_dir_allow_stor_bug3881 {
     },
   };
 
-  my ($port, $config_user, $config_group) = config_write($config_file, $config);
+  my ($port, $config_user, $config_group) = config_write($setup->{config_file},
+    $config);
 
   # Append the mod_ifsession config to the end of the config file
-  if (open(my $fh, ">> $config_file")) {
+  if (open(my $fh, ">> $setup->{config_file}")) {
     my ($volume, $parent_dir, $file) = File::Spec->splitpath($home_dir);
     my $limit_dir = File::Spec->rel2abs("$parent_dir/*/test.d");
     if ($^O eq 'darwin') {
@@ -1556,7 +1289,7 @@ sub ifgroup_dir_allow_stor_bug3881 {
   </Limit>
 </Directory>
 
-<IfGroup $group>
+<IfGroup $setup->{group}>
   <Directory $limit_dir>
     <Limit MKD XMKD RMD XRMD>
       DenyAll
@@ -1569,11 +1302,11 @@ sub ifgroup_dir_allow_stor_bug3881 {
 </IfGroup>
 EOC
     unless (close($fh)) {
-      die("Can't write $config_file: $!");
+      die("Can't write $setup->{config_file}: $!");
     }
 
   } else {
-    die("Can't open $config_file: $!");
+    die("Can't open $setup->{config_file}: $!");
   }
 
   # Open pipes, for use between the parent and child processes.  Specifically,
@@ -1592,7 +1325,7 @@ EOC
   if ($pid) {
     eval {
       my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
-      $client->login($user, $passwd);
+      $client->login($setup->{user}, $setup->{passwd});
       $client->cwd('test.d');
 
       my $path = 'test.txt';
@@ -1604,6 +1337,7 @@ EOC
 
       my $buf = "Hello, World!\n";
       $conn->write($buf, length($buf), 25);
+      sleep(0.25);
       eval { $conn->close() };
 
       my $resp_code = $client->response_code();
@@ -1612,7 +1346,6 @@ EOC
 
       $client->quit();
     };
-
     if ($@) {
       $ex = $@;
     }
@@ -1621,7 +1354,7 @@ EOC
     $wfh->flush();
 
   } else {
-    eval { server_wait($config_file, $rfh) };
+    eval { server_wait($setup->{config_file}, $rfh) };
     if ($@) {
       warn($@);
       exit 1;
@@ -1631,42 +1364,26 @@ EOC
   }
 
   # Stop server
-  server_stop($pid_file);
-
+  server_stop($setup->{pid_file});
   $self->assert_child_ok($pid);
 
-  if ($ex) {
-    test_append_logfile($log_file, $ex);
-    unlink($log_file);
-
-    die($ex);
-  }
-
-  unlink($log_file);
+  test_cleanup($setup, $ex);
 }
 
 sub ifgroup_dir_allow_stor_bug3881_sftp {
   my $self = shift;
   my $tmpdir = $self->{tmpdir};
 
-  my $config_file = "$tmpdir/ifsess.conf";
-  my $pid_file = File::Spec->rel2abs("$tmpdir/ifsess.pid");
-  my $scoreboard_file = File::Spec->rel2abs("$tmpdir/ifsess.scoreboard");
-
-  my $log_file = test_get_logfile();
-
-  my $auth_user_file = File::Spec->rel2abs("$tmpdir/ifsess.passwd");
-  my $auth_group_file = File::Spec->rel2abs("$tmpdir/ifsess.group");
-
-  my $test_file = File::Spec->rel2abs($config_file);
-
   my $user = 'proftpd';
   my $passwd = 'test';
   my $group = 'ftpd';
-  my $home_dir = File::Spec->rel2abs("$tmpdir/users/$user");
-  mkpath($home_dir);
   my $uid = 500;
   my $gid = 500;
+  my $home_dir = File::Spec->rel2abs("$tmpdir/users/$user");
+  my $setup = test_setup($tmpdir, 'ifsess', $user, $passwd, $group, $uid,
+    $gid, $home_dir);
+
+  mkpath($home_dir);
 
   my $sub_dir = File::Spec->rel2abs("$home_dir/test.d");
   mkpath($sub_dir);
@@ -1675,8 +1392,6 @@ sub ifgroup_dir_allow_stor_bug3881_sftp {
     $home_dir = ('/private' . $home_dir);
   }
 
-  # Make sure that, if we're running as root, that the home directory has
-  # permissions/privs set for the account we create
   if ($< == 0) {
     unless (chmod(0755, $home_dir, $sub_dir)) {
       die("Can't set perms on $home_dir to 0755: $!");
@@ -1687,22 +1402,18 @@ sub ifgroup_dir_allow_stor_bug3881_sftp {
     }
   }
 
-  auth_user_write($auth_user_file, $user, $passwd, $uid, $gid, $home_dir,
-    '/bin/bash');
-  auth_group_write($auth_group_file, $group, $gid, $user);
-
   my $rsa_host_key = File::Spec->rel2abs("t/etc/modules/mod_sftp/ssh_host_rsa_key");
   my $dsa_host_key = File::Spec->rel2abs("t/etc/modules/mod_sftp/ssh_host_dsa_key");
 
   my $config = {
-    PidFile => $pid_file,
-    ScoreboardFile => $scoreboard_file,
-    SystemLog => $log_file,
-    TraceLog => $log_file,
+    PidFile => $setup->{pid_file},
+    ScoreboardFile => $setup->{scoreboard_file},
+    SystemLog => $setup->{log_file},
+    TraceLog => $setup->{log_file},
     Trace => 'directory:20 fileperms:10 ifsession:20',
 
-    AuthUserFile => $auth_user_file,
-    AuthGroupFile => $auth_group_file,
+    AuthUserFile => $setup->{auth_user_file},
+    AuthGroupFile => $setup->{auth_group_file},
     AuthOrder => 'mod_auth_file.c',
 
     DefaultRoot => '~',
@@ -1714,17 +1425,18 @@ sub ifgroup_dir_allow_stor_bug3881_sftp {
 
       'mod_sftp.c' => [
         "SFTPEngine on",
-        "SFTPLog $log_file",
+        "SFTPLog $setup->{log_file}",
         "SFTPHostKey $rsa_host_key",
         "SFTPHostKey $dsa_host_key",
       ],
     },
   };
 
-  my ($port, $config_user, $config_group) = config_write($config_file, $config);
+  my ($port, $config_user, $config_group) = config_write($setup->{config_file},
+    $config);
 
   # Append the mod_ifsession config to the end of the config file
-  if (open(my $fh, ">> $config_file")) {
+  if (open(my $fh, ">> $setup->{config_file}")) {
     my ($volume, $parent_dir, $file) = File::Spec->splitpath($home_dir);
     my $limit_dir = File::Spec->rel2abs("$parent_dir/*/test.d");
     if ($^O eq 'darwin') {
@@ -1742,7 +1454,7 @@ sub ifgroup_dir_allow_stor_bug3881_sftp {
   </Limit>
 </Directory>
 
-<IfGroup $group>
+<IfGroup $setup->{group}>
   <Directory $limit_dir>
     <Limit MKD XMKD RMD XRMD>
       DenyAll
@@ -1755,11 +1467,11 @@ sub ifgroup_dir_allow_stor_bug3881_sftp {
 </IfGroup>
 EOC
     unless (close($fh)) {
-      die("Can't write $config_file: $!");
+      die("Can't write $setup->{config_file}: $!");
     }
 
   } else {
-    die("Can't open $config_file: $!");
+    die("Can't open $setup->{config_file}: $!");
   }
 
   # Open pipes, for use between the parent and child processes.  Specifically,
@@ -1782,16 +1494,15 @@ EOC
   defined(my $pid = fork()) or die("Can't fork: $!");
   if ($pid) {
     eval {
-      my $ssh2 = Net::SSH2->new();
-
       sleep(1);
 
+      my $ssh2 = Net::SSH2->new();
       unless ($ssh2->connect('127.0.0.1', $port)) {
         my ($err_code, $err_name, $err_str) = $ssh2->error();
         die("Can't connect to SSH2 server: [$err_name] ($err_code) $err_str");
       }
 
-      unless ($ssh2->auth_password($user, $passwd)) {
+      unless ($ssh2->auth_password($setup->{user}, $setup->{passwd})) {
         my ($err_code, $err_name, $err_str) = $ssh2->error();
         die("Can't login to SSH2 server: [$err_name] ($err_code) $err_str");
       }
@@ -1820,7 +1531,6 @@ EOC
       $sftp = undef;
       $ssh2->disconnect();
     };
-
     if ($@) {
       $ex = $@;
     }
@@ -1829,7 +1539,7 @@ EOC
     $wfh->flush();
 
   } else {
-    eval { server_wait($config_file, $rfh) };
+    eval { server_wait($setup->{config_file}, $rfh) };
     if ($@) {
       warn($@);
       exit 1;
@@ -1839,18 +1549,10 @@ EOC
   }
 
   # Stop server
-  server_stop($pid_file);
-
+  server_stop($setup->{pid_file});
   $self->assert_child_ok($pid);
 
-  if ($ex) {
-    test_append_logfile($log_file, $ex);
-    unlink($log_file);
-
-    die($ex);
-  }
-
-  unlink($log_file);
+  test_cleanup($setup, $ex);
 }
 
 # Regression test for issues described in:
@@ -1990,40 +1692,7 @@ EOC
 sub ifuser_no_pass_bug4199 {
   my $self = shift;
   my $tmpdir = $self->{tmpdir};
-
-  my $config_file = "$tmpdir/ifsess.conf";
-  my $pid_file = File::Spec->rel2abs("$tmpdir/ifsess.pid");
-  my $scoreboard_file = File::Spec->rel2abs("$tmpdir/ifsess.scoreboard");
-
-  my $log_file = test_get_logfile();
-
-  my $auth_user_file = File::Spec->rel2abs("$tmpdir/ifsess.passwd");
-  my $auth_group_file = File::Spec->rel2abs("$tmpdir/ifsess.group");
-
-  my $test_file = File::Spec->rel2abs($config_file);
-
-  my $user = 'proftpd';
-  my $passwd = 'test';
-  my $group = 'ftpd';
-  my $home_dir = File::Spec->rel2abs($tmpdir);
-  my $uid = 500;
-  my $gid = 500;
-
-  # Make sure that, if we're running as root, that the home directory has
-  # permissions/privs set for the account we create
-  if ($< == 0) {
-    unless (chmod(0755, $home_dir)) {
-      die("Can't set perms on $home_dir to 0755: $!");
-    }
-
-    unless (chown($uid, $gid, $home_dir)) {
-      die("Can't set owner of $home_dir to $uid/$gid: $!");
-    }
-  }
-
-  auth_user_write($auth_user_file, $user, $passwd, $uid, $gid, $home_dir,
-    '/bin/bash');
-  auth_group_write($auth_group_file, $group, $gid, $user);
+  my $setup = test_setup($tmpdir, 'ifsess');
 
   my $server_cert = File::Spec->rel2abs('t/etc/modules/mod_tls/server-cert.pem');
   my $client_cert = File::Spec->rel2abs('t/etc/modules/mod_tls/client-cert.pem');
@@ -2035,14 +1704,14 @@ sub ifuser_no_pass_bug4199 {
   }
 
   my $config = {
-    PidFile => $pid_file,
-    ScoreboardFile => $scoreboard_file,
-    SystemLog => $log_file,
-    TraceLog => $log_file,
-    Trace => 'directory:20',
+    PidFile => $setup->{pid_file},
+    ScoreboardFile => $setup->{scoreboard_file},
+    SystemLog => $setup->{log_file},
+    TraceLog => $setup->{log_file},
+    Trace => 'directory:20 tls:30',
 
-    AuthUserFile => $auth_user_file,
-    AuthGroupFile => $auth_group_file,
+    AuthUserFile => $setup->{auth_user_file},
+    AuthGroupFile => $setup->{auth_group_file},
     AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
@@ -2052,24 +1721,26 @@ sub ifuser_no_pass_bug4199 {
 
       'mod_tls.c' => {
         TLSEngine => 'on',
-        TLSLog => $log_file,
+        TLSLog => $setup->{log_file},
         TLSRequired => 'on',
         TLSRSACertificateFile => $server_cert,
         TLSCACertificateFile => $ca_cert,
+        TLSVerifyClient => 'on',
 
         TLSOptions => 'AllowDotLogin',
       },
     },
   };
 
-  my ($port, $config_user, $config_group) = config_write($config_file, $config);
+  my ($port, $config_user, $config_group) = config_write($setup->{config_file},
+    $config);
 
   # Append the mod_ifsession config to the end of the config file
-  if (open(my $fh, ">> $config_file")) {
-    my $limit_dir = $home_dir;
+  if (open(my $fh, ">> $setup->{config_file}")) {
+    my $limit_dir = $setup->{home_dir};
     if ($^O eq 'darwin') {
       # MacOSX hack
-      $limit_dir = ('/private' . $home_dir);
+      $limit_dir = ('/private' . $setup->{home_dir});
     }
 
     print $fh <<EOC;
@@ -2079,7 +1750,7 @@ sub ifuser_no_pass_bug4199 {
   </Limit>
 </Directory>
 
-<IfUser $user>
+<IfUser $setup->{user}>
   <Directory $limit_dir>
     <Limit MKD>
       AllowAll
@@ -2088,11 +1759,11 @@ sub ifuser_no_pass_bug4199 {
 </IfUser>
 EOC
     unless (close($fh)) {
-      die("Can't write $config_file: $!");
+      die("Can't write $setup->{config_file}: $!");
     }
 
   } else {
-    die("Can't open $config_file: $!");
+    die("Can't open $setup->{config_file}: $!");
   }
 
   # Open pipes, for use between the parent and child processes.  Specifically,
@@ -2114,29 +1785,37 @@ EOC
       # Give the server a chance to start up
       sleep(2);
 
-      # IO::Socket::SSL options
-      my $ssl_opts = {
-        SSL_use_cert => 1,
-        SSL_cert_file => $client_cert,
-        SSL_key_file => $client_cert,
+      # Suppress annoying warning from IO::Socket::SSL.
+      local $SIG{__WARN__} = sub {
+        my $msg = shift;
+        warn $msg unless $msg =~ /^Use of uninitialized value.*at .*IO\/Socket\/SSL\.pm/;
       };
 
-      my $client = Net::FTPSSL->new('127.0.0.1',
+      my $client_opts = {
         Croak => 1,
         Encryption => 'E',
         Port => $port,
-        SSL_Client_Certificate => $ssl_opts,
-      );
 
+        SSL_use_cert => 1,
+        SSL_cert_file => $client_cert,
+        SSL_key_file => $client_cert,
+        SSL_verify_mode => IO::Socket::SSL::SSL_VERIFY_NONE(),
+      };
+
+      if ($ENV{TEST_VERBOSE}) {
+        $client_opts->{Debug} = 1;
+      }
+
+      my $client = Net::FTPSSL->new('127.0.0.1', $client_opts);
       unless ($client) {
         die("Can't connect to FTPS server: " . IO::Socket::SSL::errstr());
       }
 
-      unless ($client->_user($user)) {
+      unless ($client->_user($setup->{user})) {
         die("USER error: " . $client->last_message());
       }
 
-      my $expected = "232 User $user logged in";
+      my $expected = "232 User $setup->{user} logged in";
       my $resp = $client->last_message();
       $self->assert($expected eq $resp,
         test_msg("Expected response '$expected', got '$resp'"));
@@ -2147,7 +1826,6 @@ EOC
 
       $client->quit();
     };
-
     if ($@) {
       $ex = $@;
     }
@@ -2156,7 +1834,7 @@ EOC
     $wfh->flush();
 
   } else {
-    eval { server_wait($config_file, $rfh) };
+    eval { server_wait($setup->{config_file}, $rfh) };
     if ($@) {
       warn($@);
       exit 1;
@@ -2166,18 +1844,10 @@ EOC
   }
 
   # Stop server
-  server_stop($pid_file);
-
+  server_stop($setup->{pid_file});
   $self->assert_child_ok($pid);
 
-  if ($ex) {
-    test_append_logfile($log_file, $ex);
-    unlink($log_file);
-
-    die($ex);
-  }
-
-  unlink($log_file);
+  test_cleanup($setup, $ex);
 }
 
 sub ifclass_and_not_classes {
@@ -2285,7 +1955,7 @@ EOC
   server_stop($setup->{pid_file});
   $self->assert_child_ok($pid);
 
-  test_cleanup($setup->{log_file}, $ex);
+  test_cleanup($setup, $ex);
 }
 
 sub ifuser_directory_bug4315 {
@@ -2381,7 +2051,7 @@ EOC
   server_stop($setup->{pid_file});
   $self->assert_child_ok($pid);
 
-  test_cleanup($setup->{log_file}, $ex);
+  test_cleanup($setup, $ex);
 }
 
 sub ifsess_options_per_unauthenticated_user {
@@ -2475,7 +2145,7 @@ EOC
   server_stop($setup->{pid_file});
   $self->assert_child_ok($pid);
 
-  test_cleanup($setup->{log_file}, $ex);
+  test_cleanup($setup, $ex);
 }
 
 1;
