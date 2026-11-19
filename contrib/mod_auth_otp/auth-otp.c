@@ -1,6 +1,7 @@
 /*
  * auth-otp: HOTP/TOTP tool for ProFTPD mod_auth_otp module
  * Copyright 2016-2026 The ProFTPD Project team
+ * SPDX-License-Identifier: GPL-2.0-only WITH vsftpd-openssl-exception
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by

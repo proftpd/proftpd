@@ -24,9 +24,10 @@ SPDX-License-Identifier = "GPL-2.0-only WITH vsftpd-openssl-exception"
 [[annotations]]
 path = [
   "aclocal.m4",
-  "config.guess",
-  "config.sub",
-  "install-sh",
+  "**/config.guess",
+  "**/config.sub",
+  "**/install-sh",
+  "**/ltmain.sh",
 ]
 SPDX-FileCopyrightText = "1991 Free Software Foundation"
 SPDX-License-Identifier = "GPL-2.0-or-later"
@@ -42,7 +43,13 @@ SPDX-FileCopyrightText = "1991 Free Software Foundation"
 SPDX-License-Identifier = "GPL-2.0-or-later"
 
 [[annotations]]
-path = "tests/t/etc/**"
+path = [
+  ".github/**",
+  "contrib/dist/**",
+  "doc/platforms/**.md",
+  "locale/**",
+  "sample-configurations/**",
+  "tests/t/etc/**",
+]
 SPDX-FileCopyrightText = "2026 The ProFTPD Project"
 SPDX-License-Identifier = "GPL-2.0-only WITH vsftpd-openssl-exception"
-

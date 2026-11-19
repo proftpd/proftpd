@@ -1,6 +1,7 @@
 /*
  * ProFTPD: mod_redis -- a module for managing Redis data
  * Copyright (c) 2017-2026 The ProFTPD Project
+ * SPDX-License-Identifier: GPL-2.0-only WITH vsftpd-openssl-exception
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
