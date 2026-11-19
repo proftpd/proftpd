@@ -2654,7 +2654,7 @@ EOC
     $ex = $@ unless $ex;
   }
 
-  test_cleanup($setup, $ex);
+  test_cleanup($setup->{log_file}, $ex);
 }
 
 1;
