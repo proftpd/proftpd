@@ -109,17 +109,12 @@ sub get_server_version {
 sub ifversion_eq {
   my $self = shift;
   my $tmpdir = $self->{tmpdir};
-
-  my $config_file = "$tmpdir/ifversion.conf";
-  my $pid_file = File::Spec->rel2abs("$tmpdir/ifversion.pid");
-  my $scoreboard_file = File::Spec->rel2abs("$tmpdir/ifversion.scoreboard");
-
-  my $log_file = File::Spec->rel2abs('tests.log');
+  my $setup = test_setup($tmpdir, 'ifversion');
 
   my $config = {
-    PidFile => $pid_file,
-    ScoreboardFile => $scoreboard_file,
-    SystemLog => $log_file,
+    PidFile => $setup->{pid_file},
+    ScoreboardFile => $setup->{scoreboard_file},
+    SystemLog => $setup->{log_file},
 
     IfModules => {
       'mod_delay.c' => {
@@ -128,9 +123,10 @@ sub ifversion_eq {
     },
   };
 
-  my ($port, $config_user, $config_group) = config_write($config_file, $config);
+  my ($port, $config_user, $config_group) = config_write($setup->{config_file},
+    $config);
 
-  if (open(my $fh, ">> $config_file")) {
+  if (open(my $fh, ">> $setup->{config_file}")) {
     my $version = get_server_version();
 
     print $fh <<EOC;
@@ -139,37 +135,34 @@ sub ifversion_eq {
 </IfVersion>
 EOC
     unless (close($fh)) {
-      die("Can't write $config_file: $!");
+      die("Can't write $setup->{config_file}: $!");
     }
 
   } else {
-    die("Can't open $config_file: $!");
+    die("Can't open $setup->{config_file}: $!");
   }
 
-  server_start($config_file);
+  my $ex;
 
-  eval { server_stop($pid_file) };
+  server_start($setup->{config_file});
+
+  eval { server_stop($setup->{pid_file}) };
   unless ($@) {
-    die("Server started unexpectedly");
+    $ex = "Server started unexpectedly";
   }
 
-  unlink($log_file);
+  test_cleanup($setup, $ex);
 }
 
 sub ifversion_eq2 {
   my $self = shift;
   my $tmpdir = $self->{tmpdir};
-
-  my $config_file = "$tmpdir/ifversion.conf";
-  my $pid_file = File::Spec->rel2abs("$tmpdir/ifversion.pid");
-  my $scoreboard_file = File::Spec->rel2abs("$tmpdir/ifversion.scoreboard");
-
-  my $log_file = File::Spec->rel2abs('tests.log');
+  my $setup = test_setup($tmpdir, 'ifversion');
 
   my $config = {
-    PidFile => $pid_file,
-    ScoreboardFile => $scoreboard_file,
-    SystemLog => $log_file,
+    PidFile => $setup->{pid_file},
+    ScoreboardFile => $setup->{scoreboard_file},
+    SystemLog => $setup->{log_file},
 
     IfModules => {
       'mod_delay.c' => {
@@ -178,9 +171,10 @@ sub ifversion_eq2 {
     },
   };
 
-  my ($port, $config_user, $config_group) = config_write($config_file, $config);
+  my ($port, $config_user, $config_group) = config_write($setup->{config_file},
+    $config);
 
-  if (open(my $fh, ">> $config_file")) {
+  if (open(my $fh, ">> $setup->{config_file}")) {
     my $version = get_server_version();
 
     print $fh <<EOC;
@@ -189,37 +183,34 @@ sub ifversion_eq2 {
 </IfVersion>
 EOC
     unless (close($fh)) {
-      die("Can't write $config_file: $!");
+      die("Can't write $setup->{config_file}: $!");
     }
 
   } else {
-    die("Can't open $config_file: $!");
+    die("Can't open $setup->{config_file}: $!");
   }
 
-  server_start($config_file);
+  my $ex;
 
-  eval { server_stop($pid_file) };
+  server_start($setup->{config_file});
+
+  eval { server_stop($setup->{pid_file}) };
   unless ($@) {
-    die("Server started unexpectedly");
+    $ex = "Server started unexpectedly";
   }
 
-  unlink($log_file);
+  test_cleanup($setup, $ex);
 }
 
 sub ifversion_ne {
   my $self = shift;
   my $tmpdir = $self->{tmpdir};
-
-  my $config_file = "$tmpdir/ifversion.conf";
-  my $pid_file = File::Spec->rel2abs("$tmpdir/ifversion.pid");
-  my $scoreboard_file = File::Spec->rel2abs("$tmpdir/ifversion.scoreboard");
-
-  my $log_file = File::Spec->rel2abs('tests.log');
+  my $setup = test_setup($tmpdir, 'ifversion');
 
   my $config = {
-    PidFile => $pid_file,
-    ScoreboardFile => $scoreboard_file,
-    SystemLog => $log_file,
+    PidFile => $setup->{pid_file},
+    ScoreboardFile => $setup->{scoreboard_file},
+    SystemLog => $setup->{log_file},
 
     IfModules => {
       'mod_delay.c' => {
@@ -228,9 +219,10 @@ sub ifversion_ne {
     },
   };
 
-  my ($port, $config_user, $config_group) = config_write($config_file, $config);
+  my ($port, $config_user, $config_group) = config_write($setup->{config_file},
+    $config);
 
-  if (open(my $fh, ">> $config_file")) {
+  if (open(my $fh, ">> $setup->{config_file}")) {
 
     # Pick a version that cannot be used by mod_ifversion
     my $version = "1.2.2";
@@ -241,37 +233,34 @@ sub ifversion_ne {
 </IfVersion>
 EOC
     unless (close($fh)) {
-      die("Can't write $config_file: $!");
+      die("Can't write $setup->{config_file}: $!");
     }
 
   } else {
-    die("Can't open $config_file: $!");
+    die("Can't open $setup->{config_file}: $!");
   }
 
-  server_start($config_file);
+  my $ex;
 
-  eval { server_stop($pid_file) };
+  server_start($setup->{config_file});
+
+  eval { server_stop($setup->{pid_file}) };
   unless ($@) {
-    die("Server started unexpectedly");
+    $ex = "Server started unexpectedly";
   }
 
-  unlink($log_file);
+  test_cleanup($setup, $ex);
 }
 
 sub ifversion_gt {
   my $self = shift;
   my $tmpdir = $self->{tmpdir};
-
-  my $config_file = "$tmpdir/ifversion.conf";
-  my $pid_file = File::Spec->rel2abs("$tmpdir/ifversion.pid");
-  my $scoreboard_file = File::Spec->rel2abs("$tmpdir/ifversion.scoreboard");
-
-  my $log_file = File::Spec->rel2abs('tests.log');
+  my $setup = test_setup($tmpdir, 'ifversion');
 
   my $config = {
-    PidFile => $pid_file,
-    ScoreboardFile => $scoreboard_file,
-    SystemLog => $log_file,
+    PidFile => $setup->{pid_file},
+    ScoreboardFile => $setup->{scoreboard_file},
+    SystemLog => $setup->{log_file},
 
     IfModules => {
       'mod_delay.c' => {
@@ -280,9 +269,10 @@ sub ifversion_gt {
     },
   };
 
-  my ($port, $config_user, $config_group) = config_write($config_file, $config);
+  my ($port, $config_user, $config_group) = config_write($setup->{config_file},
+    $config);
 
-  if (open(my $fh, ">> $config_file")) {
+  if (open(my $fh, ">> $setup->{config_file}")) {
 
     # Pick a version that cannot be used by mod_ifversion
     my $version = "1.2.2";
@@ -293,37 +283,34 @@ sub ifversion_gt {
 </IfVersion>
 EOC
     unless (close($fh)) {
-      die("Can't write $config_file: $!");
+      die("Can't write $setup->{config_file}: $!");
     }
 
   } else {
-    die("Can't open $config_file: $!");
+    die("Can't open $setup->{config_file}: $!");
   }
 
-  server_start($config_file);
+  my $ex;
 
-  eval { server_stop($pid_file) };
+  server_start($setup->{config_file});
+
+  eval { server_stop($setup->{pid_file}) };
   unless ($@) {
-    die("Server started unexpectedly");
+    $ex = "Server started unexpectedly";
   }
 
-  unlink($log_file);
+  test_cleanup($setup, $ex);
 }
 
 sub ifversion_ge {
   my $self = shift;
   my $tmpdir = $self->{tmpdir};
-
-  my $config_file = "$tmpdir/ifversion.conf";
-  my $pid_file = File::Spec->rel2abs("$tmpdir/ifversion.pid");
-  my $scoreboard_file = File::Spec->rel2abs("$tmpdir/ifversion.scoreboard");
-
-  my $log_file = File::Spec->rel2abs('tests.log');
+  my $setup = test_setup($tmpdir, 'ifversion');
 
   my $config = {
-    PidFile => $pid_file,
-    ScoreboardFile => $scoreboard_file,
-    SystemLog => $log_file,
+    PidFile => $setup->{pid_file},
+    ScoreboardFile => $setup->{scoreboard_file},
+    SystemLog => $setup->{log_file},
 
     IfModules => {
       'mod_delay.c' => {
@@ -332,9 +319,10 @@ sub ifversion_ge {
     },
   };
 
-  my ($port, $config_user, $config_group) = config_write($config_file, $config);
+  my ($port, $config_user, $config_group) = config_write($setup->{config_file},
+    $config);
 
-  if (open(my $fh, ">> $config_file")) {
+  if (open(my $fh, ">> $setup->{config_file}")) {
     my $version = get_server_version();
 
     print $fh <<EOC;
@@ -343,37 +331,34 @@ sub ifversion_ge {
 </IfVersion>
 EOC
     unless (close($fh)) {
-      die("Can't write $config_file: $!");
+      die("Can't write $setup->{config_file}: $!");
     }
 
   } else {
-    die("Can't open $config_file: $!");
+    die("Can't open $setup->{config_file}: $!");
   }
 
-  server_start($config_file);
+  my $ex;
 
-  eval { server_stop($pid_file) };
+  server_start($setup->{config_file});
+
+  eval { server_stop($setup->{pid_file}) };
   unless ($@) {
-    die("Server started unexpectedly");
+    $ex = "Server started unexpectedly";
   }
 
-  unlink($log_file);
+  test_cleanup($setup, $ex);
 }
 
 sub ifversion_lt {
   my $self = shift;
   my $tmpdir = $self->{tmpdir};
-
-  my $config_file = "$tmpdir/ifversion.conf";
-  my $pid_file = File::Spec->rel2abs("$tmpdir/ifversion.pid");
-  my $scoreboard_file = File::Spec->rel2abs("$tmpdir/ifversion.scoreboard");
-
-  my $log_file = File::Spec->rel2abs('tests.log');
+  my $setup = test_setup($tmpdir, 'ifversion');
 
   my $config = {
-    PidFile => $pid_file,
-    ScoreboardFile => $scoreboard_file,
-    SystemLog => $log_file,
+    PidFile => $setup->{pid_file},
+    ScoreboardFile => $setup->{scoreboard_file},
+    SystemLog => $setup->{log_file},
 
     IfModules => {
       'mod_delay.c' => {
@@ -382,12 +367,13 @@ sub ifversion_lt {
     },
   };
 
-  my ($port, $config_user, $config_group) = config_write($config_file, $config);
+  my ($port, $config_user, $config_group) = config_write($setup->{config_file},
+    $config);
 
-  if (open(my $fh, ">> $config_file")) {
+  if (open(my $fh, ">> $setup->{config_file}")) {
 
     # Pick an absurdly high version
-    my $version = "10.11.12z";
+    my $version = "10.20.32z";
 
     print $fh <<EOC;
 <IfVersion < $version>
@@ -395,37 +381,34 @@ sub ifversion_lt {
 </IfVersion>
 EOC
     unless (close($fh)) {
-      die("Can't write $config_file: $!");
+      die("Can't write $setup->{config_file}: $!");
     }
 
   } else {
-    die("Can't open $config_file: $!");
+    die("Can't open $setup->{config_file}: $!");
   }
 
-  server_start($config_file);
+  my $ex;
 
-  eval { server_stop($pid_file) };
+  server_start($setup->{config_file});
+
+  eval { server_stop($setup->{pid_file}) };
   unless ($@) {
-    die("Server started unexpectedly");
+    $ex = "Server started unexpectedly";
   }
 
-  unlink($log_file);
+  test_cleanup($setup, $ex);
 }
 
 sub ifversion_le {
   my $self = shift;
   my $tmpdir = $self->{tmpdir};
-
-  my $config_file = "$tmpdir/ifversion.conf";
-  my $pid_file = File::Spec->rel2abs("$tmpdir/ifversion.pid");
-  my $scoreboard_file = File::Spec->rel2abs("$tmpdir/ifversion.scoreboard");
-
-  my $log_file = File::Spec->rel2abs('tests.log');
+  my $setup = test_setup($tmpdir, 'ifversion');
 
   my $config = {
-    PidFile => $pid_file,
-    ScoreboardFile => $scoreboard_file,
-    SystemLog => $log_file,
+    PidFile => $setup->{pid_file},
+    ScoreboardFile => $setup->{scoreboard_file},
+    SystemLog => $setup->{log_file},
 
     IfModules => {
       'mod_delay.c' => {
@@ -434,9 +417,10 @@ sub ifversion_le {
     },
   };
 
-  my ($port, $config_user, $config_group) = config_write($config_file, $config);
+  my ($port, $config_user, $config_group) = config_write($setup->{config_file},
+    $config);
 
-  if (open(my $fh, ">> $config_file")) {
+  if (open(my $fh, ">> $setup->{config_file}")) {
     my $version = get_server_version();
 
     print $fh <<EOC;
@@ -445,37 +429,34 @@ sub ifversion_le {
 </IfVersion>
 EOC
     unless (close($fh)) {
-      die("Can't write $config_file: $!");
+      die("Can't write $setup->{config_file}: $!");
     }
 
   } else {
-    die("Can't open $config_file: $!");
+    die("Can't open $setup->{config_file}: $!");
   }
 
-  server_start($config_file);
+  my $ex;
 
-  eval { server_stop($pid_file) };
+  server_start($setup->{config_file});
+
+  eval { server_stop($setup->{pid_file}) };
   unless ($@) {
-    die("Server started unexpectedly");
+    $ex = "Server started unexpectedly";
   }
 
-  unlink($log_file);
+  test_cleanup($setup, $ex);
 }
 
 sub ifversion_regex {
   my $self = shift;
   my $tmpdir = $self->{tmpdir};
-
-  my $config_file = "$tmpdir/ifversion.conf";
-  my $pid_file = File::Spec->rel2abs("$tmpdir/ifversion.pid");
-  my $scoreboard_file = File::Spec->rel2abs("$tmpdir/ifversion.scoreboard");
-
-  my $log_file = File::Spec->rel2abs('tests.log');
+  my $setup = test_setup($tmpdir, 'ifversion');
 
   my $config = {
-    PidFile => $pid_file,
-    ScoreboardFile => $scoreboard_file,
-    SystemLog => $log_file,
+    PidFile => $setup->{pid_file},
+    ScoreboardFile => $setup->{scoreboard_file},
+    SystemLog => $setup->{log_file},
 
     IfModules => {
       'mod_delay.c' => {
@@ -484,9 +465,10 @@ sub ifversion_regex {
     },
   };
 
-  my ($port, $config_user, $config_group) = config_write($config_file, $config);
+  my ($port, $config_user, $config_group) = config_write($setup->{config_file},
+    $config);
 
-  if (open(my $fh, ">> $config_file")) {
+  if (open(my $fh, ">> $setup->{config_file}")) {
     my $version = get_server_version();
 
     print $fh <<EOC;
@@ -495,37 +477,34 @@ sub ifversion_regex {
 </IfVersion>
 EOC
     unless (close($fh)) {
-      die("Can't write $config_file: $!");
+      die("Can't write $setup->{config_file}: $!");
     }
 
   } else {
-    die("Can't open $config_file: $!");
+    die("Can't open $setup->{config_file}: $!");
   }
 
-  server_start($config_file);
+  my $ex;
 
-  eval { server_stop($pid_file) };
+  server_start($setup->{config_file});
+
+  eval { server_stop($setup->{pid_file}) };
   unless ($@) {
-    die("Server started unexpectedly");
+    $ex = "Server started unexpectedly";
   }
 
-  unlink($log_file);
+  test_cleanup($setup, $ex);
 }
 
 sub ifversion_regex_eq {
   my $self = shift;
   my $tmpdir = $self->{tmpdir};
-
-  my $config_file = "$tmpdir/ifversion.conf";
-  my $pid_file = File::Spec->rel2abs("$tmpdir/ifversion.pid");
-  my $scoreboard_file = File::Spec->rel2abs("$tmpdir/ifversion.scoreboard");
-
-  my $log_file = File::Spec->rel2abs('tests.log');
+  my $setup = test_setup($tmpdir, 'ifversion');
 
   my $config = {
-    PidFile => $pid_file,
-    ScoreboardFile => $scoreboard_file,
-    SystemLog => $log_file,
+    PidFile => $setup->{pid_file},
+    ScoreboardFile => $setup->{scoreboard_file},
+    SystemLog => $setup->{log_file},
 
     IfModules => {
       'mod_delay.c' => {
@@ -534,9 +513,10 @@ sub ifversion_regex_eq {
     },
   };
 
-  my ($port, $config_user, $config_group) = config_write($config_file, $config);
+  my ($port, $config_user, $config_group) = config_write($setup->{config_file},
+    $config);
 
-  if (open(my $fh, ">> $config_file")) {
+  if (open(my $fh, ">> $setup->{config_file}")) {
     my $version = get_server_version();
 
     print $fh <<EOC;
@@ -545,37 +525,34 @@ sub ifversion_regex_eq {
 </IfVersion>
 EOC
     unless (close($fh)) {
-      die("Can't write $config_file: $!");
+      die("Can't write $setup->{config_file}: $!");
     }
 
   } else {
-    die("Can't open $config_file: $!");
+    die("Can't open $setup->{config_file}: $!");
   }
 
-  server_start($config_file);
+  my $ex;
 
-  eval { server_stop($pid_file) };
+  server_start($setup->{config_file});
+
+  eval { server_stop($setup->{pid_file}) };
   unless ($@) {
-    die("Server started unexpectedly");
+    $ex = "Server started unexpectedly";
   }
 
-  unlink($log_file);
+  test_cleanup($setup, $ex);
 }
 
 sub ifversion_skip_section {
   my $self = shift;
   my $tmpdir = $self->{tmpdir};
-
-  my $config_file = "$tmpdir/ifversion.conf";
-  my $pid_file = File::Spec->rel2abs("$tmpdir/ifversion.pid");
-  my $scoreboard_file = File::Spec->rel2abs("$tmpdir/ifversion.scoreboard");
-
-  my $log_file = File::Spec->rel2abs('tests.log');
+  my $setup = test_setup($tmpdir, 'ifversion');
 
   my $config = {
-    PidFile => $pid_file,
-    ScoreboardFile => $scoreboard_file,
-    SystemLog => $log_file,
+    PidFile => $setup->{pid_file},
+    ScoreboardFile => $setup->{scoreboard_file},
+    SystemLog => $setup->{log_file},
 
     IfModules => {
       'mod_delay.c' => {
@@ -584,9 +561,10 @@ sub ifversion_skip_section {
     },
   };
 
-  my ($port, $config_user, $config_group) = config_write($config_file, $config);
+  my ($port, $config_user, $config_group) = config_write($setup->{config_file},
+    $config);
 
-  if (open(my $fh, ">> $config_file")) {
+  if (open(my $fh, ">> $setup->{config_file}")) {
     my $version = get_server_version();
 
     print $fh <<EOC;
@@ -596,37 +574,34 @@ sub ifversion_skip_section {
 </IfVersion>
 EOC
     unless (close($fh)) {
-      die("Can't write $config_file: $!");
+      die("Can't write $setup->{config_file}: $!");
     }
 
   } else {
-    die("Can't open $config_file: $!");
+    die("Can't open $setup->{config_file}: $!");
   }
 
-  server_start($config_file);
+  my $ex;
+
+  server_start($setup->{config_file});
 
   # Give the server time to start up
   sleep(2);
 
-  server_stop($pid_file);
+  server_stop($setup->{pid_file});
 
-  unlink($log_file);
+  test_cleanup($setup, $ex);
 }
 
 sub ifversion_major_only {
   my $self = shift;
   my $tmpdir = $self->{tmpdir};
-
-  my $config_file = "$tmpdir/ifversion.conf";
-  my $pid_file = File::Spec->rel2abs("$tmpdir/ifversion.pid");
-  my $scoreboard_file = File::Spec->rel2abs("$tmpdir/ifversion.scoreboard");
-
-  my $log_file = File::Spec->rel2abs('tests.log');
+  my $setup = test_setup($tmpdir, 'ifversion');
 
   my $config = {
-    PidFile => $pid_file,
-    ScoreboardFile => $scoreboard_file,
-    SystemLog => $log_file,
+    PidFile => $setup->{pid_file},
+    ScoreboardFile => $setup->{scoreboard_file},
+    SystemLog => $setup->{log_file},
 
     IfModules => {
       'mod_delay.c' => {
@@ -635,9 +610,10 @@ sub ifversion_major_only {
     },
   };
 
-  my ($port, $config_user, $config_group) = config_write($config_file, $config);
+  my ($port, $config_user, $config_group) = config_write($setup->{config_file},
+    $config);
 
-  if (open(my $fh, ">> $config_file")) {
+  if (open(my $fh, ">> $setup->{config_file}")) {
     my $version = get_server_version();
 
     print $fh <<EOC;
@@ -646,37 +622,34 @@ sub ifversion_major_only {
 </IfVersion>
 EOC
     unless (close($fh)) {
-      die("Can't write $config_file: $!");
+      die("Can't write $setup->{config_file}: $!");
     }
 
   } else {
-    die("Can't open $config_file: $!");
+    die("Can't open $setup->{config_file}: $!");
   }
 
-  server_start($config_file);
+  my $ex;
 
-  eval { server_stop($pid_file) };
+  server_start($setup->{config_file});
+
+  eval { server_stop($setup->{pid_file}) };
   unless ($@) {
-    die("Server started unexpectedly");
+    $ex = "Server started unexpectedly";
   }
 
-  unlink($log_file);
+  test_cleanup($setup, $ex);
 }
 
 sub ifversion_major_minor_only {
   my $self = shift;
   my $tmpdir = $self->{tmpdir};
-
-  my $config_file = "$tmpdir/ifversion.conf";
-  my $pid_file = File::Spec->rel2abs("$tmpdir/ifversion.pid");
-  my $scoreboard_file = File::Spec->rel2abs("$tmpdir/ifversion.scoreboard");
-
-  my $log_file = File::Spec->rel2abs('tests.log');
+  my $setup = test_setup($tmpdir, 'ifversion');
 
   my $config = {
-    PidFile => $pid_file,
-    ScoreboardFile => $scoreboard_file,
-    SystemLog => $log_file,
+    PidFile => $setup->{pid_file},
+    ScoreboardFile => $setup->{scoreboard_file},
+    SystemLog => $setup->{log_file},
 
     IfModules => {
       'mod_delay.c' => {
@@ -685,9 +658,10 @@ sub ifversion_major_minor_only {
     },
   };
 
-  my ($port, $config_user, $config_group) = config_write($config_file, $config);
+  my ($port, $config_user, $config_group) = config_write($setup->{config_file},
+    $config);
 
-  if (open(my $fh, ">> $config_file")) {
+  if (open(my $fh, ">> $setup->{config_file}")) {
     my $version = get_server_version();
 
     print $fh <<EOC;
@@ -696,21 +670,23 @@ sub ifversion_major_minor_only {
 </IfVersion>
 EOC
     unless (close($fh)) {
-      die("Can't write $config_file: $!");
+      die("Can't write $setup->{config_file}: $!");
     }
 
   } else {
-    die("Can't open $config_file: $!");
+    die("Can't open $setup->{config_file}: $!");
   }
 
-  server_start($config_file);
+  my $ex;
 
-  eval { server_stop($pid_file) };
+  server_start($setup->{config_file});
+
+  eval { server_stop($setup->{pid_file}) };
   unless ($@) {
-    die("Server started unexpectedly");
+    $ex = "Server started unexpectedly";
   }
 
-  unlink($log_file);
+  test_cleanup($setup, $ex);
 }
 
 1;
