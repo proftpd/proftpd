@@ -1,0 +1,1 @@
+As copyright holder, I give permission for proftp to be linked to the OpenSSL libraries. This includes permission for proftpd binaries to be distributed linked against the OpenSSL libraries. All other obligations under the GPL v2 remain intact.

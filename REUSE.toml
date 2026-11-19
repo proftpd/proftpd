@@ -1,0 +1,48 @@
+version = 1
+
+# Individual files
+[[annotations]]
+path = [
+  ".autom4te.cfg",
+  ".clang-tidy",
+  ".codacy.yml",
+  ".codeql.yml",
+  ".gitattributes",
+  ".gitignore",
+  ".remarkrc.yml",
+  "CREDITS",
+  "ChangeLog",
+  "INSTALL",
+  "NEWS",
+  "README.md",
+  "RELEASE_NOTES",
+  "contrib/mod_sftp/blacklist.dat",
+]
+SPDX-FileCopyrightText = "2026 The ProFTPD Project"
+SPDX-License-Identifier = "GPL-2.0-only WITH vsftpd-openssl-exception"
+
+[[annotations]]
+path = [
+  "aclocal.m4",
+  "config.guess",
+  "config.sub",
+  "install-sh",
+]
+SPDX-FileCopyrightText = "1991 Free Software Foundation"
+SPDX-License-Identifier = "GPL-2.0-or-later"
+
+# Directories
+[[annotations]]
+path = ".github/**"
+SPDX-FileCopyrightText = "NONE"
+
+[[annotations]]
+path = "lib/libltdl/**"
+SPDX-FileCopyrightText = "1991 Free Software Foundation"
+SPDX-License-Identifier = "GPL-2.0-or-later"
+
+[[annotations]]
+path = "tests/t/etc/**"
+SPDX-FileCopyrightText = "2026 The ProFTPD Project"
+SPDX-License-Identifier = "GPL-2.0-only WITH vsftpd-openssl-exception"
+
