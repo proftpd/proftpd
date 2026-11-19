@@ -169,8 +169,9 @@ static char *get_config_word(pool *p, char *word, int *resolved_var) {
 }
 
 static void remove_config_source(void) {
-  struct config_src *cs = parser_sources;
+  struct config_src *cs;
 
+  cs = parser_sources;
   if (cs != NULL) {
     parser_sources = cs->cs_next;
     destroy_pool(cs->cs_pool);
@@ -191,6 +192,8 @@ int pr_parser_cleanup(void) {
     destroy_pool(parser_pool);
     parser_pool = NULL;
   }
+
+  parser_sources = NULL;
 
   parser_servstack = NULL;
   parser_curr_server = NULL;
@@ -518,6 +521,10 @@ int pr_parser_parse_file(pool *p, const char *path, config_rec *start,
             if (!(flags & PR_PARSER_FL_DYNAMIC_CONFIG)) {
               pr_log_pri(PR_LOG_WARNING, "fatal: %s on line %u of '%s'",
                 MODRET_ERRMSG(mr), cs->cs_lineno, report_path);
+
+              remove_config_source();
+              pr_fsio_close(fh);
+
               destroy_pool(tmp_pool);
               errno = EPERM;
               return -1;
@@ -572,7 +579,7 @@ int pr_parser_parse_file(pool *p, const char *path, config_rec *start,
         if (!(flags & PR_PARSER_FL_DYNAMIC_CONFIG)) {
           pr_log_pri(PR_LOG_WARNING, "fatal: unknown configuration directive "
             "'%s' on line %u of '%s'", name, cs->cs_lineno, report_path);
-          if (non_ascii) {
+          if (non_ascii == TRUE) {
             pr_log_pri(PR_LOG_WARNING, "fatal: malformed directive name "
               "'%s' (contains non-ASCII characters)", name);
 
@@ -608,6 +615,9 @@ int pr_parser_parse_file(pool *p, const char *path, config_rec *start,
             }
           }
 
+          remove_config_source();
+          pr_fsio_close(fh);
+
           destroy_pool(tmp_pool);
           errno = EPERM;
           return -1;
@@ -615,7 +625,7 @@ int pr_parser_parse_file(pool *p, const char *path, config_rec *start,
 
         pr_log_pri(PR_LOG_WARNING, "warning: unknown configuration directive "
           "'%s' on line %u of '%s'", name, cs->cs_lineno, report_path);
-        if (non_ascii) {
+        if (non_ascii == TRUE) {
           pr_log_pri(PR_LOG_WARNING, "warning: malformed directive name "
             "'%s' (contains non-ASCII characters)", name);
         }
@@ -628,7 +638,6 @@ int pr_parser_parse_file(pool *p, const char *path, config_rec *start,
 
   /* Pop this configuration stream from the stack. */
   remove_config_source();
-
   pr_fsio_close(fh);
 
   destroy_pool(tmp_pool);

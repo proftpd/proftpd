@@ -450,11 +450,16 @@ MODRET parser_set_testsuite_engine(cmd_rec *cmd) {
   return PR_HANDLED(cmd);
 }
 
+MODRET parser_set_testsuite_error(cmd_rec *cmd) {
+  CONF_ERROR(cmd, "BAD DIRECTIVE");
+}
+
 static module parser_module;
 
 static conftable parser_conftab[] = {
   { "TestSuiteEnabled",	parser_set_testsuite_enabled, NULL },
   { "TestSuiteEngine",	parser_set_testsuite_engine, NULL },
+  { "TestSuiteError",	parser_set_testsuite_error, NULL },
   { NULL },
 };
 
@@ -758,6 +763,59 @@ START_TEST (parser_parse_file_test) {
 }
 END_TEST
 
+START_TEST (parser_parse_file_leak_test) {
+  int res;
+  pr_fh_t *fh;
+  char *text;
+
+  (void) unlink(config_path);
+
+  pr_parser_prepare(p, NULL);
+  pr_parser_server_ctxt_open("127.0.0.1");
+
+  fh = pr_fsio_open(config_path, O_CREAT|O_EXCL|O_WRONLY);
+  ck_assert_msg(fh != NULL, "Failed to open '%s': %s", config_path,
+    strerror(errno));
+
+  text = "TestSuiteEngine on\r\n";
+  res = pr_fsio_write(fh, text, strlen(text));
+  ck_assert_msg(res >= 0, "Failed to write '%s': %s", text, strerror(errno));
+
+  text = "TestSuiteError enabled\n";
+  res = pr_fsio_write(fh, text, strlen(text));
+  ck_assert_msg(res >= 0, "Failed to write '%s': %s", text, strerror(errno));
+
+  text = "OtherSuiteEnabled on\n";
+  res = pr_fsio_write(fh, text, strlen(text));
+  ck_assert_msg(res >= 0, "Failed to write '%s': %s", text, strerror(errno));
+
+  res = pr_fsio_close(fh);
+  ck_assert_msg(res == 0, "Failed to write '%s': %s", config_path,
+    strerror(errno));
+
+  mark_point();
+
+  /* Load the module's config handlers. */
+  res = load_parser_module();
+  ck_assert_msg(res == 0, "Failed to load module conftab: %s", strerror(errno));
+
+  res = pr_parser_parse_file(p, config_path, NULL, PR_PARSER_FL_DYNAMIC_CONFIG);
+  ck_assert_msg(res == 0, "Failed to parse '%s': %s", config_path,
+    strerror(errno));
+
+  res = pr_parser_parse_file(p, config_path, NULL, 0);
+  ck_assert_msg(res < 0, "Parsed '%s' unexpectedly", config_path);
+  ck_assert_msg(errno == EPERM, "Expected EPERM (%d), got %s (%d)", EPERM,
+    strerror(errno), errno);
+
+  (void) pr_parser_server_ctxt_close();
+  (void) pr_parser_cleanup();
+  (void) pr_module_unload(&parser_module);
+  (void) pr_fsio_unlink(config_path);
+  (void) pr_fsio_unlink(config_path2);
+}
+END_TEST
+
 Suite *tests_get_parser_suite(void) {
   Suite *suite;
   TCase *testcase;
@@ -778,6 +836,7 @@ Suite *tests_get_parser_suite(void) {
   tcase_add_test(testcase, parser_parse_line_test);
   tcase_add_test(testcase, parse_config_path_test);
   tcase_add_test(testcase, parser_parse_file_test);
+  tcase_add_test(testcase, parser_parse_file_leak_test);
 
   /* Some of these tests may take a little longer. */
   tcase_set_timeout(testcase, 30);
