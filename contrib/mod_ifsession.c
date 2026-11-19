@@ -893,7 +893,7 @@ MODRET set_ifsessopts(cmd_rec *cmd) {
   return PR_HANDLED(cmd);
 }
 
-MODRET start_ifctxt(cmd_rec *cmd) {
+MODRET start_ifctx(cmd_rec *cmd) {
   config_rec *c = NULL;
   int config_type = 0, eval_type = 0;
   unsigned int argc = 0;
@@ -1037,8 +1037,8 @@ MODRET start_ifctxt(cmd_rec *cmd) {
   return PR_HANDLED(cmd);
 }
 
-MODRET end_ifctxt(cmd_rec *cmd) {
-  pr_parser_config_ctxt_close(NULL);
+MODRET end_ifctx(cmd_rec *cmd) {
+  CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL);
 
   switch (ifsess_ctx) {
     case IFSESS_CLASS_NUMBER:
@@ -1064,8 +1064,12 @@ MODRET end_ifctxt(cmd_rec *cmd) {
         ifsess_ctx = -1;
       }
       break;
+
+    default:
+      CONF_ERROR(cmd, "no preceding <If> context found");
   }
 
+  pr_parser_config_ctxt_close(NULL);
   return PR_HANDLED(cmd);
 }
 
@@ -1275,15 +1279,15 @@ static int ifsess_sess_init(void) {
  */
 
 static conftable ifsess_conftab[] = {
-  { IFSESS_AUTHN_TEXT,		start_ifctxt,	NULL },
-  { "</IfAuthenticated>",	end_ifctxt,	NULL },
-  { IFSESS_CLASS_TEXT,		start_ifctxt,	NULL },
-  { "</IfClass>",		end_ifctxt,	NULL },
-  { IFSESS_GROUP_TEXT,		start_ifctxt,	NULL },
-  { "</IfGroup>",		end_ifctxt,	NULL },
+  { IFSESS_AUTHN_TEXT,		start_ifctx,	NULL },
+  { "</IfAuthenticated>",	end_ifctx,	NULL },
+  { IFSESS_CLASS_TEXT,		start_ifctx,	NULL },
+  { "</IfClass>",		end_ifctx,	NULL },
+  { IFSESS_GROUP_TEXT,		start_ifctx,	NULL },
+  { "</IfGroup>",		end_ifctx,	NULL },
   { "IfSessionOptions",		set_ifsessopts,	NULL },
-  { IFSESS_USER_TEXT,		start_ifctxt,	NULL },
-  { "</IfUser>",		end_ifctxt,	NULL },
+  { IFSESS_USER_TEXT,		start_ifctx,	NULL },
+  { "</IfUser>",		end_ifctx,	NULL },
   { NULL }
 };
 
