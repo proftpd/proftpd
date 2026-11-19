@@ -1,5 +1,7 @@
 /* Copyright (C) 1991, 1992, 1993 Free Software Foundation, Inc.
 
+SPDX-License-Identifier: LGPL-2.0-only
+
 This library is free software; you can redistribute it and/or
 modify it under the terms of the GNU Library General Public License as
 published by the Free Software Foundation; either version 2 of the
