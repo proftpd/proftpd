@@ -118,7 +118,7 @@ static int umac64_md_final(void *vctx, unsigned char *out, size_t *out_len,
   return res;
 }
 
-static int umac64_get_params(void *provctx, OSSL_PARAM params[]) {
+static int umac64_get_params(OSSL_PARAM params[]) {
   OSSL_PARAM *p;
   int ok = 1;
 
@@ -160,7 +160,7 @@ static const OSSL_DISPATCH umac64_functions[] = {
   { OSSL_FUNC_DIGEST_GET_PARAMS, (void (*)(void)) umac64_get_params },
   { OSSL_FUNC_DIGEST_GETTABLE_PARAMS, (void (*)(void)) umac64_gettable_params },
 
-  { 0, NULL }
+  OSSL_DISPATCH_END
 };
 
 /* UMAC128 */
@@ -207,7 +207,7 @@ static int umac128_md_final(void *vctx, unsigned char *out, size_t *out_len,
   return res;
 }
 
-static int umac128_get_params(void *provctx, OSSL_PARAM params[]) {
+static int umac128_get_params(OSSL_PARAM params[]) {
   OSSL_PARAM *p;
   int ok = 1;
 
@@ -249,14 +249,15 @@ static const OSSL_DISPATCH umac128_functions[] = {
   { OSSL_FUNC_DIGEST_GET_PARAMS, (void (*)(void)) umac128_get_params },
   { OSSL_FUNC_DIGEST_GETTABLE_PARAMS, (void (*)(void)) umac128_gettable_params },
 
-  { 0, NULL }
+  OSSL_DISPATCH_END
 };
 
-static const OSSL_ALGORITHM umac_digests[] = {
-  { "umac64", NULL, umac64_functions },
-  { "umac128", NULL, umac128_functions },
+/* UMAC Provider tables */
 
-  { NULL, NULL, NULL }
+static const OSSL_ALGORITHM umac_digests[] = {
+  { "umac64", "provider=umac", umac64_functions, "UMAC-64" },
+  { "umac128", "provider=umac", umac128_functions, "UMAC-128" },
+  { NULL, NULL, NULL, NULL }
 };
 
 static const OSSL_ALGORITHM *umac_provider_operations(void *provctx,
@@ -273,7 +274,7 @@ static const OSSL_ALGORITHM *umac_provider_operations(void *provctx,
 static const OSSL_DISPATCH umac_provider_functions[] = {
   { OSSL_FUNC_PROVIDER_QUERY_OPERATION, (void (*)(void)) umac_provider_operations },
 
-  { 0, NULL }
+  OSSL_DISPATCH_END
 };
 
 static int umac_provider_init(const OSSL_CORE_HANDLE *core,
@@ -283,29 +284,47 @@ static int umac_provider_init(const OSSL_CORE_HANDLE *core,
 
   return 1;
 }
-
 #endif /* OpenSSL 4.x and later */
+
+void *sftp_provider_get_libctx(void) {
+#if OPENSSL_VERSION_NUMBER >= 0x40000000L && !defined(HAVE_LIBRESSL)
+  if (sftp_libctx != NULL) {
+    return sftp_libctx;
+  }
+#endif /* OpenSSL 4.x and later */
+
+  return NULL;
+}
 
 int sftp_provider_init(void) {
 #if OPENSSL_VERSION_NUMBER >= 0x40000000L && !defined(HAVE_LIBRESSL)
-  /* Allocate a custom library context for our provider, so that no one else
+  /* Allocate a custom library context for our providers, so that no one else
    * uses our providers.
    */
   sftp_libctx = OSSL_LIB_CTX_new();
+  if (sftp_libctx == NULL) {
+    pr_log_debug(DEBUG1, MOD_SFTP_VERSION
+      ": error allocating custom OpenSSL library context: %s",
+      sftp_crypto_get_errors());
+    return -1;
+  }
+
   if (OSSL_PROVIDER_add_builtin(sftp_libctx, "umac", umac_provider_init) != 1) {
     pr_log_debug(DEBUG1, MOD_SFTP_VERSION
       ": error registering 'umac' OpenSSL provider: %s",
       sftp_crypto_get_errors());
 
   } else {
-    pr_trace_msg(trace_channel, 9, "%s", "registered 'umac' OpenSSL provider");
+    pr_trace_msg(trace_channel, 9, "%s",
+      "registered 'umac' OpenSSL provider");
   }
 
   /* Load our custom OpenSSL algorithm provider. */
   umac_provider = OSSL_PROVIDER_load(sftp_libctx, "umac");
   if (umac_provider == NULL) {
     pr_log_pri(PR_LOG_NOTICE, MOD_SFTP_VERSION
-      ": error loading 'umac' OpenSSL provider: %s", sftp_crypto_get_errors());
+      ": error loading 'umac' OpenSSL provider: %s",
+      sftp_crypto_get_errors());
 
   } else {
     pr_trace_msg(trace_channel, 9, "%s", "loaded 'umac' OpenSSL provider");
