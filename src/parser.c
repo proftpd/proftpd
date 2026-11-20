@@ -52,6 +52,7 @@ struct config_src {
   pool *cs_pool;
   pr_fh_t *cs_fh;
   unsigned int cs_lineno;
+  int cs_flags;
 };
 
 static unsigned int parser_curr_lineno = 0;
@@ -67,7 +68,7 @@ static struct config_src *parser_sources = NULL;
 /* Private functions
  */
 
-static struct config_src *add_config_source(pr_fh_t *fh) {
+static struct config_src *add_config_source(pr_fh_t *fh, int flags) {
   pool *p;
   struct config_src *cs;
 
@@ -79,6 +80,7 @@ static struct config_src *add_config_source(pr_fh_t *fh) {
   cs->cs_next = NULL;
   cs->cs_fh = fh;
   cs->cs_lineno = 0;
+  cs->cs_flags = flags;
 
   if (parser_sources == NULL) {
     parser_sources = cs;
@@ -93,6 +95,14 @@ static struct config_src *add_config_source(pr_fh_t *fh) {
 
 static char *get_config_word(pool *p, char *word, int *resolved_var) {
   size_t wordlen;
+
+  /* .ftpaccess files are written by users, not by the admin, so do not let
+   * them read the daemon's environment.
+   */
+  if (parser_sources != NULL &&
+      (parser_sources->cs_flags & PR_PARSER_FL_DYNAMIC_CONFIG)) {
+    return pstrdup(p, word);
+  }
 
   /* Should this word be replaced with a value from the environment?
    * If so, tmp will contain the expanded value, otherwise tmp will
@@ -457,7 +467,7 @@ int pr_parser_parse_file(pool *p, const char *path, config_rec *start,
   /* Push the configuration information onto the stack of configuration
    * sources.
    */
-  cs = add_config_source(fh);
+  cs = add_config_source(fh, flags);
 
   if (start != NULL) {
     (void) pr_parser_config_ctxt_push(start);
