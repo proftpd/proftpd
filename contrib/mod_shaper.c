@@ -2288,7 +2288,7 @@ static void shaper_postparse_ev(const void *event_data, void *user_data) {
     }
 
     /* Initialize ShaperTable */
-    if (shaper_table_init(fh) < 0)
+    if (shaper_table_init(fh) < 0) {
       (void) pr_log_writefile(shaper_logfd, MOD_SHAPER_VERSION,
         "error initializing ShaperTable: %s", strerror(errno));
       pr_fsio_close(fh);
