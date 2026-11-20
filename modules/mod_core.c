@@ -2742,7 +2742,7 @@ MODRET add_groupowner(cmd_rec *cmd) {
   config_rec *c = NULL;
 
   CHECK_ARGS(cmd, 1);
-  CHECK_CONF(cmd, CONF_ANON|CONF_DIR|CONF_DYNDIR);
+  CHECK_CONF(cmd, CONF_ANON|CONF_DIR);
 
   c = add_config_param_str(cmd->argv[0], 1, cmd->argv[1]);
   c->flags |= CF_MERGEDOWN;

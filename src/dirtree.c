@@ -2934,6 +2934,19 @@ void init_dirtree(void) {
 
 /* These functions are used by modules to help parse configuration. */
 
+int get_context_type(cmd_rec *cmd) {
+  int ctx;
+
+  if (cmd == NULL) {
+    return -1;
+  }
+
+  ctx = (cmd->config && cmd->config->config_type != CONF_PARAM ?
+    cmd->config->config_type : cmd->server->config_type ?
+    cmd->server->config_type : CONF_ROOT);
+  return ctx;
+}
+
 unsigned char check_context(cmd_rec *cmd, int allowed) {
   int ctx;
 
@@ -2941,10 +2954,7 @@ unsigned char check_context(cmd_rec *cmd, int allowed) {
     return FALSE;
   }
 
-  ctx = (cmd->config && cmd->config->config_type != CONF_PARAM ?
-    cmd->config->config_type : cmd->server->config_type ?
-    cmd->server->config_type : CONF_ROOT);
-
+  ctx = get_context_type(cmd);
   if (ctx & allowed) {
     return TRUE;
   }
