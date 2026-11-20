@@ -380,9 +380,13 @@ static int crc32_md_final(void *vctx, unsigned char *out, size_t *out_len,
   return 1;
 }
 
-static int crc32_get_params(void *provctx, OSSL_PARAM params[]) {
+static int crc32_get_params(OSSL_PARAM params[]) {
   OSSL_PARAM *p;
   int ok = 1;
+
+  if (params == NULL) {
+    return ok;
+  }
 
   p = OSSL_PARAM_locate(params, OSSL_DIGEST_PARAM_BLOCK_SIZE);
   if (p != NULL) {
