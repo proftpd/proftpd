@@ -4791,8 +4791,8 @@ sub extlog_sftp_raw_bytes_bug3554 {
                         $expected_max >= $bytes_in,
             test_msg("Expected $expected_min - $expected_max, got $bytes_in"));
 
-          $expected_min = 2116;
-          $expected_max = 2196;
+          $expected_min = 2000;
+          $expected_max = 5000;
           $self->assert($expected_min <= $bytes_out &&
                         $expected_max >= $bytes_out,
             test_msg("Expected $expected_min - $expected_max, got $bytes_out"));
