@@ -7,11 +7,12 @@ use lib qw(t/lib);
 use base qw(ProFTPD::TestSuite::Child);
 use strict;
 
+use Carp;
 use File::Spec;
 use IO::Handle;
 
 use ProFTPD::TestSuite::FTP;
-use ProFTPD::TestSuite::Utils qw(:auth :config :running :test :testsuite);
+use ProFTPD::TestSuite::Utils qw(:auth :config :features :running :test :testsuite);
 
 $| = 1;
 
@@ -214,7 +215,9 @@ sub shaper_queue_dos {
 
       my $count = 0;
       foreach my $client (@$clients) {
-        print STDERR "# Disonnecting client #", $count+1, "\n";
+        if ($ENV{TEST_VERBOSE}) {
+          print STDERR "# Disconnecting client #", $count+1, "\n";
+        }
         $client->quit();
         $count++;
       }
@@ -277,8 +280,13 @@ sub shaper_queue_dos {
 
       close($fh);
       $self->assert($rcvd_ok, test_msg("Did not see expected ShaperLog message"));
-      $self->assert($encrypted_ok, test_msg("Did not see expected encryption trace message"));
-      $self->assert($decrypted_ok, test_msg("Did not see expected decryption trace message"));
+
+      # We should only expect to see these log messages IFF the build is
+      # using OpenSSL.
+      if (feature_have_feature_enabled('openssl')) {
+        $self->assert($encrypted_ok, test_msg("Did not see expected encryption trace message"));
+        $self->assert($decrypted_ok, test_msg("Did not see expected decryption trace message"));
+      }
 
     } else {
       die("Can't read $setup->{log_file}: $!");
@@ -364,7 +372,9 @@ sub shaper_queue_noencryptedmessages_issue2391 {
 
       my $count = 0;
       foreach my $client (@$clients) {
-        print STDERR "# Disonnecting client #", $count+1, "\n";
+        if ($ENV{TEST_VERBOSE}) {
+          print STDERR "# Disconnecting client #", $count+1, "\n";
+        }
         $client->quit();
         $count++;
       }
@@ -618,7 +628,7 @@ sub shaper_sighup_shaperlog_bug4077 {
       'mod_shaper.c' => {
         ShaperEngine => 'on',
         ShaperLog => $setup->{log_file},
-        ShaperTable => $setup->{shaper_tab},
+        ShaperTable => $shaper_tab,
         ShaperAll => 'downrate 1500 uprate 1500',
       },
     },
@@ -641,7 +651,27 @@ sub shaper_sighup_shaperlog_bug4077 {
   }
 
   # Now modify the config, removing the ShaperLog...
-  delete($config->{IfModules}->{'mod_shaper.c'}->{ShaperLog});
+  $config = {
+    PidFile => $setup->{pid_file},
+    ScoreboardFile => $setup->{scoreboard_file},
+    SystemLog => $setup->{log_file},
+
+    AuthUserFile => $setup->{auth_user_file},
+    AuthGroupFile => $setup->{auth_group_file},
+    AuthOrder => 'mod_auth_file.c',
+
+    IfModules => {
+      'mod_delay.c' => {
+        DelayEngine => 'off',
+      },
+
+      'mod_shaper.c' => {
+        ShaperEngine => 'on',
+        ShaperTable => $shaper_tab,
+        ShaperAll => 'downrate 1500 uprate 1500',
+      },
+    },
+  };
 
   unlink($setup->{config_file});
   ($port, $config_user, $config_group) = config_write($setup->{config_file},
