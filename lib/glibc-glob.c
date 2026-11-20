@@ -1242,8 +1242,6 @@ prefix_array (const char *dirname, char **array, size_t n)
       char *new = (char *) malloc (dirlen + 1 + eltlen);
       if (new == NULL)
 	{
-	  while (i > 0)
-	    free ((__ptr_t) array[--i]);
 	  return 1;
 	}
 
