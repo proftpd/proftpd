@@ -113,7 +113,7 @@ jobs:
         # module appear AFTER mod_sql in the --with-modules list.
         run: |
           cd proftpd
-          ./configure --disable-ipv6 --enable-ctrls --enable-facl --enable-nls --enable-pcre2 --enable-openssl --with-modules=mod_copy:mod_deflate:mod_log_forensic:mod_readme:mod_rewrite:mod_site_misc:mod_sql:mod_sql_sqlite:mod_sql_passwd:mod_digest:mod_facl:mod_quotatab:mod_quotatab_file:mod_quotatab_sql:mod_sftp:mod_sftp_pam:mod_sftp_sql:mod_tls:mod_tls_fscache:mod_tls_shmcache:mod_auth_otp:mod_snmp:mod_wrap2:mod_wrap2_file:mod_wrap2_sql:mod_unique_id:mod_ifversion:mod_ifsession
+          ./configure --disable-ipv6 --enable-ctrls --enable-facl --enable-nls --enable-pcre2 --enable-openssl --with-modules=mod_copy:mod_deflate:mod_load:mod_log_forensic:mod_readme:mod_rewrite:mod_site_misc:mod_statcache:mod_sql:mod_sql_sqlite:mod_sql_passwd:mod_digest:mod_facl:mod_quotatab:mod_quotatab_file:mod_quotatab_sql:mod_sftp:mod_sftp_pam:mod_sftp_sql:mod_tls:mod_tls_fscache:mod_tls_shmcache:mod_auth_otp:mod_snmp:mod_wrap2:mod_wrap2_file:mod_wrap2_sql:mod_unique_id:mod_ifversion:mod_ifsession
           make
           ./proftpd -V
           make install

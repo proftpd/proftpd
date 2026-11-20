@@ -159,10 +159,9 @@ sub statcache_sftp_stat_file {
   defined(my $pid = fork()) or die("Can't fork: $!");
   if ($pid) {
     eval {
-      my $ssh2 = Net::SSH2->new();
-
       sleep(1);
 
+      my $ssh2 = Net::SSH2->new();
       unless ($ssh2->connect('127.0.0.1', $port)) {
         my ($err_code, $err_name, $err_str) = $ssh2->error();
         die("Can't connect to SSH2 server: [$err_name] ($err_code) $err_str");
@@ -364,10 +363,10 @@ sub statcache_sftp_stat_file {
     }
   };
   if ($@) {
-    $ex = $@;
+    $ex = $@ unless $ex;
   }
 
-  test_cleanup($setup->{log_file}, $ex);
+  test_cleanup($setup, $ex);
 }
 
 sub statcache_sftp_stat_dir {
@@ -436,10 +435,9 @@ sub statcache_sftp_stat_dir {
   defined(my $pid = fork()) or die("Can't fork: $!");
   if ($pid) {
     eval {
-      my $ssh2 = Net::SSH2->new();
-
       sleep(1);
 
+      my $ssh2 = Net::SSH2->new();
       unless ($ssh2->connect('127.0.0.1', $port)) {
         my ($err_code, $err_name, $err_str) = $ssh2->error();
         die("Can't connect to SSH2 server: [$err_name] ($err_code) $err_str");
@@ -626,10 +624,10 @@ sub statcache_sftp_stat_dir {
     }
   };
   if ($@) {
-    $ex = $@;
+    $ex = $@ unless $ex;
   }
 
-  test_cleanup($setup->{log_file}, $ex);
+  test_cleanup($setup, $ex);
 }
 
 sub statcache_sftp_upload_file {
@@ -694,10 +692,9 @@ sub statcache_sftp_upload_file {
   defined(my $pid = fork()) or die("Can't fork: $!");
   if ($pid) {
     eval {
-      my $ssh2 = Net::SSH2->new();
-
       sleep(1);
 
+      my $ssh2 = Net::SSH2->new();
       unless ($ssh2->connect('127.0.0.1', $port)) {
         my ($err_code, $err_name, $err_str) = $ssh2->error();
         die("Can't connect to SSH2 server: [$err_name] ($err_code) $err_str");
@@ -737,12 +734,12 @@ sub statcache_sftp_upload_file {
       $self->assert($expected == $file_size,
         test_msg("Expected file size '$expected', got '$file_size'"));
 
-      $expected = $<;
+      $expected = $setup->{uid};
       my $file_uid = $attrs->{uid};
       $self->assert($expected == $file_uid,
         test_msg("Expected file UID '$expected', got '$file_uid'"));
 
-      $expected = $(;
+      $expected = $setup->{gid};
       my $file_gid = $attrs->{gid};
       $self->assert($expected == $file_gid,
         test_msg("Expected file GID '$expected', got '$file_gid'"));
@@ -765,12 +762,12 @@ sub statcache_sftp_upload_file {
       $self->assert($expected == $file_size,
         test_msg("Expected file size '$expected', got '$file_size'"));
 
-      $expected = $<;
+      $expected = $setup->{uid};
       $file_uid = $attrs->{uid};
       $self->assert($expected == $file_uid,
         test_msg("Expected file UID '$expected', got '$file_uid'"));
 
-      $expected = $(;
+      $expected = $setup->{gid};
       $file_gid = $attrs->{gid};
       $self->assert($expected == $file_gid,
         test_msg("Expected file GID '$expected', got '$file_gid'"));
@@ -813,12 +810,12 @@ sub statcache_sftp_upload_file {
       $self->assert($expected == $file_size,
         test_msg("Expected file size '$expected', got '$file_size'"));
 
-      $expected = $<;
+      $expected = $setup->{uid};
       $file_uid = $attrs->{uid};
       $self->assert($expected == $file_uid,
         test_msg("Expected file UID '$expected', got '$file_uid'"));
 
-      $expected = $(;
+      $expected = $setup->{gid};
       $file_gid = $attrs->{gid};
       $self->assert($expected == $file_gid,
         test_msg("Expected file GID '$expected', got '$file_gid'"));
@@ -910,10 +907,10 @@ sub statcache_sftp_upload_file {
     }
   };
   if ($@) {
-    $ex = $@;
+    $ex = $@ unless $ex;
   }
 
-  test_cleanup($setup->{log_file}, $ex);
+  test_cleanup($setup, $ex);
 }
 
 1;
