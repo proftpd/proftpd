@@ -156,7 +156,7 @@ my $TESTS = {
 
   copy_cpto_timeout_bug4263 => {
     order => ++$order,
-    test_class => [qw(bug forking)],
+    test_class => [qw(bug forking manual)],
   },
 
   copy_cpfr_config_limit_read_bug4372 => {
