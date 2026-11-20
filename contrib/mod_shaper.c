@@ -986,8 +986,6 @@ static int shaper_table_init(pr_fh_t *fh) {
     return -1;
   }
 
-  shaper_tabfd = fh->fh_fd;
-
   /* XXX maybe add a shaper control to clear/re-init the table, in cases
    * where the format changes?
    */
@@ -1026,6 +1024,13 @@ static int shaper_table_init(pr_fh_t *fh) {
     return -1;
   }
 
+  shaper_tabfd = fh->fh_fd;
+
+  if (pr_fs_get_usable_fd2(&shaper_tabfd) < 0) {
+    shaper_tabfd = -1;
+    return -1;
+  }
+
   (void) pr_log_writefile(shaper_logfd, MOD_SHAPER_VERSION,
     "initialized ShaperTable with rate %3.2Lf KB/s (down), %3.2Lf KB/s (up), "
     "default priority %u, default shares %u down, %u up", shaper_tab.downrate,
@@ -1040,6 +1045,11 @@ static int shaper_table_refresh(void) {
   register unsigned int i;
   int res;
   struct iovec tab_iov[6];
+
+  if (shaper_tabfd < 0) {
+    errno = EBADF;
+    return -1;
+  }
 
   if (lseek(shaper_tabfd, 0, SEEK_SET) == (off_t) -1) {
     (void) pr_log_writefile(shaper_logfd, MOD_SHAPER_VERSION,
@@ -2561,11 +2571,12 @@ static void shaper_mod_unload_ev(const void *event_data, void *user_data) {
 
 static void shaper_postparse_ev(const void *event_data, void *user_data) {
   if (shaper_log_path != NULL &&
-      strcasecmp(shaper_log_path, "none") != 0 &&
-      pr_log_openfile(shaper_log_path, &shaper_logfd, 0660) < 0) {
-    pr_log_debug(DEBUG2, MOD_SHAPER_VERSION
-      ": error opening ShaperLog '%s': %s", shaper_log_path, strerror(errno));
-    shaper_logfd = -1;
+      strcasecmp(shaper_log_path, "none") != 0) {
+    if (pr_log_openfile(shaper_log_path, &shaper_logfd, 0660) < 0) {
+      pr_log_debug(DEBUG2, MOD_SHAPER_VERSION
+        ": error opening ShaperLog '%s': %s", shaper_log_path, strerror(errno));
+      shaper_logfd = -1;
+    }
   }
 
   if (shaper_tab_path != NULL) {
@@ -2623,6 +2634,8 @@ static void shaper_postparse_ev(const void *event_data, void *user_data) {
     if (shaper_table_init(fh) < 0) {
       (void) pr_log_writefile(shaper_logfd, MOD_SHAPER_VERSION,
         "error initializing ShaperTable: %s", strerror(errno));
+      pr_fsio_close(fh);
+      return;
     }
 
     (void) pr_log_writefile(shaper_logfd, MOD_SHAPER_VERSION,
@@ -2771,6 +2784,10 @@ static void shaper_postparse_ev(const void *event_data, void *user_data) {
 
 static void shaper_restart_ev(const void *event_data, void *user_data) {
   register unsigned int i;
+
+  (void) close(shaper_tabfd);
+  shaper_tabfd = -1;
+  shaper_qid = -1;
 
   (void) close(shaper_logfd);
   shaper_logfd = -1;
