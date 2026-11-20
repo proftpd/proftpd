@@ -122,6 +122,10 @@ static int umac64_get_params(OSSL_PARAM params[]) {
   OSSL_PARAM *p;
   int ok = 1;
 
+  if (params == NULL) {
+    return ok;
+  }
+
   p = OSSL_PARAM_locate(params, OSSL_DIGEST_PARAM_BLOCK_SIZE);
   if (p != NULL) {
     if (OSSL_PARAM_set_size_t(p, 32) != 1) {
@@ -210,6 +214,10 @@ static int umac128_md_final(void *vctx, unsigned char *out, size_t *out_len,
 static int umac128_get_params(OSSL_PARAM params[]) {
   OSSL_PARAM *p;
   int ok = 1;
+
+  if (params == NULL) {
+    return ok;
+  }
 
   p = OSSL_PARAM_locate(params, OSSL_DIGEST_PARAM_BLOCK_SIZE);
   if (p != NULL) {
