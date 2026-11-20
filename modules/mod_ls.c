@@ -3661,6 +3661,15 @@ MODRET set_dirfakeusergroup(cmd_rec *cmd) {
       as = cmd->argv[2];
     }
 
+    if (get_context_type(cmd) == CONF_DYNDIR) {
+      /* Per Issue #2490, if this is anything other than "ftp", then replace
+       * it to prevent possible information leaks.
+       */
+      if (strcmp(as, "ftp") != 0) {
+        as = "~";
+      }
+    }
+
     c = add_config_param_str(cmd->argv[0], 1, as);
 
   } else {

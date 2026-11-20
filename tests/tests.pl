@@ -218,6 +218,7 @@ if (scalar(@ARGV) > 0) {
     t/config/directory/limits.t
     t/config/directory/umask.t
     t/config/ftpaccess/dele.t
+    t/config/ftpaccess/display.t
     t/config/ftpaccess/empty.t
     t/config/ftpaccess/merging.t
     t/config/ftpaccess/retr.t

@@ -234,6 +234,7 @@ void resolve_anonymous_dirs(xaset_t *);
 void resolve_deferred_dirs(server_rec *);
 void fixup_dirs(server_rec *, int);
 unsigned char check_context(cmd_rec *, int);
+int get_context_type(cmd_rec *);
 char *get_context_name(cmd_rec *);
 int get_boolean(cmd_rec *, int);
 const char *get_full_cmd(cmd_rec *);

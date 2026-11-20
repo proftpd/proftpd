@@ -4055,8 +4055,7 @@ MODRET set_storeuniqueprefix(cmd_rec *cmd) {
   config_rec *c = NULL;
 
   CHECK_ARGS(cmd, 1);
-  CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL|CONF_ANON|
-    CONF_DIR|CONF_DYNDIR);
+  CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL|CONF_ANON|CONF_DIR);
 
   /* make sure there are no slashes in the prefix */
   if (strchr(cmd->argv[1], '/') != NULL) {
