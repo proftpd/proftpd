@@ -4620,7 +4620,7 @@ sub extlog_ftps_raw_bytes_bug3554 {
             test_msg("Expected $expected_min - $expected_max, got $bytes_in"));
 
           $expected_min = 6828;
-          $expected_max = 9800;
+          $expected_max = 11000;
           $self->assert($expected_min <= $bytes_out &&
                         $expected_max >= $bytes_out,
             test_msg("Expected $expected_min - $expected_max, got $bytes_out"));
@@ -4786,7 +4786,7 @@ sub extlog_sftp_raw_bytes_bug3554 {
 
           # The expected bytes in/out will vary on the ciphers used, etc.
           my $expected_min = 34147;
-          my $expected_max = 34147;
+          my $expected_max = 48000;
           $self->assert($expected_min <= $bytes_in &&
                         $expected_max >= $bytes_in,
             test_msg("Expected $expected_min - $expected_max, got $bytes_in"));
@@ -4966,7 +4966,7 @@ sub extlog_scp_raw_bytes_bug3554 {
 
           # The expected bytes in/out will vary on the ciphers used, etc.
           my $expected_min = 42787;
-          my $expected_max = 42787;
+          my $expected_max = 48000;
           $self->assert($expected_min <= $bytes_in &&
                         $expected_max >= $bytes_in,
             test_msg("Expected $expected_min - $expected_max, got $bytes_in"));

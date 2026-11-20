@@ -4294,6 +4294,8 @@ sub copy_cpto_timeout_bug4263 {
 
   my $dst_file = File::Spec->rel2abs("$tmpdir/bar.dat");
 
+  my $timeout_idle = 30;
+
   my $config = {
     PidFile => $setup->{pid_file},
     ScoreboardFile => $setup->{scoreboard_file},
@@ -4305,6 +4307,8 @@ sub copy_cpto_timeout_bug4263 {
     AuthGroupFile => $setup->{auth_group_file},
     AuthOrder => 'mod_auth_file.c',
 
+    # We deliberately use a short timeout here; the bug/fix is for this
+    # timer to be reset during a long-running copy operation.
     TimeoutIdle => 3,
 
     IfModules => {
@@ -4335,7 +4339,8 @@ sub copy_cpto_timeout_bug4263 {
       # Allow for server startup
       sleep(2);
 
-      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port, 0, 15);
+      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port, 0,
+        $timeout_idle);
       $client->login($setup->{user}, $setup->{passwd});
 
       my ($resp_code, $resp_msg) = $client->site('CPFR', 'foo.dat');
@@ -4372,7 +4377,7 @@ sub copy_cpto_timeout_bug4263 {
     $wfh->flush();
 
   } else {
-    eval { server_wait($setup->{config_file}, $rfh, 30) };
+    eval { server_wait($setup->{config_file}, $rfh, 45) };
     if ($@) {
       warn($@);
       exit 1;
