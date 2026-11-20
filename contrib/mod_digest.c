@@ -190,6 +190,7 @@ static int digest_hash_free_md = FALSE;
 #endif
 
 #if OPENSSL_VERSION_NUMBER >= 0x40000000L && !defined(HAVE_LIBRESSL)
+static OSSL_LIB_CTX *digest_libctx = NULL;
 static OSSL_PROVIDER *crc32_provider = NULL;
 #endif /* OpenSSL 4.x and later */
 
@@ -379,12 +380,6 @@ static int crc32_md_final(void *vctx, unsigned char *out, size_t *out_len,
   return 1;
 }
 
-static const OSSL_PARAM crc32_params[] = {
-  OSSL_PARAM_size_t(OSSL_DIGEST_PARAM_BLOCK_SIZE, NULL),
-  OSSL_PARAM_size_t(OSSL_DIGEST_PARAM_SIZE, NULL),
-  OSSL_PARAM_END
-};
-
 static int crc32_get_params(void *provctx, OSSL_PARAM params[]) {
   OSSL_PARAM *p;
   int ok = 1;
@@ -408,7 +403,13 @@ static int crc32_get_params(void *provctx, OSSL_PARAM params[]) {
   return ok;
 }
 
-static const OSSL_PARAM *crc32_gettable_params(void) {
+static const OSSL_PARAM *crc32_gettable_params(void *provctx) {
+  static const OSSL_PARAM crc32_params[] = {
+    OSSL_PARAM_size_t(OSSL_DIGEST_PARAM_BLOCK_SIZE, NULL),
+    OSSL_PARAM_size_t(OSSL_DIGEST_PARAM_SIZE, NULL),
+    OSSL_PARAM_END
+  };
+
   return crc32_params;
 }
 
@@ -2990,6 +2991,11 @@ static void digest_mod_unload_ev(const void *event_data, void *user_data) {
     OSSL_PROVIDER_unload(crc32_provider);
     crc32_provider = NULL;
   }
+
+  if (digest_libctx != NULL) {
+    OSSL_LIB_CTX_free(digest_libctx);
+    digest_libctx = NULL;
+  }
 # endif /* OpenSSL 4.x and later */
 }
 #endif /* PR_SHARED_MODULE */
@@ -3024,6 +3030,11 @@ static void digest_shutdown_ev(const void *event_data, void *user_data) {
     OSSL_PROVIDER_unload(crc32_provider);
     crc32_provider = NULL;
   }
+
+  if (digest_libctx != NULL) {
+    OSSL_LIB_CTX_free(digest_libctx);
+    digest_libctx = NULL;
+  }
 #endif /* HAVE_OSSL_PROVIDER_LOAD_OPENSSL */
 }
 
@@ -3041,7 +3052,12 @@ static int digest_init(void) {
   pr_event_register(&digest_module, "core.shutdown", digest_shutdown_ev, NULL);
 
 #if OPENSSL_VERSION_NUMBER >= 0x40000000L && !defined(HAVE_LIBRESSL)
-  if (OSSL_PROVIDER_add_builtin(NULL, "crc32", crc32_provider_init) != 1) {
+  /* Allocate a custom library context for our provider, so that no one else
+   * uses our providers.
+   */
+  digest_libctx = OSSL_LIB_CTX_new();
+  if (OSSL_PROVIDER_add_builtin(digest_libctx, "crc32",
+      crc32_provider_init) != 1) {
     pr_log_debug(DEBUG1, MOD_DIGEST_VERSION
       ": error registering 'crc32' OpenSSL provider: %s", get_errors());
 
@@ -3050,7 +3066,7 @@ static int digest_init(void) {
   }
 
   /* Load our custom "crc32" OpenSSL algorithm provider. */
-  crc32_provider = OSSL_PROVIDER_load(NULL, "crc32");
+  crc32_provider = OSSL_PROVIDER_load(digest_libctx, "crc32");
   if (crc32_provider == NULL) {
     pr_log_pri(PR_LOG_NOTICE, MOD_DIGEST_VERSION
       ": error loading 'crc32' OpenSSL provider: %s", get_errors());
