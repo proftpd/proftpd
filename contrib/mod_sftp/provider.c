@@ -107,9 +107,9 @@ static int umac64_md_final(void *vctx, unsigned char *out, size_t *out_len,
   unsigned char nonce[8];
 
   ctx = vctx;
-
   *out_len = outsz;
 
+  memset(nonce, 0, sizeof(nonce));
   if (outsz != 0) {
     res = umac_final(ctx, out, nonce);
   }
@@ -196,9 +196,9 @@ static int umac128_md_final(void *vctx, unsigned char *out, size_t *out_len,
   unsigned char nonce[8];
 
   ctx = vctx;
-
   *out_len = outsz;
 
+  memset(nonce, 0, sizeof(nonce));
   if (outsz != 0) {
     res = umac128_final(ctx, out, nonce);
   }
