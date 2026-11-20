@@ -1356,7 +1356,7 @@ static const EVP_MD *get_algo_md(unsigned long algo, int *free_md) {
   switch (algo) {
     case DIGEST_ALGO_CRC32:
 #if OPENSSL_VERSION_NUMBER >= 0x40000000L && !defined(HAVE_LIBRESSL)
-      md = EVP_MD_fetch(NULL, "crc32", NULL);
+      md = EVP_MD_fetch(digest_libctx, "crc32", NULL);
       if (md == NULL) {
         pr_trace_msg(trace_channel, 3, "error obtaining CRC32 EVP_MD: %s",
           get_errors());

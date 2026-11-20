@@ -26,6 +26,11 @@
 
 #include "mod_sftp.h"
 
+/* Obtain the module-specific "library context" with which our custom
+ * UMAC providers are registered.
+ */
+void *sftp_provider_get_libctx(void);
+
 int sftp_provider_init(void);
 void sftp_provider_free(void);
 

@@ -1018,11 +1018,15 @@ static int delete_umac128(EVP_MD_CTX *ctx) {
 
 static const EVP_MD *get_umac64_digest(int *free_md) {
   EVP_MD *md = NULL;
+#if OPENSSL_VERSION_NUMBER >= 0x40000000L && !defined(HAVE_LIBRESSL)
+  OSSL_LIB_CTX *sftp_libctx = NULL;
+#endif /* OpenSSL 4.x and later */
 
   *free_md = FALSE;
 
 #if OPENSSL_VERSION_NUMBER >= 0x40000000L && !defined(HAVE_LIBRESSL)
-  md = EVP_MD_fetch(NULL, "umac64", NULL);
+  sftp_libctx = sftp_provider_get_libctx();
+  md = EVP_MD_fetch(sftp_libctx, "umac64", "provider=umac");
   if (md == NULL) {
     pr_trace_msg(trace_channel, 4, "error fetching 'umac64' EVP_MD: %s",
       sftp_crypto_get_errors());
@@ -1067,11 +1071,15 @@ static const EVP_MD *get_umac64_digest(int *free_md) {
 
 static const EVP_MD *get_umac128_digest(int *free_md) {
   EVP_MD *md = NULL;
+#if OPENSSL_VERSION_NUMBER >= 0x40000000L && !defined(HAVE_LIBRESSL)
+  OSSL_LIB_CTX *sftp_libctx = NULL;
+#endif /* OpenSSL 4.x and later */
 
   *free_md = FALSE;
 
 #if OPENSSL_VERSION_NUMBER >= 0x40000000L && !defined(HAVE_LIBRESSL)
-  md = EVP_MD_fetch(NULL, "umac128", NULL);
+  sftp_libctx = sftp_provider_get_libctx();
+  md = EVP_MD_fetch(sftp_libctx, "umac128", "provider=umac");
   if (md == NULL) {
     pr_trace_msg(trace_channel, 4, "error fetching 'umac128' EVP_MD: %s",
       sftp_crypto_get_errors());
