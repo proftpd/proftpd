@@ -148,7 +148,21 @@ static int site_misc_create_path(pool *p, const char *path) {
       return -1;
     }
 
-    res = site_misc_create_dir(curr_path);
+    /* Apply the same <Limit> checks that the MKD command would, for those
+     * directories in the path which do not exist yet.
+     */
+    pr_fs_clear_cache2(curr_path);
+    if (pr_fsio_lstat(curr_path, &st) < 0 &&
+        !dir_check(sub_pool, cmd, G_WRITE, curr_path, NULL)) {
+      pr_log_debug(DEBUG3, MOD_SITE_MISC_VERSION
+        ": creating directory '%s' denied by <Limit> configuration", curr_path);
+      res = -1;
+      errno = EPERM;
+
+    } else {
+      res = site_misc_create_dir(curr_path);
+    }
+
     if (res < 0) {
       int xerrno = errno;
 
