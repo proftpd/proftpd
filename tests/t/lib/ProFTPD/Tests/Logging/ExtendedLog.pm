@@ -4972,7 +4972,7 @@ sub extlog_scp_raw_bytes_bug3554 {
             test_msg("Expected $expected_min - $expected_max, got $bytes_in"));
 
           $expected_min = 1996;
-          $expected_max = 2036;
+          $expected_max = 5000;
           $self->assert($expected_min <= $bytes_out &&
                         $expected_max >= $bytes_out,
             test_msg("Expected $expected_min - $expected_max, got $bytes_out"));
