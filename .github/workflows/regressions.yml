@@ -148,7 +148,7 @@ jobs:
           PROFTPD_TEST_CI: github
           PROFTPD_TEST_DIR: ${{ github.workspace }}/proftpd/tests
           PROFTPD_TEST_PATH: /usr/local/bin
-          REDIS_SERVER: redis
+          REDIS_SERVER: redis:6379
         run: |
           cd proftpd/tests
           perl tests.pl
