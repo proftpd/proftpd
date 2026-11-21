@@ -33,51 +33,51 @@
  */
 #if defined(HAVE_CRYPT_H) && !defined(AIX4) && !defined(AIX5)
 # include <crypt.h>
-#endif
+#endif /* HAVE_CRYPT_H and not AIX4/AIX5 */
 
-#ifdef PR_USE_SHADOW
-# ifdef HAVE_SHADOW_H
+#if defined(PR_USE_SHADOW)
+# if defined(HAVE_SHADOW_H)
 #   include <shadow.h>
-# endif
-#endif
+# endif /* HAVE_SHADOW_H */
+#endif /* PR_USE_SHADOW */
 
-#ifdef HAVE_SYS_SECURITY_H
+#if defined(HAVE_SYS_SECURITY_H)
 # include <sys/security.h>
-#endif
+#endif /* HAVE_SYS_SECURITY_H */
 
-#ifdef HAVE_KRB_H
+#if defined(HAVE_KRB_H)
 # include <krb.h>
-#endif
+#endif /* HAVE_KRB_H */
 
-#ifdef HAVE_LOGIN_H
+#if defined(HAVE_LOGIN_H)
 # include <login.h>
-#endif
+#endif /* HAVE_LOGIN_H */
 
 #if defined(HAVE_HPSECURITY_H) || defined(HPUX10) || defined(HPUX11)
 # include <hpsecurity.h>
-# ifndef COMSEC
+# if !defined(COMSEC)
 #  define COMSEC 1
 # endif /* !COMSEC */
 #endif /* HAVE_HPSECURITY_H or HPUX10 or HPUX11 */
 
 #if defined(HAVE_PROT_H) || defined(COMSEC)
 # include <prot.h>
-#endif
+#endif /* HAVE_PROT_H or COMSEC */
 
-#ifdef HAVE_USERSEC_H
+#if defined(HAVE_USERSEC_H)
 # include <usersec.h>
-#endif
+#endif /* HAVE_USERSEC_H */
 
-#ifdef PR_USE_SIA
-# ifdef HAVE_SIA_H
+#if defined(PR_USE_SIA)
+# if defined(HAVE_SIA_H)
 #  include <sia.h>
-# endif
-# ifdef HAVE_SIAD_H
+# endif /* HAVE_SIA_H */
+# if defined(HAVE_SIAD_H)
 #  include <siad.h>
-# endif
+# endif /* HAVE_SIAD_H */
 #endif /* PR_USE_SIA */
 
-#ifdef CYGWIN
+#if defined(CYGWIN)
 typedef void *HANDLE;
 typedef unsigned long DWORD;
 # define INVALID_HANDLE_VALUE (HANDLE)(-1)
@@ -87,17 +87,17 @@ extern HANDLE cygwin_logon_user (const struct passwd *, const char *);
 extern void cygwin_set_impersonation_token (const HANDLE);
 #endif /* CYGWIN */
 
-#ifdef SETGRENT_VOID
+#if defined(SETGRENT_VOID)
 # define RETSETGRENTTYPE	void
 #else
 # define RETSETGRENTTYPE	int
-#endif
+#endif /* SETGRENT_VOID */
 
 #include "privs.h"
 
-#ifdef HAVE__PW_STAYOPEN
+#if defined(HAVE__PW_STAYOPEN)
 extern int _pw_stayopen;
-#endif
+#endif /* HAVE__PW_STAYOPEN */
 
 module auth_unix_module;
 
@@ -115,13 +115,11 @@ static const char *trace_channel = "auth.unix";
 #undef GROUP
 #define	GROUP		grpfname
 
-#ifdef PR_USE_SHADOW
-
+#if defined(PR_USE_SHADOW)
 /* Shadow password entries are stored as number of days, not seconds
  * and are -1 if unused
  */
-#define SP_CVT_DAYS(x)	((x) == (time_t)-1 ? (x) : ((x) * 86400))
-
+# define SP_CVT_DAYS(x)		((x) == (time_t)-1 ? (x) : ((x) * 86400))
 #endif /* PR_USE_SHADOW */
 
 /* mod_auth_unix option flags */
@@ -169,9 +167,9 @@ static RETSETGRENTTYPE p_setgrent(void) {
     }
   }
 
-#ifndef SETGRENT_VOID
+#if !defined(SETGRENT_VOID)
   return 0;
-#endif
+#endif /* SETGRENT_VOID */
 }
 
 static void p_endgrent(void) {
@@ -485,7 +483,7 @@ MODRET pw_getgrgid(cmd_rec *cmd) {
   return gr ? mod_create_data(cmd, gr) : PR_DECLINED(cmd);
 }
 
-#ifdef PR_USE_SHADOW
+#if defined(PR_USE_SHADOW)
 static char *get_pwd_info(pool *p, const char *u, time_t *lstchg, time_t *min,
     time_t *max, time_t *warn, time_t *inact, time_t *expire) {
   struct spwd *sp;
@@ -495,7 +493,7 @@ static char *get_pwd_info(pool *p, const char *u, time_t *lstchg, time_t *min,
     "looking up user '%s' via Unix shadow mechanism", u);
 
   PRIVS_ROOT
-#ifdef HAVE_SETSPENT
+#if defined(HAVE_SETSPENT)
   setspent();
 #endif /* HAVE_SETSPENT */
 
@@ -515,19 +513,19 @@ static char *get_pwd_info(pool *p, const char *u, time_t *lstchg, time_t *min,
       *max = SP_CVT_DAYS(sp->sp_max);
     }
 
-#ifdef HAVE_SPWD_SP_WARN
+#if defined(HAVE_SPWD_SP_WARN)
     if (warn != NULL) {
       *warn = SP_CVT_DAYS(sp->sp_warn);
     }
 #endif /* HAVE_SPWD_SP_WARN */
 
-#ifdef HAVE_SPWD_SP_INACT
+#if defined(HAVE_SPWD_SP_INACT)
     if (inact != NULL) {
       *inact = SP_CVT_DAYS(sp->sp_inact);
     }
 #endif /* HAVE_SPWD_SP_INACT */
 
-#ifdef HAVE_SPWD_SP_EXPIRE
+#if defined(HAVE_SPWD_SP_EXPIRE)
     if (expire != NULL) {
       *expire = SP_CVT_DAYS(sp->sp_expire);
     }
@@ -538,7 +536,7 @@ static char *get_pwd_info(pool *p, const char *u, time_t *lstchg, time_t *min,
       u, strerror(errno));
   }
 
-#ifdef PR_USE_AUTO_SHADOW
+#if defined(PR_USE_AUTO_SHADOW)
   if (sp == NULL) {
     struct passwd *pw;
 
@@ -599,10 +597,10 @@ static char *get_pwd_info(pool *p, const char *u, time_t *lstchg, time_t *min,
   char *cpw = NULL;
 #if defined(HAVE_GETPRPWENT) || defined(COMSEC)
   struct pr_passwd *prpw;
-#endif
+#endif /* HAVE_GETPRPWENT or COMSEC */
 #if !defined(HAVE_GETPRPWENT) || defined(COMSEC)
   struct passwd *pw;
-#endif
+#endif /* HAVE_GETPRPWENT or COMSEC */
 
  /* Some platforms (i.e. BSD) provide "transparent" shadowing, which
   * requires that we are root in order to have the password member
@@ -614,7 +612,7 @@ static char *get_pwd_info(pool *p, const char *u, time_t *lstchg, time_t *min,
 
   PRIVS_ROOT
 #if !defined(HAVE_GETPRPWENT) || defined(COMSEC)
-# ifdef COMSEC
+# if defined(COMSEC)
   if (!iscomsec()) {
 # endif /* COMSEC */
   endpwent();
@@ -625,31 +623,37 @@ static char *get_pwd_info(pool *p, const char *u, time_t *lstchg, time_t *min,
    * have to be different in this area (except OpenBSD, grin).
    */
   setpassent(0);
-#else /* BSDI3 || BSDI4 */
+#else /* BSDI3 or BSDI4 */
   setpwent();
-#endif /* BSDI3 || BSDI4 */
+#endif /* BSDI3 or BSDI4 */
 
   pw = getpwnam(u);
-  if (pw) {
+  if (pw != NULL) {
     cpw = pstrdup(p, pw->pw_passwd);
 
-    if (lstchg)
+    if (lstchg != NULL) {
       *lstchg = (time_t) -1;
+    }
 
-    if (min)
+    if (min != NULL) {
       *min = (time_t) -1;
+    }
 
-    if (max)
+    if (max != NULL) {
       *max = (time_t) -1;
+    }
 
-    if (warn)
+    if (warn != NULL) {
       *warn = (time_t) -1;
+    }
 
-    if (inact)
+    if (inact != NULL) {
       *inact = (time_t) -1;
+    }
 
-    if (expire)
+    if (expire != NULL) {
       *expire = (time_t) -1;
+    }
 
   } else {
     pr_log_debug(DEBUG5, "mod_auth_unix: getpwnam(3) for user '%s' error: %s",
@@ -657,7 +661,7 @@ static char *get_pwd_info(pool *p, const char *u, time_t *lstchg, time_t *min,
   }
 
   endpwent();
-#ifdef COMSEC
+#if defined(COMSEC)
   } else {
 #endif /* COMSEC */
 #endif /* !HAVE_GETPRWENT or COMSEC */
@@ -667,31 +671,36 @@ static char *get_pwd_info(pool *p, const char *u, time_t *lstchg, time_t *min,
   setprpwent();
 
   prpw = getprpwnam((char *) u);
-
-  if (prpw) {
+  if (prpw != NULL) {
     cpw = pstrdup(p, prpw->ufld.fd_encrypt);
 
-    if (lstchg)
+    if (lstchg != NULL) {
       *lstchg = (time_t) -1;
+    }
 
-    if (min)
+    if (min != NULL) {
       *min = prpw->ufld.fd_min;
+    }
 
-    if (max)
+    if (max != NULL) {
       *max = (time_t) -1;
+    }
 
-    if (warn)
+    if (warn != NULL) {
       *warn = (time_t) -1;
+    }
 
-    if (inact)
+    if (inact != NULL) {
       *inact = (time_t) -1;
+    }
 
-    if (expire)
+    if (expire != NULL) {
       *expire = prpw->ufld.fd_expire;
+    }
   }
 
   endprpwent();
-#ifdef COMSEC
+#if defined(COMSEC)
   }
 #endif /* COMSEC */
 #endif /* HAVE_GETPRPWENT or COMSEC */
@@ -699,10 +708,9 @@ static char *get_pwd_info(pool *p, const char *u, time_t *lstchg, time_t *min,
   PRIVS_RELINQUISH
 #if defined(BSDI3) || defined(BSDI4)
   setpassent(1);
-#endif
+#endif /* BSDI3 or BSDI4 */
   return cpw;
 }
-
 #endif /* PR_USE_SHADOW */
 
 /* High-level auth handlers
@@ -804,7 +812,7 @@ MODRET pw_authz(cmd_rec *cmd) {
 
   /* XXX Any other implementations here? */
 
-#ifdef HAVE_LOGINRESTRICTIONS
+#if defined(HAVE_LOGINRESTRICTIONS)
   if (!(auth_unix_opts & AUTH_UNIX_OPT_AIX_NO_RLOGIN)) {
     int res, xerrno, code = 0;
     char *reason = NULL;
@@ -878,13 +886,13 @@ MODRET pw_check(cmd_rec *cmd) {
   cmd_rec *cmd2 = NULL;
   char *crypted_text = NULL;
 
-#ifdef PR_USE_SIA
+#if defined(PR_USE_SIA)
   SIAENTITY *ent = NULL;
   int res = SIASUCCESS;
   char *info[2];
   struct passwd *pwd;
   char *user = NULL;
-#endif
+#endif /* PR_USE_SIA */
 
   cpw = cmd->argv[0];
   pw = cmd->argv[2];
@@ -895,7 +903,7 @@ MODRET pw_check(cmd_rec *cmd) {
     return PR_DECLINED(cmd);
   }
 
-#ifdef COMSEC
+#if defined(COMSEC)
   if (iscomsec()) {
     if (strcmp(bigcrypt((char *) pw, (char *) cpw), cpw) != 0) {
       return PR_DECLINED(cmd);
@@ -904,7 +912,7 @@ MODRET pw_check(cmd_rec *cmd) {
   } else {
 #endif /* COMSEC */
 
-#ifdef PR_USE_SIA
+#if defined(PR_USE_SIA)
   /* Use Tru64's C2 SIA subsystem for authenticating this user. */
   user = cmd->argv[1];
 
@@ -921,7 +929,6 @@ MODRET pw_check(cmd_rec *cmd) {
       user);
 
   } else {
-
     res = sia_ses_authent(NULL, pw, ent);
     if (res != SIASUCCESS) {
       sia_ses_release(&ent);
@@ -951,10 +958,9 @@ MODRET pw_check(cmd_rec *cmd) {
   if (res != SIASUCCESS) {
     return PR_DECLINED(cmd);
   }
+#else /* PR_USE_SIA */
 
-#else /* !PR_USE_SIA */
-
-# ifdef CYGWIN
+# if defined(CYGWIN)
   /* We have to do special Windows NT voodoo with Cygwin in order to be
    * able to switch UID/GID. More info at
    * http://cygwin.com/cygwin-ug-net/ntsec.html#NTSEC-SETUID
@@ -998,7 +1004,7 @@ MODRET pw_check(cmd_rec *cmd) {
   } else {
 # endif /* CYGWIN */
 
-#ifdef HAVE_AUTHENTICATE
+#if defined(HAVE_AUTHENTICATE)
   if (!(auth_unix_opts & AUTH_UNIX_OPT_AIX_NO_AUTHENTICATE)) {
     int res, xerrno, reenter = 0;
     char *user, *passwd, *msg = NULL;
@@ -1081,13 +1087,11 @@ MODRET pw_check(cmd_rec *cmd) {
     return PR_DECLINED(cmd);
   }
 
-# ifdef CYGWIN
+# if defined(CYGWIN)
   }
 # endif /* CYGWIN */
-
 #endif /* PR_USE_SIA */
-
-#ifdef COMSEC
+#if defined(COMSEC)
   }
 #endif /* COMSEC */
 
@@ -1108,7 +1112,7 @@ MODRET pw_uid2name(cmd_rec *cmd) {
     pw = getpwuid(uid);
   }
 
-  if (pw) {
+  if (pw != NULL) {
     return mod_create_data(cmd, pw->pw_name);
   }
 
@@ -1127,7 +1131,7 @@ MODRET pw_gid2name(cmd_rec *cmd) {
     gr = getgrgid(gid);
   }
 
-  if (gr) {
+  if (gr != NULL) {
     return mod_create_data(cmd, gr->gr_name);
   }
 
@@ -1170,7 +1174,7 @@ static int get_groups_by_getgrset(const char *user, gid_t primary_gid,
     array_header *gids, array_header *groups,
     struct group *(*my_getgrgid)(gid_t)) {
   int res;
-#ifdef HAVE_GETGRSET
+#if defined(HAVE_GETGRSET)
   gid_t group_ids[NGROUPS_MAX];
   unsigned int ngroups = 0;
   register unsigned int i;
@@ -1240,7 +1244,6 @@ static int get_groups_by_getgrset(const char *user, gid_t primary_gid,
 
   free(ptr);
   res = 0;
-
 #else
   errno = ENOSYS;
   res = -1;
@@ -1253,7 +1256,7 @@ static int get_groups_by_getgrouplist(const char *user, gid_t primary_gid,
     array_header *gids, array_header *groups,
     struct group *(*my_getgrgid)(gid_t)) {
   int res;
-#ifdef HAVE_GETGROUPLIST
+#if defined(HAVE_GETGROUPLIST)
   int use_getgrouplist = TRUE;
   gid_t group_ids[NGROUPS_MAX];
   int ngroups = NGROUPS_MAX;
@@ -1288,11 +1291,11 @@ static int get_groups_by_getgrouplist(const char *user, gid_t primary_gid,
     "using getgrouplist(3) to look up group membership");
 
   memset(group_ids, 0, sizeof(group_ids));
-#ifdef HAVE_GETGROUPLIST_TAKES_INTS
+#if defined(HAVE_GETGROUPLIST_TAKES_INTS)
   res = getgrouplist(user, primary_gid, (int *) group_ids, &ngroups);
 #else
   res = getgrouplist(user, primary_gid, group_ids, &ngroups);
-#endif
+#endif /* HAVE_GETGROUPLIST_TAKES_INTS */
   if (res < 0) {
     int xerrno = errno;
 
@@ -1457,7 +1460,6 @@ static int get_groups_by_initgroups(const char *user, gid_t primary_gid,
   }
 
   res = 0;
-
 #else
   errno = ENOSYS;
   res = -1;
@@ -1655,10 +1657,9 @@ static void auth_unix_sess_reinit_ev(const void *event_data, void *user_data) {
  */
 
 static int auth_unix_init(void) {
-
-#ifdef HAVE__PW_STAYOPEN
+#if defined(HAVE__PW_STAYOPEN)
   _pw_stayopen = 1;
-#endif
+#endif /* HAVE__PW_STAYOPEN */
 
   return 0;
 }

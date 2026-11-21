@@ -36,29 +36,29 @@
 #include "conf.h"
 #include "privs.h"
 
-#ifdef HAVE_PAM
+#if defined(HAVE_PAM)
 
 #define MOD_AUTH_PAM_VERSION		"mod_auth_pam/1.2"
 
-#ifdef HAVE_SECURITY_PAM_APPL_H
-# ifdef HPUX11
-#  ifndef COMSEC
+#if defined(HAVE_SECURITY_PAM_APPL_H)
+# if defined(HPUX11)
+#  if !defined(COMSEC)
 #    define COMSEC 1
-#  endif
+#  endif /* COMSEC */
 # endif /* HPUX11 */
 # include <security/pam_appl.h>
 #endif /* HAVE_SECURITY_PAM_APPL_H */
 
-#ifdef HAVE_SECURITY_PAM_MODULES_H
+#if defined(HAVE_SECURITY_PAM_MODULES_H)
 # include <security/pam_modules.h>
 #endif /* HAVE_SECURITY_PAM_MODULES_H */
 
 /* Needed for the MAXLOGNAME restriction. */
-#ifdef HAVE_SYS_PARAM_H
+#if defined(HAVE_SYS_PARAM_H)
 # include <sys/param.h>
-#endif
+#endif /* HAVE_SYS_PARAM_H */
 
-#ifdef HAVE_PAM_PAM_APPL_H
+#if defined(HAVE_PAM_PAM_APPL_H)
 #include <pam/pam_appl.h>
 #endif /* HAVE_PAM_PAM_APPL_H */
 
@@ -82,11 +82,11 @@ static const char *trace_channel = "auth.pam";
  * const, but on Solaris, it isn't.  To avoid compiler warnings about
  * incompatible pointer types, we need to use const or not as appropriate.
  */
-#ifndef SOLARIS2
+#if !defined(SOLARIS2)
 # define PR_PAM_CONST	const
 #else
 # define PR_PAM_CONST
-#endif
+#endif /* SOLARIS2 */
 
 static int pam_exchange(int num_msg, PR_PAM_CONST struct pam_message **msg,
     struct pam_response **resp, void *appdata_ptr) {
@@ -127,7 +127,7 @@ static int pam_exchange(int num_msg, PR_PAM_CONST struct pam_message **msg,
 
     case PAM_TEXT_INFO:
     case PAM_ERROR_MSG:
-#ifdef PAM_RADIO_TYPE
+#if defined(PAM_RADIO_TYPE)
     case PAM_RADIO_TYPE:
 #endif /* PAM_RADIO_TYPE */
       pr_trace_msg(trace_channel, 9, "received %s response: %s",
@@ -139,7 +139,7 @@ static int pam_exchange(int num_msg, PR_PAM_CONST struct pam_message **msg,
       response[i].resp = NULL;
       break;
 
-#ifdef PAM_BINARY_PROMPT
+#if defined(PAM_BINARY_PROMPT)
     case PAM_BINARY_PROMPT:
       pr_trace_msg(trace_channel, 9, "received PAM_BINARY_PROMPT response");
 
@@ -200,11 +200,11 @@ static void auth_pam_exit_ev(const void *event_data, void *user_data) {
   /* Give up our credentials, close our session, and finally close out this
    * instance of PAM authentication.
    */
-#ifdef PAM_CRED_DELETE
+#if defined(PAM_CRED_DELETE)
   res = pam_setcred(pamh, PAM_CRED_DELETE);
 #else
   res = pam_setcred(pamh, PAM_DELETE_CRED);
-#endif /* !PAM_CRED_DELETE */
+#endif /* PAM_CRED_DELETE */
   if (res != PAM_SUCCESS) {
     pr_trace_msg(trace_channel, 1,
       "error setting PAM_DELETE_CRED credential: %s", pam_strerror(pamh, res));
@@ -277,7 +277,7 @@ MODRET pam_auth(cmd_rec *cmd) {
     pam_user_len = PAM_MAX_MSG_SIZE + 1;
   }
 
-#ifdef MAXLOGNAME
+#if defined(MAXLOGNAME)
   /* Some platforms' PAM libraries do not handle login strings that
    * exceed this length.
    */
@@ -290,7 +290,7 @@ MODRET pam_auth(cmd_rec *cmd) {
       (char *) cmd->argv[0], MAXLOGNAME);
     return PR_DECLINED(cmd);
   }
-#endif
+#endif /* MAXLOGNAME */
   pam_user = malloc(pam_user_len);
   if (pam_user == NULL) {
     return pam_authoritative ? PR_ERROR(cmd) : PR_DECLINED(cmd);
@@ -331,7 +331,7 @@ MODRET pam_auth(cmd_rec *cmd) {
     auth_pam_opts = *((unsigned long *) c->argv[0]);
   }
 
-#ifdef SOLARIS2
+#if defined(SOLARIS2)
   /* For Solaris environments, the TTY environment will always be set,
    * in order to workaround a bug (Solaris Bug ID 4250887) where
    * pam_open_session() will crash unless both PAM_RHOST and PAM_TTY are
@@ -406,19 +406,19 @@ MODRET pam_auth(cmd_rec *cmd) {
         retval = PR_AUTH_NOPWD;
         break;
 
-#ifdef PAM_CRED_INSUFFICIENT
+#if defined(PAM_CRED_INSUFFICIENT)
       case PAM_CRED_INSUFFICIENT:
         retval = PR_AUTH_CRED_INSUFFICIENT;
         break;
 #endif /* PAM_CRED_INSUFFICIENT */
 
-#ifdef PAM_AUTHINFO_UNAVAIL
+#if defined(PAM_AUTHINFO_UNAVAIL)
       case PAM_AUTHINFO_UNAVAIL:
         retval = PR_AUTH_INFO_UNAVAIL;
         break;
 #endif /* PAM_AUTHINFO_UNAVAIL */
 
-#ifdef PAM_MAXTRIES
+#if defined(PAM_MAXTRIES)
       case PAM_MAXTRIES:
         retval = PR_AUTH_MAX_ATTEMPTS_EXCEEDED;
         break;
@@ -443,7 +443,7 @@ MODRET pam_auth(cmd_rec *cmd) {
   res = pam_acct_mgmt(pamh, PAM_SILENT);
   if (res != PAM_SUCCESS) {
     switch (res) {
-#ifdef PAM_AUTHTOKEN_REQD
+#if defined(PAM_AUTHTOKEN_REQD)
       case PAM_AUTHTOKEN_REQD:
         pr_trace_msg(trace_channel, 8,
           "account mgmt error: PAM_AUTHTOKEN_REQD");
@@ -451,7 +451,7 @@ MODRET pam_auth(cmd_rec *cmd) {
         break;
 #endif /* PAM_AUTHTOKEN_REQD */
 
-#ifdef PAM_NEW_AUTHTOKEN_REQD
+#if defined(PAM_NEW_AUTHTOKEN_REQD)
       case PAM_NEW_AUTHTOKEN_REQD:
         pr_trace_msg(trace_channel, 8,
           "account mgmt error: PAM_NEW_AUTHTOKEN_REQD");
@@ -464,7 +464,7 @@ MODRET pam_auth(cmd_rec *cmd) {
         retval = PR_AUTH_DISABLEDPWD;
         break;
 
-#ifdef PAM_ACCT_DISABLED
+#if defined(PAM_ACCT_DISABLED)
       case PAM_ACCT_DISABLED:
         pr_trace_msg(trace_channel, 8, "account mgmt error: PAM_ACCT_DISABLED");
         retval = PR_AUTH_DISABLEDPWD;
@@ -508,22 +508,22 @@ MODRET pam_auth(cmd_rec *cmd) {
   }
 
   /* Finally, establish credentials. */
-#ifdef PAM_CRED_ESTABLISH
+#if defined(PAM_CRED_ESTABLISH)
   res = pam_setcred(pamh, PAM_CRED_ESTABLISH);
 #else
   res = pam_setcred(pamh, PAM_ESTABLISH_CRED);
-#endif /* !PAM_CRED_ESTABLISH */
+#endif /* PAM_CRED_ESTABLISH */
 
   if (res != PAM_SUCCESS) {
     switch (res) {
-#ifdef PAM_CRED_UNAVAIL
+#if defined(PAM_CRED_UNAVAIL)
       case PAM_CRED_UNAVAIL:
         pr_trace_msg(trace_channel, 8, "credentials error: PAM_CRED_UNAVAIL");
         retval = PR_AUTH_CRED_UNAVAIL;
         break;
 #endif /* PAM_CRED_UNAVAIL */
 
-#ifdef PAM_CRED_ERR
+#if defined(PAM_CRED_ERR)
       case PAM_CRED_ERR:
         pr_trace_msg(trace_channel, 8, "credentials error: PAM_CRED_ERR");
         retval = PR_AUTH_CRED_ERROR;
@@ -711,5 +711,4 @@ module auth_pam_module = {
   /* Module version */
   MOD_AUTH_PAM_VERSION
 };
-
 #endif /* HAVE_PAM */
