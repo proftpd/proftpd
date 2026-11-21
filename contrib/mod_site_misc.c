@@ -130,6 +130,16 @@ static int site_misc_create_path(pool *p, const char *path) {
     cmd->cmd_class = CL_DIRS|CL_WRITE;
 
     res = pr_cmd_dispatch_phase(cmd, PRE_CMD, 0);
+
+    /* Honor <Limit MKD> for each directory we create, as core_mkd() does. */
+    pr_fs_clear_cache2(curr_path);
+    if (res == 0 &&
+        pr_fsio_lstat(curr_path, &st) < 0 &&
+        !dir_check(sub_pool, cmd, G_WRITE, curr_path, NULL)) {
+      errno = EACCES;
+      res = -1;
+    }
+
     if (res < 0) {
       int xerrno = errno;
 
@@ -234,6 +244,13 @@ static int site_misc_delete_dir(pool *p, const char *dir) {
       res = pr_cmd_dispatch_phase(cmd, PRE_CMD, 0);
       xerrno = errno;
 
+      /* Honor <Limit DELE> for each file, as core_dele() does. */
+      if (res == 0 &&
+          !dir_check(sub_pool, cmd, G_WRITE, file, NULL)) {
+        res = -1;
+        xerrno = EACCES;
+      }
+
       if (res < 0) {
         pr_log_debug(DEBUG3, MOD_SITE_MISC_VERSION
           ": deleting file '%s' blocked by DELE handler: %s", file,
@@ -288,6 +305,13 @@ static int site_misc_delete_dir(pool *p, const char *dir) {
   pr_response_block(TRUE);
   res = pr_cmd_dispatch_phase(cmd, PRE_CMD, 0);
   xerrno = errno;
+
+  /* Honor <Limit RMD> for each directory, as core_rmd() does. */
+  if (res == 0 &&
+      !dir_check(sub_pool, cmd, G_WRITE, dir, NULL)) {
+    res = -1;
+    xerrno = EACCES;
+  }
 
   if (res < 0) {
     pr_log_debug(DEBUG3, MOD_SITE_MISC_VERSION
