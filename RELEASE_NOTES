@@ -14,6 +14,10 @@ ChangeLog files.
     disclosure.  For similar concerns, the GroupOwner and StoreUniquePrefix
     directives are no longer allowed in .ftpaccess files.
 
+  + Display files configured with relative paths will no longer have
+    environment variables resolved in them using %{env:...} syntax, to
+    mitigate possible sensitive environment variable disclosure.
+
 
 1.3.10rc6
 ----------

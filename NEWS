@@ -23,6 +23,8 @@
   with defaults, causing segfaults.
 - Issue 2490 - Some directives in .ftpaccess files can be used to leak
   possibly sensitive environment variable values.
+- Issue 2492 - Display files configured using relative paths can be used to
+  leak possibly sensitive environment variable values.
 
 1.3.10rc6 - Released 18-Nov-2026
 --------------------------------

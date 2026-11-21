@@ -49,6 +49,16 @@ my $TESTS = {
     test_class => [qw(bug forking rootprivs)],
   },
 
+  displaychdir_abs_path_env_var_issue2492 => {
+    order => ++$order,
+    test_class => [qw(bug forking)],
+  },
+
+  displaychdir_rel_path_env_var_issue2492 => {
+    order => ++$order,
+    test_class => [qw(bug forking)],
+  },
+
 };
 
 sub new {
@@ -543,7 +553,7 @@ sub displaychdir_abs_path_issue1688 {
   server_stop($setup->{pid_file});
   $self->assert_child_ok($pid);
 
-  test_cleanup($setup->{log_file}, $ex);
+  test_cleanup($setup, $ex);
 }
 
 sub displaychdir_abs_path_chrooted_issue1688 {
@@ -802,6 +812,272 @@ sub displaychdir_first_chdir_abs_path_chrooted_issue1688 {
   $self->assert_child_ok($pid);
 
   test_cleanup($setup->{log_file}, $ex);
+}
+
+sub displaychdir_abs_path_env_var_issue2492 {
+  my $self = shift;
+  my $tmpdir = $self->{tmpdir};
+  my $setup = test_setup($tmpdir, 'config');
+
+  my $sub_dir = File::Spec->rel2abs("$setup->{home_dir}/subdir");
+  mkpath($sub_dir);
+
+  # Make sure that, if we're running as root, that the test directory has
+  # permissions/privs set for the account we create
+  if ($< == 0) {
+    unless (chmod(0755, $sub_dir)) {
+      die("Can't set perms on $sub_dir to 0755: $!");
+    }
+
+    unless (chown($setup->{uid}, $setup->{gid}, $sub_dir)) {
+      die("Can't set owner of $sub_dir to $setup->{uid}/$setup->{gid}: $!");
+    }
+  }
+
+  # The Display file should contain:
+  #
+  #  "See: %{env:FOO_TEST}"
+  #
+  # If we see the value of that FOO_TEST environment variable value in the
+  # text, it could be the bug.  (But for absolute paths, we'll allow it,
+  # for now.)
+
+  my $env_key = 'FOO_TEST';
+  my $env_val = 'BAR_BAZ';
+
+  my $display_file = File::Spec->rel2abs("$sub_dir/display.txt");
+  if (open(my $fh, "> $display_file")) {
+    print $fh "See: %{env:$env_key}\n";
+
+    unless (close($fh)) {
+      die("Unable to write $display_file: $!");
+    }
+
+  } else {
+    die("Unable to open $display_file: $!");
+  }
+
+  my $config = {
+    PidFile => $setup->{pid_file},
+    ScoreboardFile => $setup->{scoreboard_file},
+    SystemLog => $setup->{log_file},
+
+    AuthUserFile => $setup->{auth_user_file},
+    AuthGroupFile => $setup->{auth_group_file},
+    AuthOrder => 'mod_auth_file.c',
+
+    DisplayChdir => $display_file,
+    SetEnv => "$env_key $env_val",
+
+    IfModules => {
+      'mod_delay.c' => {
+        DelayEngine => 'off',
+      },
+    },
+  };
+
+  my ($port, $config_user, $config_group) = config_write($setup->{config_file},
+    $config);
+
+  # Open pipes, for use between the parent and child processes.  Specifically,
+  # the child will indicate when it's done with its test by writing a message
+  # to the parent.
+  my ($rfh, $wfh);
+  unless (pipe($rfh, $wfh)) {
+    die("Can't open pipe: $!");
+  }
+
+  my $ex;
+
+  # Fork child
+  $self->handle_sigchld();
+  defined(my $pid = fork()) or die("Can't fork: $!");
+  if ($pid) {
+    eval {
+      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
+      $client->login($setup->{user}, $setup->{passwd});
+
+      $client->cwd('subdir');
+
+      my $resp_code = $client->response_code();
+      my $resp_msg = $client->response_msg(0);
+
+      my $expected = 250;
+      $self->assert($expected == $resp_code,
+        test_msg("Expected response code $expected, got $resp_code"));
+
+      $expected = "See: $env_val";
+      $self->assert($expected eq $resp_msg,
+        test_msg("Expected response message '$expected', got '$resp_msg'"));
+
+      $client->quit();
+
+      $resp_code = $client->response_code();
+      $resp_msg = $client->response_msg();
+
+      $expected = 221;
+      $self->assert($expected == $resp_code,
+        test_msg("Expected response code $expected, got $resp_code"));
+
+      $expected = "Goodbye.";
+      $self->assert($expected eq $resp_msg,
+        test_msg("Expected response message '$expected', got '$resp_msg'"));
+    };
+    if ($@) {
+      $ex = $@;
+    }
+
+    $wfh->print("done\n");
+    $wfh->flush();
+
+  } else {
+    eval { server_wait($setup->{config_file}, $rfh) };
+    if ($@) {
+      warn($@);
+      exit 1;
+    }
+
+    exit 0;
+  }
+
+  # Stop server
+  server_stop($setup->{pid_file});
+  $self->assert_child_ok($pid);
+
+  test_cleanup($setup, $ex);
+}
+
+sub displaychdir_rel_path_env_var_issue2492 {
+  my $self = shift;
+  my $tmpdir = $self->{tmpdir};
+  my $setup = test_setup($tmpdir, 'config');
+
+  my $sub_dir = File::Spec->rel2abs("$setup->{home_dir}/subdir");
+  mkpath($sub_dir);
+
+  # Make sure that, if we're running as root, that the test directory has
+  # permissions/privs set for the account we create
+  if ($< == 0) {
+    unless (chmod(0755, $sub_dir)) {
+      die("Can't set perms on $sub_dir to 0755: $!");
+    }
+
+    unless (chown($setup->{uid}, $setup->{gid}, $sub_dir)) {
+      die("Can't set owner of $sub_dir to $setup->{uid}/$setup->{gid}: $!");
+    }
+  }
+
+  # The Display file should contain:
+  #
+  #  "See: %{env:FOO_TEST}"
+  #
+  # If we see the value of that FOO_TEST environment variable value in the
+  # text, it is the bug.
+
+  my $env_key = 'FOO_TEST';
+  my $env_val = 'BAR_BAZ';
+
+  my $display_file = 'display.txt';
+  my $display_path = File::Spec->rel2abs("$sub_dir/$display_file");
+  if (open(my $fh, "> $display_path")) {
+    print $fh "See: %{env:$env_key}\n";
+
+    unless (close($fh)) {
+      die("Unable to write $display_path: $!");
+    }
+
+  } else {
+    die("Unable to open $display_path: $!");
+  }
+
+  my $config = {
+    PidFile => $setup->{pid_file},
+    ScoreboardFile => $setup->{scoreboard_file},
+    SystemLog => $setup->{log_file},
+
+    AuthUserFile => $setup->{auth_user_file},
+    AuthGroupFile => $setup->{auth_group_file},
+    AuthOrder => 'mod_auth_file.c',
+
+    DisplayChdir => $display_file,
+    SetEnv => "$env_key $env_val",
+
+    IfModules => {
+      'mod_delay.c' => {
+        DelayEngine => 'off',
+      },
+    },
+  };
+
+  my ($port, $config_user, $config_group) = config_write($setup->{config_file},
+    $config);
+
+  # Open pipes, for use between the parent and child processes.  Specifically,
+  # the child will indicate when it's done with its test by writing a message
+  # to the parent.
+  my ($rfh, $wfh);
+  unless (pipe($rfh, $wfh)) {
+    die("Can't open pipe: $!");
+  }
+
+  my $ex;
+
+  # Fork child
+  $self->handle_sigchld();
+  defined(my $pid = fork()) or die("Can't fork: $!");
+  if ($pid) {
+    eval {
+      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
+      $client->login($setup->{user}, $setup->{passwd});
+
+      $client->cwd('subdir');
+
+      my $resp_code = $client->response_code();
+      my $resp_msg = $client->response_msg(0);
+
+      my $expected = 250;
+      $self->assert($expected == $resp_code,
+        test_msg("Expected response code $expected, got $resp_code"));
+
+      $expected = 'See: (none)';
+      $self->assert($expected eq $resp_msg,
+        test_msg("Expected response message '$expected', got '$resp_msg'"));
+
+      $client->quit();
+
+      $resp_code = $client->response_code();
+      $resp_msg = $client->response_msg();
+
+      $expected = 221;
+      $self->assert($expected == $resp_code,
+        test_msg("Expected response code $expected, got $resp_code"));
+
+      $expected = "Goodbye.";
+      $self->assert($expected eq $resp_msg,
+        test_msg("Expected response message '$expected', got '$resp_msg'"));
+    };
+    if ($@) {
+      $ex = $@;
+    }
+
+    $wfh->print("done\n");
+    $wfh->flush();
+
+  } else {
+    eval { server_wait($setup->{config_file}, $rfh) };
+    if ($@) {
+      warn($@);
+      exit 1;
+    }
+
+    exit 0;
+  }
+
+  # Stop server
+  server_stop($setup->{pid_file});
+  $self->assert_child_ok($pid);
+
+  test_cleanup($setup, $ex);
 }
 
 1;
