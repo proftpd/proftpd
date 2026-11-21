@@ -34,13 +34,18 @@ struct fh_rec;
  * multiline file as just another line; the response will be terminated
  * properly by the calling code.
  */
-#define PR_DISPLAY_FL_NO_EOM	0x0001
+#define PR_DISPLAY_FL_NO_EOM		0x0001
 
 /* This flag should be used to tell the pr_display_file() function to send
  * the file lines immediately via pr_response_send(), rather than queueing
  * up the lines, to be flushed out to the client later.
  */
-#define PR_DISPLAY_FL_SEND_NOW	0x0002
+#define PR_DISPLAY_FL_SEND_NOW		0x0002
+
+/* This flag should be to used to tell the pr_display_file() function to
+ * skip/ignore any environment variable substitution.
+ */
+#define PR_DISPLAY_FL_NO_ENV_VAR	0x0004
 
 /* Used to read the file handle given by fh, located on the filesystem fs, and
  * return the results, with variables expanded, to the client, using the

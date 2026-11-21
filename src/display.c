@@ -355,15 +355,22 @@ static int display_fh(pr_fh_t *fh, const char *fs, const char *resp_code,
         val = pstrdup(p, time_str);
 
       } else if (strncmp(key, "%{env:", 6) == 0) {
-        char *env_var;
-
-        env_var = pstrndup(p, key + 6, strlen(key) - 7);
-        val = pr_env_get(p, env_var);
-        if (val == NULL) {
-          pr_trace_msg("var", 4,
-            "no value set for environment variable '%s', using \"(none)\"",
-            env_var);
+        if (flags & PR_DISPLAY_FL_NO_ENV_VAR) {
+          pr_trace_msg("var", 4, "%s",
+            "environment variables disabled, using \"(none)\"");
           val = "(none)";
+
+        } else {
+          char *env_var;
+
+          env_var = pstrndup(p, key + 6, strlen(key) - 7);
+          val = pr_env_get(p, env_var);
+          if (val == NULL) {
+            pr_trace_msg("var", 4,
+              "no value set for environment variable '%s', using \"(none)\"",
+              env_var);
+            val = "(none)";
+          }
         }
 
       } else {
@@ -438,6 +445,13 @@ int pr_display_fh(pr_fh_t *fh, const char *fs, const char *resp_code,
     return -1;
   }
 
+  /* Per Issue #2492, if the file in question is a relative path, we disable
+   * support for resolving environment variables.
+   */
+  if (*(fh->fh_path) != '/') {
+    flags |= PR_DISPLAY_FL_NO_ENV_VAR;
+  }
+
   return display_fh(fh, fs, resp_code, flags);
 }
 
@@ -488,6 +502,15 @@ int pr_display_file(const char *path, const char *fs, const char *resp_code,
     return -1;
   }
 
+  /* Per Issue #2492, if the file in question is a relative path, we disable
+   * support for resolving environment variables.
+   */
+  if (*path != '/') {
+    flags |= PR_DISPLAY_FL_NO_ENV_VAR;
+  }
+
+  pr_trace_msg(trace_channel, 19,
+    "displaying '%s' with response code %s, flags %d", path, resp_code, flags);
   res = display_fh(fh, fs, resp_code, flags);
   xerrno = errno;
 
