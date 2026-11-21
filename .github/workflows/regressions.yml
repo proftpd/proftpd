@@ -102,6 +102,7 @@ jobs:
           # for integration/regression tests
           apt-get install -y --no-install-recommends \
             libauthen-oath-perl \
+            libcache-memcached-perl \
             libcompress-raw-zlib-perl \
             libdata-dumper-simple-perl \
             libdatetime-perl \
