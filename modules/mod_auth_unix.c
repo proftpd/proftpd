@@ -935,7 +935,7 @@ MODRET pw_check(cmd_rec *cmd) {
       PRIVS_RELINQUISH
       pr_log_auth(PR_LOG_NOTICE, "sia_ses_authent() returned %d for user '%s'",
         res, user);
-      return PR_ERROR(cmd);
+      return PR_ERROR_INT(cmd, PR_AUTH_ERROR);
     }
 
     res = sia_ses_estab(NULL, ent);
@@ -943,14 +943,14 @@ MODRET pw_check(cmd_rec *cmd) {
       PRIVS_RELINQUISH
       pr_log_auth(PR_LOG_NOTICE, "sia_ses_estab() returned %d for user '%s'",
         res, user);
-      return PR_ERROR(cmd);
+      return PR_ERROR_INT(cmd, PR_AUTH_ERROR);
     }
 
     res = sia_ses_release(&ent);
     if (res != SIASUCCESS) {
       PRIVS_RELINQUISH
       pr_log_auth(PR_LOG_NOTICE, "sia_ses_release() returned %d", res);
-      return PR_ERROR(cmd);
+      return PR_ERROR_INT(cmd, PR_AUTH_ERROR);
     }
   }
   PRIVS_RELINQUISH

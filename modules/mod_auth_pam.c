@@ -268,7 +268,11 @@ MODRET pam_auth(cmd_rec *cmd) {
 
   /* Just in case... */
   if (cmd->argc != 2) {
-    return pam_authoritative ? PR_ERROR(cmd) : PR_DECLINED(cmd);
+    if (pam_authoritative == TRUE) {
+      return PR_ERROR_INT(cmd, PR_AUTH_ERROR);
+    }
+
+    return PR_DECLINED(cmd);
   }
 
   /* Allocate our entries; we free these up at the end of the authentication. */
@@ -293,7 +297,11 @@ MODRET pam_auth(cmd_rec *cmd) {
 #endif /* MAXLOGNAME */
   pam_user = malloc(pam_user_len);
   if (pam_user == NULL) {
-    return pam_authoritative ? PR_ERROR(cmd) : PR_DECLINED(cmd);
+    if (pam_authoritative == TRUE) {
+      return PR_ERROR_INT(cmd, PR_AUTH_ERROR);
+    }
+
+    return PR_DECLINED(cmd);
   }
 
   sstrncpy(pam_user, cmd->argv[0], pam_user_len);
@@ -310,7 +318,12 @@ MODRET pam_auth(cmd_rec *cmd) {
     pam_user = NULL;
     pam_user_len = 0;
     pam_pass_len = 0;
-    return pam_authoritative ? PR_ERROR(cmd) : PR_DECLINED(cmd);
+
+    if (pam_authoritative == TRUE) {
+      return PR_ERROR_INT(cmd, PR_AUTH_ERROR);
+    }
+
+    return PR_DECLINED(cmd);
   }
 
   sstrncpy(pam_pass, cmd->argv[1], pam_pass_len);
@@ -587,7 +600,11 @@ MODRET pam_auth(cmd_rec *cmd) {
       pam_user_len = 0;
     }
 
-    return pam_authoritative ? PR_ERROR_INT(cmd, retval) : PR_DECLINED(cmd);
+    if (pam_authoritative == TRUE) {
+      return PR_ERROR_INT(cmd, retval);
+    }
+
+    return PR_DECLINED(cmd);
   }
 
   session.auth_mech = "mod_auth_pam.c";

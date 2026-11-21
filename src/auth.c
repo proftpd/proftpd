@@ -982,6 +982,16 @@ int pr_auth_authenticate(pool *p, const char *name, const char *pw) {
             "module '%s' used for authenticating user '%s'", elt->name, name);
 
           res = MODRET_ERROR(mr);
+          if (res > 0) {
+            /* We KNOW that an error was returned, so make sure that this
+             * auth value is appropriately an error (Issue #2497).
+             */
+            pr_trace_msg(trace_channel, 4,
+              "module '%s' provided unwise error value (%d %s) when "
+              "authenticating user '%s', using %s instead", elt->name, res,
+              get_authcode_str(res), name, get_authcode_str(PR_AUTH_ERROR));
+            res = PR_AUTH_ERROR;
+          }
 
           if (cmd->tmp_pool) {
             destroy_pool(cmd->tmp_pool);
@@ -1023,6 +1033,17 @@ int pr_auth_authenticate(pool *p, const char *name, const char *pw) {
 
   } else if (MODRET_ISERROR(mr)) {
     res = MODRET_ERROR(mr);
+    if (res > 0) {
+      /* We KNOW that an error was returned, so make sure that this auth
+       * value is appropriately an error (Issue #2497).
+       */
+      pr_trace_msg(trace_channel, 9,
+        "obtained unwise error value (%d %s) when authenticating user '%s', "
+        "using %s instead", res, get_authcode_str(res), name,
+        get_authcode_str(PR_AUTH_ERROR));
+      res = PR_AUTH_ERROR;
+    }
+
     pr_trace_msg(trace_channel, 9,
       "obtained ERROR (%s) for authenticating user '%s'", get_authcode_str(res),
       name);
@@ -1075,6 +1096,17 @@ int pr_auth_authorize(pool *p, const char *name) {
 
   if (MODRET_ISERROR(mr)) {
     res = MODRET_ERROR(mr);
+    if (res > 0) {
+      /* We KNOW that an error was returned, so make sure that this auth
+       * value is appropriately an error (Issue #2497).
+       */
+      pr_trace_msg(trace_channel, 9,
+        "obtained unwise error value (%d %s) when authorizing user '%s', "
+        "using %s instead", res, get_authcode_str(res), name,
+        get_authcode_str(PR_AUTH_ERROR));
+      res = PR_AUTH_ERROR;
+    }
+
     pr_trace_msg(trace_channel, 9,
       "obtained ERROR (%s) for authorizing user '%s'", get_authcode_str(res),
       name);
@@ -1151,6 +1183,16 @@ int pr_auth_check(pool *p, const char *ciphertext_passwd, const char *name,
 
         if (MODRET_ISERROR(mr)) {
           res = MODRET_ERROR(mr);
+          if (res > 0) {
+            /* We KNOW that an error was returned, so make sure that this auth
+             * value is appropriately an error (Issue #2497).
+             */
+            pr_trace_msg(trace_channel, 9,
+              "module '%s' returned unwise error value (%d %s) when checking "
+              "user '%s', using %s instead", elt->name, res,
+              get_authcode_str(res), name, get_authcode_str(PR_AUTH_ERROR));
+            res = PR_AUTH_ERROR;
+          }
 
           if (cmd->tmp_pool != NULL) {
             destroy_pool(cmd->tmp_pool);
@@ -1189,6 +1231,15 @@ int pr_auth_check(pool *p, const char *ciphertext_passwd, const char *name,
     pr_trace_msg(trace_channel, 9,
       "obtained HANDLED (%s) for checking user '%s'", get_authcode_str(res),
       name);
+
+  } else if (MODRET_ISERROR(mr)) {
+    int err_code;
+
+    err_code = MODRET_ERROR(mr);
+    pr_trace_msg(trace_channel, 9,
+      "obtained ERROR (%d %s) for checking user '%s', returning "
+      "default ERROR (%d %s)", err_code, get_authcode_str(err_code), name,
+      res, get_authcode_str(res));
   }
 
   if (cmd->tmp_pool != NULL) {
@@ -1218,6 +1269,16 @@ int pr_auth_requires_pass(pool *p, const char *name) {
 
   } else if (MODRET_ISERROR(mr)) {
     res = MODRET_ERROR(mr);
+    if (res != TRUE) {
+      /* We KNOW that an error was returned, so make sure this properly
+       * returns TRUE, regardless of the error value, which could be
+       * negative (Issue #2497).
+       */
+      pr_trace_msg(trace_channel, 9,
+        "obtained unwise error value (%d %s) when password requirements for "
+        "user '%s', using TRUE instead", res, get_authcode_str(res), name);
+      res = TRUE;
+    }
   }
 
   if (cmd->tmp_pool) {
