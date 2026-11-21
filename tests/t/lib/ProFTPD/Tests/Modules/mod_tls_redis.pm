@@ -97,7 +97,10 @@ sub tls_sess_cache_redis {
   my $tmpdir = $self->{tmpdir};
   my $setup = test_setup($tmpdir, 'tls_redis');
 
-  my $redis_server = $ENV{REDIS_SERVER} ? $ENV{REDIS_SERVER} : '127.0.0.1:6379';
+  my $redis_server = '127.0.0.1:6379';
+  if (defined($ENV{REDIS_SERVER})) {
+    $redis_server = $ENV{REDIS_SERVER};
+  }
 
   my $cert_file = File::Spec->rel2abs('t/etc/modules/mod_tls/server-cert.pem');
   my $ca_file = File::Spec->rel2abs('t/etc/modules/mod_tls/ca-cert.pem');
@@ -415,7 +418,10 @@ sub tls_stapling_on_redis {
   my $tmpdir = $self->{tmpdir};
   my $setup = test_setup($tmpdir, 'tls_redis');
 
-  my $redis_server = $ENV{REDIS_SERVER} ? $ENV{REDIS_SERVER} : '127.0.0.1:6379';
+  my $redis_server = '127.0.0.1:6379';
+  if (defined($ENV{REDIS_SERVER})) {
+    $redis_server = $ENV{REDIS_SERVER};
+  }
 
   my $cert_file = File::Spec->rel2abs('t/etc/modules/mod_tls/server-cert.pem');
   my $ca_file = File::Spec->rel2abs('t/etc/modules/mod_tls/ca-cert.pem');
@@ -481,6 +487,12 @@ sub tls_stapling_on_redis {
     eval {
       # Give the server a chance to start up
       sleep(2);
+
+      # Suppress annoying warning from IO::Socket::SSL.
+      local $SIG{__WARN__} = sub {
+        my $msg = shift;
+        warn $msg unless $msg =~ /^Use of uninitialized value.*at .*IO\/Socket\/SSL\.pm/;
+      };
 
       # Manually simulate the STARTTLS protocol
 

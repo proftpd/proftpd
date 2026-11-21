@@ -259,7 +259,7 @@ sub redis_log_on_command {
       "Expected remote IP '$expected', got '$record->{remote_ip}'");
   };
   if ($@) {
-    $ex = $@;
+    $ex = $@ unless $ex;
   }
 
   test_cleanup($setup, $ex);
@@ -386,7 +386,7 @@ sub redis_log_on_command_custom_key {
       "Expected remote IP '$expected', got '$record->{remote_ip}'");
   };
   if ($@) {
-    $ex = $@;
+    $ex = $@ unless $ex;
   }
 
   test_cleanup($setup, $ex);
@@ -521,7 +521,7 @@ EOC
       "Expected remote IP '$expected', got '$record->{remote_ip}'");
   };
   if ($@) {
-    $ex = $@;
+    $ex = $@ unless $ex;
   }
 
   test_cleanup($setup, $ex);
@@ -534,6 +534,16 @@ sub redis_log_on_command_per_dir_none {
 
   my $sub_dir = File::Spec->rel2abs("$tmpdir/test.d");
   mkpath($sub_dir);
+
+  if ($< == 0) {
+    unless (chmod(0755, $sub_dir)) {
+      die("Can't set perms on $sub_dir: $!");
+    }
+
+    unless (chown($setup->{uid}, $setup->{gid}, $sub_dir)) {
+      die("Can't set owner of $sub_dir to $setup->{uid}/$setup->{gid}: $!");
+    }
+  }
 
   my $redis_server = '127.0.0.1:6379';
   if ($ENV{REDIS_SERVER}) {
@@ -575,7 +585,7 @@ sub redis_log_on_command_per_dir_none {
   RedisEngine on
   RedisServer $redis_server
   RedisLog $setup->{log_file}
-  LogFormat $fmt_name "%a %u"
+  LogFormat $fmt_name "%a %u %d"
 
   <Directory $setup->{home_dir}>
     RedisLogOnCommand PWD $fmt_name
@@ -649,10 +659,10 @@ EOC
     }
 
     my $nrecords = scalar(@$data);
-    $self->assert($nrecords == 0, "Expected 0 records, got $nrecords");
+    $self->assert($nrecords == 1, "Expected 1 record, got $nrecords");
   };
   if ($@) {
-    $ex = $@;
+    $ex = $@ unless $ex;
   }
 
   test_cleanup($setup, $ex);
@@ -780,7 +790,7 @@ EOC
     $self->assert($nrecords == 1, "Expected 1 record, got $nrecords");
   };
   if ($@) {
-    $ex = $@;
+    $ex = $@ unless $ex;
   }
 
   test_cleanup($setup, $ex);
@@ -911,7 +921,7 @@ sub redis_log_on_event {
       "Expected remote IP '$expected', got '$record->{remote_ip}'");
   };
   if ($@) {
-    $ex = $@;
+    $ex = $@ unless $ex;
   }
 
   test_cleanup($setup, $ex);
@@ -1043,7 +1053,7 @@ sub redis_log_on_event_custom_key {
       "Expected remote IP '$expected', got '$record->{remote_ip}'");
   };
   if ($@) {
-    $ex = $@;
+    $ex = $@ unless $ex;
   }
 
   test_cleanup($setup, $ex);
@@ -1178,7 +1188,7 @@ EOC
       "Expected remote IP '$expected', got '$record->{remote_ip}'");
   };
   if ($@) {
-    $ex = $@;
+    $ex = $@ unless $ex;
   }
 
   test_cleanup($setup, $ex);
@@ -1191,6 +1201,16 @@ sub redis_log_on_event_per_dir_none {
 
   my $sub_dir = File::Spec->rel2abs("$tmpdir/test.d");
   mkpath($sub_dir);
+
+  if ($< == 0) {
+    unless (chmod(0755, $sub_dir)) {
+      die("Can't set perms on $sub_dir: $!");
+    }
+
+    unless (chown($setup->{uid}, $setup->{gid}, $sub_dir)) {
+      die("Can't set owner of $sub_dir to $setup->{uid}/$setup->{gid}: $!");
+    }
+  }
 
   my $redis_server = '127.0.0.1:6379';
   if ($ENV{REDIS_SERVER}) {
@@ -1232,7 +1252,7 @@ sub redis_log_on_event_per_dir_none {
   RedisEngine on
   RedisServer $redis_server
   RedisLog $setup->{log_file}
-  LogFormat $fmt_name "%a %u"
+  LogFormat $fmt_name "%a %u %d"
 
   <Directory $setup->{home_dir}>
     RedisLogOnEvent PWD $fmt_name
@@ -1303,10 +1323,10 @@ EOC
     }
 
     my $nrecords = scalar(@$data);
-    $self->assert($nrecords == 0, "Expected 0 records, got $nrecords");
+    $self->assert($nrecords == 1, "Expected 1 record, got $nrecords");
   };
   if ($@) {
-    $ex = $@;
+    $ex = $@ unless $ex;
   }
 
   test_cleanup($setup, $ex);
@@ -1434,7 +1454,7 @@ EOC
     $self->assert($nrecords == 1, "Expected 1 record, got $nrecords");
   };
   if ($@) {
-    $ex = $@;
+    $ex = $@ unless $ex;
   }
 
   test_cleanup($setup, $ex);
@@ -1578,7 +1598,7 @@ sub redis_log_fmt_extra_with_log_on_command {
     }
   };
   if ($@) {
-    $ex = $@;
+    $ex = $@ unless $ex;
   }
 
   test_cleanup($setup, $ex);
@@ -1728,7 +1748,7 @@ sub redis_log_fmt_extra_with_log_on_event {
     }
   };
   if ($@) {
-    $ex = $@;
+    $ex = $@ unless $ex;
   }
 
   test_cleanup($setup, $ex);

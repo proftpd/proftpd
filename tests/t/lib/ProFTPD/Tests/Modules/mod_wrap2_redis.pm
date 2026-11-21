@@ -1971,6 +1971,9 @@ sub wrap2_redis_deny_list_dns_domain_bug3558 {
       $expected = "Access denied";
       $self->assert($expected eq $resp_msg,
         "Expected response message '$expected', got '$resp_msg'");
+
+      # NOTE: mod_wrap2 DISCONNECTS on access failure; do not try to
+      # send any more commands.
     };
     if ($@) {
       $ex = $@;
@@ -1998,7 +2001,7 @@ sub wrap2_redis_deny_list_dns_domain_bug3558 {
     return;
   }
 
-  provision_redis($redis_server, $allowed_key, [], $denied_key, [qw(.castaglia.org)]);
+  provision_redis($redis_server, $allowed_key, [], $denied_key, [qw(.castaglia.org localhost)]);
 
   eval {
     my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
@@ -2017,6 +2020,9 @@ sub wrap2_redis_deny_list_dns_domain_bug3558 {
     $expected = "Access denied";
     $self->assert($expected eq $resp_msg,
       "Expected response message '$expected', got '$resp_msg'");
+
+    # NOTE: mod_wrap2 DISCONNECTS on access failure; do not try to send any
+    # more commands.
   };
   if ($@) {
     $ex = $@;
@@ -2098,8 +2104,9 @@ sub wrap2_redis_user_lists {
   if ($pid) {
     eval {
       my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
-      my ($resp_code, $resp_msg) = $client->login($setup->{user},
-        $setup->{passwd});
+      $client->login($setup->{user}, $setup->{passwd});
+      my $resp_code = $client->response_code();
+      my $resp_msg = $client->response_msg();
       $client->quit();
 
       my $expected = 230;
@@ -2140,7 +2147,37 @@ sub wrap2_redis_user_lists {
   }
 
   # Modify the config a little
-  $config->{IfModules}->{'mod_wrap2_redis.c'}->{WrapUserTables} = "$setup->{user} redis:/list:$allowed_key redis:/list:$denied_key";
+  $config = {
+    PidFile => $setup->{pid_file},
+    ScoreboardFile => $setup->{scoreboard_file},
+    SystemLog => $setup->{log_file},
+    TraceLog => $setup->{log_file},
+    Trace => 'redis:20 wrap2:20',
+
+    AuthUserFile => $setup->{auth_user_file},
+    AuthGroupFile => $setup->{auth_group_file},
+    AuthOrder => 'mod_auth_file.c',
+
+    TimeoutIdle => $timeout_idle,
+
+    IfModules => {
+      'mod_delay.c' => {
+        DelayEngine => 'off',
+      },
+
+      'mod_redis.c' => {
+        RedisEngine => 'on',
+        RedisServer => $redis_server,
+        RedisLog => $setup->{log_file},
+      },
+
+      'mod_wrap2_redis.c' => {
+        WrapEngine => 'on',
+        WrapUserTables => "$setup->{user} redis:/list:$allowed_key redis:/list:$denied_key",
+        WrapLog => $setup->{log_file},
+      },
+    },
+  };
 
   unlink($setup->{config_file});
   ($port, $config_user, $config_group) = config_write($setup->{config_file},
@@ -2264,8 +2301,9 @@ sub wrap2_redis_group_lists {
   if ($pid) {
     eval {
       my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
-      my ($resp_code, $resp_msg) = $client->login($setup->{user},
-        $setup->{passwd});
+      $client->login($setup->{user}, $setup->{passwd});
+      my $resp_code = $client->response_code();
+      my $resp_msg = $client->response_msg();
       $client->quit();
 
       my $expected = 230;
@@ -2306,7 +2344,37 @@ sub wrap2_redis_group_lists {
   }
 
   # Modify the config a little
-  $config->{IfModules}->{'mod_wrap2_redis.c'}->{WrapGroupTables} = "$setup->{group} redis:/list:$allowed_key redis:/list:$denied_key";
+  $config = {
+    PidFile => $setup->{pid_file},
+    ScoreboardFile => $setup->{scoreboard_file},
+    SystemLog => $setup->{log_file},
+    TraceLog => $setup->{log_file},
+    Trace => 'redis:20',
+
+    AuthUserFile => $setup->{auth_user_file},
+    AuthGroupFile => $setup->{auth_group_file},
+    AuthOrder => 'mod_auth_file.c',
+
+    TimeoutIdle => $timeout_idle,
+
+    IfModules => {
+      'mod_delay.c' => {
+        DelayEngine => 'off',
+      },
+
+      'mod_redis.c' => {
+        RedisEngine => 'on',
+        RedisServer => $redis_server,
+        RedisLog => $setup->{log_file},
+      },
+
+      'mod_wrap2_redis.c' => {
+        WrapEngine => 'on',
+        WrapGroupTables => "$setup->{group} redis:/list:$allowed_key redis:/list:$denied_key",
+        WrapLog => $setup->{log_file},
+      },
+    },
+  };
 
   unlink($setup->{config_file});
   ($port, $config_user, $config_group) = config_write($setup->{config_file},
