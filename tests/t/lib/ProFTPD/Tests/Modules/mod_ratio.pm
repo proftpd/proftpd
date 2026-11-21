@@ -1292,7 +1292,7 @@ sub ratio_config_cwdratiomsg {
 
       $client->cwd('.');
       $resp_code = $client->response_code();
-      my $resp_msg = $client->response_msg(1);
+      $resp_msg = $client->response_msg(1);
 
       $expected = 250;
       $self->assert($expected == $resp_code,
@@ -1407,15 +1407,17 @@ sub ratio_config_cwdratiomsg_empty_text {
 
       $client->cwd('.');
       $resp_code = $client->response_code();
-      my $resp_msg = $client->response_msg(1);
+      $resp_msg = $client->response_msg(1);
 
       $expected = 250;
       $self->assert($expected == $resp_code,
         test_msg("Expected response code $expected, got $resp_code"));
 
-      $expected = '';
-      $self->assert($expected eq $resp_msg,
-        test_msg("Expected response message '$expected', got '$resp_msg'"));
+      if (defined($resp_msg)) {
+        $expected = '';
+        $self->assert($expected eq $resp_msg,
+          test_msg("Expected response message '$expected', got '$resp_msg'"));
+      }
 
       $client->quit();
     };
