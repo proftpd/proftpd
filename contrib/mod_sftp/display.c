@@ -62,7 +62,7 @@ static void format_size_str(char *buf, size_t buflen, off_t size) {
 const char *sftp_display_fh_get_msg(pool *p, pr_fh_t *fh) {
   struct stat st;
   char buf[PR_TUNABLE_BUFFER_SIZE], *msg = "";
-  int len, res;
+  int flags = 0, len, res;
   const unsigned int *current_clients = NULL;
   const unsigned int *max_clients = NULL;
   off_t fs_size = 0;
@@ -88,6 +88,13 @@ const char *sftp_display_fh_get_msg(pool *p, pr_fh_t *fh) {
       "error getting filesystem size for '%s': %s", fh->fh_path,
       strerror(errno));
     fs_size = 0;
+  }
+
+  /* Per Issue #2492, if the file in question is a relative path, we disable
+   * support for resolving environment variables.
+   */
+  if (*(fh->fh_path) != '/') {
+    flags |= PR_DISPLAY_FL_NO_ENV_VAR;
   }
 
   pr_snprintf(mg_size, sizeof(mg_size), "%" PR_LU, (pr_off_t) fs_size);
@@ -230,15 +237,22 @@ const char *sftp_display_fh_get_msg(pool *p, pr_fh_t *fh) {
         val = pstrdup(p, time_str);
 
       } else if (strncmp(key, "%{env:", 6) == 0) {
-        char *env_var;
-
-        env_var = pstrndup(p, key + 6, strlen(key) - 7);
-        val = pr_env_get(p, env_var);
-        if (val == NULL) {
-          pr_trace_msg("var", 4,
-            "no value set for environment variable '%s', using \"(none)\"",
-            env_var);
+        if (flags & PR_DISPLAY_FL_NO_ENV_VAR) {
+          pr_trace_msg("var", 4, "%s",
+            "environment variables disabled , using \"(none)\"");
           val = "(none)";
+
+        } else {
+          char *env_var;
+
+          env_var = pstrndup(p, key + 6, strlen(key) - 7);
+          val = pr_env_get(p, env_var);
+          if (val == NULL) {
+            pr_trace_msg("var", 4,
+              "no value set for environment variable '%s', using \"(none)\"",
+              env_var);
+            val = "(none)";
+          }
         }
 
       } else {

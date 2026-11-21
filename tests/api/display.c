@@ -279,6 +279,42 @@ START_TEST (display_fh_test) {
 }
 END_TEST
 
+START_TEST (display_flags_no_env_var_test) {
+  pr_fh_t *fh;
+  int res;
+  const char *path = NULL, *resp_code = NULL;
+  const char *last_resp_code = NULL, *last_resp_msg = NULL;
+
+  (void) unlink(display_test_file);
+  res = write_file(display_test_file, display_lines, 4);
+  ck_assert_msg(res == 0, "Failed to write display file: %s", strerror(errno));
+
+  path = display_test_file;
+  fh = pr_fsio_open(path, O_RDONLY);
+  ck_assert_msg(fh != NULL, "Failed to open '%s': %s", path, strerror(errno));
+
+  resp_code = R_200;
+  pr_response_set_pool(p);
+
+  mark_point();
+  res = pr_display_fh(fh, NULL, resp_code, PR_DISPLAY_FL_NO_ENV_VAR);
+  ck_assert_msg(res == 0, "Failed to display file: %s", strerror(errno));
+
+  mark_point();
+  res = pr_response_get_last(p, &last_resp_code, &last_resp_msg);
+  ck_assert_msg(res == 0, "Failed to get last response values: %s (%d)",
+    strerror(errno), errno);
+
+  ck_assert_msg(last_resp_code != NULL,
+    "Last response code is unexpectedly null");
+  ck_assert_msg(strcmp(last_resp_code, resp_code) == 0,
+    "Expected response code '%s', got '%s'", resp_code, last_resp_code);
+
+  ck_assert_msg(last_resp_msg != NULL,
+    "Last response message is unexpectedly null");
+}
+END_TEST
+
 Suite *tests_get_display_suite(void) {
   Suite *suite;
   TCase *testcase;
@@ -290,6 +326,7 @@ Suite *tests_get_display_suite(void) {
 
   tcase_add_test(testcase, display_file_test);
   tcase_add_test(testcase, display_fh_test);
+  tcase_add_test(testcase, display_flags_no_env_var_test);
 
   suite_add_tcase(suite, testcase);
   return suite;
