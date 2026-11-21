@@ -461,15 +461,19 @@ static int handle_user_otp(pool *p, const char *user, const char *user_otp,
       next_counter = counter - AUTH_OTP_TOTP_TIMESTEP_SECS;
       break;
 
-    case AUTH_OTP_ALGO_HOTP:
-      next_counter = counter - 1;
-      break;
-
     default:
       break;
   }
 
-  res = check_otp_code(p, user, user_otp, secret, secret_len, next_counter);
+  /* For HOTP, the stored counter is advanced past every accepted code, so
+   * the code for the counter one behind has already been used; accepting it
+   * again would allow that code to be replayed.
+   */
+  res = -1;
+  if (auth_otp_algo != AUTH_OTP_ALGO_HOTP) {
+    res = check_otp_code(p, user, user_otp, secret, secret_len, next_counter);
+  }
+
   if (res == 0) {
     pr_memscrub((char *) secret, secret_len);
 
@@ -525,9 +529,10 @@ static int handle_user_otp(pool *p, const char *user, const char *user_otp,
      * e.g. for clock drift, event counter increment, etc.
      *
      * Note that here, the client is "ahead".  NOT expected for TOTP, but is
-     * for HOTP.  Hmm.
+     * for HOTP.  Hmm.  Advance the HOTP counter past the code just used, so
+     * that it cannot be used again.
      */
-    update_otp_counter(p, user, counter + 1);
+    update_otp_counter(p, user, next_counter + 1);
 
     auth_otp_auth_code = PR_AUTH_OK;
     return 1;

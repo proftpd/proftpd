@@ -37,6 +37,11 @@ my $TESTS = {
     test_class => [qw(forking mod_auth_otp mod_sql mod_sql_sqlite)],
   },
 
+  auth_otp_hotp_login_replay => {
+    order => ++$order,
+    test_class => [qw(forking mod_auth_otp mod_sql mod_sql_sqlite)],
+  },
+
   auth_otp_hotp_unconfigured_user => {
     order => ++$order,
     test_class => [qw(forking mod_auth_otp mod_sql mod_sql_sqlite)],
@@ -810,6 +815,169 @@ EOS
       }
 
       $self->assert($ok, test_msg("Failed to login successfully using HOTP"));
+    };
+    if ($@) {
+      $ex = $@;
+    }
+
+    $wfh->print("done\n");
+    $wfh->flush();
+
+  } else {
+    eval { server_wait($setup->{config_file}, $rfh) };
+    if ($@) {
+      warn($@);
+      exit 1;
+    }
+
+    exit 0;
+  }
+
+  # Stop server
+  server_stop($setup->{pid_file});
+  $self->assert_child_ok($pid);
+
+  test_cleanup($setup, $ex);
+}
+
+sub auth_otp_hotp_login_replay {
+  my $self = shift;
+  my $tmpdir = $self->{tmpdir};
+  my $setup = test_setup($tmpdir, 'auth_otp');
+
+  my $db_file = File::Spec->rel2abs("$tmpdir/proftpd.db");
+
+  # Build up sqlite3 command to create HOTP tables
+  my $db_script = File::Spec->rel2abs("$tmpdir/hotp.sql");
+
+  # mod_auth_otp wants this secret to be base32-encoded, for interoperability
+  # with Google Authenticator.
+  require MIME::Base32;
+  MIME::Base32->import('RFC') if $MIME::Base32::VERSION <= 1.02;
+
+  my $secret = 'Sup3rS3Cr3t';
+  my $base32_secret = MIME::Base32::encode($secret);
+  my $counter = 777;
+
+  if (open(my $fh, "> $db_script")) {
+    print $fh <<EOS;
+CREATE TABLE auth_otp (
+  user TEXT PRIMARY KEY,
+  secret TEXT,
+  counter INTEGER
+);
+INSERT INTO auth_otp (user, secret, counter) VALUES ('$setup->{user}', '$base32_secret', $counter);
+
+EOS
+
+    unless (close($fh)) {
+      die("Can't write $db_script: $!");
+    }
+
+  } else {
+    die("Can't open $db_script: $!");
+  }
+
+  my $cmd = "sqlite3 $db_file < $db_script";
+  build_db($cmd, $db_script, $db_file);
+
+  my $config = {
+    PidFile => $setup->{pid_file},
+    ScoreboardFile => $setup->{scoreboard_file},
+    SystemLog => $setup->{log_file},
+    TraceLog => $setup->{log_file},
+    Trace => 'auth:20 auth_otp:20',
+
+    AuthUserFile => $setup->{auth_user_file},
+    AuthGroupFile => $setup->{auth_group_file},
+    AuthOrder => 'mod_auth_otp.c* mod_auth_file.c',
+
+    IfModules => {
+      'mod_delay.c' => {
+        DelayEngine => 'off',
+      },
+
+      'mod_auth_otp.c' => {
+        AuthOTPEngine => 'on',
+        AuthOTPLog => $setup->{log_file},
+        AuthOTPAlgorithm => 'hotp',
+
+        # Assumes default table names, column names
+        AuthOTPTable => 'sql:/get-user-hotp/update-user-hotp',
+      },
+
+      'mod_sql.c' => [
+        'SQLEngine log',
+        'SQLBackend sqlite3',
+        "SQLConnectInfo $db_file",
+        "SQLLogFile $setup->{log_file}",
+
+        'SQLNamedQuery get-user-hotp SELECT "secret, counter FROM auth_otp WHERE user = \'%{0}\'"',
+        'SQLNamedQuery update-user-hotp UPDATE "counter = %{1} WHERE user = \'%{0}\'" auth_otp',
+      ],
+    },
+  };
+
+  my ($port, $config_user, $config_group) = config_write($setup->{config_file},
+    $config);
+
+  # Open pipes, for use between the parent and child processes.  Specifically,
+  # the child will indicate when it's done with its test by writing a message
+  # to the parent.
+  my ($rfh, $wfh);
+  unless (pipe($rfh, $wfh)) {
+    die("Can't open pipe: $!");
+  }
+
+  my $ex;
+
+  require Authen::OATH;
+
+  # Fork child
+  $self->handle_sigchld();
+  defined(my $pid = fork()) or die("Can't fork: $!");
+  if ($pid) {
+    eval {
+      sleep(2);
+
+      my $oath = Authen::OATH->new();
+
+      # Each HOTP code must only be accepted once: first for a client in
+      # sync with the stored counter, then for a client one counter ahead.
+      foreach my $next_counter ($counter, $counter + 2) {
+        my $hotp = $oath->hotp($secret, $next_counter);
+        if ($ENV{TEST_VERBOSE}) {
+          print STDERR "# Generated HOTP $hotp for counter $next_counter\n";
+        }
+
+        my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
+        $client->login($setup->{user}, $hotp);
+        $client->quit();
+
+        # Replay the same code; this login should fail.
+        $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
+        eval { $client->login($setup->{user}, $hotp) };
+        unless ($@) {
+          die("Replayed HOTP login for user $setup->{user} succeeded unexpectedly");
+        }
+
+        my $resp_code = $client->response_code();
+        my $resp_msg = $client->response_msg();
+
+        my $expected = 530;
+        $self->assert($resp_code == $expected,
+          test_msg("Expected response code $expected, got $resp_code"));
+
+        $expected = 'Login incorrect.';
+        $self->assert($resp_msg eq $expected,
+          test_msg("Expected response message '$expected', got '$resp_msg'"));
+      }
+
+      # The next code after the last one used should still be accepted.
+      my $hotp = $oath->hotp($secret, $counter + 3);
+      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
+      $client->login($setup->{user}, $hotp);
+      $client->quit();
     };
     if ($@) {
       $ex = $@;
