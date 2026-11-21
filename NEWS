@@ -19,6 +19,8 @@
 --------------------------------
 - Issue 2484 - ProFTPD modules use OpenSSL 4.x custom providers that collide
   with defaults, causing segfaults.
+- Issue 2492 - Display files configured using relative paths can be used to
+  leak possibly sensitive environment variable values.
 
 1.3.9f - Released 18-Nov-2026
 --------------------------------
