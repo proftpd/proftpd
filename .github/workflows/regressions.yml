@@ -113,11 +113,12 @@ jobs:
             libfile-spec-native-perl \
             libmime-base32-perl \
             libnet-address-ip-local-perl \
+            libnet-snmp-perl \
             libnet-ssh2-perl \
             libnet-ssleay-perl \
             libnet-telnet-perl \
             libposix-2008-perl \
-            libnet-snmp-perl \
+            libredis-perl \
             libtest-unit-perl \
             libtime-hr-perl \
             libwww-perl
