@@ -21,6 +21,8 @@
   with defaults, causing segfaults.
 - Issue 2492 - Display files configured using relative paths can be used to
   leak possibly sensitive environment variable values.
+- Issue 2497 - Inadvertent authentication bypass possible due to backend error
+  mishandling.
 
 1.3.9f - Released 18-Nov-2026
 --------------------------------
