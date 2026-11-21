@@ -40,6 +40,9 @@
 #define PR_TEST_AUTH_HOME		"/tmp"
 #define PR_TEST_AUTH_SHELL		"/bin/bash"
 #define PR_TEST_AUTH_PASSWD		"password"
+#define PR_TEST_AUTH_ERR_NAME		"testsuite_error_user"
+#define PR_TEST_AUTH_ERR_PASSWD		"SendErrorNoInt"
+#define PR_TEST_AUTH_INVALID_CODE	25
 
 static pool *p = NULL;
 static server_rec *test_server = NULL;
@@ -354,12 +357,19 @@ MODRET handle_authn(cmd_rec *cmd) {
 
   if (strcmp(user, PR_TEST_AUTH_NAME) == 0) {
     if (strcmp(cleartext_passwd, PR_TEST_AUTH_PASSWD) == 0) {
-      if (authn_rfc2228) {
+      if (authn_rfc2228 == TRUE) {
         authn_rfc2228 = FALSE;
         return mod_create_data(cmd, (void *) PR_AUTH_RFC2228_OK);
       }
 
       return PR_HANDLED(cmd);
+    }
+
+    if (strcmp(cleartext_passwd, PR_TEST_AUTH_ERR_PASSWD) == 0) {
+      /* Some modules do this; notice the difference between PR_ERROR() and
+       * PR_ERROR_INT().
+       */
+      return PR_ERROR(cmd);
     }
 
     return PR_ERROR_INT(cmd, PR_AUTH_BADPWD);
@@ -375,6 +385,13 @@ MODRET handle_authz(cmd_rec *cmd) {
 
   if (strcmp(user, PR_TEST_AUTH_NAME) == 0) {
     return PR_HANDLED(cmd);
+  }
+
+  if (strcmp(user, PR_TEST_AUTH_ERR_NAME) == 0) {
+    /* Some modules do this; notice the difference between PR_ERROR() and
+     * PR_ERROR_INT().
+     */
+    return PR_ERROR(cmd);
   }
 
   return PR_ERROR_INT(cmd, PR_AUTH_NOPWD);
@@ -413,6 +430,13 @@ MODRET handle_requires_pass(cmd_rec *cmd) {
 
   if (strcmp(name, PR_TEST_AUTH_NAME) == 0) {
     return mod_create_data(cmd, (void *) PR_AUTH_RFC2228_OK);
+  }
+
+  if (strcmp(name, PR_TEST_AUTH_ERR_NAME) == 0) {
+    /* We deliberately create an ERROR return value with a non-1 mr_error
+     * value, for our test case.
+     */
+    return PR_ERROR_INT(cmd, -1);
   }
 
   return PR_DECLINED(cmd);
@@ -1542,11 +1566,22 @@ START_TEST (auth_authenticate_test) {
     "Failed to authenticate user '%s' (expected %d, got %d)",
     PR_TEST_AUTH_NAME, PR_AUTH_OK, res);
 
+  res = pr_auth_authenticate(p, PR_TEST_AUTH_NAME, PR_TEST_AUTH_ERR_PASSWD);
+  ck_assert_msg(res == PR_AUTH_ERROR,
+    "Authenticated user '%s' unexpectedly (expected %d, got %d)",
+    PR_TEST_AUTH_NAME, PR_AUTH_ERROR, res);
+
   authtab.auth_flags |= PR_AUTH_FL_REQUIRED;
   res = pr_auth_authenticate(p, PR_TEST_AUTH_NAME, PR_TEST_AUTH_PASSWD);
   ck_assert_msg(res == PR_AUTH_OK,
     "Failed to authenticate user '%s' (expected %d, got %d)",
     PR_TEST_AUTH_NAME, PR_AUTH_OK, res);
+
+  res = pr_auth_authenticate(p, PR_TEST_AUTH_NAME, PR_TEST_AUTH_ERR_PASSWD);
+  ck_assert_msg(res == PR_AUTH_ERROR,
+    "Authenticated user '%s' unexpectedly (expected %d, got %d)",
+    PR_TEST_AUTH_NAME, PR_AUTH_ERROR, res);
+
   authtab.auth_flags &= ~PR_AUTH_FL_REQUIRED;
 
   (void) pr_auth_cache_set(TRUE, PR_AUTH_CACHE_FL_AUTH_MODULE);
@@ -1574,6 +1609,11 @@ START_TEST (auth_authenticate_test) {
   ck_assert_msg(res == PR_AUTH_OK,
     "Failed to authenticate user '%s' (expected %d, got %d)",
     PR_TEST_AUTH_NAME, PR_AUTH_OK, res);
+
+  res = pr_auth_authenticate(p, PR_TEST_AUTH_NAME, PR_TEST_AUTH_ERR_PASSWD);
+  ck_assert_msg(res == PR_AUTH_ERROR,
+    "Authenticated user '%s' unexpectedly (expected %d, got %d)",
+    PR_TEST_AUTH_NAME, PR_AUTH_ERROR, res);
 
   authn_rfc2228 = TRUE;
   res = pr_auth_authenticate(p, PR_TEST_AUTH_NAME, PR_TEST_AUTH_PASSWD);
@@ -1610,7 +1650,7 @@ START_TEST (auth_authorize_test) {
     strerror(errno), errno);
 
   res = pr_auth_authorize(p, PR_TEST_AUTH_NAME);
-  ck_assert_msg(res > 0, "Failed to handle missing handler");
+  ck_assert_msg(res < 0, "Failed to handle missing handler");
 
   /* Load the appropriate AUTH symbol, and call it. */
 
@@ -1632,6 +1672,11 @@ START_TEST (auth_authorize_test) {
     "Failed to authorize user '%s' (expected %d, got %d)",
     PR_TEST_AUTH_NAME, PR_AUTH_OK, res);
 
+  res = pr_auth_authorize(p, PR_TEST_AUTH_ERR_NAME);
+  ck_assert_msg(res == PR_AUTH_ERROR,
+    "Authorized user '%s' unexpectedly (expected %d, got %d)",
+    PR_TEST_AUTH_ERR_NAME, PR_AUTH_ERROR, res);
+
   (void) pr_auth_cache_set(TRUE, PR_AUTH_CACHE_FL_AUTH_MODULE);
 
   res = pr_auth_add_auth_only_module("foo.bar");
@@ -1645,6 +1690,11 @@ START_TEST (auth_authorize_test) {
     "Failed to authorize user '%s' (expected %d, got %d)",
     PR_TEST_AUTH_NAME, PR_AUTH_OK, res);
 
+  res = pr_auth_authorize(p, PR_TEST_AUTH_ERR_NAME);
+  ck_assert_msg(res == PR_AUTH_ERROR,
+    "Authorized user '%s' unexpectedly (expected %d, got %d)",
+    PR_TEST_AUTH_ERR_NAME, PR_AUTH_ERROR, res);
+
   (void) pr_auth_clear_auth_only_modules();
 }
 END_TEST
@@ -1652,6 +1702,13 @@ END_TEST
 static int test_check_errorcode = PR_AUTH_BADPWD;
 
 MODRET handle_check_error(cmd_rec *cmd) {
+  if (test_check_errorcode == PR_TEST_AUTH_INVALID_CODE) {
+    /* Some modules do this; notice the difference between PR_ERROR() and
+     * PR_ERROR_INT().
+     */
+    return PR_ERROR(cmd);
+  }
+
   return PR_ERROR_INT(cmd, test_check_errorcode);
 }
 
@@ -1728,8 +1785,18 @@ START_TEST (auth_check_errors_test) {
   mark_point();
   test_check_errorcode = PR_AUTH_OK_NO_PASS;
   res = pr_auth_check(p, "", name, cleartext_passwd);
-  ck_assert_msg(res == test_check_errorcode, "Expected %d, got %d",
-    test_check_errorcode, res);
+
+  /* Since our test handler ALWAYS returns an error, we should not expect
+   * a positive code, like PR_AUTH_OK_NO_PASS, here.
+   */
+  ck_assert_msg(res == PR_AUTH_ERROR, "Expected %d, got %d", PR_AUTH_ERROR,
+    res);
+
+  mark_point();
+  test_check_errorcode = PR_TEST_AUTH_INVALID_CODE;
+  res = pr_auth_check(p, "", name, cleartext_passwd);
+  ck_assert_msg(res == PR_AUTH_ERROR, "Expected %d, got %d", PR_AUTH_ERROR,
+    res);
 
   res = pr_module_unload(&testsuite_module);
   ck_assert_msg(res == 0, "Failed to unload module: %s", strerror(errno));
@@ -1802,16 +1869,19 @@ START_TEST (auth_requires_pass_test) {
   authtable authtab;
   char *sym_name = "requires_pass";
 
+  mark_point();
   res = pr_auth_requires_pass(NULL, NULL);
   ck_assert_msg(res < 0, "Failed to handle null arguments");
   ck_assert_msg(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
     strerror(errno), errno);
 
+  mark_point();
   res = pr_auth_requires_pass(p, NULL);
   ck_assert_msg(res < 0, "Failed to handle null name");
   ck_assert_msg(errno == EINVAL, "Expected EINVAL (%d), got %s (%d)", EINVAL,
     strerror(errno), errno);
 
+  mark_point();
   name = "other";
   res = pr_auth_requires_pass(p, name);
   ck_assert_msg(res == TRUE, "Unknown users should require passwords (got %d)",
@@ -1827,14 +1897,22 @@ START_TEST (auth_requires_pass_test) {
   ck_assert_msg(res == 0, "Failed to add '%s' AUTH symbol: %s", sym_name,
     strerror(errno));
 
+  mark_point();
   res = pr_auth_requires_pass(p, name);
   ck_assert_msg(res == TRUE, "Unknown users should require passwords (got %d)",
     res);
 
+  mark_point();
   name = PR_TEST_AUTH_NAME;
   res = pr_auth_requires_pass(p, name);
-  ck_assert_msg(res == FALSE, "Known users should NOT require passwords (got %d)",
-    res);
+  ck_assert_msg(res == FALSE,
+    "Known users should NOT require passwords (got %d)", res);
+
+  mark_point();
+  name = PR_TEST_AUTH_ERR_NAME;
+  res = pr_auth_requires_pass(p, name);
+  ck_assert_msg(res == TRUE,
+    "Erroring users SHOULD require passwords (got %d)", res);
 }
 END_TEST
 
