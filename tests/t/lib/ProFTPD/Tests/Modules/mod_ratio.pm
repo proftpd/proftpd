@@ -1179,11 +1179,11 @@ sub ratio_site_before_login {
       my $resp_code = $client->response_code();
       my $resp_msg = $client->response_msg(0);
 
-      my $expected = 530;
+      my $expected = 500;
       $self->assert($expected == $resp_code,
         test_msg("Expected response code $expected, got $resp_code"));
 
-      $expected = 'Please login with USER and PASS';
+      $expected = "'SITE RATIO' not understood";
       $self->assert($expected eq $resp_msg,
         test_msg("Expected response message '$expected', got '$resp_msg'"));
 

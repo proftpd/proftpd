@@ -1137,48 +1137,17 @@ sub copy_before_auth {
 sub copy_help {
   my $self = shift;
   my $tmpdir = $self->{tmpdir};
-
-  my $config_file = "$tmpdir/copy.conf";
-  my $pid_file = File::Spec->rel2abs("$tmpdir/copy.pid");
-  my $scoreboard_file = File::Spec->rel2abs("$tmpdir/copy.scoreboard");
-
-  my $log_file = File::Spec->rel2abs('tests.log');
-
-  my $auth_user_file = File::Spec->rel2abs("$tmpdir/copy.passwd");
-  my $auth_group_file = File::Spec->rel2abs("$tmpdir/copy.group");
-
-  my $user = 'proftpd';
-  my $passwd = 'test';
-  my $home_dir = File::Spec->rel2abs($tmpdir);
-  my $uid = 500;
-  my $gid = 500;
-
-  # Make sure that, if we're running as root, that the home directory has
-  # permissions/privs set for the account we create
-  if ($< == 0) {
-    unless (chmod(0755, $home_dir)) {
-      die("Can't set perms on $home_dir to 0755: $!");
-    }
-
-    unless (chown($uid, $gid, $home_dir)) {
-      die("Can't set owner of $home_dir to $uid/$gid: $!");
-    }
-  }
-
-  auth_user_write($auth_user_file, $user, $passwd, $uid, $gid, $home_dir,
-    '/bin/bash');
-  auth_group_write($auth_group_file, 'ftpd', $gid, $user);
-
-  my $src_file = File::Spec->rel2abs("$home_dir/foo.txt");
-  my $dst_file = File::Spec->rel2abs("$home_dir/bar.txt");
+  my $setup = test_setup($tmpdir, 'copy');
 
   my $config = {
-    PidFile => $pid_file,
-    ScoreboardFile => $scoreboard_file,
-    SystemLog => $log_file,
+    PidFile => $setup->{pid_file},
+    ScoreboardFile => $setup->{scoreboard_file},
+    SystemLog => $setup->{log_file},
+    TraceLog => $setup->{log_file},
+    Trace => 'command:10 response:10',
 
-    AuthUserFile => $auth_user_file,
-    AuthGroupFile => $auth_group_file,
+    AuthUserFile => $setup->{auth_user_file},
+    AuthGroupFile => $setup->{auth_group_file},
     AuthOrder => 'mod_auth_file.c',
 
     IfModules => {
@@ -1188,7 +1157,8 @@ sub copy_help {
     },
   };
 
-  my ($port, $config_user, $config_group) = config_write($config_file, $config);
+  my ($port, $config_user, $config_group) = config_write($setup->{config_file},
+    $config);
 
   # Open pipes, for use between the parent and child processes.  Specifically,
   # the child will indicate when it's done with its test by writing a message
@@ -1206,16 +1176,14 @@ sub copy_help {
   if ($pid) {
     eval {
       my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
-
       $client->site('HELP');
 
       my $resp_code = $client->response_code();
       my $resp_msgs = $client->response_msgs();
 
-      my $expected;
-      $expected = 214;
+      my $expected = 214;
       $self->assert($expected == $resp_code,
-        test_msg("Expected $expected, got $resp_code"));
+        test_msg("Expected response code $expected, got $resp_code"));
 
       $expected = 'CPFR <sp> pathname';
       my $ok = 0;
@@ -1239,12 +1207,12 @@ sub copy_help {
         }
       }
 
+      $client->quit();
+
       unless ($ok) {
         die("Failed to receive expected HELP output");
       }
-
     };
-
     if ($@) {
       $ex = $@;
     }
@@ -1253,7 +1221,7 @@ sub copy_help {
     $wfh->flush();
 
   } else {
-    eval { server_wait($config_file, $rfh) };
+    eval { server_wait($setup->{config_file}, $rfh) };
     if ($@) {
       warn($@);
       exit 1;
@@ -1263,15 +1231,10 @@ sub copy_help {
   }
 
   # Stop server
-  server_stop($pid_file);
-
+  server_stop($setup->{pid_file});
   $self->assert_child_ok($pid);
 
-  if ($ex) {
-    die($ex);
-  }
-
-  unlink($log_file);
+  test_cleanup($setup, $ex);
 }
 
 sub copy_config_limit_site_copy {

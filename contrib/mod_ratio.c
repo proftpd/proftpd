@@ -821,8 +821,6 @@ MODRET post_cmd(cmd_rec *cmd) {
 }
 
 MODRET cmd_site(cmd_rec *cmd) {
-  char buf[128] = {'\0'};
-
   if (ratio_engine == FALSE) {
     return PR_DECLINED(cmd);
   }
@@ -832,6 +830,18 @@ MODRET cmd_site(cmd_rec *cmd) {
   }
 
   if (strcasecmp(cmd->argv[1], "RATIO") == 0) {
+    unsigned char *authenticated;
+    char buf[128] = {'\0'};
+
+    /* If the client has not authenticated yet, we should do nothing with this
+     * command.
+     */
+    authenticated = get_param_ptr(cmd->server->conf, "authenticated", FALSE);
+    if (authenticated == NULL ||
+        *authenticated == FALSE) {
+      return PR_DECLINED(cmd);
+    }
+
     calc_ratios(cmd);
 
     memset(buf, '\0', sizeof(buf));
@@ -1032,7 +1042,7 @@ static cmdtable ratio_cmdtab[] = {
   { PRE_CMD,  C_STOR,	G_NONE, pre_cmd, 	TRUE, FALSE },
   { POST_CMD, C_STOR,	G_NONE, post_stor,	FALSE, FALSE },
 
-  { CMD,      C_SITE,	G_NONE, cmd_site, 	TRUE, FALSE },
+  { CMD,      C_SITE,	G_NONE, cmd_site, 	FALSE, FALSE },
 
   { POST_CMD, C_PASS,	G_NONE, post_cmd,	FALSE, FALSE },
   { LOG_CMD,  C_PASS,	G_NONE, log_pass,	FALSE, FALSE },
