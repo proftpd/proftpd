@@ -4414,7 +4414,10 @@ MODRET sql_auth_authenticate(cmd_rec *cmd) {
   mr = sql_dispatch(sql_make_cmd(cmd->tmp_pool, 2, MOD_SQL_DEF_CONN_NAME,
     user), "sql_escapestring");
   if (check_response(mr, 0) < 0) {
-    return mr;
+    /* We KNOW that an error occurred here, so return DECLINED to indicate
+     * that we could not process the request (Issue #2497).
+     */
+    return PR_DECLINED(cmd);
   }
 
   user = (char *) mr->data;

@@ -2101,7 +2101,7 @@ MODRET ldap_auth_auth(cmd_rec *cmd) {
   filter = pr_ldap_interpolate_filter(cmd->tmp_pool, ldap_user_basedn,
     username);
   if (filter == NULL) {
-    return NULL;
+    return PR_DECLINED(cmd);
   }
 
   /* If anything here fails hard (IOW, we've found an LDAP entry for the
@@ -2214,7 +2214,7 @@ MODRET ldap_auth_check(cmd_rec *cmd) {
       (void) pr_log_writefile(ldap_logfd, MOD_LDAP_VERSION,
         "invalid credentials used for %s", ldap_authbind_dn);
       LDAP_UNBIND(ld_auth);
-      return PR_ERROR(cmd);
+      return PR_ERROR_INT(cmd, PR_AUTH_BADPWD);
     }
 
     LDAP_UNBIND(ld_auth);
@@ -2263,13 +2263,13 @@ MODRET ldap_auth_check(cmd_rec *cmd) {
       pr_trace_msg(trace_channel, 19,
         "using %s auth scheme, crypt(3) failed: %s", hash_method,
         strerror(errno));
-      return PR_ERROR(cmd);
+      return PR_ERROR_INT(cmd, PR_AUTH_BADPWD);
     }
 
     if (strcmp(crypted, cryptpass + encname_len) != 0) {
       pr_trace_msg(trace_channel, 19,
         "using '%s' auth scheme, comparison failed", hash_method);
-      return PR_ERROR(cmd);
+      return PR_ERROR_INT(cmd, PR_AUTH_BADPWD);
     }
 
   /* The {clear} scheme */
@@ -2277,7 +2277,7 @@ MODRET ldap_auth_check(cmd_rec *cmd) {
     if (strcmp(pass, cryptpass + encname_len) != 0) {
       pr_trace_msg(trace_channel, 19,
         "using '%s' auth scheme, comparison failed", hash_method);
-      return PR_ERROR(cmd);
+      return PR_ERROR_INT(cmd, PR_AUTH_BADPWD);
     }
 
   } else {
