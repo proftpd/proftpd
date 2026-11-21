@@ -717,6 +717,12 @@ sub tls_stapling_on_memcache_bug4175 {
       # Give the server a chance to start up
       sleep(2);
 
+      # Suppress annoying warning from IO::Socket::SSL.
+      local $SIG{__WARN__} = sub {
+        my $msg = shift;
+        warn $msg unless $msg =~ /^Use of uninitialized value.*at .*IO\/Socket\/SSL\.pm/;
+      };
+
       # Manually simulate the STARTTLS protocol
 
       my $ssl_opts = {
