@@ -650,7 +650,7 @@ START_TEST (error_strerror_detailed_test) {
   res2 = pr_error_set_why(err, why);
   ck_assert_msg(res2 == 0, "Failed to set why: %s", strerror(errno));
 
-  expected = pstrcat(p, "in API [api/error.c:593], user ", session.user,
+  expected = pstrcat(p, "in API [api/error.c:592], user ", session.user,
     " (UID ", get_uid(p), ", GID ", get_gid(p), ") via ftp wanted to ", why,
     " but ", what, " failed with \"", strerror(xerrno), " [ENOENT (",
     get_errnum(p, xerrno), ")]\"", NULL);
