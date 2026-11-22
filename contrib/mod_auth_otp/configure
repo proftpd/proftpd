@@ -2061,11 +2061,6 @@ ac_compiler_gnu=$ac_cv_c_compiler_gnu
 
 
 
-# Deliberately placed here after AC_INIT, so that these appear in the
-# generated script:
-# Copyright (c) 2015-2026 TJ Saunders <tj@castaglia.org>
-# SPDX-License-Identifier: GPL-2.0-only WITH vsftpd-openssl-exception
-
 ac_aux_dir=
 for ac_dir in "$srcdir" "$srcdir/.." "$srcdir/../.."; do
   if test -f "$ac_dir/install-sh"; then

@@ -3,7 +3,6 @@
  * developed under Openwall Project for Owl - http://www.openwall.com/Owl/
  *
  * Copyright (c) 2008 Dmitry V. Levin <ldv at cvs.openwall.com>
- * SPDX-License-Identifier: Unlicense
  *
  * Permission to use, copy, modify, and distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above

@@ -2,7 +2,6 @@
  * ProFTPD: mod_copy -- a module supporting copying of files on the server
  *                      without transferring the data to the client and back
  * Copyright (c) 2009-2026 TJ Saunders
- * SPDX-License-Identifier: GPL-2.0-only WITH vsftpd-openssl-exception
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by

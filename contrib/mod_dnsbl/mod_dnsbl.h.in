@@ -2,7 +2,6 @@
  * ProFTPD: mod_dnsbl -- a module for checking DNSBL (DNS Black Lists)
  *                       servers before allowing a connection
  * Copyright (c) 2007-2026 TJ Saunders
- * SPDX-License-Identifier: GPL-2.0-only WITH vsftpd-openssl-exception
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by

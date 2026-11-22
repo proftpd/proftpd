@@ -4,7 +4,6 @@
  * Copyright (c) 2000-2002 Peter 'Luna' Runestig <peter@runestig.com>
  * Copyright (c) 2002-2026 TJ Saunders <tj@castaglia.org>
  * All rights reserved.
- * SPDX-License-Identifier: GPL-2.0-only WITH vsftpd-openssl-exception
  *
  * Redistribution and use in source and binary forms, with or without modifi-
  * cation, are permitted provided that the following conditions are met:

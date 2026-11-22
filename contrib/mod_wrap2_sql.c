@@ -2,7 +2,6 @@
  * ProFTPD: mod_wrap2_sql -- a mod_wrap2 sub-module for supplying IP-based
  *                           access control data via SQL tables
  * Copyright (c) 2002-2026 TJ Saunders
- * SPDX-License-Identifier: GPL-2.0-only WITH vsftpd-openssl-exception
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by

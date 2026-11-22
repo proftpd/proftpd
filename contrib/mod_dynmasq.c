@@ -2,7 +2,6 @@
  * ProFTPD: mod_dynmasq -- a module for dynamically updating MasqueradeAddress
  *                         configurations, as when DynDNS names are used
  * Copyright (c) 2004-2026 TJ Saunders
- * SPDX-License-Identifier: GPL-2.0-only WITH vsftpd-openssl-exception
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by

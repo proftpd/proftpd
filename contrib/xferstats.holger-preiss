@@ -1,8 +1,5 @@
 #!/usr/bin/env perl
 
-# Copyright (c) 2001-2026 The ProFTPD Project team
-# SPDX-License-Identifier: GPL-2.0-only WITH vsftpd-openssl-exception
-
 # ---------------------------------------------------------------------------
 #
 # USAGE: xferstats <options>

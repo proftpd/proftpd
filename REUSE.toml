@@ -15,17 +15,15 @@ path = [
   "ChangeLog",
   "INSTALL",
   "Makefile.in",
+  "Make.rules.in",
   "NEWS",
   "README.md",
   "RELEASE_NOTES",
-  "contrib/README",
-  "contrib/README.ratio",
-  "contrib/dist/**",
-  "contrib/mod_quotatab_ldap.ldif",
-  "contrib/mod_quotatab_ldap.schema",
-  "contrib/mod_sftp/blacklist.dat",
-  "contrib/mod_snmp/PROFTPD-MIB.txt",
-  "contrib/mod_snmp/contrib/**",
+  "acconfig.h",
+  "config.h.in",
+  "configure.in",
+  "configure",
+  "contrib/**",
   "doc/**",
   "lib/README.tpl",
   "include/**",
@@ -39,6 +37,17 @@ path = [
   "utils/**",
 
   # Exceptions; see below
+  "!contrib/mod_sftp/blacklist.c",
+  "!contrib/mod_sftp/blacklist.dat",
+  "!contrib/mod_sftp/blacklist.h",
+  "!contrib/mod_sftp/bcrypt.c",
+  "!contrib/mod_sftp/poly1305.c",
+  "!contrib/mod_sftp/poly1305.h",
+  "!contrib/mod_sftp/sntrup761.c",
+  "!contrib/mod_sftp/sntrup761.h",
+  "!contrib/mod_sftp/sntrup761.sh",
+  "!contrib/mod_sftp/umac.c",
+  "!contrib/mod_sftp/umac.h",
   "!include/ccan-json.h",
   "!include/glibc-glob.h",
   "!include/hanson-tpl.h",
@@ -60,17 +69,25 @@ SPDX-License-Identifier = "GPL-2.0-only WITH vsftpd-openssl-exception"
 # Other licenses
 [[annotations]]
 path = [
-  "contrib/mod_sftp/bcrypt.c",
+  "contrib/mod_sftp/blacklist.c",
+  "contrib/mod_sftp/blacklist.dat",
+  "contrib/mod_sftp/blacklist.h",
   "contrib/mod_sftp/poly1305.c",
   "contrib/mod_sftp/poly1305.h",
   "contrib/mod_sftp/sntrup761.c",
   "contrib/mod_sftp/sntrup761.h",
   "contrib/mod_sftp/sntrup761.sh",
-  "contrib/mod_sftp/umac.c",
-  "contrib/mod_sftp/umac.h",
-  "lib/openbsd-bcrypt.c",
 ]
 SPDX-FileCopyrightText = "NONE"
+SPDX-License-Identifier = "Unlicense"
+
+[[annotations]]
+path = [
+  "contrib/mod_sftp/bcrypt.c",
+  "contrib/mod_sftp/umac.c",
+  "contrib/mod_sftp/umac.h",
+  "lib/openbsd-bcrypt.c"
+]
 SPDX-License-Identifier = "Unlicense"
 
 [[annotations]]

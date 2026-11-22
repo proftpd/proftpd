@@ -2,7 +2,6 @@
  * ProFTPD: mod_qos -- a module for managing QoS socket options
  * Copyright (c) 2010 Philip Prindeville
  * Copyright (c) 2010-2026 The ProFTPD Project
- * SPDX-License-Identifier: GPL-2.0-only WITH vsftpd-openssl-exception
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by

@@ -1,6 +1,4 @@
 /* -*- C -*- */
-/* Copyright (c) 2026 The ProFTPD Project team */
-/* SPDX-License-Identifier: GPL-2.0-only WITH vsftpd-openssl-exception */
 
 /* @configure_input@ */
 
