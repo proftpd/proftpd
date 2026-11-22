@@ -34,6 +34,7 @@ path = [
   "m4/proftpd.m4",
   "modules/**",
   "sample-configurations/**",
+  "src/**",
   "tests/**",
   "utils/**",
 
@@ -77,7 +78,6 @@ path = [
   "include/hanson-tpl.h",
   "lib/hanson-tpl.c",
 ]
-SPDX-FileCopyrightText = "2005 Troy D. Hanson"
 SPDX-License-Identifier = "BSD-3-Clause"
 
 [[annotations]]
@@ -85,7 +85,6 @@ path = [
   "include/openbsd-blowfish.h",
   "lib/openbsd-blowfish.c",
 ]
-SPDX-FileCopyrightText = "1987 Niels Provos"
 SPDX-License-Identifier = "BSD-3-Clause"
 
 [[annotations]]
@@ -93,7 +92,6 @@ path = [
   "lib/glibc-hstrerror.c",
   "lib/pr-syslog.c",
 ]
-SPDX-FileCopyrightText = "1987 The Regents of the University of California"
 SPDX-License-Identifier = "BSD-3-Clause"
 
 [[annotations]]
@@ -120,14 +118,12 @@ path = [
   "lib/pr_fnmatch_loop.c",
   "lib/strsep.c",
 ]
-SPDX-FileCopyrightText = "1991 Free Software Foundation"
 SPDX-License-Identifier = "LGPL-2.0-only"
 
 [[annotations]]
 path = [
   "lib/glibc-gai_strerror.c"
 ]
-SPDX-FileCopyrightText = "1997 Free Software Foundation"
 SPDX-License-Identifier = "LGPL-2.1-only"
 
 [[annotations]]
@@ -135,5 +131,4 @@ path = [
   "include/ccan-json.h",
   "lib/ccan-json.c",
 ]
-SPDX-FileCopyrightText = "2011 Joseph A. Adams"
 SPDX-License-Identifier = "MIT"

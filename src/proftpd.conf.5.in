@@ -1,6 +1,4 @@
 .TH proftpd.conf 5
-.\" Copyright (c) 2026 The ProFTPD Project team
-.\" SPDX-License-Identifier: GPL-2.0-only WITH vsftpd-openssl-exception
 .SH NAME
 proftpd.conf \- ProFTPD server configuration file
 .SH DESCRIPTION

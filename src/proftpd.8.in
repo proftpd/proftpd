@@ -1,6 +1,4 @@
 .TH proftpd 8 "July 2000"
-.\" Copyright (c) 2026 The ProFTPD Project team
-.\" SPDX-License-Identifier: GPL-2.0-only WITH vsftpd-openssl-exception
 .\" Process with
 .\" groff -man -Tascii proftpd.1 
 .\"
