@@ -22,6 +22,7 @@ path = [
   "contrib/mod_quotatab_ldap.schema",
   "contrib/mod_sftp/blacklist.dat",
   "contrib/mod_snmp/PROFTPD-MIB.txt",
+  "doc/**",
   "lib/README.tpl",
   "m4/proftpd.m4",
 ]
