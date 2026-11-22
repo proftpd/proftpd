@@ -1,7 +1,7 @@
 /*
 Copyright (c) 2005-2010, Troy D. Hanson     http://tpl.sourceforge.net
 All rights reserved.
-SPDX-License-Identifier: MIT
+SPDX-License-Identifier: BSD-3-Clause
 
 Redistribution and use in source and binary forms, with or without
 modification, are permitted provided that the following conditions are met:
