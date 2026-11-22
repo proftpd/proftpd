@@ -1,7 +1,6 @@
 /*
  * Copyright (c) 1987, 1993
  *    The Regents of the University of California.  All rights reserved.
- * SPDX-License-Identifier: BSD-3-Clause
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions

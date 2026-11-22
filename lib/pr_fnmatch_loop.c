@@ -1,6 +1,5 @@
 /* Copyright (C) 1991-1993,1996-2001,2003-2005,2007
    Free Software Foundation, Inc.
-   SPDX-License-Identifier: LGPL-2.0-only
 
    This file is part of the GNU C Library.
 

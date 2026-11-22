@@ -14,6 +14,7 @@ path = [
   "CREDITS",
   "ChangeLog",
   "INSTALL",
+  "Makefile.in",
   "NEWS",
   "README.md",
   "RELEASE_NOTES",
@@ -27,10 +28,27 @@ path = [
   "contrib/mod_snmp/contrib/**",
   "doc/**",
   "lib/README.tpl",
+  "include/**",
+  "lib/**",
   "locale/**",
   "m4/proftpd.m4",
   "sample-configurations/**",
   "tests/**",
+
+  # Exceptions; see below
+  "!include/ccan-json.h",
+  "!include/glibc-glob.h",
+  "!include/hanson-tpl.h",
+  "!include/openbsd-blowfish",
+  "!lib/getopt.c",
+  "!lib/getopt1.c",
+  "!lib/getopt.h",
+  "!lib/openbsd-blowfish.c",
+  "!lib/pr_fnmatch.c",
+  "!lib/pr_fnmatch_loop.c",
+  "!lib/pr-syslog.c",
+  "!lib/pwgrent.c",
+  "!lib/strsep.c",
 ]
 SPDX-FileCopyrightText = "2026 The ProFTPD Project"
 SPDX-License-Identifier = "GPL-2.0-only WITH vsftpd-openssl-exception"
@@ -53,6 +71,30 @@ SPDX-License-Identifier = "Unlicense"
 
 [[annotations]]
 path = [
+  "include/hanson-tpl.h",
+  "lib/hanson-tpl.c",
+]
+SPDX-FileCopyrightText = "2005 Troy D. Hanson"
+SPDX-License-Identifier = "BSD-3-Clause"
+
+[[annotations]]
+path = [
+  "include/openbsd-blowfish.h",
+  "lib/openbsd-blowfish.c",
+]
+SPDX-FileCopyrightText = "1987 Niels Provos"
+SPDX-License-Identifier = "BSD-3-Clause"
+
+[[annotations]]
+path = [
+  "lib/glibc-hstrerror.c",
+  "lib/pr-syslog.c",
+]
+SPDX-FileCopyrightText = "1987 The Regents of the University of California"
+SPDX-License-Identifier = "BSD-3-Clause"
+
+[[annotations]]
+path = [
   "aclocal.m4",
   "lib/libltdl/**",
   "**/config.guess",
@@ -62,3 +104,33 @@ path = [
 ]
 SPDX-FileCopyrightText = "1991 Free Software Foundation"
 SPDX-License-Identifier = "GPL-2.0-or-later"
+
+[[annotations]]
+path = [
+  "include/glibc-glob.h",
+  "lib/getopt.c",
+  "lib/getopt1.c",
+  "lib/getopt.h",
+  "lib/glibc-glob.c",
+  "lib/glibc-mkstemp.c",
+  "lib/pr_fnmatch.c",
+  "lib/pr_fnmatch_loop.c",
+  "lib/strsep.c",
+]
+SPDX-FileCopyrightText = "1991 Free Software Foundation"
+SPDX-License-Identifier = "LGPL-2.0-only"
+
+[[annotations]]
+path = [
+  "lib/glibc-gai_strerror.c"
+]
+SPDX-FileCopyrightText = "1997 Free Software Foundation"
+SPDX-License-Identifier = "LGPL-2.1-only"
+
+[[annotations]]
+path = [
+  "include/ccan-json.h",
+  "lib/ccan-json.c",
+]
+SPDX-FileCopyrightText = "2011 Joseph A. Adams"
+SPDX-License-Identifier = "MIT"

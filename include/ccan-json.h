@@ -1,7 +1,6 @@
 /*
   Copyright (C) 2011 Joseph A. Adams (joeyadams3.14159@gmail.com)
   All rights reserved.
-  SPDX-License-Identifier: MIT
 
   Permission is hereby granted, free of charge, to any person obtaining a copy
   of this software and associated documentation files (the "Software"), to deal

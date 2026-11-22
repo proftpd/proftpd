@@ -1,6 +1,5 @@
 /*
  * Copyright (c) 2026 The ProFTPD Project team
- * SPDX-License-Identifier: GPL-2.0-only WITH vsftpd-openssl-exception
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Library General Public License as

@@ -3,7 +3,6 @@
  * Copyright (c) 1997, 1998 Public Flood Software
  * Copyright (c) 1999, 2000 MacGyver aka Habeeb J. Dihu <macgyver@tos.net>
  * Copyright (c) 2001-2026 The ProFTPD Project team
- * SPDX-License-Identifier: GPL-2.0-only WITH vsftpd-openssl-exception
  *
  * Parts Copyright (C) 1991, 1992, 1993, 1999, 2000 Free Software
  *   Foundation, Inc.

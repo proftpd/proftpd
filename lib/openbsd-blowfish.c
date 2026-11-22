@@ -2,7 +2,6 @@
  * Blowfish block cipher for OpenBSD
  * Copyright 1997 Niels Provos <provos@physnet.uni-hamburg.de>
  * All rights reserved.
- * SPDX-License-Identifier: BSD-3-Clause
  *
  * Implementation advice by David Mazieres <dm@lcs.mit.edu>.
  *

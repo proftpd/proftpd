@@ -2,7 +2,6 @@
  * ProFTPD: mod_ctrls -- a module implementing the ftpdctl local socket
  *                       server
  * Copyright (c) 2000-2026 The ProFTPD Project team
- * SPDX-License-Identifier: GPL-2.0-only WITH vsftpd-openssl-exception
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
