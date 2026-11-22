@@ -217,7 +217,7 @@ struct ban_cache_entry {
 
 /* These are tpl format strings */
 #define BAN_CACHE_TPL_KEY_FMT		"vs"
-#define BAN_CACHE_TPL_VALUE_FMT		"S(iusiisssui)"
+#define BAN_CACHE_TPL_VALUE_FMT		"S(iIsiisssIi)"
 
 /* These are the JSON format field names */
 #define BAN_CACHE_JSON_KEY_VERSION	"version"
