@@ -32,8 +32,10 @@ path = [
   "lib/**",
   "locale/**",
   "m4/proftpd.m4",
+  "modules/**",
   "sample-configurations/**",
   "tests/**",
+  "utils/**",
 
   # Exceptions; see below
   "!include/ccan-json.h",
@@ -43,6 +45,7 @@ path = [
   "!lib/getopt.c",
   "!lib/getopt1.c",
   "!lib/getopt.h",
+  "!lib/libltdl/**",
   "!lib/openbsd-blowfish.c",
   "!lib/pr_fnmatch.c",
   "!lib/pr_fnmatch_loop.c",

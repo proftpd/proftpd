@@ -1,8 +1,5 @@
 #!/bin/sh
 
-# Copyright (c) 2026 The ProFTPD Project
-# SPDX-License-Identifier: GPL-2.0-only WITH vsftpd-openssl-exception
-
 TEMPLATE="$srcdir/module_glue.c.tmpl"
 GLUE=module_glue.c
 

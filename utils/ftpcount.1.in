@@ -1,6 +1,4 @@
 .TH ftpcount 1 "March 2003"
-.\" Copyright (c) 2026 The ProFTPD Project team
-.\" SPDX-License-Identifier: GPL-2.0-only WITH vsftpd-openssl-exception
 .\" Process with
 .\" groff -man -Tascii ftpcount.1 
 .\"

@@ -1,6 +1,4 @@
 .TH ftpscrub 8 "November 2008"
-.\" Copyright (c) 2026 The ProFTPD Project team
-.\" SPDX-License-Identifier: GPL-2.0-only WITH vsftpd-openssl-exception
 .\" Process with
 .\" groff -man -Tascii ftpscrub.8 
 .\"
