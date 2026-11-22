@@ -1,7 +1,6 @@
 /*
  * ProFTPD - FTP server fuzzing testsuite
  * Copyright (c) 2021-2026 The ProFTPD Project team
- * SPDX-License-Identifier: GPL-2.0-only WITH vsftpd-openssl-exception
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by

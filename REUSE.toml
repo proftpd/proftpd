@@ -1,6 +1,6 @@
 version = 1
 
-# Individual files
+# ProFTPD Project licensing
 [[annotations]]
 path = [
   ".autom4te.cfg",
@@ -8,6 +8,7 @@ path = [
   ".codacy.yml",
   ".codeql.yml",
   ".gitattributes",
+  ".github/**",
   ".gitignore",
   ".remarkrc.yml",
   "CREDITS",
@@ -18,17 +19,23 @@ path = [
   "RELEASE_NOTES",
   "contrib/README",
   "contrib/README.ratio",
+  "contrib/dist/**",
   "contrib/mod_quotatab_ldap.ldif",
   "contrib/mod_quotatab_ldap.schema",
   "contrib/mod_sftp/blacklist.dat",
   "contrib/mod_snmp/PROFTPD-MIB.txt",
+  "contrib/mod_snmp/contrib/**",
   "doc/**",
   "lib/README.tpl",
+  "locale/**",
   "m4/proftpd.m4",
+  "sample-configurations/**",
+  "tests/**",
 ]
 SPDX-FileCopyrightText = "2026 The ProFTPD Project"
 SPDX-License-Identifier = "GPL-2.0-only WITH vsftpd-openssl-exception"
 
+# Other licenses
 [[annotations]]
 path = [
   "contrib/mod_sftp/bcrypt.c",
@@ -47,6 +54,7 @@ SPDX-License-Identifier = "Unlicense"
 [[annotations]]
 path = [
   "aclocal.m4",
+  "lib/libltdl/**",
   "**/config.guess",
   "**/config.sub",
   "**/install-sh",
@@ -54,27 +62,3 @@ path = [
 ]
 SPDX-FileCopyrightText = "1991 Free Software Foundation"
 SPDX-License-Identifier = "GPL-2.0-or-later"
-
-# Directories
-[[annotations]]
-path = ".github/**"
-SPDX-FileCopyrightText = "NONE"
-
-[[annotations]]
-path = "lib/libltdl/**"
-SPDX-FileCopyrightText = "1991 Free Software Foundation"
-SPDX-License-Identifier = "GPL-2.0-or-later"
-
-[[annotations]]
-path = [
-  ".github/**",
-  "contrib/dist/**",
-  "contrib/mod_snmp/contrib/**",
-  "doc/platforms/**.md",
-  "locale/**",
-  "sample-configurations/**",
-  "tests/api/etc/**",
-  "tests/t/etc/**",
-]
-SPDX-FileCopyrightText = "2026 The ProFTPD Project"
-SPDX-License-Identifier = "GPL-2.0-only WITH vsftpd-openssl-exception"

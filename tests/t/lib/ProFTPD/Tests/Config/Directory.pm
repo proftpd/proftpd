@@ -1,8 +1,5 @@
 package ProFTPD::Tests::Config::Directory;
 
-# Copyright (c) 2026 The ProFTPD Project team
-# SPDX-License-Identifier: GPL-2.0-only WITH vsftpd-openssl-exception
-
 use lib qw(t/lib);
 use base qw(Test::Unit::TestCase ProFTPD::TestSuite::Child);
 use strict;
