@@ -40,7 +40,7 @@ sub set_up {
   $self->SUPER::set_up(@_);
 
   # Clear the memcached servers before each unit test
-  my $memcached_servers = $ENV{MEMCACHED_SERVERS} ? $ENV{MEMCACHED_SERVERS} : "127.0.0.1:11211";
+  my $memcached_servers = get_memcached_servers();
 
   my $mc = Cache::Memcached->new({
     servers => [ $memcached_servers ],
@@ -61,13 +61,22 @@ sub list_tests {
   return testsuite_get_runnable_tests($TESTS);
 }
 
+sub get_memcached_servers {
+  my $memcached_servers = $ENV{MEMCACHED_SERVERS} ? $ENV{MEMCACHED_SERVERS} : "127.0.0.1:11211";
+  unless ($memcached_servers =~ /:/) {
+    $memcached_servers .= ':11211';
+  }
+
+  return $memcached_servers;
+}
+
 sub ban_memcache_max_login_attempts {
   my $self = shift;
   my $tmpdir = $self->{tmpdir};
   my $setup = test_setup($tmpdir, 'ban');
 
   my $ban_tab = File::Spec->rel2abs("$tmpdir/ban.tab");
-  my $memcached_servers = $ENV{MEMCACHED_SERVERS} ? $ENV{MEMCACHED_SERVERS} : '127.0.0.1:11211';
+  my $memcached_servers = get_memcached_servers();
 
   my $config = {
     PidFile => $setup->{pid_file},
@@ -135,9 +144,7 @@ sub ban_memcache_max_login_attempts {
       my $resp_code = $client->response_code();
       my $resp_msg = $client->response_msg();
 
-      my $expected;
-
-      $expected = 530;
+      my $expected = 530;
       $self->assert($expected == $resp_code,
         test_msg("Expected response code $expected, got $resp_code"));
 
@@ -152,8 +159,8 @@ sub ban_memcache_max_login_attempts {
 
       my $conn_ex = ProFTPD::TestSuite::FTP::get_connect_exception();
 
-      $expected = "";
-      $self->assert($expected eq $conn_ex,
+      $expected = '(|Connection closed)';
+      $self->assert(qr/$expected/, $conn_ex,
         test_msg("Expected '$expected', got '$conn_ex'"));
     };
     if ($@) {
@@ -208,11 +215,10 @@ sub ban_memcache_max_login_attempts {
       # it means that the daemon hadn't even started up yet, which is not
       # the same as listening but rejecting our connection.
 
-      my $expected = '';
-      $self->assert($expected eq $conn_ex,
+      my $expected = '(|Connection closed)';
+      $self->assert(qr/$expected/, $conn_ex,
         test_msg("Expected '$expected', got '$conn_ex'"));
     };
-
     if ($@) {
       $ex = $@;
     }
@@ -243,7 +249,7 @@ sub ban_memcache_json_max_login_attempts_bug4056 {
   my $setup = test_setup($tmpdir, 'ban');
 
   my $ban_tab = File::Spec->rel2abs("$tmpdir/ban.tab");
-  my $memcached_servers = $ENV{MEMCACHED_SERVERS} ? $ENV{MEMCACHED_SERVERS} : '127.0.0.1:11211';
+  my $memcached_servers = get_memcached_servers();
 
   my $config = {
     PidFile => $setup->{pid_file},
@@ -312,9 +318,7 @@ sub ban_memcache_json_max_login_attempts_bug4056 {
       my $resp_code = $client->response_code();
       my $resp_msg = $client->response_msg();
 
-      my $expected;
-
-      $expected = 530;
+      my $expected = 530;
       $self->assert($expected == $resp_code,
         test_msg("Expected response code $expected, got $resp_code"));
 

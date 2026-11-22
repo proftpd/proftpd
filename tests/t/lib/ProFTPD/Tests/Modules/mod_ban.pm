@@ -10,6 +10,7 @@ use strict;
 use Carp;
 use File::Spec;
 use IO::Handle;
+use IPC::Open3;
 
 use ProFTPD::TestSuite::FTP;
 use ProFTPD::TestSuite::Utils qw(:auth :config :running :test :testsuite);
@@ -1588,6 +1589,85 @@ sub ban_sighup_bug3751 {
   test_cleanup($setup, undef);
 }
 
+sub do_starttls_ftp {
+  my $port = shift;
+  my $ca_file = shift;
+
+  my @cmd = (
+    'openssl',
+    's_client',
+    '-crlf',
+    '-connect',
+    "127.0.0.1:$port",
+    '-starttls',
+    'ftp',
+    '-CAfile',
+    $ca_file,
+  );
+
+  my $tls_rh = IO::Handle->new();
+  my $tls_wh = IO::Handle->new();
+  my $tls_eh = IO::Handle->new();
+
+  $tls_wh->autoflush(1);
+
+  local $SIG{CHLD} = 'DEFAULT';
+
+  if ($ENV{TEST_VERBOSE}) {
+    print STDERR "Executing: ", join(' ', @cmd), "\n";
+  }
+
+  my $tls_pid = open3($tls_wh, $tls_rh, $tls_eh, @cmd);
+  print $tls_wh "QUIT\n";
+  waitpid($tls_pid, 0);
+
+  my ($res, $cipher_str, $err_str, $out_str);
+  if ($? >> 8) {
+    my $output = [<$tls_rh>];
+
+    if ($ENV{TEST_VERBOSE}) {
+      $out_str = join('', @$output);
+      print STDERR "Stdout: $out_str\n";
+    }
+
+    if ($ENV{TEST_VERBOSE}) {
+      $err_str = join('', <$tls_eh>);
+      print STDERR "Stderr: $err_str\n";
+    }
+
+    $res = 0;
+
+  } else {
+    my $output = [<$tls_rh>];
+
+    # Specifically look for the line containing 'Cipher is'
+    foreach my $line (@$output) {
+      if ($line =~ /Cipher is/) {
+        $cipher_str = $line;
+        chomp($cipher_str);
+      }
+    }
+
+    if ($ENV{TEST_VERBOSE}) {
+      $out_str = join('', @$output);
+      print STDERR "Stdout: $out_str\n";
+    }
+
+    if ($ENV{TEST_VERBOSE}) {
+      $err_str = join('', <$tls_eh>);
+      print STDERR "Stderr: $err_str\n";
+    }
+
+    $res = 1;
+  }
+
+  if ($res == 1) {
+    return $res;
+  }
+
+  return undef;
+}
+
 sub ban_on_event_tlshandshake {
   my $self = shift;
   my $tmpdir = $self->{tmpdir};
@@ -1647,8 +1727,6 @@ sub ban_on_event_tlshandshake {
     die("Can't open pipe: $!");
   }
 
-  require Net::FTPSSL;
-
   my $ex;
 
   # Fork child
@@ -1659,38 +1737,24 @@ sub ban_on_event_tlshandshake {
       # Give the server a chance to start up
       sleep(2);
 
-      my $client_opts = {
-        Encryption => 'E',
-        Port => $port,
-      };
-
       if ($ENV{TEST_VERBOSE}) {
-        $client_opts->{Debug} = 1;
+        print STDERR "# Connecting\n";
       }
 
-      my $client = Net::FTPSSL->new('127.0.0.1', $client_opts);
-      unless ($client) {
-        die("Can't connect to FTPS server: " . IO::Socket::SSL::errstr());
+      unless (do_starttls_ftp($port, $ca_file)) {
+        die("Can't do TLS handshake with server");
       }
-
-      unless ($client->login($setup->{user}, $setup->{passwd})) {
-        die("Can't login: " . $client->last_message());
-      }
-
-      $client->quit();
 
       # Now try again; we should be banned.  Note that we have to create a
       # separate connection for this.
 
-      $client = Net::FTPSSL->new('127.0.0.1', $client_opts);
-      if ($client) {
-        die("Client successfully connected to FTPS unexpectedly");
+      if ($ENV{TEST_VERBOSE}) {
+        print STDERR "# Connecting again\n";
       }
 
-      my $errstr = IO::Socket::SSL::errstr();
-      my $expected = 'connect attempt failed';
-      $self->assert(qr/$expected/, $errstr,
-        test_msg("Expected error message '$expected', got '$errstr'"));
+      if (do_starttls_ftp($port, $ca_file)) {
+        die("TLS handshake with server succeeded unexpectedly");
+      }
     };
     if ($@) {
       $ex = $@;
