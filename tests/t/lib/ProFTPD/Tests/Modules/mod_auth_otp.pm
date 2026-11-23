@@ -52,6 +52,11 @@ my $TESTS = {
     test_class => [qw(forking mod_auth_otp mod_sql mod_sql_sqlite)],
   },
 
+  auth_otp_hotp_non_otp_password_issue2503 => {
+    order => ++$order,
+    test_class => [qw(bug forking mod_auth_otp mod_sql mod_sql_sqlite)],
+  },
+
   # TOTP tests
   auth_otp_totp_login => {
     order => ++$order,
@@ -1308,6 +1313,209 @@ EOS
   # Stop server
   server_stop($setup->{pid_file});
   $self->assert_child_ok($pid);
+
+  test_cleanup($setup, $ex);
+}
+
+sub auth_otp_hotp_non_otp_password_issue2503 {
+  my $self = shift;
+  my $tmpdir = $self->{tmpdir};
+  my $setup = test_setup($tmpdir, 'auth_otp');
+
+  my $db_file = File::Spec->rel2abs("$tmpdir/proftpd.db");
+
+  # Build up sqlite3 command to create HOTP tables
+  my $db_script = File::Spec->rel2abs("$tmpdir/hotp.sql");
+
+  # mod_auth_otp wants this secret to be base32-encoded, for interoperability
+  # with Google Authenticator.
+  require MIME::Base32;
+  MIME::Base32->import('RFC') if $MIME::Base32::VERSION <= 1.02;
+
+  my $secret = 'Sup3rS3Cr3t';
+  my $base32_secret = MIME::Base32::encode($secret);
+  my $counter = 777;
+
+  # Note that for this test, we deliberately omit a table row for our
+  # test user.
+  if (open(my $fh, "> $db_script")) {
+    print $fh <<EOS;
+CREATE TABLE auth_otp (
+  user TEXT PRIMARY KEY,
+  secret TEXT,
+  counter INTEGER
+);
+EOS
+
+    unless (close($fh)) {
+      die("Can't write $db_script: $!");
+    }
+
+  } else {
+    die("Can't open $db_script: $!");
+  }
+
+  my $cmd = "sqlite3 $db_file < $db_script";
+  build_db($cmd, $db_script, $db_file);
+
+  # We will deliberately be trying multiple wrong login attempts for this test.
+  my $max_login_attempts = 10;
+
+  my $config = {
+    PidFile => $setup->{pid_file},
+    ScoreboardFile => $setup->{scoreboard_file},
+    SystemLog => $setup->{log_file},
+    TraceLog => $setup->{log_file},
+    Trace => 'auth:20 auth_otp:25',
+
+    AuthUserFile => $setup->{auth_user_file},
+    AuthGroupFile => $setup->{auth_group_file},
+    AuthOrder => 'mod_auth_otp.c mod_auth_file.c',
+
+    MaxLoginAttempts => $max_login_attempts,
+
+    IfModules => {
+      'mod_delay.c' => {
+        DelayEngine => 'off',
+      },
+
+      'mod_auth_otp.c' => {
+        AuthOTPEngine => 'on',
+        AuthOTPLog => $setup->{log_file},
+        AuthOTPAlgorithm => 'hotp',
+
+        # Assumes default table names, column names
+        AuthOTPTable => 'sql:/get-user-hotp/update-user-hotp',
+      },
+
+      'mod_sql.c' => [
+        'SQLEngine log',
+        'SQLBackend sqlite3',
+        "SQLConnectInfo $db_file",
+        "SQLLogFile $setup->{log_file}",
+
+        'SQLNamedQuery get-user-hotp SELECT "secret, counter FROM auth_otp WHERE user = \'%{0}\'"',
+        'SQLNamedQuery update-user-hotp UPDATE "counter = %{1} WHERE user = \'%{0}\'" auth_otp',
+      ],
+    },
+  };
+
+  my ($port, $config_user, $config_group) = config_write($setup->{config_file},
+    $config);
+
+  # Open pipes, for use between the parent and child processes.  Specifically,
+  # the child will indicate when it's done with its test by writing a message
+  # to the parent.
+  my ($rfh, $wfh);
+  unless (pipe($rfh, $wfh)) {
+    die("Can't open pipe: $!");
+  }
+
+  my $ex;
+
+  # Fork child
+  $self->handle_sigchld();
+  defined(my $pid = fork()) or die("Can't fork: $!");
+  if ($pid) {
+    eval {
+      sleep(2);
+
+      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
+
+      # Incorrect number of characters.
+      my $bad_passwd = 'foobarbaz';
+      eval { $client->login($setup->{user}, $bad_passwd) };
+      unless ($@) {
+        die("Login succeeded unexpectedly");
+      }
+
+      # Correct number of characters, but no digits.
+      $bad_passwd = 'tester';
+      eval { $client->login($setup->{user}, $bad_passwd) };
+      unless ($@) {
+        die("Login succeeded unexpectedly");
+      }
+
+      # Correct number of characters, all digits, but (deliberately) no
+      # table entry.
+      $bad_passwd = '123456';
+      eval { $client->login($setup->{user}, $bad_passwd) };
+      unless ($@) {
+        die("Login succeeded unexpectedly");
+      }
+
+      # Finally, make sure using the proper password works.
+      $client->login($setup->{user}, $setup->{passwd});
+      $client->quit();
+    };
+    if ($@) {
+      $ex = $@;
+    }
+
+    $wfh->print("done\n");
+    $wfh->flush();
+
+  } else {
+    eval { server_wait($setup->{config_file}, $rfh) };
+    if ($@) {
+      warn($@);
+      exit 1;
+    }
+
+    exit 0;
+  }
+
+  # Stop server
+  server_stop($setup->{pid_file});
+  $self->assert_child_ok($pid);
+
+  eval {
+    if (open(my $fh, "< $setup->{log_file}")) {
+      my $saw_bad_len = 0;
+      my $saw_bad_text = 0;
+      my $saw_actual_non_otp = 0;
+
+      while (my $line = <$fh>) {
+        chomp($line);
+
+        if ($ENV{TEST_VERBOSE}) {
+          print STDERR "# $line\n";
+        }
+
+        next unless $line =~ /auth_otp:\d+/;
+
+        if ($line =~ /client provided non\-OTP credential \(\d+ bytes rather than expected 6\), declining/) {
+          $saw_bad_len = 1;
+        }
+
+        if ($line =~ /client provided non-OTP credential \(found non-digit character\), declining/) {
+          $saw_bad_text = 1;
+        }
+
+        if ($line =~  /actual credential is non-OTP text, declining/) {
+          $saw_actual_non_otp = 1;
+        }
+
+        if ($saw_bad_len && $saw_bad_text && $saw_actual_non_otp) {
+          last;
+        }
+      }
+
+      close($fh);
+      $self->assert($saw_bad_len,
+        test_msg("Did not see expected TraceLog message about incorrect OTP length"));
+      $self->assert($saw_bad_text,
+        test_msg("Did not see expected TraceLog message about incorrect OTP characters"));
+      $self->assert($saw_actual_non_otp,
+        test_msg("Did not see expected TraceLog message about non-OTP actual credential"));
+
+    } else {
+      die("Can't read $setup->{log_file}: $!");
+    }
+  };
+  if ($@) {
+    $ex = $@ unless $ex;
+  }
 
   test_cleanup($setup, $ex);
 }

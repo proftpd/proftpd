@@ -27,6 +27,8 @@
   leak possibly sensitive environment variable values.
 - Issue 2497 - Inadvertent authentication bypass possible due to backend error
   mishandling.
+- Issue 2503 - Some auth modules improperly handle credentials from other
+  modules.
 
 1.3.10rc6 - Released 18-Nov-2026
 --------------------------------
