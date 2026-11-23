@@ -250,8 +250,17 @@ static int site_misc_delete_dir(pool *p, const char *dir) {
         return -1;
       }
 
-      res = pr_fsio_unlink(file);
-      xerrno = errno;
+      /* Apply the same <Limit> checks that the DELE command would. */
+      if (!dir_check(sub_pool, cmd, G_WRITE, file, NULL)) {
+        pr_log_debug(DEBUG3, MOD_SITE_MISC_VERSION
+          ": deleting file '%s' denied by <Limit> configuration", file);
+        res = -1;
+        xerrno = EPERM;
+
+      } else {
+        res = pr_fsio_unlink(file);
+        xerrno = errno;
+      }
 
       if (res < 0) {
         pr_cmd_dispatch_phase(cmd, POST_CMD_ERR, 0);
@@ -305,8 +314,17 @@ static int site_misc_delete_dir(pool *p, const char *dir) {
     return -1;
   }
 
-  res = pr_fsio_rmdir(dir);
-  xerrno = errno;
+  /* Apply the same <Limit> checks that the RMD command would. */
+  if (!dir_check(sub_pool, cmd, G_WRITE, dir, NULL)) {
+    pr_log_debug(DEBUG3, MOD_SITE_MISC_VERSION
+      ": removing directory '%s' denied by <Limit> configuration", dir);
+    res = -1;
+    xerrno = EPERM;
+
+  } else {
+    res = pr_fsio_rmdir(dir);
+    xerrno = errno;
+  }
 
   if (res < 0) {
     pr_log_debug(DEBUG3, MOD_SITE_MISC_VERSION

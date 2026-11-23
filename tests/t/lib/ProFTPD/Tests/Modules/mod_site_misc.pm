@@ -175,6 +175,11 @@ my $TESTS = {
     test_class => [qw(forking)],
   },
 
+  site_misc_rmdir_failed_limit_dele => {
+    order => ++$order,
+    test_class => [qw(forking)],
+  },
+
   site_misc_symlink_failed_limit => {
     order => ++$order,
     test_class => [qw(forking)],
@@ -3560,6 +3565,137 @@ sub site_misc_rmdir_failed_limit {
       foreach my $test_dir (@$test_dirs) {
         unless (-d $test_dir) {
           die("Directory $test_dir does not exist as expected");
+        }
+      }
+    };
+    if ($@) {
+      $ex = $@;
+    }
+
+    $wfh->print("done\n");
+    $wfh->flush();
+
+  } else {
+    eval { server_wait($setup->{config_file}, $rfh) };
+    if ($@) {
+      warn($@);
+      exit 1;
+    }
+
+    exit 0;
+  }
+
+  # Stop server
+  server_stop($setup->{pid_file});
+  $self->assert_child_ok($pid);
+
+  test_cleanup($setup, $ex);
+}
+
+sub site_misc_rmdir_failed_limit_dele {
+  my $self = shift;
+  my $tmpdir = $self->{tmpdir};
+  my $setup = test_setup($tmpdir, 'site_misc');
+
+  my $test_dir = File::Spec->rel2abs("$tmpdir/foo");
+  mkpath($test_dir);
+
+  if ($< == 0) {
+    unless (chown($setup->{uid}, $setup->{gid}, $test_dir)) {
+      die("Can't set owner of $test_dir to $setup->{uid}/$setup->{gid}: $!");
+    }
+  }
+
+  my $sub_dir = File::Spec->rel2abs("$tmpdir/foo/bar");
+  mkpath($sub_dir);
+
+  my $test_file = File::Spec->rel2abs("$tmpdir/foo/bar/quxx.txt");
+  if (open(my $fh, "> $test_file")) {
+    print $fh "Quzz\n";
+
+    unless (close($fh)) {
+      die("Can't write $test_file: $!");
+    }
+
+  } else {
+    die("Can't open $test_file: $!");
+  }
+
+  my $config = {
+    PidFile => $setup->{pid_file},
+    ScoreboardFile => $setup->{scoreboard_file},
+    SystemLog => $setup->{log_file},
+
+    AuthUserFile => $setup->{auth_user_file},
+    AuthGroupFile => $setup->{auth_group_file},
+    AuthOrder => 'mod_auth_file.c',
+
+    Directory => {
+      '~/foo/bar' => {
+        Limit => {
+          DELE => {
+            DenyAll => '',
+          },
+        },
+      },
+    },
+
+    IfModules => {
+      'mod_delay.c' => {
+        DelayEngine => 'off',
+      },
+    },
+  };
+
+  my ($port, $config_user, $config_group) = config_write($setup->{config_file},
+    $config);
+
+  # Open pipes, for use between the parent and child processes.  Specifically,
+  # the child will indicate when it's done with its test by writing a message
+  # to the parent.
+  my ($rfh, $wfh);
+  unless (pipe($rfh, $wfh)) {
+    die("Can't open pipe: $!");
+  }
+
+  my $ex;
+
+  # Fork child
+  $self->handle_sigchld();
+  defined(my $pid = fork()) or die("Can't fork: $!");
+  if ($pid) {
+    eval {
+      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
+      $client->login($setup->{user}, $setup->{passwd});
+
+      # DELE is denied in foo/bar, so SITE RMDIR must not delete the files
+      # in that directory either.
+      my $path = 'foo';
+
+      eval { $client->site('RMDIR', $path) };
+      unless ($@) {
+        die("SITE RMDIR succeeded unexpectedly");
+      }
+
+      my $resp_code = $client->response_code();
+      my $resp_msg = $client->response_msg();
+      $client->quit();
+
+      my $expected = 550;
+      $self->assert($expected == $resp_code,
+        test_msg("Expected response code $expected, got $resp_code"));
+
+      $expected = "RMDIR $path: Operation not permitted";
+      $self->assert($expected eq $resp_msg,
+        test_msg("Expected response message '$expected', got '$resp_msg'"));
+
+      unless (-f $test_file) {
+        die("File $test_file does not exist as expected");
+      }
+
+      foreach my $dir ($test_dir, $sub_dir) {
+        unless (-d $dir) {
+          die("Directory $dir does not exist as expected");
         }
       }
     };
