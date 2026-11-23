@@ -42,6 +42,11 @@
 
 #define AUTH_OTP_VERIFICATION_CODE_PROMPT	"Verification code: "
 
+/* We currently hardcode the assumption that generated and valid OTPs
+ * are 6 digits.
+ */
+#define AUTH_OTP_CODE_LEN			6
+
 /* From src/response.c */
 extern pr_response_t *resp_list;
 
@@ -56,6 +61,7 @@ static unsigned int auth_otp_algo = AUTH_OTP_ALGO_TOTP_SHA1;
 static struct auth_otp_db *dbh = NULL;
 static config_rec *auth_otp_db_config = NULL;
 static int auth_otp_auth_code = PR_AUTH_NOPWD;
+static int auth_otp_found_user_entry = FALSE;
 
 /* Necessary prototypes */
 static int auth_otp_sess_init(void);
@@ -399,6 +405,8 @@ static int handle_user_otp(pool *p, const char *user, const char *user_otp,
         strerror(xerrno));
     }
 
+    auth_otp_found_user_entry = FALSE;
+
     /* If there was no entry found in the table (errno = ENOENT), should we
      * returned ERROR or DECLINED?
      *
@@ -426,6 +434,8 @@ static int handle_user_otp(pool *p, const char *user, const char *user_otp,
 
     return 0;
   }
+
+  auth_otp_found_user_entry = TRUE;
 
   res = check_otp_code(p, user, user_otp, secret, secret_len, counter);
   if (res == 0) {
@@ -638,7 +648,9 @@ MODRET auth_otp_auth(cmd_rec *cmd) {
 }
 
 MODRET auth_otp_chkpass(cmd_rec *cmd) {
+  register unsigned int i;
   const char *real_otp, *user, *user_otp;
+  size_t otp_len = 0;
 
   if (auth_otp_engine == FALSE) {
     return PR_DECLINED(cmd);
@@ -651,6 +663,58 @@ MODRET auth_otp_chkpass(cmd_rec *cmd) {
   if (real_otp == NULL) {
     /* Modules like mod_ldap might provide NULL ciphertexts. */
     pr_trace_msg(trace_channel, 3, "NULL ciphertext provided, ignoring");
+    return PR_DECLINED(cmd);
+  }
+
+  /* We should only be comparing OTP codes, and not any other kind of text;
+   * other auth modules can handle other text; see Issue #2503.
+   */
+  otp_len = strlen(user_otp);
+  if (otp_len != AUTH_OTP_CODE_LEN) {
+    pr_trace_msg(trace_channel, 19,
+      "client provided non-OTP credential (%lu bytes rather than expected 6), "
+      "declining", (unsigned long) otp_len);
+    return PR_DECLINED(cmd);
+  }
+
+  /* Perhps the client provided a 6 byte credential; we need to ensure that
+   * it is comprised of all digits for it to be a potential OTP code.
+   */
+  for (i = 0; i < otp_len; i++) {
+    if (!PR_ISDIGIT(user_otp[i])) {
+      pr_trace_msg(trace_channel, 19, "%s",
+        "client provided non-OTP credential (found non-digit character), "
+        "declining");
+      return PR_DECLINED(cmd);
+    }
+  }
+
+  otp_len = strlen(real_otp);
+  if (otp_len != AUTH_OTP_CODE_LEN) {
+    pr_trace_msg(trace_channel, 21, "%s",
+      "actual credential is non-OTP text, declining");
+    return PR_DECLINED(cmd);
+  }
+
+  /* Perhps the real credentil is 6 bytes; we need to ensure that it is
+   * comprised of all digits for it to be a potential OTP code.
+   */
+  for (i = 0; i < otp_len; i++) {
+    if (!PR_ISDIGIT(user_otp[i])) {
+      pr_trace_msg(trace_channel, 21, "%s",
+        "actual credential is non-OTP text, declining");
+      return PR_DECLINED(cmd);
+    }
+  }
+
+  /* One final check: make sure we found an entry for the user in the
+   * AuthOTPTable.  If we did, then the actual credential is mostly likely
+   * one we provisioned.  Otherwise, it still could be something from some
+   * other auth source, and we don't want to be handling it (Issue #2503).
+   */
+  if (auth_otp_found_user_entry == FALSE) {
+    pr_trace_msg(trace_channel, 21, "%s",
+      "no entry found for user in table, declining");
     return PR_DECLINED(cmd);
   }
 
@@ -912,6 +976,15 @@ MODRET auth_otp_post_user(cmd_rec *cmd) {
   return PR_DECLINED(cmd);
 }
 
+MODRET auth_otp_reset_found(cmd_rec *cmd) {
+  if (auth_otp_engine == FALSE) {
+    return PR_DECLINED(cmd);
+  }
+
+  auth_otp_found_user_entry = FALSE;
+  return PR_DECLINED(cmd);
+}
+
 /* Event listeners
  */
 
@@ -1131,6 +1204,11 @@ static cmdtable auth_otp_cmdtab[] = {
   { POST_CMD,		C_USER, G_NONE,	auth_otp_post_user,	FALSE, FALSE },
   { POST_CMD,		C_PASS, G_NONE,	auth_otp_post_pass,	FALSE, FALSE },
   { POST_CMD_ERR,	C_PASS, G_NONE,	auth_otp_post_pass,	FALSE, FALSE },
+
+  { PRE_CMD,		C_PASS,	G_NONE,	auth_otp_reset_found,	FALSE, FALSE },
+  { POST_CMD,		C_PASS,	G_NONE,	auth_otp_reset_found,	FALSE, FALSE },
+  { POST_CMD_ERR,	C_PASS,	G_NONE,	auth_otp_reset_found,	FALSE, FALSE },
+
   { 0, NULL },
 };
 
