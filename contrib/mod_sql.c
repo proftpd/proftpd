@@ -140,6 +140,7 @@ MODRET sql_lookup(cmd_rec *cmd);
 static cmdtable *sql_set_backend(const char *name);
 
 static pool *sql_pool = NULL;
+static int sql_found_user_entry = FALSE;
 static const char *trace_channel = "sql";
 
 /*
@@ -1184,6 +1185,13 @@ static modret_t *sql_auth_plaintext(cmd_rec *cmd, const char *plaintext,
 
   if (*ciphertext == '\0') {
     return PR_ERROR_INT(cmd, PR_AUTH_BADPWD);
+  }
+
+  if (sql_found_user_entry == FALSE) {
+    /* If we didn't find a user entry, we should not be handling these
+     * credentials (Issue #2503).
+     */
+    return PR_DECLINED(cmd);
   }
 
   if (strcmp(plaintext, ciphertext) == 0) {
@@ -2906,6 +2914,15 @@ MODRET sql_post_retr(cmd_rec *cmd) {
   return PR_DECLINED(cmd);
 }
 
+MODRET sql_reset_found(cmd_rec *cmd) {
+  if (cmap.engine == 0) {
+    return PR_DECLINED(cmd);
+  }
+
+  sql_found_user_entry = FALSE;
+  return PR_DECLINED(cmd);
+}
+
 static int resolve_numeric_val(cmd_rec *cmd, const char *val) {
   int idx = -1;
   unsigned int n;
@@ -4425,12 +4442,16 @@ MODRET sql_auth_authenticate(cmd_rec *cmd) {
   lpw.pw_gid = -1;
   lpw.pw_name = cmd->argv[0];
 
-  if ((pw = sql_getpasswd(cmd, &lpw)) &&
-      !pr_auth_check(cmd->tmp_pool, pw->pw_passwd, cmd->argv[0],
+  pw = sql_getpasswd(cmd, &lpw);
+  if (pw != NULL) {
+    sql_found_user_entry = TRUE;
+
+    if (!pr_auth_check(cmd->tmp_pool, pw->pw_passwd, cmd->argv[0],
         cmd->argv[1])) {
-    sql_log(DEBUG_FUNC, "%s", "<<< cmd_auth");
-    session.auth_mech = "mod_sql.c";
-    return PR_HANDLED(cmd);
+      sql_log(DEBUG_FUNC, "%s", "<<< cmd_auth");
+      session.auth_mech = "mod_sql.c";
+      return PR_HANDLED(cmd);
+    }
   }
 
   sql_log(DEBUG_FUNC, "%s", "<<< cmd_auth");
@@ -7054,6 +7075,10 @@ static cmdtable sql_cmdtab[] = {
   { POST_CMD_ERR,	C_ANY,	G_NONE,	errinfo_master,	FALSE,	FALSE },
   { LOG_CMD,		C_ANY,	G_NONE,	log_master,	FALSE,	FALSE },
   { LOG_CMD_ERR,	C_ANY,	G_NONE,	err_master,	FALSE,	FALSE },
+
+  { PRE_CMD,		C_PASS,	G_NONE, sql_reset_found, FALSE,	FALSE },
+  { POST_CMD,		C_PASS,	G_NONE, sql_reset_found, FALSE,	FALSE },
+  { POST_CMD_ERR,	C_PASS,	G_NONE, sql_reset_found, FALSE,	FALSE },
 
   /* Module hooks */
   { HOOK,	"sql_change",		G_NONE,	sql_change,	FALSE, FALSE },
