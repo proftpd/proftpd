@@ -363,7 +363,7 @@ static int xfer_check_limit(cmd_rec *cmd) {
 
       memset(maxn, '\0', sizeof(maxn));
       pr_snprintf(maxn, sizeof(maxn)-1, "%u", max);
-      pr_response_send(R_451, "%s", sreplace(cmd->tmp_pool, maxstr, "%m",
+      pr_response_add_err(R_451, "%s", sreplace(cmd->tmp_pool, maxstr, "%m",
         maxn, NULL));
       pr_log_debug(DEBUG4, "MaxTransfersPerHost %u exceeded for %s for "
         "client '%s'", max, xfer_cmd, client_addr);
@@ -454,7 +454,7 @@ static int xfer_check_limit(cmd_rec *cmd) {
 
       memset(maxn, '\0', sizeof(maxn));
       pr_snprintf(maxn, sizeof(maxn)-1, "%u", max);
-      pr_response_send(R_451, "%s", sreplace(cmd->tmp_pool, maxstr, "%m",
+      pr_response_add_err(R_451, "%s", sreplace(cmd->tmp_pool, maxstr, "%m",
         maxn, NULL));
       pr_log_debug(DEBUG4, "MaxTransfersPerUser %u exceeded for %s for "
         "user '%s'", max, xfer_cmd, session.user);
@@ -3989,9 +3989,10 @@ MODRET set_maxtransfersperhost(cmd_rec *cmd) {
     CONF_DIR|CONF_DYNDIR);
 
   count = atoi(cmd->argv[2]);
-  if (count < 1)
+  if (count < 1) {
     CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "count must be greater than zero: '",
       cmd->argv[2], "'", NULL));
+  }
 
   c = add_config_param(cmd->argv[0], 3, NULL, NULL, NULL);
 
@@ -4004,7 +4005,12 @@ MODRET set_maxtransfersperhost(cmd_rec *cmd) {
   *((unsigned int *) c->argv[1]) = count;
 
   if (cmd->argc-1 == 3) {
-    c->argv[2] = pstrdup(c->pool, cmd->argv[3]);
+    if (get_context_type(cmd) != CONF_DYNDIR) {
+      /* Per Issue #2490, we ignore configuration of the optional message
+       * in .ftpaccess files to prevent possible information leaks.
+       */
+      c->argv[2] = pstrdup(c->pool, cmd->argv[3]);
+    }
   }
 
   c->flags |= CF_MERGEDOWN_MULTI;
@@ -4042,7 +4048,12 @@ MODRET set_maxtransfersperuser(cmd_rec *cmd) {
   *((unsigned int *) c->argv[1]) = count;
 
   if (cmd->argc-1 == 3) {
-    c->argv[2] = pstrdup(c->pool, cmd->argv[3]);
+    if (get_context_type(cmd) != CONF_DYNDIR) {
+      /* Per Issue #2490, we ignore configuration of the optional message
+       * in .ftpaccess files to prevent possible information leaks.
+       */
+      c->argv[2] = pstrdup(c->pool, cmd->argv[3]);
+    }
   }
 
   c->flags |= CF_MERGEDOWN_MULTI;
