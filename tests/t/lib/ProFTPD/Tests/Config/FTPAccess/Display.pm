@@ -26,6 +26,16 @@ my $TESTS = {
     test_class => [qw(bug forking)],
   },
 
+  maxtransferperhost_env_var_issue2490 => {
+    order => ++$order,
+    test_class => [qw(bug forking)],
+  },
+
+  maxtransferperuser_env_var_issue2490 => {
+    order => ++$order,
+    test_class => [qw(bug forking)],
+  },
+
 };
 
 sub new {
@@ -317,6 +327,288 @@ EOL
       unless ($ok) {
         die("Unexpected name/owner '$mismatch: $res->{$mismatch}' appeared in LIST data")
       }
+    };
+    if ($@) {
+      $ex = $@;
+    }
+
+    $wfh->print("done\n");
+    $wfh->flush();
+
+  } else {
+    eval { server_wait($setup->{config_file}, $rfh) };
+    if ($@) {
+      warn($@);
+      exit 1;
+    }
+
+    exit 0;
+  }
+
+  # Stop server
+  server_stop($setup->{pid_file});
+  $self->assert_child_ok($pid);
+
+  test_cleanup($setup, $ex);
+}
+
+sub maxtransferperhost_env_var_issue2490 {
+  my $self = shift;
+  my $tmpdir = $self->{tmpdir};
+  my $setup = test_setup($tmpdir, 'ftpaccess');
+
+  # The .ftpaccess file should contain:
+  #
+  #    MaxTransfersPerHost RETR 1 %{env:FOO_TEST}
+  #
+  # If we see the value of that FOO_TEST environment variable in an FTP
+  # response, that's the bug.
+
+  my $env_key = 'FOO_TEST';
+  my $env_val = 'BAR_BAZ';
+
+  my $ftpaccess_file = File::Spec->rel2abs("$tmpdir/.ftpaccess");
+  if (open(my $fh, "> $ftpaccess_file")) {
+    print $fh <<EOL;
+MaxTransfersPerHost RETR 1 %{env:$env_key}
+EOL
+
+    unless (close($fh)) {
+      die("Can't write $ftpaccess_file: $!");
+    }
+
+  } else {
+    die("Can't open $ftpaccess_file: $!");
+  }
+
+  my $test_file = File::Spec->rel2abs("$tmpdir/test.dat");
+  if (open(my $fh, "> $test_file")) {
+    print $fh "Hello, World!\n";
+    unless (close($fh)) {
+      die("Can't write $test_file: $!");
+    }
+
+  } else {
+    die("Can't open $test_file: $!");
+  }
+
+  my $config = {
+    PidFile => $setup->{pid_file},
+    ScoreboardFile => $setup->{scoreboard_file},
+    SystemLog => $setup->{log_file},
+
+    AuthUserFile => $setup->{auth_user_file},
+    AuthGroupFile => $setup->{auth_group_file},
+    AuthOrder => 'mod_auth_file.c',
+
+    AllowOverride => 'on',
+    SetEnv => "$env_key $env_val",
+
+    IfModules => {
+      'mod_delay.c' => {
+        DelayEngine => 'off',
+      },
+    },
+  };
+
+  my ($port, $config_user, $config_group) = config_write($setup->{config_file},
+    $config);
+
+  # Open pipes, for use between the parent and child processes.  Specifically,
+  # the child will indicate when it's done with its test by writing a message
+  # to the parent.
+  my ($rfh, $wfh);
+  unless (pipe($rfh, $wfh)) {
+    die("Can't open pipe: $!");
+  }
+
+  my $ex;
+
+  # Fork child
+  $self->handle_sigchld();
+  defined(my $pid = fork()) or die("Can't fork: $!");
+  if ($pid) {
+    eval {
+      my $client1 = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
+      $client1->login($setup->{user}, $setup->{passwd});
+
+      my $client2 = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
+      $client2->login($setup->{user}, $setup->{passwd});
+
+      my $conn1 = $client1->retr_raw('test.dat');
+      unless ($conn1) {
+        die("RETR failed: " . $client1->response_code() .
+          " " . $client1->response_msg());
+      }
+
+      my $conn2 = $client2->retr_raw('test.dat');
+      if ($conn2) {
+        die("RETR succeeded unexpectedly");
+      }
+
+      my $resp_code = $client2->response_code();
+      my $resp_msgs = $client2->response_msgs();
+      $client2->quit();
+
+      my $expected = 451;
+      $self->assert($expected == $resp_code,
+        test_msg("Expected response code $expected, got $resp_code"));
+
+      $expected = 'the maximum number of data transfers';
+      $self->assert(qr/$expected/, $resp_msgs->[0],
+        test_msg("Expected response message '$expected', got '$resp_msgs->[0]'"));
+
+      my $buf;
+      $conn1->read($buf, 8192, 30);
+      sleep(0.25);
+      eval { $conn1->close() };
+
+      $resp_code = $client1->response_code();
+      my $resp_msg = $client1->response_msg();
+      $client1->quit();
+
+      $self->assert_transfer_ok($resp_code, $resp_msg);
+    };
+    if ($@) {
+      $ex = $@;
+    }
+
+    $wfh->print("done\n");
+    $wfh->flush();
+
+  } else {
+    eval { server_wait($setup->{config_file}, $rfh) };
+    if ($@) {
+      warn($@);
+      exit 1;
+    }
+
+    exit 0;
+  }
+
+  # Stop server
+  server_stop($setup->{pid_file});
+  $self->assert_child_ok($pid);
+
+  test_cleanup($setup, $ex);
+}
+
+sub maxtransferperuser_env_var_issue2490 {
+  my $self = shift;
+  my $tmpdir = $self->{tmpdir};
+  my $setup = test_setup($tmpdir, 'ftpaccess');
+
+  # The .ftpaccess file should contain:
+  #
+  #    MaxTransfersPerUser RETR 1 %{env:FOO_TEST}
+  #
+  # If we see the value of that FOO_TEST environment variable in an FTP
+  # response, that's the bug.
+
+  my $env_key = 'FOO_TEST';
+  my $env_val = 'BAR_BAZ';
+
+  my $ftpaccess_file = File::Spec->rel2abs("$tmpdir/.ftpaccess");
+  if (open(my $fh, "> $ftpaccess_file")) {
+    print $fh <<EOL;
+MaxTransfersPerUser RETR 1 %{env:$env_key}
+EOL
+
+    unless (close($fh)) {
+      die("Can't write $ftpaccess_file: $!");
+    }
+
+  } else {
+    die("Can't open $ftpaccess_file: $!");
+  }
+
+  my $test_file = File::Spec->rel2abs("$tmpdir/test.dat");
+  if (open(my $fh, "> $test_file")) {
+    print $fh "Hello, World!\n";
+    unless (close($fh)) {
+      die("Can't write $test_file: $!");
+    }
+
+  } else {
+    die("Can't open $test_file: $!");
+  }
+
+  my $config = {
+    PidFile => $setup->{pid_file},
+    ScoreboardFile => $setup->{scoreboard_file},
+    SystemLog => $setup->{log_file},
+
+    AuthUserFile => $setup->{auth_user_file},
+    AuthGroupFile => $setup->{auth_group_file},
+    AuthOrder => 'mod_auth_file.c',
+
+    AllowOverride => 'on',
+    SetEnv => "$env_key $env_val",
+
+    IfModules => {
+      'mod_delay.c' => {
+        DelayEngine => 'off',
+      },
+    },
+  };
+
+  my ($port, $config_user, $config_group) = config_write($setup->{config_file},
+    $config);
+
+  # Open pipes, for use between the parent and child processes.  Specifically,
+  # the child will indicate when it's done with its test by writing a message
+  # to the parent.
+  my ($rfh, $wfh);
+  unless (pipe($rfh, $wfh)) {
+    die("Can't open pipe: $!");
+  }
+
+  my $ex;
+
+  # Fork child
+  $self->handle_sigchld();
+  defined(my $pid = fork()) or die("Can't fork: $!");
+  if ($pid) {
+    eval {
+      my $client1 = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
+      $client1->login($setup->{user}, $setup->{passwd});
+
+      my $client2 = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
+      $client2->login($setup->{user}, $setup->{passwd});
+
+      my $conn1 = $client1->retr_raw('test.dat');
+      unless ($conn1) {
+        die("RETR failed: " . $client1->response_code() .
+          " " . $client1->response_msg());
+      }
+
+      my $conn2 = $client2->retr_raw('test.dat');
+      if ($conn2) {
+        die("RETR succeeded unexpectedly");
+      }
+
+      my $resp_code = $client2->response_code();
+      my $resp_msgs = $client2->response_msgs();
+      $client2->quit();
+
+      my $expected = 451;
+      $self->assert($expected == $resp_code,
+        test_msg("Expected response code $expected, got $resp_code"));
+
+      $expected = 'the maximum number of data transfers';
+      $self->assert(qr/$expected/, $resp_msgs->[0],
+        test_msg("Expected response message '$expected', got '$resp_msgs->[0]'"));
+
+      my $buf;
+      $conn1->read($buf, 8192, 30);
+      sleep(0.25);
+      eval { $conn1->close() };
+
+      $resp_code = $client1->response_code();
+      my $resp_msg = $client1->response_msg();
+      $client1->quit();
+
+      $self->assert_transfer_ok($resp_code, $resp_msg);
     };
     if ($@) {
       $ex = $@;
