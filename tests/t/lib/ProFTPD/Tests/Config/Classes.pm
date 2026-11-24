@@ -224,11 +224,10 @@ EOC
   defined(my $pid = fork()) or die("Can't fork: $!");
   if ($pid) {
     eval {
-      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port, 1, 1);
+      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
       $client->login($user, $passwd);
       $client->quit();
     };
-
     if ($@) {
       $ex = $@;
     }
@@ -352,7 +351,7 @@ EOC
   defined(my $pid = fork()) or die("Can't fork: $!");
   if ($pid) {
     eval {
-      eval { my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port, 1, 1) };
+      eval { my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port, 0, 1) };
 
       # Since class-based ACLs are enforced at connect time, we don't
       # expect this connection to succeed.
@@ -360,7 +359,6 @@ EOC
         die("Connection succeeded unexpectedly");
       }
     };
-
     if ($@) {
       $ex = $@;
     }
@@ -484,11 +482,10 @@ EOC
   defined(my $pid = fork()) or die("Can't fork: $!");
   if ($pid) {
     eval {
-      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port, 1, 1);
+      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
       $client->login($user, $passwd);
       $client->quit();
     };
-
     if ($@) {
       $ex = $@;
     }
@@ -612,7 +609,7 @@ EOC
   defined(my $pid = fork()) or die("Can't fork: $!");
   if ($pid) {
     eval {
-      eval { my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port, 1, 1) };
+      eval { my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port, 0, 1) };
 
       # Since class-based ACLs are enforced at connect time, we don't
       # expect this connection to succeed.
@@ -620,7 +617,6 @@ EOC
         die("Connection succeeded unexpectedly");
       }
     };
-
     if ($@) {
       $ex = $@;
     }
@@ -744,11 +740,10 @@ EOC
   defined(my $pid = fork()) or die("Can't fork: $!");
   if ($pid) {
     eval {
-      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port, 1, 1);
+      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
       $client->login($user, $passwd);
       $client->quit();
     };
-
     if ($@) {
       $ex = $@;
     }
@@ -872,7 +867,7 @@ EOC
   defined(my $pid = fork()) or die("Can't fork: $!");
   if ($pid) {
     eval {
-      eval { my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port, 1, 1) };
+      eval { my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port, 0, 1) };
 
       # Since class-based ACLs are enforced at connect time, we don't
       # expect this connection to succeed.
@@ -880,7 +875,6 @@ EOC
         die("Connection succeeded unexpectedly");
       }
     };
-
     if ($@) {
       $ex = $@;
     }
@@ -1004,11 +998,10 @@ EOC
   defined(my $pid = fork()) or die("Can't fork: $!");
   if ($pid) {
     eval {
-      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port, 1, 1);
+      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
       $client->login($user, $passwd);
       $client->quit();
     };
-
     if ($@) {
       $ex = $@;
     }
@@ -1132,7 +1125,7 @@ EOC
   defined(my $pid = fork()) or die("Can't fork: $!");
   if ($pid) {
     eval {
-      eval { my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port, 1, 1) };
+      eval { my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port, 0, 1) };
 
       # Since class-based ACLs are enforced at connect time, we don't
       # expect this connection to succeed.
@@ -1140,7 +1133,6 @@ EOC
         die("Connection succeeded unexpectedly");
       }
     };
-
     if ($@) {
       $ex = $@;
     }
@@ -1264,11 +1256,10 @@ EOC
   defined(my $pid = fork()) or die("Can't fork: $!");
   if ($pid) {
     eval {
-      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port, 1, 1);
+      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
       $client->login($user, $passwd);
       $client->quit();
     };
-
     if ($@) {
       $ex = $@;
     }
@@ -1392,7 +1383,7 @@ EOC
   defined(my $pid = fork()) or die("Can't fork: $!");
   if ($pid) {
     eval {
-      eval { my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port, 1, 1) };
+      eval { my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port, 0, 1) };
 
       # Since class-based ACLs are enforced at connect time, we don't
       # expect this connection to succeed.
@@ -1400,7 +1391,6 @@ EOC
         die("Connection succeeded unexpectedly");
       }
     };
-
     if ($@) {
       $ex = $@;
     }
@@ -1526,11 +1516,10 @@ EOC
   defined(my $pid = fork()) or die("Can't fork: $!");
   if ($pid) {
     eval {
-      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port, 1, 1);
+      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
       $client->login($user, $passwd);
       $client->quit();
     };
-
     if ($@) {
       $ex = $@;
     }
@@ -1656,7 +1645,7 @@ EOC
   defined(my $pid = fork()) or die("Can't fork: $!");
   if ($pid) {
     eval {
-      eval { my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port, 1, 1) };
+      eval { my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port, 0, 1) };
 
       # Since class-based ACLs are enforced at connect time, we don't
       # expect this connection to succeed.
@@ -1664,7 +1653,6 @@ EOC
         die("Connection succeeded unexpectedly");
       }
     };
-
     if ($@) {
       $ex = $@;
     }
@@ -1790,11 +1778,10 @@ EOC
   defined(my $pid = fork()) or die("Can't fork: $!");
   if ($pid) {
     eval {
-      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port, 1, 1);
+      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
       $client->login($user, $passwd);
       $client->quit();
     };
-
     if ($@) {
       $ex = $@;
     }
@@ -1920,7 +1907,7 @@ EOC
   defined(my $pid = fork()) or die("Can't fork: $!");
   if ($pid) {
     eval {
-      eval { my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port, 1, 1) };
+      eval { my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port, 0, 1) };
 
       # Since class-based ACLs are enforced at connect time, we don't
       # expect this connection to succeed.
@@ -1928,7 +1915,6 @@ EOC
         die("Connection succeeded unexpectedly");
       }
     };
-
     if ($@) {
       $ex = $@;
     }
@@ -2054,11 +2040,10 @@ EOC
   defined(my $pid = fork()) or die("Can't fork: $!");
   if ($pid) {
     eval {
-      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port, 1, 1);
+      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
       $client->login($user, $passwd);
       $client->quit();
     };
-
     if ($@) {
       $ex = $@;
     }
@@ -2184,7 +2169,7 @@ EOC
   defined(my $pid = fork()) or die("Can't fork: $!");
   if ($pid) {
     eval {
-      eval { my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port, 1, 1) };
+      eval { my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port, 0, 1) };
 
       # Since class-based ACLs are enforced at connect time, we don't
       # expect this connection to succeed.
@@ -2192,7 +2177,6 @@ EOC
         die("Connection succeeded unexpectedly");
       }
     };
-
     if ($@) {
       $ex = $@;
     }
@@ -2318,11 +2302,10 @@ EOC
   defined(my $pid = fork()) or die("Can't fork: $!");
   if ($pid) {
     eval {
-      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port, 1, 1);
+      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
       $client->login($user, $passwd);
       $client->quit();
     };
-
     if ($@) {
       $ex = $@;
     }
@@ -2448,7 +2431,7 @@ EOC
   defined(my $pid = fork()) or die("Can't fork: $!");
   if ($pid) {
     eval {
-      eval { my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port, 1, 1) };
+      eval { my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port, 0, 1) };
 
       # Since class-based ACLs are enforced at connect time, we don't
       # expect this connection to succeed.
@@ -2456,7 +2439,6 @@ EOC
         die("Connection succeeded unexpectedly");
       }
     };
-
     if ($@) {
       $ex = $@;
     }
@@ -2587,11 +2569,10 @@ EOC
   defined(my $pid = fork()) or die("Can't fork: $!");
   if ($pid) {
     eval {
-      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port, 1, 1);
+      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
       $client->login($user, $passwd);
       $client->quit();
     };
-
     if ($@) {
       $ex = $@;
     }
@@ -2696,7 +2677,7 @@ EOC
       # Allow for server startup
       sleep(1);
 
-      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port, 1, 1);
+      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
       $client->login($setup->{user}, $setup->{passwd});
       $client->quit();
     };
@@ -2801,7 +2782,7 @@ EOC
       # Allow for server startup
       sleep(1);
 
-      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port, 1, 1);
+      my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
       $client->login($setup->{user}, $setup->{passwd});
       $client->quit();
     };
