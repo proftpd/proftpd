@@ -3486,42 +3486,6 @@ MODRET radius_auth(cmd_rec *cmd) {
   return PR_DECLINED(cmd);
 }
 
-MODRET radius_check(cmd_rec *cmd) {
-  return PR_DECLINED(cmd);
-}
-
-MODRET radius_name2uid(cmd_rec *cmd) {
-  return PR_DECLINED(cmd);
-}
-
-MODRET radius_name2gid(cmd_rec *cmd) {
-  return PR_DECLINED(cmd);
-}
-
-MODRET radius_uid2name(cmd_rec *cmd) {
-  return PR_DECLINED(cmd);
-}
-
-MODRET radius_gid2name(cmd_rec *cmd) {
-  return PR_DECLINED(cmd);
-}
-
-MODRET radius_endgrent(cmd_rec *cmd) {
-  return PR_DECLINED(cmd);
-}
-
-MODRET radius_getgrnam(cmd_rec *cmd) {
-  return PR_DECLINED(cmd);
-}
-
-MODRET radius_getgrent(cmd_rec *cmd) {
-  return PR_DECLINED(cmd);
-}
-
-MODRET radius_getgrgid(cmd_rec *cmd) {
-  return PR_DECLINED(cmd);
-}
-
 MODRET radius_getgroups(cmd_rec *cmd) {
 
   if (radius_have_group_info) {
@@ -3573,14 +3537,6 @@ MODRET radius_getgroups(cmd_rec *cmd) {
   return PR_DECLINED(cmd);
 }
 
-MODRET radius_setgrent(cmd_rec *cmd) {
-  return PR_DECLINED(cmd);
-}
-
-MODRET radius_endpwent(cmd_rec *cmd) {
-  return PR_DECLINED(cmd);
-}
-
 MODRET radius_getpwnam(cmd_rec *cmd) {
 
   if (radius_have_user_info) {
@@ -3625,10 +3581,6 @@ MODRET radius_getpwuid(cmd_rec *cmd) {
   }
 
   /* Default response */
-  return PR_DECLINED(cmd);
-}
-
-MODRET radius_setpwent(cmd_rec *cmd) {
   return PR_DECLINED(cmd);
 }
 
@@ -4721,23 +4673,11 @@ static cmdtable radius_cmdtab[] = {
 };
 
 static authtable radius_authtab[] = {
-  { 0, "setpwent",  radius_setpwent },
-  { 0, "setgrent",  radius_setgrent },
-  { 0, "endpwent",  radius_endpwent },
-  { 0, "endgrent",  radius_endgrent },
   { 0, "getpwent",  radius_getpwent },
-  { 0, "getgrent",  radius_getgrent },
   { 0, "getpwnam",  radius_getpwnam },
-  { 0, "getgrnam",  radius_getgrnam },
   { 0, "getpwuid",  radius_getpwuid },
-  { 0, "getgrgid",  radius_getgrgid },
   { 0, "getgroups", radius_getgroups },
   { 0, "auth",      radius_auth     },
-  { 0, "check",     radius_check    },
-  { 0, "uid2name",  radius_uid2name },
-  { 0, "gid2name",  radius_gid2name },
-  { 0, "name2uid",  radius_name2uid },
-  { 0, "name2gid",  radius_name2gid },
   { 0, NULL }
 };
 
