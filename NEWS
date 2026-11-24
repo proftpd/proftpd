@@ -25,6 +25,8 @@
   mishandling.
 - Issue 2503 - Some auth modules improperly handle credentials from other
   modules.
+- Issue 2505 - CreateHome fails unexpectedly with "Permission denied" in
+  latest release.
 
 1.3.9f - Released 18-Nov-2026
 --------------------------------
