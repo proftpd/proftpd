@@ -98,15 +98,15 @@ sub maxtransfersperhost_retr {
       }
 
       my $resp_code = $client2->response_code();
-      my $resp_msg = $client2->response_msg();
+      my $resp_msgs = $client2->response_msgs();
 
       my $expected = 451;
       $self->assert($expected == $resp_code,
         test_msg("Expected response code $expected, got $resp_code"));
 
       $expected = "Sorry, the maximum number of data transfers ($max_transfers) from your host are currently being used.";
-      $self->assert($expected eq $resp_msg,
-        test_msg("Expected response message '$expected', got '$resp_msg'"));
+      $self->assert($expected eq $resp_msgs->[0],
+        test_msg("Expected response message '$expected', got '$resp_msgs->[0]'"));
 
       $client1->quit();
       $client2->quit();
@@ -198,15 +198,15 @@ sub maxtransfersperhost_retr_custom_message {
       }
 
       my $resp_code = $client2->response_code();
-      my $resp_msg = $client2->response_msg();
+      my $resp_msgs = $client2->response_msgs();
 
       my $expected = 451;
       $self->assert($expected == $resp_code,
         test_msg("Expected response code $expected, got $resp_code"));
 
       $expected = 'Too many transfers from your host';
-      $self->assert($expected eq $resp_msg,
-        test_msg("Expected response message '$expected', got '$resp_msg'"));
+      $self->assert($expected eq $resp_msgs->[0],
+        test_msg("Expected response message '$expected', got '$resp_msgs->[0]'"));
 
       $client1->quit();
       $client2->quit();
