@@ -5465,6 +5465,43 @@ START_TEST (fsio_smkdir2_no_root_privs_test) {
 }
 END_TEST
 
+START_TEST (fsio_smkdir2_rename_with_privs_test) {
+  int res, flags;
+  const char *path;
+  mode_t mode = 0755;
+  uid_t uid = getuid();
+  gid_t gid = getgid();
+
+  flags = PR_FSIO_SMKDIR_FL_RENAME_WITH_PRIVS;
+  path = fsio_testdir_path;
+  res = pr_fsio_smkdir2(p, path, mode, uid, gid, flags);
+  ck_assert_msg(res == 0, "Failed to securely create '%s': %s",
+    fsio_testdir_path, strerror(errno));
+  (void) pr_fsio_rmdir(fsio_testdir_path);
+
+#if defined(HAVE_MKDTEMP)
+  res = pr_fsio_set_use_mkdtemp(FALSE);
+  ck_assert_msg(res == TRUE, "Expected TRUE, got %d", res);
+
+  res = pr_fsio_smkdir2(p, path, mode, uid, gid, flags);
+  ck_assert_msg(res == 0, "Failed to securely create '%s': %s",
+    fsio_testdir_path, strerror(errno));
+  (void) pr_fsio_rmdir(fsio_testdir_path);
+
+  res = pr_fsio_set_use_mkdtemp(TRUE);
+  ck_assert_msg(res == FALSE, "Expected FALSE, got %d", res);
+#else
+  res = pr_fsio_set_use_mkdtemp(TRUE);
+  ck_assert_msg(res == FALSE, "Expected FALSE, got %d", res);
+
+  res = pr_fsio_set_use_mkdtemp(FALSE);
+  ck_assert_msg(res == FALSE, "Expected FALSE, got %d", res);
+#endif /* HAVE_MKDTEMP */
+
+  (void) pr_fsio_rmdir(fsio_testdir_path);
+}
+END_TEST
+
 START_TEST (fsio_getpipebuf_test) {
   char *res;
   int fd = -1;
@@ -5843,6 +5880,7 @@ Suite *tests_get_fsio_suite(void) {
   tcase_add_test(testcase, fsio_smkdir_test);
   tcase_add_test(testcase, fsio_smkdir2_ignore_umask_test);
   tcase_add_test(testcase, fsio_smkdir2_no_root_privs_test);
+  tcase_add_test(testcase, fsio_smkdir2_rename_with_privs_test);
   tcase_add_test(testcase, fsio_getpipebuf_test);
   tcase_add_test(testcase, fsio_gets_test);
   tcase_add_test(testcase, fsio_getline_test);
