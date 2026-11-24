@@ -314,6 +314,7 @@ int create_home(pool *p, const char *home, const char *user, uid_t uid,
     PRIVS_USER
 
   } else {
+    smkdir_flags |= PR_FSIO_SMKDIR_FL_RENAME_WITH_PRIVS;
     PRIVS_ROOT
   }
 

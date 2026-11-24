@@ -4698,10 +4698,19 @@ int pr_fsio_smkdir2(pool *p, const char *path, mode_t mode, uid_t uid,
     /* Use rename(2) to move the temporary directory into place at the
      * target path.
      */
-    res = rename(tmpl_path, path);
-    if (res < 0) {
-      xerrno = errno;
 
+    if (flags & PR_FSIO_SMKDIR_FL_RENAME_WITH_PRIVS) {
+      PRIVS_ROOT
+    }
+
+    res = rename(tmpl_path, path);
+    xerrno = errno;
+
+    if (flags & PR_FSIO_SMKDIR_FL_RENAME_WITH_PRIVS) {
+      PRIVS_RELINQUISH
+    }
+
+    if (res < 0) {
       pr_log_pri(PR_LOG_INFO, "renaming '%s' to '%s' failed: %s", tmpl_path,
         path, strerror(xerrno));
 
