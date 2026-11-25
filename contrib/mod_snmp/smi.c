@@ -278,7 +278,10 @@ struct snmp_var *snmp_smi_dup_var(pool *p, struct snmp_var *src_var) {
           break;
 
         case SNMP_SMI_OID:
-          var->value.oid = palloc(var->pool, var->valuelen);
+          /* The valuelen argument is the number of sub-ids, NOT the number
+           * of bytes, for an OID.
+           */
+          var->value.oid = palloc(var->pool, sizeof(oid_t) * var->valuelen);
           memmove(var->value.oid, iter_var->value.oid, var->valuelen);
           break;
 
@@ -452,6 +455,7 @@ int snmp_smi_read_vars(pool *p, unsigned char **buf, size_t *buflen,
       case SNMP_SMI_STRING:
       case SNMP_SMI_IPADDR:
       case SNMP_SMI_OPAQUE:
+        /* snmp_asn1_read_string allocates its own memory as needed. */
         res = snmp_asn1_read_string(p, buf, buflen,
           &(var->smi_type), &(var->value.string), &(var->valuelen));
         if (res == 0) {
@@ -463,6 +467,10 @@ int snmp_smi_read_vars(pool *p, unsigned char **buf, size_t *buflen,
         break;
 
       case SNMP_SMI_OID:
+        /* The valuelen argument is the number of sub-ids, NOT the number
+         * of bytes, for an OID.
+         */
+        var->value.oid = palloc(var->pool, sizeof(oid_t) * var->valuelen);
         res = snmp_asn1_read_oid(p, buf, buflen,
           &(var->smi_type), var->value.oid, &(var->valuelen));
         if (res == 0) {
