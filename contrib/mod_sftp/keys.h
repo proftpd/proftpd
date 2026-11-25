@@ -94,7 +94,8 @@ int sftp_keys_get_fingerprint_algo(pool *p, int *algo_id, const char **algo,
 #define SFTP_KEYS_SK_USER_VERIFICATION_REQUIRED	0x004
 
 void sftp_keys_free(void);
-int sftp_keys_get_hostkey(pool *p, const char *);
+int sftp_keys_get_hostcert(pool *p, const char *path);
+int sftp_keys_get_hostkey(pool *p, const char *path);
 const unsigned char *sftp_keys_get_hostkey_data(pool *, enum sftp_key_type_e,
   uint32_t *);
 void sftp_keys_get_passphrases(void);
@@ -133,10 +134,10 @@ int sftp_keys_clear_ed448_hostkey(void);
 int sftp_keys_clear_mldsa44_ed25519_hostkey(void);
 int sftp_keys_clear_rsa_hostkey(void);
 
-int sftp_keys_have_dsa_hostkey(void);
-int sftp_keys_have_ecdsa_hostkey(pool *, int **);
-int sftp_keys_have_ed25519_hostkey(void);
-int sftp_keys_have_ed448_hostkey(void);
-int sftp_keys_have_mldsa44_ed25519_hostkey(void);
-int sftp_keys_have_rsa_hostkey(void);
+int sftp_keys_have_dsa_hostkey(int *);
+int sftp_keys_have_ecdsa_hostkey(pool *, int **, int *);
+int sftp_keys_have_ed25519_hostkey(int *);
+int sftp_keys_have_ed448_hostkey(int *);
+int sftp_keys_have_mldsa44_ed25519_hostkey(int *);
+int sftp_keys_have_rsa_hostkey(int *, int *, int *);
 #endif /* MOD_SFTP_KEYS_H */

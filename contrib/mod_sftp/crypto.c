@@ -227,7 +227,34 @@ static struct sftp_digest digests[] = {
   { NULL, NULL, NULL, 0, FALSE, FALSE }
 };
 
+
 static const char *hostkey_algos[] = {
+#if defined(HAVE_X448_OPENSSL)
+  "ssh-ed448-cert",
+#endif /* HAVE_X448_OPENSSL */
+#if defined(PR_USE_SODIUM)
+  "ssh-ed25519-cert",
+  "ssh-ed25519-cert-v01@openssh.com",
+#endif /* PR_USE_SODIUM */
+#if defined(PR_USE_OPENSSL_ECC)
+  "ecdsa-sha2-nistp256-cert",
+  "ecdsa-sha2-nistp256-cert-v01@openssh.com",
+  "ecdsa-sha2-nistp384-cert",
+  "ecdsa-sha2-nistp384-cert-v01@openssh.com",
+  "ecdsa-sha2-nistp521-cert",
+  "ecdsa-sha2-nistp521-cert-v01@openssh.com",
+#endif /* PR_USE_OPENSSL_ECC */
+  "ssh-rsa-cert",
+  "ssh-rsa-cert-v01@openssh.com",
+#if defined(HAVE_SHA512_OPENSSL)
+  "rsa-sha2-512-cert",
+  "rsa-sha2-512-cert-v01@openssh.com",
+#endif /* HAVE_SHA512_OPENSSL */
+#if defined(HAVE_SHA256_OPENSSL)
+  "rsa-sha2-256-cert",
+  "rsa-sha2-256-cert-v01@openssh.com",
+#endif /* HAVE_SHA256_OPENSSL */
+  "ssh-dss-cert",
 #if defined(HAVE_MLDSA44_OPENSSL) && \
     defined(HAVE_X25519_OPENSSL) && \
     defined(HAVE_SHA512_OPENSSL)
@@ -1694,20 +1721,161 @@ const char *sftp_crypto_get_kexinit_hostkey_list(pool *p) {
 
   for (i = 0; i < hostkey_list->nelts; i++) {
     const char *algo;
-    int have_key = FALSE, supported_algo = FALSE;
+    int have_cert = FALSE, have_key = FALSE, supported_algo = FALSE;
 
     pr_signals_handle();
 
     algo = ((char **) hostkey_list->elts)[i];
 
-    if (strcmp(algo, "ssh-mldsa44-ed25519") == 0) {
+    if (strcmp(algo, "ssh-ed448-cert") == 0) {
+#if defined(HAVE_X448_OPENSSL)
+      supported_algo = TRUE;
+#endif /* HAVE_X448_OPENSSL */
+
+      if (sftp_keys_have_ed448_hostkey(&have_cert) == 0 &&
+          have_cert == TRUE) {
+        have_key = TRUE;
+      }
+
+    } else if (strcmp(algo, "ssh-ed25519-cert") == 0 ||
+        strcmp(algo, "ssh-ed25519-cert-v01@openssh.com") == 0) {
+#if defined(PR_USE_SODIUM)
+      supported_algo = TRUE;
+#endif /* PR_USE_SODIUM */
+
+      if (sftp_keys_have_ed25519_hostkey(&have_cert) == 0 &&
+          have_cert == TRUE) {
+        have_key = TRUE;
+      }
+
+    } else if (strcmp(algo, "ecdsa-sha2-nistp256-cert") == 0 ||
+               strcmp(algo, "ecdsa-sha2-nistp256-cert-v01@openssh.com") == 0) {
+#if defined(PR_USE_OPENSSL_ECC)
+      int *nids = NULL, res = 0;
+
+      supported_algo = TRUE;
+      res = sftp_keys_have_ecdsa_hostkey(p, &nids, &have_cert);
+      if (res > 0) {
+        register int j;
+
+        for (j = 0; j < res; j++) {
+          if (nids[j] == NID_X9_62_prime256v1 &&
+              have_cert == TRUE) {
+            have_key = TRUE;
+            break;
+          }
+        }
+      }
+#endif /* PR_USE_OPENSSL_ECC */
+
+    } else if (strcmp(algo, "ecdsa-sha2-nistp384-cert") == 0 ||
+               strcmp(algo, "ecdsa-sha2-nistp384-cert-v01@openssh.com") == 0) {
+#if defined(PR_USE_OPENSSL_ECC)
+      int *nids = NULL, res = 0;
+
+      supported_algo = TRUE;
+      res = sftp_keys_have_ecdsa_hostkey(p, &nids, &have_cert);
+      if (res > 0) {
+        register int j;
+
+        for (j = 0; j < res; j++) {
+          if (nids[j] == NID_secp384r1 &&
+              have_cert == TRUE) {
+            have_key = TRUE;
+            break;
+          }
+        }
+      }
+#endif /* PR_USE_OPENSSL_ECC */
+
+    } else if (strcmp(algo, "ecdsa-sha2-nistp521-cert") == 0 ||
+               strcmp(algo, "ecdsa-sha2-nistp521-cert-v01@openssh.com") == 0) {
+#if defined(PR_USE_OPENSSL_ECC)
+      int *nids = NULL, res = 0;
+
+      supported_algo = TRUE;
+      res = sftp_keys_have_ecdsa_hostkey(p, &nids, &have_cert);
+      if (res > 0) {
+        register int j;
+
+        for (j = 0; j < res; j++) {
+          if (nids[j] == NID_secp521r1 &&
+              have_cert == TRUE) {
+            have_key = TRUE;
+            break;
+          }
+        }
+      }
+#endif /* PR_USE_OPENSSL_ECC */
+
+    } else if (strcmp(algo, "ssh-rsa-cert") == 0 ||
+               strcmp(algo, "ssh-rsa-cert-v01@openssh.com") == 0) {
+      int have_sha256_cert = FALSE, have_sha512_cert = FALSE;
+
+      supported_algo = TRUE;
+
+      if (sftp_keys_have_rsa_hostkey(&have_cert, &have_sha256_cert,
+          &have_sha512_cert) == 0) {
+
+        if (have_cert == TRUE &&
+            have_sha256_cert == FALSE &&
+            have_sha512_cert == FALSE) {
+          have_key = TRUE;
+        }
+      }
+
+    } else if (strcmp(algo, "rsa-sha2-512-cert") == 0 ||
+               strcmp(algo, "rsa-sha2-512-cert-v01@openssh.com") == 0) {
+      int have_sha256_cert = FALSE, have_sha512_cert = FALSE;
+
+#if defined(HAVE_SHA512_OPENSSL)
+      supported_algo = TRUE;
+#endif /* HAVE_SHA512_OPENSSL */
+
+      if (sftp_keys_have_rsa_hostkey(&have_cert, &have_sha256_cert,
+          &have_sha512_cert) == 0) {
+
+        if (have_cert == FALSE &&
+            have_sha256_cert == FALSE &&
+            have_sha512_cert == TRUE) {
+          have_key = TRUE;
+        }
+      }
+
+    } else if (strcmp(algo, "rsa-sha2-256-cert") == 0 ||
+               strcmp(algo, "rsa-sha2-256-cert-v01@openssh.com") == 0) {
+      int have_sha256_cert = FALSE, have_sha512_cert = FALSE;
+
+#if defined(HAVE_SHA256_OPENSSL)
+      supported_algo = TRUE;
+#endif /* HAVE_SHA256_OPENSSL */
+
+      if (sftp_keys_have_rsa_hostkey(&have_cert, &have_sha256_cert,
+          &have_sha512_cert) == 0) {
+
+        if (have_cert == FALSE &&
+            have_sha256_cert == TRUE &&
+            have_sha512_cert == FALSE) {
+          have_key = TRUE;
+        }
+      }
+
+    } else if (strcmp(algo, "ssh-dss-cert") == 0) {
+      supported_algo = TRUE;
+
+      if (sftp_keys_have_dsa_hostkey(&have_cert) == 0 &&
+          have_cert == TRUE) {
+        have_key = TRUE;
+      }
+
+    } else if (strcmp(algo, "ssh-mldsa44-ed25519") == 0) {
 #if defined(HAVE_MLDSA44_OPENSSL) && \
     defined(HAVE_X25519_OPENSSL) && \
     defined(HAVE_SHA512_OPENSSL)
       supported_algo = TRUE;
 #endif /* HAVE_MLDSA44_OPENSSL, HAVE_X25519_OPENSSL, HAVE_SHA512_OPENSSL */
 
-      if (sftp_keys_have_mldsa44_ed25519_hostkey() == 0) {
+      if (sftp_keys_have_mldsa44_ed25519_hostkey(NULL) == 0) {
         have_key = TRUE;
       }
 
@@ -1716,7 +1884,7 @@ const char *sftp_crypto_get_kexinit_hostkey_list(pool *p) {
       supported_algo = TRUE;
 #endif /* PR_USE_SODIUM */
 
-      if (sftp_keys_have_ed25519_hostkey() == 0) {
+      if (sftp_keys_have_ed25519_hostkey(NULL) == 0) {
         have_key = TRUE;
       }
 
@@ -1725,16 +1893,16 @@ const char *sftp_crypto_get_kexinit_hostkey_list(pool *p) {
       supported_algo = TRUE;
 #endif /* HAVE_X448_OPENSSL */
 
-      if (sftp_keys_have_ed448_hostkey() == 0) {
+      if (sftp_keys_have_ed448_hostkey(NULL) == 0) {
         have_key = TRUE;
       }
 
-#if defined(PR_USE_OPENSSL_ECC)
     } else if (strcmp(algo, "ecdsa-sha2-nistp256") == 0) {
-      int *nids = NULL, res;
+#if defined(PR_USE_OPENSSL_ECC)
+      int *nids = NULL, res = 0;
 
       supported_algo = TRUE;
-      res = sftp_keys_have_ecdsa_hostkey(p, &nids);
+      res = sftp_keys_have_ecdsa_hostkey(p, &nids, NULL);
       if (res > 0) {
         register int j;
 
@@ -1745,12 +1913,14 @@ const char *sftp_crypto_get_kexinit_hostkey_list(pool *p) {
           }
         }
       }
+#endif /* PR_USE_OPENSSL_ECC */
 
     } else if (strcmp(algo, "ecdsa-sha2-nistp384") == 0) {
-      int *nids = NULL, res;
+#if defined(PR_USE_OPENSSL_ECC)
+      int *nids = NULL, res = 0;
 
       supported_algo = TRUE;
-      res = sftp_keys_have_ecdsa_hostkey(p, &nids);
+      res = sftp_keys_have_ecdsa_hostkey(p, &nids, NULL);
       if (res > 0) {
         register int j;
 
@@ -1761,12 +1931,14 @@ const char *sftp_crypto_get_kexinit_hostkey_list(pool *p) {
           }
         }
       }
+#endif /* PR_USE_OPENSSL_ECC */
 
     } else if (strcmp(algo, "ecdsa-sha2-nistp521") == 0) {
-      int *nids = NULL, res;
+#if defined(PR_USE_OPENSSL_ECC)
+      int *nids = NULL, res = 0;
 
       supported_algo = TRUE;
-      res = sftp_keys_have_ecdsa_hostkey(p, &nids);
+      res = sftp_keys_have_ecdsa_hostkey(p, &nids, NULL);
       if (res > 0) {
         register int j;
 
@@ -1779,35 +1951,35 @@ const char *sftp_crypto_get_kexinit_hostkey_list(pool *p) {
       }
 #endif /* PR_USE_OPENSSL_ECC */
 
-#if defined(HAVE_SHA512_OPENSSL)
     } else if (strcmp(algo, "rsa-sha2-512") == 0) {
+#if defined(HAVE_SHA512_OPENSSL)
       supported_algo = TRUE;
-
-      if (sftp_keys_have_rsa_hostkey() == 0) {
-        have_key = TRUE;
-      }
 #endif /* HAVE_SHA512_OPENSSL */
 
-#if defined(HAVE_SHA256_OPENSSL)
-    } else if (strcmp(algo, "rsa-sha2-256") == 0) {
-      supported_algo = TRUE;
-
-      if (sftp_keys_have_rsa_hostkey() == 0) {
+      if (sftp_keys_have_rsa_hostkey(NULL, NULL, NULL) == 0) {
         have_key = TRUE;
       }
+
+    } else if (strcmp(algo, "rsa-sha2-256") == 0) {
+#if defined(HAVE_SHA256_OPENSSL)
+      supported_algo = TRUE;
 #endif /* HAVE_SHA256_OPENSSL */
+
+      if (sftp_keys_have_rsa_hostkey(NULL, NULL, NULL) == 0) {
+        have_key = TRUE;
+      }
 
     } else if (strcmp(algo, "ssh-rsa") == 0) {
       supported_algo = TRUE;
 
-      if (sftp_keys_have_rsa_hostkey() == 0) {
+      if (sftp_keys_have_rsa_hostkey(NULL, NULL, NULL) == 0) {
         have_key = TRUE;
       }
 
     } else if (strcmp(algo, "ssh-dss") == 0) {
       supported_algo = TRUE;
 
-      if (sftp_keys_have_dsa_hostkey() == 0) {
+      if (sftp_keys_have_dsa_hostkey(NULL) == 0) {
         have_key = TRUE;
       }
     }

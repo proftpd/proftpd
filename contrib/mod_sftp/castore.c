@@ -206,7 +206,7 @@ int sftp_castore_verify_host_cert(pool *p, const char *user,
     return -1;
   }
 
-  if (sftp_certs_parse_cert(p, cert_data, cert_datalen, &cert) < 0) {
+  if (sftp_certs_parse_cert(p, cert_data, cert_datalen, &cert, 0) < 0) {
     return -1;
   }
 
@@ -432,7 +432,7 @@ int sftp_castore_verify_user_cert(pool *p, const char *user,
     return -1;
   }
 
-  if (sftp_certs_parse_cert(p, cert_data, cert_datalen, &cert) < 0) {
+  if (sftp_certs_parse_cert(p, cert_data, cert_datalen, &cert, 0) < 0) {
     return -1;
   }
 

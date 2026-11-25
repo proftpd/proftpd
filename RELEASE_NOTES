@@ -9,6 +9,8 @@ ChangeLog files.
 1.3.10rc7
 ----------
 
+  + Implemented support for SSH host certificates in mod_sftp (Issue #2507)
+
   + DirFakeUser/DirFakeGroup directives with optional names in .ftpaccess
     files have those names silently overridden, to prevent information
     disclosure.  For similar concerns, the GroupOwner and StoreUniquePrefix
@@ -17,6 +19,23 @@ ChangeLog files.
   + Display files configured with relative paths will no longer have
     environment variables resolved in them using %{env:...} syntax, to
     mitigate possible sensitive environment variable disclosure.
+
+
+  + New Directives
+
+      SFTPHostCertificate
+
+        This new directive is used for configuring host certificates that
+        clients may use for authenticating and trusting the server.
+        Please see the docs for details.
+
+
+  + Changed Directives
+
+      SFTPHostKeys
+
+        The list of host key algorithms now includes the SSH certificate
+        algorithms.
 
 
 1.3.10rc6

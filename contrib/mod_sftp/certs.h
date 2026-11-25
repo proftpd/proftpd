@@ -34,6 +34,10 @@
 struct sftp_cert {
   pool *cert_pool;
 
+  /* Raw certificate bytes */
+  unsigned char *cert_data;
+  uint32_t cert_datalen;
+
   const char *cert_algo;
   uint32_t cert_role;
   uint64_t serialno;
@@ -46,6 +50,7 @@ struct sftp_cert {
   pr_table_t *extensions;
 
   /* Signed key */
+  const char *pubkey_algo;
   unsigned char *pubkey_data;
   uint32_t pubkey_datalen;
 
@@ -55,10 +60,22 @@ struct sftp_cert {
   uint32_t signature_pubkey_datalen;
 };
 
+int sftp_certs_read_file(pool *p, const char *path, unsigned char **cert_data,
+  uint32_t *cert_datalen);
 uint32_t sftp_certs_read_nonce(pool *p, unsigned char *cert_data,
   uint32_t cert_datalen, const char *cert_algo, unsigned char **nonce);
 int sftp_certs_parse_cert(pool *p, unsigned char *cert_data,
-  uint32_t cert_datalen, struct sftp_cert **cert);
+  uint32_t cert_datalen, struct sftp_cert **cert, int flags);
+
+/* This flag is used when parsing a certificate whose signing CA key may
+ * not yet be known.
+ */
+#define SFTP_CERTS_PARSE_FL_IGNORE_SIGNATURE	0x001
+
+/* This flag indicates whether we should keep a copy of the certificate data
+ * with the parsed certificate structure.
+ */
+#define SFTP_CERTS_PARSE_FL_RETAIN_CERT_DATA	0x002
 
 /* Perform basic certificate validation, checking expiry, supported
  * options/extensions, signature validation, etc.

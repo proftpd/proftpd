@@ -32,6 +32,7 @@
 #include "crypto.h"
 #include "cipher.h"
 #include "mac.h"
+#include "certs.h"
 #include "keys.h"
 #include "keystore.h"
 #include "castore.h"
@@ -1726,6 +1727,62 @@ MODRET set_sftpextensions(cmd_rec *cmd) {
   return PR_HANDLED(cmd);
 }
 
+/* usage: SFTPHostCertificate path */
+MODRET set_sftphostcertificate(cmd_rec *cmd) {
+  int flags, res, xerrno;
+  config_rec *c;
+  const char *path = NULL;
+  unsigned char *cert_data = NULL;
+  uint32_t cert_datalen = 0;
+  struct sftp_cert *cert = NULL;
+
+  CHECK_ARGS(cmd, 1);
+  CHECK_CONF(cmd, CONF_ROOT|CONF_VIRTUAL|CONF_GLOBAL);
+
+  path = cmd->argv[1];
+  if (*path != '/') {
+    CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "must be an absolute path: ",
+      path, NULL));
+  }
+
+  /* Certificates are considered public information, so there are no
+   * concerns about permissions/accessibility of a certificate file to
+   * other system users.
+   */
+
+  PRIVS_ROOT
+  res = sftp_certs_read_file(cmd->tmp_pool, path, &cert_data, &cert_datalen);
+  xerrno = errno;
+  PRIVS_RELINQUISH
+
+  if (res < 0) {
+    CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "unable to read '", path,
+      "': ", strerror(xerrno), NULL));
+  }
+
+  /* Parse the provided file as a certificate, and ensure that it has
+   * the proper certificate type.
+   */
+  flags = SFTP_CERTS_PARSE_FL_IGNORE_SIGNATURE;
+
+  res = sftp_certs_parse_cert(cmd->tmp_pool, cert_data,
+    (uint32_t) cert_datalen, &cert, flags);
+  if (res < 0) {
+    CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "unable to parse '", path,
+      "' as an SSH certificate: ", strerror(xerrno), NULL));
+  }
+
+  if (cert->cert_role != SFTP_SSH_CERT_TYPE_HOST) {
+    CONF_ERROR(cmd, pstrcat(cmd->tmp_pool, "unable to use '", path,
+      "' as SSH certificate for host authentication: wrong role", NULL));
+  }
+
+  c = add_config_param_str(cmd->argv[0], 1, NULL);
+  c->argv[0] = pstrdup(c->pool, path);
+
+  return PR_HANDLED(cmd);
+}
+
 /* usage: SFTPHostKey path|"agent:/..."|"NoRSA"|"NoDSA"|"NoECDSA"|"NoED25519" */
 MODRET set_sftphostkey(cmd_rec *cmd) {
   struct stat st;
@@ -3154,16 +3211,34 @@ static int sftp_sess_init(void) {
    * an ED25519 hostkey, or any combination thereof.  But we have to have at
    * least one hostkey.
    */
-  if (sftp_keys_have_dsa_hostkey() < 0 &&
-      sftp_keys_have_rsa_hostkey() < 0 &&
-      sftp_keys_have_ecdsa_hostkey(sftp_pool, NULL) < 0 &&
-      sftp_keys_have_ed25519_hostkey() < 0 &&
-      sftp_keys_have_ed448_hostkey() < 0 &&
-      sftp_keys_have_mldsa44_ed25519_hostkey() < 0) {
+  if (sftp_keys_have_dsa_hostkey(NULL) < 0 &&
+      sftp_keys_have_rsa_hostkey(NULL, NULL, NULL) < 0 &&
+      sftp_keys_have_ecdsa_hostkey(sftp_pool, NULL, NULL) < 0 &&
+      sftp_keys_have_ed25519_hostkey(NULL) < 0 &&
+      sftp_keys_have_ed448_hostkey(NULL) < 0 &&
+      sftp_keys_have_mldsa44_ed25519_hostkey(NULL) < 0) {
     (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
       "no available host keys, unable to handle session");
     errno = EACCES;
     return -1;
+  }
+
+  /* Now that we have any host keys loaded, we can look for any accompanying/
+   * associated SSH certificates for those keys.
+   */
+  c = find_config(main_server->conf, CONF_PARAM, "SFTPHostCertificate", FALSE);
+  while (c != NULL) {
+    const char *path;
+
+    pr_signals_handle();
+
+    path = c->argv[0];
+    if (sftp_keys_get_hostcert(sftp_pool, path) < 0) {
+      (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
+        "error loading host certificate '%s', skipping cert", path);
+    }
+
+    c = find_config_next(c, c->next, CONF_PARAM, "SFTPHostCertificate", FALSE);
   }
 
   c = find_config(main_server->conf, CONF_PARAM, "SFTPKeyLimits", FALSE);
@@ -3367,6 +3442,7 @@ static conftable sftp_conftab[] = {
   { "SFTPDisplayBanner",	set_sftpdisplaybanner,		NULL },
   { "SFTPEngine",		set_sftpengine,			NULL },
   { "SFTPExtensions",		set_sftpextensions,		NULL },
+  { "SFTPHostCertificate",	set_sftphostcertificate,	NULL },
   { "SFTPHostKey",		set_sftphostkey,		NULL },
   { "SFTPHostKeys",		set_sftphostkeys,		NULL },
   { "SFTPKeyBlacklist",		set_sftpkeyblacklist,		NULL },

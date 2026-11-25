@@ -146,6 +146,7 @@ questions, concerns, or suggestions regarding this module.
   <li><a href="#SFTPDisplayBanner">SFTPDisplayBanner</a>
   <li><a href="#SFTPEngine">SFTPEngine</a>
   <li><a href="#SFTPExtensions">SFTPExtensions</a>
+  <li><a href="#SFTPHostCertificate">SFTPHostCertificate</a>
   <li><a href="#SFTPHostKey">SFTPHostKey</a>
   <li><a href="#SFTPHostKeys">SFTPHostKeys</a>
   <li><a href="#SFTPKeyBlacklist">SFTPKeyBlacklist</a>
@@ -944,6 +945,37 @@ to disable the extension, use a '-' (minus) character prefix.  For example:
 
 <p>
 <hr>
+<h3><a name="SFTPHostCertificate">SFTPHostCertificate</a></h3>
+<strong>Syntax:</strong> SFTPHostCertificate <em>file</em><br>
+<strong>Default:</strong> <em>None</em><br>
+<strong>Context:</strong> server config, <code>&lt;VirtualHost&gt;</code>, <code>&lt;Global&gt;</code><br>
+<strong>Module:</strong> mod_sftp<br>
+<strong>Compatibility:</strong> 1.3.10rc7 and later
+
+<p>
+The <code>SFTPHostCertificate</code> directive configures the path to an SSH
+host certificate file.  The <code>mod_sftp</code> module uses the certificates
+thus configured as part of the SSH2 key exchange process.
+
+<p>
+<b>Note</b> that the corresponding <em>private key</em> for the configured
+certificate <b>must</b> also be configured via <code>SFTPHostKey</code>.
+Certificates whose matching private key cannot be found will be ignored.
+
+<p>
+You can use either an RSA certificate, a DSA certificate, a ECDSA certificate,
+or an Ed25519 certificate.  Example:
+<pre>
+  &lt;IfModule mod_sftp.c&gt;
+    SFTPEngine on
+    ..
+    SFTPHostCertificate /etc/ssh_host_rsa_key-cert.pub
+    SFTPHostKey /etc/ssh_host_rsa_key
+  &lt;/IfModule&gt;
+</pre>
+
+<p>
+<hr>
 <h3><a name="SFTPHostKey">SFTPHostKey</a></h3>
 <strong>Syntax:</strong> SFTPHostKey <em>file</em>|agent:<em>/path</em>|"NoRSA"|"NoDSA"|"NoECDSA"<br>
 <strong>Default:</strong> <em>None</em><br>
@@ -1046,6 +1078,22 @@ The <code>SFTPHostKeys</code> directive is used to specify the list of host
 key algorithms that <code>mod_sftp</code> should use.  The current list
 of supported host key algorithms is:
 <ul>
+  <li>ssh-ed448-cert (<i>requires OpenSSL 1.1.1 or later</i>)
+  <li>ssh-ed25519-cert (<i>requires Sodium</i>)
+  <li>ssh-ed25519-cert-v01@openssh.com (<i>requires Sodium</i>)
+  <li>ecdsa-sha2-nistp256-cert
+  <li>ecdsa-sha2-nistp256-cert-v01@openssh.com
+  <li>ecdsa-sha2-nistp384-cert
+  <li>ecdsa-sha2-nistp384-cert-v01@openssh.com
+  <li>ecdsa-sha2-nistp521-cert
+  <li>ecdsa-sha2-nistp521-cert-v01@openssh.com
+  <li>ssh-rsa-cert
+  <li>ssh-rsa-cert-v01@openssh.com
+  <li>rsa-sha2-512-cert
+  <li>rsa-sha2-512-cert-v01@openssh.com
+  <li>rsa-sha2-256-cert
+  <li>rsa-sha2-256-cert-v01@openssh.com
+  <li>ssh-dss-cert
   <li>ssh-mldsa44-ed25519 (<i>requires OpenSSL 3.5 or later</li>)
   <li>ssh-ed25519 (<i>requires Sodium</i>)
   <li>ssh-ed448 (<i>requires OpenSSL 1.1.1 or later</i>)
