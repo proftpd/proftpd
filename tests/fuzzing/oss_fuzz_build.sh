@@ -29,3 +29,16 @@ cd $SRC
 git clone https://github.com/dvyukov/go-fuzz-corpus
 zip $OUT/fuzzer_seed_corpus.zip go-fuzz-corpus/json/corpus/*
 
+# Coverage-pipeline pair fnmatch-fuzzer: build the fnmatch target and
+# install its committed dictionary and seed corpus.
+cd $SRC/proftpd
+$NEW_CC_FLAG -c tests/fuzzing/fnmatch_fuzzer.c -o fnmatch_fuzzer.o
+$CC $CXXFLAGS $LIB_FUZZING_ENGINE fnmatch_fuzzer.o -o $OUT/fnmatch_fuzzer \
+	src/scoreboard.o \
+	lib/prbase.a \
+	fuzz_lib.a \
+	-L/src/proftpd/lib \
+	-lcrypt -pthread
+cp tests/fuzzing/fnmatch_fuzzer.dict $OUT/
+zip -j $OUT/fnmatch_fuzzer_seed_corpus.zip tests/fuzzing/corpus/fnmatch/*
+
