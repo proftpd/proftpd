@@ -29,3 +29,16 @@ cd $SRC
 git clone https://github.com/dvyukov/go-fuzz-corpus
 zip $OUT/fuzzer_seed_corpus.zip go-fuzz-corpus/json/corpus/*
 
+# Coverage-pipeline pair netaddr-netacl-fuzzer: build the netaddr/netacl
+# target and install its committed dictionary and seed corpus.
+cd $SRC/proftpd
+$NEW_CC_FLAG -c tests/fuzzing/netaddr_fuzzer.c -o netaddr_fuzzer.o
+$CC $CXXFLAGS $LIB_FUZZING_ENGINE netaddr_fuzzer.o -o $OUT/netaddr_fuzzer \
+	src/scoreboard.o \
+	lib/prbase.a \
+	fuzz_lib.a \
+	-L/src/proftpd/lib \
+	-lcrypt -pthread
+cp tests/fuzzing/netaddr_fuzzer.dict $OUT/
+zip -j $OUT/netaddr_fuzzer_seed_corpus.zip tests/fuzzing/corpus/netaddr/*
+
