@@ -641,7 +641,7 @@ static sftp_keystore_t *key_filestore_open(pool *parent_pool,
   }
 
   if (pr_fsio_set_block(fh) < 0) {
-   xerrno = errno;
+    xerrno = errno;
 
     destroy_pool(filestore_pool);
     (void) pr_fsio_close(fh);
