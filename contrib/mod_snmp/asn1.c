@@ -459,14 +459,27 @@ int snmp_asn1_read_null(pool *p, unsigned char **buf, size_t *buflen,
  */
 int snmp_asn1_read_oid(pool *p, unsigned char **buf, size_t *buflen,
     unsigned char *asn1_type, oid_t *asn1_oid, unsigned int *asn1_oidlen) {
+  oid_t *oid_ptr;
+  unsigned int objlen, len, sub_id;
+  int res;
+
+  if (asn1_oid == NULL ||
+      asn1_oidlen == NULL) {
+    errno = EINVAL;
+    return -1;
+  }
+
+  if (*asn1_oidlen > SNMP_ASN1_OID_MAX_LEN) {
+    pr_trace_msg(trace_channel, 3, "OID len %lu exceeds maximum %lu, rejecting",
+      (unsigned long) *asn1_oidlen, (unsigned long) SNMP_ASN1_OID_MAX_LEN);
+    errno = EINVAL;
+    return -1;
+  }
 
   /* We leave room at the start of the OID memory for expansion into two
    * bytes from the first byte of buffer data.
    */
-  oid_t *oid_ptr = asn1_oid + 1;
-
-  unsigned int objlen, len, sub_id;
-  int res;
+  oid_ptr = asn1_oid + 1;
 
   /* Type */
   res = asn1_read_type(p, buf, buflen, asn1_type, 0);
@@ -554,6 +567,8 @@ int snmp_asn1_read_oid(pool *p, unsigned char **buf, size_t *buflen,
     *oid_ptr++ = (oid_t) sub_id;
   }
 
+  *asn1_oidlen = (unsigned int) (oid_ptr - asn1_oid);
+
   /* The first two subidentifiers are encoded into the first component with
    * the value (X * 40) + Y, where:
    *
@@ -570,7 +585,6 @@ int snmp_asn1_read_oid(pool *p, unsigned char **buf, size_t *buflen,
     asn1_oid[0] = (unsigned char) ((sub_id - asn1_oid[1]) / 40);
   }
 
-  *asn1_oidlen = (unsigned int) (oid_ptr - asn1_oid);
   return 0;
 }
 
