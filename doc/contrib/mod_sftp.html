@@ -321,6 +321,37 @@ algorithms must be used (or avoided).
 
 <p>
 <hr>
+<h3><a name="SFTPAuthorizedHostCAKeys">SFTPAuthorizedHostCAKeys</a></h3>
+<strong>Syntax:</strong> SFTPAuthorizedHostCAKeys <em>store1 ...</em><br>
+<strong>Default:</strong> <em>None</em><br>
+<strong>Context:</strong> server config, <code>&lt;VirtualHost&gt;</code>, <code>&lt;Global&gt;</code><br>
+<strong>Module:</strong> mod_sftp<br>
+<strong>Compatibility:</strong> 1.3.10rc5 and later
+
+<p>
+The <code>SFTPAuthorizedHostCAKeys</code> directive configures the file that
+<code>mod_sftp</code> will use during the handling of hostbased authentication
+of users that use SSH certificates.  The configured file may contain several
+trusted public CA keys in RFC4716 format, in no particular order.
+
+<p>
+<b>Note</b> that a <code>SFTPAuthorizedHostCAKeys</code> directive is
+required for <code>mod_sftp</code> to handle sessions which want to use
+hostbased authentication via SSH certificates properly.
+
+<p>
+<b>Note:</b> In order to use OpenSSH public CA keys in a
+<code>SFTPAuthorizedHostCAKeys</code> file, you <b>must</b> convert them to the
+RFC4716 format (see the <a href="#UsageRFC4716Format">Usage</a> section).
+This is done using OpenSSH's <code>ssh-keygen</code> tool:
+<pre>
+  $ ssh-keygen -e -f /path/to/file
+</pre>
+The output from this command can then be added to the
+<code>SFTPAuthorizedHostCAKeys</code> file.
+
+<p>
+<hr>
 <h3><a name="SFTPAuthorizedHostKeys">SFTPAuthorizedHostKeys</a></h3>
 <strong>Syntax:</strong> SFTPAuthorizedHostKeys <em>store1 ...</em><br>
 <strong>Default:</strong> <em>None</em><br>
@@ -349,6 +380,37 @@ This is done using OpenSSH's <code>ssh-keygen</code> tool:
 </pre>
 The output from this command can then be added to the
 <code>SFTPAuthorizedHostKeys</code> file.
+
+<p>
+<hr>
+<h3><a name="SFTPAuthorizedUserCAKeys">SFTPAuthorizedUserCAKeys</a></h3>
+<strong>Syntax:</strong> SFTPAuthorizedUserCAKeys <em>store1 ...</em><br>
+<strong>Default:</strong> <em>None</em><br>
+<strong>Context:</strong> server config, <code>&lt;VirtualHost&gt;</code>, <code>&lt;Global&gt;</code><br>
+<strong>Module:</strong> mod_sftp<br>
+<strong>Compatibility:</strong> 1.3.10rc5 and later
+
+<p>
+The <code>SFTPAuthorizedUserCAKeys</code> directive configures the file that
+<code>mod_sftp</code> will use during the handling of publickey authentication
+of users that use SSH certificates.  The configured file may contain several
+trusted public CA keys in RFC4716 format, in no particular order.
+
+<p>
+<b>Note</b> that a <code>SFTPAuthorizedUserCAKeys</code> directive is
+required for <code>mod_sftp</code> to handle sessions which want to use
+publickey authentication via SSH certificates properly.
+
+<p>
+<b>Note:</b> In order to use OpenSSH public CA keys in a
+<code>SFTPAuthorizedUserCAKeys</code> file, you <b>must</b> convert them to the
+RFC4716 format (see the <a href="#UsageRFC4716Format">Usage</a> section).
+This is done using OpenSSH's <code>ssh-keygen</code> tool:
+<pre>
+  $ ssh-keygen -e -f /path/to/file
+</pre>
+The output from this command can then be added to the
+<code>SFTPAuthorizedUserCAKeys</code> file.
 
 <p>
 <hr>
