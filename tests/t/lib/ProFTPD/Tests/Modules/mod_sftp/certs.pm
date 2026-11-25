@@ -349,6 +349,37 @@ my $TESTS = {
     test_class => [qw(bug forking sftp)],
   },
 
+  # Host certificates
+  sftp_config_host_cert_rsa_ca_rsa_cert_issue2507 => {
+    order => ++$order,
+    test_class => [qw(bug forking sftp)],
+  },
+
+  sftp_config_host_cert_rsa_ca_rsa_cert_with_rekeying_issue2507 => {
+    order => ++$order,
+    test_class => [qw(bug forking sftp)],
+  },
+
+  sftp_config_host_cert_rsa_ca_ecdsa256_cert_issue2507 => {
+    order => ++$order,
+    test_class => [qw(bug forking sftp)],
+  },
+
+  sftp_config_host_cert_rsa_ca_ecdsa384_cert_issu2507 => {
+    order => ++$order,
+    test_class => [qw(bug forking sftp)],
+  },
+
+  sftp_config_host_cert_rsa_ca_ecdsa521_cert_issue2507 => {
+    order => ++$order,
+    test_class => [qw(bug forking sftp)],
+  },
+
+  sftp_config_host_cert_rsa_ca_ed25519_cert_issue2507 => {
+    order => ++$order,
+    test_class => [qw(bug forking sftp)],
+  },
+
 };
 
 sub new {
@@ -820,10 +851,250 @@ sub sftp_ext_publickey_ca_cert {
   test_cleanup($setup, $ex);
 }
 
-sub sftp_ext_publickey_rsa_ca_rsa_cert_issue2357 {
+sub sftp_ext_config_host_cert_cert {
   my $self = shift;
   my $tmpdir = $self->{tmpdir};
   my $setup = test_setup($tmpdir, 'sftp');
+
+  my $ca_cert = shift;
+  my $host_cert = shift;
+  my $host_key = shift;
+
+  my $user_privkey = shift;
+  my $rfc4716_key = shift;
+
+  my $addl_cmd_opts = shift;
+
+  my $authorized_keys = File::Spec->rel2abs("$tmpdir/.authorized_keys");
+  unless (copy($rfc4716_key, $authorized_keys)) {
+    die("Can't copy $rfc4716_key to $authorized_keys: $!");
+  }
+
+  # Construct the necessary known hosts file, with the "cert-authority"
+  # bit that OpenSSH will need for trusting the CA that signed our host
+  # certificate.
+  my $ca_data;
+
+  if (open(my $fh, "< $ca_cert")) {
+    local $/;
+    $ca_data = <$fh>;
+    close($fh);
+
+  } else {
+    die("Can't read $ca_cert: $!");
+  }
+
+  my $known_hosts = File::Spec->rel2abs("$tmpdir/known_hosts");
+  if (open(my $fh, "> $known_hosts")) {
+    print $fh "\@cert-authority 127.0.0.1 $ca_data";
+    unless (close($fh)) {
+      die("Can't write $known_hosts: $!");
+    }
+
+  } else {
+    die("Can't open $known_hosts: $!");
+  }
+
+  my $batch_file = File::Spec->rel2abs("$tmpdir/sftp-batch.txt");
+  if (open(my $fh, "> $batch_file")) {
+    print $fh "ls -al\n";
+
+    unless (close($fh)) {
+      die("Can't write $batch_file: $!");
+    }
+
+  } else {
+    die("Can't open $batch_file: $!");
+  }
+
+  # Make sure that the perms on the host keys are as needed
+  unless (chmod(0600, $host_key)) {
+    die("Can't set perms on $host_key to 0600: $!");
+  }
+
+  my $sftp_config = [
+    'SFTPEngine on',
+    "SFTPLog $setup->{log_file}",
+    "SFTPHostCertificate $host_cert",
+    "SFTPHostKey $host_key",
+    "SFTPAuthorizedUserKeys file:~/.authorized_keys",
+  ];
+
+  my $config = {
+    PidFile => $setup->{pid_file},
+    ScoreboardFile => $setup->{scoreboard_file},
+    SystemLog => $setup->{log_file},
+    TraceLog => $setup->{log_file},
+    Trace => 'ssh2:30 sftp:20',
+
+    AuthUserFile => $setup->{auth_user_file},
+    AuthGroupFile => $setup->{auth_group_file},
+    AuthOrder => 'mod_auth_file.c',
+
+    IfModules => {
+      'mod_delay.c' => {
+        DelayEngine => 'off',
+      },
+
+      'mod_sftp.c' => $sftp_config,
+    },
+  };
+
+  my ($port, $config_user, $config_group) = config_write($setup->{config_file},
+    $config);
+
+  # Open pipes, for use between the parent and child processes.  Specifically,
+  # the child will indicate when it's done with its test by writing a message
+  # to the parent.
+  my ($rfh, $wfh);
+  unless (pipe($rfh, $wfh)) {
+    die("Can't open pipe: $!");
+  }
+
+  my $ex;
+
+  # Ignore SIGPIPE
+  local $SIG{PIPE} = sub { };
+
+  # Fork child
+  $self->handle_sigchld();
+  defined(my $pid = fork()) or die("Can't fork: $!");
+  if ($pid) {
+    eval {
+      sleep(1);
+
+      local $SIG{CHLD} = 'DEFAULT';
+
+      my $sftp = 'sftp';
+      my @cmd = (
+        $sftp,
+        '-oBatchMode=yes',
+        '-oCheckHostIP=no',
+        '-oCompression=yes',
+        "-oPort=$port",
+        '-oIdentitiesOnly=yes',
+        "-oIdentityFile=$user_privkey",
+        '-oPubkeyAuthentication=yes',
+        '-oStrictHostKeyChecking=no',
+        '-oUpdateHostkeys=no',
+        "-oUserKnownHostsFile=$known_hosts",
+        '-vvv',
+      );
+
+      if (defined($addl_cmd_opts)) {
+        push(@cmd, @$addl_cmd_opts);
+      }
+
+      push(@cmd,
+        '-b',
+        "$batch_file",
+        "$setup->{user}\@127.0.0.1",
+      );
+
+      my $sftp_rh = IO::Handle->new();
+      my $sftp_wh = IO::Handle->new();
+      my $sftp_eh = IO::Handle->new();
+
+      $sftp_wh->autoflush(1);
+
+      # Make sure that the perms on the keys are what OpenSSH wants
+      unless (chmod(0400, $user_privkey)) {
+        die("Can't set perms on $user_privkey to 0400: $!");
+      }
+
+      if ($ENV{TEST_VERBOSE}) {
+        print STDERR "Executing: ", join(' ', @cmd), "\n";
+      }
+
+      my $sftp_pid = open3($sftp_wh, $sftp_rh, $sftp_eh, @cmd);
+      waitpid($sftp_pid, 0);
+      my $exit_status = $?;
+
+      # Restore the perms on the keys
+      unless (chmod(0644, $user_privkey)) {
+        die("Can't set perms on $user_privkey to 0644: $!");
+      }
+
+      my ($res, $errstr);
+      if ($exit_status >> 8 == 0) {
+        $errstr = join('', <$sftp_eh>);
+        $res = 0;
+
+      } else {
+        $errstr = join('', <$sftp_eh>);
+        $res = 1;
+      }
+
+      if ($ENV{TEST_VERBOSE}) {
+        print STDERR "Stderr: $errstr\n";
+      }
+
+      unless ($res == 0) {
+        die("Can't list files on server: $errstr");
+      }
+    };
+    if ($@) {
+      $ex = $@;
+    }
+
+    $wfh->print("done\n");
+    $wfh->flush();
+
+  } else {
+    eval { server_wait($setup->{config_file}, $rfh) };
+    if ($@) {
+      warn($@);
+      exit 1;
+    }
+
+    exit 0;
+  }
+
+  # Stop server
+  server_stop($setup->{pid_file});
+  $self->assert_child_ok($pid);
+
+  # Restore the perms on the host key
+  unless (chmod(0644, $host_key)) {
+    die("Can't set perms on $host_key to 0644: $!");
+  }
+
+  eval {
+    if (open(my $fh, "< $setup->{log_file}")) {
+      my $ok = 0;
+
+      while (my $line = <$fh>) {
+        chomp($line);
+
+        if ($ENV{TEST_VERBOSE}) {
+          print STDERR "# $line\n";
+        }
+
+        if ($line =~ /EXTENDED_REPLY limits\@openssh.com: .*$/) {
+          $ok = 1;
+          last;
+        }
+      }
+
+      close($fh);
+
+      $self->assert($ok,
+        test_msg("Did not see expected log message"));
+
+    } else {
+      die("Can't read $setup->{log_file}: $!");
+    }
+  };
+  if ($@) {
+    $ex = $@ unless $ex;
+  }
+
+  test_cleanup($setup, $ex);
+}
+
+sub sftp_ext_publickey_rsa_ca_rsa_cert_issue2357 {
+  my $self = shift;
+  my $tmpdir = $self->{tmpdir};
 
   my $rsa_priv_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/test_rsa_key');
   my $rsa_cert = File::Spec->rel2abs('t/etc/modules/mod_sftp/certs/user_rsa_ca_rsa_cert.pub');
@@ -836,7 +1107,6 @@ sub sftp_ext_publickey_rsa_ca_rsa_cert_issue2357 {
 sub sftp_ext_publickey_rsa_ca_ecdsa256_cert_issue2357 {
   my $self = shift;
   my $tmpdir = $self->{tmpdir};
-  my $setup = test_setup($tmpdir, 'sftp');
 
   my $ecdsa_priv_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/test_ecdsa256_key');
   my $ecdsa_cert = File::Spec->rel2abs('t/etc/modules/mod_sftp/certs/user_rsa_ca_ecdsa256_cert.pub');
@@ -849,7 +1119,6 @@ sub sftp_ext_publickey_rsa_ca_ecdsa256_cert_issue2357 {
 sub sftp_ext_publickey_rsa_ca_ecdsa384_cert_issue2357 {
   my $self = shift;
   my $tmpdir = $self->{tmpdir};
-  my $setup = test_setup($tmpdir, 'sftp');
 
   my $ecdsa_priv_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/test_ecdsa384_key');
   my $ecdsa_cert = File::Spec->rel2abs('t/etc/modules/mod_sftp/certs/user_rsa_ca_ecdsa384_cert.pub');
@@ -862,7 +1131,6 @@ sub sftp_ext_publickey_rsa_ca_ecdsa384_cert_issue2357 {
 sub sftp_ext_publickey_rsa_ca_ecdsa521_cert_issue2357 {
   my $self = shift;
   my $tmpdir = $self->{tmpdir};
-  my $setup = test_setup($tmpdir, 'sftp');
 
   my $ecdsa_priv_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/test_ecdsa521_key');
   my $ecdsa_cert = File::Spec->rel2abs('t/etc/modules/mod_sftp/certs/user_rsa_ca_ecdsa521_cert.pub');
@@ -875,7 +1143,6 @@ sub sftp_ext_publickey_rsa_ca_ecdsa521_cert_issue2357 {
 sub sftp_ext_publickey_rsa_ca_ed25519_cert_issue2357 {
   my $self = shift;
   my $tmpdir = $self->{tmpdir};
-  my $setup = test_setup($tmpdir, 'sftp');
 
   my $eddsa_priv_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/test_openssh_ed25519_key');
   my $eddsa_cert = File::Spec->rel2abs('t/etc/modules/mod_sftp/certs/user_rsa_ca_ed25519_cert.pub');
@@ -888,7 +1155,6 @@ sub sftp_ext_publickey_rsa_ca_ed25519_cert_issue2357 {
 sub sftp_ext_publickey_ecdsa256_ca_rsa_cert_issue2357 {
   my $self = shift;
   my $tmpdir = $self->{tmpdir};
-  my $setup = test_setup($tmpdir, 'sftp');
 
   my $rsa_priv_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/test_rsa_key');
   my $rsa_cert = File::Spec->rel2abs('t/etc/modules/mod_sftp/certs/user_ecdsa256_ca_rsa_cert.pub');
@@ -901,7 +1167,6 @@ sub sftp_ext_publickey_ecdsa256_ca_rsa_cert_issue2357 {
 sub sftp_ext_publickey_ecdsa256_ca_ecdsa256_cert_issue2357 {
   my $self = shift;
   my $tmpdir = $self->{tmpdir};
-  my $setup = test_setup($tmpdir, 'sftp');
 
   my $ecdsa_priv_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/test_ecdsa256_key');
   my $ecdsa_cert = File::Spec->rel2abs('t/etc/modules/mod_sftp/certs/user_ecdsa256_ca_ecdsa256_cert.pub');
@@ -914,7 +1179,6 @@ sub sftp_ext_publickey_ecdsa256_ca_ecdsa256_cert_issue2357 {
 sub sftp_ext_publickey_ecdsa256_ca_ecdsa384_cert_issue2357 {
   my $self = shift;
   my $tmpdir = $self->{tmpdir};
-  my $setup = test_setup($tmpdir, 'sftp');
 
   my $ecdsa_priv_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/test_ecdsa384_key');
   my $ecdsa_cert = File::Spec->rel2abs('t/etc/modules/mod_sftp/certs/user_ecdsa256_ca_ecdsa384_cert.pub');
@@ -927,7 +1191,6 @@ sub sftp_ext_publickey_ecdsa256_ca_ecdsa384_cert_issue2357 {
 sub sftp_ext_publickey_ecdsa256_ca_ecdsa521_cert_issue2357 {
   my $self = shift;
   my $tmpdir = $self->{tmpdir};
-  my $setup = test_setup($tmpdir, 'sftp');
 
   my $ecdsa_priv_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/test_ecdsa521_key');
   my $ecdsa_cert = File::Spec->rel2abs('t/etc/modules/mod_sftp/certs/user_ecdsa256_ca_ecdsa521_cert.pub');
@@ -940,7 +1203,6 @@ sub sftp_ext_publickey_ecdsa256_ca_ecdsa521_cert_issue2357 {
 sub sftp_ext_publickey_ecdsa256_ca_ed25519_cert_issue2357 {
   my $self = shift;
   my $tmpdir = $self->{tmpdir};
-  my $setup = test_setup($tmpdir, 'sftp');
 
   my $eddsa_priv_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/test_openssh_ed25519_key');
   my $eddsa_cert = File::Spec->rel2abs('t/etc/modules/mod_sftp/certs/user_ecdsa256_ca_ed25519_cert.pub');
@@ -953,7 +1215,6 @@ sub sftp_ext_publickey_ecdsa256_ca_ed25519_cert_issue2357 {
 sub sftp_ext_publickey_ecdsa384_ca_rsa_cert_issue2357 {
   my $self = shift;
   my $tmpdir = $self->{tmpdir};
-  my $setup = test_setup($tmpdir, 'sftp');
 
   my $rsa_priv_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/test_rsa_key');
   my $rsa_cert = File::Spec->rel2abs('t/etc/modules/mod_sftp/certs/user_ecdsa384_ca_rsa_cert.pub');
@@ -966,7 +1227,6 @@ sub sftp_ext_publickey_ecdsa384_ca_rsa_cert_issue2357 {
 sub sftp_ext_publickey_ecdsa384_ca_ecdsa256_cert_issue2357 {
   my $self = shift;
   my $tmpdir = $self->{tmpdir};
-  my $setup = test_setup($tmpdir, 'sftp');
 
   my $ecdsa_priv_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/test_ecdsa256_key');
   my $ecdsa_cert = File::Spec->rel2abs('t/etc/modules/mod_sftp/certs/user_ecdsa384_ca_ecdsa256_cert.pub');
@@ -979,7 +1239,6 @@ sub sftp_ext_publickey_ecdsa384_ca_ecdsa256_cert_issue2357 {
 sub sftp_ext_publickey_ecdsa384_ca_ecdsa384_cert_issue2357 {
   my $self = shift;
   my $tmpdir = $self->{tmpdir};
-  my $setup = test_setup($tmpdir, 'sftp');
 
   my $ecdsa_priv_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/test_ecdsa384_key');
   my $ecdsa_cert = File::Spec->rel2abs('t/etc/modules/mod_sftp/certs/user_ecdsa384_ca_ecdsa384_cert.pub');
@@ -992,7 +1251,6 @@ sub sftp_ext_publickey_ecdsa384_ca_ecdsa384_cert_issue2357 {
 sub sftp_ext_publickey_ecdsa384_ca_ecdsa521_cert_issue2357 {
   my $self = shift;
   my $tmpdir = $self->{tmpdir};
-  my $setup = test_setup($tmpdir, 'sftp');
 
   my $ecdsa_priv_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/test_ecdsa521_key');
   my $ecdsa_cert = File::Spec->rel2abs('t/etc/modules/mod_sftp/certs/user_ecdsa384_ca_ecdsa521_cert.pub');
@@ -1005,7 +1263,6 @@ sub sftp_ext_publickey_ecdsa384_ca_ecdsa521_cert_issue2357 {
 sub sftp_ext_publickey_ecdsa384_ca_ed25519_cert_issue2357 {
   my $self = shift;
   my $tmpdir = $self->{tmpdir};
-  my $setup = test_setup($tmpdir, 'sftp');
 
   my $eddsa_priv_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/test_openssh_ed25519_key');
   my $eddsa_cert = File::Spec->rel2abs('t/etc/modules/mod_sftp/certs/user_ecdsa384_ca_ed25519_cert.pub');
@@ -1018,7 +1275,6 @@ sub sftp_ext_publickey_ecdsa384_ca_ed25519_cert_issue2357 {
 sub sftp_ext_publickey_ecdsa521_ca_rsa_cert_issue2357 {
   my $self = shift;
   my $tmpdir = $self->{tmpdir};
-  my $setup = test_setup($tmpdir, 'sftp');
 
   my $rsa_priv_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/test_rsa_key');
   my $rsa_cert = File::Spec->rel2abs('t/etc/modules/mod_sftp/certs/user_ecdsa521_ca_rsa_cert.pub');
@@ -1031,7 +1287,6 @@ sub sftp_ext_publickey_ecdsa521_ca_rsa_cert_issue2357 {
 sub sftp_ext_publickey_ecdsa521_ca_ecdsa256_cert_issue2357 {
   my $self = shift;
   my $tmpdir = $self->{tmpdir};
-  my $setup = test_setup($tmpdir, 'sftp');
 
   my $ecdsa_priv_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/test_ecdsa256_key');
   my $ecdsa_cert = File::Spec->rel2abs('t/etc/modules/mod_sftp/certs/user_ecdsa521_ca_ecdsa256_cert.pub');
@@ -1044,7 +1299,6 @@ sub sftp_ext_publickey_ecdsa521_ca_ecdsa256_cert_issue2357 {
 sub sftp_ext_publickey_ecdsa521_ca_ecdsa384_cert_issue2357 {
   my $self = shift;
   my $tmpdir = $self->{tmpdir};
-  my $setup = test_setup($tmpdir, 'sftp');
 
   my $ecdsa_priv_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/test_ecdsa384_key');
   my $ecdsa_cert = File::Spec->rel2abs('t/etc/modules/mod_sftp/certs/user_ecdsa521_ca_ecdsa384_cert.pub');
@@ -1057,7 +1311,6 @@ sub sftp_ext_publickey_ecdsa521_ca_ecdsa384_cert_issue2357 {
 sub sftp_ext_publickey_ecdsa521_ca_ecdsa521_cert_issue2357 {
   my $self = shift;
   my $tmpdir = $self->{tmpdir};
-  my $setup = test_setup($tmpdir, 'sftp');
 
   my $ecdsa_priv_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/test_ecdsa521_key');
   my $ecdsa_cert = File::Spec->rel2abs('t/etc/modules/mod_sftp/certs/user_ecdsa521_ca_ecdsa521_cert.pub');
@@ -1070,7 +1323,6 @@ sub sftp_ext_publickey_ecdsa521_ca_ecdsa521_cert_issue2357 {
 sub sftp_ext_publickey_ecdsa521_ca_ed25519_cert_issue2357 {
   my $self = shift;
   my $tmpdir = $self->{tmpdir};
-  my $setup = test_setup($tmpdir, 'sftp');
 
   my $eddsa_priv_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/test_openssh_ed25519_key');
   my $eddsa_cert = File::Spec->rel2abs('t/etc/modules/mod_sftp/certs/user_ecdsa521_ca_ed25519_cert.pub');
@@ -1083,7 +1335,6 @@ sub sftp_ext_publickey_ecdsa521_ca_ed25519_cert_issue2357 {
 sub sftp_ext_publickey_ed25519_ca_rsa_cert_issue2357 {
   my $self = shift;
   my $tmpdir = $self->{tmpdir};
-  my $setup = test_setup($tmpdir, 'sftp');
 
   my $rsa_priv_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/test_rsa_key');
   my $rsa_cert = File::Spec->rel2abs('t/etc/modules/mod_sftp/certs/user_ed25519_ca_rsa_cert.pub');
@@ -1096,7 +1347,6 @@ sub sftp_ext_publickey_ed25519_ca_rsa_cert_issue2357 {
 sub sftp_ext_publickey_ed25519_ca_ecdsa256_cert_issue2357 {
   my $self = shift;
   my $tmpdir = $self->{tmpdir};
-  my $setup = test_setup($tmpdir, 'sftp');
 
   my $ecdsa_priv_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/test_ecdsa256_key');
   my $ecdsa_cert = File::Spec->rel2abs('t/etc/modules/mod_sftp/certs/user_ed25519_ca_ecdsa256_cert.pub');
@@ -1109,7 +1359,6 @@ sub sftp_ext_publickey_ed25519_ca_ecdsa256_cert_issue2357 {
 sub sftp_ext_publickey_ed25519_ca_ecdsa384_cert_issue2357 {
   my $self = shift;
   my $tmpdir = $self->{tmpdir};
-  my $setup = test_setup($tmpdir, 'sftp');
 
   my $ecdsa_priv_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/test_ecdsa384_key');
   my $ecdsa_cert = File::Spec->rel2abs('t/etc/modules/mod_sftp/certs/user_ed25519_ca_ecdsa384_cert.pub');
@@ -1122,7 +1371,6 @@ sub sftp_ext_publickey_ed25519_ca_ecdsa384_cert_issue2357 {
 sub sftp_ext_publickey_ed25519_ca_ecdsa521_cert_issue2357 {
   my $self = shift;
   my $tmpdir = $self->{tmpdir};
-  my $setup = test_setup($tmpdir, 'sftp');
 
   my $ecdsa_priv_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/test_ecdsa521_key');
   my $ecdsa_cert = File::Spec->rel2abs('t/etc/modules/mod_sftp/certs/user_ed25519_ca_ecdsa521_cert.pub');
@@ -1135,7 +1383,6 @@ sub sftp_ext_publickey_ed25519_ca_ecdsa521_cert_issue2357 {
 sub sftp_ext_publickey_ed25519_ca_ed25519_cert_issue2357 {
   my $self = shift;
   my $tmpdir = $self->{tmpdir};
-  my $setup = test_setup($tmpdir, 'sftp');
 
   my $eddsa_priv_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/test_openssh_ed25519_key');
   my $eddsa_cert = File::Spec->rel2abs('t/etc/modules/mod_sftp/certs/user_ed25519_ca_ed25519_cert.pub');
@@ -1148,7 +1395,6 @@ sub sftp_ext_publickey_ed25519_ca_ed25519_cert_issue2357 {
 sub sftp_ext_publickey_config_auth_certificates_issue2357 {
   my $self = shift;
   my $tmpdir = $self->{tmpdir};
-  my $setup = test_setup($tmpdir, 'sftp');
 
   my $rsa_priv_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/test_rsa_key');
   my $rsa_cert = File::Spec->rel2abs('t/etc/modules/mod_sftp/certs/user_rsa_ca_rsa_cert.pub');
@@ -1165,7 +1411,6 @@ sub sftp_ext_publickey_config_auth_certificates_issue2357 {
 sub sftp_ext_publickey_certificate_options_allow_match_principals_issue2357 {
   my $self = shift;
   my $tmpdir = $self->{tmpdir};
-  my $setup = test_setup($tmpdir, 'sftp');
 
   my $rsa_priv_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/test_rsa_key');
   my $rsa_cert = File::Spec->rel2abs('t/etc/modules/mod_sftp/certs/user_rsa_ca_rsa_cert_match_principals.pub');
@@ -1182,7 +1427,6 @@ sub sftp_ext_publickey_certificate_options_allow_match_principals_issue2357 {
 sub sftp_ext_publickey_certificate_revoked_rsa_key_issue2357 {
   my $self = shift;
   my $tmpdir = $self->{tmpdir};
-  my $setup = test_setup($tmpdir, 'sftp');
 
   my $rsa_priv_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/test_rsa_key');
   my $rsa_pub_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/authorized_rsa_keys');
@@ -1207,7 +1451,6 @@ sub sftp_ext_publickey_certificate_revoked_rsa_key_issue2357 {
 sub sftp_ext_publickey_certificate_revoked_ed25519_key_issue2357 {
   my $self = shift;
   my $tmpdir = $self->{tmpdir};
-  my $setup = test_setup($tmpdir, 'sftp');
 
   my $eddsa_priv_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/test_openssh_ed25519_key');
   my $eddsa_pub_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/authorized_openssh_ed25519_keys');
@@ -1232,7 +1475,6 @@ sub sftp_ext_publickey_certificate_revoked_ed25519_key_issue2357 {
 sub sftp_ext_publickey_certificate_revoked_rsa_ca_key_issue2357 {
   my $self = shift;
   my $tmpdir = $self->{tmpdir};
-  my $setup = test_setup($tmpdir, 'sftp');
 
   my $rsa_priv_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/test_rsa_key');
   my $rsa_cert = File::Spec->rel2abs('t/etc/modules/mod_sftp/certs/user_rsa_ca_rsa_cert.pub');
@@ -1256,7 +1498,6 @@ sub sftp_ext_publickey_certificate_revoked_rsa_ca_key_issue2357 {
 sub sftp_ext_hostbased_rsa_ca_rsa_cert_issue2357 {
   my $self = shift;
   my $tmpdir = $self->{tmpdir};
-  my $setup = test_setup($tmpdir, 'sftp');
 
   my $rsa_priv_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/test_rsa_key');
   my $rsa_cert = File::Spec->rel2abs('t/etc/modules/mod_sftp/certs/host_rsa_ca_rsa_cert.pub');
@@ -1269,7 +1510,6 @@ sub sftp_ext_hostbased_rsa_ca_rsa_cert_issue2357 {
 sub sftp_ext_hostbased_rsa_ca_ecdsa256_cert_issue2357 {
   my $self = shift;
   my $tmpdir = $self->{tmpdir};
-  my $setup = test_setup($tmpdir, 'sftp');
 
   my $ecdsa_priv_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/test_ecdsa256_key');
   my $ecdsa_cert = File::Spec->rel2abs('t/etc/modules/mod_sftp/certs/host_rsa_ca_ecdsa256_cert.pub');
@@ -1282,7 +1522,6 @@ sub sftp_ext_hostbased_rsa_ca_ecdsa256_cert_issue2357 {
 sub sftp_ext_hostbased_rsa_ca_ecdsa384_cert_issue2357 {
   my $self = shift;
   my $tmpdir = $self->{tmpdir};
-  my $setup = test_setup($tmpdir, 'sftp');
 
   my $ecdsa_priv_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/test_ecdsa384_key');
   my $ecdsa_cert = File::Spec->rel2abs('t/etc/modules/mod_sftp/certs/host_rsa_ca_ecdsa384_cert.pub');
@@ -1295,7 +1534,6 @@ sub sftp_ext_hostbased_rsa_ca_ecdsa384_cert_issue2357 {
 sub sftp_ext_hostbased_rsa_ca_ecdsa521_cert_issue2357 {
   my $self = shift;
   my $tmpdir = $self->{tmpdir};
-  my $setup = test_setup($tmpdir, 'sftp');
 
   my $ecdsa_priv_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/test_ecdsa521_key');
   my $ecdsa_cert = File::Spec->rel2abs('t/etc/modules/mod_sftp/certs/host_rsa_ca_ecdsa521_cert.pub');
@@ -1308,7 +1546,6 @@ sub sftp_ext_hostbased_rsa_ca_ecdsa521_cert_issue2357 {
 sub sftp_ext_hostbased_rsa_ca_ed25519_cert_issue2357 {
   my $self = shift;
   my $tmpdir = $self->{tmpdir};
-  my $setup = test_setup($tmpdir, 'sftp');
 
   my $eddsa_priv_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/test_openssh_ed25519_key');
   my $eddsa_cert = File::Spec->rel2abs('t/etc/modules/mod_sftp/certs/host_rsa_ca_ed25519_cert.pub');
@@ -1321,7 +1558,6 @@ sub sftp_ext_hostbased_rsa_ca_ed25519_cert_issue2357 {
 sub sftp_ext_hostbased_ecdsa256_ca_rsa_cert_issue2357 {
   my $self = shift;
   my $tmpdir = $self->{tmpdir};
-  my $setup = test_setup($tmpdir, 'sftp');
 
   my $rsa_priv_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/test_rsa_key');
   my $rsa_cert = File::Spec->rel2abs('t/etc/modules/mod_sftp/certs/host_ecdsa256_ca_rsa_cert.pub');
@@ -1334,7 +1570,6 @@ sub sftp_ext_hostbased_ecdsa256_ca_rsa_cert_issue2357 {
 sub sftp_ext_hostbased_ecdsa256_ca_ecdsa256_cert_issue2357 {
   my $self = shift;
   my $tmpdir = $self->{tmpdir};
-  my $setup = test_setup($tmpdir, 'sftp');
 
   my $ecdsa_priv_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/test_ecdsa256_key');
   my $ecdsa_cert = File::Spec->rel2abs('t/etc/modules/mod_sftp/certs/host_ecdsa256_ca_ecdsa256_cert.pub');
@@ -1347,7 +1582,6 @@ sub sftp_ext_hostbased_ecdsa256_ca_ecdsa256_cert_issue2357 {
 sub sftp_ext_hostbased_ecdsa256_ca_ecdsa384_cert_issue2357 {
   my $self = shift;
   my $tmpdir = $self->{tmpdir};
-  my $setup = test_setup($tmpdir, 'sftp');
 
   my $ecdsa_priv_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/test_ecdsa384_key');
   my $ecdsa_cert = File::Spec->rel2abs('t/etc/modules/mod_sftp/certs/host_ecdsa256_ca_ecdsa384_cert.pub');
@@ -1360,7 +1594,6 @@ sub sftp_ext_hostbased_ecdsa256_ca_ecdsa384_cert_issue2357 {
 sub sftp_ext_hostbased_ecdsa256_ca_ecdsa521_cert_issue2357 {
   my $self = shift;
   my $tmpdir = $self->{tmpdir};
-  my $setup = test_setup($tmpdir, 'sftp');
 
   my $ecdsa_priv_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/test_ecdsa521_key');
   my $ecdsa_cert = File::Spec->rel2abs('t/etc/modules/mod_sftp/certs/host_ecdsa256_ca_ecdsa521_cert.pub');
@@ -1373,7 +1606,6 @@ sub sftp_ext_hostbased_ecdsa256_ca_ecdsa521_cert_issue2357 {
 sub sftp_ext_hostbased_ecdsa256_ca_ed25519_cert_issue2357 {
   my $self = shift;
   my $tmpdir = $self->{tmpdir};
-  my $setup = test_setup($tmpdir, 'sftp');
 
   my $eddsa_priv_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/test_openssh_ed25519_key');
   my $eddsa_cert = File::Spec->rel2abs('t/etc/modules/mod_sftp/certs/host_ecdsa256_ca_ed25519_cert.pub');
@@ -1386,7 +1618,6 @@ sub sftp_ext_hostbased_ecdsa256_ca_ed25519_cert_issue2357 {
 sub sftp_ext_hostbased_ecdsa384_ca_rsa_cert_issue2357 {
   my $self = shift;
   my $tmpdir = $self->{tmpdir};
-  my $setup = test_setup($tmpdir, 'sftp');
 
   my $rsa_priv_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/test_rsa_key');
   my $rsa_cert = File::Spec->rel2abs('t/etc/modules/mod_sftp/certs/host_ecdsa384_ca_rsa_cert.pub');
@@ -1399,7 +1630,6 @@ sub sftp_ext_hostbased_ecdsa384_ca_rsa_cert_issue2357 {
 sub sftp_ext_hostbased_ecdsa384_ca_ecdsa256_cert_issue2357 {
   my $self = shift;
   my $tmpdir = $self->{tmpdir};
-  my $setup = test_setup($tmpdir, 'sftp');
 
   my $ecdsa_priv_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/test_ecdsa256_key');
   my $ecdsa_cert = File::Spec->rel2abs('t/etc/modules/mod_sftp/certs/host_ecdsa384_ca_ecdsa256_cert.pub');
@@ -1412,7 +1642,6 @@ sub sftp_ext_hostbased_ecdsa384_ca_ecdsa256_cert_issue2357 {
 sub sftp_ext_hostbased_ecdsa384_ca_ecdsa384_cert_issue2357 {
   my $self = shift;
   my $tmpdir = $self->{tmpdir};
-  my $setup = test_setup($tmpdir, 'sftp');
 
   my $ecdsa_priv_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/test_ecdsa384_key');
   my $ecdsa_cert = File::Spec->rel2abs('t/etc/modules/mod_sftp/certs/host_ecdsa384_ca_ecdsa384_cert.pub');
@@ -1425,7 +1654,6 @@ sub sftp_ext_hostbased_ecdsa384_ca_ecdsa384_cert_issue2357 {
 sub sftp_ext_hostbased_ecdsa384_ca_ecdsa521_cert_issue2357 {
   my $self = shift;
   my $tmpdir = $self->{tmpdir};
-  my $setup = test_setup($tmpdir, 'sftp');
 
   my $ecdsa_priv_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/test_ecdsa521_key');
   my $ecdsa_cert = File::Spec->rel2abs('t/etc/modules/mod_sftp/certs/host_ecdsa384_ca_ecdsa521_cert.pub');
@@ -1438,7 +1666,6 @@ sub sftp_ext_hostbased_ecdsa384_ca_ecdsa521_cert_issue2357 {
 sub sftp_ext_hostbased_ecdsa384_ca_ed25519_cert_issue2357 {
   my $self = shift;
   my $tmpdir = $self->{tmpdir};
-  my $setup = test_setup($tmpdir, 'sftp');
 
   my $eddsa_priv_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/test_openssh_ed25519_key');
   my $eddsa_cert = File::Spec->rel2abs('t/etc/modules/mod_sftp/certs/host_ecdsa384_ca_ed25519_cert.pub');
@@ -1451,7 +1678,6 @@ sub sftp_ext_hostbased_ecdsa384_ca_ed25519_cert_issue2357 {
 sub sftp_ext_hostbased_ecdsa521_ca_rsa_cert_issue2357 {
   my $self = shift;
   my $tmpdir = $self->{tmpdir};
-  my $setup = test_setup($tmpdir, 'sftp');
 
   my $rsa_priv_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/test_rsa_key');
   my $rsa_cert = File::Spec->rel2abs('t/etc/modules/mod_sftp/certs/host_ecdsa521_ca_rsa_cert.pub');
@@ -1464,7 +1690,6 @@ sub sftp_ext_hostbased_ecdsa521_ca_rsa_cert_issue2357 {
 sub sftp_ext_hostbased_ecdsa521_ca_ecdsa256_cert_issue2357 {
   my $self = shift;
   my $tmpdir = $self->{tmpdir};
-  my $setup = test_setup($tmpdir, 'sftp');
 
   my $ecdsa_priv_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/test_ecdsa256_key');
   my $ecdsa_cert = File::Spec->rel2abs('t/etc/modules/mod_sftp/certs/host_ecdsa521_ca_ecdsa256_cert.pub');
@@ -1477,7 +1702,6 @@ sub sftp_ext_hostbased_ecdsa521_ca_ecdsa256_cert_issue2357 {
 sub sftp_ext_hostbased_ecdsa521_ca_ecdsa384_cert_issue2357 {
   my $self = shift;
   my $tmpdir = $self->{tmpdir};
-  my $setup = test_setup($tmpdir, 'sftp');
 
   my $ecdsa_priv_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/test_ecdsa384_key');
   my $ecdsa_cert = File::Spec->rel2abs('t/etc/modules/mod_sftp/certs/host_ecdsa521_ca_ecdsa384_cert.pub');
@@ -1490,7 +1714,6 @@ sub sftp_ext_hostbased_ecdsa521_ca_ecdsa384_cert_issue2357 {
 sub sftp_ext_hostbased_ecdsa521_ca_ecdsa521_cert_issue2357 {
   my $self = shift;
   my $tmpdir = $self->{tmpdir};
-  my $setup = test_setup($tmpdir, 'sftp');
 
   my $ecdsa_priv_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/test_ecdsa521_key');
   my $ecdsa_cert = File::Spec->rel2abs('t/etc/modules/mod_sftp/certs/host_ecdsa521_ca_ecdsa521_cert.pub');
@@ -1503,7 +1726,6 @@ sub sftp_ext_hostbased_ecdsa521_ca_ecdsa521_cert_issue2357 {
 sub sftp_ext_hostbased_ecdsa521_ca_ed25519_cert_issue2357 {
   my $self = shift;
   my $tmpdir = $self->{tmpdir};
-  my $setup = test_setup($tmpdir, 'sftp');
 
   my $eddsa_priv_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/test_openssh_ed25519_key');
   my $eddsa_cert = File::Spec->rel2abs('t/etc/modules/mod_sftp/certs/host_ecdsa521_ca_ed25519_cert.pub');
@@ -1516,7 +1738,6 @@ sub sftp_ext_hostbased_ecdsa521_ca_ed25519_cert_issue2357 {
 sub sftp_ext_hostbased_ed25519_ca_rsa_cert_issue2357 {
   my $self = shift;
   my $tmpdir = $self->{tmpdir};
-  my $setup = test_setup($tmpdir, 'sftp');
 
   my $rsa_priv_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/test_rsa_key');
   my $rsa_cert = File::Spec->rel2abs('t/etc/modules/mod_sftp/certs/host_ed25519_ca_rsa_cert.pub');
@@ -1529,7 +1750,6 @@ sub sftp_ext_hostbased_ed25519_ca_rsa_cert_issue2357 {
 sub sftp_ext_hostbased_ed25519_ca_ecdsa256_cert_issue2357 {
   my $self = shift;
   my $tmpdir = $self->{tmpdir};
-  my $setup = test_setup($tmpdir, 'sftp');
 
   my $ecdsa_priv_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/test_ecdsa256_key');
   my $ecdsa_cert = File::Spec->rel2abs('t/etc/modules/mod_sftp/certs/host_ed25519_ca_ecdsa256_cert.pub');
@@ -1542,7 +1762,6 @@ sub sftp_ext_hostbased_ed25519_ca_ecdsa256_cert_issue2357 {
 sub sftp_ext_hostbased_ed25519_ca_ecdsa384_cert_issue2357 {
   my $self = shift;
   my $tmpdir = $self->{tmpdir};
-  my $setup = test_setup($tmpdir, 'sftp');
 
   my $ecdsa_priv_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/test_ecdsa384_key');
   my $ecdsa_cert = File::Spec->rel2abs('t/etc/modules/mod_sftp/certs/host_ed25519_ca_ecdsa384_cert.pub');
@@ -1555,7 +1774,6 @@ sub sftp_ext_hostbased_ed25519_ca_ecdsa384_cert_issue2357 {
 sub sftp_ext_hostbased_ed25519_ca_ecdsa521_cert_issue2357 {
   my $self = shift;
   my $tmpdir = $self->{tmpdir};
-  my $setup = test_setup($tmpdir, 'sftp');
 
   my $ecdsa_priv_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/test_ecdsa521_key');
   my $ecdsa_cert = File::Spec->rel2abs('t/etc/modules/mod_sftp/certs/host_ed25519_ca_ecdsa521_cert.pub');
@@ -1568,7 +1786,6 @@ sub sftp_ext_hostbased_ed25519_ca_ecdsa521_cert_issue2357 {
 sub sftp_ext_hostbased_ed25519_ca_ed25519_cert_issue2357 {
   my $self = shift;
   my $tmpdir = $self->{tmpdir};
-  my $setup = test_setup($tmpdir, 'sftp');
 
   my $eddsa_priv_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/test_openssh_ed25519_key');
   my $eddsa_cert = File::Spec->rel2abs('t/etc/modules/mod_sftp/certs/host_ed25519_ca_ed25519_cert.pub');
@@ -1581,7 +1798,6 @@ sub sftp_ext_hostbased_ed25519_ca_ed25519_cert_issue2357 {
 sub sftp_ext_hostbased_certificate_options_allow_empty_principals_issue2357 {
   my $self = shift;
   my $tmpdir = $self->{tmpdir};
-  my $setup = test_setup($tmpdir, 'sftp');
 
   my $rsa_priv_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/test_rsa_key');
   my $rsa_cert = File::Spec->rel2abs('t/etc/modules/mod_sftp/certs/host_rsa_ca_rsa_cert_empty_principals.pub');
@@ -1598,7 +1814,6 @@ sub sftp_ext_hostbased_certificate_options_allow_empty_principals_issue2357 {
 sub sftp_ext_hostbased_certificate_options_allow_match_principals_issue2357 {
   my $self = shift;
   my $tmpdir = $self->{tmpdir};
-  my $setup = test_setup($tmpdir, 'sftp');
 
   my $rsa_priv_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/test_rsa_key');
   my $rsa_cert = File::Spec->rel2abs('t/etc/modules/mod_sftp/certs/host_rsa_ca_rsa_cert_match_principals.pub');
@@ -1615,7 +1830,6 @@ sub sftp_ext_hostbased_certificate_options_allow_match_principals_issue2357 {
 sub sftp_ext_hostbased_certificate_revoked_rsa_key_issue2357 {
   my $self = shift;
   my $tmpdir = $self->{tmpdir};
-  my $setup = test_setup($tmpdir, 'sftp');
 
   my $rsa_priv_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/test_rsa_key');
   my $rsa_pub_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/authorized_rsa_keys');
@@ -1640,7 +1854,6 @@ sub sftp_ext_hostbased_certificate_revoked_rsa_key_issue2357 {
 sub sftp_ext_hostbased_certificate_revoked_ed25519_key_issue2357 {
   my $self = shift;
   my $tmpdir = $self->{tmpdir};
-  my $setup = test_setup($tmpdir, 'sftp');
 
   my $eddsa_priv_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/test_openssh_ed25519_key');
   my $eddsa_pub_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/authorized_openssh_ed25519_keys');
@@ -1665,7 +1878,6 @@ sub sftp_ext_hostbased_certificate_revoked_ed25519_key_issue2357 {
 sub sftp_ext_hostbased_certificate_revoked_rsa_ca_key_issue2357 {
   my $self = shift;
   my $tmpdir = $self->{tmpdir};
-  my $setup = test_setup($tmpdir, 'sftp');
 
   my $rsa_priv_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/test_rsa_key');
   my $rsa_cert = File::Spec->rel2abs('t/etc/modules/mod_sftp/certs/host_rsa_ca_rsa_cert.pub');
@@ -1684,6 +1896,105 @@ sub sftp_ext_hostbased_certificate_revoked_rsa_ca_key_issue2357 {
   # of a revoked key.
   sftp_ext_hostbased_ca_cert($self, $rsa_rfc4716_ca_keys, $rsa_cert,
     $rsa_priv_key, $addl_configs, 1);
+}
+
+sub sftp_config_host_cert_rsa_ca_rsa_cert_issue2507 {
+  my $self = shift;
+  my $tmpdir = $self->{tmpdir};
+
+  my $ca_cert = File::Spec->rel2abs('t/etc/modules/mod_sftp/certs/authorized_host_rsa_ca_key.pub');
+  my $host_cert = File::Spec->rel2abs('t/etc/modules/mod_sftp/certs/host_rsa_ca_rsa_cert.pub');
+  my $host_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/test_rsa_key');
+
+  my $rsa_priv_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/test_rsa_key');
+  my $rsa_rfc4716_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/authorized_rsa_keys');
+
+  my $addl_cmd_opts = [
+    '-oHostKeyAlgorithms=ssh-rsa-cert-v01@openssh.com',
+  ];
+
+  sftp_ext_config_host_cert_cert($self, $ca_cert, $host_cert, $host_key,
+    $rsa_priv_key, $rsa_rfc4716_key, $addl_cmd_opts);
+}
+
+sub sftp_config_host_cert_rsa_ca_rsa_cert_with_rekeying_issue2507 {
+  my $self = shift;
+  my $tmpdir = $self->{tmpdir};
+
+  my $ca_cert = File::Spec->rel2abs('t/etc/modules/mod_sftp/certs/authorized_host_rsa_ca_key.pub');
+  my $host_cert = File::Spec->rel2abs('t/etc/modules/mod_sftp/certs/host_rsa_ca_rsa_cert.pub');
+  my $host_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/test_rsa_key');
+
+  my $rsa_priv_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/test_rsa_key');
+  my $rsa_rfc4716_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/authorized_rsa_keys');
+
+  my $addl_cmd_opts = [
+    '-oHostKeyAlgorithms=ssh-rsa-cert-v01@openssh.com',
+    '-oRekeyLimit=256',
+  ];
+
+  sftp_ext_config_host_cert_cert($self, $ca_cert, $host_cert, $host_key,
+    $rsa_priv_key, $rsa_rfc4716_key, $addl_cmd_opts);
+}
+
+sub sftp_config_host_cert_rsa_ca_ecdsa256_cert_issue2507 {
+  my $self = shift;
+  my $tmpdir = $self->{tmpdir};
+
+  my $ca_cert = File::Spec->rel2abs('t/etc/modules/mod_sftp/certs/authorized_host_rsa_ca_key.pub');
+  my $host_cert = File::Spec->rel2abs('t/etc/modules/mod_sftp/certs/host_rsa_ca_ecdsa256_cert.pub');
+  my $host_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/test_ecdsa256_key');
+
+  my $rsa_priv_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/test_rsa_key');
+  my $rsa_rfc4716_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/authorized_rsa_keys');
+
+  sftp_ext_config_host_cert_cert($self, $ca_cert, $host_cert, $host_key,
+    $rsa_priv_key, $rsa_rfc4716_key);
+}
+
+sub sftp_config_host_cert_rsa_ca_ecdsa384_cert_issue2507 {
+  my $self = shift;
+  my $tmpdir = $self->{tmpdir};
+
+  my $ca_cert = File::Spec->rel2abs('t/etc/modules/mod_sftp/certs/authorized_host_rsa_ca_key.pub');
+  my $host_cert = File::Spec->rel2abs('t/etc/modules/mod_sftp/certs/host_rsa_ca_ecdsa384_cert.pub');
+  my $host_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/test_ecdsa384_key');
+
+  my $rsa_priv_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/test_rsa_key');
+  my $rsa_rfc4716_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/authorized_rsa_keys');
+
+  sftp_ext_config_host_cert_cert($self, $ca_cert, $host_cert, $host_key,
+    $rsa_priv_key, $rsa_rfc4716_key);
+}
+
+sub sftp_config_host_cert_rsa_ca_ecdsa521_cert_issue2507 {
+  my $self = shift;
+  my $tmpdir = $self->{tmpdir};
+
+  my $ca_cert = File::Spec->rel2abs('t/etc/modules/mod_sftp/certs/authorized_host_rsa_ca_key.pub');
+  my $host_cert = File::Spec->rel2abs('t/etc/modules/mod_sftp/certs/host_rsa_ca_ecdsa521_cert.pub');
+  my $host_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/test_ecdsa521_key');
+
+  my $rsa_priv_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/test_rsa_key');
+  my $rsa_rfc4716_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/authorized_rsa_keys');
+
+  sftp_ext_config_host_cert_cert($self, $ca_cert, $host_cert, $host_key,
+    $rsa_priv_key, $rsa_rfc4716_key);
+}
+
+sub sftp_config_host_cert_rsa_ca_ed25519_cert_issue2507 {
+  my $self = shift;
+  my $tmpdir = $self->{tmpdir};
+
+  my $ca_cert = File::Spec->rel2abs('t/etc/modules/mod_sftp/certs/authorized_host_rsa_ca_key.pub');
+  my $host_cert = File::Spec->rel2abs('t/etc/modules/mod_sftp/certs/host_rsa_ca_ed25519_cert.pub');
+  my $host_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/test_openssh_ed25519_key');
+
+  my $rsa_priv_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/test_rsa_key');
+  my $rsa_rfc4716_key = File::Spec->rel2abs('t/etc/modules/mod_sftp/authorized_rsa_keys');
+
+  sftp_ext_config_host_cert_cert($self, $ca_cert, $host_cert, $host_key,
+    $rsa_priv_key, $rsa_rfc4716_key);
 }
 
 1;

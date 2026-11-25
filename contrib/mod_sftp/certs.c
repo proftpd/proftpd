@@ -32,6 +32,156 @@
 
 static const char *trace_channel = "ssh2";
 
+/* Reads the OpenSSH .pub format for certificates, and returns the
+ * base64-decoded certificate data.
+ */
+int sftp_certs_read_file(pool *p, const char *path, unsigned char **cert_data,
+    uint32_t *cert_datalen) {
+  int fd, have_padding = FALSE, res, xerrno;
+  struct stat st;
+  size_t sz;
+  unsigned char *blob, *text;
+  size_t bloblen, textlen;
+  char *ptr;
+
+  if (p == NULL ||
+      path == NULL ||
+      cert_data == NULL ||
+      cert_datalen == NULL) {
+    errno = EINVAL;
+    return -1;
+  }
+
+  fd = open(path, O_RDONLY);
+  xerrno = errno;
+
+  if (fd < 0) {
+    pr_trace_msg(trace_channel, 6, "error opening path '%s': %s", path,
+      strerror(xerrno));
+
+    errno = xerrno;
+    return -1;
+  }
+
+  res = fstat(fd, &st);
+  xerrno = errno;
+
+  if (res < 0) {
+    pr_trace_msg(trace_channel, 6, "error checking path '%s' (fd %d): %s",
+      path, fd, strerror(xerrno));
+
+    (void) close(fd);
+    errno = xerrno;
+    return -1;
+  }
+
+  textlen = st.st_size;
+
+  /* If this file is larger than the maximum amount of data we expect to
+   * see, signed, for a certificate (with generous headroom), it is too large.
+   */
+  if (textlen > (SFTP_CERT_MAX_SIGN_DATA_SIZE * 2)) {
+    xerrno = E2BIG;
+
+    pr_trace_msg(trace_channel, 6,
+      "certificate path '%s' file size (%lu) exceeds maximum (%lu)", path,
+      (unsigned long) textlen,
+      (unsigned long) (SFTP_CERT_MAX_SIGN_DATA_SIZE * 2));
+
+    (void) close(fd);
+    errno = xerrno;
+    return -1;
+  }
+
+  text = palloc(p, textlen);
+
+  res = read(fd, text, textlen);
+  xerrno = errno;
+
+  if (res < 0) {
+    pr_trace_msg(trace_channel, 6, "unable to read from path '%s' (fd %d): %s",
+      path, fd, strerror(xerrno));
+
+    (void) close(fd);
+    errno = xerrno;
+    return -1;
+  }
+
+  if (res != (int) textlen) {
+    pr_trace_msg(trace_channel, 6,
+      "read only %d of %lu bytes from path '%s' (fd %d)", res,
+      (unsigned long) textlen, path, fd);
+
+    (void) close(fd);
+    errno = EPERM;
+    return -1;
+  }
+
+  (void) close(fd);
+
+  sz = strcspn((const char *) text, " \t");
+  if (sz == textlen) {
+    pr_trace_msg(trace_channel, 7, "encountered unexpected format");
+    errno = EINVAL;
+    return -1;
+  }
+
+  /* Skip past the whitespace. */
+  ptr = (char *) text;
+  for (ptr += sz; *ptr == ' ' || *ptr == '\t'; ptr++) {
+  }
+
+  if (*ptr == '\0') {
+    pr_trace_msg(trace_channel, 7, "encountered unexpected format");
+    errno = EINVAL;
+    return -1;
+  }
+
+  /* Now we need to find the next whitespace, to delimit our blob of
+   * base64-encoded data to be processed.
+   */
+
+  text = (unsigned char *) ptr;
+  sz = strcspn((const char *) text, " \t");
+
+  /* Due to Base64's padding, we need to detect if the last block was padded
+   * with zeros; we do this by looking for '=' characters at the end of the
+   * text being decoded.  If we see these characters, then we will "trim" off
+   * any trailing zero values in the decoded data, on the ASSUMPTION that they
+   * are the auto-added padding bytes.
+   */
+  if (text[sz-1] == '=') {
+    have_padding = TRUE;
+  }
+
+  blob = pcalloc(p, sz);
+  res = EVP_DecodeBlock((unsigned char *) blob, (unsigned char *) text,
+    (int) sz);
+  if (res <= 0) {
+    /* Base64 decoding error. */
+    errno = EINVAL;
+    return -1;
+  }
+
+  if (have_padding == TRUE) {
+    /* Assume that only one or two zero bytes of padding were added. */
+    if (blob[res-1] == '\0') {
+      res -= 1;
+
+      if (blob[res-1] == '\0') {
+        res -= 1;
+      }
+    }
+  }
+
+  bloblen = (size_t) res;
+
+  *cert_data = blob;
+  *cert_datalen = bloblen;
+
+  return 0;
+}
+
 uint32_t sftp_certs_read_nonce(pool *p, unsigned char *cert_data,
     uint32_t cert_datalen, const char *cert_algo, unsigned char **nonce) {
   uint32_t nonce_len = 0, res, len = 0;
@@ -309,7 +459,7 @@ static void trace_cert(pool *p, struct sftp_cert *cert) {
 }
 
 int sftp_certs_parse_cert(pool *p, unsigned char *cert_data,
-    uint32_t cert_datalen, struct sftp_cert **cert) {
+    uint32_t cert_datalen, struct sftp_cert **cert, int flags) {
   unsigned char *buf, *buf2, *principal_data, *critical_data, *extension_data,
     *reserved_data, *signature_data;
   uint32_t buflen, buflen2, len, principal_datalen, critical_datalen,
@@ -818,21 +968,42 @@ int sftp_certs_parse_cert(pool *p, unsigned char *cert_data,
     return -1;
   }
 
-  if (sftp_keys_verify_signed_data(p, res->signature_pubkey_algo,
-      res->signature_pubkey_data, res->signature_pubkey_datalen,
-      signature_data, signature_datalen, cert_data, signed_datalen, NULL) < 0) {
-    int xerrno = errno;
+  if (!(flags & SFTP_CERTS_PARSE_FL_IGNORE_SIGNATURE)) {
+    if (sftp_keys_verify_signed_data(p, res->signature_pubkey_algo,
+        res->signature_pubkey_data, res->signature_pubkey_datalen,
+        signature_data, signature_datalen, cert_data, signed_datalen,
+        NULL) < 0) {
+      int xerrno = errno;
 
-    pr_trace_msg(trace_channel, 9,
-      "error verifying %s certificate signature: %s", cert_algo,
-      strerror(xerrno));
-    (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
-      "error verifying certificate: invalid signature");
+      pr_trace_msg(trace_channel, 9,
+        "error verifying %s certificate signature: %s", cert_algo,
+        strerror(xerrno));
+      (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
+        "error verifying certificate: invalid signature");
 
-    destroy_pool(res->cert_pool);
-    errno = xerrno;
-    return -1;
+      destroy_pool(res->cert_pool);
+      errno = xerrno;
+      return -1;
+    }
   }
+
+  if (flags & SFTP_CERTS_PARSE_FL_RETAIN_CERT_DATA) {
+    /* At this point, we know that the provided data comprise a well-formed
+     * certificate.  Keep a copy of that data associated with this cert, for
+     * writing out to servers.
+     */
+    res->cert_datalen = buflen;
+    res->cert_data = palloc(res->cert_pool, res->cert_datalen);
+    memcpy(res->cert_data, buf, res->cert_datalen);
+  }
+
+  /* Obtain the signed public key's algorithm name, for use later in e.g.
+   * matching the public key to its associated private key.
+   */
+  buf = res->pubkey_data;
+  buflen = res->pubkey_datalen;
+  (void) sftp_msg_read_string2(cert_pool, &buf, &buflen,
+    (char **) &(res->pubkey_algo));
 
   trace_cert(p, res);
 

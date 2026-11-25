@@ -86,6 +86,9 @@ struct sftp_hostkey {
    * to that agent, e.g. for data signing requests.
    */
   const char *agent_path;
+
+  /* Associated host certificate, if present. */
+  struct sftp_cert *cert;
 };
 
 static struct sftp_hostkey *sftp_dsa_hostkey = NULL;
@@ -1180,7 +1183,11 @@ static uint32_t read_pkey_from_data(pool *p, unsigned char *pkey_data,
 
   if (strcmp(pkey_type, "ssh-rsa") == 0 ||
       strcmp(pkey_type, "ssh-rsa-cert") == 0 ||
-      strcmp(pkey_type, "ssh-rsa-cert-v01@openssh.com") == 0) {
+      strcmp(pkey_type, "ssh-rsa-cert-v01@openssh.com") == 0 ||
+      strcmp(pkey_type, "rsa-sha2-256-cert") == 0 ||
+      strcmp(pkey_type, "rsa-sha2-256-cert-v01@openssh.com") == 0 ||
+      strcmp(pkey_type, "rsa-sha2-512-cert") == 0 ||
+      strcmp(pkey_type, "rsa-sha2-512-cert-v01@openssh.com") == 0) {
     RSA *rsa;
     const BIGNUM *rsa_e = NULL, *rsa_n = NULL, *rsa_d = NULL;
 
@@ -1188,7 +1195,11 @@ static uint32_t read_pkey_from_data(pool *p, unsigned char *pkey_data,
      * here.
      */
     if (strcmp(pkey_type, "ssh-rsa-cert") == 0 ||
-        strcmp(pkey_type, "ssh-rsa-cert-v01@openssh.com") == 0) {
+        strcmp(pkey_type, "ssh-rsa-cert-v01@openssh.com") == 0 ||
+        strcmp(pkey_type, "rsa-sha2-256-cert") == 0 ||
+        strcmp(pkey_type, "rsa-sha2-256-cert-v01@openssh.com") == 0 ||
+        strcmp(pkey_type, "rsa-sha2-512-cert") == 0 ||
+        strcmp(pkey_type, "rsa-sha2-512-cert-v01@openssh.com") == 0) {
       res = sftp_certs_read_nonce(p, pkey_data, pkey_datalen, pkey_type, NULL);
       if (res == 0) {
         pr_trace_msg(trace_channel, 19,
@@ -4782,6 +4793,196 @@ static int handle_mldsa44_ed25519_hostkey(pool *p,
 }
 #endif /* HAVE_MLDSA44_OPENSSL, HAVE_X25519_OPENSSL, HAVE_SHA512_OPENSSL */
 
+static int handle_hostcert(pool *p, struct sftp_cert *cert) {
+  int xerrno;
+  pool *tmp_pool;
+  EVP_PKEY *pkey = NULL;
+  uint32_t len;
+  struct sftp_hostkey *hostkey = NULL;
+  enum sftp_key_type_e pkey_type;
+
+  tmp_pool = make_sub_pool(p);
+
+  len = read_pkey_from_data(tmp_pool, cert->pubkey_data, cert->pubkey_datalen,
+    &pkey, &pkey_type, NULL, FALSE);
+  xerrno = errno;
+
+  if (len == 0) {
+    destroy_pool(tmp_pool);
+    errno = xerrno;
+    return -1;
+  }
+
+  switch (pkey_type) {
+    case SFTP_KEY_RSA_CERT:
+    case SFTP_KEY_RSA_SHA256_CERT:
+    case SFTP_KEY_RSA_SHA512_CERT:
+      hostkey = sftp_rsa_hostkey;
+      break;
+
+    case SFTP_KEY_DSA_CERT:
+      hostkey = sftp_dsa_hostkey;
+      break;
+
+#if defined(PR_USE_OPENSSL_ECC)
+    case SFTP_KEY_ECDSA_256_CERT:
+      hostkey = sftp_ecdsa256_hostkey;
+      break;
+
+    case SFTP_KEY_ECDSA_384_CERT:
+      hostkey = sftp_ecdsa384_hostkey;
+      break;
+
+    case SFTP_KEY_ECDSA_521_CERT:
+      hostkey = sftp_ecdsa521_hostkey;
+      break;
+#endif /* PR_USE_OPENSSL_ECC */
+
+#if defined(PR_USE_SODIUM)
+    case SFTP_KEY_ED25519_CERT:
+      hostkey = sftp_ed25519_hostkey;
+      break;
+#endif /* PR_USE_SODIUM */
+
+#if defined(HAVE_X448_OPENSSL) && defined(HAVE_SHA512_OPENSSL)
+    case SFTP_KEY_ED448_CERT:
+      hostkey = sftp_ed448_hostkey;
+      break;
+#endif /* HAVE_X448_OPENSSL and HAVE_SHA512_OPENSSL */
+
+    default:
+      break;
+  }
+
+  if (hostkey == NULL) {
+    destroy_pool(tmp_pool);
+    errno = ENOENT;
+    return -1;
+  }
+
+  switch (pkey_type) {
+    case SFTP_KEY_DSA_CERT:
+    case SFTP_KEY_ECDSA_256_CERT:
+    case SFTP_KEY_ECDSA_384_CERT:
+    case SFTP_KEY_ECDSA_521_CERT:
+    case SFTP_KEY_RSA_CERT:
+    case SFTP_KEY_RSA_SHA256_CERT:
+    case SFTP_KEY_RSA_SHA512_CERT:
+      if (EVP_PKEY_cmp(pkey, hostkey->pkey) == 1) {
+        hostkey->cert = cert;
+        pr_trace_msg(trace_channel, 17,
+          "matching HostKey found for %s certificate", cert->pubkey_algo);
+
+      } else {
+        pr_trace_msg(trace_channel, 11,
+          "no matching HostKey found for %s certificate", cert->pubkey_algo);
+      }
+      break;
+
+    case SFTP_KEY_ED25519_CERT: {
+      unsigned char *buf, *ptr;
+      uint32_t bufsz, buflen;
+
+      buflen = bufsz = 4 + 11 + 4 + hostkey->ed25519_public_keylen;
+      ptr = buf = palloc(tmp_pool, bufsz);
+
+      sftp_msg_write_string(&buf, &buflen, "ssh-ed25519");
+      sftp_msg_write_data(&buf, &buflen, hostkey->ed25519_public_key,
+        hostkey->ed25519_public_keylen, TRUE);
+
+      if (sftp_keys_compare_keys(tmp_pool, ptr, (bufsz - buflen),
+          cert->pubkey_data, cert->pubkey_datalen) == 0) {
+        hostkey->cert = cert;
+        pr_trace_msg(trace_channel, 17,
+          "matching HostKey found for %s certificate", cert->pubkey_algo);
+
+      } else {
+        pr_trace_msg(trace_channel, 11,
+          "no matching HostKey found for %s certificate", cert->pubkey_algo);
+      }
+      break;
+    }
+
+    case SFTP_KEY_ED448_CERT: {
+      unsigned char *buf, *ptr;
+      uint32_t bufsz, buflen;
+
+      buflen = bufsz = 4 + 9 + 4 + hostkey->ed448_public_keylen;
+      ptr = buf = palloc(tmp_pool, bufsz);
+
+      sftp_msg_write_string(&buf, &buflen, "ssh-ed448");
+      sftp_msg_write_data(&buf, &buflen, hostkey->ed448_public_key,
+        hostkey->ed448_public_keylen, TRUE);
+
+      if (sftp_keys_compare_keys(tmp_pool, ptr, (bufsz - buflen),
+          cert->pubkey_data, cert->pubkey_datalen) == 0) {
+        hostkey->cert = cert;
+        pr_trace_msg(trace_channel, 17,
+          "matching HostKey found for %s certificate", cert->pubkey_algo);
+
+      } else {
+        pr_trace_msg(trace_channel, 11,
+          "no matching HostKey found for %s certificate", cert->pubkey_algo);
+      }
+      break;
+    }
+
+    default:
+      /* Non-certificate types are ignored here; we shouldn't see them. */
+      break;
+  }
+
+  if (pkey != NULL) {
+    EVP_PKEY_free(pkey);
+  }
+
+  destroy_pool(tmp_pool);
+  return 0;
+}
+
+static int load_file_hostcert(pool *p, const char *path) {
+  int flags, res, xerrno = 0;
+  unsigned char *cert_data = NULL;
+  uint32_t cert_datalen = 0;
+  struct sftp_cert *cert = NULL;
+
+  pr_signals_block();
+  PRIVS_ROOT
+
+  /* XXX Would we ever want to allow host certs to be read from FIFOs?  If
+   * so, we would need to include the O_NONBLOCK flag here.
+   */
+  res = sftp_certs_read_file(p, path, &cert_data, &cert_datalen);
+  xerrno = errno;
+
+  PRIVS_RELINQUISH
+  pr_signals_unblock();
+
+  if (res < 0) {
+    (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
+      "error reading '%s': %s", path, strerror(xerrno));
+    errno = xerrno;
+    return -1;
+  }
+
+  /* At this point in time, we do not have any CA keys to use for verifying
+   * the cert's signature; that's for the peer to do.
+   */
+  flags = SFTP_CERTS_PARSE_FL_IGNORE_SIGNATURE|SFTP_CERTS_PARSE_FL_RETAIN_CERT_DATA;
+  res = sftp_certs_parse_cert(p, cert_data, cert_datalen, &cert, flags);
+  xerrno = errno;
+  if (res < 0) {
+    (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
+      "error parsing certificate in '%s': %s", path, strerror(xerrno));
+
+    errno = xerrno;
+    return -1;
+  }
+
+  /* Now we see if this cert matches any of the configured host keys. */
+  return handle_hostcert(p, cert);
+}
+
 static int load_openssh_hostkey(pool *p, const char *path, int fd) {
   const char *passphrase = NULL;
   enum sftp_key_type_e key_type = SFTP_KEY_UNKNOWN;
@@ -5048,6 +5249,12 @@ static int load_file_hostkey(pool *p, const char *path) {
   return handle_hostkey(p, pkey, NULL, 0, path, NULL);
 }
 
+int sftp_keys_get_hostcert(pool *p, const char *path) {
+  pr_trace_msg(trace_channel, 9, "loading host certificate from file '%s'",
+    path);
+  return load_file_hostcert(p, path);
+}
+
 int sftp_keys_get_hostkey(pool *p, const char *path) {
   int res;
 
@@ -5070,6 +5277,25 @@ int sftp_keys_get_hostkey(pool *p, const char *path) {
   }
 
   return res;
+}
+
+static int get_hostcert_data(pool *p, unsigned char **buf,
+    unsigned char **ptr, uint32_t *buflen, struct sftp_cert *cert) {
+
+  /* XXX Is this buffer large enough?  Too large? */
+  *ptr = *buf = palloc(p, *buflen);
+  sftp_msg_write_data(buf, buflen, cert->cert_data, cert->cert_datalen, FALSE);
+
+  return 0;
+}
+
+static int get_rsa_hostcert_data(pool *p, unsigned char **buf,
+    unsigned char **ptr, uint32_t *buflen) {
+  if (sftp_rsa_hostkey->cert == NULL) {
+    return -1;
+  }
+
+  return get_hostcert_data(p, buf, ptr, buflen, sftp_rsa_hostkey->cert);
 }
 
 static int get_rsa_hostkey_data(pool *p, unsigned char **buf,
@@ -5099,10 +5325,20 @@ static int get_rsa_hostkey_data(pool *p, unsigned char **buf,
   sftp_msg_write_mpint(buf, buflen, rsa_n);
 
   RSA_free(rsa);
+
   return 0;
 }
 
 #if !defined(OPENSSL_NO_DSA)
+static int get_dsa_hostcert_data(pool *p, unsigned char **buf,
+    unsigned char **ptr, uint32_t *buflen) {
+  if (sftp_dsa_hostkey->cert == NULL) {
+    return -1;
+  }
+
+  return get_hostcert_data(p, buf, ptr, buflen, sftp_dsa_hostkey->cert);
+}
+
 static int get_dsa_hostkey_data(pool *p, unsigned char **buf,
     unsigned char **ptr, uint32_t *buflen) {
   DSA *dsa;
@@ -5135,11 +5371,21 @@ static int get_dsa_hostkey_data(pool *p, unsigned char **buf,
   sftp_msg_write_mpint(buf, buflen, dsa_pub_key);
 
   DSA_free(dsa);
+
   return 0;
 }
 #endif /* !OPENSSL_NO_DSA */
 
 #if defined(PR_USE_OPENSSL_ECC)
+static int get_ecdsa_hostcert_data(pool *p, struct sftp_hostkey *hostkey,
+    unsigned char **buf, unsigned char **ptr, uint32_t *buflen) {
+  if (hostkey->cert == NULL) {
+    return -1;
+  }
+
+  return get_hostcert_data(p, buf, ptr, buflen, hostkey->cert);
+}
+
 static int get_ecdsa_hostkey_data(pool *p, struct sftp_hostkey *hostkey,
     const char *algo, const char *curve, unsigned char **buf,
     unsigned char **ptr, uint32_t *buflen) {
@@ -5160,11 +5406,21 @@ static int get_ecdsa_hostkey_data(pool *p, struct sftp_hostkey *hostkey,
     EC_KEY_get0_public_key(ec));
 
   EC_KEY_free(ec);
+
   return 0;
 }
 #endif /* PR_USE_OPENSSL_ECC */
 
 #if defined(PR_USE_SODIUM)
+static int get_ed25519_hostcert_data(pool *p, unsigned char **buf,
+    unsigned char **ptr, uint32_t *buflen) {
+  if (sftp_ed25519_hostkey->cert == NULL) {
+    return -1;
+  }
+
+  return get_hostcert_data(p, buf, ptr, buflen, sftp_ed25519_hostkey->cert);
+}
+
 static int get_ed25519_hostkey_data(pool *p, unsigned char **buf,
     unsigned char **ptr, uint32_t *buflen) {
 
@@ -5179,6 +5435,16 @@ static int get_ed25519_hostkey_data(pool *p, unsigned char **buf,
 #endif /* PR_USE_SODIUM */
 
 #if defined(HAVE_X448_OPENSSL)
+static int get_ed448_hostcert_data(pool *p, unsigned char **buf,
+    unsigned char **ptr, uint32_t *buflen) {
+
+  if (sftp_ed448_hostkey->cert == NULL) {
+    return -1;
+  }
+
+  return get_hostcert_data(p, buf, ptr, buflen, sftp_ed448_hostkey->cert);
+}
+
 static int get_ed448_hostkey_data(pool *p, unsigned char **buf,
     unsigned char **ptr, uint32_t *buflen) {
 
@@ -5243,9 +5509,29 @@ const unsigned char *sftp_keys_get_hostkey_data(pool *p,
       break;
     }
 
+    case SFTP_KEY_RSA_CERT:
+    case SFTP_KEY_RSA_SHA256_CERT:
+    case SFTP_KEY_RSA_SHA512_CERT: {
+      res = get_rsa_hostcert_data(p, &buf, &ptr, &buflen);
+      if (res < 0) {
+        return NULL;
+      }
+
+      break;
+    }
+
 #if !defined(OPENSSL_NO_DSA)
     case SFTP_KEY_DSA: {
       res = get_dsa_hostkey_data(p, &buf, &ptr, &buflen);
+      if (res < 0) {
+        return NULL;
+      }
+
+      break;
+    }
+
+    case SFTP_KEY_DSA_CERT: {
+      res = get_dsa_hostcert_data(p, &buf, &ptr, &buflen);
       if (res < 0) {
         return NULL;
       }
@@ -5265,6 +5551,16 @@ const unsigned char *sftp_keys_get_hostkey_data(pool *p,
       break;
     }
 
+    case SFTP_KEY_ECDSA_256_CERT: {
+      res = get_ecdsa_hostcert_data(p, sftp_ecdsa256_hostkey,
+        &buf, &ptr, &buflen);
+      if (res < 0) {
+        return NULL;
+      }
+
+      break;
+    }
+
     case SFTP_KEY_ECDSA_384: {
       res = get_ecdsa_hostkey_data(p, sftp_ecdsa384_hostkey,
         "ecdsa-sha2-nistp384", "nistp384", &buf, &ptr, &buflen);
@@ -5275,9 +5571,29 @@ const unsigned char *sftp_keys_get_hostkey_data(pool *p,
       break;
     }
 
+    case SFTP_KEY_ECDSA_384_CERT: {
+      res = get_ecdsa_hostcert_data(p, sftp_ecdsa384_hostkey,
+        &buf, &ptr, &buflen);
+      if (res < 0) {
+        return NULL;
+      }
+
+      break;
+    }
+
     case SFTP_KEY_ECDSA_521: {
       res = get_ecdsa_hostkey_data(p, sftp_ecdsa521_hostkey,
         "ecdsa-sha2-nistp521", "nistp521", &buf, &ptr, &buflen);
+      if (res < 0) {
+        return NULL;
+      }
+
+      break;
+    }
+
+    case SFTP_KEY_ECDSA_521_CERT: {
+      res = get_ecdsa_hostcert_data(p, sftp_ecdsa521_hostkey,
+        &buf, &ptr, &buflen);
       if (res < 0) {
         return NULL;
       }
@@ -5295,11 +5611,29 @@ const unsigned char *sftp_keys_get_hostkey_data(pool *p,
 
       break;
     }
+
+    case SFTP_KEY_ED25519_CERT: {
+      res = get_ed25519_hostcert_data(p, &buf, &ptr, &buflen);
+      if (res < 0) {
+        return NULL;
+      }
+
+      break;
+    }
 #endif /* PR_USE_SODIUM */
 
 #if defined(HAVE_X448_OPENSSL)
     case SFTP_KEY_ED448: {
       res = get_ed448_hostkey_data(p, &buf, &ptr, &buflen);
+      if (res < 0) {
+        return NULL;
+      }
+
+      break;
+    }
+
+    case SFTP_KEY_ED448_CERT: {
+      res = get_ed448_hostcert_data(p, &buf, &ptr, &buflen);
       if (res < 0) {
         return NULL;
       }
@@ -5460,10 +5794,16 @@ int sftp_keys_clear_rsa_hostkey(void) {
   return 0;
 }
 
-int sftp_keys_have_dsa_hostkey(void) {
+int sftp_keys_have_dsa_hostkey(int *have_cert) {
   if (sftp_dsa_hostkey == NULL) {
     errno = ENOENT;
     return -1;
+  }
+
+  if (have_cert != NULL) {
+    if (sftp_dsa_hostkey->cert != NULL) {
+      *have_cert = TRUE;
+    }
   }
 
   return 0;
@@ -5472,7 +5812,7 @@ int sftp_keys_have_dsa_hostkey(void) {
 /* Returns the count of returned NIDs for the configured ECDSA hostkeys,
  * if any.
  */
-int sftp_keys_have_ecdsa_hostkey(pool *p, int **nids) {
+int sftp_keys_have_ecdsa_hostkey(pool *p, int **nids, int *have_cert) {
 #if defined(PR_USE_OPENSSL_ECC)
   int count = 0;
 
@@ -5489,6 +5829,12 @@ int sftp_keys_have_ecdsa_hostkey(pool *p, int **nids) {
     }
     count++;
     EC_KEY_free(ec);
+
+    if (have_cert != NULL) {
+      if (sftp_ecdsa256_hostkey->cert != NULL) {
+        *have_cert = TRUE;
+      }
+    }
   }
 
   if (sftp_ecdsa384_hostkey != NULL) {
@@ -5500,6 +5846,12 @@ int sftp_keys_have_ecdsa_hostkey(pool *p, int **nids) {
     }
     count++;
     EC_KEY_free(ec);
+
+    if (have_cert != NULL) {
+      if (sftp_ecdsa384_hostkey->cert != NULL) {
+        *have_cert = TRUE;
+      }
+    }
   }
 
   if (sftp_ecdsa521_hostkey != NULL) {
@@ -5511,6 +5863,12 @@ int sftp_keys_have_ecdsa_hostkey(pool *p, int **nids) {
     }
     count++;
     EC_KEY_free(ec);
+
+    if (have_cert != NULL) {
+      if (sftp_ecdsa521_hostkey->cert != NULL) {
+        *have_cert = TRUE;
+      }
+    }
   }
 
   if (count > 0) {
@@ -5522,29 +5880,48 @@ int sftp_keys_have_ecdsa_hostkey(pool *p, int **nids) {
   return -1;
 }
 
-int sftp_keys_have_ed25519_hostkey(void) {
+int sftp_keys_have_ed25519_hostkey(int *have_cert) {
   if (sftp_ed25519_hostkey == NULL) {
     errno = ENOENT;
     return -1;
   }
 
-  return 0;
-}
-
-int sftp_keys_have_ed448_hostkey(void) {
-  if (sftp_ed448_hostkey == NULL) {
-    errno = ENOENT;
-    return -1;
+  if (have_cert != NULL) {
+    if (sftp_ed25519_hostkey->cert != NULL) {
+      *have_cert = TRUE;
+    }
   }
 
   return 0;
 }
 
-int sftp_keys_have_mldsa44_ed25519_hostkey(void) {
+int sftp_keys_have_ed448_hostkey(int *have_cert) {
+  if (sftp_ed448_hostkey == NULL) {
+    errno = ENOENT;
+    return -1;
+  }
+
+  if (have_cert != NULL) {
+    if (sftp_ed448_hostkey->cert != NULL) {
+      *have_cert = TRUE;
+    }
+  }
+
+  return 0;
+}
+
+int sftp_keys_have_mldsa44_ed25519_hostkey(int *have_cert) {
 #if defined(HAVE_MLDSA44_OPENSSL) && \
     defined(HAVE_X25519_OPENSSL) && \
     defined(HAVE_SHA512_OPENSSL)
   if (sftp_mldsa44_ed25519_hostkey != NULL) {
+
+    if (have_cert != NULL) {
+      if (sftp_mldsa44_ed25519_hostkey->cert != NULL) {
+        *have_cert = TRUE;
+      }
+    }
+
     return 0;
   }
 #endif /* HAVE_MLDSA44_OPENSSL, HAVE_X25519_OPENSSL, HAVE_SHA512_OPENSSL */
@@ -5553,10 +5930,36 @@ int sftp_keys_have_mldsa44_ed25519_hostkey(void) {
   return -1;
 }
 
-int sftp_keys_have_rsa_hostkey(void) {
+int sftp_keys_have_rsa_hostkey(int *have_cert, int *have_sha256_cert,
+    int *have_sha512_cert) {
   if (sftp_rsa_hostkey == NULL) {
     errno = ENOENT;
     return -1;
+  }
+
+  if (have_cert != NULL) {
+    if (sftp_rsa_hostkey->cert != NULL) {
+      *have_cert = TRUE;
+    }
+  }
+
+  /* Messiness due to early OpenSSH RSA cert spec including the signature
+   * algorithm in the cert name.  Boo.
+   */
+  if (have_sha256_cert != NULL) {
+    if (sftp_rsa_hostkey->cert != NULL &&
+        (strcmp(sftp_rsa_hostkey->cert->cert_algo, "rsa-sha2-256-cert") == 0 ||
+         strcmp(sftp_rsa_hostkey->cert->cert_algo, "rsa-sha2-256-cert-v01@openssh.com") == 0)) {
+      *have_sha256_cert = TRUE;
+    }
+  }
+
+  if (have_sha512_cert != NULL) {
+    if (sftp_rsa_hostkey->cert != NULL &&
+        (strcmp(sftp_rsa_hostkey->cert->cert_algo, "rsa-sha2-512-cert") == 0 ||
+         strcmp(sftp_rsa_hostkey->cert->cert_algo, "rsa-sha2-512-cert-v01@openssh.com") == 0)) {
+      *have_sha512_cert = TRUE;
+    }
   }
 
   return 0;
@@ -5594,6 +5997,14 @@ unsigned int sftp_keys_have_hostkeys(void) {
     count++;
   }
 #endif /* PR_USE_OPENSSL_ECC */
+
+#if defined(HAVE_MLDSA44_OPENSSL) && \
+    defined(HAVE_X25519_OPENSSL) && \
+    defined(HAVE_SHA512_OPENSSL)
+  if (sftp_mldsa44_ed25519_hostkey != NULL) {
+    count++;
+  }
+#endif /* HAVE_MLDSA44_OPENSSL, HAVE_X25519_OPENSSL, HAVE_SHA512_OPENSSL */
 
   return count;
 }
@@ -6476,6 +6887,11 @@ const unsigned char *sftp_keys_sign_data(pool *p,
     enum sftp_key_type_e key_type, const unsigned char *data,
     size_t datalen, size_t *siglen) {
   const unsigned char *res;
+
+  if (sftp_keys_is_cert_type(key_type) == TRUE) {
+    /* We don't sign with certs, we sign with private keys. */
+    key_type = get_noncert_key_type(key_type);
+  }
 
   switch (key_type) {
     case SFTP_KEY_RSA:
@@ -7881,6 +8297,7 @@ int sftp_keys_verify_signed_data(pool *p, const char *pubkey_algo,
         strcmp(pubkey_algo, "ssh-rsa") != 0 &&
         strcmp(pubkey_algo, "ssh-rsa-cert") != 0 &&
         strcmp(pubkey_algo, "ssh-rsa-cert-v01@openssh.com") != 0 &&
+        strcmp(pubkey_algo, "rsa-sha2-256-cert") != 0 &&
         strcmp(pubkey_algo, "rsa-sha2-256-cert-v01@openssh.com") != 0) {
       (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
         "unable to verify signed data: signature type '%s' does not match "
@@ -7899,6 +8316,7 @@ int sftp_keys_verify_signed_data(pool *p, const char *pubkey_algo,
         strcmp(pubkey_algo, "ssh-rsa") != 0 &&
         strcmp(pubkey_algo, "ssh-rsa-cert") != 0 &&
         strcmp(pubkey_algo, "ssh-rsa-cert-v01@openssh.com") != 0 &&
+        strcmp(pubkey_algo, "rsa-sha2-512-cert") != 0 &&
         strcmp(pubkey_algo, "rsa-sha2-512-cert-v01@openssh.com") != 0) {
       (void) pr_log_writefile(sftp_logfd, MOD_SFTP_VERSION,
         "unable to verify signed data: signature type '%s' does not match "
@@ -8118,7 +8536,7 @@ int sftp_keys_send_hostkeys(pool *p) {
   sftp_msg_write_string(&buf, &buflen, "hostkeys-00@openssh.com");
   sftp_msg_write_bool(&buf, &buflen, FALSE);
 
-  res = sftp_keys_have_rsa_hostkey();
+  res = sftp_keys_have_rsa_hostkey(NULL, NULL, NULL);
   if (res == 0) {
     hostkey_data = sftp_keys_get_hostkey_data(tmp_pool, SFTP_KEY_RSA,
       &hostkey_datalen);
@@ -8128,7 +8546,7 @@ int sftp_keys_send_hostkeys(pool *p) {
     }
   }
 
-  res = sftp_keys_have_dsa_hostkey();
+  res = sftp_keys_have_dsa_hostkey(NULL);
   if (res == 0) {
     hostkey_data = sftp_keys_get_hostkey_data(tmp_pool, SFTP_KEY_DSA,
       &hostkey_datalen);
@@ -8138,7 +8556,7 @@ int sftp_keys_send_hostkeys(pool *p) {
     }
   }
 
-  res = sftp_keys_have_ed25519_hostkey();
+  res = sftp_keys_have_ed25519_hostkey(NULL);
   if (res == 0) {
     hostkey_data = sftp_keys_get_hostkey_data(tmp_pool, SFTP_KEY_ED25519,
       &hostkey_datalen);
@@ -8149,7 +8567,7 @@ int sftp_keys_send_hostkeys(pool *p) {
     }
   }
 
-  res = sftp_keys_have_ed448_hostkey();
+  res = sftp_keys_have_ed448_hostkey(NULL);
   if (res == 0) {
     hostkey_data = sftp_keys_get_hostkey_data(tmp_pool, SFTP_KEY_ED448,
       &hostkey_datalen);
@@ -8160,7 +8578,18 @@ int sftp_keys_send_hostkeys(pool *p) {
     }
   }
 
-  res = sftp_keys_have_ecdsa_hostkey(tmp_pool, &nids);
+  res = sftp_keys_have_mldsa44_ed25519_hostkey(NULL);
+  if (res == 0) {
+    hostkey_data = sftp_keys_get_hostkey_data(tmp_pool,
+      SFTP_KEY_MLDSA44_ED25519, &hostkey_datalen);
+    if (hostkey_data != NULL) {
+      pr_trace_msg(trace_channel, 17,
+        "adding MLDSA44-Ed25519 hostkey to hostkeys message");
+      sftp_msg_write_data(&buf, &buflen, hostkey_data, hostkey_datalen, TRUE);
+    }
+  }
+
+  res = sftp_keys_have_ecdsa_hostkey(tmp_pool, &nids, NULL);
 #if defined(PR_USE_OPENSSL_ECC)
   if (res > 0) {
     register int i;
@@ -8257,28 +8686,28 @@ static int have_hostkey(pool *p, enum sftp_key_type_e hostkey_type,
     case SFTP_KEY_RSA:
     case SFTP_KEY_RSA_SHA256:
     case SFTP_KEY_RSA_SHA512:
-      if (sftp_keys_have_rsa_hostkey() == 0) {
+      if (sftp_keys_have_rsa_hostkey(NULL, NULL, NULL) == 0) {
         local_hostkey_data = sftp_keys_get_hostkey_data(p, hostkey_type,
           &local_hostkey_datalen);
       }
       break;
 
     case SFTP_KEY_DSA:
-      if (sftp_keys_have_dsa_hostkey() == 0) {
+      if (sftp_keys_have_dsa_hostkey(NULL) == 0) {
         local_hostkey_data = sftp_keys_get_hostkey_data(p, hostkey_type,
           &local_hostkey_datalen);
       }
       break;
 
     case SFTP_KEY_ED25519:
-      if (sftp_keys_have_ed25519_hostkey() == 0) {
+      if (sftp_keys_have_ed25519_hostkey(NULL) == 0) {
         local_hostkey_data = sftp_keys_get_hostkey_data(p, hostkey_type,
           &local_hostkey_datalen);
       }
       break;
 
     case SFTP_KEY_ED448:
-      if (sftp_keys_have_ed448_hostkey() == 0) {
+      if (sftp_keys_have_ed448_hostkey(NULL) == 0) {
         local_hostkey_data = sftp_keys_get_hostkey_data(p, hostkey_type,
           &local_hostkey_datalen);
       }
@@ -8287,7 +8716,14 @@ static int have_hostkey(pool *p, enum sftp_key_type_e hostkey_type,
     case SFTP_KEY_ECDSA_256:
     case SFTP_KEY_ECDSA_384:
     case SFTP_KEY_ECDSA_521:
-      if (sftp_keys_have_ecdsa_hostkey(p, NULL) > 0) {
+      if (sftp_keys_have_ecdsa_hostkey(p, NULL, NULL) > 0) {
+        local_hostkey_data = sftp_keys_get_hostkey_data(p, hostkey_type,
+          &local_hostkey_datalen);
+      }
+      break;
+
+    case SFTP_KEY_MLDSA44_ED25519:
+      if (sftp_keys_have_mldsa44_ed25519_hostkey(NULL) == 0) {
         local_hostkey_data = sftp_keys_get_hostkey_data(p, hostkey_type,
           &local_hostkey_datalen);
       }

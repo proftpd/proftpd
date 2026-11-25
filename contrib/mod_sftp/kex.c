@@ -2002,19 +2002,38 @@ static int setup_hostkey_algo(struct sftp_kex *kex, const char *algo) {
     kex->use_hostkey_type = kex_used_hostkey_type = SFTP_KEY_DSA;
     res = 0;
 
+  } else if (strcmp(algo, "ssh-dss-cert") == 0) {
+    kex->use_hostkey_type = kex_used_hostkey_type = SFTP_KEY_DSA_CERT;
+    res = 0;
+
   } else if (strcmp(algo, "ssh-rsa") == 0) {
     kex->use_hostkey_type = kex_used_hostkey_type = SFTP_KEY_RSA;
+    res = 0;
+
+  } else if (strcmp(algo, "ssh-rsa-cert") == 0 ||
+             strcmp(algo, "ssh-rsa-cert-v01@openssh.com") == 0) {
+    kex->use_hostkey_type = kex_used_hostkey_type = SFTP_KEY_RSA_CERT;
     res = 0;
 
 #if defined(HAVE_SHA256_OPENSSL)
   } else if (strcmp(algo, "rsa-sha2-256") == 0) {
     kex->use_hostkey_type = kex_used_hostkey_type = SFTP_KEY_RSA_SHA256;
     res = 0;
+
+  } else if (strcmp(algo, "rsa-sha2-256-cert") == 0 ||
+             strcmp(algo, "rsa-sha2-256-cert-v01@openssh.com") == 0) {
+    kex->use_hostkey_type = kex_used_hostkey_type = SFTP_KEY_RSA_SHA256_CERT;
+    res = 0;
 #endif /* HAVE_SHA256_OPENSSL */
 
 #if defined(HAVE_SHA512_OPENSSL)
   } else if (strcmp(algo, "rsa-sha2-512") == 0) {
     kex->use_hostkey_type = kex_used_hostkey_type = SFTP_KEY_RSA_SHA512;
+    res = 0;
+
+  } else if (strcmp(algo, "rsa-sha2-512-cert") == 0 ||
+             strcmp(algo, "rsa-sha2-512-cert-v01@openssh.com") == 0) {
+    kex->use_hostkey_type = kex_used_hostkey_type = SFTP_KEY_RSA_SHA512_CERT;
     res = 0;
 #endif /* HAVE_SHA512_OPENSSL */
 
@@ -2023,12 +2042,27 @@ static int setup_hostkey_algo(struct sftp_kex *kex, const char *algo) {
     kex->use_hostkey_type = kex_used_hostkey_type = SFTP_KEY_ECDSA_256;
     res = 0;
 
+  } else if (strcmp(algo, "ecdsa-sha2-nistp256-cert") == 0 ||
+             strcmp(algo, "ecdsa-sha2-nistp256-cert-v01@openssh.com") == 0) {
+    kex->use_hostkey_type = kex_used_hostkey_type = SFTP_KEY_ECDSA_256_CERT;
+    res = 0;
+
   } else if (strcmp(algo, "ecdsa-sha2-nistp384") == 0) {
     kex->use_hostkey_type = kex_used_hostkey_type = SFTP_KEY_ECDSA_384;
     res = 0;
 
+  } else if (strcmp(algo, "ecdsa-sha2-nistp384-cert") == 0 ||
+             strcmp(algo, "ecdsa-sha2-nistp384-cert-v01@openssh.com") == 0) {
+    kex->use_hostkey_type = kex_used_hostkey_type = SFTP_KEY_ECDSA_384_CERT;
+    res = 0;
+
   } else if (strcmp(algo, "ecdsa-sha2-nistp521") == 0) {
     kex->use_hostkey_type = kex_used_hostkey_type = SFTP_KEY_ECDSA_521;
+    res = 0;
+
+  } else if (strcmp(algo, "ecdsa-sha2-nistp521-cert") == 0 ||
+             strcmp(algo, "ecdsa-sha2-nistp521-cert-v01@openssh.com") == 0) {
+    kex->use_hostkey_type = kex_used_hostkey_type = SFTP_KEY_ECDSA_521_CERT;
     res = 0;
 #endif /* PR_USE_OPENSSL_ECC */
 
@@ -2036,11 +2070,20 @@ static int setup_hostkey_algo(struct sftp_kex *kex, const char *algo) {
   } else if (strcmp(algo, "ssh-ed25519") == 0) {
     kex->use_hostkey_type = kex_used_hostkey_type = SFTP_KEY_ED25519;
     res = 0;
+
+  } else if (strcmp(algo, "ssh-ed25519-cert") == 0 ||
+             strcmp(algo, "ssh-ed25519-cert-v01@openssh.com") == 0) {
+    kex->use_hostkey_type = kex_used_hostkey_type = SFTP_KEY_ED25519_CERT;
+    res = 0;
 #endif /* PR_USE_SODIUM */
 
 #if defined(HAVE_X448_OPENSSL)
   } else if (strcmp(algo, "ssh-ed448") == 0) {
     kex->use_hostkey_type = kex_used_hostkey_type = SFTP_KEY_ED448;
+    res = 0;
+
+  } else if (strcmp(algo, "ssh-ed448-cert") == 0) {
+    kex->use_hostkey_type = kex_used_hostkey_type = SFTP_KEY_ED448_CERT;
     res = 0;
 #endif /* HAVE_X448_OPENSSL */
 

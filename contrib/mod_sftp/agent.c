@@ -27,7 +27,8 @@
 
 static const char *trace_channel = "ssh2";
 
-/* These values from https://tools.ietf.org/html/draft-miller-ssh-agent-04
+/* These values from RFC 9987:
+ *   https://www.rfc-editor.org/rfc/rfc9987.html
  */
 #define SFTP_SSH_AGENT_FAILURE			5
 #define SFTP_SSH_AGENT_SUCCESS			6
