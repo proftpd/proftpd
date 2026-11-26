@@ -552,6 +552,21 @@ START_TEST (strip_test) {
 
   ok = "foo";
   ck_assert_msg(strcmp(res, ok) == 0, "Expected '%s', got '%s'", ok, res);
+
+  str = pstrdup(p, "");
+  res = pr_str_strip(p, str);
+  ck_assert_msg(res != NULL, "Failed to strip empty string: %s",
+    strerror(errno));
+
+  ok = "";
+  ck_assert_msg(strcmp(res, ok) == 0, "Expected '%s', got '%s'", ok, res);
+
+  str = pstrdup(p, " \r \n \t ");
+  res = pr_str_strip(p, str);
+  ck_assert_msg(res != NULL, "Failed to strip '%s': %s", str, strerror(errno));
+
+  ok = "";
+  ck_assert_msg(strcmp(res, ok) == 0, "Expected '%s', got '%s'", ok, res);
 }
 END_TEST
 
