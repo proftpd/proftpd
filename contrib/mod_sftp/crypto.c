@@ -244,8 +244,6 @@ static const char *hostkey_algos[] = {
   "ecdsa-sha2-nistp521-cert",
   "ecdsa-sha2-nistp521-cert-v01@openssh.com",
 #endif /* PR_USE_OPENSSL_ECC */
-  "ssh-rsa-cert",
-  "ssh-rsa-cert-v01@openssh.com",
 #if defined(HAVE_SHA512_OPENSSL)
   "rsa-sha2-512-cert",
   "rsa-sha2-512-cert-v01@openssh.com",
@@ -254,6 +252,8 @@ static const char *hostkey_algos[] = {
   "rsa-sha2-256-cert",
   "rsa-sha2-256-cert-v01@openssh.com",
 #endif /* HAVE_SHA256_OPENSSL */
+  "ssh-rsa-cert",
+  "ssh-rsa-cert-v01@openssh.com",
   "ssh-dss-cert",
 #if defined(HAVE_MLDSA44_OPENSSL) && \
     defined(HAVE_X25519_OPENSSL) && \
