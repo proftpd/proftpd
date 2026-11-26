@@ -27,8 +27,6 @@
 #include "castore.h"
 #include "rfc4716.h"
 
-extern int ServerUseReverseDNS;
-
 struct sftp_castore_store {
   struct sftp_castore_store *prev, *next;
 
