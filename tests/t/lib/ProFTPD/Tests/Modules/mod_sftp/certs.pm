@@ -365,7 +365,7 @@ my $TESTS = {
     test_class => [qw(bug forking sftp)],
   },
 
-  sftp_config_host_cert_rsa_ca_ecdsa384_cert_issu2507 => {
+  sftp_config_host_cert_rsa_ca_ecdsa384_cert_issue2507 => {
     order => ++$order,
     test_class => [qw(bug forking sftp)],
   },
