@@ -763,6 +763,11 @@ static int send_channel_window_adjust(struct ssh2_channel *chan) {
     return 0;
   }
 
+  if (sftp_sess_state & SFTP_SESS_STATE_REKEYING) {
+    /* No CHANNEL_WINDOW_ADJUST messages during rekeying, please. */
+    return 0;
+  }
+
   tmp_pool = make_sub_pool(chan->pool);
   pr_pool_tag(tmp_pool, "SSH2 send channel window adjust pool");
 
