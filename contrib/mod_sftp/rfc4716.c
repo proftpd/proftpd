@@ -101,7 +101,8 @@ static char *filestore_getline(sftp_keystore_t *store, pool *p) {
         linebuf[linelen - 1] = '\0';
         line = pstrcat(p, line, linebuf, NULL);
 
-        if (line[strlen(line) - 1] == '\\') {
+        if (line[0] != '\0' &&
+            line[strlen(line) - 1] == '\\') {
           have_line_continuation = TRUE;
           line[strlen(line) - 1] = '\0';
         }
@@ -153,7 +154,8 @@ static char *filestore_getline(sftp_keystore_t *store, pool *p) {
         linebuf[linelen - 1] = '\0';
         line = pstrcat(p, line, linebuf, NULL);
 
-        if (line[strlen(line) - 1] == '\\') {
+        if (line[0] != '\0' &&
+            line[strlen(line) - 1] == '\\') {
           have_line_continuation = TRUE;
           line[strlen(line) - 1] = '\0';
         }

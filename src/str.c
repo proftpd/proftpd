@@ -459,6 +459,15 @@ const char *pr_str_strip(pool *p, const char *str) {
   for (start = str; PR_ISSPACE(*start); start++) {
   }
 
+  /* If the string has no non-whitespace text, there is nothing to strip.
+   * Returning here also means that the backward scan below always starts
+   * within the string, and always stops at a non-whitespace byte at or after
+   * `start'.
+   */
+  if (*start == '\0') {
+    return pstrdup(p, "");
+  }
+
   /* Now, find the non-whitespace end of the given string */
   for (finish = &str[strlen(str)-1]; PR_ISSPACE(*finish); finish--) {
   }
