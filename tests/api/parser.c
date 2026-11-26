@@ -453,12 +453,20 @@ MODRET parser_set_testsuite_error(cmd_rec *cmd) {
   CONF_ERROR(cmd, "BAD DIRECTIVE");
 }
 
+static const char *testsuite_value = NULL;
+
+MODRET parser_set_testsuite_value(cmd_rec *cmd) {
+  testsuite_value = pstrdup(p, cmd->arg);
+  return PR_HANDLED(cmd);
+}
+
 static module parser_module;
 
 static conftable parser_conftab[] = {
   { "TestSuiteEnabled",	parser_set_testsuite_enabled, NULL },
   { "TestSuiteEngine",	parser_set_testsuite_engine, NULL },
   { "TestSuiteError",	parser_set_testsuite_error, NULL },
+  { "TestSuiteValue",	parser_set_testsuite_value, NULL },
   { NULL },
 };
 
@@ -815,6 +823,62 @@ START_TEST (parser_parse_file_leak_test) {
 }
 END_TEST
 
+START_TEST (parser_parse_file_dynamic_config_env_test) {
+  int res;
+  pr_fh_t *fh;
+  char *text;
+
+  (void) unlink(config_path);
+
+  pr_parser_prepare(p, NULL);
+  pr_parser_server_ctxt_open("127.0.0.1");
+
+  fh = pr_fsio_open(config_path, O_CREAT|O_EXCL|O_WRONLY);
+  ck_assert_msg(fh != NULL, "Failed to open '%s': %s", config_path,
+    strerror(errno));
+
+  text = "TestSuiteValue %{env:FOO_TEST}\n";
+  res = pr_fsio_write(fh, text, strlen(text));
+  ck_assert_msg(res >= 0, "Failed to write '%s': %s", text, strerror(errno));
+
+  res = pr_fsio_close(fh);
+  ck_assert_msg(res == 0, "Failed to write '%s': %s", config_path,
+    strerror(errno));
+
+  mark_point();
+
+  /* Load the module's config handlers. */
+  res = load_parser_module();
+  ck_assert_msg(res == 0, "Failed to load module conftab: %s", strerror(errno));
+
+  pr_env_set(p, "FOO_TEST", "BAR");
+
+  /* Environment variables are resolved for the server's own configuration... */
+  testsuite_value = NULL;
+  res = pr_parser_parse_file(p, config_path, NULL, 0);
+  ck_assert_msg(res == 0, "Failed to parse '%s': %s", config_path,
+    strerror(errno));
+  ck_assert_msg(testsuite_value != NULL, "Expected value, got null");
+  ck_assert_msg(strcmp(testsuite_value, "BAR") == 0,
+    "Expected 'BAR', got '%s'", testsuite_value);
+
+  /* ...but not for .ftpaccess files, which are written by users. */
+  testsuite_value = NULL;
+  res = pr_parser_parse_file(p, config_path, NULL, PR_PARSER_FL_DYNAMIC_CONFIG);
+  ck_assert_msg(res == 0, "Failed to parse '%s': %s", config_path,
+    strerror(errno));
+  ck_assert_msg(testsuite_value != NULL, "Expected value, got null");
+  ck_assert_msg(strcmp(testsuite_value, "%{env:FOO_TEST}") == 0,
+    "Expected '%%{env:FOO_TEST}', got '%s'", testsuite_value);
+
+  pr_env_unset(p, "FOO_TEST");
+  (void) pr_parser_server_ctxt_close();
+  (void) pr_parser_cleanup();
+  (void) pr_module_unload(&parser_module);
+  (void) pr_fsio_unlink(config_path);
+}
+END_TEST
+
 Suite *tests_get_parser_suite(void) {
   Suite *suite;
   TCase *testcase;
@@ -836,6 +900,7 @@ Suite *tests_get_parser_suite(void) {
   tcase_add_test(testcase, parse_config_path_test);
   tcase_add_test(testcase, parser_parse_file_test);
   tcase_add_test(testcase, parser_parse_file_leak_test);
+  tcase_add_test(testcase, parser_parse_file_dynamic_config_env_test);
 
   /* Some of these tests may take a little longer. */
   tcase_set_timeout(testcase, 30);
