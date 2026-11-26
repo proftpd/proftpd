@@ -1899,9 +1899,11 @@ sub ctrls_admin_down_up_ok {
     $ex = $@;
   }
 
+  my $pid;
+
   # Fork child
   $self->handle_sigchld();
-  defined(my $pid = fork()) or die("Can't fork: $!");
+  defined($pid = fork()) or die("Can't fork: $!");
   if ($pid == 0) {
     eval {
       my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
@@ -1953,7 +1955,7 @@ sub ctrls_admin_down_up_ok {
 
   # Fork child
   $self->handle_sigchld();
-  defined(my $pid = fork()) or die("Can't fork: $!");
+  defined($pid = fork()) or die("Can't fork: $!");
   if ($pid == 0) {
     eval {
       my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
