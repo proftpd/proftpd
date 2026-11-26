@@ -511,18 +511,22 @@ END_TEST
 START_TEST (strip_test) {
   const char *ok, *res, *str;
 
+  mark_point();
   res = pr_str_strip(NULL, NULL);
   ck_assert_msg(res == NULL, "Failed to handle null arguments");
   ck_assert_msg(errno == EINVAL, "Failed to set errno to EINVAL");
 
+  mark_point();
   res = pr_str_strip(p, NULL);
   ck_assert_msg(res == NULL, "Failed to handle null str argument");
   ck_assert_msg(errno == EINVAL, "Failed to set errno to EINVAL");
 
+  mark_point();
   res = pr_str_strip(NULL, "foo");
   ck_assert_msg(res == NULL, "Failed to handle null pool argument");
   ck_assert_msg(errno == EINVAL, "Failed to set errno to EINVAL");
 
+  mark_point();
   str = pstrdup(p, "foo");
   res = pr_str_strip(p, str);
   ck_assert_msg(res != NULL, "Failed to strip '%s': %s", str, strerror(errno));
@@ -530,6 +534,7 @@ START_TEST (strip_test) {
   ok = "foo";
   ck_assert_msg(strcmp(res, ok) == 0, "Expected '%s', got '%s'", ok, res);
 
+  mark_point();
   str = pstrdup(p, " \n \t foo");
   res = pr_str_strip(p, str);
   ck_assert_msg(res != NULL, "Failed to strip '%s': %s", str, strerror(errno));
@@ -537,6 +542,7 @@ START_TEST (strip_test) {
   ok = "foo";
   ck_assert_msg(strcmp(res, ok) == 0, "Expected '%s', got '%s'", ok, res);
 
+  mark_point();
   str = pstrdup(p, "foo  \n \t \r");
   res = pr_str_strip(p, str);
   ck_assert_msg(res != NULL, "Failed to strip '%s': %s", str, strerror(errno));
@@ -544,6 +550,7 @@ START_TEST (strip_test) {
   ok = "foo";
   ck_assert_msg(strcmp(res, ok) == 0, "Expected '%s', got '%s'", ok, res);
 
+  mark_point();
   str = pstrdup(p, "\r \n\n\t    foo  \n \t \r");
   res = pr_str_strip(p, str);
   ck_assert_msg(res != NULL, "Failed to strip '%s': %s", str, strerror(errno));
@@ -551,6 +558,7 @@ START_TEST (strip_test) {
   ok = "foo";
   ck_assert_msg(strcmp(res, ok) == 0, "Expected '%s', got '%s'", ok, res);
 
+  mark_point();
   str = pstrdup(p, "");
   res = pr_str_strip(p, str);
   ck_assert_msg(res != NULL, "Failed to strip empty string: %s",
@@ -559,12 +567,32 @@ START_TEST (strip_test) {
   ok = "";
   ck_assert_msg(strcmp(res, ok) == 0, "Expected '%s', got '%s'", ok, res);
 
+  /* And for completeness, test what happens if we use malloc'd buffers. */
+  mark_point();
+  str = strdup("");
+  res = pr_str_strip(p, str);
+  ck_assert_msg(res != NULL, "Failed to strip '%s': %s", str, strerror(errno));
+
+  ok = "";
+  ck_assert_msg(strcmp(res, ok) == 0, "Expected '%s', got '%s'", ok, res);
+  free(str);
+
+  mark_point();
   str = pstrdup(p, " \r \n \t ");
   res = pr_str_strip(p, str);
   ck_assert_msg(res != NULL, "Failed to strip '%s': %s", str, strerror(errno));
 
   ok = "";
   ck_assert_msg(strcmp(res, ok) == 0, "Expected '%s', got '%s'", ok, res);
+
+  mark_point();
+  str = strdup(" \r \n \t ");
+  res = pr_str_strip(p, str);
+  ck_assert_msg(res != NULL, "Failed to strip '%s': %s", str, strerror(errno));
+
+  ok = "";
+  ck_assert_msg(strcmp(res, ok) == 0, "Expected '%s', got '%s'", ok, res);
+  free(str);
 }
 END_TEST
 

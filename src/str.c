@@ -445,40 +445,41 @@ int pr_strnrstr(const char *s, size_t slen, const char *suffix,
   return res;
 }
 
-const char *pr_str_strip(pool *p, const char *str) {
-  const char *dup_str, *start, *finish;
-  size_t len = 0;
+const char *pr_str_strip(pool *p, const char *text) {
+  const char *dup_text = NULL, *start, *finish;
+  size_t len = 0, text_len = 0;
 
   if (p == NULL ||
-      str == NULL) {
+      text == NULL) {
     errno = EINVAL;
     return NULL;
   }
 
-  /* First, find the non-whitespace start of the given string */
-  for (start = str; PR_ISSPACE(*start); start++) {
+  text_len = strlen(text);
+  if (text_len == 0) {
+    return pstrdup(p, "");
   }
 
-  /* If the string has no non-whitespace text, there is nothing to strip.
-   * Returning here also means that the backward scan below always starts
-   * within the string, and always stops at a non-whitespace byte at or after
-   * `start'.
-   */
+  /* First, find the non-whitespace start of the given text. */
+  for (start = text; PR_ISSPACE(*start); start++) {
+  }
+
+  /* If the string has no non-whitespace text, there is nothing to strip. */
   if (*start == '\0') {
     return pstrdup(p, "");
   }
 
-  /* Now, find the non-whitespace end of the given string */
-  for (finish = &str[strlen(str)-1]; PR_ISSPACE(*finish); finish--) {
+  /* Now, find the non-whitespace end of the given text. */
+  for (finish = &text[text_len-1]; PR_ISSPACE(*finish); finish--) {
   }
 
   /* Include for the last byte, of course. */
   len = finish - start + 1;
 
-  /* The space-stripped string is, then, everything from start to finish. */
-  dup_str = pstrndup(p, start, len);
+  /* The space-stripped text is, then, everything from start to finish. */
+  dup_text = pstrndup(p, start, len);
 
-  return dup_str;
+  return dup_text;
 }
 
 char *pr_str_strip_end(char *s, const char *ch) {
