@@ -745,6 +745,11 @@ static int send_channel_window_adjust(struct ssh2_channel *chan) {
     return 0;
   }
 
+  if (sftp_sess_state & SFTP_SESS_STATE_REKEYING) {
+    /* No CHANNEL_WINDOW_ADJUST messages during rekeying, please. */
+    return 0;
+  }
+
   tmp_pool = make_sub_pool(chan->pool);
   pr_pool_tag(tmp_pool, "SSH2 send channel window adjust pool");
 
@@ -1755,6 +1760,11 @@ int sftp_channel_drain_data(void) {
   chans = channel_list->elts;
   for (i = 0; i < channel_list->nelts; i++) {
     if (chans[i] != NULL) {
+      /* A CHANNEL_WINDOW_ADJUST for this channel, skipped during rekeying,
+       * might otherwise never be sent.
+       */
+      send_channel_window_adjust(chans[i]);
+
       pr_trace_msg(trace_channel, 15,
         "draining pending outgoing data for local channel ID %lu",
         (unsigned long) chans[i]->local_channel_id);
