@@ -166,6 +166,30 @@ static int facts_filters_allow_path(cmd_rec *cmd, const char *path) {
   return 0;
 }
 
+/* MFF UNIX.mode and UNIX.group are equivalent to SITE CHMOD and SITE CHGRP,
+ * and thus need to honor the same <Limit> sections that core_chmod() and
+ * core_chgrp() do.
+ */
+static int facts_modify_check_limit(cmd_rec *cmd, const char *limit_name,
+    const char *path) {
+  char *cmd_name;
+  int res;
+
+  cmd_name = cmd->argv[0];
+  pr_cmd_set_name(cmd, limit_name);
+  res = dir_check(cmd->tmp_pool, cmd, G_WRITE, path, NULL);
+  pr_cmd_set_name(cmd, cmd_name);
+
+  if (!res) {
+    pr_log_debug(DEBUG4, MOD_FACTS_VERSION
+      ": %s command denied by <Limit %s>", (char *) cmd->argv[0], limit_name);
+    errno = EACCES;
+    return -1;
+  }
+
+  return 0;
+}
+
 #define FACTS_SECS_PER_MIN	(60)
 #define FACTS_SECS_PER_HOUR	(60 * FACTS_SECS_PER_MIN)
 #define FACTS_SECS_PER_DAY	(24 * FACTS_SECS_PER_HOUR)
@@ -1362,6 +1386,16 @@ MODRET facts_mff(cmd_rec *cmd) {
 
       group = ptr2 + 1;
 
+      if (facts_modify_check_limit(cmd, "SITE_CHGRP", canon_path) < 0) {
+        int xerrno = errno;
+
+        pr_response_add_err(R_550, "%s: %s", path, strerror(xerrno));
+
+        pr_cmd_set_errno(cmd, xerrno);
+        errno = xerrno;
+        return PR_ERROR(cmd);
+      }
+
       if (facts_modify_unix_group(cmd->tmp_pool, decoded_path, group) < 0) {
         int xerrno = errno;
 
@@ -1392,6 +1426,16 @@ MODRET facts_mff(cmd_rec *cmd) {
       }
 
       mode_str = ptr2 + 1;
+
+      if (facts_modify_check_limit(cmd, "SITE_CHMOD", canon_path) < 0) {
+        int xerrno = errno;
+
+        pr_response_add_err(R_550, "%s: %s", path, strerror(xerrno));
+
+        pr_cmd_set_errno(cmd, xerrno);
+        errno = xerrno;
+        return PR_ERROR(cmd);
+      }
 
       if (facts_modify_unix_mode(cmd->tmp_pool, decoded_path, mode_str) < 0) {
         int xerrno = errno;
