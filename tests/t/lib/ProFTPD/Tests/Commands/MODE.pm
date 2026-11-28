@@ -338,7 +338,7 @@ sub mode_other_fails {
       my $client = ProFTPD::TestSuite::FTP->new('127.0.0.1', $port);
       $client->login($setup->{user}, $setup->{passwd});
 
-      eval { $client->mode('other') };
+      eval { $client->mode('o') };
       unless ($@) {
         die("MODE succeeded unexpectedly");
       }
@@ -350,7 +350,7 @@ sub mode_other_fails {
       $self->assert($expected == $resp_code,
         test_msg("Expected response code $expected, got $resp_code"));
 
-      $expected = "'MODE other' unrecognized transfer mode";
+      $expected = "'MODE o' unrecognized transfer mode";
       $self->assert($expected eq $resp_msg,
         test_msg("Expected response message '$expected', got '$resp_msg'"));
 
