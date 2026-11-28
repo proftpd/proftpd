@@ -3322,6 +3322,7 @@ MODRET xfer_type(cmd_rec *cmd) {
 
 MODRET xfer_stru(cmd_rec *cmd) {
   char *stru;
+  size_t stru_len;
 
   if (cmd->argc != 2) {
     pr_response_add_err(R_501, _("'%s' not understood"),
@@ -3333,6 +3334,16 @@ MODRET xfer_stru(cmd_rec *cmd) {
   }
 
   stru = cmd->argv[1];
+  stru_len = strlen(stru);
+  if (stru_len > 1) {
+    pr_response_add_err(R_501, _("'%s' unrecognized structure type"),
+      pr_cmd_get_displayable_str(cmd, NULL));
+
+    pr_cmd_set_errno(cmd, EINVAL);
+    errno = EINVAL;
+    return PR_ERROR(cmd);
+  }
+
   if (PR_ISALPHA((int) stru[0])) {
     stru[0] = toupper((int) stru[0]);
   }
