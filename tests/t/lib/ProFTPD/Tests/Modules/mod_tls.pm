@@ -8994,7 +8994,7 @@ sub tls_ccc_before_login {
   server_stop($setup->{pid_file});
   $self->assert_child_ok($pid);
 
-  test_cleanup($setup->{log_file}, $ex);
+  test_cleanup($setup, $ex);
 }
 
 sub tls_pbsz_prot_after_ccc_issue2518 {
@@ -9270,7 +9270,7 @@ sub tls_pbsz_prot_after_ccc_issue2518 {
   server_stop($setup->{pid_file});
   $self->assert_child_ok($pid);
 
-  test_cleanup($setup->{log_file}, $ex);
+  test_cleanup($setup, $ex);
 }
 
 sub tls_opts_commonname_required_bug3512 {
