@@ -3378,6 +3378,7 @@ MODRET xfer_stru(cmd_rec *cmd) {
 
 MODRET xfer_mode(cmd_rec *cmd) {
   char *mode;
+  size_t mode_len;
 
   if (cmd->argc != 2) {
     pr_response_add_err(R_501, _("'%s' not understood"),
@@ -3389,6 +3390,16 @@ MODRET xfer_mode(cmd_rec *cmd) {
   }
 
   mode = cmd->argv[1];
+  mode_len = strlen(mode);
+  if (mode_len > 1) {
+    pr_response_add_err(R_504, _("'%s' unsupported transfer mode"),
+      pr_cmd_get_displayable_str(cmd, NULL));
+
+    pr_cmd_set_errno(cmd, ENOSYS);
+    errno = ENOSYS;
+    return PR_ERROR(cmd);
+  }
+
   if (PR_ISALPHA((int) mode[0])) {
     mode[0] = toupper((int) mode[0]);
   }
