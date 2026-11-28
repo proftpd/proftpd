@@ -29,6 +29,7 @@
   latest release.
 - Issue 2509 - mod_sftp could inappropriately send CHANNEL_WINDOW_ADJUST
   messages during rekeying.
+- Issue 2518 - FTP PROT command after CCC should be handled more carefully.
 
 1.3.9f - Released 18-Nov-2026
 --------------------------------
