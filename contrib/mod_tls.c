@@ -13741,11 +13741,15 @@ MODRET tls_ccc(cmd_rec *cmd) {
 }
 
 MODRET tls_pbsz(cmd_rec *cmd) {
+  register unsigned int i;
+  char *prot_bufsz;
+  size_t prot_bufsz_len;
 
-  if (!tls_engine ||
-      !session.rfc2228_mech ||
-      strncmp(session.rfc2228_mech, "TLS", 4) != 0)
+  if (tls_engine == FALSE ||
+      session.rfc2228_mech == NULL ||
+      strcmp(session.rfc2228_mech, "TLS") != 0) {
     return PR_DECLINED(cmd);
+  }
 
   CHECK_CMD_ARGS(cmd, 2);
 
@@ -13758,8 +13762,20 @@ MODRET tls_pbsz(cmd_rec *cmd) {
     return PR_ERROR(cmd);
   }
 
+  prot_bufsz = cmd->argv[1];
+  prot_bufsz_len = strlen(prot_bufsz);
+
+  /* We expect only digits. */
+  for (i = 0; i < prot_bufsz_len; i++) {
+    if (!PR_ISDIGIT(prot_bufsz[i])) {
+      pr_response_add_err(R_501,
+        _("Illegal protection buffer parameter '%s' requested"), prot_bufsz);
+      return PR_ERROR(cmd);
+    }
+  }
+
   /* We expect "PBSZ 0" */
-  if (strncmp(cmd->argv[1], "0", 2) == 0) {
+  if (strcmp(prot_bufsz, "0") == 0) {
     pr_response_add(R_200, _("PBSZ 0 successful"));
 
   } else {
