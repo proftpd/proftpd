@@ -14031,9 +14031,9 @@ MODRET tls_post_user(cmd_rec *cmd) {
 MODRET tls_prot(cmd_rec *cmd) {
   char *prot;
 
-  if (!tls_engine ||
-      !session.rfc2228_mech ||
-      strncmp(session.rfc2228_mech, "TLS", 4) != 0) {
+  if (tls_engine == FALSE ||
+      session.rfc2228_mech == NULL ||
+      strcmp(session.rfc2228_mech, "TLS") != 0) {
     return PR_DECLINED(cmd);
   }
 
@@ -14076,21 +14076,52 @@ MODRET tls_prot(cmd_rec *cmd) {
 
   /* Only PROT C or PROT P is valid with respect to SSL/TLS. */
   prot = cmd->argv[1];
-  if (strncmp(prot, "C", 2) == 0) {
-    char *mesg = "Protection set to Clear";
+
+  /* Has the client previously used CCC, or not?
+   *
+   * Per RFC 4217, Section 5, ideally we would not accept PROT commands
+   * after CCC has been successfully handled.  However, experience has
+   * demonstrated that some clients (such as lftp) have been known to
+   * send PROT after CCC.  Thus we try to be polite.  IFF the given PROT
+   * setting matches what we currently have AND CCC has been used, then we
+   * will allow the command to succeed.
+   */
+
+  if (strcmp(prot, "C") == 0) {
+    int accept_protection_level = FALSE;
 
     if (tls_required_on_data != 1) {
       /* Only accept this if SSL/TLS is not required, by policy, on data
        * connections.
        */
-      tls_flags &= ~TLS_SESS_NEED_DATA_PROT;
-      pr_response_add(R_200, "%s", mesg);
-      tls_log("%s", mesg);
+
+      if (tls_flags & TLS_SESS_HAVE_CCC) {
+        /* If CCC has been used, and our PROT level already indicates
+         * that we do not require protection for data transfers, then we
+         * will accept this PROT command.
+         */
+        if (!(tls_flags & TLS_SESS_NEED_DATA_PROT)) {
+          accept_protection_level = TRUE;
+        }
+
+      } else {
+        tls_flags &= ~TLS_SESS_NEED_DATA_PROT;
+        accept_protection_level = TRUE;
+      }
+
+    } else {
+      tls_log("%s: TLSRequired requires protection for data transfers",
+        (char *) cmd->argv[0]);
+    }
+
+    if (accept_protection_level == TRUE) {
+      char *msg = "Protection set to Clear";
+
+      pr_response_add(R_200, "%s", msg);
+      tls_log("%s", msg);
 
     } else {
       pr_response_add_err(R_534, _("Unwilling to accept security parameters"));
-      tls_log("%s: TLSRequired requires protection for data transfers",
-        (char *) cmd->argv[0]);
       tls_log("%s: unwilling to accept security parameter (%s)",
         (char *) cmd->argv[0], prot);
 
@@ -14099,21 +14130,41 @@ MODRET tls_prot(cmd_rec *cmd) {
       return PR_ERROR(cmd);
     }
 
-  } else if (strncmp(prot, "P", 2) == 0) {
-    char *mesg = "Protection set to Private";
+  } else if (strcmp(prot, "P") == 0) {
+    int accept_protection_level = FALSE;
 
     if (tls_required_on_data != -1) {
       /* Only accept this if SSL/TLS is allowed, by policy, on data
        * connections.
        */
-      tls_flags |= TLS_SESS_NEED_DATA_PROT;
-      pr_response_add(R_200, "%s", mesg);
-      tls_log("%s", mesg);
+
+      if (tls_flags & TLS_SESS_HAVE_CCC) {
+        /* If CCC has been used, and our PROT level already indicates
+         * that we do require protection for data transfers, then we will
+         * accept this PROT command.
+         */
+        if (tls_flags & TLS_SESS_NEED_DATA_PROT) {
+          accept_protection_level = TRUE;
+        }
+
+      } else {
+        tls_flags |= TLS_SESS_NEED_DATA_PROT;
+        accept_protection_level = TRUE;
+      }
+
+    } else {
+      tls_log("%s: TLSRequired does not allow protection for data transfers",
+        (char *) cmd->argv[0]);
+    }
+
+    if (accept_protection_level == TRUE) {
+      char *msg = "Protection set to Private";
+
+      pr_response_add(R_200, "%s", msg);
+      tls_log("%s", msg);
 
     } else {
       pr_response_add_err(R_534, _("Unwilling to accept security parameters"));
-      tls_log("%s: TLSRequired does not allow protection for data transfers",
-        (char *) cmd->argv[0]);
       tls_log("%s: unwilling to accept security parameter (%s)",
         (char *) cmd->argv[0], prot);
 
@@ -14122,8 +14173,8 @@ MODRET tls_prot(cmd_rec *cmd) {
       return PR_ERROR(cmd);
     }
 
-  } else if (strncmp(prot, "S", 2) == 0 ||
-             strncmp(prot, "E", 2) == 0) {
+  } else if (strcmp(prot, "S") == 0 ||
+             strcmp(prot, "E") == 0) {
     pr_response_add_err(R_536, _("PROT %s unsupported"), prot);
 
     /* By the time the logic reaches this point, there must have been
@@ -14147,7 +14198,10 @@ MODRET tls_prot(cmd_rec *cmd) {
     return PR_ERROR(cmd);
   }
 
-  tls_flags |= TLS_SESS_PBSZ_OK;
+  if (!(tls_flags & TLS_SESS_HAVE_CCC)) {
+    tls_flags |= TLS_SESS_PBSZ_OK;
+  }
+
   return PR_HANDLED(cmd);
 }
 
